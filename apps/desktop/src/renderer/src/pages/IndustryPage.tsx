@@ -148,9 +148,9 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     dataLine = `可用 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）· 每批 ${batch} 单位 / ${cycleS} 秒 · 约 ${Math.ceil(total / batch)} 批炼完`
   }
 
-  // 效率估价区：精炼卡显示每批产物与「净 ≈ISK/h」（产物矿物收价 − 耗料原料收价，按双方站内收价、
+  // 效率估价区：精炼卡显示每批产物与「净 ≈信用点/h」（产物矿物收价 − 耗料原料收价，按双方站内收价、
   // 不随市场；2026-09-08 船长定：估算必须扣除材料成本，防"越炼越亏还显示正收益"误读）；
-  // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈ISK/h"（残骸可直接出售应急、也可拆解；回收无耗料可扣，展示估算非结算）
+  // 残骸回收卡与星图「残骸打捞」页同口径补"保底 ≈信用点/h"（残骸可直接出售应急、也可拆解；回收无耗料可扣，展示估算非结算）
   let econ: ReactNode = null
   if (isWreck) {
     const profile = wreckProfile
@@ -190,7 +190,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             className="app-belt-econ-val"
             title="按残骸来源危险度池的保底原材料估算（手动炉基准；AI 核心驱动时周期更长）——参考值，实际所得以回收拆解结算为准"
           >
-            {MONEY_GLYPH} 保底 ≈{evH.toLocaleString('zh-CN')} ISK/h
+            {MONEY_GLYPH} 保底 ≈{evH.toLocaleString('zh-CN')} 信用点/h
           </div>
         </div>
       )
@@ -232,11 +232,11 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         {batchValue > 0 ? (
           <div
             className={`app-belt-econ-val${netH < 0 ? ' is-neg' : ''}`}
-            title={`净收益估算：每批产物（原材料站内收价） − 每批耗料价值（原料站内收价），× 每小时批次数；不随市场、未计成交税。毛产值 ≈${grossH.toLocaleString('zh-CN')} ISK/h；${
+            title={`净收益估算：每批产物（原材料站内收价） − 每批耗料价值（原料站内收价），× 每小时批次数；不随市场、未计成交税。毛产值 ≈${grossH.toLocaleString('zh-CN')} 信用点/h；${
               netH < 0 ? '当前产出倍率下精炼不如直接卖原料。' : '数值已扣除耗料成本。'
             }`}
           >
-            {MONEY_GLYPH} ≈{netH.toLocaleString('zh-CN')} ISK/h{netH < 0 ? '（净亏：直接卖原料更划算）' : '（净）'}
+            {MONEY_GLYPH} ≈{netH.toLocaleString('zh-CN')} 信用点/h{netH < 0 ? '（净亏：直接卖原料更划算）' : '（净）'}
           </div>
         ) : null}
       </div>

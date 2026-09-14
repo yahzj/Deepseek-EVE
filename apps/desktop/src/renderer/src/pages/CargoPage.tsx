@@ -75,7 +75,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
     }
     const r = engine.sellCargo(id, qty)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`已售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK。`)
+    else onToast(`已售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} 信用点。`)
     setSellId(null)
     setPickId(null)
   }
@@ -244,7 +244,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                         </span>
                         <span className="app-inv-count">
                           ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价{' '}
-                          {buy !== undefined ? `${isk(buy)} ISK` : '—'}
+                          {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
                         </span>
                       </div>
                       <div className="app-inv-btns">
@@ -383,7 +383,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   <div className="app-itempick-name">{pickDef.name}</div>
                   <div className="app-dim">
                     ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}）· 市场收价{' '}
-                    {pickBuy !== undefined ? `${isk(pickBuy)} ISK` : '—'}
+                    {pickBuy !== undefined ? `${isk(pickBuy)} 信用点` : '—'}
                   </div>
                 </div>
               </div>
@@ -462,7 +462,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               glyph={sellDef.kind}
               max={sellUnits}
               unit="单位"
-              priceText={sellBuy !== undefined ? `收价 ${isk(sellBuy)} ISK/单位` : undefined}
+              priceText={sellBuy !== undefined ? `收价 ${isk(sellBuy)} 信用点/单位` : undefined}
               note={sellDef.description}
               onClose={() => setSellId(null)}
               onConfirm={(qty) => handleSell(sellId, qty)}

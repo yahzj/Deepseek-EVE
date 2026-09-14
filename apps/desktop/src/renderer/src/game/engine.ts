@@ -327,7 +327,7 @@ function buildOfflineReport(
       if (s.makeDone > 0) acts.push(`制造完成 ×${s.makeDone}`)
       if (acts.length === 0) continue
       coreJobs.push(
-        `${aiCoreName(t)}核心：${acts.join(' · ')}${s.income > 0 ? ` · 预估收入 ≈+${s.income.toLocaleString('zh-CN')} ISK` : ''}`,
+        `${aiCoreName(t)}核心：${acts.join(' · ')}${s.income > 0 ? ` · 预估收入 ≈+${s.income.toLocaleString('zh-CN')} 信用点` : ''}`,
       )
     }
   }
@@ -353,7 +353,7 @@ function buildOfflineReport(
 function offlineReportLogText(r: OfflineReport): string {
   const parts: string[] = [`离开 ${formatDurationMs(r.wallAwayMs)}，结算 ${formatDurationMs(r.settledMs)}`]
   if (r.overflowMs > 0) parts.push(`另有 ${formatDurationMs(r.overflowMs)} 超出上限未结算`)
-  parts.push(`钱包 ${r.iskDelta >= 0 ? '+' : '−'}${Math.abs(r.iskDelta).toLocaleString('zh-CN')} ISK`)
+  parts.push(`钱包 ${r.iskDelta >= 0 ? '+' : '−'}${Math.abs(r.iskDelta).toLocaleString('zh-CN')} 信用点`)
   if (r.items.length > 0) parts.push(`收获 ${r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join('、')}`)
   if (r.modules.length > 0) parts.push(`装备入库 ${r.modules.map((m) => `${m.name}×${m.delta}`).join('、')}`)
   if (r.shipsIn.length > 0) parts.push(`新船入坞 ${r.shipsIn.join('、')}`)
@@ -1065,7 +1065,7 @@ export class GameEngine {
     const quote = marketQuote(this.state, this.ctx, goodKey)
     const ask = quote.sell !== undefined ? Math.round(quote.sell * 1.02) : Math.round(levelOf(this.state, this.ctx, goodKey) * 1.03)
     const order = placeBuyOrder(this.state, this.ctx, goodKey, ask, 1)
-    if (!order) return { ok: false, error: 'ISK 不足或挂单失败：先攒够购书款。' }
+    if (!order) return { ok: false, error: '信用点 不足或挂单失败：先攒够购书款。' }
     void this.persist()
     this.notify()
     return { ok: true, pending: true }
@@ -1097,7 +1097,7 @@ export class GameEngine {
         const unit = quote.sell ?? 0
         return {
           ok: false,
-          error: `ISK 不足：最低一张 ${unit.toLocaleString('zh-CN')} ISK，钱包 ${Math.floor(this.state.wallet.isk).toLocaleString('zh-CN')} ISK——减少数量，或用「挂买单」低价排队等成交。`,
+          error: `信用点 不足：最低一张 ${unit.toLocaleString('zh-CN')} 信用点，钱包 ${Math.floor(this.state.wallet.isk).toLocaleString('zh-CN')} 信用点——减少数量，或用「挂买单」低价排队等成交。`,
         }
       }
       case 'standing':
@@ -2136,7 +2136,7 @@ export class GameEngine {
     return result
   }
 
-  /** 重要任务①「补给协议·首批矿物」：交付富凡晶石（仓库扣取）→ 4,000 ISK + 基础 AI 核心 */
+  /** 重要任务①「补给协议·首批矿物」：交付富凡晶石（仓库扣取）→ 4,000 信用点 + 基础 AI 核心 */
   deliverTutorialOreAt(): CommandResult {
     const result = deliverTutorialOre(this.state, this.ctx)
     if (result.ok) {

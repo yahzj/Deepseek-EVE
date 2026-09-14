@@ -1388,7 +1388,7 @@ function StarMap({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) 
                   </span>
                   赏金任务 {tasksByGalaxy.get(selected.id)!.length} 个：
                   {tasksByGalaxy.get(selected.id)!
-                    .map((t) => `${t.lairName ?? t.anomalyId ?? '窝点'}（${t.rewardIsk.toLocaleString('zh-CN')} ISK）`)
+                    .map((t) => `${t.lairName ?? t.anomalyId ?? '窝点'}（${t.rewardIsk.toLocaleString('zh-CN')} 信用点）`)
                     .join('、')}
                   {taskEtaText.length > 0 ? ` · 剩余 ${taskEtaText}（每天 0 点换新）` : ''}
                 </div>
@@ -1778,7 +1778,7 @@ function GalaxyActions({ engine, galaxy, onToast }: { engine: GameEngine; galaxy
             <span className="app-ga-main">
               <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
               <span className="app-dim app-ga-desc">
-                威胁 {a.threat} · 奖金 {Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
+                威胁 {a.threat} · 奖金 {Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} 信用点
                 {state.completedBounties.includes(a.id) ? ' · 已首胜' : ''}
               </span>
             </span>
@@ -2106,16 +2106,16 @@ function AnomalyCard({
         })()}
       </div>
       <div className="app-ano-reward">
-        奖金 {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} ISK
+        奖金 {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} 信用点
         {factionHit ? <span className="app-dim" title={`敌对派系活跃加成：原始奖金 ${anomaly.rewardIsk.toLocaleString('zh-CN')} ×1.1`}>（敌对派系活跃 +10%）</span> : null}
         {anomaly.loot.length > 0 ? ` + ${lootText}` : ''} · 声望 +{anomaly.standingGain}
         {bountyCleared ? <span className="app-dim" title="该悬赏已首胜：重复完成不再获得声望，可转向新目标提升协会声望">（已首胜）</span> : null}
       </div>
       <div
         className="app-ano-econ"
-        title={`估算奖励/小时（每次出击耗时 = 交火 + 胜利自动返航：异星系 2×单程 / 本地悬赏固定返港 2 分钟）：${grossIsk.toLocaleString('zh-CN')} ISK ÷ ${formatDurationMs(roundTripMs)}`}
+        title={`估算奖励/小时（每次出击耗时 = 交火 + 胜利自动返航：异星系 2×单程 / 本地悬赏固定返港 2 分钟）：${grossIsk.toLocaleString('zh-CN')} 信用点 ÷ ${formatDurationMs(roundTripMs)}`}
       >
-        {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} ISK/h（每次出击）
+        {MONEY_GLYPH} 估算 ≈{iskPerHourTxt} 信用点/h（每次出击）
       </div>
       <div className="app-ano-bottom">
         <span className="app-ano-desc">
@@ -2342,7 +2342,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   </div>
                   <div className="app-station-mats">
                     目标「{siteName ?? '（最近已建成副站）'}」{galaxyName ? `（${galaxyName}）` : ''}：
-                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算——酬金 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} ISK（不涨声望；到站后舰船将停靠目标副站）。
+                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算——酬金 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点（不涨声望；到站后舰船将停靠目标副站）。
                   </div>
                   <div className="app-station-deliver">
                     <span className="app-dim">
@@ -2356,7 +2356,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                       <button
                         className="app-btn is-small is-primary"
                         disabled={short > 0 || expired || otherInFlight}
-                        title={lockedTxt ?? `出发投送：携 ${name}×${t.need.toLocaleString('zh-CN')} 驶往「${siteName ?? '最近副站'}」，到站领取 ${t.rewardIsk.toLocaleString('zh-CN')} ISK`}
+                        title={lockedTxt ?? `出发投送：携 ${name}×${t.need.toLocaleString('zh-CN')} 驶往「${siteName ?? '最近副站'}」，到站领取 ${t.rewardIsk.toLocaleString('zh-CN')} 信用点`}
                         onClick={() => act(t.id)}
                       >
                         出发投送（{Math.min(have, t.need).toLocaleString('zh-CN')}/{t.need.toLocaleString('zh-CN')}）
@@ -2381,7 +2381,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
                 </div>
                 <div className="app-station-mats">
-                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓）——奖励 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} ISK（不涨声望）。
+                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓）——奖励 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点（不涨声望）。
                 </div>
                 <div className="app-station-deliver">
                   <span className="app-dim">
@@ -2390,7 +2390,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   <button
                     className="app-btn is-small is-primary"
                     disabled={!canFinish}
-                    title={canFinish ? `交付：交付 ${name}×${t.need.toLocaleString('zh-CN')}，领取 ${t.rewardIsk.toLocaleString('zh-CN')} ISK` : lockedTxt}
+                    title={canFinish ? `交付：交付 ${name}×${t.need.toLocaleString('zh-CN')}，领取 ${t.rewardIsk.toLocaleString('zh-CN')} 信用点` : lockedTxt}
                     onClick={() => act(t.id)}
                   >
                     完成交付（{Math.min(have, t.need).toLocaleString('zh-CN')}/{t.need.toLocaleString('zh-CN')}）
@@ -2556,7 +2556,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       <span className="app-dim">（原 {factionCard.threat}，+10%）</span>
                     </span>
                     <span>
-                      <span className="app-lair-key">奖金</span> {MONEY_GLYPH} {reward2.toLocaleString('zh-CN')} ISK
+                      <span className="app-lair-key">奖金</span> {MONEY_GLYPH} {reward2.toLocaleString('zh-CN')} 信用点
                       <span className="app-dim">（原 {factionCard.rewardIsk.toLocaleString('zh-CN')}，+10%）</span>
                     </span>
                   </div>
@@ -2780,7 +2780,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               </div>
               {/* 收益行：赏金 = 窝点奖金 + 任务酬金（合并成一条，避免两个数重复）；稀有残骸为战利品 */}
               <div className="app-ano-reward">
-                <span className="app-lair-key">赏金</span> {MONEY_GLYPH} {totalIsk.toLocaleString('zh-CN')} ISK
+                <span className="app-lair-key">赏金</span> {MONEY_GLYPH} {totalIsk.toLocaleString('zh-CN')} 信用点
                 <span className="app-dim" title={`窝点奖金 ${lairRewardIsk.toLocaleString('zh-CN')}（含赏金猎手学系数）+ 任务酬金 ${t.rewardIsk.toLocaleString('zh-CN')}（刷出时锁定）——胜利时一起入账`}>
                   {' '}（奖金 {lairRewardIsk.toLocaleString('zh-CN')} + 酬金 {t.rewardIsk.toLocaleString('zh-CN')}）
                 </span>

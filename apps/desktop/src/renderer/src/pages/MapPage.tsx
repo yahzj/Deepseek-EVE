@@ -364,7 +364,7 @@ function BeltCard({
     const valuePerHour = Math.round(perHourUnits * valuePerUnit)
     const sec = Math.round(mp.cycleMs / 1000)
     effLine = `${mp.unitsPerCycle} 单位/循环 · ${sec}s · ≈${perHourUnits.toLocaleString('zh-CN')} 单位/h`
-    valLine = `估价 ≈${valuePerHour.toLocaleString('zh-CN')} ISK/h`
+    valLine = `估价 ≈${valuePerHour.toLocaleString('zh-CN')} 信用点/h`
   }
   // V13：所在星系未探索的矿带不可开采（卡片可见但锁定，提示先扫描）
   const unexplored = belt.galaxyId ? !isExplored(state, belt.galaxyId) : false
@@ -450,7 +450,7 @@ function BeltCard({
         </div>
       ) : null}
       <div className="app-belt-ore">
-        所在 {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? `${isk(buy)} ISK` : '—'}
+        所在 {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
         {unexplored ? '（到「星图·远征」对该星系「未知信号」扫描后解锁）' : ''}
       </div>
       {effLine || valLine ? (
@@ -598,7 +598,7 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   const evH = Math.round(effM3 * RECYCLE_YIELD_PER_M3[tier] * RECYCLE_POOL_AVG_ISK[tier] * (1 + 0.08 * refLv))
   return {
     eff: `${cycles.length} 台打捞器 · ≈${Math.round(volH).toLocaleString('zh-CN')} m³/h（当前密度现算${volH > capM3H ? '，超出回收炉速按炉速计' : ''}）`,
-    val: `${isk(evH)} ISK/h 拆解估价（按来源危险度池粗估）`,
+    val: `${isk(evH)} 信用点/h 拆解估价（按来源危险度池粗估）`,
   }
 }
 

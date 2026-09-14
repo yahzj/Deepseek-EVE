@@ -123,7 +123,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   function handleSellQtyItem(id: string, qty: number): void {
     const r = engine.sellWare(id, qty)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`已按市价售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} ISK。`)
+    else onToast(`已按市价售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} 信用点。`)
     setSellItem(null)
     setPickItem(null)
   }
@@ -307,7 +307,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                           ) : null}
                         </span>
                         <span className="app-inv-count">
-                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价 {buy !== undefined ? `${isk(buy)} ISK` : '—'}
+                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价 {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
                         </span>
                       </div>
                       <div className="app-inv-btns">
@@ -466,7 +466,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   <div className="app-itempick-name">{pickItemDef.name}</div>
                   <div className="app-dim">
                     ×{pickItemUnits.toLocaleString('zh-CN')}（{m3(pickItemUnits * pickItemDef.unitM3)}）· 市场收价{' '}
-                    {pickItemBuy !== undefined ? `${isk(pickItemBuy)} ISK` : '—'}
+                    {pickItemBuy !== undefined ? `${isk(pickItemBuy)} 信用点` : '—'}
                   </div>
                 </div>
               </div>
@@ -582,7 +582,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             glyph={def.kind}
             max={units}
             unit="单位"
-            priceText={buy !== undefined ? `收价 ${isk(buy)} ISK/单位` : undefined}
+            priceText={buy !== undefined ? `收价 ${isk(buy)} 信用点/单位` : undefined}
             note={def.description}
             onClose={() => setSellItem(null)}
             onConfirm={(qty) => handleSellQtyItem(sellItem, qty)}

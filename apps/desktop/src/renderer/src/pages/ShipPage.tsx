@@ -581,7 +581,7 @@ export function ShipPage({
                       className="app-btn is-small is-warn"
                       onClick={() => handleRepair(uid)}
                       disabled={state.wallet.isk < repairCost}
-                      title={`维修需 ${repairCost.toLocaleString('zh-CN')} ISK（结构+装甲一并修复；护盾无需维修）`}
+                      title={`维修需 ${repairCost.toLocaleString('zh-CN')} 信用点（结构+装甲一并修复；护盾无需维修）`}
                     >
                       维修 {repairCost.toLocaleString('zh-CN')}
                     </button>
@@ -610,7 +610,7 @@ export function ShipPage({
                       <div className="app-sell-confirm-title">确认出售「{displayName}」？</div>
                       <div className="app-dim app-sell-confirm-note">
                         将按当前市场收购价即时成交；没有收购单时自动转为限价卖单（可随时撤销退回机库）。
-                        {sellBuy !== undefined ? ` 预计到手约 ${isk(sellBuy)} ISK（税后以实际成交计）。` : ''}
+                        {sellBuy !== undefined ? ` 预计到手约 ${isk(sellBuy)} 信用点（税后以实际成交计）。` : ''}
                       </div>
                       {blockers.modules.length > 0 ? (
                         <div className="app-sell-warn">
@@ -727,7 +727,7 @@ export function ShipPage({
                   <div className="app-ship-desc">{def.description}</div>
                   <div className="app-ship-bottom">
                     {ask !== undefined ? (
-                      <span className="app-ship-price">现货 {isk(ask)} ISK</span>
+                      <span className="app-ship-price">现货 {isk(ask)} 信用点</span>
                     ) : (
                       <span className="app-dim">暂无现货 · 挂收购单自动等货</span>
                     )}
@@ -977,7 +977,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             </span>
           ))}
           <button className="app-btn is-small is-primary" onClick={handleBuyCore}>
-            市场购入基础核心{marketQuote(state, engine.ctx, 'core-basic').sell !== undefined ? ` · ${isk(marketQuote(state, engine.ctx, 'core-basic').sell!)} ISK` : '（暂缺货·可挂单）'}
+            市场购入基础核心{marketQuote(state, engine.ctx, 'core-basic').sell !== undefined ? ` · ${isk(marketQuote(state, engine.ctx, 'core-basic').sell!)} 信用点` : '（暂缺货·可挂单）'}
           </button>
         </div>
       </div>

@@ -660,6 +660,21 @@ export {
   simulateOffline,
 } from './simulation'
 
+// **金额显示单点**（2026-09-13 船长：「更换金钱单位为信用点」＋「希望考虑到钱位数过多时的处理」）：
+// 单位名 / 万·亿分级 / 精确值提示 —— 玩家可见金额文案一律走这里（引擎内部字段仍叫 `isk`）。
+export {
+  MONEY_LARGE_DECIMALS,
+  MONEY_UNIT,
+  MONEY_WAN_DECIMALS,
+  MONEY_WAN_THRESHOLD,
+  MONEY_YI_THRESHOLD,
+  moneyAmount,
+  moneyDelta,
+  moneyExact,
+  moneyExactText,
+  moneyText,
+} from './money'
+
 export {
   newSettleStats,
   addAiMiningTrip,

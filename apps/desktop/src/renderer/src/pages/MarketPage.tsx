@@ -403,9 +403,9 @@ function placeOrderToast(
   resting: number,
 ): string {
   const n = (v: number): string => v.toLocaleString('zh-CN')
-  if (filled <= 0) return `已挂${side}单：${name}×${n(want)} @ ${isk(price)} ISK（挂在簿上，等对手单成交）`
-  if (resting <= 0) return `${side}单已即时成交：${name}×${n(filled)} @ ${isk(price)} ISK`
-  return `${side}单已即时成交 ${n(filled)} 件，余 ${n(resting)} 件挂单 @ ${isk(price)} ISK`
+  if (filled <= 0) return `已挂${side}单：${name}×${n(want)} @ ${isk(price)} 信用点（挂在簿上，等对手单成交）`
+  if (resting <= 0) return `${side}单已即时成交：${name}×${n(filled)} @ ${isk(price)} 信用点`
+  return `${side}单已即时成交 ${n(filled)} 件，余 ${n(resting)} 件挂单 @ ${isk(price)} 信用点`
 }
 
 /**
@@ -584,7 +584,7 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
               top: `${(mapY(slice[hover]!) / 130) * 100}%`,
             }}
           >
-            ≈{isk(slice[hover]!)} ISK · {sampleAgoLabel(fullLen, offset + hover)}
+            ≈{isk(slice[hover]!)} 信用点 · {sampleAgoLabel(fullLen, offset + hover)}
           </div>
         ) : null}
     </div>
@@ -694,11 +694,11 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
         // 2026-09-10：挂单瞬间会先与现有卖单簿面对冲成交 → 回执写明即时成交部分
         const exoNote =
           good.rarity === 'exotic' && p < askLineOf(state, engine.ctx, good.key)
-            ? `。注意：挂价低于奇货参考价（约 ${isk(askLineOf(state, engine.ctx, good.key))} ISK），可能长期无法成交——建议挂到参考价附近`
+            ? `。注意：挂价低于奇货参考价（约 ${isk(askLineOf(state, engine.ctx, good.key))} 信用点），可能长期无法成交——建议挂到参考价附近`
             : ''
         // 2026-09-11：预扣口径写进回执（实际挂量可能因余额缩量；预扣撤单即退回）
         const shrinkNote = res.placed < n ? `（余额只够 ${n.toLocaleString('zh-CN')} 件中的 ${res.placed.toLocaleString('zh-CN')} 件，已按余额缩量）` : ''
-        const escrowNote = res.escrow > 0 ? `（已预扣 ${isk(res.escrow)} ISK，撤单退回）` : ''
+        const escrowNote = res.escrow > 0 ? `（已预扣 ${isk(res.escrow)} 信用点，撤单退回）` : ''
         onToast(`${placeOrderToast('买', name, res.placed, p, res.filled, res.resting)}${shrinkNote}${escrowNote}${exoNote}。`)
       }
     } else {
@@ -724,7 +724,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
       right={
         <span className="app-dim">
-          持有 {holdings.toLocaleString('zh-CN')} 件 · 中位价 {median !== undefined ? isk(median) : '—'} ISK
+          持有 {holdings.toLocaleString('zh-CN')} 件 · 中位价 {median !== undefined ? isk(median) : '—'} 信用点
           <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
             {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' · 平'}
           </span>
@@ -828,7 +828,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               <div className="app-mkt-trade-row">
                 <span className="app-dim">单价</span>
                 <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
-                <span className="app-dim">ISK</span>
+                <span className="app-dim">信用点</span>
               </div>
             </div>
             <div className="app-mkt-actions">
@@ -846,7 +846,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                     : quote.sell === undefined
                       ? '供应簿暂无现货：改用「挂买单」等 NPC 补给后自动成交'
                       : state.wallet.isk < quote.sell
-                        ? `ISK 不足：最低一张 ${isk(quote.sell)} ISK，钱包 ${isk(Math.floor(state.wallet.isk))} ISK`
+                        ? `信用点 不足：最低一张 ${isk(quote.sell)} 信用点，钱包 ${isk(Math.floor(state.wallet.isk))} 信用点`
                         : undefined
                 }
                 onClick={tab === 'buy' ? doBuy : () => doSell()}
@@ -889,13 +889,13 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 if (p >= exoLine) {
                   return (
                     <>
-                      挂价已达奇货参考价（约 {isk(exoLine)} ISK）：协会奇货到货（行情价上下浮动）时会直接按单成交
+                      挂价已达奇货参考价（约 {isk(exoLine)} 信用点）：协会奇货到货（行情价上下浮动）时会直接按单成交
                     </>
                   )
                 }
                 return (
                   <>
-                    挂价 {isk(p)} ISK 低于奇货参考价（约 {isk(exoLine)} ISK）：奇货只按稀见到货，挂太低很可能长期无人接单——建议把挂价提到参考价附近（{isk(exoLine)} ISK 上下），到货即按单成交
+                    挂价 {isk(p)} 信用点 低于奇货参考价（约 {isk(exoLine)} 信用点）：奇货只按稀见到货，挂太低很可能长期无人接单——建议把挂价提到参考价附近（{isk(exoLine)} 信用点 上下），到货即按单成交
                   </>
                 )
               }
@@ -929,15 +929,15 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               <>
                 <div className="app-mkt-confirm-row">
                   <span>预计成交额（毛额）</span>
-                  <b className="app-gold">{isk(confirmSell.gross)} ISK</b>
+                  <b className="app-gold">{isk(confirmSell.gross)} 信用点</b>
                 </div>
                 <div className="app-mkt-confirm-row">
                   <span>贸易税</span>
-                  <b>−{isk(confirmSell.tax)} ISK</b>
+                  <b>−{isk(confirmSell.tax)} 信用点</b>
                 </div>
                 <div className="app-mkt-confirm-row is-net">
                   <span>预计实际到账（税后）</span>
-                  <b className="app-gold">{isk(confirmSell.net)} ISK</b>
+                  <b className="app-gold">{isk(confirmSell.net)} 信用点</b>
                 </div>
               </>
             ) : null}
@@ -985,11 +985,11 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
               {order.side === 'sell' ? '▼ 卖单' : '▲ 买单'}：{goodName(engine.ctx, order.good)}
             </span>
             <span className="app-inv-count">
-              {order.side === 'sell' ? '挂卖' : '挂买'} {order.price.toLocaleString('zh-CN')} ISK · 剩余 {order.qty.toLocaleString('zh-CN')}
+              {order.side === 'sell' ? '挂卖' : '挂买'} {order.price.toLocaleString('zh-CN')} 信用点 · 剩余 {order.qty.toLocaleString('zh-CN')}
               {order.filled > 0 ? `（已成交 ${order.filled.toLocaleString('zh-CN')}）` : ''}
               {/* 2026-09-11（船长裁决「甲」预扣冻结）：买单显示"已预扣多少"，让玩家看得见这笔钱在哪 */}
               {order.side === 'buy' && (order.escrowIsk ?? 0) > 0
-                ? ` · 已预扣 ${(order.escrowIsk ?? 0).toLocaleString('zh-CN')} ISK`
+                ? ` · 已预扣 ${(order.escrowIsk ?? 0).toLocaleString('zh-CN')} 信用点`
                 : ''}
             </span>
           </div>
@@ -1011,7 +1011,7 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
                   order.side === 'sell'
                     ? '卖单已撤销：货物退回库存。'
                     : back > 0
-                      ? `买单已撤销：预扣 ${isk(back)} ISK 已退回钱包。`
+                      ? `买单已撤销：预扣 ${isk(back)} 信用点 已退回钱包。`
                       : '买单已撤销。',
                 )
               }}
@@ -1220,7 +1220,7 @@ export function MarketPage({
             title="我的挂单"
             right={
               <span className="app-dim">
-                余额 {isk(state.wallet.isk)} ISK · 托管在售/在途 {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
+                余额 {isk(state.wallet.isk)} 信用点 · 托管在售/在途 {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
               </span>
             }
           >

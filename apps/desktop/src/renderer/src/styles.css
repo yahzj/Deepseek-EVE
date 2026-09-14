@@ -749,6 +749,30 @@ body {
 
 }
 
+/**
+ * **左侧栏金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」）。
+ *
+ * 与**舰船状态窗同族**（同圆角 12 / 同族描边 / 同族渐变底 —— 约定 §六：新增内容优先复刻同级相似项），
+ * 只把色调换成金色以续上它原本在顶栏的"钱"语汇；文字居中、等宽数字。
+ * `min-height` 固定 ⇒ 数值从 `999` 涨到 `1.2 亿` 时高度不变（防界面跳动，§六）。
+ */
+.app-wallet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(180, 140, 60, 0.38);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(74, 58, 22, 0.3), rgba(20, 15, 6, 0.5));
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- 采矿台：矿带选择 ---------- */
 
 .app-belt-list {
