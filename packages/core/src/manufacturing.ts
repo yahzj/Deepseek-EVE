@@ -33,7 +33,7 @@ import { addModule } from './equipment'
 import { shipStoredCount } from './shipyard'
 import { formatDurationMs } from './time'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
-import { isAtHomeLike } from './location'
+import { stationIndustryBlocked } from './location'
 import { addAiIncome, addAiMakeDone, type SettleStats } from './settleStats'
 
 /** 市场基准价（离线结算预估收入用：装备/舰船粗估；找不到返回 0） */
@@ -224,8 +224,9 @@ export function startManufacturing(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  if (!isAtHomeLike(state, ctx)) {
-    return { ok: false, error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造。' }
+  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自开线仍要求在基地网络内。
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return { ok: false, error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。' }
   }
   const buildable = findBuildable(ctx, blueprintId)
   if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }

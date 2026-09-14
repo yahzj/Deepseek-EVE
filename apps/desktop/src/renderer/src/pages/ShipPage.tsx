@@ -22,7 +22,6 @@ import {
   oreAvailable,
   ownsBlueprint,
   manufacturingRunViews,
-  isAtHomeLike,
   // 2026-09-13：站内工业目标只列玩家可见的资源（未上线资源不进 AI 精炼炉下拉）
   visibleItemDefs,
   // 舰船仓库（2026-09-14 船长）：仓库计数 / 入仓逐档判据（core 单点，与引擎同源）
@@ -1026,17 +1025,19 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         })
       : []
   const refineHave = effMode === 'refine' && effRefineId ? oreAvailable(state, effRefineId) : 0
-  /** 指派按钮置灰原因（null = 可指派；文案与下方各下拉一一对应） */
+  /** 指派按钮置灰原因（null = 可指派；文案与下方各下拉一一对应）
+   *  ⚠ **站内工业不看玩家位置**（2026-09-14 船长报障修复）：本页指派的都是 **AI 核心**驱动
+   *  （没有"亲自"这一路），而 AI 核心是留在站内替你干活的分身 ⇒ 原来的
+   *  「需停靠空间站（母港或已建成副站）才能开工」那一条**已删**：跑长途运输/远征时照常能开炉开线
+   *  （判据单点 = core `stationIndustryBlocked`，亲自操作那一路仍要求在基地网络内，见工业页）。 */
   const assignBlock: string | null =
     usableCores.length === 0
       ? '无可用 AI 核心：先去市场购入「基础 AI 核心」，或先取消占用中的任务、训练「AI 核心操作学」提高上限'
-      : isIndustryTask && !isAtHomeLike(state, engine.ctx)
-        ? '站内工业（精炼炉/回收炉/制造线）随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工——先返航停靠'
-        : !isIndustryTask && !shipId
-          ? idleShips.length === 0
-            ? '没有可指派的空闲舰船（舰船均在执勤/出航中）'
-            : '先选择一艘空闲舰船'
-          : effMode === 'salvage' && !salvageGalaxyId
+      : !isIndustryTask && !shipId
+        ? idleShips.length === 0
+          ? '没有可指派的空闲舰船（舰船均在执勤/出航中）'
+          : '先选择一艘空闲舰船'
+        : effMode === 'salvage' && !salvageGalaxyId
           ? '先选择打捞目标星系（需已探索且有敌群残骸的星系）'
           : effMode === 'standby' && !standbyGalaxyId
             ? '先选择掩护巡逻的目标星系（需已探索的星系）'

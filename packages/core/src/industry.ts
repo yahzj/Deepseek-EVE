@@ -27,7 +27,7 @@ import { wormholeDeliverRelics, wormholeUnboxRoll } from './wormholeSalvage'
 import type { AiCoreType, ItemDef, SimContext } from './types'
 import { addItem, addWare, countItem, countWare, removeItem, removeWare } from './inventory'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
-import { isAtHomeLike } from './location'
+import { isAtHomeLike, stationIndustryBlocked } from './location'
 import { formatDurationMs } from './time'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
@@ -192,8 +192,9 @@ export function startRefineRun(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  if (!isAtHomeLike(state, ctx)) {
-    return { ok: false, error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
+  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return { ok: false, error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const def = ctx.items.get(itemId)
   if (!def) {
@@ -299,8 +300,9 @@ export function startUnboxRun(
   boxItemId: string,
   worker: 'pilot' | AiCoreType,
 ): CommandResult {
-  if (!isAtHomeLike(state, ctx)) {
-    return { ok: false, error: '拆解台随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
+  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return { ok: false, error: '拆解台随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const def = ctx.items.get(boxItemId)
   if (!def) return { ok: false, error: `未知物品：${boxItemId}。` }
@@ -357,8 +359,9 @@ export function startRecycleRun(
   // 稀有残骸已开放（船长 2026-09-10：二号五族专属装备齐备后解禁）——它与普通残骸同一条链路，
   // 区别只在"首批触发一次高级箱"（`profile.rare === true`，见下方结算处）：
   // 一炉一箱（船长定：按炉结算，不按件累积），其余保底/彩头/碎片照常。
-  if (!isAtHomeLike(state, ctx)) {
-    return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动。' }
+  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const def = ctx.items.get(wreckItemId)
   if (!def) return { ok: false, error: `未知物品：${wreckItemId}。` }

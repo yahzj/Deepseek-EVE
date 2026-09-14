@@ -15,7 +15,7 @@ import { addLog, HOME_GALAXY_ID, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
-import type { SimContext, StationSiteDef } from './types'
+import type { AiCoreType, SimContext, StationSiteDef } from './types'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { deliverStationResources, noteStationSiteAt, siteProgress, tierRemaining, stationBillView, stationBillText, billNeedOf } from './station'
 import { cargoCapacityM3Of, cargoOfShip, cargoUsedM3Of, unloadCargoOfShipToWarehouse } from './inventory'
@@ -100,6 +100,22 @@ export function isAtHomeLike(state: GameState, ctx: SimContext): boolean {
   if (state.dockedSite === null) return true
   const site = ctx.stations.get(state.dockedSite)
   return !!site && siteProgress(state, site.id).stage >= site.tiers.length
+}
+/**
+ * **站内工业的位置门槛**（2026-09-14 船长报障后收口）：**只有"玩家亲自"这一路**要求人在基地网络内
+ * （`worker === 'pilot'` 且不在基地 ⇒ 拦）；**AI 核心驱动不看位置**。
+ *
+ * 为什么这么分：AI 核心是"留在站内替你干活"的分身——`mining` 的拒因文案就是这么写的
+ * （「精炼炉正由你亲自运转：先停炉才能出海（**想自动精炼可改用 AI 核心驱动**）」）。
+ * 修前 AI 路吃的是同一道门 ⇒ **跑长途运输 / 远征时**（这两类活动会把 `awayGalaxy` 记成出发星系，
+ * 见 `hauling.setLeg`）**整条站内产线都开不了**，而**采矿期间却能开**（`startMining` 会把
+ * `awayGalaxy` 清空）——同一类"主控在忙"两个口径，船长 2026-09-14 报障。
+ *
+ * ⚠ 判据单点：`startRefineRun` / `startRecycleRun` / `startUnboxRun` / `startManufacturing`
+ * 四处一律走它，别再各写一份 `isAtHomeLike`（否则又会出现"两台机器两个口径"）。
+ */
+export function stationIndustryBlocked(worker: 'pilot' | AiCoreType, state: GameState, ctx: SimContext): boolean {
+  return worker === 'pilot' && !isAtHomeLike(state, ctx)
 }
 
 /** 出发地星系：野外停留点，否则当前停靠站所在星系 */

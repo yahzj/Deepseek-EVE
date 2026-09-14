@@ -23,6 +23,15 @@
 - 站内工业的护栏与工业页完全同源（不新增、不绕过）：需停靠空间站（母港或已建成副站）、受工业 AI 上限约束
   （共用上限 + 「工业自动化」扩容，`aiCoreCapBlock(state, ctx, 'industry')`）、核心库存 > 0、蓝图须已学会、材料须足。
   这些原因在按钮置灰提示里逐条写出（不靠点完报错才知道）。
+  ⚠ **2026-09-14 修订（船长报障：「玩家正在跑长途运输，但是无法在 AI 指挥中心安排 AI 做事」）**：
+  上面那句「需停靠空间站（母港或已建成副站）」**只对"玩家亲自"成立** —— 本页派的全是 **AI 核心**，
+  而核心是"留在站内替你干活"的分身（工业页"亲自开炉"的拒因文案自己就是这么劝的）⇒ 判据收口为单点
+  `stationIndustryBlocked(worker, state, ctx)`（`packages/core/src/location.ts`）：**只有
+  `worker === 'pilot'` 且不在基地网络内才拦**；`startRefineRun` / `startRecycleRun` / `startUnboxRun` /
+  `startManufacturing` 四处一律走它。**修前的后果**：AI 路也吃这道门 ⇒ **跑长途运输 / 远征时**
+  （这两类活动把 `awayGalaxy` 记成出发星系，见 `hauling.setLeg`）**整条站内产线都开不了**，
+  而**采矿期间却能开**（`startMining` 会把 `awayGalaxy` 清空）——同一类"主控在忙"两个口径。
+  用例 = `packages/core/tests/t9.test.ts`「AI 核心驱动的站内工业不看玩家位置」（AI 放行 + 亲自仍拦 + 工地同理）。
 
 ## 2. 「执行中」统一名册
 
