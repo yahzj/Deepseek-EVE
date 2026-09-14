@@ -4998,11 +4998,38 @@ body {
 
   gap: 12px;
 
+  /* 铺满面板体（体高确定 ⇒ 子项可折算高度：折线图据此上下浮动，船长 2026-09-14） */
+
+  height: 100%;
+
+}
+
+/* 详情左块（折线图 + 走势说明 + 报价）：纵向 flex 且允许收缩，折线图才有得缩 */
+
+.app-mkt-detail-left {
+
+  display: flex;
+
+  flex-direction: column;
+
+  min-height: 0;
+
 }
 
 .app-mkt-chart-wrap {
 
   position: relative;
+
+  /* 折线图高度**跟详情面板高度挂钩**（2026-09-14 船长：「市场详细页面依旧有滚动条，建议压缩折线图高度
+     （折线图高度和市场详细页面的高度挂钩。但是不要过度压缩）」）：详情卡铺满面板体（见 .app-mkt-detail），
+     折线图吃掉富余高度——有空长回 130px（原固定值，观感不变），紧了往下缩、**最低 64px**（不过度压缩）；
+     再紧才轮到面板体出内滚。读数：1280×800 下 123 个商品里 89 个原本会出 1~N px 内滚。 */
+
+  flex: 1 1 auto;
+
+  min-height: 64px;
+
+  max-height: 130px;
 
 }
 
@@ -5010,7 +5037,9 @@ body {
 
   width: 100%;
 
-  height: 130px;
+  /* 由 .app-mkt-chart-wrap 的实测高度决定（SVG 是 preserveAspectRatio="none"，拉伸不失真字形） */
+
+  height: 100%;
 
   display: block;
 
@@ -5062,7 +5091,13 @@ body {
 
 .app-mkt-chart-empty {
 
-  height: 130px;
+  /* 无历史样本时的占位：与折线图同一条高度口径（跟面板挂钩、能缩到 64px） */
+
+  flex: 1 1 auto;
+
+  min-height: 64px;
+
+  max-height: 130px;
 
   display: flex;
 
