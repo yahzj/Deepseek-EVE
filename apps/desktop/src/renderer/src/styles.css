@@ -7567,6 +7567,41 @@ body {
 
 .app-bts-cur-chip { bottom: calc(100% + 6px); }
 
+/* ═══════════ 窄屏（手机竖屏）· 战场适配（船长 2026-09-14：「黑屏按照乙来修」）═══════════
+   为什么手机上原来是一片黑：战场三段（顶栏 / 舞台 / 底栏）在 `100vh` 里抢高度，而
+   ① 顶栏在窄屏会折成多行；② 底栏 `.app-bts-dock` 有 `clamp(420px, 52vw, 780px)` 的**最小宽度**
+   ⇒ 390px 宽的屏幕上底栏直接横向溢出、把舞台与操作区一起挤出视口，屏幕上只剩那块深色径向底。
+   乙 = **窄屏适配（桌面一字不动）**：
+   - **舞台（标尺 + 车道）改为横向可滑动**，并给它们 680px 的设计宽 ⇒ 几何按 `measure()` 实测的
+     车道宽布局 ⇒ 手机上仍是完整的双方编队，左右滑动查看（标尺与车道**同一个滚动容器**，不会错位）；
+   - **底栏（操作区）适配屏幕宽**（不再撑宽），滑条/按钮照旧可点；
+   - 整屏允许**纵向滚动**，任何一段都不会被永久挤出视口。 */
+@media (max-width: 640px) {
+  .app-battle-screen { overflow-y: auto; }
+  .app-battle-screen-top { padding: 6px 8px; gap: 8px; row-gap: 6px; flex-wrap: wrap; }
+  .app-battle-screen-top > span { font-size: 12.5px; }
+  .app-battle-screen-top .app-btn { font-size: 13px; padding: 8px 14px; }
+  .app-bts-stage { overflow-x: auto; overflow-y: hidden; }
+  .app-bts-ruler, .app-bts-lane { min-width: 680px; }
+  .app-bts-lane { min-height: 240px; }
+  .app-bts-dock { width: min(96%, 1180px); }
+  .app-bts-swipehint { display: block; }
+}
+/* 横向滑动提示（只在窄屏出现；`pointer-events:none` ⇒ 不吃拖拽） */
+.app-bts-swipehint {
+  display: none;
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  z-index: 6;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--wui-text-dim);
+  background: rgba(8, 14, 22, 0.72);
+  border: 1px solid var(--wui-border);
+  border-radius: 4px;
+  pointer-events: none;
+}
 .app-bts-dock { width: clamp(420px, 52vw, 780px); margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
 
 .app-bts-dock .app-bts-legends { justify-content: center; }
