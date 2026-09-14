@@ -21,7 +21,7 @@ export const BELTS: readonly BeltDef[] = [
     galaxyId: 'galaxy-kor',
     name: '灼烧裂隙',
     oreId: 'ore-scorched',
-    description: '火山星体碎裂留下的裂隙，灼烧岩富集。',
+    description: '火山星体碎裂留下的裂隙，辉长岩富集。',
   },
   {
     id: 'belt-kernite',
@@ -33,7 +33,7 @@ export const BELTS: readonly BeltDef[] = [
       { itemId: 'ore-scorched', weight: 30 },
       { itemId: 'ore-hemorphite', weight: 15 },
     ],
-    description: '多种矿石共生的新手混合矿带：偶尔能刨出一点希莫非特。',
+    description: '多种矿石共生的新手混合矿带：偶尔能刨出一点赤环岩。',
   },
   {
     id: 'belt-sunshard',
@@ -77,7 +77,7 @@ export const BELTS: readonly BeltDef[] = [
       { itemId: 'ore-hemorphite', weight: 60 },
       { itemId: 'ore-scorched', weight: 40 },
     ],
-    description: '海盗枢纽深处的高压矿层：希莫非特与灼烧岩交错（需声望 3）。',
+    description: '海盗枢纽深处的高压矿层：赤环岩与辉长岩交错（需声望 3）。',
   },
   {
     id: 'belt-crimsonite',

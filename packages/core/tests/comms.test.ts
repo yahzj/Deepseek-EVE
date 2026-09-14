@@ -153,7 +153,7 @@ describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入�
       // 2026-09-11 船长：训前简报的任务链要高亮（`highlight` 必须与正文某段逐字相等才生效）
       highlight: ['04 修复护卫舰。'],
       trigger: { kind: 'tutorial', step: 0 },
-      action: { label: '按单开工：采集富凡晶石', command: 'startTutorial' },
+      action: { label: '按单开工：采集橄榄岩', command: 'startTutorial' },
     },
     { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 }, hint: { text: '前往任务中心', page: 'map', tab: 'task', taskTab: 'important' } },
     { id: 'tut-7', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },

@@ -81,7 +81,7 @@ export interface DroneDefense {
 /** 物品定义（矿石 / 矿物 / 气体 / 冰矿 / 弹药 / 无人机都属于物品） */
 export interface ItemDef {
   id: string
-  /** 中文名：富凡晶石、三钛合金…… */
+  /** 中文名：橄榄岩、钛钢合金…… */
   name: string
   kind: ItemKind
   /** 每单位占用货舱体积（立方米），矿石 1 m³，矿物很小 */
@@ -1926,7 +1926,7 @@ export interface CommsReplyDef {
 
 /**
  * 通讯消息自带动作（2026-09-11 教程融入通讯）：点一下让引擎执行一条命令。
- * 本期只有 `startTutorial`——序章简报那封的「开始教程：采集富凡晶石」，
+ * 本期只有 `startTutorial`——序章简报那封的「开始教程：采集橄榄岩」，
  * 点了才从「看简报」推进到采集步骤（船长：睁眼后不要立刻开始教程任务，先指引去看通讯）。
  */
 export type CommsActionCommand = 'startTutorial'

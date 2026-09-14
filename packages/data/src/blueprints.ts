@@ -78,7 +78,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 80, // ×6 提速（2026-09-09 船长定：制造速度 ×6；原 8*60=480s）
     buildCostIsk: 8_000,
     priceIsk: 62500,
-    description: '入门蓝图，教你用三钛与类银组装第一部采集器。',
+    description: '入门蓝图，教你用钛钢合金与银纹超金属组装第一部采集器。',
   },
   {
     id: 'bp-cargo-1',
@@ -91,7 +91,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 100, // ×6 提速（原 10*60=600s）
     buildCostIsk: 10_000,
     priceIsk: 58500,
-    description: '货舱改造图纸，需要类晶体胶体做密封衬层。',
+    description: '货舱改造图纸，需要晶态胶体做密封衬层。',
   },
   {
     id: 'bp-miner-2',
@@ -105,7 +105,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 500, // ×6 提速（原 50*60=3000s）
     buildCostIsk: 60_000,
     priceIsk: 1165000,
-    description: '谐振钻头图纸，类晶体胶体谐振环加类银散热栅，中期工业的里程碑。',
+    description: '谐振钻头图纸，晶态胶体谐振环加银纹超金属散热栅，中期工业的里程碑。',
   },
   {
     id: 'bp-cargo-2',
@@ -119,7 +119,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 700, // ×6 提速（原 70*60=4200s）
     buildCostIsk: 80_000,
     priceIsk: 1187500,
-    description: '折叠货舱技术，核心是超噬矿合金框架带来的大容量。',
+    description: '折叠货舱技术，核心是重钨合金框架带来的大容量。',
   },
   // 巨构近防炮三档（2026-09-11 机群批 S4 加入）——**2026-09-12 船长裁定「乙」按全表口径对齐**：
   // 书价 = 产物现货价 × 档位系数（MK1 ×2 / MK2 ×2.5 / 奇货 ×4），材料抬到同族锚 45%（料/价原 15.8~17.6%）。
@@ -218,7 +218,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 70, // ×6 提速（原 7*60=420s）
     buildCostIsk: 1_400,
     priceIsk: 16000,
-    description: '入门货舱改装图纸，类银与类晶体的经典配方。',
+    description: '入门货舱改装图纸，银纹超金属与晶态胶体的经典配方。',
   },
   {
     id: 'bp-turret-civ',
@@ -291,7 +291,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 12,
     priceIsk: 1350, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '动能弹生产线图纸，把三钛合金轧成高速实心弹，120 发/批，对护盾 ×1.5。',
+    description: '动能弹生产线图纸，把钛钢合金轧成高速实心弹，120 发/批，对护盾 ×1.5。',
   },
   {
     id: 'bp-ammo-explosive',
@@ -313,7 +313,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 18,
     priceIsk: 1950, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '能量弹药生产线图纸，类晶体胶体充能电池组，120 发/批，对护盾 ×1.25。',
+    description: '能量弹药生产线图纸，晶态胶体充能电池组，120 发/批，对护盾 ×1.25。',
   },
   /* ═══ 弹药 MK2 蓝图（2026-09-09 船长拍板：三族高级弹稀有书可造；材料≈市价 55% 锚沿用） ═══ */
   {
@@ -325,7 +325,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 10,
     buildCostIsk: 90,
     priceIsk: 9_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '动能弹 MK2 生产线图纸，超噬合金弹芯轧制，120 发/批，对护盾 ×1.5。',
+    description: '动能弹 MK2 生产线图纸，重钨合金弹芯轧制，120 发/批，对护盾 ×1.5。',
   },
   {
     id: 'bp-ammo-explosive-2',

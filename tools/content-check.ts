@@ -435,7 +435,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
         )
       }
     }
-    // ⑧ 说明点名的矿物必须在材料里（矿石放宽：其精炼产物落在材料里即可，如「希莫非特矿带」→ 超噬矿）
+    // ⑧ 说明点名的矿物必须在材料里（矿石放宽：其精炼产物落在材料里即可，如「赤环岩矿带」→ 重钨合金）
     const mats = new Set(bp.materials.map((x) => x.itemId))
     const oreFeeds = (oreId: string): boolean => (items.get(oreId)?.refine ?? []).some((r) => mats.has(r.mineralId))
     for (const def of items.values()) {

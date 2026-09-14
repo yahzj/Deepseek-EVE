@@ -44,33 +44,33 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
 export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   'ano-harbor-escort': {
     recyclePool: [['min-pyerite', 55], ['min-tritanium', 45]],
-    recycleNote: '商路护航队残骸：类银超金属为主，夹少量三钛结构料',
+    recycleNote: '商路护航队残骸：银纹超金属为主，夹少量钛钢结构料',
   },
   'ano-pirate-post': {
     recyclePool: [['min-pyerite', 57], ['min-tritanium', 43]],
-    recycleNote: '边境海盗前哨残骸：类银超金属为主',
+    recycleNote: '边境海盗前哨残骸：银纹超金属为主',
   },
   'ano-abandoned-platform': {
     recyclePool: [['min-mexallon', 20], ['min-tritanium', 80]],
-    recycleNote: '旧工业平台残骸：类晶体胶体偏多',
+    recycleNote: '旧工业平台残骸：晶态胶体偏多',
   },
   'ano-lantern-saboteurs': {
     recyclePool: [['min-mexallon', 22], ['min-tritanium', 78]],
-    recycleNote: '信标猎手残骸：类晶体胶体与三钛结构料',
+    recycleNote: '信标猎手残骸：晶态胶体与钛钢结构料',
   },
   'ano-haze-ambush': {
     recyclePool: [['min-mexallon', 24], ['min-tritanium', 76]],
-    recycleNote: '灰霾伏击团残骸：类晶体胶体偏多',
+    recycleNote: '灰霾伏击团残骸：晶态胶体偏多',
   },
   'ano-shard-bandits': {
     // 2026-09-10 重校（基础密度口径变更致本卡档位 险→常：均价须回到 m×常档基数 9.8 = 10.58）
     recyclePool: [['min-tritanium', 11], ['min-pyerite', 20]], // (8×11+12×20)/31 = 10.58
-    recycleNote: '碎晶带劫匪残骸：三钛结构料与类银装甲板',
+    recycleNote: '碎晶带劫匪残骸：钛钢结构料与银纹装甲板',
   },
   'ano-redring-raiders': {
     // 2026-09-10 重校（本卡档位 险→危：均价须回到 m×危档基数 92.4 = 104.97）
     recyclePool: [['min-starcore', 6], ['min-nocxium', 56]], // (245×6+90×56)/62 = 105.0
-    recycleNote: '赤潮劫掠舰队残骸：星髓晶髓材与超噬矿甲',
+    recycleNote: '赤潮劫掠舰队残骸：星髓晶髓材与重钨合金甲',
   },
   'ano-ghost-signal': {
     // 2026-09-10 重校（本卡档位 险→危：均价须回到 m×危档基数 92.4 = 109.40）
@@ -89,15 +89,15 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   },
   'ano-auro-raiders': {
     // 2026-09-12 重校（同一批）：目标 m = (1+0.45×0.2)×(1+0.004×62) = **1.360** ⇒ 目标均价 = **125.7**。
-    // ⚠ 原池（超噬矿 25 : 类银 75 = 37.5）是为**旧档基数**定的；三张巨构卡集中到奥罗后本星系档基数变为 92.4
+    // ⚠ 原池（重钨合金 25 : 银纹 75 = 37.5）是为**旧档基数**定的；三张巨构卡集中到奥罗后本星系档基数变为 92.4
     // ⇒ 按规则重定价，并补入**星髓晶**（呼应"**所有巨构都在奥罗荒环**"的设定）。
-    // 取 类银 28 : 同位聚晶 30 : 星髓晶 42 ⇒ (20×28+55×30+245×42)/100 = **125.0**（−0.5%，落 ±3% 内）
+    // 取 银纹 28 : 同位聚晶 30 : 星髓晶 42 ⇒ (20×28+55×30+245×42)/100 = **125.0**（−0.5%，落 ±3% 内）
     recyclePool: [['min-mexallon', 28], ['min-isotope', 30], ['min-starcore', 42]],
-    recycleNote: '奥罗武装残骸：超噬矿重镀层，巨构残片里的星髓晶与同位聚晶',
+    recycleNote: '奥罗武装残骸：重钨合金重镀层，巨构残片里的星髓晶与同位聚晶',
   },
   'ano-abyss-guard': {
     recyclePool: [['min-starcore', 34], ['min-nocxium', 66]],
-    recycleNote: '深渊守卫残骸：星髓晶髓材与超噬矿甲',
+    recycleNote: '深渊守卫残骸：星髓晶髓材与重钨合金甲',
   },
   'ano-titan-wreck': {
     // 2026-09-12 重校（船长「将所有巨构移动到奥罗荒环」）：目标 m = (1+0.45×0.2)×(1+0.004×60) = **1.352**
@@ -117,7 +117,7 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     // 2026-09-11 重校（船长「低安至少要有一个海盗族」→ 烬火星区与蜃影星系**互换安全等级**：
     // 本卡所在星系 -0.7 → 0.0，危险度档位随之 危 → **常**：均价须回到 m×常档基数 9.8 = 11.446）
     recyclePool: [['min-tritanium', 7], ['min-pyerite', 43]], // (8×7+12×43)/50 = 11.44
-    recycleNote: '烬火围攻残骸：焦壳下的三钛结构料与类银',
+    recycleNote: '烬火围攻残骸：焦壳下的钛钢结构料与银纹超金属',
   },
   'ano-chasm-aberrations': {
     // 2026-09-12 重校（船长「**重定价池子**」）：本卡档位口径 = **危档**——裂谷深带残骸基础密度
@@ -130,7 +130,7 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   'ano-nadir-static': {
     // 2026-09-10 重校（本卡档位 危→险：均价须回到 m×险档基数 27.6 = 42.74）
     recyclePool: [['min-isotope', 13], ['min-mexallon', 7]], // (55×13+20×7)/20 = 42.75
-    recycleNote: '天底封锁残骸：同位聚晶与类晶体胶体',
+    recycleNote: '天底封锁残骸：同位聚晶与晶态胶体',
   },
   'ano-starcore-boss': {
     recyclePool: [['min-starcore', 48], ['min-isotope', 52]],
