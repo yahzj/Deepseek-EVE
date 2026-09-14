@@ -367,7 +367,6 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       </span>,
     ])
     rows.push(['耗时', `约 ${Math.round(Number(r.buildSeconds ?? 0) / 60)} 分钟（受工业理论缩短）`])
-    rows.push(['制造', '免费（只耗材料与时间）'])
   } else if (cell.tab === 'skills') {
     rows.push(['技能组', String(r.group ?? '')])
     rows.push(['训练难度', `rank ${Number(r.rank ?? 0)}（数值越大整条线练得越慢）`])
