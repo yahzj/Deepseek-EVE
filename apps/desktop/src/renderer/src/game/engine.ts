@@ -96,6 +96,8 @@ import {
   playDialogue,
   commsInbox,
   commsUnreadCount,
+  commsPopupQueue,
+  dismissCommsPopup,
   markCommsRead,
   markAllCommsRead,
   runCommsAction,
@@ -159,6 +161,19 @@ import {
   wormholeScanStop,
   wormholeScanWindowMs,
   wormholeScanBlockReason,
+  // 2026-09-14 船长：扫描虫洞要协会声望 35 才解锁（解锁发通讯 + 直接弹窗）
+  wormholeScanStanding,
+  wormholeScanUnlocked,
+  // 自动探索（批次 3 · 2026-09-14 船长逐条定案：5 分钟 · 收益 40% 入仓库 · 绝不丢船 · 报告需确认）
+  wormholeAutoRunsOf,
+  wormholeAutoReportsOf,
+  wormholeAutoUnconfirmedCount,
+  wormholeAutoCandidates,
+  wormholeAutoBlockReason,
+  wormholeAutoStart,
+  wormholeAutoStop,
+  wormholeAutoConfirmReport,
+  wormholeAutoConfirmAll,
   wormholeStockOf,
   wormholeStockTake,
   WORMHOLE_STOCK_MAX,
@@ -198,6 +213,9 @@ import type {
   SettleStats,
   SideTask,
   SimContext,
+  WormholeAutoCandidate,
+  WormholeAutoReport,
+  WormholeAutoRun,
   WormholeHoldPlacement,
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
@@ -1469,6 +1487,83 @@ export class GameEngine {
     return wormholeScanBlockReason(this.state)
   }
 
+  /** 虫洞扫描：是否已达解锁声望（船长 2026-09-14：需要协会声望 35） */
+  wormholeScanUnlocked(): boolean {
+    return wormholeScanUnlocked(this.state)
+  }
+
+  /** 虫洞扫描：当前协会声望（解锁进度读数） */
+  wormholeScanStanding(): number {
+    return wormholeScanStanding(this.state)
+  }
+
+  /* ─────────────── 自动探索（批次 3 · 2026-09-14 船长逐条定案） ─────────────── */
+
+  /** 自动探索：在跑的趟（界面进度用） */
+  wormholeAutoRuns(): WormholeAutoRun[] {
+    return wormholeAutoRunsOf(this.state)
+  }
+
+  /** 自动探索：报告队列（新的在前；含待确认与已确认） */
+  wormholeAutoReports(): WormholeAutoReport[] {
+    return wormholeAutoReportsOf(this.state)
+  }
+
+  /** 自动探索：待确认报告条数（页签角标用） */
+  wormholeAutoPending(): number {
+    return wormholeAutoUnconfirmedCount(this.state)
+  }
+
+  /** 自动探索：候选参与舰（自动配置 + 每条的可派性；`exclude` = 本次已手选的） */
+  wormholeAutoCandidates(exclude?: readonly string[]): WormholeAutoCandidate[] {
+    return wormholeAutoCandidates(this.state, this.ctx, exclude)
+  }
+
+  /** 自动探索：现在能不能派（不许时给理由，界面据此置灰） */
+  wormholeAutoBlockReason(stockId: string, shipIds?: readonly string[]): string | null {
+    return wormholeAutoBlockReason(this.state, this.ctx, stockId, shipIds)
+  }
+
+  /** 自动探索：开始一趟（消耗该处库存、按参与舰数占 AI 名额、参与舰锁定到返航） */
+  wormholeAutoStart(stockId: string, shipIds: readonly string[]): CommandResult {
+    const r = wormholeAutoStart(this.state, this.ctx, stockId, shipIds)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 自动探索：召回一趟（无收益无损伤；虫洞不退还） */
+  wormholeAutoStop(runId: string): CommandResult {
+    const r = wormholeAutoStop(this.state, runId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 自动探索：确认一份报告（船长：报告**需要确认**） */
+  wormholeAutoConfirm(reportId: string): CommandResult {
+    const r = wormholeAutoConfirmReport(this.state, reportId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /** 自动探索：全部标为已读 */
+  wormholeAutoConfirmAll(): number {
+    const n = wormholeAutoConfirmAll(this.state)
+    if (n > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return n
+  }
+
   /** 虫洞：临时离开（活动停止、进度保存；主控随即释放，可去做别的） */
   wormholeLeave(): void {    wormholeLeave(this.state)
     void this.persist()
@@ -2057,6 +2152,20 @@ export class GameEngine {
   /** 收件箱视图（全部已送达消息，按送达时间倒序；含未读标记与跳转提示） */
   commsInboxView(): ReturnType<typeof commsInbox> {
     return commsInbox(this.state, this.ctx)
+  }
+
+  /* ─────────────── 2026-09-14 需要弹窗的通讯（船长：「解锁时发送通讯给玩家（同时也要直接弹窗）」） ─────────────── */
+
+  /** 需要弹窗的通讯 id 队列（队首那封才弹） */
+  commsPopups(): string[] {
+    return commsPopupQueue(this.state)
+  }
+
+  /** 关掉一封弹窗（幂等；关掉不丢信——收件箱里还有） */
+  dismissCommsPopup(id: string): void {
+    if (!dismissCommsPopup(this.state, id)) return
+    void this.persist()
+    this.notify()
   }
 
   /** 未读条数（导航图标闪烁与数字徽标） */

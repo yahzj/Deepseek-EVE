@@ -31,6 +31,7 @@ const KIND_ICON: Record<string, string> = {
   wormhole: 'nav-wormhole',
   /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
   whscan: 'nav-wormhole',
+  whauto: 'nav-wormhole',
 }
 
 function stopLabel(v: ActivityView): string {
@@ -43,6 +44,8 @@ function stopLabel(v: ActivityView): string {
       return '终止'
     case 'stop-whscan':
       return '停扫'
+    case 'stop-whauto':
+      return '召回'
     case 'stop-salvage':
       return '停止'
     case 'cancel-manufacture':
@@ -86,6 +89,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       break
     case 'stop-whscan':
       run(engine.wormholeScanStop(), '已停止扫描虫洞：进度保留，下次接着扫。')
+      break
+    case 'stop-whauto':
+      if (v.stopParam) run(engine.wormholeAutoStop(v.stopParam), '已召回自动探索队：没有收益、也没有损伤（那条通道就此关闭）。')
       break
     case 'stop-salvage':
       run(engine.stopSalvageOpNow(), '已停止打捞：本趟已捞的残骸仍在船上（未返航不卸货）。')

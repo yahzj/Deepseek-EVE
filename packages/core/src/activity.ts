@@ -11,6 +11,7 @@ import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
 import { WORMHOLE_STOCK_MAX, wormholeScanWindowMs, wormholeStockFull, wormholeStockOf } from './wormholeScan'
+import { wormholeAutoRunsOf } from './wormholeAuto'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
@@ -28,6 +29,8 @@ export type ActivityKind =
   | 'scan'
   /** 主控活动「扫描虫洞」（2026-09-14 船长）：与星系扫描分开一类，界面各自一行 */
   | 'whscan'
+  /** 自动探索（2026-09-14 批次 3）：每趟一处虫洞一行（AI 驱动，5 分钟） */
+  | 'whauto'
   | 'salvage'
   | 'manufacture'
   | 'refine'
@@ -48,6 +51,8 @@ export type ActivityStopKind =
   | 'stop-scan'
   /** 停「扫描虫洞」（2026-09-14）：进度保留，下次接着扫 */
   | 'stop-whscan'
+  /** 召回一趟自动探索（2026-09-14 批次 3）：无收益无损伤，虫洞不退还 */
+  | 'stop-whauto'
   | 'stop-salvage'
   | 'cancel-manufacture'
   | 'stop-refine'
@@ -209,6 +214,23 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       remainingMs: Math.max(0, windowMs - done),
       stopable: true,
       stop: 'stop-whscan',
+    })
+  }
+
+  // ── 自动探索（2026-09-14 批次 3）：**每趟一行**（一处虫洞一趟）；AI 驱动 ⇒ 与 AI 副船任务同属"AI 徽标"一族 ──
+  for (const run of wormholeAutoRunsOf(state)) {
+    const span = Math.max(1, run.finishAtGameMs - run.startedAtGameMs)
+    const done = Math.max(0, Math.min(span, state.gameMs - run.startedAtGameMs))
+    out.push({
+      id: `whauto:${run.id}`,
+      kind: 'whauto',
+      label: '自动探索',
+      sub: `起始第 ${run.depth} 层 · ${run.shipIds.length} 条舰（各占 1 枚 AI 核心）`,
+      percent: Math.max(0, Math.min(100, Math.round((done / span) * 100))),
+      remainingMs: Math.max(0, run.finishAtGameMs - state.gameMs),
+      stopable: true,
+      stop: 'stop-whauto',
+      stopParam: run.id,
     })
   }
 

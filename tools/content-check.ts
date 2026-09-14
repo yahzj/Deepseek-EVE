@@ -58,7 +58,7 @@ import {
   GALAXIES,
   WORMHOLE_FOE_CARD_IDS,
 } from '@whale/data'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { tableOf } from './content-schema'
 import {
@@ -130,6 +130,9 @@ securityZoneOf,
   WORMHOLE_MATTER_DEVICE_IDS,
   WORMHOLE_MATTER_FLOOR,
   wormholeIsShapedItem,
+  // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
+  WORMHOLE_SCAN_UNLOCK_STANDING,
+  DSI_FACTION_ID,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -1353,7 +1356,7 @@ for (const m of MODULES) {
     )
   }
   check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
-  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3% · **每池必含钛钢合金**）`)
+  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3% · **每池必含钛钢合金** · 占比 ≥40% 见 B3.3）`)
 
   /* ── B3.2 档位基础池（2026-09-14 船长「所有残骸回收都加钛钢」）：
    *   ① 三档基础池**都必须含钛钢合金**（常驻档本来就有，险/危同批补入）；
@@ -1375,6 +1378,31 @@ for (const m of MODULES) {
   console.log(
     `· B3.2 档位基础池：三档均含钛钢合金 · 均价 = 档基数（常 ${RECYCLE_POOL_AVG_ISK.common} / 险 ${RECYCLE_POOL_AVG_ISK.risky} / 危 ${RECYCLE_POOL_AVG_ISK.dire}）`,
   )
+
+  /* ── B3.3 钛钢占比下限（2026-09-14 船长第二批「提高钛钢占比到 40~60」+ 三答：
+   *   **只提不降 · 统一 40% · 均价不变**）⇒ 三档基础池 + 每一张特色池的钛钢**权重占比都 ≥40%**；
+   *   已有 65~80% 的池按"只提不降"原样保持（区间上限不是硬闸，硬闸只有下限 40%）。 */
+  {
+    const shares: { name: string; share: number }[] = []
+    const shareOf = (pool: ReadonlyArray<readonly [string, number]>): number => {
+      const wSum = pool.reduce((s, [, w]) => s + w, 0)
+      return pool.filter(([id]) => id === 'min-tritanium').reduce((s, [, w]) => s + w, 0) / wSum
+    }
+    for (const tier of ['common', 'risky', 'dire'] as const) shares.push({ name: `档位基础池·${tier}`, share: shareOf(RECYCLE_POOLS[tier]) })
+    for (const def of ANOMALIES_FLAVORED) {
+      if (!def.recyclePool || def.recyclePool.length === 0) continue
+      shares.push({ name: `${def.id}`, share: shareOf(def.recyclePool) })
+    }
+    let min = shares[0]!
+    for (const s of shares) {
+      if (s.share < min.share) min = s
+      check(
+        s.share >= 0.4,
+        `B3.3 ${s.name} 钛钢占比 ${(s.share * 100).toFixed(1)}% < 40%（船长 2026-09-14：提高钛钢占比到 40~60 ⇒ 只提不降、统一 40%）`,
+      )
+    }
+    console.log(`· B3.3 钛钢占比下限：${shares.length} 个池（3 档基础池 + ${shares.length - 3} 张特色池）全部 ≥40%（最低 = ${min.name} ${(min.share * 100).toFixed(1)}%）`)
+  }
   // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正）：收价 < 无技能拆解保底（≈57/m³，三档齐平），
   // 且与档位表一致（常 30 / 险 40 / 危 50，≈该档典型特色回收的五成上下）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }
@@ -2566,6 +2594,37 @@ for (const m of MODULES) {
   }
 }
 
+/* ── 悬停提示契约（2026-09-14 船长报障「部分情况仍会出现系统默认的鼠标悬浮 title 窗口」后加）：
+ * 全站悬停说明一律走**元素的 `title` 属性**（由 `ui/Tooltip.tsx` 的全局接管层换成站内自绘提示：
+ * 限宽 300px、跟随鼠标、可多行）；**SVG 的 `<title>` 子元素一律禁止** —— 它不是属性、接管层
+ * 看不见它，浏览器会照弹**系统默认**提示（实测：`closest('[title]')` 命中不到、`<title>` 子元素
+ * 还在）。作者层已把那两处（星图航线时长 / 虫洞格子）改成属性写法，这里按"静态读源码"再守一道。 */
+{
+  const uiRoot = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src')
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
+      const p = join(dir, d.name)
+      if (d.isDirectory()) return walk(p)
+      return p.endsWith('.tsx') || p.endsWith('.ts') ? [p] : []
+    })
+  const offenders: string[] = []
+  for (const file of walk(uiRoot)) {
+    // 先剥注释（`/* */`、`{/* */}`、`//` 行）——注释里写 `<title>` 讲解是合法的
+    const code = readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    if (/<title[\s>]/.test(code)) offenders.push(file.slice(process.cwd().length + 1))
+  }
+  check(
+    offenders.length === 0,
+    `悬停提示契约：渲染层出现 SVG \`<title>\` 子元素 ⇒ 浏览器会弹**系统默认**提示（请改成父元素的 title 属性，由自绘提示接管）：${offenders.join(' · ')}`,
+  )
+  if (offenders.length === 0) {
+    console.log('· 悬停提示契约：渲染层无 SVG `<title>` 子元素（HTML 元素用 title 属性、SVG 元素用 data-tip ⇒ 自绘提示接管）')
+  }
+}
+
+
 /* ── 赏金任务·敌人窝点契约（2026-09-10 加）：可作窝点目标的敌群必须齐备"派生所需的三件套" ──
  * ①稀有残骸物品（窝点战利品，打捞必得 → 高级箱）已注册进 ctx.items；
  * ②三档称呼词齐全（敌族词表或卡级覆盖）；
@@ -3705,6 +3764,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'lowSec', 'foeFamily',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
+    // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
+    'standing',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
@@ -3867,6 +3928,25 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
           `通讯 ${m.id} 指向的敌族没有任何敌卡（死触发器）：${m.trigger.family}`,
         )
         break
+      case 'standing': {
+        /**
+         * 死触发器守卫（2026-09-14 虫洞解锁信）：这封信靠「协会声望 ≥ N」送达，门槛值与 core 的
+         * `WORMHOLE_SCAN_UNLOCK_STANDING` **必须同值** —— 两处不一致时，要么信送了却扫不了、
+         * 要么能扫了却永远收不到信。这里与引擎常量同一出处地核一遍。
+         */
+        check(m.trigger.min > 0, `通讯 ${m.id} 的 standing 触发门槛必须为正：${m.trigger.min}`)
+        check(
+          m.trigger.factionId === DSI_FACTION_ID,
+          `通讯 ${m.id} 的 standing 触发指向未知声望势力：${m.trigger.factionId}`,
+        )
+        if (m.trigger.factionId === DSI_FACTION_ID) {
+          check(
+            m.trigger.min === WORMHOLE_SCAN_UNLOCK_STANDING,
+            `通讯 ${m.id} 的 standing 门槛 ${m.trigger.min} 与引擎常量 ${WORMHOLE_SCAN_UNLOCK_STANDING} 不一致`,
+          )
+        }
+        break
+      }
       case 'wormholeNebula':
         /**
          * 死触发器守卫（2026-09-13 星云机制）：这封信靠 `state.wormhole.nebulaHintShown` 送达，

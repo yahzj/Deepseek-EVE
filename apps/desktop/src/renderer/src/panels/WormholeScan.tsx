@@ -2,17 +2,30 @@
  * **「扫描虫洞」页**（2026-09-14 船长：「将扫描虫洞放入出港界面的选项卡内。新增主控活动：'扫描虫洞'。
  * 玩家需要在扫描虫洞界面内开始。…进度条满后。玩家就可以发现一个虫洞。玩家最多可以囤积5个未开始探索的虫洞。」）。
  *
- * 口径（design §三/§五 已确认）：
+ * 口径（design §三/§五/§六 已确认）：
  * - **主控活动**：开始/停止都只在本页（进度保留，停扫不清零）；与采矿/打捞/远征等互斥；
  * - **窗口 = 220 分钟 × 三技能乘算**（信号分析学/星图测绘学/信号过滤学，与星图扫描同源；不吃舰船属性）；
  * - 进度满 ⇒ 发现一处虫洞进库存（**上限 5**，满了**停机并提示**）；
  * - 库存每处带**种子 + 起始层**（越深越险、产出越高）；「探索这一处」⇒ 打开准备页选编队进洞（**消耗**该处）；
+ * - **自动探索**（批次 3 · 船长逐条定案）：每处一个「自动探索」——自动配置最多 4 条非主控船（每条占 1 枚
+ *   AI 核心，可手动改）、**5 分钟**、完成后停止；产出 = **手动一趟期望 × 40%**（**直入仓库**、不保底）；
+ *   参与舰**结构/装甲各受损 −40%~−80%** 但**绝不丢船**、任务期间锁定；
+ * - **结算**：日志 ＋ 一份**需要确认的报告**（就在本页列出：收益清单 + 损伤读数）——船长允许本页出现"虫洞"字样；
  * - **施工期**：整个选项卡只在调试模式下出现（与虫洞入口同一把开关）。
  */
 import { useEffect, useState } from 'react'
 import { Panel } from '@whale/ui'
 import { formatDurationMs } from '@whale/core'
-import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX } from '@whale/core'
+import {
+  WORMHOLE_AUTO_DAMAGE_MAX,
+  WORMHOLE_AUTO_DAMAGE_MIN,
+  WORMHOLE_AUTO_DURATION_MS,
+  WORMHOLE_AUTO_MAX_SHIPS,
+  WORMHOLE_AUTO_YIELD_MUL,
+  WORMHOLE_SCAN_BASE_MS,
+  WORMHOLE_SCAN_UNLOCK_STANDING,
+  WORMHOLE_STOCK_MAX,
+} from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 
@@ -24,13 +37,39 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
     const t = window.setInterval(() => setTick((n) => n + 1), 1000)
     return () => window.clearInterval(t)
   }, [])
+  /** 正在"配置哪一处"（null = 没在配置） */
+  const [pickFor, setPickFor] = useState<string | null>(null)
+  /** 配置里勾选的参与舰（开始时以库存项为键保存；关掉配置即清） */
+  const [pickShips, setPickShips] = useState<string[]>([])
   const scan = state.wormholeScan ?? { active: false, progressMs: 0 }
   const stock = engine.wormholeStock()
+  const runs = engine.wormholeAutoRuns()
+  const reports = engine.wormholeAutoReports()
+  const pending = engine.wormholeAutoPending()
   const windowMs = engine.wormholeScanWindow()
   const done = Math.min(windowMs, scan.progressMs)
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
   const full = stock.length >= WORMHOLE_STOCK_MAX
+  /** 解锁门槛（船长 2026-09-14：需要协会声望 35；解锁时会收到一封通讯 + 直接弹窗） */
+  const unlocked = engine.wormholeScanUnlocked()
+  const standing = engine.wormholeScanStanding()
+  /** 配置界面的候选（全部列出；不可派的也显示并写明原因） */
+  const allCandidates = pickFor !== null ? engine.wormholeAutoCandidates([]) : []
+  const lineup =
+    pickShips.length > 0
+      ? pickShips
+      : allCandidates.filter((c) => c.picked).map((c) => c.shipId)
+  const startBlock = pickFor !== null ? engine.wormholeAutoBlockReason(pickFor, lineup) : null
+
+  const openPick = (stockId: string): void => {
+    const auto = engine
+      .wormholeAutoCandidates([])
+      .filter((c) => c.picked)
+      .map((c) => c.shipId)
+    setPickShips(auto)
+    setPickFor(stockId)
+  }
 
   return (
     <Panel
@@ -38,7 +77,9 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
       title="扫描虫洞"
       right={
         <span className="app-dim">
-          已囤 {stock.length}/{WORMHOLE_STOCK_MAX} 处 · 单次窗口 {formatDurationMs(windowMs)}
+          已囤 {stock.length}/{WORMHOLE_STOCK_MAX} 处
+          {runs.length > 0 ? ` · 自动探索 ${runs.length} 趟在跑` : ''}
+          {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''} · 单次窗口 {formatDurationMs(windowMs)}
         </span>
       }
     >
@@ -49,6 +90,19 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
           扫描期间**遭遇随机事件的概率与星图扫描一致**；被打断也**不影响进度**。
           未探索的虫洞最多囤 {WORMHOLE_STOCK_MAX} 处。
         </div>
+
+        {!unlocked ? (
+          <div className="app-wh-scanbar">
+            <div className="app-wh-scanbar-label">
+              <span className="app-wh-hold-warn">
+                尚未解锁：需要「深空工业协会」声望 {WORMHOLE_SCAN_UNLOCK_STANDING}（当前 {standing}）
+              </span>
+            </div>
+            <div className="app-dim">
+              声望靠协会的委托与任务攒；达到门槛时协会测绘处会发来一封通讯，并当场弹给你看。
+            </div>
+          </div>
+        ) : null}
 
         <div className="app-wh-scanbar">
           <div className="app-wh-scanbar-label">
@@ -103,18 +157,214 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
                 <div className="app-inv-main">
                   <span className="app-inv-name">虫洞 · 起始第 {item.depth} 层</span>
                   <span className="app-inv-count">
-                    威胁与产出随起始层上升（越深越险、产出越高） · 发现于 {formatDurationMs(Math.max(0, state.gameMs - item.foundAtGameMs))}前
+                    威胁与产出随起始层上升（越深越险、产出越高） · 发现于{' '}
+                    {formatDurationMs(Math.max(0, state.gameMs - item.foundAtGameMs))}前
                   </span>
                 </div>
                 <div className="app-inv-btns">
                   <button className="app-btn is-small is-primary" onClick={() => onExplore(item.id)}>
                     探索这一处
                   </button>
+                  <button
+                    className="app-btn is-small"
+                    disabled={runs.some((r) => r.stockId === item.id)}
+                    title={
+                      runs.some((r) => r.stockId === item.id)
+                        ? '这一处已经在自动探索中'
+                        : `自动派最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船去探（每条占 1 枚 AI 核心，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）`
+                    }
+                    onClick={() => (pickFor === item.id ? setPickFor(null) : openPick(item.id))}
+                  >
+                    自动探索
+                  </button>
                 </div>
               </li>
             ))}
           </ul>
         )}
+
+        {pickFor !== null ? (
+          <div className="app-wh-scanbar">
+            <div className="app-wh-scanbar-label">
+              自动探索 · 派谁去
+              <span className="app-dim">
+                {' '}
+                · 每条占 1 枚 AI 核心 · 约 {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟 · 收益为手动一趟的{' '}
+                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%（**直入仓库**、不保底）· 结构/装甲各受损{' '}
+                {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%（**不会丢船**）
+              </span>
+            </div>
+            <ul className="app-inv-list">
+              {allCandidates.length === 0 ? (
+                <li className="app-dim app-inv-empty">舰队里没有可派的副船。</li>
+              ) : (
+                allCandidates.map((c) => {
+                  const checked = lineup.includes(c.shipId)
+                  const disableAdd =
+                    c.blocked !== null || (!checked && lineup.length >= WORMHOLE_AUTO_MAX_SHIPS)
+                  /** 参与舰名（界面用；引擎包装里没有名字接口，这里退回 id） */
+                  return (
+                    <li key={c.shipId} className="app-inv-row">
+                      <label className="app-inv-main" style={{ cursor: disableAdd && !checked ? 'not-allowed' : 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={disableAdd && !checked}
+                          onChange={() => {
+                            setPickShips((prev) =>
+                              prev.includes(c.shipId) ? prev.filter((x) => x !== c.shipId) : [...prev, c.shipId],
+                            )
+                          }}
+                        />{' '}
+                        <span className="app-inv-name">{c.name}</span>
+                        <span className="app-inv-count">
+                          {c.blocked ?? (c.picked ? '自动配置已选' : '可派')}
+                          {!checked && c.blocked === null && lineup.length >= WORMHOLE_AUTO_MAX_SHIPS
+                            ? ' · 已达上限'
+                            : ''}
+                        </span>
+                      </label>
+                    </li>
+                  )
+                })
+              )}
+            </ul>
+            <div className="app-wh-scanbar-actions">
+              <button
+                className="app-btn is-small is-primary"
+                disabled={startBlock !== null}
+                title={startBlock ?? '派这一队出发'}
+                onClick={() => {
+                  const r = engine.wormholeAutoStart(pickFor, lineup)
+                  if (!r.ok) onToast(r.error ?? '派不出去。', true)
+                  else {
+                    onToast(`自动探索队出发：${lineup.length} 条舰，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航。`)
+                    setPickFor(null)
+                    setPickShips([])
+                  }
+                }}
+              >
+                派 {lineup.length} 条舰出发
+              </button>
+              <button
+                className="app-btn is-small"
+                onClick={() => {
+                  setPickFor(null)
+                  setPickShips([])
+                }}
+              >
+                取消
+              </button>
+              {startBlock !== null ? <span className="app-wh-hold-warn">{startBlock}</span> : null}
+            </div>
+            {lineup.length === 0 ? (
+              <div className="app-dim">先勾选至少 1 条副船（主控船不参与自动探索）。</div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {runs.length > 0 ? (
+          <>
+            <div className="app-bay-title">自动探索进行中 · {runs.length} 趟</div>
+            <ul className="app-inv-list">
+              {runs.map((run) => {
+                const span = Math.max(1, run.finishAtGameMs - run.startedAtGameMs)
+                const prog = Math.max(0, Math.min(100, Math.round(((state.gameMs - run.startedAtGameMs) / span) * 100)))
+                return (
+                  <li key={run.id} className="app-inv-row">
+                    <div className="app-inv-main">
+                      <span className="app-inv-name">虫洞 · 起始第 {run.depth} 层</span>
+                      <span className="app-inv-count">
+                        {run.shipIds.length} 条舰（各占 1 枚 AI 核心）· 还剩{' '}
+                        {formatDurationMs(Math.max(0, run.finishAtGameMs - state.gameMs))}
+                      </span>
+                    </div>
+                    <div className="app-inv-btns">
+                      <span className="app-dim">{prog}%</span>
+                      <button
+                        className="app-btn is-small is-warn"
+                        title="召回：没有收益、也没有损伤；这处虫洞不退还"
+                        onClick={() => {
+                          const r = engine.wormholeAutoStop(run.id)
+                          if (!r.ok) onToast(r.error ?? '召回失败。', true)
+                          else onToast('已召回自动探索队（无收益、无损伤；通道就此关闭）。')
+                        }}
+                      >
+                        召回
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        ) : null}
+
+        {reports.length > 0 ? (
+          <>
+            <div className="app-bay-title">
+              探索报告 · {reports.length} 份{pending > 0 ? `（待确认 ${pending}）` : ''}
+            </div>
+            {pending > 1 ? (
+              <div className="app-wh-scanbar-actions">
+                <button
+                  className="app-btn is-small"
+                  onClick={() => {
+                    const n = engine.wormholeAutoConfirmAll()
+                    onToast(n > 0 ? `已确认 ${n} 份报告。` : '没有待确认的报告。')
+                  }}
+                >
+                  全部标为已读
+                </button>
+              </div>
+            ) : null}
+            <ul className="app-inv-list">
+              {reports.map((rep) => (
+                <li key={rep.id} className="app-inv-row">
+                  <div className="app-inv-main">
+                    <span className="app-inv-name">
+                      起始第 {rep.depth} 层 · {rep.confirmed ? '已确认' : '待确认'}
+                    </span>
+                    <span className="app-inv-count">
+                      收益（已入仓库）：
+                      {rep.gains.length > 0
+                        ? rep.gains.map((g) => `${engine.ctx.items.get(g.itemId)?.name ?? g.itemId} ×${g.units}`).join('、')
+                        : '空手而归'}
+                    </span>
+                    <span className="app-inv-count">
+                      损伤：
+                      {rep.damage.length > 0
+                        ? rep.damage
+                            .map(
+                              (d) =>
+                                `${d.name} 结构 −${d.durabilityLossPct}%（现 ${d.durabilityPct}%）/ 装甲 −${d.armorLossPct}%（现 ${d.armorPct}%）`,
+                            )
+                            .join('；')
+                        : '无'}
+                    </span>
+                    <span className="app-inv-count">
+                      {rep.shipIds.length} 条舰全部安全返航 · {rep.coresReleased} 枚 AI 核心已释放 · 完成于{' '}
+                      {formatDurationMs(Math.max(0, state.gameMs - rep.finishedAtGameMs))}前
+                    </span>
+                  </div>
+                  <div className="app-inv-btns">
+                    {rep.confirmed ? null : (
+                      <button
+                        className="app-btn is-small is-primary"
+                        onClick={() => {
+                          const r = engine.wormholeAutoConfirm(rep.id)
+                          if (!r.ok) onToast(r.error ?? '确认失败。', true)
+                        }}
+                      >
+                        确认
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </div>
     </Panel>
   )

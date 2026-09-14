@@ -1776,6 +1776,9 @@ function WhGridMap({
             key={c.key}
             className={cls}
             onClick={() => onPickCell(c.q, c.r)}
+            // 格子说明：SVG 元素用 **`data-tip`**（React 的 SVG 类型不接受 `title` 属性；SVG 的
+            // `<title>` 子元素则会被浏览器弹**系统默认**提示）——由全局接管层 `ui/Tooltip.tsx` 接管
+            data-tip={title}
             style={
               dissolvingNow && dissolveAt.has(c.key)
                 ? { animationDelay: `${dissolveAt.get(c.key)}ms` }
@@ -1807,7 +1810,6 @@ function WhGridMap({
             ) : null}
             {/* **去过标记**：右上角一个小实心点（SVG 线稿；与图例同源） */}
             {visited ? <circle className="app-wh-hex-done" cx={x + size * 0.52} cy={y - size * 0.5} r={2.2} /> : null}
-            <title>{title}</title>
           </g>
         )
       })}

@@ -1924,6 +1924,14 @@ export type CommsTrigger =
    * 通讯是**留档**的（一次性提示会消失），玩家事后还能回看这条说明。
    */
   | { kind: 'wormholeNebula' }
+  /**
+   * **势力声望达标**（2026-09-14 船长：「**扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家**」）。
+   *
+   * 判定 = `state.standings[factionId] >= min`。⚠ 这里的 `factionId` 是**声望口径**的势力 id
+   * （协会 = `DSI_FACTION_ID` / `'dsi'`，见 `expedition.ts`），与**通讯发件势力** id
+   * （`commsFactions` 里的 `'dshi'`）**不是同一套命名空间**——触发器按前者、发件人按后者。
+   */
+  | { kind: 'standing'; factionId: string; min: number }
 
 /** 回复选项（**预留接口：2026-09-11 船长定"预留但不启用"**，见 core COMMS_REPLIES_ENABLED） */
 export interface CommsReplyDef {
@@ -1984,6 +1992,17 @@ export interface CommsMessageDef {
   action?: CommsActionDef
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
+  /**
+   * **送达时同时直接弹窗**（2026-09-14 船长：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）。
+   * 语义：消息照常进收件箱；送达那一刻把 id 记进 `state.commsPopups`，界面弹一次卡片、
+   * 玩家点「知道了」即清（`dismissCommsPopup`）——**关掉不丢信**，收件箱里还有。
+   */
+  popup?: boolean
+  /**
+   * **未上线闸门（施工期铁律）**：语义同 `ItemDef.unreleased` —— `true` 时**不送达**。
+   * 用途：虫洞解锁信这类"随虫洞一起上线"的消息先按正式文案写好，上线时删掉这一个字段即可开送。
+   */
+  unreleased?: boolean
 }
 
 /** 收件箱条目视图（界面用；消息与剧本镜像共用一种结构，见 core/comms.ts） */

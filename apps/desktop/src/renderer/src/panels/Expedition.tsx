@@ -1221,8 +1221,16 @@ function StarMap({
                 y2={pb.y}
                 className={`app-map-edge${crossed ? ' is-cross' : ''}`}
               />
-              <text x={mx} y={my - 6} textAnchor="middle" className={`app-map-min${crossed ? ' is-cross' : ''}`}>
-                <title>{actTitle}</title>
+              {/* 悬停说明：SVG 元素用 **`data-tip`**（React 的 SVG 类型不接受 `title` 属性；而 SVG 的
+                  `<title>` 子元素会被浏览器弹**系统默认**提示）——两者都由全局接管层 `ui/Tooltip.tsx`
+                  换成站内自绘提示（2026-09-14 船长报障后统一） */}
+              <text
+                x={mx}
+                y={my - 6}
+                textAnchor="middle"
+                className={`app-map-min${crossed ? ' is-cross' : ''}`}
+                data-tip={actTitle}
+              >
                 {actLabel}
               </text>
             </g>

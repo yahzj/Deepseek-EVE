@@ -44,8 +44,19 @@ const PAD = 8
  */
 const NATIVE_TIP_HOVER_MS = 200
 
-/** 「原生 title 已被摘走」的暂存属性名（离开时原样放回，读 title 的代码不受影响） */
-const NATIVE_TIP_STASH = 'tipNative'
+/**
+ * 「原生提示源已被摘走」的暂存属性：属性链把 `title` 值挪到这里（`title` 属性摘掉、浏览器不弹），
+ * 离开时原样放回 ⇒ 任何读 `title` 的代码不受影响；同时它也参与命中判定（摘走期间仍能再认出这个元素）。
+ * （A 类 = SVG 的 `<title>` 子元素，处理方式是**清空文本**、不是挪属性，见下方接管层注释。）
+ */
+const TIP_STASH_ATTR = 'data-tip-native'
+
+/**
+ * **SVG 元素的作者属性**（2026-09-14 新增）：HTML 元素用 `title`，但 **React 的 SVG 类型不接受
+ * `title` 属性**（SVG 的提示源本来是 `<title>` 子元素，而那个会被浏览器弹系统默认提示）⇒
+ * SVG 里的悬停说明一律写 `data-tip="…"`，由本层接管成站内自绘提示。优先级：`title` > `data-tip` > 暂存。
+ */
+const TIP_ATTR = 'data-tip'
 
 const listeners = new Set<(s: TipState | null) => void>()
 let current: TipState | null = null
@@ -178,111 +189,217 @@ export function TooltipLayer(): ReactNode {
   /**
    * ⚠ **原生 title 一律改走自绘提示**（2026-09-13 船长：「按钮的鼠标悬浮提示有时候过宽…
    * 限制下宽度，允许多几行」）——机制：
-   * 1. 指针进入带 `title` 的元素后**等 NATIVE_TIP_HOVER_MS**，才把 `title` 摘到 `dataset.tipNative`
-   *    并弹自绘提示（`.app-tip`：max-width 300px + `white-space: pre-line` + `overflow-wrap: anywhere`
-   *    ⇒ **限宽、可多行**，且 title 里的 `\n` 仍按行渲染；扫过不弹、停住才弹）；
-   * 2. 指针真正离开该元素（`relatedTarget` 不在其内部）或提前离开 ⇒ 把 `title` **原样放回**并收起提示
+   * 1. 指针进入有提示的元素、**停够 NATIVE_TIP_HOVER_MS**，才摘掉原生提示源并弹自绘提示
+   *    （`.app-tip`：max-width 300px + `white-space: pre-line` + `overflow-wrap: anywhere`
+   *    ⇒ **限宽、可多行**，且 `\n` 仍按行渲染；扫过不弹、停住才弹）；
+   * 2. 指针真正离开（`relatedTarget` 不在其内部）⇒ 原生提示源**原样放回**并收起自绘提示
    *    ⇒ 任何读 `title` 的代码（如"点了禁用按钮弹原因"那条链）行为不变；
-   * 3. 元素在展示期间被重新渲染，若 React 又把 `title` 写回来（值变了才会写）⇒ 放回时**不覆盖**已存在的值；
-   * 4. 同时挂 `pointerover/pointerout`：某些浏览器对禁用控件的 mouse 事件不打，pointer 事件照打
-   *    （禁用按钮的长说明正是最需要限宽的一类）。
+   * 3. 展示期间 React 又把 `title` 写回来（读数型说明每拍刷新）⇒ 观察器**再摘一次**并刷新提示文本；
+   * 4. 同时挂 `pointerover/pointerout`：禁用控件的 mouse 事件在部分浏览器不打、pointer 事件照打。
+   *    （**2026-09-14 实测**：当前 Chromium 对 `disabled` 按钮两者都照打、接管正常 ⇒ 禁用控件不是漏网原因）
+   *
+   * **2026-09-14 船长：「部分情况仍会出现系统默认的鼠标悬浮 title 窗口」——补齐两类漏网**：
+   * - **A. SVG 的 `<title>` 子元素**（`<text><title>…</title></text>` 这种）：它**不是属性**，
+   *   `closest('[title]')` 完全看不见 ⇒ 浏览器按 SVG 标准照弹原生提示。现在一并纳入：停够延迟后
+   *   **清空该 `<title>` 的文本**（空 title 不弹提示）并弹自绘提示，离开时把原文本放回。
+   *   ⚠ 只清文本、**不摘元素**：`<title>` 归 React 管，摘掉它会让 React 卸载父节点时
+   *   `removeChild` 抛 NotFoundError（悬停中切页就会炸）；清文本对 React 完全无感。
+   *   （作者层已同步清扫那两处、体检加了「TSX 禁 `<title>` 子元素」守卫 ⇒ 这层只是兜底。）
+   * - **B. 悬停期间才写入 `title`**（进入时还没有、React 随后才写进来）：原先只在"已经摘过 title"
+   *   之后才挂观察器 ⇒ 这一段没人管，原生提示趁虚而入。现在**进入即挂观察**，一旦出现可展示文本、
+   *   且已停够延迟，就立刻接管。
+   *
+   * ⚠ 已知边界（如实登记）：B 类的观察只挂在**指针所在的那个元素**上；若提示源是它的**祖先**
+   * （`closest('[title]')` 指到上层），而 title 是在悬停期间才写到那个祖先上的，本层不会补捉——
+   * 作者层避免"先无后有"的祖先 title 即可（本仓 311 处 title 都是渲染即带）。
    */
   useEffect(() => {
     let timer = 0
-    let armed: HTMLElement | null = null // 已进入、在等延迟的元素
-    let shown: HTMLElement | null = null // 已摘走 title、正在展示自绘提示的元素
-    let shownText = '' // 正在展示的文本（跟随鼠标时要用它重排）
-    /**
-     * **展示期间盯住 `title` 被写回来**（2026-09-13 船长报的真 BUG：悬停「工业 ×N」那枚 AI 徽标久了
-     * 还是会冒出**原生旧 title**）：那一枚的 `title` 是**实时读数**（活动条数 + 每条百分比 / 剩余时间），
-     * 引擎每拍刷新 ⇒ React 把新的 `title` 重新写到元素上 ⇒ 浏览器原生提示趁虚而入、和自绘提示**同时**显示。
-     * ⇒ 展示期间挂一个只盯 `title` 属性的 MutationObserver：**写回来就再摘一次**，并把自绘提示的
-     * 内容刷新成新值（锚点仍用最近一次鼠标位置）；元素被卸载则收起提示。
-     */
+    /** 指针当前所在元素（可能还没接管：在等延迟，或在等 title 出现） */
+    let hovered: Element | null = null
+    /** 进入 hovered 的时刻（用来补足悬停延迟；后到的 title 不必重新计时） */
+    let hoveredAt = 0
+    /** 已接管、正在展示自绘提示（`svgTitle` 非空 = A 类：清的是它的文本） */
+    let shown: { el: Element; text: string; svgTitle: Element | null; from: 'title' | 'tip' | 'stash' } | null = null
     let obs: MutationObserver | null = null
-    const watchShown = (el: HTMLElement): void => {
-      obs?.disconnect()
-      obs = new MutationObserver(() => {
-        if (shown !== el) return
-        if (!el.isConnected) {
-          restore()
-          hideTip()
-          return
-        }
-        const fresh = el.getAttribute('title')
-        if (fresh === null) return
-        el.dataset[NATIVE_TIP_STASH] = fresh
-        el.removeAttribute('title')
-        if (fresh === shownText) return
-        shownText = fresh
-        const r = el.getBoundingClientRect()
-        const ax = lastPt.x >= 0 ? lastPt.x : Math.round(r.left + Math.min(r.width / 2, 160))
-        const ay = lastPt.y >= 0 ? lastPt.y : Math.round(r.bottom - 4)
-        showTip(fresh, ax, ay)
-      })
-      obs.observe(el, { attributes: true, attributeFilter: ['title'] })
+
+    type TipSrc = { el: Element; text: string; svgTitle: Element | null; from: 'title' | 'tip' | 'stash' }
+
+    /** 某元素"能显示什么提示"：①`title` 属性 ②`data-tip`（SVG 作者属性）③暂存 ④SVG `<title>` 子元素（A 类兜底） */
+    const srcOf = (el: Element | null): TipSrc | null => {
+      if (!el || typeof el.closest !== 'function') return null
+      const attrEl = el.closest(`[title], [${TIP_ATTR}], [${TIP_STASH_ATTR}]`)
+      if (attrEl) {
+        const title = attrEl.getAttribute('title')
+        const authored = attrEl.getAttribute(TIP_ATTR)
+        const stashed = attrEl.getAttribute(TIP_STASH_ATTR)
+        const from = title !== null ? 'title' : authored !== null ? 'tip' : 'stash'
+        return { el: attrEl, text: title ?? authored ?? stashed ?? '', svgTitle: null, from }
+      }
+      // SVG 链兜底：往上找第一个带**直接** `<title>` 子元素的祖先（`<svg>` 根自身不参与）
+      for (let n: Element | null = el; n && n.tagName.toLowerCase() !== 'svg'; n = n.parentElement) {
+        const t = Array.from(n.children).find((c) => c.tagName.toLowerCase() === 'title')
+        if (t) return { el: n, text: (t.textContent ?? '').trim(), svgTitle: t, from: 'title' }
+      }
+      return null
     }
-    const restore = (): void => {
+
+    /** 摘掉原生提示源（A 类清文本 / `title` 属性挪进暂存）；`data-tip` 本就不弹原生提示，无需摘 */
+    const take = (src: TipSrc): void => {
+      if (src.svgTitle) {
+        src.svgTitle.textContent = ''
+        return
+      }
+      if (src.from !== 'title') return
+      src.el.setAttribute(TIP_STASH_ATTR, src.text)
+      src.el.removeAttribute('title')
+    }
+
+    /** 把原生提示源原样放回并清掉观察器（`data-tip` 作者属性不留痕） */
+    const putBack = (): void => {
       obs?.disconnect()
       obs = null
+      const s = shown
+      shown = null
+      if (!s) return
+      if (s.svgTitle) {
+        // 展示期间 React 改写过文本 ⇒ `s.text` 已被观察器同步成新值，以新值为准
+        if ((s.svgTitle.textContent ?? '') === '') s.svgTitle.textContent = s.text
+        return
+      }
+      const stashed = s.el.getAttribute(TIP_STASH_ATTR)
+      if (stashed === null) return
+      s.el.removeAttribute(TIP_STASH_ATTR)
+      // 只在元素当前没有 title 时放回（React 若已写新值，以新值为准）
+      if (!s.el.hasAttribute('title')) s.el.setAttribute('title', stashed)
+    }
+
+    /** 锚点：鼠标位置（2026-09-13 船长「要跟随鼠标走」）；触屏合成事件给 (0,0) 时回落元素底边中点 */
+    const anchorOf = (el: Element): { x: number; y: number } => {
+      const r = el.getBoundingClientRect()
+      return {
+        x: lastPt.x >= 0 ? lastPt.x : Math.round(r.left + Math.min(r.width / 2, 160)),
+        y: lastPt.y >= 0 ? lastPt.y : Math.round(r.bottom - 4),
+      }
+    }
+
+    /** 停够延迟且当前确有可展示文本 ⇒ 接管（B 类文本后到时由观察器再叫一次） */
+    const maybeTake = (): void => {
+      if (shown) return
+      const el = hovered
+      if (!el || !el.isConnected) return
+      if (performance.now() - hoveredAt < NATIVE_TIP_HOVER_MS) return
+      const src = srcOf(el)
+      if (!src || src.text.trim() === '') return
+      const a = anchorOf(src.el)
+      take(src)
+      shown = { el: src.el, text: src.text, svgTitle: src.svgTitle, from: src.from }
+      watch(el, src.svgTitle)
+      showTip(src.text, a.x, a.y)
+    }
+
+    /**
+     * 观察器：**进入即挂**（覆盖 B 类"悬停期间才写入 title"），接管后继续盯
+     * （覆盖读数型 title 被 React 写回；A 类额外盯 `<title>` 文本被改写）。
+     */
+    const watch = (el: Element, svgTitle: Element | null): void => {
+      obs?.disconnect()
+      obs = new MutationObserver(() => {
+        if (!hovered || !hovered.isConnected) {
+          putBack()
+          hideTip()
+          hovered = null
+          return
+        }
+        if (!shown) {
+          maybeTake() // B 类：可展示文本刚出现 ⇒ 立刻接管
+          return
+        }
+        const src = srcOf(hovered)
+        if (!src || src.el !== shown.el) return
+        if (src.svgTitle) {
+          // A 类：我们主动清空了文本 ⇒ 只有"非空的新文本"才算被 React 改写
+          if ((src.svgTitle.textContent ?? '') !== '') src.svgTitle.textContent = ''
+          const fresh = src.text.trim()
+          if (fresh === '' || fresh === shown.text) return
+          shown.text = fresh
+        } else {
+          const fresh = src.text
+          if (fresh.trim() === '') return
+          if (src.el.hasAttribute('title')) {
+            src.el.setAttribute(TIP_STASH_ATTR, fresh)
+            src.el.removeAttribute('title')
+          }
+          if (fresh === shown.text) return
+          shown.text = fresh
+        }
+        const a = anchorOf(shown.el)
+        showTip(shown.text, a.x, a.y)
+      })
+      obs.observe(el, { attributes: true, attributeFilter: ['title', TIP_ATTR] })
+      if (svgTitle) obs.observe(svgTitle, { childList: true, characterData: true, subtree: true })
+    }
+
+    /** 提示归属元素（有 `title`/`data-tip`/暂存就归它；都没有就归指针所在元素本身） */
+    const ownerOf = (el: Element): Element => srcOf(el)?.el ?? el
+
+    const armAgain = (el: Element): void => {
+      hovered = el
+      hoveredAt = performance.now()
+      if (timer !== 0) window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        timer = 0
+        maybeTake()
+      }, NATIVE_TIP_HOVER_MS)
+      watch(el, null)
+    }
+
+    /**
+     * ⚠ **浏览器按"外层 → 内层"顺序派发 `mouseover`**（进一个按钮会先给 body/顶栏、再给按钮），
+     * 所以子元素进来时**不能早退**——否则 `hovered` 会停在最外层容器上、内层永远轮不到接管
+     * （2026-09-14 用真产物端到端实测到过这个回归：悬停「设置」根本不弹自绘提示）。
+     * ⇒ 同属一个提示归属元素时只"跟着更新、延迟不重启"；换了归属才重开一轮。
+     */
+    const onEnter = (e: Event): void => {
+      const t = e.target as Element | null
+      if (!t || typeof t.closest !== 'function') return
+      if (hovered === t) return
+      if (hovered && hovered.contains(t) && ownerOf(t) === ownerOf(hovered)) {
+        hovered = t
+        watch(t, null)
+        return
+      }
+      putBack()
+      hideTip()
+      armAgain(t)
+    }
+    const onLeave = (e: Event): void => {
+      if (!hovered) return
+      // 注意：本文件顶部的 `MouseEvent` 是 React 的类型，这里要的是 DOM 事件的 relatedTarget
+      const to = (e as unknown as { relatedTarget?: Node | null }).relatedTarget ?? null
+      const toEl = to !== null && to.nodeType === 1 ? (to as Element) : null
+      if (toEl !== null) {
+        const owner = ownerOf(hovered)
+        if (toEl === owner || owner.contains(toEl)) return // 指针还在提示归属元素里（如从内层移到按钮本体）⇒ 不动
+        putBack()
+        hideTip()
+        armAgain(toEl)
+        return
+      }
       if (timer !== 0) {
         window.clearTimeout(timer)
         timer = 0
       }
-      armed = null
-      shownText = ''
-      if (!shown) return
-      const el = shown
-      shown = null
-      const text = el.dataset[NATIVE_TIP_STASH]
-      delete el.dataset[NATIVE_TIP_STASH]
-      // 只在元素当前没有 title 时放回（元素若被 React 重新渲染并写了新值，以新值为准）
-      if (text !== undefined && !el.hasAttribute('title')) el.setAttribute('title', text)
-    }
-    const targetOf = (e: Event): HTMLElement | null => {
-      const t = e.target as HTMLElement | null
-      if (!t || typeof t.closest !== 'function') return null
-      return t.closest('[title], [data-tip-native]') as HTMLElement | null
-    }
-    const onEnter = (e: Event): void => {
-      const el = targetOf(e)
-      if (!el || el === shown || el === armed) return
-      restore()
-      const text = el.getAttribute('title') ?? ''
-      if (text.trim() === '') return
-      armed = el
-      timer = window.setTimeout(() => {
-        timer = 0
-        if (armed !== el || !el.isConnected) return
-        armed = null
-        el.dataset[NATIVE_TIP_STASH] = text
-        el.removeAttribute('title')
-        shown = el
-        shownText = text
-        watchShown(el) // 实时读数的 title 会被 React 写回来 ⇒ 盯住它（见 watchShown 注释）
-        // 锚在**鼠标位置**（2026-09-13 船长：「鼠标悬浮的 title 要跟随鼠标走」）——
-        // 指针位置取模块级 lastPt（触屏合成事件给 (0,0) 时回落到元素底边中点）
-        const r = el.getBoundingClientRect()
-        const anchorX = lastPt.x >= 0 ? lastPt.x : Math.round(r.left + Math.min(r.width / 2, 160))
-        const anchorY = lastPt.y >= 0 ? lastPt.y : Math.round(r.bottom - 4)
-        showTip(text, anchorX, anchorY)
-      }, NATIVE_TIP_HOVER_MS)
-    }
-    const onLeave = (e: Event): void => {
-      const el = targetOf(e)
-      if (!el || (el !== shown && el !== armed)) return
-      // 注意：本文件顶部的 `MouseEvent` 是 React 的类型，这里要的是 DOM 事件的 relatedTarget
-      const to = (e as unknown as { relatedTarget?: Node | null }).relatedTarget ?? null
-      if (to && el.contains(to)) return // 只是在元素内部移动
-      restore()
+      putBack()
       hideTip()
+      hovered = null
     }
     /** 提示跟随鼠标（`moveTip` 自带 rAF 节流；只在提示已展示时重排） */
     const onMove = (e: Event): void => {
-      if (!shown || shownText === '') return
+      if (!shown || shown.text === '') return
       const me = e as unknown as { clientX: number; clientY: number }
       if (typeof me.clientX !== 'number') return
-      moveTip(shownText, me.clientX, me.clientY)
+      moveTip(shown.text, me.clientX, me.clientY)
     }
     document.addEventListener('mouseover', onEnter, true)
     document.addEventListener('mouseout', onLeave, true)
@@ -291,7 +408,7 @@ export function TooltipLayer(): ReactNode {
     document.addEventListener('mousemove', onMove, true)
     document.addEventListener('pointermove', onMove, true)
     return () => {
-      restore()
+      putBack()
       document.removeEventListener('mouseover', onEnter, true)
       document.removeEventListener('mouseout', onLeave, true)
       document.removeEventListener('pointerover', onEnter, true)
