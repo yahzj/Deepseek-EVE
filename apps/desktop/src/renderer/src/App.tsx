@@ -76,7 +76,7 @@ function gameClock(gameMs: number): string {
 
 /* ═══════════════ 日志面板偏好（折叠 + 类型过滤，存 localStorage） ═══════════════ */
 
-const LOG_KINDS: readonly LogKind[] = ['system', 'info', 'queue', 'levelup', 'warn', 'trade']
+const LOG_KINDS: readonly LogKind[] = ['system', 'info', 'queue', 'levelup', 'warn', 'trade', 'event']
 const KIND_LABEL: Record<LogKind, string> = {
   system: '系统',
   info: '信息',
@@ -84,7 +84,9 @@ const KIND_LABEL: Record<LogKind, string> = {
   levelup: '升级',
   warn: '警告',
   trade: '交易',
+  event: '事件',
 }
+
 /** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
 const KIND_DESC: Record<LogKind, string> = {
   system: '系统：欢迎与系统通告等',
@@ -93,7 +95,9 @@ const KIND_DESC: Record<LogKind, string> = {
   levelup: '升级：技能升级',
   warn: '警告：异常/失利/记录缺失',
   trade: '交易：市场成交与挂单、买船买核心、维修费、远征奖金等一切资金往来',
+  event: '事件：深空偶发奇遇与市场风云（日志带 ✦，在线时会弹小卡）',
 }
+
 /** 开关色点（图例）：色值须与 ui index.css 的 wui-log-* 一致 */
 const KIND_DOT: Record<LogKind, string> = {
   system: 'var(--wui-purple)',
@@ -102,7 +106,9 @@ const KIND_DOT: Record<LogKind, string> = {
   queue: '#54d4de',
   info: '#8fa3c2',
   trade: '#6fdc8f',
+  event: '#ffb35c',
 }
+
 const PREFS_KEY = 'whale-idle:log-prefs'
 
 interface LogPrefs {
@@ -113,7 +119,7 @@ interface LogPrefs {
 function defaultLogPrefs(): LogPrefs {
   return {
     collapsed: false,
-    kinds: { system: true, info: true, queue: true, levelup: true, warn: true, trade: true },
+    kinds: { system: true, info: true, queue: true, levelup: true, warn: true, trade: true, event: true },
   }
 }
 
@@ -675,7 +681,7 @@ export function App({ engine }: { engine: GameEngine }) {
     for (let i = logs.length - 1; i >= 0; i--) {
       const l = logs[i]!
       if (l.id <= lastSeenLogId.current) break // 只检查新增日志（id 单调递增）
-      if (l.text.startsWith('✦')) {
+      if (l.kind === 'event' || l.text.startsWith('✦')) { // 随机事件按类型认；其余「✦ 扫描完成/彩头/高级箱」照旧按前缀认
         setEventToast({ id: l.id, text: l.text })
         if (eventTimer.current !== null) window.clearTimeout(eventTimer.current)
         eventTimer.current = window.setTimeout(() => setEventToast(null), 6000)

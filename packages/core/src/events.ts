@@ -156,7 +156,7 @@ function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
 
 /** 日志里统一写事件文本（金额自动附注） */
 function logEvent(state: GameState, text: string, amount?: number): void {
-  addLog(state, 'info', `✦ ${text}${amount !== undefined && amount > 0 ? `（+${amount.toLocaleString('zh-CN')} 信用点）` : ''}`)
+  addLog(state, 'event', `✦ ${text}${amount !== undefined && amount > 0 ? `（+${amount.toLocaleString('zh-CN')} 信用点）` : ''}`)
 }
 
 /** 事件现金 · 已探索星系加成（2026-09-10 船长：探索越多事件奖金越高；导出供测试） */

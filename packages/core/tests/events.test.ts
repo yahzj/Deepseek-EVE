@@ -147,6 +147,25 @@ describe('随机事件系统（V11）', () => {
     expect(round.state.events.nextAtGameMs).toBe(0)
     expect(round.state.version).toBe(CURRENT_STATE_VERSION)
   })
+
+  /**
+   * **随机事件的日志类型 = `event`**（2026-09-14 船长：「突发事件的事件日志内不够显眼」
+   * ⇒ 从 `info` 独立出来，日志面板给琥珀橙醒目行 + 单独筛选档）。
+   *
+   * 两件事一起钉住：① 事件行的 `kind` 必须是 `event`（前缀 `✦` 照旧保留——桌面小弹卡与手册口径都认它）；
+   * ② **存档白名单**（`save.ts` 的 `LOG_KINDS`）必须收 `event`，否则读档会把事件行**降级成 info**。
+   */
+  it('**日志类型 = event**：事件行按类型认（不再是 info），存档往返不降级', () => {
+    const { state, ctx } = makeWorld()
+    advanceGame(state, 31 * 60_000, ctx)
+    const evs = state.logs.filter((l) => l.kind === 'event')
+    expect(evs.length, '推进 31 分钟至少出一次事件').toBeGreaterThan(0)
+    expect(evs.every((l) => l.text.startsWith('✦'))).toBe(true) // 前缀保留
+    expect(state.logs.some((l) => l.kind === 'info' && l.text.startsWith('✦'))).toBe(false) // 不再混在 info 里
+    const back = loadSaveFile(serializeSaveFile(state))
+    expect(back.state.logs.filter((l) => l.kind === 'event').length).toBe(evs.length) // 白名单缺它就会变 0
+  })
+
 })
 
 describe('星际奇遇学改版（2026-09-08 船长定：事件间隔每级 −8%，遇袭期望不变补偿）', () => {

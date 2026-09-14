@@ -46,7 +46,7 @@ export class SaveError extends Error {
 }
 
 /** 合法的日志类型白名单 */
-const LOG_KINDS: ReadonlySet<string> = new Set(['system', 'info', 'queue', 'levelup', 'warn', 'trade'])
+const LOG_KINDS: ReadonlySet<string> = new Set(['system', 'info', 'queue', 'levelup', 'warn', 'trade', 'event']) // ⚠ 新增日志类型**必须**同步这份白名单，否则读档会把该类型的行降级成 info
 
 /** 迁移脚本的输入/输出：只保证"是个对象"，具体字段由每个迁移自己处理 */
 type RawState = Record<string, unknown>

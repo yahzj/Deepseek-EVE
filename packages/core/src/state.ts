@@ -35,7 +35,7 @@ export const DEFAULT_START_SHIP_ID = 'sandcat'
 export const MAX_AI_CORE_LEVEL = 5
 
 /** 日志类型：显示端按类型配色/筛选 */
-export type LogKind = 'system' | 'info' | 'queue' | 'levelup' | 'warn' | 'trade'
+export type LogKind = 'system' | 'info' | 'queue' | 'levelup' | 'warn' | 'trade' | 'event' // 'event' = 深空偶发奇遇与市场风云（2026-09-14 船长：日志里要显眼 ⇒ 独立类型，不再混在 info）
 
 /** 一条事件日志 */
 export interface LogEntry {
