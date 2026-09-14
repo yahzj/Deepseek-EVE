@@ -59,6 +59,9 @@
 ### 验证闭环（项目固定动作）
 - `npm run typecheck`（core / data / ui / desktop 四包全绿）；
 - `npm run test -w @whale/core`（vitest；改行为必须同步改/加测试，断言确定性优先）；
+- `npm run content:check`（内容契约体检）与 **`npm run ui:rot-check`**（**旋转口径体检 · 2026-09-14 起为第五道闸门**，
+  船长定：手机竖屏自动横屏是"逻辑空间 1200 × `--mob-h`"，凡用 `vw`/`vh` 定尺寸的覆盖层必须按逻辑空间同轴覆盖、
+  窄窗媒体查询在旋转下不许误触发、侧栏让位只许收内边距；只读 `styles.css`、不用浏览器）；
 - `npm run build`（electron-vite）；结构改动后跑 Electron 冒烟 + 真实存档迁移检查
   （`%APPDATA%\whale-idle\save.json`，动它之前先备份）；
 - 数值/经济改动跑 `npm run balance`（tools/balance-check.ts，三策略 24h 对比）；
@@ -309,7 +312,7 @@
     夹具悬停 ⇒ 自绘提示且 `<title>` 文本被清空、离开原样恢复。
 
 - **🔴 表现的观感审查权在船长（船长 2026-09-13 定）**：UI / 观感类改动，
-  **实现 + 四闸门（typecheck / 测试 / content:check / 构建）跑完就直接交船长审查**——
+  **实现 + 五闸门（typecheck / 测试 / content:check / 旋转口径 / 构建）跑完就直接交船长审查**——
   **不许自己起无头浏览器截图、然后拿截图当"已经改好了"的判断依据**。
   为什么：① 好不好看、像不像、够不够醒目**只有船长能判**，截图只能判"有没有渲出来"，判不了观感；
   ② 截图/探针要起无头浏览器 + 本地服务，占机器、抢端口；

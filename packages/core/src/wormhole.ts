@@ -569,6 +569,11 @@ export function wormholeStartRun(
   ctx: SimContext,
   shipIds: readonly string[],
   rngSeed: number,
+  /**
+   * **空地点占比系数**（事件玄学：满级 0.8 ⇒ 相对 −20%）。缺省 1 = 旧行为
+   * ——本函数拿不到 `state`（测试与工具直接用它建盘），故由调用方（`wormholeEnter`）传 `blankShareFactorOf(state)`。
+   */
+  blankShareFactor = 1,
 ): WormholeStartResult {
   const adm = wormholeAdmission(ctx, shipIds)
   if (!adm.ok) return { ok: false, error: WORMHOLE_ADMISSION_TEXT[adm.code] }
@@ -589,7 +594,7 @@ export function wormholeStartRun(
       // 新开趟一律为 `null`（老档里已有的 pendingNode 仍能被 `wormholeAdvanceNode` 走完，见该函数注释）。
       pendingNode: null,
       nodesPerLayer: wormholeNodesPerLayer(depth),
-      grid: wormholeMakeGrid(rngSeed, depth, wormholeScanBonusOf(ctx, shipIds)),
+      grid: wormholeMakeGrid(rngSeed, depth, wormholeScanBonusOf(ctx, shipIds), blankShareFactor),
       seed: rngSeed,
     },
   }
@@ -693,7 +698,7 @@ export function wormholeDescend(
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
   // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
-  run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus)
+  run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus, blankShareFactorOf(state))
   maybeHintNebula(state, run.depth)
   return { ok: true, spent: 0, atLayerEnd: false }
 }
@@ -1334,6 +1339,20 @@ export function wormholeScanBonusOf(ctx: SimContext, shipIds: readonly string[])
 }
 
 /**
+ * **事件玄学（`event-dividend`）· 虫洞空白地点占比的每级系数**（船长 2026-09-14：
+ * 「效果添加：降低虫洞内出现空白地点的几率，满级为20%」；四问四答定口径「**相对削减**」）。
+ * 线性每级 −4%（rank 5 ⇒ 满级恰 −20%）。本常量与 `packages/data/src/skills.ts` 的技能说明**同源**，
+ * 改这里必须同步说明（`content:check` 技能说明契约会按内联表现场复核这个 0.04）。
+ */
+export const EVENTS_BLANK_SHARE_PER_LEVEL = 0.04
+
+/** 事件玄学等级 → 空地点占比系数（0 级 = 1 ⇒ 一字不变；满级 5 ⇒ 0.8）。入洞与深入下一层两处建盘都喂它。 */
+export function blankShareFactorOf(state: GameState): number {
+  const lv = Math.max(0, Math.min(5, Math.floor(state.skills.trained['event-dividend'] ?? 0)))
+  return 1 - EVENTS_BLANK_SHARE_PER_LEVEL * lv
+}
+
+/**
  * **入洞**（界面「进入虫洞」的引擎落点）：校验编队 → 建副本 → 写进存档。
  * `seed` 由调用方给（引擎传 `state.rng.seed`），保证节点/拾取堆可复现。
  */
@@ -1392,7 +1411,7 @@ export function wormholeEnter(
       }
     }
   }
-  const r = wormholeStartRun(ctx, shipIds, seed)
+  const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state))
   if (!r.ok || !r.run) return r
   r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
   // 出生信息（丙/丁）：层夹 1~9；原型与族缺省 ⇒ 按种子现算（与库存列表显示的同源）
