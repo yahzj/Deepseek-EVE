@@ -119,6 +119,12 @@ import {
   cpuBudgetOf,
   cpuOverloadText,
   swapModuleAt,
+  // 装配方案（预设）：保存当前装配 / 套用 / 改名 / 删除 / 一键卸下（2026-09-14 船长）
+  applyFitPreset,
+  deleteFitPreset,
+  renameFitPreset,
+  saveFitPreset,
+  unfitAllModules,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
   beginTutorialAfterAwaken,
@@ -214,6 +220,8 @@ import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  FitPresetApplyResult,
+  UnfitAllResult,
   CommsActionCommand,
   DamageType,
   GameState,
@@ -1337,6 +1345,58 @@ export class GameEngine {
   swapModuleTo(moduleId: string, rack: RackSlot, index: number, shipId?: string): CommandResult {
     const result = swapModuleAt(this.state, moduleId, this.ctx, { rack, index, shipId })
     if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  // ── 装配方案（预设）：保存当前装配 / 套用 / 重命名 / 删除 / 一键卸下（2026-09-14 船长，装配页入口） ──
+
+  /** 保存当前装配为方案（按**船型**归口；默认「方案 N」；同名覆盖；满 3 套且无同名时拒绝） */
+  saveFitPresetFor(shipId: string, name?: string): CommandResult {
+    const result = saveFitPreset(this.state, this.ctx, shipId, name)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 套用方案（先卸光再装 · 尽力装 + 逐条提示；`summary` 直接弹给玩家） */
+  applyFitPresetAt(shipId: string, index: number): FitPresetApplyResult {
+    const result = applyFitPreset(this.state, this.ctx, shipId, index)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 重命名方案（船型 + 序号；同名拒绝） */
+  renameFitPresetAt(defId: string, index: number, name: string): CommandResult {
+    const result = renameFitPreset(this.state, defId, index, name)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 删除方案（船型 + 序号；删空则连键一起清掉） */
+  deleteFitPresetAt(defId: string, index: number): CommandResult {
+    const result = deleteFitPreset(this.state, defId, index)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 一键卸下目标船的全部装备（放回装备库）；进洞/自动探索中的船拒绝（锁判定在 core 内） */
+  unfitAllFor(shipId: string): UnfitAllResult {
+    const result = unfitAllModules(this.state, this.ctx, shipId)
+    if (result.ok && result.removed > 0) {
       void this.persist()
       this.notify()
     }

@@ -4226,6 +4226,116 @@ body {
 
 }
 
+/* 装配方案（预设）：入口在「装配目标」栏右侧（船长 2026-09-14） */
+
+.app-fit-preset-bar {
+
+  margin-left: auto;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+}
+
+.app-fit-preset-count {
+
+  font-style: normal;
+
+  font-size: 11px;
+
+  color: var(--wui-gold);
+
+}
+
+.app-fit-preset-modal {
+
+  width: min(560px, 92vw);
+
+}
+
+.app-fit-preset-list {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+
+  margin: 6px 0 8px;
+
+}
+
+.app-fit-preset-row {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 6px 8px;
+
+  border: 1px solid var(--wui-border);
+
+  border-radius: 6px;
+
+  background: rgba(14, 24, 40, 0.45);
+
+}
+
+.app-fit-preset-row > b {
+
+  min-width: 84px;
+
+}
+
+.app-fit-preset-row > .app-dim {
+
+  flex: 1;
+
+  min-width: 0;
+
+  font-size: 11px;
+
+}
+
+.app-fit-preset-name {
+
+  flex: 1;
+
+  min-width: 120px;
+
+}
+
+.app-fit-preset-foot {
+
+  display: flex;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  padding-top: 8px;
+
+  border-top: 1px solid var(--wui-border);
+
+}
+
+.app-fit-preset-foot > .app-dim {
+
+  flex: 1;
+
+  min-width: 180px;
+
+  font-size: 11px;
+
+}
+
 .app-fit-cpustrip {
 
   display: flex;

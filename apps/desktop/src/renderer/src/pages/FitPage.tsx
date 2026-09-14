@@ -31,6 +31,10 @@ import {
   rackOf,
   sameKindCount,
 
+  fitPresetBrief,
+  fitPresetsOf,
+  FIT_PRESET_MAX,
+  FIT_PRESET_NAME_MAX,
   shipDisplayName,
   shipSlotsOf,
   SLOT_LABELS,
@@ -360,6 +364,72 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     else onToast(r.error ?? '卸下失败。', true)
   }
 
+  // ── 装配方案（预设）：保存当前装配 / 套用预设（2026-09-14 船长；入口在「装配目标」栏右侧） ──
+  //    方案按**船型**归口（同型号任意一艘通用），每型最多 FIT_PRESET_MAX 套；
+  //    套用 = 先卸光再装 + 尽力装（缺件/超载逐条报出，见 core `fitPresets.ts`）。
+  const [presetOpen, setPresetOpen] = useState(false)
+  const [presetRename, setPresetRename] = useState<{ index: number; name: string } | null>(null)
+  const presetDefId = shipDef?.id ?? ''
+  const presets = presetDefId.length > 0 ? fitPresetsOf(state, presetDefId) : []
+
+  /** 保存当前装配（满 3 套时把方案列表一并打开，好让玩家先删一套） */
+  function handleSavePreset(): void {
+    const r = engine.saveFitPresetFor(effectiveTarget)
+    if (!r.ok) {
+      onToast(r.error ?? '保存失败。', true)
+      setPresetOpen(true)
+      return
+    }
+    onToast('已把当前装配存为方案。')
+    setPresetOpen(true)
+  }
+
+  /** 套用方案（成功后自动关掉浮层；结果小结逐条列出缺件/超载） */
+  function handleApplyPreset(index: number): void {
+    const r = engine.applyFitPresetAt(effectiveTarget, index)
+    if (!r.ok) {
+      onToast(r.error ?? '套用失败。', true)
+      return
+    }
+    setPresetOpen(false)
+    setPresetRename(null)
+    onToast(r.summary)
+  }
+
+  /** 重命名（同名拒绝，原因由 core 给） */
+  function handleRenamePreset(): void {
+    if (!presetRename) return
+    const r = engine.renameFitPresetAt(presetDefId, presetRename.index, presetRename.name)
+    if (!r.ok) {
+      onToast(r.error ?? '改名失败。', true)
+      return
+    }
+    onToast('方案已改名。')
+    setPresetRename(null)
+  }
+
+  /** 删除方案 */
+  function handleDeletePreset(index: number): void {
+    const r = engine.deleteFitPresetAt(presetDefId, index)
+    if (!r.ok) {
+      onToast(r.error ?? '删除失败。', true)
+      return
+    }
+    setPresetRename(null)
+    onToast('方案已删除。')
+  }
+
+  /** 一键卸下全部装备（放回装备库；甲板扩容器一并卸下，超容无人机自动退仓） */
+  function handleUnfitAll(): void {
+    const r = engine.unfitAllFor(effectiveTarget)
+    if (!r.ok) {
+      onToast(r.error ?? '卸下失败。', true)
+      return
+    }
+    if (r.removed > 0) onToast(`已卸下全部装备 ${r.removed} 件（放回装备库）。`)
+    else onToast('这艘船没有已装装备。', true)
+  }
+
   // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
   const [pickBay, setPickBay] = useState<{ rack: RackSlot; index: number } | null>(null)
   // 换装对比段缓存（每候选一段；打开浮层时按当前装配/库存试算一次）
@@ -551,6 +621,23 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               ? '当前驾驶船 · 装备随船'
               : '来自「舰船」页卡片 · 此船不在驾驶（装配不影响驾驶状态）'}
           </span>
+          {/* 装配方案（2026-09-14 船长：保存当前装配 / 使用预设装配）——同一船型通用 */}
+          <div className="app-fit-preset-bar">
+            <button
+              className="app-btn is-small"
+              onClick={handleSavePreset}
+              title="把当前这艘船的实装（三类槽位装备 + 无人机舱装载）存成一套方案；方案按船型归口，同型号任意一艘都能套用"
+            >
+              保存装配
+            </button>
+            <button
+              className="app-btn is-small is-primary"
+              onClick={() => setPresetOpen(true)}
+              title="查看 / 套用 / 重命名 / 删除本船型的装配方案（最多 3 套）"
+            >
+              装配方案 <em className="app-fit-preset-count">{presets.length}/{FIT_PRESET_MAX}</em>
+            </button>
+          </div>
         </div>
         <div className="app-fit-cols">
           <div className="app-fit-col-left">
@@ -748,6 +835,85 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           </div>
         </div>
       </Panel>
+
+      {/* 装配方案浮层（2026-09-14 船长）：套用 / 重命名 / 删除 / 一键卸下 */}
+      {presetOpen ? (
+        <div className="app-fit-overlay" onClick={() => setPresetOpen(false)}>
+          <div className="app-fit-modal app-fit-preset-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-fit-modal-head">
+              <span>
+                装配方案 · {shipName}
+                <HintIcon tip="方案按船型保存：同一型号的任意一艘（含以后新建的）都能套用。套用 = 先把这艘船现有装备全部卸回装备库、无人机退回仓库，再按方案装；装备库缺件、CPU 超预算或机舱放不下时，能装的先装上，未装的逐条列出（所以方案凑不齐时结果可能不如套用前）。方案里不含弹药档位（弹种仍在右栏手动设）。" />
+              </span>
+              <button className="app-btn is-small" onClick={() => setPresetOpen(false)}>
+                关闭
+              </button>
+            </div>
+            {presets.length === 0 ? (
+              <div className="app-dim app-inv-empty">
+                还没有方案——点下面的「把当前装配存为新方案」，或先按当前装配点标题栏右侧的「保存装配」。
+              </div>
+            ) : (
+              <div className="app-fit-preset-list">
+                {presets.map((p, i) => (
+                  <div className="app-fit-preset-row" key={`${p.name}-${i}`}>
+                    {presetRename?.index === i ? (
+                      <>
+                        <input
+                          className="app-mkt-search-input app-fit-preset-name"
+                          value={presetRename.name}
+                          maxLength={FIT_PRESET_NAME_MAX}
+                          spellCheck={false}
+                          onChange={(e) => setPresetRename({ index: i, name: e.target.value })}
+                        />
+                        <span className="app-dim">{fitPresetBrief(p)}</span>
+                        <button className="app-btn is-small is-primary" onClick={handleRenamePreset}>
+                          改好
+                        </button>
+                        <button className="app-btn is-small" onClick={() => setPresetRename(null)}>
+                          取消
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <b>{p.name}</b>
+                        <span className="app-dim">{fitPresetBrief(p)}</span>
+                        <button className="app-btn is-small is-primary" onClick={() => handleApplyPreset(i)}>
+                          套用
+                        </button>
+                        <button
+                          className="app-btn is-small"
+                          onClick={() => setPresetRename({ index: i, name: p.name })}
+                        >
+                          重命名
+                        </button>
+                        <button className="app-btn is-small is-warn" onClick={() => handleDeletePreset(i)}>
+                          删除
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="app-fit-preset-foot">
+              <button className="app-btn is-small" onClick={handleSavePreset}>
+                把当前装配存为新方案
+              </button>
+              <button
+                className="app-btn is-small is-warn"
+                onClick={handleUnfitAll}
+                title="把三类槽位上的装备全部卸回装备库（甲板扩容器一并卸下，超出机舱的无人机自动退回仓库）"
+              >
+                一键卸下全部装备
+              </button>
+              <span className="app-dim">
+                套用会先卸光这艘船的装备与无人机，再按方案装；凑不齐的逐条列出。
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* 槽位换装浮层：覆盖左侧舰船属性（船长 2026-09-05） */}
       {pickBay ? (
