@@ -346,8 +346,17 @@ export {
   blueprintDefOf,
   canStartBlueprint,
   oneTimeBookInUse,
+  // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」⇒ 纯函数单点）
+  MANU_KIND_ORDER,
+  sortManuRows,
 } from './manufacturing'
-export type { BuildSpec, ManufacturingView, ManufacturingLoopView, RecipeCapability } from './manufacturing'
+export type {
+  BuildSpec,
+  ManufacturingView,
+  ManufacturingLoopView,
+  RecipeCapability,
+  ManuOrderRow,
+} from './manufacturing'
 
 export {
   ensureMarket,

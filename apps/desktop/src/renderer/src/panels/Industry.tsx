@@ -20,6 +20,8 @@ import {
   ownsBlueprint,
   recipeCapability,
   canStartBlueprint,
+  // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」）——口径单点在 core 纯函数
+  sortManuRows,
   // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
   visibleItemDefs,
 } from '@whale/core'
@@ -84,10 +86,6 @@ function bookPriceOf(engine: GameEngine, blueprintId: string, fallback: number):
   }
   return fallback
 }
-
-/** 组装机分组序（2026-09-08 船长定：按类型 + 蓝图价格排序）：装备 → 舰船 → 消耗品
- *  （2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——该档含弹药 + 修理组件，故档名随之改） */
-const MANU_KIND_ORDER: Record<string, number> = { 装备: 0, 舰船: 1, 消耗品: 2 }
 
 /* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
 
@@ -642,6 +640,11 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     ownedCount: number
     ownedWhere: string
     bookPrice: number
+    /** 排序用：**产物唯一键**（`ship:`/`module:`/`item:` + 产物 id）——2026-09-14 船长：
+     *  「一次性图纸应该和原图纸放在一起」⇒ 同产物成组，组内原图纸在前 */
+    productKey: string
+    /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
+    singleUse: boolean
   }> = []
   /** 机库同型艘数（与市场页「持有」同口径：core 自然库存对舰船恒 0，故单独数机库） */
   const shipStockOf = (shipId: string): number =>
@@ -688,6 +691,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         ownedCount: shipStockOf(sbp.shipId),
         ownedWhere: '机库',
         bookPrice: bookPriceOf(engine, sbp.id, 0),
+        productKey: `ship:${sbp.shipId}`,
+        singleUse: sbp.singleUse === true,
       })
     }
   }
@@ -716,6 +721,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         ownedCount: moduleDef ? countModule(state, bp.moduleId!) : 0, // 装备产物 → 装备库件数
         ownedWhere: '装备库',
         bookPrice: bookPriceOf(engine, bp.id, 0),
+        productKey: `module:${bp.moduleId}`,
+        singleUse: bp.singleUse === true,
       })
     }
   }
@@ -758,6 +765,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         ownedCount: itemDef ? countWare(state, bp.itemId) : 0, // 弹药/物品产物 → 物品仓库单位数
         ownedWhere: '仓库',
         bookPrice: bookPriceOf(engine, bp.id, 0),
+        productKey: `item:${bp.itemId}`,
+        singleUse: bp.singleUse === true,
       })
     }
   }
@@ -782,21 +791,11 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     )
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
-  // 2026-09-08 船长定：按「类型（装备→舰船→消耗品）→ 蓝图价格（升序）」排序；无市场价沉底
-  const bpP = (v: number): number => (v > 0 ? v : Number.MAX_SAFE_INTEGER)
+  // 排序口径（类型 → 价格升序 → 同产物的一次性图纸紧随原图纸）**单点在 core**：
+  // `sortManuRows`（2026-09-08 船长定 + 2026-09-14 船长改定；详见 core 该段注释与 `tests/manu-order.test.ts`）
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
   // （标签本身是筛选、不是排序键，故各处标签都按同一口径置顶）；组内保持类型→价格顺序。
-  const sorted = pinMarked(
-    state,
-    'blueprints',
-    [...visible].sort(
-      (a, b) =>
-        (MANU_KIND_ORDER[a.kindLabel] ?? 9) - (MANU_KIND_ORDER[b.kindLabel] ?? 9) ||
-        bpP(a.bookPrice) - bpP(b.bookPrice) ||
-        a.name.localeCompare(b.name, 'zh-Hans-CN'),
-    ),
-    (it) => it.id,
-  )
+  const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
   const equipN = items.filter((i) => i.kindLabel === '装备').length
   const shipN = items.filter((i) => i.kindLabel === '舰船').length
   const learnedN = items.filter((i) => ownsBlueprint(state, i.id)).length
