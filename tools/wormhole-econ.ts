@@ -334,8 +334,11 @@ interface Income {
    * 按 1,700 ISK/堆 折算掉，**方向性错误**。
    */
   rareWrecks: number
-  /** 遗迹安全货柜件数（**专属装备/图纸的中间件**；内容物待拆解 ⇒ 不计 ISK） */
+  /** 虫洞货柜件数（**专属装备/图纸的中间件**；内容物待拆解 ⇒ 不计 ISK）。两种合计：
+   *  安全货柜 `box-relic-*`（2×2）+ **图纸货柜 `box-bp-*`**（2×1 · 2026-09-14 新增） */
   boxes: number
+  /** 其中**图纸货柜**的件数（`boxes` 的子集；验证"并列 50:50 落到实战"的读数） */
+  boxesBp: number
   /** 族专属无人机（件数 + 基础价 ISK） */
   drones: number
   droneIsk: number
@@ -344,8 +347,20 @@ interface Income {
   blueprints: number
 }
 
+/**
+ * **虫洞货柜**（带回后精炼炉拆解的中间件；内容物待拆解 ⇒ 一律**不计 ISK、只计件数**）：
+ * - **安全货柜** `box-relic-*`（按族五种 · 2×2 = 4 格 · 2026-09-13 F4）；
+ * - **图纸货柜** `box-bp-*`（按层档三种 · 2×1 = 2 格 · **2026-09-14 船长新增**）。
+ *
+ * ⚠ 2026-09-14 修：本工具原先只认 `box-relic-` 前缀 ⇒ **新图纸货柜会被漏计**（读数偏低）。
+ * 现统一走下面的判据，并把「图纸货柜」单列一列（它同时是"并列比例 50:50 落到实战"的验证读数）。
+ */
+const isRelicBoxId = (id: string): boolean => id.startsWith('box-relic-')
+const isBpBoxId = (id: string): boolean => id.startsWith('box-bp-')
+const isContainerId = (id: string): boolean => isRelicBoxId(id) || isBpBoxId(id)
+
 function incomeOf(state: GameState): Income {
-  const acc: Income = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, drones: 0, droneIsk: 0, modules: 0, blueprints: 0 }
+  const acc: Income = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, boxesBp: 0, drones: 0, droneIsk: 0, modules: 0, blueprints: 0 }
   for (const [id, units] of Object.entries(state.warehouse.items)) {
     const n = Math.max(0, Math.floor(units))
     if (n <= 0) continue
@@ -355,8 +370,9 @@ function incomeOf(state: GameState): Income {
     } else if (id.startsWith('wreck-')) {
       acc.wreckIsk += wormholeLootValueIsk(ctx, id, n)
       if (isRareWreck(id)) acc.rareWrecks += 1 // 1 件 = 30 m³ = 1 个高级箱的原料（不是 30 件）
-    } else if (id.startsWith('box-relic-')) {
+    } else if (isContainerId(id)) {
       acc.boxes += n
+      if (isBpBoxId(id)) acc.boxesBp += n
     } else if (id.startsWith('drone-wh-')) {
       acc.drones += n
       acc.droneIsk += n * (ctx.items.get(id)?.baseSellPriceIsk ?? 0)
@@ -373,6 +389,7 @@ const INCOME_KEYS = [
   'wreckIsk',
   'rareWrecks',
   'boxes',
+  'boxesBp',
   'drones',
   'droneIsk',
   'modules',
@@ -380,7 +397,8 @@ const INCOME_KEYS = [
 ] as const satisfies ReadonlyArray<keyof Income>
 
 /**
- * **趟内已收集账**（还没入港）：读 `run.bag`（散货）+ `run.hold`（形状件：遗迹安全货柜）。
+ * **趟内已收集账**（还没入港）：读 `run.bag`（散货）+ `run.temp`（临时空间的散货）
+ * + `run.hold`（形状件：安全货柜 2×2 / 图纸货柜 2×1）。
  *
  * ⚠ 为什么要和 `incomeOf` 分开：虫洞的收益**只有撤离成功才入港**（半路全损一起丢）⇒
  * 仓库差分只能给出"整趟到手多少"，给不出"**哪一层收集了多少**"。逐层配平必须看后者
@@ -392,11 +410,14 @@ interface Ledger {
   wreckIsk: number
   /** 稀有残骸件数（趟内已收）——**目标函数的分子** */
   rareWrecks: number
+  /** 货柜件数（两种合计；其中图纸货柜见 `boxesBp`） */
   boxes: number
+  /** 其中**图纸货柜**件数（`boxes` 的子集） */
+  boxesBp: number
 }
 
 function runLedger(state: GameState): Ledger {
-  const acc: Ledger = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0 }
+  const acc: Ledger = { oreUnits: 0, oreIsk: 0, wreckIsk: 0, rareWrecks: 0, boxes: 0, boxesBp: 0 }
   const run = state.wormhole.run
   // 背包（货仓格）+ **临时空间**（大件缓冲，撤离时一并入港 ⇒ 也算"已经拿到手"）
   const slots = [...(run?.bag ?? []), ...(run?.temp ?? [])]
@@ -409,12 +430,16 @@ function runLedger(state: GameState): Ledger {
     } else if (slot.itemId.startsWith('wreck-')) {
       acc.wreckIsk += wormholeLootValueIsk(ctx, slot.itemId, n)
       if (isRareWreck(slot.itemId)) acc.rareWrecks += 1 // 1 件 = 30 m³ = 1 个高级箱的原料
-    } else if (slot.itemId.startsWith('box-relic-')) {
+    } else if (isContainerId(slot.itemId)) {
       acc.boxes += n
+      if (isBpBoxId(slot.itemId)) acc.boxesBp += n
     }
   }
+  // 形状件走 placements（placement 只记 itemId ⇒ 同样按前缀分流）
   for (const p of run?.hold?.placements ?? []) {
-    if (p.kind === 'box') acc.boxes += 1
+    if (p.kind !== 'box') continue
+    acc.boxes += 1
+    if (isBpBoxId(p.itemId)) acc.boxesBp += 1
   }
   return acc
 }
@@ -426,6 +451,7 @@ function subLedger(a: Ledger, b: Ledger): Ledger {
     wreckIsk: a.wreckIsk - b.wreckIsk,
     rareWrecks: a.rareWrecks - b.rareWrecks,
     boxes: a.boxes - b.boxes,
+    boxesBp: a.boxesBp - b.boxesBp,
   }
 }
 
@@ -664,6 +690,32 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
           stop(`回合耗尽且撤离被拒：${ex.error ?? ''}`)
           break
         }
+        continue
+      }
+      /**
+       * ⓪a **遗迹战「先确认再跳转」闸门**（船长 2026-09-13：「打捞遗迹触发战斗时，虫洞界面处于最前端
+       * 遮住了战斗，且战斗突然发生没有任何提示，应该提示玩家惊扰守卫等，**玩家确认后跳转**」）：
+       * 打捞遗迹掷中收尾战时引擎**不直接开战**，只留 `run.pendingRuinsBattle`，此后
+       * **扫描 / 前往 / 采集 / 打捞一律被拦**（`wormhole.ts` 的 `gridActionBlocked`）。
+       *
+       * ⚠⚠ **本工具漏了这一步 ⇒ 2026-09-14 那一轮复跑读数全部作废**：政策不"点迎战" ⇒ 一旦触发就
+       * **整趟死锁**（余 20+ 回合却动不了），实测 20 趟里 9 趟停在这句、稀有残骸从 2.15 掉到 0.70 件/趟。
+       * 玩家的做法就是点「迎战」，引擎侧早已支持 `wormholeStartBattle(state, ctx, 'ruins')`（见
+       * `wormholeBattle.ts` 的说明），这里照玩家做法补上。
+       */
+      if (r.pendingRuinsBattle === true) {
+        const ok = wormholeStartBattle(
+          state,
+          ctx,
+          'ruins',
+          state.gameMs,
+          STRENGTH === undefined ? undefined : { strengthMul: STRENGTH },
+        ).ok
+        if (!ok) {
+          stop('遗迹收尾战开战失败')
+          break
+        }
+        bump('fights')
         continue
       }
       /**
@@ -943,9 +995,21 @@ function runRunsMode(): void {
     combat: '纯战斗：5×导弹 MK2 + 3 中槽 + 稳像/装甲（不带作业装备 ⇒ 捞不到东西）',
     old: '对照（已作废）：5×导弹 + 打捞器/采集器**占低槽**（2026-09-13～09-14 的短暂口径）',
   }
+  /**
+   * ⚠ 2026-09-14 修：原先是 `参考编队 4×巡洋「${fitText[fit]}」` —— 一旦用 `--ships=` 换编队，
+   * 「4×巡洋」与 `fitText` 就都名不副实（实测打印出「4×巡洋「undefined」」：`fitText` 是**配装**文案，
+   * 不是舰名）。现改为**按实际编队报舰名**（同型写「4× 舰名」，混编逐个列）。
+   */
+  const shipIds = SHIPS_ARG ? SHIPS_ARG.split(',').map((s) => s.trim()).filter(Boolean) : []
+  const fleetLabel =
+    shipIds.length === 0
+      ? `4×${ctx.ships.get(REF_SHIP)?.name ?? REF_SHIP}（默认）`
+      : new Set(shipIds).size === 1
+        ? `${shipIds.length}×${ctx.ships.get(shipIds[0]!)?.name ?? shipIds[0]}`
+        : shipIds.map((id) => ctx.ships.get(id)?.name ?? id).join(' + ')
   console.log(
     `整趟模拟 · ${n} 趟（**强度系数 ${WORMHOLE_FOE_BASE_STRENGTH_MUL * (STRENGTH ?? 1)}**（覆写 ${STRENGTH ?? '无'}）· ` +
-      `参考编队 4×巡洋「${fitText[fit]}」）`,
+      `参考编队 ${fleetLabel}「${fitText[fit]}」）`,
   )
   console.log(
     `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，但照打撤离拦截战）· ` +
@@ -953,7 +1017,7 @@ function runRunsMode(): void {
       `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
   )
   console.log(
-    ['#', '结果', '到达层', '存活', '★稀有残骸(件)', '★货柜(件)', '母矿', '母矿ISK', '残骸ISK', '无人机', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
+    ['#', '结果', '到达层', '存活', '★稀有残骸(件)', '★货柜(件)', '其中图纸货柜', '母矿', '母矿ISK', '残骸ISK', '无人机', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
   )
   const out: RunOutcome[] = []
   for (let i = 0; i < n; i++) {
@@ -968,6 +1032,7 @@ function runRunsMode(): void {
         `${o.shipsLeft}/4`,
         o.income.rareWrecks,
         o.income.boxes,
+        o.income.boxesBp,
         o.income.oreUnits,
         f(o.income.oreIsk),
         f(o.income.wreckIsk),
@@ -998,16 +1063,19 @@ function runRunsMode(): void {
    * **目标函数行**（2026-09-13 二号追加 · 船长校正口径后的主读数）。
    *
    * 船长原话：「**进虫洞的目的是获得专属装备（稀有残骸，虫洞专属），资产收益只是附带的**」⇒
-   * 看配置优劣先看这一行（**稀有残骸件数 + 安全货柜件数**），ISK 只在同一条线上做参考。
+   * 看配置优劣先看这一行（**稀有残骸件数 + 货柜件数**），ISK 只在同一条线上做参考。
    * 「回收率」= 已收到手的稀有残骸 ÷ 趟内曾经收进包的（分母含全损趟里丢掉的那些）。
    */
   const rareGot = avg((o) => o.income.rareWrecks)
   const rareCollected = avg((o) => o.layerRares.reduce((s, v) => s + v, 0))
+  const boxGot = avg((o) => o.income.boxes)
+  const boxBpGot = avg((o) => o.income.boxesBp)
   console.log(
     `        **专属产出（目标函数）**：稀有残骸 **${rareGot.toFixed(2)} 件/趟**` +
       `（1 件 = ${RARE_WRECK_VOLUME_M3} m³ = 1 个高级箱的原料；1 箱开出 1 件该族专属装备或专属图纸）· ` +
-      `**遗迹安全货柜 ${avg((o) => o.income.boxes).toFixed(2)} 件/趟**` +
-      `（层 2 起才出）· 回收率 ${rareCollected > 0 ? ((rareGot / rareCollected) * 100).toFixed(0) : '—'}%` +
+      `**货柜 ${boxGot.toFixed(2)} 件/趟**` +
+      `（安全货柜 ${(boxGot - boxBpGot).toFixed(2)} + **图纸货柜 ${boxBpGot.toFixed(2)}**；层 2 起才出）· ` +
+      `回收率 ${rareCollected > 0 ? ((rareGot / rareCollected) * 100).toFixed(0) : '—'}%` +
       `（全损趟连稀有残骸一起丢）`,
   )
   console.log(
@@ -1099,7 +1167,7 @@ function runRunsMode(): void {
       '资产收益只是附带的」）——稀有残骸 → 回收炉开**高级箱** → 该族专属件，是专属装备与专属图纸的唯一来源；' +
       '② 逐层表记的是**收集额**（按层累加；母矿按基础卖价、残骸按回收炉保底估值，**不含高级箱**）——样本少的高层会被"能活着走到那儿的人"筛选过，看趋势时先看样本列；' +
       '③ 整趟表记的是**到手额**（只有撤离成功才入港 ⇒ 全损 = 0）——两个数的差就是"没带回来"的部分；' +
-      '④ 货柜（遗迹 2×2 件）与稀有残骸都**不计 ISK**，单列件数；⑤ 「ISK/威胁」是**资产口径**的旁证（应逐层上升）；' +
+      '④ 货柜（安全货柜 2×2 / **图纸货柜 2×1** · 2026-09-14 新增）与稀有残骸都**不计 ISK**，单列件数；⑤ 「ISK/威胁」是**资产口径**的旁证（应逐层上升）；' +
       '⑥ 政策不偷看 `grid.exit`，出口只由**信标**给出 ⇒ 读数里包含"找信标"的回合成本；' +
       '⑦ 撤离开放（船长 2026-09-13：「玩家可以无条件开始撤离，但是依旧需要打撤离战」）⇒ ' +
       '「磨回合」列恒 0：旧闸门逼出来的"打不过就转圈耗回合"歪招已消失；守卫只堵**深入**。',

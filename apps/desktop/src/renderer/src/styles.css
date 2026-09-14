@@ -7131,6 +7131,11 @@ body {
 
 .app-battle-screen { position: fixed; inset: 0; z-index: 100; background: radial-gradient(ellipse at 50% 40%, #0b1524 0%, #05080e 78%); display: flex; flex-direction: column; }
 
+/* 战报阶段（船长 2026-09-14）：**必须压在虫洞弹层之上** —— 虫洞面板走 `.app-modal-mask`（z-index 120），
+   而战场只在 live/outro 时盖住面板；进 report 阶段后 `run.battle` 已清空、面板重新渲染 ⇒ 战报会被挡。
+   这里给战报阶段抬到 130（仍低于 `.app-detail-mask` 140 与悬浮说明 1000）。 */
+.app-battle-screen.is-report { z-index: 130; }
+
 .app-battle-screen-top { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--wui-border); background: rgba(8,14,22,.85); }
 
 .app-battle-screen-top > span:nth-child(2) { font-size: 14px; font-weight: 700; }
@@ -10074,3 +10079,8 @@ body {
   12% { opacity: 1; }
   100% { transform: translateX(0); opacity: 1; }
 }
+/* 需要弹窗的通讯（2026-09-14 船长：「解锁时发送通讯给玩家（同时也要直接弹窗）」）：复用公告卡骨架，
+   只是正文按段落排（.app-comm-pop-body p），并把宽度收窄一点 —— 一封信不该占满一屏。 */
+.app-comm-pop { width: min(560px, 92vw); }
+.app-comm-pop-body { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.app-comm-pop-body p { margin: 0; line-height: 1.6; }

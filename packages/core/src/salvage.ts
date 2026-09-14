@@ -322,7 +322,7 @@ export const RECYCLE_TIER_LABELS: Record<RecycleTier, string> = { common: '常',
  *  使**整池期望单价不变**（险 27.72 → 27.76 · 危 92.60 → 92.55）；常驻档 65% 已 ≥40% ⇒ **一字未动**。
  *  敌群专属池同批处理（`packages/data/src/salvageFlavors.ts`：19 个提到 40%，其中 6 个补入 1 种高价矿物）。
  *  ⚠ **导出**：体检脚本要用它对"三档基础池必含钛钢 · 均价 = 档基数 · 每池占比 ≥40%"做硬契约（B3.2/B3.3）。
- *  （命名注：本矿物 id 一直是 `min-tritanium`；显示名 2026-09-14 由「钛钢合金」改为**「钛钢合金」**，见
+ *  （命名注：本矿物 id 一直是 `min-tritanium`；显示名 2026-09-14 由「三钛合金」改为**「钛钢合金」**，见
  *   `docs/roadmap.md` 二号改名条——本表的注释与体检文案已同步新名，**id 未动 ⇒ 存档与配方零影响**。） */
 export const RECYCLE_POOLS: Record<RecycleTier, ReadonlyArray<readonly [string, number]>> = {
   common: [

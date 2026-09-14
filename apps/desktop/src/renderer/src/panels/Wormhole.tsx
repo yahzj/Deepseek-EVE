@@ -228,7 +228,7 @@ export function WormholePanel({
   const herePiles = hereCell?.piles ?? []
   /**
    * **堆分两类**（2026-09-13 修好货柜拾取后）：
-   * - **形状件**（遗迹安全货柜）= 要玩家**自己拾取装舱**（2×2 = 4 格、放不下整件拒收）；
+   * - **形状件**（安全货柜 2×2 / 图纸货柜 2×1）= 要玩家**自己拾取装舱**（放不下整件拒收）；
    * - 其余 = 残骸 / 母矿，走「打捞」「采集」的成批回收。
    * 按钮可用性只看**可成批回收的那部分**（只剩货柜时「打捞」不该亮着）。
    */
@@ -733,7 +733,7 @@ export function WormholePanel({
             ) : null}
             {shapedPiles.length > 0 ? (
               <div className="app-dim app-note">
-                另有 <b>{shapedPiles.length}</b> 件「遗迹安全货柜」：**打捞器搬不动它** ——
+                另有 <b>{shapedPiles.length}</b> 件货柜：**打捞器搬不动它** ——
                 点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；腾不出 2×2 会先放进临时空间）。
               </div>
             ) : null}
@@ -792,7 +792,7 @@ export function WormholePanel({
                           const r = engine.wormholeTakePile(i)
                           if (!r.ok) onToast(r.error ?? '拾取失败。', true)
                           else {
-                            playJob('装舱中…', def?.name ?? '遗迹安全货柜')
+                            playJob('装舱中…', def?.name ?? '货柜')
                             onToast('已装上货柜（占 2×2 = 4 格）。')
                           }
                         }}
@@ -1543,7 +1543,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
   const cells: Array<{ label: string; value: string; sub: string }> = [
     { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} 信用点` },
     { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: '信用点' },
-    { label: '遗迹安全货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
+    { label: '货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
     { label: '随行战利品', value: String(settle.relics.length), sub: '件（装备 / 图纸）' },
   ]
   const STEP = 90
@@ -1954,7 +1954,7 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
  * 画法（与 core 同一套几何，`wormholeHold`）：
  * - **8 列**、行数 = ⌈可用格数 ÷ 8⌉；超出可用格数的显示位 = **锁定格**（虚线、不可放）；
  * - **一切占格的东西都在 `run.hold.placements` 里**（F5 起散货也是**真摆放件**，不再是画面上临时填的散格）：
- *   **形状件**（遗迹安全货柜 2×2）与**散货条**（一种货一条 1×N 横条，放不下自动改 N×1 竖条）
+ *   **形状件**（安全货柜 2×2 · 图纸货柜 2×1）与**散货条**（一种货一条 1×N 横条，放不下自动改 N×1 竖条）
  *   都按自己的坐标画成整块、**都能拖拽**（落点非法 ⇒ 拒绝并提示）；
  * - 散货条由 core `wormholeHoldSyncCargo` 与 `run.bag` 对齐（数量变了就重放，**先试原位**保住玩家摆好的位置）；
  * - 超载（沉船后格数变小）⇒ 顶部红条 + 「一键抛到容量内」；抛弃**永远手动**（船长裁定 8）。
@@ -2166,7 +2166,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             const iconKey = itemIconOf(p.itemId, def?.kind)
             const isCargo = p.kind === 'cargo'
             const isMatter = wormholeMatterDeviceOf(p.itemId) !== undefined
-            const label = isCargo ? `×${n(p.units ?? 0)}` : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
+            const label = isCargo ? `×${n(p.units ?? 0)}` : p.itemId.startsWith('box-bp-') ? '图纸' : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
             return (
               <div
                 key={`fig-${kind}-${p.id}`}
@@ -2276,7 +2276,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
         </span>
       </div>
       <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）占 2×2 整块、**散货**每件最多 1 格
+        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（安全货柜 2×2 · 图纸货柜 2×1）占整块、**散货**每件最多 1 格
         （超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），
         装不下就留在原地；「整理」按钮把所有件自动重排。
       </div>

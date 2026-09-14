@@ -211,6 +211,53 @@ export interface WormholeStockItem {
   /** 发现时刻（游戏内毫秒） */
   foundAtGameMs: number
 }
+
+/**
+ * **在跑的一趟自动探索**（船长 2026-09-14 定案 · 确认稿 §六）。
+ * 与 `wormholeEnter` 的副本状态机无关：这是"抽象的一趟"（不建网格、不打战斗），
+ * 到点结算「手动期望 × 40%」的收益与 −40%~−80% 的损伤（绝不丢船）。
+ */
+export interface WormholeAutoRun {
+  id: string
+  /** 对应的库存虫洞 id（**开始时即消耗**；中止也不退还） */
+  stockId: string
+  /** 该处虫洞的种子（产出池与它同源 ⇒ 同一处无论谁去，族池一致） */
+  seed: number
+  /** 起始层 */
+  depth: number
+  /** 参与舰（每条各占 1 枚 AI 核心；任务期间锁定） */
+  shipIds: string[]
+  startedAtGameMs: number
+  finishAtGameMs: number
+}
+
+/**
+ * **自动探索结算报告**（船长：结算走「日志 + 需要确认的报告」，报告显示在「扫描虫洞」页里）。
+ * 收益列表与损伤读数都按"逐项可读"存，确认后 `confirmed = true`（仍留档，超上限丢最旧）。
+ */
+export interface WormholeAutoReport {
+  id: string
+  stockId: string
+  depth: number
+  finishedAtGameMs: number
+  /** 参与舰（结算后已解锁） */
+  shipIds: string[]
+  /** 结算时释放的 AI 核心数 */
+  coresReleased: number
+  /** 收益清单（已入仓库） */
+  gains: Array<{ itemId: string; units: number }>
+  /** 损伤读数（结构 / 装甲各一项） */
+  damage: Array<{
+    shipId: string
+    name: string
+    durabilityLossPct: number
+    armorLossPct: number
+    durabilityPct: number
+    armorPct: number
+  }>
+  /** 玩家是否已确认（界面「确认」按钮） */
+  confirmed: boolean
+}
 export interface StandbyState {
   active: boolean
   /** 目标星系 id */
@@ -1132,6 +1179,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 送达即记账 ⇒ 触发器重复判定不会重复送（幂等）；可选字段、零迁移。
    */
   commsDelivered?: Record<string, number>
+  /**
+   * **需要直接弹窗的通讯 id 队列**（2026-09-14 船长：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）。
+   * 送达标了 `popup: true` 的消息时入队；界面弹一次、点「知道了」调 `dismissCommsPopup` 清掉。
+   * 兼容字段（可选）⇒ 零迁移；界面只弹队首那一封。
+   */
+  commsPopups?: string[]
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
   /**
@@ -1302,6 +1355,17 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    * 兼容字段（可选）：旧档没有 ⇒ 空库存，零迁移。
    */
   wormholeStock?: WormholeStockItem[]
+  /**
+   * **在跑的自动探索**（船长 2026-09-14 定案 · 确认稿 §六「自动探索」）。
+   * 兼容字段（可选）：旧档没有 ⇒ 没有在跑的趟，零迁移。参与舰按"每条占 1 枚 AI 核心"并入
+   * `aiCoreShipUsed` 的同一本账，并在 `shipLockedReason` 里锁定到返航。
+   */
+  wormholeAuto?: WormholeAutoRun[]
+  /**
+   * **自动探索结算报告**（新→旧；需玩家在「扫描虫洞」页确认；上限 `WORMHOLE_AUTO_REPORT_MAX`）。
+   * 兼容字段（可选）：旧档没有 ⇒ 空队列，零迁移。
+   */
+  wormholeAutoReports?: WormholeAutoReport[]
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
   /** B3 打捞作业（采矿式自动循环，2026-09-09 起默认循环；autoCycle/stopAfterTrip 偏好字段零迁移，旧档载入 = 空态） */
@@ -1528,8 +1592,18 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
  * 空 = 可以操作。文案统一说明"为什么"与"怎么解"。
  */
 export function shipLockedReason(state: GameState, shipId: string, what = '操作这艘船'): string | null {
-  if (!shipLockedInWormhole(state, shipId)) return null
-  return `该舰在虫洞里（已锁定）：${what}要等它出洞——先撤离或结算本趟。`
+  if (shipLockedInWormhole(state, shipId)) {
+    return `该舰在虫洞里（已锁定）：${what}要等它出洞——先撤离或结算本趟。`
+  }
+  /**
+   * **自动探索中的船同样锁定**（船长 2026-09-14：「参与舰任务期间锁定（不可驾驶/不可出击/不可接别的 AI 任务）」）。
+   * 这里只读 `state.wormholeAuto`（不 import 自动探索模块，免得与 `state` 形成环）。
+   */
+  const run = (state.wormholeAuto ?? []).find((r) => r.shipIds.includes(shipId))
+  if (run) {
+    return `该舰正在自动探索中（已锁定）：${what}要等它返航——「扫描虫洞」页可以看到进度与报告。`
+  }
+  return null
 }
 export function shipLockedInWormhole(state: GameState, shipId: string): boolean {
   return (state.wormhole.run?.fleet ?? []).includes(shipId)
@@ -1715,6 +1789,9 @@ export function createInitialState(opts?: {
     // 虫洞扫描（2026-09-14）：初始"没在扫、库存空"
     wormholeScan: { active: false, progressMs: 0 },
     wormholeStock: [],
+    // 自动探索（2026-09-14 批次 3）：初始"没有在跑的趟、没有报告"
+    wormholeAuto: [],
+    wormholeAutoReports: [],
     scanProgress: {},
     awayGalaxy: null,
     transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0, delivery: null },
@@ -1726,6 +1803,7 @@ export function createInitialState(opts?: {
     dialogueSeen: {},
     pendingDialogue: null,
     commsDelivered: {}, // 2026-09-11 通讯收件箱：送达记账（可选字段、零迁移）
+    commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},
     debugQuick: false,
     completedBounties: [],

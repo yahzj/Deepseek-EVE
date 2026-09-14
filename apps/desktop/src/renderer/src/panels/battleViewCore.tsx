@@ -545,6 +545,13 @@ interface OutroSnap {
   foeHits: number
   /** 本场机群战损（机型 id → 击落架数；2026-09-10 点防上线，战报「机群损失」行用；空 = 无损失） */
   droneLost?: Record<string, number>
+  /**
+   * **本场是虫洞战斗时的用途**（`node` / `boss` / `extract` / `ruins`；非虫洞战斗 = undefined）。
+   * 用途（船长 2026-09-14）：「**离开虫洞的战斗也会弹出战斗报告（这一场战斗不应该弹出）**」
+   * ⇒ 撤离战（`extract`）由虫洞的**结算单**说话，战报不再弹（见 BattleScreen 的 outro → report 分支）。
+   * 必须在"分出胜负那一刻"快照：结算后 `battle` 会被清空，事后取不到 `wormhole.kind`。
+   */
+  wormholeKind?: 'node' | 'boss' | 'extract' | 'ruins'
 }
 
 /** 在日志中找本场战斗的战报原文（时间在开战之后、含"战报"的最新一条） */

@@ -34,9 +34,11 @@ export interface WormholeHoldShape {
   h: number
 }
 
-/** 当前只用到的两种形状：可叠加散货 = 1×1（不建 placement 条目），安全货柜 = 2×2 */
+/** 当前只用到的形状：可叠加散货 = 1×1（不建 placement 条目），安全货柜 = 2×2，图纸货柜 = 2×1 */
 export const WORMHOLE_SHAPE_STACK: WormholeHoldShape = { w: 1, h: 1 }
 export const WORMHOLE_SHAPE_CONTAINER: WormholeHoldShape = { w: 2, h: 2 }
+/** **图纸货柜**（2026-09-14 船长定「占 2 格大小」）—— 2 宽 × 1 高 = 2 格 */
+export const WORMHOLE_SHAPE_BPBOX: WormholeHoldShape = { w: 2, h: 1 }
 
 /**
  * **形状表**（物品 id → 形状）。**没登记的物品 = 可叠加散货**（走 `run.bag`，不占形状条目）。
@@ -49,6 +51,10 @@ export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> =
   'box-relic-d': WORMHOLE_SHAPE_CONTAINER,
   'box-relic-e': WORMHOLE_SHAPE_CONTAINER,
   'box-relic-g': WORMHOLE_SHAPE_CONTAINER,
+  // 图纸货柜（三种 = 层档；2026-09-14 船长定「占 2 格大小」）
+  'box-bp-shallow': WORMHOLE_SHAPE_BPBOX,
+  'box-bp-mid': WORMHOLE_SHAPE_BPBOX,
+  'box-bp-deep': WORMHOLE_SHAPE_BPBOX,
   /**
    * **谜质储存器**（F3c · 船长 2026-09-13「在货仓内显示为4格的『谜质储存器』」）：
    * 与货柜同形（2×2），但**只在本趟虫洞内生效、随趟消失**（效果表 = `wormholeMatter.ts`）。
