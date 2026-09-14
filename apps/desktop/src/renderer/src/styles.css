@@ -9581,6 +9581,20 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .app-wh-pile.is-leaving { animation-duration: 1ms; }
 }
+/* ── 散货「抛弃数量」控件（船长 2026-09-13 深夜：「添加一个让玩家选择抛弃多少的拖动条
+   并允许输入数量」）：拖动条 + 数字框 + 一行读数 + 确认/取消；与同页 `app-inv-*` 一族同底色同描边。 */
+.app-wh-piece { flex-wrap: wrap; }
+.app-wh-discard {
+  flex: 1 0 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 6px; padding: 6px 8px; border: 1px solid rgba(217, 106, 106, 0.35);
+  border-radius: 6px; background: rgba(217, 106, 106, 0.06); font-size: 11.5px;
+}
+.app-wh-discard-range { flex: 1 1 160px; min-width: 120px; accent-color: var(--wui-red); }
+.app-wh-discard-num {
+  width: 84px; padding: 2px 6px; font-family: inherit; font-size: 12px; color: var(--wui-text);
+  background: rgba(15, 26, 40, 0.7); border: 1px solid var(--wui-border); border-radius: 4px;
+}
+.app-wh-discard b { color: var(--wui-red); }
 /* ── 撤离（船长 2026-09-13 晚：「撤离按钮放在关闭左侧，并用红色色系……会警告玩家并需要确认」）── */
 .app-wh-extract { color: var(--wui-red); border-color: rgba(217, 106, 106, 0.55); background: rgba(217, 106, 106, 0.08); }
 .app-wh-extract:hover:not(:disabled) { background: rgba(217, 106, 106, 0.18); border-color: var(--wui-red); }

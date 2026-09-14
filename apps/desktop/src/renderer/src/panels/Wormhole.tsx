@@ -481,7 +481,12 @@ export function WormholePanel({
             {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
           </span>
         </div>
-        {herePiles.length > 0 ? (
+        {/**
+         * ⚠ **判据要带"幽灵卡"**（船长 2026-09-13 深夜报的坑：「**当最后打捞干净时，卡片是直接消失的**」）：
+         * 原先这里只看 `herePiles.length > 0` ⇒ 最后一堆被拿走的瞬间整块换成"地点说明"，
+         * 幽灵卡**根本没机会渲染**。现在"还有卡"含幽灵卡，动画播完（300ms）才轮到地点说明。
+         */}
+        {herePiles.length > 0 || leavingPiles.length > 0 ? (
           <>
             {workCell && bulkPiles > 0 ? (
               <div className="app-dim app-note">
@@ -1535,12 +1540,17 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const info = engine.wormholeHoldInfo()
   /** **临时空间读数**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」） */
   const tempInfo = engine.wormholeTempInfo()
+  /** **抛弃控件**：正在问"丢多少"的那一件（船长 2026-09-13：「拖动条 + 允许输入数量」） */
+  const [discardAsk, setDiscardAsk] = useState<{ id: string; units: number } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const cols = WORMHOLE_HOLD_COLS
   const rows = holdRows(info.capacity, cols)
   const placements = run.hold?.placements ?? []
   const boxes = placements.filter((p) => p.kind === 'box').length
-  const cargoBars = placements.length - boxes
+  /** 散货**件**（一件一格：船长 2026-09-13 深夜口径；按物品名 + 位置排序，列表稳定不跳） */
+  const cargoPieces = placements
+    .filter((p) => p.kind === 'cargo')
+    .sort((a, b) => a.itemId.localeCompare(b.itemId) || a.y - b.y || a.x - b.x)
 
   /** 格 → 件（画块用；散货条与货柜共用一张占用表） */
   const ownerOf = new Map<string, (typeof placements)[number]>()
@@ -1566,9 +1576,9 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
         </span>
       </div>
       <div className="app-dim app-note">
-        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）占 2×2 整块、**散货**按**矩形块**摆
-        （4 格以内是一条细条，更大就是方块——格数凑不出矩形时向上取整到那块）——
-        都能拖拽摆放（点一下选中、再点空格也算落位），形状放不下就整条留在原地；整理按钮把所有件自动重排。
+        每格 {n(WORMHOLE_SLOT_M3)} m³；**货柜**（遗迹安全货柜）占 2×2 整块、**散货**每件最多 1 格
+        （超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），
+        装不下就留在原地；「整理」按钮把所有件自动重排。
       </div>
       {info.overload ? (
         <div className="app-wh-hold-overload">
@@ -1676,7 +1686,7 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
           整理（自动重排）
         </button>
         <span className="app-dim">
-          {boxes} 件货柜 + {cargoBars} 条散货 · 拖拽摆放（也可点选中后再点空位）
+          {boxes} 件货柜 + {cargoPieces.length} 件散货 · 拖拽摆放（也可点选中后再点空位）
         </span>
       </div>
       {/* 货柜清单（形状件：位置读数 + 抛弃；散货条在下面的散货清单里按"类"处理） */}
@@ -1770,41 +1780,100 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
             ))}
         </ul>
       )}
-      {/* 散货清单（可叠加的那些；抛弃按"整条"给，省得点两次） */}
-      <div className="app-bay-title">散货 · {run.bag.length} 类</div>
-      {run.bag.length === 0 ? (
+      {/**
+       * **散货清单 = 一件一行**（船长 2026-09-13 深夜：「残骸和母矿不应该合并超过 500 立方米，
+       * 当超过时，分作 2 个单独的物品格并允许单独丢弃或者移动」）：每件最多 1 格（≤ 每格单位数），
+       * 一件一个「抛弃」入口 —— 点开出现**数量拖动条 + 可直接输入数量**（同一条船长口径），
+       * 只丢这一件里的指定数量，其余留在原格；移动在网格里拖那一格即可。
+       */}
+      <div className="app-bay-title">
+        散货 · {cargoPieces.length} 件
+        <span className="app-dim">（{run.bag.length} 类 · 一件一格、可单独丢/拖）</span>
+      </div>
+      {cargoPieces.length === 0 ? (
         <div className="app-dim app-inv-empty">没有散货：去矿脉挖原矿、去墓场/遗迹打捞残骸。</div>
       ) : (
         <ul className="app-inv-list">
-          {run.bag.map((s) => {
-            const def = ctx.items.get(s.itemId)
+          {cargoPieces.map((p, i) => {
+            const def = ctx.items.get(p.itemId)
             const per = wormholeUnitsPerSlot(def?.unitM3 ?? 0)
-            // 占格与形状都按**实际摆放件**报（还没摆下才退回"规范块面积"）
-            const placed = placements.find((p) => p.kind === 'cargo' && p.itemId === s.itemId)
-            // 占格按**实际摆放件**报（实占 = 矩形外框 + 末行补齐后的格数）；还没摆下才退回格数本身
-            const cells = placed ? placementCellsCount(placed) : wormholeCargoSlotsOf(ctx, s.itemId, s.units)
+            const units = Math.max(0, Math.floor(p.units ?? 0))
+            const asking = discardAsk?.id === p.id
+            const amount = asking ? Math.min(discardAsk.units, Math.max(1, units)) : units
             return (
-              <li key={s.itemId} className="app-inv-row">
+              <li key={p.id} className="app-inv-row app-wh-piece">
                 <div className="app-inv-main">
                   <span className="app-inv-name">
-                    {def?.name ?? s.itemId} ×{n(s.units)}
+                    {def?.name ?? p.itemId} ×{n(units)}
+                    <span className="app-dim">
+                      {' '}
+                      · 第 {i + 1} 件 · 第 {p.y + 1} 行第 {p.x + 1} 列
+                    </span>
                   </span>
                   <span className="app-inv-count">
-                    {n(s.units * (def?.unitM3 ?? 0))} m³ · 占 {cells} 格
-                    {placed ? `（${placed.w}×${placed.h} 框）` : '（还没摆下）'} · 每格 {n(per)} 单位
+                    {n(units * (def?.unitM3 ?? 0))} m³ · 占 1 格 · 每格 {n(per)} 单位
                   </span>
                 </div>
                 <div className="app-inv-btns">
-                  <button
-                    className="app-btn is-small is-warn"
-                    onClick={() => {
-                      const r = engine.wormholeDiscardCargo(s.itemId)
-                      if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
-                    }}
-                  >
-                    抛弃
-                  </button>
+                  {asking ? null : (
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => setDiscardAsk({ id: p.id, units })}
+                    >
+                      抛弃
+                    </button>
+                  )}
                 </div>
+                {/**
+                 * **抛弃数量控件**（船长 2026-09-13 深夜：「添加一个让玩家选择抛弃多少的拖动条
+                 * 并允许输入数量」）：拖动条与数字框双向同步；数字框允许直接敲，失焦/确认时夹到 1..本件数量。
+                 */}
+                {asking ? (
+                  <div className="app-wh-discard">
+                    <input
+                      className="app-wh-discard-range"
+                      type="range"
+                      min={1}
+                      max={Math.max(1, units)}
+                      // 步长恒 1：拖动条上的取值必须能**精确**落到任何一个单位数
+                      // （先前用 per/100 做步长，500 的上限会被浏览器吸附成 496 —— 读数对不上）
+                      step={1}
+                      value={amount}
+                      onChange={(e) => setDiscardAsk({ id: p.id, units: Number(e.target.value) })}
+                      aria-label="抛弃数量"
+                    />
+                    <input
+                      className="app-wh-discard-num"
+                      type="number"
+                      min={1}
+                      max={Math.max(1, units)}
+                      value={amount}
+                      onChange={(e) => {
+                        const v = Math.round(Number(e.target.value))
+                        setDiscardAsk({ id: p.id, units: Number.isFinite(v) ? Math.max(1, Math.min(units, v)) : 1 })
+                      }}
+                      aria-label="抛弃数量（可直接输入）"
+                    />
+                    <span className="app-dim">
+                      共 {n(units)} · 抛弃 <b>{n(amount)}</b> 单位（{n(amount * (def?.unitM3 ?? 0))} m³）· 剩{' '}
+                      {n(units - amount)}
+                    </span>
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => {
+                        const r = engine.wormholeDiscardHold(p.id, amount)
+                        setDiscardAsk(null)
+                        if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                        else onToast(`已抛弃 ${n(amount)} 单位 ${def?.name ?? p.itemId}。`)
+                      }}
+                    >
+                      确认抛弃
+                    </button>
+                    <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
+                      取消
+                    </button>
+                  </div>
+                ) : null}
               </li>
             )
           })}

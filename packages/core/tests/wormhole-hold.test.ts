@@ -17,7 +17,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
 import type { WormholeHoldState } from '../src/wormholeHold'
 import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState, placementCellsCount } from '../src/wormholeHold'
 import {
@@ -66,24 +66,28 @@ function setBag(state: GameState, slots: Array<{ itemId: string; units: number }
 }
 describe('虫洞 · 货仓格几何（纯逻辑）', () => {
   /**
-   * **散货读档不丢**（2026-09-13 修的真 BUG + 同日晚「矩形 + 末行补齐」改判）：
+   * **散货读档不丢 + 一件一格**（2026-09-13 修的真 BUG ＋ 同日晚「每件不超过 500 m³，超过就分件」）：
    * 旧口径下散货条可以到 8 格宽，而存档清洗原先卡 `w ≤ 4` ⇒ 6 格母矿条读档后被当坏值丢掉
    * （货还在 `bag`、网格里没有它 ⇒ `unplacedCells` 凭空冒出来 ⇒ **假超载**）。
-   * 现在 6 格走「矩形外框 + 末行补齐」（外框可能 4×2 / 只占 6 格），过档后仍要在网格里、且不产生"放不下"。
+   * 现在 6 格 = **6 件（各占 1 格、每件 ≤ 每格单位数）**，过档后一件不少、也不产生"放不下"。
    */
-  it('**散货过存档往返不丢**（6 格母矿）：reads 后仍在网格里、不产生"放不下"', () => {
+  it('**散货过存档往返不丢**（6 格母矿 = 6 件）：reads 后仍在网格里、不产生"放不下"', () => {
     const state = enterRun(2, 911)
     const run = state.wormhole.run!
     setBag(state, [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 3_000 }]) // 6 格
     const before = wormholeHoldUsage(state, ctx)
     expect(before.cargoCells).toBe(6)
     expect(before.unplacedCells).toBe(0)
-    const piece = (run.hold?.placements ?? []).find((p) => p.kind === 'cargo')!
-    expect(placementCellsCount(piece)).toBe(6) // 实占 6 格（外框可能大一点，末行补齐）
-    expect(piece.w * piece.h).toBeGreaterThanOrEqual(6)
+    const pieces = (run.hold?.placements ?? []).filter((p) => p.kind === 'cargo')
+    expect(pieces.length, '一件一格：6 格母矿应拆成 6 件').toBe(6)
+    for (const p of pieces) {
+      expect([p.w, p.h]).toEqual([1, 1])
+      expect(p.units, '每件不超过一格').toBeLessThanOrEqual(wormholeUnitsPerSlot(0.2)) // 母矿 0.2 m³/单位 ⇒ 2500/格
+    }
+    expect(pieces.reduce((n, p) => n + (p.units ?? 0), 0)).toBe(3_000) // 总数不丢
     const back = loadSaveFile(serializeSaveFile(state, 1)).state
     const after = wormholeHoldUsage(back, ctx)
-    expect(back.wormhole.run!.hold!.placements.length).toBe(1)
+    expect(back.wormhole.run!.hold!.placements.length).toBe(6)
     expect(after.cargoCells).toBe(6)
     expect(after.unplacedCells, '读档后凭空多出"放不下"的格数 = 假超载').toBe(0)
     expect(after.overload).toBe(false)
@@ -259,9 +263,12 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     expect(stow.ok).toBe(true)
     expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 6, shapeCells: 4, used: 10 })
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
-    // 再塞 4 格散货（2000 单位母矿）⇒ 母矿条从 6 格涨到 10 格、网格里摆不下 ⇒ **整条**算"没位置" ⇒ 超载
+    /**
+     * 再塞 4 格散货（2000 单位母矿）⇒ 母矿从 6 件涨到 10 件，而货仓只剩 6 格给散货
+     * ⇒ **多出来的 4 件**算"没位置"（一件一格口径：`unplacedCells` = 件数差 = 4）⇒ 超载。
+     */
     setBag(state, [...run.bag, { itemId: 'ore-voidmother', units: 4 * 500 }])
-    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(10)
+    expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(4)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(true)
     // 抛掉货柜 ⇒ 散货立刻有位（对齐一次）⇒ 恢复
     const disc = wormholeHoldDiscard(state, ctx, stow.placementId!)
