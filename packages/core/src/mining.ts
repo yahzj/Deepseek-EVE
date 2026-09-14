@@ -16,7 +16,7 @@
  *   概率按分钟缩放，命中 = 连续 2 循环 ×3 的红利窗口，窗口内不再掷点）；
  * - 日志克制：只在 开始/停止/满舱转返航/卸货完成/富矿脉/换驾驶善后 时写。
  */
-import { addLog, wormholePilotHoldReason } from './state'
+import { addLog, miningHalt, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState, MiningState } from './state'
@@ -286,23 +286,16 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
 
 /** 停止开采（手动）：任何阶段都会停（若在返航/去程遗留相位中，货物留在船上） */
 export function stopMining(state: GameState, ctx: SimContext): boolean {
-  if (!state.mining.active) return false
-  const m = state.mining
-  const belt = m.beltId ? ctx.belts.get(m.beltId) : undefined
+  /** 状态改动走 `state.ts` 的单点 `miningHalt`（**进洞前自动停采**也用它）⇒ 两条停采路径不会各写一份 */
+  const info = miningHalt(state)
+  if (info === null) return false
+  const belt = info.beltId ? ctx.belts.get(info.beltId) : undefined
   const ore = belt ? ctx.items.get(belt.oreId) : undefined
   const oreName = ore ? ore.name : ''
-  const trip = m.tripUnits
-  const phaseNote = m.phase === 'returning' ? '（返航途中，货物留在船上）' : m.phase === 'outbound' ? '（出航途中）' : ''
+  const phaseNote =
+    info.phase === 'returning' ? '（返航途中，货物留在船上）' : info.phase === 'outbound' ? '（出航途中）' : ''
   const beltName = belt ? belt.name : '矿带'
-  m.active = false
-  m.beltId = null
-  m.phase = 'mining'
-  m.cycleAccMs = 0
-  m.phaseAccMs = 0
-  m.tripUnits = 0
-  m.originGalaxy = null
-  m.rvLeft = 0 // 停止开采：红利窗口随之清零（窗口绑定矿带）
-  addLog(state, 'info', `已停止开采（${beltName}）。本趟共采得 ${trip} 单位${oreName}${phaseNote}。`)
+  addLog(state, 'info', `已停止开采（${beltName}）。本趟共采得 ${info.tripUnits} 单位${oreName}${phaseNote}。`)
   return true
 }
 

@@ -14,7 +14,7 @@
  * - 工作位守卫：与采矿/远征/扫描/待命/返航/主控精炼互斥（入口拒绝）；
  * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
  */
-import { addLog, wormholePilotHoldReason } from './state'
+import { addLog, salvageHalt, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
@@ -152,20 +152,17 @@ export function setSalvageStopAfterTrip(state: GameState, stopAfterTrip: boolean
 
 /** 手动停止（任何阶段；未返航的货物留在船上） */
 export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
-  const s = state.salvaging
-  if (!s.active) return false
-  const galaxy = s.galaxyId ? ctx.galaxies.get(s.galaxyId) : undefined
+  /** 状态改动走 `state.ts` 的单点 `salvageHalt`（**进洞前自动停捞**也用它）⇒ 两条停捞路径不会各写一份 */
+  const info = salvageHalt(state)
+  if (info === null) return false
+  const galaxy = info.galaxyId ? ctx.galaxies.get(info.galaxyId) : undefined
   const phaseNote =
-    s.phase === 'returning' ? '（返航途中，货物留在船上）' : s.phase === 'outbound' ? '（出航途中）' : ''
-  const tripM3 = s.tripM3
-  s.active = false
-  s.galaxyId = null
-  s.phase = 'salvaging'
-  s.phaseAccMs = 0
-  s.cycleAccMs = 0
-  s.tripM3 = 0
-  s.deviceAccMs = {}
-  addLog(state, 'info', `已停止打捞（${galaxy?.name ?? ''}）。本趟共捞约 ${Math.round(tripM3 * 100) / 100} m³ 当量${phaseNote}。`)
+    info.phase === 'returning' ? '（返航途中，货物留在船上）' : info.phase === 'outbound' ? '（出航途中）' : ''
+  addLog(
+    state,
+    'info',
+    `已停止打捞（${galaxy?.name ?? ''}）。本趟共捞约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量${phaseNote}。`,
+  )
   return true
 }
 

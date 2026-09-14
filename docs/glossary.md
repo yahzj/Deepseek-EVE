@@ -448,12 +448,16 @@
 - **⚠ 2026-09-14 补齐（本轮修的就是它）**：原先 `wormhole.ts` 的 `shipActivityBusy` 与界面徽标
   `shipBusyLabel` 只认前五种里的五档，**漏了「打捞 / 长途运输 / 扫描虫洞 / 亲自开炉 / 亲自开线」**
   ⇒ 主控在这四类五个活动里**照样能进洞**（一条主控同时占两件事）。两张表已同步补齐、判据逐项对齐。
-- **⚠ 唯一的例外 = 「扫描虫洞」**（船长 2026-09-14 追加裁定：「**进洞自动停止**」）：
-  扫描虫洞是"找洞"的准备动作 ⇒ **不拦进洞**，进洞那一刻**自动停掉扫描**（**进度保留、回来续扫**，
-  与手动停扫共用 `state.ts` 的 `wormholeScanHalt` 单点；日志写「进洞前自动停掉「扫描虫洞」（进度保留：已扫 N 分钟）」）。
-  准备页出黄条预告「进洞会先自动停掉「扫描虫洞」」，主按钮**不因此置灰**；其余九档**照旧拦住**。
-  ⇒ 判据分层：`shipActivityBusy`（忙态，含扫描）· `wormholeEntryAutoStop`（会被自动停的那一项）·
-  `wormholeShipEntryBusy` / `wormholeEntryBlockReason`（进洞门槛，放行扫描那一档）。
+- **⚠ 唯一的例外 = 三项「就地作业」**（船长 2026-09-14 两连裁定：「**进洞自动停止**」＋
+  「『**进洞会自动停掉的那一项活动**』**同样落实到采矿/打捞**」）：**扫描虫洞 / 开采 / 打捞**都**不拦进洞**，
+  进洞那一刻**自动停掉**——停法与玩家手点活动栏「停止」**完全同一条路径**（状态改动各走 `state.ts` 的单点
+  `wormholeScanHalt` / `miningHalt` / `salvageHalt`；**扫描进度保留、作业中的货留在船上**）⇒ 不新增损失。
+  准备页出提示条「进洞会先自动停掉：扫描虫洞、开采、打捞（…）」，主按钮**不因此置灰**；
+  **其余七档照旧拦住**（扫描星系 / 远征 / 掩护巡逻 / 快递投送 / 长途运输 / 亲自开炉 / 亲自开线），
+  **副船的 AI 派工**也不算主控活动、照旧拦住。
+  ⇒ 判据分层：`shipActivityBusy`（忙态，含这三项）· `wormholeEntryAutoStops`（会被自动停的清单）·
+  `wormholeShipEntryBusy` / `wormholeEntryBlockReason`（进洞门槛，放行这三项）。
+  ⚠ **老口径作废**：2026-09-13 的「主控在采矿 ⇒ 进不去」已改判。
 - **落点**：判据 `state.ts` 的 `wormholePilotHoldReason`（洞内锁定）· `wormhole.ts` 的
   `shipActivityBusy` / `shipBusyForWormhole` / `wormholeEntryBlockReason`（进洞门槛）·
   徽标 `activity.ts` 的 `shipBusyLabel`（两边一致性由用例钉住）· 面板准备页按徽标置灰「进入虫洞」。

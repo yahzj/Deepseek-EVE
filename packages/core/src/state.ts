@@ -1748,6 +1748,48 @@ export function wormholeScanHalt(state: GameState): number | null {
   scan.active = false
   return Math.max(0, Math.floor(scan.progressMs / 60_000))
 }
+
+/**
+ * **停掉"开采"这个活动**（状态单点：手动停采与"进洞前自动停采"共用），返回本趟读数；
+ * 本来就没在采 ⇒ `null`。
+ *
+ * 与 `miningHalt` 同款理由（不 import `mining.ts` 以免给 `state → wormhole → mining` 添环）；
+ * 日志由调用方写（手动停采写"已停止开采…"、进洞写"进洞前自动停掉…"）。
+ */
+export function miningHalt(state: GameState): { tripUnits: number; beltId: string | null; phase: MiningState['phase'] } | null {
+  const m = state.mining
+  if (m.active !== true) return null
+  const info = { tripUnits: m.tripUnits, beltId: m.beltId, phase: m.phase }
+  m.active = false
+  m.beltId = null
+  m.phase = 'mining'
+  m.cycleAccMs = 0
+  m.phaseAccMs = 0
+  m.tripUnits = 0
+  m.originGalaxy = null
+  m.rvLeft = 0 // 停止开采：红利窗口随之清零（窗口绑定矿带）
+  return info
+}
+
+/**
+ * **停掉"打捞"这个活动**（状态单点：手动停捞与"进洞前自动停捞"共用），返回本趟读数；
+ * 本来就没在捞 ⇒ `null`。理由与 `miningHalt` 同款。
+ */
+export function salvageHalt(
+  state: GameState,
+): { tripM3: number; galaxyId: string | null; phase: SalvageOpState['phase'] } | null {
+  const s = state.salvaging
+  if (s.active !== true) return null
+  const info = { tripM3: s.tripM3, galaxyId: s.galaxyId, phase: s.phase }
+  s.active = false
+  s.galaxyId = null
+  s.phase = 'salvaging'
+  s.phaseAccMs = 0
+  s.cycleAccMs = 0
+  s.tripM3 = 0
+  s.deviceAccMs = {}
+  return info
+}
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
 export function addLog(state: GameState, kind: LogKind, text: string): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
