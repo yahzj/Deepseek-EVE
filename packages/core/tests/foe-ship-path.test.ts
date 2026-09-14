@@ -807,7 +807,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(w.kind).toBe('fixed'); // 能量·掷命中（裁定⑤）
     expect(w.hitRate).toBe(0.9); // 卡上覆写（原光束必中）
     expect(w.minRangeM).toBe(1)
-    expect(w.maxRangeM).toBe(2600); // 卡带（舰级缺省 2655）
+    expect(w.maxRangeM).toBe(3600); // 卡带（2026-09-14 全族 +1000：原 2600；舰级缺省 2655→3655）
     expect(w.fixedType).toBe('plasma')
     expect(u[0]!.speedMps).toBe(544); // 星髓幼虫（原 234）
     expect(u[0]!.foeTactic).toBe('brawl')
@@ -838,7 +838,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u[0]!.weapons[0]!.kind).toBe('fixed'); // 能量·掷命中（裁定⑤）
     expect(u[0]!.weapons[0]!.fixedType).toBe('plasma'); // 主系改等离子
     expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
-    expect(u[0]!.weapons[0]!.maxRangeM).toBe(2552); // 舰级缺省即卡带（本卡无覆写）
+    expect(u[0]!.weapons[0]!.maxRangeM).toBe(3552); // 舰级 2552 + 1000（2026-09-14 全族 +1000；本卡无覆写）
     expect(u[0]!.weapons[0]!.minRangeM).toBe(1)
     expect(u[0]!.foeTactic).toBe('brawl')
   })
@@ -858,12 +858,12 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 10 }, () => 23),
     ); // 231/10 → 23
-    // 末波（第 3 波）= 成虫 ×3：带 1~2655 与速 398（T2 驱逐），tag 走 `w2-` 前缀
+    // 末波（第 3 波）= 成虫 ×3：带 1~3655（2026-09-14 全族 +1000）与速 398（T2 驱逐），tag 走 `w2-` 前缀
     const last = u.filter((x) => x.tag.startsWith('w2-'))
     expect(last).toHaveLength(3)
     expect(last.map((x) => x.speedMps)).toEqual([398, 398, 398])
     expect(last.map((x) => x.weapons[0]!.maxRangeM)).toEqual([
-      2655, 2655, 2655,
+      3655, 3655, 3655,
     ])
     expect(u.filter((x) => !last.includes(x))).toHaveLength(7)
     expect(u[0]!.speedMps).toBe(544); // 前两波是幼虫
@@ -893,8 +893,8 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(501); // 总单发取整后仍精确 = 501
     expect(boss.speedMps).toBe(297); // 205 × 297/205（船长「将首领速度**单独上调 20 点**」：277 → 297）
     expect(minions.every((x) => x.speedMps === 544)).toBe(true)
-    expect(boss.weapons[0]!.maxRangeM).toBe(2713); // 射程加成已**回收**（回原值，不再覆盖标准站位 3,220m）
-    expect(minions.every((x) => x.weapons[0]!.maxRangeM === 2713)).toBe(true); // 小虫 = 卡带
+    expect(boss.weapons[0]!.maxRangeM).toBe(3713); // 2026-09-14 全族 +1000（沿革：曾令加到 4,000 → 实测后回收回 2,713 → 本批 +1000）
+    expect(minions.every((x) => x.weapons[0]!.maxRangeM === 3713)).toBe(true); // 小虫 = 卡带（2026-09-14 +1000）
     expect(boss.weapons[0]!.kind).toBe('fixed')
     expect(boss.foeTactic).toBe('brawl');
     // 冲锋：只有巨兽带资格（舰级 opt-in），小虫没有
@@ -902,16 +902,35 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(minions.every((x) => x.foeCanCharge !== true)).toBe(true)
   })
 
-  it('巨兽**目标距离不动**：期望交距 = 543 m（由波 0 的小虫带锚定；射程加成已回收）', () => {
+  it('巨兽**目标距离不动**：期望交距 = 543 m（2026-09-14 起由 `desireRangeM` 钉住，不再靠带内插值）', () => {
     const def = card('ano-maw-hunt')
     const w0 = createFoeSpecs(def, bal);
-    // 波 0 首个单位 = 畸变幼虫（带 1~2713）⇒ 期望交距 = 1 + 0.20 × (2713 − 1) = 543
-    expect(w0[0]!.weapons[0]!.maxRangeM).toBe(2713)
+    // 船长 2026-09-14：「给所有虫子添加1000的射程，但是目标距离不变」⇒ 全族带 +1000 后，
+    //   期望交距**改用条目级 `desireRangeM: 543` 显式钉住**（旧法 = 1 + 0.20 × (2713 − 1) = 543）
+    expect(w0[0]!.weapons[0]!.maxRangeM).toBe(3713)
     expect(foeDesiredRange(w0[0]!, w0, bal)).toBe(543);
-    // 巨兽与全族同档（1~2,713）；首波由小虫锚定 ⇒ 期望交距与开战距离都不随末波改变
+    // 巨兽与全族同档（1~3,713）；期望交距由钉子决定 ⇒ 不随末波/后续改带而变
     const boss = allWaves(def).find((x) => x.tag === 'w2-foe-3')!
-    expect(boss.weapons[0]!.maxRangeM).toBe(2713)
-    expect(foeDesiredRange(w0[0]!, w0, bal)).toBeLessThan(2713)
+    expect(boss.weapons[0]!.maxRangeM).toBe(3713)
+    expect(foeDesiredRange(w0[0]!, w0, bal)).toBeLessThan(3713)
+  })
+
+  it('C 族全族 +1000 射程 · 期望交距逐个钉住现状（船长 2026-09-14）', () => {
+    // 四张卡的带（首个单位 = 波 0 主体）与该卡的钉子值：带全部 +1000，交距逐字保持改前
+    const cases: Array<[string, number, number]> = [
+      ['ano-abyss-guard', 3600, 521],
+      ['ano-starcore-boss', 3655, 532],
+      ['ano-chasm-aberrations', 3552, 511],
+      ['ano-maw-hunt', 3713, 543],
+    ]
+    for (const [id, maxRange, desire] of cases) {
+      const def = card(id)
+      const specs = createFoeSpecs(def, bal)
+      expect(specs[0]!.weapons[0]!.maxRangeM, `${id} 首单位射程上限`).toBe(maxRange)
+      expect(foeDesiredRange(specs[0]!, specs, bal), `${id} 期望交距`).toBe(desire)
+      // **每个条目都要钉**（多波卡：波 2 的成虫/巨兽进场后 `foes[0]` 换人，钉子必须跟着换）
+      expect((def.ships ?? []).every((s) => s.desireRangeM === desire), `${id} 条目钉子`).toBe(true)
+    }
   })
 
   it('稀有头目唯一性：**C 族只有噬口**出现 `elite` 单位，显示名挂「精锐」（A 族头目另计）', () => {

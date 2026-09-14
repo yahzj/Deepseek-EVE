@@ -282,7 +282,7 @@ export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ['foe-alien-maw']
  * **按档重排（甲案）**：T1 档基线 260 / 39.5 × 角色 **1.00 / 1.10**（标准近战虫）= **260 / 43**。
  * 速度 = 1 护卫舰基准 340 × **`1.6`** = **544**（船长 2026-09-11「**两种幼虫提速倍率 1.6**」；
  * 远高于 A 族同档最高 391，兑现「C 族速度比 A 海盗还快」）。
- * 其余字段 = 迁移前的现状建档值：命中 0.95 · 射程带 1~2552 · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
+ * 其余字段 = 迁移前的现状建档值：命中 0.95 · ~~射程带 1~2552~~ ⇒ **1~3552**（2026-09-14 船长「所有虫子 +1000 射程」） · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
  * 血型均衡（= 裂谷卡 `defProfile balanced`）；主系**等离子** 8:2（C 族酸液签名）。
  * 形态 = `'spit'`（**能量掷命中**）。**逐卡目标值由卡的 `hpMul`/`dmgMul` 反算**（舰级值只是档案锚）。 */
 export const FOE_ALIEN_RIFT: FoeShipDef = {
@@ -297,7 +297,7 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
   hitRate: 0.95,
   reloadMs: 4000,
   rangeMinM: 1,
-  rangeMaxM: 2552, // 缺省 = 裂谷卡的带；噬口卡的条目覆写为 1~2713
+  rangeMaxM: 3552, // 2552 + 1000（2026-09-14 船长「所有虫子 +1000 射程」）；噬口卡的条目覆写同步为 1~3713
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（C 族酸液签名）
@@ -311,7 +311,7 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
  * **按档重排（甲案）**：T1 档基线 260 / 39.5 × 角色 **0.80 / 0.80**（群袭脆虫：靠数量不靠单体）= **208 / 32**。
  * 速度 = 1 护卫舰基准 340 × **`1.6`** = **544**（船长「两种幼虫提速倍率 1.6」）。
  * 其余字段 = 迁移前的现状建档值：**命中 0.95**（C 族**不保留光束必中**：能量武器正常掷命中，
- * 命中随距离衰减 + 吃守方回避——这是星髓那张卡唯一的难度改动）· 射程带 1~2655 ·
+ * 命中随距离衰减 + 吃守方回避——这是星髓那张卡唯一的难度改动）· ~~射程带 1~2655~~ ⇒ **1~3655**（2026-09-14 全族 +1000） ·
  * 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms · 血型**装甲**（= 星髓卡 `defProfile armor`）；
  * 主系**等离子** 8:2。形态 = `'spit'`（**能量掷命中**）。
  * ⚠ 深渊之门卫队卡的条目覆写：血型**护盾**（卡面 shield）· 命中 **0.90** · **纯等离子** · 射程 1~2600。 */
@@ -327,7 +327,7 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
   hitRate: 0.95, // 掷命中（C 族不保留光束必中）
   reloadMs: 4000,
   rangeMinM: 1,
-  rangeMaxM: 2655, // 缺省 = 星髓卡的带；深渊之门卡条目覆写为 1~2600
+  rangeMaxM: 3655, // 2655 + 1000（2026-09-14 船长「所有虫子 +1000 射程」）；深渊之门卡条目覆写同步为 1~3600
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 }, // 等离子主
@@ -368,7 +368,7 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
   hitRate: 0.95,
   reloadMs: 4000,
   rangeMinM: 1,
-  rangeMaxM: 2713, // 船长先令「巨兽射程增加」（4000）→ 看过实测后**「回收射程加成」** ⇒ 回原值（不再覆盖标准站位 3,220m）
+  rangeMaxM: 3713, // 2713 + 1000（2026-09-14 船长「所有虫子 +1000 射程」）。沿革：曾令「巨兽射程增加」（4000）→ 实测后**「回收射程加成」**回 2713（不再覆盖标准站位 3,220m）→ 本批全族 +1000
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 },
@@ -388,7 +388,7 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
  *
  * **按档重排（甲案）**：T2 档基线 480 / 68 × 角色 **1.30 / 0.82**（中坚成虫）= **624 / 56**。
  * 速度 = 2 驱逐舰基准 295 × **`1.35`** = **398**（高于 A 族同档最高 325）。
- * 其余字段 = 迁移前的现状建档值：命中 0.95 · 射程带 1~2655 · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
+ * 其余字段 = 迁移前的现状建档值：命中 0.95 · ~~射程带 1~2655~~ ⇒ **1~3655**（2026-09-14 全族 +1000） · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
  * 血型**装甲**（= 星髓卡 `defProfile armor`）；主系**等离子** 8:2。形态 = `'spit'`。 */
 export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   id: 'foe-alien-starcore-adult',
@@ -402,7 +402,7 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   hitRate: 0.95,
   reloadMs: 4000,
   rangeMinM: 1,
-  rangeMaxM: 2655,
+  rangeMaxM: 3655,
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, explosive: 2 },
