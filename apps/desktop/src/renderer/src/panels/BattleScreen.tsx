@@ -1983,7 +1983,13 @@ const meSpeedRef = useRef(200)
                       flip={meFlip}
                     />
                     {u.alive ? (
-                      <div className="app-bts-hpWrap">
+                      /**
+                       * **血条宽度跟同排间距走**（2026-09-14 船长：「同一排舰船的间距可以再拉开一些，
+                       * 目前会遮挡血条上的数字」）：`lay.myBarW` 由 `layout()` 按同排实际间距现算
+                       * （= `间距 − 6`，上限 185 即 CSS 默认值）⇒ 邻舰船体压不到血条右端的数字。
+                       * 单船路径没有这个值 ⇒ 落回 CSS 的 185px，逐像素不变。
+                       */
+                      <div className="app-bts-hpWrap" style={lay.myBarW !== undefined ? { width: lay.myBarW } : undefined}>
                         <HpTri hp={u.hp} max={u.hpMax} />
                       </div>
                     ) : (

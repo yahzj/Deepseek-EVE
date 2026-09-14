@@ -161,7 +161,7 @@ import {
   wormholeScanStop,
   wormholeScanWindowMs,
   wormholeScanBlockReason,
-  // 2026-09-14 船长：扫描虫洞要协会声望 35 才解锁（解锁发通讯 + 直接弹窗）
+  // 2026-09-14 船长：扫描虫洞要协会声望 40 才解锁（先定 35、当日改判 40；解锁发通讯 + 直接弹窗）
   wormholeScanStanding,
   wormholeScanUnlocked,
   // 自动探索（批次 3 · 2026-09-14 船长逐条定案：5 分钟 · 收益 40% 入仓库 · 绝不丢船 · 报告需确认）
@@ -1526,7 +1526,7 @@ export class GameEngine {
     return wormholeScanBlockReason(this.state)
   }
 
-  /** 虫洞扫描：是否已达解锁声望（船长 2026-09-14：需要协会声望 35） */
+  /** 虫洞扫描：是否已达解锁声望（船长 2026-09-14：需要协会声望 40） */
   wormholeScanUnlocked(): boolean {
     return wormholeScanUnlocked(this.state)
   }

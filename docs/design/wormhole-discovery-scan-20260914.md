@@ -36,11 +36,14 @@
 
 ## 三、主控活动「扫描虫洞」（**第二批**）
 
-- **解锁门槛（船长 2026-09-14）：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家（同时也要直接弹窗）」**
-  ⇒ 常量 `WORMHOLE_SCAN_UNLOCK_STANDING = 35`（**声望口径 = 协会 `dsi`**，与矿带 `standingReq`、奇货件同一本账）；
+- **解锁门槛（船长 2026-09-14 首定 35 → 同日后一条裁定「将开始虫洞的声望门槛提高到40」⇒ 现值 40）**：
+  原话「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家（同时也要直接弹窗）」＋
+  「**将开始虫洞的声望门槛提高到40**」⇒ 常量 `WORMHOLE_SCAN_UNLOCK_STANDING = 40`
+  （**声望口径 = 协会 `dsi`**，与矿带 `standingReq`、奇货件同一本账）；**旧值 35 作废**。
   未达标时 `wormholeScanBlockReason` 给「尚未解锁 + 当前声望」，页面另有未解锁横幅。
-  **解锁信**：`msg-wormhole-unlock`（协会测绘处 · `trigger: { kind: 'standing', factionId: 'dsi', min: 35 }` ·
+  **解锁信**：`msg-wormhole-unlock`（协会测绘处 · `trigger: { kind: 'standing', factionId: 'dsi', min: 40 }` ·
   `popup: true` ⇒ 送达同时弹窗 · **`unreleased: true`** ⇒ 虫洞上线前不送达，上线时删该字段即可开送）。
+  ⚠ **两处门槛必须同值**（`content:check` 硬契约：常量 ≠ 通讯触发器 ⇒ 体检红，防"信送了却扫不了"）。
 - **调试加速（船长 2026-09-14：「希望调试模式也能增加虫洞扫码的速度」）**：`wormholeScanWindowMs`
   在 `state.debugQuick`（调试面板「⇄ 调试 · 1秒化」）时返回 **1 秒** —— 与星图扫描 / AI 副船任务 / 技能训练 /
   本地航行段**同一把开关**，不新增调试入口。
