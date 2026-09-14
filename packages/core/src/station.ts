@@ -124,7 +124,7 @@ export function stationBillView(state: GameState, ctx: SimContext, site: Station
   return rows
 }
 
-/** 当前档材料单文案（如「三钛合金×5000 / 超噬矿×1000」） */
+/** 当前档材料单文案（如「钛钢合金×5000 / 重钨合金×1000」） */
 export function stationBillText(state: GameState, ctx: SimContext, site: StationSiteDef): string {
   return stationBillView(state, ctx, site)
     .map((r) => `${r.itemName}×${r.need.toLocaleString('zh-CN')}`)

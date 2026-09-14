@@ -17,7 +17,7 @@ import type { ItemDef } from '@whale/core'
 export const ORES: readonly ItemDef[] = [
   {
     id: 'ore-veldspar',
-    name: '富凡晶石',
+    name: '橄榄岩',
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 13,
@@ -31,11 +31,11 @@ export const ORES: readonly ItemDef[] = [
   },
   {
     id: 'ore-scorched',
-    name: '灼烧岩',
+    name: '辉长岩',
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 18,
-    description: '熔岩包裹的致密矿石，类银与类晶体的重要来源。',
+    description: '熔岩包裹的致密矿石，银纹超金属与晶态胶体的重要来源。',
     refine: [
       { mineralId: 'min-pyerite', perOre: 0.985 },
       { mineralId: 'min-mexallon', perOre: 0.35 },
@@ -45,7 +45,7 @@ export const ORES: readonly ItemDef[] = [
   },
   {
     id: 'ore-hemorphite',
-    name: '希莫非特',
+    name: '赤环岩',
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 55,
@@ -221,7 +221,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
 export const MINERALS: readonly ItemDef[] = [
   {
     id: 'min-tritanium',
-    name: '三钛合金',
+    name: '钛钢合金',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 8,
@@ -229,7 +229,7 @@ export const MINERALS: readonly ItemDef[] = [
   },
   {
     id: 'min-pyerite',
-    name: '类银超金属',
+    name: '银纹超金属',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 12,
@@ -237,7 +237,7 @@ export const MINERALS: readonly ItemDef[] = [
   },
   {
     id: 'min-mexallon',
-    name: '类晶体胶体',
+    name: '晶态胶体',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 20,
@@ -245,7 +245,7 @@ export const MINERALS: readonly ItemDef[] = [
   },
   {
     id: 'min-nocxium',
-    name: '超噬矿',
+    name: '重钨合金',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 90,

@@ -7,7 +7,7 @@
  * 看"新手 24 小时能走多远"是否符合预期。模拟为 30 秒步长推进，忽略离线与远征。
  *
  * 三种策略（控制变量：都先练采矿技术 5 级）：
- *   A 原矿流：挖富凡晶石直接卖原矿，攒钱买掘洞级 → 鲸吞级
+ *   A 原矿流：挖橄榄岩直接卖原矿，攒钱买掘洞级 → 鲸吞级
  *   B 精炼流：多练精炼学 + 高级回收，满舱后精炼成矿物再卖
  *   C 装备流：在 B 基础上再练采矿护卫舰，并制造装配 采集器MK1 → 货舱MK1 → 采集器MK2
  */
@@ -41,7 +41,7 @@ import { buildSimContext } from '@whale/data'
 
 const SIM_HOURS = 24
 const STEP_MS = 30_000 // 30 秒一步
-const BELT = 'belt-fortune' // 富凡晶石矿带
+const BELT = 'belt-fortune' // 橄榄岩矿带
 const ORE_ID = 'ore-veldspar'
 const HOUR_MS = 60 * 60 * 1000 // 1 小时的毫秒
 const TOTAL_MS = SIM_HOURS * HOUR_MS
@@ -287,7 +287,7 @@ function acquireBlueprint(state: GameState, ctx: SimContext, blueprintId: string
 
 const strategyA: Strategy = {
   name: 'A · 原矿流（卖原矿攒船）',
-  desc: '只练采矿技术；满舱直接把富凡晶石卖给空间站',
+  desc: '只练采矿技术；满舱直接把橄榄岩卖给空间站',
   refineAtHome: false,
   planSkills(state, ctx) {
     queueToMax(state, ctx, 'mining')
@@ -323,8 +323,8 @@ const strategyB: Strategy = {
 
 /* ───────── 策略 C：装备流 ───────── */
 
-/** 装备路线（2026-09-08 二号修正：富凡带精炼只产 三钛/类银，含超噬的装备需换矿带——
- * 单带策略只走富凡可实现子集，其余留待多矿带扩展）；成品自装（矿枪提速 = 长期回报） */
+/** 装备路线（2026-09-08 二号修正：橄榄带精炼只产 钛钢/银纹，含重钨的装备需换矿带——
+ * 单带策略只走橄榄可实现子集，其余留待多矿带扩展）；成品自装（矿枪提速 = 长期回报） */
 const GEAR_PLAN: Array<{ bp: string; module: string; label: string }> = [
   { bp: 'bp-miner-1', module: 'mod-miner-1', label: '强化采集器 MK1' },
 ]
@@ -370,7 +370,7 @@ const strategyC: Strategy = {
         }
         break // 材料不足：本次回港窗口不制造
       }
-      // 囤料：把矿石炼成矿物但**不卖**（三钛/类银攒给矿枪）
+      // 囤料：把矿石炼成矿物但**不卖**（钛钢/银纹攒给矿枪）
       if (isAtHome(state) && countItem(state, ORE_ID) > 0 && !refineRunActive(state)) {
         startRefineRun(state, ORE_ID, 'pilot', ctx)
       }

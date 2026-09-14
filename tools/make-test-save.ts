@@ -266,7 +266,7 @@ function injectRefine(state: GameState): string[] {
   genericPrep(state)
   // 全品级库存（浅→渊）：货仓放一份、仓库放一份，验证"货仓优先锁定 + 仓库补位"
   const stock: Array<[string, string, number]> = [
-    ['ore-veldspar', '富凡晶石', 900],
+    ['ore-veldspar', '橄榄岩', 900],
     ['ore-glowstone', '辉云岩', 300],
     ['ore-voidshard', '玄晶', 120],
     ['gas-neon', '氖云气', 200],

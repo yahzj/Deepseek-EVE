@@ -94,7 +94,7 @@ export function getMiningParams(
   const astroLv = Math.min(5, state.skills.trained['astro-geology'] ?? 0)
   if (astroLv > 0) prodMult *= 1 + 0.04 * astroLv
   if ((ore.baseSellPriceIsk ?? 0) <= 55) {
-    // 低品级矿：富凡 12 / 灼烧 18 / 希莫非特 55
+    // 低品级矿：橄榄 12 / 辉长 18 / 赤环岩 55
     const blastLv = Math.min(5, state.skills.trained['deep-hole-blasting'] ?? 0)
     if (blastLv > 0) prodMult *= 1 + 0.06 * blastLv
   }

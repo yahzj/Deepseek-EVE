@@ -113,7 +113,7 @@ describe('回收画像与保底矿物滚动', () => {
 
   it('recycleMineralPoolOf（2026-09-10 界面保底矿物块单点）：特色池优先、缺省回落档位基础池', () => {
     const base = ctxOf()
-    // 缺省：无特色池 → 回落该档基础池（柯尔 = 常档：三钛 65 / 类银 30 / 类胶 5）
+    // 缺省：无特色池 → 回落该档基础池（柯尔 = 常档：钛钢 65 / 银纹 30 / 晶态 5）
     const common = recycleProfileOf(base, wreckItemIdOf('ano-kor'))!
     expect(recycleMineralPoolOf(common)).toEqual([
       ['min-tritanium', 65],
