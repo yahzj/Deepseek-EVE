@@ -64,6 +64,7 @@ import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { ShipSprite } from '../ui/ShipSprite'
+import { debugEnabled } from './DebugPanel'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
  * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
@@ -1567,11 +1568,13 @@ function GalaxyActions({
 }) {
   const state = engine.state
   const ctx = engine.ctx
-  // ── 虫洞入口（2026-09-14 船长「可以解除虫洞对玩家的不可见状态了」⇒ **已全量开放**）：
+  // ── 虫洞入口（**旧入口已于 2026-09-14 关闭 · 船长「旧入口关闭」**）：
+  //    本行是施工期的**调试入口**——点开面板后走 `wormholeEnter(picked)`：**不消耗库存虫洞、直接用游戏种子开一趟**。
+  //    若它常显，玩家就能绕过「协会声望 ≥ 40」这道门槛、跳过"扫描发现"整条链 ⇒ 故退回调试门后。
+  //    **玩家入口唯一 = 星图「出港 · 扫描虫洞」页**：选一处库存虫洞 ⇒ 走 `wormholeEnterFromStock`（消耗该处）。
   //    面板本体挂在 App 那一层（`onOpenWormhole`）——原先挂在这里，而本组件要"星图选中星系"才渲染
-  //    ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）；
-  //    入口不再看调试开关（解锁门槛在「扫描虫洞」页内：协会声望 ≥ 40）。──
-  const whEntryVisible = true
+  //    ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）；活动栏那行只在已有本趟时出现。──
+  const whEntryVisible = debugEnabled()
   // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
@@ -1666,7 +1669,8 @@ function GalaxyActions({
   return (
     <div className="app-galaxy-actions">
       <div className="app-bay-title">前往星系 · 行动</div>
-      {/* ㊕ 虫洞（终局玩法 · ✅ 2026-09-14 船长解除不可见 ⇒ 常驻；解锁门槛在「扫描虫洞」页：协会声望 ≥ 40） */}
+      {/* ㊕ 虫洞（终局玩法 · **旧入口已于 2026-09-14 关闭**：本行只在调试模式下保留 ——
+          它不消耗库存、直接开一趟，供验收用；玩家入口 = 星图「出港 · 扫描虫洞」页选一处库存虫洞） */}
       {whEntryVisible ? (
         <div className="app-ga-row">
           <span className="app-ga-main">
@@ -1674,9 +1678,9 @@ function GalaxyActions({
               <Glyph name="nav-wormhole" size={13} color={NAV_TONES['nav-wormhole']} />
             </span>
             虫洞
-            <span className="app-dim app-ga-desc">编队 / 探索 / 背包（从「扫描虫洞」页选一处进去）</span>
+            <span className="app-dim app-ga-desc">调试入口 · 不消耗库存（玩家入口见「扫描虫洞」页）</span>
           </span>
-          <button className="app-btn is-small" onClick={() => onOpenWormhole?.()} title="终局玩法 · 虫洞（进洞要编队，进度自动保存）">
+          <button className="app-btn is-small" onClick={() => onOpenWormhole?.()} title="终局玩法 · 虫洞（调试入口：免库存开一趟，供验收）">
             进入虫洞
           </button>
         </div>
