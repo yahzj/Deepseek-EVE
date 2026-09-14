@@ -861,7 +861,7 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
   const ask = quote.sell
   if (ask !== undefined) {
     if (state.wallet.isk < ask) {
-      return { ok: false, error: `ISK 不足：${ship.name} 市场价约 ${ask.toLocaleString('zh-CN')} ISK（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
+      return { ok: false, error: `信用点不足：${ship.name} 市场价约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
     }
     const res = buyAtMarket(state, ctx, good.key, 1)
     const uid = res.bought > 0 ? res.shipUid : null
@@ -876,9 +876,9 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
         !state.salvaging.active
       if (pilotFree) {
         state.shipId = uid
-        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} ISK）并登舰。`)
+        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）并登舰。`)
       } else {
-        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} ISK）——驾驶船正在作业，新船已入机库待命（可稍后在舰船页切换驾驶）。`)
+        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）——驾驶船正在作业，新船已入机库待命（可稍后在舰船页切换驾驶）。`)
       }
       return { ok: true }
     }
@@ -886,11 +886,11 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
   // 市场暂无现货：挂收购单（均衡供应价 ×1.1 保证到货即成交优先）
   const est = estimateShipBid(state, ctx, good.key)
   if (state.wallet.isk < est) {
-    return { ok: false, error: `ISK 不足：${ship.name} 收购挂单约 ${est.toLocaleString('zh-CN')} ISK。` }
+    return { ok: false, error: `信用点不足：${ship.name} 收购挂单约 ${est.toLocaleString('zh-CN')} 信用点。` }
   }
   const order = placeBuyOrder(state, ctx, good.key, est, 1)
   if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。' }
-  addLog(state, 'trade', `${ship.name} 市场暂无现货——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} ISK，到货自动停入机库（可随时撤销）。`)
+  addLog(state, 'trade', `${ship.name} 市场暂无现货——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动停入机库（可随时撤销）。`)
   return { ok: true }
 }
 

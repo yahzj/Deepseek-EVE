@@ -550,7 +550,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '缴获评估学',
     group: '探索',
     rank: 2,
-    description: '战利品估值与销赃渠道：低安遭遇击退/大捷的缴获 信用点 每级 +⟦10%⟧。',
+    description: '战利品估值与销赃渠道：低安遭遇击退/大捷的缴获信用点每级 +⟦10%⟧。',
   },
   {
     id: 'lowsec-survival',

@@ -602,7 +602,7 @@ export class GameEngine {
             ? '存档文件已损坏'
             : err.code === 'FORMAT'
               ? '存档文件无法识别（不是本游戏的档案）'
-              : '存档版本不兼容'
+              : '档案制式过旧，无法读取'
           : '存档文件无法读取'
       addLog(this.state, 'warn', `${why}——已为你开启新档案。`)
     }
@@ -1076,7 +1076,7 @@ export class GameEngine {
     const quote = marketQuote(this.state, this.ctx, goodKey)
     const ask = quote.sell !== undefined ? Math.round(quote.sell * 1.02) : Math.round(levelOf(this.state, this.ctx, goodKey) * 1.03)
     const order = placeBuyOrder(this.state, this.ctx, goodKey, ask, 1)
-    if (!order) return { ok: false, error: '信用点 不足或挂单失败：先攒够购书款。' }
+    if (!order) return { ok: false, error: '信用点不足或挂单失败：先攒够购书款。' }
     void this.persist()
     this.notify()
     return { ok: true, pending: true }
@@ -1099,7 +1099,7 @@ export class GameEngine {
       // 部分成交：货已入库，只提示"只够这些"
       return {
         ok: false,
-        error: `供应簿只够 ${res.bought.toLocaleString('zh-CN')} 件（已买入 ${name}×${res.bought.toLocaleString('zh-CN')}）——其余可挂「挂买单」等 NPC 补给后自动成交。`,
+        error: `供应簿只够 ${res.bought.toLocaleString('zh-CN')} 件（已买入 ${name}×${res.bought.toLocaleString('zh-CN')}）——其余可挂「挂买单」等 市场补给后自动成交。`,
       }
     }
     switch (res.blocked) {
@@ -1108,7 +1108,7 @@ export class GameEngine {
         const unit = quote.sell ?? 0
         return {
           ok: false,
-          error: `信用点 不足：最低一张 ${unit.toLocaleString('zh-CN')} 信用点，钱包 ${Math.floor(this.state.wallet.isk).toLocaleString('zh-CN')} 信用点——减少数量，或用「挂买单」低价排队等成交。`,
+          error: `信用点不足：最低一张 ${unit.toLocaleString('zh-CN')} 信用点，钱包 ${Math.floor(this.state.wallet.isk).toLocaleString('zh-CN')} 信用点——减少数量，或用「挂买单」低价排队等成交。`,
         }
       }
       case 'standing':
@@ -1121,7 +1121,7 @@ export class GameEngine {
       default:
         return {
           ok: false,
-          error: `${name}当前没有现货：市场供应簿为空——用「挂买单」等 NPC 补给后自动成交，或过一会儿再来（常驻 20 分钟一轮补给）。`,
+          error: `${name}当前没有现货：市场供应簿为空——用「挂买单」等 市场补给后自动成交，或过一会儿再来（常驻 20 分钟一轮补给）。`,
         }
     }
   }

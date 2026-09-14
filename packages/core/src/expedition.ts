@@ -227,7 +227,7 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
     const span = Math.max(0, effect.max - effect.min)
     const amount = effect.min + nextInt(state.rng, span + 1)
     state.wallet.isk += amount
-    addLog(state, 'trade', `${eventDef.text}（+${amount.toLocaleString('zh-CN')} ISK）`)
+    addLog(state, 'trade', `${eventDef.text}（+${amount.toLocaleString('zh-CN')} 信用点）`)
     return
   }
   if (effect.kind === 'mineral') {
@@ -516,7 +516,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       const text = pickOne(state.rng, texts)!
       const bonus = Math.round(reward * 0.1)
       reward += bonus
-      addLog(state, 'trade', `◆ ${text}（+${bonus.toLocaleString('zh-CN')} ISK）`)
+      addLog(state, 'trade', `◆ ${text}（+${bonus.toLocaleString('zh-CN')} 信用点）`)
     }
     const lootText: string[] = []
     const lootMul = lootFactor(state)
@@ -547,7 +547,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'trade',
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} ISK${lootPart}${dronePart}${repairPart}，${standPart}` +
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootPart}${dronePart}${repairPart}，${standPart}` +
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`,
     )
     // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场
@@ -654,7 +654,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'warn',
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} ISK。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`,
+      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`,
     )
   }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；失利返航可召回）
@@ -757,17 +757,17 @@ function settleBattleRetreat(
     state,
     'warn',
     mode === 'timeout'
-      ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
+      ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。`
       : mode === 'cannot-engage'
         ? // 无法交战（2026-09-11 船长裁定「乙2 · 事件为 120 秒」）：写明**我方射程 × 敌站位**，
           // 让玩家看懂"不是打不过，是够不着"，并知道该换装配（推进器/更远的武器）。
           `⚔ 无法交战（${targetName}）：我方主武器最远射程 ${myTopRangeM.toLocaleString('zh-CN')} m，` +
           `敌编队停在约 ${foeTypicalRangeM.toLocaleString('zh-CN')} m 外（交火 ${durTxt}，一炮未发）——` +
-          `${shipName} 已脱离交火并返航。${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK。`
+          `${shipName} 已脱离交火并返航。${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。`
         : mode === 'auto'
-          ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，正在返航。`
+          ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点，正在返航。`
           // 2026-09-12 合并：主树「手动撤退 = **立刻回港**」的新文案（本块两侧各改一处 ⇒ 并集）
-          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} ISK，即刻回港。`,
+          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点，即刻回港。`,
   )
   // 收手 → 停清剿（若有；手动撤退与自动撤退都会终止重复清剿）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {

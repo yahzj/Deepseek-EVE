@@ -394,7 +394,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     }
     const wins = (state.wallet.isk - wallet0) / 2500
     expect(Number.isInteger(wins) && wins >= 1).toBe(true) // 每次击退恰为 5,000×50%
-    expect(state.logs.filter((l) => l.text.includes('缴获 2,500 ISK')).length).toBe(wins)
+    expect(state.logs.filter((l) => l.text.includes('缴获 2,500 信用点')).length).toBe(wins)
     const d1 = wreckDensityOf(state, 'galaxy-far', ctx)
     expect(d1).toBeGreaterThan(d0 + 3.2 * wins - 2) // 每胜注入威胁×0.4（闲置漂移误差 <2）
   })

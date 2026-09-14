@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 序章·苏醒（2026-09-05 船长拍板）——教程步骤机 + 重要任务结算（core 侧，可测）。
  *
  * 步骤常量：-1 未开始（老档/经典开局）／0 序章演出（UI）／1 采集 → 2 交付 → 3 出售 →
@@ -142,7 +142,7 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
   addLog(
     state,
     'trade',
-    `◆ 重要任务完成「补给协议·首批原材料」：交付 ${oreName}×${TUTORIAL_DELIVER_N}，+${TUTORIAL_REWARD_ISK.toLocaleString('zh-CN')} ISK、基础 AI 核心 ×1。`,
+    `◆ 重要任务完成「补给协议·首批原材料」：交付 ${oreName}×${TUTORIAL_DELIVER_N}，+${TUTORIAL_REWARD_ISK.toLocaleString('zh-CN')} 信用点、基础 AI 核心 ×1。`,
   )
   if (state.onboarding.step === ONB_DELIVER) {
     // 2026-09-08：交付完成 → 进入「出售」教学步骤（先教卖矿再修复）
@@ -154,7 +154,7 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
       state.shipId = 'sh-falconet'
       addLog(state, 'info', '已把驾驶切回鲣鱼级护卫舰——接下来港内维修的对象是它。')
     }
-    addLog(state, 'info', '交付只扣除 20 单位，其余富凡晶石留在物品仓库——去「物品」页把它们卖成 ISK（教学目标）。')
+    addLog(state, 'info', '交付只扣除 20 单位，其余富凡晶石留在物品仓库——去「物品」页把它们卖成信用点。')
   }
   return { ok: true }
 }
