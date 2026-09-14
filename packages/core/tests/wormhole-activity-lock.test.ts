@@ -25,9 +25,10 @@ import { shipBusyForWormhole, shipActivityBusy } from '../src/wormhole'
 import { shipBusyLabel } from '../src/activity'
 import { wormholePilotHoldReason } from '../src/state'
 import { startMining } from '../src/mining'
-import { wormholeScanStart, wormholeScanBlockReason, WORMHOLE_SCAN_UNLOCK_STANDING } from '../src/wormholeScan'
+import { wormholeScanStart, wormholeScanStop, wormholeScanBlockReason, WORMHOLE_SCAN_UNLOCK_STANDING } from '../src/wormholeScan'
 import { startScan, frontierGalaxyIds } from '../src/explore'
 import { startExpedition } from '../src/expedition'
+import { goStandbyAt } from '../src/location'
 
 const ctx = buildSimContext()
 const T1 = 'sh-falconet'
@@ -236,5 +237,70 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     // 临时离开 = 活动停止 ⇒ 主控可以去做别的（本趟进度原样保存）
     expect(wormholePilotHoldReason(state)).toBeNull()
     expect(startMining(state, beltId, ctx).ok).toBe(true)
+  })
+
+  /**
+   * **④ 扫描虫洞占着主控**（船长 2026-09-14 玩家反馈：「**虫洞扫描不占用主控活动**」）。
+   *
+   * 修前的漏洞 = **判据只有单向**：`wormholeScanBlockReason` 挡住"别人在跑时开扫"，
+   * 却没有任何地方挡住"扫描时去干别的" ⇒ 一边扫描一边出海采矿/打捞/远征。
+   * 修法 = 把它并进各主控活动共用的 `wormholePilotHoldReason`（一处生效，九个入口全覆盖）。
+   */
+  it('④ **扫描虫洞占用主控**：开采 / 打捞 / 扫描星系 / 远征 / 掩护巡逻 全部开不了（真命令）', () => {
+    const { state } = fresh()
+    const beltId = [...ctx.belts.keys()][0]!
+    const scanTarget = frontierGalaxyIds(state, ctx)[0]!
+    startWormholeScan(state) // 手搓现场：正在扫描虫洞（已扫 7 分钟）
+    // 单点：占用判据必须点名"扫描虫洞"
+    expect(wormholePilotHoldReason(state) ?? '').toContain('扫描虫洞')
+    // 真命令逐条：一律被拒、拒因点名"扫描虫洞"
+    const cases: Array<[string, { ok: boolean; error?: string }]> = [
+      ['开采', startMining(state, beltId, ctx)],
+      ['扫描星系', startScan(state, scanTarget, ctx)],
+      ['远征', startExpedition(state, 'ano-training', ctx)],
+      ['掩护巡逻', goStandbyAt(state, 'galaxy-hub', ctx)],
+    ]
+    for (const [name, r] of cases) {
+      expect(r.ok, `${name}：扫描虫洞期间还能开工 = 主控干两件事`).toBe(false)
+      expect(r.error ?? '', `${name} 的拒因要点名"扫描虫洞"`).toContain('扫描虫洞')
+    }
+    // 停扫 ⇒ 立刻放行，且**进度保留**（回来可续扫）
+    expect(wormholeScanStop(state).ok).toBe(true)
+    expect(wormholePilotHoldReason(state)).toBeNull()
+    expect(startMining(state, beltId, ctx).ok).toBe(true)
+    expect(state.wormholeScan!.progressMs).toBe(7 * 60_000)
+  })
+
+  /**
+   * **④′ 反方向也补齐**（同一批修）：长途运输 / 快递在途 / 亲自开炉 / 亲自开线**期间开不了扫**。
+   * 判据读的就是这些字段（与 `mining.ts` / `industry.ts` / `manufacturing.ts` 同一批现场）。
+   */
+  it('④′ 长途运输 / 快递在途 / 亲自开炉 / 亲自开线 ⇒ 开不了扫（两个方向成对）', () => {
+    const expectBlocked = (name: string, patch: (s: GameState) => void, keyword: string): void => {
+      const { state } = fresh()
+      patch(state)
+      const why = wormholeScanBlockReason(state)
+      expect(why, `${name} 期间不该能开扫`).not.toBeNull()
+      expect(why ?? '', `${name} 的拒因要点名它自己`).toContain(keyword)
+    }
+    expectBlocked('长途运输', (s) => void (s.hauling = { ...s.hauling, active: true }), '长途运输')
+    expectBlocked('快递投送在途', (s) => void (s.sideTasks.deliver = { taskId: 1, arriveAtGameMs: 600_000 } as never), '快递')
+    expectBlocked(
+      '亲自开炉（精炼）',
+      (s) => void s.refineRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never),
+      '精炼炉',
+    )
+    expectBlocked(
+      '亲自开线（制造）',
+      (s) => void s.manufacturingRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never),
+      '制造',
+    )
+    // 对照：AI 核心驱动的炉/线**不占主控** ⇒ 照旧能开扫
+    {
+      const { state } = fresh()
+      state.refineRuns.push({ id: 1, active: true, worker: 'basic', blueprintId: 'bp-titanium', count: 1 } as never)
+      state.manufacturingRuns.push({ id: 2, active: true, worker: 'basic', blueprintId: 'bp-titanium', count: 1 } as never)
+      expect(wormholeScanBlockReason(state), 'AI 核心驱动的产线不占主控').toBeNull()
+    }
   })
 })

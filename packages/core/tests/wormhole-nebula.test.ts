@@ -137,6 +137,35 @@ describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空�
     expect(emptyRatio(5)).toBeLessThan(emptyRatio(1) - 0.1)
   })
 
+  it('**事件玄学**（event-dividend）把空地点按**相对**削减：每级 −4% / 满级 ×0.8（地板之后乘）', () => {
+    // ① 系数 1（缺省）= 一字不变
+    for (const depth of [1, 3, 6, 9]) {
+      expect(wormholeEmptyShareFor(depth, 1)).toBeCloseTo(wormholeEmptyShareFor(depth), 10)
+    }
+    /**
+     * ② 满级 ×0.8：每一层都恰为 0.8 倍 —— **含已经触到 0.32 地板的深层**。
+     * 这正是"先取基础占比（含地板）、再乘系数"的判据：反过来先乘再取地板，深层会被地板吃回去、技能等于没用。
+     */
+    for (const depth of [1, 2, 5, 6, 9]) {
+      expect(wormholeEmptyShareFor(depth, 0.8), `层 ${depth}`).toBeCloseTo(wormholeEmptyShareFor(depth) * 0.8, 10)
+    }
+    // ③ 线性每级 −4%（rank 5 ⇒ 满级恰 −20%）
+    expect(wormholeEmptyShareFor(1, 1 - 0.04 * 5)).toBeCloseTo(0.4, 10)
+    expect(wormholeEmptyShareFor(1, 1 - 0.04 * 3)).toBeCloseTo(0.5 * 0.88, 10)
+    // ④ 真建盘：0 级与不传参逐格一致；满级空地点总量严格更少（逐 seed 有 ±1 取整余量，故看 40 seed 合计）
+    for (const depth of [1, 4, 6]) {
+      let base = 0
+      let maxed = 0
+      for (const seed of SEEDS.slice(0, 40)) {
+        const g0 = gridOf(depth, seed)
+        expect(wormholeMakeGrid(seed, depth, 0, 1), `层 ${depth} · seed ${seed}：0 级必须一字不变`).toEqual(g0)
+        base += g0.cells.filter((c) => c.place === 'empty').length
+        maxed += wormholeMakeGrid(seed, depth, 0, 0.8).cells.filter((c) => c.place === 'empty').length
+      }
+      expect(maxed, `层 ${depth}：40 seed 合计空地点 满级 ${maxed} 应少于 0 级 ${base}`).toBeLessThan(base)
+    }
+  })
+
   it('同 `(seed, depth)` 仍是**确定性同一张盘**（含星云落在哪几格）', () => {
     for (const depth of [1, 4, 5]) {
       expect(gridOf(depth, 777)).toEqual(gridOf(depth, 777))

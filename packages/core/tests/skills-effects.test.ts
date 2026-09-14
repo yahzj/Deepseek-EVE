@@ -14,13 +14,15 @@ import { scanWindowMsOf } from '../src/explore'
 import { getMiningParams, richVeinFactor } from '../src/mining'
 import { cargoCapacityM3Of, cargoUnitM3 } from '../src/inventory'
 import { startRefineRun, stopRefineRun } from '../src/industry'
-import { repairCostIsk } from '../src/shipyard'
+import { repairCostIsk, addShipToFleet } from '../src/shipyard'
 import { bountyRewardFactor } from '../src/expedition'
 import { simulateOffline } from '../src/simulation'
 import { enqueueSkill, HIDDEN_SKILL_IDS } from '../src/engine'
 import { trainingTimeFactor } from '../src/training'
 import { marketSellSkillMult } from '../src/market'
 import { lootFactor } from '../src/expedition'
+import { blankShareFactorOf, wormholeEnter } from '../src/wormhole'
+import { SKILLS, buildSimContext } from '@whale/data'
 
 const GAS_X: ItemDef = {
   id: 'gas-x',
@@ -329,5 +331,54 @@ describe('技能补全 P3a：物流/容量/执照/维修', () => {
     const costFull = repairCostIsk(state, state.shipId, ctx)
     expect(costFull).toBeLessThanOrEqual(Math.ceil(cost0 * 0.375) + 1) // ×0.375（ceil 舍入容差）
     expect(costFull).toBeGreaterThanOrEqual(Math.floor(cost0 * 0.375))
+  })
+})
+
+/**
+ * **事件玄学**（2026-09-14 船长四条改判；`id` 仍是 `event-dividend`）。
+ *
+ * ① 分红部分**一字未动**（+15%/级，`events.ts` 本批无改动）② 新增「洞里出现空白地点的几率」
+ * 相对削减（线性每级 −4%、rank 5 ⇒ 满级恰 −20%）③ 改名 / 移入「探索」组 / rank 2→5。
+ */
+describe('技能补全：事件玄学（event-dividend）', () => {
+  it('技能目录：已改名 / 移入探索组 / rank 5；说明同时登记分红与空地点两个每级值', () => {
+    const def = SKILLS.find((s) => s.id === 'event-dividend')
+    expect(def).toBeDefined()
+    expect(def!.name).toBe('事件玄学')
+    expect(def!.group).toBe('探索')
+    expect(def!.rank).toBe(5)
+    expect(def!.description).toContain('15%') // 分红：+15%/级（未动）
+    expect(def!.description).toContain('4%') // 空地点：每级相对 −4%
+    expect(def!.description).toContain('20%') // 满级 −20%
+  })
+
+  it('系数：0 级 = 1（一字不变）· 3 级 = 0.88 · 满级 = 0.8 · 越界夹住（负数 / 超 5 级）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 31 })
+    expect(blankShareFactorOf(state)).toBe(1)
+    state.skills.trained['event-dividend'] = 3
+    expect(blankShareFactorOf(state)).toBeCloseTo(0.88, 10)
+    state.skills.trained['event-dividend'] = 5
+    expect(blankShareFactorOf(state)).toBeCloseTo(0.8, 10)
+    state.skills.trained['event-dividend'] = 99
+    expect(blankShareFactorOf(state)).toBeCloseTo(0.8, 10) // 等级上限 5
+    state.skills.trained['event-dividend'] = -3
+    expect(blankShareFactorOf(state)).toBe(1) // 脏档不会反而放大空地点
+  })
+
+  it('接线：走真命令入洞，满级时首层盘面的空地点更少（同 seed 同编队）', () => {
+    const ctx = buildSimContext()
+    const emptyCountOf = (lv: number): number => {
+      const state = createInitialState({ nowWallMs: 0, seed: 4242 })
+      state.skills.trained['event-dividend'] = lv
+      const uid = addShipToFleet(state, 'sh-thresher')
+      expect(wormholeEnter(state, ctx, [uid], 4242).ok).toBe(true)
+      return state.wormhole.run!.grid!.cells.filter((c) => c.place === 'empty').length
+    }
+    /**
+     * 层 1：19 格、可分配池 18 ⇒ 0 级 ⌈18 × 50%⌉ = 9 格空 + 终点格本身也记 `empty` = **10**；
+     * 满级 ×0.8 ⇒ ⌈18 × 40%⌉ = 8 + 终点 = **9**。
+     */
+    expect(emptyCountOf(0)).toBe(10)
+    expect(emptyCountOf(5)).toBe(9)
   })
 })

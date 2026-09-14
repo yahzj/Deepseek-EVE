@@ -501,13 +501,6 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 2,
     description: '旧货市场渠道：市场稀有商品的供给单价格每级 −⟦2%⟧（满级 −⟦10%⟧）。',
   },
-  {
-    id: 'event-dividend',
-    name: '事件分红学',
-    group: '贸易',
-    rank: 2,
-    description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧（事件赏钱本身不多，纯属娱乐向的小惊喜，不必指望发家）。',
-  },
 
   // ───────── 探索（2026-09-04 新组） ─────────
   {
@@ -539,7 +532,20 @@ export const SKILLS: readonly SkillDef[] = [
     name: '星际奇遇学',
     group: '探索',
     rank: 5,
-    description: '奇闻轶事的嗅觉：在线随机事件的来访间隔每级 −⟦8%⟧（满级间隔约为原来的六成）；出击出发时遭遇随机事件的机会每级 ×⟦1.15⟧；虫洞扫描窗口每级缩短 ⟦4%⟧（满级 −⟦20%⟧）。',
+    description: '奇闻轶事的嗅觉：在线随机事件的来访间隔每级 −⟦8%⟧（满级间隔约为原来的六成）；出击出发时遭遇随机事件的机会每级 ×⟦1.15⟧；虫洞扫描窗口满级后缩短 ⟦20%⟧。',
+  },
+  {
+    // 2026-09-14 船长四条改判（同日追加）：①「事件分红学，改名事件玄学」②「Rank提高到5」
+    // ③「效果添加：降低虫洞内出现空白地点的几率，满级为20%」（四问四答：**相对削减**、分红部分不动、
+    //   移入**探索**组、不做特殊重分配）④落到「探索」组内（原属 **贸易** 组）。
+    // ⚠ **id 保持 `event-dividend` 不改**：老档 `skills.trained` / 训练队列都按 id 记账，改 id 会丢等级。
+    // 接线：分红 = `core/events.ts fireFlavor`（+15%/级，本批一字未动）；
+    //       空地点 = `core/wormhole.ts blankShareFactorOf` → `wormholeGrid.ts wormholeEmptyShareFor(depth, 系数)`。
+    id: 'event-dividend',
+    name: '事件玄学',
+    group: '探索',
+    rank: 5,
+    description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧；运气也延伸进虫洞——洞里出现空白地点的几率每级相对削减 ⟦4%⟧（满级 −⟦20%⟧）。',
   },
   {
     id: 'salvage-diving',

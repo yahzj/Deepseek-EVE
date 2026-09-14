@@ -184,6 +184,8 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
           onToast={onToast}
           onExplore={(id) => onExploreWormhole?.(id)}
           onAutoExplore={(id) => onAutoExploreWormhole?.(id)}
+          // 「返回虫洞」（船长 2026-09-14）：与活动栏那条同一入口（`App.openWormhole()`）
+          onReturn={() => onOpenWormhole?.()}
         />
       ) : null}
     </div>

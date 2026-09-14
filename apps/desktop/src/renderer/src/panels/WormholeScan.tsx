@@ -5,7 +5,7 @@
  * 口径（design §三/§五/§六 已确认）：
  * - **主控活动**：开始/停止都只在本页（进度保留，停扫不清零）；与采矿/打捞/远征等互斥；
  * - **窗口 = 12 小时 × 三技能乘算 × 星际奇遇学**（信号分析学/星图测绘学/信号过滤学，与星图扫描同源；
- *   再乘一项虫洞专属的**星际奇遇学**（每级 −4%、满级 −20%）；不吃舰船属性）；
+ *   再乘一项虫洞专属的**星际奇遇学**（**满级才 −20%**，阶跃）；不吃舰船属性）；
  * - 进度满 ⇒ 发现一处虫洞进库存（**上限 5**，满了**停机并提示**）；
  * - 库存每处带**种子 + 内容原型 + 敌族**（起始层**恒 1**：船长 2026-09-14「所有虫洞都是从1层开始探索」）；
  *   卡片只显示「**原型名，发现于 X月X日**」（船长 2026-09-14）；「探索这一处」⇒ 打开准备页选编队进洞（**消耗**该处）；
@@ -59,12 +59,18 @@ export function WormholeScanTab({
   onToast,
   onExplore,
   onAutoExplore,
+  onReturn,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onExplore: (stockId: string) => void
   /** 「自动探索」⇒ 打开**与主控探索同一个准备页**（`WormholePanel` 的自动模式；船长 2026-09-14） */
   onAutoExplore: (stockId: string) => void
+  /**
+   * **返回虫洞**（船长 2026-09-14：「建议在扫描虫洞内额外给玩家一个返回虫洞的按钮」）：
+   * 手上有一趟探索（临时离开中）时，本页给一个直达入口 —— 与活动栏那条走同一个 `openWormhole()`。
+   */
+  onReturn?: () => void
 }) {
   const state = engine.state
   /** 每秒重算一次读数（进度条/剩余时间跟手；引擎本身按拍推进） */
@@ -85,6 +91,8 @@ export function WormholeScanTab({
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
   const full = stock.length >= WORMHOLE_STOCK_MAX
+  /** 手上那趟探索（非空 = 人在洞里 / 临时离开中）；「返回虫洞」按钮与"扫描被挡"的说明都用它 */
+  const run = state.wormhole.run
   /** 解锁门槛（船长 2026-09-14：需要协会声望 40；解锁时会收到一封通讯 + 直接弹窗） */
   const unlocked = engine.wormholeScanUnlocked()
   const standing = engine.wormholeScanStanding()
@@ -97,7 +105,7 @@ export function WormholeScanTab({
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
-          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（每级 −4%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${WORMHOLE_STOCK_MAX} 处。`}
+          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${WORMHOLE_STOCK_MAX} 处。`}
         />
       }
       right={
@@ -164,6 +172,30 @@ export function WormholeScanTab({
           </div>
           {blocked !== null && !scan.active ? <div className="app-dim">{blocked}</div> : null}
         </div>
+
+        {/**
+         * **有一趟探索在洞里 ⇒ 给一个「返回虫洞」按钮**（船长 2026-09-14：「建议在扫描虫洞内
+         * 额外给玩家一个返回虫洞的按钮」）。为什么放在本页：人在洞里时**扫描是被挡的**
+         * （`wormholeScanBlockReason` 的「已经在虫洞里了」），玩家落到本页多半就是想回洞
+         * ⇒ 把出口摆在挡住他的那句话旁边。样式复用同页未解锁横幅那条 `.app-wh-scanbar`。
+         */}
+        {run ? (
+          <div className="app-wh-scanbar">
+            <div className="app-wh-scanbar-label">
+              <span className="app-wh-hold-warn">有一趟虫洞探索正在进行（临时离开中 · 进度已保存）</span>
+            </div>
+            <div className="app-wh-scanbar-actions">
+              <button
+                className="app-btn is-small is-primary"
+                disabled={!onReturn}
+                title="回到虫洞界面接着走这一趟（关掉面板即再次暂停，进度不会丢）"
+                onClick={() => onReturn?.()}
+              >
+                返回虫洞
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="app-bay-title">已发现的虫洞 · {stock.length} 处</div>
         {stock.length === 0 ? (

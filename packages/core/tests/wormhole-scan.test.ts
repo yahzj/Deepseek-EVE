@@ -6,12 +6,13 @@
  * 「**rank提升到5**」）。
  *
  * 锁住六条口径：
- * ① 窗口 = **12 小时** × 三技能乘算 × **星际奇遇学**（不练 = 12 小时；三项 + 奇遇学全满 ≈ 2.8 小时）；
+ * ① 窗口 = **12 小时** × 三技能乘算 × **星际奇遇学**（不练 = 12 小时；奇遇学**满级**才 −20%，阶跃）；
  * ② 主控活动互斥（采矿/打捞/扫描/远征/航行/待命/在洞内 都不许开扫）；
  * ③ 推进：满一个窗口发现一处进库存，**连续跨窗可连出**（离线大步长）；
  * ④ **库存上限 5**：满则**扫描停机**并写一条提示（不静默白跑）；
  * ⑤ 随档往返 + 坏值清洗（非法条目丢弃、超出上限截断）；
  * ⑥ 技能口径：三项扫描技能 `rank` = 3 / 4 / 5；**星际奇遇学 `rank` = 5 且归「探索」组**（同日改判）。
+ * （"解锁当次送一格"= 船长同日裁定「甲」，由 `reconcileWormholeScanWelcome` 落码，专测在 `wormhole-unlock.test.ts`。）
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, ITEMS, SKILLS } from '@whale/data'
@@ -45,6 +46,11 @@ function fresh(seed = 4242): GameState {
    * **解锁门槛另有专测**（`wormhole-unlock.test.ts`：协会声望 < 35 一律拦）⇒ 这里直接把声望垫到达标。
    */
   state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+  /**
+   * ⚠ **"解锁当次送一格"（`reconcileWormholeScanWelcome`）另有专测**（`wormhole-unlock.test.ts`）：
+   * 这里直接标记"已发放"，免得"进度条被预置满格"把窗口 / 停机 / 往返这些机制用例的读数全推高一格。
+   */
+  state.wormholeScan = { active: false, progressMs: 0, welcomed: true }
   return state
 }
 
@@ -71,14 +77,18 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     expect(wormholeScanWindowMs(state2)).toBeLessThan(WORMHOLE_SCAN_BASE_MS)
     /**
      * **星际奇遇学 = 虫洞专属的第四项**（船长 2026-09-14：「满级后缩减虫洞扫描周期20%」）：
-     * 每级 −4% 线性（Lv1 −4% · **满级 Lv5 −20%**），与三技能**乘算**。
+     * **满级（Lv5）才一次性 −20%**（阶跃；船长口述是"满级后"，故不是每级 −4% 的线性），与三技能**乘算**。
      */
     const state3 = fresh()
     state3.skills.trained['galactic-happenings'] = 5
     expect(wormholeScanWindowMs(state3)).toBe(Math.round(WORMHOLE_SCAN_BASE_MS * 0.8))
+    // 阶跃的两侧：Lv4 与 Lv1 一样**没有**虫洞加成（只吃它原本的事件类效果）
     const state4 = fresh()
-    state4.skills.trained['galactic-happenings'] = 1
-    expect(wormholeScanWindowMs(state4)).toBe(Math.round(WORMHOLE_SCAN_BASE_MS * 0.96))
+    state4.skills.trained['galactic-happenings'] = 4
+    expect(wormholeScanWindowMs(state4)).toBe(WORMHOLE_SCAN_BASE_MS)
+    const state5 = fresh()
+    state5.skills.trained['galactic-happenings'] = 1
+    expect(wormholeScanWindowMs(state5)).toBe(WORMHOLE_SCAN_BASE_MS)
     state.skills.trained['galactic-happenings'] = 5
     expect(wormholeScanWindowMs(state)).toBe(Math.round(three * 0.8))
     // ⚠ **星图扫描不吃这一项**（船长只点了虫洞）：同一档位上就地扫描窗口不受奇遇学影响

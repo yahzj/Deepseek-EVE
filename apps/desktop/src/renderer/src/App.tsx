@@ -515,6 +515,14 @@ export function App({ engine }: { engine: GameEngine }) {
   const commsUnread = engine.commsUnread()
   const [page, setPage] = useState<PageKey>('map')
   /**
+   * **点导航的"这一下"**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好给予玩家一个反馈，
+   * 哪怕点的是当前窗口」）：只在**点当前页**时用（换页由内容区重挂载的入场淡入负责）——
+   * 内容区与该项图标各播一次 220ms 脉冲；计时器落下来摘掉 class，于是连点也能一次次重播
+   * （CSS 动画不会因为 class 没变化而自行重放）。样式见 `styles.css` 的「侧边栏点击 / 一级页切换反馈」段。
+   */
+  const [navBeat, setNavBeat] = useState<{ key: PageKey; seq: number } | null>(null)
+  const navBeatTimer = useRef<number | null>(null)
+  /**
    * **赏金新板提示**（船长 2026-09-14：「当任务中心有新的赏金任务时，提示玩家，**玩家进入后消除提示**」）：
    * 判定 = **换板未看**（core `sideTaskBoard().bountyNewCount`，单点）——赏金日板每天本地 0 点整板替换。
    * 徽标在**任务中心页内恒为 0**（进入即消，不必等下一拍）；记账写在下面那个 effect 里。
@@ -760,11 +768,36 @@ export function App({ engine }: { engine: GameEngine }) {
     haul: '长途运输',
     whscan: '扫描虫洞',
   }
+  /** 播一次"点到了"的脉冲（内容区 + 该导航项图标；220ms 后自动落下）——同页重复点击也照样重播 */
+  const pulseNav = (key: PageKey): void => {
+    if (navBeatTimer.current !== null) window.clearTimeout(navBeatTimer.current)
+    setNavBeat((b) => ({ key, seq: (b?.seq ?? 0) + 1 }))
+    navBeatTimer.current = window.setTimeout(() => {
+      setNavBeat(null)
+      navBeatTimer.current = null
+    }, 220)
+  }
+  // 卸载时收掉未落下的计时器（不给已卸载的组件 setState）
+  useEffect(
+    () => () => {
+      if (navBeatTimer.current !== null) window.clearTimeout(navBeatTimer.current)
+    },
+    [],
+  )
   const changePage = (p: PageKey): void => {
     if (!tutCanOpen(p)) {
       showToast('按教程引导进行：先完成顶部指引条上的当前目标（每一步的完整说明在「通讯」页）。', true)
       return
     }
+    /**
+     * **点导航的"这一下"必须有反馈**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好
+     * 给予玩家一个反馈，**哪怕点的是当前窗口**」）：
+     * - **换页**：内容区随 `key={page}` 重挂载 ⇒ 播一次入场淡入（`.app-page-content` 基类），不必另加东西；
+     * - **点当前页**：**不重挂载**（页面里的检索词 / 滚动位置 / 弹层状态一律不受打扰），改播一次 220ms 脉冲
+     *   （内容区明暗脉冲 + 该导航项图标缩放脉冲）；计时器到点摘掉 class ⇒ 连点也能一次次重播。
+     */
+    if (p === page) pulseNav(p)
+    else setNavBeat(null)
     setPage(p)
   }
   const changeMapTab = (t: MapTab): void => {
@@ -900,7 +933,7 @@ export function App({ engine }: { engine: GameEngine }) {
             return (
               <button
                 key={item.key}
-                className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}`}
+                className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}${navBeat?.key === item.key ? ' is-beat' : ''}`}
                 disabled={tutLocked && !tutCanOpen(item.key)}
                 title={
                   tutLocked && !tutCanOpen(item.key)
@@ -936,8 +969,12 @@ export function App({ engine }: { engine: GameEngine }) {
             }}
             onOpenWormhole={openWormhole}
           />
-          {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗） */}
-          <div className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}`} key={page}>
+          {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗）。
+              `key={page}` ⇒ 换页即重挂载 = 入场淡入（切页反馈）；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
+          <div
+            className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}`}
+            key={page}
+          >
             {page === 'ship' ? (
               <ShipPage
                 {...pageProps}
