@@ -176,6 +176,9 @@ import {
   wormholeAutoConfirmAll,
   wormholeStockOf,
   wormholeStockTake,
+  wormholeStockDiscard,
+  wormholeStockMeta,
+  WORMHOLE_FAMILY_CARD,
   WORMHOLE_STOCK_MAX,
   holdTransferTo,
   makeHoldState,
@@ -213,6 +216,8 @@ import type {
   SettleStats,
   SideTask,
   SimContext,
+  WormholeArchetype,
+  WormholeFamily,
   WormholeAutoCandidate,
   WormholeAutoReport,
   WormholeAutoRun,
@@ -1473,8 +1478,38 @@ export class GameEngine {
   }
 
   /** 虫洞扫描：库存读数（界面用） */
-  wormholeStock(): Array<{ id: string; seed: number; depth: number; foundAtGameMs: number }> {
-    return wormholeStockOf(this.state)
+  wormholeStock(): Array<{
+    id: string
+    seed: number
+    depth: number
+    archetype: WormholeArchetype
+    family: WormholeFamily
+    foundAtGameMs: number
+  }> {
+    /** 老档缺 原型/族 ⇒ 这里按种子补全（与 `wormholeStockMeta` 同口径），界面只认完整口径 */
+    return wormholeStockOf(this.state).map((x) => ({ ...x, ...wormholeStockMeta(x) }))
+  }
+
+  /** 虫洞：放弃一处已发现的虫洞（船长 2026-09-14：「玩家要能够放弃已经探索出的虫洞」） */
+  wormholeStockDiscard(id: string): CommandResult {
+    const r = wormholeStockDiscard(this.state, id)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  /**
+   * 族名（取该族那张洞内敌卡的卡名：劫掠支队 / 巢群游猎 / 守墓巡哨 / 巨构残响 / 亡军封锁）。
+   *
+   * ⚠ **必须走 `ctx.anomalies` 全表**：五张洞内卡都带 `hidden: true`（施工期不进悬赏目录），
+   * 而 `this.anomalies` 是**过滤掉 hidden 的目录** ⇒ 早先在这里查不到、界面直接漏出内部 id
+   * （船长 2026-09-14 报障看到的是 `wh-alien-swarm`）。改成查全表，查不到才退回 id。
+   */
+  wormholeFamilyName(family: WormholeFamily): string {
+    const cardId = WORMHOLE_FAMILY_CARD[family]
+    return this.ctx.anomalies.get(cardId)?.name ?? this.anomalies.find((a) => a.id === cardId)?.name ?? cardId
   }
 
   /** 虫洞扫描：本趟窗口（毫秒；220 分钟 × 三技能乘算） */

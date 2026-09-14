@@ -864,6 +864,12 @@ export {
   wormholeAdvanceNode,
   wormholeDescend,
   // 2026-09-13 船长：侦察舰/电子舰「虫洞扫码 +1 圈（编队即生效、可叠加）」⇒ 编队加成求和
+  // 2026-09-14 船长：一处虫洞锁一族（丁 · 族徽）——族表 / 取卡 / 色调
+  WORMHOLE_FAMILY_ORDER,
+  WORMHOLE_FAMILY_CARD,
+  WORMHOLE_FAMILY_GLYPH,
+  wormholeFamilyOfSeed,
+  wormholeCardIdOfFamily,
   wormholeScanBonusOf,
   wormholeExtract,
   wormholeGridScan,
@@ -933,6 +939,14 @@ export {
   wormholeGridRadiusFor,
   wormholeMakeGrid,
   wormholeRuinsFloorFor,
+  // 2026-09-14 船长：内容原型（丙）——五档 + 权重 + 按原型重分配信号权重/遗迹占比/遗迹下限
+  WORMHOLE_ARCHETYPES,
+  WORMHOLE_ARCHETYPE_WEIGHTS,
+  WORMHOLE_ARCHETYPE_LABELS,
+  wormholeArchetypeOf,
+  wormholeSignalWeightsFor,
+  wormholeRuinsShareFor,
+  wormholeRuinsFloorBonusFor,
 } from './wormholeGrid'
 export type {
   HexCell,
@@ -1049,6 +1063,9 @@ export {
 export {
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
+  // 2026-09-14 船长：内容原型（丙）+ 敌族锁定（丁）+ 放弃已发现的虫洞
+  wormholeStockDiscard,
+  wormholeStockMeta,
   WORMHOLE_STOCK_MAX,
   WORMHOLE_STOCK_DEPTHS,
   wormholeScanStanding,
@@ -1063,7 +1080,7 @@ export {
   wormholeStockTake,
   advanceWormholeScan,
 } from './wormholeScan'
-export type { WormholeScanState, WormholeStockItem } from './state'
+export type { WormholeScanState, WormholeStockItem, WormholeArchetype, WormholeFamily } from './state'
 // 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 收益 40% 入仓库 · 绝不丢船）
 export {
   WORMHOLE_AUTO_DURATION_MS,
@@ -1090,6 +1107,9 @@ export {
   advanceWormholeAuto,
   wormholeAutoConfirmReport,
   wormholeAutoConfirmAll,
+  wormholeAutoArchetypeMul,
+  WORMHOLE_AUTO_ARCHETYPE_WEIGHTS,
+  wormholeRunMeta,
   shipNameOf,
 } from './wormholeAuto'
 export type { WormholeAutoRun, WormholeAutoReport } from './state'

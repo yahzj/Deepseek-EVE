@@ -201,13 +201,36 @@ export interface WormholeScanState {
   progressMs: number
 }
 
-/** **已发现、未开始探索的虫洞**（种子 + 起始层；上限 `WORMHOLE_STOCK_MAX`） */
+/**
+ * **虫洞内容原型**（船长 2026-09-14 定案 · 丙）：一处虫洞按种子抽一个原型，只改
+ * "非空格里各类信号占多少"——**不动空占比、盘半径、层威胁/层收益曲线**（强度仍只由层决定）。
+ */
+export type WormholeArchetype = 'balanced' | 'wreck' | 'ruins' | 'vein' | 'combat'
+
+/**
+ * **洞内敌族**（船长 2026-09-14 定案 · 丁）：一处虫洞**锁定一族**（整趟所有格都是该族的敌卡），
+ * 与数据里的五张洞内卡 **1:1**：`A 劫掠支队` / `C 巢群游猎` / `D 守墓巡哨` / `E 巨构残响` / `G 亡军封锁`。
+ * ⇒ 稀有残骸、遗迹安全货柜、专属装备与图纸**全是这一族**（"挑族刷装备"由此成立）。
+ */
+export type WormholeFamily = 'A' | 'C' | 'D' | 'E' | 'G'
+
+/** **已发现、未开始探索的虫洞**（种子 + 内容原型 + 敌族；起始层恒 1；上限 `WORMHOLE_STOCK_MAX`） */
 export interface WormholeStockItem {
   id: string
   /** 本趟种子（进洞时传给 `wormholeEnter`） */
   seed: number
-  /** 起始层（1~3）：越深越险、产出越高 */
+  /**
+   * 起始层：**恒 1**（船长 2026-09-14「所有虫洞都是从1层开始探索」；旧档里的 2/3 载入时归 1）。
+   * 字段保留 ⇒ **零迁移**（进洞时仍按它建副本，只是值不再有变化）。
+   */
   depth: number
+  /**
+   * 内容原型（丙 · 2026-09-14）。**可选字段 ⇒ 零迁移**：老档没有就按 `seed` 现算
+   * （`wormholeArchetypeOf`）——等价于"它本来就有原型"，不重掷、不改已存盘面。
+   */
+  archetype?: WormholeArchetype
+  /** 敌族（丁 · 2026-09-14）。同样**可选 ⇒ 零迁移**，老档按 `seed` 现算（`wormholeFamilyOfSeed`） */
+  family?: WormholeFamily
   /** 发现时刻（游戏内毫秒） */
   foundAtGameMs: number
 }
@@ -223,8 +246,12 @@ export interface WormholeAutoRun {
   stockId: string
   /** 该处虫洞的种子（产出池与它同源 ⇒ 同一处无论谁去，族池一致） */
   seed: number
-  /** 起始层 */
+  /** 起始层（恒 1；字段保留 ⇒ 零迁移） */
   depth: number
+  /** 该处的敌族（丁 · 族徽；缺省按 `seed` 现算 ⇒ 零迁移） */
+  family?: WormholeFamily
+  /** 该处的内容原型（丙 · 内容原型；缺省按 `seed` 现算 ⇒ 零迁移） */
+  archetype?: WormholeArchetype
   /** 参与舰（每条各占 1 枚 AI 核心；任务期间锁定） */
   shipIds: string[]
   startedAtGameMs: number
@@ -1357,7 +1384,7 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    */
   wormholeScan?: WormholeScanState
   /**
-   * **已发现、未开始探索的虫洞**（船长：最多囤积 5 个；每个带种子 + 起始层）。
+   * **已发现、未开始探索的虫洞**（船长：最多囤积 5 个；每处带种子 + 内容原型 + 敌族，起始层恒 1）。
    * 兼容字段（可选）：旧档没有 ⇒ 空库存，零迁移。
    */
   wormholeStock?: WormholeStockItem[]

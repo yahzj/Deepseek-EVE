@@ -124,11 +124,10 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     // 一次跨 3 个窗口 ⇒ 再出 3 处（累计 4）
     advanceWormholeScan(state, ctx, w * 3)
     expect(wormholeStockOf(state)).toHaveLength(4)
-    // 每处都带种子 + 起始层（1~3）
+    // 每处都带种子 + **起始层恒 1**（船长 2026-09-14：「所有虫洞都是从1层开始探索」）
     for (const item of wormholeStockOf(state)) {
       expect(item.seed).toBeGreaterThan(0)
-      expect(item.depth).toBeGreaterThanOrEqual(1)
-      expect(item.depth).toBeLessThanOrEqual(3)
+      expect(item.depth).toBe(1)
     }
   })
 
@@ -168,6 +167,8 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     const cleaned = loadSaveFile(JSON.stringify(raw)).state
     expect(cleaned.wormholeStock).toHaveLength(WORMHOLE_STOCK_MAX) // 只留合法条目、且截到上限
     expect(cleaned.wormholeStock!.every((x) => x.id.startsWith('x'))).toBe(true)
+    // 旧档里的起始层 2/3（上面这批就是 depth: 2）**载入时一律归 1**
+    expect(cleaned.wormholeStock!.every((x) => x.depth === 1)).toBe(true)
     expect(cleaned.wormholeScan).toEqual({ active: false, progressMs: 0 })
   })
 })
