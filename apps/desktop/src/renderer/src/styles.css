@@ -10179,3 +10179,21 @@ body {
 .app-comm-pop { width: min(560px, 92vw); }
 .app-comm-pop-body { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
 .app-comm-pop-body p { margin: 0; line-height: 1.6; }
+
+/* ═══════════ 窄屏（手机竖屏）· 虫洞面板适配（船长 2026-09-14 转玩家反馈：
+   「手机端没进战斗、在挖矿时，从顶部活动窗口返回虫洞会黑屏」）═══════════
+   ⚠ 如实说明：**这条是"整类黑屏"的防御性收口，不是已证实的根因** —— 我在桌面宽度下读码
+   没能复现出根因（面板各排都是 `flex:1 1 auto; min-width:0`、地图是 viewBox 自适应），
+   而手机上报的现象是"打开面板后一片黑"⇒ 最可能的一类原因是**窄屏下某一段把面板内容顶出可视区、
+   面板体又不滚**（面板高 = `min(760px, 100vh−72px)`）。
+   本条把窄屏下的虫洞面板改成：**面板体可纵向滚动 · 各横排自动堆叠 · 结算格单列**
+   ⇒ 无论哪一段变高/变宽，玩家都不会只看到一块空面板。桌面一字不动（全在媒体查询里）。 */
+@media (max-width: 640px) {
+  .app-wh-body { overflow-y: auto; }
+  .app-wh-maprow { flex-direction: column; }
+  .app-wh-zoom { flex-direction: row; justify-content: center; }
+  .app-wh-settle { width: 100%; }
+  .app-wh-settle-grid { grid-template-columns: minmax(0, 1fr); }
+  .app-wh-tabs { flex-wrap: wrap; }
+  .app-modal-head { flex-wrap: wrap; row-gap: 6px; }
+}
