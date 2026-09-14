@@ -14,8 +14,8 @@
 | 项 | 值 |
 |---|---|
 | 工作树 / 分支 | `H:\大鲸鱼\Deepseek-EVE-verify` / `verify` |
-| HEAD（写本件时） | 收尾件提交 `caa41ae4` · **与 `main` 同点、两树差异 0**（收尾前的代码基线 = `3c8a8648`） |
-| `origin/main` | **本地未推 236 条**（船长「先不推」；闸门见 §7） |
+| HEAD（写本件时） | 收尾归档件落库于 `caa41ae4`（正文）/ `b2378641`（快照校准）· **与 `main` 同点、两树差异 0**（本会话代码基线 = `3c8a8648`） |
+| `origin/main` | **本地未推 236 条**（船长「先不推」；闸门见 §7）。⚠ 此后每落一次文档提交这个数就 +1 ⇒ **以 `git rev-list --count origin/main..main` 现算为准** |
 | 四连基线（合并态复跑） | typecheck 四包 **0 错** · core **124 文件 / 1311 用例**全绿 · `content:check` ✅ · 桌面 build ✅ |
 | 工作区 | `verify` 干净；`main` 有**一号在途未提交改动**（core/renderer/roadmap，非三号所有）；`tools/_*` 临时探针 **0** |
 | 主树本地产物 | `apps/desktop/out/renderer/assets/index-x-hMLnGu.js`（收尾时重建。⚠ 该 hash **每次构建都可能不同**——本仓 renderer 产物**非确定性**（同一份源码两次构建差约 600B），核"是不是最新"请看源码/规则，**别拿 hash 比新旧**） |
