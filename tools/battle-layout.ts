@@ -22,10 +22,28 @@
  *      窄窗里根本放不下（验算：1024 宽时连"间距取 0"都不够）⇒ **要不要治它请示船长**，
  *      不拿它当本批的失败项。
  *
+ * ── 2026-09-14 扩展（「舰种体积」打开后补的盲区）─────────────────────────────
+ * 船长当日改判「**直接打开阶梯（发布默认改 true）**」（战斗里舰体按舰种档缩放：T1 110 / T2 140 /
+ * T3 170 / T4 205 / T5 240，僚机 ×0.53）。打开后 `layout()` 会多走一条分支：**敌编队整行过宽时
+ * 等比收缩**（`fit ≥ 0.4`）。原版工具对此**是盲的**——它只喂 170/205/90 这几种宽度（都塞得下 ⇒
+ * 永不触发收缩），于是"开关开关跑出来一模一样"。本次补三件事：
+ *   ① 新增**阶梯真值编成**（4×T5 240 / 4×T1 110 / T2+T4 混编）⇒ 我方血条要在**最窄 110** 的舰旁边也不压字；
+ *   ② 新增**能逼出收缩的敌排**（4×T5 240 在 1024/1280 宽下必然收缩）；
+ *   ③ 敌排边界改用 `layout()` 返回的 **`sizes`（实际落画尺寸，含收缩）**核对——用输入尺寸核等于没核；
+ *   ④ 新增 **`--tier=on|off`**（默认跟随代码里的发布默认值）：在首次调用前打 `localStorage` 桩，
+ *      让同一份几何能在**两种口径**下 A/B 对照，并打印每档的收缩读数。
+ *
  * ⚠ 这是**读数型**核对（几何事实），**不是观感结论** —— 好不好看仍由船长看。
  * ⚠ 敌方那侧的"血条堆叠"另有 `foeBarGeom`（本工具只核我方这条 + 不重叠的硬约束）。
+ *
+ * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
+ *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v25**（`CURRENT_STATE_VERSION`）
+ *   - 本工具最后核对：**2026-09-14**（当日核对：舰种阶梯**开**态 66 组全绿、收缩读数 1280 宽 ×0.92 / 1024 宽 ×0.62~0.65）
+ *   - 本工具最后跑过：**2026-09-14**
+ *   - 判据：`CURRENT_STATE_VERSION − v25 ≥ 2` ⇒ **必须重跑核对**；`LAY.ROW_GAP` / `TIER_SIZE` / 血条 CSS 宽度
+ *     任一改动 ⇒ **必须重跑**（本工具量的就是这三者的算术关系）
  */
-import { LAY, layout, MY_BAR_W_MIN } from '../apps/desktop/src/renderer/src/panels/battleViewCore'
+import { LAY, MY_BAR_W_MIN, TIER_SIZE, layout, sizeByTierEnabled } from '../apps/desktop/src/renderer/src/panels/battleViewCore'
 
 /** 血条与邻舰船体之间要求的**最小净空隙**（px；与血条自带的那 6px 同源） */
 const CLEAR = 6
@@ -34,7 +52,21 @@ const CSS_BAR_W = 185
 /** 我方最左舰允许贴到的左边界（px；留一点余量更稳） */
 const LEFT_MARGIN = 8
 
-/** 编成 = 逐舰落画体积（主控在前） */
+/**
+ * `--tier=on|off`：在**首次调用 `layout()` 之前**给 `localStorage` 打桩
+ * （`battleViewCore` 首次询问时读一次并缓存 ⇒ 必须在任何布局调用前设置）。
+ * 不给参数 = 跟随代码里的发布默认值。
+ */
+const tierArg = (process.argv.find((a) => a.startsWith('--tier=')) ?? '').slice('--tier='.length)
+if (tierArg === 'on' || tierArg === 'off') {
+  ;(globalThis as unknown as { localStorage: unknown }).localStorage = {
+    getItem: (k: string): string | null =>
+      k === 'whale-idle:ship-size-tier' ? (tierArg === 'on' ? '1' : '0') : null,
+    setItem: (): void => {},
+  }
+}
+
+/** 编成 = 逐舰落画体积（主控在前）。带 `T#` 的条目用**阶梯真值**，能逼出"最窄舰旁边也要放下血条" */
 const FLEETS: Array<{ label: string; sizes: number[] }> = [
   { label: '4×T3 巡洋（洞内标准编队）', sizes: [170, 170, 170, 170] },
   { label: '2×T3（最小多舰）', sizes: [170, 170] },
@@ -42,6 +74,15 @@ const FLEETS: Array<{ label: string; sizes: number[] }> = [
   { label: '主控 T3 + 3×护卫（混编）', sizes: [170, 90, 90, 90] },
   { label: '4×护卫（同排全小舰：逼出收窄）', sizes: [90, 90, 90, 90] },
   { label: '战列 + 3×巡洋（极端混编）', sizes: [205, 170, 170, 170] },
+  // ── 2026-09-14 扩展：阶梯真值（打开后这才是实际落画宽度）。**只列可达编成** ──
+  //   可达性依据（洞内入场口径：最多 4 艘 · 折算总质量 ≤ 16,000 · T1 500 / T2 1,500 / T3 3,500 / T4 7,000）：
+  //   ⚠ **T5 旗舰禁入虫洞**、且全游戏只有 2 艘旗舰 ⇒ "4×T5"（240×4）这类编成**玩家实现不了**，
+  //     故不进本工具（放进来只会红、而且红的是不可达配置，属于自欺）。
+  { label: '4×T1 护卫（阶梯最窄 110：血条最吃紧 · 质量 2,000）', sizes: [TIER_SIZE[1], TIER_SIZE[1], TIER_SIZE[1], TIER_SIZE[1]] },
+  { label: '4×T2 驱逐（质量 6,000）', sizes: [TIER_SIZE[2], TIER_SIZE[2], TIER_SIZE[2], TIER_SIZE[2]] },
+  { label: '2×T3 + 2×T2（洞内混编 · 质量 10,000）', sizes: [TIER_SIZE[3], TIER_SIZE[3], TIER_SIZE[2], TIER_SIZE[2]] },
+  { label: '2×T4 战列（洞内最重可行 · 质量 14,000）', sizes: [TIER_SIZE[4], TIER_SIZE[4]] },
+  { label: 'T4 + 2×T3（质量 14,000）', sizes: [TIER_SIZE[4], TIER_SIZE[3], TIER_SIZE[3]] },
 ]
 const WINDOWS_HARD: Array<{ W: number; H: number }> = [
   { W: 1600, H: 900 },
@@ -51,8 +92,15 @@ const WINDOWS_WARN: Array<{ W: number; H: number }> = [
   { W: 1280, H: 800 },
   { W: 1024, H: 720 },
 ]
-/** 敌侧固定用一个典型 3 舰编成（本工具只核我方这条报障；敌侧另有 `foeBarGeom`） */
-const FOE_SIZES = [170, 170, 90]
+/**
+ * 敌侧编成（本工具只核"整行是否越界 + 收缩读数"；敌侧血条堆叠另有 `foeBarGeom`）。
+ * 第 2/3 组是**故意撑爆**的：4×T5 在 1024/1280 宽下必然触发等比收缩 ⇒ 这正是原版工具的盲区。
+ */
+const FOE_SETS: Array<{ label: string; sizes: number[] }> = [
+  { label: '敌 2×T3+1×T1', sizes: [170, 170, 90] },
+  { label: '敌 4×T5（撑爆：逼出收缩）', sizes: [TIER_SIZE[5], TIER_SIZE[5], TIER_SIZE[5], TIER_SIZE[5]] },
+  { label: '敌 4×T1（窄排）', sizes: [TIER_SIZE[1], TIER_SIZE[1], TIER_SIZE[1], TIER_SIZE[1]] },
+]
 
 let fail = 0
 let warn = 0
@@ -69,54 +117,78 @@ console.log('════ 战斗画面几何核对（同排不遮血条 · 2026-
 console.log(
   `参数：ROW_GAP = ${LAY.ROW_GAP} · 血条 CSS 宽 = ${CSS_BAR_W} · 血条宽下限 = ${MY_BAR_W_MIN} · 净空隙要求 = ${CLEAR}px`,
 )
+console.log(
+  `舰种阶梯 = ${sizeByTierEnabled() ? '开（2026-09-14 船长改判）' : '关（还原口径）'}` +
+    `（${tierArg === '' ? '跟随代码默认' : `--tier=${tierArg}`} · 阶梯 T1~T5 = ` +
+    `${[1, 2, 3, 4, 5].map((t) => TIER_SIZE[t as 1 | 2 | 3 | 4 | 5]).join('/')}）`,
+)
 
 for (const win of [...WINDOWS_HARD, ...WINDOWS_WARN]) {
   const hard = WINDOWS_HARD.some((w) => w.W === win.W)
   for (const fleet of FLEETS) {
     const meSize = fleet.sizes[0]!
-    const dims = { W: win.W, H: win.H, meW: meSize, foeW: 170 }
-    // 米制三档：near 200 / vis 取中 / open 大数（几何与米数无关，量级与实战一致即可）
-    const l = layout(dims, FOE_SIZES, (win.W * 0.6) / 2, win.W * 0.6, 200, meSize, fleet.sizes)
-    const tag = `${fleet.label} @ ${win.W}×${win.H}`
-    const barW = l.myBarW
-    if (fleet.sizes.length <= 1) {
-      bad(`${tag}：本工具只喂多舰编成`)
-      continue
-    }
-    if (barW === undefined) {
-      bad(`${tag}：多舰路径必须给出 myBarW（否则会用 185px 固定宽、可能遮数字）`)
-      continue
-    }
-    if (barW < MY_BAR_W_MIN || barW > CSS_BAR_W) bad(`${tag}：myBarW = ${barW}，超出 [${MY_BAR_W_MIN}, ${CSS_BAR_W}]`)
+    for (const foe of FOE_SETS) {
+      const dims = { W: win.W, H: win.H, meW: meSize, foeW: 170 }
+      // 米制三档：near 200 / vis 取中 / open 大数（几何与米数无关，量级与实战一致即可）
+      const l = layout(dims, foe.sizes, (win.W * 0.6) / 2, win.W * 0.6, 200, meSize, fleet.sizes)
+      const tag = `${fleet.label} vs ${foe.label} @ ${win.W}×${win.H}`
+      const barW = l.myBarW
+      if (fleet.sizes.length <= 1) {
+        bad(`${tag}：本工具只喂多舰编成`)
+        continue
+      }
+      if (barW === undefined) {
+        bad(`${tag}：多舰路径必须给出 myBarW（否则会用 185px 固定宽、可能遮数字）`)
+        continue
+      }
+      if (barW < MY_BAR_W_MIN || barW > CSS_BAR_W) bad(`${tag}：myBarW = ${barW}，超出 [${MY_BAR_W_MIN}, ${CSS_BAR_W}]`)
 
-    // ① 同排两两核对（同 y 视为同排：第二排整体低了一个排高 + 血条带 ⇒ 纵向已让开）
-    for (let i = 0; i < l.my.length; i++) {
-      for (let k = i + 1; k < l.my.length; k++) {
-        const a = l.my[i]!
-        const b = l.my[k]!
-        if (Math.abs(a.y - b.y) > 0.5) continue
-        const gap = Math.abs(a.x - b.x)
-        const need = barW / 2 + CLEAR + Math.max(fleet.sizes[i]!, fleet.sizes[k]!) / 2
-        if (gap + 0.001 < need) {
-          bad(
-            `${tag}：同排第 ${i}/${k} 条间距 ${gap.toFixed(1)}px < 需要 ${need.toFixed(1)}px` +
-              `（血条半宽 ${(barW / 2).toFixed(1)} + 空隙 ${CLEAR} + 邻舰半宽 ${(Math.max(fleet.sizes[i]!, fleet.sizes[k]!) / 2).toFixed(1)}）`,
-          )
+      // ① 同排两两核对（同 y 视为同排：第二排整体低了一个排高 + 血条带 ⇒ 纵向已让开）
+      for (let i = 0; i < l.my.length; i++) {
+        for (let k = i + 1; k < l.my.length; k++) {
+          const a = l.my[i]!
+          const b = l.my[k]!
+          if (Math.abs(a.y - b.y) > 0.5) continue
+          const gap = Math.abs(a.x - b.x)
+          const need = barW / 2 + CLEAR + Math.max(fleet.sizes[i]!, fleet.sizes[k]!) / 2
+          if (gap + 0.001 < need) {
+            bad(
+              `${tag}：同排第 ${i}/${k} 条间距 ${gap.toFixed(1)}px < 需要 ${need.toFixed(1)}px` +
+                `（血条半宽 ${(barW / 2).toFixed(1)} + 空隙 ${CLEAR} + 邻舰半宽 ${(Math.max(fleet.sizes[i]!, fleet.sizes[k]!) / 2).toFixed(1)}）`,
+            )
+          }
         }
       }
-    }
-    // ③ 不出边界（**逐舰用各自的半宽** —— 拿主控宽度当全队会误报）
-    const leftMost = Math.min(...l.my.map((p, i) => p.x - (fleet.sizes[i] ?? meSize) / 2))
-    if (leftMost < LEFT_MARGIN) {
-      const msg = `${tag}：我方最左舰贴到 ${leftMost.toFixed(1)}px（要求 ≥ ${LEFT_MARGIN}）`
-      if (hard) bad(msg)
-      else note(`${msg} —— 既有窄窗限制，见文件头说明`)
-    }
-    const rightMost = Math.max(...l.foe.map((p, i) => p.x + (FOE_SIZES[i] ?? 170) / 2))
-    if (rightMost > win.W) {
-      const msg = `${tag}：敌方最右舰越出右边界 ${(rightMost - win.W).toFixed(1)}px`
-      if (hard) bad(msg)
-      else note(`${msg} —— 既有窄窗限制`)
+      // ③ 不出边界（**逐舰用各自的半宽** —— 拿主控宽度当全队会误报）
+      const leftMost = Math.min(...l.my.map((p, i) => p.x - (fleet.sizes[i] ?? meSize) / 2))
+      if (leftMost < LEFT_MARGIN) {
+        const msg = `${tag}：我方最左舰贴到 ${leftMost.toFixed(1)}px（要求 ≥ ${LEFT_MARGIN}）`
+        if (hard) bad(msg)
+        else note(`${msg} —— 既有窄窗限制，见文件头说明`)
+      }
+      /* ④ 敌排边界：**必须用 `l.sizes`（收缩后的实际落画尺寸）**——用输入尺寸核等于没核 */
+      const foeRight = Math.max(...l.foe.map((p, i) => p.x + (l.sizes[i] ?? 0) / 2))
+      const foeLeft = Math.min(...l.foe.map((p, i) => p.x - (l.sizes[i] ?? 0) / 2))
+      if (foeRight > win.W) {
+        const msg = `${tag}：敌方最右舰越出右边界 ${(foeRight - win.W).toFixed(1)}px`
+        if (hard) bad(msg)
+        else note(`${msg} —— 既有窄窗限制`)
+      }
+      if (foeLeft < 0) {
+        const msg = `${tag}：敌方最左舰越出左边界 ${(-foeLeft).toFixed(1)}px`
+        if (hard) bad(msg)
+        else note(`${msg} —— 既有窄窗限制`)
+      }
+      /** 收缩读数（只在真的收缩时打，免得刷屏）：输入总宽 → 落画总宽 */
+      const inW = foe.sizes.reduce((s, v) => s + v, 0)
+      const outW = l.sizes.reduce((s, v) => s + v, 0)
+      if (outW < inW - 0.5) {
+        console.log(
+          `  · 收缩 ${tag}：敌排总宽 ${inW} → ${outW}（×${(outW / inW).toFixed(2)}；` +
+            `逐舰 ${foe.sizes.join('/')} → ${l.sizes.join('/')}）`,
+        )
+      }
+      if (l.sizes.some((v) => v < 24)) bad(`${tag}：收缩后出现 < 24px 的舰体（下限 0.4 与 24 双双失效）`)
     }
   }
 }
@@ -132,10 +204,11 @@ if (LAY.ROW_GAP < needGap) {
   bad(`ROW_GAP = ${LAY.ROW_GAP} 不足：两艘 T3 同排需要 ≥ ${needGap.toFixed(1)}px，185px 血条的数字才不被压`)
 }
 
+const groups = FLEETS.length * FOE_SETS.length
 if (fail === 0) {
   console.log(
-    `\n✅ 几何核对通过：${FLEETS.length} 种编成 × ${WINDOWS_HARD.length} 种常规窗口（共 ${FLEETS.length * WINDOWS_HARD.length} 组）` +
-      ` + 单舰路径自检 —— 同排血条不压邻舰数字、宽度合规、不出边界` +
+    `\n✅ 几何核对通过：${FLEETS.length} 种我方编成 × ${FOE_SETS.length} 种敌排 × ${WINDOWS_HARD.length} 种常规窗口（共 ${groups * WINDOWS_HARD.length} 组）` +
+      ` + 单舰路径自检 —— 同排血条不压邻舰数字、宽度合规、不出边界（含收缩后）` +
       (warn > 0 ? `（另有 ${warn} 条窄窗既有留档，见上）` : ''),
   )
 } else {
