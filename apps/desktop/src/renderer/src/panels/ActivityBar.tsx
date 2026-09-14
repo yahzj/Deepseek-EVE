@@ -157,11 +157,18 @@ export function ActivityBar({
   onToast,
   onAiCenter,
   onGoPage,
+  onOpenWormhole,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onAiCenter?: () => void
   onGoPage?: (page: string, mapTab?: string) => void
+  /**
+   * **虫洞那条直接开面板**（船长 2026-09-13：「活动栏直接开面板」）：
+   * 光跳星图页不够——星图要**先选中一个星系**才渲染「前往星系 · 行动」区，
+   * 而人已经进洞时星图默认没有选中星系 ⇒ 那一行里的「进入虫洞」可能根本不出现。
+   */
+  onOpenWormhole?: () => void
 }) {
   const state = engine.state
   const all = activityOverview(state, engine.ctx)
@@ -212,6 +219,11 @@ export function ActivityBar({
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
     const handleItemClick = (): void => {
+      // 虫洞走"直接开面板"那条（见 props 注释）；其余照旧跳页
+      if (v.kind === 'wormhole' && onOpenWormhole) {
+        onOpenWormhole()
+        return
+      }
       if (onGoPage) onGoPage(target.page, target.mapTab)
     }
     const goText =
