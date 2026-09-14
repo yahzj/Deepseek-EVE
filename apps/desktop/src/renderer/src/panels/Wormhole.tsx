@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 import { HintIcon } from '../ui/Hint'
+import { pinMarked } from '../ui/marks'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
 import { Glyph, itemIconOf, itemToneOf } from '../ui/Glyphs'
 import {
@@ -525,16 +526,27 @@ export function WormholePanel({
     }
   })
   const whFiltered = whQ.trim().length > 0 || whRole !== SUB_ALL || whTier !== SUB_ALL
-  const whShown = whEntries.filter((e) => {
-    const q = whQ.trim().toLowerCase()
-    if (q.length > 0) {
-      const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
-      if (!hay.includes(q)) return false
-    }
-    if (whRole !== SUB_ALL && (e.def?.role ?? 'industrial') !== whRole) return false
-    if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
-    return true
-  })
+  const whShown = pinMarked(
+    state,
+    'ships',
+    whEntries.filter((e) => {
+      const q = whQ.trim().toLowerCase()
+      if (q.length > 0) {
+        const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      if (whRole !== SUB_ALL && (e.def?.role ?? 'industrial') !== whRole) return false
+      if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
+      return true
+    }),
+    /**
+     * **已标记（收藏）的船靠前**（船长 2026-09-14：「虫洞准备页面，玩家标记的船也要靠前」）：
+     * 口径与舰队页逐字同款——`pinMarked` 只把标记项插到最前、**组内保持原顺序**（本次是"机库序"），
+     * 不重排其余项；本页没有用户可选排序键（只有搜索 + 类别/级别子筛选）⇒ 恒走「默认排序」这一条
+     * （口径出处：`core/marks.ts` 头注 + `ui/marks.tsx`——置顶只在默认排序下生效）。
+     */
+    (e) => e.uid,
+  )
 
   /** 编队上限：手动 = `WORMHOLE_MAX_SHIPS`；自动 = 4 条副船（船长定案） */
   const pickCap = auto ? WORMHOLE_AUTO_MAX_SHIPS : WORMHOLE_MAX_SHIPS
