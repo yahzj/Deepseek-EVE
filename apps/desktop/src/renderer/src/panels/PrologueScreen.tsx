@@ -126,7 +126,7 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
                     <span className="app-pro-mod">{mod}</span>
                     <span className="app-pro-dots">…</span>
                     <span className="app-pro-text">{text}</span>
-                    <span className="app-pro-mark">{kind === 'ok' ? 'OK' : kind === 'warn' ? '!' : '✕'}</span>
+                    <span className="app-pro-mark">{kind === 'ok' ? '正常' : kind === 'warn' ? '!' : '✕'}</span>
                   </div>
                 ))}
                 {shown < CHECK_LINES.length ? (

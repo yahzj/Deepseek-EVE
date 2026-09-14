@@ -93,13 +93,13 @@ const VOYAGE_EVENTS: readonly FlavorEntry[] = [  { text: '跃迁通道里闪过�
   { text: '补给舰的货舱门坏了一半，你用胶带和铁丝帮它固定。', iskMin: 200, iskMax: 600 },
   { text: '舷窗外飘过一大片冰晶，折射出彩虹般的碎光。' },
   { text: '你在休息室找到一本别人落下的航行日记，读到凌晨。' },
-  { text: '一群流浪汉（其实是太空拾荒者）朝你挥了挥手。' },
+  { text: '一队路过的太空拾荒者朝你挥了挥手。' },
   { text: '前方出现未知引力井，你谨慎地绕行——好奇心差点害死猫。' },
   { text: '船体外的天线挂住了一只睡着的太空鸟（大概是某种仿生机器人）。' },
-  { text: '路过的货船长跟你分享了他的午饭配方：压缩饼干炖罐头。' },
-  { text: '你成功避开了一块涂了警告漆的岩礁，像玩了一次极限漂移。' },
+  { text: '路过的货船船长跟你分享了他的午饭配方：压缩饼干炖罐头。' },
+  { text: '你成功避开了一块涂了警告漆的岩礁，几乎是贴着它的边缘滑过去的。' },
   { text: '一条加密消息指向某个坐标，打开后是一幅涂鸦——诈骗犯也懂浪漫。' },
-  { text: '航行仪显示前方有 0.03% 概率的随机故障，它真的发生了。' },
+  { text: '航行仪短暂失灵，几秒后自己恢复了——虚惊一场。' },
   { text: '你帮助一艘失去动力的拖网船脱困，对方给了你一条新鲜的电鱼。', iskMin: 600, iskMax: 1500 },
   { text: '深空有一段短暂的“寂静带”，引擎声消失的十秒里世界很安静。' },
   { text: '某颗气态巨行星的云层里，闪电像城市夜景一样连绵不绝。' },
@@ -156,7 +156,7 @@ function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
 
 /** 日志里统一写事件文本（金额自动附注） */
 function logEvent(state: GameState, text: string, amount?: number): void {
-  addLog(state, 'info', `✦ ${text}${amount !== undefined && amount > 0 ? `（+${amount.toLocaleString('zh-CN')} ISK）` : ''}`)
+  addLog(state, 'info', `✦ ${text}${amount !== undefined && amount > 0 ? `（+${amount.toLocaleString('zh-CN')} 信用点）` : ''}`)
 }
 
 /** 事件现金 · 已探索星系加成（2026-09-10 船长：探索越多事件奖金越高；导出供测试） */
@@ -228,11 +228,11 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext): void {
     if (buy) {
       const price = clampPrice(ctx, def, Math.round(level * (0.99 + nextRandom(state.rng) * 0.02)))
       mk.npcBuy[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
-      logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} ISK/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`)
+      logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`)
     } else {
       const price = clampPrice(ctx, def, Math.max(Math.round(level * (1.05 + nextRandom(state.rng) * 0.02)), level + 1))
       mk.npcSell[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
-      logEvent(state, `突现大宗抛售：有人以 ${price.toLocaleString('zh-CN')} ISK/单位放出「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`)
+      logEvent(state, `突现大宗抛售：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位放出「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`)
     }
   }
 }
@@ -264,7 +264,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
     mk.npcSell[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + BLACK_MARKET_LIFE_MS })
     logEvent(
       state,
-      `黑市商人挂出一件「${name}」：开价 ${price.toLocaleString('zh-CN')} ISK（约为行情价 ×${mul.toFixed(1)} 的溢价现货），仅存 ${Math.round(BLACK_MARKET_LIFE_MS / 60_000)} 分钟，手慢无——急用免蹲货，不差钱可出手。`,
+      `黑市商人挂出一件「${name}」：开价 ${price.toLocaleString('zh-CN')} 信用点（约为行情价 ×${mul.toFixed(1)} 的溢价现货），仅存 ${Math.round(BLACK_MARKET_LIFE_MS / 60_000)} 分钟，手慢无——急用免蹲货，不差钱可出手。`,
     )
   } else {
     const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
@@ -272,7 +272,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
     mk.npcBuy[def.key]!.push({ price, qty: 1, expiresAtGameMs: state.gameMs + lifeMs })
     logEvent(
       state,
-      `神秘买家以 ${price.toLocaleString('zh-CN')} ISK 的天价求购「${name}」×1——远高于常态收购价，约 ${Math.round(lifeMs / 60_000)} 分钟内有效。`,
+      `神秘买家以 ${price.toLocaleString('zh-CN')} 信用点的天价求购「${name}」×1——远高于常态收购价，约 ${Math.round(lifeMs / 60_000)} 分钟内有效。`,
     )
   }
 }

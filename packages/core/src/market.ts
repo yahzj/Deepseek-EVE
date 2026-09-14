@@ -922,13 +922,13 @@ function settleSell(
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
   if (npc.qty <= 0) state.market.npcBuy[order.good]!.splice(idx, 1)
-  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
+  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} 信用点）` : ''
   if (state.escrowShips[order.id]) {
     delete state.escrowShips[order.id]
-    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`)
   } else {
     const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`)
+    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${bonusNote}${taxNote}。`)
   }
 }
 
@@ -966,7 +966,7 @@ function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: N
     state.wallet.isk += order.escrowIsk ?? 0
     order.escrowIsk = 0
   }
-  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${actual.toLocaleString('zh-CN')} ISK）。`)
+  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${actual.toLocaleString('zh-CN')} 信用点）。`)
 }
 
 /** 越线卖单抢单成交（2026-09-08 船长定：巡游采购按贴线度多件成交 @ 挂单价；税/escrow/池与簿成交同口径） */
@@ -991,13 +991,13 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
     pool.netVol -= take
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
-  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
+  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} 信用点）` : ''
   // 2026-09-08（船长定）：越线抢单成交静默化——日志与普通簿面成交完全一致，不出现"巡游采购"字样
   if (shipSale) {
-    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`)
   } else {
     const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`)
+    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${bonusNote}${taxNote}。`)
   }
 }
 
@@ -1026,7 +1026,7 @@ function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder):
     if (def?.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - 1)
   }
   // 2026-09-08（船长定）：越线买单静默化——日志与普通买单成交一致，不出现"巡游供货"字样
-  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×1（${order.price.toLocaleString('zh-CN')} ISK）。`)
+  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×1（${order.price.toLocaleString('zh-CN')} 信用点）。`)
 }
 
 /** 买入商品入对应库存（物品→物品仓库；装备→装备库；蓝图→蓝图书；核心→核心库；船→舰队）。
@@ -1127,13 +1127,13 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
     pool.netVol -= take
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
-  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} ISK）` : ''
+  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} 信用点）` : ''
   // 2026-09-08（船长定）：站内吸收静默化——日志与普通簿面成交完全一致，不出现"让利售出/站内收购"字样
   if (shipSale) {
-    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} ISK${taxNote}。`)
+    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`)
   } else {
     const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} ISK${bonusNote}${taxNote}。`)
+    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${bonusNote}${taxNote}。`)
   }
 }
 
@@ -1161,9 +1161,9 @@ function placeOrderLogText(
 ): string {
   const name = goodName(ctx, goodKey)
   const p = price.toLocaleString('zh-CN')
-  if (r.filled <= 0) return `已挂${side === 'buy' ? '买' : '卖'}单：${name}×${want.toLocaleString('zh-CN')} @ ${p} ISK。`
-  if (r.resting <= 0) return `${side === 'buy' ? '买' : '卖'}单已即时成交：${name}×${r.filled.toLocaleString('zh-CN')} @ ${p} ISK（无需再等撮合）。`
-  return `${side === 'buy' ? '买' : '卖'}单已即时成交 ${r.filled.toLocaleString('zh-CN')} 件，余 ${r.resting.toLocaleString('zh-CN')} 件挂单 @ ${p} ISK。`
+  if (r.filled <= 0) return `已挂${side === 'buy' ? '买' : '卖'}单：${name}×${want.toLocaleString('zh-CN')} @ ${p} 信用点。`
+  if (r.resting <= 0) return `${side === 'buy' ? '买' : '卖'}单已即时成交：${name}×${r.filled.toLocaleString('zh-CN')} @ ${p} 信用点（无需再等撮合）。`
+  return `${side === 'buy' ? '买' : '卖'}单已即时成交 ${r.filled.toLocaleString('zh-CN')} 件，余 ${r.resting.toLocaleString('zh-CN')} 件挂单 @ ${p} 信用点。`
 }
 
 /** 内部：把卖单写入订单表（不碰 escrow、不打日志） */
@@ -1221,7 +1221,7 @@ export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string
   }
   state.orders.push(order)
   const r = crossOnPlacement(state, ctx, order)
-  addLog(state, 'trade', placeOrderLogText(ctx, 'buy', goodKey, order.price, want, r) + `（预扣 ${escrow.toLocaleString('zh-CN')} ISK，撤单退回）`)
+  addLog(state, 'trade', placeOrderLogText(ctx, 'buy', goodKey, order.price, want, r) + `（预扣 ${escrow.toLocaleString('zh-CN')} 信用点，撤单退回）`)
   return order
 }
 
@@ -1242,7 +1242,7 @@ export function buyOrderBlockedReason(
   if (def.playerBuyable === false) return '该商品只收不卖，市场不出售现货。'
   const unit = Math.round(price)
   if (state.wallet.isk < unit) {
-    return `ISK 不足：挂 1 件需预扣 ${unit.toLocaleString('zh-CN')} ISK，钱包 ${Math.floor(state.wallet.isk).toLocaleString('zh-CN')} ISK（预扣部分撤单即退回）。`
+    return `信用点不足：挂 1 件需预扣 ${unit.toLocaleString('zh-CN')} 信用点，钱包 ${Math.floor(state.wallet.isk).toLocaleString('zh-CN')} 信用点（预扣部分撤单即退回）。`
   }
   return null
 }
@@ -1278,7 +1278,7 @@ export function cancelOrder(state: GameState, ctx: SimContext, orderId: number):
     if (back > 0) {
       state.wallet.isk += back
       order.escrowIsk = 0
-      addLog(state, 'trade', `买单已撤销：预扣 ${back.toLocaleString('zh-CN')} ISK 已退回钱包。`)
+      addLog(state, 'trade', `买单已撤销：预扣 ${back.toLocaleString('zh-CN')} 信用点已退回钱包。`)
     } else {
       addLog(state, 'trade', '买单已撤销。')
     }
@@ -1354,8 +1354,8 @@ export function sellAtMarket(
   }
   if (sold > 0) {
     const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    const taxNote = tax > 0 ? `，贸易税 ${tax.toLocaleString('zh-CN')} ISK` : ''
-    addLog(state, 'trade', `市价售出 ${goodName(ctx, goodKey)}×${sold.toLocaleString('zh-CN')}（税后入账 ${net.toLocaleString('zh-CN')} ISK，${fillPrices.length} 笔）${bonusNote}${taxNote}。`)
+    const taxNote = tax > 0 ? `，贸易税 ${tax.toLocaleString('zh-CN')} 信用点` : ''
+    addLog(state, 'trade', `市价售出 ${goodName(ctx, goodKey)}×${sold.toLocaleString('zh-CN')}（税后入账 ${net.toLocaleString('zh-CN')} 信用点，${fillPrices.length} 笔）${bonusNote}${taxNote}。`)
   }
   if (remaining > 0 && sold > 0) {
     const edge = fillPrices[fillPrices.length - 1]!
@@ -1440,7 +1440,7 @@ export function buyAtMarket(
     if (def.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - bought)
   }
   if (bought > 0) {
-    addLog(state, 'trade', `市价购入 ${goodName(ctx, goodKey)}×${bought.toLocaleString('zh-CN')}（${total.toLocaleString('zh-CN')} ISK）。`)
+    addLog(state, 'trade', `市价购入 ${goodName(ctx, goodKey)}×${bought.toLocaleString('zh-CN')}（${total.toLocaleString('zh-CN')} 信用点）。`)
   }
   if (remaining > 0) {
     if (bmLock && bought === 0) {
@@ -1540,8 +1540,8 @@ export function placeShipSellOrder(
     state,
     'trade',
     r.filled > 0
-      ? `卖单已即时成交：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} ISK。`
-      : `已挂卖单：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} ISK（可撤销退回机库）。`,
+      ? `卖单已即时成交：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} 信用点。`
+      : `已挂卖单：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} 信用点（可撤销退回机库）。`,
   )
   return order
 }
@@ -1700,7 +1700,7 @@ export function listSellHolding(
   const want = qty === undefined ? available : Math.max(0, Math.floor(qty))
   if (want <= 0 || available <= 0) return { ok: false, error: '没有可卖的库存。' }
   if (price <= 0 || price > def.basePrice * ctx.balance.market.maxPriceRatio) {
-    return { ok: false, error: '挂单价异常（需为 0 以上的 ISK，且不超过限价上限）。' }
+    return { ok: false, error: '挂单价异常（需为 0 以上的信用点，且不超过限价上限）。' }
   }
   const n = Math.min(want, available)
   if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。' }

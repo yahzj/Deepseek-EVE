@@ -52,7 +52,7 @@ describe('挂买单预扣冻结（挂单即扣钱，撤单/价差退回）', () 
     const order = placeBuyOrder(state, ctx, KEY, 100, 5)!
     expect(order.escrowIsk).toBe(500)
     expect(state.wallet.isk).toBe(wallet0 - 500)
-    expect(state.logs.some((l) => l.text.includes('预扣 500 ISK，撤单退回'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('预扣 500 信用点，撤单退回'))).toBe(true)
   })
 
   it('余额不足按余额缩量；连 1 件都挂不起则拒绝，并给出原因', () => {
@@ -66,7 +66,7 @@ describe('挂买单预扣冻结（挂单即扣钱，撤单/价差退回）', () 
     // 连一件都挂不起 → 拒绝 + 原因
     state.wallet.isk = 10
     expect(placeBuyOrder(state, ctx, KEY, 100, 5)).toBeNull()
-    expect(buyOrderBlockedReason(state, ctx, KEY, 100, 5)).toContain('ISK 不足')
+    expect(buyOrderBlockedReason(state, ctx, KEY, 100, 5)).toContain('信用点不足')
     expect(buyOrderBlockedReason(state, ctx, KEY, 100, 5)).toContain('撤单即退回')
   })
 
@@ -94,7 +94,7 @@ describe('挂买单预扣冻结（挂单即扣钱，撤单/价差退回）', () 
     expect(cancelOrder(state, ctx, order.id)).toBe(true)
     expect(state.wallet.isk).toBe(wallet0 - 240) // 只花了真正成交的 2 件
     expect(state.orders).toHaveLength(0)
-    expect(state.logs.some((l) => l.text.includes('预扣 960 ISK 已退回钱包'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('预扣 960 信用点已退回钱包'))).toBe(true)
   })
 
   it('成交完毕不留残留预扣（挂单移出后钱不会失踪）', () => {

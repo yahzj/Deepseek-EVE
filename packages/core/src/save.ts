@@ -468,7 +468,7 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
             typeof o === 'object' && o !== null && !(typeof o.good === 'string' && REMOVED_ORES[o.good]),
         )
       : []
-    if (converted > 0) pushLog('info', '相关挂单已撤销、锁仓一并折算；NPC 市场簿已清理退役商品。')
+    if (converted > 0) pushLog('info', '相关挂单已撤销、锁仓一并折算；市场补给簿已清理退役商品。')
 
     const mk = asRaw(raw.market)
     const cleanBooks = (b: unknown): Record<string, unknown> => {

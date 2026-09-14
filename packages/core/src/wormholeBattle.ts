@@ -637,8 +637,8 @@ function deliverExtraction(
     'info',
     `🕳 撤离成功${opts?.skippedBattle === true ? '（第 1 层没有拦截舰队：直接脱离）' : ''}：` +
       `背包 ${run.bag.length} 类物资入港` +
-      (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} ISK）` : '') +
-      (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} ISK）` : '') +
+      (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} 信用点）` : '') +
+      (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} 信用点）` : '') +
       `，第 ${run.depth} 层撤离。`,
   )
   // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手

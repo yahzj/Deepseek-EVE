@@ -346,7 +346,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     addLog(
       state,
       'info',
-      `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
+      `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
     )
   } else if (r < wWin + wLose) {
     // 受损：一口 = 敌群火力 × hitFirepowerSec，**先扣装甲、吸完再进结构**（2026-09-11 船长定）
@@ -379,7 +379,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
       'warn',
       takenUnits > 0
         ? `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被劫${suffix}——货仓损失 ${takenUnits.toLocaleString('zh-CN')} 单位货物，破财消灾。`
-        : `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被洗劫${suffix}——${takenIsk > 0 ? `抢走 ${takenIsk.toLocaleString('zh-CN')} ISK` : '一无所获的劫匪悻悻离去'}。`,
+        : `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被洗劫${suffix}——${takenIsk > 0 ? `抢走 ${takenIsk.toLocaleString('zh-CN')} 信用点` : '一无所获的劫匪悻悻离去'}。`,
     )
   }
   clearEncounter(state)
@@ -454,7 +454,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'info',
-      `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} ISK${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}${repairTail(battle, ctx)}。`,
+      `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}${repairTail(battle, ctx)}。`,
     )
   } else {
     // 失利附加扣损：与文字结算同一口径（一口 = 敌群火力 × hitFirepowerSec，装甲先吃）

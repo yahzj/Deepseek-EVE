@@ -509,10 +509,113 @@ export function holdMove(
 ): { ok: boolean; error?: string } {
   const p = hold.placements.find((q) => q.id === id)
   if (!p) return { ok: false, error: '没有这个件。' }
-  if (!canPlace(hold, x, y, { w: p.w, h: p.h }, capacity, id)) return { ok: false, error: '这里放不下。' }
+  // ⚠ 判据必须带 `fill`（散货件按"真正占的格数"算）：漏了它，移动一条不满的散货会被误判越界/重叠
+  if (!canPlace(hold, x, y, { w: p.w, h: p.h }, capacity, id, placementFill(p))) {
+    return { ok: false, error: '这里放不下。' }
+  }
   p.x = x
   p.y = y
   return { ok: true }
+}
+
+/**
+ * **两件互换位置**（船长 2026-09-13：「物品之间无法交换位置」）。
+ *
+ * 判据与 `holdMove` 同一把尺（`canPlace`），且**两件要互不相撞**。做法：先在**试算账**上把
+ * 对方摆到自己的原位，再判自己能不能落到对方的原位 —— 两份试算都过才真改状态（**任一件放不下就整体回滚**，
+ * 位置一字不动），形状对不上（例如 2×2 货柜与末行不满的散货条在窄缝里）⇒ 拒绝并说明。
+ *
+ * ⚠ **2026-09-13 修一个真 BUG**（船长报障：「大件物品和小件物品换位后，会出现重叠情况」）：
+ * 旧写法把两件都挪到网格外的哨兵位再各自试落 —— 于是**判自己时看不见对方**：一件 4×2 的散货条
+ * （末行只填 2 格）与 2×2 货柜正好能"各自都放得下"却**互相压住**（`2,0`、`3,0` 两格被两件同时占）。
+ * 现在改为**互相作为障碍物**试算，重叠不可能再溜过去；哨兵位的原地改动也一并不需要了。
+ */
+export function holdSwap(
+  hold: WormholeHoldState,
+  idA: string,
+  idB: string,
+  capacity: number,
+): { ok: boolean; error?: string } {
+  const a = hold.placements.find((q) => q.id === idA)
+  const b = hold.placements.find((q) => q.id === idB)
+  if (!a || !b) return { ok: false, error: '没有这个件。' }
+  if (a.id === b.id) return { ok: true }
+  const ax = a.x
+  const ay = a.y
+  const bx = b.x
+  const by = b.y
+  const others = hold.placements.filter((p) => p.id !== a.id && p.id !== b.id)
+  // 试算①：A 先落到 B 的原位 ⇒ 再看 B 能不能落到 A 的原位（既判越界、也判与 A 及其余件重叠）
+  const trialA: WormholeHoldState = { cols: hold.cols, placements: [...others, { ...a, x: bx, y: by }] }
+  const okB = canPlace(trialA, ax, ay, { w: b.w, h: b.h }, capacity, b.id, placementFill(b))
+  // 试算②：反过来再来一遍（两件都要"自己放得下"，不能只看单向）
+  const trialB: WormholeHoldState = { cols: hold.cols, placements: [...others, { ...b, x: ax, y: ay }] }
+  const okA = canPlace(trialB, bx, by, { w: a.w, h: a.h }, capacity, a.id, placementFill(a))
+  if (okA && okB) {
+    a.x = bx
+    a.y = by
+    b.x = ax
+    b.y = ay
+    return { ok: true }
+  }
+  return { ok: false, error: '两件的形状对不上：换过去会互相压住（先把一件挪开，或点「整理」）。' }
+}
+/**
+ * **按「抓取偏移」落件**（界面拖拽专用）：玩家抓的是件内第 `(dx,dy)` 格、光标落在 `(x,y)` 格。
+ *
+ * 语义 = 「**抓着的那一格跟着光标走**」（与浏览器拖动影像一致）：理想左上角 = `(x−dx, y−dy)`。
+ *
+ * ⚠ **2026-09-14 修船长报障**（探针在真 DOM 里复现）：件在**第一排**（`y = 0`）时抓它下面那格往第一排里拖，
+ * 理想左上角落到 **第 −1 行** ⇒ 旧写法直接判「这里放不下」，可玩家的意思明明是「**沿第一排把它挪过去**」。
+ * ⇒ 现在**越界就把件夹回网格内**（先夹再判），候选顺序：
+ * ① 精确落点 → ② **夹回网格** → ③ 光标格当左上角 → ④ 夹回后的光标格；第一个放得下的就用它。
+ * 全部放不下才报错 —— 手抓的位置偏了不该白报"放不下"。
+ */
+export function holdDropWithGrab(
+  hold: WormholeHoldState,
+  id: string,
+  x: number,
+  y: number,
+  capacity: number,
+  grab: { dx: number; dy: number },
+): { ok: boolean; error?: string; x?: number; y?: number } {
+  const p = hold.placements.find((q) => q.id === id)
+  if (!p) return { ok: false, error: '没有这个件。' }
+  const shape = { w: p.w, h: p.h }
+  const fill = placementFill(p)
+  const maxX = Math.max(0, hold.cols - p.w)
+  const maxY = Math.max(0, holdRows(capacity, hold.cols) - p.h)
+  const clamp = (v: number, max: number): number => Math.min(max, Math.max(0, v))
+  const dx = Math.max(0, Math.floor(grab.dx))
+  const dy = Math.max(0, Math.floor(grab.dy))
+  const ix = x - dx
+  const iy = y - dy
+  /**
+   * **界内就严格、越界才夹**：
+   * - 理想左上角落在**可用格**里 ⇒ 只试它一个（落不下就报错）—— 避免"明明想放到某一格、却被挪去别处"的意外；
+   * - 理想左上角越界 ⇒ 依次试「夹回网格」「光标格当左上角」「夹回后的光标格」
+   *   （船长那条报障正是靠第一条：件在第一排时把它沿第一排挪过去）。
+   */
+  const strict = placementInBounds(ix, iy, shape, capacity, hold.cols, fill)
+  const cands: Array<[number, number]> = strict
+    ? [[ix, iy]]
+    : [
+        [ix, iy],
+        [clamp(ix, maxX), clamp(iy, maxY)],
+        [x, y],
+        [clamp(x, maxX), clamp(y, maxY)],
+      ]
+  const tried = new Set<string>()
+  for (const [cx, cy] of cands) {
+    const k = `${cx},${cy}`
+    if (tried.has(k)) continue
+    tried.add(k)
+    if (!canPlace(hold, cx, cy, shape, capacity, p.id, fill)) continue
+    p.x = cx
+    p.y = cy
+    return { ok: true, x: cx, y: cy }
+  }
+  return { ok: false, error: '这里放不下（它周围没有能摆下这块地方的位置）。' }
 }
 
 /** 移除一件（**抛弃**就是它；返回被移除的件供日志/读数） */
@@ -539,8 +642,23 @@ export function holdCompact(
   for (const p of sorted) {
     const spot = findFreeSpot(staged, { w: p.w, h: p.h }, capacity, false, placementFill(p))
     if (!spot) {
-      // 放不下（超载态常见）⇒ 保持原位（不丢、也不硬塞）
-      staged.placements.push({ ...p })
+      /**
+       * 放不下（超载态常见）⇒ **改排到「可用区之外」的空位**，不再「原坐标不动」。
+       *
+       * ⚠ 2026-09-13 船长报障「整理后背包出现明显错误」的真因：原先写的是「保持原位（不丢、也不硬塞）」，
+       * 可原位很可能**已经被先排好的件占住**（staged 是重排后的新账）⇒ 两件坐标重叠、界面上一件压另一件。
+       * 现在：在「容量放开」的口径下再找一次空位（落在已排好件的下方，彼此不重叠），仍记进 unplaced
+       * 供界面提示「超载、先抛货」。
+       */
+      const overflow = findFreeSpot(
+        staged,
+        { w: p.w, h: p.h },
+        // 放开容量 = 容量 + 每件一行（最坏情况一件占一行也够排）⇒ 扫描行数有界、不拖慢
+        capacity + hold.cols * (sorted.length + 2),
+        false,
+        placementFill(p),
+      )
+      staged.placements.push(overflow ? { ...p, x: overflow.x, y: overflow.y } : { ...p })
       unplaced.push(p.id)
       continue
     }

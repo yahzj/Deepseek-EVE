@@ -48,7 +48,7 @@ export const GALAXIES: readonly GalaxyDef[] = [
     x: 386,
     y: 193,
     security: -1.0,
-    description: '古代舰队的墓园，据说守墓人从不睡觉。',
+    description: '古代舰队的墓园，据说守墓者从不睡觉。',
   },
   {
     id: 'galaxy-abyss',

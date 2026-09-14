@@ -203,19 +203,19 @@ export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult
   const quote = marketQuote(state, ctx, good.key)
   const ask = quote.sell ?? Math.round(levelOf(state, ctx, good.key) * 1.06)
   if (state.wallet.isk < ask) {
-    return { ok: false, error: `ISK 不足：基础 AI 核心约 ${ask.toLocaleString('zh-CN')} ISK（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
+    return { ok: false, error: `信用点不足：基础 AI 核心约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
   }
   if (quote.sell !== undefined) {
     const res = buyAtMarket(state, ctx, good.key, 1)
     if (res.bought > 0) {
-      addLog(state, 'trade', `已购入 基础 AI 核心（市场价 ${res.total.toLocaleString('zh-CN')} ISK）。AI 核心 = 你的分身，可指派给闲置舰船。`)
+      addLog(state, 'trade', `已购入 基础 AI 核心（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）。AI 核心 = 你的分身，可指派给闲置舰船。`)
       return { ok: true }
     }
   }
   // 供应簿瞬时吃穿：挂收购单（到货自动入核心库）
   const order = placeBuyOrder(state, ctx, good.key, ask, 1)
   if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。' }
-  addLog(state, 'trade', `基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} ISK，到货自动入核心库（可随时撤销）。`)
+  addLog(state, 'trade', `基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动入核心库（可随时撤销）。`)
   return { ok: true }
 }
 
@@ -976,7 +976,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       'trade',
       `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 大捷（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）！` +
         `${repairUse.length > 0 ? `船体维修装置${repairUse}。` : ''}` +
-        `奖金 ${reward.toLocaleString('zh-CN')} ISK${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
+        `奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
         `${dropText ? `，${dropText}` : ''}。残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`,
     )
   } else {
@@ -1001,7 +1001,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     addLog(
       state,
       'warn',
-      `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 失利（交火 ${durTxt}），维修花去 ${repair.toLocaleString('zh-CN')} ISK（耐久 ${dur}%）。` +
+      `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 失利（交火 ${durTxt}），维修花去 ${repair.toLocaleString('zh-CN')} 信用点（耐久 ${dur}%）。` +
         `${aiRepairUse.length > 0 ? `船体维修装置${aiRepairUse}。` : ''}`,
     )
   }

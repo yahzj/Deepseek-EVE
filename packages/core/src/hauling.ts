@@ -288,7 +288,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     'info',
     `长途运输开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
       (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
-      `，单段报酬随行情浮动在 ${min.toLocaleString('zh-CN')} ~ ${max.toLocaleString('zh-CN')} ISK（每趟一价，到站结算）${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
+      `，单段报酬随行情浮动在 ${min.toLocaleString('zh-CN')} ~ ${max.toLocaleString('zh-CN')} 信用点（每趟一价，到站结算）${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
   )
   return { ok: true }
 }
@@ -335,7 +335,7 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
       addLog(
         state,
         'trade',
-        `长途运输 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} ISK 已入账（本趟行情 ×${mul.toFixed(1)}；货仓 ${cap.toLocaleString('zh-CN')} m³ · 实际航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟）。`,
+        `长途运输 · 已运抵「${arrived}」：报酬 ${reward.toLocaleString('zh-CN')} 信用点已入账（本趟行情 ×${mul.toFixed(1)}；货仓 ${cap.toLocaleString('zh-CN')} m³ · 实际航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟）。`,
       )
       // 到站（母港 = dockedSite null；随后立即续下一段）
       state.awayGalaxy = null

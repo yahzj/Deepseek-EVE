@@ -1855,6 +1855,23 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
  * - 散货条由 core `wormholeHoldSyncCargo` 与 `run.bag` 对齐（数量变了就重放，**先试原位**保住玩家摆好的位置）；
  * - 超载（沉船后格数变小）⇒ 顶部红条 + 「一键抛到容量内」；抛弃**永远手动**（船长裁定 8）。
  */
+/**
+ * **抓取偏移**：玩家是抓住块内**第几格**开始拖的（列 dx / 行 dy）。
+ *
+ * 为什么必须有它（船长 2026-09-13 报障「如果不是拖拽左上角会提示[这里放不下]」）：
+ * 拖拽落点事件给的是**鼠标压着的那一格**；件的新左上角 = 落点 − 抓取偏移。
+ * 少了这一步，抓右下角拖一个 2×2 货柜就会按"左上角落在右下角那格"去判 —— 必然越界。
+ */
+function grabOffsetOf(el: HTMLElement, w: number, h: number, clientX: number, clientY: number): { dx: number; dy: number } {
+  const r = el.getBoundingClientRect()
+  if (r.width <= 0 || r.height <= 0) return { dx: 0, dy: 0 }
+  const clamp = (v: number, max: number): number => Math.min(max, Math.max(0, v))
+  return {
+    dx: clamp(Math.floor(((clientX - r.left) / r.width) * w), w - 1),
+    dy: clamp(Math.floor(((clientY - r.top) / r.height) * h), h - 1),
+  }
+}
+
 function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   const state = engine.state
   const ctx = engine.ctx
@@ -1866,9 +1883,18 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
 const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const [discardAsk, setDiscardAsk] = useState<{ id: string; units: number } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
+  /** 抓起时压住的是块内哪一格（见 `grabOffsetOf`）：落点要减掉它，抓哪一格拖都算数 */
+  const grabRef = useRef({ dx: 0, dy: 0 })
   const cols = WORMHOLE_HOLD_COLS
-  const rows = holdRows(info.capacity, cols)
   const placements = run.hold?.placements ?? []
+  /**
+   * **行数要够到"实际摆放件"**（不能只按容量算）：整理时**放不下的件会被排到可用区之外**
+   * （core `holdCompact`：先保彼此不重叠，再由界面提示抛货）——只按容量算行数，这些件会跑到格子外**看不见**。
+   */
+  const rows = Math.max(
+    holdRows(info.capacity, cols),
+    placements.reduce((m, p) => Math.max(m, p.y + p.h), 0),
+  )
   const boxes = placements.filter((p) => p.kind === 'box').length
   /** 散货**件**（一件一格：船长 2026-09-13 深夜口径；按物品名 + 位置排序，列表稳定不跳） */
   const cargoPieces = placements
@@ -1881,9 +1907,26 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     for (const c of placementCells(p)) ownerOf.set(`${c.x},${c.y}`, p)
   }
 
+  /**
+   * **落点**（船长 2026-09-13 两条：「拖拽要能抓住整件」「物品之间要能交换位置」）：
+   * ① 落在**空格**上 = 普通移动；② 落在**别件身上** = **两件互换位置**（形状对不上则拒绝并回滚，
+   * 由 core `holdSwap` 判、界面只报原因）。
+   *
+   * ⚠ **2026-09-14 修船长报障**（「不是拖拽左上角就提示[这里放不下]」＋「当物品上方处于第一排时」）：
+   * 落位要按**抓取偏移**换算（`grabRef`），且**越界由 core 夹回网格内**（`holdDropWithGrab`）
+   * ——件在第一排时抓它下面那格往第一排拖，理想左上角会落到第 −1 行，旧写法一律白报"放不下"。
+   */
   function dropAt(x: number, y: number): void {
-    if (!dragId) return
-    const r = engine.wormholeHoldMove(dragId, x, y)
+    const id = dragId
+    if (!id) return
+    const target = ownerOf.get(`${x},${y}`)
+    if (target && target.id !== id) {
+      const r = engine.wormholeHoldSwap(id, target.id)
+      if (!r.ok) onToast(r.error ?? '换不了位置。', true)
+      setDragId(null)
+      return
+    }
+    const r = engine.wormholeHoldDropAt(id, x, y, grabRef.current)
     if (!r.ok) onToast(r.error ?? '这里放不下。', true)
     setDragId(null)
   }
@@ -1920,7 +1963,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           </button>
         </div>
       ) : null}
-      <div className="app-wh-hold-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      <div
+        className="app-wh-hold-grid"
+        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
+      >
         {Array.from({ length: rows * cols }, (_, i) => {
           const x = i % cols
           const y = Math.floor(i / cols)
@@ -1953,6 +1999,11 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     : '空位：可放货柜'
               }
               draggable={isOrigin}
+              onPointerDown={(e) => {
+                if (isOrigin && p) {
+                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                }
+              }}
               onDragStart={() => {
                 if (isOrigin) setDragId(p!.id)
               }}
@@ -1973,19 +2024,6 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 }
               }}
             >
-              {isOrigin && p ? (
-                p.kind === 'cargo' ? (
-                  <span className="app-wh-hold-cargo-name">×{n(p.units ?? 0)}</span>
-                ) : (
-                  <>
-                    <span className="app-wh-hold-box-name">
-                      {/* 谜质装置用**2 字短标签**（悬停给全名与效果）；安全货柜统一写「货柜」，族由颜色区分 */}
-                      {wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜'}
-                    </span>
-                    <span className="app-wh-hold-box-size">{p.w}×{p.h}</span>
-                  </>
-                )
-              ) : null}
             </div>
           )
         })}
@@ -1996,21 +2034,56 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
          * 多格块的轮廓正好盖住它占的整块）；每件一个 figure，`grid-area` 跨它的 w×h 格，
          * 图标按 figure 的百分比取尺寸（单格也顺带变大）；`pointer-events: none` ⇒ 不吃拖拽与点击。
          */}
-        <div className="app-wh-hold-figures" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }} aria-hidden>
+        {/**
+         * **物品块层**（船长 2026-09-13 三条：「占多格的物品显示依旧是4格 ⇒ 要将四格合并成一个大格子」·
+         * 「玩家只能通过拖拽左上角的格子移动物品」· 「物品之间无法交换位置」）：
+         * 与格子网格**同一套 `grid-template-columns` 与 gap**（不手算像素），每件一个块，
+         * `grid-area` 跨它自己的 `w×h` 格 ⇒ **多格物品就是一个大格子**（一条边框、一块底色、图标居中）；
+         * 块**自己就是拖拽/点击/落点**（不再只能抓左上角那格）；落到别人身上 = `dropAt` 里换位。
+         * 标签写成底部小药丸（带底色）⇒ **不再被图标压住**（船长报的"数量被图标遮住"）。
+         */}
+        <div
+          className="app-wh-hold-figures"
+          style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
+        >
           {placements.map((p) => {
             const def = ctx.items.get(p.itemId)
             const key = itemIconOf(p.itemId, def?.kind)
+            const isCargo = p.kind === 'cargo'
+            const label = isCargo
+              ? `×${n(p.units ?? 0)}`
+              : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
             return (
               <div
                 key={`fig-${p.id}`}
-                className="app-wh-hold-fig"
+                className={`app-wh-hold-fig ${isCargo ? 'is-cargo' : 'is-box'}${dragId === p.id ? ' is-dragging' : ''}`}
                 style={{
                   gridColumn: `${p.x + 1} / span ${p.w}`,
                   gridRow: `${p.y + 1} / span ${p.h}`,
                   color: itemToneOf(p.itemId, key),
                 }}
+                title={
+                  isCargo
+                    ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货条：占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
+                    : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
+                }
+                draggable
+                onPointerDown={(e) => {
+                  grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                }}
+                onDragStart={() => setDragId(p.id)}
+                onDragEnd={() => setDragId(null)}
+                onDragOver={(e) => {
+                  if (dragId) e.preventDefault()
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  dropAt(p.x, p.y)
+                }}
+                onClick={() => setDragId((prev) => (prev === p.id ? null : p.id))}
               >
                 <Glyph name={key} size={64} color="currentColor" />
+                <span className="app-wh-hold-fig-label">{label}</span>
               </div>
             )
           })}
