@@ -78,9 +78,9 @@ export function shipSlotsOf(ship: { slots?: ShipSlots }): ShipSlots {
  * V18 模块归槽（Q3 映射单点实现）：显式 ModuleDef.rack 优先；缺省按家族/字段推导——
  * turret・missile・laser・drone-rack・drone-tac（炮台・导弹架・激光炮・无人机装置）→ high；
  * shield・propulsion（盾系・推进）→ mid；
- * **miner・salvager（采集器・打捞器）→ low**（2026-09-13 船长定：「**给作业开**」——
- * 作业装备不再跟武器抢高槽，改走低槽；低槽最少 1 个、多数船 2 个以上 ⇒
- * 小船的取舍变成"带打捞器还是带采集器"，而不再是"要不要火力"）；
+ * **miner・salvager（采集器・打捞器）→ high**（2026-09-05 定稿高槽 → 2026-09-13 一度改判低槽
+ * → **2026-09-14 船长「改回高槽」**：低槽口径下作业装备与装甲/货舱混在低槽组里，判定为错位 BUG
+ * ⇒ 归位高槽，与炮台/矿枪/无人机装置同组竞争；content:check 有对应契约钉子防漂移）；
  * armor・cargo（甲系・货舱）→ low；
  * support（V18.1 支援件）必须显式标注 rack（伤害/射速 = low、命中/闪避 = mid）。
  */
@@ -103,8 +103,8 @@ export function rackOf(def: {
   )
     return 'high'
   if (def.slot === 'shield' || def.slot === 'propulsion') return 'mid'
-  // 采集器 / 打捞器：低槽（船长 2026-09-13「给作业开」）
-  if (def.slot === 'miner' || def.slot === 'salvager') return 'low'
+  // 采集器 / 打捞器：高槽（船长 2026-09-14「改回高槽」——低槽口径作废）
+  if (def.slot === 'miner' || def.slot === 'salvager') return 'high'
   // 2026-09-11 协处理器：低槽（与装甲/货舱/支援件同槽类竞争——占一个低槽换 CPU 预算）
   if (def.slot === 'cpu') return 'low'
   return 'low'

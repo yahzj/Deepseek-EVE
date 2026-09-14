@@ -577,7 +577,7 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)
   const anomalies = engine.anomalies.filter((a) => a.galaxyId === galaxyId)
   if (cycles.length === 0 || anomalies.length === 0) {
-    return { eff: cycles.length === 0 ? '未装配打捞器（舰船页低槽安装后显示效率）' : null, val: null }
+    return { eff: cycles.length === 0 ? '未装配打捞器（舰船页高槽安装后显示效率）' : null, val: null }
   }
   const roundsPerHour = cycles.reduce((s, c) => s + 3_600_000 / c, 0)
   const avgThreat = anomalies.reduce((s, a) => s + a.threat, 0) / anomalies.length
@@ -691,7 +691,7 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
       className="is-fill"
       title="残骸打捞"
       hint={
-        <HintIcon tip="驾驶船低槽装打捞器即可开捞：自动循环作业——满舱返航卸货后自动续捞（可勾「本次返航卸货后停止」做单趟）；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。" />
+        <HintIcon tip="驾驶船高槽装打捞器即可开捞：自动循环作业——满舱返航卸货后自动续捞（可勾「本次返航卸货后停止」做单趟）；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。" />
       }
       right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
     >
@@ -934,14 +934,14 @@ function WreckCard({
           <button
             className="app-btn is-small is-primary"
             disabled={activeAnywhere}
-            title={activeAnywhere ? '已有打捞作业进行中（其它星系）——先停止或等满仓自动返航' : '开始打捞（需低槽打捞器；默认自动循环，满舱返航卸货后自动续捞）'}
+            title={activeAnywhere ? '已有打捞作业进行中（其它星系）——先停止或等满仓自动返航' : '开始打捞（需高槽打捞器；默认自动循环，满舱返航卸货后自动续捞）'}
             onClick={onStart}
           >
             <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>开始打捞
           </button>
         )}
         <div className="app-belt-ai">
-          <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title="选择空闲副船（需该船低槽装有打捞器）">
+          <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title="选择空闲副船（需该船高槽装有打捞器）">
             <option value="">— 空闲副船 —</option>
             {idleShips.map((id) => (
               <option key={id} value={id}>

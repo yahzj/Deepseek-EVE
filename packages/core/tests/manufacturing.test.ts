@@ -331,8 +331,8 @@ describe('装备装配与加成', () => {
     state.moduleBay['mod-a'] = 1
     const r = fitModule(state, 'mod-a', ctx)
     expect(r.ok).toBe(true)
-    // 采集器归**低槽**（2026-09-13 船长「给作业开」：作业装备不跟武器抢高槽）
-    expect(state.fleet[state.shipId].fitted.low[0]).toBe('mod-a')
+    // 采集器归**高槽**（2026-09-14 船长「改回高槽」：作业装备不占低槽）
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-a')
     expect(countModule(state, 'mod-a')).toBe(0)
     expect(fitModule(state, 'mod-a', ctx).ok).toBe(false) // 装备库已空
     expect(fitModule(state, 'mod-b', ctx).ok).toBe(false) // 未持有
@@ -346,14 +346,14 @@ describe('装备装配与加成', () => {
     expect(fitModule(state, 'mod-a', ctx2).ok).toBe(true)
     const r = fitModule(state, 'mod-c', ctx2)
     expect(r.ok).toBe(true)
-    expect(state.fleet[state.shipId].fitted.low[0]).toBe('mod-a') // 旧件不自动退（复数共存）
-    expect(state.fleet[state.shipId].fitted.low[1]).toBe('mod-c')
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-a') // 旧件不自动退（复数共存）
+    expect(state.fleet[state.shipId].fitted.high[1]).toBe('mod-c')
     expect(countModule(state, 'mod-a')).toBe(0)
     expect(countModule(state, 'mod-c')).toBe(0)
-    // 低槽满（2/2）：第三把矿枪被拒
+    // 高槽满（2/2）：第三把矿枪被拒
     const r3 = fitModule(state, 'mod-d', ctx2)
     expect(r3.ok).toBe(false)
-    expect(r3.error).toContain('低槽已满')
+    expect(r3.error).toContain('高槽已满')
     expect(state.moduleBay['mod-d']).toBe(1) // 未扣库
   })
 
@@ -382,26 +382,31 @@ describe('装备装配与加成', () => {
     expect(cargoCapacityM3(state, ctx)).toBe(1_040)
   })
 
-  it('炮台（V18）：**采集器走低槽、炮台走高槽**（互不抢位）；火力指数不含装备；换炮先卸后装', () => {
+  it('炮台（V18）：**采集器与炮台同走高槽**（同槽类竞争）；火力指数不含装备；换炮先卸后装', () => {
     state.moduleBay['mod-a'] = 1 // miner 件
     // 默认测试装备没有 turret 类，补一个
     const ctxWithTurret = makeTestCtx({ modules: [moduleDef('mod-t', 'turret', 0.6)] })
     state.moduleBay['mod-t'] = 1
     expect(fitModule(state, 'mod-a', ctxWithTurret).ok).toBe(true)
     expect(fitModule(state, 'mod-t', ctxWithTurret).ok).toBe(true)
-    // 2026-09-13 船长「给作业开」：采集器归低槽 ⇒ 与炮台**不再同槽竞争**
-    expect(state.fleet[state.shipId].fitted.low[0]).toBe('mod-a')
-    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-t')
+    // 2026-09-14 船长「改回高槽」：采集器与炮台**同走高槽组**（默认测试船 2 位刚好占满）
+    expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-a')
+    expect(state.fleet[state.shipId].fitted.high[1]).toBe('mod-t')
+    expect(state.fleet[state.shipId].fitted.low.filter((x) => x !== null)).toHaveLength(0) // 低槽不再被作业装备占位
     // V17：火力指数（calcPower）只计基础 + 炮术 + 船型加成——炮台不再以百分比乘入，
     // 其真实战力由 battleWinPreview 期望推演评估（装备 = 弹伤害 × dmgMult × 技能）
     expect(calcPower(state, ctxWithTurret)).toBeCloseTo(10, 5)
-    // 换炮：卸下旧炮再装新炮（V18 无自动替换——复数语义）
+    // 换炮：高槽两位都被占 ⇒ 先卸一件腾位再装（V18 无自动替换——复数语义）
     const ctxT2 = makeTestCtx({ modules: [moduleDef('mod-t2', 'turret', 0.25), moduleDef('mod-t', 'turret', 0.6)] })
     state.moduleBay['mod-t2'] = 1
-    expect(unfitAt(state, 'high', 0)).toBe(true)
+    const full = fitModule(state, 'mod-t2', ctxT2)
+    expect(full.ok).toBe(false)
+    expect(full.error).toContain('高槽已满')
+    expect(unfitAt(state, 'high', 0)).toBe(true) // 卸下矿枪腾位
     expect(fitModule(state, 'mod-t2', ctxT2).ok).toBe(true)
     expect(state.fleet[state.shipId].fitted.high[0]).toBe('mod-t2')
-    expect(countModule(state, 'mod-t')).toBe(1) // 卸下的旧炮台退回装备库
+    expect(countModule(state, 'mod-a')).toBe(1) // 卸下的矿枪退回装备库
+    expect(state.fleet[state.shipId].fitted.high[1]).toBe('mod-t') // 旧炮不动（复数共存）
   })
 })
 

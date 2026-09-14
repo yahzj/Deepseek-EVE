@@ -298,7 +298,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-lock-1', kind: 'module', refId: 'mod-lock-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
   { key: 'mod-lock-2', kind: 'module', refId: 'mod-lock-2', rarity: 'rare', basePrice: 465_000, demandMultiplier: 0.65 },
   { key: 'mod-lock-3', kind: 'module', refId: 'mod-lock-3', rarity: 'rare', basePrice: 2_270_000, demandMultiplier: 0.65 },
-  /* ═══ B3 打捞器（2026-09-05；**低槽**无伤害件（2026-09-13 由高槽改判）：升级只减周期；初价按低耗件梯队，可调） ═══ */
+  /* ═══ B3 打捞器（2026-09-05；**高槽**无伤害件（2026-09-13 曾改判低槽，2026-09-14 船长「改回高槽」）：升级只减周期；初价按低耗件梯队，可调） ═══ */
   { key: 'mod-salvager-1', kind: 'module', refId: 'mod-salvager-1', rarity: 'common', basePrice: 20_000, demandMultiplier: 0.6 },
   { key: 'mod-salvager-2', kind: 'module', refId: 'mod-salvager-2', rarity: 'rare', basePrice: 439_000, demandMultiplier: 0.65 },
   { key: 'mod-salvager-3', kind: 'module', refId: 'mod-salvager-3', rarity: 'rare', basePrice: 2_220_000, demandMultiplier: 0.65 },
