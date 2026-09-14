@@ -25,7 +25,7 @@ import { shipBusyForWormhole, shipActivityBusy } from '../src/wormhole'
 import { shipBusyLabel } from '../src/activity'
 import { wormholePilotHoldReason } from '../src/state'
 import { startMining } from '../src/mining'
-import { wormholeScanStart, wormholeScanBlockReason } from '../src/wormholeScan'
+import { wormholeScanStart, wormholeScanBlockReason, WORMHOLE_SCAN_UNLOCK_STANDING } from '../src/wormholeScan'
 import { startScan, frontierGalaxyIds } from '../src/explore'
 import { startExpedition } from '../src/expedition'
 
@@ -68,7 +68,7 @@ const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
 function fresh(): { state: GameState; pilot: string; mate: string } {
   const state = createInitialState({ nowWallMs: 0, seed: 4242 })
   const mate = addShipToFleet(state, T1)
-  state.standings['dsi'] = 35 // 扫描虫洞的解锁门槛（另见 wormhole-unlock.test.ts）
+  state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING // 扫描虫洞的解锁门槛（另见 wormhole-unlock.test.ts）
   return { state, pilot: state.shipId, mate }
 }
 

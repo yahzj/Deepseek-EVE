@@ -32,7 +32,7 @@ function unlockMsg(opts?: { unreleased?: boolean; min?: number }): CommsMessageD
     kind: '提示',
     subject: '深空测绘解锁：裂隙扫描阵列',
     body: ['测试正文'],
-    trigger: { kind: 'standing', factionId: 'dsi', min: opts?.min ?? 35 },
+    trigger: { kind: 'standing', factionId: 'dsi', min: opts?.min ?? WORMHOLE_SCAN_UNLOCK_STANDING },
     popup: true,
     ...(opts?.unreleased === true ? { unreleased: true } : {}),
   }
@@ -43,29 +43,29 @@ function ctxWith(msg: CommsMessageDef): typeof ctx {
   return { ...ctx, commsMessages: new Map([[msg.id, msg]]) } as typeof ctx
 }
 
-describe('虫洞解锁门槛（船长 2026-09-14：需要 35 声望）', () => {
-  it('**门槛 = 协会声望 35**：不足时拦（理由是未解锁）、刚好达标放行', () => {
+describe('虫洞解锁门槛（船长 2026-09-14：先定 35，当日改判提高到 40）', () => {
+  it('**门槛 = 协会声望 40**：不足时拦（理由是未解锁）、刚好达标放行', () => {
     const state = fresh()
-    expect(WORMHOLE_SCAN_UNLOCK_STANDING).toBe(35)
+    expect(WORMHOLE_SCAN_UNLOCK_STANDING).toBe(40)
     // 默认档声望 0 ⇒ 未解锁
     expect(wormholeScanUnlocked(state)).toBe(false)
     expect(wormholeScanStanding(state)).toBe(0)
     const blocked = wormholeScanBlockReason(state)
     expect(blocked).toContain('尚未解锁')
     expect(blocked).toContain(`${WORMHOLE_SCAN_UNLOCK_STANDING}`)
-    // 34 仍拦
-    state.standings['dsi'] = 34
+    // 差 1 点仍拦（边界跟着常量走，改门槛不用改用例）
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING - 1
     expect(wormholeScanUnlocked(state)).toBe(false)
     expect(wormholeScanBlockReason(state)).toContain('尚未解锁')
-    // 35 放行（其余前置都满足 ⇒ 理由是 null）
-    state.standings['dsi'] = 35
+    // 达标放行（其余前置都满足 ⇒ 理由是 null）
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
     expect(wormholeScanUnlocked(state)).toBe(true)
     expect(wormholeScanBlockReason(state)).toBeNull()
   })
 
   it('**调试 1 秒化**：`debugQuick` 打开后窗口 = 1 秒（与星图扫描同一把开关）', () => {
     const state = fresh()
-    state.standings['dsi'] = 35
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
     const normal = wormholeScanWindowMs(state)
     expect(normal).toBe(220 * 60_000) // 未练技能 = 220 分钟
     state.debugQuick = true
@@ -84,7 +84,7 @@ describe('需弹窗的通讯（解锁信）', () => {
     advanceComms(state, c)
     expect(commsPopupQueue(state)).toHaveLength(0)
     // 达标：送 + 进队列
-    state.standings['dsi'] = 35
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
     advanceComms(state, c)
     expect(commsPopupQueue(state)).toEqual([msg.id])
     expect(commsInbox(state, c).some((e) => e.id === msg.id)).toBe(true)
@@ -111,7 +111,7 @@ describe('需弹窗的通讯（解锁信）', () => {
 
   it('**门槛值口径**：`standing` 触发器按"声望势力 id"判定（不是通讯发件势力 id）', () => {
     const state = fresh()
-    state.standings['dsi'] = 35
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
     state.standings['dshi'] = 0 // 通讯发件势力那套 id 不该被当声望用
     const c = ctxWith(unlockMsg())
     advanceComms(state, c)
