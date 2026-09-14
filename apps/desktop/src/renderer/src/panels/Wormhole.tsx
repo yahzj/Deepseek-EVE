@@ -357,6 +357,8 @@ export function WormholePanel({
   const entryGate = auto || run ? null : engine.wormholeEntryGate(picked)
   /** 进洞会先自动停掉的那个活动（目前只有「扫描虫洞」；null = 没有） */
   const autoStopText = auto || run ? null : engine.wormholeEntryAutoStopText()
+  /** 带 `warn` 的（长途运输）要单独摆成**警告条**——船长 2026-09-14：「长途运输发出警告」 */
+  const autoStopWarns = auto || run ? [] : engine.wormholeEntryAutoStopList().filter((a) => a.warn)
   /**
    * **货仓超载**（F4 · 船长裁定 8：沉船后要求玩家手动抛弃货物）：
    * 超载期间不能再装货（拾取/打捞/战果），撤离与深入也要先抛到容量内 ⇒ 界面据此置灰并给提示。
@@ -1358,7 +1360,7 @@ export function WormholePanel({
               {!auto && entryGate !== null ? <div className="app-warn app-wh-gate">{entryGate}</div> : null}
               {/**
                * **进洞会自动停掉哪些活动的预告**（船长 2026-09-14「进洞自动停止」＋「同样落实到采矿/打捞」）：
-               * 只说清"会发生什么"，**不拦人**——这三项都是就地作业，停法与手点活动栏「停止」完全一致
+               * 只说清"会发生什么"，**不拦人**——这几项都是主控亲自在跑的作业，停法与手点活动栏「停止」完全一致
                * （扫描进度保留、作业中的货留在船上）。
                */}
               {!auto && autoStopText !== null ? (
@@ -1367,6 +1369,15 @@ export function WormholePanel({
                   （扫描进度保留、作业中的货留在船上——与手点活动栏「停止」同一个结果）。
                 </div>
               ) : null}
+              {/**
+               * **长途运输：发警告**（船长 2026-09-14）——它停掉**有可见后果**（本段航程中止、船被挪回出发站），
+               * 所以摆成琥珀色警告条，而不是跟在上面那句轻描淡写的预告里。
+               */}
+              {autoStopWarns.map((a) => (
+                <div key={a.kind} className="app-warn app-wh-gate">
+                  ⚠ 进洞会停掉「{a.name}」：本段航程立即中止，舰船<b>即时返港停靠出发站</b>（无惩罚，但这一趟运输就此结束）。
+                </div>
+              ))}
               {/* 进入按钮已上移到检索区右侧（船长 2026-09-13），此处不再重复放一个 */}
             </div>
           ) : null}

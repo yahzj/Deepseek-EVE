@@ -1753,8 +1753,8 @@ export function wormholeScanHalt(state: GameState): number | null {
  * **停掉"开采"这个活动**（状态单点：手动停采与"进洞前自动停采"共用），返回本趟读数；
  * 本来就没在采 ⇒ `null`。
  *
- * 与 `miningHalt` 同款理由（不 import `mining.ts` 以免给 `state → wormhole → mining` 添环）；
- * 日志由调用方写（手动停采写"已停止开采…"、进洞写"进洞前自动停掉…"）。
+ * 与 `wormholeScanHalt` 同款理由（不 import 各活动模块，以免给 `state → …` 添环）；
+ * 日志由调用方写（手动写"已停止…"、进洞写"进洞前自动停掉…"）。
  */
 export function miningHalt(state: GameState): { tripUnits: number; beltId: string | null; phase: MiningState['phase'] } | null {
   const m = state.mining
@@ -1788,6 +1788,31 @@ export function salvageHalt(
   s.cycleAccMs = 0
   s.tripM3 = 0
   s.deviceAccMs = {}
+  return info
+}
+
+/**
+ * **停掉"长途运输"这个活动**（状态单点：手动停运与"进洞前自动停运"共用），返回本段出发站；
+ * 本来就没在运 ⇒ `null`。
+ *
+ * 口径与手动停止**逐字一致**（2026-09-09 船长定）：**终止即瞬时返港**——不安排真实折返航程，
+ * 舰船**直接停靠回本段出发站**、无惩罚。
+ */
+export function haulingHalt(state: GameState): { fromSiteId: string | null } | null {
+  const h = state.hauling
+  if (h.active !== true) return null
+  const info = { fromSiteId: h.fromSiteId }
+  h.active = false
+  h.routeA = null
+  h.routeB = null
+  h.fromSiteId = null
+  h.toSiteId = null
+  h.legMinutes = 0
+  h.legMs = 0
+  h.phaseAccMs = 0
+  // 2026-09-09（船长定）：终止即瞬时返港——不再安排真实折返航程，船直接停靠回出发站
+  state.awayGalaxy = null
+  state.dockedSite = info.fromSiteId === null ? null : info.fromSiteId
   return info
 }
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */

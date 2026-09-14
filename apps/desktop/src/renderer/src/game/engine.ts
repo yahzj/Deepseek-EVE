@@ -1540,6 +1540,14 @@ export class GameEngine {
   }
 
   /**
+   * 进洞时会自动停掉的活动（**带 `warn` 标记**）——准备页据此把「长途运输」这类**有可见后果**的
+   * 单独摆成警告条（船长 2026-09-14：「长途运输发出警告」）。
+   */
+  wormholeEntryAutoStopList(): Array<{ kind: string; name: string; warn: boolean }> {
+    return wormholeEntryAutoStops(this.state).map((a) => ({ kind: a.kind, name: a.name, warn: a.warn }))
+  }
+
+  /**
    * **准备页"这张卡能不能编入"用的忙态**（与进洞门槛同一把尺，核心单点 `wormholeShipEntryBusy`）：
    * 泛用徽标 `shipBusyLabel` 会把「扫描虫洞」报成忙，而进洞那一步会自动停扫 ⇒ 主控那一档放行。
    */
