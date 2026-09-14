@@ -9055,9 +9055,15 @@ body {
 
 .app-mkt-chart-hint { margin-top: 2px; font-size: 10.5px; opacity: 0.75; color: #7fb4c9; }
 
-/* ---------- market right column stretch (2026-09-08) ---------- */
+/* ---------- market right column stretch ----------
+   2026-09-08 初版：右栏富余高度全给**最后一个**面板（「我的挂单」）——目的是与左栏同高。
+   2026-09-14 船长（甲）：「市场详情面板太矮，右栏空的高度全跑到我的挂单」⇒ **改判**：
+   富余高度给**第一个**面板（「市场详情」= 右栏主内容）；「我的挂单」按内容高、
+   最多占右栏 40%（单子多了在自己面板体内滚）⇒ 详情不会被挂单列表挤扁。 */
 
-.app-mkt-right > .wui-panel:last-child { flex: 1 1 auto; min-height: 0; }
+.app-mkt-right > .wui-panel:first-child { flex: 1 1 auto; min-height: 0; }
+
+.app-mkt-right > .wui-panel:last-child { flex: 0 1 auto; max-height: 40%; min-height: 0; }
 
 /* ---------- market page fill chain (2026-09-08 no-scroll) ---------- */
 
