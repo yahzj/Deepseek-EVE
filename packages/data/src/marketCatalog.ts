@@ -52,59 +52,59 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   数值：虚空晶 0.5 + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **1,016.25**；
   //   basePrice 1,300（≈1.28×产出，供应侧不亏）· demandMultiplier 0.6 ⇒ 收购 ≈780 < 1,016（买入精炼不赚）。】
   { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6 },
-  // ── **遗迹安全货柜**（F4 · 2026-09-13）──
-  // 【不上市交易：它是"带回后拆解"的中间件，不是商品。这里照"每种物品必须有市场卡"的既有契约补卡，
-  //   一律 `unreleased`（施工期不可见）⇒ **上线动作 = 删这 5 个字段**（与虚空母矿同一套做法）。
-  //   basePrice 1 / demandMultiplier 0：即便将来失手放出来，也不至于变成一条套利通道。】
-  { key: 'box-relic-a', kind: 'item', refId: 'box-relic-a', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'box-relic-c', kind: 'item', refId: 'box-relic-c', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  // 【图纸货柜 3 种（2026-09-14 船长定：虫洞遗迹打捞新增）：口径与安全货柜逐字相同——同样是"带回后拆解"
-  //   的中间件、同样不上市交易；basePrice 1 / demandMultiplier 0 兜底防套利；施工期一律 unreleased
-  //   ⇒ **上线动作 = 删这 3 个字段**。】
-  { key: 'box-bp-shallow', kind: 'item', refId: 'box-bp-shallow', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'box-bp-mid', kind: 'item', refId: 'box-bp-mid', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'box-bp-deep', kind: 'item', refId: 'box-bp-deep', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  // 【AI 核心 3 种（2026-09-14 船长定：虫洞遗迹打捞新增掉落）：**洞内实物形态**——占货仓 1 格、
-  //   撤离成功即自动接入核心库（`state.aiCores`）、**不进仓库、不上市交易**。⚠ 与上面三条 `core-*`
-  //   （市场那本账，kind `aicore`、basePrice 9 万/28 万/90 万）是**两回事**：那三条是"能直接买的核心"，
-  //   这三条只是"洞内占格用的实物卡"。照"每种物品必须有市场卡"的既有契约补卡，一律 `unreleased`
-  //   ⇒ **上线动作 = 删这 3 个字段**；basePrice 1 / demandMultiplier 0 兜底防套利。】
-  { key: 'ai-core-gamma', kind: 'item', refId: 'ai-core-gamma', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'ai-core-beta', kind: 'item', refId: 'ai-core-beta', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'ai-core-alpha', kind: 'item', refId: 'ai-core-alpha', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  // 【谜质储存器 7 台（F3c · 船长 2026-09-13）：同样**不上市交易**——它们是"本趟虫洞内生效、离开即消失"
-  //   的装置，不是商品。照"每种物品必须有市场卡"的既有契约补卡，一律 `unreleased`（施工期不可见）
-  //   ⇒ **上线动作 = 删这 7 个字段**（与货柜 / 虚空母矿同一套做法）；basePrice 1 / demandMultiplier 0
-  //   兜底：即便失手放出来也不构成套利通道。】
-  { key: 'mat-surveyor', kind: 'item', refId: 'mat-surveyor', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-chrono', kind: 'item', refId: 'mat-chrono', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-crane', kind: 'item', refId: 'mat-crane', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-drill', kind: 'item', refId: 'mat-drill', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-nebula', kind: 'item', refId: 'mat-nebula', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-enricher', kind: 'item', refId: 'mat-enricher', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-expander', kind: 'item', refId: 'mat-expander', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  // 【谜质储存器 B1 批（威胁 3 + 战斗 10）：同上，一律 unreleased、不构成套利通道】
-  { key: 'mat-suppressor', kind: 'item', refId: 'mat-suppressor', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-boss-analyzer', kind: 'item', refId: 'mat-boss-analyzer', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-extract-cover', kind: 'item', refId: 'mat-extract-cover', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-shield-res', kind: 'item', refId: 'mat-shield-res', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-armor-res', kind: 'item', refId: 'mat-armor-res', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-hull-res', kind: 'item', refId: 'mat-hull-res', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-tracker', kind: 'item', refId: 'mat-tracker', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-gyro', kind: 'item', refId: 'mat-gyro', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-jammer', kind: 'item', refId: 'mat-jammer', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-rangefinder', kind: 'item', refId: 'mat-rangefinder', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-blindspot', kind: 'item', refId: 'mat-blindspot', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-ammo-dmg', kind: 'item', refId: 'mat-ammo-dmg', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-reload', kind: 'item', refId: 'mat-reload', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  // 【谜质储存器 B2 批（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）：同上一律 unreleased】
-  { key: 'mat-volley', kind: 'item', refId: 'mat-volley', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-ammo-back', kind: 'item', refId: 'mat-ammo-back', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-drone-net', kind: 'item', refId: 'mat-drone-net', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
-  { key: 'mat-field-repair', kind: 'item', refId: 'mat-field-repair', rarity: 'common', basePrice: 1, demandMultiplier: 0 },
+  // ── **遗迹安全货柜**（F4 · 2026-09-13；2026-09-14 船长改判：给像样的价、只收不卖）──
+  // 【它是"带回后拆解"的中间件：**不带货进洞、只从洞内带出** ⇒ 市场**只收不卖**
+  //   （`playerBuyable: false`，市场不出售现货 —— 否则花钱就能买箱子，洞内打捞这条渠道被架穿）。
+  //   **基础价 = 该族内容期望市值 × 0.6**（一次性探针用真引擎 `wormholeUnboxRoll` 抽 4000 次量得；
+  //   内容价一律取内容自身的市场行价）：A 359.3 万 · C 372.6 万 · D 679.3 万 · E 547.7 万 · G 534.6 万。
+  //   ⚠ **0.6 这条折扣与残骸同一条哲学**：收购价恒**低于**拆解期望 ⇒ "开箱比卖箱更划算"，
+  //   箱子仍是"打开它"的东西，想换现钱随时可以卖（`demandMultiplier: 1.0` = 按基础价全额收）。】
+  { key: 'box-relic-a', kind: 'item', refId: 'box-relic-a', rarity: 'common', basePrice: 2_155_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 359.3 万 ×0.6
+  { key: 'box-relic-c', kind: 'item', refId: 'box-relic-c', rarity: 'common', basePrice: 2_235_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 372.6 万 ×0.6
+  { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 4_075_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 679.3 万 ×0.6
+  { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 3_285_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 547.7 万 ×0.6
+  { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 3_210_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 534.6 万 ×0.6
+  // 【图纸货柜 3 种（2026-09-14 船长定：虫洞遗迹打捞新增）：口径与安全货柜逐字相同 —— 只收不卖 +
+  //   基础价 = 内容期望市值 ×0.6（浅 598.9 万 · 中 2,340.8 万 · 深 4,306.8 万；层档越高箱越值钱）。】
+  { key: 'box-bp-shallow', kind: 'item', refId: 'box-bp-shallow', rarity: 'common', basePrice: 3_595_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 598.9 万 ×0.6
+  { key: 'box-bp-mid', kind: 'item', refId: 'box-bp-mid', rarity: 'common', basePrice: 14_045_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 2,340.8 万 ×0.6
+  { key: 'box-bp-deep', kind: 'item', refId: 'box-bp-deep', rarity: 'common', basePrice: 25_840_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 4,306.8 万 ×0.6
+  // 【AI 核心 **洞内实物形态** 3 种（2026-09-14 船长定：虫洞遗迹打捞新增掉落）——**不进市场**：
+  //   ① 它占货仓 1 格、撤离成功即自动接入核心库（`state.aiCores`）⇒ **永不进仓库**，市场行没有交易对手；
+  //   ② **AI 核心在市场已经有自己的卡**（`core-basic / core-gamma / core-beta / core-alpha` 四档账本核心）
+  //      ⇒ 实物再挂一张卡就是"同一个东西的第二张卡"（船长 2026-09-14：「**AI核心已经存在了**」）。
+  //   故一律 `unreleased: true`（照"每种物品必须有市场卡"的既有契约保留卡、契约照核，但不进 `ctx.marketGoods`）。】
+  { key: 'ai-core-gamma', kind: 'item', refId: 'ai-core-gamma', rarity: 'common', basePrice: 200_000, demandMultiplier: 0, unreleased: true },
+  { key: 'ai-core-beta', kind: 'item', refId: 'ai-core-beta', rarity: 'common', basePrice: 1_500_000, demandMultiplier: 0, unreleased: true },
+  { key: 'ai-core-alpha', kind: 'item', refId: 'ai-core-alpha', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0, unreleased: true },
+  // 【谜质储存器 24 台（F3c · 船长 2026-09-13 起）：**不进市场**——"本趟虫洞内生效、离开即消失"的装置，
+  //   既不带回来也不流通（船长 2026-09-14：「谜质则不一样，**需要设置不出现在市场**」）。
+  //   一律 `unreleased: true`：卡留在目录表里（"每种物品必须有市场卡"的契约照核），但不进 `ctx.marketGoods`
+  //   ⇒ 市场页 / 挂单 / 订单 / 事件一律看不到、也买不到。`content:check` 有常驻契约钉住这一条。】
+  { key: 'mat-surveyor', kind: 'item', refId: 'mat-surveyor', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-chrono', kind: 'item', refId: 'mat-chrono', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-crane', kind: 'item', refId: 'mat-crane', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-drill', kind: 'item', refId: 'mat-drill', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-nebula', kind: 'item', refId: 'mat-nebula', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-enricher', kind: 'item', refId: 'mat-enricher', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-expander', kind: 'item', refId: 'mat-expander', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-suppressor', kind: 'item', refId: 'mat-suppressor', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-boss-analyzer', kind: 'item', refId: 'mat-boss-analyzer', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-extract-cover', kind: 'item', refId: 'mat-extract-cover', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-shield-res', kind: 'item', refId: 'mat-shield-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-armor-res', kind: 'item', refId: 'mat-armor-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-hull-res', kind: 'item', refId: 'mat-hull-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-tracker', kind: 'item', refId: 'mat-tracker', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-gyro', kind: 'item', refId: 'mat-gyro', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-jammer', kind: 'item', refId: 'mat-jammer', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-rangefinder', kind: 'item', refId: 'mat-rangefinder', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-blindspot', kind: 'item', refId: 'mat-blindspot', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-ammo-dmg', kind: 'item', refId: 'mat-ammo-dmg', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-reload', kind: 'item', refId: 'mat-reload', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-volley', kind: 'item', refId: 'mat-volley', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-ammo-back', kind: 'item', refId: 'mat-ammo-back', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-drone-net', kind: 'item', refId: 'mat-drone-net', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-field-repair', kind: 'item', refId: 'mat-field-repair', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
   // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
   //   钛钢 90,734 件/h、银纹 63,385、晶态 22,523、同位聚晶 78,408、重钨 29,233、星髓 29,730、冥铁 7,722

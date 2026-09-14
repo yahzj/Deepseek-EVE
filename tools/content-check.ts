@@ -3187,6 +3187,56 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       `· 挂卖可达契约：市场 ${MARKET_GOODS.length} 行**全部允许玩家挂卖**（playerSellable 无 false）· 可获得内容无市场行的仅 ${NO_ROW_OK.length} 条有意例外（${NO_ROW_OK.map(([id]) => id).join(' / ')}）· 专属内容 ${exclusiveRows} 行**全部只收不卖**`,
     )
   }
+  /**
+   * **洞内非商品契约**（2026-09-14 船长报障后加 · 常驻防回归）——
+   *
+   * 报障原话：「**谜质出现在了市场内，还有一些虫洞专属产物也出现在市场内并且可以购买**」；
+   * 定性时的追加口径：「**AI核心已经存在了**」＋「谜质则不一样，**需要设置不出现在市场**」。
+   *
+   * 根因（值得记住）：这批卡原本是"照『每种物品必须有市场卡』的既有契约补卡 + `unreleased` 施工期闸门"，
+   * 注释里写着「**上线动作 = 删这个字段**」；上线那批照注释删了 ⇒ 它们变成 `rarity: 'common'` 的**常驻现货**，
+   * 市场按"单件平价品"铺供应单（价 = `basePrice 1` ×1.06 ≈ **1 信用点**）⇒ 1 块钱买走谜质储存器/货柜/AI 核心实物。
+   * **"不上市交易"这个意图本来靠 `unreleased` 实现**，删字段时没人核这一层 ⇒ 本契约把它钉死。
+   *
+   * 三条口径：
+   * - ① **谜质储存器**（`WORMHOLE_MATTER_DEVICE_IDS`）：本趟生效、离开即消失 ⇒ 市场行必须 **`unreleased`**；
+   * - ② **AI 核心实物**（`WORMHOLE_CORE_ITEM_IDS`）：撤离即转核心账本、**永不进仓库**，且市场已有
+   *   `core-basic/gamma/beta/alpha` 四档账本核心 ⇒ 同上 **`unreleased`**（不再给第二张卡）；
+   * - ③ **洞内货柜**（`box-relic-*` / `box-bp-*`）：会带回仓库、可拆解也可换现 ⇒ **允许有市场行**，
+   *   但必须 **`playerBuyable: false`**（不出售现货，否则花钱就能买箱子、把洞内打捞这条渠道架穿）
+   *   且 **`basePrice > 1`**（价 = 内容期望市值 ×0.6，不能再是"1 信用点的垃圾价"）。
+   */
+  {
+    /** 洞内货柜 = 模块级那张 `containerIds`（安全货柜 5 + 图纸货柜 3，与拆解契约同一个出处） */
+    const boxIds = containerIds
+    const shouldHide = [...matterDeviceIds, ...aicoreItemIds]
+    const leaked: string[] = []
+    const visible = new Set<string>(buildMarketGoodsCatalog().keys())
+    for (const g of MARKET_GOODS) {
+      if (shouldHide.includes(g.refId) && g.unreleased !== true) leaked.push(`${g.key}（应不出现在市场）`)
+    }
+    for (const id of shouldHide) {
+      if (visible.has(id)) leaked.push(`${id}（在 ctx.marketGoods 里——玩家看得到也买得到）`)
+    }
+    check(
+      leaked.length === 0,
+      `洞内非商品契约：${leaked.length} 处漏卖（2026-09-14 船长报障「谜质出现在了市场内…并且可以购买」）——` +
+        `谜质储存器与 AI 核心实物必须 \`unreleased: true\`（不进市场）；${leaked.slice(0, 8).join(' · ')}`,
+    )
+    const boxBad: string[] = []
+    for (const g of MARKET_GOODS) {
+      if (!boxIds.has(g.refId)) continue
+      if (g.playerBuyable !== false) boxBad.push(`${g.key}（在卖现货）`)
+      if ((g.basePrice ?? 0) <= 1) boxBad.push(`${g.key}（basePrice 还是 ${g.basePrice}）`)
+    }
+    check(
+      boxBad.length === 0,
+      `洞内非商品契约：洞内货柜必须"只收不卖 + 有像样的价"（基础价 = 内容期望市值 ×0.6）——${boxBad.slice(0, 8).join(' · ')}`,
+    )
+    console.log(
+      `· 洞内非商品契约：谜质 ${matterDeviceIds.size} 台 + AI 核心实物 ${aicoreItemIds.size} 种**均不在市场目录** · 洞内货柜 ${boxIds.size} 种**只收不卖**且基础价 > 1`,
+    )
+  }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽
   const zoneCount = { 中安: 0, 低安: 0 }
   for (const def of ANOMALIES_FLAVORED) {
