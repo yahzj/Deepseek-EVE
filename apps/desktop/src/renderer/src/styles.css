@@ -267,6 +267,78 @@ body {
 
 .app-root.is-mobile-rot .app-stepbar { max-width: min(1100px, calc(100vh - 48px)); }
 
+/* ── 旋转模式「高度轴」口径（2026-09-14 船长报【讯息界面看不全 / 侧栏选项超出屏幕】后全面排查）──
+   与虫洞弹层同一个病根：媒体查询与 `vh` 量的都是**手机物理竖屏**（宽 ~390 / 高 ~844），而界面实际
+   活在旋转后的逻辑空间里（宽 ≈ 1200、高 = `--mob-h` ≈ 554）。凡是用 `Nvh` / `calc(100vh − …)` 定高的
+   覆盖层，在旋转模式下都**比屏幕还高** ⇒ 顶/底被裁、「✕ 关闭」与内部滚动条的底端都够不到。
+   本块把这批一律改按 `--mob-h` 封顶；封顶后的内容由各自既有的内部滚动容器承担
+   （`.app-modal-body` / `.app-comm-body` / `.app-fit-modal` / `.app-prologue-inner` 自带 `overflow-y: auto`；
+   `.app-detail-body` 与 `.app-pro-epi-inner` 在本块内补上）。 */
+.app-root.is-mobile-rot .app-modal,
+.app-root.is-mobile-rot .app-detail,
+.app-root.is-mobile-rot .app-comm,
+.app-root.is-mobile-rot .app-fit-modal,
+.app-root.is-mobile-rot .app-prologue-inner,
+.app-root.is-mobile-rot .app-pro-epi-inner {
+  max-height: calc(var(--mob-h, 100vw) - 32px);
+}
+.app-root.is-mobile-rot .app-detail-body,
+.app-root.is-mobile-rot .app-pro-epi-inner {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* 手册/图鉴大窗：与虫洞弹层同病同治——`92vw` 取竖屏宽（1060 → 359px 窄条）、`88vh` 取手机高（743 > 逻辑高） */
+.app-root.is-mobile-rot .app-hand-modal {
+  width: min(1060px, calc(100vh - 40px));
+  max-width: calc(100vh - 24px);
+  height: min(780px, calc(var(--mob-h, 100vw) - 32px));
+  max-height: calc(var(--mob-h, 100vw) - 24px);
+}
+
+/* 离线简报卡：从 `top: 119px` 起算，原先按 `100vh − 190` 限高 ⇒ 卡底出屏、卡内滚动条底端够不到 */
+.app-root.is-mobile-rot .app-report-card {
+  max-height: calc(var(--mob-h, 100vw) - 133px);
+}
+
+/* 市场左列目录：船长原意是「限到半屏」，`50vh` 在旋转模式下成了逻辑高的 76% ⇒ 按逻辑空间取半屏 */
+.app-root.is-mobile-rot .app-mkt-page .app-mkt-left > .wui-panel {
+  max-height: min(calc(var(--mob-h, 100vw) * 0.5), 520px);
+}
+
+/* ── 旋转模式「窄窗布局误触发」口径（船长 2026-09-14 报【讯息界面只能查看最新的讯息 / 侧边栏选项超出屏幕】）──
+   `@media (max-width…)` 量的是**物理竖屏宽**（~390），而旋转后的逻辑空间有 1200 宽 ⇒ `≤1180px` 与
+   `≤1023px` 那两套「窄窗口 / 真窄窗口」布局照样命中：通讯页被改成**单列**、左列消息列表收成
+   **顶部一条横排**（条目 `max-width: 240px` + `overflow-y: hidden`）。收件箱是**按送达时间倒序**
+   （最新在前）⇒ 横条上只看得到最左（最新）的几封，更早的要靠横向拖动，而手机上既没有可拖的滚动条、
+   条目本身也超出屏幕 —— 船长反馈的两条症状（只能看最新讯息 / 侧边栏选项超出屏幕）都是这一处。
+   口径与市场 `.app-mkt-split` 那条同：**旋转时维持桌面双列**（左列纵向滚动）。 */
+.app-root.is-mobile-rot .app-comms-grid {
+  grid-template-columns: minmax(210px, 290px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.app-root.is-mobile-rot .app-comms-list {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 8px;
+  padding-bottom: 0;
+  border-right: 1px solid var(--wui-border);
+  border-bottom: none;
+}
+.app-root.is-mobile-rot .app-comms-item { flex: 0 0 auto; max-width: none; }
+
+/* ── 侧栏让位顺序（船长 2026-09-14 口径：「当侧边栏导航栏高度不足时，优先压缩出港，其次压缩出港
+   下面选项的高度（但是要保证字正常显示）」）──
+   旋转模式的逻辑高只有 ~554px，而侧栏内容 ≈ 710px（舰船窗 66+8 · 金钱栏 30+6 · 出港 148+10 ·
+   其余 8 项 ×46 · 10 道 5px 间距 · 侧栏自身 12+12 内边距）⇒ 必然放不下。落地：
+   ① **出港**是唯一可压缩项（`flex-shrink: 1`，正方形被压扁；图标与文字仍按原尺寸画）；
+   ② 其余导航项在旋转模式下**先按紧凑款起步**——只收**上下内边距**（11 → 5px）与间距（5 → 4px），
+      **字号 / 行高 / 图标尺寸一律不动**（"字正常显示"）；
+   ③ 收完仍不足才由侧栏出滚动条（`.app-nav-side` 自带 `overflow-y: auto`）。 */
+.app-root.is-mobile-rot .app-nav-side { padding-top: 8px; padding-bottom: 8px; gap: 4px; }
+.app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured) { padding-top: 5px; padding-bottom: 5px; }
+
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
 .app-mob-sel-mask { position: fixed; inset: 0; z-index: 320; background: rgba(3,7,12,.55); display: flex; align-items: center; justify-content: center; }
