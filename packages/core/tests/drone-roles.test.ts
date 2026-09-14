@@ -51,7 +51,7 @@ describe('无人机四型定位（2026-09-10 船长拍板）', () => {
     const sentry = droneOf('drone-sentry')
     expect(sentry.hitRate).toBe(1.1)
     expect(sentry.falloff).toBe(0.35)
-    expect(ALL.map((d) => d.maxRangeM)).toEqual([2500, 3000, 3500, 5000])
+    expect(ALL.map((d) => d.maxRangeM)).toEqual([4000, 4500, 5000, 6500]) // 2026-09-14 船长「只有我方无人机，射程+1500」（原 [2500, 3000, 3500, 5000]）
   })
 
   it('定位契约自检通过：四型逐机合规 + 跨类阶梯成立', () => {
