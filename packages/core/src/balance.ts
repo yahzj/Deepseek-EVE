@@ -312,7 +312,13 @@ export const DEFAULT_BALANCE: BalanceConfig = {
      * ⚠ **2026-09-10 船长：暂时先取消实装，仅实现功能** → `foeChargeEnabled` 默认 false，
      *   即"老路"整条不生效；**舰级级 opt-in 不受本开关约束**（这是 2026-09-11 新增的通道）。 */
     foeChargeEnabled: false, // 总开关（只管"按威胁门槛 + brawl 自动放行"那条老路）
-    foeChargeMul: 2.0, // 突进期敌机动倍率（临时加速，仍走距离拔河公式）
+    /**
+   * 突进期敌机动倍率（临时加速，仍走距离拔河公式）。
+   * ⚠ **2026-09-14 船长试验：2.0 → 4.0**（原话「感觉大虫子的冲锋似乎没有效果，将效果改为4倍我测试下」）。
+   *   触发条件**未动**（仍是"距离在冲锋者自己射程之外"，见 `updateFoeCharge`）⇒ 噬口巨兽（射程 3,713 m）
+   *   只在玩家拉到 3.7 km 以外时才冲；平时的 543~1,400 m 交距看不到它。
+   */
+  foeChargeMul: 4.0,
     foeChargeMaxHoldMs: 2_000, // ⚠ **已停用**（2026-09-11 改判：结束条件改"到达目标距离"，不再用维持时长）
     foeChargeCooldownMs: 20_000, // 冷却：这么久内不能再次突进（2026-09-11 船长确认 20 秒）
     foeChargeThreatFloor: 60, // 威胁门槛（与 pdThreatFloor 同口径；只管老路）
