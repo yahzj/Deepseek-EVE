@@ -690,7 +690,7 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
   24: (raw) => {
     // v24 -> v25（2026-09-13 虫洞副本开工）：补 `wormhole` 空状态（run: null）——
     // **字段纯新增、零行为变化**；老档不在洞里，故无需迁移进行中的副本。
-    // ⚠ 施工期铁律：虫洞完成前对玩家不可见（入口走调试开关），完成后由船长拍板才上线。
+    // ✅ 2026-09-14 船长解除不可见（虫洞已上线）：入口常驻、数据全部上线；玩家侧门槛 = 协会声望 ≥ 40。
     const next: RawState = { ...raw }
     const wh = asRaw(next.wormhole)
     if (wh === null || typeof wh !== 'object') next.wormhole = { run: null, lastFleetLost: 0 }

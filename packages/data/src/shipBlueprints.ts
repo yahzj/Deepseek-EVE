@@ -402,7 +402,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '掠袭电子舰图纸（一次性）',
     shipId: 'sh-wh-a-frigate',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 12_000 },
       { itemId: 'min-pyerite', count: 3_200 },
@@ -419,7 +418,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '掠袭炮艇图纸（一次性）',
     shipId: 'sh-wh-a-destroyer',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 28_000 },
       { itemId: 'min-pyerite', count: 7_400 },
@@ -436,7 +434,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '掠袭重型突击巡洋舰图纸（一次性）',
     shipId: 'sh-wh-a-cruiser',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 56_000 },
       { itemId: 'min-pyerite', count: 15_000 },
@@ -453,7 +450,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '幼虫截击舰图纸（一次性）',
     shipId: 'sh-wh-c-frigate',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 13_500 },
       { itemId: 'min-mexallon', count: 3_600 },
@@ -470,7 +466,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '甲壳截击舰图纸（一次性）',
     shipId: 'sh-wh-c-destroyer',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 30_000 },
       { itemId: 'min-mexallon', count: 7_800 },
@@ -487,7 +482,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '巢群重型突击巡洋舰图纸（一次性）',
     shipId: 'sh-wh-c-cruiser',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 62_000 },
       { itemId: 'min-mexallon', count: 16_000 },
@@ -504,7 +498,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '哨戒电子舰图纸（一次性）',
     shipId: 'sh-wh-d-frigate',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 14_500 },
       { itemId: 'min-mexallon', count: 3_800 },
@@ -521,7 +514,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '陵卫指挥舰图纸（一次性）',
     shipId: 'sh-wh-d-destroyer',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 32_000 },
       { itemId: 'min-mexallon', count: 8_200 },
@@ -539,7 +531,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '陵寝巡洋舰图纸（一次性）',
     shipId: 'sh-wh-d-cruiser',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 68_000 },
       { itemId: 'min-mexallon', count: 17_500 },
@@ -557,7 +548,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '构件鱼雷舰图纸（一次性）',
     shipId: 'sh-wh-e-frigate',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 12_800 },
       { itemId: 'min-mexallon', count: 3_400 },
@@ -574,7 +564,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '机库无人机作战舰图纸（一次性）',
     shipId: 'sh-wh-e-destroyer',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 29_000 },
       { itemId: 'min-mexallon', count: 7_600 },
@@ -591,7 +580,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '巨构无人机作战舰图纸（一次性）',
     shipId: 'sh-wh-e-carrier',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 60_000 },
       { itemId: 'min-mexallon', count: 15_500 },
@@ -609,7 +597,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '幽影侦察舰图纸（一次性）',
     shipId: 'sh-wh-g-frigate',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 11_500 },
       { itemId: 'min-mexallon', count: 3_000 },
@@ -627,7 +614,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '亡军后勤舰图纸（一次性）',
     shipId: 'sh-wh-g-destroyer',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 26_000 },
       { itemId: 'min-mexallon', count: 6_800 },
@@ -645,7 +631,6 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '亡军鱼雷舰图纸（一次性）',
     shipId: 'sh-wh-g-cruiser',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 54_000 },
       { itemId: 'min-mexallon', count: 14_000 },

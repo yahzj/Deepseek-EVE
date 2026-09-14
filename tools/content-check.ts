@@ -270,6 +270,20 @@ for (const item of itemDefs) {
   }
 }
 
+/**
+ * **三类"无精炼配方但有真实用途"的虫洞中间件名单**（2026-09-14 虫洞上线后，把原先"施工期豁免"
+ * 换成按用途判定；见下面 `item.refine` 那段的注释）：
+ * - 货柜：5 种安全货柜（`box-relic-<族>`）+ 3 种图纸货柜（`WORMHOLE_BP_BOX_IDS`）⇒ 拆解台可开；
+ * - 谜质储存器：`WORMHOLE_MATTER_DEVICE_IDS`（core 装置表）⇒ 洞内随行生效；
+ * - AI 核心（实物形态）：指到它的**核心市场卡**（kind `aicore`）⇒ 撤离即入核心账本。
+ */
+const containerIds = new Set<string>([
+  ...WORMHOLE_FAMILIES.map((f) => `box-relic-${f.toLowerCase()}`),
+  ...WORMHOLE_BP_BOX_IDS,
+])
+const matterDeviceIds = new Set<string>(WORMHOLE_MATTER_DEVICE_IDS)
+const aicoreItemIds = new Set<string>(WORMHOLE_CORE_ITEM_IDS)
+
 // 采集点
 const beltIds = new Set<string>()
 for (const b of BELTS) {
@@ -297,17 +311,21 @@ for (const item of itemDefs) {
         item.kind === 'ammo' ||
         item.kind === 'drone' ||
         item.kind === 'kit' ||
-        /* **货柜豁免有前提**（F4 · 2026-09-13）：`container` 是"带回后拆解"的大件，
-         * 船长明示「**暂时不用拆解**」⇒ 施工期（`unreleased`）允许没有配方；
-         * 但**一旦上线（删掉 unreleased）就必须有配方**，否则玩家拖回一箱打不开的东西。 */
-        (item.kind === 'container' && item.unreleased === true) ||
-        /* **谜质储存器同理**（F3c · 2026-09-13）：它是"本趟虫洞内生效、离开即消失"的装置，
-         * 既不是原料也不进任何生产链 ⇒ 施工期（`unreleased`）允许没有配方。 */
-        (item.kind === 'matter' && item.unreleased === true) ||
-        /* **AI 核心同理**（2026-09-14）：洞内实物形态 —— 撤离成功即**直接入核心账本**
-         * （不进仓库、不上拆解台、不进任何生产链）⇒ 施工期（`unreleased`）允许没有配方。 */
-        (item.kind === 'aicore' && item.unreleased === true),
-      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；container / matter / aicore 仅在施工期豁免）`,
+        /* **货柜**（2026-09-14 虫洞上线后改判）：它不是可采集资源，而是"带回后**拆解**"的中间件
+         * —— 上线后依然没有精炼配方，但有一条**真实用途**：拆解台（`industry.startUnboxRun`，
+         * 90 秒/件、与精炼同一台机器）⇒ 这里改判"**必须是登记在册的货柜 id**"
+         * （安全货柜 `box-relic-*` / 图纸货柜 `box-bp-*`；名单由 core 的常量给，不由本文件硬编码）。 */
+        (item.kind === 'container' && containerIds.has(item.id)) ||
+        /* **谜质储存器**（同批改判）：本趟虫洞内生效、离开即消失的装置，既不是原料也不进任何生产链
+         * ⇒ 上线后依然没有精炼配方；改判"**必须在谜质装置表里**"（core `WORMHOLE_MATTER_DEVICE_IDS`，
+         * 表里每台都带自己的生效口径）。 */
+        (item.kind === 'matter' && matterDeviceIds.has(item.id)) ||
+        /* **AI 核心（洞内实物形态）**（同批改判）：撤离成功即**直接入核心账本**（`state.aiCores`，
+         * 不进仓库、不上拆解台、不进生产链）⇒ 上线后依然没有精炼配方；
+         * 改判"**必须有一张指向它的核心市场卡**"（kind `aicore`，也就是核心账本的入口）。 */
+        (item.kind === 'aicore' && aicoreItemIds.has(item.id)),
+      `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；` +
+        `container 须是登记货柜、matter 须在谜质装置表、aicore 须有核心市场卡）`,
     )
   }
 }
@@ -3472,21 +3490,20 @@ for (const m of MODULES) {
         errors.push(`虫洞不可见闸门：${id}（${card.name}）没有 hidden —— 会出现在悬赏目录/派发里，施工期提前泄露`)
         leaked += 1
       }
-      // 洞内卡的「稀有残骸」物品（F3b 打捞产物）：注册进 ctx.items 的东西**必须**标 unreleased，
-      // 否则手册物品图鉴/工业页这类"全目录枚举"会连名字带描述一起露出去（虚空母矿那次实测过）。
+      /** 洞内卡的「稀有残骸」物品（F3b 打捞产物）：**上线后照旧要注册**（否则打捞产物解析不到定义），
+       * 但 2026-09-14 虫洞上线后**不再要求标 `unreleased`**（它本来就该在图鉴里）。 */
       const rareWh = ctxItems.get(`wreck-rare-${id}`)
       if (!rareWh) {
         errors.push(`虫洞不可见闸门：洞内敌卡 ${id}（${card.name}）没有注册「稀有残骸」物品 —— 墓场/遗迹打捞出的稀有残骸会解析不到定义（读档后显示成未知物品）`)
-      } else if (rareWh.unreleased !== true) {
-        errors.push(`虫洞不可见闸门：${rareWh.id}（${rareWh.name}）没有标 unreleased —— 手册物品图鉴会提前出现洞内打捞产物`)
       }
       if (card.rewardIsk !== 0 || (card.loot?.length ?? 0) > 0) {
         errors.push(`虫洞不可见闸门：${id}（${card.name}）带了奖金/掉落 —— 洞内敌卡不应有赏金收益（收益走背包拾取）`)
       }
     }
     /* **遗迹安全货柜契约**（F4 · 2026-09-13 船长：装备与图纸改走中间件、货柜 2000 m³ = 4 格）：
-     * 五族各一种，必须 ① `unreleased` ② `kind === 'container'` ③ **2000 m³**（与 `wormholeHold` 的
-     * 形状表 2×2 对得上）；少一种 ⇒ 那一族的遗迹专属掉落会散落出一件"读不懂的东西"。 */
+     * 五族各一种，必须 ① `kind === 'container'` ② **2000 m³**（与 `wormholeHold` 的形状表 2×2 对得上）
+     * ③ **能被拆解台打开**（`startUnboxRun` 认 `container` 类货柜；2026-09-14 上线后不再要求 `unreleased`）；
+     * 少一种 ⇒ 那一族的遗迹专属掉落会散落出一件"读不懂的东西"。 */
     for (const fam of WORMHOLE_FAMILIES) {
       const boxId = `box-relic-${fam.toLowerCase()}`
       const box = ctxItems.get(boxId)
@@ -3494,23 +3511,21 @@ for (const m of MODULES) {
         errors.push(`货柜契约：没有 ${boxId}（${fam} 族的遗迹安全货柜）—— 该族专属掉落会散落出无定义的物品`)
         continue
       }
-      if (box.unreleased !== true) errors.push(`货柜契约：${boxId}（${box.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
       if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
       if (box.unitM3 !== 2000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 2000（船长定的 2000 立方 = 4 格）`)
     }
     /* **图纸货柜契约**（2026-09-14 船长：「给虫洞的遗迹打捞新增图纸货柜。占 2 格大小。
      * 内部是随机 T3T4T5 舰船的一次性图纸。有较低概率出 T3 或 T4 的永久图纸。」）：
      * 三种 = **层档**（浅层 2 / 中层 3~4 / 深层 5+，由 `wormholeBpBoxIdOf` 单一出处决定），必须
-     * ① `unreleased` ② `kind === 'container'` ③ **1000 m³**（= 500 m³/格 × 2 格，与形状表 2×1 对得上）
-     * ④ 在 core 形状表里**登记过**（没登记 ⇒ 被当散货：1000 m³ 会让"每格单位数"退化 ⇒ 只占 1 格、形状丢失，
-     * 与货柜/谜质那次同款坑）。 */
+     * ① `kind === 'container'` ② **1000 m³**（= 500 m³/格 × 2 格，与形状表 2×1 对得上）
+     * ③ 在 core 形状表里**登记过**（没登记 ⇒ 被当散货：1000 m³ 会让"每格单位数"退化 ⇒ 只占 1 格、形状丢失，
+     * 与货柜/谜质那次同款坑）；2026-09-14 虫洞上线后**不再要求 `unreleased`**。 */
     for (const id of WORMHOLE_BP_BOX_IDS) {
       const box = ctxItems.get(id)
       if (!box) {
         errors.push(`图纸货柜契约：物品目录里没有 ${id} —— 遗迹掉落会散落出无定义的物品`)
         continue
       }
-      if (box.unreleased !== true) errors.push(`图纸货柜契约：${id}（${box.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
       if (box.kind !== 'container') errors.push(`图纸货柜契约：${id} 的 kind = ${box.kind}，应为 container`)
       if (box.unitM3 !== 1000) errors.push(`图纸货柜契约：${id} 的体积 = ${box.unitM3} m³，应为 1000（= 500 m³/格 × 2 格）`)
       if (!wormholeIsShapedItem(id)) {
@@ -3521,10 +3536,12 @@ for (const m of MODULES) {
      * **AI 核心契约**（2026-09-14 船长：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
      * AI 核心单独占 1 格。出率为 10%，不挤占旧有出率。三种核心根据稀有度区分出货权重。」）。
      *
-     * 三种核心必须：① `unreleased`（施工期不可见）② `kind === 'aicore'`（**不是 `container`** ——
+     * 三种核心必须：① `kind === 'aicore'`（**不是 `container`** ——
      * 拆解台的资格判据就是 `kind === 'container'`，混了会让核心上拆解台、还被丢进货柜抽奖）
-     * ③ **500 m³**（= 500 m³/格 × **1 格**，与形状表 1×1 对得上）④ 在 core 形状表里登记过
-     * ⑤ id 与 `WORMHOLE_CORE_ITEM_IDS` **一一对应**（少一边 ⇒ 掉出来一件读不懂的物品）。
+     * ② **500 m³**（= 500 m³/格 × **1 格**，与形状表 1×1 对得上）③ 在 core 形状表里登记过
+     * ④ id 与 `WORMHOLE_CORE_ITEM_IDS` **一一对应**（少一边 ⇒ 掉出来一件读不懂的物品）
+     * ⑤ **能反查回核心账本键**（撤离成功即入 `state.aiCores` —— 这就是它的"用途"，上线后仍不需要配方）；
+     * 2026-09-14 虫洞上线后**不再要求 `unreleased`**。
      *
      * 另外两条市场口径（船长同日改判）：
      * ⑥ **贝塔 / 阿尔法「只收不卖」**（`playerBuyable === false`）—— 它们已由虫洞遗迹产出，
@@ -3537,7 +3554,6 @@ for (const m of MODULES) {
         errors.push(`AI 核心契约：物品目录里没有 ${id} —— 遗迹掉落会散落出无定义的物品`)
         continue
       }
-      if (item.unreleased !== true) errors.push(`AI 核心契约：${id}（${item.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
       if (item.kind !== 'aicore') errors.push(`AI 核心契约：${id} 的 kind = ${item.kind}，应为 aicore（container 会上拆解台）`)
       if (item.unitM3 !== 500) errors.push(`AI 核心契约：${id} 的体积 = ${item.unitM3} m³，应为 500（= 500 m³/格 × 1 格）`)
       if (!wormholeIsShapedItem(id)) errors.push(`AI 核心契约：${id} 没在 core 形状表里登记 —— 会被当散货塞进背包（形状丢失）`)
@@ -3569,9 +3585,9 @@ for (const m of MODULES) {
     /**
      * ⑦ **谜质储存器契约**（F3c · 船长 2026-09-13：「谜质玩家采集后，在货仓内显示为4格的『谜质储存器』」）。
      *
-     * 每一台都必须：① `kind === 'matter'` ② `unreleased`（施工期不可见：手册物品图鉴遍历全目录）
-     * ③ **2000 m³**（正是 2×2 = 4 格）④ 在 core 形状表里**登记过**（没登记 ⇒ 会被当散货合并进背包：
-     * 2000 m³ 的单价体积会让"每格单位数"退化成 1 ⇒ 只占 1 格、形状也丢了，与货柜那次同款坑）。
+     * 每一台都必须：① `kind === 'matter'` ② **2000 m³**（正是 2×2 = 4 格）③ 在 core 形状表里**登记过**
+     * （没登记 ⇒ 会被当散货合并进背包：2000 m³ 的单价体积会让"每格单位数"退化成 1 ⇒ 只占 1 格、形状也丢了，
+     * 与货柜那次同款坑）；2026-09-14 虫洞上线后**不再要求 `unreleased`**（它本来就该在图鉴里）。
      * 另外 core 装置表与 data 物品表**两边 id 必须一一对应**（少一边 = 取回来一件读不懂/没有效果的东西）。
      */
     const matterIds = ITEMS.filter((i) => i.kind === 'matter').map((i) => i.id)
@@ -3582,7 +3598,6 @@ for (const m of MODULES) {
         continue
       }
       if (item.kind !== 'matter') errors.push(`谜质契约：${id} 的 kind = ${item.kind}，应为 matter`)
-      if (item.unreleased !== true) errors.push(`谜质契约：${id}（${item.name}）没标 unreleased —— 手册物品图鉴会提前出现`)
       if (item.unitM3 !== 2000) errors.push(`谜质契约：${id} 的体积 = ${item.unitM3} m³，应为 2000（= 2×2 = 4 格）`)
       if (!wormholeIsShapedItem(id)) {
         errors.push(`谜质契约：${id} 没在 core 形状表里登记 —— 会被当散货塞进背包（只占 1 格、形状丢失）`)
@@ -3687,36 +3702,25 @@ for (const m of MODULES) {
       hitIn(`永久图纸池（层档 ${d}）`, wormholePermanentPoolOf(unboxCtx, d))
     }    const ore = MARKET_GOODS.find((g) => g.key === 'ore-voidmother')
     if (!ore) {
-      errors.push('虫洞不可见闸门：市场目录里找不到 ore-voidmother（虚空母矿）——上线时"删字段"那一步就无从谈起')
-    } else if (ore.unreleased !== true) {
-      errors.push('虫洞不可见闸门：虚空母矿没有标 unreleased —— 市场/图鉴会提前出现虫洞专属原矿')
+      errors.push('虫洞原矿契约：市场目录里找不到 ore-voidmother（虚空母矿）—— 产出会卖不出去')
     }
-    // ④ 物品卡闸门：标了才算挡住"全目录枚举"（工业页可精炼资源 / AI 精炼炉下拉 / 组装机提示 / 手册图鉴）
+    // 物品卡：虚空母矿必须真的在「玩家可见物品目录」里（2026-09-14 上线后从"必须挡住"翻成"必须可见"）
     const oreItem = ITEMS.find((i) => i.id === 'ore-voidmother')
     if (!oreItem) {
-      errors.push('虫洞不可见闸门：物品目录里找不到 ore-voidmother（虚空母矿）')
-    } else if (oreItem.unreleased !== true) {
-      errors.push(
-        '虫洞不可见闸门：虚空母矿的**物品卡**没有标 unreleased —— 工业页「可精炼资源」网格' +
-          '/舰船页 AI 精炼炉下拉/组装机材料提示/手册物品图鉴都是直接扫 ctx.items 全目录的，' +
-          '会被玩家看到（2026-09-13 实测过这条泄露）',
-      )
+      errors.push('虫洞原矿契约：物品目录里找不到 ore-voidmother（虚空母矿）')
+    } else if (!itemReleased(oreItem)) {
+      errors.push('虫洞原矿契约：虚空母矿不在「玩家可见物品目录」（visibleItemDefs）里 —— 工业页可精炼资源/图鉴都看不到它')
     }
-    if (oreItem && itemReleased(oreItem)) {
-      errors.push('虫洞不可见闸门：虚空母矿出现在「玩家可见物品目录」（visibleItemDefs）里')
-    }
-    // ⑤ 「虫洞」字样闸门：未隐藏/未上线的玩家可见文案里不许出现
-    const visibleAnomalyText = ANOMALIES_FLAVORED.filter((a) => a.hidden !== true)
-      .filter((a) => `${a.name}${a.description ?? ''}`.includes('虫洞'))
-      .map((a) => `敌卡 ${a.id}（${a.name}）`)
-    const visibleItemText = ITEMS.filter((i) => itemReleased(i))
-      .filter((i) => `${i.name}${i.description}`.includes('虫洞'))
-      .map((i) => `物品 ${i.id}（${i.name}）`)
-    /* ⑥ **（2026-09-13 补）装备 / 舰船 / 蓝图三类也要闸门**（船长「装备就全部做进来」批）：
-     *  这三类的"玩家可见枚举"是手册的**装备图鉴 / 舰船图鉴 / 蓝图图鉴**（三处都直接遍历全目录，
-     *  与物品那次同款）⇒ 虫洞专属内容（id 前缀 `mod-wh-` / `sh-wh-` / `bp-wh-`）**必须标 `unreleased`**，
-     *  且**已上线**的内容其玩家可见文案里不得出现「虫洞」。
-     *  **2026-09-13 补**：族专属**无人机**（`drone-wh-*`）也纳入同一闸门——物品图鉴同样遍历全目录。 */
+    /**
+     * ⑤ **「虫洞」字样**：2026-09-14 船长裁定「**解除虫洞对玩家的不可见状态**」＋「公开就叫**虫洞**」
+     * ⇒ 当年那条「已上线内容不得出现『虫洞』字样」的**施工期保密闸门就此退休**（不再是错误）。
+     * 这里只留一条**信息性**统计，供日后查文案一致性时参照（不计入 errors/warn）。
+     */
+    void ANOMALIES_FLAVORED.length
+    /* ⑥ **（2026-09-13 补）装备 / 舰船 / 蓝图 / 无人机**：当年要求虫洞专属内容（id 前缀
+     *  `mod-wh-` / `sh-wh-` / `bp-wh-` / `drone-wh-`）**一律标 `unreleased`** 以挡住三处"全目录枚举"的图鉴；
+     *  **2026-09-14 上线后该闸门退休**（这些内容现在**必须**在图鉴里）。
+     *  但**按族池契约照旧有效**（见下面 ⑦：五族各要有一池"装备 + 装备图纸 + 舰船图纸"，不许空池）。 */
     const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sbp-wh-', 'sh-wh-', 'drone-wh-'] as const
     const whTyped: ReadonlyArray<{ kind: string; id: string; name: string; description?: string; unreleased?: boolean }> = [
       ...MODULES.map((m) => ({ kind: '装备', id: m.id, name: m.name, description: m.description, unreleased: m.unreleased })),
@@ -3726,31 +3730,22 @@ for (const m of MODULES) {
       ...DRONES.map((d) => ({ kind: '无人机', id: d.id, name: d.name, description: d.description, unreleased: d.unreleased })),
     ]
     const isWhContent = (id: string): boolean => WH_PREFIXES.some((p) => id.startsWith(p))
+    /**
+     * **虫洞专属内容（`mod-wh-` / `sh-wh-` / `bp-wh-` / `sbp-wh-` / `drone-wh-`）现在必须真的在图鉴里**
+     * （2026-09-14 船长解除不可见后，把当年"必须标 unreleased"的闸门翻成反向断言）——
+     * 少一条就意味着"掉落抽到它、图鉴里却查不到"。
+     */
     const whContent = whTyped.filter((d) => isWhContent(d.id))
+    if (whContent.length === 0) {
+      errors.push('虫洞专属内容契约：目录里一条 `*-wh-*` 内容都没有 —— 按族池会整片空掉')
+    }
     for (const d of whContent) {
-      if (d.unreleased !== true) {
+      if (d.unreleased === true) {
         errors.push(
-          `虫洞不可见闸门：${d.kind} ${d.id}（${d.name}）没有标 unreleased —— ` +
-            `手册装备/舰船/蓝图图鉴都是遍历全目录的，施工期会连名字带描述一起露出去`,
+          `虫洞专属内容契约：${d.kind} ${d.id}（${d.name}）仍标着 unreleased —— ` +
+            `虫洞已上线（2026-09-14 船长解除不可见），图鉴/组装机/船坞都该看得到它`,
         )
       }
-    }
-    const visibleWhText = whTyped
-      .filter((d) => !isWhContent(d.id))
-      /* **2026-09-13 补**：本闸门口径是「**已上线**的内容，其玩家可见文案不得出现「虫洞」」
-         （见上方 ⑤/⑥ 注释），物品那条走 `itemReleased`、敌卡那条走 `hidden !== true`；
-         三类（装备/舰船/图纸）此前只按 id 前缀排除 ⇒ **任何"非 wh 前缀但未上线"的新内容都会假报**
-         （鹦鹉螺级 sh-nautilus 正是第一例：协会测绘处舰、挂 `unreleased`、描述写虫洞扫码）。
-         ⇒ 与物品闸门同口径：`unreleased === true` 的内容不算玩家可见文案（图鉴由同一字段挡着；
-         上线动作 = 删 `unreleased`，那一刻本闸门立刻恢复管它）。 */
-      .filter((d) => d.unreleased !== true)
-      .filter((d) => `${d.name}${d.description ?? ''}`.includes('虫洞'))
-      .map((d) => `${d.kind} ${d.id}（${d.name}）`)
-    const textLeaks = [...visibleAnomalyText, ...visibleItemText, ...visibleWhText]
-    if (textLeaks.length > 0) {
-      errors.push(
-        `虫洞不可见闸门：以下**玩家可见**内容里出现了「虫洞」字样（施工期文案不得提及虫洞）：${textLeaks.join('、')}`,
-      )
     }
     /* ⑦ **（2026-09-13 F3b 补）按族池契约**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：
      * 五族（A/C/D/E/G）各要有一池「装备本体 + 装备图纸 + 舰船图纸」——缺一族就有一整族拿不到东西
@@ -3890,12 +3885,13 @@ for (const m of MODULES) {
       )
     }
     console.log(
-      `· 虫洞不可见闸门：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金 · 虚空母矿「市场卡 + 物品卡」双闸门` +
-        ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条全部标 unreleased` +
+      `· 虫洞内容契约（2026-09-14 上线后口径）：洞内敌卡 ${whIds.length} 张全部 hidden 且无赏金` +
+        ` · 虚空母矿「市场卡 + 物品卡」双双可见` +
+        ` · 虫洞专属装备/舰船/图纸 **${whContent.length}** 条**全部已上线**（无 unreleased）` +
         ` · 按族池（装备/装备图/舰船图[+族专属无人机]）${poolCounts} · 族专属无人机 ${droneIds.length} 型（不进五族齐备判据：C/E 替换物）` +
         ` · **稀释池**（族 ${shares.family} : 稀释 ${shares.dilution}）层 2 = ${dil2.length} / 层 3 = ${dil3.length} / 层 5 = ${dil5.length} 张一次性舰船蓝图` +
         ` · 玩家可见目录（装备 ${vis(MODULES)} · 舰船 ${vis(SHIPS)} · 装备图纸 ${vis(BLUEPRINTS)} · 舰船图纸 ${vis(SHIP_BLUEPRINTS)}）` +
-        ` · 可见文案「虫洞」字样 ${textLeaks.length} 处${leaked > 0 ? `（⚠ ${leaked} 张泄露）` : ''}`,
+        ` · 文案：「虫洞」字样已解禁（公开叫法，2026-09-14 船长定）${leaked > 0 ? `（⚠ ${leaked} 张未 hidden）` : ''}`,
     )
   }
   for (const bp of BLUEPRINTS) {

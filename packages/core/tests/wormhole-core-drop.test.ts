@@ -72,7 +72,7 @@ describe('虫洞 · 遗迹掉落 AI 核心（2026-09-14 船长定）', () => {
       const def = ctx.items.get(id)
       expect(def?.kind).toBe('aicore') // 不是 container：否则会上拆解台、还会被丢进货柜抽奖
       expect(def?.unitM3).toBe(500) // 500 m³/格 × 1 格
-      expect(def?.unreleased).toBe(true) // 施工期对玩家不可见
+      expect(def?.unreleased).toBeUndefined() // 2026-09-14 上线：手册图鉴里看得到（不再是施工期闸门）
     }
     // 物品 id ↔ 核心账本键 双向对得上
     expect(wormholeCoreItemIdOf('alpha')).toBe(WORMHOLE_CORE_ALPHA)

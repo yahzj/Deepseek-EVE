@@ -10,7 +10,7 @@
  *    装上就 +10、丢掉就 −10 并把剩余夹到新上限、**永不为负**、**0 回合照样能撤离**；
  * ⑥ **老档零迁移**（`turnsBase` 缺失时按"当前上限 − 当前加成"反推）。
  *
- * ⚠ 施工期铁律：虫洞对玩家不可见；本文件不产生玩家可见文案。
+ * ✅ 2026-09-14 船长解除不可见；本文件不产生玩家可见文案。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -60,7 +60,7 @@ function enterRun(ships = 4, seed = 777): GameState {
 }
 
 describe('虫洞 · 谜质装置（F3c A 批）', () => {
-  it('① 装置表 / 数据表 / 形状表三处一致：2×2 = 4 格、2000 m³、施工期不可见', () => {
+  it('① 装置表 / 数据表 / 形状表三处一致：2×2 = 4 格、2000 m³、已上线可见', () => {
     expect(WORMHOLE_MATTER_DEVICES.length).toBeGreaterThan(0)
     expect(WORMHOLE_MATTER_DEVICE_IDS.length).toBe(WORMHOLE_MATTER_DEVICES.length)
     for (const d of WORMHOLE_MATTER_DEVICES) {
@@ -68,7 +68,8 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
       expect(item, `物品表里应有 ${d.id}`).toBeDefined()
       expect(item!.kind).toBe('matter')
       expect(item!.unitM3).toBe(2000)
-      expect(item!.unreleased).toBe(true)
+      // 2026-09-14 虫洞上线（船长「解除不可见」）⇒ 不再标 unreleased（手册图鉴里看得到）
+      expect(item!.unreleased).toBeUndefined()
       // 形状表登记（没登记 ⇒ 会被当散货合并进背包，只占 1 格、形状丢失）
       expect(WORMHOLE_HOLD_SHAPES[d.id]).toBeDefined()
       const shape = wormholeShapeOf(d.id)

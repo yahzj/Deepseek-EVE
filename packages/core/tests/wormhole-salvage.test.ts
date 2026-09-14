@@ -9,7 +9,7 @@
  * ⑤ **遗迹**：稀有残骸 2~3 堆（**不吃**墓场那条新规则）+ 打捞结束 70% 触发收尾战（层威胁 ×1.3）；
  * ⑥ **舰船信号战果**：打赢固定给残骸 2 堆 + 稀有残骸 1 堆；**矿脉**：虚空母矿 1~3 堆、手拾每堆 1 回合。
  *
- * ⚠ 施工期铁律：虫洞对玩家不可见（入口走调试开关、数据走 `unreleased` 闸门）；本文件不产生玩家可见文案。
+ * ✅ 2026-09-14 船长解除不可见（入口常驻、数据全部上线、公开就叫「虫洞」）；本文件不产生玩家可见文案。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -386,11 +386,11 @@ describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', ()
       expect(pool.modules.length, `${f} 族专属装备`).toBeGreaterThan(0)
       expect(pool.moduleBlueprints.length, `${f} 族专属装备图纸`).toBeGreaterThan(0)
       expect(pool.shipBlueprints.length, `${f} 族专属舰船图纸`).toBeGreaterThan(0)
-      // 池里的东西必须都是"未上线"的（施工期对玩家不可见）
+      // 2026-09-14 虫洞上线（船长「解除不可见」）⇒ 池里的东西**必须都已上线**（当年这里钉的是"必须未上线"）
       for (const id of [...pool.modules, ...pool.moduleBlueprints, ...pool.shipBlueprints]) {
         const un =
           ctx.modules.get(id)?.unreleased ?? ctx.blueprints.get(id)?.unreleased ?? ctx.shipBlueprints.get(id)?.unreleased
-        expect(un, `${id} 没标 unreleased`).toBe(true)
+        expect(un, `${id} 仍标着 unreleased（虫洞已上线，图鉴/组装机该看得到它）`).toBeUndefined()
       }
     }
   })
@@ -421,8 +421,10 @@ describe('虫洞 · 按族掉落池（F3b · 船长「按种族库走」）', ()
       const p = wormholeFamilyPoolOf(ctx, f)
       expect(p.modules.length + p.drones.length, `${f} 族「装备 + 无人机」件数`).toBe(6)
     }
-    // 无人机也是施工期内容（对玩家不可见）
-    for (const id of [...c.drones, ...e.drones]) expect(ctx.items.get(id)?.unreleased, `${id} 没标 unreleased`).toBe(true)
+    // 无人机同样已上线（2026-09-14 解除不可见）
+    for (const id of [...c.drones, ...e.drones]) {
+      expect(ctx.items.get(id)?.unreleased, `${id} 仍标着 unreleased`).toBeUndefined()
+    }
   })
 
   it('**一次到手几件**：族专属无人机 ×10 架（与窝点同款），其余池内容物 1 件', () => {
