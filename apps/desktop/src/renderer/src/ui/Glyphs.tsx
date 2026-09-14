@@ -90,6 +90,16 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M11.4 10.2v2" />
     </g>
   ),
+  /* ── 谜质储存器（2026-09-13 F3c 补：本趟虫洞内生效的装置）──
+     造型与货柜同语言但**一眼可分**：圆环里一颗菱形晶体 + 上下两道束缚带（"装起来的谜质"）。 */
+  matter: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 8.4l2.8 3.6-2.8 3.6-2.8-3.6z" />
+      <path d="M8.6 9.6h6.8" />
+      <path d="M8.6 14.4h6.8" />
+    </g>
+  ),
   /* ── 装备（方框徽：外框 + 内部机件） ── */
   miner: (
     <g>
@@ -529,6 +539,7 @@ export const TONES: Record<string, string> = {
   kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
   container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
+  matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
   miner: '#5ee6c8',
   cargo: '#ffd166',
   turret: '#ff8373',

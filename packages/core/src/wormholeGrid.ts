@@ -177,6 +177,18 @@ export const WORMHOLE_NEBULA_MAX_SHARE = 0.5
 /** **遗迹占残骸信号的比重**（船长：「遗迹概率降低到 30%」⇒ 舰船墓场 70%） */
 export const WORMHOLE_RUINS_SHARE = 0.3
 
+/**
+ * **谜质格下限 = 每层保底 1 个**（船长 2026-09-13 裁定：「每层保底 1 个谜质格」）。
+ * 谜质格由「雷达信号」按概率分出 ⇒ 理论上小盘面（层 1/2 只有 19 格）可能一个都不出。
+ * 兜底手法与遗迹下限同款：**只换不重掷**（优先把"空地"翻成谜质，不动别的地点）。
+ *
+ * ⚠ **实测读数（2026-09-13）**：把这段兜底关掉、跑 seed 1~200 × 层 1~6 共 **1200 张盘**，
+ * **0 张盘是 0 个谜质格** —— 即当前权重下"保底"是**保险丝**、不是承重墙（雷达配额本来就够分出谜质）。
+ * 留着是为了**以后改信号权重时这条保证仍然成立**；用例 `wormhole-matter.test.ts` ② 钉的是
+ * **结果契约**（每层 ≥ 1 个谜质格），两种实现下都必须绿。
+ */
+export const WORMHOLE_MATTER_FLOOR = 1
+
 /** 地点 → 对外信号（`empty` 无信号；`graveyard`/`ruins` 都表现为「残骸信号」） */
 export function signalOfPlace(place: WormholePlace): WormholeSignal | null {
   switch (place) {
@@ -324,12 +336,35 @@ export function isNebulaFogged(grid: WormholeGridState, cell: WormholeGridCell):
  * **这一圈里有几格星云可以被"再扫一次"驱散** = 已扫描 + 在本圈内 + 还没驱散。
  * （未扫描的星云格要**先扫出来**——第一次扫描只"发现星云"，不驱散，这是船长的口径。）
  */
-export function gridNebulaTargets(grid: WormholeGridState): HexCell[] {
-  const r = Math.max(0, Math.floor(grid.scanRadius))
+export function gridNebulaTargets(grid: WormholeGridState, extraRadius = 0): HexCell[] {
+  const r = Math.max(0, Math.floor(grid.scanRadius + extraRadius))
   return hexDiskAround(grid.pos, r).filter((c) => {
     const cell = gridCellAt(grid, c)
     return !!cell && grid.scanned.includes(cell.key) && isNebulaFogged(grid, cell)
   })
+}
+
+/**
+ * **这一次扫描要驱散哪些星云**（`wormholeGridScan` 用）：
+ * ① 本圈（含装置加出来的额外圈）里"已扫到但还被云罩着"的格；
+ * ② 再按装置给的 `extraCount` 从**圈外**补几格**最近**的云（谜质「星云驱散器」：
+ *    「每次扫描额外驱散 N 格星云」——额外的那几格不受圈限制，否则装了也白装）。
+ */
+export function gridNebulaDisperseTargets(
+  grid: WormholeGridState,
+  extraRadius = 0,
+  extraCount = 0,
+): HexCell[] {
+  const inRing = gridNebulaTargets(grid, extraRadius)
+  if (extraCount <= 0) return inRing
+  const r = Math.max(0, Math.floor(grid.scanRadius + extraRadius))
+  const keys = new Set(inRing.map((c) => hexKey(c.q, c.r)))
+  const outside = grid.cells
+    .filter((c) => !keys.has(c.key) && grid.scanned.includes(c.key) && isNebulaFogged(grid, c))
+    .filter((c) => hexDistance(grid.pos, c) > r)
+    .sort((a, b) => hexDistance(grid.pos, a) - hexDistance(grid.pos, b) || (a.key < b.key ? -1 : 1))
+    .slice(0, Math.max(0, Math.floor(extraCount)))
+  return [...inRing, ...outside.map((c) => ({ q: c.q, r: c.r }))]
 }
 
 /** **驱散星云**（就地改状态；由 `wormholeGridScan` 在扣回合之后调用）。返回本次驱散的格键 */
@@ -345,8 +380,8 @@ export function disperseNebulae(grid: WormholeGridState, cells: readonly HexCell
 }
 
 /** 一次的扫描会揭示哪些格（当前格 + 周围一圈；**不含**已扫过的） */
-export function gridScanTargets(grid: WormholeGridState): HexCell[] {
-  const r = Math.max(0, Math.floor(grid.scanRadius))
+export function gridScanTargets(grid: WormholeGridState, extraRadius = 0): HexCell[] {
+  const r = Math.max(0, Math.floor(grid.scanRadius + extraRadius))
   return hexDiskAround(grid.pos, r).filter((c) => {
     const cell = gridCellAt(grid, c)
     return !!cell && !grid.scanned.includes(cell.key)
@@ -562,6 +597,24 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
       if (c.place !== 'graveyard') continue
       c.place = 'ruins'
       ruinsNow += 1
+    }
+  }
+  /**
+   * **谜质格下限**（船长 2026-09-13：「每层保底 1 个谜质格」）：真数一遍，不够就**把空地翻成谜质**
+   * ——与遗迹下限同款"只换不重掷"，且优先动**空地**（它本来没产出，翻掉不影响其它地点分布）；
+   * 入口格与出口格一律跳过（它们是导航用的）。
+   */
+  if (depth >= 1) {
+    let matterNow = cells.filter((c) => c.place === 'matter').length
+    if (matterNow < WORMHOLE_MATTER_FLOOR) {
+      for (const c of cells) {
+        if (matterNow >= WORMHOLE_MATTER_FLOOR) break
+        if (c.key === startKey) continue
+        if (c.q === exit.q && c.r === exit.r) continue
+        if (c.place !== 'empty') continue
+        c.place = 'matter'
+        matterNow += 1
+      }
     }
   }
   /**

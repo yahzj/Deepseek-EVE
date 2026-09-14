@@ -31,7 +31,7 @@ import {
   wormholeStream,
   disperseNebulae,
   gridCellAt,
-  gridNebulaTargets,
+  gridNebulaDisperseTargets,
   gridScanTargets,
   hexKey,
   isExitCell,
@@ -40,6 +40,8 @@ import {
   wormholeMakeGrid,
 } from './wormholeGrid'
 import type { HexCell, WormholeGridCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
+// F3c 谜质：装置效果一律从货仓**现算**（扫描半径 / 额外驱散星云走这里；回合类走 `wormholeSyncMatterTurns`）
+import { wormholeMatterBuffs } from './wormholeMatter'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -316,8 +318,14 @@ export interface WormholeRunState {
   nodeIndex: number
   /** 剩余回合 */
   turnsLeft: number
-  /** 出发时锁定的回合预算（读数用） */
+  /** 出发时锁定的回合预算（读数用）。**谜质「时序核心」的加成不写在这里**（它现算，见 `turnsBase`） */
   turnsTotal: number
+  /**
+   * **入场时的回合预算**（F3c · 船长 2026-09-13 裁定「实时派生 + 夹紧」）：
+   * 本趟上限 = `turnsBase + 10 × 货仓里的时序核心台数`，由 `wormholeSyncMatterTurns` **幂等**同步；
+   * 老档没有这个字段 ⇒ 首次同步按"现有台数"反推（老档本来没有装置 ⇒ 等于 `turnsTotal`），**零迁移**。
+   */
+  turnsBase?: number
   /** 编队（船型 id；进场时锁定） */
   fleet: readonly string[]
   /** 折合总质量（进场时锁定） */
@@ -518,6 +526,7 @@ export function wormholeStartRun(
       nodeIndex: 0,
       turnsLeft: adm.turnBudget,
       turnsTotal: adm.turnBudget,
+      turnsBase: adm.turnBudget,
       fleet: [...shipIds],
       totalMass: adm.totalMass,
       bag: [],
@@ -794,9 +803,14 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   const { run, grid } = hit
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked }
-  const targets = gridScanTargets(grid)
-  // 圈里"已扫描但还被星云罩着"的格 ⇒ 这一扫把它们驱散
-  const nebulaTargets = gridNebulaTargets(grid)
+  /**
+   * **谜质增益**（F3c · 船长 2026-09-13）：扫描半径 +圈、每次额外驱散若干格星云。
+   * 一律**现算**（装置躺在货仓里就生效，不必再同步状态）。
+   */
+  const buffs = wormholeMatterBuffs(run.hold)
+  const targets = gridScanTargets(grid, buffs.scanRadius)
+  // 圈里"已扫描但还被星云罩着"的格 ⇒ 这一扫把它们驱散；装置再额外补几格圈外的云
+  const nebulaTargets = gridNebulaDisperseTargets(grid, buffs.scanRadius, buffs.nebulaDisperse)
   if (targets.length === 0 && nebulaTargets.length === 0) {
     return { ok: false, error: '周围都扫过了、也没有星云可驱散：换个地点再扫。' }
   }
@@ -823,7 +837,7 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   addLog(
     state,
     'info',
-    `🕳 扫描（半径 ${grid.scanRadius}）：揭开 ${revealed.length} 格` +
+    `🕳 扫描（半径 ${grid.scanRadius + buffs.scanRadius}）：揭开 ${revealed.length} 格` +
       (empty > 0 ? `（其中 ${empty} 格没有信号）` : '') +
       (newlyFogged > 0 ? ` · **${newlyFogged} 格被星云遮住（再扫描一次可驱散）**` : '') +
       (dispersed.length > 0 ? ` · 驱散星云 ${dispersed.length} 格` : '') +

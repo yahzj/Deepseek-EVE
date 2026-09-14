@@ -1015,6 +1015,21 @@ export {
   wormholeIsShapedItem,
   wormholeShapeOf,
 } from './wormholeHold'
+// F3c：谜质储存器（A 批 = 探索与作业类 7 台；效果一律从货仓现算，随趟消失）
+export {
+  WORMHOLE_MATTER_DEVICES,
+  WORMHOLE_MATTER_DEVICE_IDS,
+  WORMHOLE_MATTER_BUFFS_NONE,
+  wormholeMatterDeviceOf,
+  wormholeIsMatterDevice,
+  wormholeMatterCounts,
+  wormholeMatterBuffs,
+  wormholeMatterDeviceAt,
+  wormholeMatterTurnDeltaOf,
+  wormholeMatterApplyTurnDelta,
+  wormholeMatterDiscardHint,
+} from './wormholeMatter'
+export type { WormholeMatterDevice, WormholeMatterEffectKind, WormholeMatterBuffs } from './wormholeMatter'
 
 export type { WormholeFamilyPool, WormholeSalvageResult } from './wormholeSalvage'
 export type { WormholeHoldPlacement, WormholeHoldShape, WormholeHoldState } from './wormholeHold'

@@ -36,6 +36,10 @@ import {
   durabilityOf,
   holdRows,
   placementCells,
+  // F3c 谜质装置（船长 2026-09-13）：派生增益 / 本格是哪一台 / 抛弃回合类装置的提醒
+  wormholeMatterBuffs,
+  wormholeMatterDeviceAt,
+  wormholeMatterDiscardHint,
   /**
    * ⚠ **信息展示必须走 `revealOf`**（2026-09-13 星云批）：地图此前直接读 `c.place` 上色，
    * 那是**真相**——星云遮蔽接进来后照旧上色，云就等于白罩了。
@@ -172,6 +176,11 @@ export function WormholePanel({
   const salvagers = run ? wormholeSalvagersOf(state, ctx) : 0
   /** 编队采集器台数（0 ⇒ 母矿一堆也挖不动：与打捞器同一把尺） */
   const miners = run ? wormholeMinersOf(state, ctx) : 0
+  /**
+   * **谜质增益**（F3c · 船长 2026-09-13「放在货仓里就生效」）：一律从货仓**现算**，
+   * 界面读数、按钮提示与 core 的结算走同一个函数（`wormholeMatterBuffs`）⇒ 不会两套口径。
+   */
+  const matterBuffs = wormholeMatterBuffs(run?.hold)
   /** 当前格上还剩几堆（打捞/采集共用；按钮上显示"本次能回收几堆"） */
   const herePiles = hereCell?.piles ?? []
   /**
@@ -494,7 +503,14 @@ export function WormholePanel({
     if (place === 'vein') {
       playJob('采集作业中…', `本批 ${res.taken ?? 0} 堆`)
       onToast(`采集作业：这一批回收了 ${res.taken ?? 0} 堆虚空母矿。`)
-    } else if (place === 'matter') onToast('谜质的增强效果待定（F3c）。')
+    } else if (place === 'matter') {
+      /**
+       * **取回谜质**（F3c · 船长 2026-09-13）：装置是哪一台按 (种子, 层, 格) 定死，
+       * 界面用同一个函数读出来报名字（与 core 落包的那一台必然一致）。
+       */
+      const dev = wormholeMatterDeviceAt(run?.seed ?? 0, run?.depth ?? 1, hereKey)
+      onToast(`取回谜质「${dev.name}」：${dev.text}——占货仓 2×2 格，离开虫洞即失效。`)
+    }
   }
 
   /**
@@ -584,6 +600,17 @@ export function WormholePanel({
               <div className="app-dim app-note">
                 另有 <b>{shapedPiles.length}</b> 件「遗迹安全货柜」：**打捞器搬不动它** ——
                 点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；腾不出 2×2 会先放进临时空间）。
+              </div>
+            ) : null}
+            {/**
+             * **本格的谜质是哪一台**（F3c · 船长 2026-09-13）：按 (种子, 层, 格) 定死 ⇒ 界面读出来的
+             * 与 core 落包的那一台必然一致（同一个 `wormholeMatterDeviceAt`）。
+             */}
+            {hereCell.place === 'matter' ? (
+              <div className="app-dim app-note">
+                这一格的谜质是「<b>{wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).name}</b>」：
+                {wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).text} —— 取回后**装进货仓**生效
+                （占 2×2 = 4 格，腾不出会先进临时空间），离开虫洞即失效。
               </div>
             ) : null}
             {/* **装不下的预告**（船长 2026-09-13）——把"再捞就满"这件事摆在按钮之前，别等捞到一半才发现 */}
@@ -1003,6 +1030,20 @@ export function WormholePanel({
                 </span>
                 <span className="app-wh-cell">回合 <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
                 <span className="app-wh-cell">背包 <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
+                {/**
+                 * **谜质增益读数**（F3c · 船长 2026-09-13）：只在真带装置时出现，悬停逐台列出来
+                 * ——效果一律从货仓现算（`wormholeMatterBuffs`），界面与 core 同源。
+                 */}
+                {matterBuffs.devices > 0 ? (
+                  <span
+                    className="app-wh-cell"
+                    title={matterBuffs.list
+                      .map(({ device, count }) => `· ${device.name}${count > 1 ? ` ×${count}` : ''}：${device.text}`)
+                      .join('\n')}
+                  >
+                    谜质 <b>{matterBuffs.devices}</b> 台
+                  </span>
+                ) : null}
                 <span className="app-wh-cell">本层威胁 <b>{wormholeLayerThreat(run.depth)}</b></span>
               </div>
               {grid && hereCell ? (
@@ -1678,7 +1719,8 @@ const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
   ruins: '遗迹：走到就铺好稀有残骸 2~3 堆（不用激活），小概率拿到一次性图纸或专属装备；打捞结束大概率触发一场恶战。',
   ship: '舰船信号：到达即交火；打赢固定获得残骸与稀有残骸。',
   vein: '矿脉：走到这一格就铺好虚空母矿 1~3 堆（**不用激活**）——**要采集器**，每回合回收 = 台数 的堆。',
-  matter: '虫洞谜质：取回后，本趟探索中我方所有舰船获得指定增强。',
+  matter:
+    '虫洞谜质：取回后装进货仓（占 2×2 = 4 格），**本趟探索期间一直生效**——不一样的地点藏着不一样的装置，离开虫洞即失效。',
   beacon: '漂浮信标：到达即读出它标出的下一层入口位置（地图上会一直标着）。',
 }
 /**
@@ -1701,6 +1743,7 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
   /** **临时空间读数**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」） */
   const tempInfo = engine.wormholeTempInfo()
   /** **抛弃控件**：正在问"丢多少"的那一件（船长 2026-09-13：「拖动条 + 允许输入数量」） */
+const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const [discardAsk, setDiscardAsk] = useState<{ id: string; units: number } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const cols = WORMHOLE_HOLD_COLS
@@ -1926,20 +1969,51 @@ function WhHold({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
                   </span>
                 </div>
                 <div className="app-inv-btns">
-                  <button
-                    className="app-btn is-small is-warn"
-                    onClick={() => {
-                      const r = engine.wormholeDiscardHold(p.id)
-                      if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
-                    }}
-                  >
-                    抛弃
-                  </button>
+                  {/* 谜质「时序核心」这类**回合类**装置：抛之前先问一句（船长 2026-09-13：「需要提醒玩家」） */}
+                  {wormholeMatterDiscardHint(p.itemId) && askDiscard === p.id ? null : (
+                    <button
+                      className="app-btn is-small is-warn"
+                      onClick={() => {
+                        if (wormholeMatterDiscardHint(p.itemId)) {
+                          setAskDiscard(p.id)
+                          return
+                        }
+                        const r = engine.wormholeDiscardHold(p.id)
+                        if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                      }}
+                    >
+                      抛弃
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
         </ul>
       )}
+      {/**
+       * **抛弃回合类装置的确认条**（船长 2026-09-13 问的那条：「如果玩家丢弃回合相关谜质导致回合数不够，
+       * 需要提醒玩家」）：明确写出代价 + "撤离不受影响" —— 丢完只是走不动，不会软锁。
+       */}
+      {askDiscard && placements.some((p) => p.id === askDiscard) ? (
+        <div className="app-wh-ask">
+          <span>⚠ {wormholeMatterDiscardHint(placements.find((p) => p.id === askDiscard)!.itemId)}</span>
+          <span className="app-wh-actions">
+            <button
+              className="app-btn is-small is-danger"
+              onClick={() => {
+                const r = engine.wormholeDiscardHold(askDiscard)
+                setAskDiscard(null)
+                if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+              }}
+            >
+              确认抛弃
+            </button>
+            <button className="app-btn is-small" onClick={() => setAskDiscard(null)}>
+              取消
+            </button>
+          </span>
+        </div>
+      ) : null}
       {/**
        * **散货清单 = 一件一行**（船长 2026-09-13 深夜：「残骸和母矿不应该合并超过 500 立方米，
        * 当超过时，分作 2 个单独的物品格并允许单独丢弃或者移动」）：每件最多 1 格（≤ 每格单位数），

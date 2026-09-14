@@ -61,6 +61,17 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  // 【谜质储存器 7 台（F3c · 船长 2026-09-13）：同样**不上市交易**——它们是"本趟虫洞内生效、离开即消失"
+  //   的装置，不是商品。照"每种物品必须有市场卡"的既有契约补卡，一律 `unreleased`（施工期不可见）
+  //   ⇒ **上线动作 = 删这 7 个字段**（与货柜 / 虚空母矿同一套做法）；basePrice 1 / demandMultiplier 0
+  //   兜底：即便失手放出来也不构成套利通道。】
+  { key: 'mat-surveyor', kind: 'item', refId: 'mat-surveyor', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-chrono', kind: 'item', refId: 'mat-chrono', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-crane', kind: 'item', refId: 'mat-crane', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-drill', kind: 'item', refId: 'mat-drill', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-nebula', kind: 'item', refId: 'mat-nebula', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-enricher', kind: 'item', refId: 'mat-enricher', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'mat-expander', kind: 'item', refId: 'mat-expander', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
   // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
   //   三钛 90,734 件/h、类银 63,385、类晶体 22,523、同位聚晶 78,408、超噬 29,233、星髓 29,730、冥铁 7,722

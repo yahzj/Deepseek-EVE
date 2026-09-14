@@ -111,7 +111,7 @@ export function rackOf(def: {
 }
 
 /** 物品分类展示顺序 */
-export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'fragment', 'kit']
+export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'fragment', 'kit']
 
 /** 物品分类中文名（仓库/货仓分组标题与空态文案用）
  *  ⚠ **术语（船长 2026-09-12 定）**：`ore` = 「**原矿**」（未精炼的石头，1 m³/单位）；
@@ -126,6 +126,7 @@ export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
   drone: '无人机',
   wreck: '残骸',
   container: '货柜',
+  matter: '谜质储存器',
   fragment: '蓝图碎片',
   kit: '修理组件',
 }
