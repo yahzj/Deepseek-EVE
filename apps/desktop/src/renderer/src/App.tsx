@@ -508,6 +508,17 @@ export function App({ engine }: { engine: GameEngine }) {
   // 通讯未读（2026-09-11 船长定）：导航图标闪烁 + 数字徽标；逐条已读，点开即读
   const commsUnread = engine.commsUnread()
   const [page, setPage] = useState<PageKey>('map')
+  /**
+   * **赏金新板提示**（船长 2026-09-14：「当任务中心有新的赏金任务时，提示玩家，**玩家进入后消除提示**」）：
+   * 判定 = **换板未看**（core `sideTaskBoard().bountyNewCount`，单点）——赏金日板每天本地 0 点整板替换。
+   * 徽标在**任务中心页内恒为 0**（进入即消，不必等下一拍）；记账写在下面那个 effect 里。
+   * ⚠ 记账**必须挂在 `page` 上**（而不是导航按钮的 onClick）：点导航、通讯「前往」、教程跳转
+   * 三条入口都会走到这里，挂在按钮上会漏掉后两条 ⇒ "进了任务中心徽标还在"。
+   */
+  const bountyNew = page === 'task' ? 0 : engine.bountyNewCount()
+  useEffect(() => {
+    if (page === 'task') engine.markBountyBoardSeen()
+  }, [engine, page])
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
   const [shipTab, setShipTab] = useState<ShipTab>('fleet')
@@ -878,7 +889,8 @@ export function App({ engine }: { engine: GameEngine }) {
            */}
           <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
           {NAV_ITEMS.map((item) => {
-            const unreadN = item.key === 'comms' ? commsUnread : 0
+            // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
+            const unreadN = item.key === 'comms' ? commsUnread : item.key === 'task' ? bountyNew : 0
             return (
               <button
                 key={item.key}
@@ -888,7 +900,9 @@ export function App({ engine }: { engine: GameEngine }) {
                   tutLocked && !tutCanOpen(item.key)
                     ? '按教程引导进行：先完成当前「教程目标」'
                     : unreadN > 0
-                      ? `有 ${unreadN} 条未读通讯`
+                      ? item.key === 'task'
+                        ? `赏金任务已更新：${unreadN} 条（进任务中心即清除）`
+                        : `有 ${unreadN} 条未读通讯`
                       : undefined
                 }
                 onClick={() => changePage(item.key)}

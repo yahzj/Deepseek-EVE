@@ -615,6 +615,13 @@ export interface SideTaskBoardView {
   bountyOpened: boolean
   /** 距下一个本地 0 点（赏金整板替换）的剩余毫秒（墙钟；未开板 = 0） */
   bountyRemainingMs: number
+  /**
+   * **这一板赏金任务玩家还没看过**（2026-09-14 船长：换板未看 = 提示）——导航「任务中心」徽标读它。
+   * 进「任务中心」页会记账（`sideTasksMarkBountySeen`）⇒ 立刻变 false。
+   */
+  bountyFresh: boolean
+  /** 未看过这一板时的条数（= 该板赏金任务数；看过 / 未开板 = 0）——徽标数字 */
+  bountyNewCount: number
 }
 
 /** 只读查询：任务板 + 到期倒计时 + 快递在途投送（UI 展示资源/快递时效任务区用）。
@@ -636,6 +643,11 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
   const bountyWindow = board.bountyWindow ?? 0
   const now = nowWallMs ?? state.savedAtWallMs
   const bountyOpened = bountyWindow > 0
+  /**
+   * **换板未看**（船长 2026-09-14 定的判定基准）：当前日界 > 玩家看过的日界 ⇒ 有新板没看过。
+   * 老档没有 `bountySeenWindow`（= 0）而日界 > 0 ⇒ **首帧为 true**（船长：「**老档默认亮起提示**」）。
+   */
+  const bountyFresh = bountyOpened && bountyWindow > (board.bountySeenWindow ?? 0)
   const d = board.deliver
   return {
     resource: board.resource,
@@ -659,7 +671,25 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
     remainingMs,
     bountyOpened,
     bountyRemainingMs: bountyOpened ? bountyBoardRemainingMs(now) : 0,
+    bountyFresh,
+    bountyNewCount: bountyFresh ? board.bounty.length : 0,
   }
+}
+
+/**
+ * **记账：玩家看过这一天的赏金板了**（船长 2026-09-14：「当任务中心有新的赏金任务时，提示玩家，
+ * **玩家进入后消除提示**」）——界面在**进入「任务中心」页**时调用（点导航、通讯「前往」、教程跳转
+ * 三条入口都会走到那一步）；**幂等**：同一天重复调用不写第二次。
+ *
+ * @returns 是否真的记了一笔（未开板 / 已经记过 ⇒ false；给用例与调试读数用）
+ */
+export function sideTasksMarkBountySeen(state: GameState): boolean {
+  const board = state.sideTasks
+  const day = board.bountyWindow ?? 0
+  if (day <= 0) return false // 还没开板（旧档首帧、无有效墙钟）：无从记账
+  if ((board.bountySeenWindow ?? 0) >= day) return false // 这一板已经看过
+  board.bountySeenWindow = day
+  return true
 }
 
 /**

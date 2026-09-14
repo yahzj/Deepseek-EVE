@@ -2617,6 +2617,12 @@ function normalizeState(raw: unknown): GameState {
   // 赏金日界（本地 0 点墙钟毫秒；v24 兼容字段：老档缺省 0 = 未开板，首次拿到有效墙钟即开板）
   const bountyWindowRaw = Math.floor(num(stRaw.bountyWindow))
   const sideTaskBountyWindow = Number.isFinite(bountyWindowRaw) && bountyWindowRaw > 0 ? bountyWindowRaw : 0
+  /**
+   * 赏金**新板提示**的记账（2026-09-14 船长：「玩家进入后消除提示」）——玩家看过的日界墙钟毫秒。
+   * 兼容字段：老档缺省 0 ⇒ 首帧徽标亮（船长同日定「老档默认亮起提示」）。
+   */
+  const bountySeenRaw = Math.floor(num(stRaw.bountySeenWindow))
+  const sideTaskBountySeen = Number.isFinite(bountySeenRaw) && bountySeenRaw > 0 ? bountySeenRaw : 0
   const sideTasks = {
     seq: sideTaskSeq,
     window: sideTaskWindow,
@@ -2625,6 +2631,12 @@ function normalizeState(raw: unknown): GameState {
     bounty: sideTaskBounty,
     faction: sideTaskFaction,
     bountyWindow: sideTaskBountyWindow,
+    /**
+     * ⚠ **缺省（0 = 从没看过）不写这个键** —— 老档与新档的 `sideTasks` 快照因此**逐字一致**
+     * （`t5b` / `save` 的 `toEqual` 钉着这一点，与 `escrowShips[].from` 同款口径）；
+     * 玩家进过一次任务中心（记账写入真实日界）后才会出现这个键。
+     */
+    ...(sideTaskBountySeen > 0 ? { bountySeenWindow: sideTaskBountySeen } : {}),
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 
