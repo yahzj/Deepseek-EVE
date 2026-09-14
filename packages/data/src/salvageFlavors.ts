@@ -69,22 +69,22 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   },
   'ano-redring-raiders': {
     // 2026-09-10 重校（本卡档位 险→危：均价须回到 m×危档基数 92.4 = 104.97）
-    recyclePool: [['min-starcore', 6], ['min-nocxium', 56]], // (245×6+90×56)/62 = 105.0
+    recyclePool: [['min-tritanium', 20], ['min-starcore', 20], ['min-nocxium', 60]], // 2026-09-14 船长「所有残骸回收都加三钛·均价不变」：三钛 20%，其余按 (价/均价)^α 重配 ⇒ 105.0 → 104.60（−0.38%）
     recycleNote: '赤潮劫掠舰队残骸：星髓晶髓材与超噬矿甲',
   },
   'ano-ghost-signal': {
     // 2026-09-10 重校（本卡档位 险→危：均价须回到 m×危档基数 92.4 = 109.40）
-    recyclePool: [['min-starcore', 7], ['min-nocxium', 49]], // (245×7+90×49)/56 = 109.375
+    recyclePool: [['min-tritanium', 20], ['min-starcore', 23], ['min-nocxium', 57]], // 2026-09-14 同上（加三钛 20%）：109.375 → 109.25（−0.11%）
     recycleNote: '幽灵舰残骸：星髓晶含量飙升',
   },
   'ano-echo-haunt': {
-    recyclePool: [['min-isotope', 38], ['min-mexallon', 62]],
+    recyclePool: [['min-tritanium', 20], ['min-isotope', 45], ['min-mexallon', 35]], // 2026-09-14 同上（加三钛 20%）：(55×38+20×62)/100 = 33.30 → 33.35（+0.15%）
     recycleNote: '回音残舰残骸：同位聚晶富集',
   },
   'ano-mirage-hijackers': {
     // 2026-09-11 重校（同上：蜃影星系 0.0 → -0.7，本卡由中安升为**低安**，危险度档位 → 险：
     // 均价须回到 m×险档基数 27.6 = 43.249）——**这是海盗进低安的收益面**：残骸更值钱。
-    recyclePool: [['min-isotope', 33], ['min-mexallon', 17]], // (55×33+20×17)/50 = 43.10
+    recyclePool: [['min-tritanium', 20], ['min-isotope', 73], ['min-mexallon', 7]], // 2026-09-14 同上（加三钛 20%）：43.10 → 43.15（+0.12%）
     recycleNote: '蜃影劫持者残骸：同位聚晶富集',
   },
   'ano-auro-raiders': {
@@ -92,17 +92,17 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     // ⚠ 原池（超噬矿 25 : 类银 75 = 37.5）是为**旧档基数**定的；三张巨构卡集中到奥罗后本星系档基数变为 92.4
     // ⇒ 按规则重定价，并补入**星髓晶**（呼应"**所有巨构都在奥罗荒环**"的设定）。
     // 取 类银 28 : 同位聚晶 30 : 星髓晶 42 ⇒ (20×28+55×30+245×42)/100 = **125.0**（−0.5%，落 ±3% 内）
-    recyclePool: [['min-mexallon', 28], ['min-isotope', 30], ['min-starcore', 42]],
+    recyclePool: [['min-tritanium', 20], ['min-mexallon', 15], ['min-isotope', 21], ['min-starcore', 44]], // 2026-09-14 同上（加三钛 20%）：125.0 → 123.95（−0.84%）
     recycleNote: '奥罗武装残骸：超噬矿重镀层，巨构残片里的星髓晶与同位聚晶',
   },
   'ano-abyss-guard': {
-    recyclePool: [['min-starcore', 34], ['min-nocxium', 66]],
+    recyclePool: [['min-tritanium', 20], ['min-starcore', 45], ['min-nocxium', 35]], // 2026-09-14 同上（加三钛 20%）：142.70 → 143.35（+0.46%）
     recycleNote: '深渊守卫残骸：星髓晶髓材与超噬矿甲',
   },
   'ano-titan-wreck': {
     // 2026-09-12 重校（船长「将所有巨构移动到奥罗荒环」）：目标 m = (1+0.45×0.2)×(1+0.004×60) = **1.352**
     // ⇒ 目标均价 = 1.352 × 档基数 92.4 = **124.9**；取 星髓晶 37 : 同位聚晶 63 ⇒ (245×37+55×63)/100 = **125.3**（+0.3%）
-    recyclePool: [['min-starcore', 37], ['min-isotope', 63]],
+    recyclePool: [['min-tritanium', 20], ['min-starcore', 42], ['min-isotope', 38]], // 2026-09-14 同上（加三钛 20%）：125.3 → 125.40（+0.08%）
     recycleNote: '泰坦残骸：星髓晶浓度极高',
   },
   'ano-core-section': {
@@ -110,7 +110,7 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     // m = sec(−0.7)→1.315 × 威胁84→1.336 = **1.7095** ⇒ 均价须回到 **m×92.4 = 157.96**。
     // 矿物按设计稿主题规则「深渊/裂谷 → **星髓 + 同位**」；本卡是"接近完好的巨构"，星髓晶占比最高。
     // 2026-09-12 重校（同上）：目标 m = 1.417 ⇒ 目标均价 = 130.9；取 同位聚晶 60 : 星髓晶 40 ⇒ (55×60+245×40)/100 = **131.0**（+0.1%）
-    recyclePool: [['min-isotope', 60], ['min-starcore', 40]],
+    recyclePool: [['min-tritanium', 20], ['min-isotope', 35], ['min-starcore', 45]], // 2026-09-14 同上（加三钛 20%）：131.0 → 131.10（+0.08%）
     recycleNote: '巨构核心残骸：星髓晶整块未裂，同位聚晶成脉',
   },
   'ano-cinder-siege': {
@@ -124,32 +124,32 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     // **1,206** ≥ 危线 642 ⇒ 档基数 **92.4**（不是 2026-09-10 那次重校认定的险档 27.6），
     // 故均价须回到 **m×92.4 = 144.57**（m = sec(−0.6)→1.27 × 威胁58→1.232 = 1.56464）。
     // 矿物按设计稿主题规则选（`b3-flavor-content.md` §权重生成规则：「深渊/裂谷→**星髓+同位**」）。
-    recyclePool: [['min-isotope', 53], ['min-starcore', 47]], // (55×53+245×47)/100 = 144.30（−0.19%）
+    recyclePool: [['min-tritanium', 20], ['min-isotope', 28], ['min-starcore', 52]], // 2026-09-14 同上（加三钛 20%）：144.30 → 144.40（+0.07%）
     recycleNote: '裂谷畸变体残骸：同位聚晶与星髓晶富集',
   },
   'ano-nadir-static': {
     // 2026-09-10 重校（本卡档位 危→险：均价须回到 m×险档基数 27.6 = 42.74）
-    recyclePool: [['min-isotope', 13], ['min-mexallon', 7]], // (55×13+20×7)/20 = 42.75
+    recyclePool: [['min-tritanium', 20], ['min-isotope', 72], ['min-mexallon', 8]], // 2026-09-14 同上（加三钛 20%）：42.75 → 42.80（+0.12%）
     recycleNote: '天底封锁残骸：同位聚晶与类晶体胶体',
   },
   'ano-starcore-boss': {
-    recyclePool: [['min-starcore', 48], ['min-isotope', 52]],
+    recyclePool: [['min-tritanium', 20], ['min-starcore', 53], ['min-isotope', 27]], // 2026-09-14 同上（加三钛 20%）：146.20 → 146.30（+0.07%）
     recycleNote: '星髓虫群残骸：星髓晶为主——名副其实',
   },
   'ano-maw-hunt': {
-    recyclePool: [['min-starcore', 60], ['min-isotope', 40]],
+    recyclePool: [['min-tritanium', 20], ['min-starcore', 65], ['min-isotope', 15]], // 2026-09-14 同上（加三钛 20%）：169.00 → 169.10（+0.06%）
     recycleNote: '噬口猎杀残骸：星髓晶重富集',
   },
   'ano-voidedge-warden': {
-    recyclePool: [['min-starcore', 60], ['min-isotope', 40]],
+    recyclePool: [['min-tritanium', 20], ['min-starcore', 65], ['min-isotope', 15]], // 2026-09-14 同上（加三钛 20%）：169.00 → 169.10（+0.06%）
     recycleNote: '虚海守望者残骸：星髓晶重富集',
   },
   'ano-gravekeeper': {
-    recyclePool: [['min-darkiron', 17], ['min-isotope', 83]],
+    recyclePool: [['min-tritanium', 20], ['min-darkiron', 18], ['min-isotope', 62]], // 2026-09-14 同上（加三钛 20%）：178.25 → 176.10（−1.21%，冥铁 17→18 抵偿）
     recycleNote: '坟场守墓舰残骸：冥铁合金残片',
   },
   'ano-vault-sentinel': {
-    recyclePool: [['min-darkiron', 17], ['min-isotope', 83]],
+    recyclePool: [['min-tritanium', 20], ['min-darkiron', 18], ['min-isotope', 62]], // 2026-09-14 同上（加三钛 20%）：178.25 → 176.10（−1.21%，冥铁 17→18 抵偿）
     recycleNote: '穹顶守卫残骸：冥铁合金残片',
   },
 }
