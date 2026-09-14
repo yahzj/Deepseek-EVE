@@ -26,10 +26,10 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { WORMHOLE_ORE_ITEM_ID } from './wormhole'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckItemIdOf } from './salvage'
-import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf } from './wormholeSalvage'
+import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, WORMHOLE_CORE_WEIGHTS } from './wormholeSalvage'
 import { wormholeCardIdFor, wormholeLayerRewardMul } from './wormholeFoes'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
-import { aiCoreCap, aiCoreIndustryUsed, aiCoreShipUsed, industryAiBonus } from './ai'
+import { aiCoreCap, aiCoreIndustryUsed, aiCoreName, aiCoreShipUsed, gainAiCore, industryAiBonus } from './ai'
 
 /** **一趟自动探索的时长**（船长：「自动探索时间缩短至5分钟」） */
 export const WORMHOLE_AUTO_DURATION_MS = 5 * 60_000
@@ -60,6 +60,17 @@ export const WORMHOLE_AUTO_MANUAL = {
   orePiles: 2,
   /** 遗迹安全货柜件数/趟（econ 实测；层 2 起） */
   boxes: 0.23,
+  /**
+   * **AI 核心枚数/趟**（2026-09-14 船长新增遗迹掉落；同日第四答「自动探索也吃，按同口径折算
+   * **4%/趟**」）。取 **0.10** = 「每趟 1 次遗迹打捞 × `WORMHOLE_CORE_SHARE`(10%)」——
+   * 与船长批准的那条口径逐字对应；**层 1 起就出**（与货柜那条 0.23 不同，那条层 2 起）。
+   *
+   * ⚠ **这一项不是 econ 工具实测量出来的**（其余三项都是）：2026-09-14 实测时当前政策
+   * **20 趟里 0 次遗迹打捞**（同批"货柜 0.00 件/趟"也印证了这点）⇒ 取不到样本。故按上面的
+   * 保守基准取值；等政策能稳定上到第 2 层、遗迹打捞有了样本，再用 `npm run wormhole:econ`
+   * 的「AI 核心（遗迹打捞）」一行复核。
+   */
+  cores: 0.1,
 } as const
 
 /** **结构保底**（绝不丢船：结构低于它就不再扣） */
@@ -319,6 +330,8 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const cardId = wormholeCardIdFor(run.depth, Math.abs(run.seed % 13))
   const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? 'A')
   const gains: Array<{ itemId: string; units: number }> = []
+  /** 本趟自动探索捞到的 AI 核心（**不入仓库** ⇒ 不能进 `gains`；报告里单列一行） */
+  let coresGained: { type: 'gamma' | 'beta' | 'alpha'; n: number } | null = null
 
   // ① 普通残骸：堆数 = 手动 8.5 × 40% ≈ 3~4 堆，每堆 `WORMHOLE_WRECK_PILE_M3_BASE`(200) m³ × 层收益 × 抖动
   const commons = Math.max(1, Math.round(WORMHOLE_AUTO_MANUAL.commons * WORMHOLE_AUTO_YIELD_MUL * (0.8 + rng() * 0.4)))
@@ -337,6 +350,27 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   // ④ 遗迹安全货柜：期望 ≈0.09 件/趟（手动 0.23 × 40%），层 2 起
   if (run.depth >= 2 && rng() < WORMHOLE_AUTO_MANUAL.boxes * WORMHOLE_AUTO_YIELD_MUL) {
     gains.push({ itemId: wormholeRelicBoxIdOf(family), units: 1 })
+  }
+
+  /**
+   * ⑤ **AI 核心**（2026-09-14 船长第四答「自动探索也吃，按同口径折算 4%/趟」）：
+   * 命中率 = 手动 0.10 枚/趟 × 40% = **4%/趟**；命中后按**与手动同一条权重**（60/30/10）抽一种。
+   * ⚠ 两条与货柜不同：**层 1 也给**（手动那边没有层门槛）；**不入仓库** ⇒ 不能塞进 `gains`
+   * （那条循环是 `state.warehouse.items` 累加）⇒ 直接 `gainAiCore`，报告里单列一行。
+   */
+  if (rng() < WORMHOLE_AUTO_MANUAL.cores * WORMHOLE_AUTO_YIELD_MUL) {
+    const total = WORMHOLE_CORE_WEIGHTS.gamma + WORMHOLE_CORE_WEIGHTS.beta + WORMHOLE_CORE_WEIGHTS.alpha
+    let pick = rng() * total
+    let got: 'gamma' | 'beta' | 'alpha' = 'gamma'
+    for (const t of ['gamma', 'beta', 'alpha'] as const) {
+      pick -= WORMHOLE_CORE_WEIGHTS[t]
+      if (pick < 0) {
+        got = t
+        break
+      }
+    }
+    gainAiCore(state, got)
+    coresGained = { type: got, n: 1 }
   }
 
   // 入仓库（船长：「收益进仓库」）
@@ -376,17 +410,20 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     shipIds: [...run.shipIds],
     coresReleased: run.shipIds.length,
     gains,
+    ...(coresGained !== null ? { cores: [coresGained] } : {}),
     damage,
     confirmed: false,
   }
   state.wormholeAutoReports = [report, ...wormholeAutoReportsOf(state)].slice(0, WORMHOLE_AUTO_REPORT_MAX)
 
   const gainText = gains.length > 0 ? gains.map((g) => `${itemNameOf(ctx, g.itemId)} ×${g.units}`).join('、') : '空手而归'
+  /** AI 核心单列（不入仓库，故不在 `gains` 里） */
+  const coreText = coresGained ? `，并带回 ${aiCoreName(coresGained.type)} ×${coresGained.n}（已直接接入核心库）` : ''
   const dmgText = damage.map((d) => `${d.name}（结构 −${d.durabilityLossPct}% / 装甲 −${d.armorLossPct}%）`).join('、')
   addLog(
     state,
     'info',
-    `🛰 自动探索队返航（起始第 ${run.depth} 层）：带回 ${gainText}（已入仓库）；损伤：${dmgText}。` +
+    `🛰 自动探索队返航（起始第 ${run.depth} 层）：带回 ${gainText}（已入仓库）${coreText}；损伤：${dmgText}。` +
       `${run.shipIds.length} 条舰全部安全返航，${run.shipIds.length} 枚 AI 核心已释放——报告在「扫描虫洞」页等你确认。`,
   )
 }

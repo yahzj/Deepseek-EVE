@@ -246,6 +246,12 @@ export interface WormholeAutoReport {
   coresReleased: number
   /** 收益清单（已入仓库） */
   gains: Array<{ itemId: string; units: number }>
+  /**
+   * **本趟带回的 AI 核心**（2026-09-14 船长第四答：自动探索也吃遗迹核心掉落，按手动期望 ×40% 折算）。
+   * ⚠ 与 `gains` 分开：核心**不进仓库**（直接进 `state.aiCores` 账本）⇒ 塞进 `gains` 会被入仓循环
+   * 写进仓库、变成"仓库里有核心却不能用"的两本账。缺省 = 本趟没捞到。
+   */
+  cores?: Array<{ type: 'gamma' | 'beta' | 'alpha'; n: number }>
   /** 损伤读数（结构 / 装甲各一项） */
   damage: Array<{
     shipId: string

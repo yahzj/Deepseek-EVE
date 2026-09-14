@@ -67,6 +67,14 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'box-bp-shallow', kind: 'item', refId: 'box-bp-shallow', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-bp-mid', kind: 'item', refId: 'box-bp-mid', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-bp-deep', kind: 'item', refId: 'box-bp-deep', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  // 【AI 核心 3 种（2026-09-14 船长定：虫洞遗迹打捞新增掉落）：**洞内实物形态**——占货仓 1 格、
+  //   撤离成功即自动接入核心库（`state.aiCores`）、**不进仓库、不上市交易**。⚠ 与上面三条 `core-*`
+  //   （市场那本账，kind `aicore`、basePrice 9 万/28 万/90 万）是**两回事**：那三条是"能直接买的核心"，
+  //   这三条只是"洞内占格用的实物卡"。照"每种物品必须有市场卡"的既有契约补卡，一律 `unreleased`
+  //   ⇒ **上线动作 = 删这 3 个字段**；basePrice 1 / demandMultiplier 0 兜底防套利。】
+  { key: 'ai-core-gamma', kind: 'item', refId: 'ai-core-gamma', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'ai-core-beta', kind: 'item', refId: 'ai-core-beta', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'ai-core-alpha', kind: 'item', refId: 'ai-core-alpha', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // 【谜质储存器 7 台（F3c · 船长 2026-09-13）：同样**不上市交易**——它们是"本趟虫洞内生效、离开即消失"
   //   的装置，不是商品。照"每种物品必须有市场卡"的既有契约补卡，一律 `unreleased`（施工期不可见）
   //   ⇒ **上线动作 = 删这 7 个字段**（与货柜 / 虚空母矿同一套做法）；basePrice 1 / demandMultiplier 0
@@ -470,10 +478,25 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 1.0, standingReq: 10 },
   // 协处理器 MK3（2026-09-11 船长定：稀有度 4 走奇货、**无蓝图**——只能等奇货现货；无声望门槛）
   { key: 'mod-cpu-3', kind: 'module', refId: 'mod-cpu-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0 },
-  // 高级 AI 核心（远征掉落为主；奇货市场 = 等不及的玩家的捷径；可回卖：收购档 exotic 1.0×L）
-  { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 90_000, demandMultiplier: 1.0 },
-  { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 280_000, demandMultiplier: 1.0 },
-  { key: 'core-alpha', kind: 'aicore', refId: 'alpha', rarity: 'exotic', basePrice: 900_000, demandMultiplier: 1.0 },
+  /**
+   * **高级 AI 核心**（伽马 / 贝塔 / 阿尔法）——**2026-09-14 船长两条改判**：
+   *
+   * ① **贝塔与阿尔法「移除出售订单」**（船长原话：「核心加入虫洞掉落后，移除市场的贝塔和阿尔法
+   *    AI 核心的出售订单并备注」）⇒ 照**残骸 / 皇带鱼成品**的现成口径设 `playerBuyable: false`
+   *    （**只收不卖**：市场不出售现货，NPC 仍按行价收购 ⇒ 玩家仍可回卖，只是买不到）。
+   *    动机：这两种核心已在**虫洞遗迹打捞**里产出（10% 出货 · 贝塔 30 / 阿尔法 10 权重），
+   *    再让市场卖现货就等于"花钱跳过副本"，掉落的稀缺性归零。
+   *    ⚠ 伽马**不在此列**（船长只点了贝塔与阿尔法）⇒ 仍可市场购入。
+   *
+   * ② **按级别大幅提高价值**（船长原话：「同时按级别大幅提高AI核心的价值。阿尔法核心定价为1000万」，
+   *    同日给定四档 = **2.5 万 / 20 万 / 150 万 / 1000 万**）：伽马 9 万 → **20 万**（×2.2）·
+   *    贝塔 28 万 → **150 万**（×5.4）· 阿尔法 90 万 → **1000 万**（×11.1）；基础核心 2.5 万**不动**
+   *    （不碰早期 AI 副船/产线的入门成本）。
+   *    回卖价 = `basePrice × demandMultiplier`（exotic 档 = 1.0×）⇒ 捞到一枚阿尔法可卖 **1000 万**。
+   */
+  { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 200_000, demandMultiplier: 1.0 },
+  { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 1.0, playerBuyable: false },
+  { key: 'core-alpha', kind: 'aicore', refId: 'alpha', rarity: 'exotic', basePrice: 10_000_000, demandMultiplier: 1.0, playerBuyable: false },
 ]
 
 /**

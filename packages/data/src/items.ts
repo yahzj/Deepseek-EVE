@@ -935,6 +935,55 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
   },
 ]
 
+/**
+ * **AI 核心（洞内实物形态）**（船长 2026-09-14：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的
+ * 掉落。AI 核心单独占 1 格。出率为 10%，不挤占旧有出率。三种核心根据稀有度区分出货权重」）。
+ *
+ * 为什么要"实物形态"这一层：AI 核心在游戏里**是一本账**（`state.aiCores`：市场买卖、技能上限、
+ * 副船与产线占用全按它走），而**虫洞货仓只认物品 id**（占格、拖拽、临时空间、散落、结算全按物品走）
+ * ⇒ 想让它"占 1 格"就必须先有物品卡。船长裁定：**撤离成功那一刻自动接入核心库、不进仓库**
+ * （避免"仓库里有 3 个核心却不能接"的两本账）。
+ *
+ * **`kind: 'aicore'` 是本次新增的分类**（不复用 `container`）：拆解台的门是 `def.kind !== 'container'`
+ * ⇒ 复用会让核心出现在拆解台、还会被丢进货柜抽奖（抽不出东西）；新分类语义干净，
+ * `ITEM_KIND_ORDER` / `ITEM_KIND_LABELS` 两处登记，漏登记 typecheck 直接失败。
+ *
+ * **id 为什么是 `ai-core-*` 而不是 `core-*`**：市场那本账的 key 就叫 `core-gamma`（`kind:'aicore'`、
+ * `refId:'gamma'`，见 `marketCatalog.ts`）——两者是不同命名空间，但同名会让人以为是一回事。
+ *
+ * `unitM3: 500` 与"1 格"对得上（货仓 500 m³/格，形状表登记 1×1）；`baseSellPriceIsk: 1` 与货柜同款
+ * 兜底（它不上市交易，市场卡 `basePrice 1` / `demandMultiplier 0`）。施工期一律 `unreleased`。
+ */
+export const AI_CORE_ITEMS: readonly ItemDef[] = [
+  {
+    id: 'ai-core-gamma',
+    name: '伽马 AI 核心',
+    kind: 'aicore',
+    unitM3: 500,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '从遗迹控制台里拔出来的运算核心：外壳烧灼过，内核还在低鸣。占货仓 1 格；撤离成功后自动接入核心库。',
+  },
+  {
+    id: 'ai-core-beta',
+    name: '贝塔 AI 核心',
+    kind: 'aicore',
+    unitM3: 500,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '遗迹主控柜里的运算核心：散热鳍片完好，出厂编号被刻意磨掉。占货仓 1 格；撤离成功后自动接入核心库。',
+  },
+  {
+    id: 'ai-core-alpha',
+    name: '阿尔法 AI 核心',
+    kind: 'aicore',
+    unitM3: 500,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description: '遗迹最深处供着的那一枚：整块冷铸合金外壳，摸上去冰凉。占货仓 1 格；撤离成功后自动接入核心库。',
+  },
+]
+
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */
 export const ITEMS: readonly ItemDef[] = [
   ...ORES,
@@ -947,6 +996,7 @@ export const ITEMS: readonly ItemDef[] = [
   ...RELIC_CONTAINERS,
   ...BLUEPRINT_CONTAINERS,
   ...MATTER_DEVICES,
+  ...AI_CORE_ITEMS,
 ]
 
 /** 构建"物品 id → 定义"目录 */

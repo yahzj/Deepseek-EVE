@@ -9824,6 +9824,9 @@ body {
   border: 1px solid var(--wui-border); border-radius: 6px; background: rgba(255, 255, 255, 0.02);
 }
 .app-wh-settle-cell b { font-size: 15px; }
+/* 跨两列的那一格（2026-09-14 船长增补的第 5 格「AI 核心」）：4 格是偶数、第 5 格落单会难看 ⇒ 让它独占一行；
+   其余样式全部沿用 `.app-wh-settle-cell`，不另起一套。 */
+.app-wh-settle-cell.is-wide { grid-column: 1 / -1; }
 .app-wh-settle-total {
   padding: 8px 10px; border: 1px solid rgba(79, 216, 196, 0.4); border-radius: 6px;
   background: rgba(79, 216, 196, 0.06); font-size: 13px; text-align: center;

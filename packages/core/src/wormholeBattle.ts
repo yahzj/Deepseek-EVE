@@ -12,6 +12,7 @@ import type { BattleState, GameState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
+import { gainAiCore, aiCoreName } from './ai'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
 import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
@@ -46,6 +47,7 @@ import {
   wormholeOverloadBlockReason,
   wormholeSalvageAt,
   wormholeStowOrTemp,
+  wormholeCoreTypeOfItemId,
 } from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
@@ -607,6 +609,38 @@ function bagValueIsk(ctx: SimContext, run: WormholeRunState): number {
 }
 
 /**
+ * **把带回的 AI 核心接入核心库**（2026-09-14 船长：「AI 核心单独占 1 格」＋ 落地答
+ * 「撤离成功自动入核心库，不进仓库」）。
+ *
+ * 为什么抽成导出函数：这条语义（**入核心账本、仓库里没有**）是船长明确裁定的口径，
+ * 但它原本埋在 `deliverExtraction` 里 —— 要验它就得跑完一整趟撤离战。抽出来之后用例可以直接钉住
+ * （见 `tests/wormhole-core-drop.test.ts`），也保证"撤离带回"与"自动探索带回"两条路同源。
+ *
+ * 非核心 id 一律**原样跳过**（货柜/谜质仍走各自那条入库路径）。
+ * @returns 各档枚数（本批没有核心 = 空对象）
+ */
+export function deliverWormholeCores(
+  state: GameState,
+  ids: readonly string[],
+): Partial<Record<'gamma' | 'beta' | 'alpha', number>> {
+  const cores: Partial<Record<'gamma' | 'beta' | 'alpha', number>> = {}
+  for (const id of ids) {
+    const type = wormholeCoreTypeOfItemId(id)
+    if (!type) continue
+    gainAiCore(state, type)
+    cores[type] = (cores[type] ?? 0) + 1
+  }
+  if (Object.keys(cores).length > 0) {
+    const text = (['alpha', 'beta', 'gamma'] as const)
+      .filter((t) => (cores[t] ?? 0) > 0)
+      .map((t) => `${aiCoreName(t)}×${cores[t]}`)
+      .join('、')
+    addLog(state, 'info', `🕳 带回 ${text}：已直接接入核心库（不占货仓、不入仓库）。`)
+  }
+  return cores
+}
+
+/**
  * **撤离成功的收口**（船长 2026-09-13 的收口点之一，两处调用）：
  * ① 撤离战打赢（`settleWormholeBattle`）；② **第 1 层免战**（`advanceWormhole` 里直接放行，见
  * `WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH`）。⇒ 抽成一个函数，免得两条路各写一遍（历史上这种
@@ -658,10 +692,24 @@ function deliverExtraction(
    * 形状件（货柜）仍走 `wormholeDeliverRelics` 的物品分支；散货按单位数入仓。
    */
   const tempItems = (run.temp ?? []).map((s) => s.itemId)
+  /**
+   * **AI 核心单独走一条**（2026-09-14 船长定：「AI 核心单独占 1 格」＋ 落地答「撤离成功自动入核心库，
+   * 不进仓库」）：它们是**形状件**（1×1），撤离成功那一刻按枚数 `gainAiCore` 直接入核心账，
+   * **绝不能进 `wormholeDeliverRelics`**（那条会 `addWare` 进仓库 ⇒ 变成"仓库里有 3 个核心却不能用"
+   * 的两本账）。半路全损根本走不到这里 ⇒ 核心随背包一起丢（现成口径）。
+   */
+  const coreIds = [...boxes, ...tempItems].filter((id) => wormholeCoreTypeOfItemId(id) !== null)
+  const cores = deliverWormholeCores(state, coreIds)
+  /** 行价参考估值（唯一出处 = 市场卡；核心账本那本 key 是 `core-<type>`） */
+  const coresIsk = (['gamma', 'beta', 'alpha'] as const).reduce(
+    (s, t) => s + (cores[t] ?? 0) * (ctx.marketGoods.get(`core-${t}`)?.basePrice ?? 0),
+    0,
+  )
   const boxesAll = [...boxes, ...tempItems.filter((id) => wormholeIsShapedItem(id))]
+    .filter((id) => wormholeCoreTypeOfItemId(id) === null)
   if (boxesAll.length > 0) wormholeDeliverRelics(state, ctx, boxesAll)
   for (const slot of run.temp ?? []) {
-    if (wormholeIsShapedItem(slot.itemId)) continue // 上面已按"件"入过
+    if (wormholeIsShapedItem(slot.itemId)) continue // 上面已按"件"入过（核心同理，已入核心账）
     if (Math.floor(slot.units) > 0) addWare(state, slot.itemId, Math.floor(slot.units))
   }
   if ((run.temp ?? []).length > 0) {
@@ -676,6 +724,7 @@ function deliverExtraction(
     wreckIsk: recycle,
     boxes: boxesAll,
     relics,
+    ...(coreIds.length > 0 ? { cores, coresIsk } : {}),
     shipsLost: [],
     lostIsk: 0,
     ...(opts?.skippedBattle === true ? { skippedExtractBattle: true } : {}),

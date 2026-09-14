@@ -25,6 +25,7 @@ import {
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
+  aiCoreName,
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -332,6 +333,14 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
                         ? rep.gains.map((g) => `${engine.ctx.items.get(g.itemId)?.name ?? g.itemId} ×${g.units}`).join('、')
                         : '空手而归'}
                     </span>
+                    {/* AI 核心（2026-09-14）：**不进仓库**（直接进核心库）⇒ 与「收益」分行单列，别混在一起 */}
+                    {rep.cores && rep.cores.length > 0 ? (
+                      <span className="app-inv-count">
+                        另带回：
+                        {rep.cores.map((c) => `${aiCoreName(c.type)} ×${c.n}`).join('、')}
+                        （已直接接入核心库）
+                      </span>
+                    ) : null}
                     <span className="app-inv-count">
                       损伤：
                       {rep.damage.length > 0

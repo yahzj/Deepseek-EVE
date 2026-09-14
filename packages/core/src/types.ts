@@ -58,6 +58,13 @@ export type ItemKind =
   | 'matter'
   | 'fragment'
   | 'kit'
+  /**
+   * **AI 核心（洞内实物形态）**（船长 2026-09-14：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的
+   * 掉落。AI 核心单独占 1 格」）：洞内货仓里占 1 格的实物件，**撤离成功即自动接入核心库、不进仓库**
+   * （核心账本 = `state.aiCores`；实物形态只为"占格 + 拖拽 + 临时空间 + 散落 + 结算"这一串现成规则存在）。
+   * 与 `container` **必须分开**：拆解台的资格判据是 `kind === 'container'`（核心不该上拆解台）。
+   */
+  | 'aicore'
 
 /** 伤害类型（V10.5 战斗数值契约：远行星号体系——动能/高爆/能量三系） */
 export type DamageType = 'kinetic' | 'explosive' | 'plasma'

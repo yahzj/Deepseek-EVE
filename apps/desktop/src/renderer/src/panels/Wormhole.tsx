@@ -1542,17 +1542,45 @@ export function WormholePanel({
  * **本趟结算单**（船长 2026-09-13：「结算界面表示玩家的收益和损失」＋ 同日晚两条追加
  * 「**结算界面尽量居中显示**」「**收获信息挨个弹出显示（需要动效）**」）。
  *
- * 版式：整块**居中**、定宽 640（内容变化不跳动）；四格收获**依次弹出**（+90ms/格，纯 CSS
+ * 版式：整块**居中**、定宽 640（内容变化不跳动）；收获格**依次弹出**（+90ms/格，纯 CSS
  * `animation-delay`），合计等明细播完再淡入，数字用 `useCountUp` **跳数**（320ms 缓出）；
  * ⚠ 「确认并返回」**立刻可点**，不拿动画锁玩家。
+ *
+ * 2026-09-14 船长增补第 5 格「AI 核心 N 枚」（遗迹打捞掉落）：**只在真捞到时才出**、
+ * 并**跨两列独占一行**（4 格是偶数，第 5 格落单会难看）；它是唯一不进「到手合计」的一格。
  */
+/** 核心账本键 → 短名（结算单里那行小字用；全称见 core 的 `aiCoreName`） */
+const CORE_LABEL: Readonly<Record<'gamma' | 'beta' | 'alpha', string>> = { gamma: '伽马', beta: '贝塔', alpha: '阿尔法' }
+
 function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onConfirm: () => void }) {
   const total = useCountUp(settle.oreIsk + settle.wreckIsk)
-  const cells: Array<{ label: string; value: string; sub: string }> = [
+  const cells: Array<{ label: string; value: string; sub: string; wide?: boolean }> = [
     { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} 信用点` },
     { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: '信用点' },
     { label: '货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
     { label: '随行战利品', value: String(settle.relics.length), sub: '件（装备 / 图纸）' },
+    /**
+     * **AI 核心**（2026-09-14 船长：「结算单另加一格「AI 核心 N 枚」」＋「附按行价约 N 信用点」）。
+     * 只在真捞到时才出这一格；`wide` = 跨两列独占一行（4 格是偶数、第 5 格落单会难看）。
+     * ⚠ 它是**唯一不进「到手合计」**的一格：核心直接进核心账本、不拆解，故单独给行价参考。
+     */
+    ...(settle.cores && Object.keys(settle.cores).length > 0
+      ? [
+          {
+            label: 'AI 核心',
+            value: String((settle.cores.gamma ?? 0) + (settle.cores.beta ?? 0) + (settle.cores.alpha ?? 0)),
+            sub:
+              '枚（' +
+              (['alpha', 'beta', 'gamma'] as const)
+                .filter((t) => (settle.cores?.[t] ?? 0) > 0)
+                .map((t) => `${CORE_LABEL[t]}×${settle.cores?.[t]}`)
+                .join(' · ') +
+              (settle.coresIsk && settle.coresIsk > 0 ? ` ⇒ 按行价约 ${n(settle.coresIsk)} 信用点` : '') +
+              '）',
+            wide: true,
+          },
+        ]
+      : []),
   ]
   const STEP = 90
   return (
@@ -1572,7 +1600,11 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
       </div>
       <div className="app-wh-settle-grid">
         {cells.map((c, i) => (
-          <div key={c.label} className="app-wh-settle-cell is-pop" style={{ animationDelay: `${(i + 1) * STEP}ms` }}>
+          <div
+            key={c.label}
+            className={`app-wh-settle-cell is-pop${c.wide ? ' is-wide' : ''}`}
+            style={{ animationDelay: `${(i + 1) * STEP}ms` }}
+          >
             <span className="app-dim">{c.label}</span>
             <b>{c.value}</b>
             <span className="app-dim">{c.sub}</span>
@@ -2174,7 +2206,13 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             const iconKey = itemIconOf(p.itemId, def?.kind)
             const isCargo = p.kind === 'cargo'
             const isMatter = wormholeMatterDeviceOf(p.itemId) !== undefined
-            const label = isCargo ? `×${n(p.units ?? 0)}` : p.itemId.startsWith('box-bp-') ? '图纸' : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
+            const label = isCargo
+              ? `×${n(p.units ?? 0)}`
+              : p.itemId.startsWith('box-bp-')
+                ? '图纸'
+                : p.itemId.startsWith('ai-core-')
+                  ? '核心' // AI 核心（2026-09-14）：1×1 = 1 格，短标签与货柜的「图纸」同一档
+                  : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
             return (
               <div
                 key={`fig-${kind}-${p.id}`}

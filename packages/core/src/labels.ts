@@ -111,12 +111,13 @@ export function rackOf(def: {
 }
 
 /** 物品分类展示顺序 */
-export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'fragment', 'kit']
+export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'fragment', 'kit', 'aicore']
 
 /** 物品分类中文名（仓库/货仓分组标题与空态文案用）
  *  ⚠ **术语（船长 2026-09-12 定）**：`ore` = 「**原矿**」（未精炼的石头，1 m³/单位）；
  *  `mineral` = 「**原材料**」（精炼产物，0.01 m³/单位）。旧称「矿石 / 矿物」作废，勿再混用。
- *  `container` = 「**货柜**」（F4 · 2026-09-13：占形状格的大件、带回后拆解）。 */
+ *  `container` = 「**货柜**」（F4 · 2026-09-13：占形状格的大件、带回后拆解）。
+ *  `aicore` = 「**AI 核心**」（2026-09-14：洞内实物形态，占 1 格、撤离后自动接入核心库）。 */
 export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
   ore: '原矿',
   mineral: '原材料',
@@ -129,6 +130,7 @@ export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
   matter: '谜质储存器',
   fragment: '蓝图碎片',
   kit: '修理组件',
+  aicore: 'AI 核心',
 }
 
 export function itemKindLabel(kind: ItemKind): string {
