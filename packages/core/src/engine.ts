@@ -29,7 +29,7 @@ import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
-import { advanceWormholeScan } from './wormholeScan'
+import { advanceWormholeScan, reconcileWormholeScanWelcome } from './wormholeScan'
 import { advanceWormholeAuto } from './wormholeAuto'
 import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
@@ -118,6 +118,8 @@ export function advanceGame(
   advanceWormhole(state, ctx, opts?.freezeBattle)
   advanceScanning(state, ctx)
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
+  // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）
+  reconcileWormholeScanWelcome(state)
   advanceWormholeScan(state, ctx, d)
   // 自动探索（2026-09-14 批次 3）：到点即结算（收益入仓库 + 损伤 + 待确认报告）；离线大步长同样适用
   advanceWormholeAuto(state, ctx)

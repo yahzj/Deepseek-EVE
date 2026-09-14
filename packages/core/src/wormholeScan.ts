@@ -12,8 +12,9 @@
  * - **遇袭不中断**：被打不影响进度（进度按游戏时刻推进，不在遇袭时清零）。
  * - 进度满 ⇒ **发现 1 个虫洞**（随机种子 + **起始层恒 1** + 原型/敌族按种子定）进库存，随后**自动续扫**。
  * - **库存上限 5**；满则**扫描停机**并提示（船长：「扫描停机并提示」）。
- * - **解锁赠礼**（船长 2026-09-14）：「**设置，玩家解锁扫描虫洞时，扫描进度条就是满的。**」⇒
- *   首次达标（协会声望 ≥ 40）那一刻把进度条**一次性预置满格**（`grantWormholeScanUnlockGift`，幂等、老档补发）。
+ * - **解锁当次送一格**（船长 2026-09-14 四步闸门裁定「甲」）：「**当玩家解锁虫洞时，让虫洞的进度条初始为
+ *   100%（也就是玩家点击扫描时立刻获得一个虫洞）**」⇒ 首次达标（协会声望 ≥ 40）把进度条置成满一个窗口
+ *   （`reconcileWormholeScanWelcome`，逐 tick 幂等、老档补发、**只送一次**，且**不提示"已预置"**）。
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
 import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
@@ -106,27 +107,6 @@ export function wormholeStockOf(state: GameState): WormholeStockItem[] {
   return state.wormholeStock ?? []
 }
 
-/**
- * **解锁赠礼**（船长 2026-09-14：「**设置，玩家解锁扫描虫洞时，扫描进度条就是满的。**」）：
- * 首次判定"已解锁"（协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`）时，把进度条**一次性预置满格**
- * ⇒ 玩家点开始扫描**第一拍就发现一处虫洞**（不必先等满一个窗口）。
- *
- * 口径：
- * - **幂等**：领过就写 `wormholeScan.unlockGift = true`，此后不再预置（声望掉下去再涨回来也不重复领）；
- * - **老档一并补发**：本批次之前就已达标的档在下一拍补上（否则老档永远看不到这份见面礼）；
- * - **只增不减**：取 `max(现有进度, 当时窗口)`（已有进度更长的档不被回退）；
- * - 预置的是**当时**的窗口（技能只让窗口更短 ⇒ 之后只会更快产出）。
- */
-export function grantWormholeScanUnlockGift(state: GameState): boolean {
-  const scan = (state.wormholeScan = state.wormholeScan ?? { active: false, progressMs: 0 })
-  if (scan.unlockGift === true) return false
-  if (!wormholeScanUnlocked(state)) return false
-  scan.unlockGift = true
-  scan.progressMs = Math.max(scan.progressMs, wormholeScanWindowMs(state))
-  addLog(state, 'info', '🛰 扫描虫洞已解锁：扫描进度已预置满格（开扫即可发现一处）。')
-  return true
-}
-
 /** 库存是否已满（满 ⇒ 扫描停机） */
 export function wormholeStockFull(state: GameState): boolean {
   return wormholeStockOf(state).length >= WORMHOLE_STOCK_MAX
@@ -146,6 +126,21 @@ export function wormholeScanBlockReason(state: GameState): string | null {
   if (state.expedition.active) return '主控正在远征：一台主控同时只能干一件事。'
   if (state.transit.active) return '主控正在航行：到港后再开始扫描。'
   if (state.standby.active) return '主控正在待命：先取消待命。'
+  /**
+   * **补齐剩下四项主控活动**（船长 2026-09-14 玩家反馈「虫洞扫描不占用主控活动」的同一批）：
+   * 修前这里只列到"待命"，于是**长途运输 / 快递在途 / 亲自开炉 / 亲自开线**期间还能开扫——
+   * 反方向（扫描时不让你开这些）由 `wormholePilotHoldReason` 兜住，两个方向必须成对。
+   * 判据与通知一律与 `mining.ts` / `industry.ts` / `manufacturing.ts` 的既有措辞对齐
+   * （"想自动××可改用 AI 核心驱动"）。
+   */
+  if (state.hauling.active) return '主控正在长途运输：先停止运输（活动栏「停止运输」，到站即止）再开始扫描。'
+  if (state.sideTasks.deliver !== null) return '快递投送在途：到站自动结算后再开始扫描。'
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return '精炼炉正由你亲自运转：先停炉才能展开扫描阵列（想自动精炼可改用 AI 核心驱动）。'
+  }
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
+    return '制造作业正由你亲自开线：先取消它才能展开扫描阵列（想自动制造可改用 AI 核心驱动）。'
+  }
   if (wormholeStockFull(state)) {
     return `已囤积 ${WORMHOLE_STOCK_MAX} 处未探索的虫洞：先去探索掉一处再扫。`
   }
@@ -173,6 +168,31 @@ export function wormholeScanStop(state: GameState): CommandResult {
   if (mins === null) return { ok: false, error: '扫描没在跑。' }
   addLog(state, 'info', `🛰 停止扫描虫洞（进度保留：已扫 ${mins} 分钟）。`)
   return { ok: true }
+}
+
+/**
+ * **解锁当次：把扫描进度预置成"满一个窗口"**（船长 2026-09-14 四步闸门裁定「甲」）：
+ * 船长原话「**当玩家解锁虫洞时，让虫洞的进度条初始为100%（也就是玩家点击扫描时立刻获得一个虫洞）**」。
+ *
+ * 口径：
+ * - **只送一次**（`scan.welcomed` 标记；可选存档字段 ⇒ 零迁移）；
+ * - 达标那一刻把 `progressMs` 置成 `wormholeScanWindowMs(state)` ⇒ 玩家点「开始扫描」后**第一拍**
+ *   即产出一处虫洞（**仍要玩家自己点**，不替他开扫）；
+ * - **不提示进度预置**（船长 2026-09-14：「不提示」）：日志不写"已预置 100%"这类字样；
+ *   **2026-09-14 追加**：日志要提醒**进洞前带采集器与打捞器**（船长：「**解锁虫洞的提示和通讯内，
+ *   提醒玩家要带采集器和打捞器**」）——洞里的矿脉靠采集器采、遗迹与残骸靠打捞器捞，空手进去收获会少一大截。
+ *
+ * ⚠ **逐 tick 调用**（`advanceGame`，与 `reconcileDockSanity` 同款）：解锁是"声望 ≥ 40"这个
+ * **连续状态**、不是一次性事件 ⇒ 靠标记保证幂等；老档若已达标，下一次 tick 自动补上。
+ */
+export function reconcileWormholeScanWelcome(state: GameState): boolean {
+  const scan = (state.wormholeScan = state.wormholeScan ?? { active: false, progressMs: 0 })
+  if (scan.welcomed === true) return false
+  if (!wormholeScanUnlocked(state)) return false
+  scan.welcomed = true
+  scan.progressMs = wormholeScanWindowMs(state)
+  addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描（进洞前记得带采集器与打捞器）。')
+  return true
 }
 
 let stockSeq = 0
@@ -269,8 +289,6 @@ export function wormholeStockTake(state: GameState, id: string): WormholeStockIt
  * - 离线大步长会一次跨过多个窗口 ⇒ **循环产出**（每满一个产一个，直到库存满或进度用尽）。
  */
 export function advanceWormholeScan(state: GameState, ctx: SimContext, deltaMs: number): void {
-  /** **解锁赠礼先结算**（幂等、每拍都查）：达标那一刻把进度条预置满格 —— 与"扫不扫"无关，故放在活动守卫之前 */
-  grantWormholeScanUnlockGift(state)
   const scan = state.wormholeScan
   if (!scan?.active || deltaMs <= 0) return
   const windowMs = wormholeScanWindowMs(state)

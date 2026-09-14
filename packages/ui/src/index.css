@@ -128,7 +128,7 @@
 }
 
 /* T6 日志配色：类别语义（system 系统 / levelup 升级 / warn 警告 / queue 训练队列 /
-   info 流程信息 / trade 交易资金）；色距拉大、不刺眼（色值需与 App.tsx KIND_DOT 同步） */
+   info 流程信息 / trade 交易资金 / event 随机事件）；色距拉大、不刺眼（色值需与 App.tsx KIND_DOT 同步） */
 .wui-log-system {
   color: var(--wui-purple);
 }
@@ -141,6 +141,15 @@
   border-left-color: var(--wui-red);
   background: rgba(255, 90, 80, 0.06);
 }
+
+/* 随机事件（2026-09-14 船长：「突发事件的事件日志内不够显眼」⇒ 独立类型 + 与 warn 同级的醒目配方） */
+.wui-log-event {
+  color: #ffb35c;
+  border-left-color: #ffb35c;
+  background: rgba(255, 179, 92, 0.07);
+  font-weight: 600;
+}
+
 .wui-log-queue {
   color: #54d4de;
 }

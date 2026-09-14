@@ -5,14 +5,14 @@
  * 「**星际奇遇学，对缩减虫洞的时间也有效。**」「**满级后缩减虫洞扫描周期20%**」「**并移动到探索内**」
  * 「**rank提升到5**」）。
  *
- * 锁住七条口径：
+ * 锁住六条口径：
  * ① 窗口 = **12 小时** × 三技能乘算 × **星际奇遇学**（不练 = 12 小时；奇遇学**满级**才 −20%，阶跃）；
  * ② 主控活动互斥（采矿/打捞/扫描/远征/航行/待命/在洞内 都不许开扫）；
  * ③ 推进：满一个窗口发现一处进库存，**连续跨窗可连出**（离线大步长）；
  * ④ **库存上限 5**：满则**扫描停机**并写一条提示（不静默白跑）；
  * ⑤ 随档往返 + 坏值清洗（非法条目丢弃、超出上限截断）；
- * ⑥ 技能口径：三项扫描技能 `rank` = 3 / 4 / 5；**星际奇遇学 `rank` = 5 且归「探索」组**（同日改判）；
- * ⑦ **解锁赠礼**（船长 2026-09-14）：「玩家解锁扫描虫洞时，扫描进度条就是满的」——首次达标预置满格、只领一次。
+ * ⑥ 技能口径：三项扫描技能 `rank` = 3 / 4 / 5；**星际奇遇学 `rank` = 5 且归「探索」组**（同日改判）。
+ * （"解锁当次送一格"= 船长同日裁定「甲」，由 `reconcileWormholeScanWelcome` 落码，专测在 `wormhole-unlock.test.ts`。）
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, ITEMS, SKILLS } from '@whale/data'
@@ -47,10 +47,10 @@ function fresh(seed = 4242): GameState {
    */
   state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
   /**
-   * ⚠ **解锁赠礼单独有用例**（见「解锁赠礼：达标那一刻进度条预置满格」）：这里直接标记"已领过"，
-   * 免得"进度条被预置满格"把窗口 / 停机 / 往返这些机制用例的读数全推高一格。
+   * ⚠ **"解锁当次送一格"（`reconcileWormholeScanWelcome`）另有专测**（`wormhole-unlock.test.ts`）：
+   * 这里直接标记"已发放"，免得"进度条被预置满格"把窗口 / 停机 / 往返这些机制用例的读数全推高一格。
    */
-  state.wormholeScan = { active: false, progressMs: 0, unlockGift: true }
+  state.wormholeScan = { active: false, progressMs: 0, welcomed: true }
   return state
 }
 
@@ -202,33 +202,6 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     expect(cleaned.wormholeStock!.every((x) => x.id.startsWith('x'))).toBe(true)
     // 旧档里的起始层 2/3（上面这批就是 depth: 2）**载入时一律归 1**
     expect(cleaned.wormholeStock!.every((x) => x.depth === 1)).toBe(true)
-    expect(cleaned.wormholeScan).toEqual({ active: false, progressMs: 0, unlockGift: undefined })
-  })
-
-  it('**解锁赠礼**：达标那一刻进度条预置满格（开扫即得一处；只领一次；随档往返）', () => {
-    // 未达标：不预置（进度保持 0、标记也不写）
-    const s = createInitialState({ nowWallMs: 0, seed: 99 })
-    advanceWormholeScan(s, ctx, 1000)
-    expect(s.wormholeScan!.progressMs).toBe(0)
-    expect(s.wormholeScan!.unlockGift).toBeUndefined()
-    // 达标 ⇒ 下一拍（哪怕没在扫）直接预置满格 + 一条日志
-    s.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
-    advanceWormholeScan(s, ctx, 1000)
-    expect(s.wormholeScan!.progressMs).toBe(WORMHOLE_SCAN_BASE_MS)
-    expect(s.wormholeScan!.unlockGift).toBe(true)
-    expect(s.logs.map((l) => l.text).some((t) => t.includes('预置满格'))).toBe(true)
-    // 满格的进度 ⇒ 一开扫第一拍就发现一处，产出后从 0 续扫
-    expect(wormholeScanStart(s, ctx).ok).toBe(true)
-    advanceWormholeScan(s, ctx, 1000)
-    expect(wormholeStockOf(s)).toHaveLength(1)
-    expect(s.wormholeScan!.progressMs).toBe(1000)
-    // **只领一次**：把进度清零后再推几拍都不会重新填满
-    s.wormholeScan!.progressMs = 0
-    advanceWormholeScan(s, ctx, 1000)
-    expect(s.wormholeScan!.progressMs).toBe(1000)
-    // 随档往返：标记与进度都保留（老档缺字段 = 还没领过，读档后由下一拍补发）
-    const back = loadSaveFile(serializeSaveFile(s, 1)).state
-    expect(back.wormholeScan!.unlockGift).toBe(true)
-    expect(back.wormholeScan!.progressMs).toBe(1000)
+    expect(cleaned.wormholeScan).toEqual({ active: false, progressMs: 0 })
   })
 })

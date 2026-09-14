@@ -76,7 +76,7 @@ function gameClock(gameMs: number): string {
 
 /* ═══════════════ 日志面板偏好（折叠 + 类型过滤，存 localStorage） ═══════════════ */
 
-const LOG_KINDS: readonly LogKind[] = ['system', 'info', 'queue', 'levelup', 'warn', 'trade']
+const LOG_KINDS: readonly LogKind[] = ['system', 'info', 'queue', 'levelup', 'warn', 'trade', 'event']
 const KIND_LABEL: Record<LogKind, string> = {
   system: '系统',
   info: '信息',
@@ -84,7 +84,9 @@ const KIND_LABEL: Record<LogKind, string> = {
   levelup: '升级',
   warn: '警告',
   trade: '交易',
+  event: '事件',
 }
+
 /** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
 const KIND_DESC: Record<LogKind, string> = {
   system: '系统：欢迎与系统通告等',
@@ -93,7 +95,9 @@ const KIND_DESC: Record<LogKind, string> = {
   levelup: '升级：技能升级',
   warn: '警告：异常/失利/记录缺失',
   trade: '交易：市场成交与挂单、买船买核心、维修费、远征奖金等一切资金往来',
+  event: '事件：深空偶发奇遇与市场风云（日志带 ✦，在线时会弹小卡）',
 }
+
 /** 开关色点（图例）：色值须与 ui index.css 的 wui-log-* 一致 */
 const KIND_DOT: Record<LogKind, string> = {
   system: 'var(--wui-purple)',
@@ -102,7 +106,9 @@ const KIND_DOT: Record<LogKind, string> = {
   queue: '#54d4de',
   info: '#8fa3c2',
   trade: '#6fdc8f',
+  event: '#ffb35c',
 }
+
 const PREFS_KEY = 'whale-idle:log-prefs'
 
 interface LogPrefs {
@@ -113,7 +119,7 @@ interface LogPrefs {
 function defaultLogPrefs(): LogPrefs {
   return {
     collapsed: false,
-    kinds: { system: true, info: true, queue: true, levelup: true, warn: true, trade: true },
+    kinds: { system: true, info: true, queue: true, levelup: true, warn: true, trade: true, event: true },
   }
 }
 
@@ -516,6 +522,17 @@ export function App({ engine }: { engine: GameEngine }) {
    */
   const [navBeat, setNavBeat] = useState<{ key: PageKey; seq: number } | null>(null)
   const navBeatTimer = useRef<number | null>(null)
+  /**
+   * **赏金新板提示**（船长 2026-09-14：「当任务中心有新的赏金任务时，提示玩家，**玩家进入后消除提示**」）：
+   * 判定 = **换板未看**（core `sideTaskBoard().bountyNewCount`，单点）——赏金日板每天本地 0 点整板替换。
+   * 徽标在**任务中心页内恒为 0**（进入即消，不必等下一拍）；记账写在下面那个 effect 里。
+   * ⚠ 记账**必须挂在 `page` 上**（而不是导航按钮的 onClick）：点导航、通讯「前往」、教程跳转
+   * 三条入口都会走到这里，挂在按钮上会漏掉后两条 ⇒ "进了任务中心徽标还在"。
+   */
+  const bountyNew = page === 'task' ? 0 : engine.bountyNewCount()
+  useEffect(() => {
+    if (page === 'task') engine.markBountyBoardSeen()
+  }, [engine, page])
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
   const [shipTab, setShipTab] = useState<ShipTab>('fleet')
@@ -683,7 +700,7 @@ export function App({ engine }: { engine: GameEngine }) {
     for (let i = logs.length - 1; i >= 0; i--) {
       const l = logs[i]!
       if (l.id <= lastSeenLogId.current) break // 只检查新增日志（id 单调递增）
-      if (l.text.startsWith('✦')) {
+      if (l.kind === 'event' || l.text.startsWith('✦')) { // 随机事件按类型认；其余「✦ 扫描完成/彩头/高级箱」照旧按前缀认
         setEventToast({ id: l.id, text: l.text })
         if (eventTimer.current !== null) window.clearTimeout(eventTimer.current)
         eventTimer.current = window.setTimeout(() => setEventToast(null), 6000)
@@ -911,7 +928,8 @@ export function App({ engine }: { engine: GameEngine }) {
            */}
           <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
           {NAV_ITEMS.map((item) => {
-            const unreadN = item.key === 'comms' ? commsUnread : 0
+            // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
+            const unreadN = item.key === 'comms' ? commsUnread : item.key === 'task' ? bountyNew : 0
             return (
               <button
                 key={item.key}
@@ -921,7 +939,9 @@ export function App({ engine }: { engine: GameEngine }) {
                   tutLocked && !tutCanOpen(item.key)
                     ? '按教程引导进行：先完成当前「教程目标」'
                     : unreadN > 0
-                      ? `有 ${unreadN} 条未读通讯`
+                      ? item.key === 'task'
+                        ? `赏金任务已更新：${unreadN} 条（进任务中心即清除）`
+                        : `有 ${unreadN} 条未读通讯`
                       : undefined
                 }
                 onClick={() => changePage(item.key)}

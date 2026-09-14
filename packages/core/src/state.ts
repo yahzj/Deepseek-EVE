@@ -35,7 +35,7 @@ export const DEFAULT_START_SHIP_ID = 'sandcat'
 export const MAX_AI_CORE_LEVEL = 5
 
 /** 日志类型：显示端按类型配色/筛选 */
-export type LogKind = 'system' | 'info' | 'queue' | 'levelup' | 'warn' | 'trade'
+export type LogKind = 'system' | 'info' | 'queue' | 'levelup' | 'warn' | 'trade' | 'event' // 'event' = 深空偶发奇遇与市场风云（2026-09-14 船长：日志里要显眼 ⇒ 独立类型，不再混在 info）
 
 /** 一条事件日志 */
 export interface LogEntry {
@@ -200,11 +200,11 @@ export interface WormholeScanState {
   /** 已累计的扫描毫秒（满一个窗口即发现一处虫洞） */
   progressMs: number
   /**
-   * **解锁赠礼已领**（船长 2026-09-14：「设置，玩家解锁扫描虫洞时，扫描进度条就是满的。」）。
-   * 首次判定"已解锁"（协会声望 ≥ 40）时把进度条一次性预置满格并置本标记；
-   * **可选字段 ⇒ 零迁移**：老档没有它 = 还没领过 ⇒ 下一拍补发（`grantWormholeScanUnlockGift`）。
+   * **解锁当次那"满一个窗口"的进度是否已发放**（船长 2026-09-14 四步闸门选甲：解锁时进度条初始 100%
+   * ⇒ 玩家点「开始扫描」第一拍即得一处）。**可选字段 ⇒ 零迁移**：老档没有 = 尚未发放，
+   * 已达标的老档在下一次 tick 由 `reconcileWormholeScanWelcome` 自动补上；**只送一次**。
    */
-  unlockGift?: boolean
+  welcomed?: boolean
 }
 
 /**
@@ -1677,6 +1677,15 @@ export interface SideTasksState {
   /** 赏金板日界（本地 0 点的墙钟毫秒；0 = 未开板）——下一日界到点时整板替换。
    *  兼容字段（无版本号变化）：老档缺省 0，首次拿到有效墙钟即开板。 */
   bountyWindow: number
+  /**
+   * **赏金新板提示**（2026-09-14 船长：「当任务中心有新的赏金任务时，提示玩家，玩家进入后消除提示」）：
+   * 玩家**上一次看过**的赏金日界（本地 0 点墙钟毫秒；0 = 从没看过）。
+   *
+   * 导航「任务中心」的徽标 = `bountyWindow > bountySeenWindow` 时亮（**换板未看**口径），
+   * 进「任务中心」页即记账（`sideTasksMarkBountySeen`）⇒ 灭；下一日界到点换板后再亮。
+   * 兼容字段（无版本号变化）：老档缺省 0 ⇒ **首帧会亮一次**（船长同日定「**老档默认亮起提示**」）。
+   */
+  bountySeenWindow?: number
   /** 快递投送在途挂账（一次一笔；null = 无）。整板刷新不清除在途投送，到站仍按原任务结算 */
   deliver: CourierDeliveryState | null
 }
@@ -1749,6 +1758,18 @@ export function shipLockedInWormhole(state: GameState, shipId: string): boolean 
  * 一旦它因虫洞报"驾驶船不可用"，引擎会去改派驾驶船/补发保底船。故单开一个判据。
  */
 export function wormholePilotHoldReason(state: GameState): string | null {
+  /**
+   * **「扫描虫洞」同样占着主控**（船长 2026-09-14 玩家反馈：「**虫洞扫描不占用主控活动**」）。
+   *
+   * 修前的漏洞：扫描虫洞**只有单向门槛**——`wormholeScanBlockReason` 会挡住"别人在跑时开扫"，
+   * 但**没有任何地方挡住"扫描时去干别的"** ⇒ 玩家可以一边扫描虫洞一边出海采矿/打捞/远征。
+   * 补在本函数一处即可全覆盖：九个主控活动入口（采矿 / 打捞 / 星图扫描 / 远征 / 掩护巡逻 /
+   * 长途运输 / 亲自开炉·回收·拆箱 / 亲自开线）**都读这一个判据**。
+   * 停扫即释放（`active = false`，进度保留、回来可续扫）。
+   */
+  if (state.wormholeScan?.active === true) {
+    return '主控正在扫描虫洞：先停扫（进度保留、回来可续扫）再安排别的活动。'
+  }
   if (state.wormhole.run?.attending !== true) return null
   return '人在虫洞里（进虫洞这个活动还在进行）：先撤离或结算本趟；临时离开的话，关掉虫洞界面就能释放主控。'
 }

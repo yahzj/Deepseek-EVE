@@ -67,6 +67,7 @@ import {
   serializeSaveFile,
   settleBountyTaskVictory,
   sideTaskBoard,
+  sideTasksMarkBountySeen,
   startExpedition,
   startRecycleRun,
   factionPoolOf,
@@ -963,5 +964,74 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     expect(rate).toBeGreaterThan(FACTION_RARE_DROP_CHANCE - 0.1)
     expect(rate).toBeLessThan(FACTION_RARE_DROP_CHANCE + 0.1)
     expect(hits).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * **赏金新板提示**（船长 2026-09-14：「当任务中心有新的赏金任务时，提示玩家，**玩家进入后消除提示**」）：
+ * 判定 = **换板未看**（当前日界 > 玩家看过的日界）；数字 = 该板条数；进任务中心即记账 ⇒ 灭。
+ * 老档没有该字段 ⇒ 首帧亮（船长同日定「**老档默认亮起提示**」）。
+ */
+describe('赏金新板提示（换板未看 ⇒ 导航徽标；进任务中心即消）', () => {
+  it('① 未开板不亮；开板后亮，数字 = 该板条数', () => {
+    const { state, ctx } = makeWorld()
+    exploreAll(state)
+    // 无有效墙钟（旧档首帧）⇒ 不开板 ⇒ 不亮
+    advanceGame(state, 1_000, ctx)
+    let view = sideTaskBoard(state, ctx, 0)
+    expect(view.bountyOpened).toBe(false)
+    expect(view.bountyFresh).toBe(false)
+    expect(view.bountyNewCount).toBe(0)
+    // 开板（T0 = 某日正午）⇒ 亮，且数字 = 当日板条数
+    openBountyBoard(state, ctx, T0)
+    view = sideTaskBoard(state, ctx, T0)
+    expect(view.bounty).toHaveLength(BOUNTY_TASKS_PER_ROUND)
+    expect(view.bountyFresh).toBe(true)
+    expect(view.bountyNewCount).toBe(BOUNTY_TASKS_PER_ROUND)
+  })
+
+  it('② 进任务中心即消：记账后灭、重复记账幂等；当日不再亮', () => {
+    const { state, ctx } = makeWorld()
+    exploreAll(state)
+    openBountyBoard(state, ctx, T0)
+    expect(sideTaskBoard(state, ctx, T0).bountyFresh).toBe(true)
+    expect(sideTasksMarkBountySeen(state)).toBe(true) // 第一次进入：记一笔
+    expect(sideTasksMarkBountySeen(state)).toBe(false) // 幂等：同一天不写第二次
+    expect(state.sideTasks.bountySeenWindow).toBe(bountyDayStartWallMs(T0))
+    const view = sideTaskBoard(state, ctx, T0)
+    expect(view.bountyFresh).toBe(false)
+    expect(view.bountyNewCount).toBe(0)
+    // 当日稍晚仍不亮（同一天不换板；打没打完都不影响）
+    expect(sideTaskBoard(state, ctx, T0 + 6 * 3_600_000).bountyFresh).toBe(false)
+  })
+
+  it('③ 次日换板 ⇒ 再亮一次（离线跨夜等价：直接以次日墙钟推进一步）', () => {
+    const { state, ctx } = makeWorld()
+    exploreAll(state)
+    openBountyBoard(state, ctx, T0)
+    sideTasksMarkBountySeen(state)
+    expect(sideTaskBoard(state, ctx, T0).bountyFresh).toBe(false)
+    openBountyBoard(state, ctx, T0 + BOUNTY_BOARD_PERIOD_MS)
+    const view = sideTaskBoard(state, ctx, T0 + BOUNTY_BOARD_PERIOD_MS)
+    expect(state.sideTasks.bounty).toHaveLength(BOUNTY_TASKS_PER_ROUND) // 新板
+    expect(view.bountyFresh).toBe(true)
+    expect(view.bountyNewCount).toBe(BOUNTY_TASKS_PER_ROUND)
+  })
+
+  it('④ 老档（无 bountySeenWindow 字段）首帧亮，且存档往返后仍亮（兼容字段归一为 0）', () => {
+    const { state, ctx } = makeWorld()
+    exploreAll(state)
+    openBountyBoard(state, ctx, T0)
+    delete state.sideTasks.bountySeenWindow // 模拟老档：字段不存在
+    expect(sideTaskBoard(state, ctx, T0).bountyFresh).toBe(true)
+    const loaded = loadSaveFile(serializeSaveFile(state, 0)).state
+    // 缺省**不写这个键**（老档/新档快照逐字一致）⇒ 读回来是 undefined，语义 = 0 = 从没看过
+    expect(loaded.sideTasks.bountySeenWindow ?? 0).toBe(0)
+    expect(sideTaskBoard(loaded, ctx, T0).bountyFresh).toBe(true)
+    // 记过账的档：往返后仍然是"看过"（灭）
+    sideTasksMarkBountySeen(state)
+    const loaded2 = loadSaveFile(serializeSaveFile(state, 0)).state
+    expect(loaded2.sideTasks.bountySeenWindow).toBe(bountyDayStartWallMs(T0))
+    expect(sideTaskBoard(loaded2, ctx, T0).bountyFresh).toBe(false)
   })
 })

@@ -1,7 +1,7 @@
 /**
  * 日志流：游戏里滚动的文字事件（EVE 本地频道那种味道）。
  * 最新的在最上面；kind 决定颜色（T6 语义）：system=紫、levelup=金、warn=红（左竖条）、
- * queue=淡青、info=蓝灰、trade=绿。色值见 index.css（与 App 开关色点同步）。
+ * queue=淡青、info=蓝灰、trade=绿、**event=琥珀橙（随机事件：左竖条 + 底色 + 加粗，2026-09-14 新增）**；色值见 index.css（与 App 开关色点同步）。
  */
 export interface LogItem {
   id: number

@@ -14,8 +14,9 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { advanceComms, commsInbox, commsPopupQueue, dismissCommsPopup } from '../src/comms'
-import { WORMHOLE_SCAN_UNLOCK_STANDING, wormholeScanBlockReason, wormholeScanStanding, wormholeScanUnlocked, wormholeScanWindowMs } from '../src/wormholeScan'
+import { WORMHOLE_SCAN_UNLOCK_STANDING, advanceWormholeScan, reconcileWormholeScanWelcome, wormholeScanBlockReason, wormholeScanStanding, wormholeScanStart, wormholeScanUnlocked, wormholeScanWindowMs } from '../src/wormholeScan'
 import type { CommsMessageDef } from '../src/types'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 const ctx = buildSimContext()
 
@@ -118,3 +119,55 @@ describe('需弹窗的通讯（解锁信）', () => {
     expect(commsPopupQueue(state)).toHaveLength(1)
   })
 })
+
+/**
+ * **解锁当次那"满一个窗口"**（船长 2026-09-14 四步闸门：①甲 置满进度·玩家点一下即得 ②只送一次
+ * ③乙 未达门槛时选项卡置灰不可点 ④不加提示语）。
+ *
+ * 船长原话：「当玩家解锁虫洞时，让虫洞的进度条初始为100%（也就是玩家点击扫描时立刻获得一个虫洞）」。
+ */
+describe('解锁当次的「满窗口」（2026-09-14 船长 · 甲 + 只送一次）', () => {
+  it('未达标 ⇒ 不置满、不置标记；达标那一刻 ⇒ 置满 + 置标记；再调幂等（**只送一次**）', () => {
+    const state = fresh()
+    expect(reconcileWormholeScanWelcome(state)).toBe(false) // 声望 0：什么都不做
+    expect(state.wormholeScan!.progressMs).toBe(0)
+    expect(state.wormholeScan!.welcomed).not.toBe(true)
+
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    expect(reconcileWormholeScanWelcome(state)).toBe(true)
+    expect(state.wormholeScan!.progressMs).toBe(wormholeScanWindowMs(state)) // = 满窗口
+    expect(state.wormholeScan!.welcomed).toBe(true)
+
+    // 模拟后续 tick：进度已被玩家用掉 ⇒ 不会被重新置满（只送一次）
+    state.wormholeScan!.progressMs = 0
+    expect(reconcileWormholeScanWelcome(state)).toBe(false)
+    expect(state.wormholeScan!.progressMs).toBe(0)
+  })
+
+  it('接线：置满之后点「开始扫描」⇒ **第一拍就产出一处**（库存 +1、进度回落到那一拍）', () => {
+    const state = fresh()
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    expect(reconcileWormholeScanWelcome(state)).toBe(true)
+    expect(wormholeScanStart(state, ctx).ok).toBe(true)
+    expect(state.wormholeStock ?? []).toHaveLength(0)
+    advanceWormholeScan(state, ctx, 1) // **一拍**
+    expect(state.wormholeStock ?? []).toHaveLength(1)
+    expect(state.wormholeScan!.progressMs).toBe(1) // 满窗口被消耗掉，只剩这一拍
+  })
+
+  it('存档往返：标记随档保留；老档缺省 = 未发放（**零迁移**，达标后下一次 tick 自动补）', () => {
+    const state = fresh()
+    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    reconcileWormholeScanWelcome(state)
+    const back = loadSaveFile(serializeSaveFile(state))
+    expect(back.state.wormholeScan!.welcomed).toBe(true)
+    expect(back.state.wormholeScan!.progressMs).toBe(wormholeScanWindowMs(state))
+
+    // 老档语义：字段缺省 = 尚未发放；达标的老档照样会被补上（逐 tick 收口）
+    const legacy = fresh()
+    expect(legacy.wormholeScan!.welcomed).toBeUndefined()
+    legacy.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    expect(reconcileWormholeScanWelcome(legacy)).toBe(true)
+  })
+})
+

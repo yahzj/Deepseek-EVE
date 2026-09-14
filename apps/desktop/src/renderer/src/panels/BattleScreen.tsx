@@ -1888,6 +1888,8 @@ const meSpeedRef = useRef(200)
           className={`app-bts-lane${defeat ? " is-defeat" : ""}`}
           ref={laneRef}
         >
+          {/* 窄屏（手机竖屏）提示：舞台（标尺＋车道）横向可滑动（`.app-bts-swipehint` 只在 ≤640px 显示） */}
+          <span className="app-bts-swipehint">◀ 左右滑动查看战场 ▶</span>
           {/* 星空背景（三层视差、左右无缝循环；位于战场最底层，低对比不干扰分辨） */}
           <div className="app-bts-stars" aria-hidden="true">
             {starField.map(({ cfg, pts }, li) => (

@@ -46,7 +46,7 @@ export class SaveError extends Error {
 }
 
 /** 合法的日志类型白名单 */
-const LOG_KINDS: ReadonlySet<string> = new Set(['system', 'info', 'queue', 'levelup', 'warn', 'trade'])
+const LOG_KINDS: ReadonlySet<string> = new Set(['system', 'info', 'queue', 'levelup', 'warn', 'trade', 'event']) // ⚠ 新增日志类型**必须**同步这份白名单，否则读档会把该类型的行降级成 info
 
 /** 迁移脚本的输入/输出：只保证"是个对象"，具体字段由每个迁移自己处理 */
 type RawState = Record<string, unknown>
@@ -2318,11 +2318,8 @@ function normalizeState(raw: unknown): GameState {
       Number.isFinite(whScanProgressRaw) && whScanProgressRaw > 0
         ? Math.min(WORMHOLE_SCAN_BASE_MS, Math.floor(whScanProgressRaw))
         : 0,
-    /**
-     * 解锁赠礼标记（船长 2026-09-14）：**只在领过时落 `true`** —— 老档 / 没领过 = 字段不存在
-     * ⇒ 下一拍由 `grantWormholeScanUnlockGift` 补发（`false` 与"没有"同义，故不落成显式 false）。
-     */
-    unlockGift: whScanRaw.unlockGift === true ? true : undefined,
+    /** **解锁当次的满窗口是否已发放**（可选字段：只在真时写 ⇒ 老档缺省 = 未发放，达标后下一 tick 自动补） */
+    ...(whScanRaw.welcomed === true ? { welcomed: true } : {}),
   }
   // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX`
   const wormholeStock: Array<{
@@ -2622,6 +2619,12 @@ function normalizeState(raw: unknown): GameState {
   // 赏金日界（本地 0 点墙钟毫秒；v24 兼容字段：老档缺省 0 = 未开板，首次拿到有效墙钟即开板）
   const bountyWindowRaw = Math.floor(num(stRaw.bountyWindow))
   const sideTaskBountyWindow = Number.isFinite(bountyWindowRaw) && bountyWindowRaw > 0 ? bountyWindowRaw : 0
+  /**
+   * 赏金**新板提示**的记账（2026-09-14 船长：「玩家进入后消除提示」）——玩家看过的日界墙钟毫秒。
+   * 兼容字段：老档缺省 0 ⇒ 首帧徽标亮（船长同日定「老档默认亮起提示」）。
+   */
+  const bountySeenRaw = Math.floor(num(stRaw.bountySeenWindow))
+  const sideTaskBountySeen = Number.isFinite(bountySeenRaw) && bountySeenRaw > 0 ? bountySeenRaw : 0
   const sideTasks = {
     seq: sideTaskSeq,
     window: sideTaskWindow,
@@ -2630,6 +2633,12 @@ function normalizeState(raw: unknown): GameState {
     bounty: sideTaskBounty,
     faction: sideTaskFaction,
     bountyWindow: sideTaskBountyWindow,
+    /**
+     * ⚠ **缺省（0 = 从没看过）不写这个键** —— 老档与新档的 `sideTasks` 快照因此**逐字一致**
+     * （`t5b` / `save` 的 `toEqual` 钉着这一点，与 `escrowShips[].from` 同款口径）；
+     * 玩家进过一次任务中心（记账写入真实日界）后才会出现这个键。
+     */
+    ...(sideTaskBountySeen > 0 ? { bountySeenWindow: sideTaskBountySeen } : {}),
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 
