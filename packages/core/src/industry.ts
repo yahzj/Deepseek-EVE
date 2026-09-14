@@ -286,10 +286,11 @@ export function startRefineRun(
 export const UNBOX_CYCLE_MS = 90_000
 
 /**
- * 玩家指令：**拆解一件「遗迹安全货柜」**（F4d · 船长 2026-09-13 定案）。
+ * 玩家指令：**拆解一件虫洞货柜**（F4d · 船长 2026-09-13 定案；2026-09-14 增图纸货柜）。
  *
  * 口径（船长原话要点）：走**精炼配方口径**（与精炼 / 回收**同一条产线机器**：主控亲自 或 1 枚 AI 核心）·
- * **90 秒/件** · 一箱出 **1 件** · **族池 0.7 : 稀释池 0.3** · 货柜**不记层** ⇒ 一律**最低档**。
+ * **90 秒/件** · 一箱出 **1 件**。**抽取口径 2026-09-14 起分岔**：安全货柜 = 100% 族专属池；
+ * 图纸货柜 = 5% 永久图纸 / 95% 一次性图纸（按该货柜的层档过滤）。
  * 抽取见 `wormholeSalvage.wormholeUnboxRoll`；产出走**与随行战利品同一条入库路径**。
  */
 export function startUnboxRun(
@@ -304,7 +305,7 @@ export function startUnboxRun(
   const def = ctx.items.get(boxItemId)
   if (!def) return { ok: false, error: `未知物品：${boxItemId}。` }
   if (def.kind !== 'container') {
-    return { ok: false, error: `「${def.name}」不是安全货柜——拆解台只拆遗迹安全货柜。` }
+    return { ok: false, error: `「${def.name}」不是货柜——拆解台只拆虫洞带回来的货柜（安全货柜 / 图纸货柜）。` }
   }
   if (oreAvailable(state, boxItemId) <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
@@ -639,8 +640,9 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       let batchIncome = 0 // 2026-09-08：离线结算预估收入（原材料按站内收价；彩头装备按市场基准价粗估；碎片不计）
       if (isUnbox && r.itemId) {
         /**
-         * **拆解一件安全货柜**（F4d）：抽 1 件 → 入库（装备 → 装备库 / 图纸 → 图纸库存 / 物品 → 仓库，
-         * 走与随行战利品同一条 `wormholeDeliverRelics`）。
+         * **拆解一件货柜**（F4d；2026-09-14 起两台口径分岔）：抽 1 件 → 入库（装备 → 装备库 /
+         * 图纸 → 图纸库存 / 物品 → 仓库，走与随行战利品同一条 `wormholeDeliverRelics`）。
+         * 安全货柜 = 100% 族专属池；图纸货柜 = 5% 永久图纸 / 95% 一次性图纸（按层档）。
          * 抽不出东西（奖池为空）⇒ 停这一台并说清，不静默丢料。
          */
         const drawn = wormholeUnboxRoll(state, ctx, r.itemId)
@@ -652,7 +654,10 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
             ctx.shipBlueprints.get(drawn.itemId)?.name ??
             ctx.items.get(drawn.itemId)?.name ??
             drawn.itemId
-          addLog(state, 'trade', `📦 拆解 ${def.name}：开出 ${drawnName}${drawn.diluted ? '（稀释池）' : ''}。`)
+          /** 来源后缀：让玩家一眼看出这一箱走的是哪条池（族专属 / 一次性 / 永久） */
+          const srcTag =
+            drawn.source === 'permanent' ? '（永久图纸）' : drawn.source === 'once' ? '（一次性图纸）' : '（族专属）'
+          addLog(state, 'trade', `📦 拆解 ${def.name}：开出 ${drawnName}${srcTag}。`)
         } else {
           if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
           state.refineRuns.splice(i, 1)

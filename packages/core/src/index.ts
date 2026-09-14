@@ -982,6 +982,18 @@ export {
   wormholeUnboxRoll,
   wormholeFamilyOfBox,
   wormholeLootShares,
+  // 图纸货柜（2026-09-14 船长：遗迹打捞新增 · 占 2 格 · 一次性图纸 + 5% 永久图纸）
+  WORMHOLE_BP_BOX_SHALLOW,
+  WORMHOLE_BP_BOX_MID,
+  WORMHOLE_BP_BOX_DEEP,
+  WORMHOLE_BP_BOX_IDS,
+  WORMHOLE_BP_BOX_DEPTH,
+  WORMHOLE_BPBOX_SHARE,
+  WORMHOLE_BPBOX_PERMANENT_CHANCE,
+  WORMHOLE_PERMANENT_MIN_DEPTH,
+  wormholeBpBoxIdOf,
+  wormholeBpBoxDepthOf,
+  wormholePermanentPoolOf,
   // 池内一件"一次到手几个"（族专属无人机 ×10；货柜 1）——拆解批与入库共用一份口径
   wormholePoolGrantUnitsOf,
   wormholeGrantShipSpoils,

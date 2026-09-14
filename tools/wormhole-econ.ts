@@ -115,7 +115,8 @@ const REF_FIT_COMBAT = {
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
-/** 对照行 = 2026-09-13～09-14 的低槽口径（**已作废**：作业装备现在归高槽，配置会被装配校验拒） */
+/** 对照行 = 2026-09-13～09-14 的低槽口径（**已作废**：作业装备现在归高槽；本行仅供读数对照——
+ *  配装是直接赋值给 `fitted` 的，不走装配校验，所以这里不放行也能跑） */
 const REF_FIT_OLD = {
   high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],

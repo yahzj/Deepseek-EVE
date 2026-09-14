@@ -111,6 +111,17 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 16.7v1.3" />
     </g>
   ),
+  /* ── 图纸货柜（2026-09-14 船长：「给虫洞的遗迹打捞新增图纸货柜。占 2 格大小。」）──
+     与安全货柜同为"带回后拆开"的货柜，故沿用同一套箱体语言；靠**扁长比例**（2×1）与
+     **箱盖上的卷轴筒**区分：图纸货柜装的是图纸，不是设备。 */
+  'box-bp': (
+    <g>
+      <path d="M3.6 11.6h16.8v5a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4z" />
+      <path d="M3.6 14.2h16.8" />
+      <path d="M8.8 11.6V9.6h6.4v2" />
+      <circle cx="12" cy="8" r="1.6" />
+    </g>
+  ),
   /* ── 谜质装置 20 台（2026-09-13 F3c：每台一枚专属线稿）──
      全部沿用"圆环徽 + 内部几何"这套物品语言，靠**内部纹样**区分用途（远看同族、近看可辨）。 */
   /* 探索：测绘 / 时序 / 星云 / 扩展 */
@@ -747,6 +758,11 @@ export const TONES: Record<string, string> = {
   'box-relic-d': '#cdd6e0', // D 守墓：灰白
   'box-relic-e': '#5ee6c8', // E 巨构：青
   'box-relic-g': '#ffca58', // G 亡军：黄
+  /* ── 图纸货柜（2026-09-14）：造型共用 `box-bp`，**按层档分色**（浅 → 中 → 深，越深越冷越艳）── */
+  'box-bp': '#e0b060',
+  'box-bp-shallow': '#9fe8ff', // 浅层：淡青（最浅那层）
+  'box-bp-mid': '#ffca58', // 中层：琥珀
+  'box-bp-deep': '#e07bff', // 深层：品红紫
   /* ── 谜质装置 20 台：按**用途族**分色（探索青蓝 / 作业青绿 / 威胁琥珀红 / 抗性按层 / 其余各自一色）── */
   'mat-surveyor': '#6fe3f0',
   'mat-chrono': '#7fc7ff',
@@ -811,6 +827,7 @@ export function toneOf(key: string | undefined): string {
  *
  * 规则（从具体到笼统）：
  * 1. **遗迹安全货柜**（`box-relic-*`）⇒ 共用 `box-relic` 造型，**颜色按族取**（色调表按物品 id 存）；
+ * 1b. **图纸货柜**（`box-bp-*`）⇒ 共用 `box-bp` 造型（扁长条 = 2×1），**颜色按层档取**；
  * 2. **谜质装置**（`mat-*`）⇒ **每台一枚专属线稿**（键 = 物品 id）；
  * 3. 其余物品 ⇒ 沿用按 **大类**（`ItemDef.kind`）的既有图标（矿石/残骸/货柜/修理组件…）。
  *
@@ -818,6 +835,7 @@ export function toneOf(key: string | undefined): string {
  */
 export function itemIconOf(itemId: string, kind?: string): string {
   if (itemId.startsWith('box-relic-')) return 'box-relic'
+  if (itemId.startsWith('box-bp-')) return 'box-bp'
   if (itemId.startsWith('mat-')) return itemId
   return kind ?? 'fallback'
 }

@@ -17,7 +17,7 @@ import type { ItemDef } from '@whale/core'
 export const ORES: readonly ItemDef[] = [
   {
     id: 'ore-veldspar',
-    name: '富凡晶石',
+    name: '橄榄岩',
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 13,
@@ -31,11 +31,11 @@ export const ORES: readonly ItemDef[] = [
   },
   {
     id: 'ore-scorched',
-    name: '灼烧岩',
+    name: '辉长岩',
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 18,
-    description: '熔岩包裹的致密矿石，类银与类晶体的重要来源。',
+    description: '熔岩包裹的致密矿石，银纹超金属与晶态胶体的重要来源。',
     refine: [
       { mineralId: 'min-pyerite', perOre: 0.985 },
       { mineralId: 'min-mexallon', perOre: 0.35 },
@@ -45,7 +45,7 @@ export const ORES: readonly ItemDef[] = [
   },
   {
     id: 'ore-hemorphite',
-    name: '希莫非特',
+    name: '赤环岩',
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 55,
@@ -217,11 +217,56 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
   },
 ]
 
+/**
+ * **图纸货柜**（2026-09-14 船长定：虫洞遗迹打捞新增）。
+ *
+ * 口径（船长逐条裁定）：
+ * - **占货仓 2×1 = 2 格**（`packages/core/src/wormholeHold.ts` 的形状表已登记这 3 个 id）·
+ *   **1000 m³ / 件**（与安全货柜同尺：货仓规则是 **500 m³/格**，2000 m³ = 4 格 ⇒ 1000 = 2 格）；
+ * - **三种 = 层档**：浅层（第 2 层）· 中层（第 3~4 层）· 深层（第 5 层起）。
+ *   ⚠ **层档必须写进物品 id**：拆解读的是精炼炉产线记录里的 `itemId`，而货柜撤离后进仓库
+ *   只剩「物品 id + 数量」⇒ 层信息无处可挂。好在稀释池的层门槛是 2/3/5，**三段精确等价**。
+ * - **内容物**（拆解时揭）：一次性舰船图纸（T3 / T4 / T5，按层档过滤）+ **5%** 永久图纸（T3 / T4）；
+ * - **施工期一律 `unreleased`**（与虫洞同批上线；`content:check` 有契约钉住）。
+ */
+export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
+  {
+    id: 'box-bp-shallow',
+    name: '图纸货柜（浅层）',
+    kind: 'container',
+    unitM3: 1000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的长条货柜：外壳印着制式编号，接口还是热的，只有回站拆开才知道里面压着哪张图纸。占货仓 2×1 格。',
+  },
+  {
+    id: 'box-bp-mid',
+    name: '图纸货柜（中层）',
+    kind: 'container',
+    unitM3: 1000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的长条货柜：编号被人为磨去一半，比浅层那种压手得多。占货仓 2×1 格。',
+  },
+  {
+    id: 'box-bp-deep',
+    name: '图纸货柜（深层）',
+    kind: 'container',
+    unitM3: 1000,
+    baseSellPriceIsk: 1,
+    unreleased: true,
+    description:
+      '从遗迹里拖出来的长条货柜：铭牌上还留着旧主人的舰徽，封条完好无损。占货仓 2×1 格。',
+  },
+]
+
 /** 矿物（精炼产物，可出售；制造原料） */
 export const MINERALS: readonly ItemDef[] = [
   {
     id: 'min-tritanium',
-    name: '三钛合金',
+    name: '钛钢合金',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 8,
@@ -229,7 +274,7 @@ export const MINERALS: readonly ItemDef[] = [
   },
   {
     id: 'min-pyerite',
-    name: '类银超金属',
+    name: '银纹超金属',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 12,
@@ -237,7 +282,7 @@ export const MINERALS: readonly ItemDef[] = [
   },
   {
     id: 'min-mexallon',
-    name: '类晶体胶体',
+    name: '晶态胶体',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 20,
@@ -245,7 +290,7 @@ export const MINERALS: readonly ItemDef[] = [
   },
   {
     id: 'min-nocxium',
-    name: '超噬矿',
+    name: '重钨合金',
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 90,
@@ -900,6 +945,7 @@ export const ITEMS: readonly ItemDef[] = [
   ...DRONES,
   ...REPAIR_KITS,
   ...RELIC_CONTAINERS,
+  ...BLUEPRINT_CONTAINERS,
   ...MATTER_DEVICES,
 ]
 

@@ -167,7 +167,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 21_000,
     signatureM: 140,
     scanResMm: 400,
-    description: '深空工业的顶点：双倍于鲸吞级的产能。超噬矿吞金兽，全游戏最长远的攒料目标。',
+    description: '深空工业的顶点：双倍于鲸吞级的产能。重钨合金吞金兽，全游戏最长远的攒料目标。',
   },
   {
     id: 'sh-humpback',

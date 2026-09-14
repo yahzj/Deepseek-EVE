@@ -26,7 +26,7 @@ export const ONB_AWAKEN = 0 // 序章演出（黑屏→醒来→自检→PRTS；
 /**
  * 0.5 = **简报**（2026-09-11 船长定：「教程睁眼动画结束后，不要立刻开始教程任务，
  * 此时应该指引玩家去通讯查看教程」）——睁眼动画播完先落到这里：全页锁定、只开通讯页，
- * 玩家读完**舰载信息库**的简报并点「按单开工：采集富凡晶石」才进采集步骤（见 `startTutorialFromBriefing`）。
+ * 玩家读完**舰载信息库**的简报并点「按单开工：采集橄榄岩」才进采集步骤（见 `startTutorialFromBriefing`）。
  */
 export const ONB_BRIEFING = 0.5
 export const ONB_MINE = 1 // 采集：切沙猫→丰饶之环采矿→返港卸货
@@ -39,7 +39,7 @@ export const ONB_DIVIDE = 7 // 分身：给沙猫指派 AI 采矿
 export const ONB_EPILOGUE = 8 // 收尾演出（渲染层播放后调用 finishTutorial）
 export const ONB_DONE = 99
 
-/** 任务 ① 交付物：母港矿带（丰饶之环）富凡晶石；教学交付 20 单位 */
+/** 任务 ① 交付物：母港矿带（丰饶之环）橄榄岩；教学交付 20 单位 */
 export const TUTORIAL_DELIVER_ITEM = 'ore-veldspar'
 export const TUTORIAL_DELIVER_N = 20
 /** 教学首单采足量（2026-09-08 船长定 50）：交付只扣 20，多采的 ~30 单位留给出售教学（步骤 3）——
@@ -116,7 +116,7 @@ export function beginTutorialAfterAwaken(state: GameState): CommandResult {
   return { ok: true }
 }
 
-/** 通讯简报的「按单开工：采集富凡晶石」→ 进入采集步骤（教程 S1）；幂等：不在简报态则报错 */
+/** 通讯简报的「按单开工：采集橄榄岩」→ 进入采集步骤（教程 S1）；幂等：不在简报态则报错 */
 export function startTutorialFromBriefing(state: GameState): CommandResult {
   if (state.onboarding.step !== ONB_BRIEFING) return { ok: false, error: '当前不在序章简报阶段。' }
   state.onboarding.step = ONB_MINE
@@ -124,7 +124,7 @@ export function startTutorialFromBriefing(state: GameState): CommandResult {
   return { ok: true }
 }
 
-/** 任务 ①：交付富凡晶石（从仓库扣除），发放 4,000 ISK + 基础 AI 核心 ×1 */
+/** 任务 ①：交付橄榄岩（从仓库扣除），发放 4,000 ISK + 基础 AI 核心 ×1 */
 export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandResult {
   if (state.onboarding.step < ONB_DELIVER || state.onboarding.step >= ONB_DONE) {
     return { ok: false, error: '「补给协议·首批原材料」还未到交付阶段。' }
@@ -132,7 +132,7 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
   if (isTaskDone(state, TASK_ORE_DELIVER)) return { ok: false, error: '「补给协议·首批原材料」已完成交付。' }
   const have = state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0
   if (have < TUTORIAL_DELIVER_N) {
-    return { ok: false, error: `仓库富凡晶石不足（${have}/${TUTORIAL_DELIVER_N}）——先回港卸货。` }
+    return { ok: false, error: `仓库橄榄岩不足（${have}/${TUTORIAL_DELIVER_N}）——先回港卸货。` }
   }
   state.warehouse.items[TUTORIAL_DELIVER_ITEM] = have - TUTORIAL_DELIVER_N
   state.wallet.isk += TUTORIAL_REWARD_ISK
@@ -154,7 +154,7 @@ export function deliverTutorialOre(state: GameState, ctx: SimContext): CommandRe
       state.shipId = 'sh-falconet'
       addLog(state, 'info', '已把驾驶切回鲣鱼级护卫舰——接下来港内维修的对象是它。')
     }
-    addLog(state, 'info', '交付只扣除 20 单位，其余富凡晶石留在物品仓库——去「物品」页把它们卖成信用点。')
+    addLog(state, 'info', '交付只扣除 20 单位，其余橄榄岩留在物品仓库——去「物品」页把它们卖成信用点。')
   }
   return { ok: true }
 }
@@ -209,7 +209,7 @@ export function advanceOnboardingAuto(state: GameState, ctx: SimContext): void {
         }
       }
     }
-    // 采集完成：仓库已有 ≥20 富凡晶石（已返港卸货）→ 提示交付
+    // 采集完成：仓库已有 ≥20 橄榄岩（已返港卸货）→ 提示交付
     if ((state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0) >= TUTORIAL_DELIVER_N) {
       state.onboarding.step = ONB_DELIVER
       addLog(state, 'info', '采集达标：前往出港页「任务中心」·重要任务交付「补给协议·首批原材料」。')

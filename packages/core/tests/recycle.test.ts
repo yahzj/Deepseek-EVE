@@ -113,7 +113,7 @@ describe('回收画像与保底矿物滚动', () => {
 
   it('recycleMineralPoolOf（2026-09-10 界面保底矿物块单点）：特色池优先、缺省回落档位基础池', () => {
     const base = ctxOf()
-    // 缺省：无特色池 → 回落该档基础池（柯尔 = 常档：三钛 65 / 类银 30 / 类胶 5）
+    // 缺省：无特色池 → 回落该档基础池（柯尔 = 常档：钛钢 65 / 银纹 30 / 晶态 5）
     const common = recycleProfileOf(base, wreckItemIdOf('ano-kor'))!
     expect(recycleMineralPoolOf(common)).toEqual([
       ['min-tritanium', 65],
@@ -133,7 +133,7 @@ describe('回收画像与保底矿物滚动', () => {
     }
   })
 
-  it('三档基础池都含三钛合金，且均价 = 档基数（船长 2026-09-14：所有残骸回收都加三钛、价值不变）', () => {
+  it('三档基础池都含钛钢合金，且均价 = 档基数（船长 2026-09-14：所有残骸回收都加钛钢、价值不变）', () => {
     const ctx = ctxOf()
     // 测试 ctx 里：柯尔 = 常档、坟场 = 危档（险档由 data 侧专属池覆盖，见 content-check B3.1/B3.2）
     for (const [anomalyId, tier] of [
@@ -143,7 +143,7 @@ describe('回收画像与保底矿物滚动', () => {
       const profile = recycleProfileOf(ctx, wreckItemIdOf(anomalyId))!
       expect(profile.tier).toBe(tier)
       const pool = recycleMineralPoolOf(profile)
-      // ① 必含三钛（船长口径：不能有"拆了不给三钛"的残骸）
+      // ① 必含钛钢（船长口径：不能有"拆了不给钛钢"的残骸）
       expect(pool.map(([id]) => id)).toContain('min-tritanium')
       // ② 均价必须等于档基数（改池必同步改 RECYCLE_POOL_AVG_ISK，容差 ±3% 同 content-check）
       const wSum = pool.reduce((s, [, w]) => s + w, 0)

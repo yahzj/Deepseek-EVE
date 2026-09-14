@@ -2085,7 +2085,7 @@ export class GameEngine {
   }
 
   /**
-   * 通讯消息自带动作（2026-09-11 教程融入通讯）：序章简报那封的「按单开工：采集富凡晶石」。
+   * 通讯消息自带动作（2026-09-11 教程融入通讯）：序章简报那封的「按单开工：采集橄榄岩」。
    * 点了才从简报态推进到采集步骤；成功后落盘并通知刷新。
    */
   runCommsActionAt(command: CommsActionCommand): CommandResult {
@@ -2350,7 +2350,7 @@ export class GameEngine {
     return result
   }
 
-  /** 重要任务①「补给协议·首批矿物」：交付富凡晶石（仓库扣取）→ 4,000 信用点 + 基础 AI 核心 */
+  /** 重要任务①「补给协议·首批矿物」：交付橄榄岩（仓库扣取）→ 4,000 信用点 + 基础 AI 核心 */
   deliverTutorialOreAt(): CommandResult {
     const result = deliverTutorialOre(this.state, this.ctx)
     if (result.ok) {

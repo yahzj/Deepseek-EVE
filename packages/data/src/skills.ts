@@ -179,7 +179,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '深井爆破学',
     group: '工业',
     rank: 3,
-    description: '浅层矿带的爆破开采优化：低品位原矿（富凡晶石/灼烧岩/希莫非特）产量每级 +⟦6%⟧。',
+    description: '浅层矿带的爆破开采优化：低品位原矿（橄榄岩/辉长岩/赤环岩）产量每级 +⟦6%⟧。',
   },
   {
     id: 'rich-vein-prospecting',

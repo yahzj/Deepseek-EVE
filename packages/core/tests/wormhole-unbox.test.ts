@@ -1,19 +1,25 @@
 /**
- * **虫洞 F4d · 拆解「遗迹安全货柜」**（船长 2026-09-13 定案）。
+ * **虫洞 F4d · 拆解「遗迹安全货柜」**（船长 2026-09-13 定案；**2026-09-14 改判**）。
  *
  * 口径：走**精炼配方口径**（与精炼 / 回收同一条产线机器：主控亲自 或 1 枚 AI 核心）· **90 秒/件** ·
- * 一箱出 **1 件** · **族池 0.7 : 稀释池 0.3** · 货柜**不记层** ⇒ 稀释池一律**最低档**（层 2 档 = T3 那批 10 张）。
+ * 一箱出 **1 件**。
+ *
+ * ⚠ **2026-09-14 船长新增「图纸货柜」并裁定「与安全货柜并列」**⇒ 本文件的口径随之改：
+ * **安全货柜 = 100% 族专属池**，原「族池 0.7 : 稀释池 0.3」里的**稀释池已收回**
+ * （一次性图纸改由图纸货柜专出，否则同一批图纸会有两条渠道）。
+ * `wormholeLootShares()` / `WORMHOLE_DILUTION_SHARE` **保留但停用**（见 `wormholeSalvage.ts` 的说明）；
+ * 图纸货柜的用例在 `wormhole-bp-box.test.ts`。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addWare, countWare } from '../src/inventory'
 import { UNBOX_CYCLE_MS, advanceRefining, startUnboxRun } from '../src/industry'
-import { wormholeDilutionPoolOf, wormholeUnboxRoll, WORMHOLE_DILUTION_MIN_DEPTH_FLOOR } from '../src/wormholeSalvage'
+import { wormholeFamilyPoolOf, wormholeUnboxRoll } from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 
-describe('虫洞 F4d · 安全货柜拆解（90 秒/件 · 族池 0.7 : 稀释池 0.3）', () => {
+describe('虫洞 F4d · 安全货柜拆解（90 秒/件 · 100% 族专属池）', () => {
   it('开工 → 一件 90 秒：每件消耗 1 箱、抽出的东西进账、拆完自动停', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     addWare(state, 'box-relic-a', 2)
@@ -40,33 +46,28 @@ describe('虫洞 F4d · 安全货柜拆解（90 秒/件 · 族池 0.7 : 稀释�
     expect(state.refineRuns).toHaveLength(0)
   })
 
-  it('抽取：族池 0.7 : 稀释池 0.3，且稀释池只取最低档（层 2 的 10 张一次性舰船蓝图）', () => {
+  it('安全货柜 = **100% 族专属池**（稀释池已收回；抽到的每一件都必须落在该族池里）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 11 })
-    const floorPool = new Set(wormholeDilutionPoolOf(ctx, WORMHOLE_DILUTION_MIN_DEPTH_FLOOR))
-    expect(floorPool.size).toBe(10)
-    let diluted = 0
+    const pool = wormholeFamilyPoolOf(ctx, 'A')
+    const inPool = new Set<string>([...pool.modules, ...pool.moduleBlueprints, ...pool.shipBlueprints, ...(pool.drones ?? [])])
+    expect(inPool.size).toBeGreaterThan(6)
     const seen = new Set<string>()
     for (let i = 0; i < 400; i++) {
       const r = wormholeUnboxRoll(state, ctx, 'box-relic-a')
       expect(r, `第 ${i} 抽应能抽到东西`).not.toBeNull()
+      // 2026-09-14：来源只可能是族池 —— 稀释池那条分支已收回
+      expect(r!.source, `第 ${i} 抽的来源应为族专属池`).toBe('family')
+      expect(inPool.has(r!.itemId), `第 ${i} 抽到 ${r!.itemId}，不在 A 族池里`).toBe(true)
       seen.add(r!.itemId)
-      if (r!.diluted) {
-        diluted += 1
-        // 稀释池抽到的必须落在最低档池里
-        expect(floorPool.has(r!.itemId)).toBe(true)
-      }
     }
-    // 30% ± 抽样噪声
-    expect(diluted).toBeGreaterThan(80)
-    expect(diluted).toBeLessThan(160)
-    expect(seen.size).toBeGreaterThan(3)
+    expect(seen.size, 'A 族池不止一件，应能抽出多种').toBeGreaterThan(3)
   })
 
-  it('不是货柜 ⇒ 拒绝（拆解台只拆安全货柜）', () => {
+  it('不是货柜 ⇒ 拒绝（拆解台只拆虫洞带回来的货柜）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 3 })
     addWare(state, 'ore-veldspar', 100)
     const r = startUnboxRun(state, ctx, 'ore-veldspar', 'pilot')
     expect(r.ok).toBe(false)
-    expect(r.error ?? '').toContain('安全货柜')
+    expect(r.error ?? '').toContain('货柜')
   })
 })

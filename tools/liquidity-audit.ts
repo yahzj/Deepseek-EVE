@@ -136,7 +136,7 @@ console.log(
   `· 梯度：建议 flow 区间 ${fmt(Math.min(...flows))} ~ ${fmt(Math.max(...flows))}/窗（**${(Math.max(...flows) / Math.min(...flows)).toFixed(1)}× 差距**）` +
     `；现状区间 ${fmt(Math.min(...poolNow))} ~ ${fmt(Math.max(...poolNow))}/窗（**${(Math.max(...poolNow) / Math.min(...poolNow)).toFixed(0)}× 差距**）`,
 )
-console.log('· 收入含义：低阶矿几乎不动（富凡 flow 不变）；高阶/气冰扩容后卖得掉，收入 = 产率 × 单价。')
+console.log('· 收入含义：低阶矿几乎不动（橄榄 flow 不变）；高阶/气冰扩容后卖得掉，收入 = 产率 × 单价。')
 
 /* ───────── 矿物侧（精炼产物）：以"主控炉满技能"为产能基准 ─────────
  * 口径来源：industry.refineParamsOf（批 = refineBatchUnits 100 / 周期 = refineCycleMs）、

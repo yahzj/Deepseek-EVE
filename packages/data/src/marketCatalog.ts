@@ -31,7 +31,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   规则 = **按单价分层覆盖比**：≤20 信用点 → ×15（大宗）／≤200 → ×6（中阶）／≤400 → ×3（高阶）／>400 → ×2（顶级）；
   //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
   //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
-  //   低阶几乎不动（富凡 ×1.0、灼烧 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
+  //   低阶几乎不动（橄榄 ×1.0、辉长 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
   // 【2026-09-11 船长定：**消耗品池按同一把尺重标**（弹药/修理组件玩家可自造 → 基准 = **单工位无技能日产**；
   //   无人机**无蓝图**（纯市场货源）→ 基准按 144 场/天战损折算）。
   //   实测改前产能覆盖比：动能弹 0.21× / 动能弹 MK2 0.03× / 民用修理组件 0.40× / 军用修理组件 0.33×
@@ -61,6 +61,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  // 【图纸货柜 3 种（2026-09-14 船长定：虫洞遗迹打捞新增）：口径与安全货柜逐字相同——同样是"带回后拆解"
+  //   的中间件、同样不上市交易；basePrice 1 / demandMultiplier 0 兜底防套利；施工期一律 unreleased
+  //   ⇒ **上线动作 = 删这 3 个字段**。】
+  { key: 'box-bp-shallow', kind: 'item', refId: 'box-bp-shallow', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-bp-mid', kind: 'item', refId: 'box-bp-mid', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
+  { key: 'box-bp-deep', kind: 'item', refId: 'box-bp-deep', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // 【谜质储存器 7 台（F3c · 船长 2026-09-13）：同样**不上市交易**——它们是"本趟虫洞内生效、离开即消失"
   //   的装置，不是商品。照"每种物品必须有市场卡"的既有契约补卡，一律 `unreleased`（施工期不可见）
   //   ⇒ **上线动作 = 删这 7 个字段**（与货柜 / 虚空母矿同一套做法）；basePrice 1 / demandMultiplier 0
@@ -93,8 +99,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mat-field-repair', kind: 'item', refId: 'mat-field-repair', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
   // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
   // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
-  //   三钛 90,734 件/h、类银 63,385、类晶体 22,523、同位聚晶 78,408、超噬 29,233、星髓 29,730、冥铁 7,722
-  //   ——冥铁/星髓/超噬/同位聚晶原覆盖比 0.16~0.82×（炼出来卖不掉），三钛/类银/类晶体本就 ≥5.7× 故仅微调；
+  //   钛钢 90,734 件/h、银纹 63,385、晶态 22,523、同位聚晶 78,408、重钨 29,233、星髓 29,730、冥铁 7,722
+  //   ——冥铁/星髓/重钨/同位聚晶原覆盖比 0.16~0.82×（炼出来卖不掉），钛钢/银纹/晶态本就 ≥5.7× 故仅微调；
   //   虚空晶无精炼来源（回收彩头），池不动。】
   { key: 'min-tritanium', kind: 'item', refId: 'min-tritanium', rarity: 'common', basePrice: 8, poolTarget: 2_722_080, supplyFlow: 22_684 },
   { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 1_901_640, supplyFlow: 15_847 },
