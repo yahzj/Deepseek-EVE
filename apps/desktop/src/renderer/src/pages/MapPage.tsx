@@ -30,6 +30,7 @@ import {
   RARE_WRECK_VOLUME_M3,
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
+import { WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -130,29 +131,46 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
     <div className="page-stack page-fill">
       {/* ───── 功能标签页（免滚动切换） ───── */}
       <div className="app-subtabs" role="tablist">
-        {/* 「扫描虫洞」标签**已全量开放**（船长 2026-09-14：「可以解除虫洞对玩家的不可见状态了」）
-            —— 原先按 `debugEnabled()` 过滤，现按常驻标签走；解锁门槛在页内（协会声望 ≥ 40）。 */}
-        {MAP_TABS.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={mapTab === t.key}
-            className={`app-subtab${mapTab === t.key ? ' is-active' : ''}`}
-            onClick={() => {
-              // 长途运输未解锁（未建成副空间站）：点击给引导提示，不切标签
-              if (t.key === 'haul' && builtStationCount < 1) {
-                onToast('长途运输需要先建成至少一座副空间站（与母港之间才有航线可跑）——建站指引见「任务中心 · 重要任务/资源任务」。', true)
-                return
-              }
-              onMapTab?.(t.key)
-            }}
-          >
-            <span className="app-tab-ico">
-              <Glyph name={t.icon} size={15} color={NAV_TONES[t.icon]} />
-            </span>
-            <span>{t.label}</span>
-          </button>
-        ))}
+        {/* 「扫描虫洞」标签**常显**（船长 2026-09-14：「可以解除虫洞对玩家的不可见状态了」），
+            但**未达解锁门槛时置灰不可点**（船长 2026-09-14 追加 · 乙案）：悬停写明还差多少声望，
+            点它只给一条引导、不切标签（与上面「长途运输」那条同一套写法）。
+
+            ⚠ 变更留档：上线批当时按"常显"落码（为了让玩家进去看门槛），本批按船长新裁定改成"置灰"。 */}
+        {MAP_TABS.map((t) => {
+          /** 「扫描虫洞」未解锁：置灰 + 悬停短提示 + 点击只给引导（判据与页内文案同一把声望尺） */
+          const lockedTip =
+            t.key === 'whscan' && !engine.wormholeScanUnlocked()
+              ? `尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${engine.wormholeScanStanding()}）——先去做协会的委托攒声望。`
+              : null
+          return (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={mapTab === t.key}
+              aria-disabled={lockedTip !== null || undefined}
+              title={lockedTip ?? undefined}
+              className={`app-subtab${mapTab === t.key ? ' is-active' : ''}${lockedTip ? ' is-locked' : ''}`}
+              onClick={() => {
+                // 长途运输未解锁（未建成副空间站）：点击给引导提示，不切标签
+                if (t.key === 'haul' && builtStationCount < 1) {
+                  onToast('长途运输需要先建成至少一座副空间站（与母港之间才有航线可跑）——建站指引见「任务中心 · 重要任务/资源任务」。', true)
+                  return
+                }
+                // 扫描虫洞未解锁：同样只给引导（悬停另有短提示）
+                if (lockedTip) {
+                  onToast(lockedTip, true)
+                  return
+                }
+                onMapTab?.(t.key)
+              }}
+            >
+              <span className="app-tab-ico">
+                <Glyph name={t.icon} size={15} color={NAV_TONES[t.icon]} />
+              </span>
+              <span>{t.label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {mapTab === 'mine' ? <MiningTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'mine' ? hlIds : []} /> : null}

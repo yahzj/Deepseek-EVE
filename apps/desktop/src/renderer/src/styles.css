@@ -3418,6 +3418,23 @@ body {
 
 }
 
+.app-subtab.is-locked {
+
+  color: var(--wui-text-dim);
+
+  cursor: not-allowed;
+
+}
+
+.app-subtab.is-locked:hover {
+
+  color: var(--wui-text-dim);
+
+  background: rgba(10, 17, 27, 0.55);
+
+}
+
+
 /* 页面通用小字 */
 
 .app-note {

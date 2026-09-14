@@ -199,6 +199,12 @@ export interface WormholeScanState {
   active: boolean
   /** 已累计的扫描毫秒（满一个窗口即发现一处虫洞） */
   progressMs: number
+  /**
+   * **解锁当次那"满一个窗口"的进度是否已发放**（船长 2026-09-14 四步闸门选甲：解锁时进度条初始 100%
+   * ⇒ 玩家点「开始扫描」第一拍即得一处）。**可选字段 ⇒ 零迁移**：老档没有 = 尚未发放，
+   * 已达标的老档在下一次 tick 由 `reconcileWormholeScanWelcome` 自动补上；**只送一次**。
+   */
+  welcomed?: boolean
 }
 
 /**

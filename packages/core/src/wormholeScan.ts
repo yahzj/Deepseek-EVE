@@ -151,6 +151,30 @@ export function wormholeScanStop(state: GameState): CommandResult {
   return { ok: true }
 }
 
+/**
+ * **解锁当次：把扫描进度预置成"满一个窗口"**（船长 2026-09-14 四步闸门裁定「甲」）：
+ * 船长原话「**当玩家解锁虫洞时，让虫洞的进度条初始为100%（也就是玩家点击扫描时立刻获得一个虫洞）**」。
+ *
+ * 口径：
+ * - **只送一次**（`scan.welcomed` 标记；可选存档字段 ⇒ 零迁移）；
+ * - 达标那一刻把 `progressMs` 置成 `wormholeScanWindowMs(state)` ⇒ 玩家点「开始扫描」后**第一拍**
+ *   即产出一处虫洞（**仍要玩家自己点**，不替他开扫）；
+ * - **不额外提示**（船长 2026-09-14：「不提示」）——只留一条中性日志，解锁信文案一字不动。
+ *
+ * ⚠ **逐 tick 调用**（`advanceGame`，与 `reconcileDockSanity` 同款）：解锁是"声望 ≥ 40"这个
+ * **连续状态**、不是一次性事件 ⇒ 靠标记保证幂等；老档若已达标，下一次 tick 自动补上。
+ */
+export function reconcileWormholeScanWelcome(state: GameState): boolean {
+  const scan = (state.wormholeScan = state.wormholeScan ?? { active: false, progressMs: 0 })
+  if (scan.welcomed === true) return false
+  if (!wormholeScanUnlocked(state)) return false
+  scan.welcomed = true
+  scan.progressMs = wormholeScanWindowMs(state)
+  addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描。')
+  return true
+}
+
+
 let stockSeq = 0
 /** 造一处"已发现"的虫洞（种子 + 起始层恒 1；界面按种子显示、进洞时用它建副本） */
 function rollStockItem(state: GameState, ctx: SimContext): WormholeStockItem {

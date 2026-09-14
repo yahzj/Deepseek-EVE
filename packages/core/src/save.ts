@@ -2318,6 +2318,8 @@ function normalizeState(raw: unknown): GameState {
       Number.isFinite(whScanProgressRaw) && whScanProgressRaw > 0
         ? Math.min(WORMHOLE_SCAN_BASE_MS, Math.floor(whScanProgressRaw))
         : 0,
+    /** **解锁当次的满窗口是否已发放**（可选字段：只在真时写 ⇒ 老档缺省 = 未发放，达标后下一 tick 自动补） */
+    ...(whScanRaw.welcomed === true ? { welcomed: true } : {}),
   }
   // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX`
   const wormholeStock: Array<{
