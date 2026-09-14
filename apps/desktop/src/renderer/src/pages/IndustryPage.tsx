@@ -10,7 +10,7 @@
  * - 页面布局 = 矿带卡同款：资源卡常驻网格；运转中的卡不改样式，只把操作按钮变为「停炉」。
  */
 // 2026-09-14 虫洞上线后：① 精炼炉的**货柜拆解那一档**常显（本文件已不用调试开关）；
-// ② 星图「扫描虫洞」选项卡同日解闸常显（见 `pages/MapPage.tsx`）；③ 远征页行动区那条**调试入口**仍走同一把开关。
+// ② 星图「扫描虫洞」选项卡常显（见 `pages/MapPage.tsx`）；③ 星图行动区的虫洞入口行同批解闸（见 `panels/Expedition.tsx`）。
 import {
   RARE_BOX_DRONE_UNITS,
   RECYCLE_BATCH_M3,
@@ -530,8 +530,8 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
    *
    * ⚠ **2026-09-14 船长解闸**：原话「**虫洞已经做完了，正在微调，所以允许对玩家开放**」——
    * 这里原先沿用入口那把 `debugEnabled()` 开关（施工期只有调试模式可见），现已**改为常显**。
-   * ⚠ 仍然走 `engine.ctx.items` 全表（不走 `visibleItemDefs`）：货柜的物品卡/市场卡还标着
-   * `unreleased`（"虫洞上线"那一批才摘），照 `visibleItemDefs` 过滤会让这一档**永远是空的**。
+   * ⚠ 仍走 `engine.ctx.items` 全表（不走 `visibleItemDefs`）：这一档要认**所有** `container` 类，
+   * 将来再加货柜种类也不会漏（2026-09-14 虫洞正式上线后，货柜的物品卡本身也已摘掉 `unreleased`）。
    */
   const boxDefs = [...engine.ctx.items.values()].filter(
     (def) =>
@@ -601,7 +601,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap }: PageP
       </div>
 
       {sec === 'craft' ? (
-        <ManufacturingPanel engine={engine} onToast={onToast} onNeedMineral={handleNeedMineral} />
+        <ManufacturingPanel engine={engine} onToast={onToast} onNeedMineral={handleNeedMineral} onGotoMarket={onGotoMarket} />
       ) : sec === 'shelf' ? (
         <BlueprintShelfPanel engine={engine} onToast={onToast} />
       ) : (

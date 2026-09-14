@@ -30,7 +30,7 @@ import type { GameState, ManufacturingRunState } from './state'
 import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule } from './equipment'
-import { addShipToFleet } from './shipyard'
+import { shipStoredCount } from './shipyard'
 import { formatDurationMs } from './time'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike } from './location'
@@ -452,8 +452,15 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       } else if (buildable.kind === 'ship') {
         const shipDef = buildable.shipId ? ctx.ships.get(buildable.shipId) : undefined
         if (!shipDef) return false
-        addShipToFleet(state, shipDef.id)
-        addLog(state, 'info', `造船完成：${shipDef.name} 已停入船坞，可以到舰船页切换驾驶了。`)
+        // 2026-09-14 船长：「所有组装机生产的舰船都放进舰船仓库内，并允许堆叠数量」
+        // ⇒ 不再直接进机库；要驾驶/指派先到舰船页把船转入舰队（`shipyard.unstoreShip`）
+        state.shipStore = state.shipStore ?? {}
+        state.shipStore[shipDef.id] = shipStoredCount(state, shipDef.id) + 1
+        addLog(
+          state,
+          'info',
+          `造船完成：${shipDef.name} 已入舰船仓库（现有 ${state.shipStore[shipDef.id]} 艘）——到舰船页「舰船仓库」可转入舰队。`,
+        )
         if (stats && coreType) {
           addAiMakeDone(stats, coreType)
           addAiIncome(stats, coreType, marketBasePrice(ctx, 'ship', shipDef.id))
@@ -602,4 +609,62 @@ function viewOf(state: GameState, ctx: SimContext, mf: ManufacturingRunState): M
 /** 全部制造线视图（v21 多工位：工业页卡片逐线 / 活动栏逐条） */
 export function manufacturingRunViews(state: GameState, ctx: SimContext): ManufacturingView[] {
   return state.manufacturingRuns.map((r) => viewOf(state, ctx, r))
+}
+
+/* ═══════════════ 组装机卡片排序（纯函数 · 口径单点） ═══════════════
+ * 为什么放在 core：**渲染层没有测试运行器**（与 `battleVerdictOf` 同一条理由），
+ * 而排序口径一旦漂移只会表现为"看着乱"，不会报错 ⇒ 抽成纯函数由 `tests/manu-order.test.ts` 钉住。
+ * 2026-09-08 船长定：按「类型（装备→舰船→消耗品）→ 蓝图价格（升序）」排序；无市场价沉底。
+ * 2026-09-14 船长改定：「**一次性图纸应该和原图纸放在一起**」（注：船长原话；上一条"按价值排序"
+ *   由船长本人当场作废）⇒ 在 09-08 口径上加一条**成组规则**：
+ *   同产物（`productKey` 相同）的图纸**相邻**，**原图纸（非一次性）在前、一次性图纸紧随**；
+ *   **组位次仍按原图纸的书价**（升序、无市场价沉底、同价按原图纸名）
+ *   ⇒ **非一次性卡的相对位次与 09-08 口径逐格一致**，只有一次性卡被上提到各自原图纸正后方。
+ * 组内兜底：先按产物键（不同产物绝不交错），再按自身书价、名称。 */
+
+/** 组装机一级分类序（2026-09-08 船长定；2026-09-11 档名随「消耗品蓝图」改） */
+export const MANU_KIND_ORDER: Record<string, number> = { 装备: 0, 舰船: 1, 消耗品: 2 }
+
+/** 组装机卡片排序所需的最小行（渲染层与用例共用；只认排序要用的字段） */
+export interface ManuOrderRow {
+  /** 一级分类名（'装备' / '舰船' / '消耗品'；表外的一律排最后） */
+  kindLabel: string
+  /** 图纸名（同一产物两张图时是「X 图纸」与「X 图纸（一次性）」） */
+  name: string
+  /** 蓝图书市场价（市场目录 basePrice；0 = 无市场价 ⇒ 沉底） */
+  bookPrice: number
+  /** 产物唯一键：`ship:<id>` / `module:<id>` / `item:<id>`（同键 = 同一产物的图纸） */
+  productKey: string
+  /** 本卡是否为一次性图纸（`singleUse`） */
+  singleUse: boolean
+}
+
+/** 无市场价的书一律沉底（`Number.MAX_SAFE_INTEGER` 不是价格，只表示"排最后"） */
+function manuPriceRank(v: number): number {
+  return v > 0 ? v : Number.MAX_SAFE_INTEGER
+}
+
+/** 组装机卡片排序（见本段顶部口径；不改入参，返回新数组） */
+export function sortManuRows<T extends ManuOrderRow>(rows: readonly T[]): T[] {
+  // 组锚 = 同产物里那张**非一次性**图纸（=「原图纸」）；没有原图纸（洞内定制船/装备的一次性图纸）
+  // 就锚自己 ⇒ 这类卡的位置与 09-08 口径完全一致。
+  const anchorByProduct = new Map<string, T>()
+  for (const it of rows) {
+    const cur = anchorByProduct.get(it.productKey)
+    if (!cur || (cur.singleUse && !it.singleUse)) anchorByProduct.set(it.productKey, it)
+  }
+  const anchorOf = (it: T): T => anchorByProduct.get(it.productKey) ?? it
+  return [...rows].sort((a, b) => {
+    const aa = anchorOf(a)
+    const ab = anchorOf(b)
+    return (
+      (MANU_KIND_ORDER[a.kindLabel] ?? 9) - (MANU_KIND_ORDER[b.kindLabel] ?? 9) ||
+      manuPriceRank(aa.bookPrice) - manuPriceRank(ab.bookPrice) ||
+      aa.name.localeCompare(ab.name, 'zh-Hans-CN') ||
+      a.productKey.localeCompare(b.productKey) || // 组键兜底：不同产物绝不交错
+      Number(a.singleUse) - Number(b.singleUse) || // 组内：原图纸在前
+      manuPriceRank(a.bookPrice) - manuPriceRank(b.bookPrice) ||
+      a.name.localeCompare(b.name, 'zh-Hans-CN')
+    )
+  })
 }

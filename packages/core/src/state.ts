@@ -985,8 +985,13 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   /** 挂单锁仓：good key -> 数量（挂卖时预扣，成交交付/撤单退回） */
   escrowItems: Record<string, number>
   /** 挂卖中的舰船：订单 id -> 船快照（从 fleet 离队进 escrow，撤单原实例恢复；
-   *  v17 起含 defId/customName，恢复时不丢船型与自定义名） */
-  escrowShips: Record<number, { shipId: string; defId: string; durability: number; customName: string | null }>
+   *  v17 起含 defId/customName，恢复时不丢船型与自定义名）
+   *  `from`（2026-09-14 新增，可选）：这单是从哪儿卖出去的——`'fleet'`（舰队实例，缺省，撤单退回机库）
+   *  或 `'store'`（舰船仓库的计数船，撤单退回舰船仓库）。老档缺省 = `'fleet'`（零迁移）。 */
+  escrowShips: Record<
+    number,
+    { shipId: string; defId: string; durability: number; customName: string | null; from?: 'fleet' | 'store' }
+  >
   /** 已学会配方（蓝图消耗品：学会后可无限制造） */
   learnedRecipes: string[]
   /**
@@ -1005,6 +1010,14 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   recycleCarry?: Record<string, number>
   /** 持有的蓝图书：蓝图 id -> 数量（可学习或挂卖） */
   blueprintStock: Record<string, number>
+  /**
+   * **舰船仓库**（2026-09-14 船长：舰队页的「舰船市场」换成「舰船仓库」，所有组装机生产的舰船入仓，
+   * 允许同型**堆叠计数**；仓里的船一律是"全新"：满耐久 · 无装配 · 货仓空 · 无自定义名）。
+   * 用途（船长原话）：「舰船仓库是用于方便市场出售舰船的」⇒ 仓里的船可直接在市场挂卖
+   * （`market.sellStoredShipAtMarket`），舰队 ↔ 仓库双向转移见 `shipyard.storeShip` / `unstoreShip`。
+   * 兼容字段：老档缺省 = 空（**零迁移**）。
+   */
+  shipStore?: Record<string, number>
 }
 
 /** AI 副船任务：采矿（自动循环，满舱回港卸货入仓库后自动再出航） */
@@ -1943,6 +1956,7 @@ export function createInitialState(opts?: {
     spentOneTimeRecipes: [],
     recycleCarry: {},
     blueprintStock: {},
+    shipStore: {},
     events: { nextAtGameMs: 0 },
     mining: {
       active: false,

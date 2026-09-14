@@ -1473,7 +1473,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '掠袭破片炮图纸（一次性）',
     moduleId: 'mod-wh-a-frag',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 26_000 },
       { itemId: 'min-pyerite', count: 7_000 },
@@ -1490,7 +1489,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '掠袭机库图纸（一次性）',
     moduleId: 'mod-wh-a-hangar',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 20_000 },
       { itemId: 'min-pyerite', count: 5_000 },
@@ -1507,7 +1505,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '掠袭加力器图纸（一次性）',
     moduleId: 'mod-wh-a-prop',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 15_000 },
       { itemId: 'min-pyerite', count: 4_000 },
@@ -1524,7 +1521,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '掠袭折射涂层图纸（一次性）',
     moduleId: 'mod-wh-a-coat',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 13_000 },
       { itemId: 'min-pyerite', count: 3_400 },
@@ -1541,7 +1537,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '赃物扫描阵图纸（一次性）',
     moduleId: 'mod-wh-a-scan',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 14_000 },
       { itemId: 'min-pyerite', count: 3_600 },
@@ -1558,7 +1553,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '掠袭者护盾笼图纸（一次性）',
     moduleId: 'mod-wh-a-shield',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 24_000 },
       { itemId: 'min-pyerite', count: 6_000 },
@@ -1575,7 +1569,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '生体棱镜束图纸（一次性）',
     moduleId: 'mod-wh-c-laser',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 24_000 },
       { itemId: 'min-mexallon', count: 5_200 },
@@ -1592,7 +1585,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '甲壳棱镜层图纸（一次性）',
     moduleId: 'mod-wh-c-prism',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 22_000 },
       { itemId: 'min-mexallon', count: 4_600 },
@@ -1609,7 +1601,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '生体脉搏加速器图纸（一次性）',
     moduleId: 'mod-wh-c-pulse',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 14_000 },
       { itemId: 'min-mexallon', count: 3_200 },
@@ -1626,7 +1617,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '孢子导弹巢图纸（一次性）',
     moduleId: 'mod-wh-c-missile',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 22_000 },
       { itemId: 'min-mexallon', count: 4_800 },
@@ -1643,7 +1633,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '几丁质骨架层图纸（一次性）',
     moduleId: 'mod-wh-c-frame',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 25_000 },
       { itemId: 'min-mexallon', count: 4_800 },
@@ -1660,7 +1649,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '陵卫连装炮图纸（一次性）',
     moduleId: 'mod-wh-d-turret',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 24_000 },
       { itemId: 'min-mexallon', count: 5_000 },
@@ -1678,7 +1666,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '陵墓护盾芯图纸（一次性）',
     moduleId: 'mod-wh-d-shield',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 25_000 },
       { itemId: 'min-mexallon', count: 5_200 },
@@ -1696,7 +1683,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '守墓者丧钟图纸（一次性）',
     moduleId: 'mod-wh-d-lock',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 17_000 },
       { itemId: 'min-mexallon', count: 3_800 },
@@ -1714,7 +1700,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '陵寝棱镜炮图纸（一次性）',
     moduleId: 'mod-wh-d-laser',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 27_000 },
       { itemId: 'min-mexallon', count: 5_600 },
@@ -1732,7 +1717,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '守墓者速装填机图纸（一次性）',
     moduleId: 'mod-wh-d-loader',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 15_000 },
       { itemId: 'min-mexallon', count: 3_400 },
@@ -1750,7 +1734,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '陵墓弹道铭文图纸（一次性）',
     moduleId: 'mod-wh-d-steady',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 14_000 },
       { itemId: 'min-mexallon', count: 3_200 },
@@ -1768,7 +1751,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '巨构损管阵列图纸（一次性）',
     moduleId: 'mod-wh-e-dc',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 26_000 },
       { itemId: 'min-mexallon', count: 5_000 },
@@ -1786,7 +1768,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '巨构导控塔图纸（一次性）',
     moduleId: 'mod-wh-e-tac',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 19_000 },
       { itemId: 'min-mexallon', count: 4_000 },
@@ -1804,7 +1785,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '巨构协处理器图纸（一次性）',
     moduleId: 'mod-wh-e-cpu',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 16_000 },
       { itemId: 'min-mexallon', count: 3_400 },
@@ -1822,7 +1802,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '巨构近防阵列图纸（一次性）',
     moduleId: 'mod-wh-e-pd',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 21_000 },
       { itemId: 'min-mexallon', count: 4_400 },
@@ -1840,7 +1819,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '巨构护盾矩阵图纸（一次性）',
     moduleId: 'mod-wh-e-shield',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 25_000 },
       { itemId: 'min-mexallon', count: 5_200 },
@@ -1858,7 +1836,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '亡军蜂巢坞图纸（一次性）',
     moduleId: 'mod-wh-g-hangar',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 21_000 },
       { itemId: 'min-mexallon', count: 4_400 },
@@ -1876,7 +1853,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '亡军火控图纸（一次性）',
     moduleId: 'mod-wh-g-fcs',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 15_000 },
       { itemId: 'min-mexallon', count: 3_400 },
@@ -1894,7 +1870,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '幽灵弹道校正器图纸（一次性）',
     moduleId: 'mod-wh-g-ballistic',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 14_000 },
       { itemId: 'min-mexallon', count: 3_200 },
@@ -1912,7 +1887,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '鱿蜂结构层图纸（一次性）',
     moduleId: 'mod-wh-g-hull',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 24_000 },
       { itemId: 'min-mexallon', count: 4_600 },
@@ -1930,7 +1904,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '亡军残炮图纸（一次性）',
     moduleId: 'mod-wh-g-turret',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 22_000 },
       { itemId: 'min-mexallon', count: 4_600 },
@@ -1948,7 +1921,6 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '幽灵推进器图纸（一次性）',
     moduleId: 'mod-wh-g-prop',
     singleUse: true,
-    unreleased: true,
     materials: [
       { itemId: 'min-tritanium', count: 15_000 },
       { itemId: 'min-mexallon', count: 3_400 },

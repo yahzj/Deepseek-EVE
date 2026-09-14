@@ -33,7 +33,7 @@ import type { MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimCon
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
-import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName } from './shipyard'
+import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName, shipStoredCount } from './shipyard'
 import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
@@ -1257,16 +1257,23 @@ export function cancelOrder(state: GameState, ctx: SimContext, orderId: number):
     const shipHold = state.escrowShips[order.id]
     if (shipHold) {
       delete state.escrowShips[order.id]
-      // v17：原实例原样恢复（uid/船型/耐久/自定义名全保留）；异常残留的同 uid 条目先清除
-      delete state.fleet[shipHold.shipId]
-      state.fleet[shipHold.shipId] = {
-        defId: shipHold.defId,
-        customName: shipHold.customName,
-        durability: shipHold.durability,
-        cargo: {},
-        fitted: emptyFitted(),
+      if (shipHold.from === 'store') {
+        // 2026-09-14 船长：从**舰船仓库**挂卖的（纯计数船）撤单**退回舰船仓库**，不进机库
+        state.shipStore = state.shipStore ?? {}
+        state.shipStore[shipHold.defId] = shipStoredCount(state, shipHold.defId) + 1
+        addLog(state, 'trade', '卖单已撤销：舰船已退回舰船仓库。')
+      } else {
+        // v17：原实例原样恢复（uid/船型/耐久/自定义名全保留）；异常残留的同 uid 条目先清除
+        delete state.fleet[shipHold.shipId]
+        state.fleet[shipHold.shipId] = {
+          defId: shipHold.defId,
+          customName: shipHold.customName,
+          durability: shipHold.durability,
+          cargo: {},
+          fitted: emptyFitted(),
+        }
+        addLog(state, 'trade', '卖单已撤销：舰船已退回机库。')
       }
-      addLog(state, 'trade', '卖单已撤销：舰船已退回机库。')
     } else {
       state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - order.qty)
       refundToStorage(state, ctx, order.good, order.qty)
@@ -1460,7 +1467,7 @@ export function shipSellable(state: GameState, shipId: string): { ok: boolean; r
   if (!fleetShip) return { ok: false, reason: '机库里没有这艘船。' }
   if (state.shipId === shipId) return { ok: false, reason: '正在驾驶的船不能出售。' }
   if (state.aiAssignments[shipId]) return { ok: false, reason: 'AI 任务执行中的船不能出售，先取消指派。' }
-  if (isShipLocked(state, shipId)) return { ok: false, reason: '该船已锁定防误售：先到舰船页解锁。' }
+  if (isShipLocked(state, shipId)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。' }
   if (shipInReturn(state, shipId)) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能出售。' }
   const cargoUnits = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
   if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。' }
@@ -1515,6 +1522,8 @@ export function placeShipSellOrder(
   const def = [...ctx.marketGoods.values()].find((g) => g.kind === 'ship' && g.refId === fleetShip.defId)
   if (!def) return null
   const display = shipDisplayName(state, ctx, shipId)
+  // ⚠ **不写 `from`**：缺省即 `'fleet'`（只有从舰船仓库卖出的那批才标 `'store'`）——
+  // 这样老档与新档的舰队实例托管快照形状逐字一致（`tests/t5b.test.ts` 的 toEqual 钉着它）。
   const hold = {
     shipId,
     defId: fleetShip.defId ?? uidDefId(shipId),
@@ -1544,6 +1553,87 @@ export function placeShipSellOrder(
       : `已挂卖单：二手舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} 信用点（可撤销退回机库）。`,
   )
   return order
+}
+
+/* ═══════════════ 舰船仓库出售（2026-09-14 船长：「舰船仓库是用于方便市场出售舰船的」） ═══════════════
+ * 与舰队实例出售（`sellShipAtMarket`）的差别只有一条：货从**舰船仓库的计数**里扣（不是某个实例），
+ * 托管记录标 `from: 'store'` ⇒ **撤单退回仓库**而不是机库。定价/撮合/税/吃簿口径**逐字沿用**：
+ * 估价 = 当前收购价；无收购单时按均衡收购价 ×0.98 挂限价卖单；挂单免费；成交额照收贸易税。 */
+
+/**
+ * 把舰船仓库里的 1 艘挂上限价卖单（escrow 快照 = 全新船：耐久 1、无名；撤单退回仓库）。
+ * 返回 null = 库存不足 / 不在市场目录 / 价格非法。
+ */
+export function placeStoredShipSellOrder(
+  state: GameState,
+  ctx: SimContext,
+  defId: string,
+  price: number,
+): PlayerOrder | null {
+  if (shipStoredCount(state, defId) <= 0 || price <= 0) return null
+  const def = [...ctx.marketGoods.values()].find((g) => g.kind === 'ship' && g.refId === defId)
+  if (!def) return null
+  const display = ctx.ships.get(defId)?.name ?? defId
+  // 扣仓（计数到 0 就删键，与 blueprintStock 同款写法）
+  state.shipStore = state.shipStore ?? {}
+  const left = shipStoredCount(state, defId) - 1
+  if (left > 0) state.shipStore[defId] = left
+  else delete state.shipStore[defId]
+  state.market.orderSeq += 1
+  const order: PlayerOrder = {
+    id: state.market.orderSeq,
+    side: 'sell',
+    good: def.key,
+    price: Math.round(price),
+    qty: 1,
+    filled: 0,
+    placedAtGameMs: state.gameMs,
+  }
+  state.orders.push(order)
+  // shipId 是**合成键**（仓库船没有实例）：`<船型>#store-<单号>`，`allocateShipUid` 解析不出号 ⇒ 不占号段
+  state.escrowShips[order.id] = {
+    shipId: `${defId}#store-${order.id}`,
+    defId,
+    durability: 1,
+    customName: null,
+    from: 'store',
+  }
+  const r = crossOnPlacement(state, ctx, order)
+  addLog(
+    state,
+    'trade',
+    r.filled > 0
+      ? `卖单已即时成交：舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} 信用点。`
+      : `已挂卖单：舰船「${display}」@ ${order.price.toLocaleString('zh-CN')} 信用点（可撤销退回舰船仓库）。`,
+  )
+  return order
+}
+
+/**
+ * 舰船仓库市价出售：扣仓 1 艘 → 挂限价卖单 → **立即撮合一轮**（吃收购簿即时成交；未成交留在簿上）。
+ * 返回 total = 税后净入账（即时成交时）。
+ */
+export function sellStoredShipAtMarket(
+  state: GameState,
+  ctx: SimContext,
+  defId: string,
+): { ok: boolean; total?: number; reason?: string } {
+  if (shipStoredCount(state, defId) <= 0) return { ok: false, reason: '舰船仓库里没有这一型。' }
+  const def = [...ctx.marketGoods.values()].find((g) => g.kind === 'ship' && g.refId === defId)
+  if (!def) return { ok: false, reason: '该舰船不在市场流通目录中。' }
+  const display = ctx.ships.get(defId)?.name ?? defId
+  const quote = marketQuote(state, ctx, def.key)
+  const est =
+    quote.buy ?? Math.round(buyPrice(def, priceLevel(state, ctx, def, def.poolTarget ?? 0)) * 0.98)
+  const order = placeStoredShipSellOrder(state, ctx, defId, est)
+  if (!order) return { ok: false, reason: '无法挂单：请检查仓库库存与价格。' }
+  matchPlayerOrders(state, ctx)
+  if (order.qty <= 0) {
+    const gross = order.filled * order.price
+    return { ok: true, total: netAfterTax(state, ctx, gross) }
+  }
+  addLog(state, 'info', `「${display}」未能立即成交，已转为限价卖单（撤销卖单可把船退回舰船仓库）。`)
+  return { ok: true }
 }
 
 /** 学习蓝图（消耗 1 本 → 永久学会；重复蓝图只能放市场交易）
@@ -1608,7 +1698,9 @@ export function naturalHoldings(state: GameState, def: MarketGoodDef): number {
 }
 
 /** 市价卖出持有的商品（市场页用）：自动从"自然库存"取货（物品→物品仓库、装备→装备库、
- * 蓝图→蓝图书架、AI 核心→核心库闲置数）；数量省略 = 全卖。舰船请走 sellShipAtMarket/船坞。 */
+ * 蓝图→蓝图书架、AI 核心→核心库闲置数）；数量省略 = 全卖。
+ *  ⚠ 舰船**不走这里**（自然库存对舰船恒 0）：2026-09-14 起固定指路舰船页「舰船仓库」
+ *  （`sellStoredShipAtMarket`）；舰队实例版 `sellShipAtMarket` 自同日起没有界面入口。 */
 export function marketSellHolding(
   state: GameState,
   ctx: SimContext,
@@ -1619,7 +1711,7 @@ export function marketSellHolding(
   if (!def) return { ok: false, error: `未知商品：${goodKey}`, sold: 0, total: 0, remaining: 0 }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', sold: 0, total: 0, remaining: 0 }
   if (def.kind === 'ship') {
-    return { ok: false, error: '舰船请在船坞/舰船页出售（需货仓清空、无装配）。', sold: 0, total: 0, remaining: 0 }
+    return { ok: false, error: '舰船请到舰船页「舰船仓库」出售（仓里的船是全新船，可直接出售）。', sold: 0, total: 0, remaining: 0 }
   }
   const available = naturalHoldings(state, def)
   const want = qty === undefined ? available : Math.max(0, Math.floor(qty))

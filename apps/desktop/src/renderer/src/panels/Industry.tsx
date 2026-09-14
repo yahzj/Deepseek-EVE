@@ -20,6 +20,10 @@ import {
   ownsBlueprint,
   recipeCapability,
   canStartBlueprint,
+  // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」）——口径单点在 core 纯函数
+  sortManuRows,
+  // 2026-09-14 舰船仓库批：船型"总持有"读口径（仓库＋在役舰队）
+  shipOwnedCount,
   // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
   visibleItemDefs,
 } from '@whale/core'
@@ -85,10 +89,6 @@ function bookPriceOf(engine: GameEngine, blueprintId: string, fallback: number):
   return fallback
 }
 
-/** 组装机分组序（2026-09-08 船长定：按类型 + 蓝图价格排序）：装备 → 舰船 → 消耗品
- *  （2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——该档含弹药 + 修理组件，故档名随之改） */
-const MANU_KIND_ORDER: Record<string, number> = { 装备: 0, 舰船: 1, 消耗品: 2 }
-
 /* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
 
 /** 蓝图书架：持有的蓝图书（学习 → 永久学会；多余的书市价出售） */
@@ -119,7 +119,7 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
         title="蓝图书架"
         hint={
           // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
-          <HintIcon tip="到下方组装机点「市场求购蓝图书」，市场有货即买下入架；然后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。" />
+          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）。" />
         }
         right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}
       >
@@ -242,6 +242,7 @@ function BlueprintCard({
   ownedCount,
   ownedWhere,
   onNeedMineral,
+  onGotoMarket,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -266,6 +267,9 @@ function BlueprintCard({
   ownedWhere: string
   /** 点需求材料：有精炼源 → 跳到精炼炉对应源矿石卡；无源 → 跳市场（2026-09-08 船长定） */
   onNeedMineral?: (itemId: string) => void
+  /** 「市场求购蓝图书」跳市场：传该蓝图的市场商品键，市场页会搜到并展开它的行情详情
+   *  （2026-09-14 船长：组装机只指路、不替玩家下任何单） */
+  onGotoMarket?: (goodKey: string) => void
 }) {
   const state = engine.state
   // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
@@ -309,11 +313,26 @@ function BlueprintCard({
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualNote = manualBuildNote(state)
 
-  function handleAcquire(): void {
-    const r = engine.acquireBlueprintAt(blueprintId)
-    if (!r.ok) onToast(r.error ?? '获取失败', true)
-    else if (r.pending) onToast('市场暂无蓝图书：已挂收购单，到货后请到「蓝图书架」点学习。')
-    else onToast('蓝图书已购得并自动学会：现在可以开始制造了。')
+  /** 求购 = **只跳转、不下单**（2026-09-14 船长：「组装机求购蓝图应该跳转到市场对应的订单详细。
+   *  而不是直接市场价下订单」）——到市场页会自动搜到该蓝图并展开它的行情详情（与舰船页/物品页
+   *  「去市场」同一个入口 `onGotoMarket`，全仓一处口径）；买不买、按什么价挂单由玩家在详情里自己定。 */
+  function handleGotoMarket(): void {
+    if (!goodKey) {
+      onToast('该蓝图不在市场流通目录。', true)
+      return
+    }
+    if (!onGotoMarket) {
+      onToast('当前入口不支持跳转市场：请从左侧「市场」页搜索这张蓝图。', true)
+      return
+    }
+    onGotoMarket(goodKey)
+  }
+
+  /** 书已在书架（未学习）：就地学习——与「蓝图书架」的「学习」同一个引擎出口与话术（不花钱、不占制造位） */
+  function handleLearnFromShelf(): void {
+    const r = engine.learnBlueprintAt(blueprintId)
+    if (!r.ok) onToast(r.error ?? '学习失败', true)
+    else onToast('已学习该配方：现在可以开始制造了。')
   }
 
   function runWith(worker: AiCoreType | 'pilot'): void {
@@ -604,9 +623,20 @@ function BlueprintCard({
           <button className="app-btn is-small" disabled title={oneTimeNote ?? '一次性图纸：需要一张同名图纸才能制造'}>
             {cap.kind === 'exhausted' ? '✕ 制造名额已用尽' : '✕ 需要一次性图纸'}
           </button>
+        ) : bookCount > 0 ? (
+          /* 书已在书架（尚未学习）：就地学习（2026-09-14 船长裁定「乙」）——与「蓝图书架」的「学习」
+             同一个引擎出口与话术；书不消耗、也不占制造位 */
+          <button
+            className="app-btn is-small"
+            title={`蓝图书架已有这本图纸 ×${bookCount}：点此学习（不消耗书），学会后本卡永久可造`}
+            onClick={handleLearnFromShelf}
+          >
+            学习该配方（书架已有书）
+          </button>
         ) : (
-          <button className="app-btn is-small" onClick={handleAcquire}>
-            市场求购蓝图书{bookCount > 0 ? '（书已到手，先学习）' : ''}
+          /* 求购 = 只跳市场行情详情，不替玩家下单（2026-09-14 船长口径） */
+          <button className="app-btn is-small" title="跳到市场的该蓝图行情详情：买现货或按自己的价挂买单" onClick={handleGotoMarket}>
+            市场求购蓝图书
           </button>
         )}
       </div>
@@ -614,7 +644,18 @@ function BlueprintCard({
   )
 }
 
-export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine: GameEngine; onToast: ToastFn; onNeedMineral?: (itemId: string) => void }) {
+export function ManufacturingPanel({
+  engine,
+  onToast,
+  onNeedMineral,
+  onGotoMarket,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  onNeedMineral?: (itemId: string) => void
+  /** 「市场求购蓝图书」跳市场（传市场商品键）；由工业页透传 App 的「去市场」入口 */
+  onGotoMarket?: (goodKey: string) => void
+}) {
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
   const [tab, setTab] = useState<ManuTab>('all')
@@ -642,10 +683,15 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     ownedCount: number
     ownedWhere: string
     bookPrice: number
+    /** 排序用：**产物唯一键**（`ship:`/`module:`/`item:` + 产物 id）——2026-09-14 船长：
+     *  「一次性图纸应该和原图纸放在一起」⇒ 同产物成组，组内原图纸在前 */
+    productKey: string
+    /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
+    singleUse: boolean
   }> = []
-  /** 机库同型艘数（与市场页「持有」同口径：core 自然库存对舰船恒 0，故单独数机库） */
-  const shipStockOf = (shipId: string): number =>
-    Object.entries(state.fleet).filter(([uid, e]) => (e.defId ?? uid) === shipId).length
+  /** 该船型的**总持有**（2026-09-14 舰船仓库批：组装机产出先进仓库 ⇒ 读口径改走 core 单点
+   *  `shipOwnedCount` = 舰船仓库 ＋ 在役舰队；原先只数机库，会让"仓里堆着 3 艘"显示成 0） */
+  const shipStockOf = (shipId: string): number => shipOwnedCount(state, shipId)
   const pushShip = (): void => {
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
@@ -686,8 +732,10 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
         // 舰船产物：机库同型艘数（与市场页「持有」同口径；core 自然库存对舰船恒 0）
         ownedCount: shipStockOf(sbp.shipId),
-        ownedWhere: '机库',
+        ownedWhere: '仓库＋机库',
         bookPrice: bookPriceOf(engine, sbp.id, 0),
+        productKey: `ship:${sbp.shipId}`,
+        singleUse: sbp.singleUse === true,
       })
     }
   }
@@ -716,6 +764,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         ownedCount: moduleDef ? countModule(state, bp.moduleId!) : 0, // 装备产物 → 装备库件数
         ownedWhere: '装备库',
         bookPrice: bookPriceOf(engine, bp.id, 0),
+        productKey: `module:${bp.moduleId}`,
+        singleUse: bp.singleUse === true,
       })
     }
   }
@@ -758,6 +808,8 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         ownedCount: itemDef ? countWare(state, bp.itemId) : 0, // 弹药/物品产物 → 物品仓库单位数
         ownedWhere: '仓库',
         bookPrice: bookPriceOf(engine, bp.id, 0),
+        productKey: `item:${bp.itemId}`,
+        singleUse: bp.singleUse === true,
       })
     }
   }
@@ -782,21 +834,11 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     )
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
-  // 2026-09-08 船长定：按「类型（装备→舰船→消耗品）→ 蓝图价格（升序）」排序；无市场价沉底
-  const bpP = (v: number): number => (v > 0 ? v : Number.MAX_SAFE_INTEGER)
+  // 排序口径（类型 → 价格升序 → 同产物的一次性图纸紧随原图纸）**单点在 core**：
+  // `sortManuRows`（2026-09-08 船长定 + 2026-09-14 船长改定；详见 core 该段注释与 `tests/manu-order.test.ts`）
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
   // （标签本身是筛选、不是排序键，故各处标签都按同一口径置顶）；组内保持类型→价格顺序。
-  const sorted = pinMarked(
-    state,
-    'blueprints',
-    [...visible].sort(
-      (a, b) =>
-        (MANU_KIND_ORDER[a.kindLabel] ?? 9) - (MANU_KIND_ORDER[b.kindLabel] ?? 9) ||
-        bpP(a.bookPrice) - bpP(b.bookPrice) ||
-        a.name.localeCompare(b.name, 'zh-Hans-CN'),
-    ),
-    (it) => it.id,
-  )
+  const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
   const equipN = items.filter((i) => i.kindLabel === '装备').length
   const shipN = items.filter((i) => i.kindLabel === '舰船').length
   const learnedN = items.filter((i) => ownsBlueprint(state, i.id)).length
@@ -883,6 +925,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
               ownedCount={it.ownedCount}
               ownedWhere={it.ownedWhere}
               onNeedMineral={onNeedMineral}
+              onGotoMarket={onGotoMarket}
             />
           ))}
         </div>

@@ -1,16 +1,17 @@
 /**
- * **未上线闸门 · 物品目录级**（2026-09-13 补 · 船长铁律「数据走 `unreleased` 闸门」）。
+ * **未上线闸门 · 物品目录级**（2026-09-13 立 · **2026-09-14 虫洞上线后翻面**）。
  *
  * 背景（实测泄露）：市场卡标了 `unreleased` 只管得住 `ctx.marketGoods`（市场页/图鉴/挂单/任务/事件），
  * 而**工业页「可精炼资源」网格 / 舰船页 AI 精炼炉下拉 / 组装机材料提示 / 手册物品图鉴**
  * 都是直接扫 `ctx.items` 全目录的（判据 = 有没有精炼配方）——于是虚空母矿连卡带"虫洞"描述
- * 一起挂在玩家可见的工业页上。本文件钉住修好后的两条口径：
+ * 一起挂在玩家可见的工业页上。本文件钉住两条口径：
  *
- * ① **给玩家看的枚举走 `visibleItemDefs` / `itemReleased`**，未上线物品不进；
- * ② **引擎内部照用 `ctx.items` 全目录**（虫洞背包按体积换算、精炼扣料都不受影响）——
- *    "闸门"只挡展示面，不挡玩法，否则会把洞内那条线一起弄坏。
+ * ① **给玩家看的枚举走 `visibleItemDefs` / `itemReleased`**（`unreleased` 机制本身仍然有效——
+ *    别的未上线内容照旧靠它挡）；② **引擎内部照用 `ctx.items` 全目录**（虫洞背包按体积换算、
+ * 精炼扣料都不受影响）——"闸门"只挡展示面，不挡玩法。
  *
- * ⚠ 施工期铁律：本文件不产生任何玩家可见文案。
+ * ⚠ **2026-09-14**：船长解除虫洞不可见 ⇒ 虚空母矿那条**从"必须挡住"翻成"必须可见"**
+ * （见文件末那条用例的注释）；闸门语义本身由第二条用例继续守。
  */
 import { describe, expect, it } from 'vitest'
 import { MARKET_GOODS, buildSimContext } from '@whale/data'
@@ -19,20 +20,24 @@ import { WORMHOLE_ORE_ITEM_ID } from '../src/wormhole'
 
 const ctx = buildSimContext()
 
-describe('未上线闸门 · 物品目录级（2026-09-13）', () => {
-  it('虚空母矿：**给玩家看的目录里没有它、引擎全目录里还有它**', () => {
-    // ① 展示面：挡在 visibleItemDefs 之外（工业页可精炼资源 / AI 精炼炉下拉 / 组装机提示 / 手册图鉴都走这里）
+describe('物品目录级可见性（2026-09-13 立闸 · 2026-09-14 虫洞上线后翻面）', () => {
+  it('虚空母矿：**上线后给玩家看的目录里必须有它**（同日引擎全目录里当然也有）', () => {
+    /**
+     * ⚠ **2026-09-14 船长解闸**（「可以解除虫洞对玩家的不可见状态了」）：当年这条钉的是"虚空母矿
+     * 挡在 `visibleItemDefs` 之外"，**现在翻成反向断言**——它必须在目录里（工业页「可精炼资源」/
+     * AI 精炼炉下拉 / 组装机材料提示 / 手册物品图鉴都走同一份 `visibleItemDefs`）。
+     * 泛用闸门语义（`itemReleased`）由下一条用例继续钉住，`unreleased` 机制本身没有退休。
+     */
     const visibleIds = visibleItemDefs(ctx).map((d) => d.id)
-    expect(visibleIds).not.toContain(WORMHOLE_ORE_ITEM_ID)
-    // 且它本来有资格进那些列表（有精炼配方）——证明"没进"是闸门挡的，不是它自己不合格
-    const hidden = ctx.items.get(WORMHOLE_ORE_ITEM_ID)
-    expect(hidden, '物品目录里没有虚空母矿').toBeTruthy()
-    expect((hidden!.refine?.length ?? 0)).toBeGreaterThan(0)
-    expect(itemReleased(hidden)).toBe(false)
-    // ② 玩法面：全目录照旧（虫洞按体积换算背包格、精炼扣料都读 ctx.items）
+    expect(visibleIds, '虚空母矿没进玩家可见目录').toContain(WORMHOLE_ORE_ITEM_ID)
+    const ore = ctx.items.get(WORMHOLE_ORE_ITEM_ID)
+    expect(ore, '物品目录里没有虚空母矿').toBeTruthy()
+    expect(ore!.refine?.length ?? 0).toBeGreaterThan(0)
+    expect(itemReleased(ore)).toBe(true)
+    // 玩法面照旧：全目录里也在（虫洞按体积换算背包格、精炼扣料都读 ctx.items）
     expect(ctx.items.has(WORMHOLE_ORE_ITEM_ID)).toBe(true)
-    expect(hidden!.unitM3).toBe(1)
-    expect(Object.keys(visibleItemDefs(ctx)).length).toBeGreaterThan(20) // 目录其余照旧可见
+    expect(ore!.unitM3).toBe(1)
+    expect(Object.keys(visibleItemDefs(ctx)).length).toBeGreaterThan(20) // 目录其余照旧
   })
 
   it('`itemReleased` 语义：没标 = 可见；标了 = 不可见；查不到 = 不可见', () => {

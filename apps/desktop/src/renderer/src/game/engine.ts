@@ -41,7 +41,6 @@ import {
   // 2026-09-11 市价买入失败原因分诊（暗市闸口径与界面同源，对玩家按声望锁措辞）
   bmGateReason,
   learnBlueprint,
-  levelOf,
   listSellHolding,
   loadSaveFile,
   loadWarehouseToCargoFit,
@@ -66,11 +65,14 @@ import {
   retreatBattle,
   sellCargoItem,
   sellCargoItemQty,
-  sellShipAtMarket,
+  sellStoredShipAtMarket,
   sellWareItem,
   sellWareItemQty,
   serializeSaveFile,
   shipDisplayName,
+  // 舰船仓库（2026-09-14 船长）
+  storeShip,
+  unstoreShip,
   setBattleDesire,
   setMiningAutoCycle,
   setMiningStopAfterTrip,
@@ -139,7 +141,7 @@ import {
   HAUL_RATE_PER_M3_MIN,
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
-  // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；2026-09-14 上线）
+  // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；✅ 2026-09-14 已上线，入口常驻）
   wormholeEnter,
   wormholeTakePileAt,
   wormholeHoldUsage,
@@ -416,9 +418,8 @@ function offlineReportLogText(r: OfflineReport): string {
 export class GameEngine {
   /** 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值） */
   readonly ctx: SimContext = buildSimContext()
-  /** 界面目录数据（**未上线闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
-   *  —— 与下面 `anomalies` 的 `hidden` 过滤同款。2026-09-14 虫洞上线后目录里已无未上线内容，
-   *  闸门保留给后续新增内容） */
+  /** 界面目录数据（**施工期闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
+   *  —— 与下面 `anomalies` 的 `hidden` 过滤同款，2026-09-13 船长铁律） */
   readonly skills = SKILLS
   readonly groups = SKILL_GROUPS
   readonly ships = SHIPS.filter((d) => itemReleased(d))
@@ -1101,38 +1102,6 @@ export class GameEngine {
     return result
   }
 
-  /** 获取蓝图：市场有货 → 买下蓝图书并自动学习；无货 → 挂收购单（到货后手动学习） */
-  acquireBlueprintAt(blueprintId: string): { ok: boolean; error?: string; pending?: boolean } {
-    // 找该蓝图的市场商品
-    let goodKey: string | null = null
-    for (const def of this.ctx.marketGoods.values()) {
-      if (def.kind === 'blueprint' && def.refId === blueprintId) {
-        goodKey = def.key
-        break
-      }
-    }
-    if (!goodKey) return { ok: false, error: '该蓝图不在市场流通目录中。' }
-    if (this.state.learnedRecipes.includes(blueprintId)) return { ok: false, error: '该配方已学会，无需重复获取。' }
-    const lock = goodLockedReason(this.state, this.ctx.marketGoods.get(goodKey)!)
-    if (lock) return { ok: false, error: `暂不能购买蓝图书：${lock}。` }
-    const res = buyAtMarket(this.state, this.ctx, goodKey, 1)
-    if (res.bought > 0) {
-      const learn = learnBlueprint(this.state, this.ctx, blueprintId)
-      void this.persist()
-      this.notify()
-      if (learn.ok) return { ok: true }
-      return { ok: false, error: learn.error ?? '购买成功但学习失败（异常）。' }
-    }
-    // 簿上无书：按均衡价挂收购单（到货后手动学习）
-    const quote = marketQuote(this.state, this.ctx, goodKey)
-    const ask = quote.sell !== undefined ? Math.round(quote.sell * 1.02) : Math.round(levelOf(this.state, this.ctx, goodKey) * 1.03)
-    const order = placeBuyOrder(this.state, this.ctx, goodKey, ask, 1)
-    if (!order) return { ok: false, error: '信用点不足或挂单失败：先攒够购书款。' }
-    void this.persist()
-    this.notify()
-    return { ok: true, pending: true }
-  }
-
   /** 市价买入商品（默认 1 件；矿石/矿物传数量）。
    *  2026-09-11 船长实测反馈修复：买不到时**按真实原因分别报错**（此前一律报「供应簿只剩 0 件」，
    *  实测钱包不足时 141 个有货商品里 104 个会这样说、声望不足时 3 个 MK3 会这样说——全是误导）；
@@ -1247,9 +1216,33 @@ export class GameEngine {
     return marketSellPreview(this.state, this.ctx, goodKey, qty)
   }
 
-  /** 市价出售机库里的舰船（须空仓、无装配、非驾驶） */
-  sellShipAt(shipId: string): CommandResult {
-    const res = sellShipAtMarket(this.state, this.ctx, shipId)
+  /** 市价出售机库里的舰船（须空仓、无装配、非驾驶）
+   *  ⚠ **自 2026-09-14 起没有界面入口**（船长：「之后移除我的舰队内舰船的出售按钮」——
+   *  出售统一走舰船仓库）；core 出口与用例保留（老档 escrow 撤单与后续复用），界面改调 `sellStoredShipAt`。 */
+
+  /** 移入舰船仓库（2026-09-14 船长）：`clearName` = 已在确认弹层同意清掉自定义名 */
+  storeShipAt(uid: string, clearName = false): CommandResult {
+    const res = storeShip(this.state, uid, this.ctx, { clearName })
+    if (res.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return res
+  }
+
+  /** 从舰船仓库转入舰队（生成全新实例） */
+  unstoreShipAt(defId: string): CommandResult {
+    const res = unstoreShip(this.state, defId, this.ctx)
+    if (res.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return res
+  }
+
+  /** 舰船仓库市价出售（吃收购簿即时成交；未成交转限价卖单，撤单退回舰船仓库） */
+  sellStoredShipAt(defId: string): CommandResult {
+    const res = sellStoredShipAtMarket(this.state, this.ctx, defId)
     if (res.ok) {
       void this.persist()
       this.notify()
@@ -1456,7 +1449,7 @@ export class GameEngine {
     return result
   }
 
-  /* ─────────────── 终局玩法「虫洞」（E 批 · 2026-09-14 上线） ─────────────── */
+  /* ─────────────── 终局玩法「虫洞」（E 批 · ✅ 2026-09-14 已上线） ─────────────── */
 
   /** 虫洞：跃入（编队校验 + 建副本；`seed` 取游戏随机种子，保证节点/拾取堆可复现） */
   wormholeEnter(shipIds: readonly string[]): CommandResult {
@@ -1512,7 +1505,7 @@ export class GameEngine {
   /**
    * 族名（取该族那张洞内敌卡的卡名：劫掠支队 / 巢群游猎 / 守墓巡哨 / 巨构残响 / 亡军封锁）。
    *
-   * ⚠ **必须走 `ctx.anomalies` 全表**：五张洞内卡都带 `hidden: true`（施工期不进悬赏目录），
+   * ⚠ **必须走 `ctx.anomalies` 全表**：五张洞内卡都带 `hidden: true`（**虫洞专用遭遇，不进悬赏目录**），
    * 而 `this.anomalies` 是**过滤掉 hidden 的目录** ⇒ 早先在这里查不到、界面直接漏出内部 id
    * （船长 2026-09-14 报障看到的是 `wh-alien-swarm`）。改成查全表，查不到才退回 id。
    */

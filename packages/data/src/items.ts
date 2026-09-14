@@ -142,7 +142,6 @@ export const ORES: readonly ItemDef[] = [
     unitM3: 1,
     baseSellPriceIsk: 915,
     description: '深空裂隙里结出的黑色母岩——虫洞深处唯一能带回来的东西，炼得出虚空晶。',
-    unreleased: true,
     refine: [
       { mineralId: 'min-voidcrystal', perOre: 0.5 },
       { mineralId: 'min-isotope', perOre: 1.0 },
@@ -171,7 +170,6 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的整箱货柜：外壳带锁、标记已被磨掉，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -181,7 +179,6 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的整箱货柜：外壁挂着干涸的生物膜，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -191,7 +188,6 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的整箱货柜：封条上还留着守墓者的印记，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -201,7 +197,6 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的整箱货柜：外壳是巨构自己的合金，接口仍在待机，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -211,7 +206,6 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的整箱货柜：箱体被蜂群啃过又焊上，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -236,7 +230,6 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 1000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的长条货柜：外壳印着制式编号，接口还是热的，只有回站拆开才知道里面压着哪张图纸。占货仓 2×1 格。',
   },
@@ -246,7 +239,6 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 1000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的长条货柜：编号被人为磨去一半，比浅层那种压手得多。占货仓 2×1 格。',
   },
@@ -256,7 +248,6 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 1000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description:
       '从遗迹里拖出来的长条货柜：铭牌上还留着旧主人的舰徽，封条完好无损。占货仓 2×1 格。',
   },
@@ -644,7 +635,6 @@ export const DRONES: readonly ItemDef[] = [
       evasion: 0.08, // 厚而慢（制式 0.10）
     },
     exclusive: true,
-    unreleased: true,
   },
   {
     id: 'drone-wh-e-sentry',
@@ -672,7 +662,6 @@ export const DRONES: readonly ItemDef[] = [
       evasion: 0.2,
     },
     exclusive: true,
-    unreleased: true,
   },
 ]
 
@@ -720,7 +709,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质凝成的测绘阵列：只要它躺在货仓里，扫描就能多看一圈。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -729,7 +717,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质里剥出的一小段时间：带在货仓里，本趟可用的回合凭空多出一截。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -738,7 +725,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质驱动的起重臂：每轮打捞都能多拖一堆上来。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -747,7 +733,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质磨出的钻头：每轮采集都能多挖一堆母矿。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -756,7 +741,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质吹出的一阵风：每次扫描都会额外吹散附近的星云。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -765,7 +749,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质做的富集槽：矿脉里采出的虚空母矿会更多。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -774,7 +757,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质撑开的折叠舱段：货仓能多塞几格货（它自己仍占 2×2 格）。离开虫洞即失效。',
   },
   /* ── B1 批：威胁类（三档合计最多把威胁压到一半）── */
@@ -784,7 +766,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质铺开的一层压制场：本层的节点战、守卫战与撤离拦截战都会更轻。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -793,7 +774,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质里读出的守卫编成：层末守卫的威胁明显下降。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -802,7 +782,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质撑起的撤离掩护：拦截舰队的威胁明显下降。占货仓 2×2 格，离开虫洞即失效。',
   },
   /* ── B1 批：战斗类（一律只在本趟虫洞的战斗里生效）── */
@@ -812,7 +791,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质调谐出的护盾谐振：护盾对敌方主用伤害类型的抗性提高（只作用护盾这一层）。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -821,7 +799,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质重排的装甲层：装甲对敌方主用伤害类型的抗性提高（只作用装甲这一层）。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -830,7 +807,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质织进船体骨架：结构对敌方主用伤害类型的抗性提高（只作用结构这一层）。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -839,7 +815,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质校准的追踪阵列：编队命中更准。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -848,7 +823,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质陀螺让船身更难被咬住：编队回避提高。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -857,7 +831,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质噪声盖住你的信号：敌方打得更不准。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -866,7 +839,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质拉伸的测距阵列：全武器射程更远。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -875,7 +847,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质在贴身距离上搅乱敌方火控：敌人贴脸开火的伤害比例下降。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -884,7 +855,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质给每一发弹丸加了一层：编队单发伤害提高。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -893,7 +863,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质替装填机构抢时间：武器装填周期缩短。占货仓 2×2 格，离开虫洞即失效。',
   },
   /* ── B2 批：战后收口与新机制 ── */
@@ -903,7 +872,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质接管了齐射分配：一轮齐射打死一艘后，多余的火力立刻转打下一艘。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -912,7 +880,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质在战后把打出去的弹壳与残料捞回来：本场消耗的弹药能回收一部分。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -921,7 +888,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质织成的回收网：被点防打下来的无人机有更多能被捞回机库。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
@@ -930,7 +896,6 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '谜质驱动的战地维修臂：每场交火后自动修补装甲与结构（不消耗货仓里的修理组件）。占货仓 2×2 格，离开虫洞即失效。',
   },
 ]
@@ -961,7 +926,6 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
     kind: 'aicore',
     unitM3: 500,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '从遗迹控制台里拔出来的运算核心：外壳烧灼过，内核还在低鸣。占货仓 1 格；撤离成功后自动接入核心库。',
   },
   {
@@ -970,7 +934,6 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
     kind: 'aicore',
     unitM3: 500,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '遗迹主控柜里的运算核心：散热鳍片完好，出厂编号被刻意磨掉。占货仓 1 格；撤离成功后自动接入核心库。',
   },
   {
@@ -979,7 +942,6 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
     kind: 'aicore',
     unitM3: 500,
     baseSellPriceIsk: 1,
-    unreleased: true,
     description: '遗迹最深处供着的那一枚：整块冷铸合金外壳，摸上去冰凉。占货仓 1 格；撤离成功后自动接入核心库。',
   },
 ]

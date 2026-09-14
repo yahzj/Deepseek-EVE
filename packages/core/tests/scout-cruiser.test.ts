@@ -14,7 +14,7 @@
  * ④ **施工期闸门**：舰体 / 图纸 / 市场两行**四处 `unreleased` 同步** ⇒ 玩家可见目录与
  *    `ctx.marketGoods` 里都没有它（"未上线闸门"双向一致）。
  *
- * ⚠ 施工期铁律：虫洞对玩家不可见；本文件不产生任何玩家可见文案。
+ * ✅ 2026-09-14 船长解除不可见；本文件不产生任何玩家可见文案。
  */
 import { describe, expect, it } from 'vitest'
 import { MARKET_GOODS, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'

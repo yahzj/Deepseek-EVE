@@ -1311,7 +1311,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '掠袭破片炮',
     slot: 'turret', // 爆炸系武器形态 = 炮台（激光槽契约要求等离子 ⇒ 随弹种改槽）
     rack: 'high',
-    unreleased: true,
     damageType: 'explosive',
     ammoPerEngagement: 20,
     maxRangeM: 7_300, // 船长审核：11.5 km → 7.3 km
@@ -1334,7 +1333,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '掠袭机库', // 船长审核改：赃物机库 → 掠袭机库
     slot: 'drone-rack',
     rack: 'high',
-    unreleased: true,
     droneBayBonusM3: 30, // 船长审核：85 → 30
     droneCycleCutPct: 0.08, // 船长：无人机攻击间隔 −8%（澄清 = **出击周期**）
     cpuUse: 25, // 船长审核：46 → 25
@@ -1348,7 +1346,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '掠袭加力器',
     slot: 'propulsion',
     rack: 'mid',
-    unreleased: true,
     speedBonusPct: 1.2, // 矢量推进器 MK3 = +100%
     hitPenalty: 0.35, // 船长审核：0.05 → 0.35（开火命中 ×0.65）
     cpuUse: 18, // 船长审核：38 → 18
@@ -1360,7 +1357,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '掠袭折射涂层', // 船长审核改：赃物折射涂层 → 掠袭折射涂层
     slot: 'armor', // 船长审核：改**低槽装甲**
     rack: 'low',
-    unreleased: true,
     evasionGapPct: 0.28, // 姿态陀螺 MK3 = 0.2（跨族，已登记）
     allResistPenaltyPct: 0.15, // 船长：负面 = **全抗性 −15**（盾/甲/结构三层各减 15 个百分点）
     cpuUse: 34,
@@ -1372,7 +1368,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '赃物扫描阵',
     slot: 'support',
     rack: 'mid',
-    unreleased: true,
     hitBonusPct: 0.24, // 索敌阵列 MK3 = 0.16（本件船长只要求加射程惩罚，未改命中）
     rangeCutPct: 0.15, // 船长：负面 = 武器射程 −15%
     cpuUse: 36,
@@ -1384,7 +1379,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '掠袭者护盾笼', // 船长审核改：掠夺者护盾笼 → 掠袭者护盾笼
     slot: 'shield',
     rack: 'mid',
-    unreleased: true,
     shieldHpBonus: 0.8, // 船长审核：0.9 → 0.8
     rangeCutPct: 0.25, // 船长：负面 = 武器射程 −25%
     cpuUse: 46,
@@ -1398,7 +1392,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '生体棱镜束',
     slot: 'laser',
     rack: 'high',
-    unreleased: true,
     damageType: 'plasma', // ⚠ 审核修正：C 族卡池 = 等离子 8 / 爆破 2（无动能）⇒ 原"动能穿刺炮"越出本族弹型，改为等离子
     ammoPerEngagement: 22,
     maxRangeM: 8_600, // 与本族窝点件（酸液喷吐器 2.8 km 近程必中）拉开射程带：近战贴脸是它的，这件管拉开之后
@@ -1418,7 +1411,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '甲壳棱镜层',
     slot: 'armor',
     rack: 'low',
-    unreleased: true,
     armorResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 }, // 三系均衡（与 D 族盾抗同档，但走装甲层）
     cpuUse: 46,
     description:
@@ -1429,7 +1421,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '生体脉搏加速器',
     slot: 'support',
     rack: 'low',
-    unreleased: true,
     reloadCutPct: 0.06, // 船长审核：0.18 → 0.06（射速计算机 MK3 = 0.12）
     speedBonusPct: 0.1, // 船长：舰船速度 +10%（跨族：支援槽携速度，已登记）
     cpuUse: 42, // 船长审核：32 → 42（CPU +10）
@@ -1441,7 +1432,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '孢子导弹巢',
     slot: 'missile',
     rack: 'high',
-    unreleased: true,
     damageType: 'explosive',
     ammoPerEngagement: 30,
     maxRangeM: 13_500,
@@ -1461,7 +1451,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '几丁质骨架层',
     slot: 'armor',
     rack: 'low',
-    unreleased: true,
     hullHpBonus: 0.75, // 巨构骨架 = 0.6
     speedBonusPct: 0.05, // 船长：移除甲容量，改为**舰船速度 +5%**
     cpuUse: 46,
@@ -1475,7 +1464,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '陵卫连装炮',
     slot: 'turret',
     rack: 'high',
-    unreleased: true,
     damageType: 'kinetic', // ⚠ 审核修正：D 族卡池 = 等离子 8 / 动能 2（**无爆破**）⇒ 原"陵寝齐射巢（导弹＝爆破）"越出本族弹型，改为动能
     ammoPerEngagement: 40,
     maxRangeM: 5_400, // 与本族窝点件（守墓者长炮 12 km 必中慢炮）拉开射程带与节奏：一门点名、一门清近
@@ -1494,7 +1482,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '陵墓护盾芯',
     slot: 'shield',
     rack: 'mid',
-    unreleased: true,
     shieldHpBonus: 0.9, // 护盾扩展器 MK3 = 0.6
     cpuUse: 52,
     description:
@@ -1505,7 +1492,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '守墓者丧钟',
     slot: 'target-lock',
     rack: 'high',
-    unreleased: true,
     lockDmgBonus: 0.3, // 目标锁定阵列 MK3 = 0.2
     cpuUse: 40,
     description:
@@ -1516,7 +1502,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '陵寝棱镜炮',
     slot: 'laser',
     rack: 'high',
-    unreleased: true,
     damageType: 'plasma',
     ammoPerEngagement: 18,
     maxRangeM: 12_500,
@@ -1534,7 +1519,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '守墓者速装填机',
     slot: 'support',
     rack: 'low',
-    unreleased: true,
     reloadCutPct: 0.18, // 射速计算机 MK3 = 0.12
     cpuUse: 54, // 船长审核：34 → 54（CPU +20）
     description:
@@ -1545,7 +1529,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '陵墓弹道铭文',
     slot: 'support',
     rack: 'low',
-    unreleased: true,
     damageTypeBonusPct: { kinetic: 0.18, plasma: 0.18 }, // 船长审核：22% → 18%，并追加能量（等离子）18%
     cpuUse: 30,
     description:
@@ -1558,7 +1541,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '巨构损管阵列',
     slot: 'armor',
     rack: 'low',
-    unreleased: true,
     hullResistAdd: { kinetic: 0.3, explosive: 0.3 }, // 船长：改结构类——**结构对动能与爆炸抗性 +30%**（去掉等离子）
     hullHpBonus: 0.35, // 船长：结构值 +35%
     cpuUse: 38, // 船长：CPU −10（48 → 38）
@@ -1570,7 +1552,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '巨构导控塔',
     slot: 'drone-tac',
     rack: 'high',
-    unreleased: true,
     droneDmgBonus: 0.5, // 鱿蜂群导控 = 0.45
     droneHullHpBonusPct: 0.8, // 2026-09-13 船长：「提高无人机 80% 的结构」
     cpuUse: 44,
@@ -1582,7 +1563,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '巨构协处理器',
     slot: 'cpu',
     rack: 'low',
-    unreleased: true,
     cpuBonus: 90, // 协处理器 MK3 = +45
     reloadPenaltyPct: 0.12, // 船长：负面 = 装填 +12%
     cpuUse: 0, // 协处理器口径：自身不占 CPU
@@ -1594,7 +1574,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '巨构近防阵列',
     slot: 'turret',
     rack: 'high',
-    unreleased: true,
     damageType: 'kinetic',
     ammoPerEngagement: 64,
     maxRangeM: 2_500, // 防空口径（船长 2026-09-11「近防炮射程按 2500m 算」）：防空是贴身护卫，不得超过
@@ -1613,7 +1592,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '巨构护盾矩阵',
     slot: 'shield',
     rack: 'mid',
-    unreleased: true,
     shieldResistAdd: { kinetic: 0.32, plasma: 0.32 }, // 船长：动能与能量抗性 +32%（去掉高爆）
     shieldHpBonus: 0.42, // 船长：护盾上限 +42%
     cpuUse: 70, // 船长：CPU +20（50 → 70）
@@ -1627,7 +1605,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '亡军蜂巢坞',
     slot: 'drone-rack',
     rack: 'high',
-    unreleased: true,
     droneBayBonusM3: 110, // 深层机库 = +95
     cpuUse: 54,
     description:
@@ -1638,7 +1615,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '亡军火控', // 船长审核改：亡军火控残响 → 亡军火控
     slot: 'support',
     rack: 'mid',
-    unreleased: true,
     hitBonusPct: 0.12, // 船长审核：0.24 → 0.12
     damageBonusPct: 0.06, // 船长：伤害 +6%（通用单发加成，只进炮台/光束）
     cpuUse: 36,
@@ -1650,7 +1626,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '幽灵弹道校正器',
     slot: 'support',
     rack: 'low',
-    unreleased: true,
     damageTypeBonusPct: { kinetic: 0.22 }, // 动能稳定器 MK3 = 0.15
     rangeTypeBonusPct: { kinetic: 0.22 }, // 船长：动能武器射程 +22%
     cpuUse: 60, // 船长审核：30 → 60（CPU +30）
@@ -1662,7 +1637,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '鱿蜂结构层', // 2026-09-13 船长：改名（G 族已更名「鱿烬亡军」；**id 不动**）
     slot: 'armor',
     rack: 'low',
-    unreleased: true,
     armorHpBonus: 0.18, // 结构抗性件带一点甲容量（装甲槽契约要求有甲族字段）
     hullResistAdd: { kinetic: 0.28, explosive: 0.28, plasma: 0.28 },
     droneHullHpBonusPct: 0.8, // 2026-09-13 船长：「提高无人机 80% 的结构」
@@ -1675,7 +1649,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '亡军残炮',
     slot: 'turret',
     rack: 'high',
-    unreleased: true,
     damageType: 'explosive',
     ammoPerEngagement: 36,
     maxRangeM: 8_600,
@@ -1693,7 +1666,6 @@ export const MODULES: readonly ModuleDef[] = [
     name: '幽灵推进器',
     slot: 'propulsion',
     rack: 'mid',
-    unreleased: true,
     speedBonusPct: 0.85, // 船长审核：+115% → +85%
     cpuUse: 36,
     description:
