@@ -11,7 +11,7 @@
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
-import { addLog } from './state'
+import { addLog, wormholeScanHalt } from './state'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
@@ -1233,9 +1233,33 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
 }
 
 /**
+ * **进洞时会"自动停掉"的活动**（船长 2026-09-14：「**进洞自动停止**」）——目前**只有「扫描虫洞」一项**。
+ *
+ * 为什么它单独放行：扫描虫洞本身就是"找洞"的准备动作（扫出库存 ⇒ 挑一处进去），
+ * 拦着玩家让他先手点「停扫」纯属多余；而它的停止是**无损**的（进度保留、回来续扫，
+ * 与 `wormholeScanStop` 同一口径）。其余主控活动（采矿/打捞/长途运输/远征/巡逻/快递/亲自开炉开线）
+ * **照旧拦住**——那些停掉会牵动船的位置或半成品，不能替玩家做主。
+ */
+export function wormholeEntryAutoStop(state: GameState): string | null {
+  return state.wormholeScan?.active === true ? '扫描虫洞中' : null
+}
+
+/**
+ * **进洞门槛的"逐船忙态"**（门槛与界面的舰船卡共用这一把尺）：
+ * 除了**主控那一档的自动停扫活动**（见 `wormholeEntryAutoStop`）之外，其余一律照 `shipBusyForWormhole` 报忙。
+ */
+export function wormholeShipEntryBusy(state: GameState, shipId: string): string | null {
+  const busy = shipBusyForWormhole(state, shipId)
+  if (busy && shipId === state.shipId && busy === wormholeEntryAutoStop(state)) return null
+  return busy
+}
+
+/**
  * **进洞门槛**（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）：主控必须闲置
  * （采矿/打捞/交付/扫描/掩护巡逻/远征在飞都不行），编队里每艘船也必须先空闲
  *（正在 AI 派工/已在洞里的船编不进来——否则同一艘船会被两处同时占用）。
+ *
+ * ⚠ **2026-09-14 例外**：「扫描虫洞」不再算拦（进洞那一步会**自动停扫**，见 `wormholeEntryAutoStop`）。
  * 返回拒因文案；`null` = 可以进洞。
  */
 export function wormholeEntryBlockReason(
@@ -1244,10 +1268,10 @@ export function wormholeEntryBlockReason(
   shipIds: readonly string[],
 ): string | null {
   void ctx
-  const pilotBusy = shipBusyForWormhole(state, state.shipId)
+  const pilotBusy = wormholeShipEntryBusy(state, state.shipId)
   if (pilotBusy) return `主控正在${pilotBusy}：先把手上的活收工，才能指挥虫洞探索。`
   for (const uid of shipIds) {
-    const busy = shipBusyForWormhole(state, uid)
+    const busy = wormholeShipEntryBusy(state, uid)
     if (busy) return `${shipDisplayName(state, ctx, uid)}正在${busy}：先取消它的作业/派工，才能编入虫洞。`
   }
   return null
@@ -1287,6 +1311,15 @@ export function wormholeEnter(
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。' }
   const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
   if (blocked) return { ok: false, error: blocked }
+  /**
+   * **进洞自动停止「扫描虫洞」**（船长 2026-09-14：「**进洞自动停止**」）：扫描虫洞是"找洞"的准备动作，
+   * 拦着玩家手点「停扫」纯属多余；停它是**无损**的（进度保留、回来续扫 ⇒ `state.ts` 的单点 `wormholeScanHalt`）。
+   * 其余主控活动照旧在门槛那一步拦住（见 `wormholeEntryBlockReason`）。
+   */
+  const haltingScanMins = wormholeScanHalt(state)
+  if (haltingScanMins !== null) {
+    addLog(state, 'info', `🛰 进洞前自动停掉「扫描虫洞」（进度保留：已扫 ${haltingScanMins} 分钟）——回来可以接着扫。`)
+  }
   const r = wormholeStartRun(ctx, shipIds, seed)
   if (!r.ok || !r.run) return r
   r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场

@@ -448,14 +448,17 @@
 - **⚠ 2026-09-14 补齐（本轮修的就是它）**：原先 `wormhole.ts` 的 `shipActivityBusy` 与界面徽标
   `shipBusyLabel` 只认前五种里的五档，**漏了「打捞 / 长途运输 / 扫描虫洞 / 亲自开炉 / 亲自开线」**
   ⇒ 主控在这四类五个活动里**照样能进洞**（一条主控同时占两件事）。两张表已同步补齐、判据逐项对齐。
+- **⚠ 唯一的例外 = 「扫描虫洞」**（船长 2026-09-14 追加裁定：「**进洞自动停止**」）：
+  扫描虫洞是"找洞"的准备动作 ⇒ **不拦进洞**，进洞那一刻**自动停掉扫描**（**进度保留、回来续扫**，
+  与手动停扫共用 `state.ts` 的 `wormholeScanHalt` 单点；日志写「进洞前自动停掉「扫描虫洞」（进度保留：已扫 N 分钟）」）。
+  准备页出黄条预告「进洞会先自动停掉「扫描虫洞」」，主按钮**不因此置灰**；其余九档**照旧拦住**。
+  ⇒ 判据分层：`shipActivityBusy`（忙态，含扫描）· `wormholeEntryAutoStop`（会被自动停的那一项）·
+  `wormholeShipEntryBusy` / `wormholeEntryBlockReason`（进洞门槛，放行扫描那一档）。
 - **落点**：判据 `state.ts` 的 `wormholePilotHoldReason`（洞内锁定）· `wormhole.ts` 的
   `shipActivityBusy` / `shipBusyForWormhole` / `wormholeEntryBlockReason`（进洞门槛）·
   徽标 `activity.ts` 的 `shipBusyLabel`（两边一致性由用例钉住）· 面板准备页按徽标置灰「进入虫洞」。
 - **守卫**：`tests/wormhole-activity-lock.test.ts`（十档逐档给拒因 + 两边忙态不漂移 + 洞里真命令被拒 +
   临时离开即释放）；老守卫见 `tests/wormhole-run.test.ts`「忙态口径不漂移」。
-- **已知摩擦（如实登记）**：**扫描虫洞中不能进洞**——扫描也是主控活动，玩家要先点「停扫」
-  （进度保留、续扫不清零）。若嫌这一步多余，可改成"进洞时自动停扫"（属新裁定：现口径是**拒绝**，
-  不自动停掉对方）。
 - **权威件** = `docs/design/wormhole-extraction-endgame-20260912.md`（议案 A 四条口径 + 2026-09-14 补记）。
 
 ## 九、术语修订与交互用语（2026-09-08 船长定稿）

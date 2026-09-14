@@ -13,7 +13,7 @@
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
 import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
-import { addLog } from './state'
+import { addLog, wormholeScanHalt } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { scanSkillFactor } from './explore'
@@ -122,10 +122,9 @@ export function wormholeScanStart(state: GameState, _ctx: SimContext): CommandRe
 
 /** 手动停扫（进度保留：下次接着扫） */
 export function wormholeScanStop(state: GameState): CommandResult {
-  const scan = (state.wormholeScan = state.wormholeScan ?? { active: false, progressMs: 0 })
-  if (!scan.active) return { ok: false, error: '扫描没在跑。' }
-  scan.active = false
-  const mins = Math.floor(scan.progressMs / 60_000)
+  /** 状态改动走 `state.ts` 的单点 `wormholeScanHalt`（**进洞前自动停扫**也用它）⇒ 两条路径不会各写一份 */
+  const mins = wormholeScanHalt(state)
+  if (mins === null) return { ok: false, error: '扫描没在跑。' }
   addLog(state, 'info', `🛰 停止扫描虫洞（进度保留：已扫 ${mins} 分钟）。`)
   return { ok: true }
 }

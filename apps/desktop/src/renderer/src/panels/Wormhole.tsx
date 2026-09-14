@@ -33,7 +33,6 @@ import {
   WORMHOLE_TOTAL_MASS_CAP,
   cargoCapacityM3Of,
   isExitCell,
-  shipBusyLabel,
   shipDisplayName,
   shipSizeLabel,
   wormholeAdmission,
@@ -351,8 +350,13 @@ export function WormholePanel({
   const canWork = salvageCell ? canSalvage : veinCell ? canCollect : false
   const rigs = salvageCell ? salvagers : miners
   const rigName = veinCell ? '采集器' : '打捞器'
-  /** 主控忙态（船长 2026-09-13：「进洞要求洞外主控处于闲置状态」）——非空即不许进洞 */
-  const pilotBusy = run ? null : shipBusyLabel(state, ctx, state.shipId)
+  /**
+   * **进洞门槛**（核心同一把尺 `wormholeEntryBlockReason`）——**不再用界面徽标 `shipBusyLabel` 自己判**：
+   * 两者对「扫描虫洞」口径不同（徽标报"忙"，门槛放行 ⇒ 进洞那一步自动停扫，船长 2026-09-14「进洞自动停止」）。
+   */
+  const entryGate = auto || run ? null : engine.wormholeEntryGate(picked)
+  /** 进洞会先自动停掉的那个活动（目前只有「扫描虫洞」；null = 没有） */
+  const autoStopText = auto || run ? null : engine.wormholeEntryAutoStopText()
   /**
    * **货仓超载**（F4 · 船长裁定 8：沉船后要求玩家手动抛弃货物）：
    * 超载期间不能再装货（拾取/打捞/战果），撤离与深入也要先抛到容量内 ⇒ 界面据此置灰并给提示。
@@ -493,7 +497,12 @@ export function WormholePanel({
   const [whTier, setWhTier] = useState<string>(SUB_ALL)
   const whEntries = Object.keys(state.fleet).map((uid) => {
     const def = ctx.ships.get(state.fleet[uid]!.defId ?? uid)
-    const busy = shipBusyLabel(state, ctx, uid)
+    /**
+     * 卡片上的"忙"：走**进洞门槛那把尺**（`engine.wormholeShipEntryBusy`），不是泛用的界面徽标——
+     * 两者对「扫描虫洞」口径不同：徽标报"忙"（它确实占着主控），但**进洞放行**（进洞会自动停扫，
+     * 船长 2026-09-14「进洞自动停止」）⇒ 主控那张卡不该因此锁住（否则默认编队里的主控会被标灰）。
+     */
+    const busy = auto ? null : engine.wormholeShipEntryBusy(uid)
     /**
      * 可编入性：**手动**照旧走"洞口准入"（`wormholeShipAllowed`：T5 与超重进不去）；
      * **自动**换走自动探索那把尺（主控船 = 交接可行才放行，其余 = 无拒因）。
@@ -1214,16 +1223,13 @@ export function WormholePanel({
                 <div className="app-wh-prephead-go">
                   <button
                     className="app-btn is-primary app-wh-enter"
-                    disabled={auto ? picked.length === 0 || autoGate !== null : !admission.ok || !!run || !!pilotBusy}
+                    disabled={auto ? picked.length === 0 || autoGate !== null : !admission.ok || !!run || entryGate !== null}
                     onClick={auto ? handleAutoStart : handleEnter}
                     title={
                       auto
                         ? (autoGate ?? (picked.length === 0 ? '先勾选至少 1 条船' : undefined))
-                        : run
-                          ? '已经在虫洞里了'
-                          : pilotBusy
-                            ? `主控正在${pilotBusy}：先收工`
-                            : undefined
+                        : (entryGate ??
+                          (autoStopText ? `进洞会先自动停掉「${autoStopText.replace('中', '')}」（进度保留，回来可续扫）` : undefined))
                     }
                   >
                     {auto ? '派队自动探索' : '进入虫洞'}
@@ -1349,9 +1355,14 @@ export function WormholePanel({
               {!auto && !admission.ok ? (
                 <div className="app-warn app-wh-gate">{WORMHOLE_ADMISSION_TEXT[admission.code]}</div>
               ) : null}
-              {!auto && pilotBusy ? (
-                <div className="app-warn app-wh-gate">
-                  主控正在{pilotBusy}：先把手上的活收工，才能指挥虫洞探索。
+              {!auto && entryGate !== null ? <div className="app-warn app-wh-gate">{entryGate}</div> : null}
+              {/**
+               * **进洞会自动停扫**的预告（船长 2026-09-14「进洞自动停止」）：这里只说清"会发生什么"，
+               * 不拦人——扫描虫洞是找洞的准备动作，停它是无损的（进度保留、回来续扫）。
+               */}
+              {!auto && autoStopText !== null ? (
+                <div className="app-note app-dim">
+                  进洞会先自动停掉「{autoStopText.replace('中', '')}」（进度保留，回来可以接着扫）。
                 </div>
               ) : null}
               {/* 进入按钮已上移到检索区右侧（船长 2026-09-13），此处不再重复放一个 */}
