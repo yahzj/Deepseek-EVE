@@ -796,6 +796,10 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
     <Panel
       className="is-fill win-fixed-body"
       title="组装机"
+      hint={
+        // 常驻说明收进标题后的圆形感叹号（2026-09-13 船长口径）；2026-09-14 船长点名："组装机的说明并没有隐藏"
+        <HintIcon tip="已学会的配方才能开工；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。" />
+      }
       right={
         <>
           <span className="app-dim">
@@ -807,7 +811,7 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
         </>
       }
     >
-      {/* 筛选与说明固定（固定头+下滚）：类型标签行 / 子筛选行 / 说明常显，卡网格独立内滚 */}
+      {/* 筛选固定、说明进标题后的圆形感叹号（固定头+下滚）：类型标签行 / 子筛选行常驻，卡网格独立内滚 */}
       <div className="app-task-tabs" role="tablist">
         {MANU_TABS.map((t) => (
           <button
@@ -850,10 +854,6 @@ export function ManufacturingPanel({ engine, onToast, onNeedMineral }: { engine:
           ))}
         </div>
       ) : null}
-      <div className="app-dim app-exp-idle">
-        已学会的配方才能开工；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。
-      </div>
-
       <div className="app-win-body">
         <div className="app-belt-grid">
           {sorted.map((it) => (

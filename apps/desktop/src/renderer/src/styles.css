@@ -77,6 +77,9 @@ body {
    ⚠ 不套这层的：**全屏覆盖层**（战斗画面 = 按窗口铺开的场景；弹层/详情本来就有自己的宽度上限并居中）。 */
 :root {
   --app-max-w: 1760px;
+  /* 标题行的字号旋钮（2026-09-14 船长「不能根据标题高度自适应吗」）：面板/弹层标题行的
+     标题 · 行内伴随文字 · 圆形感叹号一律按它算比例 ⇒ 改这一处整行等比跟随。 */
+  --app-head-fs: 13px;
 }
 .app-header,
 .app-workspace {
@@ -6810,16 +6813,49 @@ body {
 
 /* 标题后的提示标记（2026-09-13 船长：「隐藏起来，只在标题名字的后面显示一个圆形感叹号图标，
    当玩家悬停时才显示这些说明」）——圆形感叹号 glyph 走 currentColor，这里只给色与间距：
-   常态暗色、悬停提亮（同 `.app-btn:hover` 的改法，不用 filter）；`cursor: help` 提示"可看说明"。 */
+   常态暗色、悬停提亮（同 `.app-btn:hover` 的改法，不用 filter）；`cursor: help` 提示"可看说明"。
+   尺寸**跟着标题行字号走**（船长 2026-09-14：「题后的 ⓘ 有些过于小」⇒ 见下方「标题行字号」那组规则：
+   外框 = 标题字号 × 1.23 ⇒ 13px 标题下为 16px，圆环约 11px，与标题字视觉等高）。 */
 .app-hint-ico {
   display: inline-flex;
   align-items: center;
   margin-left: 6px;
   color: var(--wui-text-dim);
   cursor: help;
-  vertical-align: -1px;
+  vertical-align: -2px;
 }
 .app-hint-ico:hover { color: var(--wui-text); }
+
+/* ── 标题行字号（一个旋钮带一组比例）──────────────────────────────
+   2026-09-14 船长：「题后的 ⓘ 有些过于小，部分标题内的文字相比标题高度也偏小」→
+   「不能根据标题高度自适应吗」。做法 = 标题行**整行**的字号只由 `--app-head-fs` 决定：
+     标题 1×（13px）· 行内伴随文字（`.app-dim` / `.wui-panel-right` / 行内小按钮）.92×（12px）·
+     圆形感叹号 1.23×（外框 16px ⇒ 圆环 ≈11px ≈ 标题字高）。
+   改这一个变量 ⇒ 整行等比跟随（手机横屏等要整行放大时只改这一处，不必逐条改字号）；
+   图标尺寸在这里用 CSS 覆盖 svg，故 `HintIcon` 的 `size` 只作非标题场合的兜底。
+   ⚠ 只作用于**标题行**：正文里的 `.app-dim`（11px）与各处小按钮一字未动。 */
+.wui-panel-head,
+.app-modal-head,
+.app-fit-modal-head {
+  font-size: var(--app-head-fs, 13px);
+}
+/* 标题 1×：覆盖 `@whale/ui` 里写死的 13px ⇒ 旋钮一动，标题带着整行一起动
+   （默认值与旧版逐像素相同；只加了作用域，不改默认观感）。 */
+.wui-panel-head .wui-panel-title {
+  font-size: var(--app-head-fs, 13px);
+}
+.wui-panel-right,
+.wui-panel-head .app-dim,
+.app-modal-head .app-dim,
+.wui-panel-head .app-btn.is-small,
+.app-modal-head .app-btn.is-small,
+.app-fit-modal-head .app-btn.is-small {
+  font-size: calc(var(--app-head-fs, 13px) * 0.92); /* 13px 标题 ⇒ 12px */
+}
+.app-hint-ico svg {
+  width: calc(var(--app-head-fs, 13px) * 1.23); /* 13px 标题 ⇒ 外框 16px */
+  height: calc(var(--app-head-fs, 13px) * 1.23);
+}
 
 /* ═══════════════ 全局悬停提示（Tooltip） ═══════════════ */
 
@@ -9043,9 +9079,15 @@ body {
 
 .app-mkt-chart-hint { margin-top: 2px; font-size: 10.5px; opacity: 0.75; color: #7fb4c9; }
 
-/* ---------- market right column stretch (2026-09-08) ---------- */
+/* ---------- market right column stretch ----------
+   2026-09-08 初版：右栏富余高度全给**最后一个**面板（「我的挂单」）——目的是与左栏同高。
+   2026-09-14 船长（甲）：「市场详情面板太矮，右栏空的高度全跑到我的挂单」⇒ **改判**：
+   富余高度给**第一个**面板（「市场详情」= 右栏主内容）；「我的挂单」按内容高、
+   最多占右栏 40%（单子多了在自己面板体内滚）⇒ 详情不会被挂单列表挤扁。 */
 
-.app-mkt-right > .wui-panel:last-child { flex: 1 1 auto; min-height: 0; }
+.app-mkt-right > .wui-panel:first-child { flex: 1 1 auto; min-height: 0; }
+
+.app-mkt-right > .wui-panel:last-child { flex: 0 1 auto; max-height: 40%; min-height: 0; }
 
 /* ---------- market page fill chain (2026-09-08 no-scroll) ---------- */
 
@@ -9311,6 +9353,14 @@ body {
 .app-wh-devnote { font-size: 11px; margin-left: 8px; margin-right: auto; }
 .app-wh-tabs { display: flex; gap: 6px; margin-right: 8px; }
 .app-wh-sub { margin-top: 10px; }
+/* **作业进度条**（F2b 2026-09-13 · 船长裁定「只做表现层进度条」）：复用作业卡的全宽进度条
+   `.app-card-progress`，只把填充改成"每次重播"的动画（React 侧 key 换一次 = 重播一次）。
+   数据在点下那一刻就结算完了，这条纯表现：不锁按钮、不拦连点。 */
+.app-wh-jobrow { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; }
+.app-wh-jobrow-text { flex: 0 0 auto; font-size: 11.5px; color: var(--wui-accent); }
+.app-wh-jobbar { flex: 1 1 auto; }
+.app-card-progress.app-wh-jobbar i { width: 0; animation: app-wh-jobfill var(--wh-job-ms, 380ms) linear forwards; }
+@keyframes app-wh-jobfill { from { width: 0; } to { width: 100%; } }
 .app-wh-triad { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
 .app-wh-cell {
   font-size: 12px; padding: 3px 8px; border: 1px solid var(--wui-border);
