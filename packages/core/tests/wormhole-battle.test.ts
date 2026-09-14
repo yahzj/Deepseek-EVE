@@ -748,6 +748,21 @@ describe('虫洞 · 战场视图（F2 · 2026-09-13）', () => {
     expect(wormholeBattleViewOf(state, ctx)).toBeNull()
   })
 
+  it('**阵亡的敌舰仍留在 `combat.foeHp` 里**（否则战斗界面看不到"血量归零那一拍"⇒ 敌方没有爆炸动画）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    const foeTag = Object.keys(battle.units).find((t) => battle.units[t]!.side === 'foe')!
+    // 先把这一艘打空（= 引擎里刚被击毁的那一拍）
+    battle.units[foeTag]!.hp = { s: 0, a: 0, h: 0 }
+    const v = wormholeBattleViewOf(state, ctx)!
+    // 口径：**按 side 收、不按血量收** —— 条目还在（血量 0），界面才能靠 `prevHpRef` 的 >0 → 0 触发爆炸
+    expect(v.combat!.foeHp[foeTag], '阵亡敌舰的条目不该从 foeHp 里消失').toBeTruthy()
+    expect(v.combat!.foeHp[foeTag]!.s + v.combat!.foeHp[foeTag]!.a + v.combat!.foeHp[foeTag]!.h).toBe(0)
+  })
+
   it('击杀慢镜：分出胜负后要等 `killcamMs` 才结算（否则战斗界面一结束就卸载）', () => {
     const state = enterRun()
     const run = state.wormhole.run!

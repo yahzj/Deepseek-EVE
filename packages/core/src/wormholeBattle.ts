@@ -541,7 +541,17 @@ export function wormholeBattleViewOf(
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
   const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}
   for (const [tag, u] of Object.entries(battle.units)) {
-    if (u.side !== 'foe' || u.hp.s + u.hp.a + u.hp.h <= 0) continue
+    /**
+     * ⚠ **阵亡的敌舰也要留在 `foeHp` 里**（船长 2026-09-13 报障：「战斗中，敌方没有爆炸动画」）。
+     *
+     * 战斗界面判定"这一拍刚被击毁"的口径是：**迭代 `foeHp` 的键**、看某个 tag 的血量总和
+     * 从 >0 掉到 0（`BattleScreen` 的 `foeTags = Object.keys(combat.foeHp)` → `prevHpRef`）。
+     * 这里原先把"血量已归零"的敌舰**过滤掉了** ⇒ tag 从 `foeHp` 里消失、迭代根本走不到它
+     * ⇒ **爆炸演出永远不触发**（远征那条路不过滤阵亡者，所以只有洞内没爆炸）。
+     * ⇒ 与远征同口径：**按 `side` 收，不按血量收**（血量归零的条目照样给出去，界面自己会用
+     * `deadRef` 把尸骸登记成"演出中"）。
+     */
+    if (u.side !== 'foe') continue
     foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
   }
   const kindLabel =
