@@ -468,7 +468,7 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
             typeof o === 'object' && o !== null && !(typeof o.good === 'string' && REMOVED_ORES[o.good]),
         )
       : []
-    if (converted > 0) pushLog('info', '相关挂单已撤销、锁仓一并折算；NPC 市场簿已清理退役商品。')
+    if (converted > 0) pushLog('info', '相关挂单已撤销、锁仓一并折算；市场补给簿已清理退役商品。')
 
     const mk = asRaw(raw.market)
     const cleanBooks = (b: unknown): Record<string, unknown> => {
@@ -746,6 +746,7 @@ const BATTLE_FIELDS = {
   /* ── 2026-09-12 船长裁定（A3 盘点后「六项全修」）：以下七项由 runtime **改为随档** ──
    * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
   repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
+  shieldCharge: { kind: 'persist' }, // 护盾充能装置快照 + 30 秒脉冲计时（丢了 ⇒ 重载后计时重置 = 白赚一跳）
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
@@ -821,6 +822,12 @@ function cleanBattle(raw: unknown): BattleState | null {
             }
           : {}),
         weapons,
+        // **入场时刻**（船长 2026-09-14「动画没结束不开火」）：**随档**——战斗时钟 `lastTickGameMs`
+        // 也随档 ⇒ 在读入后 `lastTickGameMs − enteredAtMs` 依旧正确（窗口不会因重载而重启或消失）。
+        // 老档/无入场动画的单位本字段缺失 ⇒ 视为"窗口已过"（恒可交战，零迁移）。
+        ...(typeof u.enteredAtMs === 'number' && Number.isFinite(u.enteredAtMs)
+          ? { enteredAtMs: numf(u.enteredAtMs, 0) }
+          : {}),
       }
     }
   }
@@ -832,6 +839,7 @@ function cleanBattle(raw: unknown): BattleState | null {
   // 清洗后的候选值——**只有登记为 `persist` 的字段会被带出**（见 `BATTLE_FIELDS`）
   // 2026-09-12 船长裁定「六项全修」：下面七项**改为随档**，故先清洗成候选值
   const repair = cleanRepair(b.repair)
+  const shieldCharge = cleanShieldCharge(b.shieldCharge)
   const dronePools = cleanDronePools(b.dronePools)
   const foeDronePools = cleanFoeDronePools(b.foeDronePools)
   const droneLost = cleanCountMap(b.droneLost)
@@ -904,6 +912,7 @@ function cleanBattle(raw: unknown): BattleState | null {
     wormhole: cleanBattleWormhole(b.wormhole),
     // ── 2026-09-12 船长裁定七项（随档）──
     ...(repair !== undefined ? { repair } : {}),
+  ...(shieldCharge !== undefined ? { shieldCharge } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
@@ -1075,6 +1084,23 @@ function cleanRepair(raw: unknown): BattleState['repair'] | undefined {
     kitsUsed: Math.floor(cleanPosNum(r.kitsUsed) ?? 0),
     ...(nextPulseAtMs !== undefined ? { nextPulseAtMs } : {}),
     ...(kitsUsedByType !== undefined ? { kitsUsedByType } : {}),
+  }
+}
+
+/**
+ * 护盾充能装置运行态（开战写入；2026-09-14 船长新增件）。
+ * 清洗口径与 `cleanRepair` 同款：坏值丢键、不崩、零迁移；**比例必须为正**否则视为无装置。
+ */
+function cleanShieldCharge(raw: unknown): BattleState['shieldCharge'] | undefined {
+  const r = asRaw(raw)
+  if (Object.keys(r).length === 0) return undefined
+  const pctPerPulse = cleanPosNum(r.pctPerPulse)
+  if (pctPerPulse === undefined || pctPerPulse <= 0) return undefined
+  const nextPulseAtMs = cleanPosNum(r.nextPulseAtMs)
+  return {
+    pctPerPulse,
+    pulses: Math.floor(cleanPosNum(r.pulses) ?? 0),
+    ...(nextPulseAtMs !== undefined ? { nextPulseAtMs } : {}),
   }
 }
 

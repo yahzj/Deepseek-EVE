@@ -24,7 +24,7 @@ export const TRAVEL_EVENTS: readonly TravelEventDef[] = [
   {
     id: 'ev-aurora',
     name: '跃迁极光',
-    text: '跃迁通道内极光涌动，全舰船员驻足观赏——航程并未因此延误',
+    text: '跃迁通道内极光涌动，全舰传感器记录下这一路光影——航程并未因此延误',
     weight: 12,
     effect: { kind: 'none' },
   },

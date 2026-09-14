@@ -387,12 +387,12 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   }
   const cost = repairCostIsk(state, shipId, ctx)
   if (state.wallet.isk < cost) {
-    return { ok: false, error: `维修费不足：需要 ${cost.toLocaleString('zh-CN')} ISK。` }
+    return { ok: false, error: `维修费不足：需要 ${cost.toLocaleString('zh-CN')} 信用点。` }
   }
   state.wallet.isk -= cost
   fleetShip.durability = 1
   fleetShip.armorPct = 1
-  addLog(state, 'trade', `已完成 ${name} 的全面维修（${cost.toLocaleString('zh-CN')} ISK），结构/装甲恢复至 100%。`)
+  addLog(state, 'trade', `已完成 ${name} 的全面维修（${cost.toLocaleString('zh-CN')} 信用点），结构/装甲恢复至 100%。`)
   return { ok: true }
 }
 

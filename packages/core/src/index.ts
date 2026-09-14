@@ -610,6 +610,10 @@ export {
   layerMultText,
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
+  // **入场窗口**（船长 2026-09-14「动画没结束不开火」）：界面飞入动画与引擎"不可选中窗口"的
+  // **同一个出处**——界面直接 import 这两个数当 `--arrive-ms`，不许再各写一份。
+  BATTLE_ARRIVAL_FLY_MS,
+  BATTLE_ARRIVAL_STAGGER_MS,
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）
   pdEnabledFor,
   droneLostCount,
@@ -619,6 +623,9 @@ export {
   effectiveHitMul,
   // 维修脉冲周期（2026-09-11：内容体检「产物说明契约」按它核对说明里的「每 N 秒」）
   REPAIR_PULSE_MS,
+  // 护盾充能脉冲周期（2026-09-14 船长新增件：同上，说明里的「每 30 秒」与它同源）
+  SHIELD_PULSE_MS,
+  shieldPulsePctOf,
   // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
   DRONE_SKILL,
   // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，
@@ -675,6 +682,8 @@ export {
   moneyDelta,
   moneyExact,
   moneyExactText,
+  moneyFitCandidates,
+  moneyFormatCandidates,
   moneyText,
 } from './money'
 
@@ -1013,8 +1022,10 @@ export {
   holdAdd,
   holdCellsUsed,
   holdCompact,
+  holdDropWithGrab,
   holdMove,
   holdRemove,
+  holdSwap,
   holdRows,
   makeHoldState,
   placementCells,

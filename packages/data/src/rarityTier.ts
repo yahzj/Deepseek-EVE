@@ -94,6 +94,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-shield-ext-1': 1,
   'bp-shield-ext-2': 2,
   'bp-shield-ext-3': 3,
+  'bp-shieldchg-1': 1,
+  'bp-shieldchg-2': 1, // 书比件好买（现货稀有、书常驻）——照船体维修装置 MK1
+  'bp-shieldchg-3': 3,
   'bp-shield-kin-1': 1,
   'bp-shield-kin-2': 2,
   'bp-shield-kin-3': 3,
@@ -203,6 +206,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-shield-ext-1': 1,
   'mod-shield-ext-2': 2,
   'mod-shield-ext-3': 3,
+  'mod-shieldchg-1': 1,
+  'mod-shieldchg-2': 2,
+  'mod-shieldchg-3': 3, // 照船体维修装置三档（民用/MK1/MK2）
   'mod-shield-kin-1': 1,
   'mod-shield-kin-2': 2,
   'mod-shield-kin-3': 3,

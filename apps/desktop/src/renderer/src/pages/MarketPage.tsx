@@ -920,9 +920,9 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                   tab !== 'buy'
                     ? undefined
                     : quote.sell === undefined
-                      ? '供应簿暂无现货：改用「挂买单」等 NPC 补给后自动成交'
+                      ? '供应簿暂无现货：改用「挂买单」等市场补给后自动成交'
                       : state.wallet.isk < quote.sell
-                        ? `信用点 不足：最低一张 ${isk(quote.sell)} 信用点，钱包 ${isk(Math.floor(state.wallet.isk))} 信用点`
+                        ? `信用点不足：最低一张 ${isk(quote.sell)} 信用点，钱包 ${isk(Math.floor(state.wallet.isk))} 信用点`
                         : undefined
                 }
                 onClick={tab === 'buy' ? doBuy : () => doSell()}
@@ -1305,7 +1305,7 @@ export function MarketPage({
                   title="常驻供应"
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
                   right={
-                    <span className="app-dim" title="NPC 每 60 秒按窗口补给/刷新订单（含离线期间）">
+                    <span className="app-dim" title="市场每 60 秒按窗口补给/刷新订单（含离线期间）">
                       下次补给 {fmtClock(nextSupplyIn(engine))} · 订单 20 分钟有效
                     </span>
                   }

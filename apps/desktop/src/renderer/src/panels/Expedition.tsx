@@ -2499,7 +2499,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
         {view.bountyOpened || tasks.length > 0 ? (
           <span
             className="app-st-time"
-            title="本批任务只存活一天：每天本地 0 点整板替换——过期作废、无惩罚（打过的窝点不受影响，稀有残骸照常留在星系里）"
+            title="本批任务只存活一天：每天 0 点整板替换——过期作废、无惩罚（打过的窝点不受影响，稀有残骸照常留在星系里）"
           >
             距下批刷新 {fmtDayClock(view.bountyRemainingMs)} · 每天 0 点换新
           </span>

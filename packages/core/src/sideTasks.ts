@@ -687,7 +687,7 @@ export function settleBountyTaskVictory(
   addLog(
     state,
     'trade',
-    `赏金任务完成：${task.lairName ?? anomalyId} 已肃清（${galaxyName}），酬金 ${task.rewardIsk.toLocaleString('zh-CN')} ISK 已入账；` +
+    `赏金任务完成：${task.lairName ?? anomalyId} 已肃清（${galaxyName}），酬金 ${task.rewardIsk.toLocaleString('zh-CN')} 信用点已入账；` +
       `战场留下稀有残骸 ×${rareGain}——可前往该星系打捞（回站用回收炉解体开高级箱）。`,
   )
 }
@@ -740,7 +740,7 @@ export function completeSideTask(
   addLog(
     state,
     'trade',
-    `资源任务完成：协会收购 ${name}×${task.need.toLocaleString('zh-CN')}（自仓库交付），奖励 ${task.rewardIsk.toLocaleString('zh-CN')} ISK 已入账。`,
+    `资源任务完成：协会收购 ${name}×${task.need.toLocaleString('zh-CN')}（自仓库交付），奖励 ${task.rewardIsk.toLocaleString('zh-CN')} 信用点已入账。`,
   )
   return { ok: true }
 }
@@ -770,7 +770,7 @@ function settleCourierDelivery(state: GameState, ctx: SimContext, d: CourierDeli
   addLog(
     state,
     'trade',
-    `快递投送完成：${itemName}×${d.need.toLocaleString('zh-CN')} 已送达「${siteName}」（${galaxyName}），酬金 ${d.rewardIsk.toLocaleString('zh-CN')} ISK 已入账。`,
+    `快递投送完成：${itemName}×${d.need.toLocaleString('zh-CN')} 已送达「${siteName}」（${galaxyName}），酬金 ${d.rewardIsk.toLocaleString('zh-CN')} 信用点已入账。`,
   )
 }
 

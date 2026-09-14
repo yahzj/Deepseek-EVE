@@ -68,6 +68,7 @@ import {
   MODULE_SLOTS,
   typeLayerMult,
   REPAIR_PULSE_MS,
+  SHIELD_PULSE_MS,
   DRONE_SKILL,
   MINEABLE_KINDS,
   RACK_SLOTS,
@@ -518,6 +519,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     ['必中', 100],
     ['示例基础抗/基础船', 25],
     ['维修脉冲', REPAIR_PULSE_MS / 1000],
+    ['护盾充能脉冲', SHIELD_PULSE_MS / 1000],
     ['动能对护盾', typeLayerMult('kinetic', 'shield')],
     ['动能对装甲', typeLayerMult('kinetic', 'armor')],
     ['爆破对装甲', typeLayerMult('explosive', 'armor')],
@@ -1159,7 +1161,17 @@ for (const m of MODULES) {
     const add = m.shieldResistAdd
     const hasCap = cap !== undefined
     const hasAdd = add !== undefined && Object.keys(add).length > 0
-    check(hasCap || hasAdd, `护盾 ${m.id} 未声明容量或抗性（V17.1 拆族）`)
+    /** 2026-09-14 护盾充能装置：护盾槽的**第三类**——脉冲充能（既不给容量也不给抗性） */
+    const pulse = m.shieldPulsePct
+    const hasPulse = pulse !== undefined
+    check(hasCap || hasAdd || hasPulse, `护盾 ${m.id} 未声明容量、抗性或脉冲充能（V17.1 拆族 + 2026-09-14 充能件）`)
+    if (hasPulse) {
+      check(
+        pulse !== undefined && pulse > 0 && pulse <= 0.8,
+        `护盾充能件 ${m.id} shieldPulsePct 非法：${String(pulse)}（需 (0, 0.8]）`,
+      )
+      check(m.rack === 'mid', `护盾充能件 ${m.id} 应为中槽，实际 ${m.rack}`)
+    }
     // 2026-09-13 船长（巨构护盾矩阵：「动能和能量抗性 +32%、护盾上限 +42%」）⇒ **取消"容量与抗性互斥"**：
     // 允许同一件并给容量与抗性；V17.1 拆族只保留"至少给其中一项"。
     if (hasCap) check(cap !== undefined && cap > 0 && cap <= 2, `护盾 ${m.id} shieldHpBonus 非法`)
@@ -2908,6 +2920,8 @@ for (const m of MODULES) {
     bonus: 'miner|cargo',
     shieldHpBonus: 'shield',
     shieldResistAdd: 'shield',
+    // 护盾充能装置（2026-09-14 船长新增件）：本职属护盾槽
+    shieldPulsePct: 'shield',
     armorHpBonus: 'armor',
     armorResistAdd: 'armor',
     speedPenaltyPct: 'armor',
@@ -3633,7 +3647,7 @@ for (const m of MODULES) {
     'ico-swap', 'ico-cross', 'ico-crane', 'ico-antenna', 'ico-tact',
   ])
   /** 玩家可见文案禁用的开发/出戏用词（与词典「玩家可见文案禁用彩头/主题件/掉池」同口径，宽清单） */
-  const BANNED = ['彩头', '主题件', '掉池', '基础池', '区划', '口径', '断言', '白名单', '体检', '待定', '占位', 'EVE', 'npm']
+  const BANNED = ['彩头', '主题件', '掉池', '基础池', '区划', '口径', '断言', '白名单', '体检', '待定', '占位', 'EVE', 'npm', 'ISK', 'NPC']
   /**
    * 世界观铁律（2026-09-11 船长定，`docs/design/npc-factions-20260911.md`）：
    * **对外（章鱼人 NPC）玩家是「飞行员」——他们不追问船里是谁**；**对内（船自己的系统）玩家知道自己就是舰载 AI**

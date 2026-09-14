@@ -3,6 +3,7 @@
  * 用 helpers 造的确定性世界（沙猫默认战斗数值见 helpers.ship）。
  */
 import { describe, expect, it } from 'vitest'
+import { buildSimContext } from '@whale/data'
 import type { GameState } from '../src/state'
 import type { ItemDef } from '../src/types'
 import { createInitialState } from '../src/state'
@@ -779,8 +780,43 @@ describe('舰船属性成长技能（2026-09-05 一号补：CPU/机动速度/回
       s.skills.trained['evasion-maneuvering'] = 5
     })
     expect(s5.speedMps).toBeCloseTo(s0.speedMps * 1.25, 6)
-    expect(s5.hitBonus).toBeCloseTo(s0.hitBonus * 1.25, 6)
     expect(s5.evasion).toBeCloseTo(1 - (1 - s0.evasion) * 0.75, 6)
+  })
+
+  /**
+   * **索敌统合 = 炮台命中技能**（船长 2026-09-14 改判：「**索敌统合也改为炮台命中，缩减为 2% 每级**」）。
+   *
+   * 旧口径 = 「舰船命中加成 ×(1+5%/级)」——乘在 `ship.hitBonus` 那个小基数上、且进括号后还要被距离衰减
+   * 再乘一次（真引擎实测满级只值 **+3.3pp**）；新口径与「火控阵列学」同源（乘在武器基础命中上）。
+   * 本用例把三条一起钉住：① 武器命中 ×1.10（每级 2%）；② **舰船命中加成不再被技能放大**（= 静态值）；
+   * ③ 与火控阵列学**乘算叠加**（两者都满 ⇒ ×1.15×1.10）。
+   */
+  it('索敌统合（2026-09-14 改判）：满级 炮台命中 ×1.10、舰船命中加成**不再**被放大、与火控阵列学乘算', () => {
+    // 用**真数据**上下文（本用例要真炮台 `mod-turret-kin-1` 与真索敌件 `mod-track-1`）
+    const ctx = buildSimContext()
+    const specOf = (skills: Record<string, number>) => {
+      const state = createInitialState({ nowWallMs: 0, seed: 62 })
+      const uid = addShipToFleet(state, 'sh-sentinel')
+      state.shipId = uid
+      state.fleet[uid]!.fitted = { high: ['mod-turret-kin-1'], mid: ['mod-track-1'], low: [] }
+      for (const [id, lv] of Object.entries(skills)) state.skills.trained[id] = lv
+      return createPlayerSpec(state, ctx, uid)!
+    }
+    const gunOf = (spec: ReturnType<typeof specOf>): number => spec.weapons.find((w) => w.kind === 'gun')!.hitRate
+    const base = specOf({})
+    const hit5 = specOf({ 'targeting-integration': 5 })
+    const fc5 = specOf({ 'fire-control': 5 })
+    const both = specOf({ 'targeting-integration': 5, 'fire-control': 5 })
+
+    expect(hit5.hitBonus).toBeCloseTo(base.hitBonus, 10) // ② 舰船命中加成不再被技能放大
+    expect(gunOf(hit5)).toBeCloseTo(gunOf(base) * 1.1, 6) // ① 每级 2%、满级 +10%
+    expect(gunOf(fc5)).toBeCloseTo(gunOf(base) * 1.15, 6)
+    expect(gunOf(both)).toBeCloseTo(gunOf(base) * 1.15 * 1.1, 6) // ③ 乘算叠加
+    // 装备（索敌阵列）与技能走不同乘区：`eqHitMul` 不受技能影响
+    expect(hit5.weapons.find((w) => w.kind === 'gun')!.eqHitMul).toBeCloseTo(
+      base.weapons.find((w) => w.kind === 'gun')!.eqHitMul ?? 1,
+      6,
+    )
   })
 })
 

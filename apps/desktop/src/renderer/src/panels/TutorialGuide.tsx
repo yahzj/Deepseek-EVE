@@ -134,7 +134,7 @@ function stepPlan(engine: GameEngine, step: number): StepPlan {
   // 玩家不知道下一步干嘛）；通讯正文里是完整说明
   if (step === 3) {
     return {
-      text: '把矿石换成 信用点：前往「物品」页 → 仓库标签，富凡晶石点「市价卖出」',
+      text: '把矿石换成信用点：前往「物品」页 → 仓库标签，富凡晶石点「市价卖出」',
       go: { page: 'items' },
       goLabel: def.goLabel,
       targets: ['物品', '仓库', '市价卖出', '卖出'],

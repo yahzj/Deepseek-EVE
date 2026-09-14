@@ -18,8 +18,8 @@ import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
-import type { WormholeHoldState } from '../src/wormholeHold'
-import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdMove, holdRemove, holdRows, makeHoldState, placementCellsCount } from '../src/wormholeHold'
+import type { WormholeHoldPlacement, WormholeHoldState } from '../src/wormholeHold'
+import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdDropWithGrab, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -207,6 +207,33 @@ describe('虫洞 · 货仓格几何（纯逻辑）', () => {
   })
 })
 
+describe('虫洞 · 两件互换位置（船长 2026-09-13：「物品之间无法交换位置」）', () => {
+  it('形状都放得下 ⇒ 位置互换；放不下 ⇒ 整体回滚、位置一字不动', () => {
+    const hold = makeHoldState()
+    const a = holdAdd(hold, BOX, 20) // 2×2 货柜
+    const b = holdAdd(hold, 'mat-surveyor', 20) // 2×2 谜质装置
+    expect(a.ok && b.ok).toBe(true)
+    const ax = a.placement!.x
+    const ay = a.placement!.y
+    const bx = b.placement!.x
+    const by = b.placement!.y
+    expect(ax !== bx || ay !== by, '两件应落在不同位置（否则这条用例没意义）').toBe(true)
+    const ok = holdSwap(hold, a.placement!.id, b.placement!.id, 20)
+    expect(ok.ok, ok.error).toBe(true)
+    expect([a.placement!.x, a.placement!.y]).toEqual([bx, by])
+    expect([b.placement!.x, b.placement!.y]).toEqual([ax, ay])
+    // 放不下 ⇒ 拒绝且**两件都回原位**（容量只够 5 格：2×2 挪到右边会越出行外）
+    const tiny = makeHoldState()
+    const big = holdAdd(tiny, BOX, 5) // 2×2 落在左上
+    const small = holdAdd(tiny, 'mat-volley', 5) // 2×2 也放不进 5 格了 ⇒ 换一件 1×1 散货来试
+    if (small.ok) {
+      // 若能放下第二件，则用"容量 5"这一档直接验回滚：把 big 挪到 small 的位置必然越界
+      const bad = holdSwap(tiny, big.placement!.id, small.placement!.id, 5)
+      expect(bad.ok).toBe(false)
+      expect([big.placement!.x, big.placement!.y]).toEqual([0, 0])
+    }
+  })
+})
 describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
   it('格数 = ⌊合计货仓 ÷ 500⌋（4×T3 = 20 格）；散货与形状件共用一本账', () => {
     const state = enterRun(4)
@@ -322,5 +349,222 @@ describe('虫洞 · 货仓格随档（零迁移）', () => {
     const loaded = loadSaveFile(JSON.stringify(raw)).state.wormhole.run!
     expect(loaded.hold).toBeUndefined()
     void ({} as WormholeHoldState)
+  })
+})
+
+describe('虫洞 · 货仓不重叠不变量（船长 2026-09-13 报障「整理后背包出现明显错误」「大件与小件换位后重叠」）', () => {
+  /** 两件**真正占的格**是否相撞（重叠 = 一格被两件占；重复的件 id 也算坏账） */
+  function overlapPairs(hold: WormholeHoldState): string[] {
+    const seen = new Map<string, string>()
+    const bad: string[] = []
+    for (const p of hold.placements) {
+      for (const c of placementCellsOf(p)) {
+        const k = `${c.x},${c.y}`
+        const prev = seen.get(k)
+        if (prev !== undefined && prev !== p.id) bad.push(`${k}:${prev}+${p.id}`)
+        seen.set(k, p.id)
+      }
+    }
+    return bad
+  }
+  /** 件真正占的格（行优先、末行可不满：与 core `placementCells` 同一口径） */
+  function placementCellsOf(p: WormholeHoldPlacement): Array<{ x: number; y: number }> {
+    const fill = placementFill(p)
+    const out: Array<{ x: number; y: number }> = []
+    let k = 0
+    for (let dy = 0; dy < p.h && k < fill; dy++) {
+      for (let dx = 0; dx < p.w && k < fill; dx++) {
+        out.push({ x: p.x + dx, y: p.y + dy })
+        k += 1
+      }
+    }
+    return out
+  }
+  /** 造一份"乱摆"的货仓：3 件货柜 + 若干散货条（含末行不满的 6 格条） */
+  function messyHold(capacity: number): WormholeHoldState {
+    const hold = makeHoldState()
+    let seq = 0
+    const put = (kind: 'box' | 'cargo', w: number, h: number, fill: number | undefined, x: number, y: number): void => {
+      seq += 1
+      hold.placements.push({ id: `p${seq}`, itemId: kind === 'box' ? BOX : WORMHOLE_ORE_ITEM_ID, kind, x, y, w, h, fill })
+    }
+    put('box', 2, 2, undefined, 0, 0)
+    put('box', 2, 2, undefined, 4, 1)
+    put('box', 2, 2, undefined, 1, 3)
+    put('cargo', 3, 2, 6, 3, 0) // 6 格（3×2 整框）
+    put('cargo', 4, 2, 6, 6, 3) // 6 格（4×2 末行只填 2 格）
+    put('cargo', 4, 4, 14, 0, 6) // 14 格（4×4 末行只填 2 格）
+    void capacity
+    return hold
+  }
+
+  it('整理：混排后**没有任何两件重叠**（含末行不满的散货条），且件一个不少', () => {
+    const capacity = 24
+    const hold = messyHold(capacity)
+    const before = hold.placements.length
+    const r = holdCompact(hold, capacity)
+    expect(hold.placements).toHaveLength(before)
+    expect(overlapPairs(hold)).toEqual([])
+    // 24 格放得下：3×4 格货柜 + 6 + 6 + 14 = 38 格 ⇒ 必然放不下，落进 unplaced 的件仍**互不重叠**
+    expect(r.unplaced.length).toBeGreaterThan(0)
+    expect(overlapPairs(hold)).toEqual([])
+  })
+
+  it('整理：容量够时全部排进可用区（大件优先 ⇒ 货柜整块、散货条补齐）', () => {
+    const capacity = 40
+    const hold = makeHoldState()
+    // 3 件 2×2 货柜（12 格）+ 两条散货（6 格 + 6 格）= 24 格 ≤ 40 ⇒ 一件都不该落在可用区之外
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 4, y: 1, w: 2, h: 2 })
+    hold.placements.push({ id: 'b3', itemId: BOX, kind: 'box', x: 3, y: 2, w: 2, h: 2 })
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 1, y: 0, w: 3, h: 2 })
+    hold.placements.push({ id: 'c2', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 6, y: 3, w: 4, h: 2, fill: 6 })
+    const r = holdCompact(hold, capacity)
+    expect(r.unplaced).toEqual([])
+    expect(overlapPairs(hold)).toEqual([])
+    // 每一件都完整落在可用格内（自证式判据：拿 canPlace 排除自己再判一次）
+    for (const p of hold.placements) {
+      expect(canPlace(hold, p.x, p.y, { w: p.w, h: p.h }, capacity, p.id, placementFill(p))).toBe(true)
+    }
+  })
+
+  it('换位：2×2 货柜 ↔ 末行不满的散货条（4×2 只填 6 格）——**旧写法会判"能换"而两件重叠**', () => {
+    const capacity = 12
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 2, y: 0, w: 4, h: 2, fill: 6 })
+    const r = holdSwap(hold, 'b1', 'c1', capacity)
+    // 散货条落到 (0,0) 时第 1 行整行（x=0..3）⇒ 与落到 (2,0) 的货柜**压住两格** ⇒ 必须拒绝
+    expect(r.ok).toBe(false)
+    expect(overlapPairs(hold)).toEqual([])
+    const b = hold.placements.find((p) => p.id === 'b1')!
+    const c = hold.placements.find((p) => p.id === 'c1')!
+    expect({ x: b.x, y: b.y }).toEqual({ x: 0, y: 0 })
+    expect({ x: c.x, y: c.y }).toEqual({ x: 2, y: 0 })
+  })
+
+  it('换位：形状对得上时**真的互换**（1×1 散货 ↔ 2×2 货柜），换完不重叠', () => {
+    const capacity = 24 // 8 列 3 行：货柜落到 (4,0) 要占第 0~1 行，容量得够
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 4, y: 0, w: 1, h: 1 })
+    const r = holdSwap(hold, 'b1', 'c1', capacity)
+    expect(r.ok).toBe(true)
+    expect(overlapPairs(hold)).toEqual([])
+    expect(hold.placements.find((p) => p.id === 'b1')).toMatchObject({ x: 4, y: 0 })
+    expect(hold.placements.find((p) => p.id === 'c1')).toMatchObject({ x: 0, y: 0 })
+  })
+
+  it('移动：**不满的散货条按实占格判**（容量 10 格时 4×2 末行只填 2 格的条放得下）', () => {
+    const capacity = 10 // 8 列 1 行 + 末行 2 格
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'c1', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 0, y: 0, w: 4, h: 2, fill: 6 })
+    // 带 fill：实占 6 格 ⇒ 末格 (1,1) = 第 10 格 ⇒ 放得下（漏了 fill 会按整框 8 格算、末格 (3,1) = 第 12 格 ⇒ 误拒）
+    expect(holdMove(hold, 'c1', 0, 0, capacity).ok).toBe(true)
+    // 往右挪一格：末格 (2,1) = 第 11 格 > 10 ⇒ 真越界，拒
+    expect(holdMove(hold, 'c1', 1, 0, capacity).ok).toBe(false)
+    expect({ x: hold.placements[0]!.x, y: hold.placements[0]!.y }).toEqual({ x: 0, y: 0 })
+    // 重叠判据照旧生效：横条挪到货柜身上 ⇒ 拒（初始摆放本身不能重叠，先自证）
+    const bar = makeHoldState()
+    bar.placements.push({ id: 'c2', itemId: WORMHOLE_ORE_ITEM_ID, kind: 'cargo', x: 0, y: 0, w: 6, h: 1 })
+    bar.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 6, y: 0, w: 2, h: 2 }) // 摆在 (6,0)，与横条不挨着
+    expect(overlapPairs(bar)).toEqual([])
+    expect(holdMove(bar, 'c2', 2, 0, 16).ok).toBe(false)
+    expect(overlapPairs(bar)).toEqual([])
+  })
+})
+
+describe('虫洞 · 拖拽落点带抓取偏移（船长 2026-09-14 二次报障：「当物品上方处于第一排时」触发）', () => {
+  /** 两件**真正占的格**是否相撞（与本文件另一组的同名助手同口径，此处独立一份便于本组自证） */
+  function overlapPairs(hold: WormholeHoldState): string[] {
+    const seen = new Map<string, string>()
+    const bad: string[] = []
+    for (const p of hold.placements) {
+      const fill = placementFill(p)
+      let k = 0
+      for (let dy = 0; dy < p.h && k < fill; dy++) {
+        for (let dx = 0; dx < p.w && k < fill; dx++) {
+          const key = `${p.x + dx},${p.y + dy}`
+          const prev = seen.get(key)
+          if (prev !== undefined && prev !== p.id) bad.push(`${key}:${prev}+${p.id}`)
+          seen.set(key, p.id)
+          k += 1
+        }
+      }
+    }
+    return bad
+  }
+
+  /** 现场：2×2 货柜在**第一排**（y=0），右侧 (5,0) 起是空的（容量 40 = 5 行） */
+  function holdWithBoxAtTop(capacity = 40): WormholeHoldState {
+    const hold = makeHoldState()
+    hold.placements.push({ id: 'b1', itemId: BOX, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    return hold
+  }
+
+  it('件在**第一排**、抓**右下角**那格、光标落在**第一排**的空格 ⇒ 夹回网格内（旧口径直接报"放不下"）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    // 光标落在 (6,0)（第一排的空格）⇒ 理想左上角 = (6-1, 0-1) = (5,-1) —— 第 −1 行，越界
+    const r = holdDropWithGrab(hold, 'b1', 6, 0, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(true)
+    expect({ x: r.x, y: r.y }).toEqual({ x: 5, y: 0 }) // 夹回第一排 ⇒ "沿第一排挪过去"
+    expect(hold.placements[0]).toMatchObject({ x: 5, y: 0 })
+    expect(overlapPairs(hold)).toEqual([])
+    // **负向**：旧口径（`holdMove` 直接用理想左上角）必然拒 —— 这就是船长看到的那句"这里放不下"
+    const raw = holdWithBoxAtTop(capacity)
+    expect(holdMove(raw, 'b1', 5, -1, capacity).ok).toBe(false)
+  })
+
+  it('件在第一排、抓右下角、光标落在**第二排** ⇒ 精确落点就在界内，不夹（位置 = 光标 − 抓取偏移）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    const r = holdDropWithGrab(hold, 'b1', 6, 1, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(true)
+    expect({ x: r.x, y: r.y }).toEqual({ x: 5, y: 0 })
+  })
+
+  it('抓左上角（偏移 0,0）⇒ 光标格就是左上角（与旧观感一致）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    const r = holdDropWithGrab(hold, 'b1', 4, 3, capacity, { dx: 0, dy: 0 })
+    expect(r.ok).toBe(true)
+    expect({ x: r.x, y: r.y }).toEqual({ x: 4, y: 3 })
+  })
+
+  it('**界内**的落点被占 ⇒ 照旧拒绝（不猜位置、不悄悄挪去别处）', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 4, y: 1, w: 2, h: 2 })
+    // 光标落在 (5,2)：理想左上角 = (4,1) = b2 占着 ⇒ 拒（且两件位置都不动）
+    const r = holdDropWithGrab(hold, 'b1', 5, 2, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(false)
+    expect(hold.placements.find((p) => p.id === 'b1')).toMatchObject({ x: 0, y: 0 })
+    expect(hold.placements.find((p) => p.id === 'b2')).toMatchObject({ x: 4, y: 1 })
+    expect(overlapPairs(hold)).toEqual([])
+  })
+
+  it('**右边越界**同理：抓右下角把件拖到最右列 ⇒ 夹回可用宽度内', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    // 光标落在 (7,3)：理想左上角 = (6,2)（界内 ⇒ 精确落点，因为 6+2 ≤ 8）
+    const a = holdDropWithGrab(hold, 'b1', 7, 3, capacity, { dx: 1, dy: 1 })
+    expect(a.ok).toBe(true)
+    expect({ x: a.x, y: a.y }).toEqual({ x: 6, y: 2 })
+    // 抓右下角、光标落在 (0,3)：理想 = (-1,2) 越界 ⇒ 夹回 x=0
+    const b = holdDropWithGrab(hold, 'b1', 0, 3, capacity, { dx: 1, dy: 1 })
+    expect(b.ok).toBe(true)
+    expect({ x: b.x, y: b.y }).toEqual({ x: 0, y: 2 })
+  })
+
+  it('真没地方（夹回后仍被占）⇒ 才报"放不下"，且位置不动', () => {
+    const capacity = 40
+    const hold = holdWithBoxAtTop(capacity)
+    // 把第一排右侧与第二排右侧都占满 ⇒ 夹回第一排也放不下
+    hold.placements.push({ id: 'b2', itemId: BOX, kind: 'box', x: 5, y: 0, w: 2, h: 2 })
+    const r = holdDropWithGrab(hold, 'b1', 6, 0, capacity, { dx: 1, dy: 1 })
+    expect(r.ok).toBe(false)
+    expect(hold.placements.find((p) => p.id === 'b1')).toMatchObject({ x: 0, y: 0 })
+    expect(overlapPairs(hold)).toEqual([])
   })
 })

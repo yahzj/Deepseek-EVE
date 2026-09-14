@@ -14,7 +14,7 @@ import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
@@ -108,6 +108,10 @@ export function wormholeStartBattle(
     ...(opts?.strengthMul !== undefined ? { strengthMul: opts.strengthMul } : {}),
   })
   if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。' }
+  // **洞内开战 = 敌方跃迁入场**（船长 2026-09-13「虫洞内为敌方」）：给首波敌舰盖入场时刻
+  // ⇒ 入场窗口内我方打不到它们（船长 2026-09-14「动画没结束不开火」）。
+  // 洞外那一场是我方飞入、敌方没有入场动画 ⇒ **不盖**（有动画才有窗口）。
+  stampFoeArrivalFx(battle)
   run.battle = battle
   // 开战成功 ⇒ 清「待迎战」标记（遗迹收尾战那条确认链到此闭合）
   if (run.pendingRuinsBattle === true) run.pendingRuinsBattle = false
@@ -541,7 +545,19 @@ export function wormholeBattleViewOf(
   const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
   const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}
   for (const [tag, u] of Object.entries(battle.units)) {
-    if (u.side !== 'foe' || u.hp.s + u.hp.a + u.hp.h <= 0) continue
+    /**
+     * ⚠ **阵亡的敌舰也要留在 `foeHp` 里**（**同一处缺陷两人先后各修了一次**，两条记录都留着：
+     * 船长 2026-09-13 报障「战斗中，敌方没有爆炸动画」→ 一号修；船长同日裁定「**②和洞外一致**」→ 二号修）。
+     *
+     * **成因（口径层）**：战斗界面判定"这一拍刚被击毁"的口径是——**迭代 `foeHp` 的键**、看某个 tag
+     * 的血量总和从 >0 掉到 0（`BattleScreen` 的 `foeTags = Object.keys(combat.foeHp)` → `prevHpRef`）。
+     * 洞外那条（`expeditionStatus`）**只按 `side` 收**（阵亡者照样给、血量 0），这里原先把"血量已归零"
+     * 的敌舰**过滤掉了** ⇒ tag 从 `foeHp` 里消失、迭代根本走不到它 ⇒ **爆炸演出永远不触发**
+     * （所以只有洞内没爆炸；实测：节点战 2 次击杀、界面 0 次出现过 0 血单位）。
+     * **修法**：**按 `side` 收，不按血量收**（血量归零的条目照样给出去，界面自己会用 `deadRef`
+     * 把尸骸登记成"演出中"）——与洞外同口径。
+     */
+    if (u.side !== 'foe') continue
     foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
   }
   const kindLabel =
@@ -621,8 +637,8 @@ function deliverExtraction(
     'info',
     `🕳 撤离成功${opts?.skippedBattle === true ? '（第 1 层没有拦截舰队：直接脱离）' : ''}：` +
       `背包 ${run.bag.length} 类物资入港` +
-      (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} ISK）` : '') +
-      (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} ISK）` : '') +
+      (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} 信用点）` : '') +
+      (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} 信用点）` : '') +
       `，第 ${run.depth} 层撤离。`,
   )
   // **随行战利品入库**（遗迹专属掉落：图纸进蓝图书架、装备进装备库）——只有撤离成功才到手
