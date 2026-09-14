@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
+import { HintIcon } from '../ui/Hint'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
 import { Glyph, itemIconOf, itemToneOf } from '../ui/Glyphs'
 import {
@@ -699,6 +700,15 @@ export function WormholePanel({
       <>
         <div className="app-wh-node-title">
           {atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[hereCell.place]}
+          {/* 地点说明进标题后的 ⓘ（2026-09-14 船长：「和外面的其他页面一样，添加圆形感叹号用于进行说明」）：
+              原先这段说明是卡片里的一行淡字（`.app-note`），现在按 2026-09-13「常驻说明进感叹号」口径收进提示 */}
+          <HintIcon
+            tip={
+              atExit
+                ? `${PLACE_NOTE[hereCell.place]}（这一格同时是下一层入口：继续深入就从这里下去。）`
+                : PLACE_NOTE[hereCell.place]
+            }
+          />
           <span className="app-dim">
             {' '}· 坐标 Q{grid.pos.q} · R{grid.pos.r}
             {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
@@ -820,9 +830,7 @@ export function WormholePanel({
               })}
             </div>
           </>
-        ) : (
-          <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
-        )}
+        ) : null}
       </>
     )
   }

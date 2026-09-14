@@ -28,6 +28,7 @@ import {
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
+import { HintIcon } from '../ui/Hint'
 
 export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEngine; onToast: ToastFn; onExplore: (stockId: string) => void }) {
   const state = engine.state
@@ -75,6 +76,13 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
     <Panel
       className="is-fill win-fixed-body"
       title="扫描虫洞"
+      /* 常驻说明进标题后的 ⓘ（2026-09-14 船长：「和外面的其他页面一样，添加圆形感叹号用于进行说明」；
+         与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
+      hint={
+        <HintIcon
+          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${WORMHOLE_STOCK_MAX} 处。`}
+        />
+      }
       right={
         <span className="app-dim">
           已囤 {stock.length}/{WORMHOLE_STOCK_MAX} 处
@@ -84,13 +92,6 @@ export function WormholeScanTab({ engine, onToast, onExplore }: { engine: GameEn
       }
     >
       <div className="app-win-body">
-        <div className="app-dim app-note">
-          主控就地展开扫描阵列找**虫洞**：进度条走满一处即可开始探索。窗口 = 基准{' '}
-          {formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算）。
-          扫描期间**遭遇随机事件的概率与星图扫描一致**；被打断也**不影响进度**。
-          未探索的虫洞最多囤 {WORMHOLE_STOCK_MAX} 处。
-        </div>
-
         {!unlocked ? (
           <div className="app-wh-scanbar">
             <div className="app-wh-scanbar-label">

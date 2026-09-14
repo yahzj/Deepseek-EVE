@@ -9916,7 +9916,16 @@ body {
   border-radius: 6px; background: rgba(255, 131, 115, 0.07); color: #ff8373;
   font-size: 12px; line-height: 1.5;
 }
-.app-wh-node-title { font-size: 13px; margin-bottom: 6px; }
+/* 卡片标题（**2026-09-14 船长：「虫洞界面的标题颜色要和下方做区分」**）：原先只有 `font-size: 13px`、
+   没有颜色 ⇒ 与下方正文同色、读不出层级。现在按全站标题口径上色（`var(--wui-accent)` + 600 字重 +
+   1px 字距，与 `.wui-panel-title` / `.app-report-title` 同族），字号仍吃 `--app-head-fs` 旋钮；
+   标题后面那颗 ⓘ（`.app-hint-ico`）跟着标题走 ⇒ 说明按 2026-09-13 口径挂在标题后，不再占版面。 */
+.app-wh-node-title {
+  font-size: var(--app-head-fs, 13px); font-weight: 600; letter-spacing: 1px;
+  color: var(--wui-accent); margin-bottom: 6px;
+}
+/* 标题里尾随的"· 坐标 Q… R… · 已处理"仍是正文口径（别跟着标题变成强调字） */
+.app-wh-node-title .app-dim { font-weight: 400; letter-spacing: 0; }
 /* ── 货仓格（F4b · 2026-09-13 船长：「类似背包英雄那种需要管理的背包格」）──
    8 列固定网格：货柜 = 2×2 整块、散货 = 一种一条 1×N 横条（**F5 起散货也是真摆放件、可拖拽**）、
    超出容量的显示位 = 锁定格。格子统一 aspect-ratio:1 ⇒ 永远是正方形（拖拽落点与视觉一致，也不因内容变化跳动）。 */
