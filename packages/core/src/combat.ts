@@ -204,10 +204,13 @@ export interface UnitSpec {
   /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
    *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
   lockedDmgBonus?: number;
-  /** 敌突进/冲锋（2026-09-10 船长定；资格 2026-09-11 扩为两条来源）：本单位为 true 时，
-   *  够不着则整编队接近速度 ×`foeChargeMul`，**到达目标距离即结束**、冷却 20 秒。
+  /** 敌冲锋（2026-09-10 船长定；资格 2026-09-11 扩为两条来源；**2026-09-14 改逐单位**）：本单位为 true 时，
+   *  触发条件命中即**自己**加速（×`foeChargeMul`）、**自身炮台命中我方即解除** + 冷却 10 秒。
    *  来源 ① **舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件）② 老路（威胁 ≥ 门槛 且 brawl）。 */
   foeCanCharge?: boolean;
+  /** 本单位的冲锋倍率（**2026-09-14 船长：「大虫子的冲锋倍率改为3，给小虫子添加冲锋，倍率为1.5」**）——
+   *  缺省不写 ⇒ 走全局 `BattleBalance.foeChargeMul`（**旧读数逐字不变**）。 */
+  foeChargeMul?: number;
   /** **单波次内增援**（2026-09-11 船长裁决：机制实现、不启用）——本单位的入场触发条件；
    *  **建档时已按总开关过滤**：开关关闭时本字段一律不写（= 开战即在）。
    *  带本字段的单位**不进开战编队**，由 `advanceBattleFor` 每拍检查、条件命中才补入。 */
@@ -536,18 +539,29 @@ export function unitThrusterCycle(
 }
 
 /**
- * 高威胁近战敌突进状态机（2026-09-10 船长定；**结束条件 2026-09-11 船长改判**）：
- * 够不着（距离在**自己武器射程之外**）→ **突进**（机动 ×`foeChargeMul`，仍走拔河公式）；
- * **到达目标距离（敌方期望交距）→ 突进结束**（船长 2026-09-11：「冲锋结束条件修改，**改为到达目标距离**」
- * ——原口径'进入射程后再维持 2 秒'与其旋钮 `foeChargeMaxHoldMs` **随之停用**）；
- * 随后 `foeChargeCooldownMs`（**20 秒**）冷却，期满且再次够不着才能重启。
- * 只对挂了 `foeCanCharge` 的敌人生效——该资格有**两条互相独立**的来源（见 `createFoeSpecsFromShips`）：
+ * 敌冲锋状态机（2026-09-10 定；结束条件 2026-09-11 改判；触发条件 2026-09-14 加"乙"；
+ * **2026-09-14 同日晚些时候船长再改判：逐单位 + 自身命中解除 + 冷却 10 秒**）。
+ *
+ * **触发两条取或**：① 够不着（距离在**自己武器射程之外**）② **距离 > 期望交距 + 1,000**
+ * （船长「冲锋按乙方案来」）→ 该单位**自己**加速（机动 ×倍率，仍走拔河公式）。
+ * **解除两条取或**：① **自身炮台命中我方**（船长：「冲锋解除机制为自身攻击命中后解除冲锋状态，
+ * 并进入 10 秒冷却」）② 压到期望交距 `arrived`（2026-09-11 口径，**留作兜底**）。
+ * 解除后该单位进 `foeChargeCooldownMs`（**本批由 20 秒改判为 10 秒**）冷却，期满且再次满足触发条件才重启。
+ *
+ * ⚠ **逐单位**（2026-09-14 船长：「现在多单位的战斗速度难道不是取速度全队平均值吗？那么**各自触发
+ * 冲锋的提速**应该没什么问题吧？」＋「给小虫子添加冲锋，倍率为 1.5」）：每个挂资格的单位各持一份
+ * 「在冲 / 冷却到某时刻」（`b.foeCharges[tag]`），互不顶替——原编队级单标志下，先命中那条会把
+ * 别的冲锋者的状态一并清掉。
+ * ⚠ **倍率不外溢**（2026-09-11 船长：「冲锋还是按照**巨兽自己的速度**算…**哪怕是冲锋也是按照巨兽速度**」）：
+ * 加速只乘进**该单位自己**那一项（见 `stepBattle` 的"逐单位乘各自倍率 → 取平均"）。
+ * 只对挂了 `foeCanCharge` 的敌人生效——资格有**两条互相独立**的来源（见 `createFoeSpecsFromShips`）：
  * **舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件）与**老路**（威胁 ≥ `foeChargeThreatFloor`
  * 且战术 = brawl，受总开关 `foeChargeEnabled` 约束）；无总时长上限。
  *
- * ⚠ 突进是**编队级**状态（`b.foeChargeOn` 一个标志），但**加速只乘在冲锋者自己身上**
- * （2026-09-11 船长：「冲锋还是按照**巨兽自己的速度**算…**哪怕是冲锋也是按照巨兽速度**」）——
- * 见下函数返回值与 `stepBattle` 的用法：倍率**不外溢**到非冲锋单位。
+ * 历史 BUG（2026-09-14 船长报障「冲锋到达目标距离后并不会解除」）：当时解除条件**只有** `arrived`，
+ * 而"我方更快、且期望交距更远"时距离会**停在期望交距之上**（拔河平衡点：我方外拉 = 敌方内推），
+ * `arrived` 永不可达 ⇒ 冲锋永不解除、冷却永不启动。本批加的**命中解除**就是这条 BUG 的出口
+ * （在冲的单位既然已经进射程，炮台迟早打中）；`arrived` 仍留作兜底。
  */
 function updateFoeCharge(
   b: import('./state').BattleState,
@@ -555,37 +569,86 @@ function updateFoeCharge(
   bal: BattleBalance,
   nowMs: number,
   desireM: number,
-): UnitSpec | null {
-  // 冲锋者 = **首个存活且挂了资格的单位**
-  const charger = foes.find(
-    (f) => f.foeCanCharge === true && isAlive(b, f.tag),
-  )
-  if (!charger) {
-    // 冲锋者不在场（还没轮到它那一波 / 已阵亡）⇒ 清掉过期的突进状态（UI 标记与结算同源）
-    b.foeChargeOn = false
-    return null
-  }
-  // 两条判据各管一头：
-  // - **启动** = `inFoeRange`（口径未动）：距离在**该冲锋单位自己的武器**射程内。
-  //   ⚠ 2026-09-11 修正取武器口径：原码取 `foes[0].weapons[0]`，只在"冲锋者恰好是编队首位"时等价；
-  //   混编卡下（C 族噬口 = 畸变幼虫 ×N + 噬口巨兽 ×1，巨兽在末波且射程带更长）会按小虫的带判定，
-  //   与机制原始定义「够不着（距离在**自己**武器射程之外）」不符。
-  // - **结束** = `arrived`（2026-09-11 船长改判）：已压到**目标距离**（敌方期望交距 `foeDesire`）。
-  //   因期望交距必落在射程带内（`带.min + 0.2×(带.max − 带.min)` < 带.max），故"到达目标距离"
-  //   必然发生在"进入射程"之后，状态机单向、不会抖动。
-  const w = charger.weapons[0]
-  const inFoeRange = w ? inRange(b.distanceM, w) : false
+): void {
+  const margin = bal.foeChargeTriggerMarginM ?? 1_000
   const arrived = b.distanceM <= desireM
-  if (b.foeChargeOn) {
-    if (arrived) {
-      b.foeChargeOn = false
-      b.foeChargeCdUntilMs = nowMs + bal.foeChargeCooldownMs
+  for (const f of foes) {
+    if (f.foeCanCharge !== true) continue
+    const rt = b.foeCharges?.[f.tag]
+    if (!isAlive(b, f.tag)) {
+      if (rt && b.foeCharges) delete b.foeCharges[f.tag]
+      continue
     }
-    return charger; // 未到目标距离：持续突进（冷却不启动）——返回冲锋者供 `stepBattle` 施加加速
+    const w = f.weapons[0]
+    const inOwnRange = w ? inRange(b.distanceM, w) : false
+    const wantCharge = !inOwnRange || b.distanceM > desireM + margin
+    if (rt?.on === true) {
+      if (arrived) {
+        rt.on = false
+        rt.cdUntilMs = nowMs + bal.foeChargeCooldownMs
+      }
+      continue
+    }
+    if (nowMs >= (rt?.cdUntilMs ?? 0) && wantCharge) {
+      if (!b.foeCharges) b.foeCharges = {}
+      b.foeCharges[f.tag] = { ...(rt ?? {}), on: true }
+    }
   }
-  const cdUntil = b.foeChargeCdUntilMs ?? 0
-  if (nowMs >= cdUntil && !inFoeRange) b.foeChargeOn = true
-  return b.foeChargeOn ? charger : null
+}
+
+/**
+ * **冲锋解除：自身炮台命中我方**（船长 2026-09-14：「冲锋解除机制为自身攻击命中后解除冲锋状态，
+ * 并进入 10 秒冷却」）。
+ * ⚠ **只算炮台主武器**（`weapons[0]`）：机群（`src:'drone'`）命中**不算**——那是舰载机打的，
+ * 不是"自身炮台"；近防炮同理（防御武器，不在这里结算）。
+ */
+function releaseFoeChargeOnHit(
+  b: import('./state').BattleState,
+  tag: string,
+  bal: BattleBalance,
+): void {
+  const rt = b.foeCharges?.[tag]
+  if (rt?.on !== true) return
+  rt.on = false
+  rt.cdUntilMs = b.lastTickGameMs + bal.foeChargeCooldownMs
+}
+
+/**
+ * **单位机动倍率（单点）**——两侧"周期/状态 ⇒ 机动乘子"都从这里取，免得同一段判断散在多处：
+ * - **我方**：推进器**周期爆发**（`thrusterPhase`，周期逐单位；点火窗口内 ×(1+`thrusterBoost`)，冷却期 ×1）；
+ * - **敌方**：**冲锋**（`b.foeCharges[tag].on` ⇒ ×(舰级 `foeChargeMul` ?? 全局 `bal.foeChargeMul`)）。
+ *
+ * 两侧都只乘进**自己那一项**：编队速度 = "逐单位乘各自倍率 → 取平均"（见 `stepBattle`），
+ * 故倍率**不外溢**到队里别的船。
+ * ⚠ 只合并这一层：**冲锋的状态机**（事件驱动：命中解除 / 到达解除 / 冷却）与**推进器的相位**
+ * （时钟推导：`elapsed % 周期`）不是一回事，各自的"何时开、何时关"留在原处，不硬并成一个函数。
+ */
+function unitSpeedMulOf(
+  u: UnitSpec,
+  b: import('./state').BattleState,
+  bal: BattleBalance,
+  side: 'me' | 'foe',
+): number {
+  if (side === 'me') {
+    const boosting = thrusterPhase(b, bal, unitThrusterCycle(u, bal)).boosting
+    return 1 + (boosting ? (u.thrusterBoost ?? 0) : 0)
+  }
+  if (b.foeCharges?.[u.tag]?.on !== true) return 1
+  return u.foeChargeMul ?? bal.foeChargeMul
+}
+
+/** 正在冲锋的敌单位条数（界面标记用）。⚠ 只数**存活**：阵亡单位的状态在同一拍已清掉，这里再兜一层 */
+export function foeChargeCount(
+  b: Pick<import('./state').BattleState, 'foeCharges' | 'units'>,
+): number {
+  let n = 0
+  for (const [tag, rt] of Object.entries(b.foeCharges ?? {})) {
+    if (rt?.on !== true) continue
+    const u = b.units[tag]
+    if (!u || !(u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)) continue
+    n += 1
+  }
+  return n
 }
 
 /** 逐件缺口乘入（对 out 原位改：每系 res = 1−(1−res)(1−add)） */
@@ -1605,7 +1668,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       agility: 0.3,
       // 敌突进（冲锋）资格，两条**互相独立**的来源（2026-09-11 船长「给巨兽开启之前做过的冲锋能力」）：
       //   ① **舰级级 opt-in**（`ship.foeCanCharge`）——无条件放行，**不看**总开关与威胁门槛，
-      //      用于"慢而硬、追不上"的重型单位（C 族噬口巨兽，实速 277）；
+      //      用于"慢而硬、追不上"的重型单位（C 族噬口巨兽，实速 297）与 2026-09-14 起同样开启的三种小虫；
       //   ② 老路：威胁 ≥ 门槛 且 **有效战术** = brawl（卡上覆写优先；总开关默认 false）。
       ...(ship.foeCanCharge === true ||
       (bal.foeChargeEnabled === true &&
@@ -1613,6 +1676,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         tactic === 'brawl')
         ? { foeCanCharge: true }
         : {}),
+      // **逐单位冲锋倍率**（2026-09-14 船长：「大虫子的冲锋倍率改为3，给小虫子添加冲锋，倍率为1.5」）——
+      // 缺省**不写** ⇒ 走全局 `bal.foeChargeMul`（旧读数逐字不变）；缺省不写也是"关着就是零变化"的同款形态。
+      ...(ship.foeChargeMul !== undefined ? { foeChargeMul: ship.foeChargeMul } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       weapons: [
@@ -4613,53 +4679,43 @@ function stepBattle(
   // 与敌方 2026-09-11 定的「敌舰速度按所有船的平均值算」**同一把尺**；单船 = 该船自己（逐字不变）。
   // 爆发倍率**逐舰各取自己的**（装微型跃迁引擎那条只在它自己的 10 秒窗口里快；其余船维持 60/60）——
   // 全队同款推进器时与改前逐字等价（相位与倍率都相同 ⇒ 平均速度 ×(1+倍率)）。
+  // 敌方期望距离不得超出开战距离（近距开局下 kite 战术系数可能越界 → 钳制，避免一直想拉开）
+  const foeDesireClamped = Math.min(openM, foeDesire);
+  // 冲锋状态机（2026-09-14 船长改判：**逐单位** + **自身炮台命中解除** + 冷却 10 秒）——
+  // ⚠ **顺序**：先更新状态、再算接近速度（倍率由状态读出来，见 `unitSpeedMulOf` 的单点）。
+  // 触发条件（乙）与"到达期望交距"兜底都在 `updateFoeCharge` 里；本处只管"读状态算速度"。
+  updateFoeCharge(b, foes, bal, b.lastTickGameMs, foeDesireClamped)
+  // **整队机动 = 存活单位的「平均」战斗机动 ×各自倍率**（倍率单点 = `unitSpeedMulOf`）：
+  // 我方倍率 = 推进器**周期爆发**（逐单位周期）；敌方倍率 = **冲锋**（逐单位状态）。
+  // ⚠ 冲锋倍率**不外溢**（船长 2026-09-11：「冲锋还是按照巨兽自己的速度算…哪怕是冲锋也是按照巨兽速度」）：
+  // 逐单位乘各自倍率**再取平均** ⇒ 只有正在冲的那条吃到倍率。
+  // **2026-09-14 船长改判（本批）**：删掉旧的 `max(编队平均, 冲锋者速度 × 全局倍率)` 补丁——
+  // 那条写法在"逐单位各自倍率"下已不成立（小虫 1.5 与巨兽 3 各异），改回**纯平均**：
+  // 例 C 族噬口第 3 波（小虫 544×1.5 ×3 条 + 巨兽 297×3 ×1 条）⇒ 编队接近速度
+  // = (816×3 + 891) ÷ 4 = **834.8 m/s**（旧的 `max(编队最快, 冲锋者×倍率)` 补丁会给 891）。
+  // 敌方接近速度沿用 2026-09-11 船长口径（「能否敌舰移动速度按照敌方是所有船的平均值算」）：
+  // 原口径是**取最快单位**（`Math.max`）——混编卡里一条快船会把整队拖快：例 穹顶守卫
+  // = 2 静滞卫舰（129）+ 1 守墓长舰（232）⇒ 原口径整队按 **232** 走，与「静滞卫舰是半速炮台」
+  // 的设定相冲；改平均后该队按 **163**（战斗机动 92）走。
+  // 同速编成（单舰卡 / 同型多舰卡，如 A 族头目+同族杂鱼、C 族虫群）**逐字不变**（平均值 = 该速度）。
   let meV = 0
   {
     let n = 0
     for (const u of myUnits) {
       if (!isAlive(b, u.tag)) continue
-      meV += combatSpeed(u.speedMps, u.agility, bal) * (1 + (phaseOf(u) ? (u.thrusterBoost ?? 0) : 0))
+      meV += combatSpeed(u.speedMps, u.agility, bal) * unitSpeedMulOf(u, b, bal, 'me')
       n += 1
     }
     if (n > 0) meV /= n
   }
-  // **敌编队接近速度 = 存活单位的「平均」战斗机动**（船长 2026-09-11：
-  // 「**能否敌舰移动速度按照敌方是所有船的平均值算**」）。
-  // 原口径是**取最快单位**（`Math.max`）——混编卡里一条快船会把整队拖快：例 穹顶守卫
-  // = 2 静滞卫舰（129）+ 1 守墓长舰（232）⇒ 原口径整队按 **232** 走，与「静滞卫舰是半速炮台」
-  // 的设定相冲；改平均后该队按 **163**（战斗机动 92）走。
-  // 同速编成（单舰卡 / 同型多舰卡，如 A 族头目+同族杂鱼、C 族虫群）**逐字不变**（平均值 = 该速度）。
   let foeV = 0
   let foeAliveN = 0
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue
-    foeV += combatSpeed(f.speedMps, f.agility, bal)
+    foeV += combatSpeed(f.speedMps, f.agility, bal) * unitSpeedMulOf(f, b, bal, 'foe')
     foeAliveN += 1
   }
   if (foeAliveN > 0) foeV /= foeAliveN;
-  // 敌方期望距离不得超出开战距离（近距开局下 kite 战术系数可能越界 → 钳制，避免一直想拉开）
-  const foeDesireClamped = Math.min(openM, foeDesire);
-  // 2026-09-10 船长（敌突进）：够不着时临时加速 ×倍率。
-  // **2026-09-11 船长两条改判**：①结束条件 = **到达目标距离**（`foeDesireClamped`），冷却 20 秒
-  //    ——故本调用移到 `foeDesireClamped` 之后（原来用的是"进射程维持 2 秒"）；
-  // ②**加速只乘在冲锋者自己身上**（「冲锋还是按照巨兽自己的速度算…哪怕是冲锋也是按照巨兽速度」）
-  //    ——原实现 `if (b.foeChargeOn) foeV *= bal.foeChargeMul` 是把"存活敌**最快**单位"整体翻倍，
-  //    于是比巨兽更快的小虫也跟着 ×倍率 ⇒ C 族噬口第 3 波全编队飙车（当时 ×2 = 1,088 m/s）。
-  //    现口径 = `max(编队最快, 冲锋者速度 × 倍率)`：倍率**不外溢**，而"最快单位决定接近速度"
-  //    这条物理直觉不变（巨兽独存时它的冲锋就是实打实的 ×`foeChargeMul`；**2026-09-14 船长试验：2.0 → 4.0**）。
-  const charger = updateFoeCharge(
-    b,
-    foes,
-    bal,
-    b.lastTickGameMs,
-    foeDesireClamped,
-  )
-  if (b.foeChargeOn && charger) {
-    foeV = Math.max(
-      foeV,
-      combatSpeed(charger.speedMps, charger.agility, bal) * bal.foeChargeMul,
-    )
-  }
   const rate =
     steerStep(b.distanceM, b.myDesireM, meV, dtSec) +
     steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
@@ -5045,6 +5101,8 @@ function stepBattle(
       // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
       const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, w, b.distanceM)
       const dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * pow))
+      // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
+      releaseFoeChargeOnHit(b, f.tag, bal)
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
       gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, dmg, fType)
@@ -5061,6 +5119,8 @@ function stepBattle(
     if (fHit) {
       b.stats.foeHits += 1
       gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, shotDmg, fType)
+      // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
+      releaseFoeChargeOnHit(b, f.tag, bal)
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit })
   }

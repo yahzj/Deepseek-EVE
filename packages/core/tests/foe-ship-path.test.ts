@@ -897,9 +897,12 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(minions.every((x) => x.weapons[0]!.maxRangeM === 3713)).toBe(true); // 小虫 = 卡带（2026-09-14 +1000）
     expect(boss.weapons[0]!.kind).toBe('fixed')
     expect(boss.foeTactic).toBe('brawl');
-    // 冲锋：只有巨兽带资格（舰级 opt-in），小虫没有
+    // 冲锋（**2026-09-14 船长扩到全族**：「大虫子的冲锋倍率改为 3，给小虫子添加冲锋，倍率为 1.5」）：
+    // 巨兽 ×3、小虫 ×1.5，**逐单位独立**在冲（编队级单标志已作废）
     expect(boss.foeCanCharge).toBe(true)
-    expect(minions.every((x) => x.foeCanCharge !== true)).toBe(true)
+    expect(boss.foeChargeMul).toBe(3)
+    expect(minions.every((x) => x.foeCanCharge === true)).toBe(true)
+    expect(minions.every((x) => x.foeChargeMul === 1.5)).toBe(true)
   })
 
   it('巨兽**目标距离不动**：期望交距 = 543 m（2026-09-14 起由 `desireRangeM` 钉住，不再靠带内插值）', () => {

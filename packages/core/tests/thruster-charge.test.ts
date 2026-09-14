@@ -4,18 +4,20 @@
  * - **推进器**：不再常驻提速 → 点火 **60 秒** → 冷却 **60 秒**，**开场即点火**；
  *   点火期机动 ×(1+爆发倍率)（MK1 +30%/MK2 +60%/MK3 +100%，多件 EVE 曲线收敛），冷却期回基础值。
  *   周期由**战斗时钟推导**（`thrusterPhase`），不占存档字段。
- * - **敌突进/冲锋**：资格两条来源——**舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件，
- *   用于慢而硬的重型单位）与老路（威胁 ≥ 60 且 战术 = brawl，受总开关约束）；
- *   够不着（距离在自己武器射程之外）时**冲锋者自己**的机动 **×`foeChargeMul`**
- *   （**2026-09-14 船长试验：2.0 → 4.0**；2026-09-11 船长：
- *   「冲锋还是按照**巨兽自己的速度**算…哪怕是冲锋也是按照巨兽速度」——倍率**不外溢**到别的单位）；
- *   **到达目标距离（敌方期望交距）即结束**（2026-09-11 船长改判；原口径"进射程维持 2 秒"作废）；
- *   随后 **20 秒冷却**。
+ * - **敌冲锋**：资格两条来源——**舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件，
+ *   用于慢而硬的重型单位与 C 族小虫）与老路（威胁 ≥ 60 且 战术 = brawl，受总开关约束）；
+ *   触发两条取或——① 够不着（距离在自己武器射程之外）② **距离 > 期望交距 + 1,000**（乙，2026-09-14）；
+ *   **逐单位**加速：**该单位自己**的机动 **×(舰级 `foeChargeMul` ?? 全局 `foeChargeMul`)**，
+ *   编队接近速度 = 逐单位乘各自倍率 → **取平均**（故倍率**不外溢**到别的单位）；
+ *   **解除两条取或**——① **自身炮台命中我方**（2026-09-14 船长新定）② 压到**期望交距**（兜底）；
+ *   随后 **10 秒冷却**（2026-09-14 船长由 20 秒改判）。
+ *   倍率（2026-09-14 船长）：「大虫子的冲锋倍率改为 3，给小虫子添加冲锋，倍率为 1.5」；全局缺省 3.0。
  */
 import { describe, expect, it } from 'vitest'
+import { FOE_SHIPS } from '@whale/data'
 import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
-import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
+import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, foeChargeCount, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, foeDesiredRange, startBattleFor } from '../src/combat'
 import { anomaly, galaxy, makeTestCtx, moduleDef } from './helpers'
@@ -284,24 +286,24 @@ describe('微型跃迁引擎（2026-09-14 船长定：中槽短爆发——点�
   })
 })
 
-describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条件 = 到达目标距离**；**2026-09-14 倍率 2.0 → 4.0**）', () => {
+describe('敌冲锋（2026-09-10 定资格；2026-09-11 改"到达解除"；**2026-09-14 乙触发 · 逐单位 · 命中解除 · 冷却 10 秒**）', () => {
   const bal = () => makeTestCtx().balance.battle
   /**
-   * "到达目标距离"用例专用舰级：**舰级级 opt-in 开冲锋**（不看总开关/门槛/战术）、
+   * "到达期望交距即解除"用例专用舰级：**舰级级 opt-in 开冲锋**（不看总开关/门槛/战术）、
    * 射程带 `1~13,000`（⇒ 目标距离 = `1 + 0.20×(13000−1)` = **2,601 m**）、
-   * 血厚 + 单发 1 + 装填 60 秒（**打不动玩家、也打不死**）⇒ 战斗不会在"到达"之前结束，
-   * 冲锋的"启动 → 进射程仍继续 → 到达即结束 → 进冷却"这一整轮可以被确定性地观测到。
+   * 血厚 + 单发 1 + 装填 60 秒 + **命中率 0**（永远打不中）⇒ 只可能被**"压到期望交距"**解除，
+   * 把"兜底"那条路径单独隔离出来（"命中解除"由下面 STALL 那条用例证明）。
    */
   const ARRIVAL_SHIP: FoeShipDef = {
     id: 't-foe-arrival',
     name: '测试远程虫',
     family: 'C',
     hullClassTier: 1,
-    speedRatio: 1.6, // 340 × 1.6 = 544（冲锋期 ×4 = 2,176，闭距够快）
+    speedRatio: 1.6, // 340 × 1.6 = 544（冲锋 ×3 = 1,632，闭距够快）
     hp: 100_000,
     split: { s: 0.34, a: 0.33, h: 0.33 },
     shotDmg: 1,
-    hitRate: 0.85,
+    hitRate: 0, // 打不中（隔离"到达"路径；命中解除另有用例）
     reloadMs: 60_000,
     rangeMinM: 1,
     rangeMaxM: 13_000,
@@ -310,17 +312,64 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
     energyForm: 'spit',
     tactic: 'brawl',
     foeCanCharge: true,
+    foeChargeMul: 3, // 巨兽档倍率（2026-09-14 船长）
   }
-  /** "倍率不外溢"用例专用：**快的非冲锋者**（T1 ×2.0 = 680 m/s）+ **慢的冲锋者**（T1 ×0.5 = 170 m/s）
-   *  ——巨兽比小虫慢正是 C 族噬口的现实（277 vs 544），这条口径就是为它定的。 */
-  const FAST_PLAIN: FoeShipDef = {
-    ...ARRIVAL_SHIP,
-    id: 't-foe-fast-plain',
-    speedRatio: 2,
-    foeCanCharge: false,
-    rangeMaxM: 8_000,
+  /**
+   * **BUG 复现专用**（船长 2026-09-14：「发现BUG了，**冲锋到达目标距离后并不会解除**」）：
+   * 慢虫（20 m/s，冲锋 ×1.5 = 30 m/s）＋ **我方更快、且期望交距更远（9,000 m）** ⇒ 距离在
+   * `myDesire` 一带形成拔河平衡（我方外拉 = 敌方内推），**永远压不到敌方期望交距 2,601 m**
+   * ⇒ 旧口径（解除只有 `arrived` 一条）下冲锋永不解除、冷却永不启动、标记一直亮着。
+   * 本舰级**命中率 100% + 装填 1 秒** ⇒ 新口径的**命中解除**会在几秒内收场。
+   */
+  const HIT_SLOW_CHARGER: FoeShipDef = {
+    id: 't-foe-stall-charger',
+    name: '测试慢虫·会打中',
+    family: 'C',
+    hullClassTier: 1,
+    speedRatio: 0.03, // 340 × 0.03 ≈ 10 m/s（另有 20 m/s 速度地板）⇒ 拔河必输给我方
+    hp: 100_000,
+    split: { s: 0.34, a: 0.33, h: 0.33 },
+    shotDmg: 1, // 打不疼（只验证"命中即解除"）
+    hitRate: 1, // 必中（想观察"命中解除"就必须真命中）
+    reloadMs: 1_000,
+    rangeMinM: 1,
+    rangeMaxM: 13_000,
+    falloff: 0.5,
+    dmgMix: { plasma: 10 },
+    energyForm: 'spit',
+    tactic: 'brawl',
+    foeCanCharge: true,
+    foeChargeMul: 1.5, // 小虫倍率（2026-09-14 船长）
   }
-  const SLOW_CHARGER: FoeShipDef = { ...ARRIVAL_SHIP, id: 't-foe-slow-charger', speedRatio: 0.5, rangeMaxM: 8_000 }
+  /** 同卡第二条：**永远打不中**的冲锋者 ⇒ 用来证明"解除是**逐单位**的"（它必须一直在冲） */
+  const NEVER_HIT_CHARGER: FoeShipDef = {
+    ...HIT_SLOW_CHARGER,
+    id: 't-foe-stall-neverhit',
+    name: '测试慢虫·打不中',
+    hitRate: 0,
+  }
+  /** "倍率取平均"用例：**同卡两条速度/倍率都不同的冲锋者**（快虫 ×1.5、慢虫 ×3） */
+  const FAST_MUL15: FoeShipDef = {
+    ...HIT_SLOW_CHARGER,
+    id: 't-foe-fast-mul15',
+    name: '测试快虫·1.5 倍',
+    speedRatio: 1.6, // 544
+    hitRate: 0, // 量速度的用例里不许发生"命中解除"
+    reloadMs: 60_000,
+    foeChargeMul: 1.5,
+  }
+  const SLOW_MUL3: FoeShipDef = {
+    ...HIT_SLOW_CHARGER,
+    id: 't-foe-slow-mul3',
+    name: '测试慢虫·3 倍',
+    speedRatio: 0.5, // 170
+    hitRate: 0,
+    reloadMs: 60_000,
+    foeChargeMul: 3,
+  }
+  /** 上面那两条的**对照版**（同速同带、只是**不开冲锋**）——"倍率取平均"用例靠两卡做差测敌速 */
+  const FAST_PLAIN: FoeShipDef = { ...FAST_MUL15, id: 't-foe-fast-plain2', foeCanCharge: false }
+  const SLOW_PLAIN: FoeShipDef = { ...SLOW_MUL3, id: 't-foe-slow-plain2', foeCanCharge: false }
   /** 造一个"开关可调"的上下文（含 4 张资格对照卡 + 一把远程炮，保证开场够不着） */
   const ctxWith = (enabled: boolean): SimContext =>
     makeTestCtx({
@@ -329,8 +378,7 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
       galaxies: [galaxy('g-test')],
       modules: [
         moduleDef('mod-long', 'turret', 0, { maxRangeM: 12_000, minRangeM: 0, reloadMs: 1_000, hitRate: 1, falloff: 1 }),
-        // 慢炮（"到达目标距离"用例专用）：开一炮后长期不装填 ⇒ **敌人不会被打死**，
-        // 于是能一路压到目标距离把"结束条件"这套观测跑完（快炮会把敌人在半路打爆，战斗提前结束）
+        // 慢炮：开一炮后长期不装填 ⇒ **敌人不会被打死**，于是能一路把"解除/冷却"这套观测跑完
         moduleDef('mod-long-slow', 'turret', 0, { maxRangeM: 12_000, minRangeM: 0, reloadMs: 600_000, hitRate: 1, falloff: 1 }),
       ],
       anomalies: [
@@ -340,10 +388,22 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
         anomaly('ano-orbit-hi', 'g-test', { threat: 90, tactic: 'orbit' }),
         // 舰级路径 + 舰级级 opt-in：目标距离 2,601m（够远 ⇒ 能在玩家撑住的时间内压到）
         { ...anomaly('ano-t-arrival', 'g-test', { threat: 20, tactic: 'brawl' }), ships: [{ ship: ARRIVAL_SHIP }] },
-        // 混速编成：快的**不**冲锋 + 慢的冲锋（验证倍率不外溢）
+        // BUG 复现：慢而必中的冲锋者（期望交距远小于我方期望 ⇒ 拔河平衡点压在目标距离之上）
+        { ...anomaly('ano-t-stall', 'g-test', { threat: 20, tactic: 'brawl' }), ships: [{ ship: HIT_SLOW_CHARGER }] },
+        // 逐单位：同卡"会打中" + "打不中"两条冲锋者
         {
-          ...anomaly('ano-t-charge-spill', 'g-test', { threat: 20, tactic: 'brawl' }),
-          ships: [{ ship: FAST_PLAIN }, { ship: SLOW_CHARGER }],
+          ...anomaly('ano-t-two-chargers', 'g-test', { threat: 20, tactic: 'brawl' }),
+          ships: [{ ship: HIT_SLOW_CHARGER }, { ship: NEVER_HIT_CHARGER }],
+        },
+        // 倍率取平均：同卡两条倍率不同的冲锋者（1.5 与 3）
+        {
+          ...anomaly('ano-t-mul-avg', 'g-test', { threat: 20, tactic: 'brawl' }),
+          ships: [{ ship: FAST_MUL15 }, { ship: SLOW_MUL3 }],
+        },
+        // 上一条的对照卡：同编成同速度、只是**不开冲锋**（做差用）
+        {
+          ...anomaly('ano-t-mul-plain', 'g-test', { threat: 20, tactic: 'brawl' }),
+          ships: [{ ship: FAST_PLAIN }, { ship: SLOW_PLAIN }],
         },
       ],
     })
@@ -366,7 +426,7 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
     return { b, state }
   }
 
-  it('⚙ 默认未实装：开关关闭时**任何敌人都不具备突进资格**（机制保留但不触发）', () => {
+  it('⚙ 默认未实装：开关关闭时**任何敌人都不具备冲锋资格**（机制保留但不触发）', () => {
     const ctx = ctxWith(false)
     expect(ctx.balance.battle.foeChargeEnabled).toBe(false)
     for (const id of ['ano-brawl-hi', 'ano-brawl-lo', 'ano-kite-hi', 'ano-orbit-hi']) {
@@ -375,7 +435,7 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
     const { b, state } = battleVs(ctx, 'ano-brawl-hi')
     state.gameMs = 120_000
     advanceBattleFor(state, ctx, b!, 'sandcat2', 'ano-brawl-hi')
-    expect(b!.foeChargeOn ?? false).toBe(false) // 关着就是关着
+    expect(foeChargeCount(b!)).toBe(0) // 关着就是关着（老路整条不生效）
   })
 
   it('资格门槛（开关启用时）：威胁 ≥60 且近战才有 foeCanCharge；长射程或低威胁一律没有', () => {
@@ -386,23 +446,69 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
     expect(can('ano-brawl-lo')).toBe(false)
     expect(can('ano-kite-hi')).toBe(false) // 高威胁但长射程：不给（它们本就打得到）
     expect(can('ano-orbit-hi')).toBe(false)
+    // **倍率缺省**：走老路的单位没写舰级倍率 ⇒ 不写字段（读全局缺省值，旧读数逐字不变）
+    const legacy = createFoeSpecs(ctx.anomalies.get('ano-brawl-hi')!, ctx.balance.battle)[0]!
+    expect(legacy.foeChargeMul).toBeUndefined()
   })
 
-  it('够不着 → 启动突进；**到达目标距离**后结束并进入冷却（开关启用时）', () => {
+  it('C 族冲锋配置（2026-09-14 船长「大虫子改 3、给小虫子加 1.5」）：数据契约', () => {
+    const of = (id: string): FoeShipDef => FOE_SHIPS.find((s) => s.id === id)!
+    expect(of('foe-alien-maw').foeCanCharge).toBe(true)
+    expect(of('foe-alien-maw').foeChargeMul).toBe(3)
+    for (const id of ['foe-alien-rift-larva', 'foe-alien-starcore-larva', 'foe-alien-starcore-adult']) {
+      expect(of(id).foeCanCharge, id).toBe(true)
+      expect(of(id).foeChargeMul, id).toBe(1.5)
+    }
+    // 建档要把舰级倍率带上单位（否则逐单位倍率落不了地）
+    const ctx = ctxWith(false)
+    const specs = createFoeSpecs(
+      { ...anomaly('ano-c-contract', 'g-test', { threat: 20, tactic: 'brawl' }), ships: [{ ship: of('foe-alien-maw') }] },
+      ctx.balance.battle,
+    )
+    expect(specs[0]!.foeCanCharge).toBe(true)
+    expect(specs[0]!.foeChargeMul).toBe(3)
+    // 本批只动 C 族：其余敌族一律不带冲锋
+    for (const s of FOE_SHIPS) {
+      if (s.family === 'C') continue
+      expect(s.foeCanCharge ?? false, s.id).toBe(false)
+      expect(s.foeChargeMul, s.id).toBeUndefined()
+    }
+  })
+
+  it('乙方案（船长 2026-09-14）：距离在**自己射程之内**、但 > 期望交距 + 1000 ⇒ 也冲锋（逐单位状态）', () => {
+    // ARRIVAL_SHIP：射程 1~13,000 ⇒ 期望交距 2,601 ⇒ 乙的触发线 = 3,601 m；取 5,000 m（**在它射程之内**，旧口径不触发）。
     const ctx = ctxWith(true)
-    // 专用场景（舰级级 opt-in + 目标距离 2,601m + 我方期望交距压到 300m ⇒ 双方都往内压）：
-    // 敌人在半路不会被打死、也不会打死玩家，于是"到达即结束"这一轮能跑完
+    const s1 = battleVs(ctx, 'ano-t-arrival', 'mod-long-slow', 300)
+    s1.b!.foeCharges = {} // 清掉开场那一拍的状态，单看"5,000 m 这一步"能不能起冲
+    s1.b!.distanceM = 5_000
+    s1.state.gameMs = 1_000
+    advanceBattleFor(s1.state, ctx, s1.b!, 'sandcat2', 'ano-t-arrival')
+    expect(s1.b!.foeCharges?.['foe-0']?.on, '乙：5,000 m > 2,601 + 1,000 ⇒ 应冲锋').toBe(true)
+    // 反证：把余量调到极大 = 等效"只留旧口径（够不着才冲）" ⇒ 同一距离不冲锋
+    ctx.balance.battle.foeChargeTriggerMarginM = 999_999
+    const s2 = battleVs(ctx, 'ano-t-arrival', 'mod-long-slow', 300)
+    s2.b!.foeCharges = {}
+    s2.b!.distanceM = 5_000
+    s2.state.gameMs = 1_000
+    advanceBattleFor(s2.state, ctx, s2.b!, 'sandcat2', 'ano-t-arrival')
+    expect(s2.b!.foeCharges?.['foe-0']?.on ?? false, '旧口径：同一距离在射程之内 ⇒ 不冲锋').toBe(false)
+  })
+
+  it('够不着 → 启动冲锋；**压到期望交距**后解除并进入 10 秒冷却（命中率 0 ⇒ 隔离出兜底路径）', () => {
+    const ctx = ctxWith(true)
+    // 专用场景（舰级级 opt-in + 目标距离 2,601m + 我方期望交距压到 300m ⇒ 双方都往内压）
     const { b, state } = battleVs(ctx, 'ano-t-arrival', 'mod-long-slow', 300)
     expect(b).toBeTruthy()
-    // 开场距离（双方最远射程 13km → 开战距离 ≈14.3km）在敌射程之外 → 第一步即突进
+    // 开场距离（双方最远射程 13km → 开战距离 ≈14.3km）在敌射程之外 → 第一步即冲锋
     state.gameMs = 1_000
     advanceBattleFor(state, ctx, b!, 'sandcat2', 'ano-t-arrival')
-    expect(b!.foeChargeOn).toBe(true)
+    expect(b!.foeCharges?.['foe-0']?.on).toBe(true)
     // 逐秒推进取观测（2026-09-11 改判后需要"进了射程仍在冲锋"这一段证据）
     const specs = createFoeSpecs(ctx.anomalies.get('ano-t-arrival')!, ctx.balance.battle)
     const foeMax = specs[0]!.weapons[0]!.maxRangeM
     const foeDesire = foeDesiredRange(specs[0]!, specs, ctx.balance.battle)
     expect(foeDesire).toBe(2601) // 1 + 0.2 × (13000 − 1)
+    const rt = () => b!.foeCharges?.['foe-0']
     let inRangeStillCharging = false
     let cycleEnded = false
     let endedAboveTarget = false
@@ -417,8 +523,8 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
         endedReason = `battle ended=${String(b!.ended)}`
         break
       }
-      if (b!.foeChargeOn && b!.distanceM <= foeMax && b!.distanceM > foeDesire) inRangeStillCharging = true
-      if (!b!.foeChargeOn && (b!.foeChargeCdUntilMs ?? 0) > 0) {
+      if (rt()?.on === true && b!.distanceM <= foeMax && b!.distanceM > foeDesire) inRangeStillCharging = true
+      if (rt()?.on !== true && (rt()?.cdUntilMs ?? 0) > 0) {
         cycleEnded = true
         endedAtMs = t
         if (b!.distanceM > foeDesire) endedAboveTarget = true
@@ -426,55 +532,132 @@ describe('敌突进/冲锋（2026-09-10 定资格；**2026-09-11 改判结束条
       }
     }
     const trace = `敌射程上限 ${foeMax}m / 目标距离 ${foeDesire}m / 最近距离 ${Math.round(minSeen)}m / 结束于 ${endedAtMs}ms / ${endedReason}`
-    // ① 进了自己射程**仍继续突进**——旧口径（进射程维持 2 秒）在这一段早就结束了
-    expect(inRangeStillCharging, `进入射程后应继续突进（${trace}）`).toBe(true)
-    // ② 结束必定发生在**到达目标距离**之后（绝不会"进了射程就结束"）
-    expect(endedAboveTarget, `不得在未到目标距离时结束突进（${trace}）`).toBe(false)
-    // ③ 压到目标距离即结束，并进入冷却
-    expect(cycleEnded, `应压到目标距离 ${foeDesire}m 后结束突进（${trace}）`).toBe(true)
+    // ① 进了自己射程**仍继续冲锋**——旧口径（进射程维持 2 秒）在这一段早就结束了
+    expect(inRangeStillCharging, `进入射程后应继续冲锋（${trace}）`).toBe(true)
+    // ② 命中率 0 ⇒ 只可能"压到目标距离"才解除（绝不会在目标距离之上结束）
+    expect(endedAboveTarget, `不得在未到目标距离时结束冲锋（${trace}）`).toBe(false)
+    // ③ 压到目标距离即解除，并进入 10 秒冷却
+    expect(cycleEnded, `应压到目标距离 ${foeDesire}m 后解除冲锋（${trace}）`).toBe(true)
     expect(minSeen, `最近距离应已到目标距离（${trace}）`).toBeLessThanOrEqual(foeDesire)
+    // 冷却 = 10 秒。⚠ 口径：状态机的时刻戳取自**子步起点**（`BATTLE_STEP_MS = 100`，本拍首个子步的起点
+    // 即上一拍末尾），而这里拿的是"本拍结束"的战斗时钟 ⇒ 读数落在 **[9,000, 10,000]** 内才是 10 秒口径
+    // （若还是旧的 20 秒，读数会是 19,000+）。
+    const cdLeft = (rt()!.cdUntilMs ?? 0) - b!.lastTickGameMs
+    expect(cdLeft, `冷却应为 10 秒（${trace}）`).toBeLessThanOrEqual(10_000)
+    expect(cdLeft, `冷却应为 10 秒（${trace}）`).toBeGreaterThanOrEqual(9_000)
   })
 
-  it('冲锋倍率**不外溢**：只按冲锋者自己的速度算，非冲锋单位不跟着 ×2（船长 2026-09-11）', () => {
+  it('🔴 BUG 修复（船长 2026-09-14）：距离**永远压不到**目标距离时，**自身炮台命中**也能解除冲锋', () => {
     const ctx = ctxWith(true)
-    const def = ctx.anomalies.get('ano-t-charge-spill')!
-    const state = createInitialState({ nowWallMs: 0, seed: 3 })
-    addShipToFleet(state, 'sandcat2')
-    state.shipId = 'sandcat2'
-    state.fleet['sandcat2']!.fitted = { high: ['mod-long-slow'], mid: [], low: [] }
-    repairDeprecatedModules(state, ctx)
-    const me = createPlayerSpec(state, ctx, 'sandcat2')!
-    const specs = createFoeSpecs(def, ctx.balance.battle)
-    // 我方期望交距 = 开战距离 ⇒ **我方原地不动**，观测到的闭距全是敌人走的（隔离出敌速口径）
-    const open = battleOpenM(me, specs, ctx.balance.battle)
-    const b = startBattleFor(state, ctx, 'sandcat2', 'ano-t-charge-spill', 0, open)!
-    expect(b.myDesireM).toBe(open)
-    const d0 = b.distanceM
-    const seconds = 6
-    state.gameMs = seconds * 1_000
-    advanceBattleFor(state, ctx, b, 'sandcat2', 'ano-t-charge-spill')
-    expect(b.foeChargeOn).toBe(true) // 全程在冲锋（开场即在双方射程之外）
-    const closed = d0 - b.distanceM
-    const closing = closed / seconds
+    // 我方期望交距 9,000 m（远大于敌方目标距离 2,601 m）＋ 我方更快 ⇒ 距离停在拔河平衡点，
+    // `arrived` 永不可达（这就是船长报的"到达目标距离后并不会解除"）。
+    const { b, state } = battleVs(ctx, 'ano-t-stall', 'mod-long-slow', 9_000)
+    const rt = () => b!.foeCharges?.['foe-0']
+    expect(b!.myDesireM).toBe(9_000)
+    let minSeen = Number.POSITIVE_INFINITY
+    let chargingSeen = false
+    let releasedAtMs = 0
+    for (let t = 1_000; t <= 120_000; t += 1_000) {
+      state.gameMs = t
+      advanceBattleFor(state, ctx, b!, 'sandcat2', 'ano-t-stall')
+      minSeen = Math.min(minSeen, b!.distanceM)
+      if (rt()?.on === true) chargingSeen = true
+      if (chargingSeen && rt()?.on !== true && (rt()?.cdUntilMs ?? 0) > 0) {
+        releasedAtMs = t
+        break
+      }
+      if (b!.ended) break
+    }
+    const trace = `最近距离 ${Math.round(minSeen)}m / 敌方目标距离 2,601m / 解除于 ${releasedAtMs}ms / 敌命中累计 ${b!.stats.foeHits}`
+    expect(chargingSeen, `应当起冲（${trace}）`).toBe(true)
+    // ① 距离**从未**压到目标距离 ⇒ 旧口径（只有 arrived）在这里是死结
+    expect(minSeen, `本用例前提是"压不到目标距离"（${trace}）`).toBeGreaterThan(2_601)
+    // ② 仍然解除了 ⇒ 只可能是"自身炮台命中我方"那条，且当时确实已有命中
+    expect(releasedAtMs, `应在命中后解除（${trace}）`).toBeGreaterThan(0)
+    expect(b!.stats.foeHits, `解除时应有真实命中（${trace}）`).toBeGreaterThan(0)
+    // 冷却 10 秒（同"到达"那条的时刻戳口径：读数落在 [9,000, 10,000]；旧的 20 秒会是 19,000+）
+    const cdLeft = (rt()!.cdUntilMs ?? 0) - b!.lastTickGameMs
+    expect(cdLeft, `冷却应为 10 秒（${trace}）`).toBeLessThanOrEqual(10_000)
+    expect(cdLeft, `冷却应为 10 秒（${trace}）`).toBeGreaterThanOrEqual(9_000)
+    // ③ 冷却期内不许复位（10 秒内保持不冲）
+    state.gameMs = releasedAtMs + 9_000
+    advanceBattleFor(state, ctx, b!, 'sandcat2', 'ano-t-stall')
+    expect(rt()?.on ?? false, `冷却期内不得再次冲锋（${trace}）`).toBe(false)
+  })
+
+  it('逐单位：同卡两条冲锋者各自结算——会打中的那条解除并进冷却，打不中的那条**一直在冲**', () => {
+    const ctx = ctxWith(true)
+    const { b, state } = battleVs(ctx, 'ano-t-two-chargers', 'mod-long-slow', 9_000)
+    const specs = createFoeSpecs(ctx.anomalies.get('ano-t-two-chargers')!, ctx.balance.battle)
+    expect(specs.length).toBe(2)
+    const [hitTag, missTag] = [specs[0]!.tag, specs[1]!.tag]
+    for (let t = 1_000; t <= 30_000; t += 1_000) {
+      state.gameMs = t
+      advanceBattleFor(state, ctx, b!, 'sandcat2', 'ano-t-two-chargers')
+      if (b!.ended) break
+    }
+    const hitRt = b!.foeCharges?.[hitTag]
+    const missRt = b!.foeCharges?.[missTag]
+    const trace = `会打中(×1.5)：${JSON.stringify(hitRt)} / 打不中(×1.5)：${JSON.stringify(missRt)} / 敌命中累计 ${b!.stats.foeHits}`
+    expect(b!.stats.foeHits, `应至少命中一次（${trace}）`).toBeGreaterThan(0)
+    // 命中那条：已解除且进过冷却（10 秒一循环 ⇒ 30 秒窗口里必然出现"冷却中"）
+    expect(hitRt?.cdUntilMs ?? 0, `命中者应已解除并进冷却（${trace}）`).toBeGreaterThan(0)
+    // 打不中的那条：从未命中 ⇒ **一次都没解除过**（编队级单标志做不到这一点）
+    expect(missRt?.on, `打不中者应仍在冲锋（${trace}）`).toBe(true)
+    expect(missRt?.cdUntilMs, `打不中者不该有冷却（${trace}）`).toBeUndefined()
+  })
+
+  it('倍率**不外溢**且取"逐单位乘各自倍率 → 平均"（同卡 1.5 与 3 两条冲锋者 · 对照卡做差）', () => {
+    /**
+     * 观测法（**做差**）：同编成跑两遍——① 两条都开冲锋（×1.5 / ×3）② 两条都不开（对照）。
+     * 我方期望交距压到 300 m ⇒ 双方**全程满速内压**（无敌方死区干扰）⇒
+     * 闭距速度 = 敌编队接近速度 + 我方速度，两遍的"我方那一项"完全相同 ⇒ **差值 = 敌方那部分的变化**。
+     * 逐单位乘各自倍率取平均 ⇒ Δ = [(v快×1.5 + v慢×3) − (v快 + v慢)] ÷ 2；
+     * 旧的 `max(编队平均, 冲锋者×倍率)` 补丁会给出更大的 Δ（被下面的上界钉住）。
+     */
+    const ctx = ctxWith(true)
+    const runCard = (anomalyId: string): { closing: number; charges: number } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 3 })
+      addShipToFleet(state, 'sandcat2')
+      state.shipId = 'sandcat2'
+      state.fleet['sandcat2']!.fitted = { high: ['mod-long-slow'], mid: [], low: [] }
+      repairDeprecatedModules(state, ctx)
+      const b = startBattleFor(state, ctx, 'sandcat2', anomalyId, 0, 300)!
+      const d0 = b.distanceM
+      const seconds = 6
+      for (let t = 1_000; t <= seconds * 1_000; t += 1_000) {
+        state.gameMs = t
+        advanceBattleFor(state, ctx, b, 'sandcat2', anomalyId)
+      }
+      return { closing: (d0 - b.distanceM) / seconds, charges: foeChargeCount(b) }
+    }
+    const charged = runCard('ano-t-mul-avg')
+    const plain = runCard('ano-t-mul-plain')
     // 战斗机动换算（敌敏捷 0.3；与 `combat.combatSpeed` 同式，取值来自 balance 而非手抄）
     const b2 = ctx.balance.battle
     const k = b2.speedFactor * (1 + (0.3 - 0.5) * 2 * b2.agilitySpeedBonus)
-    const fastV = 680 * k // 非冲锋者 383.5：**不该**被乘
-    // **编队接近速度 = 存活单位的平均**（船长 2026-09-11「能否敌舰移动速度按照敌方是所有船的平均值算」）
-    // ⇒ 本卡两条不同速单位 = `(680+170)/2 × k`；若冲锋倍率**外溢到整队**，平均值会再翻一倍。
-    const avgV = ((680 + 170) / 2) * k
-    const spillV = avgV * b2.foeChargeMul
-    const trace = `闭距 ${Math.round(closed)}m / ${seconds}s ⇒ 接近速度 ${closing.toFixed(1)} m/s（编队平均 ${avgV.toFixed(1)}、非冲锋者 ${fastV.toFixed(1)}、外溢口径会是 ${spillV.toFixed(1)}）`
-    expect(closing, `冲锋倍率外溢到整队了（${trace}）`).toBeLessThan(avgV * 1.2)
-    expect(closing, `敌人根本没在接近（${trace}）`).toBeGreaterThan(avgV * 0.1)
+    const vFast = Math.max(20, 544 * k) // speedRatio 1.6 → 544
+    const vSlow = Math.max(20, 170 * k) // speedRatio 0.5 → 170
+    const delta = charged.closing - plain.closing
+    const wantDelta = (vFast * 1.5 + vSlow * 3 - (vFast + vSlow)) / 2 // 逐单位乘各自倍率 → 平均
+    const oldMaxPatch = Math.max((vFast + vSlow) / 2, vFast * 3) - (vFast + vSlow) / 2 // 旧补丁（会明显更大）
+    const spillAll = ((vFast + vSlow) / 2) * 2 // 倍率外溢到整队（×3 → +2 倍）
+    const trace = `开冲锋 ${charged.closing.toFixed(1)} m/s（在冲 ${charged.charges} 条）− 对照 ${plain.closing.toFixed(1)} m/s ⇒ Δ=${delta.toFixed(1)}（期望 ${wantDelta.toFixed(1)}；旧 max 补丁 ${oldMaxPatch.toFixed(1)}；整队外溢 ${spillAll.toFixed(1)}）`
+    expect(charged.charges, `开冲锋那张卡应两条都在冲（${trace}）`).toBe(2)
+    expect(plain.charges, `对照卡不该有冲锋（${trace}）`).toBe(0)
+    expect(Math.abs(delta - wantDelta) / wantDelta, `应等于"逐单位乘各自倍率后的平均"（${trace}）`).toBeLessThan(0.02)
+    // 反证：旧 `max(编队平均, 冲锋者速度 × 倍率)` 补丁的 Δ 明显更大 —— 本口径必须低于它
+    expect(delta, `仍带着旧的 max 补丁（${trace}）`).toBeLessThan(oldMaxPatch * 0.95)
   })
 
-  it('参数口径：突进倍率 ×4（2026-09-14 船长试验）、冷却 20 秒、门槛 60（`foeChargeMaxHoldMs` 已停用但保留）', () => {
+
+  it('参数口径：全局倍率 ×3、冷却 **10 秒**、门槛 60（`foeChargeMaxHoldMs` 已停用但保留）', () => {
     const b = bal()
-    expect(b.foeChargeMul).toBe(4) // 船长 2026-09-14：「将效果改为4倍我测试下」
-    expect(b.foeChargeCooldownMs).toBe(20_000)
+    expect(b.foeChargeMul).toBe(3) // 船长 2026-09-14：「大虫子的冲锋倍率改为 3」（同日试验值 4 作废）
+    expect(b.foeChargeCooldownMs).toBe(10_000) // 船长 2026-09-14：「并进入 10 秒冷却」
     expect(b.foeChargeThreatFloor).toBe(60)
     // ⚠ 2026-09-11 船长改判：结束条件改"到达目标距离" ⇒ 维持时长旋钮**停用**（保留字段仅为可回退）
     expect(b.foeChargeMaxHoldMs).toBe(2_000)
+    expect(b.foeChargeTriggerMarginM).toBe(1_000) // 乙：期望交距 + 1,000 m 即起冲
   })
 })

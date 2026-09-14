@@ -679,6 +679,8 @@ export {
   thrusterPhase,
   unitThrusterCycle,
   effectiveHitMul,
+  // 敌冲锋（2026-09-14 逐单位）：战斗界面读它渲染「敌冲锋中」标记（只数存活）
+  foeChargeCount,
   // 维修脉冲周期（2026-09-11：内容体检「产物说明契约」按它核对说明里的「每 N 秒」）
   REPAIR_PULSE_MS,
   // 护盾充能脉冲周期（2026-09-14 船长新增件：同上，说明里的「每 30 秒」与它同源）

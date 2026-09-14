@@ -115,14 +115,14 @@ describe('战斗字段随档往返（审计 A3 登记表）', () => {
     battle.pdFocus = ['player:0']
     battle.pdCd = [123]
     battle.notices = [{ atMs: 1, text: '测试提示' }]
-    battle.foeChargeOn = true
+    battle.foeCharges = { 'foe-0': { on: true, cdUntilMs: 12_345 } }
     const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
     const back = loaded.expedition.battle!
     const persist = new Set<string>(BATTLE_PERSIST_KEYS.map((k) => String(k)))
-    for (const key of ['pdFocus', 'pdCd', 'notices', 'foeChargeOn']) {
+    for (const key of ['pdFocus', 'pdCd', 'notices', 'foeCharges']) {
       expect(persist.has(key), `${key} 不该被登记为 persist`).toBe(false)
     }
-    expect(back.foeChargeOn).toBeUndefined()
+    expect(back.foeCharges).toBeUndefined()
     expect(back.pdCd).toBeUndefined()
     expect(back.pdFocus).toBeUndefined()
     expect(back.notices).toBeUndefined()
