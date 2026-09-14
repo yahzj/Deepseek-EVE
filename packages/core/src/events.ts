@@ -190,7 +190,6 @@ function poolGoods(ctx: SimContext): MarketGoodDef[] {
 function rareGoods(ctx: SimContext): MarketGoodDef[] {
   return [...ctx.marketGoods.values()].filter((g) => g.kind !== 'aicore' && g.rarity !== 'common' && g.kind !== 'item')
 }
-
 /**
  * 市场大类 A：行情突变动（公开导出，测试可直接调用）。
  * 变体：0 协会收购周（+冲击）/ 1 站台倾销潮（−冲击 + 池淤积）/ 2 短波行情（全池微扰）/
@@ -257,7 +256,17 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
   const level = levelOf(state, ctx, def.key)
   const name = goodName(ctx, def.key)
 
-  if (nextInt(state.rng, 2) === 0) {
+  /**
+   * ⚠ **只收不卖（`playerBuyable: false`）的商品不许被本事件"刷出卖单"**
+   * （船长 2026-09-14 转玩家反馈：「他那边出现了种族专属的陵卫指挥舰的 NPC 卖单（虽然无法交易），
+   * 怀疑是随机事件强行刷出的」——**确认属实**）：`rareGoods` 只挡了 AI 核心与常驻档，
+   * **没挡 `playerBuyable === false`**，而变体 0（黑市溢价现货）会直接往 `npcSell` 里 push ⇒ 强刷出
+   * 一件买不了的现货（种族专属舰船/装备/图纸那批 106 行都在这个池子里）。
+   * 处置：撞上这类商品时**降级走"神秘买家"那一支**——求购正是"只收"的那一半，本来就合法，
+   * 也给专属货留了销路；两支各消耗一次 `nextRandom` ⇒ **随机序列与改前逐位一致**（同种子的老档不受扰动）。
+   */
+  const wantsSupply = nextInt(state.rng, 2) === 0
+  if (wantsSupply && def.playerBuyable !== false) {
     // 变体 0：黑市溢价现货——价格 ≈行情价 ×1.8~2.0（高溢价应急渠道），仅存 8 分钟
     const mul = 1.8 + nextRandom(state.rng) * 0.2
     const price = clampPrice(ctx, def, Math.round(level * mul))

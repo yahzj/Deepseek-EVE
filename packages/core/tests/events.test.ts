@@ -28,6 +28,20 @@ const RARE_GOOD: MarketGoodDef = {
   basePrice: 20_000,
   demandMultiplier: 0.65, // 收购档位 rare（2026-09-08 船长定）
 }
+/**
+ * **只收不卖**的限定商品（2026-09-14 船长报障：玩家在限定奇货里看到"种族专属陵卫指挥舰"的 NPC 卖单，
+ * 点了却买不了）——`playerBuyable: false` 就是"只收不卖"那批（种族专属舰船/装备/图纸，共 106 行）。
+ * 这里用舰船形态（真 refId 在测试目录里不存在也没关系：`goodName` 会回落成 key）。
+ */
+const EXCLUSIVE_GOOD: MarketGoodDef = {
+  key: 'ship-wh-d-exclusive',
+  kind: 'ship',
+  refId: 'sh-wh-d-destroyer',
+  rarity: 'exotic',
+  basePrice: 2_600_000,
+  demandMultiplier: 0.75,
+  playerBuyable: false,
+}
 
 function eventCount(state: GameState): number {
   return state.logs.filter((l) => l.text.startsWith('✦')).length
@@ -127,6 +141,23 @@ describe('随机事件系统（V11）', () => {
     }
     expect(sells + buys).toBeGreaterThan(0)
     expect(sawBlack).toBe(true) // 文案与机制一致：明示溢价
+  })
+
+  it('**只收不卖的商品绝不会被刷出卖单**（船长 2026-09-14 转玩家反馈：种族专属陵卫指挥舰出现买不了的 NPC 卖单）', () => {
+    /**
+     * 根因（已查实）：`rareGoods`（市场奇货的抽选池）只挡了 AI 核心与常驻档，**没挡 `playerBuyable: false`**，
+     * 而变体 0「黑市溢价现货」直接往 `npcSell` 里 push ⇒ 会给种族专属舰船/装备/图纸**强刷一件买不了的现货**
+     * （点买入被 `market.buyGood` 挡回「该商品只收不卖，市场不出售现货」——正是玩家看到的那一幕）。
+     */
+    const state = createInitialState({ nowWallMs: 0, seed: 77 })
+    const ctx = makeTestCtx({ marketGoods: [POOL_GOOD, RARE_GOOD, EXCLUSIVE_GOOD] })
+    for (let k = 0; k < 200; k++) fireMarketOrderEvent(state, ctx)
+    // ① 一条卖单都不许有（改前这颗种子会强刷出"黑市溢价现货"）
+    expect(state.market.npcSell[EXCLUSIVE_GOOD.key] ?? []).toHaveLength(0)
+    // ② 「只收」那一半照旧：撞上它时降级成「神秘买家」求购（合法销路，专属货照样能出手）
+    expect((state.market.npcBuy[EXCLUSIVE_GOOD.key] ?? []).length).toBeGreaterThan(0)
+    // ③ 机制没被削弱：普通稀有件照旧出黑市现货
+    expect((state.market.npcSell[RARE_GOOD.key] ?? []).length).toBeGreaterThan(0)
   })
 
   it('v10 档迁移到 v11：events 默认播种为 0，往返保留 nextAtGameMs', () => {
