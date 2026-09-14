@@ -104,7 +104,7 @@ function n(v: number): string {
 }
 
 /**
- * **数字跳数**（船长 2026-09-13 拍板「⑦要」）：结算单里的 ISK 合计从 0 滚到目标值，
+ * **数字跳数**（船长 2026-09-13 拍板「⑦要」）：结算单里的 信用点 合计从 0 滚到目标值，
  * 220ms 一跳、共 `ms` 毫秒；纯前端表现，不碰任何数据。
  */
 function useCountUp(value: number, ms = 320): number {
@@ -1278,8 +1278,8 @@ export function WormholePanel({
 function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onConfirm: () => void }) {
   const total = useCountUp(settle.oreIsk + settle.wreckIsk)
   const cells: Array<{ label: string; value: string; sub: string }> = [
-    { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} ISK` },
-    { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: 'ISK' },
+    { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} 信用点` },
+    { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: '信用点' },
     { label: '遗迹安全货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
     { label: '随行战利品', value: String(settle.relics.length), sub: '件（装备 / 图纸）' },
   ]
@@ -1309,7 +1309,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
         ))}
       </div>
       <div className="app-wh-settle-total is-pop" style={{ animationDelay: `${(cells.length + 1) * STEP}ms` }}>
-        本趟到手合计 <b>{n(total)}</b> ISK
+        本趟到手合计 <b>{n(total)}</b> 信用点
         {settle.boxes.length > 0 ? ` · 货柜 ${settle.boxes.length} 件` : ''}
       </div>
       {settle.shipsLost.length > 0 ? (
@@ -1319,7 +1319,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
       ) : null}
       {settle.lostIsk > 0 ? (
         <div className="app-wh-settle-loss is-pop" style={{ animationDelay: `${(cells.length + 3) * STEP}ms` }}>
-          没带回来的货：约 {n(settle.lostIsk)} ISK（随编队一起丢了）
+          没带回来的货：约 {n(settle.lostIsk)} 信用点（随编队一起丢了）
         </div>
       ) : null}
       <div className="app-wh-actions app-wh-settle-actions">

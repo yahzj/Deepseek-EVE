@@ -1,6 +1,6 @@
 /**
  * 主界面壳（V14.1 UI 版）：
- * - 顶栏：游戏名 / 飞行员 / ISK / 在线时长 / 保存 / 重置
+ * - 顶栏：游戏名 / 飞行员 / 信用点 / 在线时长 / 保存 / 重置
  * - 顶部总菜单（原在窗口底部，移至顶部）：舰船 · 装配 · 物品 · 市场 · 工业 · 技能 · 星图
  *   （货仓已并入「物品」页的 仓库/货仓 子标签）；
  *   星图页内以标签切换三个功能区（矿带开采 / 星图·远征 / 悬赏情报）
@@ -10,7 +10,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { formatDurationMs, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
+import { formatDurationMs, moneyDelta, moneyExactText, moneyText, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -802,7 +802,10 @@ export function App({ engine }: { engine: GameEngine }) {
               </button>
             </>
           ) : null}
-          <span className="app-isk">{state.wallet.isk.toLocaleString('zh-CN')} ISK</span>
+          {/**
+           * ⚠ **金钱栏已移到左侧栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的出港上方」）
+           * ⇒ 顶栏这里不再显示余额，只留在线时长与公告/按钮。落点在 `app-nav-side` 首项上方。
+           */}
           <span className="app-clock">在线 {formatDurationMs(state.gameMs)}</span>
           <AnnouncementHub engine={engine} />
           <button
@@ -834,6 +837,16 @@ export function App({ engine }: { engine: GameEngine }) {
       <div className="app-workspace">
         <nav className="app-nav-side">
           <ShipStatusWin engine={engine} />
+          {/**
+           * **金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」＋
+           * 「更换金钱单位为**信用点**」＋「希望考虑到**钱位数过多**时的处理」）：
+           * - 位置 = 舰船状态窗之下、**第一个导航项（出港）之上**；
+           * - 值走 `ui/money.ts` 单点：`1 万`以下全写、到万/亿分级缩写，**精确值挂在 `title`**
+           *   （全站 title 走自绘提示层）⇒ 看得快、也查得到。
+           */}
+          <span className="app-isk app-wallet" title={`钱包余额：${moneyExactText(state.wallet.isk)}`}>
+            {moneyText(state.wallet.isk)}
+          </span>
           {NAV_ITEMS.map((item) => {
             const unreadN = item.key === 'comms' ? commsUnread : 0
             return (
@@ -1077,10 +1090,13 @@ export function App({ engine }: { engine: GameEngine }) {
             <div className="app-report-line">
               钱包：
               <b className={offlineReport.iskDelta >= 0 ? 'app-trend-up' : 'app-trend-down'}>
-                {offlineReport.iskDelta >= 0 ? '+' : '−'}
-                {Math.abs(offlineReport.iskDelta).toLocaleString('zh-CN')}
+                {moneyDelta(offlineReport.iskDelta)}
               </b>{' '}
-              ISK
+              信用点
+              {/**
+               * ⚠ 这里**保留全精度**（不走万/亿分级）：离线结算报告是"玩家要看清楚这趟挣了多少"的地方，
+               * 与左侧栏那个"一眼扫过"的余额栏用途不同（船长 2026-09-13 只要求处理"钱位数过多"的显示）。
+               */}
             </div>
             {offlineReport.items.length > 0 ? (
               <div className="app-report-line">

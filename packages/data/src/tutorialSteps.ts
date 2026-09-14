@@ -113,7 +113,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   {
     step: 2,
     title: '交付：补给协议·首批矿物',
-    goal: '去任务中心交付富凡晶石 ×20，领 4,000 ISK 与一枚基础 AI 核心',
+    goal: '去任务中心交付富凡晶石 ×20，领 4,000 信用点 与一枚基础 AI 核心',
     lines: [
       '【当前执行项｜第 2 步】',
       '前往任务中心交付。',
@@ -121,7 +121,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
       '01 矿石已入库。出港 →「任务中心」→ 重要任务。',
       '02 交付富凡晶石 ×20，从仓库扣取。',
       '【结算】',
-      '4,000 ISK 与一枚基础 AI 核心。',
+      '4,000 信用点 与一枚基础 AI 核心。',
     ],
     page: 'map',
     mapTab: 'task',
@@ -130,7 +130,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   },
   {
     step: 3,
-    title: '出售：把矿石换成 ISK',
+    title: '出售：把矿石换成 信用点',
     goal: '去物品页仓库，把富凡晶石「市价卖出」',
     lines: [
       '【当前执行项｜第 3 步】',

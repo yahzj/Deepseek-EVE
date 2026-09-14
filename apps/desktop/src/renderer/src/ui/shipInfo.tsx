@@ -1018,7 +1018,7 @@ export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | u
     { k: '单位体积', v: `${item.unitM3} m³` },
   ]
   if ((item.baseSellPriceIsk ?? 0) > 0) {
-    lines.push({ k: '站内收价', v: `${item.baseSellPriceIsk.toLocaleString('zh-CN')} ISK/单位` })
+    lines.push({ k: '站内收价', v: `${item.baseSellPriceIsk.toLocaleString('zh-CN')} 信用点/单位` })
   }
   if (item.refine !== undefined && item.refine.length > 0) {
     lines.push({

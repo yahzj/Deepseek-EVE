@@ -38,7 +38,7 @@ export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToas
   const deliver = (): void => {
     const r = engine.deliverTutorialOreAt()
     if (r.ok) {
-      onToast('交付完成：+4,000 ISK、基础 AI 核心 ×1。')
+      onToast('交付完成：+4,000 信用点、基础 AI 核心 ×1。')
     } else {
       onToast(r.error ?? '交付失败', true)
     }

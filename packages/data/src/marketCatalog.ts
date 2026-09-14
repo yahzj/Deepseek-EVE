@@ -28,7 +28,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 2026-09-05 船长：低级矿石/矿物是海量消耗品，池量与流量按"越低级越大"放大（稀有矿保持小）
   // 【2026-09-10 船长定：**按玩家生产能力标定**（原值按感觉定，17 个矿带里 15 个覆盖比 <1 = 采了卖不掉）。
   //   基准 = 掘洞级 + 满采矿技能 + 2×强化采集器 MK1（引擎实测 15.4k~20.0k 件/h ⇒ 日产 37~48 万件）；
-  //   规则 = **按单价分层覆盖比**：≤20 ISK → ×15（大宗）／≤200 → ×6（中阶）／≤400 → ×3（高阶）／>400 → ×2（顶级）；
+  //   规则 = **按单价分层覆盖比**：≤20 信用点 → ×15（大宗）／≤200 → ×6（中阶）／≤400 → ×3（高阶）／>400 → ×2（顶级）；
   //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
   //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
   //   低阶几乎不动（富凡 ×1.0、灼烧 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
@@ -155,7 +155,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 138500, demandMultiplier: 0.6 },
   // 2026-09-09 全蓝图化：全部装备可学蓝图自造（双渠道，现货保留）；蓝图书出现概率 −50%。
   // **蓝图价口径 2026-09-11 归一（船长裁决甲）**：书价 = 产物现货价 × 档位系数（民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3，
-  // 取整 500 ISK）——单点 = `blueprints.ts` 的 `blueprintTierCoefOf`，本表每行只做「与 blueprints.ts 同值」的落账。
+  // 取整 500 信用点）——单点 = `blueprints.ts` 的 `blueprintTierCoefOf`，本表每行只做「与 blueprints.ts 同值」的落账。
   { key: 'bp-laser-1', kind: 'blueprint', refId: 'bp-laser-1', rarity: 'common', basePrice: 132000, demandMultiplier: 0.6 }, // 轻型激光炮 MK1（蓝图=产物×2）
   { key: 'bp-missile-1', kind: 'blueprint', refId: 'bp-missile-1', rarity: 'common', basePrice: 124000, demandMultiplier: 0.6 }, // 轻型导弹架 MK1（蓝图=产物×2）
   { key: 'bp-drone-rack-1', kind: 'blueprint', refId: 'bp-drone-rack-1', rarity: 'common', basePrice: 24000, demandMultiplier: 0.6 }, // 无人机甲板扩展 MK1（蓝图=产物×2）
@@ -469,7 +469,7 @@ const BM_MK3_KEYS = new Set([
 ])
 
 /* ═══════════ 残骸收购卡（2026-09-08 船长定：残骸可到市场出售，单独分类；只收不卖） ═══════════
- * - 收价按残骸所在星系回收档（常/险/危，与精炼炉「残骸回收」档一致）：30 / 40 / 50 ISK·m³。
+ * - 收价按残骸所在星系回收档（常/险/危，与精炼炉「残骸回收」档一致）：30 / 40 / 50 信用点·m³。
  *   锚定口径（2026-09-08 修正）：三档无技能拆解保底均 ≈57/m³（Y×池均价反推齐平）——
  *   卖价必须**严格低于 57**（任何档直接卖都不如拆解），同时对"该档典型特色回收（含 m）"
  *   ≈ 50% 上下（常 60 / 险 71 / 危 97 估算 → 30/40/50 ≈ 50%/56%/52%）——拆解 + 彩头 + 碎片 +
@@ -479,7 +479,7 @@ const BM_MK3_KEYS = new Set([
  */
 
 const GALAXY_SEC = new Map(GALAXIES.map((g) => [g.id, typeof g.security === 'number' ? g.security : 0.5]))
-/** 残骸站内收价（ISK/m³；档位 = 该星系基础密度回收档：常 <20 / 险 20~29 / 危 ≥30） */
+/** 残骸站内收价（信用点/m³；档位 = 该星系基础密度回收档：常 <20 / 险 20~29 / 危 ≥30） */
 const WRECK_BUY_PRICE = { common: 30, risky: 40, dire: 50 } as const
 
 export const WRECK_BUY_GOODS: readonly MarketGoodDef[] = ANOMALIES.filter((a) => a.hidden !== true).map((a) => {

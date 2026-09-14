@@ -1,12 +1,12 @@
 /**
- * 蓝图表（M2 + V10）：ISK 购买蓝图书学习后永久可造；每次制造扣矿物材料 + 时间
+ * 蓝图表（M2 + V10）：信用点 购买蓝图书学习后永久可造；每次制造扣矿物材料 + 时间
  * （制造费 2026-09-08 船长定取消；buildCostIsk 字段保留为历史遗留数据）。
  *
  * V10 新增：民用档 ×3（平价常驻、新手入门）与 MK3 攻坚档 ×3（市场稀有、材料含同位聚晶/星髓晶；
  * MK3 蓝图学习需协会声望 4）。材料全部来自精炼产物（挖矿 → 精炼 → 制造闭环）。
  *
  * **2026-09-11 船长：「调整所有蓝图到合适价格」→ 裁决「甲」**：装备/物品蓝图书价一律按
- * **档位系数**定——`奇货 ×4 · 民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`（乘**产物现货价**，取整到 500 ISK）；
+ * **档位系数**定——`奇货 ×4 · 民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`（乘**产物现货价**，取整到 500 信用点）；
  * 系数即**默认值**，个例可用 `BLUEPRINT_PRICE_OVERRIDES` 单独覆盖（船长同日：「如果有单独调整过的则允许覆盖默认值」）。
  * 单点实现 = `blueprintTierCoefOf()`（下方），`tools/content-check.ts` 的「蓝图价格口径契约」据此校验。
  * 背景：2026-09-10「MK2/MK3 装备价对齐同级武器价」那次只改了成品价、**书价没跟**，
@@ -20,7 +20,7 @@ import type { BlueprintDef, MarketRarity } from '@whale/core'
  * - **奇货档（市场稀有度 `exotic`）默认 ×4**（船长：「蓝图价格排除奇货档。奇货档默认 4 倍」）——
  *   奇货**不参与** MK 档阶梯，单列一档；
  * - 其余按蓝图 id 后缀判档：`-3` = MK3（×3）· `-2` = MK2（×2.5）· 其余（民用/基础/MK1）= ×2。
- * **书价 = 产物现货价 × 本系数**（取整到 500 ISK）；改系数只改这一处。
+ * **书价 = 产物现货价 × 本系数**（取整到 500 信用点）；改系数只改这一处。
  * `rarity` **必填**（奇货档只能从市场行取，漏传会算错档 ⇒ 由类型强制）。
  */
 export function blueprintTierCoefOf(
@@ -33,7 +33,7 @@ export function blueprintTierCoefOf(
   return { tier: 1, coef: 2, label: '民用/基础/MK1' }
 }
 
-/** 书价取整粒度（船长口径：合适价格取整到 500 ISK） */
+/** 书价取整粒度（船长口径：合适价格取整到 500 信用点） */
 export const BLUEPRINT_PRICE_STEP = 500
 
 /**
@@ -57,7 +57,7 @@ export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number;
 }
 
 /**
- * 按系数算出的**应有书价**：① 有单独覆盖 → 用覆盖价；② 否则 = 产物现货价 × 档位系数（取整 500 ISK）。
+ * 按系数算出的**应有书价**：① 有单独覆盖 → 用覆盖价；② 否则 = 产物现货价 × 档位系数（取整 500 信用点）。
  * `rarity` 传该蓝图的市场行稀有度（奇货档 ×4 由它决定）。
  */
 export function blueprintBookPriceOf(bpId: string, productPrice: number, rarity: MarketRarity): number {
@@ -287,7 +287,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '动能弹生产线蓝图',
     itemId: 'ammo-kinetic-l',
     outputUnits: 120,
-    materials: [{ itemId: 'min-tritanium', count: 48 }], // 384 ISK ≈ 720×0.53
+    materials: [{ itemId: 'min-tritanium', count: 48 }], // 384 信用点 ≈ 720×0.53
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 12,
     priceIsk: 1350, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
@@ -298,7 +298,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '爆破导弹生产线蓝图',
     itemId: 'ammo-explosive-l',
     outputUnits: 120,
-    materials: [{ itemId: 'min-pyerite', count: 40 }], // 480 ISK ≈ 840×0.57
+    materials: [{ itemId: 'min-pyerite', count: 40 }], // 480 信用点 ≈ 840×0.57
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 15,
     priceIsk: 1650, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
@@ -309,7 +309,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '能量弹药生产线蓝图',
     itemId: 'ammo-plasma-l',
     outputUnits: 120,
-    materials: [{ itemId: 'min-mexallon', count: 26 }], // 520 ISK ≈ 960×0.54
+    materials: [{ itemId: 'min-mexallon', count: 26 }], // 520 信用点 ≈ 960×0.54
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 18,
     priceIsk: 1950, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
@@ -321,7 +321,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '动能弹 MK2 生产线蓝图',
     itemId: 'ammo-kinetic-2',
     outputUnits: 120,
-    materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 ISK ≈ 5,400×0.55
+    materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 信用点 ≈ 5,400×0.55
     buildSeconds: 10,
     buildCostIsk: 90,
     priceIsk: 9_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
@@ -332,7 +332,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '爆破导弹 MK2 生产线蓝图',
     itemId: 'ammo-explosive-2',
     outputUnits: 120,
-    materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 ISK ≈ 7,200×0.55
+    materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 信用点 ≈ 7,200×0.55
     buildSeconds: 10,
     buildCostIsk: 120,
     priceIsk: 12_750, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
@@ -343,7 +343,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '能量弹药 MK2 生产线蓝图',
     itemId: 'ammo-plasma-2',
     outputUnits: 120,
-    materials: [{ itemId: 'min-starcore', count: 22 }], // 5,390 ISK ≈ 9,600×0.56
+    materials: [{ itemId: 'min-starcore', count: 22 }], // 5,390 信用点 ≈ 9,600×0.56
     buildSeconds: 10,
     buildCostIsk: 160,
     priceIsk: 18_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
@@ -356,8 +356,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'repairkit-civ',
     outputUnits: 5,
     materials: [
-      { itemId: 'min-tritanium', count: 850 }, // 6,800 ISK
-      { itemId: 'min-pyerite', count: 120 }, // 1,440 ISK
+      { itemId: 'min-tritanium', count: 850 }, // 6,800 信用点
+      { itemId: 'min-pyerite', count: 120 }, // 1,440 信用点
     ], // 8,240 ≈ 15,000(3,000×5)×0.55
     buildSeconds: 30, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（90s→30s）
     buildCostIsk: 600,
@@ -370,8 +370,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'repairkit-mil',
     outputUnits: 3,
     materials: [
-      { itemId: 'min-mexallon', count: 1_100 }, // 22,000 ISK
-      { itemId: 'min-pyerite', count: 1_050 }, // 12,600 ISK
+      { itemId: 'min-mexallon', count: 1_100 }, // 22,000 信用点
+      { itemId: 'min-pyerite', count: 1_050 }, // 12,600 信用点
     ], // 34,600 ≈ 63,000(21,000×3)×0.55
     buildSeconds: 40, // 船长 2026-09-06：修理组件批产,生产时长缩至原 1/3（120s→40s）
     buildCostIsk: 1_200,
@@ -560,9 +560,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '无人机中继天线 MK1蓝图',
     moduleId: 'mod-drone-relay-1',
     materials: [
-      { itemId: 'min-tritanium', count: 400 }, // 3,200 ISK
-      { itemId: 'min-pyerite', count: 130 }, // 1,560 ISK
-      { itemId: 'min-mexallon', count: 80 }, // 1,600 ISK
+      { itemId: 'min-tritanium', count: 400 }, // 3,200 信用点
+      { itemId: 'min-pyerite', count: 130 }, // 1,560 信用点
+      { itemId: 'min-mexallon', count: 80 }, // 1,600 信用点
     ], // 6,360 ≈ 15,000×0.42
     buildSeconds: 180, // 无人机中继天线 MK1（2026-09-10；材料≈产物价×0.42、蓝图=产物×2）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -574,10 +574,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '无人机中继天线 MK2蓝图',
     moduleId: 'mod-drone-relay-2',
     materials: [
-      { itemId: 'min-tritanium', count: 8_350 }, // 20,800 ISK
-      { itemId: 'min-pyerite', count: 2_550 }, // 9,480 ISK
-      { itemId: 'min-mexallon', count: 1_200 }, // 7,500 ISK
-      { itemId: 'min-nocxium', count: 900 }, // 25,200 ISK
+      { itemId: 'min-tritanium', count: 8_350 }, // 20,800 信用点
+      { itemId: 'min-pyerite', count: 2_550 }, // 9,480 信用点
+      { itemId: 'min-mexallon', count: 1_200 }, // 7,500 信用点
+      { itemId: 'min-nocxium', count: 900 }, // 25,200 信用点
     ], // 62,980 ≈ 150,000×0.42
     buildSeconds: 900, // 无人机中继天线 MK2（2026-09-10；材料≈产物价×0.42、蓝图=产物×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -589,10 +589,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '无人机中继天线 MK3蓝图',
     moduleId: 'mod-drone-relay-3',
     materials: [
-      { itemId: 'min-tritanium', count: 30_000 }, // 43,680 ISK
-      { itemId: 'min-pyerite', count: 9_550 }, // 20,820 ISK
-      { itemId: 'min-mexallon', count: 5_700 }, // 20,800 ISK
-      { itemId: 'min-nocxium', count: 4_950 }, // 81,000 ISK
+      { itemId: 'min-tritanium', count: 30_000 }, // 43,680 信用点
+      { itemId: 'min-pyerite', count: 9_550 }, // 20,820 信用点
+      { itemId: 'min-mexallon', count: 5_700 }, // 20,800 信用点
+      { itemId: 'min-nocxium', count: 4_950 }, // 81,000 信用点
     ], // 166,300 ≈ 400,000×0.42
     buildSeconds: 2000, // 无人机中继天线 MK3（2026-09-10；材料≈产物价×0.42、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -1255,9 +1255,9 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '协处理器 MK1 蓝图',
     moduleId: 'mod-cpu-1',
     materials: [
-      { itemId: 'min-tritanium', count: 13_000 }, // 104,000 ISK
-      { itemId: 'min-pyerite', count: 4_000 }, // 48,000 ISK
-      { itemId: 'min-mexallon', count: 1_100 }, // 22,000 ISK
+      { itemId: 'min-tritanium', count: 13_000 }, // 104,000 信用点
+      { itemId: 'min-pyerite', count: 4_000 }, // 48,000 信用点
+      { itemId: 'min-mexallon', count: 1_100 }, // 22,000 信用点
     ],
     buildSeconds: 900, // 协处理器 MK1（材料≈产物价×0.45、蓝图=产物×2）
     buildCostIsk: 0,
@@ -1269,10 +1269,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '协处理器 MK2 蓝图',
     moduleId: 'mod-cpu-2',
     materials: [
-      { itemId: 'min-tritanium', count: 47_500 }, // 380,000 ISK
-      { itemId: 'min-pyerite', count: 13_500 }, // 162,000 ISK
-      { itemId: 'min-mexallon', count: 8_200 }, // 164,000 ISK
-      { itemId: 'min-nocxium', count: 1_850 }, // 166,500 ISK
+      { itemId: 'min-tritanium', count: 47_500 }, // 380,000 信用点
+      { itemId: 'min-pyerite', count: 13_500 }, // 162,000 信用点
+      { itemId: 'min-mexallon', count: 8_200 }, // 164,000 信用点
+      { itemId: 'min-nocxium', count: 1_850 }, // 166,500 信用点
     ],
     buildSeconds: 1900, // 协处理器 MK2（材料≈产物价×0.45、蓝图=产物×2.5）
     buildCostIsk: 0,
