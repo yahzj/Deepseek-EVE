@@ -855,7 +855,7 @@ function gridActionBlocked(run: WormholeRunState): string | null {
    */
   const pending = run.tempGrid?.placements.length ?? 0
   if (pending > 0) {
-    return `临时空间里有 ${pending} 件没处理：先到「背包」页放回货仓或丢弃，再继续。`
+    return `临时空间里有 ${pending} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。`
   }
   return null
 }

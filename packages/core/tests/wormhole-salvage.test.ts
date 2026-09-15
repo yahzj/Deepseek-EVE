@@ -222,7 +222,7 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
     expect(r.left).toBe(6) // 一堆都没进（同一物品并格 ⇒ 直接溢出）
     expect(cell.piles).toHaveLength(6)
     expect(run.turnsLeft).toBe(turnsBefore - 1)
-    expect(state.logs.some((l) => l.text.includes('背包放不下'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('货仓放不下'))).toBe(true)
   })
 
   it('**激活入口走打捞入口**：`wormholeActivateAt` 对墓场格执行打捞（不是"激活一下就没收")', () => {
