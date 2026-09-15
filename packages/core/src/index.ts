@@ -940,8 +940,7 @@ export {
   wormholeGridTravel,
   wormholeGridActivate,
   WORMHOLE_PLACE_TEXT,
-  // 撤离战从第几层起生效（船长 2026-09-13：「撤离战只从第二层开始生效」）
-  WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
+  // ⚠ 2026-09-15 撤离战取消 ⇒ `WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH` 已删除（不再有"第几层起要打"）
   // 逃生门判据（回合走不动了 ⇒ 撤离放行；撤离与界面按钮共用）
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
@@ -976,6 +975,7 @@ export {
   WORMHOLE_FAMILY_TARGETING_CHANCE,
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_BOSS_THREAT_MUL,
+  // ⚠ 2026-09-15 撤离战取消：下面三条撤离战威胁常量与 `wormholeExtractThreat` **退役留档**（只为读老档）
   WORMHOLE_EXTRACT_THREAT_MUL,
   // 层末守卫的选靶倾向概率（船长 2026-09-14「挨个定为 60%」）
   WORMHOLE_BOSS_TARGETING_CHANCE,
@@ -1237,6 +1237,8 @@ export {
 export {
   WORMHOLE_MATTER_DEVICES,
   WORMHOLE_MATTER_DEVICE_IDS,
+  // 抽取池（已排除退役项；2026-09-15 撤离掩护器退役）
+  WORMHOLE_MATTER_DRAW_POOL,
   WORMHOLE_MATTER_BUFFS_NONE,
   wormholeMatterDeviceOf,
   wormholeIsMatterDevice,

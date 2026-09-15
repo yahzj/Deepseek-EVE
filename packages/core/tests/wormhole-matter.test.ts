@@ -21,11 +21,13 @@ import { wormholeEnter, wormholeExtract } from '../src/wormhole'
 import {
   WORMHOLE_MATTER_DEVICES,
   WORMHOLE_MATTER_DEVICE_IDS,
+  WORMHOLE_MATTER_DRAW_POOL,
   WORMHOLE_MATTER_ENEMY_HIT_DOWN_CAP,
   WORMHOLE_MATTER_EVASION_CAP,
   wormholeMatterApplyTurnDelta,
   wormholeMatterBuffs,
   wormholeMatterDeviceAt,
+  wormholeMatterDeviceOf,
   wormholeMatterDiscardHint,
   wormholeMatterThreatMul,
 } from '../src/wormholeMatter'
@@ -75,6 +77,29 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
       const shape = wormholeShapeOf(d.id)
       expect(shape.w * shape.h).toBe(4)
     }
+  })
+
+  /**
+   * **退役装置**（2026-09-15 船长「虫洞的撤离战取消吧」带出的第一批）：
+   * 撤离掩护器只能压"撤离战威胁"，而撤离战整条退役 ⇒ 它**留档但不再抽出**。
+   * 这条同时钉住三件事：① 退役项仍在装置表里（老档读得懂）；② 抽取池排除它（不再产出）；
+   * ③ 真按散列抽 2000 次也抽不到它（`wormholeMatterDeviceAt` 的池子已换）。
+   */
+  it('①b 退役装置：撤离掩护器留档可读、但不进抽取池（抽 2000 次也抽不到）', () => {
+    const dev = wormholeMatterDeviceOf('mat-extract-cover')
+    expect(dev, '退役项仍要在装置表里（老档货仓里可能正带着它）').toBeDefined()
+    expect(dev!.name).toBe('撤离掩护器')
+    expect(dev!.retired).toBe(true)
+    expect(
+      WORMHOLE_MATTER_DRAW_POOL.some((d) => d.id === 'mat-extract-cover'),
+      '退役项不该在抽取池里',
+    ).toBe(false)
+    expect(WORMHOLE_MATTER_DRAW_POOL.every((d) => d.retired !== true)).toBe(true)
+    const hits = new Set<string>()
+    for (let i = 0; i < 2000; i++) hits.add(wormholeMatterDeviceAt(i, (i % 8) + 1, `cell-${i}`).id)
+    expect(hits.has('mat-extract-cover'), '抽 2000 格都不该出现退役项').toBe(false)
+    // 池子覆盖了其余全部在役装置（排除退役后不是"抽来抽去只有几种"）
+    expect(hits.size).toBeGreaterThan(5)
   })
 
   it('② 每层保底 1 个谜质格（多 seed × 多层真数一遍）', () => {

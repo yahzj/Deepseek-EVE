@@ -779,7 +779,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质铺开的一层压制场：本层的节点战、守卫战与撤离战都会更轻。占货仓 2×2 格，离开虫洞即失效。',
+    description: '谜质铺开的一层压制场：本层的节点战与守卫战都会更轻。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
     id: 'mat-boss-analyzer',
@@ -790,12 +790,18 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     description: '谜质里读出的守卫编成：层末守卫的威胁明显下降。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
+    /**
+     * ⚠ **退役留档（2026-09-15 船长「虫洞的撤离战取消吧」）**：撤离战整条退役 ⇒ 本装置**不再从谜质里抽出**
+     * （core 的 `WORMHOLE_MATTER_DRAW_POOL` 已排除退役项）。物品卡与 core 装置条目**保留不删**：
+     * 老档货仓里可能正带着它（谜质是本趟限定物），删掉会变成"读不懂的东西"；体检的「谜质契约」也要求
+     * core 装置表与 data 物品表（`kind: 'matter'`）逐字一致。说明改成"已不再提供增益"以免误导玩家。
+     */
     id: 'mat-extract-cover',
     name: '撤离掩护器',
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质撑起的撤离掩护：拦截舰队的威胁明显下降。占货仓 2×2 格，离开虫洞即失效。',
+    description: '谜质凝成的一层薄壳：如今只剩形态，不再提供增益。占货仓 2×2 格，离开虫洞即失效。',
   },
   /* ── B1 批：战斗类（一律只在本趟虫洞的战斗里生效）── */
   {
