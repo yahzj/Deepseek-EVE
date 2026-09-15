@@ -2,8 +2,11 @@
  * **终局玩法「虫洞」· 层收益校准**（正式入库；F 批 · 2026-09-13）。
  *
  * 用途：把「深层收益应该比难度曲线要更高」（船长 2026-09-13）从口号变成**可复跑的读数**——
- * 逐层跑真实战斗推演（普通节点 / 层末守卫 / 撤离战）并算出该层的**期望原矿收益**，
+ * 逐层跑真实战斗推演（普通节点 / 层末守卫）并算出该层的**期望原矿收益**，
  * 最后判定「**单位威胁收益**是否逐层严格上升」。
+ *
+ * ⚠ **2026-09-15 撤离战退役**（船长「虫洞的撤离战取消吧」）：撤离不再触发战斗 ⇒
+ * 本工具的单场解析表**删掉「撤离战胜率」列**，整趟模式里"撤离"变成一次直接入港。
  *
  * 用法：
  *   npx tsx tools/wormhole-econ.ts                 # 默认 8 层 · 每节点 1 波 · 5 播种
@@ -13,7 +16,8 @@
  *   npx tsx tools/wormhole-econ.ts --runs=20 --start-depth=4 --fit=auto   # 空降到第 4 层跑（★星云层）
  *
  * 口径（与引擎同源，不另存一份）：
- * - 威胁：`wormholeLayerThreat(depth)`（层 1 = 45、每层 ×1.16）；BOSS ×1.2、撤离战 ×0.8；
+ * - 威胁：`wormholeLayerThreat(depth)`（层 1 = 45、每层 **×1.10**，2026-09-15 由 ×1.16 降下来）；
+ *   BOSS ×1.2（**撤离战 ×0.8 已于 2026-09-15 退役**）；
  * - 敌卡：`wormholeCardIdForRun({ depth, kind, nodeIndex })` —— **族锁 + 该层档位池**
  *   （层 1 只浅 / 层 2~3 中 2 : 浅 1 / 层 4+ 深 2 : 中 1 : 浅 1；守卫取最深已解锁档），
  *   与实战同一取值点；**分层血量修正**（浅 ×1 / 中 ×1.1 / 深 ×1.2）由引擎按卡 id 反查自动带上；
@@ -33,7 +37,8 @@
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v25**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-13**（当日核对：层威胁曲线 / 四族敌卡轮换 / 拾取堆生成 / 撤离战倍率）
+ *   - 本工具最后核对：**2026-09-15**（当日核对：层威胁曲线 / 洞内敌卡轮换 / 拾取堆生成 /
+ *     **撤离战退役**（船长「虫洞的撤离战取消吧」）——撤离不再触发战斗，解析表删掉该列）
  *   - 本工具最后跑过：**2026-09-13**
  *   - 判据：`CURRENT_STATE_VERSION − v25 ≥ 2` ⇒ **必须重跑核对**（存档结构跨了一个大版本）
  */
@@ -208,11 +213,12 @@ interface Cell {
   foeShots: number
 }
 
-/** 跑一场真实洞内战斗（推到分出胜负或打满上限） */
+/** 跑一场真实洞内战斗（推到分出胜负或打满上限）。
+ * ⚠ **撤离战（`'extract'`）2026-09-15 已退役**（船长「虫洞的撤离战取消吧」）⇒ 本工具不再跑它。 */
 function runOneBattle(
   seed: number,
   depth: number,
-  kind: 'node' | 'boss' | 'extract',
+  kind: 'node' | 'boss',
   nodeIndex: number,
   cardIndex?: number,
   fit: RefFit = 'full',
@@ -583,8 +589,9 @@ interface Policy {
   /**
    * 血量低于它就**不再硬打层末守卫**，直接开始撤离（`0` = 永远硬打）。
    *
-   * 船长 2026-09-13 改裁定后：撤离**无条件可以开始**（只是照打撤离战）⇒ 这条是"保守打法"的开关：
-   * 残血时保住已收集的货，把守卫（与更深层）让给下一次。负数/0 = 激进打法（永远硬打守卫拿深度）。
+   * 船长 2026-09-13 改裁定后：撤离**无条件可以开始**；⚠ 2026-09-15 起**撤离不再触发战斗**
+   * （「虫洞的撤离战取消吧」）⇒ 这条是"保守打法"的开关：残血时保住已收集的货，
+   * 把守卫（与更深层）让给下一次。负数/0 = 激进打法（永远硬打守卫拿深度）。
    */
   bossHpMin: number
 }
@@ -740,7 +747,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
       const miners = wormholeMinersOf(state, ctx)
       const hp = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
       const bossDone = (r.bossCleared ?? 0) >= r.depth
-      // ⓪ 回合走不动（逃生门）：只能撤离——撤离战照打（设计稿 §六）
+      // ⓪ 回合走不动（逃生门）：撤离（2026-09-15 起撤离零战斗、下一拍直接入港）
       if (r.turnsLeft <= 0) {
         const ex = wormholeExtract(r)
         if (!ex.ok) {
@@ -814,8 +821,9 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
        * ②b **打不过守卫就直接撤**（`--boss-hp=` 门槛）。
        *
        * 船长 2026-09-13 改裁定：「**玩家可以无条件开始撤离，但是依旧需要打撤离战**」⇒
-       * 残血时不必硬打守卫（实测：搜打撤编队在层 1 守卫战全灭），随时能走；代价是照打撤离战
-       * （威胁 ×0.8，比守卫软）。守卫**只堵"深入"**。
+       * 残血时不必硬打守卫（实测：搜打撤编队在层 1 守卫战全灭），随时能走。
+       * ⚠ **2026-09-15 起撤离不再触发任何战斗**（船长「虫洞的撤离战取消吧」）⇒ "随时能走"变成**零代价**；
+       * 守卫**只堵"深入"**。
        *
        * ⚠ 本工具早前那一版政策在这里"原地转圈磨回合、等回合耗尽走逃生门"——那正是旧闸门逼出来的歪招，
        * 已随新裁定删除（政策里留 `waits` 这一格是为了证明它现在恒为 0）。
@@ -1069,7 +1077,7 @@ function runRunsMode(): void {
       `参考编队 ${fleetLabel}「${fitText[fit]}」）`,
   )
   console.log(
-    `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，但照打撤离战）· ` +
+    `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，零战斗）· ` +
       `回合保留 ${pol.reserve} · 守卫血量门槛 ${pol.bossHpMin}（低于它就直接撤；守卫只堵深入）· ` +
       `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
   )
@@ -1239,7 +1247,8 @@ function runRunsMode(): void {
       '③ 整趟表记的是**到手额**（只有撤离成功才入港 ⇒ 全损 = 0）——两个数的差就是"没带回来"的部分；' +
       '④ 货柜（安全货柜 2×2 / **图纸货柜 2×1** · 2026-09-14 新增）与稀有残骸都**不计 ISK**，单列件数；⑤ 「ISK/威胁」是**资产口径**的旁证（应逐层上升）；' +
       '⑥ 政策不偷看 `grid.exit`，出口只由**信标**给出 ⇒ 读数里包含"找信标"的回合成本；' +
-      '⑦ 撤离开放（船长 2026-09-13：「玩家可以无条件开始撤离，但是依旧需要打撤离战」）⇒ ' +
+      '⑦ 撤离开放（船长 2026-09-13：「玩家可以无条件开始撤离，但是依旧需要打撤离战」；' +
+      '⚠ **2026-09-15 起撤离不再触发战斗**——「虫洞的撤离战取消吧」）⇒ ' +
       '「磨回合」列恒 0：旧闸门逼出来的"打不过就转圈耗回合"歪招已消失；守卫只堵**深入**。',
   )
 }
@@ -1257,7 +1266,7 @@ function main(): void {
     const cardId = WORMHOLE_FOE_CARD_IDS[ci]!
     console.log(`逐卡读数：第 ${dep} 层 · ${cardId}（${ctx.anomalies.get(cardId)?.name ?? '?'}）· 每节点 ${WAVES} 波 · ${SEEDS.length} 播种`)
     console.log(['模式', '胜率', '时长', '残血', '敌开火', '我开火'].join('\t'))
-    for (const kind of ['node', 'boss', 'extract'] as const) {
+    for (const kind of ['node', 'boss'] as const) {
       const c = avg(SEEDS.map((s) => runOneBattle(s, dep, kind, 0, ci, ANALYTIC_FIT)))
       console.log(
         [kind, `${Math.round(c.won * 100)}%`, `${c.sec.toFixed(0)}s`, `${Math.round(c.hpFrac * 100)}%`, c.foeShots.toFixed(0), ''].join('\t'),
@@ -1281,7 +1290,6 @@ function main(): void {
       '敌开火',
       '守卫胜率',
       '守卫残血',
-      '撤离战胜率',
       '层回合',
       '期望堆数',
       '期望原矿',
@@ -1296,7 +1304,6 @@ function main(): void {
   for (let d = 1; d <= LAYERS; d++) {
     const node = avg(SEEDS.map((s) => runOneBattle(s, d, 'node', 0, undefined, ANALYTIC_FIT)))
     const boss = avg(SEEDS.map((s) => runOneBattle(s, d, 'boss', 0, undefined, ANALYTIC_FIT)))
-    const extr = avg(SEEDS.map((s) => runOneBattle(s, d, 'extract', 0, undefined, ANALYTIC_FIT)))
     const loot = SEEDS.map((s) => layerLoot(s, d)).reduce(
       (acc, l) => ({
         piles: acc.piles + l.piles / SEEDS.length,
@@ -1317,14 +1324,13 @@ function main(): void {
     console.log(
       [
         d,
-        `${threat}（守卫 ${wormholeFoeThreat(d, 'boss')} / 撤离 ${wormholeFoeThreat(d, 'extract')}）`,
+        `${threat}（守卫 ${wormholeFoeThreat(d, 'boss')}）`,
         `${Math.round(node.won * 100)}%`,
         `${node.sec.toFixed(0)}s`,
         `${Math.round(node.hpFrac * 100)}%`,
         node.foeShots.toFixed(0),
         `${Math.round(boss.won * 100)}%`,
         `${Math.round(boss.hpFrac * 100)}%`,
-        `${Math.round(extr.won * 100)}%`,
         loot.cost.toFixed(1),
         loot.piles.toFixed(1),
         loot.units.toFixed(0),
@@ -1339,7 +1345,8 @@ function main(): void {
   for (let i = 1; i < analytic.length; i++) if (!(analytic[i]! > analytic[i - 1]!)) rising = false
   console.log(
     `\n① 收益曲线（解析口径：单堆收益系数 ÷ 威胁）逐层${rising ? '**严格上升** ✓' : '**未严格上升** ✗'}` +
-      `（口径 = 收益每层 ×1.2、威胁每层 ×1.16；船长 2026-09-13「深层收益应该比难度曲线要更高」）`,
+      `（口径 = 收益每层 ×1.2、威胁每层 ×1.10；船长 2026-09-13「深层收益应该比难度曲线要更高」；` +
+      `威胁增幅 2026-09-15 由 ×1.16 降为 ×1.10）`,
   )
   console.log(
     `② 实测每回合收益（ISK，已按该 seed 真实节点/堆数计）：${perTurn.map((v) => Math.round(v).toLocaleString('zh-CN')).join(' → ')}`,

@@ -48,7 +48,7 @@ export type WormholeMatterEffectKind =
   | 'threatAll'
   /** **层末守卫**威胁额外 −N%（只作用于 `kind === 'boss'`，计入同一个 −50% 合计） */
   | 'threatBoss'
-  /** **撤离战**威胁额外 −N%（只作用于 `kind === 'extract'`，计入同一个 −50% 合计） */
+  /** ⚠ **已退役（2026-09-15 撤离战取消）**：撤离战威胁额外 −N%（旧口径只作用于 `kind === 'extract'`） */
   | 'threatExtract'
   /* ── B1：战斗类（现算：开战时按货仓里的台数算好）── */
   /** 护盾层对**敌队主伤害系**的缺口 +N（走既有"缺口削减"合成，三层上限 0.9 不变） */
@@ -94,6 +94,12 @@ export interface WormholeMatterDevice {
   per: number
   /** 一句话作用（玩家向：货仓读数行与卡片用；**不写开发口径**） */
   text: string
+  /**
+   * ⚠ **退役留档**（2026-09-15 起）：为 true 的装置**不再从谜质里抽出**（见 `WORMHOLE_MATTER_DRAW_POOL`），
+   * 但**条目与物品卡保留**（老档货仓里可能正带着它；`content:check` 的谜质契约也要求 core 表与 data 表一致）。
+   * 首个退役项 = 撤离掩护器（撤离战取消）。
+   */
+  retired?: boolean
 }
 
 /** 四类封顶里的"威胁"档（船长 2026-09-13 点名的四类；其余一律不封顶） */
@@ -167,14 +173,14 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
     per: 8,
     text: '货仓有效格数 +8',
   },
-  /* ── B1 批：威胁类（三档合计 −50% 封顶）── */
+  /* ── B1 批：威胁类（两档合计 −50% 封顶）── */
   {
     id: 'mat-suppressor',
     short: '压制',
     name: '压制力场',
     effect: 'threatAll',
     per: 0.05,
-    text: '本层威胁 −5%（节点 / 守卫 / 撤离同源）',
+    text: '本层威胁 −5%（节点 / 守卫同源）',
   },
   {
     id: 'mat-boss-analyzer',
@@ -185,12 +191,21 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
     text: '层末守卫威胁 −10%',
   },
   {
+    /**
+     * ⚠ **已退役（2026-09-15 船长「虫洞的撤离战取消吧」）**：撤离战整条退役 ⇒ 本装置**不再从谜质里抽出**
+     * （`WORMHOLE_MATTER_DRAW_POOL` 已排除退役项）。
+     *
+     * 条目与物品卡**保留不删**，两个理由：① 老档货仓里可能正带着它（谜质是本趟限定物），删了会变成
+     * "读不懂的东西"；② `content:check` 的「谜质契约」要求 core 装置表与 data 物品表（`kind: 'matter'`）
+     * 逐字一致。⇒ 保留 = **退役留档**（照 B 族/F 族与退役窝点卡的先例），其效果列已无消费者。
+     */
     id: 'mat-extract-cover',
     short: '掩护',
     name: '撤离掩护器',
     effect: 'threatExtract',
     per: 0.1,
-    text: '撤离战威胁 −10%',
+    text: '谜质凝成的一层薄壳：已不再提供增益',
+    retired: true,
   },
   /* ── B1 批：战斗类 ── */
   {
@@ -311,6 +326,16 @@ export const WORMHOLE_MATTER_DEVICES: readonly WormholeMatterDevice[] = [
 /** 全部装置 id（形状表、闸门契约与用例共用一份） */
 export const WORMHOLE_MATTER_DEVICE_IDS: readonly string[] = WORMHOLE_MATTER_DEVICES.map((d) => d.id)
 
+/**
+ * **抽取池**（= 出谜质时按散列取哪一台的来源）：**排除退役项**。
+ *
+ * ⚠ 2026-09-15：撤离掩护器退役 ⇒ 它仍在 `WORMHOLE_MATTER_DEVICES`（老档要读得懂、契约要求两表一致），
+ * 但**不再会掉出来**。新增退役项只需在表里标 `retired: true`，池子自动跟随。
+ */
+export const WORMHOLE_MATTER_DRAW_POOL: readonly WormholeMatterDevice[] = WORMHOLE_MATTER_DEVICES.filter(
+  (d) => d.retired !== true,
+)
+
 const BY_ID: ReadonlyMap<string, WormholeMatterDevice> = new Map(WORMHOLE_MATTER_DEVICES.map((d) => [d.id, d]))
 
 /** 认 id 取定义（不是装置 ⇒ undefined） */
@@ -355,12 +380,12 @@ export interface WormholeMatterBuffs {
   oreYieldMul: number
   /** 货仓有效格数加成 */
   holdCells: number
-  /* ── B1：威胁（按用途分档；`node` = 层内节点战，`boss` = 层末守卫，`extract` = 撤离战）── */
-  /** 压制力场那部分（三档同源；1 = 不减） */
+  /* ── B1：威胁（按用途分档；`node` = 层内节点战，`boss` = 层末守卫）── */
+  /** 压制力场那部分（两档同源；1 = 不减） */
   threatNodeMul: number
   /** 守卫那部分（只作用 boss 档） */
   threatBossMul: number
-  /** 撤离那部分（只作用 extract 档） */
+  /** ⚠ **已退役（2026-09-15 撤离战取消）**：撤离那部分（旧口径只作用 extract 档）——无消费者 */
   threatExtractMul: number
   /* ── B1：战斗静态增益 ── */
   /** 三层对"敌队主伤害系"的缺口（各自 0.9 封顶；合成走既有"缺口削减"） */
@@ -425,9 +450,12 @@ export const WORMHOLE_MATTER_BUFFS_NONE: WormholeMatterBuffs = {
 }
 
 /**
- * 某用途的**威胁倍率**（三档独立算、**各自 −50% 封顶**）：
- * 「压制力场」三档同源，「守卫解析仪」只加在 boss 档，「撤离掩护器」只加在 extract 档。
- * 单位口径 = **乘数**（0.5 = 威胁减半），调用方 `Math.round(基础威胁 × mul)`。
+ * 某用途的**威胁倍率**（各档独立算、**各自 −50% 封顶**）：
+ * 「压制力场」两档同源（节点 / 守卫），「守卫解析仪」只加在 boss 档。
+ *
+ * ⚠ 2026-09-15：`'extract'` 档随撤离战**一并退役** —— 形参保留只为兼容老档调用点，
+ * `threatExtractMul` 已无产出源（撤离掩护器退役）。单位口径 = **乘数**（0.5 = 威胁减半），
+ * 调用方 `Math.round(基础威胁 × mul)`。
  */
 export function wormholeMatterThreatMul(buffs: WormholeMatterBuffs, kind: 'node' | 'boss' | 'extract'): number {
   const extra = kind === 'boss' ? buffs.threatBossMul : kind === 'extract' ? buffs.threatExtractMul : 1
@@ -476,6 +504,7 @@ export function wormholeMatterBuffs(hold: WormholeHoldState | null | undefined):
         threatBoss += v
         break
       case 'threatExtract':
+        // ⚠ 已退役（2026-09-15 撤离战取消）：保留累加只为读得懂老档的装置账，无消费者
         threatExtract += v
         break
       case 'resistShield':
@@ -543,11 +572,13 @@ export function wormholeMatterBuffs(hold: WormholeHoldState | null | undefined):
 /**
  * **某一格的谜质是哪一台**（层内每格恒定、可复现；不写存档 ⇒ 读档后仍然是同一台）。
  * 散列只用 (种子, 层, 格 key)：同格的装置跨存档 / 跨会话一致。
+ *
+ * ⚠ 取的是 **`WORMHOLE_MATTER_DRAW_POOL`（已排除退役项）**：2026-09-15 起撤离掩护器不再掉出。
  */
 export function wormholeMatterDeviceAt(seed: number, depth: number, cellKey: string): WormholeMatterDevice {
   let h = (Math.imul(seed | 0, 2654435761) ^ Math.imul(depth | 0, 40503)) >>> 0
   for (let i = 0; i < cellKey.length; i++) h = Math.imul(h ^ cellKey.charCodeAt(i), 16777619) >>> 0
-  return WORMHOLE_MATTER_DEVICES[h % WORMHOLE_MATTER_DEVICES.length]!
+  return WORMHOLE_MATTER_DRAW_POOL[h % WORMHOLE_MATTER_DRAW_POOL.length]!
 }
 
 /** 回合类装置：装上一台 = +N 回合；卸下一台 = −N 回合（`per` 已按台数折算） */

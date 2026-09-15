@@ -379,7 +379,7 @@ export const MODULES: readonly ModuleDef[] = [
     minRangeM: 500,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 3120,
+    reloadMs: 3432, // 2026-09-15 船长「**提高所有导弹发射器10%的周期**」：3120 → **3432**（周期 +10%，其余字段一字未动）
     dmgMult: 1.5,
   },
   {
@@ -396,7 +396,7 @@ export const MODULES: readonly ModuleDef[] = [
     minRangeM: 900,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 4800,
+    reloadMs: 5280, // 2026-09-15 船长「**提高所有导弹发射器10%的周期**」：4800 → **5280**（周期 +10%，其余字段一字未动）
     dmgMult: 4.39,
   },
   {
@@ -413,7 +413,7 @@ export const MODULES: readonly ModuleDef[] = [
     minRangeM: 1400,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 6000,
+    reloadMs: 6600, // 2026-09-15 船长「**提高所有导弹发射器10%的周期**」：6000 → **6600**（周期 +10%，其余字段一字未动）
     dmgMult: 6.04,
   },
 
@@ -1208,7 +1208,7 @@ export const MODULES: readonly ModuleDef[] = [
     minRangeM: 200,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 2200,
+    reloadMs: 2420, // 2026-09-15 船长「**提高所有导弹发射器10%的周期**」：2200 → **2420**（周期 +10%，其余字段一字未动）
     dmgMult: 2.6,
     cpuUse: 36,
     description:
@@ -1510,7 +1510,7 @@ export const MODULES: readonly ModuleDef[] = [
     // 2026-09-13 船长：「对所有敌方同时攻击」——**本轮已落码**（引擎 allFoes + 演出逐目标弹道）
     hitsAllFoes: true,
     falloff: 1, // 导弹家族口径：追踪命中，命中不随距离衰减
-    reloadMs: 7_600, // 代价：装填长
+    reloadMs: 8360, // 2026-09-15 船长「**提高所有导弹发射器10%的周期**」：7600 → **8360**（周期 +10%，其余字段一字未动）
     dmgMult: 9.68, // 船长审核：12.1 ×0.8（降低 20%）；≈ 导弹架 MK3 的 1.6 倍
     cpuUse: 58,
     description:

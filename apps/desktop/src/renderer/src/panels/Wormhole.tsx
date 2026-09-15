@@ -20,7 +20,6 @@ import { pinMarked } from '../ui/marks'
 import { Glyph, itemIconOf, itemToneOf } from '../ui/Glyphs'
 import {
   WORMHOLE_ADMISSION_TEXT,
-  WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
   WORMHOLE_MAX_SHIPS,
   /** 自动探索（批次 3 · 船长定案）：准备页在自动模式下共用同一套结构，只有读数与按钮换口径 */
   WORMHOLE_AUTO_MAX_SHIPS,
@@ -41,8 +40,9 @@ import {
   wormholeBagUsage,
   wormholeFleetCargoM3,
   wormholeFoeThreat,
-  wormholeExtractThreat,
   wormholeLayerThreat,
+  /** 玩家可见威胁的显示口径（×2；船长 2026-09-15「面板威胁乘以2」）——**只乘给人看的数字** */
+  wormholeDisplayThreat,
   WORMHOLE_HOLD_COLS,
   /** 临时空间（船长 2026-09-14）：4 列 × 8 行 = 32 格 */
   WORMHOLE_TEMP_CELLS,
@@ -275,16 +275,15 @@ export function WormholePanel({
   const matterBuffs = wormholeMatterBuffs(run?.hold)
   /**
    * **谜质压制后的威胁读数**（F3c B1）：界面与 core 走同一个 `wormholeMatterThreatMul`
-   * ⇒ 玩家看到的威胁就是开战真正吃的那个数（节点档 / 撤离档分开算）。
+   * ⇒ 玩家看到的威胁就是开战真正吃的那个数。
+   *
+   * ⚠ 2026-09-15 撤离战取消 ⇒ **只剩下节点档**（原先还有一档"撤离 ×0.8"的读数，随撤离战一并退役）。
    */
   const nodeThreat = run ? Math.round(wormholeLayerThreat(run.depth) * wormholeMatterThreatMul(matterBuffs, 'node')) : 0
-  const extractThreat = run
-    ? Math.round(wormholeExtractThreat(run.depth) * wormholeMatterThreatMul(matterBuffs, 'extract'))
-    : 0
   const matterThreatTip =
-    matterBuffs.threatNodeMul < 1 || matterBuffs.threatBossMul < 1 || matterBuffs.threatExtractMul < 1
-      ? `谜质压制已生效：节点 / 守卫 ×${matterBuffs.threatNodeMul.toFixed(2)} / ×${(matterBuffs.threatNodeMul * matterBuffs.threatBossMul).toFixed(2)} · 撤离 ×${(matterBuffs.threatNodeMul * matterBuffs.threatExtractMul).toFixed(2)}（合计最多 −50%）`
-      : '带一台「压制力场」就能把节点 / 守卫 / 撤离的威胁一起压下来（合计最多 −50%）。'
+    matterBuffs.threatNodeMul < 1 || matterBuffs.threatBossMul < 1
+      ? `谜质压制已生效：节点 / 守卫 ×${matterBuffs.threatNodeMul.toFixed(2)} / ×${(matterBuffs.threatNodeMul * matterBuffs.threatBossMul).toFixed(2)}（合计最多 −50%）`
+      : '带一台「压制力场」就能把节点 / 守卫的威胁一起压下来（合计最多 −50%）。'
   /** 当前格上还剩几堆（打捞/采集共用；按钮上显示"本次能回收几堆"） */
   const herePiles = hereCell?.piles ?? []
   /**
@@ -603,7 +602,7 @@ export function WormholePanel({
     else startAuto()
   }
 
-  /* ── 层内网格动作（F3a-2）：扫描 / 前往 / 激活，各 1 回合 ──
+  /* ── 层内网格动作（F3a-2）：扫描 / 前往 各 1 回合；**激活免费**（2026-09-15）；打捞 / 采集每次动作 1 回合 ──
      口径（船长 2026-09-13）：「玩家可以到达任意位置，包括未扫描，但是前往未扫描的地方需要
      警告玩家即将前往未知地点」⇒ 点未扫描的格**只摆警告**（不移动、不扣回合），
      等玩家点「确认前往」才真的走。核心侧同样有这道闸（`code === 'unknown-target'`），
@@ -750,15 +749,10 @@ export function WormholePanel({
       return
     }
     /**
-     * **撤离提醒**（船长 2026-09-13：「玩家撤离时提醒玩家需要进行撤离战（有敌人开始围堵你之类的）」）。
-     * 第 1 层按船长口径**没有拦截舰队** ⇒ 提示语换成"直接脱离"，别让玩家白紧张一场。
+     * **撤离提示**（船长 2026-09-13：「玩家撤离时提醒玩家需要进行撤离战」的旧口径）。
+     * ⚠ 2026-09-15 撤离战取消 ⇒ 提示语改为"直接入港"（不再分第 1 层 / 深层，也不再提拦截）。
      */
-    const depth = state.wormhole.run?.depth ?? 1
-    onToast(
-      depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
-        ? '脱离航道：第 1 层没有拦截舰队，货物直接入港。'
-        : '⚠ 敌人开始围堵你：撤离战马上开打——打赢才把货仓与货柜带回去；打不赢就是全损，编队与随行战利品一起留在洞里。',
-    )
+    onToast('脱离航道：货仓、货柜与随行战利品直接入港。')
   }
 
   /**
@@ -1027,11 +1021,12 @@ export function WormholePanel({
                   : '从「扫描虫洞」页选一处进洞 · 关掉面板即暂停（进度保存）'}
           </span>
           {/**
-           * **撤离按钮搬到「✕ 关闭」左侧，红色色系，两讨伐确认**（船长 2026-09-13：
+           * **撤离按钮搬到「✕ 关闭」左侧，红色色系，两次讨伐确认**（船长 2026-09-13：
            * 「撤离按钮放在关闭左侧，并用红色色系，玩家撤离时会警告玩家并需要确认」）。
            * 与「存档管理 · 删除备份」同一套确认语言：**点一下进入待确认态**（按钮变文案 + 危险红），
-           * 同时在页体顶部摆出警告条（写清"要不要打撤离战"），**再点一下才真的撤**；
-           * 5 秒不点自动解除，免得误触后一直挂着。战斗进行中一律禁用（见下）。
+           * 同时在页体顶部摆出确认条，**再点一下才真的撤**；5 秒不点自动解除，免得误触后一直挂着。
+           * 战斗进行中一律禁用（见下）。
+           * ⚠ 2026-09-15 撤离战取消：这一撤不再触发任何战斗（"交火中不能撤"照旧）。
            */}
           {!settle && run ? (
             <button
@@ -1050,7 +1045,7 @@ export function WormholePanel({
                   ? '交火中不能撤离：打完这一场'
                   : extractAsk
                     ? '再点一次确认撤离'
-                    : '撤离本趟：见页顶的警告（第 2 层起要打撤离战）'
+                    : '撤离本趟：见页顶的确认条（不消耗回合、不触发战斗）'
               }
             >
               {extractAsk ? '确认撤离' : '撤离'}
@@ -1438,26 +1433,26 @@ export function WormholePanel({
                   </span>
                 ) : null}
                 {/**
-                 * **威胁读数走谜质压制后的值**（F3c B1）：压制力场三档同源、守卫解析仪只压守卫、
-                 * 撤离掩护器只压撤离战；三档**各自 −50% 封顶**（在 core 的派生里夹好）。
+                 * **威胁读数走谜质压制后的值**（F3c B1）：压制力场压节点与守卫两档、守卫解析仪只压守卫；
+                 * 各档**各自 −50% 封顶**（在 core 的派生里夹好）。
+                 * ⚠ 2026-09-15 撤离战取消 ⇒ 原来的"撤离档"读数退役。
                  */}
                 <span className="app-wh-cell" title={matterThreatTip}>
-                  本层威胁 <b>{nodeThreat}</b>
+                  本层威胁 <b>{wormholeDisplayThreat(nodeThreat)}</b>
                 </span>
               </div>
               {grid && hereCell ? (
                 <>
                   {/**
-                   * **撤离警告条**（船长 2026-09-13：「玩家撤离时会警告玩家并需要确认」）：
-                   * 处于待确认态时摆在页体顶部（红档），写清"这一撤会发生什么"——第 1 层免战、第 2 层起要打拦截战。
+                   * **撤离确认条**（船长 2026-09-13：「玩家撤离时会警告玩家并需要确认」）：
+                   * 待确认时摆在页体顶部，写清"这一撤会发生什么"。
+                   * ⚠ 2026-09-15 撤离战取消 ⇒ 文案改为"不消耗回合、不触发战斗"，不再分第 1 层 / 深层两档。
                    */}
                   {extractAsk ? (
                     <div className="app-wh-extract-ask">
                       <span>
                         ⚠ 确认要撤离本趟吗？ 当前 <b>第 {run.depth} 层</b>
-                        {run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
-                          ? '：第 1 层没有拦截舰队，货物直接入港。'
-                          : `：拦截舰队会围堵你（威胁 ${extractThreat}）——打赢才把货仓与货柜带回去，打输 = 本趟全损。`}
+                        ：撤离不消耗回合、不会触发战斗，货仓、货柜与随行战利品<b>直接入港</b>（交火中不能撤）。
                       </span>
                       <span className="app-wh-actions">
                         <button
@@ -1640,16 +1635,16 @@ export function WormholePanel({
                       {!workCell && canActivate ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
+                          disabled={!!run.battle || actionBlocked !== null || fxBusy}
                           onClick={doActivate}
                           title={
                             atExit
-                              ? '激活下一层入口：迎战本层守卫（打完才能深入）'
-                              : '激活当前地点：按地点类型开战 / 取回谜质（1 回合）'
+                              ? '激活下一层入口：迎战本层守卫（打完才能深入 · 不消耗回合）'
+                              : '激活当前地点：按地点类型开战 / 取回谜质（不消耗回合）'
                           }
                         >
                           {atExit ? '迎战守卫' : '激活此地'}
-                          <span className="app-wh-scan-sub">1 回合</span>
+                          <span className="app-wh-scan-sub">不耗回合</span>
                         </button>
                       ) : null}
                       {bossDone ? (
@@ -1661,7 +1656,7 @@ export function WormholePanel({
                         >
                           继续深入
                           <span className="app-wh-scan-sub">
-                            第 {run.depth + 1} 层 · 威胁 {wormholeLayerThreat(run.depth + 1)}
+                            第 {run.depth + 1} 层 · 威胁 {wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}
                           </span>
                         </button>
                       ) : null}
@@ -1671,11 +1666,12 @@ export function WormholePanel({
                   <div className="app-wh-actions">
                     <span className="app-dim">点格子前往（不限距离 · 1 回合）</span>
                   </div>
+                  {/**
+                   * 撤离进行中的一行读数：`extracting` 只是"已发起撤离、下一拍结算"（2026-09-15 起
+                   * 撤离不再触发战斗）⇒ 原来的「拦截舰队正在围堵你」警示条退场。
+                   */}
                   {run.phase === 'extracting' && !run.battle ? (
-                    <div className="app-wh-ask">
-                      ⚠ 撤离战：拦截舰队正在围堵你——战斗马上开始，打赢才把货仓与货柜带回去
-                      （打输 = 本趟全损）。
-                    </div>
+                    <div className="app-wh-ask">正在脱离航道：货仓与货柜马上入港。</div>
                   ) : null}
                   {/**
                    * **动作闸提示**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
@@ -1709,7 +1705,7 @@ export function WormholePanel({
                     </div>
                   ) : null}
                   {outOfTurns ? (
-                    <div className="app-wh-ask">回合已耗尽：只能撤离（撤离战照打——打不赢就是全损，编队与随行战利品一起留在洞里）。</div>
+                    <div className="app-wh-ask">回合已耗尽：随时可以撤离（撤离不消耗回合、不触发战斗，货仓与货柜直接入港）。</div>
                   ) : null}
                 </>
               ) : (
@@ -1845,8 +1841,10 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
           {settle.kind === 'lost'
             ? '编队失联，货全丢了'
             : settle.skippedExtractBattle === true
-              ? '第 1 层没有拦截舰队（直接脱离）'
-              : '打赢了撤离战'}
+              ? // 老档的结算单会带这个标记（旧口径「第 1 层免撤离战」）——照旧读得懂
+                '第 1 层没有拦截舰队（直接脱离）'
+              : // 现行口径（2026-09-15 起）：撤离一律不触发战斗，老档里打赢过撤离战的也归到这一句
+                '已脱离航道'}
         </span>
       </div>
       <div className="app-wh-settle-grid">

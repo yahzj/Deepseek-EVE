@@ -25,7 +25,6 @@ import {
   wormholeGridTravel,
   wormholeTrimBag,
   type WormholeActivateEffect,
-  WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH,
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
@@ -55,13 +54,17 @@ import {
  * **开一场洞内战斗**（船长 2026-09-13：4 艘同时参战）。
  * - `kind='node'`：打**当前所在地点**（网格层：必须站在"舰船信号"地点上；老档线性层：`pendingNode.kind === 'combat'`）；
  * - `kind='boss'`：层末守卫（网格层：必须站在"下一层入口"上；老档线性层：层内节点走完）；
- * - `kind='extract'`：撤离战（相位已在 `extracting`）。
+ * - `kind='ruins'`：遗迹收尾战（打捞完之后按确认条开打）。
+ *
+ * ⚠ **`'extract'` 撤离战已于 2026-09-15 退役**（船长「虫洞的撤离战取消吧」）⇒ 本函数**不再接受**它
+ * （参数类型用 `Exclude<…, 'extract'>` 卡住）；老档里**已经在打**的撤离战仍由 `settleWormholeBattle`
+ * 收口（那里保留 `'extract'` 分支只为兼容旧档）。
  * 战斗宿主 = `run.battle`（**不占** `expedition.battle`，故不走远征结算）。
  */
 export function wormholeStartBattle(
   state: GameState,
   ctx: SimContext,
-  kind: WormholeFoeKind,
+  kind: Exclude<WormholeFoeKind, 'extract'>,
   atGameMs: number = state.gameMs,
   /**
    * **校准用覆写**（可选）：只给 `tools/wormhole-econ.ts` 的**整趟模拟**做强度扫描用
@@ -96,8 +99,6 @@ export function wormholeStartBattle(
     if (!grid) return { ok: false, error: '遗迹收尾战只在网格层成立。' }
     if (here?.place !== 'ruins') return { ok: false, error: '这里不是遗迹。' }
     if ((here.piles ?? []).length > 0) return { ok: false, error: '遗迹还没打捞完：先捞空再打。' }
-  } else if (run.phase !== 'extracting') {
-    return { ok: false, error: '还没进入撤离相位。' }
   }
   const waves = kind === 'node' && !grid ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
   /**
@@ -332,7 +333,8 @@ function wormholeBattleReport(
   const what = kind === 'boss'
     ? `第 ${run.depth} 层守卫`
     : kind === 'extract'
-      ? '撤离战'
+      ? // ⚠ 仅老档（撤离战 2026-09-15 退役）：文案避开已退役的机制名「撤离战」，写「撤离」
+        '撤离'
       : kind === 'ruins'
         ? `第 ${run.depth} 层遗迹守军`
         : run.grid
@@ -482,8 +484,8 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     /**
      * **结构化战报**（2026-09-14 船长定）：洞内全损 = 我方全灭那一档 ⇒ `lose`，
      * 沉船名单用**整趟丢掉的这批**（含"这一场沉掉的 + 还活着但整趟判负的"）。
-     * ⚠ 撤离战（`extract`）**不弹战报弹层**（那一场由虫洞结算单说话）⇒ 这份记录只在
-     * 节点/守卫/遗迹那几种用途上会被读到；写它只是为了四类战斗同源。
+     * ⚠ 老档的撤离战（`extract`）**不弹战报弹层**（那一场由虫洞结算单说话）⇒ 这份记录只在
+     * 节点/守卫/遗迹那几种用途上会被读到；写它只是为了各类战斗同源。**新趟已无撤离战**（2026-09-15 退役）。
      */
     captureBattleReport(state, battle, { source: 'wormhole', outcome: 'lose', summary: lostText, shipsLost: lostNames })
     /**
@@ -521,6 +523,8 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   }
   // ── 胜：按战斗用途分流 ──
   if (kind === 'extract') {
+    // ⚠ **仅老档**（2026-09-15 撤离战退役）：存档里已经在打的撤离战打赢 ⇒ 照旧入港收口。
+    // 新趟不会再产生 `kind='extract'` 的战斗（`wormholeStartBattle` 已不接受该用途）。
     deliverExtraction(state, ctx, run)
     state.wormhole.run = null
     return
@@ -629,7 +633,8 @@ export function wormholeBattleViewOf(
     spec.kind === 'boss'
       ? '层末守卫'
       : spec.kind === 'extract'
-        ? '撤离战'
+        ? // ⚠ 仅老档（撤离战 2026-09-15 退役）：标题避开已退役的机制名
+          '撤离'
         : spec.kind === 'ruins'
           ? `第 ${spec.depth} 层遗迹守军`
           : `第 ${spec.depth} 层`
@@ -703,19 +708,14 @@ export function deliverWormholeCores(
 }
 
 /**
- * **撤离成功的收口**（船长 2026-09-13 的收口点之一，两处调用）：
- * ① 撤离战打赢（`settleWormholeBattle`）；② **第 1 层免战**（`advanceWormhole` 里直接放行，见
- * `WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH`）。⇒ 抽成一个函数，免得两条路各写一遍（历史上这种
- * "收口少抄一步"在本文件踩过三次：弹药退款 / 机群战损 / 货柜入库）。
+ * **撤离成功的收口**（船长 2026-09-13 的收口点之一）：
+ * ① **发起撤离后的下一拍**（`advanceWormhole` 的 `extracting` 分支 —— 2026-09-15 起撤离不再有战斗）；
+ * ② 老档里**已经在打的撤离战打赢**（`settleWormholeBattle` 的 `'extract'` 分支，仅兼容旧档）。
+ * ⇒ 抽成一个函数，免得两条路各写一遍（历史上这种"收口少抄一步"在本文件踩过三次：弹药退款 / 机群战损 / 货柜入库）。
  *
  * 做四件事：散货入港 → 随行战利品入库 → **货柜（形状件）入港** → 写**结算单** + 写日志。
  */
-function deliverExtraction(
-  state: GameState,
-  ctx: SimContext,
-  run: WormholeRunState,
-  opts?: { skippedBattle?: boolean },
-): void {
+function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunState): void {
   let isk = 0
   let recycle = 0
   let oreUnits = 0
@@ -732,8 +732,7 @@ function deliverExtraction(
   addLog(
     state,
     'info',
-    `🕳 撤离成功${opts?.skippedBattle === true ? '（第 1 层没有拦截舰队：直接脱离）' : ''}：` +
-      `货仓 ${run.bag.length} 类物资入港` +
+    `🕳 撤离成功：货仓 ${run.bag.length} 类物资入港` +
       (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} 信用点）` : '') +
       (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} 信用点）` : '') +
       `，第 ${run.depth} 层撤离。`,
@@ -809,7 +808,6 @@ function deliverExtraction(
     ...(coreIds.length > 0 ? { cores, coresIsk } : {}),
     shipsLost: [],
     lostIsk: 0,
-    ...(opts?.skippedBattle === true ? { skippedExtractBattle: true } : {}),
   }
 }
 
@@ -820,8 +818,9 @@ export function advanceWormhole(
 ): void {
   const run = state.wormhole.run
   if (!run) return
+  reconcileWormholeFleet(state, ctx, run)
   // **临时离开 = 活动停止 ⇒ 洞内一切冻结**（船长 2026-09-13 批准 · 议案 A 第 4 条）：战斗不推进
-  // （不掉血）、撤离战不开打、收口不落地——回来接着打，进度原样在。
+  // （不掉血）、撤离不落地、收口不落地——回来接着打，进度原样在。
   if (run.attending !== true) return
   if (run.battle) {
     if (freezeBattle) return
@@ -835,34 +834,24 @@ export function advanceWormhole(
     }
     return
   }
-  // 撤离相位：自动开撤离战（打完才算撤离成功；打不完 = 全损）
+  // 撤离相位：**直接结算入港**（2026-09-15 船长「虫洞的撤离战取消吧」⇒ 零战斗零风险，不再有拦截舰队）
   if (run.phase === 'extracting' && !freezeBattle) {
     /**
-     * **第 1 层免撤离战**（船长 2026-09-13：「**撤离战只从第二层开始生效**」）：
-     * 第 1 层是"进得来就出得去"的教学层，采完直接脱离；从第 2 层起才有拦截舰队，
-     * 且威胁随**已到达的层数**上升（`wormholeFoeThreat(depth,'extract')` = 该层威胁 × 0.8，
-     * 层 2 = 42、层 3 = 49、层 4 = 56…按层威胁曲线递增）。
+     * 现行口径（2026-09-15 · 船长「**虫洞的撤离战取消吧**」）：**撤离一律不触发战斗** ——
+     * 任意层、任意时候点「撤离」，下一拍直接把货仓与货柜入港。
      *
-     * ⚠ 免战的前提是**编队还在**（`fleet.length > 0`）：编队空了（全灭）就不该还能"顺利脱离"，
-     * 让它走下面的开战路径 ⇒ 开不出来 ⇒ 按全损处理（既有的硬故障兜底）。
+     * 旧口径（**已作废**）：第 1 层免战（`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`）、第 2 层起开一场
+     * 撤离战（威胁 = 当层 ×0.8，线性曲线：层 2 = 42、每层 +7），**打赢才把货带回去、打输 = 全损**。
+     *
+     * ⚠ 老档兼容（"照打完"）：存档里**已经在打的撤离战**走上面的 `run.battle` 分支 —— 照打完，
+     * 打完由 `settleWormholeBattle` 按新口径收口（赢 = `deliverExtraction`、输 = 全损），此后不再有下一场。
+     *
+     * ⚠ **空编队不许"顺利入港"**（2026-09-15 补 · 与旧口径一致）：编队账为空（全灭/老档或调试档
+     * 的两本账不同步）时，把货判成"撤离成功"就是**白拿一趟**——这里按**全损**收口
+     * （旧代码在同一档是"开不出撤离战 ⇒ 按全损处理"，那条兜底随撤离战取消一并搬到本分支）。
      */
-    if (run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH && run.fleet.length > 0) {
-      deliverExtraction(state, ctx, run, { skippedBattle: true })
-      state.wormhole.run = null
-      return
-    }
-    const r = wormholeStartBattle(state, ctx, 'extract')
-    if (!r.ok) {
-      // 编队/敌卡缺失这类硬故障：直接全损收场，避免卡在撤离相位里出不来
-      addLog(state, 'warn', `🕳 撤离战无法开始（${r.error ?? '未知原因'}）：本趟按全损处理。`)
-      const lostNames: string[] = []
-      for (const uid of run.fleet) {
-        const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
-        lostNames.push(name)
-        loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
-      }
-      state.wormhole.lastFleetLost += run.fleet.length
-      // **结算单照写**：任何一趟结束都要有结算单（界面弹层不能时有时无）
+    if (run.fleet.length === 0) {
+      addLog(state, 'warn', `🕳 撤离失败：编队已经没了（全灭或档案异常）——本趟按全损处理。`)
       state.wormhole.lastSettle = {
         kind: 'lost',
         depth: run.depth,
@@ -871,11 +860,36 @@ export function advanceWormhole(
         wreckIsk: 0,
         boxes: [],
         relics: [],
-        shipsLost: lostNames,
+        shipsLost: [],
         lostIsk: bagValueIsk(ctx, run),
       }
       state.wormhole.run = null
+      return
     }
+    deliverExtraction(state, ctx, run)
+    state.wormhole.run = null
+    return
   }
+}
+
+/**
+ * **编队账对账**（2026-09-15 补）：把 `run.fleet` 里**已经不在 `state.fleet`** 的成员摘掉。
+ *
+ * 为什么需要：两本账（洞内编队 / 舰队）本该同步，但**老档、调试档、异常态**下可能残留"幽灵成员"
+ * （船已被别处判损，编队账还记着它）。实测后果不算严重——开战时会被自动过滤、不参战、不崩——
+ * 但**结算单与读数会把它算进去**，也让"编队为空"这类判据看不准。
+ *
+ * 口径：只摘"已不在舰队"的；摘了写一条日志（幂等：没事发生时零开销、零日志）。
+ */
+function reconcileWormholeFleet(state: GameState, ctx: SimContext, run: WormholeRunState): void {
+  if (run.fleet.every((uid) => state.fleet[uid] !== undefined)) return
+  const ghosts = run.fleet.filter((uid) => state.fleet[uid] === undefined)
+  run.fleet = run.fleet.filter((uid) => state.fleet[uid] !== undefined)
+  const names = ghosts.map((uid) => ctx.ships.get(uidDefId(uid))?.name ?? uid)
+  addLog(
+    state,
+    'warn',
+    `🕳 编队核对：${names.join('、')} 已不在舰队（${ghosts.length} 艘）——已从本趟编队里摘掉，剩余 ${run.fleet.length} 艘。`,
+  )
 }
 

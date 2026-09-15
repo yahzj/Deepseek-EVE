@@ -821,6 +821,34 @@ export function sellWareItem(state: GameState, itemId: string, ctx: SimContext):
   return sellItemFrom(state, itemId, countWare(state, itemId), (units) => removeWare(state, itemId, units), ctx, '仓库')
 }
 
+/**
+ * **丢弃仓库物品（任意数量）**（船长 2026-09-15：「**仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品**」）。
+ *
+ * 口径：
+ * - `qty` **下取整**，并**夹在 [1, 持有量]**（超出按持有量丢 ⇒ 玩家点「全部」不必先自己数）；
+ * - 返回 `{ ok, dropped }`：`dropped` = **实际丢弃数**；仓库里没有该物品 / 数量 ≤ 0 ⇒ `ok:false`；
+ * - **纯销毁**：不给信用点、不进回收与精炼链、**不动货仓**（要变现请走「市价卖出」或精炼炉「残骸回收」）；
+ * - 写一条事件日志（`⚑ 丢弃 …（仓库）`），玩家可在日志里对账。
+ *
+ * 术语边界：「**抛弃**」= 洞内货仓那套（`wormholeHoldDiscard` 等，受格数与超载规则约束）；
+ * 「**丢弃**」= 站内仓库（无限容量、不随船）⇒ 两者各自独立、互不调用。
+ */
+export function discardWareQty(
+  state: GameState,
+  itemId: string,
+  qty: number,
+  ctx: SimContext,
+): { ok: boolean; dropped: number; error?: string } {
+  const have = countWare(state, itemId)
+  if (have <= 0) return { ok: false, dropped: 0, error: '仓库里没有这件物品。' }
+  const want = Math.min(have, Math.max(0, Math.floor(qty)))
+  if (want <= 0) return { ok: false, dropped: 0, error: '丢弃数量需大于 0。' }
+  if (!removeWare(state, itemId, want)) return { ok: false, dropped: 0, error: '丢弃失败（物品不足）。' }
+  const name = ctx.items.get(itemId)?.name ?? itemId
+  addLog(state, 'info', `⚑ 丢弃 ${name} ×${want.toLocaleString('zh-CN')}（仓库）。`)
+  return { ok: true, dropped: want }
+}
+
 /** 从当前船货仓按市价**卖出指定数量**（船长 2026-09-05：出售支持只卖一部分；其余语义同 sellCargoItem） */
 export function sellCargoItemQty(state: GameState, itemId: string, qty: number, ctx: SimContext): SellResult {
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）

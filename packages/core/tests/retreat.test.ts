@@ -50,10 +50,19 @@ describe('战斗中撤退（按敌方火力扣装甲/结构）', () => {
     const structBefore = ship.durability
     const K = ctx.balance.combat.retreatHitFirepowerSec
     const bite = expectedBite(ctx)
+    const iskBefore = state.wallet.isk
     // 威胁 8 × 0.8/秒 × 10 秒 = 64 HP（2026-09-14 船长改判后的 K）
     expect(bite).toBeCloseTo(8 * ctx.balance.battle.foeDpsPerThreat * K, 6)
     expect(K).toBe(10)
     expect(retreatBattle(state, ctx).ok).toBe(true)
+    /**
+     * **撤退不收维修费**（船长 2026-09-15「**删除撤离费**」）：
+     * 旧口径 = `min(钱包, 该卡期望奖励 × defeatCostRatio(0.5) × 0.5)`（= 奖励的 25%，四档一起收），
+     * 高价值悬赏撤一次要掉 21~37 万信用点；现**整条删除** ⇒ 钱包一分不动、日志也不再提维修费。
+     * 判据用"恰好等于"（不是 ≤）⇒ 任何形式的扣费回潮都会红。
+     */
+    expect(state.wallet.isk).toBe(iskBefore)
+    expect(state.logs.some((l) => l.text.includes('维修花去'))).toBe(false)
     expect(state.expedition.phase).toBe('back') // 自动返航
     // 期望：这一口**先由装甲池吸收、吃满才进结构**（测试船甲 < 64 ⇒ 甲清零、余量落结构）
     const armorHp = armorBefore * caps.capA
@@ -145,9 +154,11 @@ describe('战斗超时判负（视同被迫撤退）', () => {
 
     expect(b.ended).toBe('foe') // 判负（旧口径在此为我方满血/敌未死 → 会判 'me'）
     expect(b.escapeReason).toBe('timeout') // 走的是"超时"来源，不是结构损失过半
-    expect(state.wallet.isk).toBeLessThanOrEqual(iskBefore) // 判负：拿不到赏金（反被扣维修费）
+    // **撤退不收维修费**（船长 2026-09-15「删除撤离费」）：钱包一分不动（旧口径会扣 奖励 ×25%）
+    expect(state.wallet.isk).toBe(iskBefore)
     expect(state.logs.some((l) => l.kind === 'warn' && l.text.includes('战斗超时'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('舰船被迫撤退，正在返航'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('维修花去'))).toBe(false) // 文案同步：不再提维修费
     expect(state.autoLoopAnomalyId).toBeNull() // 超时 = 收手，停重复清剿
     expect(state.logs.some((l) => l.text.includes('重复清剿已停止（战斗超时）'))).toBe(true)
     const durAfter = durabilityOf(state, state.shipId)

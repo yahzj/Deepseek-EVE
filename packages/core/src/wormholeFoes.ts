@@ -15,16 +15,45 @@ import type { WormholeFamily } from './state'
 
 /** 第 1 层基准威胁 */
 export const WORMHOLE_THREAT_BASE = 45
-/** 每层**威胁**增幅（等比 ×1.16 ⇒ 层 1~3 = 45/52/61，与设计稿"≈45~60"同量级） */
-export const WORMHOLE_THREAT_GROWTH = 0.16
+
+/**
+ * **玩家可见威胁的显示倍率**（船长 2026-09-15：「**虫洞的面板威胁（显示给玩家看的）建议乘以2**，
+ * 玩家目前会因为 1 层的 50 威胁出现误判」）。
+ *
+ * ⚠⚠ **只乘"给人看的那个数字"，绝不动引擎的 `threat`**：洞内的 `threat` 是**血预算的输入**——
+ * `foeHpOfThreat(威胁) × WORMHOLE_FOE_BASE_STRENGTH_MUL(10)`（见 `combat.wormholeDerivedAnomaly`），
+ * 动它等于把敌人血量整体翻倍 ⇒ 那是**难度改动**，不是显示改动（本常量只服务界面）。
+ *
+ * 为什么需要它：洞内一张卡的总血 = **单船威胁曲线 × 10**（4 舰对 4 舰口径）⇒ 同样写着"威胁 45"，
+ * 洞内的实际体量远大于悬赏线上的同数字卡，玩家按悬赏经验读会误判"50 威胁很轻松"。
+ * 一个数可调：要改观感只动本值（界面三处读数全部走 `wormholeDisplayThreat`）。
+ */
+export const WORMHOLE_DISPLAY_THREAT_MUL = 2
+
+/** **玩家可见的洞内威胁**（显示口径 = 引擎威胁 × `WORMHOLE_DISPLAY_THREAT_MUL`，取整；不参与任何引擎计算） */
+export function wormholeDisplayThreat(threat: number): number {
+  return Math.round(threat * WORMHOLE_DISPLAY_THREAT_MUL)
+}
+/**
+ * 每层**威胁**增幅（等比 ×1.10 ⇒ 层 1~8 = 45/50/54/60/66/72/80/88）。
+ *
+ * ⚠ **2026-09-15 船长：「降低虫洞内，敌人的强度增长速度」⇒ 0.16 → 0.10**。
+ * 依据（实测 · 4×T3 满配 · 5 播种 · 逐层解析表）：旧 ×1.16 下层 7/8 是**两堵墙**
+ * （节点胜率 **20% / 0%**）；只降到 ×1.12（威胁 110/127 → 89/99）**墙照旧**（20%/20%）
+ * ⇒ 那一档的墙主要来自**档位阶跃 + 单卡**，不是等比曲线；要真拆墙得降到 ×1.10 一档：
+ * **层 7 = 100%（残血 49%）· 层 8 = 60%（残血 33%）**（×1.08 更宽松：层 8 = 100%）。
+ * 基准层 1 = 45 **不动**、收益曲线（×1.2/层）**不动** ⇒「单位威胁收益逐层严格上升」更明显。
+ */
+export const WORMHOLE_THREAT_GROWTH = 0.1
 /** 每层**收益**增幅（等比 ×1.2）。**必须大于威胁增幅** —— 船长 2026-09-13：
  *  「深层收益应该比难度曲线要更高」⇒ 用等比而非加法，才能让"单位威胁收益"**逐层严格上升**
- *  （若威胁用 +9 加法，层 1→2 的威胁增幅恰好 20%、与收益打平，头两层看不出"更赚"）。 */
+ *  （若威胁用 +9 加法，层 1→2 的威胁增幅恰好 20%、与收益打平，头两层看不出"更赚"）。
+ *  2026-09-15 威胁增幅降到 0.10 后，这条不等式更宽松（收益 0.20 > 威胁 0.10）。 */
 export const WORMHOLE_REWARD_GROWTH = 0.2
-/** 兼容取整：每层威胁的**名义**增量（= 45×0.16 ≈ 7，落在设计稿"+8~10"附近，供文档/读数引用） */
+/** 兼容取整：每层威胁的**名义**增量（= 45×0.10 ≈ 5，2026-09-15 由 7 降到 5；供文档/读数引用） */
 export const WORMHOLE_THREAT_PER_LAYER = Math.round(WORMHOLE_THREAT_BASE * WORMHOLE_THREAT_GROWTH)
 
-/** 第 `depth` 层的威胁（层 1 = 45，每层 ×1.16，取整） */
+/** 第 `depth` 层的威胁（层 1 = 45，每层 ×1.10，取整） */
 export function wormholeLayerThreat(depth: number): number {
   const d = Math.max(1, Math.floor(depth))
   return Math.round(WORMHOLE_THREAT_BASE * Math.pow(1 + WORMHOLE_THREAT_GROWTH, d - 1))
@@ -43,33 +72,33 @@ export function wormholeNodesPerLayer(depth: number): number {
 
 /* ═══════════ 二、洞内敌卡派生（按层换算威胁） ═══════════ */
 
-/** 洞内敌卡的用途：普通节点 / 层末 BOSS / 撤离战 / **遗迹收尾战**（威胁倍率与选靶模式按此分流） */
+/** 洞内敌卡的用途：普通节点 / 层末 BOSS / **遗迹收尾战**（威胁倍率与选靶模式按此分流）。
+ * ⚠ **`'extract'`（撤离战）已于 2026-09-15 退役**（船长「虫洞的撤离战取消吧」）——
+ * 枚举值与下面两条常量**保留只为读得懂老档**（旧战斗的 `kind` 存在存档里），新趟不再产生。 */
 export type WormholeFoeKind = 'node' | 'boss' | 'extract' | 'ruins'
 
 /** 层末 **BOSS** 的威胁倍率（设计稿 §3 表：本层 ×1.2） */
 export const WORMHOLE_BOSS_THREAT_MUL = 1.2
-/** **撤离战**的威胁倍率（设计稿 §3 表：当层威胁 ×0.8）——**只用于层 2 的基准**，见下 */
+/** ⚠ **已退役（2026-09-15 撤离战取消）**：撤离战威胁倍率（旧口径：当层威胁 ×0.8）——只为老档文档留档 */
 export const WORMHOLE_EXTRACT_THREAT_MUL = 0.8
 
 /**
- * **撤离战威胁 = 线性**（船长 2026-09-13 裁定：「**撤离威胁按线性**」，回应"线性还是等比"那一问）。
+ * ⚠ **已退役（2026-09-15 撤离战取消 · 船长「虫洞的撤离战取消吧」）**：撤离战威胁**线性**口径。
  *
- * 口径：**层 2 = 42**（= 层 2 威胁 52 × 0.8，与改判前的层 2 读数一致），之后**每层 +7**
- * （7 = 层增量的名义值 `WORMHOLE_THREAT_PER_LAYER`）——即"与前进的层数成正比"。
- * 层 1 没有拦截舰队（`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`），本函数对层 1 也按层 2 取值，
- * 免得别处误用出负数。
+ * 旧口径（**只作沿革留档，别再引用**）：**层 2 = 42**（= 层 2 威胁 52 × 0.8），之后**每层 +7**
+ * （线性而非等比，船长 2026-09-13 裁定「撤离威胁按线性」）；层 1 没有拦截舰队
+ * （旧常量 `WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`，**已删除**）。
  *
- * 为什么不像节点战那样等比（×1.16/层）：撤离战是"拿了就跑"的拦截，等比到深处会指数翻上去
- * （层 8 等比 102 / 线性 84、层 12 等比 158 / 线性 112）——**节点战照旧等比**（那才是"越深越硬"），
- * 只有撤离这一路改成线性。
+ * 为什么留：老档里**已经在打**的撤离战，其单位在建档那一刻就按本曲线算好了
+ * （`UnitSpec` 已固化），本函数只是"当时怎么算的"的出处；**新趟不会再有撤离战**。
  */
 export const WORMHOLE_EXTRACT_THREAT_BASE = Math.round(
   WORMHOLE_THREAT_BASE * (1 + WORMHOLE_THREAT_GROWTH) * WORMHOLE_EXTRACT_THREAT_MUL, // 层 2 = 52 × 0.8 = 42
 )
-/** 撤离战**每层增量**（线性；= 层增量名义值 7） */
+/** ⚠ **已退役（2026-09-15）**：撤离战每层增量（线性；= 层增量名义值 7） */
 export const WORMHOLE_EXTRACT_THREAT_PER_LAYER = WORMHOLE_THREAT_PER_LAYER
 
-/** 第 `depth` 层**撤离战**的威胁（线性：层 2 = 42、层 3 = 49、层 4 = 56……层 8 = 84） */
+/** ⚠ **已退役（2026-09-15）**：第 `depth` 层撤离战威胁（旧读数：层 2 = 42、层 3 = 49 …… 层 8 = 84） */
 export function wormholeExtractThreat(depth: number): number {
   const d = Math.max(2, Math.floor(depth))
   return WORMHOLE_EXTRACT_THREAT_BASE + WORMHOLE_EXTRACT_THREAT_PER_LAYER * (d - 2)
@@ -440,7 +469,8 @@ export function wormholeAnomalyOf(
       kind === 'boss'
         ? `${base.name} · 第 ${depth} 层守卫`
         : kind === 'extract'
-          ? `${base.name} · 撤离战`
+          ? // ⚠ 仅老档（撤离战 2026-09-15 退役）：敌名后缀避开已退役的机制名
+            `${base.name} · 撤离`
           : `${base.name} · 第 ${depth} 层`,
     threat: target,
     ...(perWaveUnits.length > 0

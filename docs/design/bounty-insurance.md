@@ -22,7 +22,7 @@
 - `advanceBattleFor` 每 100ms 步进后检查：本船结构剩余 < 满值结构 × 0.5 → 中止步进并置
   autoEscaped（结构保留当前值，绝不拖到结构归零 → 弃船）；
 - `advanceExpedition` 见 autoEscaped → `settleBattleRetreat(state, ctx, 'auto')`：
-  承伤写回 → 半损惩罚骰（最低 1%）→ 下限 5% 保护（绝不弃船）→ 按比例维修费 →
+  承伤写回 → 半损惩罚骰（最低 1%）→ 下限 5% 保护（绝不弃船）→ ~~按比例维修费~~（**2026-09-15 船长「删除撤离费」⇒ 撤退四档一律不再收费**）→
   **终止连续出击**（autoLoopAnomalyId 置空）→ 转返航（returnReason='retreat'，可召回）；
 - 玩家手动撤退 `retreatBattle` 重构为共用 `settleBattleRetreat(state, ctx, 'manual')`，
   文案/停环说明按模式区分（自动 = "结构损失过半，自动撤退/连续出击已停止（…自动撤退）"）；

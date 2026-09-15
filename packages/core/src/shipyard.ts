@@ -255,11 +255,36 @@ export function pilotUnavailableReason(state: GameState): string | null {
  * 2026-09-09（船长定）：保证存在可驾驶船（幂等自愈，弃船补驾驶与引擎逐 tick 共用）——
  * 驾驶船缺失或被 AI 执勤占用时：优先改派"空闲"（未 AI 占用）舰船；无空闲（全被 AI 占用
  * 或一艘不剩）→ 协会补发保底沙猫，绝不让 AI 执勤中的船兼任驾驶船。修正发生时记一条日志。
+ *
+ * ⚠ **2026-09-15 船长追加「优先把主控交给洞内船」**：被弃的这艘若是**虫洞那趟的编队成员**
+ * （= 它是在洞里战沉的），**先把主控交给同一趟里还活着的编队船**；没有才落回上面的既有口径。
+ * 详见函数内注释。
  */
 export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
   const reason = pilotUnavailableReason(state)
   if (reason === null) return
   const wasBusy = state.fleet[state.shipId] !== undefined
+  /**
+   * **洞内优先（船长 2026-09-15：「3 优先把主控交给洞内船」）**：原来一律"站内第一艘空闲船"，
+   * 实测结果是**把主控交给开局那艘沙猫**——而洞里那趟还在继续、活动位也还占着（"人在洞里"），
+   * 于是出现"主控在洞外、却在跑虫洞"的别扭状态。交给洞内幸存船之后语义自洽（它本来就被洞内锁定）。
+   *
+   * 判据 = `run.fleet.includes(state.shipId)`：`loseShip` 里**先 delete 再调本函数**，而 `run.fleet`
+   * 要到收口时才摘沉船 ⇒ 此刻仍认得出"这艘是洞内编队的"。mate 只挑**还在舰队里且未被 AI 占用**的。
+   */
+  const run = state.wormhole.run
+  if (run && run.fleet.includes(state.shipId)) {
+    const mate = run.fleet.find((id) => state.fleet[id] !== undefined && state.aiAssignments[id] === undefined)
+    if (mate !== undefined) {
+      state.shipId = mate
+      addLog(
+        state,
+        'info',
+        '主控在虫洞里战沉——已由同队的 ' + shipDisplayName(state, ctx, mate) + ' 在洞内接任主控。',
+      )
+      return
+    }
+  }
   const idle = Object.keys(state.fleet).find((id) => state.aiAssignments[id] === undefined)
   if (idle !== undefined) {
     state.shipId = idle

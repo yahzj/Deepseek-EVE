@@ -25,7 +25,7 @@ import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeArchetypeOf } from './wormholeGrid'
 import {
   WORMHOLE_NEBULA_MIN_DEPTH,
-  WORMHOLE_TURN_PER_ACTIVATE,
+  WORMHOLE_TURN_PER_WORK,
   WORMHOLE_TURN_PER_MOVE,
   WORMHOLE_TURN_PER_SCAN,
   wormholeRng,
@@ -300,10 +300,12 @@ export function wormholeBagUsage(
 /* ═══════════ 五、副本状态机（C 批：层 / 节点 / 回合 / 撤离） ═══════════ */
 
 /**
- * 副本相位：`idle` 未在洞里（含未出发与已结算）· `inside` 洞里（节点推进中）· `extracting` 撤离战。
+ * 副本相位：`idle` 未在洞里（含未出发与已结算）· `inside` 洞里（节点推进中）·
+ * `extracting` **已发起撤离、下一拍结算**（⚠ 2026-09-15 起**不再有撤离战**，见 `wormholeExtract`；
+ * 相位值本身保留——存档里存过它，老档要能读，且撤离战已判负的老档还要走收口）。
  *
  * ⚠ 两条硬约束（船长裁定）：
- * 1. **战斗没结束不能撤** ⇒ `wormholeExtract` **只在层末**（`pendingNode === null`）可用；
+ * 1. **战斗没结束不能撤** ⇒ `wormholeExtract` 在 `run.battle` 非空时被拒；
  * 2. **回合耗尽只能撤离** ⇒ `turnsLeft` 不够走完当前节点时，推进被拒（`mustExtract`）。
  */
 export type WormholePhase = 'idle' | 'inside' | 'extracting'
@@ -506,7 +508,10 @@ export interface WormholeSettleRecord {
   shipsLost: string[]
   /** **没带回来的收集额**（按基础价 + 拆解估值算；撤离成功 = 0） */
   lostIsk: number
-  /** 第 1 层免撤离战（船长：撤离战只从第 2 层起生效）时为 true —— 界面据此少写一句"打了一场" */
+  /**
+   * ⚠ **退役字段（2026-09-15 撤离战取消）**：旧口径里「第 1 层免撤离战」时为 true，界面据此少写一句
+   * "打了一场"。如今**撤离一律不触发战斗** ⇒ 新结算单**不再写**它；字段保留只为读得懂老档的结算单。
+   */
   skippedExtractBattle?: boolean
 }
 
@@ -526,8 +531,7 @@ export interface WormholeState {
   nebulaHintShown?: boolean
 }
 
-/** **撤离战从第几层起生效**（船长 2026-09-13：「撤离战只从第二层开始生效」） */
-export const WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2
+/** ⚠ **已删除（2026-09-15）**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`——撤离战整条退役，不再有"第几层起要打"。 */
 
 export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }
 
@@ -575,6 +579,9 @@ export {
   // 族定选靶（船长 2026-09-15「选靶按照族限定」）
   WORMHOLE_FAMILY_TARGETING,
   WORMHOLE_FAMILY_TARGETING_CHANCE,
+  // 玩家可见威胁的显示倍率（船长 2026-09-15「面板威胁乘以2」；只影响界面读数）
+  WORMHOLE_DISPLAY_THREAT_MUL,
+  wormholeDisplayThreat,
 } from './wormholeFoes'
 export type { WormholeCardTier, WormholeFoeKind } from './wormholeFoes'
 
@@ -774,17 +781,20 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
 }
 
 /**
- * 撤离 —— **无条件可以开始**（船长 2026-09-13 改裁定：「**玩家可以无条件开始撤离，但是依旧需要打撤离战**」）。
+ * 撤离 —— **无条件可以开始，且不再有撤离战**（2026-09-15 船长：「**虫洞的撤离战取消吧**」）。
  *
- * 口径：
- * - **不再有"层末守卫没清 / 层内还有节点没走完 / 回合没耗尽"这几道门**：想走随时能走（老口径把
- *   守卫当成"出门许可"，实测会逼出"打不过就原地转圈耗回合"的歪招）；
- * - 但**撤离不是白走**：进入 `extracting` 相位后由 `advanceWormhole` 开一场**撤离战**（威胁 ×0.8），
- *   打赢才把背包与货柜带回港，打输照样全损（见 `settleWormholeBattle`）；
- * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」）。
+ * 现行口径：
+ * - **零战斗零风险**：进入 `extracting` 相位后，`advanceWormhole` **下一拍直接结算入港**
+ *   （散货 + 随行战利品 + 货柜 + 临时空间全数带回），不再开任何战斗；
+ * - **任意层、任意时候**都能撤（第 1 层与深层同待遇）；**不消耗回合**；
+ * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」，2026-09-15 复核后**维持不动**）。
  *
- * ⚠ 被本裁定取代的旧条款（设计稿 §六「回合耗尽 ⇒ 只能撤离」+ §3「守卫是门」里"撤离也要先清守卫"那半句）
- * 已在文档里标注作废；`wormholeDescend`（**深入**）那一侧的守卫门**照旧有效**。
+ * ⚠ 被本裁定取代的旧条款（2026-09-13「玩家可以无条件开始撤离，但是**依旧需要打撤离战**」＋
+ * 「撤离战只从第二层开始生效」＋「撤离战打不赢 = 全损」）**已作废**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH`
+ * 已删除、撤离威胁曲线（层 2 = 42、每层 +7）与谜质「撤离掩护器」一并退役；设计稿/词典同日条目标注沿革。
+ *
+ * ⚠ 老档兼容：存档里**正在打的撤离战**照打完（`advanceWormhole` 的 `run.battle` 分支在前，天然满足），
+ * 打完按新口径结算（赢了入港、输了全损），此后不再有下一场。
  */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
@@ -1030,11 +1040,16 @@ export function wormholeGridTravel(
 }
 
 /**
- * **激活当前地点**（1 回合，每个地点只算一次）。
- * - 空信息地点 / 已读过的漂浮信标 ⇒ **拒绝且不扣回合**（"什么都没有"，没有可执行的作业）；
+ * **激活当前地点**（**不消耗回合**；每个地点只算一次）。
+ * - 空信息地点 / 已读过的漂浮信标 ⇒ **拒绝**（"什么都没有"，没有可执行的作业）；
  * - 站在下一层入口 ⇒ 层末守卫战（优先于地点自身类型：入口的意义就是"下一层"）；
  * - 舰船信号：新口径下**到达即已开打**（船长 2026-09-13），故这里只在"老档/异常态"下兜底开战；
  * - 其余按地点类型给效果，开战/结算由 `wormholeActivateAt` 接着做。
+ *
+ * ⚠ **2026-09-15 船长：「移除玩家激活时需要消耗1回合（包括层末守卫）」** ⇒ 本条**不再扣回合**
+ * （`spent: 0`）。旧口径（2026-09-13「激活该地点效果也需要一回合（打捞，挖矿，战斗等）」）作废；
+ * **打捞/采集**仍各花 1 回合/次动作（`WORMHOLE_TURN_PER_WORK`，= ⌈堆数÷台数⌉），
+ * **扫描与前往**照旧各 1 回合。
  */
 export function wormholeGridActivate(state: GameState): WormholeGridActionResult {
   const hit = gridRun(state)
@@ -1054,7 +1069,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   /**
    * **资源点与墓场/遗迹不用激活**（船长 2026-09-13：「资源点和墓场遗迹改为不用激活」）：
    * 走到那一格就铺好产出（`wormholeEnsureArrivalPiles`），玩家直接**采集/打捞**——
-   * 故这三个地点在"激活"这条路上**直接拒绝**，免得白扣一回合。
+   * 故这三个地点在"激活"这条路上**直接拒绝**。
    */
   if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins')) {
     return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。' }
@@ -1062,10 +1077,6 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
     return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
   }
-  if (run.turnsLeft < WORMHOLE_TURN_PER_ACTIVATE) {
-    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
-  }
-  run.turnsLeft -= WORMHOLE_TURN_PER_ACTIVATE
   grid.activated.push(cell.key)
   const effect: WormholeActivateEffect = atExit
     ? { kind: 'exit', key: cell.key }
@@ -1076,9 +1087,9 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   addLog(
     state,
     'info',
-    `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 剩 ${run.turnsLeft} 回合。`,
+    `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 不消耗回合 · 剩 ${run.turnsLeft} 回合。`,
   )
-  return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, effect, mustExtract: run.turnsLeft <= 0 }
+  return { ok: true, spent: 0, effect, mustExtract: run.turnsLeft <= 0 }
 }
 
 /** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {

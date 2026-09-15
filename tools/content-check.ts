@@ -140,6 +140,7 @@ securityZoneOf,
   wormholeDilutionPoolOf,
   wormholeFamilyPoolGaps,
   WORMHOLE_MATTER_DEVICES,
+  WORMHOLE_MATTER_DRAW_POOL,
   WORMHOLE_MATTER_DEVICE_IDS,
   WORMHOLE_MATTER_FLOOR,
   wormholeIsShapedItem,
@@ -1021,6 +1022,31 @@ for (const m of MODULES) {
     `· 战斗宿主双口径契约：BattleScreen 非注释行 ${bsLines.length} 行 ⇒ \`expedition.anomalyId\` 0 处 · ` +
       `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支`,
   )
+
+  /* ── 洞内威胁「显示口径」契约（船长 2026-09-15：「虫洞的面板威胁（显示给玩家看的）建议乘以2，
+   *    玩家目前会因为 1 层的 50 威胁出现误判」）──
+   * 洞内面板的威胁读数一律走 `wormholeDisplayThreat()`（显示 = 引擎威胁 × 2）。
+   * 本契约挡两种回潮：① 面板又去**裸渲染**引擎威胁（玩家又会误判）；② 有人把显示倍率用歪到引擎侧。
+   * 口径依据：引擎的 `threat` 是**血预算的输入**（`foeHpOfThreat(威胁) × 10`）——乘 2 就是难度翻倍。 */
+  {
+    const whPath = 'apps/desktop/src/renderer/src/panels/Wormhole.tsx'
+    const whLines = stripComments(readSrc(whPath))
+    const rawPatterns = ['{nodeThreat}', '${extractThreat}', '威胁 {wormholeLayerThreat(']
+    const offenders = whLines.filter((l) => rawPatterns.some((p) => l.includes(p)))
+    check(
+      offenders.length === 0,
+      `洞内威胁显示契约：${whPath} 里有 ${offenders.length} 处**裸渲染**引擎威胁` +
+        `（${offenders.map((l) => l.trim().slice(0, 50)).join(' / ')}）——` +
+        `面板威胁一律走 \`wormholeDisplayThreat(...)\`（×2 显示口径；引擎值不变）`,
+    )
+    check(
+      whLines.some((l) => l.includes('wormholeDisplayThreat(')),
+      `洞内威胁显示契约：${whPath} 没有任何 \`wormholeDisplayThreat(...)\` 调用——面板威胁读数丢了显示口径`,
+    )
+    console.log(
+      `· 洞内威胁显示契约：面板三处读数（本层 / 撤离 / 下一层）均走 \`wormholeDisplayThreat\`（引擎威胁 ×${2}）· 裸渲染 0 处`,
+    )
+  }
 }
 
 // 舰船
@@ -2977,10 +3003,22 @@ const STALE_COPY_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
   [/船坞/, '旧称（现口径：机库 / 舰船仓库）'],
   /**
    * 2026-09-15 船长报障后加（原话：「虫洞内回合耗尽后的提示：……文本不符合虫洞探索的游戏设定」）：
-   * 「撤离拦截 / 撤离拦截战」是**施工期漂移**叫法——词典八之一、手册「撤离」条、设计稿与船长原话
-   * （2026-09-13「玩家可以无条件开始撤离，但是依旧需要打撤离战」）一律叫 **「撤离战」**。
+   * 「撤离拦截 / 撤离拦截战」是**施工期漂移**叫法。
+   *
+   * ⚠ 2026-09-15 二次改判（船长「**虫洞的撤离战取消吧**」）：**「撤离战」这个名字本身也退役了**
+   * ——撤离不再触发任何战斗 ⇒ 玩家文案里两个名字都不许再出现（新文案口径见手册与词典八之一）。
+   * 历史公告里的旧说法走 `STALE_COPY_FILE_ALLOW` 豁免。
    */
-  [/撤离拦截/, '施工期漂移叫法（现行口径：撤离战——词典/手册/设计稿同一叫法）'],
+  [/撤离拦截/, '施工期漂移叫法（2026-09-15 起整条退役：撤离不再有战斗）'],
+  [/撤离战/, '已退役机制名（2026-09-15 船长「虫洞的撤离战取消吧」⇒ 撤离零战斗，玩家文案不得再提）'],
+]
+
+/**
+ * 陈旧术语**按文件豁免**（逐条写明理由）：整份文件都是"历史留档"，不得因机制退役而改写。
+ * 只用于**已上线的历史公告数据**（改它 = 篡改历史，且公告改动需重新走审核）。
+ */
+const STALE_COPY_FILE_ALLOW: ReadonlyArray<readonly [string, string]> = [
+  ['packages/data/src/announcements.ts', '已上线公告数据（历史留档：当时确实写着"自第 2 层起要打赢撤离战"）'],
 ]
 
 /** 陈旧术语**白名单**（逐条写明理由；只有确属叙事专名的才可登记） */
@@ -3039,10 +3077,11 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         mdOffenders.push(`${rel}:${line + 1}`)
       }
       if (isPlayerText(node) && node.getText(sf).length > 1) {
+        const fileAllowed = STALE_COPY_FILE_ALLOW.some(([p]) => rel.replace(/\\/g, '/') === p || rel.replace(/\\/g, '/').endsWith(p))
         const text = node.getText(sf)
         let probe = text
         for (const [re] of STALE_COPY_ALLOW) probe = probe.replace(new RegExp(re.source, 'g'), '')
-        for (const [re, why] of STALE_COPY_TERMS) {
+        for (const [re, why] of fileAllowed ? [] : STALE_COPY_TERMS) {
           if (re.test(probe)) {
             const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
             staleOffenders.push(`${rel}:${line + 1}（${text.slice(0, 40)}…）→ ${why}`)
@@ -4259,6 +4298,25 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     }
     if (WORMHOLE_MATTER_FLOOR < 1) {
       errors.push(`谜质契约：每层保底谜质格数 = ${WORMHOLE_MATTER_FLOOR}，应 ≥ 1（船长：「每层保底 1 个谜质格」）`)
+    }
+    /**
+     * ⑦b **退役装置不许再抽出**（2026-09-15 · 撤离战取消带出的第一批退役）。
+     *
+     * 口径：退役项**留在装置表与物品表**（老档读得懂、上面那条"两表一致"也要求如此），
+     * 但**必须被排除在抽取池之外** —— 抽取只看 `WORMHOLE_MATTER_DRAW_POOL`。
+     * 本契约双向把关：① 池子里不许有 `retired: true` 的项；② 池子不许空（否则 `% length` 会取到 undefined）。
+     */
+    const retiredInPool = WORMHOLE_MATTER_DRAW_POOL.filter((d) => d.retired === true).map((d) => d.id)
+    if (retiredInPool.length > 0) {
+      errors.push(`谜质契约：退役装置仍在抽取池里（${retiredInPool.join(', ')}）—— 退役项只许留档、不许抽出`)
+    }
+    if (WORMHOLE_MATTER_DRAW_POOL.length === 0) {
+      errors.push('谜质契约：抽取池为空 —— 取谜质会崩（`h % pool.length`）')
+    }
+    for (const d of WORMHOLE_MATTER_DEVICES) {
+      if (d.retired === true && WORMHOLE_MATTER_DRAW_POOL.some((p) => p.id === d.id)) {
+        errors.push(`谜质契约：${d.id} 标了 retired 但仍在池里`)
+      }
     }
     /**
      * ⑧ **图标契约**（F3c · 船长 2026-09-13：「**货仓内物品采用图标而不是纯文字，安全货仓和谜质的

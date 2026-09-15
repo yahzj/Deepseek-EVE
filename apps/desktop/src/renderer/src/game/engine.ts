@@ -67,6 +67,7 @@ import {
   sellCargoItemQty,
   sellStoredShipAtMarket,
   sellWareItem,
+  discardWareQty,
   sellWareItemQty,
   serializeSaveFile,
   shipDisplayName,
@@ -2060,7 +2061,7 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
-  /** 虫洞：发起撤离（进入撤离战相位；撤离战本体在 F 批） */
+  /** 虫洞：发起撤离（进入 `extracting` 相位；**下一拍直接结算入港** —— 2026-09-15 起撤离不触发战斗） */
   wormholeExtract(): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: '不在虫洞内。' }
@@ -2087,8 +2088,12 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
-  /** 虫洞：**迎战**（`node` = 当前节点 / `boss` = 层末守卫 / `extract` = 撤离战） */
-  wormholeFight(kind: 'node' | 'boss' | 'extract' | 'ruins'): CommandResult {
+  /**
+   * 虫洞：**迎战**（`node` = 当前节点 / `boss` = 层末守卫 / `ruins` = 遗迹收尾战）。
+   * ⚠ `'extract'`（撤离战）已于 2026-09-15 退役 ⇒ 类型里不再接受它（新趟不会再有撤离战；
+   * 老档里**已经在打**的那一场由 `settleWormholeBattle` 收口，不需要重新开战）。
+   */
+  wormholeFight(kind: 'node' | 'boss' | 'ruins'): CommandResult {
     const r = wormholeStartBattle(this.state, this.ctx, kind)
     if (r.ok) {
       void this.persist()
@@ -2532,6 +2537,19 @@ export class GameEngine {
   sellWare(itemId: string, qty?: number): SellResult {
     const result =
       qty === undefined ? sellWareItem(this.state, itemId, this.ctx) : sellWareItemQty(this.state, itemId, qty, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /**
+   * **丢弃仓库物品（任意数量）**（船长 2026-09-15：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」）。
+   * 纯销毁：不给钱、不进回收链；数量由 core 夹在 [1, 持有量]（超出按持有量丢）。
+   */
+  discardWare(itemId: string, qty: number): { ok: boolean; dropped: number; error?: string } {
+    const result = discardWareQty(this.state, itemId, qty, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()
