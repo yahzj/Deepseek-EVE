@@ -667,8 +667,8 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     fleeEncounter(state, ctx)
     expect(state.mining.active).toBe(true)
     expect(state.awayGalaxy).toBe('galaxy-far')
-    // 没撤离 ⇒ 不置位（新通讯不该在"挨了一下但没走"时就发）
-    expect(state.ambushRetreatSeen).toBeUndefined()
+    // 没撤离 ⇒ 不置位（新通讯不该在"挨了一下但没走"时就发；新档初始值 = false）
+    expect(state.ambushRetreatSeen).toBe(false)
   })
 
   it('应战：遭遇战挂 50% 自动脱离保险（结构过半即轻损脱离，无缴获、不扣维修费）', () => {

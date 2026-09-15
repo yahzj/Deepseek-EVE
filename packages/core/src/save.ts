@@ -2541,8 +2541,13 @@ function normalizeState(raw: unknown): GameState {
     if (typeof id === 'string' && id.length > 0 && !commsPopups.includes(id)) commsPopups.push(id)
   }
 
-  // --- 曾因低安袭击自动撤离（2026-09-14 · 可选字段 ⇒ 零迁移）：只认 true，缺失即"从未发生" ---
-  const ambushRetreatSeen = src.ambushRetreatSeen === true
+  /**
+   * **因低安袭击自动撤离**（2026-09-14 · 三态随档，见 `state.ts` 字段注释）：
+   * `true` = 真发生过；`false` = 新档（必须落键，否则读回来会被当成老档）；**缺失 = 老档**（保持缺失，
+   * 由触发器用 `encounterZoneCooldown` 那点痕迹判"到底触发过没有"）。
+   */
+  const ambushRetreatSeen =
+    src.ambushRetreatSeen === true ? true : src.ambushRetreatSeen === false ? false : undefined
 
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
@@ -3049,8 +3054,8 @@ function normalizeState(raw: unknown): GameState {
     commsDelivered,
     commsPopups,
     commsRead,
-    // 曾因低安袭击自动撤离：只在真发生过时落键（老档往返不多出一个键，快照用例才不会红）
-    ...(ambushRetreatSeen ? { ambushRetreatSeen: true } : {}),
+    // 因低安袭击自动撤离（true/false 都落键；缺失保持缺失 = 老档，交给触发器按痕迹判定）
+    ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,
     rareBoxesOpened,
