@@ -7109,6 +7109,16 @@ body {
 
 }
 
+/* 「↖ 查看市场」（2026-09-14 船长：图鉴详情加跳转市场的按钮）——推到头部右侧；
+   尺寸全部来自既有的 `app-btn is-small`，本类只管对齐，不含 vw/vh 定尺寸（旋转口径不受影响） */
+.app-detail-goto {
+
+  margin-left: auto;
+
+  flex-shrink: 0;
+
+}
+
 .app-detail-name {
 
   font-size: 15px;
