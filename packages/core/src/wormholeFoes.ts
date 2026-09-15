@@ -241,7 +241,7 @@ export function wormholeAnomalyOf(
       kind === 'boss'
         ? `${base.name} · 第 ${depth} 层守卫`
         : kind === 'extract'
-          ? `${base.name} · 撤离拦截`
+          ? `${base.name} · 撤离战`
           : `${base.name} · 第 ${depth} 层`,
     threat: target,
     ...(perWaveUnits.length > 0

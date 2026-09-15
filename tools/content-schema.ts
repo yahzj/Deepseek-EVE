@@ -25,8 +25,20 @@
  * **枚举值域纪律（2026-09-12 加，修卡关 ②）**：凡是**引擎已有的联合类型**（槽位 / 槽类 / 伤害系…），
  * 这里**不许再手写一份**——一律从引擎单点（`MODULE_SLOTS` / `RACK_SLOTS` / `SLOT_LABELS` 等）派生；
  * 体检 `content-check` 另有「内容工作台契约」守**schema 枚举 ⊆ 引擎值域**，防再漂。
+ *
+ * **表头改名与新词口径（2026-09-15 船长：「按照新名词改名」）**：表头里的中文说明词一律跟随现行术语
+ * （`ore` = **原矿**、`mineral` = **原材料**，2026-09-12 定；货币 = **信用点**，2026-09-13 定，`ISK` 退场）。
+ * ⚠ 表头文字是**两端契约**（`content:import` 按表头匹配列）⇒ 改名会让**手上那份旧文件**的那几列
+ * 变成"未知表头"被跳过 ⇒ 故本文件同时维护 **`HEAD_ALIASES`（旧表头 → 现行表头）**，
+ * 导入端先归一化再匹配（用到即打印提示），旧文件照常可导；**下一次编辑前仍建议先重跑
+ * `npm run content:export`**（导出件才是干净的现行表头）。
  */
-import { MODULE_SLOTS, RACK_SLOTS, SLOT_LABELS } from '@whale/core'
+import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_SLOTS, SLOT_LABELS } from '@whale/core'
+
+/** 物品类别：**引擎单点**（`ITEM_KIND_LABELS` 的键序即表头顺序，不再手抄） */
+const ITEM_KINDS = Object.keys(ITEM_KIND_LABELS) as Array<keyof typeof ITEM_KIND_LABELS>
+/** items 表 `kind` 列表头全文（`ore原矿/mineral原材料/…`，由单点派生 ⇒ 加类别自动跟随） */
+const ITEM_KIND_HEAD = `kind(${ITEM_KINDS.map((k) => `${k}${ITEM_KIND_LABELS[k]}`).join('/')})`
 
 export interface ColSpec {
   head: string
@@ -60,6 +72,22 @@ const col = (
   extra: Partial<ColSpec> = {},
 ): ColSpec => ({ head, p, k, ...extra })
 
+/**
+ * **旧表头 → 现行表头**（2026-09-15 加）。用途：`content:import` 读到的文件若是**改名之前**导出的
+ * （表头里还写着「矿石 / 矿物 / ISK」），先按本表归一化再匹配列 —— 免得那几列被判成"未知表头"而**静默不回写**。
+ * 只在真的用到时打印一句提示，引导重新 export。
+ */
+export const HEAD_ALIASES: Readonly<Record<string, string>> = {
+  'kind(ore矿石/mineral矿物/gas气体/ice冰矿/ammo弹药/drone无人机)': ITEM_KIND_HEAD,
+  'kind(ore原矿/mineral原材料/gas气体/ice冰矿/ammo弹药/drone无人机)': ITEM_KIND_HEAD,
+  空间站收购价ISK: '空间站收购价信用点',
+  '空间站售价ISK(0=自带/仅制造)': '空间站售价信用点(0=自带/仅制造)',
+  奖励ISK: '奖励信用点',
+}
+
+/** 把（可能是改名前的）表头归一到现行写法；未登记的原样返回 */
+export const normalizeHead = (head: string): string => HEAD_ALIASES[head.trim()] ?? head.trim()
+
 export const TABLES: readonly TableSpec[] = [
   {
     name: 'skills',
@@ -80,11 +108,12 @@ export const TABLES: readonly TableSpec[] = [
     cols: [
       col('id', 'id', 'id'),
       col('名称', 'name', 'str'),
-      col('kind(ore矿石/mineral矿物/gas气体/ice冰矿/ammo弹药/drone无人机)', 'kind', 'enum', {
-        vals: ['ore', 'mineral', 'gas', 'ice', 'ammo', 'drone', 'kit'],
-      }),
+      // ⚠ 枚举与表头**一律从引擎单点 `ITEM_KIND_LABELS` 派生**（2026-09-15 修：此处曾手写 7 类，
+      //   而引擎有 12 类 ⇒ 洞内新增的 `container` / `matter` / `aicore` / `wreck` / `fragment`
+      //   在导出件里成了"非法枚举"⇒ **items 表整个导不回去**（实测 dry-run 直接校验不过）。
+      col(ITEM_KIND_HEAD, 'kind', 'enum', { vals: ITEM_KINDS }),
       col('单位体积m3', 'unitM3', 'num', { min: 0.0001 }),
-      col('空间站收购价ISK', 'baseSellPriceIsk', 'num', { min: 0 }),
+      col('空间站收购价信用点', 'baseSellPriceIsk', 'num', { min: 0 }),
       col('精炼配方(mineralId×每单位产出|…)', 'refine', 'list', {
         itemKey: 'mineralId', valKey: 'perOre', valMin: 0.0001, ref: 'items',
       }),
@@ -185,7 +214,7 @@ export const TABLES: readonly TableSpec[] = [
       col('货舱m3', 'cargoM3', 'num', { min: 1 }),
       col('采集循环s', 'cycleSeconds', 'num', { min: 1 }),
       col('每循环产量', 'oreUnitsPerCycle', 'num', { min: 0.0001 }),
-      col('空间站售价ISK(0=自带/仅制造)', 'priceIsk', 'num', { min: 0 }),
+      col('空间站售价信用点(0=自带/仅制造)', 'priceIsk', 'num', { min: 0 }),
       col('动力agility(0~1，逃生/跃迁充能)', 'agility', 'num', { min: 0, max: 1 }),
       col('火力加成powerBonus', 'powerBonus', 'num', { min: 0, max: 5 }),
       col('护盾量', 'shieldHp', 'num', { min: 0 }),
@@ -237,7 +266,7 @@ export const TABLES: readonly TableSpec[] = [
       col('血型defProfile(shield盾/armor甲/balanced均衡)', 'defProfile', 'enum', { vals: ['shield', 'armor', 'balanced'] }),
       col('声望要求', 'standingReq', 'num', { min: 0, int: true }),
       col('胜利声望增长', 'standingGain', 'num', { min: 0, int: true }),
-      col('奖励ISK', 'rewardIsk', 'num', { min: 0, int: true }),
+      col('奖励信用点', 'rewardIsk', 'num', { min: 0, int: true }),
       col('战利品(itemId×单位数|…)', 'loot', 'list', { itemKey: 'itemId', valKey: 'units', valMin: 1, valInt: true, ref: 'items' }),
       col('交火展示时长s', 'combatSeconds', 'num', { min: 1, int: true }),
       col('僚机数escorts(0~2)', 'escorts', 'num', { min: 0, max: 2, int: true }),

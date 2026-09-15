@@ -324,7 +324,7 @@ function wormholeBattleReport(
   const what = kind === 'boss'
     ? `第 ${run.depth} 层守卫`
     : kind === 'extract'
-      ? '撤离拦截'
+      ? '撤离战'
       : kind === 'ruins'
         ? `第 ${run.depth} 层遗迹守军`
         : run.grid
@@ -576,7 +576,7 @@ export function wormholeBattleViewOf(
   anomaly: AnomalyDef
   /** 视图锚 = 主控（`myFleet` 首条的船型 uid；缺省退 `state.shipId`） */
   leaderShipId: string
-  /** 顶部标题用：`虫洞 · 第 N 层` / `虫洞 · 第 N 层守卫` / `虫洞 · 撤离拦截` */
+  /** 顶部标题用：`虫洞 · 第 N 层` / `虫洞 · 第 N 层守卫` / `虫洞 · 撤离战` */
   name: string
   /** 与 `expeditionStatus().combat` 同形（战斗窗口两套来源共用一套渲染） */
   combat: {
@@ -621,7 +621,7 @@ export function wormholeBattleViewOf(
     spec.kind === 'boss'
       ? '层末守卫'
       : spec.kind === 'extract'
-        ? '撤离拦截'
+        ? '撤离战'
         : spec.kind === 'ruins'
           ? `第 ${spec.depth} 层遗迹守军`
           : `第 ${spec.depth} 层`

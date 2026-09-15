@@ -779,7 +779,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质铺开的一层压制场：本层的节点战、守卫战与撤离拦截战都会更轻。占货仓 2×2 格，离开虫洞即失效。',
+    description: '谜质铺开的一层压制场：本层的节点战、守卫战与撤离战都会更轻。占货仓 2×2 格，离开虫洞即失效。',
   },
   {
     id: 'mat-boss-analyzer',

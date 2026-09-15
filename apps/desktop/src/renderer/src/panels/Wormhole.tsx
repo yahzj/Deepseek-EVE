@@ -750,7 +750,7 @@ export function WormholePanel({
     onToast(
       depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
         ? '脱离航道：第 1 层没有拦截舰队，货物直接入港。'
-        : '⚠ 敌人开始围堵你：撤离战马上开打——打赢才把货仓与货柜带回去。',
+        : '⚠ 敌人开始围堵你：撤离战马上开打——打赢才把货仓与货柜带回去；打不赢就是全损，编队与随行战利品一起留在洞里。',
     )
   }
 
@@ -1043,7 +1043,7 @@ export function WormholePanel({
                   ? '交火中不能撤离：打完这一场'
                   : extractAsk
                     ? '再点一次确认撤离'
-                    : '撤离本趟：见页顶的警告（第 2 层起要打撤离拦截战）'
+                    : '撤离本趟：见页顶的警告（第 2 层起要打撤离战）'
               }
             >
               {extractAsk ? '确认撤离' : '撤离'}
@@ -1695,7 +1695,7 @@ export function WormholePanel({
                     </div>
                   ) : null}
                   {outOfTurns ? (
-                    <div className="app-wh-ask">回合已走不动：只能撤离（撤离拦截照打——打赢才算把货仓带回去）。</div>
+                    <div className="app-wh-ask">回合已耗尽：只能撤离（撤离战照打——打不赢就是全损，编队与随行战利品一起留在洞里）。</div>
                   ) : null}
                 </>
               ) : (
@@ -1832,7 +1832,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
             ? '编队失联，货全丢了'
             : settle.skippedExtractBattle === true
               ? '第 1 层没有拦截舰队（直接脱离）'
-              : '打赢了撤离拦截战'}
+              : '打赢了撤离战'}
         </span>
       </div>
       <div className="app-wh-settle-grid">

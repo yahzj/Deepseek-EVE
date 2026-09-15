@@ -759,7 +759,7 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
  * 口径：
  * - **不再有"层末守卫没清 / 层内还有节点没走完 / 回合没耗尽"这几道门**：想走随时能走（老口径把
  *   守卫当成"出门许可"，实测会逼出"打不过就原地转圈耗回合"的歪招）；
- * - 但**撤离不是白走**：进入 `extracting` 相位后由 `advanceWormhole` 开一场**撤离拦截战**（威胁 ×0.8），
+ * - 但**撤离不是白走**：进入 `extracting` 相位后由 `advanceWormhole` 开一场**撤离战**（威胁 ×0.8），
  *   打赢才把背包与货柜带回港，打输照样全损（见 `settleWormholeBattle`）；
  * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」）。
  *
