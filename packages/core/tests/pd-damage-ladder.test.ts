@@ -128,9 +128,11 @@ describe('打机群不吃距离衰减（船长 2026-09-12「按丁修复」）',
     const def = { evasion: 0.18 }
     const near = hitChance(W, atk, def, 1_000, real.balance.battle)
     const far = hitChance(W, atk, def, 5_000, real.balance.battle)
-    // 1,000m：衰减 = 1 − (999/2499)×0.5（minRange 1 → maxRange 2,500 线性到 falloff 0.5）
-    expect(near).toBeCloseTo(0.9 * (1 - (999 / 2_499) * 0.5) - 0.18, 5)
-    expect(far).toBeCloseTo(0.9 * 0.5 - 0.18, 5) // 5,000m：越出射程 ⇒ 衰减锁在下限 ×0.5
+    /* ⚠ 2026-09-15 船长改判：回避从**初始命中**里扣、余量再乘衰减
+       ⇒ 这里从「`0.9 × 衰减 − 0.18`」改成「`(0.9 − 0.18) × 衰减`」。
+       1,000m：衰减 = 1 − (999/2,499)×0.5（minRange 1 → maxRange 2,500 线性到 falloff 0.5）。 */
+    expect(near).toBeCloseTo((0.9 - 0.18) * (1 - (999 / 2_499) * 0.5), 5)
+    expect(far).toBeCloseTo((0.9 - 0.18) * 0.5, 5) // 5,000m：越出射程 ⇒ 衰减锁在下限 ×0.5
     expect(near).toBeGreaterThan(far)
   })
 })

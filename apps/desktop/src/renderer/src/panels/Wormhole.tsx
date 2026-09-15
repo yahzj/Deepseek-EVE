@@ -86,7 +86,11 @@ type WhTab = 'prep' | 'map' | 'bag'
 /** 两块格板：货仓（8 列）/ **临时空间**（4 列 × 8 行 = 32 格 · 船长 2026-09-14） */
 type BoardKind = 'hold' | 'temp'
 
-const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '背包' }
+/**
+ * 页签文案。⚠ **玩家可见一律叫「货仓」，不叫「背包」**（船长 2026-09-15：「不应该直接叫背包，
+ * 展示给玩家看的叫货仓」）——内部标识符仍是 `bag` / `run.bag`（不动存档与代码键名）。
+ */
+const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '货仓' }
 
 /* ── 探索页动效时长（船长 2026-09-13 拍板：「入场动画时长可以拉长到 1 秒」）──
    飞入 1000ms（进场与到达新层）· 飞出 600ms（深入下一层前先飞走）· 扫描波 900ms ·
@@ -746,7 +750,7 @@ export function WormholePanel({
     onToast(
       depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
         ? '脱离航道：第 1 层没有拦截舰队，货物直接入港。'
-        : '⚠ 敌人开始围堵你：撤离战马上开打——打赢才把背包与货柜带回去。',
+        : '⚠ 敌人开始围堵你：撤离战马上开打——打赢才把货仓与货柜带回去。',
     )
   }
 
@@ -1083,7 +1087,7 @@ export function WormholePanel({
                 <span className="app-wh-tab-sub">
                   {k === 'map'
                     ? `第 ${run.depth} 层 · 回合 ${run.turnsLeft}/${run.turnsTotal}`
-                    : `背包 ${holdInfo?.used ?? 0}/${holdInfo?.capacity ?? 0} 格`}
+                    : `货仓 ${holdInfo?.used ?? 0}/${holdInfo?.capacity ?? 0} 格`}
                 </span>
                 {k === 'bag' && overloaded ? <span className="app-wh-tab-warn">超载</span> : null}
                 {k === 'bag' && !overloaded && actionBlocked !== null ? (
@@ -1149,7 +1153,7 @@ export function WormholePanel({
                 ) : (
                   <>
                     带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过{' '}
-                    {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；总质量越高、可探索回合越短；背包格数按编队「合计货仓」折算（每{' '}
+                    {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；总质量越高、可探索回合越短；货仓格数按编队「合计货仓」折算（每{' '}
                     {n(WORMHOLE_SLOT_M3)} m³ = 1 格，含技能与货舱件加成）。
                   </>
                 )}
@@ -1350,7 +1354,7 @@ export function WormholePanel({
               ) : (
                 <div className="app-wh-triad">
                   <span className="app-wh-cell">
-                    合计货仓 <b>{n(cargoM3)}</b> m³ ⇒ 背包 <b>{bagSlots}</b> 格
+                    合计货仓 <b>{n(cargoM3)}</b> m³ ⇒ 货仓 <b>{bagSlots}</b> 格
                   </span>
                   <span className="app-wh-cell">
                     折算总质量 <b>{n(admission.totalMass)}</b> / {n(WORMHOLE_TOTAL_MASS_CAP)}
@@ -1411,7 +1415,7 @@ export function WormholePanel({
                   采集器 <b>{miners}</b> 台
                 </span>
                 <span className="app-wh-cell">回合 <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
-                <span className="app-wh-cell">背包 <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
+                <span className="app-wh-cell">货仓 <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
                 {/**
                  * **谜质增益读数**（F3c · 船长 2026-09-13）：只在真带装置时出现，悬停逐台列出来
                  * ——效果一律从货仓现算（`wormholeMatterBuffs`），界面与 core 同源。
@@ -1446,7 +1450,7 @@ export function WormholePanel({
                         ⚠ 确认要撤离本趟吗？ 当前 <b>第 {run.depth} 层</b>
                         {run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
                           ? '：第 1 层没有拦截舰队，货物直接入港。'
-                          : `：拦截舰队会围堵你（威胁 ${extractThreat}）——打赢才把背包与货柜带回去，打输 = 本趟全损。`}
+                          : `：拦截舰队会围堵你（威胁 ${extractThreat}）——打赢才把货仓与货柜带回去，打输 = 本趟全损。`}
                       </span>
                       <span className="app-wh-actions">
                         <button
@@ -1655,7 +1659,7 @@ export function WormholePanel({
                   </div>
                   {run.phase === 'extracting' && !run.battle ? (
                     <div className="app-wh-ask">
-                      ⚠ 撤离战：拦截舰队正在围堵你——战斗马上开始，打赢才把背包与货柜带回去
+                      ⚠ 撤离战：拦截舰队正在围堵你——战斗马上开始，打赢才把货仓与货柜带回去
                       （打输 = 本趟全损）。
                     </div>
                   ) : null}
@@ -1667,7 +1671,7 @@ export function WormholePanel({
                     <div className="app-wh-hold-overload">
                       <span>{actionBlocked}</span>
                       <button className="app-btn is-small" onClick={() => setTab('bag')}>
-                        去背包页处理
+                        去货仓页处理
                       </button>
                     </div>
                   ) : null}
@@ -1691,7 +1695,7 @@ export function WormholePanel({
                     </div>
                   ) : null}
                   {outOfTurns ? (
-                    <div className="app-wh-ask">回合已走不动：只能撤离（撤离拦截照打——打赢才算把背包带回去）。</div>
+                    <div className="app-wh-ask">回合已走不动：只能撤离（撤离拦截照打——打赢才算把货仓带回去）。</div>
                   ) : null}
                 </>
               ) : (
@@ -2395,7 +2399,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                       : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，可拖拽）`
                     : kind === 'hold'
                       ? '空位：可放货柜'
-                      : '空位：临时空间（离开背包页前必须清空）'
+                      : '空位：临时空间（离开货仓页前必须清空）'
               }
               draggable={isOrigin}
               onPointerDown={(e) => {
@@ -2438,14 +2442,16 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             const def = ctx.items.get(p.itemId)
             const iconKey = itemIconOf(p.itemId, def?.kind)
             const isCargo = p.kind === 'cargo'
-            const isMatter = wormholeMatterDeviceOf(p.itemId) !== undefined
+            /** 谜质装置那一台（缺口 2026-09-15 船长报障：「鼠标移动到谜质上，不显示谜质具体效果」） */
+            const matterDev = wormholeMatterDeviceOf(p.itemId)
+            const isMatter = matterDev !== undefined
             const label = isCargo
               ? `×${n(p.units ?? 0)}`
               : p.itemId.startsWith('box-bp-')
                 ? '图纸'
                 : p.itemId.startsWith('ai-core-')
                   ? '核心' // AI 核心（2026-09-14）：1×1 = 1 格，短标签与货柜的「图纸」同一档
-                  : (wormholeMatterDeviceOf(p.itemId)?.short ?? '货柜')
+                  : (matterDev?.short ?? '货柜')
             return (
               <div
                 key={`fig-${kind}-${p.id}`}
@@ -2460,11 +2466,13 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 title={
                   (isCargo
                     ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货件：占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
-                    : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`) +
+                    : // 谜质装置：**把这一台的具体效果写在悬停里**（船长 2026-09-15）——
+                      // 文字与「取回谜质」的 toast、「谜质 N 台」读数同源（都取 `device.text`，界面不自写文案）
+                      `${def?.name ?? p.itemId}${matterDev ? `：${matterDev.text}` : ''}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`) +
                   (kind === 'temp'
                     ? isMatter
                       ? ' · 在临时空间里不生效（谜质增益只认货仓格）'
-                      : ' · 离开背包页前要放回货仓或丢掉'
+                      : ' · 离开货仓页前要放回货仓或丢掉'
                     : kind === 'hold' && isMatter
                       ? ' · 本趟增益生效中'
                       : '')
@@ -2511,7 +2519,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
         <div className="app-wh-tempask">
           <div className="app-wh-tempask-title">
             ⚠ 临时空间里还有 <b>{tempPending.length}</b> 件没处理（{tempInfo.cells}/{tempInfo.capacity} 格）：
-            {tempAsk === 'extract' ? '撤离前必须先清空。' : '离开背包页前必须先清空。'}
+            {tempAsk === 'extract' ? '撤离前必须先清空。' : '离开货仓页前必须先清空。'}
           </div>
           <ul className="app-wh-tempask-list">
             {tempPending.map((p) => {

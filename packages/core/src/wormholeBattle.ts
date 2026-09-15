@@ -469,7 +469,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       if (!sunk.includes(uid)) loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
     }
     state.wormhole.lastFleetLost += run.fleet.length
-    const lostText = `🕳 虫洞探险失败：编队失联、背包内容全部丢失（损失 ${lost.length} 艘）。`
+    const lostText = `🕳 虫洞探险失败：编队失联、货仓内容全部丢失（损失 ${lost.length} 艘）。`
     addLog(state, 'warn', lostText)
     /**
      * **结构化战报**（2026-09-14 船长定）：洞内全损 = 我方全灭那一档 ⇒ `lose`，
@@ -704,7 +704,7 @@ function deliverExtraction(
     state,
     'info',
     `🕳 撤离成功${opts?.skippedBattle === true ? '（第 1 层没有拦截舰队：直接脱离）' : ''}：` +
-      `背包 ${run.bag.length} 类物资入港` +
+      `货仓 ${run.bag.length} 类物资入港` +
       (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} 信用点）` : '') +
       (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} 信用点）` : '') +
       `，第 ${run.depth} 层撤离。`,

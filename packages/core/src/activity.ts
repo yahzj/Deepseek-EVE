@@ -323,7 +323,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       kind: 'wormhole',
       label: `虫洞探索 · ${where}`,
       sub:
-        `回合 ${whRun.turnsLeft}/${whRun.turnsTotal} · 背包 ${whRun.bag.length} 类物资` +
+        `回合 ${whRun.turnsLeft}/${whRun.turnsTotal} · 货仓 ${whRun.bag.length} 类物资` +
         (whRun.attending === true ? ' · 人在洞里' : ' · 已离开（进度已保存）'),
       percent: whRun.turnsTotal > 0 ? Math.round((1 - whRun.turnsLeft / whRun.turnsTotal) * 100) : null,
       remainingMs: null,

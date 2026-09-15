@@ -54,9 +54,12 @@
 开火条件    weapon.minRangeM ≤ 距离 ≤ weapon.maxRangeM（过近/过远不开火；
             **敌方例外（2026-09-05）：近盲带内不停火、伤害 ×blindDmgMul**，见文首更新）
 距离衰减    distFactor：minRange 端 = 1.0 → 线性降至 maxRange 端 = weapon.falloff
-有效回避    effEvasion = defender.evasion × clamp(sigMin, sigMax, sigBaseM / defender.signatureM)
-命中加成    effHitBonus = attacker.hitBonus × clamp(scanMin, scanMax, attacker.scanResMm / scanBaseMm)
-单发命中    hit = clamp(hitMin, hitMax, (weapon.hitRate + 攻方 effHitBonus) × distFactor − 守方 effEvasion)
+命中加成    effHitBonus = attacker.hitBonus（**信号半径/扫描分辨率不参与公式**，2026-09 船长拍板）
+单发命中    hit = clamp(hitMin, hitMax, (weapon.hitRate + 攻方 effHitBonus − 守方 effEvasion) × distFactor)
+            ⚠ **2026-09-15 船长改判**（原话「改为从初始命中中扣」）：回避**先扣、余量再乘距离衰减**；
+            旧口径 `(基础 + 加成) × distFactor − 回避`（回避 = 不随距离缩水的固定点数）**作废**。
+            df = 1（贴到近端）时新旧完全等价；越远回避越被衰减稀释。
+            打机群（`droneHitChance`）把 distFactor 固定为 1 ⇒ 该路零变化。
 单发伤害    dmg = ammo.dmg × weapon.dmgMult × (1 + 0.05×炮术等级) × (1 + ship.powerBonus)
 伤害结算    类型 × 层位克制系数 × (1 − 层抗)，逐层消费（盾→甲→结构）；结构归零单位击破
 ```

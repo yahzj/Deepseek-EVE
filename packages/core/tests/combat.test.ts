@@ -104,6 +104,28 @@ describe('命中与伤害公式', () => {
     expect(hopeless).toBe(0)
   })
 
+  /**
+   * **2026-09-15 船长改判**（原话：「**改为从初始命中中扣。**」）：回避从**初始命中**里先扣、余量再乘距离衰减。
+   * 旧口径「`(基础+加成) × 衰减 − 回避`」（回避 = 不随距离缩水的固定点数）**作废**。
+   * 本条把两条边界钉死：① df = 1 时新旧等价；② 远端必须等于 `(基础 − 回避) × 衰减`
+   * （旧公式会给 0.04，新公式给 0.18 —— 改回去这条必红）。
+   */
+  it('命中公式（2026-09-15）：回避吃距离衰减——`(基础命中 − 回避) × 衰减`，近端新旧等价', () => {
+    const gun = { hitRate: 0.8, minRangeM: 0, maxRangeM: 4000, falloff: 0.3 }
+    const attacker = { hitBonus: 0 }
+    const bal = BAL()
+    const ev = 0.2
+    const dfFar = distFactor(4000, gun) // = falloff = 0.3
+    expect(distFactor(0, gun)).toBe(1)
+    // ① 近端（df = 1）：0.8 − 0.2 = 0.6（新旧口径在此完全一致）
+    expect(hitChance(gun, attacker, { evasion: ev }, 0, bal)).toBeCloseTo(0.6, 10)
+    // ② 远端：新 = (0.8 − 0.2) × 0.3 = 0.18（旧口径 = 0.8 × 0.3 − 0.2 = 0.04）
+    expect(hitChance(gun, attacker, { evasion: ev }, 4000, bal)).toBeCloseTo(0.18, 10)
+    // ③ 回避的边际效果 = 回避值 × 该距离的衰减（而不是恒等于回避值）
+    const noEv = hitChance(gun, attacker, { evasion: 0 }, 4000, bal)
+    expect(noEv - hitChance(gun, attacker, { evasion: ev }, 4000, bal)).toBeCloseTo(ev * dfFar, 10)
+  })
+
   it('2026-09 拍板：信号半径/扫描分辨率不参与命中公式（纯展示副属性）', () => {
     const gun = { hitRate: 0.55, minRangeM: 0, maxRangeM: 2200, falloff: 0.3 }
     const attacker = { hitBonus: 0, scanResMm: 450 }
