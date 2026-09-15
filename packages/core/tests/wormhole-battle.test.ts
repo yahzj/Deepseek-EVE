@@ -288,11 +288,11 @@ describe('虫洞 · 开战（F 批）', () => {
       // 旧实现在洞内取不到敌卡（只认 expedition.anomalyId）⇒ **恒返回 0** ⇒ 战场里点战术按钮会把
       // 期望距离设成 0、被 `setBattleDesire` 钳到最近 = 整队贴脸（船长报障"开始位置似乎不对"的连带）
       expect(v, `洞内 ${t} 战术期望距离不该是 0`).toBeGreaterThan(0)
-      expect(v, `洞内 ${t} 走洞内中段口径`).toBe(desiredRangeFor(me, t, bal, bal.desireBandWormhole))
+      expect(v, `洞内 ${t} 走默认档（与星图同值）`).toBe(desiredRangeFor(me, t, bal))
     }
-    // 分档证据：洞内中段（0.5）比星图档（0.8）更近
-    expect(battleTacticDesire(state, ctx, 'mid')).toBeLessThan(
-      desiredRangeFor(me, 'mid', bal, bal.desireBandStarMap),
+    // 取消分档的证据：洞内「中距」= 星图「中距」= `desireBandMid`（0.8 高位）
+    expect(battleTacticDesire(state, ctx, 'mid')).toBe(
+      desiredRangeFor(me, 'mid', bal, bal.desireBandMid),
     )
     // 显式传一张不存在的卡 ⇒ 仍返回 0（保底分支没被改坏）
     expect(battleTacticDesire(state, ctx, 'mid', 'ano-not-exist')).toBe(0)
@@ -750,8 +750,10 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
       ctx.balance.battle,
     )
     const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
+    // ⚠ 近战怪那一支走**独立的洞内开局档** `wormholeBrawlOpenBand`（0.5 中段）——船长 2026-09-15 选定「乙」：
+    // 默认期望抬到 0.8，但"贴脸怪一开场就在你脸上"（2026-09-13）保留 ⇒ 不许写成 `desiredRangeFor(me,'mid',bal)`
     const expected = anyBrawl
-      ? desiredRangeFor(me, 'mid', ctx.balance.battle)
+      ? desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.wormholeBrawlOpenBand)
       : foeDesiredRange(me, foes, ctx.balance.battle)
     const openM = battleOpenM(me, foes, ctx.balance.battle)
     // 常规口径是"最远射程 + 缓冲"（= openM）；洞内口径落在**目标距离**上（被 openM 钳制的场合取钳制值）
@@ -761,20 +763,20 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     expect(battle.distanceM).toBeLessThanOrEqual(openM)
   })
 
-  it('**洞内默认期望维持中段**（2026-09-15 船长裁定：星图抬到 0.8、洞里不变）', () => {
+  it('**洞内默认期望跟星图同档 0.8；近战怪开局仍守中段 0.5**（船长 2026-09-15「口误」更正 + 选定「乙」）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
     standOnPlace(run, 'ship')
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
     const me = createPlayerSpec(state, ctx, run.fleet[0]!)!
     const bal = ctx.balance.battle
-    expect(bal.desireBandWormhole).toBe(0.5) // 洞里 = 中段（本条就是它的护栏）
-    expect(bal.desireBandStarMap).toBe(0.8) // 星图 = 射程带高位
-    expect(run.desireM ?? null).toBeNull() // 本趟没设过期望距离 ⇒ 走洞内默认档
-    const midPos = desiredRangeFor(me, 'mid', bal)
-    const starPos = desiredRangeFor(me, 'mid', bal, bal.desireBandStarMap)
-    expect(midPos).toBeLessThan(starPos) // 中段比星图档近（本船射程带 min < max）
-    // 洞内取中段；开战距离（= 双方最远射程×1.1）恒大于中段 ⇒ 不会被钳，故可直接相等断言
+    expect(bal.desireBandMid).toBe(0.8) // 星图与洞内同一个默认档（分档已取消）
+    expect(bal.wormholeBrawlOpenBand).toBe(0.5) // 洞内"近战怪开局"独立档，保留中段
+    expect(run.desireM ?? null).toBeNull() // 本趟没设过期望距离 ⇒ 走默认档
+    const midPos = desiredRangeFor(me, 'mid', bal) // = 0.8 档
+    const brawlPos = desiredRangeFor(me, 'mid', bal, bal.wormholeBrawlOpenBand) // = 0.5 档
+    expect(brawlPos).toBeLessThan(midPos) // 中段比 0.8 档更近（本船射程带 min < max）
+    // 期望（稳态目标）跟星图同档；开战距离（= 双方最远射程×1.1）恒大于它 ⇒ 不会被钳
     expect(run.battle!.myDesireM).toBe(midPos)
   })
 
