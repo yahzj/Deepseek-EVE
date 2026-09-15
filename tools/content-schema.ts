@@ -60,7 +60,12 @@ export interface ColSpec {
 
 export interface TableSpec {
   name: string
-  file: string
+  /**
+   * **源 TS 文件（可多个）**。一张表的数据可能横跨多份文件——典型是 `anomalies`：
+   * `ANOMALIES` 在 `anomalies.ts`，但它摊进了 5 张 `wh-*` 洞内敌卡（住 `wormholeFoes.ts`）
+   * ⇒ 导入端要**逐个文件收集对象块**才能回写（2026-09-15 修：旧版单文件 ⇒ 敌情表整表导不回去）。
+   */
+  files: readonly string[]
   idProp: 'id' | 'key'
   cols: readonly ColSpec[]
 }
@@ -91,7 +96,7 @@ export const normalizeHead = (head: string): string => HEAD_ALIASES[head.trim()]
 export const TABLES: readonly TableSpec[] = [
   {
     name: 'skills',
-    file: 'packages/data/src/skills.ts',
+    files: ['packages/data/src/skills.ts'],
     idProp: 'id',
     cols: [
       col('id', 'id', 'id'),
@@ -103,7 +108,7 @@ export const TABLES: readonly TableSpec[] = [
   },
   {
     name: 'items',
-    file: 'packages/data/src/items.ts',
+    files: ['packages/data/src/items.ts'],
     idProp: 'id',
     cols: [
       col('id', 'id', 'id'),
@@ -130,7 +135,7 @@ export const TABLES: readonly TableSpec[] = [
   },
   {
     name: 'modules',
-    file: 'packages/data/src/modules.ts',
+    files: ['packages/data/src/modules.ts'],
     idProp: 'id',
     cols: [
       col('id', 'id', 'id'),
@@ -202,7 +207,7 @@ export const TABLES: readonly TableSpec[] = [
   },
   {
     name: 'ships',
-    file: 'packages/data/src/ships.ts',
+    files: ['packages/data/src/ships.ts'],
     idProp: 'id',
     cols: [
       col('id', 'id', 'id'),
@@ -255,7 +260,7 @@ export const TABLES: readonly TableSpec[] = [
   },
   {
     name: 'anomalies',
-    file: 'packages/data/src/anomalies.ts',
+    files: ['packages/data/src/anomalies.ts', 'packages/data/src/wormholeFoes.ts'],
     idProp: 'id',
     cols: [
       col('id', 'id', 'id'),
@@ -287,7 +292,7 @@ export const TABLES: readonly TableSpec[] = [
   },
   {
     name: 'belts',
-    file: 'packages/data/src/belts.ts',
+    files: ['packages/data/src/belts.ts'],
     idProp: 'id',
     cols: [
       col('id', 'id', 'id'),
@@ -301,7 +306,7 @@ export const TABLES: readonly TableSpec[] = [
   },
   {
     name: 'market',
-    file: 'packages/data/src/marketCatalog.ts',
+    files: ['packages/data/src/marketCatalog.ts'],
     idProp: 'key',
     cols: [
       col('key(=refId；与其它表id对应)', 'key', 'id'),

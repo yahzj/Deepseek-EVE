@@ -275,6 +275,23 @@ export const FOE_SCAV_ARMED: FoeShipDef = {
  */
 export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ['foe-alien-maw']
 
+/**
+ * **C 族（异形生物）族抗性**（船长 2026-09-15：「我现暂时只打给 C 族添加**全血条 25% 爆炸抗性**」）。
+ *
+ * 口径：**三层（护盾 / 装甲 / 结构）各 25% 爆炸抗性** —— 四条 C 族舰级**共用这一份**
+ * （改数只改这里；`content:check` 会核对"四条 C 族舰级三层抗性逐字一致"）。
+ * 设定依据：异形生物的甲壳/胶质层能吸收爆轰冲击（对动能与能量**不设抗**，保持"换弹种有意义"）。
+ *
+ * ⚠ 抗性**只减不减**：`applyDamage` 夹 `0~0.9` ⇒ 负数不会变成"易伤"（船长本轮不做弱点）。
+ * ⚠ 与全局「层位克制系数」叠加：爆炸对装甲本来就 ×1.5，撞上 C 族装甲的 25% 抗性后
+ * 实际 = `1.5 × 0.75 = 1.125`（仍是三系里最高的，只是不再"破甲碾压"）。
+ */
+const C_FAMILY_RESISTS: Pick<FoeShipDef, 'shieldResist' | 'armorResist' | 'hullResist'> = {
+  shieldResist: { explosive: 0.25 },
+  armorResist: { explosive: 0.25 },
+  hullResist: { explosive: 0.25 },
+}
+
 /** C 族 · 一档「畸变幼虫」——裂谷畸变体的**幼体**，brawl 贴脸撕咬（服务：裂谷畸变体猎杀令 58、
  * 噬口猎杀令 80）。舰种档由 T3 巡洋**下落为 T1 护卫舰**（船长族级结构修正：C 族只留
  * 「护卫舰级 2 种（星髓幼虫 / 畸变幼虫）+ 驱逐级 1 种（星髓成虫）+ T4 巨兽」）。
@@ -290,6 +307,7 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
   id: 'foe-alien-rift-larva',
   name: '畸变幼虫',
   family: 'C',
+  ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
   hullClassTier: 1, // 护卫舰（**由 T3 巡洋下落一档**）
   speedRatio: 1.6, // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
   hp: 260, // 按档重排：T1 档基线 260 × 角色 1.00（标准近战虫）= **260**
@@ -327,6 +345,7 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
   id: 'foe-alien-starcore-larva',
   name: '星髓幼虫',
   family: 'C',
+  ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
   hullClassTier: 1, // 护卫舰（**由 T3 巡洋下落一档**）
   speedRatio: 1.6, // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
   hp: 208, // 按档重排：T1 档基线 260 × 角色 0.80（群袭脆虫）= **208**
@@ -373,6 +392,7 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
   id: 'foe-alien-maw',
   name: '噬口巨兽',
   family: 'C',
+  ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
   hullClassTier: 4, // 战列舰（**巨兽档**：须登记在 ALIEN_BEAST_SHIP_IDS，契约守卫）
   speedRatio: 297 / 205, // = **297**（船长 2026-09-11「将首领速度**单独上调 20 点**」：277 → 297；T4 仍是族内唯一破例的慢档）
   hp: 1600, // 按档重排：T4 档基线 1600 × 角色 1.00（稀有巨兽）= **1600**
@@ -410,6 +430,7 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   id: 'foe-alien-starcore-adult',
   name: '星髓成虫',
   family: 'C',
+  ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
   hullClassTier: 2, // 驱逐舰（C 族唯一的驱逐档）
   speedRatio: 1.35, // = 398 / 295（船长「提速倍率 1.35」；高于 A 族同档 325）
   hp: 624, // 按档重排：T2 档基线 480 × 角色 1.30（中坚成虫）= **624**
@@ -464,6 +485,7 @@ export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
   dmgMix: { plasma: 8, explosive: 2 }, // C 族签名（酸液 / 孢子）
   tactic: 'brawl', // 船长「炮台同样是近战」
   energyForm: 'spit', // C 族四档一律"能量·掷命中"
+  ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15；本舰 2026-09-15 批 2 加入 ⇒ 同族同口径）
   // **释放孢群机**（3 架、无后备）；`droneFireShare` = 机群占总火力 60%（A5 守恒，见舰级注释）
   drones: [{ drone: FOE_DRONE_C_SPORE, count: 3 }],
   droneFireShare: 0.6,

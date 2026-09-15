@@ -17,6 +17,8 @@ import {
   RECYCLE_CYCLE_MS,
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_YIELD_PER_M3,
+  /** F4d 货柜拆解：每件周期（90 秒）——卡面读数与开工提示同源，别再写死 */
+  UNBOX_CYCLE_MS,
   recycleRefiningMultiplier,
   aiCoreName,
   aiEfficiency,
@@ -146,7 +148,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     const who = worker === 'pilot' ? '由你亲自运转' : `由 ${aiCoreName(worker)}核心驱动`
     onToast(
       isBox
-        ? `安全货柜拆解开工：${def.name}（可拆 ${total} 件）${who}；每件 90 秒、拆完自动停。`
+        ? `货柜拆解开工：${def.name}（可拆 ${total} 件）${who}；每件 ${Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000))} 秒、拆完自动停。`
         : isWreck
           ? isRareBox
           ? `残骸回收开工：${def.name}。本炉预占 ${Math.min(RARE_WRECK_VOLUME_M3, Math.round(total * 10) / 10)} m³（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入炉内料账——货仓/仓库不再显示这批料，停炉时未用完部分退回物品仓库。${who}；每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停。`
@@ -163,14 +165,22 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   }
 
   // 数据行：有单位运转 = 台数 + 余量；空闲 = 可用量/批参数
+  // ⚠ 三条产线的量词/周期完全不同（2026-09-15 船长报障「精炼炉拆解货柜的文字显示不对」）：
+  //   精炼 = ×N 单位 / 每批 X 单位；残骸回收 = N m³ / 每批 X m³；**货柜拆解 = ×N 件 / 每件 90 秒**。
+  //   此前货柜卡落进"精炼"那支 ⇒ 卡面写着「可用 ×2（4,000 m³）· 每批 10 单位 / 6 秒 · 约 1 批炼完」。
+  const boxSeconds = Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000))
   let dataLine: ReactNode
   if (running) {
-    dataLine = isWreck
-      ? `运转 ${runs.length} 台 · 合计余 ${Math.round((total + claimHeld) * 10) / 10} m³` +
-        (claimHeld > 0
-          ? `（其中炉内料账 ${Math.round(claimHeld * 10) / 10} m³、货仓/仓库 ${Math.round(total * 10) / 10} m³）`
-          : '')
-      : `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
+    dataLine = isBox
+      ? `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')} 件`
+      : isWreck
+        ? `运转 ${runs.length} 台 · 合计余 ${Math.round((total + claimHeld) * 10) / 10} m³` +
+          (claimHeld > 0
+            ? `（其中炉内料账 ${Math.round(claimHeld * 10) / 10} m³、货仓/仓库 ${Math.round(total * 10) / 10} m³）`
+            : '')
+        : `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
+  } else if (isBox) {
+    dataLine = `可用 ×${total.toLocaleString('zh-CN')} 件 · 每件 ${boxSeconds} 秒 · 拆完自动停（一箱开一件）`
   } else if (isWreck) {
     // 稀有残骸：每炉锁死 1 件（30 m³）——数据行写清"一次起炉 = 开一箱"，免得玩家以为能把多件丢进一炉
     const qty = Math.round(total * 10) / 10
@@ -334,14 +344,17 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             {runs.map((v) => (
               <span key={v.id} className="app-belt-worker">
                 <span className="app-belt-worker-name">
-                  {v.worker === 'pilot' ? '⛏ 主控' : `⚙ ${v.workerLabel}核心`} · {isWreck ? '已拆解' : '已炼'} {v.batchesDone} 批
+                  {v.worker === 'pilot' ? '⛏ 主控' : `⚙ ${v.workerLabel}核心`} ·{' '}
+                  {isBox ? `已拆 ${v.batchesDone} 件` : isWreck ? `已拆解 ${v.batchesDone} 批` : `已炼 ${v.batchesDone} 批`}
                   {v.claimedUnits !== undefined
                     ? ` · 本炉料余 ${Math.round(v.claimedUnits * 10) / 10} m³`
                     : ''}
                 </span>
                 <span
                   className="app-progress-mini"
-                  title={`当前批进度 ${v.percent}%（每批 ${v.batchUnits} 单位 / ${Math.round(v.cycleMs / 100) / 10} 秒；${
+                  title={`当前批进度 ${v.percent}%（${
+                    isBox ? `每件 ${Math.round(v.cycleMs / 100) / 10} 秒` : `每批 ${v.batchUnits} 单位 / ${Math.round(v.cycleMs / 100) / 10} 秒`
+                  }；${
                     v.claimedUnits !== undefined
                       ? `每批从本炉预占的料账扣 ${v.batchUnits} m³（货仓/仓库不再显示这批料）`
                       : '每批到点实时扣料'
@@ -372,16 +385,18 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             (total <= 0
               ? noStockNote
               : running
-                ? '由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，每批到点实时扣料'
-                : isWreck
-                  ? isRareBox
-                    ? `由你亲自运转一台：起炉即预占 1 件（${RARE_WRECK_VOLUME_M3} m³）进本炉料账，每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停（期间不可离港作业）`
-                    : '由你亲自运转一台：循环拆解，每批到点实时扣料（期间不可离港作业）'
-                  : '由你亲自运转一台：循环精炼，每批到点实时扣料（期间不可离港作业）')
+                ? `由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，${isBox ? '每件到点实时扣掉一只货柜' : '每批到点实时扣料'}`
+                : isBox
+                  ? `由你亲自运转一台：循环拆解货柜，一箱开一件、每件 ${Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000))} 秒（期间不可离港作业）`
+                  : isWreck
+                    ? isRareBox
+                      ? `由你亲自运转一台：起炉即预占 1 件（${RARE_WRECK_VOLUME_M3} m³）进本炉料账，每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停（期间不可离港作业）`
+                      : '由你亲自运转一台：循环拆解，每批到点实时扣料（期间不可离港作业）'
+                    : '由你亲自运转一台：循环精炼，每批到点实时扣料（期间不可离港作业）')
           }
           onClick={() => runWith('pilot')}
         >
-          {isWreck ? '手动回收' : '手动运转'}
+          {isBox ? '手动拆解' : isWreck ? '手动回收' : '手动运转'}
         </button>
         {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10） */}
         <div className="app-belt-ai">
@@ -420,7 +435,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             }
             onClick={() => core && runWith(core)}
           >
-            {isWreck ? 'AI 回收' : 'AI 运转'}
+            {isBox ? 'AI 拆解' : isWreck ? 'AI 回收' : 'AI 运转'}
           </button>
         </div>
       </div>

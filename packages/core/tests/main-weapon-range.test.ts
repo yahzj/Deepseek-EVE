@@ -115,7 +115,7 @@ const starMid = (state: GameState, ctx: SimContext, uid: string): number =>
     createPlayerSpec(state, ctx, uid)!,
     'mid',
     ctx.balance.battle,
-    ctx.balance.battle.desireBandStarMap,
+    ctx.balance.battle.desireBandMid,
   )
 const kite = (state: GameState, ctx: SimContext, uid: string): number =>
   desiredRangeFor(createPlayerSpec(state, ctx, uid)!, 'kite', ctx.balance.battle)
@@ -131,9 +131,9 @@ describe('主武器口径（贴脸/中距/风筝的距离从哪来）', () => {
     const main = mainWeaponOf(me)!
     expect(main.kind).toBe('beam')
     expect(main.maxRangeM).toBe(4600)
-    // 三条距离按激光算：贴脸 = max(200, 0×0.6)、中距 = 带中点、风筝 = 0.95×射程
+    // 三条距离按激光算：贴脸 = max(200, 0×0.6)、中距 = 射程带 0.8（0 + 4,600×0.8）、风筝 = 0.95×射程
     expect(assault(state, ctx, uid)).toBe(ctx.balance.battle.minDistanceM)
-    expect(mid(state, ctx, uid)).toBe(2300)
+    expect(mid(state, ctx, uid)).toBe(3680)
     expect(kite(state, ctx, uid)).toBe(4370)
   })
 
@@ -141,37 +141,39 @@ describe('主武器口径（贴脸/中距/风筝的距离从哪来）', () => {
     const a = world()
     fitAll(a.state, a.ctx, a.uid, ['pd-x', 'laser-x']) // 近防炮在第 1 位（旧口径必被抢）
     expect(mainWeaponOf(createPlayerSpec(a.state, a.ctx, a.uid)!)!.maxRangeM).toBe(4600)
-    expect(mid(a.state, a.ctx, a.uid)).toBe(2300)
+    expect(mid(a.state, a.ctx, a.uid)).toBe(3680)
 
     const b = world()
     fitAll(b.state, b.ctx, b.uid, ['pd-x', 'missile-x'])
     const mainB = mainWeaponOf(createPlayerSpec(b.state, b.ctx, b.uid)!)!
     expect(mainB.kind).toBe('gun')
     expect(mainB.maxRangeM).toBe(11760)
-    expect(mid(b.state, b.ctx, b.uid)).toBe(6330)
+    expect(mid(b.state, b.ctx, b.uid)).toBe(9588)
     expect(kite(b.state, b.ctx, b.uid)).toBe(11172)
   })
 
-  it('星图默认档 = 射程带 0.8 高位（2026-09-15 船长改判）；缺省/洞内仍是中点', () => {
+  it('默认期望档 = 射程带 0.8 高位（2026-09-15 船长：「洞内维持中段」是口误，已取消分档）', () => {
     const { state, ctx, uid } = world()
     fitAll(state, ctx, uid, ['missile-x']) // 主武器 = 导弹架 900~11,760
     const me = createPlayerSpec(state, ctx, uid)!
     const bal = ctx.balance.battle
-    expect(bal.desireBandStarMap).toBe(0.8)
-    expect(bal.desireBandWormhole).toBe(0.5)
-    // 星图默认：min + 0.8×(max−min) = 900 + 10,860×0.8 = 9,588（旧中点 6,330 ⇒ 玩家报"太近"的那一档）
-    expect(starMid(state, ctx, uid)).toBe(9588)
-    expect(mid(state, ctx, uid)).toBe(6330) // 缺省（= 洞内口径）仍是中点：洞内"进去就得挨打"不变
+    expect(bal.desireBandMid).toBe(0.8) // 星图与洞内同一个默认档
+    expect(bal.wormholeBrawlOpenBand).toBe(0.5) // 只有"洞内近战怪开局距离"另立一档
+    // 默认档：min + 0.8×(max−min) = 900 + 10,860×0.8 = 9,588（旧中点 6,330 ⇒ 玩家报"太近"的那一档）
+    expect(mid(state, ctx, uid)).toBe(9588)
+    expect(starMid(state, ctx, uid)).toBe(9588) // 两条口径同一个值（分档取消的护栏）
+    // 洞内近战怪开局那一档仍是中点（0.5）
+    expect(desiredRangeFor(me, 'mid', bal, bal.wormholeBrawlOpenBand)).toBe(6330)
     // 贴脸 / 风筝两档与档位无关
-    expect(desiredRangeFor(me, 'kite', bal, bal.desireBandStarMap)).toBe(11172)
-    expect(desiredRangeFor(me, 'assault', bal, bal.desireBandStarMap)).toBe(540)
+    expect(desiredRangeFor(me, 'kite', bal, bal.desireBandMid)).toBe(11172)
+    expect(desiredRangeFor(me, 'assault', bal, bal.desireBandMid)).toBe(540)
   })
 
   it('只有近防炮时主武器就是它（最远即它本身，不是特例排除）', () => {
     const { state, ctx, uid } = world()
     fitAll(state, ctx, uid, ['pd-x'])
     expect(mainWeaponOf(createPlayerSpec(state, ctx, uid)!)!.maxRangeM).toBe(2500)
-    expect(mid(state, ctx, uid)).toBe(1251) // (1 + 2500) / 2 取整
+    expect(mid(state, ctx, uid)).toBe(2000) // 1 + (2500 − 1)×0.8 取整
   })
 
   it('并列射程取名义火力大的（装填更快的）：中距/贴脸随该件的射程带走', () => {
@@ -179,8 +181,8 @@ describe('主武器口径（贴脸/中距/风筝的距离从哪来）', () => {
     fitAll(state, ctx, uid, ['tie-slow', 'tie-fast']) // 同 5,000m；慢的 min 500、快的 min 1,000
     const main = mainWeaponOf(createPlayerSpec(state, ctx, uid)!)!
     expect(main.maxRangeM).toBe(5000)
-    // 快的（min 1,000）胜出 ⇒ 中距 = (1000+5000)/2 = 3000、贴脸 = 1000×0.6 = 600
-    expect(mid(state, ctx, uid)).toBe(3000)
+    // 快的（min 1,000）胜出 ⇒ 中距 = 1000 + 4000×0.8 = 4200、贴脸 = 1000×0.6 = 600
+    expect(mid(state, ctx, uid)).toBe(4200)
     expect(assault(state, ctx, uid)).toBe(600)
     expect(kite(state, ctx, uid)).toBe(4750)
   })
@@ -199,7 +201,7 @@ describe('主武器口径（贴脸/中距/风筝的距离从哪来）', () => {
   it('回归：炮台/纯导弹船的读数与旧口径一致（旧口径恰好取对的那两类）', () => {
     const gunOnly = world()
     fitAll(gunOnly.state, gunOnly.ctx, gunOnly.uid, ['missile-x'])
-    expect(mid(gunOnly.state, gunOnly.ctx, gunOnly.uid)).toBe(6330)
+    expect(mid(gunOnly.state, gunOnly.ctx, gunOnly.uid)).toBe(9588)
     expect(kite(gunOnly.state, gunOnly.ctx, gunOnly.uid)).toBe(11172)
   })
 })
@@ -240,8 +242,13 @@ describe('主武器口径在真数据上的一致性（战场弧 isMain）', () 
     expect(mainArc!.maxM).toBe(main.maxRangeM) // 米数刻度照它画
     expect(mainArc!.kind).toBe('beam') // 激光（旧口径这里是近防炮/基础舰炮的 gun）
     expect(mainArc!.maxM).toBeGreaterThan(2500) // 明显长于基础舰炮/近防炮的 2,500m
-    // 与三按钮同源：中距/风筝都按这条弧的带算
-    expect(desiredRangeFor(me, 'mid', real.balance.battle)).toBe(Math.max(real.balance.battle.minDistanceM, Math.round((mainArc!.minM + mainArc!.maxM) / 2)))
+    // 与三按钮同源：中距/风筝都按这条弧的带算（中距 = 带内 `desireBandMid` = 0.8 处）
+    expect(desiredRangeFor(me, 'mid', real.balance.battle)).toBe(
+      Math.max(
+        real.balance.battle.minDistanceM,
+        Math.round(mainArc!.minM + (mainArc!.maxM - mainArc!.minM) * real.balance.battle.desireBandMid),
+      ),
+    )
     expect(battleZonesFor(snap.ev, real)!.me.maxM).toBe(mainArc!.maxM)
   })
 })

@@ -769,11 +769,16 @@ export interface BattleBalance {
   openRangePadShare: number
   /**
    * **默认期望交距在主武器有效射程带内的位置**（0 = 最小射程 · 0.5 = 中点 · 1 = 最大射程）。
-   * 2026-09-15 船长裁定（玩家报「赏金任务初始距离非常近、对远程武器不利」）：星图默认 **0.8**、
-   * 洞内维持 **0.5**。贴脸/风筝两档不受影响。
+   * 2026-09-15 船长裁定（玩家报「赏金任务初始距离非常近、对远程武器不利」）：**星图与洞内统一 0.8**
+   * （当天先落成"星图 0.8 / 洞内 0.5"分档，船长更正「这个是我口误，可以回滚那句」⇒ 取消分档）。
+   * 贴脸/风筝两档不受影响。
    */
-  desireBandStarMap: number
-  desireBandWormhole: number
+  desireBandMid: number
+  /**
+   * **洞内「近战怪开局距离」的档位**（0.5 = 中段）。船长选「乙」：默认期望抬到 0.8 时，
+   * 这条 2026-09-13 定的「贴脸怪一开场就在你脸上」**保持不动**（与 `desireBandMid` 分属两处用途）。
+   */
+  wormholeBrawlOpenBand: number
   /** 舰船 maxSpeedMps 参与距离收敛的比例（战斗机动速度 = speed × speedFactor ×(1±agilitySpeedBonus)） */
   speedFactor: number
   agilitySpeedBonus: number
@@ -1492,6 +1497,20 @@ export interface FoeShipDef {
    * 母舰阵亡 ⇒ 机群照旧整群停（备用机也不再放出）。**缺省不写 = 无备用（零行为变化）**。
    */
   droneReserve?: { count: number; respawnMs: number }
+  /**
+   * **层位抗性（敌舰级）**（2026-09-15 船长：「我现暂时只打给 **C 族**添加**全血条 25% 爆炸抗性**」）。
+   *
+   * 三层各自可选（`DamageResists` = 系 → 值）；**缺省不写 = 无抗**（`UnitSpec.resists` 保持空对象）
+   * ⇒ 既有舰级**零行为变化**。建档时分别装进 `UnitSpec.resists` 的 `shield` / `armor` / `hull`
+   * （与敌机群的 `FoeDroneDef.defense` 同一条装配口径、同一份 `mergeResist` 形状）。
+   *
+   * ⚠ **抗性只减不减**：`applyDamage` 是 `层伤害 × 克制倍率 × (1 − clamp(0, 0.9, 抗))` ⇒
+   * **负数（易伤）不生效**；要表达"某族怕某系"得另立字段（船长 2026-09-15 暂不做）。
+   * ⚠ 与"层位克制系数"（`typeLayerMult`，全局三系克制）**叠加**：本字段是**族/舰级自己的**那一层。
+   */
+  shieldResist?: DamageResists
+  armorResist?: DamageResists
+  hullResist?: DamageResists
 }
 
 /**

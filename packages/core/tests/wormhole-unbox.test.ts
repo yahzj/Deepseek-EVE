@@ -36,14 +36,19 @@ describe('虫洞 F4d · 安全货柜拆解（90 秒/件 · 100% 族专属池）'
     expect(countWare(state, 'box-relic-a')).toBe(1)
     expect(lootSig(), '这一箱应真的开出东西（装备 / 图纸 / 物品）').not.toBe(before)
     expect(state.refineRuns).toHaveLength(1)
-    // 第二件到点：料尽自动停炉
+    // 第二件到点：料尽**当场**停炉（2026-09-15 船长报障：修前会空转一个批周期，像"又拆了一次"）
     state.gameMs += UNBOX_CYCLE_MS
     advanceRefining(state, ctx)
     expect(countWare(state, 'box-relic-a')).toBe(0)
-    // 料尽停炉在**下一拍**才被察觉（与精炼/回收同一条机器：批末先把 finishAt 推到下一件）
-    state.gameMs += UNBOX_CYCLE_MS
+    expect(state.refineRuns, '拆完最后一件就该收工，不再空转一个 90 秒周期').toHaveLength(0)
+    expect(state.logs.some((l) => l.text.includes('货柜拆解停'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('货柜已拆完（共 2 件）'))).toBe(true)
+    // 再推两拍：不会有第三次"拆解"（箱子已经是 0）
+    state.gameMs += UNBOX_CYCLE_MS * 2
     advanceRefining(state, ctx)
     expect(state.refineRuns).toHaveLength(0)
+    const unboxLogs = state.logs.filter((l) => l.text.includes('📦 拆解'))
+    expect(unboxLogs, '两只箱子只该开两次').toHaveLength(2)
   })
 
   it('安全货柜 = **100% 族专属池**（稀释池已收回；抽到的每一件都必须落在该族池里）', () => {

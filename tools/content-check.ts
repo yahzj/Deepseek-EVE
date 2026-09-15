@@ -1063,6 +1063,13 @@ const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18
  * ⚠ 名单外的官方船现状不在契约内（还有 14 艘偏离，船长会逐艘点名）。
  */
 const OFFICIAL_SLOT_ALIGNED = new Set(['sh-nautilus', 'sh-bullshark'])
+/**
+ * **非战斗舰血量目标总血**（2026-09-15 船长定；与 `packages/data/src/ships.ts` 头注同源）：
+ * 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
+ * 参考中位：T1 228 · T2 384 · T3 675 · T4 1273 · T5 2355 ⇒ 目标见下表。
+ * ⚠ 官方战斗舰的血量若被调整，本表要跟着重算（`npm run ship:hp` 会打出当前中位与推荐值）。
+ */
+const CIVILIAN_HP_TARGET: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 182, 2: 307, 3: 540, 4: 1018, 5: 1884 }
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -1072,6 +1079,19 @@ for (const s of SHIPS) {
   check(s.cycleSeconds > 0 && s.oreUnitsPerCycle > 0 && s.cargoM3 > 0, `舰船 ${s.id} 数值非法`)
   // V10.5 战斗数值契约：三层血量必填且 >0
   check((s.shieldHp ?? 0) > 0 && (s.armorHp ?? 0) > 0 && (s.hullHp ?? 0) > 0, `舰船 ${s.id} 三层血量缺失或非正（V10.5 契约）`)
+  /**
+   * **非战斗舰血量契约**（2026-09-15 船长定：「提高所有非战斗舰船的血量，使其约等于同级官方战斗舰船血量的 0.8」）。
+   * 判据与目标写死在下方常量里（改动必须两处同步 —— 这正是本契约要拦的"静默漂移"）：
+   * 目标 = 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
+   */
+  if (s.role === 'industrial' || s.role === 'hauler') {
+    const total = s.shieldHp + s.armorHp + s.hullHp
+    const want = CIVILIAN_HP_TARGET[s.tier as 1 | 2 | 3 | 4 | 5]
+    check(
+      total === want,
+      `非战斗舰血量契约：${s.id}（T${s.tier} ${s.role}）三层共 ${total} ≠ 目标 ${want}（= 同档官方战斗舰总血中位×0.8；改数请同步本表与 ships.ts 头注）`,
+    )
+  }
   // V10.5b：每层抗性为三系对象（0~0.9/系），键必须是合法伤害类型
   for (const r of ['shieldResist', 'armorResist', 'hullResist'] as const) {
     const res = s[r]
@@ -2891,8 +2911,45 @@ for (const m of MODULES) {
     offenders.length === 0,
     `悬停提示契约：渲染层出现 SVG \`<title>\` 子元素 ⇒ 浏览器会弹**系统默认**提示（请改成父元素的 title 属性，由自绘提示接管）：${offenders.join(' · ')}`,
   )
-  if (offenders.length === 0) {
-    console.log('· 悬停提示契约：渲染层无 SVG `<title>` 子元素（HTML 元素用 title 属性、SVG 元素用 data-tip ⇒ 自绘提示接管）')
+  /**
+   * ② **一个元素只能有一个提示归属**（2026-09-15 统一时加 · 船长报障「按钮的提示会和上一级的悬浮提示
+   * 相互冲突」）：同一 JSX 元素同时带 `title` 与 `{...hoverTipProps(...)}` ⇒ `title` 走全局接管层、
+   * `hoverTipProps` 走富内容路径，两者画在**同一个单例提示层**上 ⇒ 会互相顶掉（先弹一个再被另一个替换）。
+   *
+   * ⚠ **不按标签大小写过滤**：`<Tag {...hoverTipProps(content)}>` 这种"变量标签"（ShipHover / InfoHover
+   * 的写法，`Tag = as ?? 'span'` 最终仍是原生标签）正是本契约要拦的场景之一——只在"一个元素同时出现
+   * 两者"时判红，组件调用点（如 `<InfoHover title=…>`，标题是它自己的 prop）不会被误伤。
+   */
+  const dualOwners: string[] = []
+  for (const file of walk(uiRoot)) {
+    const src = readFileSync(file, 'utf8')
+    if (!src.includes('hoverTipProps(')) continue
+    const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const visit = (node: ts.Node): void => {
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        let hasTitle = false
+        let hasHover = false
+        for (const a of node.attributes.properties) {
+          if (ts.isJsxAttribute(a) && a.name.getText(sf) === 'title') hasTitle = true
+          if (ts.isJsxSpreadAttribute(a) && a.expression.getText(sf).includes('hoverTipProps(')) hasHover = true
+        }
+        if (hasTitle && hasHover) {
+          const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
+          dualOwners.push(`${file.slice(process.cwd().length + 1)}:${line + 1}（<${node.tagName.getText(sf)}>）`)
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+  check(
+    dualOwners.length === 0,
+    `悬停提示契约：同一元素同时带 \`title\` 与 \`{...hoverTipProps(…)}\` ⇒ 两个提示归属抢同一个单例提示层（会互相顶掉）。二选一：静态文案写 \`title\`、富内容用 \`hoverTipProps\`：${dualOwners.join(' · ')}`,
+  )
+  if (offenders.length === 0 && dualOwners.length === 0) {
+    console.log(
+      '· 悬停提示契约：渲染层无 SVG `<title>` 子元素（HTML 元素用 title 属性、SVG 元素用 data-tip ⇒ 自绘提示接管）· 无"双提示归属"元素',
+    )
   }
 }
 
