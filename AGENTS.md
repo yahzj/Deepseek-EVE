@@ -13,6 +13,7 @@
 | 任务类型 | 先读这些(按序) |
 |---|---|
 | **任何改动** | 本文件 §2 四步闸门 · §3 验证闭环 · §4 工作区与合入纪律 |
+| **记一件工作 / 写文档** | 本文件 §8（工作文档 → 归档）＋ `development-conventions.md` **§十五**；**先建工作文档，别改旧文档** |
 | 改 UI / 页面 / 视觉物件 | `development-conventions.md` **§九**(UI 与视觉一致性) + **§十四**(表现层实现与性能纪律) + 同级相似界面代码 |
 | 改战斗 / 表现层 / 动画 | §九 + **§十四** + `docs/design/` 里对应设计稿(如 `drone-combat-animation-20260910.md`) |
 | 改数值 / 经济 / 平衡 | §一(闸门) §二(验证) §八 + 对应设计稿 + `tools/*`(校准脚本,如 `battle:calibrate`) |
@@ -26,11 +27,12 @@
 | 交付可测存档 | §八 + `docs/test-saves/` + `tools/make-test-save.ts` |
 
 **文档清单(用途一览)**
-- `docs/development-conventions.md` — 约定**权威正文**(一~十四章);第十五章只留变更记录指针。
+- `docs/development-conventions.md` — 约定**权威正文**(一~十五章);第十六章只留变更记录指针。
 - `docs/development-conventions-changelog.md` — 约定与 AGENTS.md 的**历次变更记录**(最新在前;干活不必读)。
 - `docs/architecture.md` — 架构与模块边界。
-- `docs/glossary.md` — **术语权威**;新术语先登记再用。
-- `docs/roadmap.md` — 路线图 + 批次变更记录(找"某功能做到哪了"看这里)。
+- `docs/glossary.md` — **术语权威**;新术语先登记再用(§8 例外:词条登记可随时写)。
+- `docs/roadmap.md` — 路线图:待办活面 + **最近批次滚动窗口** + 封存卷索引(更早批次在 `docs/archive/`)。
+- `docs/INDEX.md` — **全仓文档索引**(`npm run docs:index` 生成,禁手改);`docs/archive/` — 封存卷(冻结件,只读不改)。
 - `docs/design/*` — 各系统设计稿(现约 100 份,以目录为准) + 公告待审稿 `announcement-draft-*.md` + 交接件 `handoff-*.md`/`handover-*.md`。
 - `docs/test-saves/` — 可复现测试档说明;`packages/data/src/announcements.ts` — 公告数据(仅经船长批准后写入)。
 
@@ -173,9 +175,19 @@
 - **2026-09-08 人称与话术(船长补定):公告禁用第一/第二人称代词,一律以「玩家」第三人称
   表述;开发/验收话语(复测/校准/对齐/目标带等)不进公告。**
 
-## 8. 会话续接与文档固化
-- 里程碑即固化到文档(design/architecture/本约定);大工程开工前提示船长压缩点并给续接卡;
-- 船长随时可要求“先固化状态/整理续接卡”——立即照做再继续。
+## 8. 文档工作流：工作文档 → 归档（2026-09-15 船长改口径）
+- **工作期间不许改旧文档**（船长 2026-09-15 原话）：「**工作流没有进行收尾归档事，不允许直接修改旧文档。
+  应该新建一个该工作的临时文档记录工作相关。等到归档时，再合入旧文档。**」
+  ＋「**归档后当前工作文档直接删除，只将关键内容归档。**」
+- **开工先建工作文档** `docs/design/<主题>-<YYYYMMDD>.md`（头部写：`状态：进行中` + 船长原话照抄 + 范围/不做
+  + 待裁决点）；工作期间**只改它**（＋代码/数据/测试），**不往 `docs/roadmap.md` 追加批次条目、不动词典现行词条**。
+- **归档三步**（船长验收 + 合入 main 后当批做）：① 关键内容**并入**该去的老文档（roadmap 一条精简条目 ·
+  该更新的词典词条 · 必要时 architecture/本约定）；② **删掉工作文档**（细节以 git 历史兜底 ⇒ 结论/数值必须已并入）；
+  ③ 重跑 `npm run docs:index`。
+- **例外（这几份随时可改）**：本文件 · `docs/development-conventions.md` · 那份 changelog（规则类要当场生效）·
+  `docs/glossary.md` 的**新术语登记** · 生成件 `docs/INDEX.md` 与 `docs/archive/` 封存卷。
+- 大工程开工前提示船长压缩点并给续接卡；船长随时可要求「先固化状态/整理续接卡」——立即照做再继续。
+- 细则见 `docs/development-conventions.md` **§十五**。
 
 ## 9. 测试门槛存档
 - 大功能交付按需配可复现脚本与测试存档(`tools/make-test-save.ts` + `docs/test-saves/`,

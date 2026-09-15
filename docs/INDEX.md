@@ -12,13 +12,13 @@
 
 ## 统计
 
-- 文档总数 **248** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4738** KB · **34795** 行
-- 状态分布：**未标注** 137 · **已确认/已实现** 105 · **待裁定** 3 · **进行中** 2 · **历史留档** 1
-- 孤儿文档（0 引用）**20** 份 · 状态未标注 **137** 份
+- 文档总数 **249** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4757** KB · **34900** 行
+- 状态分布：**未标注** 137 · **已确认/已实现** 105 · **待裁定** 3 · **进行中** 3 · **历史留档** 1
+- 孤儿文档（0 引用）**19** 份 · 状态未标注 **137** 份
 - 一、权威文档（开工必读）：**7** 份
 - 七、评审与体检（review）：**9** 份
 - 三、现行设计稿（design）：**169** 份
-- 九、封存卷（archive · 冻结件，只读不改）：**14** 份
+- 九、封存卷（archive · 冻结件，只读不改）：**15** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
@@ -28,13 +28,13 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 17 KB / 187 行 | 118 / 5 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 25 / 1 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 19 KB / 199 行 | 125 / 5 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 27 / 1 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 135 KB / 206 行 | 12 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 43 KB / 499 行 | 64 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 292 KB / 650 行 | 172 / 4 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 191 行 | 226 / 8 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 138 KB / 207 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 534 行 | 67 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 289 KB / 653 行 | 180 / 5 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 191 行 | 232 / 8 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -56,7 +56,7 @@
 |---|---|---|---|---|---|
 | `docs/design/civilian-hp-20260915.md` | 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8） | 已确认/已实现（已确认） | 2026-09-15 | 5 KB / 92 行 | 0 / 0 |
 | `docs/design/desire-band-20260915.md` | 默认期望交距：中段 → 射程带高位（星图与洞内统一 0.8；洞内近战开局另守中段 0.5） | 未标注 | 2026-09-15 | 7 KB / 85 行 | 4 / 0 |
-| `docs/design/docs-archive-20260915.md` | 文档精简与封存（roadmap / glossary）—— 工作文档 | 进行中（进行中） | 2026-09-15 | 6 KB / 71 行 | 0 / 0 |
+| `docs/design/docs-archive-20260915.md` | 文档精简与封存（roadmap / glossary）—— 工作文档 | 进行中（进行中） | 2026-09-15 | 9 KB / 99 行 | 0 / 0 |
 | `docs/design/system-scan-unattended-20260915.md` | 星系扫描无人化（扫描艇 · 不占主控 · 完成待查看）—— 2026-09-15 船长定案 | 已确认/已实现（已确认 · 已落码） | 2026-09-15 | 8 KB / 84 行 | 1 / 0 |
 | `docs/design/wormhole-foe-variety-20260915.md` | 洞内敌卡扩充（一族三档 + 新舰）· 2026-09-15 | 已确认/已实现（已确认） | 2026-09-15 | 25 KB / 279 行 | 6 / 3 |
 | `docs/design/announcement-draft-20260914-push2.md` | 公告待审稿 · 第二批（非虫洞批次 · 2026-09-14） | 待裁定（待船长审核） | 2026-09-14 | 4 KB / 47 行 | 4 / 0 |
@@ -133,7 +133,7 @@
 | `docs/design/drone-combat-animation-20260910.md` | 无人机战斗动画 + 损毁系统（2026-09-10 船长逐轮拍板，状态：已确认） | 已确认/已实现（已确认） | 2026-09-10 | 13 KB / 138 行 | 5 / 1 |
 | `docs/design/drone-losses-20260910.md` | 无人机可被击落（2026-09-10，已确认并实施） | 已确认/已实现（船长已确认并实施） | 2026-09-10 | 23 KB / 262 行 | 19 / 0 |
 | `docs/design/drone-roles-20260910.md` | 无人机四型定位与现有无人机调整方案（2026-09-10，已确认并实施） | 已确认/已实现（船长已确认） | 2026-09-10 | 13 KB / 168 行 | 9 / 0 |
-| `docs/design/enemy-speed-retune-20260910.md` | 敌速重标（2026-09-10 · 状态：已确认并实现） | 已确认/已实现（已确认并实现） | 2026-09-10 | 28 KB / 410 行 | 4 / 2 |
+| `docs/design/enemy-speed-retune-20260910.md` | 敌速重标（2026-09-10 · 状态：已确认并实现） | 已确认/已实现（已确认并实现） | 2026-09-10 | 28 KB / 410 行 | 5 / 2 |
 | `docs/design/faction-tactic-20260910.md` | 族系战术改判 + 能量卡火力重标（2026-09-10 · 状态：已确认并实现） | 已确认/已实现（已确认并实现） | 2026-09-10 | 10 KB / 154 行 | 6 / 0 |
 | `docs/design/foe-faction-identity-20260910.md` | 敌族特色 · 设定草案（2026-09-10 · 逐族商讨中） | 未标注 | 2026-09-10 | 24 KB / 203 行 | 25 / 0 |
 | `docs/design/g-exile-bee-drone-20260910.md` | G 族专属装备改造：鱿蜂无人机（2026-09-10 · 状态：已确认，实现中） | 已确认/已实现（已确认） | 2026-09-10 | 5 KB / 71 行 | 4 / 1 |
@@ -224,13 +224,14 @@
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 4 KB / 54 行 | 3 / 0 |
 
-## 九、封存卷（archive · 冻结件，只读不改） —— 14 份
+## 九、封存卷（archive · 冻结件，只读不改） —— 15 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/archive/glossary-detail-03-econ-20260915.md` | 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 11 KB / 26 行 | 6 / 0 |
 | `docs/archive/glossary-retired-20260915.md` | 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 3 KB / 16 行 | 4 / 0 |
 | `docs/archive/roadmap-todo-done-20260915.md` | 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 92 KB / 75 行 | 5 / 0 |
-| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 42 / 7 |
+| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 44 / 7 |
 | `docs/archive/roadmap-2026-09-04.md` | 封存卷 · roadmap 批次条目 2026-09-04 | 未标注 | — | 13 KB / 68 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-05.md` | 封存卷 · roadmap 批次条目 2026-09-05 | 未标注 | — | 12 KB / 32 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-06.md` | 封存卷 · roadmap 批次条目 2026-09-06 | 未标注 | — | 2 KB / 10 行 | 0 / 0 |
@@ -241,7 +242,7 @@
 | `docs/archive/roadmap-2026-09-12.md` | 封存卷 · roadmap 批次条目 2026-09-12 | 未标注 | — | 173 KB / 160 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 392 KB / 252 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 27 KB / 22 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 27 KB / 22 行 | 1 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -253,7 +254,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 43 KB / 429 行 | 42 / 7 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 43 KB / 429 行 | 44 / 7 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -265,7 +266,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 15 KB / 177 行 | 8 / 0 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 2 / 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 / 0 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 7 KB / 77 行 | 42 / 7 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 7 KB / 77 行 | 44 / 7 |
 
 ## 四、已归档设计稿（design/archive） —— 40 份
 
@@ -310,14 +311,14 @@
 | `docs/design/archive/handoff-20260909-dsh-reinstall.md` | 二号会话续接卡(2026-09-09 DSH 重装;交给新继承人) | 未标注 | 2026-09-09 | 5 KB / 48 行 | 5 / 0 |
 | `docs/design/archive/handoff-b3-skills.md` | B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施） | 未标注（打捞对标技能组已实施 ✅） | — | 4 KB / 52 行 | 4 / 0 |
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
-| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 42 / 7 |
+| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 44 / 7 |
 
-## 附：孤儿文档（0 引用，20 份）
+## 附：孤儿文档（0 引用，19 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/civilian-hp-20260915.md`（2026-09-15 · 5 KB）—— 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8）
-- `docs/design/docs-archive-20260915.md`（2026-09-15 · 6 KB）—— 文档精简与封存（roadmap / glossary）—— 工作文档
+- `docs/design/docs-archive-20260915.md`（2026-09-15 · 9 KB）—— 文档精简与封存（roadmap / glossary）—— 工作文档
 - `docs/design/foe-faction-a-pirate-20260911.md`（2026-09-11 · 8 KB）—— A 族「海盗舰系」族特色 · 对账与调整方案（2026-09-11 · 讨论中）
 - `docs/design/steam-store-draft-20260911.md`（2026-09-11 · 9 KB）—— Steam 商店页文案 · 终稿（2026-09-11，三号撰稿；口径已由船长裁决）
 - `docs/design/market-order-cross-20260910.md`（2026-09-10 · 5 KB）—— 挂单瞬间吃簿：与现有簿面对冲的挂单立即成交（状态：已确认，2026-09-10 船长拍板；一号实现）
@@ -331,7 +332,6 @@
 - `docs/archive/roadmap-2026-09-10.md`（无日期 · 169 KB）—— 封存卷 · roadmap 批次条目 2026-09-10
 - `docs/archive/roadmap-2026-09-11.md`（无日期 · 237 KB）—— 封存卷 · roadmap 批次条目 2026-09-11
 - `docs/archive/roadmap-2026-09-12.md`（无日期 · 173 KB）—— 封存卷 · roadmap 批次条目 2026-09-12
-- `docs/archive/roadmap-2026-09-15.md`（无日期 · 27 KB）—— 封存卷 · roadmap 批次条目 2026-09-15
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 6 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
@@ -339,6 +339,7 @@
 
 ## 附：状态未标注（137 份，待补一行 `状态：…`）
 
+- `docs/archive/glossary-detail-03-econ-20260915.md`（2026-09-15）—— 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出）
 - `docs/archive/glossary-retired-20260915.md`（2026-09-15）—— 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出）
 - `docs/archive/roadmap-todo-done-20260915.md`（2026-09-15）—— 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出）
 - `docs/design/desire-band-20260915.md`（2026-09-15）—— 默认期望交距：中段 → 射程带高位（星图与洞内统一 0.8；洞内近战开局另守中段 0.5）
@@ -469,7 +470,6 @@
 - `docs/design/v7-design.md`（无日期）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 - `docs/design/v9-market.md`（无日期）—— V9 设计：市场系统（已实现）
 - `docs/design/weapon-skill-batch.md`（无日期）—— 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四）
-- `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/glossary.md`（无日期）—— 术语词典（Glossary）
 - `docs/review/A1-bounty-review.md`（无日期）—— A1 · 悬赏通读走查表（22 张）
