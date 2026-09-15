@@ -2001,24 +2001,39 @@ function normalizeState(raw: unknown): GameState {
   }
   const exploredGalaxies = [...exploredSet]
 
-  // --- 扫描探索作业（v13；T8：加出发星系 originGalaxy） ---
+  // --- 星系扫描作业（v13；T8：加出发星系 originGalaxy；2026-09-15：无人化 ⇒ 无返航段 + 两个"待查看"字段） ---
   const scanRaw = asRaw(src.scanning)
   const scanGalaxyId = typeof scanRaw.galaxyId === 'string' && scanRaw.galaxyId.length > 0 ? scanRaw.galaxyId : null
+  /**
+   * **老档一次性收口"自动返航段"**（船长 2026-09-15：星系扫描改成派无人扫描艇 ⇒ 不再有返航段）。
+   * 老档若正处在返航段（`returning === true`），其窗口完成时**星系早已点亮**（`finishScan` 先落地、
+   * 再去返航）⇒ 直接按"已收尾"读入：情报不丢、舰船位置不动（收口前那套"到港停靠 + 自动卸货"作废）。
+   * 收口时补一个"待查看"高亮位，让玩家进星图看一眼——否则这次扫描完成得无声无息。
+   */
+  const legacyScanReturning = scanRaw.returning === true
+  const scanActive = scanRaw.active === true && scanGalaxyId !== null && !legacyScanReturning
+  const lastGalaxyId =
+    typeof scanRaw.lastGalaxyId === 'string' && scanRaw.lastGalaxyId.length > 0 ? scanRaw.lastGalaxyId : null
   const scanning = {
-    active: scanRaw.active === true && scanGalaxyId !== null,
-    galaxyId: scanGalaxyId,
-    finishAtGameMs:
-      typeof scanRaw.finishAtGameMs === 'number' && Number.isFinite(scanRaw.finishAtGameMs)
+    active: scanActive,
+    galaxyId: scanActive ? scanGalaxyId : null,
+    finishAtGameMs: scanActive
+      ? typeof scanRaw.finishAtGameMs === 'number' && Number.isFinite(scanRaw.finishAtGameMs)
         ? Math.max(0, Math.floor(scanRaw.finishAtGameMs))
-        : 0,
-    startedAtGameMs:
-      typeof scanRaw.startedAtGameMs === 'number' && Number.isFinite(scanRaw.startedAtGameMs)
+        : 0
+      : 0,
+    startedAtGameMs: scanActive
+      ? typeof scanRaw.startedAtGameMs === 'number' && Number.isFinite(scanRaw.startedAtGameMs)
         ? Math.max(0, Math.floor(scanRaw.startedAtGameMs))
-        : 0,
+        : 0
+      : 0,
     originGalaxy:
       typeof scanRaw.originGalaxy === 'string' && scanRaw.originGalaxy.length > 0 ? scanRaw.originGalaxy : null,
-    // 2026-09-06 兼容字段：窗口已完成、处于自动返航段（返回中不可终止）
-    returning: scanRaw.returning === true,
+    // 2026-09-06 兼容字段：**2026-09-15 起返航段取消** ⇒ 读档一律归 false（老档返航段见上：一次性收口）
+    returning: false,
+    // 待查看高亮位（老档返航段收口时补亮）
+    awaitingView: scanRaw.awaitingView === true || legacyScanReturning,
+    lastGalaxyId: lastGalaxyId ?? (legacyScanReturning ? scanGalaxyId : null),
   }
 
   // --- T8 野外停留 / 返航行程 / 悬赏冷却 / 重复清剿（v16.1 兼容字段） ---

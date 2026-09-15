@@ -10,6 +10,7 @@ import { advanceGame } from '../src/engine'
 import { startMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
 import {
+  acknowledgeScanView,
   actionBlockReason,
   ensureTransitExplored,
   frontierGalaxyIds,
@@ -17,16 +18,16 @@ import {
   markExplored,
   maxScanWindowMs,
   SCAN_WINDOW_MS,
+  scanAwaitingView,
   scanStatus,
   startScan,
   stopScan,
 } from '../src/explore'
 import { EXPLORE_EVENTS } from '../src/events'
 import { assignAiExpedition, assignAiMining, gainAiCore } from '../src/ai'
-import { anomaly, belt, makeTestCtx, moduleDef, ship , fittedOf } from './helpers'
+import { anomaly, belt, galaxy, makeTestCtx, moduleDef, ship , fittedOf } from './helpers'
+import { shipBusyLabel } from '../src/activity'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { shortestTravelMinutes, travelLegMs } from '../src/travel'
-import { RETURN_LEG_MUL } from '../src/balance'
 
 describe('V13 星图探索：迷雾与剪影', () => {
   let state: GameState
@@ -178,22 +179,39 @@ describe('V13 扫描探索作业', () => {
     ctx = makeTestCtx()
   })
 
-  it('校验：母港无需扫描；非剪影不可扫描；作业互斥；已探索无需扫描', () => {
+  it('校验：母港无需扫描；非剪影不可扫描；已探索无需扫描', () => {
     expect(startScan(state, 'galaxy-hub', ctx).error).toContain('无需扫描')
     expect(startScan(state, 'galaxy-ghost', ctx).ok).toBe(false) // 未知星系
-    state.mining.active = true
-    expect(startScan(state, 'galaxy-far', ctx).error).toContain('采矿作业进行中') // 剪影 + 作业中 → 互斥优先
-    state.mining.active = false
     markExplored(state, 'galaxy-far')
     expect(startScan(state, 'galaxy-far', ctx).error).toContain('无需扫描')
   })
 
-  it('剪影可扫描：去程取消，时长 = 10 分钟就地扫描窗口；完成点亮并自动返航（不停留）', () => {
+  /**
+   * **不占主控**（船长 2026-09-15：「玩家扫描星系将不再占用玩家的主控活动」）：
+   * 修前这里会得到「采矿作业进行中：请先停止开采。」——扫描艇是无人艇，与主控手上那件事互不相干。
+   * 「一次只派一艘」是唯一保留的互斥（`state.scanning` 单槽）：要换目标先召回。
+   */
+  it('不占主控：采矿中照样能派扫描艇；扫完前不能再派第二处（换目标先召回）', () => {
+    const twoCtx = makeTestCtx({
+      galaxies: [galaxy('galaxy-mid', '中途')],
+      edges: [{ from: 'galaxy-hub', to: 'galaxy-mid', travelMinutes: 2 }],
+    })
+    state.mining.active = true
+    expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
+    expect(state.scanning.active).toBe(true)
+    state.mining.active = false
+    // 空闲扫描艇只有一艘：扫完前不能换目标，但**召回后立刻能换**（进度按星系各自保留）
+    expect(startScan(state, 'galaxy-mid', twoCtx).error).toContain('另一处扫描')
+    expect(stopScan(state, twoCtx).ok).toBe(true)
+    expect(startScan(state, 'galaxy-mid', twoCtx).ok).toBe(true)
+    expect(scanStatus(state).galaxyId).toBe('galaxy-mid')
+  })
+
+  it('剪影可扫描：去程取消，时长 = 10 分钟就地扫描窗口；完成即点亮并当场收尾', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     const st = scanStatus(state)
     expect(st.active).toBe(true)
     expect(st.galaxyId).toBe('galaxy-far')
-    expect(st.returning).toBe(false)
     // 去程已取消：总时长 = 就地扫描窗口（默认 10 分钟）
     expect(st.totalMs).toBe(10 * 60_000)
     // 还差 1ms → 未完成
@@ -201,24 +219,16 @@ describe('V13 扫描探索作业', () => {
     expect(state.scanning.active).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     advanceGame(state, 1, ctx)
-    // 窗口完成：点亮 + 进入自动返航段（2026-09-06：不再停留该星系）
-    expect(state.scanning.returning).toBe(true)
-    expect(state.scanning.active).toBe(true)
-    expect(scanStatus(state).returning).toBe(true)
+    // 窗口完成：点亮 + **当场收尾**（2026-09-15：无人扫描艇没有返航段）+ 置"待查看"高亮位
     expect(isExplored(state, 'galaxy-far')).toBe(true)
-    expect(state.awayGalaxy).toBeNull()
-    expect(state.logs.some((l) => l.text.includes('扫描完成'))).toBe(true)
-    /**
-     * **自动返航 = 单程 × `RETURN_LEG_MUL`**（2026-09-14 船长「修正倍率回1倍」：现值 1×单程，与悬赏返航
-     * 共用同一个旋钮；旧口径「去程并入返航 = 2×单程」作废）——这里直接核时长，别只靠"推几步看它到港"。
-     */
-    const oneLeg = travelLegMs(state, ctx, shortestTravelMinutes(ctx, 'galaxy-hub', 'galaxy-far'))
-    expect(state.scanning.finishAtGameMs - state.scanning.startedAtGameMs).toBe(oneLeg * RETURN_LEG_MUL)
-    // 自动返航走完 → 停靠母港
-    for (let i = 0; i < 60 && state.scanning.active; i++) advanceGame(state, 60_000, ctx)
     expect(state.scanning.active).toBe(false)
     expect(state.scanning.returning).toBe(false)
     expect(state.awayGalaxy).toBeNull()
+    expect(state.logs.some((l) => l.text.includes('扫描完成'))).toBe(true)
+    expect(scanAwaitingView(state)).toEqual({ galaxyId: 'galaxy-far' })
+    // 舰船与位置全程不动（无人艇）：不在野外、也不产生任何行程
+    expect(state.transit.active).toBe(false)
+    expect(state.dockedSite).toBeNull()
   })
 
   it('去程取消：扫描时长与航行（warp/地图技能）无关，只算就地窗口', () => {
@@ -273,7 +283,16 @@ describe('V14 存档迁移与续扫进度', () => {
     const loaded = loadSaveFile(text)
     expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(loaded.state.exploredGalaxies).toEqual(['galaxy-hub'])
-    expect(loaded.state.scanning).toEqual({ active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null, returning: false })
+    expect(loaded.state.scanning).toEqual({
+      active: false,
+      galaxyId: null,
+      finishAtGameMs: 0,
+      startedAtGameMs: 0,
+      originGalaxy: null,
+      returning: false,
+      awaitingView: false,
+      lastGalaxyId: null,
+    })
     expect(loaded.state.scanProgress).toEqual({})
     expect(loaded.state.wallet.isk).toBe(123_456)
     // 往返保存：新字段保留
@@ -296,17 +315,17 @@ describe('V14 扫描终止与续扫', () => {
     expect(stopScan(state, ctx).ok).toBe(false)
   })
 
-  it('立即终止（去程已取消）：尚未产生窗口进度则无保留，舰船停靠原样', () => {
+  it('立即召回（去程已取消）：尚未产生窗口进度则无保留，舰船停靠原样', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     expect(stopScan(state, ctx).ok).toBe(true)
     expect(state.scanning.active).toBe(false)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     expect(state.scanProgress['galaxy-far']).toBeUndefined()
-    expect(state.transit.active).toBe(false) // 即时返航空间站（无行程）
+    expect(state.transit.active).toBe(false) // 无人扫描艇：不产生任何行程
     expect(state.awayGalaxy).toBeNull()
   })
 
-  it('扫描窗口中终止：保存已完成窗口毫秒并即时返航；下次续扫只补剩余窗口', () => {
+  it('扫描窗口中召回：保存已完成窗口毫秒；下次续扫只补剩余窗口', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     // 去程取消：总作业 = 就地窗口 600s；扫到 300s 处终止 → 进度 300_000
     advanceGame(state, 300_000, ctx)
@@ -315,43 +334,48 @@ describe('V14 扫描终止与续扫', () => {
     expect(state.scanning.active).toBe(false)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
     expect(state.scanProgress['galaxy-far']).toBe(300_000)
-    // 终止 = 即时返航空间站（transit 不落行程；位置回母港）
-    expect(state.transit.active).toBe(false)
+    expect(state.transit.active).toBe(false) // 无人扫描艇：不返航、不停靠
     expect(state.awayGalaxy).toBeNull()
     // 续扫：剩余窗口 300s = 300_000
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     expect(scanStatus(state).totalMs).toBe(300_000)
-    // 补扫完成 → 点亮、清进度并转入自动返航；返航到港后停靠母港
+    // 补扫完成 → 点亮、清进度并当场收尾
     advanceGame(state, 300_000, ctx)
-    expect(state.scanning.active).toBe(true)
-    expect(state.scanning.returning).toBe(true)
+    expect(state.scanning.active).toBe(false)
+    expect(state.scanning.returning).toBe(false)
     expect(isExplored(state, 'galaxy-far')).toBe(true)
     expect(state.scanProgress['galaxy-far']).toBeUndefined()
-    for (let i = 0; i < 60 && state.scanning.active; i++) advanceGame(state, 60_000, ctx)
-    expect(state.scanning.active).toBe(false)
     expect(state.awayGalaxy).toBeNull()
   })
 
-  it('窗口完整走完即自动完成（点亮 + 自动返航，无停留段）；返航段不可终止', () => {
+  /**
+   * **完成即收尾 + 待查看高亮**（船长 2026-09-15：「当扫描完成后这个进度条依旧存在并高亮，
+   * 直到玩家进入星图界面查看后才移除」）：窗口走完 ⇒ `scanning.active` 立刻归 false，
+   * 但 `scanAwaitingView` 亮着；玩家进星图（界面调 `acknowledgeScanView`）才收。
+   * 收尾后**没有"返航段"这一档** ⇒ `stopScan` 只会回"没有进行中的扫描"。
+   */
+  it('窗口完整走完即自动完成：当场收尾 + 待查看高亮亮起，进星图看过才收', () => {
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     // 窗口还差 1ms：仍在作业中
     advanceGame(state, 600_000 - 1, ctx)
     expect(state.scanning.active).toBe(true)
     expect(isExplored(state, 'galaxy-far')).toBe(false)
+    expect(scanAwaitingView(state)).toBeNull() // 还没扫完 ⇒ 没有待查看
     advanceGame(state, 1, ctx)
-    expect(state.scanning.active).toBe(true) // 自动返航段（船在忙）
-    expect(state.scanning.returning).toBe(true)
+    expect(state.scanning.active).toBe(false) // 完成即收尾（无返航段）
+    expect(state.scanning.returning).toBe(false)
     expect(isExplored(state, 'galaxy-far')).toBe(true)
     expect(state.awayGalaxy).toBeNull()
     expect(state.transit.active).toBe(false)
-    // 返航段不可终止
+    // 待查看位亮着，并记着是哪个星系（顶部那条进度条据此留格高亮）
+    expect(scanAwaitingView(state)).toEqual({ galaxyId: 'galaxy-far' })
+    expect(state.scanning.lastGalaxyId).toBe('galaxy-far')
+    // 已收尾 ⇒ 此时"终止"无事可做（修前这里会因为返航段而报"正在自动返航，不可终止"）
     expect(stopScan(state, ctx).ok).toBe(false)
-    expect(state.scanning.active).toBe(true)
-    // 到港收尾
-    for (let i = 0; i < 60 && state.scanning.active; i++) advanceGame(state, 60_000, ctx)
-    expect(state.scanning.active).toBe(false)
-    expect(state.scanning.returning).toBe(false)
-    expect(state.awayGalaxy).toBeNull()
+    // 玩家进「星图」看过 ⇒ 收掉高亮；再收一次返回 false（幂等，不该反复写档）
+    expect(acknowledgeScanView(state)).toBe(true)
+    expect(scanAwaitingView(state)).toBeNull()
+    expect(acknowledgeScanView(state)).toBe(false)
     expect(state.scanProgress['galaxy-far']).toBeUndefined()
   })
 
@@ -368,5 +392,86 @@ describe('V14 扫描终止与续扫', () => {
     const loaded = loadSaveFile(serializeSaveFile(state, 1))
     expect(loaded.state.scanProgress['galaxy-far']).toBe(15 * 60_000)
     expect(loaded.state.scanProgress['galaxy-far']!).toBeGreaterThan(SCAN_WINDOW_MS)
+  })
+})
+
+/**
+ * **2026-09-15 船长定案：星系扫描无人化**——原话：
+ * 「玩家扫描星系将不再占用玩家的主控活动（也不显示在主控活动里，而是在 AI 活动的图标右侧显示一个进度条，
+ * 当扫描完成后这个进度条依旧存在并高亮，直到玩家进入星图界面查看后才移除）」。
+ *
+ * 三条口径（① 1A 双向放行 / ② 2A 不牵动舰船 · 无返航段 / ③ 3甲 不再暴露）：
+ * 本块钉 ①②；③ 在 `t25.test.ts`（暴露）与 `b1.test.ts`（暴露清单）里；界面条与"看过即收"见 ④。
+ */
+describe('2026-09-15 星系扫描无人化：不占主控 / 不牵动舰船 / 待查看', () => {
+  let state: GameState
+  /** 两处剪影的星图（hub–far 之外再加 hub–mid）：才测得出"扫描 A 的同时干别的 / 换目标先召回" */
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 42 })
+    state.wallet.isk = 500_000
+    ctx = makeTestCtx({
+      galaxies: [galaxy('galaxy-mid', '中途')],
+      edges: [{ from: 'galaxy-hub', to: 'galaxy-mid', travelMinutes: 2 }],
+    })
+  })
+
+  it('① 双向放行（真命令）：扫描中能采矿、能远征；驾驶船不再报忙', () => {
+    state.standings['dsi'] = 5
+    markExplored(state, 'galaxy-far') // 远征目标（悬赏在 far）
+    expect(startScan(state, 'galaxy-mid', ctx).ok).toBe(true)
+    // 忙态徽标（换驾驶 / 派副船 / 进洞共用那把尺）：修前这里是 '扫描探索中'
+    expect(shipBusyLabel(state, ctx, state.shipId)).toBeNull()
+    // 扫描中采矿（修前：「扫描探索中：先终止扫描。」）
+    expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
+    expect(state.scanning.active).toBe(true) // 扫描不受影响，照旧在跑
+    state.mining.active = false
+    state.mining.beltId = null
+    // 扫描中远征（修前同样被拒）
+    expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
+    expect(state.scanning.active).toBe(true)
+  })
+
+  it('② 不牵动舰船：野外驻留时开扫、扫完，位置/停靠/行程一律原样（无返航、无自动停靠、无卸货）', () => {
+    state.awayGalaxy = 'galaxy-far' // 野外驻留（掩护巡逻）——修前开扫会把它清零
+    state.dockedSite = null
+    expect(startScan(state, 'galaxy-mid', ctx).ok).toBe(true)
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    advanceGame(state, 10 * 60_000, ctx) // 窗口走完（far 无关；扫的是 mid）
+    expect(isExplored(state, 'galaxy-mid')).toBe(true)
+    expect(state.scanning.active).toBe(false)
+    // 修前：完成 → 自动返航段 → 停靠「最近已建成站」+ 自动卸货；现在一律不动
+    expect(state.awayGalaxy).toBe('galaxy-far')
+    expect(state.dockedSite).toBeNull()
+    expect(state.transit.active).toBe(false)
+  })
+
+  it('④ 完成待查看：set → 界面收条（幂等）；老档的"返航段"读档一次性收口并补亮', () => {
+    // —— 新档：完成即亮待查看位 ——
+    expect(startScan(state, 'galaxy-mid', ctx).ok).toBe(true)
+    advanceGame(state, 10 * 60_000, ctx)
+    expect(scanAwaitingView(state)).toEqual({ galaxyId: 'galaxy-mid' })
+    const round = loadSaveFile(serializeSaveFile(state, 1))
+    expect(scanAwaitingView(round.state)).toEqual({ galaxyId: 'galaxy-mid' }) // 随档往返
+    expect(acknowledgeScanView(round.state)).toBe(true)
+    expect(scanAwaitingView(loadSaveFile(serializeSaveFile(round.state, 2)).state)).toBeNull()
+    // —— 老档：正处在"自动返航段"（returning=true）的扫描 ——
+    const old = createInitialState({ nowWallMs: 0, seed: 42 })
+    old.exploredGalaxies.push('galaxy-mid') // 老档里窗口完成时星系已点亮（finishScan 先落地）
+    old.scanning = {
+      active: true,
+      galaxyId: 'galaxy-mid',
+      finishAtGameMs: 99_999,
+      startedAtGameMs: 0,
+      originGalaxy: 'galaxy-hub',
+      returning: true,
+    }
+    const migrated = loadSaveFile(serializeSaveFile(old, 3)).state
+    expect(migrated.scanning.active).toBe(false) // 返航段取消 ⇒ 一次性收口
+    expect(migrated.scanning.returning).toBe(false)
+    expect(migrated.scanning.finishAtGameMs).toBe(0)
+    expect(isExplored(migrated, 'galaxy-mid')).toBe(true) // 情报不丢
+    expect(scanAwaitingView(migrated)).toEqual({ galaxyId: 'galaxy-mid' }) // 收口时补亮，让玩家看一眼
   })
 })

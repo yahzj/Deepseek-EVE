@@ -155,7 +155,6 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。' }
-  if (state.scanning.active) return { ok: false, error: '扫描作业中：请先终止扫描。' }
   const from = state.awayGalaxy
   const target = nearestStationGalaxyId(state, ctx, from)
   const mins = shortestTravelMinutes(ctx, from, target)
@@ -294,7 +293,6 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。' }
-  if (state.scanning.active) return { ok: false, error: '扫描作业中：请先终止扫描。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。' }
   }
@@ -593,7 +591,6 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
   if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。' }
-  if (state.scanning.active) return { ok: false, error: '扫描作业中：请先终止扫描。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。' }
   }

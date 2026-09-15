@@ -137,8 +137,9 @@ describe('T4 换驾驶善后（原"换船重采"取消）', () => {
     }
     expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(false)
     state.expedition.active = false
+    // 2026-09-15：扫描不再挡换驾驶（无人扫描艇）——修前这里 changeShip 会被拒
     state.scanning = { active: true, galaxyId: 'galaxy-far', finishAtGameMs: 600_000, startedAtGameMs: 0, originGalaxy: null }
-    expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(false)
+    expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(true)
   })
 })
 

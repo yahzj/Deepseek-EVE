@@ -264,7 +264,6 @@ export function startManufacturing(
     if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
     if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
     if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
-    if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
     if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自制造。' }

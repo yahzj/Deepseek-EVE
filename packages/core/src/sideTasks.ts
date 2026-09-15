@@ -829,7 +829,6 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
   // 舰船空闲互斥（快递出发 = 主控携货真实航行；与其余出航作业互为前置）
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出发投送。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出发投送。' }
-  if (state.scanning.active) return { ok: false, error: '扫描探索进行中：请先终止扫描，舰船才能出发投送。' }
   if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征，舰船才能出发投送。' }
   if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏），舰船才能出发投送。' }
   if (state.transit.active) return { ok: false, error: '返航行程中：到站后再出发投送。' }

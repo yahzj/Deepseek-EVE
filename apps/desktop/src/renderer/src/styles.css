@@ -8341,6 +8341,82 @@ body {
 
 }
 
+/* 星系扫描条（船长 2026-09-15：扫描不占主控 ⇒ 不列进「玩家活动」，改摆在 AI 徽标右侧；
+   完成后再留格高亮，玩家进「星图」查看才收起）。容器定宽 + 名称省略号：剩余时间/星系名长短
+   都不引起活动窗头部跳动（同级相似项 = 上面两枚 AI 徽标）。 */
+
+.app-activitybar-scan {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  width: 200px;
+
+  min-width: 120px;
+
+  flex-shrink: 1;
+
+  box-sizing: border-box;
+
+  cursor: pointer;
+
+  font-family: inherit;
+
+  font-size: 11px;
+
+  color: var(--wui-text-dim);
+
+  padding: 2px 8px;
+
+  border: 1px dashed rgba(120, 200, 255, 0.3);
+
+  border-radius: 6px;
+
+  background: rgba(120, 200, 255, 0.05);
+
+}
+
+.app-activitybar-scan:hover { background: rgba(120, 200, 255, 0.12); }
+
+.app-activitybar-scan .app-activitybar-track { width: 56px; flex-shrink: 0; }
+
+.app-activitybar-scan-name {
+
+  flex: 1;
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+}
+
+.app-activitybar-scan-time { flex-shrink: 0; font-size: 10.5px; font-family: var(--wui-mono); }
+
+/* 已完成待查看：满格 + 金色高亮（进「星图」看过即收；见 ActivityBar 的 ackScanView） */
+
+.app-activitybar-scan.is-done {
+
+  border-style: solid;
+
+  border-color: rgba(232, 180, 90, 0.65);
+
+  background: rgba(232, 180, 90, 0.14);
+
+  color: var(--wui-gold);
+
+}
+
+.app-activitybar-scan.is-done .app-activitybar-fill { background: var(--wui-gold); }
+
+.app-activitybar-scan.is-done .app-activitybar-scan-time { color: var(--wui-gold); }
+
 /* V16.2 vertical hp layers (shield blue / armor red / hull yellow, top-down) (ASCII-safe) */
 
 .app-battle-hp { display: flex; flex-direction: column; gap: 3px; width: 100%; }

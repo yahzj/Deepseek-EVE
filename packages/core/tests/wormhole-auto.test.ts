@@ -320,15 +320,9 @@ describe('虫洞 · 自动探索（批次 3）', () => {
   it('**主控正忙 ⇒ 直接不允许**（不沿用"采矿中换驾驶 = 旧船返航"那条善后链）', () => {
     const state = fresh({ ships: 4 })
     const oldMain = state.shipId
-    // 让主控"忙"起来：给它派一项主控活动（这里用星图扫描，与 shipBusyLabel 同一把尺）
-    state.scanning = {
-      active: true,
-      galaxyId: 'galaxy-hub',
-      finishAtGameMs: 600_000,
-      startedAtGameMs: 0,
-      originGalaxy: null,
-      returning: false,
-    }
+    // 让主控"忙"起来：给它派一项主控活动（这里用掩护巡逻，与 shipBusyLabel 同一把尺）
+    // ⚠ 2026-09-15 起**不能用星图扫描**——星系扫描改成无人扫描艇，已经不占主控了
+    state.standby = { active: true, galaxyId: 'galaxy-hub', finishAtGameMs: state.gameMs, legMs: 0 }
     expect(shipBusyLabel(state, ctx, oldMain)).not.toBeNull()
     const ho = wormholeAutoMainHandover(state, ctx, [oldMain])
     expect(ho.needed).toBe(true)

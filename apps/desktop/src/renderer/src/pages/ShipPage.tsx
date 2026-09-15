@@ -137,8 +137,6 @@ export function ShipPage({
   /** 2026-09-14 船长：**移入舰船仓库**替换原先的「市价出售」（出售统一到舰船仓库）。
    *  `storeConfirmId` = 正在展开"入仓会清掉自定义名"确认的那艘船（有名字时才需要确认）。 */
   const [storeConfirmId, setStoreConfirmId] = useState<string | null>(null)
-  // T7：扫描在途换船＝警告确认（模式甲：确认后先终止扫描——进度保留——再切换）
-  const [scanSwitchId, setScanSwitchId] = useState<string | null>(null)
   // 2026-09-09 切换驾驶高亮（船长定：无缝切换易误判）：成功后目标船卡 + 「当前驾驶」行做一次约 0.8 秒脉冲
   const [switchFxUid, setSwitchFxUid] = useState<string | null>(null)
   const switchFxTimer = useRef<number | null>(null)
@@ -238,30 +236,10 @@ export function ShipPage({
   })()
 
   function handleSwitch(id: string): void {
-    // 扫描探索在途：先弹确认（终止扫描=已扫窗口进度保留，可续扫），确认后才执行
-    if (state.scanning.active) {
-      setScanSwitchId(id)
-      return
-    }
+    // 2026-09-15 起：星系扫描是无人扫描艇（不占主控、不牵动舰船）⇒ 换驾驶不再需要"先终止扫描"的确认
     const r = engine.changeShipAt(id)
     if (!r.ok) onToast(r.error ?? '切换失败', true)
     else flashSwitchPilot(id)
-  }
-
-  /** 确认：终止扫描（进度保留）→ 切换驾驶 */
-  function confirmScanSwitch(id: string): void {
-    setScanSwitchId(null)
-    const stop = engine.stopScanNow()
-    if (!stop.ok) {
-      onToast(stop.error ?? '终止扫描失败，未切换。', true)
-      return
-    }
-    const r = engine.changeShipAt(id)
-    if (!r.ok) onToast(r.error ?? '切换失败', true)
-    else {
-      onToast('已终止扫描（进度保留，可续扫）并切换驾驶。')
-      flashSwitchPilot(id)
-    }
   }
 
   function handleRepair(id: string): void {
@@ -480,22 +458,6 @@ export function ShipPage({
           </div>
         </div>
         <div className="app-fleet-scroll" ref={fleetScrollRef}>
-        {scanSwitchId ? (
-          <div className="app-sell-confirm" style={{ marginTop: 0, marginBottom: 8 }}>
-            <div className="app-sell-warn" style={{ background: 'transparent' }}>
-              ⚠ 扫描探索进行中：切换驾驶将终止本次扫描（已扫窗口进度保留，可对该星系续扫）。
-            </div>
-            <div className="app-sell-confirm-title">确认切换至「{shipDisplayName(state, ctx, scanSwitchId)}」？</div>
-            <div className="app-sell-confirm-btns">
-              <button className="app-btn is-small is-warn" onClick={() => confirmScanSwitch(scanSwitchId)}>
-                终止扫描并切换
-              </button>
-              <button className="app-btn is-small" onClick={() => setScanSwitchId(null)}>
-                取消
-              </button>
-            </div>
-          </div>
-        ) : null}
         {fleetShown.length === 0 ? (
           <div className="app-dim app-note">
             {Object.keys(state.fleet).length === 0

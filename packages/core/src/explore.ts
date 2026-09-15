@@ -1,28 +1,29 @@
 /**
- * 星图探索（V13，设计已确认）：
+ * 星图探索（V13，设计已确认；2026-09-15 船长定案「扫描星系不占主控」）：
  *
  * 规则（中文说明）：
  * - 迷雾 = 只显示"已探索"星系（exploredGalaxies，初始只有母港）+ 其一跳邻居（frontier 剪影）；
  *   再往后的星系完全不渲染；frontier 连向更远处的通道只画半段虚化（UI 层处理）。
  * - 点亮途径一：**到达点亮**——任何船实际抵达目标星系（远征到港开战 / 矿船到远处矿带开工）；
  *   在途作业（读档恢复等）由 ensureTransitExplored 运行时兜底自动点亮。
- * - 点亮途径二：**扫描探索**（startScan）——对剪影星系发起作业：
- *   下达即就地展开深空扫描（去程已取消，无航行等待；旧档去程状态由 stopScan/advance 兼容）
- *   → 窗口走完即点亮，随即**自动返航**（2×单程 目标↔母港，去程并入返航；2026-09-06 起
- *   不再停留该星系，返航段不可终止，与采矿/打捞/悬赏的"完成即返航"口径统一）。
+ * - 点亮途径二：**扫描探索**（startScan）——**派出一艘无人深空扫描艇**对剪影星系就地深空扫描
+ *   （去程已取消，无航行等待）：窗口走完即点亮并**当场收尾**（2026-09-15 起没有返航段）。
+ * - **扫描不占主控、也不牵动舰船**（船长 2026-09-15：「玩家扫描星系将不再占用玩家的主控活动
+ *   （也不显示在主控活动里，而是在 AI 活动的图标右侧显示一个进度条…）」）：扫描期间玩家照常
+ *   采矿 / 打捞 / 远征 / 长途运输 / 快递投送 / 掩护巡逻 / 亲自开炉·开线 / 进虫洞，反过来这些
+ *   在跑时也能派扫描艇（**双向放行**）；扫描艇是无人艇 ⇒ 不出发、不返航、不停靠、不卸货，
+ *   玩家舰船与其所在位置（`awayGalaxy` / `dockedSite`）全程不动。
+ * - **扫描不再让玩家暴露**（无人艇不在场 ⇒ 不会因扫描挨打）；但扫描期间随机事件倒计时**照旧**按
+ *   `balance.events.exploreBoost` 加速、事件**照旧**从"探索发现"池抽取（见 events.ts EXPLORE_EVENTS）
+ *   —— 口径 = 扫描艇把前方的信号传了回来。
+ * - **完成待查看**：窗口完成时置 `scanning.awaitingView`，顶部活动栏的扫描条留格高亮，
+ *   直到玩家进「星图」看过（`acknowledgeScanView` 收条）。
  * - 行动封锁：目标星系未点亮（且非母港）时，远征出发 / 该星系矿带开采 / AI 派发均拒绝。
- * - 扫描期间随机事件倒计时按 balance.events.exploreBoost 加速，且事件改从"探索发现"池抽取
- *   （见 events.ts EXPLORE_EVENTS）。
  */
-import { addLog, HOME_GALAXY_ID, wormholePilotHoldReason } from './state'
-import { pilotUnavailableReason } from './shipyard'
+import { addLog, HOME_GALAXY_ID } from './state'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
-import { originGalaxyOf, startTransitHome, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
-import { shortestTravelMinutes, travelLegMs } from './travel'
-import { RETURN_LEG_MUL } from './balance'
-import { unloadCargoOfShipToWarehouse } from './inventory'
 
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
 export const SCAN_WINDOW_MS = 10 * 60_000
@@ -129,10 +130,18 @@ export function ensureTransitExplored(state: GameState, ctx: SimContext): void {
 }
 
 /**
- * 玩家指令：对剪影星系发起扫描探索。
- * 校验：目标存在且未探索（母港无需扫）、是 frontier（信息可达）、无进行中的主控作业（采矿/远征/扫描/返航行程）。
- * 去程已取消（定稿）：下达即就地展开深空扫描（finishAt = gameMs + 剩余扫描窗口，无航行等待）；
- * 窗口完成即"点亮 + 自动返航"（2026-09-06 起不再停留）。旧档在途扫描状态照常被 advance/stopScan 推进。
+ * 玩家指令：对剪影星系**派出一艘无人深空扫描艇**。
+ *
+ * 校验（2026-09-15 起只剩三条）：
+ * ① 目标存在且未点亮；② 目标在已知航线边缘（frontier，信息可达）；③ **空闲扫描艇只有一艘**
+ * —— 同一时刻只能扫一处（进 `state.scanning` 单槽）。
+ *
+ * ⚠ **有意不再检查主控活动**（船长 2026-09-15 定案「1A 双向放行」）：采矿 / 打捞 / 远征 /
+ * 长途运输 / 快递 / 掩护巡逻 / 亲自开炉·开线 / 进洞**在跑时也能派扫描艇**，扫描期间也能开它们
+ * —— 扫描艇是无人艇，与主控手上那件事互不相干（反向的十几处"扫描探索中：先终止扫描"已一并删除）。
+ * 舰船位置同样不参与：本指令**不碰** `awayGalaxy` / `dockedSite`，也不要求主控空闲。
+ *
+ * 去程早已取消（定稿）：下达即就地展开深空扫描（finishAt = gameMs + 剩余扫描窗口）。
  */
 export function startScan(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const galaxy = ctx.galaxies.get(galaxyId)
@@ -141,31 +150,9 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   if (!frontierGalaxyIds(state, ctx).includes(galaxyId)) {
     return { ok: false, error: '该星系不在已知航线边缘，无法直接扫描——先探索它相邻的星系。' }
   }
-  if (state.scanning.active) return { ok: false, error: '扫描探索作业进行中。' }
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞。' }
-  if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站。' }
-  if (state.standby.active) return { ok: false, error: '舰船正在前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
-  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排扫描。' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能开始扫描——到站自动结算后再安排。' }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港扫描。' }
+  if (state.scanning.active) {
+    return { ok: false, error: '扫描艇正在执行另一处扫描：等它扫完，或先在星图页「终止扫描」（已扫部分会保留）。' }
   }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港扫描。' }
-  }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
-  const pilotBlock = pilotUnavailableReason(state)
-  if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再扫描。' }
-
-  // 出发地 = 当前位置（野外停留点或空间站）；作业开始时清野外标记（位置交给作业自身表达）
-  const from = originGalaxyOf(state, ctx)
-  const travelMin = shortestTravelMinutes(ctx, from, galaxyId)
-  if (!Number.isFinite(travelMin)) return { ok: false, error: '该星系不在当前可达航线内，无法扫描。' }
-  state.awayGalaxy = null
 
   // 调试模式 debugQuick：扫描固定 1 秒完成
   if (state.debugQuick) {
@@ -174,9 +161,9 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     sq.galaxyId = galaxyId
     sq.startedAtGameMs = state.gameMs
     sq.finishAtGameMs = state.gameMs + 1000
-    sq.originGalaxy = from === HOME_GALAXY_ID ? null : from
+    sq.originGalaxy = null
     sq.returning = false
-    addLog(state, 'info', '开始扫描探索：1 秒后录入情报并自动返航。')
+    addLog(state, 'info', '已派出深空扫描艇：1 秒后录入情报。')
     return { ok: true }
   }
   // v14 续扫：终止过的星系只补扫剩余窗口（已完成部分保存在 state.scanProgress；窗口按信号分析学折算）
@@ -189,32 +176,25 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
   s.galaxyId = galaxyId
   s.startedAtGameMs = state.gameMs
   s.finishAtGameMs = state.gameMs + totalMs
-  s.originGalaxy = from === HOME_GALAXY_ID ? null : from
+  s.originGalaxy = null // T8 兼容字段：无人扫描艇不涉及出发地 ⇒ 恒 null
   s.returning = false
-  // 2026-09-12 船长裁定（「0 也算低安」）后，这条提示**必须分成两件事**说（此前一句话把两者混在一起，
-  // 还把"安全等级不足 0.5"的中安也**叫成低安**——名词错，已修）：
-  // ① **扫描偏慢**的线仍是 `sec < 0.5`（船长同日裁定「保留 0.5、只修文案」⇒ 中安也慢）；
-  // ② **遇袭**只发生在**低安**（`sec ≤ balance.encounter.lowSecMax`）⇒ 中安扫描不会被打。
+  // 2026-09-12 船长裁定（「0 也算低安」）：低安 / 中安只影响**扫描快慢**；2026-09-15 起扫描不再暴露
+  // ⇒ 旧文案里"更容易被巡逻盯上"一句删除（无人艇不在场，没得打），遇袭只发生在玩家自己所在的作业里。
   const secOfTarget = galaxy?.security ?? 1
-  const lowSecTarget = secOfTarget <= ctx.balance.encounter.lowSecMax
   const riskNote =
-    secOfTarget < 0.5
-      ? lowSecTarget
-        ? '该星系为低安：信号嘈杂、扫描偏慢，且扫描中更容易被巡逻盯上（遇袭概率提高，作业不会中断）。'
-        : '该星系安全等级不足 +0.5（中安）：信号嘈杂、扫描偏慢；遇袭只发生在低安，这里不会被巡逻拦截。'
-      : '扫描期间更容易碰到有趣的东西。'
+    secOfTarget < 0.5 ? '该星系信号嘈杂、扫描偏慢。' : '扫描期间更容易碰到有趣的东西。'
   addLog(
     state,
     'info',
     doneMs > 0
-      ? `开始扫描探索（续扫，就地扫描已完成 ${Math.round((doneMs / effWin) * 100)}%）：本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口，立即开始。`
-      : `开始扫描探索：深空扫描立即就地展开——预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并自动返航。${riskNote}`,
+      ? `已派扫描艇续扫「${galaxy.name}」（就地扫描已完成 ${Math.round((doneMs / effWin) * 100)}%）：本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口。${riskNote}扫描不占主控——期间照常安排别的活动。`
+      : `已派出深空扫描艇扫描「${galaxy.name}」：预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并点亮星图。${riskNote}扫描不占主控——期间照常安排别的活动。`,
   )
   return { ok: true }
 }
 
-/** 引擎内部：扫描窗口完成（点亮星系、清进度；随即进入自动返航段——2×单程 目标↔母港，去程并入返航；
- * advance 与"终止时窗口恰好完成"共用）。2026-09-06：完成不再停留该星系（口径：任务完成即返航）。 */
+/** 引擎内部：扫描窗口完成——点亮星系、清续扫进度、置"待查看"高亮位；**当场收尾**（无人扫描艇没有返航段）。
+ *  advance 与"终止时窗口恰好完成"共用。 */
 function finishScan(state: GameState, ctx: SimContext): void {
   const s = state.scanning
   const galaxy = s.galaxyId !== null ? ctx.galaxies.get(s.galaxyId) : undefined
@@ -222,110 +202,80 @@ function finishScan(state: GameState, ctx: SimContext): void {
   const targetId = s.galaxyId
   const newly = galaxy ? markExplored(state, galaxy.id) : false
   const name = galaxy?.name ?? '未知星系'
-  // 2026-09-08（船长定：自动返航一律选最近已建成空间站；无建成副站 = 母港）
-  const base = targetId !== null ? nearestStationGalaxyId(state, ctx, targetId) : HOME_GALAXY_ID
-  const baseName = base === HOME_GALAXY_ID ? '母港' : ctx.galaxies.get(base)?.name ?? base
-  const mins = targetId !== null ? shortestTravelMinutes(ctx, base, targetId) : NaN
-  /** 返航段 = 单程 × `RETURN_LEG_MUL`（2026-09-14 船长「修正倍率回1倍」⇒ 现值 1×；与悬赏返航**同一旋钮**） */
-  const backMs = targetId !== null && Number.isFinite(mins) ? travelLegMs(state, ctx, mins) * RETURN_LEG_MUL : 0
-  s.returning = true
-  s.startedAtGameMs = state.gameMs
-  s.finishAtGameMs = state.gameMs + backMs // galaxyId 保持目标星系直至到港收尾
+  s.active = false
+  s.galaxyId = null
+  s.returning = false
+  s.finishAtGameMs = 0
+  s.startedAtGameMs = 0
+  s.originGalaxy = null
+  // 待查看：顶部扫描条留格高亮，等玩家进「星图」看过才收起（acknowledgeScanView）
+  s.awaitingView = true
+  s.lastGalaxyId = targetId
   addLog(
     state,
     'info',
     newly
-      ? `✦ 扫描完成：「${name}」的情报已录入星图——航线、矿带与悬赏信息全部解锁；扫描艇自动返航「${baseName}」（去程并入返航，约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟）。`
-      : `✦ 扫描完成：「${name}」的补扫完成，没有发现新的信息；扫描艇自动返航「${baseName}」（去程并入返航，约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟）。`,
+      ? `✦ 扫描完成：「${name}」的情报已录入星图——航线、矿带与悬赏信息全部解锁（扫描艇已收回）。`
+      : `✦ 扫描完成：「${name}」的补扫完成，没有发现新的信息（扫描艇已收回）。`,
   )
 }
 
 /**
- * 玩家指令：终止扫描探索（v14 续扫语义 + 即时返航）。
- * 就地扫描窗口的已完成部分会保存进 state.scanProgress——下次对该星系扫描只补扫剩余窗口；
- * 终止后舰船即时返航空间站（去程已取消；旧档在途扫描状态照常按去程段折返）。
- * 2026-09-06：窗口已完成、处于自动返航段的扫描不可终止（返航必付）。
+ * 玩家指令：**召回扫描艇**（终止本次扫描）。
+ * 已扫部分按生效窗口比例存进 `state.scanProgress` ⇒ 下次对该星系只补扫剩余窗口。
+ * 2026-09-15 起：不牵动舰船（不返航、不停靠），也没有"已完成正在返航不可终止"那一档
+ * —— 那时扫描早已收尾（`finishScan`）。
  */
 export function stopScan(state: GameState, ctx: SimContext): CommandResult {
   const s = state.scanning
-  if (!s.active) return { ok: false, error: '当前没有进行中的扫描探索。' }
-  if (s.returning) {
-    return { ok: false, error: '扫描已完成，正在自动返航（去程并入返航，不可终止）——到港后再安排其它作业。' }
-  }
+  if (!s.active) return { ok: false, error: '当前没有进行中的扫描。' }
   const gid = s.galaxyId
   if (gid === null) {
     s.active = false
-    return { ok: false, error: '扫描作业状态异常，已自动清理。' }
+    return { ok: false, error: '扫描状态异常，已自动清理。' }
   }
   const galaxy = ctx.galaxies.get(gid)
   const galaxyName = galaxy?.name ?? gid
   const totalMs = Math.max(1, s.finishAtGameMs - s.startedAtGameMs)
+  const elapsed = Math.max(0, state.gameMs - s.startedAtGameMs)
+  // 窗口已完整走完（同帧推进边界）：直接结算点亮并收尾
+  if (elapsed >= totalMs) {
+    finishScan(state, ctx)
+    return { ok: true }
+  }
   const effWin = scanWindowMsFor(state, ctx, gid)
   const doneMs = Math.min(effWin - 1, Math.max(0, Math.floor(state.scanProgress[gid] ?? 0)))
-  const remainWindowMs = effWin - doneMs
-  // 作业 = 就地窗口（去程已取消）；旧档在途扫描的去程腿 = 总长 - 剩余窗口
-  const legMs = Math.max(0, totalMs - remainWindowMs)
-  const elapsed = Math.max(0, state.gameMs - s.startedAtGameMs)
-  const origin = s.originGalaxy && s.originGalaxy !== HOME_GALAXY_ID ? s.originGalaxy : null
-
+  const keep = Math.min(effWin - 1, doneMs + elapsed)
   s.active = false
   s.galaxyId = null
   s.finishAtGameMs = 0
   s.startedAtGameMs = 0
   s.originGalaxy = null
   s.returning = false
-
-  if (elapsed < legMs) {
-    // 旧档在途去程中：窗口进度无新增 → 即时折返空间站（从出发地计程；从母港出发则直接回港）
-    if (doneMs > 0) {
-      addLog(state, 'info', `已终止扫描探索（对「${galaxyName}」之前已保存 ${Math.round((doneMs / effWin) * 100)}% 窗口进度，下次续扫）。`)
-    } else {
-      addLog(state, 'info', `已终止扫描探索：对「${galaxyName}」的扫描艇尚未开始就地扫描，本次无进度可保留。`)
-    }
-    if (origin !== null) {
-      state.awayGalaxy = origin
-      startTransitHome(state, ctx)
-    } else {
-      addLog(state, 'info', '扫描艇已即时返航母港。')
-    }
-    return { ok: true }
-  }
-  if (elapsed >= totalMs) {
-    // 窗口已完整走完（同帧推进边界）：直接结算点亮并转入自动返航
-    finishScan(state, ctx)
-    return { ok: true }
-  }
-  // 就地扫描进行中：保存窗口完成部分（按生效窗口上限），即时返航空间站
-  const windowDone = Math.min(remainWindowMs, Math.max(0, elapsed - legMs))
-  const newDone = doneMs + windowDone
-  const keep = Math.min(effWin - 1, newDone)
-  if (keep > 0) state.scanProgress[gid] = keep
   if (keep > 0) {
+    state.scanProgress[gid] = keep
     addLog(
       state,
       'info',
-      `已终止扫描探索：就地扫描完成 ${Math.round((keep / effWin) * 100)}%，进度已保存——下次对该星系扫描只需补扫剩余窗口。舰船已即时返航空间站。`,
+      `已召回扫描艇：对「${galaxyName}」的就地扫描完成 ${Math.round((keep / effWin) * 100)}%，进度已保存——下次对该星系扫描只需补扫剩余窗口。`,
     )
   } else {
-    addLog(state, 'info', '已终止扫描探索：本次尚未产生就地扫描进度，无进度可保留（可随时重新发起）。')
+    addLog(state, 'info', `已召回扫描艇：对「${galaxyName}」的扫描尚未产生进度，随时可以重发。`)
   }
-  state.awayGalaxy = gid
-  startTransitHome(state, ctx)
   return { ok: true }
 }
 
-/** 扫描进度查询（UI：百分比与剩余毫秒；returning=true = 窗口已完成、正在自动返航段） */
+/** 扫描进度查询（UI：百分比与剩余毫秒） */
 export function scanStatus(state: GameState): {
   active: boolean
   galaxyId: string | null
   totalMs: number
   remainingMs: number
   percent: number
-  returning: boolean
 } {
   const s = state.scanning
   if (!s.active || s.galaxyId === null) {
-    return { active: false, galaxyId: null, totalMs: 0, remainingMs: 0, percent: 0, returning: false }
+    return { active: false, galaxyId: null, totalMs: 0, remainingMs: 0, percent: 0 }
   }
   const totalMs = Math.max(1, s.finishAtGameMs - s.startedAtGameMs)
   const remainingMs = Math.max(0, s.finishAtGameMs - state.gameMs)
@@ -335,38 +285,28 @@ export function scanStatus(state: GameState): {
     totalMs,
     remainingMs,
     percent: Math.min(100, Math.max(0, ((totalMs - remainingMs) / totalMs) * 100)),
-    returning: s.returning === true,
   }
 }
 
-/** 引擎内部：扫描作业推进（窗口到点 → 点亮 + 转自动返航；返航到港 → 收尾清空） */
+/**
+ * **"扫描已完成、待查看"态**（船长 2026-09-15：完成后进度条依旧存在并高亮，直到玩家进星图查看）。
+ * `null` = 没有待查看的（没扫完 / 已经看过了）。UI（顶部扫描条）据此把格子点亮。
+ */
+export function scanAwaitingView(state: GameState): { galaxyId: string | null } | null {
+  return state.scanning.awaitingView === true ? { galaxyId: state.scanning.lastGalaxyId ?? null } : null
+}
+
+/** 玩家进「星图」看过 ⇒ 收掉高亮；返回是否真的收掉了（本来就没亮 ⇒ false，不写日志、不落档） */
+export function acknowledgeScanView(state: GameState): boolean {
+  if (state.scanning.awaitingView !== true) return false
+  state.scanning.awaitingView = false
+  return true
+}
+
+/** 引擎内部：扫描作业推进（窗口到点 → 点亮 + 收尾；2026-09-15 起无返航段） */
 export function advanceScanning(state: GameState, ctx: SimContext): void {
   const s = state.scanning
   if (!s.active || s.galaxyId === null) return
   if (state.gameMs < s.finishAtGameMs) return
-  if (s.returning) {
-    // 自动返航到港（2026-09-08：落点 = 最近已建成站；有建成副站则停靠该站，否则母港；
-    // 2026-09-08 船长再定：到港即自动整仓卸货）
-    const gName = ctx.galaxies.get(s.galaxyId)?.name ?? s.galaxyId
-    const base = s.galaxyId !== null ? nearestStationGalaxyId(state, ctx, s.galaxyId) : HOME_GALAXY_ID
-    const dockSite = builtSiteAtGalaxy(state, ctx, base)
-    s.active = false
-    s.galaxyId = null
-    s.returning = false
-    s.finishAtGameMs = 0
-    s.startedAtGameMs = 0
-    s.originGalaxy = null
-    state.awayGalaxy = null
-    state.dockedSite = dockSite
-    const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
-    addLog(
-      state,
-      'info',
-      dockSite !== null
-        ? `扫描艇已返航停靠「${ctx.stations.get(dockSite)?.name ?? dockSite}」（副空间站，「${gName}」情报已入库，可继续开拓或出击）。${moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''}`
-        : `扫描艇已返航停靠母港（「${gName}」情报已入库，可继续开拓或出击）。${moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''}`,
-    )
-    return
-  }
   finishScan(state, ctx)
 }

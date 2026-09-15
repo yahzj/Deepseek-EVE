@@ -68,7 +68,6 @@ import {
 import { shipDisplayName } from './instances'
 import { stopMining } from './mining'
 import { stopSalvageOp } from './salvaging'
-import { stopScan } from './explore'
 import { startTransitHome } from './location'
 import { cancelAiTask } from './ai'
 import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
@@ -143,7 +142,7 @@ function retreatEncounterShip(
   // 主控：先停手（作业状态各自清理），再走既有"返航最近已建成站"（即时到站 + 自动卸货）
   if (state.mining.active) stopMining(state, ctx)
   if (state.salvaging.active) stopSalvageOp(state, ctx)
-  if (state.scanning.active && state.scanning.returning !== true) stopScan(state, ctx)
+  // ⚠ 2026-09-15 起**不含星系扫描**（船长：无人扫描艇不占主控、也不算暴露 ⇒ 没得停、也不会挨打）
   let home = state.awayGalaxy === null
   if (!home && !state.expedition.active) {
     const r = startTransitHome(state, ctx)
@@ -264,10 +263,11 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
   if (state.salvaging.active && state.salvaging.phase === 'salvaging' && state.salvaging.galaxyId) {
     push({ galaxyId: state.salvaging.galaxyId, shipId: state.shipId, kind: '打捞' })
   }
-  // 主控扫描：只算就地扫描窗口段（returning=自动返航移动，不暴露；船长 2026-09-05：扫描即暴露、无入场缓冲）
-  if (state.scanning.active && state.scanning.returning !== true && state.scanning.galaxyId) {
-    push({ galaxyId: state.scanning.galaxyId, shipId: state.shipId, kind: '扫描' })
-  }
+  /**
+   * ⚠ **2026-09-15 起"主控扫描星系"不再暴露**（船长：扫描 = 派出一艘无人深空扫描艇 ⇒ 不在场、
+   * 没得打）：原先那条 `kind: '扫描'` 暴露（含低安 ×1.5 埋伏系数）连同"遇袭自动停扫"一起删除。
+   * 扫描期间"更热闹"的那一半（事件倒计时加速 + 「探索发现」池）照旧保留，见 `events.ts`。
+   */
   /**
    * **主控扫描虫洞**（2026-09-14 船长：「在扫描的过程中，玩家遭遇随机事件的期望和星图中的扫描一致」）：
    * 与上面"扫描星系"那条**同一档暴露** —— 都是"就地作业、扫描即暴露、无入场缓冲"，
@@ -280,12 +280,12 @@ function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
     push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '扫描' })
   }
   // 主控野外驻留（掩护巡逻/旧档停留遗留）= 区域停留船；无作业进行时才成立
+  // ⚠ 2026-09-15 起"扫描星系"不再算作业（无人扫描艇不牵动舰船）⇒ 它不再压掉这条驻留判定
   if (
     state.awayGalaxy !== null &&
     !m.active &&
     !state.expedition.active &&
     !state.salvaging.active &&
-    !state.scanning.active &&
     state.wormholeScan?.active !== true
   ) {
     push({ galaxyId: state.awayGalaxy, shipId: state.shipId, kind: '停留' })

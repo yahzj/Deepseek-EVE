@@ -283,7 +283,6 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (cd > 0) {
     return { ok: false, error: `「${anomaly.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.round(cd / 1000))} 秒。` }
   }
-  if (state.scanning.active) return { ok: false, error: '扫描探索进行中：请先终止扫描。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能出发远征——到站自动结算后再安排。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
@@ -1253,7 +1252,6 @@ export function expeditionFeasibility(state: GameState, anomaly: AnomalyDef, ctx
   if (state.mining.active) return { ok: false, reason: '采矿中' }
   if (state.salvaging.active) return { ok: false, reason: '打捞中' }
   if (state.expedition.active) return { ok: false, reason: '远征中' }
-  if (state.scanning.active) return { ok: false, reason: '扫描探索中' }
   if (state.sideTasks.deliver !== null) return { ok: false, reason: '快递投送中' }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) return { ok: false, reason: `需声望 ${anomaly.standingReq}` }

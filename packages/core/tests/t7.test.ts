@@ -25,17 +25,12 @@ describe('T7 换船守卫：在途移动不可直接切换驾驶', () => {
     expect(state.shipId).toBe('sh-falconet')
   })
 
-  it('扫描探索往返途中：拒绝并提示可先终止扫描（进度保留）', () => {
+  it('扫描中：**放行**（2026-09-15 无人扫描艇——修前会拒绝并要求先终止扫描）', () => {
     const { state, ctx } = world()
     state.scanning = { active: true, galaxyId: 'galaxy-far', finishAtGameMs: 600_000, startedAtGameMs: 0, originGalaxy: null }
-    const r = changeShip(state, 'sh-falconet', ctx)
-    expect(r.ok).toBe(false)
-    expect(r.error).toContain('扫描')
-    expect(r.error).toContain('进度保留')
-    expect(state.shipId).toBe('sandcat')
-    // 终止扫描后即可切换
-    state.scanning.active = false
     expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(true)
+    expect(state.shipId).toBe('sh-falconet')
+    expect(state.scanning.active).toBe(true) // 换船不影响扫描（扫描艇独立作业）
   })
 
   it('远征在途：拒绝并提示到活动栏「召回」（无战果）', () => {

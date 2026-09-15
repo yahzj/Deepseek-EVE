@@ -1245,21 +1245,31 @@ export type GameStateV11 = Omit<GameStateV10, 'version'> & {
   events: EventsState
 }
 
-/** 扫描探索作业状态（V13：就地深空扫描，去程已取消；窗口完成 → 点亮 + 自动返航（2026-09-06），
- * 不再停留。返回段 scanning 保持 active（returning=true）表达"船在忙"，到港后清空。
- * originGalaxy（T8 兼容字段）：本次扫描出发星系（null = 空间站/母港；用于终止后折返基准） */
+/**
+ * 扫描探索作业状态（V13：就地深空扫描，去程已取消；窗口完成 → 点亮并**当场收尾**）。
+ *
+ * **2026-09-15 船长定案（「玩家扫描星系将不再占用玩家的主控活动」）**：扫描 = 派出一艘**无人深空扫描艇**
+ * ⇒ **不占主控、不牵动舰船**：本状态与 `state.awayGalaxy` / `state.dockedSite` / 主控活动互斥**全部脱钩**，
+ * 也不再有自己的"返航段"（`returning` 由运行时恒置 false；老档的返航段由 `save.normalizeState` 一次性收口）。
+ * 顶部活动栏（`ActivityBar`）不再把它列进"玩家活动"，改为在 AI 徽标右侧显示一条进度条。
+ */
 export interface ScanningState {
   active: boolean
   /** 目标星系 id（扫描对象永远是"已探索星系的一跳邻居"，即星图剪影） */
   galaxyId: string | null
-  /** 当前段完成的游戏内时刻（毫秒，出发时锁定；returning 段 = 到港时刻） */
+  /** 当前段完成的游戏内时刻（毫秒，出发时锁定） */
   finishAtGameMs: number
-  /** 当前段开始时刻（毫秒；窗口段 = 出发时刻，returning 段 = 窗口完成时刻） */
+  /** 当前段开始时刻（毫秒） */
   startedAtGameMs: number
-  /** T8：本次扫描的出发星系（null = 空间站/母港） */
+  /** T8 兼容字段：扫描的出发星系——2026-09-15 起无人扫描艇不涉及出发地 ⇒ 恒 `null`（读档保留旧值供老档辨认） */
   originGalaxy: string | null
-  /** 2026-09-06 兼容字段：窗口已完成、正在自动返航（2×单程 目标↔母港；不可终止） */
+  /** 2026-09-06 兼容字段：窗口已完成、正在自动返航（2×单程）。**2026-09-15 起返航段取消** ⇒ 运行时恒 false */
   returning?: boolean
+  /** 2026-09-15 船长：窗口完成 ⇒ `true`（顶部扫描条留格高亮「已完成」）；玩家进「星图」看过即清
+   *  （`explore.ts` 的 `acknowledgeScanView`）。可选字段 + `save.ts` 归一 ⇒ **零迁移** */
+  awaitingView?: boolean
+  /** 本次完成点亮的星系 id（待查看态的提示文案用；清位后保留最后一次，便于提示"查看：XX"） */
+  lastGalaxyId?: string | null
 }
 
 /** 第十二版存档结构（历史版本）：v12 = v11 + 实时战斗（远征两阶段 phase/battle 落档） */
@@ -1780,7 +1790,7 @@ export function shipLockedInWormhole(state: GameState, shipId: string): boolean 
 /**
  * **主控"手上那个活动"是否还占着**（船长 2026-09-13 批准实行 · 议案 A）。
  *
- * 口径：进洞 = 与采矿 / 打捞 / 扫描 / 交付 / 长途运输 / 掩护巡逻 / 远征 / 亲自开炉**同级的一个主控活动**，
+ * 口径：进洞 = 与采矿 / 打捞 / 交付 / 长途运输 / 掩护巡逻 / 远征 / 亲自开炉**同级的一个主控活动**，
  * 但它**只在"人在洞里"（`run.attending === true`）时占位**：
  * - 人在洞里 ⇒ 别的活动一律开不了（本函数给拒因）；
  * - **临时离开（关掉虫洞界面）⇒ 活动停止、主控立刻释放**（可以去做别的），**虫洞进度原样保存**；
@@ -1788,6 +1798,9 @@ export function shipLockedInWormhole(state: GameState, shipId: string): boolean 
  *
  * ⚠ **不要塞进 `pilotUnavailableReason`**：那个函数还被 `reconcilePilotShip`（每拍自愈）读——
  * 一旦它因虫洞报"驾驶船不可用"，引擎会去改派驾驶船/补发保底船。故单开一个判据。
+ *
+ * ⚠ **「扫描星系」不在这里**（船长 2026-09-15：「玩家扫描星系将不再占用玩家的主控活动」）：
+ * 无人扫描艇不占主控、也不阻断任何别的活动（互斥判据已从全部入口删除）。
  */
 export function wormholePilotHoldReason(state: GameState): string | null {
   /**
@@ -1795,8 +1808,8 @@ export function wormholePilotHoldReason(state: GameState): string | null {
    *
    * 修前的漏洞：扫描虫洞**只有单向门槛**——`wormholeScanBlockReason` 会挡住"别人在跑时开扫"，
    * 但**没有任何地方挡住"扫描时去干别的"** ⇒ 玩家可以一边扫描虫洞一边出海采矿/打捞/远征。
-   * 补在本函数一处即可全覆盖：九个主控活动入口（采矿 / 打捞 / 星图扫描 / 远征 / 掩护巡逻 /
-   * 长途运输 / 亲自开炉·回收·拆箱 / 亲自开线）**都读这一个判据**。
+   * 补在本函数一处即可全覆盖：八个主控活动入口（采矿 / 打捞 / 远征 / 掩护巡逻 / 长途运输 /
+   * 亲自开炉·回收·拆箱 / 亲自开线）**都读这一个判据**。
    * 停扫即释放（`active = false`，进度保留、回来可续扫）。
    */
   if (state.wormholeScan?.active === true) {
@@ -2049,7 +2062,17 @@ export function createInitialState(opts?: {
       battle: null,
     },
     exploredGalaxies: [HOME_GALAXY_ID],
-    scanning: { active: false, galaxyId: null, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null, returning: false },
+    scanning: {
+      active: false,
+      galaxyId: null,
+      finishAtGameMs: 0,
+      startedAtGameMs: 0,
+      originGalaxy: null,
+      returning: false,
+      // 2026-09-15 船长：完成待查看位（顶部扫描条留格高亮，进星图看过才收）
+      awaitingView: false,
+      lastGalaxyId: null,
+    },
     // 虫洞扫描（2026-09-14）：初始"没在扫、库存空"
     wormholeScan: { active: false, progressMs: 0 },
     wormholeStock: [],

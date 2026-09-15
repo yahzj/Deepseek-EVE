@@ -4,13 +4,17 @@
  * 船长原话（照抄）：「之前订下的，探索虫洞时，主控不能进行其他活动。进入虫洞时必须无活动。好像失效了？」
  *
  * 两个方向（缺一不可）：
- * ① **进洞门槛**：主控手上有**任何**主控活动（采矿 / 打捞 / 长途运输 / 扫描星系 / **扫描虫洞** /
+ * ① **进洞门槛**：主控手上有**任何**主控活动（采矿 / 打捞 / 长途运输 / **扫描虫洞** /
  *    远征 / 掩护巡逻 / 快递投送 / **亲自开炉精炼** / **亲自开线制造**）⇒ **进不去**
  *    （`wormholeEntryBlockReason`，判据 `shipBusyForWormhole` → `shipActivityBusy`）；
  * ② **洞内锁定**：人在洞里（`run.attending === true`）⇒ 别的活动**开不了**
  *    （`wormholePilotHoldReason` / 各活动自己的 block reason）；
  * ③ **临时离开**（关掉虫洞界面）⇒ 活动停止、**主控释放**（这条 2026-09-13 船长批准，
  *    与「洞内锁定」不冲突：离开之后不算"正在探索"）。
+ *
+ * ⚠ **2026-09-15 改判**（船长：「玩家扫描星系将不再占用玩家的主控活动」）：**星系扫描退出主控活动表**
+ * （无人扫描艇 ⇒ 不占主控、不牵动舰船）⇒ 上面两张清单各少一档，且**两个方向都放行**：
+ * 扫描期间能进洞 / 进洞后能派扫描艇 / 别的活动在跑也能派（见本文件「⑤ 星系扫描不占主控」）。
  *
  * ⚠ 本文件刻意用**真命令**建"在洞里"这个现场（`wormholeEnter`），别的活动则按各自命令写入的同一批字段
  * 构造（探针式：测的是门槛读的输入契约），并在 ② 里用真命令复核。
@@ -34,15 +38,7 @@ const ctx = buildSimContext()
 const T1 = 'sh-falconet'
 /** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目）——这些**照旧拦住进洞** */
 const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
-  [
-    '扫描星系',
-    (s) => {
-      s.scanning.active = true
-      s.scanning.galaxyId = 'galaxy-hub'
-      s.scanning.finishAtGameMs = 600_000
-      s.scanning.startedAtGameMs = 0
-    },
-  ],
+  // ⚠ 「扫描星系」**2026-09-15 起不在这张表里**（船长：无人扫描艇不占主控）——见 ⑤ 那条对照用例
   // ⚠ 远征必须走**真命令**（`expeditionStatus` 还看 phase/目标星系等字段；手搓 active 会造出"假忙"，
   //    2026-09-13 那条老用例就踩过这个坑）
   ['远征', (s) => void startExpedition(s, 'ano-training', ctx)],
@@ -214,16 +210,17 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(state.wormhole.run!.attending).toBe(true)
     // 兜底判据（各活动命令共用的那一把尺）
     expect(wormholePilotHoldReason(state)).not.toBeNull()
-    // 真命令：采矿 / 扫描虫洞 / 扫描星系 三个都该被拒，且理由是"在虫洞里"
+    // 真命令：采矿 / 扫描虫洞 两个都该被拒，且理由是"在虫洞里"
     const mining = startMining(state, beltId, ctx)
     expect(mining.ok, '在洞里还能开采矿 = 主控干两件事').toBe(false)
     expect(mining.error ?? '').toContain('虫洞')
     const whscan = wormholeScanStart(state, ctx)
     expect(whscan.ok).toBe(false)
     expect(wormholeScanBlockReason(state) ?? '').toContain('虫洞')
-    const scan = startScan(state, scanTarget, ctx)
-    expect(scan.ok).toBe(false)
-    expect(scan.error ?? '').toContain('虫洞')
+    // 对照（2026-09-15）：**星系扫描不占主控 ⇒ 人在洞里照样能派扫描艇**（它不是"主控手上的事"）
+    expect(startScan(state, scanTarget, ctx).ok).toBe(true)
+    expect(state.scanning.active).toBe(true)
+    state.scanning.active = false
     // ②′ 两边忙态口径一致（`shipBusyForWormhole` vs 界面徽标 `shipBusyLabel`）
     expect(shipBusyForWormhole(state, pilot) !== null).toBe(shipBusyLabel(state, ctx, pilot) !== null)
   })
@@ -246,7 +243,7 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
    * 却没有任何地方挡住"扫描时去干别的" ⇒ 一边扫描一边出海采矿/打捞/远征。
    * 修法 = 把它并进各主控活动共用的 `wormholePilotHoldReason`（一处生效，九个入口全覆盖）。
    */
-  it('④ **扫描虫洞占用主控**：开采 / 打捞 / 扫描星系 / 远征 / 掩护巡逻 全部开不了（真命令）', () => {
+  it('④ **扫描虫洞占用主控**：开采 / 远征 / 掩护巡逻 全部开不了（真命令）', () => {
     const { state } = fresh()
     const beltId = [...ctx.belts.keys()][0]!
     const scanTarget = frontierGalaxyIds(state, ctx)[0]!
@@ -256,7 +253,6 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     // 真命令逐条：一律被拒、拒因点名"扫描虫洞"
     const cases: Array<[string, { ok: boolean; error?: string }]> = [
       ['开采', startMining(state, beltId, ctx)],
-      ['扫描星系', startScan(state, scanTarget, ctx)],
       ['远征', startExpedition(state, 'ano-training', ctx)],
       ['掩护巡逻', goStandbyAt(state, 'galaxy-hub', ctx)],
     ]
@@ -264,11 +260,34 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(r.ok, `${name}：扫描虫洞期间还能开工 = 主控干两件事`).toBe(false)
       expect(r.error ?? '', `${name} 的拒因要点名"扫描虫洞"`).toContain('扫描虫洞')
     }
+    // 对照（2026-09-15）：**星系扫描不占主控 ⇒ 扫描虫洞期间照样能派扫描艇**
+    expect(startScan(state, scanTarget, ctx).ok).toBe(true)
+    state.scanning.active = false
     // 停扫 ⇒ 立刻放行，且**进度保留**（回来可续扫）
     expect(wormholeScanStop(state).ok).toBe(true)
     expect(wormholePilotHoldReason(state)).toBeNull()
     expect(startMining(state, beltId, ctx).ok).toBe(true)
     expect(state.wormholeScan!.progressMs).toBe(7 * 60_000)
+  })
+
+  /**
+   * **⑤ 星系扫描不占主控**（船长 2026-09-15：「玩家扫描星系将不再占用玩家的主控活动」）。
+   * 两个方向都要放行：**扫描在跑 ⇒ 照旧能进洞**；**别的活动在跑 ⇒ 照旧能派扫描艇**（后者已在
+   * `exploration.test.ts` 里用真命令钉住；这里钉"进洞门槛"这一侧，并确认忙态徽标不再报"扫描探索中"）。
+   */
+  it('⑤ 星系扫描不占主控：扫描在跑照旧能进洞；忙态徽标不再报"扫描探索中"', () => {
+    const { state, pilot } = fresh()
+    state.scanning.active = true
+    state.scanning.galaxyId = 'galaxy-hub'
+    state.scanning.finishAtGameMs = 600_000
+    state.scanning.startedAtGameMs = 0
+    // 两边（门槛判据 vs 界面徽标）都**不该**认它
+    expect(shipActivityBusy(state, pilot)).toBeNull()
+    expect(shipBusyLabel(state, ctx, pilot)).toBeNull()
+    expect(wormholeEntryAutoStops(state)).toEqual([]) // 也不在"进洞自动停"名单里（它压根不占主控）
+    expect(wormholeEntryBlockReason(state, ctx, [pilot])).toBeNull()
+    expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
+    expect(state.scanning.active).toBe(true) // 进洞不动扫描（无人扫描艇照旧在扫）
   })
 
   /**

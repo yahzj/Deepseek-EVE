@@ -9,7 +9,6 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
-import { scanStatus } from './explore'
 import { wormholeScanWindowMs, wormholeStockFull, wormholeStockMaxOf, wormholeStockOf } from './wormholeScan'
 import { wormholeAutoRunsOf } from './wormholeAuto'
 import { manufacturingRunViews } from './manufacturing'
@@ -26,8 +25,10 @@ import { travelMinutesEff } from './travel'
 export type ActivityKind =
   | 'train'
   | 'mining'
+  /** ⚠ 2026-09-15 起**不再出行**（星系扫描不占主控）：类型与 `stop-scan` 保留，
+   *  供星图页「终止扫描」与界面的顶部扫描条复用；`activityOverview` 不再生成该条目 */
   | 'scan'
-  /** 主控活动「扫描虫洞」（2026-09-14 船长）：与星系扫描分开一类，界面各自一行 */
+  /** 主控活动「扫描虫洞」（2026-09-14 船长）：界面单独一行（**仍占主控**） */
   | 'whscan'
   /** 自动探索（2026-09-14 批次 3）：每趟一处虫洞一行（AI 驱动，5 分钟） */
   | 'whauto'
@@ -179,20 +180,14 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     })
   }
 
-  // ── 扫描探索（2026-09-06：窗口完成 → 自动返航段不可终止，只读展示） ──
-  const sv = scanStatus(state)
-  if (sv.active) {
-    out.push({
-      id: 'scan',
-      kind: 'scan',
-      label: sv.returning ? '扫描 · 自动返航' : '扫描探索',
-      sub: sv.returning ? '情报已录入 · 返回母港' : '未知信号',
-      percent: sv.percent,
-      remainingMs: sv.remainingMs,
-      stopable: !sv.returning,
-      stop: sv.returning ? null : 'stop-scan',
-    })
-  }
+  /**
+   * ── 星系扫描（`state.scanning`）：**不出行**（船长 2026-09-15）──
+   * 船长原话：「玩家扫描星系将不再占用玩家的主控活动（也不显示在主控活动里，而是在 AI 活动的
+   * 图标右侧显示一个进度条，当扫描完成后这个进度条依旧存在并高亮，直到玩家进入星图界面查看后才移除）」
+   * ⇒ 扫描**不是主控活动**了：这里不再生成 `kind: 'scan'` 条目（`ActivityKind` 与 `stop-scan`
+   * 停止动作保留给星图页的「终止扫描」复用）。顶部那条进度条由界面直接读
+   * `scanStatus` + `scanAwaitingView` 渲染（`panels/ActivityBar.tsx`）。
+   */
 
   /**
    * ── 主控活动「扫描虫洞」（2026-09-14 船长）──
@@ -345,7 +340,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     if (!inFlight) {
       const aName = ctx.anomalies.get(loopId)?.name ?? loopId
       const cdMs = bountyCooldownRemainingMs(state, loopId)
-      const busyOther = state.mining.active || state.scanning.active || state.transit.active || state.standby.active
+      const busyOther = state.mining.active || state.transit.active || state.standby.active
       // 冷却段给进度条（总时长按当前驾驶船扫描属性估算；等待其它作业结束无确定终点 → 无条）
       let percent: number | null = null
       if (cdMs > 0) {
@@ -558,8 +553,6 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
     if (state.sideTasks.deliver !== null) return '快递投送中'
     const sb = standbyStatus(state, ctx)
     if (sb.active) return `掩护巡逻·前往${sb.targetName}中`
-    const sv = scanStatus(state)
-    if (sv.active) return '扫描探索中'
     if (state.wormholeScan?.active === true) return '扫描虫洞中'
     const ev = expeditionStatus(state, ctx)
     if (ev.active) {

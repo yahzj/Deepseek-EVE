@@ -90,21 +90,22 @@ describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13；2026-09-14 起�
   /**
    * ⚠ **2026-09-14 改判**（船长：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』同样落实到
    * **采矿/打捞**」）：**开采**与**打捞**不再拦进洞，改成**进洞那一刻自动停掉**（与手点「停止」同一路径，
-   * 货物留在船上）；本条用例因此改写——老口径「主控在采矿 ⇒ 拒绝」**作废**，
-   * 「不闲置就进不去」现在由**别的活动**（星图扫描）继续钉住。
+   * 货物留在船上）；本条用例因此改写——老口径「主控在采矿 ⇒ 拒绝」**作废**。
+   *
+   * ⚠ **2026-09-15 再改判**（船长：「玩家扫描星系将不再占用玩家的主控活动」）：**星系扫描**也退出
+   * 主控活动表（无人扫描艇）⇒ 本条"不闲置就进不去"的钉子改用**掩护巡逻**（仍然拦住的那一类）。
    */
-  it('**主控不闲置就进不去**：主控在扫描星系 ⇒ 拒绝，文案点名忙态；改判后「采矿」改为进洞自动停', () => {
+  it('**主控不闲置就进不去**：主控在掩护巡逻 ⇒ 拒绝，文案点名忙态；改判后「采矿/扫描星系」都不再拦', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     state.shipId = a
-    state.scanning.active = true // 主控在扫描星系（仍然拦住的那一类）
-    state.scanning.galaxyId = 'galaxy-hub'
+    state.standby = { active: true, galaxyId: 'galaxy-hub', finishAtGameMs: state.gameMs, legMs: 0 }
     const r = wormholeEnter(state, ctx, [a], 7)
     expect(r.ok, '主控忙着还能进洞').toBe(false)
     expect(r.error ?? '').toContain('主控正在')
     expect(state.wormhole.run).toBeNull()
     // 收工后就能进
-    state.scanning.active = false
+    state.standby.active = false
     expect(wormholeEnter(state, ctx, [a], 7).ok).toBe(true)
     // **改判后的采矿**：不拦、进洞自动停（细账见 tests/wormhole-activity-lock.test.ts ①″）
     const state2 = createInitialState({ nowWallMs: 0, seed: 7 })
@@ -114,6 +115,13 @@ describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13；2026-09-14 起�
     state2.mining.tripUnits = 3
     expect(wormholeEnter(state2, ctx, [b], 7).ok).toBe(true)
     expect(state2.mining.active).toBe(false)
+    // **2026-09-15：星系扫描也不再拦进洞**（无人扫描艇与主控无关）
+    const state3 = createInitialState({ nowWallMs: 0, seed: 7 })
+    const c = addShipToFleet(state3, T1)
+    state3.shipId = c
+    state3.scanning = { active: true, galaxyId: 'galaxy-hub', finishAtGameMs: state3.gameMs + 600_000, startedAtGameMs: state3.gameMs, originGalaxy: null }
+    expect(wormholeEnter(state3, ctx, [c], 7).ok).toBe(true)
+    expect(state3.scanning.active).toBe(true) // 扫描不受影响（照旧在跑）
   })
 
   it('**编队里有人被占用就进不去**：某艘正在 AI 派工 ⇒ 拒绝并点名那艘船', () => {

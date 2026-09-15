@@ -2,8 +2,13 @@
  * T1 顶部活动窗口：常驻显示「玩家活动」与「技能训练」两个分区（各带待机文案），
  * 提供统一终止入口；AI 活动不逐条显示，用两枚小图标徽标（副船 / 工业，各自跳转）。
  * 布局：垂直排布，固定高度上限，内容多时内部滚动（船长 2026-09-05）。
+ *
+ * **星系扫描条**（船长 2026-09-15）：「玩家扫描星系将不再占用玩家的主控活动（也不显示在主控活动里，
+ * 而是在 AI 活动的图标右侧显示一个进度条，当扫描完成后这个进度条依旧存在并高亮，直到玩家进入星图
+ * 界面查看后才移除）」⇒ 扫描不再是"玩家活动"行，改为头部 AI 徽标右侧一条常驻进度条
+ * （进行中 = 进度 + 剩余；完成待查看 = 满格金色高亮，进「星图」或点它即收）。
  */
-import { activityOverview, aiCoreIndustryUsed, aiCoreShipUsed } from '@whale/core'
+import { activityOverview, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { formatDurationMs } from '@whale/core'
 import { useEffect, useState } from 'react'
@@ -218,6 +223,19 @@ export function ActivityBar({
   }
   const aiShipItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'ship')
   const aiProdItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'industry')
+  /**
+   * 星系扫描条读数（见文件头注释）：**进行中优先**——正在扫就显示这条扫描的进度；
+   * 扫完（且玩家还没看过）才显示"已完成"高亮格。两条都靠 core 单点：
+   * `scanStatus`（进行中）/ `scanAwaitingView`（完成待查看）。
+   */
+  const scan = scanStatus(state)
+  const scanAck = scanAwaitingView(state)
+  const scanBar = scan.active
+    ? { done: false, galaxyId: scan.galaxyId, percent: scan.percent, remainingMs: scan.remainingMs }
+    : scanAck
+      ? { done: true, galaxyId: scanAck.galaxyId, percent: 100, remainingMs: 0 }
+      : null
+  const scanName = (id: string | null): string => (id ? (engine.ctx.galaxies.get(id)?.name ?? id) : '未知信号')
   // 撤退需二次确认（轻损但有代价）。
   // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
   // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——
@@ -350,6 +368,33 @@ export function ActivityBar({
               <Glyph name="nav-industry" size={13} color={NAV_TONES['nav-industry']} />
             </span>
             工业 ×{aiProd}
+          </button>
+        ) : null}
+        {/* 星系扫描条（船长 2026-09-15）：摆在 AI 两枚徽标**右侧**；扫描不占主控 ⇒ 不列进「玩家活动」 */}
+        {scanBar ? (
+          <button
+            className={`app-activitybar-scan${scanBar.done ? ' is-done' : ''}`}
+            title={
+              scanBar.done
+                ? `扫描完成：「${scanName(scanBar.galaxyId)}」的情报已录入星图——进「星图」看过之后这条才收起。\n点击查看（顺带进「星图」页）`
+                : `扫描艇正在扫描「${scanName(scanBar.galaxyId)}」 · 剩 ${formatDurationMs(scanBar.remainingMs)}\n扫描不占主控：期间照常安排别的活动。点击前往「星图」页（可在那儿终止扫描，已扫部分会保留）`
+            }
+            onClick={() => {
+              // 完成态点一下 = 看过（收条）；进行中点一下 = 纯跳转（星图页有「终止扫描」）
+              if (scanBar.done && scanAck) engine.ackScanView()
+              onGoPage?.('map', 'star')
+            }}
+          >
+            <span className="app-ico">
+              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+            </span>
+            <span className="app-activitybar-scan-name">{scanName(scanBar.galaxyId)}</span>
+            <span className="app-activitybar-track">
+              <span className="app-activitybar-fill" style={{ width: `${Math.min(100, Math.max(0, scanBar.percent))}%` }} />
+            </span>
+            <span className="app-activitybar-scan-time">
+              {scanBar.done ? '✓ 已完成' : `${Math.round(scanBar.percent)}%`}
+            </span>
           </button>
         ) : null}
       </div>

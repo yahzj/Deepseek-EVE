@@ -139,7 +139,8 @@ export function ExpeditionPanel({
       title="深空工业协会 · 远征调度"
       right={<span className="app-standing">声望 {standing}</span>}
     >
-      {/* T1：扫描/远征作业状态与停止入口已收敛到顶部活动窗口；此处只保留摘要与交火入口提示 */}
+      {/* T1：远征作业状态与停止入口已收敛到顶部活动窗口；**星系扫描不再占主控**（船长 2026-09-15）
+          ⇒ 顶部没有它的"玩家活动"行了，这里补一条读数 + 「终止扫描」（扫描艇只有一艘，要换目标得先召回） */}
       {scan.active || view.active || state.transit.active ? (
         <div className="app-dim app-exp-idle">
           {state.transit.active
@@ -160,9 +161,19 @@ export function ExpeditionPanel({
               <span className="app-ico">
                 <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
               </span>
-              {scan.returning
-                ? `扫描完成 · 自动返航中 · 剩余约 ${formatDurationMs(scan.remainingMs)}`
-                : `扫描探索进行中 · 剩余约 ${formatDurationMs(scan.remainingMs)}`}
+              {`扫描艇扫描中 · 剩余约 ${formatDurationMs(scan.remainingMs)}`}
+              <button
+                className="app-btn is-small is-warn"
+                style={{ marginLeft: 6 }}
+                title="召回扫描艇：已扫部分按比例保留，下次对该星系扫描只需补扫剩余窗口（不牵动舰船，也不影响其它活动）"
+                onClick={() => {
+                  const r = engine.stopScanNow()
+                  if (!r.ok) onToast(r.error ?? '无法召回扫描艇', true)
+                  else onToast('已召回扫描艇：已扫进度保留，下次对该星系扫描只补扫剩余窗口。')
+                }}
+              >
+                终止扫描
+              </button>
             </>
           ) : (
             ''
@@ -1018,14 +1029,14 @@ function StarMap({
   const factionName = state.sideTasks.faction?.factionAnomalyName ?? ''
 
   const scanMinutesOf = (): number => {
-    // 2026-09-06：作业 = 就地扫描窗口（去程已取消；完成自动返航，返航不占等待）
+    // 2026-09-06：作业 = 就地扫描窗口（去程已取消）；2026-09-15：无人扫描艇，扫完即收尾（无返航段）
     return Math.max(1, Math.round(SCAN_WINDOW_MS / 60_000))
   }
 
   function handleScan(g: GalaxyDef): void {
     const r = engine.startScanAt(g.id)
     if (!r.ok) onToast(r.error ?? '无法发起扫描。', true)
-    else onToast('扫描艇已就地展开深空扫描：窗口完成即点亮该星系并自动返航（返航路程 = 单程）。')
+    else onToast('已派出深空扫描艇：窗口完成即点亮该星系——扫描不占主控，进度见顶部活动窗的扫描条。')
   }
 
   const posOf = (g: GalaxyDef): { x: number; y: number } => {
@@ -1379,18 +1390,20 @@ function StarMap({
               </div>
               <div className="app-dim">
                 悬赏情报 {bountyByGalaxy.get(selected.id) ?? 0} 处（协会共享，仍需先探索才能出发）
-                {scan.active ? ' · 扫描进行中' : state.mining.active ? ' · 采矿中' : view.active ? ' · 远征中' : ''}
+                {scan.active ? ' · 扫描进行中' : ''}
               </div>
               <div className="app-map-scan-row">
                 <button
                   className="app-btn is-small is-primary"
-                  disabled={scan.active || state.mining.active || view.active}
+                  disabled={scan.active}
                   onClick={() => handleScan(selected)}
-                  title={`派出深空扫描艇：立即就地扫描约 10 分钟；窗口完成即点亮该星系并自动返航；期间事件倒计时加速、更易遭遇「探索发现」`}
+                  title={`派出深空扫描艇：立即就地扫描约 10 分钟；窗口完成即点亮该星系。扫描不占主控——期间照常采矿/远征/打捞，顶部活动窗会显示扫描进度`}
                 >
                   <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>扫描探索（约 {scanMinutesOf()} 分钟）
                 </button>
-                <span className="app-dim app-map-scan-note">完成即点亮 + 自动返航 · 期间事件更频繁</span>
+                <span className="app-dim app-map-scan-note">
+                  {scan.active ? `扫描艇在忙（一次一处）· 剩余约 ${formatDurationMs(scan.remainingMs)}` : '完成即点亮 · 不占主控 · 期间事件更频繁'}
+                </span>
               </div>
             </div>
           ) : (
@@ -1579,11 +1592,10 @@ function GalaxyActions({
   // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
-    state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active && !state.scanning.active
+    state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
   const pilotBusy =
     state.mining.active ||
     state.expedition.active ||
-    state.scanning.active ||
     state.transit.active ||
     (state.standby.active && !inFlight)
   const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
@@ -1810,10 +1822,9 @@ function GalaxyActions({
         if (list.length === 0) {
           return <div className="app-dim app-ga-empty">该星系暂无可接悬赏（声望/冷却/进行中过滤）。</div>
         }
-        const scanOn = state.scanning.active
         const transitOn = state.transit.active
         const otherExpOn = state.expedition.active && state.expedition.anomalyId !== null
-        const goBlocked = scanOn || transitOn || (otherExpOn && !miningActive)
+        const goBlocked = transitOn || (otherExpOn && !miningActive)
         return list.map((a) => (
           <div key={a.id} className="app-ga-row">
             <span className="app-ga-main">
@@ -1827,17 +1838,15 @@ function GalaxyActions({
               className={`app-btn is-small${goAskAno === a.id ? ' is-warn' : ' is-primary'}`}
               disabled={goBlocked}
               title={
-                scanOn
-                  ? '扫描探索进行中'
-                  : transitOn
-                    ? '返航空间站途中'
-                    : otherExpOn && !miningActive
-                      ? '远征进行中——先等当前远征结束'
-                      : miningActive
-                        ? goAskAno === a.id
-                          ? '再点一次确认转战'
-                          : '采矿中可转战'
-                        : '出发远征'
+                transitOn
+                  ? '返航空间站途中'
+                  : otherExpOn && !miningActive
+                    ? '远征进行中——先等当前远征结束'
+                    : miningActive
+                      ? goAskAno === a.id
+                        ? '再点一次确认转战'
+                        : '采矿中可转战'
+                      : '出发远征'
               }
               onClick={() => handleAnoGo(a)}
             >
@@ -2017,17 +2026,17 @@ function AnomalyCard({
   const inFlightOther = state.expedition.active && !inFlightSelf
   // 声望仅首胜发放：已首胜过的目标重复完成不再涨声望
   const bountyCleared = state.completedBounties.includes(anomaly.id)
-  // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/扫描/返航/非本目标的远征）中不可开启
+  // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/返航/非本目标的远征）中不可开启
+  // （2026-09-15：星系扫描不再算"别的作业"——无人扫描艇不占主控）
   const cdRemain = bountyCooldownRemainingMs(state, anomaly.id)
   const looping = state.autoLoopAnomalyId === anomaly.id
   const busyOther =
     state.mining.active ||
-    state.scanning.active ||
     state.transit.active ||
     (state.expedition.active && state.autoLoopAnomalyId !== anomaly.id)
-  // 出击可点条件：声望/探索/冷却/扫描/返港/远征在飞时禁；采矿中放行（转战）
+  // 出击可点条件：声望/探索/冷却/返港/远征在飞时禁；采矿中放行（转战）
   const goDisabled =
-    !reqMet || unexplored || cdRemain > 0 || state.scanning.active || state.transit.active || inFlightSelf || inFlightOther
+    !reqMet || unexplored || cdRemain > 0 || state.transit.active || inFlightSelf || inFlightOther
 
   function handleGoClick(): void {
     if (miningActive && !goAsk) {
@@ -2188,17 +2197,15 @@ function AnomalyCard({
                 ? `重复出击冷却中（剩约 ${Math.max(1, Math.ceil(cdRemain / 1000))} 秒）`
                 : !reqMet || unexplored
                   ? '先满足声望/探索条件'
-                  : state.scanning.active
-                    ? '扫描探索进行中——结束扫描后才能出发'
-                    : state.transit.active
-                      ? '返航空间站途中——到站后再出发'
-                      : inFlightSelf
-                        ? '该目标已在执行中'
-                        : inFlightOther
-                          ? '远征进行中——先等当前远征结束'
-                          : miningActive
-                            ? '采矿中：点击展开转战确认（将结束采矿、货随船、从矿带星系出发）'
-                            : ''
+                  : state.transit.active
+                    ? '返航空间站途中——到站后再出发'
+                    : inFlightSelf
+                      ? '该目标已在执行中'
+                      : inFlightOther
+                        ? '远征进行中——先等当前远征结束'
+                        : miningActive
+                          ? '采矿中：点击展开转战确认（将结束采矿、货随船、从矿带星系出发）'
+                          : ''
             }
             onClick={handleGoClick}
           >
@@ -2549,8 +2556,8 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               const cd2 = bountyCooldownRemainingMs(state, faction.anomalyId ?? '')
               const locked2 = !exploreOk2
                 ? '目标星系当前不可达（未探索/无航路）——先探索该星系再出击'
-                : state.scanning.active || state.transit.active
-                  ? '扫描探索/换港途中——先结束当前作业'
+                : state.transit.active
+                  ? '换港途中——先结束当前行程'
                   : inFlightSelf2
                     ? '舰队正在该星系交火中'
                     : inFlightOther2
@@ -2565,7 +2572,6 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               const loopOn2 = state.autoLoopAnomalyId === faction.anomalyId
               const busyOther2 =
                 state.mining.active ||
-                state.scanning.active ||
                 state.transit.active ||
                 (state.expedition.active && state.autoLoopAnomalyId !== faction.anomalyId)
               const reqMet2 = standing >= (factionCard.standingReq ?? 0)
@@ -2729,8 +2735,8 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     ? '舰队正在该窝点交火中'
                     : inFlightOther
                       ? '舰队正忙于别处（远征/巡逻等）——先等当前作业结束'
-                      : state.scanning.active || state.transit.active
-                        ? '扫描探索/换港途中——先结束当前作业'
+                      : state.transit.active
+                        ? '换港途中——先结束当前行程'
                         : undefined
           const canGo = lockedTxt === undefined || (goAsk === t.id && !inFlightOther)
           return (
@@ -2922,7 +2928,6 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
         const tripBusy =
           state.mining.active ||
           state.expedition.active ||
-          state.scanning.active ||
           state.salvaging.active ||
           state.standby.active ||
           state.transit.active ||

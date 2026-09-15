@@ -1,7 +1,7 @@
 /**
- * 低安扫描规则（2026-09-05 船长拍板）回归：
+ * 低安扫描规则（2026-09-05 船长拍板；2026-09-15 扫描无人化后收窄）回归：
  * ① 目标星系安全度越低扫描窗口越长（×[1+0.8×(0.5−sec)]，高安不延长）；
- * ② 低安扫描 = 在场暴露：无入场缓冲、遇袭概率 ×1.5，命中后扫描作业不中断。
+ * ② ~~低安扫描 = 在场暴露：无入场缓冲、遇袭概率 ×1.5~~ —— **2026-09-15 作废**（无人扫描艇 ⇒ 不暴露）。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -31,22 +31,36 @@ describe('低安扫描规则（2026-09-05）', () => {
     expect(lowWin).toBeGreaterThan(highWin)
   })
 
-  it('低安扫描即暴露：无入场缓冲可遇袭，命中后扫描作业不中断', () => {
-    const state = createInitialState({ nowWallMs: 0, seed: 42 })
+  /**
+   * **2026-09-15 口径改判**（船长：「玩家扫描星系将不再占用玩家的主控活动」⇒ 扫描 = 派出**无人扫描艇**）：
+   * 星系扫描**不再把玩家算作"就地暴露"**，故低安扫描不会再招来巡逻（旧用例「低安扫描即暴露、
+   * 命中后不中断」整条作废——那时暴露对象是玩家自己的船）。低安依旧的代价只剩"扫得慢"（上一条）。
+   * ⚠ 「扫描虫洞」的暴露**未动**（它仍按 `kind: '扫描'` 走同一套骰子，见 encounters.ts）。
+   */
+  it('低安星系扫描不再暴露：扫描中不会因扫描挨打（对照：野外驻留照旧会）', () => {
     const low = secs.filter((x) => x.sec < 0.5).reduce((a, b) => (b.sec < a.sec ? b : a))
-    state.scanning = { active: true, galaxyId: low.id, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null }
-    state.lowSecPresence = {} // 无在场记录 → 普通暴露会被 5 分钟缓冲拦下；扫描应不受限
-    state.encounterZoneCooldown = {}
-    let hit = false
-    for (let i = 0; i < 400 && !state.encounter.active; i++) {
-      if (rollLowSecAmbush(state, ctx)) {
-        hit = true
-        break
+    const rollUntilHit = (s: ReturnType<typeof createInitialState>): boolean => {
+      for (let i = 0; i < 400; i++) {
+        if (rollLowSecAmbush(s, ctx)) return true
+        if (s.encounter.active) return true
       }
+      return false
     }
-    expect(hit).toBe(true)
-    expect(state.encounter.active).toBe(true)
-    expect(state.encounter.origin).toContain('扫描')
-    expect(state.scanning.active).toBe(true) // 扫描作业不中断
+    // ① 主用例：正在低安扫描（无在场记录 = 修前"扫描即暴露、不吃入场缓冲"那条路）
+    const scanState = createInitialState({ nowWallMs: 0, seed: 42 })
+    scanState.scanning = { active: true, galaxyId: low.id, finishAtGameMs: 0, startedAtGameMs: 0, originGalaxy: null }
+    scanState.lowSecPresence = {}
+    scanState.encounterZoneCooldown = {}
+    expect(rollUntilHit(scanState)).toBe(false)
+    expect(scanState.encounter.active).toBe(false)
+    expect(scanState.scanning.active).toBe(true)
+    // ② 对照（同一颗骰子、同一场景，只把暴露来源换成"野外驻留"）：照旧会被巡逻盯上
+    //    ⇒ 证明①的"没挨打"是暴露口径变了，而不是这套判定本身失效
+    const stayState = createInitialState({ nowWallMs: 0, seed: 42 })
+    stayState.awayGalaxy = low.id
+    stayState.lowSecPresence = { [low.id]: -400_000 } // 已过 5 分钟入场缓冲
+    stayState.encounterZoneCooldown = {}
+    expect(rollUntilHit(stayState)).toBe(true)
+    expect(stayState.encounter.origin ?? '').toContain('停留')
   })
 })

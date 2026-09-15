@@ -371,7 +371,6 @@ function manualBuildNote(state: GameState): string | null {
   if (state.mining.active) return '采矿作业中：先停止开采。'
   if (state.salvaging.active) return '打捞作业中：先停止打捞（或等满仓自动返航）。'
   if (state.expedition.active) return '远征中：先召回或等待结束。'
-  if (state.scanning.active) return '扫描探索中：先终止扫描。'
   if (state.standby.active) return '掩护巡逻进行中：先召回。'
   if (state.transit.active) return '返航途中：到站后再开线。'
   return null
