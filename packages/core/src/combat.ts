@@ -291,7 +291,18 @@ export function inRange(dist: number, w: { minRangeM: number; maxRangeM: number 
 /**
  * 单发命中概率（设计文档公式；V17.1：×attacker.hitMul = 加力失稳缩放，缺省 1）。
  * 2026-09 船长拍板：信号半径/扫描分辨率等"间接属性"不参与战斗公式（纯展示副属性），
- * 命中只由 武器基础命中/攻方命中加成 × 距离衰减 − 守方回避 决定。
+ * 命中只由 武器基础命中/攻方命中加成 / 守方回避 / 距离衰减 三者决定。
+ *
+ * ⚠ **2026-09-15 船长改判（现行口径）**：「**改为从初始命中中扣**」——回避**从"初始命中"里先扣，
+ * 余量再一起乘距离衰减**（旧口径是"先乘衰减、再减回避"，即回避作为**不随距离缩水的固定点数**）。
+ *  - 旧：`hit = (基础命中 + 攻方加成) × df − 守方回避`
+ *  - 新：`hit = (基础命中 + 攻方加成 − 守方回避) × df`
+ *  语义差别：**df = 1（贴到近端）时两者完全等价**；越远，回避越被衰减稀释（远距离回避收益按比例缩水）。
+ *  对称地，双方远距离命中都上升；对**打机群**（`droneHitChance`，df 固定为 1）零变化。
+ *  读数（敌动能炮 base 0.85 / 远端衰减 0.5）：回避 0.34 时 df 0.7 = 25.5% → **35.7%**、
+ *  df 0.5 = 8.5% → **25.5%**；典型回避 0.22 时 df 0.7 = 37.5% → **44.1%**。
+ *  ⚠ **连带（登记、未改值）**：`balance.battle.foeHitCompMul`（敌方单发伤害的等效补偿）是按**旧公式**
+ *  折出来的锚 ⇒ 同一补偿下敌方期望承伤在中距 +17.6%、远端 +53.7%（船长 2026-09-15 选「先不动、看读数」）。
  * 参数保留 scanResMm/signatureM 可选字段仅为调用面兼容（字面量与单位对象），公式不消费。
  */
 export function hitChance(
@@ -306,7 +317,8 @@ export function hitChance(
   dfOverride?: number,
 ): number {
   const df = dfOverride ?? distFactor(dist, weapon)
-  const raw = (weapon.hitRate + attacker.hitBonus) * df - defender.evasion
+  // 2026-09-15：回避从**初始命中**里扣，扣完再乘距离衰减（见函数头注释）
+  const raw = (weapon.hitRate + attacker.hitBonus - defender.evasion) * df
   // V18.1：索敌（命中件）乘子在 clamp 内与失稳分开——eqHitMul 只随炮台条目
   return clamp(bal.hitMin, bal.hitMax, raw * (weapon.eqHitMul ?? 1) * (attacker.hitMul ?? 1))
 }

@@ -104,9 +104,11 @@ describe('无人机命中与衰减（2026-09-10 船长拍板）', () => {
     const near = hitChance(w, ME, FOE, 200, bal)
     const mid = hitChance(w, ME, FOE, 2500, bal)
     const far = hitChance(w, ME, FOE, 5000, bal)
-    expect(near).toBe(1) // (1.10 + 0.16) × 1 − 0.12 = 1.14 → 上限 1
+    expect(near).toBe(1) // df = 1：(1.10 + 0.16 − 0.12) × 1 = 1.14 → 上限 1
     expect(mid).toBeGreaterThan(far)
-    expect(far).toBeCloseTo(Math.max(0, (1.1 + 0.16) * 0.35 - 0.12), 6)
+    /* ⚠ 2026-09-15 船长改判后，远端读数 = **(基础命中 + 加成 − 回避) × 衰减**：
+       旧口径 `(1.1 + 0.16) × 0.35 − 0.12 = 0.321` **作废**，新值 `(1.1 + 0.16 − 0.12) × 0.35 = 0.399`。 */
+    expect(far).toBeCloseTo(Math.max(0, (1.1 + 0.16 - 0.12) * 0.35), 6)
   })
 
   it('联动：中继天线延长射程带后——三型同距离命中不变（79%），哨戒同距离命中上升', () => {
