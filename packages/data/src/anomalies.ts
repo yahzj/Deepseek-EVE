@@ -382,26 +382,24 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       {
         ship: FOE_ALIEN_STARCORE,
         count: 3,
-        desireRangeM: 521, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 0,
         hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp), // = 166.667/208（总血 1,000 的六分之一）
         dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(6)), // 每只单发 19
         split: foeLayerSplit('shield'), // 血型随卡走（舰级缺省是装甲）
         hitRate: 0.9, // 掷命中（原光束必中；本卡的单卡特征，不升格为舰级）
         dmgMix: { plasma: 10 }, // 纯等离子（C 族唯一纯能量卡）
-        rangeMaxM: 3600, // 卡带（2026-09-14 船长「所有虫子 +1000 射程」：原 2600；舰级缺省 2655→3655）
+        rangeMaxM: 2600, // 卡带（舰级缺省 2655）
       },
       {
         ship: FOE_ALIEN_STARCORE,
         count: 3,
-        desireRangeM: 521, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 1,
         hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp),
         dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(6)),
         split: foeLayerSplit('shield'),
         hitRate: 0.9,
         dmgMix: { plasma: 10 },
-        rangeMaxM: 3600,
+        rangeMaxM: 2600,
       },
     ],
     waves: [
@@ -595,7 +593,6 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       {
         ship: FOE_ALIEN_STARCORE,
         count: 4,
-        desireRangeM: 532, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 0,
         hpMul:
           1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 幼虫 95.625
@@ -604,7 +601,6 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       {
         ship: FOE_ALIEN_STARCORE,
         count: 3,
-        desireRangeM: 532, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 1,
         hpMul:
           1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp),
@@ -613,7 +609,6 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       {
         ship: FOE_ALIEN_STARCORE_ADULT, // 末波：成虫 ×3（单个血量 = 幼虫 ×3）
         count: 3,
-        desireRangeM: 532, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 2,
         hpMul:
           1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 成虫 286.875
@@ -775,53 +770,51 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //   ⚠ 守恒基准是**现树实际值**（922 × 3 单位），不是卡面名义值 1,844——本卡是 C 族唯一多波卡，
     //   旧路径"波血 = 卡总血 × hpShare、波内无僚机时每单位拿满波血" ⇒ 实际 = 1844 × 0.5 × 3
     //   （见 `MAW_TOTAL_HP` 注释）。船长 2026-09-11 确认取 **2,766**，兑现"先落虫群、血量随后"。
-    // **目标距离不动**（2026-09-11 首定 / 2026-09-14 改法）：
-    //   2026-09-14 船长「**给所有虫子添加1000的射程，但是目标距离不变**」⇒ 全族带 +1000 之后，
-    //   期望交距**改用 `desireRangeM: 543` 显式钉住**（此前是靠"首单位带 1~2713 的带内 20% 插值 = 543"）；
-    //   于是"多打得到（远到 3,713 m）、但全队想站的位置仍是 543 m"。
-    //   ⚠ 开战距离 `battleOpenM` 取**双方最远武器** ⇒ 虫子射程成为全场最远时会随之变远（船长 2026-09-14 允许）。
-    // **冲锋**：巨兽舰级开 `foeCanCharge` ⇒ 它所在的**第 3 波**里，够不着时整编队接近速度 ×2
-    //   （编队级状态，机制本体 2026-09-10 建）；**结束条件 = 到达目标距离**、冷却 **20 秒**（船长同日改判）。
+    // **目标距离不动**（2026-09-11 首定）：
+    //   期望交距与开战距离都只读**波 0 编制的首个单位**（`foeDesiredRange` / `battleOpenM`），
+    //   故小虫**排在最前**并覆写射程带为 **1~2713** ⇒ 两个距离逐字不变
+    //   （期望交距 = 1 + 0.20×(2713−1) = **543 m**）。
+    //   ⚠ 沿革：2026-09-14 曾「全族 +1000 射程」并改用 `desireRangeM: 543` 显式钉住 →
+    //   **同日船长又令回滚**（「可以回滚C族敌人射程增加的修改」）⇒ 带与覆写都回到原值、钉子撤回
+    //   （推导值仍是 543，故目标距离一个字没变）。
+    // **冲锋**（2026-09-14 船长改判：逐单位 · 自身炮台命中即解除 · 冷却 10 秒）：
+    //   巨兽 ×**3**、小虫（畸变幼虫）各 ×**1.5**，**各自独立**在冲（编队级单标志已作废）；
+    //   详见 `docs/design/foe-charge-20260914.md` 与 `combat.updateFoeCharge`。
     // N = 11 ⇒ 补偿 `22/12`，卡上 `dmgMul` 把它除掉。
     ships: [
       {
         ship: FOE_ALIEN_RIFT,
         count: 4,
-        desireRangeM: 543, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 0,
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp, // 每只小虫 55.32
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
           (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)), // 每只 10
-        rangeMaxM: 3713, // 卡带（2026-09-14 船长「所有虫子 +1000 射程」：原 2713；舰级缺省 2552→3552）——
-        //   期望交距改由 `desireRangeM: 543` 钉住（不再靠"首个单位的带"锚定）
+        rangeMaxM: 2713, // 卡带（锚定期望交距 543 m 与开战距离；舰级缺省 2552）
       },
       {
         ship: FOE_ALIEN_RIFT,
         count: 3,
-        desireRangeM: 543, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 1,
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
           (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)),
-        rangeMaxM: 3713,
+        rangeMaxM: 2713,
       },
       {
         ship: FOE_ALIEN_RIFT,
         count: 3,
-        desireRangeM: 543, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 2,
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
           (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)),
-        rangeMaxM: 3713,
+        rangeMaxM: 2713,
       },
       {
         ship: FOE_ALIEN_MAW, // 稀有头目（**全族唯一** · 显示名「精锐噬口巨兽」）
         wave: 2,
-        desireRangeM: 543, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         hpMul: (MAW_TOTAL_HP * MAW_BOSS_SHARE) / FOE_ALIEN_MAW.hp, // 首领血 2,212.8（80%）
         dmgMul:
           (MAW_TOTAL_DMG * MAW_BOSS_SHARE) /
@@ -1186,7 +1179,6 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       {
         ship: FOE_ALIEN_RIFT,
         count: 4,
-        desireRangeM: 511, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 0,
         hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp), // = 226.875/260（总血 1,815 的八分之一）
         dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(8)), // 每只单发 15
@@ -1194,7 +1186,6 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       {
         ship: FOE_ALIEN_RIFT,
         count: 4,
-        desireRangeM: 511, // 期望交距钉子（船长 2026-09-14：射程 +1000 · 目标距离不变）
         wave: 1,
         hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp),
         dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(8)),
