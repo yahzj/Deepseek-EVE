@@ -80,7 +80,7 @@ function fresh(seed = 21): GameState {
   return createInitialState({ nowWallMs: 0, seed })
 }
 
-/** 起一趟（2×T3 = 7,000 质量 ⇒ 46 回合），并返回状态 */
+/** 起一趟（2×T3 = 7,000 质量 ⇒ 76 回合），并返回状态 */
 function enterRun(seed = 21): GameState {
   const state = fresh(seed)
   const a = addShipToFleet(state, T3)

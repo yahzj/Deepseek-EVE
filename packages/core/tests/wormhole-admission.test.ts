@@ -49,16 +49,16 @@ describe('虫洞 · 入场校验（档位 / 质量 / 艘数）', () => {
     expect(r.code).toBe('tier-too-high')
   })
 
-  it('设计稿 §4 的编成表逐行复现（总质量 / 回合预算；基础 2026-09-14 由 55 提到 60）', () => {
+  it('设计稿 §4 的编成表逐行复现（总质量 / 回合预算；基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15））', () => {
     const cases: Array<{ ships: string[]; mass: number; turns: number }> = [
-      { ships: [T1, T1, T1, T1], mass: 2_000, turns: 56 },
-      { ships: [T1, T1, T1, T2], mass: 3_000, turns: 54 },
-      { ships: [T2, T2, T2, T2], mass: 6_000, turns: 48 },
-      { ships: [T3, T3, T2, T2], mass: 10_000, turns: 40 },
-      { ships: [T3, T3, T3, T1], mass: 11_000, turns: 38 },
-      { ships: [T3, T3, T3, T3], mass: 14_000, turns: 32 },
-      { ships: [T4, T4], mass: 14_000, turns: 32 },
-      { ships: [T4, T4, T2], mass: 15_500, turns: 29 },
+      { ships: [T1, T1, T1, T1], mass: 2_000, turns: 93 },
+      { ships: [T1, T1, T1, T2], mass: 3_000, turns: 90 },
+      { ships: [T2, T2, T2, T2], mass: 6_000, turns: 80 },
+      { ships: [T3, T3, T2, T2], mass: 10_000, turns: 66 },
+      { ships: [T3, T3, T3, T1], mass: 11_000, turns: 63 },
+      { ships: [T3, T3, T3, T3], mass: 14_000, turns: 53 },
+      { ships: [T4, T4], mass: 14_000, turns: 53 },
+      { ships: [T4, T4, T2], mass: 15_500, turns: 48 },
     ]
     for (const c of cases) {
       const r = wormholeAdmission(ctx, c.ships)
@@ -79,9 +79,9 @@ describe('虫洞 · 入场校验（档位 / 质量 / 艘数）', () => {
     expect(wormholeAdmission(ctx, ['sh-not-exist']).code).toBe('unknown-ship')
   })
 
-  it('回合公式边界：空载 = 60、满载 = floor(60×0.47) = 28、超载按上限夹住', () => {
-    expect(wormholeTurnBudget(0)).toBe(60)
-    expect(wormholeTurnBudget(WORMHOLE_TOTAL_MASS_CAP)).toBe(Math.floor(60 * 0.47))
+  it('回合公式边界：空载 = 100、满载 = floor(100×0.47) = 47、超载按上限夹住', () => {
+    expect(wormholeTurnBudget(0)).toBe(100)
+    expect(wormholeTurnBudget(WORMHOLE_TOTAL_MASS_CAP)).toBe(Math.floor(100 * 0.47))
     expect(wormholeTurnBudget(99_999)).toBe(wormholeTurnBudget(WORMHOLE_TOTAL_MASS_CAP))
   })
 })
