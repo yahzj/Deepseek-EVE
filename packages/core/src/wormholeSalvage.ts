@@ -12,7 +12,9 @@
  * - **舰船信号**：打赢固定给残骸 2 堆 + 稀有残骸 1 堆；**矿脉**：虚空母矿 1~3 堆。
  *
  * **按族**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：残骸物品与专属掉落都跟着
- * **本格的敌卡族**走（`wormholeCardIdFor(depth, 格序号)`；五族 A/C/D/E/G 各有一张洞内卡）。
+ * **本格的敌卡族**走（五族 A/C/D/E/G）。⚠ 2026-09-15 起"用哪一档的卡"由该层档位池决定
+ * （`wormholeCardIdForRun`），但**产出只认族**（同族三档共用一个掉落池）⇒ 本文件取**族 → 浅层卡**
+ * 的映射（`wormholeCardIdOfFamily`）即可，与"这一场战斗用哪一档"解耦。
  *
  * ⚠ **依赖方向**：`wormholeBattle → wormholeSalvage → { wormhole, wormholeGrid, wormholeFoes,
  * salvaging, equipment }`；**`wormhole.ts` 不许 import 本文件**（它被 `state.ts` 顶层引用，

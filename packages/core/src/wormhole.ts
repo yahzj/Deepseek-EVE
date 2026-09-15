@@ -19,7 +19,6 @@ import { shipDisplayName } from './instances'
 import {
   wormholeLayerRewardMul,
   wormholeNodesPerLayer,
-  wormholeCardIdFor,
   wormholeFamilyOfSeed,
 } from './wormholeFoes'
 import type { WormholeFoeKind } from './wormholeFoes'
@@ -546,7 +545,6 @@ export {
   wormholeNodesPerLayer,
   wormholeFoeThreat,
   wormholeExtractThreat,
-  wormholeCardIdFor,
   // 族锁定（丁 · 船长 2026-09-14 定案：一处虫洞一族、整趟同族）
   wormholeCardIdOfFamily,
   wormholeFamilyOfSeed,
@@ -555,8 +553,24 @@ export {
   WORMHOLE_FAMILY_GLYPH,
   wormholeAnomalyOf,
   wormholeNaturalHp,
+  // 一族三档 + 出场池 + 分层血量修正（船长 2026-09-15）
+  wormholeCardIdForRun,
+  wormholeCardOfTier,
+  wormholeTierOfCard,
+  wormholeAllCardIds,
+  wormholeCardPoolAt,
+  wormholeGuardCardOf,
+  wormholeTierWeightsAt,
+  WORMHOLE_FAMILY_CARDS,
+  WORMHOLE_CARD_TIERS,
+  WORMHOLE_TIER_LABEL,
+  WORMHOLE_TIER_UNLOCK_DEPTH,
+  WORMHOLE_TIER_HP_MUL,
+  // 族定选靶（船长 2026-09-15「选靶按照族限定」）
+  WORMHOLE_FAMILY_TARGETING,
+  WORMHOLE_FAMILY_TARGETING_CHANCE,
 } from './wormholeFoes'
-export type { WormholeFoeKind } from './wormholeFoes'
+export type { WormholeCardTier, WormholeFoeKind } from './wormholeFoes'
 
 /** 起一趟：校验编队（复用 B 批的 `wormholeAdmission`）并锁定质量 / 回合预算 / 背包 */
 export interface WormholeStartResult {

@@ -42,7 +42,7 @@ import { applyMatterPlayerBuffs, carryVolleyOverflow, droneRecoveryRateWithBonus
 import { applyDamage } from '../src/combat'
 import { wormholeFoeThreat } from '../src/wormholeFoes'
 import type { UnitSpec } from '../src/combat'
-import { wormholeCardIdFor } from '../src/wormholeFoes'
+import { wormholeCardIdForRun } from '../src/wormholeFoes'
 import { createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
 import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
 
@@ -321,7 +321,8 @@ describe('虫洞 · 谜质装置（F3c B1 批：威胁与战斗静态增益）',
     const state = enterRun(4, 4242)
     const run = state.wormhole.run!
     run.hold = holdWith({ 'mat-suppressor': 2, 'mat-jammer': 2, 'mat-blindspot': 2, 'mat-shield-res': 1 })
-    const cardId = wormholeCardIdFor(run.depth, 0)
+    // 敌卡按同一取值点取（族锁 + 该层档位池）；本用例只关心"谜质对威胁/命中的快照"
+    const cardId = wormholeCardIdForRun({ family: run.family, seed: run.seed, depth: run.depth, kind: 'node', nodeIndex: 0 })
     const baseCard = ctx.anomalies.get(cardId)!
     const mods = wormholeMatterBattleModsOf(state, baseCard, 'node')!
     expect(mods.threatMul).toBeCloseTo(0.9, 6)

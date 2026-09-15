@@ -34,7 +34,7 @@ import type {
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
-import { WORMHOLE_FOE_BASE_STRENGTH_MUL, wormholeAnomalyOf } from './wormholeFoes'
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_HP_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
 import { wormholeFoeThreat } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
@@ -2061,16 +2061,17 @@ function nominalWeaponDps(w: WeaponSpec): number {
 /** 玩家战术期望距离（贴脸/中距/风筝）。
  * "主武器" = **射程最远的武器**（见 `mainWeaponOf`）。
  *
- * ⚠ **中距档 = 射程带内可传参的位置**（2026-09-15 船长裁定）：`midPos` 缺省 = **洞内口径 0.5（中点）**，
- * **星图战斗在调用处显式传 `bal.desireBandStarMap`（0.8 = 射程带高位）**——起因＝玩家报
- * 「赏金任务一开始就在近距离、对远程武器不利」：开战那一瞬其实是最远的（16,368 m），
- * 真正"近"的是稳态期望（中点 = 射程的 54%），战斗 ~30 秒后必然收拢到那里。
+ * ⚠ **中距档 = 射程带内的位置**（2026-09-15 船长两次裁定）：缺省 = `bal.desireBandMid`（**0.8 = 射程带高位**），
+ * **星图与洞内同值**（当天先落成"星图 0.8 / 洞内 0.5"分档，船长更正「这个是我口误，可以回滚那句」⇒ 取消分档）。
+ * 起因＝玩家报「赏金任务一开始就在近距离、对远程武器不利」：开战那一瞬其实是最远的（16,368 m），
+ * 真正"近"的是稳态期望（旧口径中点 = 射程的 54%），战斗 ~30 秒后必然收拢到那里。
+ * ⚠ **洞内"近战怪开局距离"另走 `bal.wormholeBrawlOpenBand`（0.5）**，见 `startFleetBattleFor` 的洞内分支。
  * 贴脸 / 风筝两档是固定位置，不受 `midPos` 影响。 */
 export function desiredRangeFor(
   me: UnitSpec,
   tactic: 'assault' | 'mid' | 'kite',
   bal: BattleBalance,
-  midPos = bal.desireBandWormhole,
+  midPos = bal.desireBandMid,
 ): number {
   const main = mainWeaponOf(me) ?? me.weapons[0]
   const mainMin = main ? main.minRangeM : 0
@@ -2814,15 +2815,15 @@ export function startBattleFor(
     : createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
   // 期望距离：显式传入（出发时的偏好/战术）优先；`null` = 强制默认档（AI 副船）；否则用
-  // **该星系的目标距离**；该星系没设过 → **星图默认档 = 主武器射程带 0.8 处**（2026-09-15 船长裁定，
-  // 旧"射程中段"作废：远程武器默认要站远端，见 `balance.battle.desireBandStarMap`）。
+  // **该星系的目标距离**；该星系没设过 → **默认档 = 主武器射程带 0.8 处**（2026-09-15 船长裁定，
+  // 旧"射程中段"作废：远程武器默认要站远端，见 `balance.battle.desireBandMid`；星图与洞内同值）。
   // 记忆可能来自更远射程的战斗：一律钳到本次开战距离内。
   const rawDesire =
     desireM === null
-      ? desiredRangeFor(me, 'mid', bal, bal.desireBandStarMap)
+      ? desiredRangeFor(me, 'mid', bal)
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
-        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal, bal.desireBandStarMap))
+        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
   /**
@@ -2935,16 +2936,24 @@ export function wormholeDerivedAnomaly(
    * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写, 谜质三项)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
    */
   const threatMul = spec.threatMul ?? 1
+  /**
+   * **分层血量修正**（船长 2026-09-15：「中层配置血量*1.1.深层配置血量*1.2」）：
+   * 档位由**卡 id 反查**（`wormholeTierOfCard`）⇒ 不进存档、老档零迁移；
+   * 查不到（不是洞内卡）⇒ 1（= 与旧口径逐字一致）。
+   */
+  const tierHpMul = WORMHOLE_TIER_HP_MUL[wormholeTierOfCard(baseCard.id) ?? 'shallow']
   const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
-  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierHpMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
   if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
   const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
-    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）
+    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）；
+    // **分层修正**（浅/中/深）只乘血、不乘火力 —— 由 `hpScaleMul` 在派生端拆开
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
       WORMHOLE_FOE_BASE_STRENGTH_MUL *
       threatMul,
+    hpScaleMul: tierHpMul,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
   /**
@@ -3111,15 +3120,14 @@ export function startFleetBattleFor(
     : createFoeSpecs(anomaly, bal)
   const openM = battleOpenM(me, foes, bal)
   // 期望距离：`null` = 强制默认档（洞内编队默认走这条）；显式值优先；否则该星系偏好 → 默认档。
-  // ⚠ **分档**（2026-09-15 船长裁定）：洞内 = 中段（`desireBandWormhole` 0.5，"进去就得挨打"张力不变）；
-  // 星图 = 射程带高位（`desireBandStarMap` 0.8，远程武器默认站远端）。
-  const bandMid = wormhole ? bal.desireBandWormhole : bal.desireBandStarMap
+  // ⚠ **2026-09-15 船长裁定：星图与洞内同一个默认档**（`desireBandMid` = 射程带 0.8 高位；
+  // 当天先落成"星图 0.8 / 洞内 0.5"分档，船长更正「这个是我口误，可以回滚那句」⇒ 取消分档）。
   const rawDesire =
     desireM === null
-      ? desiredRangeFor(me, 'mid', bal, bandMid)
+      ? desiredRangeFor(me, 'mid', bal)
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
-        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal, bandMid))
+        : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
   /**
@@ -3142,8 +3150,11 @@ export function startFleetBattleFor(
   //   洞内要的是"进去就得挨打"的搜打撤张力。混合编成按"**卡内任一近战单位 ⇒ 走近战口径**"。
   if (wormhole) {
     const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
-    // ⚠ 近战怪的开局距离也继续用**洞内中段**（`desiredRangeFor` 缺省 = `desireBandWormhole`）
-    const want = anyBrawl ? desiredRangeFor(me, 'mid', bal) : foeDesiredRange(me, foes, bal)
+    // ⚠ 近战怪的开局距离走**独立的洞内档** `wormholeBrawlOpenBand`（0.5 = 中段）——船长选定「乙」：
+    // 默认期望抬到 0.8 时**不把它一起带走**（2026-09-13「贴脸怪一开场就在你脸上」的张力保住）。
+    const want = anyBrawl
+      ? desiredRangeFor(me, 'mid', bal, bal.wormholeBrawlOpenBand)
+      : foeDesiredRange(me, foes, bal)
     battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
   } else {
     battle.distanceM = openM
@@ -5406,17 +5417,10 @@ export function setDesirePrefOf(state: GameState, galaxyId: string, desireM: num
 /* ═══════════ 预估胜率（确定性期望推演；UI/AI 门槛同源，不消耗 rng） ═══════════ */
 
 /**
- * 该敌卡是不是**洞内敌卡**（`wh-*`，见 `packages/data/src/wormholeFoes.ts`）。
- * 用途：把"**洞内维持中段 / 星图站远端**"这条默认期望分档口径落到**预估模型**上
- * （2026-09-15 船长裁定：星图默认抬到射程带 0.8，洞内维持 0.5）。
- * 洞内节点/撤离战的敌卡一律由 `wh-*` 派生（id 沿袭）⇒ 这里判 id 前缀即可，不必传上下文。
+ * 稳态距离近似：双方期望距离的中点（钳制在开战距离内）。
+ * `midPos` = 我方**默认期望档**在射程带内的位置（`bal.desireBandMid` = 0.8；星图与洞内同值，
+ * 2026-09-15 船长取消分档后不再按 `wh-*` 分辨）。
  */
-function isWormholeCard(anomaly: AnomalyDef | undefined): boolean {
-  return anomaly?.id.startsWith('wh-') === true
-}
-
-/** 稳态距离近似：双方期望距离的中点（钳制在开战距离内）。
- * `midPos` = 我方默认档在射程带内的位置（星图 0.8 / 洞内 0.5，见上）。 */
 function steadyDistance(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance, midPos: number): number {
   const dMe = desiredRangeFor(me, 'mid', bal, midPos)
   const dFoe = foeDesiredRange(me, foes, bal)
@@ -5463,12 +5467,7 @@ function steadyPreview(
   const steady =
     steadyPref !== null
       ? clamp(bal.minDistanceM, battleOpenM(me, foes, bal), steadyPref)
-      : steadyDistance(
-          me,
-          foes,
-          bal,
-          isWormholeCard(anomaly) ? bal.desireBandWormhole : bal.desireBandStarMap,
-        )
+      : steadyDistance(me, foes, bal, bal.desireBandMid)
 
   const meHpTotal = me.hp.s + me.hp.a + me.hp.h
 

@@ -58,7 +58,7 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     const state = fresh()
     const snap = buildEvalState(state, state.shipId)!
     const me = createPlayerSpec(snap.ev, ctx, snap.uid)!
-    const want = desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandStarMap)
+    const want = desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandMid)
     expect(want).toBeGreaterThan(0)
     expect(snap.ev.expedition.desirePrefByGalaxy).toBeUndefined() // 全新档：一个星系都没设过
     expect(evalDesire(state, A.id)).toBe(want) // 星图默认档（该卡开战距离远大于它，不会被钳）
@@ -98,7 +98,7 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     setDesirePrefOf(state, A.galaxyId, 1_200)
     const snap = buildEvalState(state, state.shipId)!
     const me = createPlayerSpec(snap.ev, ctx, snap.uid)!
-    const def = desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandStarMap)
+    const def = desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandMid)
     expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0)!.myDesireM).toBe(1_200) // 主控吃设定
     expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0, null)!.myDesireM).toBe(def) // 副船传 null ⇒ 星图默认档
   })
@@ -120,7 +120,7 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     const snapOld = buildEvalState(old, old.shipId)!
     const meOld = createPlayerSpec(snapOld.ev, ctx, snapOld.uid)!
     expect(startBattleFor(snapOld.ev, ctx, snapOld.uid, A.id, 0)!.myDesireM).toBe(
-      desiredRangeFor(meOld, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandStarMap),
+      desiredRangeFor(meOld, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandMid),
     )
   })
 })

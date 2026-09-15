@@ -19,7 +19,6 @@ import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits,
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
-  wormholeCardIdOfFamily,
   wormholeFleetCargoM3,
   wormholeUnitsPerSlot,
   wormholeGridActivate,
@@ -30,7 +29,7 @@ import {
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
-import { wormholeAnomalyOf } from './wormholeFoes'
+import { wormholeAnomalyOf, wormholeCardIdForRun } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
 import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
@@ -102,11 +101,20 @@ export function wormholeStartBattle(
   }
   const waves = kind === 'node' && !grid ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
   /**
-   * 敌卡 = **本趟锁定的族**（船长 2026-09-14 定案 · 丁：一处虫洞一族、整趟同族）。
-   * `run.family` 缺省（老档 / 调试入口）按 `run.seed` 现算 ⇒ 零迁移。
+   * 敌卡 = **本趟锁定的族**（船长 2026-09-14 定案 · 丁：一处虫洞一族、整趟同族）
+   * × **该层的档位池**（船长 2026-09-15：层 1 只浅 / 层 2~3 中 2 : 浅 1 / 层 4+ 深 2 : 中 1 : 浅 1；
+   * **层末守卫取该层最深已解锁档**）。
+   *
+   * 节点序号：网格层取**该格的内容序号**（`gridContentIndex` ⇒ 同格恒同卡、不同格有变化），
+   * 线性老档取 `run.nodeIndex`；`run.family` 缺省（老档 / 调试入口）按 `run.seed` 现算 ⇒ 零迁移。
    */
-  const cardId = wormholeCardIdOfFamily(run.family, run.seed)
-  void grid
+  const cardId = wormholeCardIdForRun({
+    family: run.family,
+    seed: run.seed,
+    depth: run.depth,
+    kind,
+    nodeIndex: grid ? gridContentIndex(grid, grid.pos) : run.nodeIndex,
+  })
   // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
   const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
     depth: run.depth,

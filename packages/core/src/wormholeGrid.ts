@@ -798,7 +798,7 @@ export function isExitCell(grid: WormholeGridState, cell: HexCell): boolean {
 }
 
 /**
- * **该格的"内容序号"**（0 起）：给 `wormholeCardIdFor(depth, index)` 轮换敌卡用。
+ * **该格的"内容序号"**（0 起）：给 `wormholeCardIdForRun`（族 + 层档位池）抽敌卡用。
  *
  * 旧（线性节点）口径用 `run.nodeIndex` 当序号；网格世界里没有"第几个节点"了，
  * 若继续用常量 0，全层每场战斗都是同一张敌卡（一层里连打三场完全重样）——

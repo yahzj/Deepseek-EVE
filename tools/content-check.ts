@@ -56,6 +56,8 @@ import {
   DIALOGUES,
   STATION_SITES,
   GALAXIES,
+  // 2026-09-15 船长「撞到的契约开白名单」：构成口径由舰级说了算的舰级（D 6:4 / E 纯爆炸）
+  FOE_SHIP_MIX_AUTHORITY_IDS,
   WORMHOLE_FOE_CARD_IDS,
 } from '@whale/data'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
@@ -157,6 +159,16 @@ securityZoneOf,
   WORMHOLE_AUTO_ARCHETYPE_WEIGHTS,
   WORMHOLE_FAMILY_ORDER,
   WORMHOLE_FAMILY_CARD,
+  // 2026-09-15 洞内敌卡扩充：一族三档 / 出场池 / 分层血量修正 / 族定选靶
+  WORMHOLE_FAMILY_CARDS,
+  WORMHOLE_CARD_TIERS,
+  WORMHOLE_TIER_HP_MUL,
+  WORMHOLE_TIER_UNLOCK_DEPTH,
+  WORMHOLE_FAMILY_TARGETING,
+  WORMHOLE_FAMILY_TARGETING_CHANCE,
+  wormholeCardPoolAt,
+  wormholeAllCardIds,
+  wormholeTierOfCard,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   DSI_FACTION_ID,
 } from '@whale/core'
@@ -167,6 +179,20 @@ const warn: string[] = []
 function check(cond: boolean, msg: string): void {
   if (!cond) errors.push(msg)
 }
+
+/* ═══════════ 族级速度口径（模块作用域：**敌速口径契约**与**舰级契约**两个块共用） ═══════════
+ * ⚠ 为什么放模块作用域：这两个契约各在自己的 `{ }` 块里，块内 `const` 互不可见 ——
+ *   2026-09-15 批 5 把 G 族常量写在其中一个块里 ⇒ 另一块直接 `ReferenceError`（实测踩到）。 */
+
+/** **G 族速度定值**（船长 2026-09-12：「**速度口径按照 1.05 算**」） */
+const G_SPEED_RATIO = 1.05
+/**
+ * **G 族族级速带**（2026-09-15 加）：全族 `speedRatio` 定值 1.05 ⇒ 实速随本档舰种基准下降
+ * （357 / 310 / 271 / 215）⇒ 比率 **1.22 / 1.06 / 0.93 / 0.73**。
+ * ⚠ 0.73 会被 orbit 战术带（0.90~1.25）**误拦** ⇒ 与 B/D/E 三次同款：**族级口径必须用族级带表达**。
+ * 触发经过：2026-09-15 批 5 启用「亡军战列舰」——此前它无卡引用，这条口径从未被实战卡触发过。
+ */
+const G_SPEED_BAND: readonly [number, number] = [0.70, 1.25]
 
 /* ── 基础目录 ── */
 const items = buildItemCatalog()
@@ -1037,6 +1063,13 @@ const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18
  * ⚠ 名单外的官方船现状不在契约内（还有 14 艘偏离，船长会逐艘点名）。
  */
 const OFFICIAL_SLOT_ALIGNED = new Set(['sh-nautilus', 'sh-bullshark'])
+/**
+ * **非战斗舰血量目标总血**（2026-09-15 船长定；与 `packages/data/src/ships.ts` 头注同源）：
+ * 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
+ * 参考中位：T1 228 · T2 384 · T3 675 · T4 1273 · T5 2355 ⇒ 目标见下表。
+ * ⚠ 官方战斗舰的血量若被调整，本表要跟着重算（`npm run ship:hp` 会打出当前中位与推荐值）。
+ */
+const CIVILIAN_HP_TARGET: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 182, 2: 307, 3: 540, 4: 1018, 5: 1884 }
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -1046,6 +1079,19 @@ for (const s of SHIPS) {
   check(s.cycleSeconds > 0 && s.oreUnitsPerCycle > 0 && s.cargoM3 > 0, `舰船 ${s.id} 数值非法`)
   // V10.5 战斗数值契约：三层血量必填且 >0
   check((s.shieldHp ?? 0) > 0 && (s.armorHp ?? 0) > 0 && (s.hullHp ?? 0) > 0, `舰船 ${s.id} 三层血量缺失或非正（V10.5 契约）`)
+  /**
+   * **非战斗舰血量契约**（2026-09-15 船长定：「提高所有非战斗舰船的血量，使其约等于同级官方战斗舰船血量的 0.8」）。
+   * 判据与目标写死在下方常量里（改动必须两处同步 —— 这正是本契约要拦的"静默漂移"）：
+   * 目标 = 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
+   */
+  if (s.role === 'industrial' || s.role === 'hauler') {
+    const total = s.shieldHp + s.armorHp + s.hullHp
+    const want = CIVILIAN_HP_TARGET[s.tier as 1 | 2 | 3 | 4 | 5]
+    check(
+      total === want,
+      `非战斗舰血量契约：${s.id}（T${s.tier} ${s.role}）三层共 ${total} ≠ 目标 ${want}（= 同档官方战斗舰总血中位×0.8；改数请同步本表与 ships.ts 头注）`,
+    )
+  }
   // V10.5b：每层抗性为三系对象（0~0.9/系），键必须是合法伤害类型
   for (const r of ['shieldResist', 'armorResist', 'hullResist'] as const) {
     const res = s[r]
@@ -1689,6 +1735,8 @@ for (const m of MODULES) {
   const TEACHING_CARD = 'ano-training'
   let mixed = 0
   let pureBeam = 0
+  /** 「舰级口径优先」白名单计数（船长 2026-09-15） */
+  let whitelisted = 0
   /** E 族特例（5:5）计数——见下方 ④ */
   let symmetric = 0
   const positive = (mix: Partial<Record<string, number>> | undefined): Array<[string, number]> =>
@@ -1738,6 +1786,41 @@ for (const m of MODULES) {
       pureBeam += 1
       continue
     }
+    // **④b「舰级口径优先」白名单**（船长 2026-09-15：「**撞到的契约开白名单**」）——
+    // 主体舰级登记了自有构成口径的卡（D 族战列舰 6:4 · E 族导弹残段纯爆炸，见 `FOE_SHIP_MIX_AUTHORITY_IDS`）：
+    // 卡面按"**与主体一致**"校验，**不套**通用主 8 副 2、也不套 E 族 5:5。
+    // ⚠ 放行的只是"不必等于 8:2 / 5:5"——卡面写错（与主体不符）照样红。
+    const mixKey = (m?: Partial<Record<string, number>>): string =>
+      Object.entries(m ?? {})
+        .filter(([, v]) => (v ?? 0) > 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}:${v}`)
+        .join(',')
+    {
+      const mains = (def.ships ?? []).filter((s) => s.escort !== true)
+      const authority = new Set<string>(FOE_SHIP_MIX_AUTHORITY_IDS)
+      if (mains.length > 0 && mains.every((s) => authority.has(s.ship.id))) {
+        const eff = mixKey(mains[0]!.dmgMix ?? mains[0]!.ship.dmgMix)
+        check(
+          mixKey(def.dmgMix) === eff,
+          `混伤白名单：${def.name} 的卡面构成（${mixKey(def.dmgMix)}）与主体舰级「${mains[0]!.ship.name}」的有效构成（${eff}）不一致——` +
+            `白名单只放行"不必等于 8:2/5:5"，卡面仍须与主体逐键一致`,
+        )
+        // **纯系卡必须留"收束旋钮"**（与纯能量分支同款纪律）：单系卡只有靠"掷命中 + 命中 < 1"
+        // 收住远端收益；必中光束 + 无衰减 = 既必中又满效，等于没有约束。
+        const keys = Object.keys(def.dmgMix ?? {}).filter((k) => ((def.dmgMix ?? {}) as Record<string, number>)[k]! > 0)
+        if (keys.length === 1) {
+          const ship = mains[0]!.ship
+          check(
+            ship.energyForm !== 'beam' && ship.hitRate < 1,
+            `混伤白名单：纯系卡 ${def.name} 的主体「${ship.name}」必须留收束旋钮` +
+              `（掷命中 + 命中 < 1；实测 energyForm=${String(ship.energyForm)} / hitRate=${ship.hitRate}）`,
+          )
+        }
+        whitelisted += 1
+        continue
+      }
+    }
     // **④ E 族特例**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
     // 泰坦巨构全族 = **50% 动能 + 50% 爆炸**（族格「动能 + 爆炸为主」的对称落点）——
     // **常驻卡与窝点派生卡一律 5:5**（窝点不套 6:4：族级特例优先于"窝点比悬赏更混"的一般口径）。
@@ -1780,7 +1863,8 @@ for (const m of MODULES) {
   console.log(
     `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
       `${symmetric > 0 ? `；**E 族特例 ${symmetric} 张 50% 动能 + 50% 爆炸**（窝点派生同值，不套 6:4）` : ""}` +
-      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ""}`,
+      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ""}` +
+      `${whitelisted > 0 ? `；**舰级口径优先** ${whitelisted} 张（船长 2026-09-15「撞到的契约开白名单」：卡面 = 主体构成，不套 8:2/5:5）` : ""}`,
   )
 
   /* ── 敌速口径契约（2026-09-10 加）──
@@ -1861,6 +1945,8 @@ for (const m of MODULES) {
     const alienSample: string[] = []
     let graveReadings = 0
     const graveSample: string[] = []
+    let swarmReadings = 0
+    const swarmSample: string[] = []
     let titanReadings = 0
     const titanSample: string[] = []
     let scavReadings = 0
@@ -2000,6 +2086,30 @@ for (const m of MODULES) {
             )
             continue
           }
+          if (def.foeFamily === 'G') {
+            // **G 族（鱿烬亡军）口径**（船长 2026-09-12：「**速度口径按照 1.05 算**」⇒ 全族 `speedRatio` 定值 1.05）：
+            // 族格 = **残军按舰种走**（1~4 档同倍率 ⇒ 实速随本档舰种基准下降：357 / 310 / 271 / 215）。
+            // ⚠ **为什么必须用族级带**（与 B/D/E 三次同款教训）：战术带（orbit 0.90~1.25×）锚定的是"中位玩家船"，
+            //   而 1.05 × **T4 基准 205** 只有 215 m/s ⇒ 比率 **0.73×**，会被 orbit 带**误拦** ——
+            //   它本来就是"战列舰慢"，慢是族规（1.05 定值 + 舰种基准）算出来的，不是失衡。
+            //   2026-09-15 洞内扩充批 5 启用亡军战列舰（此前无卡引用 ⇒ 这条口径从未被实战卡触发过）时暴露。
+            //   ⇒ **族级口径必须用族级带表达**：带 = 1.05 × 五档基准所覆盖的比率区间，取 [0.70, 1.25]。
+            if (swarmSample.some((s) => s.startsWith(`${slot.ship.id} `))) continue // 同一舰级只校验一次
+            swarmReadings++
+            swarmSample.push(`${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              Math.abs(slot.ship.speedRatio - G_SPEED_RATIO) < 1e-9,
+              `敌速口径契约：G 族 ${def.name} 的舰级「${slot.ship.name}」速度倍率 ${slot.ship.speedRatio} ≠ ${G_SPEED_RATIO}——` +
+                `船长 2026-09-12「速度口径按照 1.05 算」`,
+            )
+            check(
+              ratio >= G_SPEED_BAND[0] && ratio <= G_SPEED_BAND[1],
+              `敌速口径契约：G 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**族级速带** ` +
+                `${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×（船长「速度口径按照 1.05 算」＝残军按舰种走；基准船 ${refShip.name} ` +
+                `战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
+            continue
+          }
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           check(
             ratio >= band[0] && ratio <= band[1],
@@ -2030,7 +2140,8 @@ for (const m of MODULES) {
         `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
         `同档实速须高于 A 族；T4 巨兽例外允许慢）、` +
         `D 族 ${graveReadings} 条按**族格"越往里越慢"口径**（幽灵舰 1.10 / 守墓长舰 1.00 / 静滞卫舰 0.50，比率落 ${GRAVE_SPEED_BAND[0]}~${GRAVE_SPEED_BAND[1]}×）、` +
-        `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）`,
+        `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）、` +
+        `G 族 ${swarmReadings} 条按**族级速带口径**（船长「速度口径按照 1.05 算」＝残军按舰种走，比率落 ${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×）`,
     )
     if (pirateSample.length > 0)
       console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join("　")}`)
@@ -2040,6 +2151,7 @@ for (const m of MODULES) {
       console.log(`  ↳ C 族实测读数（实速/比率）：${alienSample.join("　")}`)
     if (graveSample.length > 0)
       console.log(`  ↳ D 族实测读数（实速/比率）：${graveSample.join("　")}`)
+    if (swarmSample.length > 0) console.log(`  ↳ G 族实测读数（实速/比率）：${swarmSample.join("　")}`)
     if (titanSample.length > 0)
       console.log(`  ↳ E 族实测读数（实速/比率）：${titanSample.join("　")}`)
   }
@@ -2426,9 +2538,10 @@ for (const m of MODULES) {
       slots.reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * unitCount(s), 0)
     // ⑤ 舰种档：先校验登记表全表（档位越界 / 各族**不配的档**）
     const PIRATE_BANNED_TIERS: readonly number[] = [4, 5] // 4 战列舰 / 5 旗舰
-    /** **G 族（鱿烬亡军）速度定值**（船长 2026-09-12「**速度口径按照 1.05 算**」）——四档同倍率 */
-    const G_SPEED_RATIO = 1.05
-    /** **G 族四档「亡军战列舰」= 预留空置壳体**（船长「**战列舰先建壳体**」；当前无卡引用，属有意状态） */
+    /** **G 族四档「亡军战列舰」= 唯一合法的 T4 壳体**（船长 2026-09-12「**战列舰先建壳体**」；
+     *  **2026-09-15 已由洞内扩充批 5 启用**（船长「G族添加战列舰动能伤害为主」＋「G族战列可以添加机群」→「挂」）
+     *  ⇒ 它现在**有卡引用**（洞内 G 族深层卡「残军战列线」）；本条契约的用意不变：**G 族的 T4 只能是它**，
+     *  防日后把战列档顺手塞给杂鱼。 */
     const G_RESERVED_BATTLESHIP_ID = 'foe-g-exile-battleship'
     /** **B 族（武装拾荒者）不得 ≥ 3 巡洋舰**（2026-09-11 船长七裁决：「**确认为新手过渡种族**」+
      *  拾荒者拿的是拼装小艇）⇒ 只登记 **T1 护卫舰 / T2 驱逐舰**两档 */
@@ -2474,11 +2587,11 @@ for (const m of MODULES) {
         }
       }
       if (ship.family === 'G') {
-        // **G 族（鱿烬亡军）舰种档 + 速度定值**（船长 2026-09-12 六裁决）：
-        // ①「**G组分5档。从护卫舰到战列舰。战列舰暂时空置。**」⇒ 允许 **1~4 档**（1 护卫舰 ~ 4 战列舰）、
+        // **G 族（鱿烬亡军）舰种档 + 速度定值**（船长 2026-09-12 六裁决；2026-09-15 战列舰启用）：
+        // ①「**G组分5档。从护卫舰到战列舰。**」⇒ 允许 **1~4 档**（1 护卫舰 ~ 4 战列舰）、
         //   **不配 5 旗舰**（旗舰留给 E 族巨构的"核心舱段"）；
-        // ②「**战列舰先建壳体**」⇒ **T4 登记但"空置"**（当前无卡引用）——本契约**不要求** T4 有卡引用，
-        //   但要求 T4 就是那条**预留壳体**（`G_RESERVED_BATTLESHIP_ID`），防日后把 T4 顺手塞给杂鱼；
+        // ②「**战列舰先建壳体**」⇒ T4 就是那条壳体（`G_RESERVED_BATTLESHIP_ID`）；**2026-09-15 已启用**
+        //   （洞内 G 族深层卡用它），本条**仍然只允许这一条 T4**，防日后把战列档顺手塞给杂鱼；
         // ③「**速度口径按照 1.05 算**」⇒ 全族 `speedRatio` **定值 1.05**（四档同倍率，不逐舰写不同值）。
         check(
           t <= 4,
@@ -2488,8 +2601,8 @@ for (const m of MODULES) {
         if (t === 4) {
           check(
             ship.id === G_RESERVED_BATTLESHIP_ID,
-            `舰级契约：鱿烬亡军的 4 战列舰档当前是**预留空置壳体**（船长「战列舰先建壳体」= ${G_RESERVED_BATTLESHIP_ID}）——` +
-              `不得再登记第二条 T4；若日后真要给 G 族上战列舰，请走设定流程并先改本行口径`,
+            `舰级契约：鱿烬亡军的 4 战列舰档只能是那条壳体（船长「战列舰先建壳体」= ${G_RESERVED_BATTLESHIP_ID}；` +
+              `2026-09-15 已启用并挂蜂群机）——不得再登记第二条 T4`,
           )
         }
         check(
@@ -2670,7 +2783,7 @@ for (const m of MODULES) {
       `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
         `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）、` +
         `异形族（C）允许 T4（须登记为"巨兽"用途：${ALIEN_BEAST_SHIP_IDS.join(" / ")}）且不配 T5；` +
-        `鱿烬亡军（G）登记 1~4 档（**T4 战列舰 = 预留空置壳体**（无卡引用，船长「战列舰先建壳体」）、不配 T5；` +
+        `鱿烬亡军（G）登记 1~4 档（**T4 战列舰 = 那条壳体**（船长「战列舰先建壳体」；**2026-09-15 已启用**并挂蜂群机 ×3）、不配 T5；` +
         `全族速度定值 **${G_SPEED_RATIO}×**）；` +
         `A 族编成契约 ${aCompositionCards} 张：灰霾/赤潮/蜃影 = 头目 ×1 + 同族杂鱼 ×3（共 4 单位）· 头目血量 60% ±1%；` +
         `边境/碎晶/信标 = **无首领**（同族同型 + 船长给定波次 1+2 / 2+2 / 2+2）`,
@@ -3865,7 +3978,25 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
    * ⚠ 审计的是"标注"这一层；**入口走调试开关**这层没法在这里自动核（见 `panels/Wormhole.tsx` 头注释）。
    */
   {
-    const whIds = ['wh-pirate-scout', 'wh-alien-swarm', 'wh-grave-watch', 'wh-exile-blockade', 'wh-titan-echo']
+    const whIds = [
+      // 浅层五张（2026-09-13）
+      'wh-pirate-scout',
+      'wh-alien-swarm',
+      'wh-grave-watch',
+      'wh-exile-blockade',
+      'wh-titan-echo',
+      // 中/深（2026-09-15 洞内敌卡扩充：批 1 A 族 · 批 2 C 族 · 批 3 D 族 · 批 4 E 族 · 批 5 G 族 —— 15 张齐备）
+      'wh-pirate-hunt',
+      'wh-pirate-warband',
+      'wh-alien-brood',
+      'wh-alien-hive',
+      'wh-grave-sentry',
+      'wh-grave-throne',
+      'wh-titan-missile',
+      'wh-titan-hulk',
+      'wh-exile-swarm',
+      'wh-exile-line',
+    ]
     // **轮换表的双向契约**（2026-09-13 补第五张时加）：内容侧这张清单、data 的 `WORMHOLE_FOE_CARDS`
     // 与 core 的 `WORMHOLE_FOE_CARD_IDS` **三处必须逐字同序** —— 少一张/换序都会让"按族掉落池"
     // 取错卡（掉落物跟着族走，错一张就是整族拿不到东西）。
@@ -3919,6 +4050,78 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         }
         if (card.foeFamily !== f) {
           errors.push(`敌族锁定：卡 ${cardId} 的 foeFamily = ${String(card.foeFamily)}，与族 ${f} 不符（1:1 契约）`)
+        }
+      }
+      /* **一族三档契约**（船长 2026-09-15：「增加敌人的配置种类和敌族新舰船」＋「选靶按照族限定」＋
+       * 「浅层中层深层分别定为 1/2/4 层开始出现」＋「层 2~3 出场抽取按照 2:1 抽。层 4+ 按照 2:1：1 抽」＋
+       * 「中层配置血量*1.1.深层配置血量*1.2」）——本段是这些裁定的**体检哨**：
+       * ① 档位表与卡清单**同集合**（少一张/多一张都算漂移；缺档是"还没做"，允许 `null`）；
+       * ② 每张卡的 `foeFamily` = 它所在族的族字母（错一张 ⇒ 整族掉落池拿错东西）；
+       * ③ **选靶按族限定**：卡面模式与概率必须等于族定值（随机族不许写概率）；
+       * ④ 出场层 / 出场权重 / 分层血量修正 = 裁定值（读 core 常量，防两处漂移）。 */
+      {
+        const tiered = wormholeAllCardIds()
+        if (new Set(tiered).size !== tiered.length) {
+          errors.push(`一族三档：档位表里有重复卡 id（同一张卡占了两个档位）`)
+        }
+        for (const id of tiered) {
+          if (!whIds.includes(id)) errors.push(`一族三档：档位表里的卡 ${id} 不在洞内清单（三处清单必须一致）`)
+        }
+        for (const id of whIds) {
+          if (!tiered.includes(id)) errors.push(`一族三档：洞内清单里的卡 ${id} 没进档位表（不知道该在第几层出场）`)
+        }
+        for (const f of WORMHOLE_FAMILY_ORDER) {
+          for (const t of WORMHOLE_CARD_TIERS) {
+            const id = WORMHOLE_FAMILY_CARDS[f][t]
+            if (id === null) continue
+            const card = ANOMALIES_FLAVORED.find((x) => x.id === id)
+            if (!card) continue // 已由上面的"清单一致性"报出
+            if (card.foeFamily !== f) errors.push(`一族三档：卡 ${id}（族 ${f} · ${t} 档）的 foeFamily = ${String(card.foeFamily)}`)
+            if (wormholeTierOfCard(id) !== t) errors.push(`一族三档：卡 ${id} 的档位反查结果不是 ${t}`)
+            const wantMode = WORMHOLE_FAMILY_TARGETING[f]
+            const gotMode = card.foeTargeting ?? 'random'
+            if (gotMode !== wantMode) {
+              errors.push(`族定选靶：卡 ${id}（族 ${f}）的模式是 ${gotMode}，应为 ${wantMode}（船长「选靶按照族限定」）`)
+            }
+            if (wantMode === 'random') {
+              if (card.foeTargetingChance !== undefined) {
+                errors.push(`族定选靶：卡 ${id} 是随机模式，不该写 foeTargetingChance（写了也按 1 处理）`)
+              }
+            } else if (card.foeTargetingChance !== WORMHOLE_FAMILY_TARGETING_CHANCE) {
+              errors.push(
+                `族定选靶：卡 ${id} 的倾向概率 ${String(card.foeTargetingChance)} ≠ ${WORMHOLE_FAMILY_TARGETING_CHANCE}（船长 2026-09-14 定的 0.4）`,
+              )
+            }
+          }
+        }
+        // ④ 出场层 / 权重 / 分层血量修正（读 core 常量）
+        const wantUnlock: Record<string, number> = { shallow: 1, mid: 2, deep: 4 }
+        for (const t of WORMHOLE_CARD_TIERS) {
+          if (WORMHOLE_TIER_UNLOCK_DEPTH[t] !== wantUnlock[t]) {
+            errors.push(`出场层：${t} 档从第 ${WORMHOLE_TIER_UNLOCK_DEPTH[t]} 层起，应为第 ${wantUnlock[t]} 层（船长「1/2/4 层开始出现」）`)
+          }
+        }
+        const wantHp: Record<string, number> = { shallow: 1, mid: 1.1, deep: 1.2 }
+        for (const t of WORMHOLE_CARD_TIERS) {
+          if (Math.abs(WORMHOLE_TIER_HP_MUL[t] - wantHp[t]) > 1e-9) {
+            errors.push(`分层血量修正：${t} 档 ×${WORMHOLE_TIER_HP_MUL[t]}，应为 ×${wantHp[t]}（船长「中层 *1.1 · 深层 *1.2」）`)
+          }
+        }
+        const wantWeights: Array<[number, Record<string, number>]> = [
+          [1, { shallow: 1 }],
+          [2, { shallow: 1, mid: 2 }],
+          [3, { shallow: 1, mid: 2 }],
+          [4, { shallow: 1, mid: 1, deep: 2 }],
+          [9, { shallow: 1, mid: 1, deep: 2 }],
+        ]
+        for (const [depth, want] of wantWeights) {
+          // 用"全档齐备"的族（A 族）读权重 ⇒ 测的是权重口径本身，不是某族的缺档兜底
+          const got = Object.fromEntries(wormholeCardPoolAt('A', depth).map((e) => [e.tier, e.weight]))
+          if (JSON.stringify(got) !== JSON.stringify(want)) {
+            errors.push(
+              `出场权重：层 ${depth} 的池权重 ${JSON.stringify(got)}，应为 ${JSON.stringify(want)}（船长「层 2~3 = 2:1 · 层 4+ = 2:1:1」）`,
+            )
+          }
         }
       }
     }

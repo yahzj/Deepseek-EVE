@@ -146,8 +146,9 @@ export function calcExpeditionDurationMs(state: GameState, ctx: SimContext, anom
 export type BattleTacticChoice = 'assault' | 'mid' | 'kite'
 
 /** 按战术算期望距离（出发前/战斗中改战术均用；目标未指明时用当前目标）。
- * ⚠ **中距档分档**（2026-09-15 船长裁定）：**洞内战 = 中段 0.5**、**星图 = 射程带 0.8**
- * ——由"当前是否在洞内交火"决定（与 `setBattleDesire` 同一判据：`state.wormhole.run.battle`）。
+ * ⚠ **中距档与星图/洞内无关**（2026-09-15 船长更正「洞内维持中段」为口误、取消分档）：
+ * 一律走 `desireBandMid`（射程带 **0.8** 高位）；洞内只有**近战怪的开局距离**另走
+ * `wormholeBrawlOpenBand`（0.5，见 `startFleetBattleFor`），与本函数的"战术期望"无关。
  *
  * ⚠ **2026-09-14 修（船长报障「虫洞内的战斗…战斗开始位置似乎不对」的连带）**：默认卡此前只取
  * `state.expedition.anomalyId` ⇒ **洞内交火时取不到卡 ⇒ 本函数直接返回 0** ⇒ 战场里点
@@ -167,9 +168,7 @@ export function battleTacticDesire(
   const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : state.shipId
   const me = createPlayerSpec(state, ctx, anchorShipId)
   if (!anomaly || !me) return 0
-  const inWormhole = whBattle != null
-  const band = inWormhole ? ctx.balance.battle.desireBandWormhole : ctx.balance.battle.desireBandStarMap
-  return desiredRangeFor(me, tactic, ctx.balance.battle, band)
+  return desiredRangeFor(me, tactic, ctx.balance.battle)
 }
 
 /**

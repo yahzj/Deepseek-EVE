@@ -18,6 +18,20 @@
  * - 蜃楼航运线（hauler）：特大货舱 + 高结构量，壳大皮薄、无战斗无人机舱；
  *   2026-09-09 起含鲸盟制造的两艘超大型货舰（蝠鲼级/皇带鱼级：护盾抗动能同鲸盟）
  * - V10.5：shieldHp/armorHp/hullHp = roleBase × tierScale（t1×1.0/t2×1.8/t3×2.9/t4×4.2，取整）
+ * - **2026-09-15 船长定：非战斗舰（industrial / hauler）血量 = 同档官方战斗舰「总血中位」× 0.8**
+ *   —— 起因＝船长「提高所有非战斗舰船的血量，使其约等于同级官方战斗舰船血量的 0.8」；
+ *   四问四答（全取推荐）：**参考值 = 同档中位**（不被鲣鱼 126 / 玳瑁 910 这类极端值带偏）·
+ *   **按原比例放大三层**（盾/甲/结构的占比一字不动，取整余数记入结构层 ⇒ 总血恰为目标）·
+ *   **含 T1 新手船沙猫** · **价格/舱位/产能一律不动**。
+ *   **档位目标总血**：T1 **182** · T2 **307** · T3 **540** · T4 **1018** · T5 **1884**。
+ *   **"官方战斗舰"判据** = 官方目录里 role 为 `armed` / `armored` 的船（含侦察/电子/重装子分类；
+ *   **不含**虫洞专属 `sh-wh-*`——那些是专属掠夺舰，不是"官方同级"）⇒ 各档参考中位：
+ *   T1 228（鲣鱼 126 / 马鲛 228 / 虎鲨 243）· T2 384（灰鲭鲨 366 / 大白鲨 396 / 梭鱼 378 / 陆龟 390）·
+ *   T3 675（鹦鹉螺 610 / 长尾鲨 648 / 王鲭 652 / 电鳐 675 / 锤头鲨 701 / 牛鲨 755 / 玳瑁 910）·
+ *   T4 1273（巨齿鲨 / 玄武）· T5 2355（邓氏鱼）。
+ *   护栏 = `content:check`「非战斗舰血量契约」（11 艘总血必须等于上表目标）；读数表 =
+ *   `npm run ship:hp`。⚠ 改动波及：低安遇袭/战斗的生存线（一口伤害是绝对值）与战力/胜率预估（按血量算）；
+ *   存档零迁移（档里只存耐久**比例**，上限由定义现算 ⇒ 老档"比例不变、绝对血变多"）。
  * - V16.1：基础抗性简化（整数主抗制）——每族只有一个主抗，便于心算：
  *   鲸盟(industrial)＝护盾抗动能 25%｜掠食者(armed)＝护盾抗动能 50%｜甲壳(armored)＝装甲抗高爆 50%｜
  *   蜃楼(hauler)＝结构抗能量 25%；其余层/型一律 0（省略键）；装备抗性插件仍可在此基础上叠加；
@@ -47,10 +61,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.6,
     evasion: 0.1,
     hitBonus: 0.1,
-    shieldHp: 18,
+    shieldHp: 47,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 15,
-    hullHp: 36,
+    armorHp: 40,
+    hullHp: 95,
     cpu: 60,
     droneBayM3: 0,
     maxSpeedMps: 300,
@@ -74,10 +88,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.5,
     evasion: 0.1,
     hitBonus: 0.1,
-    shieldHp: 33,
+    shieldHp: 48,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 27,
-    hullHp: 66,
+    armorHp: 39,
+    hullHp: 95,
     cpu: 90,
     droneBayM3: 0,
     maxSpeedMps: 280,
@@ -101,10 +115,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.35,
     evasion: 0.1,
     hitBonus: 0.1,
-    shieldHp: 51,
+    shieldHp: 78,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 45,
-    hullHp: 105,
+    armorHp: 69,
+    hullHp: 160,
     cpu: 130,
     droneBayM3: 0,
     maxSpeedMps: 240,
@@ -128,10 +142,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.4,
     evasion: 0.15,
     hitBonus: 0.1,
-    shieldHp: 54,
+    shieldHp: 79,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 48,
-    hullHp: 108,
+    armorHp: 70,
+    hullHp: 158,
     cpu: 150,
     droneBayM3: 0,
     maxSpeedMps: 250,
@@ -155,10 +169,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.25,
     evasion: 0.15,
     hitBonus: 0.12,
-    shieldHp: 75,
+    shieldHp: 141,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 63,
-    hullHp: 150,
+    armorHp: 118,
+    hullHp: 281,
     cpu: 190,
     droneBayM3: 0,
     maxSpeedMps: 210,
@@ -182,10 +196,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.3,
     evasion: 0,
     hitBonus: 0.1,
-    shieldHp: 51,
+    shieldHp: 68,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 145,
-    hullHp: 210,
+    armorHp: 193,
+    hullHp: 279,
     cpu: 140,
     droneBayM3: 0,
     maxSpeedMps: 230,
@@ -209,10 +223,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.28,
     evasion: 0,
     hitBonus: 0.1,
-    shieldHp: 45,
+    shieldHp: 111,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 139,
-    hullHp: 228, // 货舰：结构占比略高
+    armorHp: 343,
+    hullHp: 564, // 货舰：结构占比略高
     cpu: 160,
     droneBayM3: 0,
     maxSpeedMps: 180,
@@ -236,10 +250,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.22,
     evasion: 0,
     hitBonus: 0.12,
-    shieldHp: 72,
+    shieldHp: 231,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 160,
-    hullHp: 354, // 旗舰大壳
+    armorHp: 514,
+    hullHp: 1139, // 旗舰大壳
     cpu: 230,
     droneBayM3: 0,
     maxSpeedMps: 160,
@@ -778,9 +792,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.62,
     evasion: 0.3,
     hitBonus: 0.08,
-    shieldHp: 33,
-    armorHp: 42,
-    hullHp: 120,
+    shieldHp: 52,
+    armorHp: 66,
+    hullHp: 189,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
     cpu: 105,
     droneBayM3: 40,
@@ -805,9 +819,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.56,
     evasion: 0.3,
     hitBonus: 0.08,
-    shieldHp: 51,
-    armorHp: 69,
-    hullHp: 192,
+    shieldHp: 88,
+    armorHp: 119,
+    hullHp: 333,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
     cpu: 135,
     droneBayM3: 50,
@@ -832,9 +846,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.5,
     evasion: 0.28,
     hitBonus: 0.08,
-    shieldHp: 54,
-    armorHp: 72,
-    hullHp: 198,
+    shieldHp: 170,
+    armorHp: 226,
+    hullHp: 622,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
     cpu: 175,
     droneBayM3: 60,

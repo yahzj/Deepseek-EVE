@@ -769,11 +769,16 @@ export interface BattleBalance {
   openRangePadShare: number
   /**
    * **默认期望交距在主武器有效射程带内的位置**（0 = 最小射程 · 0.5 = 中点 · 1 = 最大射程）。
-   * 2026-09-15 船长裁定（玩家报「赏金任务初始距离非常近、对远程武器不利」）：星图默认 **0.8**、
-   * 洞内维持 **0.5**。贴脸/风筝两档不受影响。
+   * 2026-09-15 船长裁定（玩家报「赏金任务初始距离非常近、对远程武器不利」）：**星图与洞内统一 0.8**
+   * （当天先落成"星图 0.8 / 洞内 0.5"分档，船长更正「这个是我口误，可以回滚那句」⇒ 取消分档）。
+   * 贴脸/风筝两档不受影响。
    */
-  desireBandStarMap: number
-  desireBandWormhole: number
+  desireBandMid: number
+  /**
+   * **洞内「近战怪开局距离」的档位**（0.5 = 中段）。船长选「乙」：默认期望抬到 0.8 时，
+   * 这条 2026-09-13 定的「贴脸怪一开场就在你脸上」**保持不动**（与 `desireBandMid` 分属两处用途）。
+   */
+  wormholeBrawlOpenBand: number
   /** 舰船 maxSpeedMps 参与距离收敛的比例（战斗机动速度 = speed × speedFactor ×(1±agilitySpeedBonus)） */
   speedFactor: number
   agilitySpeedBonus: number
