@@ -1906,11 +1906,11 @@ const meSpeedRef = useRef(200)
             ) : (
               <button
                 className={`app-btn is-small is-warn${retreatAsk ? ' is-danger' : ''}`}
-                title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）"
+                title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险、不收维修费；同时停止重复清剿）"
                 onClick={() => {
                   if (!retreatAsk) {
                     setRetreatAsk(true)
-                    onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
+                    onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险、不收维修费）——再点一次确认。', true)
                     return
                   }
                   setRetreatAsk(false)

@@ -687,7 +687,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
 }
 
 /**
- * 玩家指令：战斗中主动撤退（Q1乙 轻损：只损失少量舰船耐久、无弃船骰、按比例维修费；
+ * 玩家指令：战斗中主动撤退（Q1乙 轻损：只损失少量舰船耐久、无弃船骰；**维修费已于 2026-09-15 按船长「删除撤离费」整条删除**）；
  * 耐久结算带下限保护——不足 0 时压到 5% 并显著告警，绝不因撤退直接弃船）。
  * 实现口径：扣损 = 战败扣损骰 ×0.5（约 8%~15%，最低 1%）——数值小，玩家侧只描述"少量损失"。
  * 仅"正在交火且未分胜负"时可撤；撤退即手动收手 → 同时停止重复清剿（Q3甲）。
@@ -706,9 +706,11 @@ export function retreatBattle(state: GameState, ctx: SimContext): CommandResult 
 
 /**
  * 撤退结算核心（2026-09-08：手动撤退与巡回自动撤退共用）：
- * 承伤写回 → 半损扣耐久（最低 1%）→ 下限 5% 保护（绝不弃船）→ 维修费 → 停清剿 → 转返航。
- * mode 三档：'manual' 玩家主动撤退；'auto' 连续作战保险（本场结构损失过半）；
- * 'timeout' **战斗打满上限判负**（2026-09-10 船长定：超时不再按残血比判胜，视同被迫撤退）。
+ * 承伤写回 → 脱身那一口（按敌火扣装甲/结构，下限 5% 保护、绝不弃船）→ 停清剿 → 转返航。
+ * **不收维修费**（船长 2026-09-15「删除撤离费」，旧 Q1乙 的"按比例维修费"整条作废）。
+ * mode 四档：'manual' 玩家主动撤退；'auto' 连续作战保险（本场结构损失过半）；
+ * 'timeout' **战斗打满上限判负**（2026-09-10 船长定：超时不再按残血比判胜，视同被迫撤退）；
+ * 'cannot-engage' 够不着（一炮未发，2026-09-11 裁定）。
  */
 function settleBattleRetreat(
   state: GameState,
@@ -773,25 +775,33 @@ function settleBattleRetreat(
     if (fleetShipLegacy) fleetShipLegacy.durability = Math.min(1, Math.max(0.05, fleetShipLegacy.durability - loss))
   }
   const fleetShip = state.fleet[state.shipId]
-  const retreatBaseIsk = anomaly ? (exp.lairTier ? lairBaseRewardIsk(anomaly, exp.lairTier) : anomaly.rewardIsk) : 0
-  const repair = Math.min(state.wallet.isk, Math.floor(retreatBaseIsk * bal.defeatCostRatio * 0.5))
-  state.wallet.isk -= repair
+  /**
+   * **撤退不收维修费**（船长 2026-09-15：「**删除撤离费**」）。
+   *
+   * 旧口径（2026-09-04 Q1乙）：撤退 = 轻损 + 无弃船骰 + **按比例维修费**
+   * （`min(钱包, 该卡期望奖励 × defeatCostRatio(0.5) × 0.5)` = 奖励的 25%，四档——手动撤退 /
+   * 结构<50% 自动脱离 / 打满上限超时 / 无法交战——**一起收**）⇒ 已**整条删除**：
+   * 现在撤退**只损失舰船耐久（脱身那一口）**，钱包一个信用点不动。
+   * ⚠ **失利的维修费不受影响**（那条是"打输了"的惩罚，`× defeatCostRatio` 全额，见上面失利分支）；
+   * 本函数里 `retreatBaseIsk` 随收费一起删除（它只服务这两行）。
+   */
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : exp.anomalyId ?? '目标'
   const dmgTxt = hit ? hitDamageText(hit) : `结构 -${legacyLossPct}%（旧档兜底）`
   const retreatText =
     mode === 'timeout'
-      ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。`
+      ? `⏱ 战斗超时（${targetName}）：舰船被迫撤退，正在返航——${dmgTxt}。`
       : mode === 'cannot-engage'
         ? // 无法交战（2026-09-11 船长裁定「乙2 · 事件为 120 秒」）：写明**我方射程 × 敌站位**，
           // 让玩家看懂"不是打不过，是够不着"，并知道该换装配（推进器/更远的武器）。
           `⚔ 无法交战（${targetName}）：我方主武器最远射程 ${myTopRangeM.toLocaleString('zh-CN')} m，` +
           `敌编队停在约 ${foeTypicalRangeM.toLocaleString('zh-CN')} m 外（交火 ${durTxt}，一炮未发）——` +
-          `${shipName} 已脱离交火并返航。${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。`
+          `${shipName} 已脱离交火并返航。${dmgTxt}。`
         : mode === 'auto'
-          ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点，正在返航。`
+          ? `⚔ 自动撤退（${targetName}）：结构损失过半，${shipName} 自动脱离交火（交火 ${durTxt}）——${dmgTxt}，正在返航。`
           // 2026-09-12 合并：主树「手动撤退 = **立刻回港**」的新文案（本块两侧各改一处 ⇒ 并集）
-          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，维修花去 ${repair.toLocaleString('zh-CN')} 信用点，即刻回港。`
+          // 2026-09-15 船长「删除撤离费」⇒ 四档文案一律去掉「维修花去 N 信用点」（钱包不再变动）
+          : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，即刻回港。`
   addLog(state, 'warn', retreatText)
   /**
    * 战报（2026-09-14 船长定）：**四档里的「脱离」那一档** —— 这四种都是"没分出胜负就收场"

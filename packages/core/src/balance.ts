@@ -48,7 +48,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     powerPerLevel: 2,
     minWinChance: 0.05, // 胜率最低 5%（再低就别去送了）
     maxWinChance: 0.95,
-    defeatCostRatio: 0.5, // 失利：维修费 = 期望奖励 × 50%
+    defeatCostRatio: 0.5, // **失利**：维修费 = 期望奖励 × 50%（⚠ 2026-09-15 船长「删除撤离费」⇒ 撤退四档已不再收这笔钱，本值只服务"打输了"）
     durabilityLossMin: 0.15, // 每次**失利**扣耐久 15%~30%（战败口径，未改）
     durabilityLossMax: 0.3,
     /**
