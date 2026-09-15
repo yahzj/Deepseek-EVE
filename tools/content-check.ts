@@ -3370,8 +3370,24 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       boxBad.length === 0,
       `洞内非商品契约：洞内货柜必须"只收不卖 + 有像样的价"（基础价 = 内容期望市值 ×0.6）——${boxBad.slice(0, 8).join(' · ')}`,
     )
+    /**
+     * ④ **洞内产出链**（2026-09-14 船长：「**虚空晶和虚空母矿也添加只收不卖。**」＋
+     *   「**市场不会出现虚空晶和母矿的卖单。**」）：虚空母矿与虚空晶必须 `playerBuyable: false`
+     *   ——市场不出售现货（NPC 侧一笔卖单都不铺，见 `core/market.ts seedCommonBook` 的门），
+     *   否则"花钱买原矿/晶体"就能跳过洞内挖矿与精炼这条链。**收购照常**（玩家可以卖）。
+     */
+    const chainBad: string[] = []
+    for (const id of ['ore-voidmother', 'min-voidcrystal']) {
+      const g = MARKET_GOODS.find((x) => x.refId === id)
+      if (!g) chainBad.push(`${id}（没有市场行 ⇒ 带回来的产出卖不掉）`)
+      else if (g.playerBuyable !== false) chainBad.push(`${g.key}（在卖现货）`)
+    }
+    check(
+      chainBad.length === 0,
+      `洞内非商品契约：洞内产出链（虚空母矿 / 虚空晶）必须"只收不卖"——${chainBad.join(' · ')}`,
+    )
     console.log(
-      `· 洞内非商品契约：谜质 ${matterDeviceIds.size} 台 + AI 核心实物 ${aicoreItemIds.size} 种**均不在市场目录** · 洞内货柜 ${boxIds.size} 种**只收不卖**且基础价 > 1`,
+      `· 洞内非商品契约：谜质 ${matterDeviceIds.size} 台 + AI 核心实物 ${aicoreItemIds.size} 种**均不在市场目录** · 洞内货柜 ${boxIds.size} 种**只收不卖**且基础价 > 1 · 洞内产出链 2 种（虚空母矿 / 虚空晶）**只收不卖**`,
     )
   }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽

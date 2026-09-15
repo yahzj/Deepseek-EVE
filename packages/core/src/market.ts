@@ -183,6 +183,15 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
   const now = openAtMs
   const L = priceLevel(state, ctx, def, def.poolTarget ?? 0)
   const sellable = def.playerSellable !== false
+  /**
+   * **只收不卖 ⇒ 一笔 NPC 卖单都不铺**（2026-09-14 船长：「**市场不会出现虚空晶和母矿的卖单。**」）。
+   *
+   * 原实现**无条件**铺卖单（池商品 `flow×0.8` 一笔 / 单件平价品两笔）⇒ 货架上挂着"买不了"的卖单：
+   * 实测 `box-relic-a`（洞内货柜，`playerBuyable: false`）开盘就有 **2 件卖单**，点买入被
+   * `buyGood` 的 `not-buyable` 拦下——簿面与口径不一致。现按 `playerBuyable` 收口（与
+   * `slowSupplyDraw` / 供应阶梯两处既有门同一把尺）；**收购侧（`npcBuy`）不受影响**。
+   */
+  const buyable = def.playerBuyable !== false
   // 开局/目录扩增铺簿同样吃"砸得越狠、买家越多"的倍率（常态 shock=0 ⇒ ×1，不改变开盘簿面）
   const buyVolMul = dumpBuyVolumeMul(state.market.pools[def.key], ctx.balance.market)
   if (def.poolTarget && def.poolTarget > 0) {
@@ -191,15 +200,19 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
       mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: Math.max(1, Math.round(flow * buyVolMul)), expiresAtGameMs: now + life })
       mk.npcBuy[def.key]!.push({ price: buyPrice(def, L, -0.01), qty: Math.max(1, Math.round(flow * 1.25 * buyVolMul)), expiresAtGameMs: now + life })
     }
-    mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: Math.max(1, Math.round(flow * 0.8)), expiresAtGameMs: now + life })
+    if (buyable) {
+      mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: Math.max(1, Math.round(flow * 0.8)), expiresAtGameMs: now + life })
+    }
     mk.pools[def.key]!.q = def.poolTarget
   } else {
     // 单件平价品（装备/蓝图/船/基础核心）：1 收购（qty 3，2026-09-08 船长定件数放大）+ 2 供应
     if (sellable) {
       mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: 3, expiresAtGameMs: now + life })
     }
-    mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: 1, expiresAtGameMs: now + life })
-    mk.npcSell[def.key]!.push({ price: sellPrice(def, L, 0.02), qty: 1, expiresAtGameMs: now + life })
+    if (buyable) {
+      mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: 1, expiresAtGameMs: now + life })
+      mk.npcSell[def.key]!.push({ price: sellPrice(def, L, 0.02), qty: 1, expiresAtGameMs: now + life })
+    }
   }
 }
 

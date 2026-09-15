@@ -49,9 +49,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 【虚空母矿 —— 虫洞线的唯一原矿（2026-09-12 船长定）。**虫洞落地前不对玩家可见**：
   //   `unreleased: true` ⇒ 不进 `ctx.marketGoods`（市场页/图鉴/挂单/任务全看不到），
   //   但契约照核（"每种物品必须有市场卡"）。**上线时删掉这一个字段即可开卖。**
-  //   数值：虚空晶 0.5 + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **1,016.25**；
-  //   basePrice 1,300（≈1.28×产出，供应侧不亏）· demandMultiplier 0.6 ⇒ 收购 ≈780 < 1,016（买入精炼不赚）。】
-  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6 },
+  //   ⚠ **2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖。」＋「市场不会出现虚空晶和母矿的卖单。」**
+  //   ⇒ `playerBuyable: false`：**NPC 侧一笔卖单都不铺**（见 `core/market.ts seedCommonBook` 的门），
+  //   买入亦被拦；**收购照常**（带回的母矿随时能卖给 NPC）。
+  //   数值（2026-09-14 半量后）：虚空晶 **0.25** + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **566.25**
+  //   （改前 0.5 ⇒ 1,016.25）· basePrice 1,300 / demandMultiplier 0.6 ⇒ 收购 ≈780（价格按船长「价格不动」未调）。】
+  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
   // ── **遗迹安全货柜**（F4 · 2026-09-13；2026-09-14 船长改判：给像样的价、只收不卖）──
   // 【它是"带回后拆解"的中间件：**不带货进洞、只从洞内带出** ⇒ 市场**只收不卖**
   //   （`playerBuyable: false`，市场不出售现货 —— 否则花钱就能买箱子，洞内打捞这条渠道被架穿）。
@@ -117,7 +120,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 940_920, supplyFlow: 7_841 },
   { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 178_440, supplyFlow: 1_487 },
   { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 30_960, supplyFlow: 258 },
-  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 500, supplyFlow: 3 },
+  // 【虚空晶（2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖」「市场不会出现…卖单」）：
+  //   它是**24 张洞内蓝图 + 皇带鱼级**的通用主料，来源只有"虚空母矿精炼"与"回收彩头"
+  //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
+  //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
+  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 500, supplyFlow: 3, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
   // ── 气体（V10 池商品） ──
   { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 227_880, supplyFlow: 1_899 },
   { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 330, poolTarget: 114_000, supplyFlow: 950 },
