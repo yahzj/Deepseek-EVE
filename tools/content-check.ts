@@ -939,6 +939,64 @@ for (const m of MODULES) {
   )
 }
 
+/* ── 战斗宿主双口径契约（2026-09-14 船长报障「虫洞内的战斗，敌方舰船动画不对 / 战斗开始位置似乎不对」）──
+ *
+ * 根因 = **一类"洞内战读了远征口径"的漏接**：洞内战斗的宿主是 `state.wormhole.run.battle`
+ * （**不占** `expedition.battle`、敌卡按层派生不落在 `expedition.anomalyId`）——凡是"只认远征"的读法
+ * 在洞里都会静默取到 `null`/`undefined`，而界面照样渲染 ⇒ 只能靠船长肉眼发现。本轮一次抓到 5 处：
+ *   ① `BattleScreen` 的 `foeAnomaly`（→ 族形兜底成 A 海盗、舰种体积回落 170/90，而它又喂 `layout()`
+ *      的机位/米制跨度 ⇒ **动画与开局机位一起错**）② `BattleScreen` 死敌预登记（洞内退出再进战场，
+ *      血量 0 的敌人复活）③ `BattleScreen` 星场基准船速 ④ `core.expedition.battleTacticDesire`
+ *      （洞内点战术按钮 ⇒ 期望距离 0 ⇒ 整队贴脸）⑤ `ui/ShipStatusWin.sceneOfShipwin`（洞里不切交火场景）
+ *      ＋ `panels/Announcements`（洞里鏖战时照样弹公告）。
+ *
+ * 契约（源码级扫描，与「装备卡片说明契约」同款跨层兜底）：
+ * - `panels/BattleScreen.tsx` 的**非注释行**里：
+ *   · **不许**出现 `expedition.anomalyId`（敌卡一律走已解析的 `foeAnomaly`）；
+ *   · `expedition.battle` **只允许 1 处**，且那一行必须同时出现 `whView`（= 双口径解析那一行）。
+ * - 另两处必须保留洞内分支（防日后被"简化"掉）：`ShipStatusWin.tsx` 含 `state.wormhole.run?.battle`、
+ *   `Announcements.tsx` 含 `s.wormhole.run?.battle`。
+ */
+{
+  // 本块自带工作目录（上方那个同名变量在别的块作用域里，这里取不到）
+  const wsRoot = process.cwd()
+  const readSrc = (rel: string): string => readFileSync(join(wsRoot, rel), 'utf8')
+  const stripComments = (src: string): string[] =>
+    src
+      .split('\n')
+      .filter((l) => {
+        const t = l.trim()
+        return !(t.startsWith('*') || t.startsWith('//') || t.startsWith('/*'))
+      })
+  const bsPath = 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx'
+  const bsLines = stripComments(readSrc(bsPath))
+  const badAnomaly = bsLines.filter((l) => l.includes('expedition.anomalyId')).length
+  check(
+    badAnomaly === 0,
+    `战斗宿主双口径契约：${bsPath} 里有 ${badAnomaly} 处直读 \`expedition.anomalyId\`——` +
+      `洞内战取不到敌卡（族形/舰种体积/机位全错）。敌卡一律走已解析的 \`foeAnomaly\`（whView 优先）`,
+  )
+  const bsBattle = bsLines.filter((l) => l.includes('expedition.battle'))
+  check(
+    bsBattle.length === 1 && bsBattle[0]!.includes('whView'),
+    `战斗宿主双口径契约：${bsPath} 里 \`expedition.battle\` 应恰好 1 处且带 \`whView\` 兜底（双口径解析），` +
+      `实际 ${bsBattle.length} 处${bsBattle.length > 0 ? `：${bsBattle.map((l) => l.trim().slice(0, 60)).join(' / ')}` : ''}`,
+  )
+  for (const [rel, needle] of [
+    ['apps/desktop/src/renderer/src/ui/ShipStatusWin.tsx', 'state.wormhole.run?.battle'],
+    ['apps/desktop/src/renderer/src/panels/Announcements.tsx', 's.wormhole.run?.battle'],
+  ] as const) {
+    check(
+      readSrc(rel).includes(needle),
+      `战斗宿主双口径契约：${rel} 缺少洞内分支（应含 \`${needle}\`）——洞内战会被当成"没在打"`,
+    )
+  }
+  console.log(
+    `· 战斗宿主双口径契约：BattleScreen 非注释行 ${bsLines.length} 行 ⇒ \`expedition.anomalyId\` 0 处 · ` +
+      `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支`,
+  )
+}
+
 // 舰船
 const roleSet = new Set(['industrial', 'armed', 'armored', 'hauler'])
 /** 舰种子分类白名单（2026-09-13 船长定；与 `packages/core/src/types.ts` 的 `ShipSubClass` 同源） */

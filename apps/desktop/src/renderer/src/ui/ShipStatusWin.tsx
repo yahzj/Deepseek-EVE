@@ -41,9 +41,12 @@ const BG_SWITCH_MS = 480 // 背景交叉淡入淡出时长余量
  *  在本类型加值 + sceneOfShipwin 推导 + 对应背景类与远景物件内容即可，不扩散到各处） */
 export type ShipwinScene = 'combat' | 'travel' | 'work-mine' | 'work-salvage' | 'work-scan' | 'field' | 'docked'
 
-/** 活动 → 场景（纯函数，独立导出：其它消费方（未来的环境背景）可复用同一推导） */
+/** 活动 → 场景（纯函数，独立导出：其它消费方（未来的环境背景）可复用同一推导）
+ *  ⚠ **2026-09-14 修**：洞内战斗的宿主是 `state.wormhole.run.battle`（不占 `expedition.battle`）——
+ *  原先只认远征 ⇒ 洞里打起来时状态窗**不切"交火"场景**（背景/远景物件全是别的场景）。 */
 export function sceneOfShipwin(state: GameState): ShipwinScene {
   const b = state.expedition.battle
+  if (state.wormhole.run?.battle) return 'combat'
   if (state.expedition.active && b) return 'combat'
   if (state.hauling.active) return 'travel'
   if (state.mining.active) return state.mining.phase === 'returning' ? 'travel' : 'work-mine'

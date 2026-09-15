@@ -40,7 +40,9 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
     const s = engine.state
     const tut = s.onboarding.step
     if (tut === 0 || (tut >= 1 && tut <= 7)) return
-    if (s.expedition.battle) return
+    // ⚠ 2026-09-14 修：洞内战斗宿主在 `state.wormhole.run.battle`（不占 `expedition.battle`）——
+    //   原先只挡远征 ⇒ 洞里鏖战时公告照样弹出来挡住战场。
+    if (s.expedition.battle || s.wormhole.run?.battle) return
     autoShownRef.current = true
     setOpen(true)
     writeSeen(latest.id)

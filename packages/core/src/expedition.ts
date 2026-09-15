@@ -145,19 +145,29 @@ export function calcExpeditionDurationMs(state: GameState, ctx: SimContext, anom
 /** 玩家战术选择 */
 export type BattleTacticChoice = 'assault' | 'mid' | 'kite'
 
-/** 按战术算期望距离（出发前/战斗中改战术均用；目标未指明时用当前远征目标）。
+/** 按战术算期望距离（出发前/战斗中改战术均用；目标未指明时用当前目标）。
  * ⚠ **中距档分档**（2026-09-15 船长裁定）：**洞内战 = 中段 0.5**、**星图 = 射程带 0.8**
- * ——由"当前是否在洞内交火"决定（与 `setBattleDesire` 同一判据：`state.wormhole.run.battle`）。 */
+ * ——由"当前是否在洞内交火"决定（与 `setBattleDesire` 同一判据：`state.wormhole.run.battle`）。
+ *
+ * ⚠ **2026-09-14 修（船长报障「虫洞内的战斗…战斗开始位置似乎不对」的连带）**：默认卡此前只取
+ * `state.expedition.anomalyId` ⇒ **洞内交火时取不到卡 ⇒ 本函数直接返回 0** ⇒ 战场里点
+ * 「突击/中距/风筝」按钮会把期望距离设成 0（被 `setBattleDesire` 钳到最近）＝**整队贴脸**。
+ * 现与 `setBattleDesire` **同一口径**解析：洞内用本趟的敌卡（`run.battle.wormhole.cardId`）与
+ * **编队首舰**当主视角；洞外照旧用远征卡与 `state.shipId`。 */
 export function battleTacticDesire(
   state: GameState,
   ctx: SimContext,
   tactic: BattleTacticChoice,
-  anomalyId: string | null = state.expedition.anomalyId,
+  anomalyId?: string | null,
 ): number {
-  const anomaly = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
-  const me = createPlayerSpec(state, ctx, state.shipId)
+  const whRun = state.wormhole.run
+  const whBattle = whRun?.battle ?? null
+  const cardId = anomalyId ?? (whBattle ? (whBattle.wormhole?.cardId ?? null) : state.expedition.anomalyId)
+  const anomaly = cardId ? ctx.anomalies.get(cardId) : undefined
+  const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : state.shipId
+  const me = createPlayerSpec(state, ctx, anchorShipId)
   if (!anomaly || !me) return 0
-  const inWormhole = state.wormhole.run?.battle != null
+  const inWormhole = whBattle != null
   const band = inWormhole ? ctx.balance.battle.desireBandWormhole : ctx.balance.battle.desireBandStarMap
   return desiredRangeFor(me, tactic, ctx.balance.battle, band)
 }

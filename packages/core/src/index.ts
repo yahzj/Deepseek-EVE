@@ -1029,7 +1029,7 @@ export type {
 } from './wormholeGrid'
 
 // F 批：洞内战斗（开战 / 每拍推进收口）——单开模块，避免 state→wormhole→shipyard→hauling→state 的循环初始化
-export { wormholeStartBattle, wormholeActivateAt, wormholeTravelTo, advanceWormhole, wormholeBattleViewOf } from './wormholeBattle'
+export { wormholeStartBattle, wormholeActivateAt, wormholeTravelTo, advanceWormhole, wormholeBattleViewOf, battleFoeAnomaly } from './wormholeBattle'
 // F3b：层内产出与打捞（打捞器门槛 / 墓场·遗迹打捞 / 专属掉落 / 舰船信号战果 / 矿脉）
 export {
   WORMHOLE_FAMILIES,
