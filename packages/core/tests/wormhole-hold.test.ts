@@ -19,7 +19,7 @@ import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WORMHOLE_ORE_ITEM_ID, WORMHOLE_TEMP_CELLS, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
 import type { WormholeHoldPlacement, WormholeHoldState } from '../src/wormholeHold'
-import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdDropWithGrab, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill } from '../src/wormholeHold'
+import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdDropWithGrab, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill, wormholeShapeOf } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -376,6 +376,30 @@ describe('虫洞 · 货仓格随档（零迁移）', () => {
     const loaded = loadSaveFile(JSON.stringify(raw)).state.wormhole.run!
     expect(loaded.hold).toBeUndefined()
     void ({} as WormholeHoldState)
+  })
+
+  it('**安全货柜改 6 格后：老档里那件仍是旧占地（不凭空超载），新装舱才按 3×2**', () => {
+    /**
+     * 2026-09-15 船长「将安全货柜大小增加到 6 格」（2000 → 3000 m³ · 2×2 → 3×2）。
+     * 老档里的 placement **自带 `w`/`h`**，而 `cleanHoldPlacement` 只校验合法性、**不按形状表重算**
+     * ⇒ 改规格前装进仓的那一件**读档后仍是 2×2**（不因为改规格凭空变成 6 格、也就不凭空超载）；
+     * 只有**新装舱**（`holdAdd` / `wormholeHoldStow`）才取新形状 3×2。这条把该行为钉住。
+     */
+    const state = enterRun(4)
+    const run = state.wormhole.run!
+    run.hold = makeHoldState()
+    const safeBox = 'box-relic-a'
+    // 老档现场：手工写一件"旧规格"的安全货柜（2×2）
+    run.hold.placements.push({ id: 'legacy-4', itemId: safeBox, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
+    const kept = back.hold!.placements.find((p) => p.id === 'legacy-4')!
+    expect(kept.w, '老档那件保留旧占地').toBe(2)
+    expect(kept.h).toBe(2)
+    // 新装舱取新形状：3×2（形状表已改）
+    expect(wormholeShapeOf(safeBox)).toEqual({ w: 3, h: 2 })
+    expect(holdAdd(back.hold!, safeBox, 40).ok, '货仓放得下 3×2').toBe(true)
+    const fresh = back.hold!.placements.filter((p) => p.itemId === safeBox).map((p) => `${p.w}×${p.h}`)
+    expect(fresh, '同一趟里"老件 2×2 + 新件 3×2"并存').toContain('3×2')
   })
 })
 

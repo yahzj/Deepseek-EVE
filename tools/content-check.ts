@@ -176,6 +176,20 @@ securityZoneOf,
   wormholeTierOfCard,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   DSI_FACTION_ID,
+  // 2026-09-15 虫洞战利品与经济扩充（契约块见文件中部）：谜质 / 奢侈品 / 两个新货柜 / 打捞掷骰
+  WORMHOLE_ESSENCE_ITEM_ID,
+  WORMHOLE_ESSENCE_PER_DEVICE,
+  WORMHOLE_LUXURY_ITEM_IDS,
+  WORMHOLE_VALUABLES_BOX_ID,
+  WORMHOLE_VALUABLES_UNITS_MIN,
+  WORMHOLE_VALUABLES_UNITS_MAX,
+  WORMHOLE_MILITARY_BOX_ID,
+  WORMHOLE_MILITARY_PIECES_MIN,
+  WORMHOLE_MILITARY_PIECES_MAX,
+  WORMHOLE_SALVAGE_BOX_CHANCE,
+  WORMHOLE_SALVAGE_BOX_MAX,
+  wormholeMk3PoolOf,
+  wormholeSalvageBoxClassesOf,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -3654,6 +3668,124 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     console.log(
       `· 洞内非商品契约：谜质 ${matterDeviceIds.size} 台 + AI 核心实物 ${aicoreItemIds.size} 种**均不在市场目录** · 洞内货柜 ${boxIds.size} 种**只收不卖**且基础价 > 1 · 洞内产出链 2 种（虚空母矿 / 虚空晶）**只收不卖**`,
     )
+  }
+  /**
+   * **虫洞战利品与经济扩充契约**（船长 2026-09-15 确认；工作文档
+   * `docs/design/wormhole-loot-economy-20260915.md`）。
+   *
+   * 六组哨（都在"改一处必红"的位置上）：
+   * - ① **谜质只收不卖**（船长「该物品只收不卖」）：市场行必须存在、`playerBuyable: false`、
+   *   且**行价 = 物品卡价**（70,000）——不让"卡上一个价、市场另一个价"这种两套口径出现；
+   * - ② **奢侈品正常交易**（船长「奢侈品纯粹用来卖钱，市场正常交易」＋「奢侈品是精炼拆解后的，不算在内」）：
+   *   三档必须 **可买**（`playerBuyable !== false`）且 **`common` 常驻**（否则内容体检另有一条
+   *   "非常驻 ⇒ 玩家产出无法稳定卖出"的预警，等于"卖不掉的钱"）；
+   * - ③ **拆解件数/概率哨**：谜质 1 台 = 1 枚 · 奢侈品 10~20 件 · 军用 1~3 件 · 打捞 0.75% 每堆 / 上限 1；
+   * - ④ **四类货柜池齐备**：安全柜（按族）· 图纸柜三档 · 贵重品柜 · 军用柜，**类等权 4 类**，
+   *   且**每个 id 都有形状登记与市场行**（否则掷中了却放不进、卖不掉）；
+   * - ⑤ **军用拆解池排除专属（反向守卫）**：非空 · 一律 `-3` 结尾 · **不含** `-wh-`（洞内族专属）、
+   *   `mod-lair-*`（窝点专属）与 `unreleased` · **含三把常备 MK3 武器**（船长「含武器」）；
+   * - ⑥ **常量与 data 同步**：两个新货柜 id 必须在物品目录里（core 侧常量写的是字面量，靠这条钉住）。
+   */
+  {
+    const itemsById = new Map(ITEMS.map((i) => [i.id, i] as const))
+    const rowOf = (id: string): (typeof MARKET_GOODS)[number] | undefined =>
+      MARKET_GOODS.find((g) => g.kind === 'item' && g.refId === id)
+    // ① 谜质
+    {
+      const row = rowOf(WORMHOLE_ESSENCE_ITEM_ID)
+      const card = itemsById.get(WORMHOLE_ESSENCE_ITEM_ID)
+      const bad: string[] = []
+      if (!row) bad.push('没有市场行（带回来的谜质卖不掉）')
+      else {
+        if (row.playerBuyable !== false) bad.push('在卖现货（应只收不卖）')
+        if (card && row.basePrice !== card.baseSellPriceIsk) {
+          bad.push(`行价 ${row.basePrice} ≠ 物品卡价 ${card.baseSellPriceIsk}`)
+        }
+      }
+      if (!card) bad.push('物品目录里没有这张卡')
+      check(bad.length === 0, `战利品扩充契约①：虫洞谜质必须"只收不卖 + 行价 = 卡价"——${bad.join(' · ')}`)
+    }
+    // ② 奢侈品三档
+    {
+      const bad: string[] = []
+      for (const id of WORMHOLE_LUXURY_ITEM_IDS) {
+        const row = rowOf(id)
+        const card = itemsById.get(id)
+        if (!card) bad.push(`${id}（物品目录里没有这张卡）`)
+        if (!row) {
+          bad.push(`${id}（没有市场行 ⇒ 卖不掉）`)
+          continue
+        }
+        if (row.playerBuyable === false) bad.push(`${row.key}（只收不卖 ⇒ 与"市场正常交易"相反）`)
+        if (row.rarity !== 'common') bad.push(`${row.key}（${row.rarity} ⇒ 非常驻、产出无法稳定卖出）`)
+        if (card && row.basePrice !== card.baseSellPriceIsk) bad.push(`${row.key}（行价 ${row.basePrice} ≠ 卡价 ${card.baseSellPriceIsk}）`)
+      }
+      check(bad.length === 0, `战利品扩充契约②：奢侈品三档必须"可买可卖 + 常驻 + 行价 = 卡价"——${bad.join(' · ')}`)
+    }
+    // ③ 件数与概率哨
+    {
+      const want: Array<[string, number, number]> = [
+        ['谜质每台枚数 WORMHOLE_ESSENCE_PER_DEVICE', WORMHOLE_ESSENCE_PER_DEVICE, 1],
+        ['奢侈品件数下限 WORMHOLE_VALUABLES_UNITS_MIN', WORMHOLE_VALUABLES_UNITS_MIN, 10],
+        ['奢侈品件数上限 WORMHOLE_VALUABLES_UNITS_MAX', WORMHOLE_VALUABLES_UNITS_MAX, 20],
+        ['军用件数下限 WORMHOLE_MILITARY_PIECES_MIN', WORMHOLE_MILITARY_PIECES_MIN, 1],
+        ['军用件数上限 WORMHOLE_MILITARY_PIECES_MAX', WORMHOLE_MILITARY_PIECES_MAX, 3],
+        ['残骸堆出货率 WORMHOLE_SALVAGE_BOX_CHANCE', WORMHOLE_SALVAGE_BOX_CHANCE, 0.0075],
+        ['单次打捞上限 WORMHOLE_SALVAGE_BOX_MAX', WORMHOLE_SALVAGE_BOX_MAX, 1],
+      ]
+      const bad = want.filter(([, got, exp]) => got !== exp).map(([name, got, exp]) => `${name} = ${got}（应为 ${exp}）`)
+      check(bad.length === 0, `战利品扩充契约③：数值与船长口径不符——${bad.join(' · ')}`)
+    }
+    // ④ 四类货柜池齐备
+    {
+      const classes = wormholeSalvageBoxClassesOf(WORMHOLE_FAMILY_ORDER[0]!)
+      const bad: string[] = []
+      if (classes.length !== 4) bad.push(`类数 ${classes.length}（应为 4 类等权）`)
+      for (const cls of classes) {
+        if (cls.length === 0) bad.push('有一类是空的')
+        for (const id of cls) {
+          if (!itemsById.has(id)) bad.push(`${id}（物品目录里没有）`)
+          if (!wormholeIsShapedItem(id)) bad.push(`${id}（没有形状登记 ⇒ 掷中了放不进仓）`)
+          if (!rowOf(id)) bad.push(`${id}（没有市场行 ⇒ 拆不出也卖不掉）`)
+        }
+      }
+      check(bad.length === 0, `战利品扩充契约④：四类货柜池必须齐备——${bad.slice(0, 8).join(' · ')}`)
+    }
+    // ⑤ 军用拆解池排除专属（反向守卫）
+    {
+      const mk3Ctx = buildSimContext()
+      const pool = wormholeMk3PoolOf(mk3Ctx)
+      const bad: string[] = []
+      if (pool.length === 0) bad.push('池是空的（军用柜会开出空气）')
+      for (const id of pool) {
+        if (!id.endsWith('-3')) bad.push(`${id}（不是 MK3）`)
+        if (id.includes('-wh-')) bad.push(`${id}（洞内族专属混进了军用池）`)
+        if (id.startsWith('mod-lair-')) bad.push(`${id}（窝点专属混进了军用池）`)
+        if (mk3Ctx.modules.get(id)?.unreleased === true) bad.push(`${id}（未上线件混进了军用池）`)
+      }
+      for (const w of ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3']) {
+        if (!pool.includes(w)) bad.push(`${w}（三把常备 MK3 武器应在池里——船长「含武器」）`)
+      }
+      check(bad.length === 0, `战利品扩充契约⑤：军用拆解池必须"含武器、不含专属"——${bad.slice(0, 8).join(' · ')}`)
+      console.log(
+        `· 战利品扩充契约：谜质 1 台→${WORMHOLE_ESSENCE_PER_DEVICE} 枚 · 奢侈品 ${WORMHOLE_VALUABLES_UNITS_MIN}~${WORMHOLE_VALUABLES_UNITS_MAX} 件（三档可买可卖）· ` +
+          `军用 MK3 ${WORMHOLE_MILITARY_PIECES_MIN}~${WORMHOLE_MILITARY_PIECES_MAX} 件（池 ${pool.length} 件）· ` +
+          `残骸堆 ${(WORMHOLE_SALVAGE_BOX_CHANCE * 100).toFixed(2)}%/堆（单次上限 ${WORMHOLE_SALVAGE_BOX_MAX}）· 四类货柜等权`,
+      )
+    }
+    // ⑥ 两个新货柜 id 常量与 data 同步
+    {
+      const bad: string[] = []
+      for (const [name, id] of [
+        ['WORMHOLE_VALUABLES_BOX_ID', WORMHOLE_VALUABLES_BOX_ID],
+        ['WORMHOLE_MILITARY_BOX_ID', WORMHOLE_MILITARY_BOX_ID],
+      ] as const) {
+        if (!itemsById.has(id)) bad.push(`${name} = ${id}（物品目录里没有这个 id）`)
+        if (!rowOf(id)) bad.push(`${name} = ${id}（没有市场行）`)
+        if (!wormholeIsShapedItem(id)) bad.push(`${name} = ${id}（没有形状登记）`)
+      }
+      check(bad.length === 0, `战利品扩充契约⑥：core 常量与 data 目录必须同步——${bad.join(' · ')}`)
+    }
   }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽
   const zoneCount = { 中安: 0, 低安: 0 }

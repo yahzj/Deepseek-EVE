@@ -1147,6 +1147,21 @@ export {
   wormholeRelicBoxIdOf,
   wormholeSalvageAt,
   wormholeSalvagersOf,
+  // 2026-09-15 战利品与经济扩充（谜质折算 · 两个新货柜的拆解台 · 残骸堆掷货柜）
+  WORMHOLE_ESSENCE_ITEM_ID,
+  WORMHOLE_ESSENCE_PER_DEVICE,
+  WORMHOLE_VALUABLES_BOX_ID,
+  WORMHOLE_MILITARY_BOX_ID,
+  WORMHOLE_LUXURY_ITEM_IDS,
+  WORMHOLE_VALUABLES_UNITS_MIN,
+  WORMHOLE_VALUABLES_UNITS_MAX,
+  WORMHOLE_MILITARY_PIECES_MIN,
+  WORMHOLE_MILITARY_PIECES_MAX,
+  WORMHOLE_SALVAGE_BOX_CHANCE,
+  WORMHOLE_SALVAGE_BOX_MAX,
+  wormholeMk3PoolOf,
+  wormholeSalvageBoxClassesOf,
+  wormholeRollSalvageBox,
 } from './wormholeSalvage'
 // 虫洞扫描（发现线 · 2026-09-14 船长：主控活动「扫描虫洞」+ 最多囤 5 个未探索虫洞）
 export {
