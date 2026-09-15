@@ -111,6 +111,17 @@ function settleEncounterTail(state: GameState, ctx: SimContext, shipId: string):
 }
 
 /**
+ * 记一次「因低安袭击自动撤离」（一次性标记；新通讯 `msg-ambush-retreat` 的触发面，船长 2026-09-14 定）。
+ *
+ * **两处置位**（船长裁定「也算自动脱离交火」）：① `retreatEncounterShip` = 被袭船自动收手返港待命；
+ * ② `settleEscape` = 应战中途结构过半**自动脱离交火**。主控与副船同口径，只置一次。
+ * 判定侧读它（`comms.commsTriggerMet` 的 `ambushRetreat`）；老档缺字段 = 从未发生 ⇒ 不补发。
+ */
+function markAmbushRetreat(state: GameState): void {
+  if (state.ambushRetreatSeen !== true) state.ambushRetreatSeen = true
+}
+
+/**
  * 收手返港待命（原因只影响日志文案；执行口径一处）：
  * 主控：停掉低安作业（采矿/打捞/扫描）并即时返航最近已建成站（既有"返航即时到站"口径，到港自动卸货）；
  * 副船：中止 AI 任务召回回港（既有召回口径，核心归还核心库）。
@@ -137,6 +148,7 @@ function retreatEncounterShip(
     // 副船：中止任务召回回港待命（核心归还核心库）
     if (!cancelAiTask(state, shipId, ctx)) return false
     addLog(state, 'warn', `⚠ [AI·${name}] ${line}——已中止任务召回回港待命（请维修后再派；此状态下无法再派任务）。`)
+    markAmbushRetreat(state)
     return true
   }
   // 主控：先停手（作业状态各自清理），再走既有"返航最近已建成站"（即时到站 + 自动卸货）
@@ -155,6 +167,7 @@ function retreatEncounterShip(
       ? `⚠ ${name} ${line}——已自动停手返港（回港后请及时维修）。`
       : `⚠ ${name} ${line}——已自动停手，正在返航途中（到港后请及时维修）。`,
   )
+  markAmbushRetreat(state)
   return true
 }
 
@@ -439,6 +452,9 @@ function settleEscape(state: GameState, ctx: SimContext): void {
       (ship?.armorPct ?? 1) * 100,
     )}% / 结构 ${Math.round((ship?.durability ?? 1) * 100)}%）${repairTail(battle, ctx)}。`,
   )
+  // 因袭击自动撤离（两处置位之一，见 `markAmbushRetreat`）：即便随后被修理组件修好、留下继续干活，
+  // 这一次"被打到自动脱身"也算发生过（船长 2026-09-14 裁定「也算自动脱离交火」）
+  markAmbushRetreat(state)
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判；自动脱离时结构已 <50%，修不动才返港）
   settleEncounterTail(state, ctx, shipId)

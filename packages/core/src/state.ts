@@ -1344,6 +1344,16 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 兼容字段（可选）⇒ 零迁移；界面只弹队首那一封。
    */
   commsPopups?: string[]
+  /**
+   * **因低安袭击自动撤离**（2026-09-14 船长定：新通讯 `msg-ambush-retreat` 的触发面）。三态：
+   * - `true` = 真发生过（被袭船收手返港待命 / 应战中途结构过半自动脱离交火）⇒ 发信；
+   * - `false` = **新档**（本功能之后开的局，由 `createInitialState` 写入）⇒ **只等真撤离**，不补发；
+   * - **缺失 = 老档**（本功能上线前写的档）⇒ 船长裁定「老档补发，但**要判断玩家是否触发过**」：
+   *   老档没有事件记录可查，故用**可查的最强痕迹**判定 —— `encounterZoneCooldown` 非空
+   *   （只在伏击真的命中时写入、写后不删、随档保存）⇒ 该档确实被伏击过才补发。
+   * ⇒ 本字段**按三态随档**：`false` 必须落键（省掉它会被读成老档），缺失保持缺失（老档待判）。
+   */
+  ambushRetreatSeen?: boolean
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
   /**
@@ -2090,6 +2100,8 @@ export function createInitialState(opts?: {
     dialogueSeen: {},
     pendingDialogue: null,
     commsDelivered: {}, // 2026-09-11 通讯收件箱：送达记账（可选字段、零迁移）
+    // 2026-09-14 因低安袭击自动撤离：**新档显式写 false**（区别于"老档缺字段"，见字段注释）
+    ambushRetreatSeen: false,
     commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},
     debugQuick: false,

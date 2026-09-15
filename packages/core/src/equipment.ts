@@ -198,6 +198,10 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   if (def.evasionGapPct !== undefined) return { group: 'gap', kind: 'evasion' }
   if (def.hitBonusPct !== undefined) return { group: 'curve', kind: 'hit' }
   if (def.speedBonusPct !== undefined) return { group: 'curve', kind: 'speed' }
+  // 跃迁计算机（`warpSpeedBonusPct`，2026-09-14 船长新增 MK2 +20% / MK3 +35%）：**EVE 曲线**
+  // （与"命中/速度"同一条）⇒ 多装递减：MK2 1/2/3/4 件 = ×1.20 / ×1.41 / ×1.57 / ×1.66。
+  // 收敛池 = 同 kind（MK2 与 MK3 混装时按单件效果从强到弱排位）。
+  if (def.warpSpeedBonusPct !== undefined) return { group: 'curve', kind: 'warp' }
   if (def.lockDmgBonus !== undefined) return { group: 'curve', kind: 'lock' }
   // 无人机中继天线（`droneRangeBonusPct`）：**折权加算**（2026-09-14 船长「对无人机的射程插件添加叠加
   // 惩罚」→「按推荐折算」）——第 2 件起按 `stackWeight` 的 87% / 57% / 28%… 折权后**仍相加**，

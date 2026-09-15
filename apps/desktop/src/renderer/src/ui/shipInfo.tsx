@@ -252,6 +252,9 @@ export function moduleShortEffect(mod: ModuleDef): string {
         body = `炮台命中 +${pct(mod.hitBonusPct)}`
       } else if (mod.evasionGapPct !== undefined) {
         body = `被命中 −${pct(mod.evasionGapPct)}（缺口）`
+      } else if (mod.warpSpeedBonusPct !== undefined) {
+        // 2026-09-14 跃迁计算机（低槽支援件）：只缩短**星系际航行**时间，不碰战斗机动
+        body = `跃迁速度 +${pct(mod.warpSpeedBonusPct)}（仅跨星系航行）`
       }
       break
     }
@@ -413,11 +416,24 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
   return lines
 }
 
-/** 间接属性行（速度/跃迁/质量/锁定/信号）：显示优先级低——仅装配界面使用 */
-export function shipIndirectLines(ship: ShipDef): InfoLine[] {
+/**
+ * 间接属性行（速度/跃迁/质量/锁定/信号）：显示优先级低——仅装配界面使用。
+ *
+ * `effWarp`（2026-09-14 跃迁计算机）：装配页把手算好的**有效跃迁速度**（含装备加成）传进来
+ * ⇒ 该行显示「基础 → 有效（含装备 +X%）」；**不传 = 显示船表基础值**（图鉴/船型档案那条路
+ * 没有存档上下文，读数仍是档案值）。
+ */
+export function shipIndirectLines(ship: ShipDef, effWarp?: { aus: number; bonusPct: number }): InfoLine[] {
   const lines: InfoLine[] = []
   if (ship.maxSpeedMps !== undefined) lines.push({ k: '最大速度', v: `${fmt(ship.maxSpeedMps)} m/s` })
-  if (ship.warpSpeedAus !== undefined) lines.push({ k: '跃迁速度', v: `${ship.warpSpeedAus} AU/s` })
+  if (ship.warpSpeedAus !== undefined) {
+    const base = ship.warpSpeedAus
+    const boosted = effWarp !== undefined && effWarp.bonusPct > 0 && Math.abs(effWarp.aus - base) > 1e-6
+    lines.push({
+      k: '跃迁速度',
+      v: boosted ? `${base} AU/s → ${effWarp.aus.toFixed(2)} AU/s（含装备 +${pct(effWarp.bonusPct)}）` : `${base} AU/s`,
+    })
+  }
   if (ship.massKg !== undefined) lines.push({ k: '质量', v: `${(ship.massKg / 1_000_000).toFixed(1)} 百万 kg` })
   if (ship.lockRangeM !== undefined) lines.push({ k: '锁定范围', v: `${(ship.lockRangeM / 1000).toFixed(0)} km` })
   if (ship.signatureM !== undefined) lines.push({ k: '信号半径', v: `${fmt(ship.signatureM)} m` })

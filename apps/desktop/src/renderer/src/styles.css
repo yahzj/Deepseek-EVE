@@ -159,9 +159,11 @@ body {
   height: min(760px, calc(var(--mob-h, 100vw) - 32px));
   max-height: calc(var(--mob-h, 100vw) - 24px);
 }
-/* 同族：通讯弹窗与结算卡在旋转模式下也别被 100vw 截窄（与 `.app-ann` 那条同口径） */
+/* 同族：通讯弹窗与结算卡在旋转模式下也别被 100vw 截窄（与 `.app-ann` 那条同口径）；
+   高度按逻辑空间 `--mob-h` 收（旋转下物理竖屏高 ≈844，用 vh 会把卡片撑出屏幕外） */
 .app-root.is-mobile-rot .app-comm-pop {
   width: min(560px, calc(100vh - 48px));
+  height: min(620px, calc(var(--mob-h, 100vw) - 48px));
 }
 
 .app-root.is-mobile-rot .app-bts-hpWrap {
@@ -10545,11 +10547,22 @@ body {
   12% { opacity: 1; }
   100% { transform: translateX(0); opacity: 1; }
 }
-/* 需要弹窗的通讯（2026-09-14 船长：「解锁时发送通讯给玩家（同时也要直接弹窗）」）：复用公告卡骨架，
-   只是正文按段落排（.app-comm-pop-body p），并把宽度收窄一点 —— 一封信不该占满一屏。 */
-.app-comm-pop { width: min(560px, 92vw); }
-.app-comm-pop-body { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
-.app-comm-pop-body p { margin: 0; line-height: 1.6; }
+/* 送达弹窗（2026-09-14 船长两次裁定）：①「除新手教程外的讯息也弹窗」；
+   ②「将所有的通讯弹窗的外形，改成和通讯界面内的右侧界面的相同」⇒ 卡片里装的就是通讯页右栏那块屏
+   （公共件 `panels/CommsReader.tsx` 的 `.app-comms-body-col` + `.app-comms-screen` + `.app-comms-eave`），
+   外壳只留"一张卡的边界"：宽度 560、高度按视口收、深底 + 金线；屏幕自己滚（正文长短都不撑破卡）。 */
+.app-comm-pop {
+  width: min(560px, 92vw);
+  height: min(620px, 78vh);
+  display: flex;
+  background: linear-gradient(180deg, rgba(20, 28, 40, .98), rgba(8, 13, 20, .99));
+  border: 1px solid var(--wui-gold);
+  border-radius: 12px;
+  box-shadow: 0 14px 46px rgba(0, 0, 0, .7);
+  overflow: hidden;
+}
+/* 弹窗檐口第三行：右下角的「知道了」（前两行 = 动作 / 前往，见 `.app-comms-eave`） */
+.app-comms-eave-extra { display: flex; justify-content: flex-end; }
 
 /* ═══════════ 窄屏（手机竖屏）· 虫洞面板适配（船长 2026-09-14 转玩家反馈：
    「手机端没进战斗、在挖矿时，从顶部活动窗口返回虫洞会黑屏」）═══════════

@@ -1382,9 +1382,11 @@ for (const m of MODULES) {
     const hasRof = m.reloadCutPct !== undefined
     const hasHit = m.hitBonusPct !== undefined
     const hasEva = m.evasionGapPct !== undefined
+    // 2026-09-14 跃迁计算机：**跃迁**成为支援件的第六类效果（低槽；只缩短星系际航行时间）
+    const hasWarp = m.warpSpeedBonusPct !== undefined
     const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
-    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复）`)
+    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
       check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
@@ -1409,8 +1411,10 @@ for (const m of MODULES) {
       if (hasRof) check((m.reloadCutPct ?? 0) > 0 && (m.reloadCutPct ?? 0) <= 0.9, `支援件 ${m.id} reloadCutPct 非法（需 (0, 0.9]）`)
       if (hasHit) check((m.hitBonusPct ?? 0) > 0 && (m.hitBonusPct ?? 0) <= 0.9, `支援件 ${m.id} hitBonusPct 非法（需 (0, 0.9]）`)
       if (hasEva) check((m.evasionGapPct ?? 0) > 0 && (m.evasionGapPct ?? 0) <= 0.9, `支援件 ${m.id} evasionGapPct 非法（需 (0, 0.9]）`)
-      // 归槽语义：伤害/射速 = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
-      if (stabKeys > 0 || hasRof) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速）应为低槽，实际 ${m.rack}`)
+      // 跃迁计算机（2026-09-14）：跃迁速度加成值域 (0, 0.9]——单件 0.20 / 0.35，多件由 EVE 曲线收敛
+      if (hasWarp) check((m.warpSpeedBonusPct ?? 0) > 0 && (m.warpSpeedBonusPct ?? 0) <= 0.9, `支援件 ${m.id} warpSpeedBonusPct 非法（需 (0, 0.9]）`)
+      // 归槽语义：伤害/射速/**跃迁** = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
+      if (stabKeys > 0 || hasRof || hasWarp) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速/跃迁）应为低槽，实际 ${m.rack}`)
       if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
     }
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
@@ -4262,6 +4266,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'wormholeNebula',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
     'standing',
+    // 2026-09-14 被袭后的自动撤离（船长：「当玩家第一次因为低安袭击导致舰船自动撤离时触发」）
+    'ambushRetreat',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])

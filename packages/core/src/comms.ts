@@ -117,19 +117,27 @@ function deliver(state: GameState, id: string): boolean {
 }
 
 /**
- * **需要直接弹窗的通讯**（船长 2026-09-14：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）：
- * 送达后把 id 记进 `state.commsPopups`（去重、保序），界面弹一次卡片；点「知道了」调
- * `dismissCommsPopup` 清掉——**关掉不丢信**（收件箱里还有）。
+ * **需要直接弹窗的通讯**（船长 2026-09-14 三次裁定）：①「解锁时发送通讯给玩家（**同时也要直接弹窗**）」；
+ * ②「所有除新手教程外的讯息也弹窗」；③「**同一拍只弹第一封、其余只进收件箱**」。
+ * 送达后把 id 记进 `state.commsPopups`（去重、保序），界面只渲染**队首那一封**；点「知道了」调
+ * `dismissCommsPopup` 出队——**关掉不丢信**（收件箱里还有），且**视为已在通讯界面看过**（记已读）。
  */
 export function commsPopupQueue(state: GameState): string[] {
   return state.commsPopups ?? []
 }
 
-/** 关掉一份弹窗（幂等；返回是否真的关掉了一份） */
+/**
+ * 关掉一份弹窗（幂等；返回是否真的关掉了一份）。
+ *
+ * 船长 2026-09-14：「**玩家已经看过点掉的，视为在通讯界面看过（不会有导航栏提示）**」
+ * ⇒ 出队的同时**记已读**（否则刚点掉的信还会让导航栏「通讯」图标闪 + 挂未读徽标）。
+ * 只在"确实关掉了一份"时记，重复调用（幂等 false）不再动已读状态。
+ */
 export function dismissCommsPopup(state: GameState, id: string): boolean {
   const list = state.commsPopups ?? []
   if (!list.includes(id)) return false
   state.commsPopups = list.filter((x) => x !== id)
+  markCommsRead(state, id)
   return true
 }
 
@@ -194,6 +202,24 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       // 2026-09-13 船长定（星云机制）：**第一次下到第 4 层**时送达一封星云说明。
       // 判定读的是同一个随档标记（`wormholeDescend` 置位）⇒ 与那一条一次性提示同源、不会错位。
       return state.wormhole.nebulaHintShown === true
+    case 'ambushRetreat': {
+      // 2026-09-14 船长定（新通讯）：**第一次因为低安袭击导致舰船自动撤离**时送达一封"为什么船自己回家了"，
+      // 并提示自造修理组件（`msg-ambush-retreat`）。置位点两处（船长裁定「也算自动脱离交火」）：
+      // `encounters.retreatEncounterShip`（收手返港待命）与 `encounters.settleEscape`（应战中途自动脱离交火）；
+      // 主控与副船同口径。
+      if (state.ambushRetreatSeen === true) return true
+      // 新档（本功能之后开的局）：本字段显式为 false ⇒ **只等真撤离**，不补发
+      if (state.ambushRetreatSeen === false) return false
+      /**
+       * **老档补发，但要判断玩家是否触发过**（船长 2026-09-14 二次裁定；起因＝他的新档也被补发了）。
+       * 老档没有事件记录可查（撤军日志会被 `logCap` 裁掉、船体早已修好），故取**可查的最强痕迹**：
+       * `state.encounterZoneCooldown` 非空 = 该档**确实被伏击过至少一次** ——
+       * 它只在 `encounters.spawnEncounter`（伏击真的命中、且当地有可见悬赏敌群）时写入，
+       * 写后不删、随档保存（`save.ts` 原样带回）⇒ 比"进过低安"（`lowSecNotified`）更贴"触发过"。
+       * ⚠ 残留误差（如实登记）：老档**被伏击过但每次都是击退/被抢/修好继续干**的，也会收到这封信。
+       */
+      return Object.keys(state.encounterZoneCooldown).length > 0
+    }
     default:
       return false
   }
@@ -211,16 +237,32 @@ function deliveryLogText(ctx: SimContext, msg: CommsMessageDef): string {
  */
 export function advanceComms(state: GameState, ctx: SimContext): void {
   if (ctx.commsMessages.size === 0) return
+  /**
+   * 本拍是否已经用掉那**唯一一个**弹窗名额（船长 2026-09-14：「**同一拍只弹第一封、其余只进收件箱**」）。
+   * 为什么按"拍"而不是"队列非空"：一拍里可能同时满足好几个触发条件（老档补发、一次点亮多星系…），
+   * 全塞进队列会逼玩家一封封点；只弹第一封既能提醒"有事了"，其余靠导航栏未读提示去收件箱看。
+   */
+  let popupUsed = false
   for (const msg of ctx.commsMessages.values()) {
     // 施工期闸门（船长铁律「数据走 unreleased」）：标了 unreleased 的消息**不送达**（上线时删字段即可开送）
     if (msg.unreleased === true) continue
     if (!commsTriggerMet(state, ctx, msg.trigger)) continue
     if (!deliver(state, msg.id)) continue
     addLog(state, 'info', deliveryLogText(ctx, msg))
-    // 船长 2026-09-14：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」⇒ 标记了 popup 的消息再进弹窗队列
-    if (msg.popup === true) {
+    /**
+     * 弹窗队列（2026-09-14 船长两次裁定）：
+     * ① 初版：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」⇒ 只有显式标 `popup: true` 的消息弹；
+     * ② 同日改判：「**所有除新手教程外的讯息也弹窗**」⇒ 改为**默认弹窗**——唯一例外是**教程类**
+     *    （`kind === '教程'`：序章简报 + 七步教程，它们本来就在引导流程里，弹卡片只会打断）；
+     *    个别消息要关掉弹窗写 `popup: false`（显式 opt-out）。
+     * ⚠ **单窗口**由队列保证：界面只渲染队首那一封，所以同一拍送达多封也只会一张一张弹，
+     * 不会叠出多窗口（离线简报期间整体让位，见 `App.tsx` 的 `popupMsg`）。
+     */
+    const wantPopup = msg.popup ?? msg.kind !== '教程'
+    if (wantPopup && !popupUsed) {
       const list = state.commsPopups ?? []
       if (!list.includes(msg.id)) state.commsPopups = [...list, msg.id]
+      popupUsed = true
     }
   }
 }

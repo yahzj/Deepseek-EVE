@@ -20,31 +20,19 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { COMMS_REPLIES_ENABLED, commsGameClock } from '@whale/core'
+import { commsGameClock } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Panel } from '@whale/ui'
+import { CommsDeviceFrame, CommsEave, CommsScreen } from '../panels/CommsReader'
 import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
 
 /**
- * 通讯器机身：**大圆角机身外框**（参考图借来的"线条/圆角"语言）+ 左侧两颗实体键。
- *
- * 只画机身：**内嵌屏幕的框由屏幕容器自己画**（`.app-comms-screen` 的圆角框 + CSS `outline` 描边）——
- * 这样"文字容器"与"圆角框"是同一圈，窗口不管多高多窄都不会错位（图里按百分比拉伸的内框会错位：
- * 机身 900px 高时内框在 39px 处、而屏幕容器内边距固定 20px，屏幕框整圈落在内框外面 ⇒ 文字看着在框外）。
+ * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
+ * （2026-09-14 船长：「将所有的通讯弹窗的外形，改成和通讯界面内的右侧界面的相同」）——
+ * 通讯页右栏与送达弹窗**同源**渲染，两处不会再各长一样。本页只负责左列列表、选中态与已读。
  */
-function CommsDeviceFrame(): ReactNode {
-  return (
-    <svg className="app-comms-frame" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      {/* 机身 */}
-      <rect x="1.1" y="1.1" width="97.8" height="97.8" rx="5" vectorEffect="non-scaling-stroke" />
-      {/* 左侧两颗实体键（参考图侧键的抽象化，只留短线） */}
-      <path d="M2.4 34 L2.4 42" vectorEffect="non-scaling-stroke" />
-      <path d="M2.4 52 L2.4 58" vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
-}
 
 export function CommsPage({
   engine,
@@ -85,6 +73,12 @@ export function CommsPage({
   function markAll(): void {
     const n = engine.markAllCommsReadNow()
     onToast(n > 0 ? `已把 ${n} 封通讯标为已读。` : '收件箱里没有未读通讯。')
+  }
+
+  /** 消息自带动作（只有序章简报的「开始教程」）；失败按错误文案提示 */
+  function runCommsAction(command: NonNullable<CommsEntryView['action']>['command']): void {
+    const r = engine.runCommsActionAt(command)
+    onToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
   }
 
   return (
@@ -141,108 +135,13 @@ export function CommsPage({
                 ))}
               </div>
 
-              {/* 右列：通讯器（机身 + 内嵌屏幕 + 屏幕下方通栏「前往」） */}
+              {/* 右列：通讯器（机身 + 内嵌屏幕 + 屏幕下方通栏「前往」）
+                  —— 屏幕与檐口来自公共件 `panels/CommsReader.tsx`，与送达弹窗**同源** */}
               <div className="app-comms-device">
                 <CommsDeviceFrame />
                 <div className="app-comms-body-col">
-                  <div className="app-comms-screen">
-                    {current ? (
-                      <>
-                        {/* 屏幕第一层：左上角**发件方头像**（官方章鱼人）+ 标题（右侧内容类型小片） */}
-                        <div className="app-comms-title-row">
-                          {current.glyph ? (
-                            <span
-                              className="app-comms-avatar"
-                              style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
-                              title={current.fromBrief ?? '来信方'}
-                            >
-                              <Glyph name={current.glyph} size={50} />
-                            </span>
-                          ) : null}
-                          <div className="app-comms-title-col">
-                            <span className="app-comms-title">{current.subject}</span>
-                            {/* 细分隔条：发件人 + 立场小片 + 送达时间（压在标题正下方） */}
-                            <div className="app-comms-head">
-                              <span className="app-comms-head-from" style={current.tone ? { color: current.tone } : undefined}>
-                                {current.from}
-                              </span>
-                              {current.alignment ? (
-                                <span
-                                  className="app-chip app-comms-align"
-                                  style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
-                                  title={current.fromBrief}
-                                >
-                                  {current.alignment}
-                                </span>
-                              ) : null}
-                              <span className="app-comms-head-time">{commsGameClock(current.deliveredAtGameMs)} 送达</span>
-                            </div>
-                          </div>
-                          {current.kind ? (
-                            <span
-                              className="app-chip app-comms-kind"
-                              style={current.tone ? { color: current.tone, borderColor: current.tone } : undefined}
-                              title="这封通讯的性质：提示只是指个方向，委托才是协会派下来的活"
-                            >
-                              {current.kind}
-                            </span>
-                          ) : null}
-                        </div>
-                        {/* 屏幕第二层之后的正文；`highlight` 里的段落加**既有强调样式**
-                            （`.app-report-highlight`：暗底 + 左侧强调竖条；2026-09-11 船长：
-                            「将训前简报的任务链内的文字高亮」——按约定第六章复用同级既有样式，不自造新样式） */}
-                        <div className="app-comms-lines">
-                          {current.paragraphs.map((p, i) => (
-                            <p
-                              key={i}
-                              className={`app-comms-text${current.highlight?.includes(p) ? ' app-report-highlight' : ''}`}
-                            >
-                              {p}
-                            </p>
-                          ))}
-                        </div>
-                        {/* ⑥ 回复选项：接口保留、本期不启用（COMMS_REPLIES_ENABLED = false → 不渲染任何控件） */}
-                        {COMMS_REPLIES_ENABLED && current.replies && current.replies.length > 0 ? (
-                          <div className="app-comms-replies">
-                            {current.replies.map((r) => (
-                              <button key={r.id} className="app-btn is-small" disabled>
-                                {r.label}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
-                  {/* 机身下檐口（2026-09-11 船长定「乙」）：**上面一行 = 消息自带动作**（如序章简报的
-                      「按单开工：采集橄榄岩」），**下面一行 = 通栏「前往」**。两行都常驻、都在滚动区外——
-                      原先动作按钮在屏幕滚动内容末尾，简报长文不往下翻就看不见（船长实测反馈）。
-                      下檐口由这两行的自然高度撑起，屏幕（flex:1）自动让位，不再用绝对定位 + 预留内边距。 */}
-                  {current?.action || current?.hint ? (
-                    <div className="app-comms-eave">
-                      {current?.action ? (
-                        <button
-                          className="app-btn is-primary app-comms-action-btn"
-                          onClick={() => {
-                            const r = engine.runCommsActionAt(current.action!.command)
-                            onToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
-                          }}
-                        >
-                          {current.action.label}
-                        </button>
-                      ) : null}
-                      {current?.hint ? (
-                        <button
-                          className="app-btn is-primary app-comms-goto"
-                          title={current.hint.text}
-                          onClick={() => onGoto(current.hint!.page, current.hint!.tab, current.hint!.shipTab, current.hint!.taskTab)}
-                        >
-                          <span className="app-comms-goto-text">{current.hint.text}</span>
-                          <span className="app-comms-goto-label">前往</span>
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  {current ? <CommsScreen entry={current} /> : <div className="app-comms-screen" />}
+                  {current ? <CommsEave entry={current} onGoto={onGoto} onAction={runCommsAction} /> : null}
                 </div>
               </div>
             </div>
