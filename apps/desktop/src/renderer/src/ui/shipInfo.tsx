@@ -13,10 +13,10 @@
  *   同样追加这组行；悬停浮层仍不显示（浮层空间有限，保持原有克制）。
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
-import type { ElementType, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
 import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
-import { hideTip, moveTip, showTip } from './Tooltip'
+import { hoverTipProps } from './Tooltip'
 
 /** 伤害类型中文名 */
 export const DMG_LABEL: Record<DamageType, string> = { kinetic: '动能', explosive: '高爆', plasma: '能量' }
@@ -979,9 +979,7 @@ export function ShipHover({
   return (
     <Tag
       className={cls}
-      onMouseEnter={(e: ReactMouseEvent<HTMLElement>) => showTip(content, e.clientX, e.clientY)}
-      onMouseMove={(e: ReactMouseEvent<HTMLElement>) => moveTip(content, e.clientX, e.clientY)}
-      onMouseLeave={() => hideTip()}
+      {...hoverTipProps(content)}
     >
       {children}
     </Tag>
@@ -1019,9 +1017,7 @@ export function InfoHover({
   return (
     <Tag
       className={className}
-      onMouseEnter={(e: ReactMouseEvent<HTMLElement>) => showTip(content, e.clientX, e.clientY)}
-      onMouseMove={(e: ReactMouseEvent<HTMLElement>) => moveTip(content, e.clientX, e.clientY)}
-      onMouseLeave={() => hideTip()}
+      {...hoverTipProps(content)}
     >
       {children}
     </Tag>

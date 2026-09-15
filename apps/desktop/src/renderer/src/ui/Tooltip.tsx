@@ -35,14 +35,18 @@ const TIP_W = 300
 const PAD = 8
 
 /**
- * 原生 `title` 提示 → 自绘提示的**悬停延迟**（毫秒 · 2026-09-13 船长定）。
- * 船长原话：「玩家反应，按钮的鼠标悬浮提示有时候过宽。建议限制下宽度，允许多几行。」
- * 成因：过宽的其实是**浏览器原生 `title` 提示**——它不换行，长文案会拉成一整条
- * （自绘的 `.app-tip` 本来就是 300px 上限 + 自动换行，做不出"过宽"）。
- * 集中提问后船长选定：**所有带 `title` 的元素**都换自绘（不只按钮）＋ **悬停 200ms 后弹**
- * （鼠标扫过一排按钮时不一路弹提示，停住才弹；也不像原生那样等 1 秒）。
+ * **全站统一的悬停延迟**（毫秒）——**所有**提示路径共用这一个数
+ * （2026-09-15 船长：「鼠标悬浮按钮的提示会和上一级的悬浮提示相互冲突。**且悬浮的反应时间太快**。
+ * 建议**所有 UI 统一下**」）。
+ *
+ * 三条路径共用它：① 原生 `title` / `data-tip` 的**全局接管层**（本文件下方那个 useEffect）；
+ * ② **富内容提示**（`hoverTipProps`，ShipHover / InfoHover 等）；③ `HoverTip` 组件。
+ *
+ * 沿革：2026-09-13 船长定 **200ms**（原话「停住才弹」——鼠标扫过一排按钮时不一路弹提示）；
+ * **2026-09-15 船长反馈"反应时间太快" ⇒ 改成 500ms**（观感上更接近系统提示的手感，
+ * 又不至于像原生那样等 1 秒）。
  */
-const NATIVE_TIP_HOVER_MS = 200
+export const TIP_DELAY_MS = 500
 
 /**
  * 「原生提示源已被摘走」的暂存属性：属性链把 `title` 值挪到这里（`title` 属性摘掉、浏览器不弹），
@@ -57,6 +61,13 @@ const TIP_STASH_ATTR = 'data-tip-native'
  * SVG 里的悬停说明一律写 `data-tip="…"`，由本层接管成站内自绘提示。优先级：`title` > `data-tip` > 暂存。
  */
 const TIP_ATTR = 'data-tip'
+
+/**
+ * **富内容提示的属主标记**（2026-09-15 统一时加）：凡是用 `hoverTipProps()` 接线的元素都带这个属性
+ * ⇒ 全局接管层认得它、**不再对同一个元素重复接管**（否则同一处会先弹富内容、再被 title 路径顶掉，
+ * 正是船长报的「按钮的提示会和上一级的悬浮提示相互冲突」）。
+ */
+const TIP_HOVER_ATTR = 'data-tip-hover'
 
 const listeners = new Set<(s: TipState | null) => void>()
 let current: TipState | null = null
@@ -144,6 +155,87 @@ export function showTip(content: ReactNode, clientX: number, clientY: number): v
   place(content, clientX, clientY)
 }
 
+/**
+ * 当前正在展示的"富内容提示属主"（`hoverTipProps` 每次调用一个身份标）。
+ * 用于 mousemove 时判断"这条提示是不是我这条"、以及 leave 时该不该收。
+ */
+let shownOwner: object | null = null
+/** 等待延迟的那一条（同一时刻只可能有一条：鼠标只有一个） */
+let pendingOwner: object | null = null
+let pendingTimer = 0
+
+/** 取消"等待中"的那条（离开 / 换归属 / 卸载时调用） */
+function cancelPending(): void {
+  if (pendingTimer !== 0) {
+    window.clearTimeout(pendingTimer)
+    pendingTimer = 0
+  }
+  pendingOwner = null
+}
+
+type HoverEnterEvent = MouseEvent<HTMLElement>
+
+/**
+ * **内层优先**：从指针所在元素往上走到本元素之间，若中途有**更深的提示归属**
+ * （自己带 `title` / `data-tip`，或另一个 `hoverTipProps`）⇒ 本次不接（让给内层）。
+ * 这是「按钮的提示与上一级提示相互冲突」的根治点：外层行/卡不再抢内层按钮的提示。
+ */
+function deeperOwnerWins(e: HoverEnterEvent): boolean {
+  const cur = e.currentTarget
+  let n: Element | null = (e.target as Element | null) ?? null
+  while (n && n !== cur && n.nodeType === 1) {
+    if (n.hasAttribute('title') || n.hasAttribute(TIP_ATTR) || n.hasAttribute(TIP_HOVER_ATTR)) return true
+    n = n.parentElement
+  }
+  return false
+}
+
+/**
+ * **富内容提示的统一接线**（2026-09-15 统一）：与全局接管层共用同一延迟（`TIP_DELAY_MS`）、
+ * 同一单例提示层、同一"内层优先"判据。
+ *
+ * 用法：`<li {...hoverTipProps(content)}>…</li>`
+ * ⚠ **不要与 `title` 同时用**（一个元素只该有一个提示归属）：`title` 走接管层、`hoverTipProps` 走这条，
+ * 两者都在同一个单例层上画 ⇒ 同时挂会互相顶。
+ */
+export function hoverTipProps(content: ReactNode): {
+  'data-tip-hover': string
+  onMouseEnter: (e: HoverEnterEvent) => void
+  onMouseMove: (e: HoverEnterEvent) => void
+  onMouseLeave: () => void
+} {
+  const me = {}
+  let last: { x: number; y: number } = { x: 0, y: 0 }
+  return {
+    [TIP_HOVER_ATTR]: '1',
+    onMouseEnter: (e: HoverEnterEvent) => {
+      if (deeperOwnerWins(e)) return
+      last = { x: e.clientX, y: e.clientY }
+      if (shownOwner === me) return // 从内部子元素绕回来：已经在展示，不重启延迟
+      cancelPending()
+      pendingOwner = me
+      pendingTimer = window.setTimeout(() => {
+        pendingTimer = 0
+        if (pendingOwner !== me) return
+        pendingOwner = null
+        shownOwner = me
+        showTip(content, last.x, last.y)
+      }, TIP_DELAY_MS)
+    },
+    onMouseMove: (e: HoverEnterEvent) => {
+      last = { x: e.clientX, y: e.clientY }
+      if (shownOwner === me) moveTip(content, last.x, last.y)
+    },
+    onMouseLeave: () => {
+      if (pendingOwner === me) cancelPending()
+      if (shownOwner === me) {
+        shownOwner = null
+        hideTip()
+      }
+    },
+  }
+}
+
 /** 指针高频更新：rAF 节流 */
 export function moveTip(content: ReactNode, clientX: number, clientY: number): void {
   if (raf !== 0) return
@@ -189,7 +281,7 @@ export function TooltipLayer(): ReactNode {
   /**
    * ⚠ **原生 title 一律改走自绘提示**（2026-09-13 船长：「按钮的鼠标悬浮提示有时候过宽…
    * 限制下宽度，允许多几行」）——机制：
-   * 1. 指针进入有提示的元素、**停够 NATIVE_TIP_HOVER_MS**，才摘掉原生提示源并弹自绘提示
+   * 1. 指针进入有提示的元素、**停够 TIP_DELAY_MS**，才摘掉原生提示源并弹自绘提示
    *    （`.app-tip`：max-width 300px + `white-space: pre-line` + `overflow-wrap: anywhere`
    *    ⇒ **限宽、可多行**，且 `\n` 仍按行渲染；扫过不弹、停住才弹）；
    * 2. 指针真正离开（`relatedTarget` 不在其内部）⇒ 原生提示源**原样放回**并收起自绘提示
@@ -225,12 +317,17 @@ export function TooltipLayer(): ReactNode {
 
     type TipSrc = { el: Element; text: string; svgTitle: Element | null; from: 'title' | 'tip' | 'stash' }
 
-    /** 某元素"能显示什么提示"：①`title` 属性 ②`data-tip`（SVG 作者属性）③暂存 ④SVG `<title>` 子元素（A 类兜底） */
+    /** 某元素"能显示什么提示"：①`title` 属性 ②`data-tip`（SVG 作者属性）③暂存 ④SVG `<title>` 子元素（A 类兜底）
+     *  ⚠ **`title=""` 视为"没有 title"**：接管时给元素写的是**空 title**（见 `take`，用它压住祖先的原生提示）
+     *  ⇒ 这里必须继续认出"暂存里那份真文本"，否则一接管就丢掉文案。
+     *  ⚠ **带 `data-tip-hover` 的元素归 `hoverTipProps` 那条路径**（富内容提示）⇒ 本层返回 null，不重复接管。 */
     const srcOf = (el: Element | null): TipSrc | null => {
       if (!el || typeof el.closest !== 'function') return null
       const attrEl = el.closest(`[title], [${TIP_ATTR}], [${TIP_STASH_ATTR}]`)
       if (attrEl) {
-        const title = attrEl.getAttribute('title')
+        if (attrEl.hasAttribute(TIP_HOVER_ATTR)) return null
+        const rawTitle = attrEl.getAttribute('title')
+        const title = rawTitle !== null && rawTitle !== '' ? rawTitle : null
         const authored = attrEl.getAttribute(TIP_ATTR)
         const stashed = attrEl.getAttribute(TIP_STASH_ATTR)
         const from = title !== null ? 'title' : authored !== null ? 'tip' : 'stash'
@@ -244,21 +341,60 @@ export function TooltipLayer(): ReactNode {
       return null
     }
 
-    /** 摘掉原生提示源（A 类清文本 / `title` 属性挪进暂存）；`data-tip` 本就不弹原生提示，无需摘 */
+    /**
+     * **接管期间把祖先链上的 `title` 一并压住**（写空串，离开时按记录恢复）。
+     *
+     * 为什么不止压被接管的那一个：船长 2026-09-15 报的「按钮的提示会和**上一级**的悬浮提示相互冲突」——
+     * 站内自绘提示由我们画，而"上一级"的提示可能来自**浏览器原生 title**（祖先卡片/行上那个）。
+     * 只把按钮自己的 title 摘掉/置空，浏览器仍可能顺着祖先链找到卡片那条 title 弹系统提示。
+     * ⇒ 接管时**整条祖先链上的 title 全部置空**（记下原值），离开时逐个还原（React 若已写新值则以新值为准）。
+     */
+    let mutedAncestors: Array<{ el: Element; text: string }> = []
+    const muteAncestors = (el: Element): void => {
+      mutedAncestors = []
+      for (let n = el.parentElement; n; n = n.parentElement) {
+        const t = n.getAttribute('title')
+        if (t !== null && t !== '') {
+          mutedAncestors.push({ el: n, text: t })
+          n.setAttribute('title', '')
+        }
+      }
+    }
+    const restoreAncestors = (): void => {
+      for (const a of mutedAncestors) {
+        const now = a.el.getAttribute('title')
+        if (now === null || now === '') a.el.setAttribute('title', a.text)
+      }
+      mutedAncestors = []
+    }
+
+    /**
+     * 摘掉原生提示源（A 类清文本 / `title` 属性**改成空串**）。
+     *
+     * ⚠ **2026-09-15 改法**（船长报「鼠标悬浮按钮的提示会和上一级的悬浮提示相互冲突」的根治点之一）：
+     * 旧实现 `removeAttribute('title')` 摘掉之后，指针下这个元素就"没有 title"了 ⇒ 浏览器**顺着祖先链
+     * 找到上一级卡片/行的 title、弹出系统默认提示**，与站内自绘的按钮提示同时在场（正是那种"冲突"）。
+     * 改成写**空 title**：空 title 自己不弹提示，同时**截断祖先链的 title 查找**；再把整条祖先链的
+     * title 一并压住（`muteAncestors`）⇒ 场面上只剩站内自绘提示。原文案仍在 `TIP_STASH_ATTR` 里，
+     * 离开时原样放回。
+     */
     const take = (src: TipSrc): void => {
       if (src.svgTitle) {
         src.svgTitle.textContent = ''
+        muteAncestors(src.el)
         return
       }
       if (src.from !== 'title') return
       src.el.setAttribute(TIP_STASH_ATTR, src.text)
-      src.el.removeAttribute('title')
+      src.el.setAttribute('title', '')
+      muteAncestors(src.el)
     }
 
     /** 把原生提示源原样放回并清掉观察器（`data-tip` 作者属性不留痕） */
     const putBack = (): void => {
       obs?.disconnect()
       obs = null
+      restoreAncestors()
       const s = shown
       shown = null
       if (!s) return
@@ -270,8 +406,9 @@ export function TooltipLayer(): ReactNode {
       const stashed = s.el.getAttribute(TIP_STASH_ATTR)
       if (stashed === null) return
       s.el.removeAttribute(TIP_STASH_ATTR)
-      // 只在元素当前没有 title 时放回（React 若已写新值，以新值为准）
-      if (!s.el.hasAttribute('title')) s.el.setAttribute('title', stashed)
+      // 只在元素当前"没有 title"或"还是我们写的空占位"时放回（React 若已写新值，以新值为准）
+      const now = s.el.getAttribute('title')
+      if (now === null || now === '') s.el.setAttribute('title', stashed)
     }
 
     /** 锚点：鼠标位置（2026-09-13 船长「要跟随鼠标走」）；触屏合成事件给 (0,0) 时回落元素底边中点 */
@@ -288,7 +425,7 @@ export function TooltipLayer(): ReactNode {
       if (shown) return
       const el = hovered
       if (!el || !el.isConnected) return
-      if (performance.now() - hoveredAt < NATIVE_TIP_HOVER_MS) return
+      if (performance.now() - hoveredAt < TIP_DELAY_MS) return
       const src = srcOf(el)
       if (!src || src.text.trim() === '') return
       const a = anchorOf(src.el)
@@ -350,7 +487,7 @@ export function TooltipLayer(): ReactNode {
       timer = window.setTimeout(() => {
         timer = 0
         maybeTake()
-      }, NATIVE_TIP_HOVER_MS)
+      }, TIP_DELAY_MS)
       watch(el, null)
     }
 
@@ -445,7 +582,10 @@ export function TooltipLayer(): ReactNode {
 
 /**
  * 把任意元素包成"悬停出说明"。as 决定渲染标签（li/div/span…），
- * 其余属性（className 等）原样透传给该标签。tip 为纯文本；富内容请用 showTip。
+ * 其余属性（className 等）原样透传给该标签。tip 为纯文本；富内容请用 `hoverTipProps`。
+ *
+ * ⚠ **2026-09-15 统一**：此前这里是**即时弹**（`onMouseEnter` 直接 showTip）——与 title 接管层的
+ * 延迟不一致（船长：「建议所有 UI 统一下」）。现在走 `hoverTipProps`，与全站同延迟、同"内层优先"。
  */
 export function HoverTip({
   as,
@@ -461,12 +601,7 @@ export function HoverTip({
   const Tag = (as ?? 'div') as ElementType
   if (!tip) return <Tag {...rest}>{children}</Tag>
   return (
-    <Tag
-      {...rest}
-      onMouseEnter={(e: MouseEvent<HTMLElement>) => showTip(tip, e.clientX, e.clientY)}
-      onMouseMove={(e: MouseEvent<HTMLElement>) => moveTip(tip, e.clientX, e.clientY)}
-      onMouseLeave={() => hideTip()}
-    >
+    <Tag {...rest} {...hoverTipProps(tip)}>
       {children}
     </Tag>
   )

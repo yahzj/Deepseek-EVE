@@ -2798,8 +2798,45 @@ for (const m of MODULES) {
     offenders.length === 0,
     `悬停提示契约：渲染层出现 SVG \`<title>\` 子元素 ⇒ 浏览器会弹**系统默认**提示（请改成父元素的 title 属性，由自绘提示接管）：${offenders.join(' · ')}`,
   )
-  if (offenders.length === 0) {
-    console.log('· 悬停提示契约：渲染层无 SVG `<title>` 子元素（HTML 元素用 title 属性、SVG 元素用 data-tip ⇒ 自绘提示接管）')
+  /**
+   * ② **一个元素只能有一个提示归属**（2026-09-15 统一时加 · 船长报障「按钮的提示会和上一级的悬浮提示
+   * 相互冲突」）：同一 JSX 元素同时带 `title` 与 `{...hoverTipProps(...)}` ⇒ `title` 走全局接管层、
+   * `hoverTipProps` 走富内容路径，两者画在**同一个单例提示层**上 ⇒ 会互相顶掉（先弹一个再被另一个替换）。
+   *
+   * ⚠ **不按标签大小写过滤**：`<Tag {...hoverTipProps(content)}>` 这种"变量标签"（ShipHover / InfoHover
+   * 的写法，`Tag = as ?? 'span'` 最终仍是原生标签）正是本契约要拦的场景之一——只在"一个元素同时出现
+   * 两者"时判红，组件调用点（如 `<InfoHover title=…>`，标题是它自己的 prop）不会被误伤。
+   */
+  const dualOwners: string[] = []
+  for (const file of walk(uiRoot)) {
+    const src = readFileSync(file, 'utf8')
+    if (!src.includes('hoverTipProps(')) continue
+    const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const visit = (node: ts.Node): void => {
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        let hasTitle = false
+        let hasHover = false
+        for (const a of node.attributes.properties) {
+          if (ts.isJsxAttribute(a) && a.name.getText(sf) === 'title') hasTitle = true
+          if (ts.isJsxSpreadAttribute(a) && a.expression.getText(sf).includes('hoverTipProps(')) hasHover = true
+        }
+        if (hasTitle && hasHover) {
+          const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
+          dualOwners.push(`${file.slice(process.cwd().length + 1)}:${line + 1}（<${node.tagName.getText(sf)}>）`)
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+  check(
+    dualOwners.length === 0,
+    `悬停提示契约：同一元素同时带 \`title\` 与 \`{...hoverTipProps(…)}\` ⇒ 两个提示归属抢同一个单例提示层（会互相顶掉）。二选一：静态文案写 \`title\`、富内容用 \`hoverTipProps\`：${dualOwners.join(' · ')}`,
+  )
+  if (offenders.length === 0 && dualOwners.length === 0) {
+    console.log(
+      '· 悬停提示契约：渲染层无 SVG `<title>` 子元素（HTML 元素用 title 属性、SVG 元素用 data-tip ⇒ 自绘提示接管）· 无"双提示归属"元素',
+    )
   }
 }
 
