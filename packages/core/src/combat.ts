@@ -423,7 +423,9 @@ export function carryVolleyOverflow(
   let hits = 0
   let lastTag: string | null = null
   for (let n = 0; n < maxChain; n++) {
-    const excess = raw - rawDamageToKill(prevHp, {}, type)
+    // ⚠ 2026-09-15 修：转移伤害与"打空它需要多少"都要按**目标自己的层抗**算（此前传 `{}` ⇒ 敌抗性不生效）
+    const prevRes = foes.find((f) => f.tag === prevTag)?.resists ?? {}
+    const excess = raw - rawDamageToKill(prevHp, prevRes, type)
     if (excess <= 0.5) break
     const next = foes.find((f) => {
       if (f.tag === prevTag) return false
@@ -433,7 +435,7 @@ export function carryVolleyOverflow(
     if (!next) break
     const rt = b.units[next.tag]!
     const before = { ...rt.hp }
-    const r = applyDamage(rt.hp, {}, excess, type)
+    const r = applyDamage(rt.hp, next.resists ?? {}, excess, type)
     rt.hp = r.hp
     b.stats.meDmg += r.dealt
     total += r.dealt
@@ -4917,7 +4919,7 @@ function stepBattle(
           const dmgLocked = unit.lockedDmgBonus
             ? Math.round(dmg * (1 + unit.lockedDmgBonus))
             : dmg
-          const r = applyDamage(rt.hp, {}, dmgLocked, type)
+          const r = applyDamage(rt.hp, foeTarget!.resists ?? {}, dmgLocked, type)
           rt.hp = r.hp
           b.stats.meDmg += r.dealt
           /**
@@ -4940,7 +4942,7 @@ function stepBattle(
           if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
             const secType = w.secondaryDamageType ?? 'kinetic'
             const secDmg = Math.max(1, Math.round(dmgLocked * secPct))
-            const r2 = applyDamage(rt.hp, {}, secDmg, secType)
+            const r2 = applyDamage(rt.hp, foeTarget!.resists ?? {}, secDmg, secType)
             rt.hp = r2.hp
             b.stats.meDmg += r2.dealt
           }
@@ -4974,14 +4976,14 @@ function stepBattle(
             const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
             if (oHit) {
               b.stats.meHits += 1
-              const rAll = applyDamage(ort.hp, {}, dmg, type)
+              const rAll = applyDamage(ort.hp, other.resists ?? {}, dmg, type)
               ort.hp = rAll.hp
               b.stats.meDmg += rAll.dealt
               const secPctAll = w.secondaryDamagePct ?? 0
               if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
                 const secTypeAll = w.secondaryDamageType ?? 'kinetic'
                 const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
-                const rAll2 = applyDamage(ort.hp, {}, secDmgAll, secTypeAll)
+                const rAll2 = applyDamage(ort.hp, other.resists ?? {}, secDmgAll, secTypeAll)
                 ort.hp = rAll2.hp
                 b.stats.meDmg += rAll2.dealt
               }

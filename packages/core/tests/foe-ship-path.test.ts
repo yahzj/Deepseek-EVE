@@ -28,9 +28,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, FOE_SHIPS } from '@whale/data'
-import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf } from '../src/combat'
+import { advanceBattleFor, createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf, startBattleFor } from '../src/combat'
+import { createInitialState } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
-import { anomaly, makeTestCtx } from './helpers'
+import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
 
 const bal = makeTestCtx().balance.battle
 
@@ -1205,5 +1206,67 @@ describe('C 族族抗性（2026-09-15 船长 · 全血条 25% 爆炸抗）', () 
         }
       }
     }
+  })
+
+  /**
+   * ④ **玩家打敌必须按目标自己的层抗结算**（2026-09-15 修的真缺口）。
+   *
+   * 背景：本轮给 C 族加了族抗之后，`battle:calibrate --std` 前后对照**一格未变** ⇒ 查下去发现
+   * 玩家打敌舰的四条伤害结算（主段 / 附加段 / 全体攻击两段）与 `carryVolleyOverflow` 都是
+   * `applyDamage(hp, {}, …)` —— **传的是空抗性**，敌舰的抗性**从来没被消费过**
+   * （此前敌舰 `resists` 恒为 `{}`，所以这个缺口一直没被发现）。
+   * 本条用"真打一场"钉住：同种子、同装配，只差敌舰有没有 25% 爆炸抗 ⇒ 实收伤害必须恰好 ×0.75。
+   */
+  it('④ 真打一场：敌舰的层抗必须被消费（实收伤害 = 无抗时的 ×0.75）', () => {
+    /** 只放护盾层（`split s:1`）⇒ 全部伤害落在护盾，比例可精确断言 */
+    const mkFoe = (resisted: boolean): FoeShipDef => ({
+      id: 't-resist-foe',
+      name: '测试抗性舰',
+      family: 'C',
+      hullClassTier: 1,
+      speedRatio: 1,
+      hp: 200_000,
+      split: { s: 1, a: 0, h: 0 },
+      shotDmg: 1,
+      hitRate: 1,
+      reloadMs: 9_999_999,
+      rangeMinM: 1,
+      rangeMaxM: 1, // 敌舰够不着我（只测我打它）
+      falloff: 1,
+      tactic: 'brawl',
+      ...(resisted
+        ? { shieldResist: { explosive: 0.25 }, armorResist: { explosive: 0.25 }, hullResist: { explosive: 0.25 } }
+        : {}),
+    })
+    const explosiveGun = moduleDef('t-msl', 'turret', 0, {
+      rack: 'high',
+      damageType: 'explosive',
+      maxRangeM: 3000,
+      minRangeM: 0,
+      hitRate: 1, // 必中（不掷骰）⇒ 两边逐发完全对齐
+      falloff: 1,
+      reloadMs: 600,
+      dmgMult: 4,
+      cpuUse: 10,
+      ammoPerEngagement: 20,
+    })
+    const bed = { ...ship('t-bed', { cpu: 300, slots: { high: 1, mid: 0, low: 0 } }), shieldHp: 5000, armorHp: 5000, hullHp: 5000 }
+    const run = (resisted: boolean): number => {
+      const card = { ...anomaly('t-ano-resist', 'galaxy-hub', { threat: 20 }), ships: [{ ship: mkFoe(resisted) }] }
+      const ctx = makeTestCtx({ ships: [bed], modules: [explosiveGun], anomalies: [card] })
+      const state = createInitialState({ nowWallMs: 0, seed: 4242 })
+      state.fleet[state.shipId]!.defId = 't-bed'
+      state.fleet[state.shipId]!.fitted = { high: ['t-msl'], mid: [], low: [] }
+      state.moduleBay['t-msl'] = 1
+      state.warehouse.items['ammo-explosive-l'] = 100_000
+      const battle = startBattleFor(state, ctx, state.shipId, 't-ano-resist', 0)!
+      state.gameMs += 6_000 // 约 10 发；敌舰 20 万血，一段窗口内打不死 ⇒ RNG 流两边一致
+      advanceBattleFor(state, ctx, battle, state.shipId, 't-ano-resist')
+      return battle.stats.meDmg
+    }
+    const control = run(false)
+    const resisted = run(true)
+    expect(control, '对照组必须真打出伤害').toBeGreaterThan(0)
+    expect(resisted / control, '25% 爆炸抗 ⇒ 实收恰好 ×0.75').toBeCloseTo(0.75, 2)
   })
 })
