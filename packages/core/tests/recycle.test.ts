@@ -212,12 +212,14 @@ describe('残骸回收批（精炼炉运转）', () => {
     expect(countMinerals(state, ctx)).toBe(0)
     state.gameMs = 25_000 // 一批到点
     advanceRefining(state, ctx)
-    expect(state.refineRuns).toHaveLength(1) // 跑完一批后下一批到点才见底
-    state.gameMs = 50_000
-    advanceRefining(state, ctx) // 库存已空 → 自动停炉
+    /* **2026-09-15 改判**（船长报障「拆解完毕后，货柜为 0 时还是会进行一次拆解」，口径推广到全部产线）：
+       本批吃完就**当场收工**，不再空转一个批周期（旧行为：这一拍仍然 active、要等下一个到点才见底）。 */
     expect(state.refineRuns).toHaveLength(0)
-    expect(countMinerals(state, ctx)).toBeGreaterThan(0)
     expect(state.logs.some((l) => l.text.includes('原料耗尽'))).toBe(true)
+    expect(countMinerals(state, ctx)).toBeGreaterThan(0)
+    state.gameMs = 50_000
+    advanceRefining(state, ctx) // 再推一拍：没有额外的批、也没有第二台炉
+    expect(state.refineRuns).toHaveLength(0)
     // 2026-09-06（玩家上报）：结束日志必须带回收所得明细（保底产出）
     // 2026-09-12 术语修正（船长定）：`mineral` 的展示名由「矿物」改为「原材料」
     const fin = state.logs.filter((l) => l.text.includes('原料耗尽'))

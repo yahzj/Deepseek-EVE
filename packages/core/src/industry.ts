@@ -599,6 +599,17 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         const wasCore = r.worker !== 'pilot'
         const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
         state.refineRuns.splice(i, 1)
+        /**
+         * **停机标题与原因按产线分岔**（2026-09-15 船长报障「精炼炉拆解货柜的文字显示不对」）：
+         * 货柜拆解不是精炼 ⇒ 标题写「货柜拆解停」、原因写「货柜已拆完（共 N 件）」，
+         * 不再套用精炼那套「精炼炉停 … 原料耗尽（共 N 批）」。
+         */
+        const stopTitle = isUnbox
+          ? `货柜拆解停：${def.name}`
+          : isRecycle
+            ? `残骸回收炉停：${def.name}`
+            : `精炼炉停：${def.name}`
+        const stopWhy = isUnbox ? `货柜已拆完（共 ${doneBatches} 件）` : `原料耗尽（共 ${doneBatches} 批）`
         addLog(
           state,
           'info',
@@ -607,7 +618,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               (accNote ? `；回收所得：${accNote}` : '') +
               (wasCore ? '；AI 核心已归还核心库' : '') +
               `；不足 ${RARE_UNIT_M3} m³（一个回收单元）的零头不预占、不开箱，留在货仓/仓库；想继续就再起一炉。`
-            : `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 原料耗尽（共 ${doneBatches} 批）` +
+            : `${stopTitle} ${stopWhy}` +
               (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
               (wasCore ? '；AI 核心已归还核心库' : '') +
               '。',
@@ -774,9 +785,17 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         state.rareBurnUnits[r.itemId] = (state.rareBurnUnits[r.itemId] ?? 0) + qty
       }
       r.finishAtGameMs += r.cycleMs // 下一批到点；届时若余料耗尽/不足一批由上方分支自动停炉
-      // 2026-09-11（玩家反馈「稀有残骸空了精炼炉还在运转」）：私有料账**本批已吃完** → 当场收工，
-      // 不再空转一个批周期（把到点时间拨到"现在"，下一轮循环直接进上面的「料尽 = 本炉定额完成」分支）。
-      if (r.claimedUnits !== undefined && r.claimedUnits <= 0) {
+      /**
+       * **本批吃完就当场收工，不空转一个批周期**（2026-09-11 玩家反馈「稀有残骸空了精炼炉还在运转」
+       * 先只做了私有料账那一档；**2026-09-15 船长报障**「拆解完毕后，货柜为 0 时还是会进行一次拆解」
+       * ⇒ 推广到**全部产线**）：私有料账吃完、或公共库存已凑不够下一批（0 / 不足一批）⇒ 把到点时间
+       * 拨到"现在"，下一轮循环立刻进上方的「原料耗尽 / 余量不足一批」分支停炉（日志口径不变、只提前）。
+       * 口径依据：2026-09-06 船长拍板「余量不足即停工、余料保留，凑够一批再开」。
+       */
+      const nextUsesClaim = r.claimedUnits !== undefined
+      const nextStock = nextUsesClaim ? Math.max(0, r.claimedUnits ?? 0) : oreAvailable(state, r.itemId)
+      const nextAvail = r.lockUnits !== undefined ? Math.min(nextStock, r.lockUnits) : nextStock
+      if (nextAvail < r.batchUnits) {
         r.finishAtGameMs = state.gameMs
         continue
       }
