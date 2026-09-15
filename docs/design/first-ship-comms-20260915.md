@@ -81,3 +81,15 @@
 npm run test -w @whale/core -- tests/comms.test.ts tests/ship-store.test.ts
 npm run content:check
 ```
+
+## 八、合入记录（2026-09-15）
+
+- **本批提交**：`e4b789d3`（11 文件 / +277）。**合入 main**：先 `git merge main`（main 已前进 16 条——一号四批：
+  战利品与经济扩充 · 限时倍率表 · 越线折扣 · 虫洞大量生成），**冲突仅 `docs/INDEX.md` 一处**（生成件 ⇒
+  取一侧后 `npm run docs:index` 重出，259 份）；合并后**全闸门复跑全绿**（typecheck 四包 0 错 · core
+  **150 文件 / 1614 用例** · `content:check` ✅ · `docs:index --check` ✅ · `ui:rot-check` ✅ · 双 build ✅）
+  ⇒ 合并提交 `d5241f40`，主树 `--ff-only` 追平 ⇒ **`main` = `verify40` = `d5241f40`**，主树干净、零差异。
+- **主树产物已重建**（挂账①要求：主树干净后重建，船长的本地那份才含数据批与本信）：
+  `npm run build`（desktop）＋ `npm run build --prefix web`；产物核对 = 渲染层 JS 内含本信主题与首段文案。
+- **状态**：**待船长验收**；验收后按 §八（约定）三步归档：关键内容并入 `docs/design/comms-20260911.md` 新增
+  §19 → 删除本工作文档 → 重跑 `npm run docs:index`。**未推送 origin**（推送闸门：要船长一句话）。
