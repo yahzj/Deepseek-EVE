@@ -644,6 +644,7 @@ interface OutroSnap {
    * 用途（船长 2026-09-14）：「**离开虫洞的战斗也会弹出战斗报告（这一场战斗不应该弹出）**」
    * ⇒ 撤离战（`extract`）由虫洞的**结算单**说话，战报不再弹（见 BattleScreen 的 outro → report 分支）。
    * 必须在"分出胜负那一刻"快照：结算后 `battle` 会被清空，事后取不到 `wormhole.kind`。
+   * ⚠ 2026-09-15 撤离战退役 ⇒ `'extract'` 只剩**老档**里正在打的撤离战会取到。
    */
   wormholeKind?: 'node' | 'boss' | 'extract' | 'ruins'
 }

@@ -310,13 +310,14 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
 
   // ── 虫洞探索（船长 2026-09-13：「进虫洞视作主控的一个活动」＋「活动栏显示」）──
   // 一行读数：层/节点、回合余量、背包类数、人在洞里还是已离开；**不可终止**（要自己走完：
-  // 在虫洞界面发起「撤离」并打赢撤离战，或全损收场）——终止入口刻意不给，避免误点把整趟丢水里。
+  // 在虫洞界面发起「撤离」入港，或全损收场）——终止入口刻意不给，避免误点把整趟丢水里。
+  // ⚠ 2026-09-15 撤离战取消后：`extracting` 只是"已发起撤离、下一拍结算"，故读作「撤离中」。
   const whRun = state.wormhole.run
   if (whRun) {
     const where = whRun.battle
       ? '交火中'
       : whRun.phase === 'extracting'
-        ? '撤离战'
+        ? '撤离中'
         : `第 ${whRun.depth} 层 · 节点 ${Math.min(whRun.nodeIndex + 1, whRun.nodesPerLayer)}/${whRun.nodesPerLayer}`
     out.push({
       id: 'wormhole',
@@ -328,7 +329,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       percent: whRun.turnsTotal > 0 ? Math.round((1 - whRun.turnsLeft / whRun.turnsTotal) * 100) : null,
       remainingMs: null,
       stopable: false,
-      stopReason: '洞内那趟要自己走完：在虫洞界面里发起「撤离」并打赢撤离战，或全损收场。',
+      stopReason: '洞内那趟要自己走完：在虫洞界面里发起「撤离」把货带回来，或全损收场。',
       stop: null,
     })
   }

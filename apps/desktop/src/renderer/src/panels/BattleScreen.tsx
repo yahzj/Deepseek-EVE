@@ -389,6 +389,7 @@ const meSpeedRef = useRef(200)
           // 必须在分出胜负的这一刻快照下来（battleArcsFor 的 droneLost 届时已取不到）
           ...(battle!.droneLost && Object.keys(battle!.droneLost).length > 0 ? { droneLost: { ...battle!.droneLost } } : {}),
           // 虫洞战斗的用途（船长 2026-09-14：撤离战的战报不该弹——结算后 battle 清空，故此刻快照）
+          // ⚠ 2026-09-15 撤离战退役 ⇒ 这一档只剩**老档**里正在打的撤离战会命中（新趟不再有）
           ...(battle!.wormhole ? { wormholeKind: battle!.wormhole.kind } : {}),
         }
         setStage('outro')
@@ -401,6 +402,8 @@ const meSpeedRef = useRef(200)
        * **撤离战不弹战报**（船长 2026-09-14：「离开虫洞的战斗也会弹出战斗报告（这一场战斗不应该弹出）」）：
        * 那一场由虫洞的**结算单**（`run.lastSettle`）说话，战报只会把结算挡住 ⇒ 直接关屏。
        * 注意：战报**日志**照旧写在事件日志里（留档），这里只跳过弹层。
+       *
+       * ⚠ 2026-09-15 撤离战退役 ⇒ 这一档如今**只有老档**里正在打的撤离战会命中（新趟不再有撤离战）。
        */
       if (outroRef.current?.wormholeKind === 'extract') {
         onClose()

@@ -300,10 +300,12 @@ export function wormholeBagUsage(
 /* ═══════════ 五、副本状态机（C 批：层 / 节点 / 回合 / 撤离） ═══════════ */
 
 /**
- * 副本相位：`idle` 未在洞里（含未出发与已结算）· `inside` 洞里（节点推进中）· `extracting` 撤离战。
+ * 副本相位：`idle` 未在洞里（含未出发与已结算）· `inside` 洞里（节点推进中）·
+ * `extracting` **已发起撤离、下一拍结算**（⚠ 2026-09-15 起**不再有撤离战**，见 `wormholeExtract`；
+ * 相位值本身保留——存档里存过它，老档要能读，且撤离战已判负的老档还要走收口）。
  *
  * ⚠ 两条硬约束（船长裁定）：
- * 1. **战斗没结束不能撤** ⇒ `wormholeExtract` **只在层末**（`pendingNode === null`）可用；
+ * 1. **战斗没结束不能撤** ⇒ `wormholeExtract` 在 `run.battle` 非空时被拒；
  * 2. **回合耗尽只能撤离** ⇒ `turnsLeft` 不够走完当前节点时，推进被拒（`mustExtract`）。
  */
 export type WormholePhase = 'idle' | 'inside' | 'extracting'
@@ -506,7 +508,10 @@ export interface WormholeSettleRecord {
   shipsLost: string[]
   /** **没带回来的收集额**（按基础价 + 拆解估值算；撤离成功 = 0） */
   lostIsk: number
-  /** 第 1 层免撤离战（船长：撤离战只从第 2 层起生效）时为 true —— 界面据此少写一句"打了一场" */
+  /**
+   * ⚠ **退役字段（2026-09-15 撤离战取消）**：旧口径里「第 1 层免撤离战」时为 true，界面据此少写一句
+   * "打了一场"。如今**撤离一律不触发战斗** ⇒ 新结算单**不再写**它；字段保留只为读得懂老档的结算单。
+   */
   skippedExtractBattle?: boolean
 }
 
@@ -526,8 +531,7 @@ export interface WormholeState {
   nebulaHintShown?: boolean
 }
 
-/** **撤离战从第几层起生效**（船长 2026-09-13：「撤离战只从第二层开始生效」） */
-export const WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2
+/** ⚠ **已删除（2026-09-15）**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`——撤离战整条退役，不再有"第几层起要打"。 */
 
 export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }
 
@@ -777,17 +781,20 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
 }
 
 /**
- * 撤离 —— **无条件可以开始**（船长 2026-09-13 改裁定：「**玩家可以无条件开始撤离，但是依旧需要打撤离战**」）。
+ * 撤离 —— **无条件可以开始，且不再有撤离战**（2026-09-15 船长：「**虫洞的撤离战取消吧**」）。
  *
- * 口径：
- * - **不再有"层末守卫没清 / 层内还有节点没走完 / 回合没耗尽"这几道门**：想走随时能走（老口径把
- *   守卫当成"出门许可"，实测会逼出"打不过就原地转圈耗回合"的歪招）；
- * - 但**撤离不是白走**：进入 `extracting` 相位后由 `advanceWormhole` 开一场**撤离战**（威胁 ×0.8），
- *   打赢才把背包与货柜带回港，打输照样全损（见 `settleWormholeBattle`）；
- * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」）。
+ * 现行口径：
+ * - **零战斗零风险**：进入 `extracting` 相位后，`advanceWormhole` **下一拍直接结算入港**
+ *   （散货 + 随行战利品 + 货柜 + 临时空间全数带回），不再开任何战斗；
+ * - **任意层、任意时候**都能撤（第 1 层与深层同待遇）；**不消耗回合**；
+ * - 唯一保留的门：**进行中的战斗不能撤**（船长裁定「战斗没结束不能撤」，2026-09-15 复核后**维持不动**）。
  *
- * ⚠ 被本裁定取代的旧条款（设计稿 §六「回合耗尽 ⇒ 只能撤离」+ §3「守卫是门」里"撤离也要先清守卫"那半句）
- * 已在文档里标注作废；`wormholeDescend`（**深入**）那一侧的守卫门**照旧有效**。
+ * ⚠ 被本裁定取代的旧条款（2026-09-13「玩家可以无条件开始撤离，但是**依旧需要打撤离战**」＋
+ * 「撤离战只从第二层开始生效」＋「撤离战打不赢 = 全损」）**已作废**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH`
+ * 已删除、撤离威胁曲线（层 2 = 42、每层 +7）与谜质「撤离掩护器」一并退役；设计稿/词典同日条目标注沿革。
+ *
+ * ⚠ 老档兼容：存档里**正在打的撤离战**照打完（`advanceWormhole` 的 `run.battle` 分支在前，天然满足），
+ * 打完按新口径结算（赢了入港、输了全损），此后不再有下一场。
  */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }

@@ -135,7 +135,7 @@ v0→…→v24 迁移链在案，老档自动无损升级；真实档迁移经�
   | `wormholeFoes.ts` | 五张洞内敌卡按层派生 · **族徽**（`WORMHOLE_FAMILY_CARD`：一处一族的 1:1 映射） |
   | `wormholeSalvage.ts` | 墓场/遗迹/矿脉的产出堆 · **族池**（专属装备/图纸/舰船按族）· 安全货柜与图纸货柜的**开箱池** |
   | `wormholeMatter.ts` | 谜质储存器 27 台（洞内随行生效的增益/压制表） |
-  | `wormholeBattle.ts` / `wormholeFleetBattle.ts` | 洞内战斗（我方 4 单位路径）与撤离战派生 |
+  | `wormholeBattle.ts` / `wormholeFleetBattle.ts` | 洞内战斗（我方 4 单位路径）与按用途派生（⚠ **撤离战 2026-09-15 退役**：撤离不再触发战斗） |
   | `wormholeHold.ts` | 洞内货仓（8 列网格 + **临时空间** 4×8）的形状件/散货摆放 |
   | `wormholeAuto.ts` | **自动探索**（最多 4 条副船 · 各占 1 枚 AI 核心 · 5 分钟 · 收益 ×40% 入仓库 · 绝不丢船 · 报告需确认 · **主控交接**） |
 - **状态落点**：`state.wormhole`（`run` 副本 / `lastSettle` 结算单）· `state.wormholeScan` · `state.wormholeStock` ·
