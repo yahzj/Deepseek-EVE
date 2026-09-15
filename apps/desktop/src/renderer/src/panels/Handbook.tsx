@@ -14,6 +14,9 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel, visibleItemDefs } from '@whale/core'
 import type { DroneClass, ItemKind } from '@whale/core'
+// 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
+// （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
+import { handMarketKeyOf } from '../ui/marketJump'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
@@ -286,9 +289,9 @@ const GUIDE_GROUPS: HandGroup[] = [
         ],
       },
       {
-        title: '背包与产出',
+        title: '货仓与产出',
         paras: [
-          ['背包', '背包格数按编队合计货仓折算（每 500 m³ = 1 格），打捞到的安全货柜、图纸货柜各占固定格数。'],
+          ['货仓', '货仓格数按编队合计货仓折算（每 500 m³ = 1 格），打捞到的安全货柜、图纸货柜各占固定格数。'],
           ['产出链', '洞内只产原矿「虚空母矿」，回港在精炼炉精炼出「虚空晶」。'],
           ['深浅曲线', '每深入一层收益 ×1.2、威胁 ×1.16——收益涨得比威胁快。'],
         ],
@@ -481,7 +484,7 @@ const RULE_SECTS: HandGroup[] = [
         title: '临时空间',
         paras: [
           ['用途', '货仓右侧的备用格区（4×8 = 32 格），用来腾位置或暂存待丢的东西。'],
-          ['规则', '里面有东西时不能进行其他操作，离开背包页前必须放回货仓或丢掉。'],
+          ['规则', '里面有东西时不能进行其他操作，离开货仓页前必须放回货仓或丢掉。'],
         ],
       },
       {
@@ -572,6 +575,12 @@ function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) 
 }
 
 /* ═══════════ 详情窗 ═══════════ */
+
+/** 详情窗用：把当前表格单元喂给 {@link handMarketKeyOf}（映射单点在 `ui/marketJump.ts`，
+ *  体检那条跨层契约也读同一个函数——**不许在这里另写一份映射**） */
+function marketKeyOf(engine: GameEngine, cell: GridCell): string | null {
+  return handMarketKeyOf(engine.ctx, cell.tab, cell.key)
+}
 
 /** 详情内容（按页签/数据类型给出完整字段） */
 function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
@@ -702,12 +711,16 @@ function CellDetail({
   engine,
   cell,
   onClose,
+  onGotoMarket,
 }: {
   engine: GameEngine
   cell: GridCell
   onClose: () => void
+  /** 图鉴 → 市场（2026-09-14 船长）：传该条目在市场的商品键；**缺省 = 不渲染按钮**（无入口时也不假装能跳） */
+  onGotoMarket?: (goodKey: string) => void
 }) {
   const tone = toneOf(cell.glyph)
+  const marketKey = onGotoMarket ? marketKeyOf(engine, cell) : null
   return (
     <div className="app-detail-mask" onClick={(e) => { e.stopPropagation(); onClose() }}>
       <div
@@ -724,6 +737,21 @@ function CellDetail({
             <div className="app-detail-name">{cell.name}</div>
             <div className="app-detail-sub">{cell.sub}</div>
           </div>
+          {/* 「↖ 查看市场」：只跳转、不下单（与舰船页/物品页/货舱页/组装机同一个 `onGotoMarket` 入口）
+              —— 到市场页会自动搜到该商品并展开它的行情详情。⚠ 点它**同时关掉手册**：
+              手册是覆盖层，不关就会盖在刚切过去的市场页上面、聚焦也看不见。 */}
+          {marketKey !== null && onGotoMarket ? (
+            <button
+              className="app-btn is-small app-detail-goto"
+              title="前往市场查看该物品的订单（价格/挂单/买入）"
+              onClick={() => {
+                onClose()
+                onGotoMarket(marketKey)
+              }}
+            >
+              ↖ 查看市场
+            </button>
+          ) : null}
         </div>
         <DetailBody engine={engine} cell={cell} />
         <div className="app-dim app-detail-tip">点击窗口外部任意位置关闭</div>
@@ -751,7 +779,16 @@ function GroupSection({
   )
 }
 
-export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () => void }) {
+export function Handbook({
+  engine,
+  onClose,
+  onGotoMarket,
+}: {
+  engine: GameEngine
+  onClose: () => void
+  /** 图鉴条目 → 市场（2026-09-14 船长）；由 App 透传与舰船页/物品页/工业页同一个入口 */
+  onGotoMarket?: (goodKey: string) => void
+}) {
   const [tab, setTab] = useState<Tab>('guide')
   const [view, setView] = useState<ViewMode>(readView)
   const [detail, setDetail] = useState<GridCell | null>(null)
@@ -1383,7 +1420,9 @@ export function Handbook({ engine, onClose }: { engine: GameEngine; onClose: () 
           </div>
         </div>
       </div>
-      {detail !== null ? <CellDetail engine={engine} cell={detail} onClose={() => setDetail(null)} /> : null}
+      {detail !== null ? (
+        <CellDetail engine={engine} cell={detail} onClose={() => setDetail(null)} onGotoMarket={onGotoMarket} />
+      ) : null}
     </div>
   )
 }

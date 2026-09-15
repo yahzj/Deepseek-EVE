@@ -61,6 +61,11 @@ import {
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
 import { moduleShortEffect } from '../apps/desktop/src/renderer/src/ui/shipInfo'
+// ⚠ 同款跨层 import：图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）在渲染层单点，
+//   体检「图鉴市场跳转契约」逐个走它，防"按钮整类静默消失"。
+//   ⚠ 只 import 这个**只依赖 `@whale/core`** 的小模块：`panels/Handbook.tsx` 会带上 `@whale/ui` 的
+//   CSS，node 侧 tsx 加载即 `SyntaxError`（实测），故映射单点单独成文件。
+import { handMarketKeyOf } from '../apps/desktop/src/renderer/src/ui/marketJump'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import ts from 'typescript'
 import { join } from 'node:path'
@@ -105,6 +110,8 @@ securityZoneOf,
   foeLayerSplit,
   // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
   itemReleased,
+  // 2026-09-14：图鉴市场跳转契约按**玩家可见物品目录**遍历（与手册·物品图鉴同一入口）
+  visibleItemDefs,
   // 2026-09-13：洞内敌卡轮换表（与 data 清单、内容侧契约三处同序；见「虫洞不可见闸门」）
   WORMHOLE_FOE_CARD_IDS as coreWhIds,
   // 2026-09-13 F3b：按族掉落池（装备/装备图纸/舰船图纸；五族池非空契约）
@@ -3246,6 +3253,75 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     )
     console.log(
       `· 挂卖可达契约：市场 ${MARKET_GOODS.length} 行**全部允许玩家挂卖**（playerSellable 无 false）· 可获得内容无市场行的仅 ${NO_ROW_OK.length} 条有意例外（${NO_ROW_OK.map(([id]) => id).join(' / ')}）· 专属内容 ${exclusiveRows} 行**全部只收不卖**`,
+    )
+  }
+  /* **图鉴市场跳转契约**（2026-09-14 船长：「玩家查看图鉴内的道具时，添加一个跳转市场的按钮」）：
+   * 图鉴详情浮层那枚「↖ 查看市场」按 `cell.tab` → 市场 kind 映射到商品（渲染层单点 `handMarketKeyOf`，
+   * 本处**跨层 import 同一个函数**逐个走一遍）。判据 = 四类图鉴目录里的条目都要能命中一行，
+   * 放行四类（前两类是"**市场页本来就看不到它**"，不是漏行）：
+   *   ① 能命中 ⇒ 正常；
+   *   ② 市场行**被 `unreleased` 闸掉**（施工期市行，`buildMarketGoodsCatalog` 会过滤 ⇒ 市场页里搜不到，
+   *      按钮本就不该显示）：谜质装置 24 + AI 核心 3；
+   *   ③ 物品 kind = `wreck` / `fragment`：残骸**唯一变现 = 回收炉开箱**（隐藏卡残骸没有收购卡、
+   *      稀有残骸明确"无市场卡"）、碎片不进市场 ⇒ 无行是设计；
+   *   ④ 名单例外（理由同「挂卖可达契约」的 NO_ROW_OK）：协会保底艇 / 无渠道壳体。
+   * 为什么值得一条常驻契约：映射错位（改图鉴主键语义、改某族的 market kind）不会报错，只会让
+   * **整类图鉴的按钮静默消失**——玩家看不见"少了个按钮"，只有这条契约会点名。 */
+  {
+    const jumpCtx = buildSimContext()
+    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus'])
+    const unreleasedRowIds = new Set(
+      MARKET_GOODS.filter((g) => (g as { unreleased?: boolean }).unreleased === true).map((g) => g.refId),
+    )
+    const noMarketItemKinds = new Set(['wreck', 'fragment'])
+    const groups: Array<{ label: string; tab: string; ids: string[] }> = [
+      { label: '物品图鉴', tab: 'items', ids: visibleItemDefs(jumpCtx).map((d) => d.id) },
+      { label: '装备图鉴', tab: 'modules', ids: MODULES.filter((d) => itemReleased(d)).map((d) => d.id) },
+      { label: '舰船图鉴', tab: 'ships', ids: SHIPS.filter((d) => itemReleased(d)).map((d) => d.id) },
+      {
+        label: '蓝图图鉴',
+        tab: 'blueprints',
+        ids: [...BLUEPRINTS, ...SHIP_BLUEPRINTS].filter((d) => itemReleased(d)).map((d) => d.id),
+      },
+    ]
+    const noJump: string[] = []
+    let checkedEntries = 0
+    let skippedGated = 0
+    let skippedKinds = 0
+    for (const g of groups) {
+      for (const id of g.ids) {
+        checkedEntries += 1
+        if (handMarketKeyOf(jumpCtx, g.tab, id) !== null) continue
+        if (handNoJumpOk.has(id)) continue
+        if (unreleasedRowIds.has(id)) {
+          skippedGated += 1
+          continue
+        }
+        const kind = String(jumpCtx.items.get(id)?.kind ?? '')
+        if (g.tab === 'items' && noMarketItemKinds.has(kind)) {
+          skippedKinds += 1
+          continue
+        }
+        noJump.push(`${g.label} ${id}`)
+      }
+    }
+    check(
+      noJump.length === 0,
+      `图鉴市场跳转契约：${noJump.length} 个图鉴条目查不到市场行（详情浮层的「↖ 查看市场」会不显示）——` +
+        `${noJump.slice(0, 8).join(' · ')}${noJump.length > 8 ? ' …' : ''}；确实不该给按钮的请写进放行规则并注明理由`,
+    )
+    // 反向：不涉市场的页签**必须拿不到键**（防"给技能/说明页也挂上按钮"）
+    const nonMarketTabs = ['guide', 'rules', 'skills']
+    check(
+      nonMarketTabs.every((t) => handMarketKeyOf(jumpCtx, t, 'anything') === null),
+      '图鉴市场跳转契约：玩法速览 / 航行须知 / 技能速查不该命中市场商品（这些页签不给跳转按钮）',
+    )
+    console.log(
+      `· 图鉴市场跳转契约：四类图鉴 ${checkedEntries} 个条目逐个走渲染层 \`handMarketKeyOf\` ⇒ ` +
+        `可跳 ${checkedEntries - skippedGated - skippedKinds - handNoJumpOk.size} 条 · ` +
+        `市行被 unreleased 闸掉 ${skippedGated}（谜质装置 / AI 核心：市场页本就搜不到）· ` +
+        `残骸/碎片无市场卡 ${skippedKinds}（唯一变现 = 回收炉）· ` +
+        `名单例外 ${handNoJumpOk.size}（${[...handNoJumpOk].join(' / ')}）· 说明类页签恒不命中`,
     )
   }
   /**

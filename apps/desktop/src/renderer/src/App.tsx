@@ -1302,7 +1302,18 @@ export function App({ engine }: { engine: GameEngine }) {
           />
         ) : null}
       {showSaveManager ? <SaveManager engine={engine} onToast={showToast} onClose={() => setShowSaveManager(false)} /> : null}
-      {showHandbook ? <Handbook engine={engine} onClose={() => setShowHandbook(false)} /> : null}
+      {showHandbook ? (
+        <Handbook
+          engine={engine}
+          onClose={() => setShowHandbook(false)}
+          /* 图鉴条目 → 市场（2026-09-14 船长）：与舰船页 / 物品页 / 货舱页 / 工业页**同一个入口**
+             （一次性聚焦 + 切页），跳过去只展开行情详情、不替玩家下单。 */
+          onGotoMarket={(goodKey) => {
+            setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+            changePage('market')
+          }}
+        />
+      ) : null}
       {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} /> : null}
       {battleOpen ? (
         <BattleScreen

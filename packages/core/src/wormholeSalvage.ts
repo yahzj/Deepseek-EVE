@@ -763,7 +763,7 @@ export function wormholeTempAddShape(
   addLog(
     state,
     'info',
-    `🕳 放进临时空间：${name}（占 ${need} 格）——到「背包」页整理进货仓或丢弃（离开背包页前必须处理）。`,
+    `🕳 放进临时空间：${name}（占 ${need} 格）——到「货仓」页整理进货仓或丢弃（离开货仓页前必须处理）。`,
   )
   return { ok: true, cells: need }
 }
@@ -1056,7 +1056,7 @@ export function wormholeTempBlockReason(state: GameState, ctx: SimContext): stri
   if (pending.count <= 0) return null
   return (
     `临时空间里有 ${pending.count} 件没处理（${pending.cells}/${WORMHOLE_TEMP_CELLS} 格）：` +
-    `先到「背包」页把它们放回货仓或丢弃，再继续。`
+    `先到「货仓」页把它们放回货仓或丢弃，再继续。`
   )
 }
 
@@ -1169,7 +1169,7 @@ export function wormholeTakePileAt(
   if (!tryMergeIntoBag(state, ctx, run, pile)) {
     const cap = wormholeHoldCapacityOf(state, ctx)
     const used = wormholeHoldUsage(state, ctx).used
-    return { ok: false, error: `背包放不下：已占 ${used} / 共 ${cap} 格。` }
+    return { ok: false, error: `货仓放不下：已占 ${used} / 共 ${cap} 格。` }
   }
   holder!.piles!.splice(pileIndex, 1)
   const u = wormholeHoldUsage(state, ctx)
@@ -1381,7 +1381,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     `🕳 打捞（${rigs} 台打捞器）：回收 ${taken.length} 堆${names.length > 0 ? `——${names}` : ''}` +
       ` · 剩 ${piles.length} 堆 · 剩 ${run.turnsLeft} 回合。`,
   )
-  if (full) addLog(state, 'warn', `🕳 背包放不下：这一批只回收了 ${taken.length} 堆，剩下的仍留在原处。`)
+  if (full) addLog(state, 'warn', `🕳 货仓放不下：这一批只回收了 ${taken.length} 堆，剩下的仍留在原处。`)
   // 形状件留在原地时点明"要自己拾取"（不然玩家会以为漏拿了）
   if (boxLeft > 0) {
     addLog(
