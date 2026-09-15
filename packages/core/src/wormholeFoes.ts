@@ -124,7 +124,7 @@ export const WORMHOLE_FOE_CARD_IDS: readonly string[] = [
   'wh-grave-watch',
   'wh-exile-blockade',
   'wh-titan-echo',
-  // —— 中层 / 深层（2026-09-15 起逐批补：批 1 A 族 · 批 2 C 族 · 批 3 D 族 · 批 4 E 族） ——
+  // —— 中层 / 深层（2026-09-15 扩充：批 1 A 族 · 批 2 C 族 · 批 3 D 族 · 批 4 E 族 · 批 5 G 族） ——
   'wh-pirate-hunt',
   'wh-pirate-warband',
   'wh-alien-brood',
@@ -133,6 +133,8 @@ export const WORMHOLE_FOE_CARD_IDS: readonly string[] = [
   'wh-grave-throne',
   'wh-titan-missile',
   'wh-titan-hulk',
+  'wh-exile-swarm',
+  'wh-exile-line',
 ]
 
 /* ═══════════ 档位 · 出场池 · 分层血量修正（船长 2026-09-15） ═══════════ */
@@ -282,7 +284,7 @@ export const WORMHOLE_FAMILY_CARDS: Readonly<
   C: { shallow: 'wh-alien-swarm', mid: 'wh-alien-brood', deep: 'wh-alien-hive' },
   D: { shallow: 'wh-grave-watch', mid: 'wh-grave-sentry', deep: 'wh-grave-throne' },
   E: { shallow: 'wh-titan-echo', mid: 'wh-titan-missile', deep: 'wh-titan-hulk' },
-  G: { shallow: 'wh-exile-blockade', mid: null, deep: null },
+  G: { shallow: 'wh-exile-blockade', mid: 'wh-exile-swarm', deep: 'wh-exile-line' },
 }
 
 /** 缺档兜底的底牌（正常路径永不用到；只为"族表被写坏"时不至于返回空 id） */

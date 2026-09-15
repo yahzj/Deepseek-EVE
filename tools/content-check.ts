@@ -180,6 +180,20 @@ function check(cond: boolean, msg: string): void {
   if (!cond) errors.push(msg)
 }
 
+/* ═══════════ 族级速度口径（模块作用域：**敌速口径契约**与**舰级契约**两个块共用） ═══════════
+ * ⚠ 为什么放模块作用域：这两个契约各在自己的 `{ }` 块里，块内 `const` 互不可见 ——
+ *   2026-09-15 批 5 把 G 族常量写在其中一个块里 ⇒ 另一块直接 `ReferenceError`（实测踩到）。 */
+
+/** **G 族速度定值**（船长 2026-09-12：「**速度口径按照 1.05 算**」） */
+const G_SPEED_RATIO = 1.05
+/**
+ * **G 族族级速带**（2026-09-15 加）：全族 `speedRatio` 定值 1.05 ⇒ 实速随本档舰种基准下降
+ * （357 / 310 / 271 / 215）⇒ 比率 **1.22 / 1.06 / 0.93 / 0.73**。
+ * ⚠ 0.73 会被 orbit 战术带（0.90~1.25）**误拦** ⇒ 与 B/D/E 三次同款：**族级口径必须用族级带表达**。
+ * 触发经过：2026-09-15 批 5 启用「亡军战列舰」——此前它无卡引用，这条口径从未被实战卡触发过。
+ */
+const G_SPEED_BAND: readonly [number, number] = [0.70, 1.25]
+
 /* ── 基础目录 ── */
 const items = buildItemCatalog()
 /* 动态物品（残骸/蓝图碎片按敌群/逆向配方生成，不入静态物品表）——市场卡 item 解析用 */
@@ -1911,6 +1925,8 @@ for (const m of MODULES) {
     const alienSample: string[] = []
     let graveReadings = 0
     const graveSample: string[] = []
+    let swarmReadings = 0
+    const swarmSample: string[] = []
     let titanReadings = 0
     const titanSample: string[] = []
     let scavReadings = 0
@@ -2050,6 +2066,30 @@ for (const m of MODULES) {
             )
             continue
           }
+          if (def.foeFamily === 'G') {
+            // **G 族（鱿烬亡军）口径**（船长 2026-09-12：「**速度口径按照 1.05 算**」⇒ 全族 `speedRatio` 定值 1.05）：
+            // 族格 = **残军按舰种走**（1~4 档同倍率 ⇒ 实速随本档舰种基准下降：357 / 310 / 271 / 215）。
+            // ⚠ **为什么必须用族级带**（与 B/D/E 三次同款教训）：战术带（orbit 0.90~1.25×）锚定的是"中位玩家船"，
+            //   而 1.05 × **T4 基准 205** 只有 215 m/s ⇒ 比率 **0.73×**，会被 orbit 带**误拦** ——
+            //   它本来就是"战列舰慢"，慢是族规（1.05 定值 + 舰种基准）算出来的，不是失衡。
+            //   2026-09-15 洞内扩充批 5 启用亡军战列舰（此前无卡引用 ⇒ 这条口径从未被实战卡触发过）时暴露。
+            //   ⇒ **族级口径必须用族级带表达**：带 = 1.05 × 五档基准所覆盖的比率区间，取 [0.70, 1.25]。
+            if (swarmSample.some((s) => s.startsWith(`${slot.ship.id} `))) continue // 同一舰级只校验一次
+            swarmReadings++
+            swarmSample.push(`${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              Math.abs(slot.ship.speedRatio - G_SPEED_RATIO) < 1e-9,
+              `敌速口径契约：G 族 ${def.name} 的舰级「${slot.ship.name}」速度倍率 ${slot.ship.speedRatio} ≠ ${G_SPEED_RATIO}——` +
+                `船长 2026-09-12「速度口径按照 1.05 算」`,
+            )
+            check(
+              ratio >= G_SPEED_BAND[0] && ratio <= G_SPEED_BAND[1],
+              `敌速口径契约：G 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**族级速带** ` +
+                `${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×（船长「速度口径按照 1.05 算」＝残军按舰种走；基准船 ${refShip.name} ` +
+                `战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
+            continue
+          }
           const band = SPEED_BAND[tactic] ?? SPEED_BAND.orbit!
           check(
             ratio >= band[0] && ratio <= band[1],
@@ -2080,7 +2120,8 @@ for (const m of MODULES) {
         `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
         `同档实速须高于 A 族；T4 巨兽例外允许慢）、` +
         `D 族 ${graveReadings} 条按**族格"越往里越慢"口径**（幽灵舰 1.10 / 守墓长舰 1.00 / 静滞卫舰 0.50，比率落 ${GRAVE_SPEED_BAND[0]}~${GRAVE_SPEED_BAND[1]}×）、` +
-        `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）`,
+        `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）、` +
+        `G 族 ${swarmReadings} 条按**族级速带口径**（船长「速度口径按照 1.05 算」＝残军按舰种走，比率落 ${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×）`,
     )
     if (pirateSample.length > 0)
       console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join("　")}`)
@@ -2090,6 +2131,7 @@ for (const m of MODULES) {
       console.log(`  ↳ C 族实测读数（实速/比率）：${alienSample.join("　")}`)
     if (graveSample.length > 0)
       console.log(`  ↳ D 族实测读数（实速/比率）：${graveSample.join("　")}`)
+    if (swarmSample.length > 0) console.log(`  ↳ G 族实测读数（实速/比率）：${swarmSample.join("　")}`)
     if (titanSample.length > 0)
       console.log(`  ↳ E 族实测读数（实速/比率）：${titanSample.join("　")}`)
   }
@@ -2476,9 +2518,10 @@ for (const m of MODULES) {
       slots.reduce((n, s) => n + s.ship.hp * (s.hpMul ?? 1) * unitCount(s), 0)
     // ⑤ 舰种档：先校验登记表全表（档位越界 / 各族**不配的档**）
     const PIRATE_BANNED_TIERS: readonly number[] = [4, 5] // 4 战列舰 / 5 旗舰
-    /** **G 族（鱿烬亡军）速度定值**（船长 2026-09-12「**速度口径按照 1.05 算**」）——四档同倍率 */
-    const G_SPEED_RATIO = 1.05
-    /** **G 族四档「亡军战列舰」= 预留空置壳体**（船长「**战列舰先建壳体**」；当前无卡引用，属有意状态） */
+    /** **G 族四档「亡军战列舰」= 唯一合法的 T4 壳体**（船长 2026-09-12「**战列舰先建壳体**」；
+     *  **2026-09-15 已由洞内扩充批 5 启用**（船长「G族添加战列舰动能伤害为主」＋「G族战列可以添加机群」→「挂」）
+     *  ⇒ 它现在**有卡引用**（洞内 G 族深层卡「残军战列线」）；本条契约的用意不变：**G 族的 T4 只能是它**，
+     *  防日后把战列档顺手塞给杂鱼。 */
     const G_RESERVED_BATTLESHIP_ID = 'foe-g-exile-battleship'
     /** **B 族（武装拾荒者）不得 ≥ 3 巡洋舰**（2026-09-11 船长七裁决：「**确认为新手过渡种族**」+
      *  拾荒者拿的是拼装小艇）⇒ 只登记 **T1 护卫舰 / T2 驱逐舰**两档 */
@@ -2524,11 +2567,11 @@ for (const m of MODULES) {
         }
       }
       if (ship.family === 'G') {
-        // **G 族（鱿烬亡军）舰种档 + 速度定值**（船长 2026-09-12 六裁决）：
-        // ①「**G组分5档。从护卫舰到战列舰。战列舰暂时空置。**」⇒ 允许 **1~4 档**（1 护卫舰 ~ 4 战列舰）、
+        // **G 族（鱿烬亡军）舰种档 + 速度定值**（船长 2026-09-12 六裁决；2026-09-15 战列舰启用）：
+        // ①「**G组分5档。从护卫舰到战列舰。**」⇒ 允许 **1~4 档**（1 护卫舰 ~ 4 战列舰）、
         //   **不配 5 旗舰**（旗舰留给 E 族巨构的"核心舱段"）；
-        // ②「**战列舰先建壳体**」⇒ **T4 登记但"空置"**（当前无卡引用）——本契约**不要求** T4 有卡引用，
-        //   但要求 T4 就是那条**预留壳体**（`G_RESERVED_BATTLESHIP_ID`），防日后把 T4 顺手塞给杂鱼；
+        // ②「**战列舰先建壳体**」⇒ T4 就是那条壳体（`G_RESERVED_BATTLESHIP_ID`）；**2026-09-15 已启用**
+        //   （洞内 G 族深层卡用它），本条**仍然只允许这一条 T4**，防日后把战列档顺手塞给杂鱼；
         // ③「**速度口径按照 1.05 算**」⇒ 全族 `speedRatio` **定值 1.05**（四档同倍率，不逐舰写不同值）。
         check(
           t <= 4,
@@ -2538,8 +2581,8 @@ for (const m of MODULES) {
         if (t === 4) {
           check(
             ship.id === G_RESERVED_BATTLESHIP_ID,
-            `舰级契约：鱿烬亡军的 4 战列舰档当前是**预留空置壳体**（船长「战列舰先建壳体」= ${G_RESERVED_BATTLESHIP_ID}）——` +
-              `不得再登记第二条 T4；若日后真要给 G 族上战列舰，请走设定流程并先改本行口径`,
+            `舰级契约：鱿烬亡军的 4 战列舰档只能是那条壳体（船长「战列舰先建壳体」= ${G_RESERVED_BATTLESHIP_ID}；` +
+              `2026-09-15 已启用并挂蜂群机）——不得再登记第二条 T4`,
           )
         }
         check(
@@ -2720,7 +2763,7 @@ for (const m of MODULES) {
       `· 舰级契约：${shipCards} 张舰级路径卡（${slotTotal} 条编成，其中混编 ${mixed} 张）引用有效、族与卡面口径一致；` +
         `舰种档 ${tiered} 个舰级全部落在 1~5，海盗族（A）无 4 战列舰 / 5 旗舰档、拾荒族（B）无 T3 及以上（新手过渡族）、` +
         `异形族（C）允许 T4（须登记为"巨兽"用途：${ALIEN_BEAST_SHIP_IDS.join(" / ")}）且不配 T5；` +
-        `鱿烬亡军（G）登记 1~4 档（**T4 战列舰 = 预留空置壳体**（无卡引用，船长「战列舰先建壳体」）、不配 T5；` +
+        `鱿烬亡军（G）登记 1~4 档（**T4 战列舰 = 那条壳体**（船长「战列舰先建壳体」；**2026-09-15 已启用**并挂蜂群机 ×3）、不配 T5；` +
         `全族速度定值 **${G_SPEED_RATIO}×**）；` +
         `A 族编成契约 ${aCompositionCards} 张：灰霾/赤潮/蜃影 = 头目 ×1 + 同族杂鱼 ×3（共 4 单位）· 头目血量 60% ±1%；` +
         `边境/碎晶/信标 = **无首领**（同族同型 + 船长给定波次 1+2 / 2+2 / 2+2）`,
@@ -3885,7 +3928,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       'wh-grave-watch',
       'wh-exile-blockade',
       'wh-titan-echo',
-      // 中/深（2026-09-15 洞内敌卡扩充：批 1 A 族 · 批 2 C 族 · 批 3 D 族 · 批 4 E 族；批 5 G 族按 data 表顺序追加）
+      // 中/深（2026-09-15 洞内敌卡扩充：批 1 A 族 · 批 2 C 族 · 批 3 D 族 · 批 4 E 族 · 批 5 G 族 —— 15 张齐备）
       'wh-pirate-hunt',
       'wh-pirate-warband',
       'wh-alien-brood',
@@ -3894,6 +3937,8 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       'wh-grave-throne',
       'wh-titan-missile',
       'wh-titan-hulk',
+      'wh-exile-swarm',
+      'wh-exile-line',
     ]
     // **轮换表的双向契约**（2026-09-13 补第五张时加）：内容侧这张清单、data 的 `WORMHOLE_FOE_CARDS`
     // 与 core 的 `WORMHOLE_FOE_CARD_IDS` **三处必须逐字同序** —— 少一张/换序都会让"按族掉落池"

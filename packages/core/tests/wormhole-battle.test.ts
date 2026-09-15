@@ -50,6 +50,7 @@ import {
   wormholeExtractThreat,
   wormholeFleetCargoM3,
   wormholeFoeThreat,
+  wormholeGuardCardOf,
   wormholeLayerThreat,
   wormholeNaturalHp,
   wormholeTierOfCard,
@@ -193,20 +194,28 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     }
   })
 
-  it('缺档兜底：某族还没做出中/深卡时，池退回现有最深一张（分批上线期间照样能开战）', () => {
-    // G 族此刻只有浅层卡（中/深随批 5 补）⇒ 层 2~9 仍只出浅层卡，不会开不出战
-    expect(wormholeCardPoolAt('G', 1).map((e) => e.tier)).toEqual(['shallow'])
-    expect(wormholeCardPoolAt('G', 5).map((e) => e.tier)).toEqual(['shallow'])
-    expect(wormholeCardIdForRun({ family: 'G', seed: 3, depth: 6, kind: 'node', nodeIndex: 2 })).toBe('wh-exile-blockade')
-    expect(wormholeCardIdForRun({ family: 'G', seed: 3, depth: 6, kind: 'boss' })).toBe('wh-exile-blockade')
-    // 已补齐三档的族（A/C/D/E）在深层应当三档都进池
-    for (const f of ['A', 'C', 'D', 'E'] as const) {
-      expect(wormholeCardPoolAt(f, 5).map((e) => e.tier), `族 ${f}`).toEqual(['shallow', 'mid', 'deep'])
-    }
-    // 五族各有浅层卡（按族掉落池"每族都有来源"的前提）
+  it('十五张齐备：五族各三档都在池里；守卫取该层最深已解锁档（缺档兜底转为防御性代码）', () => {
+    // 2026-09-15 批 5 收口后**五族三档齐备** ⇒ 层 5 的池一律三档俱全
     for (const f of WORMHOLE_FAMILY_ORDER) {
+      expect(wormholeCardPoolAt(f, 5).map((e) => e.tier), `族 ${f}`).toEqual(['shallow', 'mid', 'deep'])
       expect(wormholeCardOfTier(f, 'shallow'), `族 ${f} 缺浅层卡`).toBeTruthy()
+      expect(wormholeCardOfTier(f, 'mid'), `族 ${f} 缺中层卡`).toBeTruthy()
+      expect(wormholeCardOfTier(f, 'deep'), `族 ${f} 缺深层卡`).toBeTruthy()
     }
+    expect(WORMHOLE_FOE_CARD_IDS).toHaveLength(15)
+    expect(wormholeAllCardIds()).toHaveLength(15)
+    // 守卫取档：层 1 → 浅 / 层 2~3 → 中 / 层 4+ → 深（逐族同口径）
+    for (const f of WORMHOLE_FAMILY_ORDER) {
+      expect(wormholeGuardCardOf(f, 1)).toBe(wormholeCardOfTier(f, 'shallow'))
+      expect(wormholeGuardCardOf(f, 3)).toBe(wormholeCardOfTier(f, 'mid'))
+      expect(wormholeGuardCardOf(f, 9)).toBe(wormholeCardOfTier(f, 'deep'))
+    }
+    /**
+     * ⚠ **缺档兜底分支**（`wormholeCardPoolAt` 里"全缺 ⇒ 退回现有最深一张"）自批 5 起**数据上不可达**，
+     * 但**代码保留**：它是分批上线期间的救命路径，也是日后新增族/新档时的兜底——若哪天有人把某档
+     * 写回 `null`，上面三条 not-null 断言会立刻红，提醒"池会静默退化"，不会静默出事。
+     */
+    expect(wormholeCardPoolAt('G', 1).map((e) => e.tier)).toEqual(['shallow'])
   })
 
   it('C 族深层卡（孢群巢穴）：无人机舰 —— 机群吃掉 60% 火力、机型是 C 族孢群机', () => {

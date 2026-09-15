@@ -77,7 +77,7 @@
  */
 
 import type { FoeShipDef } from '@whale/core'
-import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA } from './foe-drones'
+import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
  * 速度（2026-09-11 落地）= 1 护卫舰基准 340 × `1.15` = **391** m/s（高于本档基准 340，"快得起来才好突袭"）；
@@ -890,18 +890,25 @@ export const FOE_G_NADIR_LOCK: FoeShipDef = {
   // ⚠ **不写 `droneReserve`** ⇒ 无后备机库（船长「无后备」）。
 }
 
-/** G 族 · 四档「亡军战列舰」——**空置壳体**（船长「战列舰先建壳体」）。
+/** G 族 · 四档「亡军战列舰」——**已启用**（2026-09-15 船长：「**G族添加战列舰动能伤害为主。**」＋
+ *  「**G族战列可以添加机群。**」→（问"挂几架"）「**挂**」）。
  *
- * 本档**当前没有任何卡引用**：四档是"为后续 G 族卡预留的壳"，
- * 数值按档基线 × 角色的常规做法先定（T4 1,600 × 1.10 / 240 × 0.90），射程带为同族 orbit 的常规外推；
- * 落卡时**只改卡侧倍率**，不必再动本行。登记它是为了：① 族阶完整（5 档体系里的第 4 档）；
- * ② 后续 G 战列舰有现成引用目标（不必临时造舰级）。
- * ⚠ `content:check`「舰级契约」对它**不要求**有卡引用（把"空置"登记为**有意状态**）。 */
+ * **沿革**：2026-09-12 船长「**G组分5档。从护卫舰到战列舰。战列舰暂时空置。战列舰先建壳体。**」
+ * ⇒ 当时只登记壳体、无卡引用；**2026-09-15 由本批启用**（洞内 G 族深层卡「残军战列线」的主体）。
+ *
+ * **数值一字未动**（壳体当初就是按档基线 × 角色 + 全族 1.05 速 + orbit 定好的）：
+ * T4 1,600 × 1.10 = **1,760** 血 / 240 × 0.90 = **216** 单发 / 实速 **215** / 射程 600~7,200 /
+ * `dmgMix { kinetic: 8, explosive: 2 }`（= 船长要的"**动能伤害为主**"，本就如此）。
+ *
+ * **新增：蜂群机 ×3、无后备**（船长「挂」）——三系齐备（**动能 + 等离子 + 爆炸**）：
+ * ① 与「天底封锁舰」的 2 架口径同源（都无后备）；② **P-20a 的"等离子系必须在场"**仍然满足；
+ * ③ 顺带**消掉体检长期那条「已备未挂机型：蜂群机（`foe-drone-g-bee-exp`）」警告**
+ * （三种机型终于全有挂载点——G 族"三系无人机"的族格由本条兑现）。 */
 export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
   id: 'foe-g-exile-battleship',
   name: '亡军战列舰',
   family: 'G',
-  hullClassTier: 4, // 战列舰（空置预留）
+  hullClassTier: 4, // 战列舰（2026-09-15 起**已启用**，不再是空置壳体）
   speedRatio: 1.05, // = 215 / 205
   hp: 1760, // T4 档基线 1,600 × 角色 1.10
   split: { s: 0.34, a: 0.33, h: 0.33 },
@@ -912,8 +919,14 @@ export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
   rangeMaxM: 7200,
   falloff: 0.5,
   blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  dmgMix: { kinetic: 8, explosive: 2 }, // 船长「动能伤害为主」——与壳体原值一致，未动
   tactic: 'orbit',
+  // **蜂群机 ×3（三系齐备、无后备）**：船长 2026-09-15「挂」
+  drones: [
+    { drone: FOE_DRONE_G_BEE_KIN, count: 1 },
+    { drone: FOE_DRONE_G_BEE_PLA, count: 1 }, // P-20a：G 族挂机群必须含等离子系
+    { drone: FOE_DRONE_G_BEE_EXP, count: 1 }, // 原"已备未挂"⇒ 本批挂上，体检警告随之消失
+  ],
 }
 
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */

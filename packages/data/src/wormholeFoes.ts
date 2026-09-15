@@ -43,6 +43,8 @@ import {
   FOE_D_STASIS,
   FOE_D_THRONE,
   FOE_G_SWARM_SKIFF,
+  FOE_G_ECHO_REMNANT,
+  FOE_G_EXILE_BATTLESHIP,
   FOE_MISSILE_HULK,
   FOE_SHIP_AURO_HULK,
   FOE_SHIP_TITAN_HULK,
@@ -138,8 +140,8 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // ⚠ 本卡**刻意不写** `foeTargetingChance`：模式已随机，概率对它无意义（写了也按 1 处理、不掷骰）
     // 混伤 8:2（主动能 / 副爆炸 = G 族蜂群炮台构成）
     dmgMix: { kinetic: 8, explosive: 2 },
-    // 编成 = 围攻残兵舰 ×2（T1 蜂群压制）
-    ships: [{ ship: FOE_G_SWARM_SKIFF, count: 2 }],
+    // 编成 = **围攻残兵舰 ×3**（船长 2026-09-15：「**G浅层为围攻残兵舰*3**」，T1 蜂群压制）
+    ships: [{ ship: FOE_G_SWARM_SKIFF, count: 3 }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -369,6 +371,45 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     combatSeconds: 60,
     hidden: true,
     description: '虫洞内遭遇：一整段巨构残骸与其警戒机群（隐藏卡，只由虫洞生成）。',
+  },
+  /* ══════════ 2026-09-15 扩充 · G 族中/深两张（批 5 · 收口）══════════ */
+  {
+    id: 'wh-exile-swarm',
+    foeFamily: 'G',
+    name: '残响蜂群',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    // G 族族格 = 蜂群乱战 ⇒ random（不写概率字段）
+    foeTargeting: 'random',
+    dmgMix: { kinetic: 8, explosive: 2 },
+    // 编成 = **残响残舰 ×2**（船长 2026-09-15：「**中层为残响残舰*2**」，T2 orbit 环绕）
+    ships: [{ ship: FOE_G_ECHO_REMNANT, count: 2 }],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 50,
+    hidden: true,
+    description: '虫洞内遭遇：两艘残响残舰结成的蜂群（隐藏卡，只由虫洞生成）。',
+  },
+  {
+    id: 'wh-exile-line',
+    foeFamily: 'G',
+    name: '残军战列线',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    foeTargeting: 'random',
+    dmgMix: { kinetic: 8, explosive: 2 },
+    // 编成 = **亡军战列舰 ×1**（船长 2026-09-15：「**高层为亡军战列舰*1**」＋「G族战列可以添加机群」→「挂」）
+    // 该舰级本批**由"空置壳体"转为启用**，并挂蜂群机 ×3（动能 + 等离子 + 爆炸，三系齐备、无后备）。
+    ships: [{ ship: FOE_G_EXILE_BATTLESHIP, count: 1 }],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 60,
+    hidden: true,
+    description: '虫洞内遭遇：亡军最后的战列线与其蜂群护航（隐藏卡，只由虫洞生成）。',
   },
 ]
 
