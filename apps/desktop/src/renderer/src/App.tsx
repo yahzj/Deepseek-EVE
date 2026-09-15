@@ -27,6 +27,7 @@ import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MapPage } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
+import { CommsEave, CommsScreen } from './panels/CommsReader'
 import { TaskCenterPage } from './pages/TaskCenterPage'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
@@ -677,8 +678,22 @@ export function App({ engine }: { engine: GameEngine }) {
   const showOfflineReport = offlineReport !== null && !reportDismissed
 
   /**
-   * **需要弹窗的通讯**（船长 2026-09-14：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）：
-   * 队首那封弹一次卡片；点「知道了」清掉（信仍在收件箱里）。离线简报优先，避免两张卡叠着。
+   * **通讯「前往」的统一跳转出口**（2026-09-14 抽单点）：通讯页右栏与送达弹窗共用同一套落点规则
+   * ——可带星图标签、任务中心内层标签、舰船标签；老数据里 `{page:'map', tab:'task'}` 一并改道任务中心页。
+   */
+  function gotoFromComms(p: string, tab?: string, shipTab?: string, taskTab?: string): void {
+    if (p === 'map' && tab) changeMapTab(tab as MapTab)
+    if ((p === 'task' || (p === 'map' && tab === 'task')) && taskTab) focusTaskTab(taskTab)
+    if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
+    changePage(p as PageKey)
+  }
+
+  /**
+   * **需要弹窗的通讯**（船长 2026-09-14 两次裁定）：①「解锁时发送通讯给玩家（**同时也要直接弹窗**）」；
+   * ② 同日扩为「**所有除新手教程外的讯息也弹窗**」⇒ 是否弹由 core 的 `advanceComms` 单点决定
+   * （`popup ?? kind !== '教程'`），这里只负责渲染**队首那一封**：同一拍送达多封也只弹一张、
+   * 点「知道了」换下一张（**不会叠出多窗口**）；离线简报优先，避免两张卡叠着。
+   * 弹窗外形 = 通讯页右栏那块屏（同源公共件 `panels/CommsReader.tsx`）。
    */
   const popupId = engine.commsPopups()[0] ?? null
   const popupMsg =
@@ -1046,14 +1061,8 @@ export function App({ engine }: { engine: GameEngine }) {
                 {...pageProps}
                 // 顶部引导条「看详情」的定位请求（seq 变化即重新选中对应那封）
                 focus={commsFocus}
-                // 消息提示的跳转出口（③ 只给提示 + 跳转）：可带页面内标签与任务中心内层标签
-                onGoto={(p, tab, shipTab, taskTab) => {
-                  if (p === 'map' && tab) changeMapTab(tab as MapTab)
-                  // 任务中心已是一级页：老数据里可能是 { page: 'map', tab: 'task' }，一并改道到新页
-                  if ((p === 'task' || (p === 'map' && tab === 'task')) && taskTab) focusTaskTab(taskTab)
-                  if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
-                  changePage(p as PageKey)
-                }}
+                // 消息提示的跳转出口（③ 只给提示 + 跳转）：与弹窗共用同一套落点规则
+                onGoto={gotoFromComms}
               />
             ) : null}
           </div>
@@ -1241,31 +1250,28 @@ export function App({ engine }: { engine: GameEngine }) {
         </div>
       ) : null}
 
-      {/* ───── 需要弹窗的通讯（船长 2026-09-14：「解锁时发送通讯给玩家（同时也要直接弹窗）」） ───── */}
+      {/* ───── 送达弹窗（船长 2026-09-14：除新手教程外所有通讯都弹；外形 = 通讯页右栏那块屏） ───── */}
       {popupMsg ? (
         <div className="app-ann-mask" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
-          <div className="app-ann app-comm-pop" onClick={(e) => e.stopPropagation()}>
-            <div className="app-ann-head">
-              <span className="app-ann-title">✉ {popupMsg.from}</span>
-              <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
-                知道了
-              </button>
-            </div>
-            <div className="app-ann-list">
-              <div className="app-ann-item is-new">
-                <div className="app-ann-item-head">
-                  <span className="app-ann-tag">{popupMsg.kind || '通讯'}</span>
-                  <span className="app-ann-item-title">{popupMsg.subject}</span>
-                </div>
-                <div className="app-comm-pop-body">
-                  {popupMsg.paragraphs.map((line, i) => (
-                    <p key={i} className={popupMsg.highlight?.includes(line) ? 'app-report-highlight' : undefined}>
-                      {line}
-                    </p>
-                  ))}
-                </div>
-                <div className="app-dim">已存进「通讯」收件箱，随时可以回看。</div>
-              </div>
+          <div className="app-comm-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="app-comms-body-col">
+              <CommsScreen entry={popupMsg} />
+              <CommsEave
+                entry={popupMsg}
+                onGoto={(p, tab, shipTab, taskTab) => {
+                  engine.dismissCommsPopup(popupMsg.id)
+                  gotoFromComms(p, tab, shipTab, taskTab)
+                }}
+                onAction={(command) => {
+                  const r = engine.runCommsActionAt(command)
+                  showToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
+                }}
+                extra={
+                  <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
+                    知道了
+                  </button>
+                }
+              />
             </div>
           </div>
         </div>

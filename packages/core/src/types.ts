@@ -1980,6 +1980,17 @@ export type CommsTrigger =
    */
   | { kind: 'wormholeNebula' }
   /**
+   * **第一次因低安袭击自动撤离**（2026-09-14 船长：「添加新的通讯，当玩家第一次因为低安袭击导致
+   * 舰船自动撤离时触发」）。
+   *
+   * 判定 = 随档三态标记 `state.ambushRetreatSeen`：`true` ⇒ 发；**`false` = 新档 ⇒ 只等真撤离**（不补发）；
+   * **缺失 = 老档** ⇒ 船长裁定「老档补发，但**要判断玩家是否触发过**」，故按可查痕迹判定：
+   * `encounterZoneCooldown` 非空（只在伏击真的命中时写入、写后不删）⇒ 确实被伏击过才补发。
+   * 置位点两处（船长裁定「也算自动脱离交火」）：`encounters.retreatEncounterShip`（收手返港待命）
+   * 与 `encounters.settleEscape`（应战中途结构过半自动脱离交火）。主控与副船同口径。
+   */
+  | { kind: 'ambushRetreat' }
+  /**
    * **势力声望达标**（2026-09-14 船长：「**扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家**」）。
    *
    * 判定 = `state.standings[factionId] >= min`。⚠ 这里的 `factionId` 是**声望口径**的势力 id

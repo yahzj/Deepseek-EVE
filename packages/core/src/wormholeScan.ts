@@ -35,8 +35,30 @@ import { wormholeFamilyOfSeed } from './wormholeFoes'
  */
 export const WORMHOLE_SCAN_BASE_MS = 12 * 60 * 60_000
 
-/** **未探索虫洞的库存上限**（船长：「玩家最多可以囤积5个未开始探索的虫洞」） */
+/**
+ * **未探索虫洞的库存上限（基础值）**（船长 2026-09-14：「玩家最多可以囤积5个未开始探索的虫洞」）。
+ * ⚠ 自 2026-09-14 起上限**不是常数**：技能「星图记录学」满级会再加 `WORMHOLE_STOCK_BONUS` 格 ⇒
+ * 读"当前上限"一律走 **`wormholeStockMaxOf(state)`**（`WORMHOLE_STOCK_MAX` 只当基础值与文案锚）。
+ */
 export const WORMHOLE_STOCK_MAX = 5
+
+/**
+ * **星图记录学（`chart-archive`）扩展虫洞保存上限**（船长 2026-09-14：「添加 rank4 技能，星图记录学，
+ * 满级允许玩家虫洞的保存上限+10。」）——**阶跃**口径（与星际奇遇学同款语义）：**满级（Lv5）一次性 +10 格**，
+ * Lv1~4 不加 ⇒ 基础 5 处 ⇒ 满级 **15 处**。
+ * 调参入口就在这一行（体检「技能说明契约」按本文件的现场值复核技能说明里的 ⟦10⟧）。
+ */
+export const WORMHOLE_STOCK_BONUS = 10
+
+/** 上限的**理论最大值**（基础 ＋ 满级加成）：读档清洗拿它当钳制上限 ⇒ 满级玩家的 15 格不会因为
+ *  读档时"技能看起来还没到"被截掉；`save.ts` 是本文件之外唯一的用法。 */
+export const WORMHOLE_STOCK_MAX_HARD = WORMHOLE_STOCK_MAX + WORMHOLE_STOCK_BONUS
+
+/** **玩家当前的虫洞保存上限** = 基础 5 ＋（星图记录学满级 ? 10 : 0）——引擎与界面读这一个函数 */
+export function wormholeStockMaxOf(state: GameState): number {
+  const lv = Math.min(5, state.skills.trained['chart-archive'] ?? 0)
+  return WORMHOLE_STOCK_MAX + (lv >= 5 ? WORMHOLE_STOCK_BONUS : 0)
+}
 
 /**
  * 起始层档位（**发现时一律从第 1 层起**）。
@@ -102,14 +124,14 @@ export function wormholeScanWindowMs(state: GameState): number {
   return Math.max(1000, Math.round(WORMHOLE_SCAN_BASE_MS * scanSkillFactor(state) * happeningsScanFactor(state)))
 }
 
-/** 当前库存（发现即入列；上限 `WORMHOLE_STOCK_MAX`） */
+/** 当前库存（发现即入列；上限走 `wormholeStockMaxOf(state)`：基础 5 ＋ 星图记录学满级 10） */
 export function wormholeStockOf(state: GameState): WormholeStockItem[] {
   return state.wormholeStock ?? []
 }
 
 /** 库存是否已满（满 ⇒ 扫描停机） */
 export function wormholeStockFull(state: GameState): boolean {
-  return wormholeStockOf(state).length >= WORMHOLE_STOCK_MAX
+  return wormholeStockOf(state).length >= wormholeStockMaxOf(state)
 }
 
 /** 能不能开扫（主控活动互斥：与采矿/打捞/扫描/远征/待命/过境/虫洞探索同一把尺） */
@@ -142,7 +164,7 @@ export function wormholeScanBlockReason(state: GameState): string | null {
     return '制造作业正由你亲自开线：先取消它才能展开扫描阵列（想自动制造可改用 AI 核心驱动）。'
   }
   if (wormholeStockFull(state)) {
-    return `已囤积 ${WORMHOLE_STOCK_MAX} 处未探索的虫洞：先去探索掉一处再扫。`
+    return `已囤积 ${wormholeStockMaxOf(state)} 处未探索的虫洞：先去探索掉一处再扫。`
   }
   return null
 }
@@ -268,7 +290,7 @@ export function wormholeStockPush(state: GameState, ctx: SimContext): WormholeSt
   addLog(
     state,
     'info',
-    `🛰 发现一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[item.archetype ?? wormholeArchetypeOf(item.seed)]}（已囤积 ${state.wormholeStock.length}/${WORMHOLE_STOCK_MAX} 处）——到「扫描虫洞」页决定何时探索。`,
+    `🛰 发现一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[item.archetype ?? wormholeArchetypeOf(item.seed)]}（已囤积 ${state.wormholeStock.length}/${wormholeStockMaxOf(state)} 处）——到「扫描虫洞」页决定何时探索。`,
   )
   return item
 }
@@ -300,7 +322,7 @@ export function advanceWormholeScan(state: GameState, ctx: SimContext, deltaMs: 
       addLog(
         state,
         'warn',
-        `🛰 扫描停机：已囤积 ${WORMHOLE_STOCK_MAX} 处未探索的虫洞（上限）——先去探索掉一处，再回来开扫。`,
+        `🛰 扫描停机：已囤积 ${wormholeStockMaxOf(state)} 处未探索的虫洞（上限）——先去探索掉一处，再回来开扫。`,
       )
       return
     }

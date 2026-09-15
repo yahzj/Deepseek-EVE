@@ -802,6 +802,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'secondhand-market', per: 0.02, call: 'market.ts SECONDHAND_PER_LEVEL', srcNear: false },
     { skill: 'galactic-happenings', per: 0.08, call: 'events.ts eventCadenceFactor（事件间隔 −8%/级）+ expedition.ts（×1.15/级）' },
     { skill: 'galactic-happenings', per: 0.2, call: 'wormholeScan.ts happeningsScanFactor（虫洞扫描窗口 · **满级阶跃 −20%**，2026-09-14 船长追加的第四项）' },
+    { skill: 'chart-archive', per: 10, call: 'wormholeScan.ts wormholeStockMaxOf（虫洞保存上限 · **满级阶跃 +10 格**，2026-09-14 船长新技能）' },
     { skill: 'event-dividend', per: 0.15, call: 'events.ts（事件现金）' },
     { skill: 'event-dividend', per: 0.04, call: 'wormhole.ts blankShareFactorOf（洞内空白地点占比的相对系数 · 2026-09-14 船长「事件玄学」新增项）' },
     { skill: 'signal-analysis', per: 0.08, call: 'explore.ts scanSkillFactor' },
@@ -4265,6 +4266,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'wormholeNebula',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
     'standing',
+    // 2026-09-14 被袭后的自动撤离（船长：「当玩家第一次因为低安袭击导致舰船自动撤离时触发」）
+    'ambushRetreat',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])

@@ -22,7 +22,7 @@ import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
-import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX } from './wormholeScan'
+import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX_HARD } from './wormholeScan'
 import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
 import { WORMHOLE_ARCHETYPES, wormholeArchetypeOf } from './wormholeGrid'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
@@ -2394,7 +2394,7 @@ function normalizeState(raw: unknown): GameState {
     /** **解锁当次的满窗口是否已发放**（可选字段：只在真时写 ⇒ 老档缺省 = 未发放，达标后下一 tick 自动补） */
     ...(whScanRaw.welcomed === true ? { welcomed: true } : {}),
   }
-  // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX`
+  // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX_HARD`（基础 5 ＋ 星图记录学满级 10 ⇒ 读档不会截掉满级玩家的 15 格）
   const wormholeStock: Array<{
     id: string
     seed: number
@@ -2405,7 +2405,7 @@ function normalizeState(raw: unknown): GameState {
   }> = []
   const whStockRaw = Array.isArray(src.wormholeStock) ? src.wormholeStock : []
   for (const item of whStockRaw) {
-    if (wormholeStock.length >= WORMHOLE_STOCK_MAX) break
+    if (wormholeStock.length >= WORMHOLE_STOCK_MAX_HARD) break
     const o = asRaw(item)
     const id = typeof o.id === 'string' ? o.id : ''
     const seed = Math.floor(num(o.seed))
@@ -2540,6 +2540,14 @@ function normalizeState(raw: unknown): GameState {
   for (const id of Array.isArray(src.commsPopups) ? src.commsPopups : []) {
     if (typeof id === 'string' && id.length > 0 && !commsPopups.includes(id)) commsPopups.push(id)
   }
+
+  /**
+   * **因低安袭击自动撤离**（2026-09-14 · 三态随档，见 `state.ts` 字段注释）：
+   * `true` = 真发生过；`false` = 新档（必须落键，否则读回来会被当成老档）；**缺失 = 老档**（保持缺失，
+   * 由触发器用 `encounterZoneCooldown` 那点痕迹判"到底触发过没有"）。
+   */
+  const ambushRetreatSeen =
+    src.ambushRetreatSeen === true ? true : src.ambushRetreatSeen === false ? false : undefined
 
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
@@ -3046,6 +3054,8 @@ function normalizeState(raw: unknown): GameState {
     commsDelivered,
     commsPopups,
     commsRead,
+    // 因低安袭击自动撤离（true/false 都落键；缺失保持缺失 = 老档，交给触发器按痕迹判定）
+    ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,
     rareBoxesOpened,
