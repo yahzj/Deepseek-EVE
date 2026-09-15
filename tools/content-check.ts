@@ -157,6 +157,16 @@ securityZoneOf,
   WORMHOLE_AUTO_ARCHETYPE_WEIGHTS,
   WORMHOLE_FAMILY_ORDER,
   WORMHOLE_FAMILY_CARD,
+  // 2026-09-15 洞内敌卡扩充：一族三档 / 出场池 / 分层血量修正 / 族定选靶
+  WORMHOLE_FAMILY_CARDS,
+  WORMHOLE_CARD_TIERS,
+  WORMHOLE_TIER_HP_MUL,
+  WORMHOLE_TIER_UNLOCK_DEPTH,
+  WORMHOLE_FAMILY_TARGETING,
+  WORMHOLE_FAMILY_TARGETING_CHANCE,
+  wormholeCardPoolAt,
+  wormholeAllCardIds,
+  wormholeTierOfCard,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   DSI_FACTION_ID,
 } from '@whale/core'
@@ -3828,7 +3838,17 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
    * ⚠ 审计的是"标注"这一层；**入口走调试开关**这层没法在这里自动核（见 `panels/Wormhole.tsx` 头注释）。
    */
   {
-    const whIds = ['wh-pirate-scout', 'wh-alien-swarm', 'wh-grave-watch', 'wh-exile-blockade', 'wh-titan-echo']
+    const whIds = [
+      // 浅层五张（2026-09-13）
+      'wh-pirate-scout',
+      'wh-alien-swarm',
+      'wh-grave-watch',
+      'wh-exile-blockade',
+      'wh-titan-echo',
+      // 中/深（2026-09-15 洞内敌卡扩充 · 批 1 = A 族两张；后续批次按 data 表顺序追加）
+      'wh-pirate-hunt',
+      'wh-pirate-warband',
+    ]
     // **轮换表的双向契约**（2026-09-13 补第五张时加）：内容侧这张清单、data 的 `WORMHOLE_FOE_CARDS`
     // 与 core 的 `WORMHOLE_FOE_CARD_IDS` **三处必须逐字同序** —— 少一张/换序都会让"按族掉落池"
     // 取错卡（掉落物跟着族走，错一张就是整族拿不到东西）。
@@ -3882,6 +3902,78 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         }
         if (card.foeFamily !== f) {
           errors.push(`敌族锁定：卡 ${cardId} 的 foeFamily = ${String(card.foeFamily)}，与族 ${f} 不符（1:1 契约）`)
+        }
+      }
+      /* **一族三档契约**（船长 2026-09-15：「增加敌人的配置种类和敌族新舰船」＋「选靶按照族限定」＋
+       * 「浅层中层深层分别定为 1/2/4 层开始出现」＋「层 2~3 出场抽取按照 2:1 抽。层 4+ 按照 2:1：1 抽」＋
+       * 「中层配置血量*1.1.深层配置血量*1.2」）——本段是这些裁定的**体检哨**：
+       * ① 档位表与卡清单**同集合**（少一张/多一张都算漂移；缺档是"还没做"，允许 `null`）；
+       * ② 每张卡的 `foeFamily` = 它所在族的族字母（错一张 ⇒ 整族掉落池拿错东西）；
+       * ③ **选靶按族限定**：卡面模式与概率必须等于族定值（随机族不许写概率）；
+       * ④ 出场层 / 出场权重 / 分层血量修正 = 裁定值（读 core 常量，防两处漂移）。 */
+      {
+        const tiered = wormholeAllCardIds()
+        if (new Set(tiered).size !== tiered.length) {
+          errors.push(`一族三档：档位表里有重复卡 id（同一张卡占了两个档位）`)
+        }
+        for (const id of tiered) {
+          if (!whIds.includes(id)) errors.push(`一族三档：档位表里的卡 ${id} 不在洞内清单（三处清单必须一致）`)
+        }
+        for (const id of whIds) {
+          if (!tiered.includes(id)) errors.push(`一族三档：洞内清单里的卡 ${id} 没进档位表（不知道该在第几层出场）`)
+        }
+        for (const f of WORMHOLE_FAMILY_ORDER) {
+          for (const t of WORMHOLE_CARD_TIERS) {
+            const id = WORMHOLE_FAMILY_CARDS[f][t]
+            if (id === null) continue
+            const card = ANOMALIES_FLAVORED.find((x) => x.id === id)
+            if (!card) continue // 已由上面的"清单一致性"报出
+            if (card.foeFamily !== f) errors.push(`一族三档：卡 ${id}（族 ${f} · ${t} 档）的 foeFamily = ${String(card.foeFamily)}`)
+            if (wormholeTierOfCard(id) !== t) errors.push(`一族三档：卡 ${id} 的档位反查结果不是 ${t}`)
+            const wantMode = WORMHOLE_FAMILY_TARGETING[f]
+            const gotMode = card.foeTargeting ?? 'random'
+            if (gotMode !== wantMode) {
+              errors.push(`族定选靶：卡 ${id}（族 ${f}）的模式是 ${gotMode}，应为 ${wantMode}（船长「选靶按照族限定」）`)
+            }
+            if (wantMode === 'random') {
+              if (card.foeTargetingChance !== undefined) {
+                errors.push(`族定选靶：卡 ${id} 是随机模式，不该写 foeTargetingChance（写了也按 1 处理）`)
+              }
+            } else if (card.foeTargetingChance !== WORMHOLE_FAMILY_TARGETING_CHANCE) {
+              errors.push(
+                `族定选靶：卡 ${id} 的倾向概率 ${String(card.foeTargetingChance)} ≠ ${WORMHOLE_FAMILY_TARGETING_CHANCE}（船长 2026-09-14 定的 0.4）`,
+              )
+            }
+          }
+        }
+        // ④ 出场层 / 权重 / 分层血量修正（读 core 常量）
+        const wantUnlock: Record<string, number> = { shallow: 1, mid: 2, deep: 4 }
+        for (const t of WORMHOLE_CARD_TIERS) {
+          if (WORMHOLE_TIER_UNLOCK_DEPTH[t] !== wantUnlock[t]) {
+            errors.push(`出场层：${t} 档从第 ${WORMHOLE_TIER_UNLOCK_DEPTH[t]} 层起，应为第 ${wantUnlock[t]} 层（船长「1/2/4 层开始出现」）`)
+          }
+        }
+        const wantHp: Record<string, number> = { shallow: 1, mid: 1.1, deep: 1.2 }
+        for (const t of WORMHOLE_CARD_TIERS) {
+          if (Math.abs(WORMHOLE_TIER_HP_MUL[t] - wantHp[t]) > 1e-9) {
+            errors.push(`分层血量修正：${t} 档 ×${WORMHOLE_TIER_HP_MUL[t]}，应为 ×${wantHp[t]}（船长「中层 *1.1 · 深层 *1.2」）`)
+          }
+        }
+        const wantWeights: Array<[number, Record<string, number>]> = [
+          [1, { shallow: 1 }],
+          [2, { shallow: 1, mid: 2 }],
+          [3, { shallow: 1, mid: 2 }],
+          [4, { shallow: 1, mid: 1, deep: 2 }],
+          [9, { shallow: 1, mid: 1, deep: 2 }],
+        ]
+        for (const [depth, want] of wantWeights) {
+          // 用"全档齐备"的族（A 族）读权重 ⇒ 测的是权重口径本身，不是某族的缺档兜底
+          const got = Object.fromEntries(wormholeCardPoolAt('A', depth).map((e) => [e.tier, e.weight]))
+          if (JSON.stringify(got) !== JSON.stringify(want)) {
+            errors.push(
+              `出场权重：层 ${depth} 的池权重 ${JSON.stringify(got)}，应为 ${JSON.stringify(want)}（船长「层 2~3 = 2:1 · 层 4+ = 2:1:1」）`,
+            )
+          }
         }
       }
     }

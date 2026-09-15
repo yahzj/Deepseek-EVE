@@ -34,7 +34,7 @@ import type {
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
-import { WORMHOLE_FOE_BASE_STRENGTH_MUL, wormholeAnomalyOf } from './wormholeFoes'
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_HP_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
 import { wormholeFoeThreat } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
@@ -2923,16 +2923,24 @@ export function wormholeDerivedAnomaly(
    * 入参只由 `(卡 id, 层, 用途, 波数, 强度覆写, 谜质三项)` 决定 ⇒ **同键复用上一份**（调用方都只读不写）。
    */
   const threatMul = spec.threatMul ?? 1
+  /**
+   * **分层血量修正**（船长 2026-09-15：「中层配置血量*1.1.深层配置血量*1.2」）：
+   * 档位由**卡 id 反查**（`wormholeTierOfCard`）⇒ 不进存档、老档零迁移；
+   * 查不到（不是洞内卡）⇒ 1（= 与旧口径逐字一致）。
+   */
+  const tierHpMul = WORMHOLE_TIER_HP_MUL[wormholeTierOfCard(baseCard.id) ?? 'shallow']
   const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
-  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierHpMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
   if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
   const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
-    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）
+    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）；
+    // **分层修正**（浅/中/深）只乘血、不乘火力 —— 由 `hpScaleMul` 在派生端拆开
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
       WORMHOLE_FOE_BASE_STRENGTH_MUL *
       threatMul,
+    hpScaleMul: tierHpMul,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
   /**

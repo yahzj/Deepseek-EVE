@@ -21,20 +21,29 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet, pilotUnavailableReason } from '../src/shipyard'
 import { addWare, countWare } from '../src/inventory'
-import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat, foeShipTierOf, foeUnitNameOf } from '../src/combat'
+import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat, foeShipTierOf, foeUnitNameOf, wormholeDerivedAnomaly } from '../src/combat'
 import { battleTacticDesire } from '../src/expedition'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_BOSS_TARGETING_CHANCE,
+  WORMHOLE_CARD_TIERS,
+  WORMHOLE_FAMILY_ORDER,
+  WORMHOLE_FAMILY_TARGETING,
+  WORMHOLE_FAMILY_TARGETING_CHANCE,
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_ORE_ITEM_ID,
   WORMHOLE_TEMP_CELLS,
   WORMHOLE_TEMP_COLS,
+  WORMHOLE_TIER_HP_MUL,
+  WORMHOLE_TIER_UNLOCK_DEPTH,
+  wormholeAllCardIds,
   wormholeAnomalyOf,
   wormholeBagSlots,
   wormholeBagUsage,
-  wormholeCardIdFor,
+  wormholeCardIdForRun,
   wormholeCardIdOfFamily,
+  wormholeCardOfTier,
+  wormholeCardPoolAt,
   wormholeDescend,
   wormholeEnter,
   wormholeExtract,
@@ -43,6 +52,7 @@ import {
   wormholeFoeThreat,
   wormholeLayerThreat,
   wormholeNaturalHp,
+  wormholeTierOfCard,
 } from '../src/wormhole'
 import { advanceWormhole, battleFoeAnomaly, wormholeActivateAt, wormholeBattleViewOf, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import type { WormholeRunState } from '../src/wormhole'
@@ -144,27 +154,121 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     expect(wormholeExtractThreat(8)).toBeLessThan(Math.round(wormholeLayerThreat(8) * 0.8))
   })
 
-  it('五张洞内敌卡按 (层, 节点) 确定性轮换，且五族（A/C/D/E/G）都真实存在于目录里', () => {
-    const ids = new Set<string>()
-    for (let d = 1; d <= 5; d++) {
-      for (let i = 0; i < 3; i++) {
-        const id = wormholeCardIdFor(d, i)
-        ids.add(id)
-        expect(wormholeCardIdFor(d, i)).toBe(id) // 确定性
+  it('敌卡按「族锁 + 层档位池」确定抽取：层 1 只浅 / 层 2~3 中2:浅1 / 层 4+ 深2:中1:浅1；守卫取最深已解锁档', () => {
+    const weightsOf = (depth: number): Record<string, number> =>
+      Object.fromEntries(wormholeCardPoolAt('A', depth).map((e) => [e.tier, e.weight]))
+    // 船长 2026-09-15：「层 2~3出场抽取按照2:1抽。层4+出场抽取按照2:1：1抽」
+    expect(weightsOf(1)).toEqual({ shallow: 1 })
+    expect(weightsOf(2)).toEqual({ shallow: 1, mid: 2 })
+    expect(weightsOf(3)).toEqual({ shallow: 1, mid: 2 })
+    expect(weightsOf(4)).toEqual({ shallow: 1, mid: 1, deep: 2 })
+    expect(weightsOf(9)).toEqual({ shallow: 1, mid: 1, deep: 2 })
+    // 出场层（船长：「浅层中层深层分别定为 1/2/4 层开始出现」）
+    expect(WORMHOLE_TIER_UNLOCK_DEPTH).toEqual({ shallow: 1, mid: 2, deep: 4 })
+    // 层末守卫 = 该层最深已解锁档
+    expect(wormholeCardIdForRun({ family: 'A', seed: 7, depth: 1, kind: 'boss' })).toBe('wh-pirate-scout')
+    expect(wormholeCardIdForRun({ family: 'A', seed: 7, depth: 3, kind: 'boss' })).toBe('wh-pirate-hunt')
+    expect(wormholeCardIdForRun({ family: 'A', seed: 7, depth: 4, kind: 'boss' })).toBe('wh-pirate-warband')
+    // 节点抽取：只出该层池内的卡、同 (种子,层,序号) 恒同、深层三档都见过
+    const seenAt4 = new Set<string>()
+    for (let d = 1; d <= 8; d++) {
+      for (let i = 0; i < 8; i++) {
+        for (const seed of [1, 2, 3, 11, 97]) {
+          const spec = { family: 'A' as const, seed, depth: d, kind: 'node' as const, nodeIndex: i }
+          const id = wormholeCardIdForRun(spec)
+          expect(wormholeCardIdForRun(spec)).toBe(id) // 确定性
+          expect(wormholeCardPoolAt('A', d).map((e) => e.id)).toContain(id)
+          if (d >= 4) seenAt4.add(id)
+        }
       }
     }
-    expect(ids.size).toBe(WORMHOLE_FOE_CARD_IDS.length) // 轮换覆盖全部五张
-    expect(WORMHOLE_FOE_CARD_IDS.length).toBe(5) // A/C/D/E/G 各一张（2026-09-13 补 E 族）
-    const families = new Set<string>()
-    for (const id of WORMHOLE_FOE_CARD_IDS) {
-      const card = ctx.anomalies.get(id)
-      expect(card, `目录里没有洞内敌卡 ${id}`).toBeTruthy()
-      expect(card!.hidden).toBe(true) // 施工期必须隐藏（不进悬赏目录）
-      expect((card!.ships ?? []).length).toBeGreaterThan(0) // 舰级路径
-      families.add(String(card!.foeFamily))
+    expect([...seenAt4].sort()).toEqual(['wh-pirate-hunt', 'wh-pirate-scout', 'wh-pirate-warband'])
+    // 层 1 绝不会撞上中/深层编成
+    for (let i = 0; i < 8; i++) {
+      for (const seed of [1, 5, 9]) {
+        expect(wormholeCardIdForRun({ family: 'A', seed, depth: 1, kind: 'node', nodeIndex: i })).toBe(
+          'wh-pirate-scout',
+        )
+      }
     }
-    // 五族齐 ⇒ 按族掉落池"每族都有来源"（船长 2026-09-13：专属掉落与蓝图都按种族库走）
-    expect([...families].sort()).toEqual(['A', 'C', 'D', 'E', 'G'])
+  })
+
+  it('缺档兜底：某族还没做出中/深卡时，池退回现有最深一张（分批上线期间照样能开战）', () => {
+    // C 族此刻只有浅层卡（中/深随批 2 补）⇒ 层 2~9 仍只出浅层卡，不会开不出战
+    expect(wormholeCardPoolAt('C', 1).map((e) => e.tier)).toEqual(['shallow'])
+    expect(wormholeCardPoolAt('C', 5).map((e) => e.tier)).toEqual(['shallow'])
+    expect(wormholeCardIdForRun({ family: 'C', seed: 3, depth: 6, kind: 'node', nodeIndex: 2 })).toBe('wh-alien-swarm')
+    expect(wormholeCardIdForRun({ family: 'C', seed: 3, depth: 6, kind: 'boss' })).toBe('wh-alien-swarm')
+    // 五族各有浅层卡（按族掉落池"每族都有来源"的前提）
+    for (const f of WORMHOLE_FAMILY_ORDER) {
+      expect(wormholeCardOfTier(f, 'shallow'), `族 ${f} 缺浅层卡`).toBeTruthy()
+    }
+  })
+
+  it('族表 / 卡 id 清单 / 目录三处一致：每张卡恰属一族一档、不串族、浅层五张仍是旧 id', () => {
+    const listed = new Set(WORMHOLE_FOE_CARD_IDS)
+    const tiered = wormholeAllCardIds()
+    expect(new Set(tiered)).toEqual(listed) // 两张表同集合（少一张/多一张都算漂移）
+    expect(tiered.length).toBe(listed.size) // 同一张卡不得占两个档位
+    let count = 0
+    for (const f of WORMHOLE_FAMILY_ORDER) {
+      for (const t of WORMHOLE_CARD_TIERS) {
+        const id = wormholeCardOfTier(f, t)
+        if (id === null) continue
+        count++
+        const card = ctx.anomalies.get(id)
+        expect(card, `目录里没有洞内敌卡 ${id}`).toBeTruthy()
+        expect(card!.hidden).toBe(true) // 不进悬赏目录
+        expect(String(card!.foeFamily), `${id} 的族`).toBe(f)
+        expect((card!.ships ?? []).length).toBeGreaterThan(0) // 舰级路径
+        expect(wormholeTierOfCard(id), `${id} 的档位`).toBe(t)
+        // **选靶按族限定**（船长 2026-09-15）：模式与概率都必须等于族定值
+        expect(card!.foeTargeting ?? 'random', `${id} 的选靶模式`).toBe(WORMHOLE_FAMILY_TARGETING[f])
+        if (WORMHOLE_FAMILY_TARGETING[f] === 'random') {
+          expect(card!.foeTargetingChance, `${id} 随机模式不该写概率`).toBeUndefined()
+        } else {
+          expect(card!.foeTargetingChance, `${id} 的选靶概率`).toBe(WORMHOLE_FAMILY_TARGETING_CHANCE)
+        }
+      }
+    }
+    expect(count).toBe(tiered.length)
+    // 五族齐 ⇒ 按族掉落池"每族都有来源"（船长 2026-09-13）
+    expect([...WORMHOLE_FAMILY_ORDER].sort()).toEqual(['A', 'C', 'D', 'E', 'G'])
+    // 浅层五张 = 2026-09-13 的旧 id（老档零迁移的锚：存档里进行中的战斗用的就是它们）
+    expect(WORMHOLE_CARD_TIERS.map((t) => wormholeCardOfTier('A', t))).toEqual([
+      'wh-pirate-scout',
+      'wh-pirate-hunt',
+      'wh-pirate-warband',
+    ])
+    expect(['wh-alien-swarm', 'wh-grave-watch', 'wh-exile-blockade', 'wh-titan-echo'].every((id) => listed.has(id))).toBe(
+      true,
+    )
+  })
+
+  it('分层血量修正：中 ×1.1 / 深 ×1.2，**只加血不加火力**（同层同档总血恒等）', () => {
+    const base = ctx.anomalies.get('wh-pirate-scout')!
+    const natural = wormholeNaturalHp(base)
+    const shallow = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3 })
+    const mid = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3, hpScaleMul: WORMHOLE_TIER_HP_MUL.mid })
+    const deep = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3, hpScaleMul: WORMHOLE_TIER_HP_MUL.deep })
+    expect(wormholeNaturalHp(shallow)).toBeCloseTo(natural * 3, 3)
+    expect(wormholeNaturalHp(mid)).toBeCloseTo(natural * 3 * 1.1, 3)
+    expect(wormholeNaturalHp(deep)).toBeCloseTo(natural * 3 * 1.2, 3)
+    // 单发缩放（= dmgMul）不随分层修正变：只加血、不加火力
+    const dmgScale = (a: ReturnType<typeof wormholeAnomalyOf>): number => a.ships?.[0]?.dmgMul ?? 1
+    expect(dmgScale(mid)).toBeCloseTo(dmgScale(shallow), 9)
+    expect(dmgScale(deep)).toBeCloseTo(dmgScale(shallow), 9)
+    expect(WORMHOLE_TIER_HP_MUL).toEqual({ shallow: 1, mid: 1.1, deep: 1.2 })
+  })
+
+  it('引擎按卡 id 反查档位：同层同用途下，中层卡总血 = 浅层 ×1.1、深层 = 浅层 ×1.2（火力口径不变）', () => {
+    const cards = WORMHOLE_CARD_TIERS.map((t) => ctx.anomalies.get(wormholeCardOfTier('A', t)!)!)
+    const totalAt = (card: (typeof cards)[number]): number =>
+      wormholeNaturalHp(wormholeDerivedAnomaly(ctx, card, { depth: 4, kind: 'node', waves: 1 }))
+    const shallow = totalAt(cards[0]!)
+    // 按卡归一后：总血 = 该层预算 × 档位系数 ⇒ 卡间差异只剩档位（同层同档恒等）
+    expect(totalAt(cards[1]!) / shallow).toBeCloseTo(1.1, 3)
+    expect(totalAt(cards[2]!) / shallow).toBeCloseTo(1.2, 3)
   })
 
   it('派生：威胁换成目标值、**总血压到该层预算**（按卡归一）；**波数摊薄但总战力守恒**', () => {
@@ -474,7 +578,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     run.depth = 2 // 第 2 层起才有撤离战（第 1 层免战那条另有用例）
     run.bossCleared = run.depth
     // 直接用「装舱」入位（等价从格上拾取：占 2×2 = 4 格）
-    const family = String(ctx.anomalies.get(wormholeCardIdFor(run.depth, 0))?.foeFamily ?? 'A')
+    const family = String(ctx.anomalies.get(wormholeCardIdForRun({ family: run.family, seed: run.seed, depth: run.depth, kind: 'node', nodeIndex: 0 }))?.foeFamily ?? 'A')
     const boxId = wormholeRelicBoxIdOf(family)
     expect(wormholeHoldStow(state, ctx, boxId).ok).toBe(true)
     expect(countWare(state, boxId)).toBe(0)
@@ -549,7 +653,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
     run.bossCleared = run.depth
-    const family = String(ctx.anomalies.get(wormholeCardIdFor(run.depth, 0))?.foeFamily ?? 'A')
+    const family = String(ctx.anomalies.get(wormholeCardIdForRun({ family: run.family, seed: run.seed, depth: run.depth, kind: 'node', nodeIndex: 0 }))?.foeFamily ?? 'A')
     const boxId = wormholeRelicBoxIdOf(family)
     expect(wormholeHoldStow(state, ctx, boxId).ok).toBe(true)
     run.fleet = [] // 掏空编队记录 ⇒ 撤离战建不出来（与「无船撤离」那条同款造法）

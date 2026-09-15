@@ -14,7 +14,9 @@
  *
  * 口径（与引擎同源，不另存一份）：
  * - 威胁：`wormholeLayerThreat(depth)`（层 1 = 45、每层 ×1.16）；BOSS ×1.2、撤离战 ×0.8；
- * - 敌卡：`wormholeCardIdFor(depth, nodeIndex)` 四族轮换 —— 本工具按"每层逐节点"取，故与实战一致；
+ * - 敌卡：`wormholeCardIdForRun({ depth, kind, nodeIndex })` —— **族锁 + 该层档位池**
+ *   （层 1 只浅 / 层 2~3 中 2 : 浅 1 / 层 4+ 深 2 : 中 1 : 浅 1；守卫取最深已解锁档），
+ *   与实战同一取值点；**分层血量修正**（浅 ×1 / 中 ×1.1 / 深 ×1.2）由引擎按卡 id 反查自动带上；
  * - 拾取收益：按**该 seed 真实生成的节点表**（拾取点 + 每堆单位数）求和，再乘**虚空母矿基础价**
  *   （`baseSellPriceIsk`，不走市场供需），即"按基础价的毛收益"；
  * - 参考编队：**4× T3 长尾鲨导弹巡（5×导弹 MK3 + 支援件）**，技能 = 战斗系 Lv3（= `battle-calibrate`
@@ -46,7 +48,7 @@ import {
   WORMHOLE_FOE_CARD_IDS,
   WORMHOLE_ORE_ITEM_ID,
   wormholeAdvanceNode,
-  wormholeCardIdFor,
+  wormholeCardIdForRun,
   wormholeDescend,
   wormholeEnter,
   wormholeExtract,
@@ -216,7 +218,10 @@ function runOneBattle(
   fit: RefFit = 'full',
 ): Cell {
   const { state, uids } = makeFleet(seed, fit)
-  const cardId = cardIndex === undefined ? wormholeCardIdFor(depth, nodeIndex) : WORMHOLE_FOE_CARD_IDS[cardIndex]!
+  const cardId =
+    cardIndex === undefined
+      ? wormholeCardIdForRun({ depth, kind, nodeIndex })
+      : WORMHOLE_FOE_CARD_IDS[cardIndex]!
   const battle = startFleetBattleFor(state, ctx, uids, cardId, 0, null, { depth, kind, waves: WAVES, strengthMul: STRENGTH })
   if (!battle) return { won: 0, n: 1, sec: 0, hpFrac: 0 }
   const meTags = (battle.myFleet ?? []).map((e) => e.tag)

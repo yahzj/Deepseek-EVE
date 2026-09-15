@@ -694,7 +694,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(32); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）
+    expect(checked).toBe(34); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张**（2026-09-15）
     // ⚠ 2026-09-12（P-43 舰级补完）起**全表 27 张敌军卡都在舰级路径**：G 族三卡迁入 +「废弃 F 族」
     //   的四张隐藏遭遇模板（`enc-pirate-1..4`）也迁入 A 族舰级 ⇒ **旧威胁推导路径再无真实卡**。
   })

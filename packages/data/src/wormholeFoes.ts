@@ -4,8 +4,12 @@
  * 口径来源：`docs/design/wormhole-extraction-endgame-20260912.md`
  * §3（节点与层末 BOSS）· §8「层末 BOSS = 复用舰级表」· §10 F 批。
  *
- * **五张卡 = 五个族的洞内常驻编成**（A 海盗 / C 异形 / D 守墓 / E 巨构 / G 鱿烬），一卡一图层轮换
- * （`wormholeCardIdFor(depth, nodeIndex)`，确定性）。
+ * **五族各三档 = 15 张**（A 海盗 / C 异形 / D 守墓 / E 巨构 / G 鱿烬，每族浅/中/深各一）：
+ * **一处虫洞锁一族、整趟同族**（船长 2026-09-14 定案 · 丁），
+ * **用哪一档**由该层层档位池决定（船长 2026-09-15：层 1 只浅 / 层 2~3 中 2 : 浅 1 /
+ * 层 4+ 深 2 : 中 1 : 浅 1），取值点 = core 的 `wormholeCardIdForRun`。
+ * ⚠ **分批落码**：本表先出浅层五张（2026-09-13 的旧 id 与卡名一律不动），中/深随批次补齐；
+ * 缺档由 `wormholeCardPoolAt` 自动跳过（详见 `docs/design/wormhole-foe-variety-20260915.md`）。
  *
  * ⚠ **2026-09-13 补第五张（E 族）**：船长裁定「**虫洞专属掉落按种族库走，蓝图也是按种族库。
  * 你顺便补上空缺的种族。**」——五族掉落池要"每族都有来源"，而洞内原本只有四张卡（缺 E）⇒ 见下方
@@ -36,6 +40,9 @@ import {
   FOE_G_SWARM_SKIFF,
   FOE_SHIP_AURO_HULK,
   FOE_SHIP_PIRATE_CORVETTE,
+  FOE_SHIP_PIRATE_SKIFF,
+
+  FOE_SHIP_PIRATE_WARLORD,
 } from './foe-ships'
 
 /** 洞内敌卡的缩放锚点威胁（= core `WORMHOLE_THREAT_BASE`，第 1 层基准） */
@@ -168,9 +175,71 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     hidden: true,
     description: '虫洞内遭遇：一截仍在放电的巨构残骸及其警戒机群（隐藏卡，只由虫洞生成）。',
   },
+  /* ══════════ 2026-09-15 扩充：一族三档（浅/中/深）· A 族中/深两张 ══════════
+   * 船长：「增加敌人的配置种类和敌族新舰船。」＋「选靶按照族限定。」＋
+   * 「层 2~3出场抽取按照2:1抽。层4+出场抽取按照2:1：1抽。」＋「中层配置血量*1.1.深层配置血量*1.2」
+   * 口径与分批见设计稿 `docs/design/wormhole-foe-variety-20260915.md`。 */
+  {
+    id: 'wh-pirate-hunt',
+    foeFamily: 'A',
+    name: '劫掠围猎',
+    galaxyId: 'galaxy-hub', // 只作日志/展示的星系归属；本卡不进任何星系目录（hidden）
+    threat: ANCHOR_THREAT,
+    // **选靶按族限定**（船长 2026-09-15）：A 族一律「抢非战斗船」——同族三张卡同模式同概率
+    foeTargeting: 'noncombat',
+    foeTargetingChance: 0.4,
+    // 卡面构成 = 主系动能 8 : 副系爆炸 2（A 族签名）
+    dmgMix: { kinetic: 8, explosive: 2 },
+    // 编成 = 劫掠护卫舰 ×2（orbit 环绕，speedMul 0.9 与浅层卡同口径）+ 海盗快艇 ×1（brawl 贴脸扑上来）
+    // ⚠ **为什么不用劫掠狙击舰**：狙击舰是 `kite`（实速 325 ⇒ 比率 1.11×），而**隐藏卡**在体检里
+    //   走的是**战术带**（kite 0.60~0.85）而不是 A 族全族提速带 ⇒ 必红；要留它就得给它压 `speedMul`
+    //   （与船长「A 族速度都快（方便突袭）」的族格相冲突）⇒ 改用同族两条本就合法的舰级。
+    //   狙击舰仍服务悬赏线（`ano-redring-raiders` 等），不是"没用上"。
+    // ⚠ **条目覆写构成**：快艇舰级自带的是「爆炸 8 : 动能 2」（缴获弹药口径），
+    //   本卡按 A 族签名统一成动能 8 : 2 ⇒ 契约「卡面 = 每条主体的有效构成」由这条覆写满足
+    //   （这正是「想配异质编成时写条目覆写、不让卡面失真」的既有正解）。
+    ships: [
+      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, speedMul: 0.9 },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, dmgMix: { kinetic: 8, explosive: 2 } },
+    ],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 50,
+    hidden: true,
+    description: '虫洞内遭遇：一近一远互相掩护的劫掠围猎队（隐藏卡，只由虫洞生成）。',
+  },
+  {
+    id: 'wh-pirate-warband',
+    foeFamily: 'A',
+    name: '海盗战团',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    foeTargeting: 'noncombat',
+    foeTargetingChance: 0.4,
+    dmgMix: { kinetic: 8, explosive: 2 },
+    // 编成 = 海盗头目舰 ×1（brawl 精锐）+ 海盗快艇 ×3（brawl 贴脸）——A 族悬赏线的经典"头目 + 杂鱼 ×3"
+    // ⚠ 快艇舰级自带「爆炸 8 : 动能 2」⇒ 同前，条目覆写回本卡签名构成
+    ships: [
+      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1 },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 3, dmgMix: { kinetic: 8, explosive: 2 } },
+    ],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 60,
+    hidden: true,
+    description: '虫洞内遭遇：头目亲自压阵的海盗战团（隐藏卡，只由虫洞生成）。',
+  },
 ]
 
-/** 轮换用的卡 id 表（顺序即轮换顺序；core 侧按 `(depth, nodeIndex)` 确定性取用） */
+/** 逐卡 id 表（顺序 = 本表数组顺序；**三处必须逐字同序**：本表 / core 的 `WORMHOLE_FOE_CARD_IDS` /
+ *  `content:check` 的洞内清单 —— 体检有契约钉住）。
+ *
+ * 2026-09-15 扩充后：每族浅/中/深三档（浅层五张在最前，旧索引不变）。
+ * **取哪一张**由 core 的 `wormholeCardIdForRun`（族锁 + 层档位池）决定，不再是全表轮换。 */
 export const WORMHOLE_FOE_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARDS.map((c) => c.id)
 
 /**
