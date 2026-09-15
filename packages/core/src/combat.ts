@@ -1217,8 +1217,9 @@ function foeSpeedBase(threat: number, bal: BattleBalance): number {
  * ⚠ **2026-09-12 船长裁定「解除血量钳制，改为火力限制」**：
  * 旧式是 `t = min(1, (T − floor) / span)` ⇒ **威胁 ≥ 96 血量一律冻结在 1152**（威胁 100/150/300 全同），
  * 而敌火力 `威胁 × foeDpsPerThreat` 却线性不封顶 ⇒ 抬威胁只会得到"更脆更毒"的敌人。
- * 故此处**去掉 `min(1, …)`**：血量随威胁继续增长；火力改由 `BattleBalance.foeDpsCap`（**150 DPS**，
- * 见 `foeDpsCapScaleOf`）封顶；**速度与射程成长的钳制保留**（`foeRefSpeedMps` / `growT`，避免敌人"又快又远又硬"）。
+ * 故此处**去掉 `min(1, …)`**：血量随威胁继续增长；火力由 `BattleBalance.foeDpsCap`（**150 DPS**，
+ * 2026-09-15 起为**「超出部分 15% 折扣」**而非硬封顶，见 `foeDpsCapScaleOf`）收敛；
+ * **速度与射程成长的钳制保留**（`foeRefSpeedMps` / `growT`，避免敌人"又快又远又硬"）。
  *
  * **对现有内容的影响（实测）**：全表 27 张卡威胁 ≤ 96 ⇒ `t ≤ 1` ⇒ **逐字零变化**；
  * 受影响的是**窝点派生档**（`LAIR_THREAT_MUL` 1.3/1.6/2.0 会把高威胁卡的派生威胁推到 96 以上）
@@ -1514,20 +1515,26 @@ function droneFireSplitOf(
 }
 
 /**
- * **敌舰体火力上限**（2026-09-12 船长：「按照 DPS 上限 150 算」）——舰级路径按**整卡舰体总 DPS** 封顶。
+ * **敌舰体火力的「越线折扣」**（2026-09-12 船长「按照 DPS 上限 150 算」→ **2026-09-15 船长改判**：
+ * 「**不是钳制到150，而是超过150的部分进行一个约15%的折扣**」）——舰级路径按**整卡每波舰体总 DPS** 判线。
  *
- * 口径（全部经实测确认）：
+ * 口径（判线三条全部经实测确认，本次未动）：
  * - **只算舰体武器组**（每条目 `ship.shotDmg × dmgMul × 多舰补偿` ÷ `ship.reloadMs` 秒）；
  *   **不含机群**（机群另有受击增程 / 备用机库 / A5 守恒三套机制，且船长已裁定不吃多舰补偿）；
  * - **不含被 `droneFireShare` / `firepowerAnchor` 拆分的条目**——那条链自带总火力锚定，
- *   再钳制会让锚点失准（`droneFireSplitOf` 内部已含补偿，钳制与外层缩放会打架）；
+ *   再缩放会让锚点失准（`droneFireSplitOf` 内部已含补偿，外层缩放会与它打架）；
  * - 单发是整数 ⇒ 逐条取整后再求和，越线时**全卡舰体单发等比例缩放**（保持各条目相对权重）。
  *
- * 现值 150 与现有卡的关系（实测）：27 张卡**全部未越线**（最高 = 虚海守望者 131.25 DPS）
- * ⇒ **零行为变化**。每单位威胁触顶值 = `150 ÷ 0.8 ÷ 补偿` ⇒ N=1 **187.5** · N=3 **125** ·
- * N=4 **117.2** · N=11 **102.3** ——将来的多单位高威胁卡会先撞上它。
+ * **折扣公式（替代首版的硬钳制）**：`D > 阈值` 时目标 `D′ = 阈值 + (D − 阈值) × (1 − 折扣率)`，
+ * 缩放系数 `= D′ / D` ⇒ **不封顶**，`D → ∞` 时 `D′ ≈ 0.85 × D`（斜率由 1 降为 0.85）。
  *
- * `foeDpsCap` 未写或非正 ⇒ 返回 1（不钳制，零行为变化）。
+ * 现值（`150 / 0.15`，实测）：**洞外 27 张基础卡全部未越线**（最高 = 虚海守望者 131.3 DPS）⇒ 逐字不变；
+ * 越线的是**窝点派生档**（穹顶 L1/2/3 164.8/203.1/253.2 · 虚海 L1/2 170.3/210.0 · 噬口 L2/3 172.3/215.5
+ * ⇒ 折扣后 162.7/195.2/237.8 · 167.3/201.0 · 169.3/205.5）**与虫洞派生**（层 1 起陆续越线：
+ * 深层 node 最高 1,234.5 → 1,071.8、boss 1,665.8 → 1,438.5）——虫洞按船长「都生效」一并吃折扣。
+ *
+ * `foeDpsCap` 或 `foeDpsOverCapDiscount` **任一未写 / 非正 ⇒ 返回空表**（不缩放，零行为变化；
+ * ⚠ 折扣率 0 **不会**退回旧硬钳制语义）。
  */
 function foeHullDpsOf(ship: FoeShipDef, dmgMul: number, comp: number, bal: BattleBalance): number {
   const per = Math.max(1, Math.round(ship.shotDmg * dmgMul * comp))
@@ -1543,7 +1550,8 @@ function foeDpsCapScaleOf(
 ): Map<FoeShipSlot, number> {
   const out = new Map<FoeShipSlot, number>()
   const cap = bal.foeDpsCap
-  if (cap === undefined || !(cap > 0)) return out
+  const discount = bal.foeDpsOverCapDiscount ?? 0
+  if (cap === undefined || !(cap > 0) || !(discount > 0)) return out
   const seen = new Set<FoeShipSlot>()
   const bySlot = new Map<FoeShipSlot, number[]>()
   for (let i = 0; i < units.length; i++) {
@@ -1560,7 +1568,11 @@ function foeDpsCapScaleOf(
     total += idxs.length * foeHullDpsOf(slot.ship, slot.dmgMul ?? 1, comp, bal)
   }
   if (total <= cap) return out
-  const scale = cap / total
+  // 越线**只对超出部分**打折（2026-09-15 船长：「不是钳制到150，而是超过150的部分进行一个约15%的折扣」）：
+  //   目标 D′ = 阈值 + (D − 阈值) × (1 − 折扣率) ⇒ **不封顶**，火力仍随威胁继续增长。
+  // ⚠ 折扣率封在 1 以内（= 旧硬钳制语义）；0 已被上面的开关挡住 ⇒ **0 = 关闭、不退回硬钳制**。
+  const target = cap + (total - cap) * (1 - Math.min(1, discount))
+  const scale = target / total
   for (const slot of seen) out.set(slot, scale)
   return out
 }
@@ -1575,8 +1587,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
   // 逐条取整），再拆成「机群 D = round(T×s)」与「炮台 G = T−D」（两侧各保底 1/架、1/单位）。
   // 未写 s 的条目一律 `null` ⇒ 下面走旧算法（**零行为变化**）。
   const fireSplit = droneFireSplitOf(units, comp)
-  // **敌舰体火力上限**（2026-09-12 船长「按照 DPS 上限 150 算」）：整卡舰体总 DPS 越线时，
-  // 全卡舰体单发等比例缩放（机群与"被占比拆分的条目"不参与，见 `foeDpsCapScaleOf`）。
+  // **敌舰体火力越线折扣**（2026-09-12 船长「按照 DPS 上限 150 算」→ 2026-09-15 改判「不是钳制到150，
+  // 而是超过150的部分进行一个约15%的折扣」）：整卡本波舰体总 DPS 越线时，只对**超出部分**打折，
+  // 再把该系数等比例施加于全卡舰体单发（机群与"被占比拆分的条目"不参与，见 `foeDpsCapScaleOf`）。
   const dpsCapScale = foeDpsCapScaleOf(units, comp, bal, fireSplit)
   return units.map((u, ui) => {
     const sp = fireSplit[ui]
@@ -1589,7 +1602,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const split = u.slot.split ?? ship.split
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法；
-    // 之后再乘**舰体火力上限缩放**（越线才 <1；`fireSplit` 非空的条目缩放 = 1，见 `foeDpsCapScaleOf`）
+    // 之后再乘**舰体火力越线折扣**（越线才 <1；`fireSplit` 非空的条目缩放 = 1，见 `foeDpsCapScaleOf`）
     const shotDmg = sp
       ? sp.gun
       : Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp * (dpsCapScale.get(u.slot) ?? 1)))

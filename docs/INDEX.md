@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **254** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4823** KB · **35240** 行
-- 状态分布：**未标注** 140 · **已确认/已实现** 105 · **待裁定** 4 · **进行中** 4 · **历史留档** 1
-- 孤儿文档（0 引用）**12** 份 · 状态未标注 **140** 份
+- 文档总数 **255** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4829** KB · **35321** 行
+- 状态分布：**未标注** 140 · **已确认/已实现** 105 · **进行中** 5 · **待裁定** 4 · **历史留档** 1
+- 孤儿文档（0 引用）**13** 份 · 状态未标注 **140** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**173** 份
+- 三、现行设计稿（design）：**174** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**15** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -28,14 +28,14 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 147 / 4 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 148 / 4 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 17 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 140 KB / 209 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 535 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 295 KB / 697 行 | 181 / 7 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 205 行 | 233 / 8 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 295 KB / 697 行 | 181 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 94 KB / 203 行 | 233 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -51,7 +51,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 173 份
+## 三、现行设计稿（design） —— 174 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -60,6 +60,7 @@
 | `docs/design/civilian-hp-20260915.md` | 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8） | 已确认/已实现（已确认） | 2026-09-15 | 5 KB / 92 行 | 0 / 0 |
 | `docs/design/desire-band-20260915.md` | 默认期望交距：中段 → 射程带高位（星图与洞内统一 0.8；洞内近战开局另守中段 0.5） | 未标注 | 2026-09-15 | 7 KB / 85 行 | 4 / 0 |
 | `docs/design/docs-archive-20260915.md` | 文档精简与封存（roadmap / glossary）—— 工作文档 | 进行中（进行中） | 2026-09-15 | 9 KB / 99 行 | 1 / 0 |
+| `docs/design/foe-dps-overcap-20260915.md` | 敌舰体火力「越线折扣」（超 150 部分 15% 折扣）· 2026-09-15 | 进行中（进行中） | 2026-09-15 | 6 KB / 81 行 | 0 / 0 |
 | `docs/design/handoff-20260915-to-new-pilot1.md` | 交接文档 · 大鲸鱼深空工业 · 2026-09-15 夜（一号 → 下一任一号） | 未标注 | 2026-09-15 | 16 KB / 136 行 | 0 / 0 |
 | `docs/design/system-scan-unattended-20260915.md` | 星系扫描无人化（扫描艇 · 不占主控 · 完成待查看）—— 2026-09-15 船长定案 | 已确认/已实现（已确认 · 已落码） | 2026-09-15 | 8 KB / 84 行 | 1 / 0 |
 | `docs/design/tuning-schedule-20260915.md` | 限时倍率表（tuning schedule）· 工作文档 | 进行中（进行中） | 2026-09-15 | 6 KB / 57 行 | 2 / 0 |
@@ -246,7 +247,7 @@
 | `docs/archive/roadmap-2026-09-11.md` | 封存卷 · roadmap 批次条目 2026-09-11 | 未标注 | — | 237 KB / 170 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-12.md` | 封存卷 · roadmap 批次条目 2026-09-12 | 未标注 | — | 173 KB / 160 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 395 KB / 254 行 | 2 / 0 |
+| `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 397 KB / 256 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 50 KB / 36 行 | 3 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -318,11 +319,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 45 / 7 |
 
-## 附：孤儿文档（0 引用，12 份）
+## 附：孤儿文档（0 引用，13 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/civilian-hp-20260915.md`（2026-09-15 · 5 KB）—— 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8）
+- `docs/design/foe-dps-overcap-20260915.md`（2026-09-15 · 6 KB）—— 敌舰体火力「越线折扣」（超 150 部分 15% 折扣）· 2026-09-15
 - `docs/design/handoff-20260915-to-new-pilot1.md`（2026-09-15 · 16 KB）—— 交接文档 · 大鲸鱼深空工业 · 2026-09-15 夜（一号 → 下一任一号）
 - `docs/design/foe-faction-a-pirate-20260911.md`（2026-09-11 · 7 KB）—— A 族「海盗舰系」族特色 · 对账与调整方案（2026-09-11 · 讨论中）
 - `docs/design/steam-store-draft-20260911.md`（2026-09-11 · 9 KB）—— Steam 商店页文案 · 终稿（2026-09-11，三号撰稿；口径已由船长裁决）
