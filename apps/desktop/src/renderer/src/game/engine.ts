@@ -67,6 +67,7 @@ import {
   sellCargoItemQty,
   sellStoredShipAtMarket,
   sellWareItem,
+  discardWareQty,
   sellWareItemQty,
   serializeSaveFile,
   shipDisplayName,
@@ -2536,6 +2537,19 @@ export class GameEngine {
   sellWare(itemId: string, qty?: number): SellResult {
     const result =
       qty === undefined ? sellWareItem(this.state, itemId, this.ctx) : sellWareItemQty(this.state, itemId, qty, this.ctx)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /**
+   * **丢弃仓库物品（任意数量）**（船长 2026-09-15：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」）。
+   * 纯销毁：不给钱、不进回收链；数量由 core 夹在 [1, 持有量]（超出按持有量丢）。
+   */
+  discardWare(itemId: string, qty: number): { ok: boolean; dropped: number; error?: string } {
+    const result = discardWareQty(this.state, itemId, qty, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

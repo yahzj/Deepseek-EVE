@@ -351,6 +351,8 @@ export {
   sellCargoItem,
   sellCargoItemQty,
   sellWareItem,
+  // 2026-09-15 船长：仓库「丢弃」按钮（任意数量；纯销毁、不给钱）
+  discardWareQty,
   sellWareItemQty,
   sellAll,
   sellPriceMultiplier,

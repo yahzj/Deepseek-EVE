@@ -120,6 +120,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   // 出售数量选择（船长 2026-09-05：支持只卖一部分）
   const [sellItem, setSellItem] = useState<string | null>(null)
   const [sellMod, setSellMod] = useState<string | null>(null)
+  /** 丢弃数量选择（船长 2026-09-15：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」） */
+  const [discardItem, setDiscardItem] = useState<string | null>(null)
   function handleSellQtyItem(id: string, qty: number): void {
     const r = engine.sellWare(id, qty)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
@@ -332,6 +334,16 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                             ↖ 查看市场
                           </button>
                         ) : null}
+                        {/* 丢弃（船长 2026-09-15：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」）
+                            —— 与「市价卖出」同一套数量弹层（复用 SellQtyModal），但不给钱、纯销毁；
+                            按钮用 is-danger 与"卖出/装船"区分开（破坏性操作）。 */}
+                        <button
+                          className="app-btn is-small is-danger"
+                          title="丢弃这件物品（可指定任意数量；丢弃后无法找回，也不会得到任何信用点）"
+                          onClick={() => setDiscardItem(id)}
+                        >
+                          丢弃
+                        </button>
                       </div>
                     </ItemHover>
                   )
@@ -586,6 +598,29 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             note={def.description}
             onClose={() => setSellItem(null)}
             onConfirm={(qty) => handleSellQtyItem(sellItem, qty)}
+          />
+        )
+      })() : null}
+      {discardItem ? (() => {
+        const def = engine.ctx.items.get(discardItem)
+        if (!def) return null
+        const units = state.warehouse.items[discardItem] ?? 0
+        return (
+          <SellQtyModal
+            name={def.name}
+            glyph={def.kind}
+            max={units}
+            unit="单位"
+            priceText="丢弃没有任何收益（要变现请用「市价卖出」或精炼炉）"
+            confirmLabel="丢弃"
+            note="丢弃后无法找回。"
+            onClose={() => setDiscardItem(null)}
+            onConfirm={(qty) => {
+              const r = engine.discardWare(discardItem, qty)
+              if (!r.ok) onToast(r.error ?? '丢弃失败', true)
+              else onToast(`已丢弃 ${def.name}×${r.dropped.toLocaleString('zh-CN')}。`)
+              setDiscardItem(null)
+            }}
           />
         )
       })() : null}
