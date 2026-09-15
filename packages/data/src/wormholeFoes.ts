@@ -35,13 +35,15 @@
 import type { AnomalyDef } from '@whale/core'
 import {
   FOE_ALIEN_RIFT,
+  FOE_ALIEN_SPORE_HIVE,
+  FOE_ALIEN_STARCORE,
+  FOE_ALIEN_STARCORE_ADULT,
   FOE_D_GHOST,
   FOE_D_LONGSHIP,
   FOE_G_SWARM_SKIFF,
   FOE_SHIP_AURO_HULK,
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SKIFF,
-
   FOE_SHIP_PIRATE_WARLORD,
 } from './foe-ships'
 
@@ -81,14 +83,14 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     name: '巢群游猎',
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
-    // 异形捕食弱者 ⇒ 打**最小的**（按舰种档）
+    // 异形捕食弱者 ⇒ 打**最小的**（按舰种档）——**族定选靶**（船长 2026-09-15「选靶按照族限定」）
     foeTargeting: 'smallest',
     // 倾向概率 0.4（同批：四成盯着最小的那艘，六成乱咬）
     foeTargetingChance: 0.4,
     // 混伤 8:2（主等离子 = C 族酸液签名 / 副爆炸）
     dmgMix: { plasma: 8, explosive: 2 },
-    // 编成 = 畸变幼虫 ×3（T1，快、等离子、贴脸撕咬）
-    ships: [{ ship: FOE_ALIEN_RIFT, count: 3 }],
+    // 编成 = **星髓幼虫 ×4**（船长 2026-09-15：「**C族浅层为星髓虫×4**」，T1 快、等离子、贴脸撕咬）
+    ships: [{ ship: FOE_ALIEN_STARCORE, count: 4 }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -232,6 +234,53 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     combatSeconds: 60,
     hidden: true,
     description: '虫洞内遭遇：头目亲自压阵的海盗战团（隐藏卡，只由虫洞生成）。',
+  },
+  /* ══════════ 2026-09-15 扩充 · C 族中/深两张（批 2）══════════ */
+  {
+    id: 'wh-alien-brood',
+    foeFamily: 'C',
+    name: '巢群兵潮',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    foeTargeting: 'smallest',
+    foeTargetingChance: 0.4,
+    dmgMix: { plasma: 8, explosive: 2 },
+    // 编成 = 星髓成虫 ×1（T2 唯一驱逐档，装甲型、单体硬）+ 畸变幼虫 ×2（T1 快虫包夹）
+    // ⇒ 两条舰级的有效构成都是等离子 8:2 ⇒ **卡面与条目一致，无需覆写**
+    ships: [
+      { ship: FOE_ALIEN_STARCORE_ADULT, count: 1 },
+      { ship: FOE_ALIEN_RIFT, count: 2 },
+    ],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 50,
+    hidden: true,
+    description: '虫洞内遭遇：成虫带队压上的巢群兵潮（隐藏卡，只由虫洞生成）。',
+  },
+  {
+    id: 'wh-alien-hive',
+    foeFamily: 'C',
+    name: '孢群巢穴',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    foeTargeting: 'smallest',
+    foeTargetingChance: 0.4,
+    dmgMix: { plasma: 8, explosive: 2 },
+    // 编成 = **孢群异虫 ×1**（T3 无人机舰：母舰炮台近战、孢群机 ×3 中距投送）+ 畸变幼虫 ×2
+    // ⇒ C 族**唯一带机群**的洞内编成，也是"炮台让位给机群"（`droneFireShare 0.6`）的唯一落点
+    ships: [
+      { ship: FOE_ALIEN_SPORE_HIVE, count: 1 },
+      { ship: FOE_ALIEN_RIFT, count: 2 },
+    ],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 60,
+    hidden: true,
+    description: '虫洞内遭遇：孢群异虫与其护卫虫群（隐藏卡，只由虫洞生成）。',
   },
 ]
 

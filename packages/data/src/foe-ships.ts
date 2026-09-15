@@ -77,7 +77,7 @@
  */
 
 import type { FoeShipDef } from '@whale/core'
-import { FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA } from './foe-drones'
+import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
  * 速度（2026-09-11 落地）= 1 护卫舰基准 340 × `1.15` = **391** m/s（高于本档基准 340，"快得起来才好突袭"）；
@@ -428,6 +428,45 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：星髓成虫同样吃冲锋、倍率 1.5
   foeCanCharge: true,
   foeChargeMul: 1.5,
+}
+
+/** C 族 · 三档「**孢群异虫**」——**无人机舰**（2026-09-15 船长：「**C组添加一艘巡洋舰，为无人机舰，
+ *  释放蜂群机。炮台同样是近战。**」；同日补：「**孢群机主要是装甲和结构，攻坚机模板，射程6000，
+ *  需要专门的无人机SVG(属于虫族)**」）。
+ *
+ * | 项 | 值 | 口径 |
+ * |---|---|---|
+ * | 舰种档 | **T3 巡洋舰** | C 族允许 1~4 档 |
+ * | 血 / 单发 | **1,125 / 87** | T3 档基线 900 / 124 × 角色 **1.25 / 0.70**（母舰偏厚；炮台让位给机群） |
+ * | 速度 | **400 m/s**（`speedRatio 1.55`） | C 族带 1.30~2.10，且**同档实速必须高于 A 族同档最快（海盗头目舰 374）** |
+ * | 血型 | 均衡 0.34/0.33/0.33 | C 族生物软体（畸变幼虫 / 噬口巨兽同款） |
+ * | 武器 | 等离子 8 : 爆炸 2 · **近战** 1~2,700m · `brawl` | 船长「**炮台同样是近战**」＋ C 族族规（贴脸 brawl） |
+ * | 形态 | `energyForm: 'spit'`（能量·**掷命中**） | C 族四档全部掷命中（不保留光束必中） |
+ * | 机群 | **孢群机 ×3**（无后备） | 船长「释放蜂群机」；**不写 `droneReserve`** ⇒ 无后备（虫海靠数量不靠补位） |
+ * | 火力占比 | `droneFireShare 0.6` | A5 守恒：**机群拿 60%、炮台只剩 40%** ⇒ 显式表达"母舰让位、机群为主" |
+ *
+ * ⚠ **不是"多一条 C 族卡"那么简单**：它是 C 族**唯一带机群**的舰级，也是洞内 C 族深层卡的主体。 */
+export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
+  id: 'foe-alien-spore-hive',
+  name: '孢群异虫',
+  family: 'C',
+  hullClassTier: 3, // 巡洋舰
+  speedRatio: 1.55, // = 400 / 258（C 族带内，且高于 A 族 T3 头目舰 374）
+  hp: 1125, // T3 档基线 900 × 角色 1.25
+  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型
+  shotDmg: 87, // T3 档基线 124 × 角色 0.70（近战副炮，主力在机群）
+  hitRate: 0.95,
+  reloadMs: 4000,
+  rangeMinM: 1,
+  rangeMaxM: 2700, // C 族贴脸口径（畸变幼虫 2552 / 星髓系 2655）
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  dmgMix: { plasma: 8, explosive: 2 }, // C 族签名（酸液 / 孢子）
+  tactic: 'brawl', // 船长「炮台同样是近战」
+  energyForm: 'spit', // C 族四档一律"能量·掷命中"
+  // **释放孢群机**（3 架、无后备）；`droneFireShare` = 机群占总火力 60%（A5 守恒，见舰级注释）
+  drones: [{ drone: FOE_DRONE_C_SPORE, count: 3 }],
+  droneFireShare: 0.6,
 }
 
 /* ═══════════ D 族 · 守墓古舰（2026-09-11 船长「对悬赏进行敌人配置」批）═══════════
@@ -794,6 +833,7 @@ export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_ALIEN_RIFT,
   FOE_ALIEN_STARCORE_ADULT,
   FOE_ALIEN_MAW,
+  FOE_ALIEN_SPORE_HIVE, // C 族三档：无人机舰（2026-09-15 船长；洞内 C 族深层卡的主体）
   FOE_D_GHOST,
   FOE_D_LONGSHIP,
   FOE_D_STASIS,

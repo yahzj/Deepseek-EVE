@@ -30,6 +30,26 @@ export interface DroneModel {
   art: ReactNode
 }
 
+/** C 族「**孢群机**」机体（2026-09-15 船长：「**需要专门的无人机SVG(属于虫族)**」）——
+ *  族外形语言 = **孢子荚 + 甲壳节**（C 族本体口径是"生物流线 + 磷光绿 `#9fe6a4`"）：
+ *  短粗荚体、两道甲壳节缝、尾端一枚孢子囊、前缘两根短触须；体量比蜂群机更宽厚（**攻坚机**定位）。
+ *  ⚠ 与 G 族"蜂窝六边舱段 + 拼装焊接痕"、E 族"斜装甲楔形 + 断口缺角"同处一套线稿语言（细描边 / currentColor）。
+ *  ⚠ 必须声明在 `DRONE_MODELS` **之前**（对象字面量按序求值）。 */
+const SPORE_DRONE_ART: ReactNode = (
+  <g>
+    {/* 孢子荚体（短粗、前后收口 —— 攻坚机的体量感） */}
+    <path d="M10 0 C10 -4.4 4.6 -6.4 -2 -5.6 C-7 -5 -10.4 -2.6 -11 0 C-10.4 2.6 -7 5 -2 5.6 C4.6 6.4 10 4.4 10 0 Z" />
+    {/* 甲壳节缝两道（"节肢"读法） */}
+    <path d="M3 -5.9 v11.5 M-3.4 -5.1 v10" className="app-bts-drone-line" />
+    {/* 尾端孢子囊 */}
+    <path d="M-10.6 0 C-12.4 -1.8 -12.4 1.8 -10.6 0" className="app-bts-drone-line" />
+    {/* 前缘短触须 */}
+    <path d="M9 -1.6 L12.6 -3.4 M9 1.6 L12.6 3.4" className="app-bts-drone-line" />
+    {/* 孢光点（族色磷光） */}
+    <circle cx="6.2" cy="0" r="1.1" className="app-bts-drone-dot" />
+  </g>
+)
+
 /** 编队位（母舰上侧，按机型分三层避免叠在一起） */
 const SLOTS_HIGH = (y: number): DroneSlot[] => [
   { x: -52, y },
@@ -156,6 +176,15 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     slots: SLOTS_HIGH(-26),
     bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
     art: SWARM_BEE_ART,
+  },
+  /* ── C 族「孢群机」（异形巢群的活体攻坚机；2026-09-15 挂上「孢群异虫」T3 无人机舰）──
+   * 族色**磷光绿** `#9fe6a4`（与 C 族舰体/族色同源）；弹点比蜂群机更重更疏（攻坚机节奏 4,400ms）。 */
+  'foe-drone-c-spore': {
+    name: '孢群机',
+    tint: '#9fe6a4',
+    slots: SLOTS_HIGH(-26),
+    bolt: { style: 'dot', len: 9, width: 2, tail: false },
+    art: SPORE_DRONE_ART,
   },
 }
 

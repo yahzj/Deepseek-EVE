@@ -327,6 +327,9 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-alien-rift-larva', tier: 1, speed: 544 }, // 1 护卫 340 × 1.6
       { id: 'foe-alien-starcore-adult', tier: 2, speed: 398 }, // 2 驱逐 295 × 1.35（> A 同档 325）
       { id: 'foe-alien-maw', tier: 4, speed: 297 }, // **T4 巨兽**：205 × 297/205（慢而硬，用冲锋补偿；船长「单独上调 20 点」）
+      // 2026-09-15 洞内扩充批 2：C 族 T3 巡洋「**孢群异虫**」（无人机舰）——倍率 1.55 ⇒ 3 巡洋 258 × 1.55 = **400**，
+      // 既落在 C 族带（1.30~2.10）内，又**高于 A 族同档最快（海盗头目舰 374）**（契约硬要求）。
+      { id: 'foe-alien-spore-hive', tier: 3, speed: 400 },
       // D 族（守墓古舰）：船长 2026-09-11 亲定「档位 **1 驱逐 2 巡洋**（更高级的船还没出）」+
       // 「**静滞卫舰改为远程、幽灵舰为中程**」+「幽灵舰 **110%** · 守墓长舰**按正常算** · 静滞卫舰 **50%**」
       { id: 'foe-d-ghost', tier: 2, speed: 325 }, // 2 驱逐 295 × 1.10
@@ -694,7 +697,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(34); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张**（2026-09-15）
+    expect(checked).toBe(36); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张 + 批 2 的 C 族中/深 2 张**（2026-09-15）
     // ⚠ 2026-09-12（P-43 舰级补完）起**全表 27 张敌军卡都在舰级路径**：G 族三卡迁入 +「废弃 F 族」
     //   的四张隐藏遭遇模板（`enc-pirate-1..4`）也迁入 A 族舰级 ⇒ **旧威胁推导路径再无真实卡**。
   })
@@ -1141,7 +1144,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       fastestA.set(s.hullClassTier, Math.max(fastestA.get(s.hullClassTier) ?? 0, spd))
     }
     const aliens = FOE_SHIPS.filter((x) => x.family === 'C')
-    expect(aliens).toHaveLength(4)
+    expect(aliens).toHaveLength(5) // 2026-09-15 洞内扩充批 2：+「孢群异虫」T3 无人机舰（船长「C组添加一艘巡洋舰，为无人机舰」）
     for (const s of aliens) {
       expect(s.speedRatio, s.id).toBeGreaterThanOrEqual(1.3)
       expect(s.speedRatio, s.id).toBeLessThanOrEqual(2.1)

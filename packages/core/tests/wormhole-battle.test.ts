@@ -194,15 +194,34 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
   })
 
   it('缺档兜底：某族还没做出中/深卡时，池退回现有最深一张（分批上线期间照样能开战）', () => {
-    // C 族此刻只有浅层卡（中/深随批 2 补）⇒ 层 2~9 仍只出浅层卡，不会开不出战
-    expect(wormholeCardPoolAt('C', 1).map((e) => e.tier)).toEqual(['shallow'])
-    expect(wormholeCardPoolAt('C', 5).map((e) => e.tier)).toEqual(['shallow'])
-    expect(wormholeCardIdForRun({ family: 'C', seed: 3, depth: 6, kind: 'node', nodeIndex: 2 })).toBe('wh-alien-swarm')
-    expect(wormholeCardIdForRun({ family: 'C', seed: 3, depth: 6, kind: 'boss' })).toBe('wh-alien-swarm')
+    // D/E/G 三族此刻只有浅层卡（中/深随后续批次补）⇒ 层 2~9 仍只出浅层卡，不会开不出战
+    expect(wormholeCardPoolAt('D', 1).map((e) => e.tier)).toEqual(['shallow'])
+    expect(wormholeCardPoolAt('D', 5).map((e) => e.tier)).toEqual(['shallow'])
+    expect(wormholeCardIdForRun({ family: 'D', seed: 3, depth: 6, kind: 'node', nodeIndex: 2 })).toBe('wh-grave-watch')
+    expect(wormholeCardIdForRun({ family: 'D', seed: 3, depth: 6, kind: 'boss' })).toBe('wh-grave-watch')
+    // 已补齐三档的族（A/C）在深层应当三档都进池
+    expect(wormholeCardPoolAt('C', 5).map((e) => e.tier)).toEqual(['shallow', 'mid', 'deep'])
     // 五族各有浅层卡（按族掉落池"每族都有来源"的前提）
     for (const f of WORMHOLE_FAMILY_ORDER) {
       expect(wormholeCardOfTier(f, 'shallow'), `族 ${f} 缺浅层卡`).toBeTruthy()
     }
+  })
+
+  it('C 族深层卡（孢群巢穴）：无人机舰 —— 机群吃掉 60% 火力、机型是 C 族孢群机', () => {
+    const card = ctx.anomalies.get('wh-alien-hive')!
+    const derived = wormholeDerivedAnomaly(ctx, card, { depth: 6, kind: 'node', waves: 1 })
+    const specs = createFoeSpecs(derived, ctx.balance.battle)
+    const hive = specs.find((s) => s.name.includes('孢群异虫'))
+    expect(hive, '深层卡里应有「孢群异虫」').toBeTruthy()
+    const gun = hive!.weapons.filter((w) => w.src !== 'drone').reduce((n, w) => n + (w.shotDmg ?? 0), 0)
+    const drones = hive!.weapons.filter((w) => w.src === 'drone')
+    const droneSum = drones.reduce((n, w) => n + (w.shotDmg ?? 0), 0)
+    expect(drones).toHaveLength(3) // 孢群机 ×3（船长「释放蜂群机」）
+    expect(drones[0]!.artId).toBe('foe-drone-c-spore') // 机型必须同族（契约：不许串族）
+    // A5 守恒：`droneFireShare 0.6` ⇒ 机群拿六成、炮台只剩四成（取整余量内）
+    const share = droneSum / (gun + droneSum)
+    expect(share).toBeGreaterThan(0.55)
+    expect(share).toBeLessThan(0.65)
   })
 
   it('族表 / 卡 id 清单 / 目录三处一致：每张卡恰属一族一档、不串族、浅层五张仍是旧 id', () => {

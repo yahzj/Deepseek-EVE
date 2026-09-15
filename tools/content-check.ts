@@ -3845,9 +3845,11 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       'wh-grave-watch',
       'wh-exile-blockade',
       'wh-titan-echo',
-      // 中/深（2026-09-15 洞内敌卡扩充 · 批 1 = A 族两张；后续批次按 data 表顺序追加）
+      // 中/深（2026-09-15 洞内敌卡扩充：批 1 = A 族两张 · 批 2 = C 族两张；后续批次按 data 表顺序追加）
       'wh-pirate-hunt',
       'wh-pirate-warband',
+      'wh-alien-brood',
+      'wh-alien-hive',
     ]
     // **轮换表的双向契约**（2026-09-13 补第五张时加）：内容侧这张清单、data 的 `WORMHOLE_FOE_CARDS`
     // 与 core 的 `WORMHOLE_FOE_CARD_IDS` **三处必须逐字同序** —— 少一张/换序都会让"按族掉落池"

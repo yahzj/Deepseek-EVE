@@ -124,9 +124,11 @@ export const WORMHOLE_FOE_CARD_IDS: readonly string[] = [
   'wh-grave-watch',
   'wh-exile-blockade',
   'wh-titan-echo',
-  // —— 中层 / 深层（2026-09-15 起逐批补：批 1 = A 族两张） ——
+  // —— 中层 / 深层（2026-09-15 起逐批补：批 1 = A 族两张 · 批 2 = C 族两张） ——
   'wh-pirate-hunt',
   'wh-pirate-warband',
+  'wh-alien-brood',
+  'wh-alien-hive',
 ]
 
 /* ═══════════ 档位 · 出场池 · 分层血量修正（船长 2026-09-15） ═══════════ */
@@ -273,7 +275,7 @@ export const WORMHOLE_FAMILY_CARDS: Readonly<
   Record<WormholeFamily, Readonly<Record<WormholeCardTier, string | null>>>
 > = {
   A: { shallow: 'wh-pirate-scout', mid: 'wh-pirate-hunt', deep: 'wh-pirate-warband' },
-  C: { shallow: 'wh-alien-swarm', mid: null, deep: null },
+  C: { shallow: 'wh-alien-swarm', mid: 'wh-alien-brood', deep: 'wh-alien-hive' },
   D: { shallow: 'wh-grave-watch', mid: null, deep: null },
   E: { shallow: 'wh-titan-echo', mid: null, deep: null },
   G: { shallow: 'wh-exile-blockade', mid: null, deep: null },
