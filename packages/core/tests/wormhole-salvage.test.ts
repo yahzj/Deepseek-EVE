@@ -28,6 +28,10 @@ import {
   WORMHOLE_RUINS_RARES_MAX,
   WORMHOLE_RUINS_RARES_MIN,
   WORMHOLE_RARE_CHEST_NOMINAL_ISK,
+  WORMHOLE_SALVAGE_BOX_CHANCE,
+  WORMHOLE_SALVAGE_BOX_MAX,
+  WORMHOLE_BP_BOX_IDS,
+  wormholeRollSalvageBox,
   wormholeCellCardIdOf,
   wormholeLootTierOf,
   wormholeLootValueIsk,
@@ -877,5 +881,154 @@ describe('虫洞 · 遗迹收尾战「先提示、确认后再打」（船长 20
     expect(b.ok, b.error).toBe(true)
     expect(run.battle).not.toBeNull()
     expect(run.pendingRuinsBattle).toBe(false)
+  })
+})
+
+/**
+ * **残骸打捞点的货柜掉落**（船长 2026-09-15 定「虫洞战利品与经济扩充」③：
+ * 「然后在残骸打捞点，设定有极低概率出各种货柜」＋「残骸打捞是指虫洞内的。不分层随机出。」）。
+ *
+ * 三条口径：**每堆 0.75%** · **一次打捞最多 1 个** · **四类货柜类等权且不分层**。
+ * ⚠ 掷骰键 = (本趟种子, 层, 格坐标 q/r, **收走这一堆之后还剩几堆**) ⇒ 用例可以"**先探后造**"：
+ * 只要先算出哪个剩堆数命中，再把该格造成"正好剩这么多堆"的现场，就能确定性地验落点。
+ */
+describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () => {
+  /** 残骸格探针（掷骰只认 `place`/`q`/`r`；族取本趟敌卡） */
+  const probe = (q: number, r = 0, place: WormholeGridCell['place'] = 'graveyard'): WormholeGridCell =>
+    ({ key: `probe-${q}-${r}`, q, r, place, piles: [] }) as WormholeGridCell
+
+  it('**每堆 0.75%**：命中率落在口径带内 · 同一键同结果（可复现、不消费既有掷骰）', () => {
+    let hits = 0
+    let rolls = 0
+    for (let seed = 1; seed <= 40; seed++) {
+      const state = enterRun(1, seed)
+      for (let q = 0; q < 25; q++) {
+        const cell = probe(q)
+        for (let left = 0; left < 10; left++) {
+          rolls += 1
+          const a = wormholeRollSalvageBox(state, ctx, cell, left)
+          expect(wormholeRollSalvageBox(state, ctx, cell, left), '同一键必须同结果').toBe(a)
+          if (a) hits += 1
+        }
+      }
+    }
+    const rate = hits / rolls
+    // 1 万个键 ⇒ 期望 ~75 次命中；带宽放到 0.3%~1.6%（约 ±45%）只卡"量级对不对"，不当精度用例
+    expect(rolls).toBe(10_000)
+    expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeGreaterThan(0.003)
+    expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeLessThan(0.016)
+    expect(WORMHOLE_SALVAGE_BOX_CHANCE).toBe(0.0075)
+  })
+
+  it('**四类等权 · 不分层**：层 1 也能翻出深档图纸柜/贵重品柜/军用备货柜（池外零泄漏）', () => {
+    const families = ['a', 'c', 'd', 'e', 'g']
+    const allowed = new Set<string>([
+      ...families.map((f) => wormholeRelicBoxIdOf(f.toUpperCase())),
+      ...WORMHOLE_BP_BOX_IDS,
+      'box-valuables',
+      'box-military',
+    ])
+    const seen = new Set<string>()
+    const perClass = { relic: 0, bp: 0, valuables: 0, military: 0 }
+    for (let seed = 1; seed <= 40; seed++) {
+      const state = enterRun(1, seed)
+      expect(state.wormhole.run!.depth, '本用例全程在层 1（不分层 = 层 1 也出深档）').toBe(1)
+      for (let q = 0; q < 40; q++) {
+        for (let left = 0; left < 12; left++) {
+          const id = wormholeRollSalvageBox(state, ctx, probe(q), left)
+          if (!id) continue
+          expect(allowed.has(id), `${id} 不在四类货柜池里`).toBe(true)
+          seen.add(id)
+          if (id.startsWith('box-relic-')) perClass.relic += 1
+          else if (id.startsWith('box-bp-')) perClass.bp += 1
+          else if (id === 'box-valuables') perClass.valuables += 1
+          else perClass.military += 1
+        }
+      }
+    }
+    // 四类都露过面（1.9 万个键 ⇒ 期望 ~144 次命中、每类 ~36 次，缺席概率 ~1e-16）
+    for (const [name, n] of Object.entries(perClass)) expect(n, `这一类一次都没出：${name}`).toBeGreaterThan(0)
+    // **不分层**：层 1 出过深档图纸柜 / 贵重品柜 / 军用备货柜（这几种在旧口径里只属于深层/遗迹）
+    expect(seen.has('box-valuables')).toBe(true)
+    expect(seen.has('box-military')).toBe(true)
+    expect(seen.has('box-bp-deep')).toBe(true)
+    // 类权重在 ±40% 内（类等权 25%；144 次命中的抽样噪声约 ±8%，带宽留足）
+    const total = perClass.relic + perClass.bp + perClass.valuables + perClass.military
+    for (const [name, n] of Object.entries(perClass)) {
+      expect(n / total, `类权重出带：${name}`).toBeGreaterThan(0.15)
+      expect(n / total, `类权重出带：${name}`).toBeLessThan(0.35)
+    }
+  })
+
+  it('**只在残骸地点掷**：遗迹格不掷（遗迹另有专属掉落，不叠加）', () => {
+    const state = enterRun(1, 4242)
+    for (const place of ['empty', 'ruins', 'ship', 'vein', 'matter', 'beacon'] as const) {
+      const cell = probe(0, 0, place)
+      for (let left = 0; left < 60; left++) {
+        expect(wormholeRollSalvageBox(state, ctx, cell, left), `${place} 不该掷货柜`).toBeUndefined()
+      }
+    }
+  })
+
+  it('**落点走收货阶梯**：命中 ⇒ 结果里报账，货柜进货仓/临时空间/散落在原格（不入仓库）', () => {
+    const state = enterRun(1, 4242)
+    const run = state.wormhole.run!
+    const cell = standOn(state, 'graveyard')
+    // 先探：找这条流里第一个命中的"剩堆数"
+    let left = -1
+    for (let l = 0; l < 2000 && left < 0; l++) if (wormholeRollSalvageBox(state, ctx, cell, l)) left = l
+    expect(left, '这条流 2000 个键里该有一次命中').toBeGreaterThanOrEqual(0)
+    const boxId = wormholeRollSalvageBox(state, ctx, cell, left)!
+    // 后造：把该格造成"收走一堆后正好剩 left 堆"（1 台打捞器 ⇒ 一次只收一堆 ⇒ 掷的就是这个键）
+    cell.piles = Array.from({ length: left + 1 }, () => ({ itemId: wreckItemIdOf(wormholeCellCardIdOf(run, cell)), units: 1 }))
+    const before = countWare(state, boxId)
+    const r = wormholeSalvageAt(state, ctx)
+    expect(r.ok, r.error).toBe(true)
+    expect(r.boxes, '结果里报出这件货柜').toEqual([boxId])
+    expect(countWare(state, boxId), '还没入仓库（撤离成功才入港）').toBe(before)
+    const landing = [
+      (run.hold?.placements ?? []).some((p) => p.itemId === boxId) ? 'hold' : '',
+      (run.tempGrid?.placements ?? []).some((p) => p.itemId === boxId) ? 'temp' : '',
+      (cell.piles ?? []).some((p) => p.itemId === boxId) ? 'scattered' : '',
+    ].filter(Boolean)
+    expect(landing, '货柜按「货仓 → 临时空间 → 散落该格」落地（且只落一处）').toHaveLength(1)
+  })
+
+  it('**每次最多 1 个**：一次打捞里连续两堆都命中，也只出一个货柜', () => {
+    const state = enterRun(3, 4242) // 3 台打捞器 ⇒ 一次动作收 3 堆
+    const run = state.wormhole.run!
+    const cell = standOn(state, 'graveyard')
+    expect(WORMHOLE_SALVAGE_BOX_MAX).toBe(1)
+    /**
+     * 找一对**连续命中**的键（同一格、剩堆数 L 与 L-1 都命中；概率 0.75%² ⇒ 要扫几万个键）。
+     * 命中键与"这一格的实际坐标"绑定 ⇒ 找到后把当前格改造成那组坐标（`q`/`r` 只被这条掷骰读）。
+     */
+    let hitQ = -1
+    let hitLeft = -1
+    for (let q = 0; q < 4000 && hitQ < 0; q++) {
+      const cell2 = probe(q)
+      let prev = false
+      for (let l = 1; l <= 90; l++) {
+        const hit = wormholeRollSalvageBox(state, ctx, cell2, l) !== undefined
+        if (hit && prev) {
+          hitQ = q
+          hitLeft = l
+          break
+        }
+        prev = hit
+      }
+    }
+    expect(hitQ, '4 千个坐标 × 90 个剩堆数里该有一对连续命中').toBeGreaterThanOrEqual(0)
+    cell.q = hitQ
+    cell.r = 0
+    // 收走第 1 堆 ⇒ 掷键用 L=hitLeft（命中）；收走第 2 堆 ⇒ 用 L=hitLeft-1（也命中，但被上限截住）
+    cell.piles = Array.from({ length: hitLeft + 2 }, () => ({
+      itemId: wreckItemIdOf(wormholeCellCardIdOf(run, cell)),
+      units: 1,
+    }))
+    const r = wormholeSalvageAt(state, ctx)
+    expect(r.ok, r.error).toBe(true)
+    expect(r.taken, '3 台打捞器 ⇒ 这一批收走 3 堆（前两堆的掷键都命中，上限才有得验）').toHaveLength(3)
+    expect(r.boxes ?? [], '两堆都命中 ⇒ 仍只出 1 个').toHaveLength(1)
   })
 })

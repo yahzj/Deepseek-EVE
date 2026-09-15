@@ -46,6 +46,8 @@ import {
   wormholeSalvageAt,
   wormholeStowOrTemp,
   wormholeCoreTypeOfItemId,
+  WORMHOLE_ESSENCE_ITEM_ID,
+  WORMHOLE_ESSENCE_PER_DEVICE,
 } from './wormholeSalvage'
 
 /* ═══════════ 八、F 批：洞内战斗（开战 / 每拍推进 / 收口） ═══════════ */
@@ -784,13 +786,43 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
     (s, t) => s + (cores[t] ?? 0) * (ctx.marketGoods.get(`core-${t}`)?.basePrice ?? 0),
     0,
   )
+  /**
+   * **谜质装置 ⇒ 虫洞谜质**（2026-09-15 船长定：「谜质在虫洞结束时不再删除，而是转化成虫洞谜质
+   * 存入仓库。……该物品只收不卖。且具备较高价值，目前纯粹作为虫洞的金钱收益」）。
+   *
+   * 口径：**只有撤离成功才折算**（本函数 = 撤离成功的收口点）⇒ 半路全损走的是"随趟丢"那条路，
+   * 谜质一枚都拿不到；装置给的增益本趟照旧生效（折算是结算动作，不改 `run` 里的任何账目）。
+   * 台数按**件**算（形状件一件一格，`p.units` 缺省即 1），临时空间里的也一样折。
+   * 折算完的两条投递路径仍按 `kind` 排除 `matter` ⇒ 装置本身不会二次进仓库、也不会进拆解池。
+   */
+  const matterDevices =
+    (run.hold?.placements ?? []).reduce(
+      (n, p) => n + (ctx.items.get(p.itemId)?.kind === 'matter' ? Math.max(1, Math.floor(p.units ?? 1)) : 0),
+      0,
+    ) +
+    tempPlacements.reduce(
+      (n, p) => n + (ctx.items.get(p.itemId)?.kind === 'matter' ? Math.max(1, Math.floor(p.units ?? 1)) : 0),
+      0,
+    )
+  const essences = matterDevices * WORMHOLE_ESSENCE_PER_DEVICE
+  if (essences > 0) {
+    addWare(state, WORMHOLE_ESSENCE_ITEM_ID, essences)
+    const essenceName = ctx.items.get(WORMHOLE_ESSENCE_ITEM_ID)?.name ?? '虫洞谜质'
+    addLog(
+      state,
+      'info',
+      `🕳 谜质装置 ×${matterDevices} 析出 ${essenceName} ×${essences}（已入仓库 · 只收不卖）。`,
+    )
+  }
+  /** 谜质行价参考估值（与核心同一口径：唯一出处 = 市场卡；**不计入「到手合计」**） */
+  const essenceIsk = essences * (ctx.marketGoods.get(WORMHOLE_ESSENCE_ITEM_ID)?.basePrice ?? 0)
   const boxesAll = [...boxes, ...tempItems.filter((id) => wormholeIsShapedItem(id))]
     .filter((id) => wormholeCoreTypeOfItemId(id) === null)
-    .filter((id) => ctx.items.get(id)?.kind !== 'matter') // 谜质储存器：离开虫洞即消失，不进仓库
+    .filter((id) => ctx.items.get(id)?.kind !== 'matter') // 谜质装置：上面已折成谜质入库，不再走"入库/拆解"这条路
   if (boxesAll.length > 0) wormholeDeliverRelics(state, ctx, boxesAll)
   for (const [itemId, units] of tempUnits) {
     if (wormholeIsShapedItem(itemId)) continue // 上面已按"件"入过（核心同理，已入核心账）
-    if (ctx.items.get(itemId)?.kind === 'matter') continue // 谜质储存器同理：随趟消失
+    if (ctx.items.get(itemId)?.kind === 'matter') continue // 谜质装置同理：已折成谜质
     if (units > 0) addWare(state, itemId, units)
   }
   if (tempPlacements.length > 0) {
@@ -806,6 +838,7 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
     boxes: boxesAll,
     relics,
     ...(coreIds.length > 0 ? { cores, coresIsk } : {}),
+    ...(essences > 0 ? { essences, ...(essenceIsk > 0 ? { essenceIsk } : {}) } : {}),
     shipsLost: [],
     lostIsk: 0,
   }

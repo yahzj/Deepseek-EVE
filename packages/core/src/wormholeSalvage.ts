@@ -286,8 +286,53 @@ export const WORMHOLE_BP_BOX_DEPTH: Readonly<Record<string, number>> = {
   [WORMHOLE_BP_BOX_MID]: 3,
   [WORMHOLE_BP_BOX_DEEP]: 5,
 }
+/**
+ * **虫洞谜质**（船长 2026-09-15 定「虫洞战利品与经济扩充」①）：
+ * 谜质装置在**撤离成功那一刻**按 **1 台 = 1 枚**折成这个物品入库（旧口径是"随趟消失、不进仓库"）。
+ * 全损走不到折算点 ⇒ 谜质仍是"带出去才算钱"的风险品；装置给的增益照旧效（不受折算影响）。
+ * 物品卡见 `data/items.ts` 的 `mat-wh-essence`（0.5 m³ · 只收不卖 · 市场行价 70,000）。
+ */
+export const WORMHOLE_ESSENCE_ITEM_ID = 'mat-wh-essence'
+/** 1 台谜质装置析出 1 枚虫洞谜质（船长 2026-09-15 定） */
+export const WORMHOLE_ESSENCE_PER_DEVICE = 1
 /** 遗迹专属掉落命中后，**安全货柜 : 图纸货柜 = 50 : 50**（船长 2026-09-14 定） */
 export const WORMHOLE_BPBOX_SHARE = 0.5
+
+/* ── 贵重品货柜 / 军用备货柜（船长 2026-09-15 定「虫洞战利品与经济扩充」②④）── */
+
+/** 贵重品货柜（2 格 · 只收不卖）；拆出一叠奢侈品 */
+export const WORMHOLE_VALUABLES_BOX_ID = 'box-valuables'
+/** 军用备货柜（4 格 · 只收不卖）；拆出 1~3 件随机 MK3 装备 */
+export const WORMHOLE_MILITARY_BOX_ID = 'box-military'
+/**
+ * 贵重品货柜的奢侈品**三档 id**（等权抽一档；价格 24,000 / 48,000 / 96,000）。
+ * ⚠ 与 `data/items.ts` 的 `LUXURIES` 同序同值——core 不依赖 data（分层纪律），
+ * 靠引擎侧"取不到就退回"（`ctx.items.has`）兜底，另有内容契约哨（`tools/content-check.ts`）钉同步。
+ */
+export const WORMHOLE_LUXURY_ITEM_IDS = ['lux-1', 'lux-2', 'lux-3'] as const
+/** 贵重品货柜拆出的奢侈品件数区间（船长 2026-09-15 定：「随机数量」= 10~20 件） */
+export const WORMHOLE_VALUABLES_UNITS_MIN = 10
+export const WORMHOLE_VALUABLES_UNITS_MAX = 20
+/** 军用备货柜拆出的 MK3 装备件数区间（船长 2026-09-15 定：「数件」= 1~3 件） */
+export const WORMHOLE_MILITARY_PIECES_MIN = 1
+export const WORMHOLE_MILITARY_PIECES_MAX = 3
+
+/**
+ * **军用备货柜的 MK3 池**（按 id 后缀 `-3` 派生，与内容体检的 `isMk3` 同一把尺）。
+ *
+ * 口径（船长 2026-09-15 定）：**含武器**（炮/激光/导弹架照进池）、**不含专属**——
+ * 洞内族专属（id 含 `-wh-`）与窝点专属（`mod-lair-`）都不出；未上线件（`unreleased`）也不出。
+ */
+export function wormholeMk3PoolOf(ctx: SimContext): string[] {
+  const out: string[] = []
+  for (const [id, def] of ctx.modules) {
+    if (!id.endsWith('-3')) continue
+    if (id.includes('-wh-') || id.startsWith('mod-lair-')) continue
+    if (def.unreleased === true) continue
+    out.push(id)
+  }
+  return out.sort() // 排序只为"同一目录给出同一池序"（抽取仍走 rng，与顺序无关的稳定性由它保证）
+}
 /** 图纸货柜开出**永久图纸**的概率（船长 2026-09-14：「有较低概率出 T3 或 T4 的永久图纸」⇒ 5%） */
 export const WORMHOLE_BPBOX_PERMANENT_CHANCE = 0.05
 /** 永久图纸池的**档位门槛**（与一次性同口径：T3 层 2 起 · T4 层 3 起；**不含 T5**——船长只点了 T3/T4） */
@@ -375,6 +420,52 @@ export function wormholeRollCore(state: GameState, cell: WormholeGridCell): stri
   }
   // 浮点兜底：理论到不了（权重和 > 0），落到最常见的那一档
   return WORMHOLE_CORE_GAMMA
+}
+
+/**
+ * **残骸打捞点的货柜掉落**（船长 2026-09-15 定「虫洞战利品与经济扩充」③：
+ * 「然后在残骸打捞点，设定有极低概率出各种货柜」＋「残骸打捞是指虫洞内的。不分层随机出。」）。
+ *
+ * 口径：**每收走一堆残骸掷一次 0.75%**；**一次打捞最多出 1 个**（`WORMHOLE_SALVAGE_BOX_MAX`）；
+ * **四类货柜类等权**（各 1/4）：遗迹安全货柜（按本趟族）· 图纸货柜（三档等权随机）· 贵重品货柜 · 军用备货柜；
+ * **不分层**——深档图纸柜/贵重品柜在浅层也可能翻出来（船长「不分层随机出」）。
+ * 只在 `graveyard`（残骸地点）生效；遗迹另有自己的专属掉落，不叠加。
+ */
+export const WORMHOLE_SALVAGE_BOX_CHANCE = 0.0075
+/** 一次打捞最多出几个货柜（船长 2026-09-15 定：「每次最多 1 个」） */
+export const WORMHOLE_SALVAGE_BOX_MAX = 1
+
+/** 四类货柜池（类等权；类内等权随机）——`family` = 本趟虫洞族（安全货柜按族取，与遗迹掉落同一把尺） */
+export function wormholeSalvageBoxClassesOf(family: string): readonly (readonly string[])[] {
+  return [[wormholeRelicBoxIdOf(family)], WORMHOLE_BP_BOX_IDS, ['box-valuables'], ['box-military']]
+}
+
+/**
+ * **掷残骸堆里的货柜**（返回货柜物品 id 或 undefined）。
+ *
+ * 掷骰走**独立盐值的流**（照 `wormholeRollCore` 的先例
+ * `runSeed*89 + depth*811 + (q*29 + r*43)*19 + 剩堆数*7 + 23`）⇒ 不消费既有掷骰序列，旧读数逐字不变。
+ * `pilesLeft` = 这一堆收走之后该地点**还剩几堆** ⇒ 同一地点分两次打捞的键不重样（不会重现同一掷）。
+ * 安全货柜的族取**本格敌卡的族**（与遗迹专属掉落同一把尺：专属掉落按种族库走）。
+ */
+export function wormholeRollSalvageBox(
+  state: GameState,
+  ctx: SimContext,
+  cell: WormholeGridCell,
+  pilesLeft: number,
+): string | undefined {
+  const run = state.wormhole.run
+  if (!run?.grid) return undefined
+  if (cell.place !== 'graveyard') return undefined
+  const rng = wormholeStream(
+    runSeedOf(state) * 89 + run.depth * 811 + (cell.q * 29 + cell.r * 43) * 19 + Math.max(0, pilesLeft) * 7 + 23,
+  )
+  if (rng() >= WORMHOLE_SALVAGE_BOX_CHANCE) return undefined
+  // 类等权（四类各 1/4）→ 类内等权；`Math.min` 只是浮点兜底（理论到不了）
+  const family = familyOfCard(ctx, wormholeCellCardIdOf(run, cell))
+  const classes = wormholeSalvageBoxClassesOf(family)
+  const cls = classes[Math.min(classes.length - 1, Math.floor(rng() * classes.length))]!
+  return cls[Math.min(cls.length - 1, Math.floor(rng() * cls.length))]!
 }
 
 /**
@@ -1295,6 +1386,12 @@ export interface WormholeSalvageResult {
   finished?: boolean
   /** 打捞结束时的专属掉落（撤离成功后入库；见 `run.relics`） */
   relics?: string[]
+  /**
+   * **本次打捞从残骸堆里翻出的货柜**（船长 2026-09-15 定 ③；上限 `WORMHOLE_SALVAGE_BOX_MAX` = 1）。
+   * 它已经按「收货阶梯」落进货仓 / 临时空间 / 散落该格 ⇒ 这里只是**报账**（界面提示用），
+   * 撤离成功后随其他形状件一起入仓库，全损则随趟丢。
+   */
+  boxes?: string[]
   /** 打捞结束时掷中的 **AI 核心**（2026-09-14 船长定；已装进货仓/临时空间/散落该格，撤离成功才入核心账） */
   cores?: string[]
   /** 需要接着开战（遗迹收尾战） */
@@ -1354,6 +1451,9 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   const taken: WormholeCellPile[] = []
   let full = false
   let boxLeft = 0
+  /** 本次打捞翻出的货柜（船长 2026-09-15 定 ③；上限 `WORMHOLE_SALVAGE_BOX_MAX`） */
+  const foundBoxes: string[] = []
+  let boxFound = 0
   for (let i = 0; i < rigs && piles.length > 0; i++) {
     const pile = piles[0]!
     /**
@@ -1373,6 +1473,33 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     }
     piles.shift()
     taken.push(pile)
+    /**
+     * **残骸堆里的货柜**（船长 2026-09-15 定 ③：「在残骸打捞点，设定有极低概率出各种货柜」）：
+     * 每收走一堆掷一次 0.75%、一次打捞最多 1 个；落格走**与遗迹货柜同一套「收货阶梯」**
+     * （货仓 → 临时空间 → 散落该格）。掷骰走独立盐值的流 ⇒ 旧读数逐字不变（见 `wormholeRollSalvageBox`）。
+     */
+    if (boxFound < WORMHOLE_SALVAGE_BOX_MAX) {
+      const boxId = wormholeRollSalvageBox(state, ctx, cell, piles.length)
+      if (boxId) {
+        boxFound += 1
+        foundBoxes.push(boxId)
+        const name = ctx.items.get(boxId)?.name ?? boxId
+        const shp = wormholeShapeOf(boxId)
+        const landed = wormholeStowOrTemp(state, ctx, boxId, 1)
+        if (landed.where === 'hold') {
+          addLog(state, 'info', `🕳 残骸堆里翻出${name}：已装进货仓（占 ${shp.w}×${shp.h} = ${shp.w * shp.h} 格）。`)
+        } else if (landed.where === 'temp') {
+          addLog(
+            state,
+            'info',
+            `🕳 残骸堆里翻出${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`,
+          )
+        } else {
+          cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
+          addLog(state, 'warn', `🕳 残骸堆里翻出${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`)
+        }
+      }
+    }
   }
   const names = taken
     .map((p) => `${ctx.items.get(p.itemId)?.name ?? p.itemId}×${Math.floor(p.units).toLocaleString('zh-CN')}`)
@@ -1395,7 +1522,15 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   }
   const finished = piles.length === 0
   if (!finished) {
-    return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, taken, left: piles.length, finished: false, mustExtract: run.turnsLeft <= 0 }
+    return {
+      ok: true,
+      spent: WORMHOLE_TURN_PER_ACTIVATE,
+      taken,
+      left: piles.length,
+      finished: false,
+      mustExtract: run.turnsLeft <= 0,
+      ...(foundBoxes.length > 0 ? { boxes: foundBoxes } : {}),
+    }
   }
   // ── 打捞结束：记完成；遗迹另掷专属掉落与收尾战 ──
   if (!grid.activated.includes(cell.key)) grid.activated.push(cell.key)
@@ -1406,6 +1541,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     left: 0,
     finished: true,
     mustExtract: run.turnsLeft <= 0,
+    ...(foundBoxes.length > 0 ? { boxes: foundBoxes } : {}),
   }
   if (cell.place === 'ruins') {
     /**
@@ -1521,8 +1657,16 @@ export function wormholeRollRelicBox(
 export interface WormholeUnboxDraw {
   itemId: string
   units: number
-  /** 族专属池 / 一次性图纸池 / 永久图纸池 */
-  source: 'family' | 'once' | 'permanent'
+  /** 族专属池 / 一次性图纸池 / 永久图纸池 / 贵重品货柜的奢侈品 / 军用备货柜的 MK3 */
+  source: 'family' | 'once' | 'permanent' | 'valuables' | 'military'
+  /**
+   * **这一箱还开出的东西**（2026-09-15 新增的两种货柜要"一箱多件"）：
+   * - 贵重品货柜：奢侈品**整叠**一件（`units` = 10~20）⇒ 不走这里；
+   * - 军用备货柜：MK3 装备 **1~3 件**（每件一个 id、各进装备库一次）⇒ 第 2 件起放这里，`units` 恒 1。
+   * 交付方（`industry.ts` 的拆解收口）把主件与 `extra` 合并成一份 id 清单，
+   * 物品类按 `unitsOf` 记数量、模块类按"清单里出现几次"入装备库。
+   */
+  extra?: ReadonlyArray<{ itemId: string; units: number }>
 }
 
 /**
@@ -1555,6 +1699,38 @@ export function wormholeUnboxRoll(
     return { itemId: id, units: wormholePoolGrantUnitsOf(id), source: permanent ? 'permanent' : 'once' }
   }
   // ② 安全货柜：100% 族专属池
+  /**
+   * **③ 贵重品货柜**（船长 2026-09-15 定：「新增贵重品货柜，2格，精炼炉拆解后获得随机数量的
+   * 『奢侈品』，奢侈品纯粹用来卖钱，市场正常交易」）：**一叠奢侈品**——
+   * 档位三选一等权（24,000 / 48,000 / 96,000），件数 **10~20**；`units` 就是这一叠的件数。
+   */
+  if (boxItemId === WORMHOLE_VALUABLES_BOX_ID) {
+    const pool = WORMHOLE_LUXURY_ITEM_IDS.filter((id) => ctx.items.has(id))
+    if (pool.length === 0) return null
+    const id = pool[nextInt(state.rng, pool.length)]!
+    const span = WORMHOLE_VALUABLES_UNITS_MAX - WORMHOLE_VALUABLES_UNITS_MIN + 1
+    const units = WORMHOLE_VALUABLES_UNITS_MIN + nextInt(state.rng, span)
+    return { itemId: id, units, source: 'valuables' }
+  }
+  /**
+   * **④ 军用备货柜**（船长 2026-09-15 定：「新增军用备货柜4格，精炼炉可以从中拆出数件随机MK3装备」
+   * ＋「军用备货柜含武器，不含专属」）：**1~3 件**，逐件独立等权抽（可以重样 ⇒ 就是"两件同型"），
+   * 每件都进装备库（交付时主件 + `extra` 合成清单，见 `WormholeUnboxDraw.extra`）。
+   */
+  if (boxItemId === WORMHOLE_MILITARY_BOX_ID) {
+    const pool = wormholeMk3PoolOf(ctx)
+    if (pool.length === 0) return null
+    const span = WORMHOLE_MILITARY_PIECES_MAX - WORMHOLE_MILITARY_PIECES_MIN + 1
+    const pieces = WORMHOLE_MILITARY_PIECES_MIN + nextInt(state.rng, span)
+    const picks = Array.from({ length: pieces }, () => pool[nextInt(state.rng, pool.length)]!)
+    const [first, ...rest] = picks
+    return {
+      itemId: first!,
+      units: 1,
+      source: 'military',
+      ...(rest.length > 0 ? { extra: rest.map((itemId) => ({ itemId, units: 1 })) } : {}),
+    }
+  }
   const family = wormholeFamilyOfBox(boxItemId)
   if (!family) return null
   const pool = wormholeFamilyPoolOf(ctx, family)
@@ -1585,7 +1761,16 @@ export function wormholeFamilyOfBox(boxItemId: string): string | null {
   const m = /^box-relic-([a-g])$/i.exec(boxItemId)
   return m ? m[1]!.toUpperCase() : null
 }
-export function wormholeDeliverRelics(state: GameState, ctx: SimContext, relics: readonly string[]): string[] {
+export function wormholeDeliverRelics(
+  state: GameState,
+  ctx: SimContext,
+  relics: readonly string[],
+  /**
+   * **物品类的数量覆盖**（可选）：贵重品货柜开出的奢侈品是"一叠 10~20 件"⇒ 数量由开箱结果决定，
+   * 不再按 `wormholePoolGrantUnitsOf` 的"一件一格"默认值。缺省/缺键 ⇒ 走默认口径（老调用零改动）。
+   */
+  unitsOf?: Readonly<Record<string, number>>,
+): string[] {
   const done: string[] = []
   for (const id of relics) {
     if (ctx.modules.has(id)) {
@@ -1595,7 +1780,7 @@ export function wormholeDeliverRelics(state: GameState, ctx: SimContext, relics:
       state.blueprintStock[id] = (state.blueprintStock[id] ?? 0) + 1
       done.push(ctx.blueprints.get(id)?.name ?? ctx.shipBlueprints.get(id)?.name ?? id)
     } else if (ctx.items.has(id)) {
-      const units = wormholePoolGrantUnitsOf(id)
+      const units = Math.max(1, Math.floor(unitsOf?.[id] ?? wormholePoolGrantUnitsOf(id)))
       addWare(state, id, units)
       done.push(`${ctx.items.get(id)?.name ?? id}×${units}`)
     }

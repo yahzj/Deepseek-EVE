@@ -63,6 +63,7 @@ import type { WormholePlace } from '../src/wormholeGrid'
 import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
 import { rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
 import {
+  WORMHOLE_ESSENCE_ITEM_ID,
   wormholeDiscardToFit,
   wormholeHoldOverloaded,
   wormholeHoldStow,
@@ -654,24 +655,59 @@ describe('虫洞 · 战斗收口（F 批）', () => {
   })
 
   /**
-   * **谜质储存器随趟消失：撤离成功也不进仓库**（2026-09-14 修 · 一号核验查出的缺陷）。
+   * **谜质装置 ⇒ 虫洞谜质**（2026-09-15 船长定「虫洞战利品与经济扩充」①，**改了 09-14 的老口径**）。
    *
-   * 它与货柜**共用同一套形状件账本**（都记 `kind: 'box'`），而撤离收口原来按 `p.kind === 'box'`
-   * 取件 ⇒ 装置被当成货柜交给 `wormholeDeliverRelics` 进了仓库，与物品说明「本趟结束随趟消失
-   * （不进仓库、不拆解）· 离开虫洞即失效」相反。
+   * 老口径（09-14 修一号核验缺陷时定的）：谜质装置与货柜**共用同一套形状件账本**（都记 `kind: 'box'`），
+   * 撤离收口按 `p.kind === 'box'` 取件 ⇒ 装置被当货柜交给 `wormholeDeliverRelics` 进了仓库，
+   * 与物品说明「离开虫洞即失效」相反 ⇒ 当时改成**按物品 `kind` 排除 `matter`**（随趟消失、不进仓库）。
+   * 新口径：**撤离成功那一刻按 1 台 = 1 枚折成「虫洞谜质」入库**（只收不卖、纯金钱收益）；
+   * 全损走不到折算点 ⇒ 一枚都拿不到。装置本身仍**既不进仓库、也不进拆解池**。
    */
-  it('**谜质储存器随趟消失**：撤离成功也不进仓库（与货柜同账本、不同去向）', () => {
-    const state = enterRun()
+  it('**谜质装置折成「虫洞谜质」**：撤离成功才折算（1 台 = 1 枚），装置本身仍不进仓库', () => {
+    // ⚠ 两台 2×2 装置要 8 格 ⇒ 用 3 舰编队（本文件默认夹具 2 舰的货仓装不下两台）
+    const state = fresh(21)
+    const a = addShipToFleet(state, T3)
+    const b = addShipToFleet(state, T3)
+    const c = addShipToFleet(state, T3)
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [a, b, c], 21).ok).toBe(true)
     const run = state.wormhole.run!
     run.depth = 2
     run.bossCleared = run.depth
     const matterId = WORMHOLE_MATTER_DEVICE_IDS[0]!
     expect(wormholeHoldStow(state, ctx, matterId).ok, '装置能装进货仓（2×2 形状件）').toBe(true)
+    expect(wormholeHoldStow(state, ctx, matterId).ok, '再装一台（两件同型）').toBe(true)
     expect(countWare(state, matterId)).toBe(0)
+    const before = countWare(state, WORMHOLE_ESSENCE_ITEM_ID)
     expect(wormholeExtract(run).ok).toBe(true)
     advanceWormhole(state, ctx) // 2026-09-15 起：撤离下一拍直接入港（不再有战斗）
-    expect(countWare(state, matterId), '撤离成功也不进仓库（随趟消失）').toBe(0)
-    expect(state.wormhole.lastSettle!.boxes, '结算单也不列它').not.toContain(matterId)
+    expect(countWare(state, matterId), '装置本身不进仓库（折算是唯一出口）').toBe(0)
+    expect(countWare(state, WORMHOLE_ESSENCE_ITEM_ID) - before, '2 台 ⇒ 2 枚').toBe(2)
+    const st = state.wormhole.lastSettle!
+    expect(st.essences).toBe(2)
+    expect(st.essenceIsk, '按行价给参考估值（不计入到手合计）').toBe(2 * 70_000)
+    expect(st.boxes, '结算单不把它列成货柜').not.toContain(matterId)
+  })
+
+  it('**负 · 全灭**：全损 ⇒ 谜质装置一枚都折不出来（谜质仍是"带出去才算钱"）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.bossCleared = run.depth
+    const matterId = WORMHOLE_MATTER_DEVICE_IDS[0]!
+    expect(wormholeHoldStow(state, ctx, matterId).ok).toBe(true)
+    const before = countWare(state, WORMHOLE_ESSENCE_ITEM_ID)
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const battle = run.battle!
+    for (const u of Object.values(battle.units)) {
+      if (u.side === 'me') u.hp = { s: 0, a: 0, h: 0 }
+    }
+    battle.ended = 'foe'
+    settleBattle(state)
+    expect(state.wormhole.run).toBeNull()
+    expect(countWare(state, WORMHOLE_ESSENCE_ITEM_ID)).toBe(before)
+    expect(state.wormhole.lastSettle!.kind).toBe('lost')
+    expect(state.wormhole.lastSettle!.essences ?? 0).toBe(0)
   })
 
   /**

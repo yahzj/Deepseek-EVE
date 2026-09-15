@@ -17,11 +17,13 @@
 export const RARITY_TIER: Readonly<Record<string, number>> = {
   // 2026-09-15 虫洞战利品与经济扩充（船长确认）：谜质精华 · 奢侈品三档 · 贵重品/军用备货柜
   'mat-wh-essence': 4, // exotic（只收不卖的专属口径 ⇒ 奇货档；与 exclusive-market 用例的口径一致）
+  // ⚠ 渠道一致性：common ⇒ 必须 1（`content:check` 硬契约）。奢侈品三档与两个新货柜都按"常驻 ⇒ 才卖得掉"
+  //   的口径走 common ⇒ 档位一律 1；**三档价格差由 basePrice 承担**（2.4 万 / 4.8 万 / 9.6 万），不靠稀有度分层。
   'lux-1': 1, // common · 2.4 万
-  'lux-2': 2, // rare · 4.8 万（≤50 万 ⇒ 2）
-  'lux-3': 3, // rare · 9.6 万（>5 万 ⇒ 3）
-  'box-valuables': 4, // exotic · 50 万
-  'box-military': 4, // exotic · 700 万
+  'lux-2': 1, // common · 4.8 万
+  'lux-3': 1, // common · 9.6 万
+  'box-valuables': 1, // common · 50 万（只收不卖）
+  'box-military': 1, // common · 280 万（只收不卖；2026-09-15 批 B 复核：= MK3 拆解期望 470.95 万 ×0.6）
   'alpha': 4,
   'ammo-explosive-2': 1,
   'ammo-explosive-l': 1,
