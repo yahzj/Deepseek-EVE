@@ -160,7 +160,7 @@
   该更新的词典词条 · 必要时 architecture/本约定）；② **删掉工作文档**（细节以 git 历史兜底 ⇒ 结论/数值必须已并入）；
   ③ 重跑 `npm run docs:index`。
 - **例外（这几份随时可改）**：本文件 · `docs/development-conventions.md` · 那份 changelog（规则类要当场生效）·
-  `docs/glossary.md` 的**新术语登记** · 生成件 `docs/INDEX.md` 与 `docs/archive/` 封存卷。
+  `docs/glossary.md` 的**新术语登记** · **`docs/catalog.md`（指路目录）** · 生成件 `docs/INDEX.md` 与 `docs/archive/` 封存卷。
 - 大工程开工前提示船长压缩点并给续接卡；船长随时可要求「先固化状态/整理续接卡」——立即照做再继续。
 - 细则见 `docs/development-conventions.md` **§十五**。
 
