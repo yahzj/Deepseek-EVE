@@ -1,8 +1,12 @@
 /**
  * 战斗中"撤退"（2026-09-11 船长改口径：与低安遇袭同一套承伤算法）：
- * 脱身那一口 = **敌群火力（威胁 × foeDpsPerThreat）× combat.retreatHitFirepowerSec（K = 1 秒）**，
+ * 脱身那一口 = **敌群火力（威胁 × foeDpsPerThreat）× combat.retreatHitFirepowerSec**，
  * **先扣装甲、吸完再进结构**，结构 5% 底线（绝不弃船）、无弃船骰、转自动返航。
  * 取代旧口径「轻损 = 失利扣损骰 ×0.5 = 结构 −7.5%~15%（与敌人强弱无关、装甲不动）」。
+ *
+ * ⚠ **2026-09-14 船长改判：「玩家撤离战斗按照 10 秒算」⇒ K 由 1 秒改为 10 秒**，且范围经船长裁定
+ * 扩为**四档同一 K**：玩家主动撤退 / 结构<50% 自动脱离 / 战斗超时 / **无法交战**（够不着）；
+ * 虫洞的撤离战不吃本值（走真实战斗损伤）。**窝点档按派生后威胁算**（与界面/战斗同口径）。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
@@ -11,8 +15,9 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { retreatBattle, startExpedition } from '../src/expedition'
 import { durabilityOf, hullLayerCaps } from '../src/shipyard'
-import { firepowerHitHp } from '../src/hullDamage'
-import { makeTestCtx } from './helpers'
+import { applyArmorFirstDamage, firepowerHitHp } from '../src/hullDamage'
+import { LAIR_THREAT_MUL } from '../src/lairs'
+import { anomaly, makeTestCtx } from './helpers'
 
 function world() {
   const ctx: SimContext = makeTestCtx({ quietEvents: true })
@@ -43,23 +48,40 @@ describe('战斗中撤退（按敌方火力扣装甲/结构）', () => {
     const ship = state.fleet[state.shipId]!
     const armorBefore = ship.armorPct ?? 1
     const structBefore = ship.durability
+    const K = ctx.balance.combat.retreatHitFirepowerSec
     const bite = expectedBite(ctx)
-    expect(bite).toBeCloseTo(8 * ctx.balance.battle.foeDpsPerThreat * 1, 6) // 威胁 8 × 0.8/秒 × 1 秒 = 6.4 HP
+    // 威胁 8 × 0.8/秒 × 10 秒 = 64 HP（2026-09-14 船长改判后的 K）
+    expect(bite).toBeCloseTo(8 * ctx.balance.battle.foeDpsPerThreat * K, 6)
+    expect(K).toBe(10)
     expect(retreatBattle(state, ctx).ok).toBe(true)
     expect(state.expedition.phase).toBe('back') // 自动返航
-    // 期望：这一口先由装甲池吸收（测试船甲 10 > 6.4 ⇒ 结构分文不动）
+    // 期望：这一口**先由装甲池吸收、吃满才进结构**（测试船甲 < 64 ⇒ 甲清零、余量落结构）
     const armorHp = armorBefore * caps.capA
     const eat = Math.min(armorHp, bite)
     const rest = Math.max(0, bite - eat)
     expect(ship.armorPct ?? 1).toBeCloseTo((armorHp - eat) / caps.capA, 3)
     expect(ship.durability).toBeCloseTo(Math.max(0.05, structBefore - rest / caps.capH), 3)
-    expect(rest).toBe(0) // 装甲没被打穿
-    expect(ship.durability).toBe(structBefore)
+    expect(eat).toBe(armorHp) // 装甲被吃满（不是"结构先掉、装甲不动"）
+    expect(ship.armorPct).toBe(0)
+    expect(rest).toBeGreaterThan(0) // 余量确实进了结构
     expect(state.fleet[state.shipId]).toBeDefined() // 绝不弃船
     expect(state.logs.some((l) => l.kind === 'warn' && l.text.includes('撤退'))).toBe(true)
     // 日志给的是"装甲 -X%（现 装甲 x% / 结构 y%）"这一套（与遇袭同款说法）
     expect(state.logs.some((l) => l.text.includes('装甲 -'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('现 装甲'))).toBe(true)
+  })
+
+  it('装甲够厚时**分文不动结构**（先扣装甲这条本身，用小口直打算法单点）', () => {
+    const { state, ctx } = world()
+    enterBattle(state, ctx)
+    const caps = hullLayerCaps(state, ctx, state.shipId)!
+    const ship = state.fleet[state.shipId]!
+    const structBefore = ship.durability
+    // 一口只吃 1 HP（远小于甲池）⇒ 结构必须一处不动（旧实现曾直接扣结构，这条就是它的守卫）
+    const hit = applyArmorFirstDamage(state, ctx, state.shipId, 1)!
+    expect(hit.hullLost).toBe(0)
+    expect(ship.durability).toBe(structBefore)
+    expect(hit.armorLost).toBeCloseTo(1 / caps.capA, 3)
   })
 
   it('装甲打穿后余量进结构；结构触底压 5% 下限（保护性钳制，不弃船）并显著告警', () => {
@@ -132,7 +154,7 @@ describe('战斗超时判负（视同被迫撤退）', () => {
     const armorAfter = state.fleet[state.shipId]!.armorPct ?? 1
     expect(durAfter).toBeGreaterThanOrEqual(0.05) // 下限保护：绝不因超时弃船
     expect(durAfter).toBeLessThanOrEqual(durBefore + 1e-9)
-    // 与手动撤退**同一 K**：超时这一口也恰好 = 威胁 8 × 0.8/秒 × 1 秒 = 6.4 HP，且先吃装甲
+    // 与手动撤退**同一 K**：超时这一口也恰好 = 威胁 8 × 0.8/秒 × 10 秒 = 64 HP，且先吃装甲
     const caps = hullLayerCaps(state, ctx, state.shipId)!
     const bite = expectedBite(ctx)
     const armorHp = armorBefore * caps.capA
@@ -146,10 +168,39 @@ describe('战斗超时判负（视同被迫撤退）', () => {
   it('一口伤害 = 敌群火力 × K 秒（线性随威胁），K 走 balance 可调常量', () => {
     const { ctx } = world()
     const K = ctx.balance.combat.retreatHitFirepowerSec
-    expect(K).toBe(1) // 船长 2026-09-11 定：撤退 K = 1 秒（三档同一 K）
-    expect(firepowerHitHp(ctx, 8, K)).toBeCloseTo(6.4, 6)
-    expect(firepowerHitHp(ctx, 40, K)).toBeCloseTo(32, 6) // 威胁 ×5 ⇒ 伤害 ×5
-    expect(firepowerHitHp(ctx, 8, K * 3)).toBeCloseTo(19.2, 6) // 秒数线性
+    // 2026-09-14 船长改判「玩家撤离战斗按照 10 秒算」（四档同一 K；旧值 1 秒作废）
+    expect(K).toBe(10)
+    expect(firepowerHitHp(ctx, 8, K)).toBeCloseTo(64, 6)
+    expect(firepowerHitHp(ctx, 40, K)).toBeCloseTo(320, 6) // 威胁 ×5 ⇒ 伤害 ×5
+    expect(firepowerHitHp(ctx, 8, K * 3)).toBeCloseTo(192, 6) // 秒数线性
+  })
+
+  /**
+   * **窝点档按派生威胁算这一口**（2026-09-14 船长裁定「顺手对齐」）：
+   * 界面胜率/威胁与实战敌编成都按 `lairAnomalyOf` 派生后的卡（威胁 ×1.3/1.6/2.0），
+   * 唯独撤退取数原先读基础卡 ⇒ 窝点档被少算。这里用 L3（×2.0）钉住"按派生值扣"。
+   */
+  it('窝点档（L3 ×2.0）：脱身那一口按**派生后威胁**算（基础卡威胁 1 ⇒ 派生 2 ⇒ 16 HP 打穿甲池）', () => {
+    const base = makeTestCtx({ quietEvents: true })
+    const card = anomaly('ano-lair', 'galaxy-hub', { threat: 1, lairCore: '测试窝点' })
+    const ctx: SimContext = { ...base, anomalies: new Map([...base.anomalies, [card.id, card]]) }
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
+    expect(startExpedition(state, 'ano-lair', ctx, { lairTier: 3 }).ok).toBe(true)
+    advanceGame(state, 1_000, ctx)
+    expect(state.expedition.phase).toBe('battle')
+    const caps = hullLayerCaps(state, ctx, state.shipId)!
+    expect(retreatBattle(state, ctx).ok).toBe(true)
+    const derivedThreat = Math.round(card.threat * LAIR_THREAT_MUL[3]) // 1 × 2.0 = 2
+    const bite = firepowerHitHp(ctx, derivedThreat, ctx.balance.combat.retreatHitFirepowerSec) // 2×0.8×10 = 16
+    expect(bite).toBe(16)
+    const baseBite = firepowerHitHp(ctx, card.threat, ctx.balance.combat.retreatHitFirepowerSec) // 基础口径 = 8
+    const ship = state.fleet[state.shipId]!
+    const rest = Math.max(0, bite - caps.capA)
+    expect(ship.armorPct).toBe(0) // 16 > 甲池 ⇒ 甲清零（按基础威胁的 8 不会清零，见下）
+    expect(ship.durability).toBeCloseTo(Math.max(0.05, 1 - rest / caps.capH), 3)
+    // 反向：若按基础威胁算，这一口吃不满甲池 ⇒ 结构分文不动（两者读数必须不同，否则本用例咬不住对齐）
+    expect(baseBite).toBeLessThan(caps.capA)
+    expect(caps.capA).toBeGreaterThan(0)
   })
 })
 
