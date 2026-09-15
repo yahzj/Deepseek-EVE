@@ -36,6 +36,7 @@
  *   推进 window 号、不重复扣量/抬价（防 8 小时 24 轮冲击把市场打穿）；投送在途跨大步长按真实
  *   时间推进，越过 arriveAtGameMs 即到站结算。见 advanceSideTasks 注释。
  */
+import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID } from './state'
 import type { CourierDeliveryState, GameState, SideTask, SideTasksState } from './state'
 import type { CommandResult } from './engine'
@@ -246,7 +247,8 @@ function rewardIskFor(
   if (kind === 'resource' && quote.sell !== undefined && reward >= need * quote.sell) {
     reward = Math.min(reward, Math.floor((need * quote.sell - 1) / 100) * 100)
   }
-  return reward
+  // 限时倍率（2026-09-15）：`rewardIsk` 乘在资源/快递任务的奖励上
+  return Math.max(0, Math.round(reward * tuningMul(state, 'rewardIsk')))
 }
 
 /** 刷出市场影响（对单个商品一次）：npcSell 合计削减 SPAWN_SUPPLY_CUT 在售量（逐单从尾扣减至 0 移除），
@@ -419,7 +421,8 @@ function spawnBountyTasks(state: GameState, ctx: SimContext): void {
       goodKey: '',
       refId: '',
       need: 0,
-      rewardIsk: lairTaskRewardIsk(pick, tier),
+      // 限时倍率（2026-09-15）：`rewardIsk` 乘在任务奖励生成上
+      rewardIsk: Math.max(0, Math.round(lairTaskRewardIsk(pick, tier) * tuningMul(state, 'rewardIsk'))),
       anomalyId: pick.id,
       galaxyId: pick.galaxyId,
       lairTier: tier,
@@ -560,7 +563,7 @@ function spawnFactionActivity(state: GameState, ctx: SimContext): void {
     refId: '',
     need: 0,
     // 展示口径 = 加成后的悬赏奖金（实付在战斗结算里按卡 ×1.1 现算）
-    rewardIsk: factionBaseRewardIsk(pick),
+    rewardIsk: Math.max(0, Math.round(factionBaseRewardIsk(pick) * tuningMul(state, 'rewardIsk'))),
     anomalyId: pick.id,
     galaxyId: pick.galaxyId,
     factionAnomalyName: pick.name,

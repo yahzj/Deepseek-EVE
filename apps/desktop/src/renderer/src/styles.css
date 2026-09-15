@@ -8436,6 +8436,56 @@ body {
 
 .app-activitybar-scan.is-done .app-activitybar-scan-time { color: var(--wui-gold); }
 
+/* 限时加成徽标（2026-09-15 船长：显示在「活动无人机 / 扫描进度条」右侧）：
+   与 .app-activitybar-scan 同族（同字号 / 同内边距 / 同圆角），只换配色（薄荷=加成）；
+   定宽 + 两段省略号 ⇒ 名称或剩余时间再长也不推挤头部（防跳动，见约定 §九）。 */
+
+.app-activitybar-tuning {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  width: 190px;
+
+  min-width: 110px;
+
+  flex-shrink: 1;
+
+  box-sizing: border-box;
+
+  cursor: pointer;
+
+  font-family: inherit;
+
+  font-size: 11px;
+
+  color: var(--wui-text-dim);
+
+  padding: 2px 8px;
+
+  border: 1px dashed rgba(120, 235, 200, 0.35);
+
+  border-radius: 6px;
+
+  background: rgba(120, 235, 200, 0.07);
+
+}
+
+.app-activitybar-tuning:hover { background: rgba(120, 235, 200, 0.16); }
+
+.app-activitybar-tuning-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-activitybar-tuning-time { flex-shrink: 0; font-size: 10.5px; font-family: var(--wui-mono); }
+
 /* V16.2 vertical hp layers (shield blue / armor red / hull yellow, top-down) (ASCII-safe) */
 
 .app-battle-hp { display: flex; flex-direction: column; gap: 3px; width: 100%; }

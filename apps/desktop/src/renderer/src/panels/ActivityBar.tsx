@@ -8,7 +8,7 @@
  * 界面查看后才移除）」⇒ 扫描不再是"玩家活动"行，改为头部 AI 徽标右侧一条常驻进度条
  * （进行中 = 进度 + 剩余；完成待查看 = 满格金色高亮，进「星图」或点它即收）。
  */
-import { activityOverview, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
+import { activityOverview, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { formatDurationMs } from '@whale/core'
 import { useEffect, useState } from 'react'
@@ -236,6 +236,20 @@ export function ActivityBar({
       ? { done: true, galaxyId: scanAck.galaxyId, percent: 100, remainingMs: 0 }
       : null
   const scanName = (id: string | null): string => (id ? (engine.ctx.galaxies.get(id)?.name ?? id) : '未知信号')
+  /**
+   * **限时加成徽标**（2026-09-15 船长：「同时拥有限时加成时，还会在活动无人机的右侧
+   * （扫描进度条的右侧）显示当前加成项是什么和剩余时间」）。
+   *
+   * 口径：数据表 `TUNING_RULES`（`packages/core/src/tuning.ts`）× **现实墙钟**；到期自动消失。
+   * 剩余时间按**本地日界**算（规则以"当天整天生效"为准）⇒ 这里显示"还剩 N 天 N 小时"。
+   * 无加成时**不渲染**（不占位、防头部跳动）。
+   */
+  const [tuningTick, setTuningTick] = useState(() => Date.now())
+  useEffect(() => {
+    const t = window.setInterval(() => setTuningTick(Date.now()), 60_000) // 每分钟刷新剩余时间
+    return () => window.clearInterval(t)
+  }, [])
+  const tunings = activeTunings(tuningTick)
   // 撤退需二次确认（轻损但有代价）。
   // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
   // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——
@@ -397,6 +411,26 @@ export function ActivityBar({
             </span>
           </button>
         ) : null}
+        {/* 限时加成（2026-09-15 船长）：摆在**扫描条右侧** —— 生效中的加成项 + 剩余时间；无加成不渲染 */}
+        {tunings.map((t) => (
+          <button
+            key={`${t.key}-${t.untilMs}`}
+            className="app-activitybar-tuning"
+            title={
+              `${t.name}：本期限时加成 ×${t.mul}${t.note ? `\n${t.note}` : ''}\n` +
+              `截止 ${new Date(t.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, t.untilMs - tuningTick))}`
+            }
+            onClick={() => onGoPage?.('map', 'star')}
+          >
+            <span className="app-ico">
+              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+            </span>
+            <span className="app-activitybar-tuning-name">
+              {t.name} ×{t.mul}
+            </span>
+            <span className="app-activitybar-tuning-time">{formatDurationMs(Math.max(0, t.untilMs - tuningTick))}</span>
+          </button>
+        ))}
       </div>
       <div className="app-activitybar-group">
         <div className="app-activitybar-gtitle">玩家活动</div>

@@ -1578,6 +1578,14 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
 export type GameStateV25 = Omit<GameStateV24, 'version'> & {
   version: 25
   wormhole: WormholeState
+  /**
+   * **现实墙钟**（毫秒时间戳；2026-09-15 限时倍率批新增的**可选**字段）。
+   *
+   * 由引擎每拍写入（`advanceGame` 的 `nowWallMs`，在线 = `Date.now()`）——**只有显式传参时才写**：
+   * 工具与用例不传 ⇒ 该字段保持 `undefined` ⇒ **限时倍率恒为 1×**（标定读数不被日历污染）。
+   * ⚠ **不参与存档语义**（不落盘、不影响迁移）：老档没有它 = 一切照旧（限时倍率按 1× 处理）。
+   */
+  wallMs?: number
 }
 /** 对外统一称呼：当前版本状态（v25 = v24 + 虫洞副本状态） */
 export type GameState = GameStateV25

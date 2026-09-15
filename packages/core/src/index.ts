@@ -1173,6 +1173,18 @@ export {
   advanceWormholeScan,
 } from './wormholeScan'
 export type { WormholeScanState, WormholeStockItem, WormholeArchetype, WormholeFamily } from './state'
+// 限时倍率表（2026-09-15 船长：「允许我快速设置在指定的现实日期之前，给特定数值调整一个倍率」）：
+//   `TUNING_RULES` 是数据表、`tuningMul` 是引擎唯一读取入口、`activeTunings` 供界面显示加成与剩余时间
+export {
+  TUNABLE_KNOBS,
+  TUNING_RULES,
+  activeTunings,
+  localDayStartMs,
+  ruleActiveAt,
+  tuningMul,
+  tuningMulAt,
+} from './tuning'
+export type { ActiveTuning, TunableKey, TuningRule } from './tuning'
 // 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 收益 40% 入仓库 · 绝不丢船）
 export {
   WORMHOLE_AUTO_DURATION_MS,

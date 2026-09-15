@@ -17,6 +17,7 @@
  *   （`reconcileWormholeScanWelcome`，逐 tick 幂等、老档补发、**只送一次**，且**不提示"已预置"**）。
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
+import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
 import { addLog, wormholeScanHalt } from './state'
 import type { SimContext } from './types'
@@ -121,7 +122,8 @@ export function wormholeScanWindowMs(state: GameState): number {
    * （`state.debugQuick`，调试面板「⇄ 调试 · 1秒化」勾选）⇒ 一个窗口 1 秒，连点即可攒满库存。
    */
   if (state.debugQuick) return 1000
-  return Math.max(1000, Math.round(WORMHOLE_SCAN_BASE_MS * scanSkillFactor(state) * happeningsScanFactor(state)))
+  // 限时倍率（2026-09-15）：`wormholeScanMs` 乘在周期上（×0.5 = 快一倍）
+  return Math.max(1000, Math.round(WORMHOLE_SCAN_BASE_MS * scanSkillFactor(state) * happeningsScanFactor(state) * tuningMul(state, 'wormholeScanMs')))
 }
 
 /** 当前库存（发现即入列；上限走 `wormholeStockMaxOf(state)`：基础 5 ＋ 星图记录学满级 10） */

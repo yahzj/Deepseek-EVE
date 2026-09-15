@@ -20,6 +20,7 @@
  * salvaging, equipment }`；**`wormhole.ts` 不许 import 本文件**（它被 `state.ts` 顶层引用，
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
+import { tuningMul } from './tuning'
 import type { GameState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
@@ -457,7 +458,8 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
     // **每 3 堆普通判一次稀有**（船长口径）⇒ 上限 = ⌊普通 ÷ 3⌋
     const rolls = Math.floor(commons / WORMHOLE_RARE_JUDGE_PER_COMMONS)
     for (let i = 0; i < rolls; i++) {
-      if (rng() < WORMHOLE_RARE_JUDGE_CHANCE) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 })
+      // 限时倍率（2026-09-15）：`rareWreckRate` 乘判定概率、`rareWreckVolume` 乘每件单位数
+      if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * tuningMul(state, 'rareWreckRate'))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
     }
     for (let i = 0; i < commons; i++) {
       piles.push({ itemId: common, units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
@@ -465,7 +467,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   } else {
     const span = WORMHOLE_RUINS_RARES_MAX - WORMHOLE_RUINS_RARES_MIN + 1
     const rares = WORMHOLE_RUINS_RARES_MIN + Math.floor(rng() * span)
-    for (let i = 0; i < rares; i++) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 })
+    for (let i = 0; i < rares; i++) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
   }
   // **稀有在前**：回收按数组顺序取 ⇒ "优先打捞稀有残骸"天然成立
   cell.piles = piles
