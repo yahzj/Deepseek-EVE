@@ -141,11 +141,44 @@ const IDS = {
 
 const errors: string[] = []
 const err = (m: string): void => { errors.push(m) }
+/** 现值是表达式（同文件常量解析不出 / 计算式）而**只读跳过**的列（不阻断，只提示，见 planRow） */
+const readOnlySkips: string[] = []
 
 /* ═══════════ AST 辅助 ═══════════ */
-interface ObjInfo { obj: ts.ObjectLiteralExpression }
+/** 收集**同文件**的 `const NAME = 数字`（供卡面常量引用比对；只认本文件，跨文件导入的常量按只读处理） */
+function collectNumConsts(sf: ts.SourceFile): Map<string, number> {
+  const map = new Map<string, number>()
+  const visit = (node: ts.Node): void => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const n = Number(node.initializer.getText(sf).replaceAll('_', ''))
+      if (Number.isFinite(n)) map.set(node.name.text, n)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+  return map
+}
 
-function collectObjects(sf: ts.SourceFile, idPropName: string): Map<string, ObjInfo> {
+/** 表达式 → 数值（字面量直接取；标识符查同文件常量表；查不到 = undefined） */
+function numOfExpr(expr: ts.Expression | undefined, sf: ts.SourceFile, consts: Map<string, number>): number | undefined {
+  if (!expr) return undefined
+  const raw = expr.getText(sf).replaceAll('_', '').trim()
+  const direct = Number(raw)
+  if (Number.isFinite(direct)) return direct
+  if (ts.isIdentifier(expr)) {
+    const v = consts.get(expr.text)
+    if (v !== undefined) return v
+  }
+  return undefined
+}
+
+/** 一个可回写的对象块：**连同它所在的源文件**（多源表要按文件分组回写，见 main 里的多源扫描） */
+interface ObjInfo {
+  obj: ts.ObjectLiteralExpression
+  srcPath: string
+}
+
+function collectObjects(sf: ts.SourceFile, idPropName: string, srcPath: string): Map<string, ObjInfo> {
   const map = new Map<string, ObjInfo>()
   const visit = (node: ts.Node): void => {
     if (ts.isObjectLiteralExpression(node)) {
@@ -154,13 +187,26 @@ function collectObjects(sf: ts.SourceFile, idPropName: string): Map<string, ObjI
           ts.isPropertyAssignment(x) && x.name.getText(sf) === idPropName && ts.isStringLiteralLike(x.initializer),
       )
       if (p && ts.isStringLiteralLike(p.initializer) && !map.has(p.initializer.text)) {
-        map.set(p.initializer.text, { obj: node })
+        map.set(p.initializer.text, { obj: node, srcPath })
       }
     }
     ts.forEachChild(node, visit)
   }
   visit(sf)
   return map
+}
+
+/** 多源表的源码访问器：路径 → 原文 / AST（`planRow` / `applyChanges` 按对象自己的文件取用） */
+interface Sources {
+  textOf: Map<string, string>
+  sfOf: Map<string, ts.SourceFile>
+  /**
+   * **同文件数值常量表**（`const NAME = 45`；2026-09-15 加）。
+   * 为什么需要：卡面允许把数值写成常量（如 `threat: ANCHOR_THREAT`），而导入端原先只会 `Number(文本)`
+   * ⇒ 常量解析成 NaN ⇒ 判成"要改"，**把常量引用改写成字面量**（破坏数据意图 + 每轮导入都报改动）。
+   * 现在先查这张表；查不到就**当只读列跳过并提示**（宁可不动，也不擅自把表达式换成字面量）。
+   */
+  numConstOf: Map<string, Map<string, number>>
 }
 
 function propOf(obj: ts.ObjectLiteralExpression, name: string, sf: ts.SourceFile): ts.PropertyAssignment | undefined {
@@ -192,13 +238,28 @@ function quoteStr(v: string): string {
   return v.includes("'") ? JSON.stringify(v) : `'${v}'`
 }
 
-function objPairsOf(expr: ts.Expression | undefined, sf: ts.SourceFile): Array<[string, number]> {
+/**
+ * 对象字面量的 `key: 数值` 对（obj 列用）。两处兼容（2026-09-15 修既有缺陷）：
+ * ① **字符串字面量键**：源里若写成 `{ "kinetic": 0.5 }`（历史导入留下的 JSON 风格），`p.name.getText()`
+ *    会连引号一起返回 ⇒ 与表头派生的 `kinetic` 对不上 ⇒ 判成"该键不存在"、**每轮导入都重写一遍**
+ *    （实测 ships 表 15 条 `sh-wh-*` 白报 54 处改动）；现字符串键取其 `text`（去引号）。
+ * ② **同文件常量值**：值走 `numOfExpr`（字面量或 `const NAME = 数字`），避免把常量引用改写成字面量。
+ */
+function objPairsOf(
+  expr: ts.Expression | undefined,
+  sf: ts.SourceFile,
+  consts: Map<string, number>,
+): Array<[string, number]> {
   if (!expr || !ts.isObjectLiteralExpression(expr)) return []
   const out: Array<[string, number]> = []
   for (const p of expr.properties) {
     if (!ts.isPropertyAssignment(p)) continue
-    const n = Number(p.initializer.getText(sf).replaceAll('_', ''))
-    if (Number.isFinite(n)) out.push([p.name.getText(sf), n])
+    const n = numOfExpr(p.initializer, sf, consts)
+    if (n === undefined) continue
+    const name = p.name
+    const key =
+      ts.isStringLiteral(name) || ts.isNoSubstitutionTemplateLiteral(name) ? name.text : name.getText(sf)
+    out.push([key, n])
   }
   return out
 }
@@ -244,11 +305,14 @@ function planRow(
   info: ObjInfo,
   csvRow: string[],
   headIdx: Map<string, number>,
-  srcText: string,
-  sf: ts.SourceFile,
+  sources: Sources,
   changes: Change[],
 ): void {
   const { obj } = info
+  // 多源表：按**本对象自己的源文件**取原文与 AST（数值列还要查该文件的常量表）
+  const srcText = sources.textOf.get(info.srcPath)!
+  const sf = sources.sfOf.get(info.srcPath)!
+  const consts = sources.numConstOf.get(info.srcPath)!
   const indent = indentOf(srcText, obj.getStart(sf)) + '  ' // 对象属性缩进
   for (const col of spec!.cols) {
     if (col.k === 'id') continue
@@ -284,7 +348,26 @@ function planRow(
       case 'num': {
         const n = parseNum(csvRow[0]!, col.head, cell, col)
         if (n === undefined) continue
-        if (curText !== undefined && Math.abs(Number(curText.replaceAll('_', '')) - n) < 1e-9) continue
+        /**
+         * 现值可能是**同文件常量**（如 `threat: ANCHOR_THREAT`）。两条规矩：
+         * ① 解析得出且**同值** ⇒ 无需改（这条修掉了"每轮导入白报改动 + 把常量写成字面量"的既有缺陷）；
+         * ② 现值是**标识符（常量引用）**：即便表格里填了别的数，也**只读跳过并点名**——直接把字面量写进去
+         *    会把全族共用的常量钉死在单张卡上（如 5 张 `wh-*` 卡的 `ANCHOR_THREAT`），要改就该改常量本身。
+         * 解析不出的表达式（跨文件常量/计算式）同样只读跳过。
+         */
+        if (curText !== undefined) {
+          const isConstRef = prop !== undefined && ts.isIdentifier(prop.initializer)
+          const cur = numOfExpr(prop?.initializer, sf, consts)
+          if (cur === undefined) {
+            readOnlySkips.push(`${csvRow[0]}·${col.head}`)
+            continue
+          }
+          if (Math.abs(cur - n) < 1e-9) continue
+          if (isConstRef) {
+            readOnlySkips.push(`${csvRow[0]}·${col.head}（源为常量 ${prop!.initializer.getText(sf)}=${cur}）`)
+            continue
+          }
+        }
         changes.push({ kind: 'set', rowId: csvRow[0]!, prop: root, text: fmtNum(n) })
         break
       }
@@ -303,7 +386,7 @@ function planRow(
         const key = col.p.split('.')[1]!
         const n = parseNum(csvRow[0]!, col.head, cell, col)
         if (n === undefined) continue
-        const pairs = objPairsOf(prop?.initializer, sf)
+        const pairs = objPairsOf(prop?.initializer, sf, consts)
         const cur = pairs.find(([k]) => k === key)
         if (cur && Math.abs(cur[1] - n) < 1e-9) continue
         // 合并：原键序 + 新键按规范序插入
@@ -495,10 +578,25 @@ async function main(): Promise<void> {
     err(`源表有而 CSV 缺失 ${removedIds.length} 条（疑似筛选视图保存误删；真删走代办）：${removedIds.slice(0, 8).join('、')}${removedIds.length > 8 ? '…' : ''}`)
   }
 
-  const srcPath = spec.file
-  const srcText = readFileSync(srcPath, 'utf8')
-  const sf = ts.createSourceFile(srcPath, srcText, ts.ScriptTarget.Latest, true)
-  const objs = collectObjects(sf, spec.idProp)
+  /**
+   * **多源文件**（2026-09-15 修既有缺陷）：一张表的数据可能横跨多个 TS 文件 —— 典型是 `anomalies`：
+   * 5 张 `wh-*` 洞内敌卡住在 `data/wormholeFoes.ts`，而 `ANOMALIES` 在 `data/anomalies.ts` 里摊进去
+   * ⇒ 旧版只扫一个文件时会报「源文件找不到 wh-xxx 的对象块」，**整个敌情表导不回去**。
+   * 现在逐个文件收集对象块并合并（同一 id 出现在两处 = 数据错误，直接拦下）。
+   */
+  const sources: Sources = { textOf: new Map(), sfOf: new Map(), numConstOf: new Map() }
+  const objs = new Map<string, ObjInfo>()
+  for (const srcPath of spec.files) {
+    const srcText = readFileSync(srcPath, 'utf8')
+    sources.textOf.set(srcPath, srcText)
+    const sf = ts.createSourceFile(srcPath, srcText, ts.ScriptTarget.Latest, true)
+    sources.sfOf.set(srcPath, sf)
+    sources.numConstOf.set(srcPath, collectNumConsts(sf))
+    for (const [id, info] of collectObjects(sf, spec.idProp, srcPath)) {
+      if (objs.has(id)) err(`id「${id}」在多个源文件里都出现（${srcPath}）：请先消除重复`)
+      objs.set(id, info)
+    }
+  }
 
   const changes: Change[] = []
   let derivedSkipped = 0
@@ -517,10 +615,16 @@ async function main(): Promise<void> {
       err(`源文件找不到 ${id} 的对象块（id 在数据目录但源文件缺失？）`)
       continue
     }
-    planRow(spec, info, dataRows[i]!, headIdx, srcText, sf, changes)
+    planRow(spec, info, dataRows[i]!, headIdx, sources, changes)
   }
   if (derivedSkipped > 0) {
     console.log(`ℹ️ 跳过 ${derivedSkipped} 行派生只读卡（wreck-* 残骸收购卡由敌群表生成，改动请走敌群表/代码）`)
+  }
+  if (readOnlySkips.length > 0) {
+    console.log(
+      `ℹ️ ${readOnlySkips.length} 处列现值是表达式（同文件常量/计算式），表格**不改它**（要改请直接编辑源码）：` +
+        `${readOnlySkips.slice(0, 6).join('、')}${readOnlySkips.length > 6 ? '…' : ''}`,
+    )
   }
 
   if (errors.length > 0) {
@@ -544,13 +648,27 @@ async function main(): Promise<void> {
     console.log('（--dry-run 预览模式，未写盘）')
     return
   }
-  const { text: newText, count } = applyChanges(srcText, sf, changes, objs)
-  if (count !== changes.length) {
-    console.error(`❌ 内部不一致：计划 ${changes.length} 处，实际应用 ${count} 处——未写盘，请报告`)
+  // **按源文件分组回写**（多源表：一张表可能横跨多个 TS 文件，如 anomalies + wormholeFoes）
+  const byFile = new Map<string, Change[]>()
+  for (const c of changes) {
+    const info = objs.get(c.rowId)
+    if (!info) continue
+    const arr = byFile.get(info.srcPath) ?? []
+    arr.push(c)
+    byFile.set(info.srcPath, arr)
+  }
+  let applied = 0
+  for (const [path, fileChanges] of byFile) {
+    const { text, count } = applyChanges(sources.textOf.get(path)!, sources.sfOf.get(path)!, fileChanges, objs)
+    applied += count
+    writeFileSync(path, text, 'utf8')
+  }
+  if (applied !== changes.length) {
+    console.error(`❌ 内部不一致：计划 ${changes.length} 处，实际应用 ${applied} 处——请报告`)
     process.exit(1)
   }
-  writeFileSync(srcPath, newText, 'utf8')
-  console.log(`✅ 已回写 ${srcPath}（${count} 处字段变更）`)
+  const written = [...byFile.keys()]
+  console.log(`✅ 已回写 ${written.join(' · ')}（${applied} 处字段变更）`)
   console.log('—— 自动校验：content:check + core/data typecheck ……')
   for (const args of [
     ['run', 'content:check'],
@@ -559,12 +677,12 @@ async function main(): Promise<void> {
   ]) {
     const r = spawnSync('npm.cmd', args, { stdio: 'inherit' })
     if (r.status !== 0) {
-      console.error(`⚠️ 自动校验 ${args.slice(1).join(' ')} 失败——请查看上面的错误；如需还原：git checkout -- ${srcPath}`)
+      console.error(`⚠️ 自动校验 ${args.slice(1).join(' ')} 失败——请查看上面的错误；如需还原：git restore ${written.join(' ')}`)
       process.exitCode = 1
       return
     }
   }
-  const diff = spawnSync('git', ['diff', '--stat', '--', srcPath], { encoding: 'utf8' })
+  const diff = spawnSync('git', ['diff', '--stat', '--', ...written], { encoding: 'utf8' })
   console.log('—— 改动摘要（git diff --stat）：')
   console.log(diff.stdout.trim())
   console.log('请 git diff 检视无误后提交；技能描述 ⟦数值⟧ 的改动需一号复核与引擎接线一致；')
