@@ -194,6 +194,13 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       // 2026-09-13 船长定（星云机制）：**第一次下到第 4 层**时送达一封星云说明。
       // 判定读的是同一个随档标记（`wormholeDescend` 置位）⇒ 与那一条一次性提示同源、不会错位。
       return state.wormhole.nebulaHintShown === true
+    case 'ambushRetreat':
+      // 2026-09-14 船长定（新通讯）：**第一次因为低安袭击导致舰船自动撤离**时送达一封"为什么船自己回家了"，
+      // 并提示自造修理组件（`msg-ambush-retreat`）。判定读随档一次性标记 `ambushRetreatSeen`
+      // —— 置位点两处（船长裁定「也算自动脱离交火」）：`encounters.retreatEncounterShip`（收手返港待命）
+      // 与 `encounters.settleEscape`（应战中途结构过半自动脱离交火）；主控与副船同口径。
+      // ⚠ **老档不追溯**（船长裁定）：缺该字段 = 从未发生 ⇒ 不补发，等他们下次遇袭撤离时再发。
+      return state.ambushRetreatSeen === true
     default:
       return false
   }
@@ -217,8 +224,17 @@ export function advanceComms(state: GameState, ctx: SimContext): void {
     if (!commsTriggerMet(state, ctx, msg.trigger)) continue
     if (!deliver(state, msg.id)) continue
     addLog(state, 'info', deliveryLogText(ctx, msg))
-    // 船长 2026-09-14：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」⇒ 标记了 popup 的消息再进弹窗队列
-    if (msg.popup === true) {
+    /**
+     * 弹窗队列（2026-09-14 船长两次裁定）：
+     * ① 初版：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」⇒ 只有显式标 `popup: true` 的消息弹；
+     * ② 同日改判：「**所有除新手教程外的讯息也弹窗**」⇒ 改为**默认弹窗**——唯一例外是**教程类**
+     *    （`kind === '教程'`：序章简报 + 七步教程，它们本来就在引导流程里，弹卡片只会打断）；
+     *    个别消息要关掉弹窗写 `popup: false`（显式 opt-out）。
+     * ⚠ **单窗口**由队列保证：界面只渲染队首那一封，所以同一拍送达多封也只会一张一张弹，
+     * 不会叠出多窗口（离线简报期间整体让位，见 `App.tsx` 的 `popupMsg`）。
+     */
+    const wantPopup = msg.popup ?? msg.kind !== '教程'
+    if (wantPopup) {
       const list = state.commsPopups ?? []
       if (!list.includes(msg.id)) state.commsPopups = [...list, msg.id]
     }

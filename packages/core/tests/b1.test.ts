@@ -551,6 +551,8 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     expect(drone.durability).toBeLessThanOrEqual(0.45) // 无组件可修 ⇒ 只掉不涨
     expect(state.wallet.isk).toBe(walletBefore) // 也不自动花钱修
     expect(state.logs.some((l) => l.text.includes('已中止任务召回回港待命'))).toBe(true)
+    // 因袭击自动撤离 ⇒ 记下一次（新通讯 `msg-ambush-retreat` 的触发面；主控与副船同口径）
+    expect(state.ambushRetreatSeen).toBe(true)
   })
 
   it('主控低安作业遇袭后结构低于 50% 且**无组件**：停手并即时返港（断料档）', () => {
@@ -564,6 +566,8 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     expect(state.awayGalaxy).toBeNull() // 回港（就近已建成站/母港）
     expect(state.wallet.isk).toBe(walletBefore)
     expect(state.logs.some((l) => l.text.includes('已自动停手返港'))).toBe(true)
+    // 因袭击自动撤离 ⇒ 记下一次（新通讯 `msg-ambush-retreat` 的触发面）
+    expect(state.ambushRetreatSeen).toBe(true)
   })
 
   /* ── 2026-09-12 船长改判：**先维修，组件不足或者修完后结构 <50% 返港** ─────────────────────
@@ -663,6 +667,8 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     fleeEncounter(state, ctx)
     expect(state.mining.active).toBe(true)
     expect(state.awayGalaxy).toBe('galaxy-far')
+    // 没撤离 ⇒ 不置位（新通讯不该在"挨了一下但没走"时就发）
+    expect(state.ambushRetreatSeen).toBeUndefined()
   })
 
   it('应战：遭遇战挂 50% 自动脱离保险（结构过半即轻损脱离，无缴获、不扣维修费）', () => {
@@ -678,6 +684,8 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     expect(state.logs.some((l) => l.text.includes('结构损失过半，及时退出交火'))).toBe(true)
     expect(state.wallet.isk).toBe(walletBefore) // 轻损脱离：不给缴获、也不扣维修费
     expect(state.awayGalaxy).toBeNull() // 随后走撤退判定 → 停手返港
+    // 「也算自动脱离交火」（船长 2026-09-14 裁定）⇒ 应战中途被打到脱身同样记一次
+    expect(state.ambushRetreatSeen).toBe(true)
   })
 
   it('应战：遭遇战战后总结带修理组件消耗（2026-09-11 船长：装置不单独显示日志）', () => {

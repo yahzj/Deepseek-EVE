@@ -2541,6 +2541,9 @@ function normalizeState(raw: unknown): GameState {
     if (typeof id === 'string' && id.length > 0 && !commsPopups.includes(id)) commsPopups.push(id)
   }
 
+  // --- 曾因低安袭击自动撤离（2026-09-14 · 可选字段 ⇒ 零迁移）：只认 true，缺失即"从未发生" ---
+  const ambushRetreatSeen = src.ambushRetreatSeen === true
+
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
   const cbRaw = src.completedBounties
@@ -3046,6 +3049,8 @@ function normalizeState(raw: unknown): GameState {
     commsDelivered,
     commsPopups,
     commsRead,
+    // 曾因低安袭击自动撤离：只在真发生过时落键（老档往返不多出一个键，快照用例才不会红）
+    ...(ambushRetreatSeen ? { ambushRetreatSeen: true } : {}),
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,
     rareBoxesOpened,

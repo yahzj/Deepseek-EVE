@@ -4262,6 +4262,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'wormholeNebula',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
     'standing',
+    // 2026-09-14 被袭后的自动撤离（船长：「当玩家第一次因为低安袭击导致舰船自动撤离时触发」）
+    'ambushRetreat',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])

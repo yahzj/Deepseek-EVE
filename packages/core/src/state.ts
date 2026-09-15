@@ -1334,6 +1334,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 兼容字段（可选）⇒ 零迁移；界面只弹队首那一封。
    */
   commsPopups?: string[]
+  /**
+   * **是否已经历过"因低安袭击自动撤离"**（2026-09-14 船长定：新通讯 `msg-ambush-retreat` 的触发面）。
+   * 只写 `true`、不写 false；兼容字段（可选）⇒ 零迁移，**老档缺它 = 从未发生 ⇒ 不补发**（船长裁定）。
+   * 置位点两处（`encounters.ts`）：被袭船自动收手返港待命 · 应战中途结构过半自动脱离交火。
+   */
+  ambushRetreatSeen?: boolean
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
   /**

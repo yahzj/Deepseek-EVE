@@ -16,8 +16,10 @@ import {
   commsDialogueKey,
   commsGameClock,
   commsInbox,
+  commsPopupQueue,
   commsTriggerMet,
   commsUnreadCount,
+  dismissCommsPopup,
   markAllCommsRead,
   markCommsRead,
   resolveCommsSender,
@@ -623,5 +625,83 @@ describe('通讯 · 真数据：机制通讯不在开局送达（2026-09-14 船�
       const probe = { ...state, exploredGalaxies: [...state.exploredGalaxies, card.galaxyId] }
       expect(commsTriggerMet(probe, ctx, trigger), `${card.id} @ ${card.galaxyId}`).toBe(true)
     }
+  })
+})
+
+/**
+ * **被袭自动撤离**（2026-09-14 船长：「添加新的通讯，当玩家第一次因为低安袭击导致舰船自动撤离时触发」）
+ * ＋ **弹窗默认口径**（同日船长改判：「**所有除新手教程外的讯息也弹窗**」，并要求"已有弹窗在时不再叠窗口"）。
+ *
+ * 触发器 `{ kind: 'ambushRetreat' }` 读随档一次性标记 `state.ambushRetreatSeen`（两处置位在 `encounters.ts`：
+ * 收手返港待命 · 应战中途自动脱离交火）；**老档不追溯**（缺字段 = 从未发生 ⇒ 不补发，船长裁定）。
+ */
+describe('通讯 · 被袭自动撤离 ＋ 弹窗默认口径', () => {
+  const POPUP_MSGS: readonly CommsMessageDef[] = [
+    // 教程类：条件已满足也**不弹**（船长唯一列的例外）
+    { id: 'msg-tut-x', factionId: 'dshi', deptId: 'dept-survey', kind: '教程', subject: '教程样本', body: ['正文。'], trigger: { kind: 'explored', count: 1 } },
+    // 普通提示：**默认弹**
+    { id: 'msg-plain-x', factionId: 'dshi', deptId: 'dept-survey', kind: '提示', subject: '普通样本', body: ['正文。'], trigger: { kind: 'explored', count: 1 } },
+    // 显式关闭：`popup: false` ⇒ 不弹
+    { id: 'msg-quiet-x', factionId: 'dshi', deptId: 'dept-survey', kind: '提示', subject: '安静样本', body: ['正文。'], trigger: { kind: 'explored', count: 1 }, popup: false },
+    // 新通讯本体
+    { id: 'msg-retreat-x', factionId: 'dshi', deptId: 'dept-route-safety', kind: '提示', subject: '被袭撤离样本', body: ['正文。'], trigger: { kind: 'ambushRetreat' } },
+  ]
+
+  function popupWorld() {
+    const ctx: SimContext = makeTestCtx({ quietEvents: true, commsMessages: POPUP_MSGS, commsFactions: FACTIONS })
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
+    return { state, ctx }
+  }
+
+  it('触发器：未发生过 ⇒ 不送；发生过 ⇒ 送达且只送一次（幂等）', () => {
+    const { state, ctx } = popupWorld()
+    tick(state, ctx)
+    expect(commsInbox(state, ctx).map((e) => e.id)).not.toContain('msg-retreat-x')
+    state.ambushRetreatSeen = true
+    tick(state, ctx)
+    expect(commsInbox(state, ctx).map((e) => e.id)).toContain('msg-retreat-x')
+    tick(state, ctx, 5000)
+    expect(commsInbox(state, ctx).filter((e) => e.id === 'msg-retreat-x')).toHaveLength(1)
+  })
+
+  it('弹窗默认口径：除教程外都弹 · `popup: false` 可关 · 多封排成一队（一次一张，不叠多窗口）', () => {
+    const { state, ctx } = popupWorld()
+    tick(state, ctx)
+    const q = commsPopupQueue(state)
+    expect(q).not.toContain('msg-tut-x') // 新手教程类不弹（船长唯一例外）
+    expect(q).toContain('msg-plain-x') // 普通通讯默认弹
+    expect(q).not.toContain('msg-quiet-x') // 显式 `popup: false`
+    // 再送达一封（撤离信）：进**同一个队列**，不是开第二个窗口
+    state.ambushRetreatSeen = true
+    tick(state, ctx)
+    expect(commsPopupQueue(state)).toEqual(['msg-plain-x', 'msg-retreat-x'])
+    // 点掉队首 ⇒ 下一封顶上（界面只渲染队首那一封）
+    expect(dismissCommsPopup(state, 'msg-plain-x')).toBe(true)
+    expect(commsPopupQueue(state)).toEqual(['msg-retreat-x'])
+    expect(dismissCommsPopup(state, 'msg-retreat-x')).toBe(true)
+    expect(commsPopupQueue(state)).toHaveLength(0)
+  })
+
+  it('存档往返：标记随档保留（信也随档保留）；老档缺字段 ⇒ 不落键、也不补发（船长裁定「不追溯」）', () => {
+    const { state, ctx } = popupWorld()
+    state.ambushRetreatSeen = true
+    tick(state, ctx) // 触发条件已成立 ⇒ 撤离信送达并记账
+    expect(commsInbox(state, ctx).map((e) => e.id)).toContain('msg-retreat-x')
+    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(loaded.ambushRetreatSeen).toBe(true)
+    expect(commsInbox(loaded, ctx).map((e) => e.id)).toContain('msg-retreat-x')
+
+    // 老档：**从未发生过**（既没有标记、也没送达过这封）⇒ 读入不报错、不落键、不补发
+    const old = popupWorld()
+    tick(old.state, old.ctx) // 只送达 explored 那几封；撤离信不在其中
+    const raw = JSON.parse(serializeSaveFile(old.state, 1)) as { state: Record<string, unknown> }
+    delete raw.state.ambushRetreatSeen
+    const l2 = loadSaveFile(JSON.stringify(raw)).state
+    expect(l2.ambushRetreatSeen).toBeUndefined()
+    advanceComms(l2, ctx)
+    expect(commsInbox(l2, ctx).map((e) => e.id)).not.toContain('msg-retreat-x')
+    // 不凭空多字段：老档往返后依然没有这个键（等玩家真遇袭撤离时才落）
+    const round = JSON.parse(serializeSaveFile(l2, 1)) as { state: Record<string, unknown> }
+    expect(round.state.ambushRetreatSeen).toBeUndefined()
   })
 })
