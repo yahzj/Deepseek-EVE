@@ -130,6 +130,10 @@ securityZoneOf,
   wormholeRuinsFloorFor,
   // F3c 谜质储存器（船长 2026-09-13）：装置表 / 形状登记 / 保底 1 格的常量
   WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
+  // 2026-09-15 限时倍率表（船长：按现实日期给特定数值上倍率）——契约见文件尾
+  TUNING_RULES,
+  TUNABLE_KNOBS,
+  localDayStartMs,
   // 2026-09-14 图纸货柜（船长：遗迹打捞新增 · 占 2 格 · 一次性 + 5% 永久图纸）
   WORMHOLE_BP_BOX_IDS,
   WORMHOLE_BP_BOX_SHALLOW,
@@ -5092,6 +5096,54 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         `（槽位 ${engineSlots.size} 个 · 槽类 ${engineRacks.size} 个 · 弹种 ${engineTypes.size} 个）`,
     )
   }
+}
+
+/* ── 限时倍率表契约（2026-09-15 船长新增功能：按现实日期给特定数值上倍率） ── */
+{
+  /**
+   * **限时倍率表契约**（`packages/core/src/tuning.ts` 的 `TUNING_RULES`）。
+   *
+   * 四条判据：
+   * ① 每条规则的 `key` 必须是白名单 `TUNABLE_KNOBS` 里的开关（写错字 = 静默不生效）；
+   * ② 倍率必须 > 0 且有限（0/负数/NaN 会让"乘上去"变成清零或崩）；
+   * ③ 日期必须是合法 `YYYY-MM-DD`，且 `from ≤ until`（写反 = 永不生效）；
+   * ④ **每个开关都必须被引擎真正消费**（源码里至少一处 `tuningMul(state, 'key')`）——
+   *    这条防的是"登记了开关却没接线"：白名单越长越容易漏接，而漏接是**静默失效**。
+   *
+   * ⚠ **已过期的规则允许留档**（不报错）：表就是"活动史"，删不删由船长定。
+   */
+  const known = new Set(Object.keys(TUNABLE_KNOBS) as string[])
+  const srcText: string[] = []
+  const walkSrc = (dir: string): void => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, d.name)
+      if (d.isDirectory()) walkSrc(p)
+      else if (p.endsWith('.ts')) srcText.push(readFileSync(p, 'utf8'))
+    }
+  }
+  const coreSrc = join(process.cwd(), 'packages/core/src')
+  if (existsSync(coreSrc)) walkSrc(coreSrc)
+  const allSrc = srcText.join('\n')
+  let ruleCount = 0
+  for (const r of TUNING_RULES) {
+    ruleCount += 1
+    const key = String(r.key)
+    check(known.has(key), `限时倍率契约：规则用了未知开关「${key}」—— 白名单里没有它（写错字就静默不生效）`)
+    check(Number.isFinite(r.mul) && r.mul > 0, `限时倍率契约：${key} 的倍率 ${String(r.mul)} 非法（必须 > 0 且有限）`)
+    const untilMs = localDayStartMs(r.until)
+    check(untilMs !== null, `限时倍率契约：${key} 的截止日期「${r.until}」不是合法的 YYYY-MM-DD`)
+    const fromMs = r.from === undefined ? null : localDayStartMs(r.from)
+    check(r.from === undefined || fromMs !== null, `限时倍率契约：${key} 的起始日期「${String(r.from)}」不是合法的 YYYY-MM-DD`)
+    check(fromMs === null || untilMs === null || fromMs <= untilMs, `限时倍率契约：${key} 的起始日期晚于截止日期（永不生效）`)
+  }
+  for (const key of known) {
+    check(
+      allSrc.includes(`tuningMul(state, '${key}')`),
+      `限时倍率契约：开关「${key}」在引擎里没有任何读取点（tuningMul(state, '${key}') 一处都没有）——` +
+        `登记了却没接线 = 设了倍率也不生效`,
+    )
+  }
+  console.log(`· 限时倍率契约：${ruleCount} 条规则 · 白名单 ${known.size} 个开关逐个核对「已被引擎消费」`)
 }
 
 /* ── 输出 ── */

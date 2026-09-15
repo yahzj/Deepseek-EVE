@@ -17,6 +17,7 @@
  * 存档：state.galaxyWrecks（星系 id → 密度/稀有计数）；无记录 = 当前即基础密度
  * （base 由 security 推导不入档；兼容字段，无版本号）。
  */
+import { tuningMul } from './tuning'
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
@@ -203,7 +204,9 @@ export function strongestBountyInjection(galaxyId: string, ctx: SimContext): num
 /** 当前残骸密度（无记录 = 基础密度） */
 export function wreckDensityOf(state: GameState, galaxyId: string, ctx: SimContext): number {
   const rec = state.galaxyWrecks[galaxyId]
-  return rec ? rec.density : wreckBaseDensity(galaxyId, ctx)
+  // 限时倍率（2026-09-15）：`wreckDensity` **只乘读取值**（不改已存密度 ⇒ 到期自动回落）
+  const rawDensity = rec ? rec.density : wreckBaseDensity(galaxyId, ctx)
+  return rawDensity * tuningMul(state, 'wreckDensity')
 }
 
 function recordOf(state: GameState, galaxyId: string, ctx: SimContext): WreckGalaxyRecord {

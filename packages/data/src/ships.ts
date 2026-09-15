@@ -968,6 +968,9 @@ export const SHIPS: readonly ShipDef[] = [
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     description: '海盗的重型突击巡洋舰：三层抗性齐备、血量再厚一成，专啃硬目标；没有额外火力加成，代价是转身慢、舱位小。',
   },
+  // ⚠ 下面 C 族 3 艘与再下面 D 族 3 艘的 role **维持 'armored'**（船长 2026-09-15 裁定「保持现状」）——
+  //   改 'armed' 会同时撞 content:check 的三条「武装舰族定位」契约（高槽 ≥ 低槽+1 · 必带 powerBonus · 护盾 > 装甲）
+  //   与 core/tests/wh-ship-baseline.test.ts 的「武装舰仍满足高槽契约」用例；口径见 docs/glossary.md 词条「重装（armored）· 类别边界」。
   {
     id: 'sh-wh-c-frigate',
     name: '幼虫截击舰',

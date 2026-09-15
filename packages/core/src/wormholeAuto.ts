@@ -20,6 +20,7 @@
  * ⚠ 本模块**不碰** `wormholeEnter` 的副本状态机：自动探索是"抽象的一趟"（不建网格、不打战斗），
  * 产出按手动期望折算 —— 这是船长对"收益不确定 + 绝不丢船"的取舍，实现上必须与真副本解耦。
  */
+import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
 import { addLog, shipLockedInWormhole } from './state'
 import type { SimContext } from './types'
@@ -506,7 +507,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
 
   // ② 稀有残骸：期望 = 手动 1.25 × 40% = 0.5 件/趟（基准）⇒ 原型口味再乘一档
   if (rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.rares * WORMHOLE_AUTO_YIELD_MUL * taste.rares)) {
-    gains.push({ itemId: rareWreckItemIdOf(cardId), units: RARE_WRECK_VOLUME_M3 })
+    gains.push({ itemId: rareWreckItemIdOf(cardId), units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
   }
 
   // ③ 虚空母矿：0.8 堆 × 200 单位 × 层收益 × 抖动

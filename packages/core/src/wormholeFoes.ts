@@ -34,16 +34,26 @@ export const WORMHOLE_DISPLAY_THREAT_MUL = 2
 export function wormholeDisplayThreat(threat: number): number {
   return Math.round(threat * WORMHOLE_DISPLAY_THREAT_MUL)
 }
-/** 每层**威胁**增幅（等比 ×1.16 ⇒ 层 1~3 = 45/52/61，与设计稿"≈45~60"同量级） */
-export const WORMHOLE_THREAT_GROWTH = 0.16
+/**
+ * 每层**威胁**增幅（等比 ×1.10 ⇒ 层 1~8 = 45/50/54/60/66/72/80/88）。
+ *
+ * ⚠ **2026-09-15 船长：「降低虫洞内，敌人的强度增长速度」⇒ 0.16 → 0.10**。
+ * 依据（实测 · 4×T3 满配 · 5 播种 · 逐层解析表）：旧 ×1.16 下层 7/8 是**两堵墙**
+ * （节点胜率 **20% / 0%**）；只降到 ×1.12（威胁 110/127 → 89/99）**墙照旧**（20%/20%）
+ * ⇒ 那一档的墙主要来自**档位阶跃 + 单卡**，不是等比曲线；要真拆墙得降到 ×1.10 一档：
+ * **层 7 = 100%（残血 49%）· 层 8 = 60%（残血 33%）**（×1.08 更宽松：层 8 = 100%）。
+ * 基准层 1 = 45 **不动**、收益曲线（×1.2/层）**不动** ⇒「单位威胁收益逐层严格上升」更明显。
+ */
+export const WORMHOLE_THREAT_GROWTH = 0.1
 /** 每层**收益**增幅（等比 ×1.2）。**必须大于威胁增幅** —— 船长 2026-09-13：
  *  「深层收益应该比难度曲线要更高」⇒ 用等比而非加法，才能让"单位威胁收益"**逐层严格上升**
- *  （若威胁用 +9 加法，层 1→2 的威胁增幅恰好 20%、与收益打平，头两层看不出"更赚"）。 */
+ *  （若威胁用 +9 加法，层 1→2 的威胁增幅恰好 20%、与收益打平，头两层看不出"更赚"）。
+ *  2026-09-15 威胁增幅降到 0.10 后，这条不等式更宽松（收益 0.20 > 威胁 0.10）。 */
 export const WORMHOLE_REWARD_GROWTH = 0.2
-/** 兼容取整：每层威胁的**名义**增量（= 45×0.16 ≈ 7，落在设计稿"+8~10"附近，供文档/读数引用） */
+/** 兼容取整：每层威胁的**名义**增量（= 45×0.10 ≈ 5，2026-09-15 由 7 降到 5；供文档/读数引用） */
 export const WORMHOLE_THREAT_PER_LAYER = Math.round(WORMHOLE_THREAT_BASE * WORMHOLE_THREAT_GROWTH)
 
-/** 第 `depth` 层的威胁（层 1 = 45，每层 ×1.16，取整） */
+/** 第 `depth` 层的威胁（层 1 = 45，每层 ×1.10，取整） */
 export function wormholeLayerThreat(depth: number): number {
   const d = Math.max(1, Math.floor(depth))
   return Math.round(WORMHOLE_THREAT_BASE * Math.pow(1 + WORMHOLE_THREAT_GROWTH, d - 1))

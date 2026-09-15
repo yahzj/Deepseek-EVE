@@ -16,6 +16,7 @@
  *   概率按分钟缩放，命中 = 连续 2 循环 ×3 的红利窗口，窗口内不再掷点）；
  * - 日志克制：只在 开始/停止/满舱转返航/卸货完成/富矿脉/换驾驶善后 时写。
  */
+import { tuningMul } from './tuning'
 import { addLog, miningHalt, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
@@ -83,7 +84,9 @@ export function getMiningParams(
   // 2026-09-08（船长定：移除「最多缩短 40%」循环下限护栏；技能封顶 5 级，乘法叠加本身有界）
   const timeRatio = Math.max(0, 1 - bal.timePerLevel * timeLevel)
   // 调试模式 debugQuick：循环固定 1 秒
-  const cycleMs = state.debugQuick ? 1000 : Math.max(1, Math.round(ship.cycleSeconds * 1000 * timeRatio))
+  // 限时倍率（2026-09-15）：miningCycleMs 乘在循环时长上（×0.5 = 快一倍）。state.wallMs 未设 ⇒ 1×
+  const cycleMul = tuningMul(state, 'miningCycleMs')
+  const cycleMs = state.debugQuick ? 1000 : Math.max(1, Math.round(ship.cycleSeconds * 1000 * timeRatio * cycleMul))
   // V18 复数矿枪：高槽全部采集器件加成求和（线性叠加）
   const minerDefs = familyModules(state, ctx, shipId, 'miner')
   let minerBonus = 0
@@ -107,7 +110,8 @@ export function getMiningParams(
     const opsLv = Math.min(5, state.skills.trained['industrial-ops'] ?? 0)
     if (opsLv > 0) prodMult *= 1 + 0.04 * opsLv
   }
-  const unitsPerCycle = Math.max(1, Math.floor(ship.oreUnitsPerCycle * prodMult * (1 + minerBonus)))
+  // 限时倍率：miningYield 乘在每循环产出上（×2 = 产量翻倍；取整后仍至少 1）
+  const unitsPerCycle = Math.max(1, Math.floor(ship.oreUnitsPerCycle * prodMult * (1 + minerBonus) * tuningMul(state, 'miningYield')))
   return { ship, belt, ore, cycleMs, unitsPerCycle }
 }
 
