@@ -2550,6 +2550,12 @@ function normalizeState(raw: unknown): GameState {
     })
   }
 
+  // --- 限时促销的一次性领取记录（2026-09-16 · 可选字段 ⇒ 零迁移）：只收"键非空 + 值恒 true"的项 ---
+  const promoClaimed: Record<string, true> = {}
+  for (const [key, val] of Object.entries(asRaw(src.promoClaimed))) {
+    if (key.length > 0 && val === true) promoClaimed[key] = true
+  }
+
   // --- 需弹窗的通讯队列（2026-09-14 · 可选字段 ⇒ 零迁移）：只收非空字符串、去重保序 ---
   const commsPopups: string[] = []
   for (const id of Array.isArray(src.commsPopups) ? src.commsPopups : []) {
@@ -3053,6 +3059,8 @@ function normalizeState(raw: unknown): GameState {
     wormholeStock,
     wormholeAuto,
     wormholeAutoReports,
+    // 限时促销领取记录（2026-09-16 · 可选字段 ⇒ 老档没有就是"还没领过"；空表不落键，保持老档形状）
+    ...(Object.keys(promoClaimed).length > 0 ? { promoClaimed } : {}),
     debugQuick,
     completedBounties,
     awayGalaxy,

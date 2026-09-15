@@ -15,7 +15,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addWare, countWare } from '../src/inventory'
 import { UNBOX_CYCLE_MS, advanceRefining, startUnboxRun } from '../src/industry'
-import { wormholeFamilyPoolOf, wormholeUnboxRoll } from '../src/wormholeSalvage'
+import { wormholeFamilyPoolOf, wormholeMk3PoolOf, wormholeUnboxRoll, WORMHOLE_LUXURY_ITEM_IDS, WORMHOLE_MILITARY_BOX_ID, WORMHOLE_MILITARY_PIECES_MAX, WORMHOLE_MILITARY_PIECES_MIN, WORMHOLE_VALUABLES_BOX_ID, WORMHOLE_VALUABLES_UNITS_MAX, WORMHOLE_VALUABLES_UNITS_MIN } from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 
@@ -74,5 +74,84 @@ describe('虫洞 F4d · 安全货柜拆解（90 秒/件 · 100% 族专属池）'
     const r = startUnboxRun(state, ctx, 'ore-veldspar', 'pilot')
     expect(r.ok).toBe(false)
     expect(r.error ?? '').toContain('货柜')
+  })
+})
+
+/**
+ * **贵重品货柜 / 军用备货柜的拆解**（船长 2026-09-15 定「虫洞战利品与经济扩充」②④：
+ * 「新增贵重品货柜，2格，精炼炉拆解后获得随机数量的『奢侈品』，奢侈品纯粹用来卖钱，市场正常交易」
+ * ＋「新增军用备货柜4格，精炼炉可以从中拆出数件随机MK3装备」＋「军用备货柜含武器，不含专属」）。
+ */
+describe('虫洞 · 两个新货柜的拆解（2026-09-15 船长定 ②④）', () => {
+  it('**贵重品货柜 ⇒ 一叠奢侈品 10~20 件**（三档等权、每档都出得来）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    const seen = new Set<string>()
+    for (let i = 0; i < 300; i++) {
+      const r = wormholeUnboxRoll(state, ctx, WORMHOLE_VALUABLES_BOX_ID)
+      expect(r, `第 ${i} 抽应能抽到东西`).not.toBeNull()
+      expect(r!.source).toBe('valuables')
+      expect(WORMHOLE_LUXURY_ITEM_IDS).toContain(r!.itemId as (typeof WORMHOLE_LUXURY_ITEM_IDS)[number])
+      expect(r!.units).toBeGreaterThanOrEqual(WORMHOLE_VALUABLES_UNITS_MIN)
+      expect(r!.units).toBeLessThanOrEqual(WORMHOLE_VALUABLES_UNITS_MAX)
+      expect(r!.extra ?? [], '奢侈品是"一叠"，不走 extra').toHaveLength(0)
+      seen.add(r!.itemId)
+    }
+    expect(seen.size, '三档奢侈品都应抽得到（等权）').toBe(3)
+  })
+
+  it('**军用备货柜 ⇒ 1~3 件 MK3 装备**（含武器、不含专属；逐件独立抽）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 6 })
+    const pool = wormholeMk3PoolOf(ctx)
+    expect(pool.length, 'MK3 池不该是空的').toBeGreaterThan(5)
+    // 池的判据：后缀 -3（与内容体检的 isMk3 同一把尺）· 不含洞内族专属 `-wh-` · 不含窝点专属 `mod-lair-`
+    for (const id of pool) {
+      expect(id.endsWith('-3')).toBe(true)
+      expect(id.includes('-wh-'), `专属件进了军用池：${id}`).toBe(false)
+      expect(id.startsWith('mod-lair-'), `窝点专属进了军用池：${id}`).toBe(false)
+    }
+    // **含武器**：三把常备 MK3 武器都在池里（炮 / 激光 / 导弹架）
+    for (const w of ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3']) expect(pool).toContain(w)
+    const inPool = new Set(pool)
+    const pieces = new Set<number>()
+    const seen = new Set<string>()
+    for (let i = 0; i < 400; i++) {
+      const r = wormholeUnboxRoll(state, ctx, WORMHOLE_MILITARY_BOX_ID)
+      expect(r, `第 ${i} 抽应能抽到东西`).not.toBeNull()
+      expect(r!.source).toBe('military')
+      const all = [r!.itemId, ...(r!.extra ?? []).map((e) => e.itemId)]
+      for (const id of all) expect(inPool.has(id), `${id} 不在 MK3 池里`).toBe(true)
+      for (const e of r!.extra ?? []) expect(e.units, '每件 MK3 各入装备库一次').toBe(1)
+      pieces.add(all.length)
+      for (const id of all) seen.add(id)
+    }
+    expect([...pieces].sort(), '件数应覆盖 1 / 2 / 3 三档').toEqual([1, 2, 3])
+    expect(seen.size, '随机件应抽出多种（不是永远同一件）').toBeGreaterThan(4)
+  })
+
+  it('**端到端**：两只箱子各拆一次 ⇒ 奢侈品整叠进仓库、MK3 进装备库（件数一致）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 8 })
+    // ① 贵重品货柜：仓库里的奢侈品数量必须落在 10~20，且正好消耗 1 箱
+    addWare(state, WORMHOLE_VALUABLES_BOX_ID, 1)
+    expect(startUnboxRun(state, ctx, WORMHOLE_VALUABLES_BOX_ID, 'pilot').ok).toBe(true)
+    state.gameMs += UNBOX_CYCLE_MS
+    advanceRefining(state, ctx)
+    expect(countWare(state, WORMHOLE_VALUABLES_BOX_ID)).toBe(0)
+    const luxTotal = WORMHOLE_LUXURY_ITEM_IDS.reduce((s, id) => s + countWare(state, id), 0)
+    expect(luxTotal, '这一箱该开出 10~20 件奢侈品').toBeGreaterThanOrEqual(WORMHOLE_VALUABLES_UNITS_MIN)
+    expect(luxTotal).toBeLessThanOrEqual(WORMHOLE_VALUABLES_UNITS_MAX)
+    // ② 军用备货柜：装备库新增 1~3 件，且每件都在 MK3 池里
+    addWare(state, WORMHOLE_MILITARY_BOX_ID, 1)
+    const bayBefore = { ...state.moduleBay }
+    expect(startUnboxRun(state, ctx, WORMHOLE_MILITARY_BOX_ID, 'pilot').ok).toBe(true)
+    state.gameMs += UNBOX_CYCLE_MS
+    advanceRefining(state, ctx)
+    expect(countWare(state, WORMHOLE_MILITARY_BOX_ID)).toBe(0)
+    // 装备库是 `Record<件 id, 件数>`：逐件比对"多出来的件数"
+    const gained = Object.entries(state.moduleBay).flatMap(([id, n]) =>
+      Array.from({ length: Math.max(0, n - (bayBefore[id] ?? 0)) }, () => id),
+    )
+    expect(gained.length, '这一箱该开出 1~3 件 MK3').toBeGreaterThanOrEqual(WORMHOLE_MILITARY_PIECES_MIN)
+    expect(gained.length).toBeLessThanOrEqual(WORMHOLE_MILITARY_PIECES_MAX)
+    for (const id of gained) expect(wormholeMk3PoolOf(ctx)).toContain(id)
   })
 })

@@ -1056,10 +1056,10 @@ export {
   WORMHOLE_GRAVEYARD_COMMONS_MIN,
   WORMHOLE_RARE_JUDGE_CHANCE,
   WORMHOLE_RARE_JUDGE_PER_COMMONS,
-  WORMHOLE_RELIC_CHANCE_BASE,
-  WORMHOLE_RELIC_CHANCE_CAP,
-  WORMHOLE_RELIC_CHANCE_GROWTH,
   WORMHOLE_RELIC_MIN_DEPTH,
+  WORMHOLE_RELIC_BOX_CHANCE,
+  WORMHOLE_RELIC_VALUABLES_SHARE,
+  wormholeRelicBoxPoolOf,
   wormholeRelicChanceOf,
   WORMHOLE_RUINS_BATTLE_CHANCE,
   WORMHOLE_RUINS_RARES_MAX,
@@ -1094,7 +1094,6 @@ export {
   WORMHOLE_BP_BOX_DEEP,
   WORMHOLE_BP_BOX_IDS,
   WORMHOLE_BP_BOX_DEPTH,
-  WORMHOLE_BPBOX_SHARE,
   WORMHOLE_BPBOX_PERMANENT_CHANCE,
   WORMHOLE_PERMANENT_MIN_DEPTH,
   wormholeBpBoxIdOf,
@@ -1147,6 +1146,21 @@ export {
   wormholeRelicBoxIdOf,
   wormholeSalvageAt,
   wormholeSalvagersOf,
+  // 2026-09-15 战利品与经济扩充（谜质折算 · 两个新货柜的拆解台 · 残骸堆掷货柜）
+  WORMHOLE_ESSENCE_ITEM_ID,
+  WORMHOLE_ESSENCE_PER_DEVICE,
+  WORMHOLE_VALUABLES_BOX_ID,
+  WORMHOLE_MILITARY_BOX_ID,
+  WORMHOLE_LUXURY_ITEM_IDS,
+  WORMHOLE_VALUABLES_UNITS_MIN,
+  WORMHOLE_VALUABLES_UNITS_MAX,
+  WORMHOLE_MILITARY_PIECES_MIN,
+  WORMHOLE_MILITARY_PIECES_MAX,
+  WORMHOLE_SALVAGE_BOX_CHANCE,
+  WORMHOLE_SALVAGE_BOX_MAX,
+  wormholeMk3PoolOf,
+  wormholeSalvageBoxClassesOf,
+  wormholeRollSalvageBox,
 } from './wormholeSalvage'
 // 虫洞扫描（发现线 · 2026-09-14 船长：主控活动「扫描虫洞」+ 最多囤 5 个未探索虫洞）
 export {
@@ -1171,8 +1185,30 @@ export {
   wormholeStockPush,
   wormholeStockTake,
   advanceWormholeScan,
+  // 2026-09-16 限时促销「虫洞大量生成」：逐 tick 幂等的一次性赠送（只发一次、只给已解锁者）
+  reconcileWormholePromoGift,
 } from './wormholeScan'
 export type { WormholeScanState, WormholeStockItem, WormholeArchetype, WormholeFamily } from './state'
+// 限时倍率表（2026-09-15 船长：「允许我快速设置在指定的现实日期之前，给特定数值调整一个倍率」）：
+//   `TUNING_RULES` 是数据表、`tuningMul` 是引擎唯一读取入口、`activeTunings` 供界面显示加成与剩余时间
+export {
+  TUNABLE_KNOBS,
+  TUNING_RULES,
+  activeTunings,
+  localDayStartMs,
+  ruleActiveAt,
+  tuningMul,
+  tuningMulAt,
+  // 促销层（2026-09-16「虫洞大量生成」）：一条促销 = 扫描倍率 ＋ 一次性赠送 ＋ 合并展示文案
+  PROMOS,
+  activePromos,
+  activePromoGifts,
+  promoActiveAt,
+  promoScanMul,
+  promoScanMulAt,
+  dayWindowEndMs,
+} from './tuning'
+export type { ActivePromo, ActiveTuning, PromoRule, TunableKey, TuningRule } from './tuning'
 // 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 收益 40% 入仓库 · 绝不丢船）
 export {
   WORMHOLE_AUTO_DURATION_MS,

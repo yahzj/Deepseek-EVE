@@ -668,16 +668,36 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
          */
         const drawn = wormholeUnboxRoll(state, ctx, r.itemId)
         if (drawn) {
-          wormholeDeliverRelics(state, ctx, [drawn.itemId])
-          const drawnName =
-            ctx.modules.get(drawn.itemId)?.name ??
-            ctx.blueprints.get(drawn.itemId)?.name ??
-            ctx.shipBlueprints.get(drawn.itemId)?.name ??
-            ctx.items.get(drawn.itemId)?.name ??
-            drawn.itemId
-          /** 来源后缀：让玩家一眼看出这一箱走的是哪条池（族专属 / 一次性 / 永久） */
+          /**
+           * **一箱多件**（2026-09-15 新增的贵重品/军用货柜）：主件 + `extra` 合成一份 id 清单，
+           * 物品类的数量走 `unitsOf`（奢侈品一叠 10~20 件；其余仍按"一件一格"的默认口径）。
+           * 目录/图纸类与模块类不看数量（模块按"清单里出现几次"各入装备库一次）。
+           */
+          const grants = [{ itemId: drawn.itemId, units: drawn.units }, ...(drawn.extra ?? [])]
+          wormholeDeliverRelics(
+            state,
+            ctx,
+            grants.map((g) => g.itemId),
+            Object.fromEntries(grants.map((g) => [g.itemId, g.units])),
+          )
+          const nameOf = (id: string): string =>
+            ctx.modules.get(id)?.name ??
+            ctx.blueprints.get(id)?.name ??
+            ctx.shipBlueprints.get(id)?.name ??
+            ctx.items.get(id)?.name ??
+            id
+          const drawnName = grants.map((g) => nameOf(g.itemId)).join('、')
+          /** 来源后缀：让玩家一眼看出这一箱走的是哪条池（族专属 / 一次性 / 永久 / 奢侈品 / MK3） */
           const srcTag =
-            drawn.source === 'permanent' ? '（永久图纸）' : drawn.source === 'once' ? '（一次性图纸）' : '（族专属）'
+            drawn.source === 'permanent'
+              ? '（永久图纸）'
+              : drawn.source === 'once'
+                ? '（一次性图纸）'
+                : drawn.source === 'valuables'
+                  ? '（奢侈品）'
+                  : drawn.source === 'military'
+                    ? '（MK3 装备）'
+                    : '（族专属）'
           addLog(state, 'trade', `📦 拆解 ${def.name}：开出 ${drawnName}${srcTag}。`)
         } else {
           if (r.worker !== 'pilot') releaseAiCore(state, r.worker)

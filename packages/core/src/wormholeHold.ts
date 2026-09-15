@@ -39,6 +39,8 @@ export const WORMHOLE_SHAPE_STACK: WormholeHoldShape = { w: 1, h: 1 }
 export const WORMHOLE_SHAPE_CONTAINER: WormholeHoldShape = { w: 2, h: 2 }
 /** **图纸货柜**（2026-09-14 船长定「占 2 格大小」）—— 2 宽 × 1 高 = 2 格 */
 export const WORMHOLE_SHAPE_BPBOX: WormholeHoldShape = { w: 2, h: 1 }
+/** **6 格货柜**（2026-09-15 船长「将安全货柜大小增加到6格」）：3×2 = 6 格（安全货柜 3000 m³） */
+export const WORMHOLE_SHAPE_CONTAINER6: WormholeHoldShape = { w: 3, h: 2 }
 /**
  * **AI 核心**（2026-09-14 船长定「AI 核心单独占 1 格」）—— 1×1 = 1 格。
  *
@@ -54,12 +56,15 @@ export const WORMHOLE_SHAPE_CORE: WormholeHoldShape = { w: 1, h: 1 }
  */
 export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> = {
   // 遗迹安全货柜（按族各一种；F4d 落数据，这里先登记形状）
-  'box-relic-a': WORMHOLE_SHAPE_CONTAINER,
-  'box-relic-c': WORMHOLE_SHAPE_CONTAINER,
-  'box-relic-d': WORMHOLE_SHAPE_CONTAINER,
-  'box-relic-e': WORMHOLE_SHAPE_CONTAINER,
-  'box-relic-g': WORMHOLE_SHAPE_CONTAINER,
+  'box-relic-a': WORMHOLE_SHAPE_CONTAINER6, // 2026-09-15：安全货柜 4 格 → 6 格
+  'box-relic-c': WORMHOLE_SHAPE_CONTAINER6, // 2026-09-15：安全货柜 4 格 → 6 格
+  'box-relic-d': WORMHOLE_SHAPE_CONTAINER6, // 2026-09-15：安全货柜 4 格 → 6 格
+  'box-relic-e': WORMHOLE_SHAPE_CONTAINER6, // 2026-09-15：安全货柜 4 格 → 6 格
+  'box-relic-g': WORMHOLE_SHAPE_CONTAINER6, // 2026-09-15：安全货柜 4 格 → 6 格
   // 图纸货柜（三种 = 层档；2026-09-14 船长定「占 2 格大小」）
+  // 2026-09-15 新增两个货柜（船长）：贵重品 2×1 = 2 格 · 军用备货 2×2 = 4 格
+  'box-valuables': WORMHOLE_SHAPE_BPBOX,
+  'box-military': WORMHOLE_SHAPE_CONTAINER,
   'box-bp-shallow': WORMHOLE_SHAPE_BPBOX,
   'box-bp-mid': WORMHOLE_SHAPE_BPBOX,
   'box-bp-deep': WORMHOLE_SHAPE_BPBOX,

@@ -61,12 +61,16 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   **基础价 = 该族内容期望市值 × 0.6**（一次性探针用真引擎 `wormholeUnboxRoll` 抽 4000 次量得；
   //   内容价一律取内容自身的市场行价）：A 359.3 万 · C 372.6 万 · D 679.3 万 · E 547.7 万 · G 534.6 万。
   //   ⚠ **0.6 这条折扣与残骸同一条哲学**：收购价恒**低于**拆解期望 ⇒ "开箱比卖箱更划算"，
-  //   箱子仍是"打开它"的东西，想换现钱随时可以卖（`demandMultiplier: 1.0` = 按基础价全额收）。】
-  { key: 'box-relic-a', kind: 'item', refId: 'box-relic-a', rarity: 'common', basePrice: 2_155_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 359.3 万 ×0.6
-  { key: 'box-relic-c', kind: 'item', refId: 'box-relic-c', rarity: 'common', basePrice: 2_235_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 372.6 万 ×0.6
-  { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 4_075_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 679.3 万 ×0.6
-  { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 3_285_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 547.7 万 ×0.6
-  { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 3_210_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 534.6 万 ×0.6
+  //   箱子仍是"打开它"的东西，想换现钱随时可以卖（`demandMultiplier: 1.0` = 按基础价全额收）。
+  //   ⚠ **2026-09-15 船长「安全货柜价格允许提升」（体积 2000 → 3000 m³ · 6 格）⇒ 五族价一律 ×1.5**
+  //   （2,155,000 → 3,232,500 等）：收购价从"期望 ×0.6"变成 **"期望 ×0.9"**——**仍低于**拆解期望，
+  //   哲学不破，只是"开箱 vs 卖箱"的差距收窄（体积变 6 格、带回来更难，故补偿到接近等价）。
+  //   若日后觉得拆箱动力不足，把这条 ×1.5 收回（或只提到 ×0.75）即可，改的是这一处的 5 个数。】
+  { key: 'box-relic-a', kind: 'item', refId: 'box-relic-a', rarity: 'common', basePrice: 3_232_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 359.3 万 ×0.9（原 ×0.6）
+  { key: 'box-relic-c', kind: 'item', refId: 'box-relic-c', rarity: 'common', basePrice: 3_352_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 372.6 万 ×0.9（原 ×0.6）
+  { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 6_112_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 679.3 万 ×0.9（原 ×0.6）
+  { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 4_927_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 547.7 万 ×0.9（原 ×0.6）
+  { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 4_815_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 534.6 万 ×0.9（原 ×0.6）
   // 【图纸货柜 3 种（2026-09-14 船长定：虫洞遗迹打捞新增）：口径与安全货柜逐字相同 —— 只收不卖 +
   //   基础价 = 内容期望市值 ×0.6（浅 598.9 万 · 中 2,340.8 万 · 深 4,306.8 万；层档越高箱越值钱）。】
   { key: 'box-bp-shallow', kind: 'item', refId: 'box-bp-shallow', rarity: 'common', basePrice: 3_595_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 598.9 万 ×0.6
@@ -125,6 +129,20 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
   //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
   { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 500, supplyFlow: 3, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
+  // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
+  //   ⚠ **档位口径（2026-09-15 落码）**：凡"玩家产出要拿去卖钱"的行一律 **common（常驻）**——
+  //   common 才每 60s 窗口铺 3 档收购阶梯（池商品）或 85% 掷一次收购单（单件平价品）；
+  //   rare/exotic 的收购单只有 3% / 1% 每窗的掷骰 ⇒ 内容体检会报「玩家产出将无法稳定卖出」。
+  //   既有同类先例：虚空晶 `min-voidcrystal`（common · 池商品）· 遗迹安全货柜/图纸货柜 `box-relic-*`/`box-bp-*`（common）。
+  //   ⚠ **谜质（`mat-wh-essence`）暂留 exotic**：`-wh-` 专属内容档位另有 2026-09-14 船长裁定
+  //   （「所有专属的东西，价格翻4倍」⇒ 用例 `exclusive-market.test.ts` ① 要求 `-wh-` 行 = 奇货档 + 只收不卖），
+  //   与"常驻才好卖"冲突 ⇒ 待船长裁决（见汇报），裁决前不动。
+  { key: 'mat-wh-essence', kind: 'item', refId: 'mat-wh-essence', rarity: 'exotic', basePrice: 70_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 虫洞谜质（撤离成功时按台数换算：1 台 = 1 枚；NPC 收购 = 70,000）
+  { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 24_000, demandMultiplier: 1.0 }, // 奢侈品·低档（贵重品货柜拆解产物；正常交易）
+  { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'common', basePrice: 48_000, demandMultiplier: 1.0 }, // 奢侈品·中档（常驻 ⇒ 稳定卖出）
+  { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'common', basePrice: 96_000, demandMultiplier: 1.0 }, // 奢侈品·高档（常驻 ⇒ 稳定卖出）
+  { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 500_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 15 件 × 奢侈品均价 5.6 万 = 84 万 ×0.6 ✓
+  { key: 'box-military', kind: 'item', refId: 'box-military', rarity: 'common', basePrice: 2_800_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 军用备货柜（4 格）· 期望 = 2 件 × MK3 均价 235.5 万 = 470.95 万 ×0.6（2026-09-15 批 B 复核：原估值 700 万 > 拆解期望，会诱导"只卖箱不拆箱"⇒ 按同一条 ×0.6 规则下调）
   // ── 气体（V10 池商品） ──
   { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 227_880, supplyFlow: 1_899 },
   { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 330, poolTarget: 114_000, supplyFlow: 950 },

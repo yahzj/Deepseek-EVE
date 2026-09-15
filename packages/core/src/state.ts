@@ -1552,6 +1552,14 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    * 兼容字段（可选）：旧档没有 ⇒ 空队列，零迁移。
    */
   wormholeAutoReports?: WormholeAutoReport[]
+  /**
+   * **限时促销的一次性领取记录**（2026-09-16 船长：限时活动「虫洞大量生成」——每人**只发一次**
+   * 5 处虫洞，**只给已解锁者**）。键 = `PROMOS[].id`，值恒 `true`。
+   *
+   * 兼容字段（可选，**零迁移**）：老档缺席 = 未领取 ⇒ 达标后下一次心跳由
+   * `reconcileWormholePromoGift` 自动补发一次；促销表里删行不影响本记录（留着无害）。
+   */
+  promoClaimed?: Record<string, true>
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
   /** B3 打捞作业（采矿式自动循环，2026-09-09 起默认循环；autoCycle/stopAfterTrip 偏好字段零迁移，旧档载入 = 空态） */
@@ -1586,6 +1594,14 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
 export type GameStateV25 = Omit<GameStateV24, 'version'> & {
   version: 25
   wormhole: WormholeState
+  /**
+   * **现实墙钟**（毫秒时间戳；2026-09-15 限时倍率批新增的**可选**字段）。
+   *
+   * 由引擎每拍写入（`advanceGame` 的 `nowWallMs`，在线 = `Date.now()`）——**只有显式传参时才写**：
+   * 工具与用例不传 ⇒ 该字段保持 `undefined` ⇒ **限时倍率恒为 1×**（标定读数不被日历污染）。
+   * ⚠ **不参与存档语义**（不落盘、不影响迁移）：老档没有它 = 一切照旧（限时倍率按 1× 处理）。
+   */
+  wallMs?: number
 }
 /** 对外统一称呼：当前版本状态（v25 = v24 + 虫洞副本状态） */
 export type GameState = GameStateV25

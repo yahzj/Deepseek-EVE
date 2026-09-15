@@ -100,7 +100,25 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M8.6 14.4h6.8" />
     </g>
   ),
-  /* ── 遗迹安全货柜（2026-09-13 F3c 补：船长「安全货仓…的SVG图标也需要绘制」）──
+  /* ── 虫洞谜质（精华形态 · 船长 2026-09-15：「谜质在虫洞结束时不再删除，而是转化成虫洞谜质存入仓库…
+     具备研究价值…目前纯粹作为虫洞的金钱收益」）——与装置形（`matter` 圆环+晶体）同语言但**一眼可分**：
+     纯**菱形晶格**（无外环）+ 内辉小点 = "散装可交易的谜质"。 */
+  essence: (
+    <g>
+      <path d="M12 3.4l6.6 5.4-2.7 8.6H8.1L5.4 8.8z" />
+      <path d="M12 7.4l3.1 2.7-1.3 3.7h-3.6L9 10.1z" />
+      <circle cx="12" cy="11.4" r="1.1" />
+    </g>
+  ),
+  /* ── 奢侈品（船长 2026-09-15：贵重品货柜的拆解产物 ·「纯粹用来卖钱」）——礼盒 + 缎带结。 */
+  luxury: (
+    <g>
+      <path d="M5.4 10.6h13.2v8.8H5.4z" />
+      <path d="M4.4 7.4h15.2v3.2H4.4z" />
+      <path d="M12 7.4v12" />
+      <path d="M12 7.4c-2.7 0-4.1-1.3-3.4-2.7.6-1.2 2.5-.9 3.4 2.7zm0 0c2.7 0 4.1-1.3 3.4-2.7-.6-1.2-2.5-.9-3.4 2.7z" />
+    </g>
+  ),  /* ── 遗迹安全货柜（2026-09-13 F3c 补：船长「安全货仓…的SVG图标也需要绘制」）──
      与通用 `container` 区分：**没有外环**，是一个带加固角 + 挂锁 + 铅封带的箱体。 */
   'box-relic': (
     <g>
@@ -120,6 +138,28 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M3.6 14.2h16.8" />
       <path d="M8.8 11.6V9.6h6.4v2" />
       <circle cx="12" cy="8" r="1.6" />
+    </g>
+  ),
+  /* ── 贵重品货柜 / 军用备货柜（船长 2026-09-15：「新增贵重品货柜，2格…」「新增军用备货柜4格…」）──
+     两者与安全 / 图纸货柜**同一套箱体语言**（细描边 + currentColor + 24 号 viewBox），
+     但各给一处"装箱标识"，让玩家在货仓格里一眼分清这三类箱子：
+     · 贵重品柜 = 箱体 + **缎带竖带 + 中央宝石 + 顶部提手**（"装着值钱货的礼箱"）； */
+  'box-valuables': (
+    <g>
+      <path d="M4.6 10.4h14.8v7a1.4 1.4 0 0 1-1.4 1.4H6a1.4 1.4 0 0 1-1.4-1.4z" />
+      <path d="M4.6 13h14.8" />
+      <path d="M12 10.4v8.4" />
+      <circle cx="12" cy="13" r="1.5" />
+      <path d="M9.8 7.6a2.2 2.2 0 0 1 4.4 0" />
+    </g>
+  ),
+  /* · 军用备货柜 = 箱体 + **两道吊扣 + 交叉军械标记**（"制式军械箱"）。 */
+  'box-military': (
+    <g>
+      <path d="M4.4 9.6h15.2v7.8a1.4 1.4 0 0 1-1.4 1.4H5.8a1.4 1.4 0 0 1-1.4-1.4z" />
+      <path d="M4.4 12.8h15.2" />
+      <path d="M6.8 9.6V7.2h3v2.4M14.2 9.6V7.2h3v2.4" />
+      <path d="M9.8 15.2l4.4 2.2M14.2 15.2l-4.4 2.2" />
     </g>
   ),
   /* ── AI 核心（2026-09-14 船长：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
@@ -816,6 +856,8 @@ export const TONES: Record<string, string> = {
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
   container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
   matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
+  essence: '#69e2ff', // 虫洞谜质：比装置形更亮的冷辉青（同一族、亮一档）
+  luxury: '#f2d98a', // 奢侈品：浅金（与货柜黄铜 #e0b060 拉开一档）
   aicore: '#8aa0b8', // AI 核心（大类级兜底色；具体三种按稀有度分色，见下面 `ai-core-*`）
   /* ── 遗迹安全货柜（F3c）：造型共用 `box-relic`，**按族分色**（与"按族掉落"这条口径对齐）── */
   'box-relic': '#e0b060',
@@ -829,6 +871,9 @@ export const TONES: Record<string, string> = {
   'box-bp-shallow': '#9fe8ff', // 浅层：淡青（最浅那层）
   'box-bp-mid': '#ffca58', // 中层：琥珀
   'box-bp-deep': '#e07bff', // 深层：品红紫
+  /* ── 贵重品货柜 / 军用备货柜（2026-09-15）：各一枚专属造型，色调与"箱里装什么"对齐 ── */
+  'box-valuables': '#f2d98a', // 与奢侈品同族浅金（打开就是奢侈品）
+  'box-military': '#8fb0c8', // 钢青灰（制式军械）
   /* ── AI 核心（2026-09-14）：造型共用 `ai-core`，**按稀有度分色**（伽马 → 贝塔 → 阿尔法，越稀有越暖越亮）── */
   'ai-core': '#8aa0b8',
   'ai-core-gamma': '#7fd4a8', // 伽马：青绿（最常见）
@@ -908,6 +953,8 @@ export function toneOf(key: string | undefined): string {
 export function itemIconOf(itemId: string, kind?: string): string {
   if (itemId.startsWith('box-relic-')) return 'box-relic'
   if (itemId.startsWith('box-bp-')) return 'box-bp'
+  // 2026-09-15 两个新货柜各给一枚专属造型（贵重品柜 / 军用备货柜）——它们不带前缀族，故按 id 点名
+  if (itemId === 'box-valuables' || itemId === 'box-military') return itemId
   if (itemId.startsWith('ai-core-')) return 'ai-core'
   if (itemId.startsWith('mat-')) return itemId
   return kind ?? 'fallback'

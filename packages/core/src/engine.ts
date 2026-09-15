@@ -13,6 +13,7 @@
  *   skills.savedProgress，下次把该技能重新排为队首时自动续接（没有"暂停"状态位）。
  */
 
+import { tuningMul } from './tuning'
 import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog } from './types'
@@ -29,7 +30,7 @@ import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
-import { advanceWormholeScan, reconcileWormholeScanWelcome } from './wormholeScan'
+import { advanceWormholeScan, reconcileWormholePromoGift, reconcileWormholeScanWelcome } from './wormholeScan'
 import { advanceWormholeAuto } from './wormholeAuto'
 import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
@@ -95,6 +96,12 @@ export function advanceGame(
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
   state.gameMs += d
+  /**
+   * **现实墙钟落进 state**（2026-09-15 限时倍率批）：只有**显式传入 `nowWallMs`** 时才写
+   * （在线心跳 / 离线结算都传 ⇒ 正式运行恒有值）；**工具与用例不传 ⇒ `state.wallMs` 保持 undefined
+   * ⇒ 限时倍率恒为 1×**（标定读数不被日历污染）。详见 `tuning.ts` 头注。
+   */
+  if (opts?.nowWallMs !== undefined && Number.isFinite(opts.nowWallMs)) state.wallMs = opts.nowWallMs
   // V13 探索：在途作业的星系视为已探明（读档/迁移恢复兜底）
   ensureTransitExplored(state, ctx)
   advanceSkillQueue(state, d, ctx.skills)
@@ -120,6 +127,8 @@ export function advanceGame(
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
   // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）
   reconcileWormholeScanWelcome(state)
+  // 限时促销赠送（2026-09-16「虫洞大量生成」）：逐 tick 幂等、只发一次、只给已解锁者（见该函数头注）
+  reconcileWormholePromoGift(state, ctx)
   advanceWormholeScan(state, ctx, d)
   // 自动探索（2026-09-14 批次 3）：到点即结算（收益入仓库 + 损伤 + 待确认报告）；离线大步长同样适用
   advanceWormholeAuto(state, ctx)
@@ -174,7 +183,7 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
     // 冲当前这一级还差多久（调试模式 debugQuick：每级固定 1 秒；高效学习法缩时）
     const levelMs = state.debugQuick
       ? 1000
-      : Math.max(1, Math.round(skillLevelTimeMs(def, current + 1) * trainingTimeFactor(state)))
+      : Math.max(1, Math.round(skillLevelTimeMs(def, current + 1) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs')))
     const needMs = Math.max(0, levelMs - item.progressMs)
     if (remaining < needMs) {
       // 时间不够升一级：只记下这级练到一半的进度
@@ -245,7 +254,7 @@ export function enqueueSkill(
     if (typeof saved === 'number' && saved > 0) {
       const levelMs = state.debugQuick
         ? 1000
-        : Math.max(1, Math.round(skillLevelTimeMs(def, targetLevel) * trainingTimeFactor(state)))
+        : Math.max(1, Math.round(skillLevelTimeMs(def, targetLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs')))
       item.progressMs = Math.min(saved, Math.max(0, levelMs - 1))
       delete state.skills.savedProgress[skillId]
     }
@@ -392,7 +401,7 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
   const def = catalog.get(item.skillId)
   const currentLevel = state.skills.trained[item.skillId] ?? 0
   const intoLevel = currentLevel + 1
-  const levelTimeMs = def ? Math.max(1, Math.round(skillLevelTimeMs(def, intoLevel) * trainingTimeFactor(state))) : 0
+  const levelTimeMs = def ? Math.max(1, Math.round(skillLevelTimeMs(def, intoLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'))) : 0
   const remainingMs = Math.max(0, levelTimeMs - item.progressMs)
   const percent = levelTimeMs > 0 ? Math.min(100, Math.max(0, (item.progressMs / levelTimeMs) * 100)) : 0
   const head: HeadTrainingInfo = {
@@ -408,7 +417,7 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
   }
   const pending = queue.slice(1).map((p: TrainingItem, i) => {
     const pDef = catalog.get(p.skillId)
-    const levelMs = pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state))) : 0
+    const levelMs = pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'))) : 0
     const progressMs = Math.min(Math.max(0, p.progressMs), Math.max(0, levelMs - 1))
     return {
       queueIndex: i + 1,

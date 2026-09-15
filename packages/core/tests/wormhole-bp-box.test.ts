@@ -25,12 +25,12 @@ import {
   WORMHOLE_BP_BOX_MID,
   WORMHOLE_BP_BOX_SHALLOW,
   WORMHOLE_BPBOX_PERMANENT_CHANCE,
-  WORMHOLE_BPBOX_SHARE,
   wormholeBpBoxDepthOf,
   wormholeBpBoxIdOf,
   wormholeDilutionPoolOf,
   wormholePermanentPoolOf,
   wormholeRelicBoxIdOf,
+  wormholeRelicBoxPoolOf,
   wormholeRollRelicBox,
   wormholeUnboxRoll,
 } from '../src/wormholeSalvage'
@@ -169,9 +169,10 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
     }
   })
 
-  it('掉落：遗迹专属掉落命中后 **安全货柜 : 图纸货柜 = 50 : 50**，且层档与本层一致', () => {
-    let relic = 0
-    let bpBox = 0
+  it('掉落：命中后 **贵重品柜 50% + 其余 9 种各 ≈5.6%**（不再按层档取图纸柜）', () => {
+    /** 2026-09-15 船长改判：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」 */
+    const counts = new Map<string, number>()
+    let total = 0
     const depths = [2, 3, 5]
     for (let seed = 1; seed <= 80; seed++) {
       const state = enterRun(seed)
@@ -181,22 +182,24 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
         for (const cell of run.grid!.cells) {
           const id = wormholeRollRelicBox(state, ctx, cell)
           if (!id) continue
-          if (id.startsWith('box-bp-')) {
-            bpBox += 1
-            expect(id, `层 ${depth} 应给 ${wormholeBpBoxIdOf(depth)}`).toBe(wormholeBpBoxIdOf(depth))
-          } else {
-            relic += 1
-            expect(id.startsWith('box-relic-'), `意外掉落 ${id}`).toBe(true)
-            expect(id).toBe(wormholeRelicBoxIdOf(id.slice('box-relic-'.length).toUpperCase()))
-          }
+          total += 1
+          counts.set(id, (counts.get(id) ?? 0) + 1)
+          // 池 = 10 种：贵重品柜 + 安全柜五族 + 图纸柜三档 + 军用柜
+          expect(wormholeRelicBoxPoolOf(ctx)).toContain(id)
         }
       }
     }
-    const total = relic + bpBox
     expect(total, '样本量应足够（否则比例断言无意义）').toBeGreaterThan(300)
-    const share = bpBox / total
-    expect(share, `图纸货柜占比 ${(share * 100).toFixed(1)}%（${bpBox}/${total}），应 ≈ ${WORMHOLE_BPBOX_SHARE * 100}%`).toBeGreaterThan(0.42)
-    expect(share).toBeLessThan(0.58)
+    const share = (id: string): number => (counts.get(id) ?? 0) / total
+    // ① 贵重品货柜 ≈50%
+    expect(share('box-valuables'), `贵重品柜占比 ${(share('box-valuables') * 100).toFixed(1)}%`).toBeGreaterThan(0.42)
+    expect(share('box-valuables')).toBeLessThan(0.58)
+    // ② 其余 9 种各 ≈5.6%（0.5/9）——都在池里、都露过面
+    const others = wormholeRelicBoxPoolOf(ctx).filter((id) => id !== 'box-valuables')
+    expect(others, '池 = 10 种（贵重品柜 + 其余 9）').toHaveLength(9)
+    for (const id of others) expect(counts.get(id) ?? 0, `${id} 一次都没掉出来`).toBeGreaterThan(0)
+    // ③ **不再按层档**：深层也会掉浅档图纸柜（旧口径下 Deep 只会出 box-bp-deep）
+    expect(counts.get('box-bp-shallow') ?? 0, '浅档图纸柜在深层也该掉得出来（不分层）').toBeGreaterThan(0)
   })
 
   it('层 1 恒不出货柜（入口闸未变）', () => {

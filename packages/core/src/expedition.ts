@@ -11,6 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
+import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
@@ -491,11 +492,13 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const card0 = lairTier ? lairAnomalyOf(anomaly, lairTier) : anomaly
   const battleCard = factionActive ? factionAnomalyOf(card0) : card0
   const displayName = battleCard.name
-  const baseRewardIsk = lairTier
+  const baseRewardIskRaw = lairTier
     ? lairBaseRewardIsk(anomaly, lairTier)
     : factionActive
       ? factionBaseRewardIsk(anomaly)
       : anomaly.rewardIsk
+  // 限时倍率（2026-09-15）：`rewardIsk` 乘在悬赏结算基底上（窝点/派系/普通三支共用这一处）
+  const baseRewardIsk = Math.max(0, Math.round(baseRewardIskRaw * tuningMul(state, 'rewardIsk')))
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，
   // 且要在战报文案之前落账（战报要引用损失摘要）
   const droneLostText = settleDroneLosses(state, ctx, state.shipId, battle)
@@ -580,7 +583,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // 掷骰恒消耗一次随机数（保底触发时也掷、只取 `||`）——保持 rng 时序与未保底时一致，避免别的系统读数漂移。
     if (factionActive) {
       const streak = Math.max(0, Math.floor(state.rareWreckDryStreak ?? 0)) + 1
-      const hit = nextRandom(state.rng) < FACTION_RARE_DROP_CHANCE
+      // 限时倍率（2026-09-15）：`rareWreckRate` 乘在掉落概率上
+      const hit = nextRandom(state.rng) < Math.min(1, FACTION_RARE_DROP_CHANCE * tuningMul(state, 'rareWreckRate'))
       const pity = streak >= FACTION_RARE_DROP_PITY_ROLLS
       if (hit || pity) {
         injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT) // 内部清零空手计数

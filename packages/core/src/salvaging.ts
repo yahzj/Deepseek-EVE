@@ -14,6 +14,7 @@
  * - 工作位守卫：与采矿/远征/扫描/待命/返航/主控精炼互斥（入口拒绝）；
  * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
  */
+import { tuningMul } from './tuning'
 import { addLog, salvageHalt, wormholePilotHoldReason } from './state'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
@@ -230,7 +231,7 @@ export function pullOneWreck(
   const rareId = pullRareWreck(state, galaxyId)
   if (rareId) {
     const mulRare = salvageRoundPull(state, ctx, galaxyId)
-    return { itemId: rareId, mul: mulRare, volumeM3: RARE_WRECK_VOLUME_M3 }
+    return { itemId: rareId, mul: mulRare, volumeM3: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') }
   }
   const pool = wreckPoolOf(ctx, galaxyId) // 同源池：hidden 遭遇模板不入池
   if (pool.length === 0) return null

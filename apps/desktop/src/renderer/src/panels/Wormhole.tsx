@@ -1828,6 +1828,23 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
           },
         ]
       : []),
+    /**
+     * **虫洞谜质**（2026-09-15 船长定：「谜质在虫洞结束时不再删除，而是转化成虫洞谜质存入仓库」）。
+     * 同 AI 核心一样**只在真析出时才出**、跨两列独占一行、**不进「到手合计」**（只收不卖，
+     * 出手要玩家自己去市场卖）⇒ 单独给行价参考。
+     */
+    ...(settle.essences && settle.essences > 0
+      ? [
+          {
+            label: '虫洞谜质',
+            value: n(settle.essences),
+            sub:
+              '枚（谜质装置析出 · 只收不卖）' +
+              (settle.essenceIsk && settle.essenceIsk > 0 ? ` ⇒ 按行价约 ${n(settle.essenceIsk)} 信用点` : ''),
+            wide: true,
+          },
+        ]
+      : []),
   ]
   const STEP = 90
   return (

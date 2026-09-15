@@ -130,12 +130,17 @@ securityZoneOf,
   wormholeRuinsFloorFor,
   // F3c 谜质储存器（船长 2026-09-13）：装置表 / 形状登记 / 保底 1 格的常量
   WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
+  // 2026-09-15 限时倍率表（船长：按现实日期给特定数值上倍率）——契约见文件尾
+  TUNING_RULES,
+  TUNABLE_KNOBS,
+  localDayStartMs,
+  // 2026-09-16 限时促销（船长：「虫洞大量生成」= 扫描加速 ＋ 一次性赠送）——契约见文件尾
+  PROMOS,
   // 2026-09-14 图纸货柜（船长：遗迹打捞新增 · 占 2 格 · 一次性 + 5% 永久图纸）
   WORMHOLE_BP_BOX_IDS,
   WORMHOLE_BP_BOX_SHALLOW,
   WORMHOLE_BP_BOX_DEPTH,
   wormholePermanentPoolOf,
-  WORMHOLE_BPBOX_SHARE,
   WORMHOLE_BPBOX_PERMANENT_CHANCE,
   wormholeDilutionPoolOf,
   wormholeFamilyPoolGaps,
@@ -172,6 +177,24 @@ securityZoneOf,
   wormholeTierOfCard,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   DSI_FACTION_ID,
+  // 2026-09-15 虫洞战利品与经济扩充（契约块见文件中部）：谜质 / 奢侈品 / 两个新货柜 / 打捞掷骰
+  WORMHOLE_ESSENCE_ITEM_ID,
+  WORMHOLE_ESSENCE_PER_DEVICE,
+  WORMHOLE_LUXURY_ITEM_IDS,
+  WORMHOLE_VALUABLES_BOX_ID,
+  WORMHOLE_VALUABLES_UNITS_MIN,
+  WORMHOLE_VALUABLES_UNITS_MAX,
+  WORMHOLE_MILITARY_BOX_ID,
+  WORMHOLE_MILITARY_PIECES_MIN,
+  WORMHOLE_MILITARY_PIECES_MAX,
+  WORMHOLE_SALVAGE_BOX_CHANCE,
+  WORMHOLE_SALVAGE_BOX_MAX,
+  WORMHOLE_RELIC_BOX_CHANCE,
+  WORMHOLE_RELIC_VALUABLES_SHARE,
+  wormholeRelicBoxPoolOf,
+  wormholeRelicChanceOf,
+  wormholeMk3PoolOf,
+  wormholeSalvageBoxClassesOf,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -223,7 +246,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-13 F3c-B2：谜质储存器再 4 台（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）→ 物品总数 63→**67**
 // 2026-09-14：图纸货柜 3 种（层档三种 · 施工期 unreleased）→ 物品总数 67→**70**
 // 2026-09-14：AI 核心 3 种（伽马/贝塔/阿尔法 · 洞内实物形态 · 施工期 unreleased）→ 物品总数 70→**73**
-check(itemDefs.length === 73, `物品总数应为 73，实际 ${itemDefs.length}`)
+check(itemDefs.length === 79, `物品总数应为 79，实际 ${itemDefs.length}`) // 2026-09-15：+6（谜质精华 · 奢侈品 ×3 · 贵重品货柜 · 军用备货柜）
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -330,6 +353,9 @@ for (const item of itemDefs) {
 const containerIds = new Set<string>([
   ...WORMHOLE_FAMILIES.map((f) => `box-relic-${f.toLowerCase()}`),
   ...WORMHOLE_BP_BOX_IDS,
+  // 2026-09-15 船长确认的两个新货柜（贵重品 2 格 / 军用备货 4 格）：同样"带回后拆解"⇒ 无配方但登记在册
+  'box-valuables',
+  'box-military',
 ])
 const matterDeviceIds = new Set<string>(WORMHOLE_MATTER_DEVICE_IDS)
 const aicoreItemIds = new Set<string>(WORMHOLE_CORE_ITEM_IDS)
@@ -361,6 +387,11 @@ for (const item of itemDefs) {
         item.kind === 'ammo' ||
         item.kind === 'drone' ||
         item.kind === 'kit' ||
+        /* **虫洞谜质（精华）与奢侈品**（船长 2026-09-15 确认的一批）：**纯贸易品**——只用来卖钱，
+         * 不入精炼 / 拆解 / 制造链，故"没有配方"是**设计**（豁免）；来源分别是「撤离成功按台数换算」
+         * 与「贵重品货柜拆解」（口径见 docs/glossary.md 八之二「战利品四件」）。 */
+        item.kind === 'essence' ||
+        item.kind === 'luxury' ||
         /* **货柜**（2026-09-14 虫洞上线后改判）：它不是可采集资源，而是"带回后**拆解**"的中间件
          * —— 上线后依然没有精炼配方，但有一条**真实用途**：拆解台（`industry.startUnboxRun`，
          * 90 秒/件、与精炼同一台机器）⇒ 这里改判"**必须是登记在册的货柜 id**"
@@ -3643,6 +3674,160 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       `· 洞内非商品契约：谜质 ${matterDeviceIds.size} 台 + AI 核心实物 ${aicoreItemIds.size} 种**均不在市场目录** · 洞内货柜 ${boxIds.size} 种**只收不卖**且基础价 > 1 · 洞内产出链 2 种（虚空母矿 / 虚空晶）**只收不卖**`,
     )
   }
+  /**
+   * **虫洞战利品与经济扩充契约**（船长 2026-09-15 确认；口径见 `docs/glossary.md` 八之二「战利品四件」
+   * 与 `docs/roadmap.md` 滚动窗口里那一批）。
+   *
+   * 七组哨（都在"改一处必红"的位置上）：
+   * - ① **谜质只收不卖**（船长「该物品只收不卖」）：市场行必须存在、`playerBuyable: false`、
+   *   且**行价 = 物品卡价**（70,000）——不让"卡上一个价、市场另一个价"这种两套口径出现；
+   * - ② **奢侈品正常交易**（船长「奢侈品纯粹用来卖钱，市场正常交易」＋「奢侈品是精炼拆解后的，不算在内」）：
+   *   三档必须 **可买**（`playerBuyable !== false`）且 **`common` 常驻**（否则内容体检另有一条
+   *   "非常驻 ⇒ 玩家产出无法稳定卖出"的预警，等于"卖不掉的钱"）；
+   * - ③ **拆解件数/概率哨**：谜质 1 台 = 1 枚 · 奢侈品 10~20 件 · 军用 1~3 件 · 打捞 0.75% 每堆 / 上限 1；
+   * - ④ **四类货柜池齐备**：安全柜（按族）· 图纸柜三档 · 贵重品柜 · 军用柜，**类等权 4 类**，
+   *   且**每个 id 都有形状登记与市场行**（否则掷中了却放不进、卖不掉）；
+   * - ⑤ **军用拆解池排除专属（反向守卫）**：非空 · 一律 `-3` 结尾 · **不含** `-wh-`（洞内族专属）、
+   *   `mod-lair-*`（窝点专属）与 `unreleased` · **含三把常备 MK3 武器**（船长「含武器」）；
+   * - ⑥ **常量与 data 同步**：两个新货柜 id 必须在物品目录里（core 侧常量写的是字面量，靠这条钉住）。
+   */
+  {
+    const itemsById = new Map(ITEMS.map((i) => [i.id, i] as const))
+    const rowOf = (id: string): (typeof MARKET_GOODS)[number] | undefined =>
+      MARKET_GOODS.find((g) => g.kind === 'item' && g.refId === id)
+    // ① 谜质
+    {
+      const row = rowOf(WORMHOLE_ESSENCE_ITEM_ID)
+      const card = itemsById.get(WORMHOLE_ESSENCE_ITEM_ID)
+      const bad: string[] = []
+      if (!row) bad.push('没有市场行（带回来的谜质卖不掉）')
+      else {
+        if (row.playerBuyable !== false) bad.push('在卖现货（应只收不卖）')
+        if (card && row.basePrice !== card.baseSellPriceIsk) {
+          bad.push(`行价 ${row.basePrice} ≠ 物品卡价 ${card.baseSellPriceIsk}`)
+        }
+      }
+      if (!card) bad.push('物品目录里没有这张卡')
+      check(bad.length === 0, `战利品扩充契约①：虫洞谜质必须"只收不卖 + 行价 = 卡价"——${bad.join(' · ')}`)
+    }
+    // ② 奢侈品三档
+    {
+      const bad: string[] = []
+      for (const id of WORMHOLE_LUXURY_ITEM_IDS) {
+        const row = rowOf(id)
+        const card = itemsById.get(id)
+        if (!card) bad.push(`${id}（物品目录里没有这张卡）`)
+        if (!row) {
+          bad.push(`${id}（没有市场行 ⇒ 卖不掉）`)
+          continue
+        }
+        if (row.playerBuyable === false) bad.push(`${row.key}（只收不卖 ⇒ 与"市场正常交易"相反）`)
+        if (row.rarity !== 'common') bad.push(`${row.key}（${row.rarity} ⇒ 非常驻、产出无法稳定卖出）`)
+        if (card && row.basePrice !== card.baseSellPriceIsk) bad.push(`${row.key}（行价 ${row.basePrice} ≠ 卡价 ${card.baseSellPriceIsk}）`)
+      }
+      check(bad.length === 0, `战利品扩充契约②：奢侈品三档必须"可买可卖 + 常驻 + 行价 = 卡价"——${bad.join(' · ')}`)
+    }
+    // ③ 件数与概率哨
+    {
+      const want: Array<[string, number, number]> = [
+        ['谜质每台枚数 WORMHOLE_ESSENCE_PER_DEVICE', WORMHOLE_ESSENCE_PER_DEVICE, 1],
+        ['奢侈品件数下限 WORMHOLE_VALUABLES_UNITS_MIN', WORMHOLE_VALUABLES_UNITS_MIN, 10],
+        ['奢侈品件数上限 WORMHOLE_VALUABLES_UNITS_MAX', WORMHOLE_VALUABLES_UNITS_MAX, 20],
+        ['军用件数下限 WORMHOLE_MILITARY_PIECES_MIN', WORMHOLE_MILITARY_PIECES_MIN, 1],
+        ['军用件数上限 WORMHOLE_MILITARY_PIECES_MAX', WORMHOLE_MILITARY_PIECES_MAX, 3],
+        ['残骸堆出货率 WORMHOLE_SALVAGE_BOX_CHANCE', WORMHOLE_SALVAGE_BOX_CHANCE, 0.0075],
+        ['单次打捞上限 WORMHOLE_SALVAGE_BOX_MAX', WORMHOLE_SALVAGE_BOX_MAX, 1],
+      ]
+      const bad = want.filter(([, got, exp]) => got !== exp).map(([name, got, exp]) => `${name} = ${got}（应为 ${exp}）`)
+      check(bad.length === 0, `战利品扩充契约③：数值与船长口径不符——${bad.join(' · ')}`)
+    }
+    // ④ 四类货柜池齐备
+    {
+      const classes = wormholeSalvageBoxClassesOf(WORMHOLE_FAMILY_ORDER[0]!)
+      const bad: string[] = []
+      if (classes.length !== 4) bad.push(`类数 ${classes.length}（应为 4 类等权）`)
+      for (const cls of classes) {
+        if (cls.length === 0) bad.push('有一类是空的')
+        for (const id of cls) {
+          if (!itemsById.has(id)) bad.push(`${id}（物品目录里没有）`)
+          if (!wormholeIsShapedItem(id)) bad.push(`${id}（没有形状登记 ⇒ 掷中了放不进仓）`)
+          if (!rowOf(id)) bad.push(`${id}（没有市场行 ⇒ 拆不出也卖不掉）`)
+        }
+      }
+      check(bad.length === 0, `战利品扩充契约④：四类货柜池必须齐备——${bad.slice(0, 8).join(' · ')}`)
+    }
+    // ⑤ 军用拆解池排除专属（反向守卫）
+    {
+      const mk3Ctx = buildSimContext()
+      const pool = wormholeMk3PoolOf(mk3Ctx)
+      const bad: string[] = []
+      if (pool.length === 0) bad.push('池是空的（军用柜会开出空气）')
+      for (const id of pool) {
+        if (!id.endsWith('-3')) bad.push(`${id}（不是 MK3）`)
+        if (id.includes('-wh-')) bad.push(`${id}（洞内族专属混进了军用池）`)
+        if (id.startsWith('mod-lair-')) bad.push(`${id}（窝点专属混进了军用池）`)
+        if (mk3Ctx.modules.get(id)?.unreleased === true) bad.push(`${id}（未上线件混进了军用池）`)
+      }
+      for (const w of ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3']) {
+        if (!pool.includes(w)) bad.push(`${w}（三把常备 MK3 武器应在池里——船长「含武器」）`)
+      }
+      check(bad.length === 0, `战利品扩充契约⑤：军用拆解池必须"含武器、不含专属"——${bad.slice(0, 8).join(' · ')}`)
+      console.log(
+        `· 战利品扩充契约：谜质 1 台→${WORMHOLE_ESSENCE_PER_DEVICE} 枚 · 奢侈品 ${WORMHOLE_VALUABLES_UNITS_MIN}~${WORMHOLE_VALUABLES_UNITS_MAX} 件（三档可买可卖）· ` +
+          `军用 MK3 ${WORMHOLE_MILITARY_PIECES_MIN}~${WORMHOLE_MILITARY_PIECES_MAX} 件（池 ${pool.length} 件）· ` +
+          `残骸堆 ${(WORMHOLE_SALVAGE_BOX_CHANCE * 100).toFixed(2)}%/堆（单次上限 ${WORMHOLE_SALVAGE_BOX_MAX}）· 四类货柜等权`,
+      )
+    }
+    // ⑥ 两个新货柜 id 常量与 data 同步
+    {
+      const bad: string[] = []
+      for (const [name, id] of [
+        ['WORMHOLE_VALUABLES_BOX_ID', WORMHOLE_VALUABLES_BOX_ID],
+        ['WORMHOLE_MILITARY_BOX_ID', WORMHOLE_MILITARY_BOX_ID],
+      ] as const) {
+        if (!itemsById.has(id)) bad.push(`${name} = ${id}（物品目录里没有这个 id）`)
+        if (!rowOf(id)) bad.push(`${name} = ${id}（没有市场行）`)
+        if (!wormholeIsShapedItem(id)) bad.push(`${name} = ${id}（没有形状登记）`)
+      }
+      check(bad.length === 0, `战利品扩充契约⑥：core 常量与 data 目录必须同步——${bad.join(' · ')}`)
+    }
+    /**
+     * ⑦ **遗迹掉落池**（船长 2026-09-15 改判：「**遗迹出货柜概率提高到70%，货柜类型改为所有货柜中随机，
+     *   贵重品货柜占比50%**」）：概率固定 70%（层 2 起、层 1 恒 0）· 贵重品柜占 50% ·
+     *   池 = **10 种**（贵重品柜 + 安全柜五族 + 图纸柜三档 + 军用柜），每种都要"有卡 + 有形状 + 有市场行"。
+     *   ⚠ 两条旧口径已作废（概率 12%×1.3 封顶 50% · 安全柜 50 : 图纸货柜 50）。
+     */
+    {
+      const bad: string[] = []
+      if (wormholeRelicChanceOf(1) !== 0) bad.push(`层 1 概率 ${wormholeRelicChanceOf(1)}（应恒 0）`)
+      for (const d of [2, 4, 9]) {
+        if (wormholeRelicChanceOf(d) !== WORMHOLE_RELIC_BOX_CHANCE) bad.push(`层 ${d} 概率 ${wormholeRelicChanceOf(d)} ≠ ${WORMHOLE_RELIC_BOX_CHANCE}`)
+      }
+      if (WORMHOLE_RELIC_BOX_CHANCE !== 0.7) bad.push(`遗迹出货柜概率 = ${WORMHOLE_RELIC_BOX_CHANCE}（应为 0.7）`)
+      if (WORMHOLE_RELIC_VALUABLES_SHARE !== 0.5) bad.push(`贵重品柜占比 = ${WORMHOLE_RELIC_VALUABLES_SHARE}（应为 0.5）`)
+      const relicPool = wormholeRelicBoxPoolOf(buildSimContext())
+      if (relicPool.length !== 10) bad.push(`池 = ${relicPool.length} 种（应为 10：贵重品柜 + 其余 9）`)
+      if (!relicPool.includes(WORMHOLE_VALUABLES_BOX_ID)) bad.push('池里没有贵重品货柜')
+      const relicOthers = relicPool.filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
+      for (const [label, want] of [
+        ['五族安全柜', ['box-relic-a', 'box-relic-c', 'box-relic-d', 'box-relic-e', 'box-relic-g']],
+        ['图纸柜三档', [...WORMHOLE_BP_BOX_IDS]],
+        ['军用柜', [WORMHOLE_MILITARY_BOX_ID]],
+      ] as const) {
+        for (const id of want) if (!relicOthers.includes(id)) bad.push(`${label}缺 ${id}`)
+      }
+      for (const id of relicPool) {
+        if (!itemsById.has(id)) bad.push(`${id}（物品目录里没有）`)
+        if (!wormholeIsShapedItem(id)) bad.push(`${id}（没有形状登记 ⇒ 掉出来放不进仓）`)
+        if (!rowOf(id)) bad.push(`${id}（没有市场行）`)
+      }
+      check(bad.length === 0, `战利品扩充契约⑦：遗迹掉落池必须"70% · 贵重品 50% · 10 种齐备"——${bad.slice(0, 8).join(' · ')}`)
+      console.log(
+        `· 遗迹掉落契约：层 2 起固定 ${(WORMHOLE_RELIC_BOX_CHANCE * 100).toFixed(0)}%（层 1 恒 0）· 池 ${relicPool.length} 种 ⇒ ` +
+          `贵重品柜 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}% + 其余 9 种各 ${((WORMHOLE_RELIC_VALUABLES_SHARE / 9) * 100).toFixed(1)}%`,
+      )
+    }
+  }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽
   const zoneCount = { 中安: 0, 低安: 0 }
   for (const def of ANOMALIES_FLAVORED) {
@@ -4197,7 +4382,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         continue
       }
       if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
-      if (box.unitM3 !== 2000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 2000（船长定的 2000 立方 = 4 格）`)
+      if (box.unitM3 !== 3000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 3000（**2026-09-15 船长「将安全货柜大小增加到6格」：2000（4 格）→ 3000（3×2 = 6 格）**，旧口径作废）`)
     }
     /* **图纸货柜契约**（2026-09-14 船长：「给虫洞的遗迹打捞新增图纸货柜。占 2 格大小。
      * 内部是随机 T3T4T5 舰船的一次性图纸。有较低概率出 T3 或 T4 的永久图纸。」）：
@@ -4362,7 +4547,8 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     const shallowPerm = wormholePermanentPoolOf(unboxCtx, WORMHOLE_BP_BOX_DEPTH[WORMHOLE_BP_BOX_SHALLOW]!)
     console.log(
       '· 拆解链路读数：最低档一次性池', floorDilution.length, '张 · 浅层永久池', shallowPerm.length,
-      '张 · 图纸货柜并列比例', WORMHOLE_BPBOX_SHARE, '· 永久概率', WORMHOLE_BPBOX_PERMANENT_CHANCE,
+      '张 · 图纸货柜永久概率', WORMHOLE_BPBOX_PERMANENT_CHANCE,
+      '（并列比例口径已于 2026-09-15 作废 ⇒ 见「战利品扩充契约⑦」的遗迹掉落池）',
     )
     if (floorDilution.length === 0) {
       errors.push('拆解契约：最低档一次性池为空 —— 图纸货柜会开出空气（池里要放一次性舰船蓝图）')
@@ -5101,6 +5287,107 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         `（槽位 ${engineSlots.size} 个 · 槽类 ${engineRacks.size} 个 · 弹种 ${engineTypes.size} 个）`,
     )
   }
+}
+
+/* ── 限时倍率表契约（2026-09-15 船长新增功能：按现实日期给特定数值上倍率） ── */
+{
+  /**
+   * **限时倍率表契约**（`packages/core/src/tuning.ts` 的 `TUNING_RULES`）。
+   *
+   * 四条判据：
+   * ① 每条规则的 `key` 必须是白名单 `TUNABLE_KNOBS` 里的开关（写错字 = 静默不生效）；
+   * ② 倍率必须 > 0 且有限（0/负数/NaN 会让"乘上去"变成清零或崩）；
+   * ③ 日期必须是合法 `YYYY-MM-DD`，且 `from ≤ until`（写反 = 永不生效）；
+   * ④ **每个开关都必须被引擎真正消费**（源码里至少一处 `tuningMul(state, 'key')`）——
+   *    这条防的是"登记了开关却没接线"：白名单越长越容易漏接，而漏接是**静默失效**。
+   *
+   * ⚠ **已过期的规则允许留档**（不报错）：表就是"活动史"，删不删由船长定。
+   */
+  const known = new Set(Object.keys(TUNABLE_KNOBS) as string[])
+  const srcText: string[] = []
+  const walkSrc = (dir: string): void => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, d.name)
+      if (d.isDirectory()) walkSrc(p)
+      else if (p.endsWith('.ts')) srcText.push(readFileSync(p, 'utf8'))
+    }
+  }
+  const coreSrc = join(process.cwd(), 'packages/core/src')
+  if (existsSync(coreSrc)) walkSrc(coreSrc)
+  const allSrc = srcText.join('\n')
+  let ruleCount = 0
+  for (const r of TUNING_RULES) {
+    ruleCount += 1
+    const key = String(r.key)
+    check(known.has(key), `限时倍率契约：规则用了未知开关「${key}」—— 白名单里没有它（写错字就静默不生效）`)
+    check(Number.isFinite(r.mul) && r.mul > 0, `限时倍率契约：${key} 的倍率 ${String(r.mul)} 非法（必须 > 0 且有限）`)
+    const untilMs = localDayStartMs(r.until)
+    check(untilMs !== null, `限时倍率契约：${key} 的截止日期「${r.until}」不是合法的 YYYY-MM-DD`)
+    const fromMs = r.from === undefined ? null : localDayStartMs(r.from)
+    check(r.from === undefined || fromMs !== null, `限时倍率契约：${key} 的起始日期「${String(r.from)}」不是合法的 YYYY-MM-DD`)
+    check(fromMs === null || untilMs === null || fromMs <= untilMs, `限时倍率契约：${key} 的起始日期晚于截止日期（永不生效）`)
+  }
+  for (const key of known) {
+    check(
+      allSrc.includes(`tuningMul(state, '${key}')`),
+      `限时倍率契约：开关「${key}」在引擎里没有任何读取点（tuningMul(state, '${key}') 一处都没有）——` +
+        `登记了却没接线 = 设了倍率也不生效`,
+    )
+  }
+  console.log(`· 限时倍率契约：${ruleCount} 条规则 · 白名单 ${known.size} 个开关逐个核对「已被引擎消费」`)
+
+  /**
+   * **限时促销契约**（`packages/core/src/tuning.ts` 的 `PROMOS`，2026-09-16 船长「虫洞大量生成」）。
+   *
+   * 七条判据（每条都对应一种"静默失效"）：
+   * ① `id` 非空且唯一（id 是 `state.promoClaimed` 的键 ⇒ 重复 id = 两个活动抢同一次领取记录）；
+   * ② `label` / `detail` 非空（这是**玩家可见文案**，空着等于活动栏只剩一个没字的徽标）；
+   * ③ 日期合法且 `from ≤ until`（写反 = 永不生效）；
+   * ④ `scanMul`（若写）> 0 且有限（0/负/NaN 会把扫描窗口算成 0 或崩）；
+   * ⑤ `giftWormholes`（若写）是正整数（小数/负数 = 发不出或发错数）；
+   * ⑥ **至少有一项效果**（`scanMul` 或 `giftWormholes`）——都没有就是空转的活动；
+   * ⑦ `claims` 里的键必须在白名单，且**认领 `wormholeScanMs` 就必须写 `scanMul`**
+   *    （否则活动栏会把一条与本活动无关的倍率徽标藏起来，玩家看不到）。
+   *
+   * ⚠ 与限时倍率表同款：**已过期的促销允许留档**（不报错）——收口靠 `npm run tuning:expired` 手动跑。
+   */
+  const promoIds = new Set<string>()
+  for (const p of PROMOS) {
+    const id = String(p.id)
+    check(id.length > 0, '限时促销契约：有促销条目的 id 为空')
+    check(!promoIds.has(id), `限时促销契约：促销 id「${id}」重复（id 是领取记录的键 ⇒ 会互相顶掉）`)
+    promoIds.add(id)
+    check(p.label.trim().length > 0, `限时促销契约：${id} 的 label 为空（活动栏徽标没有可显示的字）`)
+    check(p.detail.trim().length > 0, `限时促销契约：${id} 的 detail 为空（悬停说明空着）`)
+    const untilMs = localDayStartMs(p.until)
+    check(untilMs !== null, `限时促销契约：${id} 的截止日期「${p.until}」不是合法的 YYYY-MM-DD`)
+    const fromMs = p.from === undefined ? null : localDayStartMs(p.from)
+    check(p.from === undefined || fromMs !== null, `限时促销契约：${id} 的起始日期「${String(p.from)}」不是合法的 YYYY-MM-DD`)
+    check(fromMs === null || untilMs === null || fromMs <= untilMs, `限时促销契约：${id} 的起始日期晚于截止日期（永不生效）`)
+    if (p.scanMul !== undefined) {
+      check(Number.isFinite(p.scanMul) && p.scanMul > 0, `限时促销契约：${id} 的 scanMul ${String(p.scanMul)} 非法（必须 > 0 且有限）`)
+    }
+    if (p.giftWormholes !== undefined) {
+      check(
+        Number.isFinite(p.giftWormholes) && Number.isInteger(p.giftWormholes) && p.giftWormholes > 0,
+        `限时促销契约：${id} 的 giftWormholes ${String(p.giftWormholes)} 非法（必须是正整数）`,
+      )
+    }
+    check(
+      p.scanMul !== undefined || p.giftWormholes !== undefined,
+      `限时促销契约：${id} 既没有 scanMul 也没有 giftWormholes（空转的活动：徽标会显示，但什么都不发生）`,
+    )
+    for (const k of p.claims ?? []) {
+      check(known.has(String(k)), `限时促销契约：${id} 认领了未知开关「${String(k)}」（白名单里没有它）`)
+      if (k === 'wormholeScanMs') {
+        check(
+          p.scanMul !== undefined,
+          `限时促销契约：${id} 认领了 wormholeScanMs 却没写 scanMul —— 活动栏会把那条倍率徽标藏起来，玩家看不到它`,
+        )
+      }
+    }
+  }
+  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关逐个核对`)
 }
 
 /* ── 输出 ── */

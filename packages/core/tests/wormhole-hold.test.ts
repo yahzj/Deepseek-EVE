@@ -3,7 +3,7 @@
  *
  * 锁住六组口径（设计稿 §十二）：
  * ① **格数 = ⌊编队合计货仓 ÷ 500⌋**（仍 500 m³/格；**现算** ⇒ 沉船后立刻变小）；
- * ② **形状件**（遗迹安全货柜 2×2 = 4 格）走 `run.hold`，**可叠加散货照旧走 `bag`**（一类一格，不参与拼装）；
+ * ② **形状件**（2026-09-15 起：军用备货柜 2×2 = 4 格 · 安全货柜 3×2 = 6 格）走 `run.hold`，**可叠加散货照旧走 `bag`**（一类一格，不参与拼装）；
  * ③ 放置：**整件拒收**（放不下就不装、不改状态）· 拖动越界/重叠拒 · 整理只重排不丢件；
  * ④ **超载**：已用 > 可用 ⇒ 不许扫描/前往/激活/打捞/拾取；撤离与深入要先把货抛到容量内；
  * ⑤ **沉船后手动抛货**（船长裁定 8）：**不再自动丢货**，只提示超载；抛货随时可用（不软锁）；
@@ -19,7 +19,7 @@ import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WORMHOLE_ORE_ITEM_ID, WORMHOLE_TEMP_CELLS, wormholeEnter, wormholeUnitsPerSlot } from '../src/wormhole'
 import type { WormholeHoldPlacement, WormholeHoldState } from '../src/wormholeHold'
-import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdDropWithGrab, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill } from '../src/wormholeHold'
+import { boxRoomCount, canPlace, cargoBlockArea, cargoShapesFor, findFreeSpot, holdAdd, holdAddCargo, holdCellsUsed, holdCompact, holdDropWithGrab, holdMove, holdSwap, holdRemove, holdRows, makeHoldState, placementCellsCount, placementFill, wormholeShapeOf } from '../src/wormholeHold'
 import {
   wormholeDiscardCargo,
   wormholeDiscardToFit,
@@ -38,7 +38,7 @@ import { gridCellAt } from '../src/wormholeGrid'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
-const BOX = 'box-relic-a'
+const BOX = 'box-military' // 2026-09-15：安全货柜 4 格 → 6 格（3×2）⇒ 本文件的「2×2 = 4 格拼装」口径改用同批新增的**军用备货柜**（正好 2×2 = 4 格）来钉；安全货柜的新规格由形状表与 wormhole-battle 用例覆盖
 
 /** 起一趟：`ships` 艘巡洋舰（货仓 2,600 m³/艘 ⇒ 5 格/艘） */
 function enterRun(ships = 4, seed = 777): GameState {
@@ -376,6 +376,30 @@ describe('虫洞 · 货仓格随档（零迁移）', () => {
     const loaded = loadSaveFile(JSON.stringify(raw)).state.wormhole.run!
     expect(loaded.hold).toBeUndefined()
     void ({} as WormholeHoldState)
+  })
+
+  it('**安全货柜改 6 格后：老档里那件仍是旧占地（不凭空超载），新装舱才按 3×2**', () => {
+    /**
+     * 2026-09-15 船长「将安全货柜大小增加到 6 格」（2000 → 3000 m³ · 2×2 → 3×2）。
+     * 老档里的 placement **自带 `w`/`h`**，而 `cleanHoldPlacement` 只校验合法性、**不按形状表重算**
+     * ⇒ 改规格前装进仓的那一件**读档后仍是 2×2**（不因为改规格凭空变成 6 格、也就不凭空超载）；
+     * 只有**新装舱**（`holdAdd` / `wormholeHoldStow`）才取新形状 3×2。这条把该行为钉住。
+     */
+    const state = enterRun(4)
+    const run = state.wormhole.run!
+    run.hold = makeHoldState()
+    const safeBox = 'box-relic-a'
+    // 老档现场：手工写一件"旧规格"的安全货柜（2×2）
+    run.hold.placements.push({ id: 'legacy-4', itemId: safeBox, kind: 'box', x: 0, y: 0, w: 2, h: 2 })
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
+    const kept = back.hold!.placements.find((p) => p.id === 'legacy-4')!
+    expect(kept.w, '老档那件保留旧占地').toBe(2)
+    expect(kept.h).toBe(2)
+    // 新装舱取新形状：3×2（形状表已改）
+    expect(wormholeShapeOf(safeBox)).toEqual({ w: 3, h: 2 })
+    expect(holdAdd(back.hold!, safeBox, 40).ok, '货仓放得下 3×2').toBe(true)
+    const fresh = back.hold!.placements.filter((p) => p.itemId === safeBox).map((p) => `${p.w}×${p.h}`)
+    expect(fresh, '同一趟里"老件 2×2 + 新件 3×2"并存').toContain('3×2')
   })
 })
 
