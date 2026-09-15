@@ -570,7 +570,7 @@ interface Policy {
   /**
    * 血量低于它就**不再硬打层末守卫**，直接开始撤离（`0` = 永远硬打）。
    *
-   * 船长 2026-09-13 改裁定后：撤离**无条件可以开始**（只是照打撤离拦截战）⇒ 这条是"保守打法"的开关：
+   * 船长 2026-09-13 改裁定后：撤离**无条件可以开始**（只是照打撤离战）⇒ 这条是"保守打法"的开关：
    * 残血时保住已收集的货，把守卫（与更深层）让给下一次。负数/0 = 激进打法（永远硬打守卫拿深度）。
    */
   bossHpMin: number
@@ -727,7 +727,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
       const miners = wormholeMinersOf(state, ctx)
       const hp = lastFrac > 0 ? lastFrac : roughHpFrac(state, r.fleet)
       const bossDone = (r.bossCleared ?? 0) >= r.depth
-      // ⓪ 回合走不动（逃生门）：只能撤离——撤离拦截照打（设计稿 §六）
+      // ⓪ 回合走不动（逃生门）：只能撤离——撤离战照打（设计稿 §六）
       if (r.turnsLeft <= 0) {
         const ex = wormholeExtract(r)
         if (!ex.ok) {
@@ -801,7 +801,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
        * ②b **打不过守卫就直接撤**（`--boss-hp=` 门槛）。
        *
        * 船长 2026-09-13 改裁定：「**玩家可以无条件开始撤离，但是依旧需要打撤离战**」⇒
-       * 残血时不必硬打守卫（实测：搜打撤编队在层 1 守卫战全灭），随时能走；代价是照打撤离拦截战
+       * 残血时不必硬打守卫（实测：搜打撤编队在层 1 守卫战全灭），随时能走；代价是照打撤离战
        * （威胁 ×0.8，比守卫软）。守卫**只堵"深入"**。
        *
        * ⚠ 本工具早前那一版政策在这里"原地转圈磨回合、等回合耗尽走逃生门"——那正是旧闸门逼出来的歪招，
@@ -1056,7 +1056,7 @@ function runRunsMode(): void {
       `参考编队 ${fleetLabel}「${fitText[fit]}」）`,
   )
   console.log(
-    `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，但照打撤离拦截战）· ` +
+    `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，但照打撤离战）· ` +
       `回合保留 ${pol.reserve} · 守卫血量门槛 ${pol.bossHpMin}（低于它就直接撤；守卫只堵深入）· ` +
       `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
   )

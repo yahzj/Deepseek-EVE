@@ -775,7 +775,7 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     advanceWormhole(state, ctx) // 自动开撤离战
     winBattle(state)
     settleBattle(state)
-    expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离拦截交火结束'))).toBe(true)
+    expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离战交火结束'))).toBe(true)
     expect(state.logs.map((l) => l.text).some((t) => t.includes('撤离成功'))).toBe(true)
   })
   it('**机群照吃战损**（与远征/遭遇同款）：洞内首舰的无人机被打下来要**真扣清单**，不是白嫖', () => {
