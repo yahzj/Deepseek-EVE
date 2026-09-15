@@ -56,6 +56,8 @@ import {
   DIALOGUES,
   STATION_SITES,
   GALAXIES,
+  // 2026-09-15 船长「撞到的契约开白名单」：构成口径由舰级说了算的舰级（D 6:4 / E 纯爆炸）
+  FOE_SHIP_MIX_AUTHORITY_IDS,
   WORMHOLE_FOE_CARD_IDS,
 } from '@whale/data'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
@@ -1699,6 +1701,8 @@ for (const m of MODULES) {
   const TEACHING_CARD = 'ano-training'
   let mixed = 0
   let pureBeam = 0
+  /** 「舰级口径优先」白名单计数（船长 2026-09-15） */
+  let whitelisted = 0
   /** E 族特例（5:5）计数——见下方 ④ */
   let symmetric = 0
   const positive = (mix: Partial<Record<string, number>> | undefined): Array<[string, number]> =>
@@ -1748,6 +1752,30 @@ for (const m of MODULES) {
       pureBeam += 1
       continue
     }
+    // **④b「舰级口径优先」白名单**（船长 2026-09-15：「**撞到的契约开白名单**」）——
+    // 主体舰级登记了自有构成口径的卡（D 族战列舰 6:4 · E 族导弹残段纯爆炸，见 `FOE_SHIP_MIX_AUTHORITY_IDS`）：
+    // 卡面按"**与主体一致**"校验，**不套**通用主 8 副 2、也不套 E 族 5:5。
+    // ⚠ 放行的只是"不必等于 8:2 / 5:5"——卡面写错（与主体不符）照样红。
+    const mixKey = (m?: Partial<Record<string, number>>): string =>
+      Object.entries(m ?? {})
+        .filter(([, v]) => (v ?? 0) > 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}:${v}`)
+        .join(',')
+    {
+      const mains = (def.ships ?? []).filter((s) => s.escort !== true)
+      const authority = new Set<string>(FOE_SHIP_MIX_AUTHORITY_IDS)
+      if (mains.length > 0 && mains.every((s) => authority.has(s.ship.id))) {
+        const eff = mixKey(mains[0]!.dmgMix ?? mains[0]!.ship.dmgMix)
+        check(
+          mixKey(def.dmgMix) === eff,
+          `混伤白名单：${def.name} 的卡面构成（${mixKey(def.dmgMix)}）与主体舰级「${mains[0]!.ship.name}」的有效构成（${eff}）不一致——` +
+            `白名单只放行"不必等于 8:2/5:5"，卡面仍须与主体逐键一致`,
+        )
+        whitelisted += 1
+        continue
+      }
+    }
     // **④ E 族特例**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
     // 泰坦巨构全族 = **50% 动能 + 50% 爆炸**（族格「动能 + 爆炸为主」的对称落点）——
     // **常驻卡与窝点派生卡一律 5:5**（窝点不套 6:4：族级特例优先于"窝点比悬赏更混"的一般口径）。
@@ -1790,7 +1818,8 @@ for (const m of MODULES) {
   console.log(
     `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
       `${symmetric > 0 ? `；**E 族特例 ${symmetric} 张 50% 动能 + 50% 爆炸**（窝点派生同值，不套 6:4）` : ""}` +
-      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ""}`,
+      `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ""}` +
+      `${whitelisted > 0 ? `；**舰级口径优先** ${whitelisted} 张（船长 2026-09-15「撞到的契约开白名单」：卡面 = 主体构成，不套 8:2/5:5）` : ""}`,
   )
 
   /* ── 敌速口径契约（2026-09-10 加）──
@@ -3845,11 +3874,13 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       'wh-grave-watch',
       'wh-exile-blockade',
       'wh-titan-echo',
-      // 中/深（2026-09-15 洞内敌卡扩充：批 1 = A 族两张 · 批 2 = C 族两张；后续批次按 data 表顺序追加）
+      // 中/深（2026-09-15 洞内敌卡扩充：批 1 A 族 · 批 2 C 族 · 批 3 D 族；后续批次按 data 表顺序追加）
       'wh-pirate-hunt',
       'wh-pirate-warband',
       'wh-alien-brood',
       'wh-alien-hive',
+      'wh-grave-sentry',
+      'wh-grave-throne',
     ]
     // **轮换表的双向契约**（2026-09-13 补第五张时加）：内容侧这张清单、data 的 `WORMHOLE_FOE_CARDS`
     // 与 core 的 `WORMHOLE_FOE_CARD_IDS` **三处必须逐字同序** —— 少一张/换序都会让"按族掉落池"

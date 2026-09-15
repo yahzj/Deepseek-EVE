@@ -40,6 +40,8 @@ import {
   FOE_ALIEN_STARCORE_ADULT,
   FOE_D_GHOST,
   FOE_D_LONGSHIP,
+  FOE_D_STASIS,
+  FOE_D_THRONE,
   FOE_G_SWARM_SKIFF,
   FOE_SHIP_AURO_HULK,
   FOE_SHIP_PIRATE_CORVETTE,
@@ -111,14 +113,10 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     foeTargetingChance: 0.4,
     // 混伤 8:2（主等离子 = D 族「以能量武器为主」/ 副动能）
     dmgMix: { plasma: 8, kinetic: 2 },
-    // 编成 = 守墓长舰 ×1（T3 中程光束）+ 幽灵舰 ×1（T2 快船）
-    // ⚠ **伤害系数 0.5**（F 批逐卡配平 · 2026-09-13）：本卡主炮是**光束（必中）**，同一血预算下
-    // 实收远高于掷命中的卡（校准读数：第 2 层节点残血 93%→41%、层末守卫直接 0% 胜）
-    // ⇒ 用 `dmgMul` 把"血/火力比"压回来；总血仍由 core 的按层预算（按卡归一）说了算。
-    ships: [
-      { ship: FOE_D_LONGSHIP, count: 1, dmgMul: 0.5 },
-      { ship: FOE_D_GHOST, count: 1, dmgMul: 0.5 },
-    ],
+    // 编成 = **幽灵舰 ×2**（船长 2026-09-15：「**D族浅层改为幽灵*2**」，T2 中程光束快船）
+    // ⚠ **伤害系数 0.5**（F 批逐卡配平 · 2026-09-13）：本族主炮是**光束（必中）**，同一血预算下
+    // 实收远高于掷命中的卡 ⇒ 用 `dmgMul` 把"血/火力比"压回来；总血仍由 core 的按层预算（按卡归一）说了算。
+    ships: [{ ship: FOE_D_GHOST, count: 2, dmgMul: 0.5 }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -281,6 +279,52 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     combatSeconds: 60,
     hidden: true,
     description: '虫洞内遭遇：孢群异虫与其护卫虫群（隐藏卡，只由虫洞生成）。',
+  },
+  /* ══════════ 2026-09-15 扩充 · D 族中/深两张（批 3）══════════ */
+  {
+    id: 'wh-grave-sentry',
+    foeFamily: 'D',
+    name: '静滞哨链',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    foeTargeting: 'top-output',
+    foeTargetingChance: 0.4,
+    // 两条舰级的有效构成都是等离子 8:2（D 族签名）⇒ **卡面与条目一致，无需覆写**
+    dmgMix: { plasma: 8, kinetic: 2 },
+    // 编成 = 守墓长舰 ×1（T3 中程光束）+ 静滞卫舰 ×1（T3 远程 kite · 12,000m · 挨打后 ×1.5）
+    // ⚠ 同为**必中光束**族 ⇒ 沿用 0.5 的配平系数（待逐卡读数复核）
+    ships: [
+      { ship: FOE_D_LONGSHIP, count: 1, dmgMul: 0.5 },
+      { ship: FOE_D_STASIS, count: 1, dmgMul: 0.5 },
+    ],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 50,
+    hidden: true,
+    description: '虫洞内遭遇：一近一远两段静滞哨链（隐藏卡，只由虫洞生成）。',
+  },
+  {
+    id: 'wh-grave-throne',
+    foeFamily: 'D',
+    name: '陵墓王庭',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    foeTargeting: 'top-output',
+    foeTargetingChance: 0.4,
+    // **卡面构成 = 主体舰级的自有口径**（等离子 6 : 动能 4，船长「按乙调整为 6:4」）
+    // ⇒ 已在 `FOE_SHIP_MIX_AUTHORITY_IDS` 登记（"舰级口径优先"白名单），体检不再套通用 8:2。
+    dmgMix: { plasma: 6, kinetic: 4 },
+    // 编成 = **守墓王座舰 ×1**（船长 2026-09-15：「**深层是守墓王座舰×1**」；单舰 ⇒ 无条目覆写需要）
+    ships: [{ ship: FOE_D_THRONE, count: 1 }],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 60,
+    hidden: true,
+    description: '虫洞内遭遇：陵寝最深处的王座守卫（隐藏卡，只由虫洞生成）。',
   },
 ]
 

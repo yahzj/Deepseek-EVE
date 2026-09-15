@@ -34,9 +34,11 @@ export {
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
   ALIEN_BEAST_SHIP_IDS,
+  // 2026-09-15 船长「撞到的契约开白名单」：构成口径由舰级说了算的舰级（D 战列舰 6:4 · E 导弹残段纯爆炸）
+  FOE_SHIP_MIX_AUTHORITY_IDS,
 } from './foe-ships'
 // 2026-09-11 敌机机型表（舰载机群）：舰级只登记"用哪个机型、几架"，数值全在机型表（设计稿 foe-drone-system-20260911.md）
-export { FOE_DRONES, FOE_DRONE_E_ALERT } from './foe-drones'
+export { FOE_DRONES, FOE_DRONE_E_ALERT, FOE_DRONE_C_SPORE } from './foe-drones'
 export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, WRECK_BUY_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
 // 2026-09-09 数字稀有度表（物品本体属性；市场/图鉴/未来掉落统一查）

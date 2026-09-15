@@ -27,7 +27,7 @@
  * ⑨ **头目射程多重方案**（同日裁决③）：打不到的头目按「同卡同带」写射程覆写，让 60% 火力真落地。
  */
 import { describe, expect, it } from 'vitest'
-import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, FOE_SHIPS } from '@whale/data'
+import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, FOE_SHIPS, FOE_SHIP_MIX_AUTHORITY_IDS } from '@whale/data'
 import { createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf } from '../src/combat'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx } from './helpers'
@@ -334,7 +334,10 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // 「**静滞卫舰改为远程、幽灵舰为中程**」+「幽灵舰 **110%** · 守墓长舰**按正常算** · 静滞卫舰 **50%**」
       { id: 'foe-d-ghost', tier: 2, speed: 325 }, // 2 驱逐 295 × 1.10
       { id: 'foe-d-longship', tier: 3, speed: 232 }, // 3 巡洋 258 × 0.90（船长「下调至 0.9 倍率」）
-      { id: 'foe-d-stasis', tier: 3, speed: 129 }, // 3 巡洋 258 × 0.50（**全族最慢**：守墓者从来不需要追人）
+      { id: 'foe-d-stasis', tier: 3, speed: 129 }, // 3 巡洋 258 × 0.50（族内第二慢）
+      // 2026-09-15 批 3：D 族 T4 战列「**守墓王座舰**」——倍率 0.60 ⇒ 4 战列 205 × 0.60 = **123**
+      // （⚠ 取 0.40 会算出 82、比率 0.28 **掉出 D 族速带 0.40~1.15**，体检会红）⇒ 它才是"全族最慢"
+      { id: 'foe-d-throne', tier: 4, speed: 123 },
       // E 族（泰坦巨构）· 2026-09-11 机群批 S3 落第一条舰级，2026-09-12 数据批补足三条。
       // 族格「**巨构不讲机动，只讲撑到最后**」的**终裁**＝船长「族速度倍率设为 0」⇒ 三条实速全 **0**
       // （静物残骸；火力由警戒机群投送）——本批之前的 195/0.95 口径已作废。
@@ -697,7 +700,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(36); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张 + 批 2 的 C 族中/深 2 张**（2026-09-15）
+    expect(checked).toBe(38); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张 + 批 2 的 C 族中/深 2 张**（2026-09-15）
     // ⚠ 2026-09-12（P-43 舰级补完）起**全表 27 张敌军卡都在舰级路径**：G 族三卡迁入 +「废弃 F 族」
     //   的四张隐藏遭遇模板（`enc-pirate-1..4`）也迁入 A 族舰级 ⇒ **旧威胁推导路径再无真实卡**。
   })
@@ -983,31 +986,45 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     }
   })
 
-  it('D 族三条舰级：全远程（不许 brawl）+ 全 `beam` 必中 + 族格"越往里越慢"', () => {
+  it('D 族四条舰级：全远程（不许 brawl）+ 全 `beam` 必中 + 族格"越往里越慢"', () => {
     const graves = FOE_SHIPS.filter((x) => x.family === 'D')
     expect(graves.map((s) => s.id)).toEqual([
       'foe-d-ghost',
       'foe-d-longship',
       'foe-d-stasis',
+      'foe-d-throne', // 2026-09-15：船长「D族添加一艘战列舰」⇒ 旧口径「更高级的船还没出」由本批兑现
     ])
-    expect(graves.map((s) => s.hullClassTier)).toEqual([2, 3, 3]); // 船长「1 驱逐 2 巡洋」，更高级的船还没出
+    expect(graves.map((s) => s.hullClassTier)).toEqual([2, 3, 3, 4]); // 船长「1 驱逐 2 巡洋」+ 本批新增 1 战列
     for (const s of graves) {
-      expect(s.tactic, s.id).not.toBe('brawl'); // 族规：全远程
+      expect(s.tactic, s.id).not.toBe('brawl') // 族规：全远程
       expect(['kite', 'orbit'], s.id).toContain(s.tactic)
-      expect(s.energyForm, s.id).toBe('beam'); // 「靠必中与射程立身」
-      expect(s.dmgMix, s.id).toEqual({ plasma: 8, kinetic: 2 }); // 主系能量 8 : 副系动能 2（族签名顺位）
+      expect(s.energyForm, s.id).toBe('beam') // 「靠必中与射程立身」
+      // 族签名顺位 = 主系能量 8 : 副系动能 2；**战列舰是唯一例外**（等离子 6 : 动能 4，
+      // 船长 2026-09-15「按乙调整为 6:4」⇒ 登记在 `FOE_SHIP_MIX_AUTHORITY_IDS` 白名单）
+      if (s.id === 'foe-d-throne') {
+        expect(s.dmgMix, s.id).toEqual({ plasma: 6, kinetic: 4 })
+        expect(FOE_SHIP_MIX_AUTHORITY_IDS, s.id).toContain(s.id)
+      } else {
+        expect(s.dmgMix, s.id).toEqual({ plasma: 8, kinetic: 2 })
+      }
       expect(s.rangeMinM, s.id).toBe(
-        s.id === 'foe-d-ghost' ? 562 : s.id === 'foe-d-longship' ? 1062 : 2062,
-      ); // 船长：古舰不贴脸（逐档抬升）
+        s.id === 'foe-d-ghost'
+          ? 562
+          : s.id === 'foe-d-longship'
+            ? 1062
+            : s.id === 'foe-d-throne'
+              ? 1400
+              : 2062,
+      ) // 船长：古舰不贴脸（逐档抬升）
     }
-    // 速度：越往里越慢；战法：静滞卫舰远程（kite）、另两条中程（orbit）
+    // 速度：越往里越慢（战列舰 123 是新的终点）；战法：静滞卫舰远程（kite）、其余中程（orbit）
     expect(
       graves.map((s) =>
         Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio),
       ),
-    ).toEqual([325, 232, 129])
-    expect(graves.map((s) => s.tactic)).toEqual(['orbit', 'orbit', 'kite']);
-    // 远程档射程最长
+    ).toEqual([325, 232, 129, 123])
+    expect(graves.map((s) => s.tactic)).toEqual(['orbit', 'orbit', 'kite', 'orbit']);
+    // 远程档射程最长（静滞卫舰 12,000 > 战列舰 9,600）
     const stasis = graves.find((s) => s.id === 'foe-d-stasis')!
     expect(stasis.rangeMaxM).toBe(12_000)
     expect(
