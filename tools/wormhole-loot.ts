@@ -233,9 +233,9 @@ console.log(
     ` ⇒ 残骸是**占格的散货**，墓场的价值主要在"每 3 堆普通判一次"的稀有残骸与遗迹的专属掉落。`,
 )
 console.log(
-  `  ④ 遗迹专属：层 ${WORMHOLE_RELIC_MIN_DEPTH} 起，概率随层上升（层 ${WORMHOLE_RELIC_MIN_DEPTH} = ` +
-    `${(wormholeRelicChanceOf(WORMHOLE_RELIC_MIN_DEPTH) * 100).toFixed(1)}% · 层 4 = ` +
-    `${(wormholeRelicChanceOf(4) * 100).toFixed(1)}% · 层 7 = ${(wormholeRelicChanceOf(7) * 100).toFixed(1)}% · 封顶 50%）；` +
+  `  ④ 遗迹专属：层 ${WORMHOLE_RELIC_MIN_DEPTH} 起**固定 ${(wormholeRelicChanceOf(WORMHOLE_RELIC_MIN_DEPTH) * 100).toFixed(0)}%**` +
+    `（2026-09-15 船长：「遗迹出货柜概率提高到70%」；旧的"随层上升、封顶 50%"作废）；` +
+    `掉出的货柜 = 贵重品柜 **50%** + 安全柜五族/图纸柜三档/军用柜共 9 种**各 ≈5.6%**（不分层）；` +
     `「专属件」列 = 一层里期望掉几件（不占背包格，撤离成功才入库）。`,
 )
 console.log(

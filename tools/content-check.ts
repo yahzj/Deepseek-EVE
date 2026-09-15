@@ -139,7 +139,6 @@ securityZoneOf,
   WORMHOLE_BP_BOX_SHALLOW,
   WORMHOLE_BP_BOX_DEPTH,
   wormholePermanentPoolOf,
-  WORMHOLE_BPBOX_SHARE,
   WORMHOLE_BPBOX_PERMANENT_CHANCE,
   wormholeDilutionPoolOf,
   wormholeFamilyPoolGaps,
@@ -188,6 +187,10 @@ securityZoneOf,
   WORMHOLE_MILITARY_PIECES_MAX,
   WORMHOLE_SALVAGE_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_MAX,
+  WORMHOLE_RELIC_BOX_CHANCE,
+  WORMHOLE_RELIC_VALUABLES_SHARE,
+  wormholeRelicBoxPoolOf,
+  wormholeRelicChanceOf,
   wormholeMk3PoolOf,
   wormholeSalvageBoxClassesOf,
 } from '@whale/core'
@@ -3786,6 +3789,42 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       }
       check(bad.length === 0, `战利品扩充契约⑥：core 常量与 data 目录必须同步——${bad.join(' · ')}`)
     }
+    /**
+     * ⑦ **遗迹掉落池**（船长 2026-09-15 改判：「**遗迹出货柜概率提高到70%，货柜类型改为所有货柜中随机，
+     *   贵重品货柜占比50%**」）：概率固定 70%（层 2 起、层 1 恒 0）· 贵重品柜占 50% ·
+     *   池 = **10 种**（贵重品柜 + 安全柜五族 + 图纸柜三档 + 军用柜），每种都要"有卡 + 有形状 + 有市场行"。
+     *   ⚠ 两条旧口径已作废（概率 12%×1.3 封顶 50% · 安全柜 50 : 图纸货柜 50）。
+     */
+    {
+      const bad: string[] = []
+      if (wormholeRelicChanceOf(1) !== 0) bad.push(`层 1 概率 ${wormholeRelicChanceOf(1)}（应恒 0）`)
+      for (const d of [2, 4, 9]) {
+        if (wormholeRelicChanceOf(d) !== WORMHOLE_RELIC_BOX_CHANCE) bad.push(`层 ${d} 概率 ${wormholeRelicChanceOf(d)} ≠ ${WORMHOLE_RELIC_BOX_CHANCE}`)
+      }
+      if (WORMHOLE_RELIC_BOX_CHANCE !== 0.7) bad.push(`遗迹出货柜概率 = ${WORMHOLE_RELIC_BOX_CHANCE}（应为 0.7）`)
+      if (WORMHOLE_RELIC_VALUABLES_SHARE !== 0.5) bad.push(`贵重品柜占比 = ${WORMHOLE_RELIC_VALUABLES_SHARE}（应为 0.5）`)
+      const relicPool = wormholeRelicBoxPoolOf(buildSimContext())
+      if (relicPool.length !== 10) bad.push(`池 = ${relicPool.length} 种（应为 10：贵重品柜 + 其余 9）`)
+      if (!relicPool.includes(WORMHOLE_VALUABLES_BOX_ID)) bad.push('池里没有贵重品货柜')
+      const relicOthers = relicPool.filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
+      for (const [label, want] of [
+        ['五族安全柜', ['box-relic-a', 'box-relic-c', 'box-relic-d', 'box-relic-e', 'box-relic-g']],
+        ['图纸柜三档', [...WORMHOLE_BP_BOX_IDS]],
+        ['军用柜', [WORMHOLE_MILITARY_BOX_ID]],
+      ] as const) {
+        for (const id of want) if (!relicOthers.includes(id)) bad.push(`${label}缺 ${id}`)
+      }
+      for (const id of relicPool) {
+        if (!itemsById.has(id)) bad.push(`${id}（物品目录里没有）`)
+        if (!wormholeIsShapedItem(id)) bad.push(`${id}（没有形状登记 ⇒ 掉出来放不进仓）`)
+        if (!rowOf(id)) bad.push(`${id}（没有市场行）`)
+      }
+      check(bad.length === 0, `战利品扩充契约⑦：遗迹掉落池必须"70% · 贵重品 50% · 10 种齐备"——${bad.slice(0, 8).join(' · ')}`)
+      console.log(
+        `· 遗迹掉落契约：层 2 起固定 ${(WORMHOLE_RELIC_BOX_CHANCE * 100).toFixed(0)}%（层 1 恒 0）· 池 ${relicPool.length} 种 ⇒ ` +
+          `贵重品柜 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}% + 其余 9 种各 ${((WORMHOLE_RELIC_VALUABLES_SHARE / 9) * 100).toFixed(1)}%`,
+      )
+    }
   }
   // 日板席位可行性（2026-09-10 船长定：高安不派发，中安 2 席 + 低安 3 席）：各区都要有候选可抽
   const zoneCount = { 中安: 0, 低安: 0 }
@@ -4506,7 +4545,8 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     const shallowPerm = wormholePermanentPoolOf(unboxCtx, WORMHOLE_BP_BOX_DEPTH[WORMHOLE_BP_BOX_SHALLOW]!)
     console.log(
       '· 拆解链路读数：最低档一次性池', floorDilution.length, '张 · 浅层永久池', shallowPerm.length,
-      '张 · 图纸货柜并列比例', WORMHOLE_BPBOX_SHARE, '· 永久概率', WORMHOLE_BPBOX_PERMANENT_CHANCE,
+      '张 · 图纸货柜永久概率', WORMHOLE_BPBOX_PERMANENT_CHANCE,
+      '（并列比例口径已于 2026-09-15 作废 ⇒ 见「战利品扩充契约⑦」的遗迹掉落池）',
     )
     if (floorDilution.length === 0) {
       errors.push('拆解契约：最低档一次性池为空 —— 图纸货柜会开出空气（池里要放一次性舰船蓝图）')

@@ -24,7 +24,7 @@ import {
   WORMHOLE_GRAVEYARD_COMMONS_MAX,
   WORMHOLE_GRAVEYARD_COMMONS_MIN,
   WORMHOLE_RARE_JUDGE_PER_COMMONS,
-  WORMHOLE_RELIC_CHANCE_CAP,
+  WORMHOLE_RELIC_BOX_CHANCE,
   WORMHOLE_RUINS_RARES_MAX,
   WORMHOLE_RUINS_RARES_MIN,
   WORMHOLE_RARE_CHEST_NOMINAL_ISK,
@@ -46,6 +46,7 @@ import {
   wormholePoolGrantUnitsOf,
   wormholeDeliverRelics,
   wormholeRelicBoxIdOf,
+  wormholeRelicBoxPoolOf,
   wormholeRelicChanceOf,
   wormholeRollRelicBox,
   wormholeSalvageAt,
@@ -760,7 +761,7 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
     expect(quiet, '24 个种子里次次都触发（概率没生效）').toBeGreaterThan(0)
   })
 
-  it('专属掉落：**层 1 恒不出、层 2 起有几率**（船长 2026-09-13），抽中的东西一定落在本族池里', () => {
+  it('专属掉落：**层 1 恒不出、层 2 起有几率**（船长 2026-09-13），掉出的东西一定落在货柜池里', () => {
     let got: string | undefined
     for (let seed = 1; seed <= 40; seed++) {
       const state = enterRun(4, seed)
@@ -778,12 +779,13 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       const r2 = wormholeSalvageAt(state, ctx)
       if ((r2.relics ?? []).length > 0) {
         got = r2.relics![0]
-        // **F4 起：掉的是一个「安全货柜」，按族命名**（内容物等拆解时才揭）
-        const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell2)
-        const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? 'A')
-        expect(got).toBe(wormholeRelicBoxIdOf(family))
+        /**
+         * **2026-09-15 改判后：掉的是"全货柜池"里的任意一种**（贵重品柜 50% + 其余 9 种各 ≈5.6%），
+         * 不再按本格敌卡的族、也不按层档取 ⇒ 这里只钉"一定在池里"。
+         */
+        expect(wormholeRelicBoxPoolOf(ctx), `${got} 不在遗迹货柜池里`).toContain(got)
         // 且它**真的落到了玩家手里**——收货阶梯（2026-09-13 船长「大件货先进临时空间」）：
-        // ① 货仓腾得出 2×2 ⇒ 进货仓格；② 腾不出 ⇒ 进临时空间；③ 两边都满才散落在该格
+        // ① 货仓腾得出该形状 ⇒ 进货仓格；② 腾不出 ⇒ 进临时空间；③ 两边都满才散落在该格
         const inHold = (run.hold?.placements ?? []).some((pp) => pp.kind === 'box' && pp.itemId === got)
         const inTemp = (run.tempGrid?.placements ?? []).some((s) => s.itemId === got)
         const onGround = (cell2.piles ?? []).some((pp) => pp.itemId === got)
@@ -791,17 +793,17 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
         break
       }
     }
-    expect(got, '40 个种子里一次专属都没掉（层 2 = 12% 概率不该如此）').toBeTruthy()
+    expect(got, '40 个种子里一次专属都没掉（层 2 = 70% 概率不该如此）').toBeTruthy()
   })
 
-  it('**专属概率随层上升**（层 2 < 层 4 < 层 7；层 1 = 0）——实测命中率单调上升', () => {
-    // 概率表本身（解析口径）
-    expect(wormholeRelicChanceOf(1)).toBe(0)
-    expect(wormholeRelicChanceOf(2)).toBeCloseTo(0.12, 6)
-    expect(wormholeRelicChanceOf(4)).toBeCloseTo(0.2028, 3)
-    expect(wormholeRelicChanceOf(7)).toBeGreaterThan(wormholeRelicChanceOf(4))
-    expect(wormholeRelicChanceOf(20)).toBe(WORMHOLE_RELIC_CHANCE_CAP) // 封顶 50%
-    // 实测口径：同一种子集在不同层的命中率（各 160 趟）
+  it('**专属概率固定 70%**（层 2 起一律；层 1 恒 0）——实测命中率 ≈70%，且不再随层变化', () => {
+    // 概率表本身（解析口径）——2026-09-15 船长：「遗迹出货柜概率提高到70%」（旧的 12%×1.3 封顶 50% 作废）
+    expect(wormholeRelicChanceOf(1), '层 1 恒不出（这条未动）').toBe(0)
+    expect(wormholeRelicChanceOf(2)).toBe(WORMHOLE_RELIC_BOX_CHANCE)
+    expect(wormholeRelicChanceOf(4)).toBe(WORMHOLE_RELIC_BOX_CHANCE)
+    expect(wormholeRelicChanceOf(20)).toBe(WORMHOLE_RELIC_BOX_CHANCE)
+    expect(WORMHOLE_RELIC_BOX_CHANCE).toBe(0.7)
+    // 实测口径：同一种子集在不同层的命中率（各 160 趟）——**各层应基本同值**（不分层）
     const hitRate = (depth: number): number => {
       let hits = 0
       const n = 160
@@ -818,9 +820,14 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
     const r2 = hitRate(2)
     const r4 = hitRate(4)
     const r7 = hitRate(7)
-    expect(r2, `层 2 命中率 ${r2}（期望 ≈12%）`).toBeGreaterThan(0.04)
-    expect(r4, `层 4 命中率 ${r4}（期望 ≈20%）`).toBeGreaterThan(r2)
-    expect(r7, `层 7 命中率 ${r7}（期望 ≈45%）`).toBeGreaterThan(r4)
+    for (const [d, r] of [
+      [2, r2],
+      [4, r4],
+      [7, r7],
+    ] as const) {
+      expect(r, `层 ${d} 命中率 ${(r * 100).toFixed(1)}%（期望 ≈70%）`).toBeGreaterThan(0.58)
+      expect(r, `层 ${d} 命中率 ${(r * 100).toFixed(1)}%（期望 ≈70%）`).toBeLessThan(0.82)
+    }
   })
 })
 
