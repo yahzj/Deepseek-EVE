@@ -1251,6 +1251,39 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 6870000,
     description: '顶配装填机械臂凸轮，上弹节拍压到机械极限。',
   },
+  /* ══════════ 跃迁计算机（2026-09-14 船长新增：低槽支援件，MK2 +20% / MK3 +35%，多装递减；
+   * 价 = 低槽支援件同档 ×4 ⇒ 产物 192.4 万 / 944 万；材料/耗时按同档件等比例放大 ══════════ */
+  {
+    id: 'bp-warpcomp-2',
+    name: '跃迁计算机 MK2蓝图',
+    moduleId: 'mod-warpcomp-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 45_600 },
+      { itemId: 'min-pyerite', count: 14_400 },
+      { itemId: 'min-mexallon', count: 8_600 },
+      { itemId: 'min-nocxium', count: 1_720 },
+    ],
+    buildSeconds: 900, // 跃迁计算机 MK2（材料≈产物价×0.42、蓝图=产物×2.5）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 4810000,
+    description: '跃迁场调谐计算机：把跃迁场稳定在更高能级，跨星系航行更快（多装递减）。',
+  },
+  {
+    id: 'bp-warpcomp-3',
+    name: '跃迁计算机 MK3蓝图',
+    moduleId: 'mod-warpcomp-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 201_800 },
+      { itemId: 'min-pyerite', count: 60_200 },
+      { itemId: 'min-mexallon', count: 34_000 },
+      { itemId: 'min-nocxium', count: 6_600 },
+      { itemId: 'min-isotope', count: 11_600 },
+    ],
+    buildSeconds: 2900, // 跃迁计算机 MK3（材料≈产物价×0.40、蓝图=产物×3）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 28320000,
+    description: '跃迁场调谐计算机的顶配型：跃迁场能级推到安全边界，跨星系航行快到极限（多装递减）。',
+  },
   {
     id: 'bp-track-1',
     name: '索敌阵列 MK1蓝图',

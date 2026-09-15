@@ -1027,6 +1027,17 @@ export interface ModuleDef {
   thrusterBoostMs?: number
   thrusterCooldownMs?: number
   /**
+   * **跃迁速度加成**（2026-09-14 船长新增「**跃迁计算机**」MK2/MK3：**+20% / +35%**，低槽支援件）。
+   *
+   * 语义 = **星系际航行**的有效跃迁速度 ×(1 + 本值)——生效处是 `travel.warpSpeedAus`
+   * （所有航行路径的唯一入口：采矿往返 / 悬赏·远征 / 长途运输 / 扫描返航 / 快递 / AI 副船，
+   * **逐船**生效）。**不碰战斗机动**——那是 `speedBonusPct`（矢量推进器）与推进器周期的地盘。
+   *
+   * **多件走 EVE 曲线**（`Π(1+pᵢ·wᵢ)`，与"命中/速度"同一条，见 `equipment.curveMult`）：
+   * 多装递减 ⇒ MK2 1/2/3/4 件 = ×1.20 / ×1.41 / ×1.57 / ×1.66；MK3 = ×1.35 / ×1.76 / ×2.11 / ×2.32。
+   */
+  warpSpeedBonusPct?: number
+  /**
    * 炮台固定弹种（V17.2 炮族制：每门炮只打一种伤害——换炮 = 换弹种）。
    * 缺失视为 kinetic（兼容旧数据/测试）；消耗弹药 = damageType 对应型。
    */

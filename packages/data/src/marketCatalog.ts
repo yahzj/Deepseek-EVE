@@ -307,6 +307,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-rof-3', kind: 'module', refId: 'mod-rof-3', rarity: 'rare', basePrice: 2_290_000, demandMultiplier: 0.65 },
   { key: 'mod-track-3', kind: 'module', refId: 'mod-track-3', rarity: 'rare', basePrice: 2_230_000, demandMultiplier: 0.65 },
   { key: 'mod-gyro-3', kind: 'module', refId: 'mod-gyro-3', rarity: 'rare', basePrice: 2_210_000, demandMultiplier: 0.65 },
+  // 2026-09-14 跃迁计算机（船长：「添加低槽装备…提高玩家舰船的跃迁速度，分别提高20%和35%，多件叠加惩罚。
+  // 基础价格可以按照同级装备价格的四倍，有蓝图」）：价 = 低槽支援件同档（48.1 万 / 236 万）×4
+  { key: 'mod-warpcomp-2', kind: 'module', refId: 'mod-warpcomp-2', rarity: 'rare', basePrice: 1_924_000, demandMultiplier: 0.65 }, // 跃迁计算机 MK2（支援件同档 48.1 万 ×4）
+  { key: 'mod-warpcomp-3', kind: 'module', refId: 'mod-warpcomp-3', rarity: 'rare', basePrice: 9_440_000, demandMultiplier: 0.65 }, // 跃迁计算机 MK3（支援件同档 236 万 ×4）
   // 2026-09-11 协处理器（船长定：低槽 CPU 预算扩容件；MK1 稀有 2 档 / MK2 稀有 3 档 /
   // **MK3 稀有 4 档走奇货、无蓝图**）——价格落在本档既有带内（第 2 档 38.5~48.1 万、第 3 档 192~240 万）
   { key: 'mod-cpu-1', kind: 'module', refId: 'mod-cpu-1', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
@@ -374,6 +378,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-track-3', kind: 'blueprint', refId: 'bp-track-3', rarity: 'rare', basePrice: 6690000, demandMultiplier: 0.65, standingReq: 4 }, // 索敌阵列 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-gyro-2', kind: 'blueprint', refId: 'bp-gyro-2', rarity: 'rare', basePrice: 1122500, demandMultiplier: 0.65 }, // 姿态陀螺 MK2（蓝图=产物×2.5）
   { key: 'bp-gyro-3', kind: 'blueprint', refId: 'bp-gyro-3', rarity: 'rare', basePrice: 6630000, demandMultiplier: 0.65, standingReq: 4 }, // 姿态陀螺 MK3（蓝图=产物×3）（入闸）
+  { key: 'bp-warpcomp-2', kind: 'blueprint', refId: 'bp-warpcomp-2', rarity: 'rare', basePrice: 4810000, demandMultiplier: 0.65 }, // 跃迁计算机 MK2（蓝图=产物×2.5）
+  { key: 'bp-warpcomp-3', kind: 'blueprint', refId: 'bp-warpcomp-3', rarity: 'rare', basePrice: 28320000, demandMultiplier: 0.65, standingReq: 4 }, // 跃迁计算机 MK3（蓝图=产物×3）（入闸）
   // 协处理器蓝图书（2026-09-11 新增；**无 MK3 蓝图**——船长定 MK3 走奇货现货）
   // 价按文档口径「蓝图 = 产物 × 2（MK1）/ × 2.5（MK2）」，与 blueprints.priceIsk 同源
   { key: 'bp-cpu-1', kind: 'blueprint', refId: 'bp-cpu-1', rarity: 'rare', basePrice: 776000, demandMultiplier: 0.65 }, // 协处理器 MK1（蓝图=产物×2）
@@ -540,6 +546,11 @@ const BM_MK3_KEYS = new Set([
   'bp-rof-3',
   'bp-track-3',
   'bp-gyro-3',
+  // 2026-09-14 跃迁计算机 MK3（+ 其蓝图）：按"**同槽支援件**"归入闸内（与 stab/rof/track/gyro 同列）。
+  // ⚠ 它**不提升战斗力**（只缩短星系际航行时间）——与"机动 prop 剔出闸"那条理由相反；
+  //   若船长要按 prop/MWD 口径放它出闸，删这两行即可（其余一行都不用动）。
+  'mod-warpcomp-3',
+  'bp-warpcomp-3',
   'bp-hullrep-2',
 ])
 

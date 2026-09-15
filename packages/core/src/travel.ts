@@ -10,6 +10,7 @@
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { fleetDefOf } from './instances'
+import { allFittedModules, curveMult } from './equipment'
 
 /** 星系间最短航程（分钟；图论静态边权，V12.1 起仅路径规划用，实际耗时见 travelLegMs） */
 export function shortestTravelMinutes(ctx: SimContext, fromGalaxyId: string, toGalaxyId: string): number {
@@ -86,14 +87,38 @@ export function shortestTravelPath(
   return { minutes: dist.get(toGalaxyId) ?? Infinity, galaxies, hopMinutes }
 }
 
-/** 当前有效跃迁速度（AU/s）：取船表 warpSpeedAus，缺省回落到基准（不加速也不减速） */
+/** 当前有效跃迁速度（AU/s）：取船表 warpSpeedAus，缺省回落到基准（不加速也不减速）× 装备加成 */
 export function warpSpeedAus(state: GameState, ctx: SimContext, shipId?: string | null): number {
   const bal = ctx.balance.travel
   // v17：shipId 是舰队实例 uid → 经实例查船型数据（defId 兜底兼容直传 defId 的旧调用）
   const def = fleetDefOf(state, ctx, shipId ?? state.shipId) ?? ctx.ships.get(shipId ?? state.shipId)
   const raw = def?.warpSpeedAus
-  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) return bal.warpRefAus
-  return Math.min(12, Math.max(0.5, raw))
+  // ⚠ **2026-09-14 船长「去掉上限」**：原 `Math.min(12, …)` 的 **12 AU/s 上限已删**（下限 0.5 保留）。
+  //   起因 = 新增「跃迁计算机」：快船（飞鱼 7.4）装 2 件 MK3 就到 13.03 ⇒ 撞顶后**多余件白装**。
+  //   与 2026-09-12「删除下限」（航行时间因子的 0.35）同款思路：倍数链条上不留人为拐点。
+  const base =
+    typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0 ? bal.warpRefAus : Math.max(0.5, raw)
+  // 装备加成（跃迁计算机；不装件恒 ×1 ⇒ **旧读数逐字不变**）——对"船表缺省回落"那条同样生效
+  return base * warpBonusMult(state, ctx, shipId)
+}
+
+/**
+ * **跃迁速度的装备倍率**（2026-09-14 船长新增「跃迁计算机」MK2/MK3：+20% / +35%）。
+ *
+ * 取该船**已装件**的 `warpSpeedBonusPct`，按 **EVE 曲线**合成（`curveMult`，与"命中/速度"同一条
+ * ⇒ 多装递减）：MK2 1/2/3/4 件 = ×1.20 / ×1.41 / ×1.57 / ×1.66；MK3 = ×1.35 / ×1.76 / ×2.11 / ×2.32。
+ * **不装件 ⇒ 恒 1**（旧存档/旧读数逐字不变）。
+ *
+ * ⚠ 只有**舰队实例 uid**（`state.fleet[uid]`）能查到装配；旧调用里直传船型 defId 的那条
+ * （测试替身/未知 id）拿不到装配 ⇒ 返回 1（不失真：那条路径本来就只有船表值）。
+ */
+export function warpBonusMult(state: GameState, ctx: SimContext, shipId?: string | null): number {
+  const fitted = state.fleet[shipId ?? state.shipId]?.fitted
+  if (!fitted) return 1
+  const bonuses = allFittedModules(fitted, ctx)
+    .map((d) => d.warpSpeedBonusPct ?? 0)
+    .filter((p) => p > 0)
+  return bonuses.length > 0 ? curveMult(bonuses) : 1
 }
 
 /** 航行时间因子（<1 = 更快；>1 = 更慢；**无下限**——见下方 `travelTimeFactor` 注释） */

@@ -123,6 +123,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-turret-2': 3,
   'bp-turret-3': 3,
   'bp-turret-civ': 1,
+  'bp-warpcomp-2': 3,
+  'bp-warpcomp-3': 3,
   'burrower': 1,
   'drone-assault': 1,
   'drone-heavy': 1,
@@ -234,6 +236,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-stab-pla-3': 3,
   'mod-track-1': 1,
   'mod-track-2': 2,
+  'mod-warpcomp-2': 3,
+  'mod-warpcomp-3': 3,
   'mod-track-3': 3,
   'mod-turret-civ': 1,
   'mod-pd-e': 2, // 巨构近防炮（2026-09-11 机群批 S4）：防空武器，定位与 MK2 同档

@@ -313,7 +313,7 @@ export {
 } from './mining'
 export type { MiningParams, MiningView } from './mining'
 
-export { warpSpeedAus, travelTimeFactor, travelLegMs, travelMinutesEff, shortestTravelMinutes, shortestTravelPath } from './travel'
+export { warpSpeedAus, warpBonusMult, travelTimeFactor, travelLegMs, travelMinutesEff, shortestTravelMinutes, shortestTravelPath } from './travel'
 
 export {
   isExplored,

@@ -42,6 +42,10 @@ import {
   stackWeight,
   thrusterCycleFullText,
   typeLayerMult,
+  // 2026-09-14 跃迁计算机：装配页显示**有效跃迁速度**（含装备加成）与航行时间因子（与引擎同源）
+  travelTimeFactor,
+  warpBonusMult,
+  warpSpeedAus,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
 // 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
@@ -324,6 +328,15 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const spec = shipDef ? createPlayerSpec(state, engine.ctx, effectiveTarget) : null
   // V18.1 索敌阵列（命中件）：炮台命中乘子（收敛后；条目层）
   const gunEq = spec?.weapons.find((w) => w.kind === 'gun')?.eqHitMul
+  // 2026-09-14 跃迁计算机：本船**有效跃迁速度**（船表值 × 装备加成，与引擎 `travel.warpSpeedAus` 同源）
+  // 与**航行时间因子**（`travelTimeFactor`：含跃迁速度与航行技能族）——只影响跨星系航行，不进战斗。
+  const effWarp = shipDef
+    ? {
+        aus: warpSpeedAus(state, engine.ctx, effectiveTarget),
+        bonusPct: warpBonusMult(state, engine.ctx, effectiveTarget) - 1,
+      }
+    : undefined
+  const warpFactor = travelTimeFactor(state, engine.ctx, effectiveTarget)
 
   // 装备库按**持有数**筛 ⇒ 走全目录（玩家的东西必须显示得出来，未上线闸门只管"给玩家看的枚举"）
   const bayModules: ModuleDef[] = engine.allModules.filter((m) => countModule(state, m.id) > 0)
@@ -649,10 +662,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               <div className="app-fit-stage-art">
                 <ShipSprite shipId={shipDef.id} role={shipDef.role} size={stageFit.art} engine={false} />
               </div>
-              {stageFit.indirect && shipIndirectLines(shipDef).length > 0 ? (
+              {stageFit.indirect && shipIndirectLines(shipDef, effWarp).length > 0 ? (
                 <div className="app-fit-indirect">
                   <div className="app-info-note app-fit-indirect-note">间接属性</div>
-                  <InfoTable lines={shipIndirectLines(shipDef)} />
+                  <InfoTable lines={shipIndirectLines(shipDef, effWarp)} />
                 </div>
               ) : null}
             </div>
@@ -751,6 +764,20 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                                 {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs })}）`}
                               </span>
                             ) : null}
+                          </>
+                        ),
+                      },
+                      // 跃迁速度（2026-09-14 跃迁计算机）：只影响**跨星系航行耗时**，战斗机动一字不动
+                      // ⇒ 与「机动速度」并列单列一行，避免玩家把两个"速度"混为一谈。
+                      {
+                        k: '跃迁速度（含装备）',
+                        v: (
+                          <>
+                            {`${effWarp ? effWarp.aus.toFixed(2) : '-'} AU/s`}
+                            {effWarp && effWarp.bonusPct > 0 ? (
+                              <span className="app-dim">{`（装备 +${Math.round(effWarp.bonusPct * 100)}%）`}</span>
+                            ) : null}
+                            <span className="app-dim">{` · 跨星系航行耗时 ×${warpFactor.toFixed(2)}（含航行技能）`}</span>
                           </>
                         ),
                       },

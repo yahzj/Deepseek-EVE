@@ -146,6 +146,8 @@ export const TABLES: readonly TableSpec[] = [
       col('射速缩短reloadCutPct(0.05=装填÷1.05)', 'reloadCutPct', 'num', { min: 0, max: 5 }),
       col('命中提升hitBonusPct(0.08=命中×1.08)', 'hitBonusPct', 'num', { min: 0, max: 5 }),
       col('闪避缺口削减evasionGapPct(0.1=被命中×0.9)', 'evasionGapPct', 'num', { min: 0, max: 5 }),
+      // 2026-09-14 跃迁计算机（低槽支援件；只缩短星系际航行时间，多装递减）
+      col('跃迁速度加成warpSpeedBonusPct(0.2=+20%；多装递减)', 'warpSpeedBonusPct', 'num', { min: 0, max: 2 }),
       /* ══ 2026-09-13 补全（船长「输出到 excel 给我审阅」）══
        * 此前本表**漏了 9 类已在用的模块字段**（结构容量/结构抗性/锁定加深/CPU 扩容/防空/备弹/
        * 机动代价/修复系/无人机中继射程）⇒ 虫洞专属装备里近一半加成在审阅表上**看不见**。
