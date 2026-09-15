@@ -1144,6 +1144,9 @@ export {
   wormholeScanStop,
   wormholeStockOf,
   wormholeStockFull,
+  // 2026-09-14 船长：上限随「星图记录学」满级 +10（基础 5 ⇒ 15）——读"当前上限"一律走这个函数
+  wormholeStockMaxOf,
+  WORMHOLE_STOCK_MAX_HARD,
   wormholeStockPush,
   wormholeStockTake,
   advanceWormholeScan,

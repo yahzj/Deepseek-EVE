@@ -25,7 +25,7 @@ import {
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_ARCHETYPE_LABELS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
-  WORMHOLE_STOCK_MAX,
+  wormholeStockMaxOf,
   aiCoreName,
 } from '@whale/core'
 import type { GameState, WormholeArchetype, WormholeFamily } from '@whale/core'
@@ -90,7 +90,9 @@ export function WormholeScanTab({
   const done = Math.min(windowMs, scan.progressMs)
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
-  const full = stock.length >= WORMHOLE_STOCK_MAX
+  /** **当前保存上限**（船长 2026-09-14：「星图记录学，满级允许玩家虫洞的保存上限+10」⇒ 基础 5＋满级 10） */
+  const stockMax = wormholeStockMaxOf(state)
+  const full = stock.length >= stockMax
   /** 手上那趟探索（非空 = 人在洞里 / 临时离开中）；「返回虫洞」按钮与"扫描被挡"的说明都用它 */
   const run = state.wormhole.run
   /** 解锁门槛（船长 2026-09-14：需要协会声望 40；解锁时会收到一封通讯 + 直接弹窗） */
@@ -105,12 +107,12 @@ export function WormholeScanTab({
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
-          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${WORMHOLE_STOCK_MAX} 处。`}
+          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${stockMax} 处（「星图记录学」满级再 +10）。`}
         />
       }
       right={
         <span className="app-dim">
-          已囤 {stock.length}/{WORMHOLE_STOCK_MAX} 处
+          已囤 {stock.length}/{stockMax} 处
           {runs.length > 0 ? ` · 自动探索 ${runs.length} 趟在跑` : ''}
           {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''} · 单次窗口 {formatDurationMs(windowMs)}
         </span>
@@ -197,7 +199,8 @@ export function WormholeScanTab({
           </div>
         ) : null}
 
-        <div className="app-bay-title">已发现的虫洞 · {stock.length} 处</div>
+        {/* 船长 2026-09-14：标题里要显示**最多能保留多少** ⇒ 写成 `X/Y 处`（Y 随「星图记录学」满级变化） */}
+        <div className="app-bay-title">已发现的虫洞 · {stock.length}/{stockMax} 处</div>
         {stock.length === 0 ? (
           <div className="app-dim app-inv-empty">还没有发现虫洞：开扫后等进度条走满。</div>
         ) : (

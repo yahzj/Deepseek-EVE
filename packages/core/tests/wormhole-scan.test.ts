@@ -26,6 +26,8 @@ import {
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
+  WORMHOLE_STOCK_MAX_HARD,
+  wormholeStockMaxOf,
   advanceWormholeScan,
   wormholeScanBlockReason,
   wormholeScanStart,
@@ -194,14 +196,43 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     st.wormholeStock = [
       { id: '', seed: 5, depth: 1, foundAtGameMs: 0 },
       { id: 'ok', seed: 0, depth: 1, foundAtGameMs: 0 },
-      ...Array.from({ length: 9 }, (_, i) => ({ id: `x${i}`, seed: 100 + i, depth: 2, foundAtGameMs: 0 })),
+      // 20 条合法（> 理论上限 15）⇒ 用来验证"截到上限"这一步仍然生效
+      ...Array.from({ length: 20 }, (_, i) => ({ id: `x${i}`, seed: 100 + i, depth: 2, foundAtGameMs: 0 })),
     ]
     st.wormholeScan = { active: 'yes', progressMs: -5 }
     const cleaned = loadSaveFile(JSON.stringify(raw)).state
-    expect(cleaned.wormholeStock).toHaveLength(WORMHOLE_STOCK_MAX) // 只留合法条目、且截到上限
+    // 截到**理论最大值**（基础 5 ＋ 星图记录学满级 10 = 15）：满级玩家的 15 格不会因为"读档时技能看起来没到"被砍
+    expect(cleaned.wormholeStock).toHaveLength(WORMHOLE_STOCK_MAX_HARD)
     expect(cleaned.wormholeStock!.every((x) => x.id.startsWith('x'))).toBe(true)
     // 旧档里的起始层 2/3（上面这批就是 depth: 2）**载入时一律归 1**
     expect(cleaned.wormholeStock!.every((x) => x.depth === 1)).toBe(true)
     expect(cleaned.wormholeScan).toEqual({ active: false, progressMs: 0 })
+  })
+
+  it('**保存上限随「星图记录学」满级 +10**（船长 2026-09-14：基础 5 ⇒ 满级 15；Lv4 不加 = 阶跃）', () => {
+    const s = fresh()
+    // 不练 / Lv4：都是基础 5 处
+    expect(wormholeStockMaxOf(s)).toBe(WORMHOLE_STOCK_MAX)
+    s.skills.trained['chart-archive'] = 4
+    expect(wormholeStockMaxOf(s)).toBe(WORMHOLE_STOCK_MAX)
+    // 满级（Lv5）：基础 + 10 = 15 处
+    s.skills.trained['chart-archive'] = 5
+    expect(wormholeStockMaxOf(s)).toBe(WORMHOLE_STOCK_MAX + 10)
+    expect(WORMHOLE_STOCK_MAX_HARD).toBe(WORMHOLE_STOCK_MAX + 10) // 读档钳制用的理论最大值
+    /**
+     * 实战：满级后能囤到 15 处（**停机阈值跟着抬高**——改前第 6 处就会停机）。
+     * 用 `debugQuick` 把窗口压到 1 秒，直接连扫 15 个窗口。
+     */
+    s.debugQuick = true
+    expect(wormholeScanStart(s, ctx).ok).toBe(true)
+    advanceWormholeScan(s, ctx, 15_000)
+    expect(wormholeStockOf(s)).toHaveLength(15)
+    expect(wormholeStockFull(s)).toBe(true)
+    expect(s.wormholeScan!.active).toBe(true) // 第 16 个窗口才撞上限
+    advanceWormholeScan(s, ctx, 1_000)
+    expect(s.wormholeScan!.active).toBe(false) // 停机
+    expect(s.logs.map((l) => l.text).some((t) => t.includes('扫描停机'))).toBe(true)
+    // 满仓时的开扫拦截文案带的是**新上限**（15），不是 5
+    expect(wormholeScanBlockReason(s) ?? '').toContain('15')
   })
 })

@@ -548,6 +548,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '把每一次巧合都变成收入：随机事件的现金奖励每级 +⟦15%⟧；运气也延伸进虫洞——洞里出现空白地点的几率每级相对削减 ⟦4%⟧（满级 −⟦20%⟧）。',
   },
   {
+    // 2026-09-14 船长：「添加 rank4 技能，星图记录学，满级允许玩家虫洞的保存上限+10。」
+    // 口径 = **阶跃**（与上面星际奇遇学同款语义）：**满级（Lv5）一次性 +10 格**，Lv1~4 不加；
+    // 接线 = `core/wormholeScan.ts` 的 `wormholeStockMaxOf`（基础 5 处 ⇒ 满级 15 处）。
+    id: 'chart-archive',
+    name: '星图记录学',
+    group: '探索',
+    rank: 4,
+    description: '深空航图与虫洞档案的整理学：星图上可留存的虫洞在满级后再 +⟦10⟧ 处（由 5 处提到 15 处）。',
+  },
+  {
     id: 'salvage-diving',
     name: '漂流物打捞学',
     group: '探索',

@@ -10,7 +10,7 @@ import type { SimContext } from './types'
 import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { scanStatus } from './explore'
-import { WORMHOLE_STOCK_MAX, wormholeScanWindowMs, wormholeStockFull, wormholeStockOf } from './wormholeScan'
+import { wormholeScanWindowMs, wormholeStockFull, wormholeStockMaxOf, wormholeStockOf } from './wormholeScan'
 import { wormholeAutoRunsOf } from './wormholeAuto'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
@@ -208,8 +208,8 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       label: '扫描虫洞',
       sub:
         wormholeStockFull(state)
-          ? `已囤满 ${WORMHOLE_STOCK_MAX} 处 · 待处理`
-          : `深空扫描中 · 已囤 ${wormholeStockOf(state).length}/${WORMHOLE_STOCK_MAX} 处`,
+          ? `已囤满 ${wormholeStockMaxOf(state)} 处 · 待处理`
+          : `深空扫描中 · 已囤 ${wormholeStockOf(state).length}/${wormholeStockMaxOf(state)} 处`,
       percent: Math.max(0, Math.min(100, Math.round((done / windowMs) * 100))),
       remainingMs: Math.max(0, windowMs - done),
       stopable: true,

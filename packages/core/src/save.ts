@@ -22,7 +22,7 @@ import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
-import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX } from './wormholeScan'
+import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX_HARD } from './wormholeScan'
 import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
 import { WORMHOLE_ARCHETYPES, wormholeArchetypeOf } from './wormholeGrid'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
@@ -2394,7 +2394,7 @@ function normalizeState(raw: unknown): GameState {
     /** **解锁当次的满窗口是否已发放**（可选字段：只在真时写 ⇒ 老档缺省 = 未发放，达标后下一 tick 自动补） */
     ...(whScanRaw.welcomed === true ? { welcomed: true } : {}),
   }
-  // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX`
+  // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX_HARD`（基础 5 ＋ 星图记录学满级 10 ⇒ 读档不会截掉满级玩家的 15 格）
   const wormholeStock: Array<{
     id: string
     seed: number
@@ -2405,7 +2405,7 @@ function normalizeState(raw: unknown): GameState {
   }> = []
   const whStockRaw = Array.isArray(src.wormholeStock) ? src.wormholeStock : []
   for (const item of whStockRaw) {
-    if (wormholeStock.length >= WORMHOLE_STOCK_MAX) break
+    if (wormholeStock.length >= WORMHOLE_STOCK_MAX_HARD) break
     const o = asRaw(item)
     const id = typeof o.id === 'string' ? o.id : ''
     const seed = Math.floor(num(o.seed))

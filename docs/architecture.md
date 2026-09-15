@@ -127,7 +127,7 @@ v0→…→v24 迁移链在案，老档自动无损升级；真实档迁移经�
   | 文件 | 职责 |
   |---|---|
   | `wormhole.ts` | 副本状态机（进入 / 推进 / 深入 / 撤离 / 临时离开与返回）· **进洞门槛**（`wormholeEntryBlockReason` / `wormholeShipEntryBusy` / `wormholeEntryAutoStops`）· 编队质量与回合预算 |
-  | `wormholeScan.ts` | 主控活动「扫描虫洞」（12 小时窗口 × 三技能 × 星际奇遇学）· 库存 5 处（`wormholeStock`，**起始层恒 1**）· 放弃 · **解锁门槛 = 协会声望 40** |
+  | `wormholeScan.ts` | 主控活动「扫描虫洞」（12 小时窗口 × 三技能 × 星际奇遇学）· 库存 5 处（`wormholeStock`，**起始层恒 1**；「星图记录学」满级 +10 ⇒ 15 处）· 放弃 · **解锁门槛 = 协会声望 40** |
   | `wormholeGrid.ts` | 层内六边形网格、信号/地点盘面、**内容原型**（五档权重）与遗迹占比/下限 |
   | `wormholeFoes.ts` | 五张洞内敌卡按层派生 · **族徽**（`WORMHOLE_FAMILY_CARD`：一处一族的 1:1 映射） |
   | `wormholeSalvage.ts` | 墓场/遗迹/矿脉的产出堆 · **族池**（专属装备/图纸/舰船按族）· 安全货柜与图纸货柜的**开箱池** |
