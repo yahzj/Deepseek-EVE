@@ -8,7 +8,7 @@
  * 界面查看后才移除）」⇒ 扫描不再是"玩家活动"行，改为头部 AI 徽标右侧一条常驻进度条
  * （进行中 = 进度 + 剩余；完成待查看 = 满格金色高亮，进「星图」或点它即收）。
  */
-import { activityOverview, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
+import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { formatDurationMs } from '@whale/core'
 import { useEffect, useState } from 'react'
@@ -243,13 +243,19 @@ export function ActivityBar({
    * 口径：数据表 `TUNING_RULES`（`packages/core/src/tuning.ts`）× **现实墙钟**；到期自动消失。
    * 剩余时间按**本地日界**算（规则以"当天整天生效"为准）⇒ 这里显示"还剩 N 天 N 小时"。
    * 无加成时**不渲染**（不占位、防头部跳动）。
+   *
+   * **2026-09-16 促销合并**（船长：「5和虫洞限时缩短写在一起，但是要润色成虫洞大量生成之类的」）：
+   * `PROMOS` 里的一条促销（扫描倍率 ＋ 一次性赠送）在这里显示成**一枚**徽标（游戏内说法 + 剩余时间），
+   * 被它 `claims` 认领的倍率键（如 `wormholeScanMs`）**不再单列** —— 同一件事不显示两遍。
    */
   const [tuningTick, setTuningTick] = useState(() => Date.now())
   useEffect(() => {
     const t = window.setInterval(() => setTuningTick(Date.now()), 60_000) // 每分钟刷新剩余时间
     return () => window.clearInterval(t)
   }, [])
-  const tunings = activeTunings(tuningTick)
+  const promos = activePromos(tuningTick)
+  const promoClaimedKeys = new Set<string>(promos.flatMap((p) => [...p.claims]))
+  const tunings = activeTunings(tuningTick).filter((t) => !promoClaimedKeys.has(t.key))
   // 撤退需二次确认（轻损但有代价）。
   // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
   // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——
@@ -411,6 +417,25 @@ export function ActivityBar({
             </span>
           </button>
         ) : null}
+        {/* 限时活动（2026-09-16 促销）：与限时加成同一处、同一族样式 —— 游戏内说法 + 剩余时间；
+            被它认领的倍率键已在上面从 `tunings` 里滤掉，同一件事只显示这一枚 */}
+        {promos.map((p) => (
+          <button
+            key={`promo-${p.id}-${p.untilMs}`}
+            className="app-activitybar-tuning"
+            title={
+              `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
+              `截止 ${new Date(p.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, p.untilMs - tuningTick))}`
+            }
+            onClick={() => onGoPage?.('map', 'star')}
+          >
+            <span className="app-ico">
+              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+            </span>
+            <span className="app-activitybar-tuning-name">{p.label}</span>
+            <span className="app-activitybar-tuning-time">{formatDurationMs(Math.max(0, p.untilMs - tuningTick))}</span>
+          </button>
+        ))}
         {/* 限时加成（2026-09-15 船长）：摆在**扫描条右侧** —— 生效中的加成项 + 剩余时间；无加成不渲染 */}
         {tunings.map((t) => (
           <button

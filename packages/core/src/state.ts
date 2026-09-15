@@ -1544,6 +1544,14 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    * 兼容字段（可选）：旧档没有 ⇒ 空队列，零迁移。
    */
   wormholeAutoReports?: WormholeAutoReport[]
+  /**
+   * **限时促销的一次性领取记录**（2026-09-16 船长：限时活动「虫洞大量生成」——每人**只发一次**
+   * 5 处虫洞，**只给已解锁者**）。键 = `PROMOS[].id`，值恒 `true`。
+   *
+   * 兼容字段（可选，**零迁移**）：老档缺席 = 未领取 ⇒ 达标后下一次心跳由
+   * `reconcileWormholePromoGift` 自动补发一次；促销表里删行不影响本记录（留着无害）。
+   */
+  promoClaimed?: Record<string, true>
   /** 精炼炉运转（2026-09-04 工业细化：单工位循环运转；兼容字段无版本号，旧档载入 = 空态） */
   refineRun: RefineRunState
   /** B3 打捞作业（采矿式自动循环，2026-09-09 起默认循环；autoCycle/stopAfterTrip 偏好字段零迁移，旧档载入 = 空态） */
