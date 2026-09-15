@@ -612,13 +612,14 @@ export const SHIPS: readonly ShipDef[] = [
   },
 
   // ══════════ 甲壳重装线（装甲/结构最厚 + 装甲层高抗） ══════════
+  // 2026-09-15 船长：「下调重装船的货仓20%」⇒ 全线三艘（陆龟/玳瑁/玄武）货舱 ×0.8，其余数值一律不动。
   {
     id: 'sh-tortoise',
     name: '陆龟级重装艇',
     role: 'armored',
     slots: { high: 3, mid: 3, low: 4 }, // 2026-09-13 船长：旧重装舰对齐同级（2/2/3 → **3/3/4 = 10 槽**）
     tier: 2,
-    cargoM3: 7000,
+    cargoM3: 5600, // 2026-09-15 船长：「下调重装船的货仓20%」＋「只保留基础的3艘重装船，货舱修改的也是它们」（7000 ×0.8）
     cycleSeconds: 13,
     oreUnitsPerCycle: 24,
     priceIsk: 450_000, // 2026-09-13 船长：旧重装舰对齐同级后价格跟涨（330k → 450k）
@@ -645,7 +646,7 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armored',
     slots: { high: 4, mid: 4, low: 5 }, // 2026-09-13 船长：旧重装舰对齐同级（2/3/3 → **4/4/5 = 13 槽**）
     tier: 3,
-    cargoM3: 12000,
+    cargoM3: 9600, // 2026-09-15 船长：重装线货舱 −20%（12000 ×0.8）
     cycleSeconds: 13,
     oreUnitsPerCycle: 22,
     priceIsk: 6_000_000, // 2026-09-13 价位重排：T3 装甲（陆龟 0.45M ×13.3；原 1.1M）
@@ -672,7 +673,7 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armored',
     slots: { high: 4, mid: 4, low: 6 }, // **14 槽**（船长「修正下玄武」＋同日废除 3~12 契约、T4 战列舰按**平均值 14**）
     tier: 4,
-    cargoM3: 19000,
+    cargoM3: 15200, // 2026-09-15 船长：重装线货舱 −20%（19000 ×0.8）
     cycleSeconds: 14,
     oreUnitsPerCycle: 26,
     priceIsk: 90_000_000, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15；原 16.5M）

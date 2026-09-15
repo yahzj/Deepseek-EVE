@@ -317,7 +317,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_080, // 玳瑁级（2026-09-13 价位重排后按带内插值：6M ⇒ 4.5 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 24_000_000, // = 行价 6,000,000 × 4（2026-09-13 价位重排；此前与市场卡不同值，本次一并归位）
-    description: '重装巡舰，货舱 12,000 m³、循环 13 秒产 22 单位，厚壳仓库。',
+    description: '重装巡舰，货舱 9,600 m³、循环 13 秒产 22 单位，厚壳仓库。',
   },
   {
     id: 'sbp-xuanwu',
@@ -332,7 +332,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 62_580, // 玄武级（2026-09-13 价位重排后按带内插值：90M ⇒ 17.4 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 360_000_000, // = 行价 90,000,000 × 4（2026-09-13 价位重排）
-    description: '重装旗舰，货舱 19,000 m³、三层血最厚，重装线的顶点。',
+    description: '重装旗舰，货舱 15,200 m³、三层血最厚，重装线的顶点。',
   },
   {
     id: 'sbp-flyingfish',
@@ -700,7 +700,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_080,
     buildCostIsk: 0,
     priceIsk: 3_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
-    description: '重装巡舰，货舱 12,000 m³、循环 13 秒产 22 单位，厚壳仓库。',
+    description: '重装巡舰，货舱 9,600 m³、循环 13 秒产 22 单位，厚壳仓库。',
   },
   {
     id: 'sbp-once-humpback',
@@ -865,7 +865,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 62_580,
     buildCostIsk: 0,
     priceIsk: 45_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
-    description: '重装旗舰，货舱 19,000 m³、三层血最厚，重装线的顶点。',
+    description: '重装旗舰，货舱 15,200 m³、三层血最厚，重装线的顶点。',
   },
   {
     id: 'sbp-once-megalodon',
