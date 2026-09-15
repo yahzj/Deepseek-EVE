@@ -705,6 +705,15 @@ function settleBattleRetreat(
 ): void {
   const exp = state.expedition
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
+  /**
+   * **本次交火实际用的那张卡**（2026-09-14 船长裁定「顺手对齐」）：
+   * 窝点的界面胜率/威胁、以及开战时的敌编成（见本文件开战路径的 `card0`）**一律按档位派生后的卡**
+   * （`lairAnomalyOf`：威胁 ×1.3/1.6/2.0），唯独撤退/无法交战这里的取数原先读**基础卡** ⇒ 窝点档被少算。
+   * 派生卡只放大威胁与条目的 hp/dmg 锚点，单发/射程/编成/战术一律不动 ⇒ 交距读数不受影响。
+   * ⚠ **奖赏与命名那条链仍走基础卡 + `exp.lairTier`**（`lairBaseRewardIsk` / `lairNameOf`），
+   * 换成派生卡会把档位倍率二次乘上 ⇒ 奖金虚高，务必别顺手改。
+   */
+  const threatCard = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier) : anomaly
   const battle = exp.battle
   if (!battle) return
   // 机群战损（2026-09-10 船长「无人机可被击落」）：撤退也照扣——被打掉的飞机不会飞回来
@@ -717,16 +726,18 @@ function settleBattleRetreat(
   // 「无法交战」战报要用的两个数字（**与引擎同源、不手写**）：我方主武器最远射程 + 敌编队典型交距
   const meSpec = createPlayerSpec(state, ctx, state.shipId)
   const myTopRangeM = meSpec ? meSpec.weapons.reduce((m, w) => Math.max(m, w.maxRangeM), 0) : 0
-  const foesNow = anomaly ? createFoeSpecs(anomaly, ctx.balance.battle) : []
+  const foesNow = threatCard ? createFoeSpecs(threatCard, ctx.balance.battle) : []
   const foeTypicalRangeM = meSpec && foesNow.length > 0 ? foeDesiredRange(meSpec, foesNow, ctx.balance.battle) : 0
 
   // 脱身那一口（2026-09-11 船长：「希望能将其应用到战斗中撤退」）：
-  // 一口 = 敌群火力（威胁 × foeDpsPerThreat）× combat.retreatHitFirepowerSec（K = 1 秒，三档同一 K），
+  // 一口 = 敌群火力（威胁 × foeDpsPerThreat）× combat.retreatHitFirepowerSec，
   // **先扣装甲、吸完再进结构**，结构 5% 底线（算法单点 hullDamage.ts，与低安遇袭受损档同一套）。
   // 取代旧口径「轻损 = 失利扣损骰 ×0.5 = 结构 −7.5%~15%（与敌人强弱无关、装甲不动）」；
   // 旧档/异常无 anomalyId 时无从取敌群火力 ⇒ 退回旧半损骰兜底（有日志说明）。
+  // ⚠ **2026-09-14 船长改判：「玩家撤离战斗按照 10 秒算」⇒ 旧值 1 秒作废**，四档（主动撤退 /
+  // 结构<50% 自动脱离 / 超时 / 无法交战）**同一 K**；虫洞撤离战不在此列（走真实战斗损伤）。
   const bal = ctx.balance.combat
-  const threat = anomaly ? Math.max(1, anomaly.threat) : 0
+  const threat = threatCard ? Math.max(1, threatCard.threat) : 0
   let hit: HullHit | null = null
   let legacyLossPct = 0
   if (threat > 0) {

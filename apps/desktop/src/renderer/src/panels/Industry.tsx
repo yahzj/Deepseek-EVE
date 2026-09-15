@@ -26,10 +26,12 @@ import {
   shipOwnedCount,
   // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
   visibleItemDefs,
+  // 2026-09-14 船长：虫洞专属图纸改「去虫洞」跳转，门槛与扫描虫洞页同一本账
+  WORMHOLE_SCAN_UNLOCK_STANDING,
 } from '@whale/core'
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -92,9 +94,33 @@ function bookPriceOf(engine: GameEngine, blueprintId: string, fallback: number):
 /* ═══════════════ 蓝图书架（紧凑小卡网格：书+数量+状态+学习/出售；船长 2026-09-05 定形态） ═══════════════ */
 
 /** 蓝图书架：持有的蓝图书（学习 → 永久学会；多余的书市价出售） */
-export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+export function BlueprintShelfPanel({
+  engine,
+  onToast,
+  onGotoCraft,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** 「去组装机」：切到组装机标签并定位那张蓝图卡（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图
+   *  直接跳转对应组装机」）——由工业页透传（跳转时会**清掉组装机的三级筛选**，否则目标卡可能被筛掉） */
+  onGotoCraft?: (blueprintId: string) => void
+}) {
   const state = engine.state
   const entries = Object.entries(state.blueprintStock).filter(([, n]) => n > 0)
+  /**
+   * **与组装机同样的筛选**（船长 2026-09-14：「蓝图书架也加入组装机同样的筛选」）：
+   * 一级类别（`MANU_TABS`）/ 二级子类（`manuSubsOf`）/ 三级一次性-永久（`BLUEPRINT_USE_TABS`），
+   * 三项都走 `bpFilterKeysOf` 同一个单点；三级同样**只在选了子类后才出现**（与组装机逐字同款口径）。
+   */
+  const [kind, setKind] = useState<ManuTab>('all')
+  const [sub, setSub] = useState<string>(SUB_ALL)
+  const [useKind, setUseKind] = useState<BlueprintUse>('all')
+  const subOptions = manuSubsOf(kind)
+  const all = entries.map(([id, n]) => ({ id, n, keys: bpFilterKeysOf(engine, id) }))
+  const shown = all
+    .filter((e) => kind === 'all' || e.keys.tab === kind)
+    .filter((e) => sub === SUB_ALL || e.keys.subKey === sub)
+    .filter((e) => useKind === 'all' || (useKind === 'single' ? e.keys.singleUse : !e.keys.singleUse))
 
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
@@ -119,7 +145,8 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
         title="蓝图书架"
         hint={
           // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
-          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）；它同样在市场流通（稀有订单 / 奇货偶有现货），组装机卡上点「市场求购蓝图书」就能去看订单。" />
+          // 2026-09-14 船长：虫洞专属图纸市场买不到 ⇒ 组装机那张卡改「去虫洞（遗迹打捞）」，这里同步改口径
+          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）；在市场流通的那些同样可以在组装机卡上看订单。虫洞专属图纸（装备 / 舰船）市场不出售——组装机卡上是「去虫洞（遗迹打捞）」，进洞在遗迹与图纸货柜里捞。" />
         }
         right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}
       >
@@ -129,9 +156,82 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
   }
 
   return (
-    <Panel className="is-fill" title="蓝图书架" right={<span className="app-dim">学习 = 永久可造；一次性图纸只能制造一次</span>}>
+    <Panel
+      className="is-fill"
+      title="蓝图书架"
+      right={
+        <span className="app-dim">
+          学习 = 永久可造；一次性图纸只能制造一次
+          {/* 筛选生效时补"当前 N 本"（与组装机/精炼炉同款，免得对着收窄后的网格数不清） */}
+          {kind !== 'all' || sub !== SUB_ALL || useKind !== 'all' ? ` · 当前 ${shown.length} 本` : ''}
+        </span>
+      }
+    >
+      {/* 三级筛选与组装机**同一套**（同表、同顺序、同"选了子类才出三级"的规则）——
+          样式逐字复用这两行（`app-task-tabs` + `app-fleet-tabs` + `app-tasktab`） */}
+      <div className="app-task-tabs" role="tablist">
+        {MANU_TABS.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={kind === t.key}
+            className={`app-tasktab${kind === t.key ? ' is-active' : ''}`}
+            onClick={() => {
+              setKind(t.key)
+              setSub(SUB_ALL) // 换一级标签即回「全部子类」（与组装机同款）
+              setUseKind('all')
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {subOptions.length > 0 ? (
+        <div className="app-task-tabs app-fleet-tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={sub === SUB_ALL}
+            className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
+            onClick={() => {
+              setSub(SUB_ALL)
+              setUseKind('all')
+            }}
+          >
+            全部子类
+          </button>
+          {subOptions.map((s) => (
+            <button
+              key={s.key}
+              role="tab"
+              aria-selected={sub === s.key}
+              className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
+              onClick={() => {
+                setSub(s.key)
+                setUseKind('all')
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {sub !== SUB_ALL ? (
+        <div className="app-task-tabs app-fleet-tabs" role="tablist">
+          {BLUEPRINT_USE_TABS.map((u) => (
+            <button
+              key={u.key}
+              role="tab"
+              aria-selected={useKind === u.key}
+              className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
+              onClick={() => setUseKind(u.key)}
+            >
+              {u.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="app-shelf-grid">
-        {entries.map(([id, n]) => {
+        {shown.map(({ id, n }) => {
           // 蓝图书架按**持有的书**列条目 ⇒ 走全目录（施工期闸门下未上线的图纸只有调试才可能持有）
           const bp = engine.allBlueprints.find((b) => b.id === id) ?? engine.allShipBlueprints.find((b) => b.id === id)
           const learned = ownsBlueprint(state, id)
@@ -161,6 +261,17 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
                     : '尚未学习——学习后永久可造'}
               </div>
               <div className="app-belt-actions">
+                {/* **去组装机**（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图直接跳转对应组装机」）——
+                    切到组装机标签并定位这张卡；组装机那一侧会先清掉三级筛选，保证目标卡一定在网格里 */}
+                {onGotoCraft ? (
+                  <button
+                    className="app-btn is-small"
+                    title="跳到组装机并定位这张图纸的卡片（那里才能开工制造）"
+                    onClick={() => onGotoCraft(id)}
+                  >
+                    去组装机
+                  </button>
+                ) : null}
                 {!learned && !su ? (
                   <button className="app-btn is-small is-primary" onClick={() => handleLearn(id)}>
                     学习
@@ -176,6 +287,9 @@ export function BlueprintShelfPanel({ engine, onToast }: { engine: GameEngine; o
           )
         })}
       </div>
+      {shown.length === 0 ? (
+        <div className="app-dim app-inv-empty">该筛选下书架里没有对应的书——换个分类、或把「全部子类 / 全部图纸」点回来看看。</div>
+      ) : null}
     </Panel>
   )
 }
@@ -203,6 +317,45 @@ function manuSubsOf(tab: ManuTab): SubOption[] {
   if (tab === 'ship') return SHIP_TIER_SUBS
   if (tab === 'supply') return CONSUME_SUBS
   return []
+}
+
+/**
+ * **第三级筛选：一次性蓝图 / 永久蓝图**（船长 2026-09-14：「组装机添加第三个筛选，一次性蓝图和永久蓝图。
+ * 需要选完上一级子类后才出现」「蓝图书架也加入组装机同样的筛选」）——**组装机与蓝图书架同一张表**。
+ * 显示规则（两处一致）：**只在选了二级子类（`sub !== SUB_ALL`）之后才出现**；切一级标签或换子类一律回「全部图纸」
+ * （否则会出现"看不见的筛选"——卡片被筛掉而玩家找不到开关，与 `handleNeedMineral` 那条同一类坑）。
+ */
+type BlueprintUse = 'all' | 'perm' | 'single'
+const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUse; label: string }> = [
+  { key: 'all', label: '全部图纸' },
+  { key: 'perm', label: '永久蓝图' },
+  { key: 'single', label: '一次性蓝图' },
+]
+
+/** 蓝图筛选三件套（类别 / 子类 / 是否一次性）——**单点**：组装机与蓝图书架都读它，键与组装机的分组逐字同源
+ * （舰船 = `t<级别>` · 装备 = 产物功能 `moduleSubKeyOf(slot)` · 消耗品 = 产物大类 `itemDef.kind`）。 */
+function bpFilterKeysOf(engine: GameEngine, bpId: string): { tab: ManuTab; subKey: string; singleUse: boolean } {
+  const sbp = engine.ctx.shipBlueprints.get(bpId)
+  if (sbp) {
+    const def = engine.ctx.ships.get(sbp.shipId)
+    return { tab: 'ship', subKey: def ? `t${def.tier}` : '', singleUse: sbp.singleUse === true }
+  }
+  const bp = engine.ctx.blueprints.get(bpId)
+  if (bp && bp.itemId !== undefined) {
+    const item = engine.ctx.items.get(bp.itemId)
+    return { tab: 'supply', subKey: item?.kind ?? '', singleUse: bp.singleUse === true }
+  }
+  const mod = bp?.moduleId ? engine.ctx.modules.get(bp.moduleId) : undefined
+  return { tab: 'equip', subKey: mod ? moduleSubKeyOf(mod.slot) : '', singleUse: bp?.singleUse === true }
+}
+
+/**
+ * **虫洞专属图纸**（`bp-wh-*` / `sbp-wh-*`）——船长 2026-09-14：「虫洞专属的蓝图市场上没有卖，建议改为跳转虫洞。
+ * 如果玩家声望不达标，就无法跳转」⇒ 这类卡不给"市场求购"（那里买不到），改给**去虫洞（遗迹打捞）**按钮 +
+ * **虫洞解锁声望闸**（`WORMHOLE_SCAN_UNLOCK_STANDING`，与扫描虫洞页同一本账）。
+ */
+function isWormholeBlueprint(bpId: string): boolean {
+  return /^(bp|sbp)-wh-/.test(bpId)
 }
 
 /** 主控此刻不能"亲自再开一条制造线"的原因（null = 主控空闲可开；AI 核心驱动不受此限；
@@ -243,6 +396,8 @@ function BlueprintCard({
   ownedWhere,
   onNeedMineral,
   onGotoMarket,
+  onGotoWormhole,
+  highlighted,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -270,6 +425,11 @@ function BlueprintCard({
   /** 「市场求购蓝图书」跳市场：传该蓝图的市场商品键，市场页会搜到并展开它的行情详情
    *  （2026-09-14 船长：组装机只指路、不替玩家下任何单） */
   onGotoMarket?: (goodKey: string) => void
+  /** 「去虫洞（遗迹打捞）」跳星图 · 出港 · 「扫描虫洞」页（船长 2026-09-14：虫洞专属图纸市场买不到，
+   *  改跳虫洞；未达虫洞解锁声望时按钮禁用、不跳） */
+  onGotoWormhole?: () => void
+  /** 被「蓝图书架 → 去组装机」定位到的那张卡（页面层同一套 `.app-belt-card.is-goto` 高亮） */
+  highlighted?: boolean
 }) {
   const state = engine.state
   // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
@@ -317,6 +477,16 @@ function BlueprintCard({
    * 市场买书本身的声望门槛**未动**（那是已确认的"声望用途"口径，船长本轮只点了组装机）。
    */
   const lock = !owned && goodKey ? marketLockedReason(state, engine.ctx, goodKey) : null
+  /**
+   * **这张图能不能在市场买到**（2026-09-14 船长：「虫洞专属的蓝图市场上没有卖，建议改为跳转虫洞。
+   * 如果玩家声望不达标，就无法跳转」）：`playerBuyable === false`（只收不卖那批）＝ 买不到 ⇒
+   * 「市场求购」是条死路（点进去只会看到"只收不卖"），改给「去虫洞」。
+   */
+  const bookBuyable = goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.playerBuyable !== false
+  const whBlueprint = isWormholeBlueprint(blueprintId)
+  /** 虫洞解锁声望闸（与扫描虫洞页同一本账：协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`） */
+  const whStanding = state.standings.dsi ?? 0
+  const whUnlocked = whStanding >= WORMHOLE_SCAN_UNLOCK_STANDING
   // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
   const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
@@ -336,6 +506,23 @@ function BlueprintCard({
       return
     }
     onGotoMarket(goodKey)
+  }
+
+  /**
+   * **去虫洞（遗迹打捞）**（船长 2026-09-14）——虫洞专属图纸（`bp-wh-*` / `sbp-wh-*`）市场只收不卖、
+   * 买不到，所以指路"真正能拿到它的地方"：星图 · 出港 · **扫描虫洞**页（进洞 → 遗迹 / 图纸货柜 / 安全货柜）。
+   * **声望不达标 ⇒ 不跳**（按钮本身也置灰；这里再兜一道，防键盘/程序化触发）。
+   */
+  function handleGotoWormhole(): void {
+    if (!whUnlocked) {
+      onToast(`虫洞尚未解锁：需「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${whStanding}）。`, true)
+      return
+    }
+    if (!onGotoWormhole) {
+      onToast('当前入口不支持跳转虫洞：请从左侧「星图」→「出港 · 扫描虫洞」进入。', true)
+      return
+    }
+    onGotoWormhole()
   }
 
   /** 书已在书架（未学习）：就地学习——与「蓝图书架」的「学习」同一个引擎出口与话术（不花钱、不占制造位） */
@@ -400,7 +587,7 @@ function BlueprintCard({
       : '没有可用 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。'
 
   return (
-    <div className="app-belt-card is-assembler">
+    <div className={`app-belt-card is-assembler${highlighted ? ' is-goto' : ''}`}>
       <div className="app-belt-head">
         <span className="app-belt-name">
           <RowGlyph glyph={productGlyph} /> {name}
@@ -626,7 +813,37 @@ function BlueprintCard({
               </button>
             </div>
           </>
-        ) : singleUse && goodKey ? (
+        ) : !singleUse && bookCount > 0 ? (
+          /* 书已在书架（尚未学习）：就地学习（2026-09-14 船长裁定「乙」）——与「蓝图书架」的「学习」
+             同一个引擎出口与话术；书不消耗、也不占制造位。
+             ⚠ 顺序上提到「去哪买/去哪捞」之前：手里有书就该先能学（这正是上一批"拿着书却只看到需要声望"的坑）。 */
+          <button
+            className="app-btn is-small"
+            title={`蓝图书架已有这本图纸 ×${bookCount}：点此学习（不消耗书），学会后本卡永久可造`}
+            onClick={handleLearnFromShelf}
+          >
+            学习该配方（书架已有书）
+          </button>
+        ) : whBlueprint ? (
+          /**
+           * **虫洞专属图纸 ⇒ 去虫洞（遗迹打捞）**（船长 2026-09-14：「虫洞专属的蓝图市场上没有卖，建议改为
+           * 跳转虫洞。**如果玩家声望不达标，就无法跳转**」）——这类图（`bp-wh-*` / `sbp-wh-*`）的市场行是
+           * "只收不卖"，点「市场求购」进去也买不到 ⇒ 死路；改成跳**星图 · 出港 · 扫描虫洞**（真正能拿图的地方：
+           * 洞内遗迹打捞 / 图纸货柜 / 安全货柜），并以**虫洞解锁声望**为闸（未达标一律禁用 + 写明还差多少）。
+           */
+          <button
+            className={`app-btn is-small${whUnlocked ? ' is-primary' : ''}`}
+            disabled={!whUnlocked}
+            title={
+              whUnlocked
+                ? '虫洞专属图纸：市场不出售（只收不卖）——点此跳到「扫描虫洞」进洞，在遗迹与图纸货柜里打捞同名图纸'
+                : `虫洞尚未解锁：需「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${whStanding}）——先去协会攒声望`
+            }
+            onClick={handleGotoWormhole}
+          >
+            {whUnlocked ? '去虫洞（遗迹打捞）' : '✕ 虫洞未解锁'}
+          </button>
+        ) : singleUse && bookBuyable ? (
           /* 一次性图纸（2026-09-14 船长：「组装机的一次性蓝图制造如果没有蓝图，也改为跳转市场，
              和其他组装机一样」）——**在市场流通的一次性图纸**（`sbp-once-*`：稀有订单层 / 奇货）
              缺书与名额已用尽都只差"再拿一张图" ⇒ 一律指路市场；买不买、按什么价挂单由玩家在详情里定。 */
@@ -642,33 +859,27 @@ function BlueprintCard({
             市场求购蓝图书{cap.kind === 'exhausted' ? '（名额已用尽）' : ''}
           </button>
         ) : singleUse ? (
-          /* 一次性图纸**不在市场流通**的（洞内定制装备/舰船的 `bp-wh-*` / `sbp-wh-*`）：
-             市场里搜不到 ⇒ 不挂"去市场"的死路按钮，改为写清唯一来源（洞内遗迹打捞 · 图纸货柜）。 */
+          /* 一次性图纸**不在市场流通**的（既非虫洞线、市场目录里也没有它）：写清唯一来源，不挂死路按钮 */
           <button
             className="app-btn is-small"
             disabled
             title={
               cap.kind === 'exhausted'
-                ? '本门一次性图纸的名额已用尽：这张不在市场流通，只能再从虫洞遗迹打捞（图纸货柜 / 安全货柜）拿到同名图纸'
-                : '一次性图纸：不能学习，只能用一次。这张不在市场流通——只能从虫洞遗迹打捞（图纸货柜 / 安全货柜）取得'
+                ? '本门一次性图纸的名额已用尽：这张不在市场流通，只能从高级箱里再开出一张同名图纸'
+                : '一次性图纸：不能学习，只能用一次。这张不在市场流通——只能从高级箱里开出来'
             }
           >
-            {cap.kind === 'exhausted' ? '✕ 制造名额已用尽（洞内打捞）' : '✕ 需要一次性图纸（洞内打捞）'}
+            {cap.kind === 'exhausted' ? '✕ 制造名额已用尽（高级箱）' : '✕ 需要一次性图纸（高级箱）'}
           </button>
-        ) : bookCount > 0 ? (
-          /* 书已在书架（尚未学习）：就地学习（2026-09-14 船长裁定「乙」）——与「蓝图书架」的「学习」
-             同一个引擎出口与话术；书不消耗、也不占制造位 */
-          <button
-            className="app-btn is-small"
-            title={`蓝图书架已有这本图纸 ×${bookCount}：点此学习（不消耗书），学会后本卡永久可造`}
-            onClick={handleLearnFromShelf}
-          >
-            学习该配方（书架已有书）
-          </button>
-        ) : (
+        ) : bookBuyable ? (
           /* 求购 = 只跳市场行情详情，不替玩家下单（2026-09-14 船长口径） */
           <button className="app-btn is-small" title="跳到市场的该蓝图行情详情：买现货或按自己的价挂买单" onClick={handleGotoMarket}>
             市场求购蓝图书
+          </button>
+        ) : (
+          /* 市场目录里根本没有这张图（可获得的渠道不在市场）：别给死路按钮 */
+          <button className="app-btn is-small" disabled title="这张图纸不在市场流通目录——来源见产物说明（洞内打捞 / 高级箱等）">
+            ✕ 无市场渠道
           </button>
         )}
       </div>
@@ -681,19 +892,37 @@ export function ManufacturingPanel({
   onToast,
   onNeedMineral,
   onGotoMarket,
+  onGotoWormhole,
+  focusBlueprintId,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onNeedMineral?: (itemId: string) => void
   /** 「市场求购蓝图书」跳市场（传市场商品键）；由工业页透传 App 的「去市场」入口 */
   onGotoMarket?: (goodKey: string) => void
+  /** 「去虫洞（遗迹打捞）」跳星图 · 出港 · 扫描虫洞（船长 2026-09-14：虫洞专属图纸市场买不到） */
+  onGotoWormhole?: () => void
+  /** 蓝图书架「去组装机」的定位目标（蓝图 id）：本面板会**先清掉三级筛选**再高亮那张卡 */
+  focusBlueprintId?: string | null
 }) {
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
   const [tab, setTab] = useState<ManuTab>('all')
   // 二级子筛选（2026-09-11 船长）；切一级标签即回「全部子类」（与市场页 changeKind 同款口径）
   const [sub, setSub] = useState<string>(SUB_ALL)
+  /** 第三级筛选：一次性/永久（**只在选了子类后显示**；见 `BLUEPRINT_USE_TABS` 的注释） */
+  const [useKind, setUseKind] = useState<BlueprintUse>('all')
   const subOptions = manuSubsOf(tab)
+  /**
+   * **书架跳过来的定位**（船长 2026-09-14）：先把三级筛选全部复位（否则目标卡可能正被筛掉 ⇒ 跳过去空白），
+   * 高亮由页面层的 `.app-belt-card.is-goto` + 居中滚动负责（与「去精炼」同一套）。
+   */
+  useEffect(() => {
+    if (!focusBlueprintId) return
+    setTab('all')
+    setSub(SUB_ALL)
+    setUseKind('all')
+  }, [focusBlueprintId])
 
   /** 目录数据（舰船 + 装备统一成条目；制造中冒泡在前，再按名称） */
   const items: Array<{
@@ -866,6 +1095,8 @@ export function ManufacturingPanel({
     )
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
+    // 三级筛选（2026-09-14 船长）：一次性 / 永久——**只在选了子类后才有开关**，故这里 sub=全部时它恒为 all
+    .filter((it) => useKind === 'all' || (useKind === 'single' ? it.singleUse : !it.singleUse))
   // 排序口径（类型 → 价格升序 → 同产物的一次性图纸紧随原图纸）**单点在 core**：
   // `sortManuRows`（2026-09-08 船长定 + 2026-09-14 船长改定；详见 core 该段注释与 `tests/manu-order.test.ts`）
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
@@ -887,8 +1118,8 @@ export function ManufacturingPanel({
         <>
           <span className="app-dim">
             制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}
-            {/* 子筛选生效时补一个"当前 N 张"，避免玩家对着收窄后的网格数不清 */}
-            {sub !== SUB_ALL ? ` · 当前 ${sorted.length} 张` : ''}
+            {/* 子筛选/三级筛选生效时补一个"当前 N 张"，避免玩家对着收窄后的网格数不清 */}
+            {sub !== SUB_ALL || useKind !== 'all' ? ` · 当前 ${sorted.length} 张` : ''}
           </span>
           <AiSlotText state={state} ctx={engine.ctx} />
         </>
@@ -905,6 +1136,7 @@ export function ManufacturingPanel({
             onClick={() => {
               setTab(t.key)
               setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
+              setUseKind('all') // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
             }}
           >
             {t.label}
@@ -920,7 +1152,10 @@ export function ManufacturingPanel({
             role="tab"
             aria-selected={sub === SUB_ALL}
             className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
-            onClick={() => setSub(SUB_ALL)}
+            onClick={() => {
+              setSub(SUB_ALL)
+              setUseKind('all') // 回「全部子类」⇒ 三级筛选行随之隐藏，故一并复位
+            }}
           >
             全部子类
           </button>
@@ -930,9 +1165,30 @@ export function ManufacturingPanel({
               role="tab"
               aria-selected={sub === s.key}
               className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
-              onClick={() => setSub(s.key)}
+              onClick={() => {
+                setSub(s.key)
+                setUseKind('all') // 换子类即回「全部图纸」（与一级标签同款口径）
+              }}
             >
               {s.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {/* **三级筛选：一次性 / 永久**（船长 2026-09-14：「组装机添加第三个筛选，一次性蓝图和永久蓝图。
+          需要选完上一级子类后才出现」）——样式逐字复刻上面那行子筛选（`app-task-tabs app-fleet-tabs`）； 
+          **选了子类才渲染**：没选子类时它不出现，避免与"全部子类"语义打架 */}
+      {sub !== SUB_ALL ? (
+        <div className="app-task-tabs app-fleet-tabs" role="tablist">
+          {BLUEPRINT_USE_TABS.map((u) => (
+            <button
+              key={u.key}
+              role="tab"
+              aria-selected={useKind === u.key}
+              className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
+              onClick={() => setUseKind(u.key)}
+            >
+              {u.label}
             </button>
           ))}
         </div>
@@ -958,11 +1214,13 @@ export function ManufacturingPanel({
               ownedWhere={it.ownedWhere}
               onNeedMineral={onNeedMineral}
               onGotoMarket={onGotoMarket}
+              onGotoWormhole={onGotoWormhole}
+              highlighted={focusBlueprintId === it.id}
             />
           ))}
         </div>
         {sorted.length === 0 ? (
-          <div className="app-dim app-exp-idle">该子分类下暂无蓝图——换个分类或点「全部子类」看看。</div>
+          <div className="app-dim app-exp-idle">该筛选下暂无蓝图——换个分类、或把「全部子类 / 全部图纸」点回来看看。</div>
         ) : null}
       </div>
     </Panel>
