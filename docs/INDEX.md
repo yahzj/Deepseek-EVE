@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **250** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4761** KB · **34933** 行
+- 文档总数 **250** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4757** KB · **34850** 行
 - 状态分布：**未标注** 138 · **已确认/已实现** 105 · **待裁定** 3 · **进行中** 3 · **历史留档** 1
 - 孤儿文档（0 引用）**19** 份 · 状态未标注 **138** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -28,14 +28,14 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 17 KB / 174 行 | 134 / 4 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 138 / 4 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
-| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 11 / 3 |
+| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 14 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 139 KB / 208 行 | 12 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 534 行 | 71 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 289 KB / 653 行 | 181 / 5 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 191 行 | 234 / 8 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 140 KB / 209 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 535 行 | 65 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 289 KB / 653 行 | 180 / 5 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 191 行 | 232 / 8 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -129,7 +129,7 @@
 | `docs/design/ai-work-fx-20260910.md` | AI 工作动画（AI 指挥中心「执行中」按工作内容差分）（2026-09-10，状态：已确认口径并实现，待验收） | 已确认/已实现（已确认口径并实现） | 2026-09-10 | 5 KB / 56 行 | 1 / 1 |
 | `docs/design/assembly-loop-card-level-20260910.md` | 组装机「循环制造」上移到卡片级（2026-09-10 船长定；状态：已确认并实现） | 已确认/已实现（已确认并实现） | 2026-09-10 | 8 KB / 97 行 | 3 / 0 |
 | `docs/design/blueprint-rate-20260910.md` | 蓝图获取速率调整（碎片门槛下调 · 市场蓝图书权重 5% · 蓝图单寿命 6 小时） | 已确认/已实现（已确认） | 2026-09-10 | 8 KB / 107 行 | 3 / 0 |
-| `docs/design/bounty-tasks-20260910.md` | 赏金任务 · 敌人窝点（2026-09-10 船长定稿） | 已确认/已实现（已确认） | 2026-09-10 | 33 KB / 344 行 | 17 / 1 |
+| `docs/design/bounty-tasks-20260910.md` | 赏金任务 · 敌人窝点（2026-09-10 船长定稿） | 已确认/已实现（已确认） | 2026-09-10 | 33 KB / 344 行 | 16 / 1 |
 | `docs/design/c6-drone-vs-gun-20260910.md` | C6 无人机流 vs 炮击流：高槽伤害比例评估（2026-09-10，大鲸鱼二号） | 未标注（评估完成 + 第一轮调整） | 2026-09-10 | 15 KB / 213 行 | 3 / 0 |
 | `docs/design/drone-combat-animation-20260910.md` | 无人机战斗动画 + 损毁系统（2026-09-10 船长逐轮拍板，状态：已确认） | 已确认/已实现（已确认） | 2026-09-10 | 13 KB / 138 行 | 5 / 1 |
 | `docs/design/drone-losses-20260910.md` | 无人机可被击落（2026-09-10，已确认并实施） | 已确认/已实现（船长已确认并实施） | 2026-09-10 | 23 KB / 262 行 | 19 / 0 |
