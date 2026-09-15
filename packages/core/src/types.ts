@@ -2024,6 +2024,16 @@ export type CommsTrigger =
    * （`commsFactions` 里的 `'dshi'`）**不是同一套命名空间**——触发器按前者、发件人按后者。
    */
   | { kind: 'standing'; factionId: string; min: number }
+  /**
+   * **造出第一艘自造船**（2026-09-15 船长：「新增通讯发送的节点：当玩家造好第一条船后，弹出通讯
+   * 祝贺玩家，并告诉玩家新建造的舰船在舰船仓库页面」）。
+   *
+   * 判定 = 随档三态标记 `state.firstShipBuilt`：`true` ⇒ 送达；**`false` = 新档 ⇒ 只等真建造**
+   * （`createInitialState` 显式写入）；**缺失 = 老档 ⇒ 船长选「丙」：读档即补发**。
+   * **置位点唯一** = `manufacturing.ts` 的 `settlePiece()` 造船分支——主控亲手开线与 AI 核心代造
+   * （含离线期间造的）共用这一处出水口，故船长选定的「都算」不需要额外判据。
+   */
+  | { kind: 'shipBuilt' }
 
 /** 回复选项（**预留接口：2026-09-11 船长定"预留但不启用"**，见 core COMMS_REPLIES_ENABLED） */
 export interface CommsReplyDef {

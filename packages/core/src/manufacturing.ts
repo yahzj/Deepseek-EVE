@@ -456,6 +456,10 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         // ⇒ 不再直接进机库；要驾驶/指派先到舰船页把船转入舰队（`shipyard.unstoreShip`）
         state.shipStore = state.shipStore ?? {}
         state.shipStore[shipDef.id] = shipStoredCount(state, shipDef.id) + 1
+        // 2026-09-15 船长（首艘自造船通讯 `msg-first-ship`）：**置位点唯一就在这里**——主控亲手开线的产出
+        // 与 AI 核心代造（含离线期间造的）都从这一处出水 ⇒ 通讯说的"造好第一条船"与产出入仓是**同一个事实**，
+        // 不会各说各的；只置一次（已经是 true 就不再写，避免无谓的存档变动）。
+        if (state.firstShipBuilt !== true) state.firstShipBuilt = true
         addLog(
           state,
           'info',

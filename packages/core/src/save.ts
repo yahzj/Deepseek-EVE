@@ -2564,6 +2564,14 @@ function normalizeState(raw: unknown): GameState {
   const ambushRetreatSeen =
     src.ambushRetreatSeen === true ? true : src.ambushRetreatSeen === false ? false : undefined
 
+  /**
+   * **造出第一艘自造船**（2026-09-15 · 三态随档，见 `state.ts` 字段注释）：
+   * `true` = 造过；`false` = 新档（必须落键，否则读回来会被当成老档）；**缺失 = 老档**（保持缺失，
+   * 由触发器按船长裁决「丙」补发）。
+   */
+  const firstShipBuilt =
+    src.firstShipBuilt === true ? true : src.firstShipBuilt === false ? false : undefined
+
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
   const cbRaw = src.completedBounties
@@ -3071,6 +3079,8 @@ function normalizeState(raw: unknown): GameState {
     commsRead,
     // 因低安袭击自动撤离（true/false 都落键；缺失保持缺失 = 老档，交给触发器按痕迹判定）
     ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
+    // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
+    ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,
     rareBoxesOpened,

@@ -4708,8 +4708,11 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   // 注：'task' = 任务中心（2026-09-14 起是独立一级页，不再是星图页的选项卡）
 const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills', 'comms', 'task'])
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
-  /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
-  const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
+  /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径）
+   *  ⚠ 2026-09-15 同步（三号）：2026-09-14 船长把舰船页第三档「舰船市场」整档换成「**舰船仓库**」
+   *  （`ShipPage.tsx`：`ShipTab = 'fleet' | 'ai' | 'store'`），本白名单当时漏改，仍写着早已不存在的
+   *  `'fit'`、缺 `'store'` ⇒ 本批（首艘自造船通讯要跳 `store`）按现行类型同步。 */
+  const SHIP_TABS = new Set(['fleet', 'ai', 'store'])
   /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set([
@@ -4722,6 +4725,9 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'standing',
     // 2026-09-14 被袭后的自动撤离（船长：「当玩家第一次因为低安袭击导致舰船自动撤离时触发」）
     'ambushRetreat',
+    // 2026-09-15 造出第一艘自造船（船长：「当玩家造好第一条船后，弹出通讯祝贺玩家，并告诉玩家
+    // 新建造的舰船在舰船仓库页面」）——判定读随档三态标记 `state.firstShipBuilt`
+    'shipBuilt',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
@@ -4912,6 +4918,17 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         check(
           WORMHOLE_NEBULA_MIN_DEPTH >= 1 && WORMHOLE_NEBULA_SHARE > 0,
           `通讯 ${m.id} 用 wormholeNebula 触发器，但星云机制没开（起效层 ${WORMHOLE_NEBULA_MIN_DEPTH} · 配额 ${WORMHOLE_NEBULA_SHARE}）`,
+        )
+        break
+      case 'shipBuilt':
+        /**
+         * 死触发器守卫（2026-09-15 首艘自造船通讯）：这封信靠"组装机交出第一艘船"送达 ⇒
+         * 数据里必须真存在**可造的舰船蓝图**（`SHIP_BLUEPRINTS`），否则没有船可造、信永远送不出去
+         * （同 `lowSec` / `foeFamily` / `wormholeNebula` 那三条守卫的用意）。
+         */
+        check(
+          SHIP_BLUEPRINTS.length > 0,
+          `通讯 ${m.id} 用 shipBuilt 触发器，但数据里没有任何舰船蓝图（死触发器）`,
         )
         break
       default:

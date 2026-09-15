@@ -28,6 +28,8 @@ import {
 import { COMMS_DAY_MS } from '../src/comms'
 import { onArriveAtGalaxy, playDialogue } from '../src/station'
 import { advanceGame } from '../src/engine'
+import { startManufacturing } from '../src/manufacturing'
+import { shipStoredCount } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { ONB_BRIEFING, ONB_DONE, ONB_DELIVER, ONB_MINE, ONB_OFF } from '../src/onboarding'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
@@ -736,5 +738,92 @@ describe('通讯 · 被袭自动撤离 ＋ 弹窗默认口径', () => {
     expect(commsTriggerMet(legacyAmbushed, ctx, { kind: 'ambushRetreat' })).toBe(true)
     advanceComms(legacyAmbushed, ctx)
     expect(commsInbox(legacyAmbushed, ctx).map((e) => e.id)).toContain('msg-retreat-x')
+  })
+})
+
+/**
+ * **首艘自造船**（2026-09-15 船长：「新增通讯发送的节点：当玩家造好第一条船后，弹出通讯祝贺玩家，
+ * 并告诉玩家新建造的舰船在舰船仓库页面」；三问裁决「**丙，甲，甲**」）。
+ *
+ * 触发器 `{ kind: 'shipBuilt' }` 读随档三态标记 `state.firstShipBuilt`，**置位点唯一** =
+ * `manufacturing.ts` 的 `settlePiece()` 造船分支（主控亲手开线与 AI 核心代造同算，船长裁决 Q3 = 甲）。
+ * 老档按 Q1 = **丙**：缺字段 ⇒ **读档即补发**（新档由 `createInitialState` 写 `false`，不会凭空收到）。
+ */
+describe('通讯 · 首艘自造船（老档「丙」补发口径）', () => {
+  const SHIP_MSGS: readonly CommsMessageDef[] = [
+    {
+      id: 'msg-first-ship-x',
+      factionId: 'dshi',
+      deptId: 'dept-industry',
+      kind: '提示',
+      subject: '首艘自造船样本',
+      body: ['正文。'],
+      trigger: { kind: 'shipBuilt' },
+    },
+  ]
+
+  function shipWorld() {
+    const ctx: SimContext = makeTestCtx({ quietEvents: true, commsMessages: SHIP_MSGS, commsFactions: FACTIONS })
+    const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
+    /** 备料 + 学会测试世界的舰船蓝图 `sbp-a`（造 sandcat2 · 60 秒 · 材料 min-a ×5） */
+    state.learnedRecipes.push('sbp-a')
+    state.warehouse.items['min-a'] = 50
+    return { state, ctx }
+  }
+
+  it('新档：造出第一艘船之前不送；造完即置位并送达一次（幂等 · 默认弹窗）', () => {
+    const { state, ctx } = shipWorld()
+    expect(state.firstShipBuilt).toBe(false) // 新档显式 false（区别于"老档缺字段"）
+    tick(state, ctx)
+    expect(commsInbox(state, ctx).map((e) => e.id)).not.toContain('msg-first-ship-x')
+    // 真链路：主控亲手开线造一艘 ⇒ 产出进舰船仓库，同时置位（同一处）
+    expect(startManufacturing(state, 'sbp-a', 'pilot', ctx).ok).toBe(true)
+    advanceGame(state, 61_000, ctx)
+    expect(shipStoredCount(state, 'sandcat2')).toBe(1)
+    expect(state.firstShipBuilt).toBe(true)
+    expect(commsInbox(state, ctx).map((e) => e.id)).toContain('msg-first-ship-x')
+    expect(commsPopupQueue(state)).toContain('msg-first-ship-x') // 不写 popup ⇒ 走默认弹窗（船长原话"弹出"）
+    // 幂等：再推进不再重复送
+    advanceGame(state, 5_000, ctx)
+    expect(commsInbox(state, ctx).filter((e) => e.id === 'msg-first-ship-x')).toHaveLength(1)
+  })
+
+  it('AI 核心代造同样算（Q3 = 甲）：产出与置位仍是同一个事实', () => {
+    const { state, ctx } = shipWorld()
+    state.aiCores['basic'] = 1
+    state.skills.trained['ai-expert'] = 1 // 开 AI 线需核心上限资格
+    expect(startManufacturing(state, 'sbp-a', 'basic', ctx).ok).toBe(true)
+    // AI 核心效率 < 1（测试世界 basic = 0.4）⇒ 60 秒的船实际要 150 秒，推进留足余量
+    advanceGame(state, 300_000, ctx)
+    expect(shipStoredCount(state, 'sandcat2')).toBe(1)
+    expect(state.firstShipBuilt).toBe(true)
+    expect(commsInbox(state, ctx).map((e) => e.id)).toContain('msg-first-ship-x')
+  })
+
+  it('存档三态：老档（缺字段）⇒ 读档即补发（丙）；新档 false 随档保留，不会被误判成老档', () => {
+    // 新档的 false 必须落键随档（省掉它会被读成老档 ⇒ 下一拍就错误补发）
+    const fresh = shipWorld()
+    const freshLoaded = loadSaveFile(serializeSaveFile(fresh.state, 1)).state
+    expect(freshLoaded.firstShipBuilt).toBe(false)
+    advanceComms(freshLoaded, fresh.ctx)
+    expect(commsInbox(freshLoaded, fresh.ctx).map((e) => e.id)).not.toContain('msg-first-ship-x')
+
+    // 造过船的档：true 随档保留
+    const built = shipWorld()
+    expect(startManufacturing(built.state, 'sbp-a', 'pilot', built.ctx).ok).toBe(true)
+    advanceGame(built.state, 61_000, built.ctx)
+    const builtLoaded = loadSaveFile(serializeSaveFile(built.state, 1)).state
+    expect(builtLoaded.firstShipBuilt).toBe(true)
+    expect(commsInbox(builtLoaded, built.ctx).map((e) => e.id)).toContain('msg-first-ship-x')
+
+    /** 造一份"本功能上线前写的档"：删掉该字段（老档没有它），保留其它一切 */
+    const legacy = shipWorld()
+    const raw = JSON.parse(serializeSaveFile(legacy.state, 1)) as { state: Record<string, unknown> }
+    delete raw.state.firstShipBuilt
+    const legacyLoaded = loadSaveFile(JSON.stringify(raw)).state
+    expect(legacyLoaded.firstShipBuilt).toBeUndefined() // 老档：保持缺失
+    expect(commsTriggerMet(legacyLoaded, legacy.ctx, { kind: 'shipBuilt' })).toBe(true) // 丙 ⇒ 判定即为真
+    advanceComms(legacyLoaded, legacy.ctx)
+    expect(commsInbox(legacyLoaded, legacy.ctx).map((e) => e.id)).toContain('msg-first-ship-x')
   })
 })

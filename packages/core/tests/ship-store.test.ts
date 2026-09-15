@@ -163,6 +163,8 @@ describe('舰船仓库（2026-09-14 船长）', () => {
     expect(shipStoredCount(state, 'sandcat2')).toBe(1)
     expect(Object.keys(state.fleet).sort()).toEqual(fleetBefore) // 舰队不变：没有自动入列
     expect(state.logs.some((l) => l.text.includes('已入舰船仓库'))).toBe(true)
+    // 2026-09-15 首艘自造船通讯（`msg-first-ship`）的置位点就在这一处：产出与"造好第一条船"是同一个事实
+    expect(state.firstShipBuilt).toBe(true)
   })
 
   it('⑥ 仓库出售·有人收购：即时成交（total = 税后净入账）、仓库 -1、不留挂单', () => {

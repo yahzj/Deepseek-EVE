@@ -1355,6 +1355,14 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * ⇒ 本字段**按三态随档**：`false` 必须落键（省掉它会被读成老档），缺失保持缺失（老档待判）。
    */
   ambushRetreatSeen?: boolean
+  /**
+   * **造出第一艘自造船**（2026-09-15 船长定：新通讯 `msg-first-ship` 的触发面）。三态：
+   * - `true` = 组装机交出过至少一艘自造船（主控亲手开线与 AI 核心代造同算）⇒ 发信；
+   * - `false` = **新档**（本功能之后开的局，由 `createInitialState` 写入）⇒ **只等真建造**；
+   * - **缺失 = 老档**（本功能上线前写的档）⇒ 船长三问裁决选「**丙**」：**读档即补发**。
+   * ⇒ 本字段**按三态随档**：`false` 必须落键（省掉它会被读成老档而错误补发），缺失保持缺失。
+   */
+  firstShipBuilt?: boolean
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
   /**
@@ -2103,6 +2111,8 @@ export function createInitialState(opts?: {
     commsDelivered: {}, // 2026-09-11 通讯收件箱：送达记账（可选字段、零迁移）
     // 2026-09-14 因低安袭击自动撤离：**新档显式写 false**（区别于"老档缺字段"，见字段注释）
     ambushRetreatSeen: false,
+    // 2026-09-15 造出第一艘自造船：同上——**新档显式写 false**，只等真建造（老档缺字段则按「丙」补发）
+    firstShipBuilt: false,
     commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},
     debugQuick: false,
