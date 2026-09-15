@@ -1668,7 +1668,17 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       name,
       side: 'foe' as const,
       hp,
-      resists: {},
+      /**
+       * **层位抗性**（2026-09-15 船长：「我现暂时只打给 **C 族**添加**全血条 25% 爆炸抗性**」）：
+       * 从**舰级**读（`FoeShipDef.shieldResist / armorResist / hullResist`；三条都缺省 ⇒ `{}`，
+       * 既有舰级零行为变化）。与敌机群那条装配口径一致（同 `FoeDroneDef.defense` 的展开写法）。
+       * ⚠ 抗性只减不减：`applyDamage` 夹 `0~0.9`，所以传进来的负数**不会**变成"易伤"。
+       */
+      resists: {
+        ...(ship.shieldResist ? { shield: ship.shieldResist } : {}),
+        ...(ship.armorResist ? { armor: ship.armorResist } : {}),
+        ...(ship.hullResist ? { hull: ship.hullResist } : {}),
+      },
       evasion: 0.12,
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),

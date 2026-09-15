@@ -1156,3 +1156,54 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     }
   })
 })
+
+/**
+ * **C 族族抗性：三层各 25% 爆炸抗**（船长 2026-09-15：「我现暂时只打给 C 族添加全血条 25% 爆炸抗性」）。
+ *
+ * 三条守卫：
+ * ① 数据面 —— 四条 C 族舰级**三层逐字一致**（都来自 `C_FAMILY_RESISTS` 那一份常量）；
+ * ② 建档面 —— `createFoeSpecs` 真的把它装进 `UnitSpec.resists` 的 shield/armor/hull（走真构建、真 C 卡）；
+ * ③ 边界面 —— **非 C 族一艘都不许有抗**（本轮只点 C 族）；抗性值必须落在 `applyDamage` 的有效域 `[0, 0.9]`。
+ */
+describe('C 族族抗性（2026-09-15 船长 · 全血条 25% 爆炸抗）', () => {
+  const NONE = 0
+
+  it('① 数据面：四条 C 族舰级三层各 25% 爆炸抗，别的系一律不写', () => {
+    const aliens = FOE_SHIPS.filter((s) => s.family === 'C')
+    expect(aliens, 'C 族舰级数（畸变幼虫 / 星髓幼虫 / 噬口巨兽 / 星髓成虫）').toHaveLength(4)
+    for (const s of aliens) {
+      for (const layer of ['shieldResist', 'armorResist', 'hullResist'] as const) {
+        expect(s[layer], `${s.name}.${layer}`).toEqual({ explosive: 0.25 })
+      }
+    }
+  })
+
+  it('② 建档面：真 C 卡开战，敌单位的 resists 三层都带上爆炸 25%', () => {
+    const cCards = ANOMALIES.filter((a) => a.foeFamily === 'C' && a.ships && a.ships.length > 0)
+    expect(cCards.length, '至少要有一张用舰级路径的 C 族卡').toBeGreaterThan(0)
+    for (const card of cCards) {
+      const foes = createFoeSpecs(card, bal)
+      expect(foes.length, card.name).toBeGreaterThan(0)
+      for (const u of foes) {
+        for (const layer of ['shield', 'armor', 'hull'] as const) {
+          expect(u.resists[layer]?.explosive, `${card.name} · ${u.name} · ${layer}`).toBe(0.25)
+        }
+      }
+    }
+  })
+
+  it('③ 边界面：非 C 族无抗；所有抗性值落在 applyDamage 的有效域 [0, 0.9]', () => {
+    for (const s of FOE_SHIPS) {
+      const hasAny = s.shieldResist !== undefined || s.armorResist !== undefined || s.hullResist !== undefined
+      if (s.family !== 'C') {
+        expect(hasAny, `${s.name}（${s.family} 族）本轮不该有族抗`).toBe(false)
+      }
+      for (const layer of ['shieldResist', 'armorResist', 'hullResist'] as const) {
+        for (const [type, v] of Object.entries(s[layer] ?? {})) {
+          expect(v, `${s.name}.${layer}.${type}`).toBeGreaterThanOrEqual(NONE)
+          expect(v, `${s.name}.${layer}.${type}`).toBeLessThanOrEqual(0.9)
+        }
+      }
+    }
+  })
+})

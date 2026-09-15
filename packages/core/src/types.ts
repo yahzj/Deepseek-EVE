@@ -1492,6 +1492,20 @@ export interface FoeShipDef {
    * 母舰阵亡 ⇒ 机群照旧整群停（备用机也不再放出）。**缺省不写 = 无备用（零行为变化）**。
    */
   droneReserve?: { count: number; respawnMs: number }
+  /**
+   * **层位抗性（敌舰级）**（2026-09-15 船长：「我现暂时只打给 **C 族**添加**全血条 25% 爆炸抗性**」）。
+   *
+   * 三层各自可选（`DamageResists` = 系 → 值）；**缺省不写 = 无抗**（`UnitSpec.resists` 保持空对象）
+   * ⇒ 既有舰级**零行为变化**。建档时分别装进 `UnitSpec.resists` 的 `shield` / `armor` / `hull`
+   * （与敌机群的 `FoeDroneDef.defense` 同一条装配口径、同一份 `mergeResist` 形状）。
+   *
+   * ⚠ **抗性只减不减**：`applyDamage` 是 `层伤害 × 克制倍率 × (1 − clamp(0, 0.9, 抗))` ⇒
+   * **负数（易伤）不生效**；要表达"某族怕某系"得另立字段（船长 2026-09-15 暂不做）。
+   * ⚠ 与"层位克制系数"（`typeLayerMult`，全局三系克制）**叠加**：本字段是**族/舰级自己的**那一层。
+   */
+  shieldResist?: DamageResists
+  armorResist?: DamageResists
+  hullResist?: DamageResists
 }
 
 /**
