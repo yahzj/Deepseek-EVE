@@ -24,6 +24,7 @@
     "content:import": "tsx tools/content-import.ts",
     "ship:hp": "tsx tools/ship-hp-table.ts",
     "battle:calibrate": "tsx tools/battle-calibrate.ts",
+    "battle:overcap": "tsx tools/foe-dps-overcap.ts",
     "battle:bolt": "tsx tools/battle-bolt-anchor.ts",
     "battle:layout": "tsx tools/battle-layout.ts",
     "wormhole:econ": "tsx tools/wormhole-econ.ts",

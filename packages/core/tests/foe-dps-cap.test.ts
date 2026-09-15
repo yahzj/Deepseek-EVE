@@ -1,32 +1,33 @@
 /**
- * **敌血量钳制解除 + 敌舰体火力上限**（均出自 2026-09-12 船长裁定）。
+ * **敌血量钳制解除 ＋ 敌舰体火力「越线折扣」**（前者出自 2026-09-12 船长裁定；
+ * 后者 2026-09-12 立项「按照 DPS 上限 150 算」，**2026-09-15 船长改判为折扣制**）。
  *
- * 起因（完整证据链）：讨论「威胁」与「赏金」时发现——
+ * 起因（完整证据链）：
  * 1. `foeHpOfThreat` 的 `t = min(1, …)` 把**敌血钳在威胁 96**（威胁 100/150/300 血量一律 1152）；
  * 2. 而**敌火力 `威胁 × foeDpsPerThreat` 线性不封顶** ⇒ 抬威胁只会得到"更脆更毒"的敌人；
- * 3. 船长两条裁定：**解除血量钳制**（改为血量随威胁继续增长）＋**火力改为 DPS 上限**（先定 **150**）。
+ * 3. 船长两条裁定：**解除血量钳制**（血量随威胁继续增长）＋ **给敌舰体火力设 150 的阈值**。
  *
- * 本文件锁住六件事：
- * ① **零行为变化**：现 27 张卡威胁 ≤ 96 ⇒ **血量**曲线逐字不变；
+ * 本文件锁住七件事：
+ * ① **零行为变化**：洞外 27 张卡威胁 ≤ 96 ⇒ **血量**曲线逐字不变；
  * ② **解除钳制生效**：威胁 > 96 时血量继续增长（不再冻结在 1152）；
- * ③ **整卡火力封顶**（**机制**）：越线时全卡**舰体总 DPS** 钳到上限，且各条目**等比例**缩放；
- * ④ **机群不吃火力钳制**（机群另有受击增程 / 备用机库 / A5 守恒，且船长已裁定不吃多舰补偿）；
- * ⑤ **`foeDpsCap` 缺省/0 ⇒ 完全不钳制**（零行为变化开关）；
- * ⑥ **速度与射程成长的钳制保留**（避免敌人"又快又远又硬"）。
+ * ③ **越线折扣（机制）**：`D > 阈值` 时目标 `D′ = 阈值 + (D − 阈值) × (1 − 折扣率)`，
+ *    全卡舰体单发**等比例**缩放 ⇒ **不封顶**（`D → ∞` 时 `D′ ≈ 0.85 D`，斜率由 1 降为 0.85）；
+ * ④ **机群不吃折扣**（机群另有受击增程 / 备用机库 / A5 守恒，且船长已裁定不吃多舰补偿）；
+ * ⑤ **双旋钮开关**：`foeDpsCap` 或 `foeDpsOverCapDiscount` **任一未写 / 0 ⇒ 完全不缩放**
+ *    （⚠ 折扣率 0 **不会**退回 2026-09-12 的旧硬钳制语义）；
+ * ⑥ **速度与射程成长的钳制保留**（避免敌人"又快又远又硬"）；
+ * ⑦ **现行配置 = 开**（150 / 0.15，**洞外与虫洞一律生效**——船长 2026-09-15「是，都生效」）。
  *
- * ⚠ **2026-09-12 配置变更（船长就"赏金分波分流"议题收口）**：
- * 「回退到赏金维持现有配置，仅按照威胁加强敌方。**并且火力钳制也暂时关闭**」
- * ⇒ `balance.battle.foeDpsCap` 现值 **0 = 关闭**。故本文件里凡"越线被钳"的用例一律
- * **显式传入上限 150**（验的是**机制仍在**），另外单独一条锁**当前配置 = 关闭**。
+ * ⚠ **口径沿革（旧断言作废登记）**：2026-09-12 首落为**硬钳制**（越线一律压到 150：穹顶派生
+ * 1/2/3 档 164.9 / 203.1 / 253.2、虚海 1/2 档 170.0 / 210.3 ⇒ 全压到 150，−9%~−41%），
+ * 同日按船长「回退到赏金维持现有配置…并且火力钳制也暂时关闭」置 0；**2026-09-15 船长两条指示**
+ * （「超过150的火力，按比例衰减」→「**不是钳制到150，而是超过150的部分进行一个约15%的折扣**」
+ * ＋「**是，都生效**」）⇒ 改为折扣制并写回 150。旧"越线 = 压到上限"的断言已全部改写为折扣式。
  *
- * ⚠ **口径澄清（2026-09-12 深夜复核，此前一处注释写错了）**：
- * 本文件的 `hullDps()` 夹具**没有漏算**——它遍历**全部单位**、逐条求和；27 张卡的夹具值与
- * "逐波独立建档（不钳制）"的实收**逐字相同**（见下方 `夹具口径` 一条守卫）。
- * 之前那句"27 张卡全部未越线 ⇒ **零行为变化**"的**错处只在后半句**：
- * - **基础卡**确实全部未越线（舰体口径最高 = 虚海 131.25 / 穹顶 126.6 / 巨构核心 67.3）；
- * - 但**窝点派生档**（1/2/3 档 = 威胁 ×1.3/1.6/2.0）会越线 ⇒ 钳制开着时**真在压**：
- *   穹顶 164.9 / 203.1 / 253.2、虚海 170.0 / 210.3 被压到 150（−9%~−41%）。
- * ⇒「零行为变化」只在基础卡成立；派生档不是零变化。**现钳制值 = 0（关闭）**，派生档按原值输出。
+ * 现行读数（实测 · 探针 `tools/_dps-cap-audit.ts`）：**洞外 27 张基础卡全部未越线**
+ * （最高 = 虚海守望者 131.3）⇒ 零变化；越线的是**窝点派生档**（穹顶 164.8/203.1/253.2 ·
+ * 虚海 170.3/210.0 · 噬口 172.3/215.5 ⇒ 折扣后 ≈162.7/195.2/237.8 · 167.3/201.0 · 169.3/205.5）
+ * **与虫洞派生**（层 1 起陆续越线；深层 node 最高 1,234.5 → 1,071.8、boss 1,665.8 → 1,438.5）。
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES } from '@whale/data'
@@ -37,10 +38,13 @@ import { anomaly, makeTestCtx } from './helpers'
 
 const ctx = makeTestCtx()
 const bal = ctx.balance.battle
-/** 当前配置值（2026-09-12 起 = 0 = 关闭） */
+/** 现行配置（2026-09-15 起 = 150 阈值 ＋ 0.15 折扣率 = 开启） */
 const CAP = bal.foeDpsCap
-/** 机制上限：验"越线钳制"时显式传它（不依赖配置） */
-const CAP_ON = 150
+const DISC = bal.foeDpsOverCapDiscount
+/** 关闭态（零行为变化）：阈值 0 / 折扣率 0 / 两者都不写，读数应完全一致 */
+const OFF_CAP = { ...bal, foeDpsCap: 0 }
+const OFF_DISC = { ...bal, foeDpsOverCapDiscount: 0 }
+const OFF_BOTH = { ...bal, foeDpsCap: undefined, foeDpsOverCapDiscount: undefined }
 
 /** 测试舰级：单发 100 / 装填 4000ms ⇒ 单艘 25 DPS（`as unknown as` 是因为测试夹具只填本用例关心的字段） */
 const GUNSHIP = {
@@ -101,6 +105,33 @@ function hullDps(a: AnomalyDef, balance = bal): number {
   return d
 }
 
+/** 折扣后的解析目标总 DPS（取整前的理想值）：`阈值 + (D − 阈值) × (1 − 折扣率)` */
+function overCapTarget(d: number, cap = 150, disc = 0.15): number {
+  return d <= cap ? d : cap + (d - cap) * (1 - disc)
+}
+
+/**
+ * **单波**舰体总 DPS（`tagPrefix` 选波）——引擎的判线口径是**逐波独立建档**
+ * （`foeDpsCapScaleOf` 每次 `createFoeSpecsFromShips` 只看得到**本波**单位），
+ * 故多波卡（如噬口猎杀令：头目在第 3 波）必须按波分别算，不能用波 0 代表全卡。
+ */
+function waveDps(a: AnomalyDef, balance = bal, wave = 0): number {
+  const specs = createFoeSpecs(a, balance, { tagPrefix: wave === 0 ? '' : `w${wave}-` }) as unknown as Array<{ weapons?: ReadonlyArray<{ shotDmg?: number; reloadMs?: number; src?: string }> }>
+  let d = 0
+  for (const sp of specs) for (const w of sp.weapons ?? []) {
+    if (w.src === 'drone' || !w.shotDmg) continue
+    d += (w.shotDmg * 1000) / Math.max(1, w.reloadMs ?? 4000)
+  }
+  return d
+}
+
+/** 逐波建档的**最大单波**舰体总 DPS（判线读数；单波卡 == `hullDps()`） */
+function maxWaveDps(a: AnomalyDef, balance = bal): number {
+  let m = 0
+  for (let i = 0; i < Math.max(1, a.waves?.length ?? 1); i++) m = Math.max(m, waveDps(a, balance, i))
+  return m
+}
+
 describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改为火力限制」）', () => {
   it('威胁 ≤ 96 逐字不变（现 27 张卡零行为变化）', () => {
     // t ≤ 1 时 min(1,…) 本就不生效 ⇒ 去钳制前后同值。
@@ -133,7 +164,7 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
     // ⚠ 口径澄清（实测）：**窝点派生卡不走这条曲线**——它们用"基础卡血量 × 派生比例"
     //   （`lairs.ts` 的 hpMul/dmgMul 同乘 scale），所以派生档的血量来自**基础卡**的曲线值。
     //   本裁定的实际受益面 = 今后写 threat > 96 的**新卡**：它们不再被冻结在 1152。
-    //   （旧路径 `createFoeSpecs` 也会受益，但现表 27 张卡已全部迁入舰级路径。）
+    //   （旧路径 `createFoeSpecs` 也会受益，但现表卡已全部迁入舰级路径。）
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
     expect(Math.max(...cards.map((a) => a.threat))).toBe(96)
     // 派生档仍以基础卡（≤96）的曲线值为基准 ⇒ 基础卡零变化就保证了派生档零变化
@@ -155,21 +186,15 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
   })
 })
 
-describe('敌舰体火力上限（船长 2026-09-12「按照 DPS 上限 150 算」）', () => {
-  it('夹具口径：hullDps()（`units = waves[0].units` 建档）== 逐波独立建档的第 0 波实收（不钳制）', () => {
+describe('敌舰体火力越线折扣（2026-09-12「DPS 上限 150」→ 2026-09-15 船长改判为「超出部分约 15% 折扣」）', () => {
+  it('夹具口径：hullDps()（`units = waves[0].units` 建档）== 逐波独立建档的第 0 波实收（不折扣）', () => {
     // ⚠ 这条守卫是为"口径别再造谣"设的：`hullDps()` 遍历全部单位、逐条求和 ⇒ 与真实建造**逐字相同**；
     //   若哪天有人改成"只取第一条"、或引擎的建档口径变了，本用例会立刻红。
-    // 2026-09-13 虫洞 F 批：+5 张洞内敌卡（wh-*，hidden；威胁锚点 45；含 E 族巨构残响），不抬高本表上限 96）
-    // 2026-09-15 洞内敌卡扩充批 1：+2 张（A 族中/深；威胁锚点同为 45）⇒ 表长 32 → 34
-    // 2026-09-15 批 2：再 +2 张（C 族中/深）⇒ 表长 36
-    // 2026-09-15 批 3：再 +2 张（D 族中/深）⇒ 表长 38
-    // 2026-09-15 批 4：再 +2 张（E 族中/深）⇒ 表长 40
-    // 2026-09-15 批 5：再 +2 张（G 族中/深）⇒ 表长 42（= 15 张洞内敌卡齐备）
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
     expect(cards.length).toBe(42)
     for (const a of cards) {
-      const viaFixture = hullDps(a, { ...bal, foeDpsCap: undefined })
-      const specs = createFoeSpecs(a, { ...bal, foeDpsCap: undefined }, { tagPrefix: '' }) as unknown as Array<{
+      const viaFixture = hullDps(a, OFF_BOTH)
+      const specs = createFoeSpecs(a, OFF_BOTH, { tagPrefix: '' }) as unknown as Array<{
         weapons?: ReadonlyArray<{ shotDmg?: number; reloadMs?: number; src?: string }>
       }>
       let viaReal = 0
@@ -181,73 +206,58 @@ describe('敌舰体火力上限（船长 2026-09-12「按照 DPS 上限 150 算�
     }
   })
 
-  it('派生档口径：钳制开着时穹顶/虚海被压到 150；关闭后按原值输出', () => {
-    // 实测（2026-09-12 深夜）：**基础卡**全表未越线（最高 = 虚海 131.25），
-    // 但**窝点派生档**（威胁 ×1.3/1.6/2.0）会越线 ⇒ 这是"零行为变化"这句话的边界。
-    // ⚠ 钳后读数**允许微超上限**：缩放系数作用在"单发（整数）"上、再逐条取整折算 DPS
-    //   ⇒ 实测 ≈150.02（3 次取整累积）。故断言用 ≤ 上限 ×1.01，不写死相等。
-    const on = { ...bal, foeDpsCap: CAP_ON }
-    const capped = (a: AnomalyDef): number => hullDps(a, on)
-    const vault = ANOMALIES.find((a) => a.id === 'ano-vault-sentinel')!
-    const voidedge = ANOMALIES.find((a) => a.id === 'ano-voidedge-warden')!
-    const uncappedVault1 = hullDps(lairAnomalyOf(vault, 1), { ...bal, foeDpsCap: undefined })
-    expect(uncappedVault1).toBeGreaterThan(CAP_ON) // 派生 1 档 ≈ 164.9 ⇒ 确实越线
-    expect(capped(lairAnomalyOf(vault, 1))).toBeLessThanOrEqual(CAP_ON * 1.01)
-    expect(capped(lairAnomalyOf(vault, 1))).toBeGreaterThan(CAP_ON * 0.99)
-    expect(capped(lairAnomalyOf(vault, 2))).toBeLessThanOrEqual(CAP_ON * 1.01)
-    // 虚海 lairLevel = 2 ⇒ 只有 1~2 档；2 档派生 ≈ 210.3 同样被钳
-    expect(lairLevelOf(voidedge)).toBe(2)
-    expect(capped(lairAnomalyOf(voidedge, 2))).toBeLessThanOrEqual(CAP_ON * 1.01)
-    // 未越线的档不受影响：坟场守墓者 1 档 ≈ 113.4
-    const grave = ANOMALIES.find((a) => a.id === 'ano-gravekeeper')!
-    const grave1 = hullDps(lairAnomalyOf(grave, 1), { ...bal, foeDpsCap: undefined })
-    expect(grave1).toBeLessThan(CAP_ON)
-    expect(capped(lairAnomalyOf(grave, 1))).toBeCloseTo(grave1, 6)
-    void LAIR_THREAT_MUL // 派生比例由 lairAnomalyOf 内部按表取，这里只需保证表被引用到
+  it('阈值以下零变化：未越线的卡逐字不动（66.5 DPS 不受影响）', () => {
+    const base = shipCard('ano-overcap-base', [{ ship: GUNSHIP, count: 2 }])
+    expect(hullDps(base, bal)).toBeCloseTo(66.5, 6)
+    expect(hullDps(base, bal)).toBeCloseTo(hullDps(base, OFF_BOTH), 9)
   })
 
-  it('当前配置 = 关闭（2026-09-12 船长「火力钳制也暂时关闭」⇒ 写 0）', () => {
-    expect(CAP).toBe(0)
-    // 关着的时候：整卡舰体 DPS 无论如何都不缩（与"未写"同款零行为）
-    const boosted = shipCard('ano-cap-live-off', [{ ship: GUNSHIP, count: 2, dmgMul: 8 }])
-    expect(hullDps(boosted)).toBeCloseTo(533.5, 6)
+  it('越线只对**超出部分**打 85 折（不封顶）：533.5 → 476.0', () => {
+    // 2 艘 × 单发 100 / 装填 4s，补偿 4/3 ⇒ round(133.33) = 133；`dmgMul` 8 ⇒
+    // 单发 round(100×8×4/3) = 1067 ⇒ 266.75 DPS/艘 ⇒ 合计 **533.5**（未折扣）
+    const boosted = shipCard('ano-overcap-boosted', [{ ship: GUNSHIP, count: 2, dmgMul: 8 }])
+    const uncapped = hullDps(boosted, OFF_BOTH)
+    expect(uncapped).toBeCloseTo(533.5, 6)
+    // 解析目标 = 150 + (533.5 − 150) × 0.85 = 475.975；缩放作用在整数单发上 ⇒
+    //   round(1067 × 475.975/533.5) = round(952.0) = 952 ⇒ 238 DPS/艘 ⇒ **476.0**
+    const d = hullDps(boosted, bal)
+    expect(d).toBeCloseTo(476, 6)
+    expect(d).toBeCloseTo(overCapTarget(uncapped), 0)
+    // **不是封顶**：结果仍高于阈值，且随原值继续增长
+    expect(d).toBeGreaterThan(150)
+    expect(d).toBeLessThan(uncapped)
+    const bigger = shipCard('ano-overcap-boosted2', [{ ship: GUNSHIP, count: 2, dmgMul: 16 }])
+    expect(hullDps(bigger, bal)).toBeGreaterThan(d)
   })
 
-  it('机制仍在：显式给上限 150 时越线钳到上限，且各条目等比例缩放', () => {
-    // 2 艘 × 单发 100 / 装填 4s，补偿 4/3 ⇒ round(133.33)=133 ⇒ 33.25 DPS/艘 ⇒ 合计 66.5（未越线）
-    const capped = { ...bal, foeDpsCap: CAP_ON }
-    const base = shipCard('ano-cap-base', [{ ship: GUNSHIP, count: 2 }])
-    expect(hullDps(base, capped)).toBeCloseTo(66.5, 6)
-    // 放大 8 倍单发 ⇒ 不钳制应 = 2 × round(100×8×4/3) / 4 = 2 × 1067 / 4 = 533.5 DPS
-    const boosted = shipCard('ano-cap-boosted', [{ ship: GUNSHIP, count: 2, dmgMul: 8 }])
-    const uncapped = hullDps(boosted, { ...bal, foeDpsCap: undefined })
-    expect(uncapped).toBeGreaterThan(CAP_ON * 3)
-    // 钳制后 = 150，且两艘同值（等比例）
-    expect(hullDps(boosted, capped)).toBeCloseTo(CAP_ON, 6)
-    const shots = hullShots(boosted, capped)
+  it('等比例缩放：同一条目的多个单位单发相同（相对权重不变）', () => {
+    const boosted = shipCard('ano-overcap-ratio', [{ ship: GUNSHIP, count: 2, dmgMul: 8 }])
+    const shots = hullShots(boosted, bal)
     expect(shots).toHaveLength(2)
     expect(shots[0]).toBe(shots[1])
-    // 补偿 2N/(N+1) = 4/3 ⇒ 单发 = round(100×8×(4/3)×scale)，scale = 150/uncapped
-    const comp = 4 / 3
-    expect(shots[0]).toBe(Math.max(1, Math.round(100 * 8 * comp * (CAP_ON / uncapped))))
+    const uncapped = hullDps(boosted, OFF_BOTH)
+    const scale = overCapTarget(uncapped) / uncapped
+    expect(shots[0]).toBe(Math.max(1, Math.round(100 * 8 * (4 / 3) * scale)))
   })
 
-  it('foeDpsCap 缺省或 0 ⇒ 完全不钳制（零行为变化开关）', () => {
-    const boosted = shipCard('ano-cap-off', [{ ship: GUNSHIP, count: 2, dmgMul: 8 }])
-    expect(hullDps(boosted, { ...bal, foeDpsCap: undefined })).toBeCloseTo(533.5, 6)
-    expect(hullDps(boosted, { ...bal, foeDpsCap: 0 })).toBeCloseTo(533.5, 6)
+  it('双旋钮开关：阈值或折扣率任一未写 / 0 ⇒ 完全不缩放（且不退回硬钳制）', () => {
+    const boosted = shipCard('ano-overcap-off', [{ ship: GUNSHIP, count: 2, dmgMul: 8 }])
+    expect(hullDps(boosted, OFF_BOTH)).toBeCloseTo(533.5, 6)
+    expect(hullDps(boosted, OFF_CAP)).toBeCloseTo(533.5, 6)
+    expect(hullDps(boosted, OFF_DISC)).toBeCloseTo(533.5, 6)
+    // 边界：折扣率 1 = 旧硬钳制语义（压到阈值）；本用例只钉住"它仍在，但已不是现行口径"
+    expect(hullDps(boosted, { ...bal, foeDpsOverCapDiscount: 1 })).toBeCloseTo(150, 6)
   })
 
-  it('机群不吃钳制：挂了机群的卡只钳舰体，机群单发逐字不变', () => {
-    const capped = { ...bal, foeDpsCap: CAP_ON }
+  it('机群不吃折扣：只折扣舰体，机群单发逐字不变', () => {
     const withDrones: FoeShipDef = {
       ...GUNSHIP,
       id: 't-cap-dronecarrier',
       shotDmg: 200,
       drones: [{ drone: { id: 't-cap-drone', name: '测试机', damageType: 'kinetic', dmg: 50, hitRate: 0.65, falloff: 1, maxRangeM: 5000, reloadMs: 4400, unitM3: 5, hp: { s: 10, a: 10, h: 10 } }, count: 4 }],
     } as unknown as FoeShipDef
-    const card = shipCard('ano-cap-drone', [{ ship: withDrones, count: 4, dmgMul: 6 }])
-    const specs = createFoeSpecs(card, capped, { units: 1, hpShare: 1 }) as unknown as Array<{ weapons?: ReadonlyArray<{ shotDmg?: number; reloadMs?: number; src?: string }> }>
+    const card = shipCard('ano-overcap-drone', [{ ship: withDrones, count: 4, dmgMul: 6 }])
+    const specs = createFoeSpecs(card, bal, { units: 1, hpShare: 1 }) as unknown as Array<{ weapons?: ReadonlyArray<{ shotDmg?: number; reloadMs?: number; src?: string }> }>
     let hull = 0
     let drone = 0
     for (const sp of specs) for (const w of sp.weapons ?? []) {
@@ -255,22 +265,59 @@ describe('敌舰体火力上限（船长 2026-09-12「按照 DPS 上限 150 算�
       if (w.src === 'drone') drone += d
       else hull += d
     }
-    // 舰体被钳到上限；机群按原式逐字不变、不受钳制影响。
-    // ⚠ 架数口径：`count: 4` 的条目会展开成 **4 个运载单位 × 每单位 4 架 = 16 架**
-    //   ⇒ 机群单发 50 × `dmgMul` 6 = 300，16 架 ÷ 4.4s = 1090.91 DPS（不受 150 上限约束）
-    expect(hull).toBeCloseTo(CAP_ON, 6)
-    expect(drone).toBeGreaterThan(CAP_ON)
+    // 舰体：4 艘 × 补偿 1.6 ⇒ 单发 round(200×6×1.6) = 1920 ⇒ 480 DPS/艘 ⇒ 合计 1920（越线）
+    //   ⇒ 目标 = 150 + (1920 − 150) × 0.85 = 1654.5；单发 round(1920 × 1654.5/1920) = 1655
+    //   ⇒ 413.75 DPS/艘 ⇒ **1655.0**（仍远高于阈值 ⇒ 确实"不封顶"）
+    // 机群：`count: 4` 展开成 **4 个运载单位 × 每单位 4 架 = 16 架** ⇒
+    //   单发 50 × `dmgMul` 6 = 300，16 架 ÷ 4.4s = **1090.91 DPS**（不吃折扣）
+    expect(hull).toBeCloseTo(1655, 6)
+    expect(hull).toBeGreaterThan(150)
     expect(drone).toBeCloseTo((50 * 6 * 16 * 1000) / 4400, 6)
   })
 
-  it('多舰补偿参与上限计算：N 越大，同一单发越早触顶', () => {
-    const capped = { ...bal, foeDpsCap: CAP_ON }
-    // 4 艘 × 补偿 1.6 ⇒ 单发 round(100×1.6)=160 ⇒ 40 DPS/艘 ⇒ 合计 160 > 150 ⇒ 被钳到 150
-    const four = shipCard('ano-cap-four', [{ ship: GUNSHIP, count: 4 }])
-    expect(hullDps(four, { ...bal, foeDpsCap: undefined })).toBeCloseTo(160, 6)
-    expect(hullDps(four, capped)).toBeCloseTo(CAP_ON, 6)
-    // 1 艘（补偿 1）⇒ 25 DPS，远未触顶
-    const one = shipCard('ano-cap-one', [{ ship: GUNSHIP, count: 1 }])
-    expect(hullDps(one, capped)).toBeCloseTo(25, 6)
+  it('多舰补偿参与判线：N 越大越早越线（4 艘 160 → 159.0）', () => {
+    // 4 艘 × 补偿 1.6 ⇒ 单发 round(100×1.6) = 160 ⇒ 40 DPS/艘 ⇒ 合计 160 > 150 ⇒ 打折
+    const four = shipCard('ano-overcap-four', [{ ship: GUNSHIP, count: 4 }])
+    expect(hullDps(four, OFF_BOTH)).toBeCloseTo(160, 6)
+    // 目标 = 150 + 10 × 0.85 = 158.5；单发 round(160 × 158.5/160) = round(158.5) = 159 ⇒ 4 × 39.75 = 159.0
+    expect(hullDps(four, bal)).toBeCloseTo(159, 6)
+    // 1 艘（补偿 1）⇒ 25 DPS，远未触线
+    const one = shipCard('ano-overcap-one', [{ ship: GUNSHIP, count: 1 }])
+    expect(hullDps(one, bal)).toBeCloseTo(25, 6)
+  })
+
+  it('现行配置 = 开（150 / 0.15）· 洞外派生档按折扣实收、未越线档逐字不动', () => {
+    expect(CAP).toBe(150)
+    expect(DISC).toBeCloseTo(0.15, 9)
+    const vault = ANOMALIES.find((a) => a.id === 'ano-vault-sentinel')!
+    const voidedge = ANOMALIES.find((a) => a.id === 'ano-voidedge-warden')!
+    const grave = ANOMALIES.find((a) => a.id === 'ano-gravekeeper')!
+    const maw = ANOMALIES.find((a) => a.id === 'ano-maw-hunt')!
+    // 越线：派生档实测（2026-09-15 探针）穹顶 L1 ≈ 164.8 ⇒ 折扣后 > 150 且 < 原值
+    // ⚠ 判线用 `maxWaveDps`（逐波建档口径）：穹顶/虚海是单波卡（与 hullDps 同值），
+    //   噬口是 3 波卡且**头目在第 3 波**——只看波 0（4 只小虫 ≈ 20 DPS）会得出"未越线"的错结论。
+    const vaultUncapped = maxWaveDps(lairAnomalyOf(vault, 1), OFF_BOTH)
+    expect(vaultUncapped).toBeGreaterThan(150)
+    const vaultLive = maxWaveDps(lairAnomalyOf(vault, 1), bal)
+    expect(vaultLive).toBeGreaterThan(150) // 不封顶
+    expect(vaultLive).toBeLessThan(vaultUncapped)
+    expect(Math.abs(vaultLive - overCapTarget(vaultUncapped))).toBeLessThan(1)
+    // 虚海 lairLevel = 2 ⇒ 只有 1~2 档；2 档派生 ≈ 210 同样越线
+    expect(lairLevelOf(voidedge)).toBe(2)
+    const voidUncapped2 = maxWaveDps(lairAnomalyOf(voidedge, 2), OFF_BOTH)
+    expect(voidUncapped2).toBeGreaterThan(150)
+    expect(maxWaveDps(lairAnomalyOf(voidedge, 2), bal)).toBeLessThan(voidUncapped2)
+    expect(maxWaveDps(lairAnomalyOf(voidedge, 2), bal)).toBeGreaterThan(150)
+    // 噬口 L3（2026-09-11 虫群编成改造后新越线，旧注释未登记）：末波（头目 401 单发）≈ 215.5 ⇒ 只打 85 折
+    const mawL3 = lairAnomalyOf(maw, 3)
+    const mawUncapped = maxWaveDps(mawL3, OFF_BOTH)
+    expect(mawUncapped).toBeGreaterThan(150)
+    expect(maxWaveDps(mawL3, bal)).toBeLessThan(mawUncapped)
+    expect(maxWaveDps(mawL3, bal)).toBeGreaterThan(150)
+    // 未越线的档不受影响：坟场守墓者 1 档 ≈ 113.5（逐字相同）
+    const grave1 = maxWaveDps(lairAnomalyOf(grave, 1), OFF_BOTH)
+    expect(grave1).toBeLessThan(150)
+    expect(maxWaveDps(lairAnomalyOf(grave, 1), bal)).toBeCloseTo(grave1, 9)
+    void LAIR_THREAT_MUL // 派生比例由 lairAnomalyOf 内部按表取，这里只需保证表被引用到
   })
 })
