@@ -106,8 +106,17 @@ function fitAll(state: GameState, ctx: SimContext, uid: string, ids: string[]): 
   }
 }
 
+/** 中距档（**缺省 = 洞内口径**：射程带中点，2026-09-15 船长裁定"洞内维持中段"） */
 const mid = (state: GameState, ctx: SimContext, uid: string): number =>
   desiredRangeFor(createPlayerSpec(state, ctx, uid)!, 'mid', ctx.balance.battle)
+/** 星图默认档（射程带 0.8 高位；2026-09-15 船长改判，旧"中点"作废） */
+const starMid = (state: GameState, ctx: SimContext, uid: string): number =>
+  desiredRangeFor(
+    createPlayerSpec(state, ctx, uid)!,
+    'mid',
+    ctx.balance.battle,
+    ctx.balance.battle.desireBandStarMap,
+  )
 const kite = (state: GameState, ctx: SimContext, uid: string): number =>
   desiredRangeFor(createPlayerSpec(state, ctx, uid)!, 'kite', ctx.balance.battle)
 const assault = (state: GameState, ctx: SimContext, uid: string): number =>
@@ -141,6 +150,21 @@ describe('主武器口径（贴脸/中距/风筝的距离从哪来）', () => {
     expect(mainB.maxRangeM).toBe(11760)
     expect(mid(b.state, b.ctx, b.uid)).toBe(6330)
     expect(kite(b.state, b.ctx, b.uid)).toBe(11172)
+  })
+
+  it('星图默认档 = 射程带 0.8 高位（2026-09-15 船长改判）；缺省/洞内仍是中点', () => {
+    const { state, ctx, uid } = world()
+    fitAll(state, ctx, uid, ['missile-x']) // 主武器 = 导弹架 900~11,760
+    const me = createPlayerSpec(state, ctx, uid)!
+    const bal = ctx.balance.battle
+    expect(bal.desireBandStarMap).toBe(0.8)
+    expect(bal.desireBandWormhole).toBe(0.5)
+    // 星图默认：min + 0.8×(max−min) = 900 + 10,860×0.8 = 9,588（旧中点 6,330 ⇒ 玩家报"太近"的那一档）
+    expect(starMid(state, ctx, uid)).toBe(9588)
+    expect(mid(state, ctx, uid)).toBe(6330) // 缺省（= 洞内口径）仍是中点：洞内"进去就得挨打"不变
+    // 贴脸 / 风筝两档与档位无关
+    expect(desiredRangeFor(me, 'kite', bal, bal.desireBandStarMap)).toBe(11172)
+    expect(desiredRangeFor(me, 'assault', bal, bal.desireBandStarMap)).toBe(540)
   })
 
   it('只有近防炮时主武器就是它（最远即它本身，不是特例排除）', () => {
