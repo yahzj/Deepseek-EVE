@@ -22,6 +22,7 @@
     "faction:audit": "tsx tools/faction-audit.ts",
     "content:export": "tsx tools/content-export.ts",
     "content:import": "tsx tools/content-import.ts",
+    "ship:hp": "tsx tools/ship-hp-table.ts",
     "battle:calibrate": "tsx tools/battle-calibrate.ts",
     "battle:bolt": "tsx tools/battle-bolt-anchor.ts",
     "battle:layout": "tsx tools/battle-layout.ts",

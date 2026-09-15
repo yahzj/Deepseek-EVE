@@ -1037,6 +1037,13 @@ const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18
  * ⚠ 名单外的官方船现状不在契约内（还有 14 艘偏离，船长会逐艘点名）。
  */
 const OFFICIAL_SLOT_ALIGNED = new Set(['sh-nautilus', 'sh-bullshark'])
+/**
+ * **非战斗舰血量目标总血**（2026-09-15 船长定；与 `packages/data/src/ships.ts` 头注同源）：
+ * 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
+ * 参考中位：T1 228 · T2 384 · T3 675 · T4 1273 · T5 2355 ⇒ 目标见下表。
+ * ⚠ 官方战斗舰的血量若被调整，本表要跟着重算（`npm run ship:hp` 会打出当前中位与推荐值）。
+ */
+const CIVILIAN_HP_TARGET: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 182, 2: 307, 3: 540, 4: 1018, 5: 1884 }
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -1046,6 +1053,19 @@ for (const s of SHIPS) {
   check(s.cycleSeconds > 0 && s.oreUnitsPerCycle > 0 && s.cargoM3 > 0, `舰船 ${s.id} 数值非法`)
   // V10.5 战斗数值契约：三层血量必填且 >0
   check((s.shieldHp ?? 0) > 0 && (s.armorHp ?? 0) > 0 && (s.hullHp ?? 0) > 0, `舰船 ${s.id} 三层血量缺失或非正（V10.5 契约）`)
+  /**
+   * **非战斗舰血量契约**（2026-09-15 船长定：「提高所有非战斗舰船的血量，使其约等于同级官方战斗舰船血量的 0.8」）。
+   * 判据与目标写死在下方常量里（改动必须两处同步 —— 这正是本契约要拦的"静默漂移"）：
+   * 目标 = 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
+   */
+  if (s.role === 'industrial' || s.role === 'hauler') {
+    const total = s.shieldHp + s.armorHp + s.hullHp
+    const want = CIVILIAN_HP_TARGET[s.tier as 1 | 2 | 3 | 4 | 5]
+    check(
+      total === want,
+      `非战斗舰血量契约：${s.id}（T${s.tier} ${s.role}）三层共 ${total} ≠ 目标 ${want}（= 同档官方战斗舰总血中位×0.8；改数请同步本表与 ships.ts 头注）`,
+    )
+  }
   // V10.5b：每层抗性为三系对象（0~0.9/系），键必须是合法伤害类型
   for (const r of ['shieldResist', 'armorResist', 'hullResist'] as const) {
     const res = s[r]
