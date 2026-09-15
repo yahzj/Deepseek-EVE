@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -448,7 +448,10 @@ const meSpeedRef = useRef(200)
    * 同时清空血量缓存并重置首帧标记，避免把"进场时的既成伤亡"误判成本帧新阵亡。
    */
   useEffect(() => {
-    const b = engine.state.expedition.battle
+    // ⚠ 2026-09-14 修：此前写死 `engine.state.expedition.battle` ⇒ **洞内那场恒为 null**，
+    //   预登记整段不跑 ⇒ 洞内"退出战斗界面再进来，血量 0 的敌人重新出现"（2026-09-10 修过的同款
+    //   BUG 当年只在洞外修好）。现取**本场已解析的 `battle`**（远征 or 洞内）。
+    const b = battle
     if (!b) return
     deadRef.current = new Set(
       Object.values(b.units)
@@ -459,15 +462,18 @@ const meSpeedRef = useRef(200)
     prevHpRef.current.clear()
     hpInitRef.current = false
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine.state.expedition.battle?.startedAtGameMs])
+  }, [battle?.startedAtGameMs])
 
   // 星空视差速率：基准 = 驾驶船基础战斗速度（装配/技能静态）——每帧再按推进器点火态放大（见 33ms 循环）
   useEffect(() => {
-    if (!engine.state.expedition.battle) return
-    const spec = createPlayerSpec(engine.state, engine.ctx, engine.state.shipId)
+    // ⚠ 2026-09-14 修：同上，洞内战里这里恒早退 ⇒ 星场基准速度一直停在缺省值。
+    //   锚船与 33ms 循环**同一口径**（洞内 = 编队首舰）。
+    if (!battle) return
+    const anchorId = battle.myFleet?.[0]?.shipId ?? engine.state.shipId
+    const spec = createPlayerSpec(engine.state, engine.ctx, anchorId)
     meSpeedRef.current = spec?.speedMps ?? 200
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine.state.expedition.battle?.startedAtGameMs])
+  }, [battle?.startedAtGameMs])
 
   // 视觉插值：引擎每 ~100ms 一拍；本循环 33ms 在两拍间线性插值，舰列/弧/游标平滑移动
   // ⚠ **句柄取 `battleRef`（远征 or 洞内）**：原先写死 `engine.state.expedition.battle` ⇒
@@ -767,7 +773,18 @@ const meSpeedRef = useRef(200)
   // 2026-09-09 多波修复：主/僚判定不靠"队列首位"——多波多小队的主舰 tag 为 w{n}-foe-{k}
   // （旧判定把第 2 艘主舰当僚机：小尺寸 + 僚机字样）；判定与引擎同源（core foeMainTagOf）
   const isFoeMainTag = foeMainTagOf
-  const foeAnomaly = state.expedition.anomalyId ? engine.ctx.anomalies.get(state.expedition.anomalyId) : undefined
+  /**
+   * **敌卡 = 本场战斗的那张卡**（2026-09-14 修船长报障「虫洞内的战斗，敌方舰船动画不对 /
+   * **敌方的战斗动画图形和敌族对不上** / 战斗开始位置似乎不对」）：
+   * 取卡单点在 core `battleFoeAnomaly`（洞内 = 按层派生卡，洞外 = 远征卡）。
+   * 此前这里只认 `state.expedition.anomalyId` ⇒ **洞内恒取不到敌卡**，三个下游一起错：
+   *   ① `foeKey = foeFamilyOf(undefined)` ⇒ 兜底族 **A 海盗**（洞里 C/D/E/G 族全画成海盗舰体/动画）
+   *      ⇒ **图形与敌族对不上**；
+   *   ② `foeShipTierOf` 拿不到舰种档 ⇒ `sizeOfUnit(null)` 回落 170/90（舰种体积阶梯在洞内失效）；
+   *   ③ 而 `foeSizes` 又喂给 `layout()`（锚点跟实际舰宽、机位/排布/米制跨度 `usable` 全由它推）
+   *      ⇒ **敌方舰船体积与机位整体偏**，看起来就是"开局位置不对"。
+   */
+  const foeAnomaly = battleFoeAnomaly(state, engine.ctx)
   /** 逐舰体积（px）：玩家舰 = `ShipDef.tier`；敌舰 = 编成条目所引舰级的 `hullClassTier`。
    *  舰级路径卡以外的旧卡无舰种档 → 回落改造前的 170/90（船长 2026-09-11：这批延后）。 */
   const meSize = sizeOfUnit(meShip?.tier, false)

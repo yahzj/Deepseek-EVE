@@ -21,7 +21,8 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet, pilotUnavailableReason } from '../src/shipyard'
 import { addWare, countWare } from '../src/inventory'
-import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat } from '../src/combat'
+import { advanceBattleFor, battleOpenM, createFoeSpecs, createPlayerSpec, desiredRangeFor, foeDesiredRange, foeHpOfThreat, foeShipTierOf, foeUnitNameOf } from '../src/combat'
+import { battleTacticDesire } from '../src/expedition'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_BOSS_TARGETING_CHANCE,
@@ -43,7 +44,7 @@ import {
   wormholeLayerThreat,
   wormholeNaturalHp,
 } from '../src/wormhole'
-import { advanceWormhole, wormholeActivateAt, wormholeBattleViewOf, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
+import { advanceWormhole, battleFoeAnomaly, wormholeActivateAt, wormholeBattleViewOf, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholePlace } from '../src/wormholeGrid'
 import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
@@ -272,6 +273,53 @@ describe('虫洞 · 开战（F 批）', () => {
     standOnPlace(run, 'vein') // 矿脉：不是交火地点
     expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(false)
     expect(run.battle ?? null).toBeNull()
+  })
+
+  it('战术期望距离（洞内）：三档都给**非零**距离，且走洞内中段口径（2026-09-14 修"点战术=整队贴脸"）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    // 主视角 = 编队首舰（与 `setBattleDesire` 同一口径）
+    const me = createPlayerSpec(state, ctx, run.fleet[0]!)!
+    const bal = ctx.balance.battle
+    for (const t of ['assault', 'mid', 'kite'] as const) {
+      const v = battleTacticDesire(state, ctx, t)
+      // 旧实现在洞内取不到敌卡（只认 expedition.anomalyId）⇒ **恒返回 0** ⇒ 战场里点战术按钮会把
+      // 期望距离设成 0、被 `setBattleDesire` 钳到最近 = 整队贴脸（船长报障"开始位置似乎不对"的连带）
+      expect(v, `洞内 ${t} 战术期望距离不该是 0`).toBeGreaterThan(0)
+      expect(v, `洞内 ${t} 走洞内中段口径`).toBe(desiredRangeFor(me, t, bal, bal.desireBandWormhole))
+    }
+    // 分档证据：洞内中段（0.5）比星图档（0.8）更近
+    expect(battleTacticDesire(state, ctx, 'mid')).toBeLessThan(
+      desiredRangeFor(me, 'mid', bal, bal.desireBandStarMap),
+    )
+    // 显式传一张不存在的卡 ⇒ 仍返回 0（保底分支没被改坏）
+    expect(battleTacticDesire(state, ctx, 'mid', 'ano-not-exist')).toBe(0)
+  })
+
+  it('敌卡取值单点 `battleFoeAnomaly`：洞内 = 按层派生卡（族形/舰种档都查得到）· 洞外 = 远征卡', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const card = battleFoeAnomaly(state, ctx)
+    expect(card, '洞内交火时必须给得出敌卡').toBeTruthy()
+    // 与开战记录同一张卡（派生卡保住 id 与族：视图据 `foeFamily` 选敌族图形/动画、据舰种档定体积）
+    expect(card!.id).toBe(run.battle!.wormhole!.cardId)
+    const base = ctx.anomalies.get(run.battle!.wormhole!.cardId)!
+    expect(card!.foeFamily).toBe(base.foeFamily)
+    expect(card!.foeFamily, '敌族必须显式登记（不许落到兜底）').toBeTruthy()
+    // 视图的两处查询在洞内真的能取到值（旧口径下都是 undefined ⇒ 兜底族 A + 体积 170/90）
+    const foeTag = Object.values(run.battle!.units).find((u) => u.side === 'foe')!.tag
+    expect(foeShipTierOf(card!, foeTag), '舰种档可解析（体积阶梯）').toBeGreaterThan(0)
+    expect(foeUnitNameOf(card!, foeTag), '敌舰名可解析').not.toBe('')
+    // 反证：把洞内战摘掉（等价旧口径"只认远征"）⇒ 拿不到卡
+    const noWh: GameState = { ...state, wormhole: { ...state.wormhole, run: null } }
+    expect(battleFoeAnomaly(noWh, ctx)).toBeUndefined()
+    // 洞外口径逐字不变：远征卡照给
+    const exp: GameState = { ...state, expedition: { ...state.expedition, anomalyId: base.id } }
+    expect(battleFoeAnomaly(exp, ctx)?.id).toBe(base.id)
   })
 
   it('战斗中：推进 / 深入 / 撤离一律被拒（船长第 8 条）', () => {

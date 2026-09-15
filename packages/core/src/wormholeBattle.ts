@@ -543,6 +543,27 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
 }
 
 /**
+ * **本场战斗的敌卡**（2026-09-14 修船长报障「虫洞内的战斗，敌方舰船动画不对 / **敌方的战斗动画图形
+ * 和敌族对不上** / 战斗开始位置似乎不对」）——视图侧取敌卡的**唯一点**：
+ * - 洞内交火 = `run.battle` 的**按层派生卡**（`wormholeDerivedAnomaly`，与推进/射程弧/血条同一张）；
+ * - 洞外 = 远征/窝点卡（`expedition.anomalyId`，**逐字保持旧口径**）。
+ *
+ * 为什么必须由 core 出这一个点：洞内战斗的宿主是 `run.battle`（**不占** `expedition.battle`、敌卡也不落
+ * 在 `expedition.anomalyId`）⇒ 界面凡"只认远征"的读法在洞里会**静默取到 `undefined`**，而照样渲染：
+ * 敌舰族形落到兜底族（A 海盗 ⇒ 洞里 C/D/E/G 族全画成海盗舰体与动画）、舰种体积回落 170/90，
+ * 而体积又喂给 `layout()` 的机位/米制跨度 ⇒ 动画、图形、开局机位一起错。界面一律读本函数，
+ * **不许再各自猜宿主**（`content:check`「战斗宿主双口径契约」会扫 BattleScreen 的直读）。
+ */
+export function battleFoeAnomaly(state: GameState, ctx: SimContext): AnomalyDef | undefined {
+  const whBattle = state.wormhole.run?.battle
+  if (whBattle?.wormhole) {
+    const base = ctx.anomalies.get(whBattle.wormhole.cardId)
+    if (base) return wormholeDerivedAnomaly(ctx, base, whBattle.wormhole)
+  }
+  return state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
+}
+
+/**
  * **洞内战斗的视图上下文**（F2 · 2026-09-13）：战斗窗口拿它渲染洞内战斗
  * （战斗宿主在 `run.battle`、敌卡按层派生、我方编队逐舰）。
  * 无洞内战斗返回 `null`（界面照旧走远征口径）。
