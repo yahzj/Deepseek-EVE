@@ -5,9 +5,11 @@
  * 口径：
  * - 战斗内拖距离条 / 点战术按钮（`setBattleDesire`）→ 写入**本场所在星系**的设定（跨会话沿用）；
  * - 出发时显式 `desireM` → 写进**目标星系**；
- * - 开战（远征 / 遭遇 / AI 副船）与**胜率预估的每一局模拟**都读该星系的设定；没设过 = 主武器有效射程中点；
+ * - 开战（远征 / 遭遇 / AI 副船）与**胜率预估的每一局模拟**都读该星系的设定；
+ *   没设过 = **默认档**（⚠ 2026-09-15 船长改判：**星图 = 射程带 0.8 高位**、洞内 = 中段 0.5；
+ *   旧"射程中点"是星图旧口径，已作废——起因＝玩家报「赏金任务初始距离非常近、对远程武器不利」）；
  * - 稳态解析预估（派系活跃卡 / 窝点卡）同口径；
- * - 存档随档保留（老档的全局 `desirePrefM` 不再沿用，一律回落中段）。
+ * - 存档随档保留（老档的全局 `desirePrefM` 不再沿用，一律回落默认档）。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -52,24 +54,24 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     return startBattleFor(snap.ev, ctx, snap.uid, anomalyId, 0)!.myDesireM
   }
 
-  it('没设过的星系 = 主武器有效射程中点', () => {
+  it('星图没设过的星系 = **射程带高位档**（2026-09-15 船长改判；旧"射程中点"作废）', () => {
     const state = fresh()
     const snap = buildEvalState(state, state.shipId)!
     const me = createPlayerSpec(snap.ev, ctx, snap.uid)!
-    const mid = desiredRangeFor(me, 'mid', ctx.balance.battle)
-    expect(mid).toBeGreaterThan(0)
+    const want = desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandStarMap)
+    expect(want).toBeGreaterThan(0)
     expect(snap.ev.expedition.desirePrefByGalaxy).toBeUndefined() // 全新档：一个星系都没设过
-    expect(evalDesire(state, A.id)).toBe(mid) // 中段（该卡开战距离远大于中段，不会被钳）
+    expect(evalDesire(state, A.id)).toBe(want) // 星图默认档（该卡开战距离远大于它，不会被钳）
   })
 
-  it('两个星系各自独立：给 A 设 1,500 只影响 A，B 仍回落中段', () => {
+  it('两个星系各自独立：给 A 设 1,500 只影响 A，B 仍回落默认档', () => {
     const state = fresh()
-    const midB = evalDesire(state, B.id)
+    const defB = evalDesire(state, B.id)
     setDesirePrefOf(state, A.galaxyId, 1_500)
     expect(desirePrefOf(state, A.galaxyId)).toBe(1_500)
     expect(desirePrefOf(state, B.galaxyId)).toBeNull() // 独立保存：B 没设过
     expect(evalDesire(state, A.id)).toBe(1_500) // A 的模拟按 1,500 打
-    expect(evalDesire(state, B.id)).toBe(midB) // B 不受影响
+    expect(evalDesire(state, B.id)).toBe(defB) // B 不受影响
   })
 
   it('胜率预估的战斗按该星系设定：设定随估价快照进入每一局模拟', () => {
@@ -96,12 +98,12 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     setDesirePrefOf(state, A.galaxyId, 1_200)
     const snap = buildEvalState(state, state.shipId)!
     const me = createPlayerSpec(snap.ev, ctx, snap.uid)!
-    const mid = desiredRangeFor(me, 'mid', ctx.balance.battle)
+    const def = desiredRangeFor(me, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandStarMap)
     expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0)!.myDesireM).toBe(1_200) // 主控吃设定
-    expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0, null)!.myDesireM).toBe(mid) // 副船传 null ⇒ 射程中段
+    expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0, null)!.myDesireM).toBe(def) // 副船传 null ⇒ 星图默认档
   })
 
-  it('存档往返：按星系的设定随档保留；老档只带全局 desirePrefM 时一律回落中段', () => {
+  it('存档往返：按星系的设定随档保留；老档只带全局 desirePrefM 时一律回落默认档', () => {
     const state = fresh()
     setDesirePrefOf(state, A.galaxyId, 1_500)
     setDesirePrefOf(state, B.galaxyId, 2_500)
@@ -118,7 +120,7 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     const snapOld = buildEvalState(old, old.shipId)!
     const meOld = createPlayerSpec(snapOld.ev, ctx, snapOld.uid)!
     expect(startBattleFor(snapOld.ev, ctx, snapOld.uid, A.id, 0)!.myDesireM).toBe(
-      desiredRangeFor(meOld, 'mid', ctx.balance.battle),
+      desiredRangeFor(meOld, 'mid', ctx.balance.battle, ctx.balance.battle.desireBandStarMap),
     )
   })
 })

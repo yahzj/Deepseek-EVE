@@ -215,6 +215,18 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     openRangeFactor: 1.0,
     openRangePadM: 100,
     openRangePadShare: 0.1,
+    /**
+     * **默认期望交距 = 主武器有效射程带内的位置**（0 = 最小射程 · 0.5 = 中点 · 1 = 最大射程）。
+     *
+     * 2026-09-15 船长裁定（起因＝玩家报障「进行赏金任务时，敌我的初始距离非常近，对远程武器不利」）：
+     * 实测开战那一瞬并不近（16,368 m = 双方最远射程×1.1），**近的是稳态**——默认期望取"射程带中点"
+     * （导弹架 1,400~14,880 ⇒ 8,140 m），战斗 ~30 秒后必然收拢到那里 ⇒ 远程武器只用到射程的一半。
+     * 口径：**星图默认抬到射程带高位 0.8**（同一装配 ⇒ 12,184 m），**洞内维持中段 0.5**
+     * （船长同日裁定：你 2026-09-13 定的"进去就得挨打"张力不变，近战怪开局距离也继续用中段）。
+     * ⚠ 贴脸（`assault` = 最小射程×0.6）与风筝（`kite` = 最大射程×0.95）两档**不受本值影响**。
+     */
+    desireBandStarMap: 0.8,
+    desireBandWormhole: 0.5,
     // V18B 武器族专精技能（2026-09-05 一号按交接底稿接入）：+5%/级，与炮术学乘算（数值 C4 校准）
     familySkillIds: { turret: 'kinetic-gunnery', missile: 'missile-launching', laser: 'laser-cannon' },
     familySkillPerLevel: 0.05,

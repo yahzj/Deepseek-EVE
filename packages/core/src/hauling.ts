@@ -245,7 +245,6 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：先停止开采。' }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：先停止打捞。' }
   if (state.expedition.active) return { ok: false, error: '远征进行中：先召回或等待结束。' }
-  if (state.scanning.active) return { ok: false, error: '扫描探索中：先终止扫描。' }
   if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先取消。' }
   if (state.transit.active) return { ok: false, error: '返航行程中：到站后再安排。' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：到站结算后再安排。' }

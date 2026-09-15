@@ -10,7 +10,7 @@ import { advanceGame, enqueueSkill } from '../src/engine'
 import { startMining, miningStatus } from '../src/mining'
 import { startManufacturing } from '../src/manufacturing'
 import { startExpedition, resolveBattleOutcome } from '../src/expedition'
-import { startScan, isExplored } from '../src/explore'
+import { startScan, isExplored, scanAwaitingView } from '../src/explore'
 import { makeTestCtx, skill, belt, anomaly } from './helpers'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 
@@ -78,19 +78,16 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     expect(s.logs.some((l) => l.text.includes('战报'))).toBe(true)
   })
 
-  it('扫描：1 秒完成点亮并自动返航（2026-09-06：完成不再停留）', () => {
+  it('扫描：1 秒完成点亮并当场收尾（2026-09-15 无人扫描艇：无返航段、不牵动位置）', () => {
     const s = freshState(true)
     expect(startScan(s, 'galaxy-far', ctx).ok).toBe(true)
     expect(s.scanning.active).toBe(true)
-    advanceGame(s, 1000, ctx) // 窗口 1 秒走完 → 点亮 + 转自动返航
-    expect(s.scanning.returning).toBe(true)
-    expect(s.scanning.active).toBe(true)
+    advanceGame(s, 1000, ctx) // 窗口 1 秒走完 → 点亮 + 收尾
+    expect(s.scanning.active).toBe(false)
+    expect(s.scanning.returning).toBe(false)
     expect(isExplored(s, 'galaxy-far')).toBe(true)
     expect(s.awayGalaxy).toBeNull()
-    // 返航腿走完 → 停靠母港
-    for (let i = 0; i < 40 && s.scanning.active; i++) advanceGame(s, 20_000, ctx)
-    expect(s.scanning.active).toBe(false)
-    expect(s.awayGalaxy).toBeNull()
+    expect(scanAwaitingView(s)).toEqual({ galaxyId: 'galaxy-far' })
   })
 
   it('本地悬赏（母港目标）战后返航：调试模式 1 秒、普通模式仍 2 分钟（2026-09-10 修复写死 120s）', () => {

@@ -822,6 +822,15 @@ export function App({ engine }: { engine: GameEngine }) {
     }
     setMapTab(t)
   }
+  /**
+   * **扫描完成的高亮"看过即收"**（船长 2026-09-15：完成后进度条依旧存在并高亮，直到玩家进入星图
+   * 界面查看后才移除）：进/留在「星图」页的「星图」标签 = 看过了 ⇒ 收掉高亮。
+   * ⚠ 依赖只有 `[page, mapTab]`：完成时人**已经**停在星图页的话，这一拍不会触发 ⇒ 高亮留着，
+   * 等他离开再回来（或点一下顶部那条）才收——免得"新点亮的星系还没看见，条就没了"。
+   */
+  useEffect(() => {
+    if (page === 'map' && mapTab === 'star') engine.ackScanView()
+  }, [page, mapTab])
   // 工业页 → 星图定位（2026-09-09 船长定）：切页 + 目标标签页 + 卡高亮 seq（MapPage 一次性应用；
   // 标签页切换走 changeMapTab 尊重教程步骤锁——被锁时只切页不切签，高亮不触发）
   const gotoMapTab = (tab: 'mine' | 'salvage', ids: string[]): void => {

@@ -324,6 +324,8 @@ export {
   startScan,
   stopScan,
   scanStatus,
+  scanAwaitingView,
+  acknowledgeScanView,
   advanceScanning,
   SCAN_WINDOW_MS,
   SCAN_LOWSEC_PENALTY,

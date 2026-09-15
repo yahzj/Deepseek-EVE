@@ -50,7 +50,7 @@ describe('T3 按船货仓只读查询', () => {
 })
 
 describe('T3 shipBusyLabel：船忙态判定', () => {
-  it('驾驶船：空闲 null；采矿中/返航；扫描中；远征去程(旧档)/交火/返航', () => {
+  it('驾驶船：空闲 null；采矿中/返航；扫描中（**不忙**）；远征去程(旧档)/交火/返航', () => {
     const { state, ctx } = world()
     const piloted = state.shipId
     expect(shipBusyLabel(state, ctx, piloted)).toBeNull()
@@ -63,9 +63,10 @@ describe('T3 shipBusyLabel：船忙态判定', () => {
     expect(shipBusyLabel(state, ctx, piloted)).toBe('采矿·返航中')
     state.mining.active = false
 
-    // 扫描探索
+    // 扫描探索：**2026-09-15 起不再算船忙**（船长：星系扫描 = 无人扫描艇，不占主控、不牵动舰船）
+    // 修前这里返回 '扫描探索中' —— 于是换驾驶、派副船、进洞都被这把尺挡住。
     state.scanning = { active: true, galaxyId: 'galaxy-far', finishAtGameMs: 600_000, startedAtGameMs: 0, originGalaxy: null }
-    expect(shipBusyLabel(state, ctx, piloted)).toBe('扫描探索中')
+    expect(shipBusyLabel(state, ctx, piloted)).toBeNull()
     state.scanning.active = false
 
     // 远征（主控）

@@ -79,14 +79,15 @@ describe('T1 activityOverview 视图', () => {
     expect(activityOverview(state, ctx)).toEqual([])
   })
 
-  it('训练/采矿/扫描/制造 各出一卡（字段齐全）', () => {
+  it('训练/采矿/制造 各出一卡（字段齐全）；**星系扫描不再出行**（2026-09-15 船长）', () => {
     enqueueSkill(state, 'nav-y', 1, ctx.skills)
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
-    // 扫描与采矿互斥（引擎校验），此处仅构造视图态验证展示
+    // 星系扫描：2026-09-15 起 = 无人扫描艇（不占主控）⇒ **不进"玩家活动"列表**，
+    // 改由活动窗头部的扫描条显示（`scanStatus` + `scanAwaitingView`）——这里钉住"不再出行"。
     state.scanning = { active: true, galaxyId: 'galaxy-far', finishAtGameMs: state.gameMs + 60_000, startedAtGameMs: state.gameMs, originGalaxy: null }
     state.learnedRecipes.push('bp-a')
     state.warehouse.items['min-a'] = 20
-    // 制造与采矿/扫描并行允许（2026-09-08：制造带劳动者——主控手动与出海互斥，故用 AI 核心驱动来并行）
+    // 制造与采矿并行允许（2026-09-08：制造带劳动者——主控手动与出海互斥，故用 AI 核心驱动来并行）
     state.aiCores['basic'] = 1
     state.skills.trained['ai-expert'] = 1 // 2026-09-08 AI 核心上限制
     expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
@@ -94,7 +95,7 @@ describe('T1 activityOverview 视图', () => {
     const kinds = acts.map((a) => a.kind).sort()
     expect(kinds).toContain('train')
     expect(kinds).toContain('mining')
-    expect(kinds).toContain('scan')
+    expect(kinds).not.toContain('scan') // 修前这里有一张「扫描探索」卡（含「终止」按钮）
     expect(kinds).toContain('ai') // 2026-09-08：AI 核心驱动的生产线并入 ⚙ AI 徽标（不再占玩家活动位）
     expect(kinds).not.toContain('manufacture')
     const train = acts.find((a) => a.kind === 'train')!
@@ -103,9 +104,6 @@ describe('T1 activityOverview 视图', () => {
     expect(train.percent).toBeGreaterThanOrEqual(0)
     const mining = acts.find((a) => a.kind === 'mining')!
     expect(mining.stop).toBe('stop-mining')
-    const scan = acts.find((a) => a.kind === 'scan')!
-    expect(scan.stop).toBe('stop-scan')
-    expect(scan.remainingMs).toBeGreaterThan(0)
     const mf = acts.find((a) => a.kind === 'ai' && a.id.startsWith('ai-prod-m'))!
     expect(mf.stop).toBe('cancel-manufacture')
     expect(mf.stopParam).toBeTruthy()

@@ -215,6 +215,7 @@ import {
   wormholeActivateAt,
   wormholeStartBattle,
   wormholeDebugReset,
+  acknowledgeScanView,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -1466,7 +1467,7 @@ export class GameEngine {
     return result
   }
 
-  /** V14 探索：终止扫描探索（就地扫描窗口进度会保存，下次续扫） */
+  /** V14 探索：召回扫描艇（就地扫描窗口进度会保存，下次续扫） */
   stopScanNow(): CommandResult {
     const result = stopScan(this.state, this.ctx)
     if (result.ok) {
@@ -1474,6 +1475,17 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  /**
+   * **玩家进「星图」看过 ⇒ 收掉扫描完成的高亮**（船长 2026-09-15：完成后进度条依旧存在并高亮，
+   * 直到玩家进入星图界面查看后才移除）。本来就没有待查看的 ⇒ 什么都不做（不落档、不通知）。
+   */
+  ackScanView(): void {
+    if (acknowledgeScanView(this.state)) {
+      void this.persist()
+      this.notify()
+    }
   }
 
   /**

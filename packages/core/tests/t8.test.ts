@@ -15,7 +15,7 @@ import {
   setAutoLoopBounty,
   startExpedition,
 } from '../src/expedition'
-import { isExplored, startScan } from '../src/explore'
+import { isExplored, scanAwaitingView, startScan } from '../src/explore'
 import { startMining } from '../src/mining'
 import { changeShip, repairWithKits, repairShip } from '../src/shipyard'
 import { goStandbyAt, startTransitHome } from '../src/location'
@@ -67,7 +67,7 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
     expect(state.awayGalaxy).toBeNull()
   })
 
-  it('失利/旧档返航仍可召回（口径不变）；扫描完成点亮后自动返航（不停留）', () => {
+  it('失利/旧档返航仍可召回（口径不变）；扫描完成当场点亮并收尾（2026-09-15 无人扫描艇，无返航段）', () => {
     const { state, ctx } = worldWithFarBounty()
     // —— 失利返航（无 returnReason 的旧档在途 back 同口径）：可召回（即时回港）——
     const exp = state.expedition
@@ -80,17 +80,15 @@ describe('T8（2026-09-06 语义：胜利自动返航）与重复冷却', () => 
     expect(recallDefeat.ok).toBe(true)
     expect(state.expedition.active).toBe(false)
     expect(state.awayGalaxy).toBeNull()
-    // —— 扫描完成：点亮 + 自动返航 ——
+    // —— 扫描完成：点亮 + 当场收尾（不再有"自动返航段"）+ 待查看高亮 ——
     const state2 = createInitialState({ nowWallMs: 0, seed: 5 })
     expect(startScan(state2, 'galaxy-far', ctx).ok).toBe(true)
     advanceGame(state2, 10 * 60_000, ctx) // 窗口走完
-    expect(state2.scanning.returning).toBe(true)
-    expect(state2.scanning.active).toBe(true)
-    expect(isExplored(state2, 'galaxy-far')).toBe(true)
-    expect(state2.awayGalaxy).toBeNull() // 完成不停留
-    for (let i = 0; i < 60 && state2.scanning.active; i++) advanceGame(state2, 60_000, ctx)
     expect(state2.scanning.active).toBe(false)
-    expect(state2.awayGalaxy).toBeNull()
+    expect(state2.scanning.returning).toBe(false)
+    expect(isExplored(state2, 'galaxy-far')).toBe(true)
+    expect(state2.awayGalaxy).toBeNull() // 完成不停留、也不牵动位置
+    expect(scanAwaitingView(state2)).toEqual({ galaxyId: 'galaxy-far' })
   })
 
   it('从野外驻留（掩护巡逻）出发打悬赏：胜利返航按 目标↔母港 1×单程计费（与出发地无关），落点母港', () => {

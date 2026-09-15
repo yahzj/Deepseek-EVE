@@ -145,7 +145,9 @@ export function calcExpeditionDurationMs(state: GameState, ctx: SimContext, anom
 /** 玩家战术选择 */
 export type BattleTacticChoice = 'assault' | 'mid' | 'kite'
 
-/** 按战术算期望距离（出发前/战斗中改战术均用；目标未指明时用当前远征目标） */
+/** 按战术算期望距离（出发前/战斗中改战术均用；目标未指明时用当前远征目标）。
+ * ⚠ **中距档分档**（2026-09-15 船长裁定）：**洞内战 = 中段 0.5**、**星图 = 射程带 0.8**
+ * ——由"当前是否在洞内交火"决定（与 `setBattleDesire` 同一判据：`state.wormhole.run.battle`）。 */
 export function battleTacticDesire(
   state: GameState,
   ctx: SimContext,
@@ -155,7 +157,9 @@ export function battleTacticDesire(
   const anomaly = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
   const me = createPlayerSpec(state, ctx, state.shipId)
   if (!anomaly || !me) return 0
-  return desiredRangeFor(me, tactic, ctx.balance.battle)
+  const inWormhole = state.wormhole.run?.battle != null
+  const band = inWormhole ? ctx.balance.battle.desireBandWormhole : ctx.balance.battle.desireBandStarMap
+  return desiredRangeFor(me, tactic, ctx.balance.battle, band)
 }
 
 /**
@@ -283,7 +287,6 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (cd > 0) {
     return { ok: false, error: `「${anomaly.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.round(cd / 1000))} 秒。` }
   }
-  if (state.scanning.active) return { ok: false, error: '扫描探索进行中：请先终止扫描。' }
   if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能出发远征——到站自动结算后再安排。' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
@@ -1253,7 +1256,6 @@ export function expeditionFeasibility(state: GameState, anomaly: AnomalyDef, ctx
   if (state.mining.active) return { ok: false, reason: '采矿中' }
   if (state.salvaging.active) return { ok: false, reason: '打捞中' }
   if (state.expedition.active) return { ok: false, reason: '远征中' }
-  if (state.scanning.active) return { ok: false, reason: '扫描探索中' }
   if (state.sideTasks.deliver !== null) return { ok: false, reason: '快递投送中' }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) return { ok: false, reason: `需声望 ${anomaly.standingReq}` }

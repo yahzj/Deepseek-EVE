@@ -110,7 +110,7 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     expect(byId('galactic-happenings').group).toBe('探索')
   })
 
-  it('**主控活动互斥**：采矿/打捞/远征/航行/待命/在洞内 都不许开扫', () => {
+  it('**主控活动互斥**：采矿/打捞/远征/航行/待命/在洞内 都不许开扫；**星系扫描已退出这张表**', () => {
     const a = fresh()
     expect(wormholeScanStart(a, ctx).ok).toBe(true)
     expect(wormholeScanStart(a, ctx).ok).toBe(false) // 已经在扫
@@ -121,9 +121,11 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     const c = fresh()
     c.salvaging.active = true
     expect(wormholeScanBlockReason(c) ?? '').toContain('打捞')
+    // 2026-09-15 船长：星系扫描 = 无人扫描艇（不占主控）⇒ 扫描中照样能开扫虫洞（修前报"主控正在扫描星系"）
     const d = fresh()
-    d.scanning.active = true
-    expect(wormholeScanBlockReason(d) ?? '').toContain('扫描星系')
+    d.scanning = { active: true, galaxyId: 'galaxy-hub', finishAtGameMs: 600_000, startedAtGameMs: 0, originGalaxy: null }
+    expect(wormholeScanBlockReason(d)).toBeNull()
+    expect(wormholeScanStart(d, ctx).ok).toBe(true)
     const e = fresh()
     e.expedition.active = true
     expect(wormholeScanBlockReason(e) ?? '').toContain('远征')

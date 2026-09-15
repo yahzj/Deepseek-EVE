@@ -441,7 +441,7 @@ describe('B1 暴露面收敛（2026-09-06 船长：移动状态不暴露——�
     expect(state.encounter.active).toBe(false)
   })
 
-  it('打捞返航段 / 扫描自动返航段不暴露；打捞与扫描"作业中"相位照常暴露', () => {
+  it('打捞返航段不暴露；打捞"作业中"相位照常暴露（扫描已于 2026-09-15 整体退出暴露清单）', () => {
     // 打捞：返航段不暴露
     const w1 = lowWorld()
     w1.state.salvaging.active = true
@@ -454,12 +454,16 @@ describe('B1 暴露面收敛（2026-09-06 船长：移动状态不暴露——�
     let hit1 = false
     for (let i = 0; i < 300 && !hit1; i += 1) hit1 = rollLowSecAmbush(w1.state, w1.ctx)
     expect(hit1).toBe(true)
-    // 扫描：自动返航段不暴露（扫描窗口段本就有 t25 覆盖）
+    /**
+     * **星系扫描：整条退出暴露清单**（船长 2026-09-15：扫描 = 派出无人扫描艇 ⇒ 不在场、没得打）。
+     * 修前这里钉的是"扫描窗口段暴露、自动返航段不暴露"两档；返航段本身也已随无人化取消。
+     * ⚠ 「扫描虫洞」的暴露**未动**（仍是 `kind: '扫描'` 那一档，见 encounters.ts）。
+     */
     const w2 = lowWorld()
     w2.state.scanning.active = true
     w2.state.scanning.galaxyId = 'galaxy-far'
-    w2.state.scanning.returning = true
-    for (let i = 0; i < 60; i += 1) expect(rollLowSecAmbush(w2.state, w2.ctx)).toBe(false)
+    w2.state.scanning.returning = false
+    for (let i = 0; i < 300; i += 1) expect(rollLowSecAmbush(w2.state, w2.ctx)).toBe(false)
     expect(w2.state.encounter.active).toBe(false)
   })
 })

@@ -1197,7 +1197,6 @@ export function shipActivityBusy(state: GameState, shipId: string): string | nul
   if (state.hauling.active) return '长途运输中'
   if (state.sideTasks.deliver !== null) return '快递投送中'
   if (state.standby.active) return '掩护巡逻中'
-  if (state.scanning.active) return '扫描探索中'
   if (state.wormholeScan?.active === true) return '扫描虫洞中'
   if (state.expedition.active) return '远征中'
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉精炼中'

@@ -58,7 +58,6 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
     state.mining.active ||
     state.salvaging.active ||
     state.expedition.active ||
-    state.scanning.active ||
     state.standby.active ||
     state.transit.active
   const haulingActive = state.hauling.active

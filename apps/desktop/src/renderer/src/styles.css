@@ -5335,11 +5335,14 @@ body {
 
   }
 
-  /* 「我的挂单」在窄窗不再吃 40% 上限（整页滚动底下没有"抢高度"的问题）；面板体内滚由 JS 按内容高放开 */
+  /* 「我的挂单」在窄窗按内容高（整页滚动底下没有"抢高度/被压缩"的问题）⇒ 上下限一律放开
+     （宽窗那套给它的也是"不加上下限"，这里只是把可能继承到的帽子清掉） */
 
   .app-mkt-page .app-mkt-right > .wui-panel:last-child {
 
     max-height: none;
+
+    min-height: 0;
 
   }
 
@@ -5355,7 +5358,9 @@ body {
 
   gap: 12px;
 
-  /* 铺满面板体（体高确定 ⇒ 子项可折算高度：折线图据此上下浮动，船长 2026-09-14） */
+  /* 铺满面板体：**面板有确定高度时**（窗口矮、详情被挤到压缩区）子项才折算高度、折线图跟着缩；
+     面板按内容高时（窗口够高，2026-09-15 起的常规态）这条 `height: 100%` 自然解析成 auto ⇒
+     各块按自身高度排布，详情不会被拉长。 */
 
   height: 100%;
 
@@ -5379,16 +5384,18 @@ body {
 
   position: relative;
 
-  /* 折线图高度**跟详情面板高度挂钩**（2026-09-14 船长：「市场详细页面依旧有滚动条，建议压缩折线图高度
-     （折线图高度和市场详细页面的高度挂钩。但是不要过度压缩）」）：详情卡铺满面板体（见 .app-mkt-detail），
-     折线图吃掉富余高度——有空长回 130px（原固定值，观感不变），紧了往下缩、**最低 64px**（不过度压缩）；
-     再紧才轮到面板体出内滚。读数：1280×800 下 123 个商品里 89 个原本会出 1~N px 内滚。 */
+  /* 折线图 = **常规高 130px**（不再是"吃掉富余高度"的那一块）——2026-09-15 船长改判：
+     富余高度归「我的挂单」，市场详情按**内容自然高**封顶 ⇒ 折线图只需保住自己的常规高；
+     窗口真矮（详情面板被挤）时才往下缩，**最低 64px**（不过度压缩）；再紧由面板体出内滚。
 
-  flex: 1 1 auto;
+     历史口径（2026-09-14：「折线图高度跟面板高度挂钩、不要过度压缩」）在**压缩侧**仍然成立
+     ——`flex-shrink: 1` + `min-height: 64px` 就是那条下限；变的只是"多出来的高度不再喂给它"。 */
+
+  flex: 0 1 auto;
+
+  height: 130px;
 
   min-height: 64px;
-
-  max-height: 130px;
 
 }
 
@@ -5450,13 +5457,13 @@ body {
 
 .app-mkt-chart-empty {
 
-  /* 无历史样本时的占位：与折线图同一条高度口径（跟面板挂钩、能缩到 64px） */
+  /* 无历史样本时的占位：与折线图同一条高度口径（常规 130px、能缩到 64px；2026-09-15 起不再吃富余） */
 
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+
+  height: 130px;
 
   min-height: 64px;
-
-  max-height: 130px;
 
   display: flex;
 
@@ -8353,6 +8360,82 @@ body {
 
 }
 
+/* 星系扫描条（船长 2026-09-15：扫描不占主控 ⇒ 不列进「玩家活动」，改摆在 AI 徽标右侧；
+   完成后再留格高亮，玩家进「星图」查看才收起）。容器定宽 + 名称省略号：剩余时间/星系名长短
+   都不引起活动窗头部跳动（同级相似项 = 上面两枚 AI 徽标）。 */
+
+.app-activitybar-scan {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  width: 200px;
+
+  min-width: 120px;
+
+  flex-shrink: 1;
+
+  box-sizing: border-box;
+
+  cursor: pointer;
+
+  font-family: inherit;
+
+  font-size: 11px;
+
+  color: var(--wui-text-dim);
+
+  padding: 2px 8px;
+
+  border: 1px dashed rgba(120, 200, 255, 0.3);
+
+  border-radius: 6px;
+
+  background: rgba(120, 200, 255, 0.05);
+
+}
+
+.app-activitybar-scan:hover { background: rgba(120, 200, 255, 0.12); }
+
+.app-activitybar-scan .app-activitybar-track { width: 56px; flex-shrink: 0; }
+
+.app-activitybar-scan-name {
+
+  flex: 1;
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+}
+
+.app-activitybar-scan-time { flex-shrink: 0; font-size: 10.5px; font-family: var(--wui-mono); }
+
+/* 已完成待查看：满格 + 金色高亮（进「星图」看过即收；见 ActivityBar 的 ackScanView） */
+
+.app-activitybar-scan.is-done {
+
+  border-style: solid;
+
+  border-color: rgba(232, 180, 90, 0.65);
+
+  background: rgba(232, 180, 90, 0.14);
+
+  color: var(--wui-gold);
+
+}
+
+.app-activitybar-scan.is-done .app-activitybar-fill { background: var(--wui-gold); }
+
+.app-activitybar-scan.is-done .app-activitybar-scan-time { color: var(--wui-gold); }
+
 /* V16.2 vertical hp layers (shield blue / armor red / hull yellow, top-down) (ASCII-safe) */
 
 .app-battle-hp { display: flex; flex-direction: column; gap: 3px; width: 100%; }
@@ -9571,17 +9654,27 @@ body {
 
 /* ---------- market right column stretch ----------
    2026-09-08 初版：右栏富余高度全给**最后一个**面板（「我的挂单」）——目的是与左栏同高。
-   2026-09-14 船长（甲）：「市场详情面板太矮，右栏空的高度全跑到我的挂单」⇒ **改判**：
-   富余高度给**第一个**面板（「市场详情」= 右栏主内容）；「我的挂单」按内容高、
-   最多占右栏 40%（单子多了在自己面板体内滚）⇒ 详情不会被挂单列表挤扁。 */
+   2026-09-14 船长（甲）：「市场详情面板太矮，右栏空的高度全跑到我的挂单」⇒ 改判：富余给**第一个**面板
+   （「市场详情」）、「我的挂单」≤ 右栏 40%。
+   **2026-09-15 船长再改判（现行口径）**：「**保证订单详细内容不会被压缩的基础上，多余的给我的订单**」
+   ＋（同日澄清）「**我的意思是，保证订单详细窗口的上限和下限，我的订单不用上下限控制**」⇒ 即：
+   ① **上下限只加在「订单详细窗口」（市场详情面板）上**：
+      · **上限 = 内容自然高**（`flex-grow: 0` ⇒ 窗口再高也不把它拉长、底部不留白）；
+      · **下限 = `min-height: 400px`**（≈ 内容压缩底：面板头 37 ＋ 内边距 20 ＋ 折线图 64 ＋ 报价 22 ＋
+        买卖盘 5 档 105 ＋ 交易面板 ≈120 ＋ 块间距 24；取 400 略高于实测底，保证"压到下限时不出内滚"）
+        ⇒ 窗口矮到一定程度它就不再让位，改由**面板体内滚**兜底（绝不裁内容）。
+   ② **「我的挂单」不加任何上下限**（`flex: 1 1 auto` ＋ `max-height: none` ＋ `min-height: 0`）：
+      窗口有富余就把富余全给它（"多余的给我的订单"），窗口不够就先让它让位（可见行数由
+      `MarketPage.MyOrders` 量成「整行」写进面板体，超出的在面板体内滚）。
+   ⇒ 2026-09-14「甲」那条旧分配**已作废**；2026-09-15 早先给挂单设的 150px 下限**已按澄清撤回**。 */
 
-.app-mkt-right > .wui-panel:first-child { flex: 1 1 auto; min-height: 0; }
+.app-mkt-right > .wui-panel:first-child { flex: 0 1 auto; min-height: 400px; }
 
-/* 「我的挂单」：高度上限 = 右栏 40%（超出部分在面板体内滚），**但不参与 flex 收缩**
-   （`flex: 0 0 auto`）——可见高度由 MarketPage.MyOrders 量成「整行」写进面板体（船长 2026-09-14：
-   「全屏时订单的第七条会被遮住一半」）；若还允许收缩，flex 会在它身上再压几像素，把刚对齐的整行又切掉。 */
+/* 「我的挂单」：吃掉富余（`flex: 1 1 auto`）、**不加上下限**（上限不封、下限 0）；
+   可见行数由 MarketPage.MyOrders 量成「整行」写进面板体（船长 2026-09-14：
+   「全屏时订单的第七条会被遮住一半」），超出的在面板体内滚。 */
 
-.app-mkt-right > .wui-panel:last-child { flex: 0 0 auto; max-height: 40%; min-height: 0; }
+.app-mkt-right > .wui-panel:last-child { flex: 1 1 auto; max-height: none; min-height: 0; }
 
 /* ---------- market page fill chain (2026-09-08 no-scroll) ---------- */
 

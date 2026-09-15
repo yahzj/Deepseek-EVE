@@ -134,7 +134,8 @@ export function wormholeStockFull(state: GameState): boolean {
   return wormholeStockOf(state).length >= wormholeStockMaxOf(state)
 }
 
-/** 能不能开扫（主控活动互斥：与采矿/打捞/扫描/远征/待命/过境/虫洞探索同一把尺） */
+/** 能不能开扫（主控活动互斥：与采矿/打捞/远征/待命/过境/虫洞探索同一把尺。
+ *  ⚠ **不含"扫描星系"**——船长 2026-09-15：无人扫描艇不占主控 ⇒ 扫描进行中照样能开扫） */
 export function wormholeScanBlockReason(state: GameState): string | null {
   // 解锁门槛（船长 2026-09-14）：协会声望 ≥ 40 才开放扫描虫洞 —— 放在最前面，理由最有用
   if (!wormholeScanUnlocked(state)) {
@@ -144,7 +145,6 @@ export function wormholeScanBlockReason(state: GameState): string | null {
   if (state.encounter.active) return '遭遇战未决：先处理完当前遭遇。'
   if (state.mining.active) return '主控正在采矿：一台主控同时只能干一件事。'
   if (state.salvaging.active) return '主控正在打捞：一台主控同时只能干一件事。'
-  if (state.scanning.active) return '主控正在扫描星系：一台主控同时只能干一件事。'
   if (state.expedition.active) return '主控正在远征：一台主控同时只能干一件事。'
   if (state.transit.active) return '主控正在航行：到港后再开始扫描。'
   if (state.standby.active) return '主控正在待命：先取消待命。'
