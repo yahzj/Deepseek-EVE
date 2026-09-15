@@ -174,7 +174,8 @@ function build(): { rows: DocRow[]; text: string } {
   const AUTHORITY = ['AGENTS.md', 'docs/development-conventions.md', 'docs/architecture.md', 'docs/glossary.md', 'docs/roadmap.md', 'docs/content-workbench.md', 'docs/development-conventions-changelog.md']
   const groupOf = (rel: string): string => {
     if (AUTHORITY.includes(rel)) return '一、权威文档（开工必读）'
-    if (rel.startsWith('docs/design/archive/')) return '四、已归档（design/archive）'
+    if (rel.startsWith('docs/archive/')) return '九、封存卷（archive · 冻结件，只读不改）'
+    if (rel.startsWith('docs/design/archive/')) return '四、已归档设计稿（design/archive）'
     if (rel.startsWith('docs/design/battle-data/')) return '五、专题：战斗数据（design/battle-data）'
     if (rel.startsWith('docs/design/ship-battle-art/')) return '六、专题：舰船美术（design/ship-battle-art）'
     if (rel.startsWith('docs/review/')) return '七、评审与体检（review）'
