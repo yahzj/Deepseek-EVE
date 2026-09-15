@@ -73,7 +73,17 @@ const ROWS: Row[] = [
   { id: 'P5', label: '王鲭 4×近防炮MK1 + 机巢（无人机舰·中技能）', ship: 'sh-sentinel', high: [PD, PD, PD, PD], mid: TANK.slice(0, 2), low: TANKL.slice(0, 2), skills: MID, desireM: 1000 },
 ]
 
-const CARDS = ['ano-titan-wreck', 'ano-auro-raiders', 'ano-core-section', 'ano-nadir-static']
+const CARDS = [
+  'ano-titan-wreck',
+  'ano-auro-raiders',
+  'ano-core-section',
+  'ano-nadir-static',
+  // 2026-09-15 洞内敌卡扩充：**虫洞内两张带机群的卡**——C 族「孢群巢穴」（孢群机 ×3 · 攻坚机档 88 血）
+  // 与 G 族「残军战列线」（蜂群机 动能/等离子/爆炸 各 1）。装配/技能/播种与上面四张同口径，
+  // 用来量"新机型能不能被近防炮打掉"（设计稿 `wormhole-foe-variety-20260915.md` §八 风险①）。
+  'wh-alien-hive',
+  'wh-exile-line',
+]
 const SEEDS = [1, 7, 13, 29, 51]
 
 function makeState(r: Row, seed: number): GameState {
