@@ -713,6 +713,23 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     expect(battle.distanceM).toBeLessThanOrEqual(openM)
   })
 
+  it('**洞内默认期望维持中段**（2026-09-15 船长裁定：星图抬到 0.8、洞里不变）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    standOnPlace(run, 'ship')
+    expect(wormholeStartBattle(state, ctx, 'node', 0).ok).toBe(true)
+    const me = createPlayerSpec(state, ctx, run.fleet[0]!)!
+    const bal = ctx.balance.battle
+    expect(bal.desireBandWormhole).toBe(0.5) // 洞里 = 中段（本条就是它的护栏）
+    expect(bal.desireBandStarMap).toBe(0.8) // 星图 = 射程带高位
+    expect(run.desireM ?? null).toBeNull() // 本趟没设过期望距离 ⇒ 走洞内默认档
+    const midPos = desiredRangeFor(me, 'mid', bal)
+    const starPos = desiredRangeFor(me, 'mid', bal, bal.desireBandStarMap)
+    expect(midPos).toBeLessThan(starPos) // 中段比星图档近（本船射程带 min < max）
+    // 洞内取中段；开战距离（= 双方最远射程×1.1）恒大于中段 ⇒ 不会被钳，故可直接相等断言
+    expect(run.battle!.myDesireM).toBe(midPos)
+  })
+
   it('**逐拍重建与开战同源**：敌人真能打疼你（首版就错在这里——血强化了、炮还是自然值）', () => {
     const state = enterRun(7)
     const run = state.wormhole.run!

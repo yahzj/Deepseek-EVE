@@ -767,6 +767,13 @@ export interface BattleBalance {
   openRangePadM: number
   /** 缓冲比例：开战缓冲 = max(100m 下限 openRangePadM, 双方最远射程×本比例)（默认 0.1 = 10%） */
   openRangePadShare: number
+  /**
+   * **默认期望交距在主武器有效射程带内的位置**（0 = 最小射程 · 0.5 = 中点 · 1 = 最大射程）。
+   * 2026-09-15 船长裁定（玩家报「赏金任务初始距离非常近、对远程武器不利」）：星图默认 **0.8**、
+   * 洞内维持 **0.5**。贴脸/风筝两档不受影响。
+   */
+  desireBandStarMap: number
+  desireBandWormhole: number
   /** 舰船 maxSpeedMps 参与距离收敛的比例（战斗机动速度 = speed × speedFactor ×(1±agilitySpeedBonus)） */
   speedFactor: number
   agilitySpeedBonus: number

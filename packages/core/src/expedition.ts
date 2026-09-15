@@ -145,7 +145,9 @@ export function calcExpeditionDurationMs(state: GameState, ctx: SimContext, anom
 /** 玩家战术选择 */
 export type BattleTacticChoice = 'assault' | 'mid' | 'kite'
 
-/** 按战术算期望距离（出发前/战斗中改战术均用；目标未指明时用当前远征目标） */
+/** 按战术算期望距离（出发前/战斗中改战术均用；目标未指明时用当前远征目标）。
+ * ⚠ **中距档分档**（2026-09-15 船长裁定）：**洞内战 = 中段 0.5**、**星图 = 射程带 0.8**
+ * ——由"当前是否在洞内交火"决定（与 `setBattleDesire` 同一判据：`state.wormhole.run.battle`）。 */
 export function battleTacticDesire(
   state: GameState,
   ctx: SimContext,
@@ -155,7 +157,9 @@ export function battleTacticDesire(
   const anomaly = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
   const me = createPlayerSpec(state, ctx, state.shipId)
   if (!anomaly || !me) return 0
-  return desiredRangeFor(me, tactic, ctx.balance.battle)
+  const inWormhole = state.wormhole.run?.battle != null
+  const band = inWormhole ? ctx.balance.battle.desireBandWormhole : ctx.balance.battle.desireBandStarMap
+  return desiredRangeFor(me, tactic, ctx.balance.battle, band)
 }
 
 /**
