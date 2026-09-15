@@ -575,6 +575,9 @@ export {
   // 族定选靶（船长 2026-09-15「选靶按照族限定」）
   WORMHOLE_FAMILY_TARGETING,
   WORMHOLE_FAMILY_TARGETING_CHANCE,
+  // 玩家可见威胁的显示倍率（船长 2026-09-15「面板威胁乘以2」；只影响界面读数）
+  WORMHOLE_DISPLAY_THREAT_MUL,
+  wormholeDisplayThreat,
 } from './wormholeFoes'
 export type { WormholeCardTier, WormholeFoeKind } from './wormholeFoes'
 

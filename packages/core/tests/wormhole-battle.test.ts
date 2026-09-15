@@ -27,6 +27,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_BOSS_TARGETING_CHANCE,
   WORMHOLE_CARD_TIERS,
+  WORMHOLE_DISPLAY_THREAT_MUL,
   WORMHOLE_FAMILY_ORDER,
   WORMHOLE_FAMILY_TARGETING,
   WORMHOLE_FAMILY_TARGETING_CHANCE,
@@ -45,6 +46,7 @@ import {
   wormholeCardOfTier,
   wormholeCardPoolAt,
   wormholeDescend,
+  wormholeDisplayThreat,
   wormholeEnter,
   wormholeExtract,
   wormholeExtractThreat,
@@ -216,6 +218,27 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
      * 写回 `null`，上面三条 not-null 断言会立刻红，提醒"池会静默退化"，不会静默出事。
      */
     expect(wormholeCardPoolAt('G', 1).map((e) => e.tier)).toEqual(['shallow'])
+  })
+
+  it('面板威胁是**显示口径 ×2**（船长 2026-09-15「玩家会因为 1 层的 50 威胁误判」），引擎威胁一字不动', () => {
+    // 显示口径：×2 取整（1 层面板显示 90，而不是 45）
+    expect(WORMHOLE_DISPLAY_THREAT_MUL).toBe(2)
+    expect(wormholeDisplayThreat(45)).toBe(90)
+    expect(wormholeDisplayThreat(52)).toBe(104)
+    expect(wormholeDisplayThreat(54)).toBe(108)
+    expect(wormholeDisplayThreat(42)).toBe(84)
+    /**
+     * ⚠ **零漂移守卫**：显示倍率**绝不许**渗进引擎 —— 引擎的 `threat` 是血预算的输入
+     * （`foeHpOfThreat(威胁) × 10`）⇒ 一旦被乘 2，敌人血量会整体翻倍（那是难度改动、不是显示改动）。
+     * 判据用**真数据**：层曲线 / 用途取值 / 派生卡面 threat 三处都必须还是原值。
+     */
+    expect(wormholeLayerThreat(1)).toBe(45)
+    expect(wormholeFoeThreat(1, 'node')).toBe(45)
+    expect(wormholeFoeThreat(1, 'boss')).toBe(54)
+    expect(wormholeFoeThreat(2, 'extract')).toBe(42)
+    const base = ctx.anomalies.get('wh-pirate-scout')!
+    const derived = wormholeDerivedAnomaly(ctx, base, { depth: 1, kind: 'node', waves: 1 })
+    expect(derived.threat).toBe(45) // 派生卡面照旧（血预算就按它算）
   })
 
   it('C 族深层卡（孢群巢穴）：无人机舰 —— 机群吃掉 60% 火力、机型是 C 族孢群机', () => {

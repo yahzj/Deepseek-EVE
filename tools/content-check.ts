@@ -1021,6 +1021,31 @@ for (const m of MODULES) {
     `· 战斗宿主双口径契约：BattleScreen 非注释行 ${bsLines.length} 行 ⇒ \`expedition.anomalyId\` 0 处 · ` +
       `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支`,
   )
+
+  /* ── 洞内威胁「显示口径」契约（船长 2026-09-15：「虫洞的面板威胁（显示给玩家看的）建议乘以2，
+   *    玩家目前会因为 1 层的 50 威胁出现误判」）──
+   * 洞内面板的威胁读数一律走 `wormholeDisplayThreat()`（显示 = 引擎威胁 × 2）。
+   * 本契约挡两种回潮：① 面板又去**裸渲染**引擎威胁（玩家又会误判）；② 有人把显示倍率用歪到引擎侧。
+   * 口径依据：引擎的 `threat` 是**血预算的输入**（`foeHpOfThreat(威胁) × 10`）——乘 2 就是难度翻倍。 */
+  {
+    const whPath = 'apps/desktop/src/renderer/src/panels/Wormhole.tsx'
+    const whLines = stripComments(readSrc(whPath))
+    const rawPatterns = ['{nodeThreat}', '${extractThreat}', '威胁 {wormholeLayerThreat(']
+    const offenders = whLines.filter((l) => rawPatterns.some((p) => l.includes(p)))
+    check(
+      offenders.length === 0,
+      `洞内威胁显示契约：${whPath} 里有 ${offenders.length} 处**裸渲染**引擎威胁` +
+        `（${offenders.map((l) => l.trim().slice(0, 50)).join(' / ')}）——` +
+        `面板威胁一律走 \`wormholeDisplayThreat(...)\`（×2 显示口径；引擎值不变）`,
+    )
+    check(
+      whLines.some((l) => l.includes('wormholeDisplayThreat(')),
+      `洞内威胁显示契约：${whPath} 没有任何 \`wormholeDisplayThreat(...)\` 调用——面板威胁读数丢了显示口径`,
+    )
+    console.log(
+      `· 洞内威胁显示契约：面板三处读数（本层 / 撤离 / 下一层）均走 \`wormholeDisplayThreat\`（引擎威胁 ×${2}）· 裸渲染 0 处`,
+    )
+  }
 }
 
 // 舰船

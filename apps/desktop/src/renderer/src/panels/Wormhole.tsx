@@ -43,6 +43,8 @@ import {
   wormholeFoeThreat,
   wormholeExtractThreat,
   wormholeLayerThreat,
+  /** 玩家可见威胁的显示口径（×2；船长 2026-09-15「面板威胁乘以2」）——**只乘给人看的数字** */
+  wormholeDisplayThreat,
   WORMHOLE_HOLD_COLS,
   /** 临时空间（船长 2026-09-14）：4 列 × 8 行 = 32 格 */
   WORMHOLE_TEMP_CELLS,
@@ -1442,7 +1444,7 @@ export function WormholePanel({
                  * 撤离掩护器只压撤离战；三档**各自 −50% 封顶**（在 core 的派生里夹好）。
                  */}
                 <span className="app-wh-cell" title={matterThreatTip}>
-                  本层威胁 <b>{nodeThreat}</b>
+                  本层威胁 <b>{wormholeDisplayThreat(nodeThreat)}</b>
                 </span>
               </div>
               {grid && hereCell ? (
@@ -1457,7 +1459,7 @@ export function WormholePanel({
                         ⚠ 确认要撤离本趟吗？ 当前 <b>第 {run.depth} 层</b>
                         {run.depth < WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH
                           ? '：第 1 层没有拦截舰队，货物直接入港。'
-                          : `：拦截舰队会围堵你（威胁 ${extractThreat}）——打赢才把货仓与货柜带回去，打输 = 本趟全损。`}
+                          : `：拦截舰队会围堵你（威胁 ${wormholeDisplayThreat(extractThreat)}）——打赢才把货仓与货柜带回去，打输 = 本趟全损。`}
                       </span>
                       <span className="app-wh-actions">
                         <button
@@ -1661,7 +1663,7 @@ export function WormholePanel({
                         >
                           继续深入
                           <span className="app-wh-scan-sub">
-                            第 {run.depth + 1} 层 · 威胁 {wormholeLayerThreat(run.depth + 1)}
+                            第 {run.depth + 1} 层 · 威胁 {wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}
                           </span>
                         </button>
                       ) : null}

@@ -15,6 +15,25 @@ import type { WormholeFamily } from './state'
 
 /** 第 1 层基准威胁 */
 export const WORMHOLE_THREAT_BASE = 45
+
+/**
+ * **玩家可见威胁的显示倍率**（船长 2026-09-15：「**虫洞的面板威胁（显示给玩家看的）建议乘以2**，
+ * 玩家目前会因为 1 层的 50 威胁出现误判」）。
+ *
+ * ⚠⚠ **只乘"给人看的那个数字"，绝不动引擎的 `threat`**：洞内的 `threat` 是**血预算的输入**——
+ * `foeHpOfThreat(威胁) × WORMHOLE_FOE_BASE_STRENGTH_MUL(10)`（见 `combat.wormholeDerivedAnomaly`），
+ * 动它等于把敌人血量整体翻倍 ⇒ 那是**难度改动**，不是显示改动（本常量只服务界面）。
+ *
+ * 为什么需要它：洞内一张卡的总血 = **单船威胁曲线 × 10**（4 舰对 4 舰口径）⇒ 同样写着"威胁 45"，
+ * 洞内的实际体量远大于悬赏线上的同数字卡，玩家按悬赏经验读会误判"50 威胁很轻松"。
+ * 一个数可调：要改观感只动本值（界面三处读数全部走 `wormholeDisplayThreat`）。
+ */
+export const WORMHOLE_DISPLAY_THREAT_MUL = 2
+
+/** **玩家可见的洞内威胁**（显示口径 = 引擎威胁 × `WORMHOLE_DISPLAY_THREAT_MUL`，取整；不参与任何引擎计算） */
+export function wormholeDisplayThreat(threat: number): number {
+  return Math.round(threat * WORMHOLE_DISPLAY_THREAT_MUL)
+}
 /** 每层**威胁**增幅（等比 ×1.16 ⇒ 层 1~3 = 45/52/61，与设计稿"≈45~60"同量级） */
 export const WORMHOLE_THREAT_GROWTH = 0.16
 /** 每层**收益**增幅（等比 ×1.2）。**必须大于威胁增幅** —— 船长 2026-09-13：
