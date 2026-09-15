@@ -17,7 +17,7 @@ import { spawnSync } from 'node:child_process'
 import * as ts from 'typescript'
 import ExcelJS from 'exceljs'
 import { ANOMALIES, BELTS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
-import { tableOf, type ColSpec } from './content-schema'
+import { normalizeHead, tableOf, type ColSpec } from './content-schema'
 
 /* ═══════════ CSV 解析（标准：引号转义/BOM/编码与分隔符自动容错） ═══════════
  * Excel/WPS 保存 CSV 有各种变体：UTF-8 或 ANSI(GBK) 编码、逗号或 Tab 分隔——
@@ -448,7 +448,19 @@ async function main(): Promise<void> {
     process.exit(2)
   }
   const loaded = await loadTableFile(csvPath, spec.name)
-  const head = loaded.head
+  /**
+   * **表头归一化**（2026-09-15 船长「按照新名词改名」）：表头里的中文说明词跟随现行术语后，
+   * 改名之前导出的文件仍在用旧表头 ⇒ 先按 `HEAD_ALIASES` 映射回现行写法再匹配列，
+   * 免得那几列被判成"未知表头"而静默不回写（用到即提示重导）。
+   */
+  const rawHead = loaded.head
+  const head = rawHead.map(normalizeHead)
+  const aliased = rawHead.filter((h, i) => h.trim() !== head[i])
+  if (aliased.length > 0) {
+    console.warn(
+      `ℹ️ 文件里有 ${aliased.length} 个旧表头列，已按现行术语映射（建议重新 npm run content:export 取干净文件）：${aliased.slice(0, 6).join('、')}`,
+    )
+  }
   const dataRows = loaded.data
   if (dataRows.length === 0) {
     console.error('文件无数据行（首行是表头）')
