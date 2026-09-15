@@ -5,37 +5,12 @@
 > 并回报船长同步本文件。所有会话(一号/二号/三号/新助手)开工先读本文件。
 
 ## 0. 开工顺序
-1. 读本文件 → 2. 按下面「目录索引」只读**本次任务需要**的那几份 → 3. 看代码现状,不凭记忆/猜测写。
+1. 读本文件 → 2. **读 `docs/catalog.md`（文档目录）**，只读本次任务需要的那几份 → 3. 看代码现状,不凭记忆/猜测写。
    (例外:首次接手/大工程开工/压缩后续接,才通读 `docs/development-conventions.md`。)
 
-## 0.1 目录索引(按任务类型指路——不必通读全部文档)
-
-| 任务类型 | 先读这些(按序) |
-|---|---|
-| **任何改动** | 本文件 §2 四步闸门 · §3 验证闭环 · §4 工作区与合入纪律 |
-| **记一件工作 / 写文档** | 本文件 §8（工作文档 → 归档）＋ `development-conventions.md` **§十五**；**先建工作文档，别改旧文档** |
-| 改 UI / 页面 / 视觉物件 | `development-conventions.md` **§九**(UI 与视觉一致性) + **§十四**(表现层实现与性能纪律) + 同级相似界面代码 |
-| 改战斗 / 表现层 / 动画 | §九 + **§十四** + `docs/design/` 里对应设计稿(如 `drone-combat-animation-20260910.md`) |
-| 改数值 / 经济 / 平衡 | §一(闸门) §二(验证) §八 + 对应设计稿 + `tools/*`(校准脚本,如 `battle:calibrate`) |
-| 改存档结构 / 迁移 | §八 + `docs/architecture.md` + 只读真档或先备份 |
-| 写/改玩家可见文案 | §十三(文案纯净与设定) §十一(术语) + `docs/glossary.md` |
-| 准备更新公告 | §十二(公告与发布审核) + `docs/design/announcement-draft-*.md`(待审稿) |
-| 新建/收尾工具 | §十(工具纪律:正式入库 / `_` 临时探针收尾处置) |
-| 多 agent 并行 / 合入 / 推送 | §三(工作区与合入纪律、推送闸门) |
-| 交接 / 续接 / 被压缩后 | §六 + `docs/roadmap.md`(最近批次与状态) |
-| 查历史决策与旧口径 | `docs/roadmap.md` + `development-conventions-changelog.md` + `docs/design/*` |
-| 交付可测存档 | §八 + `docs/test-saves/` + `tools/make-test-save.ts` |
-
-**文档清单(用途一览)**
-- `docs/development-conventions.md` — 约定**权威正文**(一~十五章);第十六章只留变更记录指针。
-- `docs/development-conventions-changelog.md` — 约定与 AGENTS.md 的**历次变更记录**(最新在前;干活不必读)。
-- `docs/architecture.md` — 架构与模块边界。
-- `docs/glossary.md` — **术语权威**;新术语先登记再用(§8 例外:词条登记可随时写)。
-- `docs/roadmap.md` — 路线图:待办活面 + **最近批次滚动窗口** + 封存卷索引(更早批次在 `docs/archive/`)。
-- `docs/INDEX.md` — **全仓文档索引**(`npm run docs:index` 生成,禁手改);`docs/archive/` — 封存卷(冻结件,只读不改)。
-- `docs/design/*` — 各系统设计稿(现约 100 份,以目录为准) + 公告待审稿 `announcement-draft-*.md` + 交接件 `handoff-*.md`/`handover-*.md`。
-- `docs/test-saves/` — 可复现测试档说明;`packages/data/src/announcements.ts` — 公告数据(仅经船长批准后写入)。
-
+## 0.1 文档目录（指路）
+- 按任务类型该读哪几份 · 权威文档清单 · 检索查证顺序 ⇒ **docs/catalog.md**（开工按它指路）。
+- 压缩/续接后上下文中没有它 ⇒ 先重读这份目录，不凭记忆猜该读哪份。
 
 ## 1. 语言与汇报
 - 一律中文:面向船长的沟通、思考呈现、总结、文档、代码注释、游戏文案、日志。

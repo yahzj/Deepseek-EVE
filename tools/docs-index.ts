@@ -3,8 +3,9 @@
  *
  * 为什么要有它：
  * - `docs/` 下已有 **300+ 份 md**（设计稿 275 · 评审 12 · 测试档 75 · 根 6），
- *   而**唯一的路由入口**一直是 `AGENTS.md` §0.1 那张"按任务类型指路"的表——它只覆盖常读的几份，
- *   剩下两百多份设计稿"存在但找不到"。
+ *   而**唯一的路由入口**一直只有 `AGENTS.md` 里那张"按任务类型指路"的表——它只覆盖常读的几份，
+ *   剩下两百多份设计稿"存在但找不到"（2026-09-15 起指路表迁到 `docs/catalog.md`，本工具与其分工：
+ *   catalog 手写指路"该读哪份"，本工具生成全仓清册"有哪些文档"）。
  * - 手工维护索引必漂（这份表的每一行都能从文件名/首行自动推出来）⇒ **一律机器生成、禁止手改**。
  *
  * 口径（三号 2026-09-15 定，随"文档索引"批落地）：
@@ -171,7 +172,7 @@ function build(): { rows: DocRow[]; text: string } {
   })
 
   // ── 分组 ──
-  const AUTHORITY = ['AGENTS.md', 'docs/development-conventions.md', 'docs/architecture.md', 'docs/glossary.md', 'docs/roadmap.md', 'docs/content-workbench.md', 'docs/development-conventions-changelog.md']
+  const AUTHORITY = ['AGENTS.md', 'docs/catalog.md', 'docs/development-conventions.md', 'docs/architecture.md', 'docs/glossary.md', 'docs/roadmap.md', 'docs/content-workbench.md', 'docs/development-conventions-changelog.md']
   const groupOf = (rel: string): string => {
     if (AUTHORITY.includes(rel)) return '一、权威文档（开工必读）'
     if (rel.startsWith('docs/archive/')) return '九、封存卷（archive · 冻结件，只读不改）'
@@ -202,7 +203,7 @@ function build(): { rows: DocRow[]; text: string } {
   L.push('> **本表由 `npm run docs:index`（`tools/docs-index.ts`）自动生成，禁止手改**——改文档后重跑即刷新。')
   L.push('> **只读**：生成器不改任何既有文档，只覆写本文件；`--check` 模式只校验不写。')
   L.push('>')
-  L.push('> **怎么用**：① 按任务找入口看 `AGENTS.md` §0.1（按任务类型指路的那张表）；')
+  L.push('> **怎么用**：① 按任务找入口看 **`docs/catalog.md`（文档目录 · 指路）**；')
   L.push('> ② 找"某功能当时怎么定的"看下面「现行设计稿」段（按日期倒序，新的在上）；')
   L.push('> ③ 拿不准某份文档还作不作数，看它的**状态**列（`未标注` = 头部没写状态，值得补）。')
   L.push('>')

@@ -1,6 +1,6 @@
 # 架构文档
 
-> **开工先读 [`AGENTS.md`](../AGENTS.md)**（按其中的「目录索引」只读本次任务需要的几份；协作铁律的权威正文见
+> **开工先读 [`AGENTS.md`](../AGENTS.md)**（按其中的指引读 `docs/catalog.md`（文档目录），只读本次任务需要的几份；协作铁律的权威正文见
 > [`docs/development-conventions.md`](./development-conventions.md)）。本文件只记录技术架构与决策；功能设计文档见 `docs/design/`，
 > 逐批变更见 `docs/roadmap.md`。
 

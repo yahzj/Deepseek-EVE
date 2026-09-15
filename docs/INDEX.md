@@ -3,7 +3,7 @@
 > **本表由 `npm run docs:index`（`tools/docs-index.ts`）自动生成，禁止手改**——改文档后重跑即刷新。
 > **只读**：生成器不改任何既有文档，只覆写本文件；`--check` 模式只校验不写。
 >
-> **怎么用**：① 按任务找入口看 `AGENTS.md` §0.1（按任务类型指路的那张表）；
+> **怎么用**：① 按任务找入口看 **`docs/catalog.md`（文档目录 · 指路）**；
 > ② 找"某功能当时怎么定的"看下面「现行设计稿」段（按日期倒序，新的在上）；
 > ③ 拿不准某份文档还作不作数，看它的**状态**列（`未标注` = 头部没写状态，值得补）。
 >
@@ -12,10 +12,10 @@
 
 ## 统计
 
-- 文档总数 **249** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4757** KB · **34900** 行
-- 状态分布：**未标注** 137 · **已确认/已实现** 105 · **待裁定** 3 · **进行中** 3 · **历史留档** 1
-- 孤儿文档（0 引用）**19** 份 · 状态未标注 **137** 份
-- 一、权威文档（开工必读）：**7** 份
+- 文档总数 **250** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4761** KB · **34933** 行
+- 状态分布：**未标注** 138 · **已确认/已实现** 105 · **待裁定** 3 · **进行中** 3 · **历史留档** 1
+- 孤儿文档（0 引用）**19** 份 · 状态未标注 **138** 份
+- 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
 - 三、现行设计稿（design）：**169** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**15** 份
@@ -24,17 +24,18 @@
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**40** 份
 
-## 一、权威文档（开工必读） —— 7 份
+## 一、权威文档（开工必读） —— 8 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 19 KB / 199 行 | 125 / 5 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 27 / 1 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 17 KB / 174 行 | 134 / 4 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
+| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 11 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 138 KB / 207 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 534 行 | 67 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 289 KB / 653 行 | 180 / 5 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 191 行 | 232 / 8 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 139 KB / 208 行 | 12 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 534 行 | 71 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 289 KB / 653 行 | 181 / 5 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 191 行 | 234 / 8 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -337,7 +338,7 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（137 份，待补一行 `状态：…`）
+## 附：状态未标注（138 份，待补一行 `状态：…`）
 
 - `docs/archive/glossary-detail-03-econ-20260915.md`（2026-09-15）—— 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出）
 - `docs/archive/glossary-retired-20260915.md`（2026-09-15）—— 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出）
@@ -446,6 +447,7 @@
 - `docs/archive/roadmap-2026-09-13.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-13
 - `docs/archive/roadmap-2026-09-14.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-14
 - `docs/archive/roadmap-2026-09-15.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-15
+- `docs/catalog.md`（无日期）—— 文档目录（指路 · 开工先读）
 - `docs/content-workbench.md`（无日期）—— 内容工作台（CSV 双向编辑内容数据）
 - `docs/design/ai-design.md`（无日期）—— V8 设计文档：AI 核心系统（玩家分身）
 - `docs/design/archive/handoff-b3-skills.md`（无日期）—— B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施）
