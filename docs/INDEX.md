@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **255** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4829** KB · **35321** 行
+- 文档总数 **255** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4832** KB · **35337** 行
 - 状态分布：**未标注** 140 · **已确认/已实现** 105 · **进行中** 5 · **待裁定** 4 · **历史留档** 1
 - 孤儿文档（0 引用）**13** 份 · 状态未标注 **140** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -34,8 +34,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 140 KB / 209 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 535 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 295 KB / 697 行 | 181 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 94 KB / 203 行 | 233 / 9 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 295 KB / 697 行 | 182 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 215 行 | 234 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -56,7 +56,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-20260915-extract-retire.md` | 公告待审稿 · 虫洞调整（2026-09-15） | 待裁定（待船长审核） | 2026-09-15 | 2 KB / 35 行 | 4 / 0 |
-| `docs/design/announcement-draft-20260915-wormhole-loot.md` | 公告待审稿 · 虫洞战利品扩充（2026-09-15） | 待裁定（待船长审核） | 2026-09-15 | 3 KB / 40 行 | 1 / 0 |
+| `docs/design/announcement-draft-20260915-wormhole-loot.md` | 公告待审稿 · 虫洞战利品扩充（2026-09-15） | 待裁定（待船长审核 · 经办已转一号） | 2026-09-15 | 4 KB / 44 行 | 2 / 0 |
 | `docs/design/civilian-hp-20260915.md` | 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8） | 已确认/已实现（已确认） | 2026-09-15 | 5 KB / 92 行 | 0 / 0 |
 | `docs/design/desire-band-20260915.md` | 默认期望交距：中段 → 射程带高位（星图与洞内统一 0.8；洞内近战开局另守中段 0.5） | 未标注 | 2026-09-15 | 7 KB / 85 行 | 4 / 0 |
 | `docs/design/docs-archive-20260915.md` | 文档精简与封存（roadmap / glossary）—— 工作文档 | 进行中（进行中） | 2026-09-15 | 9 KB / 99 行 | 1 / 0 |
