@@ -223,7 +223,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-13 F3c-B2：谜质储存器再 4 台（溢火结转 / 弹药回收 / 机群回收网 / 战地维修）→ 物品总数 63→**67**
 // 2026-09-14：图纸货柜 3 种（层档三种 · 施工期 unreleased）→ 物品总数 67→**70**
 // 2026-09-14：AI 核心 3 种（伽马/贝塔/阿尔法 · 洞内实物形态 · 施工期 unreleased）→ 物品总数 70→**73**
-check(itemDefs.length === 73, `物品总数应为 73，实际 ${itemDefs.length}`)
+check(itemDefs.length === 79, `物品总数应为 79，实际 ${itemDefs.length}`) // 2026-09-15：+6（谜质精华 · 奢侈品 ×3 · 贵重品货柜 · 军用备货柜）
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -330,6 +330,9 @@ for (const item of itemDefs) {
 const containerIds = new Set<string>([
   ...WORMHOLE_FAMILIES.map((f) => `box-relic-${f.toLowerCase()}`),
   ...WORMHOLE_BP_BOX_IDS,
+  // 2026-09-15 船长确认的两个新货柜（贵重品 2 格 / 军用备货 4 格）：同样"带回后拆解"⇒ 无配方但登记在册
+  'box-valuables',
+  'box-military',
 ])
 const matterDeviceIds = new Set<string>(WORMHOLE_MATTER_DEVICE_IDS)
 const aicoreItemIds = new Set<string>(WORMHOLE_CORE_ITEM_IDS)
@@ -361,6 +364,11 @@ for (const item of itemDefs) {
         item.kind === 'ammo' ||
         item.kind === 'drone' ||
         item.kind === 'kit' ||
+        /* **虫洞谜质（精华）与奢侈品**（船长 2026-09-15 确认的一批）：**纯贸易品**——只用来卖钱，
+         * 不入精炼 / 拆解 / 制造链，故"没有配方"是**设计**（豁免）；来源分别是「撤离成功按台数换算」
+         * 与「贵重品货柜拆解」（`docs/design/wormhole-loot-economy-20260915.md`）。 */
+        item.kind === 'essence' ||
+        item.kind === 'luxury' ||
         /* **货柜**（2026-09-14 虫洞上线后改判）：它不是可采集资源，而是"带回后**拆解**"的中间件
          * —— 上线后依然没有精炼配方，但有一条**真实用途**：拆解台（`industry.startUnboxRun`，
          * 90 秒/件、与精炼同一台机器）⇒ 这里改判"**必须是登记在册的货柜 id**"
@@ -4197,7 +4205,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         continue
       }
       if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
-      if (box.unitM3 !== 2000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 2000（船长定的 2000 立方 = 4 格）`)
+      if (box.unitM3 !== 3000) errors.push(`货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 3000（**2026-09-15 船长「将安全货柜大小增加到6格」：2000（4 格）→ 3000（3×2 = 6 格）**，旧口径作废）`)
     }
     /* **图纸货柜契约**（2026-09-14 船长：「给虫洞的遗迹打捞新增图纸货柜。占 2 格大小。
      * 内部是随机 T3T4T5 舰船的一次性图纸。有较低概率出 T3 或 T4 的永久图纸。」）：

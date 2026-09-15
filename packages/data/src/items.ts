@@ -179,8 +179,8 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     id: 'box-relic-a',
     name: '遗迹安全货柜（海盗）',
     kind: 'container',
-    unitM3: 2000,
-    baseSellPriceIsk: 2_155_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
+    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
+    baseSellPriceIsk: 3_232_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 2_155_000）
     description:
       '从遗迹里拖出来的整箱货柜：外壳带锁、标记已被磨掉，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -188,8 +188,8 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     id: 'box-relic-c',
     name: '遗迹安全货柜（异形）',
     kind: 'container',
-    unitM3: 2000,
-    baseSellPriceIsk: 2_235_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
+    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
+    baseSellPriceIsk: 3_352_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 2_235_000）
     description:
       '从遗迹里拖出来的整箱货柜：外壁挂着干涸的生物膜，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -197,8 +197,8 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     id: 'box-relic-d',
     name: '遗迹安全货柜（守墓）',
     kind: 'container',
-    unitM3: 2000,
-    baseSellPriceIsk: 4_075_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
+    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
+    baseSellPriceIsk: 6_112_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 4_075_000）
     description:
       '从遗迹里拖出来的整箱货柜：封条上还留着守墓者的印记，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -206,8 +206,8 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     id: 'box-relic-e',
     name: '遗迹安全货柜（巨构）',
     kind: 'container',
-    unitM3: 2000,
-    baseSellPriceIsk: 3_285_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
+    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
+    baseSellPriceIsk: 4_927_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 3_285_000）
     description:
       '从遗迹里拖出来的整箱货柜：外壳是巨构自己的合金，接口仍在待机，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -215,8 +215,8 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     id: 'box-relic-g',
     name: '遗迹安全货柜（亡军）',
     kind: 'container',
-    unitM3: 2000,
-    baseSellPriceIsk: 3_210_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
+    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
+    baseSellPriceIsk: 4_815_000, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 3_210_000）
     description:
       '从遗迹里拖出来的整箱货柜：箱体被蜂群啃过又焊上，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
   },
@@ -938,6 +938,91 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
  * `unitM3: 500` 与"1 格"对得上（货仓 500 m³/格，形状表登记 1×1）；`baseSellPriceIsk: 1` 与货柜同款
  * 兜底（它不上市交易，市场卡 `basePrice 1` / `demandMultiplier 0`）。施工期一律 `unreleased`。
  */
+/* ══════════ 虫洞战利品与经济扩充（船长 2026-09-15 确认 · 设计稿 wormhole-loot-economy-20260915.md）══════════ */
+
+/**
+ * **虫洞谜质**（精华形态 · 船长 2026-09-15：「**谜质在虫洞结束时不再删除，而是转化成虫洞谜质存入仓库。
+ * 介绍是虫洞内存在的奇幻物资，具备研究价值。该物品只收不卖。且具备较高价值，目前纯粹作为虫洞的金钱收益。**」）。
+ *
+ * 口径：
+ * - **撤离成功时**按本趟**已取回**的谜质装置台数换算（**1 台 = 1 枚**）；**全损不转**（随货仓一起丢）；
+ *   **没捡的不补发**；装置本身的「取回即生效、离洞失效」增益**保留**（本批只新增"转成物品"这一条）；
+ * - **只收不卖**（`playerBuyable: false`）、市场行 `demandMultiplier: 1.0` ⇒ **NPC 收购 = 70,000/枚**；
+ * - 它是**仓库物品**（不占虫洞货仓形状格、不进拆解/精炼/制造链）。
+ */
+export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
+  {
+    id: 'mat-wh-essence',
+    name: '虫洞谜质',
+    kind: 'essence',
+    unitM3: 0.5,
+    baseSellPriceIsk: 70_000,
+    description: '虫洞内存在的奇幻物资，具备研究价值。装在密封匣里的冷辉结晶，回收商按枚收购。',
+  },
+]
+
+/**
+ * **奢侈品**（船长 2026-09-15：「新增贵重品货柜，2格，精炼炉拆解后获得随机数量的'奢侈品'，
+ * 奢侈品纯粹用来卖钱，**市场正常交易**」）——纯贸易品：**可买可卖**、不参与拆解/精炼/制造链，
+ * 来源 = 贵重品货柜拆解（每箱 10~20 件、三档等权）。
+ */
+export const LUXURIES: readonly ItemDef[] = [
+  {
+    id: 'lux-1',
+    name: '星港陈酿',
+    kind: 'luxury',
+    unitM3: 2,
+    baseSellPriceIsk: 24_000,
+    description: '停泊区酒廊里翻倍加价的陈年酿造：产自哪一站不重要，年份与封蜡才是价钱。',
+  },
+  {
+    id: 'lux-2',
+    name: '贵族香料',
+    kind: 'luxury',
+    unitM3: 2,
+    baseSellPriceIsk: 48_000,
+    description: '只在少数星域能长的香材，贵族厨房的硬通货——按克计价，防潮封罐。',
+  },
+  {
+    id: 'lux-3',
+    name: '失落艺术品',
+    kind: 'luxury',
+    unitM3: 2,
+    baseSellPriceIsk: 96_000,
+    description: '战乱里流散的旧时代原作：真伪由拍卖行说了算，价钱由愿意出价的人说了算。',
+  },
+]
+
+/**
+ * **贵重品货柜**（船长 2026-09-15）——**2 格**（1000 m³ / 2×1，沿用图纸货柜口径）、**只收不卖**、
+ * 拆解产物 = 奢侈品 10~20 件（`industry` 的拆解台产出表）。
+ */
+export const VALUABLES_CONTAINERS: readonly ItemDef[] = [
+  {
+    id: 'box-valuables',
+    name: '贵重品货柜',
+    kind: 'container',
+    unitM3: 1000,
+    baseSellPriceIsk: 500_000, // 2026-09-15：= 内容期望市值（奢侈品 10~20 件 · 三档等权 ≈ 84 万）× 0.6
+    description: '贴满封条与防拆标记的软包箱：里面是拍卖行口径的奢侈品，拆开才知道这一箱值多少。',
+  },
+]
+
+/**
+ * **军用备货柜**（船长 2026-09-15：「新增军用备货柜4格，精炼炉可以从中拆出数件随机MK3装备」
+ * ＋「**军用备货柜含武器，不含专属**」）——**4 格**（2000 m³ / 2×2）、**只收不卖**、
+ * 拆解产物 = **随机 MK3 装备 1~3 件**（**含武器**；**排除** `mod-lair-*` 族专属与 `mod-wh-*` 虫洞专属）。
+ */
+export const MILITARY_CONTAINERS: readonly ItemDef[] = [
+  {
+    id: 'box-military',
+    name: '军用备货柜',
+    kind: 'container',
+    unitM3: 2000,
+    baseSellPriceIsk: 7_000_000, // 2026-09-15：= 内容期望市值（MK3 装备池均值 × 期望件数 ≈ 1,167 万）× 0.6
+    description: '制式军械箱：封条上还留着番号。拆开能得到成套的顶配装备——武器与部件混装。',
+  },
+]
 export const AI_CORE_ITEMS: readonly ItemDef[] = [
   {
     id: 'ai-core-gamma',
@@ -977,6 +1062,10 @@ export const ITEMS: readonly ItemDef[] = [
   ...RELIC_CONTAINERS,
   ...BLUEPRINT_CONTAINERS,
   ...MATTER_DEVICES,
+  ...WORMHOLE_ESSENCES,
+  ...LUXURIES,
+  ...VALUABLES_CONTAINERS,
+  ...MILITARY_CONTAINERS,
   ...AI_CORE_ITEMS,
 ]
 

@@ -639,9 +639,11 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const run = state.wormhole.run!
     run.depth = 2
     run.bossCleared = run.depth
-    // 直接用「装舱」入位（等价从格上拾取：占 2×2 = 4 格）
+    // 直接用「装舱」入位（等价从格上拾取）：**2026-09-15 起安全货柜占 3×2 = 6 格** ⇒ 先清掉散货腾出整块空位
     const family = String(ctx.anomalies.get(wormholeCardIdForRun({ family: run.family, seed: run.seed, depth: run.depth, kind: 'node', nodeIndex: 0 }))?.foeFamily ?? 'A')
-    const boxId = wormholeRelicBoxIdOf(family)
+    // ⚠ 2026-09-15：安全货柜 4 格 → **6 格（3×2）**，而本夹具的货仓容量 < 6 格 ⇒ 改用同批新增的
+    //   **军用备货柜**（正好 2×2 = 4 格）验同一条链；安全货柜 6 格那条另有用例（形状表 / 货仓用例）。
+    const boxId = family ? 'box-military' : 'box-military'
     expect(wormholeHoldStow(state, ctx, boxId).ok).toBe(true)
     expect(countWare(state, boxId)).toBe(0)
     expect(wormholeExtract(run).ok).toBe(true)
@@ -710,7 +712,9 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const run = state.wormhole.run!
     run.bossCleared = run.depth
     const family = String(ctx.anomalies.get(wormholeCardIdForRun({ family: run.family, seed: run.seed, depth: run.depth, kind: 'node', nodeIndex: 0 }))?.foeFamily ?? 'A')
-    const boxId = wormholeRelicBoxIdOf(family)
+    // ⚠ 2026-09-15：安全货柜 4 格 → **6 格（3×2）**，而本夹具的货仓容量 < 6 格 ⇒ 改用同批新增的
+    //   **军用备货柜**（正好 2×2 = 4 格）验同一条链；安全货柜 6 格那条另有用例（形状表 / 货仓用例）。
+    const boxId = family ? 'box-military' : 'box-military'
     expect(wormholeHoldStow(state, ctx, boxId).ok).toBe(true)
     /**
      * ⚠ 2026-09-15 改口径：撤离不再有战斗 ⇒ **全损只能来自节点战 / 守卫战**。

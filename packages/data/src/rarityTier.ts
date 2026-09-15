@@ -15,6 +15,13 @@
  * 升档后**档位与价格解耦**：日后调价不再自动触发改档，档位是人审结果。
  */
 export const RARITY_TIER: Readonly<Record<string, number>> = {
+  // 2026-09-15 虫洞战利品与经济扩充（船长确认）：谜质精华 · 奢侈品三档 · 贵重品/军用备货柜
+  'mat-wh-essence': 4, // exotic（只收不卖的专属口径 ⇒ 奇货档；与 exclusive-market 用例的口径一致）
+  'lux-1': 1, // common · 2.4 万
+  'lux-2': 2, // rare · 4.8 万（≤50 万 ⇒ 2）
+  'lux-3': 3, // rare · 9.6 万（>5 万 ⇒ 3）
+  'box-valuables': 4, // exotic · 50 万
+  'box-military': 4, // exotic · 700 万
   'alpha': 4,
   'ammo-explosive-2': 1,
   'ammo-explosive-l': 1,

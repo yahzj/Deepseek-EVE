@@ -125,6 +125,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
   //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
   { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 500, supplyFlow: 3, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
+  // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
+  { key: 'mat-wh-essence', kind: 'item', refId: 'mat-wh-essence', rarity: 'exotic', basePrice: 70_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 虫洞谜质（撤离成功时按台数换算：1 台 = 1 枚；NPC 收购 = 70,000）
+  { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 24_000, demandMultiplier: 1.0 }, // 奢侈品·低档（贵重品货柜拆解产物；正常交易）
+  { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'rare', basePrice: 48_000, demandMultiplier: 1.0 }, // 奢侈品·中档
+  { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'exotic', basePrice: 96_000, demandMultiplier: 1.0 }, // 奢侈品·高档
+  { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'exotic', basePrice: 500_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）
+  { key: 'box-military', kind: 'item', refId: 'box-military', rarity: 'exotic', basePrice: 7_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 军用备货柜（4 格）
   // ── 气体（V10 池商品） ──
   { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 227_880, supplyFlow: 1_899 },
   { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 330, poolTarget: 114_000, supplyFlow: 950 },
