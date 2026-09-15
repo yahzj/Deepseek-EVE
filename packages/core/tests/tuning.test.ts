@@ -12,7 +12,7 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet } from '../src/shipyard'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import { TUNING_RULES, activeTunings, localDayStartMs, ruleActiveAt, tuningMul, tuningMulAt } from '../src/tuning'
+import { PROMOS, TUNING_RULES, activePromoGifts, activePromos, activeTunings, dayWindowEndMs, localDayStartMs, promoActiveAt, promoScanMulAt, ruleActiveAt, tuningMul, tuningMulAt } from '../src/tuning'
 import type { TunableKey, TuningRule } from '../src/tuning'
 import { getMiningParams } from '../src/mining'
 import { wormholeScanWindowMs } from '../src/wormholeScan'
@@ -106,6 +106,69 @@ describe('虫洞 · 限时倍率表（表本身）', () => {
   })
 })
 
+describe('虫洞 · 限时促销（PROMOS：扫描倍率 ＋ 一次性赠送 ＋ 合并展示）', () => {
+  const PROMO_ID = 'wh-bloom-20260916'
+  const at = (mo: number, d: number, h = 0, mi = 0): number => new Date(2026, mo - 1, d, h, mi, 0, 0).getTime()
+
+  it('① 活动窗口：9/16 00:00 起生效 · 9/20 整天有效 · 9/21 00:00 失效', () => {
+    const p = PROMOS.find((x) => x.id === PROMO_ID)!
+    expect(p, '促销表里应有这条活动（改 id/删行会红）').toBeTruthy()
+    expect(promoActiveAt(p, at(9, 15, 23, 59))).toBe(false) // 起始前一天
+    expect(promoActiveAt(p, at(9, 16, 0, 0))).toBe(true) // 起始当天 00:00
+    expect(promoActiveAt(p, at(9, 20, 23, 59))).toBe(true) // 截止当天最后一分钟
+    expect(promoActiveAt(p, at(9, 21, 0, 0))).toBe(false) // 次日 00:00 失效
+    expect(promoActiveAt(p, null)).toBe(false) // 没有墙钟 ⇒ 不生效（工具/用例免疫）
+  })
+
+  it('② 窗口内读数：扫描 ×0.25 · 赠 5 处 · 文案与剩余时间齐备（界面徽标就吃这份）', () => {
+    const now = at(9, 18, 12)
+    const list = activePromos(now)
+    expect(list).toHaveLength(1)
+    const p = list[0]!
+    expect(p.id).toBe(PROMO_ID)
+    expect(p.label).toBe('虫洞大量生成') // 玩家可见名（游戏内说法）
+    expect(p.detail.length).toBeGreaterThan(0)
+    expect(p.scanMul).toBe(0.25)
+    expect(p.giftWormholes).toBe(5)
+    expect(p.claims).toContain('wormholeScanMs') // 认领 ⇒ 活动栏不再单列那条倍率徽标
+    expect(p.untilMs).toBe(at(9, 21, 0, 0))
+    expect(promoScanMulAt(now)).toBeCloseTo(0.25, 9)
+    expect(activePromoGifts(now)).toEqual([{ id: PROMO_ID, count: 5 }])
+  })
+
+  it('③ 窗口外自动回落：倍率 = 1、无赠送（到期无需回收、无需迁移）', () => {
+    const after = at(9, 21, 0, 0)
+    expect(activePromos(after)).toHaveLength(0)
+    expect(promoScanMulAt(after)).toBe(1)
+    expect(activePromoGifts(after)).toHaveLength(0)
+    expect(promoScanMulAt(null)).toBe(1)
+  })
+
+  it('④ 引擎读取点：促销期间扫描窗口 ×0.25；无墙钟 ⇒ 1×（标定读数不被日历污染）', () => {
+    const s = fresh()
+    const base = wormholeScanWindowMs(s)
+    s.wallMs = at(9, 18, 12)
+    expect(wormholeScanWindowMs(s)).toBe(Math.max(1000, Math.round(base * 0.25)))
+    s.wallMs = at(9, 21, 0, 0) // 失效后回落
+    expect(wormholeScanWindowMs(s)).toBe(base)
+    s.wallMs = undefined
+    expect(wormholeScanWindowMs(s)).toBe(base)
+  })
+
+  it('⑤ 促销与限时倍率**共用日期判据**（两张表同一天界、同套非法输入处理）', () => {
+    const p = PROMOS.find((x) => x.id === PROMO_ID)!
+    const rule: TuningRule = { key: 'wormholeScanMs', mul: 0.5, from: p.from, until: p.until }
+    for (const t of [at(9, 15, 23, 59), at(9, 16, 0, 0), at(9, 20, 23, 59), at(9, 21, 0, 0)]) {
+      expect(promoActiveAt(p, t), `墙钟 ${new Date(t).toLocaleString('zh-CN')} 上两张表应同判`).toBe(
+        ruleActiveAt(rule, t),
+      )
+    }
+    // 非法截止日 ⇒ 不生效；截止时刻读数 = 次日 00:00（界面剩余时间同源）
+    expect(promoActiveAt({ ...p, until: '2026-02-31' }, at(9, 18))).toBe(false)
+    expect(dayWindowEndMs(p.until)).toBe(at(9, 21, 0, 0))
+  })
+})
+
 describe('虫洞 · 限时倍率表（八个开关逐个接线）', () => {
   /** 造一趟洞内探索（2×T3），并把当前格改成指定地点 */
   function enterRunWith(place: 'graveyard' | 'ruins'): GameState {
@@ -171,7 +234,15 @@ describe('虫洞 · 限时倍率表（八个开关逐个接线）', () => {
   it('④ wormholeScanMs：扫描窗口 ×0.5（快一倍）', () => {
     const s = fresh()
     const base = wormholeScanWindowMs(s)
-    s.wallMs = NOW
+    /**
+     * ⚠ **必须避开促销窗口**（2026-09-16 加的守卫）：`NOW`（2026-09-20）正落在限时促销
+     * 「虫洞大量生成」（9/16~9/20，`PROMOS` 的 `scanMul 0.25`）之内 ⇒ 两把乘子会叠在一起、
+     * 本断言就不再是"限时倍率"的读数。取窗口外的 9/25 并把"无促销"写成断言，防止日后
+     * 新促销再次悄悄盖住这条用例。
+     */
+    const OUTSIDE_PROMO = new Date(2026, 8, 25, 12, 0, 0, 0).getTime()
+    expect(activePromos(OUTSIDE_PROMO), '该墙钟上不应有任何促销，否则本用例读数会被促销叠加').toHaveLength(0)
+    s.wallMs = OUTSIDE_PROMO
     withRules([on('wormholeScanMs', 0.5)], () => {
       expect(wormholeScanWindowMs(s)).toBe(Math.max(1000, Math.round(base * 0.5)))
     })

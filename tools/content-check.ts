@@ -134,6 +134,8 @@ securityZoneOf,
   TUNING_RULES,
   TUNABLE_KNOBS,
   localDayStartMs,
+  // 2026-09-16 限时促销（船长：「虫洞大量生成」= 扫描加速 ＋ 一次性赠送）——契约见文件尾
+  PROMOS,
   // 2026-09-14 图纸货柜（船长：遗迹打捞新增 · 占 2 格 · 一次性 + 5% 永久图纸）
   WORMHOLE_BP_BOX_IDS,
   WORMHOLE_BP_BOX_SHALLOW,
@@ -5316,6 +5318,59 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     )
   }
   console.log(`· 限时倍率契约：${ruleCount} 条规则 · 白名单 ${known.size} 个开关逐个核对「已被引擎消费」`)
+
+  /**
+   * **限时促销契约**（`packages/core/src/tuning.ts` 的 `PROMOS`，2026-09-16 船长「虫洞大量生成」）。
+   *
+   * 七条判据（每条都对应一种"静默失效"）：
+   * ① `id` 非空且唯一（id 是 `state.promoClaimed` 的键 ⇒ 重复 id = 两个活动抢同一次领取记录）；
+   * ② `label` / `detail` 非空（这是**玩家可见文案**，空着等于活动栏只剩一个没字的徽标）；
+   * ③ 日期合法且 `from ≤ until`（写反 = 永不生效）；
+   * ④ `scanMul`（若写）> 0 且有限（0/负/NaN 会把扫描窗口算成 0 或崩）；
+   * ⑤ `giftWormholes`（若写）是正整数（小数/负数 = 发不出或发错数）；
+   * ⑥ **至少有一项效果**（`scanMul` 或 `giftWormholes`）——都没有就是空转的活动；
+   * ⑦ `claims` 里的键必须在白名单，且**认领 `wormholeScanMs` 就必须写 `scanMul`**
+   *    （否则活动栏会把一条与本活动无关的倍率徽标藏起来，玩家看不到）。
+   *
+   * ⚠ 与限时倍率表同款：**已过期的促销允许留档**（不报错）——收口靠 `npm run tuning:expired` 手动跑。
+   */
+  const promoIds = new Set<string>()
+  for (const p of PROMOS) {
+    const id = String(p.id)
+    check(id.length > 0, '限时促销契约：有促销条目的 id 为空')
+    check(!promoIds.has(id), `限时促销契约：促销 id「${id}」重复（id 是领取记录的键 ⇒ 会互相顶掉）`)
+    promoIds.add(id)
+    check(p.label.trim().length > 0, `限时促销契约：${id} 的 label 为空（活动栏徽标没有可显示的字）`)
+    check(p.detail.trim().length > 0, `限时促销契约：${id} 的 detail 为空（悬停说明空着）`)
+    const untilMs = localDayStartMs(p.until)
+    check(untilMs !== null, `限时促销契约：${id} 的截止日期「${p.until}」不是合法的 YYYY-MM-DD`)
+    const fromMs = p.from === undefined ? null : localDayStartMs(p.from)
+    check(p.from === undefined || fromMs !== null, `限时促销契约：${id} 的起始日期「${String(p.from)}」不是合法的 YYYY-MM-DD`)
+    check(fromMs === null || untilMs === null || fromMs <= untilMs, `限时促销契约：${id} 的起始日期晚于截止日期（永不生效）`)
+    if (p.scanMul !== undefined) {
+      check(Number.isFinite(p.scanMul) && p.scanMul > 0, `限时促销契约：${id} 的 scanMul ${String(p.scanMul)} 非法（必须 > 0 且有限）`)
+    }
+    if (p.giftWormholes !== undefined) {
+      check(
+        Number.isFinite(p.giftWormholes) && Number.isInteger(p.giftWormholes) && p.giftWormholes > 0,
+        `限时促销契约：${id} 的 giftWormholes ${String(p.giftWormholes)} 非法（必须是正整数）`,
+      )
+    }
+    check(
+      p.scanMul !== undefined || p.giftWormholes !== undefined,
+      `限时促销契约：${id} 既没有 scanMul 也没有 giftWormholes（空转的活动：徽标会显示，但什么都不发生）`,
+    )
+    for (const k of p.claims ?? []) {
+      check(known.has(String(k)), `限时促销契约：${id} 认领了未知开关「${String(k)}」（白名单里没有它）`)
+      if (k === 'wormholeScanMs') {
+        check(
+          p.scanMul !== undefined,
+          `限时促销契约：${id} 认领了 wormholeScanMs 却没写 scanMul —— 活动栏会把那条倍率徽标藏起来，玩家看不到它`,
+        )
+      }
+    }
+  }
+  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关逐个核对`)
 }
 
 /* ── 输出 ── */
