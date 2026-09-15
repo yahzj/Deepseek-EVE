@@ -500,8 +500,16 @@ export function gridScanTargets(grid: WormholeGridState, extraRadius = 0): HexCe
 export const WORMHOLE_TURN_PER_MOVE = 1
 /** 扫描一次消耗（船长：扫描需要消耗一回合） */
 export const WORMHOLE_TURN_PER_SCAN = 1
-/** 激活一个地点消耗（船长：打捞/挖矿/战斗等各 1 回合） */
-export const WORMHOLE_TURN_PER_ACTIVATE = 1
+/**
+ * **一次"作业动作"消耗的回合**（打捞 / 采集各一次动作）：
+ * 一次动作（1 回合）回收 = 打捞器（或采集器）台数 的堆 ⇒ 总回合 = ⌈堆数 ÷ 台数⌉
+ * （船长 2026-09-13：「每个打捞器每次能回收 1 堆残骸」）。
+ *
+ * ⚠ **2026-09-15 改名归位**：原名 `WORMHOLE_TURN_PER_ACTIVATE`（旧口径"激活地点也花 1 回合"被复用到
+ * 打捞/采集上）。船长当日「**移除玩家激活时需要消耗1回合（包括层末守卫）**」⇒ **激活本身不再花回合**
+ * （`wormholeGridActivate` 一分子儿都不扣），打捞/采集的这条口径**单独成常量**、数值仍是 1 ⇒ 行为不变。
+ */
+export const WORMHOLE_TURN_PER_WORK = 1
 /**
  * 手动拾取一堆消耗（船长口径第 13 条「每捡一堆 +1」）。
  * ⚠ 只用于**手拾**（矿脉的虚空母矿、留给玩家的散堆）；**残骸打捞**走打捞器口径——

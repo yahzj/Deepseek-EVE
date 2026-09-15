@@ -16,8 +16,8 @@
  *   npx tsx tools/wormhole-econ.ts --runs=20 --start-depth=4 --fit=auto   # 空降到第 4 层跑（★星云层）
  *
  * 口径（与引擎同源，不另存一份）：
- * - 威胁：`wormholeLayerThreat(depth)`（层 1 = 45、每层 ×1.16）；BOSS ×1.2（**撤离战 ×0.8 已于
- *   2026-09-15 退役**）；
+ * - 威胁：`wormholeLayerThreat(depth)`（层 1 = 45、每层 **×1.10**，2026-09-15 由 ×1.16 降下来）；
+ *   BOSS ×1.2（**撤离战 ×0.8 已于 2026-09-15 退役**）；
  * - 敌卡：`wormholeCardIdForRun({ depth, kind, nodeIndex })` —— **族锁 + 该层档位池**
  *   （层 1 只浅 / 层 2~3 中 2 : 浅 1 / 层 4+ 深 2 : 中 1 : 浅 1；守卫取最深已解锁档），
  *   与实战同一取值点；**分层血量修正**（浅 ×1 / 中 ×1.1 / 深 ×1.2）由引擎按卡 id 反查自动带上；
@@ -1345,7 +1345,8 @@ function main(): void {
   for (let i = 1; i < analytic.length; i++) if (!(analytic[i]! > analytic[i - 1]!)) rising = false
   console.log(
     `\n① 收益曲线（解析口径：单堆收益系数 ÷ 威胁）逐层${rising ? '**严格上升** ✓' : '**未严格上升** ✗'}` +
-      `（口径 = 收益每层 ×1.2、威胁每层 ×1.16；船长 2026-09-13「深层收益应该比难度曲线要更高」）`,
+      `（口径 = 收益每层 ×1.2、威胁每层 ×1.10；船长 2026-09-13「深层收益应该比难度曲线要更高」；` +
+      `威胁增幅 2026-09-15 由 ×1.16 降为 ×1.10）`,
   )
   console.log(
     `② 实测每回合收益（ISK，已按该 seed 真实节点/堆数计）：${perTurn.map((v) => Math.round(v).toLocaleString('zh-CN')).join(' → ')}`,

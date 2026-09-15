@@ -25,7 +25,7 @@ import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeArchetypeOf } from './wormholeGrid'
 import {
   WORMHOLE_NEBULA_MIN_DEPTH,
-  WORMHOLE_TURN_PER_ACTIVATE,
+  WORMHOLE_TURN_PER_WORK,
   WORMHOLE_TURN_PER_MOVE,
   WORMHOLE_TURN_PER_SCAN,
   wormholeRng,
@@ -1040,11 +1040,16 @@ export function wormholeGridTravel(
 }
 
 /**
- * **激活当前地点**（1 回合，每个地点只算一次）。
- * - 空信息地点 / 已读过的漂浮信标 ⇒ **拒绝且不扣回合**（"什么都没有"，没有可执行的作业）；
+ * **激活当前地点**（**不消耗回合**；每个地点只算一次）。
+ * - 空信息地点 / 已读过的漂浮信标 ⇒ **拒绝**（"什么都没有"，没有可执行的作业）；
  * - 站在下一层入口 ⇒ 层末守卫战（优先于地点自身类型：入口的意义就是"下一层"）；
  * - 舰船信号：新口径下**到达即已开打**（船长 2026-09-13），故这里只在"老档/异常态"下兜底开战；
  * - 其余按地点类型给效果，开战/结算由 `wormholeActivateAt` 接着做。
+ *
+ * ⚠ **2026-09-15 船长：「移除玩家激活时需要消耗1回合（包括层末守卫）」** ⇒ 本条**不再扣回合**
+ * （`spent: 0`）。旧口径（2026-09-13「激活该地点效果也需要一回合（打捞，挖矿，战斗等）」）作废；
+ * **打捞/采集**仍各花 1 回合/次动作（`WORMHOLE_TURN_PER_WORK`，= ⌈堆数÷台数⌉），
+ * **扫描与前往**照旧各 1 回合。
  */
 export function wormholeGridActivate(state: GameState): WormholeGridActionResult {
   const hit = gridRun(state)
@@ -1064,7 +1069,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   /**
    * **资源点与墓场/遗迹不用激活**（船长 2026-09-13：「资源点和墓场遗迹改为不用激活」）：
    * 走到那一格就铺好产出（`wormholeEnsureArrivalPiles`），玩家直接**采集/打捞**——
-   * 故这三个地点在"激活"这条路上**直接拒绝**，免得白扣一回合。
+   * 故这三个地点在"激活"这条路上**直接拒绝**。
    */
   if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins')) {
     return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。' }
@@ -1072,10 +1077,6 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
     return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
   }
-  if (run.turnsLeft < WORMHOLE_TURN_PER_ACTIVATE) {
-    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
-  }
-  run.turnsLeft -= WORMHOLE_TURN_PER_ACTIVATE
   grid.activated.push(cell.key)
   const effect: WormholeActivateEffect = atExit
     ? { kind: 'exit', key: cell.key }
@@ -1086,9 +1087,9 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   addLog(
     state,
     'info',
-    `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 剩 ${run.turnsLeft} 回合。`,
+    `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 不消耗回合 · 剩 ${run.turnsLeft} 回合。`,
   )
-  return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, effect, mustExtract: run.turnsLeft <= 0 }
+  return { ok: true, spent: 0, effect, mustExtract: run.turnsLeft <= 0 }
 }
 
 /** 地点名（界面与日志共用；**网格地形**用语，与信号名分开） */export const WORMHOLE_PLACE_TEXT: Readonly<Record<WormholePlace, string>> = {

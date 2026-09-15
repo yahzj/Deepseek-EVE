@@ -818,6 +818,7 @@ export function advanceWormhole(
 ): void {
   const run = state.wormhole.run
   if (!run) return
+  reconcileWormholeFleet(state, ctx, run)
   // **临时离开 = 活动停止 ⇒ 洞内一切冻结**（船长 2026-09-13 批准 · 议案 A 第 4 条）：战斗不推进
   // （不掉血）、撤离不落地、收口不落地——回来接着打，进度原样在。
   if (run.attending !== true) return
@@ -844,10 +845,51 @@ export function advanceWormhole(
      *
      * ⚠ 老档兼容（"照打完"）：存档里**已经在打的撤离战**走上面的 `run.battle` 分支 —— 照打完，
      * 打完由 `settleWormholeBattle` 按新口径收口（赢 = `deliverExtraction`、输 = 全损），此后不再有下一场。
+     *
+     * ⚠ **空编队不许"顺利入港"**（2026-09-15 补 · 与旧口径一致）：编队账为空（全灭/老档或调试档
+     * 的两本账不同步）时，把货判成"撤离成功"就是**白拿一趟**——这里按**全损**收口
+     * （旧代码在同一档是"开不出撤离战 ⇒ 按全损处理"，那条兜底随撤离战取消一并搬到本分支）。
      */
+    if (run.fleet.length === 0) {
+      addLog(state, 'warn', `🕳 撤离失败：编队已经没了（全灭或档案异常）——本趟按全损处理。`)
+      state.wormhole.lastSettle = {
+        kind: 'lost',
+        depth: run.depth,
+        oreUnits: 0,
+        oreIsk: 0,
+        wreckIsk: 0,
+        boxes: [],
+        relics: [],
+        shipsLost: [],
+        lostIsk: bagValueIsk(ctx, run),
+      }
+      state.wormhole.run = null
+      return
+    }
     deliverExtraction(state, ctx, run)
     state.wormhole.run = null
     return
   }
+}
+
+/**
+ * **编队账对账**（2026-09-15 补）：把 `run.fleet` 里**已经不在 `state.fleet`** 的成员摘掉。
+ *
+ * 为什么需要：两本账（洞内编队 / 舰队）本该同步，但**老档、调试档、异常态**下可能残留"幽灵成员"
+ * （船已被别处判损，编队账还记着它）。实测后果不算严重——开战时会被自动过滤、不参战、不崩——
+ * 但**结算单与读数会把它算进去**，也让"编队为空"这类判据看不准。
+ *
+ * 口径：只摘"已不在舰队"的；摘了写一条日志（幂等：没事发生时零开销、零日志）。
+ */
+function reconcileWormholeFleet(state: GameState, ctx: SimContext, run: WormholeRunState): void {
+  if (run.fleet.every((uid) => state.fleet[uid] !== undefined)) return
+  const ghosts = run.fleet.filter((uid) => state.fleet[uid] === undefined)
+  run.fleet = run.fleet.filter((uid) => state.fleet[uid] !== undefined)
+  const names = ghosts.map((uid) => ctx.ships.get(uidDefId(uid))?.name ?? uid)
+  addLog(
+    state,
+    'warn',
+    `🕳 编队核对：${names.join('、')} 已不在舰队（${ghosts.length} 艘）——已从本趟编队里摘掉，剩余 ${run.fleet.length} 艘。`,
+  )
 }
 

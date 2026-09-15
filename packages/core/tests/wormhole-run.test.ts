@@ -576,7 +576,7 @@ describe('虫洞 · 起程与副本推进', () => {
   })
 })
 
-describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各 1 回合）', () => {
+describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 各 1 回合；**激活免费**（2026-09-15））', () => {
   it('**扫描**：1 回合揭开"当前格 + 周围一圈"；周围都扫过 ⇒ 拒绝且不扣回合', () => {
     const { state, run } = enterForActions()
     const g = run.grid!
@@ -626,7 +626,7 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各
     expect(run.turnsLeft).toBe(turnsBefore - 1)
   })
 
-  it('**激活**：空信息地点拒（不扣回合）；舰船信号 ⇒ 交火效果；入口格 ⇒ 层末守卫效果；每格只算一次', () => {
+  it('**激活**（2026-09-15 起**不消耗回合**）：空信息地点拒；舰船信号 ⇒ 交火效果；入口格 ⇒ 层末守卫效果；每格只算一次', () => {
     const { state, run } = enterForActions()
     const g = run.grid!
     // 空信息地点：没有可执行的作业
@@ -636,13 +636,13 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各
     expect(empty.ok).toBe(false)
     expect(empty.error ?? '').toContain('什么都没有')
     expect(run.turnsLeft).toBe(turnsBefore)
-    // 舰船信号：给"开战"效果 + 扣 1 回合 + 记进 activated
+    // 舰船信号：给"开战"效果 + **不扣回合** + 记进 activated
     const shipKey = standOnPlace(run, 'ship')
     const fight = wormholeGridActivate(state)
     expect(fight.ok).toBe(true)
-    expect(fight.spent).toBe(1)
+    expect(fight.spent).toBe(0) // ⚠ 船长 2026-09-15：「移除玩家激活时需要消耗1回合（包括层末守卫）」
     expect(fight.effect).toEqual({ kind: 'battle', key: shipKey })
-    expect(run.turnsLeft).toBe(turnsBefore - 1)
+    expect(run.turnsLeft).toBe(turnsBefore)
     expect(g.activated).toContain(shipKey)
     expect(wormholeGridActivate(state).ok).toBe(false) // 同一个地点不重复计
     // 层末入口：优先于地点自身类型（入口的意义就是"下一层"）
@@ -651,6 +651,8 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各
     g.activated = g.activated.filter((k) => k !== `${g.exit.q},${g.exit.r}`)
     const boss = wormholeGridActivate(state)
     expect(boss.ok).toBe(true)
+    expect(boss.spent).toBe(0) // 层末守卫同样免费（船长点名的那一条）
+    expect(run.turnsLeft).toBe(turnsBefore)
     expect(boss.effect).toEqual({ kind: 'exit', key: `${g.exit.q},${g.exit.r}` })
     // 守卫已清 ⇒ 入口格不再重复触发
     run.bossCleared = run.depth
@@ -765,10 +767,12 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 / 激活，各
 })
 
 describe('虫洞 · 层曲线（收益涨得比威胁快 —— 船长 2026-09-13 定）', () => {
-  it('威胁每层 ×1.16（层 1 = 45）、收益每层 ×1.2 ⇒ 单位威胁收益逐层严格上升', () => {
+  it('威胁每层 ×1.10（层 1 = 45）、收益每层 ×1.2 ⇒ 单位威胁收益逐层严格上升', () => {
     expect(wormholeLayerThreat(1)).toBe(45)
-    expect(wormholeLayerThreat(2)).toBe(52) // round(45×1.16)
-    expect(wormholeLayerThreat(3)).toBe(61) // round(45×1.16²)
+    expect(wormholeLayerThreat(2)).toBe(50) // round(45×1.10)（2026-09-15 由 ×1.16 降下来）
+    expect(wormholeLayerThreat(3)).toBe(54) // round(45×1.10²)
+    expect(wormholeLayerThreat(7)).toBe(80) // 深层读数：层 7/8 曾因 ×1.16 成"墙"
+    expect(wormholeLayerThreat(8)).toBe(88)
     expect(wormholeLayerRewardMul(1)).toBeCloseTo(1, 9)
     expect(wormholeLayerRewardMul(2)).toBeCloseTo(1.2, 9)
     const perThreat = (d: number): number => wormholeLayerRewardMul(d) / wormholeLayerThreat(d)

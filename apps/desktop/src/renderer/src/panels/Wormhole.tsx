@@ -602,7 +602,7 @@ export function WormholePanel({
     else startAuto()
   }
 
-  /* ── 层内网格动作（F3a-2）：扫描 / 前往 / 激活，各 1 回合 ──
+  /* ── 层内网格动作（F3a-2）：扫描 / 前往 各 1 回合；**激活免费**（2026-09-15）；打捞 / 采集每次动作 1 回合 ──
      口径（船长 2026-09-13）：「玩家可以到达任意位置，包括未扫描，但是前往未扫描的地方需要
      警告玩家即将前往未知地点」⇒ 点未扫描的格**只摆警告**（不移动、不扣回合），
      等玩家点「确认前往」才真的走。核心侧同样有这道闸（`code === 'unknown-target'`），
@@ -1635,16 +1635,16 @@ export function WormholePanel({
                       {!workCell && canActivate ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
+                          disabled={!!run.battle || actionBlocked !== null || fxBusy}
                           onClick={doActivate}
                           title={
                             atExit
-                              ? '激活下一层入口：迎战本层守卫（打完才能深入）'
-                              : '激活当前地点：按地点类型开战 / 取回谜质（1 回合）'
+                              ? '激活下一层入口：迎战本层守卫（打完才能深入 · 不消耗回合）'
+                              : '激活当前地点：按地点类型开战 / 取回谜质（不消耗回合）'
                           }
                         >
                           {atExit ? '迎战守卫' : '激活此地'}
-                          <span className="app-wh-scan-sub">1 回合</span>
+                          <span className="app-wh-scan-sub">不耗回合</span>
                         </button>
                       ) : null}
                       {bossDone ? (

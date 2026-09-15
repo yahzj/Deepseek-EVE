@@ -60,7 +60,7 @@ import type { WormholeHoldPlacement, WormholeHoldState } from './wormholeHold'
 // F3c 谜质装置：效果一律从货仓现算（本文件用到容量 / 打捞·采集堆数 / 母矿产量 / 回合同步）
 import { wormholeMatterBuffs, wormholeMatterDiscardHint } from './wormholeMatter'
 import {
-  WORMHOLE_TURN_PER_ACTIVATE,
+  WORMHOLE_TURN_PER_WORK,
   WORMHOLE_TURN_PER_PICK,
   gridCellAt,
   gridContentIndex,
@@ -1246,8 +1246,8 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   wormholeEnsureVeinPiles(state, cell)
   const piles = cell.piles ?? []
   if (piles.length === 0) return { ok: false, error: '这条矿脉已经采空了。' }
-  if (run.turnsLeft < WORMHOLE_TURN_PER_ACTIVATE) return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
-  run.turnsLeft -= WORMHOLE_TURN_PER_ACTIVATE
+  if (run.turnsLeft < WORMHOLE_TURN_PER_WORK) return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+  run.turnsLeft -= WORMHOLE_TURN_PER_WORK
   const taken: WormholeCellPile[] = []
   let full = false
   for (let i = 0; i < miners && piles.length > 0; i++) {
@@ -1273,7 +1273,7 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   if (finished && !grid.activated.includes(cell.key)) grid.activated.push(cell.key)
   return {
     ok: true,
-    spent: WORMHOLE_TURN_PER_ACTIVATE,
+    spent: WORMHOLE_TURN_PER_WORK,
     taken,
     left: piles.length,
     finished,
@@ -1347,10 +1347,10 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     if (!grid.activated.includes(cell.key)) grid.activated.push(cell.key)
     return { ok: false, error: '这个地点已经捞空了。' }
   }
-  if (run.turnsLeft < WORMHOLE_TURN_PER_ACTIVATE) {
+  if (run.turnsLeft < WORMHOLE_TURN_PER_WORK) {
     return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
   }
-  run.turnsLeft -= WORMHOLE_TURN_PER_ACTIVATE
+  run.turnsLeft -= WORMHOLE_TURN_PER_WORK
   const taken: WormholeCellPile[] = []
   let full = false
   let boxLeft = 0
@@ -1395,13 +1395,13 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   }
   const finished = piles.length === 0
   if (!finished) {
-    return { ok: true, spent: WORMHOLE_TURN_PER_ACTIVATE, taken, left: piles.length, finished: false, mustExtract: run.turnsLeft <= 0 }
+    return { ok: true, spent: WORMHOLE_TURN_PER_WORK, taken, left: piles.length, finished: false, mustExtract: run.turnsLeft <= 0 }
   }
   // ── 打捞结束：记完成；遗迹另掷专属掉落与收尾战 ──
   if (!grid.activated.includes(cell.key)) grid.activated.push(cell.key)
   const result: WormholeSalvageResult = {
     ok: true,
-    spent: WORMHOLE_TURN_PER_ACTIVATE,
+    spent: WORMHOLE_TURN_PER_WORK,
     taken,
     left: 0,
     finished: true,
