@@ -678,6 +678,10 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
    * 下限（min-height 64px）计入**，差额补给买卖盘。
    * ⚠ 不能量买卖盘自己的高度反推（第一版正是如此）：它被压到 5 档后尺寸不再变化 ⇒ ResizeObserver
    * 不再触发 ⇒ 卡死在 5 档。改看**面板体**（尺寸由窗口/布局决定，是稳定触发源）。
+   * ⚠ **2026-09-15 起**右栏分配改判（详情按内容高封顶、富余归「我的挂单」，见 `styles.css` 的
+   * `market right column stretch` 段）：窗口够高时详情面板不再被拉长 ⇒ 面板体高度由内容决定，
+   * 本函数量出来的档数会**逐步升到上限 8**（`fit(rows) ≥ rows+1` ⇒ 不会反向层层下探），
+   * 窗口矮时详情被压、面板体高度由 flex 决定 ⇒ 与改判前一样稳定。
    */
   useLayoutEffect(() => {
     const el = booksRef.current
