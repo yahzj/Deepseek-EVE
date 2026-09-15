@@ -807,7 +807,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(w.kind).toBe('fixed'); // 能量·掷命中（裁定⑤）
     expect(w.hitRate).toBe(0.9); // 卡上覆写（原光束必中）
     expect(w.minRangeM).toBe(1)
-    expect(w.maxRangeM).toBe(3600); // 卡带（2026-09-14 全族 +1000：原 2600；舰级缺省 2655→3655）
+    expect(w.maxRangeM).toBe(2600); // 卡带（舰级缺省 2655；2026-09-14 的「全族 +1000」同日已被船长令回滚）
     expect(w.fixedType).toBe('plasma')
     expect(u[0]!.speedMps).toBe(544); // 星髓幼虫（原 234）
     expect(u[0]!.foeTactic).toBe('brawl')
@@ -838,7 +838,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u[0]!.weapons[0]!.kind).toBe('fixed'); // 能量·掷命中（裁定⑤）
     expect(u[0]!.weapons[0]!.fixedType).toBe('plasma'); // 主系改等离子
     expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
-    expect(u[0]!.weapons[0]!.maxRangeM).toBe(3552); // 舰级 2552 + 1000（2026-09-14 全族 +1000；本卡无覆写）
+    expect(u[0]!.weapons[0]!.maxRangeM).toBe(2552); // 舰级带（本卡无覆写；2026-09-14 的「+1000」同日已回滚）
     expect(u[0]!.weapons[0]!.minRangeM).toBe(1)
     expect(u[0]!.foeTactic).toBe('brawl')
   })
@@ -858,12 +858,12 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 10 }, () => 23),
     ); // 231/10 → 23
-    // 末波（第 3 波）= 成虫 ×3：带 1~3655（2026-09-14 全族 +1000）与速 398（T2 驱逐），tag 走 `w2-` 前缀
+    // 末波（第 3 波）= 成虫 ×3：带 1~2655（舰级带）与速 398（T2 驱逐），tag 走 `w2-` 前缀
     const last = u.filter((x) => x.tag.startsWith('w2-'))
     expect(last).toHaveLength(3)
     expect(last.map((x) => x.speedMps)).toEqual([398, 398, 398])
     expect(last.map((x) => x.weapons[0]!.maxRangeM)).toEqual([
-      3655, 3655, 3655,
+      2655, 2655, 2655,
     ])
     expect(u.filter((x) => !last.includes(x))).toHaveLength(7)
     expect(u[0]!.speedMps).toBe(544); // 前两波是幼虫
@@ -893,8 +893,8 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(501); // 总单发取整后仍精确 = 501
     expect(boss.speedMps).toBe(297); // 205 × 297/205（船长「将首领速度**单独上调 20 点**」：277 → 297）
     expect(minions.every((x) => x.speedMps === 544)).toBe(true)
-    expect(boss.weapons[0]!.maxRangeM).toBe(3713); // 2026-09-14 全族 +1000（沿革：曾令加到 4,000 → 实测后回收回 2,713 → 本批 +1000）
-    expect(minions.every((x) => x.weapons[0]!.maxRangeM === 3713)).toBe(true); // 小虫 = 卡带（2026-09-14 +1000）
+    expect(boss.weapons[0]!.maxRangeM).toBe(2713); // 沿革：曾令加到 4,000 → 回收回 2,713 → 2026-09-14「全族 +1000」（3,713）**同日已回滚**
+    expect(minions.every((x) => x.weapons[0]!.maxRangeM === 2713)).toBe(true); // 小虫 = 卡带（2026-09-14 的 +1000 已回滚）
     expect(boss.weapons[0]!.kind).toBe('fixed')
     expect(boss.foeTactic).toBe('brawl');
     // 冲锋（**2026-09-14 船长扩到全族**：「大虫子的冲锋倍率改为 3，给小虫子添加冲锋，倍率为 1.5」）：
@@ -905,34 +905,36 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(minions.every((x) => x.foeChargeMul === 1.5)).toBe(true)
   })
 
-  it('巨兽**目标距离不动**：期望交距 = 543 m（2026-09-14 起由 `desireRangeM` 钉住，不再靠带内插值）', () => {
+  it('巨兽**目标距离不动**：期望交距 = 543 m（靠"首单位带 1~2713 的带内 20% 插值"，不写钉子）', () => {
     const def = card('ano-maw-hunt')
     const w0 = createFoeSpecs(def, bal);
-    // 船长 2026-09-14：「给所有虫子添加1000的射程，但是目标距离不变」⇒ 全族带 +1000 后，
-    //   期望交距**改用条目级 `desireRangeM: 543` 显式钉住**（旧法 = 1 + 0.20 × (2713 − 1) = 543）
-    expect(w0[0]!.weapons[0]!.maxRangeM).toBe(3713)
+    // ⚠ 沿革：2026-09-14 曾「全族 +1000 射程」并改用条目级 `desireRangeM: 543` 钉住期望交距 →
+    //   **同日船长又令回滚**（「可以回滚C族敌人射程增加的修改」）⇒ 带与覆写都回原值、钉子撤回，
+    //   期望交距重新由带内插值推导（1 + 0.20 × (2713 − 1) = 543，逐字与"钉住"时一致）。
+    expect(w0[0]!.weapons[0]!.maxRangeM).toBe(2713)
     expect(foeDesiredRange(w0[0]!, w0, bal)).toBe(543);
-    // 巨兽与全族同档（1~3,713）；期望交距由钉子决定 ⇒ 不随末波/后续改带而变
+    // 巨兽与全族同档（1~2,713）；期望交距落在带内远端之前
     const boss = allWaves(def).find((x) => x.tag === 'w2-foe-3')!
-    expect(boss.weapons[0]!.maxRangeM).toBe(3713)
-    expect(foeDesiredRange(w0[0]!, w0, bal)).toBeLessThan(3713)
+    expect(boss.weapons[0]!.maxRangeM).toBe(2713)
+    expect(foeDesiredRange(w0[0]!, w0, bal)).toBeLessThan(2713)
   })
 
-  it('C 族全族 +1000 射程 · 期望交距逐个钉住现状（船长 2026-09-14）', () => {
-    // 四张卡的带（首个单位 = 波 0 主体）与该卡的钉子值：带全部 +1000，交距逐字保持改前
+  it('C 族射程回滚（船长 2026-09-14「可以回滚C族敌人射程增加的修改」）：带回到 2552/2655/2713 · 交距 511/521/532/543', () => {
+    // 四张卡的带（首个单位 = 波 0 主体）回到 +1000 之前；期望交距由**带内 20% 插值**推导，
+    // 数值与当初"钉住"的完全一致（这正是回滚能"目标距离一个字不变"的原因）。
     const cases: Array<[string, number, number]> = [
-      ['ano-abyss-guard', 3600, 521],
-      ['ano-starcore-boss', 3655, 532],
-      ['ano-chasm-aberrations', 3552, 511],
-      ['ano-maw-hunt', 3713, 543],
+      ['ano-abyss-guard', 2600, 521], // 卡覆写带（舰级缺省 2655）
+      ['ano-starcore-boss', 2655, 532],
+      ['ano-chasm-aberrations', 2552, 511],
+      ['ano-maw-hunt', 2713, 543], // 卡覆写带（舰级缺省 2552）
     ]
     for (const [id, maxRange, desire] of cases) {
       const def = card(id)
       const specs = createFoeSpecs(def, bal)
       expect(specs[0]!.weapons[0]!.maxRangeM, `${id} 首单位射程上限`).toBe(maxRange)
       expect(foeDesiredRange(specs[0]!, specs, bal), `${id} 期望交距`).toBe(desire)
-      // **每个条目都要钉**（多波卡：波 2 的成虫/巨兽进场后 `foes[0]` 换人，钉子必须跟着换）
-      expect((def.ships ?? []).every((s) => s.desireRangeM === desire), `${id} 条目钉子`).toBe(true)
+      // 回滚 = 钉子一并撤回（推导值与钉子同值 ⇒ 行为零变化；留着钉子反而会压住后续带改动）
+      expect((def.ships ?? []).every((s) => s.desireRangeM === undefined), `${id} 不该再有钉子`).toBe(true)
     }
   })
 
