@@ -43,7 +43,9 @@ import {
   FOE_D_STASIS,
   FOE_D_THRONE,
   FOE_G_SWARM_SKIFF,
+  FOE_MISSILE_HULK,
   FOE_SHIP_AURO_HULK,
+  FOE_SHIP_TITAN_HULK,
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_WARLORD,
@@ -325,6 +327,48 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     combatSeconds: 60,
     hidden: true,
     description: '虫洞内遭遇：陵寝最深处的王座守卫（隐藏卡，只由虫洞生成）。',
+  },
+  /* ══════════ 2026-09-15 扩充 · E 族中/深两张（批 4）══════════ */
+  {
+    id: 'wh-titan-missile',
+    foeFamily: 'E',
+    name: '导弹残响',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    // E 族族格（平台随机投送）⇒ **不写** `foeTargetingChance`（随机模式对该字段无意义）
+    foeTargeting: 'random',
+    // **卡面构成 = 主体舰级的自有口径**（纯爆炸，船长「伤害为100%纯爆炸」）
+    // ⇒ 已在 `FOE_SHIP_MIX_AUTHORITY_IDS` 登记（"舰级口径优先"白名单），体检不套 E 族 5:5。
+    dmgMix: { explosive: 10 },
+    // 编成 = **导弹残段 ×1**（T3 静物导弹平台：100~15,000m · 无视近盲 · 命中不随距离衰减）
+    ships: [{ ship: FOE_MISSILE_HULK, count: 1 }],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 60,
+    hidden: true,
+    description: '虫洞内遭遇：一截仍在齐射的导弹残段（隐藏卡，只由虫洞生成）。',
+  },
+  {
+    id: 'wh-titan-hulk',
+    foeFamily: 'E',
+    name: '巨构压境',
+    galaxyId: 'galaxy-hub',
+    threat: ANCHOR_THREAT,
+    foeTargeting: 'random',
+    // 卡面与主体一致（巨构残段 = 动能 5 : 爆炸 5，E 族全族口径）⇒ 无需覆写
+    dmgMix: { kinetic: 5, explosive: 5 },
+    // 编成 = **巨构残段 ×1**（船长 2026-09-15：「**E族浅层为奥罗残骸段，深层为巨构残骸段。**」；
+    // T4 · 机群 7 架 · 受击增程 ×4）——本卡把"悬赏专属"的巨构残段接进洞内深层。
+    ships: [{ ship: FOE_SHIP_TITAN_HULK, count: 1 }],
+    standingReq: 0,
+    standingGain: 0,
+    rewardIsk: 0,
+    loot: [],
+    combatSeconds: 60,
+    hidden: true,
+    description: '虫洞内遭遇：一整段巨构残骸与其警戒机群（隐藏卡，只由虫洞生成）。',
   },
 ]
 

@@ -1772,6 +1772,17 @@ for (const m of MODULES) {
           `混伤白名单：${def.name} 的卡面构成（${mixKey(def.dmgMix)}）与主体舰级「${mains[0]!.ship.name}」的有效构成（${eff}）不一致——` +
             `白名单只放行"不必等于 8:2/5:5"，卡面仍须与主体逐键一致`,
         )
+        // **纯系卡必须留"收束旋钮"**（与纯能量分支同款纪律）：单系卡只有靠"掷命中 + 命中 < 1"
+        // 收住远端收益；必中光束 + 无衰减 = 既必中又满效，等于没有约束。
+        const keys = Object.keys(def.dmgMix ?? {}).filter((k) => ((def.dmgMix ?? {}) as Record<string, number>)[k]! > 0)
+        if (keys.length === 1) {
+          const ship = mains[0]!.ship
+          check(
+            ship.energyForm !== 'beam' && ship.hitRate < 1,
+            `混伤白名单：纯系卡 ${def.name} 的主体「${ship.name}」必须留收束旋钮` +
+              `（掷命中 + 命中 < 1；实测 energyForm=${String(ship.energyForm)} / hitRate=${ship.hitRate}）`,
+          )
+        }
         whitelisted += 1
         continue
       }
@@ -3874,13 +3885,15 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       'wh-grave-watch',
       'wh-exile-blockade',
       'wh-titan-echo',
-      // 中/深（2026-09-15 洞内敌卡扩充：批 1 A 族 · 批 2 C 族 · 批 3 D 族；后续批次按 data 表顺序追加）
+      // 中/深（2026-09-15 洞内敌卡扩充：批 1 A 族 · 批 2 C 族 · 批 3 D 族 · 批 4 E 族；批 5 G 族按 data 表顺序追加）
       'wh-pirate-hunt',
       'wh-pirate-warband',
       'wh-alien-brood',
       'wh-alien-hive',
       'wh-grave-sentry',
       'wh-grave-throne',
+      'wh-titan-missile',
+      'wh-titan-hulk',
     ]
     // **轮换表的双向契约**（2026-09-13 补第五张时加）：内容侧这张清单、data 的 `WORMHOLE_FOE_CARDS`
     // 与 core 的 `WORMHOLE_FOE_CARD_IDS` **三处必须逐字同序** —— 少一张/换序都会让"按族掉落池"

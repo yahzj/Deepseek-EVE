@@ -194,13 +194,13 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
   })
 
   it('缺档兜底：某族还没做出中/深卡时，池退回现有最深一张（分批上线期间照样能开战）', () => {
-    // E/G 两族此刻只有浅层卡（中/深随后续批次补）⇒ 层 2~9 仍只出浅层卡，不会开不出战
+    // G 族此刻只有浅层卡（中/深随批 5 补）⇒ 层 2~9 仍只出浅层卡，不会开不出战
     expect(wormholeCardPoolAt('G', 1).map((e) => e.tier)).toEqual(['shallow'])
     expect(wormholeCardPoolAt('G', 5).map((e) => e.tier)).toEqual(['shallow'])
     expect(wormholeCardIdForRun({ family: 'G', seed: 3, depth: 6, kind: 'node', nodeIndex: 2 })).toBe('wh-exile-blockade')
     expect(wormholeCardIdForRun({ family: 'G', seed: 3, depth: 6, kind: 'boss' })).toBe('wh-exile-blockade')
-    // 已补齐三档的族（A/C/D）在深层应当三档都进池
-    for (const f of ['A', 'C', 'D'] as const) {
+    // 已补齐三档的族（A/C/D/E）在深层应当三档都进池
+    for (const f of ['A', 'C', 'D', 'E'] as const) {
       expect(wormholeCardPoolAt(f, 5).map((e) => e.tier), `族 ${f}`).toEqual(['shallow', 'mid', 'deep'])
     }
     // 五族各有浅层卡（按族掉落池"每族都有来源"的前提）

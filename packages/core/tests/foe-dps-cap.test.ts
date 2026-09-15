@@ -146,8 +146,9 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
     // 2026-09-15 洞内敌卡扩充批 1：+2 张（A 族中/深；威胁锚点同为 45）⇒ 表长 32 → 34
     // 2026-09-15 批 2：再 +2 张（C 族中/深）⇒ 表长 36
     // 2026-09-15 批 3：再 +2 张（D 族中/深）⇒ 表长 38
+    // 2026-09-15 批 4：再 +2 张（E 族中/深）⇒ 表长 40
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
-    expect(cards.length).toBe(38)
+    expect(cards.length).toBe(40)
     // 现表无卡 > 96 ⇒ 速度口径不受本次改动影响（守卫：全表威胁上界）
     expect(Math.max(...cards.map((a) => a.threat))).toBe(96)
   })
@@ -161,8 +162,9 @@ describe('敌舰体火力上限（船长 2026-09-12「按照 DPS 上限 150 算�
     // 2026-09-15 洞内敌卡扩充批 1：+2 张（A 族中/深；威胁锚点同为 45）⇒ 表长 32 → 34
     // 2026-09-15 批 2：再 +2 张（C 族中/深）⇒ 表长 36
     // 2026-09-15 批 3：再 +2 张（D 族中/深）⇒ 表长 38
+    // 2026-09-15 批 4：再 +2 张（E 族中/深）⇒ 表长 40
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
-    expect(cards.length).toBe(38)
+    expect(cards.length).toBe(40)
     for (const a of cards) {
       const viaFixture = hullDps(a, { ...bal, foeDpsCap: undefined })
       const specs = createFoeSpecs(a, { ...bal, foeDpsCap: undefined }, { tagPrefix: '' }) as unknown as Array<{

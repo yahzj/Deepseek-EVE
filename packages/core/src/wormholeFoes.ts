@@ -124,13 +124,15 @@ export const WORMHOLE_FOE_CARD_IDS: readonly string[] = [
   'wh-grave-watch',
   'wh-exile-blockade',
   'wh-titan-echo',
-  // —— 中层 / 深层（2026-09-15 起逐批补：批 1 = A 族 · 批 2 = C 族 · 批 3 = D 族） ——
+  // —— 中层 / 深层（2026-09-15 起逐批补：批 1 A 族 · 批 2 C 族 · 批 3 D 族 · 批 4 E 族） ——
   'wh-pirate-hunt',
   'wh-pirate-warband',
   'wh-alien-brood',
   'wh-alien-hive',
   'wh-grave-sentry',
   'wh-grave-throne',
+  'wh-titan-missile',
+  'wh-titan-hulk',
 ]
 
 /* ═══════════ 档位 · 出场池 · 分层血量修正（船长 2026-09-15） ═══════════ */
@@ -279,7 +281,7 @@ export const WORMHOLE_FAMILY_CARDS: Readonly<
   A: { shallow: 'wh-pirate-scout', mid: 'wh-pirate-hunt', deep: 'wh-pirate-warband' },
   C: { shallow: 'wh-alien-swarm', mid: 'wh-alien-brood', deep: 'wh-alien-hive' },
   D: { shallow: 'wh-grave-watch', mid: 'wh-grave-sentry', deep: 'wh-grave-throne' },
-  E: { shallow: 'wh-titan-echo', mid: null, deep: null },
+  E: { shallow: 'wh-titan-echo', mid: 'wh-titan-missile', deep: 'wh-titan-hulk' },
   G: { shallow: 'wh-exile-blockade', mid: null, deep: null },
 }
 
