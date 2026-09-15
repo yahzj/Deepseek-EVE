@@ -42,6 +42,7 @@
     "ui:geom": "tsx tools/ui-geom.ts",
     "ui:rot-check": "tsx tools/ui-rot-check.ts",
     "wh:ui": "tsx tools/wh-ui-check.ts",
+    "docs:index": "tsx tools/docs-index.ts",
     "tools:audit": "tsx tools/tools-audit.ts"
   },
   "devDependencies": {
