@@ -938,7 +938,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
  * `unitM3: 500` 与"1 格"对得上（货仓 500 m³/格，形状表登记 1×1）；`baseSellPriceIsk: 1` 与货柜同款
  * 兜底（它不上市交易，市场卡 `basePrice 1` / `demandMultiplier 0`）。施工期一律 `unreleased`。
  */
-/* ══════════ 虫洞战利品与经济扩充（船长 2026-09-15 确认 · 设计稿 wormhole-loot-economy-20260915.md）══════════ */
+/* ══════════ 虫洞战利品与经济扩充（船长 2026-09-15 确认；口径见 docs/glossary.md 八之二「战利品四件」）══════════ */
 
 /**
  * **虫洞谜质**（精华形态 · 船长 2026-09-15：「**谜质在虫洞结束时不再删除，而是转化成虫洞谜质存入仓库。
