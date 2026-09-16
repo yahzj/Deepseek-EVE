@@ -1032,6 +1032,7 @@ export {
   hexDiskCount,
   hexDistance,
   hexKey,
+  hexLine,
   hexNeighbors,
   hexRingAround,
   isExitCell,
@@ -1042,6 +1043,8 @@ export {
   wormholeEmptyShareFor,
   wormholeGridRadiusFor,
   wormholeMakeGrid,
+  // 2026-09-16 船长：路径拦截（直线路径上有未清掉的敌人 ⇒ 移动被截断并开战）——界面预览与移动同一把尺
+  wormholePathInterceptAt,
   wormholeRuinsFloorFor,
   // 2026-09-16 船长：「遗迹的保底，改为从3层开始保底。1层没有遗迹」⇒ 保底起效层常量（层 1 禁遗迹 · 层 2 无保底）
   WORMHOLE_RUINS_FLOOR_MIN_DEPTH,
