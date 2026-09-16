@@ -617,7 +617,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
             ? `残骸回收炉停：${def.name} 本炉料账已烧完（共 ${doneBatches} 批）` +
               (accNote ? `；回收所得：${accNote}` : '') +
               (wasCore ? '；AI 核心已归还核心库' : '') +
-              `；不足 ${RARE_UNIT_M3} m³（一个回收单元）的零头不预占、不开箱，留在货仓/仓库；想继续就再起一炉。`
+              `；不足 ${RARE_UNIT_M3} m³（一个回收单元）的零头不预占、不产出，留在货仓/仓库；想继续就再起一炉。`
             : `${stopTitle} ${stopWhy}` +
               (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
               (wasCore ? '；AI 核心已归还核心库' : '') +
@@ -698,11 +698,11 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
                   : drawn.source === 'military'
                     ? '（MK3 装备）'
                     : '（族专属）'
-          addLog(state, 'trade', `📦 拆解 ${def.name}：开出 ${drawnName}${srcTag}。`)
+          addLog(state, 'trade', `📦 拆解 ${def.name}：得到 ${drawnName}${srcTag}。`)
         } else {
           if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
           state.refineRuns.splice(i, 1)
-          addLog(state, 'warn', `📦 拆解 ${def.name}：这一箱抽不出东西（奖池为空），已停这一台。`)
+          addLog(state, 'warn', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`)
           break
         }      } else if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
@@ -754,7 +754,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
               batchIncome += row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0)
             }
-            addLog(state, 'trade', `✦ 高级箱：稀有残骸开箱额外掉落——${extra.note}。`)
+            addLog(state, 'trade', `✦ 额外战利品：稀有残骸解体必给——${extra.note}。`)
           }
         }
         const loot = rollRecycleLoot(state, ctx, profile, qty)

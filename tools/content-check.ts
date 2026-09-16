@@ -3179,14 +3179,46 @@ const STALE_COPY_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
    */
   [/撤离拦截/, '施工期漂移叫法（2026-09-15 起整条退役：撤离不再有战斗）'],
   [/撤离战/, '已退役机制名（2026-09-15 船长「虫洞的撤离战取消吧」⇒ 撤离零战斗，玩家文案不得再提）'],
+  /**
+   * 2026-09-16 船长报障加（原话：「**游戏内依旧有高级箱，开箱等不符合游戏的名词使用，进行检查。**」
+   * ＋追问后的口径：「**我并没有设定是游戏内文案，将不符合的文案全部修改**」）。
+   *
+   * 背景：**「高级箱」不是游戏内文案**，是 2026-09-10 施工期给"稀有残骸额外掉落"起的工作名
+   * （词典当时"预留口子"、工业页 2026-09-14 选甲时把它当档名写上去了）⇒ 一路漏进了
+   * 工业页二级筛选标签、卡面说明、悬停、物品说明与事件日志。现行口径：
+   * 「高级箱」→ **档名「稀有残骸」/ 叙述「额外战利品」**；「开箱」→ 货柜写 **拆解**、残骸写 **解体 / 回收**。
+   *
+   * ⚠ 「开箱」这条其实是**补执行**词典 2026-09-14 已定的口径（「开箱那一步一律写『货柜拆解』，
+   * 玩家可见文案里不出现「拆解台」」）——当时只改了引擎错误文案，散在各处的日志/手册/悬停漏了。
+   */
+  [/高级箱/, '施工期工作名（2026-09-16 起：档名写「稀有残骸」、叙述写「额外战利品」）'],
+  [/开箱/, '施工期叫法（2026-09-14 词典已定「货柜一律写拆解」；2026-09-16 收口：货柜=拆解 / 残骸=解体·回收）'],
+  [/奖池|卡池/, '开发词（2026-09-16 收口：玩家文案写「产出 / 掉落」）'],
+  [/抽奖|抽卡|盲盒|礼包/, '与设定不符的现代游戏用词（2026-09-16 船长报障）'],
+  /**
+   * ⚠ 「开出」**只拦"从箱子里开出来"那一义**（后接战利品名词），不拦「开出悬赏 / 开出价码」这类正当用法——
+   * 首版写成裸 `/开出/` 时把 `anomalies.ts` 的「协会为能拆开它的人开出了长期悬赏」误报了一次（2026-09-16 当场收窄）。
+   */
+  [
+    /开出(?=[^，。；）]{0,6}(?:装备|图纸|舰船|无人机|核心|奢侈品|残骸|矿物|原材料|件东西))/,
+    '把产出说成"从箱子里开出来"（2026-09-16 收口：写「产出 / 得到 / 缴获 / 解体」）',
+  ],
 ]
 
 /**
- * 陈旧术语**按文件豁免**（逐条写明理由）：整份文件都是"历史留档"，不得因机制退役而改写。
- * 只用于**已上线的历史公告数据**（改它 = 篡改历史，且公告改动需重新走审核）。
+ * 陈旧术语**按文件 + 按词**豁免（逐条写明理由）：只用于**已上线的历史公告数据**里那些
+ * **属于当时事实的陈述**（改它 = 篡改历史）。
+ *
+ * ⚠ 2026-09-16 收窄（船长报障「游戏内依旧有高级箱，开箱等不符合游戏的名词」）：原先**整份文件**一律豁免
+ * ⇒ 新写的公告里再出现旧词也拦不住。现改为"只豁免点名的那几个词"，其余黑名单词在公告里照拦
+ *（同日按船长「一起改」把两处已发布公告里的「高级箱 / 开箱」改掉了，仅"撤离战"这类事实陈述保留）。
  */
-const STALE_COPY_FILE_ALLOW: ReadonlyArray<readonly [string, string]> = [
-  ['packages/data/src/announcements.ts', '已上线公告数据（历史留档：当时确实写着"自第 2 层起要打赢撤离战"）'],
+const STALE_COPY_FILE_ALLOW: ReadonlyArray<readonly [string, RegExp, string]> = [
+  [
+    'packages/data/src/announcements.ts',
+    /撤离拦截|撤离战/,
+    '已上线公告数据（历史留档：当时确实写着"自第 2 层起要打赢撤离战"⇒ 属当时事实，不改写）',
+  ],
 ]
 
 /** 陈旧术语**白名单**（逐条写明理由；只有确属叙事专名的才可登记） */
@@ -3245,11 +3277,21 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         mdOffenders.push(`${rel}:${line + 1}`)
       }
       if (isPlayerText(node) && node.getText(sf).length > 1) {
-        const fileAllowed = STALE_COPY_FILE_ALLOW.some(([p]) => rel.replace(/\\/g, '/') === p || rel.replace(/\\/g, '/').endsWith(p))
+        const relNorm = rel.replace(/\\/g, '/')
+        /**
+         * 本文件被点名豁免的**词**（其余黑名单词照拦；2026-09-16 由"整份文件豁免"收窄而来）。
+         * ⚠ 比对用 `exemptRe.test(termRe.source)`：豁免模式写的是**词组**（如 `/撤离拦截|撤离战/`），
+         * 而黑名单里是拆开的两条 ⇒ 比"正则源码全等"会漏（首版如此，当场被 `announcements.ts:54` 的
+         * 「撤离战」报出来才发现）。
+         */
+        const exemptRe = STALE_COPY_FILE_ALLOW.filter(([p]) => relNorm === p || relNorm.endsWith(p)).map(
+          ([, termRe]) => termRe,
+        )
         const text = node.getText(sf)
         let probe = text
         for (const [re] of STALE_COPY_ALLOW) probe = probe.replace(new RegExp(re.source, 'g'), '')
-        for (const [re, why] of fileAllowed ? [] : STALE_COPY_TERMS) {
+        for (const [re, why] of STALE_COPY_TERMS) {
+          if (exemptRe.some((x) => x.test(re.source))) continue
           if (re.test(probe)) {
             const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
             staleOffenders.push(`${rel}:${line + 1}（${text.slice(0, 40)}…）→ ${why}`)

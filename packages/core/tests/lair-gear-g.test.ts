@@ -195,7 +195,7 @@ describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-
       state.gameMs += 90_000 // 跑满一个结算单位：30 m³ = 3 批 × 10 m³（未满 30 m³ 不给彩头）
       advanceRefining(state, ctx)
       expect(countWare(state, BEE)).toBe(RARE_BOX_DRONE_UNITS) // 一次 10 架进物品仓库
-      expect(state.logs.some((l) => l.text.includes('高级箱') && l.text.includes('鱿蜂无人机'))).toBe(true)
+      expect(state.logs.some((l) => l.text.includes('额外战利品') && l.text.includes('鱿蜂无人机'))).toBe(true)
     } finally {
       for (const [k, v] of Object.entries(saved)) {
         RARE_BOX_GEAR_CHANCE[k as keyof typeof RARE_BOX_GEAR_CHANCE] = v

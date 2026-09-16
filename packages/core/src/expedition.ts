@@ -593,7 +593,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
           'trade',
           `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}` +
             `${pity && !hit ? `（连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出，本次保底）` : ''}` +
-            `——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体开高级箱）。`,
+            `——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体可得额外战利品）。`,
         )
       } else {
         state.rareWreckDryStreak = streak // 空手：累计（下次掷骰时判保底）

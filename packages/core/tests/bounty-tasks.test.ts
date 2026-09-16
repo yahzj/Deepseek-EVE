@@ -627,9 +627,9 @@ describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
     const texts = state.logs.map((l) => l.text).join('\n')
     expect(texts).toContain(lairNameOf(ctx.anomalies.get(task.anomalyId!)!, tier))
     expect(texts).toContain('赏金任务完成')
-    // 稀有残骸已解禁（船长 2026-09-10）：日志引导"打捞 → 回站开高级箱"
+    // 稀有残骸已解禁（船长 2026-09-10）：日志引导"打捞 → 回站解体拿额外战利品"
     expect(texts).toContain('打捞')
-    expect(texts).toContain('高级箱')
+    expect(texts).toContain('额外战利品')
     expect(state.expedition.lairTier).toBeUndefined()
   })
 
@@ -720,7 +720,7 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     // 2026-09-11 最终口径：与普通残骸同一条路径 —— **不预占**（lockUnits/claimedUnits 均缺省）
     expect(run.lockUnits).toBeUndefined()
     expect(run.claimedUnits).toBeUndefined()
-    const boxes = (): number => state.logs.filter((l) => l.text.includes('✦ 高级箱')).length
+    const boxes = (): number => state.logs.filter((l) => l.text.includes('✦ 额外战利品')).length
     const tick = (n: number): void => {
       for (let i = 0; i < n; i += 1) {
         state.gameMs += 30_000
@@ -738,7 +738,7 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
   it('同型残骸的料若分两批捡到：先烧完库存、再补料可继续（累计账本不受起停影响）；普通残骸不受锁量影响', () => {
     const { state, ctx } = makeWorld(33)
     const rareId = rareWreckItemIdOf(LAIR_HUB.id)
-    const boxes = (): number => state.logs.filter((l) => l.text.includes('✦ 高级箱')).length
+    const boxes = (): number => state.logs.filter((l) => l.text.includes('✦ 额外战利品')).length
     addWare(state, rareId, RARE_WRECK_VOLUME_M3 * 2) // 先有 2 个单元
     expect(startRecycleRun(state, rareId, 'pilot', ctx).ok).toBe(true)
     for (let i = 0; i < 7; i += 1) {

@@ -918,11 +918,11 @@ function WreckCard({
       ) : null}
       <div className="app-belt-ore">
         残骸密度 <b>{density.toFixed(1)}</b>
-        {lowSec ? '（低安回收箱可出 MK2 与高级碎片）' : ''} · 安全 {g.security?.toFixed(1)}
+        {lowSec ? '（低安残骸可出 MK2 与高级碎片）' : ''} · 安全 {g.security?.toFixed(1)}
         {rareCount > 0 ? (
           <>
             {' · '}
-            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：开出该敌群专属装备或特色装备 + 一批高阶原材料`}>
+            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体，保底原材料之外必给一件额外战利品：该敌群专属装备或特色装备 + 一批高阶原材料`}>
               稀有残骸 ×{rareCount}
             </em>
           </>

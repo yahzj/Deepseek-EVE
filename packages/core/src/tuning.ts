@@ -44,7 +44,7 @@ export const TUNABLE_KNOBS = {
   },
   rareWreckVolume: {
     name: '稀有残骸单件体积',
-    where: '发放时的单位数（1 件 = RARE_WRECK_VOLUME_M3 单位 ⇒ 回收炉开箱批数随之翻倍）',
+    where: '发放时的单位数（1 件 = RARE_WRECK_VOLUME_M3 单位 ⇒ 回收炉拆解批数随之翻倍）',
     dir: '×2 = 一件顶两件',
   },
   wormholeScanMs: {

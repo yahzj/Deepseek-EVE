@@ -420,7 +420,7 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
     })
   }
   const boxes = (state: ReturnType<typeof createInitialState>): number =>
-    state.logs.filter((l) => l.text.includes('高级箱')).length
+    state.logs.filter((l) => l.text.includes('额外战利品')).length
 
   it('稀有残骸与普通残骸同一条路径：起炉**不预占**、不写炉内料账（lockUnits/claimedUnits 均缺省）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
@@ -484,6 +484,6 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
     expect(startRecycleRun(loaded, RARE_ID, 'pilot', ctx).ok).toBe(true)
     loaded.gameMs += RECYCLE_CYCLE_MS * 6
     advanceRefining(loaded, ctx)
-    expect(loaded.logs.filter((l) => l.text.includes('高级箱')).length).toBe(1)
+    expect(loaded.logs.filter((l) => l.text.includes('额外战利品')).length).toBe(1)
   })
 })

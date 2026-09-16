@@ -721,7 +721,7 @@ export function settleBountyTaskVictory(
     state,
     'trade',
     `赏金任务完成：${task.lairName ?? anomalyId} 已肃清（${galaxyName}），酬金 ${task.rewardIsk.toLocaleString('zh-CN')} 信用点已入账；` +
-      `战场留下稀有残骸 ×${rareGain}——可前往该星系打捞（回站用回收炉解体开高级箱）。`,
+      `战场留下稀有残骸 ×${rareGain}——可前往该星系打捞（回站用回收炉解体可得额外战利品）。`,
   )
 }
 
