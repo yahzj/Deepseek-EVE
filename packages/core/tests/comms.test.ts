@@ -29,7 +29,7 @@ import { COMMS_DAY_MS } from '../src/comms'
 import { onArriveAtGalaxy, playDialogue } from '../src/station'
 import { advanceGame } from '../src/engine'
 import { startManufacturing } from '../src/manufacturing'
-import { shipStoredCount } from '../src/shipyard'
+import { shipStoredCount, addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { ONB_BRIEFING, ONB_DONE, ONB_DELIVER, ONB_MINE, ONB_OFF } from '../src/onboarding'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
@@ -743,13 +743,17 @@ describe('通讯 · 被袭自动撤离 ＋ 弹窗默认口径', () => {
 
 /**
  * **首艘自造船**（2026-09-15 船长：「新增通讯发送的节点：当玩家造好第一条船后，弹出通讯祝贺玩家，
- * 并告诉玩家新建造的舰船在舰船仓库页面」；三问裁决「**丙，甲，甲**」）。
+ * 并告诉玩家新建造的舰船在舰船仓库页面」）。
  *
- * 触发器 `{ kind: 'shipBuilt' }` 读随档三态标记 `state.firstShipBuilt`，**置位点唯一** =
- * `manufacturing.ts` 的 `settlePiece()` 造船分支（主控亲手开线与 AI 核心代造同算，船长裁决 Q3 = 甲）。
- * 老档按 Q1 = **丙**：缺字段 ⇒ **读档即补发**（新档由 `createInitialState` 写 `false`，不会凭空收到）。
+ * 触发器 `{ kind: 'shipBuilt' }` 读随档标记 `state.firstShipBuilt`，**置位点唯一** =
+ * `manufacturing.ts` 的 `settlePiece()` 造船分支（主控亲手开线与 AI 核心代造同算）。
+ *
+ * ⚠ **2026-09-16 船长报障后收窄**（「**购买舰船也会触发第一艘自造船的通讯，这不对**」；二选一取
+ * 「**甲：造过才发**」）：**只认 `true`** —— 新档 `false` 与老档「缺字段」一律**不发**（原 2026-09-15
+ * 三问裁决「丙：老档读档即补发」作废）。根因 = 那一支把"字段缺失"当成了"造过船"：任何 9-15 前开的档
+ * 都会在读档那一拍收到这封信（船长那份真档实测：缺字段 · `shipStore` 空 · 机库全是买来的船）。
  */
-describe('通讯 · 首艘自造船（老档「丙」补发口径）', () => {
+describe('通讯 · 首艘自造船（造过才发 · 2026-09-16 收窄）', () => {
   const SHIP_MSGS: readonly CommsMessageDef[] = [
     {
       id: 'msg-first-ship-x',
@@ -800,8 +804,20 @@ describe('通讯 · 首艘自造船（老档「丙」补发口径）', () => {
     expect(commsInbox(state, ctx).map((e) => e.id)).toContain('msg-first-ship-x')
   })
 
-  it('存档三态：老档（缺字段）⇒ 读档即补发（丙）；新档 false 随档保留，不会被误判成老档', () => {
-    // 新档的 false 必须落键随档（省掉它会被读成老档 ⇒ 下一拍就错误补发）
+  it('**买船不算造过**（船长 2026-09-16 报障现场）：买来的船进机库，但不置位、也不送达', () => {
+    const { state, ctx } = shipWorld()
+    tick(state, ctx)
+    // 买船的落点就是这里：`market.buyAtMarket` ⇒ `depositGood` ⇒ `addShipToFleet`（v17 起一艘一实例）
+    addShipToFleet(state, 'sandcat2')
+    expect(Object.keys(state.fleet)).toContain('sandcat2')
+    tick(state, ctx)
+    expect(state.firstShipBuilt).toBe(false) // 没造过 ⇒ 标记不许动
+    expect(commsInbox(state, ctx).map((e) => e.id)).not.toContain('msg-first-ship-x')
+    expect(commsPopupQueue(state)).not.toContain('msg-first-ship-x')
+  })
+
+  it('存档口径：新档 false 随档保留；**老档缺字段也不发**（2026-09-16 收窄）；造过才发', () => {
+    // 新档的 false 必须落键随档（省掉它会被读成老档）
     const fresh = shipWorld()
     const freshLoaded = loadSaveFile(serializeSaveFile(fresh.state, 1)).state
     expect(freshLoaded.firstShipBuilt).toBe(false)
@@ -822,8 +838,15 @@ describe('通讯 · 首艘自造船（老档「丙」补发口径）', () => {
     delete raw.state.firstShipBuilt
     const legacyLoaded = loadSaveFile(JSON.stringify(raw)).state
     expect(legacyLoaded.firstShipBuilt).toBeUndefined() // 老档：保持缺失
-    expect(commsTriggerMet(legacyLoaded, legacy.ctx, { kind: 'shipBuilt' })).toBe(true) // 丙 ⇒ 判定即为真
+    // 2026-09-16 收窄：**缺失 ≠ 造过** ⇒ 判定为假、读档不再补发（船长报障的那条口径）
+    expect(commsTriggerMet(legacyLoaded, legacy.ctx, { kind: 'shipBuilt' })).toBe(false)
     advanceComms(legacyLoaded, legacy.ctx)
+    expect(commsInbox(legacyLoaded, legacy.ctx).map((e) => e.id)).not.toContain('msg-first-ship-x')
+
+    // 但老档**真造一艘**后照常送达（内容仍对，只是可能晚——本批登记的取舍）
+    expect(startManufacturing(legacyLoaded, 'sbp-a', 'pilot', legacy.ctx).ok).toBe(true)
+    advanceGame(legacyLoaded, 61_000, legacy.ctx)
+    expect(legacyLoaded.firstShipBuilt).toBe(true)
     expect(commsInbox(legacyLoaded, legacy.ctx).map((e) => e.id)).toContain('msg-first-ship-x')
   })
 })
