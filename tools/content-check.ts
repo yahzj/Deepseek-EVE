@@ -90,6 +90,8 @@ import {
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_POOLS,
   SHIP_ROLE_LABELS,
+  isArmorLineShip,
+  shipCategoryKeyOf,
   createFoeSpecs, // 机群火力占比契约的守恒实测（Σ 单发对照）
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
@@ -177,7 +179,7 @@ securityZoneOf,
   // 2026-09-15 洞内敌卡扩充：一族三档 / 出场池 / 分层血量修正 / 族定选靶
   WORMHOLE_FAMILY_CARDS,
   WORMHOLE_CARD_TIERS,
-  WORMHOLE_TIER_HP_MUL,
+  WORMHOLE_TIER_THREAT_MUL,
   WORMHOLE_TIER_UNLOCK_DEPTH,
   WORMHOLE_FAMILY_TARGETING,
   WORMHOLE_FAMILY_TARGETING_CHANCE,
@@ -1151,6 +1153,8 @@ const SHIP_SUBCLASSES = [
   '无人机作战舰',
   '侦察舰',
   '后勤舰',
+  // 2026-09-16 船长：「原先将非专属的三条乌龟船添加舰船的子分类：武装货舰」（陆龟/玳瑁/玄武三艘）
+  '武装货舰',
 ] as const
 /**
  * **非虫洞舰写子分类的登记表**（2026-09-13 船长：「**协会功能舰也可写子分类**」）。
@@ -1163,6 +1167,10 @@ const SHIP_SUBCLASSES = [
  */
 const SUBCLASS_NON_WH_SHIP_IDS = new Set([
   'sh-nautilus', // 鹦鹉螺级测绘巡洋舰（协会测绘处 · 侦察舰；2026-09-13 船长）
+  // 2026-09-16 船长：「原先将非专属的三条乌龟船添加舰船的子分类：武装货舰」⇒ 甲壳装甲线三艘
+  'sh-tortoise', // 陆龟级重装艇（T2）
+  'sh-hawksbill', // 玳瑁级重装巡舰（T3）
+  'sh-xuanwu', // 玄武级重装旗舰（T4）
 ])
 /**
  * **每档默认槽位总数**（船长 2026-09-14 原话：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
@@ -1293,6 +1301,17 @@ for (const s of SHIPS) {
       (Number.isInteger(s.wormholeScanRadiusBonus) && s.wormholeScanRadiusBonus > 0 && s.wormholeScanRadiusBonus <= 3),
     `舰船 ${s.id} wormholeScanRadiusBonus 越界（应 1~3 的整数）：${String(s.wormholeScanRadiusBonus)}`,
   )
+  // **后勤舰维修脉冲字段**（2026-09-16 船长：「后勤舰添加特性，维修装置可以修理血量最少的队友。」
+  // ＋同日「我发现之前给后勤舰的维修特性并添加到船体特性属性中？」⇒ 由 `subClass` 硬判据改为本字段驱动）：
+  // 只认 true（或整条缺省）；写了就必须真是「后勤舰」子分类（防把"修队友"挂到别的船上）
+  check(
+    s.repairPulseTargetsFleet === undefined || s.repairPulseTargetsFleet === true,
+    `舰船 ${s.id} repairPulseTargetsFleet 只认 true（或整条缺省）：${String(s.repairPulseTargetsFleet)}`,
+  )
+  check(
+    s.repairPulseTargetsFleet !== true || s.subClass === '后勤舰',
+    `舰船 ${s.id} 写了 repairPulseTargetsFleet（维修脉冲修队友）但子分类不是「后勤舰」：${String(s.subClass)}`,
+  )
   // **舰种子分类**（2026-09-13 船长：虫洞族专属舰船按子分类重排并进界面；同日放宽：协会功能舰也可写）
   // 取值限白名单（防手滑写错标签；D 族巡洋舰按裁定**不设**子分类）；非虫洞舰须在登记表里
   if (s.subClass !== undefined) {
@@ -1311,7 +1330,16 @@ for (const s of SHIPS) {
   }
   if (s.role === 'armed') {
     check(s.powerBonus !== undefined && s.powerBonus > 0 && s.powerBonus <= 2, `武装舰 ${s.id} 必须有合法 powerBonus`)
-    check((s.shieldHp ?? 0) > (s.armorHp ?? 0), `武装舰 ${s.id} 护盾应大于装甲（族定位）`)
+    /**
+     * 2026-09-16 船长丙案：「**将装甲占比比护盾高的船也归入装甲舰**」＋裁决「**只在武装舰里判**」，
+     * 同日还要求「**将牛鲨级突击舰和E族专属舰的护盾和装甲互换**」⇒ 这 4 艘（role 仍 `armed`）
+     * 换完就是**装甲占比 > 护盾占比** ⇒ 归入「装甲舰」类别。故原硬契约放宽为：
+     * **盾 > 甲，或者它属于装甲线**（判据 = `isArmorLineShip`，与界面类别筛选同源）。
+     */
+    check(
+      (s.shieldHp ?? 0) > (s.armorHp ?? 0) || isArmorLineShip(s),
+      `武装舰 ${s.id} 护盾应大于装甲（族定位）——除非它归入「装甲舰」类别（装甲占比 > 护盾占比）`,
+    )
   } else {
     check(s.powerBonus === undefined, `非武装舰 ${s.id} 不应带 powerBonus`)
   }
@@ -1702,7 +1730,48 @@ for (const m of MODULES) {
   }
   console.log(
     `· 隐秘行动装置契约：${SPEC.map((s) => `${byId.get(s.id)?.name} ${s.ms / 1000} 秒 · CPU ${s.cpu} · ${s.price / 10_000} 万（${s.rarity} 档 ${s.tier}）`).join(' · ')}` +
-      ` · 带推进器即解除（引擎口径，见 core 用例）`,
+      ` · 带推进器即解除（引擎口径，见 core 用例；**侦察舰特性例外**见下一条契约）`,
+  )
+}
+
+/* ── 侦察舰特性契约（船长 2026-09-16：「**侦查舰添加特性，隐秘行动装置所需CPU降低50%，且移除推进器
+ *   失效惩罚**」；口径四答：只有「侦察舰」子分类那两艘 · CPU **向上取整**（55→28 · 80→40）·
+ *   **完全移除**推进器惩罚 · 特性栏与装配页都显示）──
+ * 本条钉三件事（数值是船长的数 ⇒ 改一处即红）：
+ *   ① **恰好两艘**（鹦鹉螺级测绘巡洋舰 / 幽影侦察舰）带这两个字段，且值 = 0.5 / true；
+ *   ② **别的船一件都不许带**（防"顺手给某艘船也开个口子"）；
+ *   ③ 装置**限制说明**的措辞 =「与任何类型推进器一起使用时失效」（船长指定原话）。
+ * ⚠ 引擎侧口径（折算单点 `equipment.cpuUseOf` · 推进器豁免在 `combat.createPlayerSpec`）
+ *   由 core 用例钉住：`tests/stealth-device.test.ts` 的「侦察舰特性」组。 */
+{
+  const SCOUTS = ['sh-nautilus', 'sh-wh-g-frigate'] as const
+  const byId = new Map(SHIPS.map((s) => [s.id, s]))
+  for (const id of SCOUTS) {
+    const s = byId.get(id)
+    check(s !== undefined, `侦察舰缺件：${id}`)
+    if (!s) continue
+    check(s.subClass === '侦察舰', `${id} 的子分类应为「侦察舰」，实际 ${s.subClass ?? '(无)'}`)
+    check(s.stealthCpuMul === 0.5, `${id} 的隐秘装置 CPU 倍率应为 0.5（船长给定），实际 ${s.stealthCpuMul}`)
+    check(s.stealthIgnoresPropulsion === true, `${id} 应带「免推进器失效」特性（船长给定）`)
+  }
+  const extra = SHIPS.filter(
+    (s) => !(SCOUTS as readonly string[]).includes(s.id) && (s.stealthCpuMul !== undefined || s.stealthIgnoresPropulsion === true),
+  )
+  check(
+    extra.length === 0,
+    `只有「侦察舰」那两艘能带该特性，实际多出：${extra.map((s) => `${s.name}(${s.id})`).join(' · ')}`,
+  )
+  const LIMIT = '与任何类型推进器一起使用时失效'
+  for (const id of ['mod-stealth-2', 'mod-stealth-3']) {
+    const m = MODULES.find((x) => x.id === id)
+    check(
+      (m?.description ?? '').includes(LIMIT),
+      `${id} 的限制说明应含「${LIMIT}」（船长 2026-09-16 指定措辞）`,
+    )
+  }
+  console.log(
+    `· 侦察舰特性契约：${SCOUTS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 隐秘装置 CPU ×0.5（向上取整：55→28 · 80→40）· 装推进器亦可隐身 · ` +
+      `其余 ${SHIPS.length - SCOUTS.length} 艘船一律不带（实测多带 0 件）· 装置限制说明已改写`,
   )
 }
 
@@ -3322,6 +3391,13 @@ const STALE_COPY_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
   [/动能弹(?!药)/, '旧弹药名（2026-09-16 起：动能弹药）'],
   [/爆破导弹/, '旧弹药名（2026-09-16 起：爆破弹药——发射架仍叫导弹架，打出去的是弹药）'],
   [/等离子弹/, '旧弹药名（V18B-2 起即为「能量弹药」，2026-09-16 补齐存量文案）'],
+  /**
+   * 2026-09-16 船长定名批（原话：「**将重装舰类的名称改为装甲舰。**」）：
+   * `armored` 的展示名由「重装」改「**装甲**」⇒ 类别名「重装舰」、角色徽标「重装」、技能「重装舰操作」全部换新；
+   * 这条黑名单只拦**「重装舰」三个字连写**（旧类别名与旧技能名），不拦三艘乌龟船的**舰名**
+   * （「陆龟级重装艇 / 玳瑁级重装巡舰 / 玄武级重装旗舰」——船长选甲案，单舰名与蓝图描述保持原样）。
+   */
+  [/重装舰/, '旧类别名（2026-09-16 起：装甲舰）——单舰名「重装艇/重装巡舰/重装旗舰」不受此条约束'],
 ]
 
 /**
@@ -4505,7 +4581,48 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     .join(' / ')
   console.log(
     `· 舰种契约：${matched}/${SHIPS.length} 艘船归类与等效质量一致（${shown}）；` +
-      `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join("/")}`,
+      `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join("/")}` +
+      // 后勤舰特性（2026-09-16 船长：进「船体特性」栏）——读数放这儿，日后加第二艘后勤舰一眼能看见
+      (() => {
+        const logi = SHIPS.filter((x) => x.repairPulseTargetsFleet === true)
+        return logi.length > 0
+          ? ` · 后勤舰特性（维修脉冲修编队最缺血者）${logi.length} 艘（${logi.map((x) => x.name).join('、')}）`
+          : ' · 后勤舰特性（维修脉冲修编队最缺血者）**0 艘**'
+      })(),
+  )
+}
+
+/* ── 舰船「类别」契约（2026-09-16 船长：类别名改名 + 装甲线判据）────────────────────
+   船长原话（照抄）：「**将重装舰类的名称改为装甲舰。**」＋「**同时将一些装甲占比比护盾高的船也归入装甲舰。**」
+   ＋裁决「**只在武装舰里判**」（丙案）＋「**将牛鲨级突击舰和E族专属舰的护盾和装甲互换**」。
+
+   口径（单点在 `packages/core/src/labels.ts`，界面四处筛选/徽标与词典同源）：
+   - **展示名**：`armored` ⇒ 「**装甲**」/「**装甲舰**」（id 不变，存档零迁移）；
+   - **装甲线判据** = `role === 'armored'` **或**（`role === 'armed'` 且 装甲占比 > 护盾占比）
+     —— **只判"类别"（显示层）**：`role` 不动 ⇒ 等效质量不折抵、不吃「装甲舰操作」、仍算战斗舰。
+   为什么钉：这条判据一旦漂回"只看 role"，船长点名的牛鲨级与 E 族专属舰就会从「装甲舰」里掉出去。 */
+{
+  check(SHIP_ROLE_LABELS.armored === '装甲', `类别契约：armored 展示名应为「装甲」（现「${SHIP_ROLE_LABELS.armored}」）`)
+  const armorLine = SHIPS.filter((s) => isArmorLineShip(s))
+  const bySwap = SHIPS.filter((s) => s.role === 'armed' && isArmorLineShip(s))
+  // 船长点名的四艘（"护盾和装甲互换"进来的；换完必须是装甲占比更高）
+  for (const id of ['sh-bullshark', 'sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+    const s = SHIPS.find((x) => x.id === id)
+    check(!!s, `类别契约：舰船目录里没有 ${id}`)
+    check(s?.role === 'armed', `类别契约：${id} 的 role 应保持 ` + '`armed`（丙案：只判类别、不动机制）')
+    check(isArmorLineShip(s!), `类别契约：${id} 换盾/甲后应归入「装甲舰」类别（现 盾 ${s?.shieldHp} / 甲 ${s?.armorHp}）`)
+    check(shipCategoryKeyOf(s!) === 'armored', `类别契约：${id} 的类别键应为 ` + '`armored`')
+  }
+  // 非战斗舰（采矿/货舰）**不许**被这条判据吸进装甲线（丙案明确"只在武装舰里判"）
+  for (const s of SHIPS) {
+    if (s.role === 'industrial' || s.role === 'hauler') {
+      check(!isArmorLineShip(s), `类别契约：${s.id}（${s.role}）不该归入装甲线（船长 2026-09-16：只在武装舰里判）`)
+    }
+  }
+  console.log(
+    `· 舰船类别契约：类别名 = 采矿舰 / 货运舰 / 武装舰 / **装甲舰**（armored 展示名「装甲」）· ` +
+      `装甲线合计 ${armorLine.length} 艘（按 role ${SHIPS.filter((s) => s.role === 'armored').length} + 武装舰换血转线 ${bySwap.length}：` +
+      `${bySwap.map((s) => s.name).join('、')}）`,
   )
 }
 
@@ -4780,17 +4897,20 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
             }
           }
         }
-        // ④ 出场层 / 权重 / 分层血量修正（读 core 常量）
+        // ④ 出场层 / 权重 / 分层**威胁预算**修正（读 core 常量）
         const wantUnlock: Record<string, number> = { shallow: 1, mid: 2, deep: 4 }
         for (const t of WORMHOLE_CARD_TIERS) {
           if (WORMHOLE_TIER_UNLOCK_DEPTH[t] !== wantUnlock[t]) {
             errors.push(`出场层：${t} 档从第 ${WORMHOLE_TIER_UNLOCK_DEPTH[t]} 层起，应为第 ${wantUnlock[t]} 层（船长「1/2/4 层开始出现」）`)
           }
         }
-        const wantHp: Record<string, number> = { shallow: 1, mid: 1.1, deep: 1.2 }
+        // 分层修正（2026-09-16 船长改口径：「档位血量修正改为**威胁预算**修正，比例降为 **1 : 1.05 : 1.1**」）
+        const wantMul: Record<string, number> = { shallow: 1, mid: 1.05, deep: 1.1 }
         for (const t of WORMHOLE_CARD_TIERS) {
-          if (Math.abs(WORMHOLE_TIER_HP_MUL[t] - wantHp[t]) > 1e-9) {
-            errors.push(`分层血量修正：${t} 档 ×${WORMHOLE_TIER_HP_MUL[t]}，应为 ×${wantHp[t]}（船长「中层 *1.1 · 深层 *1.2」）`)
+          if (Math.abs(WORMHOLE_TIER_THREAT_MUL[t] - wantMul[t]) > 1e-9) {
+            errors.push(
+              `分层威胁预算修正：${t} 档 ×${WORMHOLE_TIER_THREAT_MUL[t]}，应为 ×${wantMul[t]}（船长「改为威胁预算修正，比例降为 1:1.05:1.1」）`,
+            )
           }
         }
         const wantWeights: Array<[number, Record<string, number>]> = [

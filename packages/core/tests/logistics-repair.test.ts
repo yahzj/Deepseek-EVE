@@ -7,7 +7,9 @@
  * - 「**敌方后勤舰新增一艘舰船**」＋「**T3巡洋**」＋「**先不进卡**」
  * - 补充裁定：「**敌方的修理无法以其他敌方后勤舰为目标（包括自己）。**」
  *
- * 六问六答（全取推荐口径）：判据 = `ShipDef.subClass === '后勤舰'`（现在只有「亡军后勤舰」）·
+ * 六问六答（全取推荐口径）：判据 = `ShipDef.repairPulseTargetsFleet === true`（**2026-09-16 当日改口径**：
+ * 船长「**我发现之前给后勤舰的维修特性并添加到船体特性属性中？**」⇒ 由 `subClass === '后勤舰'` 硬判据
+ * 改为**数据字段**驱动，界面「船体特性」栏与引擎同源；现在只有「亡军后勤舰」写了它）·
  * 目标 = **三层剩余比例最低者（含自己；并列取编队顺序靠前）** · **修复量不变** ·
  * 敌方 = **加 `repairPct` 字段 + 新建一艘 T3**（`foe-g-remnant-tender`「残军补给舰」· 备用壳体暂不进卡）·
  * 敌方口径 = **开火减半 + 每 5 秒按秒修理**（名义 DPS 取 `foeHullDpsOf` 那把尺）· **所有战斗生效**。
@@ -15,7 +17,7 @@
  * ⚠ 本文件不产生任何玩家可见文案。
  */
 import { describe, expect, it } from 'vitest'
-import { FOE_SHIPS, buildSimContext } from '@whale/data'
+import { FOE_SHIPS, SHIPS, buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
@@ -23,6 +25,7 @@ import {
   REPAIR_PULSE_MS,
   createBattleState,
   createFoeSpecs,
+  createPlayerSpec,
   foeNominalDpsOf,
   foeRepairDiscountedShot,
   pulseFoeRepair,
@@ -32,7 +35,7 @@ import type { UnitSpec } from '../src/combat'
 import { wormholeEnter } from '../src/wormhole'
 import type { WormholeRunState } from '../src/wormhole'
 import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
-import type { AnomalyDef } from '../src/types'
+import type { AnomalyDef, SimContext } from '../src/types'
 
 const ctx = buildSimContext()
 /** 舰级个体从聚合表取（data 包只导出 FOE_SHIPS 聚合 + 少数个体） */
@@ -41,7 +44,7 @@ const FOE_G_REMNANT_TENDER = shipOf('foe-g-remnant-tender')
 const FOE_G_ECHO_REMNANT = shipOf('foe-g-echo-remnant')
 const FOE_G_NADIR_LOCK = shipOf('foe-g-nadir-lock')
 const T3 = 'sh-thresher'
-/** 我方后勤舰（唯一 `subClass: '后勤舰'` 的那艘 = 亡军后勤舰） */
+/** 我方后勤舰（唯一写 `repairPulseTargetsFleet: true` 的那艘 = 亡军后勤舰） */
 const LOGI = 'sh-wh-g-destroyer'
 /** 民用维修装置（每跳 甲 5 + 结构 5，耗民用组件） */
 const REP_CIV = 'mod-hullrep-civ'
@@ -148,6 +151,35 @@ describe('后勤舰 · 我方（维修装置修最缺血的队友）', () => {
     const kitsBefore = ledger.kitsUsed
     tickSeconds(state, 6)
     expect(ledger.kitsUsed, '空转不该耗组件').toBe(kitsBefore)
+  })
+})
+
+/* ═══════════ 判据：数据字段（2026-09-16 船长「并添加到船体特性属性中」）═══════════ */
+
+describe('后勤舰特性 · 判据 = 数据字段 `repairPulseTargetsFleet`', () => {
+  it('卡面：亡军后勤舰写了它；**写了的船全部是「后勤舰」子分类**（与 content:check 同一条契约）', () => {
+    const logi = SHIPS.find((s) => s.id === LOGI)!
+    expect(logi.repairPulseTargetsFleet, '亡军后勤舰应声明该字段').toBe(true)
+    expect(logi.subClass).toBe('后勤舰')
+    const declared = SHIPS.filter((s) => s.repairPulseTargetsFleet === true)
+    expect(declared.length, '现在恰好一艘').toBe(1)
+    for (const s of declared) expect(s.subClass, `${s.id} 写了修队友就必须是后勤舰`).toBe('后勤舰')
+  })
+
+  it('引擎**读字段、不看子分类**：摘掉字段 ⇒ 退回只修自己；给普通船补上 ⇒ 立刻修队友', () => {
+    const state = fresh(31)
+    const logi = addShipToFleet(state, LOGI)
+    const plain = addShipToFleet(state, T3)
+    // 基线
+    expect(createPlayerSpec(state, ctx, logi)!.logistics, '后勤舰原样 ⇒ 带 logistics').toBe(true)
+    expect(createPlayerSpec(state, ctx, plain)!.logistics, '普通船 ⇒ 不带').toBeUndefined()
+    // 补丁上下文（只换 `ships` 表，不动全局数据）
+    const ships = new Map(ctx.ships)
+    ships.set(LOGI, { ...ctx.ships.get(LOGI)!, repairPulseTargetsFleet: undefined })
+    ships.set(T3, { ...ctx.ships.get(T3)!, repairPulseTargetsFleet: true })
+    const patched: SimContext = { ...ctx, ships }
+    expect(createPlayerSpec(state, patched, logi)!.logistics, '摘掉字段 ⇒ 不再是后勤舰口径').toBeUndefined()
+    expect(createPlayerSpec(state, patched, plain)!.logistics, '普通船补上字段 ⇒ 立刻生效').toBe(true)
   })
 })
 

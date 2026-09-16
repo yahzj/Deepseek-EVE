@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipCategoryLabelOf, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -368,7 +368,8 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     {
       k: '定位 / 档次',
       // 2026-09-13 船长：**舰种子分类进界面**（只有虫洞族专属舰船写 `subClass`）
-      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipRoleLabel(ship.role)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
+      // 2026-09-16 船长：类别名走 `shipCategoryLabelOf`（装甲线 = `role: armored` 或武装舰里装甲占比 > 护盾占比）
+      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipCategoryLabelOf(ship)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
     },
     // 2026-09-13 船长点名的三条**船体固有新机制**（只虫洞族专属舰船有；没有就不占行）
     ...(() => {
@@ -379,6 +380,14 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
       if (rangeText) bits.push(rangeText)
       if (ship.fleetDamageBonusPct) bits.push(`全舰单发伤害 +${Math.round(ship.fleetDamageBonusPct * 100)}%（编队光环，多艘取最高）`)
       if (ship.wormholeScanRadiusBonus) bits.push(`虫洞扫描范围 +${ship.wormholeScanRadiusBonus} 圈（编入队伍即生效、可叠加）`)
+      // 2026-09-16 船长：后勤舰特性进「船体特性」栏（判据已由 `subClass` 改为数据字段，界面与引擎同源）
+      if (ship.repairPulseTargetsFleet) bits.push('装了维修装置时，维修脉冲改修编队中最缺血的舰船（含自己）')
+      // 2026-09-16 船长：**侦察舰特性**（「隐秘行动装置所需CPU降低50%，且移除推进器失效惩罚」）——
+      // 同样走数据字段 ⇒ 引擎（`equipment.cpuUseOf` / `combat.createPlayerSpec`）与这里同源
+      if (ship.stealthCpuMul !== undefined && ship.stealthCpuMul !== 1) {
+        bits.push(`隐秘行动装置 CPU ×${ship.stealthCpuMul}（向上取整）`)
+      }
+      if (ship.stealthIgnoresPropulsion === true) bits.push('装推进器也能保持隐身（不受推进器失效限制）')
       return bits.length > 0 ? [{ k: '船体特性', v: bits.join(' · ') }] : []
     })(),
     { k: '货舱容量', v: `${fmt(ship.cargoM3)} m³` },

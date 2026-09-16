@@ -34,7 +34,7 @@ import type {
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
-import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_HP_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
 import { wormholeFoeThreat } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
@@ -554,6 +554,40 @@ export function pulseFoeRepair(
 /* ═══════════ 构建 ═══════════ */
 
 /**
+ * **我方"不被一击带走"保险**（船长 2026-09-16：「**血量 100%，单次齐射伤害最多只能造成总血量 80% 的伤害
+ * （只对我方生效）**」）。
+ *
+ * 口径：**同一拍内落在同一艘我方舰上的敌方伤害合计 ≤ 该舰满血（三层合计）× 本比例（0.8）**
+ * —— 逐拍账本 `battle.meVolleyDmg[tag]`（每拍开头清空）⇒ **满血舰永不可能被一次齐射带走**（至少留 20%）。
+ * - **只削我方承伤**：本函数只在"敌方 → 我方"的三处结算点调用（敌机群 / 敌光束 / 敌炮台），
+ *   我方打敌人**一字不动**；
+ * - **洞内洞外都生效**：挂在共用的 `stepBattle` 上 ⇒ 悬赏 / 低安遭遇 / AI 副船 / 虫洞一律吃保险；
+ * - 夹的是**入伤**（已含近盲折扣与受击增程折减之后），所以实际掉血 ≤ 上面那条上限。
+ * - "一次齐射"按**同拍落地**计（错开首轮之后各敌首发已不同拍；同拍多为同一艘的多门炮）。
+ */
+export const PLAYER_VOLLEY_DMG_CAP_SHARE = 0.8
+
+/** 把一发"敌方 → 我方"的伤害夹进本拍保险额度内，并记账（返回实际可造成的伤害） */
+export function cappedFoeDamage(
+  b: import('./state').BattleState,
+  tag: string,
+  spec: UnitSpec,
+  dmg: number,
+): number {
+  if (dmg <= 0) return dmg
+  const max = b.units[tag]?.hpMax
+  const full = max ? max.s + max.a + max.h : spec.hp.s + spec.hp.a + spec.hp.h
+  if (full <= 0) return dmg
+  const cap = full * PLAYER_VOLLEY_DMG_CAP_SHARE
+  const used = b.meVolleyDmg?.[tag] ?? 0
+  const room = Math.max(0, cap - used)
+  const out = Math.min(dmg, room)
+  // ⚠ **必须无条件记账**（哪怕这一发全额放行）：额度是"本拍累计"口径，漏记就等于给下一发多开口子
+  b.meVolleyDmg = { ...(b.meVolleyDmg ?? {}), [tag]: used + out }
+  return out
+}
+
+/**
  * 结算敌人一发（2026-09-10 船长：窝点混伤）：
  * 武器带 `shotsByType`（混伤，主 60% / 副 40%）→ 按构成**逐系**调用 `applyDamage`
  * （各系吃各自的 `typeLayerMult` 与层抗，逐系依次消费 盾→甲→结构）；
@@ -567,8 +601,7 @@ export function applyFoeShot(
   weapon: WeaponSpec,
   totalDmg: number,
   mainType: DamageType,
-): Hp3 {
-  const shots = weapon.shotsByType
+): Hp3 {  const shots = weapon.shotsByType
   const entries = shots ? Object.entries(shots).filter(([, v]) => (v ?? 0) > 0) : []
   if (entries.length <= 1) return applyDamage(hp, resists, totalDmg, mainType).hp
   const sum = entries.reduce((s, [, v]) => s + (v ?? 0), 0)
@@ -904,11 +937,15 @@ export function createPlayerSpec(
    * 六问六答 Q4 = 两档 MK2/MK3 = **20 / 30 秒**、极度吃 CPU；Q3 = **只护装了装置的那一艘**）：
    * 窗口 = 所装件里**最长**的一件（多件不叠加）。
    *
-   * ⚠ **推进器禁令**（船长同日追加：「**有推进器类的时候直接解除隐身**」）：`propDefs` 非空即判 0 ——
+   * ⚠ **推进器禁令**（船长同日追加：「**有推进器类的时候直接解除隐身**」）：默认 `propDefs` 非空即判 0 ——
    * 判在**装配期**（推进器不会中途装卸）⇒ 等价于"带着推进器就没有隐身"。
+   * ⚠ **2026-09-16 船长给侦察舰开了口子**：「**侦查舰添加特性，隐秘行动装置所需CPU降低50%，且移除
+   * 推进器失效惩罚**」（口径四答取「甲：完全移除」）⇒ 本船 `stealthIgnoresPropulsion === true` 时
+   * **推进器不再解除隐身**（开火立即现形、超时现形两条照旧）。判据走**数据字段**（照「后勤舰」先例），
+   * 不在引擎里硬判子分类。
    */
   const stealthMs =
-    propDefs.length > 0
+    propDefs.length > 0 && ship.stealthIgnoresPropulsion !== true
       ? 0
       : allFittedModules(fitted, ctx).reduce((m, d) => Math.max(m, d.stealthMs ?? 0), 0)
 
@@ -918,13 +955,13 @@ export function createPlayerSpec(
   let armorHpMult = 1
   for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
   // 结构层容量（2026-09-10 船长：E 族巨构骨架引出）——任何槽位都可能带，按件加算求和，
-  // 与甲容同口径；技能（船体加固理论/重装舰操作）再乘于其上
+  // 与甲容同口径；技能（船体加固理论/装甲舰操作）再乘于其上
   let hullHpMult = 1
   for (const m of allFittedModules(fitted, ctx)) hullHpMult += m.hullHpBonus ?? 0
   // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
   const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
   const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
-  // 批次五：重装舰操作（armored 族驾驶）——装甲+结构容量 +4%/级，与船体加固理论乘算
+  // 批次五：装甲舰操作（armored 族驾驶）——装甲+结构容量 +4%/级，与船体加固理论乘算
   const armoredOpsLv = ship.role === 'armored' ? Math.min(5, state.skills.trained['armored-ops'] ?? 0) : 0
   const hullSkillMult = (1 + 0.04 * hullLv) * (1 + 0.04 * armoredOpsLv)
   const hp: Hp3 = {
@@ -1176,7 +1213,8 @@ export function createPlayerSpec(
 
   let bayUsed = 0
   // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
-  let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx)
+  // ⚠ 传 `shipDef`：含**本船特性折算**（侦察舰的隐秘行动装置 CPU 减半，见 `equipment.cpuUseOf`）
+  let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx, ship)
   const droneLoad = fleet.droneLoad ?? {}
   // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——每级 −4%
   //（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
@@ -1253,8 +1291,9 @@ export function createPlayerSpec(
     // 单船路径不读这两项 ⇒ 只多两个字段，零行为变化。
     shipTier: ship.tier,
     shipRole: ship.role,
-    // 2026-09-16 船长：后勤舰（`subClass === '后勤舰'`）的维修装置改修队友；其余舰只修自己
-    ...(ship.subClass === '后勤舰' ? { logistics: true } : {}),
+    // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
+    // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）
+    ...(ship.repairPulseTargetsFleet === true ? { logistics: true } : {}),
     hp,
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
@@ -2001,6 +2040,7 @@ function resolveReinforcements(
     seedUnit(b, spec, {
       enterReload: true,
       arrivedAtMs: state.gameMs + arriveIdx * BATTLE_ARRIVAL_STAGGER_MS,
+      ...(b.wormhole ? { foePhaseMs: arriveIdx * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
     })
     arriveIdx += 1
     arrived.push(spec)
@@ -2487,7 +2527,7 @@ function removeCargoOfShip(state: GameState, shipId: string, itemId: string, uni
 /**
  * **该舰的层容量增幅**（装甲/结构各自的「满值 ÷ 档案基础值」）——**2026-09-16 船长「统一吃」**：
  * 维修装置的每跳修复量与修理组件**同一把尺**，都随**额外护甲/结构加成**放大
- * （装备件 `armorHpBonus` / `hullHpBonus` ＋ 技能「船体加固理论」＋ 重装族「重装舰操作」）。
+ * （装备件 `armorHpBonus` / `hullHpBonus` ＋ 技能「船体加固理论」＋ 装甲族「装甲舰操作」）。
  *
  * 与 `shipyard.kitHealFor` 的 `capA/baseA`、`capH/baseH` **完全同源**：都取 `createPlayerSpec`
  * （含装备与技能）÷ 舰船档案值 ⇒ 两条路径的"吃加成"口径不会各写一套。
@@ -2536,7 +2576,7 @@ export function preloadRepairFor(
   /**
    * **层容量增幅**（2026-09-16 船长「统一吃」＋「并在相关说明中提及（提高维修量等）」）：
    * 每跳修复量从此与**修理组件同一把尺**——额外护甲/结构加成（装甲增厚板 · 结构件 ·
-   * 船体加固理论 · 重装舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
+   * 船体加固理论 · 装甲舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
    */
   const amp = layerAmpOf(state, ctx, shipId)
   // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
@@ -2956,6 +2996,20 @@ export const BATTLE_ARRIVAL_FLY_MS = 950
 export const BATTLE_ARRIVAL_STAGGER_MS = 60
 
 /**
+ * **洞内敌方首轮齐射的逐舰相位错开（ms/条）**（船长 2026-09-16：「错开首轮齐射」）。
+ *
+ * 为什么需要（同日实测）：洞内敌舰装填一致、开场即满弹、且入场窗口把首发全推到同一刻
+ * ⇒ **整卡首轮同时落地**：层 1 一张卡的同步首轮 = 我方单舰（长尾鲨满配 648 血）的 **99%~137%**，
+ * 层 2 E 族单体一轮即 103% ⇒ 配合族定选靶就是"一击秒掉一艘"。
+ *
+ * 口径：同批入场的第 `idx` 条敌舰，首发再推后 `idx × 本值`；此后**各自保持相位**
+ * （装填相等 ⇒ 相位差永久保留）⇒ 一轮齐射被摊成 N 拍，**总 DPS 与期望伤害不变**。
+ * **确定性、不吃随机数**；**只作用于洞内战斗**（首波由 `stampFoeArrivalFx`、波次转场/增援由 `seedUnit`
+ * 的 `foePhaseMs` 带入；洞外两条路径都不传 ⇒ **洞外读数逐字不变**）。
+ */
+export const WORMHOLE_FOE_VOLLEY_STAGGER_MS = 900
+
+/**
  * **入场播种**（船长 2026-09-14：「①乙，初始不可开火，且对洞内洞外都生效」「③补。并且参考①动画没结束不开火」）。
  *
  * 只给**有入场动画**的单位写 `enteredAtMs`（洞内首波敌方跃迁入场 / 每一次波次转场与单波内增援）：
@@ -2967,10 +3021,12 @@ export const BATTLE_ARRIVAL_STAGGER_MS = 60
 function seedUnit(
   b: import('./state').BattleState,
   spec: UnitSpec,
-  opts: { enterReload?: boolean; arrivedAtMs?: number } = {},
+  opts: { enterReload?: boolean; arrivedAtMs?: number; foePhaseMs?: number } = {},
 ): void {
   if (b.units[spec.tag]) return
   const windowMs = opts.arrivedAtMs !== undefined ? BATTLE_ARRIVAL_FLY_MS : 0
+  /** 首轮相位错开（洞内专属；见 `WORMHOLE_FOE_VOLLEY_STAGGER_MS`）——洞外调用方一律不传 ⇒ 0 */
+  const phase = opts.foePhaseMs ?? 0
   b.units[spec.tag] = {
     tag: spec.tag,
     side: spec.side,
@@ -2978,8 +3034,8 @@ function seedUnit(
     hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
     hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
     weapons: opts.enterReload
-      ? spec.weapons.map((w) => Math.max(1, w.reloadMs, windowMs))
-      : spec.weapons.map(() => 0),
+      ? spec.weapons.map((w) => Math.max(1, w.reloadMs, windowMs) + phase)
+      : spec.weapons.map(() => phase),
     ...(opts.arrivedAtMs !== undefined ? { enteredAtMs: opts.arrivedAtMs } : {}),
   }
 }
@@ -2998,8 +3054,12 @@ export function stampFoeArrivalFx(b: import('./state').BattleState, nowMs = b.la
     const rt = b.units[tag]
     if (!rt) return
     rt.enteredAtMs = nowMs + idx * BATTLE_ARRIVAL_STAGGER_MS
-    // 首发也推到窗口之后（与 `seedUnit` 同一条判据：动画没演完不开火）
-    rt.weapons = rt.weapons.map((cd) => Math.max(cd, BATTLE_ARRIVAL_FLY_MS))
+    // 首发也推到窗口之后（与 `seedUnit` 同一条判据：动画没演完不开火）；
+    // 2026-09-16 船长「错开首轮齐射」：再按编成序各推 `idx × WORMHOLE_FOE_VOLLEY_STAGGER_MS`
+    // ⇒ 全敌不再同时落地（本函数**只被洞内调用**，洞外首波不盖 ⇒ 洞外读数不变）。
+    rt.weapons = rt.weapons.map(
+      (cd) => Math.max(cd, BATTLE_ARRIVAL_FLY_MS + idx * WORMHOLE_FOE_VOLLEY_STAGGER_MS),
+    )
   })
 }
 
@@ -3329,23 +3389,34 @@ export function wormholeDerivedAnomaly(
    */
   const threatMul = spec.threatMul ?? 1
   /**
-   * **分层血量修正**（船长 2026-09-15：「中层配置血量*1.1.深层配置血量*1.2」）：
+   * **分层"威胁预算"修正**（2026-09-16 船长改口径：「档位血量修正改为威胁预算修正，比例降为 1 : 1.05 : 1.1」）：
    * 档位由**卡 id 反查**（`wormholeTierOfCard`）⇒ 不进存档、老档零迁移；
    * 查不到（不是洞内卡）⇒ 1（= 与旧口径逐字一致）。
    */
-  const tierHpMul = WORMHOLE_TIER_HP_MUL[wormholeTierOfCard(baseCard.id) ?? 'shallow']
+  const tierThreatMul = WORMHOLE_TIER_THREAT_MUL[wormholeTierOfCard(baseCard.id) ?? 'shallow']
+  /**
+   * **该卡的自然总火力**（含机群）——决定它的"自然血/火力比 `r`"（甲案口径：血与火力按 `r` 反算）。
+   * 用**未派生**的卡建一遍规格即可（与派生无关，纯卡面事实）；同一张卡只算一次（记忆在派生记忆里）。
+   */
+  const naturalDps = (() => {
+    let dps = 0
+    for (const f of createFoeSpecs(baseCard, ctx.balance.battle)) {
+      for (const w of f.weapons) dps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
+    }
+    return dps
+  })()
   const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
-  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierHpMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierThreatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
   if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
   const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
-    // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
-    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）；
-    // **分层修正**（浅/中/深）只乘血、不乘火力 —— 由 `hpScaleMul` 在派生端拆开
+    // **本层本档的"血尺度"**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径 × **谜质威胁乘数**）；
+    // 新口径下它经平方化成"威胁预算 T"，再由卡的自然比拆成血与火力（见 `wormholeAnomalyOf`）
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
       WORMHOLE_FOE_BASE_STRENGTH_MUL *
       threatMul,
-    hpScaleMul: tierHpMul,
+    tierThreatMul,
+    naturalDps,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
   /**
@@ -4430,10 +4501,20 @@ export function advanceBattleFor(
       //   按全局时钟算 ⇒ 窗口 = **追平之后实实在在的 950ms**（实测：14800 入场 → 15900 才掉第一滴血）。
       if (waitedGap) {
         curFoes.forEach((f, i) =>
-          seedUnit(battle, f, { enterReload: true, arrivedAtMs: state.gameMs + i * BATTLE_ARRIVAL_STAGGER_MS }),
+          seedUnit(battle, f, {
+            enterReload: true,
+            arrivedAtMs: state.gameMs + i * BATTLE_ARRIVAL_STAGGER_MS,
+            // 洞内：同一波新入场的敌舰也按序错开首轮（见 `WORMHOLE_FOE_VOLLEY_STAGGER_MS`）
+            ...(battle.wormhole ? { foePhaseMs: i * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
+          }),
         )
       } else {
-        curFoes.forEach((f) => seedUnit(battle, f, { enterReload: true }))
+        curFoes.forEach((f, i) =>
+          seedUnit(battle, f, {
+            enterReload: true,
+            ...(battle.wormhole ? { foePhaseMs: i * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
+          }),
+        )
       }
       // 近防炮调度随波重建（pdCd 与敌编队同序）
       if (battle.pdCd && battle.dronePools) {
@@ -4780,10 +4861,17 @@ export function foeGunPowerFactorOf(
 }
 
 /** **炮台受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）。
+ *
+ * ⚠ **2026-09-16 船长加距离门**：「**将射程增加效果改为，如果敌人在射程外攻击时才触发**」
+ * ⇒ 除了"命中本体"，还要求**这一发来自它当前全部炮台射程之外**（`b.distanceM > max(自身各炮台远界)`）。
+ * 语义：这条机制本意是惩罚"在它够不着的距离外放风筝"，近身对轰**不该**解锁增程。
+ * 洞内洞外同一处生效（船长同日裁「只改 D 炮台增程」⇒ E 族机群那条 ×4 **保持原样**）。
  *  @returns 是否本次**首次**触发（首次才推画面提示） */
 function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleState): boolean {
   const mul = rt.foeGunRangeMulOnHit
   if (mul === undefined || mul <= 1) return false
+  const reach = rt.weapons.reduce((m, w) => Math.max(m, foeGunMaxRangeOf(b, rt, w)), 0)
+  if (!(b.distanceM > reach)) return false // 近身命中不解锁（船长 2026-09-16）
   const cur = b.foeGunRangeBuff
   if (cur !== undefined && cur >= mul) return false // 该型舰共享 ⇒ 不重复盖章、不重复提示
   b.foeGunRangeBuff = mul
@@ -5193,6 +5281,9 @@ function stepBattle(
   foeTargetingChance = 1,
 ): void {
   const dtSec = dtMs / 1000
+  // **我方"不被一击带走"保险：本拍账本清零**（船长 2026-09-16；见 `cappedFoeDamage`。
+  // 逐拍重置 ⇒ 运行态、不入档；洞外洞内共用这一处）
+  b.meVolleyDmg = {}
   // 主控 = 编队首条（距离/期望交距/胜率口径的锚；单船路径即唯一那条）
   const me = myUnits[0]!
 
@@ -5603,7 +5694,7 @@ function stepBattle(
             dtgt.rt.hp,
             dtgt.spec.resists,
             dw,
-            dw.shotDmg ?? 0,
+            cappedFoeDamage(b, dtgt.spec.tag, dtgt.spec, dw.shotDmg ?? 0),
             dType,
           )
         }
@@ -5646,7 +5737,7 @@ function stepBattle(
       releaseFoeChargeOnHit(b, f.tag, bal)
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
-      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, dmg, fType)
+      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg), fType)
       pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true })
       continue
     }
@@ -5660,7 +5751,7 @@ function stepBattle(
     const fHit = nextRandom(state.rng) < foeHitEff
     if (fHit) {
       b.stats.foeHits += 1
-      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, shotDmg, fType)
+      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg), fType)
       // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
       releaseFoeChargeOnHit(b, f.tag, bal)
     }

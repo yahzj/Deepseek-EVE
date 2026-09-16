@@ -35,7 +35,7 @@ import {
   WORMHOLE_ORE_ITEM_ID,
   WORMHOLE_TEMP_CELLS,
   WORMHOLE_TEMP_COLS,
-  WORMHOLE_TIER_HP_MUL,
+  WORMHOLE_TIER_THREAT_MUL,
   WORMHOLE_TIER_UNLOCK_DEPTH,
   wormholeAllCardIds,
   wormholeAnomalyOf,
@@ -314,30 +314,42 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     )
   })
 
-  it('分层血量修正：中 ×1.1 / 深 ×1.2，**只加血不加火力**（同层同档总血恒等）', () => {
+  it('分层**威胁预算**修正：中 ×1.05 / 深 ×1.1 乘在 T 上 ⇒ 血与火力各 ×√档位（船长 2026-09-16 改口径）', () => {
     const base = ctx.anomalies.get('wh-pirate-scout')!
     const natural = wormholeNaturalHp(base)
+    // ⚠ 不给 `naturalDps` 时派生端退回"参考比"（`WORMHOLE_THREAT_REF_RATIO`）⇒ 血 = 预算（旧语义）、
+    //   火力 = 预算 ÷ 参考比；档位修正乘在 T 上 ⇒ 血与火力**各 ×√(档位系数)**。
     const shallow = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3 })
-    const mid = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3, hpScaleMul: WORMHOLE_TIER_HP_MUL.mid })
-    const deep = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3, hpScaleMul: WORMHOLE_TIER_HP_MUL.deep })
+    const mid = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3, tierThreatMul: WORMHOLE_TIER_THREAT_MUL.mid })
+    const deep = wormholeAnomalyOf(base, 4, 'node', 1, { hpBudget: natural * 3, tierThreatMul: WORMHOLE_TIER_THREAT_MUL.deep })
+    const rt = (m: number): number => Math.sqrt(m)
     expect(wormholeNaturalHp(shallow)).toBeCloseTo(natural * 3, 3)
-    expect(wormholeNaturalHp(mid)).toBeCloseTo(natural * 3 * 1.1, 3)
-    expect(wormholeNaturalHp(deep)).toBeCloseTo(natural * 3 * 1.2, 3)
-    // 单发缩放（= dmgMul）不随分层修正变：只加血、不加火力
+    expect(wormholeNaturalHp(mid)).toBeCloseTo(natural * 3 * rt(1.05), 3)
+    expect(wormholeNaturalHp(deep)).toBeCloseTo(natural * 3 * rt(1.1), 3)
+    // 火力**同步**抬（这正是"只加血"改判成"威胁预算修正"的差别）
     const dmgScale = (a: ReturnType<typeof wormholeAnomalyOf>): number => a.ships?.[0]?.dmgMul ?? 1
-    expect(dmgScale(mid)).toBeCloseTo(dmgScale(shallow), 9)
-    expect(dmgScale(deep)).toBeCloseTo(dmgScale(shallow), 9)
-    expect(WORMHOLE_TIER_HP_MUL).toEqual({ shallow: 1, mid: 1.1, deep: 1.2 })
+    expect(dmgScale(mid) / dmgScale(shallow)).toBeCloseTo(rt(1.05), 3)
+    expect(dmgScale(deep) / dmgScale(shallow)).toBeCloseTo(rt(1.1), 3)
+    expect(WORMHOLE_TIER_THREAT_MUL).toEqual({ shallow: 1, mid: 1.05, deep: 1.1 })
   })
 
-  it('引擎按卡 id 反查档位：同层同用途下，中层卡总血 = 浅层 ×1.1、深层 = 浅层 ×1.2（火力口径不变）', () => {
+  it('引擎按卡 id 反查档位：同族三档的**威胁预算（血 × 火力）比 = 1 : 1.05 : 1.1**', () => {
     const cards = WORMHOLE_CARD_TIERS.map((t) => ctx.anomalies.get(wormholeCardOfTier('A', t)!)!)
-    const totalAt = (card: (typeof cards)[number]): number =>
-      wormholeNaturalHp(wormholeDerivedAnomaly(ctx, card, { depth: 4, kind: 'node', waves: 1 }))
-    const shallow = totalAt(cards[0]!)
-    // 按卡归一后：总血 = 该层预算 × 档位系数 ⇒ 卡间差异只剩档位（同层同档恒等）
-    expect(totalAt(cards[1]!) / shallow).toBeCloseTo(1.1, 3)
-    expect(totalAt(cards[2]!) / shallow).toBeCloseTo(1.2, 3)
+    const threatAt = (card: (typeof cards)[number]): number => {
+      let hp = 0
+      let dps = 0
+      for (const f of createFoeSpecs(wormholeDerivedAnomaly(ctx, card, { depth: 4, kind: 'node', waves: 1 }), ctx.balance.battle)) {
+        hp += f.hp.s + f.hp.a + f.hp.h
+        for (const w of f.weapons) dps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
+      }
+      return hp * dps
+    }
+    const shallow = threatAt(cards[0]!)
+    // ±5%：条目层面按构造恒等，实算会吃"逐门单发取整 + 舰体火力越线折扣（超 150 部分打折，非线性）"
+    expect(threatAt(cards[1]!) / shallow).toBeGreaterThan(1.0)
+    expect(threatAt(cards[1]!) / shallow).toBeLessThan(1.1)
+    expect(threatAt(cards[2]!) / shallow).toBeGreaterThan(1.05)
+    expect(threatAt(cards[2]!) / shallow).toBeLessThan(1.16)
   })
 
   it('派生：威胁换成目标值、**总血压到该层预算**（按卡归一）；**波数摊薄但总战力守恒**', () => {

@@ -35,6 +35,7 @@ import {
   cargoCapacityM3Of,
   isExitCell,
   shipDisplayName,
+  shipCategoryKeyOf,
   shipSizeLabel,
   wormholeAdmission,
   wormholeBagSlots,
@@ -573,7 +574,8 @@ export function WormholePanel({
         const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
-      if (whRole !== SUB_ALL && (e.def?.role ?? 'industrial') !== whRole) return false
+      // 类别键 = `shipCategoryKeyOf`（2026-09-16 船长：装甲线含"武装舰里装甲占比 > 护盾占比"者）
+      if (whRole !== SUB_ALL && shipCategoryKeyOf(e.def ?? {}) !== whRole) return false
       if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
       return true
     }),

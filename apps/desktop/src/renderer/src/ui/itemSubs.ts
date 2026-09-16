@@ -140,7 +140,8 @@ export const SHIP_SUBS: SubOption[] = [
   { key: 'industrial', label: '采矿舰' },
   { key: 'hauler', label: '货运舰' },
   { key: 'armed', label: '武装舰' },
-  { key: 'armored', label: '重装舰' },
+  // 2026-09-16 船长：「将重装舰类的名称改为装甲舰」（键仍 = role id，机制零迁移）
+  { key: 'armored', label: '装甲舰' },
 ]
 
 /** 舰船级别（T1~T5；顺序即渲染顺序，分组判定与子分类判定共用一处） */

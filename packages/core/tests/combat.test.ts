@@ -671,7 +671,7 @@ describe('第三/四批战斗技能（2026-09-05：防御容量/能量供能/弹
   })
 })
 
-describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人机整备学、武装/重装舰操作）', () => {
+describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人机整备学、武装/装甲舰操作）', () => {
   it('护盾调谐学/装甲调谐学：满级减伤缺口收窄 ×0.9（0.4 基抗 → 0.46）；盾/甲技能互不串', () => {
     const resOf = (
       modId: string,
@@ -760,7 +760,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     expect(ar5).toBeGreaterThan(ar0)
   })
 
-  it('重装舰操作：仅 armored 族满级装甲与结构 ×1.2（护盾不动）；其他族不受影响', () => {
+  it('装甲舰操作：仅 armored 族满级装甲与结构 ×1.2（护盾不动）；其他族不受影响', () => {
     const armoredDef = { ...ship('sandcat'), role: 'armored' as const }
     const hpOf = (def: ReturnType<typeof ship> | typeof armoredDef, lv: number): { s: number; a: number; h: number } => {
       const state = createInitialState({ nowWallMs: 0, seed: 58 })
@@ -774,7 +774,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     const ar5 = hpOf(armoredDef, 5) // 沙猫基甲 10 / 基结构 25 → ×1.2
     expect(ar5.a).toBeCloseTo(12, 10)
     expect(ar5.h).toBeCloseTo(30, 10)
-    expect(ar5.s).toBeCloseTo(ind5.s, 10) // 护盾层不受重装舰操作影响
+    expect(ar5.s).toBeCloseTo(ind5.s, 10) // 护盾层不受装甲舰操作影响
   })
 })
 
