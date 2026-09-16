@@ -32,6 +32,7 @@ import type { GameState, WormholeArchetype, WormholeFamily } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 
 /**
  * **「发现于 9月14日」**（船长 2026-09-14：卡片上不要相对时间，要日期）。
@@ -224,9 +225,21 @@ export function WormholeScanTab({
                      */}
                     <span
                       className="app-inv-count"
-                      title={`族徽＝这一处整趟都是「${famName}」：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一族。\n内容原型「${archName}」＝这一处的地点配比口味（威胁与产出随所在层数上升：越深越险、产出越高）。`}
+                      title={
+                        wormholeIntelTip(engine, item.family, archName) +
+                        `\n族徽＝这一处整趟都是「${famName}」这一族（上面的敌情就是它）。`
+                      }
                     >
                       {line.text}
+                    </span>
+                    {/**
+                     * **敌情一行**（船长 2026-09-16：「给虫洞卡片添加更多信息（虫洞内是什么敌人，
+                     * 以什么类型伤害为主）」）：一句话 = 浅层卡名（族名）+ 主系；三档构成进悬停。
+                     * 与 2026-09-14「卡片只显示原型名+发现日期」不冲突——那一条说的是**第二行**的内容，
+                     * 本行是**新增的第三行**（`.app-inv-main` 是纵向 flex ⇒ 自然换行，无需改样式）。
+                     */}
+                    <span className="app-inv-count" title={wormholeIntelTip(engine, item.family, archName)}>
+                      {wormholeIntelLine(engine, item.family)}
                     </span>
                   </div>
                   <div className="app-inv-btns">

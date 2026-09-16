@@ -196,6 +196,7 @@ import {
   wormholeStockDiscard,
   wormholeStockMeta,
   WORMHOLE_FAMILY_CARD,
+  wormholeFamilyIntel,
   WORMHOLE_STOCK_MAX,
   holdTransferTo,
   makeHoldState,
@@ -238,6 +239,7 @@ import type {
   SimContext,
   WormholeArchetype,
   WormholeFamily,
+  WormholeFamilyIntel,
   WormholeAutoCandidate,
   WormholeAutoHandover,
   WormholeAutoReport,
@@ -1608,6 +1610,17 @@ export class GameEngine {
   wormholeFamilyName(family: WormholeFamily): string {
     const cardId = WORMHOLE_FAMILY_CARD[family]
     return this.ctx.anomalies.get(cardId)?.name ?? this.anomalies.find((a) => a.id === cardId)?.name ?? cardId
+  }
+
+  /**
+   * **一族的"敌情"摘要**（船长 2026-09-16：「扫描虫洞界面…给虫洞卡片添加更多信息
+   * （虫洞内是什么敌人，以什么类型伤害为主）」）：族称 + 浅层卡名 + **主系一句话** + 三档「卡名 + 火力构成」。
+   *
+   * 与 `wormholeFamilyName` 同一把尺（**走 `ctx.anomalies` 全表**，洞内卡都是 hidden）；
+   * 构成取 core 单点 `foeDamageComposition` ⇒ 与战斗结算同源，卡面不会与实战脱节。
+   */
+  wormholeFamilyIntel(family: WormholeFamily): WormholeFamilyIntel {
+    return wormholeFamilyIntel(family, this.ctx)
   }
 
   /** 虫洞扫描：本趟窗口（毫秒；12 小时 × 三技能乘算 × 星际奇遇学） */

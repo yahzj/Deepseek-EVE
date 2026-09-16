@@ -166,6 +166,8 @@ securityZoneOf,
   wormholeSignalWeightsFor,
   WORMHOLE_AUTO_ARCHETYPE_WEIGHTS,
   WORMHOLE_FAMILY_ORDER,
+  // 2026-09-16 船长：扫描页虫洞卡片的"敌情"（族称 + 主系 + 三档构成）——契约见文件中部「卡片敌情契约」
+  wormholeFamilyIntel,
   WORMHOLE_FAMILY_CARD,
   // 2026-09-15 洞内敌卡扩充：一族三档 / 出场池 / 分层血量修正 / 族定选靶
   WORMHOLE_FAMILY_CARDS,
@@ -3854,6 +3856,37 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         if (!wormholeIsShapedItem(id)) bad.push(`${name} = ${id}（没有形状登记）`)
       }
       check(bad.length === 0, `战利品扩充契约⑥：core 常量与 data 目录必须同步——${bad.join(' · ')}`)
+    }
+    /**
+     * ⑩ **卡片敌情契约**（船长 2026-09-16：「扫描虫洞界面，给虫洞卡片添加更多信息
+     *   （虫洞内是什么敌人，以什么类型伤害为主）」）：五族 × 三档都必须能算出
+     *   **非空卡名 + 非空火力构成 + 非空主系文案**——否则扫描页那行会显示内部 id 或空白。
+     *   ⚠ 五张洞内卡都是 `hidden`（不进悬赏目录）⇒ 这里必须用 `ctx.anomalies` **全表**取值，
+     *   与 `engine.wormholeFamilyIntel` 同一把尺（2026-09-14 那次漏出 `wh-alien-swarm` 的坑）。
+     */
+    {
+      const intelCtx = buildSimContext()
+      const bad: string[] = []
+      for (const fam of WORMHOLE_FAMILY_ORDER) {
+        const it = wormholeFamilyIntel(fam, intelCtx)
+        if (!it.ethnic) bad.push(`${fam} 族没有族称`)
+        if (!it.primaryText) bad.push(`${fam} 族没有主系文案`)
+        if (!it.firstCardName || it.firstCardName.startsWith('wh-')) bad.push(`${fam} 族浅层卡名取不到（漏出内部 id）`)
+        if (it.tiers.length !== WORMHOLE_CARD_TIERS.length) bad.push(`${fam} 族三档不全（${it.tiers.length}）`)
+        for (const t of it.tiers) {
+          if (!t.cardName || t.cardName.startsWith('wh-')) bad.push(`${fam}/${t.tier} 卡名取不到`)
+          if (t.parts.length === 0) bad.push(`${fam}/${t.tier} 火力构成为空`)
+          const sum = t.parts.reduce((s, p) => s + p.share, 0)
+          if (Math.abs(sum - 1) > 1e-6) bad.push(`${fam}/${t.tier} 构成份额之和 ${sum.toFixed(3)} ≠ 1`)
+        }
+      }
+      check(bad.length === 0, `卡片敌情契约：五族"族称 + 主系 + 三档构成"必须齐备——${bad.slice(0, 8).join(' · ')}`)
+      console.log(
+        `· 卡片敌情读数：${WORMHOLE_FAMILY_ORDER.map((f) => {
+          const it = wormholeFamilyIntel(f, intelCtx)
+          return `${f} ${it.ethnic}「${it.primaryText}」`
+        }).join(' · ')}`,
+      )
     }
     /**
      * ⑦ **遗迹掉落池**（船长 2026-09-15 改判：「**遗迹出货柜概率提高到70%，货柜类型改为所有货柜中随机，

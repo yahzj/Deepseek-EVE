@@ -590,8 +590,14 @@ export {
   // 玩家可见威胁的显示倍率（船长 2026-09-15「面板威胁乘以2」；只影响界面读数）
   WORMHOLE_DISPLAY_THREAT_MUL,
   wormholeDisplayThreat,
+  // 2026-09-16 船长：「扫描虫洞界面…给虫洞卡片添加更多信息（虫洞内是什么敌人，以什么类型伤害为主）」
+  // ⇒ 族称 / 三档中文名 / 伤害中文名 / 敌情摘要单点（卡片一句话 + 悬停列三档）
+  WORMHOLE_FAMILY_ETHNIC,
+  WORMHOLE_TIER_LABELS,
+  DAMAGE_TYPE_LABELS,
+  wormholeFamilyIntel,
 } from './wormholeFoes'
-export type { WormholeCardTier, WormholeFoeKind } from './wormholeFoes'
+export type { WormholeCardTier, WormholeFoeKind, WormholeFamilyIntel } from './wormholeFoes'
 
 /** 起一趟：校验编队（复用 B 批的 `wormholeAdmission`）并锁定质量 / 回合预算 / 背包 */
 export interface WormholeStartResult {
