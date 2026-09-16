@@ -138,10 +138,20 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   （「所有专属的东西，价格翻4倍」⇒ 用例 `exclusive-market.test.ts` ① 要求 `-wh-` 行 = 奇货档 + 只收不卖），
   //   与"常驻才好卖"冲突 ⇒ 待船长裁决（见汇报），裁决前不动。
   { key: 'mat-wh-essence', kind: 'item', refId: 'mat-wh-essence', rarity: 'exotic', basePrice: 70_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 虫洞谜质（撤离成功时按台数换算：1 台 = 1 枚；NPC 收购 = 70,000）
-  { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 100_000, demandMultiplier: 1.0 }, // 奢侈品·低档（贵重品货柜拆解产物；正常交易）· 2026-09-15 船长「单价差距提高」：2.4 → 10 万
-  { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'common', basePrice: 400_000, demandMultiplier: 1.0 }, // 奢侈品·中档（常驻 ⇒ 稳定卖出）· 4.8 → 40 万
-  { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'common', basePrice: 2_000_000, demandMultiplier: 1.0 }, // 奢侈品·高档（常驻 ⇒ 稳定卖出）· 9.6 → 200 万
-  { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 3_650_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 17.5 件 × 三档均价 83.33 万 = 1,458.33 万 ×**0.25**（2026-09-15 船长改判的专属折扣；其余三类柜仍是 ×0.6）
+  { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 100_000, demandMultiplier: 1.0 }, // 奢侈品·低带（贵重品货柜拆解产物；正常交易）· 2026-09-15 船长「单价差距提高」：2.4 → 10 万
+  { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'common', basePrice: 400_000, demandMultiplier: 1.0 }, // 奢侈品·中带（常驻 ⇒ 稳定卖出）· 4.8 → 40 万
+  { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'common', basePrice: 2_000_000, demandMultiplier: 1.0 }, // 奢侈品·高带（常驻 ⇒ 稳定卖出）· 9.6 → 200 万
+  // ⚠ 2026-09-16 船长：「添加更多奢侈品，让奢侈品有10个类型，分布在目前的3个奢侈品价格附近」＋「十件等权」
+  //   ⇒ 低带 ≈6~14 万 / 中带 ≈25~80 万 / 高带 ≈120~320 万，围绕原来的 10 / 40 / 200 万铺开；
+  //   十款均价 **87.5 万** ⇒ 一箱期望 1,531.25 万 ⇒ 箱价 382.8 万（×0.25 契约不变）。
+  { key: 'lux-4', kind: 'item', refId: 'lux-4', rarity: 'common', basePrice: 60_000, demandMultiplier: 1.0 }, // 奢侈品·低带（陈年雪茄）
+  { key: 'lux-5', kind: 'item', refId: 'lux-5', rarity: 'common', basePrice: 140_000, demandMultiplier: 1.0 }, // 奢侈品·低带（异域织物）
+  { key: 'lux-6', kind: 'item', refId: 'lux-6', rarity: 'common', basePrice: 250_000, demandMultiplier: 1.0 }, // 奢侈品·中带（香木雕刻）
+  { key: 'lux-7', kind: 'item', refId: 'lux-7', rarity: 'common', basePrice: 600_000, demandMultiplier: 1.0 }, // 奢侈品·中带（宫廷乐谱）
+  { key: 'lux-8', kind: 'item', refId: 'lux-8', rarity: 'common', basePrice: 800_000, demandMultiplier: 1.0 }, // 奢侈品·中带（古法香膏）
+  { key: 'lux-9', kind: 'item', refId: 'lux-9', rarity: 'common', basePrice: 1_200_000, demandMultiplier: 1.0 }, // 奢侈品·高带（星图真迹）
+  { key: 'lux-10', kind: 'item', refId: 'lux-10', rarity: 'common', basePrice: 3_200_000, demandMultiplier: 1.0 }, // 奢侈品·高带（王冠遗钻）
+  { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 3_828_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 17.5 件 × 十款均价 87.5 万 = 1,531.25 万 ×**0.25**（2026-09-15 船长改判的专属折扣；其余三类柜仍是 ×0.6）
   { key: 'box-military', kind: 'item', refId: 'box-military', rarity: 'common', basePrice: 2_800_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 军用备货柜（4 格）· 期望 = 2 件 × MK3 均价 235.5 万 = 470.95 万 ×0.6（2026-09-15 批 B 复核：原估值 700 万 > 拆解期望，会诱导"只卖箱不拆箱"⇒ 按同一条 ×0.6 规则下调）
   // ── 气体（V10 池商品） ──
   { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 227_880, supplyFlow: 1_899 },

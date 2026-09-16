@@ -302,7 +302,11 @@ const C_FAMILY_RESISTS: Pick<FoeShipDef, 'shieldResist' | 'armorResist' | 'hullR
  * 其余字段 = 迁移前的现状建档值：命中 0.95 · 射程带 **1~2552** · 远端衰减 0.5 · 近盲 0.3 · 装填 4000ms ·
  * 血型均衡（= 裂谷卡 `defProfile balanced`）；主系**等离子** 8:2（C 族酸液签名）。
  * 形态 = `'spit'`（**能量掷命中**）。**逐卡目标值由卡的 `hpMul`/`dmgMul` 反算**（舰级值只是档案锚）。
- * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。 */
+ * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。
+ * ⚠ **这条不是洞内的那条**（船长 2026-09-16 戊案「现状即设计，不改」）：544 m/s 的幼虫原本是洞内
+ * C 族三卡的主力，"洞内被贴上拉不开距离"的历史读数出自那一版；**「C 族三卡改编成」之后幼虫已从
+ * 洞内三卡退场**（改由星髓成虫 398 / 孢群异虫 400 / 噬口巨兽 297 出场，仍留悬赏线）。
+ * 机制层面的来龙去脉见 `combat.updateFoeCharge` 的 2026-09-16 注记。 */
 export const FOE_ALIEN_RIFT: FoeShipDef = {
   id: 'foe-alien-rift-larva',
   name: '畸变幼虫',

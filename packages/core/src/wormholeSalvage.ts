@@ -309,11 +309,26 @@ export const WORMHOLE_VALUABLES_BOX_ID = 'box-valuables'
 /** 军用备货柜（4 格 · 只收不卖）；拆出 1~3 件随机 MK3 装备 */
 export const WORMHOLE_MILITARY_BOX_ID = 'box-military'
 /**
- * 贵重品货柜的奢侈品**三档 id**（等权抽一档；价格 24,000 / 48,000 / 96,000）。
- * ⚠ 与 `data/items.ts` 的 `LUXURIES` 同序同值——core 不依赖 data（分层纪律），
+ * 贵重品货柜的奢侈品**十款 id**（等权抽一款）。
+ *
+ * ⚠ **2026-09-16 船长扩表**：「**添加更多奢侈品，让奢侈品有10个类型，分布在目前的3个奢侈品价格附近**」
+ * ＋「**十件等权**」⇒ 由三款扩到十款（价格 6 / 10 / 14 / 25 / 40 / 60 / 80 / 120 / 200 / 320 万，
+ * 均价 **87.5 万**；低带≈10 万 / 中带≈40 万 / 高带≈200 万三簇）。
+ * ⚠ 与 `data/items.ts` 的 `LUXURIES` **同序同值**——core 不依赖 data（分层纪律），
  * 靠引擎侧"取不到就退回"（`ctx.items.has`）兜底，另有内容契约哨（`tools/content-check.ts`）钉同步。
  */
-export const WORMHOLE_LUXURY_ITEM_IDS = ['lux-1', 'lux-2', 'lux-3'] as const
+export const WORMHOLE_LUXURY_ITEM_IDS = [
+  'lux-1',
+  'lux-2',
+  'lux-3',
+  'lux-4',
+  'lux-5',
+  'lux-6',
+  'lux-7',
+  'lux-8',
+  'lux-9',
+  'lux-10',
+] as const
 /**
  * **遗迹掉落的货柜池**（船长 2026-09-15：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」）。
  *
@@ -332,9 +347,10 @@ export function wormholeRelicBoxPoolOf(ctx: SimContext): string[] {
 /**
  * 贵重品货柜拆出的奢侈品件数区间。
  * ⚠ **2026-09-15 船长改判**（原「随机数量」= 10~20 件）：「**单价差距提高（10/40/200万），数量上下限拉大到 5~30，
- * 箱价 = 内容期望 ×0.25**」——三档单价见 `data/items.ts` 的 `LUXURIES`（10 万 / 40 万 / 200 万，等权），
- * 件数取 **5~30**（均值 17.5）⇒ 一箱内容期望 = 17.5 × 83.33 万 ≈ **1,458.33 万**（原 84 万），
- * 箱价 `box-valuables` = 期望 ×0.25 ≈ **365 万**（原 50 万 ×0.6）。
+ * 箱价 = 内容期望 ×0.25**」——单价见 `data/items.ts` 的 `LUXURIES`，件数取 **5~30**（均值 17.5）。
+ * ⚠ **2026-09-16 扩到十款后重算**（船长「让奢侈品有10个类型…」＋「十件等权」）：均价 **87.5 万**
+ * ⇒ 一箱内容期望 = 17.5 × 87.5 万 ≈ **1,531.25 万**（原 1,458.33 万），
+ * 箱价 `box-valuables` = 期望 ×0.25 ≈ **382.8 万**（原 365 万）。
  */
 export const WORMHOLE_VALUABLES_UNITS_MIN = 5
 export const WORMHOLE_VALUABLES_UNITS_MAX = 30
