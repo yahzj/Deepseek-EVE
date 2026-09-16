@@ -32,7 +32,12 @@ import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS, RACK_LABELS } from
 import type { SubOption } from '../ui/itemSubs'
 
 const KIND_TEXT: Record<string, string> = {
-  item: '物品',
+  /**
+   * **2026-09-16 船长**：「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」——
+   * 一级类型中文名由「物品」改为「**货物**」（子分类补「奢侈品」，见 `ui/itemSubs.ts` 的 `ITEM_SUBS`）。
+   * ⚠ 这**只是市场类型下拉的显示名**：导航页「物品」与手册「物品图鉴」走各自的单点，未随本改（等船长点名）。
+   */
+  item: '货物',
   // 2026-09-11 船长：「应该将消耗品独立出来」——消耗品（弹药/修理组件/无人机）独立成一级类型，
   // 并从「物品」里剔除（与当年「残骸」独立成类的口径一致；子分类见 ui/itemSubs.ts CONSUME_SUBS）
   consume: '消耗品',
