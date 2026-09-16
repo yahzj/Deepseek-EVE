@@ -379,6 +379,8 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
       if (rangeText) bits.push(rangeText)
       if (ship.fleetDamageBonusPct) bits.push(`全舰单发伤害 +${Math.round(ship.fleetDamageBonusPct * 100)}%（编队光环，多艘取最高）`)
       if (ship.wormholeScanRadiusBonus) bits.push(`虫洞扫描范围 +${ship.wormholeScanRadiusBonus} 圈（编入队伍即生效、可叠加）`)
+      // 2026-09-16 船长：后勤舰特性进「船体特性」栏（判据已由 `subClass` 改为数据字段，界面与引擎同源）
+      if (ship.repairPulseTargetsFleet) bits.push('装了维修装置时，维修脉冲改修编队中最缺血的舰船（含自己）')
       return bits.length > 0 ? [{ k: '船体特性', v: bits.join(' · ') }] : []
     })(),
     { k: '货舱容量', v: `${fmt(ship.cargoM3)} m³` },

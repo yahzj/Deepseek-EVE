@@ -53,6 +53,7 @@ function shipPerks(s: ShipDef): string {
   if (rec.weaponRangeBonusPct) parts.push(`武器射程 ${JSON.stringify(rec.weaponRangeBonusPct)}`)
   if (rec.fleetDamageBonusPct) parts.push(`**全舰单发 +${fmtVal(rec.fleetDamageBonusPct)}（编队光环，取最高）**`)
   if (rec.wormholeScanRadiusBonus) parts.push(`**虫洞扫码 +${fmtVal(rec.wormholeScanRadiusBonus)} 圈（编队即生效、可叠加）**`)
+  if (rec.repairPulseTargetsFleet) parts.push('**维修脉冲修编队最缺血者（装了维修装置时，含自己）**')
   if (rec.hitBonus) parts.push(`命中 +${fmtVal(rec.hitBonus)}`)
   if (rec.powerBonus) parts.push(`电力 +${fmtVal(rec.powerBonus)}`)
   const res = ['shieldResist', 'armorResist', 'hullResist']

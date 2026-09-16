@@ -305,6 +305,15 @@ export interface ShipDef {
    * `scanRadius = WORMHOLE_SCAN_RADIUS_BASE + Σ(本值 over 编队)`；**编入队伍即生效、可叠加**（船长 2026-09-13）。
    */
   wormholeScanRadiusBonus?: number
+  /**
+   * **后勤舰：维修脉冲改为在编队里挑目标**（船长 2026-09-16：「**后勤舰添加特性，维修装置可以修理
+   * 血量最少的队友。**」＋同日「**我发现之前给后勤舰的维修特性并添加到船体特性属性中？**」⇒
+   * 从"`subClass === '后勤舰'` 代码硬判据"改为**本字段驱动**，从而能进界面的「船体特性」栏）。
+   *
+   * 口径：装了维修装置时，脉冲目标 = **全编队三层剩余比例最低的舰船（含自己）**；缺省 ⇒ 只修自己（旧口径）。
+   * 落点：`combat.createPlayerSpec` 写入 `spec.logistics` ⇒ `pulseAllyRepair` 的选靶分支。
+   */
+  repairPulseTargetsFleet?: boolean
   description: string
   /**
    * **未上线闸门（施工期）**——语义与口径**完全同 `ItemDef.unreleased`**（2026-09-13 船长铁律

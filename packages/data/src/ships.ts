@@ -1323,6 +1323,8 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 58,
     scanResMm: 620,
     shieldResist: {"kinetic":0.5},
+    // **后勤舰特性**（船长 2026-09-16）：「维修装置可以修理血量最少的队友」⇒ 进界面的「船体特性」栏
+    repairPulseTargetsFleet: true,
     description: '亡军的后勤舰：货舱与机巢最大，跟着编队补给、换机；火力只求自保。',
   },
   {

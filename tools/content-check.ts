@@ -1293,6 +1293,17 @@ for (const s of SHIPS) {
       (Number.isInteger(s.wormholeScanRadiusBonus) && s.wormholeScanRadiusBonus > 0 && s.wormholeScanRadiusBonus <= 3),
     `舰船 ${s.id} wormholeScanRadiusBonus 越界（应 1~3 的整数）：${String(s.wormholeScanRadiusBonus)}`,
   )
+  // **后勤舰维修脉冲字段**（2026-09-16 船长：「后勤舰添加特性，维修装置可以修理血量最少的队友。」
+  // ＋同日「我发现之前给后勤舰的维修特性并添加到船体特性属性中？」⇒ 由 `subClass` 硬判据改为本字段驱动）：
+  // 只认 true（或整条缺省）；写了就必须真是「后勤舰」子分类（防把"修队友"挂到别的船上）
+  check(
+    s.repairPulseTargetsFleet === undefined || s.repairPulseTargetsFleet === true,
+    `舰船 ${s.id} repairPulseTargetsFleet 只认 true（或整条缺省）：${String(s.repairPulseTargetsFleet)}`,
+  )
+  check(
+    s.repairPulseTargetsFleet !== true || s.subClass === '后勤舰',
+    `舰船 ${s.id} 写了 repairPulseTargetsFleet（维修脉冲修队友）但子分类不是「后勤舰」：${String(s.subClass)}`,
+  )
   // **舰种子分类**（2026-09-13 船长：虫洞族专属舰船按子分类重排并进界面；同日放宽：协会功能舰也可写）
   // 取值限白名单（防手滑写错标签；D 族巡洋舰按裁定**不设**子分类）；非虫洞舰须在登记表里
   if (s.subClass !== undefined) {
@@ -4467,7 +4478,14 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     .join(' / ')
   console.log(
     `· 舰种契约：${matched}/${SHIPS.length} 艘船归类与等效质量一致（${shown}）；` +
-      `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join("/")}`,
+      `基准速度 ${([1, 2, 3, 4, 5] as const).map((t) => HULL_CLASS_BASE_SPEED[t]).join("/")}` +
+      // 后勤舰特性（2026-09-16 船长：进「船体特性」栏）——读数放这儿，日后加第二艘后勤舰一眼能看见
+      (() => {
+        const logi = SHIPS.filter((x) => x.repairPulseTargetsFleet === true)
+        return logi.length > 0
+          ? ` · 后勤舰特性（维修脉冲修编队最缺血者）${logi.length} 艘（${logi.map((x) => x.name).join('、')}）`
+          : ' · 后勤舰特性（维修脉冲修编队最缺血者）**0 艘**'
+      })(),
   )
 }
 

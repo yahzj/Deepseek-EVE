@@ -1286,8 +1286,9 @@ export function createPlayerSpec(
     // 单船路径不读这两项 ⇒ 只多两个字段，零行为变化。
     shipTier: ship.tier,
     shipRole: ship.role,
-    // 2026-09-16 船长：后勤舰（`subClass === '后勤舰'`）的维修装置改修队友；其余舰只修自己
-    ...(ship.subClass === '后勤舰' ? { logistics: true } : {}),
+    // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
+    // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）
+    ...(ship.repairPulseTargetsFleet === true ? { logistics: true } : {}),
     hp,
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
