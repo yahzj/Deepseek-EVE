@@ -1086,6 +1086,43 @@ for (const m of MODULES) {
       `· 洞内威胁显示契约：面板三处读数（本层 / 撤离 / 下一层）均走 \`wormholeDisplayThreat\`（引擎威胁 ×${2}）· 裸渲染 0 处`,
     )
   }
+
+  /* ── 市场「一级类型」契约（船长 2026-09-16：「**将货柜添加到市场的分类里，和货物同级**」
+   *    ＋同日「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」）──
+   * 挡三种回潮：① 下拉里丢了「货柜」这一项或改名；② 「货柜」没紧跟在「货物」之后（同级但顺序漂了）；
+   * ③ 一级类型名被改回「物品」；④ 货柜键集合（`CONTAINER_KIND_KEYS`）被删——它是剔除判定的单点。
+   * 口径依据：货柜（`container`）自本批起与「残骸」（2026-09-08 独立）、「消耗品」（2026-09-11 独立）同级；
+   * 奢侈品（`luxury`）作为「货物」的**二级子分类**（不是一级类型）。 */
+  {
+    const mpPath = 'apps/desktop/src/renderer/src/pages/MarketPage.tsx'
+    const mpSrc = stripComments(readSrc(mpPath)).join('\n')
+    check(
+      mpSrc.includes("container: '货柜'"),
+      `市场类型契约：${mpPath} 里没有 \`container: '货柜'\`——货柜的一级类型名丢了或被改名`,
+    )
+    check(
+      mpSrc.includes("'item', 'container'"),
+      `市场类型契约：${mpPath} 的类型下拉里「货柜」没有紧跟「货物」（现应是 … 'all', 'item', 'container', 'consume' …）`,
+    )
+    check(
+      !mpSrc.includes("item: '物品'"),
+      `市场类型契约：${mpPath} 的一级类型名又变回「物品」了（船长 2026-09-16 定为「货物」）`,
+    )
+    const subPath = 'apps/desktop/src/renderer/src/ui/itemSubs.ts'
+    const subSrc = stripComments(readSrc(subPath)).join('\n')
+    check(
+      subSrc.includes('CONTAINER_KIND_KEYS'),
+      `市场类型契约：${subPath} 里没有 \`CONTAINER_KIND_KEYS\`——货柜的键集合单点丢了（剔除判定会失效）`,
+    )
+    check(
+      subSrc.includes("{ key: 'luxury', label: '奢侈品' }"),
+      `市场类型契约：${subPath} 的「货物」子分类里没有「奢侈品」一档（船长 2026-09-16 定）`,
+    )
+    console.log(
+      '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 高·中·低槽装备 / 舰船 / 蓝图 / 核心 · ' +
+        '「货柜」紧跟「货物」·「奢侈品」是「货物」下的子分类',
+    )
+  }
 }
 
 // 舰船
