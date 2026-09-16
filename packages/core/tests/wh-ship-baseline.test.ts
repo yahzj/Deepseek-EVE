@@ -12,7 +12,7 @@
  * （无人机走 `droneDmgBonus`，见词典「无人机专属加成」）。
  */
 import { describe, expect, it } from 'vitest'
-import { SHIPS } from '@whale/data'
+import { MODULES, SHIPS } from '@whale/data'
 import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
@@ -116,5 +116,44 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
     const gUid = addShipToFleet(state, 'sh-wh-g-cruiser')
     expect(calcPower(state, ctx, eUid)).toBe(Math.round(base * 1.5))
     expect(calcPower(state, ctx, gUid)).toBe(Math.round(base * 1.82))
+  })
+})
+
+/**
+ * **电子舰 CPU +100**（2026-09-16 船长：「**提高电子舰的CPU，提高100**」）。
+ *
+ * 「电子舰」= 子分类 `subClass: '电子舰'`，全仓恰好 **2 艘**（A 族掠袭电子舰 / D 族哨戒电子舰）——
+ * 两艘 `cpu` 由 **165 → 265**，**只动这一个字段**（槽位 / 三层血 / 命中 / 回避 / 分辨率 / 速度 /
+ * 机动 / 货舱 / 价格一律不动）。为什么不用"改一处就算完"：CPU 是装配的唯一约束，
+ * 少了钉子日后调平衡或重跑 `wh-ship-tune` 很容易把它顺手冲掉（该工具已按 `subClass` 自锁，
+ * 但手工改值没有任何护栏）。
+ */
+describe('电子舰 CPU +100（船长 2026-09-16）', () => {
+  const cpuOf = (id: string): number | undefined => SHIPS.find((s) => s.id === id)?.cpu
+  it('两艘电子舰 cpu = 265（165 + 100），且全仓"电子舰"子分类恰好这 2 艘', () => {
+    const ew = SHIPS.filter((s) => s.subClass === '电子舰')
+    expect(ew.map((s) => s.id).sort()).toEqual(['sh-wh-a-frigate', 'sh-wh-d-frigate'])
+    for (const s of ew) expect(s.cpu, `${s.name} cpu`).toBe(265)
+    expect(cpuOf('sh-wh-a-frigate')).toBe(265)
+    expect(cpuOf('sh-wh-d-frigate')).toBe(265)
+  })
+  it('只动 CPU：两艘的槽位与三层血与改前一致（防"顺手补偿"）', () => {
+    const a = SHIPS.find((s) => s.id === 'sh-wh-a-frigate')!
+    expect(a.slots).toEqual({ high: 3, mid: 4, low: 1 })
+    expect([a.shieldHp, a.armorHp, a.hullHp]).toEqual([130, 60, 55])
+    const d = SHIPS.find((s) => s.id === 'sh-wh-d-frigate')!
+    expect(d.slots).toEqual({ high: 2, mid: 3, low: 3 })
+    expect([d.shieldHp, d.armorHp, d.hullHp]).toEqual([170, 35, 55])
+  })
+  it('装配面生效：+100 后"三门炮 + 一件高耗设备"能装下（这是本次改动的目的）', () => {
+    // 用**真数据**核装配账（本文件的测试替身 ctx 不含正式装备表 ⇒ 直接读 MODULES 的 cpuUse）
+    const cpuOf = (id: string): number => MODULES.find((m) => m.id === id)?.cpuUse ?? 0
+    const used = 3 * cpuOf('mod-turret-kin-3') + cpuOf('mod-stealth-3') // 52×3 + 80
+    expect(cpuOf('mod-turret-kin-3')).toBe(52)
+    expect(cpuOf('mod-stealth-3')).toBe(80)
+    expect(used).toBe(236)
+    const cpu = SHIPS.find((s) => s.id === 'sh-wh-a-frigate')!.cpu!
+    expect(used, '三门炮 + 隐秘 MK3 应装得下').toBeLessThanOrEqual(cpu)
+    expect(used, '并确认改前的 165 确实装不下（这正是本次改动的意义）').toBeGreaterThan(165)
   })
 })

@@ -892,7 +892,11 @@ export const SHIPS: readonly ShipDef[] = [
     shieldHp: 130,
     armorHp: 60,
     hullHp: 55,
-    cpu: 165,
+    // 2026-09-16 船长：「**提高电子舰的CPU，提高100**」⇒ **165 → 265**（只动本字段：槽位/三层血/
+    // 命中/回避/分辨率/速度/机动/货舱/价格一律不动）。动机 = 电子舰"高火控 + 设备位多（中槽 4 格）"，
+    // 但原 CPU 连"三门炮 + 一件设备"都装不满；+100 后能同时带武器与整套设备（余量读数见
+    // `docs/design/ew-ship-cpu-20260916.md` §四）。
+    cpu: 265,
     droneBayM3: 10,
     maxSpeedMps: 350,
     warpSpeedAus: 3.8,
@@ -1080,7 +1084,9 @@ export const SHIPS: readonly ShipDef[] = [
     shieldHp: 170,
     armorHp: 35,
     hullHp: 55,
-    cpu: 165,
+    // 2026-09-16 船长：「**提高电子舰的CPU，提高100**」⇒ **165 → 265**（与掠袭电子舰同批同值；
+    // 只动本字段）。D 族本舰盾比 65% 最高、中槽 3 格，加 CPU 后"盾 + 设备"能一起带满。
+    cpu: 265,
     droneBayM3: 10,
     maxSpeedMps: 300,
     warpSpeedAus: 3.4,
