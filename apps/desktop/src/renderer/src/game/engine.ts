@@ -1821,9 +1821,18 @@ export class GameEngine {
    * **路径拦截**（船长 2026-09-16）：直线路径上挡着没清掉的敌人 ⇒ 这次移动**截断在那一格**并就地开战
    * （未扫描格也拦）；界面须先弹确认、再带 `confirmIntercept = true` 重来，否则核心回 `path-blocked`
    * 且**不扣回合**。界面侧画路径/描红走的是同一个 `wormholePathInterceptAt`（同一把尺）。
+   *
+   * **踩中埋伏**（船长 2026-09-16）：走到一个**出发前没扫描过**的地点、发现里面是敌人 ⇒ 界面传
+   * `deferAmbush: true` ⇒ **这一场先挂起**（`run.pendingNodeBattle`），回执带 `pendingBattle: 'node'`，
+   * 玩家点「开战」才进战斗（与遗迹守备同一套确认语言）。工具/用例不传 ⇒ 到达即开打（原行为）。
    */
   wormholeTravel(q: number, r: number, confirmUnknown = false, confirmIntercept = false): CommandResult {
-    const res = wormholeTravelTo(this.state, this.ctx, { q, r }, { confirmUnknown, confirmIntercept })
+    const res = wormholeTravelTo(
+      this.state,
+      this.ctx,
+      { q, r },
+      { confirmUnknown, confirmIntercept, deferAmbush: true },
+    )
     if (res.ok) {
       void this.persist()
       this.notify()
@@ -1835,6 +1844,8 @@ export class GameEngine {
       ...(res.autoBattle ? { autoBattle: true } : {}),
       ...(res.beacon ? { beacon: true } : {}),
       ...(res.intercepted ? { intercepted: res.intercepted } : {}),
+      ...(res.ambush ? { ambush: true } : {}),
+      ...(res.pendingBattle ? { pendingBattle: res.pendingBattle } : {}),
     }
   }
 

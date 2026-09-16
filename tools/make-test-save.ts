@@ -1918,7 +1918,7 @@ function injectWormholeAll(state: GameState): string[] {
     reveal(cell)
     if (place === 'ruins') wormholeEnsureSalvagePiles(state, cell)
     if (place === 'vein') wormholeEnsureVeinPiles(state, cell)
-    notes.push(`同层**${label}** (Q${cell.q} R${cell.r})：${place === 'ruins' ? `已铺 ${(cell.piles ?? []).length} 堆稀有残骸 ⇒ 打捞即「惊扰守卫」` : place === 'vein' ? `已铺 ${(cell.piles ?? []).length} 堆虚空母矿 ⇒ 采集` : place === 'ship' ? '走过去即交火' : '激活取回一台谜质储存器（货仓多一个 2×2）'}`)
+    notes.push(`同层**${label}** (Q${cell.q} R${cell.r})：${place === 'ruins' ? `已铺 ${(cell.piles ?? []).length} 堆稀有残骸 ⇒ 打捞即「惊扰守卫」` : place === 'vein' ? `已铺 ${(cell.piles ?? []).length} 堆虚空母矿 ⇒ 采集` : place === 'ship' ? '已知敌格 ⇒ 走过去即交火（对照：未扫描的敌格会先发事件提醒、确认后才开战）' : '激活取回一台谜质储存器（货仓多一个 2×2）'}`)
   }
   grid.exitKnown = true
   notes.push('出口已知（可随时撤离/深入）· 守卫没清（深入要先打守卫）')

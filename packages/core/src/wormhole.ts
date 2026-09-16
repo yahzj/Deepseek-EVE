@@ -357,6 +357,19 @@ export interface WormholeRunState {
    * 直到玩家点「迎战」（wormholeStartBattle('ruins') 成功即清）。可选字段 ⇒ 老档零迁移。
    */
   pendingRuinsBattle?: boolean
+  /**
+   * **踩中埋伏、等玩家确认开战**（船长 2026-09-16：「移动途中被敌方拦截或者**进入未扫描地点踩到怪**了，
+   * 都要弹窗提示，玩家确认后进入战斗」）。
+   *
+   * 触发 = 玩家**点了一个还没扫描过的地点**、走到才发现里面是敌人（舰船信号）⇒ 到达那一刻
+   * **先发事件提醒、不直接开打**；为真时**别的层内动作一律被拦**（见 `gridActionBlocked`），
+   * 直到玩家点「开战」（`wormholeStartBattle('node')` 成功即清）。
+   *
+   * ⚠ **只在"出发前未知"时成立**：已知的敌格是自己点上去的（明知故往）⇒ 照旧到达即开打；
+   * **路径拦截**那条也照旧直接开打（玩家在移动前已经确认过"会被拦下并开战"）。
+   * 可选字段 ⇒ 老档零迁移。
+   */
+  pendingNodeBattle?: boolean
   /** 编队（船型 id；进场时锁定） */
   fleet: readonly string[]
   /** 折合总质量（进场时锁定） */
@@ -868,6 +881,12 @@ export interface WormholeGridActionResult {
     atExit: boolean
     /** 到达即开打（舰船信号）——调用方（`wormholeTravelTo`）据此立刻开战 */
     autoBattle?: boolean
+    /**
+     * **踩中埋伏**（船长 2026-09-16）：到达的格在**出发前是未知的**、而里面是敌人 ——
+     * 这一场**先发事件提醒、玩家确认后才开打**（`wormholeTravelTo` 的 `deferAmbush`）。
+     * ⚠ `autoBattle` 与它同时为真（"这里有仗"），两者的差别只在**要不要等玩家确认**。
+     */
+    ambush?: true
     /** 到达即标出下一层入口（漂浮信标） */
     beacon?: boolean
     /**
@@ -900,6 +919,8 @@ function gridActionBlocked(run: WormholeRunState): string | null {
   if (run.battle) return '战斗中：先打完这一场。'
   // **遗迹守备已惊动**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
   if (run.pendingRuinsBattle === true) return '遗迹深处的守备已经惊动：先点「迎战」打完这一场。'
+  // **踩中埋伏**（船长 2026-09-16）：与遗迹守备同一套语言 —— 先提醒、玩家确认后才开战
+  if (run.pendingNodeBattle === true) return '对方已经发现我们：先点「开战」打完这一场。'
   /**
    * **临时空间里还有东西**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
    * 和之前的超载类似」）：扫描也一并拦下 —— 玩家得先去背包页把它**放回货仓**或**丢弃**。
@@ -1058,6 +1079,11 @@ export function wormholeGridTravel(
   const first = !grid.activated.includes(dest.key)
   const autoBattle = first && dest.place === 'ship'
   const beacon = first && dest.place === 'beacon'
+  /**
+   * **踩中埋伏**（船长 2026-09-16）：`!scanned` = 玩家点它时这一格**还没扫描过**（信息闸那一步算好的值）
+   * ⇒ "走进去才发现里面是敌人"。**拦截不算**（那种玩家在移动前已确认过"会被拦下并开战"）。
+   */
+  const ambush = autoBattle && !scanned && !intercept
   if (autoBattle || beacon) grid.activated.push(dest.key)
   if (beacon) {
     grid.exitKnown = true
@@ -1078,7 +1104,9 @@ export function wormholeGridTravel(
     autoBattle
       ? intercept
         ? `🕳 途中被拦下（${dest.q},${dest.r}）：对方的舰船信号挡住去路——交火开始 · 剩 ${run.turnsLeft} 回合。`
-        : `🕳 抵达舰船信号（${dest.q},${dest.r}）：对方已经发现我们——交火开始 · 剩 ${run.turnsLeft} 回合。`
+        : ambush
+          ? `🕳 踩中埋伏（${dest.q},${dest.r}）：这个地点出发前没扫描过——里面是敌人，准备交火 · 剩 ${run.turnsLeft} 回合。`
+          : `🕳 抵达舰船信号（${dest.q},${dest.r}）：对方已经发现我们——交火开始 · 剩 ${run.turnsLeft} 回合。`
       : beacon
         ? `🕳 抵达漂浮信标（${dest.q},${dest.r}）：信标把下一层入口标在了地图上（Q${grid.exit.q} · R${grid.exit.r}）· 剩 ${run.turnsLeft} 回合。`
         : atExit
@@ -1096,6 +1124,7 @@ export function wormholeGridTravel(
       signal,
       atExit,
       ...(autoBattle ? { autoBattle: true } : {}),
+      ...(ambush ? { ambush: true as const } : {}),
       ...(beacon ? { beacon: true } : {}),
       ...(intercept ? { intercepted: { target: cell.key, known: interceptKnown } } : {}),
     },
