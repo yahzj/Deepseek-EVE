@@ -399,6 +399,8 @@ export {
   marketQuote,
   marketHistory,
   marketTrend,
+  // 2026-09-16 船长：价格采样间隔（48 点 = 24 小时）；界面换算时间用同一个常量
+  PRICE_SAMPLE_MS,
   goodName,
   salesTaxRate,
   goodLockedReason,

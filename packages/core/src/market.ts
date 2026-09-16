@@ -165,6 +165,15 @@ export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtG
         seedCommonBook(state, ctx, def, openAt)
       }
     }
+    /**
+     * **开盘先落一个采样点**（2026-09-16 随采样节奏改为 30 分钟/点一起补）：
+     * 否则新档/迁移档的折线图在**前 30 分钟是空的**（原来逐窗采样时一分钟内就有点）。
+     * 只给"历史还是空"的商品补，重复开市不会叠加。
+     */
+    for (const def of ctx.marketGoods.values()) {
+      const hist = mk.priceHistory[def.key]
+      if (hist && hist.length === 0) hist.push(priceLevel(state, ctx, def, mk.pools[def.key]?.q ?? 0))
+    }
     mk.lastTickGameMs = openAt
   }
   // 目录中途扩增（数据更新）：只给新增商品开盘，不打扰已有簿面
@@ -376,12 +385,27 @@ export function marketQuote(
   return { buy: bestBuy, sell: bestSell, buyDepth: buyOrders.length, sellDepth: sellOrders.length, buyQty, sellQty }
 }
 
-/** 价格小史（最近 48 窗 ≈ 24 小时采样；2026-09-08 船长：保留窗 24 → 48，趋势展示用） */
+/**
+ * **价格小史的采样间隔 = 30 分钟**（船长 2026-09-16：「**按照原来的30分钟来**」）。
+ *
+ * 沿革：注释与界面悬停标注（「约 N 分钟前」按 30 分钟/点换算）一直写的是 30 分钟，
+ * 而记录点此前挂在**每个 60 秒窗口**里 ⇒ 48 个点只覆盖 **48 分钟**（2026-09-16 实测查实），
+ * 与"24 小时趋势图"的口径不符。现改为**按游戏时刻跨 30 分钟边界采样**：
+ * ① 与注释/悬停口径一致；② **不新增存档字段**（判据由 `lastTickGameMs` 现算 ⇒ 零迁移）。
+ * ⚠ 代价（已知会并接受）：成交后最迟 **30 分钟**才进图（原为最迟 1 分钟）；
+ * 池库存压力这种**持久**影响照旧进图，而"冲击动量"（半程分钟级）可能在被采样前已回落。
+ */
+export const PRICE_SAMPLE_MS = 30 * 60_000
+
+/** 价格小史（**每 30 分钟一点，上限 48 点 ≈ 24 小时**；2026-09-08 船长：保留窗 24 → 48，趋势展示用） */
 export function marketHistory(state: GameState, goodKey: string): readonly number[] {
   return state.market.priceHistory[goodKey] ?? []
 }
 
-/** 价格趋势：1 涨 / -1 跌 / 0 平（2026-09-08：保留窗加倍后仍锚定「最近 24 窗」对比，观感与旧版一致） */
+/**
+ * 价格趋势：1 涨 / -1 跌 / 0 平（2026-09-08 船长：保留点加倍后仍锚定「**最近 24 点**」对比）。
+ * ⚠ 采样点 = 30 分钟 ⇒ 这里的"24 点"= **最近 12 小时**（2026-09-16 改采样节奏后同步写清）。
+ */
 export function marketTrend(state: GameState, goodKey: string): number {
   const hist = state.market.priceHistory[goodKey]
   if (!hist || hist.length < 4) return 0
@@ -502,6 +526,7 @@ function rareDrawCount(state: GameState, ctx: SimContext, stat: { unlockedN: num
 
 /** 价格小史保留窗数（每窗 = balance.market.tickMs，默认 30 分钟）。
  * 2026-09-08 船长：24 → 48（≈ 24 小时），配合市场详情折线的"分段查看" */
+/** 价格史上限：**48 点 × 30 分钟 = 24 小时**（与 PRICE_SAMPLE_MS 配套；改一处必改另一处） */
 const PRICE_HISTORY_LIMIT = 48
 
 /** 单个窗口：过期清理 → 池回归/冲击衰减 → 内部消化 → 刷单 → 撮合 → 小史/冲击结算 */
@@ -554,14 +579,23 @@ function processWindow(state: GameState, ctx: SimContext): void {
   absorbViaStation(state, ctx)
 
   // 价格小史 + 冲击结算
+  /**
+   * **采样判据**（船长 2026-09-16「按照原来的30分钟来」）：**这一窗是否跨过了 30 分钟边界**
+   * ——用 `lastTickGameMs → nextNow` 的桶号变化判断（不新增存档字段 ⇒ 零迁移）。
+   * 同一分钟内多笔交易只留一个点；跨边界那一窗记的是**该窗结算后**的均衡价。
+   */
+  const sampleNow = Math.floor(nextNow / PRICE_SAMPLE_MS) !== Math.floor(mk.lastTickGameMs / PRICE_SAMPLE_MS)
   for (const def of ctx.marketGoods.values()) {
     const key = def.key
     const pool = mk.pools[key]!
     // 记当前均衡价 L（含慢速噪声/压力/冲击）。不用 bestBuy：其是"20 窗移动最大值"，
     // 旧高单会在下行时压制，掩盖噪声波动（尤其便宜货整数取整后钉死）——L 每窗重算，更能即时反映行情趋势。
     const hist = mk.priceHistory[key]!
-    hist.push(priceLevel(state, ctx, def, pool.q))
-    if (hist.length > PRICE_HISTORY_LIMIT) hist.shift()
+    // ⚠ **历史为空时先补一个起点**（老档/非 freshInit 路径也能立刻有基线；否则折线图要空等 30 分钟）
+    if (sampleNow || hist.length === 0) {
+      hist.push(priceLevel(state, ctx, def, pool.q))
+      if (hist.length > PRICE_HISTORY_LIMIT) hist.shift()
+    }
     const ref = referenceVol(def, bal.referenceVolRatio)
     if (ref > 0 && Math.abs(pool.netVol) > ref * bal.shockTriggerRatio) {
       pool.shock += Math.sign(pool.netVol) * bal.shockPerTrigger // 无叠加上限（用户确认）

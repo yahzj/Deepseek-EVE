@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, rackOf, salesTaxRate, formatDurationMs, bmGateReason, shipStoredCount } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, formatDurationMs, bmGateReason, shipStoredCount } from '@whale/core'
 import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -502,15 +502,17 @@ function MarketColumn({
 /* ═══════════════ 市场详情卡（船长 2026-09-05：参考盘口风格——价格曲线/买卖盘/持有量/交易面板） ═══════════════ */
 
 /** 价格折线（SVG）。
- * 2026-09-08 船长：保留窗 24 → 48；显示宽度自适应——容器够宽时整条 48 窗直显；
- * 宽度不足（采样点过密）时自动只显示「最新 24 窗」（不做更早段查看入口，船长后定不实现）；
- * 悬停任意采样点可查看该点数值与相对时间 */
-/** 采样点最小可视间距（px）：低于该密度判定"宽度不足"，回退显示最新 24 窗 */
+ * 2026-09-08 船长：保留点 24 → 48；显示宽度自适应——容器够宽时整条 48 点直显；
+ * 宽度不足（采样点过密）时自动只显示「最新 24 点」（= 最近 12 小时；不做更早段查看入口，船长后定不实现）；
+ * 悬停任意采样点可查看该点数值与相对时间。
+ * ⚠ **采样节奏 = 30 分钟/点**（船长 2026-09-16「按照原来的30分钟来」）⇒ 48 点 = **24 小时**；
+ * 换算时间的分钟数走 core 单点 `PRICE_SAMPLE_MS`，界面不再自己写死一个 30。 */
+/** 采样点最小可视间距（px）：低于该密度判定"宽度不足"，回退显示最新 24 点 */
 const MIN_POINT_SPACING_PX = 12
 
-/** 采样点「约 N 分钟前」标注（样本间隔 30 分钟；最新样本 = 现在） */
+/** 采样点「约 N 分钟前」标注（样本间隔 = `PRICE_SAMPLE_MS`（30 分钟）；最新样本 = 现在） */
 function sampleAgoLabel(fullLen: number, absIdx: number): string {
-  const mins = (fullLen - 1 - absIdx) * 30
+  const mins = ((fullLen - 1 - absIdx) * PRICE_SAMPLE_MS) / 60_000
   if (mins <= 0) return '现在'
   if (mins < 60) return `约 ${mins} 分钟前`
   const h = Math.floor(mins / 60)
