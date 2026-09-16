@@ -1022,6 +1022,34 @@ export function ShipHover({
 }
 
 /**
+ * **富卡内容**（标题 + 统一参数表 + 备注行）——全站悬停卡的**唯一一份皮肤**。
+ * `InfoHover` / `ModuleHover` 与"必须自当容器"的场合（如装配台槽位是 `<button>`、要挂 `onClick`）
+ * 共用它，避免各页各画一份、风格割裂。
+ */
+export function infoCardContent(title: ReactNode, lines: InfoLine[], note?: ReactNode, extra?: ReactNode): ReactNode {
+  return (
+    <>
+      <span className="app-ship-hover-title">{title}</span>
+      <InfoTable lines={lines} />
+      {note ? <div className="app-info-note">{note}</div> : null}
+      {extra}
+    </>
+  )
+}
+
+/**
+ * **装备富卡内容**（`ModuleHover` 的等价内容，但不带包裹元素）。
+ *
+ * 用途：容器标签不能换的场景 —— 装配台「已装槽位」与「换装候选卡」都是 `<button>`（要挂 `onClick`），
+ * 用 `{...hoverTipProps(moduleHoverContent(mod))}` 直接挂在按钮上。
+ * ⚠ 同一元素**禁** `title` + `hoverTipProps` 并存（两个提示路径会在同一个单例层上互顶，见 `ui/Tooltip.tsx`）。
+ * `hint` = 追加一行行动提示（如「点击更换 · 第 N 位」），与描述同款注脚样式。
+ */
+export function moduleHoverContent(mod: ModuleDef, hint?: ReactNode): ReactNode {
+  return infoCardContent(mod.name, moduleInfoLines(mod), mod.description, hint ? <div className="app-info-note">{hint}</div> : null)
+}
+
+/**
  * 通用信息悬浮（全站列表行悬浮的统一皮肤）：标题 + InfoTable 统一参数表 + 备注行。
  * 装备/物品/蓝图/AI 核心/舰船等悬浮窗共用同一视觉与布局，避免各页悬浮风格割裂。
  * as/className 透传以兼容行级 li/div 包裹；children = 原行内容（悬浮热区）。
@@ -1041,13 +1069,7 @@ export function InfoHover({
   as?: ElementType
   className?: string
 }) {
-  const content = (
-    <>
-      <span className="app-ship-hover-title">{title}</span>
-      <InfoTable lines={lines} />
-      {note ? <div className="app-info-note">{note}</div> : null}
-    </>
-  )
+  const content = infoCardContent(title, lines, note)
   const Tag = as as ElementType
   return (
     <Tag
@@ -1057,6 +1079,19 @@ export function InfoHover({
       {children}
     </Tag>
   )
+}
+
+/**
+ * **物品富卡内容**（`ItemHover` 的等价内容，但不带包裹元素）——给"容器标签不能换"的场合
+ * （如装配台无人机舱单元格是 `<div>` 且内含 ± 按钮，要从按钮那一层让位给内层提示）。
+ * `hint` = 追加一行行动/机制提示（与描述同款注脚样式）。
+ */
+export function itemHoverContent(
+  item: ItemDef,
+  nameOf?: (id: string) => string | undefined,
+  hint?: ReactNode,
+): ReactNode {
+  return infoCardContent(item.name, itemInfoLines(item, nameOf), item.description, hint ? <div className="app-info-note">{hint}</div> : null)
 }
 
 /**

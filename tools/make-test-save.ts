@@ -1689,7 +1689,8 @@ function injectWormholeBag(state: GameState, overload: boolean): string[] {
  *   遗迹信号显形，走过去打捞即得 **2~3 件稀有残骸**；
  * - 本层还有引擎自己撒的**另外几格星云**（层 4 配额 = 4 格）⇒ 顺带能看"整盘有几处云"；
  * - **守卫没清**（`bossCleared = 0`）⇒ 撤离随时可走、深入要先打守卫；
- * - **信标没读**（`exitKnown = false`）⇒ 出口要靠找信标，与正常一趟一致。
+ * - **入口没标**（`exitKnown = false`：信标没读、出口格也还没扫到）⇒ 出口要靠找信标，与正常一趟一致
+ *   （⚠ 2026-09-16 甲案起：**扫到出口格本身**也会把它标上地图）。
  *
  * 试法（进游戏后）：
  * 1. 先在 DevTools 跑 `localStorage.setItem('whale-idle:debug','1')` 再刷新（虫洞入口只在调试模式渲染）；

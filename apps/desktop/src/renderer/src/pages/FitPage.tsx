@@ -54,7 +54,8 @@ import {
 import { Panel } from '@whale/ui'
 // 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
 import { rarityTierOf } from '@whale/data'
-import { combatBadges, DmgChip, DMG_LABEL, InfoTable, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, DmgChip, DMG_LABEL, InfoTable, itemHoverContent, moduleHoverContent, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { hoverTipProps } from '../ui/Tooltip'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -854,7 +855,13 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       key={`${rack}-${i}`}
                       className="app-fit-slot-icon is-filled"
                       onClick={() => openPick(rack, i)}
-                      title={`${fittedDef.name} · ${moduleShortEffect(fittedDef)}${stealthTraitNote(fittedDef)} · 第${i + 1}位（点击更换）`}
+                      /* 2026-09-16 船长：「装配界面，鼠标悬停槽位上的装备时，显示出的装备详细过于简陋，
+                         参考仓库界面的物品详细」⇒ 改挂**仓库同款富卡**（`moduleHoverContent` =
+                         `ModuleHover` 的内容，标题 + 统一参数表 + 描述），行动提示降为末行注脚。
+                         ⚠ 不再写 `title`：同一元素禁 `title` + 富提示并存（两个提示路径互顶）。 */
+                      {...hoverTipProps(
+                        moduleHoverContent(fittedDef, `第 ${i + 1} 位 · 点击更换${stealthTraitNote(fittedDef)}`),
+                      )}
                     >
                       <span className="app-fit-slot-icon-glyph">
                         <Glyph name={fittedDef.slot} size={22} color={tone} />
@@ -1019,7 +1026,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                   <button
                     key={m.id}
                     className="app-fit-pick-item"
-                    title={fitOptionLabel(m)}
+                    /* 2026-09-16 同批：候选卡也换成**仓库同款富卡**（标题 + 参数表 + 描述），
+                       `fitOptionLabel` 里那串"第 N 件衰减/取最长一件"的行动信息降为末行注脚。
+                       ⚠ 不再写 `title`（同一元素禁 `title` + 富提示并存）。 */
+                    {...hoverTipProps(moduleHoverContent(m, fitOptionLabel(m)))}
                     onClick={() => pickModule(m)}
                     disabled={sameAsOld}
                   >
@@ -1292,7 +1302,17 @@ function DroneBaySection({
       {/* 型卡流：一型一卡 ×N（+ / − 微调）；空态只有「装入」 */}
       <div className="app-fit-dronebay-cells">
         {cells.map(({ id, n, def }) => (
-          <div key={id} className="app-fit-drone-cell" title={`${def?.name ?? id}：无人机舱清单（战斗只放飞已装入的；仓库中其余无人机不出战）`}>
+          <div
+            key={id}
+            className="app-fit-drone-cell"
+            /* 2026-09-16 同批：无人机舱单元格也换**仓库同款富卡**（`itemHoverContent` = 仓库页
+               `ItemHover` 的内容），原那句"清单口径"降为末行注脚；± 按钮自己的提示照旧内层优先。 */
+            {...hoverTipProps(
+              def
+                ? itemHoverContent(def, (mid) => engine.ctx.items.get(mid)?.name, '舱内清单：战斗只放飞已装入的；仓库中其余无人机不出战')
+                : `${id}：无人机舱清单（战斗只放飞已装入的；仓库中其余无人机不出战）`,
+            )}
+          >
             {def ? (
               <span className="app-fit-drone-cell-glyph">
                 <Glyph name="drone" size={16} color={toneOf('drone')} />

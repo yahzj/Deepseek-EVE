@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **278** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5070** KB · **37261** 行
-- 状态分布：**未标注** 141 · **已确认/已实现** 107 · **进行中** 24 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**27** 份 · 状态未标注 **141** 份
+- 文档总数 **279** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5080** KB · **37341** 行
+- 状态分布：**未标注** 141 · **已确认/已实现** 107 · **进行中** 25 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**28** 份 · 状态未标注 **141** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**197** 份
+- 三、现行设计稿（design）：**198** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**15** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -33,9 +33,9 @@
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 68 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 320 KB / 764 行 | 201 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 95 KB / 216 行 | 241 / 9 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 70 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 322 KB / 779 行 | 201 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 216 行 | 242 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -51,7 +51,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 197 份
+## 三、现行设计稿（design） —— 198 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -63,6 +63,7 @@
 | `docs/design/c-family-charge-20260916.md` | C 族族格两改：全族冲锋（按档 1.5/2/2.5/3/4）＋ 孢群异虫速度 300 · 工作文档 | 进行中（进行中） | 2026-09-16 | 7 KB / 89 行 | 0 / 0 |
 | `docs/design/copy-parens-audit-20260916.md` | 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档 | 进行中（进行中） | 2026-09-16 | 7 KB / 85 行 | 0 / 0 |
 | `docs/design/first-ship-trigger-fix-20260916.md` | 首艘自造船通讯·触发口径修正（shipBuilt 只认"造过"）· 工作文档 | 进行中（进行中） | 2026-09-16 | 5 KB / 72 行 | 1 / 0 |
+| `docs/design/fit-hover-detail-20260916.md` | 装配界面悬停详情（对齐仓库富卡）＋ 提示层被浮层遮挡修复 · 工作文档 | 进行中（进行中） | 2026-09-16 | 5 KB / 63 行 | 0 / 0 |
 | `docs/design/foe-mounts-20260916.md` | 敌方挂载件（冲锋 / 受击增程挂载化 ＋ A 族洞内海盗冲锋）· 工作文档 | 进行中（进行中） | 2026-09-16 | 5 KB / 72 行 | 0 / 0 |
 | `docs/design/jargon-copy-20260916.md` | 文案去黑话（「高级箱 / 开箱」等不符合设定的名词）· 工作文档 | 进行中（进行中） | 2026-09-16 | 10 KB / 115 行 | 0 / 0 |
 | `docs/design/logistics-trait-field-20260916.md` | 后勤舰维修特性入「船体特性」属性（数据字段驱动）· 工作文档 | 进行中（进行中） | 2026-09-16 | 4 KB / 54 行 | 0 / 0 |
@@ -129,7 +130,7 @@
 | `docs/design/announcement-draft-20260912-pilot1-batches.md` | 公告待审稿 · 一号批次（2026-09-12 · 全部作废 · 不发布；留档备查，不要再写入 announcements.ts） | 未标注 | 2026-09-12 | 10 KB / 179 行 | 4 / 2 |
 | `docs/design/haul-security-and-ambush-repair-20260912.md` | 低安运输批：长途运输报酬重标 + 遇袭后自动维修（2026-09-12 · 二号） | 已确认/已实现（已确认并实现） | 2026-09-12 | 10 KB / 124 行 | 4 / 0 |
 | `docs/design/p0-ai-cargo-capacity-20260912.md` | P0 结案：采矿船「货仓没满就返航」——AI 副船满舱判定的漏技能副本（2026-09-12 · 二号） | 已确认/已实现（已确认） | 2026-09-12 | 5 KB / 60 行 | 1 / 0 |
-| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 183 KB / 1814 行 | 30 / 7 |
+| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 183 KB / 1814 行 | 32 / 7 |
 | `docs/design/comms-20260911.md` | 通讯（通讯录）系统 · 设计稿（2026-09-11） | 已确认/已实现（已确认） | 2026-09-11 | 62 KB / 628 行 | 15 / 4 |
 | `docs/design/cpu-coprocessor-20260911.md` | 协处理器（低槽 CPU 预算扩容件）· 2026-09-11 | 已确认/已实现（已确认并已实现） | 2026-09-11 | 10 KB / 121 行 | 4 / 0 |
 | `docs/design/foe-baseline-audit-20260911.md` | 敌人数值复核：多装配对照 + 标准复核配置集（2026-09-11 · 已确认口径） | 未标注（纯测量批 · 未改任何数值） | 2026-09-11 | 16 KB / 205 行 | 17 / 3 |
@@ -271,7 +272,7 @@
 | `docs/archive/roadmap-2026-09-12.md` | 封存卷 · roadmap 批次条目 2026-09-12 | 未标注 | — | 173 KB / 160 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 397 KB / 256 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 115 KB / 74 行 | 3 / 0 |
+| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 121 KB / 76 行 | 3 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -342,13 +343,14 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 52 / 9 |
 
-## 附：孤儿文档（0 引用，27 份）
+## 附：孤儿文档（0 引用，28 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/ammo-rename-20260916.md`（2026-09-16 · 8 KB）—— 弹药定名批：全族统一到《系+弹药》· 工作文档
 - `docs/design/c-family-charge-20260916.md`（2026-09-16 · 7 KB）—— C 族族格两改：全族冲锋（按档 1.5/2/2.5/3/4）＋ 孢群异虫速度 300 · 工作文档
 - `docs/design/copy-parens-audit-20260916.md`（2026-09-16 · 7 KB）—— 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档
+- `docs/design/fit-hover-detail-20260916.md`（2026-09-16 · 5 KB）—— 装配界面悬停详情（对齐仓库富卡）＋ 提示层被浮层遮挡修复 · 工作文档
 - `docs/design/foe-mounts-20260916.md`（2026-09-16 · 5 KB）—— 敌方挂载件（冲锋 / 受击增程挂载化 ＋ A 族洞内海盗冲锋）· 工作文档
 - `docs/design/jargon-copy-20260916.md`（2026-09-16 · 10 KB）—— 文案去黑话（「高级箱 / 开箱」等不符合设定的名词）· 工作文档
 - `docs/design/logistics-trait-field-20260916.md`（2026-09-16 · 4 KB）—— 后勤舰维修特性入「船体特性」属性（数据字段驱动）· 工作文档

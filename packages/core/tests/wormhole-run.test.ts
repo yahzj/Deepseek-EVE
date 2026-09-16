@@ -710,7 +710,7 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 各 1 回合�
   it('**漂浮信标**（船长 2026-09-13）：走到信标格 ⇒ 回报 beacon + 标出下一层入口（此后地图一直标着）', () => {
     const { state, run } = enterForActions()
     const g = run.grid!
-    expect(g.exitKnown).toBe(false) // 默认为假：入口不标在地图上
+    expect(g.exitKnown).toBe(false) // 默认为假：入口不标在地图上（还没读信标、也没扫到出口格）
     const target = g.cells.find((c) => c.key !== `${g.pos.q},${g.pos.r}` && hexDistance(c, g.pos) === 1)!
     target.place = 'beacon'
     g.scanned.push(target.key)

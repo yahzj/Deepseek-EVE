@@ -711,18 +711,21 @@ export function WormholePanel({
      * **星云反馈**（船长 2026-09-13 星云机制）：一次扫描可能同时做两件事——
      * 揭开新格、驱散圈内的星云。两种情况各给一句提示，玩家才分得清"这次扫到的东西被云挡着"
      * （要**再扫一次**）与"云散了"。
+     * ⚠ **扫到下一层入口**（船长 2026-09-16 甲案）与它们并列：地图上会立刻标出入口
+     * （`grid.exitKnown`），这里再补一句，免得玩家漏看地图上多出来的那个标记。
      */
     const dispersed = res.dispersed ?? 0
     const fogged = res.newlyFogged ?? 0
+    const parts: string[] = []
     if (fogged > 0 && dispersed > 0) {
-      onToast(`扫描完成（1 回合）：${fogged} 格被星云遮挡，同时驱散了 ${dispersed} 格星云。`)
+      parts.push(`${fogged} 格被星云遮挡，同时驱散了 ${dispersed} 格星云。`)
     } else if (fogged > 0) {
-      onToast(`扫描完成（1 回合）：${fogged} 格被星云遮挡——在原位再扫描一次即可驱散。`)
+      parts.push(`${fogged} 格被星云遮挡——在原位再扫描一次即可驱散。`)
     } else if (dispersed > 0) {
-      onToast(`扫描完成（1 回合）：驱散星云 ${dispersed} 格，信号已显形。`)
-    } else {
-      onToast('扫描完成（1 回合）。')
+      parts.push(`驱散星云 ${dispersed} 格，信号已显形。`)
     }
+    if (res.exitScanned === true) parts.push('扫到了下一层入口——已标在地图上。')
+    onToast(parts.length > 0 ? `扫描完成（1 回合）：${parts.join(' ')}` : '扫描完成（1 回合）。')
   }
 
   /**
