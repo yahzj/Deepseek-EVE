@@ -29,9 +29,9 @@ import {
   startBattleFor,
 } from '../src/combat'
 import type { UnitSpec } from '../src/combat'
-import { stackingOf } from '../src/equipment'
+import { cpuUseOf, fittedCpuUsed, stackingOf } from '../src/equipment'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import type { AnomalyDef, FoeShipDef, SimContext } from '../src/types'
+import type { AnomalyDef, FoeShipDef, ShipDef, SimContext } from '../src/types'
 
 const base: SimContext = buildSimContext()
 
@@ -259,5 +259,96 @@ describe('隐秘行动装置（2026-09-15 船长 · 六问六答）', () => {
     expect(withDev.armorLoss).toBeLessThanOrEqual(without.armorLoss)
     expect(withDev.hullLoss).toBeLessThanOrEqual(without.hullLoss)
     expect(withDev.armorLoss + withDev.hullLoss).toBeLessThan(without.armorLoss + without.hullLoss)
+  })
+})
+
+/**
+ * **侦察舰特性**（船长 2026-09-16：「**侦查舰添加特性，隐秘行动装置所需CPU降低50%，且移除推进器
+ * 失效惩罚**」；口径四答：只有「侦察舰」子分类那两艘 · CPU **向上取整**（55→28 · 80→40）·
+ * **完全移除**推进器惩罚 · 特性栏与装配页都显示）。
+ *
+ * 判据一律走**数据字段**（`ShipDef.stealthCpuMul` / `stealthIgnoresPropulsion`，照「后勤舰」先例），
+ * 引擎里不硬判子分类 ⇒ 改数值/换船都只动数据。
+ */
+describe('侦察舰特性（2026-09-16 船长）', () => {
+  const SCOUT = 'sh-nautilus' // 鹦鹉螺级测绘巡洋舰（子分类 侦察舰）
+  const SCOUT2 = 'sh-wh-g-frigate' // 幽影侦察舰（同子分类）
+  const NON_SCOUT = 'sh-whiteshark' // 对照：普通炮舰
+  const shipDefOf = (id: string): ShipDef => base.ships.get(id)!
+
+  /** 造一艘指定船的装配（高槽：炮 + 装置；中槽可插推进器），与 `world()` 同口径 */
+  function worldOf(defId: string, opts: { stealth: string | readonly string[]; mid?: string }) {
+    const ctx: SimContext = {
+      ...base,
+      anomalies: new Map([...base.anomalies, [CARD, stealthCard()] as const]),
+    }
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const uid = addShipToFleet(state, defId)
+    state.shipId = uid
+    const stealth = Array.isArray(opts.stealth) ? [...opts.stealth] : [opts.stealth as string]
+    state.fleet[uid]!.fitted = { high: ['mod-turret-kin-3', ...stealth], mid: opts.mid ? [opts.mid] : [], low: [] }
+    addWare(state, 'ammo-kinetic-l', 5_000)
+    return { state, ctx, uid }
+  }
+
+  it('数据侧：**恰好两艘**侦察舰带这两个特性，且值 = 0.5 / true（其余船一件都不带）', () => {
+    for (const id of [SCOUT, SCOUT2]) {
+      const s = shipDefOf(id)
+      expect(s.subClass, `${id} 的子分类`).toBe('侦察舰')
+      expect(s.stealthCpuMul, `${id} 的 CPU 倍率`).toBe(0.5)
+      expect(s.stealthIgnoresPropulsion, `${id} 的免推进器失效`).toBe(true)
+    }
+    // 对照：普通船两个字段都不该有（防"顺手给别的船也开个口子"）
+    const plain = shipDefOf(NON_SCOUT)
+    expect(plain.stealthCpuMul).toBeUndefined()
+    expect(plain.stealthIgnoresPropulsion).toBeUndefined()
+  })
+
+  it('**CPU 折算（向上取整）**：侦察舰上 MK2 55→28 · MK3 80→40；其余件与其余船一字不变', () => {
+    const scout = shipDefOf(SCOUT)
+    const s2 = base.modules.get(STEALTH_2)!
+    const s3 = base.modules.get(STEALTH_3)!
+    expect(cpuUseOf(s2, scout)).toBe(28) // ceil(55 × 0.5) = 28（船长四答取「乙：向上取整」）
+    expect(cpuUseOf(s3, scout)).toBe(40) // ceil(80 × 0.5)
+    // 对照 ①：非侦察舰 = 原值
+    expect(cpuUseOf(s2, shipDefOf(NON_SCOUT))).toBe(55)
+    expect(cpuUseOf(s3, shipDefOf(NON_SCOUT))).toBe(80)
+    // 对照 ②：**只折隐秘装置**——普通高槽件在侦察舰上 CPU 不变
+    const gun = base.modules.get('mod-turret-kin-3')!
+    expect(cpuUseOf(gun, scout)).toBe(gun.cpuUse)
+    // 全位合计同源：传船比不传船正好少 27（55 − 28）
+    const w = worldOf(SCOUT, { stealth: STEALTH_2 })
+    const fittedOnly = fittedCpuUsed(w.state.fleet[w.uid]!.fitted, w.ctx)
+    const withTrait = fittedCpuUsed(w.state.fleet[w.uid]!.fitted, w.ctx, scout)
+    expect(fittedOnly - withTrait).toBe(27)
+  })
+
+  it('**免推进器失效**：侦察舰装推进器也照常隐身；同配装的普通船仍旧失效', () => {
+    for (const prop of ['mod-prop-3', 'mod-mwd-3']) {
+      const scout = worldOf(SCOUT, { stealth: STEALTH_3, mid: prop })
+      expect(createPlayerSpec(scout.state, scout.ctx, scout.uid)!.stealthMs, `${SCOUT} + ${prop} 不该失效`).toBe(30_000)
+      const other = worldOf(SCOUT2, { stealth: STEALTH_2, mid: prop })
+      expect(createPlayerSpec(other.state, other.ctx, other.uid)!.stealthMs, `${SCOUT2} + ${prop} 不该失效`).toBe(20_000)
+      // 对照：普通船同一套配装 ⇒ 旧口径（推进器在装即判 0）
+      const plain = worldOf(NON_SCOUT, { stealth: STEALTH_3, mid: prop })
+      expect(createPlayerSpec(plain.state, plain.ctx, plain.uid)!.stealthMs, `${NON_SCOUT} + ${prop} 应仍失效`).toBeUndefined()
+    }
+  })
+
+  it('**端到端**：侦察舰带推进器进战斗 ⇒ 开战就有隐身窗口，窗口内敌舰选不中我方', () => {
+    const { state, ctx, uid } = worldOf(SCOUT, { stealth: STEALTH_3, mid: 'mod-mwd-3' })
+    const b = startBattleFor(state, ctx, uid, CARD, 0)!
+    expect(b.units['player']!.stealthUntilMs, '带推进器的侦察舰没有隐身窗口').toBe(30_000)
+    const spec = createPlayerSpec(state, ctx, uid)!
+    expect(pickMyUnitTarget(state, b, [spec], 'random'), '窗口内仍被选中').toBeNull()
+  })
+
+  it('**装配校验同源**：同一份装配在侦察舰上合计 CPU 更低——差值正好是那 27 点（55 − 28）', () => {
+    const fitted = { high: [STEALTH_2], mid: [], low: [] }
+    const scoutUsed = fittedCpuUsed(fitted, base, shipDefOf(SCOUT))
+    const plainUsed = fittedCpuUsed(fitted, base, shipDefOf(NON_SCOUT))
+    expect(scoutUsed, '侦察舰上 MK2 应折成 28').toBe(28)
+    expect(plainUsed, '普通船上 MK2 应仍是 55').toBe(55)
+    expect(plainUsed - scoutUsed).toBe(27)
   })
 })

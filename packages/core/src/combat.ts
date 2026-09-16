@@ -937,11 +937,15 @@ export function createPlayerSpec(
    * 六问六答 Q4 = 两档 MK2/MK3 = **20 / 30 秒**、极度吃 CPU；Q3 = **只护装了装置的那一艘**）：
    * 窗口 = 所装件里**最长**的一件（多件不叠加）。
    *
-   * ⚠ **推进器禁令**（船长同日追加：「**有推进器类的时候直接解除隐身**」）：`propDefs` 非空即判 0 ——
+   * ⚠ **推进器禁令**（船长同日追加：「**有推进器类的时候直接解除隐身**」）：默认 `propDefs` 非空即判 0 ——
    * 判在**装配期**（推进器不会中途装卸）⇒ 等价于"带着推进器就没有隐身"。
+   * ⚠ **2026-09-16 船长给侦察舰开了口子**：「**侦查舰添加特性，隐秘行动装置所需CPU降低50%，且移除
+   * 推进器失效惩罚**」（口径四答取「甲：完全移除」）⇒ 本船 `stealthIgnoresPropulsion === true` 时
+   * **推进器不再解除隐身**（开火立即现形、超时现形两条照旧）。判据走**数据字段**（照「后勤舰」先例），
+   * 不在引擎里硬判子分类。
    */
   const stealthMs =
-    propDefs.length > 0
+    propDefs.length > 0 && ship.stealthIgnoresPropulsion !== true
       ? 0
       : allFittedModules(fitted, ctx).reduce((m, d) => Math.max(m, d.stealthMs ?? 0), 0)
 
@@ -1209,7 +1213,8 @@ export function createPlayerSpec(
 
   let bayUsed = 0
   // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
-  let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx)
+  // ⚠ 传 `shipDef`：含**本船特性折算**（侦察舰的隐秘行动装置 CPU 减半，见 `equipment.cpuUseOf`）
+  let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx, ship)
   const droneLoad = fleet.droneLoad ?? {}
   // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——每级 −4%
   //（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）

@@ -100,7 +100,7 @@ export function cpuOverloadText(
     bays[free] = add.id
   }
   const budget = cpuBudgetOf(state, ctx, shipId, after)
-  const used = fittedCpuUsed(after, ctx) + droneCpuUsed(fleet.droneLoad, ctx)
+  const used = fittedCpuUsed(after, ctx, shipDef) + droneCpuUsed(fleet.droneLoad, ctx)
   if (used > budget) {
     return `CPU 超载：合计需 ${used}，预算 ${budget}（协处理器只扩容、卸下即收回——先卸下其它装备或无人机）。`
   }
@@ -280,10 +280,29 @@ export function sameKindCount(fitted: FittedModules, ctx: SimContext, def: Modul
   return n
 }
 
-/** 全位 CPU 占用合计（与无人机放飞共用池；装配校验/战斗余量同源） */
-export function fittedCpuUsed(fitted: FittedModules, ctx: SimContext): number {
+/**
+ * **单件 CPU 占用（含本船特性折算）**——装配校验 / 面板 / 战斗建档的**唯一口径**。
+ *
+ * 现行折算只有一条（船长 2026-09-16「侦查舰添加特性，隐秘行动装置所需CPU降低50%」，取整取**向上**）：
+ * 带 `stealthMs` 的装置在本船 `stealthCpuMul` 生效时按 `ceil(cpuUse × 倍率)`；
+ * 其余件、其余船一律返回原值（`ship` 缺省 ⇒ 原值）。**
+ */
+export function cpuUseOf(def: ModuleDef, ship?: { stealthCpuMul?: number }): number {
+  const raw = def.cpuUse ?? 0
+  const mul = ship?.stealthCpuMul
+  if (def.stealthMs !== undefined && mul !== undefined && mul !== 1) return Math.ceil(raw * mul)
+  return raw
+}
+
+/** 全位 CPU 占用合计（与无人机放飞共用池；装配校验/战斗余量同源）。
+ *  ⚠ 传 `ship`（本船舰船定义）时**含本船特性折算**（见 `cpuUseOf`）——凡"某一艘船"的读数都该传它。 */
+export function fittedCpuUsed(
+  fitted: FittedModules,
+  ctx: SimContext,
+  ship?: { stealthCpuMul?: number },
+): number {
   let used = 0
-  for (const def of allFittedModules(fitted, ctx)) used += def.cpuUse ?? 0
+  for (const def of allFittedModules(fitted, ctx)) used += cpuUseOf(def, ship)
   return used
 }
 
@@ -391,7 +410,7 @@ export function fitModule(
     const overload = cpuOverloadText(state, ctx, shipId, { addModuleId: moduleId })
     if (overload !== null) {
       const used =
-        fittedCpuUsed(fitted, ctx) + (def.cpuUse ?? 0) + droneCpuUsed(state.fleet[shipId]?.droneLoad, ctx)
+        fittedCpuUsed(fitted, ctx, shipDef) + cpuUseOf(def, shipDef) + droneCpuUsed(state.fleet[shipId]?.droneLoad, ctx)
       return {
         ok: false,
         error: `装配超载：合计需 CPU ${used}，预算 ${cpuBudgetOf(state, ctx, shipId)}（无人机舱占用亦计入预算——卸下装备、清一部分无人机，或装一件「协处理器」扩容）。`,
@@ -580,7 +599,10 @@ export function adjustDroneLoad(
     const cap = droneBayCapOf(state, ctx, shipId)
     // 预算 = 船体 CPU + 已装协处理器加成（2026-09-11 起：装配与放飞共用同一份扩容预算）
     const cpuTotal = cpuBudgetOf(state, ctx, shipId)
-    const usedCpu = fittedCpuUsed(fleet.fitted, ctx) + droneCpuUsed(load, ctx) + (def.cpuUse ?? 0) * delta
+    const usedCpu =
+      fittedCpuUsed(fleet.fitted, ctx, fleetDefOf(state, ctx, shipId)) +
+      droneCpuUsed(load, ctx) +
+      (def.cpuUse ?? 0) * delta
     const usedM3 = droneLoadM3(load, ctx) + (def.unitM3 ?? 0) * delta
     if (usedM3 > cap) {
       return { ok: false, error: `机舱容量不足：${Math.round(usedM3 * 10) / 10}/${cap} m³（先卸下一些，或装「甲板扩展」扩容）。` }

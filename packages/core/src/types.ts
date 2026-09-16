@@ -318,6 +318,24 @@ export interface ShipDef {
    * 落点：`combat.createPlayerSpec` 写入 `spec.logistics` ⇒ `pulseAllyRepair` 的选靶分支。
    */
   repairPulseTargetsFleet?: boolean
+  /**
+   * **侦察舰特性 · 隐秘行动装置 CPU 减半**（船长 2026-09-16：「**侦查舰添加特性，隐秘行动装置所需
+   * CPU 降低50%**」；口径四答取「**乙：向上取整**」⇒ MK2 55 → **28**、MK3 80 → 40）。
+   *
+   * 值 = 倍率（`0.5`）；**只作用于带 `stealthMs` 的装置**（本船其它件的 CPU 一律不折）；
+   * 引擎按 `ceil(cpuUse × 本值)` 折算 ⇒ 单点 = `equipment.cpuUseOf`（装配校验 / 面板 / 战斗建档三处同源）。
+   * 缺省 = 1（非侦察舰一字不变）。**数据字段驱动**（照 2026-09-16「后勤舰」先例），界面「船体特性」栏同源。
+   */
+  stealthCpuMul?: number
+  /**
+   * **侦察舰特性 · 免推进器失效**（船长 2026-09-16：「**且移除推进器失效惩罚**」，口径四答取
+   * 「甲：**完全移除**」）：本船装着推进器族（`slot: 'propulsion'`，含微型跃迁引擎那 8 件）也
+   * **照常隐身**（开火立即现形、超时现形这两条照旧）。
+   *
+   * 缺省 / 非本船 ⇒ 旧口径（船长 2026-09-15「有推进器类的时候直接解除隐身」）＝**任一推进器在装即判 0**。
+   * 落点 = `combat.createPlayerSpec` 的隐形窗口段；界面「船体特性」栏同源。
+   */
+  stealthIgnoresPropulsion?: boolean
   description: string
   /**
    * **未上线闸门（施工期）**——语义与口径**完全同 `ItemDef.unreleased`**（2026-09-13 船长铁律
