@@ -8,7 +8,9 @@
  * ④ **效果一律从货仓现算**（扫描半径 / 打捞·采集堆数 / 母矿产量 / 仓格）；
  * ⑤ **回合实时派生 + 夹紧**（船长：「实时派生 + 夹紧 + 丢弃提醒」）：
  *    装上就 +10、丢掉就 −10 并把剩余夹到新上限、**永不为负**、**0 回合照样能撤离**；
- * ⑥ **老档零迁移**（`turnsBase` 缺失时按"当前上限 − 当前加成"反推）。
+ * ⑥ **老档零迁移**（`turnsBase` 缺失时按"当前上限 − 当前加成"反推）；
+ * ⑦ **谜质格只发装置**（2026-09-16 玩家报障「从谜质中获得了图纸货柜」取证固化：玩家澄清是看错，
+ *    这里把"谜质格出不了货柜"钉成常驻护栏）。
  *
  * ✅ 2026-09-14 船长解除不可见；本文件不产生玩家可见文案。
  */
@@ -34,10 +36,16 @@ import {
 import { WORMHOLE_HOLD_SHAPES, wormholeShapeOf } from '../src/wormholeHold'
 import { WORMHOLE_MATTER_FLOOR, gridScanTargets, wormholeMakeGrid } from '../src/wormholeGrid'
 import {
+  WORMHOLE_BP_BOX_IDS,
+  wormholeCollectOreAt,
+  wormholeEnsureArrivalPiles,
   wormholeHoldCapacityOf,
   wormholeHoldDiscard,
+  wormholeRelicBoxPoolOf,
+  wormholeSalvageAt,
   wormholeStowOrTemp,
   wormholeSyncMatterTurns,
+  wormholeTakePileAt,
 } from '../src/wormholeSalvage'
 import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import { applyMatterPlayerBuffs, carryVolleyOverflow, droneRecoveryRateWithBonus, rawDamageToKill, wormholeMatterBattleModsOf } from '../src/combat'
@@ -226,6 +234,79 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
     // 同一格再激活：不重复给（已 activated）
     const again = wormholeActivateAt(state, ctx)
     expect(again.ok).toBe(false)
+  })
+
+  /**
+   * **谜质格只发谜质装置**（2026-09-16 玩家报障取证固化：「从谜质中获得了图纸货柜」⇒ 玩家当场澄清是**看错**）。
+   *
+   * 这条护栏钉两件事，免得日后有人把「格上产出」的闸门改松：
+   * ① **三条作业入口在谜质格上全被拒**（打捞 / 采集 / 逐堆拾取都要对的地点）⇒ 不扣回合、不动仓库；
+   * ② **多 seed × 多层扫一遍**：谜质格激活发到手的**只能是装置表里的那台**（`wormholeMatterDeviceOf` 认得），
+   *    且货仓/临时空间/背包里**绝不出现 `box-*`**（图纸货柜的正规来源只有遗迹掉落池与残骸堆那条 0.75%）。
+   */
+  it('⑦b 谜质格只发谜质装置：打捞/采集/拾取一律被拒，扫遍各层也出不了货柜', () => {
+    // ① 单格：三条作业入口全拒、不扣回合、不动仓库
+    const state = enterRun(4, 20260916)
+    const run = state.wormhole.run!
+    const grid = run.grid!
+    /** 站到谜质格上 = 挪 `grid.pos` + 走"到达那一刻"的真实钩子（铺堆逻辑就在那里面） */
+    const here = grid.cells.find((c) => c.place === 'matter')!
+    grid.pos = { q: here.q, r: here.r }
+    wormholeEnsureArrivalPiles(state, ctx)
+    expect((here.piles ?? []).length, '谜质格不该铺堆').toBe(0)
+    const turnsBefore = run.turnsLeft
+    const wareBefore = { ...state.warehouse.items }
+    expect(wormholeSalvageAt(state, ctx).ok).toBe(false)
+    expect(wormholeCollectOreAt(state, ctx).ok).toBe(false)
+    expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(false)
+    expect(run.turnsLeft).toBe(turnsBefore)
+    expect(state.warehouse.items).toEqual(wareBefore)
+    // ② 图纸货柜的正规来源（对照）：遗迹掉落池里才有它
+    expect(wormholeRelicBoxPoolOf(ctx)).toEqual(expect.arrayContaining([...WORMHOLE_BP_BOX_IDS]))
+
+    // ③ 多 seed × 层 1~5：谜质格只发装置
+    let granted = 0
+    /** 件数账（**按重数比**：同一盘里两台同型装置是合法的，不能用"清单里有没有"判新增） */
+    const held = (r: typeof run): Map<string, number> => {
+      const out = new Map<string, number>()
+      const bump = (id: string): void => {
+        out.set(id, (out.get(id) ?? 0) + 1)
+      }
+      for (const p of r.hold?.placements ?? []) bump(p.itemId)
+      for (const p of r.tempGrid?.placements ?? []) bump(p.itemId)
+      for (const p of r.bag ?? []) bump(p.itemId)
+      return out
+    }
+    const addedOf = (before: Map<string, number>, after: Map<string, number>): string[] => {
+      const out: string[] = []
+      for (const [id, n] of after) for (let i = n - (before.get(id) ?? 0); i > 0; i--) out.push(id)
+      return out
+    }
+    for (let seed = 1; seed <= 12; seed++) {
+      for (const depth of [1, 2, 3, 4, 5]) {
+        const s = enterRun(2, seed)
+        const r = s.wormhole.run!
+        if (depth !== 1) {
+          r.depth = depth
+          r.grid = wormholeMakeGrid(seed, depth)
+        }
+        const g = r.grid!
+        for (const cell of g.cells.filter((c) => c.place === 'matter')) {
+          g.pos = { q: cell.q, r: cell.r }
+          const before = held(r)
+          const act = wormholeActivateAt(s, ctx)
+          const added = addedOf(before, held(r))
+          for (const id of added) {
+            expect(wormholeMatterDeviceOf(id), `seed ${seed} 层 ${depth} 格 ${cell.key} 发了非装置：${id}`).toBeDefined()
+            expect(id.startsWith('box-'), `谜质格出货柜：${id}`).toBe(false)
+          }
+          if (!act.ok) continue
+          granted += 1
+          expect(added, '取回成功就该拿到那一台装置').toContain(wormholeMatterDeviceAt(r.seed ?? 0, r.depth, cell.key).id)
+        }
+      }
+    }
+    expect(granted, '样本里应当真取回过装置（否则这条护栏是空转）').toBeGreaterThan(10)
   })
 
   it('⑧ 非回合装置的"丢弃提醒"为空（界面照旧直接抛）', () => {
