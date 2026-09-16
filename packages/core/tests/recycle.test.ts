@@ -11,7 +11,8 @@ import { addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
-import { FRAGMENT_RECIPES, fragmentPoolOf, rareWreckItemDefOf, rareWreckItemIdOf, recycleBatchValueIsk, recycleRefiningMultiplier, recycleMineralPoolOf, recyclePoolMeanIsk, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, fragmentPoolOf, rareBoxThemePoolOf, rareWreckItemDefOf, rareWreckItemIdOf, recycleBatchValueIsk, recycleRefiningMultiplier, recycleMineralPoolOf, recyclePoolMeanIsk, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
+import { wormholeMk3PoolOf, wormholeRareBoxThemePoolOf } from '../src/wormholeSalvage'
 
 /** 测试矿物（id = 真实矿物 id，价格占位） */
 function mineral(id: string, price: number): ItemDef {
@@ -485,5 +486,72 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
     loaded.gameMs += RECYCLE_CYCLE_MS * 6
     advanceRefining(loaded, ctx)
     expect(loaded.logs.filter((l) => l.text.includes('高级箱')).length).toBe(1)
+  })
+})
+
+/* ═══════════ 洞内稀有残骸的高级箱：主题件回落（2026-09-16 船长甲1案）═══
+ * 玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」⇒ 根因：**洞内 15 张卡从没配 `recycleLoot`**
+ * ⇒ 高级箱第②支恒空、只剩那批矿物（常档 300 单位 · 基础池钛钢 65%）。
+ * 裁定甲1：洞内卡回落「军用备货柜」同款 MK3 池抽 **1 件**；**洞外一行不动**。 */
+describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09-16 甲1）', () => {
+  const WH_ANOMALY = 'wh-alien-brood'
+  const WH_ID = rareWreckItemIdOf(WH_ANOMALY)
+  const OUT_ANOMALY = 'ano-grave'
+
+  function ctxWithMk3() {
+    return makeTestCtx({
+      galaxies: [{ ...galaxy('galaxy-hub', '母港'), security: 1.0 }],
+      anomalies: [
+        // 洞内卡：id 以 `wh-` 开头、无 `recycleLoot`、无专属池（合成卡没有 lairGear ⇒ 第①支必不中）
+        anomaly(WH_ANOMALY, 'galaxy-hub', { threat: 45, tactic: 'brawl' }),
+        // 洞外对照卡：同样没有 `recycleLoot`，但**不该**吃到回落
+        anomaly(OUT_ANOMALY, 'galaxy-hub', { threat: 45, tactic: 'brawl' }),
+      ],
+      items: [
+        mineral('min-tritanium', 8),
+        rareWreckItemDefOf(WH_ANOMALY, '孢群兵潮'),
+        rareWreckItemDefOf(OUT_ANOMALY, '对照窝点'),
+      ],
+      modules: [moduleDef('mod-turret-kin-3', 'turret', 3), moduleDef('mod-armor-plate-2', 'armor', 2)],
+    })
+  }
+
+  /** 把一件稀有残骸整炉烧完，返回这一炉的产出（装备库增量 + 日志） */
+  function burnOne(ctx: SimContext, wreckId: string): { mods: Record<string, number>; logs: string[] } {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    addWare(state, wreckId, RARE_WRECK_VOLUME_M3)
+    const before = { ...state.moduleBay }
+    const from = state.logs.length
+    expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
+    state.gameMs = RECYCLE_CYCLE_MS * 4
+    advanceRefining(state, ctx)
+    const mods: Record<string, number> = {}
+    for (const [id, n] of Object.entries(state.moduleBay)) {
+      const d = (n ?? 0) - (before[id] ?? 0)
+      if (d > 0) mods[id] = d
+    }
+    return { mods, logs: state.logs.slice(from).map((l) => l.text) }
+  }
+
+  it('回落池：洞内卡取「军用备货柜」同款 MK3 池，洞外卡一律空（回落不外溢）', () => {
+    const ctx = ctxWithMk3()
+    expect(wormholeMk3PoolOf(ctx)).toEqual(['mod-turret-kin-3'])
+    expect(wormholeRareBoxThemePoolOf(ctx, WH_ANOMALY)).toEqual(['mod-turret-kin-3'])
+    expect(wormholeRareBoxThemePoolOf(ctx, OUT_ANOMALY)).toEqual([])
+  })
+
+  it('洞内稀有残骸：未中族专属时**必给一件装备**（改前只剩一批矿物）', () => {
+    const ctx = ctxWithMk3()
+    const { mods, logs } = burnOne(ctx, WH_ID)
+    expect(mods['mod-turret-kin-3'], `应出一件 MK3 主题件，实际 ${JSON.stringify(mods)}`).toBe(1)
+    expect(logs.some((t) => t.includes('高级箱') && t.includes('主题装备'))).toBe(true)
+  })
+
+  it('洞外稀有残骸：没配 `recycleLoot` 的卡**不**吃回落（行为逐字不变，只出矿物）', () => {
+    const ctx = ctxWithMk3()
+    const { mods, logs } = burnOne(ctx, rareWreckItemIdOf(OUT_ANOMALY))
+    expect(Object.keys(mods), `不该出任何主题件，实际 ${JSON.stringify(mods)}`).toEqual([])
+    expect(logs.some((t) => t.includes('高级箱') && t.includes('主题装备'))).toBe(false)
+    expect(logs.some((t) => t.includes('高级箱'))).toBe(true) // 箱照开（只是只有矿物那一支）
   })
 })

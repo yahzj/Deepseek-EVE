@@ -48,6 +48,7 @@ import {
   buildItemCatalog,
   buildSimContext,
   RETIRED_LAIR_CARD_IDS,
+  WORMHOLE_RARE_WRECK_CARD_IDS,
   ALIEN_BEAST_SHIP_IDS,
   ALIEN_CHARGE_MUL_BY_TIER,
   ALIEN_SLOW_SHIP_IDS,
@@ -108,6 +109,8 @@ securityZoneOf,
   subDamageTypeOf,
   type DamageType,
   rareWreckItemIdOf,
+  rareBoxThemePoolOf,
+  recycleProfileOf,
   recycleTierOf,
   rackOf,
   wreckBaseDensity,
@@ -200,6 +203,7 @@ securityZoneOf,
   wormholeRelicBoxPoolOf,
   wormholeRelicChanceOf,
   wormholeMk3PoolOf,
+  wormholeRareBoxThemePoolOf,
   wormholeSalvageBoxClassesOf,
 } from '@whale/core'
 
@@ -3418,6 +3422,37 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     console.log(
       `· 退役窝点卡契约：${retiredChecked} 张退役卡字段已清、白名单有效、稀有残骸仍可识别` +
         `（${[...RETIRED_LAIR_CARD_IDS].map((id) => rareWreckItemIdOf(id)).join(" / ")}）`,
+    )
+  }
+
+  /* ── 洞内高级箱契约（2026-09-16 船长**甲1案**：`rareBoxThemePoolOf` 的洞内回落）──
+   * 背景（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内 15 张卡从没配 `recycleLoot`**
+   * ⇒ 高级箱第②支（未中族专属时的"特色装备"）恒空、只剩第③支那批矿物（常档 300 单位 · 基础池钛钢 65%）。
+   * 裁定甲1 = 洞内卡回落**「军用备货柜」同款 MK3 池**抽 1 件。钉三件事：
+   *  ① 回落池本身非空（MK3 池被清空 ⇒ 这条兜底会退化成"只有一批矿物"，红线）；
+   *  ② 洞内每张卡的稀有残骸**能建出回收画像**；
+   *  ③ 每张卡的**高级箱主题件池非空**（= 未中族专属时**必有装备**）。
+   *  ⚠ 洞外卡一律回落空池 ⇒ 洞外行为逐字不变（用例另有对照钉子）。 */
+  {
+    const mk3 = wormholeMk3PoolOf(lairCtx)
+    check(
+      mk3.length > 0,
+      '洞内高级箱契约：军用备货柜 MK3 池为空——洞内稀有残骸"未中族专属时的主题件回落"会退化成只剩矿物',
+    )
+    const bad: string[] = []
+    for (const cardId of WORMHOLE_RARE_WRECK_CARD_IDS) {
+      const profile = recycleProfileOf(lairCtx, rareWreckItemIdOf(cardId))
+      if (!profile) {
+        bad.push(`${cardId}（建不出回收画像）`)
+        continue
+      }
+      const pool = rareBoxThemePoolOf(profile, wormholeRareBoxThemePoolOf(lairCtx, profile.anomalyId))
+      if (pool.length === 0) bad.push(`${cardId}（高级箱主题件池为空）`)
+    }
+    check(bad.length === 0, `洞内高级箱契约：${bad.join(' · ')}`)
+    console.log(
+      `· 洞内高级箱契约：${WORMHOLE_RARE_WRECK_CARD_IDS.length} 张洞内卡的稀有残骸高级箱**主题件池均非空**` +
+        `（未中族专属时回落军用备货柜 MK3 池 ${mk3.length} 件抽 1 件）`,
     )
   }
 

@@ -435,11 +435,29 @@ export const RARE_BOX_DRONE_UNITS = 10
 export const RARE_BOX_MINERAL_UNITS: Record<RecycleTier, number> = { common: 300, risky: 120, dire: 40 }
 
 /**
+ * **高级箱第②支「主题件」的池（单点）**：卡面 `recycleLoot`（`mk2` + `modules`）优先，
+ * 空则用调用方给的**回落池**。
+ *
+ * ⚠ **为什么要有回落**（2026-09-16 玩家报障「稀有残骸拆解只拆除了 300 钛钢合金」）：
+ * **洞内 15 张卡从没配过 `recycleLoot`** ⇒ 高级箱第②支恒空，5%~10% 没掷中族专属时
+ * 这一箱**只剩第③支那批矿物**（常档 300 单位、基础池里钛钢占 65% ⇒ 十有八九显示成「钛钢合金 ×300」）。
+ * ⇒ 船长当日裁定**甲1案**：洞内卡回落「军用备货柜」同款 MK3 池抽 1 件
+ * （池的构造在 `wormholeSalvage.wormholeRareBoxThemePoolOf`；**洞外卡一律回落空池 ⇒ 逐字不变**）。
+ */
+export function rareBoxThemePoolOf(
+  profile: RecycleProfile,
+  themeFallback: readonly string[] = [],
+): string[] {
+  const own = [...(profile.loot?.mk2 ?? []), ...(profile.loot?.modules ?? [])]
+  return own.length > 0 ? own : [...themeFallback]
+}
+
+/**
  * 稀有残骸开箱的"必定额外掉落"（每件稀有残骸只结算一次，由回收批次的首批触发）：
  * ① 先掷该敌群专属装备（`lairGear`，按档位命中率）——命中即出 1 件；
  *    **池内元素可以是模块 id 或物品 id**（2026-09-10 船长：G 族第一件 = 专属无人机"物品"）：
  *    模块 → `modules`（进装备库）；无人机物品 → `drones`（一次 `RARE_BOX_DRONE_UNITS` 架，进物品仓库）；
- * ② 未命中 → 出一件该敌群主题追加件（recycleLoot；池空则跳过）；
+ * ② 未命中 → 出一件该敌群主题追加件（`rareBoxThemePoolOf`：卡面池 ?? 回落池；两者都空则跳过）；
  * ③ 无论命中与否，再附一批高阶矿物（数量按档位，从该敌群/档位池加权抽 1 种）。
  * 返回 undefined = 本次没有额外掉落（无专属池且无主题件且无矿物池的极端情况）。
  */
@@ -447,6 +465,8 @@ export function rollRareBoxExtra(
   state: GameState,
   ctx: SimContext,
   profile: RecycleProfile,
+  /** 主题件**回落池**（洞内稀有残骸用；见 `rareBoxThemePoolOf` 的注释。缺省空 = 旧口径） */
+  themeFallback: readonly string[] = [],
 ): {
   modules: string[]
   drones: Array<{ id: string; count: number }>
@@ -490,8 +510,8 @@ export function rollRareBoxExtra(
       notes.push(`专属装备「${itemDef?.name ?? pick}」×${RARE_BOX_DRONE_UNITS} 架`)
     }
   } else {
-    // ② 主题追加件（未出专属时保底一件主题件；池可空）
-    const theme = [...(profile.loot?.mk2 ?? []), ...(profile.loot?.modules ?? [])]
+    // ② 主题追加件（未出专属时保底一件主题件；卡面池为空时用**回落池**——洞内件靠它兜住"必有装备"）
+    const theme = rareBoxThemePoolOf(profile, themeFallback)
     if (theme.length > 0) {
       const pick = pickOne(state.rng, theme)!
       modules.push(pick)

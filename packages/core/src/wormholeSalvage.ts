@@ -374,6 +374,23 @@ export function wormholeMk3PoolOf(ctx: SimContext): string[] {
   }
   return out.sort() // 排序只为"同一目录给出同一池序"（抽取仍走 rng，与顺序无关的稳定性由它保证）
 }
+
+/**
+ * **洞内稀有残骸「高级箱」的主题件回落池**（船长 2026-09-16 裁定**甲1案**）。
+ *
+ * 缺口（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内 15 张卡从没配过 `recycleLoot`**
+ * ⇒ 高级箱第②支（未中族专属时的"特色装备"）恒空，只剩第③支那批矿物；而洞内卡走常档基础池
+ * （钛钢 65% 权重）、批数恒 300 ⇒ 十有八九就是「钛钢合金 ×300」。
+ *
+ * 口径：洞内卡回落**「军用备货柜」同款 MK3 池**抽 **1 件**（`wormholeMk3PoolOf`：含武器、
+ * 不含族专属/虫洞专属（`-wh-` / `mod-lair-`）、不含未上线件）——不新造池，与既有货柜口径同源。
+ * ⚠ **只作用于高级箱这一支**：普通洞内残骸的彩头（`rollRecycleLoot`）与矿物池（`recyclePool`）一律不动，
+ * 否则会变成"每堆普通残骸都掉 MK3"。洞外卡（非 `wh-`）一律给空池 ⇒ 洞外行为**逐字不变**。
+ */
+export function wormholeRareBoxThemePoolOf(ctx: SimContext, anomalyId: string): string[] {
+  return anomalyId.startsWith('wh-') ? wormholeMk3PoolOf(ctx) : []
+}
+
 /** 图纸货柜开出**永久图纸**的概率（船长 2026-09-14：「有较低概率出 T3 或 T4 的永久图纸」⇒ 5%） */
 export const WORMHOLE_BPBOX_PERMANENT_CHANCE = 0.05
 /** 永久图纸池的**档位门槛**（与一次性同口径：T3 层 2 起 · T4 层 3 起；**不含 T5**——船长只点了 T3/T4） */
