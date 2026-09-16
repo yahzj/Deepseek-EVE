@@ -103,4 +103,23 @@
 
 **已批准并入库**（2026-09-16 船长：「进行合并和检查，然后可以直接推送，包括公告」）：
 `announcements.ts` 最上方新增 `ann-wormhole-bloom-20260916`「虫洞大量生成」（tag 活动 · 3 条要点），
-与同批代码一起推送。待审稿留档：`docs/design/announcement-draft-20260916-wormhole-bloom.md`。
+与同批代码一起推送上线。待审稿留档：`docs/design/announcement-draft-20260916-wormhole-bloom.md`。
+
+## 八、推送与线上核验（2026-09-16 08:07）
+
+- **推送**：`git push origin main` ⇒ `73ca8efb..482d0301`；本地 HEAD = 远端 = **`482d0301`**，待推送 **0**。
+  （同批上线的还有三号在我编辑期间合入的 5 条：`fd91b12d` / `73ca8efb` / `e4b789d3` / `d5241f40` /
+  `537cfce7`——含「首艘自造船」通讯与交接卡，属他人批次。）
+- **闸门（在推送的那个提交上复跑）**：typecheck 四包 0 错 · core **150 文件 / 1615 用例全绿** ·
+  `content:check` ✅ · `ui:rot-check` ✅ · 桌面与网页 build ✅。
+- **Pages 核验**：线上 `https://yahzj.github.io/Deepseek-EVE/` 已切到本次产物
+  `assets/index-rkKiY5U0.js`；与本地 `web/dist/assets/index-rkKiY5U0.js`
+  **SHA256 逐字节一致**（`8B0B66CB…D540710F` · 1,600,814 字节）· 产物内含公告文案「虫洞大量生成」✅。
+- **公告已上线**：`announcements.ts` 的 `ann-wormhole-bloom-20260916` 随本次推送与玩家见面。
+
+## 九、后续
+
+1. **验收**：徽标观感（宽度不再截字 · 点击进「扫描虫洞」页）请船长在**线上或本地**复核；
+   若仍有不合意处，改 CSS/去向即可（本批所有口径都在 `PROMOS` 一行 + 两条 CSS 规则里）。
+2. **9/21 之后清理**（见 §六）：`npm run tuning:expired` ⇒ 删 `PROMOS` 那一行 ⇒ 重跑 `content:check`。
+3. **归档**（船长验收后）：把关键内容并入 roadmap 一条 ＋ 词典登记，删本工作文档，重跑 `docs:index`。
