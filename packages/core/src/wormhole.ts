@@ -37,6 +37,7 @@ import {
   hexKey,
   isExitCell,
   isNebulaFogged,
+  markExitKnown,
   signalOfPlace,
   wormholeMakeGrid,
   wormholePathInterceptAt,
@@ -903,6 +904,11 @@ export interface WormholeGridActionResult {
   dispersed?: string[]
   /** **本次新揭开、但被星云遮住的格数**（扫描；界面据此提示"再扫一次可驱散"） */
   newlyFogged?: number
+  /**
+   * **本次扫描扫到了"下一层入口"那一格**（船长 2026-09-16 甲案）⇒ 入口已由 `markExitKnown`
+   * 标上地图（`grid.exitKnown = true`）。界面据此可给一句提示；`false`/缺省 = 这一圈里没有入口格。
+   */
+  exitScanned?: boolean
   /** 回合耗尽 ⇒ 只能撤离（与 `wormholeAdvanceNode` 的 `mustExtract` 同口径） */
   mustExtract?: boolean
 }
@@ -937,6 +943,10 @@ function gridActionBlocked(run: WormholeRunState): string | null {
 /**
  * **扫描**（1 回合）：揭开"当前格 + 扫描半径内"还没扫过的格，**并把圈里已扫描的星云驱散**。
  *
+ * **扫到"下一层入口"那一格 ⇒ 入口标上地图**（船长 2026-09-16 裁定**甲案**：报障「玩家扫描无法直接
+ * 扫出下一层入口」）。入口格不参与信号分配、`place` 恒为 `empty` ⇒ 光看信号认不出它，得比格键；
+ * 命中就调 `markExitKnown`（与"读到信标"同一个收口）⇒ 地图上标出入口、前往不再要"未知地点"确认。
+ *
  * 拒绝口径（都不扣回合）：**既没有新格可揭、也没有星云可驱散** ⇒ 「换个地点再扫」。
  *
  * ⚠ **星云为什么要"再扫一次"**（船长 2026-09-13）：「玩家第一次扫描出一个地点时，有星云的地点，
@@ -966,12 +976,21 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   }
   run.turnsLeft -= WORMHOLE_TURN_PER_SCAN
   const revealed: { key: string; signal: WormholeSignal | null }[] = []
+  /**
+   * **这一扫有没有扫到"下一层入口"那一格**（船长 2026-09-16 裁定**甲案**：「玩家扫描无法直接扫出
+   * 下一层入口」是缺陷 ⇒ 扫到就把入口标上地图）。入口格不参与信号分配、`place` 恒为 `empty`
+   * ⇒ 只靠 `revealed` 的 signal 是认不出它的，得拿格键跟 `grid.exit` 比一比。
+   */
+  const exitKey = hexKey(grid.exit.q, grid.exit.r)
+  let exitScanned = false
   for (const c of targets) {
     const cell = gridCellAt(grid, c)
     if (!cell) continue
     if (!grid.scanned.includes(cell.key)) grid.scanned.push(cell.key)
+    if (cell.key === exitKey) exitScanned = true
     revealed.push({ key: cell.key, signal: signalOfPlace(cell.place) })
   }
+  if (exitScanned) markExitKnown(grid)
   const dispersed = disperseNebulae(grid, nebulaTargets)
   const empty = revealed.filter((r) => r.signal === null).length
   /**
@@ -986,6 +1005,7 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
     'info',
     `🕳 扫描（半径 ${grid.scanRadius + buffs.scanRadius}）：揭开 ${revealed.length} 格` +
       (empty > 0 ? `（其中 ${empty} 格没有信号）` : '') +
+      (exitScanned ? ` · 扫到下一层入口（Q${grid.exit.q} · R${grid.exit.r}，已标在地图上）` : '') +
       (newlyFogged > 0 ? ` · ${newlyFogged} 格被星云遮住（再扫描一次可驱散）` : '') +
       (dispersed.length > 0 ? ` · 驱散星云 ${dispersed.length} 格` : '') +
       ` · 剩 ${run.turnsLeft} 回合。`,
@@ -996,6 +1016,7 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
     revealed,
     dispersed,
     newlyFogged,
+    exitScanned,
     mustExtract: run.turnsLeft <= 0,
   }
 }
@@ -1010,7 +1031,8 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
  *   `wormholeBattle.wormholeTravelTo` 接着开战（本函数只回报 `arrived.autoBattle`，不能自己开战：
  *   `wormhole.ts` 不许 import `wormholeBattle`（会成环），依赖方向固定为 wormholeBattle → wormhole）；
  * - **漂浮信标 ⇒ 到达即标出下一层入口**（「到达后有一个漂浮信标，会告诉玩家终点位置」）⇒
- *   `grid.exitKnown = true`（地图此后一直标着入口），该格同样记 `activated`。
+ *   走 `markExitKnown`：`grid.exitKnown = true`（地图此后一直标着入口），该格同样记 `activated`。
+ *   （入口被打出来的另一条途径是**扫描扫到出口格本身**，见 `wormholeGridScan`；两条同一个收口。）
  *
  * **路径拦截**（船长 2026-09-16 新增）：直线路径上挡着**还没清掉的舰船信号格**时，这次移动
  * **截断在那一格**（未扫描的也拦）；未确认（`confirmIntercept`）⇒ 回 `code='path-blocked'`
@@ -1086,17 +1108,16 @@ export function wormholeGridTravel(
   const ambush = autoBattle && !scanned && !intercept
   if (autoBattle || beacon) grid.activated.push(dest.key)
   if (beacon) {
-    grid.exitKnown = true
     /**
-     * **信标标出终点 ⇒ 终点格一并记为"已知"**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
+     * **信标标出终点**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
      *
-     * 为什么：出口格不参与信号分配 ⇒ 它永远不在 `scanned` 里；原先玩家从信标得知终点位置后，
-     * 点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」的确认框 —— 那句话在此时是**误导**
-     * （它不是未知地点，它是终点）。这里把出口格并入 `scanned`，前往它就走正常路径。
-     * ⚠ 只在**读到信标之后**才并：在那之前玩家不该"凭空知道"出口格是安全可去的。
+     * 收口在 `markExitKnown`：置 `exitKnown` ＋ 把出口格并入 `scanned`。
+     * 为什么要并入：原先玩家从信标得知终点位置后，点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」
+     * 的确认框 —— 那句话在此时是**误导**（它不是未知地点，它是终点）。并进去之后前往就走正常路径。
+     * ⚠ 读到信标之前玩家不该"凭空知道"出口格是安全可去的 ⇒ 默认不并；
+     * **2026-09-16 甲案**起，**扫描扫到出口格本身**也走同一个收口（见 `markExitKnown` 的注释）。
      */
-    const exitKey = hexKey(grid.exit.q, grid.exit.r)
-    if (!grid.scanned.includes(exitKey)) grid.scanned.push(exitKey)
+    markExitKnown(grid)
   }
   addLog(
     state,

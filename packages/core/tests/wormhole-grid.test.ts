@@ -36,7 +36,7 @@ import type { WormholeSignal } from '../src/wormholeGrid'
 import { createInitialState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter, wormholeGridTravel } from '../src/wormhole'
+import { wormholeEnter, wormholeGridScan, wormholeGridTravel } from '../src/wormhole'
 import { buildSimContext } from '@whale/data'
 
 const ctx = buildSimContext()
@@ -188,8 +188,9 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
   /**
    * **信标读出终点 ⇒ 终点格一并算"已知"**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
    *
-   * 为什么：出口格不参与信号分配 ⇒ 永远不在 `scanned` 里；玩家从信标知道终点在哪之后，
+   * 为什么：出口格不参与信号分配、`scanned` 里默认没有它；玩家从信标知道终点在哪之后，
    * 点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」——那句话在此时是误导。
+   * （⚠ 2026-09-16 甲案起，"扫描扫到出口格"也走同一个收口 `markExitKnown`，见下一条用例。）
    */
   it('信标读出终点后，**出口格不再要求"确认未知"**（修掉那次多余的确认框）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 4242 })
@@ -219,6 +220,59 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
       const go = wormholeGridTravel(state, { q: g.exit.q, r: g.exit.r })
       expect(go.ok, `前往出口被拒：${go.error ?? ''}`).toBe(true)
     }
+  })
+
+  /**
+   * **扫描扫到出口格 ⇒ 入口标上地图**（船长 2026-09-16 裁定**甲案**）。
+   *
+   * 报障原话：「**发现一个问题，玩家扫描无法直接扫出下一层入口**」⇒ 取证：入口格不参与信号分配、
+   * `place` 恒为 `empty`，扫到它时只给 `signal(null)`，界面据 `exitKnown` 判入口 ⇒ **扫过也画成
+   * 「没有信号：空信息地点」**，玩家扫到了入口位置却认不出来。
+   * 现口径：扫描的圈里含出口格 ⇒ 与"读到信标"走同一个收口（`markExitKnown`）⇒ 地图标出入口、
+   * 前往不再要"未知地点"确认；**圈里没有出口格 ⇒ 不标**（信标仍是唯一的远程途径）。
+   */
+  it('扫描扫到出口格 ⇒ 入口立刻标上地图；圈里没有出口格 ⇒ 不标（2026-09-16 甲案）', () => {
+    // ① 正向：把玩家挪到出口格旁边（扫描半径 1 的一圈里），扫一次 ⇒ 入口已知
+    const state = createInitialState({ nowWallMs: 0, seed: 4242 })
+    const a = addShipToFleet(state, 'sh-thresher')
+    expect(wormholeEnter(state, ctx, [a], 4242).ok).toBe(true)
+    const run = state.wormhole.run!
+    const g = run.grid!
+    const exitKey = hexKey(g.exit.q, g.exit.r)
+    const near = g.cells
+      .filter((c) => c.key !== exitKey && hexDistance({ q: c.q, r: c.r }, g.exit) === 1)
+      .sort((p, q) => p.key.localeCompare(q.key))[0]!
+    expect(near, '出口格周围总该有邻格').toBeDefined()
+    g.pos = { q: near.q, r: near.r }
+    expect(g.exitKnown, '扫之前入口不该是已知的').toBe(false)
+    expect(g.scanned.includes(exitKey), '扫之前出口格未扫描').toBe(false)
+    const sc = wormholeGridScan(state)
+    expect(sc.ok, sc.error).toBe(true)
+    expect(sc.exitScanned, '这一圈里应当扫到了出口格').toBe(true)
+    expect(g.exitKnown, '扫到出口格 ⇒ 入口已知').toBe(true)
+    expect(g.scanned.includes(exitKey), '出口格随之并入已扫描').toBe(true)
+    // 界面判据（`Wormhole.tsx` 的 isExit）成立、前往不再要确认
+    expect(g.visited.includes(exitKey) || g.exitKnown === true).toBe(true)
+    const go = wormholeGridTravel(state, { q: g.exit.q, r: g.exit.r })
+    expect(go.ok, `前往入口被拒：${go.error ?? ''}`).toBe(true)
+
+    // ② 反向：出口格在扫描圈外 ⇒ 扫了也不标（找一盘"入口离出生格足够远"的）
+    const far = ((): { ok: boolean; state?: ReturnType<typeof createInitialState> } => {
+      for (let seed = 1; seed <= 30; seed++) {
+        const s = createInitialState({ nowWallMs: 0, seed })
+        const id = addShipToFleet(s, 'sh-thresher')
+        if (!wormholeEnter(s, ctx, [id], seed).ok) continue
+        const gg = s.wormhole.run!.grid!
+        if (hexDistance(gg.pos, gg.exit) > gg.scanRadius + 1) return { ok: true, state: s }
+      }
+      return { ok: false }
+    })()
+    expect(far.ok, '该找得到一盘入口离出生格足够远的').toBe(true)
+    const g2 = far.state!.wormhole.run!.grid!
+    const sc2 = wormholeGridScan(far.state!)
+    expect(sc2.ok, sc2.error).toBe(true)
+    expect(sc2.exitScanned ?? false, '入口在圈外 ⇒ 这一扫不该判成扫到入口').toBe(false)
+    expect(g2.exitKnown ?? false, '入口在圈外 ⇒ 不标').toBe(false)
   })
 
   it('信号遮蔽：未知 / 只有信号 / 已知真相 三档（**空地点无信号**）', () => {

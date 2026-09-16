@@ -86,6 +86,12 @@ export interface CommandResult {
    * 界面提示"这一批有 N 格被云挡着，再扫一次可驱散"用。
    */
   newlyFogged?: number
+  /**
+   * 虫洞"扫描"专用（船长 2026-09-16 **甲案**）：**这一扫扫到了"下一层入口"那一格**
+   * ⇒ core 已把入口标上地图（`grid.exitKnown = true`），界面提示一句用。
+   * `false`/缺省 = 这一圈里没有入口格。
+   */
+  exitScanned?: boolean
 }
 
 /** 界面隐藏且不可训练的技能 id（2026-09-05 批次三起战斗占位全部开放，当前为空；

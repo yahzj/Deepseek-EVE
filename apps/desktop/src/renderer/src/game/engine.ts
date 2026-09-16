@@ -1810,6 +1810,8 @@ export class GameEngine {
       code: r.code,
       dispersed: r.dispersed?.length ?? 0,
       newlyFogged: r.newlyFogged ?? 0,
+      // **扫到下一层入口**（船长 2026-09-16 甲案）：界面据此补一句提示（地图上已由 core 标出入口）
+      exitScanned: r.exitScanned === true,
     }
   }
 
