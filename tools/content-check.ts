@@ -5352,6 +5352,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
    * ⚠ 与限时倍率表同款：**已过期的促销允许留档**（不报错）——收口靠 `npm run tuning:expired` 手动跑。
    */
   const promoIds = new Set<string>()
+  /** 促销徽标的**已知去向**（与 `PromoRule.open` 的联合类型同源；加新去向时这里与 UI 一起改） */
+  const PROMO_OPEN_TARGETS: readonly string[] = ['wormhole-scan']
   for (const p of PROMOS) {
     const id = String(p.id)
     check(id.length > 0, '限时促销契约：有促销条目的 id 为空')
@@ -5386,8 +5388,15 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         )
       }
     }
+    // ⑧ 点击徽标的去向必须是已知目标（写错 = 点进去找不到东西；活动栏按它决定跳哪一页）
+    if (p.open !== undefined) {
+      check(
+        PROMO_OPEN_TARGETS.includes(String(p.open)),
+        `限时促销契约：${id} 的 open「${String(p.open)}」不是已知去向（可选值：${PROMO_OPEN_TARGETS.join(' / ')}）`,
+      )
+    }
   }
-  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关逐个核对`)
+  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关/去向逐个核对`)
 }
 
 /* ── 输出 ── */

@@ -733,6 +733,8 @@ export {
   formatDurationMs,
   simulateOffline,
 } from './simulation'
+// 紧凑时长（2026-09-16）：活动栏徽标那类窄格用（只保留两级最大单位）——全量格式仍走 formatDurationMs
+export { formatDurationShort } from './time'
 
 // **金额显示单点**（2026-09-13 船长：「更换金钱单位为信用点」＋「希望考虑到钱位数过多时的处理」）：
 // 单位名 / 万·亿分级 / 精确值提示 —— 玩家可见金额文案一律走这里（引擎内部字段仍叫 `isk`）。
@@ -1208,7 +1210,7 @@ export {
   promoScanMulAt,
   dayWindowEndMs,
 } from './tuning'
-export type { ActivePromo, ActiveTuning, PromoRule, TunableKey, TuningRule } from './tuning'
+export type { ActivePromo, ActiveTuning, PromoOpenTarget, PromoRule, TunableKey, TuningRule } from './tuning'
 // 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 收益 40% 入仓库 · 绝不丢船）
 export {
   WORMHOLE_AUTO_DURATION_MS,
