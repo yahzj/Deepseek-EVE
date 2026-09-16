@@ -91,20 +91,30 @@ function battleWith(counts: Array<{ drone: FoeDroneDef; count: number }>): {
 
 /** 近防炮的武器视图（射程 1~2,500m，与真件同口径） */
 const PD_W = { minRangeM: 1, maxRangeM: 2_500 }
-/** 打开"反击令牌"（一次敌机攻击换一次反击），再调选靶 */
+/**
+ * 打开"反击令牌"（一次敌机攻击换一次反击），再调选靶。
+ * ⚠ **2026-09-16 逐舰**：令牌与集火锁都按 `舰tag` 分账 ⇒ 这里写的是 `myTag`（缺省 `player`）名下那一份
+ * （旧形状 `droneHitAt.me` / `mePdFocus` 只服务"本改动之前开的在途战斗"，见最后一组用例）。
+ */
 function pick(
   b: BattleState,
   state: GameState,
   dist: number,
   wi = 0,
+  myTag = 'player',
 ): { foeTag: string; pool: NonNullable<BattleState['foeDronePools']>[string][number] } | null {
-  b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }
+  b.droneHitAtMeBy = { ...(b.droneHitAtMeBy ?? {}), [myTag]: b.lastTickGameMs }
   // ⚠ 只喂选靶需要的两个字段（tag / foeDrones）——真实 `UnitSpec` 的其余字段与本函数无关
   const units = foeUnits(b) as unknown as Parameters<typeof pickFoeDroneTarget>[2]
-  return pickFoeDroneTarget(state, b, units, dist, PD_W, wi) as {
+  return pickFoeDroneTarget(state, b, units, dist, PD_W, wi, myTag) as {
     foeTag: string
     pool: NonNullable<BattleState['foeDronePools']>[string][number]
   } | null
+}
+/** 清空集火锁（换距离/换场景前用；逐舰版键 = `舰tag:武器下标`） */
+function clearFocus(b: BattleState): void {
+  b.mePdFocusBy = {}
+  b.mePdFocus = undefined
 }
 /** 从战斗状态里取敌单位（与 `b.foeDronePools` 的键同源） */
 function foeUnits(b: BattleState): Array<{ tag: string; foeDrones?: readonly { drone: FoeDroneDef }[] }> {
@@ -124,7 +134,7 @@ describe('我方近防炮 · 选靶规则（P-40）', () => {
     const far = pick(b, state, 4_000)
     expect(far?.pool.artId).toBe(DRONE_SCOUT.id)
     // ⚠ 集火锁定会跨调用保持（这是对的）⇒ 换距离前先清锁定，否则打的还是上一轮锁的那架
-    b.mePdFocus = []
+    clearFocus(b)
     // 贴到 1,000m ⇒ 哨戒机进池，且**优先级 0** ⇒ 必中哨戒机
     const near = pick(b, state, 1_000)
     expect(near?.pool.artId).toBe(DRONE_SENTRY.id)
@@ -146,7 +156,7 @@ describe('我方近防炮 · 选靶规则（P-40）', () => {
     const pools = b.foeDronePools!
     for (const arr of Object.values(pools)) for (const p of arr) if (p.artId === DRONE_ASSAULT.id) p.alive = false
     // 集火锁定里可能还留着攻坚 ⇒ 清掉锁定再看
-    b.mePdFocus = []
+    clearFocus(b)
     expect(pick(b, state, 1_000)?.pool.artId).toBe(DRONE_SCOUT.id)
   })
 
@@ -162,14 +172,46 @@ describe('我方近防炮 · 选靶规则（P-40）', () => {
     expect(third.pool.alive).toBe(true)
   })
 
-  it('集火按**武器槽**各锁各的（`mePdFocus`）：两门防空炮可以打不同的机', () => {
+  it('集火按**舰 × 武器槽**各锁各的（`mePdFocusBy`，2026-09-16 逐舰）：互不覆盖', () => {
     const { state, b } = battleWith([{ drone: DRONE_SCOUT, count: 2 }])
     const w0 = pick(b, state, 1_000, 0)!
     const w1 = pick(b, state, 1_000, 1)!
-    expect(b.mePdFocus?.[0]?.idx).toBeDefined()
-    expect(b.mePdFocus?.[1]?.idx).toBeDefined()
-    // 两槽各自锁定（互不覆盖）——锁定的下标允许相同（随机可能撞同一架），但状态必须各自留下
-    expect(b.mePdFocus!.length).toBeGreaterThanOrEqual(2)
+    expect(b.mePdFocusBy?.['player:0']?.idx).toBeDefined()
+    expect(b.mePdFocusBy?.['player:1']?.idx).toBeDefined()
     expect([w0.pool, w1.pool].every((p) => p.alive)).toBe(true)
+  })
+
+  it('**令牌逐舰**：僚舰挨打不给主控令牌（旧的"全队共用一个令牌"已作废）', () => {
+    const { state, b } = battleWith([{ drone: DRONE_SCOUT, count: 2 }])
+    // 只给僚舰写令牌 ⇒ 主控的近防炮这段时间不该开火（不白蹭别人的挨打）
+    b.droneHitAtMeBy = { 'ally-1': b.lastTickGameMs }
+    const units = foeUnits(b) as unknown as Parameters<typeof pickFoeDroneTarget>[2]
+    expect(pickFoeDroneTarget(state, b, units, 1_000, PD_W, 0, 'player')).toBeNull()
+    // 僚舰自己调用 ⇒ 能选到目标（并且只消费它自己那份令牌）
+    const ally = pickFoeDroneTarget(state, b, units, 1_000, PD_W, 0, 'ally-1')
+    expect(ally).not.toBeNull()
+    expect(b.droneHitAtMeBy?.['ally-1'], '僚舰的令牌已被消费').toBeUndefined()
+  })
+
+  it('**集火锁逐舰**：主控与僚舰的 0 号武器各自锁定、互不覆盖', () => {
+    const { state, b } = battleWith([{ drone: DRONE_SCOUT, count: 2 }])
+    pick(b, state, 1_000, 0, 'player')
+    pick(b, state, 1_000, 0, 'ally-1')
+    expect(b.mePdFocusBy?.['player:0']?.idx).toBeDefined()
+    expect(b.mePdFocusBy?.['ally-1:0']?.idx).toBeDefined()
+    expect(Object.keys(b.mePdFocusBy ?? {}).sort()).toEqual(['ally-1:0', 'player:0'])
+  })
+
+  it('**老形状兼容**（本改动之前开的在途战斗）：只有 `droneHitAt` / `mePdFocus` 时照旧工作', () => {
+    const { state, b } = battleWith([{ drone: DRONE_SCOUT, count: 2 }])
+    // 复刻旧档在途战斗：抹掉逐舰表，只留旧字段
+    b.droneHitAtMeBy = undefined
+    b.mePdFocusBy = undefined
+    b.droneHitAt = { me: b.lastTickGameMs }
+    const units = foeUnits(b) as unknown as Parameters<typeof pickFoeDroneTarget>[2]
+    const hit = pickFoeDroneTarget(state, b, units, 1_000, PD_W, 0)
+    expect(hit, '旧形状下应当照旧选到目标').not.toBeNull()
+    expect(b.mePdFocus?.[0]?.idx, '旧形状下集火锁写回旧字段').toBeDefined()
+    expect(b.droneHitAt?.me, '旧形状下令牌被消费').toBeUndefined()
   })
 })

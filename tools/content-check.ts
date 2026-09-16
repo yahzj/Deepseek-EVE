@@ -128,6 +128,8 @@ securityZoneOf,
   wormholeEmptyShareFor,
   wormholeMakeGrid,
   wormholeRuinsFloorFor,
+  // 2026-09-16 船长：「遗迹的保底，改为从3层开始保底。1层没有遗迹」
+  WORMHOLE_RUINS_FLOOR_MIN_DEPTH,
   // F3c 谜质储存器（船长 2026-09-13）：装置表 / 形状登记 / 保底 1 格的常量
   WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
   // 2026-09-15 限时倍率表（船长：按现实日期给特定数值上倍率）——契约见文件尾
@@ -3723,7 +3725,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
    * - ② **奢侈品正常交易**（船长「奢侈品纯粹用来卖钱，市场正常交易」＋「奢侈品是精炼拆解后的，不算在内」）：
    *   三档必须 **可买**（`playerBuyable !== false`）且 **`common` 常驻**（否则内容体检另有一条
    *   "非常驻 ⇒ 玩家产出无法稳定卖出"的预警，等于"卖不掉的钱"）；
-   * - ③ **拆解件数/概率哨**：谜质 1 台 = 1 枚 · 奢侈品 10~20 件 · 军用 1~3 件 · 打捞 0.75% 每堆 / 上限 1；
+   * - ③ **拆解件数/概率哨**：谜质 1 台 = 1 枚 · 奢侈品 5~30 件 · 军用 1~3 件 · 打捞 0.75% 每堆 / 上限 1；
    * - ④ **四类货柜池齐备**：安全柜（按族）· 图纸柜三档 · 贵重品柜 · 军用柜，**类等权 4 类**，
    *   且**每个 id 都有形状登记与市场行**（否则掷中了却放不进、卖不掉）；
    * - ⑤ **军用拆解池排除专属（反向守卫）**：非空 · 一律 `-3` 结尾 · **不含** `-wh-`（洞内族专属）、
@@ -3770,8 +3772,8 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     {
       const want: Array<[string, number, number]> = [
         ['谜质每台枚数 WORMHOLE_ESSENCE_PER_DEVICE', WORMHOLE_ESSENCE_PER_DEVICE, 1],
-        ['奢侈品件数下限 WORMHOLE_VALUABLES_UNITS_MIN', WORMHOLE_VALUABLES_UNITS_MIN, 10],
-        ['奢侈品件数上限 WORMHOLE_VALUABLES_UNITS_MAX', WORMHOLE_VALUABLES_UNITS_MAX, 20],
+        ['奢侈品件数下限 WORMHOLE_VALUABLES_UNITS_MIN', WORMHOLE_VALUABLES_UNITS_MIN, 5],
+        ['奢侈品件数上限 WORMHOLE_VALUABLES_UNITS_MAX', WORMHOLE_VALUABLES_UNITS_MAX, 30],
         ['军用件数下限 WORMHOLE_MILITARY_PIECES_MIN', WORMHOLE_MILITARY_PIECES_MIN, 1],
         ['军用件数上限 WORMHOLE_MILITARY_PIECES_MAX', WORMHOLE_MILITARY_PIECES_MAX, 3],
         ['残骸堆出货率 WORMHOLE_SALVAGE_BOX_CHANCE', WORMHOLE_SALVAGE_BOX_CHANCE, 0.0075],
@@ -3811,6 +3813,68 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         if (!pool.includes(w)) bad.push(`${w}（三把常备 MK3 武器应在池里——船长「含武器」）`)
       }
       check(bad.length === 0, `战利品扩充契约⑤：军用拆解池必须"含武器、不含专属"——${bad.slice(0, 8).join(' · ')}`)
+      /**
+       * ⑧ **贵重品货柜的箱价口径**（船长 2026-09-15 改判：「**单价差距提高（10/40/200万），数量上下限拉大到 5~30，
+       *   箱价 = 内容期望 ×0.25**」）：这条是**本箱专属折扣**（其余三类柜仍是 ×0.6）⇒ 单独钉一次，
+       *   免得日后调奢侈品价或件数时忘了同步箱价（"箱价高于拆解期望"会让玩家只卖箱不拆箱）。
+       *   期望 = 三档均价 × 件数均值；取整容差 ±1%。
+       */
+      const luxPrices = WORMHOLE_LUXURY_ITEM_IDS.map((id) => rowOf(id)?.basePrice ?? 0)
+      if (luxPrices.some((p) => p <= 0)) {
+        bad.push('奢侈品三档里有行价 ≤ 0 的（箱价期望算不出来）')
+      } else {
+        const meanPiece = luxPrices.reduce((s, p) => s + p, 0) / luxPrices.length
+        const meanUnits = (WORMHOLE_VALUABLES_UNITS_MIN + WORMHOLE_VALUABLES_UNITS_MAX) / 2
+        const ev = meanPiece * meanUnits
+        const boxPrice = rowOf(WORMHOLE_VALUABLES_BOX_ID)?.basePrice ?? 0
+        const want = ev * 0.25
+        if (Math.abs(boxPrice - want) > want * 0.01) {
+          bad.push(
+            `贵重品货柜箱价 ${Math.round(boxPrice).toLocaleString('zh-CN')} ≠ 内容期望 ` +
+              `${Math.round(ev).toLocaleString('zh-CN')} ×0.25 = ${Math.round(want).toLocaleString('zh-CN')}（±1%）`,
+          )
+        }
+        console.log(
+          `· 贵重品货柜读数：奢侈品 ${(WORMHOLE_VALUABLES_UNITS_MIN + '~' + WORMHOLE_VALUABLES_UNITS_MAX)} 件 × 均价 ` +
+            `${Math.round(meanPiece).toLocaleString('zh-CN')}（${luxPrices.map((p) => Math.round(p / 10_000) + '万').join('/')}）` +
+            ` ⇒ 一箱期望 ${Math.round(ev).toLocaleString('zh-CN')} · 箱价 ${Math.round(boxPrice).toLocaleString('zh-CN')}（= ×0.25）`,
+        )
+      }
+      /**
+       * ⑨ **箱价两处一致 + 军用柜的 ×0.6 口径**（2026-09-15 补的空白：批 A 曾出现"物品卡改了价、市场行没跟"
+       *   ⇒ 同一个箱子两张价；而 0.6 这条折扣此前只写在注释里，没人算过）。
+       *   - **卡价 = 行价**：两个新货柜的物品卡 `baseSellPriceIsk` 必须等于市场行 `basePrice`；
+       *   - **军用柜 = MK3 池期望 ×0.6**（池内等权、件数均值 2）——"箱价高于拆解期望"会诱导只卖箱不拆箱。
+       */
+      for (const id of [WORMHOLE_VALUABLES_BOX_ID, WORMHOLE_MILITARY_BOX_ID]) {
+        const card = itemsById.get(id)
+        const row = rowOf(id)
+        if (card && row && card.baseSellPriceIsk !== row.basePrice) {
+          bad.push(`${id}：物品卡价 ${card.baseSellPriceIsk} ≠ 市场行价 ${row.basePrice}（同物两价）`)
+        }
+      }
+      {
+        const mk3Rows = wormholeMk3PoolOf(buildSimContext())
+          .map((id) => rowOf(id)?.basePrice ?? 0)
+          .filter((p) => p > 0)
+        const piecesMean = (WORMHOLE_MILITARY_PIECES_MIN + WORMHOLE_MILITARY_PIECES_MAX) / 2
+        if (mk3Rows.length > 0) {
+          const meanPiece = mk3Rows.reduce((s, p) => s + p, 0) / mk3Rows.length
+          const ev = meanPiece * piecesMean
+          const want = ev * 0.6
+          const got = rowOf(WORMHOLE_MILITARY_BOX_ID)?.basePrice ?? 0
+          if (Math.abs(got - want) > want * 0.01) {
+            bad.push(
+              `军用备货柜箱价 ${Math.round(got).toLocaleString('zh-CN')} ≠ MK3 期望 ${Math.round(ev).toLocaleString('zh-CN')} ×0.6 = ${Math.round(want).toLocaleString('zh-CN')}（±1%）`,
+            )
+          }
+          console.log(
+            `· 军用备货柜读数：MK3 池均价 ${Math.round(meanPiece).toLocaleString('zh-CN')} × 期望 ${piecesMean} 件 ⇒ ` +
+              `期望 ${Math.round(ev).toLocaleString('zh-CN')} · 箱价 ${Math.round(got).toLocaleString('zh-CN')}（= ×0.6）`,
+          )
+        }
+      }
+      check(bad.length === 0, `战利品扩充契约⑤/⑧/⑨：军用拆解池 · 箱价口径 · 卡价=行价——${bad.slice(0, 8).join(' · ')}`)
       console.log(
         `· 战利品扩充契约：谜质 1 台→${WORMHOLE_ESSENCE_PER_DEVICE} 枚 · 奢侈品 ${WORMHOLE_VALUABLES_UNITS_MIN}~${WORMHOLE_VALUABLES_UNITS_MAX} 件（三档可买可卖）· ` +
           `军用 MK3 ${WORMHOLE_MILITARY_PIECES_MIN}~${WORMHOLE_MILITARY_PIECES_MAX} 件（池 ${pool.length} 件）· ` +
@@ -4779,8 +4843,10 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
     /* ⑦c **层间盘面契约**（2026-09-13 船长三条：「让遗迹格数量随层数增加并给每层增加一个遗迹格下限」＋
-     * 「空地块允许随着高层权重降低」＋「在四层以上及以上，添加星云机制…空地没有星云」）：
-     * 钉四件事：① **逐层遗迹 ≥ 下限**（真生成 12 seed 实数，不只看公式）；
+     * 「空地块允许随着高层权重降低」＋「在四层以上及以上，添加星云机制…空地没有星云」；
+     * **2026-09-16 船长改判**：「**遗迹的保底，改为从3层开始保底。1层没有遗迹**」）：
+     * 钉五件事：① **逐层遗迹 ≥ 下限**（真生成 12 seed 实数，不只看公式；层 1/2 下限 = 0）；
+     * ①b **层 1 恒 0 张遗迹**（船长 2026-09-16 明示）＋ **层 2 无保底**；
      * ② **信标恒 ≥1**（每层都要有指路标记——借格子只从资源/谜质借）；
      * ③ **层 1~3 绝不出星云、层 4 起配额与"有信号格数 × 15%"一致、空地与入口不长星云**；
      * ④ 空占比与 `wormholeEmptyShareFor` 一致（**量纲 = 占可分配池**）。 */
@@ -4797,6 +4863,9 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
             ruins >= floor,
             `层间盘面契约：第 ${depth} 层（seed ${seed}）遗迹格 ${ruins} < 下限 ${floor} —— 「给每层增加一个遗迹格下限」没生效`,
           )
+          if (depth === 1) {
+            check(ruins === 0, `层间盘面契约：第 1 层（seed ${seed}）出了 ${ruins} 张遗迹 —— 船长 2026-09-16「1层没有遗迹」`)
+          }
           const beacons = g.cells.filter((c) => c.place === 'beacon').length
           check(beacons >= 1, `层间盘面契约：第 ${depth} 层（seed ${seed}）没有信标——每层必须有一个指路标记`)
           const empties = g.cells.filter((c) => c.place === 'empty').length
@@ -4837,6 +4906,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       })
       console.log(
         `· 层间盘面契约：遗迹格下限 ${depths.map((d) => `层${d}≥${wormholeRuinsFloorFor(d)}`).join(' · ')}` +
+          `（**保底从层 ${WORMHOLE_RUINS_FLOOR_MIN_DEPTH} 起**；层 1 恒 0 张 · 层 2 无保底）` +
           `（实测均值 ${perDepthRuins.join(' / ')} · ${samples} seed/层）` +
           ` · 空占比（占可分配池）${depths.map((d) => `${(wormholeEmptyShareFor(d) * 100).toFixed(0)}%`).join('/')}` +
           ` · 星云：层 ${WORMHOLE_NEBULA_MIN_DEPTH} 起、配额 ${(WORMHOLE_NEBULA_SHARE * 100).toFixed(0)}%、只长在有信号的地点上` +

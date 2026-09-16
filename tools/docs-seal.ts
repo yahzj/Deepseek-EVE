@@ -53,6 +53,12 @@ const KEEP_SECTIONS = [
 ]
 /** 只当分隔用的段头：不保留（其下条目照常按日分卷） */
 const DROP_SECTIONS = ['## 变更记录（本文件）']
+/**
+ * 待办活面的**模式名单**（2026-09-16 补）：`## 2026-09-08 一号交接开放项` / `## 2026-09-15 二号交接开放项`
+ * 这类「日期 + 经办人 + 交接/收尾开放项」的段一律整段保留——**防"新写的待办段头没进前缀白名单 ⇒ 整段被丢"**
+ * （实证：二号那段里的 W1「公告待发」/ W2「验收用测试存档未配」两条待办曾被本工具静默丢掉）。
+ */
+const KEEP_SECTION_PATTERNS: readonly RegExp[] = [/^## \d{4}-\d{2}-\d{2} .*(交接开放项|收尾开放项)/]
 
 const bytes = (s: string): number => Buffer.byteLength(s, 'utf8')
 
@@ -178,11 +184,21 @@ const head = (sections.get('__head__') ?? []).filter(
   (l) => !/^# /.test(l) && !/^> \*\*2026-09-15 改版\*\*/.test(l) && !/^> 更早的批次条目已/.test(l) && !/^> 封存动作 = /.test(l),
 )
 kept.push(head.join('\r\n').replace(/(\r?\n)+$/, ''))
-for (const want of KEEP_SECTIONS) {
-  const key = [...sections.keys()].find((k) => k.startsWith(want))
-  if (key) kept.push((sections.get(key) ?? []).join('\r\n').replace(/(\r?\n)+$/, ''))
+/** 一个段头是否属于"待办活面"（前缀白名单 **或** 模式名单） */
+const isKeepSection = (k: string): boolean =>
+  KEEP_SECTIONS.some((w) => k.startsWith(w)) || KEEP_SECTION_PATTERNS.some((re) => re.test(k))
+/**
+ * ⚠ **按原文顺序**保留全部待办段（2026-09-16 修）：原实现只遍历 `KEEP_SECTIONS` 找**每项第一个**匹配段
+ * ⇒ 两份"同类"待办段只会留下第一份，且**段头没进白名单的段（例如「## 2026-09-15 二号交接开放项」）
+ * 连同段内 `- [ ]` 待办一起被静默丢掉**（实证：二号那段的 W1 公告待发 / W2 测试存档两条待办就这么没了，
+ * 封存卷里也查不到）。现在改为：**扫全部段头、按文档顺序收**，并支持正则模式名单。
+ */
+for (const key of sections.keys()) {
+  if (key === '__head__') continue
+  if (!isKeepSection(key)) continue
+  kept.push((sections.get(key) ?? []).join('\r\n').replace(/(\r?\n)+$/, ''))
 }
-const dropped = [...sections.keys()].filter((k) => k !== '__head__' && !KEEP_SECTIONS.some((w) => k.startsWith(w)))
+const dropped = [...sections.keys()].filter((k) => k !== '__head__' && !isKeepSection(k))
 // 「最近批次」与「封存卷索引」两段是本工具自己生成的，重跑时会被丢弃再重建 ⇒ 不算"被删内容"，不报警
 const selfMade = (k: string): boolean => k.startsWith('## 最近批次') || k.startsWith('## 封存卷索引')
 const droppedNonEmpty = dropped.filter((k) => !selfMade(k) && (sections.get(k) ?? []).some((l) => l.trim() !== ''))

@@ -1035,6 +1035,8 @@ export {
   wormholeGridRadiusFor,
   wormholeMakeGrid,
   wormholeRuinsFloorFor,
+  // 2026-09-16 船长：「遗迹的保底，改为从3层开始保底。1层没有遗迹」⇒ 保底起效层常量（层 1 禁遗迹 · 层 2 无保底）
+  WORMHOLE_RUINS_FLOOR_MIN_DEPTH,
   // 2026-09-14 船长：内容原型（丙）——五档 + 权重 + 按原型重分配信号权重/遗迹占比/遗迹下限
   WORMHOLE_ARCHETYPES,
   WORMHOLE_ARCHETYPE_WEIGHTS,

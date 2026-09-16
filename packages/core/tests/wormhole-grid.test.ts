@@ -15,6 +15,7 @@ import {
   HEX_DIRS,
   WORMHOLE_EMPTY_MIN_SHARE,
   WORMHOLE_GRID_R_MAX,
+  WORMHOLE_RUINS_FLOOR_MIN_DEPTH,
   WORMHOLE_RUINS_SHARE,
   gridTally,
   hexDiskAround,
@@ -29,6 +30,7 @@ import {
   signalOfPlace,
   wormholeGridRadiusFor,
   wormholeMakeGrid,
+  wormholeRuinsFloorFor,
 } from '../src/wormholeGrid'
 import type { WormholeSignal } from '../src/wormholeGrid'
 import { createInitialState } from '../src/state'
@@ -114,27 +116,29 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
   })
 
   /**
-   * **遗迹 = 残骸信号的 30%**（±1 格容差，格数少时取整）。
+   * **遗迹 = 残骸信号的 30%**（层 3 起；层 1 恒 0、层 2 无保底也会走 30%）。
    *
-   * ⚠ 2026-09-13 星云/层间盘面批**改了这条的上界读法**：船长同日定了「**给每层增加一个遗迹格下限**」，
-   * 下限是**硬保证**（不够就把舰船墓场翻成遗迹）⇒ 层 1 的实际占比会**高于** 30%（实测 36%）。
-   * 故这里改成钉两件事：**下界照旧不能低于 30% 太多**（否则"遗迹概率 30%"名存实亡），
-   * **上界放宽到"下限带来的偏移"**（层 1 下限 1 格 ÷ 每盘 4 个残骸信号 = 最多 +25%）。
+   * ⚠ 口径沿革：2026-09-13 加了「每层遗迹下限」（硬保证 ⇒ 实际占比高于 30%）；
+   * **2026-09-16 船长改判「保底从 3 层开始，1 层没有遗迹」** ⇒ 层 1 的遗迹恒为 **0**（不再有下限抬升），
+   * 故本用例改钉 **层 3**（有下限的那一档）的比例与层 1 的"恒 0"。
    */
-  it('**遗迹 = 残骸信号的 30%**（下限会把它抬上去，见注释）', () => {
+  it('**遗迹 = 残骸信号的 30%**（层 3 起；层 1 恒 0）', () => {
+    // 层 3：下限 2 会把占比抬高一点 ⇒ 上下界都放宽到"下限带来的偏移"以内
     let ruins = 0
     let wreck = 0
     for (let seed = 1; seed <= 200; seed++) {
-      const t = gridTally(wormholeMakeGrid(seed, 1))
+      const t = gridTally(wormholeMakeGrid(seed, 3))
       ruins += t.byPlace.ruins
       wreck += t.bySignal.wreck
     }
     expect(wreck).toBeGreaterThan(50)
     expect(ruins / wreck).toBeGreaterThan(WORMHOLE_RUINS_SHARE - 0.15)
-    expect(ruins / wreck).toBeLessThan(WORMHOLE_RUINS_SHARE + 0.25)
-    // 层 1 下限 = 1 ⇒ 每盘至少一张遗迹（这是"随层给下限"那条的硬保证）
+    expect(ruins / wreck).toBeLessThan(WORMHOLE_RUINS_SHARE + 0.35)
+    // 层 1：船长 2026-09-16「1层没有遗迹」⇒ 恒 0（残骸信号全给舰船墓场）
     for (const seed of [1, 2, 3, 77, 2026]) {
-      expect(gridTally(wormholeMakeGrid(seed, 1)).byPlace.ruins).toBeGreaterThanOrEqual(1)
+      const t = gridTally(wormholeMakeGrid(seed, 1))
+      expect(t.byPlace.ruins, `seed ${seed} 的第 1 层出了遗迹`).toBe(0)
+      expect(t.bySignal.wreck, '层 1 的残骸信号照旧（只是全归舰船墓场）').toBeGreaterThan(0)
     }
   })
 
@@ -260,6 +264,40 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     const g = wormholeMakeGrid(5, 2)
     expect(isExitCell(g, g.exit)).toBe(true)
     expect(isExitCell(g, g.start)).toBe(false)
+  })
+})
+
+describe('虫洞网格 · 遗迹保底（船长 2026-09-16：「遗迹的保底，改为从3层开始保底。1层没有遗迹」）', () => {
+  it('**层 1 恒 0 张遗迹**（任何种子/任何原型都一样）', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const g = wormholeMakeGrid(seed, 1)
+      const ruins = g.cells.filter((c) => c.place === 'ruins').length
+      expect(ruins, `seed ${seed} 的第 1 层出了遗迹`).toBe(0)
+    }
+    expect(wormholeRuinsFloorFor(1)).toBe(0)
+  })
+
+  it('**保底从层 3 起**：下限表 层1=0 · 层2=0 · 层3=2 · 层4=2 · 层5=3 · 层7=4；层 2 允许出但可能为 0', () => {
+    expect(WORMHOLE_RUINS_FLOOR_MIN_DEPTH).toBe(3)
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map((d) => wormholeRuinsFloorFor(d))).toEqual([0, 0, 2, 2, 3, 3, 4, 4])
+    // 层 2 无保底：实测既出过 0 张、也出过 >0 张（只验"允许 0"这一半 ⇒ 200 个种子里必定有 0 张的盘）
+    let zeros = 0
+    let positives = 0
+    for (let seed = 1; seed <= 200; seed++) {
+      const n = wormholeMakeGrid(seed, 2).cells.filter((c) => c.place === 'ruins').length
+      if (n === 0) zeros += 1
+      else positives += 1
+    }
+    expect(zeros, '层 2 应该允许"一个遗迹都没有"').toBeGreaterThan(0)
+    expect(positives, '层 2 也该常常有遗迹（不是恒 0）').toBeGreaterThan(0)
+    // 层 3 起真的守住下限（含「遗迹密集」原型的 +1）
+    for (const depth of [3, 4, 5, 6, 7, 8]) {
+      const floor = wormholeRuinsFloorFor(depth)
+      for (let seed = 1; seed <= 120; seed++) {
+        const n = wormholeMakeGrid(seed, depth).cells.filter((c) => c.place === 'ruins').length
+        expect(n, `层 ${depth}（seed ${seed}）遗迹 ${n} < 下限 ${floor}`).toBeGreaterThanOrEqual(floor)
+      }
+    }
   })
 })
 

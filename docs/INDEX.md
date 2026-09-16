@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **262** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4895** KB · **36009** 行
+- 文档总数 **262** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4903** KB · **36050** 行
 - 状态分布：**未标注** 142 · **已确认/已实现** 106 · **进行中** 9 · **待裁定** 4 · **历史留档** 1
 - 孤儿文档（0 引用）**16** 份 · 状态未标注 **142** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -34,8 +34,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 140 KB / 209 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 535 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 298 KB / 698 行 | 185 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 215 行 | 235 / 9 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 299 KB / 708 行 | 185 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 93 KB / 216 行 | 235 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -56,10 +56,10 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-20260916-wormhole-bloom.md` | 公告待审稿 · 虫洞大量生成（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 2 KB / 37 行 | 1 / 1 |
-| `docs/design/hullrep-in-wormhole-20260916.md` | 报障核查：船体维修装置在虫洞里无效（2026-09-16） | 未标注（已落码待验收） | 2026-09-16 | 10 KB / 116 行 | 0 / 0 |
+| `docs/design/hullrep-in-wormhole-20260916.md` | 报障核查：船体维修装置在虫洞里无效（2026-09-16） | 未标注（已落码待验收） | 2026-09-16 | 12 KB / 141 行 | 0 / 0 |
 | `docs/design/wormhole-bloom-promo-20260916.md` | 限时活动「虫洞大量生成」（扫描加速 ＋ 一次性送 5 处）· 2026-09-16 | 进行中（进行中） | 2026-09-16 | 10 KB / 126 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260915-extract-retire.md` | 公告待审稿 · 虫洞调整（2026-09-15） | 待裁定（待船长审核） | 2026-09-15 | 2 KB / 35 行 | 4 / 0 |
-| `docs/design/announcement-draft-20260915-wormhole-loot.md` | 公告待审稿 · 虫洞战利品扩充（2026-09-15） | 待裁定（待船长审核 · 经办已转一号） | 2026-09-15 | 4 KB / 44 行 | 2 / 0 |
+| `docs/design/announcement-draft-20260915-wormhole-loot.md` | 公告待审稿 · 虫洞战利品扩充（2026-09-15） | 待裁定（待船长审核 · 经办已转一号） | 2026-09-15 | 4 KB / 45 行 | 2 / 0 |
 | `docs/design/civilian-hp-20260915.md` | 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8） | 已确认/已实现（已确认） | 2026-09-15 | 5 KB / 92 行 | 0 / 0 |
 | `docs/design/desire-band-20260915.md` | 默认期望交距：中段 → 射程带高位（星图与洞内统一 0.8；洞内近战开局另守中段 0.5） | 未标注 | 2026-09-15 | 7 KB / 85 行 | 4 / 0 |
 | `docs/design/docs-archive-20260915.md` | 文档精简与封存（roadmap / glossary）—— 工作文档 | 进行中（进行中） | 2026-09-15 | 9 KB / 107 行 | 2 / 0 |
@@ -255,7 +255,7 @@
 | `docs/archive/roadmap-2026-09-12.md` | 封存卷 · roadmap 批次条目 2026-09-12 | 未标注 | — | 173 KB / 160 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 397 KB / 256 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 50 KB / 36 行 | 3 / 0 |
+| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 58 KB / 40 行 | 3 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -330,7 +330,7 @@
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/hullrep-in-wormhole-20260916.md`（2026-09-16 · 10 KB）—— 报障核查：船体维修装置在虫洞里无效（2026-09-16）
+- `docs/design/hullrep-in-wormhole-20260916.md`（2026-09-16 · 12 KB）—— 报障核查：船体维修装置在虫洞里无效（2026-09-16）
 - `docs/design/wormhole-bloom-promo-20260916.md`（2026-09-16 · 10 KB）—— 限时活动「虫洞大量生成」（扫描加速 ＋ 一次性送 5 处）· 2026-09-16
 - `docs/design/civilian-hp-20260915.md`（2026-09-15 · 5 KB）—— 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8）
 - `docs/design/first-ship-comms-20260915.md`（2026-09-15 · 8 KB）—— 首艘自造船通讯（msg-first-ship）· 工作文档

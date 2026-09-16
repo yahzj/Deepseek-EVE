@@ -138,10 +138,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   （「所有专属的东西，价格翻4倍」⇒ 用例 `exclusive-market.test.ts` ① 要求 `-wh-` 行 = 奇货档 + 只收不卖），
   //   与"常驻才好卖"冲突 ⇒ 待船长裁决（见汇报），裁决前不动。
   { key: 'mat-wh-essence', kind: 'item', refId: 'mat-wh-essence', rarity: 'exotic', basePrice: 70_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 虫洞谜质（撤离成功时按台数换算：1 台 = 1 枚；NPC 收购 = 70,000）
-  { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 24_000, demandMultiplier: 1.0 }, // 奢侈品·低档（贵重品货柜拆解产物；正常交易）
-  { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'common', basePrice: 48_000, demandMultiplier: 1.0 }, // 奢侈品·中档（常驻 ⇒ 稳定卖出）
-  { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'common', basePrice: 96_000, demandMultiplier: 1.0 }, // 奢侈品·高档（常驻 ⇒ 稳定卖出）
-  { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 500_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 15 件 × 奢侈品均价 5.6 万 = 84 万 ×0.6 ✓
+  { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 100_000, demandMultiplier: 1.0 }, // 奢侈品·低档（贵重品货柜拆解产物；正常交易）· 2026-09-15 船长「单价差距提高」：2.4 → 10 万
+  { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'common', basePrice: 400_000, demandMultiplier: 1.0 }, // 奢侈品·中档（常驻 ⇒ 稳定卖出）· 4.8 → 40 万
+  { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'common', basePrice: 2_000_000, demandMultiplier: 1.0 }, // 奢侈品·高档（常驻 ⇒ 稳定卖出）· 9.6 → 200 万
+  { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 3_650_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 17.5 件 × 三档均价 83.33 万 = 1,458.33 万 ×**0.25**（2026-09-15 船长改判的专属折扣；其余三类柜仍是 ×0.6）
   { key: 'box-military', kind: 'item', refId: 'box-military', rarity: 'common', basePrice: 2_800_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 军用备货柜（4 格）· 期望 = 2 件 × MK3 均价 235.5 万 = 470.95 万 ×0.6（2026-09-15 批 B 复核：原估值 700 万 > 拆解期望，会诱导"只卖箱不拆箱"⇒ 按同一条 ×0.6 规则下调）
   // ── 气体（V10 池商品） ──
   { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 227_880, supplyFlow: 1_899 },
