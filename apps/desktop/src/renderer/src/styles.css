@@ -7534,6 +7534,12 @@ body {
 
 .app-bts-ruler { flex: none; padding: 6px 7% 0; }
 
+/* 双方战斗机动速度行（2026-09-16 船长：距离条两端的上方分别显示敌我速度）——
+   与 `.app-bts-ruler-head` 同款 flex 两端对齐 + 同字号；绿/红沿用射程带与敌我色调，不新增色板 */
+.app-bts-ruler-speed { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 0 2px; line-height: 1.4; }
+.app-bts-speed { font-variant-numeric: tabular-nums; }
+.app-bts-speed.is-me { color: #7fd39a; }
+.app-bts-speed.is-foe { color: #e08a86; }
 .app-bts-ruler-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 0 2px 2px; }
 
 .app-bts-scale { position: relative; height: 10px; margin-top: 8px; background: linear-gradient(90deg, rgba(255,224,138,.14), rgba(255,224,138,.42)); border: 1px solid rgba(255,224,138,.25); border-radius: 5px; }

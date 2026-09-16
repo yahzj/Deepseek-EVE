@@ -145,6 +145,33 @@ describe('虫洞 · 敌族锁定（丁）', () => {
     }
   })
 
+  /**
+   * ⚠ **2026-09-16 回归钉（真 BUG 复现）**：旧实现
+   * `Math.abs((s × 1103515245 + 12345) % 5)` 的两个常数**都能被 5 整除**
+   * ⇒ 乘积不溢出时整个和恒 `≡ 0 (mod 5)` ⇒ **小种子一律 A 族**
+   * （实测：种子 1..20000 → 100% A；真实扫描种子区间 1..2e9 上也只有 0.41% 落在"精确"区，
+   *  其余靠**浮点溢出舍入**凑出偏斜分布：D 31.9% vs G 12.7%）。
+   * 修法 = splitmix 风格 32 位混合（全程 `Math.imul` ⇒ 无浮点参与）；本用例用**小种子**钉住——
+   * 它们正是旧实现必然塌成 A 的那一段，且与浏览器/Node 版本无关。
+   */
+  it('**小种子也必须摇出五族**（旧哈希 ≡ 0 (mod 5) 恒 A 的回归钉）', () => {
+    const N = 1_000
+    const hit: Record<string, number> = {}
+    for (let s = 1; s <= N; s++) {
+      const f = wormholeFamilyOfSeed(s)
+      hit[f] = (hit[f] ?? 0) + 1
+    }
+    expect(Object.keys(hit).sort(), '五族都要出现').toEqual([...WORMHOLE_FAMILY_ORDER].sort())
+    for (const f of WORMHOLE_FAMILY_ORDER) {
+      const share = ((hit[f] ?? 0) / N) * 100
+      expect(Math.abs(share - 20), `族 ${f} 占比 ${share.toFixed(1)}%`).toBeLessThan(5)
+    }
+    // 确定性不变：同种子恒同族（含大种子）
+    for (const s of [1, 42, 987_654_321, 1_999_999_999]) {
+      expect(wormholeFamilyOfSeed(s)).toBe(wormholeFamilyOfSeed(s))
+    }
+  })
+
   it('**整趟同族**：进洞后每一格的敌卡都是该族那一张（不再逐格轮换）', () => {
     const state = fresh()
     const ids: string[] = []

@@ -2956,10 +2956,19 @@ export function createBattleState(
   myAllies: readonly UnitSpec[] = [],
 ): import('./state').BattleState {
   const units: Record<string, import('./state').BattleState['units'][string]> = {}
+  /**
+   * **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）。
+   * ⚠ **开战首波是内联播种**（本函数不走 `seedUnit`）——首版只在 `seedUnit` 里累积 ⇒
+   * **单波战斗的战报/悬停看不到敌方挂载件**（多波/增援才看得到）；这里补上首波这一份。
+   */
+  const foeMounts: string[] = []
   for (const spec of [me, ...myAllies, ...foes]) {
     // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发的单位不进开战编队**，
     // 由 `advanceBattleFor` 每拍按条件补入。开关关闭时建档期根本不写 `foeReinforceAt` → 本行永不命中。
     if (spec.foeReinforceAt) continue
+    if (spec.side === 'foe') {
+      for (const m of spec.foeMountNames ?? []) if (!foeMounts.includes(m)) foeMounts.push(m)
+    }
     units[spec.tag] = {
       tag: spec.tag,
       side: spec.side,
@@ -2983,6 +2992,8 @@ export function createBattleState(
     distanceM: 0, // 由调用方按 battleOpenM 赋值
     myDesireM,
     units,
+    // 开战首波登记下来的敌方挂载件（没挂 = 不写键 ⇒ 老档/无挂载场次零变化）
+    ...(foeMounts.length > 0 ? { foeMounts } : {}),
     ammo: { kin: 0, exp: 0, pla: 0 },
     stats: { meShots: 0, meHits: 0, meDmg: 0, foeShots: 0, foeHits: 0 },
     fx: [],
@@ -3886,6 +3897,13 @@ export function battleArcsFor(
   /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
   foeCanCharge: boolean;
   /**
+   * **双方当前战斗机动速度（m/s）**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」）
+   * ——与引擎推进/距离拔河同一把尺（含我方推进器爆发、敌方冲锋倍率，逐单位取平均）；
+   * **开战首拍之前缺省**（老档在途战斗同样缺省 ⇒ 界面不显示这一格）。
+   */
+  meSpeedMps?: number
+  foeSpeedMps?: number
+  /**
    * **敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——本场敌方挂了哪些件
    * （去重展示名，如「劫掠冲锋推进器」）；**缺省 = 本场敌人没挂件**（既有战斗零变化）。
    */
@@ -4162,6 +4180,9 @@ export function battleArcsFor(
     thrusterBoost: me.thrusterBoost ?? 0,
     /** **我方首舰（= 距离/读数锚）的推进器周期**（2026-09-14 逐单位周期后，战斗界面那一格读它） */
     thrusterCycle: unitThrusterCycle(me, bal),
+    // 双方战斗机动速度（2026-09-16 船长：距离条两端显示）——读引擎逐拍落的那份，界面不自己算
+    ...(battle.meSpeedMps !== undefined ? { meSpeedMps: battle.meSpeedMps } : {}),
+    ...(battle.foeSpeedMps !== undefined ? { foeSpeedMps: battle.foeSpeedMps } : {}),
     foeCanCharge: foes.some((f) => f.foeCanCharge === true),
     // **敌方挂载件**（去重展示名）——界面/战报同源；空 = 本场敌人没挂件（老档同样缺省）
     ...(() => {
@@ -5395,6 +5416,9 @@ function stepBattle(
     foeAliveN += 1
   }
   if (foeAliveN > 0) foeV /= foeAliveN;
+  // **双方战斗机动速度落盘**（2026-09-16 船长：距离条两端要显示）——与下面拔河用的是同一对值
+  b.meSpeedMps = Math.round(meV)
+  b.foeSpeedMps = Math.round(foeV)
   const rate =
     steerStep(b.distanceM, b.myDesireM, meV, dtSec) +
     steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)

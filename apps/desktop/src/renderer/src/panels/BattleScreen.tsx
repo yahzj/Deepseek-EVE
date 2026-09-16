@@ -1957,6 +1957,19 @@ const meSpeedRef = useRef(200)
       <div className="app-bts-stage">
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}
         <div className="app-bts-ruler">
+          {/* **双方战斗机动速度**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」）：
+              左端 = 我方（舰队在左）· 右端 = 敌方；数值与引擎推进/距离拔河同一把尺
+              （含我方推进器爆发、敌方冲锋倍率，逐单位取平均）。缺省（未开火/老档）不显示这一行。 */}
+          {arcs.meSpeedMps !== undefined || arcs.foeSpeedMps !== undefined ? (
+            <div className="app-bts-ruler-speed">
+              <span className="app-bts-speed is-me" title="我方编队战斗机动速度（逐舰平均；点火期含推进器爆发倍率）">
+                ◀ 我方 {Math.round(arcs.meSpeedMps ?? 0).toLocaleString('zh-CN')} m/s
+              </span>
+              <span className="app-bts-speed is-foe" title="敌方编队战斗机动速度（逐舰平均；冲锋期含冲锋倍率）">
+                敌方 {Math.round(arcs.foeSpeedMps ?? 0).toLocaleString('zh-CN')} m/s ▶
+              </span>
+            </div>
+          ) : null}
           <div className="app-bts-ruler-head">
             <span className="app-dim">◀ 拉开（远 {Math.round(openM).toLocaleString('zh-CN')}m）</span>
             <span className="app-dim">贴脸（近 {Math.round(nearM).toLocaleString('zh-CN')}m）▶</span>
