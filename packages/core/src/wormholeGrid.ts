@@ -261,8 +261,20 @@ export function wormholeEmptyShareFor(depth: number, blankShareFactor = 1): numb
  * 与旧口径的关系：**不推翻** `WORMHOLE_RUINS_SHARE = 30%`（船长 2026-09-13「遗迹概率降低到 30%」），
  * 只在它上面加**地板**——残骸信号分完墓场后剩下的都给遗迹，但仍保证 ≥ 下限。
  */
+/**
+ * **遗迹保底的起效层**（船长 2026-09-16：「**遗迹的保底，改为从3层开始保底。1层没有遗迹**」）。
+ *
+ * ⇒ 层 1 **一个遗迹都不出**（残骸信号全给舰船墓场）· 层 2 **允许出但没有保底**（可能一个都没有）·
+ * **层 3 起才保底**。⚠ 「遗迹密集」原型的**遗迹专属加成（份额 30% → 50% · 下限 +1）同样从本层起才生效**
+ * ——浅层（层 1/2）它只体现为"残骸更多"（`wreck` 权重 ×1.4）。
+ */
+export const WORMHOLE_RUINS_FLOOR_MIN_DEPTH = 3
+
+/** 第 `depth` 层遗迹格数**下限**（层 1/2 = **0**（无保底；层 1 另由生成器禁止出遗迹）；层 3 起 `1 + ⌊(层-1)÷2⌋`） */
 export function wormholeRuinsFloorFor(depth: number): number {
-  return 1 + Math.floor((Math.max(1, Math.floor(depth)) - 1) / 2)
+  const d = Math.max(1, Math.floor(depth))
+  if (d < WORMHOLE_RUINS_FLOOR_MIN_DEPTH) return 0
+  return 1 + Math.floor((d - 1) / 2)
 }
 
 /**
@@ -629,7 +641,18 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
   /** **本盘的内容原型**（丙 · 船长 2026-09-14）：只改这张权重表的配比，总量的口径照旧 */
   const archetype = wormholeArchetypeOf(seed)
   const signalWeights = wormholeSignalWeightsFor(archetype)
-  const ruinsShare = wormholeRuinsShareFor(archetype)
+  /**
+   * **遗迹份额**（船长 2026-09-16：「1 层没有遗迹」＋保底从 3 层起）：
+   * - **层 1 = 0**（残骸信号全给舰船墓场，一个遗迹都不出）；
+   * - **层 2 = 基础 30%**（**不给**原型加成 ⇒ 可能一个都没有；「遗迹密集」的 50% 从层 3 起才生效）；
+   * - **层 3+ = 按原型**（均衡/其它原型 30% · 「遗迹密集」50%）。
+   */
+  const ruinsShare =
+    depth < WORMHOLE_RUINS_FLOOR_MIN_DEPTH
+      ? depth === 1
+        ? 0
+        : WORMHOLE_RUINS_SHARE
+      : wormholeRuinsShareFor(archetype)
   const totalW = order.reduce((s, k) => s + signalWeights[k], 0)
   const quota = order.map((k) => {
     const exact = (pool.length * signalWeights[k]) / totalW
@@ -702,15 +725,19 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
     return { key, q: c.q, r: c.r, place }
   })
   /**
-   * **遗迹下限的"硬保证"**（船长 2026-09-13「给每层增加一个遗迹格下限」）。
+   * **遗迹下限的"硬保证"**（船长 2026-09-13「给每层增加一个遗迹格下限」；**2026-09-16 改判：保底从层 3 起**）。
    *
    * ⚠ 为什么不能只靠"补残骸信号"：70/30 那道分法是**逐格掷骰**（`pickPlace`），
    * 补出来的残骸信号仍可能一张遗迹都不出（层 1 实测 24% 的盘是 0 张遗迹）。
    * 所以这里做**兜底翻转**：真数一遍，不够就把"舰船墓场"按 `all` 顺序翻成遗迹
    * ——与"信标不落入口格"同款手法（**只换不重掷** ⇒ 格数与其余地点分布照旧）。
    * 墓场是"最该让位"的那个：它的专属能效最低（0.09 稀有/回合 vs 遗迹 0.67）。
+   *
+   * ⚠ **层 1/2 的下限 = 0**（`wormholeRuinsFloorFor` 已按 2026-09-16 裁定返回 0）⇒ 这里天然不翻转；
+   * 「遗迹密集」原型的 **+1 加成一并从层 3 起才生效**（`WORMHOLE_RUINS_FLOOR_MIN_DEPTH`）。
    */
-  const ruinsFloor = wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype)
+  const ruinsFloor =
+    depth >= WORMHOLE_RUINS_FLOOR_MIN_DEPTH ? wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype) : 0
   let ruinsNow = cells.filter((c) => c.place === 'ruins').length
   if (ruinsNow < ruinsFloor) {
     for (const c of cells) {

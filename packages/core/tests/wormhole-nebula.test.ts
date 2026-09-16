@@ -63,13 +63,16 @@ function enterForActions(shipIds: readonly string[] = [T1, T1, T1, T1], seed = 1
 }
 
 describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空占比随层降）', () => {
-  it('**遗迹格下限随层增加**：层 1~2 ≥ 1 · 层 3~4 ≥ 2 · 层 5~6 ≥ 3（每层都验，120 seed）', () => {
-    expect(wormholeRuinsFloorFor(1)).toBe(1)
-    expect(wormholeRuinsFloorFor(2)).toBe(1)
+  it('**遗迹格下限从层 3 起**：层 1/2 = 0（层 1 恒 0 张）· 层 3~4 = 2 · 层 5~6 = 3 · 层 7~8 = 4（每层都验，120 seed）', () => {
+    // ⚠ 船长 2026-09-16：「遗迹的保底，改为从3层开始保底。1层没有遗迹」⇒ 旧表 层1/2 = 1 作废
+    expect(wormholeRuinsFloorFor(1)).toBe(0)
+    expect(wormholeRuinsFloorFor(2)).toBe(0)
     expect(wormholeRuinsFloorFor(3)).toBe(2)
     expect(wormholeRuinsFloorFor(4)).toBe(2)
     expect(wormholeRuinsFloorFor(5)).toBe(3)
     expect(wormholeRuinsFloorFor(6)).toBe(3)
+    expect(wormholeRuinsFloorFor(7)).toBe(4)
+    expect(wormholeRuinsFloorFor(8)).toBe(4)
     // 逐层逐 seed 硬断言（下限是**保证**，不是期望）
     for (const depth of [1, 2, 3, 4, 5, 6]) {
       const floor = wormholeRuinsFloorFor(depth)
@@ -93,14 +96,15 @@ describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空�
     }
   })
 
-  it('**遗迹跟着层数涨**：层 1 的均值 < 层 3 < 层 5（"随层数增加"这条要看得见）', () => {
+  it('**遗迹跟着层数涨**：层 1 = 0 · 层 2 < 层 3 < 层 5（"随层数增加"这条从层 3 起看得见）', () => {
     const avg = (depth: number): number =>
       SEEDS.reduce((s, seed) => s + countPlace(depth, seed, 'ruins'), 0) / SEEDS.length
-    const [d1, d3, d5] = [avg(1), avg(3), avg(5)]
-    expect(d1).toBeLessThan(d3)
+    const [d1, d2, d3, d5] = [avg(1), avg(2), avg(3), avg(5)]
+    // 船长 2026-09-16「1层没有遗迹」⇒ 层 1 恒 0；层 2 只有基础份额（无保底）⇒ 明显低于层 3
+    expect(d1).toBe(0)
+    expect(d2).toBeLessThan(d3)
     expect(d3).toBeLessThan(d5)
-    // 改造前的实测期望是 0.54 / 1.48 / 2.61 ⇒ 下限落地后浅层必须明显抬起来
-    expect(d1).toBeGreaterThan(0.9)
+    expect(d3).toBeGreaterThanOrEqual(2) // 层 3 的下限
   })
 
   it('**空占比随层下降**：层 1 = 50% → 层 6 触底 32%（"占可分配池"，层 1 逐格不变）', () => {

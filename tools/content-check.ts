@@ -128,6 +128,8 @@ securityZoneOf,
   wormholeEmptyShareFor,
   wormholeMakeGrid,
   wormholeRuinsFloorFor,
+  // 2026-09-16 船长：「遗迹的保底，改为从3层开始保底。1层没有遗迹」
+  WORMHOLE_RUINS_FLOOR_MIN_DEPTH,
   // F3c 谜质储存器（船长 2026-09-13）：装置表 / 形状登记 / 保底 1 格的常量
   WORMHOLE_DILUTION_MIN_DEPTH_FLOOR,
   // 2026-09-15 限时倍率表（船长：按现实日期给特定数值上倍率）——契约见文件尾
@@ -4800,8 +4802,10 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     const vis = (arr: ReadonlyArray<{ unreleased?: boolean }>): string =>
       `${arr.filter((d) => d.unreleased !== true).length}/${arr.length}`
     /* ⑦c **层间盘面契约**（2026-09-13 船长三条：「让遗迹格数量随层数增加并给每层增加一个遗迹格下限」＋
-     * 「空地块允许随着高层权重降低」＋「在四层以上及以上，添加星云机制…空地没有星云」）：
-     * 钉四件事：① **逐层遗迹 ≥ 下限**（真生成 12 seed 实数，不只看公式）；
+     * 「空地块允许随着高层权重降低」＋「在四层以上及以上，添加星云机制…空地没有星云」；
+     * **2026-09-16 船长改判**：「**遗迹的保底，改为从3层开始保底。1层没有遗迹**」）：
+     * 钉五件事：① **逐层遗迹 ≥ 下限**（真生成 12 seed 实数，不只看公式；层 1/2 下限 = 0）；
+     * ①b **层 1 恒 0 张遗迹**（船长 2026-09-16 明示）＋ **层 2 无保底**；
      * ② **信标恒 ≥1**（每层都要有指路标记——借格子只从资源/谜质借）；
      * ③ **层 1~3 绝不出星云、层 4 起配额与"有信号格数 × 15%"一致、空地与入口不长星云**；
      * ④ 空占比与 `wormholeEmptyShareFor` 一致（**量纲 = 占可分配池**）。 */
@@ -4818,6 +4822,9 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
             ruins >= floor,
             `层间盘面契约：第 ${depth} 层（seed ${seed}）遗迹格 ${ruins} < 下限 ${floor} —— 「给每层增加一个遗迹格下限」没生效`,
           )
+          if (depth === 1) {
+            check(ruins === 0, `层间盘面契约：第 1 层（seed ${seed}）出了 ${ruins} 张遗迹 —— 船长 2026-09-16「1层没有遗迹」`)
+          }
           const beacons = g.cells.filter((c) => c.place === 'beacon').length
           check(beacons >= 1, `层间盘面契约：第 ${depth} 层（seed ${seed}）没有信标——每层必须有一个指路标记`)
           const empties = g.cells.filter((c) => c.place === 'empty').length
@@ -4858,6 +4865,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
       })
       console.log(
         `· 层间盘面契约：遗迹格下限 ${depths.map((d) => `层${d}≥${wormholeRuinsFloorFor(d)}`).join(' · ')}` +
+          `（**保底从层 ${WORMHOLE_RUINS_FLOOR_MIN_DEPTH} 起**；层 1 恒 0 张 · 层 2 无保底）` +
           `（实测均值 ${perDepthRuins.join(' / ')} · ${samples} seed/层）` +
           ` · 空占比（占可分配池）${depths.map((d) => `${(wormholeEmptyShareFor(d) * 100).toFixed(0)}%`).join('/')}` +
           ` · 星云：层 ${WORMHOLE_NEBULA_MIN_DEPTH} 起、配额 ${(WORMHOLE_NEBULA_SHARE * 100).toFixed(0)}%、只长在有信号的地点上` +
