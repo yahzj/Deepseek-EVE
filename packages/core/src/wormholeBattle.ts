@@ -133,6 +133,8 @@ export function wormholeStartBattle(
   run.battle = battle
   // 开战成功 ⇒ 清「待迎战」标记（遗迹收尾战那条确认链到此闭合）
   if (run.pendingRuinsBattle === true) run.pendingRuinsBattle = false
+  // **踩中埋伏**那条确认链同样到此闭合（船长 2026-09-16）
+  if (run.pendingNodeBattle === true) run.pendingNodeBattle = false
   return { ok: true }
 }
 
@@ -266,7 +268,7 @@ export function wormholeTravelTo(
   state: GameState,
   ctx: SimContext,
   target: { q: number; r: number },
-  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean },
+  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean; deferAmbush?: boolean },
   atGameMs?: number,
 ): {
   ok: boolean
@@ -277,6 +279,10 @@ export function wormholeTravelTo(
   beacon?: boolean
   /** 本次移动被**路径拦截**截断（到达的是拦截点；`known` = 拦之前该格是否已知，见 `arrived.intercepted`） */
   intercepted?: { target: string; known: boolean }
+  /** **踩中埋伏**（到达的格出发前未知、里面是敌人）：为真时这一场已挂起，等玩家确认 */
+  ambush?: boolean
+  /** 已结算但**等确认**的战斗：`'node'` = 踩中埋伏（船长 2026-09-16）· `'ruins'` = 遗迹守备（2026-09-13） */
+  pendingBattle?: 'node' | 'ruins'
 } {
   const run = state.wormhole.run
   const overloaded = wormholeActionBlockReason(state, ctx)
@@ -307,6 +313,19 @@ export function wormholeTravelTo(
       ...(intercepted ? { intercepted } : {}),
     }
   }
+  /**
+   * **踩中埋伏 ⇒ 先发事件提醒、等玩家确认再开战**（船长 2026-09-16：「移动途中被敌方拦截或者
+   * **进入未扫描地点踩到怪**了，都要弹窗提示，玩家确认后进入战斗」）。
+   *
+   * 与遗迹守备（`deferRuinsBattle`）**同一套做法**：移动已结算（回合已扣、位置已落、该格已记
+   * `activated`），只在 `run` 上留 `pendingNodeBattle` 标记 ⇒ 界面弹提醒条，玩家点「开战」再调
+   * `wormholeStartBattle(state, ctx, 'node')`。标记没清之前**别的动作一律被拦**（`gridActionBlocked`）。
+   * ⚠ **只在界面传 `deferAmbush: true` 时生效**：不传（工具 / 老调用方 / 用例）= **原行为**（到达即开打）。
+   */
+  if (arrived.ambush === true && opts?.deferAmbush === true) {
+    if (run) run.pendingNodeBattle = true
+    return { ok: true, spent: r.spent, autoBattle: true, ambush: true, pendingBattle: 'node' }
+  }
   const s = wormholeStartBattle(state, ctx, 'node', atGameMs)
   if (!s.ok) {
     if (run && g && snap) {
@@ -319,7 +338,13 @@ export function wormholeTravelTo(
     }
     return { ok: false, error: `无法开战：${s.error ?? ''}` }
   }
-  return { ok: true, spent: r.spent, autoBattle: true, ...(intercepted ? { intercepted } : {}) }
+  return {
+    ok: true,
+    spent: r.spent,
+    autoBattle: true,
+    ...(arrived.ambush === true ? { ambush: true } : {}),
+    ...(intercepted ? { intercepted } : {}),
+  }
 }
 
 /** 本场战斗的**编队残血比例**（我方三层血合计 ÷ 满值合计；用于战报与结算读数） */
