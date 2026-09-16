@@ -14,6 +14,13 @@
  * - 「物品」**不再包含**消耗品与残骸（剔除判定在 `subPasses` 与 `MarketPage.kindPasses` 两处，键集合单点 = `CONSUME_KIND_KEYS`）。
  * 注意：手册图鉴的物品分组走 core 的 `ITEM_KIND_ORDER`/`ITEM_KIND_LABELS`（按物品大类分），**不受本表拆分影响**。
  *
+ * **2026-09-16 船长（本批）**：「**将货柜添加到市场的分类里，和货物同级**」＋（同日上一句）
+ * 「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」⇒
+ * - **货柜**（`container`，新一级类型）：五族遗迹安全货柜 · 三档图纸货柜 · 贵重品货柜 · 军用备货柜
+ *   从「货物」剔出（键集合单点 = `CONTAINER_KIND_KEYS`，本批第三次同类拆分）；**无二级子分类**（照「残骸」先例）；
+ * - 「物品」→「**货物**」只是**市场类型下拉的显示名**（`MarketPage.KIND_TEXT.item`，导航页与手册不随改）；
+ * - 「货物」子分类补一档「**奢侈品**」（`ITEM_SUBS`）。
+ *
  * **2026-09-11 船长（第二批）：「对组装机的蓝图添加子筛选，根据产物的类型进行二次分类。舰船部分按舰船
  * 级别划分。弹药蓝图改为消耗品蓝图。」**（集中提问后定「甲：装备蓝图按**产物功能**分组」＋「甲：市场页
  * 蓝图子分类**同步改**」）：
@@ -32,7 +39,7 @@
  * - 物品页 ItemsPage：仓库筛选的装备二级（`RACK_SUBS`）与槽类判定（core `rackOf`）。
  * 新增/调整分类只改本文件，各处同时生效。
  */
-import { rackOf, shipSizeLabel } from '@whale/core'
+import { rackOf, shipSizeLabel, WORMHOLE_BP_BOX_IDS, WORMHOLE_MILITARY_BOX_ID, WORMHOLE_VALUABLES_BOX_ID } from '@whale/core'
 import type { MarketGoodDef, SimContext } from '@whale/core'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
@@ -56,6 +63,38 @@ export const CONSUME_SUBS: SubOption[] = [
 
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
 export const CONSUME_KIND_KEYS: readonly string[] = CONSUME_SUBS.map((s) => s.key)
+
+/**
+ * **「货柜」独立成一级类型**（船长 2026-09-16：「**将货柜添加到市场的分类里，和货物同级**」）——
+ * 货柜（`container`：五族遗迹安全货柜 · 三档图纸货柜 · 贵重品货柜 · 军用备货柜）从「货物」里剔出，
+ * 与「残骸」（2026-09-08 独立）、「消耗品」（2026-09-11 独立）同一套做法。
+ *
+ * ⚠ **2026-09-16 船长追答：「货柜要二级子分类」** ⇒ 四档子类（`CONTAINER_SUBS`），
+ * 判定走 `containerSubKeyOf`（**按 id 规则派生**，不复述清单：`box-relic-<族字母>` 来自 core 的
+ * `wormholeRelicBoxPoolOf` 同一把尺，另两类读 core 的货柜常量）。
+ */
+export const CONTAINER_KIND_KEYS: readonly string[] = ['container']
+
+/** 货柜的四个二级子类（顺序 = 渲染顺序；"安全柜"五族在前，"贵重品/军用"两个新柜在后） */
+export const CONTAINER_SUBS: SubOption[] = [
+  { key: 'safe', label: '遗迹安全货柜' },
+  { key: 'bp', label: '图纸货柜' },
+  { key: 'valuables', label: '贵重品货柜' },
+  { key: 'military', label: '军用备货柜' },
+]
+
+/**
+ * 货柜物品 → 子类键（查不到 ⇒ `''`，调用方按"其它"兜底）。
+ * ⚠ **按 id 规则派生**，不另存清单：五族安全柜 = `box-relic-<族字母>`（与 core `wormholeRelicBoxPoolOf`
+ * 的正则同一把尺）· 三档图纸柜 = core `WORMHOLE_BP_BOX_IDS` · 贵重品/军用柜 = core 两个常量。
+ */
+export function containerSubKeyOf(refId: string): string {
+  if (/^box-relic-[a-z]$/.test(refId)) return 'safe'
+  if ((WORMHOLE_BP_BOX_IDS as readonly string[]).includes(refId)) return 'bp'
+  if (refId === WORMHOLE_VALUABLES_BOX_ID) return 'valuables'
+  if (refId === WORMHOLE_MILITARY_BOX_ID) return 'military'
+  return ''
+}
 
 /** 「物品」类 = 除残骸与消耗品以外的物品（2026-09-11 起消耗品独立，故此处剔除三类）
  *  ⚠ 术语（船长 2026-09-12）：`ore` = **原矿**、`mineral` = **原材料**（旧称矿石/矿物作废）
@@ -167,6 +206,7 @@ export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low'] as const).map((k) 
 /** 主类型 → 可用子分类（残骸 wreck 无二级；三个槽类装备类型共用装备的功能子分类） */
 export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   item: ITEM_SUBS,
+  container: CONTAINER_SUBS,
   consume: CONSUME_SUBS,
   module: MODULE_SUBS,
   'module-high': MODULE_SUBS,
@@ -182,8 +222,16 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   if (sub === SUB_ALL || kind === 'all' || kind === 'wreck') return true
   if (kind === 'item') {
     const it = ctx.items.get(good.refId)
-    // 消耗品三类已独立成类（2026-09-11 船长），「物品」不再包含它们
-    return it?.kind === sub && !CONSUME_KIND_KEYS.includes(it.kind)
+    // 消耗品三类与货柜已各自独立成类（2026-09-11 / 2026-09-16 船长），「货物」不再包含它们
+    if (it === undefined) return false
+    if (CONSUME_KIND_KEYS.includes(it.kind)) return false
+    if (CONTAINER_KIND_KEYS.includes(it.kind)) return false
+    return it.kind === sub
+  }
+  if (kind === 'container') {
+    // 货柜四档子类（船长 2026-09-16 追答：「货柜要二级子分类」）：按 id 规则派生，见 containerSubKeyOf
+    const it = ctx.items.get(good.refId)
+    return it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind) && containerSubKeyOf(it.id) === sub
   }
   if (kind === 'consume') {
     const it = ctx.items.get(good.refId)

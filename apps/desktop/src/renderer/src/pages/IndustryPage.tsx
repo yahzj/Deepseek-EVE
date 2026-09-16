@@ -65,10 +65,10 @@ const FURNACE_TABS: Array<{ key: FurnaceTab; label: string }> = [
 type SubOpt = { key: string; label: string }
 /** 可精炼资源按**资源大类**（只列实际存在的档；`ItemDef.kind` 单点） */
 const ORE_KIND_LABEL: Record<string, string> = { ore: '原矿', gas: '气体', ice: '冰矿' }
-/** 残骸回收按**档位**（普通 / 稀有·高级箱）——船长 2026-09-14 选甲 */
+/** 残骸回收按**档位**（普通 / 稀有）——船长 2026-09-14 选甲；档名 2026-09-16 收口为「稀有残骸」（旧称「稀有 · 高级箱」是施工期叫法，船长：「我并没有设定是游戏内文案」） */
 const WRECK_SUBS: SubOpt[] = [
   { key: 'common', label: '普通残骸' },
-  { key: 'rare', label: '稀有 · 高级箱' },
+  { key: 'rare', label: '稀有残骸' },
 ]
 
 
@@ -303,7 +303,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           {isRareBox ? (
             <em
               className="app-chip is-rare"
-              title="高级箱：开出该敌群专属装备或特色装备，另附一批高阶原材料"
+              title="稀有残骸：解体时保底原材料之外必给一件——该敌群专属装备或特色装备，另附一批高阶原材料"
             >
               稀有
             </em>
@@ -330,7 +330,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       <div className="app-belt-desc">
         {isWreck
           ? isRareBox
-            ? '每批拆解 = 保底原材料 + 概率特色掉落；另有「高级箱」掉落：专属装备或特色装备 + 高阶原材料'
+            ? '每批拆解 = 保底原材料 + 概率特色掉落；每烧满一个回收单元必给一件：专属装备或特色装备 + 高阶原材料'
             : '每批拆解 = 保底原材料 + 概率特色掉落'
           : def.description}
       </div>
@@ -570,7 +570,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   /* ── 两级筛选（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）──────────────────
    * 一级 = 活计大类（全部 / 可精炼资源 / 残骸回收 / 货柜拆解）；
    * 二级 = 按当前一级给候选：「可精炼资源」按**资源大类**（原矿/气体/冰矿）、
-   *       「残骸回收」按**档位**（普通 / 稀有·高级箱）；「全部」与「货柜拆解」不带二级（同组装机）。 */
+   *       「残骸回收」按**档位**（普通 / 稀有残骸）；「全部」与「货柜拆解」不带二级（同组装机）。 */
   const oreSubs: SubOpt[] = Object.keys(ORE_KIND_LABEL)
     .filter((k) => oreDefs.some((d) => d.kind === k))
     .map((k) => ({ key: k, label: ORE_KIND_LABEL[k]! }))

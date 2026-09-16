@@ -34,7 +34,7 @@ export interface WormholeHoldShape {
   h: number
 }
 
-/** 当前只用到的形状：可叠加散货 = 1×1（不建 placement 条目），安全货柜 = 2×2，图纸货柜 = 2×1 */
+/** 当前只用到的形状：可叠加散货 = 1×1（不建 placement 条目），货柜 = 2×1（图纸） / 2×2（贵重品·军用） / 3×2（安全货柜），AI 核心 = 1×1，谜质储存器 = 2×2 */
 export const WORMHOLE_SHAPE_STACK: WormholeHoldShape = { w: 1, h: 1 }
 export const WORMHOLE_SHAPE_CONTAINER: WormholeHoldShape = { w: 2, h: 2 }
 /** **图纸货柜**（2026-09-14 船长定「占 2 格大小」）—— 2 宽 × 1 高 = 2 格 */
@@ -62,8 +62,11 @@ export const WORMHOLE_HOLD_SHAPES: Readonly<Record<string, WormholeHoldShape>> =
   'box-relic-e': WORMHOLE_SHAPE_CONTAINER6, // 2026-09-15：安全货柜 4 格 → 6 格
   'box-relic-g': WORMHOLE_SHAPE_CONTAINER6, // 2026-09-15：安全货柜 4 格 → 6 格
   // 图纸货柜（三种 = 层档；2026-09-14 船长定「占 2 格大小」）
-  // 2026-09-15 新增两个货柜（船长）：贵重品 2×1 = 2 格 · 军用备货 2×2 = 4 格
-  'box-valuables': WORMHOLE_SHAPE_BPBOX,
+  // 2026-09-15 新增两个货柜（船长）：军用备货 2×2 = 4 格
+  // ⚠ 2026-09-16 船长「**奢侈品货柜调整为2*2**」：贵重品货柜 **2×1 = 2 格 → 2×2 = 4 格**
+  //（与军用备货同形；体积同步 1000 → 2000 m³ = 500 m³/格 × 4 格，见 `data/items.ts` 与
+  //  `content:check` 的「贵重品/军用货柜契约」）
+  'box-valuables': WORMHOLE_SHAPE_CONTAINER,
   'box-military': WORMHOLE_SHAPE_CONTAINER,
   'box-bp-shallow': WORMHOLE_SHAPE_BPBOX,
   'box-bp-mid': WORMHOLE_SHAPE_BPBOX,

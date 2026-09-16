@@ -99,7 +99,7 @@ export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): Item
     kind: 'wreck',
     unitM3: 1,
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体可开「高级箱」——开出该敌群专属装备或特色装备，另附一批高阶原材料。`,
+    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体，保底原材料之外必给一件该敌群专属装备或特色装备，另附一批高阶原材料。`,
   }
 }
 

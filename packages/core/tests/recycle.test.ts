@@ -421,7 +421,7 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
     })
   }
   const boxes = (state: ReturnType<typeof createInitialState>): number =>
-    state.logs.filter((l) => l.text.includes('高级箱')).length
+    state.logs.filter((l) => l.text.includes('额外战利品')).length
 
   it('稀有残骸与普通残骸同一条路径：起炉**不预占**、不写炉内料账（lockUnits/claimedUnits 均缺省）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
@@ -485,7 +485,7 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
     expect(startRecycleRun(loaded, RARE_ID, 'pilot', ctx).ok).toBe(true)
     loaded.gameMs += RECYCLE_CYCLE_MS * 6
     advanceRefining(loaded, ctx)
-    expect(loaded.logs.filter((l) => l.text.includes('高级箱')).length).toBe(1)
+    expect(loaded.logs.filter((l) => l.text.includes('额外战利品')).length).toBe(1)
   })
 })
 
@@ -544,14 +544,14 @@ describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09
     const ctx = ctxWithMk3()
     const { mods, logs } = burnOne(ctx, WH_ID)
     expect(mods['mod-turret-kin-3'], `应出一件 MK3 主题件，实际 ${JSON.stringify(mods)}`).toBe(1)
-    expect(logs.some((t) => t.includes('高级箱') && t.includes('主题装备'))).toBe(true)
+    expect(logs.some((t) => t.includes('额外战利品') && t.includes('主题装备'))).toBe(true)
   })
 
   it('洞外稀有残骸：没配 `recycleLoot` 的卡**不**吃回落（行为逐字不变，只出矿物）', () => {
     const ctx = ctxWithMk3()
     const { mods, logs } = burnOne(ctx, rareWreckItemIdOf(OUT_ANOMALY))
     expect(Object.keys(mods), `不该出任何主题件，实际 ${JSON.stringify(mods)}`).toEqual([])
-    expect(logs.some((t) => t.includes('高级箱') && t.includes('主题装备'))).toBe(false)
-    expect(logs.some((t) => t.includes('高级箱'))).toBe(true) // 箱照开（只是只有矿物那一支）
+    expect(logs.some((t) => t.includes('额外战利品') && t.includes('主题装备'))).toBe(false)
+    expect(logs.some((t) => t.includes('额外战利品'))).toBe(true) // 箱照开（只是只有矿物那一支）
   })
 })

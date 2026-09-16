@@ -1449,7 +1449,7 @@ function StarMap({
               {rare.count > 0 ? (
                 <div
                   className="app-map-taskline is-rare"
-                  title={`赏金任务战果：${rare.text}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体可开高级箱：保底原材料之外必定额外掉落一件（该敌群专属装备，未出则给特色装备）+ 一批高阶原材料`}
+                  title={`赏金任务战果：${rare.text}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体，保底原材料之外必给一件额外战利品（该敌群专属装备，未出则给特色装备）+ 一批高阶原材料`}
                 >
                   <span className="app-ico">◆</span>
                   <em className="app-chip is-rare">稀有残骸 ×{rare.count}</em>
