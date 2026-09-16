@@ -776,6 +776,10 @@ const BATTLE_FIELDS = {
     why: '敌冲锋循环（2026-09-14 起逐单位：在冲 / 冷却到某时刻）：落在"重载即重置循环"口径内（2026-09-10 起即如此，登记备查）',
   },
   foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
+  foeMounts: {
+    kind: 'runtime',
+    why: '敌方挂载件名清单（2026-09-16 加）：只给战报/悬停渲染；战中重载即由 seedUnit 重建 ⇒ 不入档',
+  },
   meVolleyDmg: {
     kind: 'runtime',
     why: '我方"不被一击带走"保险的逐拍承伤账本（船长 2026-09-16）：跨拍即重置，重载即清空 ⇒ 不入档',

@@ -706,6 +706,10 @@ const meSpeedRef = useRef(200)
             ) : null}
             {/* **双方残余**（新增三行之二）：逐舰 盾/甲/结构（当前/上限）+ 敌方残余 */}
             {myUnitsText ? <div className="app-bts-report-stats">双方残余：我方 {myUnitsText} ｜ {foeText}</div> : null}
+            {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——没挂件就整行不显示 */}
+            {br && br.foeMounts && br.foeMounts.length > 0 ? (
+              <div className="app-bts-report-stats">敌方挂载件：{br.foeMounts.join('、')}</div>
+            ) : null}
             {/* **弹药消耗**（新增三行之三）：按弹种；0 的弹种不列 */}
             {ammoSeg ? <div className="app-bts-report-stats">弹药消耗：{ammoSeg}</div> : null}
             {/* 机群战损（2026-09-11 船长：优先回收高价值 + 在战报里显示）：
@@ -2374,7 +2378,9 @@ const meSpeedRef = useRef(200)
                 className="app-bts-chip is-foe"
                 title={
                   b.names.length > 0
-                    ? `敌方射程带（${b.names.join('、')}）：${b.minM}~${b.maxM}m`
+                    ? `敌方射程带（${b.names.join('、')}）：${b.minM}~${b.maxM}m` +
+                      // 2026-09-16 船长「敌舰悬停展示挂载件」：本带的敌方挂载件挂在同一条悬停里
+                      (b.mounts && b.mounts.length > 0 ? ` · 挂载：${b.mounts.join('、')}` : '')
                     : '敌方整编队武器（同型聚合）'
                 }
               >
@@ -2385,10 +2391,17 @@ const meSpeedRef = useRef(200)
               </span>
             ))}
             {/* 敌方冲锋标记（2026-09-10 船长定；**2026-09-14 改逐单位**：可能不止一条在冲）——
-                复用同级"运行态 chip"样式（红点 = 告警态），不自造新类 */}
+                复用同级"运行态 chip"样式（红点 = 告警态），不自造新类。
+                ⚠ 冷却不再写死 10 秒：C 族 10 秒、A 族洞内海盗 30 秒（挂载件各自给，见 `FoeMountDef.charge`） */}
             {foeCharging > 0 ? (
-              <span className="app-bts-repair is-down" title="敌方正在冲锋：各自加速逼近，自身炮台命中你、或压到目标距离即解除，随后进入 10 秒冷却">
+              <span className="app-bts-repair is-down" title="敌方正在冲锋：各自加速逼近，自身炮台命中你、或压到目标距离即解除，随后进入各自的冷却">
                 <i /> 敌冲锋中{foeCharging > 1 ? ` ×${foeCharging}` : ''}
+              </span>
+            ) : null}
+            {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——有才占位，悬停看全名 */}
+            {arcs.foeMounts && arcs.foeMounts.length > 0 ? (
+              <span className="app-bts-chip is-foe" title={`敌方挂载件：${arcs.foeMounts.join('、')}`}>
+                <i /> 敌挂载：{arcs.foeMounts.join('、')}
               </span>
             ) : null}
             {ammoChips.length > 0 ? (

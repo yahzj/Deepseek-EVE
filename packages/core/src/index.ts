@@ -55,6 +55,9 @@ export type {
   FoeTargetingMode,
   FoeShipDef,
   FoeShipSlot,
+  // 敌方挂载件（2026-09-16 船长：把冲锋/受击增程做成"给敌人装配件"）——目录表在 core/foeMounts.ts
+  FoeMountDef,
+  FoeMountId,
   FoeDroneDef, // 2026-09-11 敌机机型表（舰载机群；设计稿 foe-drone-system-20260911.md）
   FoeDroneSlot, // 舰级上的机群登记条目（引用机型 + 架数）
   FoeReinforceTrigger,
@@ -172,6 +175,8 @@ export {
 } from './training'
 
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
+// 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
+export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'
 
 export {
   advanceGame,

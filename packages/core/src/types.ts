@@ -200,6 +200,51 @@ export interface BeltDef {
 export type ShipRole = 'industrial' | 'armed' | 'armored' | 'hauler'
 
 /**
+ * **敌方挂载件 id**（2026-09-16 船长：「**能否将冲锋设置成类似舰船装备的挂载物？这样只要给敌人装配就行了**」
+ * ＋「**除了C族，将D族和E族的射程增加也迁成挂载件**」）——目录表在 `core/foeMounts.ts`（`FOE_MOUNTS`）。
+ * 写成字面量联合 = 数据侧写错 id 会**当场编译不过**（比字符串松类型更能防手滑）。
+ */
+export type FoeMountId =
+  | 'foe-mount-charge-pirate'
+  | 'foe-mount-charge-swarm-t1'
+  | 'foe-mount-charge-swarm-t2'
+  | 'foe-mount-charge-swarm-t3'
+  | 'foe-mount-charge-swarm-t4'
+  | 'foe-mount-drone-range-x4'
+  | 'foe-mount-gun-range-x1-5'
+
+/**
+ * **敌方挂载件定义**（船长 2026-09-16 三句合一的落点）：
+ * - 「**能否将冲锋设置成类似舰船装备的挂载物？这样只要给敌人装配就行了**」；
+ * - 「**除了C族，将D族和E族的射程增加也迁成挂载件**」；
+ * - 「**要：敌舰悬停/战报展示挂载件**」⇒ `name` 是**玩家可见**文案，进敌舰悬停与战报。
+ *
+ * 语义 = 挂在敌舰（**舰级 `FoeShipDef.mounts`** 或**卡条目 `FoeShipSlot.mounts`**，条目优先）上的装置，
+ * 由 `foeMounts.resolveFoeMounts` **单点**解析成运行时字段（`UnitSpec.foeCanCharge` / `foeChargeMul` /
+ * `foeChargeCooldownMs` / `foeDroneRangeMulOnHit` / `foeGunRangeMulOnHit` / `foeMountNames`）。
+ * 一件只能带**一类**效果（三类字段互斥，`content:check` 会拦）；`note` 写设计备注。
+ */
+export interface FoeMountDef {
+  id: FoeMountId
+  /** 玩家可见名（敌舰悬停 / 战报里逐件列出） */
+  name: string
+  /**
+   * **冲锋装置**：触发后**本单位自己的机动 ×`mul`**（不外溢），解除后 `cooldownMs` 内不能再冲。
+   * `triggerMarginM` 缺省 = 走全局 `BattleBalance.foeChargeTriggerMarginM`。
+   */
+  charge?: { mul: number; cooldownMs: number; triggerMarginM?: number }
+  /**
+   * **机群受击增程**：本体被命中一次 ⇒ **整支敌队的机群**射程 ×`mul`（整队标量 `foeDroneRangeBuff`，
+   * 口径与迁移前**逐字一致**：任一挂件舰挨打即盖章、此后全队机群都吃）。
+   */
+  droneRangeOnHit?: { mul: number }
+  /** **炮台受击增程**：**从它射程之外**被命中 ⇒ **本舰**炮台射程 ×`mul`（只对挂了本件的舰生效）。 */
+  gunRangeOnHit?: { mul: number }
+  /** 设计备注（不进玩家视野） */
+  note?: string
+}
+
+/**
  * **舰种子分类**（2026-09-13 船长定：虫洞专属舰船按子分类重排数值并进界面）。
  * 与 `role` 并列：`role` 管战斗曲线口径，`subClass` 管"这艘船是干什么的"——
  * 只作**展示 + 设计口径**（数值差异已直接落在各字段上，引擎不读本字段做判定）。
@@ -1501,14 +1546,24 @@ export interface FoeShipDef {
    * ⚠ **逐单位状态**（`BattleState.foeCharges[tag]`，互不顶替）、**只在有该单位的波次生效**。
    *
    * 用途：慢而硬的重型单位（C 族**噬口巨兽**，实速 297）与虫群小虫（544 / 398）用冲锋补偿"追不上"。
+   *
+   * ⚠ **2026-09-16 起改走「挂载件」**（船长：「将冲锋设置成类似舰船装备的挂载物」）：C 族四条舰级
+   * 改为 `mounts: ['foe-mount-charge-swarm-tN']`，本字段**保留为兼容回退**（没写 `mounts` 的卡照旧读它）。
    */
   foeCanCharge?: boolean;
   /**
    * **本舰级的冲锋倍率覆写**（2026-09-14 船长：「**大虫子的冲锋倍率改为 3，给小虫子添加冲锋，
    * 倍率为 1.5**」）——缺省不写 ⇒ 用全局 `BattleBalance.foeChargeMul`（**旧读数逐字不变**）。
    * ⚠ 编队接近速度 = "逐单位乘各自倍率 → 取平均"（`combat.stepBattle`），故倍率**不外溢**。
+   * ⚠ **2026-09-16 起优先读挂载件**（`mounts`），本字段保留为兼容回退。
    */
   foeChargeMul?: number;
+  /**
+   * **本舰级的挂载件**（船长 2026-09-16：「**这样只要给敌人装配就行了**」）：写 id 列表，
+   * 引擎在建档时解析成运行时字段（见 `FoeMountDef`）。**卡条目 `FoeShipSlot.mounts` 覆写本字段**。
+   * ⚠ 缺省不写 = 无挂载、零行为变化（旧字段照旧读）。
+   */
+  mounts?: readonly FoeMountId[];
   /**
    * **期望作战距离覆写（米）**（2026-09-11 E 族：船长「**战术进行调整，但期望距离不改**，
    * 因为射程未定」）：给了本字段就**直接采纳**，不再按「战术 × 射程带」推导
@@ -1536,6 +1591,7 @@ export interface FoeShipDef {
    * ⚠ **触发口径（船长逐项裁定）**：①**只有母舰本体被命中**才算（**打机群不触发**、未命中不触发）；
    * ②覆盖该舰**全部**机群、**本场永久**（一次触发即保持，不做限时窗口）；③**不封顶**。
    * ⚠ **缺省不写 = 无此机制、零行为变化**；`content:check` 只允许**带机群的 E 族舰级**写它。
+   * ⚠ **2026-09-16 起改走挂载件**（`mounts: ['foe-mount-drone-range-x4']`），本字段保留为兼容回退。
    */
   droneRangeMulOnHit?: number
   /** **受击增程（炮台）**（2026-09-12 船长：「给 D 族静滞卫舰加入类似 E 族挨打加炮台射程的效果，
@@ -1545,7 +1601,8 @@ export interface FoeShipDef {
    *  `BattleState.foeGunRangeBuff` 盖一次章（本场永久、只提示一条）；**生效面只有带本字段的舰**
    *  （即"所有静滞卫舰"），同场的其它舰级**不受影响**（E 族那条是"整支敌队的机群"，两者不共用状态）。
    *  **口径（船长选乙）**：只延长**最远射程**、近界不动；**原射程内的命中/伤害折减一字不变**，
-   *  延长段按**同斜率**继续线性衰减。 */
+   *  延长段按**同斜率**继续线性衰减。
+   *  ⚠ **2026-09-16 起改走挂载件**（`mounts: ['foe-mount-gun-range-x1-5']`），本字段保留为兼容回退。 */
   gunRangeMulOnHit?: number
   /**
    * **机群火力占比（舰级缺省）**（0~1；2026-09-11 船长：「**允许调整敌舰的无人机/炮台火力比例。
@@ -1667,6 +1724,16 @@ export interface FoeShipSlot {
   firepowerAnchor?: number;
   /** 本条目数量（缺省 1） */
   count?: number
+  /**
+   * **本条目覆写的挂载件**（2026-09-16 船长：「**这样只要给敌人装配就行了**」）——
+   * **写了就整条替换舰级 `FoeShipDef.mounts`**（与 `droneFireShare` / `desireRangeM` 同款"条目 > 舰级"）。
+   *
+   * 用途（船长同日两次点名）：
+   * ① **A 族海盗只在虫洞内冲锋**——那三条舰级洞外（低安遭遇 / 悬赏）也在用，
+   *    所以把 `foe-mount-charge-pirate` 挂在**洞内三张卡的条目**上，洞外一字不变；
+   * ② 日后"同一舰级在不同卡上装不同件"不必改舰级。
+   */
+  mounts?: readonly FoeMountId[]
   /** 第几波（0 起；缺省 0 = 第一波） */
   wave?: number
   /**

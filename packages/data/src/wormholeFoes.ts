@@ -34,6 +34,7 @@
  * ⚠ **待 F 批收益校准**：编成取"舰级自然值"（不写 `hpMul`/`dmgMul`，即 1×），
  * 层内难度是否合适要看 `tools/wormhole-econ.ts` 的实测读数再定。
  */
+import { FOE_MOUNT_IDS } from '@whale/core'
 import type { AnomalyDef } from '@whale/core'
 import {
   FOE_ALIEN_MAW,
@@ -75,7 +76,9 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     dmgMix: { kinetic: 8, explosive: 2 },
     // 编成 = 劫掠护卫舰 ×2（T1；`speedMul 0.9` 把实速 374 → **337**，落在 orbit 常规带 0.9~1.25× 内
     // ——隐藏模板也要过「敌速口径契约」，这条与 `enc-pirate-*` 用 `speedMul` 反算实速同款）
-    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, speedMul: 0.9 }],
+    // **冲锋挂载件只挂本卡条目**（2026-09-16 船长：「给A族虫洞内的海盗添加冲锋…冲锋倍率为1.6，冷却30秒」）：
+    // 劫掠护卫舰这条舰级洞外（低安遭遇 / 悬赏）也在用 ⇒ 挂**条目**才能做到"只在洞内冲锋"。
+    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, speedMul: 0.9, mounts: [FOE_MOUNT_IDS.chargePirate] }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -209,9 +212,10 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // ⚠ **条目覆写构成**：快艇舰级自带的是「爆炸 8 : 动能 2」（缴获弹药口径），
     //   本卡按 A 族签名统一成动能 8 : 2 ⇒ 契约「卡面 = 每条主体的有效构成」由这条覆写满足
     //   （这正是「想配异质编成时写条目覆写、不让卡面失真」的既有正解）。
+    // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
-      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, speedMul: 0.9 },
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, dmgMix: { kinetic: 8, explosive: 2 } },
+      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, speedMul: 0.9, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
     standingGain: 0,
@@ -232,9 +236,10 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     dmgMix: { kinetic: 8, explosive: 2 },
     // 编成 = 海盗头目舰 ×1（brawl 精锐）+ 海盗快艇 ×3（brawl 贴脸）——A 族悬赏线的经典"头目 + 杂鱼 ×3"
     // ⚠ 快艇舰级自带「爆炸 8 : 动能 2」⇒ 同前，条目覆写回本卡签名构成
+    // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——同上，只挂条目
     ships: [
-      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1 },
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 3, dmgMix: { kinetic: 8, explosive: 2 } },
+      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 3, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
     standingGain: 0,

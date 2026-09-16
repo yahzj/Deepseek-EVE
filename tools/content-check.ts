@@ -90,6 +90,9 @@ import {
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_POOLS,
   SHIP_ROLE_LABELS,
+  FOE_MOUNTS,
+  FOE_MOUNT_IDS,
+  resolveFoeMounts,
   isArmorLineShip,
   shipCategoryKeyOf,
   createFoeSpecs, // 机群火力占比契约的守恒实测（Σ 单发对照）
@@ -2519,36 +2522,41 @@ for (const m of MODULES) {
         )
         titanRanges.push(`${ship.name} ${ship.rangeMinM}~${ship.rangeMaxM}`)
       }
-      // ⑤c **受击增程**：只给带机群的 E 族舰级，且倍率 ≤ 4（= +400%）
-      if (ship.droneRangeMulOnHit !== undefined) {
+      // ⑤c **受击增程**：只给带机群的 E 族舰级，且倍率 ≤ 4（= +400%）。
+      // 2026-09-16 起这两条改走**挂载件**（船长：「将D族和E族的射程增加也迁成挂载件」）——
+      // 这里读"挂载件解析后的值"（旧字段仍作兼容回退 ⇒ 两代写法都能过体检）。
+      const mountRes = resolveFoeMounts(ship.mounts)
+      const droneOnHit = mountRes.foeDroneRangeMulOnHit ?? ship.droneRangeMulOnHit
+      const gunOnHit = mountRes.foeGunRangeMulOnHit ?? ship.gunRangeMulOnHit
+      if (droneOnHit !== undefined) {
         check(
           ship.family === 'E' && hasDrones,
-          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族${hasDrones ? '' : '、无机群'}）写了受击增程倍率——` +
+          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族${hasDrones ? '' : '、无机群'}）挂了机群受击增程——` +
             `本机制目前只允许**带机群的 E 族舰级**（船长 2026-09-11 E 族专属裁定）`,
         )
         check(
-          ship.droneRangeMulOnHit > 1 && ship.droneRangeMulOnHit <= DRONE_RANGE_ON_HIT_CAP,
-          `机群与防空契约：舰级「${ship.name}」受击增程倍率 ${ship.droneRangeMulOnHit} 越界（须 >1 且 ≤ ${DRONE_RANGE_ON_HIT_CAP}）`,
+          droneOnHit > 1 && droneOnHit <= DRONE_RANGE_ON_HIT_CAP,
+          `机群与防空契约：舰级「${ship.name}」受击增程倍率 ${droneOnHit} 越界（须 >1 且 ≤ ${DRONE_RANGE_ON_HIT_CAP}）`,
         )
         onHitShips++
       }
       // ⑤c-2 **炮台受击增程**（2026-09-12 船长：「给 D 族静滞卫舰加入类似 E 族挨打加炮台射程的效果，
       //   不过仅影响所有静滞卫舰。挨打后射程增加 50%」）：只允许 D 族「静滞卫舰」、倍率 ≤ 2；
       //   且该舰级**必须真出现在某张卡的编成里**（否则是死字段，玩家永远遇不到）
-      if (ship.gunRangeMulOnHit !== undefined) {
+      if (gunOnHit !== undefined) {
         check(
           ship.family === 'D' && ship.name === '静滞卫舰',
-          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族）写了炮台受击增程倍率——` +
+          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族）挂了炮台受击增程——` +
             `本机制目前只允许 **D 族「静滞卫舰」**（船长 2026-09-12 指名）`,
         )
         check(
-          ship.gunRangeMulOnHit > 1 && ship.gunRangeMulOnHit <= GUN_RANGE_ON_HIT_CAP,
-          `机群与防空契约：舰级「${ship.name}」炮台受击增程倍率 ${ship.gunRangeMulOnHit} 越界` +
+          gunOnHit > 1 && gunOnHit <= GUN_RANGE_ON_HIT_CAP,
+          `机群与防空契约：舰级「${ship.name}」炮台受击增程倍率 ${gunOnHit} 越界` +
             `（须 >1 且 ≤ ${GUN_RANGE_ON_HIT_CAP}）`,
         )
         check(
           ANOMALIES_FLAVORED.some((a) => (a.ships ?? []).some((s) => s.ship.id === ship.id)),
-          `机群与防空契约：舰级「${ship.name}」写了炮台受击增程，但**没有任何卡使用该舰级**——玩家永远遇不到这个机制`,
+          `机群与防空契约：舰级「${ship.name}」挂了炮台受击增程，但**没有任何卡使用该舰级**——玩家永远遇不到这个机制`,
         )
         gunOnHitShips++
       }
@@ -2651,28 +2659,73 @@ for (const m of MODULES) {
           `${unmounted.length > 0 ? ' · **未上场**' : ' · 已上场'}）`,
       )
     }
-    /* ⑤g **C 族冲锋契约**（船长 2026-09-16：「**C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4**」；
-     *    四问后确认按**舰种档**读，不是"五条舰级依次"）。钉两件事：
-     *    ① 族内**每条舰级一律具冲锋资格**（`foeCanCharge: true`）——防"全族"漏掉某一条；
-     *    ② 倍率**必须等于按档阶梯** `ALIEN_CHARGE_MUL_BY_TIER`（T1 1.5 · T2 2 · T3 2.5 · T4 3 · T5 4）。
-     *    ⚠ 冲锋倍率**只在"在冲"期间生效**（触发 = 够不着 或 距离 > 期望交距 + 1,000；解除 = 自身炮台
-     *      命中我方 或 压到期望交距，随后 10 秒冷却，见 `combat.updateFoeCharge`），不是常驻提速。 */
+    /* ⑤g **敌方挂载件契约**（2026-09-16 船长三句：「**能否将冲锋设置成类似舰船装备的挂载物？这样只要给敌人
+     *    装配就行了**」＋「**除了C族，将D族和E族的射程增加也迁成挂载件**」＋ A 族洞内海盗
+     *    「**冲锋倍率为1.6，冷却30秒**」）。钉五件事：
+     *    ① **C 族**：全族每条舰级的冲锋件倍率 = 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`、冷却 10 秒；
+     *    ② **A 族**：**洞内三张 A 族卡的每条编成条目**必须挂海盗冲锋件，参数 = **×1.6 / 30 秒**；
+     *    ③ **洞外不许挂冲锋件**——A 族那三条舰级洞外（低安遭遇 / 悬赏）也在用，
+     *       挂舰级就会连洞外一起冲（这正是船长选"条目级挂载"的原因）；
+     *    ④ 挂载件 id 必须都在 `FOE_MOUNTS` 里（写错 id = 红灯，引擎侧不生效）；
+     *    ⑤ D/E 的增程件归属沿用原口径（D 只静滞卫舰 · E 只带机群的三舰）。 */
     {
-      const aliens = FOE_SHIPS.filter((s) => s.family === 'C')
       const bad: string[] = []
+      const wantPirate = FOE_MOUNTS[FOE_MOUNT_IDS.chargePirate].charge!
+      // ① C 族按档
+      const aliens = FOE_SHIPS.filter((s) => s.family === 'C')
       for (const s of aliens) {
-        if (s.foeCanCharge !== true) bad.push(`${s.name}（${s.id}）未挂冲锋资格`)
+        const r = resolveFoeMounts(s.mounts)
         const want = ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier]
-        if (want === undefined)
-          bad.push(`${s.name}（${s.id}）的档位 T${s.hullClassTier} 在按档表里没有倍率`)
-        else if (s.foeChargeMul !== want)
-          bad.push(`${s.name}（${s.id}）倍率 ${s.foeChargeMul ?? '未写'} ≠ 按档 ${want}（T${s.hullClassTier}）`)
+        if (r.foeCanCharge !== true) bad.push(`${s.name}（${s.id}）未挂冲锋件`)
+        else if (want === undefined) bad.push(`${s.name}（${s.id}）的档位 T${s.hullClassTier} 在按档表里没有倍率`)
+        else if (r.foeChargeMul !== want)
+          bad.push(`${s.name}（${s.id}）冲锋件倍率 ${r.foeChargeMul ?? '未写'} ≠ 按档 ${want}（T${s.hullClassTier}）`)
+        else if (r.foeChargeCooldownMs !== 10_000) bad.push(`${s.name}（${s.id}）冲锋冷却 ${r.foeChargeCooldownMs} ≠ 10 秒`)
       }
-      check(bad.length === 0, `C 族冲锋契约：全族按档逐条对齐——${bad.join(' · ')}`)
+      // ② A 族洞内三卡（条目级）：必须 = 海盗件
+      const whPirateCards = ['wh-pirate-scout', 'wh-pirate-hunt', 'wh-pirate-warband']
+      for (const id of whPirateCards) {
+        const card = ANOMALIES_FLAVORED.find((a) => a.id === id)
+        if (!card) {
+          bad.push(`洞内 A 族卡 ${id} 不在目录里`)
+          continue
+        }
+        const slots = card.ships ?? []
+        if (slots.length === 0) bad.push(`洞内 A 族卡 ${id} 没有编成条目`)
+        for (const sl of slots) {
+          const r = resolveFoeMounts(sl.mounts)
+          if (r.foeCanCharge !== true || r.foeChargeMul !== wantPirate.mul || r.foeChargeCooldownMs !== wantPirate.cooldownMs) {
+            bad.push(`${id} 的 ${sl.ship.name} 条目挂载 ≠ 海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）`)
+          }
+        }
+      }
+      // ③ 洞外不许挂冲锋件（除 C 族舰级、洞内三张 A 族卡条目）
+      const whSet = new Set(whPirateCards)
+      for (const a of ANOMALIES_FLAVORED) {
+        if (whSet.has(a.id)) continue
+        for (const sl of a.ships ?? []) {
+          const charge = resolveFoeMounts(sl.mounts).foeChargeMul
+          if (charge !== undefined && sl.ship.family !== 'C') {
+            bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了冲锋件——冲锋只允许 C 族舰级与洞内三张 A 族卡`)
+          }
+        }
+      }
+      // ④ 挂载件 id 全部可解析（舰级 + 条目两处都查）
+      const unknown: string[] = []
+      for (const s of FOE_SHIPS) {
+        for (const u of resolveFoeMounts(s.mounts).unknown) unknown.push(`${s.id} → ${u}`)
+      }
+      for (const a of ANOMALIES_FLAVORED) {
+        for (const sl of a.ships ?? []) {
+          for (const u of resolveFoeMounts(sl.mounts).unknown) unknown.push(`${a.id}/${sl.ship.id} → ${u}`)
+        }
+      }
+      if (unknown.length > 0) bad.push(`未知挂载件 id：${unknown.join(' · ')}`)
+      check(bad.length === 0, `敌方挂载件契约：${bad.join(' · ')}`)
       console.log(
-        `· C 族冲锋契约：${aliens.length} 条舰级**全具冲锋** · 按档倍率 ` +
-          aliens.map((s) => `${s.name} T${s.hullClassTier}×${s.foeChargeMul}`).join('　') +
-          `（船长 2026-09-16「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」）`,
+        `· 敌方挂载件契约：${Object.keys(FOE_MOUNTS).length} 件（冲锋 5 · 机群增程 1 · 炮台增程 1）· ` +
+          `C 族 ${aliens.length} 条按档挂件（${aliens.map((s) => `${s.name} T${s.hullClassTier}×${resolveFoeMounts(s.mounts).foeChargeMul}`).join('　')}）· ` +
+          `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件`,
       )
     }
     console.log(
