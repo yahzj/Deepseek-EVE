@@ -610,6 +610,11 @@ export const SHIPS: readonly ShipDef[] = [
     droneDmgBonus: 0.10, // 机舱 80（同级 50）⇒ 机群是它的次要输出（介于梭鱼 0.08 与王鲭 0.12）
     /** **主效果**：虫洞扫码范围 +1 圈——对编队**求和**（多艘可叠加），入洞与深入下层都生效 */
     wormholeScanRadiusBonus: 1,
+    // **侦察舰特性**（船长 2026-09-16：「侦查舰添加特性，隐秘行动装置所需CPU降低50%，且移除推进器失效惩罚」）：
+    //   ① 隐秘行动装置 CPU **×0.5 向上取整**（MK2 55 → **28** · MK3 80 → 40）；
+    //   ② 装推进器族也**照常隐身**（旧口径「有推进器即解除隐身」对它作废）。
+    stealthCpuMul: 0.5,
+    stealthIgnoresPropulsion: true,
     shieldHp: 300,
     shieldResist: { kinetic: 0.25 }, // 协会通用口径（不占掠食者线签名——它靠机动与视野吃饭）
     armorHp: 145,
@@ -1267,6 +1272,10 @@ export const SHIPS: readonly ShipDef[] = [
     role: 'armed',
     subClass: '侦察舰',
     // 子分类「侦察舰」（船长 2026-09-13）：**回避 +35% · 命中 +0.06**（真吃战斗）· **虫洞扫码 +1 圈（编队即生效、可叠加）** · 信号 −35% · 锁定 +25%（纯展示，叙事用）｜ 货舱 −30% · 甲/壳血占比 −25%
+    // **侦察舰特性**（船长 2026-09-16）：隐秘行动装置 CPU **×0.5 向上取整**（55 → **28** · 80 → 40）＋
+    //   **免推进器失效**（装推进器族也照常隐身）——与鹦鹉螺级测绘巡洋舰同一条特性（数据字段驱动）。
+    stealthCpuMul: 0.5,
+    stealthIgnoresPropulsion: true,
     slots: { high: 3, mid: 4, low: 1 },
     tier: 1,
     cargoM3: 490,

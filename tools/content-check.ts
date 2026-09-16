@@ -1713,7 +1713,48 @@ for (const m of MODULES) {
   }
   console.log(
     `· 隐秘行动装置契约：${SPEC.map((s) => `${byId.get(s.id)?.name} ${s.ms / 1000} 秒 · CPU ${s.cpu} · ${s.price / 10_000} 万（${s.rarity} 档 ${s.tier}）`).join(' · ')}` +
-      ` · 带推进器即解除（引擎口径，见 core 用例）`,
+      ` · 带推进器即解除（引擎口径，见 core 用例；**侦察舰特性例外**见下一条契约）`,
+  )
+}
+
+/* ── 侦察舰特性契约（船长 2026-09-16：「**侦查舰添加特性，隐秘行动装置所需CPU降低50%，且移除推进器
+ *   失效惩罚**」；口径四答：只有「侦察舰」子分类那两艘 · CPU **向上取整**（55→28 · 80→40）·
+ *   **完全移除**推进器惩罚 · 特性栏与装配页都显示）──
+ * 本条钉三件事（数值是船长的数 ⇒ 改一处即红）：
+ *   ① **恰好两艘**（鹦鹉螺级测绘巡洋舰 / 幽影侦察舰）带这两个字段，且值 = 0.5 / true；
+ *   ② **别的船一件都不许带**（防"顺手给某艘船也开个口子"）；
+ *   ③ 装置**限制说明**的措辞 =「与任何类型推进器一起使用时失效」（船长指定原话）。
+ * ⚠ 引擎侧口径（折算单点 `equipment.cpuUseOf` · 推进器豁免在 `combat.createPlayerSpec`）
+ *   由 core 用例钉住：`tests/stealth-device.test.ts` 的「侦察舰特性」组。 */
+{
+  const SCOUTS = ['sh-nautilus', 'sh-wh-g-frigate'] as const
+  const byId = new Map(SHIPS.map((s) => [s.id, s]))
+  for (const id of SCOUTS) {
+    const s = byId.get(id)
+    check(s !== undefined, `侦察舰缺件：${id}`)
+    if (!s) continue
+    check(s.subClass === '侦察舰', `${id} 的子分类应为「侦察舰」，实际 ${s.subClass ?? '(无)'}`)
+    check(s.stealthCpuMul === 0.5, `${id} 的隐秘装置 CPU 倍率应为 0.5（船长给定），实际 ${s.stealthCpuMul}`)
+    check(s.stealthIgnoresPropulsion === true, `${id} 应带「免推进器失效」特性（船长给定）`)
+  }
+  const extra = SHIPS.filter(
+    (s) => !(SCOUTS as readonly string[]).includes(s.id) && (s.stealthCpuMul !== undefined || s.stealthIgnoresPropulsion === true),
+  )
+  check(
+    extra.length === 0,
+    `只有「侦察舰」那两艘能带该特性，实际多出：${extra.map((s) => `${s.name}(${s.id})`).join(' · ')}`,
+  )
+  const LIMIT = '与任何类型推进器一起使用时失效'
+  for (const id of ['mod-stealth-2', 'mod-stealth-3']) {
+    const m = MODULES.find((x) => x.id === id)
+    check(
+      (m?.description ?? '').includes(LIMIT),
+      `${id} 的限制说明应含「${LIMIT}」（船长 2026-09-16 指定措辞）`,
+    )
+  }
+  console.log(
+    `· 侦察舰特性契约：${SCOUTS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 隐秘装置 CPU ×0.5（向上取整：55→28 · 80→40）· 装推进器亦可隐身 · ` +
+      `其余 ${SHIPS.length - SCOUTS.length} 艘船一律不带（实测多带 0 件）· 装置限制说明已改写`,
   )
 }
 

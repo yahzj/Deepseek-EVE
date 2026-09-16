@@ -23,6 +23,7 @@ import {
   countModule,
   countWare,
   cpuBudgetOf,
+  cpuUseOf,
   createPlayerSpec,
   droneCpuUsed,
   droneLoadM3,
@@ -345,7 +346,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const bayModules: ModuleDef[] = engine.allModules.filter((m) => countModule(state, m.id) > 0)
   // CPU 占用（全位合计 + 无人机舱清单预占——2026-09-08 无人机舱大改：装入即占预算）
   const droneLoadOf = state.fleet[effectiveTarget]?.droneLoad
-  const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx) + droneCpuUsed(droneLoadOf, engine.ctx) : 0
+  const cpuUsed = fitted ? fittedCpuUsed(fitted, engine.ctx, shipDef) + droneCpuUsed(droneLoadOf, engine.ctx) : 0
   // 装配台左右分栏（船长 2026-09-05）：左=船参数，右=装备按槽位图标；装备库列表移到物品页，不再在此显示。
 
   // ── 舰船形象区自适应（船长 2026-09-09：窗口缩窄优先缩小舰影，图缩到下限仍不够才隐藏间接列；
@@ -514,7 +515,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       cur: curSpec,
       next: createPlayerSpec(simState, engine.ctx, effectiveTarget),
       // 2026-09-08：换装对比 CPU 口径同含无人机舱清单占用（清单不变，只反映装配变化）
-      cpuNext: fittedCpuUsed(simFitted, engine.ctx) + droneCpuUsed(fleet.droneLoad, engine.ctx),
+      cpuNext: fittedCpuUsed(simFitted, engine.ctx, shipDef) + droneCpuUsed(fleet.droneLoad, engine.ctx),
       // 2026-09-11 协处理器：**装后预算**（装的是协处理器时会变大）——"CPU 剩"两栏各用自己的预算
       cpuTotalNext: cpuBudgetOf(state, engine.ctx, effectiveTarget, simFitted),
     }
@@ -564,9 +565,25 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     setPickBay(null)
   }
 
+  /**
+   * **本船特性对隐秘行动装置的标注**（船长 2026-09-16：「侦查舰添加特性，隐秘行动装置所需CPU降低50%，
+   * 且移除推进器失效惩罚」＋四答「甲：特性栏 ＋ 装配页标注」）——只在**本船确有该特性**且**这件是隐秘装置**
+   * 时返回一段尾巴，写清"省了多少"与"推进器不再失效"；其余件、其余船返回空串（一个字不加）。
+   * 数值走 core 的 `cpuUseOf`（装配校验同一函数）⇒ 界面写的数就是引擎算的数。
+   */
+  function stealthTraitNote(m: ModuleDef): string {
+    if (m.stealthMs === undefined || !shipDef) return ''
+    const bits: string[] = []
+    if (shipDef.stealthCpuMul !== undefined && shipDef.stealthCpuMul !== 1) {
+      bits.push(`本船特性：CPU ${cpuUseOf(m, shipDef)}（原 ${m.cpuUse ?? 0}）`)
+    }
+    if (shipDef.stealthIgnoresPropulsion === true) bits.push('装推进器也能保持隐身')
+    return bits.length > 0 ? ` ← ${bits.join(' · ')}` : ''
+  }
+
   /** 空位候选下拉文案：V18.1 收敛件标注"第 N 件衰减"（避免玩家误以为全效线性叠加） */
   function fitOptionLabel(m: ModuleDef): string {
-    const base = `${m.name}（×${countModule(state, m.id)} · ${moduleShortEffect(m)}）`
+    const base = `${m.name}（×${countModule(state, m.id)} · ${moduleShortEffect(m)}）${stealthTraitNote(m)}`
     if (!fitted) return base
     const st = stackingOf(m)
     if (st.group === 'flat') return base
@@ -837,7 +854,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       key={`${rack}-${i}`}
                       className="app-fit-slot-icon is-filled"
                       onClick={() => openPick(rack, i)}
-                      title={`${fittedDef.name} · ${moduleShortEffect(fittedDef)} · 第${i + 1}位（点击更换）`}
+                      title={`${fittedDef.name} · ${moduleShortEffect(fittedDef)}${stealthTraitNote(fittedDef)} · 第${i + 1}位（点击更换）`}
                     >
                       <span className="app-fit-slot-icon-glyph">
                         <Glyph name={fittedDef.slot} size={22} color={tone} />
@@ -1212,7 +1229,7 @@ function DroneBaySection({
   const [open, setOpen] = useState(false)
   const [selId, setSelId] = useState<string | null>(null)
   const [selN, setSelN] = useState(1)
-  const fittedCpu = fitted ? fittedCpuUsed(fitted, ctx) : 0
+  const fittedCpu = fitted ? fittedCpuUsed(fitted, ctx, fleetDefOf(state, ctx, target)) : 0
   // 2026-09-11 协处理器：预算含扩容（与 core `adjustDroneLoad` 同源，界面不会"能装/装不上"打架）
   const cpuTotal = cpuBudgetOf(state, ctx, target)
   const cpuLeftRaw = cpuTotal - fittedCpu - droneCpu // 显示用：允许为负（超载时让玩家看见差多少）

@@ -224,6 +224,8 @@ export {
   setAmmoTier, // 2026-09-09 弹药 MK2：出战前选档（装配页按弹族设基础/MK2）
   fittedBonuses,
   fittedCpuUsed,
+  // 单件 CPU 占用（含本船特性折算：侦察舰的隐秘行动装置 ×0.5 向上取整）——界面与校验同一把尺
+  cpuUseOf,
   // 2026-09-08 无人机舱大改：装载清单 CPU/体积（装配页预算条、装配校验、战斗装载同源）
   droneCpuUsed,
   droneLoadM3,
