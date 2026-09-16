@@ -703,6 +703,10 @@ export {
   repairLedgersOf,
   shieldChargeLedgersOf,
   refundRepairKitsAll,
+  // 弹药取档判定（船长 2026-09-16「甲」新口径：同族取"能装得最多"的那一档）——
+  // 引擎开战预载与装配页弹药档位**共用**（界面如实显示"本场会用哪一档、够不够"）
+  resolveAmmoTier,
+  ammoLoadTotals,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 

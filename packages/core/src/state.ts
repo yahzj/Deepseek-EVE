@@ -118,7 +118,9 @@ export interface FleetShipState {
    *  战斗只放飞此清单（不再自动从仓库贪心）；CPU 预占计入船体预算；旧档缺省 = 空 = 无无人机 */
   droneLoad?: Record<string, number>
   /** 弹药档位偏好（2026-09-09 弹药 MK2）：damageType -> 弹 itemId（如 'ammo-kinetic-2'）；
-   *  缺省 = 基础弹。开战预载按此装载（库存不足整族回退基础 + 日志）；连打/离线同源消耗 */
+   *  缺省 = 基础弹。**取档口径 2026-09-16 船长改判**：开战按"同族取能装得最多的一档"装载
+   *  （装不满也照装；旧口径「库存不足整族回退基础弹」已作废，见 `combat.resolveAmmoTier`）；
+   *  连打/离线同源消耗 */
   ammoPref?: Partial<Record<DamageType, string>>
 }
 
