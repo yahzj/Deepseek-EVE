@@ -2001,6 +2001,7 @@ function resolveReinforcements(
     seedUnit(b, spec, {
       enterReload: true,
       arrivedAtMs: state.gameMs + arriveIdx * BATTLE_ARRIVAL_STAGGER_MS,
+      ...(b.wormhole ? { foePhaseMs: arriveIdx * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
     })
     arriveIdx += 1
     arrived.push(spec)
@@ -2956,6 +2957,20 @@ export const BATTLE_ARRIVAL_FLY_MS = 950
 export const BATTLE_ARRIVAL_STAGGER_MS = 60
 
 /**
+ * **洞内敌方首轮齐射的逐舰相位错开（ms/条）**（船长 2026-09-16：「错开首轮齐射」）。
+ *
+ * 为什么需要（同日实测）：洞内敌舰装填一致、开场即满弹、且入场窗口把首发全推到同一刻
+ * ⇒ **整卡首轮同时落地**：层 1 一张卡的同步首轮 = 我方单舰（长尾鲨满配 648 血）的 **99%~137%**，
+ * 层 2 E 族单体一轮即 103% ⇒ 配合族定选靶就是"一击秒掉一艘"。
+ *
+ * 口径：同批入场的第 `idx` 条敌舰，首发再推后 `idx × 本值`；此后**各自保持相位**
+ * （装填相等 ⇒ 相位差永久保留）⇒ 一轮齐射被摊成 N 拍，**总 DPS 与期望伤害不变**。
+ * **确定性、不吃随机数**；**只作用于洞内战斗**（首波由 `stampFoeArrivalFx`、波次转场/增援由 `seedUnit`
+ * 的 `foePhaseMs` 带入；洞外两条路径都不传 ⇒ **洞外读数逐字不变**）。
+ */
+export const WORMHOLE_FOE_VOLLEY_STAGGER_MS = 900
+
+/**
  * **入场播种**（船长 2026-09-14：「①乙，初始不可开火，且对洞内洞外都生效」「③补。并且参考①动画没结束不开火」）。
  *
  * 只给**有入场动画**的单位写 `enteredAtMs`（洞内首波敌方跃迁入场 / 每一次波次转场与单波内增援）：
@@ -2967,10 +2982,12 @@ export const BATTLE_ARRIVAL_STAGGER_MS = 60
 function seedUnit(
   b: import('./state').BattleState,
   spec: UnitSpec,
-  opts: { enterReload?: boolean; arrivedAtMs?: number } = {},
+  opts: { enterReload?: boolean; arrivedAtMs?: number; foePhaseMs?: number } = {},
 ): void {
   if (b.units[spec.tag]) return
   const windowMs = opts.arrivedAtMs !== undefined ? BATTLE_ARRIVAL_FLY_MS : 0
+  /** 首轮相位错开（洞内专属；见 `WORMHOLE_FOE_VOLLEY_STAGGER_MS`）——洞外调用方一律不传 ⇒ 0 */
+  const phase = opts.foePhaseMs ?? 0
   b.units[spec.tag] = {
     tag: spec.tag,
     side: spec.side,
@@ -2978,8 +2995,8 @@ function seedUnit(
     hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
     hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
     weapons: opts.enterReload
-      ? spec.weapons.map((w) => Math.max(1, w.reloadMs, windowMs))
-      : spec.weapons.map(() => 0),
+      ? spec.weapons.map((w) => Math.max(1, w.reloadMs, windowMs) + phase)
+      : spec.weapons.map(() => phase),
     ...(opts.arrivedAtMs !== undefined ? { enteredAtMs: opts.arrivedAtMs } : {}),
   }
 }
@@ -2998,8 +3015,12 @@ export function stampFoeArrivalFx(b: import('./state').BattleState, nowMs = b.la
     const rt = b.units[tag]
     if (!rt) return
     rt.enteredAtMs = nowMs + idx * BATTLE_ARRIVAL_STAGGER_MS
-    // 首发也推到窗口之后（与 `seedUnit` 同一条判据：动画没演完不开火）
-    rt.weapons = rt.weapons.map((cd) => Math.max(cd, BATTLE_ARRIVAL_FLY_MS))
+    // 首发也推到窗口之后（与 `seedUnit` 同一条判据：动画没演完不开火）；
+    // 2026-09-16 船长「错开首轮齐射」：再按编成序各推 `idx × WORMHOLE_FOE_VOLLEY_STAGGER_MS`
+    // ⇒ 全敌不再同时落地（本函数**只被洞内调用**，洞外首波不盖 ⇒ 洞外读数不变）。
+    rt.weapons = rt.weapons.map(
+      (cd) => Math.max(cd, BATTLE_ARRIVAL_FLY_MS + idx * WORMHOLE_FOE_VOLLEY_STAGGER_MS),
+    )
   })
 }
 
@@ -4430,10 +4451,20 @@ export function advanceBattleFor(
       //   按全局时钟算 ⇒ 窗口 = **追平之后实实在在的 950ms**（实测：14800 入场 → 15900 才掉第一滴血）。
       if (waitedGap) {
         curFoes.forEach((f, i) =>
-          seedUnit(battle, f, { enterReload: true, arrivedAtMs: state.gameMs + i * BATTLE_ARRIVAL_STAGGER_MS }),
+          seedUnit(battle, f, {
+            enterReload: true,
+            arrivedAtMs: state.gameMs + i * BATTLE_ARRIVAL_STAGGER_MS,
+            // 洞内：同一波新入场的敌舰也按序错开首轮（见 `WORMHOLE_FOE_VOLLEY_STAGGER_MS`）
+            ...(battle.wormhole ? { foePhaseMs: i * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
+          }),
         )
       } else {
-        curFoes.forEach((f) => seedUnit(battle, f, { enterReload: true }))
+        curFoes.forEach((f, i) =>
+          seedUnit(battle, f, {
+            enterReload: true,
+            ...(battle.wormhole ? { foePhaseMs: i * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
+          }),
+        )
       }
       // 近防炮调度随波重建（pdCd 与敌编队同序）
       if (battle.pdCd && battle.dronePools) {
@@ -4780,10 +4811,17 @@ export function foeGunPowerFactorOf(
 }
 
 /** **炮台受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）。
+ *
+ * ⚠ **2026-09-16 船长加距离门**：「**将射程增加效果改为，如果敌人在射程外攻击时才触发**」
+ * ⇒ 除了"命中本体"，还要求**这一发来自它当前全部炮台射程之外**（`b.distanceM > max(自身各炮台远界)`）。
+ * 语义：这条机制本意是惩罚"在它够不着的距离外放风筝"，近身对轰**不该**解锁增程。
+ * 洞内洞外同一处生效（船长同日裁「只改 D 炮台增程」⇒ E 族机群那条 ×4 **保持原样**）。
  *  @returns 是否本次**首次**触发（首次才推画面提示） */
 function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleState): boolean {
   const mul = rt.foeGunRangeMulOnHit
   if (mul === undefined || mul <= 1) return false
+  const reach = rt.weapons.reduce((m, w) => Math.max(m, foeGunMaxRangeOf(b, rt, w)), 0)
+  if (!(b.distanceM > reach)) return false // 近身命中不解锁（船长 2026-09-16）
   const cur = b.foeGunRangeBuff
   if (cur !== undefined && cur >= mul) return false // 该型舰共享 ⇒ 不重复盖章、不重复提示
   b.foeGunRangeBuff = mul

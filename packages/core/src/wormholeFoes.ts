@@ -120,6 +120,37 @@ export const WORMHOLE_RUINS_THREAT_MUL = 1.3
  */
 export const WORMHOLE_FOE_BASE_STRENGTH_MUL = 10
 
+/**
+ * **洞内敌卡火力总系数**（船长 2026-09-16：「洞内全族 ×0.7 降火」）。
+ *
+ * 为什么加这一道（同日核准的读数）：按卡归一后洞内敌卡的"每威胁 DPS"落在 **0.66~3.09**，
+ * 而洞外主力卡是 **0.99~2.97** ⇒ 洞内整体偏高一头；折算成**有效 DPS**（吃到命中/距离折减后）
+ * 更明显：开场**全敌同装填** ⇒ 一张卡的**同步首轮** = 我方单舰总血的 **99%~137%**（层 2 E 族单体即 103%）。
+ * ⇒ 本系数把洞内火力整体压 30%，使"每面板威胁 DPS"回到洞外带；**血量不动**（"更耐打、不更疼"）。
+ *
+ * ⚠ **D 族（守墓）例外**：见下面两条专用系数。
+ */
+export const WORMHOLE_FOE_DMG_MUL = 0.7
+
+/**
+ * **D 族（守墓）洞内火力系数**（船长 2026-09-16：「不削弱 D 族船…（输出）恢复成和洞外差不多的输出比」
+ * ⇒ 相对**现值** ×1.45，而不是吃 ×0.7）。
+ *
+ * 依据（同日读数）：洞内 D 的 DPS/威胁 = 0.72/0.66/0.73，而洞外 D 卡是 **0.99~1.49**（幽灵舰信号 0.57 起）
+ * ⇒ 抬到面板威胁 ×≈1.05（层 1 65→94 · 层 2 66→96 · 守卫 88→128）后落回洞外带。
+ */
+export const WORMHOLE_GRAVE_DMG_MUL = 1.45
+
+/**
+ * **D 族（守墓）洞内血量系数**（同批：「并适当降低血量（其他族 1 层血量和洞外血量比例作为参考）」）。
+ *
+ * 依据：其他族「洞内层 1 血 ÷ 该卡自然血」= A 4.79 / C 1.86 / E 3.53 / G 7.46 ⇒ 平均 **4.41×**；
+ * 把它用在 D 的洞外血量（幽灵舰信号 555）上 ⇒ 层 1 ≈ **2,448**，即现值 3,490 的 **×0.7**；
+ * 层 2 / 守卫同法（保留层间梯度）⇒ 3,157 / 4,188。这样 D 的「血/火力比」从洞内的 54~68
+ * 降到 ≈ 26~33，落进**洞外 D 带 21.8~45.3**。
+ */
+export const WORMHOLE_GRAVE_HP_MUL = 0.7
+
 /** 某张敌卡的**自然总血**（按编成条目的舰级绝对值 × 条数，不含派生缩放） */
 export function wormholeNaturalHp(base: AnomalyDef): number {
   return (base.ships ?? []).reduce(
@@ -525,8 +556,15 @@ export function wormholeAnomalyOf(
   // **按卡归一**：把每张卡的总血**压到同一个预算**上（各卡的"坦克/脆皮"性格由原编成的血比保留），
   // 同时**同比例**缩放火力 ⇒ 卡间强度不再悬殊（"威胁 = 战力标尺"由构造保证）。
   // 2026-09-15：血量与火力**拆成两个系数**——血再乘一道**分层修正**（浅/中/深），火力只吃血预算。
-  const scaleDmg = budget / natural
-  const scaleHp = scaleDmg * (opts?.hpScaleMul ?? 1)
+  // 2026-09-16（船长三裁 · 见 docs/design/wh-dmg-retune-20260916.md）：
+  //   ① 全族火力 ×`WORMHOLE_FOE_DMG_MUL`（0.7）；
+  //   ② **D 族（守墓）例外**：不吃 0.7，而是 ×`WORMHOLE_GRAVE_DMG_MUL`（1.45，抬回洞外 D 的输出比）；
+  //   ③ 同族的血量 ×`WORMHOLE_GRAVE_HP_MUL`（0.7 ⇒ 层 1 2,443 ≈ 洞外 D 卡血 × 其他族平均倍率 4.41）。
+  const isGrave = fam === 'D'
+  const dmgK = isGrave ? WORMHOLE_GRAVE_DMG_MUL : WORMHOLE_FOE_DMG_MUL
+  const hpK = isGrave ? WORMHOLE_GRAVE_HP_MUL : 1
+  const scaleDmg = (budget / natural) * dmgK
+  const scaleHp = (budget / natural) * hpK * (opts?.hpScaleMul ?? 1)
   const nWaves = Math.max(1, Math.floor(waves))
   const per = 1 / nWaves
   const slots = base.ships ?? []

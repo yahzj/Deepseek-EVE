@@ -90,6 +90,70 @@ function closeCard(shipId: string, hpMul = 6): AnomalyDef {
   };
 }
 
+/**
+ * **合成卡 · 短射程静滞卫舰**（2026-09-16 新距离门用）：
+ * 真舰级射程 12,000m —— 我方最长武器（导弹架 MK2 11,760m）也够不着 ⇒ **永远满足不了"从它射程外打它"**，
+ * 触发链无法用真卡验证。这里把炮台压到 **3,000m**（其余字段照抄真舰级），
+ * 于是"近身对轰"（<3,000）与"射程外点名"（>3,000）两种情形都能真跑出来。
+ */
+function shortRangeCard(desireRangeM: number): AnomalyDef {
+  const ship = { ...shipDef("foe-d-stasis"), rangeMinM: 1, rangeMaxM: 3_000 };
+  return {
+    ...VAULT,
+    id: "ano-test-gun-range-short",
+    name: "炮台增程试验卡（短射程）",
+    threat: 60,
+    ships: [{ ship, count: 1, hpMul: 6, desireRangeM }],
+    waves: [{ units: 1, hpShare: 1 }],
+  };
+}
+
+/** 跑一场合成短射程卡：`desireM` 给玩家侧期望交距（null = 走默认远档） */
+function runShort(
+  desireM: number | null,
+  advMs = 60_000,
+): { state: GameState; battle: BattleState; ctx: SimContext } {
+  const card = shortRangeCard(1500);
+  const ctx = ctxWith(card);
+  const state = makeState();
+  const battle = startBattleFor(state, ctx, state.shipId, card.id, 0, desireM)!;
+  state.expedition.active = true;
+  state.expedition.phase = "battle";
+  state.expedition.anomalyId = card.id;
+  state.expedition.battle = battle;
+  state.gameMs = advMs;
+  advanceBattleFor(state, ctx, battle, state.shipId, card.id);
+  return { state, battle, ctx };
+}
+
+/**
+ * **合成卡 · 超远射程静滞卫舰**（负向用）：把炮台拉到 **14,000m** ——
+ * 我方任何武器的命中都发生在**它射程之内** ⇒ 新距离门下**永不触发**（这条正是"近身对轰不解锁"的判据）。
+ * 为什么不用"短射程 + 玩家期望 1,500m"做负向：开战距离是 6,314m、双方要飞一段才进 1,500m，
+ * 途中我方在 3,000m 外的命中**照样**满足"从它射程外打它" ⇒ 那条构造测不出否定面。
+ */
+function runLongGun(advMs = 60_000): { state: GameState; battle: BattleState } {
+  const ship = { ...shipDef("foe-d-stasis"), rangeMinM: 1, rangeMaxM: 14_000 };
+  const card: AnomalyDef = {
+    ...VAULT,
+    id: "ano-test-gun-range-long",
+    name: "炮台增程试验卡（超远射程）",
+    threat: 60,
+    ships: [{ ship, count: 1, hpMul: 6, desireRangeM: 1500 }],
+    waves: [{ units: 1, hpShare: 1 }],
+  };
+  const ctx = ctxWith(card);
+  const state = makeState();
+  const battle = startBattleFor(state, ctx, state.shipId, card.id, 0, null)!;
+  state.expedition.active = true;
+  state.expedition.phase = "battle";
+  state.expedition.anomalyId = card.id;
+  state.expedition.battle = battle;
+  state.gameMs = advMs;
+  advanceBattleFor(state, ctx, battle, state.shipId, card.id);
+  return { state, battle };
+}
+
 describe("敌方炮台受击增程（D 族静滞卫舰 · 仅该型舰）", () => {
   it("建档：静滞卫舰带倍率 1.5，同场的守墓长舰不带（真卡穹顶守卫 96）", () => {
     const units = createFoeSpecs(VAULT, bal);
@@ -146,9 +210,9 @@ describe("敌方炮台受击增程（D 族静滞卫舰 · 仅该型舰）", () =
     expect(foeGunPowerFactorOf(battle, stasis, w, 18_000)).toBeCloseTo(0.5, 12);
   });
 
-  it("触发（真引擎）：打中静滞卫舰本体 ⇒ 该型舰射程 ×1.5 + 一条战斗画面提示；只触发一次", () => {
-    const card = closeCard("foe-d-stasis");
-    const { state, battle } = runBattle(card);
+  it("触发（真引擎 · 2026-09-16 新距离门）：**从它射程外**命中 ⇒ 该型舰射程 ×1.5 + 一条战斗画面提示；只触发一次", () => {
+    // 短射程卡（3,000m）· 玩家期望走默认远档（≈4,732m）⇒ 距离在它射程之外 ⇒ 命中即触发
+    const { state, battle } = runShort(null);
     expect(battle.foeGunRangeBuff).toBe(1.5);
     const noticeText = (b: BattleState): string[] =>
       (b.notices ?? []).map((n) => n.text).filter((t) => t.includes("静滞阵列解除限幅"));
@@ -156,8 +220,15 @@ describe("敌方炮台受击增程（D 族静滞卫舰 · 仅该型舰）", () =
     expect(noticeText(battle)[0]).toBe("静滞阵列解除限幅：静滞卫舰炮台射程 +50%");
     // 继续打：不重复盖章、不重复提示
     state.gameMs += 60_000;
+    const card = shortRangeCard(1500);
     advanceBattleFor(state, ctxWith(card), battle, state.shipId, card.id);
     expect(noticeText(state.expedition.battle!)).toHaveLength(1);
+  });
+
+  it("**负向（新门）**：命中永远发生在**它射程之内**（超远射程 14,000m）⇒ **不解锁**增程（船长 2026-09-16）", () => {
+    const { battle } = runLongGun();
+    expect(battle.foeGunRangeBuff).toBeUndefined();
+    expect((battle.notices ?? []).some((n) => n.text.includes("静滞阵列解除限幅"))).toBe(false);
   });
 
   it("负向：只有守墓长舰的卡（无该字段）跑满 60 秒 ⇒ 绝不触发", () => {
