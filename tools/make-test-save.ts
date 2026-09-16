@@ -84,6 +84,11 @@ import {
   addShipToFleet,
   rareWreckItemIdOf,
   RARE_WRECK_VOLUME_M3,
+  // 2026-09-16 `wh-logi`（后勤舰验收档）：新物品 id 常量 + 库存项的族/原型现算
+  WORMHOLE_ESSENCE_ITEM_ID,
+  WORMHOLE_LUXURY_ITEM_IDS,
+  wormholeArchetypeOf,
+  wormholeFamilyOfSeed,
 } from '@whale/core'
 import type { GameState } from '@whale/core'
 import { GALAXIES, ITEMS, MODULES, buildSimContext } from '@whale/data'
@@ -2167,6 +2172,204 @@ function injectWormholeIntercept(state: GameState): string[] {
   return notes
 }
 
+/**
+ * **虫洞 · 后勤舰验收档**（船长 2026-09-16：「给我准备一个存档」——承接同日两半特性）：
+ * ① 我方「后勤舰」（`subClass: '后勤舰'` = 亡军后勤舰）的维修装置**改修三层剩余比例最低的队友**；
+ * ② 敌方后勤舰的机制（本档**看不到**——船长定了"先不进卡"，新舰 `foe-g-remnant-tender` 是备用壳体；
+ *    想看它得先点名进哪张卡）。
+ *
+ * 现场（确定性摆位，同 seed 每次一样）：
+ * - **第 3 层**（这一档同时顺带验"层 3 起遗迹保底 + 遗迹出货柜 70%"）；
+ * - 编队 4 艘（入场封顶 4 · 总质量 16,000 以内）：主控 = **亡军后勤舰**（装 `mod-hullrep-1` 军用维修装置）
+ *   ＋ 长尾鲨①（装 `mod-hullrep-civ` ⇒ **对照**：非后勤舰只修自己）＋ 长尾鲨②（裸装）＋ 玳瑁（重装裸装）；
+ * - **四艘按不同残血进场**：后勤舰 0.95 / 长尾鲨① 0.80 / **长尾鲨② 0.50（最惨 ⇒ 后勤舰第一跳就修它）** /
+ *   玳瑁 0.90（`durability` 结构与 `armorPct` 装甲两个旋钮一起给，进场满值口径照真引擎算）；
+ * - **入口格 = 舰船信号**：进洞即交火 ⇒ 开打 5 秒后就能在战斗页看到维修脉冲（战报尾部还会报组件消耗）；
+ * - 同层另有：**遗迹**（打捞 ⇒ 70% 出货箱）· **矿脉**（采集）· **墓场**（打捞残骸）；
+ * - **货仓**：2 台谜质储存器（时序核心 = 回合 +10 · 打捞吊臂 = 多捞一堆，增益立刻可见）——撤离成功时会
+ *   按"1 台 = 1 枚"折成**虫洞谜质**（结算单会多一格）；
+ * - **仓库**：修理组件民用/军用各 40 · **贵重品货柜 ×2 + 军用备货柜 ×2 + 安全货柜 ×1**（撤离后到工业页连拆）·
+ *   虫洞谜质 ×3 与奢侈品三档各 5（物品页/市场页可见；奢侈品可买可卖）；
+ * - **扫描页**：预置 **2 处已发现的虫洞**（不同族）⇒ 卡片上能看「敌：{卡名}（{族}）· {主系}」与悬停三档构成。
+ *
+ * 试法（详见 `docs/test-saves/README.md` 同名条目）：
+ * 1. 进游戏（本档**人在洞里**，且停在"舰船信号"格）⇒ 星图 →「进入虫洞」→ 探索页；
+ * 2. 点「开战」（或直接走到该格）⇒ 看**后勤舰的维修脉冲**：长尾鲨②（最惨）每 5 秒回 10 点甲/结构；
+ *    对照组长尾鲨① 只修自己；战后战报尾部有「船体维修装置消耗 …」；
+ * 3. 打完去**遗迹**打捞 ⇒ 看"极高概率出货柜"；**矿脉**采集；**墓场**打捞；
+ * 4. **撤离** ⇒ 结算单里多一格「虫洞谜质 ×N」（2 台装置 ⇒ 2 枚）；
+ * 5. 回基地 → **工业页**：贵重品/军用/安全货柜连拆（看奢侈品整叠与 MK3 装备）；
+ * 6. 星图 →「扫描虫洞」：看两处库存卡片上的**敌情行**与悬停（三档火力构成）。
+ */
+function injectWormholeLogi(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  for (const k of [
+    'gunnery',
+    'fire-control',
+    'reload-drills',
+    'shield-operation',
+    'armor-tuning',
+    'vector-maneuvering',
+    'evasion-maneuvering',
+    'targeting-integration',
+  ]) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  /** 修理组件管够（预载**本舰货舱优先、仓库兜底** ⇒ 放仓库即可）· 弹药三型管够 */
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 40
+  /** 本批新货柜（拆解用）+ 新物品（看物品页/市场） */
+  for (const b of ['box-valuables', 'box-military']) state.warehouse.items[b] = (state.warehouse.items[b] ?? 0) + 2
+  state.warehouse.items['box-relic-a'] = (state.warehouse.items['box-relic-a'] ?? 0) + 1
+  state.warehouse.items[WORMHOLE_ESSENCE_ITEM_ID] = (state.warehouse.items[WORMHOLE_ESSENCE_ITEM_ID] ?? 0) + 3
+  for (const l of WORMHOLE_LUXURY_ITEM_IDS) state.warehouse.items[l] = (state.warehouse.items[l] ?? 0) + 5
+  notes.push('钱包 +30,000,000 信用点 · 协会声望 13 · 战斗系技能 Lv3 · 弹药三型 ×5000 · **修理组件民用/军用各 +40**')
+  notes.push('仓库：**贵重品货柜 ×2 · 军用备货柜 ×2 · 安全货柜 ×1**（撤离后工业页连拆）· 虫洞谜质 ×3 · 奢侈品三档各 ×5')
+
+  const ctx = buildSimContext()
+  /** 编队：主控 = 后勤舰（装军用维修装置）；僚舰 = 长尾鲨①（民用装置 = 对照）· 长尾鲨②（裸装）· 玳瑁（重装裸装） */
+  const plan: Array<{ shipId: string; name: string; fit: { high: string[]; mid: string[]; low: string[] }; durability: number; armorPct: number }> = [
+    {
+      shipId: 'sh-wh-g-destroyer',
+      name: '亡军后勤舰·主控（后勤特性 + 军用维修装置）',
+      fit: {
+        high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
+        mid: ['mod-hullrep-1', 'mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
+        low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+      },
+      durability: 0.95,
+      armorPct: 0.95,
+    },
+    {
+      shipId: 'sh-thresher',
+      name: '长尾鲨①·对照（民用维修装置 ⇒ 只修自己）',
+      fit: {
+        high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3'],
+        mid: ['mod-prop-2', 'mod-hullrep-civ', 'mod-shield-kin-2', 'mod-track-2'],
+        low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+      },
+      durability: 0.8,
+      armorPct: 0.8,
+    },
+    {
+      shipId: 'sh-thresher',
+      name: '长尾鲨②·最惨（裸装 ⇒ 只能被后勤舰修）',
+      fit: {
+        high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'],
+        mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+        low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+      },
+      durability: 0.5,
+      armorPct: 0.5,
+    },
+    {
+      shipId: 'sh-hawksbill',
+      name: '玳瑁·重装（裸装）',
+      fit: {
+        high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3'],
+        mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+        low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-armor-plate-2'],
+      },
+      durability: 0.9,
+      armorPct: 0.9,
+    },
+  ]
+  const uids: string[] = []
+  for (const p of plan) {
+    const uid = addShipToFleet(state, p.shipId)
+    const s = state.fleet[uid]!
+    s.customName = p.name
+    s.fitted = { high: [...p.fit.high], mid: [...p.fit.mid], low: [...p.fit.low] }
+    s.durability = p.durability
+    s.armorPct = p.armorPct
+    if (uids.length === 0) state.shipId = uid
+    uids.push(uid)
+  }
+  notes.push(
+    '编队（4 艘）：主控 **亡军后勤舰**（`subClass: 后勤舰` · 军用维修装置）＋ 长尾鲨①（民用装置 = 对照）＋ ' +
+      '长尾鲨②（**残血 50% ⇒ 最缺血**）＋ 玳瑁（重装）；四艘按 0.95 / 0.80 / **0.50** / 0.90 的残血进场',
+  )
+
+  const seed = 20260916
+  state.wormhole = { run: null, lastFleetLost: 0 } // 清掉在途副本（本档要指定现场）
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.depth = 3 // 第 3 层：遗迹保底（2 格）与"遗迹出货柜 70%"都在这一层生效
+  run.turnsLeft = enter.run!.turnsTotal
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0
+  run.grid = wormholeMakeGrid(seed, 3, 0)
+  const grid = run.grid
+  const cells = grid.cells
+  const pick = (i: number): (typeof cells)[number] => cells[i % cells.length]!
+  const reveal = (c: (typeof cells)[number]): void => {
+    if (!grid.scanned.includes(c.key)) grid.scanned.push(c.key)
+    if (!grid.visited.includes(c.key)) grid.visited.push(c.key)
+  }
+  /** 入口格 = **舰船信号**（落地即交火 ⇒ 一进洞就能看后勤舰的维修脉冲） */
+  const here = pick(0)
+  here.place = 'ship'
+  here.piles = []
+  grid.pos = { q: here.q, r: here.r }
+  grid.start = { q: here.q, r: here.r }
+  reveal(here)
+  notes.push(`第 3 层 · **入口格 (Q${here.q} R${here.r}) = 舰船信号**：直接开战即可看"后勤舰修最缺血的那艘"`)
+  const ruins = pick(1)
+  const vein = pick(2)
+  const grave = pick(3)
+  for (const [cell, place, label] of [
+    [ruins, 'ruins', '遗迹'],
+    [vein, 'vein', '矿脉'],
+    [grave, 'graveyard', '墓场'],
+  ] as const) {
+    if (cell.key === here.key) continue
+    cell.place = place
+    cell.piles = []
+    reveal(cell)
+    if (place === 'ruins') wormholeEnsureSalvagePiles(state, cell)
+    if (place === 'vein') wormholeEnsureVeinPiles(state, cell)
+    if (place === 'graveyard') wormholeEnsureSalvagePiles(state, cell)
+    notes.push(
+      `同层**${label}** (Q${cell.q} R${cell.r})：` +
+        (place === 'vein'
+          ? `已铺 ${(cell.piles ?? []).length} 堆虚空母矿 ⇒ 采集`
+          : `已铺 ${(cell.piles ?? []).length} 堆 ⇒ 打捞` +
+            (place === 'ruins' ? '（**遗迹打捞完 = 70% 出货柜**，打完还会 70% 触发守卫战）' : '')),
+    )
+  }
+  grid.exitKnown = true
+  /** 货仓：2 台谜质储存器（增益立刻可见；撤离成功时折成虫洞谜质） */
+  run.bag = []
+  run.hold = makeHoldState()
+  for (const id of ['mat-chrono', 'mat-crane']) {
+    const r = wormholeStowOrTemp(state, ctx, id, 1)
+    if (!r.ok) throw new Error(`摆货失败（${id}）：${r.error ?? ''}`)
+  }
+  notes.push('货仓：**2 台谜质储存器**（时序核心 = 回合 +10 · 打捞吊臂 = 每次多捞一堆）——撤离成功时按 1 台 = 1 枚折成**虫洞谜质**')
+  /** 扫描页：预置 2 处已发现虫洞（不同族）⇒ 看卡片"敌情行"（族名 + 主系 + 悬停三档构成） */
+  state.wormholeStock = [seed + 101, seed + 202].map((sd, i) => ({
+    id: `probe-${i + 1}`,
+    seed: sd,
+    depth: 1,
+    archetype: wormholeArchetypeOf(sd),
+    family: wormholeFamilyOfSeed(sd),
+    foundAtGameMs: 0,
+  }))
+  notes.push(
+    '扫描页：预置 **2 处已发现虫洞**（族 = ' +
+      state.wormholeStock.map((x) => x.family).join(' / ') +
+      '）⇒ 卡片上直接看「敌：{卡名}（{族}）· {主系}」与悬停三档构成',
+  )
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {  // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
   'wh-bag': (s) => injectWormholeBag(s, false),
   'wh-overload': (s) => injectWormholeBag(s, true),
@@ -2183,6 +2386,18 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {  // 虫洞·
    * ⇒ 一档验完"整理 / 换位 / 抓任意一格拖动"三处修复与整条链路。
    */
   'wh-all': injectWormholeAll,
+  /**
+   * **虫洞 · 后勤舰验收档**（2026-09-16 船长要的存档：「后勤舰添加特性，维修装置可以修理血量最少的队友」）：
+   * - 编队 **4 艘**：主控 = **亡军后勤舰**（唯一 `subClass: 后勤舰` · 装维修装置）＋ 2× 长尾鲨（一艘装装置 = 只修自己
+   *   的对照，一艘裸装）＋ 1× 玳瑁（重装）；
+   * - **四艘按不同残血进场**（`durability`/`armorPct`）⇒ 一开打就能看见"后勤舰去修最缺血的那艘"；
+   * - **入口格 = 舰船信号**（到达即交火，不用找）；
+   * - 同层另有 **遗迹**（打捞完 → 70% 出货柜）· **矿脉** · **墓场**；
+   * - 仓库：修理组件管够 · 两个新货柜（贵重品/军用）各 2 + 安全货柜 1（撤离后可连拆）·
+   *   谜质精华与奢侈品三档若干（物品页/市场看得到）；**扫描页预置 2 处已发现虫洞**（看卡片"敌情行"）。
+   */
+  'wh-logi': injectWormholeLogi,
+
   /**
    * **虫洞 · 路径拦截验收档**（2026-09-16 · 船长「路径拦截」机制）：
    * 三条直线摆成三种形态（拦路者已知 / 未扫描 / 路径干净）⇒ 一档看完确认栏、地图描红与"甲案不指名"。
