@@ -14,6 +14,13 @@
  * - 「物品」**不再包含**消耗品与残骸（剔除判定在 `subPasses` 与 `MarketPage.kindPasses` 两处，键集合单点 = `CONSUME_KIND_KEYS`）。
  * 注意：手册图鉴的物品分组走 core 的 `ITEM_KIND_ORDER`/`ITEM_KIND_LABELS`（按物品大类分），**不受本表拆分影响**。
  *
+ * **2026-09-16 船长（本批）**：「**将货柜添加到市场的分类里，和货物同级**」＋（同日上一句）
+ * 「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」⇒
+ * - **货柜**（`container`，新一级类型）：五族遗迹安全货柜 · 三档图纸货柜 · 贵重品货柜 · 军用备货柜
+ *   从「货物」剔出（键集合单点 = `CONTAINER_KIND_KEYS`，本批第三次同类拆分）；**无二级子分类**（照「残骸」先例）；
+ * - 「物品」→「**货物**」只是**市场类型下拉的显示名**（`MarketPage.KIND_TEXT.item`，导航页与手册不随改）；
+ * - 「货物」子分类补一档「**奢侈品**」（`ITEM_SUBS`）。
+ *
  * **2026-09-11 船长（第二批）：「对组装机的蓝图添加子筛选，根据产物的类型进行二次分类。舰船部分按舰船
  * 级别划分。弹药蓝图改为消耗品蓝图。」**（集中提问后定「甲：装备蓝图按**产物功能**分组」＋「甲：市场页
  * 蓝图子分类**同步改**」）：
@@ -56,6 +63,14 @@ export const CONSUME_SUBS: SubOption[] = [
 
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
 export const CONSUME_KIND_KEYS: readonly string[] = CONSUME_SUBS.map((s) => s.key)
+
+/**
+ * **「货柜」独立成一级类型**（船长 2026-09-16：「**将货柜添加到市场的分类里，和货物同级**」）——
+ * 货柜（`container`：五族遗迹安全货柜 · 三档图纸货柜 · 贵重品货柜 · 军用备货柜）从「货物」里剔出，
+ * 与「残骸」（2026-09-08 独立）、「消耗品」（2026-09-11 独立）同一套做法。
+ * **无二级子分类**（照「残骸」先例：`SUBS_OF_KIND` 不给它挂子项 ⇒ 界面只显示「全部货柜」）。
+ */
+export const CONTAINER_KIND_KEYS: readonly string[] = ['container']
 
 /** 「物品」类 = 除残骸与消耗品以外的物品（2026-09-11 起消耗品独立，故此处剔除三类）
  *  ⚠ 术语（船长 2026-09-12）：`ore` = **原矿**、`mineral` = **原材料**（旧称矿石/矿物作废）
@@ -182,8 +197,16 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   if (sub === SUB_ALL || kind === 'all' || kind === 'wreck') return true
   if (kind === 'item') {
     const it = ctx.items.get(good.refId)
-    // 消耗品三类已独立成类（2026-09-11 船长），「物品」不再包含它们
-    return it?.kind === sub && !CONSUME_KIND_KEYS.includes(it.kind)
+    // 消耗品三类与货柜已各自独立成类（2026-09-11 / 2026-09-16 船长），「货物」不再包含它们
+    if (it === undefined) return false
+    if (CONSUME_KIND_KEYS.includes(it.kind)) return false
+    if (CONTAINER_KIND_KEYS.includes(it.kind)) return false
+    return it.kind === sub
+  }
+  if (kind === 'container') {
+    // 货柜无二级子分类 ⇒ 只会收到 SUB_ALL（上面已短路）；这里仍按大类如实判定，供日后加子类时直接用
+    const it = ctx.items.get(good.refId)
+    return it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind)
   }
   if (kind === 'consume') {
     const it = ctx.items.get(good.refId)

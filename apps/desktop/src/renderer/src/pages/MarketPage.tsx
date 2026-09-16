@@ -28,7 +28,7 @@ import { isk } from './common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS, RACK_LABELS } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS, CONTAINER_KIND_KEYS, RACK_LABELS } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 
 const KIND_TEXT: Record<string, string> = {
@@ -38,6 +38,13 @@ const KIND_TEXT: Record<string, string> = {
    * ⚠ 这**只是市场类型下拉的显示名**：导航页「物品」与手册「物品图鉴」走各自的单点，未随本改（等船长点名）。
    */
   item: '货物',
+  /**
+   * **2026-09-16 船长**：「**将货柜添加到市场的分类里，和货物同级**」——货柜（`container`：五族遗迹安全货柜 ·
+   * 三档图纸货柜 · 贵重品货柜 · 军用备货柜）从「货物」里**剔出、独立成一级类型**，与「残骸」（2026-09-08）、
+   * 「消耗品」（2026-09-11）两次同类拆分同一套口径（键集合单点 = `ui/itemSubs.ts` 的 `CONTAINER_KIND_KEYS`）。
+   * ⚠ 无二级子分类（照「残骸」先例；要分"安全/图纸/贵重品/军用"再说一声）。
+   */
+  container: '货柜',
   // 2026-09-11 船长：「应该将消耗品独立出来」——消耗品（弹药/修理组件/无人机）独立成一级类型，
   // 并从「物品」里剔除（与当年「残骸」独立成类的口径一致；子分类见 ui/itemSubs.ts CONSUME_SUBS）
   consume: '消耗品',
@@ -51,7 +58,7 @@ const KIND_TEXT: Record<string, string> = {
   aicore: '核心',
   wreck: '残骸',
 }
-const KIND_OPTIONS = ['all', 'item', 'consume', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
+const KIND_OPTIONS = ['all', 'item', 'container', 'consume', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
 
@@ -92,12 +99,18 @@ function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: 
     const it = itemDefOf(ctx, good)
     return it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)
   }
+  if (kind === 'container') {
+    // 货柜 = 遗迹安全货柜 / 图纸货柜 / 贵重品货柜 / 军用备货柜（2026-09-16 船长：独立成类，与「货物」同级）
+    const it = itemDefOf(ctx, good)
+    return it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind)
+  }
   if (good.kind !== kind) return false
   const it = itemDefOf(ctx, good)
   if (kind === 'item') {
-    // 「物品」= 除残骸与消耗品以外的物品（残骸 2026-09-08 独立、消耗品 2026-09-11 独立）
+    // 「货物」= 除残骸、消耗品与货柜以外的物品（残骸 2026-09-08 独立 · 消耗品 2026-09-11 独立 · 货柜 2026-09-16 独立）
     if (it?.kind === 'wreck') return false
     if (it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)) return false
+    if (it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind)) return false
   }
   return true
 }
