@@ -177,7 +177,7 @@ securityZoneOf,
   // 2026-09-15 洞内敌卡扩充：一族三档 / 出场池 / 分层血量修正 / 族定选靶
   WORMHOLE_FAMILY_CARDS,
   WORMHOLE_CARD_TIERS,
-  WORMHOLE_TIER_HP_MUL,
+  WORMHOLE_TIER_THREAT_MUL,
   WORMHOLE_TIER_UNLOCK_DEPTH,
   WORMHOLE_FAMILY_TARGETING,
   WORMHOLE_FAMILY_TARGETING_CHANCE,
@@ -4742,17 +4742,20 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
             }
           }
         }
-        // ④ 出场层 / 权重 / 分层血量修正（读 core 常量）
+        // ④ 出场层 / 权重 / 分层**威胁预算**修正（读 core 常量）
         const wantUnlock: Record<string, number> = { shallow: 1, mid: 2, deep: 4 }
         for (const t of WORMHOLE_CARD_TIERS) {
           if (WORMHOLE_TIER_UNLOCK_DEPTH[t] !== wantUnlock[t]) {
             errors.push(`出场层：${t} 档从第 ${WORMHOLE_TIER_UNLOCK_DEPTH[t]} 层起，应为第 ${wantUnlock[t]} 层（船长「1/2/4 层开始出现」）`)
           }
         }
-        const wantHp: Record<string, number> = { shallow: 1, mid: 1.1, deep: 1.2 }
+        // 分层修正（2026-09-16 船长改口径：「档位血量修正改为**威胁预算**修正，比例降为 **1 : 1.05 : 1.1**」）
+        const wantMul: Record<string, number> = { shallow: 1, mid: 1.05, deep: 1.1 }
         for (const t of WORMHOLE_CARD_TIERS) {
-          if (Math.abs(WORMHOLE_TIER_HP_MUL[t] - wantHp[t]) > 1e-9) {
-            errors.push(`分层血量修正：${t} 档 ×${WORMHOLE_TIER_HP_MUL[t]}，应为 ×${wantHp[t]}（船长「中层 *1.1 · 深层 *1.2」）`)
+          if (Math.abs(WORMHOLE_TIER_THREAT_MUL[t] - wantMul[t]) > 1e-9) {
+            errors.push(
+              `分层威胁预算修正：${t} 档 ×${WORMHOLE_TIER_THREAT_MUL[t]}，应为 ×${wantMul[t]}（船长「改为威胁预算修正，比例降为 1:1.05:1.1」）`,
+            )
           }
         }
         const wantWeights: Array<[number, Record<string, number>]> = [

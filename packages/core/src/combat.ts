@@ -34,7 +34,7 @@ import type {
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
-import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_HP_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
 import { wormholeFoeThreat } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
@@ -554,6 +554,40 @@ export function pulseFoeRepair(
 /* ═══════════ 构建 ═══════════ */
 
 /**
+ * **我方"不被一击带走"保险**（船长 2026-09-16：「**血量 100%，单次齐射伤害最多只能造成总血量 80% 的伤害
+ * （只对我方生效）**」）。
+ *
+ * 口径：**同一拍内落在同一艘我方舰上的敌方伤害合计 ≤ 该舰满血（三层合计）× 本比例（0.8）**
+ * —— 逐拍账本 `battle.meVolleyDmg[tag]`（每拍开头清空）⇒ **满血舰永不可能被一次齐射带走**（至少留 20%）。
+ * - **只削我方承伤**：本函数只在"敌方 → 我方"的三处结算点调用（敌机群 / 敌光束 / 敌炮台），
+ *   我方打敌人**一字不动**；
+ * - **洞内洞外都生效**：挂在共用的 `stepBattle` 上 ⇒ 悬赏 / 低安遭遇 / AI 副船 / 虫洞一律吃保险；
+ * - 夹的是**入伤**（已含近盲折扣与受击增程折减之后），所以实际掉血 ≤ 上面那条上限。
+ * - "一次齐射"按**同拍落地**计（错开首轮之后各敌首发已不同拍；同拍多为同一艘的多门炮）。
+ */
+export const PLAYER_VOLLEY_DMG_CAP_SHARE = 0.8
+
+/** 把一发"敌方 → 我方"的伤害夹进本拍保险额度内，并记账（返回实际可造成的伤害） */
+export function cappedFoeDamage(
+  b: import('./state').BattleState,
+  tag: string,
+  spec: UnitSpec,
+  dmg: number,
+): number {
+  if (dmg <= 0) return dmg
+  const max = b.units[tag]?.hpMax
+  const full = max ? max.s + max.a + max.h : spec.hp.s + spec.hp.a + spec.hp.h
+  if (full <= 0) return dmg
+  const cap = full * PLAYER_VOLLEY_DMG_CAP_SHARE
+  const used = b.meVolleyDmg?.[tag] ?? 0
+  const room = Math.max(0, cap - used)
+  const out = Math.min(dmg, room)
+  // ⚠ **必须无条件记账**（哪怕这一发全额放行）：额度是"本拍累计"口径，漏记就等于给下一发多开口子
+  b.meVolleyDmg = { ...(b.meVolleyDmg ?? {}), [tag]: used + out }
+  return out
+}
+
+/**
  * 结算敌人一发（2026-09-10 船长：窝点混伤）：
  * 武器带 `shotsByType`（混伤，主 60% / 副 40%）→ 按构成**逐系**调用 `applyDamage`
  * （各系吃各自的 `typeLayerMult` 与层抗，逐系依次消费 盾→甲→结构）；
@@ -567,8 +601,7 @@ export function applyFoeShot(
   weapon: WeaponSpec,
   totalDmg: number,
   mainType: DamageType,
-): Hp3 {
-  const shots = weapon.shotsByType
+): Hp3 {  const shots = weapon.shotsByType
   const entries = shots ? Object.entries(shots).filter(([, v]) => (v ?? 0) > 0) : []
   if (entries.length <= 1) return applyDamage(hp, resists, totalDmg, mainType).hp
   const sum = entries.reduce((s, [, v]) => s + (v ?? 0), 0)
@@ -3350,23 +3383,34 @@ export function wormholeDerivedAnomaly(
    */
   const threatMul = spec.threatMul ?? 1
   /**
-   * **分层血量修正**（船长 2026-09-15：「中层配置血量*1.1.深层配置血量*1.2」）：
+   * **分层"威胁预算"修正**（2026-09-16 船长改口径：「档位血量修正改为威胁预算修正，比例降为 1 : 1.05 : 1.1」）：
    * 档位由**卡 id 反查**（`wormholeTierOfCard`）⇒ 不进存档、老档零迁移；
    * 查不到（不是洞内卡）⇒ 1（= 与旧口径逐字一致）。
    */
-  const tierHpMul = WORMHOLE_TIER_HP_MUL[wormholeTierOfCard(baseCard.id) ?? 'shallow']
+  const tierThreatMul = WORMHOLE_TIER_THREAT_MUL[wormholeTierOfCard(baseCard.id) ?? 'shallow']
+  /**
+   * **该卡的自然总火力**（含机群）——决定它的"自然血/火力比 `r`"（甲案口径：血与火力按 `r` 反算）。
+   * 用**未派生**的卡建一遍规格即可（与派生无关，纯卡面事实）；同一张卡只算一次（记忆在派生记忆里）。
+   */
+  const naturalDps = (() => {
+    let dps = 0
+    for (const f of createFoeSpecs(baseCard, ctx.balance.battle)) {
+      for (const w of f.weapons) dps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
+    }
+    return dps
+  })()
   const zero = (v: number | undefined): string => (v === undefined || v === 0 ? '' : String(v))
-  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierHpMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
+  const memoKey = `${baseCard.id}|${spec.depth}|${spec.kind}|${spec.waves}|${spec.strengthMul ?? ''}|${threatMul}|${tierThreatMul}|${zero(spec.foeHitDown)}|${zero(spec.blindReduce)}`
   if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
   const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
-    // **按层把总血压到该层威胁对应的预算**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径）
-    // × **谜质威胁乘数**（压制力场 / 守卫解析仪 / 撤离掩护器；−50% 封顶在派生端夹好）；
-    // **分层修正**（浅/中/深）只乘血、不乘火力 —— 由 `hpScaleMul` 在派生端拆开
+    // **本层本档的"血尺度"**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径 × **谜质威胁乘数**）；
+    // 新口径下它经平方化成"威胁预算 T"，再由卡的自然比拆成血与火力（见 `wormholeAnomalyOf`）
     hpBudget:
       foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
       WORMHOLE_FOE_BASE_STRENGTH_MUL *
       threatMul,
-    hpScaleMul: tierHpMul,
+    tierThreatMul,
+    naturalDps,
     ...(spec.strengthMul !== undefined ? { strengthMul: spec.strengthMul } : {}),
   })
   /**
@@ -5231,6 +5275,9 @@ function stepBattle(
   foeTargetingChance = 1,
 ): void {
   const dtSec = dtMs / 1000
+  // **我方"不被一击带走"保险：本拍账本清零**（船长 2026-09-16；见 `cappedFoeDamage`。
+  // 逐拍重置 ⇒ 运行态、不入档；洞外洞内共用这一处）
+  b.meVolleyDmg = {}
   // 主控 = 编队首条（距离/期望交距/胜率口径的锚；单船路径即唯一那条）
   const me = myUnits[0]!
 
@@ -5641,7 +5688,7 @@ function stepBattle(
             dtgt.rt.hp,
             dtgt.spec.resists,
             dw,
-            dw.shotDmg ?? 0,
+            cappedFoeDamage(b, dtgt.spec.tag, dtgt.spec, dw.shotDmg ?? 0),
             dType,
           )
         }
@@ -5684,7 +5731,7 @@ function stepBattle(
       releaseFoeChargeOnHit(b, f.tag, bal)
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
-      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, dmg, fType)
+      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg), fType)
       pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true })
       continue
     }
@@ -5698,7 +5745,7 @@ function stepBattle(
     const fHit = nextRandom(state.rng) < foeHitEff
     if (fHit) {
       b.stats.foeHits += 1
-      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, shotDmg, fType)
+      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg), fType)
       // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
       releaseFoeChargeOnHit(b, f.tag, bal)
     }

@@ -121,36 +121,15 @@ export const WORMHOLE_RUINS_THREAT_MUL = 1.3
 export const WORMHOLE_FOE_BASE_STRENGTH_MUL = 10
 
 /**
- * **洞内敌卡火力总系数**（船长 2026-09-16：「洞内全族 ×0.7 降火」）。
+ * **"1 点 DPS 折算多少血"的参考比**（甲案口径 · 船长 2026-09-16：
+ * 「预算不应该只看血量，应该直接考虑血/火力比，或者两个一起看」）。
  *
- * 为什么加这一道（同日核准的读数）：按卡归一后洞内敌卡的"每威胁 DPS"落在 **0.66~3.09**，
- * 而洞外主力卡是 **0.99~2.97** ⇒ 洞内整体偏高一头；折算成**有效 DPS**（吃到命中/距离折减后）
- * 更明显：开场**全敌同装填** ⇒ 一张卡的**同步首轮** = 我方单舰总血的 **99%~137%**（层 2 E 族单体即 103%）。
- * ⇒ 本系数把洞内火力整体压 30%，使"每面板威胁 DPS"回到洞外带；**血量不动**（"更耐打、不更疼"）。
- *
- * ⚠ **D 族（守墓）例外**：见下面两条专用系数。
+ * 洞内预算 = **威胁量 T = 血 × 火力**（≈ 敌人被打死前能打出的总伤害），并按本比值给"血/火力"定标：
+ * `血 = √(T × r)`、`火力 = √(T / r)`（`r` = 该卡**自然**的血/火力比，性格由此保留）。
+ * 取 25 = 洞外主力卡的常见比（幽灵舰信号 21.8 · 虚海守望者 34.4 · 穹顶守卫 45.2 · 记 25 为中枢），
+ * 它只决定"血与火力各拿多少"，**总量由威胁预算 T 决定**（层难度曲线仍在，见 `WORMHOLE_FOE_BASE_STRENGTH_MUL`）。
  */
-export const WORMHOLE_FOE_DMG_MUL = 0.7
-
-/**
- * **D 族（守墓）洞内火力系数**（船长 2026-09-16：「不削弱 D 族船…（输出）恢复成和洞外差不多的输出比」
- * ⇒ 相对**现值** ×1.45，而不是吃 ×0.7）。
- *
- * 依据（同日读数）：洞内 D 的 DPS/威胁 = 0.72/0.66/0.73，而洞外 D 卡是 **0.99~1.49**（幽灵舰信号 0.57 起）
- * ⇒ 抬到面板威胁 ×≈1.05（层 1 65→94 · 层 2 66→96 · 守卫 88→128）后落回洞外带。
- */
-export const WORMHOLE_GRAVE_DMG_MUL = 1.45
-
-/**
- * **D 族（守墓）洞内血量系数**（同批：「并适当降低血量（其他族 1 层血量和洞外血量比例作为参考）」。
- * ⚠ **2026-09-16 当日回调**：船长看读数后「**D族的血量削弱回调为85%**」⇒ 由 0.7 改为 **0.85**）。
- *
- * 依据：其他族「洞内层 1 血 ÷ 该卡自然血」= A 4.79 / C 1.86 / E 3.53 / G 7.46 ⇒ 平均 **4.41×**；
- * 按 4.41 折算 D 的洞外血（幽灵舰信号 555）得 2,448（= 现值 ×0.7）——**偏狠**，船长回调到 ×0.85：
- * 层 1 **2,967** · 层 2 3,833 · 守卫 5,086（等价放大倍率 5.35，仍在其他族 1.86~7.46 的带内）。
- * 此时 D 的「血/火力比」= 31~34，落在**洞外 D 带 21.8~45.3** 里。
- */
-export const WORMHOLE_GRAVE_HP_MUL = 0.85
+export const WORMHOLE_THREAT_REF_RATIO = 25
 
 /** 某张敌卡的**自然总血**（按编成条目的舰级绝对值 × 条数，不含派生缩放） */
 export function wormholeNaturalHp(base: AnomalyDef): number {
@@ -222,16 +201,17 @@ export const WORMHOLE_TIER_UNLOCK_DEPTH: Readonly<Record<WormholeCardTier, numbe
 }
 
 /**
- * **分层血量修正**（船长 2026-09-15：「中层配置血量*1.1.深层配置血量*1.2」）。
+ * **分层"威胁预算"修正**（2026-09-16 船长改口径：「**档位血量修正改为威胁预算修正，比例降为 1 : 1.05 : 1.1**」）。
  *
- * 只乘**血量缩放**、不乘火力缩放（见 `wormholeAnomalyOf` 的 `scaleHp` / `scaleDmg` 拆分）
- * ⇒ 表现 = "更耐打、但不更疼"；由此"同层同族不同卡总血恒等"改为**"同层同档位总血恒等"**。
+ * 沿革：2026-09-15 是"**只乘血**"的 1 / 1.1 / 1.2（"更耐打、不更疼"）；改用"威胁预算（血 × 火力）"
+ * 口径后，这道修正乘在**威胁预算 T** 上 ⇒ 血与火力按同一比例一起抬（中 ×1.05、深 ×1.1），
+ * 而不是只抬血。取值也按船长本次裁定降档：**浅 1 / 中 1.05 / 深 1.1**。
  */
-export const WORMHOLE_TIER_HP_MUL: Readonly<Record<WormholeCardTier, number>> = {
+export const WORMHOLE_TIER_THREAT_MUL: Readonly<Record<WormholeCardTier, number>> = {
   shallow: 1,
-  mid: 1.1,
-  deep: 1.2,
-}
+  mid: 1.05,
+  deep: 1.1,
+} 
 
 /**
  * 该层的**出场权重表**（船长 2026-09-15：「层 2~3出场抽取按照 2:1 抽。层4+出场抽取按照 2:1：1 抽」）：
@@ -534,13 +514,14 @@ export function wormholeAnomalyOf(
   kind: WormholeFoeKind,
   waves: number,
   /**
-   * - `hpBudget`：**本场敌卡的期望总血**（由引擎按威胁曲线 × `WORMHOLE_FOE_BASE_STRENGTH_MUL` 算好传进来；
-   *   不给 = 用本卡的"自然总血" ⇒ 只做威胁字段的换算，不缩放条目）。
+   * - `hpBudget`：**本层本档的"血尺度"**（= `foeHpOfThreat(层威胁) × WORMHOLE_FOE_BASE_STRENGTH_MUL`，
+   *   由引擎算好传进来，含谜质威胁乘数；不给 = 用本卡的"自然总血"）——新口径下它经平方化成**威胁预算 T**。
    * - `strengthMul`：**校准用覆写**（只有 `tools/wormhole-econ.ts` 会传；引擎/实战一律走常量）。
-   * - `hpScaleMul`：**分层血量修正**（浅 1 / 中 1.1 / 深 1.2，见 `WORMHOLE_TIER_HP_MUL`）——
-   *   **只乘血、不乘火力** ⇒ "更耐打但不更疼"；缺省 1 = 与旧口径逐字一致。
+   * - `tierThreatMul`：**分层威胁预算修正**（浅 1 / 中 1.05 / 深 1.1，见 `WORMHOLE_TIER_THREAT_MUL`）。
+   * - `naturalDps`：该卡**自然总火力**（含机群；由调用方按 `createFoeSpecs` 算好传入）——
+   *   决定卡的"自然血/火力比 `r`"。缺省 ⇒ 退回 `WORMHOLE_THREAT_REF_RATIO`（等价于"比 = 参考比"）。
    */
-  opts?: { hpBudget?: number; strengthMul?: number; hpScaleMul?: number },
+  opts?: { hpBudget?: number; strengthMul?: number; tierThreatMul?: number; naturalDps?: number },
 ): AnomalyDef {
   /**
    * **族定选靶**（船长 2026-09-15「选靶按照族限定」）：族字母可取到就按族表取，
@@ -554,18 +535,21 @@ export function wormholeAnomalyOf(
   const target = wormholeFoeThreat(depth, kind)
   const natural = Math.max(1, wormholeNaturalHp(base))
   const budget = (opts?.hpBudget ?? natural) * (opts?.strengthMul ?? 1)
-  // **按卡归一**：把每张卡的总血**压到同一个预算**上（各卡的"坦克/脆皮"性格由原编成的血比保留），
-  // 同时**同比例**缩放火力 ⇒ 卡间强度不再悬殊（"威胁 = 战力标尺"由构造保证）。
-  // 2026-09-15：血量与火力**拆成两个系数**——血再乘一道**分层修正**（浅/中/深），火力只吃血预算。
-  // 2026-09-16（船长三裁 · 见 docs/design/wh-dmg-retune-20260916.md）：
-  //   ① 全族火力 ×`WORMHOLE_FOE_DMG_MUL`（0.7）；
-  //   ② **D 族（守墓）例外**：不吃 0.7，而是 ×`WORMHOLE_GRAVE_DMG_MUL`（1.45，抬回洞外 D 的输出比）；
-  //   ③ 同族的血量 ×`WORMHOLE_GRAVE_HP_MUL`（0.7 ⇒ 层 1 2,443 ≈ 洞外 D 卡血 × 其他族平均倍率 4.41）。
-  const isGrave = fam === 'D'
-  const dmgK = isGrave ? WORMHOLE_GRAVE_DMG_MUL : WORMHOLE_FOE_DMG_MUL
-  const hpK = isGrave ? WORMHOLE_GRAVE_HP_MUL : 1
-  const scaleDmg = (budget / natural) * dmgK
-  const scaleHp = (budget / natural) * hpK * (opts?.hpScaleMul ?? 1)
+  /**
+   * **2026-09-16 船长改口径（甲案）：「预算不应该只看血量，应该直接考虑血/火力比，或者两个一起看」**
+   * ⇒ 预算从"总血"改成**威胁量** `T = 血 × 火力`（≈ 敌人被打死前能打出的总伤害），
+   * 卡的自然血/火力比 `r` **原样保留**，血与火力按 `血 = √(T·r)`、`火力 = √(T/r)` 反算：
+   * - 层难度曲线仍在：`T = budget² ÷ WORMHOLE_THREAT_REF_RATIO`（budget 已含曲线 ×10 与谜质）；
+   * - 档位修正改乘 **T**（浅 1 / 中 1.05 / 深 1.1）⇒ 血与火力**一起**抬，而不是只抬血；
+   * - **族系数全部撤除**（D 族的"厚血低伤"由它自己的自然比表达，不再需要专用旋钮）。
+   * 效果（改前 → 改后）：15 张卡的"血 × 火力"极差由 **7.69× → 1.00×**（同层同档内恒等）。
+   */
+  const ratio = opts?.naturalDps !== undefined && opts.naturalDps > 0 ? natural / opts.naturalDps : WORMHOLE_THREAT_REF_RATIO
+  const threatBudget = ((budget * budget) / WORMHOLE_THREAT_REF_RATIO) * (opts?.tierThreatMul ?? 1)
+  const hpTarget = Math.sqrt(threatBudget * ratio)
+  const dpsTarget = Math.sqrt(threatBudget / ratio)
+  const scaleHp = hpTarget / natural
+  const scaleDmg = opts?.naturalDps !== undefined && opts.naturalDps > 0 ? dpsTarget / opts.naturalDps : scaleHp
   const nWaves = Math.max(1, Math.floor(waves))
   const per = 1 / nWaves
   const slots = base.ships ?? []
