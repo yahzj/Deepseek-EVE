@@ -382,3 +382,30 @@ describe('技能补全：事件玄学（event-dividend）', () => {
     expect(emptyCountOf(5)).toBe(9)
   })
 })
+
+/**
+ * **2026-09-16 船长两条技能改动**（照抄原话）：
+ * ① 「**采矿护卫舰操作改名为采集器入门学。**」——`mining-frigate` 只改展示名与说明措辞，
+ *    **id 与效果一字不动**（存档零迁移；效果仍是"每级缩短采集循环时间 3%"）。
+ * ② 「**矢量机动操作，规避机动学，索敌统合改为rank3**」——三条由 r2 升到 **r3**
+ *    （rank 只驱动训练时长：`training.ts` 的 `base × rank`，≈2.9h → ≈11.2h）。
+ *    ⚠ 索敌统合与火控阵列学由此同为 r3：2026-09-08「相似效果错开级别」给它俩分档的理由，
+ *    在 2026-09-14 船长把索敌统合也改成"炮台命中"口径时**就已作废**（现只靠 3% vs 2% 区分）。
+ */
+describe('技能改名与 rank 调整（船长 2026-09-16）', () => {
+  const byId = (id: string) => SKILLS.find((s) => s.id === id)
+  it('采矿护卫舰操作 → 采集器入门学：改名不改 id，效果说明仍是每级 −3% 循环', () => {
+    const def = byId('mining-frigate')
+    expect(def).toBeDefined()
+    expect(def!.name).toBe('采集器入门学')
+    expect(def!.description).toContain('3%')
+    // id 是存档键（`skills.trained`）⇒ 不能动；旧名不许在技能目录里复活
+    expect(SKILLS.some((s) => s.name === '采矿护卫舰操作')).toBe(false)
+  })
+
+  it('矢量机动操作 / 规避机动学 / 索敌统合 三条 rank = 3', () => {
+    for (const id of ['vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
+      expect(byId(id)?.rank, `${id} 的 rank`).toBe(3)
+    }
+  })
+})
