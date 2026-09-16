@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **262** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4891** KB · **36007** 行
-- 状态分布：**未标注** 142 · **已确认/已实现** 106 · **进行中** 9 · **待裁定** 4 · **历史留档** 1
-- 孤儿文档（0 引用）**18** 份 · 状态未标注 **142** 份
+- 文档总数 **264** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4899** KB · **36103** 行
+- 状态分布：**未标注** 143 · **已确认/已实现** 106 · **进行中** 9 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**19** 份 · 状态未标注 **143** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**181** 份
+- 三、现行设计稿（design）：**183** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**15** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -28,13 +28,13 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 152 / 4 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 153 / 4 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 140 KB / 209 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 535 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 297 KB / 707 行 | 183 / 8 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 297 KB / 707 行 | 184 / 8 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 93 KB / 216 行 | 236 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
@@ -51,11 +51,13 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 181 份
+## 三、现行设计稿（design） —— 183 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 1 / 0 |
 | `docs/design/announcement-draft-20260916-wormhole-bloom.md` | 公告待审稿 · 虫洞大量生成（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 2 KB / 37 行 | 1 / 1 |
+| `docs/design/auto-repair-requires-device-20260916.md` | 洞外「受损自动修补」改为需要船体维修装置（2026-09-16） | 未标注（已落码待验收） | 2026-09-16 | 6 KB / 63 行 | 0 / 0 |
 | `docs/design/hullrep-in-wormhole-20260916.md` | 报障核查：船体维修装置在虫洞里无效（2026-09-16） | 未标注（已落码待验收） | 2026-09-16 | 12 KB / 141 行 | 0 / 0 |
 | `docs/design/wormhole-bloom-promo-20260916.md` | 限时活动「虫洞大量生成」（扫描加速 ＋ 一次性送 5 处）· 2026-09-16 | 进行中（进行中） | 2026-09-16 | 10 KB / 126 行 | 0 / 0 |
 | `docs/design/wormhole-card-intel-20260916.md` | 扫描页虫洞卡片「敌情」（2026-09-16） | 进行中（进行中） | 2026-09-16 | 5 KB / 56 行 | 0 / 0 |
@@ -326,10 +328,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 46 / 7 |
 
-## 附：孤儿文档（0 引用，18 份）
+## 附：孤儿文档（0 引用，19 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/auto-repair-requires-device-20260916.md`（2026-09-16 · 6 KB）—— 洞外「受损自动修补」改为需要船体维修装置（2026-09-16）
 - `docs/design/hullrep-in-wormhole-20260916.md`（2026-09-16 · 12 KB）—— 报障核查：船体维修装置在虫洞里无效（2026-09-16）
 - `docs/design/wormhole-bloom-promo-20260916.md`（2026-09-16 · 10 KB）—— 限时活动「虫洞大量生成」（扫描加速 ＋ 一次性送 5 处）· 2026-09-16
 - `docs/design/wormhole-card-intel-20260916.md`（2026-09-16 · 5 KB）—— 扫描页虫洞卡片「敌情」（2026-09-16）
@@ -349,8 +352,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（142 份，待补一行 `状态：…`）
+## 附：状态未标注（143 份，待补一行 `状态：…`）
 
+- `docs/design/auto-repair-requires-device-20260916.md`（2026-09-16）—— 洞外「受损自动修补」改为需要船体维修装置（2026-09-16）
 - `docs/design/hullrep-in-wormhole-20260916.md`（2026-09-16）—— 报障核查：船体维修装置在虫洞里无效（2026-09-16）
 - `docs/archive/glossary-detail-03-econ-20260915.md`（2026-09-15）—— 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出）
 - `docs/archive/glossary-retired-20260915.md`（2026-09-15）—— 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出）

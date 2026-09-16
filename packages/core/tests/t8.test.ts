@@ -20,7 +20,7 @@ import { startMining } from '../src/mining'
 import { changeShip, repairWithKits, repairShip } from '../src/shipyard'
 import { goStandbyAt, startTransitHome } from '../src/location'
 import { shortestTravelMinutes, travelLegMs } from '../src/travel'
-import { makeTestCtx, anomaly, mineral, ship } from './helpers'
+import { makeTestCtx, anomaly, mineral, moduleDef, ship } from './helpers'
 
 /** 远星系低威胁悬赏（快速可胜）：2026-09-06 起胜利自动返航母港（不再停留目标星系） */
 function worldWithFarBounty() {
@@ -173,22 +173,28 @@ describe('T8 重复清剿（2026-09-06 重复清剿：自动返航到港后自�
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
     // 测试修理组件（P2 固定 HP 语义：repairRestore=基础回复 HP；用超大值保证单件修满，专测"先修再出发"流程）
     const kit = { ...mineral('kit-a', 15), name: '纳米修理组件', description: '测试修理组件', repairRestore: 1_000_000 }
-    const kitCtx = makeTestCtx({ items: [kit], quietEvents: true })
+    // ⚠ **2026-09-16 船长改判**：自动修补需要船上装着维修装置，且**只吃装置指定的组件**
+    //   ⇒ 造一台吃 `kit-a` 的测试装置并装上（旧口径"不看装置、民用优先"已作废）。
+    const repMod = moduleDef('mod-rep-a', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: 'kit-a' })
+    const kitCtx = makeTestCtx({ items: [kit], modules: [repMod], quietEvents: true })
     state.fleet.sandcat.cargo['kit-a'] = 2
+    state.fleet.sandcat.fitted = { ...state.fleet.sandcat.fitted, mid: ['mod-rep-a'] }
     state.fleet.sandcat.durability = 0.2
-    // 单件即修满 → 只用 1 件即越过 0.5 阈值
-    expect(repairWithKits(state, kitCtx, 0.5)).toBe(1)
+    // 单件即修满 → 只用 1 件即越过 0.5 阈值（`repairWithKits` 自 2026-09-16 起返回结果对象）
+    expect(repairWithKits(state, kitCtx, 0.5).used).toBe(1)
     expect(state.fleet.sandcat.durability).toBe(1)
     expect(state.fleet.sandcat.cargo['kit-a']).toBe(1)
     // 循环条件检查：耐久 0.45（低于阈值）+ 1 件组件 → 自动消耗并继续
     const state2: GameState = createInitialState({ nowWallMs: 0, seed: 2 })
     state2.exploredGalaxies.push('galaxy-far')
     state2.fleet.sandcat.cargo['kit-a'] = 1
+    state2.fleet.sandcat.fitted = { ...state2.fleet.sandcat.fitted, mid: ['mod-rep-a'] }
     state2.fleet.sandcat.durability = 0.45
     state2.autoLoopAnomalyId = 'ano-far-easy'
     const ctxB = makeTestCtx({
       anomalies: [anomaly('ano-far-easy', 'galaxy-far', { threat: 1, reward: 1_000, loot: [] })],
       items: [kit],
+      modules: [repMod],
       quietEvents: true,
     })
     expect(advanceAutoLoopBounty(state2, ctxB)).toBeNull() // 组件修满 → 放行出发
