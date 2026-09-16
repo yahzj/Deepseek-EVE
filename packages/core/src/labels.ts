@@ -159,16 +159,45 @@ export function itemKindText(item: { kind: ItemKind; droneClass?: DroneClass }):
 }
 
 /** 舰船角色中文名（船卡徽标用；V10 占位展示；2026-09-09 船长定：industrial 展示名「工业」→「采矿」
- * ——两艘货舰分出后工业线全为矿舰，标签更直观。role id 不变，存档零迁移） */
+ * ——两艘货舰分出后工业线全为矿舰，标签更直观。role id 不变，存档零迁移）
+ * **2026-09-16 船长：「将重装舰类的名称改为装甲舰」** ⇒ `armored` 展示名「重装」→「**装甲**」（id 不变）。 */
 export const SHIP_ROLE_LABELS: Record<ShipRole, string> = {
   industrial: '采矿',
   armed: '武装',
-  armored: '重装',
+  armored: '装甲',
   hauler: '航运',
 }
 
 export function shipRoleLabel(role: ShipRole): string {
   return SHIP_ROLE_LABELS[role] ?? role
+}
+
+/**
+ * **「装甲线」判据**（船长 2026-09-16：「**将重装舰类的名称改为装甲舰**」＋
+ * 「**将装甲占比比护盾高的船也归入装甲舰**」＋丙案「**只在武装舰里判**」）：
+ * - `role === 'armored'`（甲壳三艘 / C 族 / 陵墓 D 族 —— 既有装甲族）；**或**
+ * - **武装舰里装甲占比 > 护盾占比**者（牛鲨级突击巡洋舰 + E 族三艘；船长同日要求「护盾和装甲互换」）。
+ *
+ * ⚠ **只判"类别"（显示层）**：`role` 一字不动 ⇒ 等效质量不折抵、不吃「装甲舰操作」技能、
+ * 仍算战斗舰（敌方选靶「打非战斗船」口径不变）、货舱/采掘的 role 口径不变。
+ */
+export function isArmorLineShip(ship: { role?: ShipRole; shieldHp?: number; armorHp?: number }): boolean {
+  if (ship.role === 'armored') return true
+  if (ship.role !== 'armed') return false
+  return (ship.armorHp ?? 0) > (ship.shieldHp ?? 0)
+}
+
+/**
+ * **「类别」展示键**（我的舰队 / 手册图鉴 / 虫洞页 / 市场·图纸列 的类别筛选与徽标**同源单点**）：
+ * 装甲线 ⇒ `'armored'`，其余按 `role`。改类别口径只改这一处。
+ */
+export function shipCategoryKeyOf(ship: { role?: ShipRole; shieldHp?: number; armorHp?: number }): ShipRole {
+  return isArmorLineShip(ship) ? 'armored' : (ship.role ?? 'industrial')
+}
+
+/** 「类别」中文名（与筛选同一判据；船卡徽标与「定位 / 档次」行用） */
+export function shipCategoryLabelOf(ship: { role?: ShipRole; shieldHp?: number; armorHp?: number }): string {
+  return shipRoleLabel(shipCategoryKeyOf(ship))
 }
 
 /** 舰船尺寸大分类名（2026-09-09 船长定：护卫 T1 / 驱逐 T2 / 巡洋 T3 / 主力 T4 / 旗舰 T5；

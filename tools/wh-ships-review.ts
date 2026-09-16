@@ -150,7 +150,7 @@ const whWithResist = wh.filter((s) => s.shieldResist || s.armorResist || s.hullR
 const baseWithFamily = base.filter((s) => s.weaponFamilyBonus)
 const whWithFamily = wh.filter((s) => s.weaponFamilyBonus)
 P(`1. **船体三层抗性：本批 ${whWithResist.length}/${wh.length} 艘全空，而既有船 ${baseWithResist.length}/${base.length} 艘都有**`)
-P('   （既有口径按角色分：武装舰 盾动能抗 0.5 · 重装舰 甲爆炸抗 0.5 · 采矿/工业 盾动能抗 0.25 · 货舰 壳等离子抗 0.25）。')
+P('   （既有口径按角色分：武装舰 盾动能抗 0.5 · 装甲舰 甲爆炸抗 0.5 · 采矿/工业 盾动能抗 0.25 · 货舰 壳等离子抗 0.25）。')
 P('   ⇒ 要么按角色给这 15 艘补上（推荐，否则"虫洞船比民船还脆"是硬差），要么明确"虫洞船靠装备件拿抗性"。')
 P(`2. **族系武器加成：本批 ${whWithFamily.length}/${wh.length} 艘全空，既有船 ${baseWithFamily.length} 艘有**（全部 0.12，且都是 T3 巡洋舰：${baseWithFamily.map((s) => s.id).join(' / ')}）。`)
 P('   ⇒ 若沿用既有口径，本批 5 艘 T3 巡洋舰可各给本族主弹种 +0.12；T1/T2 不给（与既有阶梯一致）。')

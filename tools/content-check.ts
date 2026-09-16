@@ -90,6 +90,8 @@ import {
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_POOLS,
   SHIP_ROLE_LABELS,
+  isArmorLineShip,
+  shipCategoryKeyOf,
   createFoeSpecs, // 机群火力占比契约的守恒实测（Σ 单发对照）
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
@@ -1151,6 +1153,8 @@ const SHIP_SUBCLASSES = [
   '无人机作战舰',
   '侦察舰',
   '后勤舰',
+  // 2026-09-16 船长：「原先将非专属的三条乌龟船添加舰船的子分类：武装货舰」（陆龟/玳瑁/玄武三艘）
+  '武装货舰',
 ] as const
 /**
  * **非虫洞舰写子分类的登记表**（2026-09-13 船长：「**协会功能舰也可写子分类**」）。
@@ -1163,6 +1167,10 @@ const SHIP_SUBCLASSES = [
  */
 const SUBCLASS_NON_WH_SHIP_IDS = new Set([
   'sh-nautilus', // 鹦鹉螺级测绘巡洋舰（协会测绘处 · 侦察舰；2026-09-13 船长）
+  // 2026-09-16 船长：「原先将非专属的三条乌龟船添加舰船的子分类：武装货舰」⇒ 甲壳装甲线三艘
+  'sh-tortoise', // 陆龟级重装艇（T2）
+  'sh-hawksbill', // 玳瑁级重装巡舰（T3）
+  'sh-xuanwu', // 玄武级重装旗舰（T4）
 ])
 /**
  * **每档默认槽位总数**（船长 2026-09-14 原话：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
@@ -1322,7 +1330,16 @@ for (const s of SHIPS) {
   }
   if (s.role === 'armed') {
     check(s.powerBonus !== undefined && s.powerBonus > 0 && s.powerBonus <= 2, `武装舰 ${s.id} 必须有合法 powerBonus`)
-    check((s.shieldHp ?? 0) > (s.armorHp ?? 0), `武装舰 ${s.id} 护盾应大于装甲（族定位）`)
+    /**
+     * 2026-09-16 船长丙案：「**将装甲占比比护盾高的船也归入装甲舰**」＋裁决「**只在武装舰里判**」，
+     * 同日还要求「**将牛鲨级突击舰和E族专属舰的护盾和装甲互换**」⇒ 这 4 艘（role 仍 `armed`）
+     * 换完就是**装甲占比 > 护盾占比** ⇒ 归入「装甲舰」类别。故原硬契约放宽为：
+     * **盾 > 甲，或者它属于装甲线**（判据 = `isArmorLineShip`，与界面类别筛选同源）。
+     */
+    check(
+      (s.shieldHp ?? 0) > (s.armorHp ?? 0) || isArmorLineShip(s),
+      `武装舰 ${s.id} 护盾应大于装甲（族定位）——除非它归入「装甲舰」类别（装甲占比 > 护盾占比）`,
+    )
   } else {
     check(s.powerBonus === undefined, `非武装舰 ${s.id} 不应带 powerBonus`)
   }
@@ -3333,6 +3350,13 @@ const STALE_COPY_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
   [/动能弹(?!药)/, '旧弹药名（2026-09-16 起：动能弹药）'],
   [/爆破导弹/, '旧弹药名（2026-09-16 起：爆破弹药——发射架仍叫导弹架，打出去的是弹药）'],
   [/等离子弹/, '旧弹药名（V18B-2 起即为「能量弹药」，2026-09-16 补齐存量文案）'],
+  /**
+   * 2026-09-16 船长定名批（原话：「**将重装舰类的名称改为装甲舰。**」）：
+   * `armored` 的展示名由「重装」改「**装甲**」⇒ 类别名「重装舰」、角色徽标「重装」、技能「重装舰操作」全部换新；
+   * 这条黑名单只拦**「重装舰」三个字连写**（旧类别名与旧技能名），不拦三艘乌龟船的**舰名**
+   * （「陆龟级重装艇 / 玳瑁级重装巡舰 / 玄武级重装旗舰」——船长选甲案，单舰名与蓝图描述保持原样）。
+   */
+  [/重装舰/, '旧类别名（2026-09-16 起：装甲舰）——单舰名「重装艇/重装巡舰/重装旗舰」不受此条约束'],
 ]
 
 /**
@@ -4486,6 +4510,40 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
           ? ` · 后勤舰特性（维修脉冲修编队最缺血者）${logi.length} 艘（${logi.map((x) => x.name).join('、')}）`
           : ' · 后勤舰特性（维修脉冲修编队最缺血者）**0 艘**'
       })(),
+  )
+}
+
+/* ── 舰船「类别」契约（2026-09-16 船长：类别名改名 + 装甲线判据）────────────────────
+   船长原话（照抄）：「**将重装舰类的名称改为装甲舰。**」＋「**同时将一些装甲占比比护盾高的船也归入装甲舰。**」
+   ＋裁决「**只在武装舰里判**」（丙案）＋「**将牛鲨级突击舰和E族专属舰的护盾和装甲互换**」。
+
+   口径（单点在 `packages/core/src/labels.ts`，界面四处筛选/徽标与词典同源）：
+   - **展示名**：`armored` ⇒ 「**装甲**」/「**装甲舰**」（id 不变，存档零迁移）；
+   - **装甲线判据** = `role === 'armored'` **或**（`role === 'armed'` 且 装甲占比 > 护盾占比）
+     —— **只判"类别"（显示层）**：`role` 不动 ⇒ 等效质量不折抵、不吃「装甲舰操作」、仍算战斗舰。
+   为什么钉：这条判据一旦漂回"只看 role"，船长点名的牛鲨级与 E 族专属舰就会从「装甲舰」里掉出去。 */
+{
+  check(SHIP_ROLE_LABELS.armored === '装甲', `类别契约：armored 展示名应为「装甲」（现「${SHIP_ROLE_LABELS.armored}」）`)
+  const armorLine = SHIPS.filter((s) => isArmorLineShip(s))
+  const bySwap = SHIPS.filter((s) => s.role === 'armed' && isArmorLineShip(s))
+  // 船长点名的四艘（"护盾和装甲互换"进来的；换完必须是装甲占比更高）
+  for (const id of ['sh-bullshark', 'sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+    const s = SHIPS.find((x) => x.id === id)
+    check(!!s, `类别契约：舰船目录里没有 ${id}`)
+    check(s?.role === 'armed', `类别契约：${id} 的 role 应保持 ` + '`armed`（丙案：只判类别、不动机制）')
+    check(isArmorLineShip(s!), `类别契约：${id} 换盾/甲后应归入「装甲舰」类别（现 盾 ${s?.shieldHp} / 甲 ${s?.armorHp}）`)
+    check(shipCategoryKeyOf(s!) === 'armored', `类别契约：${id} 的类别键应为 ` + '`armored`')
+  }
+  // 非战斗舰（采矿/货舰）**不许**被这条判据吸进装甲线（丙案明确"只在武装舰里判"）
+  for (const s of SHIPS) {
+    if (s.role === 'industrial' || s.role === 'hauler') {
+      check(!isArmorLineShip(s), `类别契约：${s.id}（${s.role}）不该归入装甲线（船长 2026-09-16：只在武装舰里判）`)
+    }
+  }
+  console.log(
+    `· 舰船类别契约：类别名 = 采矿舰 / 货运舰 / 武装舰 / **装甲舰**（armored 展示名「装甲」）· ` +
+      `装甲线合计 ${armorLine.length} 艘（按 role ${SHIPS.filter((s) => s.role === 'armored').length} + 武装舰换血转线 ${bySwap.length}：` +
+      `${bySwap.map((s) => s.name).join('、')}）`,
   )
 }
 

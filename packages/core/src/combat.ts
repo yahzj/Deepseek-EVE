@@ -951,13 +951,13 @@ export function createPlayerSpec(
   let armorHpMult = 1
   for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
   // 结构层容量（2026-09-10 船长：E 族巨构骨架引出）——任何槽位都可能带，按件加算求和，
-  // 与甲容同口径；技能（船体加固理论/重装舰操作）再乘于其上
+  // 与甲容同口径；技能（船体加固理论/装甲舰操作）再乘于其上
   let hullHpMult = 1
   for (const m of allFittedModules(fitted, ctx)) hullHpMult += m.hullHpBonus ?? 0
   // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
   const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
   const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
-  // 批次五：重装舰操作（armored 族驾驶）——装甲+结构容量 +4%/级，与船体加固理论乘算
+  // 批次五：装甲舰操作（armored 族驾驶）——装甲+结构容量 +4%/级，与船体加固理论乘算
   const armoredOpsLv = ship.role === 'armored' ? Math.min(5, state.skills.trained['armored-ops'] ?? 0) : 0
   const hullSkillMult = (1 + 0.04 * hullLv) * (1 + 0.04 * armoredOpsLv)
   const hp: Hp3 = {
@@ -2522,7 +2522,7 @@ function removeCargoOfShip(state: GameState, shipId: string, itemId: string, uni
 /**
  * **该舰的层容量增幅**（装甲/结构各自的「满值 ÷ 档案基础值」）——**2026-09-16 船长「统一吃」**：
  * 维修装置的每跳修复量与修理组件**同一把尺**，都随**额外护甲/结构加成**放大
- * （装备件 `armorHpBonus` / `hullHpBonus` ＋ 技能「船体加固理论」＋ 重装族「重装舰操作」）。
+ * （装备件 `armorHpBonus` / `hullHpBonus` ＋ 技能「船体加固理论」＋ 装甲族「装甲舰操作」）。
  *
  * 与 `shipyard.kitHealFor` 的 `capA/baseA`、`capH/baseH` **完全同源**：都取 `createPlayerSpec`
  * （含装备与技能）÷ 舰船档案值 ⇒ 两条路径的"吃加成"口径不会各写一套。
@@ -2571,7 +2571,7 @@ export function preloadRepairFor(
   /**
    * **层容量增幅**（2026-09-16 船长「统一吃」＋「并在相关说明中提及（提高维修量等）」）：
    * 每跳修复量从此与**修理组件同一把尺**——额外护甲/结构加成（装甲增厚板 · 结构件 ·
-   * 船体加固理论 · 重装舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
+   * 船体加固理论 · 装甲舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
    */
   const amp = layerAmpOf(state, ctx, shipId)
   // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**

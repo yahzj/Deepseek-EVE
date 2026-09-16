@@ -17,7 +17,8 @@ import {
   idleAiShipIds,
   isExplored,
   marketQuote,
-  shipRoleLabel,
+  shipCategoryKeyOf,
+  shipCategoryLabelOf,
   missingMaterials,
   oreAvailable,
   ownsBlueprint,
@@ -216,11 +217,13 @@ export function ShipPage({
                 : dur < 1 || armor < 1 // damaged：耐久或装甲未满 = 待维修
         if (!ok) return false
       }
-      // 舰船类别（角色）子筛选（2026-09-12 船长：与级别对调顺序 —— 类别为上位、先选）
-      // 键 = 角色 id，与市场/手册的 SHIP_SUBS 同源；「全部」= 该维不参与判定
+      // 舰船类别子筛选（2026-09-12 船长：与级别对调顺序 —— 类别为上位、先选）
+      // 键 = **类别判据** `shipCategoryKeyOf`（2026-09-16 船长：装甲线 = role 为 armored，
+      // 或武装舰里装甲占比 > 护盾占比「丙案：只在武装舰里判」），与市场/手册/虫洞的 SHIP_SUBS 同源；
+      // 「全部」= 该维不参与判定
       if (fleetRole !== SUB_ALL) {
         const def = ctx.ships.get(ship.defId ?? uid)
-        if ((def?.role ?? 'industrial') !== fleetRole) return false
+        if (shipCategoryKeyOf(def ?? {}) !== fleetRole) return false
       }
       // 舰船级别子筛选（2026-09-12 船长：为下位、后选）：键 `t<级别>`，与组装机「舰船蓝图」子筛选同一张单点表
       // ⚠ 各维“与”关系、互不重置；两维都选具体值时可能出现**空组合**（T4/T5 无采矿舰与武装舰等），
@@ -490,7 +493,7 @@ export function ShipPage({
                     {displayName}
                     {/* 2026-09-13 船长：子分类徽标（只有虫洞族专属舰船有 `subClass`）；样式复用同级角色 chip */}
                     {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
-                    <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
+                    <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipCategoryLabelOf(def)}</em>
                     {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">定制</em> : null}
                     {isLockedShip ? (
                       <em className="app-chip app-lock-chip" title="已锁定：此船不可移入舰船仓库（防误操作）">
@@ -795,7 +798,7 @@ export function ShipPage({
                             {def.name}
                             {/* 2026-09-13 船长：子分类徽标（市场/图纸列同样显示） */}
                             {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
-                            <em className={`app-chip app-role-chip is-${def.role}`}>{shipRoleLabel(def.role)}</em>
+                            <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipCategoryLabelOf(def)}</em>
                             {stored <= 0 ? (
                               <em className="app-chip app-lock-chip" title="舰船仓库里还没有这一型（在役舰队里的船不算——「已拥有 / 未拥有」只看仓库库存）">
                                 未拥有

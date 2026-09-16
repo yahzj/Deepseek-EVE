@@ -22,17 +22,17 @@ function shipOf(id: string) {
   return s!
 }
 
-/** 重装线三艘（船长 2026-09-15：「只保留基础的3艘重装船」） */
+/** 装甲线三艘（船长 2026-09-15：「只保留基础的3艘重装船」） */
 const LINE = ['sh-tortoise', 'sh-hawksbill', 'sh-xuanwu'] as const
 
-describe('重装线（甲壳族）货舱 −20%（船长 2026-09-15）', () => {
+describe('装甲线（甲壳族）货舱 −20%（船长 2026-09-15）', () => {
   it('三艘的货舱 = 原值 ×0.8', () => {
     expect(shipOf('sh-tortoise').cargoM3).toBe(5_600) // 7,000 ×0.8
     expect(shipOf('sh-hawksbill').cargoM3).toBe(9_600) // 12,000 ×0.8
     expect(shipOf('sh-xuanwu').cargoM3).toBe(15_200) // 19,000 ×0.8
   })
 
-  it('三艘都还在「重装」类别里（本线身份不变）', () => {
+  it('三艘都还在「装甲」类别里（本线身份不变）', () => {
     for (const id of LINE) expect(shipOf(id).role, `${id} 的 role`).toBe('armored')
   })
 

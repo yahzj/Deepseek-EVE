@@ -12,8 +12,8 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipSizeLabel, visibleItemDefs } from '@whale/core'
-import type { DroneClass, ItemKind } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipCategoryKeyOf, shipSizeLabel, visibleItemDefs } from '@whale/core'
+import type { DroneClass, ItemKind, ShipRole } from '@whale/core'
 // 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
 // （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
 import { handMarketKeyOf } from '../ui/marketJump'
@@ -236,7 +236,7 @@ const GUIDE_GROUPS: HandGroup[] = [
       {
         title: '势力与舰船',
         paras: [
-          ['协会与部门', '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（重装舰）、蜃楼（航运货舰）。'],
+          ['协会与部门', '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（装甲舰）、蜃楼（航运货舰）。'],
           ['五个档位', '舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高。'],
           ['子型号', '同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。'],
         ],
@@ -634,8 +634,8 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       rows.push(['说明', '已生效战斗数值：抗性按递减方式合成（上限 90%）'])
       rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场无成品现货：舰船蓝图船厂定制；已拥有的可二手出售）' : '市场流通'])
     } else {
-      const role = String(r.role ?? 'industrial')
-      rows.push(['定位 / 档次', `${roleName(role)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
+      const cls = shipCategoryKeyOf(r as unknown as { role?: ShipRole; shieldHp?: number; armorHp?: number })
+      rows.push(['定位 / 档次', `${roleName(cls)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
       rows.push(['货舱容量', `${Number(r.cargoM3 ?? 0).toLocaleString('zh-CN')} m³`])
       rows.push(['采集性能', `${Number(r.cycleSeconds ?? 0)} 秒 × ${Number(r.oreUnitsPerCycle ?? 0)} 单位/循环`])
       rows.push(['动力（机动 / 跃迁充能）', `${Math.round(Number(r.agility ?? 0) * 100)}%`])
@@ -869,13 +869,15 @@ export function Handbook({
     raw: mod as unknown as RawData,
   }))
   const shipCells: GridCell[] = engine.ships.map((ship) => {
-    const role = ship.role ?? 'industrial'
+    // 2026-09-16 船长：类别键走 `shipCategoryKeyOf` —— 装甲线 = `role: 'armored'` **或**武装舰里装甲占比 > 护盾占比
+    // （牛鲨级突击巡洋舰 + E 族专属舰；丙案「只在武装舰里判」）。图标/文字/分组/筛选四处同源这一处。
+    const cls = shipCategoryKeyOf(ship)
     return {
       key: ship.id,
       tab: 'ships',
-      glyph: role,
+      glyph: cls,
       name: ship.name,
-      sub: `${roleName(role)} · ${shipSizeLabel(ship.tier)} T${ship.tier} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
+      sub: `${roleName(cls)} · ${shipSizeLabel(ship.tier)} T${ship.tier} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
       raw: ship as unknown as RawData,
     }
   })
@@ -918,7 +920,7 @@ export function Handbook({
   function groupKeyOf(c: GridCell): string {
     if (c.tab === 'items') return String(c.raw.kind ?? '')
     if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''))
-    if (c.tab === 'ships') return String(c.raw.role ?? 'industrial')
+    if (c.tab === 'ships') return String(c.glyph) // 舰船类别键（`shipCategoryKeyOf` 的产物；见 shipCells）
     if (c.tab === 'blueprints') {
       // 2026-09-10 船长：装备蓝图按**产物模块的槽类**分高/中/低档（与市场页子分类同源单点）
       // 2026-09-11 船长：「舰船部分按舰船级别划分」——舰船蓝图由 1 组拆成 T1~T5 五组（键 t<级别>，同表）
@@ -982,7 +984,7 @@ export function Handbook({
       const mod = engine.ctx.modules.get(c.key)
       return mod !== undefined && rackOf(mod) === main
     }
-    if (t === 'ships') return String(c.raw.role ?? 'industrial') === main
+    if (t === 'ships') return String(c.glyph) === main // 同上：类别键（不是 raw.role）
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) return main === 'ship'
       if (c.raw.itemId !== undefined) return main === 'consume'
@@ -1090,13 +1092,13 @@ export function Handbook({
           {engine.ships
             .filter((ship) => ids.has(ship.id))
             .map((ship) => {
-              const role = ship.role ?? 'industrial'
+              const cls = shipCategoryKeyOf(ship)
               return (
                 <ShipHover key={ship.id} as="li" ship={ship} className="app-hand-entry">
                   <div className="app-inv-name">
-                    <RowGlyph glyph={role} /> {ship.name}
+                    <RowGlyph glyph={cls} /> {ship.name}
                     <span className="app-chip is-dim">T{ship.tier}</span>
-                    <span className={`app-chip app-role-chip is-${role}`}>{roleName(role)}</span>
+                    <span className={`app-chip app-role-chip is-${cls}`}>{roleName(cls)}</span>
                     {ship.priceIsk <= 0 ? <span className="app-chip">仅可制造</span> : null}
                   </div>
                   <div className="app-dim">

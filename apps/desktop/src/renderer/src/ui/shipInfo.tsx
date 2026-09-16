@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipRoleLabel, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipCategoryLabelOf, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 
 /** 伤害类型中文名 */
@@ -368,7 +368,8 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     {
       k: '定位 / 档次',
       // 2026-09-13 船长：**舰种子分类进界面**（只有虫洞族专属舰船写 `subClass`）
-      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipRoleLabel(ship.role)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
+      // 2026-09-16 船长：类别名走 `shipCategoryLabelOf`（装甲线 = `role: armored` 或武装舰里装甲占比 > 护盾占比）
+      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipCategoryLabelOf(ship)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
     },
     // 2026-09-13 船长点名的三条**船体固有新机制**（只虫洞族专属舰船有；没有就不占行）
     ...(() => {
