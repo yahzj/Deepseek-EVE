@@ -348,10 +348,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-lock-1', kind: 'module', refId: 'mod-lock-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
   { key: 'mod-lock-2', kind: 'module', refId: 'mod-lock-2', rarity: 'rare', basePrice: 465_000, demandMultiplier: 0.65 },
   { key: 'mod-lock-3', kind: 'module', refId: 'mod-lock-3', rarity: 'rare', basePrice: 2_270_000, demandMultiplier: 0.65 },
-  /* ═══ 2026-09-15 隐秘行动装置（船长：高槽 · 自身武器开火前隐身 20/30 秒 · 极度吃 CPU ·
-      带推进器则直接解除隐身）；蓝图书价按档位系数（MK2 = 产物价 ×2.5 = 400 万 · MK3 = ×3 = 1,440 万） ═══ */
-  { key: 'mod-stealth-2', kind: 'module', refId: 'mod-stealth-2', rarity: 'rare', basePrice: 1_600_000, demandMultiplier: 0.65 },
-  { key: 'mod-stealth-3', kind: 'module', refId: 'mod-stealth-3', rarity: 'rare', basePrice: 4_800_000, demandMultiplier: 0.65 },
+  /* ═══ 2026-09-15 隐秘行动装置（船长：高槽 · 自身武器开火前隐身 20/30 秒 · 带推进器则直接解除隐身）
+      2026-09-16 船长定数与渠道：**MK2 = CPU 55 · 300 万 · 稀有订单档 3** · **MK3 = CPU 80 · 1000 万 · 奇货档 4**；
+      蓝图书价照档位系数 = 产物 **×2.5（750 万）/ ×4（奇货，4000 万）**，与 blueprints.ts 的 bp-stealth-2/3 同值 ═══ */
+  { key: 'mod-stealth-2', kind: 'module', refId: 'mod-stealth-2', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65 },
+  { key: 'mod-stealth-3', kind: 'module', refId: 'mod-stealth-3', rarity: 'exotic', basePrice: 10_000_000, demandMultiplier: 0.75 },
   /* ═══ B3 打捞器（2026-09-05；**高槽**无伤害件（2026-09-13 曾改判低槽，2026-09-14 船长「改回高槽」）：升级只减周期；初价按低耗件梯队，可调） ═══ */
   { key: 'mod-salvager-1', kind: 'module', refId: 'mod-salvager-1', rarity: 'common', basePrice: 20_000, demandMultiplier: 0.6 },
   { key: 'mod-salvager-2', kind: 'module', refId: 'mod-salvager-2', rarity: 'rare', basePrice: 439_000, demandMultiplier: 0.65 },
@@ -418,10 +419,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-hullrep-2', kind: 'blueprint', refId: 'bp-hullrep-2', rarity: 'rare', basePrice: 5725000, demandMultiplier: 0.65, standingReq: 4 }, // 船体维修装置 MK2（蓝图=产物×3）（入闸）
   { key: 'bp-lock-2', kind: 'blueprint', refId: 'bp-lock-2', rarity: 'rare', basePrice: 1162500, demandMultiplier: 0.65 }, // 目标锁定阵列 MK2（蓝图=产物×2.5）
   { key: 'bp-lock-3', kind: 'blueprint', refId: 'bp-lock-3', rarity: 'rare', basePrice: 6810000, demandMultiplier: 0.65, standingReq: 4 }, // 目标锁定阵列 MK3（蓝图=产物×3）
-  // 2026-09-15 隐秘行动装置（高槽 · 开火前隐身 20/30 秒 · 极度吃 CPU）：蓝图书价 = 产物价 ×2.5 / ×3
-  // （与 blueprints.ts 的 priceIsk 必须同值——硬契约），MK3 挂同档声望门槛
-  { key: 'bp-stealth-2', kind: 'blueprint', refId: 'bp-stealth-2', rarity: 'rare', basePrice: 4000000, demandMultiplier: 0.65 },
-  { key: 'bp-stealth-3', kind: 'blueprint', refId: 'bp-stealth-3', rarity: 'rare', basePrice: 14400000, demandMultiplier: 0.65, standingReq: 4 },
+  // 2026-09-15 隐秘行动装置（高槽 · 开火前隐身 20/30 秒）；2026-09-16 船长定数：MK2 = 300 万（稀有档 3）、
+  // MK3 = 1000 万（**奇货档 4**）⇒ 书价 = 产物 ×2.5 / **×4**（奇货档规矩，无 MK 阶梯），与 blueprints.ts 同值（硬契约）
+  { key: 'bp-stealth-2', kind: 'blueprint', refId: 'bp-stealth-2', rarity: 'rare', basePrice: 7500000, demandMultiplier: 0.65 },
+  { key: 'bp-stealth-3', kind: 'blueprint', refId: 'bp-stealth-3', rarity: 'exotic', basePrice: 40000000, demandMultiplier: 0.75 },
   // 舰船蓝图（造船；稀有）
   { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 3_600_000, demandMultiplier: 1.0, standingReq: 11 }, // 开拓级（蓝图=船价×3；2026-09-09 随全蓝图化升奇货档+声望 11）
   { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 座头鲸级（2026-09-13 价位重排：船价 9M ×4；T3 蓝图门槛 15）

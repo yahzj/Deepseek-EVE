@@ -7,8 +7,8 @@
  *   弹药管够；每格 **40 种子**（`SEED_BASE` + i×1013904223）取平均。
  * - **表 1 · 机制净效果**：同一套装配里把第 5 门炮换成装置（4 炮 vs 4 炮 + 装置）——隔离出装置本身
  *   （CPU 会超船体，仅用于隔离机制，不代表可装配）。
- * - **表 2 · CPU 合法的真实取舍**：满火力 4 门（208）vs 2 门 + 装置（MK2 = 179 / MK3 = 224）
- *   —— 回答"极度吃 CPU 拿走了什么"。
+ * - **表 2 · CPU 合法的真实取舍**（**2026-09-16 船长定数后**：MK2 = 55 CPU / MK3 = 80 CPU）：满火力
+ *   4 门（208）vs **3 门 + MK2（211）** vs **2 门 + MK3（184）**——回答"吃 CPU 拿走了什么"。
  *
  * 读数落 `tools/_ui-artifacts/stealth-readings.log`（gitignore 区，便于随时看尾）。
  * 用量：`npm run battle:stealth-readings`
@@ -45,13 +45,13 @@ const SKILLS: Record<string, number> = Object.fromEntries(SKILL_IDS.map((k) => [
 type Fit = { key: string; high: readonly string[]; cpu: string }
 const TABLE1: readonly Fit[] = [
   { key: '4×炮台（对照）', high: [GUN, GUN, GUN, GUN], cpu: '208（可装配）' },
-  { key: '4×炮台 + 隐秘MK2', high: [GUN, GUN, GUN, GUN, 'mod-stealth-2'], cpu: '283（超船体·仅隔离机制）' },
-  { key: '4×炮台 + 隐秘MK3', high: [GUN, GUN, GUN, GUN, 'mod-stealth-3'], cpu: '328（超船体·仅隔离机制）' },
+  { key: '4×炮台 + 隐秘MK2', high: [GUN, GUN, GUN, GUN, 'mod-stealth-2'], cpu: '263（超船体·仅隔离机制）' },
+  { key: '4×炮台 + 隐秘MK3', high: [GUN, GUN, GUN, GUN, 'mod-stealth-3'], cpu: '288（超船体·仅隔离机制）' },
 ]
 const TABLE2: readonly Fit[] = [
   { key: '满火力 4×炮台（无装置）', high: [GUN, GUN, GUN, GUN], cpu: '208/225' },
-  { key: '2×炮台 + 隐秘MK2（20 秒）', high: [GUN, GUN, 'mod-stealth-2'], cpu: '179/225' },
-  { key: '2×炮台 + 隐秘MK3（30 秒）', high: [GUN, GUN, 'mod-stealth-3'], cpu: '224/225' },
+  { key: '3×炮台 + 隐秘MK2（20 秒）', high: [GUN, GUN, GUN, 'mod-stealth-2'], cpu: '211/225' },
+  { key: '2×炮台 + 隐秘MK3（30 秒）', high: [GUN, GUN, 'mod-stealth-3'], cpu: '184/225' },
 ]
 const RUNS = 40
 const SEED_BASE = 20260915

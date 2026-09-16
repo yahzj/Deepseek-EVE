@@ -1541,22 +1541,22 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 6810000,
     description: '顶级锁定流程，从发现到咬住几乎是同一个瞬间。',
   },
-  /* ═══ 2026-09-15 隐秘行动装置（船长：高槽 · 自身武器开火前隐身 20/30 秒 · 极度吃 CPU）；
-      材料 ≈ 产物价 ×0.42 / ×0.40（与锁定阵列同一条料价带，按价格倍数换算件数）、
-      书价按档位系数 = 产物价 ×2.5 / ×3 ═══ */
+  /* ═══ 2026-09-15 隐秘行动装置（船长：高槽 · 自身武器开火前隐身 20/30 秒）；
+      2026-09-16 船长定数与渠道：MK2 = 300 万（稀有档 3）· MK3 = 1000 万（**奇货档 4**）
+      ⇒ 材料 ≈ 产物价 **0.45**（与微型跃迁引擎 MK3 同一条料价带）、书价 = 产物 **×2.5 / ×4** ═══ */
   {
     id: 'bp-stealth-2',
     name: '隐秘行动装置 MK2蓝图',
     moduleId: 'mod-stealth-2',
     materials: [
-      { itemId: 'min-tritanium', count: 37_800 },
-      { itemId: 'min-pyerite', count: 12_000 },
-      { itemId: 'min-mexallon', count: 7_200 },
-      { itemId: 'min-nocxium', count: 1_450 },
+      { itemId: 'min-tritanium', count: 70_800 },
+      { itemId: 'min-pyerite', count: 22_500 },
+      { itemId: 'min-mexallon', count: 13_500 },
+      { itemId: 'min-nocxium', count: 2_700 },
     ],
-    buildSeconds: 1800,
+    buildSeconds: 2400,
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 4000000,
+    priceIsk: 7500000,
     description: '把整段舰体的信号压到背景噪声之下：材料不难找，难的是那份遮蔽规程。',
   },
   {
@@ -1564,15 +1564,15 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     name: '隐秘行动装置 MK3蓝图',
     moduleId: 'mod-stealth-3',
     materials: [
-      { itemId: 'min-tritanium', count: 102_600 },
-      { itemId: 'min-pyerite', count: 30_500 },
-      { itemId: 'min-mexallon', count: 17_200 },
-      { itemId: 'min-nocxium', count: 3_380 },
-      { itemId: 'min-isotope', count: 5_800 },
+      { itemId: 'min-tritanium', count: 214_000 },
+      { itemId: 'min-pyerite', count: 63_700 },
+      { itemId: 'min-mexallon', count: 35_900 },
+      { itemId: 'min-nocxium', count: 7_060 },
+      { itemId: 'min-isotope', count: 12_100 },
     ],
-    buildSeconds: 3600,
+    buildSeconds: 4800,
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 14400000,
+    priceIsk: 40000000,
     description: '顶配遮蔽规程：长到能在敌人眼皮底下走完一整段距离，代价是算力几乎被它吃干。',
   },
 

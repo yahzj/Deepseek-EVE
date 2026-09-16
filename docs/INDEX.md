@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **262** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4903** KB · **36050** 行
+- 文档总数 **262** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4905** KB · **36057** 行
 - 状态分布：**未标注** 142 · **已确认/已实现** 106 · **进行中** 9 · **待裁定** 4 · **历史留档** 1
 - 孤儿文档（0 引用）**16** 份 · 状态未标注 **142** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -34,7 +34,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 140 KB / 209 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 535 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 299 KB / 708 行 | 185 / 8 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 300 KB / 708 行 | 185 / 8 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 93 KB / 216 行 | 235 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
@@ -67,7 +67,7 @@
 | `docs/design/foe-dps-overcap-20260915.md` | 敌舰体火力「越线折扣」（超 150 部分 15% 折扣）· 2026-09-15 | 进行中（进行中） | 2026-09-15 | 6 KB / 81 行 | 0 / 0 |
 | `docs/design/handoff-20260915-to-new-pilot1.md` | 交接文档 · 大鲸鱼深空工业 · 2026-09-15 夜（一号 → 下一任一号） | 未标注 | 2026-09-15 | 16 KB / 136 行 | 0 / 0 |
 | `docs/design/handoff-20260915-verify.md` | 交接文档 · 大鲸鱼深空工业 · 2026-09-15 夜（三号 → 下一任） | 未标注 | 2026-09-15 | 8 KB / 91 行 | 2 / 0 |
-| `docs/design/stealth-device-20260915.md` | 隐秘行动装置（高槽 · 开火前隐身）· 工作文档 | 进行中（进行中） | 2026-09-15 | 10 KB / 98 行 | 1 / 0 |
+| `docs/design/stealth-device-20260915.md` | 隐秘行动装置（高槽 · 开火前隐身）· 工作文档 | 进行中（进行中） | 2026-09-15 | 11 KB / 105 行 | 1 / 0 |
 | `docs/design/system-scan-unattended-20260915.md` | 星系扫描无人化（扫描艇 · 不占主控 · 完成待查看）—— 2026-09-15 船长定案 | 已确认/已实现（已确认 · 已落码） | 2026-09-15 | 8 KB / 84 行 | 1 / 0 |
 | `docs/design/tuning-schedule-20260915.md` | 限时倍率表（tuning schedule）· 工作文档 | 进行中（进行中） | 2026-09-15 | 6 KB / 57 行 | 2 / 0 |
 | `docs/design/wormhole-foe-variety-20260915.md` | 洞内敌卡扩充（一族三档 + 新舰）· 2026-09-15 | 已确认/已实现（已确认） | 2026-09-15 | 27 KB / 293 行 | 7 / 3 |

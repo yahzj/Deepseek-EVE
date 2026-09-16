@@ -1606,34 +1606,47 @@ for (const m of MODULES) {
 }
 
 /* ── 隐秘行动装置契约（2026-09-15 船长：「添加隐秘行动装置，高槽，效果是自身武器开火前，隐身30秒
- *   （不被锁定，不被攻击）」；六问六答 = 两档 MK2/MK3 · 20 / 30 秒 · **极度吃 CPU** · 带推进器即解除）──
- * 数据侧能核的四条：① 恰好两档、时长 = 20 秒 / 30 秒（档位越高窗口越长）；② 高槽支援件；
- * ③ 常驻市场可买 + 有蓝图可造；④ **CPU 占用高于既有全部装备**（"极度吃 CPU" 的可核表达）。
+ *   （不被锁定，不被攻击）」；**2026-09-16 船长定数与渠道**：「MK2吃55CPU，价格提高到300W，MK3吃80CPU，
+ *   价格提高到1000W，MK2为稀有订单稀有度3，MK3为奇货，稀有度4」）──
+ * 本条把**船长给定值逐项钉死**（数值是船长的数 ⇒ 回归时改一处就会被拦下）：
+ *   ① 恰好两档：MK2 = 20 秒 · CPU 55 · 300 万 · 稀有渠道 · 档 3；MK3 = 30 秒 · CPU 80 · 1000 万 · **奇货渠道 · 档 4**；
+ *   ② 高槽支援件；③ 市场可买（不挂 unreleased）+ 有蓝图可造，且**蓝图渠道/档位与产物一致**；
+ *   ④ 蓝图书价照档位系数（MK2 ×2.5 = 750 万 · 奇货 ×4 = 4000 万）。
  * ⚠「**带推进器则直接解除隐身**」是**引擎口径**（`combat.createPlayerSpec`：`propDefs` 非空即判 0），
  *   数据侧没有可核字段 ⇒ 由 core 用例钉住（`tests/stealth-device.test.ts`）。 */
 {
   const stealthMods = MODULES.filter((m) => (m.stealthMs ?? 0) > 0)
   check(stealthMods.length === 2, `隐秘行动装置应为两档（MK2/MK3），实际 ${stealthMods.length} 件`)
   const byId = new Map(stealthMods.map((m) => [m.id, m]))
-  check(byId.get('mod-stealth-2')?.stealthMs === 20_000, '隐秘行动装置 MK2 的隐身窗口应为 20 秒（20000 毫秒）')
-  check(byId.get('mod-stealth-3')?.stealthMs === 30_000, '隐秘行动装置 MK3 的隐身窗口应为 30 秒（30000 毫秒）')
-  for (const m of stealthMods) {
+  /** 船长 2026-09-16 给定值（逐项钉死）：id → 窗口 / CPU / 市场价 / 渠道 / 档位 / 蓝图书价 */
+  const SPEC: ReadonlyArray<{ id: string; bpId: string; ms: number; cpu: number; price: number; rarity: string; tier: number; book: number }> = [
+    { id: 'mod-stealth-2', bpId: 'bp-stealth-2', ms: 20_000, cpu: 55, price: 3_000_000, rarity: 'rare', tier: 3, book: 7_500_000 },
+    { id: 'mod-stealth-3', bpId: 'bp-stealth-3', ms: 30_000, cpu: 80, price: 10_000_000, rarity: 'exotic', tier: 4, book: 40_000_000 },
+  ]
+  for (const spec of SPEC) {
+    const m = byId.get(spec.id)
+    check(m !== undefined, `隐秘行动装置缺件：${spec.id}`)
+    if (!m) continue
+    check(m.stealthMs === spec.ms, `${spec.id} 的隐身窗口应为 ${spec.ms / 1000} 秒（船长给定）`)
+    check(m.cpuUse === spec.cpu, `${spec.id} 的 CPU 占用应为 ${spec.cpu}（船长给定），实际 ${m.cpuUse}`)
     check(m.slot === 'support' && m.rack === 'high', `隐秘行动装置 ${m.id} 应为高槽支援件，实际 ${m.slot}/${m.rack}`)
     check(m.unreleased !== true, `隐秘行动装置 ${m.id} 标着未上线 —— 船长要的是玩家能拿到它`)
     const good = MARKET_GOODS.find((g) => g.kind === 'module' && g.refId === m.id)
     check(good !== undefined && good.unreleased !== true, `隐秘行动装置 ${m.id} 没有常驻市场行（玩家买不到）`)
-    check(BLUEPRINTS.some((b) => b.moduleId === m.id), `隐秘行动装置 ${m.id} 没有蓝图（不可制造）`)
-  }
-  const otherMaxCpu = Math.max(...MODULES.filter((m) => (m.stealthMs ?? 0) === 0).map((m) => m.cpuUse ?? 0))
-  for (const m of stealthMods) {
-    check(
-      (m.cpuUse ?? 0) > otherMaxCpu,
-      `隐秘行动装置 ${m.id} 的 CPU 占用（${m.cpuUse}）应高于既有全部装备（现最高 ${otherMaxCpu}）——船长口径「极度吃 CPU」`,
-    )
+    check(good?.rarity === spec.rarity, `${spec.id} 的市场渠道应为 ${spec.rarity}（船长给定），实际 ${good?.rarity}`)
+    check(good?.basePrice === spec.price, `${spec.id} 的市场价应为 ${spec.price.toLocaleString('zh-CN')}（船长给定），实际 ${good?.basePrice}`)
+    check(RARITY_TIER[spec.id] === spec.tier, `${spec.id} 的稀有度档应为 ${spec.tier}（与 ${spec.rarity} 渠道同带），实际 ${RARITY_TIER[spec.id]}`)
+    const bp = BLUEPRINTS.find((b) => b.moduleId === m.id)
+    check(bp !== undefined, `隐秘行动装置 ${m.id} 没有蓝图（不可制造）`)
+    check(bp?.priceIsk === spec.book, `${spec.bpId} 的书价应为 ${spec.book.toLocaleString('zh-CN')}（产物价 × 档位系数），实际 ${bp?.priceIsk?.toLocaleString('zh-CN')}`)
+    const bpRow = MARKET_GOODS.find((g) => g.kind === 'blueprint' && g.refId === spec.bpId)
+    check(bpRow !== undefined && bpRow.unreleased !== true, `${spec.bpId} 没有市场行（玩家买不到图纸）`)
+    check(bpRow?.rarity === spec.rarity && bpRow?.basePrice === spec.book, `${spec.bpId} 的渠道/书价应与产物同渠道同值`)
+    check(RARITY_TIER[spec.bpId] === spec.tier, `${spec.bpId} 的稀有度档应与产物一致（${spec.tier}）`)
   }
   console.log(
-    `· 隐秘行动装置契约：${stealthMods.map((m) => `${m.name} ${(m.stealthMs ?? 0) / 1000} 秒 · CPU ${m.cpuUse}`).join(' · ')}` +
-      `（既有装备最高 CPU ${otherMaxCpu}）· 带推进器即解除（引擎口径，见 core 用例）`,
+    `· 隐秘行动装置契约：${SPEC.map((s) => `${byId.get(s.id)?.name} ${s.ms / 1000} 秒 · CPU ${s.cpu} · ${s.price / 10_000} 万（${s.rarity} 档 ${s.tier}）`).join(' · ')}` +
+      ` · 带推进器即解除（引擎口径，见 core 用例）`,
   )
 }
 
