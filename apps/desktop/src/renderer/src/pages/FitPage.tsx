@@ -17,6 +17,9 @@ import type {
 } from '@whale/core'
 import {
   allFittedIds,
+  /** 本场预载需求（与开战装载同一函数）＋ 取档判定（船长 2026-09-16「甲」口径的单点） */
+  ammoLoadTotals,
+  resolveAmmoTier,
   countModule,
   countWare,
   cpuBudgetOf,
@@ -1065,7 +1068,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
 }
 
 /* ═══════════════ 弹药档位（2026-09-09 弹药 MK2：出战前选档——装配页按弹族选基础弹/MK2；
-开战预载按所选档消耗（库存不足整族回退基础弹 + 日志）；连打/离线同源。未设 = 基础弹） ═══════════════ */
+   **取档口径 2026-09-16 船长改判**：开战按"同族取能装得最多的一档"装载、装不满也照装
+   （旧口径「库存不足整族回退基础弹」已作废）；连打/离线同源。未设 = 基础弹；
+   本区显示的"本场预载"走 core `resolveAmmoTier`（与开战装载同一函数）） ═══════════════ */
 
 const AMMO_SLOT_TYPES: Array<{ slot: 'turret' | 'missile' | 'laser'; type: DamageType }> = [
   { slot: 'turret', type: 'kinetic' },
@@ -1087,15 +1092,31 @@ function AmmoTierSection({
   const ctx = engine.ctx
   const ship = state.fleet[target]
   const highIds = new Set((ship?.fitted?.high ?? []).filter((id): id is string => typeof id === 'string'))
+  /**
+   * **本场预载需求**（与引擎开战装载同一函数 `ammoLoadTotals`）——界面要拿它算"这一档够不够装"。
+   * ⚠ 与开战口径同源：同一 `createPlayerSpec` + 同一 `ammoLoadTotals`（技能/装配一变就跟着变）。
+   */
+  const spec = ship ? createPlayerSpec(state, ctx, target) : null
+  const totals = spec ? ammoLoadTotals(spec, ctx.balance.battle, state) : {}
   const rows = AMMO_SLOT_TYPES.map(({ slot, type }) => {
     const hasWeapon = [...highIds].some((id) => ctx.modules.get(id)?.slot === slot)
     if (!hasWeapon) return null
     const mk2 = ctx.items.get(`ammo-${type}-2`)
-    const baseName = ctx.items.get(`ammo-${type}-l`)?.name ?? DMG_LABEL[type]
+    const base = ctx.items.get(`ammo-${type}-l`)
+    const baseName = base?.name ?? DMG_LABEL[type]
     if (!mk2) return null
     const pref = ship?.ammoPref?.[type]
     const onMk2 = pref === mk2.id
     const haveMk2 = countWare(state, mk2.id)
+    const haveBase = countWare(state, base?.id ?? `ammo-${type}-l`)
+    /**
+     * **本场实际会装哪一档**（船长 2026-09-16「甲」口径：同族取"能装得最多"的那一档）——
+     * 走 core 的 `resolveAmmoTier`（**与开战预载同一函数** ⇒ 界面显示 = 实战结果，不各写一套）。
+     */
+    const need = totals[type] ?? 0
+    const eff = resolveAmmoTier(state, ctx, target, type, need)
+    const effName = ctx.items.get(eff.id)?.name ?? eff.id
+    const noneLeft = eff.can <= 0 && need > 0
     return (
       <div key={type} className="app-fit-ammotier-row">
         <DmgChip t={type} label={baseName} />
@@ -1106,7 +1127,7 @@ function AmmoTierSection({
               const r = engine.setAmmoTierAt(type, null, target)
               if (!r.ok) onToast(r.error ?? '设置失败', true)
             }}
-            title={`${baseName}：本船${baseName}档（未设 = 基础弹）`}
+            title={`${baseName}：本船${baseName}档（未设 = 基础弹；开战时同族取"能装得最多"的一档）`}
           >
             {baseName}
           </button>
@@ -1116,13 +1137,32 @@ function AmmoTierSection({
               const r = engine.setAmmoTierAt(type, mk2.id, target)
               if (!r.ok) onToast(r.error ?? '设置失败', true)
             }}
-            title={`${mk2.name}：单发更高（${mk2.dmg ?? '?'} vs ${ctx.items.get(`ammo-${type}-l`)?.dmg ?? '?'}）；开战按档预载，库存不足整族回退${baseName}。仓库 ×${haveMk2}`}
+            title={`${mk2.name}：单发更高（${mk2.dmg ?? '?'} vs ${base?.dmg ?? '?'}）；开战按档预载——同族里"能装得最多"的那一档会被实际装填，装不满也照装。仓库 ×${haveMk2}`}
           >
             {mk2.name}
           </button>
         </span>
         <span className="app-dim">
-          {haveMk2 > 0 ? `仓库 ×${fmt(haveMk2)}` : `${mk2.name}无库存（将回退${baseName}）`}
+          {baseName} ×{fmt(haveBase)} · {mk2.name} ×{fmt(haveMk2)}
+          {need > 0 ? (
+            <>
+              {' · '}
+              本场预载：<b>{effName}</b> 可装 {fmt(eff.can)}/{fmt(need)}
+            </>
+          ) : null}
+          {noneLeft ? (
+            <>
+              {' · '}
+              <span className="app-fit-ammotier-warn">⚠ 两档都没货：本场将无弹可打</span>
+            </>
+          ) : eff.fellBack && need > 0 ? (
+            <>
+              {' · '}
+              <span className="app-fit-ammotier-warn">
+                ⚠ {pref ? ctx.items.get(pref)?.name ?? '所选档' : '基础弹'}不足，将自动改用{effName}
+              </span>
+            </>
+          ) : null}
         </span>
       </div>
     )
@@ -1132,7 +1172,7 @@ function AmmoTierSection({
     <div className="app-fit-ammotier">
       <div className="app-fit-dronebay-head">
         <span className="app-fit-dronebay-title">弹药档位</span>
-        <span className="app-dim">（出发预载按所选档消耗；连打同源）</span>
+        <span className="app-dim">（出发预载按档消耗；连打同源；同族取"能装得最多"的一档，装不满也照装）</span>
       </div>
       {rows}
     </div>

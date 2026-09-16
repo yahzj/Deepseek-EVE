@@ -6,7 +6,9 @@
  * ② **回收速率**：一次动作（1 回合）回收 = **打捞器台数** 的堆 ⇒ 总回合 = **⌈堆数 ÷ 台数⌉**；
  * ③ **优先稀有**：先拿稀有残骸，回合不够时留下的是普通残骸；
  * ④ **墓场**：普通残骸 3~10 堆 + **每 3 堆普通判一次稀有**（35%）⇒ 稀有 ≤ ⌊普通 ÷ 3⌋；
- * ⑤ **遗迹**：稀有残骸 2~3 堆（**不吃**墓场那条新规则）+ 打捞结束 70% 触发收尾战（层威胁 ×1.3）；
+ * ⑤ **遗迹**：稀有残骸 2~3 堆（**不吃**墓场那条新规则）+ **首次打捞**时结算三个掷点：
+ *    遗迹安全货柜 70%（层 2 起）· AI 核心 10% · 惊扰守卫当场开战（2026-09-16 船长
+ *    「**时间点改为遗迹第一次打捞**」——改前是"打捞完"那一拍，见本文件「遗迹掉落时机」describe）；
  * ⑥ **舰船信号战果**：打赢固定给残骸 2 堆 + 稀有残骸 1 堆；**矿脉**：虚空母矿 1~3 堆、手拾每堆 1 回合。
  *
  * ✅ 2026-09-14 船长解除不可见（入口常驻、数据全部上线、公开就叫「虫洞」）；本文件不产生玩家可见文案。
@@ -766,6 +768,7 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
     for (let seed = 1; seed <= 40; seed++) {
       const state = enterRun(4, seed)
       const run = state.wormhole.run!
+      const grid = run.grid!
       // 层 1：恒不出专属
       const cell = standOn(state, 'ruins')
       wormholeEnsureSalvagePiles(state, cell)
@@ -774,6 +777,10 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       expect((run.relics ?? []).length).toBe(0)
       // 推到第 2 层再试（直接改层号：只验门槛与池归属，不验走盘）
       run.depth = 2
+      // ⚠ 2026-09-16 起「遗迹掉落」在**这一格第一次打捞**时就结算（船长「时间点改为遗迹第一次打捞」），
+      //   而这里是把同一张盘原地改成层 2 ⇒ 必须**一起清掉首捞账**，否则这一格在层 1 那一步已经结算过、
+      //   永远不会再掷（真游戏里换层是**换一张新盘**，新盘本来就没有这个账）。
+      grid.ruinsRolled = []
       const cell2 = standOn(state, 'ruins')
       wormholeEnsureSalvagePiles(state, cell2)
       const r2 = wormholeSalvageAt(state, ctx)
@@ -794,6 +801,99 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       }
     }
     expect(got, '40 个种子里一次专属都没掉（层 2 = 70% 概率不该如此）').toBeTruthy()
+  })
+
+  /* ═══════════ 遗迹掉落时机（2026-09-16 船长：「时间点改为遗迹第一次打捞」）═══════════
+   * 三个掷点（遗迹安全货柜 70% · AI 核心 10% · 惊扰守卫）由"**这一格打捞完**那一拍"
+   * 提前到"**这一格第一次真正收走至少一堆**的那次打捞"，掷中即发货，每格只结算一次
+   * （`grid.ruinsRolled` 记账、随档）。 */
+  describe('遗迹掉落时机：第一次打捞即结算（船长 2026-09-16）', () => {
+    /** 在 depth=2 找一个「首捞命中货柜」的种子（真掷骰，不用假随机） */
+    function seedWithBox(depth = 2): { state: GameState; cell: WormholeGridCell } {
+      for (let seed = 1; seed <= 60; seed++) {
+        const state = enterRun(1, seed)
+        const run = state.wormhole.run!
+        run.depth = depth
+        const cell = standOn(state, 'ruins')
+        wormholeEnsureSalvagePiles(state, cell)
+        if (wormholeRollRelicBox(state, ctx, cell) !== undefined) return { state, cell }
+      }
+      throw new Error('60 个种子里没有首捞命中货柜的样本（70% 概率不该如此）')
+    }
+
+    it('**不必清完也能拿到**：首捞（还有堆没捞）即掷、掷中即发货', () => {
+      const { state, cell } = seedWithBox()
+      const run = state.wormhole.run!
+      const grid = run.grid!
+      expect((cell.piles ?? []).length).toBeGreaterThanOrEqual(2) // 1 台打捞器 ⇒ 首捞必留堆
+      expect(grid.ruinsRolled ?? []).not.toContain(cell.key)
+      const r = wormholeSalvageAt(state, ctx)
+      expect(r.ok).toBe(true)
+      expect(r.finished, '首捞不该把 2~3 堆一次捞完').toBe(false)
+      expect((r.relics ?? []).length, '首捞就该出遗迹货柜').toBe(1)
+      expect(wormholeRelicBoxPoolOf(ctx)).toContain(r.relics![0]!)
+      expect(grid.ruinsRolled, '首捞即记账').toContain(cell.key)
+      expect(state.logs.some((l) => l.text.includes('遗迹深处发现'))).toBe(true)
+    })
+
+    it('**每格只结算一次**：同格再打捞不再掷（`relics` 空、账不变）', () => {
+      const { state, cell } = seedWithBox()
+      const run = state.wormhole.run!
+      const grid = run.grid!
+      wormholeSalvageAt(state, ctx)
+      const rolled = [...(grid.ruinsRolled ?? [])]
+      const r2 = wormholeSalvageAt(state, ctx)
+      expect(r2.relics ?? []).toEqual([])
+      expect(grid.ruinsRolled).toEqual(rolled)
+      void run
+      void cell
+    })
+
+    it('**惊扰守卫也提前**（船长同日选「也提前到第一次打捞」）：首捞就可能当场开战', () => {
+      let checked = 0
+      for (let seed = 1; seed <= 60 && checked < 3; seed++) {
+        const state = enterRun(1, seed)
+        const run = state.wormhole.run!
+        run.depth = 2
+        const cell = standOn(state, 'ruins')
+        wormholeEnsureSalvagePiles(state, cell)
+        const r = wormholeSalvageAt(state, ctx)
+        expect(r.finished).toBe(false) // 首捞（1 台 ⇒ 还有堆）
+        if (r.effect?.kind === 'ruinsBattle') {
+          expect(r.effect.key).toBe(cell.key)
+          expect(run.pendingRuinsBattle, '要拦下后续动作').toBe(true)
+          expect(state.logs.some((l) => l.text.includes('守备被惊动'))).toBe(true)
+          checked += 1
+        }
+      }
+      expect(checked, '60 个种子里一次首捞开战都没有（概率没生效）').toBeGreaterThan(0)
+    })
+
+    it('**空动作不算第一次**：货仓一堆都收不走 ⇒ 不结算、不浪费这一格的判定', () => {
+      const state = enterRun(1, 7)
+      const run = state.wormhole.run!
+      run.depth = 2
+      const cell = standOn(state, 'ruins')
+      const cardId = wormholeCellCardIdOf(run, cell)
+      wormholeEnsureSalvagePiles(state, cell)
+      // 塞满背包（同一物品并格 ⇒ 直接溢出，一堆都进不去）
+      run.bag = [{ itemId: wreckItemIdOf(cardId), units: 100_000 }]
+      const r = wormholeSalvageAt(state, ctx)
+      expect(r.ok).toBe(true)
+      expect((r.taken ?? []).length, '一堆都没收走').toBe(0)
+      expect(r.relics ?? []).toEqual([])
+      expect(run.grid!.ruinsRolled ?? [], '一堆都没收走 ⇒ 这一格的判定要留着').not.toContain(cell.key)
+    })
+
+    it('**记账随档**：读档后同格不再重复结算（否则"存档→重开"能反复刷）', () => {
+      const { state, cell } = seedWithBox()
+      wormholeSalvageAt(state, ctx)
+      const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
+      const lgrid = loaded.wormhole.run!.grid!
+      expect(lgrid.ruinsRolled, '首捞账要落盘').toContain(cell.key)
+      const r = wormholeSalvageAt(loaded, ctx)
+      expect(r.relics ?? [], '读档后再捞不该再出货柜').toEqual([])
+    })
   })
 
   it('**专属概率固定 70%**（层 2 起一律；层 1 恒 0）——实测命中率 ≈70%，且不再随层变化', () => {
