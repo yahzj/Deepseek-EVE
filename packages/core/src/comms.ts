@@ -225,13 +225,20 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
        * **造出第一艘自造船**（2026-09-15 船长：「新增通讯发送的节点：当玩家造好第一条船后，弹出通讯
        * 祝贺玩家，并告诉玩家新建造的舰船在舰船仓库页面」）。
        *
-       * 三态随档标记 `state.firstShipBuilt`（置位点唯一 = `manufacturing.ts` 的 `settlePiece()` 造船分支）：
-       * - `true` ⇒ 造过 ⇒ 送达；
-       * - `false` = **新档**（`createInitialState` 写入）⇒ **只等真建造**，不会凭空收到祝贺；
-       * - **缺失 = 老档** ⇒ 船长三问裁决选「**丙**」：**读档即补发**（与 `ambushRetreat` 的"按痕迹判"不同——
-       *   这条既是祝贺、也是"新船在舰船仓库"的指路，老档读到同样有用）。
+       * 判定 = 随档标记 `state.firstShipBuilt === true`——**置位点唯一** =
+       * `manufacturing.ts` 的 `settlePiece()` 造船分支（主控亲手开线与 AI 核心代造同算）。
+       *
+       * ⚠ **2026-09-16 船长报障后收窄**（原话：「**购买舰船也会触发第一艘自造船的通讯，这不对**」；
+       * 二选一裁决取「**甲：改成造过才发**」）：
+       * 原先第三态「**缺失 = 老档 ⇒ 读档即补发**」（2026-09-15 的三问裁决「丙」）**作废** ——
+       * 根因是它把"字段缺失"当成了"造过船"：任何 2026-09-15 之前开的档（含船长自己那份：
+       * `firstShipBuilt` 缺字段、`shipStore` 为空、机库全是买来的船）都会在读档那一拍收到这封
+       * "第一艘自造船下线"的信，看起来就像"买船触发了它"。
+       * ⇒ 现在**只认 `true`**：`false`（新档）与 `undefined`（老档缺字段）一律**不发**；
+       * 老档第一次真造船时照常置位并送达（内容仍对，只是可能晚——造过船的老档要等下次造船）。
+       * 取舍已登记：代价 = "老档早就造过船"的那批人，这封指路信晚到；换来的是**没造过的永不误收**。
        */
-      return state.firstShipBuilt !== false
+      return state.firstShipBuilt === true
     default:
       return false
   }
