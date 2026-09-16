@@ -149,7 +149,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1,
     baseSellPriceIsk: 915,
-    description: '深空裂隙里结出的黑色母岩——虫洞深处唯一能带回来的东西，炼得出虚空晶。',
+    description: '深空裂隙里结出的黑色母岩，炼得出虚空晶。',
     refine: [
       { mineralId: 'min-voidcrystal', perOre: 0.25 }, // 2026-09-14 船长：产出量下调到一半（原 0.5）
       { mineralId: 'min-isotope', perOre: 1.0 },
@@ -609,7 +609,7 @@ export const DRONES: readonly ItemDef[] = [
     unitM3: 5, // 轻型侦察机档（与蜂鸟同体积）
     baseSellPriceIsk: 24_000, // 2026-09-14 船长「专属 ×4」：6,000 → 24,000（与市场行同值）
     description:
-      '流亡者从残舰机库里拼出来的侦查无人机：单发威力是制式侦察机的两倍、机体更飘（闪避最高），放飞还比制式机省电。代价是三层血最薄——挨一下就没了。',
+      '流亡者从残舰机库里拼出来的侦查无人机：单发比制式侦察机重一倍、机体更飘，放飞更省电。代价是三层血最薄——挨一下就没了。',
     damageType: 'kinetic', // 侦察机档：动能点射（破盾）
     dmg: 6, // 2026-09-10 船长裁决：A 档基础上「输出提高到 6 点」（专属强化型，契约登记豁免）
     cpuUse: 5, // 船长裁决：随单发上调（仍低于制式战斗机赤鸢的 7）
@@ -1008,7 +1008,7 @@ export const VALUABLES_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 1000,
     baseSellPriceIsk: 3_650_000, // 2026-09-15 船长改判：内容期望（5~30 件 · 三档 10/40/200 万 · 等权 ≈ 1,458 万）× 0.25
-    description: '贴满封条与防拆标记的软包箱：里面是拍卖行口径的奢侈品，拆开才知道这一箱值多少。',
+    description: '贴满封条与防拆标记的软包箱：里面是拍卖行里的奢侈品，拆开才知道这一箱值多少。',
   },
 ]
 
