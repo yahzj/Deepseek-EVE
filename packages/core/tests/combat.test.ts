@@ -760,6 +760,38 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     expect(ar5).toBeGreaterThan(ar0)
   })
 
+  /**
+   * **两个「舰操作」各自只影响自身分类**（船长 2026-09-16：「**装甲舰操作和武装舰操作各自只影响
+   * 自身分类的舰船。**」）。
+   *
+   * 判据 = **类别**（`shipCategoryKeyOf`）而不是 `role`：武装舰里"装甲占比 > 护盾占比"的那些
+   * （牛鲨级 + E 族三艘，船长同日要求互换盾/甲）归入**装甲舰** ⇒ 它们吃**装甲舰操作**、
+   * **不吃**武装舰操作。合成卡用沙猫改字段构造，避免依赖具体舰船的数值。
+   */
+  it('两类「舰操作」按**类别**分流：装甲线武装舰吃装甲舰操作、不吃武装舰操作（反之亦然）', () => {
+    /** 装甲线武装舰：role 仍 armed，但装甲占比 > 护盾占比 */
+    const armorLineArmed = { ...ship('sandcat'), role: 'armed' as const, shieldHp: 5, armorHp: 20 }
+    const pltArmed = { ...ship('sandcat'), role: 'armed' as const, shieldHp: 20, armorHp: 10 } // 普通武装舰（盾 20 > 甲 10）
+    const probe = (
+      def: typeof armorLineArmed,
+      train: { armed?: number; armored?: number },
+    ): { shot: number; a: number } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 59 })
+      const ctx = makeTestCtx({ ships: [def] })
+      if (train.armed) state.skills.trained['armed-ops'] = train.armed
+      if (train.armored) state.skills.trained['armored-ops'] = train.armored
+      const spec = createPlayerSpec(state, ctx, state.shipId)!
+      return { shot: spec.weapons[0]!.shotDmg ?? 0, a: spec.hp.a }
+    }
+    // ① 装甲线武装舰：武装舰操作**不生效**
+    expect(probe(armorLineArmed, { armed: 5 }).shot, '装甲线 ⇒ 不吃武装舰操作').toBe(probe(armorLineArmed, {}).shot)
+    // ② 装甲线武装舰：装甲舰操作**生效**（甲 ×1.2）
+    expect(probe(armorLineArmed, { armored: 5 }).a).toBeCloseTo(probe(armorLineArmed, {}).a * 1.2, 6)
+    // ③ 普通武装舰：反过来（吃武装舰操作、不吃装甲舰操作）
+    expect(probe(pltArmed, { armed: 5 }).shot).toBeGreaterThan(probe(pltArmed, {}).shot)
+    expect(probe(pltArmed, { armored: 5 }).a).toBeCloseTo(probe(pltArmed, {}).a, 10)
+  })
+
   it('装甲舰操作：仅 armored 族满级装甲与结构 ×1.2（护盾不动）；其他族不受影响', () => {
     const armoredDef = { ...ship('sandcat'), role: 'armored' as const }
     const hpOf = (def: ReturnType<typeof ship> | typeof armoredDef, lv: number): { s: number; a: number; h: number } => {

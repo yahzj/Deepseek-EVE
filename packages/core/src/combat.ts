@@ -42,7 +42,7 @@ import type { WormholeMatterBuffs } from './wormholeMatter'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, cargoOfShip, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
-import { uidDefId } from './labels'
+import { shipCategoryKeyOf, uidDefId } from './labels'
 import { quickRepairFactor } from './repair'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight, weightedSum } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
@@ -961,8 +961,8 @@ export function createPlayerSpec(
   // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
   const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
   const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
-  // 批次五：装甲舰操作（armored 族驾驶）——装甲+结构容量 +4%/级，与船体加固理论乘算
-  const armoredOpsLv = ship.role === 'armored' ? Math.min(5, state.skills.trained['armored-ops'] ?? 0) : 0
+  // 批次五：装甲舰操作（判据 = 类别 `shipCategoryKeyOf`；船长 2026-09-16「两个舰操作各自只影响自身分类」）
+  const armoredOpsLv = shipCategoryKeyOf(ship) === 'armored' ? Math.min(5, state.skills.trained['armored-ops'] ?? 0) : 0
   const hullSkillMult = (1 + 0.04 * hullLv) * (1 + 0.04 * armoredOpsLv)
   const hp: Hp3 = {
     s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv),
@@ -1069,8 +1069,10 @@ export function createPlayerSpec(
 
   const weapons: WeaponSpec[] = []
   const gunneryLv = state.skills.trained[ctx.balance.combat.gunnerySkillId] ?? 0
-  // 批次五：武装舰操作（armed 族驾驶 +3%/级 全武器单发，乘于炮术学之外）
-  const arOpsLv = ship.role === 'armed' ? Math.min(5, state.skills.trained['armed-ops'] ?? 0) : 0
+  // 批次五：武装舰操作（**武装舰**驾驶 +3%/级 全武器单发，乘于炮术学之外）
+  // 2026-09-16 船长：「装甲舰操作和武装舰操作各自只影响自身分类的舰船。」⇒ 判据由 `role` 改为**类别**
+  // （`shipCategoryKeyOf`）⇒ 归入装甲线的牛鲨 + E 族三艘**不再吃**这一条（它们改吃装甲舰操作）
+  const arOpsLv = shipCategoryKeyOf(ship) === 'armed' ? Math.min(5, state.skills.trained['armed-ops'] ?? 0) : 0
   const dmgScale = (1 + bal.gunneryDmgPerLevel * gunneryLv) * (1 + (ship.powerBonus ?? 0)) * (1 + 0.03 * arOpsLv)
 
   // 兜底武器：基础舰炮恒在（弱；无炮/无弹仍可还击）

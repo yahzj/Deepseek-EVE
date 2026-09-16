@@ -23,7 +23,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   mining: {
     yieldSkillId: 'mining', // 采矿技术：每级 +6% 产量
     yieldPerLevel: 0.06,
-    timeSkillId: 'mining-frigate', // 采矿护卫舰操作：每级 -3% 循环时间
+    timeSkillId: 'mining-frigate', // 采集器入门学（原「采矿护卫舰操作」，2026-09-16 船长改名）：每级 -3% 循环时间
     timePerLevel: 0.03,
     /** T4 显式行程基准（满载/返航单程的进出港基础）：本地矿带 120 秒；
      *  出航（空船）时跃迁×2 → 出航单程减半（60 秒）；远带单程 = 航程 + 120 秒 */

@@ -56,7 +56,7 @@ describe('采矿作业', () => {
     expect(countItem(state, 'ore-a')).toBe(11) // floor(10 × 1.12)
   })
 
-  it('采矿护卫舰操作缩短循环：Lv5 时循环 10.2 秒', () => {
+  it('采集器入门学（原采矿护卫舰操作）缩短循环：Lv5 时循环 10.2 秒', () => {
     state.skills.trained['mining-frigate'] = 5 // balance.timeSkillId = 'mining-frigate'
     startMining(state, 'belt-a', ctx)
     advanceGame(state, 10_200, ctx)

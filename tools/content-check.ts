@@ -838,8 +838,8 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'spaceship-command', per: 0.02, call: 'travel.ts travelTimeFactor' },
     { skill: 'mining-frigate', per: 0.03, call: 'balance.mining.timePerLevel' },
     { skill: 'industrial-ops', per: 0.04, call: 'mining.ts（industrial 族产量）' },
-    { skill: 'armed-ops', per: 0.03, call: 'combat.ts（armed 族单发）' },
-    { skill: 'armored-ops', per: 0.04, call: 'combat.ts（armored 族甲/结构容量）' },
+    { skill: 'armed-ops', per: 0.03, call: 'combat.ts（**武装舰**类别单发；判据 = shipCategoryKeyOf）' },
+    { skill: 'armored-ops', per: 0.04, call: 'combat.ts（**装甲舰**类别甲/结构容量；判据 = shipCategoryKeyOf）' },
     { skill: 'astro-geology', per: 0.04, call: 'mining.ts（全矿产量）' },
     { skill: 'deep-hole-blasting', per: 0.06, call: 'mining.ts（低品位矿 ≤55 ISK）' },
     { skill: 'deep-space-harvesting', per: 0.05, call: 'mining.ts（气/冰）' },
@@ -3398,6 +3398,11 @@ const STALE_COPY_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
    * （「陆龟级重装艇 / 玳瑁级重装巡舰 / 玄武级重装旗舰」——船长选甲案，单舰名与蓝图描述保持原样）。
    */
   [/重装舰/, '旧类别名（2026-09-16 起：装甲舰）——单舰名「重装艇/重装巡舰/重装旗舰」不受此条约束'],
+  /**
+   * 2026-09-16 船长改名（原话：「**采矿护卫舰操作改名为采集器入门学。**」）：
+   * 技能 `mining-frigate`（每级缩短采集循环时间 3%）的展示名换新；id 不动 ⇒ 存档零迁移。
+   */
+  [/采矿护卫舰/, '旧技能名（2026-09-16 起：采集器入门学）'],
 ]
 
 /**

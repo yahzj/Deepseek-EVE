@@ -513,7 +513,7 @@ export interface BalanceConfig {
     yieldSkillId: string
     /** 该技能每级产量加成（如 0.06 = 6%） */
     yieldPerLevel: number
-    /** 循环时间缩减技能 id（技能表里是"采矿护卫舰操作"） */
+    /** 循环时间缩减技能 id（技能表里是「采集器入门学」，2026-09-16 由「采矿护卫舰操作」改名） */
     timeSkillId: string
     /** 该技能每级循环时间缩减比例（如 0.03 = 3%） */
     timePerLevel: number
