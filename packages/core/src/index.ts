@@ -695,6 +695,11 @@ export {
   // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，
   // 此前面板用 (1+falloff)/2 自算——旧口径下引擎实际是 ×0.44/×0.48、面板却写 ×0.65/×0.68，属显示值与实战值漂移）
   beamPowerFactor,
+  // 逐舰维修 / 护盾充能（2026-09-16 船长裁定「甲」）：界面与收场方读**逐舰账本**的唯一入口
+  // （单船路径与老档在途战斗 ⇒ 自动退化成"只有主控那一份"）
+  repairLedgersOf,
+  shieldChargeLedgersOf,
+  refundRepairKitsAll,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 
@@ -733,6 +738,8 @@ export {
   formatDurationMs,
   simulateOffline,
 } from './simulation'
+// 紧凑时长（2026-09-16）：活动栏徽标那类窄格用（只保留两级最大单位）——全量格式仍走 formatDurationMs
+export { formatDurationShort } from './time'
 
 // **金额显示单点**（2026-09-13 船长：「更换金钱单位为信用点」＋「希望考虑到钱位数过多时的处理」）：
 // 单位名 / 万·亿分级 / 精确值提示 —— 玩家可见金额文案一律走这里（引擎内部字段仍叫 `isk`）。
@@ -1208,7 +1215,7 @@ export {
   promoScanMulAt,
   dayWindowEndMs,
 } from './tuning'
-export type { ActivePromo, ActiveTuning, PromoRule, TunableKey, TuningRule } from './tuning'
+export type { ActivePromo, ActiveTuning, PromoOpenTarget, PromoRule, TunableKey, TuningRule } from './tuning'
 // 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 收益 40% 入仓库 · 绝不丢船）
 export {
   WORMHOLE_AUTO_DURATION_MS,

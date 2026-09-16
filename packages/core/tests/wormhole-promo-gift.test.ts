@@ -52,11 +52,13 @@ function tick(s: GameState, wallMs: number, ms = 1_000): void {
 }
 
 describe('虫洞 · 限时促销赠送（2026-09-16「虫洞大量生成」）', () => {
-  it('促销表守卫：id / 赠送数 / 截止日（改表会红，防止静默失效）', () => {
+  it('促销表守卫：id / 赠送数 / 截止日 / 点击去向（改表会红，防止静默失效）', () => {
     const p = PROMOS.find((x) => x.id === PROMO_ID)
     expect(p, `促销表里应有 ${PROMO_ID}`).toBeTruthy()
     expect(p!.giftWormholes).toBe(5)
     expect(p!.until).toBe('2026-09-20')
+    // 船长 2026-09-16：「点击后，不会跳转扫描虫洞界面」⇒ 本促销必须写明去向 = 扫描虫洞页
+    expect(p!.open).toBe('wormhole-scan')
   })
 
   it('① 已解锁 + 活动期内 ⇒ 一次发 5 处并记录已领取', () => {

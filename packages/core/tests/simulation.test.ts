@@ -13,6 +13,7 @@ import {
   offlineSplit,
   simulateOffline,
 } from '../src/simulation'
+import { formatDurationShort } from '../src/time'
 import { makeTestCtx, ore, ship, skill } from './helpers'
 
 describe('离线切分', () => {
@@ -144,5 +145,24 @@ describe('中文时长格式化', () => {
 
   it('负值安全处理为 0 秒', () => {
     expect(formatDurationMs(-100)).toBe('0秒')
+  })
+
+  /**
+   * **紧凑时长**（2026-09-16 船长：活动栏徽标「虫洞大量生成6个字显示不完全。建议宽度要保证标题文字
+   * 都能显示」）——只保留**两级最大单位**：徽标窄格用它，全量格式仍走 `formatDurationMs`。
+   */
+  it('紧凑时长只保留两级最大单位（活动栏徽标用）', () => {
+    expect(formatDurationShort(0)).toBe('0秒')
+    expect(formatDurationShort(45_000)).toBe('45秒')
+    expect(formatDurationShort(61_000)).toBe('1分1秒')
+    expect(formatDurationShort(3_721_000)).toBe('1小时2分')
+    expect(formatDurationShort(90_061_000)).toBe('1天1小时')
+    // 4 天档（本活动的最长剩余）：全量格式 10 个汉字 ⇒ 徽标会截字，紧凑格式 7 个 ⇒ 放得下
+    const fourDays = 4 * 86_400_000 + 21 * 3_600_000 + 5 * 60_000 + 3_000
+    expect(formatDurationMs(fourDays)).toBe('4天21小时5分3秒')
+    expect(formatDurationShort(fourDays)).toBe('4天21小时')
+    // 中间单位缺位时按"前两级非零单位"接续（1天0小时3分 ⇒ 1天3分）
+    expect(formatDurationShort(86_400_000 + 180_000)).toBe('1天3分')
+    expect(formatDurationShort(-100)).toBe('0秒')
   })
 })

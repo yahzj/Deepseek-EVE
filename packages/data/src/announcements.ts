@@ -19,6 +19,25 @@ export interface AnnouncementDef {
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
     /**
+     * 2026-09-16 船长批准（随同批代码一起推送；待审稿
+     * `docs/design/announcement-draft-20260916-wormhole-bloom.md` **逐字照发**）。
+     * 口径来源：船长「将扫描虫洞所需时间*0.25，持续到9月20号，并给予所有玩家5个虫洞（同样持续到
+     * 20号为止……」＋展示口径「5和虫洞限时缩短写在一起，但是要润色成虫洞大量生成之类的」；
+     * 玩家可见效果 = 扫描窗口 ×0.25（`PROMOS[].scanMul`）＋ 每人一次 5 处（`giftWormholes`，
+     * 只发给已解锁虫洞扫描的玩家）。公告**不写倍率数字与开发口径**（§12）。
+     */
+    id: 'ann-wormhole-bloom-20260916',
+    title: '虫洞大量生成',
+    date: '2026-09-16',
+    tag: '活动',
+    bullets: [
+      '深空虫洞活动异常活跃：扫描阵列的捕获效率大幅提升，虫洞的发现速度显著加快。',
+      '活动期间，协会测绘处会为已解锁虫洞扫描的玩家预先标记 5 处虫洞坐标（每位玩家仅发放一次）。',
+      '活动持续至 9 月 20 日；已标记的虫洞在活动结束后仍可照常探索。',
+    ],
+  },
+  {
+    /**
      * 2026-09-14 船长批准（待审稿 `docs/design/announcement-draft-20260914-wormhole-launch.md` **v2 稿**，
      * 逐字照发）。批前经一号**核验件**逐条核对（`docs/review/announcement-factcheck-20260914.md`）：
      * 数字断言全部通过；改了 6 处表述（全损措辞按实现改写·「内容倾向」→**内容原型**·「驻守敌族徽记」→**族徽**·

@@ -138,7 +138,16 @@ export interface PromoRule {
   giftWormholes?: number
   /** 本促销"认领"的限时倍率开关：这些键的**单独徽标会被并购进本促销**，避免同一件事显示两遍 */
   claims?: readonly TunableKey[]
+  /**
+   * **点击徽标的去向**（2026-09-16 船长：「点击后，不会跳转扫描虫洞界面」）。
+   * - `'wormhole-scan'` ⇒ 星图页的「扫描虫洞」选项卡（`WormholeScanTab`：进度条与库存列表那一页）；
+   * - 不写 ⇒ 与限时加成徽标同款（星图页的「星图」选项卡）。
+   */
+  open?: PromoOpenTarget
 }
+
+/** 促销徽标的**去向**（写错 = 点进去找不到东西；`content:check` 的促销契约会拦未知值） */
+export type PromoOpenTarget = 'wormhole-scan'
 
 /**
  * **促销规则表**（按需往里加；空表 = 无任何活动）。
@@ -158,6 +167,8 @@ export const PROMOS: readonly PromoRule[] = [
     scanMul: 0.25,
     giftWormholes: 5,
     claims: ['wormholeScanMs'],
+    // 点徽标 ⇒ 星图页的「扫描虫洞」选项卡（船长 2026-09-16：「点击后，不会跳转扫描虫洞界面」）
+    open: 'wormhole-scan',
   },
 ]
 
@@ -274,6 +285,8 @@ export interface ActivePromo {
   giftWormholes: number
   /** 本促销认领的限时倍率键（这些键的单独徽标要隐藏，见活动栏） */
   claims: readonly TunableKey[]
+  /** 点击徽标的去向（不写 = 星图页「星图」选项卡；见 `PromoRule.open`） */
+  open?: PromoOpenTarget
 }
 
 /** 促销是否命中（判据与 `ruleActiveAt` 同源 ⇒ 两套表的日期口径绝不会漂） */
@@ -297,6 +310,7 @@ export function activePromos(nowMs: number | null | undefined): ActivePromo[] {
       giftWormholes:
         p.giftWormholes !== undefined && p.giftWormholes > 0 ? Math.floor(p.giftWormholes) : 0,
       claims: p.claims ?? [],
+      ...(p.open !== undefined ? { open: p.open } : {}),
     })
   }
   return out
