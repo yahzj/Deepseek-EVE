@@ -395,7 +395,7 @@ export function TutorialSpot({
           {onDetail && inTutorial ? (
             <button
               className="app-btn is-small app-stepbar-detail"
-              title="打开通讯页，读这一步的完整说明（历史上每一步都留档）"
+              title="打开通讯页，读这一步的完整说明（每一步都能回看）"
               onClick={() => onDetail(tutorialMessageId(step))}
             >
               看详情

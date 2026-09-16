@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **275** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5049** KB · **37017** 行
-- 状态分布：**未标注** 141 · **已确认/已实现** 107 · **进行中** 21 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**24** 份 · 状态未标注 **141** 份
+- 文档总数 **276** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5055** KB · **37096** 行
+- 状态分布：**未标注** 141 · **已确认/已实现** 107 · **进行中** 22 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**25** 份 · 状态未标注 **141** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**194** 份
+- 三、现行设计稿（design）：**195** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**15** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -33,9 +33,9 @@
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 66 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 68 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 320 KB / 764 行 | 199 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 98 KB / 216 行 | 240 / 9 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 98 KB / 216 行 | 241 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -51,7 +51,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 194 份
+## 三、现行设计稿（design） —— 195 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -61,6 +61,7 @@
 | `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 2 / 0 |
 | `docs/design/announcement-draft-20260916-wormhole-bloom.md` | 公告待审稿 · 虫洞大量生成（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 2 KB / 37 行 | 1 / 1 |
 | `docs/design/c-family-charge-20260916.md` | C 族族格两改：全族冲锋（按档 1.5/2/2.5/3/4）＋ 孢群异虫速度 300 · 工作文档 | 进行中（进行中） | 2026-09-16 | 7 KB / 89 行 | 0 / 0 |
+| `docs/design/copy-parens-audit-20260916.md` | 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档 | 进行中（进行中） | 2026-09-16 | 6 KB / 79 行 | 0 / 0 |
 | `docs/design/first-ship-trigger-fix-20260916.md` | 首艘自造船通讯·触发口径修正（shipBuilt 只认"造过"）· 工作文档 | 进行中（进行中） | 2026-09-16 | 5 KB / 72 行 | 1 / 0 |
 | `docs/design/jargon-copy-20260916.md` | 文案去黑话（「高级箱 / 开箱」等不符合设定的名词）· 工作文档 | 进行中（进行中） | 2026-09-16 | 10 KB / 115 行 | 0 / 0 |
 | `docs/design/logistics-trait-field-20260916.md` | 后勤舰维修特性入「船体特性」属性（数据字段驱动）· 工作文档 | 进行中（进行中） | 2026-09-16 | 4 KB / 54 行 | 0 / 0 |
@@ -339,12 +340,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 52 / 9 |
 
-## 附：孤儿文档（0 引用，24 份）
+## 附：孤儿文档（0 引用，25 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/ammo-rename-20260916.md`（2026-09-16 · 8 KB）—— 弹药定名批：全族统一到《系+弹药》· 工作文档
 - `docs/design/c-family-charge-20260916.md`（2026-09-16 · 7 KB）—— C 族族格两改：全族冲锋（按档 1.5/2/2.5/3/4）＋ 孢群异虫速度 300 · 工作文档
+- `docs/design/copy-parens-audit-20260916.md`（2026-09-16 · 6 KB）—— 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档
 - `docs/design/jargon-copy-20260916.md`（2026-09-16 · 10 KB）—— 文案去黑话（「高级箱 / 开箱」等不符合设定的名词）· 工作文档
 - `docs/design/logistics-trait-field-20260916.md`（2026-09-16 · 4 KB）—— 后勤舰维修特性入「船体特性」属性（数据字段驱动）· 工作文档
 - `docs/design/scout-stealth-trait-20260916.md`（2026-09-16 · 6 KB）—— 侦察舰特性：隐秘行动装置 CPU 减半 ＋ 免推进器失效（2026-09-16）

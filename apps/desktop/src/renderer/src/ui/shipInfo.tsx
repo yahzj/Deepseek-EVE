@@ -951,7 +951,7 @@ export function itemCombatLines(item: ItemDef): InfoLine[] {
   }
   if (item.kind === 'drone' && item.defense) {
     const d = item.defense
-    lines.push({ k: '生存（契约）', v: `盾 ${fmt(d.shieldHp)} · 甲 ${fmt(d.armorHp)} · 结构 ${fmt(d.hullHp)}` })
+    lines.push({ k: '生存（三层血）', v: `盾 ${fmt(d.shieldHp)} · 甲 ${fmt(d.armorHp)} · 结构 ${fmt(d.hullHp)}` })
     lines.push({ k: '回避', v: d.evasion !== undefined ? `${Math.round(d.evasion * 100)}%` : '—' })
   }
   return lines

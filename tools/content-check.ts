@@ -3426,6 +3426,27 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   [/隐蔽船坞/, '敌方窝点叙事专名（D 族据点名，非设施旧称）'],
 ]
 
+/**
+ * **跨件对比契约**（2026-09-16 二次报障后加）：玩家可见文案**只讲本件**，不许拿别的装备/舰船做标尺。
+ *
+ * 船长两次点到同一类：① 2026-09-16 第一轮文案审查（「炮台装填间隔 ÷1.18（射速计算机 MK3 是 ÷1.12）」这类）；
+ * ② 当日二次报障：「**文案中依旧还有类（总输出 ≈ 攻坚炮台的八成）这种文案，建议重新审查一遍所有带有括号的文案。**」
+ * ——第一轮清掉的是**常规装备**那一批，**窝点/虫洞专属**（2026-09-10 之后新增的那批）漏了 6 条，
+ * 且都藏在括号或破折号后面（如「射速只有攻坚炮台的四成、单发威力是它的两倍（总输出 ≈ 攻坚炮台的八成）」）。
+ *
+ * 判据（**只认"点名了别的装备/舰种"的对比**，避免误伤自比与玩法对比）：
+ * - 出现装备/舰种类名词（炮台 / 激光炮 / 导弹架 / 导弹巢 / 近防炮 / 稳定器 / 计算机 / 阵列 / 甲板 …）
+ *   且其后 12 字内出现「的 N 成 / 的 N 倍 / 相当 / 同档」；
+ * - 或出现指代他人的「它 / 该件 / 原型」＋「N 成 / N 倍」。
+ *
+ * ⚠ **刻意放过的（不算跨件对比）**：自比（「满级间隔约为原来的六成」）· 跨玩法对比（「收益约为亲自探索的四成」）·
+ * 数值读数（「≈15.5 万 信用点/h」）——这三类在第一轮审查里都判为合规，契约不拦。
+ */
+const CROSS_ITEM_COMPARE: readonly RegExp[] = [
+  /(炮台|激光炮|导弹架|导弹巢|近防炮|稳定器|计算机|阵列|甲板|扩展|推进器)[^。；]{0,12}(的 ?[一二三四五六七八九十百]+成|的 ?[0-9.]+ ?倍|相当|同档)/,
+  /(它|该件|原型)[^。；]{0,6}(的 ?[一二三四五六七八九十百]+成|的 ?[0-9.]+ ?倍)/,
+]
+
 {
   const tplRoots = [
     'apps/desktop/src/renderer/src',
@@ -3450,6 +3471,7 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   const tplOffenders: string[] = []
   const mdOffenders: string[] = []
   const staleOffenders: string[] = []
+  const compareOffenders: string[] = []
   const isPlayerText = (node: ts.Node): boolean =>
     ts.isStringLiteral(node) ||
     ts.isNoSubstitutionTemplateLiteral(node) ||
@@ -3497,6 +3519,15 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
             staleOffenders.push(`${rel}:${line + 1}（${text.slice(0, 40)}…）→ ${why}`)
           }
         }
+        // 跨件对比（2026-09-16 二次报障后加）：只认"点名了别的装备/舰种"的对比，详见 CROSS_ITEM_COMPARE 注释
+        for (const re of CROSS_ITEM_COMPARE) {
+          if (re.test(text)) {
+            const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
+            const hit = text.match(re)?.[0] ?? ''
+            compareOffenders.push(`${rel}:${line + 1}（…${hit}…）`)
+            break
+          }
+        }
       }
       ts.forEachChild(node, visit)
     }
@@ -3524,6 +3555,13 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     console.log(
       `· 陈旧术语契约：${tplFiles.length} 个源文件无已改判旧称（黑名单 ${STALE_COPY_TERMS.length} 组 · 白名单 ${STALE_COPY_ALLOW.length} 条专名）`,
     )
+  }
+  check(
+    compareOffenders.length === 0,
+    `跨件对比契约（2026-09-16 船长二次报障后加）：玩家可见文案**只讲本件**——不许拿别的装备/舰船当标尺（船长原话：「文案中依旧还有类（总输出 ≈ 攻坚炮台的八成）这种文案」）。请改写为**本件自述**（射速/单发/射程各自定性即可，绝对值界面卡上已有）：${compareOffenders.join(' · ')}`,
+  )
+  if (compareOffenders.length === 0) {
+    console.log(`· 跨件对比契约：${tplFiles.length} 个源文件无"点名的跨件对比"（判据 ${CROSS_ITEM_COMPARE.length} 条 · 自比/跨玩法对比/数值读数不算）`)
   }
 }
 
