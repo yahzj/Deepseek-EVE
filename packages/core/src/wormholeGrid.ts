@@ -448,10 +448,13 @@ export interface WormholeGridState {
    */
   ruinsRolled?: string[]
   /**
-   * **下一层入口是否已被标出**（F3a-3 · 船长 2026-09-13 新增信标信号）。
+   * **下一层入口（下潜点）是否已被标出**（F3a-3 · 船长 2026-09-13 新增信标信号）。
    *
    * 口径：入口默认**不在地图上显示**（船长：「玩家只有到达目标地点后才能知道目标地点的确切信息」）；
-   * 玩家**到达"漂浮信标"那一格**时，信标会指出入口位置 ⇒ 本字段置 `true`，此后地图上一直标着它。
+   * 两条途径把它标出来（**都收口到 `markExitKnown`**）：
+   * ① **到达"漂浮信标"那一格**（船长 2026-09-13）——不靠近也能远程得知；
+   * ② **扫描把入口格本身扫进本圈**（船长 2026-09-16 裁定**甲案**：「玩家扫描无法直接扫出下一层入口」
+   *    是缺陷 ⇒ 扫到就该标上地图）。
    * 可选字段（老档没有 = 没被标出 ⇒ 零迁移）。
    */
   exitKnown?: boolean
@@ -482,6 +485,26 @@ export type WormholeCellReveal =
 /** 查格（坏键 ⇒ undefined） */
 export function gridCellAt(grid: WormholeGridState, cell: HexCell): WormholeGridCell | undefined {
   return grid.cells.find((c) => c.key === hexKey(cell.q, cell.r))
+}
+
+/**
+ * **把"下一层入口"标出来 —— 唯一收口**（两条途径共用它，见 `exitKnown` 的字段注释）：
+ * ① **读到漂浮信标**（船长 2026-09-13 口径：信标把入口标在地图上）；
+ * ② **扫描把入口格本身扫进本圈**（船长 2026-09-16 裁定**甲案**）。
+ *
+ * 为什么②必须给（甲案的现场证据）：入口格不参与信号分配 ⇒ 它的 `place` 恒为
+ * `empty`（`wormholeMakeGrid`）⇒ 扫到它时 `revealOf` 只给 `signal(null)`，界面据
+ * `exitKnown` 判入口、于是**扫过也画成「没有信号：空信息地点」**——玩家扫到了入口位置
+ * 却认不出来，这就是船长报的那个问题。扫描把出口格一并扫进 `scanned`（`gridScanTargets`
+ * 从来不排除它），所以②在判据上与①同源：**这一格"已知"了，入口就该标出来**。
+ *
+ * 顺带把入口格并入 `scanned`（幂等）：否则玩家从地图知道入口在哪、点「前往」却会撞上
+ * 「这个地点还没扫描过：前往未知地点？」——那句话此时是误导，**它不是未知地点，它是入口**。
+ */
+export function markExitKnown(grid: WormholeGridState): void {
+  grid.exitKnown = true
+  const key = hexKey(grid.exit.q, grid.exit.r)
+  if (!grid.scanned.includes(key)) grid.scanned.push(key)
 }
 
 /* ═══════════ 三之一、路径拦截（2026-09-16 船长新增） ═══════════ */
