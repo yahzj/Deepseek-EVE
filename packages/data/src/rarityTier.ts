@@ -79,6 +79,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-lock-1': 1,
   'bp-lock-2': 2,
   'bp-lock-3': 3,
+  // 2026-09-15 隐秘行动装置蓝图（与产物同渠道同档：MK2 = 稀有档 3 · MK3 = 奇货档 4）
+  'bp-stealth-2': 3,
+  'bp-stealth-3': 4,
   'bp-miner-1': 1,
   'bp-miner-2': 2,
   'bp-miner-3': 3,
@@ -198,6 +201,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-lock-1': 1,
   'mod-lock-2': 2,
   'mod-lock-3': 3,
+  // 2026-09-15 隐秘行动装置（船长 2026-09-16 定数与渠道：**MK2 = 稀有订单档 3** · **MK3 = 奇货档 4**）
+  'mod-stealth-2': 3,
+  'mod-stealth-3': 4,
   'mod-miner-1': 1,
   'mod-miner-2': 2,
   'mod-miner-3': 3,

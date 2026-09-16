@@ -255,6 +255,9 @@ export function moduleShortEffect(mod: ModuleDef): string {
       } else if (mod.warpSpeedBonusPct !== undefined) {
         // 2026-09-14 跃迁计算机（低槽支援件）：只缩短**星系际航行**时间，不碰战斗机动
         body = `跃迁速度 +${pct(mod.warpSpeedBonusPct)}（仅跨星系航行）`
+      } else if (mod.stealthMs !== undefined) {
+        // 2026-09-15 隐秘行动装置（高槽支援件）：开火前隐身——短行必须写明"开火即现形"与推进器禁令
+        body = `开火前隐身 ${mod.stealthMs / 1000} 秒（不被锁定/不被攻击 · 带推进器失效）`
       }
       break
     }
@@ -271,8 +274,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
   // （跨族尾缀 = 2026-09-11 修复：赃物强化舱的"甲容 +15%"这类搭车加成因槽位分支而漏显示）
   const extras = [repairShortText(mod), hullResistShortText(mod), crossFamilyShort(mod)].filter(Boolean).join(' · ')
   if (extras) body = body ? `${body} · ${extras}` : extras
-  // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"
-  return body + (stackingOf(mod).group === 'flat' ? '' : ' · 多装递减')
+  // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"；
+  // 2026-09-15 隐秘行动装置（`max` 组）= **取最长一件、不叠加** ⇒ 既不标"多装递减"也不标"全额叠加"。
+  const stShort = stackingOf(mod).group
+  return body + (stShort === 'flat' || stShort === 'max' ? '' : ' · 多装递减')
 }
 
 /** 三系抗性紧凑文本（整数主抗制简化后只列非零项；全零 = "无"） */
@@ -763,6 +768,14 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     if (mod.evasionGapPct !== undefined) {
       lines.push({ k: '回避支援', v: `敌命中 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}（全船生效）` })
     }
+    // 隐秘行动装置（2026-09-15 船长：高槽 · 自身武器开火前隐身 20/30 秒 · 不被锁定不被攻击）
+    if (mod.stealthMs !== undefined) {
+      lines.push({
+        k: '隐秘行动',
+        v: `本舰武器开火之前隐身 ${mod.stealthMs / 1000} 秒（敌方无法锁定、无法攻击；一开火立即现形，超时也现形）`,
+      })
+      lines.push({ k: '装置限制', v: '装着推进器时本装置直接失效（船一动就藏不住）' })
+    }
     // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
       const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
@@ -881,11 +894,14 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   }
   // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）
   lines.push(...crossFamilyLines(mod))
-  // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加）
+  // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加；
+  // 2026-09-15 隐秘行动装置 = **取最长一件、不叠加**——`max` 组单列一档，不谎报"全额叠加"）
   // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
   const st = stackingOf(mod)
   if (st.group === 'flat') {
     lines.push({ k: '叠加方式', v: '全额叠加' })
+  } else if (st.group === 'max') {
+    lines.push({ k: '叠加方式', v: '取最长一件（不叠加）' })
   } else {
     lines.push({ k: '叠加方式', v: '多装递减' })
   }

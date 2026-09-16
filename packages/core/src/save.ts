@@ -848,6 +848,12 @@ function cleanBattle(raw: unknown): BattleState | null {
         ...(typeof u.enteredAtMs === 'number' && Number.isFinite(u.enteredAtMs)
           ? { enteredAtMs: numf(u.enteredAtMs, 0) }
           : {}),
+        // **隐秘行动装置的隐身窗口**（2026-09-15 船长）：同样**随档**——窗口是战斗时钟上的一个
+        // 截止时刻，而 `lastTickGameMs` 也随档 ⇒ 读档后窗口不会重启、也不会凭空消失。
+        // 老档/未装装置的单位缺本字段 ⇒ 恒可被选中（零迁移）。
+        ...(typeof u.stealthUntilMs === 'number' && Number.isFinite(u.stealthUntilMs)
+          ? { stealthUntilMs: numf(u.stealthUntilMs, 0) }
+          : {}),
       }
     }
   }
