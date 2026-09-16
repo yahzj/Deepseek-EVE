@@ -4707,6 +4707,7 @@ function pdPriorityOf(artId: string | undefined | null, role?: string): number {
  * - **两条独立开火许可**（2026-09-12 **修 bug**）：旧代码要求"哨戒机在射程内"**并且**有令牌，
  *   等于把"出击型打一次换一次反击"整条路掐死（出击型机群永远不会被反击、实测战损恒为 0）：
  *   a) **反击令牌**：我方无人机打过敌舰 ⇒ 窗口内还手（**无视距离**，船长 2026-09-11 口径）；
+ *      ⚠ 该令牌**敌方全队共用**（不是逐舰）——船长 2026-09-16 复核定论「**点防没问题**」（见 `state.ts` `droneHitAt`）；
  *   b) **哨戒机在射程内**：常驻暴露 ⇒ 不需令牌即可还手（船长 2026-09-11 重新定义）；
  * - **不看距离**（放飞出去就在威胁之下）；**战斗内可 100% 损坏**（战后按回收率找回一部分）；
  * - 近防炮不参与敌舰对玩家的常规攻击（独立系统）；全程消费 state.rng，确定性可复现。
@@ -4733,6 +4734,11 @@ function resolvePointDefense(
     sentryOk && aliveDroneKeys(b, SENTRY_DRONE_IDS, true, true).length > 0
   if (!tokenOpen && !sentryOpen) return
   // **消费制**（船长 2026-09-11）：一次攻击换一次还手（对每艘点防舰各一次）
+  // ⚠ **本令牌为敌方全队共用、非逐舰**（打到**任意一艘**敌舰 ⇒ 当场所有冷却已就绪的敌点防舰**各还手一次**，
+  //   冷却仍各走各的 `pdCd[fi]`）。这与我方侧**故意不对称**——我方侧 2026-09-16 起是**逐舰令牌**
+  //   （`droneHitAtMeBy`：要打到那艘船它才能反击，见 `pickFoeDroneTarget`）。
+  //   船长 2026-09-16 复核定论「**点防没问题**」⇒ 本条**按现状保留**：不许照"逐舰"把敌方侧也改过去
+  //   （改它＝动玩家无人机在多舰敌卡里的战损口径）。
   if (tokenOpen) b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined }
   const focus: Array<string | undefined> = b.pdFocus ? [...b.pdFocus] : []
   for (let fi = 0; fi < foes.length; fi++) {
@@ -5097,6 +5103,8 @@ function stepBattle(
         pushBattleNotice(b, '隐秘行动结束：本舰开火现形')
       }
       // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
+      // ⚠ 记的是**敌方全队共用**的一枚令牌（**不按被打的敌舰 tag 分记**）——船长 2026-09-16「点防没问题」
+      //   = 现状为准；换靶/换敌舰都共用它，消费一次即全队过窗（见 `resolvePointDefense`）。
       if (w.src === 'drone')
         b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
