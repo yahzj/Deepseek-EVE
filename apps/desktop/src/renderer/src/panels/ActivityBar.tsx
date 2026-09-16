@@ -10,7 +10,7 @@
  */
 import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { formatDurationMs } from '@whale/core'
+import { formatDurationMs, formatDurationShort } from '@whale/core'
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -418,22 +418,32 @@ export function ActivityBar({
           </button>
         ) : null}
         {/* 限时活动（2026-09-16 促销）：与限时加成同一处、同一族样式 —— 游戏内说法 + 剩余时间；
-            被它认领的倍率键已在上面从 `tunings` 里滤掉，同一件事只显示这一枚 */}
+            被它认领的倍率键已在上面从 `tunings` 里滤掉，同一件事只显示这一枚。
+            点击去向由促销表的 `open` 决定（船长 2026-09-16：「点击后，不会跳转扫描虫洞界面」
+            ⇒ 「虫洞大量生成」写到「扫描虫洞」选项卡；不写则与限时加成同款走「星图」）。
+            时间列用**紧凑时长**（两级单位）：全量格式在 4 天档要 10 个汉字，会把标题挤成省略号。 */}
         {promos.map((p) => (
           <button
             key={`promo-${p.id}-${p.untilMs}`}
-            className="app-activitybar-tuning"
+            className="app-activitybar-tuning app-activitybar-promo"
             title={
               `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
-              `截止 ${new Date(p.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, p.untilMs - tuningTick))}`
+              `截止 ${new Date(p.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, p.untilMs - tuningTick))}` +
+              `\n点击前往「${p.open === 'wormhole-scan' ? '扫描虫洞' : '星图'}」页`
             }
-            onClick={() => onGoPage?.('map', 'star')}
+            onClick={() => {
+              if (p.open === 'wormhole-scan') {
+                onGoPage?.('map', 'whscan')
+                return
+              }
+              onGoPage?.('map', 'star')
+            }}
           >
             <span className="app-ico">
               <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
             </span>
             <span className="app-activitybar-tuning-name">{p.label}</span>
-            <span className="app-activitybar-tuning-time">{formatDurationMs(Math.max(0, p.untilMs - tuningTick))}</span>
+            <span className="app-activitybar-tuning-time">{formatDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
           </button>
         ))}
         {/* 限时加成（2026-09-15 船长）：摆在**扫描条右侧** —— 生效中的加成项 + 剩余时间；无加成不渲染 */}
@@ -453,7 +463,8 @@ export function ActivityBar({
             <span className="app-activitybar-tuning-name">
               {t.name} ×{t.mul}
             </span>
-            <span className="app-activitybar-tuning-time">{formatDurationMs(Math.max(0, t.untilMs - tuningTick))}</span>
+            {/* 时间列同样用紧凑时长：全量格式会把"名称 ×倍率"挤成省略号（见促销徽标同处注释） */}
+            <span className="app-activitybar-tuning-time">{formatDurationShort(Math.max(0, t.untilMs - tuningTick))}</span>
           </button>
         ))}
       </div>

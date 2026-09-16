@@ -8105,13 +8105,19 @@ body {
 
 }
 
-/* 活动窗口头部：标题 + AI 徽标 + 连击标记 */
+/* 活动窗口头部：标题 + AI 徽标 + 连击标记
+   ⚠ 2026-09-16：允许**换行**（flex-wrap）——限时加成/活动徽标改为"按内容定宽、不许压缩"之后，
+   窄窗拥挤时应当整枚徽标换到下一行，而不是把标题文字裁成省略号（船长：「宽度要保证标题文字都能显示」）。 */
 
 .app-activitybar-hd {
 
   display: flex;
 
+  flex-wrap: wrap;
+
   align-items: center;
+
+  row-gap: 6px;
 
   gap: 10px;
 
@@ -8436,9 +8442,12 @@ body {
 
 .app-activitybar-scan.is-done .app-activitybar-scan-time { color: var(--wui-gold); }
 
-/* 限时加成徽标（2026-09-15 船长：显示在「活动无人机 / 扫描进度条」右侧）：
+/* 限时加成 / 限时活动徽标（2026-09-15 船长：显示在「活动无人机 / 扫描进度条」右侧；
+   2026-09-16 船长改口径：「虫洞大量生成6个字显示不完全。**建议宽度要保证标题文字都能显示**」）：
    与 .app-activitybar-scan 同族（同字号 / 同内边距 / 同圆角），只换配色（薄荷=加成）；
-   定宽 + 两段省略号 ⇒ 名称或剩余时间再长也不推挤头部（防跳动，见约定 §九）。 */
+   ⚠ 宽度口径 = **按内容**（`max-content`，最小保留原来的 190px 观感）＋ **不许被压缩**（`flex-shrink: 0`）
+   ⇒ 标题永不截字；头部拥挤时由 `.app-activitybar-hd` 的 `flex-wrap` 换行，而不是把字裁掉。
+   `.app-activitybar-promo` 是**促销徽标**的语义钩子（限时活动，同样式族；点击去向见 `PROMOS[].open`）。 */
 
 .app-activitybar-tuning {
 
@@ -8448,11 +8457,11 @@ body {
 
   gap: 6px;
 
-  width: 190px;
+  width: max-content;
 
-  min-width: 110px;
+  min-width: 190px;
 
-  flex-shrink: 1;
+  flex-shrink: 0;
 
   box-sizing: border-box;
 
@@ -8477,14 +8486,16 @@ body {
 .app-activitybar-tuning:hover { background: rgba(120, 235, 200, 0.16); }
 
 .app-activitybar-tuning-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* 2026-09-16 船长：「建议宽度要保证标题文字都能显示」⇒ 名称**不再省略**
+     （去掉 flex:1 / min-width:0 / overflow:hidden / ellipsis）：徽标按内容定宽，宁可换行也不截字 */
+  flex: 0 0 auto;
   white-space: nowrap;
 }
 
-.app-activitybar-tuning-time { flex-shrink: 0; font-size: 10.5px; font-family: var(--wui-mono); }
+/* 时间列：**紧凑时长**（两级单位，如「4天21小时」）＋ 固定最小宽
+   ⇒ 剩余时间变化不再推挤标题（徽标宽度稳定 = 不引起头部跳动，见约定 §九） */
+
+.app-activitybar-tuning-time { flex-shrink: 0; min-width: 7em; text-align: right; font-size: 10.5px; font-family: var(--wui-mono); }
 
 /* V16.2 vertical hp layers (shield blue / armor red / hull yellow, top-down) (ASCII-safe) */
 

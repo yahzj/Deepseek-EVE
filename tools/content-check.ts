@@ -4674,14 +4674,31 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
      *  **2026-09-14 上线后该闸门退休**（这些内容现在**必须**在图鉴里）。
      *  但**按族池契约照旧有效**（见下面 ⑦：五族各要有一池"装备 + 装备图纸 + 舰船图纸"，不许空池）。 */
     const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sbp-wh-', 'sh-wh-', 'drone-wh-'] as const
+    /**
+     * ⚠ **2026-09-15 补（三号 · 船长报障「精炼炉好像缺少虫洞的稀有残骸回收」）**：上面五个前缀
+     * **盖不到物品**，而洞内稀有残骸的物品 id = `wreck-rare-wh-<卡 id>`（前缀是 `wreck-rare-`）⇒
+     * 它当年那条"施工期标 `unreleased`、上线删字段"的闸门**漏摘了也没人拦**，实机后果 =
+     * 精炼炉「残骸回收」看不到洞内稀有残骸（该列表与手册物品图鉴都走 `visibleItemDefs`）。
+     * 现把物品纳入本契约（id 前缀 `wreck-rare-wh-`）。
+     */
+    const WH_ITEM_PREFIX = 'wreck-rare-wh-'
+    /**
+     * ⚠ 稀有残骸物品**不在静态 `ITEMS` 数组里**（它们由 `data/src/context.ts` 按敌卡**运行时注册**）
+     * ⇒ 本节一律读**真 context 的物品目录**（`buildSimContext().items`），读 `ITEMS` 会得到空集、
+     * 哨子就变成永远通过（这条坑是首版写错后实测抓出来的）。
+     */
+    const whItemCtx = buildSimContext()
+    const whItems = [...whItemCtx.items.values()].filter((i) => i.id.startsWith(WH_ITEM_PREFIX))
     const whTyped: ReadonlyArray<{ kind: string; id: string; name: string; description?: string; unreleased?: boolean }> = [
       ...MODULES.map((m) => ({ kind: '装备', id: m.id, name: m.name, description: m.description, unreleased: m.unreleased })),
       ...SHIPS.map((s) => ({ kind: '舰船', id: s.id, name: s.name, description: s.description, unreleased: s.unreleased })),
       ...BLUEPRINTS.map((b) => ({ kind: '装备图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
       ...SHIP_BLUEPRINTS.map((b) => ({ kind: '舰船图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
       ...DRONES.map((d) => ({ kind: '无人机', id: d.id, name: d.name, description: d.description, unreleased: d.unreleased })),
+      ...whItems.map((i) => ({ kind: '残骸', id: i.id, name: i.name, description: i.description, unreleased: i.unreleased })),
     ]
-    const isWhContent = (id: string): boolean => WH_PREFIXES.some((p) => id.startsWith(p))
+    const isWhContent = (id: string): boolean =>
+      WH_PREFIXES.some((p) => id.startsWith(p)) || id.startsWith(WH_ITEM_PREFIX)
     /**
      * **虫洞专属内容（`mod-wh-` / `sh-wh-` / `bp-wh-` / `sbp-wh-` / `drone-wh-`）现在必须真的在图鉴里**
      * （2026-09-14 船长解除不可见后，把当年"必须标 unreleased"的闸门翻成反向断言）——
@@ -4697,6 +4714,17 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
           `虫洞专属内容契约：${d.kind} ${d.id}（${d.name}）仍标着 unreleased —— ` +
             `虫洞已上线（2026-09-14 船长解除不可见），图鉴/组装机/船坞都该看得到它`,
         )
+      }
+    }
+    /**
+     * **每张洞内敌卡都要有对应的稀有残骸物品**（2026-09-15 补）：缺一件 = 那一趟打捞带回来的箱子
+     * 在回收炉里找不到定义（旧档更显示成"未知物品"）。注册走 `context.ts` 的白名单
+     * （`hasLairCore` 不覆盖洞内卡），故这里按 `WORMHOLE_FOE_CARD_IDS` 逐张核。
+     */
+    for (const card of WORMHOLE_FOE_CARD_IDS) {
+      const wreckId = `wreck-rare-${card}`
+      if (!whItemCtx.items.has(wreckId)) {
+        errors.push(`虫洞专属内容契约：洞内敌卡 ${card} 没有对应的稀有残骸物品 ${wreckId}（打捞回来的箱子开不了）`)
       }
     }
     /* ⑦ **（2026-09-13 F3b 补）按族池契约**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：
@@ -4956,8 +4984,11 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   // 注：'task' = 任务中心（2026-09-14 起是独立一级页，不再是星图页的选项卡）
 const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry', 'skills', 'comms', 'task'])
   const MAP_TABS = new Set(['star', 'mine', 'bounty', 'salvage', 'haul', 'task'])
-  /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径） */
-  const SHIP_TABS = new Set(['fleet', 'fit', 'ai'])
+  /** 舰船页内标签（`hint.shipTab`；与 App.tsx 的 ShipTab 同口径）
+   *  ⚠ 2026-09-15 同步（三号）：2026-09-14 船长把舰船页第三档「舰船市场」整档换成「**舰船仓库**」
+   *  （`ShipPage.tsx`：`ShipTab = 'fleet' | 'ai' | 'store'`），本白名单当时漏改，仍写着早已不存在的
+   *  `'fit'`、缺 `'store'` ⇒ 本批（首艘自造船通讯要跳 `store`）按现行类型同步。 */
+  const SHIP_TABS = new Set(['fleet', 'ai', 'store'])
   /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set([
@@ -4970,6 +5001,9 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'standing',
     // 2026-09-14 被袭后的自动撤离（船长：「当玩家第一次因为低安袭击导致舰船自动撤离时触发」）
     'ambushRetreat',
+    // 2026-09-15 造出第一艘自造船（船长：「当玩家造好第一条船后，弹出通讯祝贺玩家，并告诉玩家
+    // 新建造的舰船在舰船仓库页面」）——判定读随档三态标记 `state.firstShipBuilt`
+    'shipBuilt',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])
@@ -5160,6 +5194,17 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         check(
           WORMHOLE_NEBULA_MIN_DEPTH >= 1 && WORMHOLE_NEBULA_SHARE > 0,
           `通讯 ${m.id} 用 wormholeNebula 触发器，但星云机制没开（起效层 ${WORMHOLE_NEBULA_MIN_DEPTH} · 配额 ${WORMHOLE_NEBULA_SHARE}）`,
+        )
+        break
+      case 'shipBuilt':
+        /**
+         * 死触发器守卫（2026-09-15 首艘自造船通讯）：这封信靠"组装机交出第一艘船"送达 ⇒
+         * 数据里必须真存在**可造的舰船蓝图**（`SHIP_BLUEPRINTS`），否则没有船可造、信永远送不出去
+         * （同 `lowSec` / `foeFamily` / `wormholeNebula` 那三条守卫的用意）。
+         */
+        check(
+          SHIP_BLUEPRINTS.length > 0,
+          `通讯 ${m.id} 用 shipBuilt 触发器，但数据里没有任何舰船蓝图（死触发器）`,
         )
         break
       default:
@@ -5397,6 +5442,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
    * ⚠ 与限时倍率表同款：**已过期的促销允许留档**（不报错）——收口靠 `npm run tuning:expired` 手动跑。
    */
   const promoIds = new Set<string>()
+  /** 促销徽标的**已知去向**（与 `PromoRule.open` 的联合类型同源；加新去向时这里与 UI 一起改） */
+  const PROMO_OPEN_TARGETS: readonly string[] = ['wormhole-scan']
   for (const p of PROMOS) {
     const id = String(p.id)
     check(id.length > 0, '限时促销契约：有促销条目的 id 为空')
@@ -5431,8 +5478,15 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         )
       }
     }
+    // ⑧ 点击徽标的去向必须是已知目标（写错 = 点进去找不到东西；活动栏按它决定跳哪一页）
+    if (p.open !== undefined) {
+      check(
+        PROMO_OPEN_TARGETS.includes(String(p.open)),
+        `限时促销契约：${id} 的 open「${String(p.open)}」不是已知去向（可选值：${PROMO_OPEN_TARGETS.join(' / ')}）`,
+      )
+    }
   }
-  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关逐个核对`)
+  console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关/去向逐个核对`)
 }
 
 /* ── 输出 ── */

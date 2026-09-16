@@ -52,14 +52,19 @@ export function buildSimContext(): SimContext {
   // 会解析不到物品定义、在读档后显示成"未知物品"。白名单 ≠ 恢复窝点候选（候选仍由
   // `isLairCandidate()` 的族规则排除），只是"旧档兼容登记"。详见 `./retiredLairCards.ts`。
   // ⚠ 第三张白名单 = **洞内敌卡**（F3b · 船长 2026-09-13「打捞…每 3 堆普通，进行一次稀有残骸出现判断」）：
-  // 四张 `wh-*` 卡没有窝点核心 ⇒ 不给白名单就**不存在 `wreck-rare-wh-*`**，打捞出的稀有残骸会解析不到定义。
-  // 它们是施工期新内容 ⇒ 注册时一律标 `unreleased`（随虫洞一起上线）。
+  // `wh-*` 卡没有窝点核心 ⇒ 不给白名单就**不存在 `wreck-rare-wh-*`**，打捞出的稀有残骸会解析不到定义。
+  // ⚠ **2026-09-15 修（三号 · 船长报障「精炼炉好像缺少虫洞的稀有残骸回收」）**：当年这里给洞内件
+  // 额外标了 `unreleased: true`（注释写"随虫洞一起上线"），但 **2026-09-14 虫洞上线时这一个字段漏摘**——
+  // 而精炼炉「残骸回收」列表走**玩家可见目录**（`visibleItemDefs` / `itemReleased`）⇒ 洞内稀有残骸
+  // **不进回收列表**（打捞带回来的箱子开不了），顺带在手册物品图鉴里也看不到。漏摘没被拦的原因：
+  // 体检那条"虫洞专属内容必须已上线"契约当时只枚举装备/舰船/图纸/无人机，**物品不在判据里**（现已补进去）。
+  // ⇒ 本行与窝点件**同款注册**（不带闸门）。
   for (const a of anomalies.values()) {
     const isWhCard = WORMHOLE_RARE_WRECK_CARD_IDS.includes(a.id)
     if (!hasLairCore(a) && !RETIRED_LAIR_CARD_IDS.has(a.id) && !isWhCard) continue
     const id = rareWreckItemIdOf(a.id)
     if (items.has(id)) continue
-    items.set(id, isWhCard ? { ...rareWreckItemDefOf(a.id, a.name), unreleased: true } : rareWreckItemDefOf(a.id, a.name))
+    items.set(id, rareWreckItemDefOf(a.id, a.name))
   }
   const modules = buildModuleCatalog()
   // B3：碎片物品按"有逆向配方的装备"生成

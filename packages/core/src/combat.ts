@@ -40,7 +40,7 @@ import { wormholeFoeThreat } from './wormholeFoes'
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
 import type { WormholeMatterBuffs } from './wormholeMatter'
 import { nextInt, nextRandom, pickOne } from './rng'
-import { cargoItemsOf, countWare, removeItem, removeWare, addWare } from './inventory'
+import { cargoItemsOf, cargoOfShip, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { uidDefId } from './labels'
 import { quickRepairFactor } from './repair'
@@ -2274,6 +2274,19 @@ export function ammoKeyOf(t: DamageType): AmmoKey {
 /* 船长定稿：中槽支援件；每 5 秒一跳，逐台修复装甲/结构（各层满则额度转投另一层），
  * 每台每跳消耗 1 枚对应修理组件；组件耗尽自动停机；与弹药预载同哲学——开战装载、结束退还。 */
 
+/** 从**指定船**的货舱扣件（返回实际扣到的数量；船不存在/冻结货舱/数量不足 ⇒ 按现有扣，可能为 0） */
+function removeCargoOfShip(state: GameState, shipId: string, itemId: string, units: number): number {
+  const cargo = cargoOfShip(state, shipId)
+  if (!cargo || Object.isFrozen(cargo)) return 0
+  const have = Math.floor(cargo[itemId] ?? 0)
+  const take = Math.min(have, Math.max(0, Math.floor(units)))
+  if (take <= 0) return 0
+  const left = have - take
+  if (left > 0) cargo[itemId] = left
+  else delete cargo[itemId]
+  return take
+}
+
 /** 当前船已装配的维修装置（带 repairArmorHp/repairHullHp 的装配件，按位序） */
 export function fittedRepairModules(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
   const ship = state.fleet[shipId]
@@ -2337,16 +2350,15 @@ export function preloadRepairFor(
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
   }
-  // 装载（与 loadAmmo 同序：货舱优先、仓库兜底）
+  // 装载（与 loadAmmo 同序：**本舰货舱**优先、仓库兜底）
+  // ⚠ 2026-09-16（船长裁定「甲：逐舰维修」）：旧口径读的是**驾驶船**货舱（`cargoItemsOf`）——
+  //   多舰编队里僚舰的组件来源被记到主控头上。现改为「**谁装装置、用谁的货舱**」；
+  //   主控那一份与旧口径**逐字相同**（主控 = `state.shipId` 时 `cargoOfShip` ≡ `cargoItemsOf`）。
   const kits: Record<string, number> = {}
   for (const [kitId, wantTotal] of need) {
     let want = wantTotal
-    const inCargo = Math.floor(cargoItemsOf(state)[kitId] ?? 0)
-    const fromCargo = Math.min(want, inCargo)
-    if (fromCargo > 0) {
-      removeItem(state, kitId, fromCargo)
-      want -= fromCargo
-    }
+    const fromCargo = removeCargoOfShip(state, shipId, kitId, want)
+    if (fromCargo > 0) want -= fromCargo
     if (want > 0) {
       const fromWare = Math.min(want, countWare(state, kitId))
       if (fromWare > 0) {
@@ -2369,7 +2381,7 @@ export function preloadRepairFor(
 /** 退还维修装置预载的未用组件（回仓库；与弹药退还同哲学）——战斗结束/撤退收场调用；幂等 */
 export function refundRepairKits(
   state: GameState,
-  repair: import('./state').BattleState['repair'],
+  repair: import('./state').BattleRepairLedger | null | undefined,
 ): void {
   if (!repair || !repair.kits || Object.isFrozen(repair.kits)) return
   for (const [id, n] of Object.entries(repair.kits)) {
@@ -2379,21 +2391,77 @@ export function refundRepairKits(
 }
 
 /**
+ * **本场所有舰的维修账本**（2026-09-16 逐舰维修的**唯一读取入口**）。
+ *
+ * - 有 `repairBy`（多舰战斗、本批之后开的场）⇒ 逐舰遍历；
+ * - 只有 `repair`（单船路径，或**本批之前开的在途战斗**）⇒ 视为"只有主控那一份"（旧行为，零迁移）。
+ */
+export function repairLedgersOf(
+  battle:
+    | { repair?: import('./state').BattleRepairLedger; repairBy?: Record<string, import('./state').BattleRepairLedger> }
+    | null
+    | undefined,
+): Array<{ tag: string; ledger: import('./state').BattleRepairLedger }> {
+  if (!battle) return []
+  if (battle.repairBy) return Object.entries(battle.repairBy).map(([tag, ledger]) => ({ tag, ledger }))
+  return battle.repair ? [{ tag: 'player', ledger: battle.repair }] : []
+}
+
+/** 同上，护盾充能账本（口径与 `repairLedgersOf` 完全一致） */
+export function shieldChargeLedgersOf(
+  battle:
+    | {
+        shieldCharge?: import('./state').BattleShieldChargeLedger
+        shieldChargeBy?: Record<string, import('./state').BattleShieldChargeLedger>
+      }
+    | null
+    | undefined,
+): Array<{ tag: string; ledger: import('./state').BattleShieldChargeLedger }> {
+  if (!battle) return []
+  if (battle.shieldChargeBy) return Object.entries(battle.shieldChargeBy).map(([tag, ledger]) => ({ tag, ledger }))
+  return battle.shieldCharge ? [{ tag: 'player', ledger: battle.shieldCharge }] : []
+}
+
+/**
+ * **退还一场战斗里所有舰的未用组件**（逐舰维修：收场方只认这一个入口）。
+ * 单船路径/老档在途战斗退化成"只退主控那一份"= 旧行为。
+ */
+export function refundRepairKitsAll(
+  state: GameState,
+  battle:
+    | { repair?: import('./state').BattleRepairLedger; repairBy?: Record<string, import('./state').BattleRepairLedger> }
+    | null
+    | undefined,
+): void {
+  for (const { ledger } of repairLedgersOf(battle)) refundRepairKits(state, ledger)
+}
+
+/**
  * **战后总结里的"修理组件消耗"文案**（2026-09-11 船长：「船体修理装置不单独显示日志。
  * 只将消耗组件数量显示到战后总结」）：本场一枚没耗 = `''`（战报不添尾巴），否则形如
  * `消耗 军用修理组件 ×12`（多型按「、」连接）。战报四处（远征胜/败、遭遇战、AI 副船）共用本函数。
  */
 export function repairUsageText(
-  battle: { repair?: import('./state').BattleState['repair'] } | null | undefined,
+  battle:
+    | { repair?: import('./state').BattleRepairLedger; repairBy?: Record<string, import('./state').BattleRepairLedger> }
+    | null
+    | undefined,
   ctx: SimContext,
 ): string {
-  const r = battle?.repair
-  if (!r || (r.kitsUsed ?? 0) <= 0) return ''
-  const byType = r.kitsUsedByType ?? {}
+  // 2026-09-16 逐舰维修：多舰战斗要把**各舰账本合计**（旧口径只读主控那份 ⇒ 僚舰的消耗不进战报）
+  let total = 0
+  const byType: Record<string, number> = {}
+  for (const { ledger: r } of repairLedgersOf(battle)) {
+    total += Math.max(0, Math.floor(r.kitsUsed ?? 0))
+    for (const [id, n] of Object.entries(r.kitsUsedByType ?? {})) {
+      if (n > 0) byType[id] = (byType[id] ?? 0) + n
+    }
+  }
+  if (total <= 0) return ''
   const parts = Object.entries(byType)
     .filter(([, n]) => n > 0)
     .map(([id, n]) => `${ctx.items.get(id)?.name ?? id} ×${n.toLocaleString('zh-CN')}`)
-  if (parts.length === 0) return `消耗修理组件 ×${r.kitsUsed.toLocaleString('zh-CN')}`
+  if (parts.length === 0) return `消耗修理组件 ×${total.toLocaleString('zh-CN')}`
   return `消耗 ${parts.join('、')}`
 }
 
@@ -2439,44 +2507,57 @@ export function preloadShieldChargeFor(
 }
 
 /**
- * **单次护盾充能脉冲**：按**满盾 × 每跳比例**把主控的护盾层补回去（夹在满盾。
- * ⚠ 与维修装置同口径：**只作用于主控**——僚舰的充能装置不参战，见 D 批边界）。
+ * **单次护盾充能脉冲（逐舰）**：按**该舰满盾 × 每跳比例**补**它自己**的护盾层（夹在满盾）。
+ *
+ * 2026-09-16 船长裁定「甲：逐舰维修」——护盾充能装置与维修装置**同批逐舰化**
+ * （此前只有主控那一份，僚舰装了也白装，与"船体维修装置在洞里无效"同一根因）。
  *
  * 它是**破盾后唯一的回头路**：被动回充按当前盾比例（盾 0 = 回充 0），只有这里能从 0 把盾点起来；
  * 点着之后被动回充立刻接管（指数增长）。
  */
-export function pulseShieldCharge(
+export function pulseShieldChargeFor(
   b: import('./state').BattleState,
-  me: UnitSpec,
+  spec: UnitSpec,
+  sc: import('./state').BattleShieldChargeLedger,
 ): void {
-  const sc = b.shieldCharge
-  const meRt = b.units['player']
-  if (!sc || !meRt || sc.nextPulseAtMs === undefined) return
-  if (!isAlive(b, 'player')) return
-  const capS = Math.max(0, me.hp.s)
+  const rt = b.units[spec.tag]
+  if (!rt || sc.nextPulseAtMs === undefined) return
+  if (!isAlive(b, spec.tag)) return
+  const capS = Math.max(0, spec.hp.s)
   if (capS <= 0) return
   const gain = capS * Math.max(0, sc.pctPerPulse)
-  if (gain > 0) meRt.hp.s = Math.min(capS, meRt.hp.s + gain)
+  if (gain > 0) rt.hp.s = Math.min(capS, rt.hp.s + gain)
 }
 
 /**
- * 单次维修脉冲（advanceBattleFor 在到期脉冲处调用）：
- * 逐台未停机装置修复——每层通道修复量 = 该层额度，某层已满（或补满）后，该层剩余额度
- * 转投另一层（单跳修复上限 = 甲 + 结构额度之和，痊愈后不再消耗）；每台实际修复 > 0 才扣
- * 1 枚对应组件并计入消耗；组件耗尽该台停机（日志一次）。修复上限 = 出场满值口径
- * （advanceBattleFor 重建的 me，与保险检查同源——可把入场残值修回满血）。
+ * @deprecated 逐舰化之前的入口（只作用于主控）；保留仅为**老用例/外部读法**兼容，
+ * 生产路径请用 `pulseShieldChargeFor`（逐舰）＋ `shieldChargeLedgersOf`。等价于"只给主控跳一次"。
  */
-function pulseRepairs(
+export function pulseShieldCharge(b: import('./state').BattleState, me: UnitSpec): void {
+  const sc = b.shieldCharge
+  if (!sc) return
+  pulseShieldChargeFor(b, { ...me, tag: 'player' }, sc)
+}
+
+/**
+ * **单次维修脉冲（逐舰 · 2026-09-16 船长「甲」）**：对**指定那艘船**的账本跑一跳——
+ * 逐台未停机装置修复它自己的装甲/结构：每层通道修复量 = 该层额度，某层已满（或补满）后，该层
+ * 剩余额度转投另一层（单跳修复上限 = 甲 + 结构额度之和，痊愈后不再消耗）；每台实际修复 > 0 才扣
+ * 1 枚对应组件并计入消耗；组件耗尽该台停机（日志一次，见 2026-09-11 船长口径）。修复上限 =
+ * **该舰出场满值口径**（`advanceBattleFor` 重建的规格，与保险检查同源——可把入场残值修回满血）。
+ */
+function pulseRepairsFor(
   state: GameState,
   ctx: SimContext,
   b: import('./state').BattleState,
-  me: UnitSpec,
+  spec: UnitSpec,
+  r: import('./state').BattleRepairLedger,
 ): void {
-  const r = b.repair
-  const meRt = b.units['player']
-  if (!r || !meRt || r.nextPulseAtMs === undefined) return
-  const capA = Math.max(0, me.hp.a)
-  const capH = Math.max(0, me.hp.h)
+  void ctx
+  const meRt = b.units[spec.tag]
+  if (!meRt || r.nextPulseAtMs === undefined) return
+  const capA = Math.max(0, spec.hp.a)
+  const capH = Math.max(0, spec.hp.h)
   const hp = meRt.hp
   let active = 0
   for (const u of r.units) {
@@ -3218,18 +3299,38 @@ export function startFleetBattleFor(
   if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
     battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
   }
-  // 维修装置：**只预载主控**（僚舰修理包不参战，见 D 批边界）
-  const repair = preloadRepairFor(state, ctx, fleet[0]!.shipId, bal.maxBattleMs)
-  if (repair) {
-    const ready = repair.units.filter((u) => !u.stopped)
-    if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
-    battle.repair = repair
+  /**
+   * **维修装置 / 护盾充能装置：逐舰预载**（2026-09-16 船长裁定「甲：逐舰维修」——
+   * 起因是玩家报障「船体维修装置在虫洞里无效」：旧口径只预载主控，装置装在僚舰上就完全不工作）。
+   *
+   * - 每艘参战船**各自的装置、各自的组件**（**本舰货舱**优先、仓库兜底）、各自被修；
+   * - `battle.repair` / `battle.shieldCharge` 仍是**主控那一份**（老读法零迁移；主控没装而僚舰装了
+   *   ⇒ 指向第一份有的，界面状态灯据此仍能显示"运转中"，逐舰明细走 `*By`）；
+   * - 逐舰账本在 `repairBy` / `shieldChargeBy`（键 = tag）；退款与战报**只认逐舰入口**
+   *   （`refundRepairKitsAll` / `repairUsageText`）⇒ 不会与别名重复结算。
+   */
+  const repairBy: Record<string, import('./state').BattleRepairLedger> = {}
+  const shieldChargeBy: Record<string, import('./state').BattleShieldChargeLedger> = {}
+  for (const e of fleet) {
+    const r = preloadRepairFor(state, ctx, e.shipId, bal.maxBattleMs)
+    if (r) {
+      const ready = r.units.filter((u) => !u.stopped)
+      if (ready.length > 0) r.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+      repairBy[e.tag] = r
+    }
+    const sc = preloadShieldChargeFor(state, ctx, e.shipId)
+    if (sc) {
+      sc.nextPulseAtMs = battle.startedAtGameMs + SHIELD_PULSE_MS
+      shieldChargeBy[e.tag] = sc
+    }
   }
-  // 护盾充能装置：与维修装置同口径**只预载主控**（僚舰的充能装置不参战，见 D 批边界）
-  const shieldCharge = preloadShieldChargeFor(state, ctx, fleet[0]!.shipId)
-  if (shieldCharge) {
-    shieldCharge.nextPulseAtMs = battle.startedAtGameMs + SHIELD_PULSE_MS
-    battle.shieldCharge = shieldCharge
+  if (Object.keys(repairBy).length > 0) {
+    battle.repairBy = repairBy
+    battle.repair = repairBy['player'] ?? Object.values(repairBy)[0]!
+  }
+  if (Object.keys(shieldChargeBy).length > 0) {
+    battle.shieldChargeBy = shieldChargeBy
+    battle.shieldCharge = shieldChargeBy['player'] ?? Object.values(shieldChargeBy)[0]!
   }
   // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）；
   // F3c B1 起，谜质在开战那一刻的快照（威胁乘数 / 敌主伤害系 / 敌方削弱）**一并写进去**，
@@ -4088,38 +4189,51 @@ export function advanceBattleFor(
         break
       }
     }
-    // 船体维修装置脉冲（2026-09-09）：本拍内到期的脉冲补齐——修复发生在受伤结算之后
-    // （≤1 拍延迟，保守口径）；战斗结束/自动撤退后不再补跳
-    if (!battle.ended && battle.repair?.nextPulseAtMs !== undefined && battle.repair.nextPulseAtMs <= battle.lastTickGameMs) {
-      let guardR = 0
-      while (
-        !battle.ended &&
-        battle.repair.nextPulseAtMs !== undefined &&
-        battle.repair.nextPulseAtMs <= battle.lastTickGameMs &&
-        guardR < BATTLE_MAX_STEPS
-      ) {
-        pulseRepairs(state, ctx, battle, me)
-        guardR++
+    /**
+     * 船体维修装置脉冲（**逐舰** · 2026-09-16 船长裁定「甲」）：本拍内到期的脉冲补齐——
+     * 修复发生在受伤结算之后（≤1 拍延迟，保守口径）；战斗结束/自动撤退后不再补跳。
+     * 逐舰遍历 `repairLedgersOf`（单船路径与老档在途战斗 ⇒ 只有主控那一份，等价旧行为）。
+     */
+    if (!battle.ended && repairLedgersOf(battle).length > 0) {
+      const specByTag = new Map(myUnits.map((u) => [u.tag, u]))
+      for (const { tag, ledger } of repairLedgersOf(battle)) {
+        if (battle.ended) break
+        const spec = specByTag.get(tag)
+        if (!spec) continue // 该舰已不在这场（沉了/被摘）⇒ 它的账本不跳
+        if (ledger.nextPulseAtMs === undefined || ledger.nextPulseAtMs > battle.lastTickGameMs) continue
+        let guardR = 0
+        while (
+          !battle.ended &&
+          ledger.nextPulseAtMs !== undefined &&
+          ledger.nextPulseAtMs <= battle.lastTickGameMs &&
+          guardR < BATTLE_MAX_STEPS
+        ) {
+          pulseRepairsFor(state, ctx, battle, spec, ledger)
+          guardR++
+        }
       }
     }
-    // 护盾充能装置脉冲（2026-09-14 船长）：与维修装置**各按各的计时**（30 秒 vs 5 秒），
+    // 护盾充能装置脉冲（逐舰 · 2026-09-16）：与维修装置**各按各的计时**（30 秒 vs 5 秒），
     // 同样在受伤结算之后补跳（≤1 拍延迟）；破盾后它是唯一能把盾点起来的路径。
-    if (
-      !battle.ended &&
-      battle.shieldCharge?.nextPulseAtMs !== undefined &&
-      battle.shieldCharge.nextPulseAtMs <= battle.lastTickGameMs
-    ) {
-      let guardS = 0
-      while (
-        !battle.ended &&
-        battle.shieldCharge.nextPulseAtMs !== undefined &&
-        battle.shieldCharge.nextPulseAtMs <= battle.lastTickGameMs &&
-        guardS < BATTLE_MAX_STEPS
-      ) {
-        pulseShieldCharge(battle, me)
-        battle.shieldCharge.pulses += 1
-        battle.shieldCharge.nextPulseAtMs += SHIELD_PULSE_MS
-        guardS++
+    if (!battle.ended && shieldChargeLedgersOf(battle).length > 0) {
+      const specByTag = new Map(myUnits.map((u) => [u.tag, u]))
+      for (const { tag, ledger } of shieldChargeLedgersOf(battle)) {
+        if (battle.ended) break
+        const spec = specByTag.get(tag)
+        if (!spec) continue
+        if (ledger.nextPulseAtMs === undefined || ledger.nextPulseAtMs > battle.lastTickGameMs) continue
+        let guardS = 0
+        while (
+          !battle.ended &&
+          ledger.nextPulseAtMs !== undefined &&
+          ledger.nextPulseAtMs <= battle.lastTickGameMs &&
+          guardS < BATTLE_MAX_STEPS
+        ) {
+          pulseShieldChargeFor(battle, spec, ledger)
+          ledger.pulses += 1
+          ledger.nextPulseAtMs += SHIELD_PULSE_MS
+          guardS++
+        }
       }
     }
   }
@@ -5192,7 +5306,8 @@ function stepBattle(
   }
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──
-  // ⚠ 本批仍只结算**主控**的机群（`b.dronePools` 按主控武器槽建池；僚舰无人机不参战，见 D 批边界）
+  // ⚠ 机群池自 2026-09-14「逐舰机群」起是**逐舰**建的（键 = `舰tag:武器下标`，见 4803 一带），
+  //   敌方点防也**逐舰选靶**（`pdFocus` 按池键存）⇒ 本条注释此前那句"仍只结算主控的机群"已过期，一并改正。
   resolvePointDefense(state, b, foes, bal, dtMs)
 
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。

@@ -691,37 +691,31 @@ export interface BattleState {
   /** 船体维修装置运行态（2026-09-09 船长定；零迁移可选——旧档缺省 = 本场无维修装置介入）。
    * 与弹药预载同哲学：开战把货舱（仓库兜底）中的对应修理组件移入 kits 账本，战斗中不可补给；
    * 每 REPAIR_PULSE_MS 一次脉冲，各台未停机装置修复装甲/结构并扣 1 枚组件，耗尽即停机；
-   * 战斗结束未用组件退回仓库（见 combat.refundRepairKits）。 */
-  repair?: {
-    /** 装置运行快照（开战按装配写入；组件耗尽自动停机 stopped = true） */
-    units: BattleRepairUnit[]
-    /** 预载组件账本（item id → 枚数；脉冲逐枚扣减；余额 0 = 该型装置停机） */
-    kits: Record<string, number>
-    /** 下一脉冲战斗时刻（开战 = startedAt + 间隔；全部停机后清空 = 停调度） */
-    nextPulseAtMs?: number
-    /** 累计脉冲次数（战报展示；痊愈空转的脉冲也计数） */
-    pulses: number
-    /** 累计消耗组件枚数 */
-    kitsUsed: number
-    /** **逐型**累计消耗（item id → 枚数；2026-09-11 船长「只将消耗组件数量显示到战后总结」）——
-     * 战报按此写「消耗 军用修理组件 ×12」；旧档缺省 = 空账本（战报退化为只报总数） */
-    kitsUsedByType?: Record<string, number>
-  }
+   * 战斗结束未用组件退回仓库（见 combat.refundRepairKits）。
+   * ⚠ **2026-09-16 起 = 主控那一份**（多舰战斗的逐舰账本见 `repairBy`；单船路径只有这一份）。 */
+  repair?: BattleRepairLedger
+  /**
+   * **逐舰维修账本**（2026-09-16 船长裁定「甲」：「玩家反应，船体维修装置在虫洞里无效」
+   * ⇒ 每艘参战船各自的装置、各自的组件、各自被修）。
+   *
+   * - 键 = 战斗 tag（含 `player`）；**只写真正装了装置的舰**；
+   * - `repair` 仍是**主控那一份**（同对象引用 ⇒ 老读法/老档零迁移）；本字段存在时，
+   *   脉冲、退款、战报一律**遍历本表**（旧档在途战斗没有本字段 ⇒ 退化成"只有主控修"，即旧行为）。
+   */
+  repairBy?: Record<string, BattleRepairLedger>
   /* ═══ 护盾充能装置（2026-09-14 船长：「护盾充能装置，和船体修理装置类似。每 30 秒恢复自身
      护盾最大值一定比例的护盾量。CPU消耗较多」）——与维修装置**独立计时**（30 秒 vs 5 秒）═══ */
   /**
-   * 护盾充能快照：开战按装配写入（只预载主控，与维修装置同边界）。
+   * 护盾充能快照：开战按装配写入（**2026-09-16 起逐舰**，见 `shieldChargeBy`；本字段 = 主控那一份）。
    * **它是破盾后唯一的回头路**：被动回充按当前盾比例（盾 0 ⇒ 回充 0），只有这里能从 0 把盾点起来。
    * 缺省 = 本场没装该装置（零行为变化）。
    */
-  shieldCharge?: {
-    /** 每跳合计比例（**满盾的几分之几**；同型多件已按 EVE 曲线收敛） */
-    pctPerPulse: number
-    /** 下一脉冲战斗时刻（开战 = startedAt + 30 秒）；缺省 = 不调度 */
-    nextPulseAtMs?: number
-    /** 累计脉冲次数（战报/读档续战用） */
-    pulses: number
-  }
+  shieldCharge?: BattleShieldChargeLedger
+  /**
+   * **逐舰护盾充能账本**（2026-09-16：与维修装置同批逐舰化，键 = 战斗 tag、含 `player`）。
+   * 缺省（老档在途战斗）⇒ 退化成"只有主控充能"，即旧行为。
+   */
+  shieldChargeBy?: Record<string, BattleShieldChargeLedger>
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = **`舰tag:武器条目下标`**（仅 src='drone' 的条目）；开战由 startBattleFor /
    *  startFleetBattleFor **逐舰**写入（2026-09-14 船长「逐舰机群」）。
@@ -920,6 +914,37 @@ export interface BattleRepairUnit {
   hullPerPulse: number
   /** 组件耗尽自动停机（不再参与后续脉冲） */
   stopped: boolean
+}
+
+/**
+ * **一条维修装置账本**（2026-09-16 船长裁定「甲：逐舰维修」）——**每艘参战船各一份**：
+ * 键 = 战斗 tag（`player` / `ally-1`..），值 = 本账本。组件从**本舰自己的货舱**优先装载
+ * （老口径取的是驾驶船货舱 ⇒ 僚舰的组件来源被记到主控头上，本批一并改正）。
+ */
+export interface BattleRepairLedger {
+  /** 装置运行快照（开战按装配写入；组件耗尽自动停机 stopped = true） */
+  units: BattleRepairUnit[]
+  /** 预载组件账本（item id → 枚数；脉冲逐枚扣减；余额 0 = 该型装置停机） */
+  kits: Record<string, number>
+  /** 下一脉冲战斗时刻（开战 = startedAt + 间隔；全部停机后清空 = 停调度） */
+  nextPulseAtMs?: number
+  /** 累计脉冲次数（战报展示；痊愈空转的脉冲也计数） */
+  pulses: number
+  /** 累计消耗组件枚数 */
+  kitsUsed: number
+  /** **逐型**累计消耗（item id → 枚数；2026-09-11 船长「只将消耗组件数量显示到战后总结」）——
+   * 战报按此写「消耗 军用修理组件 ×12」；旧档缺省 = 空账本（战报退化为只报总数） */
+  kitsUsedByType?: Record<string, number>
+}
+
+/** **一条护盾充能账本**（2026-09-16 逐舰化；与维修装置各按各的计时：30 秒 vs 5 秒） */
+export interface BattleShieldChargeLedger {
+  /** 每跳合计比例（**满盾的几分之几**；同型多件已按 EVE 曲线收敛） */
+  pctPerPulse: number
+  /** 下一脉冲战斗时刻（开战 = startedAt + 30 秒）；缺省 = 不调度 */
+  nextPulseAtMs?: number
+  /** 累计脉冲次数（战报/读档续战用） */
+  pulses: number
 }
 
 /* ═══════════════ V9：市场状态 ═══════════════ */
@@ -1355,6 +1380,14 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * ⇒ 本字段**按三态随档**：`false` 必须落键（省掉它会被读成老档），缺失保持缺失（老档待判）。
    */
   ambushRetreatSeen?: boolean
+  /**
+   * **造出第一艘自造船**（2026-09-15 船长定：新通讯 `msg-first-ship` 的触发面）。三态：
+   * - `true` = 组装机交出过至少一艘自造船（主控亲手开线与 AI 核心代造同算）⇒ 发信；
+   * - `false` = **新档**（本功能之后开的局，由 `createInitialState` 写入）⇒ **只等真建造**；
+   * - **缺失 = 老档**（本功能上线前写的档）⇒ 船长三问裁决选「**丙**」：**读档即补发**。
+   * ⇒ 本字段**按三态随档**：`false` 必须落键（省掉它会被读成老档而错误补发），缺失保持缺失。
+   */
+  firstShipBuilt?: boolean
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
   /**
@@ -2119,6 +2152,8 @@ export function createInitialState(opts?: {
     commsDelivered: {}, // 2026-09-11 通讯收件箱：送达记账（可选字段、零迁移）
     // 2026-09-14 因低安袭击自动撤离：**新档显式写 false**（区别于"老档缺字段"，见字段注释）
     ambushRetreatSeen: false,
+    // 2026-09-15 造出第一艘自造船：同上——**新档显式写 false**，只等真建造（老档缺字段则按「丙」补发）
+    firstShipBuilt: false,
     commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},
     debugQuick: false,

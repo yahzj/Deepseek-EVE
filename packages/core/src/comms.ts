@@ -220,6 +220,18 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
        */
       return Object.keys(state.encounterZoneCooldown).length > 0
     }
+    case 'shipBuilt':
+      /**
+       * **造出第一艘自造船**（2026-09-15 船长：「新增通讯发送的节点：当玩家造好第一条船后，弹出通讯
+       * 祝贺玩家，并告诉玩家新建造的舰船在舰船仓库页面」）。
+       *
+       * 三态随档标记 `state.firstShipBuilt`（置位点唯一 = `manufacturing.ts` 的 `settlePiece()` 造船分支）：
+       * - `true` ⇒ 造过 ⇒ 送达；
+       * - `false` = **新档**（`createInitialState` 写入）⇒ **只等真建造**，不会凭空收到祝贺；
+       * - **缺失 = 老档** ⇒ 船长三问裁决选「**丙**」：**读档即补发**（与 `ambushRetreat` 的"按痕迹判"不同——
+       *   这条既是祝贺、也是"新船在舰船仓库"的指路，老档读到同样有用）。
+       */
+      return state.firstShipBuilt !== false
     default:
       return false
   }
