@@ -1104,10 +1104,19 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
   }
   // 装甲/结构门槛（2026-09-08 船长定：提前到装甲——装甲或结构 <50% 即自动修补到 60%，
   // 为战斗内"结构损失过半自动撤退"保险留缓冲；组件不足则停环）
+  // ⚠ **2026-09-16 船长改判**：「洞外，原本的损伤严重自动消耗维修组件功能，需要修改。**改成需要玩家
+  //   携带对应的船体维修装置。消耗的维修组件类型也跟着装置走**」⇒ 停环理由分两种说法（没带装置 vs 组件耗尽）。
   if ((fleetShip.armorPct ?? 1) < 0.5 || fleetShip.durability < 0.5) {
-    repairWithKits(state, ctx, 0.6)
+    const rep = repairWithKits(state, ctx, 0.6)
     const fs = state.fleet[state.shipId]
     if (!fs || (fs.armorPct ?? 1) < 0.5 || fs.durability < 0.5) {
+      if (!rep.hasDevice) {
+        stopAutoLoopReason(
+          state,
+          '装甲或结构低于 50%：自动修补需要该船装着船体维修装置（中槽）——装上装置并带够对应组件，或先到空间站付费维修。',
+        )
+        return '耐久不足（装甲或结构低于 50%）且未装船体维修装置'
+      }
       stopAutoLoopReason(state, '装甲或结构低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。')
       return '耐久不足（装甲或结构低于 50%）且修理组件耗尽'
     }
