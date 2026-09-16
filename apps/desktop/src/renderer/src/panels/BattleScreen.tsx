@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairLedgersOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -1462,10 +1462,22 @@ const meSpeedRef = useRef(200)
   /* 敌方冲锋（2026-09-14 逐单位）：可能同时多条在冲 ⇒ 标记带条数；口径与引擎同源（core 的 `foeChargeCount`） */
   const foeCharging = battle ? foeChargeCount(battle) : 0
 
-  /* 船体维修装置状态（2026-09-09）：运转中（绿点呼吸）/ 组件耗尽停机（暗红）；徽标在弹药旁 */
-  const repairRt = battle?.repair
-  const repairTotal = repairRt ? Object.values(repairRt.kits).reduce((a, b) => a + b, 0) : 0
-  const repairRunning = repairRt ? repairRt.units.some((u) => !u.stopped) : false
+  /* 船体维修装置状态（2026-09-09；**2026-09-16 逐舰**）：运转中（绿点呼吸）/ 组件耗尽停机（暗红）；徽标在弹药旁。
+     逐舰化后徽标是**全队合计**（任何一艘在跑 ⇒ 亮"运转中"），悬停列出逐舰明细（谁在跑、各剩多少组件）。 */
+  const repairLedgers = repairLedgersOf(battle)
+  const repairTotal = repairLedgers.reduce(
+    (n, e) => n + Object.values(e.ledger.kits).reduce((a, b) => a + b, 0),
+    0,
+  )
+  const repairRunning = repairLedgers.some((e) => e.ledger.units.some((u) => !u.stopped))
+  const repairDetail = repairLedgers
+    .map((e) => {
+      const kits = Object.values(e.ledger.kits).reduce((a, b) => a + b, 0)
+      const running = e.ledger.units.some((u) => !u.stopped)
+      const who = e.tag === 'player' ? '主控' : `僚舰 ${e.tag.replace('ally-', '')}`
+      return `${who}：${running ? '运转中' : '停机'}（组件 ×${kits.toLocaleString('zh-CN')}）`
+    })
+    .join('\n')
 
   /* 距离滑条：值 = 接近度×1000（0 最远拉开 → 1000 贴脸），右拖 = 接近 */
   const desireM = Math.min(openM, Math.max(nearM, combat.myDesireM))
@@ -2388,13 +2400,14 @@ const meSpeedRef = useRef(200)
                 ))}
               </span>
             ) : null}
-            {repairRt ? (
+            {repairLedgers.length > 0 ? (
               <span
                 className={`app-bts-repair${repairRunning ? "" : " is-down"}`}
                 title={
-                  repairRunning
-                    ? '船体维修装置运转中：每 5 秒自动修复装甲/结构，每跳消耗 1 枚对应修理组件'
-                    : '船体维修装置已停机：修理组件耗尽（或开战时未备组件）——装甲/结构不再自动修复'
+                  (repairRunning
+                    ? '船体维修装置运转中：每 5 秒自动修复装甲/结构，每跳消耗 1 枚对应修理组件（每艘船各自的装置、各自的组件）'
+                    : '船体维修装置已停机：修理组件耗尽（或开战时未备组件）——装甲/结构不再自动修复') +
+                  (repairDetail ? `\n${repairDetail}` : '')
                 }
               >
                 <i /> {repairRunning ? '维修装置运转中' : '维修装置停机'}

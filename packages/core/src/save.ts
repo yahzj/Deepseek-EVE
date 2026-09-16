@@ -754,6 +754,10 @@ const BATTLE_FIELDS = {
    * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
   repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
   shieldCharge: { kind: 'persist' }, // 护盾充能装置快照 + 30 秒脉冲计时（丢了 ⇒ 重载后计时重置 = 白赚一跳）
+  // 2026-09-16 船长裁定「甲：逐舰维修」：逐舰账本（键 = 舰 tag）——同 `repair`/`shieldCharge` 的理由，
+  // 且**必须随档**：漏了会让僚舰的预载组件与计时在战中重载后凭空消失（与 `myFleet` 漏登记的后果同类）。
+  repairBy: { kind: 'persist' },
+  shieldChargeBy: { kind: 'persist' },
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
@@ -852,6 +856,9 @@ function cleanBattle(raw: unknown): BattleState | null {
   // 2026-09-12 船长裁定「六项全修」：下面七项**改为随档**，故先清洗成候选值
   const repair = cleanRepair(b.repair)
   const shieldCharge = cleanShieldCharge(b.shieldCharge)
+  /** 逐舰账本（2026-09-16 逐舰维修）：键 = 舰 tag；坏项丢键、整表空 ⇒ undefined（零迁移） */
+  const repairBy = cleanLedgerMap(b.repairBy, cleanRepair)
+  const shieldChargeBy = cleanLedgerMap(b.shieldChargeBy, cleanShieldCharge)
   const dronePools = cleanDronePools(b.dronePools)
   const foeDronePools = cleanFoeDronePools(b.foeDronePools)
   const droneLost = cleanCountMap(b.droneLost)
@@ -928,6 +935,9 @@ function cleanBattle(raw: unknown): BattleState | null {
     // ── 2026-09-12 船长裁定七项（随档）──
     ...(repair !== undefined ? { repair } : {}),
   ...(shieldCharge !== undefined ? { shieldCharge } : {}),
+    // ── 2026-09-16 逐舰维修（船长裁定「甲」）：逐舰账本同样**必须随档**（丢了 ⇒ 僚舰的组件凭空消失）──
+    ...(repairBy !== undefined ? { repairBy } : {}),
+    ...(shieldChargeBy !== undefined ? { shieldChargeBy } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
@@ -1144,6 +1154,26 @@ function cleanShieldCharge(raw: unknown): BattleState['shieldCharge'] | undefine
     pulses: Math.floor(cleanPosNum(r.pulses) ?? 0),
     ...(nextPulseAtMs !== undefined ? { nextPulseAtMs } : {}),
   }
+}
+
+/**
+ * **逐舰账本清洗**（2026-09-16 逐舰维修）：键 = 战斗 tag（`player` / `ally-1`…），值走各自的单份清洗器。
+ * 坏键/清洗失败的项**丢键**；整表为空 ⇒ `undefined`（不写字段 ⇒ 老读法退化成"只有主控那一份"）。
+ */
+function cleanLedgerMap<T>(
+  raw: unknown,
+  cleanOne: (v: unknown) => T | undefined,
+): Record<string, T> | undefined {
+  const r = asRaw(raw)
+  let out: Record<string, T> | undefined
+  for (const [tag, v] of Object.entries(r)) {
+    if (tag.length === 0) continue
+    const one = cleanOne(v)
+    if (one === undefined) continue
+    if (!out) out = {}
+    out[tag] = one
+  }
+  return out
 }
 
 /** 弹药 id 映射清洗（弹药 MK2：kinetic/explosive/plasma 键下的非空字符串 id；坏值丢键） */

@@ -36,7 +36,7 @@ import {
   foeDesiredRange,
   persistFleetHullDamage,
   refundAmmo,
-  refundRepairKits,
+  refundRepairKitsAll,
   repairUsageText,
   setDesirePrefOf,
   settleDroneLosses,
@@ -514,7 +514,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     )
   }
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
-  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
+  refundRepairKitsAll(state, battle) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：先落装甲/结构残余（结构=耐久），失利附加扣损在其后叠加
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
@@ -737,7 +737,7 @@ function settleBattleRetreat(
   // 机群战损（2026-09-10 船长「无人机可被击落」）：撤退也照扣——被打掉的飞机不会飞回来
   settleDroneLosses(state, ctx, state.shipId, battle)
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
-  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
+  refundRepairKitsAll(state, battle) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   // P0 承伤持久化：撤退也保留本场已损装甲/结构（脱身那一口在其后叠加）
   persistFleetHullDamage(state, ctx, state.shipId, battle)
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)

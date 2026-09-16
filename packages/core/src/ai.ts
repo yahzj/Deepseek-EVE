@@ -36,7 +36,7 @@ import {
   aiFavorAdv,
   aiWinPreview,
   refundAmmo,
-  refundRepairKits,
+  refundRepairKitsAll,
   repairUsageText,
   settleDroneLosses,
   startBattleFor,
@@ -946,7 +946,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   settleDroneLosses(state, ctx, shipId, battle)
   // 弹药剩余退回物品仓库（弹药 MK2：按实装弹 id 退回）
   refundAmmo(state, battle.ammo, battle.ammoIds)
-  refundRepairKits(state, battle.repair) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
+  refundRepairKitsAll(state, battle) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
   const anomaly = ctx.anomalies.get(task.anomalyId)
   if (!anomaly) {
     delete state.aiAssignments[shipId]

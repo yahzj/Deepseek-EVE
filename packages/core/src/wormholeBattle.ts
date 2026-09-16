@@ -15,7 +15,7 @@ import { uidDefId } from './labels'
 import { gainAiCore, aiCoreName } from './ai'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKits, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport } from './combat'
+import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
@@ -407,7 +407,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 后果是**连打第二场起全队哑火**（仓库被上一场抽干）：整趟模拟里表现为"节点战轻松赢、
   // 撤离战却 74 秒全灭、我开火 61/命中 17"（探针实测），把小费当成了难度。
   refundAmmo(state, battle.ammo, battle.ammoIds)
-  refundRepairKits(state, battle.repair)
+  refundRepairKitsAll(state, battle)
   /**
    * **谜质 B2：战后收口三件**（F3c · 船长 2026-09-13）。
    * 一律**现算**（从货仓的装置派生）⇒ 打完这一场立刻按"这一场带了什么"结算，不留状态。

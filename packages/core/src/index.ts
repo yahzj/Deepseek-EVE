@@ -695,6 +695,11 @@ export {
   // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，
   // 此前面板用 (1+falloff)/2 自算——旧口径下引擎实际是 ×0.44/×0.48、面板却写 ×0.65/×0.68，属显示值与实战值漂移）
   beamPowerFactor,
+  // 逐舰维修 / 护盾充能（2026-09-16 船长裁定「甲」）：界面与收场方读**逐舰账本**的唯一入口
+  // （单船路径与老档在途战斗 ⇒ 自动退化成"只有主控那一份"）
+  repairLedgersOf,
+  shieldChargeLedgersOf,
+  refundRepairKitsAll,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 
