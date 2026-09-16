@@ -427,8 +427,10 @@ export const WORMHOLE_FOE_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARDS.map((
  * 优先打捞稀有残骸…每 3 堆普通，进行一次稀有残骸出现判断」）。
  *
  * 为什么需要这张白名单：`context.ts` 注册稀有残骸物品的条件是 `hasLairCore(卡)`（窝点核心）——
- * 洞内四张卡**没有窝点核心**（它们不是窝点候选）⇒ 不白名单就**不存在 `wreck-rare-wh-*` 物品**，
+ * 洞内卡**没有窝点核心**（它们不是窝点候选）⇒ 不白名单就**不存在 `wreck-rare-wh-*` 物品**，
  * 打捞出来的稀有残骸会解析不到定义、读档后显示成"未知物品"。
- * 注册出来的物品一律 `unreleased`（施工期对玩家不可见，与虫洞同批上线）。
+ * ⚠ **2026-09-15 更正**（原写"注册出来的物品一律 `unreleased`（施工期，与虫洞同批上线）"）：那个闸门
+ * 随虫洞上线（2026-09-14）**漏摘**，后果 = 精炼炉「残骸回收」看不到洞内稀有残骸（船长当日报障）；
+ * 现已按上线动作删字段 ⇒ 与窝点稀有残骸同款：**可回收、图鉴可见**。
  */
 export const WORMHOLE_RARE_WRECK_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARDS.map((c) => c.id)

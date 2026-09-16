@@ -16,6 +16,7 @@
 import { describe, expect, it } from 'vitest'
 import { MARKET_GOODS, buildSimContext } from '@whale/data'
 import { itemReleased, visibleItemDefs } from '../src/inventory'
+import { recycleProfileOf } from '../src/salvage'
 import { WORMHOLE_ORE_ITEM_ID } from '../src/wormhole'
 
 const ctx = buildSimContext()
@@ -55,6 +56,25 @@ describe('物品目录级可见性（2026-09-13 立闸 · 2026-09-14 虫洞上�
       const good = marketOf.get(def.id)
       if (!good) continue // 无市场卡（残骸等）：只有物品闸门这一道，够了
       expect(good.unreleased, `${def.id}（${def.name}）物品卡标了未上线，市场卡却没标`).toBe(true)
+    }
+  })
+
+  /**
+   * **洞内稀有残骸必须可见**（2026-09-15 三号修 · 船长报障「**精炼炉好像缺少虫洞的稀有残骸回收**」）。
+   *
+   * 根因：`data/src/context.ts` 给洞内件注册时留着施工期 `unreleased: true`（虫洞 2026-09-14 上线时
+   * 漏摘这一个字段），而精炼炉「残骸回收」列表走**玩家可见目录**（`visibleItemDefs`）⇒
+   * 打捞带回仓库的洞内稀有残骸**在回收列表里看不到**、高级箱开不了（手册物品图鉴同样看不到）。
+   * 本用例钉两侧：**玩家可见目录里有它** ＋ **它确实是高级箱画像**（`recycleProfileOf(...).rare`）。
+   */
+  it('洞内稀有残骸（`wreck-rare-wh-*`）：在玩家可见目录里，且是高级箱画像', () => {
+    const whWrecks = [...ctx.items.values()].filter((d) => d.id.startsWith('wreck-rare-wh-'))
+    expect(whWrecks.length, '一件洞内稀有残骸都没有（`context.ts` 的白名单注册断了？）').toBeGreaterThan(0)
+    const visibleIds = new Set(visibleItemDefs(ctx).map((d) => d.id))
+    for (const def of whWrecks) {
+      expect(itemReleased(def), `${def.id}（${def.name}）仍被闸门挡着`).toBe(true)
+      expect(visibleIds.has(def.id), `${def.id} 不在玩家可见目录（精炼炉看不到它）`).toBe(true)
+      expect(recycleProfileOf(ctx, def.id)?.rare, `${def.id} 不是高级箱画像（回收档位判错）`).toBe(true)
     }
   })
 })

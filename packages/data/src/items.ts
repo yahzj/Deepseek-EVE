@@ -957,7 +957,7 @@ export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
     kind: 'essence',
     unitM3: 0.5,
     baseSellPriceIsk: 70_000,
-    description: '虫洞内存在的奇幻物资，具备研究价值。装在密封匣里的冷辉结晶，回收商按枚收购。',
+    description: '虫洞内存在的奇幻物资，具备研究价值，不建议出售。装在密封匣里的冷辉结晶，回收商按枚收购。',
   },
 ]
 

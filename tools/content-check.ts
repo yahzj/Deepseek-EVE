@@ -4612,14 +4612,31 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
      *  **2026-09-14 上线后该闸门退休**（这些内容现在**必须**在图鉴里）。
      *  但**按族池契约照旧有效**（见下面 ⑦：五族各要有一池"装备 + 装备图纸 + 舰船图纸"，不许空池）。 */
     const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sbp-wh-', 'sh-wh-', 'drone-wh-'] as const
+    /**
+     * ⚠ **2026-09-15 补（三号 · 船长报障「精炼炉好像缺少虫洞的稀有残骸回收」）**：上面五个前缀
+     * **盖不到物品**，而洞内稀有残骸的物品 id = `wreck-rare-wh-<卡 id>`（前缀是 `wreck-rare-`）⇒
+     * 它当年那条"施工期标 `unreleased`、上线删字段"的闸门**漏摘了也没人拦**，实机后果 =
+     * 精炼炉「残骸回收」看不到洞内稀有残骸（该列表与手册物品图鉴都走 `visibleItemDefs`）。
+     * 现把物品纳入本契约（id 前缀 `wreck-rare-wh-`）。
+     */
+    const WH_ITEM_PREFIX = 'wreck-rare-wh-'
+    /**
+     * ⚠ 稀有残骸物品**不在静态 `ITEMS` 数组里**（它们由 `data/src/context.ts` 按敌卡**运行时注册**）
+     * ⇒ 本节一律读**真 context 的物品目录**（`buildSimContext().items`），读 `ITEMS` 会得到空集、
+     * 哨子就变成永远通过（这条坑是首版写错后实测抓出来的）。
+     */
+    const whItemCtx = buildSimContext()
+    const whItems = [...whItemCtx.items.values()].filter((i) => i.id.startsWith(WH_ITEM_PREFIX))
     const whTyped: ReadonlyArray<{ kind: string; id: string; name: string; description?: string; unreleased?: boolean }> = [
       ...MODULES.map((m) => ({ kind: '装备', id: m.id, name: m.name, description: m.description, unreleased: m.unreleased })),
       ...SHIPS.map((s) => ({ kind: '舰船', id: s.id, name: s.name, description: s.description, unreleased: s.unreleased })),
       ...BLUEPRINTS.map((b) => ({ kind: '装备图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
       ...SHIP_BLUEPRINTS.map((b) => ({ kind: '舰船图纸', id: b.id, name: b.name, description: b.description, unreleased: b.unreleased })),
       ...DRONES.map((d) => ({ kind: '无人机', id: d.id, name: d.name, description: d.description, unreleased: d.unreleased })),
+      ...whItems.map((i) => ({ kind: '残骸', id: i.id, name: i.name, description: i.description, unreleased: i.unreleased })),
     ]
-    const isWhContent = (id: string): boolean => WH_PREFIXES.some((p) => id.startsWith(p))
+    const isWhContent = (id: string): boolean =>
+      WH_PREFIXES.some((p) => id.startsWith(p)) || id.startsWith(WH_ITEM_PREFIX)
     /**
      * **虫洞专属内容（`mod-wh-` / `sh-wh-` / `bp-wh-` / `sbp-wh-` / `drone-wh-`）现在必须真的在图鉴里**
      * （2026-09-14 船长解除不可见后，把当年"必须标 unreleased"的闸门翻成反向断言）——
@@ -4635,6 +4652,17 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
           `虫洞专属内容契约：${d.kind} ${d.id}（${d.name}）仍标着 unreleased —— ` +
             `虫洞已上线（2026-09-14 船长解除不可见），图鉴/组装机/船坞都该看得到它`,
         )
+      }
+    }
+    /**
+     * **每张洞内敌卡都要有对应的稀有残骸物品**（2026-09-15 补）：缺一件 = 那一趟打捞带回来的箱子
+     * 在回收炉里找不到定义（旧档更显示成"未知物品"）。注册走 `context.ts` 的白名单
+     * （`hasLairCore` 不覆盖洞内卡），故这里按 `WORMHOLE_FOE_CARD_IDS` 逐张核。
+     */
+    for (const card of WORMHOLE_FOE_CARD_IDS) {
+      const wreckId = `wreck-rare-${card}`
+      if (!whItemCtx.items.has(wreckId)) {
+        errors.push(`虫洞专属内容契约：洞内敌卡 ${card} 没有对应的稀有残骸物品 ${wreckId}（打捞回来的箱子开不了）`)
       }
     }
     /* ⑦ **（2026-09-13 F3b 补）按族池契约**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：
