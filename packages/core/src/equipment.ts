@@ -604,7 +604,9 @@ const AMMO_TYPES: readonly DamageType[] = ['kinetic', 'explosive', 'plasma']
 
 /**
  * 弹药档位设置（2026-09-09 船长拍板：出战前选档——装配页按弹族选基础弹/弹药 MK2；
- * 开战预载按此装载，库存不足整族回退基础弹；连打/离线同源消耗当前配置）。
+ * **取档口径 2026-09-16 船长改判**：开战按"同族取能装得最多的一档"装载（装不满也照装），
+ * 旧口径「库存不足整族回退基础弹」**已作废**（细则见 `combat.resolveAmmoTier`）；
+ * 连打/离线同源消耗当前配置）。
  * itemId = null → 恢复基础弹（删键）。shipId 缺省 = 当前驾驶船。
  */
 export function setAmmoTier(

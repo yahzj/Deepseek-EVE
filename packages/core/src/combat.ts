@@ -2321,8 +2321,7 @@ export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, to
 }
 
 /** 装载指定弹 id（货仓优先、仓库兜底，单型一次抽足）；返回实装数 */
-function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {
-  if (total <= 0) return 0
+function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {  if (total <= 0) return 0
   const stock = Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id))
   if (stock <= 0) return 0
   let want = Math.min(stock, total)
@@ -2345,9 +2344,79 @@ function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number
 }
 
 /**
- * 开战按档装载（弹药 MK2，2026-09-09 船长拍板：出战前选档——船装配 ammoPref 决定本场弹种；
- * 该档库存不足 → 整族回退基础弹（fellBack = true，由调用方日志提示），不卡远征）。
- * 返回实装数 + 实装弹 id（写 battle.ammoIds 供推进/退还/视图对齐）。
+ * **改档日志文案**（船长 2026-09-16 新口径配套）：实际档 ≠ 期望档时记一条。
+ * 期望档 = 本船 `ammoPref`；**没设档时把"基础弹"当期望**（措辞相应换成"基础弹不足"）。
+ */
+function ammoTierFallbackLog(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  type: DamageType,
+  useId: string,
+  loaded: number,
+): string {
+  const prefId = state.fleet[shipId]?.ammoPref?.[type]
+  const wantName = prefId ? (ctx.items.get(prefId)?.name ?? type) : '基础弹'
+  const useName = ctx.items.get(useId)?.name ?? type
+  return `⚙ ${wantName}可用量不足，本场改用${useName}（预载 ${loaded} 发）。`
+}
+
+/**
+ * **本船本族的"实际会装哪一档"**（船长 2026-09-16 新口径的**单点判定**）。
+ *
+ * 界面（装配页弹药档位）与引擎（开战预载）**共用它** ⇒ 界面能如实显示"本场会用哪一档、够不够"
+ * （与"界面与引擎同一把尺"的既有纪律一致）。
+ *
+ * 口径：候选 = **基础弹恒在** ∪ 物品表里同族（`ammo-<族>-*`）的全部档；各算可装量
+ * `min(货舱+仓库库存, want)`；**取可装量最大者**；平局 = `ammoPref` ＞ 基础弹 ＞ 其余（id 序）。
+ * `want <= 0` 或全族无货 ⇒ 回"期望档"（`pref ?? 基础弹`）且 `can = 0`。
+ */
+export function resolveAmmoTier(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  type: DamageType,
+  want: number,
+): { id: string; can: number; expected: string; fellBack: boolean } {
+  const need = Math.max(0, Math.floor(want))
+  const prefId = state.fleet[shipId]?.ammoPref?.[type]
+  const wantId = prefId && ctx.items.has(prefId) ? prefId : null
+  const baseId = AMMO_IDS[type]
+  const canLoadOf = (id: string): number =>
+    Math.min(Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id)), need)
+  /** 候选：**基础弹恒在**（它是无档时的默认）+ 物品表里同族的所有档（日后加档自动纳入） */
+  const family = [...new Set([baseId, ...[...ctx.items.keys()].filter((id) => id.startsWith(`ammo-${type}-`))])].sort()
+  const ranked = family
+    .map((id) => ({ id, can: canLoadOf(id) }))
+    .sort(
+      (a, b) =>
+        b.can - a.can || // ① 可装量最大者优先
+        (a.id === wantId ? -1 : b.id === wantId ? 1 : 0) || // ② 平局：本船选的档
+        (a.id === baseId ? -1 : b.id === baseId ? 1 : 0) || // ③ 平局：基础弹（"不选档 = 基础弹"的旧语义）
+        a.id.localeCompare(b.id),
+    )
+  const pick = ranked[0]
+  const expected = wantId ?? baseId
+  const id = pick && pick.can > 0 ? pick.id : expected
+  return { id, can: pick?.can ?? 0, expected, fellBack: pick !== undefined && pick.can > 0 && id !== expected }
+}
+
+/**
+ * 开战按档装载（弹药 MK2，2026-09-09 船长拍板"出战前选档"；**取档口径 2026-09-16 船长改判**）。
+ *
+ * **现行口径（船长 2026-09-16「甲」：回退改为"同族取能装得最多的那一档"）**：
+ * 1. 候选 = **同族全部弹药档**（基础弹恒在 + 物品表里 `ammo-<族>-*` 的其余档 ⇒ 日后加档自动纳入）；
+ * 2. **取可装量最大的那一档**（不再"不足整批就整族否决"）；**允许装不满**（有多少装多少）；
+ * 3. **平局按"期望档优先"**：本船 `ammoPref` ＞ 基础弹 ＞ 其余（⇒ 选了档仍优先用所选档；
+ *    没选档且两档都够 ⇒ 仍走基础弹，保持"不选档 = 基础弹"的旧语义）；
+ * 4. `fellBack` = **实际用的档 ≠ 期望档**（期望档 = `ammoPref`，没设则基础弹）⇒ 调用方记一条日志。
+ *
+ * ⚠ **旧口径已作废**（2026-09-09：「配置档库存不足 ⇒ **整族回退基础弹**」）——它带来两个实战缺口：
+ * ① **没选档 ⇒ 完全无视 MK2**（玩家仓库 553 发 MK2、基础弹 0 ⇒ 进战斗显示"无弹"）；
+ * ② **选了 MK2 但不足整批 ⇒ 一发 MK2 都不用**（宁可回退基础弹，哪怕基础弹也是 0）。
+ * 根因与取证见工作文档 `docs/design/ammo-tier-fallback-20260916.md`。
+ *
+ * 返回实装数 + 实装弹 id（写 `battle.ammoIds` 供推进/退还/视图对齐）。
  */
 export function loadAmmoTier(
   state: GameState,
@@ -2356,17 +2425,9 @@ export function loadAmmoTier(
   type: DamageType,
   total: number,
 ): { loaded: number; id: string; fellBack: boolean } {
-  const prefId = state.fleet[shipId]?.ammoPref?.[type]
-  const wantId = prefId && ctx.items.has(prefId) ? prefId : null
-  let id = AMMO_IDS[type]
-  let fellBack = false
-  if (wantId !== null) {
-    const have = Math.floor((cargoItemsOf(state)[wantId] ?? 0) + countWare(state, wantId))
-    if (have >= total) id = wantId
-    else fellBack = true // 配置档不足整批 → 整族回退基础弹
-  }
-  const loaded = loadAmmoOf(state, ctx, id, total)
-  return { loaded, id, fellBack }
+  const r = resolveAmmoTier(state, ctx, shipId, type, total)
+  const loaded = r.can > 0 ? loadAmmoOf(state, ctx, r.id, Math.max(0, Math.floor(total))) : 0
+  return { loaded, id: r.id, fellBack: r.fellBack }
 }
 
 /** 剩余弹药退回物品仓库（弹药 MK2：按实装弹 id 原样退回；ids 缺省 = 基础弹语义） */
@@ -3170,8 +3231,10 @@ export function startBattleFor(
   battle.distanceM = openM
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
   // （纯激光船也能带上能量弹药；混装各型互不挤占）
-  // 2026-09-09 弹药 MK2：按船装配档位（ammoPref）装载；配置档库存不足整族回退基础弹 +
-  // 日志提示；实装弹 id 写入 battle.ammoIds（推进/退还/视图与实际弹种对齐）
+  // 2026-09-09 弹药 MK2：按船装配档位（ammoPref）装载；**取档口径 2026-09-16 船长改判**——
+  // 同族取"能装得最多"的那一档、允许装不满（细则见 `loadAmmoTier`）。
+  // ⚠ `battle.ammoIds` **只要有实装就记实际档**（哪怕实际档 = 基础弹）：推进重建（`ammoIdFor`）
+  //   与退还都按它走 —— 若这里漏记，重建会回落到 `ammoPref`（= MK2 口径伤害）而实际烧的是基础弹。
   const totals = ammoLoadTotals(me, bal, state)
   const ammoIds: Partial<Record<DamageType, string>> = {}
   for (const [t, n] of Object.entries(totals)) {
@@ -3179,11 +3242,9 @@ export function startBattleFor(
     const key = ammoKeyOf(type)
     const res = loadAmmoTier(state, ctx, shipId, type, n)
     battle.ammo[key] += res.loaded
-    if (state.fleet[shipId]?.ammoPref?.[type] && res.loaded > 0) ammoIds[type] = res.id
+    if (res.loaded > 0) ammoIds[type] = res.id
     if (res.fellBack && res.loaded > 0) {
-      const wantName = ctx.items.get(state.fleet[shipId]!.ammoPref![type]!)?.name ?? type
-      const useName = ctx.items.get(res.id)?.name ?? type
-      addLog(state, 'warn', `⚙ ${wantName}库存不足，本场改用${useName}（预载 ${res.loaded} 发）。`)
+      addLog(state, 'warn', ammoTierFallbackLog(state, ctx, shipId, type, res.id, res.loaded))
     }
   }
   if (Object.keys(ammoIds).length > 0) battle.ammoIds = ammoIds
@@ -3493,6 +3554,7 @@ export function startFleetBattleFor(
   }
   battle.myFleet = fleet
   // 弹药：**逐船装载、汇入同一个池**（成本按各船各付；档口按主控优先）
+  // **取档口径 2026-09-16 船长改判**：同族取"能装得最多"的那一档、允许装不满（细则见 `loadAmmoTier`）
   const ammoIds: Partial<Record<DamageType, string>> = {}
   for (const entry of fleet) {
     const spec = specOf.get(entry.shipId)!
@@ -3502,13 +3564,10 @@ export function startFleetBattleFor(
       const key = ammoKeyOf(type)
       const res = loadAmmoTier(state, ctx, entry.shipId, type, n)
       battle.ammo[key] += res.loaded
-      if (state.fleet[entry.shipId]?.ammoPref?.[type] && res.loaded > 0 && ammoIds[type] === undefined) {
-        ammoIds[type] = res.id
-      }
+      // ⚠ 只要有实装就记实际档（含"实际 = 基础弹"）：推进重建与退还都按它走，漏记会串档
+      if (res.loaded > 0 && ammoIds[type] === undefined) ammoIds[type] = res.id
       if (res.fellBack && res.loaded > 0) {
-        const wantName = ctx.items.get(state.fleet[entry.shipId]!.ammoPref![type]!)?.name ?? type
-        const useName = ctx.items.get(res.id)?.name ?? type
-        addLog(state, 'warn', `⚙ ${wantName}库存不足，本场改用${useName}（预载 ${res.loaded} 发）。`)
+        addLog(state, 'warn', ammoTierFallbackLog(state, ctx, entry.shipId, type, res.id, res.loaded))
       }
     }
   }

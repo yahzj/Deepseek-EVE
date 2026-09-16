@@ -1,7 +1,8 @@
 /**
  * 弹药 MK2（2026-09-09 船长拍板，docs/design/ammo-mk2-20260909.md）：
  * - 出战前选档：装配档位（ammoPref）决定本场弹种，开战预载按档、连打/离线同源；
- * - 配置档库存不足 → 整族回退基础弹 + 日志（不卡远征）；
+ * - 配置档库存不足 → **同族另一档** + 日志（不卡远征）——⚠ **2026-09-16 船长改判**：
+ *   现口径 = 「**同族取能装得最多的一档**、装不满也照装」（旧口径"整族回退基础弹"已作废）；
  * - battle.ammoIds 记录实装弹 id——推进/退还/视图与实际弹种对齐（退还按 id 原样退回）；
  * - 单发伤害 = 实装弹药卡的 dmg 基数（MK2 > 基础）。
  */
@@ -88,16 +89,58 @@ describe('弹药 MK2（2026-09-09）', () => {
     expect(state.warehouse.items['ammo-kinetic-l'] ?? 0).toBe(0)
   })
 
-  it('MK2 库存不足：整族回退基础弹 + 日志提示；实装 id = 基础；退还回基础', () => {
+  it('**所选档无货 ⇒ 用同族另一档**（基础弹）+ 日志提示；实装 id = 基础；退还回基础', () => {
     const { state, ctx } = world({ pref: { kinetic: 'ammo-kinetic-2' }, kinStock: { 'ammo-kinetic-l': 50_000 } })
     const battle = startBattleFor(state, ctx as SimContext, state.shipId, 'ano-x', 0)!
     expect(battle.ammo.kin).toBeGreaterThan(0)
-    expect(battle.ammoIds?.kinetic).toBe('ammo-kinetic-l') // 回退写基础 id
-    expect(state.logs.some((l) => l.text.includes('库存不足') && l.text.includes('本场改用'))).toBe(true)
+    expect(battle.ammoIds?.kinetic).toBe('ammo-kinetic-l') // 实际档 = 基础
+    expect(state.logs.some((l) => l.text.includes('可用量不足') && l.text.includes('本场改用'))).toBe(true)
     const beforeBase = state.warehouse.items['ammo-kinetic-l'] ?? 0
     runToEnd(state, ctx as SimContext, battle)
     refundAmmo(state, battle.ammo, battle.ammoIds)
     expect(state.warehouse.items['ammo-kinetic-l']!).toBe(beforeBase + battle.ammo.kin)
+  })
+
+  /**
+   * **报障回归钉子**（船长 2026-09-16：「爆破导弹MK2 的仓库有 553 个，舰船携带重型导弹架MK2
+   * 进入战斗后提示无弹」）——旧口径「没选档 ⇒ 只装基础弹」会让仓库里的 MK2 一发不用。
+   */
+  it('**没选档 + 基础弹 0 + 仓库有 MK2 ⇒ 自动装 MK2**（治"有弹却提示无弹"）', () => {
+    const { state, ctx } = world({ kinStock: { 'ammo-kinetic-2': 553 } })
+    expect(state.warehouse.items['ammo-kinetic-l'] ?? 0).toBe(0)
+    const battle = startBattleFor(state, ctx as SimContext, state.shipId, 'ano-x', 0)!
+    expect(battle.ammo.kin).toBeGreaterThan(0)
+    expect(battle.ammoIds?.kinetic).toBe('ammo-kinetic-2') // 实装 = MK2（推进/退还/视图都按它）
+    expect(state.logs.some((l) => l.text.includes('基础弹可用量不足') && l.text.includes('本场改用'))).toBe(true)
+    const before = state.warehouse.items['ammo-kinetic-2'] ?? 0
+    runToEnd(state, ctx as SimContext, battle)
+    refundAmmo(state, battle.ammo, battle.ammoIds)
+    // 退还按实装 id 原样回仓：烧的是 MK2、退的也是 MK2（不会串成基础弹）
+    expect(state.warehouse.items['ammo-kinetic-2']!).toBe(before + battle.ammo.kin)
+    expect(state.warehouse.items['ammo-kinetic-l'] ?? 0).toBe(0)
+  })
+
+  it('**所选档不足整批但仍有货 ⇒ 装多少算多少**（不再"一发都不用"）', () => {
+    const { state, ctx } = world({ pref: { kinetic: 'ammo-kinetic-2' }, kinStock: { 'ammo-kinetic-2': 30 } })
+    const battle = startBattleFor(state, ctx as SimContext, state.shipId, 'ano-x', 0)!
+    expect(battle.ammo.kin, '有 30 发就该装 30 发').toBeGreaterThan(0)
+    expect(battle.ammo.kin).toBeLessThanOrEqual(30)
+    expect(battle.ammoIds?.kinetic).toBe('ammo-kinetic-2')
+  })
+
+  it('**同族取"能装得最多"的那一档**：所选档只有 30 发、基础弹更多 ⇒ 改用基础弹（＋日志）', () => {
+    const { state, ctx } = world({ pref: { kinetic: 'ammo-kinetic-2' }, kinStock: { 'ammo-kinetic-2': 30, 'ammo-kinetic-l': 50_000 } })
+    const battle = startBattleFor(state, ctx as SimContext, state.shipId, 'ano-x', 0)!
+    expect(battle.ammoIds?.kinetic).toBe('ammo-kinetic-l')
+    expect(battle.ammo.kin).toBeGreaterThan(30)
+    expect(state.logs.some((l) => l.text.includes('可用量不足'))).toBe(true)
+  })
+
+  it('**两档都空 ⇒ 0 发**（不抛错、不写实装 id；界面据此预警）', () => {
+    const { state, ctx } = world({ kinStock: {} })
+    const battle = startBattleFor(state, ctx as SimContext, state.shipId, 'ano-x', 0)!
+    expect(battle.ammo.kin).toBe(0)
+    expect(battle.ammoIds?.kinetic).toBeUndefined()
   })
 
   it('单发伤害按实装弹档：MK2 ≈ 基础 ×(8/6)；回退局推进重建按基础口径（同种子与无档对照一致）', () => {
@@ -120,17 +163,17 @@ describe('弹药 MK2（2026-09-09）', () => {
     expect(bF.stats.meDmg).toBe(bC.stats.meDmg) // 同种子同口径：回退局 ≡ 基础局
   })
 
-  it('激光族同样按档（能量弹药 MK2）；默认无档 = 零迁移走基础、battle.ammoIds 不写', () => {
+  it('激光族同样按档（能量弹药 MK2）；**没选档 = 走基础弹**（实装 id 如实记为基本弹 ⇒ 退还同物）', () => {
     const mk2 = world({ laser: true, pref: { plasma: 'ammo-plasma-2' } })
     const b1 = startBattleFor(mk2.state, mk2.ctx as SimContext, mk2.state.shipId, 'ano-x', 0)!
     expect(b1.ammo.pla).toBeGreaterThan(0)
     expect(b1.ammoIds?.plasma).toBe('ammo-plasma-2')
-    // 无档旧档语义：基础弹、不写 ammoIds
+    // 没选档：两档都够 ⇒ 仍走基础弹（"不选档 = 基础弹"的旧语义不变）；实装 id 如实记录
     const plain = world({ laser: true })
     const b2 = startBattleFor(plain.state, plain.ctx as SimContext, plain.state.shipId, 'ano-x', 0)!
     expect(b2.ammo.pla).toBeGreaterThan(0)
-    expect(b2.ammoIds).toBeUndefined()
-    expect(plain.state.logs.some((l) => l.text.includes('库存不足'))).toBe(false)
+    expect(b2.ammoIds?.plasma).toBe('ammo-plasma-l')
+    expect(plain.state.logs.some((l) => l.text.includes('可用量不足'))).toBe(false)
   })
 
   it('setAmmoTier：设档 / 恢复基础（null）/ 跨族与非法物品拒绝', () => {
