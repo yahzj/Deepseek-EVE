@@ -3133,6 +3133,62 @@ for (const m of MODULES) {
   }
 }
 
+/* ── 舰船图形契约（2026-09-16 加）：**每一艘船都必须有自己的 SVG 形与挂点** ──
+ * 船长 2026-09-16：「**新增的舰船没有SVG图形，按照之前的规则每艘需要单独的SVG图形**」。
+ *
+ * 根因：2026-09-09 那批图形是**手工全量**接入的，此后新加的船（2026-09-12 的 T4/T5 模子与鹦鹉螺、
+ * 2026-09-13 的虫洞族专属 15 艘）没人补 ⇒ `ShipSprite` 静默回退 140×64 的 role 兜底剪影：
+ * 舰队卡 / 舰船仓库 / 战斗画面里长得一模一样，且**四道闸门全绿也照样漏**（就像这次的实测）。
+ * 同款缺口还有一处：挂点表（引擎喷口 / 真实炮口）——缺了不会报错，只是尾焰落回"单焰"、
+ * 开火锚落回舰艏前缘。故本契约把**两张表**一起钉住。
+ *
+ * 口径：`ships.ts` 的每一艘船，在
+ *   ① `ui/shipArt.tsx` / `shipArtData.tsx` / `shipArtWh.tsx` 的形表里有一条；
+ *   ② `ui/shipMounts.ts` 的 `SHIP_MOUNTS` 里有一条（**敌族表不在此列**，另有 `FOE_ART` 覆盖）。
+ * 静态读源码（与「图标覆盖契约」「市场类型契约」同款做法，不引 UI 依赖）。 */
+{
+  const uiDir = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'ui')
+  const artFiles = ['shipArt.tsx', 'shipArtData.tsx', 'shipArtWh.tsx']
+  const missingFiles = artFiles.filter((f) => !existsSync(join(uiDir, f)))
+  const mountPath = join(uiDir, 'shipMounts.ts')
+  if (missingFiles.length > 0 || !existsSync(mountPath)) {
+    check(
+      false,
+      `舰船图形契约：找不到 ${[...missingFiles, ...(existsSync(mountPath) ? [] : ['shipMounts.ts'])].join(' · ')}（文件移位请同步本检查）`,
+    )
+  } else {
+    const artSrc = artFiles.map((f) => readFileSync(join(uiDir, f), 'utf8')).join('\n')
+    /** 形表键 = `'sh-xxx': (` 或 `"sh-xxx": (`（含敌族 A~G 字母键，故下面只按船 id 取交集） */
+    const artKeys = new Set([...artSrc.matchAll(/["']([A-Za-z0-9-]+)["']\s*:\s*\(/g)].map((m) => m[1]!))
+    const mountSrc = readFileSync(mountPath, 'utf8')
+    const mountBlock = mountSrc.slice(
+      mountSrc.indexOf('export const SHIP_MOUNTS'),
+      mountSrc.indexOf('export const FOE_MOUNTS'),
+    )
+    /** 挂点表键 = 两空格缩进的 `'sh-xxx': {` / `id: {`（敌族块在 SHIP_MOUNTS 之后，已切掉） */
+    const mountKeys = new Set(
+      [...mountBlock.matchAll(/^\s{2}(?:'([A-Za-z0-9-]+)'|([A-Za-z0-9-]+)):\s*\{/gm)].map(
+        (m) => m[1] ?? m[2]!,
+      ),
+    )
+    const noArt = SHIPS.filter((s) => !artKeys.has(s.id)).map((s) => `${s.id}（${s.name}）`)
+    const noMount = SHIPS.filter((s) => !mountKeys.has(s.id)).map((s) => `${s.id}（${s.name}）`)
+    check(
+      noArt.length === 0,
+      `舰船图形契约：${noArt.join(' · ')} 没有独立 SVG 形 —— 舰队卡/舰船仓库/战斗画面会落 role 兜底剪影（船长 2026-09-16：「每艘需要单独的SVG图形」）；请在 ui/shipArt.tsx 或 ui/shipArtWh.tsx 补形（画布 240×110 · 舰首朝右 · 无类元素 = 主轮廓）`,
+    )
+    check(
+      noMount.length === 0,
+      `舰船图形契约：${noMount.join(' · ')} 没有挂点 —— 尾焰回落单焰、开火锚回落舰艏前缘；请在 ui/shipMounts.ts 补 engines/muzzles（坐标 = 该舰 240×110 本地几何）`,
+    )
+    if (noArt.length === 0 && noMount.length === 0) {
+      console.log(
+        `· 舰船图形契约：${SHIPS.length} 艘船形与挂点齐备（形表 ${artKeys.size} 键 · 玩家挂点 ${mountKeys.size} 键）`,
+      )
+    }
+  }
+}
+
 /* ── 悬停提示契约（2026-09-14 船长报障「部分情况仍会出现系统默认的鼠标悬浮 title 窗口」后加）：
  * 全站悬停说明一律走**元素的 `title` 属性**（由 `ui/Tooltip.tsx` 的全局接管层换成站内自绘提示：
  * 限宽 300px、跟随鼠标、可多行）；**SVG 的 `<title>` 子元素一律禁止** —— 它不是属性、接管层
@@ -3256,6 +3312,16 @@ const STALE_COPY_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
     /开出(?=[^，。；）]{0,6}(?:装备|图纸|舰船|无人机|核心|奢侈品|残骸|矿物|原材料|件东西))/,
     '把产出说成"从箱子里开出来"（2026-09-16 收口：写「产出 / 得到 / 缴获 / 解体」）',
   ],
+  /**
+   * 2026-09-16 船长定名批（原话：「**将弹药 爆破导弹改名为爆破弹药，其他的弹药也进行类似的改名**」）：
+   * 弹药全族统一到《系+弹药》——**动能弹 → 动能弹药** · **爆破导弹 → 爆破弹药**（能量弹药本就合规），
+   * 含 MK2 两档与 6 张生产线蓝图。三条旧名列入黑名单防回潮。
+   *
+   * ⚠ `动能弹` 必须带负向断言 `(?!药)`：**它是新名「动能弹药」的前缀**，裸写会把新名一起判红。
+   */
+  [/动能弹(?!药)/, '旧弹药名（2026-09-16 起：动能弹药）'],
+  [/爆破导弹/, '旧弹药名（2026-09-16 起：爆破弹药——发射架仍叫导弹架，打出去的是弹药）'],
+  [/等离子弹/, '旧弹药名（V18B-2 起即为「能量弹药」，2026-09-16 补齐存量文案）'],
 ]
 
 /**

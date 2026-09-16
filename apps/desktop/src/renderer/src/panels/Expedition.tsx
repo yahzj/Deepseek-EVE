@@ -2147,7 +2147,7 @@ function AnomalyCard({
           return (
             <span
               className="app-dim"
-              title={`敌方三层血量占比：盾 ${Math.round(split.s * 100)}% / 甲 ${Math.round(split.a * 100)}% / 结构 ${Math.round(split.h * 100)}%——动能弹拆盾 ×1.5、高爆破甲 ×1.5、能量弹各层均衡`}
+              title={`敌方三层血量占比：盾 ${Math.round(split.s * 100)}% / 甲 ${Math.round(split.a * 100)}% / 结构 ${Math.round(split.h * 100)}%——动能弹药拆盾 ×1.5、高爆破甲 ×1.5、能量弹药各层均衡`}
             >
               {' '}· 敌型 <ProfileChip profile={p} text={cn} />
             </span>
@@ -2817,7 +2817,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       const p = card.defProfile ?? 'balanced'
                       const cn = p === 'shield' ? '盾厚' : p === 'armor' ? '甲厚' : '均衡'
                       return (
-                        <span className="app-dim" title="敌方三层血量占比——动能弹拆盾 ×1.5、高爆破甲 ×1.5">
+                        <span className="app-dim" title="敌方三层血量占比——动能弹药拆盾 ×1.5、高爆破甲 ×1.5">
                           {' '}· 敌型 <ProfileChip profile={p} text={cn} />
                         </span>
                       )

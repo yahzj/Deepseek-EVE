@@ -288,7 +288,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '导弹发射学',
     group: '战斗',
     rank: 1,
-    description: '导弹架专精：爆破导弹单发伤害每级 +⟦5%⟧（与炮术学乘算叠加；追踪命中与近盲安全射距不受影响）。',
+    description: '导弹架专精：爆破弹药单发伤害每级 +⟦5%⟧（与炮术学乘算叠加；追踪命中与近盲安全射距不受影响）。',
   },
   {
     id: 'laser-cannon',

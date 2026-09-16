@@ -10,9 +10,11 @@
  */
 import type { ReactNode } from 'react'
 import { FOE_ART_EXTRA, SHIP_ART_EXTRA } from './shipArtData'
+import { SHIP_ART_WH } from './shipArtWh'
 
 export const SHIP_ART: Record<string, ReactNode> = {
   ...SHIP_ART_EXTRA,
+  ...SHIP_ART_WH,
   /* ── 鲣鱼级护卫舰（箭头机身 + 后掠双翼 + 机头炮） ── */
   'sh-falconet': (
     <g>
@@ -73,6 +75,67 @@ export const SHIP_ART: Record<string, ReactNode> = {
       <path d="M54 42 h8 v26 h-8 z M62 42 h8 v26 h-8 z" opacity=".85" />
       <circle className="shipart-accf" cx="140" cy="85" r="1.6" />
       <circle className="shipart-accf" cx="92" cy="40" r="1.2" />
+    </g>
+  ),
+  /* ── 2026-09-16 补图批（船长：「新增的舰船没有SVG图形，按照之前的规则每艘需要单独的SVG图形」）：
+        下面 3 艘是 2026-09-12「T4/T5 模子 + 鹦鹉螺」那批，此前一直回退 role 兜底剪影。
+        虫洞族专属 15 艘在 `shipArtWh.tsx`（同批补）。 ── */
+
+  /* 鹦鹉螺级测绘巡洋舰（T3 · 掠食者武装）—— 分段螺旋装甲环（鹦鹉螺壳意象）+ 测绘桅杆天线阵 + 舷侧扫描窗 */
+  'sh-nautilus': (
+    <g>
+      <path d="M206 58 L180 38 L124 32 C96 32 68 38 52 48 L40 58 L48 68 C64 78 94 84 126 84 L178 82 L202 68 Z" />
+      <path d="M206 58 L226 56 L226 62 L204 64 Z" opacity=".85" />
+      <path className="shipart-panel" d="M40 58 C58 44 88 36 124 34 C152 33 176 40 190 52" />
+      <path className="shipart-panel" d="M48 58 C66 46 92 40 124 38 C148 37 170 43 184 53" />
+      <path d="M124 32 L124 16 L142 10" />
+      <path className="shipart-acc" d="M124 20 h17" strokeWidth="2" />
+      <path className="shipart-acc" d="M128 25 h11" strokeWidth="1.6" />
+      <path className="shipart-accf" d="M142 10 L151 12 L142 16 Z" />
+      <path className="shipart-panel" d="M96 46 h40 v18 h-40 z M101 50 h30 M101 56 h30 M101 62 h30" />
+      <path className="shipart-panel" d="M96 70 h44 v8 h-44 z" />
+      <path d="M74 52 h10 v5 h-10 z M74 62 h10 v5 h-10 z" />
+      <path d="M40 46 h11 v10 h-11 z M40 62 h11 v10 h-11 z" opacity=".9" />
+      <circle className="shipart-accf" cx="184" cy="68" r="1.5" />
+      <circle className="shipart-accf" cx="102" cy="42" r="1.2" />
+    </g>
+  ),
+
+  /* 巨齿鲨级战列舰（T4 · 掠食者武装）—— 厚重舰体 + 舰首巨齿獠牙（史前巨齿意象）+ 三联主炮 + 舷侧副炮列 */
+  'sh-megalodon': (
+    <g>
+      <path d="M212 58 L190 34 L128 28 C96 28 66 34 48 44 L34 56 L44 70 C60 82 92 88 128 88 L184 86 L206 70 Z" />
+      <path d="M212 58 L234 54 L234 62 L210 64 Z" />
+      <path className="shipart-accf" d="M212 58 L197 50 L207 45 Z" />
+      <path className="shipart-accf" d="M206 68 L189 71 L196 78 Z" />
+      <path className="shipart-panel" d="M128 30 v56 M96 32 v54 M64 40 v36 M172 30 v54 M196 36 v46" />
+      <path d="M150 40 h30 v16 h-30 z M155 44 h20 M155 51 h20" />
+      <path d="M180 44 L206 42" strokeWidth="2.8" />
+      <path className="shipart-acc" d="M206 42 L212 42" />
+      <path d="M104 46 h11 v7 h-11 z M104 58 h11 v7 h-11 z M104 70 h11 v7 h-11 z" />
+      <path d="M34 44 h12 v10 h-12 z M34 62 h12 v10 h-12 z" opacity=".9" />
+      <circle className="shipart-accf" cx="176" cy="76" r="1.6" />
+      <circle className="shipart-accf" cx="86" cy="82" r="1.3" />
+    </g>
+  ),
+
+  /* 邓氏鱼级旗舰（T5 · 掠食者武装）—— 头部装甲盾板（邓氏鱼头盾意象）+ 极厚舰体 + 四联舷炮 + 双联主炮 */
+  'sh-dunkleosteus': (
+    <g>
+      <path d="M216 58 L196 30 L132 22 C96 22 62 30 44 42 L28 56 L40 72 C58 86 94 92 132 92 L190 90 L212 72 Z" />
+      <path d="M216 58 L236 54 L236 62 L214 64 Z" />
+      <path d="M196 30 L206 22 L215 26 L208 37 Z" opacity=".9" />
+      <path d="M196 86 L206 94 L215 90 L208 79 Z" opacity=".9" />
+      <path className="shipart-panel" d="M132 24 v66 M96 26 v62 M62 36 v42 M176 24 v64 M198 32 v50" />
+      <path d="M154 34 h34 v18 h-34 z M160 39 h22 M160 46 h22" />
+      <path d="M188 38 L214 36" strokeWidth="3" />
+      <path d="M188 48 L214 50" strokeWidth="3" />
+      <path className="shipart-acc" d="M214 36 L221 36 M214 50 L221 50" strokeWidth="2" />
+      <path d="M104 40 h12 v7 h-12 z M104 52 h12 v7 h-12 z M104 64 h12 v7 h-12 z M104 76 h12 v7 h-12 z" />
+      <path d="M28 44 h13 v10 h-13 z M28 60 h13 v10 h-13 z" opacity=".9" />
+      <circle className="shipart-accf" cx="180" cy="82" r="1.6" />
+      <circle className="shipart-accf" cx="146" cy="84" r="1.4" />
+      <circle className="shipart-accf" cx="70" cy="30" r="1.2" />
     </g>
   ),
 }

@@ -45,6 +45,7 @@
     "ui:probe": "tsx tools/ui-probe.ts",
     "ui:geom": "tsx tools/ui-geom.ts",
     "ui:rot-check": "tsx tools/ui-rot-check.ts",
+    "art:ships": "tsx tools/shipart-preview.ts",
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",
     "docs:seal": "tsx tools/docs-seal.ts",

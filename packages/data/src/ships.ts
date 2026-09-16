@@ -494,8 +494,8 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 41_000,
     signatureM: 96,
     scanResMm: 520,
-    weaponFamilyBonus: { explosive: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族爆破导弹 +12%）
-    description: '掠食者武装部门的新锐导弹巡洋舰：以长尾为名的远距猎手，齐射导弹先声夺人——舰体为导弹阵列特调，爆破导弹威力额外加成（限定奇货）。',
+    weaponFamilyBonus: { explosive: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族爆破弹药 +12%）
+    description: '掠食者武装部门的新锐导弹巡洋舰：以长尾为名的远距猎手，齐射导弹先声夺人——舰体为导弹阵列特调，爆破弹药威力额外加成（限定奇货）。',
   },
   {
     id: 'sh-electricray',
