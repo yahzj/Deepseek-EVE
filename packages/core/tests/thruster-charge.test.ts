@@ -14,7 +14,7 @@
  *   倍率（2026-09-14 船长）：「大虫子的冲锋倍率改为 3，给小虫子添加冲锋，倍率为 1.5」；全局缺省 3.0。
  */
 import { describe, expect, it } from 'vitest'
-import { FOE_SHIPS } from '@whale/data'
+import { ALIEN_CHARGE_MUL_BY_TIER, FOE_SHIPS } from '@whale/data'
 import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
 import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, foeChargeCount, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
@@ -451,14 +451,21 @@ describe('敌冲锋（2026-09-10 定资格；2026-09-11 改"到达解除"；**20
     expect(legacy.foeChargeMul).toBeUndefined()
   })
 
-  it('C 族冲锋配置（2026-09-14 船长「大虫子改 3、给小虫子加 1.5」）：数据契约', () => {
+  it('C 族冲锋配置（2026-09-16 船长「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」）：按档契约', () => {
     const of = (id: string): FoeShipDef => FOE_SHIPS.find((s) => s.id === id)!
-    expect(of('foe-alien-maw').foeCanCharge).toBe(true)
-    expect(of('foe-alien-maw').foeChargeMul).toBe(3)
-    for (const id of ['foe-alien-rift-larva', 'foe-alien-starcore-larva', 'foe-alien-starcore-adult']) {
-      expect(of(id).foeCanCharge, id).toBe(true)
-      expect(of(id).foeChargeMul, id).toBe(1.5)
+    // **全族一律具冲锋资格**，且倍率**只看舰种档**（`ALIEN_CHARGE_MUL_BY_TIER` 是契约基准）
+    const aliens = FOE_SHIPS.filter((s) => s.family === 'C')
+    expect(aliens.length).toBeGreaterThanOrEqual(5)
+    for (const s of aliens) {
+      expect(s.foeCanCharge, `${s.name} 须具冲锋资格`).toBe(true)
+      expect(s.foeChargeMul, `${s.name}（T${s.hullClassTier}）倍率`).toBe(ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier])
     }
+    // 逐条点名（防"表改了但舰级没跟上"被上面那条掩盖）：T1 1.5 · T2 2 · T3 2.5 · T4 3
+    expect(of('foe-alien-rift-larva').foeChargeMul).toBe(1.5)
+    expect(of('foe-alien-starcore-larva').foeChargeMul).toBe(1.5)
+    expect(of('foe-alien-starcore-adult').foeChargeMul).toBe(2)
+    expect(of('foe-alien-spore-hive').foeChargeMul).toBe(2.5)
+    expect(of('foe-alien-maw').foeChargeMul).toBe(3)
     // 建档要把舰级倍率带上单位（否则逐单位倍率落不了地）
     const ctx = ctxWith(false)
     const specs = createFoeSpecs(

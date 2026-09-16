@@ -27,7 +27,7 @@
  * ⑨ **头目射程多重方案**（同日裁决③）：打不到的头目按「同卡同带」写射程覆写，让 60% 火力真落地。
  */
 import { describe, expect, it } from 'vitest'
-import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, FOE_SHIPS, FOE_SHIP_MIX_AUTHORITY_IDS } from '@whale/data'
+import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, ALIEN_SLOW_SHIP_IDS, FOE_SHIPS, FOE_SHIP_MIX_AUTHORITY_IDS } from '@whale/data'
 import { advanceBattleFor, createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf, startBattleFor } from '../src/combat'
 import { createInitialState } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
@@ -328,9 +328,11 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-alien-rift-larva', tier: 1, speed: 544 }, // 1 护卫 340 × 1.6
       { id: 'foe-alien-starcore-adult', tier: 2, speed: 398 }, // 2 驱逐 295 × 1.35（> A 同档 325）
       { id: 'foe-alien-maw', tier: 4, speed: 297 }, // **T4 巨兽**：205 × 297/205（慢而硬，用冲锋补偿；船长「单独上调 20 点」）
-      // 2026-09-15 洞内扩充批 2：C 族 T3 巡洋「**孢群异虫**」（无人机舰）——倍率 1.55 ⇒ 3 巡洋 258 × 1.55 = **400**，
-      // 既落在 C 族带（1.30~2.10）内，又**高于 A 族同档最快（海盗头目舰 374）**（契约硬要求）。
-      { id: 'foe-alien-spore-hive', tier: 3, speed: 400 },
+      // 2026-09-15 洞内扩充批 2：C 族 T3 巡洋「**孢群异虫**」（无人机舰）——原为倍率 1.55 ⇒ 3 巡洋 258 × 1.55 = **400**；
+      // **2026-09-16 船长「孢群异虫速度削减到300」⇒ `speedRatio = 300/258 ≈ 1.16`**，是 C 族**唯一**
+      // 「允许慢」例外（登记在 `ALIEN_SLOW_SHIP_IDS`）——无人机母舰不追人、火力由孢群机投送，
+      // 故豁免族格"同档高于 A 族（海盗头目舰 374）"与 1.30~2.10 速带这三条断言。
+      { id: 'foe-alien-spore-hive', tier: 3, speed: 300 },
       // D 族（守墓古舰）：船长 2026-09-11 亲定「档位 **1 驱逐 2 巡洋**（更高级的船还没出）」+
       // 「**静滞卫舰改为远程、幽灵舰为中程**」+「幽灵舰 **110%** · 守墓长舰**按正常算** · 静滞卫舰 **50%**」
       { id: 'foe-d-ghost', tier: 2, speed: 325 }, // 2 驱逐 295 × 1.10
@@ -1172,11 +1174,18 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     }
     const aliens = FOE_SHIPS.filter((x) => x.family === 'C')
     expect(aliens).toHaveLength(5) // 2026-09-15 洞内扩充批 2：+「孢群异虫」T3 无人机舰（船长「C组添加一艘巡洋舰，为无人机舰」）
+    // 2026-09-16 船长「孢群异虫速度削减到300」⇒ C 族「允许慢」白名单**逐条例外**（无人机母舰不追人）
+    expect(ALIEN_SLOW_SHIP_IDS, '允许慢白名单成员').toEqual(['foe-alien-spore-hive'])
     for (const s of aliens) {
-      expect(s.speedRatio, s.id).toBeGreaterThanOrEqual(1.3)
-      expect(s.speedRatio, s.id).toBeLessThanOrEqual(2.1)
       expect(s.hullClassTier, s.id).toBeLessThanOrEqual(4) // 不配 5 旗舰
       const spd = Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio)
+      if (ALIEN_SLOW_SHIP_IDS.includes(s.id)) {
+        // 反查：白名单不是摆设——登记在案的舰必须**确实**低于族格下限（否则该摘牌）
+        expect(s.speedRatio, `${s.id} 在允许慢白名单里 ⇒ 倍率须低于族格下限 1.3`).toBeLessThan(1.3)
+        continue
+      }
+      expect(s.speedRatio, s.id).toBeGreaterThanOrEqual(1.3)
+      expect(s.speedRatio, s.id).toBeLessThanOrEqual(2.1)
       if (s.hullClassTier === 4) {
         expect(ALIEN_BEAST_SHIP_IDS, `${s.id} 用 T4 必须登记为"巨兽"用途`).toContain(s.id)
       } else {

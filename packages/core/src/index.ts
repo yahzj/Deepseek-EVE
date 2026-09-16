@@ -485,6 +485,7 @@ export {
   RARE_BOX_DRONE_UNITS,
   RARE_BOX_MINERAL_UNITS,
   recycleMineralPoolOf,
+  rareBoxThemePoolOf,
   rollRareBoxExtra,
   wreckItemDefOf,
   wreckBaseDensity,
@@ -1179,6 +1180,7 @@ export {
   WORMHOLE_SALVAGE_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_MAX,
   wormholeMk3PoolOf,
+  wormholeRareBoxThemePoolOf,
   wormholeSalvageBoxClassesOf,
   wormholeRollSalvageBox,
 } from './wormholeSalvage'

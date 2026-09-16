@@ -48,7 +48,10 @@ import {
   buildItemCatalog,
   buildSimContext,
   RETIRED_LAIR_CARD_IDS,
+  WORMHOLE_RARE_WRECK_CARD_IDS,
   ALIEN_BEAST_SHIP_IDS,
+  ALIEN_CHARGE_MUL_BY_TIER,
+  ALIEN_SLOW_SHIP_IDS,
   COMMS_MESSAGES,
   COMMS_FACTIONS,
   FACTION_AVATARS,
@@ -106,6 +109,8 @@ securityZoneOf,
   subDamageTypeOf,
   type DamageType,
   rareWreckItemIdOf,
+  rareBoxThemePoolOf,
+  recycleProfileOf,
   recycleTierOf,
   rackOf,
   wreckBaseDensity,
@@ -198,6 +203,7 @@ securityZoneOf,
   wormholeRelicBoxPoolOf,
   wormholeRelicChanceOf,
   wormholeMk3PoolOf,
+  wormholeRareBoxThemePoolOf,
   wormholeSalvageBoxClassesOf,
 } from '@whale/core'
 
@@ -2169,10 +2175,26 @@ for (const m of MODULES) {
             // **C 族（异形生物）口径**（船长 2026-09-11 裁定②「C 族速度比 A 海盗还快」+ 裁定③「T4 例外允许慢」）：
             // ①倍率口径（speedRatio）落全族提速带 1.30~2.10；②基准船比率口径同带，**T4 巨兽豁免**；
             // ③**同档实速必须高于 A 族同档最快舰级**（A 族无 T4 档 ⇒ 只做巨兽白名单登记校验）。
+            // ⚠ **2026-09-16 追加例外**（船长「**孢群异虫速度削减到300**」）：无人机母舰不追人
+            //   ⇒ 登记在 `ALIEN_SLOW_SHIP_IDS` 的舰级**豁免这三条**（照"T4 允许慢"先例），并**反查**
+            //   "它确实低于族格要求"——防白名单变成随手减速的口子。
             const tier = slot.ship.hullClassTier
             if (alienSample.some((s) => s.startsWith(`${slot.ship.id} `))) continue // 同一舰级被多条编成引用时只校验一次
             alienReadings++
-            alienSample.push(`${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            const slowOk = ALIEN_SLOW_SHIP_IDS.includes(slot.ship.id)
+            alienSample.push(
+              `${slot.ship.id} ${slot.ship.name} ${spd}(${ratio.toFixed(2)})` + (slowOk ? '【允许慢】' : ''),
+            )
+            if (slowOk) {
+              const aFast = pirateFastestByTier.get(tier)
+              check(
+                slot.ship.speedRatio < ALIEN_SPEED_RATIO_BAND[0] || (aFast !== undefined && spd <= aFast),
+                `敌速口径契约：C 族「${slot.ship.name}」登记在**允许慢白名单**里，但速度并未低于族格要求` +
+                  `（倍率 ${slot.ship.speedRatio.toFixed(2)}× vs 带下限 ${ALIEN_SPEED_RATIO_BAND[0]}×` +
+                  `${aFast !== undefined ? ` · 同档 A 族最快 ${aFast} m/s` : ''}）`,
+              )
+              continue
+            }
             check(
               slot.ship.speedRatio >= ALIEN_SPEED_RATIO_BAND[0] && slot.ship.speedRatio <= ALIEN_SPEED_RATIO_BAND[1],
               `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」倍率 ${slot.ship.speedRatio.toFixed(2)}× 越出**全族提速带** ` +
@@ -2299,7 +2321,7 @@ for (const m of MODULES) {
         `其中 A 族 ${pirateReadings} 条按**全族提速口径**（实速高于本档舰种基准、比率 ${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×）、` +
         `B 族 ${scavReadings} 条按**全族慢速口径**（实速低于本档舰种基准、比率落 ${SCAV_SPEED_BAND[0]}~${SCAV_SPEED_BAND[1]}×；船长「速度偏慢」→「B 族速落实 0.8」）、` +
         `C 族 ${alienReadings} 条按**全族更快口径**（倍率 ${ALIEN_SPEED_RATIO_BAND[0]}~${ALIEN_SPEED_RATIO_BAND[1]}×、比率 ${ALIEN_SPEED_BAND[0]}~${ALIEN_SPEED_BAND[1]}×、` +
-        `同档实速须高于 A 族；T4 巨兽例外允许慢）、` +
+        `同档实速须高于 A 族；T4 巨兽例外允许慢${ALIEN_SLOW_SHIP_IDS.length > 0 ? `；${ALIEN_SLOW_SHIP_IDS.join(' / ')} 例外允许慢（无人机母舰）` : ''}）、` +
         `D 族 ${graveReadings} 条按**族格"越往里越慢"口径**（幽灵舰 1.10 / 守墓长舰 1.00 / 静滞卫舰 0.50，比率落 ${GRAVE_SPEED_BAND[0]}~${GRAVE_SPEED_BAND[1]}×）、` +
         `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）、` +
         `G 族 ${swarmReadings} 条按**族级速带口径**（船长「速度口径按照 1.05 算」＝残军按舰种走，比率落 ${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×）`,
@@ -2558,6 +2580,30 @@ for (const m of MODULES) {
         `· 后勤契约：玩家后勤舰 ${logisticsShips.map((s) => s.name).join('、')}（${logisticsShips.length} 艘 · 维修脉冲改修三层比例最低的队友）· ` +
           `敌方后勤舰 ${withRepair.map((s) => `${s.name}（T${s.hullClassTier} · repairPct ${s.repairPct}）`).join('、')}（${withRepair.length} 艘` +
           `${unmounted.length > 0 ? ' · **未上场**' : ' · 已上场'}）`,
+      )
+    }
+    /* ⑤g **C 族冲锋契约**（船长 2026-09-16：「**C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4**」；
+     *    四问后确认按**舰种档**读，不是"五条舰级依次"）。钉两件事：
+     *    ① 族内**每条舰级一律具冲锋资格**（`foeCanCharge: true`）——防"全族"漏掉某一条；
+     *    ② 倍率**必须等于按档阶梯** `ALIEN_CHARGE_MUL_BY_TIER`（T1 1.5 · T2 2 · T3 2.5 · T4 3 · T5 4）。
+     *    ⚠ 冲锋倍率**只在"在冲"期间生效**（触发 = 够不着 或 距离 > 期望交距 + 1,000；解除 = 自身炮台
+     *      命中我方 或 压到期望交距，随后 10 秒冷却，见 `combat.updateFoeCharge`），不是常驻提速。 */
+    {
+      const aliens = FOE_SHIPS.filter((s) => s.family === 'C')
+      const bad: string[] = []
+      for (const s of aliens) {
+        if (s.foeCanCharge !== true) bad.push(`${s.name}（${s.id}）未挂冲锋资格`)
+        const want = ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier]
+        if (want === undefined)
+          bad.push(`${s.name}（${s.id}）的档位 T${s.hullClassTier} 在按档表里没有倍率`)
+        else if (s.foeChargeMul !== want)
+          bad.push(`${s.name}（${s.id}）倍率 ${s.foeChargeMul ?? '未写'} ≠ 按档 ${want}（T${s.hullClassTier}）`)
+      }
+      check(bad.length === 0, `C 族冲锋契约：全族按档逐条对齐——${bad.join(' · ')}`)
+      console.log(
+        `· C 族冲锋契约：${aliens.length} 条舰级**全具冲锋** · 按档倍率 ` +
+          aliens.map((s) => `${s.name} T${s.hullClassTier}×${s.foeChargeMul}`).join('　') +
+          `（船长 2026-09-16「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」）`,
       )
     }
     console.log(
@@ -3472,6 +3518,37 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     console.log(
       `· 退役窝点卡契约：${retiredChecked} 张退役卡字段已清、白名单有效、稀有残骸仍可识别` +
         `（${[...RETIRED_LAIR_CARD_IDS].map((id) => rareWreckItemIdOf(id)).join(" / ")}）`,
+    )
+  }
+
+  /* ── 洞内高级箱契约（2026-09-16 船长**甲1案**：`rareBoxThemePoolOf` 的洞内回落）──
+   * 背景（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内 15 张卡从没配 `recycleLoot`**
+   * ⇒ 高级箱第②支（未中族专属时的"特色装备"）恒空、只剩第③支那批矿物（常档 300 单位 · 基础池钛钢 65%）。
+   * 裁定甲1 = 洞内卡回落**「军用备货柜」同款 MK3 池**抽 1 件。钉三件事：
+   *  ① 回落池本身非空（MK3 池被清空 ⇒ 这条兜底会退化成"只有一批矿物"，红线）；
+   *  ② 洞内每张卡的稀有残骸**能建出回收画像**；
+   *  ③ 每张卡的**高级箱主题件池非空**（= 未中族专属时**必有装备**）。
+   *  ⚠ 洞外卡一律回落空池 ⇒ 洞外行为逐字不变（用例另有对照钉子）。 */
+  {
+    const mk3 = wormholeMk3PoolOf(lairCtx)
+    check(
+      mk3.length > 0,
+      '洞内高级箱契约：军用备货柜 MK3 池为空——洞内稀有残骸"未中族专属时的主题件回落"会退化成只剩矿物',
+    )
+    const bad: string[] = []
+    for (const cardId of WORMHOLE_RARE_WRECK_CARD_IDS) {
+      const profile = recycleProfileOf(lairCtx, rareWreckItemIdOf(cardId))
+      if (!profile) {
+        bad.push(`${cardId}（建不出回收画像）`)
+        continue
+      }
+      const pool = rareBoxThemePoolOf(profile, wormholeRareBoxThemePoolOf(lairCtx, profile.anomalyId))
+      if (pool.length === 0) bad.push(`${cardId}（高级箱主题件池为空）`)
+    }
+    check(bad.length === 0, `洞内高级箱契约：${bad.join(' · ')}`)
+    console.log(
+      `· 洞内高级箱契约：${WORMHOLE_RARE_WRECK_CARD_IDS.length} 张洞内卡的稀有残骸高级箱**主题件池均非空**` +
+        `（未中族专属时回落军用备货柜 MK3 池 ${mk3.length} 件抽 1 件）`,
     )
   }
 
