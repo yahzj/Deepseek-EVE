@@ -1817,9 +1817,13 @@ export class GameEngine {
    * 虫洞：**前往**某一格（1 回合；未扫描的格必须先带 `confirmUnknown`，这就是"警告"的落点）。
    * ⚠ 走 `wormholeTravelTo`（不是 core 的 `wormholeGridTravel`）：**到达"舰船信号"那一格就地开打**
    * （船长 2026-09-13「战斗节点到达即开打」）——开战失败整趟移动回滚，玩家留在原格。
+   *
+   * **路径拦截**（船长 2026-09-16）：直线路径上挡着没清掉的敌人 ⇒ 这次移动**截断在那一格**并就地开战
+   * （未扫描格也拦）；界面须先弹确认、再带 `confirmIntercept = true` 重来，否则核心回 `path-blocked`
+   * 且**不扣回合**。界面侧画路径/描红走的是同一个 `wormholePathInterceptAt`（同一把尺）。
    */
-  wormholeTravel(q: number, r: number, confirmUnknown = false): CommandResult {
-    const res = wormholeTravelTo(this.state, this.ctx, { q, r }, { confirmUnknown })
+  wormholeTravel(q: number, r: number, confirmUnknown = false, confirmIntercept = false): CommandResult {
+    const res = wormholeTravelTo(this.state, this.ctx, { q, r }, { confirmUnknown, confirmIntercept })
     if (res.ok) {
       void this.persist()
       this.notify()
@@ -1830,6 +1834,7 @@ export class GameEngine {
       code: res.code,
       ...(res.autoBattle ? { autoBattle: true } : {}),
       ...(res.beacon ? { beacon: true } : {}),
+      ...(res.intercepted ? { intercepted: res.intercepted } : {}),
     }
   }
 

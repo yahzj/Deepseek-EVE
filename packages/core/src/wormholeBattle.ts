@@ -256,14 +256,28 @@ export function wormholeActivateAt(
  * 为什么合成一次调用（与 `wormholeActivateAt` 同款理由）：界面若分两步，中间失败会留下
  * "人已经站到那里、回合已扣、但战斗没开"的半截状态——这里**开战失败会把整趟移动回滚**
  * （回合 / 位置 / 已到达 / 已扫描 / 已激活 / 信标标出的入口全部还原），玩家留在原格、回合不丢。
+ *
+ * **路径拦截**（船长 2026-09-16）：直线路径上挡着没清掉的舰船信号格时，`wormholeGridTravel`
+ * 把这次移动**截断在拦截点**并回报 `arrived.intercepted`；本函数照旧走"到达即开打"那条开战
+ * （`pos` 已落在拦截格 ⇒ 敌卡就是那一格的），并把 `intercepted` 透传给界面做提示。
+ * 未确认的拦截由核心直接拒（`code='path-blocked'`）⇒ 界面先弹确认、再带 `confirmIntercept` 重来。
  */
 export function wormholeTravelTo(
   state: GameState,
   ctx: SimContext,
   target: { q: number; r: number },
-  opts?: { confirmUnknown?: boolean },
+  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean },
   atGameMs?: number,
-): { ok: boolean; error?: string; code?: 'unknown-target'; spent?: number; autoBattle?: boolean; beacon?: boolean } {
+): {
+  ok: boolean
+  error?: string
+  code?: 'unknown-target' | 'path-blocked'
+  spent?: number
+  autoBattle?: boolean
+  beacon?: boolean
+  /** 本次移动被**路径拦截**截断（到达的是拦截点；`known` = 拦之前该格是否已知，见 `arrived.intercepted`） */
+  intercepted?: { target: string; known: boolean }
+} {
   const run = state.wormhole.run
   const overloaded = wormholeActionBlockReason(state, ctx)
   if (overloaded) return { ok: false, error: overloaded }
@@ -284,11 +298,13 @@ export function wormholeTravelTo(
   // **到达即铺堆**（船长 F5：「资源点和墓场遗迹改为不用激活」）——只铺产出，不扣回合、不进回滚路径
   wormholeEnsureArrivalPiles(state, ctx)
   const arrived = r.arrived
+  const intercepted = arrived?.intercepted
   if (!arrived?.autoBattle) {
     return {
       ok: true,
       spent: r.spent,
       ...(arrived?.beacon ? { beacon: true } : {}),
+      ...(intercepted ? { intercepted } : {}),
     }
   }
   const s = wormholeStartBattle(state, ctx, 'node', atGameMs)
@@ -303,7 +319,7 @@ export function wormholeTravelTo(
     }
     return { ok: false, error: `无法开战：${s.error ?? ''}` }
   }
-  return { ok: true, spent: r.spent, autoBattle: true }
+  return { ok: true, spent: r.spent, autoBattle: true, ...(intercepted ? { intercepted } : {}) }
 }
 
 /** 本场战斗的**编队残血比例**（我方三层血合计 ÷ 满值合计；用于战报与结算读数） */

@@ -89,7 +89,7 @@ import type { GameState } from '@whale/core'
 import { GALAXIES, ITEMS, MODULES, buildSimContext } from '@whale/data'
 // 虫洞·货仓装不下 / 超载 / 第 4 层星云现场（要用到的核心单点，走深路径，与 `wormhole-econ` 同一套做法）
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../packages/core/src/wormhole'
-import { hexNeighbors, wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
+import { hexDistance, hexLine, hexNeighbors, isExitCell, wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
 import {
   wormholeHoldCapacityOf,
   wormholeEnsureSalvagePiles,
@@ -1991,8 +1991,183 @@ function injectWormholeAll(state: GameState): string[] {
   return notes
 }
 
-const INJECTORS: Record<string, (state: GameState) => string[]> = {
-  // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
+/**
+ * **虫洞 · 路径拦截验收档**（2026-09-16 · 船长「路径拦截」机制）。
+ *
+ * 要让船长**一点就能看见三种结果**，现场必须把三条直线摆成三种形态（其余格保持生成原样）：
+ * - **① 拦路者已知** ⇒ 点目标时弹「路径上有**敌人阻拦**（Q?,R?）」，地图上那一格**描红指名**；
+ * - **② 拦路者未扫描** ⇒ 弹「路径上**可能**有敌人阻拦」，地图**只把路径线置警示色、不指名**
+ *   （§5.2 甲案：不给未扫描格上信号色）；
+ * - **③ 路径干净** ⇒ 不弹确认、直接到达。
+ * 另附一条**打完再看**：① 那条打赢后停在被拦格，**再点一次同一目标应直达**（拦路者已清）。
+ *
+ * ⚠ 做法：三条线各自把**中间格清成空地**再按要求摆敌人（真盘本来就有随机舰船信号 ⇒ 不清线就说不清是谁拦的）；
+ * 三个目标格一律**已扫描但不曾到达**（否则会是"去过"的暗格，看不出是目的地）。
+ */
+function injectWormholeIntercept(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 5_000_000
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 45)
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 3_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 20
+  }
+  notes.push('钱包 +5,000,000 ISK · 协会声望 45（虫洞已解锁）· 弹药三型 ×3000 · 修理组件各 ×20')
+  const ctx = buildSimContext()
+  const seed = 20260916
+  state.wormhole = { run: null, lastFleetLost: 0 } // 清掉在途副本（本档要指定现场）
+  const uids: string[] = []
+  for (let i = 0; i < 2; i++) {
+    const uid = addShipToFleet(state, 'sh-thresher')
+    const s = state.fleet[uid]!
+    s.customName = `长尾鲨${i + 1}·拦截验收`
+    s.fitted = {
+      high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+      low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+    }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  }
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.turnsLeft = enter.run!.turnsTotal
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0
+  /**
+   * **层 3**（R=3 · 37 格）：层 1 只有 19 格，容不下**三条互不干扰**的验收直线
+   * （首版在层 1 上跑，三元搜索直接判"盘面太小"）。
+   */
+  run.depth = 3
+  run.grid = wormholeMakeGrid(seed, 3, 1)
+  const grid = run.grid
+  const here = { q: grid.pos.q, r: grid.pos.r }
+  const cellAt = (q: number, r: number): (typeof grid.cells)[number] => {
+    const c = grid.cells.find((x) => x.key === `${q},${r}`)
+    if (!c) throw new Error(`盘里没有格 ${q},${r}`)
+    return c
+  }
+  const reveal = (c: (typeof grid.cells)[number]): void => {
+    if (!grid.scanned.includes(c.key)) grid.scanned.push(c.key)
+  }
+  /** 把这条连线的**中间格**清成空地并揭开（`keepHidden` 那一格例外：甲案要它保持未扫描） */
+  const prepLine = (target: (typeof grid.cells)[number], keepHidden?: string): Array<{ q: number; r: number }> => {
+    const line = hexLine(here, { q: target.q, r: target.r })
+    for (let i = 1; i < line.length - 1; i++) {
+      const c = cellAt(line[i]!.q, line[i]!.r)
+      c.place = 'empty'
+      c.piles = []
+      grid.activated = grid.activated.filter((k) => k !== c.key)
+      if (c.key !== keepHidden) reveal(c)
+    }
+    return line
+  }
+  /** 三个目标格：已扫描、没到过、不是出口格、离玩家 ≥3 格（按距离与 key 稳定排序） */
+  const cands = grid.cells
+    .filter(
+      (c) =>
+        c.key !== `${here.q},${here.r}` &&
+        hexDistance(here, { q: c.q, r: c.r }) >= 3 &&
+        !isExitCell(grid, { q: c.q, r: c.r }),
+    )
+    .sort((a, b) => hexDistance(here, a) - hexDistance(here, b) || a.key.localeCompare(b.key))
+  const lineOf = (t: (typeof grid.cells)[number]): Array<{ q: number; r: number }> =>
+    hexLine(here, { q: t.q, r: t.r })
+  const keyOf = (c: { q: number; r: number }): string => `${c.q},${c.r}`
+  /**
+   * **三元搜索**：三条线必须互不干扰，否则现场会塌成一种形态（首版就踩过：①②的拦路者落在同一格）。
+   *
+   * 约束（缺一不可）：
+   * ① `L_A ≠ L_B`（两处拦路者不是同一格 —— 否则"已知/未扫描"两种形态无法并存）；
+   * ② `L_A` 不在 B 的线上、`L_B` 不在 A 的线上（否则 A 的线会先撞上 B 的拦路者 ⇒ A 变成"未扫描拦路"）；
+   * ③ 三个目标互不在对方的线上、拦路者也不是任何一个目标（否则清线/摆敌人会互相覆盖）；
+   * ④ `L_A`、`L_B` 都不在 C 的线上（C 必须保持"路径干净"）。
+   */
+  let triple: [number, number, number] | null = null
+  outer: for (let i = 0; i < cands.length; i++) {
+    const la = lineOf(cands[i]!)
+    const La = la[1]!
+    for (let j = 0; j < cands.length; j++) {
+      if (j === i) continue
+      const lb = lineOf(cands[j]!)
+      const Lb = lb[1]!
+      if (keyOf(La) === keyOf(Lb)) continue
+      const sa = new Set(la.map(keyOf))
+      const sb = new Set(lb.map(keyOf))
+      if (sb.has(keyOf(La)) || sa.has(keyOf(Lb))) continue
+      if (sa.has(cands[j]!.key) || sb.has(cands[i]!.key)) continue
+      for (let k = 0; k < cands.length; k++) {
+        if (k === i || k === j) continue
+        const lc = lineOf(cands[k]!)
+        const sc = new Set(lc.map(keyOf))
+        if (sc.has(keyOf(La)) || sc.has(keyOf(Lb))) continue
+        if (sc.has(cands[i]!.key) || sc.has(cands[j]!.key)) continue
+        if (sa.has(cands[k]!.key) || sb.has(cands[k]!.key)) continue
+        triple = [i, j, k]
+        break outer
+      }
+    }
+  }
+  if (!triple) throw new Error('盘面太小：找不到三条互不干扰的验收直线（换个 seed）')
+  const [tA, tB, tC] = triple.map((n) => cands[n]!) as [
+    (typeof cands)[number],
+    (typeof cands)[number],
+    (typeof cands)[number],
+  ]
+  for (const t of [tA, tB, tC]) {
+    t.place = 'empty'
+    t.piles = []
+    grid.visited = grid.visited.filter((k) => k !== t.key) // 保持"没到过"（目的地不该是暗格）
+    reveal(t)
+  }
+  // ① 已知拦路者（第二个中间格也算"线上"）——先把三条线都清空，再摆敌人（避免互相覆盖）
+  const lineA = prepLine(tA)
+  const lineB = prepLine(tB)
+  const lineC = prepLine(tC)
+  const blockerA = cellAt(lineA[1]!.q, lineA[1]!.r)
+  const blockerB = cellAt(lineB[1]!.q, lineB[1]!.r)
+  blockerA.place = 'ship'
+  blockerA.piles = []
+  reveal(blockerA)
+  // ② 未扫描拦路者（甲案：界面不指名）
+  blockerB.place = 'ship'
+  blockerB.piles = []
+  grid.scanned = grid.scanned.filter((k) => k !== blockerB.key)
+  grid.visited = grid.visited.filter((k) => k !== blockerB.key)
+  grid.exitKnown = true
+  notes.push(
+    `第 3 层 · 玩家在 (Q${here.q} R${here.r}) · 回合 ${run.turnsLeft}（4×T3 真实入场预算）· 出口已知（随时可撤）`,
+  )
+  notes.push(
+    `① **拦路者已知**：点 (Q${tA.q} R${tA.r})（离 ${hexDistance(here, tA)} 格）⇒ 确认栏写「路径上有**敌人阻拦**` +
+      `（Q${blockerA.q} R${blockerA.r}）」且地图上那一格**描红指名**（它已扫描 ⇒ 本来就有橙色舰船图标）`,
+  )
+  notes.push(
+    `② **拦路者未扫描**：点 (Q${tB.q} R${tB.r})（离 ${hexDistance(here, tB)} 格）⇒ 确认栏写「路径上**可能**有敌人阻拦」，` +
+      `地图**只把路径线置警示色、不描红任何格**（那一格 (Q${blockerB.q} R${blockerB.r}) 在地图上是蓝灰虚线的未扫描格）`,
+  )
+  notes.push(
+    `③ **路径干净**：点 (Q${tC.q} R${tC.r})（离 ${hexDistance(here, tC)} 格）⇒ **不弹确认**、直接到达（对照：没有拦截这一层）`,
+  )
+  notes.push(
+    `④ **打完再看**：① 确认前往 ⇒ 位置应停在 (Q${blockerA.q} R${blockerA.r})（**不是**目标格）、回合 −1、就地开战；` +
+      `打赢后再点一次 (Q${tA.q} R${tA.r}) ⇒ 这次应**直达**（拦路者已清）`,
+  )
+  notes.push(
+    '⑤ **顺带**：被拦那一格会记「已激活」（地图上图标消失/压暗）；日志里应出现「🕳 途中被拦下（Q?,R?）：对方的舰船信号挡住去路——交火开始」',
+  )
+  notes.push('⚠ 入口只在调试模式下出现：DevTools 执行 localStorage.setItem(\'whale-idle:debug\',\'1\') 后刷新')
+  return notes
+}
+
+const INJECTORS: Record<string, (state: GameState) => string[]> = {  // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
   'wh-bag': (s) => injectWormholeBag(s, false),
   'wh-overload': (s) => injectWormholeBag(s, true),
   /**
@@ -2008,6 +2183,11 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
    * ⇒ 一档验完"整理 / 换位 / 抓任意一格拖动"三处修复与整条链路。
    */
   'wh-all': injectWormholeAll,
+  /**
+   * **虫洞 · 路径拦截验收档**（2026-09-16 · 船长「路径拦截」机制）：
+   * 三条直线摆成三种形态（拦路者已知 / 未扫描 / 路径干净）⇒ 一档看完确认栏、地图描红与"甲案不指名"。
+   */
+  'wh-intercept': injectWormholeIntercept,
   // wormhole（2026-09-13）：虫洞验收档（4×巡洋 MK2 基准编队 + T4/T5 对照 + 补给）
   wormhole: injectWormhole,
   // pd（2026-09-11 机群批 S5）：敌方机群 + 巨构近防炮验收档（三船对照 + 近防炮三档）

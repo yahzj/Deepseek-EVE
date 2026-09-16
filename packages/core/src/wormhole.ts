@@ -39,6 +39,7 @@ import {
   isNebulaFogged,
   signalOfPlace,
   wormholeMakeGrid,
+  wormholePathInterceptAt,
 } from './wormholeGrid'
 import type { HexCell, WormholeGridCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
 // F3c 谜质：装置效果一律从货仓**现算**（扫描半径 / 额外驱散星云走这里；回合类走 `wormholeSyncMatterTurns`）
@@ -852,8 +853,9 @@ export type WormholeActivateEffect =
 export interface WormholeGridActionResult {
   ok: boolean
   error?: string
-  /** 拒绝码：`unknown-target` = 目标格没扫过（界面据此先弹「前往未知地点」的确认） */
-  code?: 'unknown-target'
+  /** 拒绝码：`unknown-target` = 目标格没扫过（界面据此先弹「前往未知地点」的确认）；
+   *  `path-blocked` = **直线路径上有未清掉的敌人**（界面据此先弹「路径上有敌人阻拦」的确认，见 `confirmIntercept`） */
+  code?: 'unknown-target' | 'path-blocked'
   /** 本次花掉几回合 */
   spent?: number
   /** 本次新揭开的格（扫描；`signal === null` = 空信息地点） */
@@ -868,6 +870,13 @@ export interface WormholeGridActionResult {
     autoBattle?: boolean
     /** 到达即标出下一层入口（漂浮信标） */
     beacon?: boolean
+    /**
+     * **本次移动被"路径拦截"截断**（船长 2026-09-16）：到达的是**拦截点**、不是玩家点的目标格。
+     * · `target` = 玩家原本点的目标格（界面可据此提示"继续前往"）；
+     * · `known` = **拦之前**该格是否已扫/已到过（**甲案**：已知 ⇒ 界面描红并给信号图标；
+     *   未知 ⇒ 只警示路径线、**不指名**，不泄漏未扫描格的内容）。
+     */
+    intercepted?: { target: string; known: boolean }
   }
   /** 激活产生的效果（激活；有它就该接着开战/结算，见 `wormholeActivateAt`） */
   effect?: WormholeActivateEffect
@@ -981,11 +990,15 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
  *   `wormhole.ts` 不许 import `wormholeBattle`（会成环），依赖方向固定为 wormholeBattle → wormhole）；
  * - **漂浮信标 ⇒ 到达即标出下一层入口**（「到达后有一个漂浮信标，会告诉玩家终点位置」）⇒
  *   `grid.exitKnown = true`（地图此后一直标着入口），该格同样记 `activated`。
+ *
+ * **路径拦截**（船长 2026-09-16 新增）：直线路径上挡着**还没清掉的舰船信号格**时，这次移动
+ * **截断在那一格**（未扫描的也拦）；未确认（`confirmIntercept`）⇒ 回 `code='path-blocked'`
+ * **且不扣回合**，界面先弹「路径上有敌人阻拦」的确认。口径见 `wormholePathInterceptAt`。
  */
 export function wormholeGridTravel(
   state: GameState,
   target: HexCell,
-  opts?: { confirmUnknown?: boolean },
+  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean },
 ): WormholeGridActionResult {
   const hit = gridRun(state)
   if (!hit) return { ok: false, error: '本层没有网格：无法前往。' }
@@ -999,21 +1012,53 @@ export function wormholeGridTravel(
   if (!scanned && !opts?.confirmUnknown) {
     return { ok: false, error: '这个地点还没扫描过：前往未知地点？', code: 'unknown-target' }
   }
+  /**
+   * ⚠ **回合检查排在拦截确认之前**（2026-09-16）：0 回合时先如实说"只能撤离"，
+   * 不该先弹一个**走不成**的拦截确认框（白点一次）；顺序 = 未知地点 → 回合 → 拦截。
+   */
   if (run.turnsLeft < WORMHOLE_TURN_PER_MOVE) {
     return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
   }
+  /**
+   * ── **路径拦截**（船长 2026-09-16）──
+   *
+   * 直线路径上若**挡着一处还没清掉的舰船信号格**（未扫描的也拦），这次移动就**截断在那一格**：
+   * 位置落到拦截点、移动的 1 回合照扣、**不额外扣回合**，到达即开打（下面那条 `autoBattle` 通道）。
+   * 打赢后该格记 `activated` ⇒ 以后穿越它不再触发；玩家**自己再点一次**继续前往原目标。
+   *
+   * ⚠ 这道闸与界面**同一把尺**（`wormholePathInterceptAt`）：界面先画路径 ＋ 弹确认，
+   * 未确认（`confirmIntercept` 缺省）⇒ 这里**直接拒绝且不扣回合** —— 与 `unknown-target` 同款，
+   * "界面记得拦"不是纪律。
+   */
+  const intercept = wormholePathInterceptAt(grid, { q: cell.q, r: cell.r })
+  if (intercept && opts?.confirmIntercept !== true) {
+    return {
+      ok: false,
+      error: '路径上有敌人阻拦：前往将在中途被拦截并开战。',
+      code: 'path-blocked',
+    }
+  }
+  /** 本次实际到达的格：被拦 ⇒ 只走到拦截点（不是玩家点的目标格） */
+  const dest = intercept ?? cell
+  /**
+   * **拦之前**这一格是否"已知"（甲案：已知 ⇒ 界面描红并给信号图标；未知 ⇒ 只警示路径线、不指名）。
+   * ⚠ 必须在下面把 `dest` 并入 `visited`/`scanned` **之前**取，否则永远算"已知"。
+   */
+  const interceptKnown = intercept
+    ? grid.scanned.includes(intercept.key) || grid.visited.includes(intercept.key)
+    : false
   run.turnsLeft -= WORMHOLE_TURN_PER_MOVE
-  grid.pos = { q: cell.q, r: cell.r }
+  grid.pos = { q: dest.q, r: dest.r }
   // 到达 ⇒ 真相揭开（`revealOf` 里 visited 优先于 scanned）；同时并入 scanned，避免后续扫描重复"揭开"它
-  if (!grid.visited.includes(cell.key)) grid.visited.push(cell.key)
-  if (!grid.scanned.includes(cell.key)) grid.scanned.push(cell.key)
-  const signal = signalOfPlace(cell.place)
-  const atExit = isExitCell(grid, cell)
+  if (!grid.visited.includes(dest.key)) grid.visited.push(dest.key)
+  if (!grid.scanned.includes(dest.key)) grid.scanned.push(dest.key)
+  const signal = signalOfPlace(dest.place)
+  const atExit = isExitCell(grid, dest)
   // ── 到达即触发：舰船信号（开打）/ 漂浮信标（标出入口） ──
-  const first = !grid.activated.includes(cell.key)
-  const autoBattle = first && cell.place === 'ship'
-  const beacon = first && cell.place === 'beacon'
-  if (autoBattle || beacon) grid.activated.push(cell.key)
+  const first = !grid.activated.includes(dest.key)
+  const autoBattle = first && dest.place === 'ship'
+  const beacon = first && dest.place === 'beacon'
+  if (autoBattle || beacon) grid.activated.push(dest.key)
   if (beacon) {
     grid.exitKnown = true
     /**
@@ -1031,23 +1076,28 @@ export function wormholeGridTravel(
     state,
     'info',
     autoBattle
-      ? `🕳 抵达舰船信号（${cell.q},${cell.r}）：对方已经发现我们——交火开始 · 剩 ${run.turnsLeft} 回合。`
+      ? intercept
+        ? `🕳 途中被拦下（${dest.q},${dest.r}）：对方的舰船信号挡住去路——交火开始 · 剩 ${run.turnsLeft} 回合。`
+        : `🕳 抵达舰船信号（${dest.q},${dest.r}）：对方已经发现我们——交火开始 · 剩 ${run.turnsLeft} 回合。`
       : beacon
-        ? `🕳 抵达漂浮信标（${cell.q},${cell.r}）：信标把下一层入口标在了地图上（Q${grid.exit.q} · R${grid.exit.r}）· 剩 ${run.turnsLeft} 回合。`
+        ? `🕳 抵达漂浮信标（${dest.q},${dest.r}）：信标把下一层入口标在了地图上（Q${grid.exit.q} · R${grid.exit.r}）· 剩 ${run.turnsLeft} 回合。`
         : atExit
-          ? `🕳 抵达下一层入口（${cell.q},${cell.r}）：激活此处将迎战第 ${run.depth} 层守卫 · 剩 ${run.turnsLeft} 回合。`
-          : `🕳 抵达新地点（${cell.q},${cell.r}）：${WORMHOLE_PLACE_TEXT[cell.place]} · 剩 ${run.turnsLeft} 回合。`,
+          ? `🕳 抵达下一层入口（${dest.q},${dest.r}）：激活此处将迎战第 ${run.depth} 层守卫 · 剩 ${run.turnsLeft} 回合。`
+          : intercept
+            ? `🕳 途中被拦下（${dest.q},${dest.r}）：这里是${WORMHOLE_PLACE_TEXT[dest.place]}，先处理完再继续 · 剩 ${run.turnsLeft} 回合。`
+            : `🕳 抵达新地点（${dest.q},${dest.r}）：${WORMHOLE_PLACE_TEXT[dest.place]} · 剩 ${run.turnsLeft} 回合。`,
   )
   return {
     ok: true,
     spent: WORMHOLE_TURN_PER_MOVE,
     arrived: {
-      key: cell.key,
-      place: cell.place,
+      key: dest.key,
+      place: dest.place,
       signal,
       atExit,
       ...(autoBattle ? { autoBattle: true } : {}),
       ...(beacon ? { beacon: true } : {}),
+      ...(intercept ? { intercepted: { target: cell.key, known: interceptKnown } } : {}),
     },
     mustExtract: run.turnsLeft <= 0,
   }

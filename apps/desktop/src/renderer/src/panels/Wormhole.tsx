@@ -66,6 +66,13 @@ import {
    */
   revealOf,
   signalOfPlace,
+  /**
+   * **路径拦截**（船长 2026-09-16）：界面画路径/描红用的判据与引擎**同一个函数**
+   * （`hexLine` 出连线、`wormholePathInterceptAt` 出"最近的未清敌人格"）——"界面记得拦"不是纪律，
+   * 两边同一把尺才是。
+   */
+  hexLine,
+  wormholePathInterceptAt,
   wormholeOutOfTurns,
   wormholeShipAllowed,
   wormholeSalvagersOf,
@@ -222,8 +229,18 @@ export function WormholePanel({
   /**
    * 待确认的"前往未知地点"目标（船长 2026-09-13：前往未扫描的地方**需要警告**）。
    * 口径：点未扫描的格 **不直接走**（也不扣回合），先把警告摆出来，等玩家点「确认前往」。
+   *
+   * ⚠ **2026-09-16 起同一条待确认栏也承载「路径拦截」**（船长路径拦截机制）：
+   * `unknown` = 目标格未扫描（原口径）；`intercept` = 直线路径上挡着没清掉的敌人
+   * （`known` = 那一格是否已知 —— 甲案：已知才在地图上描红指名，未知只警示路径线）。
+   * 两件事**可以同时成立**（点的是未扫描格、路上还挡着敌人）⇒ 合成一次确认、一次移动。
    */
-  const [pendingCell, setPendingCell] = useState<{ q: number; r: number } | null>(null)
+  const [pendingCell, setPendingCell] = useState<{
+    q: number
+    r: number
+    unknown: boolean
+    intercept: { q: number; r: number; known: boolean } | null
+  } | null>(null)
 
   const admission = wormholeAdmission(ctx, picked)
   /* ── 自动探索模式的读数（船长 2026-09-14：准备页两用）─────────────────────────────
@@ -619,7 +636,12 @@ export function WormholePanel({
      等玩家点「确认前往」才真的走。核心侧同样有这道闸（`code === 'unknown-target'`），
      界面不依赖"记得拦"——两边同一把尺。 */
 
-  /** 点格：已扫描/已到达 ⇒ 直接走；未扫描 ⇒ 先警告 */
+  /**
+   * 点格：已扫描/已到达 ⇒ 直接走；未扫描 ⇒ 先警告。
+   * ⚠ **2026-09-16 路径拦截**：**不管目标是否已知**，先在核心同一把尺上算一次"直线路径上最近的未清敌人格"
+   * ⇒ 有拦截就一律先摆确认栏（不直接走、不扣回合）。已知格才把 `interceptKey` 交给地图描红指名；
+   * 未扫描的拦截格**不指名**（甲案：不泄漏未扫描格的内容），只把路径线置警示色。
+   */
   function pickCell(q: number, r: number): void {
     if (!grid || !run) return
     if (run.battle) {
@@ -632,15 +654,26 @@ export function WormholePanel({
       onToast('已经在这个地点了。')
       return
     }
-    if (!grid.scanned.includes(cell.key) && !grid.visited.includes(cell.key)) {
-      setPendingCell({ q, r })
+    const unknown = !grid.scanned.includes(cell.key) && !grid.visited.includes(cell.key)
+    const hit = wormholePathInterceptAt(grid, { q, r })
+    if (hit) {
+      const known = grid.scanned.includes(hit.key) || grid.visited.includes(hit.key)
+      setPendingCell({ q, r, unknown, intercept: { q: hit.q, r: hit.r, known } })
       return
     }
-    travelTo(q, r, false)
+    if (unknown) {
+      setPendingCell({ q, r, unknown: true, intercept: null })
+      return
+    }
+    travelTo(q, r, false, false)
   }
 
-  function travelTo(q: number, r: number, confirmUnknown: boolean): void {
-    const res = engine.wormholeTravel(q, r, confirmUnknown)
+  /**
+   * 真的走（`confirmUnknown` / `confirmIntercept` 由上面的确认栏给出；核心侧同样有这两道闸）。
+   * 被拦截时战斗界面接手（那条路径与"到达舰船信号即开打"完全同款，故不额外弹提示）。
+   */
+  function travelTo(q: number, r: number, confirmUnknown: boolean, confirmIntercept: boolean): void {
+    const res = engine.wormholeTravel(q, r, confirmUnknown, confirmIntercept)
     if (!res.ok) {
       onToast(res.error ?? '无法前往。', true)
       return
@@ -1576,6 +1609,21 @@ export function WormholePanel({
                         scanFx={scanFx}
                         dissolveFx={dissolveFx}
                         zoom={mapZoom}
+                        /* 待确认的这次移动：画出直线路径；已知的拦截格才描红指名（甲案） */
+                        pathPreview={
+                          pendingCell
+                            ? {
+                                q: pendingCell.q,
+                                r: pendingCell.r,
+                                ...(pendingCell.intercept && pendingCell.intercept.known
+                                  ? { interceptKey: `${pendingCell.intercept.q},${pendingCell.intercept.r}` }
+                                  : {}),
+                                ...(pendingCell.intercept && !pendingCell.intercept.known
+                                  ? { hush: true }
+                                  : {}),
+                              }
+                            : null
+                        }
                       />
                     </div>
                   </div>
@@ -1606,14 +1654,36 @@ export function WormholePanel({
                   {pendingCell ? (
                     <div className="app-wh-ask">
                       <span>
-                        即将前往<b>未扫描</b>的地点（Q{pendingCell.q} · R{pendingCell.r}）：那里是什么、会不会撞上交火，
-                        现在都还不知道。
+                        {pendingCell.intercept ? (
+                          pendingCell.intercept.known ? (
+                            <>
+                              路径上有<b>敌人阻拦</b>（Q{pendingCell.intercept.q} · R{pendingCell.intercept.r}）：
+                              直接前往会在中途被拦下并<b>开战</b>——想清楚再走，也可以换个目的地绕开。
+                            </>
+                          ) : (
+                            <>
+                              路径上<b>可能有敌人阻拦</b>：直接前往会在中途被拦下并<b>开战</b>——
+                              拦路的是什么、会不会撞上交火，现在都还不知道。
+                            </>
+                          )
+                        ) : (
+                          <>
+                            即将前往<b>未扫描</b>的地点（Q{pendingCell.q} · R{pendingCell.r}）：那里是什么、
+                            会不会撞上交火，现在都还不知道。
+                          </>
+                        )}
+                        {pendingCell.intercept && pendingCell.unknown ? (
+                          <>
+                            <br />
+                            另外，目标地点（Q{pendingCell.q} · R{pendingCell.r}）<b>还没扫描过</b>。
+                          </>
+                        ) : null}
                       </span>
                       <span className="app-wh-actions">
                         <button
                           className="app-btn is-small is-warn"
                           disabled={!!run.battle || run.turnsLeft < 1}
-                          onClick={() => travelTo(pendingCell.q, pendingCell.r, true)}
+                          onClick={() => travelTo(pendingCell.q, pendingCell.r, true, !!pendingCell.intercept)}
                         >
                           确认前往（1 回合）
                         </button>
@@ -1948,6 +2018,7 @@ function WhGridMap({
   scanFx = null,
   dissolveFx = null,
   zoom = 1,
+  pathPreview = null,
 }: {
   grid: WormholeGridState
   onPickCell: (q: number, r: number) => void
@@ -1963,6 +2034,12 @@ function WhGridMap({
   dissolveFx?: { keys: string[]; nonce: number } | null
   /** 缩放（1 = 适应窗口）：**以玩家所在格为中心**放大，超出地图框的部分被裁掉 */
   zoom?: number
+  /**
+   * **路径预览**（船长 2026-09-16 路径拦截）：待确认的这次移动 —— 画出"当前格 → 目标格"的直线，
+   * 并在**已知**的拦截格上加红框。`hush = true`（拦截格未扫描）⇒ **不指名**：只把路径线置警示色
+   * （§5.2 甲案：不泄漏未扫描格的内容）。
+   */
+  pathPreview?: { q: number; r: number; interceptKey?: string; hush?: boolean } | null
 }) {
   const size = 30
   const R = Math.max(1, Math.floor(grid.radius))
@@ -1986,6 +2063,18 @@ function WhGridMap({
   /** 玩家舰影的落点（与格子同一套换算；单独算一份给地图最上层那个 `<g>` 用） */
   const hereX = cx + Math.sqrt(3) * size * (grid.pos.q + grid.pos.r / 2)
   const hereY = cy + 1.5 * size * grid.pos.r
+  /**
+   * **路径预览的折线点**（船长 2026-09-16 路径拦截）：走 core 的 `hexLine`（与引擎判定**同一把尺**），
+   * 换算成各格中心的屏幕坐标 ⇒ 一条穿过沿途各格的折线。
+   */
+  const pathPoints = pathPreview
+    ? hexLine(grid.pos, { q: pathPreview.q, r: pathPreview.r })
+        .map(
+          (c) =>
+            `${(cx + Math.sqrt(3) * size * (c.q + c.r / 2)).toFixed(2)},${(cy + 1.5 * size * c.r).toFixed(2)}`,
+        )
+        .join(' ')
+    : null
   /**
    * **新扫到的格子按圈依次亮起**（船长 2026-09-13 拍板「甲：扫描波 + 逐格点亮」）：
    * 延迟 = 与玩家所在格的距离（按"第几圈"算）× 60ms，与扩散的波同步。
@@ -2032,6 +2121,16 @@ function WhGridMap({
           transform: `translate(${(-(zoom - 1) * (hereX - cx)).toFixed(1)}px, ${(-(zoom - 1) * (hereY - cy)).toFixed(1)}px) scale(${zoom})`,
         }}
       >
+      {/**
+       * **路径预览线**（船长 2026-09-16）：画在**所有格子之下**（格子照旧压在线上，不挡图标/舰影）。
+       * `is-blocked` = 拦截格还没扫描（甲案：不指名那一格，只把整条线置为警示色）。
+       */}
+      {pathPoints ? (
+        <polyline
+          className={`app-wh-path${pathPreview?.hush === true ? ' is-blocked' : ''}`}
+          points={pathPoints}
+        />
+      ) : null}
       {grid.cells.map((c) => {
         const x = cx + Math.sqrt(3) * size * (c.q + c.r / 2)
         const y = cy + 1.5 * size * c.r
@@ -2079,6 +2178,12 @@ function WhGridMap({
            * 被星云遮住的格走 `.is-nebula`（**不按信号上色**，否则边框颜色就把被遮的信号漏出去了）。
            */
           known ? (nebula ? 'is-nebula' : signal ? `is-${signal}` : 'is-blank') : '',
+          /**
+           * **拦截格描红**（船长 2026-09-16 路径拦截 · §5.2 甲案）：**只在那一格已知时**才指名
+           * （`interceptKey` 由面板仅在"已扫描/已到过"时传入）；未扫描的拦截格**不给类**，
+           * 避免"边框颜色把未扫描格的内容漏出去"（2026-09-13 那条修漏口径继续有效）。
+           */
+          pathPreview?.interceptKey === c.key ? 'is-intercept' : '',
           c.key === hereKey ? 'is-here' : '',
           isExit ? 'is-exit' : '',
           freshAt.has(c.key) ? 'is-just-scanned' : '',

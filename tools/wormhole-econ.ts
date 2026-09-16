@@ -35,6 +35,14 @@
  * 两者的处方相反（前者要加产出、后者要加回合）。⚠ 回合是**整趟共用一池**，深入下一层**不刷新**
  * （`wormhole.ts:508`）⇒ 这个数是整趟结束时的余量。
  *
+ * ⚠ **本工具低估"路径拦截"的咬合面**（2026-09-16 登记）：本政策只去**已扫描**的格，而扫描半径小
+ * ⇒ 实测走法 **68% 是距离 1**（`--trace` 数过：53 次走里 36 次距离 1、平均 1.6），而**距离 1 没有中间格、
+ * 永远拦不到** ⇒ 政策口径下只 0.25 次/趟。真实的咬合面来自**跨盘跳格**（移动与距离无关、都是 1 回合，
+ * 玩家自然会跳着走）：几何读数（200 盘 × 层 1/3/5/7 · 34,800 个目标组合）=
+ * **30.1% 的"前往任意格"会被拦**（层 1 14.8% → 层 5 33.2% → 层 7 35.1%；按距离：距 2 18.0% ·
+ * 距 4 29.6% · 距 8 53.6%）。**`--charge-through` 开关在本政策下与默认读数几乎一致**（原因同上：
+ * 距离 1 的走法无所谓绕不绕）——想看这机制的分量，认几何读数，不要只认本工具的 `拦截` 列。
+ *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v25**（`CURRENT_STATE_VERSION`）
  *   - 本工具最后核对：**2026-09-15**（当日核对：层威胁曲线 / 洞内敌卡轮换 / 拾取堆生成 /
@@ -88,10 +96,19 @@ import {
   isExitCell,
   isNebulaFogged,
   wormholeMakeGrid,
+  /** 路径拦截（船长 2026-09-16）：政策与界面/引擎**同一把尺**——先看路上有没有未清的敌人 */
+  wormholePathInterceptAt,
 } from '../packages/core/src/wormholeGrid'
 import type { WormholeGridState, WormholePlace } from '../packages/core/src/wormholeGrid'
 
 const ctx: SimContext = buildSimContext()
+
+/**
+ * **读数开关 `--charge-through`**（2026-09-16 加 · 路径拦截的 A/B 用）：
+ * 默认（关）= 政策像玩家一样**优先挑"直线路径上没有敌人"的目标**（点格时界面会弹警告与描红）；
+ * 打开 = **无视拦截径直硬打**（等价于"每次都被拦下"的旧式直走）⇒ 两轮读数的差 = **绕开拦截值多少**。
+ */
+const CHARGE_THROUGH = process.argv.includes('--charge-through')
 
 /**
  * 参考编队（三套 fit · F3c 第二段）：
@@ -538,6 +555,12 @@ interface LayerActs {
   /** **"磨回合"次数**：旧闸门（撤离要求守卫已清）逼出来的歪招（原地转圈等回合耗尽）。
    *  船长 2026-09-13 改裁定「玩家可以无条件开始撤离」后**恒为 0**——留着它当回归证据。 */
   waits: number
+  /**
+   * **被路径拦截的次数**（船长 2026-09-16「路径拦截」）：这次移动的直线路径上挡着没清掉的舰船信号格
+   * ⇒ 移动被截断在那一格并**就地开战**（多打一场、少走一段）。政策优先挑"路上没敌人"的目标，
+   * 只有绕不开时才硬打 ⇒ 这个数就是"绕不开的拦截税"。
+   */
+  intercepts: number
 }
 
 interface RunOutcome {
@@ -602,6 +625,10 @@ interface Policy {
  *
  * 优先级（回合紧张时换序）：遗迹 → 墓场 → 矿脉 → 信标 → 舰船信号；都要"已扫描、没到过"，
  * 并按装备与血量过滤（没打捞器不去墓场/遗迹、没采集器不去矿脉、血太少不主动撞舰船信号）。
+ *
+ * ⚠ **2026-09-16 路径拦截**：同一优先级里**先挑"直线路径上没有未清敌人"的目标**（玩家点格时会看到
+ * 「路径上有敌人阻拦」的警告与地图描红 ⇒ 正常人会先绕），只有同档候选全都绕不开时才挑最近的硬打
+ * （那一次移动会被截断在拦截点、就地开战，记进 `intercepts`）。
  */
 function pickTarget(
   g: WormholeGridState,
@@ -622,8 +649,15 @@ function pickTarget(
       (c) => c.place === place && g.scanned.includes(c.key) && !g.visited.includes(c.key),
     )
     if (cands.length === 0) continue
-    // 就近走（回合与距离无关，这只是"像人一样不瞎绕"）
-    cands.sort((a, b) => hexDistance(a, g.pos) - hexDistance(b, g.pos) || a.key.localeCompare(b.key))
+    // **先挑路上没敌人的**（`--charge-through` 时跳过 ⇒ 退回"就近直走、被拦就硬打"）
+    const blockedOf = (c: { q: number; r: number }): number =>
+      !CHARGE_THROUGH && wormholePathInterceptAt(g, { q: c.q, r: c.r }) ? 1 : 0
+    cands.sort(
+      (a, b) =>
+        blockedOf(a) - blockedOf(b) ||
+        hexDistance(a, g.pos) - hexDistance(b, g.pos) ||
+        a.key.localeCompare(b.key),
+    )
     return { q: cands[0]!.q, r: cands[0]!.r }
   }
   return null
@@ -660,12 +694,41 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
   const layerActs: LayerActs[] = []
   const actsAt = (d: number): LayerActs => {
     while (layerActs.length < d) {
-      layerActs.push({ scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0 })
+      layerActs.push({ scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0, intercepts: 0 })
     }
     return layerActs[d - 1]!
   }
   const bump = (k: keyof LayerActs): void => {
     actsAt(state.wormhole.run?.depth ?? 1)[k] += 1
+  }
+  /**
+   * **移动一步（政策唯一出口）**：先按**界面同一把尺**看直线路径上有没有未清的敌人
+   * （`wormholePathInterceptAt`）⇒ 有就带 `confirmIntercept`（等价于玩家在确认栏点了「确认前往」），
+   * 并记一次 `intercepts`。这样工具的走动口径与玩家实际点下去的结果一致。
+   */
+  const go = (
+    target: { q: number; r: number },
+    confirmUnknown = false,
+  ): ReturnType<typeof wormholeTravelTo> => {
+    const g0 = state.wormhole.run?.grid
+    const from = g0 ? { q: g0.pos.q, r: g0.pos.r } : { q: target.q, r: target.r }
+    const dist = hexDistance(from, target)
+    const blocked = g0 ? wormholePathInterceptAt(g0, target) !== undefined : false
+    const res = wormholeTravelTo(state, ctx, target, {
+      confirmUnknown,
+      ...(blocked || CHARGE_THROUGH ? { confirmIntercept: true } : {}),
+    })
+    if (res.ok) {
+      bump('moves')
+      if (res.intercepted) bump('intercepts')
+      if (trace) {
+        console.log(
+          `      [走] (${from.q},${from.r}) → (${target.q},${target.r}) 距离 ${dist} · ` +
+            `决策时拦截=${blocked ? '是' : '否'} · 实际被拦=${res.intercepted ? '是' : '否'}`,
+        )
+      }
+    }
+    return res
   }
   const layerCollected: number[] = []
   const layerBoxes: number[] = []
@@ -833,12 +896,11 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
         ? null
         : pickTarget(g, rigs, miners, tooHurtForBoss ? 0 : hp, urgent)
       if (target) {
-        const res = wormholeTravelTo(state, ctx, target, {})
+        const res = go(target)
         if (!res.ok) {
           stop(`前往目标被拒：${res.error ?? ''}`)
           break
         }
-        bump('moves')
         continue
       }
       if (tooHurtForBoss) {
@@ -868,31 +930,19 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
                 .map((n) => gridCellAt(g, n))
                 .find((c) => !!c && c.key !== beacon.key && !isExitCell(g, c))
               if (step) {
-                const res = wormholeTravelTo(
-                  state,
-                  ctx,
-                  { q: step.q, r: step.r },
-                  { confirmUnknown: !g.scanned.includes(step.key) },
-                )
+                const res = go({ q: step.q, r: step.r }, !g.scanned.includes(step.key))
                 if (!res.ok) {
                   stop(`信标压在入口格：挪开被拒：${res.error ?? ''}`)
                   break
                 }
-                bump('moves')
                 continue
               }
             } else {
-              const res = wormholeTravelTo(
-                state,
-                ctx,
-                { q: beacon.q, r: beacon.r },
-                { confirmUnknown: !g.scanned.includes(beacon.key) },
-              )
+              const res = go({ q: beacon.q, r: beacon.r }, !g.scanned.includes(beacon.key))
               if (!res.ok) {
                 stop(`前往信标被拒：${res.error ?? ''}`)
                 break
               }
-              bump('moves')
               continue
             }
           }
@@ -926,12 +976,11 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
           }
           const unknown = g.cells.find((c) => !g.scanned.includes(c.key))
           if (unknown) {
-            const res = wormholeTravelTo(state, ctx, { q: unknown.q, r: unknown.r }, { confirmUnknown: true })
+            const res = go({ q: unknown.q, r: unknown.r }, true)
             if (!res.ok) {
               stop(`前往未知格被拒：${res.error ?? ''}`)
               break
             }
-            bump('moves')
             continue
           }
           // 盘面走遍仍没读到信标（理论上不会：每层至少 1 个）⇒ 只能撤离
@@ -954,17 +1003,11 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
          * 故这里带上 `confirmUnknown`（信标已经告诉我们终点在哪，这一步只是走过去）。
          */
         const exitCell = gridCellAt(g, { q: g.exit.q, r: g.exit.r })
-        const res = wormholeTravelTo(
-          state,
-          ctx,
-          { q: g.exit.q, r: g.exit.r },
-          { confirmUnknown: !exitCell || !g.scanned.includes(exitCell.key) },
-        )
+        const res = go({ q: g.exit.q, r: g.exit.r }, !exitCell || !g.scanned.includes(exitCell.key))
         if (!res.ok) {
           stop(`前往入口被拒：${res.error ?? ''}`)
           break
         }
-        bump('moves')
         continue
       }
       // ④ 守卫已清 ⇒ 按政策深入或撤离（血量 / 深度 / 回合）
@@ -1019,7 +1062,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
     layerBoxes,
     layerRares,
     layerActs,
-    acts: layerActs.reduce((s, a) => ({ scans: s.scans + a.scans, moves: s.moves + a.moves, salvages: s.salvages + a.salvages, collects: s.collects + a.collects, fights: s.fights + a.fights, discards: s.discards + a.discards, waits: s.waits + a.waits }), { scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0 }),
+    acts: layerActs.reduce((s, a) => ({ scans: s.scans + a.scans, moves: s.moves + a.moves, salvages: s.salvages + a.salvages, collects: s.collects + a.collects, fights: s.fights + a.fights, discards: s.discards + a.discards, waits: s.waits + a.waits, intercepts: s.intercepts + a.intercepts }), { scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0, intercepts: 0 }),
     turnsLeft: state.wormhole.run?.turnsLeft ?? lastTurns,
     turnsTotal,
     nebulaScans,
@@ -1079,10 +1122,11 @@ function runRunsMode(): void {
   console.log(
     `  政策：粗残血 < ${pol.extractHp} 或到第 ${pol.maxDepth} 层就撤（撤离开放：随时能走，零战斗）· ` +
       `回合保留 ${pol.reserve} · 守卫血量门槛 ${pol.bossHpMin}（低于它就直接撤；守卫只堵深入）· ` +
-      `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）`,
+      `优先 遗迹→墓场→矿脉→信标→舰船信号 · 出口只认**信标**（不许偷看盘面）· ` +
+      `读数模式 ${CHARGE_THROUGH ? '**--charge-through**（无视拦截径直硬打）' : '默认（优先绕开拦截）'}`,
   )
   console.log(
-    ['#', '结果', '到达层', '存活', '★稀有残骸(件)', '★货柜(件)', '其中图纸货柜', '★AI核心(枚)', '母矿', '母矿ISK', '残骸ISK', '无人机', '合计ISK', '扫描', '移动', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
+    ['#', '结果', '到达层', '存活', '★稀有残骸(件)', '★货柜(件)', '其中图纸货柜', '★AI核心(枚)', '母矿', '母矿ISK', '残骸ISK', '无人机', '合计ISK', '扫描', '移动', '拦截', '打捞', '采集', '交战', '抛货', '磨回合', '余回合', '停止原因'].join('\t'),
   )
   const out: RunOutcome[] = []
   for (let i = 0; i < n; i++) {
@@ -1106,6 +1150,7 @@ function runRunsMode(): void {
         f(incomeIsk(o.income)),
         o.acts.scans,
         o.acts.moves,
+        o.acts.intercepts,
         o.acts.salvages,
         o.acts.collects,
         o.acts.fights,
@@ -1190,6 +1235,17 @@ function runRunsMode(): void {
   console.log(
     `        星云回合税：平均 **${nebulaScansAvg.toFixed(2)} 个扫描动作/趟**` +
       `（${nebulaRuns}/${out.length} 趟至少驱散过一次；层 1~3 恒 0，层 4 起才有云；已计入上面的"扫"列）`,
+  )
+  /**
+   * **路径拦截税**（2026-09-16 船长「路径拦截」落地后的读数）：政策**优先挑路上没敌人的目标**
+   * （与界面警告同款），只有同档候全都绕不开时才硬打 ⇒ 这里的次数 = "绕不开的拦截"，
+   * 每次 = 移动被截断在那一格 + **多打一场节点战**（那一场不计进"交战"列——它是被动的）。
+   */
+  const interceptAvg = avg((o) => o.acts.intercepts)
+  const interceptRuns = out.filter((o) => o.acts.intercepts > 0).length
+  console.log(
+    `        路径拦截：平均 **${interceptAvg.toFixed(2)} 次/趟**` +
+      `（${interceptRuns}/${out.length} 趟至少被拦一次；政策先挑"路上没敌人"的目标，绕不开才硬打）`,
   )
   const collectedAvg = avg((o) => o.layerCollected.reduce((s, v) => s + v, 0))
   console.log(

@@ -87,6 +87,53 @@ export function hexRingAround(center: HexCell, radius: number): HexCell[] {
   return hexDiskAround(center, R).filter((c) => hexDistance(c, center) === R)
 }
 
+/** 立方坐标取整（`s = -q - r`；**把误差最大的那一维回拉** ⇒ 落点唯一、不掷骰） */
+function cubeRound(q: number, r: number): HexCell {
+  const s = -q - r
+  let rq = Math.round(q)
+  let rr = Math.round(r)
+  const rs = Math.round(s)
+  const dq = Math.abs(rq - q)
+  const dr = Math.abs(rr - r)
+  const ds = Math.abs(rs - s)
+  if (dq > dr && dq > ds) rq = -rr - rs
+  else if (dr > ds) rr = -rq - rs
+  return { q: rq, r: rr }
+}
+
+/**
+ * **六边形直线**：`a → b` 这条线上依次经过的格（**含两端**）。
+ *
+ * 用途（船长 2026-09-16「路径拦截」）：判断"从当前格前往目标格"的**直线路径**上有没有敌人挡路。
+ *
+ * 三条口径：
+ * ① **含两端**（`a` 与 `b` 都在结果里；**拦截判定自己把两端排除**——起点是自己站的格、
+ *    终点若本身是敌人走的是既有的"到达即开打"）；
+ * ② **双向同集**：先把方向规范化（按 `(q, r)` 字典序取小端当起点）再画线 ⇒
+ *    `hexLine(a,b)` 与 `hexLine(b,a)` **互为倒序**（同一批格）。否则偶数距离的平局会让
+ *    "谁拦谁"随调用方向漂；
+ * ③ **平局确定性**：立方坐标取整 ⇒ 同输入恒同输出、**不消耗 `state.rng`**（可复现）。
+ *
+ * ⚠ 相邻两格必是邻居（步长 1）、共 `hexDistance(a,b) + 1` 格——用例在盘内**逐对**钉住这两条。
+ */
+export function hexLine(a: HexCell, b: HexCell): HexCell[] {
+  const swap = a.q > b.q || (a.q === b.q && a.r > b.r)
+  const from = swap ? b : a
+  const to = swap ? a : b
+  const n = hexDistance(from, to)
+  if (n === 0) return [{ q: from.q, r: from.r }]
+  const fq = from.q
+  const fr = from.r
+  const tq = to.q
+  const tr = to.r
+  const out: HexCell[] = []
+  for (let i = 0; i <= n; i++) {
+    const t = i / n
+    out.push(cubeRound(fq + (tq - fq) * t, fr + (tr - fr) * t))
+  }
+  return swap ? out.reverse() : out
+}
+
 /* ═══════════ 二、信号与地点（信号遮蔽真相） ═══════════ */
 
 /**
@@ -424,6 +471,40 @@ export type WormholeCellReveal =
 /** 查格（坏键 ⇒ undefined） */
 export function gridCellAt(grid: WormholeGridState, cell: HexCell): WormholeGridCell | undefined {
   return grid.cells.find((c) => c.key === hexKey(cell.q, cell.r))
+}
+
+/* ═══════════ 三之一、路径拦截（2026-09-16 船长新增） ═══════════ */
+
+/**
+ * **路径拦截判定**（船长 2026-09-16）：从玩家当前格前往 `target`，这条**直线路径**上
+ * **最近的一处"还没清掉的舰船信号格"**（`place === 'ship'` 且不在 `activated` 里）。
+ *
+ * 口径（六问六答 ＋ §5.2 甲案）：
+ * ① **起点与终点都不算**——起点是自己站的格；终点若本身是舰船信号 ⇒ 走既有的"到达即开打"，不重复判；
+ * ② **未扫描的格照样拦**（船长裁定 1 = 乙）："看不见的敌人也会挡路"；
+ * ③ **已清掉的格不拦**（打赢一次就通了；同一格不会被连拦两次）；
+ * ④ 找不到 ⇒ `undefined`（本次移动直达目标）。
+ *
+ * ⚠ **界面预览与移动判定共用本函数**（同一把尺）：界面据此画路径与描红，引擎据此刻断移动 ——
+ * "界面记得拦"不是纪律，"两边同一把尺"才是（照 `unknown-target` 那道闸的先例）。
+ *
+ * ⚠ **出口格（层末守卫）不在此列**：守卫只认"站在出口格上点激活"，不参与路径拦截（船长裁定 1 = 乙
+ * 只覆盖舰船信号格）。
+ */
+export function wormholePathInterceptAt(
+  grid: WormholeGridState,
+  target: HexCell,
+): WormholeGridCell | undefined {
+  const line = hexLine(grid.pos, target)
+  // 掐头去尾：`line[0]` = 当前格、`line[last]` = 目标格
+  for (let i = 1; i < line.length - 1; i++) {
+    const cell = gridCellAt(grid, line[i]!)
+    if (!cell) continue
+    if (cell.place !== 'ship') continue
+    if (grid.activated.includes(cell.key)) continue
+    return cell
+  }
+  return undefined
 }
 
 /**
