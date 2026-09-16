@@ -354,6 +354,9 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-g-echo-remnant', tier: 2, speed: 310 },
       { id: 'foe-g-nadir-lock', tier: 3, speed: 271 },
       { id: 'foe-g-exile-battleship', tier: 4, speed: 215 },
+      // 2026-09-16 船长：敌方后勤舰「残军补给舰」（T3 · **备用壳体，暂不进卡**）——
+      // 族定值 1.05 ⇒ 258 × 1.05 = 271（与同族 T3 同速；上场读数待进卡时再跑）
+      { id: 'foe-g-remnant-tender', tier: 3, speed: 271 },
     ])
   })
 

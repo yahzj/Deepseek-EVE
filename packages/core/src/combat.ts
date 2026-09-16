@@ -168,6 +168,17 @@ export interface UnitSpec {
    *  用途 = 敌方选靶模式「**打非战斗船**」——`industrial`（工业/采矿）与 `hauler`（货舰）算非战斗，
    *  `armed`（武装）/ `armored`（装甲）算战斗。 */
   shipRole?: ShipRole
+  /**
+   * **我方「后勤舰」标记**（船长 2026-09-16：「**后勤舰添加特性，维修装置可以修理血量最少的队友**」）：
+   * `createPlayerSpec` 按 `ShipDef.subClass === '后勤舰'` 写入（现在只有「亡军后勤舰」一艘）。
+   * 语义 = 本舰的**船体维修装置脉冲改为修队友**（三层剩余比例最低者，含自己）；不写 ⇒ 只修自己（旧口径）。
+   */
+  logistics?: boolean
+  /**
+   * **敌方后勤舰：把自身多少比例的名义 DPS 转成修理值**（`FoeShipDef.repairPct` 下发的运行时副本；
+   * 见 `types.ts` 该字段的完整口径）。缺省 ⇒ 该敌舰零行为变化。
+   */
+  repairPct?: number
   side: 'me' | 'foe'
   hp: Hp3
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
@@ -456,6 +467,88 @@ export function carryVolleyOverflow(
     if (rt.hp.s + rt.hp.a + rt.hp.h > 0) break
   }
   return { total, hits, lastTag }
+}
+
+/* ═══════════ 敌方后勤舰（船长 2026-09-16）═══════════ */
+
+/**
+ * **敌方后勤舰：开火单发打折**（船长 2026-09-16：「**敌人后勤舰则是将 50% 的自身DPS转换为修理值**」）。
+ * 把该单位打出去的单发按 `×(1 − repairPct)` 折掉——被折掉的那半**按秒转成修理量**
+ * （见 `pulseFoeRepair`）。⚠ **只折炮台（`src` 非 `drone`）**：后勤舰本就不挂机群（我方新舰如此设计），
+ * 且"自身 DPS"的修理口径也只算炮台 ⇒ 两边同一把尺。
+ * 缺省（无 `repairPct`）⇒ **原值返回，零行为变化**。
+ */
+export function foeRepairDiscountedShot(f: UnitSpec, dmg: number): number {
+  const pct = f.repairPct ?? 0
+  return pct > 0 ? Math.max(1, Math.round(dmg * (1 - pct))) : dmg
+}
+
+/**
+ * **敌方后勤舰的名义 DPS**（用于每跳修理量）：该单位**战斗中炮台面板**的
+ * `Σ 单发 × 门数 × 1000 ÷ 装填`——**不含命中与距离衰减**（固定、可预测）。
+ * ⚠ 排除机群条目（`src === 'drone'`）与**备用机**条目（`reserve`）：两者都不是常驻齐射的一份。
+ */
+export function foeNominalDpsOf(f: UnitSpec): number {
+  let dps = 0
+  for (const w of f.weapons) {
+    if (w.src === 'drone' || w.reserve === true) continue
+    const per = w.shotDmg ?? 0
+    if (per <= 0) continue
+    dps += (per * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
+  }
+  return dps
+}
+
+/**
+ * **一记敌方后勤脉冲**（每 `REPAIR_PULSE_MS` = 5 秒一跳，与玩家维修装置同节拍）：
+ *
+ * - 修理量 = `Σ 在场后勤舰(名义 DPS × repairPct) × (5 秒)`（各舰按自己的名义 DPS 出力）；
+ * - 目标 = **非后勤**敌舰里**三层剩余比例最低**者（船长 2026-09-16 补充裁定：
+ *   「**敌方的修理无法以其他敌方后勤舰为目标（包括自己）**」）⇒ 候选**排除一切 `repairPct > 0` 的单位，
+ *   也排除"甲+结构 都满"的单位（修不动 ⇒ 换下一个；全不可修 ⇒ 空转）；
+ * - **只修装甲/结构**（与玩家维修装置同一套层位语义），**不超过目标满血**、**不耗组件**；
+ * - 返回实际修好的点数（累加进 `ledger.healed`，供战报/读数）。
+ */
+export function pulseFoeRepair(
+  b: import('./state').BattleState,
+  foeSpecs: ReadonlyArray<UnitSpec>,
+  ledger: { nextPulseAtMs?: number; pulses: number; healed: number },
+): void {
+  const donors = foeSpecs.filter((s) => (s.repairPct ?? 0) > 0 && b.units[s.tag])
+  if (donors.length === 0) return
+  const perSecond = donors.reduce((sum, s) => sum + foeNominalDpsOf(s) * (s.repairPct ?? 0), 0)
+  const amount = (perSecond * REPAIR_PULSE_MS) / 1000
+  ledger.pulses += 1
+  if (amount <= 0) return
+  // 选靶：非后勤 + 甲/结构未满 + 三层比例最低（并列取 spec 顺序靠前）
+  let target: UnitSpec | undefined
+  let bestRatio = Number.POSITIVE_INFINITY
+  for (const s of foeSpecs) {
+    if ((s.repairPct ?? 0) > 0) continue // 永不以任何后勤舰为目标（含自己）
+    const rt = b.units[s.tag]
+    if (!rt) continue
+    const capA = Math.max(0, s.hp.a)
+    const capH = Math.max(0, s.hp.h)
+    if (rt.hp.a >= capA && rt.hp.h >= capH) continue
+    const capAll = capA + capH + Math.max(0, s.hp.s)
+    const ratio = capAll > 0 ? (rt.hp.s + rt.hp.a + rt.hp.h) / capAll : 1
+    if (ratio < bestRatio) {
+      bestRatio = ratio
+      target = s
+    }
+  }
+  if (!target) return
+  const rt = b.units[target.tag]
+  if (!rt) return
+  const capA = Math.max(0, target.hp.a)
+  const capH = Math.max(0, target.hp.h)
+  let left = amount
+  const healA = Math.min(left, Math.max(0, capA - rt.hp.a))
+  rt.hp.a += healA
+  left -= healA
+  const healH = Math.min(left, Math.max(0, capH - rt.hp.h))
+  rt.hp.h += healH
+  ledger.healed += healA + healH
 }
 
 /* ═══════════ 构建 ═══════════ */
@@ -1145,6 +1238,8 @@ export function createPlayerSpec(
     // 单船路径不读这两项 ⇒ 只多两个字段，零行为变化。
     shipTier: ship.tier,
     shipRole: ship.role,
+    // 2026-09-16 船长：后勤舰（`subClass === '后勤舰'`）的维修装置改修队友；其余舰只修自己
+    ...(ship.subClass === '后勤舰' ? { logistics: true } : {}),
     hp,
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
@@ -1779,6 +1874,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(ship.gunRangeMulOnHit !== undefined ? { foeGunRangeMulOnHit: ship.gunRangeMulOnHit } : {}),
       // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）
       hullClassTier: ship.hullClassTier,
+      // **敌方后勤舰**（船长 2026-09-16）：把自身 repairPct 比例的名义 DPS 转成修理值；缺省不写 ⇒ 零变化
+      ...(ship.repairPct !== undefined ? { repairPct: ship.repairPct } : {}),
       foeTactic: tactic,
       // **自己的有效射程带**（含覆写）——供 `foeDesiredRange` 在舰级路径上替代全局战术表
       // （2026-09-11 船长裁决②「期望交距改取该单位自己的射程带」）。旧路径不写本字段。
@@ -2596,6 +2693,15 @@ export function pulseShieldCharge(b: import('./state').BattleState, me: UnitSpec
  * 剩余额度转投另一层（单跳修复上限 = 甲 + 结构额度之和，痊愈后不再消耗）；每台实际修复 > 0 才扣
  * 1 枚对应组件并计入消耗；组件耗尽该台停机（日志一次，见 2026-09-11 船长口径）。修复上限 =
  * **该舰出场满值口径**（`advanceBattleFor` 重建的规格，与保险检查同源——可把入场残值修回满血）。
+ *
+ * ⚠ **2026-09-16 船长新增「后勤舰」特性**（`ship.subClass === '后勤舰'` ⇒ `spec.logistics`）：
+ * **这一跳改修"三层剩余比例最低的队友"**（含自己）——`allySpecs` 是本场我方全部单位（tag → spec，
+ * 由调用方传入；缺省 = 只有自己 ⇒ 与旧行为逐字一致）。细则：
+ * - **候选判据** = `(s+a+h) ÷ 满值三层合计` 最低者；并列取**传入顺序靠前**者（= 编队顺序）；
+ * - **排除"甲+结构 都满"的单位**（装置修不了护盾：把它们排除掉，避免"选了盾伤满甲的同袍 ⇒ 白跳"）；
+ *   若所有候选都不可修 ⇒ 本跳空转（**不耗组件**，与"痊愈空转"同口径）；
+ * - 修复上限取**被修那艘**的出场满值（`allySpecs` 里那一份），不是后勤舰自己的；
+ * - **只换目标、不改量**（船长 2026-09-16 三问三答之「甲」）。
  */
 function pulseRepairsFor(
   state: GameState,
@@ -2603,13 +2709,45 @@ function pulseRepairsFor(
   b: import('./state').BattleState,
   spec: UnitSpec,
   r: import('./state').BattleRepairLedger,
+  allySpecs?: ReadonlyMap<string, UnitSpec>,
 ): void {
   void ctx
   const meRt = b.units[spec.tag]
   if (!meRt || r.nextPulseAtMs === undefined) return
-  const capA = Math.max(0, spec.hp.a)
-  const capH = Math.max(0, spec.hp.h)
-  const hp = meRt.hp
+  /**
+   * **修谁**：后勤舰 ⇒ 三层剩余比例最低的**可修**队友（含自己）；其余舰 ⇒ 自己（旧口径）。
+   * ⚠ 只换 `spec`/`hp` 两处来源，下面每台装置的额度分配逻辑**一字未动**。
+   */
+  let targetSpec: UnitSpec = spec
+  let targetRt = meRt
+  if (spec.logistics && allySpecs && allySpecs.size > 1) {
+    let bestKey: string | undefined
+    let bestRatio = Number.POSITIVE_INFINITY
+    for (const [tag, s] of allySpecs) {
+      const rt = b.units[tag]
+      if (!rt) continue // 已不在场（沉了/被摘）
+      const capA0 = Math.max(0, s.hp.a)
+      const capH0 = Math.max(0, s.hp.h)
+      if (rt.hp.a >= capA0 && rt.hp.h >= capH0) continue // 甲+结构 都满 ⇒ 装置无事可做
+      const capAll = capA0 + capH0 + Math.max(0, s.hp.s)
+      const ratio = capAll > 0 ? (rt.hp.s + rt.hp.a + rt.hp.h) / capAll : 1
+      if (ratio < bestRatio) {
+        bestRatio = ratio
+        bestKey = tag
+      }
+    }
+    const pickedSpec = bestKey !== undefined ? allySpecs.get(bestKey) : undefined
+    const pickedRt = bestKey !== undefined ? b.units[bestKey] : undefined
+    if (pickedSpec && pickedRt) {
+      targetSpec = pickedSpec
+      targetRt = pickedRt
+    } else {
+      return // 全场都修不动（都满血）⇒ 空转：不耗组件、不动计时器之外任何账
+    }
+  }
+  const capA = Math.max(0, targetSpec.hp.a)
+  const capH = Math.max(0, targetSpec.hp.h)
+  const hp = targetRt.hp
   let active = 0
   for (const u of r.units) {
     if (u.stopped) continue
@@ -3416,6 +3554,14 @@ export function startFleetBattleFor(
   if (Object.keys(shieldChargeBy).length > 0) {
     battle.shieldChargeBy = shieldChargeBy
     battle.shieldCharge = shieldChargeBy['player'] ?? Object.values(shieldChargeBy)[0]!
+  }
+  /**
+   * **敌方后勤账本**（船长 2026-09-16）：**只在敌阵里真有 `repairPct > 0` 的舰时才建**
+   * （缺省 ⇒ `battle.foeRepair` 不写、tick 里那一块直接跳过 ⇒ 零开销、零行为变化）。
+   * 首跳 = 开战 + `REPAIR_PULSE_MS`（与维修装置同节拍）。
+   */
+  if (foes.some((f) => (f.repairPct ?? 0) > 0)) {
+    battle.foeRepair = { nextPulseAtMs: battle.startedAtGameMs + REPAIR_PULSE_MS, pulses: 0, healed: 0 }
   }
   // **虫洞战斗标记**（F 批）：写进 battle ⇒ 每拍按同一份派生重建敌卡（`advanceBattleFor` 读它）；
   // F3c B1 起，谜质在开战那一刻的快照（威胁乘数 / 敌主伤害系 / 敌方削弱）**一并写进去**，
@@ -4293,9 +4439,27 @@ export function advanceBattleFor(
           ledger.nextPulseAtMs <= battle.lastTickGameMs &&
           guardR < BATTLE_MAX_STEPS
         ) {
-          pulseRepairsFor(state, ctx, battle, spec, ledger)
+          pulseRepairsFor(state, ctx, battle, spec, ledger, specByTag)
           guardR++
         }
+      }
+    }
+    /**
+     * **敌方后勤脉冲**（船长 2026-09-16）：只在场上存在 `repairPct > 0` 的敌舰时才有账本
+     * （`battle.foeRepair` 由开战建档；缺省 ⇒ 零开销、零行为变化）。
+     * 与维修装置同节拍（5 秒），在受伤结算之后补跳；一记脉冲 = 累加一跳修理量。
+     */
+    if (!battle.ended && battle.foeRepair) {
+      let guardF = 0
+      while (
+        !battle.ended &&
+        battle.foeRepair.nextPulseAtMs !== undefined &&
+        battle.foeRepair.nextPulseAtMs <= battle.lastTickGameMs &&
+        guardF < BATTLE_MAX_STEPS
+      ) {
+        pulseFoeRepair(battle, foes, battle.foeRepair)
+        battle.foeRepair.nextPulseAtMs += REPAIR_PULSE_MS
+        guardF++
       }
     }
     // 护盾充能装置脉冲（逐舰 · 2026-09-16）：与维修装置**各按各的计时**（30 秒 vs 5 秒），
@@ -5403,7 +5567,7 @@ function stepBattle(
     if (w.kind === 'beam') {
       // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
       const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, w, b.distanceM)
-      const dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * pow))
+      const dmg = foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow)))
       // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
       releaseFoeChargeOnHit(b, f.tag, bal)
       b.stats.foeHits += 1
@@ -5413,7 +5577,8 @@ function stepBattle(
       continue
     }
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
-    const shotDmg = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
+    const shotDmgRaw = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
+    const shotDmg = foeRepairDiscountedShot(f, shotDmgRaw)
     // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
     // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
     const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, w, b.distanceM))
