@@ -34,6 +34,8 @@ import {
   absorbViaStation,
   ensureMarket,
   slowSupplyDraw,
+  marketHistory,
+  PRICE_SAMPLE_MS,
 } from '../src/market'
 import { occupyAiCore } from '../src/ai'
 import { DEFAULT_BALANCE } from '../src/balance'
@@ -1338,5 +1340,29 @@ describe('蓝图船二手出售通道（2026-09-09 船长：允许玩家出售�
     // 大步推进跨稀有抽取窗：playerBuyable=false 的船永不出现在供给侧（成品无现货，只收不卖）
     advanceGame(state, 12 * 60_000, ctx)
     expect(state.market.npcSell['ship-delist']?.length ?? 0).toBe(0)
+  })
+})
+/**
+ * **价格小史的采样节奏 = 30 分钟/点**（船长 2026-09-16：「按照原来的30分钟来」）。
+ *
+ * 旧实现把记录点挂在**每个 60 秒窗口**里 ⇒ 48 点只覆盖 48 分钟，与注释/悬停标注的
+ * 「30 分钟/点、48 点 ≈ 24 小时」不符（2026-09-16 实测查实）。现按**游戏时刻跨 30 分钟边界**采样。
+ * 本用例钉三件事：① 前 29 分钟不新增点；② 第 30 分钟正好 +1；③ 24 小时封顶 48 点（滚动丢弃最旧）。
+ */
+describe('市场 · 价格小史采样节奏（30 分钟/点 · 48 点 = 24 小时）', () => {
+  it('按 30 分钟边界采样：29 分钟不加点 · 30 分钟 +1 · 24 小时封顶 48', () => {
+    const ctx = makeTestCtx()
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    const key = 'it-ore-a'
+    expect(PRICE_SAMPLE_MS).toBe(30 * 60_000)
+    advanceGame(state, 60_000, ctx) // 开盘第一窗：补一个起点（历史为空 ⇒ 立刻有基线）
+    const base = marketHistory(state, key).length
+    expect(base, '开盘应已有一个起点').toBe(1)
+    advanceGame(state, 29 * 60_000 - 60_000, ctx) // 累计 29 分钟（未跨 30 分钟边界）
+    expect(marketHistory(state, key).length, '未跨边界不该加点').toBe(base)
+    advanceGame(state, 60_000, ctx) // 累计 30 分钟 ⇒ 跨边界
+    expect(marketHistory(state, key).length, '第 30 分钟应 +1').toBe(base + 1)
+    advanceGame(state, 48 * 60 * 60_000, ctx) // 大离线 48 小时
+    expect(marketHistory(state, key).length, '24 小时封顶 48 点').toBe(48)
   })
 })

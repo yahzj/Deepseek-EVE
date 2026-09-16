@@ -10149,6 +10149,13 @@ body {
 .app-wh-map { width: 100%; height: 100%; color: var(--wui-accent); display: block; overflow: hidden; }
 /* 缩放层：只影响图内内容（**以玩家所在格为锚点**放大：那一格原地不动、四周长开），不动地图框与坐标口径 */
 .app-wh-zoomlayer { transition: transform 220ms ease-out; }
+/* ── **路径预览线**（船长 2026-09-16 路径拦截）：待确认的这次移动 —— 当前格 → 目标格的直线 ──
+   画在所有格子**之下**（不挡图标/舰影）；细描边 + 虚线，与地图同语言（SVG 线稿，不用 CSS 拼形状）。
+   `is-blocked` = 拦路的那一格**还没扫描**（§5.2 甲案：不指名那一格，只把整条线置为警示色）。 */
+.app-wh-path { fill: none; stroke: var(--wui-accent); stroke-width: 1.6; stroke-dasharray: 5 4; opacity: 0.75; }
+.app-wh-path.is-blocked { stroke: #ef8f6a; opacity: 0.9; }
+/* **已知的拦截格**：红框指名（未扫描的拦截格**不给这个类** —— 不给未扫描格上信号色是 2026-09-13 的修漏口径） */
+.app-wh-hex.is-intercept polygon { stroke: #ef8f6a; stroke-width: 2.4; stroke-dasharray: none; opacity: 1; }
 /* ── 层内网格地图（F3a-2 · 2026-09-13）：圆盘六边形，一格 = 一个地点 ──
    容器固定高（防界面跳动；2026-09-13 晚改成**定高 300px + 左侧缩放**，见上面 `.app-wh-mapbox`）；
    图形一律 SVG 线稿（约定 §九），这里只管颜色与档位透明度。 */
