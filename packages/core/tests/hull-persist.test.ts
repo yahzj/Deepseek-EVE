@@ -12,7 +12,7 @@ import { advanceGame } from '../src/engine'
 import { createPlayerSpec, persistFleetHullDamage, startBattleFor } from '../src/combat'
 import { startExpedition } from '../src/expedition'
 import { repairShip, repairWithKits, useOneRepairKit } from '../src/shipyard'
-import { makeTestCtx, anomaly, ship, fittedOf } from './helpers'
+import { makeTestCtx, anomaly, moduleDef, ship, fittedOf } from './helpers'
 
 function world(hp: { shieldHp: number; armorHp: number; hullHp: number }): { state: GameState; ctx: SimContext } {
   const ctx: SimContext = makeTestCtx({ ships: [ship('sandcat', hp)] })
@@ -130,19 +130,24 @@ describe('P0 承伤持久化', () => {
   })
 
   it('修理组件（自动链，P2 固定回复）：重复清剿阈值下按 70HP 换算恢复结构+装甲至目标', () => {
+    // ⚠ **2026-09-16 船长改判**：自动修补需要船上装着维修装置，且**消耗的组件类型跟着装置走**
     const ctx: SimContext = makeTestCtx({
       ships: [ship('sandcat', { shieldHp: 100, armorHp: 200, hullHp: 200 })],
       items: [
         { id: 'repairkit-mil', name: '军用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 21_000, repairRestore: 70, description: 't' },
       ],
+      // 军用档维修装置（吃 repairkit-mil）
+      modules: [moduleDef('mod-rep-mil', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 10, repairHullHp: 10, repairKit: 'repairkit-mil' })],
     })
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
     const fleetShip = state.fleet[state.shipId]!
+    fleetShip.fitted = { ...fleetShip.fitted, mid: ['mod-rep-mil'] } // 装装置（新口径的前置）
     fleetShip.cargo['repairkit-mil'] = 1
     fleetShip.durability = 0.4
     fleetShip.armorPct = 0.2
-    const used = repairWithKits(state, ctx, 0.5)
-    expect(used).toBe(1)
+    const r = repairWithKits(state, ctx, 0.5)
+    expect(r.used).toBe(1)
+    expect(r.hasDevice).toBe(true)
     expect(fleetShip.durability).toBeCloseTo(0.75, 6) // 0.4 + 70/200
     expect(fleetShip.armorPct).toBeCloseTo(0.55, 6) // 0.2 + 70/200
     expect(fleetShip.cargo['repairkit-mil']).toBeUndefined()

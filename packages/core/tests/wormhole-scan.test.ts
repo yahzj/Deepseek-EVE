@@ -21,6 +21,8 @@ import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { wormholeEnter } from '../src/wormhole'
+// 2026-09-16 船长：扫描页虫洞卡片的"敌情"（族称 + 主系 + 三档构成）
+import { wormholeFamilyIntel } from '../src/wormholeFoes'
 import { scanWindowMsOf } from '../src/explore'
 import {
   WORMHOLE_SCAN_BASE_MS,
@@ -236,5 +238,53 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     expect(s.logs.map((l) => l.text).some((t) => t.includes('扫描停机'))).toBe(true)
     // 满仓时的开扫拦截文案带的是**新上限**（15），不是 5
     expect(wormholeScanBlockReason(s) ?? '').toContain('15')
+  })
+})
+
+/**
+ * **虫洞卡片"敌情"**（船长 2026-09-16：「扫描虫洞界面，给虫洞卡片添加更多信息
+ * （虫洞内是什么敌人，以什么类型伤害为主）」）。
+ *
+ * 显示口径：卡片一句话 = **族称 + 主系**（取**族级 = 浅层卡**）；悬停列**浅/中/深三档**的卡名与火力构成。
+ * 本用例钉住"五族的文案与构成"，尤其是**档间会变**的两处（D 族深层 6:4 · E 族中层纯高爆）——
+ * 它们正是"卡片只报族级、差异写进悬停"这条口径存在的理由。
+ */
+describe('虫洞 · 卡片敌情（族称 + 主系 + 三档构成）', () => {
+  const intelOf = (family: 'A' | 'C' | 'D' | 'E' | 'G') => wormholeFamilyIntel(family, ctx)
+
+  it('五族：族称与主系文案钉死（A/C/G 动能为主 · C/D 能量为主 · E 并重）', () => {
+    expect(intelOf('A').ethnic).toBe('海盗')
+    expect(intelOf('A').primaryText).toBe('动能为主')
+    expect(intelOf('C').ethnic).toBe('异形')
+    expect(intelOf('C').primaryText).toBe('能量为主')
+    expect(intelOf('D').ethnic).toBe('守墓')
+    expect(intelOf('D').primaryText).toBe('能量为主')
+    expect(intelOf('E').ethnic).toBe('巨构')
+    expect(intelOf('E').primaryText).toBe('高爆 / 动能并重') // 浅层 5:5 ⇒ 不硬说"某系为主"
+    expect(intelOf('G').ethnic).toBe('亡军')
+    expect(intelOf('G').primaryText).toBe('动能为主')
+    // 卡片那行取的是**浅层卡名**（与 `engine.wormholeFamilyName` 同一把尺）
+    expect(intelOf('A').firstCardName).toBe('劫掠支队')
+  })
+
+  it('三档构成齐备，且**档间差异**写得出来（D 族深层 6:4 · E 族中层纯高爆）', () => {
+    for (const f of ['A', 'C', 'D', 'E', 'G'] as const) {
+      const it = intelOf(f)
+      expect(it.tiers, `${f} 族应有三档`).toHaveLength(3)
+      for (const t of it.tiers) {
+        expect(t.cardName, `${f}/${t.tier} 卡名不该漏出内部 id`).not.toContain('wh-')
+        expect(t.parts.length, `${f}/${t.tier} 构成不该为空`).toBeGreaterThan(0)
+        const sum = t.parts.reduce((s, p) => s + p.share, 0)
+        expect(sum, `${f}/${t.tier} 构成份额之和应为 1`).toBeCloseTo(1, 6)
+      }
+    }
+    const dDeep = intelOf('D').tiers.find((t) => t.tier === 'deep')!
+    expect(dDeep.parts.map((p) => [p.type, Math.round(p.share * 100)])).toEqual([
+      ['plasma', 60],
+      ['kinetic', 40],
+    ])
+    const eMid = intelOf('E').tiers.find((t) => t.tier === 'mid')!
+    expect(eMid.parts).toHaveLength(1)
+    expect(eMid.parts[0]!.type).toBe('explosive') // 纯高爆（唯一单系档）
   })
 })

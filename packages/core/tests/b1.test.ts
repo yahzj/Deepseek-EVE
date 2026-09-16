@@ -578,16 +578,30 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
    * 旧「不自动维修」作废 ⇒ 只要组件够，被伏击的船修好继续干活、不再自动撤退；
    * 组件来源含**仓库兜底**（船长「用组件，包括仓库组件」）；主控与 AI 副船同一口径。 */
 
-  /** 低安世界 + 修理组件（指定回复量与存放处：货舱 / 仓库） */
-  function repairWorld(opts: { restore: number; units: number; where: 'cargo' | 'warehouse' }) {
+  /**
+   * 低安世界 + 修理组件（指定回复量与存放处：货舱 / 仓库）＋ **测试维修装置**。
+   *
+   * ⚠ **2026-09-16 船长改判**：自动修补**需要该船装着船体维修装置**，且**组件类型跟着装置走**
+   * ⇒ 除"专门验没装置"的那条用例（`device: false`）外，这里默认给它装一台吃 `repairkit-civ` 的装置。
+   */
+  function repairWorld(opts: {
+    restore: number
+    units: number
+    where: 'cargo' | 'warehouse'
+    /** 缺省 true = 装上测试维修装置；false = 验"没装装置 ⇒ 不自动修" */
+    device?: boolean
+    /** 装置吃哪种组件（缺省民用） */
+    kit?: 'civ' | 'mil'
+  }) {
+    const kitId = opts.kit === 'mil' ? 'repairkit-mil' : 'repairkit-civ'
     const kit = {
-      id: 'repairkit-civ',
-      name: '民用修理组件',
+      id: kitId,
+      name: opts.kit === 'mil' ? '军用修理组件' : '民用修理组件',
       kind: 'kit' as const,
       unitM3: 1,
       baseSellPriceIsk: 3_000,
       repairRestore: opts.restore,
-      description: '测试民用修理组件',
+      description: '测试修理组件',
     }
     const ctx: SimContext = makeTestCtx({
       quietEvents: true,
@@ -595,11 +609,15 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
       belts: [belt('belt-a', 'ore-a', '带belt-a'), belt('belt-f', 'ore-a', '低安带', { galaxyId: 'galaxy-far' })],
       anomalies: encTiers(),
       items: [kit],
+      modules: [moduleDef('mod-test-rep', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: kitId })],
     })
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
     state.exploredGalaxies.push('galaxy-far')
-    if (opts.where === 'cargo') state.fleet[state.shipId]!.cargo['repairkit-civ'] = opts.units
-    else state.warehouse.items['repairkit-civ'] = opts.units
+    if (opts.device !== false) {
+      state.fleet[state.shipId]!.fitted = { ...state.fleet[state.shipId]!.fitted, mid: ['mod-test-rep'] }
+    }
+    if (opts.where === 'cargo') state.fleet[state.shipId]!.cargo[kitId] = opts.units
+    else state.warehouse.items[kitId] = opts.units
     return { state, ctx }
   }
 
@@ -648,7 +666,8 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     state.fleet[droneId] = {
       durability: 1,
       cargo: { 'repairkit-civ': 10 },
-      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
+      // 2026-09-16 起自动修补需要装置 ⇒ 副船也给它装一台（吃民用组件）
+      fitted: { ...fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }), mid: ['mod-test-rep'] },
     }
     state.aiAssignments[droneId] = {
       coreType: 'basic',
@@ -661,6 +680,19 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     expect(state.aiAssignments[droneId]).toBeDefined() // 不召回
     expect(state.fleet[droneId]!.durability).toBeGreaterThanOrEqual(0.6)
     expect(state.logs.some((l) => l.text.includes('已中止任务召回回港待命'))).toBe(false)
+  })
+
+  it('**没装维修装置**：遇袭后不自动修，也不按"断料"返港（结构尚有半数的场合）', () => {
+    const { state, ctx } = repairWorld({ restore: 30, units: 10, where: 'cargo', device: false })
+    miningInField(state, ctx)
+    state.fleet[state.shipId]!.durability = 0.8
+    state.fleet[state.shipId]!.armorPct = 0.4 // 装甲残、结构好 ⇒ 只可能触发自动修补那条
+    inject(state, 6)
+    fleeEncounter(state, ctx)
+    // 「没装置 ⇒ 不修」的证据 = **没有自动修理日志**；「没装置 ≠ 断料」的证据 = **没有断料返港那条日志**
+    // （遇袭档位本身可能另有处置，故不拿 mining 状态当判据）
+    expect(state.logs.some((l) => l.text.includes('自动使用修理组件'))).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('修理组件耗尽')), '不该被判成断料返港').toBe(false)
   })
 
   it('结构未低于 50%：不撤退（低安作业照做）', () => {

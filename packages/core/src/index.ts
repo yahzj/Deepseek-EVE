@@ -938,6 +938,12 @@ export {
   WORMHOLE_FAMILY_ORDER,
   WORMHOLE_FAMILY_CARD,
   WORMHOLE_FAMILY_GLYPH,
+  // 2026-09-16 船长：「扫描虫洞界面…给虫洞卡片添加更多信息（虫洞内是什么敌人，以什么类型伤害为主）」
+  // ⇒ 族称 / 三档中文名 / 伤害中文名 / 敌情摘要单点（卡片一句话 + 悬停列三档）
+  WORMHOLE_FAMILY_ETHNIC,
+  WORMHOLE_TIER_LABELS,
+  DAMAGE_TYPE_LABELS,
+  wormholeFamilyIntel,
   wormholeFamilyOfSeed,
   wormholeCardIdOfFamily,
   wormholeScanBonusOf,
@@ -1318,6 +1324,7 @@ export type {
   WormholePile,
   WormholeFoeKind,
   WormholeCardTier,
+  WormholeFamilyIntel,
   WormholeState,
   WormholeRunState,
   WormholeNode,

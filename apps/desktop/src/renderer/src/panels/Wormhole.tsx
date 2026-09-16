@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 import { HintIcon } from '../ui/Hint'
 import { pinMarked } from '../ui/marks'
+import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
 import { Glyph, itemIconOf, itemToneOf } from '../ui/Glyphs'
 import {
@@ -246,6 +247,16 @@ export function WormholePanel({
   const autoBlock =
     auto && autoStockId !== null ? engine.wormholeAutoBlockReason(autoStockId, picked, autoMainPicked) : null
   const autoGate = autoMainReason ?? autoBlock
+  /**
+   * **本次准备的是哪一处虫洞**（船长 2026-09-16 的敌情行要用它）：从库存进来时
+   * `stockId`（手动）/ `autoStockId`（自动）有值 ⇒ 取其族；两者都没有（从星图入口直接开面板）
+   * ⇒ 不显示敌情行（不猜、不编）。
+   */
+  const prepStock = (() => {
+    const id = autoStockId ?? stockId
+    if (!id) return null
+    return engine.wormholeStock().find((s) => s.id === id) ?? null
+  })()
   const cargoM3 = wormholeFleetCargoM3(state, ctx, picked)
   const bagSlots = wormholeBagSlots(cargoM3)
   const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))) : null
@@ -1142,6 +1153,17 @@ export function WormholePanel({
                   ? `准备 · 选编队（最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船）`
                   : `准备 · 选编队（最多 ${WORMHOLE_MAX_SHIPS} 艘）`}
               </div>
+              {/**
+               * **敌情一行**（船长 2026-09-16：「给虫洞卡片添加更多信息（虫洞内是什么敌人，
+               * 以什么类型伤害为主）」——准备页与扫描页**同批对齐**，两处共用 `ui/wormholeIntel`）。
+               * 只有"这一处是哪一处"已知时才显示（从库存进来 ⇒ `stockId`/`autoStockId` 有值）；
+               * 悬停给三档火力构成（⚠ 档间会变：D 族深层 6:4、E 族中层纯高爆）。
+               */}
+              {prepStock ? (
+                <div className="app-dim app-note" title={wormholeIntelTip(engine, prepStock.family)}>
+                  {wormholeIntelLine(engine, prepStock.family)}
+                </div>
+              ) : null}
               <div className="app-dim app-note">
                 {auto ? (
                   <>

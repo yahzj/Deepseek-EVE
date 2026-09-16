@@ -454,9 +454,17 @@ describe('连续作战保险', () => {
     expect(battleWinPreview(state, ctx, weak, state.shipId)).toBe(rawWeak)
   })
 
-  it('巡回自动再出发门槛看装甲：装甲 <50% 且无修理组件 → 停环（原先只看结构，太晚）', () => {
+  /**
+   * **2026-09-16 船长改判**：「洞外，原本的损伤严重自动消耗维修组件功能，需要修改。**改成需要玩家携带
+   * 对应的船体维修装置。消耗的维修组件类型也跟着装置走**」⇒ 下面两条用例各自补齐"装置"这一前提；
+   * 另新增一条锁"没装装置 ⇒ 停环且理由点名"。
+   */
+  it('巡回自动再出发门槛看装甲：装甲 <50% 且**装了装置但无组件** → 停环（理由点名组件耗尽）', () => {
+    // 装一台能吃民用组件的测试维修装置（**2026-09-16 起自动修补的前置**）
+    ctx = makeTestCtx({ modules: [moduleDef('mod-test-rep', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: 'repairkit-civ' })] })
     state.autoLoopAnomalyId = 'ano-a' // 本地目标（无冷却/无探索门槛）
     const fs = state.fleet[state.shipId]!
+    fs.fitted = { ...fs.fitted, mid: ['mod-test-rep'] }
     fs.armorPct = 0.4 // 装甲已残、结构尚好——旧逻辑（结构 <0.5 才拦）会放行
     fs.durability = 0.9
     const reason = advanceAutoLoopBounty(state, ctx)
@@ -465,7 +473,21 @@ describe('连续作战保险', () => {
     expect(state.expedition.active).toBe(false) // 未出发
   })
 
-  it('巡回自动再出发：装甲 <50% 时有货仓修理组件 → 自动修补到 60% 再出发（战斗挂保险阈值 50%）', () => {
+  it('**没装船体维修装置** ⇒ 停环，理由点名"未装装置"（2026-09-16 新口径：不再无条件吃组件）', () => {
+    state.autoLoopAnomalyId = 'ano-a'
+    const fs = state.fleet[state.shipId]!
+    fs.armorPct = 0.4
+    fs.durability = 0.9
+    fs.cargo['repairkit-civ'] = 50 // 货舱里有组件，但没装装置 ⇒ 一枚都不该被吃
+    const reason = advanceAutoLoopBounty(state, ctx)
+    expect(reason).toContain('未装船体维修装置')
+    expect(fs.cargo['repairkit-civ']).toBe(50) // 组件一枚未动
+    expect(fs.armorPct).toBe(0.4) // 也没修
+    expect(state.autoLoopAnomalyId).toBeNull()
+    expect(state.expedition.active).toBe(false)
+  })
+
+  it('巡回自动再出发：装甲 <50% 时**装了装置 + 对应组件** → 自动修补到 60% 再出发（战斗挂保险阈值 50%）', () => {
     const kit: ItemDef = {
       id: 'repairkit-civ',
       name: '民用修理组件',
@@ -475,11 +497,16 @@ describe('连续作战保险', () => {
       repairRestore: 30,
       description: '',
     }
-    ctx = makeTestCtx({ quietEvents: true, items: [...DEFAULT_TEST_ITEMS, kit] })
+    ctx = makeTestCtx({
+      quietEvents: true,
+      items: [...DEFAULT_TEST_ITEMS, kit],
+      modules: [moduleDef('mod-test-rep', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: 'repairkit-civ' })],
+    })
     state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.wallet.isk = 500_000
     state.autoLoopAnomalyId = 'ano-a'
     const fs = state.fleet[state.shipId]!
+    fs.fitted = { ...fs.fitted, mid: ['mod-test-rep'] } // 装置（test ctx 的模块表里带 repairKit: repairkit-civ）
     fs.armorPct = 0.4
     fs.durability = 0.9
     fs.cargo['repairkit-civ'] = 50
