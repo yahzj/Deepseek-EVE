@@ -304,7 +304,8 @@ export const WORMHOLE_ESSENCE_PER_DEVICE = 1
 
 /* ── 贵重品货柜 / 军用备货柜（船长 2026-09-15 定「虫洞战利品与经济扩充」②④）── */
 
-/** 贵重品货柜（2 格 · 只收不卖）；拆出一叠奢侈品 */
+/** 贵重品货柜（**4 格 = 2×2** · 只收不卖）；拆出一叠奢侈品
+ *  ⚠ 2026-09-16 船长「**奢侈品货柜调整为2*2**」：占格 **2×1 = 2 格 → 2×2 = 4 格**（体积 1000 → 2000 m³） */
 export const WORMHOLE_VALUABLES_BOX_ID = 'box-valuables'
 /** 军用备货柜（4 格 · 只收不卖）；拆出 1~3 件随机 MK3 装备 */
 export const WORMHOLE_MILITARY_BOX_ID = 'box-military'

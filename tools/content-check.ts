@@ -4597,6 +4597,37 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
         errors.push(`图纸货柜契约：${id} 没在 core 形状表里登记 —— 会被当散货塞进背包（只占 1 格、形状丢失）`)
       }
     }
+    /* **贵重品 / 军用货柜契约**（2026-09-15 船长：「新增贵重品货柜，2格，精炼炉拆解后获得随机数量的'奢侈品'」
+     * ＋「新增军用备货柜4格，精炼炉可以从中拆出数件随机MK3装备」；**2026-09-16 船长「奢侈品货柜调整为2*2」**
+     * ⇒ 贵重品柜 **2×1 = 2 格 → 2×2 = 4 格**）：
+     * 两种都必须 ① `kind === 'container'` ② **体积 = 500 m³/格 × w × h**（与形状表对得上）
+     * ③ 在 core 形状表里登记过（没登记 ⇒ 被当散货：2000 m³ 会让"每格单位数"退化 ⇒ 只占 1 格、形状丢失）。
+     * ⚠ 这两条原先没有哨（2026-09-16 补）：**形状在 core、体积在 data**，只改一处四道闸门都不会报错 ⇒ 现钉住这一对。 */
+    for (const [boxId, w, h] of [
+      [WORMHOLE_VALUABLES_BOX_ID, 2, 2], // 2026-09-16 船长「奢侈品货柜调整为2*2」（原 2×1 = 2 格 · 1000 m³）
+      [WORMHOLE_MILITARY_BOX_ID, 2, 2], // 2026-09-15 船长「新增军用备货柜4格」
+    ] as const) {
+      const box = ctxItems.get(boxId)
+      if (!box) {
+        errors.push(`货柜契约：物品目录里没有 ${boxId} —— 遗迹掉落会散落出无定义的物品`)
+        continue
+      }
+      if (box.kind !== 'container') errors.push(`货柜契约：${boxId} 的 kind = ${box.kind}，应为 container`)
+      const shp = wormholeShapeOf(boxId)
+      if (shp.w !== w || shp.h !== h) {
+        errors.push(
+          `货柜契约：${boxId} 的形状 = ${shp.w}×${shp.h}，应为 ${w}×${h}（船长「奢侈品货柜调整为2*2」/「新增军用备货柜4格」）`,
+        )
+      }
+      if (box.unitM3 !== 500 * w * h) {
+        errors.push(
+          `货柜契约：${boxId} 的体积 = ${box.unitM3} m³，应为 ${500 * w * h}（= 500 m³/格 × ${w}×${h} = ${w * h} 格）`,
+        )
+      }
+      if (!wormholeIsShapedItem(boxId)) {
+        errors.push(`货柜契约：${boxId} 没在 core 形状表里登记 —— 会被当散货塞进背包（形状丢失）`)
+      }
+    }
     /**
      * **AI 核心契约**（2026-09-14 船长：「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
      * AI 核心单独占 1 格。出率为 10%，不挤占旧有出率。三种核心根据稀有度区分出货权重。」）。

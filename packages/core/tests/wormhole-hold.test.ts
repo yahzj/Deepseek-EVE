@@ -32,6 +32,7 @@ import {
   wormholeOverloadBlockReason,
   wormholeSalvageAt,
   wormholeTempUsage,
+  WORMHOLE_VALUABLES_BOX_ID,
 } from '../src/wormholeSalvage'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
 import { gridCellAt } from '../src/wormholeGrid'
@@ -400,6 +401,32 @@ describe('虫洞 · 货仓格随档（零迁移）', () => {
     expect(holdAdd(back.hold!, safeBox, 40).ok, '货仓放得下 3×2').toBe(true)
     const fresh = back.hold!.placements.filter((p) => p.itemId === safeBox).map((p) => `${p.w}×${p.h}`)
     expect(fresh, '同一趟里"老件 2×2 + 新件 3×2"并存').toContain('3×2')
+  })
+
+  it('**贵重品货柜改 2×2 = 4 格后：老档那件仍是 2×1，新装舱才按 2×2**', () => {
+    /**
+     * 2026-09-16 船长「**奢侈品货柜调整为2*2**」：`box-valuables` **2×1 = 2 格 → 2×2 = 4 格**
+     * （体积同步 1000 → 2000 m³ = 500 m³/格 × 4 格，与军用备货柜同形同积）。
+     * 与上面那条安全货柜同款行为：老档 placement **自带 `w`/`h`**、读档不按形状表重算
+     * ⇒ 改规格前装进仓的那件**仍是 2×1**（不凭空多占 2 格、也就不凭空超载）；只有新装舱取新形状。
+     */
+    const state = enterRun(4)
+    const run = state.wormhole.run!
+    run.hold = makeHoldState()
+    const box = WORMHOLE_VALUABLES_BOX_ID
+    // 老档现场：手工写一件"旧规格"的贵重品货柜（2×1）
+    run.hold.placements.push({ id: 'legacy-2', itemId: box, kind: 'box', x: 0, y: 0, w: 2, h: 1 })
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state.wormhole.run!
+    const kept = back.hold!.placements.find((p) => p.id === 'legacy-2')!
+    expect([kept.w, kept.h], '老档那件保留旧占地 2×1').toEqual([2, 1])
+    // 新装舱取新形状：2×2（形状表已改）
+    expect(wormholeShapeOf(box)).toEqual({ w: 2, h: 2 })
+    expect(holdAdd(back.hold!, box, 40).ok, '货仓放得下 2×2').toBe(true)
+    const fresh = back.hold!.placements.filter((p) => p.itemId === box).map((p) => `${p.w}×${p.h}`)
+    expect(fresh, '同一趟里"老件 2×1 + 新件 2×2"并存').toContain('2×2')
+    // 体积同尺：500 m³/格 × 4 格（content:check「贵重品/军用货柜契约」同钉这一对）
+    expect(ctx.items.get(box)?.unitM3, '体积随形状同改').toBe(2000)
+    expect(ctx.items.get(box)?.kind).toBe('container')
   })
 })
 

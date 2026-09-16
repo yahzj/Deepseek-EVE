@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **263** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4972** KB · **36144** 行
-- 状态分布：**未标注** 141 · **已确认/已实现** 106 · **进行中** 10 · **待裁定** 5 · **历史留档** 1
+- 文档总数 **264** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4977** KB · **36221** 行
+- 状态分布：**未标注** 141 · **已确认/已实现** 106 · **进行中** 11 · **待裁定** 5 · **历史留档** 1
 - 孤儿文档（0 引用）**16** 份 · 状态未标注 **141** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**182** 份
+- 三、现行设计稿（design）：**183** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**15** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -34,8 +34,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 317 KB / 756 行 | 187 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 216 行 | 236 / 9 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 317 KB / 756 行 | 189 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 216 行 | 237 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -51,18 +51,19 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 182 份
+## 三、现行设计稿（design） —— 183 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 2 / 0 |
 | `docs/design/announcement-draft-20260916-wormhole-bloom.md` | 公告待审稿 · 虫洞大量生成（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 2 KB / 37 行 | 1 / 1 |
-| `docs/design/luxury-expansion-20260916.md` | 奢侈品扩到十款 ＋ 波动口径复核（2026-09-16） | 进行中（进行中） | 2026-09-16 | 6 KB / 72 行 | 0 / 0 |
+| `docs/design/luxury-expansion-20260916.md` | 奢侈品扩到十款 ＋ 波动口径复核（2026-09-16） | 进行中（进行中） | 2026-09-16 | 6 KB / 72 行 | 1 / 0 |
+| `docs/design/valuables-box-2x2-20260916.md` | 奢侈品（贵重品）货柜改 2×2 · 工作文档 | 进行中（进行中） | 2026-09-16 | 5 KB / 77 行 | 0 / 0 |
 | `docs/design/wh-c-cards-20260916.md` | 虫洞 C 族三卡改编成（＋15 卡火力密度普查）· 工作文档 | 进行中（进行中） | 2026-09-16 | 10 KB / 120 行 | 0 / 1 |
 | `docs/design/wormhole-ambush-20260916.md` | 虫洞「踩中埋伏」：进未扫描地点踩到敌人 ⇒ 事件提醒 → 确认开战（2026-09-16） | 进行中（进行中） | 2026-09-16 | 7 KB / 68 行 | 0 / 0 |
 | `docs/design/wormhole-path-intercept-20260916.md` | 虫洞「路径拦截」：直线路径上有敌人 ⇒ 前往中途被拦下开战（2026-09-16） | 进行中（进行中） | 2026-09-16 | 11 KB / 126 行 | 0 / 1 |
 | `docs/design/announcement-draft-20260915-extract-retire.md` | 公告待审稿 · 虫洞调整（2026-09-15） | 待裁定（待船长审核） | 2026-09-15 | 2 KB / 35 行 | 4 / 0 |
-| `docs/design/announcement-draft-20260915-wormhole-loot.md` | 公告待审稿 · 虫洞战利品扩充（2026-09-15） | 待裁定（待船长审核 · 经办已转一号） | 2026-09-15 | 4 KB / 45 行 | 2 / 0 |
+| `docs/design/announcement-draft-20260915-wormhole-loot.md` | 公告待审稿 · 虫洞战利品扩充（2026-09-15） | 待裁定（待船长审核 · 经办已转一号） | 2026-09-15 | 4 KB / 45 行 | 4 / 0 |
 | `docs/design/civilian-hp-20260915.md` | 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8） | 已确认/已实现（已确认） | 2026-09-15 | 5 KB / 92 行 | 0 / 0 |
 | `docs/design/desire-band-20260915.md` | 默认期望交距：中段 → 射程带高位（星图与洞内统一 0.8；洞内近战开局另守中段 0.5） | 未标注 | 2026-09-15 | 7 KB / 85 行 | 4 / 0 |
 | `docs/design/docs-archive-20260915.md` | 文档精简与封存（roadmap / glossary）—— 工作文档 | 进行中（进行中） | 2026-09-15 | 9 KB / 107 行 | 2 / 0 |
@@ -331,7 +332,7 @@
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/luxury-expansion-20260916.md`（2026-09-16 · 6 KB）—— 奢侈品扩到十款 ＋ 波动口径复核（2026-09-16）
+- `docs/design/valuables-box-2x2-20260916.md`（2026-09-16 · 5 KB）—— 奢侈品（贵重品）货柜改 2×2 · 工作文档
 - `docs/design/wormhole-ambush-20260916.md`（2026-09-16 · 7 KB）—— 虫洞「踩中埋伏」：进未扫描地点踩到敌人 ⇒ 事件提醒 → 确认开战（2026-09-16）
 - `docs/design/civilian-hp-20260915.md`（2026-09-15 · 5 KB）—— 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8）
 - `docs/design/first-ship-comms-20260915.md`（2026-09-15 · 8 KB）—— 首艘自造船通讯（msg-first-ship）· 工作文档
