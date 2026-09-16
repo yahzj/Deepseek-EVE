@@ -35,10 +35,13 @@ import type { AnomalyDef, FoeShipDef, SimContext } from '../src/types'
 
 const base: SimContext = buildSimContext()
 
-const STEALTH_2 = 'mod-stealth-2' // 20 秒 · CPU 75
-const STEALTH_3 = 'mod-stealth-3' // 30 秒 · CPU 120
-/** 推进器（中槽 propulsion 家族）——船长追加禁令的判据 */
-const THRUSTER = 'mod-prop-3'
+const STEALTH_2 = 'mod-stealth-2' // 20 秒 · CPU 55 · 300 万 · 稀有档 3（船长 2026-09-16 定数）
+const STEALTH_3 = 'mod-stealth-3' // 30 秒 · CPU 80 · 1000 万 · 奇货档 4（船长 2026-09-16 定数）
+/**
+ * 推进器禁令的判据 = **装配家族 `slot: 'propulsion'`**（不是件名）⇒ 三档矢量推进器、三档微型跃迁引擎、
+ * 以及虫洞专属的「掠袭加力器」「幽灵推进器」**全部**触发（用例里按家族**动态枚举**，新增件自动纳入）。
+ */
+const THRUSTER = 'mod-prop-3' // 矢量推进器 MK3（代表性一件）
 /** 测试舰：大白鲨级炮舰（225 CPU · 高槽 5）——装得下"重炮 + 隐秘装置"或"重炮 + 推进器" */
 const SHIP = 'sh-whiteshark'
 const CARD = 'ano-stealth-test'
@@ -84,11 +87,12 @@ function stealthCard(): AnomalyDef {
   }
 }
 
-/** 造一场真战斗：把装置与武器装到测试舰上（`weapons: false` = 只有装置、没有武器） */
+/** 造一场真战斗：把装置与武器装到测试舰上（`weapons: false` = 只有装置、没有武器；
+ *  `mid` = 中槽附加件——推进器禁令与"非推进器中槽件"的对照都走这个口） */
 function world(opts: {
   stealth: string | readonly string[]
   weapons?: boolean
-  thruster?: string
+  mid?: string
 }): { state: GameState; ctx: SimContext; uid: string } {
   const ctx: SimContext = {
     ...base,
@@ -99,7 +103,7 @@ function world(opts: {
   state.shipId = uid
   const stealth = Array.isArray(opts.stealth) ? [...opts.stealth] : [opts.stealth as string]
   const high = [...(opts.weapons === false ? [] : ['mod-turret-kin-3']), ...stealth]
-  const mid = opts.thruster ? [opts.thruster] : []
+  const mid = opts.mid ? [opts.mid] : []
   state.fleet[uid]!.fitted = { high, mid, low: [] }
   addWare(state, 'ammo-kinetic-l', 5_000)
   return { state, ctx, uid }
@@ -176,15 +180,33 @@ describe('隐秘行动装置（2026-09-15 船长 · 六问六答）', () => {
     expect(stackingOf(both.ctx.modules.get(STEALTH_3)!)).toEqual({ group: 'max', kind: 'stealth' })
   })
 
-  it('**推进器禁令**（船长 Q5 追加）：装了推进器 ⇒ 装置直接失效（没有窗口）', () => {
-    const { state, ctx, uid } = world({ stealth: STEALTH_3, thruster: THRUSTER })
-    // 装配期即判：规格里不带 stealthMs
-    expect(createPlayerSpec(state, ctx, uid)!.stealthMs).toBeUndefined()
-    const b = startBattleFor(state, ctx, uid, CARD, 0)!
-    expect(b.units['player']!.stealthUntilMs, '带推进器却仍有隐身窗口').toBeUndefined()
-    // 直接后果：开战即可被选中（隐身没有生效）
-    const spec = createPlayerSpec(state, ctx, uid)!
-    expect(pickMyUnitTarget(state, b, [spec], 'random')).not.toBeNull()
+  it('**推进器禁令**（船长 Q5 追加）：装了**推进器族任何一件** ⇒ 装置直接失效（含微型跃迁引擎）', () => {
+    /**
+     * 判据 = **装配家族 `slot: 'propulsion'`**（`combat.createPlayerSpec` 里 `propDefs` 非空即判 0）——
+     * 不是件名匹配 ⇒ **三档矢量推进器 + 三档微型跃迁引擎 + 虫洞专属两件**全部触发。
+     * 本用例按家族**动态枚举**：日后新增任何推进器件，自动落进这条断言（防"注释里写着同源、代码各写一份"）。
+     * 船长 2026-09-16 追问「推进器是否包括微型跃迁装置」⇒ 这一条就是那问的钉子。
+     */
+    const propIds = [...base.modules.values()].filter((m) => m.slot === 'propulsion').map((m) => m.id)
+    expect(propIds.length, '推进器家族不该这么少').toBeGreaterThanOrEqual(6)
+    expect(propIds, '矢量推进器不在家族里？').toContain('mod-prop-3')
+    expect(propIds, '微型跃迁引擎不在家族里？').toContain('mod-mwd-3')
+    for (const id of propIds) {
+      const { state, ctx, uid } = world({ stealth: STEALTH_3, mid: id })
+      expect(createPlayerSpec(state, ctx, uid)!.stealthMs, `${id} 没有触发禁令`).toBeUndefined()
+    }
+    // 端到端：装了**微型跃迁引擎 MK3** ⇒ 开战就没有隐身窗口，且立刻可被选中
+    const e2e = world({ stealth: STEALTH_3, mid: 'mod-mwd-3' })
+    const b = startBattleFor(e2e.state, e2e.ctx, e2e.uid, CARD, 0)!
+    expect(b.units['player']!.stealthUntilMs, '带微型跃迁引擎却仍有隐身窗口').toBeUndefined()
+    const spec = createPlayerSpec(e2e.state, e2e.ctx, e2e.uid)!
+    expect(pickMyUnitTarget(e2e.state, b, [spec], 'random')).not.toBeNull()
+    // **反击断言**：禁令认的是**家族**，不是"中槽"——非推进器的中槽支援件不该误触发
+    for (const id of ['mod-track-2', 'mod-gyro-2']) {
+      const ctrl = world({ stealth: STEALTH_3, mid: id })
+      expect(base.modules.get(id)?.slot, `${id} 不是中槽支援件？对照失效`).toBe('support')
+      expect(createPlayerSpec(ctrl.state, ctrl.ctx, ctrl.uid)!.stealthMs, `${id} 误触发禁令`).toBe(30_000)
+    }
   })
 
   it('**编队里只护装了装置的那一艘**（Q3 甲）：僚舰照常可被选中', () => {
@@ -215,7 +237,7 @@ describe('隐秘行动装置（2026-09-15 船长 · 六问六答）', () => {
     const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
     expect(loaded.expedition.battle?.units['player']?.stealthUntilMs).toBe(30_000)
     // 老档/未装装置的单位：本字段缺失 ⇒ 恒可被选中（零迁移）
-    const plain = world({ stealth: STEALTH_2, thruster: THRUSTER })
+    const plain = world({ stealth: STEALTH_2, mid: THRUSTER })
     const pb = startBattleFor(plain.state, plain.ctx, plain.uid, CARD, 0)!
     expect(pb.units['player']!.stealthUntilMs).toBeUndefined()
   })
