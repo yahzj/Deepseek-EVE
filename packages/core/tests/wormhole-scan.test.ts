@@ -29,6 +29,8 @@ import {
   WORMHOLE_SCAN_UNLOCK_STANDING,
   WORMHOLE_STOCK_MAX,
   WORMHOLE_STOCK_MAX_HARD,
+  WORMHOLE_STOCK_BONUS,
+  WORMHOLE_STOCK_BONUS_PER_LEVEL,
   wormholeStockMaxOf,
   advanceWormholeScan,
   wormholeScanBlockReason,
@@ -213,16 +215,26 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     expect(cleaned.wormholeScan).toEqual({ active: false, progressMs: 0 })
   })
 
-  it('**保存上限随「星图记录学」满级 +10**（船长 2026-09-14：基础 5 ⇒ 满级 15；Lv4 不加 = 阶跃）', () => {
+  it('**保存上限随「星图记录学」每级 +2（满级 +10）**（船长 2026-09-16 改判：由阶跃改为线性）', () => {
     const s = fresh()
-    // 不练 / Lv4：都是基础 5 处
+    // 不练：基础 5 处
     expect(wormholeStockMaxOf(s)).toBe(WORMHOLE_STOCK_MAX)
-    s.skills.trained['chart-archive'] = 4
-    expect(wormholeStockMaxOf(s)).toBe(WORMHOLE_STOCK_MAX)
-    // 满级（Lv5）：基础 + 10 = 15 处
+    // **每级 +2**：Lv1 7 / Lv2 9 / Lv3 11 / Lv4 13（旧口径 Lv1~4 一律 5，本批改判）
+    for (const [lv, want] of [
+      [1, WORMHOLE_STOCK_MAX + 2],
+      [2, WORMHOLE_STOCK_MAX + 4],
+      [3, WORMHOLE_STOCK_MAX + 6],
+      [4, WORMHOLE_STOCK_MAX + 8],
+    ] as const) {
+      s.skills.trained['chart-archive'] = lv
+      expect(wormholeStockMaxOf(s), `Lv${lv}`).toBe(want)
+    }
+    // 满级（Lv5）：基础 + 10 = 15 处（**满级总量与旧口径一致**）
     s.skills.trained['chart-archive'] = 5
     expect(wormholeStockMaxOf(s)).toBe(WORMHOLE_STOCK_MAX + 10)
-    expect(WORMHOLE_STOCK_MAX_HARD).toBe(WORMHOLE_STOCK_MAX + 10) // 读档钳制用的理论最大值
+    // 防漂移守卫：满级锚（常量）必须 = 每级值 × 5（两处不许各自漂）
+    expect(WORMHOLE_STOCK_BONUS).toBe(WORMHOLE_STOCK_BONUS_PER_LEVEL * 5)
+    expect(WORMHOLE_STOCK_MAX_HARD).toBe(WORMHOLE_STOCK_MAX + 10) // 读档钳制用的理论最大值（不变）
     /**
      * 实战：满级后能囤到 15 处（**停机阈值跟着抬高**——改前第 6 处就会停机）。
      * 用 `debugQuick` 把窗口压到 1 秒，直接连扫 15 个窗口。

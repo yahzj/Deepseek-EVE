@@ -2311,6 +2311,27 @@ function removeCargoOfShip(state: GameState, shipId: string, itemId: string, uni
   return take
 }
 
+/**
+ * **该舰的层容量增幅**（装甲/结构各自的「满值 ÷ 档案基础值」）——**2026-09-16 船长「统一吃」**：
+ * 维修装置的每跳修复量与修理组件**同一把尺**，都随**额外护甲/结构加成**放大
+ * （装备件 `armorHpBonus` / `hullHpBonus` ＋ 技能「船体加固理论」＋ 重装族「重装舰操作」）。
+ *
+ * 与 `shipyard.kitHealFor` 的 `capA/baseA`、`capH/baseH` **完全同源**：都取 `createPlayerSpec`
+ * （含装备与技能）÷ 舰船档案值 ⇒ 两条路径的"吃加成"口径不会各写一套。
+ * 缺规格/档案（老档坏数据）⇒ 返回 1（不放大、不崩）。
+ */
+function layerAmpOf(state: GameState, ctx: SimContext, shipId: string): { a: number; h: number } {
+  const spec = createPlayerSpec(state, ctx, shipId)
+  const def = fleetDefOf(state, ctx, shipId)
+  if (!spec || !def) return { a: 1, h: 1 }
+  const baseA = def.armorHp ?? 0
+  const baseH = def.hullHp ?? 0
+  return {
+    a: baseA > 0 ? spec.hp.a / baseA : 1,
+    h: baseH > 0 ? spec.hp.h / baseH : 1,
+  }
+}
+
 /** 当前船已装配的维修装置（带 repairArmorHp/repairHullHp 的装配件，按位序） */
 export function fittedRepairModules(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
   const ship = state.fleet[shipId]
@@ -2339,6 +2360,12 @@ export function preloadRepairFor(
   // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
   // 共用同一处系数（`repair.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）
   const quickRepair = quickRepairFactor(state, ctx)
+  /**
+   * **层容量增幅**（2026-09-16 船长「统一吃」＋「并在相关说明中提及（提高维修量等）」）：
+   * 每跳修复量从此与**修理组件同一把尺**——额外护甲/结构加成（装甲增厚板 · 结构件 ·
+   * 船体加固理论 · 重装舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
+   */
+  const amp = layerAmpOf(state, ctx, shipId)
   // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
   // （权重 100%/87%/57%/28%/11%，与"命中/速度"同类；不吃组件故必须收敛，否则叠装失控）
   const freeSeen = new Map<string, number>()
@@ -2355,8 +2382,8 @@ export function preloadRepairFor(
         moduleId: d.id,
         kitId: '',
         free: true,
-        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w)),
-        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w)),
+        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w * amp.a)),
+        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w * amp.h)),
         stopped: false,
       })
       continue
@@ -2368,8 +2395,8 @@ export function preloadRepairFor(
     units.push({
       moduleId: d.id,
       kitId,
-      armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * quickRepair)),
-      hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * quickRepair)),
+      armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * quickRepair * amp.a)),
+      hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * quickRepair * amp.h)),
       stopped: false,
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)

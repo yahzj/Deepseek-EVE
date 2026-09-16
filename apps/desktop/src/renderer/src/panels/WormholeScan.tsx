@@ -91,7 +91,7 @@ export function WormholeScanTab({
   const done = Math.min(windowMs, scan.progressMs)
   const percent = Math.max(0, Math.min(100, Math.round((done / windowMs) * 100)))
   const blocked = engine.wormholeScanBlockReason()
-  /** **当前保存上限**（船长 2026-09-14：「星图记录学，满级允许玩家虫洞的保存上限+10」⇒ 基础 5＋满级 10） */
+  /** **当前保存上限**（2026-09-16 船长改判「星图记录学，应该为每级+2，满级+10」⇒ 基础 5 ＋ 每级 2 ⇒ 满级 15） */
   const stockMax = wormholeStockMaxOf(state)
   const full = stock.length >= stockMax
   /** 手上那趟探索（非空 = 人在洞里 / 临时离开中）；「返回虫洞」按钮与"扫描被挡"的说明都用它 */
@@ -108,7 +108,7 @@ export function WormholeScanTab({
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
-          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${stockMax} 处（「星图记录学」满级再 +10）。`}
+          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${stockMax} 处（「星图记录学」每级 +2，满级 +10）。`}
         />
       }
       right={

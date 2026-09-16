@@ -72,7 +72,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '重装舰操作',
     group: '舰船',
     rank: 3,
-    description: '重装舰族专精驾驶：驾驶重装族舰船时装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与船体加固理论、装甲增厚板乘算叠加，护盾不受影响）。',
+    description: '重装舰族专精驾驶：驾驶重装族舰船时装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与船体加固理论、装甲增厚板乘算叠加，护盾不受影响）。容量变厚的同时，修理组件与船体维修装置的修复量按同一比例提高。',
   },
   {
     id: 'vector-maneuvering',
@@ -399,7 +399,7 @@ export const SKILLS: readonly SkillDef[] = [
     name: '船体加固理论',
     group: '工程',
     rank: 3,
-    description: '船体结构强化工程：装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与装甲增厚板乘算）。',
+    description: '船体结构强化工程：装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与装甲增厚板乘算）。容量变厚的同时，修理组件与船体维修装置的修复量按同一比例提高。',
   },
   {
     id: 'armor-tuning',
@@ -549,13 +549,14 @@ export const SKILLS: readonly SkillDef[] = [
   },
   {
     // 2026-09-14 船长：「添加 rank4 技能，星图记录学，满级允许玩家虫洞的保存上限+10。」
-    // 口径 = **阶跃**（与上面星际奇遇学同款语义）：**满级（Lv5）一次性 +10 格**，Lv1~4 不加；
-    // 接线 = `core/wormholeScan.ts` 的 `wormholeStockMaxOf`（基础 5 处 ⇒ 满级 15 处）。
+    // **2026-09-16 船长改判**：「星图记录学，效果错误，应该为每级+2，满级+10。」⇒ 由**阶跃**改为
+    // **每级线性 +2**（Lv1 +2 … Lv5 +10，满级总量不变）；接线 = `core/wormholeScan.ts` 的
+    // `wormholeStockMaxOf`（基础 5 处 ⇒ 上限 7/9/11/13/15）。
     id: 'chart-archive',
     name: '星图记录学',
     group: '探索',
     rank: 4,
-    description: '深空航图与虫洞档案的整理学：星图上可留存的虫洞在满级后再 +⟦10⟧ 处（由 5 处提到 15 处）。',
+    description: '深空航图与虫洞档案的整理学：星图上可留存的虫洞每级 +⟦2⟧ 处（满级 +⟦10⟧ 处，由 5 处提到 15 处）。',
   },
   {
     id: 'salvage-diving',
