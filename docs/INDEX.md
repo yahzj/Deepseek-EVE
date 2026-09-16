@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **277** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5060** KB · **37168** 行
+- 文档总数 **277** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5064** KB · **37176** 行
 - 状态分布：**未标注** 141 · **已确认/已实现** 107 · **进行中** 23 · **待裁定** 5 · **历史留档** 1
 - 孤儿文档（0 引用）**26** 份 · 状态未标注 **141** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -35,7 +35,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 68 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 320 KB / 764 行 | 200 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 98 KB / 216 行 | 241 / 9 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 95 KB / 216 行 | 241 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -61,7 +61,7 @@
 | `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 2 / 0 |
 | `docs/design/announcement-draft-20260916-wormhole-bloom.md` | 公告待审稿 · 虫洞大量生成（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 2 KB / 37 行 | 1 / 1 |
 | `docs/design/c-family-charge-20260916.md` | C 族族格两改：全族冲锋（按档 1.5/2/2.5/3/4）＋ 孢群异虫速度 300 · 工作文档 | 进行中（进行中） | 2026-09-16 | 7 KB / 89 行 | 0 / 0 |
-| `docs/design/copy-parens-audit-20260916.md` | 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档 | 进行中（进行中） | 2026-09-16 | 6 KB / 79 行 | 0 / 0 |
+| `docs/design/copy-parens-audit-20260916.md` | 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档 | 进行中（进行中） | 2026-09-16 | 7 KB / 85 行 | 0 / 0 |
 | `docs/design/first-ship-trigger-fix-20260916.md` | 首艘自造船通讯·触发口径修正（shipBuilt 只认"造过"）· 工作文档 | 进行中（进行中） | 2026-09-16 | 5 KB / 72 行 | 1 / 0 |
 | `docs/design/foe-mounts-20260916.md` | 敌方挂载件（冲锋 / 受击增程挂载化 ＋ A 族洞内海盗冲锋）· 工作文档 | 进行中（进行中） | 2026-09-16 | 5 KB / 72 行 | 0 / 0 |
 | `docs/design/jargon-copy-20260916.md` | 文案去黑话（「高级箱 / 开箱」等不符合设定的名词）· 工作文档 | 进行中（进行中） | 2026-09-16 | 10 KB / 115 行 | 0 / 0 |
@@ -270,7 +270,7 @@
 | `docs/archive/roadmap-2026-09-12.md` | 封存卷 · roadmap 批次条目 2026-09-12 | 未标注 | — | 173 KB / 160 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 397 KB / 256 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 109 KB / 72 行 | 3 / 0 |
+| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 115 KB / 74 行 | 3 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -347,7 +347,7 @@
 
 - `docs/design/ammo-rename-20260916.md`（2026-09-16 · 8 KB）—— 弹药定名批：全族统一到《系+弹药》· 工作文档
 - `docs/design/c-family-charge-20260916.md`（2026-09-16 · 7 KB）—— C 族族格两改：全族冲锋（按档 1.5/2/2.5/3/4）＋ 孢群异虫速度 300 · 工作文档
-- `docs/design/copy-parens-audit-20260916.md`（2026-09-16 · 6 KB）—— 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档
+- `docs/design/copy-parens-audit-20260916.md`（2026-09-16 · 7 KB）—— 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档
 - `docs/design/foe-mounts-20260916.md`（2026-09-16 · 5 KB）—— 敌方挂载件（冲锋 / 受击增程挂载化 ＋ A 族洞内海盗冲锋）· 工作文档
 - `docs/design/jargon-copy-20260916.md`（2026-09-16 · 10 KB）—— 文案去黑话（「高级箱 / 开箱」等不符合设定的名词）· 工作文档
 - `docs/design/logistics-trait-field-20260916.md`（2026-09-16 · 4 KB）—— 后勤舰维修特性入「船体特性」属性（数据字段驱动）· 工作文档

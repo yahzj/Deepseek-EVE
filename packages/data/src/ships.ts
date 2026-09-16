@@ -210,7 +210,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 21_000,
     signatureM: 120,
     scanResMm: 430,
-    description: '鲸盟第三代量产矿舰：拥有货舰级的货舱，产量再上一档（稀有现货或蓝图自造）。',
+    description: '鲸盟第三代量产矿舰：拥有货舰级的货舱，产量再上一档。',
   },
   {
     id: 'sh-bowhead',
@@ -264,7 +264,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 23_000,
     signatureM: 260,
     scanResMm: 320,
-    description: '鲸盟总装的旗舰货舰：十万八千立方货舱，深空物流的移动要塞（仅可制造）。',
+    description: '鲸盟总装的旗舰货舰：十万八千立方货舱，深空物流的移动要塞。',
   },
 
   // ══════════ 掠食者武装线（盾厚炮强；带无人机舱；锁定强） ══════════
@@ -406,7 +406,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 38_000,
     signatureM: 88,
     scanResMm: 520,
-    description: '顶级武装炮舰：市场限量现货，声誉与实力的双重象征（限定奇货）。',
+    description: '顶级武装炮舰：声誉与实力的双重象征。',
   },
 
   // ══════════ 无人机平台延伸（掠食者同系：大机舱 + 高槽多为甲板扩展/导控阵列位） ══════════
@@ -466,7 +466,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 38_000,
     signatureM: 110,
     scanResMm: 500,
-    description: '掠食者武装部门定制的无人机母舰：翻倍的机巢与充裕的装配位，无人机战力的巅峰载体（限定奇货）。',
+    description: '掠食者武装部门定制的无人机母舰：翻倍的机巢与充裕的装配位，无人机战力的巅峰载体。',
   },
 
   // ══════════ 掠食者巡洋舰线（2026-09-09 尺寸分级：T3 巡洋,等效质量 5.8~13M；主力级以上本批不入场） ══════════
@@ -497,7 +497,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 96,
     scanResMm: 520,
     weaponFamilyBonus: { explosive: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族爆破弹药 +12%）
-    description: '掠食者武装部门的新锐导弹巡洋舰：以长尾为名的远距猎手，齐射导弹先声夺人——舰体为导弹阵列特调，爆破弹药威力额外加成（限定奇货）。',
+    description: '掠食者武装部门的新锐导弹巡洋舰：以长尾为名的远距猎手，齐射导弹先声夺人——舰体为导弹阵列特调，爆破弹药威力额外加成。',
   },
   {
     id: 'sh-electricray',
@@ -526,7 +526,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 100,
     scanResMm: 510,
     weaponFamilyBonus: { plasma: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族能量激光 +12%）
-    description: '掠食者武装部门的光束巡洋舰：高压电弧般的激光炮阵列，接敌即烧穿护盾——舰体光束聚焦阵列特调，能量武器威力额外加成（限定奇货）。',
+    description: '掠食者武装部门的光束巡洋舰：高压电弧般的激光炮阵列，接敌即烧穿护盾——舰体光束聚焦阵列特调，能量武器威力额外加成。',
   },
   {
     id: 'sh-hammerhead',
@@ -555,7 +555,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 105,
     scanResMm: 500,
     weaponFamilyBonus: { kinetic: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族动能炮 +12%）
-    description: '掠食者武装部门的炮击主力：重炮动能阵列齐射的中坚，深空讨伐的舰队长矛——舰体动能炮组特调，动能武器威力额外加成（限定奇货）。',
+    description: '掠食者武装部门的炮击主力：重炮动能阵列齐射的中坚，深空讨伐的舰队长矛——舰体动能炮组特调，动能武器威力额外加成。',
   },
   {
     id: 'sh-bullshark',
@@ -588,7 +588,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 118,
     scanResMm: 480,
     weaponFamilyBonus: { kinetic: 0.12 }, // 船体族加成（2026-09-09 船长拍板：四族巡洋分型——本族动能炮 +12%）
-    description: '掠食者武装部门最凶悍的咬合者：厚盾重炮的突击巡洋舰，专为贴脸近战而生——舰体动能炮组特调，动能武器威力额外加成（限定奇货）。',
+    description: '掠食者武装部门最凶悍的咬合者：厚盾重炮的突击巡洋舰，专为贴脸近战而生——舰体动能炮组特调，动能武器威力额外加成。',
   },
 
   // ══════════ 协会测绘处 · 测量线（2026-09-13 船长：「添加一艘新的巡洋舰，子分类为侦查舰。所属为
@@ -723,7 +723,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 24_000,
     signatureM: 250,
     scanResMm: 330,
-    description: '重装线的顶点：传闻用整颗小行星的岩壳锻造（限定奇货，需高声望）。',
+    description: '重装线的顶点：传闻用整颗小行星的岩壳锻造。',
   },
 
   // ══════════ T4/T5 主战船（2026-09-12 船长「T4,T5 可以先立个模子」）══════════════
@@ -765,7 +765,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26_000,
     signatureM: 300,
     scanResMm: 300,
-    description: '以史前巨齿为名的战列舰：正面承伤与火力平台。三层血厚实、装配位宽裕，敢站在编队最前面——代价是转身慢、起步慢（仅可制造）。',
+    description: '以史前巨齿为名的战列舰：正面承伤与火力平台。三层血厚实、装配位宽裕，敢站在编队最前面——代价是转身慢、起步慢。',
   },
   {
     id: 'sh-dunkleosteus',
@@ -875,7 +875,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26_000,
     signatureM: 170,
     scanResMm: 390,
-    description: '蜃楼航运的旗舰货舰：一万四立方的运力，跑商人的终极梦想（限定奇货）。',
+    description: '蜃楼航运的旗舰货舰：一万四立方的运力，跑商人的终极梦想。',
   },
 
   /* ══════════════ 虫洞专属舰船（2026-09-13 船长「护卫，驱逐，巡洋都可以有，你干脆都安排设计吧」＋
@@ -923,7 +923,7 @@ export const SHIPS: readonly ShipDef[] = [
     scanResMm: 990,
     shieldResist: {"kinetic":0.5},
     wormholeScanRadiusBonus: 1,
-    description: '海盗的电子战艇：火控与回避双高——先锁上、先打中，也更难被咬住；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。',
+    description: '海盗的电子战艇：长项在火控与回避——先锁上、先打中，也更难被咬住；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。',
   },
   {
     id: 'sh-wh-a-destroyer',
@@ -1116,7 +1116,7 @@ export const SHIPS: readonly ShipDef[] = [
     armorResist: {"explosive":0.5},
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     wormholeScanRadiusBonus: 1,
-    description: '陵墓的电子哨戒舰：护盾占比全批最高、火控与回避一并拉高，替全队先敌开火；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。',
+    description: '陵墓的电子哨戒舰：盾厚甲薄、火控与回避一并拉高，替全队先敌开火；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。',
   },
   {
     id: 'sh-wh-d-destroyer',
@@ -1178,7 +1178,7 @@ export const SHIPS: readonly ShipDef[] = [
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     armorResist: {"explosive":0.5},
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    description: '陵墓的重装巡洋舰：护盾占比全批最高（不再靠总血厚）、炮位最多、舱容最大——靠盾与抗性站在阵线中央。',
+    description: '陵墓的重装巡洋舰：盾厚甲薄、炮位最多、舱容最大——靠盾与抗性站在阵线中央。',
   },
   {
     id: 'sh-wh-e-frigate',
@@ -1246,7 +1246,7 @@ export const SHIPS: readonly ShipDef[] = [
     shieldResist: {"kinetic":0.5},
     hullResist: {"plasma":0.25},
     droneDmgBonus: 0.1,
-    description: '巨构的无人机作战舰：机巢与无人机战力双高，是长时间放飞机群的移动机库；舱位与自射火力都让位给机群。',
+    description: '巨构的无人机作战舰：机巢大、机群强，是长时间放飞机群的移动机库；舱位与自射火力都让位给机群。',
   },
   {
     id: 'sh-wh-e-carrier',
