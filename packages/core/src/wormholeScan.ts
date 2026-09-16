@@ -44,21 +44,28 @@ export const WORMHOLE_SCAN_BASE_MS = 12 * 60 * 60_000
 export const WORMHOLE_STOCK_MAX = 5
 
 /**
- * **星图记录学（`chart-archive`）扩展虫洞保存上限**（船长 2026-09-14：「添加 rank4 技能，星图记录学，
- * 满级允许玩家虫洞的保存上限+10。」）——**阶跃**口径（与星际奇遇学同款语义）：**满级（Lv5）一次性 +10 格**，
- * Lv1~4 不加 ⇒ 基础 5 处 ⇒ 满级 **15 处**。
- * 调参入口就在这一行（体检「技能说明契约」按本文件的现场值复核技能说明里的 ⟦10⟧）。
+ * **星图记录学（`chart-archive`）扩展虫洞保存上限**。
+ *
+ * **2026-09-16 船长改判**：「**星图记录学，效果错误，应该为每级+2，满级+10。**」
+ * ⇒ 由**阶跃**（只有满级一次性 +10）改为**每级线性 +2**：Lv1 +2 / Lv2 +4 / Lv3 +6 / Lv4 +8 / **Lv5 +10**
+ * ⇒ 基础 5 处 ⇒ 上限 **7 / 9 / 11 / 13 / 15**（满级仍是 15，与旧口径的**满级总量一致**，只是中段开始有用）。
+ *
+ * 调参入口就在下面两行（体检「技能说明契约」按本文件的现场值复核技能说明里的 ⟦2⟧ 与 ⟦10⟧）。
  */
+export const WORMHOLE_STOCK_BONUS_PER_LEVEL = 2
+
+/** **满级总量 10**（= 每级 2 × 5 级）：只作**上限锚**与文案锚，逻辑一律走 `wormholeStockMaxOf`；
+ *  与 `WORMHOLE_STOCK_BONUS_PER_LEVEL` 的关系由用例守卫（`WORMHOLE_STOCK_BONUS === PER_LEVEL × 5`）。 */
 export const WORMHOLE_STOCK_BONUS = 10
 
 /** 上限的**理论最大值**（基础 ＋ 满级加成）：读档清洗拿它当钳制上限 ⇒ 满级玩家的 15 格不会因为
  *  读档时"技能看起来还没到"被截掉；`save.ts` 是本文件之外唯一的用法。 */
 export const WORMHOLE_STOCK_MAX_HARD = WORMHOLE_STOCK_MAX + WORMHOLE_STOCK_BONUS
 
-/** **玩家当前的虫洞保存上限** = 基础 5 ＋（星图记录学满级 ? 10 : 0）——引擎与界面读这一个函数 */
+/** **玩家当前的虫洞保存上限** = 基础 5 ＋ 星图记录学**每级 +2**（满级 15）——引擎与界面读这一个函数 */
 export function wormholeStockMaxOf(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['chart-archive'] ?? 0)
-  return WORMHOLE_STOCK_MAX + (lv >= 5 ? WORMHOLE_STOCK_BONUS : 0)
+  return WORMHOLE_STOCK_MAX + WORMHOLE_STOCK_BONUS_PER_LEVEL * lv
 }
 
 /**

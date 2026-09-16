@@ -65,6 +65,38 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
     expect(r?.units[0]?.armorPerPulse).toBe(27) // 18 × 1.5
   })
 
+  /**
+   * **2026-09-16 船长「统一吃」**：「维修量（是否吃额外护甲/结构加成）」⇒ 装置每跳与修理组件**同一把尺**：
+   * 每跳值再乘**层容量增幅**（满值 ÷ 档案基础值）——含装备件与「船体加固理论」「重装舰操作」。
+   */
+  it('装置每跳也吃**层容量增幅**（统一吃）：满技能下再乘 装甲/结构容量加成', () => {
+    // 船体加固理论满级（甲/结构容量 +20%）⇒ 层容量增幅 ×1.2
+    const withHullSkill = world(5, 'mod-hullrep-2')
+    withHullSkill.state.skills.trained['repair-engineering'] = 5
+    withHullSkill.state.skills.trained['hull-upgrades'] = 5
+    const caps = hullLayerCaps(withHullSkill.state, ctx, withHullSkill.uid)!
+    expect(caps.capA / caps.baseA).toBeCloseTo(1.2, 6)
+    const r = preloadRepairFor(withHullSkill.state, ctx, withHullSkill.uid, 10 * REPAIR_PULSE_MS)
+    // 18 × 1.5（技能）× 1.2（层容量增幅）= 32.4 → 32
+    expect(r?.units[0]?.armorPerPulse).toBe(32)
+    expect(r?.units[0]?.hullPerPulse).toBe(32)
+
+    // 装上装甲增厚板（armorHpBonus）⇒ **只有装甲那一路**再放大（分层生效，与组件同口径）
+    const armored = world(5, 'mod-hullrep-2')
+    armored.state.skills.trained['hull-upgrades'] = 5
+    const plate = MODULES.find((m) => (m.armorHpBonus ?? 0) > 0 && m.slot === 'armor')
+    expect(plate, '真数据里应有带 armorHpBonus 的甲件').toBeTruthy()
+    addModule(armored.state, plate!.id, 1)
+    expect(fitModule(armored.state, plate!.id, ctx).ok).toBe(true)
+    const caps2 = hullLayerCaps(armored.state, ctx, armored.uid)!
+    const r2 = preloadRepairFor(armored.state, ctx, armored.uid, 10 * REPAIR_PULSE_MS)
+    const wantArmor = Math.round(18 * quickRepairFactor(armored.state, ctx) * (caps2.capA / caps2.baseA))
+    const wantHull = Math.round(18 * quickRepairFactor(armored.state, ctx) * (caps2.capH / caps2.baseH))
+    expect(r2?.units[0]?.armorPerPulse, '装甲那一路按装甲容量增幅').toBe(wantArmor)
+    expect(r2?.units[0]?.hullPerPulse, '结构那一路按结构容量增幅').toBe(wantHull)
+    expect(caps2.capA / caps2.baseA).toBeGreaterThan(caps2.capH / caps2.baseH) // 甲件只加装甲
+  })
+
   it('直接使用同基数、同吃技能：一枚民用件回 round(5 × 层容量增幅 × 系数) 点', () => {
     for (const lv of [0, 5]) {
       const { state, uid } = world(lv)

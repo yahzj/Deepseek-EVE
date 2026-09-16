@@ -2311,6 +2311,27 @@ function removeCargoOfShip(state: GameState, shipId: string, itemId: string, uni
   return take
 }
 
+/**
+ * **该舰的层容量增幅**（装甲/结构各自的「满值 ÷ 档案基础值」）——**2026-09-16 船长「统一吃」**：
+ * 维修装置的每跳修复量与修理组件**同一把尺**，都随**额外护甲/结构加成**放大
+ * （装备件 `armorHpBonus` / `hullHpBonus` ＋ 技能「船体加固理论」＋ 重装族「重装舰操作」）。
+ *
+ * 与 `shipyard.kitHealFor` 的 `capA/baseA`、`capH/baseH` **完全同源**：都取 `createPlayerSpec`
+ * （含装备与技能）÷ 舰船档案值 ⇒ 两条路径的"吃加成"口径不会各写一套。
+ * 缺规格/档案（老档坏数据）⇒ 返回 1（不放大、不崩）。
+ */
+function layerAmpOf(state: GameState, ctx: SimContext, shipId: string): { a: number; h: number } {
+  const spec = createPlayerSpec(state, ctx, shipId)
+  const def = fleetDefOf(state, ctx, shipId)
+  if (!spec || !def) return { a: 1, h: 1 }
+  const baseA = def.armorHp ?? 0
+  const baseH = def.hullHp ?? 0
+  return {
+    a: baseA > 0 ? spec.hp.a / baseA : 1,
+    h: baseH > 0 ? spec.hp.h / baseH : 1,
+  }
+}
+
 /** 当前船已装配的维修装置（带 repairArmorHp/repairHullHp 的装配件，按位序） */
 export function fittedRepairModules(state: GameState, ctx: SimContext, shipId: string): ModuleDef[] {
   const ship = state.fleet[shipId]
@@ -2339,6 +2360,12 @@ export function preloadRepairFor(
   // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
   // 共用同一处系数（`repair.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）
   const quickRepair = quickRepairFactor(state, ctx)
+  /**
+   * **层容量增幅**（2026-09-16 船长「统一吃」＋「并在相关说明中提及（提高维修量等）」）：
+   * 每跳修复量从此与**修理组件同一把尺**——额外护甲/结构加成（装甲增厚板 · 结构件 ·
+   * 船体加固理论 · 重装舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
+   */
+  const amp = layerAmpOf(state, ctx, shipId)
   // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
   // （权重 100%/87%/57%/28%/11%，与"命中/速度"同类；不吃组件故必须收敛，否则叠装失控）
   const freeSeen = new Map<string, number>()
@@ -2355,8 +2382,8 @@ export function preloadRepairFor(
         moduleId: d.id,
         kitId: '',
         free: true,
-        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w)),
-        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w)),
+        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w * amp.a)),
+        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w * amp.h)),
         stopped: false,
       })
       continue
@@ -2368,8 +2395,8 @@ export function preloadRepairFor(
     units.push({
       moduleId: d.id,
       kitId,
-      armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * quickRepair)),
-      hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * quickRepair)),
+      armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * quickRepair * amp.a)),
+      hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * quickRepair * amp.h)),
       stopped: false,
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
@@ -4680,6 +4707,7 @@ function pdPriorityOf(artId: string | undefined | null, role?: string): number {
  * - **两条独立开火许可**（2026-09-12 **修 bug**）：旧代码要求"哨戒机在射程内"**并且**有令牌，
  *   等于把"出击型打一次换一次反击"整条路掐死（出击型机群永远不会被反击、实测战损恒为 0）：
  *   a) **反击令牌**：我方无人机打过敌舰 ⇒ 窗口内还手（**无视距离**，船长 2026-09-11 口径）；
+ *      ⚠ 该令牌**敌方全队共用**（不是逐舰）——船长 2026-09-16 复核定论「**点防没问题**」（见 `state.ts` `droneHitAt`）；
  *   b) **哨戒机在射程内**：常驻暴露 ⇒ 不需令牌即可还手（船长 2026-09-11 重新定义）；
  * - **不看距离**（放飞出去就在威胁之下）；**战斗内可 100% 损坏**（战后按回收率找回一部分）；
  * - 近防炮不参与敌舰对玩家的常规攻击（独立系统）；全程消费 state.rng，确定性可复现。
@@ -4706,6 +4734,11 @@ function resolvePointDefense(
     sentryOk && aliveDroneKeys(b, SENTRY_DRONE_IDS, true, true).length > 0
   if (!tokenOpen && !sentryOpen) return
   // **消费制**（船长 2026-09-11）：一次攻击换一次还手（对每艘点防舰各一次）
+  // ⚠ **本令牌为敌方全队共用、非逐舰**（打到**任意一艘**敌舰 ⇒ 当场所有冷却已就绪的敌点防舰**各还手一次**，
+  //   冷却仍各走各的 `pdCd[fi]`）。这与我方侧**故意不对称**——我方侧 2026-09-16 起是**逐舰令牌**
+  //   （`droneHitAtMeBy`：要打到那艘船它才能反击，见 `pickFoeDroneTarget`）。
+  //   船长 2026-09-16 复核定论「**点防没问题**」⇒ 本条**按现状保留**：不许照"逐舰"把敌方侧也改过去
+  //   （改它＝动玩家无人机在多舰敌卡里的战损口径）。
   if (tokenOpen) b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined }
   const focus: Array<string | undefined> = b.pdFocus ? [...b.pdFocus] : []
   for (let fi = 0; fi < foes.length; fi++) {
@@ -5070,6 +5103,8 @@ function stepBattle(
         pushBattleNotice(b, '隐秘行动结束：本舰开火现形')
       }
       // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
+      // ⚠ 记的是**敌方全队共用**的一枚令牌（**不按被打的敌舰 tag 分记**）——船长 2026-09-16「点防没问题」
+      //   = 现状为准；换靶/换敌舰都共用它，消费一次即全队过窗（见 `resolvePointDefense`）。
       if (w.src === 'drone')
         b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
       // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
