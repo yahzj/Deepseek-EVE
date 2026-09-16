@@ -774,10 +774,14 @@ const BATTLE_FIELDS = {
   },
   foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
   droneHitAt: { kind: 'runtime', why: '反应式防空的最近受击时刻：短窗缓存，超窗即脱锁' },
+  // 2026-09-16 近防炮逐舰（船长「将缺少的一并实现」）：令牌与集火锁都按 `舰tag` 分账，
+  // 与上面两条同款 —— 短窗运行态，重载即重置（设计即零迁移）。
+  droneHitAtMeBy: { kind: 'runtime', why: '反应式防空令牌（我方逐舰）：短窗缓存，超窗即脱锁' },
   notices: { kind: 'runtime', why: '战斗画面提示条：纯表现层，限时自动消失、不留档' },
   pdCd: { kind: 'runtime', why: '近防炮调度冷却（当前波）：重载即重置为可开火' },
   pdFocus: { kind: 'runtime', why: '近防炮集火锁定：缺省 = 下一拍按优先级重选（2026-09-12 设计即零迁移）' },
   mePdFocus: { kind: 'runtime', why: '我方近防炮集火锁定（P-40）：同上，缺省 = 每拍按优先级重选（零迁移）' },
+  mePdFocusBy: { kind: 'runtime', why: '我方近防炮集火锁定（2026-09-16 逐舰版，键 = 舰tag:武器下标）：同上' },
 } satisfies Record<keyof BattleState, BattleFieldSpec>
 
 /** **必须随档持久化**的战斗字段键（用例据此逐字段守"重载不丢"；顺序 = 登记表顺序） */
