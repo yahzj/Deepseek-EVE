@@ -172,7 +172,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
       '【系统设定】',
       '本场为照会战，本舰命中与回避按规程上调。',
       '【结算】',
-      '轻型炮台 MK1 ×1、动能弹 ×120，由协会发放。',
+      '轻型炮台 MK1 ×1、动能弹药 ×120，由协会发放。',
     ],
     page: 'map',
     mapTab: 'bounty',

@@ -31,7 +31,7 @@ function world(opts: { threat?: number; pref?: Record<string, string> | null; ki
     hullHp: 1000,
   }
   const items = [
-    { id: 'ammo-kinetic-2', name: '动能弹 MK2', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 45, description: '测试用', damageType: 'kinetic', dmg: 8 },
+    { id: 'ammo-kinetic-2', name: '动能弹药 MK2', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 45, description: '测试用', damageType: 'kinetic', dmg: 8 },
     { id: 'ammo-plasma-2', name: '能量弹药 MK2', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 80, description: '测试用', damageType: 'plasma', dmg: 12 },
   ] as const
   const kin = kinGunDef('mod-kin-3', 4)

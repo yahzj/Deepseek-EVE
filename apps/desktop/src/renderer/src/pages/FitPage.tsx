@@ -266,9 +266,9 @@ function mulText(v: number): string {
 function ammoChipOf(m: ModuleDef): ReactNode | null {
   if (m.slot === 'turret') {
     const t = m.damageType ?? 'kinetic'
-    return <DmgChip t={t} label={`${DMG_LABEL[t]}弹`} />
+    return <DmgChip t={t} label={`${DMG_LABEL[t]}弹药`} />
   }
-  if (m.slot === 'missile') return <DmgChip t="explosive" label="爆破导弹" />
+  if (m.slot === 'missile') return <DmgChip t="explosive" label="爆破弹药" />
   if (m.slot === 'laser') return <DmgChip t="plasma" label="能量弹药" />
   return null
 }

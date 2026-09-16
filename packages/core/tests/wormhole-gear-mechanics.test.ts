@@ -65,8 +65,8 @@ function world(mods: ModuleDef[], fit: { high?: (string | null)[]; mid?: (string
     ships: [bed],
     modules: mods,
     items: [
-      { id: 'ammo-kinetic-l', name: '动能弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 10, description: 't', damageType: 'kinetic', dmg: 10 },
-      { id: 'ammo-plasma-l', name: '能量弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 10, description: 't', damageType: 'plasma', dmg: 10 },
+      { id: 'ammo-kinetic-l', name: '动能弹药', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 10, description: 't', damageType: 'kinetic', dmg: 10 },
+      { id: 'ammo-plasma-l', name: '能量弹药', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 10, description: 't', damageType: 'plasma', dmg: 10 },
       { id: 'drone-x', name: '测试无人机', kind: 'drone', unitM3: 10, baseSellPriceIsk: 100, description: 't', droneClass: 'combat', damageType: 'kinetic', dmg: 10, cpuUse: 5, maxRangeM: 3_000, hitRate: 0.75, falloff: 1, reloadMs: 4_000 },
     ],
     anomalies: [anomaly('ano-x', 'galaxy-hub', { threat })],

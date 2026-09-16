@@ -2355,7 +2355,7 @@ const meSpeedRef = useRef(200)
                 {w.label} {w.minM.toLocaleString('zh-CN')}~{w.maxM.toLocaleString('zh-CN')}m
                 {w.kind === 'gun' ? (
                   w.type ? (
-                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}弹</span>
+                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}弹药</span>
                   ) : (
                     '（无弹）'
                   )

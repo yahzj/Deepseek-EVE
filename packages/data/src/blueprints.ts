@@ -284,25 +284,25 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   /* ═══ 弹药蓝图（2026-09-05 船长：基础弹可自制；单批 120 发，材料成本≈市价 55% 锚定，参数可调） ═══ */
   {
     id: 'bp-ammo-kinetic',
-    name: '动能弹生产线蓝图',
+    name: '动能弹药生产线蓝图',
     itemId: 'ammo-kinetic-l',
     outputUnits: 120,
     materials: [{ itemId: 'min-tritanium', count: 48 }], // 384 信用点 ≈ 720×0.53
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 12,
     priceIsk: 1350, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '动能弹生产线图纸，把钛钢合金轧成高速实心弹，120 发/批，对护盾 ×1.5。',
+    description: '动能弹药生产线图纸，把钛钢合金轧成高速实心弹，120 发/批，对护盾 ×1.5。',
   },
   {
     id: 'bp-ammo-explosive',
-    name: '爆破导弹生产线蓝图',
+    name: '爆破弹药生产线蓝图',
     itemId: 'ammo-explosive-l',
     outputUnits: 120,
     materials: [{ itemId: 'min-pyerite', count: 40 }], // 480 信用点 ≈ 840×0.57
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 15,
     priceIsk: 1650, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '爆破导弹生产线图纸，120 发/批，对装甲 ×1.5。',
+    description: '爆破弹药生产线图纸，120 发/批，对装甲 ×1.5。',
   },
   {
     id: 'bp-ammo-plasma',
@@ -318,25 +318,25 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   /* ═══ 弹药 MK2 蓝图（2026-09-09 船长拍板：三族高级弹稀有书可造；材料≈市价 55% 锚沿用） ═══ */
   {
     id: 'bp-ammo-kinetic-2',
-    name: '动能弹 MK2 生产线蓝图',
+    name: '动能弹药 MK2 生产线蓝图',
     itemId: 'ammo-kinetic-2',
     outputUnits: 120,
     materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 信用点 ≈ 5,400×0.55
     buildSeconds: 10,
     buildCostIsk: 90,
     priceIsk: 9_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '动能弹 MK2 生产线图纸，重钨合金弹芯轧制，120 发/批，对护盾 ×1.5。',
+    description: '动能弹药 MK2 生产线图纸，重钨合金弹芯轧制，120 发/批，对护盾 ×1.5。',
   },
   {
     id: 'bp-ammo-explosive-2',
-    name: '爆破导弹 MK2 生产线蓝图',
+    name: '爆破弹药 MK2 生产线蓝图',
     itemId: 'ammo-explosive-2',
     outputUnits: 120,
     materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 信用点 ≈ 7,200×0.55
     buildSeconds: 10,
     buildCostIsk: 120,
     priceIsk: 12_750, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '爆破导弹 MK2 生产线图纸，120 发/批，对装甲 ×1.5。',
+    description: '爆破弹药 MK2 生产线图纸，120 发/批，对装甲 ×1.5。',
   },
   {
     id: 'bp-ammo-plasma-2',

@@ -170,7 +170,7 @@ export function claimTutorialTrialReward(state: GameState, anomalyId: string | n
   addLog(
     state,
     'trade',
-    `◆ 重要任务完成「试炼·演习场驱逐令」：协会发放 轻型炮台 MK1 ×1、动能弹 ×${TUTORIAL_REWARD_AMMO_N}。`,
+    `◆ 重要任务完成「试炼·演习场驱逐令」：协会发放 轻型炮台 MK1 ×1、动能弹药 ×${TUTORIAL_REWARD_AMMO_N}。`,
   )
   if (s === ONB_TRIAL) state.onboarding.step = ONB_SKILL
 }

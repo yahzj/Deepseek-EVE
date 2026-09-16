@@ -156,10 +156,11 @@ function hullResistShortText(mod: ModuleDef): string {
  * 装备一行式短效果（装配台槽位行 / 装备库行共用；V17：各战斗家族显示真实进公式参数）。
  * 空槽文本由调用方自给；抗性为"缺口削减"值（合成规则见 moduleInfoLines 注释行）。
  */
-/** 炮台配弹文本（V17.2 炮族：固定弹种） */
+/** 炮台配弹文本（V17.2 炮族：固定弹种）
+ *  ⚠ 2026-09-16 弹药定名批：弹药名统一到《系+弹药》⇒ 这里的后缀是「弹药」（原「弹」）。 */
 export function turretAmmoText(mod: ModuleDef): string {
   const type = DMG_LABEL[mod.damageType ?? 'kinetic'] ?? mod.damageType
-  return `${type}弹`
+  return `${type}弹药`
 }
 
 /** 短效文案（装配台槽位行 / 装备库行 / 手册网格共用；V18.1 收敛件尾注"多装递减"） */
@@ -177,8 +178,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
       break
     }
     case 'missile': {
-      // V18B-1 导弹架：爆炸系武器形态（爆破导弹，近盲安全射距 + 追踪命中）
-      body = `爆破导弹 · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      // V18B-1 导弹架：爆炸系武器形态（爆破弹药，近盲安全射距 + 追踪命中）
+      body = `爆破弹药 · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
       break
     }
     case 'laser': {
@@ -643,7 +644,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         v: (
           <>
             <span className="app-dim">配弹：</span>
-            <DmgChip t={mod.damageType} label={`${DMG_LABEL[mod.damageType]}弹`} />
+            <DmgChip t={mod.damageType} label={`${DMG_LABEL[mod.damageType]}弹药`} />
             <span className="app-dim">（固定）</span>
           </>
         ),
@@ -679,7 +680,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       v: (
         <>
           <span className="app-dim">配弹：</span>
-          <DmgChip t={mod.damageType ?? 'explosive'} label="爆破导弹" />
+          <DmgChip t={mod.damageType ?? 'explosive'} label="爆破弹药" />
           <span className="app-dim">（固定）</span>
         </>
       ),

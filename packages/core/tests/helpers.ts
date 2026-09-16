@@ -294,9 +294,9 @@ export const DEFAULT_TEST_ITEMS: readonly ItemDef[] = [
   mineral('min-a'),
   mineral('min-b', 12),
   // V18 口径取消：单档通用弹（战斗/装载测试用；数值与正式数据一致）——V12 曾为轻口径三型
-  { id: 'ammo-kinetic-l', name: '动能弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 6, description: '测试动能弹', damageType: 'kinetic', dmg: 6 },
-  { id: 'ammo-explosive-l', name: '爆破导弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 7, description: '测试爆破导弹', damageType: 'explosive', dmg: 7 },
-  { id: 'ammo-plasma-l', name: '等离子弹', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 8, description: '测试等离子弹', damageType: 'plasma', dmg: 9 },
+  { id: 'ammo-kinetic-l', name: '动能弹药', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 6, description: '测试动能弹药', damageType: 'kinetic', dmg: 6 },
+  { id: 'ammo-explosive-l', name: '爆破弹药', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 7, description: '测试爆破弹药', damageType: 'explosive', dmg: 7 },
+  { id: 'ammo-plasma-l', name: '能量弹药', kind: 'ammo', unitM3: 0.02, baseSellPriceIsk: 8, description: '测试能量弹药', damageType: 'plasma', dmg: 9 },
 ]
 
 /** 测试世界里的默认装备 */
