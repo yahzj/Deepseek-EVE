@@ -2643,6 +2643,14 @@ export function createBattleState(
     fx: [],
     fxSeq: 0,
     ended: null,
+    /**
+     * **逐舰状态表开场即建空表**（2026-09-16 船长「将缺少的一并实现」）：
+     * 近防炮的**反应式令牌**与**集火锁**都改为按 `舰tag`（锁再加武器下标）分账。
+     * 建空表 = 新战斗一律走逐舰路径；**旧字段**（`droneHitAt` / `mePdFocus`）只服务
+     * "本改动之前开的在途战斗"（运行态字段、不随档 ⇒ 零迁移）。
+     */
+    droneHitAtMeBy: {},
+    mePdFocusBy: {},
   }
 }
 
@@ -4747,21 +4755,32 @@ export function pickFoeDroneTarget(
   foes: readonly UnitSpec[],
   dist: number,
   w: { minRangeM: number; maxRangeM: number },
-  /** 我方**武器槽下标**（集火锁定的索引轴；见 `BattleState.mePdFocus`） */
+  /** 我方**武器槽下标**（集火锁定的索引轴；逐舰后键 = `舰tag:下标`，见 `BattleState.mePdFocusBy`） */
   wi = 0,
+  /** **开火的那艘我方舰**（tag；缺省 `player` = 单船路径 ⇒ 与旧口径逐字相同） */
+  myTag = 'player',
 ): { foeTag: string; pool: import('./state').DronePoolEntry } | null {
   const pools = b.foeDronePools
   if (!pools) return null;
   // **反应式**（船长 2026-09-11「每轮都是被攻击后才开火」）：只有**刚被机群打过**才反击——
   // 敌机没打过来（或已超出窗口）⇒ 近防炮不开火（"敌方无人机只有靠近你你才能反击"）。
-  const hitAt = b.droneHitAt?.me
+  // ⚠ **2026-09-16 逐舰**（船长「将缺少的一并实现」）：令牌按**本舰**取/消费
+  //   （旧口径 `droneHitAt.me` 全队共用一个、一次反击就消费掉 ⇒ 4 舰编队整队每轮只换到一发反击）。
+  const perShipTokens = b.droneHitAtMeBy
+  const hitAt = perShipTokens ? perShipTokens[myTag] : b.droneHitAt?.me
   if (hitAt === undefined || b.lastTickGameMs - hitAt > PD_REACTIVE_WINDOW_MS)
     return null;
   // **消费制**（船长 2026-09-11：「我没有看到反应式防空，被攻击后近防炮就一直开火」）——
   // 窗口原设 5,000ms 而敌机装填 4,400ms ⇒ **窗口首尾相接、看着就是一直在打**。
   // 现改为：**一次敌机攻击只换一次反击**（把这个时刻消费掉，下一次要等它再打过来）——
   // 节奏变成"挨一下 → 还一炮 → 静默等下一轮"，反应式才看得出来。
-  b.droneHitAt = { ...(b.droneHitAt ?? {}), me: undefined };
+  if (perShipTokens) {
+    const nextTokens = { ...perShipTokens }
+    delete nextTokens[myTag]
+    b.droneHitAtMeBy = nextTokens
+  } else {
+    b.droneHitAt = { ...(b.droneHitAt ?? {}), me: undefined };
+  }
   // ⚠ **打机群不按两舰间距判射程**（船长 2026-09-11 裁定 · 甲案）：敌机在画面里是**飞到您舰旁**
   // 才开火的——机制服从画面 ⇒ 只要机还活着、近防炮就能打它（近防炮的射程只对"打舰"生效）。
   // 旧口径用 `b.distanceM` 判 ⇒ 画面里贴着您的敌机被当成在 4.5km 外 ⇒ 近防炮"不工作"（船长实测）。
@@ -4797,9 +4816,11 @@ export function pickFoeDroneTarget(
   if (cands.length === 0) return null
   // ── **集火**（2026-09-12 船长「改为集火制度」；P-40 乙案：与我方侧口径对齐）──
   // 本武器已锁定的那架**还活着且仍可打** ⇒ 继续打它（换靶只发生在"被击落 / 被备用机替换 / 出射程"时）。
-  // ⚠ 与敌方侧 `pdFocus` 同口径（那侧按**点防舰**同序存；我方按**武器槽**存，见 `BattleState.mePdFocus`）。
-  const focus: Array<{ tag: string; idx: number } | undefined> = b.mePdFocus ? [...b.mePdFocus] : []
-  const locked = focus[wi]
+  // ⚠ 与敌方侧 `pdFocus` 同口径（那侧按**点防舰**同序存）；**我方侧 2026-09-16 起按 `舰tag:武器下标` 存**
+  //   （旧口径只按下标 ⇒ 多舰的 0 号武器互相顶锁；旧字段 `mePdFocus` 只服务在途老战斗）。
+  const lockKey = dronePoolKey(myTag, wi)
+  const focusBy = b.mePdFocusBy
+  const locked = focusBy ? focusBy[lockKey] : b.mePdFocus?.[wi]
   if (locked) {
     const keep = cands.find((c) => c.foeTag === locked.tag && c.idx === locked.idx)
     if (keep) return { foeTag: keep.foeTag, pool: keep.pool }
@@ -4813,8 +4834,13 @@ export function pickFoeDroneTarget(
   }
   const tier = cands.filter((c) => pdPriorityOf(c.pool.artId, c.role) === best)
   const pick = tier[nextInt(state.rng, tier.length)]!
-  focus[wi] = { tag: pick.foeTag, idx: pick.idx }
-  b.mePdFocus = focus
+  if (focusBy) {
+    b.mePdFocusBy = { ...focusBy, [lockKey]: { tag: pick.foeTag, idx: pick.idx } }
+  } else {
+    const focus: Array<{ tag: string; idx: number } | undefined> = b.mePdFocus ? [...b.mePdFocus] : []
+    focus[wi] = { tag: pick.foeTag, idx: pick.idx }
+    b.mePdFocus = focus
+  }
   return { foeTag: pick.foeTag, pool: pick.pool }
 }
 
@@ -4934,7 +4960,7 @@ function stepBattle(
       // **射程口径（船长 2026-09-11 甲案）**：打机群**不看两舰间距**（敌机扑到您舰旁才开火，
       // 机制服从画面）⇒ 有敌机可打时不受 `inRange` 拦截；只有"打舰"才按本武器射程判。
       const droneHit = w.canHitDrones
-        ? pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi)
+        ? pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag)
         : null
       if (!droneHit && !inRange(b.distanceM, w)) continue;
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
@@ -5227,8 +5253,14 @@ function stepBattle(
         const dtgt = pickTarget()
         if (!dtgt) break // 我方已全灭（正常由结束判定收场）
         b.stats.foeShots += 1;
-        // **反应式防空**：敌机打过我方 ⇒ 记录时刻，供**我方近防炮**在窗口内反击
-        b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }
+        // **反应式防空**：敌机打过我方 ⇒ 记录时刻，供**我方近防炮**在窗口内反击。
+        // ⚠ **2026-09-16 逐舰**：令牌记在**被打的那艘船**名下（`droneHitAtMeBy[舰tag]`）——
+        //   旧口径全队共用一个令牌，僚舰的近防炮基本轮不到反击。
+        if (b.droneHitAtMeBy) {
+          b.droneHitAtMeBy = { ...b.droneHitAtMeBy, [dtgt.spec.tag]: b.lastTickGameMs }
+        } else {
+          b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }
+        }
         const dType = dw.fixedType ?? 'kinetic';
         // 机群为掷命中（`fixed`）：吃自己的 `hitRate`、吃我方回避与距离衰减——与我方无人机同源
         const droneHit = hitChance(dw, f, dtgt.spec, b.distanceM, bal)
