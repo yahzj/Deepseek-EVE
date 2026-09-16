@@ -28,6 +28,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, ALIEN_SLOW_SHIP_IDS, FOE_SHIPS, FOE_SHIP_MIX_AUTHORITY_IDS } from '@whale/data'
+import { resolveFoeMounts } from '../src/foeMounts'
 import { advanceBattleFor, createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf, startBattleFor } from '../src/combat'
 import { createInitialState } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
@@ -688,7 +689,8 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(ship.rangeMinM, row.id).toBe(100) // 族级最低 100
       expect(ship.rangeMaxM, row.id).toBe(row.max)
       expect(ship.desireRangeM, row.id).toBeUndefined() // 钉住值已撤（否则交距不会跟着射程走）
-      expect(ship.droneRangeMulOnHit, row.id).toBe(4) // 受击增程（船长「提高 400%」= ×4）
+      // 受击增程（船长「提高 400%」= ×4）——2026-09-16 起走**挂载件**（`foe-mount-drone-range-x4`）
+      expect(resolveFoeMounts(ship.mounts).foeDroneRangeMulOnHit, row.id).toBe(4)
       const specs = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)
       const w = specs[0]!.weapons[0]!
       expect(w.minRangeM, row.id).toBe(100)

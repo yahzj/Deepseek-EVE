@@ -43,6 +43,7 @@ import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, cargoOfShip, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { shipCategoryKeyOf, uidDefId } from './labels'
+import { resolveFoeMounts } from './foeMounts'
 import { quickRepairFactor } from './repair'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight, weightedSum } from './equipment'
 import { applyTutorialBuff, isTutorialBattle } from './onboarding'
@@ -225,12 +226,19 @@ export interface UnitSpec {
    */
   stealthMs?: number;
   /** 敌冲锋（2026-09-10 船长定；资格 2026-09-11 扩为两条来源；**2026-09-14 改逐单位**）：本单位为 true 时，
-   *  触发条件命中即**自己**加速（×`foeChargeMul`）、**自身炮台命中我方即解除** + 冷却 10 秒。
-   *  来源 ① **舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件）② 老路（威胁 ≥ 门槛 且 brawl）。 */
+   *  触发条件命中即**自己**加速（×`foeChargeMul`）、**自身炮台命中我方即解除** + 逐单位冷却。
+   *  来源 ① **挂载件**（`FoeMountDef.charge`，2026-09-16 起）／舰级级 opt-in（`FoeShipDef.foeCanCharge`，兼容回退）
+   *  ② 老路（威胁 ≥ 门槛 且 brawl）。 */
   foeCanCharge?: boolean;
   /** 本单位的冲锋倍率（**2026-09-14 船长：「大虫子的冲锋倍率改为3，给小虫子添加冲锋，倍率为1.5」**）——
    *  缺省不写 ⇒ 走全局 `BattleBalance.foeChargeMul`（**旧读数逐字不变**）。 */
   foeChargeMul?: number;
+  /** **本单位的冲锋冷却覆写**（2026-09-16 船长：A 族海盗「冲锋倍率为1.6，**冷却30秒**」）——
+   *  缺省不写 ⇒ 走全局 `BattleBalance.foeChargeCooldownMs`（10 秒）。 */
+  foeChargeCooldownMs?: number;
+  /** **本单位的挂载件展示名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——建档时由 `mounts` 解析，
+   *  视图与战报直接渲染；**不是 id**、也不参与任何判定。 */
+  foeMountNames?: readonly string[]
   /** **单波次内增援**（2026-09-11 船长裁决：机制实现、不启用）——本单位的入场触发条件；
    *  **建档时已按总开关过滤**：开关关闭时本字段一律不写（= 开战即在）。
    *  带本字段的单位**不进开战编队**，由 `advanceBattleFor` 每拍检查、条件命中才补入。 */
@@ -749,7 +757,7 @@ function updateFoeCharge(
     if (rt?.on === true) {
       if (arrived) {
         rt.on = false
-        rt.cdUntilMs = nowMs + bal.foeChargeCooldownMs
+        rt.cdUntilMs = nowMs + (f.foeChargeCooldownMs ?? bal.foeChargeCooldownMs)
       }
       continue
     }
@@ -770,11 +778,13 @@ function releaseFoeChargeOnHit(
   b: import('./state').BattleState,
   tag: string,
   bal: BattleBalance,
+  /** 本单位的冲锋冷却覆写（挂载件给的，2026-09-16 船长：A 族海盗 30 秒）——缺省走全局 */
+  cdMs?: number,
 ): void {
   const rt = b.foeCharges?.[tag]
   if (rt?.on !== true) return
   rt.on = false
-  rt.cdUntilMs = b.lastTickGameMs + bal.foeChargeCooldownMs
+  rt.cdUntilMs = b.lastTickGameMs + (cdMs ?? bal.foeChargeCooldownMs)
 }
 
 /**
@@ -1806,6 +1816,14 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         ? normReinforceTrigger(u.slot.enterAt)
         : null
     const name = foeUnitNameOf(anomaly, u.tag);
+    /**
+     * **挂载件解析**（2026-09-16 船长：「**能否将冲锋设置成类似舰船装备的挂载物？这样只要给敌人装配就行了**」
+     * ＋「除了C族，将D族和E族的射程增加也迁成挂载件」）：**条目 `mounts` ?? 舰级 `mounts`**（条目优先，
+     * 与 `droneFireShare`/`desireRangeM` 同款）⇒ 运行时字段。旧字段（`foeCanCharge`/`foeChargeMul`/
+     * `droneRangeMulOnHit`/`gunRangeMulOnHit`）保留为**兼容回退**：只有**没挂 mounts** 时才读，
+     * 所以老卡、老档、老测试逐字不变。
+     */
+    const mount = resolveFoeMounts(u.slot.mounts ?? ship.mounts)
     /** 本条目内**逐架机群单发**的游标（与 `ship.drones` 展开顺序一致，仅写了比例时消费） */
     let dIdx = 0
     // **舰载机群**（2026-09-11 机群批 · 设计稿 `foe-drone-system-20260911.md` §三/§五）：
@@ -1878,19 +1896,28 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       // （core 不能 import data 包的 hullClass.ts，故基准随 bal 传入），零行为变化。
       speedMps: Math.round(bal.hullClassBaseSpeedMps[ship.hullClassTier] * ship.speedRatio * (u.slot.speedMul ?? 1)),
       agility: 0.3,
-      // 敌突进（冲锋）资格，两条**互相独立**的来源（2026-09-11 船长「给巨兽开启之前做过的冲锋能力」）：
-      //   ① **舰级级 opt-in**（`ship.foeCanCharge`）——无条件放行，**不看**总开关与威胁门槛，
+      // 敌突进（冲锋）资格，三条**互相独立**的来源：
+      //   ① **挂载件**（`FoeMountDef.charge`，2026-09-16 起的主路——"给敌人装配件"）；
+      //   ② **舰级级 opt-in**（`ship.foeCanCharge`，兼容回退）——无条件放行，**不看**总开关与威胁门槛，
       //      用于"慢而硬、追不上"的重型单位（C 族噬口巨兽，实速 297）与 2026-09-14 起同样开启的三种小虫；
-      //   ② 老路：威胁 ≥ 门槛 且 **有效战术** = brawl（卡上覆写优先；总开关默认 false）。
-      ...(ship.foeCanCharge === true ||
+      //   ③ 老路：威胁 ≥ 门槛 且 **有效战术** = brawl（卡上覆写优先；总开关默认 false）。
+      ...(mount.foeCanCharge === true ||
+      ship.foeCanCharge === true ||
       (bal.foeChargeEnabled === true &&
         anomaly.threat >= bal.foeChargeThreatFloor &&
         tactic === 'brawl')
         ? { foeCanCharge: true }
         : {}),
       // **逐单位冲锋倍率**（2026-09-14 船长：「大虫子的冲锋倍率改为3，给小虫子添加冲锋，倍率为1.5」）——
-      // 缺省**不写** ⇒ 走全局 `bal.foeChargeMul`（旧读数逐字不变）；缺省不写也是"关着就是零变化"的同款形态。
-      ...(ship.foeChargeMul !== undefined ? { foeChargeMul: ship.foeChargeMul } : {}),
+      // 挂载件优先；缺省**不写** ⇒ 走全局 `bal.foeChargeMul`（旧读数逐字不变）。
+      ...(() => {
+        const mul = mount.foeChargeMul ?? ship.foeChargeMul
+        return mul !== undefined ? { foeChargeMul: mul } : {}
+      })(),
+      // **逐单位冲锋冷却**（2026-09-16 船长：A 族海盗「冲锋倍率为1.6，**冷却30秒**」）——挂了件才写
+      ...(mount.foeChargeCooldownMs !== undefined ? { foeChargeCooldownMs: mount.foeChargeCooldownMs } : {}),
+      // **挂载件展示名**（船长同日「要：敌舰悬停/战报展示挂载件」）——视图/战报直接渲染
+      ...(mount.names.length > 0 ? { foeMountNames: mount.names } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       weapons: [
@@ -1921,13 +1948,16 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(ship.droneReserve && droneWeapons.length > 0
         ? { foeDroneReserve: ship.droneReserve }
         : {}),
-      // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化
-      ...(ship.droneRangeMulOnHit !== undefined && droneWeapons.length > 0
-        ? { foeDroneRangeMulOnHit: ship.droneRangeMulOnHit }
+      // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化。
+      // 2026-09-16 起走挂载件（`foe-mount-drone-range-x4`），旧字段 `ship.droneRangeMulOnHit` 兼容回退
+      ...((mount.foeDroneRangeMulOnHit ?? ship.droneRangeMulOnHit) !== undefined && droneWeapons.length > 0
+        ? { foeDroneRangeMulOnHit: mount.foeDroneRangeMulOnHit ?? ship.droneRangeMulOnHit }
         : {}),
       // **受击增程（炮台）**（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，仅该型舰）：
-      // 与机群那条无关（不需要机群），缺省不写 ⇒ 零行为变化
-      ...(ship.gunRangeMulOnHit !== undefined ? { foeGunRangeMulOnHit: ship.gunRangeMulOnHit } : {}),
+      // 与机群那条无关（不需要机群），缺省不写 ⇒ 零行为变化。2026-09-16 起走挂载件（`foe-mount-gun-range-x1-5`）
+      ...((mount.foeGunRangeMulOnHit ?? ship.gunRangeMulOnHit) !== undefined
+        ? { foeGunRangeMulOnHit: mount.foeGunRangeMulOnHit ?? ship.gunRangeMulOnHit }
+        : {}),
       // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）
       hullClassTier: ship.hullClassTier,
       // **敌方后勤舰**（船长 2026-09-16）：把自身 repairPct 比例的名义 DPS 转成修理值；缺省不写 ⇒ 零变化
@@ -3026,6 +3056,13 @@ function seedUnit(
   opts: { enterReload?: boolean; arrivedAtMs?: number; foePhaseMs?: number } = {},
 ): void {
   if (b.units[spec.tag]) return
+  // **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）：所有单位都经这里入场
+  // （开战首波 / 波次转场 / 增援）⇒ 累积一份"本场出现过"的清单给战报用（运行期字段、不入档）
+  if (spec.side === 'foe' && spec.foeMountNames && spec.foeMountNames.length > 0) {
+    const set = new Set(b.foeMounts ?? [])
+    for (const n of spec.foeMountNames) set.add(n)
+    b.foeMounts = [...set]
+  }
   const windowMs = opts.arrivedAtMs !== undefined ? BATTLE_ARRIVAL_FLY_MS : 0
   /** 首轮相位错开（洞内专属；见 `WORMHOLE_FOE_VOLLEY_STAGGER_MS`）——洞外调用方一律不传 ⇒ 0 */
   const phase = opts.foePhaseMs ?? 0
@@ -3837,7 +3874,7 @@ export function battleArcsFor(
    * 按 (min, max, 弹种) 去重、外圈在前；`count` = 用该带的**敌舰艘数**，`names` = 舰名（悬停说明用）。
    * 只有一条带时界面观感与旧版完全一致（同一条「敌方 X~Ym」）；多条带时界面逐带各出一条。
    */
-  foeBands: Array<{ minM: number; maxM: number; type: DamageType; count: number; names: string[] }>
+  foeBands: Array<{ minM: number; maxM: number; type: DamageType; count: number; names: string[]; mounts?: string[] }>
   /** 各单位三层满血量（UI 垂直血条按各自满值比例绘制） */
   maxHp: { me: { s: number; a: number; h: number }; foe: Record<string, { s: number; a: number; h: number }> }
   /** 机群战损（2026-09-10）：本场已击落架数（机型 id → 架数）；缺省 = 无损失 */
@@ -3848,6 +3885,11 @@ export function battleArcsFor(
   thrusterCycle: { boostMs: number; cooldownMs: number }
   /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
   foeCanCharge: boolean;
+  /**
+   * **敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——本场敌方挂了哪些件
+   * （去重展示名，如「劫掠冲锋推进器」）；**缺省 = 本场敌人没挂件**（既有战斗零变化）。
+   */
+  foeMounts?: string[]
   /** **敌方机群**（2026-09-11 机群批 S5）——按敌单位 tag 汇总：机型 id / 机库存量 / **现存架数**。
    *  表现层据此在**敌舰旁**画出警戒机群（与我方机群层共用 `droneArt` 的机体资产）。
    *  **缺省 = 本场没有敌机**（既有战斗零行为变化）。 */
@@ -3963,7 +4005,7 @@ export function battleArcsFor(
    * （如快速艇 1~1883 对头目舰 1~2210）会被并集吃掉、看起来只剩一个射程。这里按
    * (最小射程, 最大射程, 弹种) 分组去重下发，界面照**我方逐武器一条**的同款做法逐带出一条。
    */
-  const foeBandMap = new Map<string, { minM: number; maxM: number; type: DamageType; units: number; names: Set<string> }>()
+  const foeBandMap = new Map<string, { minM: number; maxM: number; type: DamageType; units: number; names: Set<string>; mounts: Set<string> }>()
   for (const f of foes) {
     // 同一单位的多件同带武器只算一艘；`count` = **用该带的敌舰艘数**（三艘同名快艇 = 3，不是 1）
     const seenBandOfUnit = new Set<string>()
@@ -3984,10 +4026,12 @@ export function battleArcsFor(
       const key = `${wMin}|${wMax}|${type}`
       let band = foeBandMap.get(key)
       if (!band) {
-        band = { minM: wMin, maxM: wMax, type, units: 0, names: new Set<string>() }
+        band = { minM: wMin, maxM: wMax, type, units: 0, names: new Set<string>(), mounts: new Set<string>() }
         foeBandMap.set(key, band)
       }
       band.names.add(f.name)
+      // 该带的敌方挂载件（2026-09-16 船长：敌舰悬停要能看到挂载）
+      for (const m of f.foeMountNames ?? []) band.mounts.add(m)
       if (!seenBandOfUnit.has(key)) {
         seenBandOfUnit.add(key)
         band.units += 1
@@ -3997,7 +4041,14 @@ export function battleArcsFor(
   if (!Number.isFinite(foeMin)) foeMin = 0
   // 外圈在前（远 → 近），同远者近端更小者在前——与界面"从外往里读"一致
   const foeBands = [...foeBandMap.values()]
-    .map((b) => ({ minM: b.minM, maxM: b.maxM, type: b.type, count: b.units, names: [...b.names] }))
+    .map((b) => ({
+      minM: b.minM,
+      maxM: b.maxM,
+      type: b.type,
+      count: b.units,
+      names: [...b.names],
+      ...(b.mounts.size > 0 ? { mounts: [...b.mounts] } : {}),
+    }))
     .sort((a, b) => b.maxM - a.maxM || a.minM - b.minM)
   const openM = battleOpenM(me, foes, bal)
   // 各单位三层满血量（UI 垂直血条按各自满值比例绘制）：以战斗实况单位为准——
@@ -4112,6 +4163,12 @@ export function battleArcsFor(
     /** **我方首舰（= 距离/读数锚）的推进器周期**（2026-09-14 逐单位周期后，战斗界面那一格读它） */
     thrusterCycle: unitThrusterCycle(me, bal),
     foeCanCharge: foes.some((f) => f.foeCanCharge === true),
+    // **敌方挂载件**（去重展示名）——界面/战报同源；空 = 本场敌人没挂件（老档同样缺省）
+    ...(() => {
+      const names = new Set<string>()
+      for (const f of foes) for (const m of f.foeMountNames ?? []) names.add(m)
+      return names.size > 0 ? { foeMounts: [...names] } : {}
+    })(),
     ...(foeDroneWings.length > 0 ? { foeDrones: foeDroneWings } : {}),
   }
 }
@@ -4226,6 +4283,8 @@ export function captureBattleReport(
     shipsLost,
     myUnits,
     foe: { alive: foeAlive, total: foeTotal, hpFrac: foeMax > 0 ? Math.max(0, Math.min(1, foeCur / foeMax)) : 0 },
+    // **敌方挂载件名**（2026-09-16 船长：战报也要展示）——由 `seedUnit` 累积（含多波/增援）
+    ...(battle.foeMounts && battle.foeMounts.length > 0 ? { foeMounts: [...battle.foeMounts] } : {}),
     ammoUsed,
     dronesGone,
     summary: opts.summary,
@@ -5736,7 +5795,7 @@ function stepBattle(
       const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, w, b.distanceM)
       const dmg = foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow)))
       // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
-      releaseFoeChargeOnHit(b, f.tag, bal)
+      releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
       gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg), fType)
@@ -5755,7 +5814,7 @@ function stepBattle(
       b.stats.foeHits += 1
       gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg), fType)
       // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
-      releaseFoeChargeOnHit(b, f.tag, bal)
+      releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit })
   }

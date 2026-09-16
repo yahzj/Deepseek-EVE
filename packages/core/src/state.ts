@@ -698,6 +698,12 @@ export interface BattleState {
    * ⚠ **逐单位**：每个挂 `foeCanCharge` 的单位各有一份「在冲 / 冷却到某时刻」，互不顶替
    *   （2026-09-14 船长：「各自触发冲锋的提速」＋「自身攻击命中后解除冲锋状态，并进入 10 秒冷却」）。
    * 字段是**可选、零迁移**、且**有意不入档**（运行态 ⇒ 战中重载即重置冲锋循环，见 `save.ts` 登记表）。 */
+  /**
+   * **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——
+   * `seedUnit` 时累积（开战首波 / 波次转场 / 增援都经那里），供战报渲染。
+   * **运行期字段、有意不入档**（战中重载即重建；见 `save.ts` 登记表）。
+   */
+  foeMounts?: string[];
   /** 逐单位冲锋运行态（键 = 战斗 tag：`foe-0` / `w0-foe-2` / `w1-foe-0-e1`，同一场内唯一） */
   foeCharges?: Record<string, { on?: boolean; cdUntilMs?: number }>;
   /**
@@ -924,6 +930,9 @@ export interface BattleReportRecord {
   myUnits: Array<{ name: string; s: number; a: number; h: number; sMax: number; aMax: number; hMax: number }>
   /** **敌方残余**：存活单位数 / 参战单位总数 / 残余血量比（`hpMax` 为分母） */
   foe: { alive: number; total: number; hpFrac: number }
+  /** **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——去重后的展示名列表；
+   *  `undefined`/空 = 本场敌人没挂任何件（老档同样缺省 ⇒ 战报回落不显示这一行） */
+  foeMounts?: readonly string[]
   /** **本场弹药消耗**（按弹种；= 开战预载 − 战后余额，四类战斗都算得出） */
   ammoUsed: { kin: number; exp: number; pla: number }
   /** **机群净损失架数**（判「惨胜」的第二个依据；0 = 无损或本场没有机群） */

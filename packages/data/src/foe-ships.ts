@@ -76,6 +76,7 @@
  * B 族三卡本轮补上同形态的倍率（原先靠'舰级值即卡值'）。
  */
 
+import { FOE_MOUNT_IDS } from '@whale/core'
 import type { FoeShipDef } from '@whale/core'
 import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA } from './foe-drones'
 
@@ -369,8 +370,8 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
   tactic: 'brawl',
   // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：小虫也吃冲锋，倍率 1.5
   // （巨兽 3）——解除 = **自身炮台命中我方**（或压到期望交距），随后冷却 10 秒；逐单位独立。
-  foeCanCharge: true,
-  foeChargeMul: 1.5,
+    // **冲锋挂载件**（2026-09-16 船长：「能否将冲锋设置成类似舰船装备的挂载物？」）——按档倍率 1.5 / 冷却 10 秒
+    mounts: [FOE_MOUNT_IDS.chargeSwarmT1],
 }
 
 /** C 族 · 一档「星髓幼虫」——星髓虫群的**幼体**、厚甲筑巢（服务：深渊之门卫队 45、星髓虫群 72）。
@@ -406,8 +407,7 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
   energyForm: 'spit',
   tactic: 'brawl',
   // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：星髓幼虫同样吃冲锋、倍率 1.5
-  foeCanCharge: true,
-  foeChargeMul: 1.5,
+    mounts: [FOE_MOUNT_IDS.chargeSwarmT1],
 }
 
 /**
@@ -453,10 +453,9 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
   energyForm: 'spit',
   tactic: 'brawl',
   elite: true, // 全族唯一的稀有头目（显示名「精锐噬口巨兽」）
-  foeCanCharge: true, // 船长「给巨兽开启之前做过的冲锋能力」（舰级级 opt-in；总开关仍关）
   // 倍率 = **3**（本舰 T4 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`；2026-09-16 船长
   // 「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」后**维持 3**，与 2026-09-14 裁定逐字一致）
-  foeChargeMul: 3,
+    mounts: [FOE_MOUNT_IDS.chargeSwarmT4],
 }
 
 /**
@@ -495,8 +494,7 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：星髓成虫同样吃冲锋；
   // 倍率 **1.5 → 2**（2026-09-16 船长「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」⇒
   // 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`：本舰 T2 ⇒ **2**）
-  foeCanCharge: true,
-  foeChargeMul: 2,
+    mounts: [FOE_MOUNT_IDS.chargeSwarmT2],
 }
 
 /** C 族 · 三档「**孢群异虫**」——**无人机舰**（2026-09-15 船长：「**C组添加一艘巡洋舰，为无人机舰，
@@ -543,8 +541,7 @@ export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
   // **冲锋**（船长 2026-09-16：「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」）：
   // 本舰 T3 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER` 取 **2.5**（此前是族内唯一**不**具冲锋资格的舰级）。
   // ⚠ 它的 400 m/s 是全族最快（`speedRatio 1.55`）⇒ 冲锋期 **1,000 m/s**，是洞内"想拉开距离"最硬的一堵墙。
-  foeCanCharge: true,
-  foeChargeMul: 2.5,
+    mounts: [FOE_MOUNT_IDS.chargeSwarmT3],
 }
 
 /* ═══════════ D 族 · 守墓古舰（2026-09-11 船长「对悬赏进行敌人配置」批）═══════════
@@ -649,7 +646,7 @@ export const FOE_D_STASIS: FoeShipDef = {
   // ⇒ **12,000 → 18,000m**（近界 2,062 不动）。⚠ 与 E 族的机群增程是**两套独立机制**：
   // 那条是"整支敌队的机群 ×4"，本条**只作用于静滞卫舰自己**（同场的守墓长舰不受影响）。
   // 衰减口径（船长选乙）：原射程内读数一字不变，12 km 以外按同斜率继续衰减（18 km 处 ≈ ×0.20）。
-  gunRangeMulOnHit: 1.5,
+    mounts: [FOE_MOUNT_IDS.gunRangeX15], // 炮台受击增程（2026-09-16 迁成挂载件：×1.5）
   falloff: 0.5,
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 },
@@ -787,7 +784,7 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
   tactic: 'orbit',
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 7 }], // **常态出击 7 架**（船长 2026-09-12：按舰种档——
   // 巡洋 5 / **战列 7** / 旗舰 10）
-  droneRangeMulOnHit: 4,
+    mounts: [FOE_MOUNT_IDS.droneRangeX4], // 机群受击增程（2026-09-16 迁成挂载件：×4）
   // **备用机库**（船长 2026-09-12：「损坏后补充敌机」+「**备用机库为出击数量的 100%**」）：+7 架备用
   // （总库存 14），战损后 **10s** 满血补位（母舰阵亡则整群停，含备用机）。
   // ⚠ **甲（单次出击上限 `droneLaunch`）本轮不采用** —— 机制已实现，**留作后续其他机制**（缺省不写）。
@@ -820,7 +817,7 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
   tactic: 'orbit',
   // 交距 = 7,000 × 0.55 = **3,850m**（射程既定后解除钉住；旧钉值 516 已撤）
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 5 }], // **常态出击 5 架**（船长：巡洋 **5** / 战列 7 / 旗舰 10）
-  droneRangeMulOnHit: 4, // 受击增程（全族口径）
+    mounts: [FOE_MOUNT_IDS.droneRangeX4], // 机群受击增程（2026-09-16 迁成挂载件：×4）
   droneReserve: { count: 5, respawnMs: 10000 }, // 备用机库 = 出击数的 **100%**（+5，总 10），10s 满血补位
 }
 
@@ -856,7 +853,7 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   // 交距 = 10,000 × 0.55 = **5,545m**（射程既定后解除钉住；旧钉值 513 已撤）
   elite: true, // 「精锐核心舱段」
   drones: [{ drone: FOE_DRONE_E_ALERT, count: 10 }], // **常态出击 10 架**（船长：旗舰 **10**；族内最多）
-  droneRangeMulOnHit: 4, // 受击增程（全族口径）
+    mounts: [FOE_MOUNT_IDS.droneRangeX4], // 机群受击增程（2026-09-16 迁成挂载件：×4）
   droneReserve: { count: 10, respawnMs: 12000 }, // 备用机库 = 出击数的 **100%**（+10，总 20），12s 满血补位
 }
 

@@ -14,11 +14,12 @@
  *   倍率（2026-09-14 船长）：「大虫子的冲锋倍率改为 3，给小虫子添加冲锋，倍率为 1.5」；全局缺省 3.0。
  */
 import { describe, expect, it } from 'vitest'
-import { ALIEN_CHARGE_MUL_BY_TIER, FOE_SHIPS } from '@whale/data'
+import { ALIEN_CHARGE_MUL_BY_TIER, FOE_SHIPS, WORMHOLE_FOE_CARDS } from '@whale/data'
 import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
 import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, foeChargeCount, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
 import { DEFAULT_BALANCE } from '../src/balance'
+import { FOE_MOUNT_IDS, resolveFoeMounts } from '../src/foeMounts'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, foeDesiredRange, startBattleFor } from '../src/combat'
 import { anomaly, galaxy, makeTestCtx, moduleDef } from './helpers'
 
@@ -451,22 +452,25 @@ describe('敌冲锋（2026-09-10 定资格；2026-09-11 改"到达解除"；**20
     expect(legacy.foeChargeMul).toBeUndefined()
   })
 
-  it('C 族冲锋配置（2026-09-16 船长「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」）：按档契约', () => {
+  it('C 族冲锋配置（2026-09-16 船长「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」）：按档契约（**走挂载件**）', () => {
     const of = (id: string): FoeShipDef => FOE_SHIPS.find((s) => s.id === id)!
-    // **全族一律具冲锋资格**，且倍率**只看舰种档**（`ALIEN_CHARGE_MUL_BY_TIER` 是契约基准）
+    // **全族一律具冲锋资格**，且倍率**只看舰种档**（`ALIEN_CHARGE_MUL_BY_TIER` 是契约基准）；
+    // 2026-09-16 起资格/倍率/冷却都在**挂载件**里（`resolveFoeMounts` 是唯一解析点）
     const aliens = FOE_SHIPS.filter((s) => s.family === 'C')
     expect(aliens.length).toBeGreaterThanOrEqual(5)
     for (const s of aliens) {
-      expect(s.foeCanCharge, `${s.name} 须具冲锋资格`).toBe(true)
-      expect(s.foeChargeMul, `${s.name}（T${s.hullClassTier}）倍率`).toBe(ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier])
+      const r = resolveFoeMounts(s.mounts)
+      expect(r.foeCanCharge, `${s.name} 须具冲锋资格`).toBe(true)
+      expect(r.foeChargeMul, `${s.name}（T${s.hullClassTier}）倍率`).toBe(ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier])
+      expect(r.foeChargeCooldownMs, `${s.name} 冲锋冷却`).toBe(10_000) // C 族维持 10 秒
     }
     // 逐条点名（防"表改了但舰级没跟上"被上面那条掩盖）：T1 1.5 · T2 2 · T3 2.5 · T4 3
-    expect(of('foe-alien-rift-larva').foeChargeMul).toBe(1.5)
-    expect(of('foe-alien-starcore-larva').foeChargeMul).toBe(1.5)
-    expect(of('foe-alien-starcore-adult').foeChargeMul).toBe(2)
-    expect(of('foe-alien-spore-hive').foeChargeMul).toBe(2.5)
-    expect(of('foe-alien-maw').foeChargeMul).toBe(3)
-    // 建档要把舰级倍率带上单位（否则逐单位倍率落不了地）
+    expect(resolveFoeMounts(of('foe-alien-rift-larva').mounts).foeChargeMul).toBe(1.5)
+    expect(resolveFoeMounts(of('foe-alien-starcore-larva').mounts).foeChargeMul).toBe(1.5)
+    expect(resolveFoeMounts(of('foe-alien-starcore-adult').mounts).foeChargeMul).toBe(2)
+    expect(resolveFoeMounts(of('foe-alien-spore-hive').mounts).foeChargeMul).toBe(2.5)
+    expect(resolveFoeMounts(of('foe-alien-maw').mounts).foeChargeMul).toBe(3)
+    // 建档要把挂载件带上单位（否则逐单位倍率/冷却落不了地）
     const ctx = ctxWith(false)
     const specs = createFoeSpecs(
       { ...anomaly('ano-c-contract', 'g-test', { threat: 20, tactic: 'brawl' }), ships: [{ ship: of('foe-alien-maw') }] },
@@ -474,12 +478,86 @@ describe('敌冲锋（2026-09-10 定资格；2026-09-11 改"到达解除"；**20
     )
     expect(specs[0]!.foeCanCharge).toBe(true)
     expect(specs[0]!.foeChargeMul).toBe(3)
-    // 本批只动 C 族：其余敌族一律不带冲锋
+    expect(specs[0]!.foeMountNames).toEqual(['虫群冲锋器 T4'])
+    // 冲锋件只给 C 族**舰级**与洞内三张 A 族卡**条目**：其余舰级的舰级级挂载里不得出现冲锋
     for (const s of FOE_SHIPS) {
       if (s.family === 'C') continue
-      expect(s.foeCanCharge ?? false, s.id).toBe(false)
-      expect(s.foeChargeMul, s.id).toBeUndefined()
+      expect(resolveFoeMounts(s.mounts).foeCanCharge ?? false, s.id).toBe(false)
     }
+  })
+
+  /**
+   * **A 族海盗冲锋**（船长 2026-09-16：「给A族虫洞内的海盗添加冲锋…**冲锋倍率为1.6，冷却30秒**」）。
+   *
+   * 关键口径（同日裁决「能否将冲锋设置成类似舰船装备的挂载物？这样只要给敌人装配就行了」）：
+   * 只挂**洞内三张 A 族卡的条目**（`FoeShipSlot.mounts`）——那三条舰级洞外（低安遭遇 / 悬赏）
+   * 也在用，所以挂舰级会让洞外海盗也冲锋。
+   */
+  describe('A 族海盗冲锋（×1.6 · 冷却 30 秒 · 只在洞内）', () => {
+    it('洞内三卡：**逐条目**挂海盗件 ⇒ 每个单位带 ×1.6 / 30 秒 / 展示名', () => {
+      for (const id of ['wh-pirate-scout', 'wh-pirate-hunt', 'wh-pirate-warband']) {
+        const card = WORMHOLE_FOE_CARDS.find((a) => a.id === id)!
+        expect(card, `${id} 应在洞内敌卡表里`).toBeTruthy()
+        const specs = createFoeSpecs(card, DEFAULT_BALANCE.battle)
+        expect(specs.length, `${id} 应有编成单位`).toBeGreaterThan(0)
+        for (const s of specs) {
+          expect(s.foeCanCharge, `${id}/${s.name} 应具冲锋资格`).toBe(true)
+          expect(s.foeChargeMul, `${id}/${s.name} 倍率`).toBe(1.6)
+          expect(s.foeChargeCooldownMs, `${id}/${s.name} 冷却`).toBe(30_000)
+          expect(s.foeMountNames, `${id}/${s.name} 挂载件名`).toContain('劫掠冲锋推进器')
+        }
+      }
+    })
+
+    it('**洞外反证**：同一批海盗舰级、不挂条目 ⇒ 不冲锋（挂载件必须挂在条目上）', () => {
+      const corvette = FOE_SHIPS.find((s) => s.id === 'foe-pirate-corvette')!
+      const warband = FOE_SHIPS.find((s) => s.id === 'foe-pirate-warlord')!
+      expect(resolveFoeMounts(corvette.mounts).foeCanCharge ?? false, '舰级本身不该有冲锋').toBe(false)
+      expect(corvette.mounts, '舰级不该挂任何冲锋件').toBeUndefined()
+      const outside = {
+        ...anomaly('ano-outside-pirates', 'g-test', { threat: 60, tactic: 'brawl' }),
+        ships: [{ ship: corvette, count: 2 }, { ship: warband, count: 1 }],
+      }
+      for (const s of createFoeSpecs(outside, DEFAULT_BALANCE.battle)) {
+        expect(s.foeCanCharge ?? false, `${s.name} 洞外不该冲锋`).toBe(false)
+        expect(s.foeChargeCooldownMs).toBeUndefined()
+      }
+    })
+
+    it('**30 秒冷却**实测：解除后 cd = 30 秒（C 族同款机制仍 10 秒）', () => {
+      const ctx = ctxWith(true)
+      /** 合成卡：把海盗件挂在**条目**上（与洞内三卡同款写法），目标距离压到很近 ⇒ 能观测"到达解除" */
+      const pirateEntry = { ...anomaly('ano-a-arrival', 'g-test', { threat: 20, tactic: 'brawl' }), ships: [{ ship: ARRIVAL_SHIP, mounts: [FOE_MOUNT_IDS.chargePirate] as const }] }
+      const ctx2 = makeTestCtx({
+        quietEvents: true,
+        balance: ctx.balance,
+        galaxies: [galaxy('g-test')],
+        modules: [moduleDef('mod-long-slow', 'turret', 0, { maxRangeM: 12_000, minRangeM: 0, reloadMs: 600_000, hitRate: 1, falloff: 1 })],
+        anomalies: [pirateEntry],
+      })
+      const specs = createFoeSpecs(pirateEntry, ctx2.balance.battle)
+      expect(specs[0]!.foeChargeMul).toBe(1.6)
+      expect(specs[0]!.foeChargeCooldownMs).toBe(30_000)
+      const { b, state } = battleVs(ctx2, 'ano-a-arrival', 'mod-long-slow', 300)
+      expect(b).toBeTruthy()
+      state.gameMs = 1_000
+      advanceBattleFor(state, ctx2, b!, 'sandcat2', 'ano-a-arrival')
+      expect(b!.foeCharges?.['foe-0']?.on, '开场够不着 ⇒ 应已冲锋').toBe(true)
+      let cd = 0
+      for (let t = 2_000; t <= 300_000; t += 1_000) {
+        state.gameMs = t
+        advanceBattleFor(state, ctx2, b!, 'sandcat2', 'ano-a-arrival')
+        if (b!.ended) break
+        const rt = b!.foeCharges?.['foe-0']
+        if (rt && rt.on !== true && (rt.cdUntilMs ?? 0) > 0) {
+          cd = (rt.cdUntilMs ?? 0) - t
+          break
+        }
+      }
+      // 逐拍推进 ⇒ 允许 1 拍误差（1000ms）
+      expect(cd, '解除后的冷却应约为 30 秒').toBeGreaterThanOrEqual(29_000)
+      expect(cd, '解除后的冷却应约为 30 秒').toBeLessThanOrEqual(31_000)
+    })
   })
 
   it('乙方案（船长 2026-09-14）：距离在**自己射程之内**、但 > 期望交距 + 1000 ⇒ 也冲锋（逐单位状态）', () => {
