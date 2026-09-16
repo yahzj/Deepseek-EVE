@@ -964,7 +964,9 @@ export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
 /**
  * **奢侈品**（船长 2026-09-15：「新增贵重品货柜，2格，精炼炉拆解后获得随机数量的'奢侈品'，
  * 奢侈品纯粹用来卖钱，**市场正常交易**」）——纯贸易品：**可买可卖**、不参与拆解/精炼/制造链，
- * 来源 = 贵重品货柜拆解（每箱 10~20 件、三档等权）。
+ * 来源 = 贵重品货柜拆解（每箱 **5~30 件**、三档**等权**）。
+ * ⚠ **2026-09-15 船长改判**（原 2.4 / 4.8 / 9.6 万）：「**单价差距提高（10/40/200万）**」——
+ * 三档拉开 4 倍与 5 倍，均值 83.33 万/件 ⇒ 一箱内容期望 ≈ **1,458 万**（原 84 万）。
  */
 export const LUXURIES: readonly ItemDef[] = [
   {
@@ -972,7 +974,7 @@ export const LUXURIES: readonly ItemDef[] = [
     name: '星港陈酿',
     kind: 'luxury',
     unitM3: 2,
-    baseSellPriceIsk: 24_000,
+    baseSellPriceIsk: 100_000,
     description: '停泊区酒廊里翻倍加价的陈年酿造：产自哪一站不重要，年份与封蜡才是价钱。',
   },
   {
@@ -980,7 +982,7 @@ export const LUXURIES: readonly ItemDef[] = [
     name: '贵族香料',
     kind: 'luxury',
     unitM3: 2,
-    baseSellPriceIsk: 48_000,
+    baseSellPriceIsk: 400_000,
     description: '只在少数星域能长的香材，贵族厨房的硬通货——按克计价，防潮封罐。',
   },
   {
@@ -988,14 +990,16 @@ export const LUXURIES: readonly ItemDef[] = [
     name: '失落艺术品',
     kind: 'luxury',
     unitM3: 2,
-    baseSellPriceIsk: 96_000,
+    baseSellPriceIsk: 2_000_000,
     description: '战乱里流散的旧时代原作：真伪由拍卖行说了算，价钱由愿意出价的人说了算。',
   },
 ]
 
 /**
  * **贵重品货柜**（船长 2026-09-15）——**2 格**（1000 m³ / 2×1，沿用图纸货柜口径）、**只收不卖**、
- * 拆解产物 = 奢侈品 10~20 件（`industry` 的拆解台产出表）。
+ * 拆解产物 = 奢侈品 **5~30 件**（`industry` 的拆解台产出表）。
+ * 箱价口径（船长 2026-09-15 改判）：**= 内容期望 ×0.25**（本箱专属折扣；其余三类柜仍是 ×0.6）——
+ * 期望 = 17.5 件 × 83.33 万 ≈ 1,458.33 万 ⇒ 箱价 **365 万**（原 50 万 = 84 万 ×0.6）。
  */
 export const VALUABLES_CONTAINERS: readonly ItemDef[] = [
   {
@@ -1003,7 +1007,7 @@ export const VALUABLES_CONTAINERS: readonly ItemDef[] = [
     name: '贵重品货柜',
     kind: 'container',
     unitM3: 1000,
-    baseSellPriceIsk: 500_000, // 2026-09-15：= 内容期望市值（奢侈品 10~20 件 · 三档等权 ≈ 84 万）× 0.6
+    baseSellPriceIsk: 3_650_000, // 2026-09-15 船长改判：内容期望（5~30 件 · 三档 10/40/200 万 · 等权 ≈ 1,458 万）× 0.25
     description: '贴满封条与防拆标记的软包箱：里面是拍卖行口径的奢侈品，拆开才知道这一箱值多少。',
   },
 ]

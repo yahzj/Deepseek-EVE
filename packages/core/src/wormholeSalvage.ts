@@ -329,9 +329,15 @@ export function wormholeRelicBoxPoolOf(ctx: SimContext): string[] {
     .sort()
   return [WORMHOLE_VALUABLES_BOX_ID, ...safe, ...WORMHOLE_BP_BOX_IDS, WORMHOLE_MILITARY_BOX_ID]
 }
-/** 贵重品货柜拆出的奢侈品件数区间（船长 2026-09-15 定：「随机数量」= 10~20 件） */
-export const WORMHOLE_VALUABLES_UNITS_MIN = 10
-export const WORMHOLE_VALUABLES_UNITS_MAX = 20
+/**
+ * 贵重品货柜拆出的奢侈品件数区间。
+ * ⚠ **2026-09-15 船长改判**（原「随机数量」= 10~20 件）：「**单价差距提高（10/40/200万），数量上下限拉大到 5~30，
+ * 箱价 = 内容期望 ×0.25**」——三档单价见 `data/items.ts` 的 `LUXURIES`（10 万 / 40 万 / 200 万，等权），
+ * 件数取 **5~30**（均值 17.5）⇒ 一箱内容期望 = 17.5 × 83.33 万 ≈ **1,458.33 万**（原 84 万），
+ * 箱价 `box-valuables` = 期望 ×0.25 ≈ **365 万**（原 50 万 ×0.6）。
+ */
+export const WORMHOLE_VALUABLES_UNITS_MIN = 5
+export const WORMHOLE_VALUABLES_UNITS_MAX = 30
 /** 军用备货柜拆出的 MK3 装备件数区间（船长 2026-09-15 定：「数件」= 1~3 件） */
 export const WORMHOLE_MILITARY_PIECES_MIN = 1
 export const WORMHOLE_MILITARY_PIECES_MAX = 3

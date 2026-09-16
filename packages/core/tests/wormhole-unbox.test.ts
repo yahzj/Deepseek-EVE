@@ -83,7 +83,7 @@ describe('虫洞 F4d · 安全货柜拆解（90 秒/件 · 100% 族专属池）'
  * ＋「新增军用备货柜4格，精炼炉可以从中拆出数件随机MK3装备」＋「军用备货柜含武器，不含专属」）。
  */
 describe('虫洞 · 两个新货柜的拆解（2026-09-15 船长定 ②④）', () => {
-  it('**贵重品货柜 ⇒ 一叠奢侈品 10~20 件**（三档等权、每档都出得来）', () => {
+  it('**贵重品货柜 ⇒ 一叠奢侈品 5~30 件**（三档等权、每档都出得来）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 5 })
     const seen = new Set<string>()
     for (let i = 0; i < 300; i++) {
@@ -130,14 +130,14 @@ describe('虫洞 · 两个新货柜的拆解（2026-09-15 船长定 ②④）', 
 
   it('**端到端**：两只箱子各拆一次 ⇒ 奢侈品整叠进仓库、MK3 进装备库（件数一致）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 8 })
-    // ① 贵重品货柜：仓库里的奢侈品数量必须落在 10~20，且正好消耗 1 箱
+    // ① 贵重品货柜：仓库里的奢侈品数量必须落在 5~30，且正好消耗 1 箱
     addWare(state, WORMHOLE_VALUABLES_BOX_ID, 1)
     expect(startUnboxRun(state, ctx, WORMHOLE_VALUABLES_BOX_ID, 'pilot').ok).toBe(true)
     state.gameMs += UNBOX_CYCLE_MS
     advanceRefining(state, ctx)
     expect(countWare(state, WORMHOLE_VALUABLES_BOX_ID)).toBe(0)
     const luxTotal = WORMHOLE_LUXURY_ITEM_IDS.reduce((s, id) => s + countWare(state, id), 0)
-    expect(luxTotal, '这一箱该开出 10~20 件奢侈品').toBeGreaterThanOrEqual(WORMHOLE_VALUABLES_UNITS_MIN)
+    expect(luxTotal, '这一箱该开出 5~30 件奢侈品').toBeGreaterThanOrEqual(WORMHOLE_VALUABLES_UNITS_MIN)
     expect(luxTotal).toBeLessThanOrEqual(WORMHOLE_VALUABLES_UNITS_MAX)
     // ② 军用备货柜：装备库新增 1~3 件，且每件都在 MK3 池里
     addWare(state, WORMHOLE_MILITARY_BOX_ID, 1)
