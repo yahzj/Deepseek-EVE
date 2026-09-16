@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **261** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4954** KB · **35928** 行
-- 状态分布：**未标注** 141 · **已确认/已实现** 106 · **进行中** 8 · **待裁定** 5 · **历史留档** 1
+- 文档总数 **262** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4961** KB · **36016** 行
+- 状态分布：**未标注** 141 · **已确认/已实现** 106 · **进行中** 9 · **待裁定** 5 · **历史留档** 1
 - 孤儿文档（0 引用）**15** 份 · 状态未标注 **141** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**180** 份
+- 三、现行设计稿（design）：**181** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**15** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -34,7 +34,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 317 KB / 756 行 | 184 / 8 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 317 KB / 756 行 | 185 / 8 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 216 行 | 236 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
@@ -51,12 +51,13 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 180 份
+## 三、现行设计稿（design） —— 181 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 2 / 0 |
 | `docs/design/announcement-draft-20260916-wormhole-bloom.md` | 公告待审稿 · 虫洞大量生成（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 2 KB / 37 行 | 1 / 1 |
+| `docs/design/wh-c-cards-20260916.md` | 虫洞 C 族三卡改编成（＋15 卡火力密度普查）· 工作文档 | 进行中（进行中） | 2026-09-16 | 7 KB / 88 行 | 0 / 1 |
 | `docs/design/wormhole-ambush-20260916.md` | 虫洞「踩中埋伏」：进未扫描地点踩到敌人 ⇒ 事件提醒 → 确认开战（2026-09-16） | 进行中（进行中） | 2026-09-16 | 7 KB / 68 行 | 0 / 0 |
 | `docs/design/wormhole-path-intercept-20260916.md` | 虫洞「路径拦截」：直线路径上有敌人 ⇒ 前往中途被拦下开战（2026-09-16） | 进行中（进行中） | 2026-09-16 | 11 KB / 126 行 | 0 / 1 |
 | `docs/design/announcement-draft-20260915-extract-retire.md` | 公告待审稿 · 虫洞调整（2026-09-15） | 待裁定（待船长审核） | 2026-09-15 | 2 KB / 35 行 | 4 / 0 |
@@ -70,7 +71,7 @@
 | `docs/design/handoff-20260915-verify.md` | 交接文档 · 大鲸鱼深空工业 · 2026-09-15 夜（三号 → 下一任） | 未标注 | 2026-09-15 | 8 KB / 91 行 | 2 / 0 |
 | `docs/design/system-scan-unattended-20260915.md` | 星系扫描无人化（扫描艇 · 不占主控 · 完成待查看）—— 2026-09-15 船长定案 | 已确认/已实现（已确认 · 已落码） | 2026-09-15 | 8 KB / 84 行 | 1 / 0 |
 | `docs/design/tuning-schedule-20260915.md` | 限时倍率表（tuning schedule）· 工作文档 | 进行中（进行中） | 2026-09-15 | 6 KB / 57 行 | 2 / 0 |
-| `docs/design/wormhole-foe-variety-20260915.md` | 洞内敌卡扩充（一族三档 + 新舰）· 2026-09-15 | 已确认/已实现（已确认） | 2026-09-15 | 27 KB / 293 行 | 7 / 3 |
+| `docs/design/wormhole-foe-variety-20260915.md` | 洞内敌卡扩充（一族三档 + 新舰）· 2026-09-15 | 已确认/已实现（已确认） | 2026-09-15 | 27 KB / 293 行 | 8 / 3 |
 | `docs/design/announcement-draft-20260914-push2.md` | 公告待审稿 · 第二批（非虫洞批次 · 2026-09-14） | 待裁定（待船长审核） | 2026-09-14 | 4 KB / 47 行 | 4 / 0 |
 | `docs/design/announcement-draft-20260914-release.md` | 更新公告 · 待审稿：本次推送批次（2026-09-14 一号 起草） | 未标注（网络不通） | 2026-09-14 | 11 KB / 162 行 | 7 / 1 |
 | `docs/design/announcement-draft-20260914-wormhole-launch.md` | 更新公告 · 定稿待发：终局玩法「虫洞」（2026-09-14 · 两稿合并 → 一号核验后出 v2） | 未标注 | 2026-09-14 | 15 KB / 144 行 | 12 / 1 |

@@ -246,12 +246,14 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     expect(derived.threat).toBe(45) // 派生卡面照旧（血预算就按它算）
   })
 
-  it('C 族深层卡（孢群巢穴）：无人机舰 —— 机群吃掉 60% 火力、机型是 C 族孢群机', () => {
-    const card = ctx.anomalies.get('wh-alien-hive')!
+  it('C 族**中层**卡（孢群兵潮）：无人机舰 —— 机群吃掉 60% 火力、机型是 C 族孢群机', () => {
+    // 2026-09-16 船长改编成：孢群异虫由**深档挪到中档**（中层 = 孢群异虫 ×1 + 星髓成虫 ×2）
+    // ⇒ 这条读数的落点随之从 `wh-alien-hive` 改为 `wh-alien-brood`（层 2~3 起就会遇到机群）。
+    const card = ctx.anomalies.get('wh-alien-brood')!
     const derived = wormholeDerivedAnomaly(ctx, card, { depth: 6, kind: 'node', waves: 1 })
     const specs = createFoeSpecs(derived, ctx.balance.battle)
     const hive = specs.find((s) => s.name.includes('孢群异虫'))
-    expect(hive, '深层卡里应有「孢群异虫」').toBeTruthy()
+    expect(hive, '中层卡里应有「孢群异虫」').toBeTruthy()
     const gun = hive!.weapons.filter((w) => w.src !== 'drone').reduce((n, w) => n + (w.shotDmg ?? 0), 0)
     const drones = hive!.weapons.filter((w) => w.src === 'drone')
     const droneSum = drones.reduce((n, w) => n + (w.shotDmg ?? 0), 0)
@@ -261,6 +263,15 @@ describe('虫洞 · 洞内敌卡按层派生（F 批）', () => {
     const share = droneSum / (gun + droneSum)
     expect(share).toBeGreaterThan(0.55)
     expect(share).toBeLessThan(0.65)
+  })
+
+  it('C 族**深层**卡（噬口深巢）：不再带机群（孢群异虫已挪到中层）· 巨兽与成虫同波', () => {
+    const card = ctx.anomalies.get('wh-alien-hive')!
+    const derived = wormholeDerivedAnomaly(ctx, card, { depth: 6, kind: 'node', waves: 1 })
+    const specs = createFoeSpecs(derived, ctx.balance.battle)
+    expect(specs.some((s) => s.name.includes('噬口巨兽')), '深层卡里应有「噬口巨兽」').toBe(true)
+    expect(specs.some((s) => s.name.includes('星髓成虫')), '深层卡里应有「星髓成虫」').toBe(true)
+    expect(specs.every((s) => !s.weapons.some((w) => w.src === 'drone')), '深层卡不该再有敌机').toBe(true)
   })
 
   it('族表 / 卡 id 清单 / 目录三处一致：每张卡恰属一族一档、不串族、浅层五张仍是旧 id', () => {

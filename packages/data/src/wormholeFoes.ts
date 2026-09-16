@@ -36,9 +36,8 @@
  */
 import type { AnomalyDef } from '@whale/core'
 import {
-  FOE_ALIEN_RIFT,
+  FOE_ALIEN_MAW,
   FOE_ALIEN_SPORE_HIVE,
-  FOE_ALIEN_STARCORE,
   FOE_ALIEN_STARCORE_ADULT,
   FOE_D_GHOST,
   FOE_D_LONGSHIP,
@@ -88,7 +87,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   {
     id: 'wh-alien-swarm',
     foeFamily: 'C',
-    name: '巢群游猎',
+    name: '星髓游猎群',
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     // 异形捕食弱者 ⇒ 打**最小的**（按舰种档）——**族定选靶**（船长 2026-09-15「选靶按照族限定」）
@@ -97,15 +96,21 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     foeTargetingChance: 0.4,
     // 混伤 8:2（主等离子 = C 族酸液签名 / 副爆炸）
     dmgMix: { plasma: 8, explosive: 2 },
-    // 编成 = **星髓幼虫 ×4**（船长 2026-09-15：「**C族浅层为星髓虫×4**」，T1 快、等离子、贴脸撕咬）
-    ships: [{ ship: FOE_ALIEN_STARCORE, count: 4 }],
+    // 编成 = **星髓成虫 ×3**（船长 2026-09-16：「C族，浅层改为3只星髓成虫」——由 T1 星髓幼虫 ×4 换成 T2 成虫 ×3）
+    // `dmgMul 1.40` = 船长 2026-09-16 裁「**C 族先折中，其他保持不变**」。**引擎真实口径**（普查后更正）：
+    // `wormholeAnomalyOf` 的 `scaleDmg = 层血预算 ÷ 卡的自然总血` **同乘在单发上** ⇒ 卡的实际火力 ∝ 火力密度
+    // （ΣDPS ÷ 自然血 × 多舰补偿）。本卡 ⇒ DPS 密度 **0.0472**，落族间中段
+    //（改前浅层：A 0.0467 · C 0.0615 · D 0.0185 · G 0.0673 · E 0.0540）。
+    // ⚠ 本卡早前那版注释里的"Σ单发守恒"算式**是错的**（漏了 `scaleDmg` 这一层），已作废；
+    //   普查与口径见 `docs/design/wh-c-cards-20260916.md` §四。
+    ships: [{ ship: FOE_ALIEN_STARCORE_ADULT, count: 3, dmgMul: 1.4 }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
     loot: [],
     combatSeconds: 40,
     hidden: true,
-    description: '虫洞内遭遇：异形巢群的游猎小队（隐藏卡，只由虫洞生成）。',
+    description: '虫洞内遭遇：成群的星髓成虫游猎队（隐藏卡，只由虫洞生成）。',
   },
   {
     id: 'wh-grave-watch',
@@ -243,17 +248,21 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   {
     id: 'wh-alien-brood',
     foeFamily: 'C',
-    name: '巢群兵潮',
+    name: '孢群兵潮',
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'smallest',
     foeTargetingChance: 0.4,
     dmgMix: { plasma: 8, explosive: 2 },
-    // 编成 = 星髓成虫 ×1（T2 唯一驱逐档，装甲型、单体硬）+ 畸变幼虫 ×2（T1 快虫包夹）
-    // ⇒ 两条舰级的有效构成都是等离子 8:2 ⇒ **卡面与条目一致，无需覆写**
+    // 编成 = **孢群异虫 ×1**（T3：近战母舰炮台 + 孢群机 ×3、`droneFireShare 0.6` 炮台让位给机群）
+    //      + **星髓成虫 ×2**（T2 中坚）——船长 2026-09-16：「中层为孢群异虫 ×1+星髓成虫 ×2」
+    // ⚠ **机群自本批起在层 2~3 出现**（孢群异虫由深档挪来 ⇒ 这两层开始需要防空属性武器）；
+    //    ⚠ **它没有受击增程**（`droneRangeMulOnHit` 只有 E 族三舰有；船长 2026-09-16 追问后核实）。
+    // `dmgMul 1.15` = 船长裁「C 族先折中」⇒ DPS 密度 **0.0406**（改前中层：A 0.0551 · C 0.0465 ·
+    // D 0.0161 · G 0.0370 · E 0.0325）⇒ 落族间中位偏上。
     ships: [
-      { ship: FOE_ALIEN_STARCORE_ADULT, count: 1 },
-      { ship: FOE_ALIEN_RIFT, count: 2 },
+      { ship: FOE_ALIEN_SPORE_HIVE, count: 1, dmgMul: 1.15 },
+      { ship: FOE_ALIEN_STARCORE_ADULT, count: 2, dmgMul: 1.15 },
     ],
     standingReq: 0,
     standingGain: 0,
@@ -261,22 +270,25 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     loot: [],
     combatSeconds: 50,
     hidden: true,
-    description: '虫洞内遭遇：成虫带队压上的巢群兵潮（隐藏卡，只由虫洞生成）。',
+    description: '虫洞内遭遇：孢群异虫领着的巢群兵潮（隐藏卡，只由虫洞生成）。',
   },
   {
     id: 'wh-alien-hive',
     foeFamily: 'C',
-    name: '孢群巢穴',
+    name: '噬口深巢',
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'smallest',
     foeTargetingChance: 0.4,
     dmgMix: { plasma: 8, explosive: 2 },
-    // 编成 = **孢群异虫 ×1**（T3 无人机舰：母舰炮台近战、孢群机 ×3 中距投送）+ 畸变幼虫 ×2
-    // ⇒ C 族**唯一带机群**的洞内编成，也是"炮台让位给机群"（`droneFireShare 0.6`）的唯一落点
+    // 编成 = **噬口巨兽 ×1**（T4 巨兽档：血 1600 / 单发 240 / 近战；`ALIEN_BEAST_SHIP_IDS` 白名单内 ⇒ 敌速契约豁免）
+    //      + **星髓成虫 ×2**（T2 中坚）——船长 2026-09-16：「深层为噬口巨兽+2星髓成虫」；
+    //      **同波上场**（船长同日裁「不做变化」= 不拆压轴波；洞内卡本就不自带波表、波次由层派生）
+    // `dmgMul 0.94` = 船长裁「C 族先折中」⇒ DPS 密度 **0.0436**（改前深层：A 0.0640 · C 0.0450 ·
+    // D 0.0342 · G 0.0338 · E 0.0605）⇒ 落族间中位（巨兽单发 240 本就重）。
     ships: [
-      { ship: FOE_ALIEN_SPORE_HIVE, count: 1 },
-      { ship: FOE_ALIEN_RIFT, count: 2 },
+      { ship: FOE_ALIEN_MAW, count: 1, dmgMul: 0.94 },
+      { ship: FOE_ALIEN_STARCORE_ADULT, count: 2, dmgMul: 0.94 },
     ],
     standingReq: 0,
     standingGain: 0,
@@ -284,7 +296,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     loot: [],
     combatSeconds: 60,
     hidden: true,
-    description: '虫洞内遭遇：孢群异虫与其护卫虫群（隐藏卡，只由虫洞生成）。',
+    description: '虫洞内遭遇：噬口巨兽盘踞的深巢（隐藏卡，只由虫洞生成）。',
   },
   /* ══════════ 2026-09-15 扩充 · D 族中/深两张（批 3）══════════ */
   {
