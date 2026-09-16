@@ -758,6 +758,9 @@ const BATTLE_FIELDS = {
   // 且**必须随档**：漏了会让僚舰的预载组件与计时在战中重载后凭空消失（与 `myFleet` 漏登记的后果同类）。
   repairBy: { kind: 'persist' },
   shieldChargeBy: { kind: 'persist' },
+  // 2026-09-16 船长：敌方后勤账本（每 5 秒一跳的计时 + 累计修复量）——**必须随档**：
+  // 漏了会让战中重载后敌方修理计时重置（= 白赚一跳），与 `repair`/`shieldCharge` 同理。
+  foeRepair: { kind: 'persist' },
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
@@ -868,6 +871,21 @@ function cleanBattle(raw: unknown): BattleState | null {
   const shieldCharge = cleanShieldCharge(b.shieldCharge)
   /** 逐舰账本（2026-09-16 逐舰维修）：键 = 舰 tag；坏项丢键、整表空 ⇒ undefined（零迁移） */
   const repairBy = cleanLedgerMap(b.repairBy, cleanRepair)
+  /**
+   * **敌方后勤账本**（2026-09-16 船长）：`{ nextPulseAtMs, pulses, healed }`——整块缺/坏 ⇒ undefined
+   * （零迁移：老档在途战斗本来就没有敌方后勤舰）。`pulses`/`healed` 取有限非负整数，`nextPulseAtMs` 可缺省。
+   */
+  const foeRepair = (() => {
+    const r = asRaw(b.foeRepair)
+    if (Object.keys(r).length === 0) return undefined
+    const next = numf(r.nextPulseAtMs, 0)
+    const out: NonNullable<import('./state').BattleState['foeRepair']> = {
+      pulses: Math.max(0, Math.floor(numf(r.pulses, 0))),
+      healed: Math.max(0, numf(r.healed, 0)),
+    }
+    if (next > 0) out.nextPulseAtMs = Math.floor(next)
+    return out
+  })()
   const shieldChargeBy = cleanLedgerMap(b.shieldChargeBy, cleanShieldCharge)
   const dronePools = cleanDronePools(b.dronePools)
   const foeDronePools = cleanFoeDronePools(b.foeDronePools)
@@ -948,6 +966,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     // ── 2026-09-16 逐舰维修（船长裁定「甲」）：逐舰账本同样**必须随档**（丢了 ⇒ 僚舰的组件凭空消失）──
     ...(repairBy !== undefined ? { repairBy } : {}),
     ...(shieldChargeBy !== undefined ? { shieldChargeBy } : {}),
+    // 2026-09-16 敌方后勤账本（丢了 ⇒ 战中重载后敌方修理计时重置）
+    ...(foeRepair !== undefined ? { foeRepair } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),

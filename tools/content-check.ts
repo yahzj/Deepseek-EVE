@@ -2473,6 +2473,46 @@ for (const m of MODULES) {
           `确认是有意留档还是待挂（三种机型两个机位时，换系必然空出一个）`,
       )
     }
+    /* ⑤f **后勤契约**（船长 2026-09-16：「**后勤舰添加特性，维修装置可以修理血量最少的队友**」＋
+     *    「**敌人后勤舰则是将50%的自身DPS转换为修理值**」＋「**敌方后勤舰新增一艘舰船**（T3巡洋）」
+     *    ＋「**先不进卡**」＋「**敌方的修理无法以其他敌方后勤舰为目标（包括自己）**」）：
+     *    钉四件事：① `repairPct` 取值域 **(0,1]**（写 0 或 >1 都是坏值）；
+     *    ② **有 repairPct 的舰级必须在白名单里显式登记**（防"悄悄给某艘敌舰加修理"）；
+     *    ③ 我方**判据在役**：至少一艘玩家舰 `subClass === '后勤舰'`（否则这条特性是死的）；
+     *    ④ **已备未上场**（有 `repairPct` 但没有任何卡引用）：**预警**、不阻断——照机群「已备未挂」先例
+     *       （2026-09-16 船长定「先不进卡」⇒ 本批应收在这一行里）。 */
+    {
+      const REPAIR_SHIP_WHITELIST = new Set(['foe-g-remnant-tender'])
+      const referenced = new Set<string>()
+      const repCtx = buildSimContext()
+      for (const card of repCtx.anomalies.values()) for (const slot of card.ships ?? []) referenced.add(slot.ship.id)
+      const withRepair = FOE_SHIPS.filter((s) => s.repairPct !== undefined)
+      const bad: string[] = []
+      for (const s of withRepair) {
+        const pct = s.repairPct ?? 0
+        if (!(pct > 0 && pct <= 1)) bad.push(`${s.id}（repairPct = ${pct}，应在 (0,1]）`)
+        if (!REPAIR_SHIP_WHITELIST.has(s.id)) bad.push(`${s.id}（带 repairPct 但不在登记表里——请显式登记）`)
+      }
+      check(bad.length === 0, `后勤契约：敌方后勤舰登记与取值域——${bad.join(' · ')}`)
+      const logisticsShips = SHIPS.filter((s) => s.subClass === '后勤舰')
+      check(
+        logisticsShips.length > 0,
+        '后勤契约：玩家侧没有任何 `subClass: 后勤舰` 的船 —— 「修最缺血的队友」这条特性会永远不生效',
+      )
+      const unmounted = withRepair.filter((s) => !referenced.has(s.id))
+      if (unmounted.length > 0) {
+        warn.push(
+          `后勤契约：敌方后勤舰 ${unmounted.map((s) => `${s.name}（${s.id}）`).join('、')}**已备未上场**` +
+            `（没有任何卡引用它）——船长 2026-09-16 定「先不进卡」⇒ 机制已就位、实战暂不出现；` +
+            `上场时只需把它写进某张卡的 ships（编成改动须过船长）`,
+        )
+      }
+      console.log(
+        `· 后勤契约：玩家后勤舰 ${logisticsShips.map((s) => s.name).join('、')}（${logisticsShips.length} 艘 · 维修脉冲改修三层比例最低的队友）· ` +
+          `敌方后勤舰 ${withRepair.map((s) => `${s.name}（T${s.hullClassTier} · repairPct ${s.repairPct}）`).join('、')}（${withRepair.length} 艘` +
+          `${unmounted.length > 0 ? ' · **未上场**' : ' · 已上场'}）`,
+      )
+    }
     console.log(
       `· 机群与防空契约：防空武器 ${aaMods.length} 件（射程上限 ≤ ${PD_MAX_RANGE_M}m）· 敌机登记 ${droneSlots} 处（机型在表内 / 族一致 / 架数合法）` +
         `${titanRanges.length > 0 ? ` · **E 族射程带** ${titanRanges.join('　')}（机型射程 ${TITAN_DRONE_RANGE_M}m）` : ''}` +

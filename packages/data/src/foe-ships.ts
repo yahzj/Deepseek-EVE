@@ -951,6 +951,45 @@ export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
   ],
 }
 
+/**
+ * **G 族 · T3「残军补给舰」——敌方后勤舰**（船长 2026-09-16：「**敌人后勤舰则是将 50% 的自身DPS转换为修理值**」
+ * ＋「**敌方后勤舰新增一艘舰船**」＋「**T3巡洋**」＋「**先不进卡**」）。
+ *
+ * **备用壳体（先把舰建出来，暂不进任何卡）**——照 2026-09-12「亡军战列舰先建壳体、后启用」的先例：
+ * 上场时只需把它写进某张 G 族卡的 `ships`（编成改动须过船长），机制与用例**本批已全部就位**。
+ *
+ * 数值（全程按族内既有算法，便于复核）：
+ * - 档位 **T3 巡洋**（与我方「亡军后勤舰」镜像；也接替族内 T3 的"据点主力"位）；
+ * - 血 **1080** = T3 档基线 900 × 角色 **1.20**（支援型必须在场活下来，与天底封锁舰同厚）；
+ * - 单发 **62** = T3 档基线 124 × 角色 **0.50**（**火力让位给修理**）；
+ * - 命中 **0.85**（后勤不靠命中；族内 T3 的 0.95 是那张低安卡的迁移守恒值）、装填 4000ms、射程带 **502~6604**；
+ * - 速度 = 族定值 `speedRatio 1.05` ⇒ 实速 **271**（T3 基准 258）；战术 orbit；
+ * - 主系 **动能 8 : 高爆 2**（G 族族格「动能伤害为主」）；
+ * - **`repairPct: 0.5`** ⇒ 名义 DPS = 62 × 1000 ÷ 4000 = **15.5/s** ⇒ **修理 7.75 HP/s = 38.75 / 跳（5 秒）**，
+ *   开火实收 ×0.5；修理目标**永不含任何后勤舰（含自己）**（船长 2026-09-16 补充裁定）。
+ * - ⚠ **不挂机群**（后勤舰不带机群；`FOE_DRONES` 的"已备未挂"计数不受影响）。
+ */
+export const FOE_G_REMNANT_TENDER: FoeShipDef = {
+  id: 'foe-g-remnant-tender',
+  name: '残军补给舰',
+  family: 'G',
+  hullClassTier: 3, // 巡洋舰（船长 2026-09-16：「T3巡洋」）
+  speedRatio: 1.05, // G 族族定值（实速 = 258 × 1.05 = 271）
+  hp: 1080, // T3 档基线 900 × 角色 1.20（支援型要活下来）
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 62, // T3 档基线 124 × 角色 0.50（火力让位给修理）
+  hitRate: 0.85, // 后勤不靠命中（族内 T3 的 0.95 属那张卡的迁移守恒值）
+  reloadMs: 4000,
+  rangeMinM: 502, // 与同族同档（天底封锁舰）同带
+  rangeMaxM: 6604,
+  falloff: 0.5,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 }, // 族格：G 族动能伤害为主
+  tactic: 'orbit',
+  // **敌方后勤舰**：50% 名义 DPS 转修理（见字段注释与 `types.ts` 的 `FoeShipDef.repairPct`）
+  repairPct: 0.5,
+}
+
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
 export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_PIRATE_SKIFF,
@@ -975,5 +1014,6 @@ export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_G_SWARM_SKIFF,
   FOE_G_ECHO_REMNANT,
   FOE_G_NADIR_LOCK,
-  FOE_G_EXILE_BATTLESHIP, // 四档战列舰：**空置壳体**（无卡引用，见上方注释）
+  FOE_G_EXILE_BATTLESHIP, // 四档战列舰（2026-09-15 已启用：洞内 G 族深层卡 ×1，挂蜂群机 ×3）
+  FOE_G_REMNANT_TENDER, // 2026-09-16 船长：敌方后勤舰（T3 · 备用壳体，暂不进卡；带 repairPct 修理能力）
 ]

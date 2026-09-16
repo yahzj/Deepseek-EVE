@@ -729,6 +729,18 @@ export interface BattleState {
    * 缺省（老档在途战斗）⇒ 退化成"只有主控充能"，即旧行为。
    */
   shieldChargeBy?: Record<string, BattleShieldChargeLedger>
+  /**
+   * **敌方后勤账本**（船长 2026-09-16：「**敌人后勤舰则是将 50% 的自身DPS转换为修理值**」＋
+   * 「**敌方的修理无法以其他敌方后勤舰为目标（包括自己）**」）。
+   *
+   * - **只在场上存在敌方后勤舰（`FoeShipDef.repairPct > 0`）时才建**（缺省 ⇒ 零开销、零行为变化）；
+   * - 每 `REPAIR_PULSE_MS`（5 秒）一跳：每跳修理量 = `Σ 在场后勤舰(名义 DPS × repairPct × 5 秒)`，
+   *   名义 DPS 取该单位**战斗中武器面板**的 `Σ 单发 × 1000 ÷ 装填`（不含命中/距离衰减）；
+   * - 目标 = **非后勤**敌舰里三层剩余比例最低者（**永不指向任何 `repairPct > 0` 的敌舰，含自己**），
+   *   不超过其满血、不耗组件；
+   * - `healed` = 累计实际修好的点数（供战报/读数用）。
+   */
+  foeRepair?: { nextPulseAtMs?: number; pulses: number; healed: number }
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = **`舰tag:武器条目下标`**（仅 src='drone' 的条目）；开战由 startBattleFor /
    *  startFleetBattleFor **逐舰**写入（2026-09-14 船长「逐舰机群」）。
