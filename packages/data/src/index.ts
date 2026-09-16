@@ -34,6 +34,11 @@ export {
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
   ALIEN_BEAST_SHIP_IDS,
+  // 2026-09-16 船长「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」：C 族冲锋倍率的**按档契约基准**
+  // （T1 1.5 · T2 2 · T3 2.5 · T4 3 · T5 4；`content:check` 与用例都按它核对舰级实挂值）
+  ALIEN_CHARGE_MUL_BY_TIER,
+  // 2026-09-16 船长「孢群异虫速度削减到300」：C 族「允许慢」白名单（豁免族格速带三条断言）
+  ALIEN_SLOW_SHIP_IDS,
   // 2026-09-15 船长「撞到的契约开白名单」：构成口径由舰级说了算的舰级（D 战列舰 6:4 · E 导弹残段纯爆炸）
   FOE_SHIP_MIX_AUTHORITY_IDS,
   // 2026-09-16 船长：敌方后勤舰「残军补给舰」（T3 · 备用壳体，暂不进卡；带 repairPct 修理能力）
