@@ -58,7 +58,12 @@ AI 核心、谜质储存器都有）⇒ 而**形状在 core、体积在 data**�
       且新用例红（`expected { w: 2, h: 1 } to deeply equal { w: 2, h: 2 }`）；
       ② **体积退回 1000**（形状已 2×2）⇒ 体检报 `货柜契约：box-valuables 的体积 = 1000 m³，应为 2000
       （= 500 m³/格 × 2×2 = 4 格）`，且新用例红（`体积随形状同改: expected 1000 to be 2000`）；
-- [x] `npm run docs:index`（264 份）· 桌面 + 网页双 build ✅。
+- [x] `npm run docs:index`（265 份 · 并入一号「市场分类」批后）· 桌面 + 网页双 build ✅；
+- [x] **产物实证**（主树重建后**逐字扫产物**，防"源码改了、产物是旧的"）：
+      桌面 `apps/desktop/out/renderer/assets/index-CRG0kzOE.js` —— `id: "box-valuables" … unitM3: 2e3`（2000）
+      ＋ `"box-valuables": WORMHOLE_SHAPE_CONTAINER`（该常量同文件内 = `{ w: 2, h: 2 }`）；
+      网页 `web/dist/assets/index-Cw-GOx0U.js` —— `{id:"box-valuables",…,unitM3:2e3,…}` ＋ `Dt={w:2,h:2}`。
+      两侧箱价 `…Isk: 3828e3`（382.8 万）**未动** ✓。
 - **公告侧核查**：`docs/design/announcement-draft-20260915-wormhole-loot.md` 状态仍是「**待船长审核**」，
   而 `packages/data/src/announcements.ts` 里**没有任何**「贵重品货柜 / 奢侈品」字样 ⇒ **公告未发布**
   ⇒ §七 第 3 条按"发布前同步成 4 格"处理，不算勘误。
