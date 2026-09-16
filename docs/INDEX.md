@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **276** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5061** KB · **37102** 行
+- 文档总数 **276** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5062** KB · **37104** 行
 - 状态分布：**未标注** 141 · **已确认/已实现** 107 · **进行中** 22 · **待裁定** 5 · **历史留档** 1
 - 孤儿文档（0 引用）**25** 份 · 状态未标注 **141** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -35,7 +35,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 68 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 320 KB / 764 行 | 199 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 98 KB / 216 行 | 241 / 9 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 95 KB / 216 行 | 241 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -169,7 +169,7 @@
 | `docs/design/market-pool-liquidity-20260910.md` | 市场物品池按玩家产能标定（流通性体检）· 2026-09-10 · 状态：已确认并实现 | 已确认/已实现（已确认并实现） | 2026-09-10 | 9 KB / 117 行 | 3 / 0 |
 | `docs/design/mixed-damage-20260910.md` | 敌方混伤（2026-09-10 · 状态：已确认并实现） | 已确认/已实现（已确认并实现） | 2026-09-10 | 4 KB / 53 行 | 2 / 0 |
 | `docs/design/mixed-damage-review-20260910.md` | 敌方混伤副作用复核（2026-09-10 · 状态：复核完成，数值待船长裁决） | 未标注（复核完成） | 2026-09-10 | 28 KB / 389 行 | 9 / 2 |
-| `docs/design/player-marks-20260910.md` | 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现） | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 76 行 | 0 / 0 |
+| `docs/design/player-marks-20260910.md` | 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现） | 已确认/已实现（已确认） | 2026-09-10 | 5 KB / 76 行 | 0 / 0 |
 | `docs/design/shipwin-scenes-20260910.md` | 舰船状态窗 · 场景背景系统（2026-09-10，含扩展接口约定） | 未标注 | 2026-09-10 | 3 KB / 42 行 | 0 / 1 |
 | `docs/design/thruster-charge-20260910.md` | 推进器周期爆发 + 高威胁近战敌突进（2026-09-10 · 状态：已确认并实现） | 已确认/已实现（已确认并实现） | 2026-09-10 | 10 KB / 126 行 | 7 / 1 |
 | `docs/design/timeout-defeat-20260910.md` | 战斗超时判负（2026-09-10 · 状态：已确认并实现） | 已确认/已实现（已确认并实现） | 2026-09-10 | 8 KB / 141 行 | 7 / 1 |
@@ -193,7 +193,7 @@
 | `docs/design/captain-skill-audit-batch.md` | 船长技能/UX 审核批次（2026-09-08 工作台审阅后问题单）— 全量映射与分批计划 | 进行中（分卷进行中） | — | 46 KB / 452 行 | 5 / 0 |
 | `docs/design/copy-cleanup-pending.md` | 页面文案归位（说明书式介绍 → 手册玩法速览）— 执行记录与待办 | 未标注（首批已执行） | — | 3 KB / 26 行 | 3 / 0 |
 | `docs/design/copy-sweep-candidates.md` | 页面文案巡检候选清单（全部页面，2026-09-08） | 未标注（A1–A4 + D 已执行） | — | 6 KB / 42 行 | 1 / 0 |
-| `docs/design/deliver-trip-and-station-gating.md` | 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿） | 已确认/已实现（已确认） | — | 6 KB / 69 行 | 0 / 0 |
+| `docs/design/deliver-trip-and-station-gating.md` | 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿） | 已确认/已实现（已确认） | — | 5 KB / 69 行 | 0 / 0 |
 | `docs/design/drone-bay-rework.md` | 无人机舱大改：主动装载「无人机舱」+ 全船机舱平衡 + 无人机舰船(设计定稿,2026-09-08 船长逐项拍板) | 已确认/已实现（已确认） | — | 8 KB / 106 行 | 4 / 0 |
 | `docs/design/industry-ai-slot-expansion.md` | 工业产能扩容：AI 核心阶梯与工业专用工位（2026-09-08 定稿） | 已确认/已实现（已确认） | — | 5 KB / 62 行 | 5 / 0 |
 | `docs/design/m0-design.md` | M0 设计文档：技能训练队列 + 时间系统 + 存档 | 未标注 | — | 5 KB / 111 行 | 1 / 0 |
@@ -269,7 +269,7 @@
 | `docs/archive/roadmap-2026-09-12.md` | 封存卷 · roadmap 批次条目 2026-09-12 | 未标注 | — | 173 KB / 160 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 397 KB / 256 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 109 KB / 72 行 | 3 / 0 |
+| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 115 KB / 74 行 | 3 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -362,10 +362,10 @@
 - `docs/design/foe-faction-a-pirate-20260911.md`（2026-09-11 · 8 KB）—— A 族「海盗舰系」族特色 · 对账与调整方案（2026-09-11 · 讨论中）
 - `docs/design/steam-store-draft-20260911.md`（2026-09-11 · 9 KB）—— Steam 商店页文案 · 终稿（2026-09-11，三号撰稿；口径已由船长裁决）
 - `docs/design/market-order-cross-20260910.md`（2026-09-10 · 5 KB）—— 挂单瞬间吃簿：与现有簿面对冲的挂单立即成交（状态：已确认，2026-09-10 船长拍板；一号实现）
-- `docs/design/player-marks-20260910.md`（2026-09-10 · 6 KB）—— 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现）
+- `docs/design/player-marks-20260910.md`（2026-09-10 · 5 KB）—— 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现）
 - `docs/review/enemy-roster-20260910.md`（2026-09-10 · 11 KB）—— 敌情名册（2026-09-10 · 待船长审核与调整）
 - `docs/design/salvage-autoloop-20260909.md`（2026-09-09 · 3 KB）—— 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现)
-- `docs/design/deliver-trip-and-station-gating.md`（无日期 · 6 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
+- `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
