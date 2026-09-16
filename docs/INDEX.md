@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **263** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4907** KB · **36007** 行
-- 状态分布：**未标注** 143 · **已确认/已实现** 106 · **进行中** 8 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**18** 份 · 状态未标注 **143** 份
+- 文档总数 **263** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **4914** KB · **36039** 行
+- 状态分布：**未标注** 144 · **已确认/已实现** 106 · **进行中** 7 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**18** 份 · 状态未标注 **144** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
 - 三、现行设计稿（design）：**182** 份
@@ -28,14 +28,14 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 153 / 4 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 154 / 4 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 140 KB / 209 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 46 KB / 535 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 301 KB / 708 行 | 184 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 99 KB / 218 行 | 236 / 9 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 303 KB / 723 行 | 184 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 99 KB / 218 行 | 235 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -55,12 +55,12 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 1 / 0 |
+| `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 2 / 0 |
 | `docs/design/announcement-draft-20260916-wormhole-bloom.md` | 公告待审稿 · 虫洞大量生成（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 2 KB / 37 行 | 1 / 1 |
 | `docs/design/auto-repair-requires-device-20260916.md` | 洞外「受损自动修补」改为需要船体维修装置（2026-09-16） | 未标注（已落码待验收） | 2026-09-16 | 6 KB / 63 行 | 0 / 0 |
 | `docs/design/hullrep-in-wormhole-20260916.md` | 报障核查：船体维修装置在虫洞里无效（2026-09-16） | 未标注（已落码待验收） | 2026-09-16 | 12 KB / 141 行 | 0 / 0 |
+| `docs/design/repair-scaling-and-chart-archive-20260916.md` | 维修量「统一吃」层容量加成 ＋ 星图记录学改每级 +2（2026-09-16） | 未标注（已落码待验收） | 2026-09-16 | 6 KB / 71 行 | 0 / 0 |
 | `docs/design/wormhole-bloom-promo-20260916.md` | 限时活动「虫洞大量生成」（扫描加速 ＋ 一次性送 5 处）· 2026-09-16 | 进行中（进行中） | 2026-09-16 | 10 KB / 126 行 | 0 / 0 |
-| `docs/design/wormhole-card-intel-20260916.md` | 扫描页虫洞卡片「敌情」（2026-09-16） | 进行中（进行中） | 2026-09-16 | 5 KB / 56 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260915-extract-retire.md` | 公告待审稿 · 虫洞调整（2026-09-15） | 待裁定（待船长审核） | 2026-09-15 | 2 KB / 35 行 | 4 / 0 |
 | `docs/design/announcement-draft-20260915-wormhole-loot.md` | 公告待审稿 · 虫洞战利品扩充（2026-09-15） | 待裁定（待船长审核 · 经办已转一号） | 2026-09-15 | 4 KB / 45 行 | 2 / 0 |
 | `docs/design/civilian-hp-20260915.md` | 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8） | 已确认/已实现（已确认） | 2026-09-15 | 5 KB / 92 行 | 0 / 0 |
@@ -256,7 +256,7 @@
 | `docs/archive/roadmap-2026-09-12.md` | 封存卷 · roadmap 批次条目 2026-09-12 | 未标注 | — | 173 KB / 160 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 397 KB / 256 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 58 KB / 40 行 | 3 / 0 |
+| `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 62 KB / 42 行 | 3 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -333,8 +333,8 @@
 
 - `docs/design/auto-repair-requires-device-20260916.md`（2026-09-16 · 6 KB）—— 洞外「受损自动修补」改为需要船体维修装置（2026-09-16）
 - `docs/design/hullrep-in-wormhole-20260916.md`（2026-09-16 · 12 KB）—— 报障核查：船体维修装置在虫洞里无效（2026-09-16）
+- `docs/design/repair-scaling-and-chart-archive-20260916.md`（2026-09-16 · 6 KB）—— 维修量「统一吃」层容量加成 ＋ 星图记录学改每级 +2（2026-09-16）
 - `docs/design/wormhole-bloom-promo-20260916.md`（2026-09-16 · 10 KB）—— 限时活动「虫洞大量生成」（扫描加速 ＋ 一次性送 5 处）· 2026-09-16
-- `docs/design/wormhole-card-intel-20260916.md`（2026-09-16 · 5 KB）—— 扫描页虫洞卡片「敌情」（2026-09-16）
 - `docs/design/civilian-hp-20260915.md`（2026-09-15 · 5 KB）—— 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8）
 - `docs/design/first-ship-comms-20260915.md`（2026-09-15 · 8 KB）—— 首艘自造船通讯（msg-first-ship）· 工作文档
 - `docs/design/foe-dps-overcap-20260915.md`（2026-09-15 · 6 KB）—— 敌舰体火力「越线折扣」（超 150 部分 15% 折扣）· 2026-09-15
@@ -350,10 +350,11 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（143 份，待补一行 `状态：…`）
+## 附：状态未标注（144 份，待补一行 `状态：…`）
 
 - `docs/design/auto-repair-requires-device-20260916.md`（2026-09-16）—— 洞外「受损自动修补」改为需要船体维修装置（2026-09-16）
 - `docs/design/hullrep-in-wormhole-20260916.md`（2026-09-16）—— 报障核查：船体维修装置在虫洞里无效（2026-09-16）
+- `docs/design/repair-scaling-and-chart-archive-20260916.md`（2026-09-16）—— 维修量「统一吃」层容量加成 ＋ 星图记录学改每级 +2（2026-09-16）
 - `docs/archive/glossary-detail-03-econ-20260915.md`（2026-09-15）—— 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出）
 - `docs/archive/glossary-retired-20260915.md`（2026-09-15）—— 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出）
 - `docs/archive/roadmap-todo-done-20260915.md`（2026-09-15）—— 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出）

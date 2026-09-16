@@ -1116,7 +1116,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 5,
     repairHullHp: 5,
     repairKit: 'repairkit-civ',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 5 点，每跳消耗 1 枚民用修理组件——保命件，修不过敌方火力。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 5 点，每跳消耗 1 枚民用修理组件——保命件，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
   },
   {
     id: 'mod-hullrep-1',
@@ -1127,7 +1127,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 10,
     repairHullHp: 10,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 10 点，每跳消耗 1 枚军用修理组件——显著延寿，修不过敌方火力。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 10 点，每跳消耗 1 枚军用修理组件——显著延寿，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
   },
   {
     id: 'mod-hullrep-2',
@@ -1138,7 +1138,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 18,
     repairHullHp: 18,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗 1 枚军用修理组件——高配巡洋/战列舰的持久战底牌。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗 1 枚军用修理组件——高配巡洋/战列舰的持久战底牌。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
   },
 
   /* ═══ 2026-09-09 目标锁定阵列（target-lock 家族·高槽；船长拍板：集火 + 被锁目标受击加深；
@@ -1261,7 +1261,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairFree: true,
     cpuUse: 30,
     description:
-      '异形生物窝点专属：层叠生体甲壳——装甲层三系减伤各 +10%，并自带无消耗自愈：战斗中每 5 秒自动修复 6 点装甲（不吃组件）。单系抗性远不如专精镀层，胜在能自己长回来。',
+      '异形生物窝点专属：层叠生体甲壳——装甲层三系减伤各 +10%，并自带无消耗自愈：战斗中每 5 秒自动修复 6 点装甲（不吃组件，修复量随装甲容量加成放大）。单系抗性远不如专精镀层，胜在能自己长回来。',
   },
   {
     id: 'mod-lair-dc-c',
@@ -1274,7 +1274,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairFree: true,
     cpuUse: 34,
     description:
-      '异形生物窝点专属：生体组织长成的损管腔——结构层三系减伤各 +25%，并自带无消耗自愈：战斗中每 5 秒自动修复 4 点结构。生物不该有护盾，它靠的是"被打穿也能长回来"。',
+      '异形生物窝点专属：生体组织长成的损管腔——结构层三系减伤各 +25%，并自带无消耗自愈：战斗中每 5 秒自动修复 4 点结构（修复量随结构容量加成放大）。生物不该有护盾，它靠的是"被打穿也能长回来"。',
   },
   {
     id: 'mod-lair-laser-c',
