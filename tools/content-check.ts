@@ -1118,9 +1118,16 @@ for (const m of MODULES) {
       subSrc.includes("{ key: 'luxury', label: '奢侈品' }"),
       `市场类型契约：${subPath} 的「货物」子分类里没有「奢侈品」一档（船长 2026-09-16 定）`,
     )
+    check(
+      subSrc.includes('export const CONTAINER_SUBS') && subSrc.includes('container: CONTAINER_SUBS'),
+      `市场类型契约：${subPath} 的「货柜」没有挂上二级子分类（船长 2026-09-16 追答：「货柜要二级子分类」）`,
+    )
+    for (const label of ['遗迹安全货柜', '图纸货柜', '贵重品货柜', '军用备货柜']) {
+      check(subSrc.includes(label), `市场类型契约：${subPath} 的货柜子分类里没有「${label}」一档`)
+    }
     console.log(
       '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 高·中·低槽装备 / 舰船 / 蓝图 / 核心 · ' +
-        '「货柜」紧跟「货物」·「奢侈品」是「货物」下的子分类',
+        '「货柜」紧跟「货物」· 子分类 = 货物（原矿/原材料/气体/冰矿/奢侈品）· 货柜（遗迹安全/图纸/贵重品/军用）',
     )
   }
 }
