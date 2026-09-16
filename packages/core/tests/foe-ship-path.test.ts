@@ -951,10 +951,13 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     }
   })
 
-  it('稀有头目唯一性：**C 族只有噬口**出现 `elite` 单位，显示名挂「精锐」（A 族头目另计）', () => {
+  it('稀有头目唯一性：**C 族悬赏线只有噬口**出现 `elite` 单位，显示名挂「精锐」（A 族头目另计）', () => {
     const eliteCCards = new Set<string>()
     for (const def of ANOMALIES) {
       if (def.foeFamily !== 'C') continue
+      // ⚠ 2026-09-16 收窄口径：本条的断言对象是**悬赏目录**（可见卡）。洞内隐藏卡（`wh-*`）另属一条线，
+      // 其深层卡自本批起**也**带噬口巨兽（船长「深层为噬口巨兽+2星髓成虫」）⇒ 见下一条用例。
+      if (def.hidden === true) continue
       for (const s of def.ships ?? [])
         if (s.ship.elite) eliteCCards.add(def.id)
     }

@@ -58,12 +58,16 @@ export const CONSUME_SUBS: SubOption[] = [
 export const CONSUME_KIND_KEYS: readonly string[] = CONSUME_SUBS.map((s) => s.key)
 
 /** 「物品」类 = 除残骸与消耗品以外的物品（2026-09-11 起消耗品独立，故此处剔除三类）
- *  ⚠ 术语（船长 2026-09-12）：`ore` = **原矿**、`mineral` = **原材料**（旧称矿石/矿物作废） */
+ *  ⚠ 术语（船长 2026-09-12）：`ore` = **原矿**、`mineral` = **原材料**（旧称矿石/矿物作废）
+ *  ⚠ **2026-09-16 船长**：「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」⇒ 本表补
+ *  **奢侈品**（`luxury`）一档（三件纯贸易品：星港陈酿 / 贵族香料 / 失落艺术品，出自贵重品货柜拆解），
+ *  一级类型中文名「物品」→「**货物**」在 `MarketPage.KIND_TEXT` 单点改。 */
 export const ITEM_SUBS: SubOption[] = [
   { key: 'ore', label: '原矿' },
   { key: 'mineral', label: '原材料' },
   { key: 'gas', label: '气体' },
   { key: 'ice', label: '冰矿' },
+  { key: 'luxury', label: '奢侈品' },
 ]
 
 /** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
