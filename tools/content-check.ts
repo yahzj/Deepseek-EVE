@@ -1552,9 +1552,12 @@ for (const m of MODULES) {
     const hasEva = m.evasionGapPct !== undefined
     // 2026-09-14 跃迁计算机：**跃迁**成为支援件的第六类效果（低槽；只缩短星系际航行时间）
     const hasWarp = m.warpSpeedBonusPct !== undefined
+    // 2026-09-15 隐秘行动装置：**隐身**成为支援件的第七类效果（**高槽**；开火前隐身 20/30 秒）
+    const hasStealth = m.stealthMs !== undefined
     const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
-    const kinds = (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁）`)
+    const kinds =
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
       check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
@@ -1581,9 +1584,13 @@ for (const m of MODULES) {
       if (hasEva) check((m.evasionGapPct ?? 0) > 0 && (m.evasionGapPct ?? 0) <= 0.9, `支援件 ${m.id} evasionGapPct 非法（需 (0, 0.9]）`)
       // 跃迁计算机（2026-09-14）：跃迁速度加成值域 (0, 0.9]——单件 0.20 / 0.35，多件由 EVE 曲线收敛
       if (hasWarp) check((m.warpSpeedBonusPct ?? 0) > 0 && (m.warpSpeedBonusPct ?? 0) <= 0.9, `支援件 ${m.id} warpSpeedBonusPct 非法（需 (0, 0.9]）`)
-      // 归槽语义：伤害/射速/**跃迁** = 低槽；命中/闪避 = 中槽（数据显式 rack，rackOf 已校验一致）
+      // 隐秘行动装置（2026-09-15 船长）：隐身窗口值域 (0, 120000] 毫秒（两档 = 20 / 30 秒；
+      // 档位与"每档多少秒"由下面「隐秘行动装置契约」逐条核）
+      if (hasStealth) check((m.stealthMs ?? 0) > 0 && (m.stealthMs ?? 0) <= 120_000, `支援件 ${m.id} stealthMs 非法（需 (0, 120000] 毫秒）`)
+      // 归槽语义：伤害/射速/**跃迁** = 低槽；命中/闪避 = 中槽；**隐身 = 高槽**（数据显式 rack，rackOf 已校验一致）
       if (stabKeys > 0 || hasRof || hasWarp) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速/跃迁）应为低槽，实际 ${m.rack}`)
       if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
+      if (hasStealth) check(m.rack === 'high', `支援件 ${m.id}（隐身）应为高槽，实际 ${m.rack}`)
     }
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
     check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)
@@ -1594,6 +1601,38 @@ for (const m of MODULES) {
     check(m.rack === 'high', `锁定装置 ${m.id} 应为高槽，实际 ${m.rack}`)
     check(m.bonus === undefined && m.damageType === undefined && m.maxRangeM === undefined, `锁定装置 ${m.id} 不应携带工业/武器参数`)
   }
+}
+
+/* ── 隐秘行动装置契约（2026-09-15 船长：「添加隐秘行动装置，高槽，效果是自身武器开火前，隐身30秒
+ *   （不被锁定，不被攻击）」；六问六答 = 两档 MK2/MK3 · 20 / 30 秒 · **极度吃 CPU** · 带推进器即解除）──
+ * 数据侧能核的四条：① 恰好两档、时长 = 20 秒 / 30 秒（档位越高窗口越长）；② 高槽支援件；
+ * ③ 常驻市场可买 + 有蓝图可造；④ **CPU 占用高于既有全部装备**（"极度吃 CPU" 的可核表达）。
+ * ⚠「**带推进器则直接解除隐身**」是**引擎口径**（`combat.createPlayerSpec`：`propDefs` 非空即判 0），
+ *   数据侧没有可核字段 ⇒ 由 core 用例钉住（`tests/stealth-device.test.ts`）。 */
+{
+  const stealthMods = MODULES.filter((m) => (m.stealthMs ?? 0) > 0)
+  check(stealthMods.length === 2, `隐秘行动装置应为两档（MK2/MK3），实际 ${stealthMods.length} 件`)
+  const byId = new Map(stealthMods.map((m) => [m.id, m]))
+  check(byId.get('mod-stealth-2')?.stealthMs === 20_000, '隐秘行动装置 MK2 的隐身窗口应为 20 秒（20000 毫秒）')
+  check(byId.get('mod-stealth-3')?.stealthMs === 30_000, '隐秘行动装置 MK3 的隐身窗口应为 30 秒（30000 毫秒）')
+  for (const m of stealthMods) {
+    check(m.slot === 'support' && m.rack === 'high', `隐秘行动装置 ${m.id} 应为高槽支援件，实际 ${m.slot}/${m.rack}`)
+    check(m.unreleased !== true, `隐秘行动装置 ${m.id} 标着未上线 —— 船长要的是玩家能拿到它`)
+    const good = MARKET_GOODS.find((g) => g.kind === 'module' && g.refId === m.id)
+    check(good !== undefined && good.unreleased !== true, `隐秘行动装置 ${m.id} 没有常驻市场行（玩家买不到）`)
+    check(BLUEPRINTS.some((b) => b.moduleId === m.id), `隐秘行动装置 ${m.id} 没有蓝图（不可制造）`)
+  }
+  const otherMaxCpu = Math.max(...MODULES.filter((m) => (m.stealthMs ?? 0) === 0).map((m) => m.cpuUse ?? 0))
+  for (const m of stealthMods) {
+    check(
+      (m.cpuUse ?? 0) > otherMaxCpu,
+      `隐秘行动装置 ${m.id} 的 CPU 占用（${m.cpuUse}）应高于既有全部装备（现最高 ${otherMaxCpu}）——船长口径「极度吃 CPU」`,
+    )
+  }
+  console.log(
+    `· 隐秘行动装置契约：${stealthMods.map((m) => `${m.name} ${(m.stealthMs ?? 0) / 1000} 秒 · CPU ${m.cpuUse}`).join(' · ')}` +
+      `（既有装备最高 CPU ${otherMaxCpu}）· 带推进器即解除（引擎口径，见 core 用例）`,
+  )
 }
 
 /* ── B3.1 敌群特色回收池（2026-09-08 收尾：池均价 ÷ 档基数 ∈ 保底乘数 m ±3%）
@@ -3932,6 +3971,8 @@ const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
     repairHullHp: 'support',
     repairKit: 'support',
     lockDmgBonus: 'target-lock',
+    // 2026-09-15 隐秘行动装置：隐身窗口（本职 = 支援件族；高槽 rack 由支援件契约另行钉住）
+    stealthMs: 'support',
     // 2026-09-11 协处理器：CPU 预算扩容（本职在 cpu 族；写在别的槽位上才算跨族，需登记）
     cpuBonus: 'cpu',
     /* ═══ 2026-09-13 虫洞专属装备引出的新字段（本职归属；写在别的槽位上即跨族，需登记）═══ */

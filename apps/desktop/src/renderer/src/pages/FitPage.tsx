@@ -569,6 +569,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     if (st.group === 'flat') return base
     const n = sameKindCount(fitted, engine.ctx, m)
     if (n === 0) return base
+    // 2026-09-15 隐秘行动装置（`max` 组）：多件**取最长一件**——明说"不叠加"，免得玩家以为能叠到 50 秒
+    if (st.group === 'max') return `${base} ← 同类第 ${n + 1} 件：取最长一件（不叠加）`
     if (st.group === 'curve' || st.group === 'weighted') { // 折权加算与 EVE 曲线同文案：写明第 N 件按权重百分比生效
       return `${base} ← 同类第 ${n + 1} 件：按 ${Math.round(stackWeight(n + 1) * 100)}% 生效`
     }

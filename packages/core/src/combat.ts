@@ -204,6 +204,15 @@ export interface UnitSpec {
   /** 锁定装置（2026-09-09）：被锁定目标受本舰伤害加深等效比例（多件 EVE 曲线收敛）；
    *  >0 同时表示"本场集火模式"——全部武器打存活编队首位（替代每发随机分散） */
   lockedDmgBonus?: number;
+  /**
+   * **本单位的隐身窗口时长（ms）**（2026-09-15 船长：「隐秘行动装置」——高槽，**自身武器开火前
+   * 隐身 20/30 秒**：不被锁定、不被攻击）。
+   *
+   * `createPlayerSpec` 写入：取所装隐秘装置里**最长**的一件；**装了任何推进器 ⇒ 不写**
+   * （船长同日追加的禁令：「有推进器类的时候直接解除隐身」）。
+   * 缺省不写 ⇒ 零行为变化（未装装置的船、敌舰、老档）。
+   */
+  stealthMs?: number;
   /** 敌冲锋（2026-09-10 船长定；资格 2026-09-11 扩为两条来源；**2026-09-14 改逐单位**）：本单位为 true 时，
    *  触发条件命中即**自己**加速（×`foeChargeMul`）、**自身炮台命中我方即解除** + 冷却 10 秒。
    *  来源 ① **舰级级 opt-in**（`FoeShipDef.foeCanCharge`，无条件）② 老路（威胁 ≥ 门槛 且 brawl）。 */
@@ -782,6 +791,18 @@ export function createPlayerSpec(
   const droneGear = allFittedModules(fitted, ctx).filter(
     (d) => d.droneBayBonusM3 !== undefined || d.droneDmgBonus !== undefined || d.droneRangeBonusPct !== undefined,
   )
+  /**
+   * **隐秘行动装置**（2026-09-15 船长：「高槽，效果是自身武器开火前，隐身 30 秒（不被锁定，不被攻击）」；
+   * 六问六答 Q4 = 两档 MK2/MK3 = **20 / 30 秒**、极度吃 CPU；Q3 = **只护装了装置的那一艘**）：
+   * 窗口 = 所装件里**最长**的一件（多件不叠加）。
+   *
+   * ⚠ **推进器禁令**（船长同日追加：「**有推进器类的时候直接解除隐身**」）：`propDefs` 非空即判 0 ——
+   * 判在**装配期**（推进器不会中途装卸）⇒ 等价于"带着推进器就没有隐身"。
+   */
+  const stealthMs =
+    propDefs.length > 0
+      ? 0
+      : allFittedModules(fitted, ctx).reduce((m, d) => Math.max(m, d.stealthMs ?? 0), 0)
 
   // 盾/甲：容量加成加算求和；抗性按系逐件缺口乘入（mergeResist 链；V18.1 同系可多件）
   let shieldHpMult = 1
@@ -1155,6 +1176,9 @@ export function createPlayerSpec(
     weapons,
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
     ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1 } : {}),
+    // **隐秘行动装置**（2026-09-15 船长）：隐身窗口取所装件里**最长**的一件；
+    // **装了任何推进器 ⇒ 直接解除**（船长同日追加的禁令）⇒ 这里不写字段（= 无隐身）。
+    ...(stealthMs > 0 ? { stealthMs } : {}),
     foeTactic: null,
   }
 }
@@ -2630,6 +2654,14 @@ export function createBattleState(
       hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
       hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
       weapons: spec.weapons.map(() => 0),
+      /**
+       * **隐秘行动装置**（2026-09-15 船长）：开战那一刻起窗——`stealthMs` 由 `createPlayerSpec` 写
+       * （装了装置**且未装推进器**才有值）。**只有装了装置的那一艘写本字段**（Q3 甲）⇒
+       * 编队其余船、未装装置的场次、敌舰一律零变化。
+       */
+      ...(spec.stealthMs !== undefined && spec.stealthMs > 0
+        ? { stealthUntilMs: nowMs + spec.stealthMs }
+        : {}),
     }
   }
   return {
@@ -2643,6 +2675,22 @@ export function createBattleState(
     fx: [],
     fxSeq: 0,
     ended: null,
+  }
+}
+
+/**
+ * **开战公告：隐秘行动装置启动**（2026-09-15 船长 · Q6 甲 = 不新增界面，只走战斗内那一条提示）。
+ *
+ * 落点口径照 2026-09-11 船长的机制提示纪律：「**日志内不用显示提示，将该提示放入战斗画面内显示**
+ * （和敌方增援统一下系统，显示位置改为战斗窗口正上方）」⇒ 走 `pushBattleNotice`（画面顶部提示位，
+ * 与「敌方增援」「受击增程」同一处），**不写 `addLog`**。
+ * 只在**真的有窗口**时推（未装装置的场次一条都不推 ⇒ 既有读数零变化）。
+ */
+function announceStealthStart(b: import('./state').BattleState): void {
+  for (const u of Object.values(b.units)) {
+    if (u.side !== 'me' || u.stealthUntilMs === undefined) continue
+    const sec = Math.max(0, Math.round((u.stealthUntilMs - b.lastTickGameMs) / 1000))
+    pushBattleNotice(b, `隐秘行动：${u.name} 进入隐身（${sec} 秒内不被锁定、不被攻击）`)
   }
 }
 
@@ -2927,6 +2975,7 @@ export function startBattleFor(
    */
   const meRt0 = battle.units['player']
   if (meRt0) meRt0.hpMax = meFullHp
+  announceStealthStart(battle) // 隐秘行动装置：开战那一刻的提示条（没装装置的场次不推）
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
@@ -3233,6 +3282,7 @@ export function startFleetBattleFor(
     const rt = battle.units[tag]
     if (rt) rt.hpMax = full
   }
+  announceStealthStart(battle) // 隐秘行动装置：开战那一刻的提示条（逐舰各一条，没装的船不推）
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
@@ -4987,6 +5037,12 @@ function stepBattle(
       if (droneHit && (w.antiDroneMul ?? 1) !== 1)
         dmg = Math.round(dmg * (w.antiDroneMul ?? 1))
       b.stats.meShots += 1;
+      // **隐秘行动：开火即现形**（2026-09-15 船长 Q1 甲）——本舰任一门武器打出第一发时窗口清空；
+      // 同一拍稍后的敌方开火段因此已经"看得见"它（现实语义亦然：枪口一闪就暴露了）。
+      if (meRt.stealthUntilMs !== undefined) {
+        meRt.stealthUntilMs = undefined
+        pushBattleNotice(b, '隐秘行动结束：本舰开火现形')
+      }
       // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
       if (w.src === 'drone')
         b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
@@ -5327,6 +5383,17 @@ function stepBattle(
     }
   }
 
+  // ── 隐秘行动装置（2026-09-15 船长）：**窗口到点即现形** —— "先到者为准"的另一支
+  //    （开火那一支在上面 `stats.meShots` 处已处理）⇒ 一直没开火也不会永久隐身。──
+  for (const unit of myUnits) {
+    const urt = b.units[unit.tag]
+    const until = urt?.stealthUntilMs
+    if (urt && until !== undefined && b.lastTickGameMs >= until) {
+      urt.stealthUntilMs = undefined
+      pushBattleNotice(b, '隐秘行动结束：隐身窗口到点，本舰现形')
+    }
+  }
+
   // ── 结束判定 ──
   // **判负 = 我方全灭**（虫洞 D 批 · 船长 2026-09-13 定）：主控沉了僚舰继续打；
   // 单船路径下"全灭"与"主控沉"等价 ⇒ 与改动前逐字一致。
@@ -5414,8 +5481,23 @@ function isFoeEngageable(b: import('./state').BattleState, tag: string): boolean
   return at === undefined || b.lastTickGameMs >= at + BATTLE_ARRIVAL_FLY_MS
 }
 
-/** 我方还有没有活着的单位（`myUnits` 里任一存活）——单船路径等价于 `isAlive(b,'player')` */
-function isAliveAnyOf(b: import('./state').BattleState, myUnits: readonly UnitSpec[]): boolean {
+/**
+ * **我方单位当前是否"可被敌方选中"**（2026-09-15 船长：「隐秘行动装置」——**开火前隐身：不被锁定、
+ * 不被攻击**）。
+ *
+ * 判据 = 该单位的隐身窗口不在生效期：`stealthUntilMs === undefined || lastTickGameMs >= stealthUntilMs`。
+ * 为什么做成**选靶判据**而不是"伤害免疫"：与上面 `isFoeEngageable` 同一条理由——引擎里**命中与伤害
+ * 同拍结算**（没有在途弹道状态）⇒ 选靶处排除即彻底；且敌舰主炮与机群在**无处可选**时自然
+ * **停火待机**（Q2 甲：本拍若没有别的可打目标就不开火）。
+ *
+ * 缺字段（未装装置的船 / 敌舰 / 老档）⇒ **恒可选中**（零行为变化）。
+ */
+function isMyUnitTargetable(b: import('./state').BattleState, tag: string): boolean {
+  const until = b.units[tag]?.stealthUntilMs
+  return until === undefined || b.lastTickGameMs >= until
+}
+
+/** 我方还有没有活着的单位（`myUnits` 里任一存活）——单船路径等价于 `isAlive(b,'player')` */function isAliveAnyOf(b: import('./state').BattleState, myUnits: readonly UnitSpec[]): boolean {
   return myUnits.some((u) => isAlive(b, u.tag))
 }
 
@@ -5469,8 +5551,16 @@ export function pickMyUnitTarget(
   // `!meRt`、不判 `isAlive`，故"我方在某一拍被打沉后、本拍剩余敌人仍照旧结算开火"——
   // 那一发打在尸体上、对战果无影响，但**会进 `stats.foeShots`**（标定工具「敌开火」列）。
   // 若在此提前返回 null，该计数会少掉最后一拍 ⇒ 与改动前口径不一致（D 批实测到的唯一漂移）。
-  if (myUnits.length === 1) return myUnits[0]!
-  const alive = aliveMyUnits(b, myUnits)
+  if (myUnits.length === 1) {
+    /**
+     * **隐秘行动**（2026-09-15 船长）：唯一那艘若在隐身窗口内 ⇒ 敌方**无人可选** ⇒ 本发停火
+     * （Q2 甲）。**零漂移命门照旧**：没装装置时 `isMyUnitTargetable` 恒真 ⇒ 与改动前逐字等价、
+     * 一次随机数都不多消费。
+     */
+    const only = myUnits[0]!
+    return isMyUnitTargetable(b, only.tag) ? only : null
+  }
+  const alive = aliveMyUnits(b, myUnits).filter((u) => isMyUnitTargetable(b, u.tag))
   if (alive.length === 0) return null
   if (alive.length === 1) return alive[0]!
   /** 并列集合里等权随机（**恰好消费一次** `nextInt`） */
@@ -5724,7 +5814,18 @@ export function bountyDamageForecast(
   else if (!Number.isFinite(sp.ttrFoe)) rawWin = 0
   else rawWin = clamp(0, 1, sp.ttrMe / (sp.ttrMe + sp.ttrFoe))
   const duration = Math.min(sp.ttrMe, sp.ttrFoe)
-  const dmg = Number.isFinite(duration) ? sp.foeDps * duration : 0
+  /**
+   * **隐秘行动装置计入预估**（2026-09-15 船长 · Q6 甲）：隐身窗口内**双方都不开火**
+   * （我方一开火就现形 ⇒ 窗口内我方同样停火）⇒ 敌方的**有效输出时长**要扣掉这一段
+   * （窗口比战斗还长就扣到 0，不会出现"负输出"）。
+   *
+   * **口径边界（如实登记）**：胜率**比值**不受影响（双方 DPS 没变，只是开打得更晚）——
+   * 玩家可见的胜率走 `winEstimate.ts` 的**蒙特卡洛**（直接跑真引擎）⇒ 装置**自动计入**、无需另算；
+   * 本处改的是**损耗预估**（预计装甲/结构损耗），免得"装了装置、面板还按旧损耗显示"。
+   */
+  const stealthSec = Math.max(0, (sp.me.stealthMs ?? 0) / 1000)
+  const foeFireSec = Math.max(0, duration - stealthSec)
+  const dmg = Number.isFinite(duration) ? sp.foeDps * foeFireSec : 0
   const afterShield = Math.max(0, dmg - sp.me.hp.s)
   const armorLoss = sp.me.hp.a > 0 ? clamp(0, 1, afterShield / sp.me.hp.a) : afterShield > 0 ? 1 : 0
   const hullLoss = sp.me.hp.h > 0 ? clamp(0, 1, Math.max(0, afterShield - sp.me.hp.a) / sp.me.hp.h) : afterShield > sp.me.hp.a ? 1 : 0

@@ -180,8 +180,8 @@ export function familyModules(state: GameState, ctx: SimContext, shipId: string,
 
 /* ═══════════ V18.1 多件收敛（取消同类唯一后的防超模机制） ═══════════ */
 
-/** 收敛分组：gap = 缺口复合（抗性/闪避）· curve = EVE 曲线（命中/速度）· **weighted = 折权加算**（加算族的多装惩罚，2026-09-14 起用于无人机射程中继天线）· flat = 加算线性（不收敛） */
-export type StackGroup = 'gap' | 'curve' | 'weighted' | 'flat'
+/** 收敛分组：gap = 缺口复合（抗性/闪避）· curve = EVE 曲线（命中/速度）· **weighted = 折权加算**（加算族的多装惩罚，2026-09-14 起用于无人机射程中继天线）· **max = 取最强一件**（多件不叠加，2026-09-15 起用于隐秘行动装置的隐身窗口）· flat = 加算线性（不收敛） */
+export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'flat'
 
 /**
  * 一件装备的收敛分组与收敛键（同键 = 同一收敛池，按单件效果从强到弱参与合成）。
@@ -203,6 +203,12 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   // 收敛池 = 同 kind（MK2 与 MK3 混装时按单件效果从强到弱排位）。
   if (def.warpSpeedBonusPct !== undefined) return { group: 'curve', kind: 'warp' }
   if (def.lockDmgBonus !== undefined) return { group: 'curve', kind: 'lock' }
+  /**
+   * **隐秘行动装置（`stealthMs`，2026-09-15 船长）**：隐身窗口 = **多件取最长那一件**（不叠加）——
+   * 两档 20/30 秒，装两件也只有最长的那一段。UI 据此标「取最长（不叠加）」，
+   * 既不写"多装递减"（那是收敛件的口径），也不写"全额叠加"（那是加算件的口径）。
+   */
+  if (def.stealthMs !== undefined) return { group: 'max', kind: 'stealth' }
   // 无人机中继天线（`droneRangeBonusPct`）：**折权加算**（2026-09-14 船长「对无人机的射程插件添加叠加
   // 惩罚」→「按推荐折算」）——第 2 件起按 `stackWeight` 的 87% / 57% / 28%… 折权后**仍相加**，
   // 不再"全额线性叠加"；收敛池 = 同 `kind`（制式 MK1/2/3 与 G 族「流亡中继桅」同槽同池）。

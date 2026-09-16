@@ -1541,6 +1541,40 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 6810000,
     description: '顶级锁定流程，从发现到咬住几乎是同一个瞬间。',
   },
+  /* ═══ 2026-09-15 隐秘行动装置（船长：高槽 · 自身武器开火前隐身 20/30 秒 · 极度吃 CPU）；
+      材料 ≈ 产物价 ×0.42 / ×0.40（与锁定阵列同一条料价带，按价格倍数换算件数）、
+      书价按档位系数 = 产物价 ×2.5 / ×3 ═══ */
+  {
+    id: 'bp-stealth-2',
+    name: '隐秘行动装置 MK2蓝图',
+    moduleId: 'mod-stealth-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 37_800 },
+      { itemId: 'min-pyerite', count: 12_000 },
+      { itemId: 'min-mexallon', count: 7_200 },
+      { itemId: 'min-nocxium', count: 1_450 },
+    ],
+    buildSeconds: 1800,
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 4000000,
+    description: '把整段舰体的信号压到背景噪声之下：材料不难找，难的是那份遮蔽规程。',
+  },
+  {
+    id: 'bp-stealth-3',
+    name: '隐秘行动装置 MK3蓝图',
+    moduleId: 'mod-stealth-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 102_600 },
+      { itemId: 'min-pyerite', count: 30_500 },
+      { itemId: 'min-mexallon', count: 17_200 },
+      { itemId: 'min-nocxium', count: 3_380 },
+      { itemId: 'min-isotope', count: 5_800 },
+    ],
+    buildSeconds: 3600,
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 14400000,
+    description: '顶配遮蔽规程：长到能在敌人眼皮底下走完一整段距离，代价是算力几乎被它吃干。',
+  },
 
   /* ══════════════ 虫洞专属**一次性图纸**（2026-09-13 船长「开工，装备就全部做进来」＋「不掉永久图纸」）
    * 口径（船长逐条裁定）：**不上市场、不能学、只能造一次**（`singleUse`，开工吃掉这本图）；
