@@ -270,7 +270,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     loot: [],
     combatSeconds: 50,
     hidden: true,
-    description: '虫洞内遭遇：孢群异虫领着的巢群兵潮（隐藏卡，只由虫洞生成）。',
+    description: '虫洞内遭遇：孢群异虫领着星髓成虫压上（隐藏卡，只由虫洞生成）。',
   },
   {
     id: 'wh-alien-hive',
