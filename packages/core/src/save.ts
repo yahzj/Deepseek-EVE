@@ -2928,6 +2928,9 @@ function normalizeState(raw: unknown): GameState {
       scanned: keys(g.scanned),
       visited: keys(g.visited),
       activated: keys(g.activated),
+      // 已结算「首捞掉落」的遗迹格（船长 2026-09-16「时间点改为遗迹第一次打捞」）：
+      // 空数组不写（老档/没首捞过 ⇒ 零迁移）
+      ...(keys(g.ruinsRolled).length > 0 ? { ruinsRolled: keys(g.ruinsRolled) } : {}),
       // 已驱散的星云格（船长 2026-09-13）：空数组不写（老档/没驱散过 ⇒ 零迁移）
       ...(keys(g.dispersed).length > 0 ? { dispersed: keys(g.dispersed) } : {}),
       // 「下一层入口已被漂浮信标标出」（F3a-3）：只在为真时写（老档/未标出 ⇒ 不写 = 零迁移）

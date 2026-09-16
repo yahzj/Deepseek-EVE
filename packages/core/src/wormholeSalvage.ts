@@ -1580,42 +1580,35 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
         `点堆位自己拾取装舱（形状件按占地占货仓格；货仓腾不出会先进临时空间）。`,
     )
   }
-  const finished = piles.length === 0
-  if (!finished) {
-    return {
-      ok: true,
-      spent: WORMHOLE_TURN_PER_WORK,
-      taken,
-      left: piles.length,
-      finished: false,
-      mustExtract: run.turnsLeft <= 0,
-      ...(foundBoxes.length > 0 ? { boxes: foundBoxes } : {}),
-    }
-  }
-  // ── 打捞结束：记完成；遗迹另掷专属掉落与收尾战 ──
-  if (!grid.activated.includes(cell.key)) grid.activated.push(cell.key)
-  const result: WormholeSalvageResult = {
-    ok: true,
-    spent: WORMHOLE_TURN_PER_WORK,
-    taken,
-    left: 0,
-    finished: true,
-    mustExtract: run.turnsLeft <= 0,
-    ...(foundBoxes.length > 0 ? { boxes: foundBoxes } : {}),
-  }
-  if (cell.place === 'ruins') {
-    /**
-     * **遗迹专属掉落 = 一个「遗迹安全货柜」**（F4）。落地走**收货阶梯**
-     * （船长 2026-09-13：「**打捞出了大件货时应该放进一个临时空间或者临时背包，让玩家进行协调**」）：
-     * ① 货仓腾得出该形状 ⇒ 直接装进货仓格；② 腾不出 ⇒ **放进临时空间**（玩家到货仓页整理）；
-     * ③ 两边都满 ⇒ 才散落在该格（并提示"腾出空间后回来拾取"）。
-     * ⚠ 占格数**按形状现算**（安全货柜 2×2 = 4 格 / 图纸货柜 2×1 = 2 格），不写死。
-     */
-    const boxId = wormholeRollRelicBox(state, ctx, cell)
-    if (boxId) {
-      const name = ctx.items.get(boxId)?.name ?? boxId
-      const shp = wormholeShapeOf(boxId)
-      const landed = wormholeStowOrTemp(state, ctx, boxId, 1)
+  /**
+   * ── **遗迹首捞结算**（2026-09-16 船长改时机：「**时间点改为遗迹第一次打捞**」；三个掷点一起提前）──
+   *
+   * 改前：这些掷点挂在"**这一格打捞完**（堆清空）"那一拍 ⇒ 打一半（货仓满/回合不够）就白白错过判定，
+   * 且"必须清完才有机会拿"成了硬门槛。改后：**这一格第一次真正收走至少一堆**的那次打捞就结算，
+   * **掷中即发货**（货柜/核心走收货阶梯；惊扰守卫当场开战），此后本格不再掷。
+   *
+   * 三条掷点都保持**各自独立的盐值流**（不消费 `state.rng`、不挤占别的掷点）：
+   * ① 遗迹安全货柜 `70%`（层 2 起，`wormholeRollRelicBox`）；
+   * ② AI 核心 `10%`（`wormholeRollCore`）；
+   * ③ 惊扰守卫（`WORMHOLE_RUINS_BATTLE_CHANCE`，掷中 ⇒ `pendingRuinsBattle` 拦下后续动作，先打完）。
+   * 记账 `grid.ruinsRolled`（格键数组、随档）⇒ **每格只结算一次**；老档缺字段 = 这格还没首捞过。
+   * ⚠ "第一次"以**实际收走 ≥1 堆**为准（`taken.length > 0`）：货仓满到一堆都收不走的空动作不算，
+   * 不浪费这一格的判定。
+   */
+  const ruinsFirstPull = cell.place === 'ruins' && taken.length > 0 && !(grid.ruinsRolled ?? []).includes(cell.key)
+  const ruinsBoxes: string[] = []
+  let ruinsCores: string[] | undefined
+  let ruinsBattle = false
+  /** 本次首捞出的遗迹货柜（沿用旧报账字段 `relics`——它是"这一次掉的遗迹专属件"，语义未变，只是时机提前） */
+  let resultRelics: string[] | undefined
+  if (ruinsFirstPull) {
+    grid.ruinsRolled = [...(grid.ruinsRolled ?? []), cell.key]
+    // ① 遗迹专属掉落 = 一个「遗迹安全货柜」（层 2 起 70%）——落地走收货阶梯（货仓 → 临时空间 → 散落该格）
+    const ruinsBoxId = wormholeRollRelicBox(state, ctx, cell)
+    if (ruinsBoxId) {
+      const name = ctx.items.get(ruinsBoxId)?.name ?? ruinsBoxId
+      const shp = wormholeShapeOf(ruinsBoxId)
+      const landed = wormholeStowOrTemp(state, ctx, ruinsBoxId, 1)
       if (landed.where === 'hold') {
         addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 ${shp.w}×${shp.h} = ${shp.w * shp.h} 格）。`)
       } else if (landed.where === 'temp') {
@@ -1625,21 +1618,17 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
           `🕳 遗迹深处发现${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`,
         )
       } else {
-        cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
+        cell.piles = [...(cell.piles ?? []), { itemId: ruinsBoxId, units: 1 }]
         addLog(
           state,
           'warn',
           `🕳 遗迹深处发现${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`,
         )
       }
-      result.relics = [boxId]
+      ruinsBoxes.push(ruinsBoxId)
+      resultRelics = [ruinsBoxId]
     }
-    /**
-     * **AI 核心**（2026-09-14 船长定「在遗迹的打捞内，添加阿尔法、贝塔、伽马 AI 核心的掉落。
-     * AI 核心单独占 1 格。出率为 10%，不挤占旧有出率」）：走**与上面货柜完全独立的一条流**
-     * （`wormholeRollCore` 自带盐值）⇒ 上面那次掷骰的随机数消费不受影响，旧读数逐字不变。
-     * 落格走**与货柜同一套收货阶梯**（货仓 → 临时空间 → 散落该格）——它是**形状件**（1×1 = 1 格）。
-     */
+    // ② AI 核心（10% · 独立流；1×1 形状件，撤离成功才入核心账）
     const coreId = wormholeRollCore(state, cell)
     if (coreId) {
       const name = ctx.items.get(coreId)?.name ?? coreId
@@ -1652,16 +1641,33 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
         cell.piles = [...(cell.piles ?? []), { itemId: coreId, units: 1 }]
         addLog(state, 'warn', `🕳 遗迹深处发现${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`)
       }
-      result.cores = [coreId]
+      ruinsCores = [coreId]
     }
-    const rng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
-    if (rng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
-      result.effect = { kind: 'ruinsBattle', key: cell.key }
-    // **记「待迎战」标记**（船长 2026-09-13）：界面据此弹确认条；玩家点「迎战」之前别的动作一律被拦
-    run.pendingRuinsBattle = true
+    // ③ 惊扰守卫（船长 2026-09-16 选「也提前到第一次打捞」）⇒ 当场开战，打完才能做别的
+    const battleRng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
+    if (battleRng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
+      ruinsBattle = true
+      run.pendingRuinsBattle = true
       addLog(state, 'warn', '🕳 遗迹深处的守备被惊动了：交火在即——这一场必须打完。')
     }
   }
+  const finished = piles.length === 0
+  const foundAll = [...foundBoxes, ...ruinsBoxes]
+  const result: WormholeSalvageResult = {
+    ok: true,
+    spent: WORMHOLE_TURN_PER_WORK,
+    taken,
+    left: piles.length,
+    finished,
+    mustExtract: run.turnsLeft <= 0,
+    ...(foundAll.length > 0 ? { boxes: foundAll } : {}),
+    ...(ruinsCores !== undefined ? { cores: ruinsCores } : {}),
+    ...(resultRelics !== undefined ? { relics: resultRelics } : {}),
+    ...(ruinsBattle ? { effect: { kind: 'ruinsBattle', key: cell.key } as WormholeActivateEffect } : {}),
+  }
+  if (!finished) return result
+  // ── 打捞结束：记完成（掉落与收尾战已在上面"首捞"那一刻结算过，此处不再掷）──
+  if (!grid.activated.includes(cell.key)) grid.activated.push(cell.key)
   return result
 }
 
