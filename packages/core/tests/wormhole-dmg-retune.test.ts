@@ -48,19 +48,19 @@ function derived(cardId: string, depth: number, kind: 'node' | 'boss' = 'node'):
 }
 
 describe('洞内伤害重调（船长 2026-09-16）', () => {
-  it('系数常量：全族降火 0.7 · D 族火力 1.45 / 血量 0.7（D 不吃 0.7）', () => {
+  it('系数常量：全族降火 0.7 · D 族火力 1.45 / 血量 0.85（D 不吃 0.7；血量当日由 0.7 回调）', () => {
     expect(WORMHOLE_FOE_DMG_MUL).toBe(0.7)
     expect(WORMHOLE_GRAVE_DMG_MUL).toBe(1.45)
-    expect(WORMHOLE_GRAVE_HP_MUL).toBe(0.7)
+    expect(WORMHOLE_GRAVE_HP_MUL).toBe(0.85)
     expect(WORMHOLE_FOE_VOLLEY_STAGGER_MS).toBe(900)
   })
 
-  it('派生读数（层 1 节点）：A/C/E/G **血不变、火力 ×0.7**；D **血 ×0.7、火力 ×1.45**', () => {
+  it('派生读数（层 1 节点）：A/C/E/G **血不变、火力 ×0.7**；D **血 ×0.85、火力 ×1.45**', () => {
     // 期望值 = 改前读数 × 系数（改前：A 3,490/161 · C 3,490/162 · D 3,490/65 · E 3,490/278 · G 3,490/222）
     const want: Record<string, { hp: number; dps: number }> = {
       A: { hp: 3490, dps: 113 },
       C: { hp: 3490, dps: 113 },
-      D: { hp: 2443, dps: 94 },
+      D: { hp: 2967, dps: 94 }, // 3,490 × 0.85（当日由 0.7 回调）
       E: { hp: 3490, dps: 195 },
       G: { hp: 3490, dps: 155 },
     }
@@ -74,13 +74,13 @@ describe('洞内伤害重调（船长 2026-09-16）', () => {
     }
   })
 
-  it('D 族层 2 / 守卫：血同样 ×0.7（保留层间梯度）· 火力同样 ×1.45', () => {
+  it('D 族层 2 / 守卫：血同样 ×0.85（保留层间梯度）· 火力同样 ×1.45', () => {
     const mid = WORMHOLE_FAMILY_CARDS.D.mid!
     const d2 = derived(mid, 2, 'node')
     const g2 = derived(mid, 2, 'boss')
     for (const [got, want, label] of [
-      [d2.hp, 3157, '层 2 血（4,510 × 0.7）'],
-      [g2.hp, 4188, '守卫血（5,984 × 0.7）'],
+      [d2.hp, 3834, '层 2 血（4,510 × 0.85）'],
+      [g2.hp, 5086, '守卫血（5,984 × 0.85）'],
       [d2.dps, 96, '层 2 火力（66 × 1.45）'],
       [g2.dps, 128, '守卫火力（88 × 1.45）'],
     ] as const) {
