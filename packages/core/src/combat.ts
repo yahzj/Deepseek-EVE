@@ -5388,16 +5388,28 @@ export function pickFoeDroneTarget(
   const hitAt = perShipTokens ? perShipTokens[myTag] : b.droneHitAt?.me
   if (hitAt === undefined || b.lastTickGameMs - hitAt > PD_REACTIVE_WINDOW_MS)
     return null;
-  // **消费制**（船长 2026-09-11：「我没有看到反应式防空，被攻击后近防炮就一直开火」）——
-  // 窗口原设 5,000ms 而敌机装填 4,400ms ⇒ **窗口首尾相接、看着就是一直在打**。
-  // 现改为：**一次敌机攻击只换一次反击**（把这个时刻消费掉，下一次要等它再打过来）——
-  // 节奏变成"挨一下 → 还一炮 → 静默等下一轮"，反应式才看得出来。
+  /**
+   * **逐门记账**（2026-09-17 修玩家报障：「**多个近防炮对无人机的伤害不叠加，同时装MK2和MK3只有一个开火**」）：
+   *
+   * 旧口径在这之后把**整舰共用的令牌删掉**（`delete nextTokens[myTag]`）⇒ 同一拍里**第一门**近防炮开完火，
+   * 其余门（含 MK2/MK3 这种不同武器条目）全部拿到 null ⇒ 加装近防炮**毫无收益**（取证：一艘船装 3 门，
+   * 每拍开火发数与只装 1 门相同）。船长 2026-09-11 定"消费制"的本意是**防一直开火**，不是"一舰只准一门开火"。
+   *
+   * 现改为：**令牌保留**（它记的是"本舰何时挨了机群打"），每门武器按 `舰tag:武器下标` 各记一次
+   * "这次挨打我已经还过手"⇒ **一次敌机攻击 = 本舰每门近防炮各还手一次**；窗口过期仍由上面的
+   * `PD_REACTIVE_WINDOW_MS` 判断兜底 ⇒ 不会退回"一直开火"。
+   */
+  const lockKey = dronePoolKey(myTag, wi)
   if (perShipTokens) {
-    const nextTokens = { ...perShipTokens }
-    delete nextTokens[myTag]
-    b.droneHitAtMeBy = nextTokens
+    const answered = b.mePdAnsweredBy?.[lockKey]
+    if (answered !== undefined && answered >= hitAt) return null
   } else {
+    // 旧形状（本改动之前开的在途战斗）：照旧消费旧令牌
     b.droneHitAt = { ...(b.droneHitAt ?? {}), me: undefined };
+  }
+  /** 成功还手后记账（只有**选到目标**才算还过手：没目标时不消耗本门这次机会） */
+  const markAnswered = (): void => {
+    if (perShipTokens) b.mePdAnsweredBy = { ...(b.mePdAnsweredBy ?? {}), [lockKey]: hitAt }
   }
   // ⚠ **打机群不按两舰间距判射程**（船长 2026-09-11 裁定 · 甲案）：敌机在画面里是**飞到您舰旁**
   // 才开火的——机制服从画面 ⇒ 只要机还活着、近防炮就能打它（近防炮的射程只对"打舰"生效）。
@@ -5436,12 +5448,15 @@ export function pickFoeDroneTarget(
   // 本武器已锁定的那架**还活着且仍可打** ⇒ 继续打它（换靶只发生在"被击落 / 被备用机替换 / 出射程"时）。
   // ⚠ 与敌方侧 `pdFocus` 同口径（那侧按**点防舰**同序存）；**我方侧 2026-09-16 起按 `舰tag:武器下标` 存**
   //   （旧口径只按下标 ⇒ 多舰的 0 号武器互相顶锁；旧字段 `mePdFocus` 只服务在途老战斗）。
-  const lockKey = dronePoolKey(myTag, wi)
+  //   `lockKey` 已在上方（令牌记账处）算好，两处共用同一个键。
   const focusBy = b.mePdFocusBy
   const locked = focusBy ? focusBy[lockKey] : b.mePdFocus?.[wi]
   if (locked) {
     const keep = cands.find((c) => c.foeTag === locked.tag && c.idx === locked.idx)
-    if (keep) return { foeTag: keep.foeTag, pool: keep.pool }
+    if (keep) {
+      markAnswered()
+      return { foeTag: keep.foeTag, pool: keep.pool }
+    }
   }
   // ── **选靶优先级**（船长 2026-09-12：「**优先攻击哨戒和攻坚无人机**」「侦查和普通战机相同权重抽取」）──
   // 与敌方侧 `pdPriorityOf` **同一张表**：哨戒 0 → 攻坚 1 → 其余 2；取**当前存在的最低档**，同档**等权随机**。
@@ -5459,6 +5474,7 @@ export function pickFoeDroneTarget(
     focus[wi] = { tag: pick.foeTag, idx: pick.idx }
     b.mePdFocus = focus
   }
+  markAnswered() // 本门这次挨打还过手了（其余门各自记账，互不顶掉）
   return { foeTag: pick.foeTag, pool: pick.pool }
 }
 
