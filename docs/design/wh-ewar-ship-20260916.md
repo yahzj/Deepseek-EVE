@@ -60,6 +60,8 @@
 10. `BattleScreen.tsx`：蓝线几何（`foeAnchorByTag` / `meAnchorOfTag` / `webEls`，插在 `boltEls` 之前渲染）
     ＋ 敌方挂载件芯片（悬停看全部件名）＋ 战报行「敌方挂载件」。
 11. `styles.css`：`.app-bts-web` / `.app-bts-web-bar` + `@keyframes app-bts-web-pulse`（蓝色发光）。
+    **2026-09-17 船长：「建议将收尾互换有羽化效果的对着敌人」** ⇒ 两端对调：发动者（劫掠电子舰 · 敌人）
+    那头 = 最亮 + 外发光，被钉住的我方舰那头 = 羽化收尾（只动 `linear-gradient` 方向，几何/时长/颜色不变）。
 
 **契约与用例**
 12. `tools/content-check.ts`：敌方挂载件契约 ①~⑤ ＋ **捕获网归属**（只允许「劫掠电子舰」带，深层战团必须带一条）；
