@@ -94,7 +94,7 @@ import type { GameState } from '@whale/core'
 import { GALAXIES, ITEMS, MODULES, buildSimContext } from '@whale/data'
 // 虫洞·货仓装不下 / 超载 / 第 4 层星云现场（要用到的核心单点，走深路径，与 `wormhole-econ` 同一套做法）
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../packages/core/src/wormhole'
-import { hexDistance, hexLine, hexNeighbors, isExitCell, wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
+import { hexDistance, hexLine, hexNeighbors, isExitCell, gridContentIndex, wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
 import {
   wormholeHoldCapacityOf,
   wormholeEnsureSalvagePiles,
@@ -106,6 +106,9 @@ import {
 } from '../packages/core/src/wormholeSalvage'
 import { makeHoldState, placementCells } from '../packages/core/src/wormholeHold'
 import { wormholeUnitsPerSlot } from '../packages/core/src/wormhole'
+// 2026-09-17 `wh-ewar`（劫掠电子舰现场档）：敌卡的**唯一取值点**（与 `wormholeStartBattle` 同一函数，
+// 故本档能"先算好是哪张卡、写死现场、再当场断言"）
+import { wormholeCardIdForRun } from '../packages/core/src/wormholeFoes'
 
 const SAVE_PATH = join(process.env.APPDATA ?? '', 'whale-idle', 'save.json')
 const OUT_DIR = join(process.cwd(), 'docs', 'test-saves')
@@ -2371,7 +2374,144 @@ function injectWormholeLogi(state: GameState): string[] {
   return notes
 }
 
-const INJECTORS: Record<string, (state: GameState) => string[]> = {  // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
+/**
+ * **虫洞 · 劫掠电子舰「海盗战团」现场档**（2026-09-17 · 船长：「**准备一个在虫洞内面对该敌人的存档**」）。
+ *
+ * 目的：一开档就站在**舰船信号**格上，**点脚下那格按迎战**即对上 A 族**深层**卡「**海盗战团**」——
+ * 编成 = 海盗头目舰 ×1 ＋ **劫掠电子舰 ×1**（首轮开火即发动**劫掠捕获网**）＋ 海盗快艇 ×2。
+ * 要看的东西：**蓝色连线**（发动者那头最亮 + 外发光、被钉舰那头羽化）·
+ * 被钉住的我方舰 **机动 ×0.1 / 推进器熄火 / 闪避归零 / 射程两端 −500m**（悬停敌卡可看挂载件名），
+ * **击杀劫掠电子舰 = 当场解除**。
+ *
+ * 关键做法（确定性 · 可复现 · 不用手翻档）：
+ * - **层 4**：深层卡从层 4 起进池（`WORMHOLE_TIER_UNLOCK_DEPTH.deep = 4`）⇒ 本档把 run 直接放第 4 层；
+ * - **族锁定 A**：种子挑 A 族（`wormholeFamilyOfSeed`）并**同时写死 `run.family = 'A'`**，
+ *   免得"档里是 A、种子算出来是别的族"两套口径（整趟一族是 2026-09-14 的既定口径）；
+ * - **卡片确定性**：敌卡 = `wormholeCardIdForRun({族, 种子, 层, kind:'node', nodeIndex: gridContentIndex(盘, 格)})`
+ *   —— 与 `wormholeStartBattle` **同一个函数**；本档在脚本里**搜一个"起始格的内容序号恰好抽中
+ *   `wh-pirate-warband`"的种子**，摆好现场后**再算一遍断言**（卡不对直接抛错，绝不产出错档）；
+ * - 出口已知 ⇒ 想撤随时撤；同层其余格原样保留（可自由探索，不挡事）。
+ */
+function injectWormholeEwar(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 30_000_000
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  for (const k of [
+    'gunnery',
+    'fire-control',
+    'reload-drills',
+    'shield-operation',
+    'armor-tuning',
+    'vector-maneuvering',
+    'evasion-maneuvering',
+    'targeting-integration',
+  ]) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  for (const key of [
+    'ammo-kinetic-l',
+    'ammo-kinetic-2',
+    'ammo-explosive-l',
+    'ammo-explosive-2',
+    'ammo-plasma-l',
+    'ammo-plasma-2',
+  ]) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 40
+  }
+  notes.push('钱包 +30,000,000 信用点 · 协会声望 13 · 战斗系技能 Lv3 · 弹药六型（l/2）各 ×5000 · 修理组件各 ×40')
+
+  const ctx = buildSimContext()
+  /** 战斗编队：4× 长尾鲨级（T3）· 4×动能 MK3 + 1×动能 MK2（CPU 323/345）——够打完这支战团，也扛得住第一轮 */
+  const fit = {
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  /** ⚠ 清掉在途副本：本档要指定"第 4 层 · A 族 · 站在舰船信号上"的现场（其余 case 同款处置） */
+  state.wormhole = { run: null, lastFleetLost: 0 }
+  const uids: string[] = []
+  for (let i = 0; i < 4; i++) {
+    const uid = addShipToFleet(state, 'sh-thresher')
+    const s = state.fleet[uid]!
+    s.customName = `长尾鲨${['①', '②', '③', '④'][i]}·对劫掠电子舰`
+    s.fitted = { high: [...fit.high], mid: [...fit.mid], low: [...fit.low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  }
+  notes.push('编队：**4× 长尾鲨级巡洋（T3）** · 4×动能 MK3 ＋ 1×动能 MK2 · 推进/双盾/索敌/稳像/装甲（CPU 323/345）· 全血满耐久')
+  /**
+   * 搜种子：**族 = A** 且"某一格的内容序号恰好抽中海盗战团"。
+   * 内容序号 = `gridContentIndex(盘, 格)`（`|q*7 + r*13 + radius*3| % 8`）⇒ 同一盘里换一格就可能换卡，
+   * 故一般第一个 A 族种子就能命中；搜 3000 个仍没有 ⇒ 抛错（说明卡表/权重被改过，须人工核）。
+   */
+  let found: { seed: number; q: number; r: number } | null = null
+  for (let seed = 20260917; seed < 20260917 + 3000 && !found; seed++) {
+    if (wormholeFamilyOfSeed(seed) !== 'A') continue
+    const probe = wormholeMakeGrid(seed, 4, 0)
+    for (const c of probe.cells) {
+      const card = wormholeCardIdForRun({ family: 'A', seed, depth: 4, kind: 'node', nodeIndex: gridContentIndex(probe, c) })
+      if (card === 'wh-pirate-warband') {
+        found = { seed, q: c.q, r: c.r }
+        break
+      }
+    }
+  }
+  if (!found) throw new Error('没搜到"族 A ＋ 起始格抽中海盗战团"的种子（卡表或权重被改过？）')
+  const seed = found.seed
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.turnsLeft = enter.run!.turnsTotal
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0
+  run.depth = 4
+  run.family = 'A' // 与种子一致；写死防两套口径
+  run.grid = wormholeMakeGrid(seed, 4, 0)
+  const grid = run.grid
+  const here = grid.cells.find((c) => c.q === found!.q && c.r === found!.r)
+  if (!here) throw new Error(`盘里没有格 ${found.q},${found.r}`)
+  here.place = 'ship' // 舰船信号：站在原地即可按迎战（`wormholeStartBattle(..., 'node')` 要求脚下是它）
+  here.piles = []
+  grid.pos = { q: here.q, r: here.r }
+  grid.start = { q: here.q, r: here.r }
+  if (!grid.visited.includes(here.key)) grid.visited.push(here.key)
+  if (!grid.scanned.includes(here.key)) grid.scanned.push(here.key)
+  grid.activated = (grid.activated ?? []).filter((k) => k !== here.key) // 未清 ⇒ 迎战入口可用
+  grid.exitKnown = true
+  /** 现场断言：脚下这一格按**引擎同一函数**算出来必须是海盗战团 */
+  const cardNow = wormholeCardIdForRun({
+    family: run.family,
+    seed: run.seed,
+    depth: run.depth,
+    kind: 'node',
+    nodeIndex: gridContentIndex(grid, grid.pos),
+  })
+  if (cardNow !== 'wh-pirate-warband') throw new Error(`现场卡不对：期望 wh-pirate-warband，实得 ${cardNow}`)
+  const card = ctx.anomalies.get('wh-pirate-warband')
+  const make = (card?.ships ?? []).map((sl) => `${sl.ship.name}×${sl.count ?? 1}`).join(' ＋ ')
+  notes.push(
+    `第 4 层（37 格）· **站在舰船信号 (Q${here.q} R${here.r})** ⇒ 点脚下那格按「迎战」即对上 **${card?.name ?? '海盗战团'}**（${make}）`,
+  )
+  notes.push(`种子 ${seed} · 族 **A** · 敌卡 = \`wh-pirate-warband\`（脚本按 \`wormholeCardIdForRun\` 算出并当场断言）`)
+  notes.push('看什么：劫掠电子舰**首轮开火**那一瞬 → 蓝色连线连住被钉舰（发动者那头亮、被钉舰那头羽化）· 悬停敌舰看挂载件「劫掠捕获网」· 被钉舰机动骤降/推进器熄火/闪避 0/射程收窄 ⇒ **击沉它即解除**')
+  notes.push('出口已知（可随时撤离）· 同层其余格未动，可自由探索')
+  return notes
+}
+
+const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  /**
+   * **虫洞 · 劫掠电子舰现场档**（2026-09-17 船长：「准备一个在虫洞内面对该敌人的存档」）：
+   * 第 4 层 · A 族 · 站在舰船信号上 ⇒ 迎战即打「海盗战团」（内含劫掠电子舰，首轮开火放捕获网）。
+   */
+  'wh-ewar': injectWormholeEwar,
+  // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
   'wh-bag': (s) => injectWormholeBag(s, false),
   'wh-overload': (s) => injectWormholeBag(s, true),
   /**
