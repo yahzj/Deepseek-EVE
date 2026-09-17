@@ -2205,7 +2205,11 @@ for (const m of MODULES) {
           // ⚠ **旧 hidden 遭遇模板豁免族级提速带**（2026-09-12 加）：`enc-pirate-1..4` 归属 A 族
           //   （F 族废弃并入）但属**旧档兜底模板**，其速度是"迁移守恒"来的（`speedMul` 反算回迁移前实速
           //   281 / 291 / 394 / 418）⇒ 不套 A 族"每档都高于基准"的设计口径。
-          if (def.foeFamily === 'A' && def.hidden !== true) {
+          // ⚠ **2026-09-16 收窄豁免**：原判据写成 `def.hidden !== true` ⇒ 把**洞内三张 A 族卡**
+          //   （`wh-pirate-*` 也标了 hidden）一起豁免了 ⇒ 它们的护卫舰被条目 `speedMul 0.9` 压到
+          //   **337 < 本档基准 340** 却全绿（船长 2026-09-16「海盗的平均速度好像有些太慢」）。
+          //   现只豁免**迁移守恒反算**的那四个旧模板（按 id 前缀认），洞内 A 族卡从此受同一口径约束。
+          if (def.foeFamily === 'A' && !def.id.startsWith('enc-')) {
             // A 族口径（见上方⚠）：高于本档舰种基准 + 落在全族提速带
             pirateReadings++
             pirateSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)

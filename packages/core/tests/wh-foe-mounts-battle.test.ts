@@ -67,6 +67,28 @@ describe('洞内 A 族挂载件（端到端）', () => {
     }
   })
 
+  /**
+   * **海盗速度不得低于本档舰种基准**（船长 2026-09-16「海盗的平均速度好像有些太慢」⇒ 甲案）。
+   *
+   * 旧值：两张洞内卡的护卫舰写了条目 `speedMul: 0.9` ⇒ 实速 `340 × 1.10 × 0.9 = 337 < 340`，
+   * 违反船长 2026-09-11「A 族速度都快…每档都必须高于基准」；它当年逃过体检是因为那条契约把
+   * **hidden 卡整类豁免**，而洞内三张卡恰好都标了 hidden（2026-09-16 已收窄成只豁免 `enc-*`）。
+   */
+  it('洞内 A 族海盗：每条编目实速都高于本档舰种基准（护卫 340 / 驱逐 295 / 巡洋 258）', () => {
+    for (const id of ['wh-pirate-scout', 'wh-pirate-hunt', 'wh-pirate-warband']) {
+      const card = ctx.anomalies.get(id)!
+      for (const slot of card.ships ?? []) {
+        const baseSpd = bal.hullClassBaseSpeedMps[slot.ship.hullClassTier]
+        const spd = Math.round(baseSpd * slot.ship.speedRatio * (slot.speedMul ?? 1))
+        expect(spd, `${id}/${slot.ship.name} 实速 ${spd} 应高于本档基准 ${baseSpd}`).toBeGreaterThan(baseSpd)
+      }
+    }
+    // 逐条点名（修后实测：劫掠护卫舰 374 / 海盗快艇 391 / 精锐海盗头目舰 374）
+    const corvette = ctx.anomalies.get('wh-pirate-scout')!.ships![0]!
+    const spd = Math.round(bal.hullClassBaseSpeedMps[corvette.ship.hullClassTier] * corvette.ship.speedRatio * (corvette.speedMul ?? 1))
+    expect(spd).toBe(374)
+  })
+
   it('触发条件：距离被压住时不冲；能拉开（装推进器）才冲（×1.6 生效）', () => {
     const pinned = wormholeNode(['mod-turret-kin-2'])
     let pinnedCharged = false
