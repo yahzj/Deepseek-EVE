@@ -3,7 +3,8 @@
  * ①「提高倾销惩罚」→ 每次触发 **−5% → −8% → −10%**（衰减半程仍 6 分钟）；
  * ②「砸得越狠越卖来买的人越多」⇒ **每层未衰减惩罚把 NPC 收购单量 +8%**（全部商品适用）；
  * ③「移除压力项」→ **只从收购量里移除**：收购阶梯量不再乘库存压力（价格仍保留压力项）；
- * ④「价格钳制下限下调到 0.1」；⑤「砸盘时挂卖单的量同步削减」→ **每层供应单量 −8%（下限 10%）**。
+ * ④「价格钳制下限」：2026-09-11 下调到 0.1，**2026-09-17 船长改回 0.2**（「地板取0.2，不加吸收上限」）；
+ *    ⑤「砸盘时挂卖单的量同步削减」→ **每层供应单量 −8%（下限 10%）**。
  *
  * 本用例锁：每层 −10% / 稳态 ≈ −0.92 且价格落在地板附近 / 收购量只随惩罚层数放大（×1.73）/
  * 挂卖单量同步削减 / 倍率函数（含方向与地板）。
@@ -49,7 +50,7 @@ describe('倾销惩罚（每层 −10% · 收购量只吃补偿 · 挂卖单量�
     expect(state.market.pools[KEY]!.shock).toBeCloseTo(-0.1, 3)
   })
 
-  it('连续每窗倾销：稳态 ≈ −0.92，价格落在地板附近（钳制下限已降到 0.1×）', () => {
+  it('连续每窗倾销：稳态 ≈ −0.92，价格落在**基础价两成**的地板上（2026-09-17 地板回到 0.2×）', () => {
     const state = fresh()
     for (let i = 0; i < 40; i++) dumpWindow(state, triggerThreshold() + 1_000)
     const shock = state.market.pools[KEY]!.shock!
@@ -58,11 +59,13 @@ describe('倾销惩罚（每层 −10% · 收购量只吃补偿 · 挂卖单量�
     expect(shock).toBeGreaterThan(-1)
     const def = ctx.marketGoods.get(KEY)!
     const price = state.market.priceHistory[KEY]!.at(-1)!
-    expect(bal.minPriceRatio).toBe(0.1)
-    // 价格 = 基准 × 压力 × (1+shock)：已跌破**旧的 0.2× 地板**（说明地板下调确实生效），
-    // 但仍在新的 0.1× 地板之上（整数取整后略高一点）
-    expect(price / def.basePrice).toBeLessThan(0.2)
-    expect(price / def.basePrice).toBeGreaterThanOrEqual(0.08)
+    expect(bal.minPriceRatio).toBe(0.2)
+    // 价格 = 基准 × 压力 × (1+shock)：本该跌到 0.92× 以下（更低），被**地板 0.2×** 接住。
+    // ⚠ 地板是"基础价 ×0.2 后**取整**"（`priceLevel` 末尾 `Math.round`）⇒ 便宜货会略低于 0.2×：
+    // 本卡基础价 12 ⇒ 地板 2.4 → **2 ISK**（比值 0.167）；故这里钉"取整后的地板价"逐字相等。
+    const floorPrice = Math.max(1, Math.round(def.basePrice * bal.minPriceRatio))
+    expect(price).toBe(floorPrice)
+    expect(price / def.basePrice).toBeGreaterThanOrEqual(0.15)
   })
 
   it('砸得越狠、来收货的买家越多：本窗新铺收购单量只随惩罚层数放大（不再被库存压力压制）', () => {
