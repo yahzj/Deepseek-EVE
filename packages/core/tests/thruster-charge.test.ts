@@ -14,7 +14,7 @@
  *   倍率（2026-09-14 船长）：「大虫子的冲锋倍率改为 3，给小虫子添加冲锋，倍率为 1.5」；全局缺省 3.0。
  */
 import { describe, expect, it } from 'vitest'
-import { ALIEN_CHARGE_MUL_BY_TIER, FOE_SHIPS, WORMHOLE_FOE_CARDS } from '@whale/data'
+import { ALIEN_CHARGE_MUL_BY_TIER, ANOMALIES_FLAVORED, FOE_SHIPS, WORMHOLE_FOE_CARDS } from '@whale/data'
 import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
 import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, foeChargeCount, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
@@ -479,11 +479,35 @@ describe('敌冲锋（2026-09-10 定资格；2026-09-11 改"到达解除"；**20
     expect(specs[0]!.foeCanCharge).toBe(true)
     expect(specs[0]!.foeChargeMul).toBe(3)
     expect(specs[0]!.foeMountNames).toEqual(['虫群冲锋器 T4'])
-    // 冲锋件只给 C 族**舰级**与洞内三张 A 族卡**条目**：其余舰级的舰级级挂载里不得出现冲锋
+    // 冲锋件只给 C 族**舰级**、洞内三张 A 族卡**条目**、以及 A 族新舰「劫掠电子舰」（见下）
     for (const s of FOE_SHIPS) {
       if (s.family === 'C') continue
+      if (s.id === 'foe-pirate-raider') continue // 例外，见下方专条
       expect(resolveFoeMounts(s.mounts).foeCanCharge ?? false, s.id).toBe(false)
     }
+    /**
+     * **舰级挂载的例外：劫掠电子舰**（船长 2026-09-16「**新增A族敌人劫掠电子舰，添加挂载件冲锋**，
+     * 并额外加装一件新的挂载件，劫掠捕获网…**添加进深层的海盗战团里**」）。
+     * 它连同捕获网一起写在**舰级**上（引擎与体检都按"条目 ?? 舰级"取有效挂载）；
+     * 之所以不违反"洞外不许冲锋"，是因为这条舰级**只被深层战团使用**——下面即为此事实的守卫：
+     * 一旦有人把它放进洞外卡，冲锋就跟着上洞外，这里会红。
+     */
+    const raider = FOE_SHIPS.find((s) => s.id === 'foe-pirate-raider')!
+    const raiderMounts = resolveFoeMounts(raider.mounts)
+    expect(raiderMounts.foeCanCharge, '劫掠电子舰应具冲锋资格（舰级挂载）').toBe(true)
+    expect(raiderMounts.foeChargeMul).toBe(1.6)
+    expect(raiderMounts.foeChargeCooldownMs).toBe(30_000)
+    expect(raiderMounts.foeCaptureWeb, '劫掠电子舰应挂捕获网件').toBeDefined()
+    const whIds = new Set(WORMHOLE_FOE_CARDS.map((a) => a.id))
+    for (const a of ANOMALIES_FLAVORED) {
+      if (whIds.has(a.id)) continue
+      for (const sl of a.ships ?? []) {
+        expect(sl.ship.id, `洞外卡 ${a.id} 不得用劫掠电子舰（它的舰级挂载带冲锋）`).not.toBe('foe-pirate-raider')
+      }
+    }
+    // 深层战团必须带它一条（船长「添加进深层的海盗战团里」）
+    const warbandSlots = WORMHOLE_FOE_CARDS.find((a) => a.id === 'wh-pirate-warband')!.ships ?? []
+    expect(warbandSlots.filter((sl) => sl.ship.id === 'foe-pirate-raider')).toHaveLength(1)
   })
 
   /**

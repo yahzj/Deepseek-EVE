@@ -571,6 +571,25 @@ export interface BattleUnitRt {
   stealthUntilMs?: number
 }
 
+/**
+ * **我方被「劫掠捕获网」钉住的四层效果**（船长 2026-09-16 两句话的落点）：
+ * 「降低目标90%移动速度，并关闭所有类型推进器」＋「还会让目标闪避强制为0，射程降低500米」。
+ * 只作用于被钉的**那一艘**；本场永久；**击杀发动者即解除**；多艘不叠加。
+ */
+export interface BattleWebDebuff {
+  /** 施放者 tag（它一死 ⇒ 本条清掉） */
+  byTag: string
+  /** 战斗机动 ×本值（0.1 = 降低 90%） */
+  slowMul: number
+  /** 关闭所有类型推进器（点火期不再加成；微型跃迁引擎同样失效） */
+  noThruster: true
+  /** 闪避强制为 0（敌方命中率 = 敌武器命中 + 加成 − 0） */
+  noEvasion: true
+  /** 武器射程 −本值（两端各减，近界下限 1m） */
+  rangeDownM: number
+  /** 施放时刻（日志/战报用） */
+  atMs: number
+}
 /** V12 战斗可视化事件：一次实际开火（供战斗画面动画回放；纯展示数据，不影响结算与随机） */
 export interface BattleFx {
   /** 单调序号（跨环裁剪仍可续播：UI 消费端记录 lastSeq，只取 seq 更大的新事件） */
@@ -592,6 +611,11 @@ export interface BattleFx {
   src?: 'turret' | 'missile' | 'laser' | 'drone' | 'base'
   /** 无人机机型 id（src='drone' 时携带：drone-scout/assault/heavy/sentry） */
   artId?: string
+  /**
+   * **劫掠捕获网连线**（船长 2026-09-16：「动画效果为一根蓝色的光速连着命中舰船」）——
+   * `true` 时本条不是普通开火弹道，而是"发动者 → 被钉舰"的一条**蓝色连线**（持续到效果解除）。
+   */
+  web?: true
   /** 是否命中目标 */
   hit: boolean
   /** 机群被击落标记（2026-09-10 船长「无人机可被击落」）：本事件表示该架无人机被点防击落
@@ -698,6 +722,15 @@ export interface BattleState {
    * ⚠ **逐单位**：每个挂 `foeCanCharge` 的单位各有一份「在冲 / 冷却到某时刻」，互不顶替
    *   （2026-09-14 船长：「各自触发冲锋的提速」＋「自身攻击命中后解除冲锋状态，并进入 10 秒冷却」）。
    * 字段是**可选、零迁移**、且**有意不入档**（运行态 ⇒ 战中重载即重置冲锋循环，见 `save.ts` 登记表）。 */
+  /**
+   * **我方被「劫掠捕获网」钉住的状态**（船长 2026-09-16：A 族新舰「劫掠电子舰」的捕获网）——
+   * 键 = 被钉的我方 tag；施放者一死即整条清掉（**击杀发动者 = 唯一解除手段**）。
+   * 四层效果施加在"每拍重建的我方规格"上（见 `combat.applyMeWebDebuff`）：减速 / 关推进器 / 闪避归零 / 射程 −500m。
+   * **运行期字段、有意不入档**（见 `save.ts` 登记表）。
+   */
+  meWebDebuffs?: Record<string, BattleWebDebuff>;
+  /** **捕获网"已发放"账本**（键 = 施放者 tag）：同一艘电子舰**整场只发一次**（船长：第一次开火时发动） */
+  foeWebFired?: Record<string, true>;
   /**
    * **双方当前速度（m/s）· 界面显示口径**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」
    * ＋「战斗中实际速度和面板显示的机动速度不一致」⇒「**只修改战斗显示数值，实际数值不变动**」）：
@@ -1469,6 +1502,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * - **缺失 = 老档**（本功能上线前写的档）⇒ 船长三问裁决选「**丙**」：**读档即补发**。
    * ⇒ 本字段**按三态随档**：`false` 必须落键（省掉它会被读成老档而错误补发），缺失保持缺失。
    */
+  /**
+   * **见过的敌方舰级**（键 = `FoeShipDef.id`；船长 2026-09-16：「在玩家第一次遭遇劫掠电子舰之后…发一封通讯」）。
+   * 置位点 = 开战扫描该场敌卡的编成（`combat.noteFoeShipsSeen`，洞内洞外同一处出口）⇒ 与"这卡有没有它"同源。
+   * **缺失 = 老档** ⇒ 视为没遇过（新舰上线后才可能置位，无需补发逻辑）。
+   */
+  foeShipSeen?: Record<string, true>
   firstShipBuilt?: boolean
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
@@ -2236,6 +2275,7 @@ export function createInitialState(opts?: {
     ambushRetreatSeen: false,
     // 2026-09-15 造出第一艘自造船：同上——**新档显式写 false**，只等真建造（老档缺字段则按「丙」补发）
     firstShipBuilt: false,
+    foeShipSeen: {},
     commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},
     debugQuick: false,

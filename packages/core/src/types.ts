@@ -212,6 +212,8 @@ export type FoeMountId =
   | 'foe-mount-charge-swarm-t4'
   | 'foe-mount-drone-range-x4'
   | 'foe-mount-gun-range-x1-5'
+  /** 劫掠捕获网（船长 2026-09-16）：首次开火即钉住目标——减速 90% + 关推进器 + 闪避归零 + 射程 −500m */
+  | 'foe-mount-capture-web'
 
 /**
  * **敌方挂载件定义**（船长 2026-09-16 三句合一的落点）：
@@ -240,6 +242,21 @@ export interface FoeMountDef {
   droneRangeOnHit?: { mul: number }
   /** **炮台受击增程**：**从它射程之外**被命中 ⇒ **本舰**炮台射程 ×`mul`（只对挂了本件的舰生效）。 */
   gunRangeOnHit?: { mul: number }
+  /**
+   * **劫掠捕获网**（船长 2026-09-16：「劫掠捕获网：**降低目标90%移动速度，并关闭所有类型推进器**。
+   * **在自身第一次开火时发动**。动画效果为一根蓝色的光速连着命中舰船」＋补充「**还会让目标闪避强制为0，
+   * 射程降低500米**」）：本舰**第一次开火那一刻**（不看命中）钉住**它这一发的目标**，本场永久。
+   *
+   * 四层效果（全部只作用于被钉的那一艘我方舰）：
+   * - `slowMul`：战斗机动 ×本值（0.1 = 降低 90%）；
+   * - `noThruster`：**关闭所有类型推进器**（点火期不再加成，微型跃迁引擎同样失效）；
+   * - `noEvasion`：**闪避强制为 0**（敌方命中率 = 敌武器命中 + 加成 − 0）；
+   * - `rangeDownM`：**武器射程 −本值**（两端各减，近界下限 1m）。
+   *
+   * **解除 = 击杀发动者**（发动者阵亡即清账）；**多艘不叠加**（同一目标只生效一次）。
+   * ⚠ 只影响**战斗**机动/射程，不影响星图航行。
+   */
+  web?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /** 设计备注（不进玩家视野） */
   note?: string
 }
@@ -1532,6 +1549,12 @@ export interface FoeShipDef {
   /** 头目档：显示名加「精锐」前缀（2026-09-11 船长裁决实装；旧 `FOE_LIGHT_WORD` 的预留位） */
   elite?: boolean;
   /**
+   * **舰级闪避覆写**（船长 2026-09-16 新舰「劫掠电子舰」：「**护卫舰档位，闪避提高，血量降低**」）——
+   * 我方武器对它的命中率 = `(武器命中 + 加成 − 本值) × 距离折减`（见 `combat.hitChance`）。
+   * **缺省不写 = 0.12**（既有全部敌舰的原值 ⇒ 老卡零行为变化）；值域 0~0.9（`content:check` 护栏）。
+   */
+  evasion?: number;
+  /**
    * **舰级级「敌冲锋」开关**（2026-09-11 船长：「**给巨兽开启之前做过的冲锋能力**」；
    * **2026-09-14 船长扩到 C 族三种小虫**：「给小虫子添加冲锋，倍率为1.5」）。
    *
@@ -2142,6 +2165,13 @@ export type CommsTrigger =
    */
   | { kind: 'foeFamily'; family: FoeFamily }
   /**
+   * **遭遇过某个敌方舰级**（船长 2026-09-16：「**在玩家第一次遭遇劫掠电子舰之后**…发一封通讯」）。
+   * 判定 = `state.foeShipSeen[shipId] === true`；置位点 = 开战扫描该场敌卡编成（`combat.noteFoeShipsSeen`）。
+   * **缺失 = 老档** ⇒ 没遇过（该舰级是本功能上线时才加的新舰，老档不可能遇过）⇒ 不补发。
+   * ⚠ 若想让通讯"等玩家出了洞/回到主界面再送"，配合消息级 `holdWhenBusy`。
+   */
+  | { kind: 'foeShipSeen'; shipId: string }
+  /**
    * **虫洞星云带**（2026-09-13 船长定：「**除了一次性事件，通讯内也发一条相关的讯息给玩家**」）。
    *
    * 判定 = `state.wormhole.nebulaHintShown === true`（玩家**第一次下到第 4 层**时由
@@ -2230,6 +2260,12 @@ export interface CommsMessageDef {
    * 界面按它给该段加既有强调样式（离线报告那套 `.app-report-highlight`），其余段落照旧。
    */
   highlight?: readonly string[]
+  /**
+   * **忙时不投递**（船长 2026-09-16：「**结束虫洞或回到主界面时**，给玩家发送一封通讯」）：
+   * `true` ⇒ 洞内（`state.wormhole.run` 在场）或交战中一律压着，等回到星图/主界面那一拍再送。
+   * 用途 = 战斗内出现的机制说明信（例：首次遭遇劫掠电子舰的捕获网介绍）。
+   */
+  holdWhenBusy?: boolean
   /** 送达条件 */
   trigger: CommsTrigger
   /**

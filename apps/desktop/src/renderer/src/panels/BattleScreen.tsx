@@ -1540,6 +1540,38 @@ const meSpeedRef = useRef(200)
 
   /* 弹道（旋转容器内沿 +x 飞行）+ 撞点特效（CSS 延迟到着弹时刻）——
      2026-09-05 三族观感分家：动能=快曳光 / 导弹=慢速虚线尾焰 / 激光=近瞬光束线 */
+  /**
+   * **劫掠捕获网连线**（船长 2026-09-16：「动画效果为一根蓝色的光速连着命中舰船」）：
+   * 与弹道**同一套几何**（锚点 + 夹角 + 长度），但**不发散也不消失**——只要引擎账本里还有这条网就一直画，
+   * 击杀发动者后 `arcs.webLinks` 自然为空、连线当帧消失。样式沿用同级 `.app-bts-bolt` 那套（不新造机制）。
+   */
+  const foeAnchorByTag = new Map<string, { x: number; y: number }>()
+  rowFxTags.forEach((tag, i) => {
+    const a = layFx.foe[i]
+    if (a) foeAnchorByTag.set(tag, a)
+  })
+  const meAnchorOfTag = (tag: string): { x: number; y: number } | undefined =>
+    multiMe ? meAnchorByTag.get(tag) : tag === 'player' ? layFx.me : undefined
+  const webEls = (arcs.webLinks ?? []).flatMap((l) => {
+    const from = foeAnchorByTag.get(l.from)
+    const to = meAnchorOfTag(l.to)
+    if (!from || !to) return []
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const len = Math.max(8, Math.hypot(dx, dy))
+    const ang = (Math.atan2(dy, dx) * 180) / Math.PI
+    return [
+      <div
+        key={`web-${l.from}-${l.to}`}
+        className="app-bts-web"
+        style={{ left: from.x, top: from.y, transform: `rotate(${ang}deg)` }}
+        title="劫掠捕获网：被钉住的舰船机动骤降、推进器熄火、闪避失效、射程缩短——击沉发动者才能解除"
+      >
+        <i className="app-bts-web-bar" style={{ width: len }} />
+      </div>,
+    ]
+  })
+
   const boltEls = boltsRef.current.map((bv) => {
     const look = BOLT_LOOK[bv.type] ?? BOLT_LOOK.kinetic
     const color = bv.color
@@ -2364,6 +2396,8 @@ const meSpeedRef = useRef(200)
             </div>
           ) : null}
 
+          {/* **劫掠捕获网连线**（船长 2026-09-16）：持续态，画在弹道层**之下**，不挡弹道 */}
+          {webEls}
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}
           {boltEls}

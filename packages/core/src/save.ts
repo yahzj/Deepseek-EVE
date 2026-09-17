@@ -784,6 +784,14 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '同上（敌方那份）',
   },
+  meWebDebuffs: {
+    kind: 'runtime',
+    why: '劫掠捕获网：我方被钉住的状态（2026-09-16 加）——运行期、随战斗结束即消，不入档',
+  },
+  foeWebFired: {
+    kind: 'runtime',
+    why: '劫掠捕获网：同一艘电子舰整场只发一次的账本（2026-09-16 加）——运行期',
+  },
   foeMounts: {
     kind: 'runtime',
     why: '敌方挂载件名清单（2026-09-16 加）：只给战报/悬停渲染；战中重载即由 seedUnit 重建 ⇒ 不入档',
@@ -2653,6 +2661,13 @@ function normalizeState(raw: unknown): GameState {
    */
   const firstShipBuilt =
     src.firstShipBuilt === true ? true : src.firstShipBuilt === false ? false : undefined
+  /**
+   * 见过的敌方舰级（2026-09-16）：只收 `true` 的键（值域 = `FoeShipDef.id` 字符串）。
+   * **空表也落键**（与 `commsDelivered` 同口径）：新档出生即带 `{}`，若这里把空表折成"缺失"，
+   * 存档往返会少一个键 ⇒ `save.test.ts` 的"内容完全一致"用例失败。
+   */
+  const foeShipSeen: Record<string, true> = {}
+  for (const [k, v] of Object.entries(asRaw(src.foeShipSeen))) if (v === true) foeShipSeen[k] = true
 
   // --- 首胜声望清单（v15.1 兼容字段）：只收字符串 id、去重保序 ---
   const completedBounties: string[] = []
@@ -3168,6 +3183,8 @@ function normalizeState(raw: unknown): GameState {
     ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
+    // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径
+    foeShipSeen,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     rareOpenedUnits,
     rareBoxesOpened,

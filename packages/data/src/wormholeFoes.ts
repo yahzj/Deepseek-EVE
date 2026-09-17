@@ -53,6 +53,7 @@ import {
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_WARLORD,
+  FOE_SHIP_PIRATE_RAIDER, // 2026-09-16 船长：A 族新舰（深层战团）
 } from './foe-ships'
 
 /** 洞内敌卡的缩放锚点威胁（= core `WORMHOLE_THREAT_BASE`，第 1 层基准） */
@@ -243,7 +244,11 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——同上，只挂条目
     ships: [
       { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate] },
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 3, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      // **新舰「劫掠电子舰」×1**（船长 2026-09-16）——改编成 头目×1 + 电子舰×1 + 快艇×2：
+      // 单位数仍 4 ⇒ 本层本档的**总威胁预算不变**，只是把一条快艇换成电子战支援舰。
+      // 它自带两件挂载件（冲锋 ×1.6/30s ＋ 劫掠捕获网），故条目不再重复挂冲锋件。
+      { ship: FOE_SHIP_PIRATE_RAIDER, count: 1 },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
     standingGain: 0,

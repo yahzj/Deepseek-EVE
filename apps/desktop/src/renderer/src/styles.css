@@ -7540,6 +7540,19 @@ body {
 
 /* 双方战斗机动速度行（2026-09-16 船长：距离条两端的上方分别显示敌我速度）——
    与 `.app-bts-ruler-head` 同款 flex 两端对齐 + 同字号；绿/红沿用射程带与敌我色调，不新增色板 */
+/* 劫掠捕获网连线（2026-09-16 船长：「一根蓝色的光速连着命中舰船」）——与 `.app-bts-bolt` 同款几何
+   （定位 + 旋转 + 条宽），蓝色发光条 + 轻微呼吸；持续态、到解除为止 */
+.app-bts-web { position: absolute; height: 0; z-index: 3; pointer-events: none; }
+.app-bts-web-bar {
+  position: absolute; left: 0; top: -1.5px; height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(120,200,255,.15) 0%, rgba(120,200,255,.85) 35%, rgba(190,235,255,.95) 100%);
+  box-shadow: 0 0 8px rgba(120,200,255,.85), 0 0 18px rgba(80,170,255,.45);
+  animation: app-bts-web-pulse 1.6s ease-in-out infinite;
+}
+@keyframes app-bts-web-pulse {
+  0%, 100% { opacity: .78; }
+  50% { opacity: 1; }
+}
 .app-bts-ruler-speed { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 0 2px; line-height: 1.4; }
 .app-bts-speed { font-variant-numeric: tabular-nums; }
 .app-bts-speed.is-me { color: #7fd39a; }

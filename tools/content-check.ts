@@ -2697,18 +2697,31 @@ for (const m of MODULES) {
         const slots = card.ships ?? []
         if (slots.length === 0) bad.push(`洞内 A 族卡 ${id} 没有编成条目`)
         for (const sl of slots) {
-          const r = resolveFoeMounts(sl.mounts)
+          // ⚠ **有效挂载 = 条目 mounts ?? 舰级 mounts**（与引擎同一条优先级）：新舰「劫掠电子舰」
+          // 把两件挂载件写在**舰级**上（它不外借），条目那一侧是空的 ⇒ 只看条目会误判为"没挂"。
+          const r = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
           if (r.foeCanCharge !== true || r.foeChargeMul !== wantPirate.mul || r.foeChargeCooldownMs !== wantPirate.cooldownMs) {
-            bad.push(`${id} 的 ${sl.ship.name} 条目挂载 ≠ 海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）`)
+            bad.push(`${id} 的 ${sl.ship.name}（条目或舰级）未挂海盗冲锋件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）`)
           }
         }
+        // **捕获网件归属**（船长 2026-09-16）：只允许出现在「劫掠电子舰」上，且深层战团必须带它一条
+        for (const sl of slots) {
+          const eff = sl.mounts ?? sl.ship.mounts
+          const hasWeb = resolveFoeMounts(eff).foeCaptureWeb !== undefined
+          if (hasWeb && sl.ship.id !== 'foe-pirate-raider') {
+            bad.push(`${id} 的 ${sl.ship.name} 挂了劫掠捕获网——该件只允许挂在「劫掠电子舰」上`)
+          }
+          if (sl.ship.id === 'foe-pirate-raider' && !hasWeb) bad.push(`${id} 的劫掠电子舰没挂捕获网件`)
+        }
       }
-      // ③ 洞外不许挂冲锋件（除 C 族舰级、洞内三张 A 族卡条目）
+      // ③ 洞外不许挂冲锋件（除 C 族舰级、洞内三张 A 族卡条目）。
+      //    ⚠ 按**有效挂载**（条目 ?? 舰级）判：新舰「劫掠电子舰」把海盗冲锋件写在**舰级**上
+      //    （它只进深层战团），若只看条目，日后把它放进洞外卡会漏检 ⇒ 冲锋跟着上洞外。
       const whSet = new Set(whPirateCards)
       for (const a of ANOMALIES_FLAVORED) {
         if (whSet.has(a.id)) continue
         for (const sl of a.ships ?? []) {
-          const charge = resolveFoeMounts(sl.mounts).foeChargeMul
+          const charge = resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeChargeMul
           if (charge !== undefined && sl.ship.family !== 'C') {
             bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了冲锋件——冲锋只允许 C 族舰级与洞内三张 A 族卡`)
           }
@@ -2726,10 +2739,17 @@ for (const m of MODULES) {
       }
       if (unknown.length > 0) bad.push(`未知挂载件 id：${unknown.join(' · ')}`)
       check(bad.length === 0, `敌方挂载件契约：${bad.join(' · ')}`)
+      // 汇总行**按目录实算**（血泪清单：硬编码"冲锋 5 · 增程 2"会在加件时说过期话）
+      const allMounts = Object.values(FOE_MOUNTS)
+      const nCharge = allMounts.filter((m) => m.charge !== undefined).length
+      const nDrone = allMounts.filter((m) => m.droneRangeOnHit !== undefined).length
+      const nGun = allMounts.filter((m) => m.gunRangeOnHit !== undefined).length
+      const nWeb = allMounts.filter((m) => m.web !== undefined).length
       console.log(
-        `· 敌方挂载件契约：${Object.keys(FOE_MOUNTS).length} 件（冲锋 5 · 机群增程 1 · 炮台增程 1）· ` +
+        `· 敌方挂载件契约：${allMounts.length} 件（冲锋 ${nCharge} · 机群增程 ${nDrone} · 炮台增程 ${nGun} · 捕获网 ${nWeb}）· ` +
           `C 族 ${aliens.length} 条按档挂件（${aliens.map((s) => `${s.name} T${s.hullClassTier}×${resolveFoeMounts(s.mounts).foeChargeMul}`).join('　')}）· ` +
-          `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件`,
+          `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件` +
+          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m）` : ''}`,
       )
     }
     console.log(
@@ -5614,6 +5634,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
+  // 2026-09-16 首次遭遇某敌舰级（船长：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯）
+  'foeShipSeen',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）

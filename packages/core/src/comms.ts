@@ -144,6 +144,9 @@ export function dismissCommsPopup(state: GameState, id: string): boolean {
 /** 单条触发条件是否达成（新增 kind 时须同步 content-check 的「通讯消息契约」） */
 export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: CommsTrigger): boolean {
   switch (trigger.kind) {
+    /** **遭遇过某个敌方舰级**（船长 2026-09-16：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯） */
+    case 'foeShipSeen':
+      return state.foeShipSeen?.[trigger.shipId] === true
     case 'start':
       // 序章引导（采矿→交付→出售→修复→试炼→技能→分身）期间导航被教程锁定，通讯页打不开；
       // 故开局信等引导走完（收尾演出起）再送，玩家收得到、也点得开。
@@ -254,6 +257,15 @@ function deliveryLogText(ctx: SimContext, msg: CommsMessageDef): string {
  * 引擎内部：推进通讯收件箱（每次时间推进后调用）。
  * 廉价：表为空或全部已送达时立即返回；触发判定只读 state 字段。
  */
+/**
+ * **"忙"的判据**（只服务 `holdWhenBusy`）：洞内（`state.wormhole.run` 在场）或任一战线上有进行中的战斗。
+ * ⚠ 只读状态、不引战斗模块（避免模块环）：洞外的在途战斗挂在 `state.expedition.battle`。
+ */
+function commsBusy(state: GameState): boolean {
+  if (state.wormhole.run != null) return true
+  return state.expedition?.battle != null
+}
+
 export function advanceComms(state: GameState, ctx: SimContext): void {
   if (ctx.commsMessages.size === 0) return
   /**
@@ -266,6 +278,11 @@ export function advanceComms(state: GameState, ctx: SimContext): void {
     // 施工期闸门（船长铁律「数据走 unreleased」）：标了 unreleased 的消息**不送达**（上线时删字段即可开送）
     if (msg.unreleased === true) continue
     if (!commsTriggerMet(state, ctx, msg.trigger)) continue
+    /**
+     * **忙时压着**（船长 2026-09-16：「结束虫洞或回到主界面时」发那封捕获网介绍信）：
+     * 洞内（`state.wormhole.run`）或交战中都不投递——不消耗 `deliver`，下一拍继续等。
+     */
+    if (msg.holdWhenBusy === true && commsBusy(state)) continue
     if (!deliver(state, msg.id)) continue
     addLog(state, 'info', deliveryLogText(ctx, msg))
     /**

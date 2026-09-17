@@ -317,6 +317,9 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-pirate-corvette', tier: 1, speed: 374 },
       { id: 'foe-pirate-sniper', tier: 2, speed: 325 },
       { id: 'foe-pirate-warlord', tier: 3, speed: 374 },
+      // 2026-09-16 船长：「**新增A族敌人劫掠电子舰**…添加进深层的海盗战团里」——T1 护卫，速度沿用
+      // A 族 T1 档倍率 1.10 ⇒ 340 × 1.10 = **374**（与同族劫掠护卫舰同速）
+      { id: 'foe-pirate-raider', tier: 1, speed: 374 },
       // B 族（武装拾荒者）：船长 2026-09-11「**速度偏慢**」⇒ 终值 `speedRatio = 0.80 / 0.80`
       // （本批曾一度取 0.90 / 0.92 = 306 / 271，船长裁决「B 族速落实 0.8」后作废）
       { id: 'foe-scav-skiff', tier: 1, speed: 272 },
@@ -366,7 +369,8 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
   it('A 族每档实速都**高于本档舰种基准**（护卫 340 / 驱逐 295 / 巡洋 258）——船长「速度都快」', () => {
     const shell = anomaly('ano-t-hull-overshoot', 'galaxy-hub', { threat: 20 })
     const pirates = FOE_SHIPS.filter((s) => s.family === 'A')
-    expect(pirates).toHaveLength(4)
+    // 2026-09-16 起 A 族 5 条舰级（原 4 条 + 新增「劫掠电子舰」）
+    expect(pirates).toHaveLength(5)
     for (const ship of pirates) {
       expect(ship.speedRatio).toBeGreaterThan(1) // 倍率 > 1 ⇔ 快于本档基准
       const spd = createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps
