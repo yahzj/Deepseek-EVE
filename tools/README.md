@@ -28,7 +28,7 @@
 （提案字段对真卡无效、读数一格不变，极易被误读成"提案无效"＝假结论）。工具不会自己报错，
 只会**安静地给你一个过时的数**。
 
-## 二、台账（29 个工具）
+## 二、台账（30 个工具）
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
@@ -40,6 +40,7 @@
 | `drone-vs-gun.ts` | `battle:drone-vs-gun` | 未登记版本自检 |
 | `faction-audit.ts` | `faction:audit` | 未登记版本自检 |
 | `firepower-curve.ts` / `foe-hp-table.ts` | — | 未登记版本自检 |
+| **`foe-export.ts`** | `foe:export` | **已登记**（v25 · 核对 2026-09-17；敌人**敌舰明细**导出（xlsx 单 sheet ＋ 同列 CSV）：25 个舰级 × 56 列，含三层三系抗性/名义 DPS 分系/射程与期望交距/挂载件与机群） |
 | `hit-profile.ts` | `battle:hit-profile` | 未登记版本自检 |
 | `liquidity-audit.ts` | `liquidity:audit` | 未登记版本自检 |
 | `loop-stop-check.ts` | — | 未登记版本自检 |
