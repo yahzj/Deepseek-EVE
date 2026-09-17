@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addShipToFleet, createInitialState, wormholeEnter, wormholeStartBattle, advanceWormhole, wormholeFamilyOfSeed } from '../src/index'
+import { addShipToFleet, createInitialState, createPlayerSpec, wormholeEnter, wormholeStartBattle, advanceWormhole, wormholeFamilyOfSeed } from '../src/index'
 import { createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
 
 const ctx = buildSimContext()
@@ -113,17 +113,52 @@ describe('洞内 A 族挂载件（端到端）', () => {
   })
 })
 
-describe('双方战斗机动速度（距离条两端显示的数据源）', () => {
-  it('逐拍落盘：首拍前缺省；落盘值与规格层同源（未冲锋 = 原始战斗机动速度）', () => {
-    const { battle, tick } = wormholeNode(['mod-turret-kin-2'], ['mod-prop-2'])
+/**
+ * **双方速度（距离条两端显示的数据源）**——船长 2026-09-16：
+ * 「在上方的距离条两端的上方分别显示敌我的战斗速度」＋「**战斗中实际速度和面板显示的机动速度不一致**」
+ * ⇒ 裁决「**只修改战斗显示数值，实际数值不变动**」。
+ *
+ * 于是两套口径并存：
+ * - **引擎推进 / 距离拔河** = `combatSpeed(...)`（含全局 `speedFactor 0.6` 与敏捷修正）——**一字不动**；
+ * - **界面显示**（`battle.meSpeedMps / foeSpeedMps`）= 单位 `speedMps` × 机动倍率、逐单位平均
+ *   ⇒ **与装配页「机动速度 / 加力推进点火期」、敌卡「实速」同一把尺**。
+ */
+describe('双方速度落盘（面板同源口径）', () => {
+  it('首拍前缺省；落盘值 = 单位自身速度（不含 ×0.6 折算），与面板同一把尺', () => {
+    const { state, battle, tick } = wormholeNode(['mod-turret-kin-2'], ['mod-prop-2'])
     expect(battle.meSpeedMps, '首拍之前缺省').toBeUndefined()
     tick(1_000)
     expect(battle.meSpeedMps!).toBeGreaterThan(0)
     expect(battle.foeSpeedMps!).toBeGreaterThan(0)
+    // 敌方：该卡单位自身的 speedMps（未冲锋 ⇒ 倍率 1），**不再乘 speedFactor/敏捷**
     const base = ctx.anomalies.get('wh-pirate-scout')!
     const derived = wormholeDerivedAnomaly(ctx, base, { depth: 1, kind: 'node', waves: 1 })
     const foe0 = createFoeSpecs(derived, bal)[0]!
-    const raw = Math.max(20, foe0.speedMps * bal.speedFactor * (1 + (foe0.agility - 0.5) * 2 * bal.agilitySpeedBonus))
-    expect(Math.abs(battle.foeSpeedMps! - raw)).toBeLessThanOrEqual(1)
+    expect(Math.abs(battle.foeSpeedMps! - foe0.speedMps)).toBeLessThanOrEqual(1)
+    // 我方：本船 spec.speedMps ×（点火期含推进器倍率）⇒ 必落在 [基础值, 点火期值] 区间内
+    const mine = createPlayerSpec(state, ctx, state.shipId)!
+    const boost = 1 + (mine.thrusterBoost ?? 0)
+    expect(battle.meSpeedMps!).toBeGreaterThanOrEqual(Math.round(mine.speedMps) - 1)
+    expect(battle.meSpeedMps!).toBeLessThanOrEqual(Math.round(mine.speedMps * boost) + 1)
+  })
+
+  it('冲锋期：敌方显示值 = 实速 × 冲锋倍率（与敌卡「实速」同尺）', () => {
+    // 拉开距离逼它冲锋（与上一条同款配装）
+    const { battle, tick } = wormholeNode(['mod-turret-kin-2'], ['mod-prop-2', 'mod-prop-2'])
+    const base = ctx.anomalies.get('wh-pirate-scout')!
+    const derived = wormholeDerivedAnomaly(ctx, base, { depth: 1, kind: 'node', waves: 1 })
+    const rawSpeed = createFoeSpecs(derived, bal)[0]!.speedMps
+    let sawCharge = false
+    for (let t = 1_000; t <= 60_000; t += 1_000) {
+      tick(t)
+      if (Object.values(battle.foeCharges ?? {}).some((x) => x.on === true)) {
+        sawCharge = true
+        // 显示值应抬到 实速 × 1.6（允许取整 ±2）
+        expect(Math.abs(battle.foeSpeedMps! - rawSpeed * 1.6)).toBeLessThanOrEqual(2)
+        break
+      }
+      if (battle.ended) break
+    }
+    expect(sawCharge, '本用例需要它真的冲起来').toBe(true)
   })
 })

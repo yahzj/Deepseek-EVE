@@ -3897,8 +3897,9 @@ export function battleArcsFor(
   /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
   foeCanCharge: boolean;
   /**
-   * **双方当前战斗机动速度（m/s）**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」）
-   * ——与引擎推进/距离拔河同一把尺（含我方推进器爆发、敌方冲锋倍率，逐单位取平均）；
+   * **双方当前速度（m/s）**（2026-09-16 船长：距离条两端显示；同日裁「只改战斗显示数值」）——
+   * **面板同源口径**：单位 `speedMps` × 机动倍率（我方点火期含推进器倍率、敌方冲锋期含冲锋倍率），逐单位平均；
+   * 与装配页「机动速度」同一把尺（**不含**引擎内部的 ×0.6 折算）。
    * **开战首拍之前缺省**（老档在途战斗同样缺省 ⇒ 界面不显示这一格）。
    */
   meSpeedMps?: number
@@ -5399,26 +5400,50 @@ function stepBattle(
   // 的设定相冲；改平均后该队按 **163**（战斗机动 92）走。
   // 同速编成（单舰卡 / 同型多舰卡，如 A 族头目+同族杂鱼、C 族虫群）**逐字不变**（平均值 = 该速度）。
   let meV = 0
+  /** **面板同源口径**（见下方落盘注释）：只乘机动倍率，**不乘 `combatSpeed` 的 speedFactor/敏捷修正** */
+  let mePanel = 0
   {
     let n = 0
     for (const u of myUnits) {
       if (!isAlive(b, u.tag)) continue
-      meV += combatSpeed(u.speedMps, u.agility, bal) * unitSpeedMulOf(u, b, bal, 'me')
+      const mul = unitSpeedMulOf(u, b, bal, 'me')
+      meV += combatSpeed(u.speedMps, u.agility, bal) * mul
+      mePanel += u.speedMps * mul
       n += 1
     }
-    if (n > 0) meV /= n
+    if (n > 0) {
+      meV /= n
+      mePanel /= n
+    }
   }
   let foeV = 0
+  let foePanel = 0
   let foeAliveN = 0
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue
-    foeV += combatSpeed(f.speedMps, f.agility, bal) * unitSpeedMulOf(f, b, bal, 'foe')
+    const mul = unitSpeedMulOf(f, b, bal, 'foe')
+    foeV += combatSpeed(f.speedMps, f.agility, bal) * mul
+    foePanel += f.speedMps * mul
     foeAliveN += 1
   }
-  if (foeAliveN > 0) foeV /= foeAliveN;
-  // **双方战斗机动速度落盘**（2026-09-16 船长：距离条两端要显示）——与下面拔河用的是同一对值
-  b.meSpeedMps = Math.round(meV)
-  b.foeSpeedMps = Math.round(foeV)
+  if (foeAliveN > 0) {
+    foeV /= foeAliveN
+    foePanel /= foeAliveN
+  }
+  /**
+   * **落盘给界面显示的那对速度 = 面板同源口径**（2026-09-16 船长：「**战斗中实际速度和面板显示的机动速度
+   * 不一致**」⇒ 裁决「**只修改战斗显示数值，实际数值不变动**」）。
+   *
+   * 两套口径的分工（都保留、都不改）：
+   * - **引擎推进/距离拔河** = 上面那对 `meV` / `foeV`（= `combatSpeed` ⇒ 含全局 `speedFactor 0.6`
+   *   与敏捷修正，逐拍驱动 `b.distanceM`）——**一字不动**；
+   * - **界面显示** = 本对（= 单位自身 `speedMps` × 机动倍率，逐单位取平均）⇒ **与装配页「机动速度」
+   *   同一把尺**：我方点火期 = `speedMps × (1+推进器倍率)`（装配页那行「加力推进点火期」）、
+   *   敌方冲锋期 = `speedMps × 冲锋倍率`（敌卡/体检里的"实速 ×倍率"）。
+   * 这样面板与战斗读数不再对不上，而战斗手感/触发线/标定完全不受影响。
+   */
+  b.meSpeedMps = Math.round(mePanel)
+  b.foeSpeedMps = Math.round(foePanel)
   const rate =
     steerStep(b.distanceM, b.myDesireM, meV, dtSec) +
     steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
