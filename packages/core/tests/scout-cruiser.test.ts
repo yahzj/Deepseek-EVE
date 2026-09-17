@@ -114,8 +114,11 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(ctx.marketGoods.has('ship-nautilus')).toBe(true)
     expect(ctx.marketGoods.has('sbp-nautilus')).toBe(true)
     expect(ctx.marketGoods.has('sbp-once-nautilus')).toBe(true)
-    // 渠道与数字档不变：**奇货 + 数字 4**（船长裁定：两行都留 4）
-    expect(goodOf('ship', SCOUT)?.rarity).toBe('exotic')
+    // 渠道与数字档：**2026-09-16 船长裁定「甲」＋「乙」**——舰体现货从奇货**挪进稀有订单**（声望 8）、
+    // 数字档按「乙」**保持 4**；⚠ 2026-09-14 那条「舰体两行都留奇货 + 数字 4」对**舰体**这一行**作废**
+    // （非一次性图纸 `sbp-nautilus` 仍留奇货，见下一行断言）。
+    expect(goodOf('ship', SCOUT)?.rarity).toBe('rare')
+    expect(goodOf('ship', SCOUT)?.standingReq).toBe(8)
     expect(goodOf('blueprint', 'sbp-nautilus')?.rarity).toBe('exotic')
   })
 })

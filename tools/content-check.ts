@@ -329,14 +329,29 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
   for (const k of tableKeys) {
     if (!refSet.has(k)) errors.push(`稀有度表多余键 ${k}（无对应市场卡）`)
     const v = RARITY_TIER[k]!
-    check(Number.isInteger(v) && v >= 1 && v <= 4, `稀有度表 ${k} 值非法：${v}（应为 1~4 整数）`)
+    check(Number.isInteger(v) && v >= 1 && v <= 5, `稀有度表 ${k} 值非法：${v}（应为 1~5 整数，2026-09-16 上沿 4 → 5）`)
   }
-  // 渠道一致性：common 必须 1；rare 只能 2/3；exotic 只能 3/4（低值奇货可标 3，船长 2026-09-09）
+  /**
+   * **渠道 ↔ 数字档的允许带**（**2026-09-16 船长改判**：「**那么修正契约，rate现在允许2~4，
+   * exotic拓展到3~5**」）。
+   *
+   * 现行三条带：
+   * - `common` ⇒ **1**（不变）；
+   * - `rare`（稀有订单）⇒ **2 / 3 / 4**（原「只能 2/3」作废——当日「甲＋乙」把 5 艘官方巡洋舰
+   *   从奇货挪进稀有订单、数字档按船长话**保持 4**，随后船长把这条契约按**区间**放宽）；
+   * - `exotic`（限定奇货）⇒ **3 / 4 / 5**（上沿从 4 拓到 **5**：为将来更高档预留，当前无商品用到 5；
+   *   下沿仍是 3——「低值奇货可标 3」那条 2026-09-09 口径不动）。
+   *
+   * ⚠ **档位语义跟着松开**（见 `rarityTier.ts` 头注与词典「数字稀有度」条）：数字只驱动**稀有订单渠道**
+   * 的刷新权重（`market.ts` 的 `rareTierWeight` **只对档 3** 打 ×0.15，其余按 ×1），奇货渠道出率与数字
+   * 不挂钩 ⇒ **档 4 走稀有订单时按权重 1（大众档）刷新**，这是"保 4"的必然结果、不是漏改。
+   */
+  // 渠道一致性：common = 1；rare = 2~4；exotic = 3~5（2026-09-16 船长改判为区间）
   for (const g of MARKET_GOODS) {
     const v = RARITY_TIER[g.refId] ?? 0
     if (g.rarity === 'common') check(v === 1, `稀有度表 ${g.refId}：common 渠道应为 1，实际 ${v}`)
-    else if (g.rarity === 'rare') check(v === 2 || v === 3, `稀有度表 ${g.refId}：rare 渠道应为 2/3，实际 ${v}`)
-    else check(v === 3 || v === 4, `稀有度表 ${g.refId}：exotic 渠道应为 3/4，实际 ${v}`)
+    else if (g.rarity === 'rare') check(v >= 2 && v <= 4, `稀有度表 ${g.refId}：rare 渠道应为 2~4，实际 ${v}`)
+    else check(v >= 3 && v <= 5, `稀有度表 ${g.refId}：exotic 渠道应为 3~5，实际 ${v}`)
   }
 }
 
