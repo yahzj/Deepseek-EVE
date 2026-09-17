@@ -237,29 +237,33 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
 /** 均衡价 L：池商品 = base×库存压力×(1+冲击)·(1+慢速噪声)；单件 = base×(1+冲击)·(1+噪声)。输出按比例钳制防失控 */
 /**
  * **倾销惩罚层数 → NPC 买单挂单量放大**（2026-09-11 船长：「提高倾销惩罚，同时每层惩罚还会提高
- * 系数一半的订单量」→ 追问后定「**修改为每层提高 8% 买单数量**」「**所有商品都适用**」）。
+ * 系数一半的订单量」→ 追问后定「**修改为每层提高 8% 买单数量**」「**所有商品都适用**」；
+ * **2026-09-17 船长改判**：「买单量 +8%/层…**分别改为 +40%/−40% 每层，并且是乘法叠加**」
+ * ⇒ 本函数公式由线性 `1 + 0.4×层` 改为**乘幂** `(1 + 0.4)^层`）。
  *
  * 层数 = **当前未衰减的净惩罚层数** = `|shock| ÷ shockPerTrigger`（**不取整**——衰减中的半层也按比例算，
  * 量随行情平滑回落，不会卡在整层上）；只在**砸盘方向**（`shock < 0`）放大：玩家买入把价格顶上去时
  * 不动买单量（那不是"惩罚"）。所有商品共用本单点：池商品收购阶梯、单件平价品、稀有、奇货、开局铺簿。
+ * ⚠ 量级：砸盘稳态 8.2 层 ⇒ **×15.8**（旧线性口径 ×1.66）；9.2 层 ⇒ ×21.9。
  */
 export function dumpBuyVolumeMul(pool: { shock?: number } | undefined, bal: MarketBalance): number {
   const shock = pool?.shock ?? 0
   if (!(shock < 0)) return 1
   const layers = Math.abs(shock) / Math.max(1e-9, bal.shockPerTrigger)
-  return 1 + bal.dumpBuyVolumePerLayer * layers
+  return Math.pow(1 + bal.dumpBuyVolumePerLayer, layers) // 乘法叠加（船长 2026-09-17）
 }
 
 /**
- * **砸盘时 NPC 挂卖单量的同步削减**（2026-09-11 船长：「砸盘时，挂卖单的量进行同步削减」）：
- * 与买单放大对称——每层未衰减惩罚把**供应单（挂卖）挂单量 −8%**，下限 10%（不把供应簿削光）。
+ * **砸盘时 NPC 挂卖单量的同步削减**（2026-09-11 船长：「砸盘时，挂卖单的量进行同步削减」；
+ * **2026-09-17 船长改判**：「…卖单量 −8%/层…**改为 −40% 每层，并且是乘法叠加**」⇒ `0.6^层数`）：
+ * 与买单放大对称，下限 10%（不把供应簿削光）。⚠ `0.6^层数` 在 ~4.5 层即撞下限 ⇒ 深砸盘时供应侧停摆。
  * 方向同样是**只在砸盘方向生效**；池商品供应阶梯共用本单点（单件/稀有/奇货的供应单恒为 1 张，不适用）。
  */
 export function dumpSellVolumeMul(pool: { shock?: number } | undefined, bal: MarketBalance): number {
   const shock = pool?.shock ?? 0
   if (!(shock < 0)) return 1
   const layers = Math.abs(shock) / Math.max(1e-9, bal.shockPerTrigger)
-  return Math.max(0.1, 1 - bal.dumpSellVolumePerLayer * layers)
+  return Math.max(0.1, Math.pow(1 - bal.dumpSellVolumePerLayer, layers)) // 乘法叠加（船长 2026-09-17）
 }
 
 function priceLevel(state: GameState, ctx: SimContext, def: MarketGoodDef, poolQ: number): number {
