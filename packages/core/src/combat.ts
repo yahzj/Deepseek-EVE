@@ -2587,7 +2587,8 @@ export function resolveAmmoTier(
  * ⚠ **旧口径已作废**（2026-09-09：「配置档库存不足 ⇒ **整族回退基础弹**」）——它带来两个实战缺口：
  * ① **没选档 ⇒ 完全无视 MK2**（玩家仓库 553 发 MK2、基础弹 0 ⇒ 进战斗显示"无弹"）；
  * ② **选了 MK2 但不足整批 ⇒ 一发 MK2 都不用**（宁可回退基础弹，哪怕基础弹也是 0）。
- * 根因与取证见工作文档 `docs/design/ammo-tier-fallback-20260916.md`。
+ * 根因与取证见 `docs/roadmap.md` 2026-09-16「弹药取档口径改判」条（原工作稿已按 §8 归档删除，
+ * 全文 `git show 191c294e:docs/design/ammo-tier-fallback-20260916.md`）。
  *
  * 返回实装数 + 实装弹 id（写 `battle.ammoIds` 供推进/退还/视图对齐）。
  */
