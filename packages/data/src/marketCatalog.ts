@@ -551,10 +551,22 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-once-xuanwu', kind: 'blueprint', refId: 'sbp-once-xuanwu', rarity: 'exotic', basePrice: 45_000_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-megalodon', kind: 'blueprint', refId: 'sbp-once-megalodon', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-colossal', kind: 'blueprint', refId: 'sbp-once-colossal', rarity: 'exotic', basePrice: 320_000_000, demandMultiplier: 1.0, standingReq: 40 },
-  // 异星原型装备（V10：超档收藏，无蓝图，需声望 10）
-  { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 1_600_000, demandMultiplier: 1.0, standingReq: 10 },
-  { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 1.0, standingReq: 10 },
-  { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 1.0, standingReq: 10 },
+  /**
+   * **异星原型装备**（V10：**超档收藏**，无蓝图、不可制造，需声望 10）。
+   *
+   * ⚠ **2026-09-17 船长定价（原价偏低，已抬）**：船长问「**异星装备的价格是否太低了？**」⇒ 取证读数
+   * （同槽 MK3 对照）：原价让**两件工业件比它们取代的 MK3 还便宜** —— 采集器 **+110%** 卖 1.6M 而
+   * MK3 **+80%** 卖 2.33M（每 +1% 效果 14,545 vs 29,125）· 货舱 **+180%** 卖 1.5M 而 MK3 **+140%**
+   * 卖 2.4M（8,333 vs 17,143）⇒ 拍板「**按照 MK3 的十五倍价格估算**」：三件一律 = **同槽 MK3 行价 ×15**
+   * （采集器 2,330,000×15 = **34,950,000** · 货舱 2,400,000×15 = **36,000,000** ·
+   * 激光 2,395,000×15 = **35,925,000**）。
+   * 连带：`demandMultiplier: 1.0`（奇货**全价回收**）同步生效 ⇒ 抬价 1:1 抬收购价、不产生套利
+   * （供应价恒 ≈1.0~1.06L 高于全价回收）；带原型件的船，其**装配价值/损失估值**也随之上升。
+   * 常驻护栏：`tools/price-audit.ts` 的「奇货原型件 ×15」段 + 用例 `tests/proto-price.test.ts`。
+   */
+  { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 34_950_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-miner-3 (2,330,000) ×15
+  { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-cargo-3 (2,400,000) ×15
+  { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 35_925_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-laser-3 (2,395,000) ×15
   // 协处理器 MK3（2026-09-11 船长定：稀有度 4 走奇货、**无蓝图**——只能等奇货现货；无声望门槛）
   { key: 'mod-cpu-3', kind: 'module', refId: 'mod-cpu-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0 },
   /**
