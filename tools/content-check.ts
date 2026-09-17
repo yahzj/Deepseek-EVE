@@ -4701,6 +4701,23 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       check(!isArmorLineShip(s), `类别契约：${s.id}（${s.role}）不该归入装甲线（船长 2026-09-16：只在武装舰里判）`)
     }
   }
+  /**
+   * **换血转线 4 艘的抗性口径**（船长 2026-09-17：「**抗性也进行调整，不要单纯互换**（**不用护盾了，
+   * 所以不要给护盾任何抗性，只给装甲抗性**）」）：它们已是"装甲主打" ⇒ **盾层不得挂任何抗性**、
+   * **动能抗 0.5 挂甲层**；E 三艘的**壳等离子抗 0.25 保留**（同日选甲案：族格与用不用盾无关）。
+   */
+  for (const id of ['sh-bullshark', 'sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+    const s = SHIPS.find((x) => x.id === id)
+    check(s?.shieldResist === undefined, `类别契约：${id} 已按装甲主打用血 ⇒ 护盾层不应带任何抗性（船长 2026-09-17）`)
+    check(
+      s?.armorResist?.kinetic === 0.5,
+      `类别契约：${id} 的动能抗 0.5 应挂在**装甲层**（现 ${JSON.stringify(s?.armorResist)}）`,
+    )
+  }
+  for (const id of ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+    const s = SHIPS.find((x) => x.id === id)
+    check(s?.hullResist?.plasma === 0.25, `类别契约：${id} 的结构层等离子抗 0.25 应保留（船长 2026-09-17 甲案）`)
+  }
   console.log(
     `· 舰船类别契约：类别名 = 采矿舰 / 货运舰 / 武装舰 / **装甲舰**（armored 展示名「装甲」）· ` +
       `装甲线合计 ${armorLine.length} 艘（按 role ${SHIPS.filter((s) => s.role === 'armored').length} + 武装舰换血转线 ${bySwap.length}：` +

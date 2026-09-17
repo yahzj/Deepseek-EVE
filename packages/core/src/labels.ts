@@ -178,8 +178,9 @@ export function shipRoleLabel(role: ShipRole): string {
  * - `role === 'armored'`（甲壳三艘 / C 族 / 陵墓 D 族 —— 既有装甲族）；**或**
  * - **武装舰里装甲占比 > 护盾占比**者（牛鲨级突击巡洋舰 + E 族三艘；船长同日要求「护盾和装甲互换」）。
  *
- * ⚠ **只判"类别"（显示层）**：`role` 一字不动 ⇒ 等效质量不折抵、不吃「装甲舰操作」技能、
- * 仍算战斗舰（敌方选靶「打非战斗船」口径不变）、货舱/采掘的 role 口径不变。
+ * ⚠ **只判"类别"（显示层）**：`role` 一字不动 ⇒ 等效质量不折抵（舰种档不变）、仍算战斗舰
+ * （敌方选靶「打非战斗船」口径不变）、货舱/采掘的 role 口径不变。
+ * （两个「舰操作」技能已于 2026-09-16 追裁**改按类别判** ⇒ 转线 4 艘吃「装甲舰操作」、不吃「武装舰操作」。）
  */
 export function isArmorLineShip(ship: { role?: ShipRole; shieldHp?: number; armorHp?: number }): boolean {
   if (ship.role === 'armored') return true

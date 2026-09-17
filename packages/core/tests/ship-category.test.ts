@@ -94,6 +94,25 @@ describe('舰船类别：装甲舰（船长 2026-09-16）', () => {
     }
   })
 
+  /**
+   * **抗性口径**（船长 2026-09-17：「**抗性也进行调整，不要单纯互换**（**不用护盾了，所以不要给护盾
+   * 任何抗性，只给装甲抗性**）」）：换血转线的 4 艘 ⇒ 盾层零抗性、动能抗 0.5 挂**甲层**；
+   * 同日选甲案 ⇒ E 三艘的**壳等离子抗 0.25 保留**（族格与用不用盾无关）。
+   * 读数（层克制 × (1−抗) 逐层乘）：对动能 EHP 变为原值的 1.36~1.46 倍，对爆炸/能量与改前一字不差。
+   */
+  it('换血 4 艘的抗性口径：盾层零抗性 · 动能抗 0.5 挂甲层 · E 三艘壳等离子抗保留', () => {
+    for (const id of SWAPPED) {
+      const s = shipOf(id)
+      expect(s.shieldResist, `${id} 盾层不该有任何抗性`).toBeUndefined()
+      expect(s.armorResist, `${id} 甲层动能抗`).toEqual({ kinetic: 0.5 })
+    }
+    // 牛鲨：掠食者线签名只换层、不换系（仍是动能 0.5；壳层本来就没有抗性）
+    expect(shipOf('sh-bullshark').hullResist).toBeUndefined()
+    for (const id of ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+      expect(shipOf(id).hullResist, `${id} 结构层等离子抗应保留（甲案）`).toEqual({ plasma: 0.25 })
+    }
+  })
+
   it('三艘乌龟船的子分类 = 「武装货舰」（船长 2026-09-16），全仓恰好 3 艘', () => {
     const declared = SHIPS.filter((s) => s.subClass === '武装货舰')
     expect(declared.map((s) => s.id).sort()).toEqual(['sh-hawksbill', 'sh-tortoise', 'sh-xuanwu'])

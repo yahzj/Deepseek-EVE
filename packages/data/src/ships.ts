@@ -573,11 +573,13 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.19,
     powerBonus: 0.7,
     // 2026-09-16 船长：「将牛鲨级突击舰和E族专属舰的护盾和装甲互换」⇒ 盾/甲 400↔163（总血 755 不变）；
-    // 换后**装甲占比 > 护盾占比** ⇒ 按同日丙案归入「装甲舰」类别（role 仍 `armed`，机制口径不动：不吃装甲舰操作、
-    // 等效质量不折抵、仍算战斗舰）。⚠ 抗性未随血层动：盾动能抗 0.5 现在落在小池上，实际吃动能更痛。
+    // 换后**装甲占比 > 护盾占比** ⇒ 按同日丙案归入「装甲舰」类别（role 仍 `armed`）；
+    // 两个「舰操作」按**类别**判（同日追裁）⇒ 本舰吃「装甲舰操作」、不吃「武装舰操作」。
+    // **2026-09-17 船长：抗性也一并调整**——「**不用护盾了，所以不要给护盾任何抗性，只给装甲抗性**」
+    // ⇒ 盾层清零、动能抗 0.5 搬到**甲层**（读数：对动能 EHP 943 → 1367，对爆炸/能量不变）。
     shieldHp: 163,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
     armorHp: 400,
+    armorResist: { kinetic: 0.5 }, // 掠食者：重甲抗动能（2026-09-17 由盾层移到甲层）
     hullHp: 192,
     cpu: 390,
     droneBayM3: 50,
@@ -1198,8 +1200,11 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.17,
     powerBonus: 0.5,
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（115↔60，总血 255 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
+    // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；
+    // **壳等离子抗 0.25 保留**（船长选甲案：E 族「结构吃等离子轻」的族格与用不用盾无关）。
     shieldHp: 60,
     armorHp: 115,
+    armorResist: { kinetic: 0.5 },
     hullHp: 80,
     cpu: 200,
     droneBayM3: 30,
@@ -1209,7 +1214,6 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 32000,
     signatureM: 68,
     scanResMm: 640,
-    shieldResist: {"kinetic":0.5},
     hullResist: {"plasma":0.25},
     weaponFamilyBonus: { explosive: 0.15 },
     description: '巨构的鱼雷舰：爆破弹头拆甲，命中扎实；信号大、转身笨，得靠队友挡在前面。',
@@ -1232,8 +1236,10 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.14,
     powerBonus: 0.4,
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（230↔90，总血 435 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
+    // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；壳等离子抗保留。
     shieldHp: 90,
     armorHp: 230,
+    armorResist: { kinetic: 0.5 },
     hullHp: 115,
     cpu: 290,
     droneBayM3: 105,
@@ -1243,7 +1249,6 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 37000,
     signatureM: 80,
     scanResMm: 540,
-    shieldResist: {"kinetic":0.5},
     hullResist: {"plasma":0.25},
     droneDmgBonus: 0.1,
     description: '巨构的无人机作战舰：机巢大、机群强，是长时间放飞机群的移动机库；舱位与自射火力都让位给机群。',
@@ -1266,8 +1271,10 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.14,
     powerBonus: 0.6,
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（410↔160，总血 770 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
+    // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；壳等离子抗保留。
     shieldHp: 160,
     armorHp: 410,
+    armorResist: { kinetic: 0.5 },
     hullHp: 200,
     cpu: 440,
     droneBayM3: 145,
@@ -1277,7 +1284,6 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 42000,
     signatureM: 105,
     scanResMm: 500,
-    shieldResist: {"kinetic":0.5},
     hullResist: {"plasma":0.25},
     droneDmgBonus: 0.14,
     description: '巨构的无人机作战舰：本舰机巢最大、无人机伤害最高，放飞即是主武器；舱位让给机库，本舰火力偏辅助。',
