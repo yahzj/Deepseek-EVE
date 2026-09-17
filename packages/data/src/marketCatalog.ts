@@ -462,11 +462,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
    * ⚠ **两条旧口径就此作废**（原注：`:465` 「2026-09-09 尺寸分级：**T3 巡洋入奇货**」·
    * `:463` 「2026-09-13：**T3 门槛统一 12**」）：现行为**稀有订单渠道 ＋ 声望 8**，数字档仍 4。
    * 价位（9 / 15 / 11 / 13 / 9 M）与 `demandMultiplier: 1.0`（全价回收）**按"其他不变"逐字保留**。
-   * ⚠ **连带（引擎不改）**：渠道一换，这几行走稀有渠道的既有规则——供给单寿命 6h → 36 分钟、
-   * NPC 收购价按 `demandMultiplier` 仍 1.0L、刷新权重按 `rareTierWeight`（只对档 3 打 ×0.15）⇒
-   * **档 4 按权重 1（大众档）刷新**。契约侧同步**按区间放宽**（船长同日：「**修正契约，rate现在允许2~4，
-   * exotic拓展到3~5**」）——`content-check` 的渠道带现为 common 1 / **rare 2~4** / **exotic 3~5**，
-   * 故本段 5 行**不需要任何白名单**。
+   * ⚠ **连带（引擎不改渠道规则）**：渠道一换，这几行走稀有渠道的既有规则——供给单寿命 6h → 36 分钟、
+   * NPC 收购价按 `demandMultiplier` 仍 1.0L。刷新权重：`rareTierWeight` 原本**只特判档 3** ⇒ 档 4 拿 ×1
+   * （与大众档同频，实测 ≈32 分钟/件）——**2026-09-16 船长随后选「选项 B」，给档 4 补了单独系数
+   * `rareTier4Weight` = 0.05 ⇒ 实测 ≈9.5 小时/件**（见 `balance.ts` 该字段注释）。契约侧同步**按区间放宽**
+   * （船长同日：「**修正契约，rate现在允许2~4，exotic拓展到3~5**」）——`content-check` 的渠道带现为
+   * common 1 / **rare 2~4** / **exotic 3~5**，故本段 5 行**不需要任何白名单**。
    */
   { key: 'ship-thresher', kind: 'ship', refId: 'sh-thresher', rarity: 'rare', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 8 },
   { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'rare', basePrice: 15_000_000, demandMultiplier: 1.0, standingReq: 8 },

@@ -83,8 +83,15 @@ const EXOTIC_CAP_PER_DRAW = 2
 /** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
  * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
  * balance.market.rareTier3Weight；奇货渠道出率与数字不挂钩。**2026-09-10 船长定 0.25 → 0.15**，
- * 系数经 market-rarity-sim 复跑校准） */
+ * 系数经 market-rarity-sim 复跑校准。
+ *
+ * ⚠ **2026-09-16 补 4 档**（船长问清「2/3/4 的权重分别是多少」＝ 1 / 0.15 / **1** 后，选**选项 B**）：
+ * 当日的「甲＋乙」把 5 艘官方巡洋舰**保 4** 挪进稀有订单，而本函数原**只特判档 3** ⇒ 档 4 落 `else`
+ * 拿 ×1（与大众档同频，实测 ≈32 分钟一件）；现给档 4 单独系数 **`rareTier4Weight` = 0.05**
+ * ⇒ 实测 ≈**9.5 小时/件**（档 3 仍 0.15 ≈3.9h · 档 2 仍 1 ≈0.8h）。
+ * ⚠ 档 **5** 仍无自己的系数（走 `else` ⇒ ×1）——将来启用档 5 时一并定。 */
 function rareTierWeight(def: MarketGoodDef, ctx: SimContext): number {
+  if (def.rarityTier === 4) return ctx.balance.market.rareTier4Weight ?? 0.05
   return def.rarityTier === 3 ? (ctx.balance.market.rareTier3Weight ?? 0.15) : 1
 }
 
