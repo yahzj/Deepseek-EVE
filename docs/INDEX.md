@@ -12,13 +12,13 @@
 
 ## 统计
 
-- 文档总数 **280** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5100** KB · **37471** 行
-- 状态分布：**未标注** 142 · **已确认/已实现** 107 · **进行中** 25 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**29** 份 · 状态未标注 **142** 份
+- 文档总数 **281** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5105** KB · **37481** 行
+- 状态分布：**未标注** 143 · **已确认/已实现** 107 · **进行中** 25 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**30** 份 · 状态未标注 **143** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
 - 三、现行设计稿（design）：**199** 份
-- 九、封存卷（archive · 冻结件，只读不改）：**15** 份
+- 九、封存卷（archive · 冻结件，只读不改）：**16** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
@@ -34,8 +34,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 70 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 323 KB / 779 行 | 201 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 216 行 | 242 / 9 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 324 KB / 779 行 | 201 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 93 KB / 216 行 | 245 / 9 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -255,7 +255,7 @@
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 4 KB / 54 行 | 3 / 0 |
 
-## 九、封存卷（archive · 冻结件，只读不改） —— 15 份
+## 九、封存卷（archive · 冻结件，只读不改） —— 16 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -274,6 +274,7 @@
 | `docs/archive/roadmap-2026-09-13.md` | 封存卷 · roadmap 批次条目 2026-09-13 | 未标注 | — | 265 KB / 231 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-14.md` | 封存卷 · roadmap 批次条目 2026-09-14 | 未标注 | — | 397 KB / 256 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 126 KB / 80 行 | 3 / 0 |
+| `docs/archive/roadmap-2026-09-16.md` | 封存卷 · roadmap 批次条目 2026-09-16 | 未标注 | — | 3 KB / 10 行 | 0 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -344,7 +345,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 52 / 9 |
 
-## 附：孤儿文档（0 引用，29 份）
+## 附：孤儿文档（0 引用，30 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -373,12 +374,13 @@
 - `docs/design/player-marks-20260910.md`（2026-09-10 · 5 KB）—— 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现）
 - `docs/review/enemy-roster-20260910.md`（2026-09-10 · 11 KB）—— 敌情名册（2026-09-10 · 待船长审核与调整）
 - `docs/design/salvage-autoloop-20260909.md`（2026-09-09 · 3 KB）—— 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现)
+- `docs/archive/roadmap-2026-09-16.md`（无日期 · 3 KB）—— 封存卷 · roadmap 批次条目 2026-09-16
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（142 份，待补一行 `状态：…`）
+## 附：状态未标注（143 份，待补一行 `状态：…`）
 
 - `docs/design/wh-ewar-ship-20260916.md`（2026-09-16）—— 劫掠电子舰 + 劫掠捕获网 · 工作文档
 - `docs/archive/glossary-detail-03-econ-20260915.md`（2026-09-15）—— 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出）
@@ -491,6 +493,7 @@
 - `docs/archive/roadmap-2026-09-13.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-13
 - `docs/archive/roadmap-2026-09-14.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-14
 - `docs/archive/roadmap-2026-09-15.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-15
+- `docs/archive/roadmap-2026-09-16.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-16
 - `docs/catalog.md`（无日期）—— 文档目录（指路 · 开工先读）
 - `docs/content-workbench.md`（无日期）—— 内容工作台（CSV 双向编辑内容数据）
 - `docs/design/ai-design.md`（无日期）—— V8 设计文档：AI 核心系统（玩家分身）
