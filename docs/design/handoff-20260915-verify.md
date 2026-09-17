@@ -71,8 +71,10 @@
    **别动它们**；等主树干净后**重建主树产物**（`npm run build` ＋ `npm run build --prefix web`），
    数据批（货舱/虚空晶 3,600/C 族爆炸抗）才会进船长本地那份。**没重建前船长本地看不到这些数。**
 2. **推送闸门未过**：全部批「待验收 · 本地提交未推送」，线上 Pages 未变。**推送要船长一句话**，且与公告同批。
-3. **工作文档待归档**：`docs/design/docs-archive-20260915.md`（状态：进行中）——船长验收后按 §十五 归档：
-   关键内容已在老文档（AGENTS/conventions/changelog/词典/封存卷），**归档即删本卡与工作文档**、重跑 `docs:index`。
+3. ~~**工作文档待归档**~~ **✅ 2026-09-16 已归档**：`docs/design/docs-archive-20260915.md` 已按 §十五 归档删除
+   ——第一期（roadmap 封存器 / `docs/INDEX.md` / 词典过时词条外移）**已落地**并把关键内容并入老文档
+   （AGENTS §8 / 约定 §十五 / changelog / roadmap 那条）；**第二期（词典逐词条瘦身 · 乙）仍挂账**
+   （口径与可外移量见 roadmap 2026-09-15 那条）。
 4. **消档（船长 2026-09-15「不用了」，不再推进）**：glossary 乙后续批次 · `docs:index --check` 挂进 content:check ·
    `docs/review/A2-*.png` 三张截图删除（**保留现状**）· 约定 §三/§九 逐条审。
 5. **内容体检两条老预警**（非本次引入）：`bp-shieldchg-2` / `bp-shieldchg-3` 蓝图书价与档位系数不符——

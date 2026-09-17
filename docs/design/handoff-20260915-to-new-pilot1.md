@@ -105,7 +105,8 @@
    - **`wip/batch3-auto` 分支去留**：WIP 提交（洞内自动探索）的功能已由后续批次在 main 落地 ⇒ 建议删；等船长一句。
 3. **工作文档待归档（船长验收后当批做 · AGENTS.md §8 三步）**：`docs/design/tuning-schedule-20260915.md`（状态：进行中）
    ⇒ ① 关键内容并入 roadmap 一条精简条目（＋词典「限时倍率表」新词条）② **删掉工作文档** ③ 重跑 `npm run docs:index`。
-   三号侧还有一份 `docs/design/docs-archive-20260915.md`（他卡里 §4 挂账 ③ 已写明归档口径）。
+   三号侧那份 `docs/design/docs-archive-20260915.md` **✅ 2026-09-16 已归档删除**（第一期关键内容已并入
+   AGENTS §8 / 约定 §十五 / changelog / roadmap；**第二期词典瘦身仍挂账**，口径见 roadmap 2026-09-15 条）。
 4. **已登记的工具缺口（下一批建议先修）**：`npm run wormhole:econ` 的**模拟政策不处理「临时空间」** ⇒ 深趟被卡成「未结束」、
    收集物不计入到手 ⇒ **深层收益读数不可信**（对照读数 19/1/0 vs 13/2/5，出处 `docs/design/wormhole-extraction-endgame-20260912.md` 读数注）。
    本轮「强度+激活」批的 5 层政策读数（撤离 12/20 → 8/20）就是这个缺口污染出来的 ⇒ **别拿它当配平依据**。
