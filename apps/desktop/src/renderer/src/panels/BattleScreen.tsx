@@ -1540,6 +1540,41 @@ const meSpeedRef = useRef(200)
 
   /* 弹道（旋转容器内沿 +x 飞行）+ 撞点特效（CSS 延迟到着弹时刻）——
      2026-09-05 三族观感分家：动能=快曳光 / 导弹=慢速虚线尾焰 / 激光=近瞬光束线 */
+  /**
+   * **劫掠捕获网连线**（船长 2026-09-16：「动画效果为一根蓝色的光速连着命中舰船」）：
+   * 与弹道**同一套几何**（锚点 + 夹角 + 长度），但**不发散也不消失**——只要引擎账本里还有这条网就一直画，
+   * 击杀发动者后 `arcs.webLinks` 自然为空、连线当帧消失。样式沿用同级 `.app-bts-bolt` 那套（不新造机制）。
+   * ⚠ 两端语义（船长 2026-09-17 定稿：「**亮端留在被钉舰、羽化端朝敌人**」）：
+   * `from` = 发动者（劫掠电子舰 · 敌人）＝连线元素 0% 端 ⇒ **羽化淡出**；
+   * `to` = 被钉住的我方舰 ＝ 100% 端 ⇒ **最亮 + 外发光**（渐变方向只在 `styles.css` 的 `.app-bts-web-bar`）。
+   */
+  const foeAnchorByTag = new Map<string, { x: number; y: number }>()
+  rowFxTags.forEach((tag, i) => {
+    const a = layFx.foe[i]
+    if (a) foeAnchorByTag.set(tag, a)
+  })
+  const meAnchorOfTag = (tag: string): { x: number; y: number } | undefined =>
+    multiMe ? meAnchorByTag.get(tag) : tag === 'player' ? layFx.me : undefined
+  const webEls = (arcs.webLinks ?? []).flatMap((l) => {
+    const from = foeAnchorByTag.get(l.from)
+    const to = meAnchorOfTag(l.to)
+    if (!from || !to) return []
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const len = Math.max(8, Math.hypot(dx, dy))
+    const ang = (Math.atan2(dy, dx) * 180) / Math.PI
+    return [
+      <div
+        key={`web-${l.from}-${l.to}`}
+        className="app-bts-web"
+        style={{ left: from.x, top: from.y, transform: `rotate(${ang}deg)` }}
+        title="劫掠捕获网：被钉住的舰船机动骤降、推进器熄火、闪避失效、射程缩短——击沉发动者才能解除"
+      >
+        <i className="app-bts-web-bar" style={{ width: len }} />
+      </div>,
+    ]
+  })
+
   const boltEls = boltsRef.current.map((bv) => {
     const look = BOLT_LOOK[bv.type] ?? BOLT_LOOK.kinetic
     const color = bv.color
@@ -1957,6 +1992,27 @@ const meSpeedRef = useRef(200)
       <div className="app-bts-stage">
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}
         <div className="app-bts-ruler">
+          {/* **双方速度**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」；
+              同日裁「只修改战斗显示数值，实际数值不变动」）：
+              左端 = 我方（舰队在左）· 右端 = 敌方；口径 = **与装配页「机动速度」同一把尺**
+              （单位速度 × 机动倍率，逐单位平均；我方点火期含推进器倍率、敌方冲锋期含冲锋倍率）。
+              缺省（未开火/老档）不显示这一行。 */}
+          {arcs.meSpeedMps !== undefined || arcs.foeSpeedMps !== undefined ? (
+            <div className="app-bts-ruler-speed">
+              <span
+                className="app-bts-speed is-me"
+                title="我方编队机动速度（逐舰平均）：与装配页「机动速度」同口径——点火期显示的是含加力推进倍率的值"
+              >
+                ◀ 我方 {Math.round(arcs.meSpeedMps ?? 0).toLocaleString('zh-CN')} m/s
+              </span>
+              <span
+                className="app-bts-speed is-foe"
+                title="敌方编队机动速度（逐舰平均）：与敌卡/体检里的「实速」同口径——冲锋期显示的是含冲锋倍率的值"
+              >
+                敌方 {Math.round(arcs.foeSpeedMps ?? 0).toLocaleString('zh-CN')} m/s ▶
+              </span>
+            </div>
+          ) : null}
           <div className="app-bts-ruler-head">
             <span className="app-dim">◀ 拉开（远 {Math.round(openM).toLocaleString('zh-CN')}m）</span>
             <span className="app-dim">贴脸（近 {Math.round(nearM).toLocaleString('zh-CN')}m）▶</span>
@@ -2343,6 +2399,8 @@ const meSpeedRef = useRef(200)
             </div>
           ) : null}
 
+          {/* **劫掠捕获网连线**（船长 2026-09-16）：持续态，画在弹道层**之下**，不挡弹道 */}
+          {webEls}
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}
           {boltEls}

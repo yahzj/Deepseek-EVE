@@ -52,10 +52,10 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(s.oreUnitsPerCycle).toBe(39) // 「采矿提高到39单位」
     expect(s.priceIsk).toBe(9_000_000)
     expect(s.wormholeScanRadiusBonus).toBe(1) // 主效果
-    expect(s.powerBonus).toBe(0.55)
+    expect(s.powerBonus, '2026-09-17 武装舰按档位：T3 = +25%').toBe(0.25)
     expect(s.droneDmgBonus).toBe(0.1)
     expect((s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)).toBe(610)
-    expect(s.shieldResist?.kinetic).toBe(0.25)
+    expect(s.shieldResist?.kinetic).toBe(0.25) // 0.25 的动能抗不在"50 动能抗"移除范围内（保持）
   })
 
   it('主效果实测生效：编队求和；入洞与深入下层都把扫描半径抬 1 圈（两艘可叠加）', () => {
@@ -114,8 +114,11 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(ctx.marketGoods.has('ship-nautilus')).toBe(true)
     expect(ctx.marketGoods.has('sbp-nautilus')).toBe(true)
     expect(ctx.marketGoods.has('sbp-once-nautilus')).toBe(true)
-    // 渠道与数字档不变：**奇货 + 数字 4**（船长裁定：两行都留 4）
-    expect(goodOf('ship', SCOUT)?.rarity).toBe('exotic')
+    // 渠道与数字档：**2026-09-16 船长裁定「甲」＋「乙」**——舰体现货从奇货**挪进稀有订单**（声望 8）、
+    // 数字档按「乙」**保持 4**；⚠ 2026-09-14 那条「舰体两行都留奇货 + 数字 4」对**舰体**这一行**作废**
+    // （非一次性图纸 `sbp-nautilus` 仍留奇货，见下一行断言）。
+    expect(goodOf('ship', SCOUT)?.rarity).toBe('rare')
+    expect(goodOf('ship', SCOUT)?.standingReq).toBe(8)
     expect(goodOf('blueprint', 'sbp-nautilus')?.rarity).toBe('exotic')
   })
 })

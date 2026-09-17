@@ -329,14 +329,29 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
   for (const k of tableKeys) {
     if (!refSet.has(k)) errors.push(`稀有度表多余键 ${k}（无对应市场卡）`)
     const v = RARITY_TIER[k]!
-    check(Number.isInteger(v) && v >= 1 && v <= 4, `稀有度表 ${k} 值非法：${v}（应为 1~4 整数）`)
+    check(Number.isInteger(v) && v >= 1 && v <= 5, `稀有度表 ${k} 值非法：${v}（应为 1~5 整数，2026-09-16 上沿 4 → 5）`)
   }
-  // 渠道一致性：common 必须 1；rare 只能 2/3；exotic 只能 3/4（低值奇货可标 3，船长 2026-09-09）
+  /**
+   * **渠道 ↔ 数字档的允许带**（**2026-09-16 船长改判**：「**那么修正契约，rate现在允许2~4，
+   * exotic拓展到3~5**」）。
+   *
+   * 现行三条带：
+   * - `common` ⇒ **1**（不变）；
+   * - `rare`（稀有订单）⇒ **2 / 3 / 4**（原「只能 2/3」作废——当日「甲＋乙」把 5 艘官方巡洋舰
+   *   从奇货挪进稀有订单、数字档按船长话**保持 4**，随后船长把这条契约按**区间**放宽）；
+   * - `exotic`（限定奇货）⇒ **3 / 4 / 5**（上沿从 4 拓到 **5**：为将来更高档预留，当前无商品用到 5；
+   *   下沿仍是 3——「低值奇货可标 3」那条 2026-09-09 口径不动）。
+   *
+   * ⚠ **档位语义跟着松开**（见 `rarityTier.ts` 头注与词典「数字稀有度」条）：数字只驱动**稀有订单渠道**
+   * 的刷新权重（`market.ts` 的 `rareTierWeight` = 档 2 ×1 · 档 3 ×0.15 · **档 4 ×0.05**（2026-09-16
+   * 船长选「选项 B」补的单独系数）· 档 5 暂无系数 ⇒ ×1），奇货渠道出率与数字不挂钩。
+   */
+  // 渠道一致性：common = 1；rare = 2~4；exotic = 3~5（2026-09-16 船长改判为区间）
   for (const g of MARKET_GOODS) {
     const v = RARITY_TIER[g.refId] ?? 0
     if (g.rarity === 'common') check(v === 1, `稀有度表 ${g.refId}：common 渠道应为 1，实际 ${v}`)
-    else if (g.rarity === 'rare') check(v === 2 || v === 3, `稀有度表 ${g.refId}：rare 渠道应为 2/3，实际 ${v}`)
-    else check(v === 3 || v === 4, `稀有度表 ${g.refId}：exotic 渠道应为 3/4，实际 ${v}`)
+    else if (g.rarity === 'rare') check(v >= 2 && v <= 4, `稀有度表 ${g.refId}：rare 渠道应为 2~4，实际 ${v}`)
+    else check(v >= 3 && v <= 5, `稀有度表 ${g.refId}：exotic 渠道应为 3~5，实际 ${v}`)
   }
 }
 
@@ -1148,7 +1163,7 @@ const roleSet = new Set(['industrial', 'armed', 'armored', 'hauler'])
 /** 舰种子分类白名单（2026-09-13 船长定；与 `packages/core/src/types.ts` 的 `ShipSubClass` 同源） */
 const SHIP_SUBCLASSES = [
   '电子舰',
-  '炮艇',
+  '炮舰', // 2026-09-17 船长：「掠袭炮艇改名掠袭炮舰」⇒ 子分类名由「炮艇」改为「炮舰」
   '重型突击巡洋舰',
   '截击舰',
   '指挥舰',
@@ -1174,6 +1189,8 @@ const SUBCLASS_NON_WH_SHIP_IDS = new Set([
   'sh-tortoise', // 陆龟级重装艇（T2）
   'sh-hawksbill', // 玳瑁级重装巡舰（T3）
   'sh-xuanwu', // 玄武级重装旗舰（T4）
+  // 2026-09-17 船长：「给予大白鲨级炮舰舰船子分类炮舰」（官方掠食者线，T2 驱逐·奇货精装）
+  'sh-whiteshark',
 ])
 /**
  * **每档默认槽位总数**（船长 2026-09-14 原话：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
@@ -1259,8 +1276,14 @@ for (const s of SHIPS) {
     //   §四布局草案表（陆龟 2/2/3、玳瑁 2/3/3、玄武 2/3/4 的低槽偏多形态 + 注"甲厚（低槽多）"）。
     //   删除理由：① 它是**草案精神**而非独立裁定；② 草案数值早被后续平衡批突破（玄武已从 2/3/4 变 4/4/6）；
     //   ③ 虫洞族重装巡洋按新口径给到"高槽 4"（4/4/4、4/3/5）⇒ 与 `low >= high + 1` 冲突。
-    //   保留"武装舰"半条（现行 43 艘全部通过，且与 armed 族的身份一致）。
-    if (s.role === 'armed') check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+    //   保留"武装舰"半条（**官方船**；且与 armed 族的身份一致）。
+    //   ⚠ **2026-09-17 船长「D 族移动到武装舰」** ⇒ 这条弱断言的适用范围收窄为**官方船**：
+    //   虫洞专属舰的槽位是 2026-09-13 按**子分类**定的（电子舰 / 指挥舰 = 中槽型：2/3/3、2/4/4；
+    //   陵寝巡洋舰 4/4/4）—— 让"高槽多"去推翻那套设计不成立。三艘的实际布局由
+    //   `core/tests/wh-ship-baseline.test.ts`「D 族三艘的实际布局逐一钉住」逐条守着。
+    if (s.role === 'armed' && !s.id.startsWith('sh-wh-')) {
+      check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+    }
     // **专属舰槽位基准线契约**（船长 2026-09-14：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
     // 种族专属的会在这个基础上 +1 槽位」）——只钉 `sh-wh-*`；官方船现状不在此契约内（见 TIER_SLOT_BASE 注释）。
     // ⚠ 本契约是 2026-09-14 那次核账的钉子：此前 15 艘里 1 艘欠 1 格（掠袭电子舰）、4 艘各多 1 格
@@ -1288,7 +1311,7 @@ for (const s of SHIPS) {
   // V12：回避 0~0.9、命中加成 0~0.5
   check(s.evasion === undefined || (s.evasion >= 0 && s.evasion <= 0.9), `舰船 ${s.id} evasion 越界：${String(s.evasion)}`)
   check(s.hitBonus === undefined || (s.hitBonus >= 0 && s.hitBonus <= 0.5), `舰船 ${s.id} hitBonus 越界：${String(s.hitBonus)}`)
-  // **船体固有新机制三条**（2026-09-13 船长点名：炮艇动能射程 / 指挥舰全舰光环 / 侦察舰·电子舰扫码）
+  // **船体固有新机制三条**（2026-09-13 船长点名：炮舰动能射程 / 指挥舰全舰光环 / 侦察舰·电子舰扫码）
   for (const [rt, v] of Object.entries(s.weaponRangeBonusPct ?? {})) {
     check(
       DMG_TYPES.has(rt) && typeof v === 'number' && v > 0 && v <= 0.6,
@@ -1331,8 +1354,16 @@ for (const s of SHIPS) {
     const v = s[f]
     check(v === undefined || (typeof v === 'number' && Number.isFinite(v) && v > 0), `舰船 ${s.id} 间接属性 ${f} 非法：${String(v)}`)
   }
-  if (s.role === 'armed') {
-    check(s.powerBonus !== undefined && s.powerBonus > 0 && s.powerBonus <= 2, `武装舰 ${s.id} 必须有合法 powerBonus`)
+  // ⚠ **判据按"类别"而非 `role`**（2026-09-17）：换血转线的牛鲨 + E 族三艘 `role` 仍是 `armed`
+  //   但类别是「装甲舰」——它们已按专条移除 powerBonus（改给甲层抗性），不该再被这条要求"必带单发加成"。
+  const catOfThis = shipCategoryKeyOf(s)
+  if (catOfThis === 'armed') {
+    // 2026-09-17 船长：「武装舰T1~T5获得单发伤害加成…**如果是无人机船，则改为同等数值的无人机伤害加成**」
+    // ⇒ 无人机船（梭鱼 / 王鲭）没有 `powerBonus`，那笔加成改走 `droneDmgBonus`（档位阶梯值另由专条钉住）。
+    check(
+      (s.powerBonus ?? s.droneDmgBonus) !== undefined && (s.powerBonus ?? s.droneDmgBonus)! > 0 && (s.powerBonus ?? s.droneDmgBonus)! <= 2,
+      `武装舰 ${s.id} 必须有合法 powerBonus 或 droneDmgBonus（无人机船口径）`,
+    )
     /**
      * 2026-09-16 船长丙案：「**将装甲占比比护盾高的船也归入装甲舰**」＋裁决「**只在武装舰里判**」，
      * 同日还要求「**将牛鲨级突击舰和E族专属舰的护盾和装甲互换**」⇒ 这 4 艘（role 仍 `armed`）
@@ -1343,7 +1374,8 @@ for (const s of SHIPS) {
       (s.shieldHp ?? 0) > (s.armorHp ?? 0) || isArmorLineShip(s),
       `武装舰 ${s.id} 护盾应大于装甲（族定位）——除非它归入「装甲舰」类别（装甲占比 > 护盾占比）`,
     )
-  } else {
+  } else if (catOfThis === 'industrial' || catOfThis === 'hauler') {
+    // 采矿舰 / 货运舰不带伤害加成（装甲舰的例外 = 子分类给的炮舰/鱼雷舰加成，另由「加成与抗性新口径」管）
     check(s.powerBonus === undefined, `非武装舰 ${s.id} 不应带 powerBonus`)
   }
   const total = (s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)
@@ -2205,7 +2237,11 @@ for (const m of MODULES) {
           // ⚠ **旧 hidden 遭遇模板豁免族级提速带**（2026-09-12 加）：`enc-pirate-1..4` 归属 A 族
           //   （F 族废弃并入）但属**旧档兜底模板**，其速度是"迁移守恒"来的（`speedMul` 反算回迁移前实速
           //   281 / 291 / 394 / 418）⇒ 不套 A 族"每档都高于基准"的设计口径。
-          if (def.foeFamily === 'A' && def.hidden !== true) {
+          // ⚠ **2026-09-16 收窄豁免**：原判据写成 `def.hidden !== true` ⇒ 把**洞内三张 A 族卡**
+          //   （`wh-pirate-*` 也标了 hidden）一起豁免了 ⇒ 它们的护卫舰被条目 `speedMul 0.9` 压到
+          //   **337 < 本档基准 340** 却全绿（船长 2026-09-16「海盗的平均速度好像有些太慢」）。
+          //   现只豁免**迁移守恒反算**的那四个旧模板（按 id 前缀认），洞内 A 族卡从此受同一口径约束。
+          if (def.foeFamily === 'A' && !def.id.startsWith('enc-')) {
             // A 族口径（见上方⚠）：高于本档舰种基准 + 落在全族提速带
             pirateReadings++
             pirateSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
@@ -2693,18 +2729,31 @@ for (const m of MODULES) {
         const slots = card.ships ?? []
         if (slots.length === 0) bad.push(`洞内 A 族卡 ${id} 没有编成条目`)
         for (const sl of slots) {
-          const r = resolveFoeMounts(sl.mounts)
+          // ⚠ **有效挂载 = 条目 mounts ?? 舰级 mounts**（与引擎同一条优先级）：新舰「劫掠电子舰」
+          // 把两件挂载件写在**舰级**上（它不外借），条目那一侧是空的 ⇒ 只看条目会误判为"没挂"。
+          const r = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
           if (r.foeCanCharge !== true || r.foeChargeMul !== wantPirate.mul || r.foeChargeCooldownMs !== wantPirate.cooldownMs) {
-            bad.push(`${id} 的 ${sl.ship.name} 条目挂载 ≠ 海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）`)
+            bad.push(`${id} 的 ${sl.ship.name}（条目或舰级）未挂海盗冲锋件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）`)
           }
         }
+        // **捕获网件归属**（船长 2026-09-16）：只允许出现在「劫掠电子舰」上，且深层战团必须带它一条
+        for (const sl of slots) {
+          const eff = sl.mounts ?? sl.ship.mounts
+          const hasWeb = resolveFoeMounts(eff).foeCaptureWeb !== undefined
+          if (hasWeb && sl.ship.id !== 'foe-pirate-raider') {
+            bad.push(`${id} 的 ${sl.ship.name} 挂了劫掠捕获网——该件只允许挂在「劫掠电子舰」上`)
+          }
+          if (sl.ship.id === 'foe-pirate-raider' && !hasWeb) bad.push(`${id} 的劫掠电子舰没挂捕获网件`)
+        }
       }
-      // ③ 洞外不许挂冲锋件（除 C 族舰级、洞内三张 A 族卡条目）
+      // ③ 洞外不许挂冲锋件（除 C 族舰级、洞内三张 A 族卡条目）。
+      //    ⚠ 按**有效挂载**（条目 ?? 舰级）判：新舰「劫掠电子舰」把海盗冲锋件写在**舰级**上
+      //    （它只进深层战团），若只看条目，日后把它放进洞外卡会漏检 ⇒ 冲锋跟着上洞外。
       const whSet = new Set(whPirateCards)
       for (const a of ANOMALIES_FLAVORED) {
         if (whSet.has(a.id)) continue
         for (const sl of a.ships ?? []) {
-          const charge = resolveFoeMounts(sl.mounts).foeChargeMul
+          const charge = resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeChargeMul
           if (charge !== undefined && sl.ship.family !== 'C') {
             bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了冲锋件——冲锋只允许 C 族舰级与洞内三张 A 族卡`)
           }
@@ -2722,10 +2771,17 @@ for (const m of MODULES) {
       }
       if (unknown.length > 0) bad.push(`未知挂载件 id：${unknown.join(' · ')}`)
       check(bad.length === 0, `敌方挂载件契约：${bad.join(' · ')}`)
+      // 汇总行**按目录实算**（血泪清单：硬编码"冲锋 5 · 增程 2"会在加件时说过期话）
+      const allMounts = Object.values(FOE_MOUNTS)
+      const nCharge = allMounts.filter((m) => m.charge !== undefined).length
+      const nDrone = allMounts.filter((m) => m.droneRangeOnHit !== undefined).length
+      const nGun = allMounts.filter((m) => m.gunRangeOnHit !== undefined).length
+      const nWeb = allMounts.filter((m) => m.web !== undefined).length
       console.log(
-        `· 敌方挂载件契约：${Object.keys(FOE_MOUNTS).length} 件（冲锋 5 · 机群增程 1 · 炮台增程 1）· ` +
+        `· 敌方挂载件契约：${allMounts.length} 件（冲锋 ${nCharge} · 机群增程 ${nDrone} · 炮台增程 ${nGun} · 捕获网 ${nWeb}）· ` +
           `C 族 ${aliens.length} 条按档挂件（${aliens.map((s) => `${s.name} T${s.hullClassTier}×${resolveFoeMounts(s.mounts).foeChargeMul}`).join('　')}）· ` +
-          `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件`,
+          `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件` +
+          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m）` : ''}`,
       )
     }
     console.log(
@@ -4677,6 +4733,118 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       check(!isArmorLineShip(s), `类别契约：${s.id}（${s.role}）不该归入装甲线（船长 2026-09-16：只在武装舰里判）`)
     }
   }
+  /**
+   * **换血转线 4 艘的抗性口径**（船长 2026-09-17）：它们已是"装甲主打" ⇒ **盾层不得挂任何抗性**；
+   * 甲层抗性 = 装甲舰档位阶梯（见上一条专条：动能 + 能量 30/30/35/35/35）；
+   * E 三艘的**壳等离子抗 0.25 保留**（族给，不属"移除"范围）。
+   */
+  for (const id of ['sh-bullshark', 'sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+    const s = SHIPS.find((x) => x.id === id)
+    check(s?.shieldResist === undefined, `类别契约：${id} 已按装甲主打用血 ⇒ 护盾层不应带任何抗性（船长 2026-09-17）`)
+    check(
+      s?.armorResist?.kinetic !== undefined && s?.armorResist?.plasma !== undefined,
+      `类别契约：${id} 的甲层应带动能 + 能量抗性（档位阶梯；现 ${JSON.stringify(s?.armorResist)}）`,
+    )
+  }
+  for (const id of ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+    const s = SHIPS.find((x) => x.id === id)
+    check(s?.hullResist?.plasma === 0.25, `类别契约：${id} 的结构层等离子抗 0.25 应保留（船长 2026-09-17 甲案）`)
+  }
+  /**
+   * **两类舰的"额外加成"新口径**（船长 2026-09-17，原话照抄）：
+   * 「**武装舰T1~T5获得单发伤害加成，分别是15/20/25/35/50.允许出现上下浮动。如果是无人机船，
+   *   则改为同等数值的无人机伤害加成。移除每条船的50动能抗性**」＋
+   * 「**装甲舰T~T5获得装甲的动能和能量抗性加成，分别为30/30/35/35/35。移除之前获得的单发伤害加成。
+   *   （这里所有的移除都不会影响舰船子类型和种族给予的额外属性。）**」＋（同日追加）
+   * 「**所有炮舰伤害倍率额外+0.15。鱼雷舰获得伤害倍率+0.2。**」
+   *
+   * 契约五条：
+   * ① **武装舰**：`powerBonus`（无人机船看 `droneDmgBonus`）= 档位阶梯 0.15/0.20/0.25/0.35/0.50
+   *    ＋ **子分类附加**（炮舰 +0.15 · 鱼雷舰 +0.2），**允许 ±0.05 浮动**；
+   * ② **装甲舰（类别口径）**：甲层 `kinetic` = 0.30/0.30/0.35/0.35/0.35（±0.05）；**不得有档位单发加成**，
+   *    唯一例外 = **子分类给的**（构件鱼雷舰 +0.2）；
+   * ③ **全局**：三层抗性里**任何一层都不许再出现 `kinetic: 0.5`**（"移除每条船的 50 动能抗性"）；
+   * ④ **装甲舰甲层能量抗**：幼虫截击舰 / 甲壳截击舰**已按船长移除** ⇒ 只查其余装甲舰 = 档位值；
+   * ⑤ **不变量**：装甲舰甲层高爆抗 = 甲壳线 **0.25**（船长：「陆龟级，玳瑁级，玄武级，爆炸抗性削弱到0.25」）·
+   *    C 族 **0.3**（船长：「装甲船的C族高爆抗性改为0.3」）· D 族三艘**甲层/壳层抗性已全删**（只留盾层 0.25×3）·
+   *    E 三艘 `hullResist.plasma` 0.25 保留。
+   */
+  {
+    const bad: string[] = []
+    const ARMED_DMG: Record<number, number> = { 1: 0.15, 2: 0.2, 3: 0.25, 4: 0.35, 5: 0.5 }
+    const ARMOR_RES: Record<number, number> = { 1: 0.3, 2: 0.3, 3: 0.35, 4: 0.35, 5: 0.35 }
+    const SUBCLASS_DMG: Record<string, number> = { 炮舰: 0.15, 鱼雷舰: 0.2 }
+    const FLOAT = 0.05
+    /** 装甲舰甲层能量抗被船长点名移除的两艘（C 族截击舰） */
+    const NO_ARMOR_PLASMA = new Set(['sh-wh-c-frigate', 'sh-wh-c-destroyer'])
+    let armedN = 0
+    let armorN = 0
+    for (const s of SHIPS) {
+      const cat = shipCategoryKeyOf(s)
+      const subExtra = s.subClass !== undefined ? (SUBCLASS_DMG[s.subClass] ?? 0) : 0
+      if (cat === 'armed') {
+        armedN++
+        const droneShip = s.powerBonus === undefined && s.droneDmgBonus !== undefined
+        const v = droneShip ? s.droneDmgBonus! : (s.powerBonus ?? NaN)
+        const want = (ARMED_DMG[s.tier] ?? NaN) + subExtra
+        if (ARMED_DMG[s.tier] === undefined) bad.push(`${s.name}（${s.id}）档位 T${s.tier} 不在阶梯表里`)
+        else if (!(Math.abs(v - want) <= FLOAT + 1e-9))
+          bad.push(
+            `${s.name}（${s.id}）${droneShip ? '无人机伤害' : '单发'}加成 ${v} ∉ ${want}±${FLOAT}` +
+              `（T${s.tier} 档位 ${ARMED_DMG[s.tier]}${subExtra > 0 ? ` ＋ 子分类 ${s.subClass} ${subExtra}` : ''}）`,
+          )
+        if (droneShip && s.powerBonus !== undefined) bad.push(`${s.name}（${s.id}）是无人机船却又带 powerBonus（应改给 droneDmgBonus）`)
+      } else if (cat === 'armored') {
+        armorN++
+        const want = ARMOR_RES[s.tier]
+        for (const t of ['kinetic', 'plasma'] as const) {
+          if (t === 'plasma' && NO_ARMOR_PLASMA.has(s.id)) continue // 船长点名移除
+          const v = s.armorResist?.[t]
+          if (want === undefined) bad.push(`${s.name}（${s.id}）档位 T${s.tier} 不在阶梯表里`)
+          else if (v === undefined || Math.abs(v - want) > FLOAT + 1e-9)
+            bad.push(`${s.name}（${s.id}）甲层 ${t} 抗 ${v ?? '未写'} ∉ ${want}±${FLOAT}（T${s.tier}）`)
+        }
+        // 档位单发加成必须已移除；唯一例外 = 子分类给的（鱼雷舰 +0.2）
+        const allowed = subExtra
+        const got = s.powerBonus ?? 0
+        if (Math.abs(got - allowed) > 1e-9)
+          bad.push(`${s.name}（${s.id}）属装甲舰 ⇒ 单发加成只允许子分类给的 ${allowed}（现 ${s.powerBonus ?? '无'}）`)
+      }
+      for (const [layer, r] of [['盾', s.shieldResist], ['甲', s.armorResist], ['壳', s.hullResist]] as const) {
+        if (r?.kinetic === 0.5) bad.push(`${s.name}（${s.id}）${layer}层仍有 50 动能抗（船长：「移除每条船的 50 动能抗性」）`)
+      }
+    }
+    // ⑤ 不变量：子类型 / 种族给的抗性按船长新口令核对
+    const EXPLOSIVE_WANT: Record<string, number> = {
+      'sh-tortoise': 0.25,
+      'sh-hawksbill': 0.25,
+      'sh-xuanwu': 0.25,
+      'sh-wh-c-frigate': 0.3,
+      'sh-wh-c-destroyer': 0.3,
+      'sh-wh-c-cruiser': 0.3,
+    }
+    for (const [id, want] of Object.entries(EXPLOSIVE_WANT)) {
+      const s = SHIPS.find((x) => x.id === id)
+      if (s?.armorResist?.explosive !== want) bad.push(`${id} 的甲层高爆抗应为 ${want}（现 ${s?.armorResist?.explosive ?? '无'}）`)
+    }
+    for (const id of ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser']) {
+      const s = SHIPS.find((x) => x.id === id)
+      if (s?.armorResist !== undefined) bad.push(`${id} 的甲层抗性应已全部移除（船长：「D族船，装甲爆炸抗性…移除」）`)
+      if (s?.hullResist !== undefined) bad.push(`${id} 的结构层抗性应已全部移除（船长：「…结构所有抗性移除」）`)
+      if (s?.shieldResist === undefined) bad.push(`${id} 的盾层抗性应保留（船长只点名甲层爆炸与结构层）`)
+    }
+    for (const id of ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
+      const s = SHIPS.find((x) => x.id === id)
+      if (s?.hullResist?.plasma !== 0.25) bad.push(`${id} 的壳层等离子抗 0.25（族给）被误删`)
+    }
+    check(bad.length === 0, `加成与抗性新口径：${bad.join(' · ')}`)
+    console.log(
+      `· 加成与抗性新口径（船长 2026-09-17）：武装舰 ${armedN} 艘按档位给单发/无人机伤害（15/20/25/35/50 ±5；` +
+        `炮舰 +15 · 鱼雷舰 +20 另加）· 装甲舰 ${armorN} 艘按档位给甲层动能（30/30/35/35/35 ±5）· ` +
+        `全局已无 50 动能抗 · D 族甲层/壳层抗性已清 · C 族两艘截击舰能量抗已清`,
+    )
+  }
+
   console.log(
     `· 舰船类别契约：类别名 = 采矿舰 / 货运舰 / 武装舰 / **装甲舰**（armored 展示名「装甲」）· ` +
       `装甲线合计 ${armorLine.length} 艘（按 role ${SHIPS.filter((s) => s.role === 'armored').length} + 武装舰换血转线 ${bySwap.length}：` +
@@ -5610,6 +5778,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
+  // 2026-09-16 首次遭遇某敌舰级（船长：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯）
+  'foeShipSeen',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）

@@ -360,10 +360,30 @@ export const WORMHOLE_FAMILY_CARD: Readonly<Record<WormholeFamily, string>> = {
 /**
  * **一处虫洞锁定的敌族**（确定性：同 `seed` 必得同族，**等概率**五分之一）。
  * 老档/调试入口没有该字段 ⇒ 现算，永远一致、不重掷。
+ *
+ * ⚠ **2026-09-16 修真 BUG（船长确认修）**：旧实现是
+ * `Math.abs((s × 1103515245 + 12345) % WORMHOLE_FAMILY_ORDER.length)`，
+ * 而 `1103515245 = 5 × 220703049`、`12345 = 5 × 2469` **两项都能被 5 整除**
+ * ⇒ 整个和恒 `≡ 0 (mod 5)` ⇒ 下标恒 0 ⇒ **任何种子的族都是 A（海盗）**：
+ * 五族里另外四族（连同它们的洞内敌卡、族专属装备/图纸/舰船）**实际永不出现**
+ * （实测：种子 1..20000 → 100% A）。根因 = 那对 LCG 常数本是配 `% 2^31` 用的，
+ * 拿来配 `% 5` 时"乘数/加数与模数不互质"，结果塌成一个常数。
+ *
+ * 修法：换成 splitmix 风格的 **32 位混合**（全程 `Math.imul`/异或 ⇒ 无浮点精度损失、
+ * 跨引擎确定），再取模。修后：新旧存档里**已有的洞不变**（族随 `run.family` 落档），
+ * 只有"现算"的入口（新扫描的洞 / 老档缺字段 / 调试入口）会真正摇出五族。
  */
+function mix32(x: number): number {
+  let v = x >>> 0
+  v = Math.imul(v ^ (v >>> 16), 2246822507)
+  v = Math.imul(v ^ (v >>> 13), 3266489909)
+  v ^= v >>> 16
+  return v >>> 0
+}
+
 export function wormholeFamilyOfSeed(seed: number): WormholeFamily {
   const s = Math.abs(Math.floor(seed)) % 1_000_000_007
-  const h = Math.abs((s * 1103515245 + 12345) % WORMHOLE_FAMILY_ORDER.length)
+  const h = mix32(s) % WORMHOLE_FAMILY_ORDER.length
   return WORMHOLE_FAMILY_ORDER[h]!
 }
 

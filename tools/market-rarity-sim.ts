@@ -8,7 +8,7 @@
  * 船长 2026-09-09 定）。同一抽中行连续窗连抽间隔记为 1。
  *
  * 运行：npx tsx tools/market-rarity-sim.ts [--windows 1440] [--seeds 1,7,13] [--standing 24]
- *        [--tier3-weight 0.25] [--bp-weight 0.05] [--rows bp-miner-2,bp-cargo-2]
+ *        [--tier3-weight 0.25] [--tier4-weight 0.05] [--bp-weight 0.05] [--rows bp-miner-2,bp-cargo-2]
  * 2026-09-10 起兼查蓝图书：--bp-weight 对照不同权重，并按行打印蓝图出现间隔
  * （原 tools/_bp-rate.ts 探针并入此处，探针已删）。
  */
@@ -29,6 +29,8 @@ const SEEDS =
 const STANDING = argVal('--standing', 24)
 // --tier3-weight X：覆写引擎 balance 的 3 档权重（对照不同系数用；缺省 = 当前配置）
 const TIER3_OVERRIDE = ARGS.indexOf('--tier3-weight') >= 0 ? Number(ARGS[ARGS.indexOf('--tier3-weight') + 1]) : null
+// --tier4-weight X：覆写引擎 balance 的 **4 档**权重（2026-09-16 船长选「选项 B」起 = 0.05；对照用）
+const TIER4_OVERRIDE = ARGS.indexOf('--tier4-weight') >= 0 ? Number(ARGS[ARGS.indexOf('--tier4-weight') + 1]) : null
 // --bp-weight X：覆写蓝图书权重（2026-09-10 船长定 5%；对照旧值 0.5 用；缺省 = 当前配置）
 const BP_OVERRIDE = ARGS.indexOf('--bp-weight') >= 0 ? Number(ARGS[ARGS.indexOf('--bp-weight') + 1]) : null
 // --rows k1,k2：额外打印指定稀有行的单行出现间隔（默认 = 碎片路线对应的 6 张书）
@@ -42,10 +44,14 @@ const ctx = buildSimContext()
 if (TIER3_OVERRIDE !== null && Number.isFinite(TIER3_OVERRIDE)) {
   ctx.balance.market.rareTier3Weight = TIER3_OVERRIDE
 }
+if (TIER4_OVERRIDE !== null && Number.isFinite(TIER4_OVERRIDE)) {
+  ctx.balance.market.rareTier4Weight = TIER4_OVERRIDE
+}
 if (BP_OVERRIDE !== null && Number.isFinite(BP_OVERRIDE)) {
   ctx.balance.market.blueprintWeight = BP_OVERRIDE
 }
 const tier3W = ctx.balance.market.rareTier3Weight
+const tier4W = ctx.balance.market.rareTier4Weight
 const bpW = ctx.balance.market.blueprintWeight
 const rareDefs = [...ctx.marketGoods.values()].filter((g) => g.rarity === 'rare' && g.playerBuyable !== false)
 const bpDefs = rareDefs.filter((d) => d.kind === 'blueprint')
@@ -147,7 +153,8 @@ for (const seed of SEEDS) {
 
 const meanWin = mean(perWindowAll)
 console.log(
-  `══ 稀有订单刷新模拟（rare 渠道卖单；窗 ${WINDOWS} × 种子 ${SEEDS.length}，声望 ${STANDING}，tier3 权重 ${tier3W}，蓝图权重 ${bpW}）══`,
+  `══ 稀有订单刷新模拟（rare 渠道卖单；窗 ${WINDOWS} × 种子 ${SEEDS.length}，声望 ${STANDING}，` +
+    `tier 权重 2=1 / 3=${tier3W} / 4=${tier4W}，蓝图权重 ${bpW}）══`,
 )
 console.log(
   `rare 供给行 ${rareDefs.length}：tier2（大众）= ${ROW_BY_TIER.get(2) ?? 0} 行 · tier3（高阶）= ${ROW_BY_TIER.get(3) ?? 0} 行` +

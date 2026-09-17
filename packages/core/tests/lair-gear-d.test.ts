@@ -54,8 +54,9 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
       expect(after).toBeCloseTo(1 - (1 - base) * 0.7, 6)
       expect(after).toBeGreaterThan(base)
     }
-    // 灰鲭鲨基础盾抗只有动能 0.5 → 装后动能 0.65（缺口剩一半再削 30%）、另两系各 0.30
-    expect(withShield.resists.shield!.kinetic).toBeCloseTo(0.65, 6)
+    // 灰鲭鲨基础盾抗 0.5 动能已被 2026-09-17 船长「移除每条船的 50 动能抗性」清掉
+    // ⇒ 装后三系都只剩盾件那一档 0.30
+    expect(withShield.resists.shield!.kinetic).toBeCloseTo(0.3, 6)
     expect(withShield.resists.shield!.explosive).toBeCloseTo(0.3, 6)
     expect(withShield.resists.shield!.plasma).toBeCloseTo(0.3, 6)
     // 装甲/结构层不被盾件影响

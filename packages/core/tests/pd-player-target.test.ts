@@ -103,6 +103,9 @@ function pick(
   wi = 0,
   myTag = 'player',
 ): { foeTag: string; pool: NonNullable<BattleState['foeDronePools']>[string][number] } | null {
+  // ⚠ **2026-09-17 逐门记账**后，同一门武器在**同一次挨打**里只能还手一次 ⇒ 每次调用模拟
+  // **新的一次敌机攻击**（推进一拍再写令牌），否则第二次调用会（正确地）返回 null。
+  b.lastTickGameMs += 1
   b.droneHitAtMeBy = { ...(b.droneHitAtMeBy ?? {}), [myTag]: b.lastTickGameMs }
   // ⚠ 只喂选靶需要的两个字段（tag / foeDrones）——真实 `UnitSpec` 的其余字段与本函数无关
   const units = foeUnits(b) as unknown as Parameters<typeof pickFoeDroneTarget>[2]
@@ -187,10 +190,43 @@ describe('我方近防炮 · 选靶规则（P-40）', () => {
     b.droneHitAtMeBy = { 'ally-1': b.lastTickGameMs }
     const units = foeUnits(b) as unknown as Parameters<typeof pickFoeDroneTarget>[2]
     expect(pickFoeDroneTarget(state, b, units, 1_000, PD_W, 0, 'player')).toBeNull()
-    // 僚舰自己调用 ⇒ 能选到目标（并且只消费它自己那份令牌）
+    // 僚舰自己调用 ⇒ 能选到目标（只读它自己那份令牌）
     const ally = pickFoeDroneTarget(state, b, units, 1_000, PD_W, 0, 'ally-1')
     expect(ally).not.toBeNull()
-    expect(b.droneHitAtMeBy?.['ally-1'], '僚舰的令牌已被消费').toBeUndefined()
+    // **2026-09-17 起令牌不再被"第一门"删掉**（它记的是"本舰何时挨打"）——改由逐门记账决定放行：
+    // 僚舰的 0 号武器这次已还过手 ⇒ 它再调是 null；但**换一门（1 号）仍能还手**（这正是玩家报障的修复点）。
+    expect(b.droneHitAtMeBy?.['ally-1'], '令牌保留（供其余门用）').toBe(b.lastTickGameMs)
+    expect(pickFoeDroneTarget(state, b, units, 1_000, PD_W, 0, 'ally-1'), '同一门同一次挨打只能还手一次').toBeNull()
+    expect(pickFoeDroneTarget(state, b, units, 1_000, PD_W, 1, 'ally-1'), '换一门仍可还手').not.toBeNull()
+  })
+
+  /**
+   * **多门近防炮各还手一次**（2026-09-17 修玩家报障：「**多个近防炮对无人机的伤害不叠加，同时装MK2和MK3
+   * 只有一个开火**」）。
+   *
+   * 旧口径把"本舰挨打令牌"在第一门开火时就删掉 ⇒ 同一拍里其余门（含 MK2/MK3 这些**不同武器条目**）
+   * 全部拿到 null ⇒ 加装近防炮毫无收益（取证：一艘船装 3 门，每拍开火发数与只装 1 门相同）。
+   * 本用例钉住修后的语义：**一次挨打 ⇒ 本舰每门近防炮各还手一次**（同一门不重复）。
+   */
+  it('**一次挨打 ⇒ 每门近防炮各还手一次**（MK2+MK3 不再只有一门开火）', () => {
+    const { state, b } = battleWith([{ drone: DRONE_SCOUT, count: 3 }])
+    b.lastTickGameMs += 1
+    b.droneHitAtMeBy = { player: b.lastTickGameMs }
+    const units = foeUnits(b) as unknown as Parameters<typeof pickFoeDroneTarget>[2]
+    // 同一时刻、同一艘船：0/1/2 号武器（= 三件近防炮各自的条目）**依次都能还手**
+    for (const wi of [0, 1, 2]) {
+      expect(pickFoeDroneTarget(state, b, units, 1_000, PD_W, wi, 'player'), `${wi} 号武器应能还手`).not.toBeNull()
+    }
+    // 但每一门**同一次挨打只还手一次**（不会变成"一直开火"）
+    for (const wi of [0, 1, 2]) {
+      expect(pickFoeDroneTarget(state, b, units, 1_000, PD_W, wi, 'player'), `${wi} 号武器不重复开火`).toBeNull()
+    }
+    // 下一次挨打（新时刻）⇒ 三门又能各还手一次
+    b.lastTickGameMs += 1
+    b.droneHitAtMeBy = { player: b.lastTickGameMs }
+    for (const wi of [0, 1, 2]) {
+      expect(pickFoeDroneTarget(state, b, units, 1_000, PD_W, wi, 'player'), `新一次挨打：${wi} 号应能还手`).not.toBeNull()
+    }
   })
 
   it('**集火锁逐舰**：主控与僚舰的 0 号武器各自锁定、互不覆盖', () => {

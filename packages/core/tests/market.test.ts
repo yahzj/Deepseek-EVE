@@ -1247,6 +1247,56 @@ describe('数字稀有度分层（2026-09-09 船长拍板：稀有度入物品�
     expect(share).toBeGreaterThan(0.25) // 均权对照：近似对半（宽界防随机噪声）
     expect(share).toBeLessThan(0.75)
   })
+
+  /**
+   * **档 4 的单独系数**（**2026-09-16 船长选「选项 B」**：`rareTier4Weight` = 0.05）。
+   *
+   * 由来：当日「甲＋乙」把 5 艘官方巡洋舰**保 4** 挪进稀有订单，而 `rareTierWeight` 原**只特判档 3**
+   * ⇒ 档 4 落 `else` 拿 ×1（与大众档同频）。船长问清 2/3/4 = 1 / 0.15 / 1 后，选了"给档 4 单独系数"。
+   * 本用例按 2/3/4 三行同时抽取，钉住：**档 4 显著低于档 2**（系数 0.05 ⇒ 约 1/20），且系数可被
+   * `balance` 覆写（0 ⇒ 永不命中；1 ⇒ 与档 2 同频）。
+   */
+  it('档 4 单独系数：默认 0.05 ⇒ 命中远低于档 2；覆写 0 ⇒ 永不命中、覆写 1 ⇒ 与档 2 同频', () => {
+    const run = (w4: number): { t2: number; t3: number; t4: number } => {
+      const state = createInitialState({ nowWallMs: 0, seed: 20260916 })
+      const ctx = makeTestCtx({
+        marketGoods: [
+          { key: 'mod-t2', kind: 'module', refId: 'mod-t2', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65, rarityTier: 2 },
+          { key: 'mod-t3', kind: 'module', refId: 'mod-t3', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65, rarityTier: 3 },
+          { key: 'mod-t4', kind: 'module', refId: 'mod-t4', rarity: 'rare', basePrice: 10_000, demandMultiplier: 0.65, rarityTier: 4 },
+        ],
+        modules: [moduleDef('mod-t2', 'turret', 0), moduleDef('mod-t3', 'turret', 0), moduleDef('mod-t4', 'turret', 0)],
+      })
+      ctx.balance.market.rareTier4Weight = w4
+      ensureMarket(state, ctx)
+      let t2 = 0
+      let t3 = 0
+      let t4 = 0
+      for (let i = 0; i < 400; i++) {
+        state.market.npcSell['mod-t2'] = []
+        state.market.npcSell['mod-t3'] = []
+        state.market.npcSell['mod-t4'] = []
+        slowSupplyDraw(state, ctx, i * 600_000)
+        t2 += state.market.npcSell['mod-t2']!.length
+        t3 += state.market.npcSell['mod-t3']!.length
+        t4 += state.market.npcSell['mod-t4']!.length
+      }
+      return { t2, t3, t4 }
+    }
+    // 默认 0.05：t4 ≈ t2 × 0.05（宽界：只要求"显著低于"，并对 0 与同频两个极端各钉一次）
+    const def = run(0.05)
+    expect(def.t2, '档 2 应当常出').toBeGreaterThan(0)
+    expect(def.t3, '档 3（0.15）应当出得来').toBeGreaterThan(0)
+    expect(def.t4, '档 4（0.05）应当出得来').toBeGreaterThan(0)
+    expect(def.t4 * 3, '档 4 应显著低于档 2（系数 0.05 ⇒ 约 1/20）').toBeLessThan(def.t2)
+    expect(def.t4, '档 4 应低于档 3（0.05 < 0.15）').toBeLessThan(def.t3)
+    // 覆写 0 ⇒ 永不命中；覆写 1 ⇒ 与档 2 同频（宽界）
+    expect(run(0).t4).toBe(0)
+    const full = run(1)
+    const share = full.t4 / (full.t2 + full.t4)
+    expect(share).toBeGreaterThan(0.25)
+    expect(share).toBeLessThan(0.75)
+  })
 })
 
 describe('商品下架（市场目录收缩防御，2026-09-09：蓝图船成品现货退役）', () => {

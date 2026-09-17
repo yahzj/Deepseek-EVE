@@ -86,8 +86,9 @@ describe('无人机射程插件 · 叠加惩罚（2026-09-14 船长 · 折权加
     const { state, uid } = world(['mod-drone-tac-2', 'mod-drone-tac-2', null])
     const spec = createPlayerSpec(state, ctx, uid)!
     const bee = spec.weapons.find((w) => w.src === 'drone' && w.artId === BEE)!
-    // 单发 = 3 × 2（引擎单发×2）× (1 + 0.25 + 0.25 两件导控全额相加) × (1 + 0.08 船体)
-    expect(bee.shotDmg).toBe(Math.round(3 * 2 * 1.5 * 1.08))
+    // 单发 = 3 × 2（引擎单发×2）× (1 + 0.25 + 0.25 两件导控全额相加) × (1 + 0.20 船体)
+    // （船体 = 梭鱼级无人机护卫；2026-09-17 船长：无人机船按档位给无人机伤害 ⇒ T2 = +20%，原 +8% 作废）
+    expect(bee.shotDmg).toBe(Math.round(3 * 2 * 1.5 * 1.2))
     expect(bee.maxRangeM).toBe(4000) // 导控不加射程：基数原样
   })
 })

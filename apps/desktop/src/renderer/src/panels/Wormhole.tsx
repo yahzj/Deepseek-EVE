@@ -1631,8 +1631,15 @@ export function WormholePanel({
         className="app-wh-mapbox"
         ref={mapBoxRef}
         style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': `url("${pinnedSpaceBg}")` } : {}) } as React.CSSProperties}
-        title="滚轮缩放地图（也可以点左侧的 ＋/－，或点「适应」回到全图）"
       >
+                      {/**
+                       * ⚠ **这里不许写 `title`**（**2026-09-17 船长报障**：「鼠标在地点上悬停时，会同时出现
+                       * **滚轮缩放的 title 提示**和格子信息，建议取消滚轮缩放的 title」）。
+                       * 机制：格子上的提示走 **SVG 的 `data-tip`**（由 `ui/Tooltip.tsx` 的自绘层接管），
+                       * 而**悬停元素自己没有 `title` 时，浏览器会沿祖先链找最近的 `title` 并照原生弹出**
+                       * ⇒ 地图框这一层的 `title` 会和格子提示**同屏出现**（自绘 + 原生两个）。
+                       * 滚轮那句话已搬进下方图例行的 ⓘ（常驻说明进 ⓘ 的既有口径），此处保持**无 title**。
+                       */}
                       <WhGridMap
                         grid={grid}
                         onPickCell={pickCell}
@@ -1683,6 +1690,13 @@ export function WormholePanel({
                         {l.text}
                       </span>
                     ))}
+                    {/**
+                     * **地图操作说明进 ⓘ**（2026-09-17 船长：「取消滚轮缩放的 title」）——原句从地图框的
+                     * `title` 一字不改搬到这里：那处 `title` 会在"悬停格子上"时被浏览器当**祖先原生提示**
+                     * 弹出来，与格子自己的 `data-tip` 自绘提示同屏（一个屏幕两个提示）。图例行是地图的
+                     * 常驻说明位（与"常驻说明进 ⓘ、状态读数留眼前"同款口径），搬来即不再打架。
+                     */}
+                    <HintIcon tip="滚轮缩放地图（也可以点左侧的 ＋/－，或点「适应」回到全图）" />
                   </div>
                   {pendingCell ? (
                     <div className="app-wh-ask">

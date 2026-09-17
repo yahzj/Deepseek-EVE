@@ -265,6 +265,12 @@ export interface UnitSpec {
    *  「挨打后射程增加 50%」，**只影响所有静滞卫舰**）——与机群那条**同款触发、不同作用面**：
    *  任一此类敌舰被命中 ⇒ `BattleState.foeGunRangeBuff` 盖章；读射程时**只对本字段存在的单位**生效。 */
   foeGunRangeMulOnHit?: number
+  /**
+   * **劫掠捕获网**（船长 2026-09-16，A 族新舰「劫掠电子舰」专属；参数见 `FoeMountDef.web`）：
+   * 本舰**第一次开火那一刻**（不看命中）钉住**它这一发的目标**，本场永久、**击杀发动者即解除**。
+   * 被钉的我方舰：战斗机动 ×`slowMul`（0.1）· 推进器全关 · 闪避归零 · 武器射程 −`rangeDownM`。
+   */
+  foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /** **单次出击上限**（见 `FoeShipDef.droneLaunch`；2026-09-12 船长「限制敌机单次出击数量」） */
   foeDroneLaunch?: { maxAloft: number; cycleMs?: number; keepDps?: boolean }
   /** **备用机库**（见 `FoeShipDef.droneReserve`；2026-09-12 船长「损坏后补充敌机」） */
@@ -735,6 +741,97 @@ export function unitThrusterCycle(
  * `arrived` 永不可达 ⇒ 冲锋永不解除、冷却永不启动。本批加的**命中解除**就是这条 BUG 的出口
  * （在冲的单位既然已经进射程，炮台迟早打中）；`arrived` 仍留作兜底。
  */
+/**
+ * **劫掠捕获网：把四层效果施加到被钉的我方规格上**（船长 2026-09-16 两句话的落点）。
+ *
+ * 语义 = **只改这一份规格**（不改存档、不改数据）：战斗机动 ×`slowMul`、推进器倍率清零、
+ * 闪避归零、每条武器**两端各减** `rangeDownM`（近界下限 1m、远界下限 2m）。
+ * 三处调用（缺一不可）：① 触发那一发**当场**施加（这一发的命中判定就该看到闪避 0）；
+ * ② `buildMyUnitSpecs` 每拍重建后施加（否则下一拍又"复活"）；③ 视图 `battleArcsFor`（面板/射程带同尺）。
+ */
+/**
+ * **记下"这一场有哪些敌方舰级"**（船长 2026-09-16：「**在玩家第一次遭遇劫掠电子舰之后**…给玩家发送一封
+ * 通讯，介绍劫掠电子舰的捕获网」）。出口唯一：两处开战入口（单船 `startBattleFor` / 编队 `startFleetBattleFor`）
+ * 各调一次 ⇒ 通讯触发器只读 `state.foeShipSeen`，不必在别处再判"遇到过没有"。
+ * ⚠ 只认**这一场敌卡编成里出现过的舰级**（含派生卡的编成）——与"这卡有没有它"同源。
+ */
+export function noteFoeShipsSeen(state: GameState, anomaly: AnomalyDef): void {
+  const slots = anomaly.ships
+  if (!slots || slots.length === 0) return
+  let next: Record<string, true> | null = null
+  for (const slot of slots) {
+    const id = slot.ship?.id
+    if (!id || state.foeShipSeen?.[id] === true) continue
+    next = next ?? { ...(state.foeShipSeen ?? {}) }
+    next[id] = true
+  }
+  if (next) state.foeShipSeen = next
+}
+
+export function applyMeWebDebuff<T extends UnitSpec>(spec: T, d: import('./state').BattleWebDebuff): T {
+  spec.speedMps = Math.max(20, spec.speedMps * d.slowMul)
+  if (d.noThruster) spec.thrusterBoost = 0
+  if (d.noEvasion) spec.evasion = 0
+  if (d.rangeDownM > 0) {
+    spec.weapons = spec.weapons.map((w) => {
+      const maxRangeM = Math.max(2, w.maxRangeM - d.rangeDownM)
+      const minRangeM = Math.max(1, Math.min(maxRangeM - 1, w.minRangeM - d.rangeDownM))
+      return { ...w, maxRangeM, minRangeM }
+    })
+  }
+  return spec
+}
+
+/**
+ * **发动捕获网**（船长 2026-09-16：「**在自身第一次开火时发动**」——不看是否命中）：
+ * 记"已发放"、给目标上账本、**当场**把效果打在本发目标的规格上、推一条**蓝色连线**特效与一条日志。
+ * ⚠ 同一艘电子舰**整场只发一次**（`foeWebFired`）；**多艘不叠加**（同一目标已有账本 ⇒ 只留最早那条）。
+ */
+function fireFoeCaptureWeb(
+  state: GameState,
+  b: import('./state').BattleState,
+  f: UnitSpec,
+  target: UnitSpec,
+): void {
+  const web = f.foeCaptureWeb
+  if (!web) return
+  b.foeWebFired = { ...(b.foeWebFired ?? {}), [f.tag]: true }
+  if (b.meWebDebuffs?.[target.tag]) return // 同一目标已被别的网钉住 ⇒ 不叠加（只推特效不重复上账本）
+  const debuff: import('./state').BattleWebDebuff = {
+    byTag: f.tag,
+    slowMul: web.slowMul,
+    noThruster: web.noThruster,
+    noEvasion: web.noEvasion,
+    rangeDownM: web.rangeDownM,
+    atMs: b.lastTickGameMs,
+  }
+  b.meWebDebuffs = { ...(b.meWebDebuffs ?? {}), [target.tag]: debuff }
+  applyMeWebDebuff(target, debuff) // 本发立即生效（含闪避归零）
+  pushBattleFx(b, { atMs: b.lastTickGameMs, side: 'foe', tag: f.tag, to: target.tag, type: 'kinetic', hit: true, web: true })
+  addLog(
+    state,
+    'warn',
+    `${f.name} 张开劫掠捕获网，钉住了 ${target.name}：机动骤降、推进器熄火、闪避失效、射程缩短——` +
+      `击沉 ${f.name} 才能解除。`,
+  )
+}
+
+/**
+ * **捕获网解除**（船长 2026-09-16：「**击杀发动者即解除**」）：每拍清理"施放者已不在场/已阵亡"的条目。
+ * 只删账本（效果随"每拍重建规格"自然消失）；解除时推一条日志，让玩家知道网松了。
+ */
+function expireFoeWebs(state: GameState, b: import('./state').BattleState, foes: readonly UnitSpec[]): void {
+  const list = b.meWebDebuffs
+  if (!list || Object.keys(list).length === 0) return
+  const aliveTags = new Set(foes.filter((f) => isAlive(b, f.tag)).map((f) => f.tag))
+  for (const [tag, d] of Object.entries(list)) {
+    if (aliveTags.has(d.byTag)) continue
+    delete list[tag]
+    const name = b.units[tag]?.name ?? tag
+    addLog(state, 'info', `劫掠捕获网已失效：${name} 摆脱了束缚（发动者已被击沉）。`)
+  }
+}
+
 function updateFoeCharge(
   b: import('./state').BattleState,
   foes: UnitSpec[],
@@ -1887,7 +1984,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         ...(ship.armorResist ? { armor: ship.armorResist } : {}),
         ...(ship.hullResist ? { hull: ship.hullResist } : {}),
       },
-      evasion: 0.12,
+      // 舰级闪避（船长 2026-09-16 新舰「劫掠电子舰」：闪避提高）：缺省 0.12 = 既有全部敌舰原值
+      evasion: ship.evasion ?? 0.12,
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,
@@ -1958,6 +2056,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...((mount.foeGunRangeMulOnHit ?? ship.gunRangeMulOnHit) !== undefined
         ? { foeGunRangeMulOnHit: mount.foeGunRangeMulOnHit ?? ship.gunRangeMulOnHit }
         : {}),
+      // **劫掠捕获网**（船长 2026-09-16）：本舰第一次开火那一刻钉住它这一发的目标；四层效果与解除口径见 FoeMountDef.web / applyMeWebDebuff
+      ...(mount.foeCaptureWeb !== undefined ? { foeCaptureWeb: mount.foeCaptureWeb } : {}),
       // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）
       hullClassTier: ship.hullClassTier,
       // **敌方后勤舰**（船长 2026-09-16）：把自身 repairPct 比例的名义 DPS 转成修理值；缺省不写 ⇒ 零变化
@@ -2165,7 +2265,8 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
       side: 'foe',
       hp,
       resists: {},
-      evasion: 0.12,
+      // 舰级闪避（船长 2026-09-16 新舰「劫掠电子舰」：闪避提高）：缺省 0.12 = 既有全部敌舰原值
+      evasion: 0.12, // ⚠ 旧「威胁推导」路径没有舰级对象（ship）⇒ 保持原值 0.12（只服务未写 ships 的老卡）
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,
@@ -2956,10 +3057,19 @@ export function createBattleState(
   myAllies: readonly UnitSpec[] = [],
 ): import('./state').BattleState {
   const units: Record<string, import('./state').BattleState['units'][string]> = {}
+  /**
+   * **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）。
+   * ⚠ **开战首波是内联播种**（本函数不走 `seedUnit`）——首版只在 `seedUnit` 里累积 ⇒
+   * **单波战斗的战报/悬停看不到敌方挂载件**（多波/增援才看得到）；这里补上首波这一份。
+   */
+  const foeMounts: string[] = []
   for (const spec of [me, ...myAllies, ...foes]) {
     // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发的单位不进开战编队**，
     // 由 `advanceBattleFor` 每拍按条件补入。开关关闭时建档期根本不写 `foeReinforceAt` → 本行永不命中。
     if (spec.foeReinforceAt) continue
+    if (spec.side === 'foe') {
+      for (const m of spec.foeMountNames ?? []) if (!foeMounts.includes(m)) foeMounts.push(m)
+    }
     units[spec.tag] = {
       tag: spec.tag,
       side: spec.side,
@@ -2983,6 +3093,8 @@ export function createBattleState(
     distanceM: 0, // 由调用方按 battleOpenM 赋值
     myDesireM,
     units,
+    // 开战首波登记下来的敌方挂载件（没挂 = 不写键 ⇒ 老档/无挂载场次零变化）
+    ...(foeMounts.length > 0 ? { foeMounts } : {}),
     ammo: { kin: 0, exp: 0, pla: 0 },
     stats: { meShots: 0, meHits: 0, meDmg: 0, foeShots: 0, foeHits: 0 },
     fx: [],
@@ -3224,6 +3336,9 @@ function buildMyUnitSpecs(
     const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
     if (!me) return []
     if (matterBuffs) applyMatterPlayerBuffs(me, matterBuffs, matterFoeMain)
+    // **捕获网**（船长 2026-09-16）：每拍重建后重新施加（否则下一拍就"复活"）
+    const web0 = battle.meWebDebuffs?.[me.tag]
+    if (web0) applyMeWebDebuff(me, web0)
     // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
     if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
     return [me]
@@ -3237,6 +3352,9 @@ function buildMyUnitSpecs(
     if (entry.tag === 'player' && isTutorialBattle(state, anomalyId, entry.shipId)) {
       applyTutorialBuff(spec)
     }
+    // **捕获网**（船长 2026-09-16）：同上，逐舰按账本施加
+    const web = battle.meWebDebuffs?.[entry.tag]
+    if (web) applyMeWebDebuff(spec, web)
     out.push(spec)
   }
   return out
@@ -3274,6 +3392,8 @@ export function startBattleFor(
 ): import('./state').BattleState | null {
   if (!anomalyId) return null
   const anomaly = battleAnomalyOf(ctx, anomalyId, state.expedition.lairTier, state.expedition.factionActive)
+  // **记下这一场的敌方舰级**（船长 2026-09-16：首次遭遇劫掠电子舰后发通讯）
+  if (anomaly) noteFoeShipsSeen(state, anomaly)
   if (!anomaly) return null
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
@@ -3526,6 +3646,8 @@ export function startFleetBattleFor(
   if (!anomalyId || shipIds.length === 0) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
   const baseCard = battleAnomalyOf(ctx, anomalyId)
+  // **记下这一场的敌方舰级**（用**原卡**，两处派生之前；船长 2026-09-16）
+  if (baseCard) noteFoeShipsSeen(state, baseCard)
   if (!baseCard) return null
   /**
    * **谜质在开战那一刻的快照**（F3c B1 · 船长 2026-09-13）：威胁乘数（三档各自 −50% 封顶）、
@@ -3886,10 +4008,23 @@ export function battleArcsFor(
   /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
   foeCanCharge: boolean;
   /**
+   * **双方当前速度（m/s）**（2026-09-16 船长：距离条两端显示；同日裁「只改战斗显示数值」）——
+   * **面板同源口径**：单位 `speedMps` × 机动倍率（我方点火期含推进器倍率、敌方冲锋期含冲锋倍率），逐单位平均；
+   * 与装配页「机动速度」同一把尺（**不含**引擎内部的 ×0.6 折算）。
+   * **开战首拍之前缺省**（老档在途战斗同样缺省 ⇒ 界面不显示这一格）。
+   */
+  meSpeedMps?: number
+  foeSpeedMps?: number
+  /**
    * **敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——本场敌方挂了哪些件
    * （去重展示名，如「劫掠冲锋推进器」）；**缺省 = 本场敌人没挂件**（既有战斗零变化）。
    */
   foeMounts?: string[]
+  /**
+   * **捕获网连线**（船长 2026-09-16）：每条形如 `{ from: 施放者 tag, to: 被钉舰 tag }`；
+   * 渲染层画一条蓝色光束、**持续到解除**（击杀发动者即消失）。缺省 = 本场没有网。
+   */
+  webLinks?: Array<{ from: string; to: string }>
   /** **敌方机群**（2026-09-11 机群批 S5）——按敌单位 tag 汇总：机型 id / 机库存量 / **现存架数**。
    *  表现层据此在**敌舰旁**画出警戒机群（与我方机群层共用 `droneArt` 的机体资产）。
    *  **缺省 = 本场没有敌机**（既有战斗零行为变化）。 */
@@ -3913,6 +4048,11 @@ export function battleArcsFor(
   const leaderShipId = override?.leaderShipId ?? state.shipId
   const me = createPlayerSpec(state, ctx, leaderShipId, battle.ammoIds) // 弹药 MK2：视图与实际弹种对齐
   if (!me) return null
+  // **捕获网**（船长 2026-09-16）：视图锚舰被钉时同样施加四层效果 ⇒ 面板速度/射程带与引擎同尺
+  {
+    const web = battle.meWebDebuffs?.[me.tag]
+    if (web) applyMeWebDebuff(me, web)
+  }
   const foes = createFoeSpecs(anomaly, bal)
   const ammoLeft = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
   const dominant = nextAmmoType(battle.ammo)
@@ -4162,7 +4302,15 @@ export function battleArcsFor(
     thrusterBoost: me.thrusterBoost ?? 0,
     /** **我方首舰（= 距离/读数锚）的推进器周期**（2026-09-14 逐单位周期后，战斗界面那一格读它） */
     thrusterCycle: unitThrusterCycle(me, bal),
+    // 双方战斗机动速度（2026-09-16 船长：距离条两端显示）——读引擎逐拍落的那份，界面不自己算
+    ...(battle.meSpeedMps !== undefined ? { meSpeedMps: battle.meSpeedMps } : {}),
+    ...(battle.foeSpeedMps !== undefined ? { foeSpeedMps: battle.foeSpeedMps } : {}),
     foeCanCharge: foes.some((f) => f.foeCanCharge === true),
+    // **捕获网连线**（船长 2026-09-16：「动画效果为一根蓝色的光速连着命中舰船」）——
+    // 渲染层按 (from = 施放者 tag, to = 被钉舰 tag) 画一条蓝色光束，**持续到效果解除**
+    ...(battle.meWebDebuffs && Object.keys(battle.meWebDebuffs).length > 0
+      ? { webLinks: Object.entries(battle.meWebDebuffs).map(([to, d]) => ({ from: d.byTag, to })) }
+      : {}),
     // **敌方挂载件**（去重展示名）——界面/战报同源；空 = 本场敌人没挂件（老档同样缺省）
     ...(() => {
       const names = new Set<string>()
@@ -5240,16 +5388,28 @@ export function pickFoeDroneTarget(
   const hitAt = perShipTokens ? perShipTokens[myTag] : b.droneHitAt?.me
   if (hitAt === undefined || b.lastTickGameMs - hitAt > PD_REACTIVE_WINDOW_MS)
     return null;
-  // **消费制**（船长 2026-09-11：「我没有看到反应式防空，被攻击后近防炮就一直开火」）——
-  // 窗口原设 5,000ms 而敌机装填 4,400ms ⇒ **窗口首尾相接、看着就是一直在打**。
-  // 现改为：**一次敌机攻击只换一次反击**（把这个时刻消费掉，下一次要等它再打过来）——
-  // 节奏变成"挨一下 → 还一炮 → 静默等下一轮"，反应式才看得出来。
+  /**
+   * **逐门记账**（2026-09-17 修玩家报障：「**多个近防炮对无人机的伤害不叠加，同时装MK2和MK3只有一个开火**」）：
+   *
+   * 旧口径在这之后把**整舰共用的令牌删掉**（`delete nextTokens[myTag]`）⇒ 同一拍里**第一门**近防炮开完火，
+   * 其余门（含 MK2/MK3 这种不同武器条目）全部拿到 null ⇒ 加装近防炮**毫无收益**（取证：一艘船装 3 门，
+   * 每拍开火发数与只装 1 门相同）。船长 2026-09-11 定"消费制"的本意是**防一直开火**，不是"一舰只准一门开火"。
+   *
+   * 现改为：**令牌保留**（它记的是"本舰何时挨了机群打"），每门武器按 `舰tag:武器下标` 各记一次
+   * "这次挨打我已经还过手"⇒ **一次敌机攻击 = 本舰每门近防炮各还手一次**；窗口过期仍由上面的
+   * `PD_REACTIVE_WINDOW_MS` 判断兜底 ⇒ 不会退回"一直开火"。
+   */
+  const lockKey = dronePoolKey(myTag, wi)
   if (perShipTokens) {
-    const nextTokens = { ...perShipTokens }
-    delete nextTokens[myTag]
-    b.droneHitAtMeBy = nextTokens
+    const answered = b.mePdAnsweredBy?.[lockKey]
+    if (answered !== undefined && answered >= hitAt) return null
   } else {
+    // 旧形状（本改动之前开的在途战斗）：照旧消费旧令牌
     b.droneHitAt = { ...(b.droneHitAt ?? {}), me: undefined };
+  }
+  /** 成功还手后记账（只有**选到目标**才算还过手：没目标时不消耗本门这次机会） */
+  const markAnswered = (): void => {
+    if (perShipTokens) b.mePdAnsweredBy = { ...(b.mePdAnsweredBy ?? {}), [lockKey]: hitAt }
   }
   // ⚠ **打机群不按两舰间距判射程**（船长 2026-09-11 裁定 · 甲案）：敌机在画面里是**飞到您舰旁**
   // 才开火的——机制服从画面 ⇒ 只要机还活着、近防炮就能打它（近防炮的射程只对"打舰"生效）。
@@ -5288,12 +5448,15 @@ export function pickFoeDroneTarget(
   // 本武器已锁定的那架**还活着且仍可打** ⇒ 继续打它（换靶只发生在"被击落 / 被备用机替换 / 出射程"时）。
   // ⚠ 与敌方侧 `pdFocus` 同口径（那侧按**点防舰**同序存）；**我方侧 2026-09-16 起按 `舰tag:武器下标` 存**
   //   （旧口径只按下标 ⇒ 多舰的 0 号武器互相顶锁；旧字段 `mePdFocus` 只服务在途老战斗）。
-  const lockKey = dronePoolKey(myTag, wi)
+  //   `lockKey` 已在上方（令牌记账处）算好，两处共用同一个键。
   const focusBy = b.mePdFocusBy
   const locked = focusBy ? focusBy[lockKey] : b.mePdFocus?.[wi]
   if (locked) {
     const keep = cands.find((c) => c.foeTag === locked.tag && c.idx === locked.idx)
-    if (keep) return { foeTag: keep.foeTag, pool: keep.pool }
+    if (keep) {
+      markAnswered()
+      return { foeTag: keep.foeTag, pool: keep.pool }
+    }
   }
   // ── **选靶优先级**（船长 2026-09-12：「**优先攻击哨戒和攻坚无人机**」「侦查和普通战机相同权重抽取」）──
   // 与敌方侧 `pdPriorityOf` **同一张表**：哨戒 0 → 攻坚 1 → 其余 2；取**当前存在的最低档**，同档**等权随机**。
@@ -5311,6 +5474,7 @@ export function pickFoeDroneTarget(
     focus[wi] = { tag: pick.foeTag, idx: pick.idx }
     b.mePdFocus = focus
   }
+  markAnswered() // 本门这次挨打还过手了（其余门各自记账，互不顶掉）
   return { foeTag: pick.foeTag, pool: pick.pool }
 }
 
@@ -5364,6 +5528,8 @@ function stepBattle(
   // ⚠ **顺序**：先更新状态、再算接近速度（倍率由状态读出来，见 `unitSpeedMulOf` 的单点）。
   // 触发条件（乙）与"到达期望交距"兜底都在 `updateFoeCharge` 里；本处只管"读状态算速度"。
   updateFoeCharge(b, foes, bal, b.lastTickGameMs, foeDesireClamped)
+  // **捕获网解除**（船长 2026-09-16：击杀发动者即解除）——每拍清理施放者已不在场的条目
+  expireFoeWebs(state, b, foes)
   // **整队机动 = 存活单位的「平均」战斗机动 ×各自倍率**（倍率单点 = `unitSpeedMulOf`）：
   // 我方倍率 = 推进器**周期爆发**（逐单位周期）；敌方倍率 = **冲锋**（逐单位状态）。
   // ⚠ 冲锋倍率**不外溢**（船长 2026-09-11：「冲锋还是按照巨兽自己的速度算…哪怕是冲锋也是按照巨兽速度」）：
@@ -5378,23 +5544,50 @@ function stepBattle(
   // 的设定相冲；改平均后该队按 **163**（战斗机动 92）走。
   // 同速编成（单舰卡 / 同型多舰卡，如 A 族头目+同族杂鱼、C 族虫群）**逐字不变**（平均值 = 该速度）。
   let meV = 0
+  /** **面板同源口径**（见下方落盘注释）：只乘机动倍率，**不乘 `combatSpeed` 的 speedFactor/敏捷修正** */
+  let mePanel = 0
   {
     let n = 0
     for (const u of myUnits) {
       if (!isAlive(b, u.tag)) continue
-      meV += combatSpeed(u.speedMps, u.agility, bal) * unitSpeedMulOf(u, b, bal, 'me')
+      const mul = unitSpeedMulOf(u, b, bal, 'me')
+      meV += combatSpeed(u.speedMps, u.agility, bal) * mul
+      mePanel += u.speedMps * mul
       n += 1
     }
-    if (n > 0) meV /= n
+    if (n > 0) {
+      meV /= n
+      mePanel /= n
+    }
   }
   let foeV = 0
+  let foePanel = 0
   let foeAliveN = 0
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue
-    foeV += combatSpeed(f.speedMps, f.agility, bal) * unitSpeedMulOf(f, b, bal, 'foe')
+    const mul = unitSpeedMulOf(f, b, bal, 'foe')
+    foeV += combatSpeed(f.speedMps, f.agility, bal) * mul
+    foePanel += f.speedMps * mul
     foeAliveN += 1
   }
-  if (foeAliveN > 0) foeV /= foeAliveN;
+  if (foeAliveN > 0) {
+    foeV /= foeAliveN
+    foePanel /= foeAliveN
+  }
+  /**
+   * **落盘给界面显示的那对速度 = 面板同源口径**（2026-09-16 船长：「**战斗中实际速度和面板显示的机动速度
+   * 不一致**」⇒ 裁决「**只修改战斗显示数值，实际数值不变动**」）。
+   *
+   * 两套口径的分工（都保留、都不改）：
+   * - **引擎推进/距离拔河** = 上面那对 `meV` / `foeV`（= `combatSpeed` ⇒ 含全局 `speedFactor 0.6`
+   *   与敏捷修正，逐拍驱动 `b.distanceM`）——**一字不动**；
+   * - **界面显示** = 本对（= 单位自身 `speedMps` × 机动倍率，逐单位取平均）⇒ **与装配页「机动速度」
+   *   同一把尺**：我方点火期 = `speedMps × (1+推进器倍率)`（装配页那行「加力推进点火期」）、
+   *   敌方冲锋期 = `speedMps × 冲锋倍率`（敌卡/体检里的"实速 ×倍率"）。
+   * 这样面板与战斗读数不再对不上，而战斗手感/触发线/标定完全不受影响。
+   */
+  b.meSpeedMps = Math.round(mePanel)
+  b.foeSpeedMps = Math.round(foePanel)
   const rate =
     steerStep(b.distanceM, b.myDesireM, meV, dtSec) +
     steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
@@ -5786,6 +5979,11 @@ function stepBattle(
     // 选靶（多单位）：**本发开火前重选**（上一次齐射可能已把目标打沉）
     const gtgt = pickTarget()
     if (!gtgt) continue // 我方已全灭（正常由结束判定收场）
+    // **劫掠捕获网**（船长 2026-09-16）：「在自身第一次开火时发动」——**不看命中**，
+    // 就在这一发之前钉住本发目标（于是这一发的命中判定也吃到"闪避归零"）
+    if (f.foeCaptureWeb !== undefined && b.foeWebFired?.[f.tag] !== true) {
+      fireFoeCaptureWeb(state, b, f, gtgt.spec)
+    }
     b.stats.foeShots += 1
     const fType = w.fixedType ?? 'kinetic'
     // 2026-09-08（船长定）：能量（beam）= 必中——不掷命中骰；威力：近盲带内 ×blindDmgMul

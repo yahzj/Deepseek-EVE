@@ -151,7 +151,7 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
       { x: 144, y: 65 },
     ],
   },
-  // 掠袭炮艇：双喷口 M48..（上下）；三联长管动能炮口端 M146 47 / 59 / 67
+  // 掠袭炮舰：双喷口 M48..（上下）；三联长管动能炮口端 M146 47 / 59 / 67
   'sh-wh-a-destroyer': {
     engines: [{ x: 48, y: 49.5 }, { x: 48, y: 63.5 }],
     muzzles: [

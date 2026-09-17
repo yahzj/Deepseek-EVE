@@ -171,7 +171,8 @@ export const MODULES: readonly ModuleDef[] = [
     description: '轻型动能速射炮：打盾 1.5 倍伤害（打甲减半）。协会制式、蓝图可造，把矿船变成勉强能打的武装矿船。',
     cpuUse: 10,
     maxRangeM: 3220, // 2026-09-08 船长定：动能炮射程 −30%（4600→3220），装填等价缩短（2200→1540）
-    minRangeM: 250,
+    // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 250 → **500**
+    minRangeM: 500,
     hitRate: 0.8,
     falloff: 0.5, // 2026-09-11 船长定（自 main 同步）：动能炮台远端命中 0.3 → 0.5
     reloadMs: 1540,
@@ -188,7 +189,8 @@ export const MODULES: readonly ModuleDef[] = [
     description: '重型动能炮：5.7 km 中远程。协会重型制式（蓝图可造）——中程压制的正解。',
     cpuUse: 28,
     maxRangeM: 5740, // 2026-09-08 船长定：动能炮射程 −30%（8200→5740），装填等价缩短（3400→2380）
-    minRangeM: 700,
+    // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 700 → **600**
+    minRangeM: 600,
     hitRate: 0.78,
     falloff: 0.5, // 2026-09-11 船长定（自 main 同步）：动能炮台远端命中 0.28 → 0.5
     reloadMs: 2380,
@@ -205,7 +207,8 @@ export const MODULES: readonly ModuleDef[] = [
     description: '攻城级动能巨炮：7.4 km，攻坚炮里的协会制式（蓝图可造，52 CPU 顶级重炮）。',
     cpuUse: 52,
     maxRangeM: 7350, // 2026-09-08 船长定：动能炮射程 −30%（10500→7350），装填等价缩短（4200→2940）
-    minRangeM: 1200,
+    // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 1200 → **700**（攻坚炮近盲带大幅收窄）
+    minRangeM: 700,
     hitRate: 0.78,
     falloff: 0.5, // 2026-09-11 船长定（自 main 同步）：动能炮台远端命中 0.28 → 0.5
     reloadMs: 2940,

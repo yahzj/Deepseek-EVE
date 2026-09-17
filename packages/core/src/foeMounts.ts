@@ -9,7 +9,9 @@
  * 放 core 就能让"解析挂载 → 写运行时字段"在**同一处**完成，数据侧只写 id（`FoeShipDef.mounts` /
  * `FoeShipSlot.mounts`）。同类先例：`core/lairs.ts` 的 `FOE_LAIR_GEAR`（敌族掉落池表）。
  *
- * **一件一类效果**（`charge` / `droneRangeOnHit` / `gunRangeOnHit` 三选一）：`content:check` 会拦混写。
+ * **一件一类效果**（`charge` / `droneRangeOnHit` / `gunRangeOnHit` / `web` 四选一）：`content:check` 会拦混写。
+ * ⚠ 新舰「劫掠电子舰」是**唯一把两件挂在舰级**上的单位（冲锋 + 捕获网，它不外借给洞外）——
+ * 「洞外零冲锋」的守卫因此按**有效挂载**（条目 ?? 舰级）判，见 `content-check` 敌方挂载件契约 ③。
  */
 import type { FoeMountDef, FoeMountId } from './types'
 
@@ -26,6 +28,8 @@ export const FOE_MOUNT_IDS = {
   droneRangeX4: 'foe-mount-drone-range-x4',
   /** D 族静滞卫舰：**从射程外**挨打 ⇒ 本舰炮台射程 ×1.5（迁移前 `gunRangeMulOnHit: 1.5`） */
   gunRangeX15: 'foe-mount-gun-range-x1-5',
+  /** 劫掠捕获网（船长 2026-09-16）：A 族新舰「劫掠电子舰」专属——首次开火即钉住目标 */
+  captureWeb: 'foe-mount-capture-web',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -70,6 +74,15 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       'E 族三舰（巨构残段 / 奥罗残骸段 / 巨构核心段）：本体被命中 ⇒ 整队机群射程 ×4（迁移前 droneRangeMulOnHit: 4）。' +
       '船长 2026-09-16：作用面保持「整队标量」、零行为变化。',
   },
+  [FOE_MOUNT_IDS.captureWeb]: {
+    id: FOE_MOUNT_IDS.captureWeb,
+    name: '劫掠捕获网',
+    web: { slowMul: 0.1, noThruster: true, noEvasion: true, rangeDownM: 500 },
+    note:
+      '船长 2026-09-16：「劫掠捕获网：降低目标90%移动速度，并关闭所有类型推进器。在自身第一次开火时发动。' +
+      '动画效果为一根蓝色的光速连着命中舰船」＋补充「还会让目标闪避强制为0，射程降低500米」。' +
+      '只作用于被钉的那一艘；本场永久；击杀发动者即解除；多艘不叠加。',
+  },
   [FOE_MOUNT_IDS.gunRangeX15]: {
     id: FOE_MOUNT_IDS.gunRangeX15,
     name: '守墓远距观瞄',
@@ -92,6 +105,8 @@ export interface ResolvedFoeMounts {
   foeChargeCooldownMs?: number
   foeDroneRangeMulOnHit?: number
   foeGunRangeMulOnHit?: number
+  /** **劫掠捕获网**参数（原样带给单位；触发/作用面见 `FoeMountDef.web`） */
+  foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /** 未知 id（体检用；引擎侧忽略） */
@@ -118,6 +133,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     }
     if (def.droneRangeOnHit) out.foeDroneRangeMulOnHit = def.droneRangeOnHit.mul
     if (def.gunRangeOnHit) out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul
+    if (def.web) out.foeCaptureWeb = { ...def.web }
   }
   return out
 }

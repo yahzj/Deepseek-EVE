@@ -12,7 +12,8 @@
  * - 非武器装备 = 其余槽位（shield / armor / propulsion / support / target-lock / salvager /
  *   drone-rack / drone-tac / drone-relay / miner / cargo）；
  * - 级别按**模块名里的 MK 编号**取（数据层命名）；**注意命名例外**：船体维修装置只有
- *   civ / MK1 / MK2 三档（无 MK3），其 MK2 实为顶级档；奇货（exotic）异星原型件不在本表内；
+ *   civ / MK1 / MK2 三档（无 MK3），其 MK2 实为顶级档；奇货（exotic）异星原型件**不进上面的档位表**，
+ *   但**另有一段专表**（见文末「奇货原型件：行价 = 同槽 MK3 ×15」，2026-09-17 船长定）；
  * - 两套对齐规则：
  *   甲 = **等比缩放**（保序保差距）：newPrice = 现价 × k，k = 武器中位 ÷ 同级非武器现价中位；
  *   丙 = **线性映射到武器带**：把同级非武器装备的现价区间线性映射到武器价区间 [min, max]。
@@ -110,3 +111,41 @@ for (const r of rows) {
 for (const [fam, ts] of byFamily) {
   if (!ts.includes(3)) console.log(`· ${fam}：档位 = ${ts.join(' / ')}（**无第 3 档**——顶级档即第 2 档）`)
 }
+
+/**
+ * **奇货原型件口径**（**2026-09-17 船长**：「**按照 MK3 的十五倍价格估算**」）——
+ * 本表上面**刻意排除奇货档**（`price-audit` 头注旧口径），现按船长裁定补这一段：
+ * 三件异星原型件（采集器/货舱/激光）的行价 **= 同槽 MK3 行价 ×15**。
+ * 由头：原价 1.6M/1.5M/3.0M 让两件工业件**比它们取代的 MK3 还便宜**（每 +1% 效果只有 MK3 的一半）。
+ * 常驻护栏：本段（跑 `npm run price:audit` 即核）＋ 用例 `packages/core/tests/proto-price.test.ts`。
+ */
+const PROTO_OF_MK3: ReadonlyArray<{ proto: string; mk3: string; mul: number }> = [
+  { proto: 'mod-miner-proto', mk3: 'mod-miner-3', mul: 15 },
+  { proto: 'mod-cargo-proto', mk3: 'mod-cargo-3', mul: 15 },
+  { proto: 'mod-laser-proto', mk3: 'mod-laser-3', mul: 15 },
+]
+console.log('')
+console.log('══ 奇货原型件：行价 = 同槽 MK3 ×15（2026-09-17 船长定）══')
+console.log('| 原型件 | 同槽 MK3 | MK3 行价 | ×15 目标 | 原型件行价 | 偏差 |')
+console.log('|---|---|---|---|---|---|')
+let protoBad = 0
+for (const { proto, mk3, mul } of PROTO_OF_MK3) {
+  const p = ctx.marketGoods.get(proto)
+  const m = ctx.marketGoods.get(mk3)
+  const target = Math.round((m?.basePrice ?? 0) * mul)
+  const actual = p?.basePrice ?? 0
+  const dev = target > 0 ? (actual - target) / target : 0
+  if (Math.abs(dev) > 0.01) protoBad += 1
+  console.log(
+    `| ${proto} | ${mk3} | ${fmt(m?.basePrice ?? 0)} | ${fmt(target)} | ${fmt(actual)} | ${
+      Math.abs(dev) <= 0.01 ? '✅' : `❌ ${(dev * 100).toFixed(1)}%`
+    } |`,
+  )
+}
+console.log(
+  protoBad === 0
+    ? '✅ 三件原型件与「MK3 ×15」一致（±1%）。'
+    : `❌ 有 ${protoBad} 件偏离「MK3 ×15」——按 2026-09-17 船长裁定应为该槽 MK3 行价 ×15。`,
+)
+
+if (protoBad > 0) process.exitCode = 1

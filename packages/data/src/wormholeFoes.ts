@@ -53,6 +53,7 @@ import {
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_WARLORD,
+  FOE_SHIP_PIRATE_RAIDER, // 2026-09-16 船长：A 族新舰（深层战团）
 } from './foe-ships'
 
 /** 洞内敌卡的缩放锚点威胁（= core `WORMHOLE_THREAT_BASE`，第 1 层基准） */
@@ -78,7 +79,11 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // ——隐藏模板也要过「敌速口径契约」，这条与 `enc-pirate-*` 用 `speedMul` 反算实速同款）
     // **冲锋挂载件只挂本卡条目**（2026-09-16 船长：「给A族虫洞内的海盗添加冲锋…冲锋倍率为1.6，冷却30秒」）：
     // 劫掠护卫舰这条舰级洞外（低安遭遇 / 悬赏）也在用 ⇒ 挂**条目**才能做到"只在洞内冲锋"。
-    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, speedMul: 0.9, mounts: [FOE_MOUNT_IDS.chargePirate] }],
+    // ⚠ **不给护卫舰压 speedMul**（2026-09-16 船长「海盗的平均速度好像有些太慢」）：条目倍率会把它压到
+    // 本档基准之下（340 × 1.10 × 0.9 = 337 < 340）——违反船长 2026-09-11「A 族速度都快…每档都必须高于基准」。
+    // 旧值 0.9 的来历：当年体检把 hidden 卡**整类**豁免，而洞内三张卡恰好都是 hidden ⇒ 一直没被查到；
+    // 现契约收窄成只豁免迁移守恒反算的 `enc-pirate-*` 旧模板，本卡按 **374 m/s（1.28×）** 过线。
+    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate] }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -214,7 +219,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     //   （这正是「想配异质编成时写条目覆写、不让卡面失真」的既有正解）。
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
-      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, speedMul: 0.9, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate] }, // 同上：不给护卫舰压 speedMul
       { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
@@ -239,7 +244,11 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——同上，只挂条目
     ships: [
       { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate] },
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 3, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      // **新舰「劫掠电子舰」×1**（船长 2026-09-16）——改编成 头目×1 + 电子舰×1 + 快艇×2：
+      // 单位数仍 4 ⇒ 本层本档的**总威胁预算不变**，只是把一条快艇换成电子战支援舰。
+      // 它自带两件挂载件（冲锋 ×1.6/30s ＋ 劫掠捕获网），故条目不再重复挂冲锋件。
+      { ship: FOE_SHIP_PIRATE_RAIDER, count: 1 },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
     standingGain: 0,

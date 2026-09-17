@@ -415,7 +415,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   },
   {
     id: 'sbp-wh-a-destroyer',
-    name: '掠袭炮艇图纸（一次性）',
+    name: '掠袭炮舰图纸（一次性）',
     shipId: 'sh-wh-a-destroyer',
     singleUse: true,
     materials: [
@@ -427,7 +427,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 2_555_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
-    description: '掠袭炮艇，动能炮阵加持，正面火力扎实。',
+    description: '掠袭炮舰，动能炮阵加持，正面火力扎实。',
   },
   {
     id: 'sbp-wh-a-cruiser',

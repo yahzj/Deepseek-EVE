@@ -31,7 +31,7 @@ import {
 } from '@whale/core'
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -555,7 +555,29 @@ function BlueprintCard({
   // 目标件数 = 全卡合计；「关→开」= 开一批新循环（合计与停因清零）。判定/计数都在 core。
   const loop = manufacturingLoopOf(state, blueprintId)
   const [goalDraft, setGoalDraft] = useState('')
+  /**
+   * **草稿引用**（2026-09-17 报障修复）：「目标件数」原先**只在回车 / 失焦那一刻提交**，
+   * 而**程序化跳页**（通讯「前往」、教程跳转、任务卡跳转）**不产生失焦** ⇒ 玩家刚打的数字
+   * 从未提交，切回来输入框是空的、循环开关还开着 ⇒ **变成"无限生产"**（真浏览器复现：
+   * 打字→不回车→合成点击导航⇒落盘 goal=null；鼠标点导航则因 mousedown 先失焦而侥幸不丢）。
+   * 这里把最新草稿放进 ref，**卡片卸载时补一次提交**（切页/切标签都会卸载卡片）⇒ 打过就一定生效。
+   * 回车/失焦仍即时提交（口径不变，见输入框 title）；没打字（草稿为空）时**不做任何动作**，
+   * 故不会凭空清掉已有目标、也不会在 StrictMode 的"挂载即卸载"里误提交。
+   */
+  const goalDraftRef = useRef('')
+  goalDraftRef.current = goalDraft
+  /** 「这一版草稿是玩家打出来的」——只有它为真，卸载时才补提交；任何一次正式提交后即清账 */
+  const goalTouchedRef = useRef(false)
+  useEffect(
+    () => () => {
+      if (!goalTouchedRef.current) return
+      const n = Number.parseInt(goalDraftRef.current, 10)
+      engine.setManufacturingLoopAt(blueprintId, true, Number.isFinite(n) && n > 0 ? n : null)
+    },
+    [engine, blueprintId],
+  )
   function commitLoop(on: boolean, goalText: string): void {
+    goalTouchedRef.current = false
     const n = Number.parseInt(goalText, 10)
     const goal = Number.isFinite(n) && n > 0 ? n : null
     const r = engine.setManufacturingLoopAt(blueprintId, on, on ? goal : null)
@@ -718,7 +740,10 @@ function BlueprintCard({
                   className="app-mf-goal-input"
                   placeholder="∞"
                   value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                  onChange={(e) => setGoalDraft(e.target.value)}
+                  onChange={(e) => {
+                    goalTouchedRef.current = true
+                    setGoalDraft(e.target.value)
+                  }}
                   onBlur={(e) => {
                     setGoalDraft('')
                     commitLoop(true, e.target.value)
@@ -729,7 +754,7 @@ function BlueprintCard({
                       commitLoop(true, (e.target as HTMLInputElement).value)
                     }
                   }}
-                  title="目标件数：本卡全部制造线合计做到这么多件就停（留空 = 直到材料不足自动停）；回车/失焦生效"
+                  title="目标件数：本卡全部制造线合计做到这么多件就停（留空 = 直到材料不足自动停）；回车、点空白处、或离开本页都会记住"
                 />
                 件<em className="app-dim">（全卡合计）</em>
               </span>

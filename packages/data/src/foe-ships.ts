@@ -1043,12 +1043,40 @@ export const FOE_G_REMNANT_TENDER: FoeShipDef = {
   repairPct: 0.5,
 }
 
+/** A 族 · **新舰「劫掠电子舰」**（船长 2026-09-16：「新增A族敌人劫掠电子舰…护卫舰档位，**闪避提高，血量降低**」）
+ * —— 电子战支援：**血低（档基线 260 × 0.70 = 182）· 闪避高（0.30，族内其余舰级统一 0.12）· 火力弱（39.5 × 0.76 = 30）**，
+ * 靠两件挂载件吃饭：**劫掠冲锋推进器**（×1.6 / 30 秒）＋**劫掠捕获网**（首次开火即钉住目标）。
+ * 速度 = 1 护卫舰基准 340 × `1.10` = **374** m/s（仍满足 A 族「每档高于本档基准」）；
+ * 射程带沿用劫掠护卫舰的 ±15% 口径（326~4275）；战术 `orbit`（中距环绕支援）。
+ * ⚠ 只服务「海盗战团」（深层卡）——`mounts` 挂在**舰级**上与挂条目等价（本舰不外借）。 */
+export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
+  id: 'foe-pirate-raider',
+  name: '劫掠电子舰',
+  family: 'A',
+  hullClassTier: 1, // 护卫舰
+  speedRatio: 1.1, // = 374 / 340
+  hp: 182, // 档基线 260 × 角色 0.70 = 182（船长「血量降低」⇒ 低于标准护卫 364、略高于数量型小艇 156）
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 30, // 档基线 39.5 × 角色 0.76 = 30.02 → **30**（支援型，火力不是它的活）
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 326,
+  rangeMaxM: 4275,
+  falloff: 0.3,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'orbit',
+  evasion: 0.3, // **闪避提高**（舰级覆写；族内其余舰级缺省 0.12）
+  mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb],
+}
+
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
 export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
+  FOE_SHIP_PIRATE_RAIDER, // 2026-09-16 船长：A 族新舰「劫掠电子舰」（深层战团专属）
   FOE_SCAV_SKIFF,
   FOE_SCAV_ARMED,
   FOE_ALIEN_STARCORE,

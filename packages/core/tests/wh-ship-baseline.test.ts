@@ -4,10 +4,14 @@
  * 口径（正文 = `packages/data/src/ships.ts` 各条注释 ＋ `tools/content-check.ts` 的同名契约）：
  * ① **槽位基准线**（船长原话）：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
  *    种族专属的会在这个基础上 +1 槽位」⇒ **专属 T1 = 8 / T2 = 10 / T3 = 12**（专属目前只有 T1~T3）。
- *    ⚠ 只钉专属舰；官方 23 艘里 19 艘不在线上（船长 2026-09-14 已收到核对表，待另裁）。
- * ② **鱼雷舰强化**：构件 **火力加成 +25 点**（0.25 → 0.50）· 亡军 **+20 点**（0.62 → 0.82）＋
- *    **中槽→高槽**（5/5/3 → 6/4/2，守「专属巡洋 = 12 槽」）；亡军代价 = **命中 −0.10**（0.21 → 0.11）·
- *    **回避 −0.10**（0.105 → 0.005）。
+ * ② **鱼雷舰强化**：**中槽→高槽**（亡军 5/5/3 → 6/4/2，守「专属巡洋 = 12 槽」）；亡军代价 =
+ *    **命中 −0.10**（0.21 → 0.11）· **回避 −0.10**（0.105 → 0.005）。
+ * ⚠ **2026-09-17 船长改口径**：「**武装舰T1~T5获得单发伤害加成，分别是15/20/25/35/50**…**装甲舰…
+ *    移除之前获得的单发伤害加成**」⇒ 两艘鱼雷舰的 `powerBonus` 不再是 0.50 / 0.82：
+ *    **亡军鱼雷舰（武装舰 T3）= 0.25**（档位值）；**构件鱼雷舰（装甲舰 T1）= 移除**（改给甲层抗性）。
+ *    同理 **D 族三艘转入武装舰**（船长同日「D 族移动到武装舰，吃武装舰技能」）⇒ 它们不再受
+ *    「武装舰 高槽 ≥ 低槽 + 1」这条**弱断言**约束（槽位按 2026-09-13 的子分类口径定：电子舰/指挥舰
+ *    是中槽型，陵寝巡洋舰 4/4/4）——本文件把三艘的实际布局**逐一钉住**代替那条弱断言。
  * ⚠ 火力加成**只喂炮台**（`combat.ts` 的 `dmgScale = …×(1+powerBonus)×…`），不含无人机
  * （无人机走 `droneDmgBonus`，见词典「无人机专属加成」）。
  */
@@ -25,6 +29,8 @@ import { makeTestCtx } from './helpers'
 const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18 }
 
 const WH_SHIPS = SHIPS.filter((s) => s.id.startsWith('sh-wh-'))
+/** 2026-09-17 船长「D 族移动到武装舰」⇒ 这三艘转入 `armed`（布局按子分类，不吃"高槽多"弱断言） */
+const D_FAMILY: readonly string[] = ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser']
 const TORP_E = SHIPS.find((s) => s.id === 'sh-wh-e-frigate')!
 const TORP_G = SHIPS.find((s) => s.id === 'sh-wh-g-cruiser')!
 
@@ -40,10 +46,18 @@ describe('虫洞族专属舰船：槽位基准线（2026-09-14 船长）', () =>
     }
   })
 
-  it('武装舰仍满足「高槽 ≥ 低槽 + 1」', () => {
+  it('武装舰「高槽 ≥ 低槽 + 1」：官方船照旧；**D 族三艘按子分类布局豁免**（2026-09-17 转入武装舰）', () => {
     for (const s of WH_SHIPS.filter((x) => x.role === 'armed')) {
+      if (D_FAMILY.includes(s.id)) continue // 见下一条：布局按子分类钉住
       expect(s.slots!.high, `${s.name} 高槽 vs 低槽`).toBeGreaterThanOrEqual(s.slots!.low + 1)
     }
+  })
+
+  it('D 族三艘（2026-09-17 转入武装舰）的实际布局逐一钉住——电子舰/指挥舰是中槽型', () => {
+    expect(slotsOf('sh-wh-d-frigate')).toEqual({ high: 2, mid: 3, low: 3 }) // 哨戒电子舰（T1 = 8 槽）
+    expect(slotsOf('sh-wh-d-destroyer')).toEqual({ high: 2, mid: 4, low: 4 }) // 陵卫指挥舰（T2 = 10 槽）
+    expect(slotsOf('sh-wh-d-cruiser')).toEqual({ high: 4, mid: 4, low: 4 }) // 陵寝巡洋舰（T3 = 12 槽）
+    for (const id of D_FAMILY) expect(SHIPS.find((s) => s.id === id)!.role, `${id} 的 role`).toBe('armed')
   })
 
   it('本批实际改动的 5 艘（形状逐一钉住）', () => {
@@ -71,12 +85,14 @@ describe('官方 T3 槽位对齐（船长 2026-09-14：「2.鹦鹉螺+1槽位，
 
 describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
   it('两艘鱼雷舰的数值（火力/命中/回避/槽位）', () => {
-    expect(TORP_E.powerBonus).toBe(0.5) // 0.25 + 0.25
+    // 2026-09-17：E 构件鱼雷舰归装甲舰（档位单发加成已移除），但**子分类「鱼雷舰」+0.2 保留**
+    // （船长：「鱼雷舰获得伤害倍率+0.2」＋「移除不会影响子类型给予的属性」）；亡军鱼雷舰 = 档位 T3 0.25 + 0.2
+    expect(TORP_E.powerBonus, '装甲舰 + 子分类鱼雷舰 +20%').toBe(0.2)
     expect(TORP_E.hitBonus).toBe(0.17) // 不动
     expect(TORP_E.evasion).toBe(0.105) // 不动
     expect(TORP_E.slots).toEqual({ high: 4, mid: 2, low: 2 }) // 已在线上，不动
 
-    expect(TORP_G.powerBonus).toBe(0.82) // 0.62 + 0.20
+    expect(TORP_G.powerBonus, '武装舰 T3 档位 0.25 ＋ 子分类鱼雷舰 0.2').toBe(0.45)
     expect(TORP_G.hitBonus).toBe(0.11) // 0.21 − 0.10（代价）
     expect(TORP_G.evasion).toBe(0.005) // 0.105 − 0.10（代价：界面显示 1%）
     expect(TORP_G.slots).toEqual({ high: 6, mid: 4, low: 2 })
@@ -94,8 +110,8 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
       return base.shotDmg ?? -1 // WeaponSpec.shotDmg 为可选字段；本路径（炮台）必填，-1 让缺失时断言直接红
     }
     // 零技能、零装配 ⇒ dmgScale = (1+火力) ⇒ 基础舰炮基数 8
-    expect(baseShot(eUid)).toBe(Math.round(8 * 1.5)) // 12
-    expect(baseShot(gUid)).toBe(Math.round(8 * 1.82)) // 15
+    expect(baseShot(eUid)).toBe(Math.round(8 * 1.2)) // 装甲舰 + 子分类鱼雷舰 0.2 ⇒ 10
+    expect(baseShot(gUid)).toBe(Math.round(8 * 1.45)) // 武装舰 T3 0.25 ＋ 鱼雷舰 0.2 ⇒ 12
   })
 
   it('亡军的命中/回避代价真进战斗规格', () => {
@@ -114,8 +130,8 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
     const base = bal.basePower + bal.powerPerLevel * 0 // 零技能
     const eUid = addShipToFleet(state, 'sh-wh-e-frigate')
     const gUid = addShipToFleet(state, 'sh-wh-g-cruiser')
-    expect(calcPower(state, ctx, eUid)).toBe(Math.round(base * 1.5))
-    expect(calcPower(state, ctx, gUid)).toBe(Math.round(base * 1.82))
+    expect(calcPower(state, ctx, eUid)).toBe(Math.round(base * 1.2)) // 装甲舰 + 子分类鱼雷舰 0.2
+    expect(calcPower(state, ctx, gUid)).toBe(Math.round(base * 1.45)) // 武装舰 T3 0.25 ＋ 鱼雷舰 0.2
   })
 })
 

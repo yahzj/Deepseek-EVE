@@ -452,6 +452,28 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ship-hawksbill', kind: 'ship', refId: 'sh-hawksbill', rarity: 'exotic', basePrice: 6_000_000, demandMultiplier: 1.0, standingReq: 12 }, // 2026-09-13：价位重排（T3 装甲，陆龟 0.45M ×13.3）+ **渠道升奇货**（船长「玳瑁现货和蓝图上调至奇货」）
   { key: 'ship-flyingfish', kind: 'ship', refId: 'sh-flyingfish', rarity: 'rare', basePrice: 210_000, demandMultiplier: 0.65 },
   { key: 'ship-sailfish', kind: 'ship', refId: 'sh-sailfish', rarity: 'rare', basePrice: 2_400_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-13 价位重排：T3 货舰（飞鱼 0.21M ×11.4）；T3 门槛 12
+  /**
+   * **官方五艘巡洋舰的现货**（**2026-09-16 船长裁定「甲」＋「乙」**）。
+   *
+   * 船长原话（照抄）：「**将目前官方的几艘巡洋舰舰船和一次性蓝图在稀有度不变的前提下，放到稀有订单里，
+   * 所需声望降低为8。其他不变。**」⇒ 追问后裁定：**范围＝甲**（名字带「巡洋舰」的 5 艘：长尾鲨 / 电鳐 /
+   * 锤头鲨 / 牛鲨 / 鹦鹉螺）· **数字档＝乙**（**保持 4 不动**，渠道照船长话挪进稀有订单）。
+   *
+   * ⚠ **两条旧口径就此作废**（原注：`:465` 「2026-09-09 尺寸分级：**T3 巡洋入奇货**」·
+   * `:463` 「2026-09-13：**T3 门槛统一 12**」）：现行为**稀有订单渠道 ＋ 声望 8**，数字档仍 4。
+   * 价位（9 / 15 / 11 / 13 / 9 M）与 `demandMultiplier: 1.0`（全价回收）**按"其他不变"逐字保留**。
+   * ⚠ **连带（引擎不改渠道规则）**：渠道一换，这几行走稀有渠道的既有规则——供给单寿命 6h → 36 分钟、
+   * NPC 收购价按 `demandMultiplier` 仍 1.0L。刷新权重：`rareTierWeight` 原本**只特判档 3** ⇒ 档 4 拿 ×1
+   * （与大众档同频，实测 ≈32 分钟/件）——**2026-09-16 船长随后选「选项 B」，给档 4 补了单独系数
+   * `rareTier4Weight` = 0.05 ⇒ 实测 ≈9.5 小时/件**（见 `balance.ts` 该字段注释）。契约侧同步**按区间放宽**
+   * （船长同日：「**修正契约，rate现在允许2~4，exotic拓展到3~5**」）——`content-check` 的渠道带现为
+   * common 1 / **rare 2~4** / **exotic 3~5**，故本段 5 行**不需要任何白名单**。
+   */
+  { key: 'ship-thresher', kind: 'ship', refId: 'sh-thresher', rarity: 'rare', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'rare', basePrice: 15_000_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-hammerhead', kind: 'ship', refId: 'sh-hammerhead', rarity: 'rare', basePrice: 11_000_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'rare', basePrice: 13_000_000, demandMultiplier: 1.0, standingReq: 8 },
+  { key: 'ship-nautilus', kind: 'ship', refId: 'sh-nautilus', rarity: 'rare', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 8 },
 
   // ══════════ 限定奇货（exotic：极低概率、寿命 4 分钟、天价） ══════════
 
@@ -462,14 +484,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // V10 顶级船（声望解锁）
   { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 12 }, // 2026-09-13：T3 门槛统一 12（原 2026-09-09 定的 6→10 由本口径取代）
   { key: 'ship-whiteshark', kind: 'ship', refId: 'sh-whiteshark', rarity: 'exotic', basePrice: 1_100_000, demandMultiplier: 1.0, standingReq: 7 }, // T2：保留门槛（船长 2026-09-13「大白鲨作为稀有船，可以保留门槛」）
-  // 掠食者巡洋舰线（2026-09-09 尺寸分级：T3 巡洋入奇货；价位 2026-09-09 船长定档：按战力序 9/11/13/15M）
-  { key: 'ship-thresher', kind: 'ship', refId: 'sh-thresher', rarity: 'exotic', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 12 },
-  { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'exotic', basePrice: 15_000_000, demandMultiplier: 1.0, standingReq: 12 },
-  { key: 'ship-hammerhead', kind: 'ship', refId: 'sh-hammerhead', rarity: 'exotic', basePrice: 11_000_000, demandMultiplier: 1.0, standingReq: 12 },
-  { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'exotic', basePrice: 13_000_000, demandMultiplier: 1.0, standingReq: 12 },
-  // 2026-09-13 船长：**鹦鹉螺级**（协会测绘处 · T3 侦察巡洋舰）——奇货 + 数字 4（与长尾鲨级同档同价）；
+  // 掠食者巡洋舰线（价位 2026-09-09 船长定档：按战力序 9/11/13/15M）
+  // ⚠ **2026-09-16 船长裁定「甲」：这 5 艘官方巡洋舰的现货已挪进「稀有订单」段**（声望 8、数字档按「乙」保持 4）——
+  // 原「2026-09-09 尺寸分级：T3 巡洋入奇货」与「T3 门槛统一 12」两条口径**作废**，行体见上面稀有段的注释块。
+  // 2026-09-13 船长：**鹦鹉螺级**（协会测绘处 · T3 侦察巡洋舰）——数字 4（与长尾鲨级同档同价）；
   // ✅ 2026-09-14 虫洞上线：**闸门已删**（与舰体/两张图纸同一批放开，见 design/scout-cruiser §2.3）
-  { key: 'ship-nautilus', kind: 'ship', refId: 'sh-nautilus', rarity: 'exotic', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 12 },
   { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 24_000_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13 价位重排：T4 货舰（旗鱼 2.4M ×10）；T4 门槛 20
   { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 90_000_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15）；T4 门槛 20
   // 2026-09-13 船长裁定：巨齿鲨级（T4 战列舰）走**仅图纸制造**——成品只收不卖（照皇带鱼口径），
@@ -514,26 +533,40 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 口径：① 价格 = **该舰市场行价 × 50%**（**2026-09-14 船长改判**：「将一次性蓝图的价格下调到舰船的
   //       0.5倍」——原「×100%」作废）；② `singleUse` ⇒ 造一艘吃一张；③ 材料/工期同永久蓝图；
   //      ④ **渠道**：T3 十张 + 剑鱼/蝠鲼 = 稀有订单层（数字 3）；玄武/巨齿鲨/皇带鱼 = 奇货（数字 4）；
-  //      ⑤ **权重**：引擎 `blueprintWeight` 对一次性舰船蓝图 = ×0.5（普通蓝图 ×0.05）。
+  //      ⑤ **权重**：引擎 `blueprintWeight` 对一次性舰船蓝图 = ×0.5（普通蓝图 ×0.05）；
+  //      ⑥ **声望**（**2026-09-16 船长裁定「甲」**）：官方五艘巡洋舰（长尾鲨/电鳐/锤头鲨/牛鲨/鹦鹉螺）的
+  //         一次性蓝图 **15 → 8**（原「2026-09-13：T3 蓝图门槛 15」对**这 5 张**作废；其余 T3 五张仍 15）。
   { key: 'sbp-once-sailfish', kind: 'blueprint', refId: 'sbp-once-sailfish', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-sentinel', kind: 'blueprint', refId: 'sbp-once-sentinel', rarity: 'rare', basePrice: 1_300_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-hawksbill', kind: 'blueprint', refId: 'sbp-once-hawksbill', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-humpback', kind: 'blueprint', refId: 'sbp-once-humpback', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-thresher', kind: 'blueprint', refId: 'sbp-once-thresher', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-nautilus', kind: 'blueprint', refId: 'sbp-once-nautilus', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 15 }, // ✅ 2026-09-14 随鹦鹉螺级同步放开
-  { key: 'sbp-once-hammerhead', kind: 'blueprint', refId: 'sbp-once-hammerhead', rarity: 'rare', basePrice: 5_500_000, demandMultiplier: 0.65, standingReq: 15 },
+  { key: 'sbp-once-thresher', kind: 'blueprint', refId: 'sbp-once-thresher', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
+  { key: 'sbp-once-nautilus', kind: 'blueprint', refId: 'sbp-once-nautilus', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // ✅ 2026-09-14 随鹦鹉螺级同步放开；2026-09-16 甲案：15 → 8
+  { key: 'sbp-once-hammerhead', kind: 'blueprint', refId: 'sbp-once-hammerhead', rarity: 'rare', basePrice: 5_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-whale-king', kind: 'blueprint', refId: 'sbp-once-whale-king', rarity: 'rare', basePrice: 6_000_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-bullshark', kind: 'blueprint', refId: 'sbp-once-bullshark', rarity: 'rare', basePrice: 6_500_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-electricray', kind: 'blueprint', refId: 'sbp-once-electricray', rarity: 'rare', basePrice: 7_500_000, demandMultiplier: 0.65, standingReq: 15 },
+  { key: 'sbp-once-bullshark', kind: 'blueprint', refId: 'sbp-once-bullshark', rarity: 'rare', basePrice: 6_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
+  { key: 'sbp-once-electricray', kind: 'blueprint', refId: 'sbp-once-electricray', rarity: 'rare', basePrice: 7_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-swordfish', kind: 'blueprint', refId: 'sbp-once-swordfish', rarity: 'rare', basePrice: 12_000_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「剑鱼的一次性蓝图也下放稀有」
   { key: 'sbp-once-bowhead', kind: 'blueprint', refId: 'sbp-once-bowhead', rarity: 'rare', basePrice: 33_750_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「蝠鲼…一次性蓝图保留在稀有」
   { key: 'sbp-once-xuanwu', kind: 'blueprint', refId: 'sbp-once-xuanwu', rarity: 'exotic', basePrice: 45_000_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-megalodon', kind: 'blueprint', refId: 'sbp-once-megalodon', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-colossal', kind: 'blueprint', refId: 'sbp-once-colossal', rarity: 'exotic', basePrice: 320_000_000, demandMultiplier: 1.0, standingReq: 40 },
-  // 异星原型装备（V10：超档收藏，无蓝图，需声望 10）
-  { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 1_600_000, demandMultiplier: 1.0, standingReq: 10 },
-  { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 1.0, standingReq: 10 },
-  { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 3_000_000, demandMultiplier: 1.0, standingReq: 10 },
+  /**
+   * **异星原型装备**（V10：**超档收藏**，无蓝图、不可制造，需声望 10）。
+   *
+   * ⚠ **2026-09-17 船长定价（原价偏低，已抬）**：船长问「**异星装备的价格是否太低了？**」⇒ 取证读数
+   * （同槽 MK3 对照）：原价让**两件工业件比它们取代的 MK3 还便宜** —— 采集器 **+110%** 卖 1.6M 而
+   * MK3 **+80%** 卖 2.33M（每 +1% 效果 14,545 vs 29,125）· 货舱 **+180%** 卖 1.5M 而 MK3 **+140%**
+   * 卖 2.4M（8,333 vs 17,143）⇒ 拍板「**按照 MK3 的十五倍价格估算**」：三件一律 = **同槽 MK3 行价 ×15**
+   * （采集器 2,330,000×15 = **34,950,000** · 货舱 2,400,000×15 = **36,000,000** ·
+   * 激光 2,395,000×15 = **35,925,000**）。
+   * 连带：`demandMultiplier: 1.0`（奇货**全价回收**）同步生效 ⇒ 抬价 1:1 抬收购价、不产生套利
+   * （供应价恒 ≈1.0~1.06L 高于全价回收）；带原型件的船，其**装配价值/损失估值**也随之上升。
+   * 常驻护栏：`tools/price-audit.ts` 的「奇货原型件 ×15」段 + 用例 `tests/proto-price.test.ts`。
+   */
+  { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 34_950_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-miner-3 (2,330,000) ×15
+  { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-cargo-3 (2,400,000) ×15
+  { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 35_925_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-laser-3 (2,395,000) ×15
   // 协处理器 MK3（2026-09-11 船长定：稀有度 4 走奇货、**无蓝图**——只能等奇货现货；无声望门槛）
   { key: 'mod-cpu-3', kind: 'module', refId: 'mod-cpu-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0 },
   /**
@@ -644,7 +677,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
    * ⚠ 沙猫级（协会保底艇）与邓氏鱼级（无渠道壳体）**有意不补**（船长裁定）——见 roadmap 同日条目。 */
   // ── 舰船图纸 15 张（`sbp-wh-*`：五族各 3，一次性）──
     { key: 'sbp-wh-a-frigate', kind: 'blueprint', refId: 'sbp-wh-a-frigate', rarity: 'exotic', basePrice: 1_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-a-destroyer', kind: 'blueprint', refId: 'sbp-wh-a-destroyer', rarity: 'exotic', basePrice: 2_555_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮艇图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-a-destroyer', kind: 'blueprint', refId: 'sbp-wh-a-destroyer', rarity: 'exotic', basePrice: 2_555_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰图纸（一次性）（= 舰价 ×0.5）
     { key: 'sbp-wh-a-cruiser', kind: 'blueprint', refId: 'sbp-wh-a-cruiser', rarity: 'exotic', basePrice: 4_942_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰图纸（一次性）（= 舰价 ×0.5）
     { key: 'sbp-wh-c-frigate', kind: 'blueprint', refId: 'sbp-wh-c-frigate', rarity: 'exotic', basePrice: 1_307_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰图纸（一次性）（= 舰价 ×0.5）
     { key: 'sbp-wh-c-destroyer', kind: 'blueprint', refId: 'sbp-wh-c-destroyer', rarity: 'exotic', basePrice: 2_822_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰图纸（一次性）（= 舰价 ×0.5）
@@ -718,7 +751,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
     { key: 'mod-wh-g-prop', kind: 'module', refId: 'mod-wh-g-prop', rarity: 'exotic', basePrice: 4_709_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵推进器（料÷0.45×4）
   // ── 虫洞舰船 15 艘（`sh-wh-*`：定制船，`priceIsk` 仍为 0 = 定制口径，契约「舰船价格口径」守）──
     { key: 'sh-wh-a-frigate', kind: 'ship', refId: 'sh-wh-a-frigate', rarity: 'exotic', basePrice: 2_306_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰（料÷0.45×4）
-    { key: 'sh-wh-a-destroyer', kind: 'ship', refId: 'sh-wh-a-destroyer', rarity: 'exotic', basePrice: 5_109_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮艇（料÷0.45×4）
+    { key: 'sh-wh-a-destroyer', kind: 'ship', refId: 'sh-wh-a-destroyer', rarity: 'exotic', basePrice: 5_109_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰（料÷0.45×4）
     { key: 'sh-wh-a-cruiser', kind: 'ship', refId: 'sh-wh-a-cruiser', rarity: 'exotic', basePrice: 9_884_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰（料÷0.45×4）
     { key: 'sh-wh-c-frigate', kind: 'ship', refId: 'sh-wh-c-frigate', rarity: 'exotic', basePrice: 2_613_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰（料÷0.45×4）
     { key: 'sh-wh-c-destroyer', kind: 'ship', refId: 'sh-wh-c-destroyer', rarity: 'exotic', basePrice: 5_644_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰（料÷0.45×4）

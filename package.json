@@ -39,6 +39,7 @@
     "battle:stealth-readings": "tsx tools/stealth-readings.ts",
     "travel:matrix": "tsx tools/travel-matrix.ts",
     "bounty:econ": "tsx tools/bounty-econ.ts",
+    "foe:export": "tsx tools/foe-export.ts",
     "price:audit": "tsx tools/price-audit.ts",
     "liquidity:audit": "tsx tools/liquidity-audit.ts",
     "manufacture:econ": "tsx tools/manufacture-econ.ts",
