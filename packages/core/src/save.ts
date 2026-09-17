@@ -809,6 +809,10 @@ const BATTLE_FIELDS = {
   pdFocus: { kind: 'runtime', why: '近防炮集火锁定：缺省 = 下一拍按优先级重选（2026-09-12 设计即零迁移）' },
   mePdFocus: { kind: 'runtime', why: '我方近防炮集火锁定（P-40）：同上，缺省 = 每拍按优先级重选（零迁移）' },
   mePdFocusBy: { kind: 'runtime', why: '我方近防炮集火锁定（2026-09-16 逐舰版，键 = 舰tag:武器下标）：同上' },
+  mePdAnsweredBy: {
+    kind: 'runtime',
+    why: '近防炮逐门"这次挨打已还过手"记账（2026-09-17 修复：多门近防炮只有一门开火）：跨拍缓存，超窗即失效',
+  },
 } satisfies Record<keyof BattleState, BattleFieldSpec>
 
 /** **必须随档持久化**的战斗字段键（用例据此逐字段守"重载不丢"；顺序 = 登记表顺序） */

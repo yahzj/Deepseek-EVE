@@ -899,6 +899,17 @@ export interface BattleState {
    * ⇒ 每艘船的每门近防炮**各锁各的**，不再互相顶锁。缺省 = 每拍按优先级重选（零迁移）。
    */
   mePdFocusBy?: Record<string, { tag: string; idx: number }>
+  /**
+   * **我方近防炮"这次挨打已经还过手"的逐门记账**（2026-09-17 修玩家报障：「**多个近防炮对无人机的伤害
+   * 不叠加，同时装MK2和MK3只有一个开火**」）：
+   *
+   * 键 = **`舰tag:武器下标`**（`dronePoolKey`，与集火锁同键），值 = 该门武器**已经还过手的那次挨打时刻**
+   * （= `droneHitAtMeBy[舰tag]` 的取值）。语义：一次敌机攻击（一枚令牌）⇒ **本舰每门近防炮各还手一次**；
+   * 旧口径把整舰令牌"第一门就删掉" ⇒ 同拍其余门全拿到 null（装 3 门与装 1 门开火发数相同）。
+   * 窗口过期仍由 `PD_REACTIVE_WINDOW_MS` 判断兜底 ⇒ 不会退回"一直开火"。
+   * **运行期字段、有意不入档**（跨拍记账，见 `save.ts` 登记表）。
+   */
+  mePdAnsweredBy?: Record<string, number>
   /** 开战时的机群清单快照（机型 id → 架数；用于战后判定"机群战损过半"→ 停重复清剿）
    *  ⚠ 2026-09-14 起**只是主控那份**（老字段，兼容保留）；逐舰快照见下一条 */
   droneLoadAtStart?: Record<string, number>
