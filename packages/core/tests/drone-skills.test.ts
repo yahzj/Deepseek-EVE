@@ -37,20 +37,21 @@ function specOf(state: GameState) {
 
 describe('无人机线新技能（2026-09-10 船长）', () => {
   it('打击学：单发 +4%/级，与作战学乘算（满级两者 = ×1.25 ×1.20）', () => {
-    // 本局高槽 = 甲板×2 + 导控×2（Σ导控 +0.8 → ×1.8）；船体专属加成 王鲭 +12%
+    // 本局高槽 = 甲板×2 + 导控×2（Σ导控 +0.8 → ×1.8）；船体专属加成 王鲭 +25%
+    // （2026-09-17 船长：无人机船按档位给无人机伤害加成 ⇒ 王鲭 T3 = 0.25，原 +12% 作废）
     const base = makeState()
-    expect(specOf(base).weapons.find((w) => w.src === 'drone')!.shotDmg).toBe(Math.round(12 * 2 * 1.8 * 1.12))
+    expect(specOf(base).weapons.find((w) => w.src === 'drone')!.shotDmg).toBe(Math.round(12 * 2 * 1.8 * 1.25))
     const mid = makeState()
     mid.skills.trained['drone-warfare'] = 5 // ×1.25
     mid.skills.trained['drone-strike'] = 3 // ×1.12
     expect(specOf(mid).weapons.find((w) => w.src === 'drone')!.shotDmg).toBe(
-      Math.round(12 * 2 * 1.8 * 1.12 * 1.25 * 1.12),
+      Math.round(12 * 2 * 1.8 * 1.25 * 1.25 * 1.12),
     )
     const full = makeState()
     full.skills.trained['drone-warfare'] = 5
     full.skills.trained['drone-strike'] = 5 // ×1.20
     expect(specOf(full).weapons.find((w) => w.src === 'drone')!.shotDmg).toBe(
-      Math.round(12 * 2 * 1.8 * 1.12 * 1.25 * 1.2),
+      Math.round(12 * 2 * 1.8 * 1.25 * 1.25 * 1.2),
     )
   })
 

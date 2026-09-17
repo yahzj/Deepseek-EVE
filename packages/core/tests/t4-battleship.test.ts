@@ -46,8 +46,9 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     expect(s.slots).toEqual({ high: 6, mid: 5, low: 3 }) // 14 槽（T4 平均值）
     expect((s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)).toBe(1_273) // T4 档位目标
     expect(s.cpu).toBe(490) // T3 350 × 1.4
-    expect(s.powerBonus).toBe(0.85) // 阶梯 牛鲨 0.7 → T4 0.85
-    expect(s.shieldResist?.kinetic).toBe(0.5) // 掠食者线签名（2026-09-13 补）
+    expect(s.powerBonus, '武装舰档位阶梯：T4 ⇒ +35%').toBe(0.35)
+    // 2026-09-17 船长：「移除每条船的 50 动能抗性」⇒ 掠食者线的盾动能 0.5 已移除（线签名改为按档位给单发）
+    expect(s.shieldResist, '盾层 50 动能抗已移除').toBeUndefined()
     expect(s.priceIsk).toBe(0) // 定制船口径：只收不卖 ⇒ 必须为 0
   })
 

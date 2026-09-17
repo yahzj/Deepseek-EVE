@@ -33,14 +33,16 @@ describe('舰船类别：装甲舰（船长 2026-09-16）', () => {
     expect(SKILLS.find((s) => s.id === 'armored-ops')?.name).toBe('装甲舰操作')
   })
 
-  it('判据：`role: armored` 一律是装甲线（含 D 族那种护盾占比高的既有装甲族）', () => {
+  it('判据：`role: armored` 一律是装甲线（甲壳线 + C 族）', () => {
     for (const s of SHIPS.filter((x) => x.role === 'armored')) {
       expect(isArmorLineShip(s), `${s.id}（role armored）应在装甲线`).toBe(true)
     }
-    // D 族哨戒电子舰：role armored 但护盾占比高 —— 丙案只按 role 收，故此仍在装甲线
+    // 2026-09-17 船长「D 族移动到武装舰」⇒ D 族三艘已不是 role armored；它们**护盾占比高** ⇒ 落在武装舰里
     const dFrigate = shipOf('sh-wh-d-frigate')
+    expect(dFrigate.role).toBe('armed')
     expect(dFrigate.shieldHp! > dFrigate.armorHp!).toBe(true)
-    expect(isArmorLineShip(dFrigate)).toBe(true)
+    expect(isArmorLineShip(dFrigate), '护盾型 ⇒ 不进装甲线').toBe(false)
+    expect(shipCategoryKeyOf(dFrigate)).toBe('armed')
   })
 
   it('判据：武装舰里**装甲占比 > 护盾占比**者归入装甲线（牛鲨 + E 族三艘）', () => {
@@ -95,21 +97,27 @@ describe('舰船类别：装甲舰（船长 2026-09-16）', () => {
   })
 
   /**
-   * **抗性口径**（船长 2026-09-17：「**抗性也进行调整，不要单纯互换**（**不用护盾了，所以不要给护盾
-   * 任何抗性，只给装甲抗性**）」）：换血转线的 4 艘 ⇒ 盾层零抗性、动能抗 0.5 挂**甲层**；
-   * 同日选甲案 ⇒ E 三艘的**壳等离子抗 0.25 保留**（族格与用不用盾无关）。
-   * 读数（层克制 × (1−抗) 逐层乘）：对动能 EHP 变为原值的 1.36~1.46 倍，对爆炸/能量与改前一字不差。
+   * **抗性口径**（船长 2026-09-17 两条）：
+   * ① 「**移除每条船的 50 动能抗性**」⇒ 换血 4 艘甲层的动能 0.5 已清、改为装甲舰的档位抗性；
+   * ② 「**装甲舰T~T5获得装甲的动能和能量抗性加成，分别为30/30/35/35/35**…（移除）不会影响
+   *    舰船子类型和种族给予的额外属性」⇒ E 三艘的**壳等离子抗 0.25 保留**（族给）。
    */
-  it('换血 4 艘的抗性口径：盾层零抗性 · 动能抗 0.5 挂甲层 · E 三艘壳等离子抗保留', () => {
-    for (const id of SWAPPED) {
+  it('换血 4 艘的抗性口径：盾层零抗性 · 甲层动能+能量按档位 · E 三艘壳等离子抗保留', () => {
+    const want: Record<string, [number, number]> = {
+      // [甲层动能, 甲层能量]
+      'sh-bullshark': [0.35, 0.35], // T3
+      'sh-wh-e-frigate': [0.3, 0.3], // T1
+      'sh-wh-e-destroyer': [0.3, 0.3], // T2
+      'sh-wh-e-carrier': [0.35, 0.35], // T3
+    }
+    for (const [id, [kin, plasma]] of Object.entries(want)) {
       const s = shipOf(id)
       expect(s.shieldResist, `${id} 盾层不该有任何抗性`).toBeUndefined()
-      expect(s.armorResist, `${id} 甲层动能抗`).toEqual({ kinetic: 0.5 })
+      expect(s.armorResist, `${id} 甲层抗性`).toEqual({ kinetic: kin, plasma })
     }
-    // 牛鲨：掠食者线签名只换层、不换系（仍是动能 0.5；壳层本来就没有抗性）
-    expect(shipOf('sh-bullshark').hullResist).toBeUndefined()
+    expect(shipOf('sh-bullshark').hullResist).toBeUndefined() // 掠食者线壳层本来就没有抗性
     for (const id of ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
-      expect(shipOf(id).hullResist, `${id} 结构层等离子抗应保留（甲案）`).toEqual({ plasma: 0.25 })
+      expect(shipOf(id).hullResist, `${id} 结构层等离子抗应保留（族给）`).toEqual({ plasma: 0.25 })
     }
   })
 

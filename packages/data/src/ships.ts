@@ -34,10 +34,23 @@
  *   护栏 = `content:check`「非战斗舰血量契约」（11 艘总血必须等于上表目标）；读数表 =
  *   `npm run ship:hp`。⚠ 改动波及：低安遇袭/战斗的生存线（一口伤害是绝对值）与战力/胜率预估（按血量算）；
  *   存档零迁移（档里只存耐久**比例**，上限由定义现算 ⇒ 老档"比例不变、绝对血变多"）。
- * - V16.1：基础抗性简化（整数主抗制）——每族只有一个主抗，便于心算：
- *   鲸盟(industrial)＝护盾抗动能 25%｜掠食者(armed)＝护盾抗动能 50%｜甲壳(armored)＝装甲抗高爆 50%｜
- *   蜃楼(hauler)＝结构抗能量 25%；其余层/型一律 0（省略键）；装备抗性插件仍可在此基础上叠加；
+ * - V16.1：基础抗性简化（整数主抗制）——每族一个主抗，便于心算：
+ *   鲸盟(industrial)＝护盾抗动能 25%｜甲壳(armored)＝装甲抗高爆 50%｜蜃楼(hauler)＝结构抗能量 25%；
+ *   其余层/型一律 0（省略键）；装备抗性插件仍可在此基础上叠加；
  *   （鲸盟出品的蝠鲼/皇带鱼沿用鲸盟护盾抗动能，不随航运族改结构抗）
+ * - **2026-09-17 船长「武装舰 / 装甲舰的额外加成」重排（本表最新口径，前面各族的"主抗"注以本条为准）**：
+ *   ① **武装舰（类别）按档位给伤害加成**：T1/T2/T3/T4/T5 = **+15/20/25/35/50%** ⇒ 写 `powerBonus`；
+ *      **无人机船**（主力输出是机群的梭鱼级 / 王鲭级）**改为同等数值的 `droneDmgBonus`**（不再有 powerBonus）。
+ *   ② **装甲舰（类别）按档位给甲层抗性**：**动能与能量各 +30/30/35/35/35%**（写 `armorResist`），
+ *      且**移除先前获得的单发加成**（牛鲨 0.7 / 构件鱼雷舰 0.5 / 机库 0.4 / 巨构 0.6 已清）。
+ *   ③ **移除每条船的"50 动能抗"**：掠食者线（官方 8 艘）＋ A 族 2 艘 ＋ G 族 3 艘 ＋ 甲壳截击舰之外的
+ *      C 族 —— 共 **21 艘**的 `kinetic: 0.5` 已删；**0.25 的动能抗（鲸盟/蜃楼/鹦鹉螺/C 族壳层）不动**。
+ *   ④ **子分类与种族给的额外属性一律不动**：甲壳线 / C 族的甲层高爆 0.5 · E 三艘的壳层能量 0.25 ·
+ *      E/C/G/A 各族的族武与命中/回避强增 · D 族的盾/甲/壳 0.25 与甲层高爆 0.5 —— 全部保留。
+ *   ⑤ **D 族三艘（哨戒电子舰 / 陵卫指挥舰 / 陵寝巡洋舰）由 `armored` 转入 `armed`**（船长同日
+ *      「D 族移动到武装舰，吃武装舰技能」）⇒ 它们吃「武装舰操作」（+3%/级 单发）并按 ① 拿档位加成；
+ *      槽位仍按 2026-09-13 的子分类口径（电子舰 2/3/3 · 指挥舰 2/4/4 · 陵寝 4/4/4）**不动**。
+ *   护栏 = `content:check`「加成与抗性新口径」四条（阶梯 ±0.05 · 盾层零抗 · 全局无 50 动能抗 · 不变量）。
  * - V16.1：删除已废弃展示字段（锁定目标数 maxTargets、起跳时间 alignSec——起跳语义反转由
  *   "跃迁充能"派生属性取代：跃迁充能速率 = 动力(agility)×200%，动力越高充能越快，仅展示挂钩）；
  * - V10.5b：cpu = 模块装配与无人机放飞共用资源（带宽并入 CPU）；无人机舱 droneBayM3；
@@ -281,9 +294,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.8,
     evasion: 0.2,
     hitBonus: 0.12,
-    powerBonus: 0.15,
+    powerBonus: 0.15, // 2026-09-17 船长：武装舰按档位给单发加成（T1 = +15%）
     shieldHp: 60,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 30,
     hullHp: 36,
     cpu: 110,
@@ -309,9 +322,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.74,
     evasion: 0.14,
     hitBonus: 0.14,
-    powerBonus: 0.25,
+    powerBonus: 0.15, // 2026-09-17 船长：武装舰按档位给单发加成（T1 = +15%）
     shieldHp: 108,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 54,
     hullHp: 66,
     cpu: 150,
@@ -337,9 +350,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.68,
     evasion: 0.15,
     hitBonus: 0.15,
-    powerBonus: 0.3,
+    powerBonus: 0.15, // 2026-09-17 船长：武装舰按档位给单发加成（T1 = +15%）
     shieldHp: 114,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 57,
     hullHp: 72,
     cpu: 165,
@@ -365,9 +378,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.62,
     evasion: 0.1,
     hitBonus: 0.17,
-    powerBonus: 0.45,
+    powerBonus: 0.2, // 2026-09-17 船长：武装舰按档位给单发加成（T2 = +20%）
     shieldHp: 174,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 87,
     hullHp: 105,
     cpu: 195,
@@ -393,9 +406,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.56,
     evasion: 0.1,
     hitBonus: 0.2,
-    powerBonus: 0.6,
+    powerBonus: 0.2, // 2026-09-17 船长：武装舰按档位给单发加成（T2 = +20%）
     shieldHp: 186,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 96,
     hullHp: 114,
     cpu: 225,
@@ -423,10 +436,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.6,
     evasion: 0.12,
     hitBonus: 0.16,
-    powerBonus: 0.25, // 2026-09-10 船长：无人机舰火力加成削弱（0.45→0.25）——该笔加成只喂炮台
-    droneDmgBonus: 0.08, // 2026-09-10 船长：改为无人机专属加成 +8%（T2 档，对称于巡洋舰族加成）
+    // 2026-09-17 船长：本舰按档位给加成后**移除**原 powerBonus（改为同等数值的无人机伤害加成）
+    droneDmgBonus: 0.2, // 2026-09-17 船长：无人机船按档位给**无人机伤害**加成（T2 = +20%）
     shieldHp: 180,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 90,
     hullHp: 108,
     cpu: 235,
@@ -452,10 +465,10 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.52,
     evasion: 0.08,
     hitBonus: 0.16,
-    powerBonus: 0.3, // 2026-09-10 船长：无人机母舰火力加成削弱（0.6→0.3）——原来与长尾鲨同级，但只喂炮台
-    droneDmgBonus: 0.12, // 2026-09-10 船长：改为无人机专属加成 +12%（与其它巡洋舰的族加成同档）
+    // 2026-09-17 船长：本舰按档位给加成后**移除**原 powerBonus（改为同等数值的无人机伤害加成）
+    droneDmgBonus: 0.25, // 2026-09-17 船长：无人机船按档位给**无人机伤害**加成（T3 = +25%）
     shieldHp: 310,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 155,
     hullHp: 187,
     cpu: 320,
@@ -483,9 +496,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.54,
     evasion: 0.12,
     hitBonus: 0.17,
-    powerBonus: 0.6,
+    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
     shieldHp: 325,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 148,
     hullHp: 175,
     cpu: 345,
@@ -512,9 +525,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.5,
     evasion: 0.1,
     hitBonus: 0.16,
-    powerBonus: 0.62,
+    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
     shieldHp: 340,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 154,
     hullHp: 181,
     cpu: 355,
@@ -541,9 +554,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.5,
     evasion: 0.1,
     hitBonus: 0.18,
-    powerBonus: 0.65,
+    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
     shieldHp: 355,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 160,
     hullHp: 186,
     cpu: 360,
@@ -571,7 +584,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.46,
     evasion: 0.08,
     hitBonus: 0.19,
-    powerBonus: 0.7,
+    // 2026-09-17 船长：本舰按档位给加成后**移除**原 powerBonus（装甲舰改为按档位给甲层抗性）
     // 2026-09-16 船长：「将牛鲨级突击舰和E族专属舰的护盾和装甲互换」⇒ 盾/甲 400↔163（总血 755 不变）；
     // 换后**装甲占比 > 护盾占比** ⇒ 按同日丙案归入「装甲舰」类别（role 仍 `armed`）；
     // 两个「舰操作」按**类别**判（同日追裁）⇒ 本舰吃「装甲舰操作」、不吃「武装舰操作」。
@@ -579,7 +592,8 @@ export const SHIPS: readonly ShipDef[] = [
     // ⇒ 盾层清零、动能抗 0.5 搬到**甲层**（读数：对动能 EHP 943 → 1367，对爆炸/能量不变）。
     shieldHp: 163,
     armorHp: 400,
-    armorResist: { kinetic: 0.5 }, // 掠食者：重甲抗动能（2026-09-17 由盾层移到甲层）
+    armorResist: { kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T3 = 35%）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     hullHp: 192,
     cpu: 390,
     droneBayM3: 50,
@@ -613,7 +627,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.56,
     evasion: 0.16,
     hitBonus: 0.14,
-    powerBonus: 0.55, // T3 武装带 0.6~0.7 之下、王鲭级 0.3 之上（功能舰定位）
+    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
     droneDmgBonus: 0.10, // 机舱 80（同级 50）⇒ 机群是它的次要输出（介于梭鱼 0.08 与王鲭 0.12）
     /** **主效果**：虫洞扫码范围 +1 圈——对编队**求和**（多艘可叠加），入洞与深入下层都生效 */
     wormholeScanRadiusBonus: 1,
@@ -657,7 +671,7 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.12,
     shieldHp: 60,
     armorHp: 150,
-    armorResist: { explosive: 0.5 }, // 甲壳：装甲抗高爆（整数主抗制）
+    armorResist: { explosive: 0.5, kinetic: 0.3, plasma: 0.3 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T2 = 30%）
     hullHp: 180,
     cpu: 205,
     droneBayM3: 40,
@@ -686,7 +700,7 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.12,
     shieldHp: 120,
     armorHp: 360,
-    armorResist: { explosive: 0.5 }, // 甲壳：装甲抗高爆（整数主抗制）
+    armorResist: { explosive: 0.5, kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T3 = 35%）
     hullHp: 430,
     cpu: 330,
     droneBayM3: 50,
@@ -715,7 +729,7 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.05,
     shieldHp: 166,
     armorHp: 493,
-    armorResist: { explosive: 0.5 }, // 甲壳：装甲抗高爆（整数主抗制）
+    armorResist: { explosive: 0.5, kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T4 = 35%）
     hullHp: 614,
     cpu: 490,
     droneBayM3: 60,
@@ -754,9 +768,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.35,
     evasion: 0.06,
     hitBonus: 0.06,
-    powerBonus: 0.85, // 2026-09-13 定案（武装舰必填；阶梯 牛鲨 0.7 → T4 0.85）
+    powerBonus: 0.35, // 2026-09-17 船长：武装舰按档位给单发加成（T4 = +35%）
     shieldHp: 675,
-    shieldResist: { kinetic: 0.5 }, // 掠食者：重盾抗动能（整数主抗制；2026-09-13 补上缺失的线签名）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 280,
     hullHp: 318, // 三层共 1,273（T4 档位目标）；武装族定位 = 盾 > 结构 > 甲
     cpu: 490, // T3 350 × 1.4
@@ -782,7 +796,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.3,
     evasion: 0.05,
     hitBonus: 0.07,
-    powerBonus: 1.0, // 模子待定（阶梯续 0.85 → T5 1.0；契约上限 2）
+    powerBonus: 0.5, // 2026-09-17 船长：武装舰按档位给单发加成（T5 = +50%）
     shieldHp: 1248,
     armorHp: 518,
     hullHp: 589, // 三层共 2,355（T5 档位目标）
@@ -907,7 +921,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.675,
     evasion: 0.216,
     hitBonus: 0.25,
-    powerBonus: 0.3,
+    powerBonus: 0.15, // 2026-09-17 船长：武装舰按档位给单发加成（T1 = +15%）
     shieldHp: 130,
     armorHp: 60,
     hullHp: 55,
@@ -923,7 +937,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 46500,
     signatureM: 44,
     scanResMm: 990,
-    shieldResist: {"kinetic":0.5},
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     wormholeScanRadiusBonus: 1,
     description: '海盗的电子战艇：长项在火控与回避——先锁上、先打中，也更难被咬住；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。',
   },
@@ -942,7 +956,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.62,
     evasion: 0.12,
     hitBonus: 0.2,
-    powerBonus: 0.45,
+    powerBonus: 0.2, // 2026-09-17 船长：武装舰按档位给单发加成（T2 = +20%）
     shieldHp: 175,
     armorHp: 130,
     hullHp: 130,
@@ -954,7 +968,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 36000,
     signatureM: 72,
     scanResMm: 456,
-    shieldResist: {"kinetic":0.5},
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     weaponFamilyBonus: { kinetic: 0.15 },
     weaponRangeBonusPct: { kinetic: 0.3 },
     description: '海盗的炮艇：动能炮阵加持，动能武器射程再拉长三成——先在射程外开火；舱位很窄、护盾让位给装甲。',
@@ -964,7 +978,8 @@ export const SHIPS: readonly ShipDef[] = [
     name: '掠袭重型突击巡洋舰',
     role: 'armed',
     subClass: '重型突击巡洋舰',
-    // 子分类「重型突击巡洋舰」（船长 2026-09-13）：**三层抗性：0 抗一律 → 0.25**（护盾动能保留 0.5）· **三层血 ×1.1 = 855** · **移除族武 +0.15**（船长 2026-09-13）｜ 机动 −30% · 货舱 −30% · 信号 +20%
+    // 子分类「重型突击巡洋舰」（船长 2026-09-13）：**三层抗性：0 抗一律 → 0.25** · **三层血 ×1.1 = 855** · **移除族武 +0.15**（船长 2026-09-13）｜ 机动 −30% · 货舱 −30% · 信号 +20%
+    // （2026-09-17：护盾那一条动能 0.5 已按船长「移除每条船的 50 动能抗性」删除）
     slots: { high: 6, mid: 3, low: 3 },
     tier: 3,
     cargoM3: 3640,
@@ -974,7 +989,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.385,
     evasion: 0.12,
     hitBonus: 0.17,
-    powerBonus: 0.65,
+    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
     shieldHp: 375,
     armorHp: 225,
     hullHp: 255,
@@ -986,15 +1001,17 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 40000,
     signatureM: 110,
     scanResMm: 525,
-    shieldResist: {"kinetic":0.5,"explosive":0.25,"plasma":0.25},
+    shieldResist: {"explosive":0.25,"plasma":0.25}, // 船长 2026-09-17「移除每条船的 50 动能抗性」
     armorResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     description: '海盗的重型突击巡洋舰：三层抗性齐备、血量再厚一成，专啃硬目标；没有额外火力加成，代价是转身慢、舱位小。',
   },
-  // ⚠ 下面 C 族 3 艘与再下面 D 族 3 艘的 role **维持 'armored'**（船长 2026-09-15 裁定「保持现状」）——
-  //   改 'armed' 会同时撞 content:check 的三条「武装舰族定位」契约（高槽 ≥ 低槽+1 · 必带 powerBonus · 护盾 > 装甲）
-  //   与 core/tests/wh-ship-baseline.test.ts 的「武装舰仍满足高槽契约」用例；口径见 docs/glossary.md 词条
-  //   「**装甲（armored）· 类别边界**」（原词条名「重装（armored）」，2026-09-16 船长改名后词典同步）。
+  // ⚠ 下面 C 族 3 艘的 role **维持 'armored'**（船长 2026-09-15 裁定「保持现状」）。
+  //   **D 族 3 艘已于 2026-09-17 按船长「D 族移动到武装舰，吃武装舰技能」转入 'armed'**（见各自 role 注）；
+  //   为完成这次转移，「武装舰 高槽 ≥ 低槽 + 1」这条**弱断言**的适用范围收窄为**官方船**
+  //   （虫洞专属舰的槽位是 2026-09-13 按子分类定的：电子舰/指挥舰＝中槽型），
+  //   实际布局由 core/tests/wh-ship-baseline.test.ts「D 族三艘的实际布局逐一钉住」守着。
+  //   口径见 docs/glossary.md 词条「**装甲（armored）· 类别边界**」（词典待归档时同步，§8）。
   {
     id: 'sh-wh-c-frigate',
     name: '幼虫截击舰',
@@ -1021,7 +1038,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26000,
     signatureM: 71,
     scanResMm: 600,
-    armorResist: {"explosive":0.5},
+    armorResist: {"explosive":0.5,"kinetic":0.3,"plasma":0.3}, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T1 = 30%）
     hullResist: {"kinetic":0.25},
     description: '巢群的活体截击舰：快得不像话，专咬落单的；护盾几乎不设防，靠一层甲壳与一副骨架撑住。',
   },
@@ -1051,7 +1068,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 24000,
     signatureM: 138,
     scanResMm: 460,
-    armorResist: {"explosive":0.5},
+    armorResist: {"explosive":0.5,"kinetic":0.3,"plasma":0.3}, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T2 = 30%）
     hullResist: {"kinetic":0.25},
     description: '巢群的活体截击舰：速度与机动拉满，切入切出；护盾极薄，伤害全由甲与结构承担。',
   },
@@ -1082,14 +1099,14 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 204,
     scanResMm: 400,
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    armorResist: {"explosive":0.5,"kinetic":0.25,"plasma":0.25},
+    armorResist: {"explosive":0.5,"kinetic":0.35,"plasma":0.35}, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T3 = 35%）
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     description: '巢群的重型突击巡洋舰：三层抗性齐备、甲壳再厚一成，正面硬碰硬；没有额外火力加成，转身极慢。',
   },
   {
     id: 'sh-wh-d-frigate',
     name: '哨戒电子舰',
-    role: 'armored',
+    role: 'armed', // 2026-09-17 船长：「D 族移动到武装舰，吃武装舰技能」⇒ 由 armored 转入
     subClass: '电子舰',
     // 子分类「电子舰」（船长 2026-09-13）：**D 族特色 = 高护盾比（护盾 65%）** · **三层盾抗 0.25 + 甲爆炸 0.5** · **命中 +0.12 · 回避 +55%** · **虫洞扫码 +1 圈（编队即生效、可叠加）** · 分辨率 +50%（经济向）｜ 货舱 −30% · 机动 −10%
     slots: { high: 2, mid: 3, low: 3 },
@@ -1101,6 +1118,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.495,
     evasion: 0.109,
     hitBonus: 0.22,
+    powerBonus: 0.15, // 2026-09-17 船长：武装舰按档位给单发加成（T1 = +15%）
     shieldHp: 170,
     armorHp: 35,
     hullHp: 55,
@@ -1123,7 +1141,7 @@ export const SHIPS: readonly ShipDef[] = [
   {
     id: 'sh-wh-d-destroyer',
     name: '陵卫指挥舰',
-    role: 'armored',
+    role: 'armed', // 2026-09-17 船长：「D 族移动到武装舰，吃武装舰技能」⇒ 由 armored 转入
     subClass: '指挥舰',
     // 子分类「指挥舰」（船长 2026-09-13）：**D 族特色 = 高护盾比（护盾 60%）** · **全舰单发伤害 +15%（取最高、不叠加）** · 机巢 +50% · 无人机伤害 +0.08 · 命中 +0.05 ｜ **速度/机动不再削**（2026-09-13 船长：D 组已非重装族，种族级削弱移除）· 货舱 −25%（子分类级）· 代价 = 甲/壳薄
     slots: { high: 2, mid: 4, low: 4 },
@@ -1135,6 +1153,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.45,
     evasion: 0.045,
     hitBonus: 0.11,
+    powerBonus: 0.2, // 2026-09-17 船长：武装舰按档位给单发加成（T2 = +20%）
     shieldHp: 230,
     armorHp: 75,
     hullHp: 80,
@@ -1156,7 +1175,7 @@ export const SHIPS: readonly ShipDef[] = [
   {
     id: 'sh-wh-d-cruiser',
     name: '陵寝巡洋舰',
-    role: 'armored',
+    role: 'armed', // 2026-09-17 船长：「D 族移动到武装舰，吃武装舰技能」⇒ 由 armored 转入
     slots: { high: 4, mid: 4, low: 4 },
     tier: 3,
     cargoM3: 9000,
@@ -1166,6 +1185,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.4,
     evasion: 0.04,
     hitBonus: 0.05,
+    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
     shieldHp: 510,
     armorHp: 155,
     hullHp: 255,
@@ -1198,13 +1218,14 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.7,
     evasion: 0.105,
     hitBonus: 0.17,
-    powerBonus: 0.5,
+    // 2026-09-17 船长：本舰按档位给加成后**移除**原 powerBonus（装甲舰改为按档位给甲层抗性）
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（115↔60，总血 255 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
     // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；
     // **壳等离子抗 0.25 保留**（船长选甲案：E 族「结构吃等离子轻」的族格与用不用盾无关）。
     shieldHp: 60,
     armorHp: 115,
-    armorResist: { kinetic: 0.5 },
+    armorResist: { kinetic: 0.3, plasma: 0.3 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T1 = 30%）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     hullHp: 80,
     cpu: 200,
     droneBayM3: 30,
@@ -1234,12 +1255,13 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.6,
     evasion: 0.1,
     hitBonus: 0.14,
-    powerBonus: 0.4,
+    // 2026-09-17 船长：本舰按档位给加成后**移除**原 powerBonus（装甲舰改为按档位给甲层抗性）
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（230↔90，总血 435 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
     // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；壳等离子抗保留。
     shieldHp: 90,
     armorHp: 230,
-    armorResist: { kinetic: 0.5 },
+    armorResist: { kinetic: 0.3, plasma: 0.3 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T2 = 30%）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     hullHp: 115,
     cpu: 290,
     droneBayM3: 105,
@@ -1269,12 +1291,13 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.5,
     evasion: 0.1,
     hitBonus: 0.14,
-    powerBonus: 0.6,
+    // 2026-09-17 船长：本舰按档位给加成后**移除**原 powerBonus（装甲舰改为按档位给甲层抗性）
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（410↔160，总血 770 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
     // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；壳等离子抗保留。
     shieldHp: 160,
     armorHp: 410,
-    armorResist: { kinetic: 0.5 },
+    armorResist: { kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T3 = 35%）
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     hullHp: 200,
     cpu: 440,
     droneBayM3: 145,
@@ -1307,7 +1330,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.82,
     evasion: 0.27,
     hitBonus: 0.2,
-    powerBonus: 0.28,
+    powerBonus: 0.15, // 2026-09-17 船长：武装舰按档位给单发加成（T1 = +15%）
     shieldHp: 140,
     armorHp: 45,
     hullHp: 65,
@@ -1320,7 +1343,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 47500,
     signatureM: 22,
     scanResMm: 700,
-    shieldResist: {"kinetic":0.5},
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     wormholeScanRadiusBonus: 1,
     description: '亡军的侦察舰：回避极高、火控不弱——编入虫洞队伍即扩大扫描范围一圈（多艘可叠加），它负责先看见别人。',
   },
@@ -1340,7 +1363,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.68,
     evasion: 0.147,
     hitBonus: 0.15,
-    powerBonus: 0.45,
+    powerBonus: 0.2, // 2026-09-17 船长：武装舰按档位给单发加成（T2 = +20%）
     shieldHp: 230,
     armorHp: 75,
     hullHp: 115,
@@ -1353,7 +1376,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 44000,
     signatureM: 58,
     scanResMm: 620,
-    shieldResist: {"kinetic":0.5},
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     // **后勤舰特性**（船长 2026-09-16）：「维修装置可以修理血量最少的队友」⇒ 进界面的「船体特性」栏
     repairPulseTargetsFleet: true,
     description: '亡军的后勤舰：货舱与机巢最大，跟着编队补给、换机；火力只求自保。',
@@ -1375,7 +1398,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.493,
     evasion: 0.005,
     hitBonus: 0.11,
-    powerBonus: 0.82,
+    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
     shieldHp: 345,
     armorHp: 185,
     hullHp: 225,
@@ -1388,7 +1411,7 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 48000,
     signatureM: 101,
     scanResMm: 580,
-    shieldResist: {"kinetic":0.5},
+    // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     weaponFamilyBonus: { explosive: 0.15 },
     description: '亡军的鱼雷舰：爆破弹头配扎实命中，专挑大目标的装甲；信号大、转身慢，是明牌重锤。',
   },

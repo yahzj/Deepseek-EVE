@@ -158,8 +158,9 @@ describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-
     const spec = createPlayerSpec(state, ctx, uid)!
     const bees = spec.weapons.filter((w) => w.src === 'drone' && w.artId === BEE)
     expect(bees).toHaveLength(10) // 10 架全数放飞（CPU 5×10 = 50 ≤ 320）
-    // 单发 = 6 × 2（引擎单发×2）× (1+0.45 导控) × (1+0.08 梭鱼船体加成)
-    expect(bees[0]!.shotDmg).toBe(Math.round(6 * 2 * 1.45 * 1.08))
+    // 单发 = 6 × 2（引擎单发×2）× (1+0.45 导控) × (1+0.20 梭鱼船体加成)
+    // （2026-09-17 船长：无人机船按档位给无人机伤害加成 ⇒ 梭鱼 T2 = +20%，原 +8% 作废）
+    expect(bees[0]!.shotDmg).toBe(Math.round(6 * 2 * 1.45 * 1.2))
     expect(bees[0]!.maxRangeM).toBe(Math.round(4000 * 1.65)) // 中继桅 +65%（基数 2026-09-14 +1500 ⇒ 6600）
     expect(bees[0]!.hitRate).toBeCloseTo(0.75, 6)
     expect(bees[0]!.falloff).toBeCloseTo(1, 6)
