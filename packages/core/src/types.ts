@@ -271,7 +271,7 @@ export interface FoeMountDef {
  */
 export type ShipSubClass =
   | '电子舰'
-  | '炮艇'
+  | '炮舰'
   | '重型突击巡洋舰'
   | '截击舰'
   | '指挥舰'

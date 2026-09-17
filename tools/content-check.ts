@@ -1148,7 +1148,7 @@ const roleSet = new Set(['industrial', 'armed', 'armored', 'hauler'])
 /** 舰种子分类白名单（2026-09-13 船长定；与 `packages/core/src/types.ts` 的 `ShipSubClass` 同源） */
 const SHIP_SUBCLASSES = [
   '电子舰',
-  '炮艇',
+  '炮舰', // 2026-09-17 船长：「掠袭炮艇改名掠袭炮舰」⇒ 子分类名由「炮艇」改为「炮舰」
   '重型突击巡洋舰',
   '截击舰',
   '指挥舰',
@@ -1174,6 +1174,8 @@ const SUBCLASS_NON_WH_SHIP_IDS = new Set([
   'sh-tortoise', // 陆龟级重装艇（T2）
   'sh-hawksbill', // 玳瑁级重装巡舰（T3）
   'sh-xuanwu', // 玄武级重装旗舰（T4）
+  // 2026-09-17 船长：「给予大白鲨级炮舰舰船子分类炮舰」（官方掠食者线，T2 驱逐·奇货精装）
+  'sh-whiteshark',
 ])
 /**
  * **每档默认槽位总数**（船长 2026-09-14 原话：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
@@ -1294,7 +1296,7 @@ for (const s of SHIPS) {
   // V12：回避 0~0.9、命中加成 0~0.5
   check(s.evasion === undefined || (s.evasion >= 0 && s.evasion <= 0.9), `舰船 ${s.id} evasion 越界：${String(s.evasion)}`)
   check(s.hitBonus === undefined || (s.hitBonus >= 0 && s.hitBonus <= 0.5), `舰船 ${s.id} hitBonus 越界：${String(s.hitBonus)}`)
-  // **船体固有新机制三条**（2026-09-13 船长点名：炮艇动能射程 / 指挥舰全舰光环 / 侦察舰·电子舰扫码）
+  // **船体固有新机制三条**（2026-09-13 船长点名：炮舰动能射程 / 指挥舰全舰光环 / 侦察舰·电子舰扫码）
   for (const [rt, v] of Object.entries(s.weaponRangeBonusPct ?? {})) {
     check(
       DMG_TYPES.has(rt) && typeof v === 'number' && v > 0 && v <= 0.6,
@@ -1357,7 +1359,8 @@ for (const s of SHIPS) {
       (s.shieldHp ?? 0) > (s.armorHp ?? 0) || isArmorLineShip(s),
       `武装舰 ${s.id} 护盾应大于装甲（族定位）——除非它归入「装甲舰」类别（装甲占比 > 护盾占比）`,
     )
-  } else {
+  } else if (catOfThis === 'industrial' || catOfThis === 'hauler') {
+    // 采矿舰 / 货运舰不带伤害加成（装甲舰的例外 = 子分类给的炮舰/鱼雷舰加成，另由「加成与抗性新口径」管）
     check(s.powerBonus === undefined, `非武装舰 ${s.id} 不应带 powerBonus`)
   }
   const total = (s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)
@@ -4737,54 +4740,83 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * 「**武装舰T1~T5获得单发伤害加成，分别是15/20/25/35/50.允许出现上下浮动。如果是无人机船，
    *   则改为同等数值的无人机伤害加成。移除每条船的50动能抗性**」＋
    * 「**装甲舰T~T5获得装甲的动能和能量抗性加成，分别为30/30/35/35/35。移除之前获得的单发伤害加成。
-   *   （这里所有的移除都不会影响舰船子类型和种族给予的额外属性。）**」
+   *   （这里所有的移除都不会影响舰船子类型和种族给予的额外属性。）**」＋（同日追加）
+   * 「**所有炮舰伤害倍率额外+0.15。鱼雷舰获得伤害倍率+0.2。**」
    *
-   * 契约四条：
-   * ① **武装舰**：`powerBonus`（无人机船看 `droneDmgBonus`）= 档位阶梯 0.15/0.20/0.25/0.35/0.50，
-   *    **允许 ±0.05 浮动**；
-   * ② **装甲舰（类别口径）**：甲层 `kinetic` 与 `plasma` = 0.30/0.30/0.35/0.35/0.35（同样 ±0.05），
-   *    且**不得有 powerBonus**（"移除之前获得的单发伤害加成"）；
+   * 契约五条：
+   * ① **武装舰**：`powerBonus`（无人机船看 `droneDmgBonus`）= 档位阶梯 0.15/0.20/0.25/0.35/0.50
+   *    ＋ **子分类附加**（炮舰 +0.15 · 鱼雷舰 +0.2），**允许 ±0.05 浮动**；
+   * ② **装甲舰（类别口径）**：甲层 `kinetic` = 0.30/0.30/0.35/0.35/0.35（±0.05）；**不得有档位单发加成**，
+   *    唯一例外 = **子分类给的**（构件鱼雷舰 +0.2）；
    * ③ **全局**：三层抗性里**任何一层都不许再出现 `kinetic: 0.5`**（"移除每条船的 50 动能抗性"）；
-   * ④ 不变量：装甲线的 `armorResist.explosive`（甲壳线 / C 族的 0.5）与 E 三艘的
-   *    `hullResist.plasma`（0.25）**保留**（"不会影响子类型和种族给予的额外属性"）。
+   * ④ **装甲舰甲层能量抗**：幼虫截击舰 / 甲壳截击舰**已按船长移除** ⇒ 只查其余装甲舰 = 档位值；
+   * ⑤ **不变量**：装甲舰甲层高爆抗 = 甲壳线 **0.25**（船长：「陆龟级，玳瑁级，玄武级，爆炸抗性削弱到0.25」）·
+   *    C 族 **0.3**（船长：「装甲船的C族高爆抗性改为0.3」）· D 族三艘**甲层/壳层抗性已全删**（只留盾层 0.25×3）·
+   *    E 三艘 `hullResist.plasma` 0.25 保留。
    */
   {
     const bad: string[] = []
     const ARMED_DMG: Record<number, number> = { 1: 0.15, 2: 0.2, 3: 0.25, 4: 0.35, 5: 0.5 }
     const ARMOR_RES: Record<number, number> = { 1: 0.3, 2: 0.3, 3: 0.35, 4: 0.35, 5: 0.35 }
+    const SUBCLASS_DMG: Record<string, number> = { 炮舰: 0.15, 鱼雷舰: 0.2 }
     const FLOAT = 0.05
+    /** 装甲舰甲层能量抗被船长点名移除的两艘（C 族截击舰） */
+    const NO_ARMOR_PLASMA = new Set(['sh-wh-c-frigate', 'sh-wh-c-destroyer'])
     let armedN = 0
     let armorN = 0
     for (const s of SHIPS) {
       const cat = shipCategoryKeyOf(s)
+      const subExtra = s.subClass !== undefined ? (SUBCLASS_DMG[s.subClass] ?? 0) : 0
       if (cat === 'armed') {
         armedN++
         const droneShip = s.powerBonus === undefined && s.droneDmgBonus !== undefined
         const v = droneShip ? s.droneDmgBonus! : (s.powerBonus ?? NaN)
-        const want = ARMED_DMG[s.tier]
-        if (want === undefined) bad.push(`${s.name}（${s.id}）档位 T${s.tier} 不在阶梯表里`)
+        const want = (ARMED_DMG[s.tier] ?? NaN) + subExtra
+        if (ARMED_DMG[s.tier] === undefined) bad.push(`${s.name}（${s.id}）档位 T${s.tier} 不在阶梯表里`)
         else if (!(Math.abs(v - want) <= FLOAT + 1e-9))
-          bad.push(`${s.name}（${s.id}）${droneShip ? '无人机伤害' : '单发'}加成 ${v} ∉ ${want}±${FLOAT}（T${s.tier}）`)
+          bad.push(
+            `${s.name}（${s.id}）${droneShip ? '无人机伤害' : '单发'}加成 ${v} ∉ ${want}±${FLOAT}` +
+              `（T${s.tier} 档位 ${ARMED_DMG[s.tier]}${subExtra > 0 ? ` ＋ 子分类 ${s.subClass} ${subExtra}` : ''}）`,
+          )
         if (droneShip && s.powerBonus !== undefined) bad.push(`${s.name}（${s.id}）是无人机船却又带 powerBonus（应改给 droneDmgBonus）`)
       } else if (cat === 'armored') {
         armorN++
         const want = ARMOR_RES[s.tier]
         for (const t of ['kinetic', 'plasma'] as const) {
+          if (t === 'plasma' && NO_ARMOR_PLASMA.has(s.id)) continue // 船长点名移除
           const v = s.armorResist?.[t]
           if (want === undefined) bad.push(`${s.name}（${s.id}）档位 T${s.tier} 不在阶梯表里`)
           else if (v === undefined || Math.abs(v - want) > FLOAT + 1e-9)
             bad.push(`${s.name}（${s.id}）甲层 ${t} 抗 ${v ?? '未写'} ∉ ${want}±${FLOAT}（T${s.tier}）`)
         }
-        if (s.powerBonus !== undefined) bad.push(`${s.name}（${s.id}）属装甲舰却仍带 powerBonus（船长：「移除之前获得的单发伤害加成」）`)
+        // 档位单发加成必须已移除；唯一例外 = 子分类给的（鱼雷舰 +0.2）
+        const allowed = subExtra
+        const got = s.powerBonus ?? 0
+        if (Math.abs(got - allowed) > 1e-9)
+          bad.push(`${s.name}（${s.id}）属装甲舰 ⇒ 单发加成只允许子分类给的 ${allowed}（现 ${s.powerBonus ?? '无'}）`)
       }
       for (const [layer, r] of [['盾', s.shieldResist], ['甲', s.armorResist], ['壳', s.hullResist]] as const) {
         if (r?.kinetic === 0.5) bad.push(`${s.name}（${s.id}）${layer}层仍有 50 动能抗（船长：「移除每条船的 50 动能抗性」）`)
       }
     }
-    // ④ 不变量：子类型 / 种族给的抗性不许被这轮误删
-    for (const id of ['sh-tortoise', 'sh-hawksbill', 'sh-xuanwu', 'sh-wh-c-frigate', 'sh-wh-c-destroyer', 'sh-wh-c-cruiser']) {
+    // ⑤ 不变量：子类型 / 种族给的抗性按船长新口令核对
+    const EXPLOSIVE_WANT: Record<string, number> = {
+      'sh-tortoise': 0.25,
+      'sh-hawksbill': 0.25,
+      'sh-xuanwu': 0.25,
+      'sh-wh-c-frigate': 0.3,
+      'sh-wh-c-destroyer': 0.3,
+      'sh-wh-c-cruiser': 0.3,
+    }
+    for (const [id, want] of Object.entries(EXPLOSIVE_WANT)) {
       const s = SHIPS.find((x) => x.id === id)
-      if (s?.armorResist?.explosive !== 0.5) bad.push(`${id} 的甲层高爆抗 0.5（族/子分类给）被误删`)
+      if (s?.armorResist?.explosive !== want) bad.push(`${id} 的甲层高爆抗应为 ${want}（现 ${s?.armorResist?.explosive ?? '无'}）`)
+    }
+    for (const id of ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser']) {
+      const s = SHIPS.find((x) => x.id === id)
+      if (s?.armorResist !== undefined) bad.push(`${id} 的甲层抗性应已全部移除（船长：「D族船，装甲爆炸抗性…移除」）`)
+      if (s?.hullResist !== undefined) bad.push(`${id} 的结构层抗性应已全部移除（船长：「…结构所有抗性移除」）`)
+      if (s?.shieldResist === undefined) bad.push(`${id} 的盾层抗性应保留（船长只点名甲层爆炸与结构层）`)
     }
     for (const id of ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {
       const s = SHIPS.find((x) => x.id === id)
@@ -4792,8 +4824,9 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     }
     check(bad.length === 0, `加成与抗性新口径：${bad.join(' · ')}`)
     console.log(
-      `· 加成与抗性新口径（船长 2026-09-17）：武装舰 ${armedN} 艘按档位给单发/无人机伤害（15/20/25/35/50 ±5）· ` +
-        `装甲舰 ${armorN} 艘按档位给甲层动能+能量抗（30/30/35/35/35 ±5）且无单发加成 · 全局已无 50 动能抗`,
+      `· 加成与抗性新口径（船长 2026-09-17）：武装舰 ${armedN} 艘按档位给单发/无人机伤害（15/20/25/35/50 ±5；` +
+        `炮舰 +15 · 鱼雷舰 +20 另加）· 装甲舰 ${armorN} 艘按档位给甲层动能（30/30/35/35/35 ±5）· ` +
+        `全局已无 50 动能抗 · D 族甲层/壳层抗性已清 · C 族两艘截击舰能量抗已清`,
     )
   }
 

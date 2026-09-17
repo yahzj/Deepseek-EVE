@@ -397,6 +397,8 @@ export const SHIPS: readonly ShipDef[] = [
     id: 'sh-whiteshark',
     name: '大白鲨级炮舰',
     role: 'armed',
+    // 2026-09-17 船长：「**给予大白鲨级炮舰舰船子分类炮舰**」、「**所有炮舰伤害倍率额外+0.15**」
+    subClass: '炮舰',
     slots: { high: 5, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
     tier: 2,
     cargoM3: 3200,
@@ -406,7 +408,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.56,
     evasion: 0.1,
     hitBonus: 0.2,
-    powerBonus: 0.2, // 2026-09-17 船长：武装舰按档位给单发加成（T2 = +20%）
+    powerBonus: 0.35, // 2026-09-17：档位 T2 +20% ＋ 子分类炮舰 +15% = +35%
     shieldHp: 186,
     // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 96,
@@ -671,7 +673,7 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.12,
     shieldHp: 60,
     armorHp: 150,
-    armorResist: { explosive: 0.5, kinetic: 0.3, plasma: 0.3 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T2 = 30%）
+    armorResist: { explosive: 0.25, kinetic: 0.3, plasma: 0.3 }, // 2026-09-17 船长：「陆龟级，玳瑁级，玄武级，爆炸抗性削弱到0.25」（其余两层为装甲舰 T2 档位 30%）
     hullHp: 180,
     cpu: 205,
     droneBayM3: 40,
@@ -700,7 +702,7 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.12,
     shieldHp: 120,
     armorHp: 360,
-    armorResist: { explosive: 0.5, kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T3 = 35%）
+    armorResist: { explosive: 0.25, kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：「陆龟级，玳瑁级，玄武级，爆炸抗性削弱到0.25」（其余两层为装甲舰 T3 档位 35%）
     hullHp: 430,
     cpu: 330,
     droneBayM3: 50,
@@ -729,7 +731,7 @@ export const SHIPS: readonly ShipDef[] = [
     hitBonus: 0.05,
     shieldHp: 166,
     armorHp: 493,
-    armorResist: { explosive: 0.5, kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T4 = 35%）
+    armorResist: { explosive: 0.25, kinetic: 0.35, plasma: 0.35 }, // 2026-09-17 船长：「陆龟级，玳瑁级，玄武级，爆炸抗性削弱到0.25」（其余两层为装甲舰 T4 档位 35%）
     hullHp: 614,
     cpu: 490,
     droneBayM3: 60,
@@ -943,10 +945,10 @@ export const SHIPS: readonly ShipDef[] = [
   },
   {
     id: 'sh-wh-a-destroyer',
-    name: '掠袭炮艇',
+    name: '掠袭炮舰', // 2026-09-17 船长：「**掠袭炮艇改名掠袭炮舰**」（id 不变 ⇒ 存档零迁移）
     role: 'armed',
-    subClass: '炮艇',
-    // 子分类「炮艇」（船长 2026-09-13）：**族武 动能 +0.15 · 动能武器射程 +30%** · 命中 +0.03 ｜ 货舱 −30% · 护盾血占比 −20% · 分辨率 −20%
+    subClass: '炮舰', // 2026-09-17：子分类「炮艇」随改名 → 「炮舰」
+    // 子分类「炮舰」（船长 2026-09-13 原名炮艇 · 2026-09-17 改名）：**族武 动能 +0.15 · 动能武器射程 +30%** · 命中 +0.03 ｜ 货舱 −30% · 护盾血占比 −20% · 分辨率 −20%
     slots: { high: 5, mid: 3, low: 2 },
     tier: 2,
     cargoM3: 3080,
@@ -956,7 +958,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.62,
     evasion: 0.12,
     hitBonus: 0.2,
-    powerBonus: 0.2, // 2026-09-17 船长：武装舰按档位给单发加成（T2 = +20%）
+    powerBonus: 0.35, // 2026-09-17：档位 T2 +20% ＋ 子分类炮舰 +15% = +35%
     shieldHp: 175,
     armorHp: 130,
     hullHp: 130,
@@ -971,7 +973,7 @@ export const SHIPS: readonly ShipDef[] = [
     // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     weaponFamilyBonus: { kinetic: 0.15 },
     weaponRangeBonusPct: { kinetic: 0.3 },
-    description: '海盗的炮艇：动能炮阵加持，动能武器射程再拉长三成——先在射程外开火；舱位很窄、护盾让位给装甲。',
+    description: '海盗的炮舰：动能炮阵加持，动能武器射程再拉长三成——先在射程外开火；舱位很窄、护盾让位给装甲。',
   },
   {
     id: 'sh-wh-a-cruiser',
@@ -1038,7 +1040,8 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 26000,
     signatureM: 71,
     scanResMm: 600,
-    armorResist: {"explosive":0.5,"kinetic":0.3,"plasma":0.3}, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T1 = 30%）
+    // 2026-09-17 船长：「装甲船的C族高爆抗性改为0.3」＋「幼虫截击舰甲壳截击舰移除能量抗性」
+    armorResist: {"explosive":0.3,"kinetic":0.3}, // 甲层：高爆 0.3（族）＋ 动能 0.3（装甲舰 T1 档位）；能量抗已按船长移除
     hullResist: {"kinetic":0.25},
     description: '巢群的活体截击舰：快得不像话，专咬落单的；护盾几乎不设防，靠一层甲壳与一副骨架撑住。',
   },
@@ -1068,7 +1071,8 @@ export const SHIPS: readonly ShipDef[] = [
     lockRangeM: 24000,
     signatureM: 138,
     scanResMm: 460,
-    armorResist: {"explosive":0.5,"kinetic":0.3,"plasma":0.3}, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T2 = 30%）
+    // 2026-09-17 船长：「装甲船的C族高爆抗性改为0.3」＋「幼虫截击舰甲壳截击舰移除能量抗性」
+    armorResist: {"explosive":0.3,"kinetic":0.3}, // 甲层：高爆 0.3（族）＋ 动能 0.3（装甲舰 T2 档位）；能量抗已按船长移除
     hullResist: {"kinetic":0.25},
     description: '巢群的活体截击舰：速度与机动拉满，切入切出；护盾极薄，伤害全由甲与结构承担。',
   },
@@ -1099,7 +1103,8 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 204,
     scanResMm: 400,
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    armorResist: {"explosive":0.5,"kinetic":0.35,"plasma":0.35}, // 2026-09-17 船长：装甲舰按档位给**甲层动能+能量**抗性（T3 = 35%）
+    // 2026-09-17 船长：「装甲船的C族高爆抗性改为0.3」⇒ 甲层高爆 0.5 → 0.3（动能/能量维持装甲舰 T3 档位 0.35）
+    armorResist: {"explosive":0.3,"kinetic":0.35,"plasma":0.35},
     hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     description: '巢群的重型突击巡洋舰：三层抗性齐备、甲壳再厚一成，正面硬碰硬；没有额外火力加成，转身极慢。',
   },
@@ -1133,8 +1138,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 70,
     scanResMm: 840,
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    armorResist: {"explosive":0.5},
-    hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
+    // 2026-09-17 船长：「D族船，装甲爆炸抗性和结构所有抗性移除」⇒ 本舰只留盾层抗性（0.25×3）
     wormholeScanRadiusBonus: 1,
     description: '陵墓的电子哨戒舰：盾厚甲薄、火控与回避一并拉高，替全队先敌开火；编入虫洞队伍即扩大扫描范围一圈（多艘可叠加）。',
   },
@@ -1166,8 +1170,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 140,
     scanResMm: 651,
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    armorResist: {"explosive":0.5},
-    hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
+    // 2026-09-17 船长：「D族船，装甲爆炸抗性和结构所有抗性移除」⇒ 本舰只留盾层抗性（0.25×3）
     droneDmgBonus: 0.08,
     fleetDamageBonusPct: 0.15,
     description: '陵墓的指挥舰：护盾占比高、并给全编队的单发伤害加一成半——多艘指挥舰只取最高、不叠加。代价是甲/壳薄：盾一破就很脆。',
@@ -1198,8 +1201,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 200,
     scanResMm: 350,
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
-    armorResist: {"explosive":0.5},
-    hullResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
+    // 2026-09-17 船长：「D族船，装甲爆炸抗性和结构所有抗性移除」⇒ 本舰只留盾层抗性（0.25×3）
     description: '陵墓的重装巡洋舰：盾厚甲薄、炮位最多、舱容最大——靠盾与抗性站在阵线中央。',
   },
   {
@@ -1218,7 +1220,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.7,
     evasion: 0.105,
     hitBonus: 0.17,
-    // 2026-09-17 船长：本舰按档位给加成后**移除**原 powerBonus（装甲舰改为按档位给甲层抗性）
+    powerBonus: 0.2, // 2026-09-17 船长：「鱼雷舰获得伤害倍率+0.2」⇒ 装甲舰例外：这笔是**子分类**给的（船长：「移除不会影响子类型给予的属性」）
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（115↔60，总血 255 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
     // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；
     // **壳等离子抗 0.25 保留**（船长选甲案：E 族「结构吃等离子轻」的族格与用不用盾无关）。
@@ -1398,7 +1400,7 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.493,
     evasion: 0.005,
     hitBonus: 0.11,
-    powerBonus: 0.25, // 2026-09-17 船长：武装舰按档位给单发加成（T3 = +25%）
+    powerBonus: 0.45, // 2026-09-17：档位 T3 +25% ＋ 子分类鱼雷舰 +20% = +45%（船长：「鱼雷舰获得伤害倍率+0.2」）
     shieldHp: 345,
     armorHp: 185,
     hullHp: 225,

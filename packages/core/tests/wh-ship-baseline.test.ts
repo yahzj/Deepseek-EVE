@@ -85,13 +85,14 @@ describe('官方 T3 槽位对齐（船长 2026-09-14：「2.鹦鹉螺+1槽位，
 
 describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
   it('两艘鱼雷舰的数值（火力/命中/回避/槽位）', () => {
-    // 2026-09-17：E 构件鱼雷舰归装甲舰 ⇒ powerBonus 移除（改给甲层抗性）；亡军鱼雷舰按武装舰 T3 档 = 0.25
-    expect(TORP_E.powerBonus, '装甲舰不再吃单发加成').toBeUndefined()
+    // 2026-09-17：E 构件鱼雷舰归装甲舰（档位单发加成已移除），但**子分类「鱼雷舰」+0.2 保留**
+    // （船长：「鱼雷舰获得伤害倍率+0.2」＋「移除不会影响子类型给予的属性」）；亡军鱼雷舰 = 档位 T3 0.25 + 0.2
+    expect(TORP_E.powerBonus, '装甲舰 + 子分类鱼雷舰 +20%').toBe(0.2)
     expect(TORP_E.hitBonus).toBe(0.17) // 不动
     expect(TORP_E.evasion).toBe(0.105) // 不动
     expect(TORP_E.slots).toEqual({ high: 4, mid: 2, low: 2 }) // 已在线上，不动
 
-    expect(TORP_G.powerBonus, '武装舰 T3 档位值').toBe(0.25)
+    expect(TORP_G.powerBonus, '武装舰 T3 档位 0.25 ＋ 子分类鱼雷舰 0.2').toBe(0.45)
     expect(TORP_G.hitBonus).toBe(0.11) // 0.21 − 0.10（代价）
     expect(TORP_G.evasion).toBe(0.005) // 0.105 − 0.10（代价：界面显示 1%）
     expect(TORP_G.slots).toEqual({ high: 6, mid: 4, low: 2 })
@@ -109,8 +110,8 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
       return base.shotDmg ?? -1 // WeaponSpec.shotDmg 为可选字段；本路径（炮台）必填，-1 让缺失时断言直接红
     }
     // 零技能、零装配 ⇒ dmgScale = (1+火力) ⇒ 基础舰炮基数 8
-    expect(baseShot(eUid)).toBe(8) // 装甲舰：无火力加成 ⇒ 8
-    expect(baseShot(gUid)).toBe(Math.round(8 * 1.25)) // 武装舰 T3 = 10
+    expect(baseShot(eUid)).toBe(Math.round(8 * 1.2)) // 装甲舰 + 子分类鱼雷舰 0.2 ⇒ 10
+    expect(baseShot(gUid)).toBe(Math.round(8 * 1.45)) // 武装舰 T3 0.25 ＋ 鱼雷舰 0.2 ⇒ 12
   })
 
   it('亡军的命中/回避代价真进战斗规格', () => {
@@ -129,8 +130,8 @@ describe('鱼雷舰强化批：数值落地 + 真进战斗公式', () => {
     const base = bal.basePower + bal.powerPerLevel * 0 // 零技能
     const eUid = addShipToFleet(state, 'sh-wh-e-frigate')
     const gUid = addShipToFleet(state, 'sh-wh-g-cruiser')
-    expect(calcPower(state, ctx, eUid)).toBe(Math.round(base * 1)) // 装甲舰：无单发加成
-    expect(calcPower(state, ctx, gUid)).toBe(Math.round(base * 1.25)) // 武装舰 T3 档位值
+    expect(calcPower(state, ctx, eUid)).toBe(Math.round(base * 1.2)) // 装甲舰 + 子分类鱼雷舰 0.2
+    expect(calcPower(state, ctx, gUid)).toBe(Math.round(base * 1.45)) // 武装舰 T3 0.25 ＋ 鱼雷舰 0.2
   })
 })
 

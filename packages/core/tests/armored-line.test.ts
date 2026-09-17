@@ -99,10 +99,10 @@ describe('装甲线（甲壳族）货舱 −20%（船长 2026-09-15）', () => {
       expect(s.cpu, `${id} CPU`).toBe(w.cpu)
       expect(s.priceIsk, `${id} 行价`).toBe(w.price)
       expect(s.massKg, `${id} 质量`).toBe(w.mass)
-      // 甲壳族抗性：原有甲层「高爆 0.5」保留（族/子分类给的），
+      // 甲壳族抗性：甲层高爆 0.5 → **0.25**（2026-09-17 船长：「陆龟级，玳瑁级，玄武级，爆炸抗性削弱到0.25」），
       // 2026-09-17 船长追加「装甲舰按档位给甲层动能+能量抗性」（陆龟 T2 = 30% / 玳瑁 T3、玄武 T4 = 35%）
       expect(s.armorResist, `${id} 甲壳族抗性`).toEqual({
-        explosive: 0.5,
+        explosive: 0.25,
         kinetic: w.armorResKineticAndPlasma,
         plasma: w.armorResKineticAndPlasma,
       })

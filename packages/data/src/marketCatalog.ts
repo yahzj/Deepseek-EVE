@@ -644,7 +644,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
    * ⚠ 沙猫级（协会保底艇）与邓氏鱼级（无渠道壳体）**有意不补**（船长裁定）——见 roadmap 同日条目。 */
   // ── 舰船图纸 15 张（`sbp-wh-*`：五族各 3，一次性）──
     { key: 'sbp-wh-a-frigate', kind: 'blueprint', refId: 'sbp-wh-a-frigate', rarity: 'exotic', basePrice: 1_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-a-destroyer', kind: 'blueprint', refId: 'sbp-wh-a-destroyer', rarity: 'exotic', basePrice: 2_555_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮艇图纸（一次性）（= 舰价 ×0.5）
+    { key: 'sbp-wh-a-destroyer', kind: 'blueprint', refId: 'sbp-wh-a-destroyer', rarity: 'exotic', basePrice: 2_555_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰图纸（一次性）（= 舰价 ×0.5）
     { key: 'sbp-wh-a-cruiser', kind: 'blueprint', refId: 'sbp-wh-a-cruiser', rarity: 'exotic', basePrice: 4_942_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰图纸（一次性）（= 舰价 ×0.5）
     { key: 'sbp-wh-c-frigate', kind: 'blueprint', refId: 'sbp-wh-c-frigate', rarity: 'exotic', basePrice: 1_307_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰图纸（一次性）（= 舰价 ×0.5）
     { key: 'sbp-wh-c-destroyer', kind: 'blueprint', refId: 'sbp-wh-c-destroyer', rarity: 'exotic', basePrice: 2_822_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰图纸（一次性）（= 舰价 ×0.5）
@@ -718,7 +718,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
     { key: 'mod-wh-g-prop', kind: 'module', refId: 'mod-wh-g-prop', rarity: 'exotic', basePrice: 4_709_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵推进器（料÷0.45×4）
   // ── 虫洞舰船 15 艘（`sh-wh-*`：定制船，`priceIsk` 仍为 0 = 定制口径，契约「舰船价格口径」守）──
     { key: 'sh-wh-a-frigate', kind: 'ship', refId: 'sh-wh-a-frigate', rarity: 'exotic', basePrice: 2_306_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰（料÷0.45×4）
-    { key: 'sh-wh-a-destroyer', kind: 'ship', refId: 'sh-wh-a-destroyer', rarity: 'exotic', basePrice: 5_109_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮艇（料÷0.45×4）
+    { key: 'sh-wh-a-destroyer', kind: 'ship', refId: 'sh-wh-a-destroyer', rarity: 'exotic', basePrice: 5_109_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰（料÷0.45×4）
     { key: 'sh-wh-a-cruiser', kind: 'ship', refId: 'sh-wh-a-cruiser', rarity: 'exotic', basePrice: 9_884_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰（料÷0.45×4）
     { key: 'sh-wh-c-frigate', kind: 'ship', refId: 'sh-wh-c-frigate', rarity: 'exotic', basePrice: 2_613_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰（料÷0.45×4）
     { key: 'sh-wh-c-destroyer', kind: 'ship', refId: 'sh-wh-c-destroyer', rarity: 'exotic', basePrice: 5_644_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰（料÷0.45×4）
