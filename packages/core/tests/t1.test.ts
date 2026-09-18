@@ -9,7 +9,7 @@ import { createInitialState } from '../src/state'
 import { advanceGame, enqueueSkill } from '../src/engine'
 import { activityOverview } from '../src/activity'
 import { cancelManufacturing, startManufacturing } from '../src/manufacturing'
-import { bountyCooldownMsFor, recallExpedition, setAutoLoopBounty, startExpedition } from '../src/expedition'
+import { advanceAutoLoopBounty, bountyCooldownMsFor, recallExpedition, setAutoLoopBounty, startExpedition } from '../src/expedition'
 import { startMining } from '../src/mining'
 import { startScan } from '../src/explore'
 import { advanceSalvageOp, legMsFor, outboundLegMsFor, startSalvageOp } from '../src/salvaging'
@@ -201,10 +201,54 @@ describe('T1 activityOverview 视图', () => {
     v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
     expect(v.sub).toContain('即将自动再出击')
     expect(v.percent).toBeNull()
-    // 等待当前作业结束 → 无条（busyOther 提示文案）
+    // 等别的作业：**点名**在等哪一类（2026-09-17 报障修复后文案带作业名），无条
     st.mining.active = true
     v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
-    expect(v.sub).toContain('等待当前作业结束')
+    expect(v.sub).toContain('等待采矿结束')
     expect(v.percent).toBeNull()
+  })
+
+  /**
+   * **2026-09-17 玩家报障回归**：「自动清缴一直处于『即将自动再出击』的状态」。
+   *
+   * 根因 = **两处判据漂移**：引擎 `advanceAutoLoopBounty` 会为 5 类作业让路，而活动栏那行自己写了一份
+   * `busyOther`（只认 采矿/航行/待命）⇒ **星图扫描 / 残骸打捞在跑时**引擎在等、行却一路写「即将自动再出击」
+   * （星图扫描能无限期跑 ⇒ 玩家看到"卡死"）。修法 = 判据收成单点 `autoLoopWaitLabel`，两侧共用。
+   */
+  it('报障回归：星图扫描 / 残骸打捞在跑时，重复清剿行**不许**写「即将自动再出击」（判据与引擎同源）', () => {
+    const st = createInitialState({ nowWallMs: 0, seed: 11 })
+    const ct = makeTestCtx({})
+    expect(setAutoLoopBounty(st, ct, 'ano-a').ok).toBe(true)
+    st.bountyCooldowns['ano-a'] = st.gameMs - 1 // 冷却已过 ⇒ 没别的作业就该出发
+    const row = (): string => activityOverview(st, ct).find((a) => a.kind === 'loop')?.sub ?? '(无行)'
+    // ① 基线：没别的作业 ⇒ 「即将自动再出击」
+    expect(row()).toContain('即将自动再出击')
+    // ② **玩家报障的那一种**：星图扫描在跑 ⇒ 行点名等待，且引擎**确实在等**（返回 null，不出发也不停环）
+    st.scanning.active = true
+    expect(row()).toContain('等待星图扫描结束')
+    expect(row()).not.toContain('即将自动再出击')
+    expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    st.scanning.active = false
+    // ③ 残骸打捞：同一类（原先也漏在 busyOther 之外）
+    st.salvaging.active = true
+    expect(row()).toContain('等待残骸打捞结束')
+    expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    st.salvaging.active = false
+    // ④ 采矿 / 航行 / 别的出击：文案保留原语义，只是改成点名
+    st.mining.active = true
+    expect(row()).toContain('等待采矿结束')
+    st.mining.active = false
+    st.transit.active = true
+    expect(row()).toContain('等待航行结束')
+    st.transit.active = false
+    st.expedition.active = true
+    st.expedition.anomalyId = 'ano-other'
+    expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    expect(row()).toContain('等待本次出击结束')
+    expect(row()).not.toContain('即将自动再出击')
+    st.expedition.active = false
+    st.expedition.anomalyId = null
+    // ⑤ 全清 ⇒ 回到「即将自动再出击」（判据不是恒真）
+    expect(row()).toContain('即将自动再出击')
   })
 })
