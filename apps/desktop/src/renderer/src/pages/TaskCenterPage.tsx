@@ -5,7 +5,7 @@
  * 「先选中星系」才渲染，路径绕；船长要的是**从左侧导航直达**。搬家后：
  * - **一级页不滚**（红线）：本页固定一屏高、`page-fill`；滚动只发生在**内层列表**里（`TaskPanel` 自己的容器）；
  * - **内层标签照搬**（重要任务 / 资源任务 / 快递任务 / 赏金任务），跳转定位仍走 `taskFocus`
- *   （通讯与教程步骤的「前往任务中心」都带内层标签 —— 见 core `CommsJumpPage` 的 `'task'`）。
+ *   （通讯的「前往任务中心」与开场信都带内层标签 —— 见 core `CommsJumpPage` 的 `'task'`）。
  */
 import type { GameEngine } from '../game/engine'
 import type { PageProps } from './common'
