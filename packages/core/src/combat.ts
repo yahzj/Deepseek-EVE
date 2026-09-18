@@ -3124,7 +3124,7 @@ function announceStealthStart(b: import('./state').BattleState): void {
   for (const u of Object.values(b.units)) {
     if (u.side !== 'me' || u.stealthUntilMs === undefined) continue
     const sec = Math.max(0, Math.round((u.stealthUntilMs - b.lastTickGameMs) / 1000))
-    pushBattleNotice(b, `隐秘行动：${u.name} 进入隐身（${sec} 秒内不被锁定、不被攻击；基础舰炮在此期间不开火）`)
+    pushBattleNotice(b, `隐秘行动：${u.name} 进入隐身（${sec} 秒内不被锁定、不被攻击）`)
   }
 }
 
