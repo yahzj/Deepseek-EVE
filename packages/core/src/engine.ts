@@ -38,7 +38,7 @@ import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans, advanceOnboardingAuto } from './onboarding'
 import { advanceComms } from './comms'
-import { FIRST_TASKS, advanceFirstTasks, grantFirstReward } from './firstTasks'
+import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks, grantFirstReward } from './firstTasks'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -183,6 +183,8 @@ export function advanceGame(
     const def = FIRST_TASKS.find((d) => d.id === id)
     if (def) grantFirstReward(state, def)
   }
+  // 后续次数链：越过新档位 ⇒ 每级发一次 ISK（记账在 importantTasks 的 chain-* 键上）
+  advanceFirstChains(state)
 }
 
 /** 技能队列推进（内部函数，不对外） */

@@ -276,6 +276,27 @@ export function grantFirstReward(state: GameState, def: FirstTaskDef): void {
   const isk = def.reward?.isk ?? 0
   if (isk > 0) state.wallet.isk += isk
 }
+/**
+ * **链任务升级**（引擎每拍调用）：某条链的进度越过新的一档 ⇒ **每级发一次 ISK**（CHAIN_REWARD_ISK）。
+ *
+ * 记账复用 importantTasks[chain-<id>].delivered（已达成到第几级；done 恒 false——链没有"做完"），
+ * 老档缺这个键 ⇒ 从 0 起算。返回本次升级的链（调用方当前不写日志，保持既有"离线事件条数"口径）。
+ */
+export function advanceFirstChains(state: GameState): Array<{ id: string; name: string; level: number; isk: number }> {
+  const out: Array<{ id: string; name: string; level: number; isk: number }> = []
+  for (const def of FIRST_TASKS) {
+    if (!def.chain) continue
+    const key = `chain-${def.chain.id}`
+    const { level } = chainProgressOf(state, def.chain)
+    const before = state.importantTasks[key]?.delivered ?? 0
+    if (level <= before) continue
+    state.importantTasks[key] = { done: false, delivered: level }
+    const isk = CHAIN_REWARD_ISK * (level - before)
+    state.wallet.isk += isk
+    out.push({ id: def.chain.id, name: def.chain.name, level, isk })
+  }
+  return out
+}
 /** 任务中心用：按前置过滤后的可见任务（未满足前置 ⇒ 不显示） */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
   return FIRST_TASKS.filter((d) => d.prereq === undefined || state.importantTasks[d.prereq]?.done === true)
