@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **267** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5090** KB · **36535** 行
-- 状态分布：**未标注** 142 · **已确认/已实现** 107 · **进行中** 12 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**17** 份 · 状态未标注 **142** 份
+- 文档总数 **269** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5109** KB · **36720** 行
+- 状态分布：**未标注** 142 · **已确认/已实现** 107 · **进行中** 14 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**18** 份 · 状态未标注 **142** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**185** 份
+- 三、现行设计稿（design）：**187** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**16** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -28,14 +28,14 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 12 KB / 89 行 | 150 / 4 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 13 KB / 90 行 | 152 / 4 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 144 KB / 211 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 49 KB / 554 行 | 70 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 352 KB / 794 行 | 192 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 109 KB / 238 行 | 251 / 10 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 147 KB / 212 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 51 KB / 569 行 | 72 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 352 KB / 794 行 | 194 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 109 KB / 238 行 | 252 / 10 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -51,10 +51,12 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 185 份
+## 三、现行设计稿（design） —— 187 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/copy-rules-20260917.md` | 说明文案规范（≤30 字 · 不写原因解释）· 工作文档 | 进行中（进行中） | 2026-09-17 | 7 KB / 85 行 | 1 / 0 |
+| `docs/design/stealth-base-gun-20260917.md` | 隐身期间「基础舰炮」不开炮（船长 2026-09-17）· 工作文档 | 进行中（进行中） | 2026-09-17 | 6 KB / 83 行 | 0 / 0 |
 | `docs/design/ammo-rename-20260916.md` | 弹药定名批：全族统一到《系+弹药》· 工作文档 | 进行中（进行中） | 2026-09-16 | 8 KB / 107 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260916-combat-insurance.md` | 公告待审稿 · 战斗保险机制上线（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 3 KB / 44 行 | 0 / 1 |
 | `docs/design/announcement-draft-20260916-repair-needs-device.md` | 公告待审稿 · 洞外自动修补需装维修装置（2026-09-16） | 待裁定（待船长审核） | 2026-09-16 | 2 KB / 33 行 | 2 / 0 |
@@ -331,10 +333,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 53 / 9 |
 
-## 附：孤儿文档（0 引用，17 份）
+## 附：孤儿文档（0 引用，18 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/stealth-base-gun-20260917.md`（2026-09-17 · 6 KB）—— 隐身期间「基础舰炮」不开炮（船长 2026-09-17）· 工作文档
 - `docs/design/ammo-rename-20260916.md`（2026-09-16 · 8 KB）—— 弹药定名批：全族统一到《系+弹药》· 工作文档
 - `docs/design/copy-parens-audit-20260916.md`（2026-09-16 · 7 KB）—— 带括号文案重审（跨件对比清零 + 跨件对比契约）· 工作文档
 - `docs/design/fit-hover-detail-20260916.md`（2026-09-16 · 5 KB）—— 装配界面悬停详情（对齐仓库富卡）＋ 提示层被浮层遮挡修复 · 工作文档
