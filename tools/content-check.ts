@@ -1156,6 +1156,56 @@ for (const m of MODULES) {
         '「货柜」紧跟「货物」· 子分类 = 货物（原矿/原材料/气体/冰矿/奢侈品）· 货柜（遗迹安全/图纸/贵重品/军用）',
     )
   }
+
+  /* ── 存档「恢复 / 导入**不**自动备份」契约（船长 2026-09-17：「**导入或者恢复存档时，不要备份现有存档**」）──
+   * 挡回潮：三条覆盖路径里任何一条又"好心"加回防误操作备份，或界面文案又开始承诺自动备份。
+   * 依据：手动「备份当前档」与备份列表**照旧**（要留退路由玩家自己先点一次）。 */
+  {
+    const mainPath = 'apps/desktop/src/main/index.ts'
+    const mainSrc = stripComments(readSrc(mainPath)).join('\n')
+    const restoreAt = mainSrc.indexOf("ipcMain.handle('save:restore'")
+    check(restoreAt >= 0, `存档不自动备份契约：${mainPath} 里找不到 \`save:restore\` 处理器`)
+    if (restoreAt >= 0) {
+      const nextHandler = mainSrc.indexOf('ipcMain.handle(', restoreAt + 10)
+      const body = mainSrc.slice(restoreAt, nextHandler < 0 ? undefined : nextHandler)
+      check(
+        !body.includes('backupCurrentSave('),
+        `存档不自动备份契约：${mainPath} 的 \`save:restore\` 又在覆盖前备份当前档了（船长 2026-09-17：恢复不备份）`,
+      )
+    }
+    const stPath = 'apps/desktop/src/renderer/src/game/storage.ts'
+    const stSrc = stripComments(readSrc(stPath)).join('\n')
+    const stAt = stSrc.indexOf('async restore(name')
+    check(stAt >= 0, `存档不自动备份契约：${stPath} 里找不到网页分支的 \`restore\``)
+    if (stAt >= 0) {
+      const bodyEnd = stSrc.indexOf('\n  },', stAt)
+      const body = stSrc.slice(stAt, bodyEnd < 0 ? undefined : bodyEnd)
+      check(
+        !body.includes('BP_PREFIX'),
+        `存档不自动备份契约：${stPath} 的网页分支 \`restore\` 又在覆盖前备份当前档了（与桌面同口径，2026-09-17）`,
+      )
+    }
+    const enPath = 'apps/desktop/src/renderer/src/game/engine.ts'
+    const enSrc = stripComments(readSrc(enPath)).join('\n')
+    const imAt = enSrc.indexOf('async importSaveFromFile(')
+    check(imAt >= 0, `存档不自动备份契约：${enPath} 里找不到 \`importSaveFromFile\``)
+    if (imAt >= 0) {
+      const body = enSrc.slice(imAt, imAt + 4000)
+      check(
+        !body.includes('saveBridge.backup()'),
+        `存档不自动备份契约：${enPath} 的导入流程又在覆盖前备份当前档了（船长 2026-09-17：导入不备份）`,
+      )
+    }
+    const smPath = 'apps/desktop/src/renderer/src/panels/SaveManager.tsx'
+    const smSrc = stripComments(readSrc(smPath)).join('\n')
+    check(
+      !smSrc.includes('已自动备份当前档'),
+      `存档不自动备份契约：${smPath} 的玩家可见文案仍在承诺"已自动备份当前档"（与现行行为不符）`,
+    )
+    console.log(
+      '· 存档不自动备份契约：恢复（桌面主进程 / 网页分支）与导入三条路径均**不**备份原档 · 手动「备份当前档」与备份列表照旧',
+    )
+  }
 }
 
 // 舰船

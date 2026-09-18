@@ -125,14 +125,10 @@ const localStorageBridge: WhaleApi = {
     const key = backupKeyOf(name)
     const text = key === null ? null : ls().getItem(key)
     if (text === null) return { ok: false, error: '找不到该备份。' }
-    // 与桌面一致：覆盖前先把当前档备份一份
-    const current = ls().getItem(SAVE_KEY)
-    if (current !== null) {
-      const now = new Date()
-      let bk = stampOf(now)
-      for (let n = 1; ls().getItem(BP_PREFIX + bk) !== null; n += 1) bk = stampOf(new Date(now.getTime() + n))
-      setWithBudget(BP_PREFIX + bk, current)
-    }
+    /**
+     * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 这里**不再**为当前档补一份备份
+     * （桌面主进程那条同款，一起删）。要留退路请先点「备份当前档」——手动备份与备份列表照旧。
+     */
     if (!setWithBudget(SAVE_KEY, text)) return { ok: false, error: '浏览器存储空间不足，恢复失败。' }
     return { ok: true }
   },

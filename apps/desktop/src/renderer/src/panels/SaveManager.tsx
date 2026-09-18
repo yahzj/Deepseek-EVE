@@ -1,5 +1,7 @@
 /**
- * 存档管理（B5）：备份当前档 / 列出备份 / 一键恢复（恢复前自动备份当前档）。
+ * 存档管理（B5）：备份当前档 / 列出备份 / 一键恢复。
+ * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 恢复与导入**都不再**自动备份原档
+ * （桌面主进程、网页分支、导入三条路径一起删）；要留退路只能用「备份当前档」手动备。
  */
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
@@ -50,12 +52,12 @@ export function SaveManager({
     setBusy(false)
     if (!r.ok) onToast(r.error ?? '恢复失败。', true)
     else {
-      onToast(`已恢复到 ${name}（恢复前已自动备份当前档）。`)
+      onToast(`已恢复到 ${name}（未备份原档：要留退路请先点「备份当前档」）。`)
       onClose()
     }
   }
 
-  /** 导入：系统文件选择（桌面/手机网页通用）→ 校验 → 覆盖当前档（覆盖前自动备份） */
+  /** 导入：系统文件选择（桌面/手机网页通用）→ 校验 → 覆盖当前档（⚠ **不备份**原档，2026-09-17 船长） */
   async function handleImport(): Promise<void> {
     setBusy(true)
     const r = await engine.importSaveFromFile()
@@ -63,7 +65,7 @@ export function SaveManager({
     if (r.canceled) return
     if (!r.ok) onToast(r.error ?? '导入失败。', true)
     else {
-      onToast('已从所选文件导入存档（导入前已自动备份当前档）。')
+      onToast('已从所选文件导入存档（未备份原档：要留退路请先点「备份当前档」）。')
       onClose()
     }
   }
@@ -113,7 +115,7 @@ export function SaveManager({
         <div className="app-modal-head">
           <span className="app-report-title">
             存档管理
-            <HintIcon tip="备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。恢复/导入前会自动为当前档再做一次备份（若恢复错了，用列表里最新的备份即可退回）；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。" />
+            <HintIcon tip="备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档（2026-09-17 船长定）——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。" />
           </span>
           <button className="app-btn is-small" onClick={onClose}>
             ✕ 关闭
@@ -124,7 +126,7 @@ export function SaveManager({
             <button className="app-btn is-primary is-small" onClick={() => void handleBackup()} disabled={busy}>
               备份当前档
             </button>
-            <button className="app-btn is-small" onClick={() => void handleImport()} disabled={busy} title="选择一个 .json 存档文件导入（导入前自动备份当前档，并按时间差补齐离线进度）">
+            <button className="app-btn is-small" onClick={() => void handleImport()} disabled={busy} title="选择一个 .json 存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）">
               导入存档…
             </button>
             <button className="app-btn is-small" onClick={() => void handleExportCurrent()} disabled={busy} title="把当前进度保存为你指定的文件">

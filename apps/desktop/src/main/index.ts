@@ -115,12 +115,12 @@ function registerSaveHandlers(): void {
     }
   })
 
-  // 恢复：先把当前档自动备份一份（防误操作），再用目标备份原子覆盖
+  // 恢复：用目标备份原子覆盖当前档（⚠ 2026-09-17 船长：「导入或者恢复存档时，不要备份现有存档」
+  // ⇒ 这里**不再**自动 `backupCurrentSave()`；要留退路请先手动点「备份当前档」）
   ipcMain.handle('save:restore', async (_event, name: unknown) => {
     if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: '非法的备份文件名。' }
     try {
       const dir = app.getPath('userData')
-      await backupCurrentSave() // 自动防误操作
       const text = await fs.readFile(join(dir, name), 'utf8')
       const file = savePath()
       const tmp = `${file}.tmp`
