@@ -36,5 +36,6 @@ const baseline = {
   _generatedBy: 'tools/copy-len-baseline.ts',
   entries: Object.fromEntries([...over].sort((a, b) => a.key.localeCompare(b.key)).map((r) => [r.key, r.text])),
 }
-writeFileSync('tools/copy-len-baseline.json', JSON.stringify(baseline, null, 2) + '\n', 'utf8')
+// 行尾跟仓库一致用 CRLF（本文件存着中文文案；省得每次生成都触发 git 的 LF→CRLF 警告）
+writeFileSync('tools/copy-len-baseline.json', JSON.stringify(baseline, null, 2).replace(/\n/g, '\r\n') + '\r\n', 'utf8')
 console.log(`已写 tools/copy-len-baseline.json：${Object.keys(baseline.entries).length} 条宽限`)
