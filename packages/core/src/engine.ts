@@ -38,7 +38,8 @@ import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans } from './onboarding'
 import { advanceComms } from './comms'
-import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks, grantFirstReward } from './firstTasks'
+import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks } from './firstTasks'
+import { grantFirstReward } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -180,7 +181,18 @@ export function advanceGame(
    */
   for (const id of advanceFirstTasks(state, ctx)) {
     const def = FIRST_TASKS.find((d) => d.id === id)
-    if (def) grantFirstReward(state, def)
+    // 发奖（2026-09-18：奖励表扩充到六个口袋，发放逻辑拆到 `firstRewards.ts`；名字由 ctx 查内容表得到）
+    if (def) {
+      grantFirstReward(state, ctx, def, (kind, id2) =>
+        kind === 'blueprint'
+          ? (ctx.blueprints.get(id2)?.name ?? ctx.shipBlueprints.get(id2)?.name ?? id2)
+          : kind === 'ware'
+            ? (ctx.items.get(id2)?.name ?? id2)
+            : kind === 'module'
+              ? (ctx.modules.get(id2)?.name ?? id2)
+              : (ctx.ships.get(id2)?.name ?? id2),
+      )
+    }
   }
   // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
   // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。

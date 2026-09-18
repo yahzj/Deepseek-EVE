@@ -118,7 +118,7 @@ ok('切换驾驶为沙猫级采矿艇', swap.ok, swap.ok ? '' : swap.error)
 ok('派出采矿被接受', startMining(s, BELT, ctx).ok)
 ok('采到原矿', until(s, () => firstStatOf(s, 'mineUnits') > 0, 20 * 60_000, '采矿'), `mineUnits=${firstStatOf(s, 'mineUnits')}`)
 ok('「第一次采集原矿」判定完成', s.importantTasks['first-mine']?.done === true)
-ok('奖励：动能弹药生产线蓝图 ×1', (s.blueprintStock['bp-ammo-kinetic'] ?? 0) === 1)
+ok('奖励：采集器 MK1 进装备库（船长 2026-09-18 的奖励表）', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
 ok('工业页解锁', unlocked(s, 'industry'))
 // 采一批（精炼按批起炉：**每批 100 单位**，沙猫一趟约 70 ⇒ 新玩家要跑两趟；这就是真实节奏）
 const holdOf = (): number => {
@@ -146,6 +146,7 @@ const refine = startRefineRun(s, oreId, 'pilot', ctx)
 ok('起炉被接受', refine.ok, refine.ok ? '' : refine.error)
 ok('精炼出料', until(s, () => firstStatOf(s, 'refineBatches') > 0, 30 * 60_000, '精炼'), `batches=${firstStatOf(s, 'refineBatches')}`)
 ok('「第一次操作精炼炉」判定完成', s.importantTasks['first-refine']?.done === true)
+ok('奖励：动能弹药生产线蓝图 ×1（按船长 2026-09-18 从②移到本条）', (s.blueprintStock['bp-ammo-kinetic'] ?? 0) === 1)
 
 step('⑥ 第一次生产（组装机）')
 const bpLearn = learnBlueprint(s, ctx, 'bp-ammo-kinetic')
@@ -181,8 +182,15 @@ console.log(`   钱包：${s.wallet.isk.toLocaleString('zh-CN')} 信用点`)
 step('⑧ 第一次完成悬赏（演习场驱逐令 · 含照会战加成）')
 const exp = startExpedition(s, 'ano-training', ctx)
 ok('接取演习场驱逐令', exp.ok, exp.ok ? '' : exp.error)
+const fleetBefore = Object.keys(s.fleet).length
 ok('战斗结束并取胜', until(s, () => firstStatOf(s, 'bountyWins') > 0 || !s.expedition.active, 20 * 60_000, '战斗'))
 ok('「第一次完成悬赏」判定完成', s.importantTasks['first-bounty']?.done === true, `wins=${firstStatOf(s, 'bountyWins')}`)
+ok(
+  '奖励：一艘鲣鱼级进机库（船长 2026-09-18）',
+  Object.keys(s.fleet).length === fleetBefore + 1 &&
+    Object.values(s.fleet).filter((v) => v.defId === 'sh-falconet').length === 2,
+  `机库 ${fleetBefore} → ${Object.keys(s.fleet).length} 艘`,
+)
 console.log(`   钱包：${s.wallet.isk.toLocaleString('zh-CN')} 信用点（含悬赏报酬）`)
 
 step('⑨ 港内维修（第一次维修舰船）')
@@ -192,6 +200,7 @@ const repair = repairShip(s, 'sh-falconet', ctx)
 ok('港内维修鲣鱼', repair.ok, repair.ok ? '' : repair.error)
 advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
 ok('「第一次维修舰船」判定完成', s.importantTasks['first-repair']?.done === true, `repairs=${firstStatOf(s, 'repairs')}`)
+ok('奖励：民用修理组件 ×20（船长 2026-09-18）', (s.warehouse.items['repairkit-civ'] ?? 0) >= 20, `现有 ${s.warehouse.items['repairkit-civ'] ?? 0}`)
 mark('⑦⑧⑨ 挂单 / 卖矿 / 首场悬赏 / 港内维修', s.gameMs)
 
 step('⑩ 领链奖金 + 打两场悬赏攒点现金（训练与维修要花钱）')

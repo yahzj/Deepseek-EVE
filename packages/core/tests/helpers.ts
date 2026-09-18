@@ -324,6 +324,16 @@ export function skipFirstSkillReward(state: GameState): void {
   state.importantTasks['first-skill'] = { done: true }
 }
 
+/**
+ * 用例预置：把**某一条**「第一次」标为已完成 —— 于是不再领它那份奖励。
+ *
+ * 用途同上：机制类用例（虫洞库存、AI 核心账目…）常会顺手满足某条「第一次」的判据（声望/技能/计数），
+ * 引擎首拍就把奖励发下来，把它们的账目顶掉。**要考奖励本身的用例别调它**（见 `first-tasks.test.ts`）。
+ */
+export function markFirstTaskDone(state: GameState, id: string): void {
+  state.importantTasks[id] = { done: true }
+}
+
 /** 快速造星系（opts.security：安全等级——赏金日板按 高安 ≥0.5 / 中安 ≥0 / 低安 <0 分区抽地点） */
 export function galaxy(id: string, name = `星系${id}`, opts?: { security?: number }): GalaxyDef {
   return {

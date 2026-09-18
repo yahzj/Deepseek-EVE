@@ -11,7 +11,8 @@
  * - 样式**照旧面板 `ImportantTasks` 复刻**（`app-imp-*` 家族），不新增 CSS。
  */
 import {
-  CHAIN_REWARD_ISK,
+  CHAIN_REWARD_ISK_BASE,
+  chainPendingRewardIsk,
   chainProgressOf,
   visibleFirstTasks,
 } from '@whale/core'
@@ -104,9 +105,9 @@ export function FirstTasks({
                     isk <= 0,
                   )
                 }}
-                title={`每档 ${CHAIN_REWARD_ISK.toLocaleString('zh-CN')} 信用点`}
+                title={`第 N 级奖金 = ${CHAIN_REWARD_ISK_BASE.toLocaleString('zh-CN')} × N 的五次方`}
               >
-                领奖（{CHAIN_REWARD_ISK * (prog!.level - paid)} 信用点）
+                领奖（{chainPendingRewardIsk(state, chain!.id).toLocaleString('zh-CN')} 信用点）
               </button>
             ) : null}
           </div>

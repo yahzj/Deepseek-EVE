@@ -833,7 +833,10 @@ export {
 export {
   FIRST_TASKS,
   CHAIN_TIERS,
-  CHAIN_REWARD_ISK,
+  /* 链奖金：第 N 级 = 基准 × N⁵（船长 2026-09-18）；领奖额一律走下面两个函数算 */
+  CHAIN_REWARD_ISK_BASE,
+  chainLevelRewardIsk,
+  chainPendingRewardIsk,
   FIRST_UNLOCKS,
   unlocked,
   unlockNeedTitle,
@@ -848,11 +851,13 @@ export {
   advanceFirstTasks,
   advanceFirstChains,
   claimChainReward,
-  grantFirstReward,
   visibleFirstTasks,
   totalSkillLevels,
   dsiStanding,
 } from './firstTasks'
+/* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
+export { grantFirstReward } from './firstRewards'
+export { HOME_SCAN_WINDOW_MS } from './explore'
 export type { FirstTaskDef, FirstStatKey } from './firstTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'
 

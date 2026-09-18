@@ -27,6 +27,14 @@ import type { CommandResult } from './engine'
 
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
 export const SCAN_WINDOW_MS = 10 * 60_000
+/**
+ * **母港的扫描窗口 = 10 秒**（2026-09-18 船长：「**扫描母港的时间缩短至10秒**」）。
+ *
+ * 由来：新档第一步就是扫母港（母港开局与其他星系一样未知），而那一步是**唯一的起步前置**——
+ * 10 分钟的窗口意味着开局先干等十分钟。故母港固定 10 秒，**不吃技能系数、不吃低安惩罚**
+ * （它是一次性的"起步门"，不是可反复优化的作业）。其余星系照旧走 10 分钟基准 × 技能 × 低安。
+ */
+export const HOME_SCAN_WINDOW_MS = 10_000
 /** 低安扫描时长惩罚系数（船长 2026-09-05 定：目标星系 sec < 0.5 时，窗口 ×[1 + 0.8×(0.5−sec)]；
  *  sec=0 时 ×1.4，线性；高安(≥0.5)不延长） */
 export const SCAN_LOWSEC_PENALTY = 0.8
@@ -60,8 +68,10 @@ export function scanWindowMsOf(state: GameState): number {
   return Math.round(SCAN_WINDOW_MS * scanSkillFactor(state))
 }
 
-/** 目标星系的实际扫描窗口（毫秒）：技能缩短 × 低安安全度惩罚（船长 2026-09-05） */
+/** 目标星系的实际扫描窗口（毫秒）：技能缩短 × 低安安全度惩罚（船长 2026-09-05）；
+ *  **母港例外 = 固定 10 秒**（船长 2026-09-18：「扫描母港的时间缩短至10秒」） */
 export function scanWindowMsFor(state: GameState, ctx: SimContext, galaxyId: string): number {
+  if (galaxyId === HOME_GALAXY_ID) return HOME_SCAN_WINDOW_MS
   const galaxy = ctx.galaxies.get(galaxyId)
   const sec = galaxy?.security ?? 1
   const lowPen = sec < 0.5 ? 1 + SCAN_LOWSEC_PENALTY * (0.5 - sec) : 1

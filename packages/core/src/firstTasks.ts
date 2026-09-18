@@ -56,12 +56,26 @@ export interface FirstTaskDef {
   judge: (state: GameState, ctx: SimContext) => number
   /** 完成时发的通讯 id（`messages.ts` 里的 `first-*`） */
   commsId: string
-  /** 奖励：`items` 走蓝图库存（预留接口）；`aiCores` 给 AI 核心实物（**不进仓库**，直接进 `state.aiCores` 账本） */
+  /**
+   * 奖励（2026-09-18 船长逐条裁定；`items` 字段名沿用旧稿但语义已拆清）：
+   * - `isk` 信用点 · `blueprints` 蓝图书（进 `blueprintStock`）· `ware` 仓库物品（进 `warehouse.items`）
+   * - `modules` 装备（进 `moduleBay`）· `ships` 舰船（直接进机库）· `aiCores` AI 核心（进核心账本）
+   * - `wormholeStock` 未探索虫洞处数（进 `wormholeStock`）
+   */
   reward?: {
     isk?: number
-    items?: ReadonlyArray<{ itemId: string; units: number }>
-    /** AI 核心（`type` = `AiCoreType`：basic/gamma/beta/alpha）——2026-09-17 船长：「AI 核心放在'第一次技能'里给」 */
+    /** 蓝图书（`bp-*` / `sbp-*`）——制造时按"已学会或手上有书"判定 */
+    blueprints?: ReadonlyArray<{ blueprintId: string; units: number }>
+    /** 仓库物品（`state.warehouse.items`） */
+    ware?: ReadonlyArray<{ itemId: string; units: number }>
+    /** 装备（`state.moduleBay`，装配页可见） */
+    modules?: ReadonlyArray<{ moduleId: string; units: number }>
+    /** 舰船（直接进机库；同型会自动编号 #2、#3…） */
+    ships?: ReadonlyArray<{ defId: string; units: number }>
+    /** AI 核心（**不进仓库**，直接进 `state.aiCores` 账本） */
     aiCores?: ReadonlyArray<{ type: string; units: number }>
+    /** 未探索虫洞处数（进 `state.wormholeStock`；一次性奖励允许超库存上限） */
+    wormholeStock?: number
   }
   /** 后续"次数"链（阈值表见 `CHAIN_TIERS`） */
   chain?: { id: string; name: string; stat: FirstStatKey | 'scan' | 'skills'; tierKey: string }
@@ -86,8 +100,21 @@ export const CHAIN_TIERS: Readonly<Record<string, readonly number[]>> = {
   skills: [5, 12, 25, 45, 70, 100, 140, 190, 250, 320], // 累计技能等级
 }
 
-/** 链任务发 ISK（船长：「选项1的基础上，考虑顺便给点其他东西」⇒ 链任务给钱，物品留给 items 接口） */
-export const CHAIN_REWARD_ISK = 2_500
+/**
+ * **链奖金基准与"第 N 级奖金"**（2026-09-18 船长：「每级的信用点奖励有些过于少，建议按照级别的 5 次方给予奖励」）。
+ *
+ * 口径：**第 N 级奖金 = 基准 × N⁵**（基准沿用原先的每级 2,500 ⇒ 第 1 级仍是 2,500，往后陡增）：
+ * 1→2,500 · 2→80,000 · 3→607,500 · 4→2,560,000 · 5→7,812,500 · 6→19,440,000 · 7→42,017,500 ·
+ * 8→81,920,000 · 9→147,622,500 · 10→250,000,000。
+ * 领奖时按"已达成级数 − 已领级数"逐级求和（见 `chainPendingRewardIsk` / `claimChainReward`）。
+ */
+export const CHAIN_REWARD_ISK_BASE = 2_500
+
+/** 第 N 级的奖金（N 从 1 起；非正数一律 0） */
+export function chainLevelRewardIsk(level: number): number {
+  const n = Math.max(0, Math.floor(level))
+  return CHAIN_REWARD_ISK_BASE * n ** 5
+}
 
 /** 累计技能等级（Σ trained） */
 export function totalSkillLevels(state: GameState): number {
@@ -121,9 +148,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
-    // ⚠ 唯一带奖励的「第一次」：动能弹药生产线蓝图（产物动能弹药 ×120、材料钛钢合金＝精炼产物）
-    //   ⇒ 正好串起"采集 → 精炼 → 生产"，同时解开"没有蓝图 ⇒ 生产不了 ⇒ 市场锁死"的死锁。
-    reward: { items: [{ itemId: 'bp-ammo-kinetic', units: 1 }] },
+    // 奖励（船长 2026-09-18）：「第一次采集原矿」⇒ **采集器 MK1**（`mod-miner-1`＝强化采集器 MK1）
+    reward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }] },
     chain: { id: 'digger', name: '深空采掘者', stat: 'mineUnits', tierKey: 'mineUnits' },
   },
   {
@@ -133,6 +159,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
+    // 奖励（船长 2026-09-18）：打捞器 MK1
+    reward: { modules: [{ moduleId: 'mod-salvager-1', units: 1 }] },
     chain: { id: 'scavenger', name: '残骸拾荒者', stat: 'salvageRuns', tierKey: 'salvageRuns' },
   },
   {
@@ -141,6 +169,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     brief: '用修理组件或港内维修修一次船',
     judge: (state) => (state.firstStats?.repairs ?? 0),
     commsId: 'first-repair',
+    // 奖励（船长 2026-09-18）：民用修理组件 ×20（船长原话写「民工维修组件」⇒ 按现行物品名 `repairkit-civ` 落地）
+    reward: { ware: [{ itemId: 'repairkit-civ', units: 20 }] },
     chain: { id: 'mechanic', name: '维修技师', stat: 'repairs', tierKey: 'repairs' },
   },
   {
@@ -150,6 +180,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.bountyWins ?? 0),
     commsId: 'first-bounty',
+    // 奖励（船长 2026-09-18）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
+    reward: { ships: [{ defId: 'sh-falconet', units: 1 }] },
     chain: { id: 'hunter', name: '赏金猎人', stat: 'bountyWins', tierKey: 'bountyWins' },
   },
   {
@@ -159,6 +191,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-mine',
     judge: (state) => (state.firstStats?.refineBatches ?? 0),
     commsId: 'first-refine',
+    // 奖励（船长 2026-09-18）：动能弹药生产线蓝图（原挂在②，现按船长裁定移到本条）
+    reward: { blueprints: [{ blueprintId: 'bp-ammo-kinetic', units: 1 }] },
     chain: { id: 'refiner', name: '精炼师', stat: 'refineBatches', tierKey: 'refineBatches' },
   },
   {
@@ -168,6 +202,10 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-mine',
     judge: (state) => (state.firstStats?.produceUnits ?? 0),
     commsId: 'first-produce',
+    // ⚠ 船长 2026-09-18 裁定「给予玩家沙猫级采矿艇蓝图」——但**沙猫级没有舰船蓝图**
+    //   （它是开局白送的船：`ships.ts` 里 `priceIsk: 0`、`SHIP_BLUEPRINTS` 无对应条目、市场也无行）。
+    //   按 §5.2 已上报船长，等他选：①改成现有的 T1 采矿艇蓝图 ②新增一张 `sbp-sandcat`（需他给材料/工时/价格）
+    //   ③改发沙猫舰船本体。裁定前**先留空**，不擅自发明数值。
     chain: { id: 'lineboss', name: '产线主管', stat: 'produceUnits', tierKey: 'produceUnits' },
   },
   {
@@ -186,6 +224,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-produce',
     judge: (state) => (state.firstStats?.ships ?? 0),
     commsId: 'first-ship',
+    // 奖励（船长 2026-09-18）：民用船体维修装置（船长原话写「民用体维修装置」⇒ 按现行装备名落地）
+    reward: { modules: [{ moduleId: 'mod-hullrep-civ', units: 1 }] },
     chain: { id: 'shipwright', name: '造船厂主', stat: 'ships', tierKey: 'ships' },
   },
   {
@@ -221,6 +261,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.haulTrips ?? 0),
     commsId: 'first-haul',
+    // 奖励（船长 2026-09-18）：飞鱼级快运舰（直接进机库）
+    reward: { ships: [{ defId: 'sh-flyingfish', units: 1 }] },
     chain: { id: 'freight', name: '星际货运', stat: 'haulTrips', tierKey: 'haulTrips' },
   },
   {
@@ -231,6 +273,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     // 任务目标就是"完成解锁条件的内容"（船长原话）⇒ 判据 = 声望门槛（虫洞解锁线 40）
     judge: (state) => (dsiStanding(state) >= WORMHOLE_UNLOCK_STANDING ? 1 : 0),
     commsId: 'first-wormhole',
+    // 奖励（船长 2026-09-18）：两次虫洞探索（＝标记 2 处未探索虫洞进库存；允许超库存上限）
+    reward: { wormholeStock: 2 },
     chain: { id: 'abyss', name: '深渊探索者', stat: 'wormholeRuns', tierKey: 'wormholeRuns' },
   },
 ]
@@ -281,27 +325,11 @@ export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
 }
 
 /**
- * **发放一条任务的奖励**（引擎在"新完成"时调用一次）。
- *
- * 三个口子：`items` 走 `blueprintStock`（现阶段唯一的物品奖励是「第一次采集原矿」那张动能弹药蓝图，其余留空
- * —— 船长说的"先把物品奖励接口留出来"就在这里）；`aiCores` 直接进 `state.aiCores` 账本（**核心不进仓库**，
- * 与 `ai.gainAiCore` 同口径；此处就地写而不 import `ai.ts`，是因为 `ai.ts` 反向依赖本模块，一 import 就成环）。
- */
-export function grantFirstReward(state: GameState, def: FirstTaskDef): void {
-  for (const it of def.reward?.items ?? []) {
-    state.blueprintStock[it.itemId] = (state.blueprintStock[it.itemId] ?? 0) + it.units
-  }
-  for (const c of def.reward?.aiCores ?? []) {
-    state.aiCores[c.type] = (state.aiCores[c.type] ?? 0) + c.units
-  }
-  const isk = def.reward?.isk ?? 0
-  if (isk > 0) state.wallet.isk += isk
-}
-/**
- * **链任务升级**（引擎每拍调用）：某条链的进度越过新的一档 ⇒ **每级发一次 ISK**（CHAIN_REWARD_ISK）。
+ * **链任务升级**（引擎每拍调用）：某条链的进度越过新的一档 ⇒ 记下"已达成到第几级"。
  *
  * 记账复用 importantTasks[chain-<id>].delivered（已达成到第几级；done 恒 false——链没有"做完"），
- * 老档缺这个键 ⇒ 从 0 起算。返回本次升级的链（调用方当前不写日志，保持既有"离线事件条数"口径）。
+ * 老档缺这个键 ⇒ 从 0 起算。返回本次升级的链（`isk` = 本次新达成各级的奖金合计，仅作读数，
+ * **不在这里发钱**：ISK 由任务中心领奖时经 `claimChainReward` 发放）。
  */
 export function advanceFirstChains(state: GameState): Array<{ id: string; name: string; level: number; isk: number }> {
   const out: Array<{ id: string; name: string; level: number; isk: number }> = []
@@ -312,17 +340,33 @@ export function advanceFirstChains(state: GameState): Array<{ id: string; name: 
     const before = state.importantTasks[key]?.delivered ?? 0
     if (level <= before) continue
     state.importantTasks[key] = { done: false, delivered: level }
-    // ⚠ **只记账、不在这里加钱**：ISK 由任务中心领奖时经 claimChainReward() 发放
-    out.push({ id: def.chain.id, name: def.chain.name, level, isk: CHAIN_REWARD_ISK * (level - before) })
+    let isk = 0
+    for (let i = before + 1; i <= level; i++) isk += chainLevelRewardIsk(i)
+    out.push({ id: def.chain.id, name: def.chain.name, level, isk })
   }
   return out
+}
+
+/**
+ * **某条链当前可领的奖金**（任务中心卡片显示与领奖共用同一把尺；链不在表里 ⇒ 0）。
+ * 口径 = Σ 第 i 级奖金，i 从"已领级数 + 1"到"已达成级数"（见 `chainLevelRewardIsk`）。
+ */
+export function chainPendingRewardIsk(state: GameState, chainId: string): number {
+  const def = FIRST_TASKS.find((d) => d.chain?.id === chainId)
+  if (!def?.chain) return 0
+  const { level } = chainProgressOf(state, def.chain)
+  const paid = state.firstStats?.[`paid-${def.chain.id}`] ?? 0
+  if (level <= paid) return 0
+  let sum = 0
+  for (let i = paid + 1; i <= level; i++) sum += chainLevelRewardIsk(i)
+  return sum
 }
 
 /**
  * **领取链任务奖金**（任务中心的领奖入口；返回本次发出的 ISK）。
  *
  * 口径：升级记账在 advanceFirstChains()（每拍）；**发钱只在这里**（点一次领一次，避免钱包被悄悄加钱）。
- * 已领额度记在 `firstStats` 的 `paid-<链 id>` 计数上（与终身计数同一张表，零迁移）。
+ * 每级奖金 = 基准 × N⁵（见 `chainLevelRewardIsk`）；已领额度记在 `firstStats` 的 `paid-<链 id>` 上（零迁移）。
  */
 export function claimChainReward(state: GameState, chainId: string): number {
   const def = FIRST_TASKS.find((d) => d.chain?.id === chainId)
@@ -330,7 +374,7 @@ export function claimChainReward(state: GameState, chainId: string): number {
   const { level } = chainProgressOf(state, def.chain)
   const paid = state.firstStats?.[`paid-${def.chain.id}`] ?? 0
   if (level <= paid) return 0
-  const isk = CHAIN_REWARD_ISK * (level - paid)
+  const isk = chainPendingRewardIsk(state, chainId)
   bumpFirst(state, `paid-${def.chain.id}`, level - paid)
   state.wallet.isk += isk
   return isk

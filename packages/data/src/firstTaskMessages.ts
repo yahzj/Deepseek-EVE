@@ -34,7 +34,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     subject: '档案补全 · 采矿与精炼',
     body: [
       '矿带产出原矿；精炼炉把原矿炼成原材料，原材料才是绝大多数蓝图的用料。',
-      '随信附一份「动能弹药生产线」蓝图：材料是钛钢合金，正好由原矿炼出。',
+      '随信附一台采集器 MK1——装上它，采掘效率更高。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-mine' },
     hint: { text: '去工业页看看精炼炉与组装机', page: 'industry' },
@@ -48,6 +48,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '残骸堆拆解出的保底原材料可直接入炉；带稀有标记的残骸价值更高。',
       '回收炉能把残骸里的旧件重新解体成整件装备，值得留一批专门拆。',
+      '随信附一台打捞器 MK1——装上即可用于打捞作业。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-salvage' },
     hint: { text: '在星图里挑一处残骸地点', page: 'map' },
@@ -61,6 +62,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '护盾脱战后自行回满；装甲与结构的损伤会跨场保留，需要修理组件或港内工位处理。',
       '航行前把装甲与结构修到六成以上，能少吃很多亏。',
+      '随信附民用修理组件 ×20——野外应急够用一阵。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-repair' },
     hint: { text: '舰船页可以修理与补给', page: 'ship' },
@@ -74,6 +76,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '悬赏按威胁分档：威胁越高，敌舰越厚、火力越重，报酬与声望也越高。',
       '声望是协会渠道的通行证——市场声望门槛、虫洞扫描解锁都看它。',
+      '随信附一艘鲣鱼级护卫舰——编入舰队或改作副船都行。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-bounty' },
     hint: { text: '星图里的常驻悬赏可以接着打', page: 'map' },
@@ -87,6 +90,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '精炼炉按批运转：料尽自动停炉，装满则按批续烧，主控亲自看炉只占一台。',
       '「精炼学」每级 +6% 产出、「高级回收处理」每级 +3%，两条练满可到 165%。',
+      '随信附一份「动能弹药生产线」蓝图——材料是钛钢合金，正好由原矿炼出。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-refine' },
     hint: { text: '工业页的精炼炉可以多开几台', page: 'industry' },
@@ -126,6 +130,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '第一艘自造船已经下线：舰船蓝图 + 材料 + 机库工位，和造装备是同一条链路。',
       '新船入机库待命；装配页配好槽位与弹档，就能编入出港编队。',
+      '随信附一台民用船体维修装置——结构层能自己回一点。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ship' },
     hint: { text: '去舰船页看看新船', page: 'ship' },
@@ -139,6 +144,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '技能按现实时长训练，队列排好就能一直练；「高效学习法」能压缩全部训练时间。',
       '「AI 核心操作学」是调度副船与自动产线的前置，越早练越省事。',
+      '随信附一枚基础 AI 核心——装到闲置舰船上，它就能自己出海。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-skill' },
     hint: { text: '技能页可以排队训练', page: 'skills' },
@@ -165,6 +171,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '站间运输按趟结算，报酬随行情浮动；船上原本的货不受影响。',
       '低安航段的运输会遇袭，出发前把装甲与结构留足余量。',
+      '随信附一艘飞鱼级快运舰——跑长途用它更合适。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-haul' },
     hint: { text: '星图的长途运输页可以接下一趟', page: 'map' },
@@ -178,6 +185,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '协会声望已够，虫洞扫描阵列可以展开：扫出的通道从第 1 层开始，越深越险、也越肥。',
       '洞内是搜、打、撤三条线——带不回来的，等于没有。',
+      '随信标记 2 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时进入。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-wormhole' },
     hint: { text: '去星图的「扫描虫洞」看看', page: 'map' },

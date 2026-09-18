@@ -13,9 +13,11 @@ import { createInitialState, HOME_GALAXY_ID } from '../src/state'
 import type { GameState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import {
-  CHAIN_REWARD_ISK,
+  CHAIN_REWARD_ISK_BASE,
   FIRST_TASKS,
   advanceFirstChains,
+  chainLevelRewardIsk,
+  chainPendingRewardIsk,
   chainProgressOf,
   claimChainReward,
   firstStatOf,
@@ -24,7 +26,8 @@ import {
 import { startMining } from '../src/mining'
 import { startRecycleRun, startRefineRun } from '../src/industry'
 import { repairShip } from '../src/shipyard'
-import { startScan } from '../src/explore'
+import { startScan, HOME_SCAN_WINDOW_MS, scanWindowMsFor } from '../src/explore'
+import { countAiCore } from '../src/ai'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 const ctx = buildSimContext()
@@ -49,14 +52,21 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     expect(state.importantTasks['first-mine']?.done).toBe(true)
   })
 
-  it('奖励只发一次：那张动能弹药蓝图进一次库存，重复推进不再加', () => {
+  it('奖励只发一次：「第一次采集原矿」发采集器 MK1（船长 2026-09-18），重复推进不再加', () => {
     const state = testState()
     expect(startMining(state, BELT, ctx).ok).toBe(true)
     for (let i = 0; i < 60 && state.importantTasks['first-mine']?.done !== true; i++) advanceGame(state, 5_000, ctx)
-    expect(state.blueprintStock['bp-ammo-kinetic']).toBe(1)
+    expect(state.moduleBay['mod-miner-1']).toBe(1)
     // 再推进一段（计数继续涨）——奖励不再发第二次
     for (let i = 0; i < 20; i++) advanceGame(state, 5_000, ctx)
-    expect(state.blueprintStock['bp-ammo-kinetic']).toBe(1)
+    expect(state.moduleBay['mod-miner-1']).toBe(1)
+  })
+
+  it('母港扫描窗口 = 10 秒（船长 2026-09-18）；其余星系照旧 10 分钟基准', () => {
+    const state = testState()
+    expect(scanWindowMsFor(state, ctx, HOME)).toBe(HOME_SCAN_WINDOW_MS)
+    expect(HOME_SCAN_WINDOW_MS).toBe(10_000)
+    expect(scanWindowMsFor(state, ctx, 'galaxy-far')).toBeGreaterThan(HOME_SCAN_WINDOW_MS)
   })
 
   it('前置未完成 ⇒ 任务在任务中心不显示（船长：「两者都隐藏」）', () => {
@@ -101,7 +111,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstStatOf(state, 'refineBatches')).toBe(before)
   })
 
-  it('港内付费维修记一次（任务：「用修理组件或港内维修修一次船」）', () => {
+  it('港内付费维修记一次（任务：「用修理组件或港内维修修一次船」）＋ 奖励民用修理组件 ×20', () => {
     const state = testState()
     state.wallet.isk = 500_000
     const fal = state.fleet['sh-falconet']!
@@ -112,6 +122,39 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstStatOf(state, 'repairs')).toBe(1)
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-repair']?.done).toBe(true)
+    // 奖励（船长 2026-09-18）：民用修理组件 ×20 进仓库（老档迁移不发奖励，故这里只查新完成的这一档）
+    expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(20)
+  })
+
+  it('「第一次操作精炼炉」发动能弹药生产线蓝图（从②移到本条，船长 2026-09-18）', () => {
+    const state = testState()
+    state.warehouse.items['ore-veldspar'] = 200
+    expect(state.blueprintStock['bp-ammo-kinetic'] ?? 0).toBe(0)
+    expect(startRefineRun(state, 'ore-veldspar', 'pilot', ctx).ok).toBe(true)
+    for (let i = 0; i < 20 && state.importantTasks['first-refine']?.done !== true; i++) advanceGame(state, 60_000, ctx)
+    expect(state.importantTasks['first-refine']?.done).toBe(true)
+    expect(state.blueprintStock['bp-ammo-kinetic']).toBe(1)
+  })
+
+  it('「第一次完成悬赏」发一艘鲣鱼级（同型自动编号 #2，船长 2026-09-18）', () => {
+    const state = testState()
+    const before = Object.keys(state.fleet).length
+    // 判据 = 胜场 ≥ 1；直接置位计数再走一拍引擎（战斗本身由战斗侧用例覆盖）
+    state.firstStats = { ...(state.firstStats ?? {}), bountyWins: 1 }
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-bounty']?.done).toBe(true)
+    expect(Object.keys(state.fleet).length).toBe(before + 1)
+    const added = Object.entries(state.fleet).filter(([, v]) => v.defId === 'sh-falconet')
+    expect(added.length).toBe(2) // 新档本来就有 1 艘鲣鱼 ⇒ 拿到第 2 艘
+  })
+
+  it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
+    const state = testState()
+    state.standings['dsi'] = 40
+    expect(state.wormholeStock?.length ?? 0).toBe(0)
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-wormhole']?.done).toBe(true)
+    expect(state.wormholeStock?.length ?? 0).toBe(2)
   })
 })
 
@@ -128,24 +171,29 @@ describe('「第一次」次数链：记账与领奖分开', () => {
     expect(state.importantTasks['chain-explorer']?.delivered).toBe(1)
     // 记账不发钱：钱包没动
     expect(state.wallet.isk).toBe(createInitialState({ nowWallMs: 0, seed: 11 }).wallet.isk)
-    // 领奖：一次领 1 档 = 2,500；再点一次为 0（幂等）
-    expect(claimChainReward(state, 'explorer')).toBe(CHAIN_REWARD_ISK)
+    // 领奖：第 1 级 = 基准 × 1⁵ = 2,500；再点一次为 0（幂等）
+    expect(claimChainReward(state, 'explorer')).toBe(chainLevelRewardIsk(1))
     expect(claimChainReward(state, 'explorer')).toBe(0)
-    // 再点亮到第 2 档（8 个）⇒ 又记一级；这次领 1 档
+    // 再点亮到第 2 档（8 个）⇒ 又记一级；这次领第 2 级（基准 × 2⁵ = 80,000）
     state.exploredGalaxies = [...ctx.galaxies.keys()].slice(0, 8)
     advanceFirstChains(state)
     expect(state.importantTasks['chain-explorer']?.delivered).toBe(2)
-    expect(claimChainReward(state, 'explorer')).toBe(CHAIN_REWARD_ISK)
+    expect(claimChainReward(state, 'explorer')).toBe(chainLevelRewardIsk(2))
+    expect(chainLevelRewardIsk(2)).toBe(CHAIN_REWARD_ISK_BASE * 32)
   })
 
-  it('一次跨越两档：领奖按"已达成 − 已领"一次结清', () => {
+  it('一次跨越两档：领奖按"已达成 − 已领"逐级求和（2⁵ + 3⁵ 那一档）', () => {
     const state = testState()
     // 直接点亮 12 个星系 = 第 3 档（5/8/12）
     state.exploredGalaxies = [...ctx.galaxies.keys()].slice(0, 12)
     advanceFirstChains(state)
     expect(state.importantTasks['chain-explorer']?.delivered).toBe(3)
-    expect(claimChainReward(state, 'explorer')).toBe(CHAIN_REWARD_ISK * 3)
+    const expectSum = chainLevelRewardIsk(1) + chainLevelRewardIsk(2) + chainLevelRewardIsk(3)
+    expect(chainPendingRewardIsk(state, 'explorer')).toBe(expectSum)
+    expect(claimChainReward(state, 'explorer')).toBe(expectSum)
     expect(claimChainReward(state, 'explorer')).toBe(0)
+    // 基准 2,500、五次方 ⇒ 三级合计 2,500 × (1 + 32 + 243) = 690,000
+    expect(expectSum).toBe(690_000)
   })
 
   it('未知链 id 领奖返回 0（界面误点不炸）', () => {
