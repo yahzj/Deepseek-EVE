@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **266** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5157** KB · **36684** 行
+- 文档总数 **266** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5160** KB · **36694** 行
 - 状态分布：**未标注** 145 · **已确认/已实现** 108 · **待裁定** 7 · **进行中** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**17** 份 · 状态未标注 **145** 份
+- 孤儿文档（0 引用）**16** 份 · 状态未标注 **145** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**182** 份
@@ -32,8 +32,8 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 150 KB / 214 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 55 KB / 604 行 | 66 / 3 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 152 KB / 215 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 56 KB / 609 行 | 66 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 355 KB / 812 行 | 183 / 8 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 87 KB / 262 行 | 249 / 10 |
 
@@ -56,7 +56,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/chain-retune-20260918.md` | 次数链 L10 重标定 ＋ 市场链改口径 ＋ 奖金数额上卡（2026-09-18 船长指令） | 已确认/已实现（已实现） | 2026-09-18 | 11 KB / 122 行 | 0 / 0 |
+| `docs/design/chain-retune-20260918.md` | 次数链 L10 重标定 ＋ 市场链改口径 ＋ 奖金数额上卡（2026-09-18 船长指令） | 已确认/已实现（已实现） | 2026-09-18 | 11 KB / 126 行 | 1 / 0 |
 | `docs/design/announcement-draft-20260917-first-tasks.md` | 公告待审稿：任务重做 ·「第一次」任务系列（2026-09-17 · 2026-09-18 修订） | 待裁定（待船长审核） | 2026-09-17 | 4 KB / 39 行 | 2 / 0 |
 | `docs/design/bio-selfheal-no-capacity-amp-20260917.md` | 生体甲壳板：无消耗自愈不吃装甲容量加成（2026-09-17） | 进行中（进行中） | 2026-09-17 | 6 KB / 60 行 | 0 / 0 |
 | `docs/design/first-tasks-rework-20260917.md` | 教程重做：「第一次」任务系列 ＋ 前置解锁（2026-09-17 · 船长） | 待裁定（实现完成 · 待船长验收） | 2026-09-17 | 28 KB / 255 行 | 2 / 0 |
@@ -330,11 +330,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 51 / 9 |
 
-## 附：孤儿文档（0 引用，17 份）
+## 附：孤儿文档（0 引用，16 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/chain-retune-20260918.md`（2026-09-18 · 11 KB）—— 次数链 L10 重标定 ＋ 市场链改口径 ＋ 奖金数额上卡（2026-09-18 船长指令）
 - `docs/design/bio-selfheal-no-capacity-amp-20260917.md`（2026-09-17 · 6 KB）—— 生体甲壳板：无消耗自愈不吃装甲容量加成（2026-09-17）
 - `docs/design/fit-preset-10-20260917.md`（2026-09-17 · 6 KB）—— 装配方案：上限 10 套 ＋ 明细可查（船长 2026-09-17）· 工作文档
 - `docs/design/lock-aura-fleet-20260917.md`（2026-09-17 · 8 KB）—— 目标锁定阵列：增伤与集火改为「全队生效」（船长 2026-09-17）· 工作文档

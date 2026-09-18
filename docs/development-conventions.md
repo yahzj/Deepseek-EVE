@@ -65,6 +65,11 @@
 - `npm run build`（electron-vite）；结构改动后跑 Electron 冒烟 + 真实存档迁移检查
   （`%APPDATA%\whale-idle\save.json`，动它之前先备份）；
 - 数值/经济改动跑 `npm run balance`（tools/balance-check.ts，三策略 24h 对比）；
+- **任务/次数链/市场收入/技能训练 的"要多久"读数**跑 `npm run balance:chains`（`tools/chain-balance.ts`，
+  2026-09-18 立：船长审「全部级别完成要多久」时把四个临时探针合并入库）——四段 `tasks`（13 条「第一次」
+  任务各自耗时，能跑引擎的实跑）· `chain`（13 条次数链顶档 ＋ 逐级累计，读 `CHAIN_TIERS`，改表后重跑即得新读数）·
+  `market`（交易收入链：各矿种满产卖出的 ISK/小时 ＋ 市场吸纳上限对照）· `skills`（训练时长与满级总级数）；
+  可只跑一段：`npm run balance:chains -- chain`；
 - 临时调试文件（`tools/_*.ts`、`tests/_dbg.test.ts` 之类）**不一律"用后即删"**：按工具纪律
   （第十章）收尾二选一——有复用价值转正式入库，确属一次性才删除。
 
