@@ -1150,8 +1150,10 @@ export const MODULES: readonly ModuleDef[] = [
   },
 
   /* ═══ 2026-09-09 目标锁定阵列（target-lock 家族·高槽；船长拍板：集火 + 被锁目标受击加深；
-     装上任意一件即触发集火模式——本舰全部武器不再随机分散，改打存活编队首位（主舰优先、
-     击毁自动接力）；加深按档位 8/12/20%，多件 EVE 曲线收敛（见 equipment.stackingOf）） ═══ */
+     装上任意一件即触发集火模式——**全队**全部武器不再随机分散，改打存活编队首位（主舰优先、
+     击毁自动接力）；加深按档位 8/12/20%，多件 EVE 曲线收敛（见 equipment.stackingOf）；
+     ⚠ **2026-09-17 船长：「增伤改为全队生效。」＋「集火也是全队生效」** ⇒ 编队取最高一份、
+     增伤与集火都作用于全队（落点 `combat.applyFleetLockAura`，每拍重建处施加）） ═══ */
   {
     id: 'mod-lock-1',
     name: '目标锁定阵列 MK1',
@@ -1159,7 +1161,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     lockDmgBonus: 0.08,
-    description: '目标锁定支援：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +8%（本舰全部武器）。',
+    description: '全队集火编队首位，全队伤害 +8%',
   },
   {
     id: 'mod-lock-2',
@@ -1168,7 +1170,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 14,
     lockDmgBonus: 0.12,
-    description: '目标锁定支援：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +12%（本舰全部武器）。',
+    description: '全队集火编队首位，全队伤害 +12%',
   },
   {
     id: 'mod-lock-3',
@@ -1177,7 +1179,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 26,
     lockDmgBonus: 0.2,
-    description: '目标锁定支援：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +20%（本舰全部武器）。',
+    description: '全队集火编队首位，全队伤害 +20%',
   },
 
   /* ═══ 2026-09-15 隐秘行动装置（船长原话：「添加隐秘行动装置，高槽，效果是自身武器开火前，
@@ -1597,8 +1599,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     lockDmgBonus: 0.3, // 目标锁定阵列 MK3 = 0.2
     cpuUse: 40,
-    description:
-      '锁定即宣判：被本舰锁定的目标受击加深 30%，且全舰武器转为集火同一目标——先敲最硬的那一个。',
+    description: '全队集火编队首位，全队伤害 +30%',
   },
   {
     id: 'mod-wh-d-laser',

@@ -3362,7 +3362,7 @@ function buildMyUnitSpecs(
     if (web0) applyMeWebDebuff(me, web0)
     // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
     if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
-    return [me]
+    return applyFleetLockAura([me])
   }
   const out: UnitSpec[] = []
   for (const entry of fleet) {
@@ -3378,7 +3378,28 @@ function buildMyUnitSpecs(
     if (web) applyMeWebDebuff(spec, web)
     out.push(spec)
   }
-  return out
+  return applyFleetLockAura(out)
+}
+
+/**
+ * **目标锁定阵列：增伤与集火「全队生效」**（船长 2026-09-17：「**增伤改为全队生效。**」＋「**集火也是全队生效**」）——
+ * 编队内任一舰装了 `lockDmgBonus` 件 ⇒ **全队取最高一份**（各舰先按自己那几件走 `curveMult` 收敛、再取最大），
+ * 全队每舰的 `lockedDmgBonus` 都置为该值（船长裁定甲：与指挥舰「全队单发 +15% 取最高不叠加」同口径）。
+ *
+ * 为什么放在这里而不是只写一次：该字段在 `stepBattle` 里**一处驱动两件事**——
+ * ① **集火**「存活编队首位」（`unit.lockedDmgBonus ? firstAliveFoe : randomAliveFoe`：主舰优先、击毁接力）；
+ * ② **增伤**：本舰伤害 ×(1 + 值)（只对"打舰"生效；打敌机不吃，见 `stepBattle` 的机群分支）。
+ * ⇒ 置满全队 = 增伤与集火**同时**全队化。而战斗是**逐拍重建规格**的（`buildMyUnitSpecs`）⇒ 必须在这一处施加，
+ * 与「谜质增益 / 捕获网 / 教学战加成」同一处纪律（只写在开战那一刻会被下一拍冲掉）。
+ *
+ * **零份 ⇒ 一个字段都不写**（没装阵列的编队逐字不变）；**单舰路径取到的就是它自己 ⇒ 逐字等价**
+ * （远征单人 / 遭遇战 / 虫洞单舰的读数不受影响）。件数值（8/12/20/30%）一个不动，**零存档迁移**。
+ */
+function applyFleetLockAura(specs: UnitSpec[]): UnitSpec[] {
+  let best = 0
+  for (const s of specs) best = Math.max(best, s.lockedDmgBonus ?? 0)
+  if (best > 0) for (const s of specs) s.lockedDmgBonus = best
+  return specs
 }
 
 /**
@@ -3752,6 +3773,9 @@ export function startFleetBattleFor(
       }
     }
   }
+  // **目标锁定阵列：全队生效**（船长 2026-09-17）——见 `applyFleetLockAura` 的注释：
+  // 开战这一刻的规格也要置上（首拍用）；**真正的每拍生效靠 `buildMyUnitSpecs` 里同一次调用**。
+  applyFleetLockAura(specs)
   // **谜质 B1：我方静态增益**（抗性 / 命中 / 回避 / 射程 / 单发 / 装填）——只在洞内战斗里生效
   if (matterMods) {
     const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)

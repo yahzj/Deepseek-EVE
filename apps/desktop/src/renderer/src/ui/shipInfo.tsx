@@ -263,8 +263,8 @@ export function moduleShortEffect(mod: ModuleDef): string {
       break
     }
     case 'target-lock':
-      // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深
-      body = `锁定集火：目标受击 +${pctOpt(mod.lockDmgBonus)}`
+      // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深；**2026-09-17 船长：增伤与集火都改「全队生效」**
+      body = `全队集火首位：全队伤害 +${pctOpt(mod.lockDmgBonus)}`
       break
     case 'cpu':
       // 2026-09-11 协处理器：装配 CPU 预算扩容（本件自身不占 CPU——说清，否则玩家会以为要占 0 是 bug）
@@ -563,9 +563,9 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
     if (mod.hitBonusPct !== undefined) out.push({ k: '命中支援', v: `炮台命中 ×${(1 + mod.hitBonusPct).toFixed(2)}` })
     if (mod.evasionGapPct !== undefined) out.push({ k: '回避支援', v: `敌命中 ×${(1 - mod.evasionGapPct).toFixed(2)}（全船生效）` })
   }
-  // 目标锁定阵列
+  // 目标锁定阵列（2026-09-17 船长：增伤与集火都「全队生效」）
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) {
-    out.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
+    out.push({ k: '锁定加深', v: `全队集火首位，全队伤害 +${pct(mod.lockDmgBonus)}` })
   }
   // 协处理器（2026-09-11）：CPU 预算扩容——本职在 cpu 族；写在别的槽位上才算跨族（当前无此件，护栏登记着）
   if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) {
@@ -591,7 +591,7 @@ function crossFamilyShort(mod: ModuleDef): string {
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(`机舱 +${fmt(mod.droneBayBonusM3 ?? 0)} m³`)
   if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) parts.push(`无人机伤害 +${pct(mod.droneDmgBonus ?? 0)}`)
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(`无人机射程 +${pct(mod.droneRangeBonusPct ?? 0)}`)
-  if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(`锁定受击 +${pct(mod.lockDmgBonus)}`)
+  if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(`全队伤害 +${pct(mod.lockDmgBonus)}`)
   if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(`CPU 上限 +${fmt(mod.cpuBonus ?? 0)}`)
   return parts.join(' · ')
 }
@@ -827,10 +827,11 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       })
     }
   } else if (mod.slot === 'target-lock') {
-    // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 被锁目标受击加深
-    lines.push({ k: '集火模式', v: '全部武器集火存活编队首位' })
+    // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 目标受击加深
+    // **2026-09-17 船长：增伤与集火都改「全队生效」**（编队取最高一份）
+    lines.push({ k: '集火模式', v: '全队武器集火存活编队首位' })
     if (mod.lockDmgBonus !== undefined) {
-      lines.push({ k: '锁定加深', v: `被锁目标受本舰伤害 +${pct(mod.lockDmgBonus)}` })
+      lines.push({ k: '锁定加深', v: `全队伤害 +${pct(mod.lockDmgBonus)}` })
     }
   } else if (mod.slot === 'cpu') {
     // 2026-09-11 协处理器（低槽）：装配 CPU 预算扩容；**本件自身不占 CPU**（船长定）——
