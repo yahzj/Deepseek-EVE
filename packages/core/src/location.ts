@@ -128,14 +128,19 @@ export function originGalaxyOf(state: GameState, ctx: SimContext): string {
   return HOME_GALAXY_ID
 }
 
-/** 野外空闲中（非站内且无任何进行中作业） */
+/**
+ * 野外空闲中（非站内且无任何**船只**在跑的作业）
+ *
+ * ⚠ 2026-09-17 去掉 `!state.scanning.active`：星系扫描自 2026-09-15 起是**无人扫描艇**
+ * （船长：「玩家扫描星系将不再占用玩家的主控活动」「不牵动舰船」）⇒ 它不该参与"船只是在野外闲着"的判定
+ * （本条是那批无人化改造漏掉的旧闸之一；本函数唯一调用点 = 「前往」里那句"舰船已在 X 掩护巡逻"的提示）。
+ */
 export function isIdleField(state: GameState): boolean {
   return (
     state.awayGalaxy !== null &&
     !state.transit.active &&
     !state.expedition.active &&
     !state.mining.active &&
-    !state.scanning.active &&
     !state.standby.active &&
     !state.salvaging.active
   )

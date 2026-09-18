@@ -962,11 +962,13 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
     const uid = res.bought > 0 ? res.shipUid : null
     if (uid) {
       // v17：登舰前检查驾驶船是否空闲（忙时先入机库，改舰船页切换，避免打断作业）
+      // ⚠ 2026-09-17 去掉 `!state.scanning.active`：星系扫描自 2026-09-15 起是**无人扫描艇**
+      //   （船长：「玩家扫描星系将不再占用玩家的主控活动」）⇒ 扫描在跑时驾驶船其实是空闲的，
+      //   买船应当**当场登舰**（本条是那批无人化改造漏掉的旧闸之一）。
       const pilotFree =
         state.awayGalaxy === null &&
         !state.transit.active &&
         !state.expedition.active &&
-        !state.scanning.active &&
         !state.mining.active &&
         !state.salvaging.active
       if (pilotFree) {

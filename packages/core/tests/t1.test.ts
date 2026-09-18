@@ -211,11 +211,15 @@ describe('T1 activityOverview 视图', () => {
   /**
    * **2026-09-17 玩家报障回归**：「自动清缴一直处于『即将自动再出击』的状态」。
    *
-   * 根因 = **两处判据漂移**：引擎 `advanceAutoLoopBounty` 会为 5 类作业让路，而活动栏那行自己写了一份
-   * `busyOther`（只认 采矿/航行/待命）⇒ **星图扫描 / 残骸打捞在跑时**引擎在等、行却一路写「即将自动再出击」
-   * （星图扫描能无限期跑 ⇒ 玩家看到"卡死"）。修法 = 判据收成单点 `autoLoopWaitLabel`，两侧共用。
+   * 两层根因（都在本用例里钉住）：
+   * ① **等待表本身带着一条旧闸**：`advanceAutoLoopBounty` 会为 5 类作业让路，其中 **「星图扫描」自
+   *    2026-09-15 起已是无人扫描艇、不占主控**（船长：「玩家扫描星系将不再占用玩家的主控活动」）
+   *    ⇒ 那批无人化改造漏删了这条 ⇒ 扫描在跑时清剿**永远等不到**（扫描可以无限期跑）。
+   * ② **界面与引擎判据漂移**：活动栏那行自写 `busyOther`（只认 采矿/航行/待命）⇒ 上面那种"在等"还会
+   *    被写成「即将自动再出击」，玩家看到的就是"卡死"。
+   * 修法 = 单点 `autoLoopWaitLabel`（两侧共用）+ **把星图扫描从等待表删掉**（残骸打捞保留：它真的占主控）。
    */
-  it('报障回归：星图扫描 / 残骸打捞在跑时，重复清剿行**不许**写「即将自动再出击」（判据与引擎同源）', () => {
+  it('报障回归：**星图扫描不挡清剿**；残骸打捞/采矿/航行/别的出击照旧点名等待（判据与引擎同源）', () => {
     const st = createInitialState({ nowWallMs: 0, seed: 11 })
     const ct = makeTestCtx({})
     expect(setAutoLoopBounty(st, ct, 'ano-a').ok).toBe(true)
@@ -223,16 +227,20 @@ describe('T1 activityOverview 视图', () => {
     const row = (): string => activityOverview(st, ct).find((a) => a.kind === 'loop')?.sub ?? '(无行)'
     // ① 基线：没别的作业 ⇒ 「即将自动再出击」
     expect(row()).toContain('即将自动再出击')
-    // ② **玩家报障的那一种**：星图扫描在跑 ⇒ 行点名等待，且引擎**确实在等**（返回 null，不出发也不停环）
+    // ② **玩家报障的那一种**：星系扫描（无人艇）在跑 ⇒ **不挡清剿**：行照旧，引擎**真的当场出发**
     st.scanning.active = true
-    expect(row()).toContain('等待星图扫描结束')
-    expect(row()).not.toContain('即将自动再出击')
+    expect(row(), '无人扫描艇不该被写成"等待"').toContain('即将自动再出击')
+    expect(row()).not.toContain('等待')
     expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    expect(st.expedition.active, '扫描在跑时清剿应当照常再出发').toBe(true)
+    st.expedition.active = false // 复位：下面几档只测"等待表"
+    st.expedition.anomalyId = null
     st.scanning.active = false
-    // ③ 残骸打捞：同一类（原先也漏在 busyOther 之外）
+    // ③ 残骸打捞：**保留在等待表**（打捞要用主控船与打捞器，确实占主控）
     st.salvaging.active = true
     expect(row()).toContain('等待残骸打捞结束')
     expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    expect(st.expedition.active, '打捞在跑时清剿应当等').toBe(false)
     st.salvaging.active = false
     // ④ 采矿 / 航行 / 别的出击：文案保留原语义，只是改成点名
     st.mining.active = true
