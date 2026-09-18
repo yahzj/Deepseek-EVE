@@ -717,7 +717,8 @@ export function unstoreShip(state: GameState, defId: string, ctx: SimContext): C
   state.shipStore![defId] = n - 1
   if (state.shipStore![defId] <= 0) delete state.shipStore![defId]
   const uid = addShipToFleet(state, defId)
-  bumpFirst(state, 'ships') // 第一次任务/链：造出的自造船数
+  // ⚠ 2026-09-18 修：这一行原先误放在"从舰船仓库转入舰队"这条路径上——**这不是"造出"**，
+  //   「第一次造船」的计数改落在 `manufacturing.ts` 的造船交付处（与 `firstShipBuilt` 同一处）。
   addLog(state, 'info', `${shipDisplayName(state, ctx, uid)} 已从舰船仓库转入舰队（机库）。`)
   return { ok: true }
 }
