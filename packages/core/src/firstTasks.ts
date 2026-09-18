@@ -335,6 +335,27 @@ export const FIRST_UNLOCKS: Readonly<Record<string, string>> = {
   mapHaul: 'first-scan', // 星图·长途运输 ← 第一次扫描
 }
 
+/**
+ * **「第一次完成悬赏」的照会战加成**（2026-09-17 教程重做：原属"试炼步骤"的教学战加成改挂到这条任务上）。
+ *
+ * 判据 = 打的是**演习场驱逐令** ＋ **本舰主控** ＋ 这条任务**未完成** ⇒ 命中/回避各 +0.5（仅该场）。
+ * 渲染侧（`combat.ts` 每拍规格重建）与预估侧（`winEstimate.ts` 的快照）走**同一个判据**，
+ * 所以悬赏卡上显示的胜率与实战一致（快照必须同步 `importantTasks['first-bounty']`）。
+ */
+export function isFirstBountyBattle(state: GameState, anomalyId: string | null, shipId: string): boolean {
+  return anomalyId === 'ano-training' && shipId === state.shipId && state.importantTasks['first-bounty']?.done !== true
+}
+
+/** 照会战加成的命中/回避值（船长 2026-09-05 定 0.5；模拟 6/6 种子稳胜 ≤25s） */
+export const FIRST_BOUNTY_HIT_BONUS = 0.5
+export const FIRST_BOUNTY_EVASION_BONUS = 0.5
+
+/** 把照会战加成注入玩家规格（调用方在每拍重建规格处使用） */
+export function applyFirstBountyBuff(spec: { hitBonus: number; evasion: number }): void {
+  spec.hitBonus += FIRST_BOUNTY_HIT_BONUS
+  spec.evasion += FIRST_BOUNTY_EVASION_BONUS
+}
+
 /** 该页面/页签是否已解锁（表里没有的 key ⇒ 恒真 = 开局可用） */
 export function unlocked(state: GameState, key: string): boolean {
   const need = FIRST_UNLOCKS[key]

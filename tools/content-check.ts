@@ -55,7 +55,6 @@ import {
   COMMS_MESSAGES,
   COMMS_FACTIONS,
   FACTION_AVATARS,
-  TUTORIAL_TOTAL,
   DIALOGUES,
   STATION_SITES,
   GALAXIES,
@@ -5904,7 +5903,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
   /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set([
-    'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial',
+    'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
   // 2026-09-16 首次遭遇某敌舰级（船长：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯）
@@ -6057,13 +6056,6 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         break
       case 'siteBuilt':
         check(siteIds.has(m.trigger.siteId), `通讯 ${m.id} 指向的建站点不存在：${m.trigger.siteId}`)
-        break
-      case 'tutorial':
-        // 教程通讯：0 = 序章简报（信息库检索重启），1..TUTORIAL_TOTAL = 七步教程（与 core 的 ONB_* 同值）
-        check(
-          Number.isInteger(m.trigger.step) && m.trigger.step >= 0 && m.trigger.step <= TUTORIAL_TOTAL,
-          `通讯 ${m.id} tutorial.step 应在 0..${TUTORIAL_TOTAL}：${m.trigger.step}`,
-        )
         break
       case 'lowSec':
         // 死触发器守卫（2026-09-12 星系机制通讯）：数据里必须真的存在低安星系，否则这封信永远不会送达。

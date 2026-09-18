@@ -66,8 +66,10 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
   if (state.expedition.desirePrefByGalaxy !== undefined) {
     ev.expedition.desirePrefByGalaxy = { ...state.expedition.desirePrefByGalaxy }
   }
-  // 教学战加成判定（onboarding.step === ONB_TRIAL && ano-training && 任务未领）——复制进度使评估与实战一致
-  ev.onboarding.step = state.onboarding.step
+  // 照会战加成判定（演习场 + 主控 + 「第一次完成悬赏」未完成）——复制任务状态使评估与实战一致，
+  // 判据见 firstTasks.isFirstBountyBattle（只读 importantTasks，故这里带一份即可）
+  const fb = state.importantTasks['first-bounty']
+  if (fb !== undefined) ev.importantTasks['first-bounty'] = { ...fb }
   ev.shipId = uid
   return { ev, uid }
 }

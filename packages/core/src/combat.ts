@@ -46,7 +46,7 @@ import { shipCategoryKeyOf, uidDefId } from './labels'
 import { resolveFoeMounts } from './foeMounts'
 import { quickRepairFactor } from './repair'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight, weightedSum } from './equipment'
-import { applyTutorialBuff, isTutorialBattle } from './onboarding'
+import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
@@ -3368,8 +3368,8 @@ function buildMyUnitSpecs(
     // **捕获网**（船长 2026-09-16）：每拍重建后重新施加（否则下一拍就"复活"）
     const web0 = battle.meWebDebuffs?.[me.tag]
     if (web0) applyMeWebDebuff(me, web0)
-    // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
-    if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
+    // 「第一次完成悬赏」的照会战加成（演习场 + 主控 + 任务未完成；每拍规格重建处注入）
+    if (isFirstBountyBattle(state, anomalyId, shipId)) applyFirstBountyBuff(me)
     // **指挥舰全舰单发光环**（2026-09-17 修：原先只在开战那一刻乘 ⇒ 被每拍重建冲掉、从未生效）
     applyFleetDamageAura([me], 1 + fleetDamageAuraOf(state, ctx, [shipId]))
     return applyFleetLockAura([me])
@@ -3380,8 +3380,8 @@ function buildMyUnitSpecs(
     if (!spec) continue
     if (matterBuffs) applyMatterPlayerBuffs(spec, matterBuffs, matterFoeMain)
     spec.tag = entry.tag
-    if (entry.tag === 'player' && isTutorialBattle(state, anomalyId, entry.shipId)) {
-      applyTutorialBuff(spec)
+    if (entry.tag === 'player' && isFirstBountyBattle(state, anomalyId, entry.shipId)) {
+      applyFirstBountyBuff(spec)
     }
     // **捕获网**（船长 2026-09-16）：同上，逐舰按账本施加
     const web = battle.meWebDebuffs?.[entry.tag]
@@ -3511,8 +3511,8 @@ export function startBattleFor(
     me.hp.a = Math.max(0, me.hp.a * armorMul)
     me.hp.h = Math.max(0, me.hp.h * hullMul)
   }
-  // 序章·苏醒：教学战加成（开战规格重建处也注入，命中/回避影响后续弹道与 UI 读到的克制无涉）
-  if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
+  // 照会战加成（开战规格重建处也注入，命中/回避影响后续弹道与 UI 读到的克制无涉）
+  if (isFirstBountyBattle(state, anomalyId, shipId)) applyFirstBountyBuff(me)
   // 多波（2026-09-09）：开战只生成第一波；后续波由 advanceBattleFor 在敌方全灭时补刷
   const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
   const foes = waves

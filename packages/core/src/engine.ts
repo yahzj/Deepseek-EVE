@@ -36,7 +36,7 @@ import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
-import { advanceFindHumans, advanceOnboardingAuto } from './onboarding'
+import { advanceFindHumans } from './onboarding'
 import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks, grantFirstReward } from './firstTasks'
 import { advanceSideTasks } from './sideTasks'
@@ -168,7 +168,6 @@ export function advanceGame(
   // 离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）
   advanceSideTasks(state, ctx, opts?.nowWallMs)
   // 序章·苏醒：教程自动推进判定（采集达标/修复完成/技能归档/分身就位；廉价，仅教程进行中）
-  advanceOnboardingAuto(state, ctx)
   // 通讯收件箱（2026-09-11）：数据消息按触发条件送达 + 未读记账（幂等；表为空时零开销）
   advanceComms(state, ctx)
   // 贯穿任务「寻找人类」阶段目标：探索全部星系（里程碑只记一次；未发布/已完成时零开销）

@@ -49,7 +49,6 @@ import {
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules } from './equipment'
-import { claimTutorialTrialReward } from './onboarding'
 import {
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
@@ -601,8 +600,6 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         state.rareWreckDryStreak = streak // 空手：累计（下次掷骰时判保底）
       }
     }
-    // 序章·苏醒：教学战（演习场驱逐令）取胜 → 发放试炼奖励并推进教程步骤
-    claimTutorialTrialReward(state, anomaly.id)
     // T8 悬赏冷却：结算时刻开始计时（与自动返航并行）
     setBountyCooldown(state, ctx, anomaly.id)
     exp.battle = null

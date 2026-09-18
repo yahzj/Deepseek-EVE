@@ -17,7 +17,7 @@ import type { WormholeState } from './wormhole'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 25
+export const CURRENT_STATE_VERSION = 26
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -1765,8 +1765,18 @@ export type GameStateV25 = Omit<GameStateV24, 'version'> & {
    */
   firstStats?: FirstStats
 }
-/** 对外统一称呼：当前版本状态（v25 = v24 + 虫洞副本状态） */
-export type GameState = GameStateV25
+/**
+ * 第二十六版存档结构（当前版本）：**v26 = v25 + 「第一次」任务系列上线时的一次性老档判定**（2026-09-17 教程重做）。
+ *
+ * 结构本身没动（irstStats 仍是可选字段）——**升版只为给"老档判定"一个只跑一次的落点**：
+ * v25 及更早的档在读取时把 13 条「第一次」整体判为已完成（通讯由 irstTask 触发器自然补送、**不发奖励**），
+ * 新档（v26 起）才从零走「第一次」流程（页面/页签前置锁定因此**只对新档生效**，老档不倒退）。
+ */
+export type GameStateV26 = Omit<GameStateV25, 'version'> & {
+  version: 26
+}
+/** 对外统一称呼：当前版本状态（v26 = v25 + 老档「第一次」一次性判定） */
+export type GameState = GameStateV26
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -1808,12 +1818,11 @@ export type GameStateV22 = Omit<GameStateV21, 'version'> & {
   version: 22
 }
 
-/** 序章/新手引导进度（2026-09-05 序章·苏醒：-1 = 未开始（老档/跳过），0..N = 教程进行中，99 = 已完成） */
+/** 序章进度（2026-09-05 序章·苏醒；**2026-09-17 教程重做后只剩两态**）：
+ * `0` = 序章演出中（渲染层 `PrologueScreen` 推进），`99` = 已完成/老档/经典开局。
+ * 旧档的 -1（未开始）／0.5（简报）／1..8（七步教程中）由 `save.ts` 一律读成 99。 */
 export interface OnboardingState {
   step: number
-  /** 出售教学（步骤 3）：交付完成时的钱包 ISK 基线——此后钱包超过基线（卖出矿石得款）才达标推进。
-   * 用钱包而非仓库余量判定：装船/挪货不动钱包，不会误推进（2026-09-08 船长确认 BUG 修复；零迁移可选字段） */
-  sellIskBaseline?: number
 }
 
 /** 重要任务状态（任务中心「重要任务」分类；key = 数据目录任务 id） */
@@ -2132,11 +2141,11 @@ export function createInitialState(opts?: {
   seed?: number
   nowWallMs?: number
   prologue?: boolean
-}): GameStateV25 {
+}): GameStateV26 {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV25 = {
-    version: 25,
+  const state: GameStateV26 = {
+    version: 26,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -2337,7 +2346,9 @@ export function createInitialState(opts?: {
     rareOpenedUnits: {}, // 已开过高级箱的稀有残骸存量（m³；2026-09-11「一件 = 一箱」第二道锁）
     rareBoxesOpened: {}, // 该型残骸累计已开箱数（与 rareBurnUnits 配对：允许箱数 = ⌊累计已烧/30⌋）
     rareBurnUnits: {}, // 该型残骸累计已烧体积（m³）
-    onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
+    // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出）；其余（老档/经典开局/工具与用例）=
+    // **已完成（99）**——2026-09-17 教程重做后只剩"演出中/已完成"两态（见 OnboardingState）
+    onboarding: { step: prologue ? 0 : 99 },
     importantTasks: {},
     // 「第一次」任务系列的终身计数（2026-09-17 教程重做批）：**新档不写这个键**——首次 bumpFirst 才建，
     // 老档/新档快照因此逐字一致（真零迁移）；读侧一律按缺省 0（`firstStatOf`）。

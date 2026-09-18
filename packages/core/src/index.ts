@@ -40,8 +40,6 @@ export type {
   CommsDeptDef,
   CommsFactionAlignment,
   CommsKind,
-  CommsActionDef,
-  CommsActionCommand,
   AiCoreType,
   BalanceConfig,
   MarketRarity,
@@ -605,7 +603,6 @@ export {
   deliverDialogueToComms,
   markAllCommsRead,
   markCommsRead,
-  runCommsAction,
 } from './comms'
 export type { StationSiteProgress } from './state'
 
@@ -795,45 +792,14 @@ export {
 } from './save'
 
 export {
-  ONB_OFF,
+  /* 序章·苏醒（2026-09-17 教程重做后只剩"演出 + 收尾"；线性七步已退场） */
   ONB_AWAKEN,
-  ONB_BRIEFING,
-  ONB_MINE,
-  ONB_DELIVER,
-  ONB_SELL,
-  ONB_REPAIR,
-  ONB_TRIAL,
-  ONB_SKILL,
-  ONB_DIVIDE,
-  ONB_EPILOGUE,
   ONB_DONE,
-  TUTORIAL_DELIVER_ITEM,
-  TUTORIAL_DELIVER_N,
-  TUTORIAL_MINE_GOAL,
-  TUTORIAL_REWARD_ISK,
-  TUTORIAL_REWARD_TURRET,
-  TUTORIAL_REWARD_AMMO,
-  TUTORIAL_REWARD_AMMO_N,
-  TUTORIAL_SKILL_ID,
-  TUTORIAL_BATTLE_HIT_BONUS,
-  TUTORIAL_BATTLE_EVASION_BONUS,
-  TASK_ORE_DELIVER,
-  TASK_TRIAL_WIN,
   TASK_FIND_HUMANS,
   publishFindHumans,
-  tutorialActive,
-  tutorialAccelWait,
-  isTutorialBattle,
-  applyTutorialBuff,
-  beginTutorialAfterAwaken,
-  startTutorialFromBriefing,
-  deliverTutorialOre,
-  claimTutorialTrialReward,
-  grantTutorialSkill,
-  onTutorialSkillPageOpened,
-  advanceOnboardingAuto,
-  finishTutorial,
-  skipTutorial,
+  beginAfterAwaken,
+  skipPrologue,
+  advanceFindHumans,
 } from './onboarding'
 export type { OnboardingState, ImportantTaskState } from './state'
 
@@ -871,6 +837,11 @@ export {
   FIRST_UNLOCKS,
   unlocked,
   unlockNeedTitle,
+  /* 「第一次完成悬赏」的照会战加成（原"试炼步骤"加成改挂任务） */
+  isFirstBountyBattle,
+  applyFirstBountyBuff,
+  FIRST_BOUNTY_HIT_BONUS,
+  FIRST_BOUNTY_EVASION_BONUS,
   bumpFirst,
   firstStatOf,
   chainProgressOf,

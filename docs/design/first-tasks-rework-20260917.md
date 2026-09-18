@@ -1,6 +1,7 @@
 # 教程重做：「第一次」任务系列 ＋ 前置解锁（2026-09-17 · 船长）
 
-> **状态：进行中**（工作文档；**未推送**——阶段①只落了引擎前置面，序章档新玩家在任务系列落地前会卡住，见 §六。
+> **状态：实现完成 · 待船长验收**（工作文档；**四阶段全部落码、五闸门全绿 ＋ 新档流程跑通**，
+> 但 §七 有五条待裁决（第 1 条影响新档经济）⇒ 按 §4 推送闸门**仍未推送**，等裁决后与公告一起走。
 > 船长验收 + 合入 main 后按 AGENTS.md §8 归档三步：并入 roadmap / 词典改写 → 删本文件 → 重跑 `docs:index`）
 
 ## 一、船长原话（照抄 · 三轮问答）
@@ -56,34 +57,77 @@
 | **市场页** | ⑦ 第一次生产 |
 | 扫描虫洞 | 沿用既有：协会声望 ≥ 40（⑬ 的任务目标就是它） |
 
-## 四、阶段①已落码（本次提交）
+## 四、落码清单（四阶段全部完成 · 2026-09-17）
 
+### 阶段①　前置面（母港未知）
 | 文件 | 改动 |
 |---|---|
 | `core/src/state.ts` | 序章档（`prologue: true` = 真实新游戏入口）初始 `exploredGalaxies` ⇒ **`[]`**；非序章档（测试/工具入口）**保持 [母港]** |
 | `core/src/explore.ts` | `isExplored` **删母港豁免** · `actionBlockReason` **删母港豁免** · `frontierGalaxyIds` **把未探索的母港当种子**（否则零探索时无处可扫＝死锁） |
 | `core/src/mining.ts` | 采集的探索闸**从"非母港"改成对所有星系生效**（原先把母港排除在外） |
 | `core/src/salvaging.ts` | 打捞同款：探索闸对所有星系生效，航路检查仍只对外系 |
-| `core/tests/first-steps-gate.test.ts` | 新增 3 条：序章档开局一处不亮＋母港是唯一扫描目标 · 未扫描时采矿被拒/扫完放行 · 非序章档对照不变 |
-| `core/tests/t24.test.ts` | 旧步骤机那条"教学首单采矿"补 `markExplored(母港)` 适配（阶段④会连步骤机一起删） |
 
-## 五、验证（阶段① · 2026-09-17 实测）
+### 阶段②　任务系列本体
+| 文件 | 改动 |
+|---|---|
+| `core/src/firstTasks.ts`（新） | 13 条「第一次」＋ 13 条链 ＋ 阈值表 `CHAIN_TIERS` ＋ `bumpFirst`/`firstStatOf`/`chainProgressOf`/`advanceFirstTasks`/`advanceFirstChains`/`claimChainReward`/`grantFirstReward`/`visibleFirstTasks`；照会战加成 `isFirstBountyBattle`/`applyFirstBountyBuff`（0.5 命中/回避，由原"试炼步骤"改挂任务）；**刻意零运行期 import**（它被 engine/ai/market/wormhole/shipyard 反向依赖，一 import 就成环） |
+| 11 处事件落点 | `mining`(mineUnits) · `salvaging`(salvageRuns) · `market`(orders) · `ai`(aiAssigns×4) · `expedition`(bountyWins) · `industry`(refineBatches) · `manufacturing`(produceUnits) · `shipyard`(ships/repairs) · `wormhole`(wormholeRuns) · `hauling`(haulTrips) |
+| `core/src/engine.ts` | 每拍 `advanceFirstTasks`（发通讯＋发奖励）＋ `advanceFirstChains`（**只记账不发钱**） |
+| `data/src/firstTaskMessages.ts`（新） | 13 封情报信，触发器 `{ kind: 'firstTask', taskId }`，发件方 = 信息库 · 检索重启 |
+| `core/src/save.ts` | `firstStats` 归一（只收有限正数、空表不落盘） |
 
-- typecheck 四包 **0 错** · core **165 文件 / 1,778 例全绿** · `content:check` ✅
-- 负向含义（本阶段的实质）：**未扫描母港 ⇒ 悬赏/采矿/打捞一律被拒**（拒因「该星系尚未探索——先对星图上的「未知信号」执行扫描探索。」）；
-  扫描母港后放行 ✓ 由新用例钉住。
+### 阶段③　界面
+| 文件 | 改动 |
+|---|---|
+| `panels/FirstTasks.tsx`（新） | 任务中心「重要任务」标签新面板：按前置过滤的清单；**完成后同一张卡改成后续次数任务**（船长：「完成'第一次扫描'后就会出现后续任务'宇宙探索家1'」）＋档位进度＋领奖；已完成才出现「看情报」（跳通讯定位那封信） |
+| `App.tsx` | 锁定**改数据驱动**（`unlocked`/`unlockNeedTitle`）：工业/市场导航项**未解锁不渲染**，程序化跳转在 `changePage`/`changeMapTab` 拦一道并提示；序章演出结束 → 落任务中心「重要任务」 |
+| `pages/MapPage.tsx` | `TAB_UNLOCK_KEY`（矿带/悬赏/打捞/运输 ← 第一次扫描），未解锁页签不渲染；`whscan` 仍按声望门槛置灰 |
+| `game/engine.ts` | `claimChainRewardAt()`（点一次领一次；记账仍在每拍） |
+| `panels/ImportantTasks.tsx` | 两张教程卡退役，只剩贯穿任务「寻找人类」 |
 
-## 六、⚠ 为什么**暂不推送**（§4 推送闸门）
+### 阶段④　收尾（删旧教程 ＋ 老档迁移）
+| 删除 | 内容 |
+|---|---|
+| `data/src/tutorialSteps.ts` | 整件删除（七步文案与跳转的唯一出处） |
+| `data/src/messages.ts` | 七封 `tut-1..7` 与旧「训前简报」删除；新开场信 `msg-briefing`（触发 `{kind:'start'}`，跳任务中心） |
+| `core/src/onboarding.ts` | 步骤机、`skipTutorial`、交付/试炼/S5 特典、`advanceOnboardingAuto`、`tutorialAccelWait`、教学战判定全部退役；只剩演出（`ONB_AWAKEN=0`／`ONB_DONE=99`）＋ `beginAfterAwaken`／`skipPrologue`／`publishFindHumans`／`advanceFindHumans` |
+| `panels/TutorialGuide.tsx` | 整件删除（顶部引导条＋光圈＋收尾演出） |
+| 通讯动作机制 | `CommsActionDef`/`CommsActionCommand`/`runCommsAction` 及其 UI 三处接线删除（唯一使用者是旧简报的「开始教程」） |
+| `core/tests/t24.test.ts` | 旧步骤机用例整件删除（新增 `first-tasks.test.ts` 10 例替代） |
+| 计数落点修正 | 阶段②自查发现两处**落错分支**：`refineBatches` 记在**残骸回收**分支（精炼出料反而没记）、`repairs` 记在**自动修理组件**循环（港内付费维修没记）⇒ 均已挪到正确位置并补回归用例 |
 
-阶段①单独上线会让**序章档新玩家卡住**：线性教程第 1 步就是"去丰饶之环采矿"，而母港现在得先扫描。
-必须等**阶段②（任务系列与通讯）＋ 阶段③（任务中心与锁定表）**落地、新玩家有明确指引后才可推。
-⇒ 本阶段**只本地 commit**，标「未推送 · 待续」。
+## 五、老档迁移（v25 → v26）
 
-## 七、后续阶段（按此顺序）
+- **结构没变**（`firstStats` 仍是可选），升版只为让"老档一次性判定"**只跑一次**：
+  v25 及更早的档读入时把 13 条「第一次」**整体判为已完成**（`save.ts` 的 `25:` 迁移），
+  **不发奖励**；13 封情报信由 `{kind:'firstTask'}` 触发器在下一拍**补送**（按 id 幂等）。
+- `onboarding.step`：只认 `0`（正处序章演出）与 `99`（已完成）——老档的 `-1`／`0.5`／`1..8` 一律读成 99。
+- **页面锁定因此只对新档生效**（老档入口不倒退）。
+- `{kind:'start'}` 的开局信改为**序章演出结束即送**（演出盖屏时弹信没意义）。
 
-- **②任务系列**：13 条「第一次」＋13 条链（5/10 级，数据表生成）＋ 判定（事件置位 ＋ 老档兜底）＋ 13 封通讯（含情报）
-  ＋ 把「造好第一条船」的既有触发器并进"第一条船" ＋ 奖励（ISK ＋ 预留物品接口）
-- **③界面**：任务中心新分区（未解锁不显示）· `App.tsx` 锁定表**从教程步骤白名单改为数据驱动的解锁表** ·
-  远征面板的旧「重要任务」面板下线 · 引导条/光圈改按"当前可做的第一次任务"
-- **④收尾**：删 `tutorialSteps.ts` 与七步 `tut-*` 通讯与 `skipTutorial` · 老档一次性判定＋补发通讯 ·
-  删 t24 等步骤机用例 · 全量五闸门 · 公告（**等船长验收后再起草**）
+## 六、验证（2026-09-17 实测）
+
+- **五闸门全绿**：`typecheck`（4 包 0 错）· `test -w @whale/core`（**165 文件 / 1,777 例**）·
+  `content:check` ✅（通讯契约 30 条消息）· `ui:rot-check` ✅ · `build` ＋ `build --prefix web` ✅ ·
+  `tools:audit` ✅（新工具已登记版本自检）
+- **新档端到端流程跑通**（新入库工具 `npm run flow:newgame`，读数型）：零资金新档
+  序章演出结束 → 扫描母港 → 采矿（两趟凑够一批）→ 精炼 → 生产 → 市场挂单 → 5 场演习场驱逐令 →
+  港内维修 → 学 AI 核心操作学 Lv1 → 指派沙猫 AI 采矿，**全部通过**；
+  沿途 9 条「第一次」判定完成、工业/市场/星图四页签按表依次解锁、链记账与领奖（幂等）正确。
+- 负向含义（阶段①）：**未扫描母港 ⇒ 悬赏/采矿/打捞一律被拒**（拒因「该星系尚未探索」）；扫描后放行。
+
+## 七、⚠ 待船长裁决（本批**未推送**，等这几条定了一起走 §4 推送闸门＋公告）
+
+1. **旧教程的两笔赠予随教程一起消失了**（数值影响，建议裁一下）：
+   旧「交付首批原矿」发 **4,000 信用点 ＋ 基础 AI 核心 ×1**、旧「试炼」发 **轻型炮台 MK1 ×1 ＋ 动能弹药 ×120**；
+   现在「第一次」系列只有 ② 送蓝图。实测新档拿第一枚 AI 核心需 **~25,000–26,000 信用点**
+   （链奖金 15,000 ＋ 5 场演习场驱逐令的读数），即"第一次指派 AI 副船"要等到开局半小时以后。
+   **建议**：把这两笔挂到对应「第一次」上（② → ＋4,000 信用点＋基础 AI 核心 ×1；「第一次完成悬赏」→ MK1 ＋ 动能弹药 ×120）
+   ——与船长自己举的例（「例：首次悬赏送 MK1 炮」）同口径，`reward` 接口现成。
+2. **精炼每批 100 单位、沙猫一趟约 70** ⇒ 新玩家开精炼炉必然跑两趟（本批按现状保留，未调数值）。
+3. **页面锁定只对新档生效**（老档一次性判定为已完成 ⇒ 入口照旧）——请确认这个"不倒退"口径。
+4. **收尾演出（原步骤 8 的五句独白）随步骤机退场**：其"乘员失踪／记忆残缺"的叙事由苏醒演出的自检结论
+   与档案残片承担；若要保留那五句，可挂到「寻找人类」发布时。
+5. `ui-geom.ts` / `ui-probe.ts` 两个 UI 读数工具停留在 v24，存档版本升到 v26 后 `tools:audit` 标「需重检」——
+   本批未动它们（属既有欠账），待安排重检。
+

@@ -103,7 +103,6 @@ import {
   dismissCommsPopup,
   markCommsRead,
   markAllCommsRead,
-  runCommsAction,
   completeSideTask,
   sideTaskBoard,
   sideTasksMarkBountySeen,
@@ -130,12 +129,8 @@ import {
   unloadCargoOfShipToWarehouse,
   // 「第一次」任务系列的链奖金（面板上的领奖按钮）
   claimChainReward as claimChainRewardCore,
-  beginTutorialAfterAwaken,
-  skipTutorial,
-  finishTutorial,
-  deliverTutorialOre,
-  onTutorialSkillPageOpened,
-  tutorialAccelWait,
+  beginAfterAwaken,
+  skipPrologue,
   ONB_AWAKEN,
   // 悬赏胜率蒙特卡洛预估（2026-09-09：玩家可见展示口径；预热缓存）
   BOUNTY_MC_RUNS,
@@ -227,7 +222,6 @@ import type {
   CommandResult,
   FitPresetApplyResult,
   UnfitAllResult,
-  CommsActionCommand,
   DamageType,
   GameState,
   LairTier,
@@ -569,7 +563,7 @@ export class GameEngine {
   /**
    * 是否需要 100ms 快速心跳（否则用 500ms 低频挂机心跳——玩家反馈主机高占用后优化）：
    * - 交火中（含已分胜负的击杀慢镜窗口）：战斗按 100ms 实时推进 → 必须保持；
-   * - 教学加速等待段：时间泵 ×6，保持原颗粒度；
+
    * - 远征去程（phase 'out'）：到港边界切割守卫依赖心跳颗粒度，降频后开战弹出延迟 ≤0.5s（原 ≤0.1s）。
    */
   private wantsFastPump(): boolean {
@@ -577,7 +571,6 @@ export class GameEngine {
     if (exp.phase === 'battle' && !!exp.battle) return true
     // 虫洞战斗（F 批）同款：洞内战斗也按 100ms 实时推进（否则 500ms 心跳下战斗画面一顿一顿）
     if (this.state.wormhole.run?.battle) return true
-    if (tutorialAccelWait(this.state)) return true
     if (exp.active && exp.phase === 'out') return true
     return false
   }
@@ -770,8 +763,7 @@ export class GameEngine {
       this.notify()
       return
     }
-    // 序章·苏醒：教学等待段（采集/返航途中）时间泵 ×6（船长 2026-09-05 照准）；交火期不加速
-    const pumpDt = tutorialAccelWait(this.state) ? dt * 6 : dt
+    const pumpDt = dt
     this.pendingMs += pumpDt
     // 去程将在这片余额内到港：推进到“越过到港边界 1ms”，确保核心在本片内触发开战（引擎在
     // 跨过 finishAt 的推进中才执行开战——精确停在边界会留到下一片，且下一片 toArrival=0 使
@@ -2417,14 +2409,6 @@ export class GameEngine {
    * 通讯消息自带动作（2026-09-11 教程融入通讯）：序章简报那封的「按单开工：采集橄榄岩」。
    * 点了才从简报态推进到采集步骤；成功后落盘并通知刷新。
    */
-  runCommsActionAt(command: CommsActionCommand): CommandResult {
-    const r = runCommsAction(this.state, command)
-    if (r.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return r
-  }
 
   /* ─────────────── v24 任务中心·时效任务（资源 / 快递，定时刷新限时有效） ─────────────── */
 
@@ -2687,11 +2671,11 @@ export class GameEngine {
     this.notify()
   }
 
-  /** 序章·苏醒：自检/起名完成 → 写入呼号并进入采集步骤（教程 S1） */
+  /** 序章·苏醒：自检/起名完成 → 写入呼号并结束序章（教程七步已退场，改由任务中心「第一次」承载） */
   prologueAwaken(name: string): CommandResult {
     const n = (name ?? '').trim()
     this.state.character.name = n.length > 0 ? n.slice(0, 12) : 'PRTS'
-    const result = beginTutorialAfterAwaken(this.state)
+    const result = beginAfterAwaken(this.state)
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -2701,37 +2685,7 @@ export class GameEngine {
 
   /** 序章·苏醒：跳过（含演出阶段）——全额结算奖励 + 鲣鱼修满，教程结束 */
   prologueSkip(): CommandResult {
-    const result = skipTutorial(this.state, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
-
-  /** 序章·苏醒：收尾演出播完 → 教程完成（step 99，全解锁） */
-  prologueFinishShow(): CommandResult {
-    const result = finishTutorial(this.state)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
-
-  /** 重要任务①「补给协议·首批矿物」：交付橄榄岩（仓库扣取）→ 4,000 信用点 + 基础 AI 核心 */
-  deliverTutorialOreAt(): CommandResult {
-    const result = deliverTutorialOre(this.state, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
-  }
-
-  /** 序章·苏醒 S5：玩家到达技能页 → 特典即时归档（AI 核心操作学 Lv1，免训练等待）并进入分身步骤 */
-  prologueSkillOpened(): CommandResult {
-    const result = onTutorialSkillPageOpened(this.state)
+    const result = skipPrologue(this.state)
     if (result.ok) {
       void this.persist()
       this.notify()

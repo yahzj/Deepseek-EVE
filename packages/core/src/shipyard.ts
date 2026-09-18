@@ -413,6 +413,8 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   state.wallet.isk -= cost
   fleetShip.durability = 1
   fleetShip.armorPct = 1
+  // 「第一次维修舰船」与「维修技师」链：**港内付费维修**记一次（2026-09-17 教程重做批）
+  bumpFirst(state, 'repairs')
   addLog(state, 'trade', `已完成 ${name} 的全面维修（${cost.toLocaleString('zh-CN')} 信用点），结构/装甲恢复至 100%。`)
   return { ok: true }
 }
@@ -500,7 +502,8 @@ export function repairWithKitsFor(
     if (kitId === null) break
     const def = ctx.items.get(kitId)!
     const heal = kitHealFor(state, ctx, shipId, def.repairRestore!, caps)
-  bumpFirst(state, 'repairs') // 第一次任务/链：维修次数（港内付费）
+    // 「第一次维修舰船」与「维修技师」链：自动修理**每消耗一枚组件记一次**（与手动用组件同口径）
+    bumpFirst(state, 'repairs')
     if (caps) {
       fleetShip.durability = Math.min(1, Math.round((fleetShip.durability + heal.h / caps.capH) * 1000) / 1000)
       fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + heal.a / caps.capA) * 1000) / 1000)
@@ -593,6 +596,8 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
     fleetShip.armorPct = Math.min(1, Math.round(((fleetShip.armorPct ?? 1) + heal.a / caps.capA) * 1000) / 1000)
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
+  // 「第一次维修舰船」与「维修技师」链：手动用掉一枚修理组件记一次（与港内付费维修同口径）
+  bumpFirst(state, 'repairs')
   addLog(
     state,
     'info',

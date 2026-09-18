@@ -21,8 +21,10 @@ export interface TaskFocusTarget {
   seq: number
 }
 
-export function TaskCenterPage({ engine, onToast, taskFocus = null }: PageProps & {
+export function TaskCenterPage({ engine, onToast, taskFocus = null, onOpenComms }: PageProps & {
   taskFocus?: TaskFocusTarget | null
+  /** 「第一次」卡片上的「看情报」：跳到通讯页并选中那封情报信（App 层的 `commsFocus` 定位） */
+  onOpenComms?: (messageId: string) => void
 }) {
   return (
     /**
@@ -31,7 +33,7 @@ export function TaskCenterPage({ engine, onToast, taskFocus = null }: PageProps 
      * 与搬家的原样一致（原先在星图页里也是这一套，页面本身没有新增任何滚动容器）。
      */
     <div className="page-stack page-fill">
-      <TaskPanel engine={engine} onToast={onToast} focusTab={taskFocus} />
+      <TaskPanel engine={engine} onToast={onToast} focusTab={taskFocus} onOpenComms={onOpenComms} />
     </div>
   )
 }

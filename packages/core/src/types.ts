@@ -2175,13 +2175,7 @@ export type CommsTrigger =
   | { kind: 'skill'; skillId: string; level: number }
   | { kind: 'isk'; amount: number }
   | { kind: 'siteBuilt'; siteId: string }
-  /**
-   * 序章教程步骤（2026-09-11 船长定：教程融入通讯——每步开始时把该步指引发成一封通讯）。
-   * `step: 0` = 序章简报（`ONB_BRIEFING = 0.5` 时送达），`1..7` = 七步教程。
-   * 判定：简报要 `onboarding.step >= 0.5`（序章演出 `ONB_AWAKEN = 0` 时还不送），第 N 步要 `>= N`；
-   * **跳过教程**（step → 99）后会把前几步一并补送，收件箱里始终留一份完整教程记录。
-   */
-  | { kind: 'tutorial'; step: number }
+
   /**
    * **低安空域**（2026-09-12 船长定：探索到带特殊机制的星系后，发一封通讯讲解对应机制）。
    *
@@ -2252,20 +2246,6 @@ export interface CommsReplyDef {
   label: string
 }
 
-/**
- * 通讯消息自带动作（2026-09-11 教程融入通讯）：点一下让引擎执行一条命令。
- * 本期只有 `startTutorial`——序章简报那封的「开始教程：采集橄榄岩」，
- * 点了才从「看简报」推进到采集步骤（船长：睁眼后不要立刻开始教程任务，先指引去看通讯）。
- */
-export type CommsActionCommand = 'startTutorial'
-
-/** 消息动作按钮 */
-export interface CommsActionDef {
-  /** 按钮文字 */
-  label: string
-  /** 引擎命令（core 的 `runCommsAction` 分发；未知命令报错不崩） */
-  command: CommsActionCommand
-}
 
 /** 通讯消息（NPC → 玩家；data/src/messages.ts 维护，core 按 trigger 送达） */
 export interface CommsMessageDef {
@@ -2307,8 +2287,6 @@ export interface CommsMessageDef {
    * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
    */
   hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
-  /** 自带动作按钮（可选；见 `CommsActionDef`——序章简报的「开始教程」用它） */
-  action?: CommsActionDef
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
   /**
@@ -2358,8 +2336,6 @@ export interface CommsEntryView {
   read: boolean
   /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签） */
   hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
-  /** 自带动作按钮（`runCommsAction` 执行；界面在正文下方渲染） */
-  action?: CommsActionDef
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
   replies?: readonly CommsReplyDef[]
 }

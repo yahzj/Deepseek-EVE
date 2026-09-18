@@ -77,14 +77,16 @@ describe('winEstimate 蒙特卡洛预估（2026-09-09）', () => {
     expect(Object.keys(state.fleet[uid]!.cargo)).toHaveLength(0) // 快照内弹药不回流真档
   })
 
-  it('快照正确复制战力（装配/技能/耐久/教学进度/无人机清单）', () => {
+  it('快照正确复制战力（装配/技能/耐久/照会战加成判定/无人机清单）', () => {
     const { state, uid } = warriorState()
     const f = state.fleet[uid]!
     f.armorPct = 0.61
     f.durability = 0.42
     f.customName = '测试船甲'
     state.skills.trained['kinetic-gunnery'] = 3
-    state.onboarding.step = 5 // 教程试炼步（复制后 MC 与实战同口径判定 buff）
+    // 照会战加成（演习场 + 主控 + 「第一次完成悬赏」未完成）改读 importantTasks ⇒ 快照必须带上它，
+    // 否则"已完成该任务"的玩家在预估里会白白多一份加成（见 core/firstTasks.isFirstBountyBattle）
+    state.importantTasks['first-bounty'] = { done: true }
     const snap = buildEvalState(state, uid)!
     const ef = snap.ev.fleet[snap.uid]!
     expect(ef.defId).toBe('warrior')
@@ -93,7 +95,7 @@ describe('winEstimate 蒙特卡洛预估（2026-09-09）', () => {
     expect(ef.durability).toBe(0.42)
     expect(ef.customName).toBe('测试船甲')
     expect(snap.ev.skills.trained['kinetic-gunnery']).toBe(3)
-    expect(snap.ev.onboarding.step).toBe(5)
+    expect(snap.ev.importantTasks['first-bounty']?.done).toBe(true)
     expect(ef.cargo['ammo-kinetic-l']).toBe(1_000_000) // 评估弹药给足
     // 快照上评估也不改原档
     expect(state.fleet[uid]!.durability).toBe(0.42)

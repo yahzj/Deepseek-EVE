@@ -115,25 +115,17 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
 export function CommsEave({
   entry,
   onGoto,
-  onAction,
   extra,
 }: {
   entry: CommsEntryView
   /** 跳转出口（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
   onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
-  /** 消息自带动作（如 `startTutorial`）；不传 = 不渲染动作按钮 */
-  onAction?: (command: NonNullable<CommsEntryView['action']>['command']) => void
   /** 追加行（弹窗的「知道了」） */
   extra?: ReactNode
 }): ReactNode {
-  if (!entry.action && !entry.hint && !extra) return null
+  if (!entry.hint && !extra) return null
   return (
     <div className="app-comms-eave">
-      {entry.action && onAction ? (
-        <button className="app-btn is-primary app-comms-action-btn" onClick={() => onAction(entry.action!.command)}>
-          {entry.action.label}
-        </button>
-      ) : null}
       {entry.hint ? (
         <button
           className="app-btn is-primary app-comms-goto"

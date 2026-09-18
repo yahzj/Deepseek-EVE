@@ -705,14 +705,14 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
           state.refineRuns.splice(i, 1)
           addLog(state, 'warn', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`)
           break
-        }      } else if (isRecycle && profile) {
+        }
+      } else if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
         // 所得同时累计进 r.recAcc（停炉/结束日志出明细）
         const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }
         const volumeM3 = qty * def.unitM3
         const out = rollRecycleGuarantee(state, ctx, profile, volumeM3)
         for (const row of out) addWare(state, row.mineralId, row.units)
-  bumpFirst(state, 'refineBatches') // 第一次任务/链：精炼出料批数
         batchIncome += out.reduce((s, row) => s + row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0), 0)
         // 稀有残骸专属：累计已烧体积跨过 `RARE_UNIT_M3`（30 m³）的每一个整数倍，都**必给**一次彩头
         // （2026-09-11 船长定：「每次回收 30 立方米，每次必给彩头」——照普通回收机制走，只把彩头概率提到 100%）。
@@ -803,6 +803,11 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         if (batchIncome > 0) addAiIncome(stats, r.worker, batchIncome)
       }
       r.batchesDone += 1
+      // 「第一次操作精炼炉」与「精炼师」链：**精炼炉**出一批料记一批。
+      // ⚠ 2026-09-17 修（教程重做批自查）：原先这行被落在上面的**残骸回收**分支里 ⇒
+      //   真正的精炼出料没记、回收反而记了，与任务文案（「让精炼炉出一批料」）对不上。
+      //   口径 = 只认精炼炉（残骸回收炉是同一页里的另一台炉，不计入本计数）。
+      if (!isRecycle) bumpFirst(state, 'refineBatches')
       if (isRecycle && r.itemId) {
         // 累计已烧体积（稀有残骸每满 30 m³ 必给一次彩头的账本；随存档落盘，起停不重置）
         state.rareBurnUnits[r.itemId] = (state.rareBurnUnits[r.itemId] ?? 0) + qty

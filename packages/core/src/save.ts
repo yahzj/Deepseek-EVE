@@ -18,6 +18,7 @@ import {
   MAX_SKILL_LEVEL,
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
+import { FIRST_TASKS } from './firstTasks'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
@@ -696,6 +697,32 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     const next: RawState = { ...raw }
     const wh = asRaw(next.wormhole)
     if (wh === null || typeof wh !== 'object') next.wormhole = { run: null, lastFleetLost: 0 }
+    return next
+  },
+  25: (raw) => {
+    /**
+     * v25 -> v26（2026-09-17 教程重做）：「第一次」任务系列的**一次性老档判定**。
+     *
+     * 口径（船长）：「**老档一次性判定与补发通讯**」⇒
+     * - 老档（v25 及更早）**一律把 13 条「第一次」判为已完成**——「第一次」是新玩家的引导清单，
+     *   老档早已越过这一步；判定后任务中心直接显示后续次数任务（能推导的计数按真值算：
+     *   扫描 = 已点亮星系、技能 = Σ 等级；其余终身计数老档没有 ⇒ 链从 0 起）；
+     * - **不发奖励**（奖励只发给真正"第一次"完成的当下）；
+     * - **补发通讯**不需要本迁移动手：`{ kind: 'firstTask' }` 触发器在下一拍看到 done 即送达（按 id 幂等），
+     *   13 封情报信会陆续进收件箱，老档也能回看；
+     * - **不倒退**：页面/页签前置（工业/市场/星图四项）因此**只对新档生效**，老档的入口照旧开着。
+     *
+     * ⚠ 结构没变（`firstStats` 仍是可选字段），升版只为让这段判定**只跑一次**。
+     */
+    const next: RawState = { ...raw }
+    const its = asRaw(next.importantTasks)
+    const merged: RawState = its === null ? {} : { ...its }
+    for (const def of FIRST_TASKS) {
+      const prev = asRaw(merged[def.id])
+      // 保留既有的 delivered/allExplored 等附带字段，只把 done 置真
+      merged[def.id] = { ...(prev ?? {}), done: true }
+    }
+    next.importantTasks = merged
     return next
   },
 }
@@ -2682,23 +2709,14 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  // --- 序章·苏醒（v23 兼容字段）：教程进度（-1 = 未开始）+ 重要任务状态 ---
+  // --- 序章·苏醒（v23 兼容字段）：只剩"演出中(0) / 完成(99)"两态（2026-09-17 教程重做） ---
   const onboardingRaw = asRaw(src.onboarding)
-  // 2026-09-11：**不能 floor 也不能 round**——简报态是 0.5（`ONB_BRIEFING`），
-  // floor 会压成 0（= 序章演出），round 会抬成 1（= 采集步骤），两者都会把玩家放错地方。
-  // 合法步骤是 -1..99 的整档或半档（0.5），故只做合理性钳制、**半档原样保留**。
   const stepRaw = onboardingRaw.step
-  const onboardingStep =
-    typeof stepRaw === 'number' && Number.isFinite(stepRaw) ? Math.min(99, Math.max(-1, stepRaw)) : -1
-  // 出售教学钱包基线（可选；缺省 undefined = 老档/无此步骤时不影响）
-  const sellIskBaselineRaw = onboardingRaw.sellIskBaseline
-  const onboarding = {
-    step: onboardingStep,
-    sellIskBaseline:
-      typeof sellIskBaselineRaw === 'number' && Number.isFinite(sellIskBaselineRaw)
-        ? Math.max(0, Math.floor(sellIskBaselineRaw))
-        : undefined,
-  }
+  // 2026-09-17 迁移：旧档的 -1（未开始）／0.5（简报）／1..8（七步教程中）一律读成 99 ——
+  // 线性教程已退场（内容改由任务中心 13 条「第一次」承载），旧的"进行中"状态没有任何后续步骤可推进；
+  // **只有正处在序章演出里（step 0）的档保留 0**，让他们照常看完开场演出。
+  const onboardingStep = stepRaw === 0 ? 0 : 99
+  const onboarding = { step: onboardingStep }
   const importantTasks: GameState['importantTasks'] = {}
   const itRaw = asRaw(src.importantTasks)
   for (const [key, value] of Object.entries(itRaw)) {

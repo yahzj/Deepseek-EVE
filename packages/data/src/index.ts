@@ -81,8 +81,7 @@ export {
   buildCommsFactionCatalog,
   buildCommsDeptCatalog,
 } from './commsFactions'
-// 2026-09-11 教程融入通讯：序章简报 + 七步教程的文案与跳转（唯一出处；教程通讯与顶部引导条共用）
-export { BRIEFING_INTRO, TUTORIAL_STEPS, TUTORIAL_TOTAL, type TutorialStepDef } from './tutorialSteps'
+export { FIRST_TASK_MESSAGES } from './firstTaskMessages'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 

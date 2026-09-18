@@ -35,7 +35,16 @@ const CHAIN_UNITS: Record<string, string> = {
   skills: '级',
 }
 
-export function FirstTasks({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+export function FirstTasks({
+  engine,
+  onToast,
+  onOpenComms,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** 「看情报」：跳到通讯页并选中这条任务的那封情报信（船长：「完成…后就会有一则通讯告诉玩家情报」） */
+  onOpenComms?: (messageId: string) => void
+}) {
   const state = engine.state
   const tasks = visibleFirstTasks(state)
   const doneN = tasks.filter((d) => state.importantTasks[d.id]?.done === true).length
@@ -45,7 +54,7 @@ export function FirstTasks({ engine, onToast }: { engine: GameEngine; onToast: T
       <div className="app-imp-card">
         <div className="app-imp-card-title">◆ 第一次 · {doneN}/{tasks.length} 已完成</div>
         <div className="app-imp-card-body">
-          想从哪一件开始都行。完成一条会收到一封通讯，其后开出长期次数目标。
+          想做哪一件都行；完成一条会收到一封通讯，并开出长期次数目标。
         </div>
       </div>
       {tasks.map((def) => {
@@ -74,6 +83,15 @@ export function FirstTasks({ engine, onToast }: { engine: GameEngine; onToast: T
                 <div className="app-imp-card-body">{def.brief}</div>
               </>
             )}
+            {/**
+             * 「看情报」：那封信在该条完成时送达（`firstTask` 触发器）——老档的一次性判定也会把信补上，
+             * 所以这里只在"已完成"时出现（未完成时收了也读不懂）。
+             */}
+            {done && onOpenComms ? (
+              <button className="app-btn is-small" title="打开通讯页，读这一条相关的情报" onClick={() => onOpenComms(def.commsId)}>
+                看情报
+              </button>
+            ) : null}
             {claimable ? (
               <button
                 className="app-btn is-small is-primary"

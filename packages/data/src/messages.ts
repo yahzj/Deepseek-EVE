@@ -12,57 +12,47 @@
  * - `replies` 为**预留**字段（回复选项接口），本期不启用（`core/comms.ts` 的 COMMS_REPLIES_ENABLED = false）。
  */
 import type { CommsMessageDef } from '@whale/core'
-import { BRIEFING_INTRO, TUTORIAL_STEPS } from './tutorialSteps'
 import { FIRST_TASK_MESSAGES } from './firstTaskMessages'
 
 /**
- * 序章简报（`tut-0`；2026-09-11 船长定）：睁眼动画结束后先送这封，玩家读完点「开始教程」才进第 1 步。
- * 触发器 `{ kind: 'tutorial', step: 0 }` = 到达简报态（`ONB_BRIEFING`）即送达。
- * 发件方 = **舰载信息库 · 检索重启**（船长 2026-09-11：「消息来源修改为信息库检索重启方案」）。
+ * **信息库重启（开场信）**——睁眼演出结束后送达，把「第一次」清单交代清楚。
+ *
+ * 由来（2026-09-17 教程重做）：原先这里是「训前简报」＋七步任务链（教程融入通讯那版），
+ * 每步再各发一封 `tut-1..7`；船长改口径为「**改成以重要任务的形式发布在任务中心，让玩家自由选择完成**」
+ * ⇒ 七步与那七封一并退场，**开场信只保留"自检记录 + 清单在任务中心 + 一句起步建议"**，
+ * 体例（【区块】＋逐行陈述）、发件方（舰载信息库 · 检索重启）与叙述口径都不动。
+ *
+ * ⚠ 不写"第一件该做什么"的硬指引——清单是自由选择的；只把**最靠前的那道门**（先扫母港星域）
+ * 点明，否则玩家会在"星图一片空白"上卡住。
  */
 const BRIEFING_MESSAGE: CommsMessageDef = {
-  id: 'tut-0',
+  id: 'msg-briefing',
   factionId: 'archive',
   deptId: 'dept-recall',
-  kind: '教程',
-  subject: BRIEFING_INTRO.subject,
-  body: BRIEFING_INTRO.lines,
-  // 2026-09-11 船长：「将训前简报的任务链内的文字高亮」——任务链那七行在正文里加既有的强调样式
-  highlight: BRIEFING_INTRO.highlight,
-  trigger: { kind: 'tutorial', step: 0 },
-  hint: { text: BRIEFING_INTRO.hint, page: 'comms' },
-  action: { label: BRIEFING_INTRO.actionLabel, command: 'startTutorial' },
+  kind: '提示',
+  subject: '信息库重启｜待办清单',
+  body: [
+    '【自检记录｜本舰】',
+    '自检完成。乘员栏为空，船体与记忆均存在缺失扇区。',
+    '身份档案损坏；协会呼号按本舰自报登记。',
+    '【待办｜第一次】',
+    '任务中心列着一份清单：第一次扫描、第一次采集原矿、第一次打捞残骸……',
+    '顺序不作规定，先做哪一项由本舰自己定。',
+    '每完成一项，信息库就把相关情报补录到收件箱。',
+    '【起步】',
+    '若一时无从下手，先把母港所在星域扫一遍。',
+    '星图上的位置要先点亮，那里的矿带、航道与悬赏才会进入可作业清单。',
+    '【备注】',
+    '清单长期留在任务中心，随时回看。',
+  ],
+  trigger: { kind: 'start' },
+  hint: { text: '待办清单在任务中心', page: 'task' },
 }
-
-/**
- * 序章教程七封通讯（2026-09-11 船长定：**教程融入通讯**——每步开始时送达该步指引，右下角引导卡取消）。
- * 文案与跳转全部取自 `./tutorialSteps`（单一出处）；发件方 = **舰载信息库 · 检索重启**（船自己的系统）。
- */
-const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => ({
-  id: `tut-${s.step}`,
-  factionId: 'archive',
-  deptId: 'dept-recall',
-  kind: '教程',
-  // 主题分隔条用「｜」而不是「：」——步骤标题自带冒号（如「采集：维持运转」），
-  // 原写法会出现「检索重启 1/7：采集：维持运转」两个冒号（2026-09-11 船长批准改分隔符）
-  subject: `检索重启 ${s.step}/${TUTORIAL_STEPS.length}｜${s.title}`,
-  body: s.lines,
-  trigger: { kind: 'tutorial', step: s.step },
-  hint: {
-    text: s.goal,
-    page: s.page,
-    ...(s.mapTab ? { tab: s.mapTab } : {}),
-    // 任务中心内层标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）
-    ...(s.taskTab ? { taskTab: s.taskTab } : {}),
-    ...(s.shipTab ? { shipTab: s.shipTab } : {}),
-  },
-}))
 
 /** 全部通讯消息（id 稳定；新增即追加，不要改既有 id——已读/送达按 id 记账） */
 export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
   ...FIRST_TASK_MESSAGES, // 「第一次」任务系列的 13 封情报信（2026-09-17 教程重做批）
   BRIEFING_MESSAGE,
-  ...TUTORIAL_MESSAGES,
   {
     id: 'msg-welcome',
     factionId: 'dshi',
