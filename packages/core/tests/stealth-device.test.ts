@@ -263,6 +263,89 @@ describe('隐秘行动装置（2026-09-15 船长 · 六问六答）', () => {
 })
 
 /**
+ * **隐身期间「基础舰炮」不开炮**（船长 2026-09-17：「**让舰船自带的基础舰炮在隐身情况下不开炮**」）。
+ *
+ * 背景（旧行为的实证）：基础舰炮**恒在且卸不掉** ⇒ 只装装置、没装自己武器的船，**开战第一拍**就由它
+ * 自己开火（`stats.meShots` 处「开火即现形」）⇒ 20/30 秒窗口当场终结、装置形同虚设。
+ * 现行口径 = **窗口生效期内 `src === 'base'` 不开火**；**到点**或**本舰其它武器开火现形**之后立刻恢复。
+ * 只认 `src === 'base'` ⇒ 外挂武器与无人机照旧开火（"主动开火现形"仍是玩家的选择与代价）。
+ */
+describe('隐身期间基础舰炮闭麦（2026-09-17 船长）', () => {
+  /** 全部武器满装填 ⇒ 排除"在装填"这个干扰项（只在开打前清零一次） */
+  function loadAll(b: BattleState): void {
+    for (const u of Object.values(b.units)) u.weapons = u.weapons.map(() => 0)
+  }
+  /**
+   * **把距离钉在基础舰炮射程内逐拍推进**。为什么必须钉：拔河段距离会缓慢外飘
+   * （临时探针实测 —— 开战 1,000m、我方期望 2,000m，t=30s 恰 2,500m、t=33s 2,553m），
+   * 不钉住的话"到点恢复开火"会被"已经飘出 2,500m 射程"掩盖、观测不到。
+   */
+  function pinned(
+    state: GameState,
+    ctx: SimContext,
+    b: BattleState,
+    uid: string,
+    ms: number,
+    until?: () => boolean,
+  ): void {
+    for (let i = 0; i < Math.round(ms / 100); i++) {
+      b.distanceM = 1_000
+      state.gameMs += 100
+      advanceBattleFor(state, ctx, b, uid, CARD)
+      if (b.ended) return
+      if (until?.()) return
+    }
+  }
+
+  it('**窗口内一炮未发**：只装装置的船，即使敌人已在基础舰炮射程内也不还击，窗口原样保留', () => {
+    const { state, ctx, uid } = world({ stealth: STEALTH_3, weapons: false })
+    const b = startBattleFor(state, ctx, uid, CARD, 0)!
+    // 反证前提：这艘船**真的只有兜底那一门**（否则本用例证明不了"基础舰炮被闭麦"）
+    expect(createPlayerSpec(state, ctx, uid)!.weapons.map((w) => w.src)).toEqual(['base'])
+    loadAll(b)
+    pinned(state, ctx, b, uid, 5_000)
+    expect(b.stats.meShots, '隐身期间基础舰炮开火了').toBe(0)
+    expect(b.units['player']!.stealthUntilMs, '窗口被自己那门炮打掉了').toBe(30_000)
+    expect(b.stats.foeShots, '窗口内敌舰开火了').toBe(0)
+    expect(b.units['player']!.weapons[0], '基础舰炮的装填倒计时被推动了').toBe(0)
+  })
+
+  it('**到点即恢复**：窗口一到点，同一门基础舰炮立刻开火（不是"永久哑火"）', () => {
+    const { state, ctx, uid } = world({ stealth: STEALTH_3, weapons: false })
+    const b = startBattleFor(state, ctx, uid, CARD, 0)!
+    loadAll(b)
+    pinned(state, ctx, b, uid, 29_000)
+    expect(b.stats.meShots, '窗口内就开火了').toBe(0)
+    pinned(state, ctx, b, uid, 5_000, () => b.stats.meShots > 0)
+    expect(b.units['player']!.stealthUntilMs, '到点没现形').toBeUndefined()
+    expect(b.stats.meShots, '到点后基础舰炮仍不开火').toBeGreaterThan(0)
+  })
+
+  it('**只闭底座那一门**：外挂武器照常开火并立即现形（同一拍里基础舰炮仍是哑的）', () => {
+    const { state, ctx, uid } = world({ stealth: STEALTH_3 }) // 高槽 = 攻坚炮台 MK3 + 隐秘装置
+    const b = startBattleFor(state, ctx, uid, CARD, 0)!
+    expect(createPlayerSpec(state, ctx, uid)!.weapons.map((w) => w.src)).toEqual(['base', 'turret'])
+    loadAll(b)
+    pinned(state, ctx, b, uid, 100)
+    expect(b.stats.meShots, '装的炮台没有开火').toBeGreaterThan(0)
+    expect(b.units['player']!.stealthUntilMs, '开火后没有现形').toBeUndefined()
+    // 基础舰炮排第 0 位、在炮台**之前**结算 ⇒ 这一拍它没开火（倒计时仍 0），炮台已进装填
+    expect(b.units['player']!.weapons[0], '基础舰炮在隐身的这一拍开火了').toBe(0)
+    expect(b.units['player']!.weapons[1], '炮台没进装填').toBeGreaterThan(0)
+  })
+
+  it('**对照（旧口径零变化）**：没装装置的船照旧第一拍就用基础舰炮还击', () => {
+    const { state, ctx, uid } = world({ stealth: [], weapons: false })
+    const b = startBattleFor(state, ctx, uid, CARD, 0)!
+    expect(b.units['player']!.stealthUntilMs, '没装装置却有隐身窗口').toBeUndefined()
+    loadAll(b)
+    pinned(state, ctx, b, uid, 100)
+    expect(b.stats.meShots, '没装装置的船不还击了').toBeGreaterThan(0)
+    expect(b.units['player']!.weapons[0], '基础舰炮没进装填').toBeGreaterThan(0)
+  })
+})
+
+/**
  * **侦察舰特性**（船长 2026-09-16：「**侦查舰添加特性，隐秘行动装置所需CPU降低50%，且移除推进器
  * 失效惩罚**」；口径四答：只有「侦察舰」子分类那两艘 · CPU **向上取整**（55→28 · 80→40）·
  * **完全移除**推进器惩罚 · 特性栏与装配页都显示）。

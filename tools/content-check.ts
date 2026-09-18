@@ -899,7 +899,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'source-sweeping', per: 0.1, call: 'market.ts SWEEP_PER_LEVEL（×1.1/级）', srcNear: false },
     { skill: 'secondhand-market', per: 0.02, call: 'market.ts SECONDHAND_PER_LEVEL', srcNear: false },
     { skill: 'galactic-happenings', per: 0.08, call: 'events.ts eventCadenceFactor（事件间隔 −8%/级）+ expedition.ts（×1.15/级）' },
-    { skill: 'galactic-happenings', per: 0.2, call: 'wormholeScan.ts happeningsScanFactor（虫洞扫描窗口 · **满级阶跃 −20%**，2026-09-14 船长追加的第四项）' },
+    { skill: 'galactic-happenings', per: 0.04, call: 'wormholeScan.ts happeningsScanFactor（虫洞扫描窗口 · **每级 −4%、满级恰 −20%**，2026-09-14 船长追加的第四项；**2026-09-17 船长改判：由「满级阶跃」改线性每级**）' },
     { skill: 'chart-archive', per: 10, call: 'wormholeScan.ts wormholeStockMaxOf（虫洞保存上限 · **满级总量 +10 格**，2026-09-16 船长改判后满级值不变）' },
     { skill: 'chart-archive', per: 2, call: 'wormholeScan.ts WORMHOLE_STOCK_BONUS_PER_LEVEL（虫洞保存上限 · **每级 +2**，2026-09-16 船长「应该为每级+2，满级+10」）' },
     { skill: 'event-dividend', per: 0.15, call: 'events.ts（事件现金）' },

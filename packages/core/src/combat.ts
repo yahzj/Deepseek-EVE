@@ -3124,7 +3124,7 @@ function announceStealthStart(b: import('./state').BattleState): void {
   for (const u of Object.values(b.units)) {
     if (u.side !== 'me' || u.stealthUntilMs === undefined) continue
     const sec = Math.max(0, Math.round((u.stealthUntilMs - b.lastTickGameMs) / 1000))
-    pushBattleNotice(b, `隐秘行动：${u.name} 进入隐身（${sec} 秒内不被锁定、不被攻击）`)
+    pushBattleNotice(b, `隐秘行动：${u.name} 进入隐身（${sec} 秒内不被锁定、不被攻击；基础舰炮在此期间不开火）`)
   }
 }
 
@@ -5621,6 +5621,13 @@ function stepBattle(
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
         continue
       }
+      // ── **隐秘行动 · 基础舰炮闭麦**（船长 2026-09-17：「**让舰船自带的基础舰炮在隐身情况下不开炮**」）──
+      // `src === 'base'` 的兜底炮**恒在且卸不掉** ⇒ 若照常开火，**开战第一拍就由它自己**把隐身窗口
+      // 终结掉（下方 `stats.meShots` 处的"开火即现形"）——装置等于白装。⇒ **窗口生效期内这一门不开火**；
+      // 窗口到点、或本舰其它武器开火现形之后，它**立刻恢复**（射程/弹药/装填/命中的口径一字不动）。
+      // **只认 `src === 'base'`**：外挂武器与无人机**照旧开火**——"主动开火现形"仍是玩家的选择与代价。
+      // 判据复用敌方选靶那把尺 `isMyUnitTargetable`（不另立第二份隐身判据）。
+      if (w.src === 'base' && isMyUnitStealthed(b, unit.tag)) continue
       // ── 防空属性（船长 A1）：**只有带 `canHitDrones` 的武器能筛到敌机** ──
       // 机群不在主目标池里 ⇒ 其余武器（含我方无人机，船长 B1）按构造看不到它们。
       // 带标记的武器**优先打机群**（防空是它的本职）。
@@ -6152,6 +6159,16 @@ function isFoeEngageable(b: import('./state').BattleState, tag: string): boolean
 function isMyUnitTargetable(b: import('./state').BattleState, tag: string): boolean {
   const until = b.units[tag]?.stealthUntilMs
   return until === undefined || b.lastTickGameMs >= until
+}
+
+/**
+ * 我方单位**当前是否正处于隐身窗口内**（`isMyUnitTargetable` 的补集）——给"隐身时不自动开火"这类
+ * 判据用（船长 2026-09-17：「**让舰船自带的基础舰炮在隐身情况下不开炮**」；落码点 = 我方开火循环里
+ * 对 `src === 'base'` 的那一条）。**故意与选靶共用同一把尺**：两处若各写一份判据，日后改隐身旁支
+ * 必然出现"打得着却打不到 / 打不到却挨打"的错位。缺字段（未装装置 / 敌舰 / 老档）⇒ `false`。
+ */
+function isMyUnitStealthed(b: import('./state').BattleState, tag: string): boolean {
+  return !isMyUnitTargetable(b, tag)
 }
 
 /** 我方还有没有活着的单位（`myUnits` 里任一存活）——单船路径等价于 `isAlive(b,'player')` */function isAliveAnyOf(b: import('./state').BattleState, myUnits: readonly UnitSpec[]): boolean {

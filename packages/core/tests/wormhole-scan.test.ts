@@ -6,7 +6,8 @@
  * 「**rank提升到5**」）。
  *
  * 锁住六条口径：
- * ① 窗口 = **12 小时** × 三技能乘算 × **星际奇遇学**（不练 = 12 小时；奇遇学**满级**才 −20%，阶跃）；
+ * ① 窗口 = **12 小时** × 三技能乘算 × **星际奇遇学**（不练 = 12 小时；奇遇学**每级 −4%、满级恰 −20%**
+ *    —— **2026-09-17 船长改判**：「将一些只有满级后才有效果的技能，拆分成每个等级效果」⇒ 由阶跃改线性）；
  * ② 主控活动互斥（采矿/打捞/扫描/远征/航行/待命/在洞内 都不许开扫）；
  * ③ 推进：满一个窗口发现一处进库存，**连续跨窗可连出**（离线大步长）；
  * ④ **库存上限 5**：满则**扫描停机**并写一条提示（不静默白跑）；
@@ -82,19 +83,21 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     trainScanSkills(state2, 3, 0, 0)
     expect(wormholeScanWindowMs(state2)).toBeLessThan(WORMHOLE_SCAN_BASE_MS)
     /**
-     * **星际奇遇学 = 虫洞专属的第四项**（船长 2026-09-14：「满级后缩减虫洞扫描周期20%」）：
-     * **满级（Lv5）才一次性 −20%**（阶跃；船长口述是"满级后"，故不是每级 −4% 的线性），与三技能**乘算**。
+     * **星际奇遇学 = 虫洞专属的第四项**（船长 2026-09-14 追加；**2026-09-17 改判为线性**）：
+     * **每级 −4%、满级恰 −20%**（`1 − 0.04 × 等级`，见 `happeningsScanFactor`），与三技能**乘算**。
+     * ⚠ 旧口径「**满级（Lv5）才一次性 −20%**（Lv1~4 对虫洞零效果）」**已作废**——船长 2026-09-17：
+     * 「**将一些只有满级后才有效果的技能，拆分成每个等级效果**」。
      */
     const state3 = fresh()
     state3.skills.trained['galactic-happenings'] = 5
     expect(wormholeScanWindowMs(state3)).toBe(Math.round(WORMHOLE_SCAN_BASE_MS * 0.8))
-    // 阶跃的两侧：Lv4 与 Lv1 一样**没有**虫洞加成（只吃它原本的事件类效果）
+    // 线性两侧：Lv4 ×0.84、Lv1 ×0.96（**旧阶跃口径下这两档与不练同值**，那正是本批要消灭的行为）
     const state4 = fresh()
     state4.skills.trained['galactic-happenings'] = 4
-    expect(wormholeScanWindowMs(state4)).toBe(WORMHOLE_SCAN_BASE_MS)
+    expect(wormholeScanWindowMs(state4)).toBe(Math.round(WORMHOLE_SCAN_BASE_MS * 0.84))
     const state5 = fresh()
     state5.skills.trained['galactic-happenings'] = 1
-    expect(wormholeScanWindowMs(state5)).toBe(WORMHOLE_SCAN_BASE_MS)
+    expect(wormholeScanWindowMs(state5)).toBe(Math.round(WORMHOLE_SCAN_BASE_MS * 0.96))
     state.skills.trained['galactic-happenings'] = 5
     expect(wormholeScanWindowMs(state)).toBe(Math.round(three * 0.8))
     // ⚠ **星图扫描不吃这一项**（船长只点了虫洞）：同一档位上就地扫描窗口不受奇遇学影响
