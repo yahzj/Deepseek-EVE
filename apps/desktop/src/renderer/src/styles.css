@@ -8977,6 +8977,18 @@ body {
 
 }
 
+/* ── 任务卡片的「奖励」独立行（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显，
+   建议将奖励单独起一行，并采用金色字体（奖励 ◆这几个字可以不用金色）」）——
+   共用一条：金色沿用既有 `--wui-gold`（与赏金卡的 `.app-ano-reward` 同一支金色），
+   「奖励 ◆」前缀由调用方包在 `.app-dim` 里保持暗色 ⇒ 只有奖励内容发亮。 */
+.app-task-reward {
+  font-size: 12px;
+  color: var(--wui-gold);
+  line-height: 1.7;
+}
+.app-station-card .app-task-reward {
+  margin-top: 2px;
+}
 .app-station-deliver input {
 
   background: #0a1320;

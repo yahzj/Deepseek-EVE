@@ -2432,7 +2432,12 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   </div>
                   <div className="app-station-mats">
                     目标「{siteName ?? '（最近已建成副站）'}」{galaxyName ? `（${galaxyName}）` : ''}：
-                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算——酬金 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点（不涨声望；到站后舰船将停靠目标副站）。
+                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算（不涨声望；到站后舰船将停靠目标副站）。
+                  </div>
+                  {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
+                  <div className="app-task-reward">
+                    <span className="app-dim">奖励 ◆ </span>
+                    {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
                   </div>
                   <div className="app-station-deliver">
                     <span className="app-dim">
@@ -2471,7 +2476,12 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
                 </div>
                 <div className="app-station-mats">
-                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓）——奖励 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点（不涨声望）。
+                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓；不涨声望）。
+                </div>
+                {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
+                <div className="app-task-reward">
+                  <span className="app-dim">奖励 ◆ </span>
+                  {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
                 </div>
                 <div className="app-station-deliver">
                   <span className="app-dim">

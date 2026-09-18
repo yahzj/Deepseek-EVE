@@ -93,6 +93,20 @@ export function FirstTasks({
         const levelInName = def.chain && total > 0 ? Math.min(level + 1, total) : 0
         // 进度读数：`已累计 当前/下一档`（下一档为空 ⇒ 已达最高档）
         const goal = next ?? count
+        // **奖励一行**（船长 2026-09-18：奖励单独起一行、金色）——名字从内容表查
+        const r = def.reward
+        const parts: string[] = []
+        for (const m of r?.modules ?? []) parts.push(`${engine.ctx.modules.get(m.moduleId)?.name ?? m.moduleId} ×${m.units}`)
+        for (const w of r?.ware ?? []) parts.push(`${engine.ctx.items.get(w.itemId)?.name ?? w.itemId} ×${w.units}`)
+        for (const b of r?.blueprints ?? []) {
+          const nm = engine.ctx.blueprints.get(b.blueprintId)?.name ?? engine.ctx.shipBlueprints.get(b.blueprintId)?.name
+          parts.push(`${nm ?? b.blueprintId} ×${b.units}`)
+        }
+        for (const s of r?.ships ?? []) parts.push(`${engine.ctx.ships.get(s.defId)?.name ?? s.defId} ×${s.units}`)
+        for (const c of r?.aiCores ?? []) parts.push(`基础 AI 核心 ×${c.units}`)
+        if (r?.wormholeStock) parts.push(`未探索虫洞 ×${r.wormholeStock}`)
+        if (r?.isk) parts.push(`${r.isk.toLocaleString('zh-CN')} 信用点`)
+        const rewardTxt = parts.length > 0 ? parts.join('、') : '情报信一封'
         return (
           <div key={def.id} className="app-station-card">
             <div className="app-station-head">
@@ -121,6 +135,25 @@ export function FirstTasks({
             ) : null}
             {/* 正文：一段话讲清怎么做 / 做成什么样 / 有什么奖励 */}
             <div className="app-station-mats">{def.detail}</div>
+            {/**
+             * **奖励独立成行 + 金色**（船长 2026-09-18：「奖励不明显，建议将奖励单独起一行，
+             * 并采用金色字体（奖励 ◆这几个字可以不用金色）」）：前缀「奖励 ◆」走 `.app-dim` 保持暗色，
+             * 奖励内容走 `.app-task-reward` 金色。
+             * - 还没做的条目 ⇒ 写这条任务送什么（没有实物就如实写"情报信一封"）；
+             * - 已完成的条目 ⇒ 那条「第一次」的奖励早已发过，这里改写**次数奖金**（每档 2,500 × 级别⁵）。
+             */}
+            {done && def.chain ? (
+              <div className="app-task-reward">
+                <span className="app-dim">奖金 ◆ </span>
+                每档 {CHAIN_REWARD_ISK_BASE.toLocaleString('zh-CN')} × 级别⁵
+                {claimable ? ` · 现可领 ${pending.toLocaleString('zh-CN')} 信用点` : ''}
+              </div>
+            ) : (
+              <div className="app-task-reward">
+                <span className="app-dim">奖励 ◆ </span>
+                {rewardTxt}
+              </div>
+            )}
             <div className="app-station-deliver">
               <span className="app-dim">
                 {claimable ? `可领奖金 ${pending.toLocaleString('zh-CN')} 信用点` : done ? '次数目标进行中' : '完成即发情报'}
