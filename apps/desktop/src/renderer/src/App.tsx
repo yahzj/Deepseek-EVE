@@ -540,6 +540,11 @@ export function App({ engine }: { engine: GameEngine }) {
   const [mktFocus, setMktFocus] = useState<{ key: string; seq: number } | null>(null)
   // 舰船页卡片"装配"→ 装配页默认目标船（船长 2026-09-05：入口在舰队卡片；离开装配页即清，再次直进默认当前驾驶船）
   const [fitShipId, setFitShipId] = useState<string | null>(null)
+  /**
+   * 工业页的**内层段定位**（精炼炉 / 组装机）——「第一次」卡片上的跳转按钮要落到"这件活"那一档
+   * （船长 2026-09-18）。一次性：页在切走时重挂载（`key={page}`），故只需给初值。
+   */
+  const [indFocus, setIndFocus] = useState<'refine' | 'shelf' | 'craft' | null>(null)
   // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
   /** 任务中心内层标签定位请求（通讯「前往」与开场信都落在「重要任务」） */
@@ -1013,6 +1018,7 @@ export function App({ engine }: { engine: GameEngine }) {
             {page === 'industry' ? (
               <IndustryPage
                 {...pageProps}
+                focusSec={indFocus}
                 onGotoMarket={(goodKey) => {
                   setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
                   changePage('market')
@@ -1050,6 +1056,17 @@ export function App({ engine }: { engine: GameEngine }) {
                 onOpenComms={(messageId) => {
                   setCommsFocus((p) => ({ id: messageId, seq: (p?.seq ?? 0) + 1 }))
                   setPage('comms')
+                }}
+                /**
+                 * 「第一次」卡片的**跳转按钮**（船长 2026-09-18：「所有的'第一次'任务，添加一个跳转界面的按钮」）：
+                 * 一律走既有的 `changePage` / `changeMapTab` / `changeShipTab` 三把尺——
+                 * 「第一次」前置锁与页签白名单自动跟随（未解锁时给提示而不是硬跳），工业页再带上内层段。
+                 */
+                onJump={(t) => {
+                  if (t.industrySec) setIndFocus(t.industrySec)
+                  changePage(t.page as PageKey)
+                  if (t.mapTab) changeMapTab(t.mapTab as MapTab)
+                  if (t.shipTab) changeShipTab(t.shipTab as ShipTab)
                 }}
               />
             ) : null}

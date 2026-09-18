@@ -852,6 +852,8 @@ export {
   advanceFirstChains,
   claimChainReward,
   visibleFirstTasks,
+  /* 任务中心卡片序列（过滤 + 隐藏"已全部完成" + 置顶：可领奖 → 已完成 → 未完成） */
+  firstTaskBoard,
   totalSkillLevels,
   dsiStanding,
 } from './firstTasks'

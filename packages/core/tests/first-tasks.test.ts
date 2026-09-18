@@ -21,6 +21,7 @@ import {
   chainProgressOf,
   claimChainReward,
   firstStatOf,
+  firstTaskBoard,
   visibleFirstTasks,
 } from '../src/firstTasks'
 import { startMining, getMiningParams } from '../src/mining'
@@ -180,6 +181,29 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-produce']?.done).toBe(true)
     expect(state.blueprintStock['sbp-sandcat']).toBe(1)
+  })
+
+  it('任务中心序列：可领奖置顶 · 已全部完成（链满档且没得领）隐藏（船长 2026-09-18 两条 UI 规矩）', () => {
+    const state = testState()
+    // ① 全都还没做 ⇒ 顺序 = 原序，且没有隐藏项
+    const fresh = firstTaskBoard(state)
+    expect(fresh.every((r) => !r.hidden)).toBe(true)
+    expect(fresh.map((r) => r.def.id)).toEqual(visibleFirstTasks(state).map((d) => d.id))
+
+    // ② 扫描链满档（点亮 20 星系）＋ 该条已完成 ＋ 没领过 ⇒ 可领奖 ⇒ 置顶
+    state.exploredGalaxies = [...ctx.galaxies.keys()].slice(0, 20)
+    state.importantTasks['first-scan'] = { done: true }
+    advanceFirstChains(state)
+    const board = firstTaskBoard(state)
+    expect(board[0]!.def.id).toBe('first-scan')
+    expect(board[0]!.pendingIsk).toBeGreaterThan(0)
+
+    // ③ 领完奖（链满档 + 已领满）⇒ 这条**隐藏**（其余条目照旧显示）
+    const beforeClaim = firstTaskBoard(state)
+    claimChainReward(state, 'explorer')
+    const after = firstTaskBoard(state)
+    expect(after.some((r) => r.def.id === 'first-scan')).toBe(false)
+    expect(after.length).toBe(beforeClaim.length - 1)
   })
 
   it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
