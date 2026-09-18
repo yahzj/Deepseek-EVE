@@ -3370,6 +3370,8 @@ function buildMyUnitSpecs(
     if (web0) applyMeWebDebuff(me, web0)
     // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
     if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
+    // **指挥舰全舰单发光环**（2026-09-17 修：原先只在开战那一刻乘 ⇒ 被每拍重建冲掉、从未生效）
+    applyFleetDamageAura([me], 1 + fleetDamageAuraOf(state, ctx, [shipId]))
     return applyFleetLockAura([me])
   }
   const out: UnitSpec[] = []
@@ -3386,6 +3388,8 @@ function buildMyUnitSpecs(
     if (web) applyMeWebDebuff(spec, web)
     out.push(spec)
   }
+  // **指挥舰全舰单发光环**：全队取最高一份、不叠加（同批修：见 `applyFleetDamageAura` 的注释）
+  applyFleetDamageAura(out, 1 + fleetDamageAuraOf(state, ctx, fleet.map((e) => e.shipId)))
   return applyFleetLockAura(out)
 }
 
@@ -3408,6 +3412,47 @@ function applyFleetLockAura(specs: UnitSpec[]): UnitSpec[] {
   for (const s of specs) best = Math.max(best, s.lockedDmgBonus ?? 0)
   if (best > 0) for (const s of specs) s.lockedDmgBonus = best
   return specs
+}
+
+/**
+ * **指挥舰「全舰单发伤害 +15%」光环的取用口径**：编队（或单舰）里**取最高一份**、**不叠加**
+ * （2026-09-13 船长口径：「提高全舰的单发伤害 15%」＋"多艘同类只取最高"，与"同项取优"惯例一致）。
+ * 数据来源 = `ShipDef.fleetDamageBonusPct`（现只有陵卫指挥舰 0.15）。
+ */
+function fleetDamageAuraOf(state: GameState, ctx: SimContext, shipIds: readonly string[]): number {
+  return Math.max(
+    0,
+    ...shipIds.map((sid) => {
+      const defId = state.fleet[sid]?.defId
+      return (defId ? ctx.ships.get(defId)?.fleetDamageBonusPct : 0) ?? 0
+    }),
+  )
+}
+
+/**
+ * **把全舰单发光环乘进这一份规格的每条武器**（`mul` = 1 + 光环值；`<= 1` 直接跳过）。
+ *
+ * ⚠ **2026-09-17 修一个真 BUG（船长「本批一起修」）**：这段乘算原先是**内联写在
+ * `startFleetBattleFor` 里的**——只乘**开战那一刻**的规格，而战斗是**逐拍重建规格**的
+ * （`buildMyUnitSpecs` → `createPlayerSpec`，后者不认识 `fleetDamageBonusPct`）⇒ 那些被乘过的值
+ * **一拍都没用上**，指挥舰的光环自始至终是**死代码**。真引擎 A/B 取证（同编队同种子、只差光环船那 15%、
+ * 双方都不死比每发均值）：带光环 **每发 91.640 / 命中 25** 与无光环**逐位相同** ⇒ 比值 **1.000**
+ * （生效应 ≈1.15）。⇒ 现在统一由**每拍重建处**（`buildMyUnitSpecs`）调用，`startFleetBattleFor`
+ * 也调一次同一函数（开战首拍的规格同源，避免两处各写一份乘算）。
+ */
+function applyFleetDamageAura(specs: readonly UnitSpec[], mul: number): void {
+  if (mul <= 1) return
+  for (const spec of specs) {
+    for (const w of spec.weapons) {
+      if (typeof w.shotDmg === 'number') w.shotDmg = w.shotDmg * mul
+      if (w.shotsByType) {
+        for (const k of Object.keys(w.shotsByType) as DamageType[]) {
+          const v = w.shotsByType[k]
+          if (typeof v === 'number') w.shotsByType[k] = v * mul
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -3762,25 +3807,9 @@ export function startFleetBattleFor(
   if (specs.length === 0) return null
   // **全舰单发伤害光环**（2026-09-13 船长：指挥舰「提高全舰的单发伤害 15%」）——
   // 建完各舰规格后统一乘；**多艘同类只取最高、不叠加**（与"同项取优"惯例一致）。
-  const fleetAura = Math.max(0, ...ordered.map((sid) => {
-    const fs = state.fleet[sid]
-    const defId = fs?.defId
-    return (defId ? ctx.ships.get(defId)?.fleetDamageBonusPct : 0) ?? 0
-  }))
-  if (fleetAura > 0) {
-    const mul = 1 + fleetAura
-    for (const spec of specs) {
-      for (const w of spec.weapons) {
-        if (typeof w.shotDmg === 'number') w.shotDmg = w.shotDmg * mul
-        if (w.shotsByType) {
-          for (const k of Object.keys(w.shotsByType) as DamageType[]) {
-            const v = w.shotsByType[k]
-            if (typeof v === 'number') w.shotsByType[k] = v * mul
-          }
-        }
-      }
-    }
-  }
+  // ⚠ **2026-09-17**：乘算抽成 `applyFleetDamageAura` 单点，**每拍重建处（`buildMyUnitSpecs`）也要调**
+  // ——原先只在这里乘一次，而开火读的是每拍重建后的规格 ⇒ 光环从未生效（真 BUG，同批已修）。
+  applyFleetDamageAura(specs, 1 + fleetDamageAuraOf(state, ctx, ordered))
   // **目标锁定阵列：全队生效**（船长 2026-09-17）——见 `applyFleetLockAura` 的注释：
   // 开战这一刻的规格也要置上（首拍用）；**真正的每拍生效靠 `buildMyUnitSpecs` 里同一次调用**。
   applyFleetLockAura(specs)
