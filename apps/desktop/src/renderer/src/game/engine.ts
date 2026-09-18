@@ -128,6 +128,8 @@ import {
   unfitAllModules,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
+  // 「第一次」任务系列的链奖金（面板上的领奖按钮）
+  claimChainReward as claimChainRewardCore,
   beginTutorialAfterAwaken,
   skipTutorial,
   finishTutorial,
@@ -2448,6 +2450,19 @@ export class GameEngine {
   /** 快递任务当前是否解锁（已建成任一副空间站——stage ≥ 档位数） */
   courierTasksUnlocked(): boolean {
     return courierTaskUnlocked(this.state, this.ctx)
+  }
+
+  /**
+   * **领取次数链奖金**（任务中心「第一次」卡片上的领奖；2026-09-17 教程重做批）。
+   * 记账在引擎每拍的 `advanceFirstChains`（已达成第几档），**发钱只在这一处点击时**（返回本次发出额）。
+   */
+  claimChainRewardAt(chainId: string): number {
+    const isk = claimChainRewardCore(this.state, chainId)
+    if (isk > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return isk
   }
 
   /** 完成一条资源时效任务（物品仓库足量 → 扣货 → 现金入账 → 该条下板，其余不受影响） */

@@ -61,6 +61,7 @@ import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH, rareWreckRefsOf } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
+import { FirstTasks } from './FirstTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
@@ -341,6 +342,8 @@ export function TaskPanel({
       <div className="app-win-body">
       {tab === 'important' ? (
         <div>
+          {/* 2026-09-17 教程重做：重要任务＝「第一次」系列（13 条，自由选择）＋后续次数任务 */}
+          <FirstTasks engine={engine} onToast={onToast} />
           <ImportantTasks engine={engine} onToast={onToast} />
           {stationCount > 0 && unbuiltStationIds.length > 0 ? (
             <>

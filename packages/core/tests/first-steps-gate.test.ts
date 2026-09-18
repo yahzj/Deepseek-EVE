@@ -14,6 +14,7 @@ import { buildSimContext } from '@whale/data'
 import { HOME_GALAXY_ID, createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { actionBlockReason, frontierGalaxyIds, isExplored, startScan } from '../src/explore'
+import { unlocked, unlockNeedTitle } from '../src/firstTasks'
 import { startMining } from '../src/mining'
 
 const ctx = buildSimContext()
@@ -56,5 +57,39 @@ describe('新档「母港未知」与前置解锁（船长 2026-09-17）', () =>
     expect(isExplored(state, HOME)).toBe(true)
     expect(actionBlockReason(state, HOME)).toBeNull()
     expect(startMining(state, BELT, ctx).ok).toBe(true)
+  })
+
+  /**
+   * 前置解锁表（阶段③ · 数据驱动）：界面只读 `FIRST_UNLOCKS` / `unlocked()`。
+   * 口径（船长）：工业 ← 第一次采集原矿 · 市场 ← 第一次生产 · 星图四项 ← 第一次扫描；
+   * **未解锁的页面与任务都隐藏**（隐藏是 UI 的事，这里钉的是判定本体）。
+   */
+  it('解锁表：开局只放行未登记项；完成对应「第一次」后逐项开放', () => {
+    const state = newGame()
+    // 表里没有的能力（舰船/装配/物品/技能/任务中心/通讯/手册/星图页本体）开局即可用
+    expect(unlocked(state, 'ship')).toBe(true)
+    expect(unlocked(state, 'map')).toBe(true)
+    expect(unlocked(state, 'star')).toBe(true)
+    expect(unlockNeedTitle('ship')).toBeUndefined()
+    // 表里有的：开局全锁，且提示文案点名前置任务
+    expect(unlocked(state, 'industry')).toBe(false)
+    expect(unlocked(state, 'market')).toBe(false)
+    for (const k of ['mapMine', 'mapBounty', 'mapSalvage', 'mapHaul']) {
+      expect(unlocked(state, k), `${k} 应在开局锁上`).toBe(false)
+      expect(unlockNeedTitle(k)).toBe('第一次扫描')
+    }
+    expect(unlockNeedTitle('industry')).toBe('第一次采集原矿')
+    expect(unlockNeedTitle('market')).toBe('第一次生产')
+    // 完成「第一次扫描」⇒ 星图四项一起开（工业/市场仍锁——各有各的前置）
+    state.importantTasks['first-scan'] = { done: true }
+    for (const k of ['mapMine', 'mapBounty', 'mapSalvage', 'mapHaul']) expect(unlocked(state, k)).toBe(true)
+    expect(unlocked(state, 'industry')).toBe(false)
+    expect(unlocked(state, 'market')).toBe(false)
+    // 采集原矿 ⇒ 工业开；生产 ⇒ 市场开
+    state.importantTasks['first-mine'] = { done: true }
+    expect(unlocked(state, 'industry')).toBe(true)
+    expect(unlocked(state, 'market')).toBe(false)
+    state.importantTasks['first-produce'] = { done: true }
+    expect(unlocked(state, 'market')).toBe(true)
   })
 })

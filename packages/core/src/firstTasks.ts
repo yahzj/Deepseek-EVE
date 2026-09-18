@@ -315,6 +315,37 @@ export function claimChainReward(state: GameState, chainId: string): number {
   state.wallet.isk += isk
   return isk
 }
+
+/**
+ * **功能 / 页面解锁表**（船长 2026-09-17 定案 · 数据驱动）：key = 页面或星图页签，value = 需要完成的「第一次」任务 id。
+ *
+ * 口径（船长原话）：「**所有和星图相关的，比如战斗和采矿，需要玩家先完成第一次扫描**（初始将母港星系设置为和其他星系
+ * 一样的未知状态，需要扫描才有悬赏和挖矿）」＋「**市场页面和相关任务要玩家先完成第一次生产**」＋
+ * 「**工业界面和相关任务则需要玩家先完成第一次采集矿物**」。
+ *
+ * 用法：界面只读这一张表（`unlocked()` 判定）——**未解锁的页面与任务都不显示**（船长选「两者都隐藏」）。
+ * 星图页本体、舰船/装配/物品/技能/任务中心/通讯/手册**不在这张表里** ⇒ 开局即可用。
+ */
+export const FIRST_UNLOCKS: Readonly<Record<string, string>> = {
+  industry: 'first-mine', // 工业页 ← 第一次采集原矿
+  market: 'first-produce', // 市场页 ← 第一次生产
+  mapMine: 'first-scan', // 星图·矿带开采 ← 第一次扫描
+  mapBounty: 'first-scan', // 星图·常驻悬赏（战斗）← 第一次扫描
+  mapSalvage: 'first-scan', // 星图·残骸打捞 ← 第一次扫描
+  mapHaul: 'first-scan', // 星图·长途运输 ← 第一次扫描
+}
+
+/** 该页面/页签是否已解锁（表里没有的 key ⇒ 恒真 = 开局可用） */
+export function unlocked(state: GameState, key: string): boolean {
+  const need = FIRST_UNLOCKS[key]
+  if (!need) return true
+  return state.importantTasks[need]?.done === true
+}
+/** 未解锁时所需的「第一次」任务名（界面提示用；key 不在表里 ⇒ undefined） */
+export function unlockNeedTitle(key: string): string | undefined {
+  const need = FIRST_UNLOCKS[key]
+  return need === undefined ? undefined : FIRST_TASKS.find((d) => d.id === need)?.title
+}
 /** 任务中心用：按前置过滤后的可见任务（未满足前置 ⇒ 不显示） */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
   return FIRST_TASKS.filter((d) => d.prereq === undefined || state.importantTasks[d.prereq]?.done === true)

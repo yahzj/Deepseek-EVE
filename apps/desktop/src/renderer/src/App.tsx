@@ -10,7 +10,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { formatDurationMs, moneyDelta, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
+import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -25,7 +25,7 @@ import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
-import { MapPage } from './pages/MapPage'
+import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
 import { CommsEave, CommsScreen } from './panels/CommsReader'
 import { TaskCenterPage } from './pages/TaskCenterPage'
@@ -775,6 +775,23 @@ export function App({ engine }: { engine: GameEngine }) {
   }
   const tutMapTab = tutLocked ? TUT_LOCK[tutStep]?.map : undefined
   const tutShipTab = tutLocked ? TUT_LOCK[tutStep]?.ship : undefined
+  /**
+   * **「第一次」前置锁定**（2026-09-17 教程重做批 · 数据驱动；表在 core 的 `FIRST_UNLOCKS`）：
+   * 工业页 ← 第一次采集原矿 · 市场页 ← 第一次生产 · 星图四个页签 ← 第一次扫描。
+   * 口径（船长）：「**未解锁的页面与任务都隐藏**」⇒ 导航项与页签直接不渲染；
+   * 程序化跳转（活动栏 / 跨页按钮）另在 `changePage` / `changeMapTab` 里拦一道，给一句"先做什么"。
+   */
+  const tabLocked = (t: MapTab): boolean => {
+    const k = TAB_UNLOCK_KEY[t]
+    return k !== undefined && !unlocked(state, k)
+  }
+  /** 页签解锁状态签名（effect 依赖用：解锁只从无到有 ⇒ 签名变了才需要归位一次） */
+  const tabLockSig = MAP_TABS.map((t) => (tabLocked(t.key) ? '0' : '1')).join('')
+  // 锁上的页签不能停着不动（读档落在其上 / 跳转落点被锁）：退回「星图·远征」
+  useEffect(() => {
+    if (tabLocked(mapTab)) setMapTab('star')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapTab, tabLockSig])
   const MAP_TAB_LABEL: Record<MapTab, string> = {
     star: '星图·远征',
     mine: '矿带开采',
@@ -804,6 +821,11 @@ export function App({ engine }: { engine: GameEngine }) {
       showToast('按教程引导进行：先完成顶部指引条上的当前目标（每一步的完整说明在「通讯」页）。', true)
       return
     }
+    // 「第一次」前置（工业/市场）：导航项此时不显示，这里拦的是程序化跳转
+    if (!unlocked(state, p)) {
+      showToast(`尚未解锁：先完成「${unlockNeedTitle(p) ?? '前置任务'}」。`, true)
+      return
+    }
     /**
      * **点导航的"这一下"必须有反馈**（船长 2026-09-14：「点击左边侧边栏的时候，中间主窗口进行切换时最好
      * 给予玩家一个反馈，**哪怕点的是当前窗口**」）：
@@ -818,6 +840,12 @@ export function App({ engine }: { engine: GameEngine }) {
   const changeMapTab = (t: MapTab): void => {
     if (tutMapTab && t !== tutMapTab) {
       showToast(`当前教程步骤请使用「${MAP_TAB_LABEL[tutMapTab] ?? tutMapTab}」标签。`, true)
+      return
+    }
+    // 「第一次」前置（星图四项：先完成第一次扫描）——页签此时不显示，这里拦的是程序化跳转
+    if (tabLocked(t)) {
+      const k = TAB_UNLOCK_KEY[t]
+      showToast(`尚未解锁：先完成「${(k ? unlockNeedTitle(k) : undefined) ?? '前置任务'}」。`, true)
       return
     }
     setMapTab(t)
@@ -952,6 +980,8 @@ export function App({ engine }: { engine: GameEngine }) {
            */}
           <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
           {NAV_ITEMS.map((item) => {
+            // 「第一次」前置未达 ⇒ **该导航项不显示**（船长：未解锁页面与任务都隐藏）
+            if (!unlocked(state, item.key)) return null
             // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
             const unreadN = item.key === 'comms' ? commsUnread : item.key === 'task' ? bountyNew : 0
             return (
