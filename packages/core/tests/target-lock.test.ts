@@ -6,7 +6,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { advanceBattleFor, startBattleFor } from '../src/combat'
+import { advanceBattleFor, startBattleFor, startFleetBattleFor } from '../src/combat'
+import { addShipToFleet } from '../src/shipyard'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import type { ModuleDef } from '../src/types'
@@ -101,5 +102,102 @@ describe('目标锁定阵列（2026-09-09）', () => {
     const plain = run(null)
     expect(locked.perHit / plain.perHit).toBeGreaterThan(1.15)
     expect(locked.perHit / plain.perHit).toBeLessThan(1.26)
+  })
+})
+
+/**
+ * **增伤与集火改为「全队生效」**（船长 2026-09-17：「**增伤改为全队生效。**」＋「**集火也是全队生效**」）。
+ *
+ * 口径（三问三答全取甲）：**编队取最高一份、不叠加**（与指挥舰「全队单发 +15% 取最高」同口径）·
+ * 范围含窝点专属「守墓者丧钟」· 落点 = `combat.applyFleetLockAura`（**每拍重建规格处**施加，
+ * 否则下一拍就被 `createPlayerSpec` 的新规格冲掉——本项目已踩过一次同类坑）。
+ */
+describe('目标锁定阵列 · 全队生效（2026-09-17 船长）', () => {
+  /**
+   * 编队夹具：主控 = 装阵列的船（不带武器，只剩恒在的基础舰炮）；僚舰 = 炮舰（2×必中激光）。
+   *
+   * ⚠ **读数口径**（实测踩过两次）：`stats.meDmg` 统计的是"**实际扣掉的血**"⇒ 一旦敌舰被打死，
+   * 两跑的合计值会**双双收敛到敌舰总血**（实测 1652 = 敌舰满血，带不带光环逐字相同）——
+   * 拿合计值比"增伤是否生效"会得出**假阴性**。故本组一律：**敌我血量都抬高、只跑 15 秒**
+   * （双方都活着的窗口，threat 1200 ⇒ 敌舰 ≈1.6 万血），并且只比 **每发均值 meDmg ÷ meHits**。
+   */
+  const BIG_HP = 200_000
+  function fleet(lockOnLeader: string | null, lockOnWing: string | null, escorts = 0) {
+    const deck = (id: string) =>
+      ship(id, { cpu: 300, slots: { high: 4, mid: 0, low: 0 }, shieldHp: BIG_HP, armorHp: BIG_HP, hullHp: BIG_HP })
+    const ctx: SimContext = makeTestCtx({
+      ships: [deck('lead'), deck('wing')],
+      modules: [laserDef('mod-laser-3', 6), lockDef('mod-lock-3', 0.2), lockDef('mod-lock-1', 0.08)],
+      anomalies: [anomaly('ano-x', 'galaxy-hub', { threat: 1200, escorts })],
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const lead = addShipToFleet(state, 'lead')
+    const wing = addShipToFleet(state, 'wing')
+    state.shipId = lead
+    state.fleet[lead]!.fitted = { high: [lockOnLeader, null, null, null], mid: [], low: [] }
+    state.fleet[wing]!.fitted = { high: [lockOnWing, 'mod-laser-3', 'mod-laser-3', null], mid: [], low: [] }
+    if (lockOnLeader) state.moduleBay[lockOnLeader] = 1
+    if (lockOnWing) state.moduleBay[lockOnWing] = 1
+    state.moduleBay['mod-laser-3'] = 2
+    state.warehouse.items['ammo-plasma-l'] = 50_000
+    return { state, ctx, lead, wing }
+  }
+
+  /** 真编队战（主控 + 僚舰，走 `startFleetBattleFor` 多舰路径）：只跑 15 秒，敌舰不会死 */
+  function runFleet(lockOnLeader: string | null, lockOnWing: string | null, escorts = 0) {
+    const { state, ctx, lead, wing } = fleet(lockOnLeader, lockOnWing, escorts)
+    const battle = startFleetBattleFor(state, ctx, [lead, wing], 'ano-x', 0)!
+    const wingTargets: string[] = []
+    for (let i = 0; i < 150; i++) {
+      // **把距离按进射程**（1,000 m）：高血量夹具下双方都慢，15 秒内靠拔河走不进射程 ⇒ 一炮不发
+      // （实测 meHits = 0、每发均值 NaN）。本组测的是"加成有没有给到全队"，距离钉住不影响判据。
+      battle.distanceM = 1_000
+      state.gameMs += 100
+      advanceBattleFor(state, ctx, battle, lead, 'ano-x')
+      for (const fx of battle.fx) {
+        if (fx.side === 'me' && fx.tag === 'ally-1' && fx.to) wingTargets.push(fx.to)
+      }
+      if (battle.ended) break
+    }
+    const perHit = battle.stats.meDmg / Math.max(1, battle.stats.meHits)
+    return { battle, wingTargets, perHit }
+  }
+
+  it('**僚舰共享增伤**：阵列装在主控 ⇒ 没装阵列的僚舰打出的伤害也吃那 20%', () => {
+    const withLock = runFleet('mod-lock-3', null)
+    const plain = runFleet(null, null)
+    const ratio = withLock.perHit / plain.perHit
+    expect(withLock.battle.ended, '敌舰没活满 15 秒 ⇒ 本用例读数口径失效').toBeFalsy()
+    expect(ratio, `每发均值比 ${ratio.toFixed(3)}`).toBeGreaterThan(1.15)
+    expect(ratio, `每发均值比 ${ratio.toFixed(3)}`).toBeLessThan(1.25)
+  })
+
+  it('**集火也全队生效**：阵列装在主控 ⇒ 没装阵列的僚舰也只打存活编队首位（不再随机分散）', () => {
+    const { wingTargets } = runFleet('mod-lock-3', null, 1)
+    expect(wingTargets.length).toBeGreaterThan(3)
+    const mainDead = wingTargets.indexOf('foe-1') // 首位（foe-0）死前不该出现打僚机的弹道
+    const upto = mainDead < 0 ? wingTargets.length : mainDead
+    for (let i = 0; i < upto; i++) expect(wingTargets[i]).toBe('foe-0')
+  })
+
+  it('**取最高一份、不叠加**：主控 MK1(8%) + 僚舰 MK3(20%) ⇒ 全队都是 20%（不是 28%）', () => {
+    const both = runFleet('mod-lock-1', 'mod-lock-3')
+    const only3 = runFleet(null, 'mod-lock-3')
+    expect(both.perHit, `两跑每发均值 ${both.perHit.toFixed(2)} / ${only3.perHit.toFixed(2)}`).toBe(only3.perHit)
+  })
+
+  it('**僚舰自己装也照旧**：阵列只在僚舰上 ⇒ 全队（含主控）都吃（同一条链）', () => {
+    const wingOnly = runFleet(null, 'mod-lock-3')
+    const plain = runFleet(null, null)
+    const ratio = wingOnly.perHit / plain.perHit
+    expect(ratio, `每发均值比 ${ratio.toFixed(3)}`).toBeGreaterThan(1.15)
+    expect(ratio, `每发均值比 ${ratio.toFixed(3)}`).toBeLessThan(1.25)
+  })
+
+  it('**没有阵列 = 逐字不变**：两跑都不装 ⇒ 每发均值与命中数完全一致（零变化守卫）', () => {
+    const a = runFleet(null, null)
+    const b = runFleet(null, null)
+    expect(a.perHit).toBe(b.perHit)
+    expect(a.battle.stats.meHits).toBe(b.battle.stats.meHits)
   })
 })

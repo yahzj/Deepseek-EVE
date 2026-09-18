@@ -75,6 +75,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import ts from 'typescript'
 import { join } from 'node:path'
 import { tableOf } from './content-schema'
+// 说明文案口径单点（船长 2026-09-17 立的文案规则）：长度计数 + 括号原因解释判据
+import { COPY_LEN_MAX, REASON_HINTS, copyEntriesOf, copyLen, parenSpans } from './copy-len'
 import {
   DEFAULT_BALANCE,
   ITEM_KIND_ORDER,
@@ -788,6 +790,60 @@ for (const sbp of SHIP_BLUEPRINTS) {
   console.log(`· 产物说明契约：核对 ${total} 条数值声明（装备 ${MODULES.length} 件 + 物品 ${ITEMS.length} 种），其中舱位换算 ${countHints} 处；无法解释 ${unexplained} 条`)
 }
 
+/* ── 说明文案长度契约（船长 2026-09-17 立的文案规则）──
+ * 船长原话：「**新增文案相关规则，不要在任何说明文案内写入原因解释（特别是使用括号进行解释的这种）。
+ * 文案要保证在30个字以内。**」；三问三答裁定：**存量一起改**（乙）· **计数 = 汉字/字母/数字各 1 字、
+ * 标点不计**（甲）· **护栏只对新增/改动亮红、存量先只列清单**（甲）。
+ *
+ * 判据单点 = `tools/copy-len.ts`（`copyLen` / `parenSpans` / `REASON_HINTS`，与基线生成器共用）。
+ * **宽限机制**：`tools/copy-len-baseline.json` 里**key 相同且文本一字未动**的老条目 ⇒ 只列清单；
+ * **新增的、或改过文本的**条目 ⇒ 超线/括号原因**立即报红**（这样改写批次推进时基线自然收缩，
+ * 存量全部改完 ⇒ 删掉基线文件即转为全量强制）。 */
+{
+  const baselinePath = join(process.cwd(), 'tools/copy-len-baseline.json')
+  const baselineRaw = existsSync(baselinePath)
+    ? (JSON.parse(readFileSync(baselinePath, 'utf8')) as { entries?: Record<string, string> })
+    : {}
+  const baseline = baselineRaw.entries ?? {}
+  const copyCtx = buildSimContext()
+  const copyRows = copyEntriesOf(copyCtx)
+  const overRed: string[] = []
+  const overGrandfathered: string[] = []
+  const reasonRed: string[] = []
+  const reasonGrandfathered: string[] = []
+  for (const r of copyRows) {
+    const untouched = baseline[r.key] === r.text
+    const len = copyLen(r.text)
+    if (len > COPY_LEN_MAX) {
+      const line = `${r.label} ${r.id}（${len} 字）`
+      if (untouched) overGrandfathered.push(line)
+      else overRed.push(line)
+    }
+    for (const span of parenSpans(r.text)) {
+      const hit = REASON_HINTS.find((w) => span.includes(w))
+      if (!hit) continue
+      const line = `${r.label} ${r.id} 括号内「${span}」`
+      if (untouched) reasonGrandfathered.push(line)
+      else reasonRed.push(line)
+    }
+  }
+  check(
+    overRed.length === 0,
+    `说明文案长度契约：${overRed.length} 条说明超出 ${COPY_LEN_MAX} 字（口径 = 只数汉字/字母/数字，标点不计）——新写或改动过的说明必须压到 ${COPY_LEN_MAX} 字以内：${overRed.slice(0, 8).join(' · ')}${overRed.length > 8 ? ` …（共 ${overRed.length} 条）` : ''}`,
+  )
+  check(
+    reasonRed.length === 0,
+    `说明文案原因解释契约：${reasonRed.length} 处用括号写原因解释——说明只回答"是什么/有什么用"，不解释"为什么"（船长 2026-09-17）：${reasonRed.slice(0, 6).join(' · ')}`,
+  )
+  console.log(
+    `· 说明文案长度契约：核对 ${copyRows.length} 条说明（装备/物品/舰船/蓝图/敌卡，上限 ${COPY_LEN_MAX} 字）· 存量待改写 ${overGrandfathered.length} 条（基线宽限，只列清单不阻断）· 超线报红 ${overRed.length} 条 · 括号原因解释：存量待改写 ${reasonGrandfathered.length} 处 / 报红 ${reasonRed.length} 处`,
+  )
+  if (overGrandfathered.length > 0)
+    console.log(
+      `  ⚠ 待改写存量（前 6 条）：${overGrandfathered.slice(0, 6).join(' · ')}${overGrandfathered.length > 6 ? ` …（共 ${overGrandfathered.length} 条，清单见 tools/copy-len-baseline.json）` : ''}`,
+    )
+}
+
 /* ── 技能说明契约（2026-09-11 加，船长：「另开一批做技能说明 ↔ 引擎效果核查」）──
  * 背景：技能说明里每个数值都用 ⟦⟧ 标出（内容工作台口径：改 ⟦⟧ 需与引擎接线一致），
  * 但过去**没有任何自动检查**——改引擎数值忘改说明、或技能压根没接线，都只有玩家能发现。
@@ -1155,6 +1211,79 @@ for (const m of MODULES) {
       '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 高·中·低槽装备 / 舰船 / 蓝图 / 核心 · ' +
         '「货柜」紧跟「货物」· 子分类 = 货物（原矿/原材料/气体/冰矿/奢侈品）· 货柜（遗迹安全/图纸/贵重品/军用）',
     )
+  }
+
+  /* ── 存档「恢复 / 导入**不**自动备份」契约（船长 2026-09-17：「**导入或者恢复存档时，不要备份现有存档**」）──
+   * 挡回潮：三条覆盖路径里任何一条又"好心"加回防误操作备份，或界面文案又开始承诺自动备份。
+   * 依据：手动「备份当前档」与备份列表**照旧**（要留退路由玩家自己先点一次）。 */
+  {
+    const mainPath = 'apps/desktop/src/main/index.ts'
+    const mainSrc = stripComments(readSrc(mainPath)).join('\n')
+    const restoreAt = mainSrc.indexOf("ipcMain.handle('save:restore'")
+    check(restoreAt >= 0, `存档不自动备份契约：${mainPath} 里找不到 \`save:restore\` 处理器`)
+    if (restoreAt >= 0) {
+      const nextHandler = mainSrc.indexOf('ipcMain.handle(', restoreAt + 10)
+      const body = mainSrc.slice(restoreAt, nextHandler < 0 ? undefined : nextHandler)
+      check(
+        !body.includes('backupCurrentSave('),
+        `存档不自动备份契约：${mainPath} 的 \`save:restore\` 又在覆盖前备份当前档了（船长 2026-09-17：恢复不备份）`,
+      )
+    }
+    const stPath = 'apps/desktop/src/renderer/src/game/storage.ts'
+    const stSrc = stripComments(readSrc(stPath)).join('\n')
+    const stAt = stSrc.indexOf('async restore(name')
+    check(stAt >= 0, `存档不自动备份契约：${stPath} 里找不到网页分支的 \`restore\``)
+    if (stAt >= 0) {
+      const bodyEnd = stSrc.indexOf('\n  },', stAt)
+      const body = stSrc.slice(stAt, bodyEnd < 0 ? undefined : bodyEnd)
+      check(
+        !body.includes('BP_PREFIX'),
+        `存档不自动备份契约：${stPath} 的网页分支 \`restore\` 又在覆盖前备份当前档了（与桌面同口径，2026-09-17）`,
+      )
+    }
+    const enPath = 'apps/desktop/src/renderer/src/game/engine.ts'
+    const enSrc = stripComments(readSrc(enPath)).join('\n')
+    const imAt = enSrc.indexOf('async importSaveFromFile(')
+    check(imAt >= 0, `存档不自动备份契约：${enPath} 里找不到 \`importSaveFromFile\``)
+    if (imAt >= 0) {
+      const body = enSrc.slice(imAt, imAt + 4000)
+      check(
+        !body.includes('saveBridge.backup()'),
+        `存档不自动备份契约：${enPath} 的导入流程又在覆盖前备份当前档了（船长 2026-09-17：导入不备份）`,
+      )
+    }
+    const smPath = 'apps/desktop/src/renderer/src/panels/SaveManager.tsx'
+    const smSrc = stripComments(readSrc(smPath)).join('\n')
+    check(
+      !smSrc.includes('已自动备份当前档'),
+      `存档不自动备份契约：${smPath} 的玩家可见文案仍在承诺"已自动备份当前档"（与现行行为不符）`,
+    )
+    console.log(
+      '· 存档不自动备份契约：恢复（桌面主进程 / 网页分支）与导入三条路径均**不**备份原档 · 手动「备份当前档」与备份列表照旧',
+    )
+  }
+
+  /* ── 手册「搜索关键词跨页保留」契约（船长 2026-09-17：「**手册里进行搜索后，切换导航页搜索会重置**」）──
+   * 两个方向都钉：① 切页**不许**再清关键词（原先那句 `setQuery('')` 是经办人自定口径，已按船长指示删除）；
+   * ② 筛选**仍然**切页归零（守 2026-09-13 的裁定「与市场『切类型即回全部子类』同一哲学」）。 */
+  {
+    const hbPath = 'apps/desktop/src/renderer/src/panels/Handbook.tsx'
+    const hbSrc = stripComments(readSrc(hbPath)).join('\n')
+    const at = hbSrc.indexOf('function changeTab(')
+    check(at >= 0, `手册搜索跨页保留契约：${hbPath} 里找不到 \`changeTab\``)
+    if (at >= 0) {
+      const end = hbSrc.indexOf('\n  }', at)
+      const body = hbSrc.slice(at, end < 0 ? undefined : end)
+      check(
+        !body.includes('setQuery('),
+        `手册搜索跨页保留契约：${hbPath} 的 \`changeTab\` 又在切页时清空关键词了（船长 2026-09-17：搜索词跨页保留）`,
+      )
+      check(
+        body.includes('setMainKey(SUB_ALL)') && body.includes('setSubKey(SUB_ALL)'),
+        `手册搜索跨页保留契约：${hbPath} 的 \`changeTab\` 不再把筛选归零了（2026-09-13 裁定：切页回「全部」）`,
+      )
+    }
+    console.log('· 手册搜索跨页保留契约：切页保留关键词（关掉手册即清空）· 筛选仍按 2026-09-13 裁定归零')
   }
 }
 
@@ -4599,12 +4728,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   }
   /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
   const REGISTERED: readonly string[] = [
-    'mod-lair-cargo-a:armorHpBonus', // 赃物强化舱（货舱槽 + 装甲容量）→ 界面「装甲容量 +15%」
+    'mod-lair-cargo-a:armorHpBonus', // 赃物强化舱（货舱槽 + 装甲容量）→ 界面「装甲容量 +15%」；**2026-09-17 起引擎也真的算它**（原先甲容量只在装甲槽件里求和 ⇒ 玩家报障「护甲增加效果无效」）
     'mod-lair-armor-c:repairArmorHp', // 生体甲壳板（装甲槽 + 自愈）→ 信息卡「生体自愈」
     'mod-lair-dc-c:hullResistAdd', // 生体损管腔（支援槽 + 结构抗性）→ 结构抗性行
     // 2026-09-13 虫洞专属（船长逐条给定）：
     'mod-wh-c-pulse:speedBonusPct', // 生体脉搏加速器（支援槽 + 舰船速度 +10%）→ 界面「航速」
-    'mod-wh-a-coat:evasionGapPct', // 掠袭折射涂层（装甲槽 + 闪避缺口）→ 界面「闪避」
+    'mod-wh-a-coat:evasionGapPct', // 掠袭折射涂层（装甲槽 + 闪避缺口）→ 界面「闪避」；**2026-09-17 起引擎也真的算它**（原先闪避缺口只在支援槽件里收）
     'mod-wh-a-scan:rangeCutPct', // 赃物扫描阵（支援槽 + 武器射程 −15%）→ 界面「射程代价」
     'mod-wh-a-shield:rangeCutPct', // 掠袭者护盾笼（护盾槽 + 武器射程 −25%）→ 界面「射程代价」
     'mod-wh-c-frame:speedBonusPct', // 几丁质骨架层（装甲槽 + 舰船速度 +5%）→ 界面「航速」

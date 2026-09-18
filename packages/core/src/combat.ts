@@ -1059,8 +1059,20 @@ export function createPlayerSpec(
   // 盾/甲：容量加成加算求和；抗性按系逐件缺口乘入（mergeResist 链；V18.1 同系可多件）
   let shieldHpMult = 1
   for (const m of shieldDefs) shieldHpMult += m.shieldHpBonus ?? 0
+  /**
+   * **甲容量 = 全件加算**（2026-09-17 玩家报障修复：「**赃物强化仓的护甲增加效果无效**」）。
+   *
+   * ⚠ 原先只在 `armorDefs`（**装甲槽件**）里求和 ⇒ 跨族的「**赃物强化舱**」（低槽货舱件 · 甲容量 15%）
+   * **引擎从来没算过**，而界面自 2026-09-11 起就显示「装甲容量 +15%」（`shipInfo.tsx` 的
+   * `crossFamilyLines`，体检白名单也登记了 `mod-lair-cargo-a:armorHpBonus`）⇒ 玩家看到的是不兑现的承诺。
+   * 现改为与**其余跨族字段同口径**（`hullHpBonus` · `hullResistAdd` · `speedBonusPct` · `evasionGapPct` ·
+   * `rangeCutPct` · `reloadPenaltyPct` · `rangeTypeBonusPct` 全都是"全件扫描"）⇒ 装甲槽件照旧各算一次、
+   * **不重复计入**；全表只有赃物强化舱这一件的生效值发生变化（其余 6 个带该字段的件本就是装甲槽）。
+   * 连带自动跟随：`layerAmpOf`（维修装置每跳修复量与修理组件共用的一把尺）取的就是本函数 ⇒ 「容量变厚、
+   * 修得也更多」两条口径同步。
+   */
   let armorHpMult = 1
-  for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
+  for (const m of allFittedModules(fitted, ctx)) armorHpMult += m.armorHpBonus ?? 0
   // 结构层容量（2026-09-10 船长：E 族巨构骨架引出）——任何槽位都可能带，按件加算求和，
   // 与甲容同口径；技能（船体加固理论/装甲舰操作）再乘于其上
   let hullHpMult = 1
@@ -1108,8 +1120,16 @@ export function createPlayerSpec(
     for (const [t, v] of Object.entries(m.damageTypeBonusPct ?? {})) dmgBonus[t as DamageType] += v ?? 0
     rofCut += m.reloadCutPct ?? 0
     if (m.hitBonusPct !== undefined) hitEqs.push(m.hitBonusPct)
-    if (m.evasionGapPct !== undefined) evadeGaps.push(m.evasionGapPct)
   }
+  /**
+   * **闪避缺口：全件扫描**（2026-09-17 · 与甲容量同一批修，由玩家报障「赃物强化舱的护甲增加效果无效」引出）。
+   *
+   * ⚠ 原先这一行与支援件族那几个字段同放（`for (const m of supportDefs)`）⇒ 跨族的
+   * 「**掠袭折射涂层**」（**装甲槽** · 被命中缺口 −28%，物品说明与界面都写着）**引擎从来没算过**。
+   * 口径与 **2026-09-13「速度加成不再只认推进器槽」**（见下方推进器段）一致 ⇒ 改为任意槽位携带。
+   * 姿态陀螺三件本身是支援槽 ⇒ 照旧各算一次（**不重复计入**）。
+   */
+  for (const m of allFittedModules(fitted, ctx)) if (m.evasionGapPct !== undefined) evadeGaps.push(m.evasionGapPct)
   const hitEq = curveMult(hitEqs)
   // 2026-09-05 一号按盘点补：规避机动学——舰船被命中缺口每级收窄 5%（与姿态陀螺缺口复合）
   const evLv = Math.min(5, state.skills.trained[bal.evasionSkillId] ?? 0)
@@ -3124,7 +3144,7 @@ function announceStealthStart(b: import('./state').BattleState): void {
   for (const u of Object.values(b.units)) {
     if (u.side !== 'me' || u.stealthUntilMs === undefined) continue
     const sec = Math.max(0, Math.round((u.stealthUntilMs - b.lastTickGameMs) / 1000))
-    pushBattleNotice(b, `隐秘行动：${u.name} 进入隐身（${sec} 秒内不被锁定、不被攻击；基础舰炮在此期间不开火）`)
+    pushBattleNotice(b, `隐秘行动：${u.name} 进入隐身（${sec} 秒内不被锁定、不被攻击）`)
   }
 }
 
@@ -3342,7 +3362,7 @@ function buildMyUnitSpecs(
     if (web0) applyMeWebDebuff(me, web0)
     // 序章·苏醒：教学战（教程步骤4 + 演习场 + 主控）给玩家舰 命中/回避加成（每拍规格重建处注入）
     if (isTutorialBattle(state, anomalyId, shipId)) applyTutorialBuff(me)
-    return [me]
+    return applyFleetLockAura([me])
   }
   const out: UnitSpec[] = []
   for (const entry of fleet) {
@@ -3358,7 +3378,28 @@ function buildMyUnitSpecs(
     if (web) applyMeWebDebuff(spec, web)
     out.push(spec)
   }
-  return out
+  return applyFleetLockAura(out)
+}
+
+/**
+ * **目标锁定阵列：增伤与集火「全队生效」**（船长 2026-09-17：「**增伤改为全队生效。**」＋「**集火也是全队生效**」）——
+ * 编队内任一舰装了 `lockDmgBonus` 件 ⇒ **全队取最高一份**（各舰先按自己那几件走 `curveMult` 收敛、再取最大），
+ * 全队每舰的 `lockedDmgBonus` 都置为该值（船长裁定甲：与指挥舰「全队单发 +15% 取最高不叠加」同口径）。
+ *
+ * 为什么放在这里而不是只写一次：该字段在 `stepBattle` 里**一处驱动两件事**——
+ * ① **集火**「存活编队首位」（`unit.lockedDmgBonus ? firstAliveFoe : randomAliveFoe`：主舰优先、击毁接力）；
+ * ② **增伤**：本舰伤害 ×(1 + 值)（只对"打舰"生效；打敌机不吃，见 `stepBattle` 的机群分支）。
+ * ⇒ 置满全队 = 增伤与集火**同时**全队化。而战斗是**逐拍重建规格**的（`buildMyUnitSpecs`）⇒ 必须在这一处施加，
+ * 与「谜质增益 / 捕获网 / 教学战加成」同一处纪律（只写在开战那一刻会被下一拍冲掉）。
+ *
+ * **零份 ⇒ 一个字段都不写**（没装阵列的编队逐字不变）；**单舰路径取到的就是它自己 ⇒ 逐字等价**
+ * （远征单人 / 遭遇战 / 虫洞单舰的读数不受影响）。件数值（8/12/20/30%）一个不动，**零存档迁移**。
+ */
+function applyFleetLockAura(specs: UnitSpec[]): UnitSpec[] {
+  let best = 0
+  for (const s of specs) best = Math.max(best, s.lockedDmgBonus ?? 0)
+  if (best > 0) for (const s of specs) s.lockedDmgBonus = best
+  return specs
 }
 
 /**
@@ -3732,6 +3773,9 @@ export function startFleetBattleFor(
       }
     }
   }
+  // **目标锁定阵列：全队生效**（船长 2026-09-17）——见 `applyFleetLockAura` 的注释：
+  // 开战这一刻的规格也要置上（首拍用）；**真正的每拍生效靠 `buildMyUnitSpecs` 里同一次调用**。
+  applyFleetLockAura(specs)
   // **谜质 B1：我方静态增益**（抗性 / 命中 / 回避 / 射程 / 单发 / 装填）——只在洞内战斗里生效
   if (matterMods) {
     const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)

@@ -51,7 +51,9 @@ export function sceneOfShipwin(state: GameState): ShipwinScene {
   if (state.hauling.active) return 'travel'
   if (state.mining.active) return state.mining.phase === 'returning' ? 'travel' : 'work-mine'
   if (state.salvaging.active) return state.salvaging.phase === 'returning' ? 'travel' : 'work-salvage'
-  if (state.scanning.active) return state.scanning.returning ? 'travel' : 'work-scan'
+  // ⚠ 2026-09-17 去掉 `state.scanning` 那一档：星系扫描自 2026-09-15 起是**无人扫描艇**
+  //   （船长：「玩家扫描星系将不再占用玩家的主控活动」「不牵动舰船」）⇒ 本舰并没有在扫描，
+  //   状态窗不该把它画成"本舰作业中"（本条是那批无人化改造漏掉的旧闸之一）。
   if (state.expedition.active) return 'travel'
   if (state.transit.active) return 'travel'
   if (state.standby.active) return 'field'

@@ -24,7 +24,7 @@ declare global {
     listBackups(): Promise<{ ok: boolean; backups: SaveBackupInfo[]; error?: string }>
     /** 读取某份备份的文本（恢复前校验用） */
     readBackup(name: string): Promise<{ ok: boolean; text?: string; error?: string }>
-    /** 恢复备份（覆盖前自动备份当前档） */
+    /** 恢复备份（⚠ 2026-09-17 船长：**不再**为当前档自动备份，直接覆盖） */
     restore(name: string): Promise<{ ok: boolean; error?: string }>
     /** 删除某份备份（只删备份文件，不影响当前档） */
     deleteBackup(name: string): Promise<{ ok: boolean; error?: string }>

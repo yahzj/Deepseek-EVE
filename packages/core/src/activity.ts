@@ -14,7 +14,7 @@ import { wormholeAutoRunsOf } from './wormholeAuto'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
-import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor } from './expedition'
+import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoLoopWaitLabel } from './expedition'
 import { standbyStatus, transitStatus } from './location'
 import { shipDisplayName } from './instances'
 import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
@@ -341,7 +341,15 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     if (!inFlight) {
       const aName = ctx.anomalies.get(loopId)?.name ?? loopId
       const cdMs = bountyCooldownRemainingMs(state, loopId)
-      const busyOther = state.mining.active || state.transit.active || state.standby.active
+      /**
+       * **在等哪一类作业**（`null` = 没别的作业挡路）：判据与引擎**同源**（`autoLoopWaitLabel`）。
+       *
+       * ⚠ **2026-09-17 玩家报障修复**：原先这里自己写了一份 `busyOther`（只认 采矿/航行/待命），
+       * 而引擎的等待表是 **5 类**（远征 · 采矿 · **星图扫描** · **残骸打捞** · 航行）——两者漂移的结果：
+       * 星图扫描或打捞在跑时，引擎在等、这行却一路写「即将自动再出击」（扫描能无限期跑 ⇒ 玩家看到"卡死"）。
+       * 现在同一个单点判据 + **点名**在等哪一类。
+       */
+      const waitFor = autoLoopWaitLabel(state)
       // 冷却段给进度条（总时长按当前驾驶船扫描属性估算；等待其它作业结束无确定终点 → 无条）
       let percent: number | null = null
       if (cdMs > 0) {
@@ -352,11 +360,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         id: 'loop',
         kind: 'loop',
         label: '重复清剿',
-        sub: busyOther
-          ? `目标「${aName}」——等待当前作业结束，自动再出击`
-          : cdMs > 0
-            ? `目标「${aName}」——正在扫描新敌人`
-            : `目标「${aName}」——即将自动再出击`,
+        sub:
+          waitFor !== null
+            ? `目标「${aName}」——等待${waitFor}结束，自动再出击`
+            : cdMs > 0
+              ? `目标「${aName}」——正在扫描新敌人`
+              : `目标「${aName}」——即将自动再出击`,
         percent,
         remainingMs: cdMs > 0 ? cdMs : null,
         stopable: true,
