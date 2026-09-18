@@ -2,12 +2,15 @@
  * **装配方案（预设）**：保存当前装配 / 按方案一键换装
  * （2026-09-14 船长拍板；入口在装配页「装配目标」栏右侧）。
  *
- * 口径（船长四问四答 + 一处追加）：
+ * 口径（船长四问四答 + 一处追加；**上限 2026-09-17 船长：「舰船的装配方案数量上限拓展到10套」**）：
  * ① **按船型归口**（`defId`）——同型号任意一艘（含以后新建的）都能套用；
- * ② **每个船型最多 3 套**（`FIT_PRESET_MAX`），名称玩家自定（默认「方案 N」，见 `FIT_PRESET_NAME_MAX`）；
+ * ② **每个船型最多 10 套**（`FIT_PRESET_MAX`；原 3 套），名称玩家自定（默认「方案 N」，见 `FIT_PRESET_NAME_MAX`）；
  * ③ 存 **三类槽位装备（高/中/低 逐位）＋ 无人机舱装载**；**不存**弹药档位（那仍在装配页手动设）；
  * ④ 套用 = **先卸光再装**——目标船现有装备全卸回装备库、无人机退回仓库，再按方案装；
  * ⑤ 装备库不足 / CPU 超预算 / 机舱不足时 **尽力装 + 逐条提示**（装上的保留，未装的逐条写进结果与日志）。
+ * ⑥ **方案明细可查**（船长 2026-09-17：「**允许玩家查看装备方案内用了哪些装备**」）⇒ 单点
+ *   `fitPresetDetailOf(preset, ctx, ship)` 出「三类槽位逐位（含空位）＋ 无人机舱装载」，
+ *   界面（装配页方案浮层）只负责渲染，不自己拼名字。
  *
  * ⚠ **取舍（如实登记，2026-09-14 船长选定的语义）**：先卸光 + 尽力装 ⇒ **方案凑不齐时，
  * 套用后可能比套用前更差**（旧装配已回库）。结果小结与日志会逐条列出缺什么、哪几件未装。
@@ -29,8 +32,8 @@ import { addModule, adjustDroneLoad, countModule, fitModule, trimDroneLoadToBay 
 import { addWare } from './inventory'
 import { fleetDefOf } from './instances'
 
-/** 每个船型最多存几套（船长 2026-09-14：3 套） */
-export const FIT_PRESET_MAX = 3
+/** 每个船型最多存几套（船长 2026-09-14：3 套 ⇒ **2026-09-17「上限拓展到10套」**） */
+export const FIT_PRESET_MAX = 10
 /** 方案名长度上限（玩家自定；超长截断） */
 export const FIT_PRESET_NAME_MAX = 12
 /** 槽类顺序（卸下 / 装配 / 展示统一走它：高 → 中 → 低） */
@@ -52,6 +55,78 @@ export function fitPresetBrief(preset: ShipFitPreset): string {
   const parts = [`装备 ${high + mid + low} 件（高 ${high} / 中 ${mid} / 低 ${low}）`]
   if (drones > 0) parts.push(`无人机 ${Object.keys(load).length} 型 ${drones} 架`)
   return parts.join(' · ')
+}
+
+/**
+ * **方案明细（界面「明细」展开用）**：逐位列出三类槽位装了什么 ＋ 无人机舱装载
+ * （船长 2026-09-17：「**允许玩家查看装备方案内用了哪些装备**」；两问两答取甲：
+ * 行内展开 · 逐位列含空位）。
+ *
+ * 口径：
+ * - **按目标船的槽位布局铺满**（`shipSlotsOf(ship)`）⇒ 空位显示为「空」（`name: '空'`、`id: null`），
+ *   玩家能一眼看出"这位没装"；方案数组比船位少的那几位也照样铺成空位。
+ * - **未知 / 已下架的件不隐藏**：`missing: true` ＋ `name` 回落成 id —— 与套用时"逐条报未装"同一口径
+ *   （悄悄吞掉会让玩家以为方案里没有它）。
+ * - **超出本船槽位的方案位**（船型槽位被改小过）单独计数 `overflow`：套用时按 `Math.min` 忽略，
+ *   这里如实报出来。
+ * - 无人机按「机型 × 架」列出（机型名走 `ctx.items`，未知机型同样标 `missing`）。
+ */
+export interface FitPresetSlotLine {
+  rack: RackSlot
+  /** 位次（**1 起**，界面直接显示「高 1」） */
+  index: number
+  /** 件 id（空位 = null） */
+  id: string | null
+  /** 件名（空位 = 「空」；未知/下架件回落成 id） */
+  name: string
+  /** 未知 / 已下架的件（界面据此染色提示） */
+  missing: boolean
+}
+export interface FitPresetDroneLine {
+  id: string
+  name: string
+  count: number
+  missing: boolean
+}
+export interface FitPresetDetail {
+  slots: FitPresetSlotLine[]
+  drones: FitPresetDroneLine[]
+  /** 超出本船槽位、套用时会忽略的方案位数 */
+  overflow: number
+}
+
+export function fitPresetDetailOf(
+  preset: ShipFitPreset,
+  ctx: SimContext,
+  ship: { slots?: import('./types').ShipSlots },
+): FitPresetDetail {
+  const bays = shipSlotsOf(ship)
+  const slots: FitPresetSlotLine[] = []
+  let overflow = 0
+  for (const rack of RACK_ORDER) {
+    const src = preset.fitted[rack] ?? []
+    const baysN = bays[rack]
+    if (src.length > baysN) overflow += src.length - baysN
+    for (let i = 0; i < baysN; i++) {
+      const raw = src[i]
+      const id = raw === null || raw === undefined || raw === '' ? null : raw
+      const def = id === null ? undefined : ctx.modules.get(id)
+      slots.push({
+        rack,
+        index: i + 1,
+        id,
+        name: id === null ? '空' : (def?.name ?? id),
+        missing: id !== null && def === undefined,
+      })
+    }
+  }
+  const drones: FitPresetDroneLine[] = Object.entries(preset.droneLoad ?? {})
+    .filter(([, n]) => n > 0)
+    .map(([id, count]) => {
+      const def = ctx.items.get(id)
+      return { id, name: def?.name ?? id, count, missing: def === undefined }
+    })
+  return { slots, drones, overflow }
 }
 
 /** 裁掉位数组尾部的空位（方案存"紧凑形状"，套用时按目标船槽位布局对齐） */
@@ -76,7 +151,7 @@ function defaultName(list: readonly ShipFitPreset[]): string {
 
 /**
  * 玩家指令：**保存当前装配为方案**（`shipId` 那艘船的实装 = 三类槽位 + 无人机舱装载）。
- * `name` 缺省 = 「方案 N」；同名 = **覆盖**（满 3 套时仍可覆盖同名，不必先删）。
+ * `name` 缺省 = 「方案 N」；同名 = **覆盖**（满套时仍可覆盖同名，不必先删）。
  */
 export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string, name?: string): CommandResult {
   const lock = shipLockedReason(state, shipId, '保存它的装配方案')

@@ -1360,7 +1360,7 @@ export class GameEngine {
 
   // ── 装配方案（预设）：保存当前装配 / 套用 / 重命名 / 删除 / 一键卸下（2026-09-14 船长，装配页入口） ──
 
-  /** 保存当前装配为方案（按**船型**归口；默认「方案 N」；同名覆盖；满 3 套且无同名时拒绝） */
+  /** 保存当前装配为方案（按**船型**归口；默认「方案 N」；同名覆盖；满 `FIT_PRESET_MAX`（现 10）套且无同名时拒绝） */
   saveFitPresetFor(shipId: string, name?: string): CommandResult {
     const result = saveFitPreset(this.state, this.ctx, shipId, name)
     if (result.ok) {

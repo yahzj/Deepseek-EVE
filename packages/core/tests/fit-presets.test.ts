@@ -2,8 +2,8 @@
  * 装配方案（预设）：保存 / 套用 / 上限 / 缺件 / 超载 / 锁定 / 存档清洗
  * （2026-09-14 船长拍板；口径正文 = `packages/core/src/fitPresets.ts` 头注释，本件是钉子）。
  *
- * 船长四问四答：**按船型归口** · **每型 3 套** · **存槽位装备 + 无人机舱装载** ·
- * **尽力装 + 逐条提示** · **先卸光再装**；入口在装配页「装配目标」栏右侧。
+ * 船长四问四答：**按船型归口** · **每型 10 套**（2026-09-17 「上限拓展到10套」；原 3 套）· **存槽位装备 + 无人机舱装载** ·
+ * **尽力装 + 逐条提示** · **先卸光再装**；入口在装配页「装配目标」栏右侧；每套可展开**明细**看逐位装了什么（同日船长）。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState, ItemDef, SimContext } from '../src/index'
@@ -18,6 +18,8 @@ import {
   createInitialState,
   deleteFitPreset,
   fitPresetBrief,
+  fitPresetDetailOf,
+  FIT_PRESET_MAX,
   fitPresetsOf,
   fitModule,
   loadSaveFile,
@@ -121,30 +123,80 @@ describe('装配方案（预设）：保存', () => {
     expect(saveFitPreset(state, ctx, uid).ok).toBe(true)
   })
 
-  it('每型最多 3 套 · 同名可覆盖 · 改名（同名拒绝）· 删除', () => {
+  it('**每型最多 10 套**（船长 2026-09-17「上限拓展到10套」）· 同名可覆盖 · 改名（同名拒绝）· 删除', () => {
     const { state, ctx, uid } = world()
     place(state, uid, 'high', 0, 'mod-gun') // 空装配不许存（见上一条用例）⇒ 先装一件
-    expect(saveFitPreset(state, ctx, uid, '甲').ok).toBe(true)
-    expect(saveFitPreset(state, ctx, uid, '乙').ok).toBe(true)
-    expect(saveFitPreset(state, ctx, uid, '丙').ok).toBe(true)
+    for (let i = 1; i <= FIT_PRESET_MAX; i++) {
+      expect(saveFitPreset(state, ctx, uid, `甲${i}`).ok, `第 ${i} 套应能存下`).toBe(true)
+    }
+    expect(fitPresetsOf(state, 'sh-fit').length).toBe(10)
 
+    // 满 10 套后：新名字被拒（文案带新上限），同名仍可覆盖
     const full = saveFitPreset(state, ctx, uid)
     expect(full.ok).toBe(false)
-    expect(full.error).toContain('3 套')
+    expect(full.error).toContain('10 套')
 
-    // 同名覆盖：满 3 套时仍可写（不必先删）
     place(state, uid, 'high', 0, 'mod-gun')
-    expect(saveFitPreset(state, ctx, uid, '甲').ok).toBe(true)
-    expect(fitPresetsOf(state, 'sh-fit').length).toBe(3)
+    expect(saveFitPreset(state, ctx, uid, '甲1').ok).toBe(true)
+    expect(fitPresetsOf(state, 'sh-fit').length).toBe(10)
     expect(fitPresetsOf(state, 'sh-fit')[0]!.fitted.high).toEqual(['mod-gun'])
 
     // 改名：同名拒绝；改成新名成功
-    expect(renameFitPreset(state, 'sh-fit', 0, '乙').ok).toBe(false)
+    expect(renameFitPreset(state, 'sh-fit', 0, '甲2').ok).toBe(false)
     expect(renameFitPreset(state, 'sh-fit', 0, '甲改').ok).toBe(true)
     expect(fitPresetsOf(state, 'sh-fit')[0]!.name).toBe('甲改')
 
     expect(deleteFitPreset(state, 'sh-fit', 1).ok).toBe(true)
-    expect(fitPresetsOf(state, 'sh-fit').map((p) => p.name)).toEqual(['甲改', '丙'])
+    expect(fitPresetsOf(state, 'sh-fit').length).toBe(9)
+    expect(fitPresetsOf(state, 'sh-fit')[0]!.name).toBe('甲改')
+  })
+
+  it('**方案明细**：逐位铺满本船槽位（空位显示「空」）＋ 无人机「型 × 架」＋ 未知件不隐藏', () => {
+    const { state, ctx, uid } = world()
+    place(state, uid, 'high', 0, 'mod-gun')
+    place(state, uid, 'low', 0, 'mod-armor')
+    addWare(state, 'drone-x', 5)
+    expect(adjustDroneLoad(state, ctx, 'drone-x', 2, uid).ok).toBe(true)
+    expect(saveFitPreset(state, ctx, uid).ok).toBe(true)
+    const preset = fitPresetsOf(state, 'sh-fit')[0]!
+    const ship = ctx.ships.get('sh-fit')!
+    const detail = fitPresetDetailOf(preset, ctx, ship)
+
+    // 逐位铺满：本夹具船 = 高 3 / 中 2 / 低 3（共 8 位）⇒ 空位以 name='空' 标出
+    expect(ctx.ships.get('sh-fit')!.slots).toEqual({ high: 3, mid: 2, low: 3 })
+    expect(detail.slots.map((s) => `${s.rack}${s.index}:${s.name}`)).toEqual([
+      'high1:模块mod-gun',
+      'high2:空',
+      'high3:空',
+      'mid1:空',
+      'mid2:空',
+      'low1:模块mod-armor',
+      'low2:空',
+      'low3:空',
+    ])
+    expect(detail.slots.filter((s) => s.id === null).length).toBe(6)
+    expect(detail.drones).toEqual([{ id: 'drone-x', name: '试验无人机', count: 2, missing: false }])
+    expect(detail.overflow).toBe(0)
+
+    // 未知 / 已下架的件不隐藏：name 回落成 id 并标 missing（与套用时"逐条报未装"同口径）
+    const broken = { name: '坏方案', fitted: { high: ['mod-gone'], mid: [], low: [] }, droneLoad: { 'drone-gone': 3 } }
+    const bd = fitPresetDetailOf(broken, ctx, ship)
+    const gone = bd.slots.find((s) => s.id === 'mod-gone')!
+    expect(gone.name).toBe('mod-gone')
+    expect(gone.missing).toBe(true)
+    expect(bd.drones[0]!.missing).toBe(true)
+  })
+
+  it('**明细：超出本船槽位的方案位如实报出**（套用时按 Math.min 忽略）', () => {
+    const { state, ctx, uid } = world()
+    place(state, uid, 'high', 0, 'mod-gun')
+    expect(saveFitPreset(state, ctx, uid).ok).toBe(true)
+    const preset = fitPresetsOf(state, 'sh-fit')[0]!
+    // 手工塞一个"比船位多"的形状（船型槽位被改小的情形）：高位 4 个 vs 本船高 3 位
+    const wide = { ...preset, fitted: { high: ['mod-gun', 'mod-gun', 'mod-gun', 'mod-gun'], mid: [], low: [] } }
+    const detail = fitPresetDetailOf(wide, ctx, ctx.ships.get('sh-fit')!)
+    expect(detail.slots.filter((s) => s.rack === 'high').length).toBe(3) // 只铺本船位数
+    expect(detail.overflow).toBe(1)
   })
 })
 
@@ -321,22 +373,26 @@ describe('装配方案（预设）：存档', () => {
     expect(serializeSaveFile(back2, 5)).not.toContain('fitPresets')
   })
 
-  it('存档清洗：空名/全空方案丢弃 · 每型截断到 3 条 · 无人机只收正整数', () => {
+  it('存档清洗：空名/全空方案丢弃 · **每型截断到 10 条** · 无人机只收正整数', () => {
     const { state } = world()
+    /** A..K = 11 条有效（第 11 条 K 必须被截掉）＋ 两条不合规 */
+    const valid = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].map((name) => ({
+      name,
+      fitted: { high: ['mod-gun'], mid: [], low: [] },
+    }))
     state.fitPresets = {
       'sh-fit': [
         { name: '   ', fitted: { high: ['mod-gun'], mid: [], low: [] } }, // 空名 ⇒ 丢
         { name: '空方案', fitted: { high: [], mid: [], low: [] } }, // 全空 ⇒ 丢
         { name: 'A', fitted: { high: ['mod-gun'], mid: [], low: [] }, droneLoad: { 'drone-x': 0 } }, // 0 架 ⇒ 不落 droneLoad
-        { name: 'B', fitted: { high: ['mod-gun'], mid: [], low: [] } },
-        { name: 'C', fitted: { high: ['mod-gun'], mid: [], low: [] } },
-        { name: 'D', fitted: { high: ['mod-gun'], mid: [], low: [] } }, // 第 4 条有效 ⇒ 截断
+        ...valid.slice(1),
       ],
     } as unknown as GameState['fitPresets']
 
     const back = loadSaveFile(serializeSaveFile(state, 4)).state
     const list = fitPresetsOf(back, 'sh-fit')
-    expect(list.map((p) => p.name)).toEqual(['A', 'B', 'C'])
+    expect(list.length).toBe(10) // 11 条有效 ⇒ 截到上限 10
+    expect(list.map((p) => p.name)).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'])
     expect(list[0]!.droneLoad).toBeUndefined()
     expect(list[0]!.fitted.high).toEqual(['mod-gun'])
   })
