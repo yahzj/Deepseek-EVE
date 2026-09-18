@@ -863,7 +863,22 @@ export {
   // 赏金新板提示（船长 2026-09-14：换板未看 ⇒ 导航徽标；进任务中心即记账）
   sideTasksMarkBountySeen,
 } from './sideTasks'
+/* 「第一次」任务系列（2026-09-17 教程重做批 · 阶段②）：13 条任务 + 13 条次数链 + 终身计数 */
+export {
+  FIRST_TASKS,
+  CHAIN_TIERS,
+  CHAIN_REWARD_ISK,
+  bumpFirst,
+  firstStatOf,
+  chainProgressOf,
+  advanceFirstTasks,
+  visibleFirstTasks,
+  totalSkillLevels,
+  dsiStanding,
+} from './firstTasks'
+export type { FirstTaskDef, FirstStatKey } from './firstTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'
+
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
 export { emptyMarks } from './state'
 

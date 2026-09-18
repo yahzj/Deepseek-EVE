@@ -38,6 +38,7 @@ import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans, advanceOnboardingAuto } from './onboarding'
 import { advanceComms } from './comms'
+import { advanceFirstTasks } from './firstTasks'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -172,6 +173,13 @@ export function advanceGame(
   advanceComms(state, ctx)
   // 贯穿任务「寻找人类」阶段目标：探索全部星系（里程碑只记一次；未发布/已完成时零开销）
   advanceFindHumans(state, ctx)
+  /**
+   * **「第一次」任务系列 ＋ 后续次数链**（2026-09-17 教程重做批 · 阶段②）：判定达成 ⇒ 写
+   * `importantTasks[id].done`（**只置一次**，奖励/通讯据此去重）。
+   * ⚠ 本阶段**不写日志、不发通讯**——保持"离线事件条数"等既有口径逐字不变；
+   * 阶段②b 接通讯与奖励，阶段③把任务画进任务中心。
+   */
+  advanceFirstTasks(state, ctx)
 }
 
 /** 技能队列推进（内部函数，不对外） */

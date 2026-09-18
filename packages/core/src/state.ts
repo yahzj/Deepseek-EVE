@@ -1759,6 +1759,11 @@ export type GameStateV25 = Omit<GameStateV24, 'version'> & {
    * ⚠ **不参与存档语义**（不落盘、不影响迁移）：老档没有它 = 一切照旧（限时倍率按 1× 处理）。
    */
   wallMs?: number
+  /**
+   * **「第一次」任务系列的终身计数**（船长 2026-09-17 教程重做批 · 阶段②；可选、**零迁移**）。
+   * 键见 `core/firstTasks.ts` 的 `FirstStatKey`；老档没有 ⇒ 读作 0（链任务从 0 起）。
+   */
+  firstStats?: FirstStats
 }
 /** 对外统一称呼：当前版本状态（v25 = v24 + 虫洞副本状态） */
 export type GameState = GameStateV25
@@ -1819,6 +1824,16 @@ export interface ImportantTaskState {
   /** 「寻找人类」阶段目标：已探索全部星系（里程碑只记一次；2026-09-10 船长定） */
   allExplored?: boolean
 }
+
+/**
+ * **「第一次」任务系列的终身计数**（船长 2026-09-17 教程重做批 · 阶段②）。
+ *
+ * 键见 `core/firstTasks.ts` 的 `FirstStatKey`（采矿单位 / 打捞次数 / 维修次数 / 胜场 / 精炼批 / 产出件 /
+ * 挂单 / 造船 / 指派 / 运输趟 / 进洞趟）。**只增不减**，由各引擎落点 `bumpFirst()` 累加；
+ * 扫描数、累计技能等级、协会声望三条**不计数**（现推）。
+ * ⚠ **可选字段、零迁移**：老档没有 ⇒ 读作 0（链任务从 0 起，见工作文档 §老档口径）。
+ */
+export type FirstStats = Partial<Record<string, number>>
 
 /** 第二十三版存档结构（历史版本）：v23 = v22 + 序章·苏醒（2026-09-05 船长拍板：
  * onboarding 教程进度（老档迁移为 -1 = 不触发）与重要任务状态（importantTasks）。
@@ -2324,6 +2339,8 @@ export function createInitialState(opts?: {
     rareBurnUnits: {}, // 该型残骸累计已烧体积（m³）
     onboarding: { step: prologue ? 0 : -1 }, // 序章·苏醒：prologue 新档 step 0（待界面开始序章演出），老档/经典 = -1
     importantTasks: {},
+    // 「第一次」任务系列的终身计数（2026-09-17 教程重做批）：**新档不写这个键**——首次 bumpFirst 才建，
+    // 老档/新档快照因此逐字一致（真零迁移）；读侧一律按缺省 0（`firstStatOf`）。
     sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）
     wormhole: { ...EMPTY_WORMHOLE_STATE }, // v25：虫洞副本（施工期对玩家不可见；见 wormhole.ts 头注释）
     logs: [],

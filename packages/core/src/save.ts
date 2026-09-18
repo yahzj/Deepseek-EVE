@@ -2712,6 +2712,19 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
+  /**
+   * 「第一次」任务系列的终身计数（2026-09-17 教程重做批 · 阶段②；**可选、零迁移**）：
+   * 只收"有限正数"，键非空即留；老档没有这个字段 ⇒ 不写（读作 0，链任务从 0 起）。
+   */
+  const firstStats: NonNullable<GameState['firstStats']> = {}
+  const fsRaw = asRaw(src.firstStats)
+  for (const [key, value] of Object.entries(fsRaw)) {
+    if (key.length === 0) continue
+    const n = num(value)
+    if (!Number.isFinite(n) || n <= 0) continue
+    firstStats[key] = Math.floor(n)
+  }
+
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
     rawList: unknown,
@@ -3195,6 +3208,8 @@ function normalizeState(raw: unknown): GameState {
     rareBurnUnits,
     onboarding,
     importantTasks,
+    // 「第一次」任务终身计数：**空表不写键**（老档与新档快照逐字一致 = 真零迁移）
+    ...(Object.keys(firstStats).length > 0 ? { firstStats } : {}),
     sideTasks,
     wormhole,
     logs,
