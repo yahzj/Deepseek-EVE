@@ -311,6 +311,11 @@ export function chainProgressOf(
  *
  * 为什么要"事件置位 ＋ 本函数统一判定"两条腿：计数是事件驱动的（不怕读档重算），
  * 而 `importantTasks` 的 done 标记保证**奖励与通讯只发一次**（与既有教程奖励同款去重口径）。
+ *
+ * 🔖 **成就系统的预留接口**（船长 2026-09-18：「顺便打算制作成就系统，每个重要任务就会给予一个成就徽章，
+ * 不过等做完这个之后再考虑，先挂机，可以预留接口」）：本函数的返回值**就是**那个挂点——
+ * 谁要发徽章，就在拿到 `id` 的地方加一次发放（与 `firstRewards.grantFirstReward` 同一个调用点，
+ * 见 `engine.ts` 的那段循环）；判定/去重/老档语义全都不用改。**成就系统本身本批不做**。
  */
 export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
   const newly: string[] = []
@@ -433,5 +438,46 @@ export function unlockNeedTitle(key: string): string | undefined {
 /** 任务中心用：按前置过滤后的可见任务（未满足前置 ⇒ 不显示） */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
   return FIRST_TASKS.filter((d) => d.prereq === undefined || state.importantTasks[d.prereq]?.done === true)
+}
+
+/** 任务中心**一张卡的读数**（面板只渲染，不自己算——置顶/隐藏两条规矩都在这里定，便于用例钉住） */
+export interface FirstTaskRow {
+  def: FirstTaskDef
+  done: boolean
+  /** 链的当前档位与总档数（无链 ⇒ 0/0） */
+  level: number
+  total: number
+  count: number
+  next: number | null
+  /** 当前可领奖金（0 = 没得领） */
+  pendingIsk: number
+  /** **已全部完成**（做完了 ＋ 链满档 ＋ 没有可领的）⇒ 面板隐藏（船长 2026-09-18：「已经全部完成的重要任务隐藏」） */
+  hidden: boolean
+}
+
+/**
+ * **任务中心的卡片序列**（2026-09-18 船长两条 UI 规矩的数据侧）：
+ * ① 先按前置过滤（`visibleFirstTasks`）→ ② 排掉"已全部完成"的 → ③ **置顶排序**：
+ * **可领奖 → 已完成 → 未完成**（组内保持 `FIRST_TASKS` 原序，方便玩家一进来就把奖励收掉）。
+ */
+export function firstTaskBoard(state: GameState): FirstTaskRow[] {
+  const rows: FirstTaskRow[] = visibleFirstTasks(state).map((def) => {
+    const done = state.importantTasks[def.id]?.done === true
+    const prog = def.chain ? chainProgressOf(state, def.chain) : null
+    const pendingIsk = def.chain ? chainPendingRewardIsk(state, def.chain.id) : 0
+    const maxed = prog !== null && prog.level >= prog.total
+    return {
+      def,
+      done,
+      level: prog?.level ?? 0,
+      total: prog?.total ?? 0,
+      count: prog?.count ?? 0,
+      next: prog?.next ?? null,
+      pendingIsk,
+      hidden: done && maxed && pendingIsk <= 0,
+    }
+  })
+  const rank = (r: FirstTaskRow): number => (r.pendingIsk > 0 ? 0 : r.done ? 1 : 2)
+  return rows.filter((r) => !r.hidden).sort((a, b) => rank(a) - rank(b))
 }
 
