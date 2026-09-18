@@ -35,6 +35,7 @@ import {
   createPlayerSpec,
   desiredRangeFor,
   foeDesiredRange,
+  foeRangeDebuffOf,
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKitsAll,
@@ -744,7 +745,11 @@ function settleBattleRetreat(
   const meSpec = createPlayerSpec(state, ctx, state.shipId)
   const myTopRangeM = meSpec ? meSpec.weapons.reduce((m, w) => Math.max(m, w.maxRangeM), 0) : 0
   const foesNow = threatCard ? createFoeSpecs(threatCard, ctx.balance.battle) : []
-  const foeTypicalRangeM = meSpec && foesNow.length > 0 ? foeDesiredRange(meSpec, foesNow, ctx.balance.battle) : 0
+  const foeTypicalRangeM =
+    meSpec && foesNow.length > 0
+      ? // 电子舰削减后敌人会主动压近（船长 2026-09-18）⇒ 战报这条读数与引擎同源
+        foeDesiredRange(meSpec, foesNow, ctx.balance.battle, foeRangeDebuffOf(state, ctx, [state.shipId]))
+      : 0
 
   // 脱身那一口（2026-09-11 船长：「希望能将其应用到战斗中撤退」）：
   // 一口 = 敌群火力（威胁 × foeDpsPerThreat）× combat.retreatHitFirepowerSec，

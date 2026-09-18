@@ -2455,16 +2455,32 @@ export function foeDesiredRange(
   _me: UnitSpec,
   foes: UnitSpec[],
   bal: BattleBalance,
+  /**
+   * **我方电子舰对敌舰射程的削减率**（缺省 0 = 旧口径，逐字不变）。
+   *
+   * **船长 2026-09-18：「削减射程后，敌人的期望距离也要随之改变」** ⇒ 敌人**主动压近**以恢复火线：
+   * 把射程带的上界换成"**只被削减后**的有效上界"（`foeRangeWithDebuff(band.max, 1, r)`），
+   * 再在**有效带**里取同一相对位置（band 路径）；显式钉住的期望距离（`foeDesireRangeM`）
+   * 按同一比例 `有效上界 ÷ 原上界` 收缩。
+   *
+   * ⚠ **只随「削减」变化，「受击增程」照旧不改期望距离**（2026-09-12 既有口径：增程让它够得更远、
+   * 不必挪窝）——所以这里的倍率固定传 1，不读 `foeGunRangeBuff`。
+   */
+  foeRangeDebuffR = 0,
 ): number {
+  const head = foes[0]
   // **期望距离覆写优先**（船长 2026-09-11 E 族：「战术调整、期望距离不改」）
-  const pinned = foes[0]?.foeDesireRangeM
-  if (pinned !== undefined && Number.isFinite(pinned))
-    return Math.max(bal.minDistanceM, Math.round(pinned))
-  const tactic = foes[0]?.foeTactic ?? 'orbit';
+  const pinned = head?.foeDesireRangeM
   // 舰级路径：带 = 自己的有效射程带；旧路径：带 = 全局战术表（原样）
-  const band = foes[0]?.foeRangeBand ?? TACTIC_RANGE[tactic]!
-  const pos = clamp(0.05, 0.95, bal.tacticDesireFactor[tactic] ?? 0.5)
-  return Math.max(bal.minDistanceM, Math.round(band.min + pos * (band.max - band.min)))
+  const band = head?.foeRangeBand ?? TACTIC_RANGE[head?.foeTactic ?? 'orbit']!
+  // **削减后的有效上界**（只吃削减、不吃增程；基础 <3000m 或没有电子舰 ⇒ 等于原上界）
+  const effMax = foeRangeDebuffR > 0 ? foeRangeWithDebuff(band.max, 1, foeRangeDebuffR) : band.max
+  if (pinned !== undefined && Number.isFinite(pinned)) {
+    const ratio = band.max > 0 ? effMax / band.max : 1
+    return Math.max(bal.minDistanceM, Math.round(pinned * ratio))
+  }
+  const pos = clamp(0.05, 0.95, bal.tacticDesireFactor[head?.foeTactic ?? 'orbit'] ?? 0.5)
+  return Math.max(bal.minDistanceM, Math.round(band.min + pos * (effMax - band.min)))
 }
 
 /* ═══════════ 弹药 ═══════════ */
@@ -3865,7 +3881,8 @@ export function startFleetBattleFor(
     // 默认期望抬到 0.8 时**不把它一起带走**（2026-09-13「贴脸怪一开场就在你脸上」的张力保住）。
     const want = anyBrawl
       ? desiredRangeFor(me, 'mid', bal, bal.wormholeBrawlOpenBand)
-      : foeDesiredRange(me, foes, bal)
+      : // 电子舰削减之后，敌人也**在洞里**主动压近（船长 2026-09-18：「削减射程后，敌人的期望距离也要随之改变」）
+        foeDesiredRange(me, foes, bal, foeRangeDebuffOf(state, ctx, ordered))
     battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
   } else {
     battle.distanceM = openM
@@ -4373,7 +4390,7 @@ export function battleArcsFor(
   return {
     nearM: bal.minDistanceM,
     openM,
-    foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal)),
+    foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
@@ -4723,7 +4740,7 @@ export function advanceBattleFor(
   applyFoeRangeDebuff(state, ctx, battle, battle.myFleet?.map((e) => e.shipId) ?? [shipId])
   const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
   const foes = createFoeSpecs(anomaly, bal)
-  const foeDesire = foeDesiredRange(me, foes, bal)
+  const foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
   const openM = battleOpenM(me, foes, bal)
   const favor =
     favorAdv === null
@@ -5147,7 +5164,11 @@ function effectiveFoeRangeM(
   baseRangeM: number,
   buffMul: number,
 ): number {
-  const r = b.meFoeRangeDebuff ?? 0
+  return foeRangeWithDebuff(baseRangeM, buffMul, b.meFoeRangeDebuff ?? 0)
+}
+
+/** 上面的纯函数版（不读战斗态）——供"期望距离随削减收缩"复用同一条闸门口径 */
+function foeRangeWithDebuff(baseRangeM: number, buffMul: number, r: number): number {
   if (r <= 0) return buffMul > 1 ? Math.round(baseRangeM * buffMul) : baseRangeM
   // 「不足 3000m 的无法被削弱」：只管它自己的增程，不削
   if (baseRangeM < FOE_RANGE_DEBUFF_FLOOR_M) return buffMul > 1 ? Math.round(baseRangeM * buffMul) : baseRangeM
@@ -6466,9 +6487,15 @@ export function setDesirePrefOf(state: GameState, galaxyId: string, desireM: num
  * `midPos` = 我方**默认期望档**在射程带内的位置（`bal.desireBandMid` = 0.8；星图与洞内同值，
  * 2026-09-15 船长取消分档后不再按 `wh-*` 分辨）。
  */
-function steadyDistance(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance, midPos: number): number {
+function steadyDistance(
+  me: UnitSpec,
+  foes: UnitSpec[],
+  bal: BattleBalance,
+  midPos: number,
+  foeRangeDebuffR = 0,
+): number {
   const dMe = desiredRangeFor(me, 'mid', bal, midPos)
-  const dFoe = foeDesiredRange(me, foes, bal)
+  const dFoe = foeDesiredRange(me, foes, bal, foeRangeDebuffR)
   const open = battleOpenM(me, foes, bal)
   return clamp(bal.minDistanceM, open, (dMe + dFoe) / 2)
 }
@@ -6512,7 +6539,7 @@ function steadyPreview(
   const steady =
     steadyPref !== null
       ? clamp(bal.minDistanceM, battleOpenM(me, foes, bal), steadyPref)
-      : steadyDistance(me, foes, bal, bal.desireBandMid)
+      : steadyDistance(me, foes, bal, bal.desireBandMid, foeRangeDebuffOf(state, ctx, [shipId]))
 
   const meHpTotal = me.hp.s + me.hp.a + me.hp.h
 

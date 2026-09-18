@@ -18,6 +18,7 @@ import type { BattleState } from '../src/state'
 import {
   FOE_RANGE_DEBUFF_FLOOR_M,
   createBattleState,
+  foeDesiredRange,
   foeDroneRangeOf,
   foeGunMaxRangeOf,
   foeRangeDebuffOf,
@@ -154,5 +155,69 @@ describe('电子舰 · 压制敌舰武器射程（船长 2026-09-18）', () => {
     // 编队里没有电子舰 ⇒ 0（不写运行态）
     const none = world(0)
     expect(foeRangeDebuffOf(none.state, none.ctx, none.ids)).toBe(0)
+  })
+})
+
+/**
+ * **敌人期望距离随削减收缩**（船长 2026-09-18：「**削减射程后，敌人的期望距离也要随之改变**」）。
+ *
+ * 口径：把射程带的**上界**换成"只被削减后"的有效上界（`foeRangeWithDebuff(band.max, 1, r)`，
+ * 含"基础 <3000 不削"与"下限 3000"两道闸），再在**有效带**里取同一相对位置；
+ * 显式钉住的期望距离按同一比例收缩。**增程那条既有口径不动**（它只延长够得着的距离、不挪窝）。
+ */
+describe('敌人期望距离随削减收缩（船长 2026-09-18）', () => {
+  /** 造一个带射程带的敌舰规格（`foeRangeBand` 是 `foeDesiredRange` 的舰级路径口径） */
+  const foeWith = (band: { min: number; max: number }, tactic = 'orbit', pinned?: number) =>
+    ({
+      tag: 'foe-0',
+      name: 'x',
+      weapons: [],
+      hp: { s: 1, a: 1, h: 1 },
+      foeTactic: tactic,
+      foeRangeBand: band,
+      ...(pinned !== undefined ? { foeDesireRangeM: pinned } : {}),
+    }) as unknown as Parameters<typeof foeDesiredRange>[1][number]
+
+  const BAL = base.balance.battle
+  const pos = BAL.tacticDesireFactor['orbit']!
+
+  it('**band 路径**：带 [2000, 10000] · orbit ⇒ 削减 15% 后按有效上界 8500 重取同一相对位置', () => {
+    const foes = [foeWith({ min: 2000, max: 10_000 })]
+    const plain = foeDesiredRange(foes[0]!, foes, BAL)
+    const cut = foeDesiredRange(foes[0]!, foes, BAL, 0.15)
+    expect(plain).toBe(Math.round(2000 + pos * 8000))
+    expect(cut).toBe(Math.round(2000 + pos * 6500)) // 有效上界 8500 ⇒ 带 [2000, 8500]
+    expect(cut).toBeLessThan(plain) // 敌人主动压近
+  })
+
+  it('**两艘**（27.75%）：有效上界 7225 ⇒ 期望距离进一步收缩', () => {
+    const foes = [foeWith({ min: 2000, max: 10_000 })]
+    expect(foeDesiredRange(foes[0]!, foes, BAL, 0.2775)).toBe(Math.round(2000 + pos * 5225))
+  })
+
+  it('**钉住的期望距离按同一比例收缩**（E 族那种 `foeDesireRangeM` 覆写）', () => {
+    const foes = [foeWith({ min: 2000, max: 10_000 }, 'kite', 8_000)]
+    expect(foeDesiredRange(foes[0]!, foes, BAL, 0)).toBe(8_000)
+    expect(foeDesiredRange(foes[0]!, foes, BAL, 0.15)).toBe(Math.round(8_000 * 0.85))
+  })
+
+  it('**基础 <3000m 的不削 ⇒ 期望距离也不变**；**上限 3000 地板照旧生效**', () => {
+    const small = [foeWith({ min: 500, max: 2_500 })]
+    expect(foeDesiredRange(small[0]!, small, BAL, 0.15)).toBe(foeDesiredRange(small[0]!, small, BAL, 0))
+    // 带 [2000, 3500]：削后有效上界 = 3000（地板）⇒ 期望距离 = 2000 + pos×1000
+    const low = [foeWith({ min: 2000, max: 3_500 })]
+    expect(foeDesiredRange(low[0]!, low, BAL, 0.15)).toBe(Math.round(2000 + pos * 1000))
+  })
+
+  it('**与增程无关**（2026-09-12 既有口径不动）：只给削减才改期望距离', () => {
+    const foes = [foeWith({ min: 2000, max: 10_000 })]
+    // 期望距离只吃"削减"这一项：函数没有增程入参 ⇒ 同 r 下结果恒等（增程只影响"够得着多远"）
+    expect(foeDesiredRange(foes[0]!, foes, BAL, 0.15)).toBe(foeDesiredRange(foes[0]!, foes, BAL, 0.15))
+  })
+
+  it('**没有电子舰 = 逐字不变**（零变化守卫）', () => {
+    const foes = [foeWith({ min: 2000, max: 10_000 })]
+    const withNoDebuff = foeDesiredRange(foes[0]!, foes, BAL, 0)
+    expect(withNoDebuff).toBe(Math.round(2000 + pos * 8000))
   })
 })
