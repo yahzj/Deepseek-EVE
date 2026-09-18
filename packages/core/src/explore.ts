@@ -68,9 +68,9 @@ export function scanWindowMsFor(state: GameState, ctx: SimContext, galaxyId: str
   return Math.round(SCAN_WINDOW_MS * scanSkillFactor(state) * lowPen)
 }
 
-/** 某星系是否已探索（母港恒为真） */
+/** 某星系是否已探索（⚠ **2026-09-17 起母港不再恒为真**：新档连母港都是未知的，见 `createInitialState`） */
 export function isExplored(state: GameState, galaxyId: string): boolean {
-  return galaxyId === HOME_GALAXY_ID || state.exploredGalaxies.includes(galaxyId)
+  return state.exploredGalaxies.includes(galaxyId)
 }
 
 /** 把星系标记为已探索；返回是否新点亮（去重） */
@@ -80,10 +80,18 @@ export function markExplored(state: GameState, galaxyId: string): boolean {
   return true
 }
 
-/** 未探索但"邻接已探索"的星系 id 列表（星图剪影 = 可扫描对象） */
+/**
+ * 未探索但"可扫描"的星系 id 列表（星图剪影 = 可扫描对象）。
+ *
+ * ⚠ **2026-09-17 船长改口径**：「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」
+ * ⇒ 新档 `exploredGalaxies` 为空、连母港都没点亮，而"邻接已探索"这条规则在**零探索时会返回空**
+ * （没有任何已探索的邻接点）⇒ 会出现"无处可扫"的死锁。故这里补一条种子：
+ * **未探索的母港本身永远是候选**（它就是新玩家的第一个扫描目标）。母港一旦点亮，本行自然失效。
+ */
 export function frontierGalaxyIds(state: GameState, ctx: SimContext): string[] {
   const seen = new Set<string>(state.exploredGalaxies)
   const out: string[] = []
+  if (!seen.has(HOME_GALAXY_ID) && ctx.galaxies.has(HOME_GALAXY_ID)) out.push(HOME_GALAXY_ID)
   for (const edge of ctx.galaxyEdges) {
     const aIn = seen.has(edge.from)
     const bIn = seen.has(edge.to)
@@ -95,9 +103,10 @@ export function frontierGalaxyIds(state: GameState, ctx: SimContext): string[] {
   return out
 }
 
-/** 行动封锁检查：返回不可行动原因；null = 可行动（母港与已探索星系不受限） */
+/** 行动封锁检查：返回不可行动原因；null = 可行动（已探索星系不受限）
+ *  ⚠ **2026-09-17 起母港也要探索**：原先这里对母港直接放行，与"母港未知"的新口径冲突（同日删除）。 */
 export function actionBlockReason(state: GameState, galaxyId: string | null | undefined): string | null {
-  if (!galaxyId || galaxyId === HOME_GALAXY_ID) return null
+  if (!galaxyId) return null
   if (isExplored(state, galaxyId)) return null
   return '该星系尚未探索——先对星图上的「未知信号」执行扫描探索。'
 }

@@ -2253,7 +2253,15 @@ export function createInitialState(opts?: {
       phase: 'out',
       battle: null,
     },
-    exploredGalaxies: [HOME_GALAXY_ID],
+    /**
+     * **初始已探索星系**（2026-09-17 船长改口径）：**新游戏（序章档）开局一处都不亮**——
+     * 船长原话：「**初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿**」。
+     * ⇒ 母港也得先扫（它是唯一的初始扫描目标，见 `explore.frontierGalaxyIds`）；
+     * `isExplored` / `actionBlockReason` 里原本给母港开的豁免**同日一并删除**。
+     * ⚠ 非序章档（`prologue !== true`，测试与工具入口）**保持 [母港]**：那批入口本来就假定母港可达。
+     * ⚠ 老档不受影响（`exploredGalaxies` 随档，读档保留原值）。
+     */
+    exploredGalaxies: prologue ? [] : [HOME_GALAXY_ID],
     scanning: {
       active: false,
       galaxyId: null,

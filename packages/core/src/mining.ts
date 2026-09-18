@@ -197,15 +197,19 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再开采。' }
-  // 挂星系的采集点必须能从母港到达（无航路 → 拒绝）
+  /**
+   * V13 探索封锁：**采集点所在星系未点亮 ⇒ 拒绝开工**。
+   * ⚠ **2026-09-17 船长改口径**：「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」
+   * ⇒ 原先这条只作用于**非母港**的采集点（母港当时恒为已探索），现对**所有**采集点生效。
+   */
+  const block = actionBlockReason(state, belt.galaxyId)
+  if (block) return { ok: false, error: block }
+  // 挂外系星系的采集点还必须能从母港到达（无航路 → 拒绝）
   if (belt.galaxyId && belt.galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, belt.galaxyId)
     if (!Number.isFinite(travel)) {
       return { ok: false, error: `「${belt.name}」所在星系没有从母港可达的航线，无法前往开采。` }
     }
-    // V13 探索封锁：所在星系未点亮（且非母港）→ 拒绝开工
-    const block = actionBlockReason(state, belt.galaxyId)
-    if (block) return { ok: false, error: block }
   }
   return { ok: true }
 }

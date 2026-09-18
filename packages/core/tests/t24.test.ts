@@ -39,6 +39,9 @@ import {
   tutorialAccelWait,
   TUTORIAL_BATTLE_HIT_BONUS,
   TUTORIAL_BATTLE_EVASION_BONUS,
+  // 2026-09-17 教程重做批 · 阶段①的适配用（见下方「教学首单采矿」用例里的说明）
+  HOME_GALAXY_ID,
+  markExplored,
 } from '../src/index'
 
 describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
@@ -166,6 +169,13 @@ describe('序章·苏醒 步骤机与结算（core 阶段 2）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 3, prologue: true })
     s.onboarding.step = ONB_MINE
     s.shipId = 'sandcat'
+    /**
+     * ⚠ **2026-09-17 适配（教程重做批 · 阶段①）**：新口径下**序章档连母港都要先扫描**
+     * （船长：「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」）
+     * ⇒ 这条旧步骤机用例先手动点亮母港，才测得到"采矿 → 交付"这一段。
+     * 整个线性步骤机（含本文件）在本批**阶段④会随教程重做一并删除**，届时这条适配一起消失。
+     */
+    markExplored(s, HOME_GALAXY_ID)
     expect(startMining(s, 'belt-fortune', ctx).ok).toBe(true)
     expect(tutorialAccelWait(s)).toBe(true) // 采集/返航全程可 ×6（母港矿带 isAtHome 恒真,不能用它判定——船长复测修复）
     let guard = 0
