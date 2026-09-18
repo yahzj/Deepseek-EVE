@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **269** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5109** KB · **36720** 行
-- 状态分布：**未标注** 142 · **已确认/已实现** 107 · **进行中** 14 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**18** 份 · 状态未标注 **142** 份
+- 文档总数 **268** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5103** KB · **36636** 行
+- 状态分布：**未标注** 143 · **已确认/已实现** 107 · **进行中** 12 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**18** 份 · 状态未标注 **143** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**9** 份
-- 三、现行设计稿（design）：**187** 份
+- 三、现行设计稿（design）：**186** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**16** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -32,10 +32,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 进行中（进行中） | — | 147 KB / 212 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 51 KB / 569 行 | 72 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 352 KB / 794 行 | 194 / 8 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 109 KB / 238 行 | 252 / 10 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 148 KB / 213 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 51 KB / 569 行 | 70 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 352 KB / 794 行 | 193 / 8 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 109 KB / 238 行 | 251 / 10 |
 
 ## 七、评审与体检（review） —— 9 份
 
@@ -51,11 +51,10 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 187 份
+## 三、现行设计稿（design） —— 186 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/copy-rules-20260917.md` | 说明文案规范（≤30 字 · 不写原因解释）· 工作文档 | 进行中（进行中） | 2026-09-17 | 7 KB / 85 行 | 1 / 0 |
 | `docs/design/stealth-base-gun-20260917.md` | 隐身期间「基础舰炮」不开炮（船长 2026-09-17）· 工作文档 | 进行中（进行中） | 2026-09-17 | 6 KB / 83 行 | 0 / 0 |
 | `docs/design/ammo-rename-20260916.md` | 弹药定名批：全族统一到《系+弹药》· 工作文档 | 进行中（进行中） | 2026-09-16 | 8 KB / 107 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260916-combat-insurance.md` | 公告待审稿 · 战斗保险机制上线（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 3 KB / 44 行 | 0 / 1 |
@@ -356,7 +355,7 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（142 份，待补一行 `状态：…`）
+## 附：状态未标注（143 份，待补一行 `状态：…`）
 
 - `docs/archive/glossary-detail-03-econ-20260915.md`（2026-09-15）—— 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出）
 - `docs/archive/glossary-retired-20260915.md`（2026-09-15）—— 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出）
@@ -494,6 +493,7 @@
 - `docs/design/v7-design.md`（无日期）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 - `docs/design/v9-market.md`（无日期）—— V9 设计：市场系统（已实现）
 - `docs/design/weapon-skill-batch.md`（无日期）—— 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四）
+- `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/glossary.md`（无日期）—— 术语词典（Glossary）
 - `docs/review/A1-bounty-review.md`（无日期）—— A1 · 悬赏通读走查表（22 张）
