@@ -265,6 +265,17 @@ export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
   return newly
 }
 
+/**
+ * **发放一条任务的奖励**（引擎在"新完成"时调用一次；`items` 走 `blueprintStock`——现阶段唯一的物品奖励是
+ * 「第一次采集原矿」那张动能弹药蓝图，其余留空 ⇒ 船长说的"先把物品奖励接口留出来"就在这里）。
+ */
+export function grantFirstReward(state: GameState, def: FirstTaskDef): void {
+  for (const it of def.reward?.items ?? []) {
+    state.blueprintStock[it.itemId] = (state.blueprintStock[it.itemId] ?? 0) + it.units
+  }
+  const isk = def.reward?.isk ?? 0
+  if (isk > 0) state.wallet.isk += isk
+}
 /** 任务中心用：按前置过滤后的可见任务（未满足前置 ⇒ 不显示） */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
   return FIRST_TASKS.filter((d) => d.prereq === undefined || state.importantTasks[d.prereq]?.done === true)

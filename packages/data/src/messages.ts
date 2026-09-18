@@ -13,6 +13,7 @@
  */
 import type { CommsMessageDef } from '@whale/core'
 import { BRIEFING_INTRO, TUTORIAL_STEPS } from './tutorialSteps'
+import { FIRST_TASK_MESSAGES } from './firstTaskMessages'
 
 /**
  * 序章简报（`tut-0`；2026-09-11 船长定）：睁眼动画结束后先送这封，玩家读完点「开始教程」才进第 1 步。
@@ -59,6 +60,7 @@ const TUTORIAL_MESSAGES: readonly CommsMessageDef[] = TUTORIAL_STEPS.map((s) => 
 
 /** 全部通讯消息（id 稳定；新增即追加，不要改既有 id——已读/送达按 id 记账） */
 export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
+  ...FIRST_TASK_MESSAGES, // 「第一次」任务系列的 13 封情报信（2026-09-17 教程重做批）
   BRIEFING_MESSAGE,
   ...TUTORIAL_MESSAGES,
   {

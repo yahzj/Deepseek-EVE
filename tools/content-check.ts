@@ -5908,7 +5908,7 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
   // 2026-09-16 首次遭遇某敌舰级（船长：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯）
-  'foeShipSeen',
+  'foeShipSeen', 'firstTask',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）

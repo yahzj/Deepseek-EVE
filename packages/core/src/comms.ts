@@ -147,6 +147,9 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
     /** **遭遇过某个敌方舰级**（船长 2026-09-16：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯） */
     case 'foeShipSeen':
       return state.foeShipSeen?.[trigger.shipId] === true
+    /** 「第一次」任务系列（2026-09-17）：任务完成即送达那封情报信；见 data/src/firstTaskMessages.ts。 */
+    case 'firstTask':
+      return state.importantTasks[trigger.taskId]?.done === true
     case 'start':
       // 序章引导（采矿→交付→出售→修复→试炼→技能→分身）期间导航被教程锁定，通讯页打不开；
       // 故开局信等引导走完（收尾演出起）再送，玩家收得到、也点得开。

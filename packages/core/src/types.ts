@@ -2167,6 +2167,8 @@ export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'indus
  */
 export type CommsTrigger =
   | { kind: 'start' }
+  /** **「第一次」任务已完成**（2026-09-17 教程重做批）：读 importantTasks[taskId].done */
+  | { kind: 'firstTask'; taskId: string }
   | { kind: 'day'; days: number }
   | { kind: 'explored'; count: number }
   | { kind: 'galaxy'; galaxyId: string }

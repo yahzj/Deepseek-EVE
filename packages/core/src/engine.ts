@@ -38,7 +38,7 @@ import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans, advanceOnboardingAuto } from './onboarding'
 import { advanceComms } from './comms'
-import { advanceFirstTasks } from './firstTasks'
+import { FIRST_TASKS, advanceFirstTasks, grantFirstReward } from './firstTasks'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -179,7 +179,10 @@ export function advanceGame(
    * ⚠ 本阶段**不写日志、不发通讯**——保持"离线事件条数"等既有口径逐字不变；
    * 阶段②b 接通讯与奖励，阶段③把任务画进任务中心。
    */
-  advanceFirstTasks(state, ctx)
+  for (const id of advanceFirstTasks(state, ctx)) {
+    const def = FIRST_TASKS.find((d) => d.id === id)
+    if (def) grantFirstReward(state, def)
+  }
 }
 
 /** 技能队列推进（内部函数，不对外） */

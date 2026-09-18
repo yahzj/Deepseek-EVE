@@ -872,6 +872,7 @@ export {
   firstStatOf,
   chainProgressOf,
   advanceFirstTasks,
+  grantFirstReward,
   visibleFirstTasks,
   totalSkillLevels,
   dsiStanding,
