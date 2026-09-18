@@ -12,8 +12,10 @@
  *   ⇒ 那个位置改放**跳转按钮**（显眼）；③ 正文改用任务的 `detail`（一段话讲清怎么做/做成什么样/奖励），
  *   不再只显示一句话；④ 进度改成 **`已累计 X/Y 单位`**（Y = 下一档阈值）；⑤ **不再挂"已完成"小片**
  *   （船长：「因为可以继续完成，所以名字边上的已经完成的标签显得很不合适」）。
+ * - **2026-09-18 第三轮**（船长：L10 逐条重标定）：市场链条目从"挂单张数"改**交易收入（税后信用点）**；
+ *   链条目奖金行改写**"完成本级能拿多少"的具体数额**（`nextRewardIsk`，公式不再上卡）。
  */
-import { CHAIN_REWARD_ISK_BASE, firstTaskBoard, visibleFirstTasks } from '@whale/core'
+import { firstTaskBoard, visibleFirstTasks } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 
@@ -26,7 +28,8 @@ const CHAIN_UNITS: Record<string, string> = {
   repairs: '次',
   refineBatches: '批',
   produceUnits: '件',
-  orders: '单',
+  // 2026-09-18 船长换口径：市场链不再数"挂单张数"，改数**交易收入（税后信用点）**
+  marketIncome: '信用点',
   ships: '艘',
   aiAssigns: '次',
   haulTrips: '趟',
@@ -85,7 +88,7 @@ export function FirstTasks({
         ◆ 第一次 · {doneN}/{tasks.length} 已完成
         <span className="app-dim"> · 完成一条收一封情报，其后开出长期次数目标；可领奖的排在最前</span>
       </div>
-      {ordered.map(({ def, done, pendingIsk: pending, level, total, count, next }) => {
+      {ordered.map(({ def, done, pendingIsk: pending, level, total, count, next, nextRewardIsk }) => {
         const jump = FIRST_JUMPS[def.id]
         const claimable = pending > 0
         const unit = def.chain ? (CHAIN_UNITS[def.chain.tierKey] ?? '') : ''
@@ -128,8 +131,7 @@ export function FirstTasks({
             {/* 进度：已完成 ⇒ 走次数链，读数用「已累计 当前/下一档」 */}
             {done && def.chain && total > 0 ? (
               <div className="app-station-mats">
-                已累计 {count}/{goal}
-                {unit}
+                已累计 {count.toLocaleString('zh-CN')}/{goal.toLocaleString('zh-CN')} {unit}
                 {next === null ? '（已到最高档）' : ''}
               </div>
             ) : null}
@@ -137,16 +139,14 @@ export function FirstTasks({
             <div className="app-station-mats">{def.detail}</div>
             {/**
              * **奖励独立成行 + 金色**（船长 2026-09-18：「奖励不明显，建议将奖励单独起一行，
-             * 并采用金色字体（奖励 ◆这几个字可以不用金色）」）：前缀「奖励 ◆」走 `.app-dim` 保持暗色，
-             * 奖励内容走 `.app-task-reward` 金色。
-             * - 还没做的条目 ⇒ 写这条任务送什么（没有实物就如实写"情报信一封"）；
-             * - 已完成的条目 ⇒ 那条「第一次」的奖励早已发过，这里改写**次数奖金**（每档 2,500 × 级别⁵）。
+             * 并采用金色字体（奖励 ◆这几个字可以不用金色）」）；**链条目写"完成本级能拿多少"的具体数额**
+             * （船长 2026-09-18 第二轮：「任务奖金要写清楚当前这级的具体数额，不能让玩家自己算」）
+             * ⇒ 直接印第 `level+1` 级的奖金数字，公式不再上卡。
              */}
             {done && def.chain ? (
               <div className="app-task-reward">
                 <span className="app-dim">奖金 ◆ </span>
-                每档 {CHAIN_REWARD_ISK_BASE.toLocaleString('zh-CN')} × 级别⁵
-                {claimable ? ` · 现可领 ${pending.toLocaleString('zh-CN')} 信用点` : ''}
+                {nextRewardIsk > 0 ? `第 ${level + 1} 级 ${nextRewardIsk.toLocaleString('zh-CN')} 信用点` : '已到最高档'}
               </div>
             ) : (
               <div className="app-task-reward">
@@ -167,7 +167,7 @@ export function FirstTasks({
               {claimable ? (
                 <button
                   className="app-btn is-small is-primary"
-                  title={`第 N 级奖金 = ${CHAIN_REWARD_ISK_BASE.toLocaleString('zh-CN')} × N 的五次方`}
+                  title={`领取已达级别的链奖金（共 ${pending.toLocaleString('zh-CN')} 信用点）`}
                   onClick={() => {
                     const isk = engine.claimChainRewardAt(def.chain!.id)
                     onToast(isk > 0 ? `奖金已到账：${isk.toLocaleString('zh-CN')} 信用点。` : '暂无可领奖金。', isk <= 0)

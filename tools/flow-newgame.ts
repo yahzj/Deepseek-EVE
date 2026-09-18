@@ -11,7 +11,7 @@
  *
  * ⚠ 这是**读数型**验证（跑状态与数值，不替代船长观感审查）。
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v26** · 最后核对 2026-09-17 · 最后跑过 2026-09-17
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v27** · 最后核对 2026-09-18 · 最后跑过 2026-09-18
  */
 import { buildSimContext } from '@whale/data'
 import { commsPopupQueue } from '../packages/core/src/comms'
