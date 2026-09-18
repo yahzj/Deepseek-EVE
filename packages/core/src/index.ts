@@ -286,8 +286,15 @@ export {
   unfitAllModules,
   clearDroneLoad,
   applyFitPreset,
+  fitPresetDetailOf,
 } from './fitPresets'
-export type { FitPresetApplyResult, UnfitAllResult } from './fitPresets'
+export type {
+  FitPresetApplyResult,
+  UnfitAllResult,
+  FitPresetDetail,
+  FitPresetSlotLine,
+  FitPresetDroneLine,
+} from './fitPresets'
 
 export { fleetDefOf, shipDisplayName } from './instances'
 

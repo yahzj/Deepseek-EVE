@@ -1196,7 +1196,7 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   shipStore?: Record<string, number>
   /**
    * **装配方案（预设）**（2026-09-14 船长：装配页可「保存当前装配 / 套用预设」，入口在「装配目标」栏右侧）。
-   * 归口 = **船型 id**（`defId`）：同型号任意一艘都能套用；每型上限 `FIT_PRESET_MAX = 3`。
+   * 归口 = **船型 id**（`defId`）：同型号任意一艘都能套用；每型上限 `FIT_PRESET_MAX`（**现 10**，2026-09-17 船长「上限拓展到10套」）。
    * `fitted` 逐位存模块 id（尾部空位已裁），`droneLoad` 与舰船实例同结构；
    * 套用语义（先卸光再装 · 尽力装 + 逐条提示）与结果清单见 `fitPresets.ts`。
    * **兼容字段：老档缺省 = 空 · 零迁移 · 不升版本**（与同日 `shipStore` / `wormholeScan` 同款落法：
