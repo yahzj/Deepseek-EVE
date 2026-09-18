@@ -23,7 +23,8 @@ import {
   firstStatOf,
   visibleFirstTasks,
 } from '../src/firstTasks'
-import { startMining } from '../src/mining'
+import { startMining, getMiningParams } from '../src/mining'
+import { fitModule } from '../src/equipment'
 import { startRecycleRun, startRefineRun } from '../src/industry'
 import { repairShip } from '../src/shipyard'
 import { startScan, HOME_SCAN_WINDOW_MS, scanWindowMsFor } from '../src/explore'
@@ -146,6 +147,29 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(Object.keys(state.fleet).length).toBe(before + 1)
     const added = Object.entries(state.fleet).filter(([, v]) => v.defId === 'sh-falconet')
     expect(added.length).toBe(2) // 新档本来就有 1 艘鲣鱼 ⇒ 拿到第 2 艘
+  })
+
+  it('奖励发的装备真能用：采集器 MK1 装上沙猫级 ⇒ 每循环产量提高', () => {
+    const state = testState()
+    state.shipId = 'sandcat' // 采矿艇（2 高槽）
+    const before = getMiningParams(state, ctx, { shipId: 'sandcat', beltId: BELT })!.unitsPerCycle
+    // 这台就是「第一次采集原矿」发的那件（走同一个 key：`moduleBay`）
+    state.moduleBay['mod-miner-1'] = 1
+    const fit = fitModule(state, 'mod-miner-1', ctx)
+    expect(fit.ok, fit.ok ? '' : fit.error).toBe(true)
+    const after = getMiningParams(state, ctx, { shipId: 'sandcat', beltId: BELT })!.unitsPerCycle
+    expect(after).toBeGreaterThan(before)
+  })
+
+  it('奖励发的装备真能用：打捞器 MK1 与民用船体维修装置都能装上对应舰船', () => {
+    const state = testState()
+    state.shipId = 'sandcat'
+    state.moduleBay['mod-salvager-1'] = 1
+    state.moduleBay['mod-hullrep-civ'] = 1
+    const a = fitModule(state, 'mod-salvager-1', ctx)
+    const b = fitModule(state, 'mod-hullrep-civ', ctx)
+    expect(a.ok, a.ok ? '' : a.error).toBe(true)
+    expect(b.ok, b.ok ? '' : b.error).toBe(true)
   })
 
   it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
