@@ -221,8 +221,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   },
 ]
 
-/** 终身计数加一（事件落点调用；`key` 见 `FirstStatKey`） */
-export function bumpFirst(state: GameState, key: FirstStatKey, n = 1): void {
+/** 终身计数加一（事件落点调用）。`key` 常规取值见 `FirstStatKey`；任务中心领奖额用 `paid-<链 id>` 这类派生键，
+ * 故签名放宽为 string（底层就是 `Record<string, number>`）。 */
+export function bumpFirst(state: GameState, key: string, n = 1): void {
   if (n <= 0) return
   const bag = (state.firstStats ??= {})
   bag[key] = (bag[key] ?? 0) + n
@@ -291,11 +292,28 @@ export function advanceFirstChains(state: GameState): Array<{ id: string; name: 
     const before = state.importantTasks[key]?.delivered ?? 0
     if (level <= before) continue
     state.importantTasks[key] = { done: false, delivered: level }
-    const isk = CHAIN_REWARD_ISK * (level - before)
-    state.wallet.isk += isk
-    out.push({ id: def.chain.id, name: def.chain.name, level, isk })
+    // ⚠ **只记账、不在这里加钱**：ISK 由任务中心领奖时经 claimChainReward() 发放
+    out.push({ id: def.chain.id, name: def.chain.name, level, isk: CHAIN_REWARD_ISK * (level - before) })
   }
   return out
+}
+
+/**
+ * **领取链任务奖金**（任务中心的领奖入口；返回本次发出的 ISK）。
+ *
+ * 口径：升级记账在 advanceFirstChains()（每拍）；**发钱只在这里**（点一次领一次，避免钱包被悄悄加钱）。
+ * 已领额度记在 `firstStats` 的 `paid-<链 id>` 计数上（与终身计数同一张表，零迁移）。
+ */
+export function claimChainReward(state: GameState, chainId: string): number {
+  const def = FIRST_TASKS.find((d) => d.chain?.id === chainId)
+  if (!def?.chain) return 0
+  const { level } = chainProgressOf(state, def.chain)
+  const paid = state.firstStats?.[`paid-${def.chain.id}`] ?? 0
+  if (level <= paid) return 0
+  const isk = CHAIN_REWARD_ISK * (level - paid)
+  bumpFirst(state, `paid-${def.chain.id}`, level - paid)
+  state.wallet.isk += isk
+  return isk
 }
 /** 任务中心用：按前置过滤后的可见任务（未满足前置 ⇒ 不显示） */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {

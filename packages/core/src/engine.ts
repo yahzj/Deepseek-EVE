@@ -183,7 +183,8 @@ export function advanceGame(
     const def = FIRST_TASKS.find((d) => d.id === id)
     if (def) grantFirstReward(state, def)
   }
-  // 后续次数链：越过新档位 ⇒ 每级发一次 ISK（记账在 importantTasks 的 chain-* 键上）
+  // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
+  // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。
   advanceFirstChains(state)
 }
 
