@@ -24,6 +24,10 @@
  *   · 弹药：动能弹药（质量炮）、爆破弹药（导弹架专用，爆炸键）、能量弹药（激光炮专用，
  *     原名"等离子弹"，id 不变）——每型单档通用弹（-l），武器按自身固定弹种消耗；
  *     ⚠ 2026-09-16 船长定名批：动能弹 / 爆破导弹 两名统一到《系+弹药》（id 一律不变）；
+ *     ⚠ 2026-09-17 船长定批（带括号文案逐类审核 · 第一批裁决）：说明里**不再写槽位标签**——
+ *       「（低槽）」「（中槽）」「（高槽）」「（高槽，无伤害）」6 类 29 段一律去掉；槽位由富卡
+ *       「槽位 / 类型」行与仓库/装配/市场/手册各处 chip 承担。**「（不可制造）」按约定 §十三 保留**
+ *       （"能不能造"是有用信息，中性句写法）；「（上限 90%）」与谜质储存器的尾注经复核**保留**。
  * - CPU 装配资源（V17.1 用户定稿：成倍档位拉开船级差距）：
  *   民用 3（炮台 6）/ MK1 5（炮台 10）/ MK2 15（炮台 28）/ MK3 40（炮台 52）/
  *   异星原型 60（炮台 70）——战斗件与工业件同档；低级船（沙猫 60 CPU）只带得动
@@ -860,7 +864,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.06 },
     cpuUse: 5,
-    description: '动能武器支援（低槽）：动能炮台单发伤害 +6%。',
+    description: '动能武器支援：动能炮台单发伤害 +6%。',
   },
   {
     id: 'mod-stab-kin-2',
@@ -869,7 +873,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.1 },
     cpuUse: 15,
-    description: '动能武器支援（低槽）：动能炮台单发伤害 +10%。',
+    description: '动能武器支援：动能炮台单发伤害 +10%。',
   },
   {
     id: 'mod-stab-kin-3',
@@ -878,7 +882,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.15 },
     cpuUse: 40,
-    description: '动能武器支援（低槽）：动能炮台单发伤害 +15%。',
+    description: '动能武器支援：动能炮台单发伤害 +15%。',
   },
   {
     id: 'mod-stab-exp-1',
@@ -887,7 +891,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.06 },
     cpuUse: 5,
-    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +6%。',
+    description: '高爆武器支援：爆炸系武器（导弹架）单发伤害 +6%。',
   },
   {
     id: 'mod-stab-exp-2',
@@ -896,7 +900,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.1 },
     cpuUse: 15,
-    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +10%。',
+    description: '高爆武器支援：爆炸系武器（导弹架）单发伤害 +10%。',
   },
   {
     id: 'mod-stab-exp-3',
@@ -905,7 +909,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.15 },
     cpuUse: 40,
-    description: '高爆武器支援（低槽）：爆炸系武器（导弹架）单发伤害 +15%。',
+    description: '高爆武器支援：爆炸系武器（导弹架）单发伤害 +15%。',
   },
   {
     id: 'mod-stab-pla-1',
@@ -914,7 +918,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.06 },
     cpuUse: 5,
-    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +6%。',
+    description: '等离子武器支援：能量系武器（激光炮）单发伤害 +6%。',
   },
   {
     id: 'mod-stab-pla-2',
@@ -923,7 +927,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.1 },
     cpuUse: 15,
-    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +10%。',
+    description: '等离子武器支援：能量系武器（激光炮）单发伤害 +10%。',
   },
   {
     id: 'mod-stab-pla-3',
@@ -932,7 +936,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.15 },
     cpuUse: 40,
-    description: '等离子武器支援（低槽）：能量系武器（激光炮）单发伤害 +15%。',
+    description: '等离子武器支援：能量系武器（激光炮）单发伤害 +15%。',
   },
   {
     id: 'mod-rof-1',
@@ -941,7 +945,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.05,
     cpuUse: 5,
-    description: '炮台射速支援（低槽）：装填间隔 −5%。',
+    description: '炮台射速支援：装填间隔 −5%。',
   },
   {
     id: 'mod-rof-2',
@@ -950,7 +954,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.08,
     cpuUse: 15,
-    description: '炮台射速支援（低槽）：装填间隔 −8%。',
+    description: '炮台射速支援：装填间隔 −8%。',
   },
   {
     id: 'mod-rof-3',
@@ -959,7 +963,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.12,
     cpuUse: 40,
-    description: '炮台射速支援（低槽）：装填间隔 −12%。',
+    description: '炮台射速支援：装填间隔 −12%。',
   },
   /* ══════════ 跃迁计算机（2026-09-14 船长：「添加低槽装备…效果是提高玩家舰船的跃迁速度，
    * 分别提高20%和35%，多件叠加惩罚。基础价格可以按照同级装备价格的四倍，有蓝图。」
@@ -974,7 +978,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     warpSpeedBonusPct: 0.2,
     cpuUse: 15,
-    description: '航行支援（低槽）：跃迁速度 +20%——只缩短星系际航行时间，不改变战斗机动。多装递减。',
+    description: '航行支援：跃迁速度 +20%——只缩短星系际航行时间，不改变战斗机动。多装递减。',
   },
   {
     id: 'mod-warpcomp-3',
@@ -983,7 +987,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     warpSpeedBonusPct: 0.35,
     cpuUse: 40,
-    description: '航行支援（低槽）：跃迁速度 +35%——只缩短星系际航行时间，不改变战斗机动。多装递减。',
+    description: '航行支援：跃迁速度 +35%——只缩短星系际航行时间，不改变战斗机动。多装递减。',
   },
   {
     id: 'mod-track-1',
@@ -992,7 +996,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.08,
     cpuUse: 5,
-    description: '索敌支援（中槽）：炮台命中整体提升 8%。',
+    description: '索敌支援：炮台命中整体提升 8%。',
   },
   {
     id: 'mod-track-2',
@@ -1001,7 +1005,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.12,
     cpuUse: 15,
-    description: '索敌支援（中槽）：炮台命中整体提升 12%。',
+    description: '索敌支援：炮台命中整体提升 12%。',
   },
   {
     id: 'mod-track-3',
@@ -1010,7 +1014,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.16,
     cpuUse: 40,
-    description: '索敌支援（中槽）：炮台命中整体提升 16%。',
+    description: '索敌支援：炮台命中整体提升 16%。',
   },
   {
     id: 'mod-gyro-1',
@@ -1019,7 +1023,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.1,
     cpuUse: 5,
-    description: '机动支援（中槽）：被命中缺口削减 10%。',
+    description: '机动支援：被命中缺口削减 10%。',
   },
   {
     id: 'mod-gyro-2',
@@ -1028,7 +1032,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.15,
     cpuUse: 15,
-    description: '机动支援（中槽）：被命中缺口削减 15%。',
+    description: '机动支援：被命中缺口削减 15%。',
   },
   {
     id: 'mod-gyro-3',
@@ -1037,7 +1041,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.2,
     cpuUse: 40,
-    description: '机动支援（中槽）：被命中缺口削减 20%。',
+    description: '机动支援：被命中缺口削减 20%。',
   },
 
   // ══════════ 协处理器（cpu：低槽，**装配 CPU 预算扩容**） ══════════
@@ -1056,7 +1060,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     cpuUse: 0, // 船长定：自身不占用（零占用只允许"加预算"件，见 content-check 契约）
     cpuBonus: 25,
-    description: '算力扩展卡（低槽）：装配 CPU 上限 +25。本件自身不占 CPU。',
+    description: '算力扩展卡：装配 CPU 上限 +25。本件自身不占 CPU。',
   },
   {
     id: 'mod-cpu-2',
@@ -1065,7 +1069,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     cpuUse: 0,
     cpuBonus: 35,
-    description: '双路算力扩展卡（低槽）：装配 CPU 上限 +35。本件自身不占 CPU，中后期的通用解锁件。',
+    description: '双路算力扩展卡：装配 CPU 上限 +35。本件自身不占 CPU，中后期的通用解锁件。',
   },
   {
     id: 'mod-cpu-3',
@@ -1074,7 +1078,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     cpuUse: 0,
     cpuBonus: 45,
-    description: '军用算力堆叠模块（低槽）：装配 CPU 上限 +45（不可制造）。本件自身不占 CPU。',
+    description: '军用算力堆叠模块：装配 CPU 上限 +45（不可制造）。本件自身不占 CPU。',
   },
 
   // ══════════ B3 打捞器（salvager：**高槽**无伤害件 —— 2026-09-05 定稿高槽、2026-09-13 一度改判低槽、**2026-09-14 船长「改回高槽」**） ══════════
@@ -1087,7 +1091,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 2,
     salvageCycleMs: 10_000,
-    description: '残骸打捞（高槽，无伤害）：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。',
+    description: '残骸打捞：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。',
   },
   {
     id: 'mod-salvager-2',
@@ -1096,7 +1100,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     salvageCycleMs: 8_000,
-    description: '残骸打捞（高槽，无伤害）：周期缩短至 8 秒/轮（每轮仍 1 具）。',
+    description: '残骸打捞：周期缩短至 8 秒/轮（每轮仍 1 具）。',
   },
   {
     id: 'mod-salvager-3',
@@ -1105,7 +1109,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 15,
     salvageCycleMs: 6_000,
-    description: '残骸打捞（高槽，无伤害）：周期缩短至 6 秒/轮（每轮仍 1 具）。',
+    description: '残骸打捞：周期缩短至 6 秒/轮（每轮仍 1 具）。',
   },
   /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
       每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；
@@ -1155,7 +1159,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     lockDmgBonus: 0.08,
-    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +8%（本舰全部武器）。',
+    description: '目标锁定支援：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +8%（本舰全部武器）。',
   },
   {
     id: 'mod-lock-2',
@@ -1164,7 +1168,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 14,
     lockDmgBonus: 0.12,
-    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +12%（本舰全部武器）。',
+    description: '目标锁定支援：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +12%（本舰全部武器）。',
   },
   {
     id: 'mod-lock-3',
@@ -1173,7 +1177,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 26,
     lockDmgBonus: 0.2,
-    description: '目标锁定支援（高槽）：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +20%（本舰全部武器）。',
+    description: '目标锁定支援：开火锁定存活编队首位集火，被锁定目标受本舰伤害 +20%（本舰全部武器）。',
   },
 
   /* ═══ 2026-09-15 隐秘行动装置（船长原话：「添加隐秘行动装置，高槽，效果是自身武器开火前，

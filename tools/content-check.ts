@@ -955,7 +955,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'source-sweeping', per: 0.1, call: 'market.ts SWEEP_PER_LEVEL（×1.1/级）', srcNear: false },
     { skill: 'secondhand-market', per: 0.02, call: 'market.ts SECONDHAND_PER_LEVEL', srcNear: false },
     { skill: 'galactic-happenings', per: 0.08, call: 'events.ts eventCadenceFactor（事件间隔 −8%/级）+ expedition.ts（×1.15/级）' },
-    { skill: 'galactic-happenings', per: 0.2, call: 'wormholeScan.ts happeningsScanFactor（虫洞扫描窗口 · **满级阶跃 −20%**，2026-09-14 船长追加的第四项）' },
+    { skill: 'galactic-happenings', per: 0.04, call: 'wormholeScan.ts happeningsScanFactor（虫洞扫描窗口 · **每级 −4%、满级恰 −20%**，2026-09-14 船长追加的第四项；**2026-09-17 船长改判：由「满级阶跃」改线性每级**）' },
     { skill: 'chart-archive', per: 10, call: 'wormholeScan.ts wormholeStockMaxOf（虫洞保存上限 · **满级总量 +10 格**，2026-09-16 船长改判后满级值不变）' },
     { skill: 'chart-archive', per: 2, call: 'wormholeScan.ts WORMHOLE_STOCK_BONUS_PER_LEVEL（虫洞保存上限 · **每级 +2**，2026-09-16 船长「应该为每级+2，满级+10」）' },
     { skill: 'event-dividend', per: 0.15, call: 'events.ts（事件现金）' },
@@ -1210,6 +1210,56 @@ for (const m of MODULES) {
     console.log(
       '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 高·中·低槽装备 / 舰船 / 蓝图 / 核心 · ' +
         '「货柜」紧跟「货物」· 子分类 = 货物（原矿/原材料/气体/冰矿/奢侈品）· 货柜（遗迹安全/图纸/贵重品/军用）',
+    )
+  }
+
+  /* ── 存档「恢复 / 导入**不**自动备份」契约（船长 2026-09-17：「**导入或者恢复存档时，不要备份现有存档**」）──
+   * 挡回潮：三条覆盖路径里任何一条又"好心"加回防误操作备份，或界面文案又开始承诺自动备份。
+   * 依据：手动「备份当前档」与备份列表**照旧**（要留退路由玩家自己先点一次）。 */
+  {
+    const mainPath = 'apps/desktop/src/main/index.ts'
+    const mainSrc = stripComments(readSrc(mainPath)).join('\n')
+    const restoreAt = mainSrc.indexOf("ipcMain.handle('save:restore'")
+    check(restoreAt >= 0, `存档不自动备份契约：${mainPath} 里找不到 \`save:restore\` 处理器`)
+    if (restoreAt >= 0) {
+      const nextHandler = mainSrc.indexOf('ipcMain.handle(', restoreAt + 10)
+      const body = mainSrc.slice(restoreAt, nextHandler < 0 ? undefined : nextHandler)
+      check(
+        !body.includes('backupCurrentSave('),
+        `存档不自动备份契约：${mainPath} 的 \`save:restore\` 又在覆盖前备份当前档了（船长 2026-09-17：恢复不备份）`,
+      )
+    }
+    const stPath = 'apps/desktop/src/renderer/src/game/storage.ts'
+    const stSrc = stripComments(readSrc(stPath)).join('\n')
+    const stAt = stSrc.indexOf('async restore(name')
+    check(stAt >= 0, `存档不自动备份契约：${stPath} 里找不到网页分支的 \`restore\``)
+    if (stAt >= 0) {
+      const bodyEnd = stSrc.indexOf('\n  },', stAt)
+      const body = stSrc.slice(stAt, bodyEnd < 0 ? undefined : bodyEnd)
+      check(
+        !body.includes('BP_PREFIX'),
+        `存档不自动备份契约：${stPath} 的网页分支 \`restore\` 又在覆盖前备份当前档了（与桌面同口径，2026-09-17）`,
+      )
+    }
+    const enPath = 'apps/desktop/src/renderer/src/game/engine.ts'
+    const enSrc = stripComments(readSrc(enPath)).join('\n')
+    const imAt = enSrc.indexOf('async importSaveFromFile(')
+    check(imAt >= 0, `存档不自动备份契约：${enPath} 里找不到 \`importSaveFromFile\``)
+    if (imAt >= 0) {
+      const body = enSrc.slice(imAt, imAt + 4000)
+      check(
+        !body.includes('saveBridge.backup()'),
+        `存档不自动备份契约：${enPath} 的导入流程又在覆盖前备份当前档了（船长 2026-09-17：导入不备份）`,
+      )
+    }
+    const smPath = 'apps/desktop/src/renderer/src/panels/SaveManager.tsx'
+    const smSrc = stripComments(readSrc(smPath)).join('\n')
+    check(
+      !smSrc.includes('已自动备份当前档'),
+      `存档不自动备份契约：${smPath} 的玩家可见文案仍在承诺"已自动备份当前档"（与现行行为不符）`,
+    )
+    console.log(
+      '· 存档不自动备份契约：恢复（桌面主进程 / 网页分支）与导入三条路径均**不**备份原档 · 手动「备份当前档」与备份列表照旧',
     )
   }
 }
@@ -4655,12 +4705,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   }
   /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
   const REGISTERED: readonly string[] = [
-    'mod-lair-cargo-a:armorHpBonus', // 赃物强化舱（货舱槽 + 装甲容量）→ 界面「装甲容量 +15%」
+    'mod-lair-cargo-a:armorHpBonus', // 赃物强化舱（货舱槽 + 装甲容量）→ 界面「装甲容量 +15%」；**2026-09-17 起引擎也真的算它**（原先甲容量只在装甲槽件里求和 ⇒ 玩家报障「护甲增加效果无效」）
     'mod-lair-armor-c:repairArmorHp', // 生体甲壳板（装甲槽 + 自愈）→ 信息卡「生体自愈」
     'mod-lair-dc-c:hullResistAdd', // 生体损管腔（支援槽 + 结构抗性）→ 结构抗性行
     // 2026-09-13 虫洞专属（船长逐条给定）：
     'mod-wh-c-pulse:speedBonusPct', // 生体脉搏加速器（支援槽 + 舰船速度 +10%）→ 界面「航速」
-    'mod-wh-a-coat:evasionGapPct', // 掠袭折射涂层（装甲槽 + 闪避缺口）→ 界面「闪避」
+    'mod-wh-a-coat:evasionGapPct', // 掠袭折射涂层（装甲槽 + 闪避缺口）→ 界面「闪避」；**2026-09-17 起引擎也真的算它**（原先闪避缺口只在支援槽件里收）
     'mod-wh-a-scan:rangeCutPct', // 赃物扫描阵（支援槽 + 武器射程 −15%）→ 界面「射程代价」
     'mod-wh-a-shield:rangeCutPct', // 掠袭者护盾笼（护盾槽 + 武器射程 −25%）→ 界面「射程代价」
     'mod-wh-c-frame:speedBonusPct', // 几丁质骨架层（装甲槽 + 舰船速度 +5%）→ 界面「航速」

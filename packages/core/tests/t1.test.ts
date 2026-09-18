@@ -9,7 +9,7 @@ import { createInitialState } from '../src/state'
 import { advanceGame, enqueueSkill } from '../src/engine'
 import { activityOverview } from '../src/activity'
 import { cancelManufacturing, startManufacturing } from '../src/manufacturing'
-import { bountyCooldownMsFor, recallExpedition, setAutoLoopBounty, startExpedition } from '../src/expedition'
+import { advanceAutoLoopBounty, bountyCooldownMsFor, recallExpedition, setAutoLoopBounty, startExpedition } from '../src/expedition'
 import { startMining } from '../src/mining'
 import { startScan } from '../src/explore'
 import { advanceSalvageOp, legMsFor, outboundLegMsFor, startSalvageOp } from '../src/salvaging'
@@ -201,10 +201,62 @@ describe('T1 activityOverview 视图', () => {
     v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
     expect(v.sub).toContain('即将自动再出击')
     expect(v.percent).toBeNull()
-    // 等待当前作业结束 → 无条（busyOther 提示文案）
+    // 等别的作业：**点名**在等哪一类（2026-09-17 报障修复后文案带作业名），无条
     st.mining.active = true
     v = activityOverview(st, ct).find((a) => a.kind === 'loop')!
-    expect(v.sub).toContain('等待当前作业结束')
+    expect(v.sub).toContain('等待采矿结束')
     expect(v.percent).toBeNull()
+  })
+
+  /**
+   * **2026-09-17 玩家报障回归**：「自动清缴一直处于『即将自动再出击』的状态」。
+   *
+   * 两层根因（都在本用例里钉住）：
+   * ① **等待表本身带着一条旧闸**：`advanceAutoLoopBounty` 会为 5 类作业让路，其中 **「星图扫描」自
+   *    2026-09-15 起已是无人扫描艇、不占主控**（船长：「玩家扫描星系将不再占用玩家的主控活动」）
+   *    ⇒ 那批无人化改造漏删了这条 ⇒ 扫描在跑时清剿**永远等不到**（扫描可以无限期跑）。
+   * ② **界面与引擎判据漂移**：活动栏那行自写 `busyOther`（只认 采矿/航行/待命）⇒ 上面那种"在等"还会
+   *    被写成「即将自动再出击」，玩家看到的就是"卡死"。
+   * 修法 = 单点 `autoLoopWaitLabel`（两侧共用）+ **把星图扫描从等待表删掉**（残骸打捞保留：它真的占主控）。
+   */
+  it('报障回归：**星图扫描不挡清剿**；残骸打捞/采矿/航行/别的出击照旧点名等待（判据与引擎同源）', () => {
+    const st = createInitialState({ nowWallMs: 0, seed: 11 })
+    const ct = makeTestCtx({})
+    expect(setAutoLoopBounty(st, ct, 'ano-a').ok).toBe(true)
+    st.bountyCooldowns['ano-a'] = st.gameMs - 1 // 冷却已过 ⇒ 没别的作业就该出发
+    const row = (): string => activityOverview(st, ct).find((a) => a.kind === 'loop')?.sub ?? '(无行)'
+    // ① 基线：没别的作业 ⇒ 「即将自动再出击」
+    expect(row()).toContain('即将自动再出击')
+    // ② **玩家报障的那一种**：星系扫描（无人艇）在跑 ⇒ **不挡清剿**：行照旧，引擎**真的当场出发**
+    st.scanning.active = true
+    expect(row(), '无人扫描艇不该被写成"等待"').toContain('即将自动再出击')
+    expect(row()).not.toContain('等待')
+    expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    expect(st.expedition.active, '扫描在跑时清剿应当照常再出发').toBe(true)
+    st.expedition.active = false // 复位：下面几档只测"等待表"
+    st.expedition.anomalyId = null
+    st.scanning.active = false
+    // ③ 残骸打捞：**保留在等待表**（打捞要用主控船与打捞器，确实占主控）
+    st.salvaging.active = true
+    expect(row()).toContain('等待残骸打捞结束')
+    expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    expect(st.expedition.active, '打捞在跑时清剿应当等').toBe(false)
+    st.salvaging.active = false
+    // ④ 采矿 / 航行 / 别的出击：文案保留原语义，只是改成点名
+    st.mining.active = true
+    expect(row()).toContain('等待采矿结束')
+    st.mining.active = false
+    st.transit.active = true
+    expect(row()).toContain('等待航行结束')
+    st.transit.active = false
+    st.expedition.active = true
+    st.expedition.anomalyId = 'ano-other'
+    expect(advanceAutoLoopBounty(st, ct)).toBeNull()
+    expect(row()).toContain('等待本次出击结束')
+    expect(row()).not.toContain('即将自动再出击')
+    st.expedition.active = false
+    st.expedition.anomalyId = null
+    // ⑤ 全清 ⇒ 回到「即将自动再出击」（判据不是恒真）
+    expect(row()).toContain('即将自动再出击')
   })
 })

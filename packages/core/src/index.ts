@@ -540,6 +540,7 @@ export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, set
 export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,
+  autoLoopWaitLabel,
   bountyCooldownMsFor,
   bountyCooldownRemainingMs,
   BOUNTY_COOLDOWN_BASE_MS,

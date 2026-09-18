@@ -1076,16 +1076,39 @@ function stopAutoLoopReason(state: GameState, reason: string): void {
 }
 
 /**
+ * **重复清剿当前在等哪一类作业**（`null` = 没有别的作业挡路，继续走冷却/门槛检查）。
+ *
+ * ⚠ **引擎与活动栏必须共用这一份**（2026-09-17 玩家报障「自动清缴一直处于『即将自动再出击』的状态」）：
+ * 原先引擎等 **5 类**（远征 · 采矿 · **星图扫描** · 残骸打捞 · 航行），而活动栏那行只认 **3 类**（采矿 · 航行 · 待命）
+ * ⇒ 两者漂移：那两种情况下引擎在等、行文案却一路写「即将自动再出击」。现收成这一份：**增删等待项只改这里**。
+ *
+ * 🔴 **「星图扫描」已从等待表删除**（2026-09-17 船长追问「星图扫描不是已经不占用主控活动了？」）——
+ * 船长 2026-09-15 定案：「**进行修正，玩家扫描星系将不再占用玩家的主控活动**」⇒ 星系扫描改成**无人扫描艇**：
+ * **不占主控、不牵动舰船、不阻断任何别的活动**（双向放行，当时把双向互斥判据全删了）。
+ * 而这条等待判据是那批**漏掉的一处旧闸** ⇒ 扫描在跑时清剿一直"等"、而扫描可以无限期跑
+ * ⇒ 玩家看到的"卡死"**根因就在这里**（只把行文案改诚实是不够的，等待表本身必须跟着改）。
+ * `state.salvaging`（残骸打捞）**仍在**表里：打捞要用主控船与打捞器，确实占着主控。
+ * ⚠ 掩护巡逻（`standby`）**不在等待表里**：它不挡 `startExpedition` 的资格判定 ⇒ 引擎会真的试一次出发、
+ * 失败即按既有口径**停环**（带日志与在线弹窗），所以这行不需要为它显示"等待"。
+ */
+export function autoLoopWaitLabel(state: GameState): string | null {
+  if (state.expedition.active) return '本次出击'
+  if (state.mining.active) return '采矿'
+  if (state.salvaging.active) return '残骸打捞'
+  if (state.transit.active) return '航行'
+  return null
+}
+
+/**
  * 重复清剿推进（在线心跳调用；落档开关在重开档后从可出发条件自动恢复）：
- * 忙（远征/采矿/扫描/返航行程）或冷却中 → 等待；条件不满足 → 停环并记原因。
+ * 忙（远征/采矿/星图扫描/打捞/航行）或冷却中 → 等待；条件不满足 → 停环并记原因。
  * 返回 null = 继续等待/已再出发；否则 = 停止原因。
  */
 export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string | null {
   const id = state.autoLoopAnomalyId
   if (id === null) return null
-  if (state.expedition.active || state.mining.active || state.scanning.active || state.transit.active || state.salvaging.active) {
-    return null // 作业中/返航中：等
-  }
+  // 别的作业在跑：等（**判据单点 = `autoLoopWaitLabel`**，与活动栏那行同源）
+  if (autoLoopWaitLabel(state) !== null) return null
   const anomaly = ctx.anomalies.get(id)
   if (!anomaly) {
     stopAutoLoopReason(state, '目标已不存在。')

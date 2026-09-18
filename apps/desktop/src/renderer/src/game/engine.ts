@@ -838,7 +838,12 @@ export class GameEngine {
     }
   }
 
-  /** 恢复某份备份：先校验可解析 → 主进程覆盖（自动备份当前档）→ 热替换内存状态 */
+  /**
+   * 恢复某份备份：先校验可解析 → 主进程覆盖 → 热替换内存状态。
+   *
+   * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 覆盖前**不再**自动备份当前档
+   * （桌面主进程与网页分支两处一起删）。要留退路请先用「备份当前档」手动备一份。
+   */
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const read = await saveBridge.readBackup(name)
@@ -910,7 +915,7 @@ export class GameEngine {
     }
   }
 
-  /** 从外部文件导入存档：覆盖前自动备份当前档 → 校验可解析 → 按时间差补齐离线进度
+  /** 从外部文件导入存档：**不备份当前档**（2026-09-17 船长）→ 校验可解析 → 按时间差补齐离线进度
    * （与正常启动同口径：repair 迁移 + simulateOffline + 离线简报）→ 落盘 → 热替换内存 */
   async importSaveFromFile(): Promise<{ ok: boolean; canceled?: boolean; error?: string }> {
     try {
@@ -924,13 +929,11 @@ export class GameEngine {
         return { ok: false, error: `所选文件无法解析为本游戏存档（${err instanceof Error ? err.message : String(err)}）。` }
       }
       const imported = parsed.state
-      // 防误操作：覆盖前先把"当前档"备份一份（与恢复同口径）
-      await this.persist()
-      try {
-        await saveBridge.backup()
-      } catch {
-        // 备份失败不阻断导入（尽力而为）
-      }
+      /**
+       * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 原先这里会
+       * `persist()` ＋ `saveBridge.backup()` 给当前档留一份"防误操作"备份，现已删除（与恢复那条同口径）。
+       * 要留退路请在导入前点「备份当前档」——手动备份与备份列表功能照旧。
+       */
       // 与正常启动同口径的载入修复链（须在离线结算前完成，让离线按新参数结算）
       repairDeprecatedModules(imported, this.ctx)
       migrateDeprecatedAmmo(imported)
