@@ -71,7 +71,20 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
   })
 })
 
-describe('「第一次」任务：计数落点回归（2026-09-17 自查修的两处）', () => {
+describe('「第一次」任务：奖励（一次性）与计数落点回归', () => {
+  it('「第一次学习技能」发基础 AI 核心 ×1（船长 2026-09-17：AI 核心放这条里给），且只发一次', () => {
+    const state = testState()
+    expect(state.aiCores.basic ?? 0).toBe(0)
+    // 判据 = AI 核心操作学 Lv1（训练过程由 training 侧用例覆盖）⇒ 这里直接置位再走一拍引擎
+    state.skills.trained['ai-expert'] = 1
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-skill']?.done).toBe(true)
+    expect(state.aiCores.basic).toBe(1)
+    // 再推进一段：不双发
+    for (let i = 0; i < 5; i++) advanceGame(state, 1000, ctx)
+    expect(state.aiCores.basic).toBe(1)
+  })
+
   it('精炼炉出料记一批；**残骸回收炉不计入**（任务文案 = 「让精炼炉出一批料」）', () => {
     const state = testState()
     state.warehouse.items['ore-veldspar'] = 200

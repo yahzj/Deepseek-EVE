@@ -12,7 +12,8 @@
  * - **可推导的口径不用计数**：扫描数 = `exploredGalaxies.length`、技能 = `Σ trained`、
  *   虫洞解锁 = 协会声望（读 `standing`）——少一处计数就少一处漂移。
  * - **奖励**：`items` 是**预留接口**（船长：「可以先留出接口」，例：首次悬赏送 MK1 炮、挖矿送采集器）；
- *   本轮只有 ②「第一次采集矿物」真填一张蓝图（`bp-ammo-kinetic`），其余留空。
+ *   本轮只有 ②「第一次采集原矿」真填一张蓝图（`bp-ammo-kinetic`），③「第一次学习技能」按船长 2026-09-17
+ *   裁决送**基础 AI 核心 ×1**（接上"指派 AI 副船"那一步），其余留空。
  * - **前置**：`prereq` 只用于"任务在任务中心是否可见"（未满足＝不显示，船长选"两者都隐藏"）；
  *   不锁流程——玩家在功能解锁后本来就能自由做。
  */
@@ -55,8 +56,13 @@ export interface FirstTaskDef {
   judge: (state: GameState, ctx: SimContext) => number
   /** 完成时发的通讯 id（`messages.ts` 里的 `first-*`） */
   commsId: string
-  /** 奖励：`items` 预留接口；ISK 由链任务用 */
-  reward?: { isk?: number; items?: ReadonlyArray<{ itemId: string; units: number }> }
+  /** 奖励：`items` 走蓝图库存（预留接口）；`aiCores` 给 AI 核心实物（**不进仓库**，直接进 `state.aiCores` 账本） */
+  reward?: {
+    isk?: number
+    items?: ReadonlyArray<{ itemId: string; units: number }>
+    /** AI 核心（`type` = `AiCoreType`：basic/gamma/beta/alpha）——2026-09-17 船长：「AI 核心放在'第一次技能'里给」 */
+    aiCores?: ReadonlyArray<{ type: string; units: number }>
+  }
   /** 后续"次数"链（阈值表见 `CHAIN_TIERS`） */
   chain?: { id: string; name: string; stat: FirstStatKey | 'scan' | 'skills'; tierKey: string }
 }
@@ -188,6 +194,14 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     brief: '把 AI 核心操作学练到 Lv1',
     judge: (state) => state.skills.trained['ai-expert'] ?? 0,
     commsId: 'first-skill',
+    /**
+     * **基础 AI 核心 ×1**（船长 2026-09-17 裁决：「AI 核心放在'第一次技能'里给」）。
+     *
+     * 由来：旧教程里这枚核心是「交付首批原矿」白送的；教程退场后，下一件「第一次指派 AI 副船」会被
+     * 市场价（实测 ~25,000 信用点）挡住半小时以上 ⇒ 船长把它挂到这条任务：练成 AI 核心操作学 Lv1
+     * 即领一枚（正好接上"给沙猫派个 AI 任务"这一步）。
+     */
+    reward: { aiCores: [{ type: 'basic', units: 1 }] },
     chain: { id: 'scholar', name: '学而不厌', stat: 'skills', tierKey: 'skills' },
   },
   {
@@ -267,12 +281,18 @@ export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
 }
 
 /**
- * **发放一条任务的奖励**（引擎在"新完成"时调用一次；`items` 走 `blueprintStock`——现阶段唯一的物品奖励是
- * 「第一次采集原矿」那张动能弹药蓝图，其余留空 ⇒ 船长说的"先把物品奖励接口留出来"就在这里）。
+ * **发放一条任务的奖励**（引擎在"新完成"时调用一次）。
+ *
+ * 三个口子：`items` 走 `blueprintStock`（现阶段唯一的物品奖励是「第一次采集原矿」那张动能弹药蓝图，其余留空
+ * —— 船长说的"先把物品奖励接口留出来"就在这里）；`aiCores` 直接进 `state.aiCores` 账本（**核心不进仓库**，
+ * 与 `ai.gainAiCore` 同口径；此处就地写而不 import `ai.ts`，是因为 `ai.ts` 反向依赖本模块，一 import 就成环）。
  */
 export function grantFirstReward(state: GameState, def: FirstTaskDef): void {
   for (const it of def.reward?.items ?? []) {
     state.blueprintStock[it.itemId] = (state.blueprintStock[it.itemId] ?? 0) + it.units
+  }
+  for (const c of def.reward?.aiCores ?? []) {
+    state.aiCores[c.type] = (state.aiCores[c.type] ?? 0) + c.units
   }
   const isk = def.reward?.isk ?? 0
   if (isk > 0) state.wallet.isk += isk

@@ -170,7 +170,7 @@ ok('港内维修鲣鱼', repair.ok, repair.ok ? '' : repair.error)
 advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
 ok('「第一次维修舰船」判定完成', s.importantTasks['first-repair']?.done === true, `repairs=${firstStatOf(s, 'repairs')}`)
 
-step('⑩ 领链奖金 + 攒钱，直到买得起基础 AI 核心')
+step('⑩ 领链奖金 + 打两场悬赏攒点现金（训练与维修要花钱）')
 advanceFirstChains(s)
 let claimed = 0
 for (const def of FIRST_TASKS) {
@@ -179,9 +179,7 @@ for (const def of FIRST_TASKS) {
 }
 console.log(`   先把已达成档位的奖金领掉：+${claimed.toLocaleString('zh-CN')} 信用点 → 钱包 ${s.wallet.isk.toLocaleString('zh-CN')}`)
 let runs = 1 // ⑧ 已打过一场
-// ⚠ 判"买得起"**不能用 `buyBasicAiCore()` 当条件**（它会真的买下来 ⇒ 白花一笔、后面再买就失败）。
-// 核心价随市场浮动（实测 25,096 → 26,062），这里按 30,000 留余量。
-while (s.wallet.isk < 30_000 && runs < 15) {
+while (runs < 3) {
   let e = startExpedition(s, 'ano-training', ctx)
   // 悬赏有冷却（返航段 + 冷却）：等冷却走完再接下一条，最多等 10 分钟游戏时间
   let waitMs = 0
@@ -199,18 +197,22 @@ while (s.wallet.isk < 30_000 && runs < 15) {
 }
 console.log(`   共 ${runs} 场演习场驱逐令 · 钱包 ${s.wallet.isk.toLocaleString('zh-CN')} 信用点 · 悬赏计数 ${firstStatOf(s, 'bountyWins')}`)
 
-step('⑪ 第一次学习技能 + 第一次指派 AI 副船')
-const coreBuy = buyBasicAiCore(s, ctx)
-ok('买基础 AI 核心', coreBuy.ok, coreBuy.ok ? '' : coreBuy.error)
+step('⑪ 第一次学习技能（领基础 AI 核心）＋ 第一次指派 AI 副船')
+// 核心不再靠攒钱买：船长 2026-09-17「AI 核心放在'第一次技能'里给」——练成 AI 核心操作学 Lv1 即领一枚
 const train = enqueueSkill(s, 'ai-expert', 1, ctx.skills)
 ok('开始训练 AI 核心操作学', train.ok, train.ok ? '' : train.error)
 ok('练到 Lv1', until(s, () => (s.skills.trained['ai-expert'] ?? 0) >= 1, 60 * 60_000, '训练'))
+advanceGame(s, 1000, ctx) // 奖励在引擎每拍（advanceFirstTasks → grantFirstReward）
 ok('「第一次学习技能」判定完成', s.importantTasks['first-skill']?.done === true)
+ok('奖励：基础 AI 核心 ×1（免去市场价 ~25k）', (s.aiCores.basic ?? 0) === 1, `aiCores.basic=${s.aiCores.basic ?? 0}`)
 ok('「第一次指派 AI 副船」此时才出现（前置已满）', visibleFirstTasks(s).some((d) => d.id === 'first-ai'))
 const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
 ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
 advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
 ok('「第一次指派 AI 副船」判定完成', s.importantTasks['first-ai']?.done === true, `aiAssigns=${firstStatOf(s, 'aiAssigns')}`)
+// 买一枚是**可选**的（第二艘副船才需要）：只核一下价格读数，不作断言
+const coreBuy = buyBasicAiCore(s, ctx)
+console.log(`   市场上再买一枚基础 AI 核心：${coreBuy.ok ? '成功' : `未买（${coreBuy.error}）`}`)
 
 step('⑫ 次数链：记账与领奖')
 advanceFirstChains(s)
