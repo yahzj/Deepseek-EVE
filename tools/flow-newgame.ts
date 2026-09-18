@@ -157,6 +157,7 @@ const prod = startManufacturing(s, 'bp-ammo-kinetic', 'pilot', ctx)
 ok('起制造线被接受', prod.ok, prod.ok ? '' : prod.error)
 ok('产出成品', until(s, () => firstStatOf(s, 'produceUnits') > 0, 30 * 60_000, '生产'), `units=${firstStatOf(s, 'produceUnits')}`)
 ok('「第一次生产」判定完成', s.importantTasks['first-produce']?.done === true)
+ok('奖励：沙猫级舰船蓝图 ×1（2026-09-18 新建，不进市场）', (s.blueprintStock['sbp-sandcat'] ?? 0) === 1)
 ok('市场页解锁', unlocked(s, 'market'))
 mark('⑤⑥ 精炼一批 + 生产一批', s.gameMs)
 

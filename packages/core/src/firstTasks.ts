@@ -202,10 +202,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     prereq: 'first-mine',
     judge: (state) => (state.firstStats?.produceUnits ?? 0),
     commsId: 'first-produce',
-    // ⚠ 船长 2026-09-18 裁定「给予玩家沙猫级采矿艇蓝图」——但**沙猫级没有舰船蓝图**
-    //   （它是开局白送的船：`ships.ts` 里 `priceIsk: 0`、`SHIP_BLUEPRINTS` 无对应条目、市场也无行）。
-    //   按 §5.2 已上报船长，等他选：①改成现有的 T1 采矿艇蓝图 ②新增一张 `sbp-sandcat`（需他给材料/工时/价格）
-    //   ③改发沙猫舰船本体。裁定前**先留空**，不擅自发明数值。
+    // 奖励（船长 2026-09-18）：「新建一张沙猫级的蓝图，按照沙猫级价值 1W 来设定」（`sbp-sandcat`，
+    // 不进市场、只靠这条任务发放；数值推导见 `data/src/shipBlueprints.ts` 该条目注释）。
+    reward: { blueprints: [{ blueprintId: 'sbp-sandcat', units: 1 }] },
     chain: { id: 'lineboss', name: '产线主管', stat: 'produceUnits', tierKey: 'produceUnits' },
   },
   {

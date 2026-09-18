@@ -26,24 +26,26 @@
 
 ## 二、任务全表（13 条「第一次」＋ 13 条链）
 
-- **第一次扫描**（判据：完成一次扫描（母港即第一处） · 前置：— · 链：宇宙探索家 2/5/10/15/**20**（全图 20 ⇒ 5 级封顶））
-- **第一次采集矿物**（判据：采到 ≥1 原矿 · 前置：① · 链：深空采掘者（单位原矿，10 级））
-- **第一次打捞残骸**（判据：打捞产出 ≥1 · 前置：① · 链：残骸拾荒者（次数，10 级））
-- **第一次维修舰船**（判据：用修理组件或港内维修 ≥1 次 · 前置：— · 链：维修技师（次数，10 级））
-- **第一次完成悬赏**（判据：讨伐首次胜利（保留首战教学加成） · 前置：① · 链：赏金猎人（胜场，10 级））
-- **第一次操作精炼炉**（判据：一次精炼出料 · 前置：② · 链：精炼师（批数，10 级））
-- **第一次生产**（判据：组装机产出 ≥1 件 · 前置：②（＋⑥） · 链：产线主管（件数，10 级））
-- **第一次挂单销售**（判据：挂出一张卖单 · 前置：⑦ · 链：市场老手（单数，10 级））
-- **第一条船**（判据：造出第一艘自造船（**并入既有那封通讯**） · 前置：⑦ · 链：造船厂主（艘数，10 级））
-- **第一次学习技能**（判据：**AI 核心操作学 Lv1** · 前置：— · 链：学而不厌（累计技能等级，10 级））
-- **第一次指派 AI 副船**（判据：成功指派过一艘（**任务本身要等⑩才出现**） · 前置：⑩ · 链：舰队调度（指派次数，10 级））
-- **第一次长途运输**（判据：完成一次运输交付 · 前置：① · 链：星际货运（趟数，10 级））
-- **第一次虫洞**（判据：**解锁虫洞（协会声望 ≥40）** · 前置：①? · 链：深渊探索者（进洞趟数，10 级））
+| # | 第一次 | 完成判据（事件置位 ＋ 老档兜底） | 前置 | 链（1..N 级阈值） |
+|---|---|---|---|---|
+| 1 | 第一次扫描 | 完成一次扫描（母港即第一处） | — | 宇宙探索家 2/5/10/15/**20**（全图 20 ⇒ 5 级封顶） |
+| 2 | 第一次采集矿物 | 采到 ≥1 原矿 | ① | 深空采掘者（单位原矿，10 级） |
+| 3 | 第一次打捞残骸 | 打捞产出 ≥1 | ① | 残骸拾荒者（次数，10 级） |
+| 4 | 第一次维修舰船 | 用修理组件或港内维修 ≥1 次 | — | 维修技师（次数，10 级） |
+| 5 | 第一次完成悬赏 | 讨伐首次胜利（保留首战教学加成） | ① | 赏金猎人（胜场，10 级） |
+| 6 | 第一次操作精炼炉 | 一次精炼出料 | ② | 精炼师（批数，10 级） |
+| 7 | 第一次生产 | 组装机产出 ≥1 件 | ②（＋⑥） | 产线主管（件数，10 级） |
+| 8 | 第一次挂单销售 | 挂出一张卖单 | ⑦ | 市场老手（单数，10 级） |
+| 9 | 第一条船 | 造出第一艘自造船（**并入既有那封通讯**） | ⑦ | 造船厂主（艘数，10 级） |
+| 10 | 第一次学习技能 | **AI 核心操作学 Lv1** | — | 学而不厌（累计技能等级，10 级） |
+| 11 | 第一次指派 AI 副船 | 成功指派过一艘（**任务本身要等⑩才出现**） | ⑩ | 舰队调度（指派次数，10 级） |
+| 12 | 第一次长途运输 | 完成一次运输交付 | ① | 星际货运（趟数，10 级） |
+| 13 | 第一次虫洞 | **解锁虫洞（协会声望 ≥40）** | ①? | 深渊探索者（进洞趟数，10 级） |
 
 - **奖励（2026-09-18 船长逐条裁定 · 现行表）**：
   ① 无 · ② 采集器 MK1（`mod-miner-1`）· ③ 打捞器 MK1（`mod-salvager-1`）· ④ 民用修理组件 ×20（`repairkit-civ`）·
   ⑤ 一艘鲣鱼级（`sh-falconet`，进机库）· ⑥ 动能弹药生产线蓝图（`bp-ammo-kinetic`，**从②移到本条**）·
-  ⑦ **待船长裁决**（他裁定"沙猫级采矿艇蓝图"，但沙猫没有舰船蓝图——见 §七 第 1 条）· ⑨ 民用船体维修装置（`mod-hullrep-civ`）·
+  ⑦ 沙猫级舰船蓝图（`sbp-sandcat`，2026-09-18 新建、不进市场）· ⑨ 民用船体维修装置（`mod-hullrep-civ`）·
   ⑩ 基础 AI 核心 ×1 · ⑫ 飞鱼级快运舰（`sh-flyingfish`）· ⑬ 2 处未探索虫洞（允许超库存上限）。
   其余（① ⑧ ⑪）**只发一封情报信**；链任务**发 ISK**（见下条）。发放逻辑在 `core/firstRewards.ts`（六个口袋）。
 - **链奖金（2026-09-18 船长：「每级的信用点奖励有些过于少，建议按照级别的 5 次方给予奖励」）**：
@@ -55,44 +57,52 @@
 
 ## 三、解锁表（未解锁 = 页面与任务**都隐藏**）
 
-   - **内容**：前置
-   - **出港（星图页本体）/ 舰船 / 装配 / 物品 / 技能 / 任务中心 / 通讯 / 手册**：开局可用（星图页必须开着——要能扫描）
-   - **星图内 **矿带开采 / 常驻悬赏 / 残骸打捞 / 长途运输** 页签 ＋ 一切战斗**：① 第一次扫描
-   - **工业页**：② 第一次采集矿物
-   - **市场页**：⑦ 第一次生产
-   - **扫描虫洞**：沿用既有：协会声望 ≥ 40（⑬ 的任务目标就是它）
+| 内容 | 前置 |
+|---|---|
+| 出港（星图页本体）/ 舰船 / 装配 / 物品 / 技能 / 任务中心 / 通讯 / 手册 | 开局可用（星图页必须开着——要能扫描） |
+| 星图内 **矿带开采 / 常驻悬赏 / 残骸打捞 / 长途运输** 页签 ＋ 一切战斗 | ① 第一次扫描 |
+| **工业页** | ② 第一次采集矿物 |
+| **市场页** | ⑦ 第一次生产 |
+| 扫描虫洞 | 沿用既有：协会声望 ≥ 40（⑬ 的任务目标就是它） |
 
 ## 四、落码清单（四阶段全部完成 · 2026-09-17）
 
 ### 阶段①　前置面（母港未知）
-   - **`core/src/state.ts`**：序章档（`prologue: true` = 真实新游戏入口）初始 `exploredGalaxies` ⇒ **`[]`**；非序章档（测试/工具入口）**保持 [母港]**
-   - **`core/src/explore.ts`**：`isExplored` **删母港豁免** · `actionBlockReason` **删母港豁免** · `frontierGalaxyIds` **把未探索的母港当种子**（否则零探索时无处可扫＝死锁）
-   - **`core/src/mining.ts`**：采集的探索闸**从"非母港"改成对所有星系生效**（原先把母港排除在外）
-   - **`core/src/salvaging.ts`**：打捞同款：探索闸对所有星系生效，航路检查仍只对外系
+| 文件 | 改动 |
+|---|---|
+| `core/src/state.ts` | 序章档（`prologue: true` = 真实新游戏入口）初始 `exploredGalaxies` ⇒ **`[]`**；非序章档（测试/工具入口）**保持 [母港]** |
+| `core/src/explore.ts` | `isExplored` **删母港豁免** · `actionBlockReason` **删母港豁免** · `frontierGalaxyIds` **把未探索的母港当种子**（否则零探索时无处可扫＝死锁） |
+| `core/src/mining.ts` | 采集的探索闸**从"非母港"改成对所有星系生效**（原先把母港排除在外） |
+| `core/src/salvaging.ts` | 打捞同款：探索闸对所有星系生效，航路检查仍只对外系 |
 
 ### 阶段②　任务系列本体
-   - **`core/src/firstTasks.ts`（新）**：13 条「第一次」＋ 13 条链 ＋ 阈值表 `CHAIN_TIERS` ＋ `bumpFirst`/`firstStatOf`/`chainProgressOf`/`advanceFirstTasks`/`advanceFirstChains`/`claimChainReward`/`grantFirstReward`/`visibleFirstTasks`；照会战加成 `isFirstBountyBattle`/`applyFirstBountyBuff`（0.5 命中/回避，由原"试炼步骤"改挂任务）；**刻意零运行期 import**（它被 engine/ai/market/wormhole/shipyard 反向依赖，一 import 就成环）
-   - **11 处事件落点**：`mining`(mineUnits) · `salvaging`(salvageRuns) · `market`(orders) · `ai`(aiAssigns×4) · `expedition`(bountyWins) · `industry`(refineBatches) · `manufacturing`(produceUnits) · `shipyard`(ships/repairs) · `wormhole`(wormholeRuns) · `hauling`(haulTrips)
-   - **`core/src/engine.ts`**：每拍 `advanceFirstTasks`（发通讯＋发奖励）＋ `advanceFirstChains`（**只记账不发钱**）
-   - **`data/src/firstTaskMessages.ts`（新）**：13 封情报信，触发器 `{ kind: 'firstTask', taskId }`，发件方 = 信息库 · 检索重启
-   - **`core/src/save.ts`**：`firstStats` 归一（只收有限正数、空表不落盘）
+| 文件 | 改动 |
+|---|---|
+| `core/src/firstTasks.ts`（新） | 13 条「第一次」＋ 13 条链 ＋ 阈值表 `CHAIN_TIERS` ＋ `bumpFirst`/`firstStatOf`/`chainProgressOf`/`advanceFirstTasks`/`advanceFirstChains`/`claimChainReward`/`grantFirstReward`/`visibleFirstTasks`；照会战加成 `isFirstBountyBattle`/`applyFirstBountyBuff`（0.5 命中/回避，由原"试炼步骤"改挂任务）；**刻意零运行期 import**（它被 engine/ai/market/wormhole/shipyard 反向依赖，一 import 就成环） |
+| 11 处事件落点 | `mining`(mineUnits) · `salvaging`(salvageRuns) · `market`(orders) · `ai`(aiAssigns×4) · `expedition`(bountyWins) · `industry`(refineBatches) · `manufacturing`(produceUnits) · `shipyard`(ships/repairs) · `wormhole`(wormholeRuns) · `hauling`(haulTrips) |
+| `core/src/engine.ts` | 每拍 `advanceFirstTasks`（发通讯＋发奖励）＋ `advanceFirstChains`（**只记账不发钱**） |
+| `data/src/firstTaskMessages.ts`（新） | 13 封情报信，触发器 `{ kind: 'firstTask', taskId }`，发件方 = 信息库 · 检索重启 |
+| `core/src/save.ts` | `firstStats` 归一（只收有限正数、空表不落盘） |
 
 ### 阶段③　界面
-   - **`panels/FirstTasks.tsx`（新）**：任务中心「重要任务」标签新面板：按前置过滤的清单；**完成后同一张卡改成后续次数任务**（船长：「完成'第一次扫描'后就会出现后续任务'宇宙探索家1'」）＋档位进度＋领奖；已完成才出现「看情报」（跳通讯定位那封信）
-   - **`App.tsx`**：锁定**改数据驱动**（`unlocked`/`unlockNeedTitle`）：工业/市场导航项**未解锁不渲染**，程序化跳转在 `changePage`/`changeMapTab` 拦一道并提示；序章演出结束 → 落任务中心「重要任务」
-   - **`pages/MapPage.tsx`**：`TAB_UNLOCK_KEY`（矿带/悬赏/打捞/运输 ← 第一次扫描），未解锁页签不渲染；`whscan` 仍按声望门槛置灰
-   - **`game/engine.ts`**：`claimChainRewardAt()`（点一次领一次；记账仍在每拍）
-   - **`panels/ImportantTasks.tsx`**：两张教程卡退役，只剩贯穿任务「寻找人类」
+| 文件 | 改动 |
+|---|---|
+| `panels/FirstTasks.tsx`（新） | 任务中心「重要任务」标签新面板：按前置过滤的清单；**完成后同一张卡改成后续次数任务**（船长：「完成'第一次扫描'后就会出现后续任务'宇宙探索家1'」）＋档位进度＋领奖；已完成才出现「看情报」（跳通讯定位那封信） |
+| `App.tsx` | 锁定**改数据驱动**（`unlocked`/`unlockNeedTitle`）：工业/市场导航项**未解锁不渲染**，程序化跳转在 `changePage`/`changeMapTab` 拦一道并提示；序章演出结束 → 落任务中心「重要任务」 |
+| `pages/MapPage.tsx` | `TAB_UNLOCK_KEY`（矿带/悬赏/打捞/运输 ← 第一次扫描），未解锁页签不渲染；`whscan` 仍按声望门槛置灰 |
+| `game/engine.ts` | `claimChainRewardAt()`（点一次领一次；记账仍在每拍） |
+| `panels/ImportantTasks.tsx` | 两张教程卡退役，只剩贯穿任务「寻找人类」 |
 
 ### 阶段④　收尾（删旧教程 ＋ 老档迁移）
-   - **删除**：内容
-   - **`data/src/tutorialSteps.ts`**：整件删除（七步文案与跳转的唯一出处）
-   - **`data/src/messages.ts`**：七封 `tut-1..7` 与旧「训前简报」删除；新开场信 `msg-briefing`（触发 `{kind:'start'}`，跳任务中心）
-   - **`core/src/onboarding.ts`**：步骤机、`skipTutorial`、交付/试炼/S5 特典、`advanceOnboardingAuto`、`tutorialAccelWait`、教学战判定全部退役；只剩演出（`ONB_AWAKEN=0`／`ONB_DONE=99`）＋ `beginAfterAwaken`／`skipPrologue`／`publishFindHumans`／`advanceFindHumans`
-   - **`panels/TutorialGuide.tsx`**：整件删除（顶部引导条＋光圈＋收尾演出）
-   - **通讯动作机制**：`CommsActionDef`/`CommsActionCommand`/`runCommsAction` 及其 UI 三处接线删除（唯一使用者是旧简报的「开始教程」）
-   - **`core/tests/t24.test.ts`**：旧步骤机用例整件删除（新增 `first-tasks.test.ts` 10 例替代）
-   - **计数落点修正**：阶段②自查发现两处**落错分支**：`refineBatches` 记在**残骸回收**分支（精炼出料反而没记）、`repairs` 记在**自动修理组件**循环（港内付费维修没记）⇒ 均已挪到正确位置并补回归用例
+| 删除 | 内容 |
+|---|---|
+| `data/src/tutorialSteps.ts` | 整件删除（七步文案与跳转的唯一出处） |
+| `data/src/messages.ts` | 七封 `tut-1..7` 与旧「训前简报」删除；新开场信 `msg-briefing`（触发 `{kind:'start'}`，跳任务中心） |
+| `core/src/onboarding.ts` | 步骤机、`skipTutorial`、交付/试炼/S5 特典、`advanceOnboardingAuto`、`tutorialAccelWait`、教学战判定全部退役；只剩演出（`ONB_AWAKEN=0`／`ONB_DONE=99`）＋ `beginAfterAwaken`／`skipPrologue`／`publishFindHumans`／`advanceFindHumans` |
+| `panels/TutorialGuide.tsx` | 整件删除（顶部引导条＋光圈＋收尾演出） |
+| 通讯动作机制 | `CommsActionDef`/`CommsActionCommand`/`runCommsAction` 及其 UI 三处接线删除（唯一使用者是旧简报的「开始教程」） |
+| `core/tests/t24.test.ts` | 旧步骤机用例整件删除（新增 `first-tasks.test.ts` 10 例替代） |
+| 计数落点修正 | 阶段②自查发现两处**落错分支**：`refineBatches` 记在**残骸回收**分支（精炼出料反而没记）、`repairs` 记在**自动修理组件**循环（港内付费维修没记）⇒ 均已挪到正确位置并补回归用例 |
 
 ## 五、老档迁移（v25 → v26）
 
@@ -143,16 +153,15 @@
 
 ## 七、裁决与待办
 
-1. ⚠ **待船长裁决（2026-09-18 新出现的冲突）**：船长裁定「第一次生产给予玩家**沙猫级采矿艇蓝图**」——
-   但**沙猫级没有舰船蓝图**：它是开局白送的船（`ships.ts` 里 `priceIsk: 0`、`SHIP_BLUEPRINTS` 无 `sbp-sandcat`
-   条目、市场也没有它的行）。**按 §5.2 上报**，三选一（数字已实测，供他一句话定）：
-
-   - **① 改成现有 T1 矿船蓝图 `sbp-burrower`（掘洞级）**：**零新增数据**。书价 240,000（市场本来就有卖）· 材料 钛钢 4,750＋派瑞 1,350 · 工期 21 分钟；产物掘洞级：货舱 1,800 m³ / 11 秒 18 单位（对比沙猫 800 / 12 秒 10 单位）⇒ 是明确的升级。与奖励表其它件同量级（飞鱼级 210,000、修理组件 ×20 66,000）
-   - **② 新增一张 `sbp-sandcat`**：**要发明数值**（材料/工期/书价——沙猫售价 0，"书价 = 船价×2"的口径直接失效）＋ **实测撞 3 条内容契约**：舰船蓝图没有市场卡、挂卖可达契约、图鉴市场跳转契约（后两条要登记 `NO_ROW_OK`／放行规则并写理由；或者给它配一张市场行）
-   - **③ 改发沙猫舰船本体**：**零新增数据**。沙猫本体售价 0（开局已有一艘 ⇒ 会是第 2 艘，可当备用矿船/AI 副船）；优点是"沙猫级"三个字对得上，缺点是这份奖励的市价几乎为 0
-
-   **推荐 ①**（现成、且是新手第一次能拿到的"更好的矿船"）；裁定前该条奖励**留空**，不擅自发明数值。
-   （② 的契约代价是**临时插入占位蓝图实测**出来的，探针与占位数据已原样回滚，`content:check` 复绿 ✓。）
+1. ✅ **已裁决（船长 2026-09-18）**：「第一次生产」的奖励＝**新建一张沙猫级舰船蓝图**。原话：
+   「**新建一张沙猫级的蓝图，按照沙猫级价值 1W 来设定（但是实际上沙猫市场价格是 0，也不会出现在市场内）**」。
+   已落码 `data/src/shipBlueprints.ts` 的 `sbp-sandcat`（只作本条奖励发放）：
+   **书价 20,000**（＝ 价值 1 万 × T1 档系数 2；与既有惯例"书价 = 市场行价 × 档位系数"同源，只是这里的锚取船长给的估值
+   而非市场价）· **材料 钛钢合金 200 ＋ 银纹超金属 50 ＝ 2,200 ISK**（＝ 价值 ×0.22，与掘洞级/马鲛级同口径）·
+   **工期 15 分钟**（T1 带 15~25 分的下限）· **不配市场行**（三处内容契约已登记为例外：
+   `SHIP_BP_NO_ROW_OK`、"挂卖可达契约"的 `NO_ROW_OK`、图鉴跳转的 `handNoJumpOk`，理由都写的是"只作任务奖励、不进市场"）。
+   沙猫本体 `ships.ts` 的 `priceIsk` **保持 0**（定制船口径：无市场行的船必须为 0，改了会撞「舰船价格口径」警报）。
+   实测：`content:check` ✅（**没有**触发"蓝图价与档位系数"预警——该预警对定制船的蓝图跳过比对）。
 2. ✅ **已裁决（船长 2026-09-18 · 奖励表）**：13 条任务的实物奖励逐条改定（见 §四 的奖励表）；
    链奖金改"第 N 级 = 基准 × N⁵"；母港扫描改 10 秒。
 3. ✅ **已裁决（船长 2026-09-17）**：基础 AI 核心挂在「第一次学习技能」（现仍在 ⑩）。
@@ -172,4 +181,3 @@
    （一分钟的事），要么我按这四档状态从测试档改配装生成；两条路都不宜我擅自替工具"发明"夹具契约。
    **本批未动**，故仍挂「需重检」。（工具本身可配 `UI_APP_URL`/`UI_CDP_URL` 覆盖端口、且**不会关浏览器**，
    按 §6 用非默认端口跑是安全的——只差输入夹具。）
-

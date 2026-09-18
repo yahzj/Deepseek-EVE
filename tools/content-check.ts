@@ -502,8 +502,16 @@ for (const sbp of SHIP_BLUEPRINTS) {
     const mat = items.get(need.itemId)
     check(!!mat && mat.kind === 'mineral', `舰船蓝图 ${sbp.id} 材料 ${need.itemId} 不存在或不是矿物`)
   }
+  /**
+   * **船蓝图"无市场行"白名单**（2026-09-18 船长裁定新建 `sbp-sandcat` 时立的）：
+   * 任务奖励发放的蓝图不进市场 ⇒ 不要求市场卡（与一次性图纸豁免同精神，但它是**可反复制造**的普通蓝图）。
+   */
+  const SHIP_BP_NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
+    ['sbp-sandcat', '沙猫级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
+  ]
+  const shipBpNoRowOk = new Set(SHIP_BP_NO_ROW_OK.map(([id]) => id))
   check(
-    sbp.singleUse === true || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
+    sbp.singleUse === true || shipBpNoRowOk.has(sbp.id) || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
     `舰船蓝图 ${sbp.id} 没有市场卡（无法购书学习）`,
   )
 }
@@ -4187,6 +4195,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
       ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
+      ['sbp-sandcat', '沙猫级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
     ]
     const noRowOk = new Set(NO_ROW_OK.map(([id]) => id))
     const rowKeys = new Set(MARKET_GOODS.map((g) => g.refId))
@@ -4233,12 +4242,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    *      按钮本就不该显示）：谜质装置 24 + AI 核心 3；
    *   ③ 物品 kind = `wreck` / `fragment`：残骸**唯一变现 = 回收炉开箱**（隐藏卡残骸没有收购卡、
    *      稀有残骸明确"无市场卡"）、碎片不进市场 ⇒ 无行是设计；
-   *   ④ 名单例外（理由同「挂卖可达契约」的 NO_ROW_OK）：协会保底艇 / 无渠道壳体。
+   *   ④ 名单例外（理由同「挂卖可达契约」的 NO_ROW_OK）：协会保底艇 / 无渠道壳体 / 任务奖励蓝图（`sbp-sandcat`）。
    * 为什么值得一条常驻契约：映射错位（改图鉴主键语义、改某族的 market kind）不会报错，只会让
    * **整类图鉴的按钮静默消失**——玩家看不见"少了个按钮"，只有这条契约会点名。 */
   {
     const jumpCtx = buildSimContext()
-    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus'])
+    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat'])
     const unreleasedRowIds = new Set(
       MARKET_GOODS.filter((g) => (g as { unreleased?: boolean }).unreleased === true).map((g) => g.refId),
     )

@@ -104,6 +104,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '组装机要三样：一张蓝图、够用的材料、以及时间——装上 AI 核心就能无人值守开线。',
       '弹药与修理组件这类消耗品最适合常驻开线，装备与舰船则按需排产。',
+      '随信附一张沙猫级舰船蓝图——照着它就能再造几艘矿船。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-produce' },
     hint: { text: '工业页可给产线装 AI 核心', page: 'industry' },

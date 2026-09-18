@@ -172,6 +172,16 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(b.ok, b.ok ? '' : b.error).toBe(true)
   })
 
+  it('「第一次生产」发沙猫级舰船蓝图（2026-09-18 新建，不进市场、只靠本条发放）', () => {
+    const state = testState()
+    expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(0)
+    // 判据 = 组装机产出 ≥ 1 件；直接置位计数再走一拍引擎（制造链路由制造侧用例覆盖）
+    state.firstStats = { ...(state.firstStats ?? {}), produceUnits: 1 }
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-produce']?.done).toBe(true)
+    expect(state.blueprintStock['sbp-sandcat']).toBe(1)
+  })
+
   it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
     const state = testState()
     state.standings['dsi'] = 40
