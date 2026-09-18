@@ -2731,6 +2731,8 @@ export function preloadRepairFor(
    * **层容量增幅**（2026-09-16 船长「统一吃」＋「并在相关说明中提及（提高维修量等）」）：
    * 每跳修复量从此与**修理组件同一把尺**——额外护甲/结构加成（装甲增厚板 · 结构件 ·
    * 船体加固理论 · 装甲舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
+   * ⚠ **2026-09-17 例外**：无消耗自愈里带 `repairIgnoresCapacityAmp` 的件（只有生体甲壳板）按**平值**结算，
+   * 见下方该分支的注释——那条例外只作用于"无消耗自愈"，耗组件装置照旧吃本增幅。
    */
   const amp = layerAmpOf(state, ctx, shipId)
   // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
@@ -2745,12 +2747,18 @@ export function preloadRepairFor(
       w = stackWeight(n)
     }
     if (isFree) {
+      /**
+       * **平值例外**（2026-09-17 船长：「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」）：
+       * 带 `repairIgnoresCapacityAmp` 的件每跳 = `值 × 曲线权重`，**不乘** `amp.a / amp.h`
+       * （2026-09-16「统一吃层容量加成」那条**只对耗组件装置继续有效**）。全表只有生体甲壳板带这个字段。
+       */
+      const flat = d.repairIgnoresCapacityAmp === true
       units.push({
         moduleId: d.id,
         kitId: '',
         free: true,
-        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w * amp.a)),
-        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w * amp.h)),
+        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w * (flat ? 1 : amp.a))),
+        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w * (flat ? 1 : amp.h))),
         stopped: false,
       })
       continue

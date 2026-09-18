@@ -172,7 +172,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 24,
-    description: '轻型动能速射炮：打盾 1.5 倍伤害（打甲减半）。协会制式、蓝图可造，把矿船变成勉强能打的武装矿船。',
+    description: '轻型动能速射炮：对护盾 ×1.5、对装甲 ×0.75。',
     cpuUse: 10,
     maxRangeM: 3220, // 2026-09-08 船长定：动能炮射程 −30%（4600→3220），装填等价缩短（2200→1540）
     // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 250 → **500**
@@ -306,7 +306,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'plasma',
     ammoPerEngagement: 24,
-    description: '轻型激光炮：能量光束必中（锁定即命中）、无视近盲；距离越远威力削减越明显。消耗能量弹药。',
+    description: '轻型激光炮：光束必中、无视近盲，威力随距离衰减，吃能量弹药。',
     cpuUse: 10,
     maxRangeM: 4600,
     minRangeM: 0,
@@ -381,7 +381,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'explosive',
     ammoPerEngagement: 24,
-    description: '轻型导弹巢：发射爆破弹药（打甲 1.5 倍、打盾减半）。命中不随距离衰减；注意 500 m 内近盲——贴太近发射会炸到自己。',
+    description: '轻型导弹巢：发射爆破弹药（对装甲 ×1.5、对护盾 ×0.75）；近盲 500 m。',
     cpuUse: 10,
     maxRangeM: 7440, // 2026-09-08 船长定：导弹射程/装填/伤害倍率同步 +20%（6200/2600/1.25 → 7440/3120/1.5）
     minRangeM: 500,
@@ -637,7 +637,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldPulsePct: 0.24,
     cpuUse: 25,
     description:
-      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 24%（CPU 占用高）。护盾被打穿后被动回充归零——只有这一线充能装置能把盾重新点起来，一跳拉回可战水平。',
+      '每 30 秒脉冲充能，恢复护盾上限的 24%。',
   },
   {
     id: 'mod-shieldchg-2',
@@ -647,7 +647,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldPulsePct: 0.4,
     cpuUse: 45,
     description:
-      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 40%（CPU 占用高）。破盾后的重启能力比 MK1 强得多，代价是吃掉几乎所有护卫舰的中槽预算。',
+      '每 30 秒脉冲充能，恢复护盾上限的 40%。',
   },
   {
     id: 'mod-shieldchg-3',
@@ -657,7 +657,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldPulsePct: 0.64,
     cpuUse: 70,
     description:
-      '中槽充能装置：战斗中每 30 秒脉冲充能，恢复护盾上限的 64%（CPU 占用极高）。给战列舰以上的大盾池准备的重启器，两跳之内必定把打空的护盾拉回满值。',
+      '每 30 秒脉冲充能，恢复护盾上限的 64%。',
   },
 
   // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入）
@@ -678,7 +678,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.25 },
     cpuUse: 4,
-    description: '高爆抗 +25%（上限 90%）。高爆对装甲是双倍伤害——这是第一道防线。',
+    description: '高爆抗 +25%（上限 90%）。高爆对装甲 ×1.5——这是第一道防线。',
   },
   {
     id: 'mod-armor-pla-1',
@@ -864,7 +864,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.06 },
     cpuUse: 5,
-    description: '动能武器支援：动能炮台单发伤害 +6%。',
+    description: '动能武器支援：动能系武器单发伤害 +6%。',
   },
   {
     id: 'mod-stab-kin-2',
@@ -873,7 +873,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.1 },
     cpuUse: 15,
-    description: '动能武器支援：动能炮台单发伤害 +10%。',
+    description: '动能武器支援：动能系武器单发伤害 +10%。',
   },
   {
     id: 'mod-stab-kin-3',
@@ -882,7 +882,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.15 },
     cpuUse: 40,
-    description: '动能武器支援：动能炮台单发伤害 +15%。',
+    description: '动能武器支援：动能系武器单发伤害 +15%。',
   },
   {
     id: 'mod-stab-exp-1',
@@ -891,7 +891,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.06 },
     cpuUse: 5,
-    description: '高爆武器支援：爆炸系武器（导弹架）单发伤害 +6%。',
+    description: '高爆武器支援：高爆系武器单发伤害 +6%。',
   },
   {
     id: 'mod-stab-exp-2',
@@ -900,7 +900,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.1 },
     cpuUse: 15,
-    description: '高爆武器支援：爆炸系武器（导弹架）单发伤害 +10%。',
+    description: '高爆武器支援：高爆系武器单发伤害 +10%。',
   },
   {
     id: 'mod-stab-exp-3',
@@ -909,7 +909,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.15 },
     cpuUse: 40,
-    description: '高爆武器支援：爆炸系武器（导弹架）单发伤害 +15%。',
+    description: '高爆武器支援：高爆系武器单发伤害 +15%。',
   },
   {
     id: 'mod-stab-pla-1',
@@ -918,7 +918,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.06 },
     cpuUse: 5,
-    description: '等离子武器支援：能量系武器（激光炮）单发伤害 +6%。',
+    description: '等离子武器支援：能量系武器单发伤害 +6%。',
   },
   {
     id: 'mod-stab-pla-2',
@@ -927,7 +927,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.1 },
     cpuUse: 15,
-    description: '等离子武器支援：能量系武器（激光炮）单发伤害 +10%。',
+    description: '等离子武器支援：能量系武器单发伤害 +10%。',
   },
   {
     id: 'mod-stab-pla-3',
@@ -936,7 +936,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.15 },
     cpuUse: 40,
-    description: '等离子武器支援：能量系武器（激光炮）单发伤害 +15%。',
+    description: '等离子武器支援：能量系武器单发伤害 +15%。',
   },
   {
     id: 'mod-rof-1',
@@ -1100,7 +1100,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     salvageCycleMs: 8_000,
-    description: '残骸打捞：周期缩短至 8 秒/轮（每轮仍 1 具）。',
+    description: '残骸打捞：周期缩短至 8 秒/轮。',
   },
   {
     id: 'mod-salvager-3',
@@ -1109,7 +1109,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 15,
     salvageCycleMs: 6_000,
-    description: '残骸打捞：周期缩短至 6 秒/轮（每轮仍 1 具）。',
+    description: '残骸打捞：周期缩短至 6 秒/轮。',
   },
   /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
       每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；
@@ -1194,8 +1194,7 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 55,
     stealthMs: 20_000,
     description:
-      '高槽隐秘装置：本舰武器开火之前保持隐身——敌方无法锁定、也无法攻击，最长 20 秒；本舰一旦开火立即现形，超时同样现形。与任何类型推进器一起使用时失效（船一动就藏不住）——侦察舰不受此限。占用 55 点 CPU，压得下它的多是巡洋以上的舰体。',
-  },
+      '开火前隐身 20 秒；与任何类型推进器一起使用时失效。',  },
   {
     id: 'mod-stealth-3',
     name: '隐秘行动装置 MK3',
@@ -1204,8 +1203,7 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 80,
     stealthMs: 30_000,
     description:
-      '高槽隐秘装置（顶配）：本舰武器开火之前保持隐身——敌方无法锁定、也无法攻击，最长 30 秒；本舰一旦开火立即现形，超时同样现形。与任何类型推进器一起使用时失效（船一动就藏不住）——侦察舰不受此限。占用 80 点 CPU，喂得起它的多是大型舰体。',
-  },
+      '开火前隐身 30 秒；与任何类型推进器一起使用时失效。',  },
 
   /* ═══ 2026-09-10 赏金任务·窝点专属装备（船长认可草案；**数值为占位初值，等船长定数后改这里**） ═══
      获取渠道：只在精炼炉「残骸回收」开**稀有残骸（高级箱）**时掉落——打赢赏金任务的敌人窝点、
@@ -1269,9 +1267,14 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 6,
     repairIntervalMs: 5000,
     repairFree: true,
+    // 2026-09-17 船长：「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」
+    // ⇒ 本件是本字段**唯一**的持有人（2026-09-16「维修量统一吃层容量加成」那条的单件例外）；
+    //   ⚠ 别再"顺手补齐"给同类件（生体损管腔不在本次范围，它的文案仍写"随结构容量加成放大"）。
+    //   ⚠ 说明文案归三号那批（同一件·在途），本行只动字段。
+    repairIgnoresCapacityAmp: true,
     cpuUse: 30,
     description:
-      '异形生物窝点专属：层叠生体甲壳——装甲层三系减伤各 +10%，并自带无消耗自愈：战斗中每 5 秒自动修复 6 点装甲（不吃组件，修复量随装甲容量加成放大）。单系抗性不厚，胜在能自己长回来。',
+      '装甲层三系减伤各 +10%；交火中每 5 秒自修 6 点装甲（不吃组件）。',
   },
   {
     id: 'mod-lair-dc-c',
@@ -1311,7 +1314,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 },
     cpuUse: 42,
     description:
-      '守墓古舰窝点专属：陵寝守备用的全能重盾——三系减伤各 +30%。单系抗性不厚，胜在不用猜对手弹种；CPU 占用很重（42）。',
+      '三系减伤各 +30%；不用猜对手弹种。',
   },
   {
     id: 'mod-lair-turret-d',
@@ -1328,7 +1331,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 10.35,
     cpuUse: 62,
     description:
-      '守墓古舰窝点专属：陵寝守备炮——基础命中 100%（锁定即命中）、12 km 超远程点名；射速极慢、单发极重，远端命中衰减也更轻（射程尽头仍有六成命中）。装填一发要七秒，打空就是七秒空窗。',
+      '命中 100%、12 km 超远程（射程尽头六成）；射速极慢、单发极重。',
   },
   {
     id: 'mod-lair-armor-d',
@@ -1519,7 +1522,7 @@ export const MODULES: readonly ModuleDef[] = [
     armorResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 }, // 三系均衡（与 D 族盾抗同档，但走装甲层）
     cpuUse: 46,
     description:
-      '甲壳里析出的棱晶结构：三系装甲抗性各削三成缺口（动能 / 爆破 / 等离子一视同仁）。护盾薄的族，只能把甲做成棱镜。',
+      '三系装甲抗性各削三成缺口。',
   },
   {
     id: 'mod-wh-c-pulse',

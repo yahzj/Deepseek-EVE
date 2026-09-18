@@ -92,6 +92,36 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     expect((repair.kits['repairkit-mil'] ?? 0)).toBeGreaterThan(0)
   })
 
+  /**
+   * **2026-09-17 船长**：「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」——
+   * 09-16 那条「维修量统一吃层容量加成」的**单件例外**（数据字段 `repairIgnoresCapacityAmp`）。
+   * 本用例把三件事一起钉住：① 甲壳板平值 6（哪怕甲容 +20%）；② **耗组件装置照旧吃**加成（对照，防误伤）；
+   * ③ **生体损管腔不在例外内**（结构自愈照旧随结构容量放大）——范围写死在用例里，防"顺手补齐"。
+   */
+  it('**报障修复（船长）**：生体甲壳板自愈不吃装甲容量加成（平值 6）；耗组件装置照旧吃；损管腔不在例外内', () => {
+    const state = makeState([], ['mod-lair-dc-c', 'mod-hullrep-1'], ['mod-lair-armor-c', 'mod-armor-plate-1'])
+    // 甲容 +20%（装甲增厚板 MK1）· 结构 +75%（几丁质骨架层，借中槽一位放，本用例只数每跳值）
+    state.fleet[state.shipId]!.fitted.mid[2] = 'mod-wh-c-frame'
+    state.warehouse.items['repairkit-mil'] = 50
+    const repair = preloadRepairFor(state, ctx, state.shipId, ctx.balance.battle.maxBattleMs)!
+    const shell = repair.units.find((u) => u.moduleId === 'mod-lair-armor-c')!
+    const dc = repair.units.find((u) => u.moduleId === 'mod-lair-dc-c')!
+    const kit = repair.units.find((u) => u.moduleId === 'mod-hullrep-1')!
+    // ① 甲壳板：平值（原本会被 ×1.2 放大成 7）
+    expect(shell.free).toBe(true)
+    expect(shell.armorPerPulse, '甲壳板的自愈量不该吃装甲容量加成').toBe(6)
+    expect(shell.hullPerPulse).toBe(0)
+    // ② 耗组件装置：两级都照旧吃加成（甲 ×1.2 = 12 · 结构 ×1.75 = 18）
+    // ⚠ 非自愈件的 `free` 字段是**缺省**（不是 false）⇒ 断言要写 `?? false`，或直接断言它挂了组件
+    expect(kit.kitId, '耗组件装置应当预载组件（对照）').toBe('repairkit-mil')
+    expect(kit.free ?? false).toBe(false)
+    expect(kit.armorPerPulse).toBe(12)
+    expect(kit.hullPerPulse).toBe(18)
+    // ③ 损管腔（结构自愈）：不在本次例外内 ⇒ 仍随结构容量放大（4 × 1.75 = 7）
+    expect(dc.free).toBe(true)
+    expect(dc.hullPerPulse).toBe(7)
+  })
+
   it('C3 酸液喷吐器：必中能量件、射速更慢单发更重、总输出与攻坚激光炮相当', () => {
     const state = makeState(['mod-lair-laser-c'])
     const spec = createPlayerSpec(state, ctx, state.shipId)!

@@ -917,7 +917,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质驱动的战地维修臂：每场交火后自动修补装甲与结构（不消耗货仓里的修理组件）。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: '交火后自动修补装甲与结构；离开虫洞即失效（析出虫洞谜质）。',
   },
 ]
 
