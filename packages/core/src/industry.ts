@@ -22,6 +22,7 @@
 import { addLog, shipLockedReason, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
+import { bumpFirst } from './firstTasks'
 // F4d：拆解安全货柜（与随行战利品同一条入库路径；抽取池在 wormholeSalvage 里）
 import { wormholeDeliverRelics, wormholeRareBoxThemePoolOf, wormholeUnboxRoll } from './wormholeSalvage'
 import type { AiCoreType, ItemDef, SimContext } from './types'
@@ -711,6 +712,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         const volumeM3 = qty * def.unitM3
         const out = rollRecycleGuarantee(state, ctx, profile, volumeM3)
         for (const row of out) addWare(state, row.mineralId, row.units)
+  bumpFirst(state, 'refineBatches') // 第一次任务/链：精炼出料批数
         batchIncome += out.reduce((s, row) => s + row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0), 0)
         // 稀有残骸专属：累计已烧体积跨过 `RARE_UNIT_M3`（30 m³）的每一个整数倍，都**必给**一次彩头
         // （2026-09-11 船长定：「每次回收 30 立方米，每次必给彩头」——照普通回收机制走，只把彩头概率提到 100%）。

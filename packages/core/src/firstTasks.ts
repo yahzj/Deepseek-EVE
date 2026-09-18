@@ -18,8 +18,16 @@
  */
 import type { GameState } from './state'
 import type { SimContext } from './types'
-import { DSI_FACTION_ID } from './expedition'
-import { HOME_GALAXY_ID } from './state'
+/**
+ * ⚠ **本模块刻意只做"类型 import"，不在运行期 import 任何 core 模块**（2026-09-17 实测教训）：
+ * irstTasks 被 engine / ai / market / wormhole / shipyard… **反向依赖**，一旦它再 import 那些模块
+ * 就会形成环，工具侧加载时崩在「Cannot access 'HOME_GALAXY_ID' before initialization」。
+ * 故下面两个常量**就地写死**（值从源头抽取核对），改动源头时请同步这里。
+ */
+/** 深空工业协会 id（= expedition.DSI_FACTION_ID） */
+const DSI_FACTION_ID = 'dsi'
+/** 虫洞解锁声望线（= wormholeScan.WORMHOLE_SCAN_UNLOCK_STANDING） */
+const WORMHOLE_UNLOCK_STANDING = 40
 
 /** 终身计数键（`state.firstStats`）——**只增不减**，事件落点用 `bumpFirst()` 加 */
 export type FirstStatKey =
@@ -207,7 +215,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     brief: '把深空工业协会声望攒到 40',
     prereq: 'first-scan',
     // 任务目标就是"完成解锁条件的内容"（船长原话）⇒ 判据 = 声望门槛（虫洞解锁线 40）
-    judge: (state) => dsiStanding(state),
+    judge: (state) => (dsiStanding(state) >= WORMHOLE_UNLOCK_STANDING ? 1 : 0),
     commsId: 'first-wormhole',
     chain: { id: 'abyss', name: '深渊探索者', stat: 'wormholeRuns', tierKey: 'wormholeRuns' },
   },
@@ -262,5 +270,3 @@ export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
   return FIRST_TASKS.filter((d) => d.prereq === undefined || state.importantTasks[d.prereq]?.done === true)
 }
 
-/** 母港 id 转发导出（任务文案/工具用；保持与本模块同源） */
-export { HOME_GALAXY_ID }

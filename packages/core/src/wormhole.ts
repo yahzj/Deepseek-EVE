@@ -10,6 +10,7 @@
  *
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
+import { bumpFirst } from './firstTasks'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
 import { addLog, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
@@ -1569,6 +1570,7 @@ export function wormholeEnter(
   r.run.archetype = origin?.archetype ?? wormholeArchetypeOf(seed)
   r.run.family = origin?.family ?? wormholeFamilyOfSeed(seed)
   state.wormhole.run = r.run
+  bumpFirst(state, 'wormholeRuns') // 第一次任务/链：进洞趟数
   addLog(
     state,
     'info',
