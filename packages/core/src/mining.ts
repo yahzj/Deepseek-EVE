@@ -18,6 +18,7 @@
  */
 import { tuningMul } from './tuning'
 import { addLog, miningHalt, wormholePilotHoldReason } from './state'
+import { bumpFirst } from './firstTasks'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState, MiningState } from './state'
@@ -473,6 +474,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       addLog(state, 'info', `富矿脉！连续 2 个循环产量 ×3，本循环获得 ${units} 单位${oreNow.name}。`)
     }
     addItem(state, oreNow.id, units)
+    bumpFirst(state, 'mineUnits', units) // 第一次任务/链：累计原矿单位（2026-09-17 教程重做批）
     m.tripUnits += units
 
     // 序章·苏醒 教学首单（船长 2026-09-05 拍板：不等到满舱，采足即返港卸货；2026-09-08 采足量

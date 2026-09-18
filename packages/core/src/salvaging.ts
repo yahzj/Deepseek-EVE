@@ -24,6 +24,7 @@ import { addItem, freeCargoM3, unloadCargoToWarehouse } from './inventory'
 import { HOME_GALAXY_ID, shortestTravelMinutes } from './expedition'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
+import { bumpFirst } from './firstTasks'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
 import { nextRandom, pickWeighted } from './rng'
@@ -358,6 +359,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
         const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs)
+      if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
         if (!pulled) {
           resetOp(state)
           addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。')

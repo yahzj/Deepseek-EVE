@@ -27,6 +27,7 @@
  *   双满合计减免 80% → 1%）；挂单/自动转挂单/买入一律免费——税是唯一的市场费用
  *   （参考 EVE 的销售税；取消经纪人费/挂单费）。
  */
+import { bumpFirst } from './firstTasks'
 import { addLog, shipLockedReason } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
 import type { MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
@@ -1204,6 +1205,7 @@ export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: strin
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
   const r = crossOnPlacement(state, ctx, order)
+  bumpFirst(state, 'orders') // 第一次任务/链：挂单数（含买单？不——只记成功挂出的卖单）
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, qty, r))
   return order
 }
