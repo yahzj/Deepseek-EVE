@@ -11,6 +11,8 @@
  *   ⑦ 全层抗性削减 `allResistPenaltyPct`（折射涂层 −15）
  *   ⑧ 无人机出击周期折减 `droneCycleCutPct`（掠袭机库 −8%）
  *   ⑨ 速度加成**跨槽生效**（生体脉搏加速器：支援槽 +10%）
+ *   ⑩ 闪避缺口**跨槽生效**（掠袭折射涂层：**装甲槽** −28% —— 2026-09-17 玩家报障「赃物强化舱的护甲增加
+ *      效果无效」时顺带查出的同类缺陷：闪避缺口原先只在支援槽件里收，与甲容量同批修）
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
@@ -209,5 +211,37 @@ describe('虫洞装备新机制（2026-09-13）', () => {
     expect(weapon.reloadMs).toBe(600)
     expect(weapon.secondaryDamagePct).toBeUndefined()
     expect(spec.resists.armor?.kinetic ?? 0).toBeCloseTo(0.5, 5)
+  })
+
+  /**
+   * **2026-09-17 修**（玩家报障「赃物强化舱的护甲增加效果无效」时查出的同一类缺陷）：
+   * 「**掠袭折射涂层**」是**装甲槽**件却带 `evasionGapPct`（−28%），而引擎原先只在 `supportDefs`
+   * （支援槽）里收这一个字段 ⇒ 物品说明与界面都写着、战斗里从未生效。
+   * 口径与 ⑨「速度加成跨槽生效」一致 ⇒ 改为全件扫描。姿态陀螺（支援槽）照旧各算一次。
+   */
+  it('⑪ 闪避缺口跨槽生效：**装甲槽**带 `evasionGapPct` 也算（缺口复合，不重复计入）', () => {
+    const ARMOR = (id: string, extra: Partial<ModuleDef>): ModuleDef =>
+      moduleDef(id, 'armor', 0, { rack: 'low', cpuUse: 1, ...extra })
+    const base = world([gun('mod-g')], { high: ['mod-g', null, null, null] })
+    const e0 = specOf(base.state, base.ctx).evasion
+    // ① 装甲槽（报障同款：涂层 0.28）
+    const coat = world([gun('mod-g'), ARMOR('mod-coat', { evasionGapPct: 0.28 })], {
+      high: ['mod-g', null, null, null],
+      low: ['mod-coat', null, null, null],
+    })
+    expect(specOf(coat.state, coat.ctx).evasion, '装甲槽的闪避缺口未计入战斗建档').toBeCloseTo(1 - (1 - e0) * 0.72, 6)
+    // ② 支援槽（姿态陀螺 0.1）照旧生效
+    const gyro = world([gun('mod-g'), SUPPORT('mod-gyro', { evasionGapPct: 0.1 })], {
+      high: ['mod-g', null, null, null],
+      mid: ['mod-gyro', null, null, null],
+    })
+    expect(specOf(gyro.state, gyro.ctx).evasion).toBeCloseTo(1 - (1 - e0) * 0.9, 6)
+    // ③ 两件同装：按缺口**复合**（1 − 0.72 × 0.9），既不相加也不重复计入
+    const both = world([gun('mod-g'), ARMOR('mod-coat', { evasionGapPct: 0.28 }), SUPPORT('mod-gyro', { evasionGapPct: 0.1 })], {
+      high: ['mod-g', null, null, null],
+      mid: ['mod-gyro', null, null, null],
+      low: ['mod-coat', null, null, null],
+    })
+    expect(specOf(both.state, both.ctx).evasion).toBeCloseTo(1 - (1 - e0) * 0.72 * 0.9, 6)
   })
 })

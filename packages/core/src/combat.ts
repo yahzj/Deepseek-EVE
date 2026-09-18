@@ -1059,8 +1059,20 @@ export function createPlayerSpec(
   // 盾/甲：容量加成加算求和；抗性按系逐件缺口乘入（mergeResist 链；V18.1 同系可多件）
   let shieldHpMult = 1
   for (const m of shieldDefs) shieldHpMult += m.shieldHpBonus ?? 0
+  /**
+   * **甲容量 = 全件加算**（2026-09-17 玩家报障修复：「**赃物强化仓的护甲增加效果无效**」）。
+   *
+   * ⚠ 原先只在 `armorDefs`（**装甲槽件**）里求和 ⇒ 跨族的「**赃物强化舱**」（低槽货舱件 · 甲容量 15%）
+   * **引擎从来没算过**，而界面自 2026-09-11 起就显示「装甲容量 +15%」（`shipInfo.tsx` 的
+   * `crossFamilyLines`，体检白名单也登记了 `mod-lair-cargo-a:armorHpBonus`）⇒ 玩家看到的是不兑现的承诺。
+   * 现改为与**其余跨族字段同口径**（`hullHpBonus` · `hullResistAdd` · `speedBonusPct` · `evasionGapPct` ·
+   * `rangeCutPct` · `reloadPenaltyPct` · `rangeTypeBonusPct` 全都是"全件扫描"）⇒ 装甲槽件照旧各算一次、
+   * **不重复计入**；全表只有赃物强化舱这一件的生效值发生变化（其余 6 个带该字段的件本就是装甲槽）。
+   * 连带自动跟随：`layerAmpOf`（维修装置每跳修复量与修理组件共用的一把尺）取的就是本函数 ⇒ 「容量变厚、
+   * 修得也更多」两条口径同步。
+   */
   let armorHpMult = 1
-  for (const m of armorDefs) armorHpMult += m.armorHpBonus ?? 0
+  for (const m of allFittedModules(fitted, ctx)) armorHpMult += m.armorHpBonus ?? 0
   // 结构层容量（2026-09-10 船长：E 族巨构骨架引出）——任何槽位都可能带，按件加算求和，
   // 与甲容同口径；技能（船体加固理论/装甲舰操作）再乘于其上
   let hullHpMult = 1
@@ -1108,8 +1120,16 @@ export function createPlayerSpec(
     for (const [t, v] of Object.entries(m.damageTypeBonusPct ?? {})) dmgBonus[t as DamageType] += v ?? 0
     rofCut += m.reloadCutPct ?? 0
     if (m.hitBonusPct !== undefined) hitEqs.push(m.hitBonusPct)
-    if (m.evasionGapPct !== undefined) evadeGaps.push(m.evasionGapPct)
   }
+  /**
+   * **闪避缺口：全件扫描**（2026-09-17 · 与甲容量同一批修，由玩家报障「赃物强化舱的护甲增加效果无效」引出）。
+   *
+   * ⚠ 原先这一行与支援件族那几个字段同放（`for (const m of supportDefs)`）⇒ 跨族的
+   * 「**掠袭折射涂层**」（**装甲槽** · 被命中缺口 −28%，物品说明与界面都写着）**引擎从来没算过**。
+   * 口径与 **2026-09-13「速度加成不再只认推进器槽」**（见下方推进器段）一致 ⇒ 改为任意槽位携带。
+   * 姿态陀螺三件本身是支援槽 ⇒ 照旧各算一次（**不重复计入**）。
+   */
+  for (const m of allFittedModules(fitted, ctx)) if (m.evasionGapPct !== undefined) evadeGaps.push(m.evasionGapPct)
   const hitEq = curveMult(hitEqs)
   // 2026-09-05 一号按盘点补：规避机动学——舰船被命中缺口每级收窄 5%（与姿态陀螺缺口复合）
   const evLv = Math.min(5, state.skills.trained[bal.evasionSkillId] ?? 0)
