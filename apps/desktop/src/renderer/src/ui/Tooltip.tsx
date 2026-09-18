@@ -406,6 +406,14 @@ export function TooltipLayer(): ReactNode {
       const attrEl = el.closest(`[title], [${TIP_ATTR}], [${TIP_STASH_ATTR}]`)
       if (attrEl) {
         if (attrEl.hasAttribute(TIP_HOVER_ATTR)) return null
+        /**
+         * **富卡元素比这个 title 源更深 ⇒ 让富卡那条路赢**（内层优先）。
+         * 不加这条：指针在富卡元素上、而它的**祖先容器**带 `title` 时，本层会把那个祖先的 title 当成提示源
+         * 接管起来（`closest` 沿链找到的就是它）⇒ 500ms 后拿祖先文本把富卡顶掉（同一时刻只有一条自绘提示）。
+         * ⚠ 本仓当前**没有**这种嵌套（`ui:tip-check` ② 判据实测 0 处），这是防日后接线踩到。
+         */
+        const richOwner = el.closest(`[${TIP_HOVER_ATTR}]`)
+        if (richOwner && attrEl !== richOwner && attrEl.contains(richOwner)) return null
         const rawTitle = attrEl.getAttribute('title')
         const title = rawTitle !== null && rawTitle !== '' ? rawTitle : null
         const authored = attrEl.getAttribute(TIP_ATTR)
