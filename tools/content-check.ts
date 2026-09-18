@@ -1262,6 +1262,29 @@ for (const m of MODULES) {
       '· 存档不自动备份契约：恢复（桌面主进程 / 网页分支）与导入三条路径均**不**备份原档 · 手动「备份当前档」与备份列表照旧',
     )
   }
+
+  /* ── 手册「搜索关键词跨页保留」契约（船长 2026-09-17：「**手册里进行搜索后，切换导航页搜索会重置**」）──
+   * 两个方向都钉：① 切页**不许**再清关键词（原先那句 `setQuery('')` 是经办人自定口径，已按船长指示删除）；
+   * ② 筛选**仍然**切页归零（守 2026-09-13 的裁定「与市场『切类型即回全部子类』同一哲学」）。 */
+  {
+    const hbPath = 'apps/desktop/src/renderer/src/panels/Handbook.tsx'
+    const hbSrc = stripComments(readSrc(hbPath)).join('\n')
+    const at = hbSrc.indexOf('function changeTab(')
+    check(at >= 0, `手册搜索跨页保留契约：${hbPath} 里找不到 \`changeTab\``)
+    if (at >= 0) {
+      const end = hbSrc.indexOf('\n  }', at)
+      const body = hbSrc.slice(at, end < 0 ? undefined : end)
+      check(
+        !body.includes('setQuery('),
+        `手册搜索跨页保留契约：${hbPath} 的 \`changeTab\` 又在切页时清空关键词了（船长 2026-09-17：搜索词跨页保留）`,
+      )
+      check(
+        body.includes('setMainKey(SUB_ALL)') && body.includes('setSubKey(SUB_ALL)'),
+        `手册搜索跨页保留契约：${hbPath} 的 \`changeTab\` 不再把筛选归零了（2026-09-13 裁定：切页回「全部」）`,
+      )
+    }
+    console.log('· 手册搜索跨页保留契约：切页保留关键词（关掉手册即清空）· 筛选仍按 2026-09-13 裁定归零')
+  }
 }
 
 // 舰船
