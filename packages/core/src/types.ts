@@ -362,8 +362,14 @@ export interface ShipDef {
    */
   weaponRangeBonusPct?: Partial<Record<DamageType, number>>
   /**
-   * **全舰（编队）单发伤害光环**（如指挥舰「全舰单发伤害 +15%」）——`startFleetBattleFor` 在建完各舰规格后，
-   * 对**全队每艘船**的每条武器统一乘 `(1 + 本值)`；**多艘同类**只取**最高**、不叠加（与"同项取优"惯例一致）。
+   * **全舰（编队）单发伤害光环**（如指挥舰「全舰单发伤害 +15%」）——对**全队每艘船**的每条武器统一乘
+   * `(1 + 本值)`；**多艘同类**只取**最高**、不叠加（与"同项取优"惯例一致）；单舰场景 = 对自己生效。
+   *
+   * **落点（2026-09-17 修）**：由 `combat.applyFleetDamageAura` 施加，**每拍重建规格处
+   * （`buildMyUnitSpecs`）与开战建档处（`startFleetBattleFor`）各调一次**。
+   * ⚠ 修前它只在 `startFleetBattleFor` 里乘一次，而开火读的是每拍重建后的规格 ⇒ **光环从未生效**
+   * （真 BUG：真引擎 A/B 每发均值 91.640 vs 91.640、比值 1.000，生效应 ≈1.15）。新加同类光环时，
+   * **一律走"每拍重建处施加"这条纪律**（谜质增益 / 捕获网 / 教学战加成 / 锁定阵列全队光环同款）。
    */
   fleetDamageBonusPct?: number
   /**
