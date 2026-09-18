@@ -1,20 +1,19 @@
 /**
- * **「第一次」任务系列面板**（船长 2026-09-17 教程重做批 · 阶段③；2026-09-18 按船长四条改版）。
+ * **「第一次」任务系列面板**（船长 2026-09-17 教程重做批 · 阶段③；2026-09-18 按船长两轮实机反馈改版）。
  *
  * 口径（船长）：
  * - 13 条「第一次」**自由选择完成**，按前置过滤：**未解锁的不显示**（`visibleFirstTasks`）；
  * - 每条完成后由**通讯**送达情报（信件在 `data/src/firstTaskMessages.ts`）＋ 部分条目有实物奖励；
- * - 完成「第一次扫描」后**出现后续任务「宇宙探索家1」**——所以一张卡随进度改名：
- *   未完成 ⇒ 显示「第一次··」，已完成 ⇒ 显示该链的名字与档位进度；越过新档位时出现**领奖**；
- * - **2026-09-18 四条改版**：① **完成的置顶**（可领奖 → 已完成 → 未完成，组内保持原序）；
- *   ② 卡片样式**改用资源任务那张卡**（`app-station-card` 家族）；③ **每条都有跳转按钮**（去这件活所在的页面）；
- *   ④ **已全部完成（链也满档）的卡隐藏**（船长：「已经全部完成的重要任务隐藏」）。
+ * - 一张卡随进度改名：未完成 ⇒「第一次··」，已完成 ⇒ 该链的名字**带当前级别**
+ *   （船长 2026-09-18：「重要任务进行到哪一个级别要直接在任务名称内告诉玩家」⇒「宇宙探索家3」）；
+ * - **2026-09-18 第一轮**：完成置顶（可领奖 → 已完成 → 未完成）· 卡片改用资源任务那张卡（`app-station-card`）·
+ *   每条都有跳转按钮 · 已全部完成（链满档且没得领）的卡隐藏；
+ * - **2026-09-18 第二轮**（船长实机反馈）：① 名字带级别；② **删掉右上角那行"已达成 L/T 档 · 当前 N"**（与正文重复）
+ *   ⇒ 那个位置改放**跳转按钮**（显眼）；③ 正文改用任务的 `detail`（一段话讲清怎么做/做成什么样/奖励），
+ *   不再只显示一句话；④ 进度改成 **`已累计 X/Y 单位`**（Y = 下一档阈值）；⑤ **不再挂"已完成"小片**
+ *   （船长：「因为可以继续完成，所以名字边上的已经完成的标签显得很不合适」）。
  */
-import {
-  CHAIN_REWARD_ISK_BASE,
-  firstTaskBoard,
-  visibleFirstTasks,
-} from '@whale/core'
+import { CHAIN_REWARD_ISK_BASE, firstTaskBoard, visibleFirstTasks } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 
@@ -90,36 +89,18 @@ export function FirstTasks({
         const jump = FIRST_JUMPS[def.id]
         const claimable = pending > 0
         const unit = def.chain ? (CHAIN_UNITS[def.chain.tierKey] ?? '') : ''
+        // 名字里的级别 = **正在做的那一级**（完成「第一次」后从 1 起；满档时停在总档数）
+        const levelInName = def.chain && total > 0 ? Math.min(level + 1, total) : 0
+        // 进度读数：`已累计 当前/下一档`（下一档为空 ⇒ 已达最高档）
+        const goal = next ?? count
         return (
           <div key={def.id} className="app-station-card">
             <div className="app-station-head">
               <span className="app-station-name">
-                {done ? '✓' : '◆'} {done && def.chain ? def.chain.name : def.title}
-                {claimable ? <em className="app-chip">可领奖</em> : done ? <em className="app-chip">已完成</em> : null}
+                {done ? '✓' : '◆'} {done && def.chain ? `${def.chain.name}${levelInName}` : def.title}
+                {claimable ? <em className="app-chip">可领奖</em> : null}
               </span>
-              {def.chain && total > 0 ? (
-                <span className="app-dim">
-                  已达成 {level}/{total} 档 · 当前 {count}
-                  {unit}
-                </span>
-              ) : null}
-            </div>
-            <div className="app-station-mats">
-              {done && def.chain && total > 0
-                ? next !== null
-                  ? `下一档：累计 ${next}${unit}（当前 ${count}${unit}）`
-                  : `已到最高档：累计 ${count}${unit}`
-                : def.brief}
-            </div>
-            <div className="app-station-deliver">
-              <span className="app-dim">
-                {claimable ? `可领奖金 ${pending.toLocaleString('zh-CN')} 信用点` : done ? '奖励已结清' : '完成即发情报'}
-              </span>
-              {/**
-               * 跳转按钮（船长 2026-09-18：「所有的'第一次'任务，添加一个跳转界面的按钮」）——
-               * 未完成时是"去干活"，完成后仍留着（回看/继续那条链的活）。
-               * 按钮直接排在 `.app-station-deliver` 这一行里（该行本就是 flex + 自动换行，不另造样式）。
-               */}
+              {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」） */}
               {jump && onJump ? (
                 <button
                   className="app-btn is-small"
@@ -129,6 +110,21 @@ export function FirstTasks({
                   前往{jump.label} ›
                 </button>
               ) : null}
+            </div>
+            {/* 进度：已完成 ⇒ 走次数链，读数用「已累计 当前/下一档」 */}
+            {done && def.chain && total > 0 ? (
+              <div className="app-station-mats">
+                已累计 {count}/{goal}
+                {unit}
+                {next === null ? '（已到最高档）' : ''}
+              </div>
+            ) : null}
+            {/* 正文：一段话讲清怎么做 / 做成什么样 / 有什么奖励 */}
+            <div className="app-station-mats">{def.detail}</div>
+            <div className="app-station-deliver">
+              <span className="app-dim">
+                {claimable ? `可领奖金 ${pending.toLocaleString('zh-CN')} 信用点` : done ? '次数目标进行中' : '完成即发情报'}
+              </span>
               {/* 「看情报」：那封信在该条完成时送达（`firstTask` 触发器）⇒ 只在已完成时出现 */}
               {done && onOpenComms ? (
                 <button className="app-btn is-small" title="打开通讯页，读这一条相关的情报" onClick={() => onOpenComms(def.commsId)}>

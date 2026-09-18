@@ -42,6 +42,14 @@ function testState(): GameState {
   return createInitialState({ nowWallMs: 0, seed: 11 })
 }
 
+describe('「第一次」任务：卡片文案齐备（船长 2026-09-18：正文要"一定量的文本丰富"）', () => {
+  it('13 条都写了 detail（一段话讲清怎么做/做什么/奖励）', () => {
+    for (const def of FIRST_TASKS) {
+      expect(def.detail.length, `${def.id} 的 detail 太短`).toBeGreaterThan(30)
+      expect(def.brief.length, `${def.id} 的卡片一句话过长`).toBeLessThanOrEqual(30)
+    }
+  })
+})
 describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', () => {
   it('采矿计数随产量增长，采到第一单位即判过「第一次采集原矿」', () => {
     const state = testState()
