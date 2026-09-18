@@ -75,7 +75,7 @@ import ts from 'typescript'
 import { join } from 'node:path'
 import { tableOf } from './content-schema'
 // 说明文案口径单点（船长 2026-09-17 立的文案规则）：长度计数 + 括号原因解释判据
-import { COPY_LEN_MAX, REASON_HINTS, copyEntriesOf, copyLen, parenSpans } from './copy-len'
+import { REASON_HINTS, copyEntriesOf, parenSpans } from './copy-len'
 import {
   DEFAULT_BALANCE,
   ITEM_KIND_ORDER,
@@ -797,58 +797,32 @@ for (const sbp of SHIP_BLUEPRINTS) {
   console.log(`· 产物说明契约：核对 ${total} 条数值声明（装备 ${MODULES.length} 件 + 物品 ${ITEMS.length} 种），其中舱位换算 ${countHints} 处；无法解释 ${unexplained} 条`)
 }
 
-/* ── 说明文案长度契约（船长 2026-09-17 立的文案规则）──
- * 船长原话：「**新增文案相关规则，不要在任何说明文案内写入原因解释（特别是使用括号进行解释的这种）。
- * 文案要保证在30个字以内。**」；三问三答裁定：**存量一起改**（乙）· **计数 = 汉字/字母/数字各 1 字、
- * 标点不计**（甲）· **护栏只对新增/改动亮红、存量先只列清单**（甲）。
+/* ── 说明文案原因解释契约（船长 2026-09-17 立；**2026-09-18 船长废止其中的"≤30 字"那一半**）──
+ * 现行只剩一条规矩：**说明文案不写原因解释**（尤其不许用括号做解释）——原话：「**不要在任何说明文案内
+ * 写入原因解释（特别是使用括号进行解释的这种）**」；**括号只许装规格**（如「（20 秒）」「（50 m³）」）。
  *
- * 判据单点 = `tools/copy-len.ts`（`copyLen` / `parenSpans` / `REASON_HINTS`，与基线生成器共用）。
- * **宽限机制**：`tools/copy-len-baseline.json` 里**key 相同且文本一字未动**的老条目 ⇒ 只列清单；
- * **新增的、或改过文本的**条目 ⇒ 超线/括号原因**立即报红**（这样改写批次推进时基线自然收缩，
- * 存量全部改完 ⇒ 删掉基线文件即转为全量强制）。 */
+ * ⚠ **2026-09-18 船长废止**：「**「说明文案 ≤30 字」的计划已经废止，清档所有相关内容**」⇒
+ * 长度上限、`copy-len-baseline.json` 宽限机制与「存量待改写」清单**全部删除**（工具 `tools/copy-len-baseline.ts`
+ * 一并删除）；本契约只留**括号原因解释**这一支，且**不再有宽限**——命中即报红。
+ * 判据单点仍是 `tools/copy-len.ts` 的 `parenSpans` / `REASON_HINTS`。 */
 {
-  const baselinePath = join(process.cwd(), 'tools/copy-len-baseline.json')
-  const baselineRaw = existsSync(baselinePath)
-    ? (JSON.parse(readFileSync(baselinePath, 'utf8')) as { entries?: Record<string, string> })
-    : {}
-  const baseline = baselineRaw.entries ?? {}
   const copyCtx = buildSimContext()
   const copyRows = copyEntriesOf(copyCtx)
-  const overRed: string[] = []
-  const overGrandfathered: string[] = []
   const reasonRed: string[] = []
-  const reasonGrandfathered: string[] = []
   for (const r of copyRows) {
-    const untouched = baseline[r.key] === r.text
-    const len = copyLen(r.text)
-    if (len > COPY_LEN_MAX) {
-      const line = `${r.label} ${r.id}（${len} 字）`
-      if (untouched) overGrandfathered.push(line)
-      else overRed.push(line)
-    }
     for (const span of parenSpans(r.text)) {
       const hit = REASON_HINTS.find((w) => span.includes(w))
       if (!hit) continue
-      const line = `${r.label} ${r.id} 括号内「${span}」`
-      if (untouched) reasonGrandfathered.push(line)
-      else reasonRed.push(line)
+      reasonRed.push(`${r.label} ${r.id} 括号内「${span}」`)
     }
   }
-  check(
-    overRed.length === 0,
-    `说明文案长度契约：${overRed.length} 条说明超出 ${COPY_LEN_MAX} 字（口径 = 只数汉字/字母/数字，标点不计）——新写或改动过的说明必须压到 ${COPY_LEN_MAX} 字以内：${overRed.slice(0, 8).join(' · ')}${overRed.length > 8 ? ` …（共 ${overRed.length} 条）` : ''}`,
-  )
   check(
     reasonRed.length === 0,
     `说明文案原因解释契约：${reasonRed.length} 处用括号写原因解释——说明只回答"是什么/有什么用"，不解释"为什么"（船长 2026-09-17）：${reasonRed.slice(0, 6).join(' · ')}`,
   )
   console.log(
-    `· 说明文案长度契约：核对 ${copyRows.length} 条说明（装备/物品/舰船/蓝图/敌卡，上限 ${COPY_LEN_MAX} 字）· 存量待改写 ${overGrandfathered.length} 条（基线宽限，只列清单不阻断）· 超线报红 ${overRed.length} 条 · 括号原因解释：存量待改写 ${reasonGrandfathered.length} 处 / 报红 ${reasonRed.length} 处`,
+    `· 说明文案原因解释契约：核对 ${copyRows.length} 条说明（装备/物品/舰船/蓝图/敌卡）· 括号原因解释报红 ${reasonRed.length} 处（**长度上限已于 2026-09-18 废止，相关基线/存量清单已清档**）`,
   )
-  if (overGrandfathered.length > 0)
-    console.log(
-      `  ⚠ 待改写存量（前 6 条）：${overGrandfathered.slice(0, 6).join(' · ')}${overGrandfathered.length > 6 ? ` …（共 ${overGrandfathered.length} 条，清单见 tools/copy-len-baseline.json）` : ''}`,
-    )
 }
 
 /* ── 技能说明契约（2026-09-11 加，船长：「另开一批做技能说明 ↔ 引擎效果核查」）──

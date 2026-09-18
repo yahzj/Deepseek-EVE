@@ -46,7 +46,7 @@ describe('「第一次」任务：卡片文案齐备（船长 2026-09-18：正�
   it('13 条都写了 detail（一段话讲清怎么做/做什么/奖励）', () => {
     for (const def of FIRST_TASKS) {
       expect(def.detail.length, `${def.id} 的 detail 太短`).toBeGreaterThan(30)
-      expect(def.brief.length, `${def.id} 的卡片一句话过长`).toBeLessThanOrEqual(30)
+      // ⚠ 原有一条 `brief ≤ 30 字` 的断言随船长 2026-09-18 废止「说明文案 ≤30 字」一并撤除
     }
   })
 })
