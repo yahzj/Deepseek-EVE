@@ -1267,6 +1267,11 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 6,
     repairIntervalMs: 5000,
     repairFree: true,
+    // 2026-09-17 船长：「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」
+    // ⇒ 本件是本字段**唯一**的持有人（2026-09-16「维修量统一吃层容量加成」那条的单件例外）；
+    //   ⚠ 别再"顺手补齐"给同类件（生体损管腔不在本次范围，它的文案仍写"随结构容量加成放大"）。
+    //   ⚠ 说明文案归三号那批（同一件·在途），本行只动字段。
+    repairIgnoresCapacityAmp: true,
     cpuUse: 30,
     description:
       '装甲层三系减伤各 +10%；交火中每 5 秒自修 6 点装甲（不吃组件）。',
