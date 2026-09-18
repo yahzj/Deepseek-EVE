@@ -291,7 +291,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 12,
     priceIsk: 1350, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '动能弹药生产线图纸，把钛钢合金轧成高速实心弹，120 发/批，对护盾 ×1.5、对装甲 ×0.75。',
+    description: '动能弹药图纸：120 发/批，对护盾 ×1.5、对装甲 ×0.75。',
   },
   {
     id: 'bp-ammo-explosive',
@@ -313,7 +313,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 10, // 船长 2026-09-06：弹药单批默认缩至 10 秒
     buildCostIsk: 18,
     priceIsk: 1950, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '能量弹药生产线图纸，晶态胶体充能电池组，120 发/批，对护盾 ×1.25、对甲/结构 ×1。',
+    description: '能量弹药图纸：120 发/批，对护盾 ×1.25、对甲/结构 ×1。',
   },
   /* ═══ 弹药 MK2 蓝图（2026-09-09 船长拍板：三族高级弹稀有书可造；材料≈市价 55% 锚沿用） ═══ */
   {
@@ -325,7 +325,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 10,
     buildCostIsk: 90,
     priceIsk: 9_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
-    description: '动能弹药 MK2 生产线图纸，重钨合金弹芯轧制，120 发/批，对护盾 ×1.5、对装甲 ×0.75。',
+    description: '动能弹药 MK2 图纸：120 发/批，对护盾 ×1.5、对装甲 ×0.75。',
   },
   {
     id: 'bp-ammo-explosive-2',
@@ -1282,7 +1282,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 2900, // 跃迁计算机 MK3（材料≈产物价×0.40、蓝图=产物×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 28320000,
-    description: '跃迁场调谐计算机的顶配型：跃迁场能级推到安全边界，跨星系航行快到极限。多装递减。',
+    description: '跃迁场调谐计算机顶配型：跨星系航行更快。多装递减。',
   },
   {
     id: 'bp-track-1',
