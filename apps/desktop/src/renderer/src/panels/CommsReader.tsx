@@ -106,34 +106,27 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
 }
 
 /**
- * 机身下檐口（2026-09-11 船长定「乙」）：**上面一行 = 消息自带动作**（如序章简报的「按单开工：采集橄榄岩」），
- * **下面一行 = 通栏「前往」**。两行都常驻、都在滚动区外——原先动作按钮在屏幕滚动内容末尾，
- * 简报长文不往下翻就看不见（船长实测反馈）。下檐口由自然高度撑起，屏幕（flex:1）自动让位。
+ * 机身下檐口（2026-09-11 船长定「乙」）：**通栏「前往」一行**，常驻且落在滚动区外——
+ * 原先跳转按钮在屏幕滚动内容末尾，长信不往下翻就看不见（船长实测反馈）。
+ * 下檐口由自然高度撑起，屏幕（flex:1）自动让位。
  *
- * `extra`：调用方追加的一行（弹窗放「知道了」）；`onAction` 缺省时不渲染动作按钮。
+ * `extra`：调用方追加的一行（弹窗放「知道了」）。
+ * （2026-09-17 教程重做：消息「自带动作」机制整体退场，原先在这一行的动作按钮与 `onAction` 一并删除。）
  */
 export function CommsEave({
   entry,
   onGoto,
-  onAction,
   extra,
 }: {
   entry: CommsEntryView
   /** 跳转出口（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
   onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
-  /** 消息自带动作（如 `startTutorial`）；不传 = 不渲染动作按钮 */
-  onAction?: (command: NonNullable<CommsEntryView['action']>['command']) => void
   /** 追加行（弹窗的「知道了」） */
   extra?: ReactNode
 }): ReactNode {
-  if (!entry.action && !entry.hint && !extra) return null
+  if (!entry.hint && !extra) return null
   return (
     <div className="app-comms-eave">
-      {entry.action && onAction ? (
-        <button className="app-btn is-primary app-comms-action-btn" onClick={() => onAction(entry.action!.command)}>
-          {entry.action.label}
-        </button>
-      ) : null}
       {entry.hint ? (
         <button
           className="app-btn is-primary app-comms-goto"

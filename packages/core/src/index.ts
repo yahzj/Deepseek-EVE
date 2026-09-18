@@ -40,8 +40,6 @@ export type {
   CommsDeptDef,
   CommsFactionAlignment,
   CommsKind,
-  CommsActionDef,
-  CommsActionCommand,
   AiCoreType,
   BalanceConfig,
   MarketRarity,
@@ -605,7 +603,6 @@ export {
   deliverDialogueToComms,
   markAllCommsRead,
   markCommsRead,
-  runCommsAction,
 } from './comms'
 export type { StationSiteProgress } from './state'
 
@@ -795,45 +792,14 @@ export {
 } from './save'
 
 export {
-  ONB_OFF,
+  /* 序章·苏醒（2026-09-17 教程重做后只剩"演出 + 收尾"；线性七步已退场） */
   ONB_AWAKEN,
-  ONB_BRIEFING,
-  ONB_MINE,
-  ONB_DELIVER,
-  ONB_SELL,
-  ONB_REPAIR,
-  ONB_TRIAL,
-  ONB_SKILL,
-  ONB_DIVIDE,
-  ONB_EPILOGUE,
   ONB_DONE,
-  TUTORIAL_DELIVER_ITEM,
-  TUTORIAL_DELIVER_N,
-  TUTORIAL_MINE_GOAL,
-  TUTORIAL_REWARD_ISK,
-  TUTORIAL_REWARD_TURRET,
-  TUTORIAL_REWARD_AMMO,
-  TUTORIAL_REWARD_AMMO_N,
-  TUTORIAL_SKILL_ID,
-  TUTORIAL_BATTLE_HIT_BONUS,
-  TUTORIAL_BATTLE_EVASION_BONUS,
-  TASK_ORE_DELIVER,
-  TASK_TRIAL_WIN,
   TASK_FIND_HUMANS,
   publishFindHumans,
-  tutorialActive,
-  tutorialAccelWait,
-  isTutorialBattle,
-  applyTutorialBuff,
-  beginTutorialAfterAwaken,
-  startTutorialFromBriefing,
-  deliverTutorialOre,
-  claimTutorialTrialReward,
-  grantTutorialSkill,
-  onTutorialSkillPageOpened,
-  advanceOnboardingAuto,
-  finishTutorial,
-  skipTutorial,
+  beginAfterAwaken,
+  skipPrologue,
+  advanceFindHumans,
 } from './onboarding'
 export type { OnboardingState, ImportantTaskState } from './state'
 
@@ -863,7 +829,38 @@ export {
   // 赏金新板提示（船长 2026-09-14：换板未看 ⇒ 导航徽标；进任务中心即记账）
   sideTasksMarkBountySeen,
 } from './sideTasks'
+/* 「第一次」任务系列（2026-09-17 教程重做批 · 阶段②）：13 条任务 + 13 条次数链 + 终身计数 */
+export {
+  FIRST_TASKS,
+  CHAIN_TIERS,
+  /* 链奖金：第 N 级 = 基准 × N⁵（船长 2026-09-18）；领奖额一律走下面两个函数算 */
+  CHAIN_REWARD_ISK_BASE,
+  chainLevelRewardIsk,
+  chainPendingRewardIsk,
+  FIRST_UNLOCKS,
+  unlocked,
+  unlockNeedTitle,
+  /* 「第一次完成悬赏」的照会战加成（原"试炼步骤"加成改挂任务） */
+  isFirstBountyBattle,
+  applyFirstBountyBuff,
+  FIRST_BOUNTY_HIT_BONUS,
+  FIRST_BOUNTY_EVASION_BONUS,
+  bumpFirst,
+  firstStatOf,
+  chainProgressOf,
+  advanceFirstTasks,
+  advanceFirstChains,
+  claimChainReward,
+  visibleFirstTasks,
+  totalSkillLevels,
+  dsiStanding,
+} from './firstTasks'
+/* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
+export { grantFirstReward } from './firstRewards'
+export { HOME_SCAN_WINDOW_MS } from './explore'
+export type { FirstTaskDef, FirstStatKey } from './firstTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'
+
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
 export { emptyMarks } from './state'
 

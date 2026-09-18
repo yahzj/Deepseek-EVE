@@ -24,6 +24,7 @@ import { addItem, freeCargoM3, unloadCargoToWarehouse } from './inventory'
 import { HOME_GALAXY_ID, shortestTravelMinutes } from './expedition'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
+import { bumpFirst } from './firstTasks'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
 import { nextRandom, pickWeighted } from './rng'
@@ -97,13 +98,19 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
     return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出海（可改用 AI 核心驱动）。' }
   }
+  /**
+   * V13 探索封锁：**目标星系未点亮 ⇒ 拒绝开工**。
+   * ⚠ **2026-09-17 船长改口径**（与采集同批）：原先这条只作用于**非母港**（母港当时恒为已探索），
+   * 现对**所有**星系生效——「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」。
+   */
+  const exploreBlock = actionBlockReason(state, galaxyId)
+  if (exploreBlock) return { ok: false, error: exploreBlock }
+  // 外系星系还必须能从母港到达（无航路 → 拒绝）
   if (galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
     if (!Number.isFinite(travel)) {
       return { ok: false, error: `「${galaxy.name}」没有从母港可达的航线，无法前往打捞。` }
     }
-    const block = actionBlockReason(state, galaxyId)
-    if (block) return { ok: false, error: block }
   }
   if (wreckPoolOf(ctx, galaxyId).length === 0) {
     return { ok: false, error: `「${galaxy.name}」没有可打捞的敌群残骸（该星系无悬赏目标）。` }
@@ -352,6 +359,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
         const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs)
+      if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
         if (!pulled) {
           resetOp(state)
           addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。')

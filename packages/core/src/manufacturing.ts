@@ -29,6 +29,7 @@ import type { CommandResult } from './engine'
 import type { GameState, ManufacturingRunState } from './state'
 import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
 import { addWare, countWare, removeWare } from './inventory'
+import { bumpFirst } from './firstTasks'
 import { addModule } from './equipment'
 import { shipStoredCount } from './shipyard'
 import { formatDurationMs } from './time'
@@ -477,6 +478,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         if (!itemDef) return false
         const n = Math.max(1, buildable.outputUnits ?? 1)
         addWare(state, itemDef.id, n)
+      bumpFirst(state, 'produceUnits', n) // 第一次任务/链：组装机产出件数
         addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
         if (stats && coreType) {
           addAiMakeDone(stats, coreType)

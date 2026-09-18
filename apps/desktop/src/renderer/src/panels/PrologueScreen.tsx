@@ -1,7 +1,7 @@
 /**
  * 序章·苏醒（2026-09-05 船长拍板）——新档开场演出：黑屏 → 醒来 → 系统自检 →
  * 自检结论（乘员失踪/船体受损/记忆损坏）→ 回忆系统名称（默认 PRTS）→ 进入采集步骤。
- * 演出阶段引擎时间冻结（step 0）；右上角常驻「跳过」= 全额结算（core skipTutorial）。
+ * 演出阶段引擎时间冻结（step 0）；右上角常驻「跳过」= 直接结束序章（core skipPrologue，无奖励结算）。
  * 阶段转场（2026-09-08 船长定）：换段先淡出旧画面，再切内容由 key 重挂载触发淡入。
  */
 import { useEffect, useRef, useState } from 'react'
@@ -87,7 +87,7 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
 
   const confirm = (): void => {
     if (phase === 'open') return
-    // “睁眼”转场后再唤醒（引擎写入呼号并进入采集步骤）；光晕消散加长后总时长 1.9s（船长 2026-09-05）
+    // “睁眼”转场后再唤醒（引擎写入呼号并结束序章）；光晕消散加长后总时长 1.9s（船长 2026-09-05）
     setPhase('open')
     window.setTimeout(() => {
       const r = engine.prologueAwaken(name)
@@ -194,8 +194,8 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
       ) : null}
       {err && phase === 'wake' ? <div className="app-pro-err">{err}</div> : null}
       {phase !== 'open' ? (
-        <button className="app-pro-skip" onClick={skip} title="跳过教程：立即全额结算奖励并修好鲣鱼">
-          跳过教程 ›
+        <button className="app-pro-skip" onClick={skip} title="跳过序章演出：呼号落默认 PRTS，直接开始">
+          跳过演出 ›
         </button>
       ) : null}
     </div>

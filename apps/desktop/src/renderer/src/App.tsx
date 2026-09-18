@@ -10,14 +10,13 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { formatDurationMs, moneyDelta, shipDisplayName, ONB_BRIEFING, ONB_MINE, ONB_DELIVER, ONB_SELL, ONB_REPAIR, ONB_TRIAL, ONB_SKILL, ONB_DIVIDE, ONB_EPILOGUE } from '@whale/core'
+import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
-import { TutorialEpilogue, TutorialSpot, tutorialTaskTabOf, type GuideGo } from './panels/TutorialGuide'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -25,7 +24,7 @@ import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
-import { MapPage } from './pages/MapPage'
+import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
 import { CommsEave, CommsScreen } from './panels/CommsReader'
 import { TaskCenterPage } from './pages/TaskCenterPage'
@@ -543,9 +542,9 @@ export function App({ engine }: { engine: GameEngine }) {
   const [fitShipId, setFitShipId] = useState<string | null>(null)
   // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
-  /** 任务中心内层标签定位请求（教程步骤 2 → 「重要任务」） */
+  /** 任务中心内层标签定位请求（通讯「前往」与开场信都落在「重要任务」） */
   const [taskFocus, setTaskFocus] = useState<TaskFocusTarget | null>(null)
-  /** 通讯页定位（2026-09-11 教程融入通讯）：顶部引导条「看详情」→ 切到通讯页并选中该封教程通讯 */
+  /** 通讯页定位：任务中心「第一次」卡片上的「看情报」→ 切到通讯页并选中那封情报信 */
   const [commsFocus, setCommsFocus] = useState<{ id: string; seq: number } | null>(null)
   /**
    * **虫洞面板**（终局玩法 · ✅ 2026-09-14 已上线：入口常驻，玩家侧门槛 = 协会声望 ≥ 40）：
@@ -748,41 +747,30 @@ export function App({ engine }: { engine: GameEngine }) {
 
   const pageProps = { engine, onToast: showToast }
 
-  // ── 序章·苏醒：教程锁定与引导（简报态只开通讯；步骤 1..7 页签/按钮级锁定；8 收尾演出；99 全解锁） ──
+  /**
+   * **序章·苏醒只剩"演出"**（2026-09-17 教程重做）：线性七步（采集→交付→出售→修复→试炼→技能→分身）、
+   * 步骤白名单锁定、顶部引导条与收尾演出**全部退场**——教程内容改由任务中心的 13 条「第一次」承载，
+   * 玩家自由选择；页面/页签的门改由下面的「第一次」前置表（core `FIRST_UNLOCKS`）把守。
+   */
   const tutStep = engine.state.onboarding.step
-  // 简报态（0.5）也算"进行中"：此时除通讯页外全部锁定，顶栏提示去看简报（2026-09-11 船长定）
-  const tutLocked = tutStep >= ONB_BRIEFING && tutStep <= ONB_DIVIDE
-  const guideOn = tutStep === ONB_BRIEFING || (tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE)
-  const epiOn = tutStep === ONB_EPILOGUE
-  const TUT_LOCK: Record<number, { pages: PageKey[]; map?: MapTab; ship?: ShipTab }> = {
-    // 步骤 1 开放 物品页：玩家若取消采矿/返航,可手动把货仓矿石卸入仓库（防卡教程——船长复测反馈）
-    [ONB_MINE]: { pages: ['ship', 'map', 'items'], map: 'mine', ship: 'fleet' },
-    [ONB_DELIVER]: { pages: ['task'] }, // 任务中心已是独立一级页（2026-09-14 搬家）
-    // 步骤 3（2026-09-08）：出售教学——只开物品页（仓库「市价卖出」），矿只减不增 → 卖出 ≥1 自动推进
-    [ONB_SELL]: { pages: ['items'] },
-    [ONB_REPAIR]: { pages: ['ship', 'map'], map: 'mine', ship: 'fleet' },
-    [ONB_TRIAL]: { pages: ['map'], map: 'bounty' },
-    [ONB_SKILL]: { pages: ['skills'] },
-    [ONB_DIVIDE]: { pages: ['ship'], ship: 'ai' },
+  /**
+   * **「第一次」前置锁定**（2026-09-17 教程重做批 · 数据驱动；表在 core 的 `FIRST_UNLOCKS`）：
+   * 工业页 ← 第一次采集原矿 · 市场页 ← 第一次生产 · 星图四个页签 ← 第一次扫描。
+   * 口径（船长）：「**未解锁的页面与任务都隐藏**」⇒ 导航项与页签直接不渲染；
+   * 程序化跳转（活动栏 / 跨页按钮）另在 `changePage` / `changeMapTab` 里拦一道，给一句"先做什么"。
+   */
+  const tabLocked = (t: MapTab): boolean => {
+    const k = TAB_UNLOCK_KEY[t]
+    return k !== undefined && !unlocked(state, k)
   }
-  const tutCanOpen = (p: PageKey): boolean => {
-    // 2026-09-11 船长定（教程融入通讯）：**通讯页在教程期始终可开**——教程每一步的全文都在那里，
-    // 顶部引导条的「看详情」与收件箱都靠它；其余页面仍按步骤白名单锁定。
-    if (p === 'comms') return true
-    if (!tutLocked) return true
-    const allow = TUT_LOCK[tutStep]
-    return !!allow && allow.pages.includes(p)
-  }
-  const tutMapTab = tutLocked ? TUT_LOCK[tutStep]?.map : undefined
-  const tutShipTab = tutLocked ? TUT_LOCK[tutStep]?.ship : undefined
-  const MAP_TAB_LABEL: Record<MapTab, string> = {
-    star: '星图·远征',
-    mine: '矿带开采',
-    bounty: '常驻悬赏',
-    salvage: '残骸打捞',
-    haul: '长途运输',
-    whscan: '扫描虫洞',
-  }
+  /** 页签解锁状态签名（effect 依赖用：解锁只从无到有 ⇒ 签名变了才需要归位一次） */
+  const tabLockSig = MAP_TABS.map((t) => (tabLocked(t.key) ? '0' : '1')).join('')
+  // 锁上的页签不能停着不动（读档落在其上 / 跳转落点被锁）：退回「星图·远征」
+  useEffect(() => {
+    if (tabLocked(mapTab)) setMapTab('star')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapTab, tabLockSig])
+
   /** 播一次"点到了"的脉冲（内容区 + 该导航项图标；220ms 后自动落下）——同页重复点击也照样重播 */
   const pulseNav = (key: PageKey): void => {
     if (navBeatTimer.current !== null) window.clearTimeout(navBeatTimer.current)
@@ -800,8 +788,10 @@ export function App({ engine }: { engine: GameEngine }) {
     [],
   )
   const changePage = (p: PageKey): void => {
-    if (!tutCanOpen(p)) {
-      showToast('按教程引导进行：先完成顶部指引条上的当前目标（每一步的完整说明在「通讯」页）。', true)
+
+    // 「第一次」前置（工业/市场）：导航项此时不显示，这里拦的是程序化跳转
+    if (!unlocked(state, p)) {
+      showToast(`尚未解锁：先完成「${unlockNeedTitle(p) ?? '前置任务'}」。`, true)
       return
     }
     /**
@@ -816,8 +806,11 @@ export function App({ engine }: { engine: GameEngine }) {
     setPage(p)
   }
   const changeMapTab = (t: MapTab): void => {
-    if (tutMapTab && t !== tutMapTab) {
-      showToast(`当前教程步骤请使用「${MAP_TAB_LABEL[tutMapTab] ?? tutMapTab}」标签。`, true)
+
+    // 「第一次」前置（星图四项：先完成第一次扫描）——页签此时不显示，这里拦的是程序化跳转
+    if (tabLocked(t)) {
+      const k = TAB_UNLOCK_KEY[t]
+      showToast(`尚未解锁：先完成「${(k ? unlockNeedTitle(k) : undefined) ?? '前置任务'}」。`, true)
       return
     }
     setMapTab(t)
@@ -832,7 +825,7 @@ export function App({ engine }: { engine: GameEngine }) {
     if (page === 'map' && mapTab === 'star') engine.ackScanView()
   }, [page, mapTab])
   // 工业页 → 星图定位（2026-09-09 船长定）：切页 + 目标标签页 + 卡高亮 seq（MapPage 一次性应用；
-  // 标签页切换走 changeMapTab 尊重教程步骤锁——被锁时只切页不切签，高亮不触发）
+  // 标签页切换走 changeMapTab 尊重「第一次」前置锁——被锁时只切页不切签，高亮不触发）
   const gotoMapTab = (tab: 'mine' | 'salvage', ids: string[]): void => {
     changePage('map')
     changeMapTab(tab)
@@ -846,40 +839,26 @@ export function App({ engine }: { engine: GameEngine }) {
     setTaskFocus((p) => ({ tab, seq: (p?.seq ?? 0) + 1 }))
   }
   const changeShipTab = (t: ShipTab): void => {
-    if (tutShipTab && t !== tutShipTab) {
-      showToast('当前教程步骤请使用舰船页对应标签（见引导卡）。', true)
-      return
-    }
     setShipTab(t)
   }
-  // 步骤推进 → 跳到该步骤默认视图（切换瞬间发生；恢复读档也会归位一次）
-  const prevTutStep = useRef(-1)
+  /**
+   * **序章演出结束 ⇒ 落到任务中心「重要任务」**（原收尾演出的落点，2026-09-17 教程重做后由"演出一结束"承接）：
+   * 待办清单与开场信都指向这里——先看清单，再决定做哪一件。
+   */
+  const prevObStep = useRef(engine.state.onboarding.step)
   useEffect(() => {
-    if (tutStep !== prevTutStep.current) {
-      prevTutStep.current = tutStep
-      if (tutStep >= ONB_MINE && tutStep <= ONB_DIVIDE) {
-        const d = TUT_LOCK[tutStep]
-        if (d) {
-          setPage(d.pages[0]!)
-          if (d.map) setMapTab(d.map)
-          if (d.ship) setShipTab(d.ship)
-          // 步骤自带内层标签（步骤 2 → 任务中心「重要任务」）也一并归位
-          const stepTaskTab = tutorialTaskTabOf(tutStep)
-          if (stepTaskTab) focusTaskTab(stepTaskTab)
-        }
+    const s = engine.state.onboarding.step
+    if (prevObStep.current === ONB_AWAKEN && s !== ONB_AWAKEN) {
+      try {
+        localStorage.setItem('whale-idle:task-tab', 'important')
+      } catch {
+        // 忽略
       }
+      setPage('task')
     }
+    prevObStep.current = s
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep])
-  // S5：到达技能页 → 特典即时归档（AI 核心操作学 Lv1，免训练等待——船长复测：学习该技能没有加速）
-  const skillSeenStep = useRef(-1)
-  useEffect(() => {
-    if (tutStep === ONB_SKILL && page === 'skills' && skillSeenStep.current !== ONB_SKILL) {
-      skillSeenStep.current = ONB_SKILL
-      engine.prologueSkillOpened()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tutStep, page])
 
   return (
     <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
@@ -929,10 +908,10 @@ export function App({ engine }: { engine: GameEngine }) {
           <button className="app-btn" onClick={() => void handleSave()}>
             保存
           </button>
-          <button className="app-btn" disabled={tutLocked} title={tutLocked ? '教程期间暂不可用（避免误触）' : '备份 / 恢复存档'} onClick={() => setShowSaveManager(true)}>
+          <button className="app-btn" title="备份 / 恢复存档" onClick={() => setShowSaveManager(true)}>
             存档管理
           </button>
-          <button className="app-btn is-danger" disabled={tutLocked} title={tutLocked ? '教程期间暂不可用（避免误触）' : undefined} onClick={handleReset}>
+          <button className="app-btn is-danger" onClick={handleReset}>
             重置档案
           </button>
         </div>
@@ -952,21 +931,20 @@ export function App({ engine }: { engine: GameEngine }) {
            */}
           <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
           {NAV_ITEMS.map((item) => {
+            // 「第一次」前置未达 ⇒ **该导航项不显示**（船长：未解锁页面与任务都隐藏）
+            if (!unlocked(state, item.key)) return null
             // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
             const unreadN = item.key === 'comms' ? commsUnread : item.key === 'task' ? bountyNew : 0
             return (
               <button
                 key={item.key}
                 className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}${navBeat?.key === item.key ? ' is-beat' : ''}`}
-                disabled={tutLocked && !tutCanOpen(item.key)}
                 title={
-                  tutLocked && !tutCanOpen(item.key)
-                    ? '按教程引导进行：先完成当前「教程目标」'
-                    : unreadN > 0
-                      ? item.key === 'task'
-                        ? `赏金任务已更新：${unreadN} 条（进任务中心即清除）`
-                        : `有 ${unreadN} 条未读通讯`
-                      : undefined
+                  unreadN > 0
+                    ? item.key === 'task'
+                      ? `赏金任务已更新：${unreadN} 条（进任务中心即清除）`
+                      : `有 ${unreadN} 条未读通讯`
+                    : undefined
                 }
                 onClick={() => changePage(item.key)}
               >
@@ -1051,7 +1029,7 @@ export function App({ engine }: { engine: GameEngine }) {
                 }}
               />
             ) : null}
-            {page === 'skills' ? <SkillsPage {...pageProps} focusSkillId={tutStep === ONB_SKILL ? 'ai-expert' : undefined} /> : null}
+            {page === 'skills' ? <SkillsPage {...pageProps} /> : null}
             {page === 'map' ? (
               <MapPage
                 {...pageProps}
@@ -1064,7 +1042,17 @@ export function App({ engine }: { engine: GameEngine }) {
               />
             ) : null}
             {/* 任务中心（2026-09-14 从星图页搬来的一级页）：内层标签定位仍走 taskFocus */}
-            {page === 'task' ? <TaskCenterPage {...pageProps} taskFocus={taskFocus} /> : null}
+            {page === 'task' ? (
+              <TaskCenterPage
+                {...pageProps}
+                taskFocus={taskFocus}
+                // 「第一次」卡片上的「看情报」：切到通讯页并选中那封情报信（沿用既有的 commsFocus 定位机制）
+                onOpenComms={(messageId) => {
+                  setCommsFocus((p) => ({ id: messageId, seq: (p?.seq ?? 0) + 1 }))
+                  setPage('comms')
+                }}
+              />
+            ) : null}
             {page === 'comms' ? (
               <CommsPage
                 {...pageProps}
@@ -1271,10 +1259,6 @@ export function App({ engine }: { engine: GameEngine }) {
                   engine.dismissCommsPopup(popupMsg.id)
                   gotoFromComms(p, tab, shipTab, taskTab)
                 }}
-                onAction={(command) => {
-                  const r = engine.runCommsActionAt(command)
-                  showToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
-                }}
                 extra={
                   <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
                     知道了
@@ -1328,44 +1312,6 @@ export function App({ engine }: { engine: GameEngine }) {
         />
       ) : null}
 
-      {/* 序章·苏醒：教程引导（步骤 1..7；全文在通讯页，顶栏只留步骤进度与跳转）与收尾演出（步骤 8） */}
-      {guideOn ? (
-        <TutorialSpot
-          engine={engine}
-          step={tutStep}
-          onGo={(g: GuideGo) => {
-            changePage(g.page as PageKey)
-            if (g.mapTab) changeMapTab(g.mapTab as MapTab)
-            // 任务中心内层标签（步骤 2：「前往任务中心」要落在「重要任务」）——与通讯「前往」同口径
-            if (g.page === 'task' && g.taskTab) focusTaskTab(g.taskTab)
-            if (g.shipTab) changeShipTab(g.shipTab as ShipTab)
-          }}
-          // 「看详情」：切到通讯页并直接选中本步那封教程通讯（2026-09-11 船长定：教程融入通讯）
-          onDetail={(messageId) => {
-            setCommsFocus((p) => ({ id: messageId, seq: (p?.seq ?? 0) + 1 }))
-            setPage('comms')
-          }}
-          // 「跳过教程」：入口从右下角卡移到顶部引导条（2026-09-11 船长定）
-          onSkip={() => {
-            const r = engine.prologueSkip()
-            if (!r.ok) showToast(r.error ?? '无法跳过教程', true)
-          }}
-        />
-      ) : null}
-      {epiOn ? (
-        <TutorialEpilogue
-          engine={engine}
-          onDone={() => {
-            // 苏醒完成演出后：落在任务中心「重要任务」页（新发布的「寻找人类」在此）
-            try {
-              localStorage.setItem('whale-idle:task-tab', 'important')
-            } catch {
-              // 忽略
-            }
-            setPage('task')
-          }}
-        />
-      ) : null}
 
       {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
       {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}

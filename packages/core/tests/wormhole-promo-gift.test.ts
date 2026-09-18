@@ -22,6 +22,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { DSI_FACTION_ID } from '../src/expedition'
 import { PROMOS } from '../src/tuning'
+import { markFirstTaskDone } from './helpers'
 import {
   WORMHOLE_SCAN_UNLOCK_STANDING,
   wormholeStockFull,
@@ -44,6 +45,9 @@ function fresh(seed = 5): GameState {
 /** 解锁「扫描虫洞」（协会声望达标） */
 function unlock(s: GameState): void {
   s.standings[DSI_FACTION_ID] = WORMHOLE_SCAN_UNLOCK_STANDING
+  // ⚠ 声望达标同时会判过「第一次虫洞」⇒ 引擎首拍发 2 处虫洞库存（船长 2026-09-18 的奖励表）。
+  //   本组用例只考**限时促销赠送**的点数，故先把那条任务标为已完成（不领它的奖励）。
+  markFirstTaskDone(s, 'first-wormhole')
 }
 
 /** 推进一拍（把现实墙钟写进 state ⇒ 促销判定走它） */

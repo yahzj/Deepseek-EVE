@@ -32,6 +32,7 @@ import type { CommandResult } from './engine'
 import type { GameState, HaulingState } from './state'
 import type { SimContext } from './types'
 import { shortestTravelPath, shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
+import { bumpFirst } from './firstTasks'
 import { securityZoneOf } from './sideTasks'
 import { cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { siteProgress } from './station'
@@ -338,7 +339,12 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
         addLog(state, 'warn', `长途运输异常终止：舰船停靠在「${arrived}」（航线端点不可达）。`)
         break
       }
-      if (h.tripLegsLeft <= 0) beginTrip(state, 2)
+      if (h.tripLegsLeft <= 0) {
+        // 「第一次长途运输」判定（2026-09-17 教程重做批）：**本趟跑完**（往返两段都到站）记一趟，
+        // 而不是每段都记——「一趟」的口径就写在上面这行（`beginTrip(state, 2)` 一趟两段）。
+        bumpFirst(state, 'haulTrips')
+        beginTrip(state, 2)
+      }
       const departTo = haulEndpointName(ctx, h.toSiteId)
       addLog(state, 'info', `长途运输继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`)
     }

@@ -30,7 +30,7 @@ import {
   RARE_WRECK_VOLUME_M3,
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
-import { WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
+import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -68,6 +68,18 @@ export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
   /* 扫描虫洞（2026-09-14 船长：放进「出港界面的选项卡内」）：✅ 同日解除不可见 ⇒ **常驻标签**（解锁门槛在页内：协会声望 ≥ 40） */
   { key: 'whscan', label: '扫描虫洞', icon: 'nav-wormhole' },
 ]
+
+/**
+ * **星图页签的「第一次」前置**（2026-09-17 船长定：星图相关的采矿/战斗等**先完成「第一次扫描」**）。
+ * 值 = `FIRST_UNLOCKS` 的键；表里没有的页签（星图·远征 / 扫描虫洞）⇒ 开局即可用（虫洞另有声望门槛）。
+ * **未解锁 = 页签不显示**（船长选「两者都隐藏」——页面与任务都隐藏）；App 层用同一张表做跳转拦截。
+ */
+export const TAB_UNLOCK_KEY: Partial<Record<MapTab, string>> = {
+  mine: 'mapMine',
+  bounty: 'mapBounty',
+  salvage: 'mapSalvage',
+  haul: 'mapHaul',
+}
 
 /* 矿带 / 打捞排序（2026-09-09 船长拍板：危险=所在星系安全等级 sec 降序=安全在前，为默认；
  * 选择存本地，键形如 whale-idle:*-sort）。 */
@@ -136,7 +148,8 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
             点它只给一条引导、不切标签（与上面「长途运输」那条同一套写法）。
 
             ⚠ 变更留档：上线批当时按"常显"落码（为了让玩家进去看门槛），本批按船长新裁定改成"置灰"。 */}
-        {MAP_TABS.map((t) => {
+        {/* 未过「第一次」前置的页签**不显示**（`TAB_UNLOCK_KEY` 缺项 ⇒ 开局即可用） */}
+        {MAP_TABS.filter((t) => unlocked(engine.state, TAB_UNLOCK_KEY[t.key] ?? t.key)).map((t) => {
           /** 「扫描虫洞」未解锁：置灰 + 悬停短提示 + 点击只给引导（判据与页内文案同一把声望尺） */
           const lockedTip =
             t.key === 'whscan' && !engine.wormholeScanUnlocked()

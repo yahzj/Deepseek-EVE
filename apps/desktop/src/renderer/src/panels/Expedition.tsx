@@ -61,6 +61,7 @@ import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH, rareWreckRefsOf } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
+import { FirstTasks } from './FirstTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
@@ -262,11 +263,14 @@ export function TaskPanel({
   engine,
   onToast,
   focusTab = null,
+  onOpenComms,
 }: {
   engine: GameEngine
   onToast: ToastFn
-  /** 外部定位请求（2026-09-11 船长：教程步骤 2 跳转任务中心要切到「重要任务」；seq 变化即应用） */
+  /** 外部定位请求（2026-09-11 船长：跳转任务中心要切到「重要任务」；seq 变化即应用） */
   focusTab?: { tab: string; seq: number } | null
+  /** 「第一次」卡片的「看情报」（App 层定位到那封情报信） */
+  onOpenComms?: (messageId: string) => void
 }) {
   const [tab, setTab] = useState<TaskTabKey>(() => {
     try {
@@ -341,7 +345,9 @@ export function TaskPanel({
       <div className="app-win-body">
       {tab === 'important' ? (
         <div>
-          <ImportantTasks engine={engine} onToast={onToast} />
+          {/* 2026-09-17 教程重做：重要任务＝「第一次」系列（13 条，自由选择）＋后续次数任务 */}
+          <FirstTasks engine={engine} onToast={onToast} onOpenComms={onOpenComms} />
+          <ImportantTasks engine={engine} />
           {stationCount > 0 && unbuiltStationIds.length > 0 ? (
             <>
               <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（泊位/卸货/维修/补给/换驾驶与全部站内功能建成后一次性开放）。</div>

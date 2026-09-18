@@ -1,75 +1,28 @@
 /**
- * 重要任务 · 序章/贯穿（2026-09-05 船长拍板规则更新；2026-09-10 船长补定）：
- * - **已完成的重要任务一律隐藏**：教程任务卡（补给协议/试炼）只在“进行中”展示；
- * - 教程完成(含跳过)后发布贯穿任务「寻找人类」：正常发布、不告诉做法；
+ * 重要任务 · 贯穿（2026-09-05 船长拍板；2026-09-10 补定；**2026-09-17 教程重做后只剩「寻找人类」**）。
+ *
+ * - 序章结束时发布「寻找人类」：正常发布、不告诉做法（船长 2026-09-05）。
  * - 「寻找人类」阶段目标（2026-09-10 船长定）：**探索全部星系、寻找人类踪迹**——带进度显示，
  *   全部探索完毕后标为"阶段目标已完成"（任务本身仍进行中，完成方法未知）。
+ *
+ * ⚠ 2026-09-17 教程重做：原先这里还有两张教程任务卡（补给协议·首批原矿、试炼·演习场驱逐令）——
+ * 线性七步教程退场后它们一并撤掉，教程内容改由任务中心的 13 条「第一次」承载（见 `FirstTasks.tsx`）。
  */
-import {
-  ONB_DELIVER,
-  ONB_DIVIDE,
-  ONB_TRIAL,
-  TASK_FIND_HUMANS,
-  TASK_ORE_DELIVER,
-  TASK_TRIAL_WIN,
-  TUTORIAL_DELIVER_ITEM,
-  TUTORIAL_DELIVER_N,
-} from '@whale/core'
+import { TASK_FIND_HUMANS } from '@whale/core'
 import type { GameEngine } from '../game/engine'
-import type { ToastFn } from '../pages/common'
 
-export function ImportantTasks({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+/** 只剩「寻找人类」这一条贯穿任务（教程卡随线性教程退场）⇒ 不再需要 onToast（没有可点的动作） */
+export function ImportantTasks({ engine }: { engine: GameEngine }) {
   const state = engine.state
-  const oreDone = state.importantTasks[TASK_ORE_DELIVER]?.done === true
-  const trialDone = state.importantTasks[TASK_TRIAL_WIN]?.done === true
   const findTask = state.importantTasks[TASK_FIND_HUMANS]
   const findHumanOn = findTask !== undefined && findTask.done !== true
-  const oreName = engine.ctx.items.get(TUTORIAL_DELIVER_ITEM)?.name ?? TUTORIAL_DELIVER_ITEM
-  const have = state.warehouse.items[TUTORIAL_DELIVER_ITEM] ?? 0
-  const step = state.onboarding.step
-  // 已完成的任务隐藏（船长 2026-09-05）；教程卡仅在对应步骤窗口且未完成时出现
-  const showOre = !oreDone && step >= ONB_DELIVER && step <= ONB_DIVIDE
-  const showTrial = !trialDone && step >= ONB_TRIAL && step <= ONB_DIVIDE
   // 「寻找人类」阶段目标进度：已探索星系 / 全图星系
   const galaxyTotal = engine.ctx.galaxies.size
   const exploredN = [...engine.ctx.galaxies.keys()].filter((g) => state.exploredGalaxies.includes(g)).length
   const allExplored = findTask?.allExplored === true || (galaxyTotal > 0 && exploredN >= galaxyTotal)
 
-  const deliver = (): void => {
-    const r = engine.deliverTutorialOreAt()
-    if (r.ok) {
-      onToast('交付完成：+4,000 信用点、基础 AI 核心 ×1。')
-    } else {
-      onToast(r.error ?? '交付失败', true)
-    }
-  }
-
   return (
     <div className="app-imp-quests">
-      {showOre ? (
-        <div className="app-imp-card">
-          <div className="app-imp-card-title">◆ 补给协议·首批原矿</div>
-          <div className="app-imp-card-body">
-            向任务中心交付 {oreName} ×{TUTORIAL_DELIVER_N}（仓库现有 {have}）——维持隐秘泊位的临时修复储备。
-          </div>
-          <button
-            className="app-btn is-small is-primary"
-            disabled={have < TUTORIAL_DELIVER_N}
-            onClick={deliver}
-            title={have < TUTORIAL_DELIVER_N ? '仓库原矿不足——先回港把采集的原矿卸入仓库' : undefined}
-          >
-            交付原矿（{Math.min(have, TUTORIAL_DELIVER_N)}/{TUTORIAL_DELIVER_N}）
-          </button>
-        </div>
-      ) : null}
-      {showTrial ? (
-        <div className="app-imp-card">
-          <div className="app-imp-card-title">◆ 试炼·演习场驱逐令</div>
-          <div className="app-imp-card-body">
-            星图 →「常驻悬赏」，接取母港的演习场驱逐令并取胜（这场是照会战，本舰的命中与回避按规程上调）。完成后发放：轻型炮台 MK1 ×1、动能弹药 ×120。
-          </div>
-        </div>
-      ) : null}
       {findHumanOn ? (
         <div className="app-imp-card is-perm">
           <div className="app-imp-card-title">◆ 寻找人类</div>

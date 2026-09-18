@@ -31,6 +31,7 @@ import type {
   StationSiteDef,
   TravelEventDef,
 } from '../src/types'
+import type { GameState } from '../src/state'
 
 /** 快速造技能 */
 export function skill(id: string, rank = 1, name = `技能${id}`): SkillDef {
@@ -310,6 +311,28 @@ export const DEFAULT_TEST_BLUEPRINTS: readonly BlueprintDef[] = [
   blueprint('bp-a', 'mod-a', [{ itemId: 'min-a', count: 10 }]),
   blueprint('bp-b', 'mod-b', [{ itemId: 'min-b', count: 8 }], { buildSeconds: 300, buildCost: 300, price: 800 }),
 ]
+
+/**
+ * 用例预置：把「第一次学习技能」标为已完成 —— 于是**不再领它那枚基础 AI 核心**。
+ *
+ * 为什么要有这个开关（2026-09-17 教程重做）：AI / 工业 / 待命 / 结算统计这几组用例只考机制本身，
+ * 但它们都得先 `state.skills.trained['ai-expert'] = N` 拿「AI 核心上限」资格 ⇒ 引擎首拍会顺手判过
+ * 「第一次学习技能」并送一枚基础 AI 核心，把它们**原有的核心账目全部 +1**。
+ * 关注奖励本身的用例见 `first-tasks.test.ts`（那里不调用本函数）。
+ */
+export function skipFirstSkillReward(state: GameState): void {
+  state.importantTasks['first-skill'] = { done: true }
+}
+
+/**
+ * 用例预置：把**某一条**「第一次」标为已完成 —— 于是不再领它那份奖励。
+ *
+ * 用途同上：机制类用例（虫洞库存、AI 核心账目…）常会顺手满足某条「第一次」的判据（声望/技能/计数），
+ * 引擎首拍就把奖励发下来，把它们的账目顶掉。**要考奖励本身的用例别调它**（见 `first-tasks.test.ts`）。
+ */
+export function markFirstTaskDone(state: GameState, id: string): void {
+  state.importantTasks[id] = { done: true }
+}
 
 /** 快速造星系（opts.security：安全等级——赏金日板按 高安 ≥0.5 / 中安 ≥0 / 低安 <0 分区抽地点） */
 export function galaxy(id: string, name = `星系${id}`, opts?: { security?: number }): GalaxyDef {

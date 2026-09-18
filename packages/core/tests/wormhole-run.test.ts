@@ -784,10 +784,10 @@ describe('虫洞 · 层曲线（收益涨得比威胁快 —— 船长 2026-09-1
 })
 
 describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
-  it('当前存档版本 = 25，新档带空虫洞状态', () => {
-    expect(CURRENT_STATE_VERSION).toBe(25)
+  it('新档带空虫洞状态；当前存档版本 = 26（v26 = 「第一次」任务系列的老档一次性判定）', () => {
+    expect(CURRENT_STATE_VERSION).toBe(26)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
-    expect(s.version).toBe(25)
+    expect(s.version).toBe(26)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 

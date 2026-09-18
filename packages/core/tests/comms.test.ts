@@ -23,7 +23,6 @@ import {
   markAllCommsRead,
   markCommsRead,
   resolveCommsSender,
-  runCommsAction,
 } from '../src/comms'
 import { COMMS_DAY_MS } from '../src/comms'
 import { onArriveAtGalaxy, playDialogue } from '../src/station'
@@ -31,7 +30,9 @@ import { advanceGame } from '../src/engine'
 import { startManufacturing } from '../src/manufacturing'
 import { shipStoredCount, addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { ONB_BRIEFING, ONB_DONE, ONB_DELIVER, ONB_MINE, ONB_OFF } from '../src/onboarding'
+import { ONB_AWAKEN, ONB_DONE } from '../src/onboarding'
+import { FIRST_TASKS } from '../src/firstTasks'
+import { FIRST_TASK_MESSAGES } from '@whale/data'
 import { anomaly, galaxy, makeTestCtx } from './helpers'
 
 /** 迷你建站点（挂在 galaxy-far；介绍剧本 dlg-intro） */
@@ -145,119 +146,90 @@ function tick(state: GameState, ctx: SimContext, ms = 1000): void {
   advanceGame(state, ms, ctx, { nowWallMs: 0 })
 }
 
-describe('通讯 · 教程步骤触发器（2026-09-11 船长定：教程融入通讯）', () => {
-  /** 教程通讯样本：简报（tut-0，带「开始教程」动作）与步骤 2、7 */
-  const TUT_MSGS: readonly CommsMessageDef[] = [
-    {
-      id: 'tut-0',
-      factionId: 'archive',
-      deptId: 'dept-recall',
-      kind: '教程',
-      subject: '训前简报',
-      body: ['先读简报再开工。', '04 修复护卫舰。'],
-      // 2026-09-11 船长：训前简报的任务链要高亮（`highlight` 必须与正文某段逐字相等才生效）
-      highlight: ['04 修复护卫舰。'],
-      trigger: { kind: 'tutorial', step: 0 },
-      action: { label: '按单开工：采集橄榄岩', command: 'startTutorial' },
-    },
-    { id: 'tut-2', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 2/7：交付', body: ['去任务中心交付。'], trigger: { kind: 'tutorial', step: 2 }, hint: { text: '前往任务中心', page: 'task', taskTab: 'important' } },
-    { id: 'tut-7', factionId: 'archive', deptId: 'dept-recall', kind: '教程', subject: '教程 7/7：分身', body: ['给沙猫指派采矿。'], trigger: { kind: 'tutorial', step: 7 } },
-  ]
+describe('通讯 · 「第一次」任务情报信（2026-09-17 教程重做：教程改由任务承载）', () => {
+  /** 用真实数据表的 13 封情报信（触发器 = `firstTask`，发件方 = 信息库 · 检索重启） */
+  const FIRST_MSGS = FIRST_TASK_MESSAGES
 
-  it('到达该步才送达：提前不送、到达即送、幂等只送一次', () => {
-    const { state, ctx } = world(TUT_MSGS)
-    // 睁眼之前（序章演出之前，老档口径 ONB_OFF）：简报也不送
-    state.onboarding.step = ONB_OFF
+  it('任务未完成不送、完成即送、幂等只送一次', () => {
+    const { state, ctx } = world(FIRST_MSGS)
     tick(state, ctx, 1000)
-    expect(state.commsDelivered?.['tut-0']).toBeUndefined()
-    // 序章演出中（ONB_AWAKEN = 0）：简报与步骤 2 都不送
-    state.onboarding.step = 0
+    // ⚠ 样本用「第一次打捞残骸」：非序章档的母港本来就已探明 ⇒「第一次扫描」会被引擎当拍判过，
+    //   拿它当"未完成"样本会假失败。
+    expect(state.commsDelivered?.['first-salvage']).toBeUndefined()
+    expect(commsTriggerMet(state, ctx, { kind: 'firstTask', taskId: 'first-salvage' })).toBe(false)
+    // 标记「第一次打捞残骸」完成（引擎每拍的 advanceFirstTasks 干的就是这件事）
+    state.importantTasks['first-salvage'] = { done: true }
+    expect(commsTriggerMet(state, ctx, { kind: 'firstTask', taskId: 'first-salvage' })).toBe(true)
     tick(state, ctx, 1000)
-    expect(state.commsDelivered?.['tut-0']).toBeUndefined()
-    expect(state.commsDelivered?.['tut-2']).toBeUndefined()
-    expect(commsTriggerMet(state, ctx, { kind: 'tutorial', step: 2 })).toBe(false)
-    // 到达步骤 2（进行态 = ONB_DELIVER = 2）：送达
-    state.onboarding.step = ONB_DELIVER
-    expect(commsTriggerMet(state, ctx, { kind: 'tutorial', step: 2 })).toBe(true)
-    tick(state, ctx, 1000)
-    expect(state.commsDelivered?.['tut-2']).toBeDefined()
-    const at = state.commsDelivered!['tut-2']!
+    expect(state.commsDelivered?.['first-salvage']).toBeDefined()
+    const at = state.commsDelivered!['first-salvage']!
     tick(state, ctx, 5000)
-    expect(state.commsDelivered!['tut-2']).toBe(at) // 时间戳不被刷新
-    expect(state.logs.filter((l) => l.text.includes('教程 2/7'))).toHaveLength(1)
-    // 步骤 7 仍未到：不送
-    expect(state.commsDelivered?.['tut-7']).toBeUndefined()
+    expect(state.commsDelivered!['first-salvage']).toBe(at) // 幂等：时间戳不被刷新
+    expect(state.logs.filter((l) => l.text.includes('档案补全 · 残骸打捞'))).toHaveLength(1)
+    // 其余任务未完成 ⇒ 不送
+    expect(state.commsDelivered?.['first-mine']).toBeUndefined()
   })
 
-  it('简报态：tut-0 送达、发件方 = 舰载信息库 · 检索重启，点「开始教程」才进采集步骤', () => {
-    const { state, ctx } = world(TUT_MSGS)
-    state.onboarding.step = ONB_BRIEFING
+  it('发件方 = 舰载信息库 · 检索重启（核心形头像），跳转落在任务中心', () => {
+    const { state, ctx } = world(FIRST_MSGS)
+    state.importantTasks['first-mine'] = { done: true }
     advanceComms(state, ctx)
-    const briefing = commsInbox(state, ctx).find((e) => e.id === 'tut-0')
-    expect(briefing).toBeDefined()
-    expect(briefing!.from).toBe('信息库 · 检索重启') // 2026-09-11 船长：消息来源改为信息库检索重启
-    expect(briefing!.alignment).toBe('系统')
-    expect(briefing!.glyph).toBe('nav-ai') // 头像：船内系统用核心形图标
-    expect(briefing!.action?.command).toBe('startTutorial')
-    // 强调行要透传到界面（2026-09-11 船长：任务链高亮；漏传就像"没写"，界面静默不高亮）
-    expect(briefing!.highlight).toEqual(['04 修复护卫舰。'])
-    expect(briefing!.paragraphs).toContain(briefing!.highlight![0])
-    // 此时还没进采集步骤
-    expect(state.onboarding.step).toBe(ONB_BRIEFING)
-    // 点动作 → 进采集步骤
-    const r = runCommsAction(state, briefing!.action!.command)
-    expect(r.ok).toBe(true)
-    expect(state.onboarding.step).toBe(ONB_MINE)
-    // 未知命令：报错不崩
-    expect(runCommsAction(state, 'nope' as never).ok).toBe(false)
-    // 没写 highlight 的消息不透传（界面按 undefined 处理，不会误高亮第一段）
-    const other = world(TUT_MSGS)
-    other.state.onboarding.step = ONB_DELIVER
-    advanceComms(other.state, other.ctx)
-    expect(commsInbox(other.state, other.ctx).find((e) => e.id === 'tut-2')!.highlight).toBeUndefined()
-    /**
-     * 跳转提示要带任务中心**内层**标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）。
-     * ⚠ **2026-09-14 起目标页变了**（船长：「将任务中心界面移出星图，放入左侧导航栏，通讯的上方」）：
-     * 任务中心是**独立一级页** ⇒ `page = 'task'`，不再是星图页的 `tab: 'task'` 选项卡。
-     */
-    const tut2 = commsInbox(other.state, other.ctx).find((e) => e.id === 'tut-2')!
-    expect(tut2.hint?.page).toBe('task')
-    expect(tut2.hint?.tab).toBeUndefined()
-    expect(tut2.hint?.taskTab).toBe('important')
-  })
-
-  it('简报态（0.5）能随存档往返保留——不会被归一化压成 0（存档真 BUG 回归）', () => {
-    const { state, ctx } = world(TUT_MSGS)
-    state.onboarding.step = ONB_BRIEFING
-    const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
-    expect(loaded.onboarding.step).toBe(ONB_BRIEFING) // 修前是 0（退回序章演出）
-    // 简报通讯在重载后仍能送达
-    advanceComms(loaded, ctx)
-    expect(loaded.commsDelivered?.['tut-0']).toBeDefined()
-  })
-
-  it('跳过教程（step → 99）后，未送的教程通讯全部补齐，收件箱留完整记录', () => {
-    const { state, ctx } = world(TUT_MSGS)
-    state.onboarding.step = ONB_DONE
-    advanceComms(state, ctx)
-    const inbox = commsInbox(state, ctx)
-    expect(inbox.map((e) => e.id).sort()).toEqual(['tut-0', 'tut-2', 'tut-7'])
-    expect(inbox.every((e) => e.kind === '教程')).toBe(true)
-    expect(inbox[0]!.from).toBe('信息库 · 检索重启') // 教程来信的发件方 = 舰载信息库 · 检索重启
+    const letter = commsInbox(state, ctx).find((e) => e.id === 'first-mine')
+    expect(letter).toBeDefined()
+    expect(letter!.from).toBe('信息库 · 检索重启') // 船内系统来信
+    expect(letter!.alignment).toBe('系统')
+    expect(letter!.glyph).toBe('nav-ai') // 头像：船内系统用核心形图标（与 NPC 章鱼头分开）
+    // 「第一次采集原矿」那封指向工业页（精炼炉与组装机在那里）
+    expect(letter!.hint?.page).toBe('industry')
   })
 })
 
-describe('通讯 · 触发条件', () => {
-  it('开局信：序章引导期间不送（导航那时被教程锁着），收尾演出起送达', () => {
+describe('通讯 · 序章演出与老档迁移（2026-09-17）', () => {
+  it('开场信（start）：序章演出期间不送，演出结束即送达', () => {
     const { state, ctx } = world()
-    expect(state.onboarding.step).toBeLessThan(ONB_DONE)
+    state.onboarding.step = ONB_AWAKEN // 序章演出中：屏幕被演出盖住，此刻弹信没意义
     tick(state, ctx, 5000)
-    expect(state.commsDelivered?.['msg-start']).toBeUndefined() // 引导中不送
+    expect(state.commsDelivered?.['msg-start']).toBeUndefined()
     state.onboarding.step = ONB_DONE
     tick(state, ctx, 1000)
     expect(state.commsDelivered?.['msg-start']).toBeDefined()
   })
 
+  it('存档往返：序章演出态（0）原样保留；老档的 -1／0.5／1..8 一律读成已完成（99）', () => {
+    const { state } = world()
+    state.onboarding.step = ONB_AWAKEN
+    expect(loadSaveFile(serializeSaveFile(state, 1)).state.onboarding.step).toBe(ONB_AWAKEN)
+    // 旧档的各种"教程中途"取值：迁移后一律 99（线性教程已退场，没有可推进的步骤）
+    for (const old of [-1, 0.5, 1, 4, 7, 8]) {
+      const s2 = world().state
+      s2.onboarding.step = old
+      expect(loadSaveFile(serializeSaveFile(s2, 1)).state.onboarding.step, `旧值 ${old}`).toBe(ONB_DONE)
+    }
+  })
+
+  it('老档一次性判定：13 条「第一次」整体判为已完成，情报信随后补送（不发奖励）', () => {
+    const { state, ctx } = world(FIRST_TASK_MESSAGES)
+    state.onboarding.step = ONB_DONE
+    // 伪造一份 v25 老档：结构没变，只是版本号更早、且**没有任何 first-* 记录**（老教程的两条记录保留）
+    const raw = JSON.parse(serializeSaveFile(state, 1)) as { version: number; state: Record<string, unknown> }
+    raw.version = 25
+    raw.state.importantTasks = { 'tut-ore-deliver': { done: true } }
+    const loaded = loadSaveFile(JSON.stringify(raw)).state
+    for (const def of FIRST_TASKS) {
+      expect(loaded.importantTasks[def.id]?.done, def.id).toBe(true)
+    }
+    // 老教程的记录不清洗（只是不再有人读它）
+    expect(loaded.importantTasks['tut-ore-deliver']?.done).toBe(true)
+    // 补发通讯：下一拍全部送达（按 id 幂等）
+    advanceComms(loaded, ctx)
+    for (const def of FIRST_TASKS) {
+      expect(loaded.commsDelivered?.[def.commsId], def.commsId).toBeDefined()
+    }
+    // 奖励不补发：老档只送信（②那张蓝图不在老档仓库里）
+    expect(loaded.blueprintStock['bp-ammo-kinetic'] ?? 0).toBe(0)
+  })
+})
+describe('通讯 · 触发条件', () => {
   it('六个条件各自独立生效（天数 / 已探明 / 指定星系 / 技能 / 现金 / 副站建成）', () => {
     const { state, ctx } = world()
     state.onboarding.step = ONB_DONE

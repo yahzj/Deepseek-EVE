@@ -26,7 +26,7 @@ import {
   startManufacturing,
 } from '../src/manufacturing'
 import { countAiCore, gainAiCore } from '../src/ai'
-import { makeTestCtx, moduleDef } from './helpers'
+import { makeTestCtx, moduleDef, skipFirstSkillReward } from './helpers'
 
 describe('蓝图学习（V9 消耗品制）', () => {
   let state: GameState
@@ -69,6 +69,8 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     state = createInitialState({ nowWallMs: 0, seed: 1 })
     ctx = makeTestCtx() // bp-a：10 单位矿粉 min-a、耗时 600 秒（制造费 500 为历史遗留数据，2026-09-08 起引擎不再收取）；bp-b：mod-b（8 单位 min-b、300 秒）
     state.skills.trained['ai-expert'] = 5 // 2026-09-08 AI 核心上限制：本组 AI 线用例需资格（多线并行用 Lv5）
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.blueprintStock['bp-a'] = 1
     learnBlueprint(state, ctx, 'bp-a')
   })
@@ -418,6 +420,8 @@ describe('循环制造（2026-09-10 船长定：开关与目标件数从逐条�
     state = createInitialState({ nowWallMs: 0, seed: 1 })
     ctx = makeTestCtx() // bp-a：10×min-a / 600 秒 → mod-a（主控线 600s/件；基础核心 40% 效率 → 1500s/件）
     state.skills.trained['ai-expert'] = 5 // AI 核心上限资格（多线并行）
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.blueprintStock['bp-a'] = 1
     learnBlueprint(state, ctx, 'bp-a')
   })

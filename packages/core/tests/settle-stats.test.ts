@@ -10,7 +10,7 @@ import { countAiCore } from '../src/ai'
 import { simulateOffline } from '../src/simulation'
 import { startManufacturing } from '../src/manufacturing'
 import { newSettleStats } from '../src/settleStats'
-import { makeTestCtx } from './helpers'
+import { makeTestCtx, skipFirstSkillReward } from './helpers'
 
 describe('离线结算：AI 核心作业统计（settleStats）', () => {
   it('AI 核心驱动的精炼炉按批统计并估收入', () => {
@@ -19,6 +19,8 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     // AI 核心一台 + 库存充足（默认炉：10 单位/批、6s/批 → AI 周期 15s）
     state.aiCores['basic'] = 1
     state.skills.trained['ai-expert'] = 1 // 2026-09-08 AI 核心上限制：开 AI 炉需「AI 核心上限」资格
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.warehouse.items['ore-a'] = 400
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
 
@@ -52,6 +54,8 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     const ctx: SimContext = makeTestCtx()
     state.aiCores['basic'] = 1
     state.skills.trained['ai-expert'] = 1 // 2026-09-08 AI 核心上限制：开 AI 炉需「AI 核心上限」资格
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.warehouse.items['ore-a'] = 400
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     const stats = newSettleStats()
@@ -65,6 +69,8 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     // 默认测试舰船蓝图 sbp-a（造 sandcat2 · 60s · 材料 min-a ×5）——AI 核心驱动 + 材料备足
     state.aiCores['basic'] = 1
     state.skills.trained['ai-expert'] = 1 // 开 AI 线需「AI 核心上限」资格
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.learnedRecipes.push('sbp-a')
     state.warehouse.items['min-a'] = 50
     expect(startManufacturing(state, 'sbp-a', 'basic', ctx).ok).toBe(true)
@@ -85,6 +91,8 @@ describe('离线结算：AI 核心作业统计（settleStats）', () => {
     const ctx: SimContext = makeTestCtx()
     state.aiCores['basic'] = 1
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.learnedRecipes.push('bp-b') // 造 mod-b · 300s · 材料 min-b ×8
     state.warehouse.items['min-b'] = 80
     expect(startManufacturing(state, 'bp-b', 'basic', ctx).ok).toBe(true)

@@ -27,6 +27,14 @@ import type { CommandResult } from './engine'
 
 /** 扫描探索的就地扫描窗口（毫秒；时间类参数若需调参可挪入 balance） */
 export const SCAN_WINDOW_MS = 10 * 60_000
+/**
+ * **母港的扫描窗口 = 10 秒**（2026-09-18 船长：「**扫描母港的时间缩短至10秒**」）。
+ *
+ * 由来：新档第一步就是扫母港（母港开局与其他星系一样未知），而那一步是**唯一的起步前置**——
+ * 10 分钟的窗口意味着开局先干等十分钟。故母港固定 10 秒，**不吃技能系数、不吃低安惩罚**
+ * （它是一次性的"起步门"，不是可反复优化的作业）。其余星系照旧走 10 分钟基准 × 技能 × 低安。
+ */
+export const HOME_SCAN_WINDOW_MS = 10_000
 /** 低安扫描时长惩罚系数（船长 2026-09-05 定：目标星系 sec < 0.5 时，窗口 ×[1 + 0.8×(0.5−sec)]；
  *  sec=0 时 ×1.4，线性；高安(≥0.5)不延长） */
 export const SCAN_LOWSEC_PENALTY = 0.8
@@ -60,17 +68,19 @@ export function scanWindowMsOf(state: GameState): number {
   return Math.round(SCAN_WINDOW_MS * scanSkillFactor(state))
 }
 
-/** 目标星系的实际扫描窗口（毫秒）：技能缩短 × 低安安全度惩罚（船长 2026-09-05） */
+/** 目标星系的实际扫描窗口（毫秒）：技能缩短 × 低安安全度惩罚（船长 2026-09-05）；
+ *  **母港例外 = 固定 10 秒**（船长 2026-09-18：「扫描母港的时间缩短至10秒」） */
 export function scanWindowMsFor(state: GameState, ctx: SimContext, galaxyId: string): number {
+  if (galaxyId === HOME_GALAXY_ID) return HOME_SCAN_WINDOW_MS
   const galaxy = ctx.galaxies.get(galaxyId)
   const sec = galaxy?.security ?? 1
   const lowPen = sec < 0.5 ? 1 + SCAN_LOWSEC_PENALTY * (0.5 - sec) : 1
   return Math.round(SCAN_WINDOW_MS * scanSkillFactor(state) * lowPen)
 }
 
-/** 某星系是否已探索（母港恒为真） */
+/** 某星系是否已探索（⚠ **2026-09-17 起母港不再恒为真**：新档连母港都是未知的，见 `createInitialState`） */
 export function isExplored(state: GameState, galaxyId: string): boolean {
-  return galaxyId === HOME_GALAXY_ID || state.exploredGalaxies.includes(galaxyId)
+  return state.exploredGalaxies.includes(galaxyId)
 }
 
 /** 把星系标记为已探索；返回是否新点亮（去重） */
@@ -80,10 +90,18 @@ export function markExplored(state: GameState, galaxyId: string): boolean {
   return true
 }
 
-/** 未探索但"邻接已探索"的星系 id 列表（星图剪影 = 可扫描对象） */
+/**
+ * 未探索但"可扫描"的星系 id 列表（星图剪影 = 可扫描对象）。
+ *
+ * ⚠ **2026-09-17 船长改口径**：「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」
+ * ⇒ 新档 `exploredGalaxies` 为空、连母港都没点亮，而"邻接已探索"这条规则在**零探索时会返回空**
+ * （没有任何已探索的邻接点）⇒ 会出现"无处可扫"的死锁。故这里补一条种子：
+ * **未探索的母港本身永远是候选**（它就是新玩家的第一个扫描目标）。母港一旦点亮，本行自然失效。
+ */
 export function frontierGalaxyIds(state: GameState, ctx: SimContext): string[] {
   const seen = new Set<string>(state.exploredGalaxies)
   const out: string[] = []
+  if (!seen.has(HOME_GALAXY_ID) && ctx.galaxies.has(HOME_GALAXY_ID)) out.push(HOME_GALAXY_ID)
   for (const edge of ctx.galaxyEdges) {
     const aIn = seen.has(edge.from)
     const bIn = seen.has(edge.to)
@@ -95,9 +113,10 @@ export function frontierGalaxyIds(state: GameState, ctx: SimContext): string[] {
   return out
 }
 
-/** 行动封锁检查：返回不可行动原因；null = 可行动（母港与已探索星系不受限） */
+/** 行动封锁检查：返回不可行动原因；null = 可行动（已探索星系不受限）
+ *  ⚠ **2026-09-17 起母港也要探索**：原先这里对母港直接放行，与"母港未知"的新口径冲突（同日删除）。 */
 export function actionBlockReason(state: GameState, galaxyId: string | null | undefined): string | null {
-  if (!galaxyId || galaxyId === HOME_GALAXY_ID) return null
+  if (!galaxyId) return null
   if (isExplored(state, galaxyId)) return null
   return '该星系尚未探索——先对星图上的「未知信号」执行扫描探索。'
 }

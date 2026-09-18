@@ -55,7 +55,6 @@ import {
   COMMS_MESSAGES,
   COMMS_FACTIONS,
   FACTION_AVATARS,
-  TUTORIAL_TOTAL,
   DIALOGUES,
   STATION_SITES,
   GALAXIES,
@@ -503,8 +502,16 @@ for (const sbp of SHIP_BLUEPRINTS) {
     const mat = items.get(need.itemId)
     check(!!mat && mat.kind === 'mineral', `舰船蓝图 ${sbp.id} 材料 ${need.itemId} 不存在或不是矿物`)
   }
+  /**
+   * **船蓝图"无市场行"白名单**（2026-09-18 船长裁定新建 `sbp-sandcat` 时立的）：
+   * 任务奖励发放的蓝图不进市场 ⇒ 不要求市场卡（与一次性图纸豁免同精神，但它是**可反复制造**的普通蓝图）。
+   */
+  const SHIP_BP_NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
+    ['sbp-sandcat', '沙猫级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
+  ]
+  const shipBpNoRowOk = new Set(SHIP_BP_NO_ROW_OK.map(([id]) => id))
   check(
-    sbp.singleUse === true || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
+    sbp.singleUse === true || shipBpNoRowOk.has(sbp.id) || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === sbp.id),
     `舰船蓝图 ${sbp.id} 没有市场卡（无法购书学习）`,
   )
 }
@@ -4188,6 +4195,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
       ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
+      ['sbp-sandcat', '沙猫级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
     ]
     const noRowOk = new Set(NO_ROW_OK.map(([id]) => id))
     const rowKeys = new Set(MARKET_GOODS.map((g) => g.refId))
@@ -4234,12 +4242,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    *      按钮本就不该显示）：谜质装置 24 + AI 核心 3；
    *   ③ 物品 kind = `wreck` / `fragment`：残骸**唯一变现 = 回收炉开箱**（隐藏卡残骸没有收购卡、
    *      稀有残骸明确"无市场卡"）、碎片不进市场 ⇒ 无行是设计；
-   *   ④ 名单例外（理由同「挂卖可达契约」的 NO_ROW_OK）：协会保底艇 / 无渠道壳体。
+   *   ④ 名单例外（理由同「挂卖可达契约」的 NO_ROW_OK）：协会保底艇 / 无渠道壳体 / 任务奖励蓝图（`sbp-sandcat`）。
    * 为什么值得一条常驻契约：映射错位（改图鉴主键语义、改某族的 market kind）不会报错，只会让
    * **整类图鉴的按钮静默消失**——玩家看不见"少了个按钮"，只有这条契约会点名。 */
   {
     const jumpCtx = buildSimContext()
-    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus'])
+    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat'])
     const unreleasedRowIds = new Set(
       MARKET_GOODS.filter((g) => (g as { unreleased?: boolean }).unreleased === true).map((g) => g.refId),
     )
@@ -5904,11 +5912,11 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
   /** 任务中心内层标签（`hint.taskTab`；与 panels/Expedition.tsx 的 TaskTabKey 同口径） */
   const TASK_TABS = new Set(['important', 'resource', 'courier', 'bounty'])
   const TRIGGER_KINDS = new Set([
-    'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt', 'tutorial',
+    'start', 'day', 'explored', 'galaxy', 'skill', 'isk', 'siteBuilt',
     // 2026-09-12 星系机制通讯：低安空域（**低安 = sec ≤ 0，含 0**，与伏击掷骰同源）· 某族敌人所在的星系
     'lowSec', 'foeFamily',
   // 2026-09-16 首次遭遇某敌舰级（船长：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯）
-  'foeShipSeen',
+  'foeShipSeen', 'firstTask',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
@@ -6057,13 +6065,6 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         break
       case 'siteBuilt':
         check(siteIds.has(m.trigger.siteId), `通讯 ${m.id} 指向的建站点不存在：${m.trigger.siteId}`)
-        break
-      case 'tutorial':
-        // 教程通讯：0 = 序章简报（信息库检索重启），1..TUTORIAL_TOTAL = 七步教程（与 core 的 ONB_* 同值）
-        check(
-          Number.isInteger(m.trigger.step) && m.trigger.step >= 0 && m.trigger.step <= TUTORIAL_TOTAL,
-          `通讯 ${m.id} tutorial.step 应在 0..${TUTORIAL_TOTAL}：${m.trigger.step}`,
-        )
         break
       case 'lowSec':
         // 死触发器守卫（2026-09-12 星系机制通讯）：数据里必须真的存在低安星系，否则这封信永远不会送达。

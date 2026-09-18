@@ -27,7 +27,7 @@ import {
   gainAiCore,
   idleAiShipIds,
 } from '../src/ai'
-import { anomaly, makeTestCtx, fittedOf, ship } from './helpers'
+import { anomaly, makeTestCtx, fittedOf, ship, skipFirstSkillReward } from './helpers'
 import { aiWinPreview } from '../src/combat'
 import { startRefineRun, stopRefineRun } from '../src/industry'
 import { startManufacturing, cancelManufacturing } from '../src/manufacturing'
@@ -84,6 +84,8 @@ describe('AI 核心库与名额', () => {
   it('启用上限 = AI 核心上限技能贡献（现唯一 = AI 核心操作学等级）；Lv0 = 0 不能启用', () => {
     expect(aiCoreCap(state, ctx)).toBe(0)
     state.skills.trained['ai-expert'] = 2
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     expect(aiCoreCap(state, ctx)).toBe(2)
   })
 
@@ -109,6 +111,8 @@ describe('AI 核心库与名额', () => {
     expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull()
     // 共用上限满、扩容还有空余：产业照常放行（副船仍拦截）
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.fleet['sandcat2'] = {
       durability: 1,
       armorPct: 1,
@@ -133,6 +137,8 @@ describe('AI 采矿任务', () => {
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 42 })
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     // 舰队加一艘可指派的空闲船（sandcat2：100 m³ / 6s / 每循环 5 单位）
     state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state, 'basic', 2)
@@ -191,6 +197,8 @@ describe('AI 采矿任务', () => {
     // 阿尔法 75%：6s/0.75 = 8 秒一个循环
     const state2 = createInitialState({ nowWallMs: 0, seed: 42 })
     state2.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state2)
     state2.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state2, 'alpha', 1)
     assignAiMining(state2, 'sandcat2', 'alpha', 'belt-a', ctx)
@@ -296,6 +304,8 @@ describe('AI 采矿任务', () => {
     const bal = makeTestCtx().balance
     const p1Ctx = makeTestCtx({ balance: { ...bal, richVeinChance: 5 } })
     state.skills.trained['ai-expert'] = 2
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.fleet['sandcat3'] = { defId: 'sandcat2', durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', p1Ctx).ok).toBe(true)
     expect(assignAiMining(state, 'sandcat3', 'basic', 'belt-a', p1Ctx).ok).toBe(true)
@@ -319,6 +329,8 @@ describe('AI 打捞任务', () => {
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state, 'basic', 1)
     ctx = makeTestCtx()
@@ -352,6 +364,8 @@ describe('AI 远征任务', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
     const ctx = makeTestCtx({ anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2, reward: 8_000 })] })
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     gainAiCore(state, 'basic', 1)
     state.completedBounties.push('ano-easy') // 已亲手首胜（原解锁前提）
@@ -369,6 +383,8 @@ describe('AI 远征任务', () => {
       const state = createInitialState({ nowWallMs: 0, seed: seedNum })
       const ctx = makeTestCtx({ anomalies: [anomaly('ano-easy', 'galaxy-hub', { threat: 2, reward: 8_000 })] })
       state.skills.trained['ai-expert'] = 1
+      // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+      skipFirstSkillReward(state)
       state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
       // 模拟旧档：任务进行中=核心已被占用（库存 0），善后应归还 1 颗
       state.completedBounties.push('ano-easy')
@@ -411,6 +427,8 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
 
   it('AI 炉占用启用数：满额再开拒；停炉即释放', () => {
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     expect(aiCoreUsed(state)).toBe(1)
     const r2 = startRefineRun(state, 'ore-a', 'basic', ctx)
@@ -423,6 +441,8 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
 
   it('AI 副船任务与 AI 炉互占名额（同一上限池）', () => {
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
     expect(aiCoreUsed(state)).toBe(1)
     const r = startRefineRun(state, 'ore-a', 'basic', ctx)
@@ -434,6 +454,8 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
 
   it('玩家反馈修复（2026-09-09）：站内工业占用先抵工业扩容工位——工业核心全开不再拦截副船任务', () => {
     state.skills.trained['ai-expert'] = 1 // 共用 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.skills.trained['industrial-ai-cap'] = 1 // 工业扩容 2 → 站内总容量 1+2=3
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
@@ -455,6 +477,8 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
 
   it('工业占用超出工业扩容的部分，才计入副船共用名额（与引擎同口径）', () => {
     state.skills.trained['ai-expert'] = 2 // 共用 2
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.skills.trained['industrial-ai-cap'] = 1 // 工业扩容 2 → 站内总容量 2+2=4
     // sandcat3 不在默认 ctx 舰船目录 → 本测试用追加了该船的 ctx2 指派对
     const ctx2 = makeTestCtx({ ships: [ship('sandcat3', { cargo: 100, cycle: 6, perCycle: 5 })] })
@@ -481,6 +505,8 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
 
   it('制造线同池：Lv2 炉+线并行；第三处（副船）满额拒；停/取消后释放', () => {
     state.skills.trained['ai-expert'] = 2
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.blueprintStock['bp-a'] = 1
     learnBlueprint(state, ctx, 'bp-a')
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
@@ -498,9 +524,13 @@ describe('AI 核心统一启用上限（2026-09-08 船长定：AI 副船任务�
 
   it('存量超限（读档/技能低于占用）不中断：照常结算归还，但新启用被拒直到降到上限内', () => {
     state.skills.trained['ai-expert'] = 2
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
     state.skills.trained['ai-expert'] = 1 // 模拟技能低于当前占用（读档/变更后）
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     expect(aiCoreUsed(state)).toBe(2) // 存量仍计入
     const blocked = startRefineRun(state, 'ore-a', 'basic', ctx)
     expect(blocked.ok).toBe(false)
@@ -531,6 +561,8 @@ describe('AI 执勤船 × 切换驾驶（2026-09-09 bug 回归：伽玛核心丢
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.skills.trained['ai-expert'] = 1
+    // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+    skipFirstSkillReward(state)
     state.fleet['sandcat2'] = {
       durability: 1,
       cargo: {},

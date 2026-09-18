@@ -36,8 +36,10 @@ import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
-import { advanceFindHumans, advanceOnboardingAuto } from './onboarding'
+import { advanceFindHumans } from './onboarding'
 import { advanceComms } from './comms'
+import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks } from './firstTasks'
+import { grantFirstReward } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -167,11 +169,34 @@ export function advanceGame(
   // 离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）
   advanceSideTasks(state, ctx, opts?.nowWallMs)
   // 序章·苏醒：教程自动推进判定（采集达标/修复完成/技能归档/分身就位；廉价，仅教程进行中）
-  advanceOnboardingAuto(state, ctx)
   // 通讯收件箱（2026-09-11）：数据消息按触发条件送达 + 未读记账（幂等；表为空时零开销）
   advanceComms(state, ctx)
   // 贯穿任务「寻找人类」阶段目标：探索全部星系（里程碑只记一次；未发布/已完成时零开销）
   advanceFindHumans(state, ctx)
+  /**
+   * **「第一次」任务系列 ＋ 后续次数链**（2026-09-17 教程重做批 · 阶段②）：判定达成 ⇒ 写
+   * `importantTasks[id].done`（**只置一次**，奖励/通讯据此去重）。
+   * ⚠ 本阶段**不写日志、不发通讯**——保持"离线事件条数"等既有口径逐字不变；
+   * 阶段②b 接通讯与奖励，阶段③把任务画进任务中心。
+   */
+  for (const id of advanceFirstTasks(state, ctx)) {
+    const def = FIRST_TASKS.find((d) => d.id === id)
+    // 发奖（2026-09-18：奖励表扩充到六个口袋，发放逻辑拆到 `firstRewards.ts`；名字由 ctx 查内容表得到）
+    if (def) {
+      grantFirstReward(state, ctx, def, (kind, id2) =>
+        kind === 'blueprint'
+          ? (ctx.blueprints.get(id2)?.name ?? ctx.shipBlueprints.get(id2)?.name ?? id2)
+          : kind === 'ware'
+            ? (ctx.items.get(id2)?.name ?? id2)
+            : kind === 'module'
+              ? (ctx.modules.get(id2)?.name ?? id2)
+              : (ctx.ships.get(id2)?.name ?? id2),
+      )
+    }
+  }
+  // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
+  // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。
+  advanceFirstChains(state)
 }
 
 /** 技能队列推进（内部函数，不对外） */
