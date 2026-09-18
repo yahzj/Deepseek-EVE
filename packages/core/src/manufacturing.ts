@@ -461,6 +461,10 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         // 与 AI 核心代造（含离线期间造的）都从这一处出水 ⇒ 通讯说的"造好第一条船"与产出入仓是**同一个事实**，
         // 不会各说各的；只置一次（已经是 true 就不再写，避免无谓的存档变动）。
         if (state.firstShipBuilt !== true) state.firstShipBuilt = true
+        // 「第一条船」与「造船厂主」链的计数落点（2026-09-18 修）：**造船交付这一处**才是
+        // "造出自造船"的事实。⚠ 原先这一行被落在 `shipyard.unstoreShip`（从舰船仓库**转入舰队**）里
+        // ⇒ 玩家按正常路径造船时 `ships` 永不增加、「第一条船」判不过（探针实测 90 分钟游戏时间也完不成）。
+        bumpFirst(state, 'ships')
         addLog(
           state,
           'info',

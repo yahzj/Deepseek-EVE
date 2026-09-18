@@ -27,7 +27,9 @@ import {
 import { startMining, getMiningParams } from '../src/mining'
 import { fitModule } from '../src/equipment'
 import { startRecycleRun, startRefineRun } from '../src/industry'
-import { repairShip } from '../src/shipyard'
+import { repairShip, unstoreShip } from '../src/shipyard'
+import { learnBlueprint } from '../src/market'
+import { startManufacturing } from '../src/manufacturing'
 import { startScan, HOME_SCAN_WINDOW_MS, scanWindowMsFor } from '../src/explore'
 import { countAiCore } from '../src/ai'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -189,6 +191,27 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-produce']?.done).toBe(true)
     expect(state.blueprintStock['sbp-sandcat']).toBe(1)
+  })
+
+  it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
+    const state = testState()
+    // 备料 + 学会沙猫级蓝图（正常路径里蓝图来自「第一次生产」的奖励）
+    state.blueprintStock['sbp-sandcat'] = 1
+    expect(learnBlueprint(state, ctx, 'sbp-sandcat').ok).toBe(true)
+    state.warehouse.items['min-tritanium'] = 400
+    state.warehouse.items['min-pyerite'] = 100
+    expect(firstStatOf(state, 'ships')).toBe(0)
+    expect(startManufacturing(state, 'sbp-sandcat', 'pilot', ctx).ok).toBe(true)
+    // 工期 15 分钟（`sbp-sandcat.buildSeconds`）——推进到交付
+    for (let i = 0; i < 60 && firstStatOf(state, 'ships') === 0; i++) advanceGame(state, 30_000, ctx)
+    expect(firstStatOf(state, 'ships')).toBe(1)
+    expect(state.firstShipBuilt).toBe(true)
+    expect(state.importantTasks['first-ship']?.done).toBe(true)
+
+    // 反例：仓库转舰队（原先误挂计数的那条路径）不该再加
+    state.shipStore = { ...(state.shipStore ?? {}), sandcat: 1 }
+    expect(unstoreShip(state, 'sandcat', ctx).ok).toBe(true)
+    expect(firstStatOf(state, 'ships')).toBe(1)
   })
 
   it('任务中心序列：可领奖置顶 · 已全部完成（链满档且没得领）隐藏（船长 2026-09-18 两条 UI 规矩）', () => {
