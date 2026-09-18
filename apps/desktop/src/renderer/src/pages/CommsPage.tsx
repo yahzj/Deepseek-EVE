@@ -75,11 +75,6 @@ export function CommsPage({
     onToast(n > 0 ? `已把 ${n} 封通讯标为已读。` : '收件箱里没有未读通讯。')
   }
 
-  /** 消息自带动作（只有序章简报的「开始教程」）；失败按错误文案提示 */
-  function runCommsAction(command: NonNullable<CommsEntryView['action']>['command']): void {
-    const r = engine.runCommsActionAt(command)
-    onToast(r.ok ? '教程已开始——按顶部指引走第一步。' : (r.error ?? '这封通讯上的动作暂不可用。'), !r.ok)
-  }
 
   return (
     <div className="page-stack page-fill">
@@ -141,7 +136,7 @@ export function CommsPage({
                 <CommsDeviceFrame />
                 <div className="app-comms-body-col">
                   {current ? <CommsScreen entry={current} /> : <div className="app-comms-screen" />}
-                  {current ? <CommsEave entry={current} onGoto={onGoto} onAction={runCommsAction} /> : null}
+                  {current ? <CommsEave entry={current} onGoto={onGoto} /> : null}
                 </div>
               </div>
             </div>

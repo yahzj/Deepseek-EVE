@@ -12,6 +12,7 @@
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
 import { tuningMul } from './tuning'
+import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
@@ -48,7 +49,6 @@ import {
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules } from './equipment'
-import { claimTutorialTrialReward } from './onboarding'
 import {
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
@@ -545,6 +545,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       lootText.push(`${ctx.items.get(row.itemId)?.name ?? row.itemId}×${units}`)
     }
     state.wallet.isk += reward
+  bumpFirst(state, 'bountyWins') // 第一次任务/链：讨伐胜场
     // B3 击杀注入（2026-09-10 船长定）：威胁 ×0.4 × (1 + 0.2×敌人数)，无上限（窝点按强化后威胁算）
     injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(battleCard.threat, bountyEnemyCount(battleCard)))
     const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
@@ -599,8 +600,6 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         state.rareWreckDryStreak = streak // 空手：累计（下次掷骰时判保底）
       }
     }
-    // 序章·苏醒：教学战（演习场驱逐令）取胜 → 发放试炼奖励并推进教程步骤
-    claimTutorialTrialReward(state, anomaly.id)
     // T8 悬赏冷却：结算时刻开始计时（与自动返航并行）
     setBountyCooldown(state, ctx, anomaly.id)
     exp.battle = null

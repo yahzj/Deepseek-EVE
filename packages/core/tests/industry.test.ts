@@ -9,7 +9,7 @@ import { countItem, countWare } from '../src/inventory'
 import { buyShip, refineRate, sellAll, sellWareItem, startRefineRun, stopRefineRun, refineRunViews } from '../src/industry'
 import { advanceGame } from '../src/engine'
 import { countAiCore } from '../src/ai'
-import { makeTestCtx, ship, skill } from './helpers'
+import { makeTestCtx, ship, skill, skipFirstSkillReward } from './helpers'
 
 describe('精炼与市场（M1 经济）', () => {
   let state: GameState
@@ -37,6 +37,8 @@ describe('精炼与市场（M1 经济）', () => {
     // 2026-09-08 AI 核心上限制：本组 AI 炉用例需「AI 核心上限」资格（Lv5 足够覆盖多台并行用例）
     beforeEach(() => {
       state.skills.trained['ai-expert'] = 5
+      // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+      skipFirstSkillReward(state)
     })
     // 测试 fixture 无单批参数 → 兜底：10 单位/批、6 秒/批（100 单位 = 10 批 = 60s）
     const totalUnits = 100

@@ -69,6 +69,67 @@ const TIP_ATTR = 'data-tip'
  */
 const TIP_HOVER_ATTR = 'data-tip-hover'
 
+/**
+ * **把元素自身与整条祖先链上的 `title` 置空**（记原值，离开时放回）——原生提示与富卡两条路共用一份记账。
+ *
+ * 为什么是「链」：浏览器在悬停元素自身没有 `title` 时**会顺着祖先链找最近的一条**并弹系统默认提示
+ *（2026-09-15 船长报的「按钮提示和上一级冲突」就是这条回退）⇒ 只清自己那颗必然漏。
+ *
+ * 为什么**进入就压、而不是停够延迟再压**（2026-09-17 船长二次报障「默认的悬停 title 和新的悬浮窗
+ * 会同时出现」的根治点）：浏览器原生提示与我们的自绘提示**延迟同一档**（都约 500ms）——等延迟到点才
+ * 置空，原生提示往往已经先弹出来了，随后自绘提示再弹一次 ⇒ 同屏两个。改成**指针一进就置空**：
+ * 原生提示永远没机会弹，延迟只用来决定「我们这条什么时候画出来」。
+ */
+/** `n` = 压住这条元素的属主数：接管层与富卡可能同时压同一批元素 ⇒ 引用计数，减到 0 才真的还原 */
+let mutedChain: Array<{ el: Element; text: string; n: number }> = []
+
+/** 压住 `el` 自身与祖先链上的 `title`（引用计数 +1；承诺调用方离开时按同一条链 `releaseTitleChain` 一次） */
+function muteTitleChain(el: Element): void {
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    const t = n.getAttribute('title')
+    const rec = mutedChain.find((m) => m.el === n)
+    if (rec) {
+      if (t !== null && t !== '') {
+        rec.text = t // React 写了新值（读数型 title 会变）⇒ 以新值为「原值」
+        n.setAttribute('title', '')
+      }
+      rec.n += 1
+      continue
+    }
+    if (t !== null && t !== '') {
+      mutedChain.push({ el: n, text: t, n: 1 })
+      n.setAttribute('title', '')
+    }
+  }
+}
+
+/** 只补压、不再计数（同一属主的重复压制：React 把 `title` 写回来了；链上新出现的祖先算本次这一份） */
+function reblankTitleChain(el: Element): void {
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    const t = n.getAttribute('title')
+    if (t === null || t === '') continue
+    const rec = mutedChain.find((m) => m.el === n)
+    if (rec) rec.text = t
+    else mutedChain.push({ el: n, text: t, n: 1 })
+    n.setAttribute('title', '')
+  }
+}
+
+/** 某个属主放手：走同一条链把计数减一，减到 0 才还原（元素当前已有非空 title ⇒ 作者层自己写的，以它为准） */
+function releaseTitleChain(el: Element): void {
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    const i = mutedChain.findIndex((m) => m.el === n)
+    if (i < 0) continue
+    const rec = mutedChain[i]!
+    rec.n -= 1
+    if (rec.n > 0) continue
+    mutedChain.splice(i, 1)
+    if (!rec.el.isConnected) continue // 已从文档里摘掉的元素不用还
+    const now = rec.el.getAttribute('title')
+    if (now === null || now === '') rec.el.setAttribute('title', rec.text)
+  }
+}
+
 const listeners = new Set<(s: TipState | null) => void>()
 let current: TipState | null = null
 let raf = 0
@@ -206,10 +267,23 @@ export function hoverTipProps(content: ReactNode): {
 } {
   const me = {}
   let last: { x: number; y: number } = { x: 0, y: 0 }
+  /** 本次悬停压住的那颗元素（离开时只放自己这一份；`null` = 没压过） */
+  let mutedEl: Element | null = null
   return {
     [TIP_HOVER_ATTR]: '1',
     onMouseEnter: (e: HoverEnterEvent) => {
       if (deeperOwnerWins(e)) return
+      /**
+       * ★ **富卡这条路同样要压掉原生提示**（2026-09-17 船长报「默认的悬停 title 和新的悬浮窗同时出现」）：
+       * 接管层只压"有 `title`/`data-tip` 的那些元素"，而富卡元素走的是本路径 ⇒ 若它自身或**祖先卡片/行**
+       * 上有原生 `title`，浏览器就会顺着祖先链把系统提示弹出来、与富卡同屏。压法与接管层共用同一份记账
+       * （模块级 `muteTitleChain` / `releaseTitleChain`，引用计数：两条路可同时压同一批元素），**指针一进就压**、离开时只放自己这一份。
+       */
+      const el = e.currentTarget as unknown as Element | null
+      if (el && typeof el.closest === 'function' && mutedEl === null) {
+        muteTitleChain(el)
+        mutedEl = el
+      }
       last = { x: e.clientX, y: e.clientY }
       if (shownOwner === me) return // 从内部子元素绕回来：已经在展示，不重启延迟
       cancelPending()
@@ -227,6 +301,10 @@ export function hoverTipProps(content: ReactNode): {
       if (shownOwner === me) moveTip(content, last.x, last.y)
     },
     onMouseLeave: () => {
+      if (mutedEl !== null) {
+        releaseTitleChain(mutedEl)
+        mutedEl = null
+      }
       if (pendingOwner === me) cancelPending()
       if (shownOwner === me) {
         shownOwner = null
@@ -313,6 +391,8 @@ export function TooltipLayer(): ReactNode {
     let hoveredAt = 0
     /** 已接管、正在展示自绘提示（`svgTitle` 非空 = A 类：清的是它的文本） */
     let shown: { el: Element; text: string; svgTitle: Element | null; from: 'title' | 'tip' | 'stash' } | null = null
+    /** 已被我们压住的原生提示源（**进入即压**；与「是否已展示自绘提示」分开记账） */
+    let mutedSrc: TipSrc | null = null
     let obs: MutationObserver | null = null
 
     type TipSrc = { el: Element; text: string; svgTitle: Element | null; from: 'title' | 'tip' | 'stash' }
@@ -326,6 +406,14 @@ export function TooltipLayer(): ReactNode {
       const attrEl = el.closest(`[title], [${TIP_ATTR}], [${TIP_STASH_ATTR}]`)
       if (attrEl) {
         if (attrEl.hasAttribute(TIP_HOVER_ATTR)) return null
+        /**
+         * **富卡元素比这个 title 源更深 ⇒ 让富卡那条路赢**（内层优先）。
+         * 不加这条：指针在富卡元素上、而它的**祖先容器**带 `title` 时，本层会把那个祖先的 title 当成提示源
+         * 接管起来（`closest` 沿链找到的就是它）⇒ 500ms 后拿祖先文本把富卡顶掉（同一时刻只有一条自绘提示）。
+         * ⚠ 本仓当前**没有**这种嵌套（`ui:tip-check` ② 判据实测 0 处），这是防日后接线踩到。
+         */
+        const richOwner = el.closest(`[${TIP_HOVER_ATTR}]`)
+        if (richOwner && attrEl !== richOwner && attrEl.contains(richOwner)) return null
         const rawTitle = attrEl.getAttribute('title')
         const title = rawTitle !== null && rawTitle !== '' ? rawTitle : null
         const authored = attrEl.getAttribute(TIP_ATTR)
@@ -341,62 +429,47 @@ export function TooltipLayer(): ReactNode {
       return null
     }
 
-    /**
-     * **接管期间把祖先链上的 `title` 一并压住**（写空串，离开时按记录恢复）。
-     *
-     * 为什么不止压被接管的那一个：船长 2026-09-15 报的「按钮的提示会和**上一级**的悬浮提示相互冲突」——
-     * 站内自绘提示由我们画，而"上一级"的提示可能来自**浏览器原生 title**（祖先卡片/行上那个）。
-     * 只把按钮自己的 title 摘掉/置空，浏览器仍可能顺着祖先链找到卡片那条 title 弹系统提示。
-     * ⇒ 接管时**整条祖先链上的 title 全部置空**（记下原值），离开时逐个还原（React 若已写新值则以新值为准）。
-     */
-    let mutedAncestors: Array<{ el: Element; text: string }> = []
-    const muteAncestors = (el: Element): void => {
-      mutedAncestors = []
-      for (let n = el.parentElement; n; n = n.parentElement) {
-        const t = n.getAttribute('title')
-        if (t !== null && t !== '') {
-          mutedAncestors.push({ el: n, text: t })
-          n.setAttribute('title', '')
-        }
-      }
-    }
-    const restoreAncestors = (): void => {
-      for (const a of mutedAncestors) {
-        const now = a.el.getAttribute('title')
-        if (now === null || now === '') a.el.setAttribute('title', a.text)
-      }
-      mutedAncestors = []
-    }
+    // 整链压制与还原走模块级的 `muteTitleChain` / `restoreTitleChain`（与富卡那条路共用一份记账）
 
     /**
-     * 摘掉原生提示源（A 类清文本 / `title` 属性**改成空串**）。
+     * **压住原生提示源**（A 类 = 清空 SVG `<title>` 文本；B 类 = `title` 文本挪进暂存 ＋ 整链置空）。
      *
-     * ⚠ **2026-09-15 改法**（船长报「鼠标悬浮按钮的提示会和上一级的悬浮提示相互冲突」的根治点之一）：
-     * 旧实现 `removeAttribute('title')` 摘掉之后，指针下这个元素就"没有 title"了 ⇒ 浏览器**顺着祖先链
-     * 找到上一级卡片/行的 title、弹出系统默认提示**，与站内自绘的按钮提示同时在场（正是那种"冲突"）。
-     * 改成写**空 title**：空 title 自己不弹提示，同时**截断祖先链的 title 查找**；再把整条祖先链的
-     * title 一并压住（`muteAncestors`）⇒ 场面上只剩站内自绘提示。原文案仍在 `TIP_STASH_ATTR` 里，
-     * 离开时原样放回。
+     * ⚠ **2026-09-15 第一次修**（船长报「按钮的提示会和上一级的悬浮提示相互冲突」）：
+     * 旧实现 `removeAttribute('title')` 之后，指针下这个元素就"没有 title"了 ⇒ 浏览器**顺着祖先链
+     * 找到上一级卡片/行的 title、弹出系统默认提示** ⇒ 改成写**空 title**（空 title 自己不弹、同时截断
+     * 祖先链查找）＋ 把整条祖先链的 title 一并压住。原文案仍在 `TIP_STASH_ATTR` 里，离开时原样放回。
+     *
+     * ⚠ **2026-09-17 第二次修**（船长报「默认的悬停 title 和新的悬浮窗会同时出现」）：上面这套原先只在
+     * **停够 `TIP_DELAY_MS` 之后**才执行 ⇒ 那 500ms 里原生 title 仍然有效、浏览器原生提示先弹，随后自绘
+     * 提示再弹 ⇒ 同屏两个。现在**指针一进就压**（`armAgain` 调用本函数），延迟只决定「我们这条何时画出来」。
      */
-    const take = (src: TipSrc): void => {
+    const muteNative = (src: TipSrc): void => {
       if (src.svgTitle) {
-        src.svgTitle.textContent = ''
-        muteAncestors(src.el)
-        return
+        if ((src.svgTitle.textContent ?? '') !== '') src.svgTitle.textContent = ''
+      } else if (src.from === 'title') {
+        // 文本挪进暂存：摘走期间仍能认出这个元素（`srcOf`），也继续供自绘提示取文本
+        src.el.setAttribute(TIP_STASH_ATTR, src.text)
       }
-      if (src.from !== 'title') return
-      src.el.setAttribute(TIP_STASH_ATTR, src.text)
-      src.el.setAttribute('title', '')
-      muteAncestors(src.el)
+      const same = mutedSrc !== null && mutedSrc.el === src.el
+      if (mutedSrc !== null && !same) unmuteNative()
+      if (same) reblankTitleChain(src.el)
+      else muteTitleChain(src.el)
+      mutedSrc = src
     }
 
     /** 把原生提示源原样放回并清掉观察器（`data-tip` 作者属性不留痕） */
     const putBack = (): void => {
+      unmuteNative()
+      shown = null
+    }
+
+    /** 还原本次压制（整链 ＋ 暂存属性），并断开观察器 */
+    const unmuteNative = (): void => {
       obs?.disconnect()
       obs = null
-      restoreAncestors()
-      const s = shown
-      shown = null
+      const s = mutedSrc
+      mutedSrc = null
+      if (s) releaseTitleChain(s.el)
       if (!s) return
       if (s.svgTitle) {
         // 展示期间 React 改写过文本 ⇒ `s.text` 已被观察器同步成新值，以新值为准
@@ -428,8 +501,8 @@ export function TooltipLayer(): ReactNode {
       if (performance.now() - hoveredAt < TIP_DELAY_MS) return
       const src = srcOf(el)
       if (!src || src.text.trim() === '') return
+      muteNative(src) // 兜底：B 类（title 悬停期间才写入）与 React 写回都在这里补压
       const a = anchorOf(src.el)
-      take(src)
       shown = { el: src.el, text: src.text, svgTitle: src.svgTitle, from: src.from }
       watch(el, src.svgTitle)
       showTip(src.text, a.x, a.y)
@@ -463,10 +536,8 @@ export function TooltipLayer(): ReactNode {
         } else {
           const fresh = src.text
           if (fresh.trim() === '') return
-          if (src.el.hasAttribute('title')) {
-            src.el.setAttribute(TIP_STASH_ATTR, fresh)
-            src.el.removeAttribute('title')
-          }
+          // React 把 title 写回来了（读数型 title 会随状态变）⇒ 重新压掉；原值以新值为准（见 muteTitleChain）
+          muteNative(src)
           if (fresh === shown.text) return
           shown.text = fresh
         }
@@ -483,6 +554,9 @@ export function TooltipLayer(): ReactNode {
     const armAgain = (el: Element): void => {
       hovered = el
       hoveredAt = performance.now()
+      // ★ 指针一进就压掉原生提示源（不等延迟）——否则浏览器原生提示会与自绘提示同屏（2026-09-17 船长报障）
+      const src0 = srcOf(el)
+      if (src0 && src0.text.trim() !== '') muteNative(src0)
       if (timer !== 0) window.clearTimeout(timer)
       timer = window.setTimeout(() => {
         timer = 0

@@ -18,7 +18,7 @@ import { changeShip } from '../src/shipyard'
 import { shipDisplayName } from '../src/instances'
 import { activityOverview } from '../src/activity'
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
-import { makeTestCtx, galaxy, ship } from './helpers'
+import { makeTestCtx, galaxy, ship, skipFirstSkillReward } from './helpers'
 
 function world() {
   const ctx: SimContext = makeTestCtx({
@@ -29,6 +29,8 @@ function world() {
   state.exploredGalaxies.push('galaxy-far')
   state.aiCores['basic'] = 2
   state.skills.trained['ai-expert'] = 1
+  // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+  skipFirstSkillReward(state)
   return { state, ctx }
 }
 
@@ -43,6 +45,8 @@ function lowWorld() {
   state.exploredGalaxies.push('galaxy-far')
   state.aiCores['basic'] = 2
   state.skills.trained['ai-expert'] = 1
+  // 只考机制、不考「第一次」奖励：预置该任务已完成（否则引擎首拍送一枚基础 AI 核心）
+  skipFirstSkillReward(state)
   return { state, ctx }
 }
 

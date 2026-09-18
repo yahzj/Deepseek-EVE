@@ -25,6 +25,7 @@ import { addWare, cargoUnitM3, freeCargoM3Of } from './inventory'
 import { pullOneWreck, salvagerCyclesOf } from './salvaging'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
+import { bumpFirst } from './firstTasks'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
 import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
 import { travelLegMs } from './travel'
@@ -275,6 +276,7 @@ export function assignAiMining(
   }
 
   spendAiCore(state, coreType)
+  bumpFirst(state, 'aiAssigns') // 第一次任务/链：指派次数
   state.aiAssignments[shipId] = {
     coreType,
     startedAtGameMs: state.gameMs,
@@ -356,6 +358,7 @@ export function assignAiExpedition(
       battle: null,
     },
   }
+  bumpFirst(state, 'aiAssigns') // 第一次任务/链：指派次数
   state.aiAssignments[shipId] = assignment
   const shipName = shipDisplayName(state, ctx, shipId)
   addLog(
@@ -401,6 +404,7 @@ export function assignAiSalvage(
   }
   const eff = aiEfficiency(state, ctx, coreType)
   spendAiCore(state, coreType)
+  bumpFirst(state, 'aiAssigns') // 第一次任务/链：指派次数
   state.aiAssignments[shipId] = {
     coreType,
     startedAtGameMs: state.gameMs,
@@ -456,6 +460,7 @@ export function assignAiStandby(
       phase: 'out',
     },
   }
+  bumpFirst(state, 'aiAssigns') // 第一次任务/链：指派次数
   state.aiAssignments[shipId] = assignment
   const shipName = shipDisplayName(state, ctx, shipId)
   addLog(

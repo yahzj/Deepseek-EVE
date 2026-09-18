@@ -469,17 +469,20 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   )
 }
 
-export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoWormhole }: PageProps & {
+export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoWormhole, focusSec = null }: PageProps & {
   onGotoMarket?: (goodKey: string) => void
   onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void
   /** 「去虫洞（遗迹打捞）」：跳星图 · 出港 · 扫描虫洞（船长 2026-09-14：虫洞专属图纸市场买不到；
    *  声望不达标时组装机那张卡自己会置灰，不会走到这里） */
   onGotoWormhole?: () => void
+  /** **内层段定位**（船长 2026-09-18：「第一次」卡片的跳转按钮要直达精炼炉 / 组装机）——
+   *  页在切走时重挂载（`key={page}`）⇒ 取初值即可，不必 seq 机制。 */
+  focusSec?: 'refine' | 'shelf' | 'craft' | null
 }) {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
 
-  const [sec, setSec] = useState<'refine' | 'shelf' | 'craft'>('refine')
+  const [sec, setSec] = useState<'refine' | 'shelf' | 'craft'>(focusSec ?? 'refine')
   /**
    * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：
    * `furnaceTab` = 一级（活计大类）· `sub` = 二级（资源大类 / 残骸档位；`''` = 全部子类）。

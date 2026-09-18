@@ -784,7 +784,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         k: '隐秘行动',
         v: `本舰武器开火之前隐身 ${mod.stealthMs / 1000} 秒（敌方无法锁定、无法攻击；一开火立即现形，超时也现形）`,
       })
-      lines.push({ k: '装置限制', v: '装着推进器时本装置直接失效（船一动就藏不住）' })
+      lines.push({ k: '装置限制', v: '装着推进器时本装置失效' })
     }
     // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {

@@ -34,12 +34,13 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
   const unread = latest !== null && latest.id !== seen
   const autoShownRef = useRef(false)
 
-  // 启动自动弹一次：非序章演出 / 非教程步骤 1..7 / 非交火中
+  // 启动自动弹一次：非序章演出中 / 非交火中
   useEffect(() => {
     if (autoShownRef.current || !unread || !latest) return
     const s = engine.state
-    const tut = s.onboarding.step
-    if (tut === 0 || (tut >= 1 && tut <= 7)) return
+    // 序章演出（step 0）盖着全屏，此刻弹公告只会压在演出上；演出一结束即可弹
+    // （2026-09-17 教程重做：原先还要跳过"教程步骤 1..7"，那七步已退场，只剩演出态这一档）
+    if (s.onboarding.step === 0) return
     // ⚠ 2026-09-14 修：洞内战斗宿主在 `state.wormhole.run.battle`（不占 `expedition.battle`）——
     //   原先只挡远征 ⇒ 洞里鏖战时公告照样弹出来挡住战场。
     if (s.expedition.battle || s.wormhole.run?.battle) return

@@ -331,6 +331,21 @@ export function wormholeStockPush(state: GameState, ctx: SimContext): WormholeSt
 }
 
 /**
+ * **任务奖励：标记 N 处未探索虫洞进库存**（2026-09-18 船长：「第一次虫洞给予玩家两次虫洞探索」）。
+ *
+ * 口径与限时促销赠送**逐条一致**（见 `reconcileWormholePromoGift` 的注释）：一次性奖励不该被库存上限吃掉
+ * ⇒ 走 `stockPushUncapped`（**允许暂时超上限**）；超上限期间扫描照旧停机，玩家用掉降到上限以下即恢复。
+ * 返回实际发放处数。
+ */
+export function grantWormholeStock(state: GameState, ctx: SimContext, count: number): number {
+  const n = Math.max(0, Math.floor(count))
+  if (n <= 0) return 0
+  for (let i = 0; i < n; i++) stockPushUncapped(state, ctx)
+  addLog(state, 'info', `🛰 已标记 ${n} 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时探索。`)
+  return n
+}
+
+/**
  * **限时促销的一次性赠送**（2026-09-16 船长四条口径：「**每人只发一次 5 个**」「**只给已解锁者**」
  * 「到期**只停止赠送**（不回收）」＋ 展示与扫描加速合并）。
  *

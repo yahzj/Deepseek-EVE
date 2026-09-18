@@ -18,6 +18,7 @@
  */
 import { tuningMul } from './tuning'
 import { addLog, miningHalt, wormholePilotHoldReason } from './state'
+import { bumpFirst } from './firstTasks'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState, MiningState } from './state'
@@ -31,7 +32,6 @@ import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { familyModules } from './equipment'
-import { ONB_MINE, TUTORIAL_MINE_GOAL } from './onboarding'
 import { scaledReturnMs } from './trips'
 
 /** 一次循环的实际参数（技能+装备加成后的最终值） */
@@ -197,15 +197,19 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再开采。' }
-  // 挂星系的采集点必须能从母港到达（无航路 → 拒绝）
+  /**
+   * V13 探索封锁：**采集点所在星系未点亮 ⇒ 拒绝开工**。
+   * ⚠ **2026-09-17 船长改口径**：「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」
+   * ⇒ 原先这条只作用于**非母港**的采集点（母港当时恒为已探索），现对**所有**采集点生效。
+   */
+  const block = actionBlockReason(state, belt.galaxyId)
+  if (block) return { ok: false, error: block }
+  // 挂外系星系的采集点还必须能从母港到达（无航路 → 拒绝）
   if (belt.galaxyId && belt.galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, belt.galaxyId)
     if (!Number.isFinite(travel)) {
       return { ok: false, error: `「${belt.name}」所在星系没有从母港可达的航线，无法前往开采。` }
     }
-    // V13 探索封锁：所在星系未点亮（且非母港）→ 拒绝开工
-    const block = actionBlockReason(state, belt.galaxyId)
-    if (block) return { ok: false, error: block }
   }
   return { ok: true }
 }
@@ -357,8 +361,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           'info',
           `自动返港：已把货仓全部卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} 单位，本趟采得 ${oreName}×${trip}）。`,
         )
-        // 序章·苏醒 教学首单：卸货后停在港（等玩家去任务中心交付），不自动续采
-        if (m.stopAfterTrip || !m.autoCycle || state.onboarding.step === ONB_MINE) {
+        if (m.stopAfterTrip || !m.autoCycle) {
           // 按设定结束循环
           m.active = false
           m.beltId = null
@@ -469,28 +472,8 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       addLog(state, 'info', `富矿脉！连续 2 个循环产量 ×3，本循环获得 ${units} 单位${oreNow.name}。`)
     }
     addItem(state, oreNow.id, units)
+    bumpFirst(state, 'mineUnits', units) // 第一次任务/链：累计原矿单位（2026-09-17 教程重做批）
     m.tripUnits += units
-
-    // 序章·苏醒 教学首单（船长 2026-09-05 拍板：不等到满舱，采足即返港卸货；2026-09-08 采足量
-    // 20 → TUTORIAL_MINE_GOAL=50：交付只需 20，多采的留给出售教学——采足 50（约 5 循环）才返航）
-    if (state.onboarding.step === ONB_MINE && m.tripUnits >= TUTORIAL_MINE_GOAL) {
-      m.phase = 'returning'
-      m.phaseAccMs = 0
-      const stGalNow2 = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
-      const mergedMs2 = scaledReturnMs(
-        oneLegMs(state, ctx, m.beltId, undefined, stGalNow2) +
-          oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow2),
-        state,
-        ctx,
-        state.shipId,
-      )
-      addLog(
-        state,
-        'info',
-        `教学首单已采足（本趟 ${m.tripUnits} 单位${oreNow.name}）：自动返港卸货（返航约 ${Math.max(1, Math.round(mergedMs2 / 1000))} 秒）。`,
-      )
-      continue // 剩余时间转入返航阶段
-    }
   }
 }
 

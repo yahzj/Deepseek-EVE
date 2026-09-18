@@ -176,15 +176,18 @@ describe('专属内容上市场（2026-09-14 船长「允许玩家挂卖」批�
     expect(sawBogusDrone).toBe(false)
   })
 
-  it('⑦ 沙猫级与邓氏鱼级**有意不补**（例外表）：其余可获得内容全部有市场行', () => {
+  it('⑦ 例外表（有意不补市场行）：沙猫级 / 邓氏鱼级 / 沙猫级舰船蓝图；其余可获得内容全部有市场行', () => {
     const rowKeys = new Set(MARKET_GOODS.map((g) => g.refId))
     expect(rowKeys.has('sandcat')).toBe(false)
     expect(rowKeys.has('sh-dunkleosteus')).toBe(false)
+    // 2026-09-18 船长裁定新建的沙猫级舰船蓝图只作「第一次生产」的任务奖励发放，不进市场
+    expect(rowKeys.has('sbp-sandcat')).toBe(false)
+    const noRowOk = ['sandcat', 'sh-dunkleosteus', 'sbp-sandcat']
     const gaps: string[] = []
-    for (const it of ITEMS) if (itemReleased(it) && !rowKeys.has(it.id) && !['sandcat', 'sh-dunkleosteus'].includes(it.id)) gaps.push(it.id)
+    for (const it of ITEMS) if (itemReleased(it) && !rowKeys.has(it.id) && !noRowOk.includes(it.id)) gaps.push(it.id)
     for (const m of MODULES) if (itemReleased(m) && !rowKeys.has(m.id)) gaps.push(m.id)
     for (const b of BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id)) gaps.push(b.id)
-    for (const b of SHIP_BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id)) gaps.push(b.id)
+    for (const b of SHIP_BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id) && !noRowOk.includes(b.id)) gaps.push(b.id)
     expect(gaps).toEqual([])
   })
 })

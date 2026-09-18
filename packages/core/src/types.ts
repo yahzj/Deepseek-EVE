@@ -1255,13 +1255,14 @@ export interface ModuleDef {
    */
   repairFree?: boolean
   /**
-   * **修复量按平值结算**（**不**吃层容量加成）——2026-09-17 船长给「生体甲壳板」的口径：
-   * 「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」。
+   * **修复量按平值结算**（**不**吃层容量加成）——2026-09-17 船长两次点名给的口径：
+   * 「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」＋「**损管腔也一同修改**」。
    *
    * 背景：2026-09-16 船长定「维修量**统一吃**层容量加成」（额外护甲/结构加成会按同比例抬高每跳修复量，
-   * 与修理组件同一把尺）——本字段是那条的**单件例外**：填 true 的件每跳 = `repairArmorHp/HullHp × 曲线权重`，
+   * 与修理组件同一把尺）——本字段是那条的**例外**：填 true 的件每跳 = `repairArmorHp/HullHp × 曲线权重`，
    * 不乘 `layerAmpOf` 的 `a/h`。只对**无消耗自愈**类件有意义（耗组件装置照旧吃加成）。
-   * ⚠ 只给船长点名的那一件写，别"顺手补齐"同类件。
+   * 现持有人 = **生体甲壳板（装甲）＋ 生体损管腔（结构）**，2026-09-17 同批落的。
+   * ⚠ 再有新件要不要开例外，等船长点名，别自行补齐。
    */
   repairIgnoresCapacityAmp?: boolean
   /* ═══ 2026-09-14 护盾充能装置（船长：「和船体修理装置类似。每 30 秒恢复自身护盾最大值一定比例
@@ -2149,9 +2150,9 @@ export interface CommsFactionDef {
 
 /* ═══════════════ 通讯（2026-09-11 船长定：NPC 以"发消息"补充剧情与任务提示） ═══════════════ */
 
-/** 通讯跳转目标页（裁决③：消息只给提示 + 跳转，不在通讯页里接任务）。`comms` = 回本页（简报里用） */
+/** 通讯跳转目标页（裁决③：消息只给提示 + 跳转，不在通讯页里接任务）。`comms` = 回本页 */
 /**
- * 通讯消息/教程步骤的**跳转目标页**。
+ * 通讯消息的**跳转目标页**。
  *
  * ⚠ 2026-09-14 起新增 `'task'`：**任务中心已从星图页的一个选项卡搬成独立一级页**
  * （船长：「将任务中心界面移出星图，放入左侧导航栏，通讯的上方」）⇒ 指向任务中心的跳转
@@ -2166,19 +2167,15 @@ export type CommsJumpPage = 'map' | 'ship' | 'fit' | 'items' | 'market' | 'indus
  */
 export type CommsTrigger =
   | { kind: 'start' }
+  /** **「第一次」任务已完成**（2026-09-17 教程重做批）：读 importantTasks[taskId].done */
+  | { kind: 'firstTask'; taskId: string }
   | { kind: 'day'; days: number }
   | { kind: 'explored'; count: number }
   | { kind: 'galaxy'; galaxyId: string }
   | { kind: 'skill'; skillId: string; level: number }
   | { kind: 'isk'; amount: number }
   | { kind: 'siteBuilt'; siteId: string }
-  /**
-   * 序章教程步骤（2026-09-11 船长定：教程融入通讯——每步开始时把该步指引发成一封通讯）。
-   * `step: 0` = 序章简报（`ONB_BRIEFING = 0.5` 时送达），`1..7` = 七步教程。
-   * 判定：简报要 `onboarding.step >= 0.5`（序章演出 `ONB_AWAKEN = 0` 时还不送），第 N 步要 `>= N`；
-   * **跳过教程**（step → 99）后会把前几步一并补送，收件箱里始终留一份完整教程记录。
-   */
-  | { kind: 'tutorial'; step: number }
+
   /**
    * **低安空域**（2026-09-12 船长定：探索到带特殊机制的星系后，发一封通讯讲解对应机制）。
    *
@@ -2249,20 +2246,6 @@ export interface CommsReplyDef {
   label: string
 }
 
-/**
- * 通讯消息自带动作（2026-09-11 教程融入通讯）：点一下让引擎执行一条命令。
- * 本期只有 `startTutorial`——序章简报那封的「开始教程：采集橄榄岩」，
- * 点了才从「看简报」推进到采集步骤（船长：睁眼后不要立刻开始教程任务，先指引去看通讯）。
- */
-export type CommsActionCommand = 'startTutorial'
-
-/** 消息动作按钮 */
-export interface CommsActionDef {
-  /** 按钮文字 */
-  label: string
-  /** 引擎命令（core 的 `runCommsAction` 分发；未知命令报错不崩） */
-  command: CommsActionCommand
-}
 
 /** 通讯消息（NPC → 玩家；data/src/messages.ts 维护，core 按 trigger 送达） */
 export interface CommsMessageDef {
@@ -2285,7 +2268,8 @@ export interface CommsMessageDef {
   /** 正文（逐段） */
   body: readonly string[]
   /**
-   * 需要**强调显示**的正文段落（可选；2026-09-11 船长：「将训前简报的任务链内的文字高亮」）。
+   * 需要**强调显示**的正文段落（可选；**预留字段**——原使用者「训前简报」的任务链已随教程退场，
+   * 2026-09-17 起暂无消息填它）。
    * 取值必须与 `body` 里某一段**逐字相等**才生效（`content:check` 有契约盯着），
    * 界面按它给该段加既有强调样式（离线报告那套 `.app-report-highlight`），其余段落照旧。
    */
@@ -2304,8 +2288,6 @@ export interface CommsMessageDef {
    * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
    */
   hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
-  /** 自带动作按钮（可选；见 `CommsActionDef`——序章简报的「开始教程」用它） */
-  action?: CommsActionDef
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
   /**
@@ -2355,8 +2337,6 @@ export interface CommsEntryView {
   read: boolean
   /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签） */
   hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
-  /** 自带动作按钮（`runCommsAction` 执行；界面在正文下方渲染） */
-  action?: CommsActionDef
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
   replies?: readonly CommsReplyDef[]
 }

@@ -265,27 +265,21 @@ body {
 
 .app-root.is-mobile-rot .app-prologue-inner { width: min(700px, calc(100vh - 48px)); }
 
-.app-root.is-mobile-rot .app-pro-epi-inner { width: min(660px, calc(100vh - 48px)); }
-
-.app-root.is-mobile-rot .app-stepbar { max-width: min(1100px, calc(100vh - 48px)); }
-
 /* ── 旋转模式「高度轴」口径（2026-09-14 船长报【讯息界面看不全 / 侧栏选项超出屏幕】后全面排查）──
    与虫洞弹层同一个病根：媒体查询与 `vh` 量的都是**手机物理竖屏**（宽 ~390 / 高 ~844），而界面实际
    活在旋转后的逻辑空间里（宽 ≈ 1200、高 = `--mob-h` ≈ 554）。凡是用 `Nvh` / `calc(100vh − …)` 定高的
    覆盖层，在旋转模式下都**比屏幕还高** ⇒ 顶/底被裁、「✕ 关闭」与内部滚动条的底端都够不到。
    本块把这批一律改按 `--mob-h` 封顶；封顶后的内容由各自既有的内部滚动容器承担
    （`.app-modal-body` / `.app-comm-body` / `.app-fit-modal` / `.app-prologue-inner` 自带 `overflow-y: auto`；
-   `.app-detail-body` 与 `.app-pro-epi-inner` 在本块内补上）。 */
+   `.app-detail-body` 在本块内补上）。 */
 .app-root.is-mobile-rot .app-modal,
 .app-root.is-mobile-rot .app-detail,
 .app-root.is-mobile-rot .app-comm,
 .app-root.is-mobile-rot .app-fit-modal,
-.app-root.is-mobile-rot .app-prologue-inner,
-.app-root.is-mobile-rot .app-pro-epi-inner {
+.app-root.is-mobile-rot .app-prologue-inner {
   max-height: calc(var(--mob-h, 100vw) - 32px);
 }
-.app-root.is-mobile-rot .app-detail-body,
-.app-root.is-mobile-rot .app-pro-epi-inner {
+.app-root.is-mobile-rot .app-detail-body {
   overflow-y: auto;
   min-height: 0;
 }
@@ -9066,6 +9060,18 @@ body {
 
 }
 
+/* ── 任务卡片的「奖励」独立行（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显，
+   建议将奖励单独起一行，并采用金色字体（奖励 ◆这几个字可以不用金色）」）——
+   共用一条：金色沿用既有 `--wui-gold`（与赏金卡的 `.app-ano-reward` 同一支金色），
+   「奖励 ◆」前缀由调用方包在 `.app-dim` 里保持暗色 ⇒ 只有奖励内容发亮。 */
+.app-task-reward {
+  font-size: 12px;
+  color: var(--wui-gold);
+  line-height: 1.7;
+}
+.app-station-card .app-task-reward {
+  margin-top: 2px;
+}
 .app-station-deliver input {
 
   background: #0a1320;
@@ -9698,17 +9704,11 @@ body {
 @keyframes app-pro-slitfade { to { opacity: 0; } }
 .app-pro-iris { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,1) 0%, rgba(235,255,246,.97) 12%, rgba(150,240,195,.85) 30%, rgba(40,110,80,.6) 52%, rgba(0,0,0,.96) 74%); animation: app-pro-iris 1.5s ease .3s forwards; }
 @keyframes app-pro-iris { 0% { opacity: 0; transform: scale(.15); } 12% { opacity: 1; } 38% { opacity: 1; transform: scale(1.55); } 100% { opacity: 0; transform: scale(2.25); } }
-/* ── 序章·苏醒 教程引导（阶段 4，2026-09-05）── */
+/* ── 序章·苏醒（演出本体在本文件上方；教程引导类样式已随线性教程退场，2026-09-17）── */
 .app-nav-item:disabled { opacity: .38; cursor: not-allowed; }
-/* 2026-09-11 船长定（教程融入通讯）：右下角引导卡（.app-tut-card / .app-tut-tab）与它的淡入动画
-   已删除——七步全文改为**协会训练处发来的教程通讯**，顶部引导条只留「步骤 N/7 + 目标 + 前往 + 看详情 + 跳过」。 */
-/* 收尾演出（步骤 7） */
-.app-pro-epi { position: fixed; inset: 0; z-index: 95; background: radial-gradient(ellipse at 50% 30%, rgba(12,22,18,.98), rgba(2,6,8,.99)); color: #cfe3d8; display: flex; align-items: center; justify-content: center; overflow: auto; }
-.app-pro-epi-inner { width: min(620px, 88vw); display: flex; flex-direction: column; gap: 14px; padding: 26px 22px; text-align: center; align-items: center; }
-.app-pro-epi-title { color: #ffd08a; font-weight: 800; font-size: 16px; letter-spacing: 2px; text-align: center; }
-.app-pro-epi-line { font-size: 13.5px; line-height: 1.9; color: #cfe6d8; text-align: center; animation: app-pro-epifade .5s ease-out; }
-@keyframes app-pro-epifade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.app-pro-epi-quest { font-size: 12.5px; color: #ffcf8a; border: 1px dashed #7a5a2a; background: rgba(90,60,20,.18); border-radius: 8px; padding: 8px 12px; text-align: center; }
+/* 2026-09-11 船长定（教程融入通讯）：右下角引导卡（.app-tut-card / .app-tut-tab）与它的淡入动画已删除。
+   2026-09-17 教程重做：顶部引导条（.app-stepbar）＋ 光圈与气泡（.app-spot-*）＋ 收尾演出（.app-pro-epi*）
+   一并删除——线性七步教程退场，教程内容改由任务中心的「第一次」任务承载（见 panels/FirstTasks.tsx）。 */
 
 
 /* ── 任务中心 · 重要任务（序章）卡（阶段 5，2026-09-05） ── */
@@ -9755,27 +9755,10 @@ body {
 .app-ann-item-title { font-weight: 800; font-size: 13.5px; color: #eaf2fa; }
 .app-ann-bullets { margin: 6px 0 0; padding-left: 18px; }
 .app-ann-bullets li { font-size: 12px; color: #b9c8d8; line-height: 1.8; }
-/* ── 出港导航强调 + 教程步骤条/光圈高亮（2026-09-05 船长反馈） ── */
+/* ── 出港导航强调（2026-09-05 船长反馈；同批的教程步骤条/光圈高亮已随教程退场，2026-09-17 删） ── */
 .app-nav-item.is-featured { color: #ffe08a; border: 1px solid rgba(255,208,120,.6); background: linear-gradient(180deg, rgba(140,105,35,.34), rgba(70,50,12,.24)); border-radius: 10px; }
 .app-nav-item.is-featured:hover { background: linear-gradient(180deg, rgba(170,130,45,.44), rgba(90,65,16,.3)); box-shadow: 0 0 14px rgba(255,200,110,.4); }
 .app-nav-item.is-featured.is-active { border-color: #ffd98a; box-shadow: 0 0 18px rgba(255,210,120,.5), inset 0 0 8px rgba(255,200,110,.2); }
-.app-stepbar { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 78; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: linear-gradient(180deg, rgba(16,30,24,.97), rgba(8,16,12,.98)); border: 1px solid #2e8a63; border-radius: 24px; padding: 6px 10px 6px 16px; box-shadow: 0 6px 22px rgba(0,0,0,.55); max-width: min(980px, 94vw); }
-/* 步骤进度（2026-09-11 船长定：按教程内容顺序指引，玩家要知道走到第几步）：小圆片，与目标文案区分层级 */
-.app-stepbar-step { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #0d2018; background: #7dffb0; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
-/* 2026-09-08：教程目标文案改最多两行折行（原单行省略号截断——玩家反馈顶部指引显示不全）；
-   ▸ 为独立标记不占文案宽度，文本换行独立对齐排头 */
-.app-stepbar-mark { flex: 0 0 auto; color: #7dffb0; font-weight: 700; align-self: flex-start; line-height: 1.3; }
-.app-stepbar-text { flex: 1 1 auto; font-size: 13px; color: #d8ffe8; font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; min-width: 0; }
-.app-stepbar-go { animation: app-stepbar-pulse 1.6s ease-in-out infinite; }
-/* 「看详情」（开通讯页读该步全文）与「跳过教程」：次要按钮，弱化以免与主按钮抢视线 */
-.app-stepbar-detail, .app-stepbar-skip { flex: 0 0 auto; }
-.app-stepbar-skip { color: #9db8a8; border-color: rgba(120,160,140,.4); }
-@keyframes app-stepbar-pulse { 0%,100% { box-shadow: 0 0 4px rgba(120,240,170,.35); } 50% { box-shadow: 0 0 16px rgba(120,240,170,.85); transform: translateY(-1px); } }
-.app-spot-ring { position: fixed; z-index: 79; pointer-events: none; border: 3px solid #7dffb0; border-radius: 10px; box-shadow: 0 0 0 3px rgba(10,30,18,.75), 0 0 22px rgba(110,255,180,.95); animation: app-spot-pulse .9s ease-in-out infinite; }
-@keyframes app-spot-pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
-/* 2026-09-08：「点这里」气泡改为独立 fixed 元素（原先 absolute 跟随光圈，估算定位会出屏/消失）——
-   文案与位置由 TutorialSpot 渲染后量测钳制，内联指定；气泡不挡点击 */
-.app-spot-bubble { position: fixed; z-index: 80; font-size: 12px; font-weight: 800; color: #05231a; background: #9dffc4; border-radius: 6px; padding: 3px 9px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.5); pointer-events: none; animation: app-spot-pulse 1.2s ease-in-out infinite; }
 
 /* ── 市场交易面板：买/卖方向切换与执行按钮区分 + 全部卖出（2026-09-05 船长） ── */
 .app-mkt-sides { display: inline-flex; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; overflow: hidden; background: rgba(6,10,16,.6); }
@@ -10068,8 +10051,6 @@ body {
    两行都常驻在滚动区外（原先动作按钮在屏幕滚动内容末尾，简报长文不往下翻就看不见）。
    纯在流内的弹性列：高度随内容自然长高（长提示折行不会互相压），屏幕（flex:1）自动让位。 */
 .app-comms-eave { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; }
-/* 动作按钮 = 与「前往」同宽的胶囊（同一枚主按钮家族，只是位置在下檐口上一行） */
-.app-btn.app-comms-action-btn { width: 100%; display: flex; align-items: center; justify-content: center; border-radius: 22px; padding: 8px 18px; font-size: 13px; }
 /* 下檐口下一行：通栏胶囊「前往」。提示文字在左、动作词在右；**文字允许折行**
    （2026-09-11 船长：「跳转的文本过长时，有部分文本不显示」——原先是 `white-space: nowrap` +
    省略号单行截断，长提示会被吃掉），胶囊随行数长高。 */
@@ -10081,19 +10062,16 @@ body {
 .app-comms-goto-text { flex: 1 1 auto; min-width: 0; text-align: left; font-size: 12px; line-height: 1.45; }
 .app-comms-goto-label { flex: 0 0 auto; font-weight: 600; }
 .app-comms-replies { display: flex; gap: 6px; flex-wrap: wrap; }
-/* 旧类保留为空壳（动作按钮已移到下檐口 `.app-comms-eave`；这两条若被别处引用也不改变外观） */
-.app-comms-action { display: flex; justify-content: center; margin-top: 4px; }
-.app-comms-action-btn { border-radius: 999px; padding: 8px 22px; font-size: 13px; }
 
 /* ═══════════ 通讯页 · 大窗口（全屏）放大（2026-09-11 船长：全屏下消息界面很空，"在丙的基础上让下方跳转更大"） ═══════════
    实测依据（2560×1440 全屏）：屏幕可视高 933px 而内容仅 167px（填充率 17.9%）、正文行长只占屏幕宽 31.4%
    ⇒ 观感"空"来自"框大内容小"。处方 = **丙：大窗口下把屏内文字与下方跳转胶囊一起放大**（布局结构不动、不限宽）。
    断点用 min-width（本页首次；既有 @media 都是 max-width 收窄布局，放大是另一类需求）；
    字号统一走 `calc(var(--ui-fs, 1) * Npx)`，与"设置→字体大小"叠加而不互相覆盖。
-   2026-09-11 船长定「乙」后：下檐口两行（动作 + 前往）走**在流内**排布，高度随内容自然长高，
-   故此处不再需要"抬高下内边距"的旧补偿，只放大字号/内边距。 */
+   2026-09-11 船长定「乙」后：下檐口那行（前往）走**在流内**排布，高度随内容自然长高，
+   故此处不再需要"抬高下内边距"的旧补偿，只放大字号/内边距。
+   （2026-09-17 教程重做：消息「自带动作」机制整体退场 ⇒ 动作按钮及其三条样式一并删除。） */
 @media (min-width: 1500px) {
-  .app-btn.app-comms-action-btn { padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); }
   .app-btn.app-comms-goto { padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); gap: 14px; }
   .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * 13.5px); }
   .app-comms-screen { padding: 18px 24px 20px; gap: 10px; }
@@ -10110,7 +10088,6 @@ body {
   .app-comms-note { font-size: calc(var(--ui-fs, 1) * 13.5px); }
 }
 @media (min-width: 1900px) {
-  .app-btn.app-comms-action-btn { padding: 14px 32px; font-size: calc(var(--ui-fs, 1) * 16px); }
   .app-btn.app-comms-goto { padding: 14px 32px; font-size: calc(var(--ui-fs, 1) * 16px); }
   .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * 15px); }
   .app-comms-text { font-size: calc(var(--ui-fs, 1) * 16px); }

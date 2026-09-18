@@ -12,7 +12,7 @@ import {
   LAIR_RARE_WRECK_GAIN,
   LAIR_TIER_LABELS,
   lairLevelOf,
-  SCAN_WINDOW_MS,
+  scanWindowMsFor,
   aiCoreName,
   bountyDamageForecast,
   bountyWinPercentGuarded,
@@ -61,6 +61,7 @@ import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH, rareWreckRefsOf } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
+import { FirstTasks } from './FirstTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
@@ -262,11 +263,17 @@ export function TaskPanel({
   engine,
   onToast,
   focusTab = null,
+  onOpenComms,
+  onJump,
 }: {
   engine: GameEngine
   onToast: ToastFn
-  /** 外部定位请求（2026-09-11 船长：教程步骤 2 跳转任务中心要切到「重要任务」；seq 变化即应用） */
+  /** 外部定位请求（2026-09-11 船长：跳转任务中心要切到「重要任务」；seq 变化即应用） */
   focusTab?: { tab: string; seq: number } | null
+  /** 「第一次」卡片的「看情报」（App 层定位到那封情报信） */
+  onOpenComms?: (messageId: string) => void
+  /** 「第一次」卡片的跳转按钮（App 层切页面/页签，自带解锁闸门） */
+  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' }) => void
 }) {
   const [tab, setTab] = useState<TaskTabKey>(() => {
     try {
@@ -341,7 +348,9 @@ export function TaskPanel({
       <div className="app-win-body">
       {tab === 'important' ? (
         <div>
-          <ImportantTasks engine={engine} onToast={onToast} />
+          {/* 2026-09-17 教程重做：重要任务＝「第一次」系列（13 条，自由选择）＋后续次数任务 */}
+          <FirstTasks engine={engine} onToast={onToast} onOpenComms={onOpenComms} onJump={onJump} />
+          <ImportantTasks engine={engine} />
           {stationCount > 0 && unbuiltStationIds.length > 0 ? (
             <>
               <div className="app-dim app-exp-idle">长期建设目标：完成副站建设会并入空间站网络（泊位/卸货/维修/补给/换驾驶与全部站内功能建成后一次性开放）。</div>
@@ -885,6 +894,30 @@ function StarMap({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   /** 2026-09-08 船长：点星系行动改弹窗——星图不再被长详情纵向挤压 */
   const [modalId, setModalId] = useState<string | null>(null)
+  /**
+   * **「点了扫描就关窗」的防误触闸门**（船长 2026-09-18：「点下『扫描探索』的那一刻就关。
+   * 但是要注意不要出现关闭窗口太快导致误触的情况」）。三道闸：
+   * ① 关窗**延后 260ms**：让这一次点击彻底结束、按钮的按下态走完，窗口不会在指针还压着时凭空消失；
+   * ② 关窗后 **420ms 内忽略星系节点的点击**：连点两下时，第二下不会顺手点开另一个星系的弹窗；
+   * ③ 延后期间窗口照常显示（按钮已置灰），玩家看得见"已经点上了"。
+   * 失败时（例如已有一处扫描在跑）**不关窗**——错误提示要留在弹窗里让他看见。
+   */
+  const nodeClickGuardUntilRef = useRef(0)
+  const closeTimerRef = useRef<number | null>(null)
+  const closeModalSoon = (): void => {
+    if (closeTimerRef.current !== null) return
+    nodeClickGuardUntilRef.current = Date.now() + 680
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null
+      setModalId(null)
+    }, 260)
+  }
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+    },
+    [],
+  )
   const dragRef = useRef<{ id: string } | null>(null)
   const hubName = engine.ctx.galaxies.get('galaxy-hub')?.name ?? ''
   const selected: GalaxyDef | null = engine.ctx.galaxies.get(selectedId ?? '') ?? null
@@ -1028,15 +1061,23 @@ function StarMap({
   const factionGalaxy = factionGalaxyId(state)
   const factionName = state.sideTasks.faction?.factionAnomalyName ?? ''
 
-  const scanMinutesOf = (): number => {
-    // 2026-09-06：作业 = 就地扫描窗口（去程已取消）；2026-09-15：无人扫描艇，扫完即收尾（无返航段）
-    return Math.max(1, Math.round(SCAN_WINDOW_MS / 60_000))
+  /**
+   * **目标星系的扫描窗口文案**（2026-09-18 修）：原先这里恒写「约 10 分钟」（只读基准常量），
+   * 而母港的窗口已被船长裁定改成 **10 秒** ⇒ 改成按目标星系实算，短于 1 分钟就按秒显示。
+   */
+  const scanWindowTextOf = (galaxyId: string): string => {
+    const ms = scanWindowMsFor(state, engine.ctx, galaxyId)
+    return ms < 60_000 ? `约 ${Math.max(1, Math.round(ms / 1000))} 秒` : `约 ${Math.max(1, Math.round(ms / 60_000))} 分钟`
   }
 
   function handleScan(g: GalaxyDef): void {
     const r = engine.startScanAt(g.id)
-    if (!r.ok) onToast(r.error ?? '无法发起扫描。', true)
-    else onToast('已派出深空扫描艇：窗口完成即点亮该星系——扫描不占主控，进度见顶部活动窗的扫描条。')
+    if (!r.ok) {
+      onToast(r.error ?? '无法发起扫描。', true)
+      return // 失败不关窗：错误提示留在弹窗里
+    }
+    onToast('已派出深空扫描艇：窗口完成即点亮该星系——扫描不占主控，进度见顶部活动窗的扫描条。')
+    closeModalSoon() // 成功 ⇒ 点下这一刻就关（带防误触闸门，见 closeModalSoon 的注释）
   }
 
   const posOf = (g: GalaxyDef): { x: number; y: number } => {
@@ -1285,6 +1326,8 @@ function StarMap({
               key={g.id}
               className="app-map-node"
               onClick={() => {
+                // 刚点过「扫描探索」⇒ 这 420ms 内不吃点击（防连点顺手点开另一个星系）
+                if (Date.now() < nodeClickGuardUntilRef.current) return
                 setSelectedId(g.id)
                 setModalId(g.id)
               }}
@@ -1397,9 +1440,9 @@ function StarMap({
                   className="app-btn is-small is-primary"
                   disabled={scan.active}
                   onClick={() => handleScan(selected)}
-                  title={`派出深空扫描艇：立即就地扫描约 10 分钟；窗口完成即点亮该星系。扫描不占主控——期间照常采矿/远征/打捞，顶部活动窗会显示扫描进度`}
+                  title={`派出深空扫描艇：立即就地扫描${scanWindowTextOf(selected.id)}；窗口完成即点亮该星系。扫描不占主控——期间照常采矿/远征/打捞，顶部活动窗会显示扫描进度`}
                 >
-                  <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>扫描探索（约 {scanMinutesOf()} 分钟）
+                  <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>扫描探索（{scanWindowTextOf(selected.id)}）
                 </button>
                 <span className="app-dim app-map-scan-note">
                   {scan.active ? `扫描艇在忙（一次一处）· 剩余约 ${formatDurationMs(scan.remainingMs)}` : '完成即点亮 · 不占主控 · 期间事件更频繁'}
@@ -2389,7 +2432,12 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   </div>
                   <div className="app-station-mats">
                     目标「{siteName ?? '（最近已建成副站）'}」{galaxyName ? `（${galaxyName}）` : ''}：
-                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算——酬金 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点（不涨声望；到站后舰船将停靠目标副站）。
+                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算（不涨声望；到站后舰船将停靠目标副站）。
+                  </div>
+                  {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
+                  <div className="app-task-reward">
+                    <span className="app-dim">奖励 ◆ </span>
+                    {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
                   </div>
                   <div className="app-station-deliver">
                     <span className="app-dim">
@@ -2428,7 +2476,12 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
                 </div>
                 <div className="app-station-mats">
-                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓）——奖励 {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点（不涨声望）。
+                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓；不涨声望）。
+                </div>
+                {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
+                <div className="app-task-reward">
+                  <span className="app-dim">奖励 ◆ </span>
+                  {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
                 </div>
                 <div className="app-station-deliver">
                   <span className="app-dim">

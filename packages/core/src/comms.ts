@@ -9,12 +9,11 @@
  * - **只给提示 + 跳转**：消息可带 `hint`，但通讯页不接取/不完成任何任务。
  * - **回复接口预留但不启用**：见 `COMMS_REPLIES_ENABLED`（玩家侧不出现任何回复控件）。
  */
-import { ONB_EPILOGUE, startTutorialFromBriefing } from './onboarding'
+import { ONB_DONE } from './onboarding'
 import { isSiteBuilt } from './station'
 import { addLog } from './state'
 import type { GameState } from './state'
 import type {
-  CommsActionCommand,
   CommsEntryView,
   CommsFactionAlignment,
   CommsKind,
@@ -147,10 +146,13 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
     /** **遭遇过某个敌方舰级**（船长 2026-09-16：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯） */
     case 'foeShipSeen':
       return state.foeShipSeen?.[trigger.shipId] === true
+    /** 「第一次」任务系列（2026-09-17）：任务完成即送达那封情报信；见 data/src/firstTaskMessages.ts。 */
+    case 'firstTask':
+      return state.importantTasks[trigger.taskId]?.done === true
     case 'start':
-      // 序章引导（采矿→交付→出售→修复→试炼→技能→分身）期间导航被教程锁定，通讯页打不开；
-      // 故开局信等引导走完（收尾演出起）再送，玩家收得到、也点得开。
-      return state.onboarding.step >= ONB_EPILOGUE
+      // 开局信等**序章演出结束**再送（2026-09-17 教程重做后演出是唯一的开场遮挡）：
+      // 演出期间屏幕被盖住，此刻弹信只会压在演出上；演出一结束（step 99）即送达。
+      return state.onboarding.step >= ONB_DONE
     case 'day':
       return state.gameMs >= trigger.days * COMMS_DAY_MS
     case 'explored':
@@ -167,14 +169,6 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
     case 'siteBuilt': {
       const site = ctx.stations.get(trigger.siteId)
       return site !== undefined && isSiteBuilt(state, site)
-    }
-    case 'tutorial': {
-      // 2026-09-11 船长定（教程融入通讯）：**到达该步**才送达。
-      // 步骤号与引擎状态的对应：简报 = 0（进行态 `ONB_BRIEFING = 0.5`）、第 N 步 = N（进行态 `ONB_* = N`）。
-      // 故：简报要 `step >= 0.5`（序章演出 `ONB_AWAKEN = 0` 时还没到，不送）；
-      // 第 N 步用 `step >= N`（状态一旦到 N 就送，不推迟）。**跳过教程**（step → 99）后前几步一并补送。
-      const need = trigger.step === 0 ? 0.5 : trigger.step
-      return state.onboarding.step >= need
     }
     case 'lowSec':
       // 2026-09-12 船长定（星系机制通讯）：**首次探明任一低安星系**即送达一封低安须知。
@@ -375,7 +369,6 @@ export function commsInbox(state: GameState, ctx: SimContext): CommsEntryView[] 
       deliveredAtGameMs: atMs,
       read: state.commsRead?.[id] === true,
       hint: msg.hint,
-      action: msg.action,
       replies: msg.replies,
     })
   }
@@ -409,17 +402,3 @@ export function markAllCommsRead(state: GameState, ctx: SimContext): number {
   return n
 }
 
-/**
- * 消息自带动作的分发（2026-09-11 教程融入通讯）。
- * 本期只有 `startTutorial`：序章简报那封的「按单开工：采集橄榄岩」——
- * 点击才从简报态（`ONB_BRIEFING`）推进到采集步骤（`ONB_MINE`）。
- * 未知命令一律报错返回，界面只弹提示、不崩。
- */
-export function runCommsAction(state: GameState, command: CommsActionCommand): { ok: boolean; error?: string } {
-  switch (command) {
-    case 'startTutorial':
-      return startTutorialFromBriefing(state)
-    default:
-      return { ok: false, error: '这封通讯上的动作暂不可用。' }
-  }
-}

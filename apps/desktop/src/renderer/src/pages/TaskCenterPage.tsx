@@ -5,7 +5,7 @@
  * 「先选中星系」才渲染，路径绕；船长要的是**从左侧导航直达**。搬家后：
  * - **一级页不滚**（红线）：本页固定一屏高、`page-fill`；滚动只发生在**内层列表**里（`TaskPanel` 自己的容器）；
  * - **内层标签照搬**（重要任务 / 资源任务 / 快递任务 / 赏金任务），跳转定位仍走 `taskFocus`
- *   （通讯与教程步骤的「前往任务中心」都带内层标签 —— 见 core `CommsJumpPage` 的 `'task'`）。
+ *   （通讯的「前往任务中心」与开场信都带内层标签 —— 见 core `CommsJumpPage` 的 `'task'`）。
  */
 import type { GameEngine } from '../game/engine'
 import type { PageProps } from './common'
@@ -21,8 +21,12 @@ export interface TaskFocusTarget {
   seq: number
 }
 
-export function TaskCenterPage({ engine, onToast, taskFocus = null }: PageProps & {
+export function TaskCenterPage({ engine, onToast, taskFocus = null, onOpenComms, onJump }: PageProps & {
   taskFocus?: TaskFocusTarget | null
+  /** 「第一次」卡片上的「看情报」：跳到通讯页并选中那封情报信（App 层的 `commsFocus` 定位） */
+  onOpenComms?: (messageId: string) => void
+  /** 「第一次」卡片上的跳转按钮：去这件活所在的页面（App 层切页 + 页签，自带解锁闸门） */
+  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' }) => void
 }) {
   return (
     /**
@@ -31,7 +35,7 @@ export function TaskCenterPage({ engine, onToast, taskFocus = null }: PageProps 
      * 与搬家的原样一致（原先在星图页里也是这一套，页面本身没有新增任何滚动容器）。
      */
     <div className="page-stack page-fill">
-      <TaskPanel engine={engine} onToast={onToast} focusTab={taskFocus} />
+      <TaskPanel engine={engine} onToast={onToast} focusTab={taskFocus} onOpenComms={onOpenComms} onJump={onJump} />
     </div>
   )
 }

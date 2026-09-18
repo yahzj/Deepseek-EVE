@@ -22,6 +22,7 @@
 import { addLog, shipLockedReason, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
+import { bumpFirst } from './firstTasks'
 // F4d：拆解安全货柜（与随行战利品同一条入库路径；抽取池在 wormholeSalvage 里）
 import { wormholeDeliverRelics, wormholeRareBoxThemePoolOf, wormholeUnboxRoll } from './wormholeSalvage'
 import type { AiCoreType, ItemDef, SimContext } from './types'
@@ -704,7 +705,8 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
           state.refineRuns.splice(i, 1)
           addLog(state, 'warn', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`)
           break
-        }      } else if (isRecycle && profile) {
+        }
+      } else if (isRecycle && profile) {
         // B3 残骸回收批：保底矿物（体积当量 × 危险度池） + 彩头（基础件/低安 MK2/蓝图碎片）；
         // 所得同时累计进 r.recAcc（停炉/结束日志出明细）
         const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }
@@ -801,6 +803,11 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         if (batchIncome > 0) addAiIncome(stats, r.worker, batchIncome)
       }
       r.batchesDone += 1
+      // 「第一次操作精炼炉」与「精炼师」链：**精炼炉**出一批料记一批。
+      // ⚠ 2026-09-17 修（教程重做批自查）：原先这行被落在上面的**残骸回收**分支里 ⇒
+      //   真正的精炼出料没记、回收反而记了，与任务文案（「让精炼炉出一批料」）对不上。
+      //   口径 = 只认精炼炉（残骸回收炉是同一页里的另一台炉，不计入本计数）。
+      if (!isRecycle) bumpFirst(state, 'refineBatches')
       if (isRecycle && r.itemId) {
         // 累计已烧体积（稀有残骸每满 30 m³ 必给一次彩头的账本；随存档落盘，起停不重置）
         state.rareBurnUnits[r.itemId] = (state.rareBurnUnits[r.itemId] ?? 0) + qty

@@ -76,7 +76,7 @@ export const FACTION_OCTOPUS_GLYPH = 'faction-octopus'
 
 /**
  * 舰载信息库（船自己的系统）头像（2026-09-11 船长：「头像换成类似核心的SVG」）。
- * 与 NPC 分开：教程/简报这类**船内系统来信**用「核心」形图标（`nav-ai`，粉色调），
+ * 与 NPC 分开：**船内系统来信**（自检记录、行动建议、各项情报）用「核心」形图标（`nav-ai`，粉色调），
  * 协会 NPC 的来信仍用章鱼头。
  */
 export const FACTION_CORE_GLYPH = 'nav-ai'
@@ -87,7 +87,7 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
     /**
      * 舰载信息库（2026-09-11 船长定：「消息来源修改为信息库检索重启方案」）。
      * **不是 NPC**：它是船自己的系统，醒来自检后按条目回放既有记录——
-     * 教程与简报就以「检索重启」的名义从这里发到收件箱（头像用核心形图标，与 NPC 的章鱼头分开）。
+     * 开场信与各项情报都以「检索重启」的名义从这里发到收件箱（头像用核心形图标，与 NPC 的章鱼头分开）。
      */
     id: 'archive',
     name: '信息库',
@@ -95,14 +95,14 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
     alignment: '系统',
     tone: '#ff8ab5',
     glyph: FACTION_CORE_GLYPH,
-    brief: '这条船自己的舰载信息库：自检后按条目回放既有记录，教程与行动建议都以它检索重启的方式送达。',
-    kinds: ['教程', '提示'],
+    brief: '船自己的舰载信息库：自检后按条目回放记录，情报与建议都由它送达。',
+    kinds: ['提示'],
     departments: [
       {
         id: 'dept-recall',
         name: '检索重启',
-        brief: '信息库按条目重新载入记录的过程：把该干的活按顺序念给你听。',
-        kinds: ['教程', '提示'],
+        brief: '信息库按条目重新载入记录的过程：把记下来的事一条条念给你听。',
+        kinds: ['提示'],
       },
     ],
   },
