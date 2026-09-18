@@ -60,6 +60,18 @@ function until(state: GameState, cond: () => boolean, budgetMs = 30 * 60_000, la
   return cond()
 }
 
+/**
+ * **分段时间线读数**（游戏内时间）——船长审开局节奏时看的就是它
+ * （例：「精炼每批 100 单位、采矿艇一趟约 70 ⇒ 开炉必跑两趟」到底占多久）。
+ * 每段 = 距上一个 mark 的**游戏内**分钟数（含等待采矿/返航/训练的时间）。
+ */
+let lastMarkMs = 0
+function mark(label: string, nowMs: number): void {
+  const seg = (nowMs - lastMarkMs) / 60_000
+  lastMarkMs = nowMs
+  console.log(`   ⏱ ${label}：本段 ${seg.toFixed(1)} 分钟 · 累计 ${(nowMs / 60_000).toFixed(1)} 分钟`)
+}
+
 const step = (n: string): void => console.log(`\n──── ${n} ────`)
 
 step('① 新档（序章）：母港未知、页面按表锁定')
@@ -89,6 +101,7 @@ advanceGame(s, 1000, ctx)
 ok('情报信「档案补全 · 星图扫描」送达', s.commsDelivered?.['first-scan'] !== undefined)
 ok('星图四项一起解锁', unlocked(s, 'mapMine') && unlocked(s, 'mapBounty') && unlocked(s, 'mapSalvage') && unlocked(s, 'mapHaul'))
 ok('工业页仍锁（前置是采集原矿）', !unlocked(s, 'industry'))
+mark('① → ③ 演出结束 + 扫描母港', s.gameMs)
 
 step('④ 第一次采集原矿（矿带）')
 // 照玩家路径：先把驾驶换成采矿艇沙猫（鲣鱼是护卫舰，货舱小、矿枪不对口）
@@ -118,6 +131,7 @@ ok('收工返港', !s.mining.active)
 const oreId = 'ore-veldspar'
 const oreHave = s.warehouse.items[oreId] ?? 0
 ok('仓库有原矿可炼（≥ 一批 100）', oreHave >= 100, `${oreId} ×${oreHave}`)
+mark('④ 采矿两趟 + 卸货（"每批 100、一趟约 70"的实际耗时）', s.gameMs)
 
 step('⑤ 第一次操作精炼炉（工业）')
 const refine = startRefineRun(s, oreId, 'pilot', ctx)
@@ -135,6 +149,7 @@ ok('起制造线被接受', prod.ok, prod.ok ? '' : prod.error)
 ok('产出成品', until(s, () => firstStatOf(s, 'produceUnits') > 0, 30 * 60_000, '生产'), `units=${firstStatOf(s, 'produceUnits')}`)
 ok('「第一次生产」判定完成', s.importantTasks['first-produce']?.done === true)
 ok('市场页解锁', unlocked(s, 'market'))
+mark('⑤⑥ 精炼一批 + 生产一批', s.gameMs)
 
 step('⑦ 第一次挂单销售（市场）')
 // 找一条"我手上有的、可上市"的商品行（市场行 key = goodKey）
@@ -169,6 +184,7 @@ const repair = repairShip(s, 'sh-falconet', ctx)
 ok('港内维修鲣鱼', repair.ok, repair.ok ? '' : repair.error)
 advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
 ok('「第一次维修舰船」判定完成', s.importantTasks['first-repair']?.done === true, `repairs=${firstStatOf(s, 'repairs')}`)
+mark('⑦⑧⑨ 挂单 / 卖矿 / 首场悬赏 / 港内维修', s.gameMs)
 
 step('⑩ 领链奖金 + 打两场悬赏攒点现金（训练与维修要花钱）')
 advanceFirstChains(s)
@@ -210,6 +226,7 @@ const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
 ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
 advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
 ok('「第一次指派 AI 副船」判定完成', s.importantTasks['first-ai']?.done === true, `aiAssigns=${firstStatOf(s, 'aiAssigns')}`)
+mark('⑩⑪ 领奖 + 两场悬赏 + 学技能 + 指派副船', s.gameMs)
 // 买一枚是**可选**的（第二艘副船才需要）：只核一下价格读数，不作断言
 const coreBuy = buyBasicAiCore(s, ctx)
 console.log(`   市场上再买一枚基础 AI 核心：${coreBuy.ok ? '成功' : `未买（${coreBuy.error}）`}`)
