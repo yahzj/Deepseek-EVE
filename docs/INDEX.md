@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **264** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5135** KB · **36462** 行
+- 文档总数 **264** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5140** KB · **36487** 行
 - 状态分布：**未标注** 145 · **已确认/已实现** 107 · **待裁定** 7 · **进行中** 4 · **历史留档** 1
 - 孤儿文档（0 引用）**15** 份 · 状态未标注 **145** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -28,12 +28,12 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 13 KB / 90 行 | 153 / 5 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 13 KB / 90 行 | 155 / 5 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 21 KB / 214 行 | 28 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 148 KB / 213 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 55 KB / 606 行 | 66 / 3 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 150 KB / 214 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 55 KB / 604 行 | 66 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 355 KB / 812 行 | 182 / 8 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 87 KB / 262 行 | 248 / 10 |
 
@@ -56,9 +56,9 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/announcement-draft-20260917-first-tasks.md` | 公告待审稿：任务重做 ·「第一次」任务系列（2026-09-17 · 2026-09-18 修订） | 待裁定（待船长审核） | 2026-09-17 | 4 KB / 39 行 | 1 / 0 |
+| `docs/design/announcement-draft-20260917-first-tasks.md` | 公告待审稿：任务重做 ·「第一次」任务系列（2026-09-17 · 2026-09-18 修订） | 待裁定（待船长审核） | 2026-09-17 | 4 KB / 39 行 | 2 / 0 |
 | `docs/design/bio-selfheal-no-capacity-amp-20260917.md` | 生体甲壳板：无消耗自愈不吃装甲容量加成（2026-09-17） | 进行中（进行中） | 2026-09-17 | 6 KB / 60 行 | 0 / 0 |
-| `docs/design/first-tasks-rework-20260917.md` | 教程重做：「第一次」任务系列 ＋ 前置解锁（2026-09-17 · 船长） | 待裁定（实现完成 · 待船长验收） | 2026-09-17 | 25 KB / 229 行 | 1 / 0 |
+| `docs/design/first-tasks-rework-20260917.md` | 教程重做：「第一次」任务系列 ＋ 前置解锁（2026-09-17 · 船长） | 待裁定（实现完成 · 待船长验收） | 2026-09-17 | 28 KB / 255 行 | 1 / 0 |
 | `docs/design/lock-aura-fleet-20260917.md` | 目标锁定阵列：增伤与集火改为「全队生效」（船长 2026-09-17）· 工作文档 | 进行中（进行中） | 2026-09-17 | 8 KB / 100 行 | 0 / 0 |
 | `docs/design/stealth-base-gun-20260917.md` | 隐身期间「基础舰炮」不开炮（船长 2026-09-17）· 工作文档 | 进行中（进行中） | 2026-09-17 | 6 KB / 83 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260916-combat-insurance.md` | 公告待审稿 · 战斗保险机制上线（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 3 KB / 44 行 | 0 / 1 |
