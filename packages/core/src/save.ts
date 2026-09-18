@@ -18,7 +18,7 @@ import {
   MAX_SKILL_LEVEL,
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
-import { FIRST_TASKS } from './firstTasks'
+import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
@@ -723,6 +723,35 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
       merged[def.id] = { ...(prev ?? {}), done: true }
     }
     next.importantTasks = merged
+    return next
+  },
+  26: (raw) => {
+    /**
+     * v26 -> v27（2026-09-18 船长）：**市场链换口径的一次性老档折算**。
+     *
+     * 口径（船长）：「挂单按照市场交易收入计数，最高档按 1000 亿算」＋「老档已有的'挂单张数'给一次性折算」。
+     * 本条按**级别对齐**折算（不是拍一个"每张多少 ISK"的汇率）：
+     * ① 用**旧表** `CHAIN_TIERS_LEGACY_ORDERS` 由 `firstStats.orders`（挂单张数）算出老档已达级数 N；
+     * ② 把 `firstStats.marketIncome` 写成**新表 `CHAIN_TIERS.marketIncome` 第 N 级**的门槛值
+     *    ⇒ 折算后已达级数 **= N，一点不倒退**（旧 L10=3,000 张 ⇒ 新表第 10 级 1,000 亿）。
+     * ③ 挂单 0 张的老档**不写**该键（保持"可选字段、零迁移"）；已有 `marketIncome` 的档不覆盖（幂等）。
+     */
+    const next: RawState = { ...raw }
+    const fs = asRaw(next.firstStats)
+    const stats: RawState = fs === null ? {} : { ...fs }
+    const orders = typeof stats.orders === 'number' && Number.isFinite(stats.orders) ? Math.max(0, Math.floor(stats.orders)) : 0
+    const legacy = CHAIN_TIERS_LEGACY_ORDERS
+    const tiers = CHAIN_TIERS.marketIncome ?? []
+    if (orders > 0 && typeof stats.marketIncome !== 'number') {
+      let level = 0
+      for (const t of legacy) if (orders >= t) level += 1
+      // 级别对齐：老档的第 N 级 ⇒ 直接给新表第 N 级的门槛值（N=0 写 0 之外什么都不写）
+      const aligned = level > 0 ? (tiers[level - 1] ?? 0) : 0
+      if (aligned > 0) {
+        stats.marketIncome = aligned
+        next.firstStats = stats
+      }
+    }
     return next
   },
 }
