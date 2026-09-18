@@ -45,7 +45,7 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(s.tier).toBe(3)
     expect(s.role).toBe('armed')
     expect(s.subClass).toBe('侦察舰') // 协会功能舰写子分类（契约已放宽为"白名单 + 非虫洞登记表"）
-    expect(s.slots).toEqual({ high: 4, mid: 4, low: 3 }) // 2026-09-14 船长「鹦鹉螺+1槽位」⇒ 中槽 +1（原 4/3/3）
+    expect(s.slots).toEqual({ high: 3, mid: 4, low: 4 }) // 2026-09-18 船长「鹦鹉螺的槽位改成3/4/4」（总数仍 11；原 4/4/3）
     expect(s.droneBayM3).toBe(80) // 「无人机舱稍大」（同级巡洋 50）
     expect(s.cargoM3).toBe(6_600) // 「货仓可以乘*3」
     expect(s.cycleSeconds).toBe(14)

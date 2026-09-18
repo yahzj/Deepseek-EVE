@@ -3538,6 +3538,8 @@ export function startBattleFor(
    */
   const meRt0 = battle.units['player']
   if (meRt0) meRt0.hpMax = meFullHp
+  // **电子舰 · 压制敌舰射程**（2026-09-18）：单船路径同样按编队（= 它自己）算一次
+  applyFoeRangeDebuff(state, ctx, battle, [shipId])
   announceStealthStart(battle) // 隐秘行动装置：开战那一刻的提示条（没装装置的场次不推）
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
@@ -3845,6 +3847,8 @@ export function startFleetBattleFor(
     const rt = battle.units[tag]
     if (rt) rt.hpMax = full
   }
+  // **电子舰 · 压制敌舰射程**（2026-09-18）：按本场编队算一次（每拍还会在 `advanceBattleFor` 里重算）
+  applyFoeRangeDebuff(state, ctx, battle, ordered)
   announceStealthStart(battle) // 隐秘行动装置：开战那一刻的提示条（逐舰各一条，没装的船不推）
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
@@ -4714,6 +4718,9 @@ export function advanceBattleFor(
     battle.ended = 'foe'
     return
   }
+  // **电子舰 · 压制敌舰射程**（2026-09-18）：**每拍重算**（运行态，不随档 ⇒ 换编队/读档都不陈旧）。
+  // 编队口径 = `battle.myFleet`（单船路径取本条 `shipId`）。
+  applyFoeRangeDebuff(state, ctx, battle, battle.myFleet?.map((e) => e.shipId) ?? [shipId])
   const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
   const foes = createFoeSpecs(anomaly, bal)
   const foeDesire = foeDesiredRange(me, foes, bal)
@@ -5069,19 +5076,83 @@ function aloftDroneSet(
   return out
 }
 
-/** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）。
+/** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）－ **我方电子舰削减**。
  *
  *  2026-09-11 船长：「添加新机制，**受到攻击后，大幅提高无人机射程（提高 400%）**」——
  *  E 族三条舰级写 `droneRangeMulOnHit: 4` ⇒ 警戒机 5,000 → **20,000m**（本场永久、不封顶）；
  *  **全敌队一次生效**（船长二次裁定：「只触发一次，**对所有敌舰生效**」）。
  *  ⚠ **开火判定与界面（机群阵位/弹道/击落点）都读本函数**：射程只有一处算法，不出现"打得着但画得近"。
+ *  ⚠ **2026-09-18 起并入电子舰的削减**（船长：「电子舰新增特性，削减敌人15%的武器射程…射程最短只能
+ *  削弱到3000m」）——口径与舰体武器同款（见 `foeRangeDebuffOf`：与增程**做加法**、基础 <3000 不削）。
  */
 export function foeDroneRangeOf(
   b: import('./state').BattleState,
   w: WeaponSpec,
 ): number {
-  const mul = b.foeDroneRangeBuff
-  return mul && mul > 1 ? Math.round(w.maxRangeM * mul) : w.maxRangeM
+  const buffMul = b.foeDroneRangeBuff && b.foeDroneRangeBuff > 1 ? b.foeDroneRangeBuff : 1
+  return effectiveFoeRangeM(b, w.maxRangeM, buffMul)
+}
+
+/* ═══════════ 我方电子舰 · 压制敌舰武器射程（船长 2026-09-18）═══════════
+ * 船长原话：「**电子舰新增特性，削减敌人15%的武器射程，可以乘法叠加，与敌人的射程增加效果做加法处理。
+ * （比如10000m射程，我方一艘电子舰，对方拥有射程+50%，那么对方实际射程为13500.）
+ * 射程最短只能削弱到3000m（不足3000m的无法被削弱）。**」
+ *
+ * 口径（三问三答全取甲）：
+ * - **多艘乘法合成**：`r = 1 − Π(1 − vᵢ)`（每艘带 `ShipDef.foeRangeDebuffPct`，电子舰 = 0.15）
+ *   ⇒ 1 艘 15% · 2 艘 **27.75%** · 3 艘 38.6%；
+ * - **与敌方增程做加法**：**净倍率 = 增程倍率 − r**（例：10000、敌 +50%、我方 1 艘 ⇒ 10000×(1.5−0.15)=**13500**）；
+ * - **地板**：敌舰/机型的**基础射程 < `FOE_RANGE_DEBUFF_FLOOR_M`（3000m）⇒ 完全不削**（只吃它自己的增程）；
+ *   否则削后结果**下限 3000m**；
+ * - **只动最远射程**，近界不动（与既有「受击增程」口径一致，见 `foeGunMaxRangeOf` 的注释）。
+ *
+ * **落点 = 两处既有单一真相源**（开火门 / 距离衰减 / 战斗界面射程标签全部自动跟随，不新增第三份算法）：
+ * `foeGunMaxRangeOf`（舰体武器）与 `foeDroneRangeOf`（敌方机群放飞射程）。
+ * **削减率每拍重算进运行态 `BattleState.meFoeRangeDebuff`**（不随档 ⇒ 读档/中途换编队都不陈旧）。 */
+export const FOE_RANGE_DEBUFF_FLOOR_M = 3000
+
+/** 编队当前的**敌舰射程削减率** `r = 1 − Π(1 − vᵢ)`（无电子舰 = 0）。 */
+export function foeRangeDebuffOf(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): number {
+  let prod = 1
+  for (const sid of shipIds) {
+    const defId = state.fleet[sid]?.defId
+    const v = defId ? (ctx.ships.get(defId)?.foeRangeDebuffPct ?? 0) : 0
+    if (v > 0 && v < 1) prod *= 1 - v
+  }
+  return prod >= 1 ? 0 : 1 - prod
+}
+
+/** 把编队削减率写进运行态（战斗建档与**每拍**各调一次——只写开战那一刻会在换编队/读档后陈旧）。 */
+function applyFoeRangeDebuff(
+  state: GameState,
+  ctx: SimContext,
+  battle: import('./state').BattleState,
+  shipIds: readonly string[],
+): void {
+  const r = foeRangeDebuffOf(state, ctx, shipIds)
+  if (r > 0) battle.meFoeRangeDebuff = r
+  else delete battle.meFoeRangeDebuff
+}
+
+/**
+ * **敌方某个射程的最终有效值**（舰体武器与机群共用这一条算式）：
+ * `基础 × (增程倍率 − 削减率)`，带"基础 <3000 不削"与"削后下限 3000"两道闸（见上面那段注释）。
+ */
+function effectiveFoeRangeM(
+  b: import('./state').BattleState,
+  baseRangeM: number,
+  buffMul: number,
+): number {
+  const r = b.meFoeRangeDebuff ?? 0
+  if (r <= 0) return buffMul > 1 ? Math.round(baseRangeM * buffMul) : baseRangeM
+  // 「不足 3000m 的无法被削弱」：只管它自己的增程，不削
+  if (baseRangeM < FOE_RANGE_DEBUFF_FLOOR_M) return buffMul > 1 ? Math.round(baseRangeM * buffMul) : baseRangeM
+  const net = Math.max(0, buffMul - r)
+  return Math.round(Math.max(FOE_RANGE_DEBUFF_FLOOR_M, baseRangeM * net))
 }
 
 /** **受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）。
@@ -5127,14 +5198,15 @@ export function foeGunRangeMulOf(
   return buff !== undefined && buff > 1 ? buff : 1
 }
 
-/** 该敌舰武器的**有效最远射程**（开火门与界面标签共用；未触发 = 原值） */
+/** 该敌舰武器的**有效最远射程**（开火门与界面标签共用；未触发 = 原值）。
+ *  ⚠ **2026-09-18 起并入我方电子舰的削减**（船长：「削减敌人15%的武器射程…射程最短只能削弱到3000m」）：
+ *  净倍率 = **增程倍率 − 削减率**（做加法，见 `foeRangeDebuffOf`）；**基础 <3000m 不削**、削后**下限 3000m**。 */
 export function foeGunMaxRangeOf(
   b: import('./state').BattleState,
   unit: { foeGunRangeMulOnHit?: number },
   w: { maxRangeM: number },
 ): number {
-  const mul = foeGunRangeMulOf(b, unit)
-  return mul > 1 ? Math.round(w.maxRangeM * mul) : w.maxRangeM
+  return effectiveFoeRangeM(b, w.maxRangeM, foeGunRangeMulOf(b, unit))
 }
 
 /** 该敌舰武器的**距离折减**（船长选乙：原区间内 = 原公式，逐字一致；延长段同斜率外推、下限 0） */
