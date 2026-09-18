@@ -14,6 +14,7 @@
  * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v26** · 最后核对 2026-09-17 · 最后跑过 2026-09-17
  */
 import { buildSimContext } from '@whale/data'
+import { commsPopupQueue } from '../packages/core/src/comms'
 import { createInitialState, HOME_GALAXY_ID } from '../packages/core/src/state'
 import type { GameState } from '../packages/core/src/state'
 import type { SimContext } from '../packages/core/src/types'
@@ -91,6 +92,13 @@ ok('演出结束调用成功', beginAfterAwaken(s).ok)
 for (let i = 0; i < 3; i++) advanceGame(s, 1000, ctx)
 ok('序章 = 已完成', s.onboarding.step === 99)
 ok('开场信送达', s.commsDelivered?.['msg-briefing'] !== undefined)
+// 开局那一拍同时满足"开场信 + msg-welcome"两条 start 触发 ⇒ 按"同一拍只弹第一封"的口径，
+// 弹出来的必须是开场信（先看清单、再读欢迎辞），另一封留在收件箱里。
+ok(
+  '开局第一封弹窗 = 开场信',
+  commsPopupQueue(s)[0] === 'msg-briefing',
+  `实际 ${commsPopupQueue(s).slice(0, 3).join(' / ') || '（无）'}`,
+)
 ok('「寻找人类」已发布', s.importantTasks['find-humans'] !== undefined)
 
 step('③ 第一次扫描（星图）')
