@@ -1317,6 +1317,12 @@ const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18
  */
 const OFFICIAL_SLOT_ALIGNED = new Set(['sh-nautilus', 'sh-bullshark'])
 /**
+ * **「官方武装舰 高槽 ≥ 低槽+1」的白名单豁免**（船长 2026-09-18 裁定甲）：
+ * 鹦鹉螺级测绘巡洋舰按船长指定的 **3/4/4**（中槽型功能舰）⇒ 高 3 < 低 4+1，故豁免这一条；
+ * 其余官方武装舰照旧受约束。**总数仍 11**（T3 基准线不破，见 `OFFICIAL_SLOT_ALIGNED`）。
+ */
+const OFFICIAL_HIGH_SLOT_EXEMPT = new Set(['sh-nautilus'])
+/**
  * **非战斗舰血量目标总血**（2026-09-15 船长定；与 `packages/data/src/ships.ts` 头注同源）：
  * 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
  * 参考中位：T1 228 · T2 384 · T3 675 · T4 1273 · T5 2355 ⇒ 目标见下表。
@@ -1392,7 +1398,13 @@ for (const s of SHIPS) {
     //   陵寝巡洋舰 4/4/4）—— 让"高槽多"去推翻那套设计不成立。三艘的实际布局由
     //   `core/tests/wh-ship-baseline.test.ts`「D 族三艘的实际布局逐一钉住」逐条守着。
     if (s.role === 'armed' && !s.id.startsWith('sh-wh-')) {
-      check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+      // ⚠ **2026-09-18 船长：「鹦鹉螺的槽位改成3/4/4」** ⇒ 高 3 < 低 4 会撞这条弱断言。
+      //   裁定 = **给 `sh-nautilus` 一条白名单豁免**（理由：它是**中槽型功能舰**——测绘/侦察线，
+      //   中槽 = 命中/闪避支援正是它吃的那两项；与同子分类「侦察舰」的幽影侦察舰 3/4/1 同形）。
+      //   其余官方武装舰**照旧**受约束。
+      if (!OFFICIAL_HIGH_SLOT_EXEMPT.has(s.id)) {
+        check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+      }
     }
     // **专属舰槽位基准线契约**（船长 2026-09-14：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
     // 种族专属的会在这个基础上 +1 槽位」）——只钉 `sh-wh-*`；官方船现状不在此契约内（见 TIER_SLOT_BASE 注释）。
@@ -1876,6 +1888,41 @@ for (const m of MODULES) {
   console.log(
     `· 隐秘行动装置契约：${SPEC.map((s) => `${byId.get(s.id)?.name} ${s.ms / 1000} 秒 · CPU ${s.cpu} · ${s.price / 10_000} 万（${s.rarity} 档 ${s.tier}）`).join(' · ')}` +
       ` · 带推进器即解除（引擎口径，见 core 用例；**侦察舰特性例外**见下一条契约）`,
+  )
+}
+
+/* ── 电子舰特性契约（船长 2026-09-18：「**电子舰新增特性，削减敌人15%的武器射程，可以乘法叠加，与敌人的
+ *   射程增加效果做加法处理…射程最短只能削弱到3000m（不足3000m的无法被削弱）。**」）──
+ * 本条钉三件事（数值是船长的数 ⇒ 改一处即红）：
+ *   ① **恰好两艘**（掠袭电子舰 / 哨戒电子舰）带 `foeRangeDebuffPct`，值 = **0.15**；
+ *   ② **别的船一件都不许带**（防"顺手给某艘船也开个口子"）；
+ *   ③ 带字段的船，其子分类必须是「电子舰」（字段 ↔ 子分类一致，防"把特性挂到别的船型上"）。
+ * ⚠ 引擎侧口径（乘法合成 · 与增程做加法 · 3000m 地板）由 core 用例钉住：`tests/foe-range-debuff.test.ts`。 */
+{
+  const EW_SHIPS = ['sh-wh-a-frigate', 'sh-wh-d-frigate'] as const
+  const byId = new Map(SHIPS.map((s) => [s.id, s]))
+  for (const id of EW_SHIPS) {
+    const s = byId.get(id)
+    check(s !== undefined, `电子舰缺件：${id}`)
+    if (!s) continue
+    check(s.subClass === '电子舰', `${id} 的子分类应为「电子舰」，实际 ${s.subClass ?? '(无)'}`)
+    check(
+      s.foeRangeDebuffPct === 0.15,
+      `${id} 的敌舰射程削减应为 0.15（船长给定「削减敌人15%的武器射程」），实际 ${s.foeRangeDebuffPct}`,
+    )
+  }
+  const extra = SHIPS.filter(
+    (s) => !(EW_SHIPS as readonly string[]).includes(s.id) && (s.foeRangeDebuffPct ?? 0) > 0,
+  )
+  check(
+    extra.length === 0,
+    `只有「电子舰」那两艘能带该特性，实际多出：${extra.map((s) => `${s.name}(${s.id})`).join(' · ')}`,
+  )
+  const floorOwner = SHIPS.find((s) => (s.foeRangeDebuffPct ?? 0) > 0)
+  check(floorOwner !== undefined, '电子舰特性契约：没有任何船带 foeRangeDebuffPct（船长给定的特性凭空消失）')
+  console.log(
+    `· 电子舰特性契约：${EW_SHIPS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 削减敌舰武器射程 15%` +
+      `（编队乘法叠加：2 艘 27.75% · 与敌方增程做加法 · 基础 <3000m 不削、削后下限 3000m）· 其余 ${SHIPS.length - EW_SHIPS.length} 艘船一律不带`,
   )
 }
 

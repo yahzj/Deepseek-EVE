@@ -848,6 +848,10 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '劫掠捕获网：同一艘电子舰整场只发一次的账本（2026-09-16 加）——运行期',
   },
+  meFoeRangeDebuff: {
+    kind: 'runtime',
+    why: '电子舰压制敌舰射程的削减率（2026-09-18 加）——由编队现算、建档与每拍各重算一次，不入档（读档后自动重建）',
+  },
   foeMounts: {
     kind: 'runtime',
     why: '敌方挂载件名清单（2026-09-16 加）：只给战报/悬停渲染；战中重载即由 seedUnit 重建 ⇒ 不入档',
