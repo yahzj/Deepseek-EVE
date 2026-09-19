@@ -15,6 +15,7 @@ import {
   COURIER_TASK_LEVEL_FREIGHT_ISK,
   COURIER_TASK_LEVEL_VOLUME,
   COURIER_TIMED_CHANCE,
+  COURIER_TIMED_PREMIUM,
   COURIER_TIMED_VOLUME_RATIO,
   COURIER_TIMED_WARP_REQ,
   DEFAULT_BALANCE,
@@ -116,10 +117,11 @@ function expectResourceReward(need: number, buy: number, level: 1 | 2 | 3 | 4 | 
   return r
 }
 
-/** 期望的快递运费（级别运费基准 × 航程系数[标称分钟/10，下限 0.5]；2026-09-18 起运费与体积解耦） */
-function expectCourierReward(level: 1 | 2 | 3 | 4 | 5, nominalMinutes: number): number {
+/** 期望的快递运费（级别运费基准 × 航程系数[标称分钟/10，下限 0.5] × 限时加急 1.5；运费与体积解耦） */
+function expectCourierReward(level: 1 | 2 | 3 | 4 | 5, nominalMinutes: number, timed = false): number {
   const trip = Math.max(0.5, nominalMinutes / 10)
-  return Math.max(100, Math.floor((COURIER_TASK_LEVEL_FREIGHT_ISK[level] * trip) / 100) * 100)
+  const premium = timed ? COURIER_TIMED_PREMIUM : 1
+  return Math.max(100, Math.floor((COURIER_TASK_LEVEL_FREIGHT_ISK[level] * trip * premium) / 100) * 100)
 }
 
 describe('时效任务板 · 条数与级别（2026-09-18 船长改版）', () => {
@@ -325,7 +327,19 @@ describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
       expect(t.refId).toBe('') // 不再绑商品
       expect(t.need).toBe(0)
       // 运费与体积解耦：只看级别 + 航程（母港→远方 = 2 分钟标称）
-      expect(t.rewardIsk).toBe(expectCourierReward(t.level!, 2))
+      expect(t.rewardIsk).toBe(expectCourierReward(t.level!, 2, t.timed === true))
+    }
+  })
+
+  it('限时加急 +50%（船长选乙案）：同级别限时运费 = 普通 × 1.5，体积却只有一半', () => {
+    expect(COURIER_TIMED_PREMIUM).toBe(1.5)
+    for (const lv of [1, 2, 3, 4, 5] as const) {
+      const ordinary = expectCourierReward(lv, 7, false)
+      const timed = expectCourierReward(lv, 7, true)
+      // 取整到百 ⇒ 比值有小误差，按 1 位小数核（精确式已由上面那条整板用例钉住）
+      expect(timed / ordinary).toBeCloseTo(COURIER_TIMED_PREMIUM, 1)
+      expect(timed).toBeGreaterThan(ordinary)
+      expect(courierVolumeFor(lv, true)).toBe(Math.round(courierVolumeFor(lv, false) * 0.5))
     }
   })
 
