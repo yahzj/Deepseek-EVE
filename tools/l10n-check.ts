@@ -24,7 +24,7 @@
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v29**（`packages/core/src/state.ts` 的 `CURRENT_STATE_VERSION`）
  *   - 本工具最后跑过：**2026-09-19**（ID 制改版）
- *   - 本工具最后核对：**2026-09-19**（表 98 条 · 接线 75 处 · 未译读数见运行输出）
+ *   - 本工具最后核对：**2026-09-19**（表 938 条 · 引用 938 个 id · 接线 1,277 处 · 未译读数 1,209）
  *   - 判据：表文件路径 / 导出名（`L10N`）/ id 规则（`<域>.<短名>.<序号>`）/ `i18n/locale.tsx` 的 `t`/`tr`
  *     签名改动 ⇒ 必须重跑核对
  */
@@ -34,7 +34,7 @@ import ts from 'typescript'
 import { L10N } from '../packages/data/src/l10n/table'
 
 const ROOT = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src')
-const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
+const CJK = /[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
 /** 额外放行的白名单（条目 id）；常规情形不必用——**语言自称**（`en === zh`，如「中文」）已自动放行 */
 const CJK_ALLOW = new Set<string>([])
 /** id 允许的域前缀（与 `tools/l10n-wrap.ts` 的 DOMAINS 同源；加域两处一起加） */

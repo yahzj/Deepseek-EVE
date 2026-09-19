@@ -26,12 +26,13 @@ import type { MatterTechBranch, MatterTechNodeDef } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { useL10n } from '../i18n/locale'
+import { tr } from '../i18n/locale'
 
 /** 三条线（顺序 = 界面上从左到右；与数据表的 branch 值一一对应） */
 const BRANCHES: ReadonlyArray<{ key: MatterTechBranch; label: string; icon: string; tone: string }> = [
-  { key: 'explore', label: '虫洞探索', icon: 'target-lock', tone: '#8fd0ff' },
-  { key: 'battle', label: '虫洞战斗', icon: 'turret', tone: '#e0a86a' },
-  { key: 'industry', label: '洞外工业', icon: 'industrial', tone: '#9fd8a0' },
+  { key: 'explore', label: tr("ui.MatterTechTab.001"), icon: 'target-lock', tone: '#8fd0ff' },
+  { key: 'battle', label: tr("ui.MatterTechTab.002"), icon: 'turret', tone: '#e0a86a' },
+  { key: 'industry', label: tr("ui.MatterTechTab.003"), icon: 'industrial', tone: '#9fd8a0' },
 ]
 
 export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -58,15 +59,15 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
   return (
     <div className="app-mt">
       <div className="app-mt-top">
-        <span className="app-mt-essence" title={t('「虫洞谜质」：洞内撤离成功带回的研究材料，只收不卖')}>
-          <Glyph name="essence" size={13} color="#c9a6ff" /> {t('虫洞谜质')} <b>{essence.toLocaleString('zh-CN')}</b> {t('枚')}
+        <span className="app-mt-essence" title={t("ui.MatterTechTab.004")}>
+          <Glyph name="essence" size={13} color="#c9a6ff" /> {t("ui.MatterTechTab.005")} <b>{essence.toLocaleString('zh-CN')}</b> {t("ui.MatterTechTab.006")}
         </span>
         <span className="app-dim">
-          {t('已点 {n}/{total} 级', { n: spent, total })} · {t('研究不消耗时间，点即生效')}
+          {t("ui.MatterTechTab.007", { n: spent, total })} · {t("ui.MatterTechTab.008")}
         </span>
         <HintIcon
           tip={t(
-            '研究花费「虫洞谜质」与信用点，不消耗时间；效果一律即时生效。三条线分别作用于洞内探索（回合 / 采集 / 扫描 / 倍速）、洞内战斗（护盾装甲 / 命中回避 / 射程装填 / 威胁压制）与洞外工业（货柜拆解 / 虚空精炼 / 残骸解析）。部分节点有前置要求，需先点满前置的指定级数。',
+            "ui.MatterTechTab.009",
           )}
         />
       </div>
@@ -94,10 +95,10 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
                           className={`app-mt-node ${cls}`}
                           title={
                             level >= def.maxLevel
-                              ? t('{name}：已满级 {lv}/{max}', { name: def.name, lv: level, max: def.maxLevel })
+                              ? t("ui.MatterTechTab.010", { name: def.name, lv: level, max: def.maxLevel })
                               : can.ok
-                                ? t('{name}：{lv}/{max} 级 — 可研究下一级', { name: def.name, lv: level, max: def.maxLevel })
-                                : t('{name}：{lv}/{max} 级 — {why}', {
+                                ? t("ui.MatterTechTab.011", { name: def.name, lv: level, max: def.maxLevel })
+                                : t("ui.MatterTechTab.012", {
                                     name: def.name,
                                     lv: level,
                                     max: def.maxLevel,
@@ -129,12 +130,12 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
                 {open.name}
                 <span className="app-dim">
                   {' '}
-                  · {t('{lv}/{max} 级', { lv: matterTechLevel(state, open.id), max: open.maxLevel })} ·{' '}
+                  · {t("ui.MatterTechTab.013", { lv: matterTechLevel(state, open.id), max: open.maxLevel })} ·{' '}
                   {t(BRANCHES.find((b) => b.key === open.branch)?.label ?? '')} T{open.tier}
                 </span>
               </span>
               <button className="app-btn is-small" onClick={() => setOpenId(null)}>
-                ✕ {t('关闭')}
+                ✕ {t("ui.FitPage.055")}
               </button>
             </div>
             <div className="app-modal-body">
@@ -144,31 +145,31 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
                 return (
                   <>
                     <div className="app-mt-modal-row">
-                      <span className="app-dim">{t('下一级费用')}</span>
+                      <span className="app-dim">{t("ui.MatterTechTab.014")}</span>
                       {cost ? (
                         <span className="app-mt-cost">
-                          <Glyph name="essence" size={12} color="#c9a6ff" /> {cost.essence} {t('枚')} ·{' '}
-                          {cost.isk.toLocaleString('zh-CN')} {t('信用点')}
+                          <Glyph name="essence" size={12} color="#c9a6ff" /> {cost.essence} {t("ui.MatterTechTab.006")} ·{' '}
+                          {cost.isk.toLocaleString('zh-CN')} {t("ui.FirstTasks.003")}
                         </span>
                       ) : (
-                        <span className="app-mt-cost is-max">{t('已满级')}</span>
+                        <span className="app-mt-cost is-max">{t("ui.SkillsPage.025")}</span>
                       )}
                     </div>
                     <div className="app-mt-modal-row">
                       <span className="app-dim">
-                        {t('前置')}
-                        <HintIcon tip={t('前置未满时，先把前置节点点满到要求的级数再来。')} />
+                        {t("ui.MatterTechTab.015")}
+                        <HintIcon tip={t("ui.MatterTechTab.016")} />
                       </span>
                       <span className="app-mt-modal-row-value">
                         {Object.keys(open.prereq ?? {}).length === 0
-                          ? t('无')
+                          ? t("ui.BattleScreen.001")
                           : Object.entries(open.prereq ?? {})
                               .map(([id, need]) => {
                                 const dep = nodes.find((d) => d.id === id)
                                 const have = matterTechLevel(state, id)
                                 return `${dep?.name ?? id} ${have}/${need}`
                               })
-                              .join(t('、'))}
+                              .join(t("ui.MatterTechTab.017"))}
                       </span>
                     </div>
                     {!can.ok && level < open.maxLevel ? (
@@ -178,20 +179,20 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
                       <button
                         className="app-btn is-primary"
                         disabled={!can.ok}
-                        title={can.ok ? t('研究一级（不消耗时间）') : (can.error ?? '')}
+                        title={can.ok ? t("ui.MatterTechTab.018") : (can.error ?? '')}
                         onClick={() => {
                           const r = engine.researchMatterTech(open.id)
-                          if (r.ok) onToast(t('🔬 已研究：{name}', { name: open.name }))
-                          else onToast(r.error ?? t('研究失败。'), true)
+                          if (r.ok) onToast(t("ui.MatterTechTab.019", { name: open.name }))
+                          else onToast(r.error ?? t("ui.MatterTechTab.020"), true)
                         }}
                       >
-                        {level >= open.maxLevel ? t('已满级') : t('研究一级（{ess} 谜质 · {isk} 信用点）', {
+                        {level >= open.maxLevel ? t("ui.SkillsPage.025") : t("ui.MatterTechTab.021", {
                           ess: cost?.essence ?? 0,
                           isk: (cost?.isk ?? 0).toLocaleString('zh-CN'),
                         })}
                       </button>
                       <span className="app-dim">
-                        {t('现有虫洞谜质 {n} 枚', { n: essence.toLocaleString('zh-CN') })}
+                        {t("ui.MatterTechTab.022", { n: essence.toLocaleString('zh-CN') })}
                       </span>
                     </div>
                   </>

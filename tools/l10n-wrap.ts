@@ -35,7 +35,8 @@
  *
  * ⚠ **版本自检**
  *   - 游戏版本：**v0.1.0** · 存档结构：**v29**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后跑过：**2026-09-19**（ID 制改版：造 id + 写表）
+ *   - 本工具最后跑过：**2026-09-19**（ID 制改版：造 id + 写表 + `l10n-keep` 豁免标记）
+ *   - 本工具最后核对：**2026-09-19**（表 938 条 · 界面批 1~6 · 幂等自检：连跑两次第 2 次 0 处改动）
  *   - 判据：`i18n/locale.tsx` 的导出改名（`tr`）/ 表文件路径或导出名（`L10N`）改动 / App 不再订阅引擎
  *     `notify` ⇒ 必须重跑核对
  */
@@ -46,7 +47,7 @@ import ts from 'typescript'
 const ROOT = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src')
 const I18N_DIR = join(ROOT, 'i18n')
 const TABLE = join(process.cwd(), 'packages', 'data', 'src', 'l10n', 'table.ts')
-const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
+const CJK = /[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
 /** 展示类属性（初值是字符串时包成表达式） */
 const DISPLAY_ATTRS = new Set(['title', 'placeholder', 'label', 'hint', 'note', 'tip', 'alt', 'desc'])
 /** 表里的域前缀（新造 id 只允许落在这些域；`ui` = 界面批） */
@@ -99,8 +100,9 @@ const rows: Row[] = []
 for (let i = openIdx + 1; i < closeIdx; i++) {
   const m = ROW_RE.exec(tableLines[i]!)
   if (!m) {
-    if (tableLines[i]!.trim() !== '') throw new Error(`table.ts 第 ${i + 1} 行不像条目标目：${tableLines[i]!}`)
-    continue
+    // 表是**生成件**：解析时跳过注释行与空行（重写时不保留注释）
+    if (tableLines[i]!.trim() === '' || tableLines[i]!.trimStart().startsWith('//')) continue
+    throw new Error(`table.ts 第 ${i + 1} 行不像条目标目：${tableLines[i]!}`)
   }
   rows.push({ id: m[1]!, zh: JSON.parse(m[2]!) as string, en: JSON.parse(m[3]!) as string })
 }
