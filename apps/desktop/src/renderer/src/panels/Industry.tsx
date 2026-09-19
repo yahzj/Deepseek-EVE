@@ -176,6 +176,13 @@ export function BlueprintShelfPanel({
     (useKind === 'all' || (useKind === 'single' ? k.singleUse : !k.singleUse))
   const shown = bookCards.filter((c) => passKeys(c.keys))
   const fragShown = fragCards.filter((c) => passKeys(c.keys))
+  /**
+   * **可逆向解锁的碎片卡置顶**（船长 2026-09-19：「蓝图书架内，已经可以逆向解析的蓝图置顶」）：
+   * 「已集齐」判据 = `have >= need`（与卡面进度、`RedeemFragmentButton` 的可点判定同源）⇒ 排到书架**最前**；
+   * 未集齐的碎片卡留在蓝图书之后（原位置不动）。
+   */
+  const fragReady = fragShown.filter((c) => c.r.have >= c.r.need)
+  const fragRest = fragShown.filter((c) => c.r.have < c.r.need)
 
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
@@ -192,6 +199,34 @@ export function BlueprintShelfPanel({
     const r = engine.sellHoldingAt(key)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
     else onToast('出售指令已受理：市场收购簿有单即时成交，否则自动挂卖单。')
+  }
+
+  /**
+   * **碎片逆向卡**（2026-09-19 船长：「蓝图书架内确实没有显示可以合并的蓝图碎片。是否忘记添加到蓝图书架了？」）
+   * ——与蓝图书**同网格**（同一份 JSX 供"置顶区"与"常规区"共用），卡面标明碎片来源与进度，
+   * 动作 = 「逆向解锁 N/M」（`RedeemFragmentButton` 与物品详情弹层共用同一个出口）。
+   */
+  function fragCard(r: ReturnType<GameEngine['fragmentRedeemRows']>[number]): ReactNode {
+    return (
+      <div key={`frag-${r.fragmentItemId}`} className="app-belt-card app-shelf-card is-frag">
+        <div className="app-belt-head">
+          <span className="app-belt-name" title={`${r.blueprintName}（碎片 ${r.have}/${r.need}）`}>
+            ▦ {r.blueprintName}
+          </span>
+          <span className="app-chip" style={{ marginLeft: 'auto' }}>
+            碎片 {r.have}/{r.need}
+          </span>
+        </div>
+        <div className="app-belt-desc">
+          {r.have >= r.need
+            ? '碎片已集齐——逆向解锁后永久可造（残骸回收的彩头掉落）'
+            : `碎片未集齐：还差 ${r.need - r.have} 片（来自残骸回收的彩头掉落）`}
+        </div>
+        <div className="app-belt-actions">
+          <RedeemFragmentButton engine={engine} itemId={r.fragmentItemId} onToast={onToast} />
+        </div>
+      </div>
+    )
   }
 
   if (cards.length === 0) {
@@ -288,6 +323,8 @@ export function BlueprintShelfPanel({
         </div>
       ) : null}
       <div className="app-shelf-grid">
+        {/* **可逆向解锁的碎片卡置顶**（船长 2026-09-19）——排在蓝图书之前 */}
+        {fragReady.map((c) => fragCard(c.r))}
         {shown.map(({ id, n }) => {
           // 蓝图书架按**持有的书**列条目 ⇒ 走全目录（施工期闸门下未上线的图纸只有调试才可能持有）
           const bp = engine.allBlueprints.find((b) => b.id === id) ?? engine.allShipBlueprints.find((b) => b.id === id)
@@ -343,29 +380,9 @@ export function BlueprintShelfPanel({
             </div>
           )
         })}
+        {/* 未集齐的碎片卡：留在蓝图书之后（原位置） */}
+        {fragRest.map((c) => fragCard(c.r))}
       </div>
-      {/* **碎片逆向卡**（2026-09-19 船长：书架里看不到可合并的碎片）——与蓝图书同网格、同筛选，
-          卡面标明"碎片"来源与进度，动作 = 「逆向解锁 N/M」 */}
-      {fragShown.map(({ r }) => (
-        <div key={`frag-${r.fragmentItemId}`} className="app-belt-card app-shelf-card is-frag">
-          <div className="app-belt-head">
-            <span className="app-belt-name" title={`${r.blueprintName}（碎片 ${r.have}/${r.need}）`}>
-              ▦ {r.blueprintName}
-            </span>
-            <span className="app-chip" style={{ marginLeft: 'auto' }}>
-              碎片 {r.have}/{r.need}
-            </span>
-          </div>
-          <div className="app-belt-desc">
-            {r.have >= r.need
-              ? '碎片已集齐——逆向解锁后永久可造（残骸回收的彩头掉落）'
-              : `碎片未集齐：还差 ${r.need - r.have} 片（来自残骸回收的彩头掉落）`}
-          </div>
-          <div className="app-belt-actions">
-            <RedeemFragmentButton engine={engine} itemId={r.fragmentItemId} onToast={onToast} />
-          </div>
-        </div>
-      ))}
       {shown.length === 0 && fragShown.length === 0 ? (
         <div className="app-dim app-inv-empty">{t('这一类书架里没有书，也没有可逆向的碎片。')}</div>
       ) : null}
