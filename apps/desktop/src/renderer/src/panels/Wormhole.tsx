@@ -35,7 +35,6 @@ import {
   cargoCapacityM3Of,
   isExitCell,
   shipDisplayName,
-  shipCategoryKeyOf,
   shipSizeLabel,
   wormholeAdmission,
   wormholeBagSlots,
@@ -93,7 +92,7 @@ import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, Wormh
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
-import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
+import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses } from '../ui/itemSubs'
 
 type WhTab = 'prep' | 'map' | 'bag'
 
@@ -594,9 +593,10 @@ export function WormholePanel({
         const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
-      // 类别键 = `shipCategoryKeyOf`（2026-09-16 船长：装甲线含"武装舰里装甲占比 > 护盾占比"者）
-      if (whRole !== SUB_ALL && shipCategoryKeyOf(e.def ?? {}) !== whRole) return false
-      if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
+      // 类别 / 级别：走**唯一入口** `shipRolePasses` / `shipTierPasses`（2026-09-19 乙组·判定单点；
+      // 类别 = 派生类别键 `shipCategoryKeyOf`，与舰队/仓库/手册同一把尺）
+      if (!shipRolePasses(e.def, whRole)) return false
+      if (!shipTierPasses(e.def ?? { tier: e.tier }, whTier)) return false
       return true
     }),
     /**

@@ -34,6 +34,8 @@ import {
   itemBucketPasses,
   itemSubPasses,
   moduleSubKeyOf,
+  shipRolePasses,
+  shipTierPasses,
 } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
@@ -1029,7 +1031,8 @@ export function Handbook({
      *  物品页的 `main` = 真实物品大类；装备页的 `main` = 槽类键（`high/mid/low`）⇒ 拼成桶键 `module-<rack>`。 */
     if (t === 'items') return itemBucketPasses(engine.ctx, c.key, main)
     if (t === 'modules') return itemBucketPasses(engine.ctx, c.key, `module-${main}`)
-    if (t === 'ships') return String(c.glyph) === main // 同上：类别键（不是 raw.role）
+    // 舰船图鉴：类别走**唯一入口** `shipRolePasses`（= core `shipCategoryKeyOf`，2026-09-19 乙组）
+    if (t === 'ships') return shipRolePasses(engine.ctx.ships.get(c.key), main)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) return main === 'ship'
       if (c.raw.itemId !== undefined) return main === 'consume'
@@ -1042,7 +1045,8 @@ export function Handbook({
     if (sub === SUB_ALL) return true
     if (t === 'items') return itemSubPasses(engine.ctx, c.key, String(c.raw.kind ?? ''), sub)
     if (t === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? '')) === sub
-    if (t === 'ships') return `t${String(c.raw.tier ?? '')}` === sub
+    // 舰船图鉴：级别走**唯一入口** `shipTierPasses`（2026-09-19 乙组）
+    if (t === 'ships') return shipTierPasses(engine.ctx.ships.get(c.key), sub)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) {
         const ship = engine.ctx.ships.get(String(c.raw.shipId))

@@ -276,6 +276,32 @@
 - 时机说明：两处搜索栏与①一起进**丙组那一遍**（同一页、同一套写法；分两遍反而重复动 `IndustryPage/Industry.tsx`）；
   丁组剩下的项（精炼炉空串键 ⇒ `SUB_ALL` · 任务中心是否补级别筛选 · 技能页搜索互斥）照旧留丁。
 
+## 十、第 2 遍（乙 · 舰船）落地记录 · 2026-09-19
+
+**范围**：我的舰队 · 舰船仓库 · 虫洞出征编队 · 手册舰船图鉴 · 市场舰船档——五处读同一套表与同一套判定。
+
+**改动清单**：
+
+| 文件 | 改动 |
+|---|---|
+| `ui/itemSubs.ts` | 收编两张表（基线⑤）：`FLEET_STATE_TABS`（全部/驾驶中/AI 执勤/空闲/待维修）· `STORE_OWN_TABS`（全部/已拥有/未拥有）——「全部」键由 `'all'` 改为 **`SUB_ALL`**（基线②）；新增**两个唯一入口**（基线⑥）：`shipRolePasses(def, role)`（类别 = core 派生类别键 `shipCategoryKeyOf`）· `shipTierPasses(def, tier)`（级别 = `t<级别>`）；`subPasses` 的舰船分支改读 `shipRolePasses` |
+| `pages/ShipPage.tsx` | 删掉就地写死的两张表与两个类型（改 import）；状态/拥有状态改用 `SUB_ALL`；舰队与仓库的类别/级别判定改走唯一入口 |
+| `panels/Wormhole.tsx` | 出征编队两行改走唯一入口；core `shipCategoryKeyOf` 的直接 import 退场 |
+| `panels/Handbook.tsx` | 舰船图鉴的主筛选（类别）/子筛选（级别）改走唯一入口 |
+| `ui/itemSubs.ts`（同上） | `subPasses` 的舰船档（市场用）改走唯一入口 |
+
+**行为变化（一处真修复）**：**舰船仓库与市场**原先按**原始 `role`** 判类别，而舰队/虫洞/手册按**派生类别键**
+（`shipCategoryKeyOf`：装甲线 = `role: 'armored'` **或** 武装舰里装甲 > 护盾，2026-09-16 船长裁定）⇒
+同一型船在两处会落进不同类别。统一后有 **4 型船换类别**（原先在仓库/市场被算作「武装舰」，现在与其它三页一致算「装甲舰」）：
+
+- `sh-bullshark`（牛鲨级突击巡洋舰）· `sh-wh-e-frigate`（构件鱼雷舰）· `sh-wh-e-destroyer`（机库无人机作战舰）· `sh-wh-e-carrier`（巨构无人机作战舰）
+
+其余判定**逐字等价**（含"缺 `def` 时按 `{}` 派生"这条边界，不借收敛之名改行为）。
+
+**验证**：临时对拍探针（已按 §6 删除）——全舰 × 全类别/级别选项（含缺 def 边界）共 **484 条 · 0 处不一致**；
+`typecheck` 4 包 0 错 · `ui:rot-check` ✅ · `build` ✅ · core **1,883 测试全绿**。
+
+
 
 
 

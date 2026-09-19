@@ -39,7 +39,15 @@ import { AiWorkFx } from '../ui/aiWorkFx'
 import type { AiWorkKind } from '../ui/aiWorkFx'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
+import {
+  FLEET_STATE_TABS,
+  SHIP_SUBS,
+  SHIP_TIER_SUBS,
+  STORE_OWN_TABS,
+  SUB_ALL,
+  shipRolePasses,
+  shipTierPasses,
+} from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -77,15 +85,9 @@ export type ShipTab = 'fleet' | 'ai' | 'store'
 /** 舰队检索（2026-09-10 船长：筛选 + 搜索，控件样式与仓库/技能目录统一；
  *  2026-09-11 船长：「**移除排序选项，改为按照舰船级别划分的子筛选**」——
  *  排序下拉（默认/名称/耐久/舰族）整条退场，改由**舰船级别**子筛选（`SHIP_TIER_SUBS`，与组装机同一张单点表）收窄；
- *  列表顺序固定为「机库序 + 已标记置顶」（即原「默认排序」口径，收藏置顶规则继续成立）。 */
-type FleetFilter = 'all' | 'pilot' | 'ai' | 'idle' | 'damaged'
-const FLEET_FILTER_TABS: Array<{ key: FleetFilter; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'pilot', label: '驾驶中' },
-  { key: 'ai', label: 'AI 执勤' },
-  { key: 'idle', label: '空闲' },
-  { key: 'damaged', label: '待维修' },
-]
+ *  列表顺序固定为「机库序 + 已标记置顶」（即原「默认排序」口径，收藏置顶规则继续成立）。
+ *  ⚠ 2026-09-19 乙组：「状态」维度表已按基线⑤收编到 `ui/itemSubs.ts`（`FLEET_STATE_TABS`），
+ *  类别/级别判据也改读那里的唯一入口（`shipRolePasses` / `shipTierPasses`）。 */
 
 /** AI 指挥中心可指派的任务类型（2026-09-10 船长：统一全部 AI 可执行活动）——
  *  副船三类：采矿/打捞/掩护巡逻；站内工业两类：精炼炉与回收炉/组装机制造。
@@ -107,13 +109,8 @@ const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: stri
 ]
 
 /** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
- *  仓里有货 = 已拥有；仓里为空 = 未拥有，即使在役舰队有同型） */
-type StoreOwnFilter = 'all' | 'owned' | 'unowned'
-const STORE_OWN_TABS: Array<{ key: StoreOwnFilter; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'owned', label: '已拥有' },
-  { key: 'unowned', label: '未拥有' },
-]
+ *  仓里有货 = 已拥有；仓里为空 = 未拥有，即使在役舰队有同型）。
+ *  ⚠ 2026-09-19 乙组：表已收编到 `ui/itemSubs.ts`（`STORE_OWN_TABS`）。 */
 
 export function ShipPage({
   engine,
@@ -155,7 +152,7 @@ export function ShipPage({
   // 2026-09-10 舰队检索：搜索词 / 状态筛选；2026-09-11 船长：排序键退场，改「舰船级别」子筛选 +
   // 「舰船类别」（角色）子筛选；2026-09-12 船长：「将级别和类别筛选对调，玩家先选择类别，再选级别」
   const [fleetQ, setFleetQ] = useState('')
-  const [fleetFilter, setFleetFilter] = useState<FleetFilter>('all')
+  const [fleetFilter, setFleetFilter] = useState<string>(SUB_ALL)
   const [fleetTier, setFleetTier] = useState<string>(SUB_ALL)
   const [fleetRole, setFleetRole] = useState<string>(SUB_ALL)
 
@@ -194,7 +191,7 @@ export function ShipPage({
   const fleetTotal = Object.keys(state.fleet).length
   const fq = fleetQ.trim().toLowerCase()
   /** 任一维筛选或搜索词生效（标题行的计数据此在「N 艘 / 匹配 N / 共 M 艘」之间切换） */
-  const fleetFiltered = fq.length > 0 || fleetFilter !== 'all' || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL
+  const fleetFiltered = fq.length > 0 || fleetFilter !== SUB_ALL || fleetTier !== SUB_ALL || fleetRole !== SUB_ALL
   const fleetShown = (() => {
     const list = fleetEntries.filter(({ uid, ship }) => {
       if (fq.length > 0) {
@@ -202,7 +199,7 @@ export function ShipPage({
         const defName = (ctx.ships.get(ship.defId ?? uid)?.name ?? '').toLowerCase()
         if (!name.includes(fq) && !defName.includes(fq)) return false
       }
-      if (fleetFilter !== 'all') {
+      if (fleetFilter !== SUB_ALL) {
         const dur = durabilityOf(state, uid)
         const armor = ship.armorPct ?? 1
         const isPilot = uid === state.shipId
@@ -218,20 +215,15 @@ export function ShipPage({
         if (!ok) return false
       }
       // 舰船类别子筛选（2026-09-12 船长：与级别对调顺序 —— 类别为上位、先选）
-      // 键 = **类别判据** `shipCategoryKeyOf`（2026-09-16 船长：装甲线 = role 为 armored，
-      // 或武装舰里装甲占比 > 护盾占比「丙案：只在武装舰里判」），与市场/手册/虫洞的 SHIP_SUBS 同源；
-      // 「全部」= 该维不参与判定
-      if (fleetRole !== SUB_ALL) {
-        const def = ctx.ships.get(ship.defId ?? uid)
-        if (shipCategoryKeyOf(def ?? {}) !== fleetRole) return false
-      }
+      // 键 = **派生类别判据** `shipCategoryKeyOf`（2026-09-16 船长：装甲线 = role 为 armored，
+      // 或武装舰里装甲占比 > 护盾占比「丙案：只在武装舰里判」）——判据走唯一入口 `shipRolePasses`
+      // （2026-09-19 乙组：舰船仓库与市场原先用原始 role，两处已统一到同一把尺）
+      const shipDef = ctx.ships.get(ship.defId ?? uid)
+      if (!shipRolePasses(shipDef, fleetRole)) return false
       // 舰船级别子筛选（2026-09-12 船长：为下位、后选）：键 `t<级别>`，与组装机「舰船蓝图」子筛选同一张单点表
       // ⚠ 各维“与”关系、互不重置；两维都选具体值时可能出现**空组合**（T4/T5 无采矿舰与武装舰等），
       // 属船长已确认的取舍（船长选「始终出全五档 + 各类别」，不隐藏空档）
-      if (fleetTier !== SUB_ALL) {
-        const def = ctx.ships.get(ship.defId ?? uid)
-        if (`t${def?.tier}` !== fleetTier) return false
-      }
+      if (!shipTierPasses(shipDef, fleetTier)) return false
       return true
     })
     // 2026-09-10 船长定：已标记（收藏）的船置顶（原「默认排序」口径；排序键已退场，恒走这一条）
@@ -293,7 +285,7 @@ export function ShipPage({
    * 口径：仓里的船 = 组装机产出（同型堆叠计数）；可转入舰队；可直接在市场出售（吃簿即时成交 /
    * 未成交转限价卖单 / 撤单退回仓库）。筛选三维同「我的舰队」，其中「拥有」按船长裁定**只看仓库库存**。 */
   const [storeQ, setStoreQ] = useState('')
-  const [storeOwn, setStoreOwn] = useState<StoreOwnFilter>('all')
+  const [storeOwn, setStoreOwn] = useState<string>(SUB_ALL)
   const [storeRole, setStoreRole] = useState<string>(SUB_ALL)
   const [storeTier, setStoreTier] = useState<string>(SUB_ALL)
   /** 正在展开出售确认的船型 id（同时只展开一个） */
@@ -307,14 +299,16 @@ export function ShipPage({
   )
   const storeTotalShips = Object.values(state.shipStore ?? {}).reduce((a, b) => a + b, 0)
   const sq = storeQ.trim().toLowerCase()
-  const storeFiltered = sq.length > 0 || storeOwn !== 'all' || storeRole !== SUB_ALL || storeTier !== SUB_ALL
+  const storeFiltered = sq.length > 0 || storeOwn !== SUB_ALL || storeRole !== SUB_ALL || storeTier !== SUB_ALL
   const storeShown = storeAll.filter((def) => {
     const stored = shipStoredCount(state, def.id)
     if (sq.length > 0 && !def.name.toLowerCase().includes(sq) && !def.id.toLowerCase().includes(sq)) return false
     if (storeOwn === 'owned' && stored <= 0) return false
     if (storeOwn === 'unowned' && stored > 0) return false
-    if (storeRole !== SUB_ALL && def.role !== storeRole) return false
-    if (storeTier !== SUB_ALL && `t${def.tier}` !== storeTier) return false
+    /* 类别 / 级别：走**唯一入口**（2026-09-19 乙组）——原先这里用原始 `def.role`，与舰队/虫洞/手册的
+     * 派生类别键（`shipCategoryKeyOf`）不一致 ⇒ 已统一（同一型船在各页落进同一类别） */
+    if (!shipRolePasses(def, storeRole)) return false
+    if (!shipTierPasses(def, storeTier)) return false
     return true
   })
   /** 舰队（机库）里同型艘数——仓库卡上的参考读数（不是筛选判据） */
@@ -397,7 +391,7 @@ export function ShipPage({
           <div className="app-fleet-row">
             <span className="app-dim">状态：</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
-              {FLEET_FILTER_TABS.map((t) => (
+              {FLEET_STATE_TABS.map((t) => (
                 <button
                   key={t.key}
                   role="tab"

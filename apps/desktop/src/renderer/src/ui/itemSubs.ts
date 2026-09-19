@@ -39,7 +39,15 @@
  * - 物品页 ItemsPage：仓库筛选的装备二级（`RACK_SUBS`）与槽类判定（core `rackOf`）。
  * 新增/调整分类只改本文件，各处同时生效。
  */
-import { isRareWreck, rackOf, shipSizeLabel, WORMHOLE_BP_BOX_IDS, WORMHOLE_MILITARY_BOX_ID, WORMHOLE_VALUABLES_BOX_ID } from '@whale/core'
+import {
+  isRareWreck,
+  rackOf,
+  shipCategoryKeyOf,
+  shipSizeLabel,
+  WORMHOLE_BP_BOX_IDS,
+  WORMHOLE_MILITARY_BOX_ID,
+  WORMHOLE_VALUABLES_BOX_ID,
+} from '@whale/core'
 import type { MarketGoodDef, SimContext } from '@whale/core'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
@@ -247,8 +255,9 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   // 只装物品/装备的桶：别的商品（舰船/蓝图/核心）**不属此桶**（收敛前各分支自带这条护栏，别丢）
   if (ITEM_SPACE_BUCKETS.includes(kind)) return false
   if (kind === 'ship') {
-    const ship = ctx.ships.get(good.refId)
-    return (ship?.role ?? '') === sub
+    // 舰船类别走**唯一入口** `shipRolePasses`（2026-09-19 乙组：原先这里用原始 `role`，
+    // 与舰队/虫洞/手册的派生类别键 `shipCategoryKeyOf` 不一致 ⇒ 已统一）
+    return shipRolePasses(ctx.ships.get(good.refId), sub)
   }
   if (kind === 'blueprint') {
     const eq = ctx.blueprints.get(good.refId)
@@ -383,3 +392,45 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
 
 /** 一级桶中**只装物品 / 装备**的那些（`itemSubPasses` 的适用范围；其余桶由各页自己判） */
 export const ITEM_SPACE_BUCKETS: readonly string[] = ['item', 'container', 'consume', 'wreck', 'module', ...RACK_KIND_KEYS]
+
+/* ═══════════ 乙组 · 舰船维度（船长 2026-09-19 六条基线：⑤表收编 ＋ ⑥判定单点）═══════════
+ * 「我的舰队 / 舰船仓库 / 虫洞出征编队 / 手册舰船图鉴 / 市场舰船档」五处读同一套表与同一套判定。
+ * ⚠ 收敛前的**真不一致**（本组修掉）：舰队/虫洞/手册 的「类别」走**派生类别键** `core.shipCategoryKeyOf`
+ *   （装甲线 = `role: 'armored'` **或** 武装舰里装甲 > 护盾），而**舰船仓库与市场**走的是原始 `role`
+ *   ⇒ 同一型船在两处会落进不同类别（core 注释里本就写明这是"同源单点"）。 */
+
+/** **我的舰队「状态」维度**（并列属性行，第一行）：全部 / 驾驶中 / AI 执勤 / 空闲 / 待维修。
+ *  「全部」键 = `SUB_ALL`（基线②：下级/维度选择器一律用它；`'all'` 只留给一级选择器）。 */
+export const FLEET_STATE_TABS: SubOption[] = [
+  { key: SUB_ALL, label: '全部' },
+  { key: 'pilot', label: '驾驶中' },
+  { key: 'ai', label: 'AI 执勤' },
+  { key: 'idle', label: '空闲' },
+  { key: 'damaged', label: '待维修' },
+]
+
+/** **舰船仓库「拥有」维度**（并列属性行，第一行）：全部 / 已拥有 / 未拥有。
+ *  判据口径见 2026-09-14 船长裁定「乙」：**只看仓库库存**（在役舰队里的同型不算"已拥有"）。 */
+export const STORE_OWN_TABS: SubOption[] = [
+  { key: SUB_ALL, label: '全部' },
+  { key: 'owned', label: '已拥有' },
+  { key: 'unowned', label: '未拥有' },
+]
+
+/** 舰船定义的最小形状（类别判据只需要 role + 盾/甲结构值） */
+type ShipCategoryInput = Parameters<typeof shipCategoryKeyOf>[0]
+
+/** **舰船「类别」维度判据（唯一入口）**：走 core 派生类别键 `shipCategoryKeyOf`
+ *  （`SHIP_SUBS` 的键 = 角色/类别 id：industrial / hauler / armed / armored）。
+ *  ⚠ 缺 `def`（老档/异常条目）时按 `{}` 派生——与收敛前舰队/虫洞那两处的写法**逐字一致**，
+ *  不借收敛之名改这个边界行为。 */
+export function shipRolePasses(def: ShipCategoryInput | undefined, role: string): boolean {
+  if (role === SUB_ALL) return true
+  return shipCategoryKeyOf(def ?? {}) === role
+}
+
+/** **舰船「级别」维度判据（唯一入口）**：键 = `t<级别>`（与组装机「舰船蓝图」子筛选同一张 `SHIP_TIER_SUBS` 表）。 */
+export function shipTierPasses(def: { tier?: number } | undefined, tier: string): boolean {
+  if (tier === SUB_ALL) return true
+  return def !== undefined && `t${def.tier}` === tier
+}
