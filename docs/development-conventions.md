@@ -168,8 +168,12 @@
   `"` **既不被转义也不被保留**——实测 `$s = 'a "b" c'` 经 `node -e … $s` 到达时变成 `a b c`（引号凭空消失）；
   长文本还会被**按空格/换行切成多个参数**（`git commit -m $msg` 于是把提交消息切成一堆 pathspec 报
   `did not match any file(s) known to git`，**消息越正式越容易中招**）。**纪律四条**：
-  ① **多行文本或含引号的文本，一律走"写文件 + `-F`"**——`git commit -F <临时文件>`（消息文件写 `$env:TEMP`，
-  用完即删，不在仓库留垃圾），写盘仍按上条用 .NET 显式 UTF-8；
+  ① **多行文本或含引号的文本，一律走"写文件 + `-F`"**——**首选现成工具 `npm run commit:msg`**
+  （`tools/commit-msg.ts`：消息从 **stdin** 进来、自带编码自检与预览，内部就是写 `$TEMP` 临时文件 + `git commit -F`，
+  用完即删）；⚠ **要给 git 传参数（如 `--amend`）时，分隔符必须写成 `'--'`**——PowerShell 会把**裸 `--`**
+  当自己的"参数结束"标记吃掉，`npm run commit:msg -- --amend` 到不了脚本（实测参数被当 npm 配置丢掉）；
+  也可直连 `npx tsx tools/commit-msg.ts --amend`。手工做法同理：`git commit -F <临时文件>`，
+  消息文件写 `$env:TEMP`、不在仓库留垃圾，写盘仍按上条用 .NET 显式 UTF-8；
   ② 短消息**宁可避开 `"`**：中文引号一律用「」；
   ③ 单引号 here-string `@'…'@` **只保证 PowerShell 自己不解析内容**，**不保证原生侧收到原样**
   ⇒ 别把 `-m $msg` 当安全路径（已两次踩：提交消息被吞引号 + 被切碎）；
