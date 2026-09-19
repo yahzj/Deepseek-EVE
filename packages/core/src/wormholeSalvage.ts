@@ -2061,12 +2061,24 @@ export function wormholeSyncMatterTurns(state: GameState, ctx: SimContext): void
   if (!run) return
   const bonus = wormholeMatterBuffs(run.hold).turnBonus
   const techNow = matterTechWhBuffs(state, ctx).turnBonus
-  const techBaked = run.turnsTechBonus ?? techNow
-  const techGain = Math.max(0, techNow - techBaked)
-  // 老档没有 `turnsBase` ⇒ 用"当前上限 − 当前加成"反推（老档本来没有装置 ⇒ 等于 turnsTotal）
-  const base = run.turnsBase ?? run.turnsTotal - bonus - techBaked
+  /**
+   * ⚠ **2026-09-19 报障修复**（船长转述玩家：「**138 剩余回合数，拾取回合数增加的谜质后变成 38 回合**」）：
+   * 旧式把 `turnsBase` 定成「不含科技的基础」，却在 `want` 里**只加科技的"增量"**（`techGain`）
+   * ⇒ 一旦触发同步（捡 / 挪 / 丢装置都触发），**已折算进本趟的那一份科技加成整段消失**：
+   * 玩家 42 基础 ＋ 10 级锚定器 100 = 138，捡一台「时序核心」后算成 `42 + 10 + 0 = 52`，
+   * `turnsLeft` 被夹到新上限（实测报的是 38，同因）。
+   *
+   * 现改为**当前科技整份参与求和**：`本趟上限 = base（不含科技）＋ 装置 ＋ 当前科技`
+   * —— 与建趟处 `turnsBase = 总预算 − 科技` 的口径**互补**；入洞后再点锚定器依旧立刻 +10/级，
+   * 幂等性由"每次从 base 重算"保证（不累加、不会重复加）。
+   *
+   * 老档（无 `turnsBase`）的反推同样修：把**科技那一份留在 base 里**（不再减两次），
+   * 首次同步后上限与同步前逐字相同，此后捡装置照常 +10。
+   */
+  const base = run.turnsBase ?? run.turnsTotal - bonus - techNow
   run.turnsBase = base
-  const want = Math.max(0, Math.round(base + bonus + techGain))
+  run.turnsTechBonus = techNow // 保留字段（老档兼容 + 读数）：语义 = 入场时已折算的那一份
+  const want = Math.max(0, Math.round(base + bonus + techNow))
   const delta = want - run.turnsTotal
   run.turnsTotal = want
   if (delta > 0) run.turnsLeft = Math.min(want, run.turnsLeft + delta)
