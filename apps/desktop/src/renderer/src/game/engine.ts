@@ -198,6 +198,9 @@ import {
   wormholeAutoConfirmAll,
   wormholeStockOf,
   wormholeStockTake,
+  // 2026-09-19「取消固定种子」：进洞时把库存项承诺的族/原型显式带进本趟（种子改成现掷，见 freshLayerSeed）
+  wormholeFamilyOfSeed,
+  wormholeArchetypeOf,
   wormholeStockDiscard,
   wormholeStockMeta,
   WORMHOLE_FAMILY_CARD,
@@ -1715,9 +1718,27 @@ export class GameEngine {
 
   /* ─────────────── 终局玩法「虫洞」（E 批 · ✅ 2026-09-14 已上线） ─────────────── */
 
-  /** 虫洞：跃入（编队校验 + 建副本；`seed` 取游戏随机种子，保证节点/拾取堆可复现） */
+  /**
+   * **"新开一层"用的现掷种子**（船长 2026-09-19：「**虫洞建议取消固定种子，玩家会采用恢复存档的方法
+   * 搞清楚地图**」·裁定「甲」）。
+   *
+   * 为什么要**离开存档**取种：原先进洞取 `item.seed`（库存项里存着）、深入取 `state.rng.seed`
+   * （存档里存着）⇒ 都是"读档能重现"的值 ⇒ 玩家存档 → 进洞/深入看一眼 → 读档 → 再来一次，
+   * 地图一模一样，等于把整层免费看光。现在改成**墙钟 + 随机混合**（两者都不在存档里）
+   * ⇒ 读档重现不出同一张图。
+   *
+   * ⚠ 只改"新开一层"的那一刻：种子照样写进 `run.seed` **随档保存** ⇒ **同一趟之内**（临时离开再回来、
+   * 读档续玩）地图依旧稳定、不会自己变；工具与用例走低层 API 传显式种子 ⇒ 可复现性一字不动。
+   * ⚠ **战斗结果本来就不受本改动影响**：掷骰走随档的 `state.rng`，读档重打结果一样（既有口径）。
+   */
+  private freshLayerSeed(): number {
+    const s = (Date.now() ^ Math.floor(Math.random() * 0x1_0000_0000)) >>> 0
+    return s === 0 ? 1 : s
+  }
+
+  /** 虫洞：跃入（编队校验 + 建副本）。种子**现掷**（见 `freshLayerSeed`），不再是存档里的可复现值 */
   wormholeEnter(shipIds: readonly string[]): CommandResult {
-    const r = wormholeEnter(this.state, this.ctx, shipIds, this.state.rng.seed)
+    const r = wormholeEnter(this.state, this.ctx, shipIds, this.freshLayerSeed())
     if (r.ok) {
       void this.persist()
       this.notify()
@@ -1727,13 +1748,21 @@ export class GameEngine {
 
   /**
    * **从库存进洞**（2026-09-14 船长：发现的虫洞囤在「扫描虫洞」页，玩家在那里选一处开始探索）。
-   * 与调试入口的区别只有两处：种子取**该库存项**（本趟内容确定性）、起始层取该项的 `depth`；
-   * 进洞成功即**消耗**这一处。
+   * 起始层取该项的 `depth`；进洞成功即**消耗**这一处。
+   *
+   * ⚠ 2026-09-19（船长「取消固定种子」·裁定「甲」）：**种子现掷**（不再用 `item.seed` ⇒ 同一处虫洞
+   * 每次进去都是新图），但**该处承诺的"族 + 原型"照旧兑现**——用 `origin` 把
+   * `item.family / item.archetype`（老档没有这些字段时按 `item.seed` 现算）显式写进本趟
+   * ⇒ 进洞前「敌情行」看到的族与原型不变，与 2026-09-14「一处虫洞一族、整趟同族」不冲突。
    */
   wormholeEnterFromStock(stockId: string, shipIds: readonly string[]): CommandResult {
     const item = wormholeStockOf(this.state).find((x) => x.id === stockId)
     if (!item) return { ok: false, error: '这处虫洞不在了（可能已经探索过）。' }
-    const r = wormholeEnter(this.state, this.ctx, shipIds, item.seed)
+    const r = wormholeEnter(this.state, this.ctx, shipIds, this.freshLayerSeed(), {
+      depth: item.depth,
+      archetype: item.archetype ?? wormholeArchetypeOf(item.seed),
+      family: item.family ?? wormholeFamilyOfSeed(item.seed),
+    })
     if (!r.ok) return { ok: false, error: r.error }
     const run = this.state.wormhole.run
     if (run) run.depth = Math.max(1, Math.min(9, item.depth))
@@ -2250,8 +2279,10 @@ export class GameEngine {
      * "新盘的扫描半径加成"，不传就默认 0 ⇒ 侦察舰/电子舰的「扫码范围 +1 圈」**只在第 1 层生效**。
      * 口径与入洞同源（`wormholeScanBonusOf` 对编队求和），故这里现算一次传进去。
      * ⚠ **第一入参是 `state`**（2026-09-13 星云批改的）：星云机制的"第一次下到层 4"提示要写进 `state`。
+     * ⚠ 2026-09-19（船长「取消固定种子」·裁定「甲」）：**第二入参改成现掷**（原 `state.rng.seed` 随档
+     * ⇒ 读档深入能预览同一张下层图）。现掷 ⇒ 每一层的盘面只在**真正下去的那一刻**才生成。
      */
-    const r = wormholeDescend(this.state, this.state.rng.seed, wormholeScanBonusOf(this.ctx, run.fleet))
+    const r = wormholeDescend(this.state, this.freshLayerSeed(), wormholeScanBonusOf(this.ctx, run.fleet))
     if (r.ok) {
       void this.persist()
       this.notify()
