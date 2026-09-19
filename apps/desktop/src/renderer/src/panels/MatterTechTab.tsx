@@ -86,22 +86,42 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
                   <span className="app-mt-tier-tag">{`T${tier}`}</span>
                   <div className="app-mt-tier-nodes">
                     {row.map((def) => {
-                      const { level, can } = infoOf(def)
+                      const { level, can, cost } = infoOf(def)
                       const cls = level >= def.maxLevel ? 'is-max' : can.ok ? 'is-ready' : 'is-locked'
                       return (
                         <button
                           key={def.id}
                           className={`app-mt-node ${cls}`}
                           title={
+                            /**
+                             * **悬停讲"这科技有什么用"**（船长 2026-09-19：「玩家鼠标悬停科技时，应该显示
+                             * 科技效果，**而不是科技前置条件**」）⇒ 正文 = 数据表的效果说明（每级值就在里面），
+                             * 末尾只补一句"现在能不能点"的**状态**；**前置未满/谜质不足的具体原因留给二级详情窗**
+                             * （那里有完整的前置进度行），悬停不再重复它。
+                             * ⚠ 本仓悬停走全局接管层（`ui/Tooltip.tsx`，HTML 写 `title`、限宽 300px）
+                             * ⇒ 文案按**单行**拼（换行在接管层里不生效），分隔用「 · 」。
+                             */
                             level >= def.maxLevel
-                              ? t('{name}：已满级 {lv}/{max}', { name: def.name, lv: level, max: def.maxLevel })
+                              ? t('{name} · {lv}/{max} 级 · {note} · 已满级', {
+                                  name: def.name,
+                                  lv: level,
+                                  max: def.maxLevel,
+                                  note: def.note,
+                                })
                               : can.ok
-                                ? t('{name}：{lv}/{max} 级 — 可研究下一级', { name: def.name, lv: level, max: def.maxLevel })
-                                : t('{name}：{lv}/{max} 级 — {why}', {
+                                ? t('{name} · {lv}/{max} 级 · {note} · 可研究下一级（{ess} 谜质 + {isk} 信用点）', {
                                     name: def.name,
                                     lv: level,
                                     max: def.maxLevel,
-                                    why: can.error ?? '',
+                                    note: def.note,
+                                    ess: cost?.essence ?? 0,
+                                    isk: (cost?.isk ?? 0).toLocaleString('zh-CN'),
+                                  })
+                                : t('{name} · {lv}/{max} 级 · {note} · 暂不可研究（原因见详情）', {
+                                    name: def.name,
+                                    lv: level,
+                                    max: def.maxLevel,
+                                    note: def.note,
                                   })
                           }
                           onClick={() => setOpenId(def.id)}
