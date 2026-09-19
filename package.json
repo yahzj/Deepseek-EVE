@@ -51,6 +51,7 @@
     "ui:rot-check": "tsx tools/ui-rot-check.ts",
     "ui:tip-check": "tsx tools/tip-audit.ts",
     "l10n:check": "tsx tools/l10n-check.ts",
+    "l10n:wrap": "tsx tools/l10n-wrap.ts",
     "art:ships": "tsx tools/shipart-preview.ts",
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",

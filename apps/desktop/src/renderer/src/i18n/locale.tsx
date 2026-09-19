@@ -4,16 +4,18 @@
  * 口径权威：`docs/glossary-en.md`（术语与专名）· 工程做法：`docs/design/l10n-en-20260919.md`。
  *
  * 三条纪律：
- * ① 词典**以中文源串为 key**（`t('装配')`）——缺 key 自动回退中文 ⇒ 可分批翻、永不白屏，
- *    并由 `npm run l10n:check` 列出未译清单；
+ * ① 文案一律**按 id 引用**（`t('ui.itemsPage.014')`），中文与英文都只写在**唯一表**
+ *    `packages/data/src/l10n/table.ts`（id → `{ zh, en }`）里——换语言 = 换表，不在源码里翻文本；
+ *    缺 id 时**显示 id 本身**（便于定位漏登记），未译清单由 `npm run l10n:check` 点名；
  * ② 语言存 `localStorage`（`whale-idle:locale`），**不进存档** ⇒ 存档保持语言中立；
  * ③ 默认**跟随系统**（`navigator.language`），设置面板里可随时覆盖。
  *
- * 为什么这样切：界面字符串是内联中文（≈3,500 条），key 化重构面太大；源串 key 让调用点只多一层
- * `t(...)`，中文原文仍是唯一真源（改中文文案即改 key，死 key 由工具点名）。
+ * 为什么这样切（2026-09-19 船长定）：界面/内容文案共 ≈3,500 条，若用「中文源串当 key」的词典，
+ * 中文原文一改 key 就死、还得靠源码里残留中文来定位；改成 id 后**源码零文本**、表是唯一真源
+ * （批量接线与造 id 由 `tools/l10n-wrap.ts` 代劳，`npm run l10n:wrap`）。
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { EN } from './dict.en'
+import { L10N } from '@whale/data'
 
 export type Locale = 'zh' | 'en'
 
@@ -70,23 +72,29 @@ export function isEn(): boolean {
   return activeLocale === 'en'
 }
 
+/** 按 id 取文本：`locale === 'zh'` 取 `zh` 列，否则取 `en` 列；**缺 id ⇒ 返回 id 本身**（便于定位漏登记） */
+export function textOf(id: string, locale: Locale): string {
+  const entry = L10N[id]
+  if (!entry) return id
+  return locale === 'zh' ? entry.zh : entry.en
+}
+
 /** 组件外也能用的翻译（读模块级语言；组件内请用 `useL10n().t` 以获得重渲染） */
-export function tr(zh: string, params?: Record<string, string | number>): string {
-  const text = activeLocale === 'zh' ? zh : (EN[zh] ?? zh)
-  return interpolate(text, params)
+export function tr(id: string, params?: Record<string, string | number>): string {
+  return interpolate(textOf(id, activeLocale), params)
 }
 
 export interface L10nApi {
   locale: Locale
   setLocale: (locale: Locale) => void
-  /** 译一条界面文案（参数 {name} 形式插值）；缺词条回退中文原文 */
-  t: (zh: string, params?: Record<string, string | number>) => string
+  /** 译一条界面文案（`id` = 唯一表里的键；参数 `{name}` 形式插值）；缺 id ⇒ 显示 id 本身 */
+  t: (id: string, params?: Record<string, string | number>) => string
 }
 
 const Ctx = createContext<L10nApi>({
   locale: 'zh',
   setLocale: () => undefined,
-  t: (zh) => zh,
+  t: (id) => id,
 })
 
 export function L10nProvider({ children }: { children: ReactNode }): ReactNode {
@@ -103,10 +111,7 @@ export function L10nProvider({ children }: { children: ReactNode }): ReactNode {
     setLocaleState(next)
   }, [])
   const t = useCallback(
-    (zh: string, params?: Record<string, string | number>) => {
-      const text = locale === 'zh' ? zh : (EN[zh] ?? zh)
-      return interpolate(text, params)
-    },
+    (id: string, params?: Record<string, string | number>) => interpolate(textOf(id, locale), params),
     [locale],
   )
   const api = useMemo<L10nApi>(() => ({ locale, setLocale, t }), [locale, setLocale, t])

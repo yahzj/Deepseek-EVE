@@ -20,6 +20,7 @@ import { useL10n } from '../i18n/locale'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
+import { tr } from '../i18n/locale'
 
 type ItemsTab = 'warehouse' | 'cargo'
 
@@ -88,21 +89,21 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
 
   const KIND_EMPTY: Record<string, string> = {
-    ore: t('仓库里没有原矿（自动卸货的矿会先到这里）。'),
-    mineral: t('还没有原材料——去「工业」页精炼资源。'),
-    gas: t('仓库里没有气体。'),
-    ice: t('仓库里没有冰矿。'),
-    ammo: t('仓库里没有弹药。'),
-    drone: t('仓库里没有无人机。'),
+    ore: t('ui.ItemsPage.005'),
+    mineral: t('ui.ItemsPage.006'),
+    gas: t('ui.ItemsPage.007'),
+    ice: t('ui.ItemsPage.008'),
+    ammo: t('ui.ItemsPage.009'),
+    drone: t('ui.ItemsPage.010'),
   }
 
   function handleLoad(id: string): void {
     const def = engine.ctx.items.get(id)
     if (!def) return
     const loaded = engine.loadWareToCargoFit(id)
-    if (loaded === 0) onToast(t('船上没有足够空间。'), true)
+    if (loaded === 0) onToast(t('ui.ItemsPage.012'), true)
     else {
-      onToast(t('已装船 {name}×{n}。', { name: def.name, n: loaded.toLocaleString('zh-CN') }))
+      onToast(t('ui.ItemsPage.013', { name: def.name, n: loaded.toLocaleString('zh-CN') }))
       setPickItem(null)
     }
   }
@@ -177,10 +178,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   return (
     <Panel
       className="is-fill app-fleet-panel"
-      title={t('仓库')}
+      title={t('ui.ItemsPage.001')}
       hint={
         // 图标视图的用法说明只在图标视图挂出来（2026-09-13 船长：常驻说明收进标题后的圆形感叹号）
-        mode === 'grid' ? <HintIcon tip={t('图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。')} /> : undefined
+        mode === 'grid' ? <HintIcon tip={t('ui.ItemsPage.014')} /> : undefined
       }
       right={
         <span className="app-head-search-wrap">
@@ -188,15 +189,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           <input
             className="app-head-search"
             type="text"
-            placeholder={t('搜索仓库…')}
+            placeholder={t('ui.ItemsPage.015')}
             value={wareQuery}
             onChange={(e) => setWareQuery(e.target.value)}
             spellCheck={false}
           />
           <span className="app-dim">
             {wareNarrowed
-              ? t('匹配 {n} 种', { n: hitTotal })
-              : t('{n} 种 · 无限容量 · 不随船', { n: hitTotal })}
+              ? t('ui.ItemsPage.016', { n: hitTotal })
+              : t('ui.ItemsPage.017', { n: hitTotal })}
           </span>
         </span>
       }
@@ -217,7 +218,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 setWareRack(SUB_ALL)
               }}
             >
-              全部
+              {tr("ui.IndustryPage.001")}
             </button>
             {ITEM_KIND_ORDER.map((kind) => (
               <button
@@ -242,7 +243,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 setWareRack(SUB_ALL)
               }}
             >
-              装备
+              {tr("ui.MarketPage.003")}
             </button>
           </div>
         </div>
@@ -279,8 +280,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       {wareNarrowed && hitTotal === 0 ? (
         <div className="app-dim app-note">
           {wq.length > 0
-            ? t('没有匹配「{kw}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。', { kw: wareQuery.trim() })
-            : t('当前筛选下仓库里没有东西——换个分类，或点「全部」看全表。')}
+            ? t('ui.ItemsPage.018', { kw: wareQuery.trim() })
+            : t('ui.ItemsPage.019')}
         </div>
       ) : null}
       {mode === 'list' ? (
@@ -300,7 +301,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
             {kindRows.length === 0 ? (
-              <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('仓库里没有该分类物品。')}</div>
+              <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('ui.ItemsPage.011')}</div>
             ) : (
               <ul className="app-inv-list">
                 {kindRows.map(([id, units]) => {
@@ -346,10 +347,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         {marketGoodOf(engine.ctx, 'item', id) ? (
                           <button
                             className="app-btn is-small"
-                            title={t('前往市场查看该物品的订单（价格/挂单/买入）')}
+                            title={t('ui.CargoPage.003')}
                             onClick={() => goMarket('item', id)}
                           >
-                            {t('↖ 查看市场')}
+                            {t('ui.CargoPage.001')}
                           </button>
                         ) : null}
                         {/* 丢弃（船长 2026-09-15：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」）
@@ -421,10 +422,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     {modGood ? (
                       <button
                         className="app-btn is-small"
-                        title={t('前往市场查看该装备的订单（价格/挂单/买入）')}
+                        title={t("ui.ItemsPage.020")}
                         onClick={() => goMarket('module', id)}
                       >
-                        {t('↖ 查看市场')}
+                        {t('ui.CargoPage.001')}
                       </button>
                     ) : null}
                   </div>
@@ -462,7 +463,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 right={<span className="app-dim">{kindRows2.length} 种</span>}
               >
                 {kindRows2.length === 0 ? (
-                  <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('仓库里没有该分类物品。')}</div>
+                  <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('ui.ItemsPage.011')}</div>
                 ) : (
                   <ItemGlyphGrid cells={cells} onPick={(key) => setPickItem(key)} />
                 )}
@@ -528,13 +529,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 {marketGoodOf(engine.ctx, 'item', pickItem) ? (
                   <button
                     className="app-btn is-small"
-                    title="前往市场查看该物品的订单（价格/挂单/买入）"
+                    title={tr("ui.CargoPage.003")}
                     onClick={() => {
                       setPickItem(null)
                       goMarket('item', pickItem)
                     }}
                   >
-                    {t('↖ 查看市场订单')}
+                    {t('ui.CargoPage.002')}
                   </button>
                 ) : null}
               </div>
@@ -584,13 +585,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 {marketGoodOf(engine.ctx, 'module', pickMod) ? (
                   <button
                     className="app-btn is-small"
-                    title="前往市场查看该装备的订单（价格/挂单/买入）"
+                    title={tr("ui.ItemsPage.020")}
                     onClick={() => {
                       setPickMod(null)
                       goMarket('module', pickMod)
                     }}
                   >
-                    {t('↖ 查看市场订单')}
+                    {t('ui.CargoPage.002')}
                   </button>
                 ) : null}
               </div>
@@ -678,7 +679,7 @@ export function ItemsPage(props: PageProps & Partial<ItemNavProps>) {
           onClick={() => setTab('warehouse')}
         >
           <span>▤</span>
-          <span>仓库</span>
+          <span>{tr("ui.ItemsPage.001")}</span>
         </button>
         <button
           role="tab"
@@ -687,7 +688,7 @@ export function ItemsPage(props: PageProps & Partial<ItemNavProps>) {
           onClick={() => setTab('cargo')}
         >
           <span>▣</span>
-          <span>货仓</span>
+          <span>{tr("ui.CargoPage.004")}</span>
         </button>
       </div>
       {/* 船长拍板：物品页整标签一窗滚——活跃标签内容包进二级滚动窗（CargoPage 内层不再产生双滚动）；

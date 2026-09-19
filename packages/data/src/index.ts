@@ -89,6 +89,8 @@ export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from '.
 export { buildSimContext } from './context'
 // 2026-09-19 谜质科技树：23 节点数据表（体检「谜质科技契约」逐条校验 id/费用/前置）
 export { MATTER_TECH_NODES, buildMatterTechCatalog } from './matterTech'
+// 2026-09-19 英语本地化（船长令）：**唯一本地化表** `L10N`（id → {zh,en}，一处改全局换语言）
+export { L10N, type L10nEntry } from './l10n/table'
 // 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
 export {
   localizeCtx,

@@ -45,21 +45,21 @@ import { MoneyFit } from './ui/MoneyFit'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
-  { key: 'map', label: '点击 出港', icon: 'nav-map' },
-  { key: 'ship', label: '舰船', icon: 'nav-ship' },
-  { key: 'fit', label: '装配', icon: 'nav-fit' },
-  { key: 'items', label: '物品', icon: 'nav-items' },
-  { key: 'market', label: '市场', icon: 'nav-market' },
-  { key: 'industry', label: '工业', icon: 'nav-industry' },
-  { key: 'skills', label: '技能', icon: 'nav-skills' },
+  { key: 'map', label: 'ui.App.001', icon: 'nav-map' },
+  { key: 'ship', label: 'ui.App.002', icon: 'nav-ship' },
+  { key: 'fit', label: 'ui.App.003', icon: 'nav-fit' },
+  { key: 'items', label: 'ui.App.004', icon: 'nav-items' },
+  { key: 'market', label: 'ui.App.005', icon: 'nav-market' },
+  { key: 'industry', label: 'ui.App.006', icon: 'nav-industry' },
+  { key: 'skills', label: 'ui.App.007', icon: 'nav-skills' },
   /**
    * **任务中心**（2026-09-14 船长：「将任务中心界面移出星图，放入左侧导航栏，**通讯的上方**」）：
    * 原先它是星图页（出港）的一个选项卡 —— 那条路要先选中星系才渲染行动区，绕；
    * 搬成一级页后从左侧导航直达（内层标签与跳转定位照旧，见 `pages/TaskCenterPage.tsx`）。
    */
-  { key: 'task', label: '任务中心', icon: 'nav-task' },
+  { key: 'task', label: 'ui.App.008', icon: 'nav-task' },
   // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
-  { key: 'comms', label: '通讯', icon: 'nav-mail' },
+  { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
 ]
 
 type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'task' | 'comms'
@@ -176,15 +176,15 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="app-settings-title">{t('设置')}</div>
+        <div className="app-settings-title">{t('ui.App.010')}</div>
         <div className="app-settings-sub">
-          {t('界面缩放、字体大小与宇宙背景，即时生效 · 缩放与字号自动记忆')}
+          {t('ui.App.011')}
         </div>
         <div className="app-settings-list">
           {/* 语言（2026-09-19 船长令「英语本地化」）：默认跟随系统，这里可随时覆盖；语言不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('语言')}</span>
+              <span className="app-settings-label">{t('ui.App.025')}</span>
               <span className="app-settings-val">{locale === 'zh' ? '中文' : 'English'}</span>
             </div>
             <div className="app-settings-btns">
@@ -201,51 +201,51 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
                 English
               </button>
             </div>
-            <div className="app-settings-desc">{t('界面语言（即时生效；默认跟随系统）')}</div>
+            <div className="app-settings-desc">{t('ui.App.026')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('界面缩放')}</span>
+              <span className="app-settings-label">{t('ui.App.012')}</span>
               <span className="app-settings-val">{Math.round(zoom * 100)}%</span>
             </div>
             <input className="app-settings-slider" type="range" min={0.8} max={1.25} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
-            <div className="app-settings-desc">{t('整窗缩放：面板几何与文字一起放大/缩小（80%~125%）')}</div>
+            <div className="app-settings-desc">{t('ui.App.013')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('字体大小')}</span>
+              <span className="app-settings-label">{t('ui.App.014')}</span>
               <span className="app-settings-val">{Math.round(fs * 100)}%</span>
             </div>
             <input className="app-settings-slider" type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
-            <div className="app-settings-desc">{t('独立于界面缩放，只调整文字（85%~125%）')}</div>
+            <div className="app-settings-desc">{t('ui.App.015')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('宇宙背景')}</span>
-              <span className="app-settings-val">{bg ? bg.label : t('未启用')}</span>
+              <span className="app-settings-label">{t('ui.App.016')}</span>
+              <span className="app-settings-val">{bg ? bg.label : t('ui.App.017')}</span>
             </div>
             <div className="app-settings-btns">
               <button
                 className="app-btn is-small"
                 onClick={() => setBg(rerollSpaceBg())}
                 disabled={!bg}
-                title={t('换成另一张随机底图（立即生效）')}
+                title={t('ui.App.019')}
               >
-                {t('换一张')}
+                {t('ui.App.018')}
               </button>
             </div>
             <div className="app-settings-desc">
               {bg
-                ? t('{n} 张无缝星图铺在界面最底层，每次启动随机一张；这里换的这张本场有效（下次启动仍随机）', { n: bg.total })
-                : t('背景图缺失：当前用的是默认深色底')}
+                ? t('ui.App.020', { n: bg.total })
+                : t('ui.App.021')}
             </div>
           </div>
         </div>
         <div className="app-settings-foot">
-          <span className="app-dim">{t('可随时从顶栏「设置」调回')}</span>
+          <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
             <button className="app-btn is-small" onClick={() => { setZoom(1); setFs(1) }}>
-              {t('恢复默认')}
+              {t('ui.App.023')}
             </button>
             <button
               className="app-btn is-small is-primary"
@@ -254,7 +254,7 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
                 onClose()
               }}
             >
-              {t('完成')}
+              {t('ui.App.024')}
             </button>
           </span>
         </div>
@@ -939,10 +939,10 @@ export function App({ engine }: { engine: GameEngine }) {
             {qqCopied ? '✓ 群号已复制' : `💬 QQ群 ${QQ_GROUP}`}
           </button>
           <button className="app-btn" onClick={() => setShowHandbook(true)} title="玩法说明与图鉴">
-            {t('手册')}
+            {t('ui.App.028')}
           </button>
           <button className="app-btn" onClick={() => setShowSettings(true)} title="界面缩放与字体大小">
-            {t('设置')}
+            {t('ui.App.010')}
           </button>
           <button className="app-btn" onClick={() => void handleSave()}>
             保存
