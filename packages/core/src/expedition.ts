@@ -29,7 +29,9 @@ import { RETURN_LEG_MUL } from './balance'
 import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
 import {
   advanceBattleFor,
+  battleClockNowMs,
   battleOpenM,
+  battleShowWindowMs,
   bountyWinPercentGuarded,
   createFoeSpecs,
   createPlayerSpec,
@@ -948,8 +950,9 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
       if (exp.battle.ended) {
         // V12.3 击杀慢镜：分出胜负后延迟 killcamMs 再结算，让最后一击动画与爆炸演出播完；
         // 计时基准 = 战斗停表时刻（lastTickGameMs 冻结于击杀拍）。离线/大步长推进下差值立即达标，行为与旧版一致。
+        // ⚠ 倍速批（2026-09-19）：判据改走**战斗时钟**并把窗口按倍速放大（洞外战斗 `speedX` 缺省 = 1 ⇒ 逐字等价）。
         const bal = ctx.balance.battle
-        if (state.gameMs - exp.battle.lastTickGameMs < bal.killcamMs) return
+        if (battleClockNowMs(state, exp.battle) - exp.battle.lastTickGameMs < battleShowWindowMs(exp.battle, bal.killcamMs)) return
         resolveBattleOutcome(state, ctx)
         continue // resolve 后转 back；若返航也已到点则同帧回家
       }

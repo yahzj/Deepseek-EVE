@@ -114,6 +114,10 @@ export function advanceGame(
     /** 当前墙钟毫秒（现实时间；赏金日板按它对齐"每天本地 0 点"）。
      *  在线 = 心跳传入 Date.now()；离线结算 = 传入离线末刻；缺省退 state.savedAtWallMs */
     nowWallMs?: number
+    /** **本拍想跑的虫洞内战斗倍速**（2026-09-19 谜质科技「时间压缩矩阵」）：
+     *  **只有前台心跳传**（在线心跳那一个调用点）；离线结算 / 后台 / 工具 / 用例一律不传 ⇒ 1×。
+     *  实际生效值由 `combat.advanceBattleFor` 夹到"洞内 + 科技已解锁档位"内。 */
+    battleSpeedX?: number
   },
 ): void {
   const d = Math.floor(deltaMs)
@@ -145,7 +149,7 @@ export function advanceGame(
   advanceRefining(state, ctx, opts?.settleStats)
   advanceExpedition(state, ctx, opts?.freezeBattle)
   // 终局玩法「虫洞」（F 批）：洞内战斗步进与收口 + 撤离战自动开打（不在洞里时零开销）
-  advanceWormhole(state, ctx, opts?.freezeBattle)
+  advanceWormhole(state, ctx, opts?.freezeBattle, opts?.battleSpeedX)
   advanceScanning(state, ctx)
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
   // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）

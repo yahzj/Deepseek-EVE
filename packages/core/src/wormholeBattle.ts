@@ -15,7 +15,7 @@ import { uidDefId } from './labels'
 import { gainAiCore, aiCoreName } from './ai'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { advanceBattleFor, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport } from './combat'
+import { advanceBattleFor, battleClockNowMs, battleShowWindowMs, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
@@ -890,6 +890,7 @@ export function advanceWormhole(
   state: GameState,
   ctx: SimContext,
   freezeBattle = false,
+  battleSpeedX = 1,
 ): void {
   const run = state.wormhole.run
   if (!run) return
@@ -899,12 +900,14 @@ export function advanceWormhole(
   if (run.attending !== true) return
   if (run.battle) {
     if (freezeBattle) return
-    advanceBattleFor(state, ctx, run.battle, run.fleet[0] ?? state.shipId, run.battle.wormhole?.cardId ?? null)
+    advanceBattleFor(state, ctx, run.battle, run.fleet[0] ?? state.shipId, run.battle.wormhole?.cardId ?? null, null, undefined, undefined, { battleSpeedX })
     if (run.battle.ended) {
       // **击杀慢镜**（与远征 `expedition.ts` 同源 · `bal.killcamMs`）：分出胜负后**延迟结算**，
       // 让最后一击动画/爆炸演出播完；否则战斗界面会在结束那一瞬间直接卸载（首版实测踩到）。
-      const waitMs = ctx.balance.battle.killcamMs
-      if (state.gameMs - run.battle.lastTickGameMs < waitMs) return
+      // ⚠ 倍速批（2026-09-19）：判据必须走**战斗时钟**并把窗口按倍速放大——否则倍速下战斗时钟领先
+      //   全局时钟，`state.gameMs − lastTick` 为负 ⇒ 慢镜会被拖长（倍速只压进度、不压演出）。
+      const waitMs = battleShowWindowMs(run.battle, ctx.balance.battle.killcamMs)
+      if (battleClockNowMs(state, run.battle) - run.battle.lastTickGameMs < waitMs) return
       settleWormholeBattle(state, ctx, run)
     }
     return

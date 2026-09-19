@@ -7985,6 +7985,12 @@ html[data-locale='en'] body {
 
 .app-bts-ruler { width: clamp(420px, 52vw, 780px); margin: 4px auto 0; padding: 6px 4px 0; }
 
+/* 洞内倍速控件（2026-09-19 谜质科技「时间压缩矩阵」）：**顶部中间、距离条上方**，只显示已解锁档。
+   选中态复刻 `.app-fit-ammotier-opt.is-active`（同语言：亮青底 + 深字 + 加粗），不另造样式。 */
+.app-bts-speedx { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px auto 0; }
+.app-bts-speedx .app-dim { font-size: 11px; margin-right: 2px; }
+.app-bts-speedx .app-btn.is-active { color: #0e1a26; background: #8fd0ff; border-color: #8fd0ff; font-weight: 600; }
+
 .app-bts-scale { margin-top: 34px; }
 
 .app-bts-cur-chip { bottom: calc(100% + 6px); }
@@ -8004,7 +8010,7 @@ html[data-locale='en'] body {
   .app-battle-screen-top > span { font-size: 12.5px; }
   .app-battle-screen-top .app-btn { font-size: 13px; padding: 8px 14px; }
   .app-bts-stage { overflow-x: auto; overflow-y: hidden; }
-  .app-bts-ruler, .app-bts-lane { min-width: 680px; }
+  .app-bts-speedx, .app-bts-ruler, .app-bts-lane { min-width: 680px; }
   .app-bts-lane { min-height: 240px; }
   .app-bts-dock { width: min(96%, 1180px); }
   .app-bts-swipehint { display: block; }

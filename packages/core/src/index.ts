@@ -195,6 +195,7 @@ export {
   researchMatterTech,
   matterTechSum,
   matterTechBattleSpeed,
+  matterTechBattleSpeedTiers,
   matterTechScanCut,
   matterTechUnboxCut,
   matterTechVoidYield,
@@ -778,6 +779,11 @@ export {
   // 引擎开战预载与装配页弹药档位**共用**（界面如实显示"本场会用哪一档、够不够"）
   resolveAmmoTier,
   ammoLoadTotals,
+  // 洞内战斗倍速时间轴（2026-09-19 谜质科技「时间压缩矩阵」）：界面读生效倍速与折算时刻，
+  // 演出窗口（入场/转场/击杀慢镜）按 `battleShowWindowMs` 等比放大
+  battleSpeedOf,
+  battleShowWindowMs,
+  battleClockNowMs,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 

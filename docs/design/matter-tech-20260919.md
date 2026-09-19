@@ -189,11 +189,31 @@ ISK `6·12·18M`；T3 = 谜质 `10·20·30` / ISK `10·20·30M`。
 - [x] 闸门读数：`typecheck` 四包全绿 · core **1872/1872**（172 文件 · 0 skipped）· `content:check` 通过。
 
 **批次 2 · 界面与倍速**
-- [ ] 洞内战斗倍速时间轴（`combat.ts`：`战斗目标时刻 = battle.startedAtGameMs + (state.gameMs − startedAtGameMs) × 倍速`；
-      1× 逐字等价）＋把挂起卡列的三处混用真实墙钟改成倍速口径
-- [ ] 战斗窗口倍速控件（顶部中间、距离条上方；只显示已解锁档）
+- [x] 洞内战斗倍速时间轴（`combat.ts`）——**已落地**，做法与本文件 §三.5 的初稿略有加强：
+  · 折算点 = `battleClockNowMs(state, battle)`：`锚点战斗时钟 + (state.gameMs − 锚点全局时钟) × 倍速`，
+    并夹一个下限 `= state.gameMs` ⇒ **1× 时恒等于旧口径**（逐字等价）；
+  · **为什么用锚点而不是"开战时刻起算"**：后者在**中途切档**时会把"已过去的时长"按新倍速重算
+    （玩到 30 秒从 ×1 切 ×4 ⇒ 瞬间快进 90 秒）⇒ 锚点只折算"从锚点起的增量"，切档连续、不跳变；
+    锚点由 `advanceBattleFor` **每拍收尾**刷新（`battle.speedAxis`，runtime 字段、不落档）；
+  · 生效倍速 = `resolveBattleSpeed`：**非洞内恒 1**、**未解锁恒 1**、传入档位**夹到已解锁档位**
+    （`matterTechBattleSpeedTiers` ⇒ 1 级 [1,2]、2 级 [1,2,4]）；写进 `battle.speedX` 供界面与演出窗口读；
+  · 三处真实墙钟混用已改口径：入场动画时刻（`arrivedAtMs` 取战斗时钟"现在"）、波次转场等待
+    （`nowMs() < battle.waveClearAt`）、击杀慢镜（`wormholeBattle.ts` + `expedition.ts` 改走
+    `battleClockNowMs` / `battleShowWindowMs`）；提示条 `atMs` 本来就是战斗时钟 ⇒ 只把**寿命**按倍速放大；
+  · 演出保护窗口一律 `battleShowWindowMs(battle, ms)` = `ms × 倍速` ⇒ **真实时长不变**（倍速只压战斗进程）。
+- [x] 战斗窗口倍速控件（`BattleScreen.tsx`：顶部中间、距离条上方；只显示已解锁档；未解锁整个控件不出现）
+  ＋ 心跳接线（渲染层 `advanceSlice` 每拍传 `battleSpeedX`，档位选择存会话内存、不落档
+  ⇒ 离线结算走 `simulateOffline`、根本不传 ⇒ **恒 1×**）。
+- [x] `tests/battle-speed.test.ts`（8 条）：1× 逐字等价（三条路径读数全等）· 未解锁夹回 1× ·
+  ×2/×4 读数比值 · 入场窗口放大后真实时长不变 · **中途切档不跳变** · 倍速不落档（往返后 = 1×）。
 - [ ] 「扫描虫洞」拆两个子页：**虫洞探索**（现有内容）/ **谜质科技**（分层树 + 二级详情窗，固定尺寸不滚）
 - [ ] 读数 A/B（`wormhole:econ` + 洞外工业）· 五道闸门 · 合入 main
+
+**批次 2 的前置（已顺带完成，2026-09-19）**
+- [x] **倍速公式真 BUG 修复**：`matterTechBattleSpeed` 原按 `1 + Σ(级 × per)` 算 ⇒ 1 级 ×3 / 2 级 ×5；
+  改为**乘法**（`per^级`，全表唯一乘法效果）⇒ **1 级 ×2 · 2 级 ×4**；用例从 `≥2 / ≥4` 收紧成 `toBe(2) / toBe(4)`
+  （原先的弱断言正是它蒙混过关的原因）。
+- [x] **战斗快照死线修复**：`wormholeMatterBattleModsOf` 没吃科技袋 ⇒ 只点科技时战斗四节点全无效（见批次 1）。
 
 **实现要点（防丢）**
 - 科技效果在 core **按 effect 关键字聚合**（不按节点 id）⇒ core 不需要 id 清单；节点表（名/层/级数/费用/前置/

@@ -150,9 +150,33 @@ export function matterTechSum(state: GameState, ctx: SimContext, effect: string)
   return sum
 }
 
-/** **洞内战斗倍速**（1 = 未解锁；`whBattleSpeed` 的 per = 每级 +2 ⇒ 1 级 ×2、2 级 ×4） */
+/**
+ * **洞内战斗倍速**（1 = 未解锁）。
+ * ⚠ 这是全表**唯一按乘法**算的效果：`whBattleSpeed` 的 `per` 是**每级倍率**（2）
+ * ⇒ `per^级` = 1 级 ×2、2 级 ×4；**不能**套通用的 `Σ 等级 × per`（那会算成 ×3 / ×5，本批修）。
+ */
 export function matterTechBattleSpeed(state: GameState, ctx: SimContext): number {
-  return 1 + matterTechSum(state, ctx, 'whBattleSpeed')
+  let mul = 1
+  for (const node of matterTechNodes(ctx)) {
+    if (node.effect !== 'whBattleSpeed') continue
+    const lv = matterTechLevel(state, node.id)
+    if (lv > 0) mul *= Math.pow(node.per, lv)
+  }
+  return mul
+}
+
+/**
+ * **已解锁的倍速档位**（含 1×；1 级 ⇒ [1, 2]、2 级 ⇒ [1, 2, 4]）。
+ * 界面按它渲染控件（**只显示已解锁档**，船长 2026-09-19 口径）；引擎按它夹紧传入档位。
+ */
+export function matterTechBattleSpeedTiers(state: GameState, ctx: SimContext): number[] {
+  const tiers = new Set<number>([1])
+  for (const node of matterTechNodes(ctx)) {
+    if (node.effect !== 'whBattleSpeed') continue
+    const lv = matterTechLevel(state, node.id)
+    for (let i = 1; i <= lv; i++) tiers.add(Math.pow(node.per, i))
+  }
+  return [...tiers].sort((a, b) => a - b)
 }
 
 /** **扫描虫洞间隔削减**（0.05/级 ⇒ 0.25 = −25%；与技能链乘算） */

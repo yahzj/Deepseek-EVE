@@ -39,7 +39,7 @@ import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, wormholeAnoma
 import { wormholeCardThreatOf, wormholeSkippedBranch } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
-import { matterTechWhBuffs } from './matterTech'
+import { matterTechBattleSpeedTiers, matterTechWhBuffs } from './matterTech'
 import type { WormholeMatterBuffs } from './wormholeMatter'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, cargoOfShip, countWare, removeItem, removeWare, addWare } from './inventory'
@@ -4854,9 +4854,71 @@ export function waveGapTotalMs(anomaly: Pick<AnomalyDef, 'waves'> | undefined, b
   return Math.max(0, n - 1) * Math.max(0, bal.waveEnterGapMs ?? 0)
 }
 
-/** 推进指定战斗（主控远征与 AI 远征通用）；结束后 ended 非空由调用方结算。
+/**
+ * **本场生效倍速**（读 `battle.speedX`；缺省/非法 ⇒ 1）。
+ * ⚠ 这是**只读**入口：写值是 `advanceBattleFor` 每拍的职责（夹在科技已解锁档位内）。
+ */
+export function battleSpeedOf(battle: import('./state').BattleState): number {
+  const v = battle.speedX
+  return typeof v === 'number' && Number.isFinite(v) && v > 1 ? v : 1
+}
+
+/**
+ * **演出保护窗口按倍速等比放大**（船长 2026-09-19：「演出照原速，只把**动画没结束不开火**的保护窗口
+ * 按倍速等比放大」）。窗口本身写在**战斗时钟**上 ⇒ 倍速下必须乘回去，真实时长才不变。
+ */
+export function battleShowWindowMs(battle: import('./state').BattleState, ms: number): number {
+  return ms * battleSpeedOf(battle)
+}
+
+/**
+ * **战斗时钟的"现在"**（2026-09-19 倍速时间轴 · **唯一折算点**）：
+ * `锚点战斗时钟 + (state.gameMs − 锚点全局时钟) × 倍速`，并夹一个**下限 = `state.gameMs`**。
+ *
+ * - **1× 时恒等于 `state.gameMs`**（倍速之前的老口径）⇒ 未解锁 / 洞外战斗 / 离线结算 / 老档
+ *   一律走原路径、行为逐字不变；
+ * - **中途切档不跳变**：只折算"从锚点起的增量"，已过去的时长不会被重新按新倍速计价；
+ * - 主循环（推进目标）与击杀慢镜（延迟结算）**共用这一个函数** ⇒ 两者不会各算一套。
+ */
+export function battleClockNowMs(
+  state: GameState,
+  battle: import('./state').BattleState,
+): number {
+  const axis = battle.speedAxis
+  if (!axis) return state.gameMs // 老档 / 尚未推进过：老口径
+  const x = battleSpeedOf(battle)
+  return Math.max(axis.clock + (state.gameMs - axis.anchor) * x, state.gameMs)
+}
+
+/**
+ * **解析本拍该跑多少倍速**（唯一判据点）：
+ * - **非洞内战斗** ⇒ 1（倍速只属于虫洞，船长 2026-09-19）；
+ * - **科技未解锁** ⇒ 1（`matterTechBattleSpeed` 1 = 没点过时间压缩矩阵）；
+ * - 否则把传入档位**夹到已解锁档位**（界面传错 / 老档 / 改档都拿不到未解锁的速度）。
+ */
+function resolveBattleSpeed(
+  state: GameState,
+  ctx: SimContext,
+  battle: import('./state').BattleState,
+  want: number,
+): number {
+  if (!battle.wormhole) return 1
+  const tiers = matterTechBattleSpeedTiers(state, ctx)
+  const pick = Math.floor(want)
+  if (!Number.isFinite(pick) || pick <= 1) return 1
+  let best = 1
+  for (const t of tiers) if (t <= pick && t > best) best = t
+  return best
+}
+
+/**
+ * **推进指定战斗**（主控远征与 AI 远征通用）；结束后 ended 非空由调用方结算。
  *  favorAdv：AI 远征专属优势量 ∈[−1,1]（null = 玩家手动战斗，无 favor）——
- *  AI 方命中 ×(1+k·adv)（可到 100%），敌方 ×(1−k·adv)（上限保留 97%）。 */
+ *  AI 方命中 ×(1+k·adv)（可到 100%），敌方 ×(1−k·adv)（上限保留 97%）。
+ *  `opts.battleSpeedX`：**本拍想跑的倍速**（1 缺省 = 老行为）——**只由前台心跳传**，
+ *  离线/后台结算/AI/胜率模拟一律不传 ⇒ 逐字等价；实际生效值还要过
+ *  `resolveBattleSpeed` 的"洞内 + 已解锁档位"夹紧，写进 `battle.speedX` 供界面与演出窗口用。
+ */
 export function advanceBattleFor(
   state: GameState,
   ctx: SimContext,
@@ -4866,8 +4928,20 @@ export function advanceBattleFor(
   favorAdv: number | null = null,
   lairTier?: LairTier,
   factionActive?: boolean,
+  opts?: { battleSpeedX?: number },
 ): void {
   if (!battle || battle.ended) return
+  // **倍速时间轴**（2026-09-19 · 谜质科技「时间压缩矩阵」）：先解析本拍生效倍速并写进战斗
+  //（夹在科技已解锁档位内；洞外战斗恒 1）。写值只为**洞内**战斗——洞外保持"字段不存在"，
+  // 演出窗口与界面据此逐字走老路径。
+  const speedX = resolveBattleSpeed(state, ctx, battle, opts?.battleSpeedX ?? 1)
+  if (battle.wormhole) battle.speedX = speedX
+  /** 本拍的"现在"（战斗时钟口径；1× 时 = `state.gameMs`） */
+  const nowMs = (): number => battleClockNowMs(state, battle)
+  /** **每拍收尾：刷新倍速锚点**（把"此刻的全局时钟"与"此刻的战斗时钟"重新配对） */
+  const rebaseAxis = (): void => {
+    battle.speedAxis = { anchor: state.gameMs, clock: battle.lastTickGameMs }
+  }
   const baseAnomaly = battleAnomalyOf(ctx, anomalyId, lairTier, factionActive)
   if (!baseAnomaly) return
   // 虫洞战斗（F 批）：**每拍按层重建**派生敌卡（**与开战同源**——同一处 `wormholeDerivedAnomaly`）
@@ -4911,10 +4985,10 @@ export function advanceBattleFor(
     // 它们只由下面的 `resolveReinforcements` 按条件补入；开关关闭时本字段一律不存在 → 本行不生效。
     if (f.foeReinforceAt) continue
     // 读档中断补缺 = 视为"增援入场" ⇒ 同样盖入场窗口（时刻取**全局时钟**，理由同转场那一处）
-    seedUnit(battle, f, { enterReload: true, arrivedAtMs: state.gameMs })
+    seedUnit(battle, f, { enterReload: true, arrivedAtMs: nowMs() })
   }
   let guard = 0
-  while (state.gameMs > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
+  while (nowMs() > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
     // 切波：当前波全灭且还有后续波 → 先走演出窗口（爆炸/残骸播完），窗口结束才续刷下一波。
     // 窗口语义（2026-09-09 船长反馈"切换突兀/爆炸未播完就刷下一波"）：
@@ -4923,7 +4997,9 @@ export function advanceBattleFor(
     // - 实时战斗中游戏时钟与墙钟 1:1，窗口 = 上一波最后一艘的爆炸 + 残骸淡出完整播完；
     // - 大步长/离线推进下 state.gameMs 越过窗口即立刻续刷，无额外等待。
     if (waves && waveIdx < lastIdx && !curFoes.some((f) => isAlive(battle, f.tag))) {
-      const gapMs = Math.max(0, bal.waveEnterGapMs ?? 0)
+      // ⚠ 转场窗口在**洞内现行玩法里几乎走不到**（网格层一律单波，只有老档 `pendingNode` 路径可能多波）；
+      //   这里的 `× speedX` 与 `battleShowWindowMs` 同一口径（倍速只压进度、不压演出）
+      const gapMs = Math.max(0, bal.waveEnterGapMs ?? 0) * speedX
       /** **进入本拍时就已经在等**转场窗口（= 真的等过一段，而不是"本拍才发现全灭、本拍就续刷"） */
       const pendingGap = battle.waveClearAt !== undefined
       if (gapMs > 0 && battle.waveClearAt === undefined) {
@@ -4936,7 +5012,7 @@ export function advanceBattleFor(
             (bal.waveReopenEnabled === true ? '敌方增援正在从远处入场…' : '敌方增援正在入场…'),
         )
       }
-      if (gapMs > 0 && battle.waveClearAt !== undefined && state.gameMs < battle.waveClearAt) break // 演出窗口未走完：停表等待，下一拍再续
+      if (gapMs > 0 && battle.waveClearAt !== undefined && nowMs() < battle.waveClearAt) break // 演出窗口未走完：停表等待，下一拍再续
       /**
        * **这一波是不是"真的等过转场窗口"**（`pendingGap`：进入本拍时 `waveClearAt` 就已经在）。
        * 只有它为真时才盖入场窗口（船长 2026-09-14「动画没结束不开火」）：
@@ -4963,7 +5039,7 @@ export function advanceBattleFor(
         curFoes.forEach((f, i) =>
           seedUnit(battle, f, {
             enterReload: true,
-            arrivedAtMs: state.gameMs + i * BATTLE_ARRIVAL_STAGGER_MS,
+            arrivedAtMs: nowMs() + i * BATTLE_ARRIVAL_STAGGER_MS * speedX,
             // 洞内：同一波新入场的敌舰也按序错开首轮（见 `WORMHOLE_FOE_VOLLEY_STAGGER_MS`）
             ...(battle.wormhole ? { foePhaseMs: i * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
           }),
@@ -5007,7 +5083,7 @@ export function advanceBattleFor(
     // 放在 `stepBattle` **之前**：上一拍刚打死的单位本拍即可触发援军，且判胜检查看到的是补入后的编队。
     // 总开关关闭时本函数第一步就返回（且建档期也没写过 `foeReinforceAt`）= 零行为变化。
     resolveReinforcements(state, ctx, battle, anomaly, curFoes, bal, openM)
-    const dt = Math.min(BATTLE_STEP_MS, state.gameMs - battle.lastTickGameMs)
+    const dt = Math.min(BATTLE_STEP_MS, nowMs() - battle.lastTickGameMs)
     stepBattle(
       state,
       battle,
@@ -5101,6 +5177,8 @@ export function advanceBattleFor(
       }
     }
   }
+  // 本拍收尾：把倍速锚点重新配对（下一拍按新锚点起算增量 ⇒ 切档连续、1× 与老口径逐字一致）
+  rebaseAxis()
 }
 
 /** 推进当前主控远征的战斗（到耗尽时间或分出胜负） */
@@ -6461,7 +6539,8 @@ function isAlive(b: import('./state').BattleState, tag: string): boolean {
 function isFoeEngageable(b: import('./state').BattleState, tag: string): boolean {
   if (!isAlive(b, tag)) return false
   const at = b.units[tag]?.enteredAtMs
-  return at === undefined || b.lastTickGameMs >= at + BATTLE_ARRIVAL_FLY_MS
+  // 窗口按倍速等比放大（`battleShowWindowMs`）：倍速下这一窗口在真实时间里仍是 950ms ⇒ 动画演完才可被选中
+  return at === undefined || b.lastTickGameMs >= at + battleShowWindowMs(b, BATTLE_ARRIVAL_FLY_MS)
 }
 
 /**
