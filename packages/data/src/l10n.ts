@@ -871,21 +871,217 @@ function shipClassSegment(enName: string): string {
  * 依据：`BlueprintDef` 自带 `moduleId` / `itemId` ⇒ 直接取产物的英文名拼后缀，
  * 比逐条翻中文蓝图串更准（中文侧写的是「轻型炮台 MK1（动能）蓝图」，英文侧统一成 `Light Turret MK1 · Kinetic Blueprint`）。
  */
+/**
+ * **蓝图说明**（135 条 · 中文侧逐条手写、无模板 ⇒ 逐条译；名称仍按产物派生）。
+ * 与中文同一条口径：说明只讲"这张图造什么、吃什么料/什么特性"，不写原因解释。
+ */
+const BP_DESC_EN: Readonly<Record<string, string>> = {
+  'bp-miner-1': 'A starter blueprint: assemble your first mining laser from Tritanium Alloy and Silvervein Supermetal.',
+  'bp-cargo-1': 'A cargo hold refit plan; Crystalline Colloid makes the sealing lining.',
+  'bp-miner-2': 'Resonant drill head plans: a Crystalline Colloid resonance ring plus a Silvervein Supermetal heat sink — a milestone of mid-game industry.',
+  'bp-cargo-2': 'Folding hold technology, built around the capacity a Heavy Tungsten Alloy frame provides.',
+  'bp-pd-e': 'Point defense gun plans: short range, fast fire, and the only gun that can hit enemy drone swarms.',
+  'bp-pd-e-2': 'Uprated point defense gun plans: faster fire, heavier shots, still short-ranged.',
+  'bp-pd-e-3': 'Top-tier point defense gun plans: fire rate and shot weight pushed to the limit, range still that short band.',
+  'bp-turret-1': 'Light kinetic gun plans that give a mining ship a proper gun of its own.',
+  'bp-turret-2': 'Heavy kinetic gun plans with 5.7 km of reach — the go-to long-range suppression gun for any hull.',
+  'bp-miner-civ': 'The most basic mining laser plans; slightly cheaper to build than buying off the market, and good for practice.',
+  'bp-cargo-civ': 'A starter cargo refit plan: the classic Silvervein Supermetal and Crystalline Colloid recipe.',
+  'bp-turret-civ': 'Constabulary-standard cannon plans that let a rookie mining ship look a pirate in the eye.',
+  'bp-miner-3': 'Precision mining laser MK3 plans: an Isotope Polycrystal resonance chamber with Starcore Crystal bearings.',
+  'bp-cargo-3': 'Folding hold MK3 plans; the spatial lining is die-cast from Starcore Crystal.',
+  'bp-turret-3': 'Siege turret MK3 plans: a Darkiron barrel with a Starcore Crystal breech.',
+  'bp-ammo-kinetic': 'Kinetic ammo plans: 120 rounds per batch; ×1.5 vs shields, ×0.75 vs armor.',
+  'bp-ammo-explosive': 'Explosive ammo line plans: 120 rounds per batch; ×1.5 vs armor, ×0.75 vs shields.',
+  'bp-ammo-plasma': 'Energy ammo plans: 120 rounds per batch; ×1.25 vs shields, ×1 vs armor and hull.',
+  'bp-ammo-kinetic-2': 'Kinetic ammo MK2 plans: 120 rounds per batch; ×1.5 vs shields, ×0.75 vs armor.',
+  'bp-ammo-explosive-2': 'Explosive ammo MK2 line plans: 120 rounds per batch; ×1.5 vs armor, ×0.75 vs shields.',
+  'bp-ammo-plasma-2': 'Energy ammo MK2 line plans: 120 rounds per batch; ×1.25 vs shields, ×1 vs armor and hull.',
+  'bp-repairkit-civ': 'Civilian repair kit plans: pressed nano repair compound, 5 kits per batch, base 5 HP.',
+  'bp-repairkit-mil': 'Military repair kit plans: sealed high-density nano repair agent, 3 kits per batch, base 10 HP.',
+  'bp-laser-1': 'An energy beam focusing chamber; lens coating and heat sink decide the beam purity.',
+  'bp-laser-2': 'A reinforced energy beam focusing chamber: longer reach, heavier shots.',
+  'bp-laser-3': 'The top-grade energy beam focusing chamber: range and penetration cap out the laser line.',
+  'bp-missile-1': 'Missile nest and launch rails; the assembler handles guidance fin mounting automatically.',
+  'bp-missile-2': 'Reinforced missile nest and launch rails: heavier rounds, longer reach.',
+  'bp-missile-3': 'Top-grade missile nest and launch rails: range and single-shot power cap out the missile line.',
+  'bp-drone-rack-1': 'A drone deck expansion section with racks, recovery net and power bus all in place.',
+  'bp-drone-rack-2': 'An enlarged drone deck expansion section that carries one tier more drones.',
+  'bp-drone-rack-3': 'The top-grade drone deck expansion: berths and power headroom both maxed.',
+  'bp-drone-tac-1': 'The phased-array computing unit of a tactical control array, with its fire-control data link die-cast in one piece.',
+  'bp-drone-tac-2': 'The reinforced phased-array computing unit of a tactical control array: faster and steadier control.',
+  'bp-drone-tac-3': 'The top-grade phased-array computing unit: the fire-control data link maxed out.',
+  'bp-drone-relay-1': 'The signal relay unit of a guidance relay antenna, amplifying drone command links.',
+  'bp-drone-relay-2': 'A dual-band guidance relay antenna with interference filtering pressed into the relay unit.',
+  'bp-drone-relay-3': 'A long-range phased-array relay antenna; drone commands can run over inter-ship links.',
+  'bp-shield-kin-1': 'Shield generator coil plans (kinetic band tuning), with the magnetic envelope calibrated against ballistic impact.',
+  'bp-shield-exp-1': 'Shield generator coil plans (explosive band tuning): shock fronts are torn apart by the phase difference in the deflection field.',
+  'bp-shield-pla-1': 'Shield generator coil plans (energy band tuning): high-energy beams are refracted and defocused on the polar layer.',
+  'bp-shield-kin-2': 'A kinetic shield amplifier: the magnetic envelope, calibrated against ballistic impact, one step thicker.',
+  'bp-shield-exp-2': 'An explosive shield amplifier: shock fronts torn apart by deflection-field phase difference, one step thicker.',
+  'bp-shield-pla-2': 'An energy shield amplifier: beams refracted and defocused on the polar layer, one step thicker.',
+  'bp-shield-kin-3': 'A kinetic shield amplifier: magnetic envelope calibrated against ballistic impact, resistance maxed.',
+  'bp-shield-exp-3': 'An explosive shield amplifier: shock fronts torn apart by deflection-field phase difference, resistance maxed.',
+  'bp-shield-pla-3': 'An energy shield amplifier: beams refracted and defocused on the polar layer, resistance maxed.',
+  'bp-shield-ext-1': 'A shield capacitor bay: extra storage cells paralleled into the generator bank.',
+  'bp-shield-ext-2': 'An enlarged shield capacitor bay with one more parallel storage group.',
+  'bp-shield-ext-3': 'The top-grade shield capacitor bay: storage cells and bus capacity both maxed.',
+  'bp-shieldchg-1': 'Shield recharge circuit plans: rebuild the generator bank into a time-shared bus that can force a recharge cycle.',
+  'bp-shieldchg-2': 'High-power shield recharge circuit plans: a dedicated recharge bus that doubles the shield restored per tick.',
+  'bp-shieldchg-3': 'Capital-grade shield recharge circuit plans: one tick brings an empty shield back to fighting strength.',
+  'bp-armor-kin-1': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads.',
+  'bp-armor-exp-1': 'Explosive-resistant armor plating: a honeycomb backing plate vents blast pressure outboard.',
+  'bp-armor-pla-1': 'Energy-resistant armor plating: an ablative coating carries beam heat away by vaporizing itself.',
+  'bp-armor-kin-2': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads, one step thicker.',
+  'bp-armor-exp-2': 'Explosive-resistant armor plating: the honeycomb backing vents blast pressure outboard, one step thicker.',
+  'bp-armor-pla-2': 'Energy-resistant armor plating: the ablative coating carries beam heat away, one step thicker.',
+  'bp-armor-kin-3': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads — protection caps out the plating line.',
+  'bp-armor-exp-3': 'Explosive-resistant armor plating: the honeycomb backing vents blast pressure outboard — protection caps out the plating line.',
+  'bp-armor-pla-3': 'Energy-resistant armor plating: the ablative coating carries beam heat away — protection caps out the plating line.',
+  'bp-armor-plate-1': 'Composite armor slab: keel-grade plate that trades hold space for survival.',
+  'bp-armor-plate-2': 'A thicker composite armor slab, keel-grade stock one step up.',
+  'bp-armor-plate-3': 'The top-grade composite armor slab: the thickest layer on the ship, and the biggest hold cost.',
+  'bp-prop-1': 'Vector nozzles and attitude control gear: turning no longer relies on the hull\'s attitude wheels alone.',
+  'bp-prop-2': 'Afterburning vector nozzles and attitude gear: thrust and turning both improved.',
+  'bp-prop-3': 'Top-grade vector nozzles and attitude gear: speed and agility both maxed.',
+  'bp-mwd-1': 'Short-burst warp coils and a single-discharge assembly: ten seconds of displacement is enough to claim a position.',
+  'bp-mwd-2': 'High-power warp coils and fast-discharge capacitors: in ten seconds the ship outruns anything a vector thruster can catch.',
+  'bp-mwd-3': 'Military warp coils and a burst reactor: one ignition is a warp-grade displacement — ten seconds, then a minute of silence.',
+  'bp-stab-kin-1': 'Kinetic turret recoil and compensation gear; the spread from sustained fire is squeezed to the minimum.',
+  'bp-stab-kin-2': 'Kinetic turret recoil and compensation gear; the spread squeezed one step tighter.',
+  'bp-stab-kin-3': 'Kinetic turret recoil and compensation gear; spread squeezed to the minimum in the line.',
+  'bp-stab-exp-1': 'Explosive turret recoil and compensation gear: the torque of a nest salvo is absorbed by counterweights.',
+  'bp-stab-exp-2': 'Explosive turret recoil and compensation gear: more salvo torque absorbed.',
+  'bp-stab-exp-3': 'Explosive turret recoil and compensation gear: salvo torque almost entirely absorbed.',
+  'bp-stab-pla-1': 'Energy turret recoil and compensation gear: capacitor pulse oscillation is damped out of the circuit.',
+  'bp-stab-pla-2': 'Energy turret recoil and compensation gear: circuit damping one step up.',
+  'bp-stab-pla-3': 'Energy turret recoil and compensation gear: circuit oscillation at its lowest in the line.',
+  'bp-rof-1': 'Loading arm cam timing plans: the reload beat is far quicker than by hand.',
+  'bp-rof-2': 'Reinforced loading arm cams: tighter timing, shorter cycle.',
+  'bp-rof-3': 'Top-grade loading arm cams: the reload beat at the mechanical limit.',
+  'bp-warpcomp-2': 'Warp field tuning computer: holds the field at a higher energy level for faster interstellar travel. Stacks with diminishing returns.',
+  'bp-warpcomp-3': 'Top-grade warp field tuning computer: faster interstellar travel. Stacks with diminishing returns.',
+  'bp-track-1': 'Sensor array and signal board: a locked target no longer slips off the fire-control screen.',
+  'bp-track-2': 'Reinforced sensor array and signal board: locks faster and steadier.',
+  'bp-track-3': 'Top-grade sensor array and signal board: lock speed and stability maxed.',
+  'bp-gyro-1': 'Inertial platform and gimbal rings: attitude drift held to milliradians.',
+  'bp-gyro-2': 'Reinforced inertial platform and gimbals: drift squeezed one step further.',
+  'bp-gyro-3': 'Top-grade inertial platform and gimbals: the steadiest attitude reference in the line.',
+  'bp-cpu-1': 'A low-slot compute expansion card that turns idle rack space into usable CPU.',
+  'bp-cpu-2': 'Dual-channel compute expansion card: double the compute with no extra rack space.',
+  'bp-salvager-1': 'Salvage grapples and cutting tools that turn scrap into recoverable material.',
+  'bp-salvager-2': 'Reinforced salvage grapples and cutting tools: one tier more recovered per run.',
+  'bp-salvager-3': 'Top-grade salvage grapples and cutting tools: the highest recovery per run in the line.',
+  'bp-hullrep-civ': 'Nano repair arms and kit injection lines let armor and structure heal slowly in combat.',
+  'bp-hullrep-1': 'Nano repair arms and kit injection lines let armor and structure heal themselves in combat.',
+  'bp-hullrep-2': 'Top-grade nano repair arms and injection lines: restoration and frequency both maxed.',
+  'bp-lock-1': 'Lock procedure and fire-control linkage, written up as a mass-producible drill for holding a target.',
+  'bp-lock-2': 'Reinforced lock procedure: once bitten, a target finds it much harder to shake off.',
+  'bp-lock-3': 'Top-grade lock procedure: spotting and biting happen almost in the same instant.',
+  'bp-stealth-2': "Presses the whole hull's signature below background noise; the materials are easy to find — the masking procedure is the hard part.",
+  'bp-stealth-3': "The top-grade masking procedure: long enough to cross a whole stretch under the enemy's nose, at the cost of nearly all your compute.",
+  'bp-wh-a-frag': 'Raider fragment cannon: explosive main segment, kinetic secondary, 20 rounds per cycle.',
+  'bp-wh-a-hangar': 'Raider hangar: enlarges the drone bay and speeds up the swarm cycle.',
+  'bp-wh-a-prop': 'Raider afterburner: a big speed boost at the cost of accuracy.',
+  'bp-wh-a-coat': 'Raider refraction coating: opens up the evasion gap at the cost of all resistances.',
+  'bp-wh-a-scan': 'Spoils scan array: accuracy well up, range cut.',
+  'bp-wh-a-shield': 'Raider shield cage: shield capacity well up, range cut.',
+  'bp-wh-c-laser': 'Bio prism beam: an always-hit plasma beam with better range and falloff than its tier.',
+  'bp-wh-c-prism': 'Carapace prism layer: raises armor resistance to kinetic, explosive and plasma together.',
+  'bp-wh-c-pulse': 'Bio pulse accelerator: faster reload and a slight speed gain.',
+  'bp-wh-c-missile': 'Spore missile nest: explosive warheads with wide spread, but one salvo covers every enemy.',
+  'bp-wh-c-frame': 'Chitin frame layer: a large structure boost and a slight speed gain.',
+  'bp-wh-d-turret': 'Tombwarden linked cannon: a rapid kinetic gun firing two shots per round, the fastest of its tier.',
+  'bp-wh-d-shield': 'Mausoleum shield core: the top-tier core for shield capacity.',
+  'bp-wh-d-lock': 'Gravekeeper death knell: damage against a locked target rises markedly.',
+  'bp-wh-d-laser': 'Mausoleum prism cannon: an always-hit long-range plasma beam with the longest reach.',
+  'bp-wh-d-loader': 'Gravekeeper rapid loader: cuts reload time sharply.',
+  'bp-wh-d-steady': 'Mausoleum ballistic inscription: raises kinetic and plasma weapon damage together.',
+  'bp-wh-e-dc': 'Megastructure damage control array: kinetic and explosive resistance plus structure strength together.',
+  'bp-wh-e-tac': 'Megastructure control tower: a large boost to drone damage and structure strength.',
+  'bp-wh-e-cpu': 'Megastructure coprocessor: compute unmatched in its tier, at the cost of slower reloads.',
+  'bp-wh-e-pd': 'Megastructure point defense array: shortest range, fastest fire — built to intercept swarms.',
+  'bp-wh-e-shield': 'Megastructure shield matrix: shield capacity with kinetic and plasma resistance together.',
+  'bp-wh-g-hangar': 'Deadarmy hive dock: the largest berth capacity in the line.',
+  'bp-wh-g-fcs': 'Deadarmy fire control: modest gains to both accuracy and damage.',
+  'bp-wh-g-ballistic': 'Wraith ballistic corrector: raises kinetic weapon damage and range.',
+  'bp-wh-g-hull': "Squidwasp hull layer: lifts all three resistances and structure, and makes this ship's drones tougher.",
+  'bp-wh-g-turret': 'Deadarmy wreck cannon: the heaviest single-shot explosive gun, with mid-range reach and rate of fire.',
+  'bp-wh-g-prop': 'Wraith thruster: a large speed boost.',
+  'bp-lair-g-drone': 'One batch yields 50 Squidwasp drones: twice the punch of a standard scout, and the flightiest airframe.',
+  'bp-wh-c-drone': 'One batch yields 50 Hiveguard siege drones: spore-burst warheads crack armor, and their three-layer HP is thicker than a standard siege drone.',
+  'bp-wh-e-drone': 'One batch yields 50 Construct sentry drones: kinetic needles break shields, with longer reach and better accuracy than a standard sentry.',
+}
+
 export const EN_BLUEPRINTS: EnTable = (() => {
   const out: Record<string, EnText> = {}
   for (const bp of BLUEPRINTS) {
     const product = bp.moduleId ? EN_MODULES[bp.moduleId]?.name : bp.itemId ? EN_ITEMS_ALL[bp.itemId]?.name : undefined
-    if (product) out[bp.id] = { name: `${product} Blueprint` }
+    if (!product) continue
+    const desc = BP_DESC_EN[bp.id]
+    out[bp.id] = desc !== undefined ? { name: `${product} Blueprint`, description: desc } : { name: `${product} Blueprint` }
   }
   return out
 })()
 
-/** **舰船蓝图**（派生）：`<舰级段> Blueprint`（`ShipBlueprintDef.shipId` ⇒ 舰船英文名 ⇒ 取舰级段） */
+/**
+ * **舰船蓝图说明**（45 条手译 + `sbp-once-*` 12 条按本体派生——中文侧一次性图纸与普通图纸**逐字同说明**）。
+ * 数值（货舱/循环/产量）照抄中文原文，不做本地化换算（单位与千分位与英文侧一致）。
+ */
+const SBP_DESC_EN: Readonly<Record<string, string>> = {
+  'sbp-pioneer': 'Mining corvette; 5,200 m³ hold, 38 units per 9 s cycle — a fifth more output than the Whaleswallow-class.',
+  'sbp-whale-king': 'Mining corvette; 7,000 m³ hold, 58 units per 8 s cycle — the peak output of the mining family.',
+  'sbp-humpback': 'Mining ship; 19,000 m³ hold, 140 units per 30 s cycle — the flagship of mining output.',
+  'sbp-colossal': 'Flagship freighter; 108,000 m³ hold, 129 units per 33 s cycle — a mobile fortress.',
+  'sbp-sandcat': 'Mining corvette; a T1 starter with an 800 m³ hold and 10 units per 12 s cycle.',
+  'sbp-burrower': 'Mining corvette; a T1 starter with a 1,800 m³ hold and 18 units per 11 s cycle.',
+  'sbp-whale': 'Mining corvette; 4,500 m³ hold, 34 units per 10 s cycle — the mining family\'s volume workhorse.',
+  'sbp-bowhead': 'Heavy freighter; 26,000 m³ hold, 110 units per 36 s cycle — the backbone of stockpiling.',
+  'sbp-falconet': 'Armed frigate; the fastest light-firepower platform at T1.',
+  'sbp-shrike': 'Armed frigate; slightly more firepower than the Skipjack-class, at the cost of speed.',
+  'sbp-tigershark': 'Armed frigate; a stronger firepower frame, and a familiar sight on deep-space escort duty.',
+  'sbp-mako': 'Destroyer; 2,300 m³ hold, 15 units per 13 s cycle — balanced between firepower and capacity.',
+  'sbp-whiteshark': 'Gunboat; 3,200 m³ hold, 18 units per 13 s cycle — the volume workhorse of the armed family.',
+  'sbp-swarm': 'Drone frigate; launches swarms to back up its main guns.',
+  'sbp-sentinel': 'Drone carrier; a 3,600 m³ hold with a roomy nest — its firepower comes from the swarm.',
+  'sbp-thresher': 'Missile cruiser; 2,600 m³ hold — opens the fight with a missile salvo.',
+  'sbp-electricray': 'Laser cruiser; 2,500 m³ hold — burns through shields on contact.',
+  'sbp-hammerhead': 'Gunnery cruiser; 2,800 m³ hold — the core of a heavy kinetic broadside.',
+  'sbp-bullshark': 'Assault cruiser; 3,000 m³ hold — thick shields and heavy guns, built to bite.',
+  'sbp-nautilus': 'Survey cruiser; 6,600 m³ hold — joining a fleet widens scan range by one ring.',
+  'sbp-tortoise': 'Light corvette; armor and structure far above its tier, paid for with speed and hold space.',
+  'sbp-hawksbill': 'Heavy cruiser; 9,600 m³ hold, 22 units per 13 s cycle — a warehouse in thick shell.',
+  'sbp-xuanwu': 'Heavy flagship; 15,200 m³ hold and the thickest three-layer HP — the apex of the heavy line.',
+  'sbp-flyingfish': 'Courier; a 5,000 m³ hold at 430 m/s — built for short-haul express runs.',
+  'sbp-sailfish': 'Fast freighter; 8,500 m³ hold, 18 units per 11 s cycle.',
+  'sbp-swordfish': 'Heavy freighter; 14,000 m³ hold, 16 units per 12 s cycle.',
+  'sbp-megalodon': 'Battleship; 4,000 m³ hold — a fire platform that dares to stand at the head of the formation.',
+  'sbp-wh-a-frigate': 'Raider EW frigate; locking and resolution top its tier — it sees first and locks first.',
+  'sbp-wh-a-destroyer': 'Raider gunboat; kinetic batteries give it solid frontal firepower.',
+  'sbp-wh-a-cruiser': 'Raider heavy assault cruiser; kinetic firepower wide open behind a thicker carapace — built to crack hard targets.',
+  'sbp-wh-c-frigate': 'Larva interceptor; impossibly fast, with almost no shields — a carapace holds it together.',
+  'sbp-wh-c-destroyer': 'Carapace interceptor; speed and agility maxed, with armor and structure taking every hit.',
+  'sbp-wh-c-cruiser': 'Hiveswarm heavy assault cruiser; energy main guns behind thick armor and shell — made for head-on collisions.',
+  'sbp-wh-d-frigate': 'Sentry EW frigate; locking and resolution far above its tier — it spots the enemy for the whole fleet.',
+  'sbp-wh-d-destroyer': "Tombwarden command ship; locking, resolution and drone nest all raised — the fleet's eyes and hub.",
+  'sbp-wh-d-cruiser': 'Mausoleum cruiser; the thickest three-layer HP and the most gun mounts, holding the center of the line.',
+  'sbp-wh-e-frigate': 'Construct torpedo frigate; explosive warheads crack armor and hit solidly.',
+  'sbp-wh-e-destroyer': 'Hangar drone combat ship; a big nest and strong drones — a hangar that can fly.',
+  'sbp-wh-e-carrier': 'Megastructure drone combat ship; the largest nest and the highest drone damage — launching is its main weapon.',
+  'sbp-wh-g-frigate': 'Wraith scout frigate; a tiny signature and very high evasion — it sees the others first.',
+  'sbp-wh-g-destroyer': 'Deadarmy logistics ship; the largest hold and nest, following the fleet to resupply and swap drones.',
+  'sbp-wh-g-cruiser': 'Deadarmy torpedo cruiser; explosive warheads with solid accuracy, aimed at the armor of big targets.',
+}
+
+/** **舰船蓝图**（名称派生：`<舰级段> Blueprint`；说明查 `SBP_DESC_EN`，`sbp-once-*` 取本体同说明） */
 export const EN_SHIP_BLUEPRINTS: EnTable = (() => {
   const out: Record<string, EnText> = {}
   for (const bp of SHIP_BLUEPRINTS) {
     const en = EN_SHIPS[bp.shipId]?.name
-    if (en) out[bp.id] = { name: `${shipClassSegment(en)} Blueprint` }
+    if (!en) continue
+    const onceBase = bp.id.startsWith('sbp-once-') ? `sbp-${bp.id.slice('sbp-once-'.length)}` : null
+    const desc = SBP_DESC_EN[bp.id] ?? (onceBase !== null ? SBP_DESC_EN[onceBase] : undefined)
+    out[bp.id] = desc !== undefined ? { name: `${shipClassSegment(en)} Blueprint`, description: desc } : { name: `${shipClassSegment(en)} Blueprint` }
   }
   return out
 })()

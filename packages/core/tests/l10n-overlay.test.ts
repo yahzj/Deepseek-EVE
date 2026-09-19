@@ -321,6 +321,39 @@ describe('英文覆盖层（P2）', () => {
     expect(en.items.get('wreck-rare-g-wh')?.description).toContain('Deadarmy (Wormhole)')
   })
 
+  it('蓝图说明：135 条装备/物品蓝图全部有英文说明，且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const [id] of zh.blueprints) {
+      const other = en.blueprints.get(id)!
+      if (!other.description) {
+        noDesc.push(id)
+        continue
+      }
+      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+    expect(noDesc, `这些蓝图还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.blueprints.get('bp-miner-1')?.description).toContain('Tritanium Alloy')
+    expect(en.blueprints.get('bp-wh-e-pd')?.description).toContain('intercept swarms')
+  })
+
+  it('舰船蓝图说明：57 条全部有英文说明（含 sbp-once-* 按本体派生）且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const [id] of zh.shipBlueprints) {
+      const other = en.shipBlueprints.get(id)!
+      if (!other.description) {
+        noDesc.push(id)
+        continue
+      }
+      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+    expect(noDesc, `这些舰船蓝图还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.shipBlueprints.get('sbp-pioneer')?.description).toContain('5,200 m³')
+    // 一次性图纸与本体同说明（中文侧逐字相同 ⇒ 英文也照同一条派生）
+    expect(en.shipBlueprints.get('sbp-once-sailfish')?.description).toBe(en.shipBlueprints.get('sbp-sailfish')?.description)
+  })
+
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {
     for (const [id, text] of Object.entries(EN_SHIPS)) {
       const keys = Object.keys(text).sort()
