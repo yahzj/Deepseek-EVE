@@ -1194,7 +1194,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ShipPage.125": { zh: "已移入舰船仓库（自定义名已清除）。", en: "Moved into Ship Storage (the custom name was cleared)." },
   "ui.ShipPage.126": { zh: "已移入舰船仓库；到「舰船仓库」可转入舰队或直接出售。", en: "Moved into Ship Storage; from there you can move it to the fleet or sell it outright." },
   "ui.ShipPage.127": { zh: "已恢复默认船名。", en: "Default ship name restored." },
-  "ui.ShipPage.128": { zh: "（当前筛选）", en: "(current filter)" },
   "ui.ShipPage.129": { zh: "移入舰船仓库：同型堆叠存放，可在舰船仓库转入舰队或直接出售", en: "Move to Ship Storage: same hulls stack there, and from Ship Storage you can move one to the fleet or sell it outright" },
   "ui.ShipPage.130": { zh: "无可用 AI 核心：先去市场购入「基础 AI 核心」，或先取消占用中的任务、训练「AI 核心操作学」提高上限", en: "No AI core available: buy a Basic AI Core on the market, cancel a running task, or train AI Core Operation to raise the limit" },
   "ui.ShipPage.131": { zh: "没有可指派的空闲舰船（舰船均在执勤/出航中）", en: "No idle ship to assign (they are all on duty or under way)" },
