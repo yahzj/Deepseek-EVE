@@ -83,9 +83,9 @@ type FleetFilter = 'all' | 'pilot' | 'ai' | 'idle' | 'damaged'
 const FLEET_FILTER_TABS: Array<{ key: FleetFilter; label: string }> = [
   { key: 'all', label: tr("ui.IndustryPage.001") },
   { key: 'pilot', label: tr("ui.ShipPage.010") },
-  { key: 'ai', label: 'AI 执勤' },
+  { key: 'ai', label: tr("ui.ShipPage.118") },
   { key: 'idle', label: tr("ui.ShipPage.117") },
-  { key: 'damaged', label: '待维修' },
+  { key: 'damaged', label: tr("ui.ShipPage.119") },
 ]
 
 /** AI 指挥中心可指派的任务类型（2026-09-10 船长：统一全部 AI 可执行活动）——
@@ -108,9 +108,9 @@ const CRAFT_GROUPS: ReadonlyArray<{ key: CraftOption['group']; id: string }> = [
 ]
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: tr("ui.ShipPage.001"), icon: 'nav-ship' },
-  { key: 'ai', label: tr("ui.ShipPage.057"), icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
+  { key: 'ai', label: tr("ui.ShipPage.057"), icon: 'nav-ai', title: tr("ui.ShipPage.120") },
   // 2026-09-14 船长：「舰船市场」→「舰船仓库」（图标沿用物品仓库那只箱子，语义 = 存放）
-  { key: 'store', label: tr("ui.ShipPage.036"), icon: 'nav-items', title: '组装机造好的船先入这里（同型堆叠）：可转入舰队，也可直接在市场出售' },
+  { key: 'store', label: tr("ui.ShipPage.036"), icon: 'nav-items', title: tr("ui.ShipPage.121") },
 ]
 
 /** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
@@ -118,7 +118,7 @@ const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: stri
 type StoreOwnFilter = 'all' | 'owned' | 'unowned'
 const STORE_OWN_TABS: Array<{ key: StoreOwnFilter; label: string }> = [
   { key: 'all', label: tr("ui.IndustryPage.001") },
-  { key: 'owned', label: '已拥有' },
+  { key: 'owned', label: tr("ui.ShipPage.122") },
   { key: 'unowned', label: tr("ui.ShipPage.041") },
 ]
 
@@ -262,7 +262,7 @@ export function ShipPage({
   function handleToggleLock(id: string, currentlyLocked: boolean): void {
     const r = engine.lockShipAt(id, !currentlyLocked)
     if (!r.ok) onToast(r.error ?? '操作失败', true)
-    else onToast(currentlyLocked ? '已解锁：恢复可移入舰船仓库。' : '已锁定：此船不可移入舰船仓库（防止误操作）。')
+    else onToast(currentlyLocked ? tr("ui.ShipPage.123") : tr("ui.ShipPage.124"))
   }
 
   /** 移入舰船仓库（2026-09-14 船长）：有自定义名 ⇒ 先弹确认（入仓会清名），否则直接入仓 */
@@ -277,7 +277,7 @@ export function ShipPage({
     const r = engine.storeShipAt(id, clearName)
     setStoreConfirmId(null)
     if (!r.ok) onToast(r.error ?? '移入舰船仓库失败', true)
-    else onToast(clearName ? '已移入舰船仓库（自定义名已清除）。' : '已移入舰船仓库；到「舰船仓库」可转入舰队或直接出售。')
+    else onToast(clearName ? tr("ui.ShipPage.125") : tr("ui.ShipPage.126"))
   }
 
   /** 开始改名（恢复默认名 = 直接提交 null） */
@@ -288,7 +288,7 @@ export function ShipPage({
   function submitRename(id: string, name: string | null): void {
     const r = engine.renameShipAt(id, name)
     if (!r.ok) onToast(r.error ?? '改名失败', true)
-    else onToast(name === null ? '已恢复默认船名。' : `已命名为「${name.trim()}」。`)
+    else onToast(name === null ? tr("ui.ShipPage.127") : `已命名为「${name.trim()}」。`)
     setRenameId(null)
     setRenameDraft('')
   }
@@ -473,7 +473,7 @@ export function ShipPage({
           <div className="app-dim app-note">
             {Object.keys(state.fleet).length === 0
               ? tr("ui.ShipPage.006")
-              : `没有匹配的舰船${fq.length > 0 ? `（关键词「${fleetQ.trim()}」）` : '（当前筛选）'}——换个关键词或筛选条件试试。`}
+              : `没有匹配的舰船${fq.length > 0 ? `（关键词「${fleetQ.trim()}」）` : tr("ui.ShipPage.128")}——换个关键词或筛选条件试试。`}
           </div>
         ) : (
         <div className="app-ship-list">
@@ -665,7 +665,7 @@ export function ShipPage({
                           storable.ok
                             ? shipState.customName
                               ? `移入舰船仓库：同型堆叠存放（会清除自定义名「${shipState.customName}」）`
-                              : '移入舰船仓库：同型堆叠存放，可在舰船仓库转入舰队或直接出售'
+                              : tr("ui.ShipPage.129")
                             : storable.reason
                         }
                         onClick={() => requestStore(uid, shipState.customName)}
@@ -786,7 +786,7 @@ export function ShipPage({
               <div className="app-dim app-note">
                 {storeAll.length === 0
                   ? tr("ui.ShipPage.039")
-                  : `没有匹配的船型${sq.length > 0 ? `（关键词「${storeQ.trim()}」）` : '（当前筛选）'}——换个关键词或筛选条件试试。`}
+                  : `没有匹配的船型${sq.length > 0 ? `（关键词「${storeQ.trim()}」）` : tr("ui.ShipPage.128")}——换个关键词或筛选条件试试。`}
               </div>
             ) : (
               <div className="app-ship-list">
@@ -1005,21 +1005,21 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
    *  （判据单点 = core `stationIndustryBlocked`，亲自操作那一路仍要求在基地网络内，见工业页）。 */
   const assignBlock: string | null =
     usableCores.length === 0
-      ? '无可用 AI 核心：先去市场购入「基础 AI 核心」，或先取消占用中的任务、训练「AI 核心操作学」提高上限'
+      ? tr("ui.ShipPage.130")
       : !isIndustryTask && !shipId
         ? idleShips.length === 0
-          ? '没有可指派的空闲舰船（舰船均在执勤/出航中）'
-          : '先选择一艘空闲舰船'
+          ? tr("ui.ShipPage.131")
+          : tr("ui.ShipPage.132")
         : effMode === 'salvage' && !salvageGalaxyId
-          ? '先选择打捞目标星系（需已探索且有敌群残骸的星系）'
+          ? tr("ui.ShipPage.133")
           : effMode === 'standby' && !standbyGalaxyId
-            ? '先选择掩护巡逻的目标星系（需已探索的星系）'
+            ? tr("ui.ShipPage.134")
             : effMode === 'refine' && !effRefineId
-              ? '当前没有可精炼的资源或可回收的残骸（先去采集/打捞，或从市场买入原料）'
+              ? tr("ui.ShipPage.135")
               : effMode === 'refine' && refineHave <= 0
                 ? `仓库与货仓里没有「${selRefine?.name ?? ''}」——先补料再开炉`
                 : effMode === 'craft' && !effCraftId
-                  ? '还没有已学会的蓝图——先到工业页「蓝图书架」学习一张'
+                  ? tr("ui.ShipPage.136")
                   : effMode === 'craft' && craftShort.length > 0
                     ? `材料不足：${craftShort.join('；')}`
                     : null
@@ -1060,8 +1060,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       else
         onToast(
           isWreck
-            ? 'AI 回收炉已开工：每批到点实时扣料，耗尽自动停。'
-            : 'AI 精炼炉已开工：每批到点实时扣料，耗尽自动停。',
+            ? tr("ui.ShipPage.137")
+            : tr("ui.ShipPage.138"),
         )
       return
     }
@@ -1089,7 +1089,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   function handleStopIndustry(runId: number, isMake: boolean): void {
     const r = isMake ? engine.cancelManufacturingAt(runId) : engine.stopRefineRunAt(runId)
     if (!r.ok) onToast(r.error ?? '停止失败', true)
-    else onToast(isMake ? '已取消该条 AI 制造线（核心已归还）。' : '已停该台 AI 炉（核心已归还）。')
+    else onToast(isMake ? tr("ui.ShipPage.139") : tr("ui.ShipPage.140"))
   }
 
   return (
@@ -1136,12 +1136,12 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               isIndustryTask
                 ? tr("ui.ShipPage.065")
                 : idleShips.length === 0
-                  ? '当前没有空闲舰船可指派（舰船均在执勤/出航中）'
-                  : '选择空闲舰船'
+                  ? tr("ui.ShipPage.141")
+                  : tr("ui.ShipPage.142")
             }
           >
             <option value="">
-              {isIndustryTask ? tr("ui.ShipPage.066") : idleShips.length === 0 ? '无空闲舰船' : '— 选择空闲舰船 —'}
+              {isIndustryTask ? tr("ui.ShipPage.066") : idleShips.length === 0 ? tr("ui.ShipPage.143") : tr("ui.ShipPage.144")}
             </option>
             {idleShips.map((id) => (
               <option key={id} value={id}>
@@ -1317,7 +1317,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             let desc = ''
             if (task.kind === 'mining') {
               const belt = engine.ctx.belts.get(task.beltId)
-              const phaseLabel = task.phase === 'returning' ? '返航中' : task.phase === 'outbound' ? tr("ui.MapPage.056") : '采掘中'
+              const phaseLabel = task.phase === 'returning' ? tr("ui.ShipPage.145") : task.phase === 'outbound' ? tr("ui.MapPage.056") : tr("ui.ShipPage.146")
               desc = `采矿 ${belt?.name ?? task.beltId} · ${phaseLabel} · 本趟 ${task.tripUnits} 单位`
             } else if (task.kind === 'expedition') {
               // 防御分支：AI 远征已停用（2026-09-05 软下线、2026-09-08 UI 隐藏），理论不出现——老档残留兜底显示
@@ -1326,7 +1326,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               desc = `远征 ${a?.name ?? task.anomalyId} · 剩余约 ${Math.floor(remain / 60_000)} 分钟`
             } else if (task.kind === 'salvage') {
               const g = engine.ctx.galaxies.get(task.galaxyId)
-              const phaseLabel = task.phase === 'returning' ? '返航卸货' : task.phase === 'outbound' ? '出航' : '打捞中'
+              const phaseLabel = task.phase === 'returning' ? tr("ui.ShipPage.147") : task.phase === 'outbound' ? tr("ui.ShipPage.148") : tr("ui.ShipPage.149")
               desc = `打捞 ${g?.name ?? task.galaxyId} · ${phaseLabel}（本趟约 ${Math.round(task.tripM3 * 10) / 10} m³）`
             } else {
               const g = engine.ctx.galaxies.get(task.galaxyId)
@@ -1391,7 +1391,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                     </span>
                     <span className="app-inv-count">
                       <AiTaskBar
-                        view={{ kind: 'ai', phase: 'refine', label: '本批', percent: v.percent, remainingMs: v.remainingMs }}
+                        view={{ kind: 'ai', phase: 'refine', label: tr("ui.ShipPage.150"), percent: v.percent, remainingMs: v.remainingMs }}
                       />
                     </span>
                     </div>
@@ -1423,7 +1423,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   </span>
                   <span className="app-inv-count">
                     <AiTaskBar
-                      view={{ kind: 'ai', phase: 'make', label: '本件', percent: v.percent, remainingMs: v.remainingMs }}
+                      view={{ kind: 'ai', phase: 'make', label: tr("ui.ShipPage.151"), percent: v.percent, remainingMs: v.remainingMs }}
                     />
                   </span>
                   </div>

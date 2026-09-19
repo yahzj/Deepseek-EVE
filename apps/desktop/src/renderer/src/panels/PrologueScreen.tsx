@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
 
 type Phase = 'wake' | 'boot' | 'diag' | 'name' | 'open'
 
@@ -13,21 +14,21 @@ type LineKind = 'ok' | 'warn' | 'fail'
 
 /** 自检滚动条目（system：模块名） */
 const CHECK_LINES: ReadonlyArray<readonly [string, LineKind, string]> = [
-  ['供电核心', 'ok', '在线 · 输出稳定'],
-  ['航行系统', 'warn', '推力 60% · 导航阵列漂移（±3σ）'],
-  ['武器系统', 'fail', '离线 —— 未检测到已安装武器'],
-  ['采矿子系统', 'ok', '就绪 · 矿枪能源链路正常'],
-  ['生命维持', 'ok', '运行中 —— 无需乘员循环'],
-  ['乘员舱扫描', 'fail', '无生命信号'],
-  ['身份档案', 'fail', '损坏 · 无法读取'],
-  ['系统日志', 'warn', '最后条目时间戳：■■■.■■.■■ —— 乱码'],
+  [tr("ui.PrologueScreen.001"), 'ok', tr("ui.PrologueScreen.002")],
+  [tr("ui.PrologueScreen.003"), 'warn', tr("ui.PrologueScreen.004")],
+  [tr("ui.PrologueScreen.005"), 'fail', tr("ui.PrologueScreen.006")],
+  [tr("ui.PrologueScreen.007"), 'ok', tr("ui.PrologueScreen.008")],
+  [tr("ui.PrologueScreen.009"), 'ok', tr("ui.PrologueScreen.010")],
+  [tr("ui.PrologueScreen.011"), 'fail', tr("ui.PrologueScreen.012")],
+  [tr("ui.PrologueScreen.013"), 'fail', tr("ui.PrologueScreen.014")],
+  [tr("ui.PrologueScreen.015"), 'warn', tr("ui.PrologueScreen.016")],
 ]
 
 const DIAG_LINES: ReadonlyArray<readonly [string, string]> = [
-  ['结构完整性', '装甲/结构受损（80%）'],
-  ['乘员', '失踪 —— 生命信号 0'],
-  ['记忆档案', '大部分损坏，仅存碎片'],
-  ['自检建议', '采集原矿维持运转与临时修复储备'],
+  [tr("ui.PrologueScreen.017"), tr("ui.PrologueScreen.018")],
+  [tr("ui.PrologueScreen.019"), tr("ui.PrologueScreen.020")],
+  [tr("ui.PrologueScreen.021"), tr("ui.PrologueScreen.022")],
+  [tr("ui.PrologueScreen.023"), tr("ui.PrologueScreen.024")],
 ]
 
 const LINE_MS = 130
@@ -110,56 +111,56 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
           <div key={phase} className={`app-pro-stage${fading ? ' is-fading' : ''}`}>
             {phase === 'wake' ? (
               <div className="app-pro-wake">
-                <div className="app-pro-dim">未知年代 · 隐秘泊位</div>
+                <div className="app-pro-dim">{tr("ui.PrologueScreen.025")}</div>
                 <button className="app-pro-wake-btn" onClick={() => goto('boot')}>
-                  ⏻ 醒来
+                  {tr("ui.PrologueScreen.026")}
                 </button>
-                <div className="app-pro-dim">—— 点击唤醒 ——</div>
+                <div className="app-pro-dim">{tr("ui.PrologueScreen.027")}</div>
               </div>
             ) : null}
 
             {phase === 'boot' ? (
               <div className="app-pro-term">
-                <div className="app-pro-term-title">舰载系统自检 · 启动序列</div>
+                <div className="app-pro-term-title">{tr("ui.PrologueScreen.028")}</div>
                 {CHECK_LINES.slice(0, shown).map(([mod, kind, text], i) => (
                   <div key={i} className={`app-pro-line is-${kind}`}>
                     <span className="app-pro-mod">{mod}</span>
                     <span className="app-pro-dots">…</span>
                     <span className="app-pro-text">{text}</span>
-                    <span className="app-pro-mark">{kind === 'ok' ? '正常' : kind === 'warn' ? '!' : '✕'}</span>
+                    <span className="app-pro-mark">{kind === 'ok' ? tr("ui.PrologueScreen.029") : kind === 'warn' ? '!' : '✕'}</span>
                   </div>
                 ))}
                 {shown < CHECK_LINES.length ? (
                   <>
                     <div className="app-pro-cursor">▌</div>
-                    <div className="app-pro-hint">（点击画面可跳过自检动画）</div>
+                    <div className="app-pro-hint">{tr("ui.PrologueScreen.030")}</div>
                   </>
                 ) : (
-                  <div className="app-pro-hint">自检序列完成 —— 点击画面查看自检结论 ›</div>
+                  <div className="app-pro-hint">{tr("ui.PrologueScreen.031")}</div>
                 )}
               </div>
             ) : null}
 
             {phase === 'diag' ? (
               <div className="app-pro-diag">
-                <div className="app-pro-diag-title">⚠ 自检结论</div>
+                <div className="app-pro-diag-title">{tr("ui.PrologueScreen.032")}</div>
                 {DIAG_LINES.map(([k, v], i) => (
                   <div key={i} className="app-pro-diag-row">
                     <span className="app-pro-diag-k">{k}</span>
                     <span className="app-pro-diag-v">{v}</span>
                   </div>
                 ))}
-                <div className="app-pro-frag">档案残片：「编号 07……如果它醒了，告诉它——」……（记录截断）</div>
+                <div className="app-pro-frag">{tr("ui.PrologueScreen.033")}</div>
                 <button className="app-btn is-primary" onClick={() => goto('name')}>
-                  下一步：身份确认
+                  {tr("ui.PrologueScreen.034")}
                 </button>
               </div>
             ) : null}
 
             {phase === 'name' ? (
               <div className="app-pro-name" onClick={(e) => e.stopPropagation()}>
-                <div className="app-pro-diag-title">身份标识检索失败</div>
-                <div className="app-pro-sub">从记忆碎片中找回自己的系统名称（顶栏呼号）：</div>
+                <div className="app-pro-diag-title">{tr("ui.PrologueScreen.035")}</div>
+                <div className="app-pro-sub">{tr("ui.PrologueScreen.036")}</div>
                 <input
                   className="app-input app-pro-input"
                   value={name}
@@ -173,10 +174,10 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
                   }}
                   autoFocus
                 />
-                <div className="app-pro-name-default">默认：PRTS —— 可自由修改</div>
+                <div className="app-pro-name-default">{tr("ui.PrologueScreen.037")}</div>
                 {err ? <div className="app-pro-err">{err}</div> : null}
                 <button className="app-btn is-primary" onClick={confirm}>
-                  写入并启动
+                  {tr("ui.PrologueScreen.038")}
                 </button>
               </div>
             ) : null}
@@ -194,8 +195,8 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
       ) : null}
       {err && phase === 'wake' ? <div className="app-pro-err">{err}</div> : null}
       {phase !== 'open' ? (
-        <button className="app-pro-skip" onClick={skip} title="跳过序章演出：呼号落默认 PRTS，直接开始">
-          跳过演出 ›
+        <button className="app-pro-skip" onClick={skip} title={tr("ui.PrologueScreen.039")}>
+          {tr("ui.PrologueScreen.040")}
         </button>
       ) : null}
     </div>

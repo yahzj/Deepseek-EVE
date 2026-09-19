@@ -78,10 +78,10 @@ export const CONTAINER_KIND_KEYS: readonly string[] = ['container']
 
 /** 货柜的四个二级子类（顺序 = 渲染顺序；"安全柜"五族在前，"贵重品/军用"两个新柜在后） */
 export const CONTAINER_SUBS: SubOption[] = [
-  { key: 'safe', label: '遗迹安全货柜' },
-  { key: 'bp', label: '图纸货柜' },
-  { key: 'valuables', label: '贵重品货柜' },
-  { key: 'military', label: '军用备货柜' },
+  { key: 'safe', label: tr("ui.itemSubs.002") },
+  { key: 'bp', label: tr("ui.itemSubs.003") },
+  { key: 'valuables', label: tr("ui.itemSubs.004") },
+  { key: 'military', label: tr("ui.itemSubs.005") },
 ]
 
 /**
@@ -104,24 +104,24 @@ export function containerSubKeyOf(refId: string): string {
  *  一级类型中文名「物品」→「**货物**」在 `MarketPage.KIND_TEXT` 单点改。 */
 export const ITEM_SUBS: SubOption[] = [
   { key: 'ore', label: tr("ui.IndustryPage.005") },
-  { key: 'mineral', label: '原材料' },
+  { key: 'mineral', label: tr("ui.itemSubs.006") },
   { key: 'gas', label: tr("ui.IndustryPage.006") },
   { key: 'ice', label: tr("ui.IndustryPage.007") },
-  { key: 'luxury', label: '奢侈品' },
+  { key: 'luxury', label: tr("ui.itemSubs.007") },
 ]
 
 /** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
 export const MODULE_SUBS: SubOption[] = [
-  { key: 'prod', label: '采集与货舱' },
-  { key: 'weapon', label: '武器' },
+  { key: 'prod', label: tr("ui.itemSubs.008") },
+  { key: 'weapon', label: tr("ui.itemSubs.009") },
   { key: 'shield', label: tr("ui.FitPage.001") },
   { key: 'armor', label: tr("ui.FitPage.003") },
-  { key: 'prop', label: '推进器' },
-  { key: 'drone', label: '无人机装置' },
-  { key: 'support', label: '支援件（辅助与维修）' },
-  { key: 'cpu', label: '协处理器（CPU 扩容）' },
-  { key: 'salvager', label: '打捞器' },
-  { key: 'lock', label: '目标锁定' },
+  { key: 'prop', label: tr("ui.BattleScreen.004") },
+  { key: 'drone', label: tr("ui.itemSubs.010") },
+  { key: 'support', label: tr("ui.itemSubs.011") },
+  { key: 'cpu', label: tr("ui.itemSubs.012") },
+  { key: 'salvager', label: tr("ui.Wormhole.001") },
+  { key: 'lock', label: tr("ui.itemSubs.013") },
 ]
 
 export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
@@ -138,11 +138,11 @@ export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
 }
 
 export const SHIP_SUBS: SubOption[] = [
-  { key: 'industrial', label: '采矿舰' },
-  { key: 'hauler', label: '货运舰' },
-  { key: 'armed', label: '武装舰' },
+  { key: 'industrial', label: tr("ui.itemSubs.014") },
+  { key: 'hauler', label: tr("ui.itemSubs.015") },
+  { key: 'armed', label: tr("ui.itemSubs.016") },
   // 2026-09-16 船长：「将重装舰类的名称改为装甲舰」（键仍 = role id，机制零迁移）
-  { key: 'armored', label: '装甲舰' },
+  { key: 'armored', label: tr("ui.itemSubs.017") },
 ]
 
 /** 舰船级别（T1~T5；顺序即渲染顺序，分组判定与子分类判定共用一处） */
@@ -168,18 +168,18 @@ export const SHIP_TIER_SUBS: SubOption[] = SHIP_TIER_KEYS.map((t) => ({
  * （复用 `MODULE_SUBS`），因组装机已用标签行区分装备/舰船/消耗品三大类，槽类不足以收窄 81 张装备蓝图。
  */
 export const BLUEPRINT_SUBS: SubOption[] = [
-  { key: 'high', label: '高槽装备蓝图' },
-  { key: 'mid', label: '中槽装备蓝图' },
-  { key: 'low', label: '低槽装备蓝图' },
+  { key: 'high', label: tr("ui.itemSubs.018") },
+  { key: 'mid', label: tr("ui.itemSubs.019") },
+  { key: 'low', label: tr("ui.itemSubs.020") },
   ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: `${s.label}蓝图` })),
-  { key: 'supply', label: '消耗品蓝图（弹药·修理组件）' },
+  { key: 'supply', label: tr("ui.itemSubs.021") },
 ]
 
 export const CORE_SUBS: SubOption[] = [
   { key: 'basic', label: tr("ui.MarketPage.020") },
-  { key: 'gamma', label: '伽马核心' },
-  { key: 'beta', label: '贝塔核心' },
-  { key: 'alpha', label: '阿尔法核心' },
+  { key: 'gamma', label: tr("ui.itemSubs.022") },
+  { key: 'beta', label: tr("ui.itemSubs.023") },
+  { key: 'alpha', label: tr("ui.itemSubs.024") },
 ]
 
 /**
@@ -193,9 +193,9 @@ export type RackKind = (typeof RACK_KIND_KEYS)[number]
  *  市场页「类型」下拉的三项（`module-high/mid/low`）、手册「装备图鉴」主筛选、
  *  手册「蓝图图鉴」装备蓝图的子筛选、物品页仓库的装备二级筛选，全部读这里。 */
 export const RACK_LABELS: Record<string, string> = {
-  high: '高槽装备',
-  mid: '中槽装备',
-  low: '低槽装备',
+  high: tr("ui.itemSubs.025"),
+  mid: tr("ui.itemSubs.026"),
+  low: tr("ui.itemSubs.027"),
 }
 
 /** 装备槽类子项（顺序 = 高 / 中 / 低；手册与仓库的筛选行直接渲染这张表） */

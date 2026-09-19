@@ -263,7 +263,7 @@ const GUIDE_GROUPS: HandGroup[] = [
     ],
   },
   {
-    title: '虫洞探索',
+    title: tr("ui.MatterTechTab.001"),
     entries: [
       {
         title: '发现虫洞',
@@ -465,7 +465,7 @@ const RULE_SECTS: HandGroup[] = [
     ],
   },
   {
-    title: '虫洞探索',
+    title: tr("ui.MatterTechTab.001"),
     entries: [
       {
         title: '进洞与离开',

@@ -383,7 +383,7 @@ export function WormholePanel({
   const workCell = salvageCell || veinCell
   const canWork = salvageCell ? canSalvage : veinCell ? canCollect : false
   const rigs = salvageCell ? salvagers : miners
-  const rigName = veinCell ? '采集器' : '打捞器'
+  const rigName = veinCell ? '采集器' : tr("ui.Wormhole.001")
   /**
    * **进洞门槛**（核心同一把尺 `wormholeEntryBlockReason`）——**不再用界面徽标 `shipBusyLabel` 自己判**：
    * 两者对「扫描虫洞」口径不同（徽标报"忙"，门槛放行 ⇒ 进洞那一步自动停扫，船长 2026-09-14「进洞自动停止」）。
@@ -1472,7 +1472,7 @@ export function WormholePanel({
                   已扫描 <b>{grid ? grid.scanned.length : 0}</b> 格
                 </span>
                 <span className="app-wh-cell">
-                  打捞器 <b>{salvagers}</b> 台
+                  {tr("ui.Wormhole.001")} <b>{salvagers}</b> 台
                 </span>
                 <span className="app-wh-cell">
                   采集器 <b>{miners}</b> 台
@@ -1981,7 +1981,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
     ...(settle.essences && settle.essences > 0
       ? [
           {
-            label: '虫洞谜质',
+            label: tr("ui.MatterTechTab.005"),
             value: n(settle.essences),
             sub:
               '枚（谜质装置析出 · 只收不卖）' +

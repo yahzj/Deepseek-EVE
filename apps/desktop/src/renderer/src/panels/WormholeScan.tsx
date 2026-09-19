@@ -126,7 +126,7 @@ export function WormholeScanTab({
       right={
         sec === 'matter' ? (
           <span className="app-dim">
-            虫洞谜质 {essence.toLocaleString('zh-CN')} 枚 · 研究不消耗时间
+            {tr("ui.MatterTechTab.005")} {essence.toLocaleString('zh-CN')} 枚 · 研究不消耗时间
           </span>
         ) : (
           <span className="app-dim">
@@ -147,7 +147,7 @@ export function WormholeScanTab({
             className={`app-subtab${sec === 'explore' ? ' is-active' : ''}`}
             onClick={() => setSec('explore')}
           >
-            虫洞探索
+            {tr("ui.MatterTechTab.001")}
           </button>
           <button
             role="tab"

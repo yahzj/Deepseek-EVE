@@ -1606,7 +1606,7 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
         }}
         title="只能在停留/停靠时手动使用；重复清剿出发前低于 50% 会自动消耗组件"
       >
-        组件 ×{kits}
+        {tr("ui.BattleScreen.066")}{kits}
       </button>
     </div>
   )
@@ -1847,7 +1847,7 @@ function GalaxyActions({
                 }
                 onClick={() => handleMineStart(b.id)}
               >
-                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>再点确认</>) : expOn ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>{tr("ui.MapPage.034")}</>) : (<><span className="app-ico"><Glyph name="nav-mine" size={13} color={NAV_TONES['nav-mine']} /></span>开采</>)}
+                {isMiningThis ? tr("ui.ShipPage.146") : mineAskBelt === b.id ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>再点确认</>) : expOn ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>{tr("ui.MapPage.034")}</>) : (<><span className="app-ico"><Glyph name="nav-mine" size={13} color={NAV_TONES['nav-mine']} /></span>开采</>)}
               </button>
             </div>
           )
