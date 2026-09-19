@@ -454,9 +454,189 @@
 | wh-exile-swarm | 残响蜂群 | `Echo Swarm` |
 | wh-exile-line | 残军战列线 | `Remnant Battle Line` |
 
-## 十二、P0b 剩余（同规则，下一批出稿）
+## 十二、专名表 · 装备（142）
 
-装备（**142 条**，按「轻型炮台 MK1·动能型 → `Light Turret MK1 · Kinetic`」这类模式批量出稿）· 少量零散表（无人机机型 / 舰体档 / 空间站站点 / 残骸风味 / 旅行事件）。
+分组说明（本节新立的术语，已并入 §二 的口径）：采集器 = `Mining Laser` · 近防炮 = `Point Defense Gun`（缩写 PD）·
+导弹架 = `Missile Launcher` · 稳定器 = `Stabilizer` · 护盾增强器 = `Shield Amplifier`（按系）· 护盾扩展器 = `Shield Extender` ·
+护盾充能装置 = `Shield Recharger` · 装甲镀层 = `Armor Plating` · 装甲增厚板 = `Armor Thickening Plate` · 协处理器 = `Coprocessor` ·
+隐秘行动装置 = `Stealth Module` · 窝点专属 = `lair-exclusive` · 虫洞族专属 = `wormhole family-exclusive`。
+
+**采集 / 货舱**
+
+| id | 中文 | English |
+|---|---|---|
+| mod-miner-civ | 民用采集器 | `Civilian Mining Laser` |
+| mod-miner-1 | 强化采集器 MK1 | `Reinforced Mining Laser MK1` |
+| mod-miner-2 | 强化采集器 MK2 | `Reinforced Mining Laser MK2` |
+| mod-miner-3 | 精密采集器 MK3 | `Precision Mining Laser MK3` |
+| mod-miner-proto | 异星原型采集器 | `Alien Prototype Mining Laser` |
+| mod-cargo-civ | 民用货舱扩展 | `Civilian Cargo Expander` |
+| mod-cargo-1 | 货舱扩展 MK1 | `Cargo Expander MK1` |
+| mod-cargo-2 | 货舱扩展 MK2 | `Cargo Expander MK2` |
+| mod-cargo-3 | 折叠货舱扩展 MK3 | `Folding Cargo Expander MK3` |
+| mod-cargo-proto | 异星原型货舱 | `Alien Prototype Cargo Hold` |
+
+**武器（炮台 / 舰炮 / 近防炮 / 激光炮 / 导弹架）**
+
+| id | 中文 | English |
+|---|---|---|
+| mod-turret-civ | 民用舰炮 | `Civilian Cannon` |
+| mod-turret-kin-1 | 轻型炮台 MK1·动能型 | `Light Turret MK1 · Kinetic` |
+| mod-turret-kin-2 | 重型炮台 MK2·动能型 | `Heavy Turret MK2 · Kinetic` |
+| mod-turret-kin-3 | 攻坚炮台 MK3·动能型 | `Siege Turret MK3 · Kinetic` |
+| mod-pd-e | 近防炮 MK1 | `Point Defense Gun MK1` |
+| mod-pd-e-2 | 近防炮 MK2 | `Point Defense Gun MK2` |
+| mod-pd-e-3 | 近防炮 MK3 | `Point Defense Gun MK3` |
+| mod-laser-1 | 轻型激光炮 MK1 | `Light Laser Cannon MK1` |
+| mod-laser-2 | 重型激光炮 MK2 | `Heavy Laser Cannon MK2` |
+| mod-laser-3 | 攻坚激光炮 MK3 | `Siege Laser Cannon MK3` |
+| mod-laser-proto | 异星原型激光炮 | `Alien Prototype Laser Cannon` |
+| mod-missile-1 | 轻型导弹架 MK1 | `Light Missile Launcher MK1` |
+| mod-missile-2 | 重型导弹架 MK2 | `Heavy Missile Launcher MK2` |
+| mod-missile-3 | 巡航导弹架 MK3 | `Cruise Missile Launcher MK3` |
+
+**无人机件**
+
+| id | 中文 | English |
+|---|---|---|
+| mod-drone-rack-1 | 无人机甲板扩展 MK1 | `Drone Deck Expansion MK1` |
+| mod-drone-rack-2 | 无人机甲板扩展 MK2 | `Drone Deck Expansion MK2` |
+| mod-drone-rack-3 | 无人机甲板扩展 MK3 | `Drone Deck Expansion MK3` |
+| mod-drone-tac-1 | 战术导控阵列 MK1 | `Tactical Control Array MK1` |
+| mod-drone-tac-2 | 战术导控阵列 MK2 | `Tactical Control Array MK2` |
+| mod-drone-tac-3 | 战术导控阵列 MK3 | `Tactical Control Array MK3` |
+| mod-drone-relay-1 | 无人机中继天线 MK1 | `Drone Relay Antenna MK1` |
+| mod-drone-relay-2 | 无人机中继天线 MK2 | `Drone Relay Antenna MK2` |
+| mod-drone-relay-3 | 无人机中继天线 MK3 | `Drone Relay Antenna MK3` |
+
+**护盾 / 装甲**
+
+| id | 中文 | English |
+|---|---|---|
+| mod-shield-kin-1 | 护盾增强器 MK1·动能型 | `Shield Amplifier MK1 · Kinetic` |
+| mod-shield-exp-1 | 护盾增强器 MK1·高爆型 | `Shield Amplifier MK1 · Explosive` |
+| mod-shield-pla-1 | 护盾增强器 MK1·能量型 | `Shield Amplifier MK1 · Energy` |
+| mod-shield-kin-2 | 护盾增强器 MK2·动能型 | `Shield Amplifier MK2 · Kinetic` |
+| mod-shield-exp-2 | 护盾增强器 MK2·高爆型 | `Shield Amplifier MK2 · Explosive` |
+| mod-shield-pla-2 | 护盾增强器 MK2·能量型 | `Shield Amplifier MK2 · Energy` |
+| mod-shield-kin-3 | 护盾增强器 MK3·动能型 | `Shield Amplifier MK3 · Kinetic` |
+| mod-shield-exp-3 | 护盾增强器 MK3·高爆型 | `Shield Amplifier MK3 · Explosive` |
+| mod-shield-pla-3 | 护盾增强器 MK3·能量型 | `Shield Amplifier MK3 · Energy` |
+| mod-shield-ext-1 | 护盾扩展器 MK1 | `Shield Extender MK1` |
+| mod-shield-ext-2 | 护盾扩展器 MK2 | `Shield Extender MK2` |
+| mod-shield-ext-3 | 护盾扩展器 MK3 | `Shield Extender MK3` |
+| mod-shieldchg-1 | 护盾充能装置 MK1 | `Shield Recharger MK1` |
+| mod-shieldchg-2 | 护盾充能装置 MK2 | `Shield Recharger MK2` |
+| mod-shieldchg-3 | 护盾充能装置 MK3 | `Shield Recharger MK3` |
+| mod-armor-kin-1 | 装甲镀层 MK1·动能型 | `Armor Plating MK1 · Kinetic` |
+| mod-armor-exp-1 | 装甲镀层 MK1·高爆型 | `Armor Plating MK1 · Explosive` |
+| mod-armor-pla-1 | 装甲镀层 MK1·能量型 | `Armor Plating MK1 · Energy` |
+| mod-armor-kin-2 | 装甲镀层 MK2·动能型 | `Armor Plating MK2 · Kinetic` |
+| mod-armor-exp-2 | 装甲镀层 MK2·高爆型 | `Armor Plating MK2 · Explosive` |
+| mod-armor-pla-2 | 装甲镀层 MK2·能量型 | `Armor Plating MK2 · Energy` |
+| mod-armor-kin-3 | 装甲镀层 MK3·动能型 | `Armor Plating MK3 · Kinetic` |
+| mod-armor-exp-3 | 装甲镀层 MK3·高爆型 | `Armor Plating MK3 · Explosive` |
+| mod-armor-pla-3 | 装甲镀层 MK3·能量型 | `Armor Plating MK3 · Energy` |
+| mod-armor-plate-1 | 装甲增厚板 MK1 | `Armor Thickening Plate MK1` |
+| mod-armor-plate-2 | 装甲增厚板 MK2 | `Armor Thickening Plate MK2` |
+| mod-armor-plate-3 | 装甲增厚板 MK3 | `Armor Thickening Plate MK3` |
+
+**推进 / 支援 / 维修 / 隐秘**
+
+| id | 中文 | English |
+|---|---|---|
+| mod-prop-1 | 矢量推进器 MK1 | `Vector Thruster MK1` |
+| mod-prop-2 | 矢量推进器 MK2 | `Vector Thruster MK2` |
+| mod-prop-3 | 矢量推进器 MK3 | `Vector Thruster MK3` |
+| mod-mwd-1 | 微型跃迁引擎 MK1 | `Micro Warp Drive MK1` |
+| mod-mwd-2 | 微型跃迁引擎 MK2 | `Micro Warp Drive MK2` |
+| mod-mwd-3 | 微型跃迁引擎 MK3 | `Micro Warp Drive MK3` |
+| mod-stab-kin-1 | 动能稳定器 MK1 | `Kinetic Stabilizer MK1` |
+| mod-stab-kin-2 | 动能稳定器 MK2 | `Kinetic Stabilizer MK2` |
+| mod-stab-kin-3 | 动能稳定器 MK3 | `Kinetic Stabilizer MK3` |
+| mod-stab-exp-1 | 高爆稳定器 MK1 | `Explosive Stabilizer MK1` |
+| mod-stab-exp-2 | 高爆稳定器 MK2 | `Explosive Stabilizer MK2` |
+| mod-stab-exp-3 | 高爆稳定器 MK3 | `Explosive Stabilizer MK3` |
+| mod-stab-pla-1 | 等离子稳定器 MK1 | `Plasma Stabilizer MK1` |
+| mod-stab-pla-2 | 等离子稳定器 MK2 | `Plasma Stabilizer MK2` |
+| mod-stab-pla-3 | 等离子稳定器 MK3 | `Plasma Stabilizer MK3` |
+| mod-rof-1 | 射速计算机 MK1 | `Rate-of-Fire Computer MK1` |
+| mod-rof-2 | 射速计算机 MK2 | `Rate-of-Fire Computer MK2` |
+| mod-rof-3 | 射速计算机 MK3 | `Rate-of-Fire Computer MK3` |
+| mod-warpcomp-2 | 跃迁计算机 MK2 | `Warp Computer MK2` |
+| mod-warpcomp-3 | 跃迁计算机 MK3 | `Warp Computer MK3` |
+| mod-track-1 | 索敌阵列 MK1 | `Tracking Array MK1` |
+| mod-track-2 | 索敌阵列 MK2 | `Tracking Array MK2` |
+| mod-track-3 | 索敌阵列 MK3 | `Tracking Array MK3` |
+| mod-gyro-1 | 姿态陀螺 MK1 | `Attitude Gyro MK1` |
+| mod-gyro-2 | 姿态陀螺 MK2 | `Attitude Gyro MK2` |
+| mod-gyro-3 | 姿态陀螺 MK3 | `Attitude Gyro MK3` |
+| mod-cpu-1 | 协处理器 MK1 | `Coprocessor MK1` |
+| mod-cpu-2 | 协处理器 MK2 | `Coprocessor MK2` |
+| mod-cpu-3 | 协处理器 MK3 | `Coprocessor MK3` |
+| mod-salvager-1 | 打捞器 MK1 | `Salvager MK1` |
+| mod-salvager-2 | 打捞器 MK2 | `Salvager MK2` |
+| mod-salvager-3 | 打捞器 MK3 | `Salvager MK3` |
+| mod-hullrep-civ | 民用船体维修装置 | `Civilian Hull Repair Unit` |
+| mod-hullrep-1 | 船体维修装置 MK1 | `Hull Repair Unit MK1` |
+| mod-hullrep-2 | 船体维修装置 MK2 | `Hull Repair Unit MK2` |
+| mod-lock-1 | 目标锁定阵列 MK1 | `Target Lock Array MK1` |
+| mod-lock-2 | 目标锁定阵列 MK2 | `Target Lock Array MK2` |
+| mod-lock-3 | 目标锁定阵列 MK3 | `Target Lock Array MK3` |
+| mod-stealth-2 | 隐秘行动装置 MK2 | `Stealth Module MK2` |
+| mod-stealth-3 | 隐秘行动装置 MK3 | `Stealth Module MK3` |
+
+**窝点专属（lair，15）**
+
+| id | 中文 | English |
+|---|---|---|
+| mod-lair-turret-a | 劫掠者转管炮 | `Raider Gatling Cannon` |
+| mod-lair-missile-a | 掠袭导弹巢 | `Raider Missile Nest` |
+| mod-lair-cargo-a | 赃物强化舱 | `Spoils Reinforcement Bay` |
+| mod-lair-armor-c | 生体甲壳板 | `Bio Carapace Plate` |
+| mod-lair-dc-c | 生体损管腔 | `Bio Damage Control Chamber` |
+| mod-lair-laser-c | 酸液喷吐器 | `Acid Sprayer` |
+| mod-lair-shield-d | 陵墓护盾阵列 | `Mausoleum Shield Array` |
+| mod-lair-turret-d | 守墓者长炮 | `Gravekeeper Long Cannon` |
+| mod-lair-armor-d | 陵寝装甲层 | `Mausoleum Armor Layer` |
+| mod-lair-turret-e | 巨构残骸炮 | `Megastructure Wreck Cannon` |
+| mod-lair-hangar-e | 深层机库 | `Deep Hangar` |
+| mod-lair-frame-e | 巨构骨架 | `Megastructure Frame` |
+| mod-lair-drone-tac-g | 鱿蜂群导控 | `Squidwasp Swarm Control` |
+| mod-lair-drone-relay-g | 流亡中继桅 | `Exile Relay Mast` |
+
+**虫洞族专属（`mod-wh-*`，28）**
+
+| id | 中文 | English |
+|---|---|---|
+| mod-wh-a-frag | 掠袭破片炮 | `Raider Fragment Cannon` |
+| mod-wh-a-hangar | 掠袭机库 | `Raider Hangar` |
+| mod-wh-a-prop | 掠袭加力器 | `Raider Afterburner` |
+| mod-wh-a-coat | 掠袭折射涂层 | `Raider Refraction Coating` |
+| mod-wh-a-scan | 赃物扫描阵 | `Spoils Scan Array` |
+| mod-wh-a-shield | 掠袭者护盾笼 | `Raider Shield Cage` |
+| mod-wh-c-laser | 生体棱镜束 | `Bio Prism Beam` |
+| mod-wh-c-prism | 甲壳棱镜层 | `Carapace Prism Layer` |
+| mod-wh-c-pulse | 生体脉搏加速器 | `Bio Pulse Accelerator` |
+| mod-wh-c-missile | 孢子导弹巢 | `Spore Missile Nest` |
+| mod-wh-c-frame | 几丁质骨架层 | `Chitin Frame Layer` |
+| mod-wh-d-turret | 陵卫连装炮 | `Tombwarden Linked Cannon` |
+| mod-wh-d-shield | 陵墓护盾芯 | `Mausoleum Shield Core` |
+| mod-wh-d-lock | 守墓者丧钟 | `Gravekeeper Death Knell` |
+| mod-wh-d-laser | 陵寝棱镜炮 | `Mausoleum Prism Cannon` |
+| mod-wh-d-loader | 守墓者速装填机 | `Gravekeeper Rapid Loader` |
+| mod-wh-d-steady | 陵墓弹道铭文 | `Mausoleum Ballistic Inscription` |
+| mod-wh-e-dc | 巨构损管阵列 | `Megastructure Damage Control Array` |
+| mod-wh-e-tac | 巨构导控塔 | `Megastructure Control Tower` |
+| mod-wh-e-cpu | 巨构协处理器 | `Megastructure Coprocessor` |
+| mod-wh-e-pd | 巨构近防阵列 | `Megastructure Point Defense Array` |
+| mod-wh-e-shield | 巨构护盾矩阵 | `Megastructure Shield Matrix` |
+| mod-wh-g-hangar | 亡军蜂巢坞 | `Deadarmy Hive Dock` |
+| mod-wh-g-fcs | 亡军火控 | `Deadarmy Fire Control` |
+| mod-wh-g-ballistic | 幽灵弹道校正器 | `Wraith Ballistic Corrector` |
+| mod-wh-g-hull | 鱿蜂结构层 | `Squidwasp Hull Layer` |
+| mod-wh-g-turret | 亡军残炮 | `Deadarmy Wreck Cannon` |
+| mod-wh-g-prop | 幽灵推进器 | `Wraith Thruster` |
 
 **舰船蓝图（135 条）不另立表，按派生规则出**（中文侧本来就是派生的）：
 
@@ -467,5 +647,6 @@
 
 > 一次性舰船图纸（`sbp-once-*`）与虫洞族图纸（`sbp-wh-*`）同规则；族图纸用 §四 的族舰名
 > （如 `Raider Heavy Assault Cruiser Blueprint`）。
+
 
 
