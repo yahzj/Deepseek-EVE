@@ -2448,7 +2448,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   <div className="app-station-head">
                     <span className="app-station-name">
                       ⌁ 副站投送 L{t.level ?? 1}：{vol.toLocaleString('zh-CN')} m³
-                      <em className="app-chip">{t.timed === true ? `限时 · 跃迁 ≥${t.warpReqAus} AU/s` : '普通快递'}</em>
+                      <em className="app-chip">{t.timed === true ? `限时 · 加急 +50% · 跃迁 ≥${t.warpReqAus} AU/s` : '普通快递'}</em>
                     </span>
                     <span className="app-dim">{accepted ? '已接单（不随刷新消失）' : `剩余 ${fmtSideClock(view.remainingMs)}`}</span>
                   </div>
@@ -2462,7 +2462,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   </div>
                   {/* 奖励独立成行 + 金色 */}
                   <div className="app-task-reward">
-                    <span className="app-dim">运费 ◆ </span>
+                    <span className="app-dim">{t.timed === true ? '运费（含加急 +50%） ◆ ' : '运费 ◆ '}</span>
                     {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
                   </div>
                   <div className="app-station-deliver">

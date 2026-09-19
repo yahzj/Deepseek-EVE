@@ -115,6 +115,12 @@ export const COURIER_TIMED_WARP_REQ: readonly number[] = [6.2, 7.44, 8.37, 10.92
 /** 快递任务掷成**限时快递**的概率（每单独立掷；其余为普通快递） */
 export const COURIER_TIMED_CHANCE = 0.5
 
+/**
+ * **限时快递的加急系数**（船长 2026-09-18 选乙案：**+50%**）——限时的体积只有普通的一半（单位体积运费
+ * 已翻倍），但仍按级别基准加价五成，抵掉跃迁门槛（L5 要剑鱼＋双 MK3）与"超时无报酬"的风险。
+ */
+export const COURIER_TIMED_PREMIUM = 1.5
+
 /** 每板**基础**条数（船长 2026-09-18：「初始每个任务数量提高到4」）——资源/快递各 4 条 */
 export const SIDE_TASK_BASE_COUNT = 4
 
@@ -383,19 +389,26 @@ function resourceRewardIskFor(
 }
 
 /**
- * **快递奖励（虚拟货物 ⇒ 纯运费，2026-09-18 船长两轮定）**：
- * reward = `COURIER_TASK_LEVEL_FREIGHT_ISK[level]` × 航程系数，向下取整到整百、至少 100。
- * **运费与体积解耦**（船长：「在维持运费的前提下，提高占用的体积数」）⇒ 体积涨了、运费一分不动。
- * 航程系数 = 标称航程分钟 ÷ **10**（10 分钟航程 = 1.0），**下限 0.5、无上限** ⇒ 远站线性加价
- * （船长对"是否失衡"的裁定：「并不失衡啊，你要考虑玩家成本问题和任务周期」）。
+ * **快递奖励（虚拟货物 ⇒ 纯运费，2026-09-18 船长三轮定）**：
+ * reward = `COURIER_TASK_LEVEL_FREIGHT_ISK[level]` × 航程系数 ×（限时 ? `COURIER_TIMED_PREMIUM` : 1），
+ * 向下取整到整百、至少 100。
+ * **运费与体积解耦**（船长：「在维持运费的前提下，提高占用的体积数」）⇒ 体积涨了、普通运费一分不动；
+ * **限时加急 +50%**（船长选乙案：限时体积减半却要跃迁门槛与时限、超时无报酬）。
+ * 航程系数 = 标称航程分钟 ÷ **10**（10 分钟航程 = 1.0），**下限 0.5、无上限** ⇒ 远站线性加价。
  * 快递不再绑商品 ⇒ 不吃市场报价、也不触发市场联动。
  */
-function courierRewardIskFor(state: GameState, level: SideTaskLevel, nominalMinutes: number): number {
+function courierRewardIskFor(
+  state: GameState,
+  level: SideTaskLevel,
+  nominalMinutes: number,
+  timed: boolean,
+): number {
   const trip = Math.max(
     COURIER_TRIP_FACTOR_MIN,
     (Number.isFinite(nominalMinutes) ? nominalMinutes : 10) / COURIER_TRIP_MINUTES_REF,
   )
-  const raw = COURIER_TASK_LEVEL_FREIGHT_ISK[level] * trip
+  const premium = timed ? COURIER_TIMED_PREMIUM : 1
+  const raw = COURIER_TASK_LEVEL_FREIGHT_ISK[level] * trip * premium
   return Math.max(0, Math.round(Math.max(100, Math.floor(raw / 100) * 100) * tuningMul(state, 'rewardIsk')))
 }
 
@@ -485,7 +498,7 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
       const warpReqAus = timed ? courierWarpReqOf(level) : null
       // 报酬按"母港 → 目标站"的标称航程算（与玩家实际用哪条船无关 ⇒ 不好被换船薅）
       const nominal = shortestTravelMinutes(ctx, HOME_GALAXY_ID, picked.site.galaxyId)
-      const rewardIsk = courierRewardIskFor(state, level, nominal)
+      const rewardIsk = courierRewardIskFor(state, level, nominal, timed)
       const timeLimitMs =
         warpReqAus === null
           ? undefined

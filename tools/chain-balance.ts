@@ -39,6 +39,7 @@ import { wormholeNodesPerLayer } from '../packages/core/src/wormholeFoes'
 import { wormholeScanWindowMs } from '../packages/core/src/wormholeScan'
 import {
   COURIER_TASK_LEVEL_FREIGHT_ISK,
+  COURIER_TIMED_PREMIUM,
   COURIER_TIMED_VOLUME_RATIO,
   RESOURCE_TASK_LEVEL_MARGIN,
   SIDE_TASK_LEVEL_SCALE,
@@ -99,10 +100,12 @@ function sectionSideTasks(): void {
     const volT = courierVolumeFor(lv, true)
     const req = courierWarpReqOf(lv)
     const reward = Math.max(100, Math.floor((COURIER_TASK_LEVEL_FREIGHT_ISK[lv] * trip) / 100) * 100)
+    const rewardT = Math.max(100, Math.floor((COURIER_TASK_LEVEL_FREIGHT_ISK[lv] * trip * COURIER_TIMED_PREMIUM) / 100) * 100)
     const limitMin = nominal * (ctx.balance.travel.warpRefAus / req) * 1.05
     console.log(
       `  L${lv}：体积 普通 ${volNt.toLocaleString('zh-CN')} m³ / 限时 ${volT.toLocaleString('zh-CN')} m³（×${COURIER_TIMED_VOLUME_RATIO}）` +
-        ` ⇒ 运费 ${reward.toLocaleString('zh-CN')} ISK（与体积无关）· 限时门槛 跃迁 ≥${req} AU/s · 时限 ≈${limitMin.toFixed(1)} 分钟`,
+        ` ⇒ 运费 普通 ${reward.toLocaleString('zh-CN')} / 限时 ${rewardT.toLocaleString('zh-CN')} ISK（加急 ×${COURIER_TIMED_PREMIUM}）` +
+        ` · 限时门槛 跃迁 ≥${req} AU/s · 时限 ≈${limitMin.toFixed(1)} 分钟`,
     )
   }
   console.log('\n（航程系数 = 标称分钟 ÷ 10，下限 0.5、无上限 ⇒ 远站线性加价；此处按上面那条航程的系数算）')
