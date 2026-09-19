@@ -595,20 +595,30 @@ export function App({ engine }: { engine: GameEngine }) {
   const [whStockPick, setWhStockPick] = useState<string | null>(null)
   /** **自动探索模式**要派的那一处库存（2026-09-14 船长：自动探索走同一个准备页） */
   const [whAutoPick, setWhAutoPick] = useState<string | null>(null)
-  /** 打开虫洞面板（stockId 给了 = 从「扫描虫洞」页选中的那处库存虫洞开始探索） */
+  /**
+   * 打开虫洞面板（stockId 给了 = 从「扫描虫洞」页选中的那处库存虫洞开始探索）。
+   *
+   * ⚠ **不许顺手改星图的标签页**（2026-09-19 船长报障：「关闭虫洞准备界面后，为什么界面会停留在
+   * 星图远征界面」）：面板挂在 **App 层**（见本文件底部 `{whOpen ? <WormholePanel …/> : null}`）
+   * ⇒ 它**不依赖**底下是哪一页哪一签；这里原先是 `changePage('map') + changeMapTab('star')`，
+   * 那句切标签是**面板还住在星图标签里时的遗留**（`f08c76a8` 把面板搬到 App 层后就不需要了）：
+   * 从「扫描虫洞」点「返回虫洞 / 探索 / 自动探索」会把标签偷偷切到「星图」⇒ 关掉面板后人被丢在
+   * **星图远征页**，回不到刚才那一页。
+   * ⇒ 现在**只切页、不动标签**：关掉面板即回到进来时那一页（船长要的"从哪来回哪去"）。
+   * 附带修好一条副作用：`page==='map' && mapTab==='star'` 那条「扫描完成高亮 · 看过即收」，
+   * 原先会被"开一下虫洞面板"顺手触发——等于玩家没看星图就把高亮收掉了。
+   */
   const openWormhole = (stockId?: string): void => {
     setWhStockPick(stockId ?? null)
     setWhAutoPick(null)
     changePage('map')
-    changeMapTab('star')
     setWhOpen(true)
   }
-  /** 打开虫洞面板的**自动探索模式**（同一个准备页；按钮写「派队自动探索」） */
+  /** 打开虫洞面板的**自动探索模式**（同一个准备页；按钮写「派队自动探索」）——同样**不动星图标签** */
   const openWormholeAuto = (stockId: string): void => {
     setWhStockPick(null)
     setWhAutoPick(stockId)
     changePage('map')
-    changeMapTab('star')
     setWhOpen(true)
   }
   useEffect(() => {
