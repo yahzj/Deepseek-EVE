@@ -41,6 +41,9 @@ import {
   // 2026-09-11 市价买入失败原因分诊（暗市闸口径与界面同源，对玩家按声望锁措辞）
   bmGateReason,
   learnBlueprint,
+  // 2026-09-19 玩家报障修：碎片 → 蓝图（逆向解锁）的兑命令与读数单点
+  redeemFragments,
+  fragmentRedeemRowsOf,
   listSellHolding,
   loadSaveFile,
   loadWarehouseToCargoFit,
@@ -233,6 +236,7 @@ import type {
   ModuleSlot,
   RackSlot,
   RefineRunView,
+  FragmentRedeemRow,
   SellResult,
   SettleStats,
   SideTask,
@@ -1106,6 +1110,25 @@ export class GameEngine {
   /** 全部精炼炉工位运行视图（v19 多工位：工业页卡片逐台 / 活动栏逐条） */
   refineRunViews(): RefineRunView[] {
     return refineRunViews(this.state, this.ctx)
+  }
+
+  /**
+   * **逆向解锁**（2026-09-19 玩家报障修：碎片集齐后无处可换）。
+   * 消耗该装备的蓝图碎片（货仓 + 仓库），永久学会对应配方；需停靠空间站。
+   * 按钮状态读数走 core 的单点 `fragmentRedeemRowsOf`（本方法与它同一口径）。
+   */
+  redeemFragmentsAt(moduleId: string): CommandResult {
+    const result = redeemFragments(this.state, this.ctx, moduleId)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 「逆向解锁」逐条读数（物品页「蓝图碎片」行用：现有 / 门槛 / 已掌握 / 可兑） */
+  fragmentRedeemRows(): FragmentRedeemRow[] {
+    return fragmentRedeemRowsOf(this.state, this.ctx)
   }
 
   /** 卖当前船货仓里的物品（旧名兼容） */

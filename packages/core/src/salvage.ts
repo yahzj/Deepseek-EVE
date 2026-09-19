@@ -766,7 +766,7 @@ export function fragmentItemDefOf(moduleId: string, moduleName: string): ItemDef
     kind: 'fragment',
     unitM3: 0.02,
     baseSellPriceIsk: 1,
-    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片可在母港逆向解锁「${moduleName}」蓝图（无需市场）。集齐前不会重复掉落同一本书的碎片——拿到蓝图后它就不再出现。`,
+    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片后，在物品页的「蓝图碎片」分组里点「逆向解锁」即可换成该装备的永久蓝图（需停靠空间站）。集齐前不会重复掉落同一本书的碎片——拿到蓝图后它就不再出现。`,
   }
 }
 
