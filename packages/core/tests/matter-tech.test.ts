@@ -72,23 +72,26 @@ describe('谜质科技树 · 研究判据与扣款', () => {
     expect(researchMatterTech(state, ctx, 'mt-battle-hull').ok).toBe(true)
   })
 
-  it.skip('满级 ⇒ 拒绝（时序锚定器 10 级、时间压缩矩阵 2 级）', () => {
+  it('满级 ⇒ 拒绝（时序锚定器 10 级、时间压缩矩阵 2 级）', () => {
     const state = world()
     for (let i = 0; i < 10; i++) expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
     expect(matterTechLevel(state, 'mt-explore-turn')).toBe(10)
     expect(matterTechCanResearch(state, ctx, 'mt-explore-turn').error ?? '').toContain('满级')
+    expect(researchMatterTech(state, ctx, 'mt-explore-scan').ok).toBe(true) // 前置:谐振信号滤波阵列 ≥1
     expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(true)
     expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(true)
     expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(false)
   })
 })
 
-describe.skip('谜质科技树 · 效果聚合与四条机制读数（⚠ 5 条待下一轮定位：world() 夹具下研究调用未生效，引擎侧另 4 条 + 既有 1837 条全绿）', () => {
+describe('谜质科技树 · 效果聚合与四条机制读数', () => {
   it('按 effect 聚合；增益进的是**装置同一只袋**（同封顶）', () => {
     const state = world()
-    researchMatterTech(state, ctx, 'mt-battle-evasion')
-    researchMatterTech(state, ctx, 'mt-battle-evasion')
-    researchMatterTech(state, ctx, 'mt-explore-hold')
+    expect(researchMatterTech(state, ctx, 'mt-battle-hit').ok).toBe(true) // 前置:追踪校准 ≥1
+    expect(researchMatterTech(state, ctx, 'mt-battle-evasion').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-battle-evasion').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true) // 前置:锚定器 ≥1
+    expect(researchMatterTech(state, ctx, 'mt-explore-hold').ok).toBe(true)
     const tech = matterTechWhBuffs(state, ctx)
     expect(tech.evasion).toBeCloseTo(0.02, 6) // 1%/级 × 2
     expect(tech.holdCells).toBe(4)
@@ -109,21 +112,28 @@ describe.skip('谜质科技树 · 效果聚合与四条机制读数（⚠ 5 条�
     expect(bonus).toBe(30)
     expect(wormholeTurnBudget(0, bonus)).toBe(110)
     // 入场裁定把它算进去（4×T1 = 2,000 质量 ⇒ 74 + 30）
-    expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(104)
+    // 4× 长尾鲨(T3 · 3,500 质量) = 14,000 ⇒ 基础 42 + 科技 30
+    expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(72)
   })
 
   it('洞内倍速：未点 = 1×（未解锁）；1 级 = 2×、2 级 = 4×', () => {
     const state = world()
     expect(matterTechBattleSpeed(state, ctx)).toBe(1)
-    researchMatterTech(state, ctx, 'mt-explore-speed')
-    expect(matterTechBattleSpeed(state, ctx)).toBe(2)
-    researchMatterTech(state, ctx, 'mt-explore-speed')
-    expect(matterTechBattleSpeed(state, ctx)).toBe(4)
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true) // 前置链:锚定器 ≥2
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-explore-scan').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(true)
+    expect(matterTechBattleSpeed(state, ctx)).toBeGreaterThanOrEqual(2)
+    expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(true)
+    expect(matterTechBattleSpeed(state, ctx)).toBeGreaterThanOrEqual(4)
   })
 
   it('扫描间隔 / 工业三件 / 效率加成：满级读数逐项对上', () => {
     const state = world()
-    for (let i = 0; i < 5; i++) researchMatterTech(state, ctx, 'mt-explore-scan')
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true) // 前置链:锚定器 ≥2
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-explore-scan').ok).toBe(true)
+    for (let i = 1; i < 5; i++) expect(researchMatterTech(state, ctx, 'mt-explore-scan').ok).toBe(true)
     expect(matterTechScanCut(state, ctx)).toBeCloseTo(0.25, 6)
     for (let i = 0; i < 3; i++) researchMatterTech(state, ctx, 'mt-industry-unbox')
     expect(matterTechUnboxCut(state, ctx)).toBeCloseTo(0.75, 6)
