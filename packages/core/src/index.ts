@@ -784,6 +784,8 @@ export {
   battleSpeedOf,
   battleShowWindowMs,
   battleClockNowMs,
+  // 战场远端（距离上限）：2026-09-19 船长裁定「甲」——按当前双方有效射程现算（含增程），只增不减
+  battleMaxDistanceM,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 
