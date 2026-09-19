@@ -1411,7 +1411,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                     {/* 循环制造为卡片级（2026-09-10 船长定）：这里显示该卡合计进度，不再按线各写各的 */}
                     {v.workerLabel}核心 ·{' '}
                     {v.loopOn
-                      ? `循环制造 · 本卡合计 ${v.loopProduced.toLocaleString('zh-CN')}${v.loopGoal > 0 ? `/${v.loopGoal.toLocaleString('zh-CN')}` : ''} 件`
+                      ? `循环制造 · 本卡合计 ${v.loopProduced.toLocaleString('zh-CN')}${v.loopGoal > 0 ? `/${v.loopGoal.toLocaleString('zh-CN')}` : ''} 批`
                       : '单件生产'}
                   </span>
                   <span className="app-inv-count">
