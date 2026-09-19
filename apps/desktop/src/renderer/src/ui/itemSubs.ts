@@ -108,8 +108,8 @@ export function containerSubKeyOf(refId: string): string {
 /** **残骸档位**（普通 / 稀有）——物品页仓库 · 手册物品图鉴 · 市场 · 工业页回收炉**共用同一张表**
  *  （原写死在 `pages/IndustryPage.tsx`，2026-09-19 按基线⑤收编到本文件）。 */
 export const WRECK_SUBS: SubOption[] = [
-  { key: 'common', label: '普通残骸' },
-  { key: 'rare', label: '稀有残骸' },
+  { key: 'common', label: tr("ui.IndustryPage.008") },
+  { key: 'rare', label: tr("ui.IndustryPage.009") },
 ]
 
 /** 残骸档位判据（**单点**）：直接委托 core 的 `isRareWreck`（`wreck-rare-*` 前缀，13 组同源），
@@ -403,19 +403,19 @@ export const ITEM_SPACE_BUCKETS: readonly string[] = ['item', 'container', 'cons
 /** **我的舰队「状态」维度**（并列属性行，第一行）：全部 / 驾驶中 / AI 执勤 / 空闲 / 待维修。
  *  「全部」键 = `SUB_ALL`（基线②：下级/维度选择器一律用它；`'all'` 只留给一级选择器）。 */
 export const FLEET_STATE_TABS: SubOption[] = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'pilot', label: '驾驶中' },
-  { key: 'ai', label: 'AI 执勤' },
-  { key: 'idle', label: '空闲' },
-  { key: 'damaged', label: '待维修' },
+  { key: SUB_ALL, label: tr("ui.IndustryPage.001") },
+  { key: 'pilot', label: tr("ui.ShipPage.010") },
+  { key: 'ai', label: tr("ui.ShipPage.118") },
+  { key: 'idle', label: tr("ui.ShipPage.117") },
+  { key: 'damaged', label: tr("ui.ShipPage.119") },
 ]
 
 /** **舰船仓库「拥有」维度**（并列属性行，第一行）：全部 / 已拥有 / 未拥有。
  *  判据口径见 2026-09-14 船长裁定「乙」：**只看仓库库存**（在役舰队里的同型不算"已拥有"）。 */
 export const STORE_OWN_TABS: SubOption[] = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'owned', label: '已拥有' },
-  { key: 'unowned', label: '未拥有' },
+  { key: SUB_ALL, label: tr("ui.IndustryPage.001") },
+  { key: 'owned', label: tr("ui.ShipPage.122") },
+  { key: 'unowned', label: tr("ui.ShipPage.041") },
 ]
 
 /** 舰船定义的最小形状（类别判据只需要 role + 盾/甲结构值） */

@@ -85,13 +85,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
    * AI 核心：仓库里只有物品形态的 gamma/beta/alpha（`basic` 只有市场商品）⇒ 按目录存在性列档。
    */
   const subDim: { options: typeof RACK_SUBS; label: string } | null = (() => {
-    if (wareKind === 'module') return { options: RACK_SUBS, label: '槽类' }
-    if (wareKind === 'container') return { options: CONTAINER_SUBS, label: '档位' }
-    if (wareKind === 'wreck') return { options: WRECK_SUBS, label: '档位' }
+    if (wareKind === 'module') return { options: RACK_SUBS, label: tr("ui.Handbook.192") }
+    if (wareKind === 'container') return { options: CONTAINER_SUBS, label: tr("ui.ItemsPage.047") }
+    if (wareKind === 'wreck') return { options: WRECK_SUBS, label: tr("ui.ItemsPage.047") }
     if (wareKind === 'aicore') {
-      return { options: CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`)), label: '档位' }
+      return { options: CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`)), label: tr("ui.ItemsPage.047") }
     }
-    if (wareKind === 'fragment') return { options: MODULE_SUBS, label: '功能' }
+    if (wareKind === 'fragment') return { options: MODULE_SUBS, label: tr("ui.ItemsPage.048") }
     return null
   })()
   /** **三级维度**：只有「装备」有（槽类 → 功能分组），且**选了槽位才出**（基线③级联） */
@@ -312,7 +312,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         ) : null}
         {funcDim ? (
           <div className="app-fleet-row">
-            <span className="app-dim">功能：</span>
+            <span className="app-dim">{tr("ui.ItemsPage.049")}</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
@@ -320,7 +320,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 className={`app-tasktab${wareFunc === SUB_ALL ? ' is-active' : ''}`}
                 onClick={() => setWareFunc(SUB_ALL)}
               >
-                全部
+                {tr("ui.IndustryPage.001")}
               </button>
               {funcDim.map((s) => (
                 <button

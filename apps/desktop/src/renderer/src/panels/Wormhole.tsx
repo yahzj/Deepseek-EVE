@@ -1459,13 +1459,13 @@ export function WormholePanel({
                     className="app-wh-cell"
                     title="所选编队的打捞器台数：墓场与遗迹每次打捞按台数回收若干堆；0 台 ⇒ 打捞格干不了活"
                   >
-                    打捞器 <b>{pickedSalvagers}</b> 台
+                    {tr("ui.Wormhole.001")} <b>{pickedSalvagers}</b> 台
                   </span>
                   <span
                     className="app-wh-cell"
                     title="所选编队的采集器台数：矿脉每次采集按台数回收若干堆；0 台 ⇒ 一堆虚空母矿也挖不动"
                   >
-                    采集器 <b>{pickedMiners}</b> 台
+                    {tr("ui.Wormhole.238")} <b>{pickedMiners}</b> 台
                   </span>
                   <span
                     className="app-wh-cell"

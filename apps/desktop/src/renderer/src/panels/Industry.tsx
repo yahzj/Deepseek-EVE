@@ -222,8 +222,8 @@ export function BlueprintShelfPanel({
         </div>
         <div className="app-belt-desc">
           {r.have >= r.need
-            ? '碎片已集齐——逆向解锁后永久可造（残骸回收的彩头掉落）'
-            : `碎片未集齐：还差 ${r.need - r.have} 片（来自残骸回收的彩头掉落）`}
+            ? tr("ui.Industry.020")
+            : tr("ui.Industry.099", { p1: r.need - r.have })}
         </div>
         <div className="app-belt-actions">
           <RedeemFragmentButton engine={engine} itemId={r.fragmentItemId} onToast={onToast} />
