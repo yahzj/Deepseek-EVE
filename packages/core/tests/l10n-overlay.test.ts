@@ -259,6 +259,25 @@ describe('英文覆盖层（P2）', () => {
     expect(en.modules.get('mod-shield-kin-1')?.description).toContain('cap 90%')
   })
 
+  it('技能说明：79 条全部有英文说明，且不残留中日韩字符、`⟦⟧` 高亮标记保留', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const [id] of zh.skills) {
+      const other = en.skills.get(id)!
+      if (!other.description) {
+        noDesc.push(id)
+        continue
+      }
+      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      // 高亮标记数量应与中文一致（译文里数字位置照旧）
+      const want = (zh.skills.get(id)?.description.match(/⟦/g) ?? []).length
+      const got = (other.description.match(/⟦/g) ?? []).length
+      expect(got, `${id} 的 ⟦⟧ 数量（中 ${want} / 英 ${got}）`).toBe(want)
+    }
+    expect(noDesc, `这些技能还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.skills.get('gunnery')?.description).toContain('+⟦5%⟧')
+  })
+
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {
     for (const [id, text] of Object.entries(EN_SHIPS)) {
       const keys = Object.keys(text).sort()
