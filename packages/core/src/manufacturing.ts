@@ -18,9 +18,9 @@
  *   产线节拍学（原"工业自动化"）−5%/级（下限 60%）。
  * - 2026-09-09（船长拍板：组装机卡片滑动开关「连续生产」）：运行中的线可开 autoRepeat——
  *   完成一件自动续做同一蓝图（劳动者/核心持续占用，相位推进可跨离线大 delta 连续结算），
- *   到 达目标件数 / 材料不足 自动停线并写汇总日志；开关关闭 = 完成当前件后停止。
- * - 2026-09-10（船长定：开关与目标件数**从逐条制造线上移到整张生产卡**）：一张卡（= 一个蓝图）
- *   只有一个开关、一个目标件数与一个「本轮全卡合计」计数，**该卡全部制造线共用**（含主控亲自那条），
+ *   到 达目标**批数** / 材料不足 自动停线并写汇总日志；开关关闭 = 完成当前件后停止。⚠ **单位口径（2026-09-18 船长定：UI 改按「批」）**：`produced` 与 `goal` 都是**批数**（一个蓝图批可产 `outputUnits` 件，如军修组件 3 个/批 ⇒ 151 批 = 453 件）；界面文案同步说"批"。
+ * - 2026-09-10（船长定：开关与目标**批数**从逐条制造线上移到整张生产卡）：一张卡（= 一个蓝图）
+ *   只有一个开关、一个目标批数与一个「本轮全卡合计」计数，**该卡全部制造线共用**（含主控亲自那条），
  *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
  *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
@@ -350,10 +350,10 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
 }
 
 /**
- * 玩家指令：开/关这张生产卡的「循环制造」（2026-09-10 船长定：开关与目标件数挂在卡片上，
- * 作用于**该卡全部制造线**——含主控亲自那条；打开后新开的线自动继承；目标件数 = 全卡合计）。
+ * 玩家指令：开/关这张生产卡的「循环制造」（2026-09-10 船长定：开关与目标批数挂在卡片上，
+ * 作用于**该卡全部制造线**——含主控亲自那条；打开后新开的线自动继承；目标批数 = 全卡合计）。
  * - 从「关」到「开」= 开一批新循环：本轮合计 `produced` 与停因 `stopWhy` 一起清零；
- *   开关本来就开着时只更新目标件数（**不动**已累计的合计，避免改数字把进度重置）；
+ *   开关本来就开着时只更新目标批数（**不动**已累计的合计，避免改数字把进度重置）；
  * - 关闭 = 该卡在跑的线完成当前件后停（不写停因，属玩家主动收手）；
  * - 卡片无需正在生产：先开开关、后开线同样生效（预制循环）。
  */
@@ -391,7 +391,7 @@ export function setManufacturingLoop(
 export interface ManufacturingLoopView {
   /** 开关是否打开 */
   on: boolean
-  /** 目标件数（0 = 不限，直到材料不足） */
+  /** 目标批数（0 = 不限，直到材料不足；见头注"单位口径"） */
   goal: number
   /** 本轮全卡合计产出件数 */
   produced: number
@@ -418,9 +418,9 @@ function loopRefOf(state: GameState, blueprintId: string | null): GameState['man
 
 /** 引擎内部调用：推进全部制造线（每次时间推进后调用；v21 多工位逐线检查到点；
  * AI 核心驱动的线到点完成即归还核心。stats = 离线结算统计器（可选，见 settleStats.ts）
- * 循环制造（2026-09-10 上移到卡片级）：开关与目标件数按蓝图读 state.manufacturingLoops，
+ * 循环制造（2026-09-10 上移到卡片级）：开关与目标批数按蓝图读 state.manufacturingLoops，
  * 该卡全部线共用——完成一件后自动续做同一蓝图（劳动者保持占用、相位推进 finishAt 可跨大 delta
- * 连续结算多件），本轮合计 produced 逐件累加；停止条件 = 合计达目标件数 / 材料不足 / 记录缺失 /
+ * 连续结算多件），本轮合计 produced **逐批累加**；停止条件 = 合计达目标批数 / 材料不足 / 记录缺失 /
  * 开关已关（完成最后一件即止）。自动停线时把 `on` 置假并记 `stopWhy`（每卡一条汇总日志），
  * 该卡其它线跑完当前件即止、核心归还。 */
 export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: SettleStats): void {
@@ -503,8 +503,8 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         stopWhy = '蓝图记录缺失'
         break
       }
-      // 本轮全卡合计（2026-09-10：卡片级计数，**开关打开期间**逐件累加——含首件；
-      // 达成目标时停在"正好等于目标"的件数上，随后收尾的在跑件不再计入，故合计即停线依据）
+      // 本轮全卡合计（2026-09-10：卡片级计数，**开关打开期间逐批累加**——含首件；
+      // 达成目标时停在"正好等于目标"的**批数**上，随后收尾的在跑件不再计入，故合计即停线依据）
       if (loop && loop.on === true) loop.produced = (loop.produced ?? 0) + 1
       if (!settlePiece(buildable)) {
         addLog(state, 'warn', '制造作业引用的产物记录缺失，产出已丢弃（异常）。')
@@ -514,7 +514,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       if (!auto) break
       const goal = loop && loop.goal && loop.goal > 0 ? loop.goal : null
       if (goal !== null && (loop?.produced ?? 0) >= goal) {
-        stopWhy = `已达成目标 ${goal} 件`
+        stopWhy = `已达成目标 ${goal} 批`
         break
       }
       const missing = missingMaterials(state, ctx, buildable.spec)
@@ -557,7 +557,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         addLog(
           state,
           'info',
-          `循环制造停止：${nm}（本卡合计 ${loop.produced ?? 0} 件）——${stopWhy}${
+          `循环制造停止：${nm}（本卡合计 ${loop.produced ?? 0} 批）——${stopWhy}${
             rest > 0 ? `；本卡其余 ${rest} 条线跑完当前件即停` : ''
           }${byCore ? '；AI 核心已归还核心库' : ''}`,
         )
@@ -587,7 +587,7 @@ export interface ManufacturingView {
   percent: number
   /** 本卡「循环制造」开关（2026-09-10 卡片级：同卡各线读到的是**同一个**开关，不是逐线状态） */
   loopOn: boolean
-  /** 本卡循环目标件数（全卡合计口径；0/缺省 = 直到材料不足） */
+  /** 本卡循环目标批数（全卡合计口径；0/缺省 = 直到材料不足） */
   loopGoal: number
   /** 本卡本轮合计产出件数（开关打开期间累加；与同卡其它线共享） */
   loopProduced: number
