@@ -546,6 +546,7 @@ export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,
   autoLoopWaitLabel,
+  autoLoopReopenBlockReason,
   bountyCooldownMsFor,
   bountyCooldownRemainingMs,
   BOUNTY_COOLDOWN_BASE_MS,

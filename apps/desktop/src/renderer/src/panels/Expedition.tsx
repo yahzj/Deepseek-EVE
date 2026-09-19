@@ -43,6 +43,7 @@ import {
   scanStatus,
   shipDisplayName,
   shipRoleLabel,
+  autoLoopReopenBlockReason,
   wreckDensityOf,
   shortestTravelMinutes,
   standingOf,
@@ -2073,10 +2074,19 @@ function AnomalyCard({
   // （2026-09-15：星系扫描不再算"别的作业"——无人扫描艇不占主控）
   const cdRemain = bountyCooldownRemainingMs(state, anomaly.id)
   const looping = state.autoLoopAnomalyId === anomaly.id
+  /**
+   * **"别的作业占着主控"⇒ 本卡开关禁用**（船长 2026-09-18 沿用现有忙碌判定）。
+   *
+   * ⚠ 本次改一处：判据由"**环**是不是这个目标"改成"**在飞的是谁**"——
+   * 旧写法下"正在打这个目标但还没开环"会被当成忙碌 ⇒ **进行中根本开不了**（船长报的正是这个）。
+   * 现在：本目标在飞 ⇒ 不忙 ⇒ 未开环可点「重复清剿」开、已开环可点「停止讨伐」关。
+   */
   const busyOther =
     state.mining.active ||
     state.transit.active ||
-    (state.expedition.active && state.autoLoopAnomalyId !== anomaly.id)
+    (state.expedition.active && state.expedition.anomalyId !== anomaly.id)
+  /** 再开的前置未满足（战损未补 / 装甲或结构 <50%）：只在"要开"的方向挡，关闭一律放行 */
+  const reopenBlock = looping ? null : autoLoopReopenBlockReason(state)
   // 出击可点条件：声望/探索/冷却/返港/远征在飞时禁；采矿中放行（转战）
   const goDisabled =
     !reqMet || unexplored || cdRemain > 0 || state.transit.active || inFlightSelf || inFlightOther
@@ -2216,15 +2226,17 @@ function AnomalyCard({
         <div className="app-ano-btns">
           <button
             className={`app-btn is-small${looping ? ' is-warn' : ''}`}
-            disabled={!reqMet || unexplored || busyOther}
+            disabled={!reqMet || unexplored || busyOther || reopenBlock !== null}
             title={
               !reqMet || unexplored
                 ? '先满足声望/探索条件'
                 : busyOther
-                  ? '当前舰船正在采矿/扫描/返航或执行其它远征——作业结束后才能开启讨伐'
-                  : looping
-                    ? '停止自动循环（当前这一单会打完）'
-                    : '开启重复清剿：胜利后自动返航到港（返航路程 = 单程），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
+                  ? '当前舰船正在采矿/返航或执行别的目标的远征——作业结束后才能开关重复清剿'
+                  : reopenBlock !== null
+                    ? reopenBlock
+                    : looping
+                      ? '停止自动循环（当前这一单会打完；本趟不受影响）'
+                      : '开启重复清剿：胜利后自动返航到港（返航路程 = 单程），冷却结束自动再次出发；货仓装不下缴获或耐久不足（修理组件耗尽）时自动暂停'
             }
             onClick={toggleLoop}
           >

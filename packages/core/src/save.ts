@@ -2367,6 +2367,13 @@ function normalizeState(raw: unknown): GameState {
     typeof src.autoLoopAnomalyId === 'string' && src.autoLoopAnomalyId.length > 0
       ? src.autoLoopAnomalyId
       : null
+  /** 再开机群前置（2026-09-18）：非负整数才算；缺省/坏值 ⇒ null（= 不套这条判定） */
+  const autoLoopDroneFloor =
+    typeof src.autoLoopDroneFloor === 'number' &&
+    Number.isFinite(src.autoLoopDroneFloor) &&
+    src.autoLoopDroneFloor >= 0
+      ? Math.floor(src.autoLoopDroneFloor)
+      : null
 
   // --- B3 打捞作业（2026-09-05 兼容字段 + 2026-09-09 自动循环偏好零迁移）：active + 合法星系才启用，否则空态；
   // autoCycle 缺省按开（!= false），stopAfterTrip 缺省关——与采矿读档口径一致 ---
@@ -3276,6 +3283,7 @@ function normalizeState(raw: unknown): GameState {
     salvaging,
     bountyCooldowns,
     autoLoopAnomalyId,
+    autoLoopDroneFloor,
     // 2026-09-11 稀有残骸保底计数（船长「每 20 次必定掉」）：非负整数，缺省 0（老档从零攒）
     rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),
     encounter,

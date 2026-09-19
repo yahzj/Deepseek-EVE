@@ -512,6 +512,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     stopAutoLoopReason(
       state,
       `机群战损过半（${droneBefore} → ${droneAfter} 架）——请先补充无人机舱清单（装配页装入）再开启重复清剿。`,
+      droneAfter, // 记下停环时的机群架数 ⇒ 再开前必须"确实补过货"（船长 2026-09-18）
     )
   }
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
@@ -1054,12 +1055,42 @@ export function bountyCooldownRemainingMs(state: GameState, anomalyId: string): 
   return remain
 }
 
-/** 重复清剿开关（落档：重启后自动恢复）；null = 关闭 */
+/**
+ * **再开重复清剿的前置**（船长 2026-09-18：「**战损/耐久未恢复则先挡住**」）——返回 null = 放行。
+ *
+ * 两条都是"可恢复"的前置，且都复用既有那把尺：
+ * ① **装甲或结构 < 50%**：与出发门槛、自动停环同一档（`advanceAutoLoopBounty` 里那条）。
+ * ② **机群战损未补**：停环那一刻记下的架数 `state.autoLoopDroneFloor`（只有"机群战损过半"那一路会写）
+ *    ⇒ 再开要求**当前装载严格大于它**（确实补过货）。其余停环原因该字段为 null ⇒ 不套这条。
+ */
+export function autoLoopReopenBlockReason(state: GameState): string | null {
+  const fs = state.fleet[state.shipId]
+  if (!fs) return '舰队里找不到当前驾驶舰船。'
+  if ((fs.armorPct ?? 1) < 0.5 || fs.durability < 0.5) {
+    return '装甲或结构低于 50%：先修回 50% 以上，或装上船体维修装置并带够组件。'
+  }
+  const floor = state.autoLoopDroneFloor
+  if (typeof floor === 'number') {
+    const now = Object.values(fs.droneLoad ?? {}).reduce((sum, n) => sum + n, 0)
+    if (now <= floor) {
+      return `机群尚未补充（现 ${now} 架 / 停环时 ${floor} 架）：先在装配页补装无人机。`
+    }
+  }
+  return null
+}
+
+/** 重复清剿开关（落档：重启后自动恢复）；null = 关闭。⚠ **关闭一律放行**；开启过 `autoLoopReopenBlockReason` */
 export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: string | null): CommandResult {
+  if (anomalyId !== null) {
+    const block = autoLoopReopenBlockReason(state)
+    if (block !== null) return { ok: false, error: block }
+  }
   state.autoLoopAnomalyId = anomalyId
   if (anomalyId === null) {
+    state.autoLoopDroneFloor = null
     addLog(state, 'info', '重复清剿已停止。')
   } else {
+    state.autoLoopDroneFloor = null // 重新开环 ⇒ 清掉上一轮的机群前置记账
     const def = ctx.anomalies.get(anomalyId)
     const name = def?.name ?? anomalyId
     addLog(state, 'info', `重复清剿已开启：「${name}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。`)
@@ -1069,8 +1100,10 @@ export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: 
 
 /** 停环并记录原因（日志+清开关；2026-09-10 船长定：文案带当前 装甲/结构 数字，
  * 并写入一次性提示 autoLoopStopNotice——玩家在线时由心跳读取弹窗告知） */
-function stopAutoLoopReason(state: GameState, reason: string): void {
+function stopAutoLoopReason(state: GameState, reason: string, droneFloor: number | null = null): void {
   state.autoLoopAnomalyId = null
+  // 只有"机群战损过半"那一路传 `droneFloor`（再开前须补货，见 `autoLoopReopenBlockReason`）；其余原因清除记账
+  state.autoLoopDroneFloor = droneFloor
   const fs = state.fleet[state.shipId]
   const armorPct = Math.round((fs?.armorPct ?? 1) * 100)
   const structPct = Math.round((fs?.durability ?? 1) * 100)

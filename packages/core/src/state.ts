@@ -1548,6 +1548,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    */
   autoLoopStopNotice?: string | null
   /**
+   * **再开重复清剿的机群前置**（船长 2026-09-18：「战损/耐久未恢复则先挡住」）：
+   * 因「机群战损过半」停环时记下**当时的机群装载架数**；再开时要求当前装载**严格大于**它（确实补过货）。
+   * 其余停环原因把它清成 null（不套这条）。随档、可选、零迁移。
+   */
+  autoLoopDroneFloor?: number | null
+  /**
    * 2026-09-10 机群战损一次性提示（船长定「无人机可被击落」+ 永久损失制）：
    * 战斗结算扣掉被击落的无人机后写入（含机型与架数），心跳读取即清并 toast——
    * 同 deliveryNotice 模式（不落档、零迁移）
@@ -2368,6 +2374,7 @@ export function createInitialState(opts?: {
     transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0, delivery: null },
     bountyCooldowns: {},
     autoLoopAnomalyId: null,
+    autoLoopDroneFloor: null,
     stationSites: {},
     dockedSite: null,
     hauling: { ...EMPTY_HAULING },
