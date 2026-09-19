@@ -62,7 +62,7 @@ import {
 import type { WormholeHoldPlacement, WormholeHoldState } from './wormholeHold'
 // F3c 谜质装置：效果一律从货仓现算（本文件用到容量 / 打捞·采集堆数 / 母矿产量 / 回合同步）
 import { wormholeMatterBuffs, wormholeMatterDiscardHint } from './wormholeMatter'
-import { matterTechWhBuffs } from './matterTech'
+import { matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import {
   WORMHOLE_TURN_PER_WORK,
   WORMHOLE_TURN_PER_PICK,
@@ -1348,6 +1348,49 @@ export function wormholeTakePileAt(
  *    每台每次 1 堆、总回合 = ⌈堆数 ÷ 台数⌉（与残骸打捞完全同构，只是"打捞器"换成"采集器"）。
  */
 
+/**
+ * **编队打捞器 / 采集器的「效率」**（2026-09-19 船长「谜质科技树」批）：
+ * `Σ 各台的档位基础效率`（`ModuleDef.workEfficiency`：民用 0 / MK1 20 / MK2 40 / MK3 60 / 异星 80（%）；
+ * 打捞器只有 MK1~MK3 三档）**＋ 科技加成**（引力吊臂 / 富集钻头各 +20%/级）。
+ *
+ * 消费点 = 每次打捞/采集动作的**额外堆**：`额外堆 = floor(效率) + (掷中 frac(效率) ? 1 : 0)`
+ * （船长：「根据采集效率，有概率额外打捞/采集一堆。如果效率超过100%，溢出部分再计算一次打捞概率」）。
+ * **效率 ≤ 0 ⇒ 不额外多捞、也不掷骰**（纯民用编队零行为变化）。
+ */
+export function wormholeWorkEfficiencyOf(
+  state: GameState,
+  ctx: SimContext,
+  kind: 'salvager' | 'miner',
+): number {
+  const run = state.wormhole.run
+  if (!run) return 0
+  let sum = 0
+  for (const uid of run.fleet) {
+    const ship = state.fleet[uid]
+    if (!ship) continue
+    for (const m of allFittedModules(ship.fitted, ctx)) {
+      if (m.slot !== kind) continue
+      sum += m.workEfficiency ?? 0
+    }
+  }
+  return sum + matterTechWorkEffBonus(state, ctx, kind === 'salvager' ? 'salvage' : 'collect')
+}
+
+/**
+ * **效率 → 本次动作的额外堆**（floor 保底 + frac 掷一次）。
+ * ⚠ **确定性、不消费全局随机数流**（与 `wormholeMatterDeviceAt` 同款）：
+ * 由 `(跑种子, 层, 格 key, 剩余回合)` 现算 ⇒ 同档重放结果一致、也不扰动其它掷骰。
+ */
+function workExtraPiles(state: GameState, eff: number, cellKey: string, depth: number): number {
+  if (!(eff > 0)) return 0
+  const whole = Math.floor(eff)
+  const frac = eff - whole
+  if (frac <= 0) return whole
+  let h = Math.imul(runSeedOf(state) | 0, 2654435761) ^ Math.imul(depth | 0, 40503)
+  h = Math.imul(h ^ ((state.wormhole.run?.turnsLeft ?? 0) | 0), 16777619) >>> 0
+  for (let i = 0; i < cellKey.length; i++) h = Math.imul(h ^ cellKey.charCodeAt(i), 16777619) >>> 0
+  return whole + ((h % 10_000) / 10_000 < frac ? 1 : 0)
+}
 /** **编队采集器台数**（`slot === 'miner'`；0 = 挖不动矿脉） */
 export function wormholeMinersOf(state: GameState, ctx: SimContext): number {
   const run = state.wormhole.run
@@ -1404,6 +1447,9 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   if (baseMiners <= 0) return { ok: false, error: '编队里没有采集器：矿脉挖不动（至少装 1 台）。' }
   // 谜质「采集钻机」：每次采集 +1 堆/台（门槛仍看真采集器）
   const miners = baseMiners + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).collectPiles
+  // 效率 → 额外堆：floor 保底 + frac 掷一次；效率 0 不掷（2026-09-19 船长批）
+  const collectEff = wormholeWorkEfficiencyOf(state, ctx, 'miner')
+  const minersWant = miners + workExtraPiles(state, collectEff, cell.key, run.depth)
   wormholeEnsureVeinPiles(state, cell)
   const piles = cell.piles ?? []
   if (piles.length === 0) return { ok: false, error: '这条矿脉已经采空了。' }
@@ -1411,7 +1457,7 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   run.turnsLeft -= WORMHOLE_TURN_PER_WORK
   const taken: WormholeCellPile[] = []
   let full = false
-  for (let i = 0; i < miners && piles.length > 0; i++) {
+  for (let i = 0; i < minersWant && piles.length > 0; i++) {
     const pile = piles[0]!
     if (!tryMergeIntoBag(state, ctx, run, pile)) {
       full = true
@@ -1508,6 +1554,9 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   }
   // 谜质「打捞起重机」：每次打捞 +1 堆/台（**门槛仍看真打捞器**——装置不替代装备）
   const rigs = baseRigs + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).salvagePiles
+  // 效率 → 额外堆：floor 保底 + frac 掷一次；效率 0 不掷（2026-09-19 船长批）
+  const salvageEff = wormholeWorkEfficiencyOf(state, ctx, 'salvager')
+  const rigsWant = rigs + workExtraPiles(state, salvageEff, cell.key, run.depth)
   wormholeEnsureSalvagePiles(state, cell)
   const piles = cell.piles ?? []
   if (piles.length === 0) {
@@ -1524,7 +1573,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   /** 本次打捞翻出的货柜（船长 2026-09-15 定 ③；上限 `WORMHOLE_SALVAGE_BOX_MAX`） */
   const foundBoxes: string[] = []
   let boxFound = 0
-  for (let i = 0; i < rigs && piles.length > 0; i++) {
+  for (let i = 0; i < rigsWant && piles.length > 0; i++) {
     const pile = piles[0]!
     /**
      * ⚠ **形状件（遗迹安全货柜）不参与"打捞回收"**（2026-09-13 修的真 BUG）：
