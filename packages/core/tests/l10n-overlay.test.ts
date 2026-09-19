@@ -227,6 +227,22 @@ describe('英文覆盖层（P2）', () => {
     }
   })
 
+  it('物品说明：86 条静态物品全部有英文说明，且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const it of ITEMS) {
+      const other = en.items.get(it.id)!
+      if (!other.description) {
+        noDesc.push(it.id)
+        continue
+      }
+      expect(cjk.test(other.description), `${it.id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+    expect(noDesc, `这些物品还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.items.get('min-tritanium')?.description).toBe('The basic material of ship armor: plentiful and price-stable.')
+    expect(en.items.get('box-relic-a')?.description).toContain('Takes 2×2 cargo slots')
+  })
+
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {
     for (const [id, text] of Object.entries(EN_SHIPS)) {
       const keys = Object.keys(text).sort()
