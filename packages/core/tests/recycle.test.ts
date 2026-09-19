@@ -5,9 +5,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { advanceRefining, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
+import { advanceRefining, fragmentRedeemRowsOf, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
 import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RECYCLE_POOL_AVG_ISK, RECYCLE_POOLS, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
-import { addWare, countWare, removeWare } from '../src/inventory'
+import { addItem, addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
@@ -341,6 +341,50 @@ describe('蓝图碎片逆向研究', () => {
     expect(t3.map(([, r]) => r.need)).toEqual([250, 250, 250])
     expect(t2.map(([m]) => m).sort()).toEqual(['mod-cargo-2', 'mod-miner-2', 'mod-turret-kin-2'])
     expect(t3.map(([m]) => m).sort()).toEqual(['mod-cargo-3', 'mod-miner-3', 'mod-turret-kin-3'])
+  })
+
+  /**
+   * **界面读数单点** `fragmentRedeemRowsOf`（2026-09-19 玩家报障修「集齐了 25 个蓝图碎片，
+   * 但是找不到在哪换成蓝图」）——物品页「蓝图碎片」那一行的按钮状态全部读它，
+   * 口径必须与 `redeemFragments` 完全一致（否则会出现"按钮亮着、一点就报碎片不足"）。
+   */
+  it('逆向解锁读数：6 条配方逐条给出 现有/门槛/已掌握/可兑，且与兑命令同一口径', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 43 })
+    const ctx = ctxOf()
+    const rows = fragmentRedeemRowsOf(state, ctx)
+    expect(rows).toHaveLength(6)
+    expect(rows.map((r) => r.need)).toEqual([25, 25, 25, 250, 250, 250]) // 配方表原序：MK2 三张 → MK3 三张
+    for (const r of rows) {
+      expect(r.fragmentItemId).toBe(`frag-${r.moduleId}`)
+      expect(r.fragmentName).toContain('蓝图碎片')
+      expect(r.have).toBe(0)
+      expect(r.learned).toBe(false)
+      expect(r.ready).toBe(false) // 0 片 ⇒ 不可兑
+    }
+    // 片数够 + 在空间站 ⇒ 可兑；且兑一次后读数变"已掌握"
+    const target = rows.find((r) => r.moduleId === 'mod-turret-kin-2')!
+    addWare(state, target.fragmentItemId, 25)
+    const after = fragmentRedeemRowsOf(state, ctx).find((r) => r.moduleId === 'mod-turret-kin-2')!
+    expect(after.have).toBe(25)
+    expect(after.ready).toBe(true)
+    expect(redeemFragments(state, ctx, 'mod-turret-kin-2').ok).toBe(true)
+    const learned = fragmentRedeemRowsOf(state, ctx).find((r) => r.moduleId === 'mod-turret-kin-2')!
+    expect(learned.learned).toBe(true)
+    expect(learned.ready).toBe(false) // 已掌握 ⇒ 按钮该显示"已解锁配方"
+    // 货仓里的碎片同样计入（货仓 + 仓库一本账）
+    addItem(state, 'frag-mod-miner-2', 25)
+    const inCargo = fragmentRedeemRowsOf(state, ctx).find((r) => r.moduleId === 'mod-miner-2')!
+    expect(inCargo.have).toBe(25)
+    expect(inCargo.ready).toBe(true)
+  })
+
+  it('碎片说明点名真实入口（2026-09-19 报障：旧文案写"母港逆向"，而界面里没有这个入口）', () => {
+    const ctx = ctxOf()
+    for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
+      const desc = ctx.items.get(`frag-${moduleId}`)?.description ?? ''
+      expect(desc, `${moduleId} 的碎片说明`).toContain('逆向解锁')
+      expect(desc, `${moduleId} 的碎片说明`).not.toContain('母港逆向')
+    }
   })
 })
 

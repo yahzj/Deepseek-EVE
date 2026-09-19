@@ -363,6 +363,8 @@ export {
   stopRefineRun,
   refineRunViews,
   redeemFragments,
+  // 2026-09-19 玩家报障修：「碎片 → 蓝图」的读数单点（物品页「蓝图碎片」行内兑换用）
+  fragmentRedeemRowsOf,
   sellCargoItem,
   sellCargoItemQty,
   sellWareItem,
@@ -373,7 +375,7 @@ export {
   sellPriceMultiplier,
   buyShip,
 } from './industry'
-export type { RefineRunView, SellResult } from './industry'
+export type { RefineRunView, SellResult, FragmentRedeemRow } from './industry'
 
 export {
   ownsBlueprint,
