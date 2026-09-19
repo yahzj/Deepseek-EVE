@@ -255,7 +255,7 @@ export function ShipPage({
   function handleRepair(id: string): void {
     const r = engine.repairShipAt(id)
     if (!r.ok) onToast(r.error ?? '维修失败', true)
-    else onToast('维修完成：结构/装甲已修复。')
+    else onToast(tr("ui.ShipPage.153"))
   }
 
   /** T5：锁定/解锁（2026-09-14 起语义 = **防误移入舰船仓库**：舰队出售按钮已撤） */
@@ -288,7 +288,7 @@ export function ShipPage({
   function submitRename(id: string, name: string | null): void {
     const r = engine.renameShipAt(id, name)
     if (!r.ok) onToast(r.error ?? '改名失败', true)
-    else onToast(name === null ? tr("ui.ShipPage.127") : `已命名为「${name.trim()}」。`)
+    else onToast(name === null ? tr("ui.ShipPage.127") : tr("ui.ShipPage.154", { p1: name.trim() }))
     setRenameId(null)
     setRenameDraft('')
   }
@@ -331,13 +331,13 @@ export function ShipPage({
   function doUnstore(defId: string): void {
     const r = engine.unstoreShipAt(defId)
     if (!r.ok) onToast(r.error ?? '转入舰队失败', true)
-    else onToast('已从舰船仓库转入舰队（机库）：这艘是全新船，可直接切换驾驶或派 AI。')
+    else onToast(tr("ui.ShipPage.155"))
   }
   function doSellStored(defId: string): void {
     const r = engine.sellStoredShipAt(defId)
     setStoreSellId(null)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast('出售指令已受理：有收购单即时成交；没有则自动挂卖单（可撤单退回舰船仓库）。')
+    else onToast(tr("ui.ShipPage.156"))
   }
 
   return (
@@ -473,7 +473,9 @@ export function ShipPage({
           <div className="app-dim app-note">
             {Object.keys(state.fleet).length === 0
               ? tr("ui.ShipPage.006")
-              : `没有匹配的舰船${fq.length > 0 ? `（关键词「${fleetQ.trim()}」）` : tr("ui.ShipPage.128")}——换个关键词或筛选条件试试。`}
+              : tr('ui.ShipPage.157', {
+                  p1: fq.length > 0 ? tr('ui.ShipPage.158', { p1: fleetQ.trim() }) : '',
+                })}
           </div>
         ) : (
         <div className="app-ship-list">
@@ -521,7 +523,7 @@ export function ShipPage({
                     ) : null}
                     <button
                       className="app-btn is-small"
-                      title={`进入「${displayName}」的装配台——可直接为该船装配/卸下装备（不需要切换驾驶）`}
+                      title={tr("ui.ShipPage.159", { displayName: displayName })}
                       onClick={() => onGotoFit?.(uid)}
                     >
                       <span className="app-ico">
@@ -532,7 +534,7 @@ export function ShipPage({
                     {!isRenaming ? (
                       <button
                         className="app-btn is-small"
-                        title={shipState.customName ? `已自定义名称——点击改名（或恢复默认）` : tr("ui.ShipPage.012")}
+                        title={shipState.customName ? tr("ui.ShipPage.160") : tr("ui.ShipPage.012")}
                         onClick={() => startRename(uid, shipState.customName)}
                       >
                         {tr("ui.ShipPage.013")}
@@ -596,16 +598,19 @@ export function ShipPage({
                   </div>
                   <span
                     className={`app-dur-text${dur < 0.5 || armor < 0.5 ? ' is-bad' : dur < 1 || armor < 1 ? ' is-mid' : ''}`}
-                    title={`结构（=原耐久，与装甲同为跨场保留的损伤；护盾损失不保留）${dur < 1 ? `：结构 ${Math.round(dur * 100)}%` : ''}${armor < 1 ? `，装甲 ${Math.round(armor * 100)}%` : ''}`}
+                    title={tr('ui.ShipPage.161', {
+                      p1: dur < 1 ? tr('ui.ShipPage.162', { p1: Math.round(dur * 100) }) : '',
+                      p2: armor < 1 ? tr('ui.ShipPage.163', { p1: Math.round(armor * 100) }) : '',
+                    })}
                   >
-                    {tr("ui.ShipPage.023")} {Math.round(dur * 100)}%{armor < 1 ? ` · 装甲 ${Math.round(armor * 100)}%` : ''}
+                    {tr("ui.ShipPage.023")} {Math.round(dur * 100)}%{armor < 1 ? tr("ui.ShipPage.164", { p1: Math.round(armor * 100) }) : ''}
                   </span>
                   {(dur < 1 || armor < 1) && !isWorking ? (
                     <button
                       className="app-btn is-small is-warn"
                       onClick={() => handleRepair(uid)}
                       disabled={state.wallet.isk < repairCost}
-                      title={`维修需 ${repairCost.toLocaleString('zh-CN')} 信用点（结构+装甲一并修复；护盾无需维修）`}
+                      title={tr("ui.ShipPage.165", { p1: repairCost.toLocaleString('zh-CN') })}
                     >
                       {tr("ui.ShipPage.024")} {repairCost.toLocaleString('zh-CN')}
                     </button>
@@ -616,7 +621,7 @@ export function ShipPage({
                       onClick={() => {
                         const r = engine.useRepairKitNow()
                         if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
-                        else onToast('已使用一枚修理组件（基础 HP×容量增幅，民用30/军用70）。')
+                        else onToast(tr("ui.ShipPage.166"))
                       }}
                       title={tr("ui.ShipPage.025")}
                     >
@@ -664,7 +669,7 @@ export function ShipPage({
                         title={
                           storable.ok
                             ? shipState.customName
-                              ? `移入舰船仓库：同型堆叠存放（会清除自定义名「${shipState.customName}」）`
+                              ? tr("ui.ShipPage.167", { p1: shipState.customName })
                               : tr("ui.ShipPage.129")
                             : storable.reason
                         }
@@ -786,7 +791,9 @@ export function ShipPage({
               <div className="app-dim app-note">
                 {storeAll.length === 0
                   ? tr("ui.ShipPage.039")
-                  : `没有匹配的船型${sq.length > 0 ? `（关键词「${storeQ.trim()}」）` : tr("ui.ShipPage.128")}——换个关键词或筛选条件试试。`}
+                  : tr('ui.ShipPage.168', {
+                      p1: sq.length > 0 ? tr('ui.ShipPage.158', { p1: storeQ.trim() }) : '',
+                    })}
               </div>
             ) : (
               <div className="app-ship-list">
@@ -1017,11 +1024,11 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             : effMode === 'refine' && !effRefineId
               ? tr("ui.ShipPage.135")
               : effMode === 'refine' && refineHave <= 0
-                ? `仓库与货仓里没有「${selRefine?.name ?? ''}」——先补料再开炉`
+                ? tr("ui.ShipPage.169", { p1: selRefine?.name ?? '' })
                 : effMode === 'craft' && !effCraftId
                   ? tr("ui.ShipPage.136")
                   : effMode === 'craft' && craftShort.length > 0
-                    ? `材料不足：${craftShort.join('；')}`
+                    ? tr("ui.ShipPage.170", { p1: craftShort.join('；') })
                     : null
 
   /** 站内工业 AI 名册（只列 AI 核心驱动的：worker 非 'pilot'；老档免占用的旧作业不计） */
@@ -1032,24 +1039,24 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   function handleBuyCore(): void {
     const r = engine.buyBasicCoreAt()
     if (!r.ok) onToast(r.error ?? '购买失败', true)
-    else onToast('购买指令已受理：现货立即入核心库；无现货已挂收购单（到货自动入库）。')
+    else onToast(tr("ui.ShipPage.171"))
   }
 
   function handleAssign(): void {
     // 站内工业两类：不出舰船，直接把一枚 AI 核心接进炉/线（与工业页卡片同一批引擎命令）
     if (effMode === 'craft') {
       if (!effCraftId) {
-        onToast('先在「蓝图」下拉里选一张已学会的蓝图。', true)
+        onToast(tr("ui.ShipPage.172"), true)
         return
       }
       const r = engine.startManufacturingAt(effCraftId, effCore)
       if (!r.ok) onToast(r.error ?? 'AI 制造线开工失败', true)
-      else onToast('AI 制造线已开工（核心已占用，完成或取消时自动归还）。')
+      else onToast(tr("ui.ShipPage.173"))
       return
     }
     if (effMode === 'refine') {
       if (!selRefine) {
-        onToast('先在「资源」下拉里选一种可精炼资源或残骸。', true)
+        onToast(tr("ui.ShipPage.174"), true)
         return
       }
       const isWreck = selRefine.kind === 'wreck'
@@ -1066,7 +1073,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       return
     }
     if (!shipId) {
-      onToast('先选择一艘空闲舰船。', true)
+      onToast(tr("ui.ShipPage.175"), true)
       return
     }
     const r =
@@ -1076,13 +1083,13 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           ? engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
           : engine.assignAiStandbyAt(shipId, effCore, standbyGalaxyId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
-    else onToast('AI 任务已下达。')
+    else onToast(tr("ui.ShipPage.176"))
   }
 
   /** 取消执行中的 AI 任务（船长 2026-09-05：活动栏简略后须在 AI 指挥中心内可直接取消） */
   function handleCancelAi(sid: string): void {
-    if (engine.cancelAiTaskAt(sid)) onToast('AI 任务已取消（核心已归还）。')
-    else onToast('取消失败：任务状态异常。', true)
+    if (engine.cancelAiTaskAt(sid)) onToast(tr("ui.ShipPage.177"))
+    else onToast(tr("ui.MapPage.077"), true)
   }
 
   /** 停止站内工业 AI（炉/制造线）——与工业页卡片同一批引擎命令，核心自动归还 */
@@ -1099,7 +1106,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       right={
         <span className="app-dim">
           {tr("ui.ShipPage.058")} {used}/{totalCap}
-          {industryBonus > 0 ? `（共用 ${cap} + 工业扩容 ${industryBonus}）` : ''}
+          {industryBonus > 0 ? tr("ui.ShipPage.178", { cap: cap, industryBonus: industryBonus }) : ''}
         </span>
       }
     >
@@ -1116,7 +1123,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             </span>
           ))}
           <button className="app-btn is-small is-primary" onClick={handleBuyCore}>
-            {tr("ui.ShipPage.063")}{marketQuote(state, engine.ctx, 'core-basic').sell !== undefined ? ` · ${isk(marketQuote(state, engine.ctx, 'core-basic').sell!)} 信用点` : tr("ui.ShipPage.064")}
+            {tr("ui.ShipPage.063")}{marketQuote(state, engine.ctx, 'core-basic').sell !== undefined ? tr("ui.ShipPage.179", { p1: isk(marketQuote(state, engine.ctx, 'core-basic').sell!) }) : tr("ui.ShipPage.064")}
           </button>
         </div>
       </div>
@@ -1199,9 +1206,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 return (
                   <option key={b.id} value={b.id} disabled={locked}>
                     {unexplored
-                      ? `✧ ${b.name}（所在星系未探索——先到出港页扫描）`
+                      ? tr("ui.ShipPage.180", { p1: b.name })
                       : locked
-                        ? `✕ ${b.name}（需声望 ${b.standingReq}，当前 ${standing}）`
+                        ? tr("ui.ShipPage.181", { p1: b.name, p2: b.standingReq ?? 0, standing: standing })
                         : `${b.name}（${engine.ctx.items.get(b.oreId)?.name}）`}
                   </option>
                 )
@@ -1318,22 +1325,22 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             if (task.kind === 'mining') {
               const belt = engine.ctx.belts.get(task.beltId)
               const phaseLabel = task.phase === 'returning' ? tr("ui.ShipPage.145") : task.phase === 'outbound' ? tr("ui.MapPage.056") : tr("ui.ShipPage.146")
-              desc = `采矿 ${belt?.name ?? task.beltId} · ${phaseLabel} · 本趟 ${task.tripUnits} 单位`
+              desc = tr("ui.ShipPage.182", { p1: belt?.name ?? task.beltId, phaseLabel: phaseLabel, p3: task.tripUnits })
             } else if (task.kind === 'expedition') {
               // 防御分支：AI 远征已停用（2026-09-05 软下线、2026-09-08 UI 隐藏），理论不出现——老档残留兜底显示
               const a = engine.ctx.anomalies.get(task.anomalyId)
               const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
-              desc = `远征 ${a?.name ?? task.anomalyId} · 剩余约 ${Math.floor(remain / 60_000)} 分钟`
+              desc = tr("ui.ShipPage.183", { p1: a?.name ?? task.anomalyId, p2: Math.floor(remain / 60_000) })
             } else if (task.kind === 'salvage') {
               const g = engine.ctx.galaxies.get(task.galaxyId)
               const phaseLabel = task.phase === 'returning' ? tr("ui.ShipPage.147") : task.phase === 'outbound' ? tr("ui.ShipPage.148") : tr("ui.ShipPage.149")
-              desc = `打捞 ${g?.name ?? task.galaxyId} · ${phaseLabel}（本趟约 ${Math.round(task.tripM3 * 10) / 10} m³）`
+              desc = tr("ui.ShipPage.184", { p1: g?.name ?? task.galaxyId, phaseLabel: phaseLabel, p3: Math.round(task.tripM3 * 10) / 10 })
             } else {
               const g = engine.ctx.galaxies.get(task.galaxyId)
               desc =
                 task.phase === 'out'
-                  ? `前往 ${g?.name ?? task.galaxyId} 掩护巡逻（去程中）`
-                  : `掩护巡逻：${g?.name ?? task.galaxyId}`
+                  ? tr("ui.ShipPage.185", { p1: g?.name ?? task.galaxyId })
+                  : tr("ui.ShipPage.186", { p1: g?.name ?? task.galaxyId })
             }
             // 工作动画差分（2026-09-10 船长定 6 类，判据取引擎真值 task.kind）：远征已软下线，
             // 老档残留兜底显示时按掩护巡逻呈现（不新造第七种动画）
@@ -1357,7 +1364,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   <button
                     className="app-btn is-small is-warn"
                     onClick={() => handleCancelAi(sid)}
-                    title={`取消 ${shipDisplayName(state, engine.ctx, sid)} 的 AI 任务：副船召回，核心归还核心库`}
+                    title={tr("ui.ShipPage.187", { p1: shipDisplayName(state, engine.ctx, sid) })}
                   >
                     {tr("ui.ShipPage.094")}
                   </button>
@@ -1418,7 +1425,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                     {/* 循环制造为卡片级（2026-09-10 船长定）：这里显示该卡合计进度，不再按线各写各的 */}
                     {v.workerLabel}{tr("ui.ShipPage.103")}{' '}
                     {v.loopOn
-                      ? `循环制造 · 本卡合计 ${v.loopProduced.toLocaleString('zh-CN')}${v.loopGoal > 0 ? `/${v.loopGoal.toLocaleString('zh-CN')}` : ''} 批`
+                      ? tr("ui.ShipPage.188", { p1: v.loopProduced.toLocaleString('zh-CN'), p2: v.loopGoal > 0 ? `/${v.loopGoal.toLocaleString('zh-CN')}` : '' })
                       : tr("ui.ShipPage.104")}
                   </span>
                   <span className="app-inv-count">

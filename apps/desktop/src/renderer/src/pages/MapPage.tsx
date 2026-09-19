@@ -459,7 +459,7 @@ function BeltCard({
 
   function cancelWorker(shipId: string): void {
     if (engine.cancelAiTaskAt(shipId)) onToast('AI 开采任务已取消（核心已归还）。')
-    else onToast('取消失败：任务状态异常。', true)
+    else onToast(tr("ui.MapPage.077"), true)
   }
 
   return (
@@ -731,7 +731,7 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
   }
   function cancelAi(sid: string): void {
     if (engine.cancelAiTaskAt(sid)) onToast('AI 打捞任务已取消（核心已归还）。')
-    else onToast('取消失败：任务状态异常。', true)
+    else onToast(tr("ui.MapPage.077"), true)
   }
 
   // 循环偏好（与采矿同款：默认自动循环；「本次返航卸货后停止」= 做单趟）

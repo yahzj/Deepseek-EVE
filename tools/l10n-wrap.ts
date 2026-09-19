@@ -18,6 +18,11 @@
  * （`typecheck` 报 TS2322）。**正确做法**：key 保持中文字面量，改在**渲染处**按 id 取译名
  * （例：`pages/ShipPage.tsx` 的 `CRAFT_GROUPS`）。工具认不出这种，交给 typecheck 兜。
  *
+ * ⚠ **嵌套模板**（外层模板的 `${…}` 里又是模板，如 `` `没有匹配的舰船${n > 0 ? `（关键词「${q}」）` : ''}…` ``）：
+ * **只包内层，外层转人工**（两条都包会互相覆盖，写出来就是坏行——2026-09-19 实测踩过）。
+ * 外层那句按参数拼：`tr('外层id', { p1: 内层 tr(...) })`。
+ * 另外模板参数若是 `number | undefined`，转 `tr` 后要补 `?? 0`（typecheck 会报）。
+ *
  * **英文从哪来**：`--en=<json>` 给一张 `{ "中文": "English" }` 映射（P3 逐页翻译时先出这张表）。
  * **映射里没有的中文串一律不包、不改**（宁可少包，绝不产出 `en: ''` 的半成品让闸门变红）；
  * 干跑会把这些串列出来，方便补完再跑一次。
@@ -292,7 +297,20 @@ for (const file of walk(ROOT)) {
     ts.forEachChild(node, visit)
   }
   visit(sf)
-  for (const s of sites) {
+  // ⚠ **嵌套模板**（外层模板的 `${…}` 里又是模板）不能两条都包：外层那条替换文本会覆盖内层，写出来就是坏行。
+  //   规则：**包内层、外层转人工**（内层先翻，外层整句由人工按参数拼）。2026-09-19 实测踩过一次。
+  const innerRanges = sites.filter((s) => s.form === 'template').map((s) => [s.node.getStart(sf), s.node.getEnd()] as const)
+  const usableSites = sites.filter((s) => {
+    if (s.form !== 'template') return true
+    const [a, b] = [s.node.getStart(sf), s.node.getEnd()]
+    const hasInner = innerRanges.some(([x, y]) => x > a && y < b)
+    if (hasInner) {
+      manual.add(s.zh.replace(/\s+/g, ' ').slice(0, 90))
+      return false
+    }
+    return true
+  })
+  for (const s of usableSites) {
     const preexisting = byZh.has(s.zh)
     const id = idFor(s.zh, stem)
     if (id === null) {

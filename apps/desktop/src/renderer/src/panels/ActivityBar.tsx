@@ -118,7 +118,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.retreatNow(), '已撤退：舰队脱离交火并即刻回港。')
       break
     case 'cancel-ai':
-      if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), 'AI 任务已取消（核心已归还）。')
+      if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), tr("ui.ShipPage.177"))
       break
     case 'cancel-deliver-trip':
       run(engine.cancelDeliverTripNow(), '交付航线已取消（无惩罚）：已停止交付循环，舰船立即返航停靠最近空间站（本趟装载随进港卸回仓库）。')
