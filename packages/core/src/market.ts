@@ -970,6 +970,8 @@ function settleSell(
   const net = netAfterTax(state, ctx, gross)
   const tax = gross - net
   state.wallet.isk += net
+  // 市场链（2026-09-18 船长：「挂单按照市场交易收入计数」·「按税后算」）：卖出入账即累计
+  bumpFirst(state, 'marketIncome', net)
   state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - take)
   order.filled += take
   order.qty -= take
@@ -1038,6 +1040,8 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
   const net = netAfterTax(state, ctx, gross)
   const tax = gross - net
   state.wallet.isk += net
+  // 市场链（2026-09-18 船长：「挂单按照市场交易收入计数」·「按税后算」）：卖出入账即累计
+  bumpFirst(state, 'marketIncome', net)
   if (shipSale) {
     delete state.escrowShips[order.id]
   } else {
@@ -1174,6 +1178,8 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
   const net = netAfterTax(state, ctx, gross)
   const tax = gross - net
   state.wallet.isk += net
+  // 市场链（2026-09-18 船长：「挂单按照市场交易收入计数」·「按税后算」）：卖出入账即累计
+  bumpFirst(state, 'marketIncome', net)
   if (shipSale) {
     delete state.escrowShips[order.id]
   } else {
@@ -1205,7 +1211,8 @@ export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: strin
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
   const r = crossOnPlacement(state, ctx, order)
-  bumpFirst(state, 'orders') // 第一次任务/链：挂单数（含买单？不——只记成功挂出的卖单）
+  // 「第一次挂单销售」的判据（2026-09-18 起**只作判据**：市场链已改数交易收入，见下面几处卖出入账的 marketIncome）
+  bumpFirst(state, 'orders')
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, qty, r))
   return order
 }
@@ -1413,6 +1420,8 @@ export function sellAtMarket(
   const net = netAfterTax(state, ctx, gross) // 税后净入账
   const tax = gross - net
   state.wallet.isk += net
+  // 市场链（2026-09-18 船长：「挂单按照市场交易收入计数」·「按税后算」）：卖出入账即累计
+  bumpFirst(state, 'marketIncome', net)
   state.escrowItems[goodKey] = Math.max(0, (state.escrowItems[goodKey] ?? 0) - sold)
   const pool = mk.pools[goodKey]
   if (pool) {

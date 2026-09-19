@@ -36,6 +36,7 @@ import {
   sameKindCount,
 
   fitPresetBrief,
+  fitPresetDetailOf,
   fitPresetsOf,
   FIT_PRESET_MAX,
   FIT_PRESET_NAME_MAX,
@@ -387,10 +388,12 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   //    套用 = 先卸光再装 + 尽力装（缺件/超载逐条报出，见 core `fitPresets.ts`）。
   const [presetOpen, setPresetOpen] = useState(false)
   const [presetRename, setPresetRename] = useState<{ index: number; name: string } | null>(null)
+  /** **方案明细行内展开**（船长 2026-09-17：「允许玩家查看装备方案内用了哪些装备」⇒ 行内展开 · 逐位列含空位） */
+  const [presetDetailAt, setPresetDetailAt] = useState<number | null>(null)
   const presetDefId = shipDef?.id ?? ''
   const presets = presetDefId.length > 0 ? fitPresetsOf(state, presetDefId) : []
 
-  /** 保存当前装配（满 3 套时把方案列表一并打开，好让玩家先删一套） */
+  /** 保存当前装配（满套时把方案列表一并打开，好让玩家先删一套） */
   function handleSavePreset(): void {
     const r = engine.saveFitPresetFor(effectiveTarget)
     if (!r.ok) {
@@ -669,7 +672,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             <button
               className="app-btn is-small is-primary"
               onClick={() => setPresetOpen(true)}
-              title="查看 / 套用 / 重命名 / 删除本船型的装配方案（最多 3 套）"
+              title={`查看 / 套用 / 重命名 / 删除本船型的装配方案（最多 ${FIT_PRESET_MAX} 套）；每套可展开「明细」看逐位装了什么`}
             >
               装配方案 <em className="app-fit-preset-count">{presets.length}/{FIT_PRESET_MAX}</em>
             </button>
@@ -912,8 +915,12 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               </div>
             ) : (
               <div className="app-fit-preset-list">
-                {presets.map((p, i) => (
-                  <div className="app-fit-preset-row" key={`${p.name}-${i}`}>
+                {presets.map((p, i) => {
+                  // 明细每渲染算一次（件名解析走 core 单点 `fitPresetDetailOf`，界面不自己拼）
+                  const detail = presetDetailAt === i && shipDef ? fitPresetDetailOf(p, engine.ctx, shipDef) : null
+                  return (
+                  <div className="app-fit-preset-item" key={`${p.name}-${i}`}>
+                  <div className="app-fit-preset-row">
                     {presetRename?.index === i ? (
                       <>
                         <input
@@ -935,6 +942,13 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       <>
                         <b>{p.name}</b>
                         <span className="app-dim">{fitPresetBrief(p)}</span>
+                        <button
+                          className="app-btn is-small"
+                          onClick={() => setPresetDetailAt(presetDetailAt === i ? null : i)}
+                          title="展开这套方案里逐位装了什么（高/中/低 逐位 ＋ 无人机舱装载）"
+                        >
+                          {presetDetailAt === i ? '收起' : '明细'}
+                        </button>
                         <button className="app-btn is-small is-primary" onClick={() => handleApplyPreset(i)}>
                           套用
                         </button>
@@ -950,7 +964,52 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       </>
                     )}
                   </div>
-                ))}
+                  {/* 方案明细（2026-09-17 船长）：逐位列出「高 1 件名 · 2 空 …」＋无人机；件名走 core 单点 */}
+                  {detail ? (
+                    <div className="app-fit-preset-detail">
+                      {(['high', 'mid', 'low'] as const).map((rack) => (
+                        <div className="app-fit-preset-detail-line" key={rack}>
+                          <span className="app-fit-preset-detail-rack">{RACK_LABELS[rack]}</span>
+                          {detail.slots
+                            .filter((s) => s.rack === rack)
+                            .map((s) => (
+                              <span
+                                className={`app-fit-preset-detail-cell${s.id === null ? ' is-empty' : ''}${s.missing ? ' is-missing' : ''}`}
+                                key={`${rack}-${s.index}`}
+                              >
+                                <em>{s.index}</em>
+                                {s.name}
+                                {s.missing ? '（未知件）' : ''}
+                              </span>
+                            ))}
+                        </div>
+                      ))}
+                      <div className="app-fit-preset-detail-line">
+                        <span className="app-fit-preset-detail-rack">无人机</span>
+                        {detail.drones.length === 0 ? (
+                          <span className="app-fit-preset-detail-cell is-empty">未装载</span>
+                        ) : (
+                          detail.drones.map((d) => (
+                            <span
+                              className={`app-fit-preset-detail-cell${d.missing ? ' is-missing' : ''}`}
+                              key={d.id}
+                            >
+                              {d.name} ×{d.count}
+                              {d.missing ? '（未知机型）' : ''}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                      {detail.overflow > 0 ? (
+                        <div className="app-fit-preset-detail-note">
+                          另有 {detail.overflow} 位超出本船槽位，套用时会被忽略。
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  </div>
+                  )
+                })}
               </div>
             )}
             <div className="app-fit-preset-foot">

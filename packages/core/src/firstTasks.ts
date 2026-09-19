@@ -38,7 +38,8 @@ export type FirstStatKey =
   | 'bountyWins' // 讨伐胜利场数
   | 'refineBatches' // 精炼出料批数
   | 'produceUnits' // 组装机产出件数
-  | 'orders' // 挂出的卖单数
+  | 'orders' // 挂出的卖单数（**自 2026-09-18 起只作「第一次挂单销售」的判据**，不再做链阈值）
+  | 'marketIncome' // 通过市场获得的信用点（税后净入账，累计；2026-09-18 船长改口径）
   | 'ships' // 造出的自造船数
   | 'aiAssigns' // 指派 AI 副船次数
   | 'haulTrips' // 长途运输完成趟数
@@ -50,6 +51,12 @@ export interface FirstTaskDef {
   title: string
   /** 任务卡一句话（**不写原因解释、≤30 字**，与 §5 文案硬规矩同口径） */
   brief: string
+  /**
+   * **任务卡正文**（船长 2026-09-18：「任务内容过于简略，建议加入一定量的文本丰富」）——
+   * 一段话讲清"这件事怎么做、做成什么样、有什么好处"，并带一句实物奖励提示。
+   * ⚠ 它会超过 §5「说明文案 ≤30 字」那条规矩（那是给商品说明定的）；是否把任务卡正文豁免，已上报船长。
+   */
+  detail: string
   /** 前置任务 id（未完成 ⇒ 本任务在任务中心不显示） */
   prereq?: string
   /** 完成判据：`count` 达到 1（或技能/声望这类直接判） */
@@ -81,24 +88,43 @@ export interface FirstTaskDef {
   chain?: { id: string; name: string; stat: FirstStatKey | 'scan' | 'skills'; tierKey: string }
 }
 
-/** 链阈值表（**初版值 · 集中一处便于标定**；船长复核后改这里即可） */
+/**
+ * **链阈值表**（2026-09-18 船长第二轮标定：逐条指定新 L10，其余各级"按曲线重排平滑数值"）。
+ *
+ * 平滑口径（已确认）：**L1~L5 保持原值**（保住早期手感、老档已过的级不受扰动），
+ * **L6~L10 按等比 `r = (L10 ÷ L5)^(1/5)` 铺开**并取整到可读值 ⇒ 曲线上没有跳变。
+ * 船长逐条定的新 L10：采矿 1,000 万 · 精炼/生产 100 万 · 悬赏 1 万 · 打捞 5 万 ·
+ * 虫洞 500 · 造船 1,000 · 技能 500（**当前技能表只到 395 级 ⇒ 顶档留待新增技能**）·
+ * 市场 = 1,000 亿信用点（口径由"挂单张数"改为**交易收入**）。
+ * 未提到的三条（扫描 / 维修 / AI 指派）与长途运输**保持原值**（船长：「没提到的保持原样」）。
+ */
 export const CHAIN_TIERS: Readonly<Record<string, readonly number[]>> = {
   // 扫描：全图 20 星系 ⇒ 5 级封顶（船长：「至少 5 级」，有内容上限的按上限做）
   scan: [5, 8, 12, 16, 20],
-  // 其余无内容上限 ⇒ 10 级（次数类 ×~2.4 递增；单位类给量级）
-  salvageRuns: [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000],
-  bountyWins: [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000],
+  // 次数类（L1~L5 原值；L6~L10 等比平滑到船长定的新顶档）
+  salvageRuns: [1, 3, 8, 20, 50, 200, 790, 3_150, 12_500, 50_000],
+  bountyWins: [1, 3, 8, 20, 50, 144, 415, 1_200, 3_460, 10_000],
+  wormholeRuns: [1, 3, 8, 20, 50, 79, 126, 199, 316, 500],
+  // 未提到的三条：原值不动
   repairs: [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000],
-  orders: [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000],
   aiAssigns: [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000],
   haulTrips: [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000],
-  wormholeRuns: [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000],
-  ships: [1, 2, 4, 8, 15, 25, 40, 60, 90, 130],
-  mineUnits: [1_000, 2_500, 6_000, 15_000, 40_000, 100_000, 250_000, 600_000, 1_500_000, 4_000_000],
-  produceUnits: [10, 25, 60, 150, 400, 1_000, 2_500, 6_000, 15_000, 40_000],
-  refineBatches: [10, 25, 60, 150, 400, 1_000, 2_500, 6_000, 15_000, 40_000],
-  skills: [5, 12, 25, 45, 70, 100, 140, 190, 250, 320], // 累计技能等级
+  // 市场：**交易收入（税后累计信用点）**，船长选"每级 ×10"（丙案）⇒ 顶档 1,000 亿
+  marketIncome: [100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000],
+  // 舰船：顶档 1,000 艘
+  ships: [1, 2, 4, 8, 15, 35, 80, 186, 431, 1_000],
+  // 量级链（单位/件数）：采矿顶档 1,000 万；精炼与生产顶档 100 万
+  mineUnits: [1_000, 2_500, 6_000, 15_000, 40_000, 120_000, 365_000, 1_100_000, 3_300_000, 10_000_000],
+  produceUnits: [10, 25, 60, 150, 400, 1_900, 9_100, 44_000, 209_000, 1_000_000],
+  refineBatches: [10, 25, 60, 150, 400, 1_900, 9_100, 44_000, 209_000, 1_000_000],
+  skills: [5, 12, 25, 45, 70, 104, 154, 228, 338, 500], // 累计技能等级（满级 395；顶档 500 留待新技能）
 }
+
+/**
+ * **旧「挂单张数」阈值表**（2026-09-18 换口径前用的那张）——**只给老档一次性折算读**，
+ * 新逻辑一律走 `CHAIN_TIERS.marketIncome`（留在这里是为了折算规则可复现、可测）。
+ */
+export const CHAIN_TIERS_LEGACY_ORDERS: readonly number[] = [1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000]
 
 /**
  * **链奖金基准与"第 N 级奖金"**（2026-09-18 船长：「每级的信用点奖励有些过于少，建议按照级别的 5 次方给予奖励」）。
@@ -134,6 +160,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-scan',
     title: '第一次扫描',
     brief: '对星图上的未知信号执行一次扫描探索',
+    detail: '星图上只剩剪影的位置＝未解读的未知信号。派一艘深空扫描艇就地扫描，窗口走完即点亮该星系：航线、矿带、悬赏与残骸情报一并解锁。母港只需十来秒，其余星系越危险扫得越久。',
     judge: (state, ctx) => state.exploredGalaxies.filter((g) => ctx.galaxies.has(g)).length,
     commsId: 'first-scan',
     chain: { id: 'explorer', name: '宇宙探索家', stat: 'scan', tierKey: 'scan' },
@@ -145,6 +172,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     //   ⇒ 本批按**现行口径**写成「第一次采集原矿」。若船长要保留"矿物"字样，把它登记为例外即可。
     title: '第一次采集原矿',
     brief: '到矿带采一批原矿',
+    detail: '到矿带派出采矿艇：采掘、返航、卸货自动跑完。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——那是绝大多数蓝图的用料。',
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
@@ -156,6 +184,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-salvage',
     title: '第一次打捞残骸',
     brief: '到残骸地点打捞一批',
+    detail: '星系里的残骸点可以派船打捞：保底原材料直接入炉，带稀有标记的残骸更值钱，回收炉还能把旧件重新解体成整件装备。',
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
@@ -167,6 +196,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-repair',
     title: '第一次维修舰船',
     brief: '用修理组件或港内维修修一次船',
+    detail: '护盾脱战后自行回满，装甲与结构的损伤则会跨场保留——用修理组件应急，或回港让工位整体修好。航行前把它们修到六成以上会稳很多。',
     judge: (state) => (state.firstStats?.repairs ?? 0),
     commsId: 'first-repair',
     // 奖励（船长 2026-09-18）：民用修理组件 ×20（船长原话写「民工维修组件」⇒ 按现行物品名 `repairkit-civ` 落地）
@@ -177,6 +207,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-bounty',
     title: '第一次完成悬赏',
     brief: '打赢一场悬赏讨伐',
+    detail: '常驻悬赏按威胁分档：档位越高敌人越厚、火力越重，报酬与协会声望也越高。声望是协会渠道的通行证，市场门槛与虫洞扫描都看它。',
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.bountyWins ?? 0),
     commsId: 'first-bounty',
@@ -188,6 +219,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-refine',
     title: '第一次操作精炼炉',
     brief: '让精炼炉出一批料',
+    detail: '精炼炉按批运转：原料够一批就能起炉，料尽自动停炉，装满则按批续烧。精炼学每级 +6% 产出、高级回收处理每级 +3%，两条练满可到 165%。',
     prereq: 'first-mine',
     judge: (state) => (state.firstStats?.refineBatches ?? 0),
     commsId: 'first-refine',
@@ -199,6 +231,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-produce',
     title: '第一次生产',
     brief: '让组装机造出一件东西',
+    detail: '组装机要三样：蓝图、材料、时间。装上 AI 核心就能无人值守开线，弹药与修理组件这类消耗品最适合常驻。',
     prereq: 'first-mine',
     judge: (state) => (state.firstStats?.produceUnits ?? 0),
     commsId: 'first-produce',
@@ -211,15 +244,18 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-order',
     title: '第一次挂单销售',
     brief: '在市场挂出一张卖单',
+    detail: '市场吃三路单子：协会挂出的常驻买卖单、玩家自留的挂单、以及贴着价线巡游的抢单。挂价越贴收购线成交越快，挂得高则是在赌巡游采购上门。',
     prereq: 'first-produce',
     judge: (state) => (state.firstStats?.orders ?? 0),
     commsId: 'first-order',
-    chain: { id: 'marketeer', name: '市场老手', stat: 'orders', tierKey: 'orders' },
+    // 2026-09-18 船长改口径：「挂单按照市场交易收入计数」⇒ 判据从挂单张数改成税后交易收入
+    chain: { id: 'marketeer', name: '市场老手', stat: 'marketIncome', tierKey: 'marketIncome' },
   },
   {
     id: 'first-ship',
     title: '第一条船',
     brief: '造出第一艘自造船',
+    detail: '造舰与造装备是同一条链路：舰船蓝图＋材料＋机库工位。新船入机库待命，装配页配好槽位与弹档即可编入出港编队。',
     prereq: 'first-produce',
     judge: (state) => (state.firstStats?.ships ?? 0),
     commsId: 'first-ship',
@@ -231,6 +267,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-skill',
     title: '第一次学习技能',
     brief: '把 AI 核心操作学练到 Lv1',
+    detail: '技能按现实时长训练，队列排好就能一直练，高效学习法能压缩全部训练时间。AI 核心操作学是调度副船与自动产线的前置。',
     judge: (state) => state.skills.trained['ai-expert'] ?? 0,
     commsId: 'first-skill',
     /**
@@ -247,6 +284,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-ai',
     title: '第一次指派 AI 副船',
     brief: '给一艘闲置舰船派个 AI 任务',
+    detail: '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。每项指派占一枚核心，核心等级越高作业效率越高。',
     // 船长 2026-09-17：「将安排 AI 核心的任务设置为需要玩家完成学习技能才出现」
     prereq: 'first-skill',
     judge: (state) => (state.firstStats?.aiAssigns ?? 0),
@@ -257,6 +295,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-haul',
     title: '第一次长途运输',
     brief: '完成一趟长途运输',
+    detail: '长途运输在站与站之间按趟结算，报酬随行情浮动；低安航段会遇袭，出发前把装甲与结构留足余量。',
     prereq: 'first-scan',
     judge: (state) => (state.firstStats?.haulTrips ?? 0),
     commsId: 'first-haul',
@@ -268,6 +307,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-wormhole',
     title: '第一次虫洞',
     brief: '把深空工业协会声望攒到 40',
+    detail: '协会声望攒到 40 就能展开虫洞扫描阵列：扫出的通道从第 1 层开始，越深越险也越肥。洞内是搜、打、撤三条线，带不回来的等于没有。',
     prereq: 'first-scan',
     // 任务目标就是"完成解锁条件的内容"（船长原话）⇒ 判据 = 声望门槛（虫洞解锁线 40）
     judge: (state) => (dsiStanding(state) >= WORMHOLE_UNLOCK_STANDING ? 1 : 0),
@@ -451,6 +491,11 @@ export interface FirstTaskRow {
   next: number | null
   /** 当前可领奖金（0 = 没得领） */
   pendingIsk: number
+  /**
+   * **完成"正在推进的这一级"能拿的奖金**（船长 2026-09-18：「任务奖金要写清楚当前这级的具体数额，
+   * 不能让玩家自己算」）＝第 `level + 1` 级的奖金；已满档 ⇒ 0。
+   */
+  nextRewardIsk: number
   /** **已全部完成**（做完了 ＋ 链满档 ＋ 没有可领的）⇒ 面板隐藏（船长 2026-09-18：「已经全部完成的重要任务隐藏」） */
   hidden: boolean
 }
@@ -474,6 +519,8 @@ export function firstTaskBoard(state: GameState): FirstTaskRow[] {
       count: prog?.count ?? 0,
       next: prog?.next ?? null,
       pendingIsk,
+      // 正在推进的那一级 = 已达级数 + 1；满档 ⇒ 0（没有"下一级"了）
+      nextRewardIsk: maxed ? 0 : chainLevelRewardIsk((prog?.level ?? 0) + 1),
       hidden: done && maxed && pendingIsk <= 0,
     }
   })

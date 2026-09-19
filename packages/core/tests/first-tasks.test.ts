@@ -14,20 +14,23 @@ import type { GameState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import {
   CHAIN_REWARD_ISK_BASE,
-  FIRST_TASKS,
-  advanceFirstChains,
+  CHAIN_TIERS,
   chainLevelRewardIsk,
   chainPendingRewardIsk,
   chainProgressOf,
   claimChainReward,
   firstStatOf,
   firstTaskBoard,
+  FIRST_TASKS,
+  advanceFirstChains,
   visibleFirstTasks,
 } from '../src/firstTasks'
+import { sellAtMarket, learnBlueprint } from '../src/market'
 import { startMining, getMiningParams } from '../src/mining'
 import { fitModule } from '../src/equipment'
 import { startRecycleRun, startRefineRun } from '../src/industry'
-import { repairShip } from '../src/shipyard'
+import { repairShip, unstoreShip } from '../src/shipyard'
+import { startManufacturing } from '../src/manufacturing'
 import { startScan, HOME_SCAN_WINDOW_MS, scanWindowMsFor } from '../src/explore'
 import { countAiCore } from '../src/ai'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -42,6 +45,14 @@ function testState(): GameState {
   return createInitialState({ nowWallMs: 0, seed: 11 })
 }
 
+describe('「第一次」任务：卡片文案齐备（船长 2026-09-18：正文要"一定量的文本丰富"）', () => {
+  it('13 条都写了 detail（一段话讲清怎么做/做什么/奖励）', () => {
+    for (const def of FIRST_TASKS) {
+      expect(def.detail.length, `${def.id} 的 detail 太短`).toBeGreaterThan(30)
+      // ⚠ 原有一条 `brief ≤ 30 字` 的断言随船长 2026-09-18 废止「说明文案 ≤30 字」一并撤除
+    }
+  })
+})
 describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', () => {
   it('采矿计数随产量增长，采到第一单位即判过「第一次采集原矿」', () => {
     const state = testState()
@@ -183,6 +194,27 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(state.blueprintStock['sbp-sandcat']).toBe(1)
   })
 
+  it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
+    const state = testState()
+    // 备料 + 学会沙猫级蓝图（正常路径里蓝图来自「第一次生产」的奖励）
+    state.blueprintStock['sbp-sandcat'] = 1
+    expect(learnBlueprint(state, ctx, 'sbp-sandcat').ok).toBe(true)
+    state.warehouse.items['min-tritanium'] = 400
+    state.warehouse.items['min-pyerite'] = 100
+    expect(firstStatOf(state, 'ships')).toBe(0)
+    expect(startManufacturing(state, 'sbp-sandcat', 'pilot', ctx).ok).toBe(true)
+    // 工期 15 分钟（`sbp-sandcat.buildSeconds`）——推进到交付
+    for (let i = 0; i < 60 && firstStatOf(state, 'ships') === 0; i++) advanceGame(state, 30_000, ctx)
+    expect(firstStatOf(state, 'ships')).toBe(1)
+    expect(state.firstShipBuilt).toBe(true)
+    expect(state.importantTasks['first-ship']?.done).toBe(true)
+
+    // 反例：仓库转舰队（原先误挂计数的那条路径）不该再加
+    state.shipStore = { ...(state.shipStore ?? {}), sandcat: 1 }
+    expect(unstoreShip(state, 'sandcat', ctx).ok).toBe(true)
+    expect(firstStatOf(state, 'ships')).toBe(1)
+  })
+
   it('任务中心序列：可领奖置顶 · 已全部完成（链满档且没得领）隐藏（船长 2026-09-18 两条 UI 规矩）', () => {
     const state = testState()
     // ① 全都还没做 ⇒ 顺序 = 原序，且没有隐藏项
@@ -257,6 +289,126 @@ describe('「第一次」次数链：记账与领奖分开', () => {
   it('未知链 id 领奖返回 0（界面误点不炸）', () => {
     const state = testState()
     expect(claimChainReward(state, 'no-such-chain')).toBe(0)
+  })
+})
+
+describe('链阈值（2026-09-18 船长第二轮标定）', () => {
+  it('9 条新顶档：船长逐条指定的 L10 落地', () => {
+    const top = (k: string): number => CHAIN_TIERS[k]!.at(-1)!
+    expect(top('mineUnits')).toBe(10_000_000)
+    expect(top('refineBatches')).toBe(1_000_000)
+    expect(top('produceUnits')).toBe(1_000_000)
+    expect(top('bountyWins')).toBe(10_000)
+    expect(top('salvageRuns')).toBe(50_000)
+    expect(top('wormholeRuns')).toBe(500)
+    expect(top('ships')).toBe(1_000)
+    expect(top('skills')).toBe(500) // 当前技能表满级 395 ⇒ 顶档留待新增技能
+    expect(top('marketIncome')).toBe(100_000_000_000) // 交易收入 1,000 亿（税后）
+  })
+
+  it('未提到的三条与长途运输保持原值（船长：「没提到的保持原样」）', () => {
+    expect(CHAIN_TIERS.scan).toEqual([5, 8, 12, 16, 20])
+    expect(CHAIN_TIERS.repairs).toEqual([1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000])
+    expect(CHAIN_TIERS.aiAssigns).toEqual([1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000])
+    expect(CHAIN_TIERS.haulTrips).toEqual([1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000])
+  })
+
+  it('每条链严格递增（虫洞 L9 曾高于新 L10 的那个矛盾不再有）；扫描按内容上限 5 档、其余 10 档', () => {
+    for (const [key, tiers] of Object.entries(CHAIN_TIERS)) {
+      expect(tiers.length, `${key} 的档数不对`).toBe(key === 'scan' ? 5 : 10)
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i]!, `${key} 第 ${i + 1} 档没有递增`).toBeGreaterThan(tiers[i - 1]!)
+      }
+    }
+  })
+
+  it('L1~L5 保持原值（早期手感锚：平滑只动 L6~L10）', () => {
+    expect(CHAIN_TIERS.mineUnits!.slice(0, 5)).toEqual([1_000, 2_500, 6_000, 15_000, 40_000])
+    expect(CHAIN_TIERS.bountyWins!.slice(0, 5)).toEqual([1, 3, 8, 20, 50])
+    expect(CHAIN_TIERS.ships!.slice(0, 5)).toEqual([1, 2, 4, 8, 15])
+    expect(CHAIN_TIERS.skills!.slice(0, 5)).toEqual([5, 12, 25, 45, 70])
+  })
+})
+
+describe('市场链：交易收入（税后）＋ 老档一次性折算', () => {
+  it('卖货入账 ⇒ 累计 marketIncome（税后净额）；链判据走 income 而不是挂单张数', () => {
+    const state = testState()
+    const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
+    expect(chain.stat).toBe('marketIncome')
+    expect(chain.tierKey).toBe('marketIncome')
+    // 备货并卖出（`sellAtMarket` 会 ensureMarket，按协会收购线成交）
+    state.warehouse.items['min-tritanium'] = 500
+    const before = state.wallet.isk
+    const r = sellAtMarket(state, ctx, 'min-tritanium', 100)
+    expect(r.sold).toBeGreaterThan(0)
+    const gained = state.wallet.isk - before
+    expect(gained).toBeGreaterThan(0)
+    // 累计值 = 税后净入账（与钱包增量逐字一致——税后口径）
+    expect(firstStatOf(state, 'marketIncome')).toBe(gained)
+    expect(firstStatOf(state, 'orders')).toBe(0) // 直卖不算挂单
+  })
+
+  it('挂单成交也计入（挂单张数只作「第一次挂单销售」的判据）', () => {
+    const state = testState()
+    state.warehouse.items['min-tritanium'] = 500
+    const order = sellAtMarket(state, ctx, 'min-tritanium', 100)
+    expect(order.sold).toBeGreaterThan(0)
+    const income = firstStatOf(state, 'marketIncome')
+    expect(income).toBeGreaterThan(0)
+    // 收入链进度随之推进（100 ISK 起 = 第一档）
+    const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
+    expect(chainProgressOf(state, chain).count).toBe(income)
+  })
+
+  it('老档一次性折算：按级别对齐（旧表级数 ⇒ 新表同级门槛），已达级数不倒退', () => {
+    const state = testState()
+    state.firstStats = { orders: 30 } // 旧表 [1,3,8,20,50…] ⇒ 已达第 4 级
+    const file = JSON.parse(serializeSaveFile(state, 1)) as { version: number; state: Record<string, unknown> }
+    file.version = 26 // 装成换口径之前的老档
+    const loaded = loadSaveFile(JSON.stringify(file)).state
+    expect(loaded.firstStats?.marketIncome).toBe(CHAIN_TIERS.marketIncome![3]) // 新表第 4 级 = 100,000
+    const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
+    expect(chainProgressOf(loaded, chain).level).toBe(4) // 折算后仍是第 4 级
+    // 折算的落点直接是门槛值 ⇒ 再卖一点就升第 5 级
+    expect(chainProgressOf(loaded, chain).next).toBe(CHAIN_TIERS.marketIncome![4])
+  })
+
+  it('挂单 0 张的老档不写该键（零迁移）；满档老档折到顶档', () => {
+    const fresh = testState()
+    const f1 = JSON.parse(serializeSaveFile(fresh, 1)) as { version: number; state: Record<string, unknown> }
+    f1.version = 25
+    const loadedFresh = loadSaveFile(JSON.stringify(f1)).state
+    expect(loadedFresh.firstStats?.marketIncome).toBeUndefined()
+
+    const maxed = testState()
+    maxed.firstStats = { orders: 3000 } // 旧表顶档
+    const f2 = JSON.parse(serializeSaveFile(maxed, 1)) as { version: number; state: Record<string, unknown> }
+    f2.version = 26
+    const loadedMaxed = loadSaveFile(JSON.stringify(f2)).state
+    expect(loadedMaxed.firstStats?.marketIncome).toBe(CHAIN_TIERS.marketIncome![9])
+  })
+})
+
+describe('链条目奖金上卡（船长：写清楚当前这级的具体数额）', () => {
+  it('nextRewardIsk = 第（已达级数+1）级的奖金；满档 ⇒ 0', () => {
+    const state = testState()
+    state.importantTasks['first-scan'] = { done: true }
+    state.importantTasks['first-mine'] = { done: true }
+    state.firstStats = { mineUnits: 2_500 } // 达第 2 级（1,000 / 2,500）
+    advanceFirstChains(state)
+    const row = firstTaskBoard(state).find((r) => r.def.id === 'first-mine')!
+    expect(row.level).toBe(2)
+    expect(row.nextRewardIsk).toBe(chainLevelRewardIsk(3))
+    expect(row.nextRewardIsk).toBe(607_500) // 具体数额（不是公式）
+
+    // 满档：没有"下一级" ⇒ 0（这条不置 done——否则"已全部完成"会把卡整行隐藏）
+    const s2 = testState()
+    s2.importantTasks['first-scan'] = { done: true }
+    s2.firstStats = { mineUnits: CHAIN_TIERS.mineUnits!.at(-1)! }
+    advanceFirstChains(s2)
+    const maxedRow = firstTaskBoard(s2).find((r) => r.def.id === 'first-mine')!
+    expect(maxedRow.level).toBe(10)
+    expect(maxedRow.nextRewardIsk).toBe(0)
   })
 })
 

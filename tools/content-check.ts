@@ -75,7 +75,7 @@ import ts from 'typescript'
 import { join } from 'node:path'
 import { tableOf } from './content-schema'
 // 说明文案口径单点（船长 2026-09-17 立的文案规则）：长度计数 + 括号原因解释判据
-import { COPY_LEN_MAX, REASON_HINTS, copyEntriesOf, copyLen, parenSpans } from './copy-len'
+import { REASON_HINTS, copyEntriesOf, parenSpans } from './copy-len'
 import {
   DEFAULT_BALANCE,
   ITEM_KIND_ORDER,
@@ -797,58 +797,32 @@ for (const sbp of SHIP_BLUEPRINTS) {
   console.log(`· 产物说明契约：核对 ${total} 条数值声明（装备 ${MODULES.length} 件 + 物品 ${ITEMS.length} 种），其中舱位换算 ${countHints} 处；无法解释 ${unexplained} 条`)
 }
 
-/* ── 说明文案长度契约（船长 2026-09-17 立的文案规则）──
- * 船长原话：「**新增文案相关规则，不要在任何说明文案内写入原因解释（特别是使用括号进行解释的这种）。
- * 文案要保证在30个字以内。**」；三问三答裁定：**存量一起改**（乙）· **计数 = 汉字/字母/数字各 1 字、
- * 标点不计**（甲）· **护栏只对新增/改动亮红、存量先只列清单**（甲）。
+/* ── 说明文案原因解释契约（船长 2026-09-17 立；**2026-09-18 船长废止其中的"≤30 字"那一半**）──
+ * 现行只剩一条规矩：**说明文案不写原因解释**（尤其不许用括号做解释）——原话：「**不要在任何说明文案内
+ * 写入原因解释（特别是使用括号进行解释的这种）**」；**括号只许装规格**（如「（20 秒）」「（50 m³）」）。
  *
- * 判据单点 = `tools/copy-len.ts`（`copyLen` / `parenSpans` / `REASON_HINTS`，与基线生成器共用）。
- * **宽限机制**：`tools/copy-len-baseline.json` 里**key 相同且文本一字未动**的老条目 ⇒ 只列清单；
- * **新增的、或改过文本的**条目 ⇒ 超线/括号原因**立即报红**（这样改写批次推进时基线自然收缩，
- * 存量全部改完 ⇒ 删掉基线文件即转为全量强制）。 */
+ * ⚠ **2026-09-18 船长废止**：「**「说明文案 ≤30 字」的计划已经废止，清档所有相关内容**」⇒
+ * 长度上限、`copy-len-baseline.json` 宽限机制与「存量待改写」清单**全部删除**（工具 `tools/copy-len-baseline.ts`
+ * 一并删除）；本契约只留**括号原因解释**这一支，且**不再有宽限**——命中即报红。
+ * 判据单点仍是 `tools/copy-len.ts` 的 `parenSpans` / `REASON_HINTS`。 */
 {
-  const baselinePath = join(process.cwd(), 'tools/copy-len-baseline.json')
-  const baselineRaw = existsSync(baselinePath)
-    ? (JSON.parse(readFileSync(baselinePath, 'utf8')) as { entries?: Record<string, string> })
-    : {}
-  const baseline = baselineRaw.entries ?? {}
   const copyCtx = buildSimContext()
   const copyRows = copyEntriesOf(copyCtx)
-  const overRed: string[] = []
-  const overGrandfathered: string[] = []
   const reasonRed: string[] = []
-  const reasonGrandfathered: string[] = []
   for (const r of copyRows) {
-    const untouched = baseline[r.key] === r.text
-    const len = copyLen(r.text)
-    if (len > COPY_LEN_MAX) {
-      const line = `${r.label} ${r.id}（${len} 字）`
-      if (untouched) overGrandfathered.push(line)
-      else overRed.push(line)
-    }
     for (const span of parenSpans(r.text)) {
       const hit = REASON_HINTS.find((w) => span.includes(w))
       if (!hit) continue
-      const line = `${r.label} ${r.id} 括号内「${span}」`
-      if (untouched) reasonGrandfathered.push(line)
-      else reasonRed.push(line)
+      reasonRed.push(`${r.label} ${r.id} 括号内「${span}」`)
     }
   }
-  check(
-    overRed.length === 0,
-    `说明文案长度契约：${overRed.length} 条说明超出 ${COPY_LEN_MAX} 字（口径 = 只数汉字/字母/数字，标点不计）——新写或改动过的说明必须压到 ${COPY_LEN_MAX} 字以内：${overRed.slice(0, 8).join(' · ')}${overRed.length > 8 ? ` …（共 ${overRed.length} 条）` : ''}`,
-  )
   check(
     reasonRed.length === 0,
     `说明文案原因解释契约：${reasonRed.length} 处用括号写原因解释——说明只回答"是什么/有什么用"，不解释"为什么"（船长 2026-09-17）：${reasonRed.slice(0, 6).join(' · ')}`,
   )
   console.log(
-    `· 说明文案长度契约：核对 ${copyRows.length} 条说明（装备/物品/舰船/蓝图/敌卡，上限 ${COPY_LEN_MAX} 字）· 存量待改写 ${overGrandfathered.length} 条（基线宽限，只列清单不阻断）· 超线报红 ${overRed.length} 条 · 括号原因解释：存量待改写 ${reasonGrandfathered.length} 处 / 报红 ${reasonRed.length} 处`,
+    `· 说明文案原因解释契约：核对 ${copyRows.length} 条说明（装备/物品/舰船/蓝图/敌卡）· 括号原因解释报红 ${reasonRed.length} 处（**长度上限已于 2026-09-18 废止，相关基线/存量清单已清档**）`,
   )
-  if (overGrandfathered.length > 0)
-    console.log(
-      `  ⚠ 待改写存量（前 6 条）：${overGrandfathered.slice(0, 6).join(' · ')}${overGrandfathered.length > 6 ? ` …（共 ${overGrandfathered.length} 条，清单见 tools/copy-len-baseline.json）` : ''}`,
-    )
 }
 
 /* ── 技能说明契约（2026-09-11 加，船长：「另开一批做技能说明 ↔ 引擎效果核查」）──
@@ -1343,6 +1317,12 @@ const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18
  */
 const OFFICIAL_SLOT_ALIGNED = new Set(['sh-nautilus', 'sh-bullshark'])
 /**
+ * **「官方武装舰 高槽 ≥ 低槽+1」的白名单豁免**（船长 2026-09-18 裁定甲）：
+ * 鹦鹉螺级测绘巡洋舰按船长指定的 **3/4/4**（中槽型功能舰）⇒ 高 3 < 低 4+1，故豁免这一条；
+ * 其余官方武装舰照旧受约束。**总数仍 11**（T3 基准线不破，见 `OFFICIAL_SLOT_ALIGNED`）。
+ */
+const OFFICIAL_HIGH_SLOT_EXEMPT = new Set(['sh-nautilus'])
+/**
  * **非战斗舰血量目标总血**（2026-09-15 船长定；与 `packages/data/src/ships.ts` 头注同源）：
  * 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
  * 参考中位：T1 228 · T2 384 · T3 675 · T4 1273 · T5 2355 ⇒ 目标见下表。
@@ -1418,7 +1398,13 @@ for (const s of SHIPS) {
     //   陵寝巡洋舰 4/4/4）—— 让"高槽多"去推翻那套设计不成立。三艘的实际布局由
     //   `core/tests/wh-ship-baseline.test.ts`「D 族三艘的实际布局逐一钉住」逐条守着。
     if (s.role === 'armed' && !s.id.startsWith('sh-wh-')) {
-      check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+      // ⚠ **2026-09-18 船长：「鹦鹉螺的槽位改成3/4/4」** ⇒ 高 3 < 低 4 会撞这条弱断言。
+      //   裁定 = **给 `sh-nautilus` 一条白名单豁免**（理由：它是**中槽型功能舰**——测绘/侦察线，
+      //   中槽 = 命中/闪避支援正是它吃的那两项；与同子分类「侦察舰」的幽影侦察舰 3/4/1 同形）。
+      //   其余官方武装舰**照旧**受约束。
+      if (!OFFICIAL_HIGH_SLOT_EXEMPT.has(s.id)) {
+        check(slots.high >= slots.low + 1, `武装舰 ${s.id} 高槽应显著多于低槽（${slots.high} vs ${slots.low}）`)
+      }
     }
     // **专属舰槽位基准线契约**（船长 2026-09-14：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
     // 种族专属的会在这个基础上 +1 槽位」）——只钉 `sh-wh-*`；官方船现状不在此契约内（见 TIER_SLOT_BASE 注释）。
@@ -1902,6 +1888,41 @@ for (const m of MODULES) {
   console.log(
     `· 隐秘行动装置契约：${SPEC.map((s) => `${byId.get(s.id)?.name} ${s.ms / 1000} 秒 · CPU ${s.cpu} · ${s.price / 10_000} 万（${s.rarity} 档 ${s.tier}）`).join(' · ')}` +
       ` · 带推进器即解除（引擎口径，见 core 用例；**侦察舰特性例外**见下一条契约）`,
+  )
+}
+
+/* ── 电子舰特性契约（船长 2026-09-18：「**电子舰新增特性，削减敌人15%的武器射程，可以乘法叠加，与敌人的
+ *   射程增加效果做加法处理…射程最短只能削弱到3000m（不足3000m的无法被削弱）。**」）──
+ * 本条钉三件事（数值是船长的数 ⇒ 改一处即红）：
+ *   ① **恰好两艘**（掠袭电子舰 / 哨戒电子舰）带 `foeRangeDebuffPct`，值 = **0.15**；
+ *   ② **别的船一件都不许带**（防"顺手给某艘船也开个口子"）；
+ *   ③ 带字段的船，其子分类必须是「电子舰」（字段 ↔ 子分类一致，防"把特性挂到别的船型上"）。
+ * ⚠ 引擎侧口径（乘法合成 · 与增程做加法 · 3000m 地板）由 core 用例钉住：`tests/foe-range-debuff.test.ts`。 */
+{
+  const EW_SHIPS = ['sh-wh-a-frigate', 'sh-wh-d-frigate'] as const
+  const byId = new Map(SHIPS.map((s) => [s.id, s]))
+  for (const id of EW_SHIPS) {
+    const s = byId.get(id)
+    check(s !== undefined, `电子舰缺件：${id}`)
+    if (!s) continue
+    check(s.subClass === '电子舰', `${id} 的子分类应为「电子舰」，实际 ${s.subClass ?? '(无)'}`)
+    check(
+      s.foeRangeDebuffPct === 0.15,
+      `${id} 的敌舰射程削减应为 0.15（船长给定「削减敌人15%的武器射程」），实际 ${s.foeRangeDebuffPct}`,
+    )
+  }
+  const extra = SHIPS.filter(
+    (s) => !(EW_SHIPS as readonly string[]).includes(s.id) && (s.foeRangeDebuffPct ?? 0) > 0,
+  )
+  check(
+    extra.length === 0,
+    `只有「电子舰」那两艘能带该特性，实际多出：${extra.map((s) => `${s.name}(${s.id})`).join(' · ')}`,
+  )
+  const floorOwner = SHIPS.find((s) => (s.foeRangeDebuffPct ?? 0) > 0)
+  check(floorOwner !== undefined, '电子舰特性契约：没有任何船带 foeRangeDebuffPct（船长给定的特性凭空消失）')
+  console.log(
+    `· 电子舰特性契约：${EW_SHIPS.map((id) => byId.get(id)?.name ?? id).join(' · ')} ⇒ 削减敌舰武器射程 15%` +
+      `（编队乘法叠加：2 艘 27.75% · 与敌方增程做加法 · 基础 <3000m 不削、削后下限 3000m）· 其余 ${SHIPS.length - EW_SHIPS.length} 艘船一律不带`,
   )
 }
 

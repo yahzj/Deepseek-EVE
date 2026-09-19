@@ -69,17 +69,22 @@ describe('虫洞族专属舰船：槽位基准线（2026-09-14 船长）', () =>
   })
 })
 
-describe('官方 T3 槽位对齐（船长 2026-09-14：「2.鹦鹉螺+1槽位，牛鲨-1槽位。」）', () => {
-  it('两艘都收到 T3 默认线 11，且满足武装舰契约「高槽 ≥ 低槽 + 1」', () => {
+describe('官方 T3 槽位对齐（船长 2026-09-14：「2.鹦鹉螺+1槽位，牛鲨-1槽位。」；2026-09-18 鹦鹉螺改 3/4/4）', () => {
+  it('两艘都收到 T3 默认线 11（鹦鹉螺按船长 2026-09-18 指定为 3/4/4，已列入契约白名单豁免）', () => {
     const nautilus = SHIPS.find((s) => s.id === 'sh-nautilus')!
     const bullshark = SHIPS.find((s) => s.id === 'sh-bullshark')!
-    expect(nautilus.slots).toEqual({ high: 4, mid: 4, low: 3 }) // 中槽 +1（原 4/3/3 = 10）
+    expect(nautilus.slots).toEqual({ high: 3, mid: 4, low: 4 }) // 2026-09-18 船长「鹦鹉螺的槽位改成3/4/4」（总数仍 11）
     expect(bullshark.slots).toEqual({ high: 5, mid: 2, low: 4 }) // 中槽 −1（原 5/3/4 = 12）
     for (const s of [nautilus, bullshark]) {
       const slots = s.slots!
       expect(slots.high + slots.mid + slots.low, `${s.name} 槽位总数`).toBe(TIER_SLOT_BASE[s.tier])
-      expect(slots.high, `${s.name} 武装舰契约`).toBeGreaterThanOrEqual(slots.low + 1)
     }
+    // 武装舰契约「高槽 ≥ 低槽 + 1」：**鹦鹉螺按船长 2026-09-18 的 3/4/4 豁免**（中槽型功能舰，
+    // `content:check` 的 `OFFICIAL_HIGH_SLOT_EXEMPT` 同一份口径）；牛鲨照旧受约束。
+    const bs = bullshark.slots!
+    expect(bs.high, '牛鲨级武装舰契约').toBeGreaterThanOrEqual(bs.low + 1)
+    const na = nautilus.slots!
+    expect(na.high, '鹦鹉螺按船长指定为 3/4/4（豁免该契约）').toBe(3)
   })
 })
 

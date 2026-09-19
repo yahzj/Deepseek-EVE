@@ -17,7 +17,7 @@ import type { WormholeState } from './wormhole'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 26
+export const CURRENT_STATE_VERSION = 27
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -861,6 +861,20 @@ export interface BattleState {
    */
   foeGunRangeBuff?: number;
   /**
+   * **我方电子舰对敌舰射程的削减率**（船长 2026-09-18：「电子舰新增特性，**削减敌人15%的武器射程**，
+   * 可以乘法叠加，与敌人的射程增加效果做加法处理…射程最短只能削弱到3000m」）。
+   *
+   * 值 = 编队合成的**削减率** `r = 1 − Π(1 − vᵢ)`（电子舰 1 艘 0.15 · 2 艘 0.2775 …，见
+   * `combat.foeRangeDebuffOf`）；与敌方"射程增加"**做加法**：净倍率 = 增程倍率 − r；
+   * **基础射程 < 3000m 的不削**、削后**下限 3000m**（`FOE_RANGE_DEBUFF_FLOOR_M`）。
+   *
+   * ⚠ **运行态、不随档**：战斗建档与**每拍**各重算一次（读档/中途换编队都不会陈旧）。
+   * 消费方只有两处（既有单一真相源）：`combat.foeGunMaxRangeOf`（舰体武器）与
+   * `combat.foeDroneRangeOf`（敌方机群）——开火门 / 距离衰减 / 界面射程标签全部自动跟随。
+   * 缺省 = 不削（没带电子舰的编队逐字不变）。
+   */
+  meFoeRangeDebuff?: number;
+  /**
    * **战斗内提示条**（2026-09-11 船长二次裁定：「**日志内不用显示提示，将该提示放入战斗画面内显示**
    * （和**敌方增援**统一下系统，**显示位置改为战斗窗口正上方**）」）。
    *
@@ -1196,7 +1210,7 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   shipStore?: Record<string, number>
   /**
    * **装配方案（预设）**（2026-09-14 船长：装配页可「保存当前装配 / 套用预设」，入口在「装配目标」栏右侧）。
-   * 归口 = **船型 id**（`defId`）：同型号任意一艘都能套用；每型上限 `FIT_PRESET_MAX = 3`。
+   * 归口 = **船型 id**（`defId`）：同型号任意一艘都能套用；每型上限 `FIT_PRESET_MAX`（**现 10**，2026-09-17 船长「上限拓展到10套」）。
    * `fitted` 逐位存模块 id（尾部空位已裁），`droneLoad` 与舰船实例同结构；
    * 套用语义（先卸光再装 · 尽力装 + 逐条提示）与结果清单见 `fitPresets.ts`。
    * **兼容字段：老档缺省 = 空 · 零迁移 · 不升版本**（与同日 `shipStore` / `wormholeScan` 同款落法：
@@ -1766,7 +1780,7 @@ export type GameStateV25 = Omit<GameStateV24, 'version'> & {
   firstStats?: FirstStats
 }
 /**
- * 第二十六版存档结构（当前版本）：**v26 = v25 + 「第一次」任务系列上线时的一次性老档判定**（2026-09-17 教程重做）。
+ * 第二十六版存档结构：**v26 = v25 + 「第一次」任务系列上线时的一次性老档判定**（2026-09-17 教程重做）。
  *
  * 结构本身没动（irstStats 仍是可选字段）——**升版只为给"老档判定"一个只跑一次的落点**：
  * v25 及更早的档在读取时把 13 条「第一次」整体判为已完成（通讯由 irstTask 触发器自然补送、**不发奖励**），
@@ -1776,7 +1790,19 @@ export type GameStateV26 = Omit<GameStateV25, 'version'> & {
   version: 26
 }
 /** 对外统一称呼：当前版本状态（v26 = v25 + 老档「第一次」一次性判定） */
-export type GameState = GameStateV26
+/**
+ * 第二十七版存档结构（当前版本）：**v27 = v26 + 市场链换口径的一次性老档折算**（2026-09-18 船长）。
+ *
+ * 结构同样没动（`firstStats` 仍是可选字段）——升版只为让「挂单张数 → 交易收入」的折算**只跑一次**：
+ * v26 及更早的档在读取时按**级别对齐**折算：旧表由挂单张数算出已达级数 N ⇒ `firstStats.marketIncome`
+ * 直接取新表第 N 级的门槛值，已达级数**一点不倒退**（挂单 0 张的档不写 = 零迁移）；
+ * 新档（v27 起）从 0 起算真·交易收入（`market.ts` 四处卖出入账处累计）。
+ */
+export type GameStateV27 = Omit<GameStateV26, 'version'> & {
+  version: 27
+}
+/** 对外统一称呼：当前版本状态（v27 = v26 + 市场链一次性折算） */
+export type GameState = GameStateV27
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -2141,11 +2167,11 @@ export function createInitialState(opts?: {
   seed?: number
   nowWallMs?: number
   prologue?: boolean
-}): GameStateV26 {
+}): GameStateV27 {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV26 = {
-    version: 26,
+  const state: GameStateV27 = {
+    version: 27,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,

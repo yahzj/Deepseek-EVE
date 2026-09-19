@@ -388,6 +388,12 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
         bits.push(`隐秘行动装置 CPU ×${ship.stealthCpuMul}（向上取整）`)
       }
       if (ship.stealthIgnoresPropulsion === true) bits.push('装推进器也能保持隐身（不受推进器失效限制）')
+      // 2026-09-18 船长：**电子舰特性 · 压制敌舰武器射程**（多艘乘法叠加 · 与敌方增程做加法 · 下限 3000m）
+      if ((ship.foeRangeDebuffPct ?? 0) > 0) {
+        bits.push(
+          `压制敌舰武器射程 ${Math.round((ship.foeRangeDebuffPct ?? 0) * 100)}%（多艘乘法叠加；与敌方增程相加；最低 3000 m）`,
+        )
+      }
       return bits.length > 0 ? [{ k: '船体特性', v: bits.join(' · ') }] : []
     })(),
     { k: '货舱容量', v: `${fmt(ship.cargoM3)} m³` },
