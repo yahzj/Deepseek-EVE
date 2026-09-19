@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, rackOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
-import { Glyph, toneOf } from '../ui/Glyphs'
+import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
@@ -312,7 +312,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     >
                       <div className="app-inv-main">
                         <span className="app-inv-name">
-                          <RowGlyph glyph={def.kind} /> {def.name}
+                          <RowGlyph glyph={def.kind} tone={inventoryItemTone(id, def.kind)} /> {def.name}
                           {def.kind !== 'ore' && def.kind !== 'mineral' ? (
                             <span className="app-dim">（{ITEM_KIND_LABELS[def.kind]}）</span>
                           ) : null}
@@ -446,6 +446,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 name: def?.name ?? id,
                 sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                 title: def?.description,
+                // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
+                tone: inventoryItemTone(id, def?.kind ?? kind),
               }
             })
             const extra2 = kindExtraNote(kind)
@@ -485,7 +487,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             <ItemActionModal onClose={() => setPickItem(null)}>
               <div className="app-itempick-head">
                 <span className="app-itempick-icon">
-                  <Glyph name={pickItemDef.kind} size={40} color={toneOf(pickItemDef.kind)} />
+                  <Glyph name={pickItemDef.kind} size={40} color={inventoryItemTone(pickItem, pickItemDef.kind)} />
                 </span>
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickItemDef.name}</div>

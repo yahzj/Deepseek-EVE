@@ -55,6 +55,12 @@ export interface ItemGridCell {
   name: string
   sub?: string
   title?: string
+  /**
+   * 图标色覆盖（缺省 = `toneOf(glyph)`）。
+   * 用途只有一个：货仓页 / 物品页仓库给**稀有残骸**上稀有金（船长 2026-09-19）；
+   * 其余调用方不传 ⇒ 与改动前逐字一致（手册 / 装配 / 货仓的装备卡都不受影响）。
+   */
+  tone?: string
 }
 
 /** 分类补充说明（仓库/货仓列表与图标模式共用；2026-09-08 船长反馈弹药/无人机存放含义） */
@@ -77,10 +83,13 @@ export function kindExtraNote(kind: string): string | null {
  * 2026-09-10 船长：物品页仓库与货仓的**列表模式**照手册图鉴在名字前加对应图标。
  * 键口径与图鉴一致——物品取 `def.kind`、装备取 `def.slot`（同一个 Glyphs 图标库 + toneOf 色调）。
  * 本组件 = 该行首图标的唯一实现（手册/物品页/货仓共用），样式沿用图鉴行样式 `.app-hand-row-glyph`。
+ *
+ * `tone` 可选：只有货仓页 / 物品页仓库给**稀有残骸**传稀有金（船长 2026-09-19），
+ * 缺省仍走 `toneOf(glyph)` ⇒ 手册、装配等既有调用零变化。
  */
-export function RowGlyph({ glyph }: { glyph: string }) {
+export function RowGlyph({ glyph, tone }: { glyph: string; tone?: string }) {
   return (
-    <span className="app-hand-row-glyph" style={{ color: toneOf(glyph) }}>
+    <span className="app-hand-row-glyph" style={{ color: tone ?? toneOf(glyph) }}>
       <Glyph name={glyph} size={15} color="currentColor" />
     </span>
   )
@@ -92,7 +101,7 @@ export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick
   return (
     <div className="app-hand-grid" data-ui-group={ICON_LIST_GROUP}>
       {cells.map((c) => {
-        const tone = toneOf(c.glyph)
+        const tone = c.tone ?? toneOf(c.glyph)
         return (
           <div
             key={c.key}

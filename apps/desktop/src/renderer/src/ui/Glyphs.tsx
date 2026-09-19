@@ -965,6 +965,26 @@ export function itemToneOf(itemId: string, iconKey: string): string {
   return TONES[itemId] ?? toneOf(iconKey)
 }
 
+/**
+ * **稀有残骸＝稀有金**（船长 2026-09-19：「将稀有残骸和普通残骸进行下区分，建议用颜色区分」；
+ * 三答：只给**图标**上色 · 取既有「稀有」色阶 · 范围限**货仓页 ＋ 物品页仓库**）。
+ *
+ * 色值 `#f4c95d` 与 `.app-chip.is-rare`（残骸打捞卡 / 星图稀有残骸战果行 / 工业页「稀有」徽标）
+ * **同一支色阶**——玩家一眼就是同一套语汇。普通残骸保持旧黄铜 `#b8a37a`（`TONES.wreck`），
+ * 两者继续共用同一枚 `wreck` 线稿（与 `box-bp-*` 按层档、`ai-core-*` 按稀有度分色同一套做法）。
+ */
+export const RARE_WRECK_TONE = '#f4c95d'
+
+/**
+ * 仓库 / 货仓两页的**物品图标色**：稀有残骸（`wreck-rare-*`）走稀有金，其余照旧按大类取色。
+ *
+ * ⚠ **只在这两页调用**（船长圈定的范围）：手册图鉴 / 工业页回收炉 / 星图打捞页 / 虫洞散货清单
+ * 一律维持原样——它们读的是 `TONES` / `itemToneOf`，本函数**不去改那两条**，正是为了不越界。
+ */
+export function inventoryItemTone(itemId: string, kind: string): string {
+  return itemId.startsWith('wreck-rare-') ? RARE_WRECK_TONE : toneOf(kind)
+}
+
 /** 导航/标签图标专属色调（2026-09-05 船长：每个图标各自纯色，未选中也着色；选中态由按钮高亮区分） */
 export const NAV_TONES: Record<string, string> = {
   'nav-map': '#ffe08a',
