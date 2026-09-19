@@ -239,15 +239,18 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     foeTargeting: 'noncombat',
     foeTargetingChance: 0.4,
     dmgMix: { kinetic: 8, explosive: 2 },
-    // 编成 = 海盗头目舰 ×1（brawl 精锐）+ 海盗快艇 ×3（brawl 贴脸）——A 族悬赏线的经典"头目 + 杂鱼 ×3"
+    // 编成 = 海盗头目舰 ×1（brawl 精锐）+ **劫掠电子舰 ×1** + 海盗快艇 ×2（brawl 贴脸）——
+    // A 族悬赏线的经典"头目 + 杂鱼"，电子舰于 2026-09-16 换下一条快艇（单位数仍 4）
     // ⚠ 快艇舰级自带「爆炸 8 : 动能 2」⇒ 同前，条目覆写回本卡签名构成
-    // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——同上，只挂条目
+    // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
       { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate] },
       // **新舰「劫掠电子舰」×1**（船长 2026-09-16）——改编成 头目×1 + 电子舰×1 + 快艇×2：
       // 单位数仍 4 ⇒ 本层本档的**总威胁预算不变**，只是把一条快艇换成电子战支援舰。
-      // 它自带两件挂载件（冲锋 ×1.6/30s ＋ 劫掠捕获网），故条目不再重复挂冲锋件。
-      { ship: FOE_SHIP_PIRATE_RAIDER, count: 1 },
+      // ⚠ **两件挂载件都写在本条目上**（2026-09-19 船长：「海盗电子舰的冲锋也移除，只在洞内单独挂载」）：
+      // 有效挂载是 `条目 ?? 舰级`（**替换**不是叠加）⇒ 舰级已清空，冲锋与捕获网必须**两件都写**，
+      // 只写冲锋会顶掉捕获网。
+      { ship: FOE_SHIP_PIRATE_RAIDER, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb] },
       { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
