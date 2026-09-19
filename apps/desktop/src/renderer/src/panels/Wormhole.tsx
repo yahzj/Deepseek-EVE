@@ -1786,7 +1786,12 @@ export function WormholePanel({
                           <span className="app-wh-scan-sub">不耗回合</span>
                         </button>
                       ) : null}
-                      {bossDone ? (
+                      {/*
+                        * 「继续深入」**只在站在下一层入口且守卫已清时出现**（船长 2026-09-18：「虫洞前往下一层
+                        * 修改为必须在下一层入口才可以前往」）——与"作业按钮只在真能用的时候才出现"同一套做法；
+                        * 核心侧 `wormholeDescend` 有同款判据（不只是界面收口）。
+                        */}
+                      {bossDone && atExit ? (
                         <button
                           className="app-btn is-primary app-wh-work"
                           disabled={!!run.battle || actionBlocked !== null || run.turnsLeft <= 0 || fxBusy}

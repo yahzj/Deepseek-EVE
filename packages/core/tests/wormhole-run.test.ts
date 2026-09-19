@@ -49,7 +49,7 @@ import {
 } from '../src/wormhole'
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholeGridCell, WormholePlace } from '../src/wormholeGrid'
-import { gridCellAt, hexDistance, wormholeGridRadiusFor } from '../src/wormholeGrid'
+import { gridCellAt, hexDistance, hexNeighbors, wormholeGridRadiusFor } from '../src/wormholeGrid'
 
 const ctx = buildSimContext()
 const T1 = 'sandcat'
@@ -84,6 +84,18 @@ function standOnPlace(run: WormholeRunState, place: WormholePlace): string {
   const g = run.grid!
   g.activated = g.activated.filter((k) => k !== cell.key)
   return cell.key
+}
+
+/**
+ * **把玩家落位到"下一层入口"格**（船长 2026-09-18 新口径：深入必须在入口）。
+ *
+ * ⚠ 用例里走位是**占位**（与 `wormhole-battle.test.ts` 的 `standAtExit` 同款）：真路径会被"途中有敌人"
+ * 拦下（那是另一套口径），而这里要验的是"深入这一步要不要在入口"。**真路径的"到达即标出"另有专测**
+ *（见「踩到入口格就把它标在地图上」）。
+ */
+function goToExit(run: WormholeRunState): void {
+  const g = run.grid!
+  g.pos = { q: g.exit.q, r: g.exit.r }
 }
 
 describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13；2026-09-14 起「就地作业」改为进洞自动停）', () => {
@@ -478,13 +490,52 @@ describe('虫洞 · 起程与副本推进', () => {
     const ex = wormholeExtract(run)
     expect(ex.ok, '守卫没清也该能开始撤离').toBe(true)
     expect(run.phase).toBe('extracting')
-    // 清掉守卫之后：深入放行
+    // 清掉守卫之后：还要**站在下一层入口**才放行（船长 2026-09-18 新口径）
     const b = enterForActions([T1, T1], 77)
     b.run.bossCleared = b.run.depth
+    const blocked = wormholeDescend(b.state, 77)
+    expect(blocked.ok, '不在入口不许深入').toBe(false)
+    expect(blocked.error ?? '').toContain('入口')
+    goToExit(b.run)
     expect(wormholeDescend(b.state, 77).ok).toBe(true)
     expect(b.run.depth).toBe(2)
   })
 
+  it('**深入必须在下一层入口**（船长 2026-09-18 新口径）：清完守卫也得出入口格；老档线性层不受影响', () => {
+    const { state, run } = enterForActions([T1, T1], 91)
+    run.bossCleared = run.depth
+    // ① 不在入口 ⇒ 拒（哪怕守卫已清）
+    const away = wormholeDescend(state, 91)
+    expect(away.ok, '不在入口不许深入').toBe(false)
+    expect(away.error ?? '').toContain('入口')
+    expect(run.depth).toBe(1)
+    // ② 走到入口 ⇒ 放行；新层是新盘（入口重随机）
+    const before = run.grid
+    goToExit(run)
+    expect(wormholeDescend(state, 91).ok).toBe(true)
+    expect(run.depth).toBe(2)
+    expect(run.grid).not.toBe(before)
+    // ③ 老档线性层（没有网格 ⇒ 没有"入口格"）⇒ 照旧放行（兼容边界）
+    const legacy = enterForActions([T1, T1], 91)
+    legacy.run.bossCleared = legacy.run.depth
+    legacy.run.grid = undefined
+    expect(wormholeDescend(legacy.state, 91).ok, '老档线性层不受新判据影响').toBe(true)
+    expect(legacy.run.depth).toBe(2)
+  })
+
+  it('**踩到入口格就把它标在地图上**（2026-09-18 配套）：与"扫到出口格 / 踩到漂浮信标"同一收口', () => {
+    const { state, run } = enterForActions([T1, T1], 92)
+    const g = run.grid!
+    expect(g.exitKnown, '默认不标出').toBeFalsy()
+    // 落到入口的**相邻格**（相邻一步没有途经格 ⇒ 不会被"途中有敌人"拦下），再走**真路径**踏上去
+    const nb = hexNeighbors(g.exit)
+      .map((c) => g.cells.find((x) => x.key === `${c.q},${c.r}`))
+      .find((c) => c !== undefined)!
+    g.pos = { q: nb.q, r: nb.r }
+    const res = wormholeGridTravel(state, { q: g.exit.q, r: g.exit.r }, { confirmUnknown: true })
+    expect(res.ok, res.error ?? '前往入口失败').toBe(true)
+    expect(g.exitKnown, '人到过 ⇒ 标出来，走开也能找回入口').toBe(true)
+  })
   it('**撤离开放**（2026-09-13 船长改裁定）：回合没耗尽、守卫没清、层内还有活 ⇒ 一样能开始撤离', () => {
     const { run } = enterForActions([T1, T1], 31)
     run.turnsLeft = 0 // 回合耗尽
@@ -519,6 +570,7 @@ describe('虫洞 · 起程与副本推进', () => {
     const { state, run } = enterForActions([T1, T1], 42)
     const oldGrid = run.grid!
     run.bossCleared = run.depth
+    goToExit(run) // 2026-09-18 新口径：深入必须在下一层入口
     expect(wormholeDescend(state, 42).ok).toBe(true)
     expect(run.depth).toBe(2)
     expect(run.nodeIndex).toBe(0)
@@ -534,6 +586,7 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(oldGrid.activated).not.toBe(g2.activated)
     // 再深一层：半径按层曲线（层 3 = 3）
     run.bossCleared = run.depth
+    goToExit(run) // 2026-09-18 新口径：深入必须在下一层入口
     expect(wormholeDescend(state, 42).ok).toBe(true)
     expect(run.depth).toBe(3)
     expect(run.nodesPerLayer).toBe(3)
@@ -550,11 +603,13 @@ describe('虫洞 · 起程与副本推进', () => {
     // 不带加成：新盘扫描半径 = 基础值
     const { state: plainState, run: plain } = enterForActions([T1, T1], 42)
     plain.bossCleared = plain.depth
+    goToExit(plain) // 2026-09-18 新口径：深入必须在下一层入口
     expect(wormholeDescend(plainState, 42).ok).toBe(true)
     const baseScan = plain.grid!.scanRadius
     // 带 +1 圈：同一 seed/层 ⇒ 只有扫描半径不同（盘面其余部分同源）
     const { state: boostedState, run: boosted } = enterForActions([T1, T1], 42)
     boosted.bossCleared = boosted.depth
+    goToExit(boosted) // 2026-09-18 新口径：深入必须在下一层入口
     expect(wormholeDescend(boostedState, 42, 1).ok).toBe(true)
     expect(boosted.grid!.scanRadius).toBe(baseScan + 1)
     expect(boosted.grid!.cells.length).toBe(plain.grid!.cells.length) // 加成只改"能扫多远"，不改盘大小
@@ -564,6 +619,7 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(wormholeScanBonusOf(ctx, withScout.fleet)).toBe(1)
     expect(wormholeScanBonusOf(ctx, [T1, T1])).toBe(0)
     withScout.bossCleared = withScout.depth
+    goToExit(withScout) // 2026-09-18 新口径：深入必须在下一层入口
     expect(wormholeDescend(withScoutState, 42, wormholeScanBonusOf(ctx, withScout.fleet)).ok).toBe(true)
     expect(withScout.grid!.scanRadius).toBe(baseScan + 1)
   })

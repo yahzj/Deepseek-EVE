@@ -81,6 +81,8 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     state.wormhole.run = one.run!
     const run = one.run!
     run.bossCleared = run.depth
+    // 2026-09-18 新口径：深入必须在「下一层入口」格（这里直接落位，省掉走格铺垫）
+    run.grid!.pos = { q: run.grid!.exit.q, r: run.grid!.exit.r }
     expect(wormholeDescend(state, 42, wormholeScanBonusOf(ctx, run.fleet)).ok).toBe(true)
     expect(run.grid!.scanRadius).toBe(baseScan + 1)
   })

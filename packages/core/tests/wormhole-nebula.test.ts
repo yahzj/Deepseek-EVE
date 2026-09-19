@@ -62,6 +62,16 @@ function enterForActions(shipIds: readonly string[] = [T1, T1, T1, T1], seed = 1
   return { state, run }
 }
 
+/**
+ * **把玩家落位到"下一层入口"格**（船长 2026-09-18 新口径：深入必须在入口）。
+ * ⚠ 用例里走位是占位（与 `wormhole-battle.test.ts` 的 `standAtExit` 同款）——真路径会被"途中有敌人"拦下，
+ * 而这里要验的是深入这一步的位置门槛；真路径的"到达即标出"由 `wormhole-run.test.ts` 专测。
+ */
+function goToExit(run: WormholeRunState): void {
+  const g = run.grid!
+  g.pos = { q: g.exit.q, r: g.exit.r }
+}
+
 describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空占比随层降）', () => {
   it('**遗迹格下限从层 3 起**：层 1/2 = 0（层 1 恒 0 张）· 层 3~4 = 2 · 层 5~6 = 3 · 层 7~8 = 4（每层都验，120 seed）', () => {
     // ⚠ 船长 2026-09-16：「遗迹的保底，改为从3层开始保底。1层没有遗迹」⇒ 旧表 层1/2 = 1 作废
@@ -288,12 +298,14 @@ describe('虫洞 · 星云遮蔽与驱散（船长 2026-09-13）', () => {
     // 层 1→2→3：都不该触发
     for (const _ of [1, 2]) {
       run.bossCleared = run.depth
+      goToExit(run)
       expect(wormholeDescend(state, 42).ok).toBe(true)
       expect(state.nebulaHintNotice ?? null).toBeNull()
     }
     expect(run.depth).toBe(3)
     // 层 3→4：触发
     run.bossCleared = run.depth
+    goToExit(run)
     expect(wormholeDescend(state, 42).ok).toBe(true)
     expect(run.depth).toBe(4)
     expect(state.wormhole.nebulaHintShown).toBe(true)
@@ -301,6 +313,7 @@ describe('虫洞 · 星云遮蔽与驱散（船长 2026-09-13）', () => {
     // 清掉不落档的一次性事件后：再深入（层 5）**不再给**
     state.nebulaHintNotice = null
     run.bossCleared = run.depth
+    goToExit(run)
     expect(wormholeDescend(state, 42).ok).toBe(true)
     expect(run.depth).toBe(5)
     expect(state.nebulaHintNotice ?? null).toBeNull()
@@ -309,6 +322,7 @@ describe('虫洞 · 星云遮蔽与驱散（船长 2026-09-13）', () => {
     second.state.wormhole.nebulaHintShown = true
     second.run.depth = 4
     second.run.bossCleared = 4
+    goToExit(second.run)
     expect(wormholeDescend(second.state, 42).ok).toBe(true)
     expect(second.state.nebulaHintNotice ?? null).toBeNull()
   })

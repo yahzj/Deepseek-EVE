@@ -751,6 +751,19 @@ export function wormholeDescend(
     return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
   }
   if (run.turnsLeft <= 0) return { ok: false, error: '回合已耗尽：只能撤离。', mustExtract: true }
+  /**
+   * **深入必须在「下一层入口」（下潜点）那一格**（船长 2026-09-18：「**虫洞前往下一层修改为必须在下一层
+   * 入口才可以前往**」）。
+   *
+   * 与守卫战**同一把尺**（`wormholeBattle.ts` 的 boss 分支已要求 `isExitCell`）——本次把同一条口径补到
+   * "深入"这一步：**只认此刻站在入口格**（走开就得走回来）。
+   *
+   * ⚠ **老档线性层没有网格**（`grid === undefined`）⇒ 没有"入口格"可言，**跳过本判据**（照旧放行）。
+   * ⚠ 判据排在**回合耗尽之后**：回合见底时"只能撤离"是更决定性的状态，先报它。
+   */
+  if (run.grid && !isExitCell(run.grid, run.grid.pos)) {
+    return { ok: false, error: '没站在下一层入口：先走到入口（下潜点）再深入。' }
+  }
   run.depth += 1
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
@@ -1098,6 +1111,14 @@ export function wormholeGridTravel(
   if (!grid.scanned.includes(dest.key)) grid.scanned.push(dest.key)
   const signal = signalOfPlace(dest.place)
   const atExit = isExitCell(grid, dest)
+  /**
+   * **踩到入口格 ⇒ 把它标在地图上**（船长 2026-09-18 配套裁定）。
+   *
+   * 新口径要求"必须在入口才能深入" ⇒ 清了守卫后若去捡漏/采集，玩家得走回来；而入口原先只有
+   * "**扫到出口格**"或"**踩到漂浮信标**"才标出（`markExitKnown` 的两条途径）——**人到过却不认**，
+   * 走开就可能找不回去。⇒ 与那两条**同一收口**（它顺便把出口格并入 `scanned`，前往时不再问"未知地点"）。
+   */
+  if (atExit) markExitKnown(grid)
   // ── 到达即触发：舰船信号（开打）/ 漂浮信标（标出入口） ──
   const first = !grid.activated.includes(dest.key)
   const autoBattle = first && dest.place === 'ship'
