@@ -27,55 +27,184 @@ export interface EnText {
 
 export type EnTable = Readonly<Record<string, EnText>>
 
-/** 舰船（43 · `docs/glossary-en.md` §四；虫洞族舰名不带 `-class`，与中文一致） */
+/** 舰船（43 · `docs/glossary-en.md` §四；**名称 + 说明**。说明逐条译自中文原文，括号里的规格照留） */
 export const EN_SHIPS: EnTable = {
   // ── 采矿 / 工业 / 货运
-  sandcat: { name: 'Sandcat-class Mining Corvette' },
-  burrower: { name: 'Burrower-class Mining Corvette' },
-  whale: { name: 'Whaleswallow-class Mining Corvette' },
-  pioneer: { name: 'Pioneer-class Mining Corvette' },
-  'whale-king': { name: 'Whaleking-class Mining Corvette' },
-  'sh-humpback': { name: 'Humpback-class Mining Ship' },
-  'sh-bowhead': { name: 'Manta-class Heavy Freighter' },
-  'sh-colossal': { name: 'Oarfish-class Flagship Freighter' },
-  'sh-flyingfish': { name: 'Flyingfish-class Courier' },
-  'sh-sailfish': { name: 'Sailfish-class Fast Freighter' },
-  'sh-swordfish': { name: 'Swordfish-class Heavy Freighter' },
+  sandcat: {
+    name: 'Sandcat-class Mining Corvette',
+    description: 'The starter mining boat: basic hold and a single mining laser. Your first ship — and, for now, your only one.',
+  },
+  burrower: {
+    name: 'Burrower-class Mining Corvette',
+    description: 'A larger hold and twin mining lasers — nearly double the output. The mark of graduating from the starter grounds.',
+  },
+  whale: {
+    name: 'Whaleswallow-class Mining Corvette',
+    description: 'A deep-space industrial beast: four mining lasers strip half an asteroid in one pass. The name fits.',
+  },
+  pioneer: {
+    name: 'Pioneer-class Mining Corvette',
+    description: "The Association shipyard's custom boat: not for sale — build it on your own pad from raw materials. A step faster than the Whaleswallow-class.",
+  },
+  'whale-king': {
+    name: 'Whaleking-class Mining Corvette',
+    description: 'The peak of deep-space industry: double the Whaleswallow-class output. A heavy-tungsten devourer, and the longest-term material goal in the game.',
+  },
+  'sh-humpback': {
+    name: 'Humpback-class Mining Ship',
+    description: 'The third-generation Leviathan mining ship: a freighter-grade hold with another step up in output.',
+  },
+  'sh-bowhead': {
+    name: 'Manta-class Heavy Freighter',
+    description: 'A heavy freighter assembled by the Leviathan yards: over 26,000 m³ of hold — the backbone of offline stockpiling and long hauls.',
+  },
+  'sh-colossal': {
+    name: 'Oarfish-class Flagship Freighter',
+    description: 'The flagship freighter of the Leviathan yards: 108,000 m³ of hold — a mobile fortress of deep-space logistics.',
+  },
+  'sh-flyingfish': {
+    name: 'Flyingfish-class Courier',
+    description: 'A courier: hold space and combat ability traded away for high-speed warping. The entry choice for small-scale stockpiling.',
+  },
+  'sh-sailfish': {
+    name: 'Sailfish-class Fast Freighter',
+    description: 'A fast freighter: 8,500 m³ of hold while still warping at speed.',
+  },
+  'sh-swordfish': {
+    name: 'Swordfish-class Heavy Freighter',
+    description: "Mirage Shipping's flagship freighter: 14,000 m³ of capacity — the trader's ultimate dream.",
+  },
   // ── 武装舰
-  'sh-falconet': { name: 'Skipjack-class Frigate' },
-  'sh-shrike': { name: 'Mackerel-class Frigate' },
-  'sh-tigershark': { name: 'Tigershark-class Armed Frigate' },
-  'sh-mako': { name: 'Mako-class Destroyer' },
-  'sh-whiteshark': { name: 'Whiteshark-class Gunboat' },
-  'sh-swarm': { name: 'Barracuda-class Drone Frigate' },
-  'sh-sentinel': { name: 'Kingfish-class Drone Carrier' },
-  'sh-thresher': { name: 'Thresher-class Missile Cruiser' },
-  'sh-electricray': { name: 'Electricray-class Laser Cruiser' },
-  'sh-hammerhead': { name: 'Hammerhead-class Gunnery Cruiser' },
-  'sh-bullshark': { name: 'Bullshark-class Assault Cruiser' },
-  'sh-nautilus': { name: 'Nautilus-class Survey Cruiser' },
+  'sh-falconet': {
+    name: 'Skipjack-class Frigate',
+    description: 'The Association training gunship: poor at mining but startlingly quick — already a nimble ride for low-risk expeditions.',
+  },
+  'sh-shrike': {
+    name: 'Mackerel-class Frigate',
+    description: "The Predator armament division's standard frigate: high mobility, low yield — a fine escort for AI auxiliaries.",
+  },
+  'sh-tigershark': {
+    name: 'Tigershark-class Armed Frigate',
+    description: 'A heavier armed frigate: a stronger firepower frame, and a familiar sight on deep-space escort duty.',
+  },
+  'sh-mako': {
+    name: 'Mako-class Destroyer',
+    description: "A large destroyer: the backbone hull of the Association's armed forces.",
+  },
+  'sh-whiteshark': {
+    name: 'Whiteshark-class Gunboat',
+    description: 'A top-tier gunboat: a symbol of both reputation and capability.',
+  },
+  'sh-swarm': {
+    name: 'Barracuda-class Drone Frigate',
+    description: "The Predator armament division's drone frigate: a large drone nest that launches swarms to back up thin gun batteries.",
+  },
+  'sh-sentinel': {
+    name: 'Kingfish-class Drone Carrier',
+    description: "A drone carrier custom-built by the Predator armament division: double the nest and ample fitting space — the peak platform for drone power.",
+  },
+  'sh-thresher': {
+    name: 'Thresher-class Missile Cruiser',
+    description: 'A new-generation missile cruiser of the Predator armament division: a long-range hunter named for its tail, opening with a missile salvo. The hull is tuned for missile arrays — explosive ammo gains extra damage.',
+  },
+  'sh-electricray': {
+    name: 'Electricray-class Laser Cruiser',
+    description: 'A beam cruiser of the Predator armament division: laser arrays like high-voltage arcs that burn through shields on contact. The hull is tuned for beam focusing — energy weapons gain extra damage.',
+  },
+  'sh-hammerhead': {
+    name: 'Hammerhead-class Gunnery Cruiser',
+    description: "The Predator armament division's gunnery mainstay: the core of heavy kinetic broadsides and the fleet's long spear in deep-space hunts. The hull is tuned for kinetic batteries — kinetic weapons gain extra damage.",
+  },
+  'sh-bullshark': {
+    name: 'Bullshark-class Assault Cruiser',
+    description: "The Predator armament division's fiercest biter: an assault cruiser of thick shields and heavy guns, built for point-blank brawls. The hull is tuned for kinetic batteries — kinetic weapons gain extra damage.",
+  },
+  'sh-nautilus': {
+    name: 'Nautilus-class Survey Cruiser',
+    description: 'An Association survey cruiser: joining a wormhole fleet widens scan range by one ring (multiple ships stack).',
+  },
   // ── 重装 / 旗舰
-  'sh-tortoise': { name: 'Tortoise-class Heavy Corvette' },
-  'sh-hawksbill': { name: 'Hawksbill-class Heavy Cruiser' },
-  'sh-xuanwu': { name: 'Leatherback-class Heavy Flagship' },
-  'sh-megalodon': { name: 'Megalodon-class Battleship' },
-  'sh-dunkleosteus': { name: 'Dunkleosteus-class Flagship' },
+  'sh-tortoise': {
+    name: 'Tortoise-class Heavy Corvette',
+    description: 'A slow, steady armored transport: a big hold and a thick hide.',
+  },
+  'sh-hawksbill': {
+    name: 'Hawksbill-class Heavy Cruiser',
+    description: 'A heavy cruiser: a mobile warehouse in thick shell — a reliable partner for long offline operations.',
+  },
+  'sh-xuanwu': {
+    name: 'Leatherback-class Heavy Flagship',
+    description: 'The apex of the heavy line: said to be forged from the rocky shell of an entire asteroid.',
+  },
+  'sh-megalodon': {
+    name: 'Megalodon-class Battleship',
+    description: 'A battleship named for a prehistoric giant: a front-line damage sponge and fire platform. Three thick HP layers and generous fitting space let it stand at the head of the formation — at the cost of slow turns and slow starts.',
+  },
+  'sh-dunkleosteus': {
+    name: 'Dunkleosteus-class Flagship',
+    description: "The fleet's apex: damage soaking, firepower and fitting space all above its generation — as are its price and build time. It sets the pace of the whole formation: when it is slow, everyone waits.",
+  },
   // ── 虫洞族舰（敌舰模板名，不带 -class）
-  'sh-wh-a-frigate': { name: 'Raider EW Frigate' },
-  'sh-wh-a-destroyer': { name: 'Raider Gunboat' },
-  'sh-wh-a-cruiser': { name: 'Raider Heavy Assault Cruiser' },
-  'sh-wh-c-frigate': { name: 'Larva Interceptor' },
-  'sh-wh-c-destroyer': { name: 'Carapace Interceptor' },
-  'sh-wh-c-cruiser': { name: 'Hiveswarm Heavy Assault Cruiser' },
-  'sh-wh-d-frigate': { name: 'Sentry EW Frigate' },
-  'sh-wh-d-destroyer': { name: 'Tombwarden Command Ship' },
-  'sh-wh-d-cruiser': { name: 'Mausoleum Cruiser' },
-  'sh-wh-e-frigate': { name: 'Construct Torpedo Frigate' },
-  'sh-wh-e-destroyer': { name: 'Hangar Drone Combat Ship' },
-  'sh-wh-e-carrier': { name: 'Megastructure Drone Combat Ship' },
-  'sh-wh-g-frigate': { name: 'Wraith Scout Frigate' },
-  'sh-wh-g-destroyer': { name: 'Deadarmy Logistics Ship' },
-  'sh-wh-g-cruiser': { name: 'Deadarmy Torpedo Cruiser' },
+  'sh-wh-a-frigate': {
+    name: 'Raider EW Frigate',
+    description: 'A pirate electronic-warfare boat: strong in fire control and evasion — it locks first, hits first, and is harder to pin. Joining a wormhole fleet widens scan range by one ring (multiple ships stack).',
+  },
+  'sh-wh-a-destroyer': {
+    name: 'Raider Gunboat',
+    description: 'A pirate gunboat: kinetic batteries stretch kinetic weapon range by a further 30% — open fire from beyond reach. Cramped holds, and shields give way to armor.',
+  },
+  'sh-wh-a-cruiser': {
+    name: 'Raider Heavy Assault Cruiser',
+    description: 'A pirate heavy assault cruiser: all three resistances covered and another 10% more HP, built to crack hard targets. No extra firepower bonus; the cost is slow turns and a small hold.',
+  },
+  'sh-wh-c-frigate': {
+    name: 'Larva Interceptor',
+    description: 'A living interceptor of the hive: impossibly fast, hunting stragglers. Shields are barely there — a carapace and a frame hold it together.',
+  },
+  'sh-wh-c-destroyer': {
+    name: 'Carapace Interceptor',
+    description: 'A living interceptor of the hive: speed and agility maxed for slash-in, slash-out runs. Shields are paper-thin; armor and hull take every hit.',
+  },
+  'sh-wh-c-cruiser': {
+    name: 'Hiveswarm Heavy Assault Cruiser',
+    description: 'A heavy assault cruiser of the hive: all three resistances covered and another 10% more carapace, made for head-on collisions. No extra firepower bonus, and it turns very slowly.',
+  },
+  'sh-wh-d-frigate': {
+    name: 'Sentry EW Frigate',
+    description: 'A mausoleum electronic sentry: thick shields over thin armor, with fire control and evasion both raised to open fire before the fleet. Joining a wormhole fleet widens scan range by one ring (multiple ships stack).',
+  },
+  'sh-wh-d-destroyer': {
+    name: 'Tombwarden Command Ship',
+    description: "A mausoleum command ship: shield-heavy, and it adds 15% to the whole formation's single-shot damage — multiple command ships take the highest only, no stacking. The price is thin armor and hull: once the shield drops, it is fragile.",
+  },
+  'sh-wh-d-cruiser': {
+    name: 'Mausoleum Cruiser',
+    description: 'A mausoleum heavy cruiser: thick shields over thin armor, the most gun mounts and the largest hold — holding the center of the line on shields and resistances.',
+  },
+  'sh-wh-e-frigate': {
+    name: 'Construct Torpedo Frigate',
+    description: 'A megastructure torpedo ship: explosive warheads strip armor and hit solidly. A big signature and clumsy turns mean it needs allies in front.',
+  },
+  'sh-wh-e-destroyer': {
+    name: 'Hangar Drone Combat Ship',
+    description: 'A megastructure drone combat ship: a big nest and strong swarms — a mobile hangar for long drone sorties. Hold space and its own guns both give way to the swarm.',
+  },
+  'sh-wh-e-carrier': {
+    name: 'Megastructure Drone Combat Ship',
+    description: 'A megastructure drone combat ship: the largest nest and the highest drone damage in the game — launching is its main weapon. Hold space goes to the hangar, and its own guns are supporting only.',
+  },
+  'sh-wh-g-frigate': {
+    name: 'Wraith Scout Frigate',
+    description: 'A deadarmy scout: very high evasion with solid fire control. Joining a wormhole fleet widens scan range by one ring (multiple ships stack) — it is the one that sees the others first.',
+  },
+  'sh-wh-g-destroyer': {
+    name: 'Deadarmy Logistics Ship',
+    description: 'A deadarmy logistics ship: the largest hold and drone nest, following the formation to resupply and swap drones. Its guns are for self-defense only.',
+  },
+  'sh-wh-g-cruiser': {
+    name: 'Deadarmy Torpedo Cruiser',
+    description: 'A deadarmy torpedo ship: explosive warheads with solid accuracy, aimed at the armor of big targets. A big signature and slow turns make it an open hammer.',
+  },
 }
 
 /**

@@ -216,6 +216,17 @@ describe('英文覆盖层（P2）', () => {
     for (const [id, def] of zh.matterTech ?? new Map()) expect(strip(en.matterTech!.get(id)!), `谜质科技 ${id}`).toBe(strip(def))
   })
 
+  it('舰船说明：43 条全部有英文说明，且不残留中日韩字符', () => {
+    const noDesc = [...zh.ships.keys()].filter((id) => !en.ships.get(id)?.description)
+    expect(noDesc, `这些舰船还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    for (const [id, def] of zh.ships) {
+      const other = en.ships.get(id)!
+      expect(other.description, `${id} 的说明应来自原文且有内容`).not.toBe(def.description)
+      expect(cjk.test(other.description ?? ''), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+  })
+
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {
     for (const [id, text] of Object.entries(EN_SHIPS)) {
       const keys = Object.keys(text).sort()
