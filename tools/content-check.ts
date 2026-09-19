@@ -3780,8 +3780,18 @@ for (const m of MODULES) {
         .map((b) => `${b} ${MATTER_TECH_NODES.filter((n) => n.branch === b).length}`)
         .join(' / ')
       const total = MATTER_TECH_NODES.reduce((s, n) => s + n.maxLevel, 0)
+      /**
+       * **满树花费合计**（2026-09-19 船长问「现在虫洞全科技要多少谜质」⇒ 把读数行补上，以后随时可查）：
+       * 按**目录实算**（不写死数字——改一个节点的费用，这行跟着变；写死就是"血泪清单"同款过期话）。
+       * 分线给"洞内两条线"与"洞外工业线"，因为船长问的"虫洞全科技"通常只指前者。
+       */
+      const essOf = (ns: typeof MATTER_TECH_NODES): number => ns.reduce((s, n) => s + n.essence.reduce((a, b) => a + b, 0), 0)
+      const iskOf = (ns: typeof MATTER_TECH_NODES): number => ns.reduce((s, n) => s + n.isk.reduce((a, b) => a + b, 0), 0)
+      const inside = MATTER_TECH_NODES.filter((n) => n.branch !== 'industry')
       console.log(
         `· 谜质科技契约：${MATTER_TECH_NODES.length} 节点（${byBranch}）· 满树 ${total} 级 · ` +
+          `**满树花费 ${essOf(MATTER_TECH_NODES).toLocaleString('zh-CN')} 谜质 ＋ ${iskOf(MATTER_TECH_NODES).toLocaleString('zh-CN')} 信用点**` +
+          `（其中**洞内两条线 ${essOf(inside).toLocaleString('zh-CN')} 谜质** ／ 洞外工业线 ${essOf(MATTER_TECH_NODES.filter((n) => n.branch === 'industry')).toLocaleString('zh-CN')} 谜质）· ` +
           `费用表长度 = 等级且逐级非降 · 首级费用随层上升 · 前置同支且更低层 · ` +
           `${new Set(MATTER_TECH_NODES.map((n) => n.effect)).size} 个效果关键字条条已在引擎接线`,
       )
