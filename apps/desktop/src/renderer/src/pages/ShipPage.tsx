@@ -84,7 +84,7 @@ const FLEET_FILTER_TABS: Array<{ key: FleetFilter; label: string }> = [
   { key: 'all', label: tr("ui.IndustryPage.001") },
   { key: 'pilot', label: tr("ui.ShipPage.010") },
   { key: 'ai', label: 'AI 执勤' },
-  { key: 'idle', label: '空闲' },
+  { key: 'idle', label: tr("ui.ShipPage.117") },
   { key: 'damaged', label: '待维修' },
 ]
 
@@ -102,9 +102,9 @@ interface CraftOption {
 }
 /** 组装机下拉的分档顺序与译名 id（`CraftOption.group` 是**字面量联合 key**，显示时才按 id 取译名） */
 const CRAFT_GROUPS: ReadonlyArray<{ key: CraftOption['group']; id: string }> = [
-  { key: '装备蓝图', id: 'ui.ShipPage.115' },
-  { key: '舰船蓝图', id: 'ui.ShipPage.116' },
-  { key: '消耗品蓝图', id: 'ui.ShipPage.114' },
+  { key: '装备蓝图', id: 'ui.ShipPage.115' }, // l10n-keep：联合 key，不是文案（渲染处 tr(id)）
+  { key: '舰船蓝图', id: 'ui.ShipPage.116' }, // l10n-keep
+  { key: '消耗品蓝图', id: 'ui.ShipPage.114' }, // l10n-keep
 ]
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: tr("ui.ShipPage.001"), icon: 'nav-ship' },
@@ -957,8 +957,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       craftAll.push({
         id: bp.id,
         name: `${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId} ×${units}`,
-        group: '消耗品蓝图', // 2026-09-14 文案体检：档名随 2026-09-11 改名口径（原「弹药蓝图」实际含弹药＋修理组件）
-        // ⚠ 这一格是 `CraftOption.group` 的**字面量联合 key**（不是文案）⇒ 保持中文原样，
+        group: '消耗品蓝图', // l10n-keep：`CraftOption.group` 是**字面量联合 key**（不是文案）⇒ 保持中文原样，
         //   显示译名在渲染处按 id 取（见 `CRAFT_GROUPS`，2026-09-19 本地化）
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
@@ -967,7 +966,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       craftAll.push({
         id: bp.id,
         name: engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.name,
-        group: '装备蓝图',
+        group: '装备蓝图', // l10n-keep
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
       })
@@ -977,7 +976,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
     craftAll.push({
       id: sbp.id,
       name: engine.ctx.ships.get(sbp.shipId)?.name ?? sbp.name,
-      group: '舰船蓝图',
+      group: '舰船蓝图', // l10n-keep
       materials: sbp.materials,
       buildSeconds: sbp.buildSeconds,
     })

@@ -336,7 +336,7 @@ export function WormholeScanTab({
                     <div className="app-modal-head">
                       <span className="app-report-title">放弃这一处虫洞？</span>
                       <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
-                        ✕ 关闭
+                        {tr("ui.App.086")}
                       </button>
                     </div>
                     <div className="app-modal-body">
@@ -405,7 +405,7 @@ export function WormholeScanTab({
                           else onToast('已召回自动探索队（无收益、无损伤；通道就此关闭）。')
                         }}
                       >
-                        召回
+                        {tr("ui.ActivityBar.009")}
                       </button>
                     </div>
                   </li>

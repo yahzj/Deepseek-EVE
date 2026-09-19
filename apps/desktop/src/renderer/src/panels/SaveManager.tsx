@@ -115,11 +115,11 @@ export function SaveManager({
       <div className="app-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
           <span className="app-report-title">
-            存档管理
+            {tr("ui.App.065")}
             <HintIcon tip="备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档（2026-09-17 船长定）——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。" />
           </span>
           <button className="app-btn is-small" onClick={onClose}>
-            ✕ 关闭
+            {tr("ui.App.086")}
           </button>
         </div>
         <div className="app-modal-body">

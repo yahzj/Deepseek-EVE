@@ -63,7 +63,7 @@ const COUNT_UNIT: Record<Tab, string> = {
   rules: '条',
   items: '种',
   modules: '件',
-  ships: '艘',
+  ships: tr("ui.MarketPage.116"),
   blueprints: '张',
   skills: '项',
 }
@@ -248,7 +248,7 @@ const GUIDE_GROUPS: HandGroup[] = [
     title: '市场与世界',
     entries: [
       {
-        title: '交易',
+        title: tr("ui.App.033"),
         paras: [
           ['三个标签', '市场页：常驻供应 / 稀有订单 / 限定奇货三个标签，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。'],
           ['撮合与冲击', '市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），原矿 / 原材料另受库存池调节。'],
@@ -1252,7 +1252,7 @@ export function Handbook({
       )
     }
     if (cur === null) {
-      return <div className="app-dim app-inv-empty">没有匹配「{query.trim()}」的词条——换个关键词试试。</div>
+      return <div className="app-dim app-inv-empty">{tr("ui.SkillsPage.006")}{query.trim()}」的词条——换个关键词试试。</div>
     }
     return (
       <div className="app-hand-guide">
@@ -1283,7 +1283,7 @@ export function Handbook({
         <div className="app-modal-head">
           <span className="app-report-title">手册 · 图鉴</span>
           <button className="app-btn is-small" onClick={onClose}>
-            ✕ 关闭
+            {tr("ui.App.086")}
           </button>
         </div>
         <div className="app-hand-split">

@@ -144,7 +144,8 @@ function idFor(zh: string, stem: string): string | null {
   // 形态：非空 · 不许制表/换行 · 首尾**至多一个空格**（JSX 文本片段与相邻 `{表达式}` 之间要靠这个空格
   // 排版，如 `{n}（结构 500）` ⇒ `{n} (structure 500)`；多余空白仍是错的）
   if (en.trim() === '' || /[\r\n\t]/.test(en) || /^ {2,}| {2,}$/.test(en)) throw new Error(`英文值形态不合规（空/含制表换行/首尾多余空白）：「${zh}」→「${en}」`)
-  if (CJK.test(en)) throw new Error(`英文值残留中日韩字符：「${zh}」→「${en}」`)
+  // 中日韩字符：只有**语言自称**一类允许原样保留（en === zh，如「中文」）
+  if (CJK.test(en) && en !== zh) throw new Error(`英文值残留中日韩字符：「${zh}」→「${en}」`)
   const id = mintId(stem)
   const row: Row = { id, zh, en }
   rows.push(row)
@@ -176,9 +177,18 @@ for (const file of walk(ROOT)) {
   const sites: Array<{ node: ts.Node; zh: string; form: 'jsx-text' | 'attr' | 'expr' | 'arg'; lead?: string; tail?: string }> = []
   /** 同一节点别被两条判据重复认领（否则会被包两层） */
   const claimed = new Set<number>()
+  /** 打了 `l10n-keep` 标记（同行或上一行）而**故意不包**的字面量（报告用） */
+  const kept = new Set<string>()
+  const sourceLines = text.split(/\r?\n/)
   const addSite = (node: ts.Node, zh: string, form: 'jsx-text' | 'attr' | 'expr' | 'arg', lead?: string, tail?: string): void => {
     const at = node.getStart(sf)
     if (claimed.has(at)) return
+    // 人工标记：这一格不是文案（如类型的字面量联合 key）⇒ 源码里写 `l10n-keep` 让工具绕开
+    const line = sf.getLineAndCharacterOfPosition(at).line
+    if ((sourceLines[line] ?? '').includes('l10n-keep') || (sourceLines[line - 1] ?? '').includes('l10n-keep')) {
+      kept.add(zh)
+      return
+    }
     claimed.add(at)
     sites.push({ node, zh, form, lead, tail })
   }

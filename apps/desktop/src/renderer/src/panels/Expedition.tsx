@@ -1319,7 +1319,7 @@ function StarMap({
             isHub || frontier
               ? isHub
                 ? '母港'
-                : '未知信号'
+                : tr("ui.ActivityBar.015")
               : labelMode === 'sec'
                 ? secText(g.security)
                 : g.name
@@ -1425,16 +1425,16 @@ function StarMap({
       {modalId !== null && selected ? (
         <div className="app-comm-mask" onClick={() => setModalId(null)}>
           <div className="app-comm" onClick={(e) => e.stopPropagation()}>
-            <div className="app-comm-title">星系行动 · {isFrontier(selected.id) ? '未知信号' : selected.name}</div>
+            <div className="app-comm-title">星系行动 · {isFrontier(selected.id) ? tr("ui.ActivityBar.015") : selected.name}</div>
             <div className="app-comm-body">
         {isFrontier(selected.id) ? (
             <div className="app-map-detail">
-              <div className="app-map-detail-name app-map-frontier-name">未知信号</div>
+              <div className="app-map-detail-name app-map-frontier-name">{tr("ui.ActivityBar.015")}</div>
               <div className="app-map-detail-desc">
                 尚未探明的星系——情报不足，无法查看航路与内容。对剪影发起扫描探索可录入完整情报。
               </div>
               <div className="app-dim">
-                悬赏情报 {bountyByGalaxy.get(selected.id) ?? 0} 处（协会共享，仍需先探索才能出发）
+                {tr("ui.ActivityBar.016")} {bountyByGalaxy.get(selected.id) ?? 0} 处（协会共享，仍需先探索才能出发）
                 {scan.active ? ' · 扫描进行中' : ''}
               </div>
               <div className="app-map-scan-row">
@@ -1515,7 +1515,7 @@ function StarMap({
             </div>
             <div className="app-comm-foot">
               <button className="app-btn is-small" onClick={() => setModalId(null)}>
-                ✕ 关闭
+                {tr("ui.App.086")}
               </button>
             </div>
           </div>
@@ -2544,7 +2544,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                 </div>
                 {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
                 <div className="app-task-reward">
-                  <span className="app-dim">奖励 ◆ </span>
+                  <span className="app-dim">{tr("ui.Expedition.004")} </span>
                   {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                 </div>
                 <div className="app-station-deliver">

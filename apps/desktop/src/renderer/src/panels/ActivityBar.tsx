@@ -43,35 +43,35 @@ const KIND_ICON: Record<string, string> = {
 function stopLabel(v: ActivityView): string {
   switch (v.stop) {
     case 'remove-training':
-      return '移除'
+      return tr("ui.ActivityBar.007")
     case 'stop-mining':
       return tr("ui.ActivityBar.005")
     case 'stop-scan':
-      return '终止'
+      return tr("ui.ActivityBar.008")
     case 'stop-whscan':
       return '停扫'
     case 'stop-whauto':
-      return '召回'
+      return tr("ui.ActivityBar.009")
     case 'stop-salvage':
       return tr("ui.ActivityBar.005")
     case 'cancel-manufacture':
       return tr("ui.ActivityBar.004")
     case 'stop-refine':
-      return '停炉'
+      return tr("ui.ActivityBar.010")
     case 'recall-expedition':
-      return '召回'
+      return tr("ui.ActivityBar.009")
     case 'recall-standby':
-      return '召回巡逻'
+      return tr("ui.ActivityBar.011")
     case 'retreat-battle':
-      return '撤退'
+      return tr("ui.ActivityBar.012")
     case 'cancel-ai':
       return tr("ui.ActivityBar.004")
     case 'cancel-deliver-trip':
-      return '取消交付'
+      return tr("ui.ActivityBar.013")
     case 'stop-loop':
       return '停止清剿'
     case 'stop-hauling':
-      return '停止运输'
+      return tr("ui.ActivityBar.014")
     default:
       return ''
   }
@@ -236,7 +236,7 @@ export function ActivityBar({
     : scanAck
       ? { done: true, galaxyId: scanAck.galaxyId, percent: 100, remainingMs: 0 }
       : null
-  const scanName = (id: string | null): string => (id ? (engine.ctx.galaxies.get(id)?.name ?? id) : '未知信号')
+  const scanName = (id: string | null): string => (id ? (engine.ctx.galaxies.get(id)?.name ?? id) : tr("ui.ActivityBar.015"))
   /**
    * **限时加成徽标**（2026-09-15 船长：「同时拥有限时加成时，还会在活动无人机的右侧
    * （扫描进度条的右侧）显示当前加成项是什么和剩余时间」）。
@@ -283,7 +283,7 @@ export function ActivityBar({
         ? target.mapTab === 'mine'
           ? tr("ui.MapPage.003")
           : target.mapTab === 'bounty'
-            ? '悬赏情报'
+            ? tr("ui.ActivityBar.016")
             : target.mapTab === 'task'
               ? tr("ui.App.008")
               : tr("ui.MapPage.002")
@@ -318,23 +318,23 @@ export function ActivityBar({
           className="app-btn is-small is-warn"
           title={
             v.stop === 'cancel-manufacture'
-              ? '取消制造：材料全额退回'
+              ? tr("ui.ActivityBar.017")
               : v.stop === 'stop-refine'
-                ? '停炉：已完成批保留，剩余原料全额退回仓库（AI 核心自动归还）'
+                ? tr("ui.ActivityBar.018")
                 : v.stop === 'recall-expedition'
-                  ? '召回远征：中止任务返回母港（无战果）'
+                  ? tr("ui.ActivityBar.019")
                   : v.stop === 'cancel-deliver-trip'
-                    ? '取消交付航线：无惩罚，停止整个交付循环，舰船立即返航停靠最近已建成空间站（本趟装载随进港卸回仓库）'
+                    ? tr("ui.ActivityBar.020")
                     : v.stop === 'stop-whscan'
                     ? '停止扫描虫洞：进度保留，下次接着扫'
                     : v.stop === 'stop-scan'
-                    ? '终止扫描：就地扫描进度保存，下次续扫'
+                    ? tr("ui.ActivityBar.021")
                     : v.stop === 'stop-salvage'
                       ? '停止打捞：本趟已捞的残骸留在船上（未返航不卸货）'
                       : v.stop === 'remove-training'
-                        ? '取消训练：本级进度保留，重排同一级自动续接；后续同技能队列顺延一级'
+                        ? tr("ui.ActivityBar.022")
                         : v.stop === 'retreat-battle'
-                          ? '撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险；同时停止重复清剿）'
+                          ? tr("ui.ActivityBar.023")
                           : undefined
           }
           onClick={(e) => {
@@ -352,7 +352,7 @@ export function ActivityBar({
             doStop(v, engine, onToast)
           }}
         >
-          {v.stop === 'retreat-battle' && retreatAsk ? '再点确认撤退' : stopLabel(v)}
+          {v.stop === 'retreat-battle' && retreatAsk ? tr("ui.ActivityBar.024") : stopLabel(v)}
         </button>
       ) : null}
     </div>
@@ -362,7 +362,7 @@ export function ActivityBar({
   return (
     <div className="app-activitybar">
       <div className="app-activitybar-hd">
-        <span className="app-activitybar-title">活动</span>
+        <span className="app-activitybar-title">{tr("ui.ActivityBar.025")}</span>
         {/* AI 徽标（2026-09-10 船长：拆成两枚，图标 / 配色 / 去处各不相同）——
             ① 副船：AI 核心图标（粉）+「副船 ×N」，点进「舰船」的 AI 指挥中心；
             ② 工业：工业页图标（薄荷）+「工业 ×N」，点进「工业」页（AI 炉/线的停止在那儿）。
@@ -376,7 +376,7 @@ export function ActivityBar({
             <span className="app-ico">
               <Glyph name="nav-ai" size={13} color={NAV_TONES['nav-ai']} />
             </span>
-            副船 ×{aiShips}
+            {tr("ui.ActivityBar.026")}{aiShips}
           </button>
         ) : null}
         {aiProd > 0 ? (
@@ -388,7 +388,7 @@ export function ActivityBar({
             <span className="app-ico">
               <Glyph name="nav-industry" size={13} color={NAV_TONES['nav-industry']} />
             </span>
-            工业 ×{aiProd}
+            {tr("ui.ActivityBar.027")}{aiProd}
           </button>
         ) : null}
         {/* 星系扫描条（船长 2026-09-15）：摆在 AI 两枚徽标**右侧**；扫描不占主控 ⇒ 不列进「玩家活动」 */}
@@ -470,15 +470,15 @@ export function ActivityBar({
         ))}
       </div>
       <div className="app-activitybar-group">
-        <div className="app-activitybar-gtitle">玩家活动</div>
+        <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.028")}</div>
         {playerItems.length > 0 ? (
           playerItems.map(renderItem)
         ) : (
-          <span className="app-activitybar-idle">待机中——安排采矿 / 远征 / 扫描。</span>
+          <span className="app-activitybar-idle">{tr("ui.ActivityBar.029")}</span>
         )}
       </div>
       <div className="app-activitybar-group">
-        <div className="app-activitybar-gtitle">技能训练</div>
+        <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.030")}</div>
         {trainItems.length > 0 ? (
           trainItems.map(renderItem)
         ) : (

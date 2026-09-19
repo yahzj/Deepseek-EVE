@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ANNOUNCEMENTS } from '@whale/data'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
 
 const SEEN_KEY = 'whale-idle:announce-seen'
 
@@ -70,7 +71,7 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
             <div className="app-ann-head">
               <span className="app-ann-title">📣 更新公告</span>
               <button className="app-btn is-small" onClick={() => setOpen(false)}>
-                知道了
+                {tr("ui.App.100")}
               </button>
             </div>
             <div className="app-ann-list">

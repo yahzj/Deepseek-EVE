@@ -191,7 +191,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                         label={`本段驶往「${h.toSiteId === null ? '母港' : ctx.stations.get(h.toSiteId!)?.name ?? '空间站'}」· 剩余约 ${fmtMin(Math.max(0, h.legMs - h.phaseAccMs))}`}
                       />
                       <button className="app-btn is-small" onClick={stopNow} title="立即停止：即时返港停靠出发站，无需返程时间（无惩罚）">
-                        停止运输
+                        {tr("ui.ActivityBar.014")}
                       </button>
                     </div>
                   ) : (

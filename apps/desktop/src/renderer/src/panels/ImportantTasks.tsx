@@ -10,6 +10,7 @@
  */
 import { TASK_FIND_HUMANS } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
 
 /** 只剩「寻找人类」这一条贯穿任务（教程卡随线性教程退场）⇒ 不再需要 onToast（没有可点的动作） */
 export function ImportantTasks({ engine }: { engine: GameEngine }) {
@@ -40,7 +41,7 @@ export function ImportantTasks({ engine }: { engine: GameEngine }) {
           <div className="app-imp-card-goal">
             <span className="app-imp-goal-key">可做的事</span> 继续探索全部星系，寻找人类踪迹
             <span className="app-dim">
-              （已探索 {exploredN}/{galaxyTotal} 星系{allExplored ? ' · 已完成' : ''}）
+              （已探索 {exploredN}/{galaxyTotal} {tr("ui.FirstTasks.004")}{allExplored ? ' · 已完成' : ''}）
             </span>
           </div>
           <div className="app-imp-card-state">

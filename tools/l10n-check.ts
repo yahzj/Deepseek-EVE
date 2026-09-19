@@ -10,7 +10,7 @@
  *   ① **id 形态**：`<域>.<短名>.<三位序号>`（域见 `DOMAINS`），且调用点传给 `t()`/`tr()` 的必须是 id；
  *   ② **调用点不得再传中文**（旧「中文源串当 key」的写法已废，传了英文界面就漏中文）；
  *   ③ **死引用**：`t('id')` / `tr('id')` 用到的 id 必须能在表里查到；
- *   ④ **英文值禁残留中日韩字符**（白名单见 `CJK_ALLOW`：语言名一类需要原样显示的除外）；
+ *   ④ **英文值禁残留中日韩字符**（唯一放行：**语言自称** `en === zh`，如「中文」；另有 `CJK_ALLOW` 白名单备用）；
  *   ⑤ **占位符对齐**：`zh` 与 `en` 的 `{名字}` 集合必须逐个相同（缺/多都红）；
  *   ⑥ **值形态**：两列非空、首尾无空白。
  *
@@ -35,7 +35,7 @@ import { L10N } from '../packages/data/src/l10n/table'
 
 const ROOT = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src')
 const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
-/** 允许英文值里保留中日韩字符的白名单（key = 条目 id） */
+/** 额外放行的白名单（条目 id）；常规情形不必用——**语言自称**（`en === zh`，如「中文」）已自动放行 */
 const CJK_ALLOW = new Set<string>([])
 /** id 允许的域前缀（与 `tools/l10n-wrap.ts` 的 DOMAINS 同源；加域两处一起加） */
 const DOMAINS = ['ui', 'ship', 'mod', 'item', 'skill', 'ano', 'gal', 'bp', 'wreck', 'station', 'faction', 'travel', 'matter', 'core']
@@ -150,7 +150,7 @@ for (const [id, e] of entries) {
   const a = placeholders(e.zh)
   const b = placeholders(e.en)
   if (a.join('|') !== b.join('|')) badPh.push(`「${id}」中 ${a.join(',') || '无'} / 英 ${b.join(',') || '无'}`)
-  if (CJK.test(e.en) && !CJK_ALLOW.has(id)) badCjk.push(`「${id}」→「${e.en}」`)
+  if (CJK.test(e.en) && e.en !== e.zh && !CJK_ALLOW.has(id)) badCjk.push(`「${id}」→「${e.en}」`)
   // 形态：非空 · 不许制表/换行 · 首尾**至多一个空格**（JSX 文本片段与相邻 `{表达式}` 之间要靠这个空格排版，
   // 如 `{n}（结构 500）` ⇒ `{n} (structure 500)`；多余空白仍是错的）
   if (e.zh.trim() === '' || e.en.trim() === '' || /[\r\n\t]/.test(e.zh + e.en) || /^ {2,}| {2,}$/.test(e.zh) || /^ {2,}| {2,}$/.test(e.en)) badShape.push(`「${id}」`)

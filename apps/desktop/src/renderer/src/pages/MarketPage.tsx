@@ -641,7 +641,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const trend = marketTrend(state, good.key)
   const holdings = good.kind === 'ship' ? shipStoredCount(state, good.refId) : naturalHoldings(state, good)
   /** 舰船的量词是「艘」（其余商品是「件」）；舰队同型艘数用于"可卖量从哪来"的提示 */
-  const unit = good.kind === 'ship' ? '艘' : '件'
+  const unit = good.kind === 'ship' ? tr("ui.MarketPage.116") : '件'
   const shipInFleet = good.kind === 'ship' ? fleetCountOf(state, good.refId) : 0
   const lock = goodLockedReason(state, good)
   /**

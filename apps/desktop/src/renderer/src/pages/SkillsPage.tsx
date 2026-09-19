@@ -111,22 +111,22 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
   return (
     <div className="page-stack page-wide page-fill">
       <Panel
-        title="训练队列"
-        right={<span className="app-dim">技能与采矿/远征/制造并行 · 取消训练保留本级进度，重排同一级自动续接</span>}
+        title={tr("ui.SkillsPage.001")}
+        right={<span className="app-dim">{tr("ui.SkillsPage.002")}</span>}
       >
         <QueueBlock engine={engine} />
       </Panel>
       {/* 船长拍板：技能目录整窗滚（队列面板固定在上） */}
       <Panel
         className="is-fill"
-        title="技能目录"
+        title={tr("ui.SkillsPage.003")}
         right={
           <span className="app-head-search-wrap">
             <ItemViewBar mode={view} onChange={applyView} />
             <input
               className="app-head-search"
               type="text"
-              placeholder="搜索技能…"
+              placeholder={tr("ui.SkillsPage.004")}
               value={skillQuery}
               onChange={(e) => setSkillQuery(e.target.value)}
               spellCheck={false}
@@ -167,20 +167,20 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
         <div className="app-skill-groups-wide">
           {searchHits ? (
             <div className="app-skill-group">
-              <div className="app-skill-group-tag">搜索结果（{searchHits.length}）</div>
+              <div className="app-skill-group-tag">{tr("ui.SkillsPage.005")}{searchHits.length}）</div>
               {renderItems(searchHits)}
               {searchHits.length === 0 ? (
                 <div className="app-dim" style={{ padding: '6px 4px' }}>
-                  没有匹配「{skillQuery.trim()}」的技能——换个关键词试试（支持名称/分类/说明）。
+                  {tr("ui.SkillsPage.006")}{skillQuery.trim()}{tr("ui.SkillsPage.007")}
                 </div>
               ) : null}
             </div>
           ) : focusSkillId ? (
             <div className="app-skill-group">
-              <div className="app-skill-group-tag">教程聚焦</div>
+              <div className="app-skill-group-tag">{tr("ui.SkillsPage.008")}</div>
               {renderItems(visibleSkills)}
               <div className="app-dim" style={{ padding: '6px 4px' }}>
-                其余技能将在完成教程后开放浏览。
+                {tr("ui.SkillsPage.009")}
               </div>
             </div>
           ) : groupTab === 'all' ? (
@@ -215,8 +215,8 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
     <div>
       {totalMs > 0 ? (
         <div className="app-dim app-train-total">
-          队列总时长 ≈ {formatDurationMs(totalMs)}
-          {view.head !== null ? `（含训练中本级剩余 ${formatDurationMs(view.head.remainingMs)}）` : ''}——⇈ 置顶 = 立刻成为当前训练（原训练退回排队并保留本级进度）；↑↓ 微调先后。
+          {tr("ui.SkillsPage.010")} {formatDurationMs(totalMs)}
+          {view.head !== null ? `（含训练中本级剩余 ${formatDurationMs(view.head.remainingMs)}）` : ''}{tr("ui.SkillsPage.011")}
         </div>
       ) : null}
       {view.pending.length > 0 ? (
@@ -225,14 +225,14 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
             <span key={`${p.skillId}-${p.queueIndex}`} className="app-chip app-train-chip">
               <button
                 className="app-train-arrow"
-                title="置顶：这条立刻成为当前训练（跳到最前），原训练退回排队并保留本级进度"
+                title={tr("ui.SkillsPage.012")}
                 onClick={() => engine.moveQueueAt(p.queueIndex, 0)}
               >
                 ⇈
               </button>
               <button
                 className="app-train-arrow"
-                title={p.queueIndex === 1 ? '已是最前一位——再 ⇈ 就是置顶（当前训练与它互换）' : '前移一位'}
+                title={p.queueIndex === 1 ? tr("ui.SkillsPage.013") : tr("ui.SkillsPage.014")}
                 onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex - 1)}
               >
                 ↑
@@ -247,13 +247,13 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
               ) : null}
               <button
                 className="app-train-arrow"
-                title={p.queueIndex < lastIndex ? '后移一位' : '已在队尾'}
+                title={p.queueIndex < lastIndex ? tr("ui.SkillsPage.015") : tr("ui.SkillsPage.016")}
                 disabled={p.queueIndex >= lastIndex}
                 onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex + 1)}
               >
                 ↓
               </button>
-              <button className="app-train-x" title="移出队列：同技能的后续条目自动顺延一级" onClick={() => engine.dequeueAt(p.queueIndex)}>
+              <button className="app-train-x" title={tr("ui.SkillsPage.017")} onClick={() => engine.dequeueAt(p.queueIndex)}>
                 ×
               </button>
             </span>
@@ -261,7 +261,7 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
         </div>
       ) : (
         <div className="app-dim app-train-idle">
-          无排队中的技能——正在训练的技能见顶部活动窗口；点下方技能行的「追加」继续排课。
+          {tr("ui.SkillsPage.018")}
         </div>
       )}
     </div>
@@ -284,7 +284,7 @@ function skillUiState(engine: PageProps['engine'], skill: SkillDef) {
   // 悬停提示：**只给各级训练时长**（2026-09-13 船长：「技能卡片的 title 只显示训练时长就够了，
   // 介绍已经写在卡片上」——卡面与列表行都已常显简介/效果，提示里不再重复）。
   const title = def
-    ? `${levelTimesHint(def, tf)}${tf < 1 ? '（高效学习法缩时已计入）' : ''}`
+    ? `${levelTimesHint(def, tf)}${tf < 1 ? tr("ui.SkillsPage.019") : ''}`
     : plainSkillDesc(skill.description)
   // "轮到该技能还有多久"（只对已排队、非队首的展示）
   let waitMs = 0
@@ -315,7 +315,7 @@ function nextLevelAction(
   // 点下去只会被引擎拒绝（trainNextLevel 的满级/超限校验）。此处改为置灰说明，文案不越上限。
   if (lastQueued >= MAX_SKILL_LEVEL) {
     return {
-      label: '已排队到满级',
+      label: tr("ui.SkillsPage.020"),
       onClick: () => engine.trainNextLevel(skill.id),
       title: `队列里已排到 Lv${MAX_SKILL_LEVEL}（技能上限），无法再追加。`,
       disabled: true,
@@ -327,7 +327,7 @@ function nextLevelAction(
     label,
     onClick: () => engine.trainNextLevel(skill.id),
     title: `练这一级需 ${def ? formatDurationMs(effLevelMs(def, targetLv, tf)) : ''}`,
-    eta: def ? <span className="app-sr-eta">本级约 {formatDurationMs(effLevelMs(def, targetLv, tf))}</span> : null,
+    eta: def ? <span className="app-sr-eta">{tr("ui.SkillsPage.021")} {formatDurationMs(effLevelMs(def, targetLv, tf))}</span> : null,
   }
 }
 
@@ -341,7 +341,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
         <div className="app-sr-training">
           <ProgressBar value={head.percent} label="" />
           <span className="app-sr-eta">
-            冲 Lv{head.intoLevel} · {formatDurationMs(head.remainingMs)}
+            {tr("ui.SkillsPage.022")}{head.intoLevel} · {formatDurationMs(head.remainingMs)}
           </span>
           {action ? (
             <>
@@ -358,8 +358,8 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
       return (
         <div className="app-sr-training">
           <span className="app-chip is-dim">
-            排队第{position}位
-            {waitMs > 0 ? <span className="app-sr-eta"> · 约{formatDurationMs(waitMs)}后开练</span> : null}
+            {tr("ui.SkillsPage.023")}{position}位
+            {waitMs > 0 ? <span className="app-sr-eta"> · 约{formatDurationMs(waitMs)}{tr("ui.SkillsPage.024")}</span> : null}
           </span>
           {action ? (
             <>
@@ -372,7 +372,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
         </div>
       )
     }
-    if (maxed) return <span className="app-dim app-sr-max">已满级</span>
+    if (maxed) return <span className="app-dim app-sr-max">{tr("ui.SkillsPage.025")}</span>
     return (
       <div className="app-sr-training">
         {action ? (
@@ -385,7 +385,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
         ) : null}
         {saved > 0 && def ? (
           <span className="app-sr-eta app-sr-resume">
-            有保留进度 {Math.min(100, Math.round((saved / effLevelMs(def, current + 1, tf)) * 100))}%，训练即续接
+            {tr("ui.SkillsPage.026")} {Math.min(100, Math.round((saved / effLevelMs(def, current + 1, tf)) * 100))}%，训练即续接
           </span>
         ) : null}
       </div>
@@ -417,14 +417,14 @@ function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: Skil
   const tone = toneOf(glyph)
   const action = nextLevelAction(st, engine, skill)
   const statusTxt = isTraining
-    ? '训练中'
+    ? tr("ui.SkillsPage.027")
     : mine.length > 0
       ? `排队第${position}位`
       : maxed
-        ? '已满级'
+        ? tr("ui.SkillsPage.025")
         : saved > 0 && def
-          ? '有保留进度'
-          : '空闲'
+          ? tr("ui.SkillsPage.026")
+          : tr("ui.ShipPage.117")
   const cardTitle = `${title}${mine.length > 0 && !isTraining && waitMs > 0 ? `｜约 ${formatDurationMs(waitMs)} 后开练` : ''}`
   return (
     <div className={`app-skill-card${isTraining ? ' is-training' : ''}`} title={cardTitle}>
@@ -455,13 +455,13 @@ function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: Skil
             {action.label}
           </button>
         ) : null}
-        {isTraining && head ? <span className="app-skill-card-eta">冲 Lv{head.intoLevel} · {formatDurationMs(head.remainingMs)}</span> : null}
+        {isTraining && head ? <span className="app-skill-card-eta">{tr("ui.SkillsPage.022")}{head.intoLevel} · {formatDurationMs(head.remainingMs)}</span> : null}
         {mine.length > 0 && !isTraining && waitMs > 0 ? (
-          <span className="app-skill-card-eta">约{formatDurationMs(waitMs)}后开练</span>
+          <span className="app-skill-card-eta">约{formatDurationMs(waitMs)}{tr("ui.SkillsPage.024")}</span>
         ) : null}
         {saved > 0 && def && !isTraining && mine.length === 0 ? (
           <span className="app-skill-card-eta">
-            保留 {Math.min(100, Math.round((saved / effLevelMs(def, lastQueued + 1, st.tf)) * 100))}%
+            {tr("ui.SkillsPage.028")} {Math.min(100, Math.round((saved / effLevelMs(def, lastQueued + 1, st.tf)) * 100))}%
           </span>
         ) : null}
       </div>

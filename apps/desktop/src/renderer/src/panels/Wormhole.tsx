@@ -1561,7 +1561,7 @@ export function WormholePanel({
                             // 面板**保持打开**（战斗中自动不渲染）⇒ 战报一关就回到虫洞界面
                           }}
                         >
-                          迎战
+                          {tr("ui.App.080")}
                         </button>
                       </span>
                     </div>
@@ -1903,7 +1903,7 @@ export function WormholePanel({
             <div className="app-modal-head">
               <span className="app-report-title">把主控换到「{autoHandover?.toName ?? '另一条船'}」？</span>
               <button className="app-btn is-small" onClick={() => setMainAsk(false)}>
-                ✕ 关闭
+                {tr("ui.App.086")}
               </button>
             </div>
             <div className="app-modal-body">

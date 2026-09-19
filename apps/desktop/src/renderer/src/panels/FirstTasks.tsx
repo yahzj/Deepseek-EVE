@@ -22,20 +22,20 @@ import { tr } from '../i18n/locale'
 
 /** 链进度的计数单位（**纯显示用**，与 core 的阈值表同源；`tierKey` 缺项 ⇒ 不写单位） */
 const CHAIN_UNITS: Record<string, string> = {
-  scan: '星系',
-  mineUnits: '单位原矿',
-  salvageRuns: '次',
-  bountyWins: '场',
-  repairs: '次',
-  refineBatches: '批',
+  scan: tr("ui.FirstTasks.004"),
+  mineUnits: tr("ui.FirstTasks.005"),
+  salvageRuns: tr("ui.FirstTasks.006"),
+  bountyWins: tr("ui.FirstTasks.007"),
+  repairs: tr("ui.FirstTasks.006"),
+  refineBatches: tr("ui.FirstTasks.008"),
   produceUnits: '件',
   // 2026-09-18 船长换口径：市场链不再数"挂单张数"，改数**交易收入（税后信用点）**
   marketIncome: tr("ui.FirstTasks.003"),
-  ships: '艘',
-  aiAssigns: '次',
-  haulTrips: '趟',
-  wormholeRuns: '趟',
-  skills: '级',
+  ships: tr("ui.MarketPage.116"),
+  aiAssigns: tr("ui.FirstTasks.006"),
+  haulTrips: tr("ui.FirstTasks.009"),
+  wormholeRuns: tr("ui.FirstTasks.009"),
+  skills: tr("ui.FirstTasks.010"),
 }
 
 /** 一条任务的跳转落点（**按"这件活在哪干"定**，与情报信的"前往"分属两处：信是完成后的回看指引） */
@@ -52,12 +52,12 @@ const FIRST_JUMPS: Record<string, TaskJump> = {
   'first-scan': { page: 'map', mapTab: 'star', label: tr("ui.ActivityBar.006") },
   'first-mine': { page: 'map', mapTab: 'mine', label: tr("ui.MapPage.003") },
   'first-salvage': { page: 'map', mapTab: 'salvage', label: tr("ui.MapPage.005") },
-  'first-repair': { page: 'ship', shipTab: 'fleet', label: '舰队' },
+  'first-repair': { page: 'ship', shipTab: 'fleet', label: tr("ui.FirstTasks.011") },
   'first-bounty': { page: 'map', mapTab: 'bounty', label: tr("ui.MapPage.004") },
   'first-refine': { page: 'industry', industrySec: 'refine', label: tr("ui.ShipPage.097") },
   'first-produce': { page: 'industry', industrySec: 'craft', label: tr("ui.IndustryPage.059") },
   'first-order': { page: 'market', label: tr("ui.App.005") },
-  'first-ship': { page: 'industry', industrySec: 'craft', label: '组装机·造船' },
+  'first-ship': { page: 'industry', industrySec: 'craft', label: tr("ui.FirstTasks.012") },
   'first-skill': { page: 'skills', label: tr("ui.App.007") },
   'first-ai': { page: 'ship', shipTab: 'ai', label: tr("ui.ShipPage.057") },
   'first-haul': { page: 'map', mapTab: 'haul', label: tr("ui.MapPage.006") },
@@ -86,7 +86,7 @@ export function FirstTasks({
   return (
     <div className="app-station-list">
       <div className="app-task-family">
-        ◆ 第一次 · {doneN}/{tasks.length} 已完成
+        ◆ 第一次 · {doneN}/{tasks.length} {tr("ui.FirstTasks.013")}
         <span className="app-dim"> · 完成一条收一封情报，其后开出长期次数目标；可领奖的排在最前</span>
       </div>
       {ordered.map(({ def, done, pendingIsk: pending, level, total, count, next, nextRewardIsk }) => {
@@ -110,13 +110,13 @@ export function FirstTasks({
         for (const c of r?.aiCores ?? []) parts.push(`基础 AI 核心 ×${c.units}`)
         if (r?.wormholeStock) parts.push(`未探索虫洞 ×${r.wormholeStock}`)
         if (r?.isk) parts.push(`${r.isk.toLocaleString('zh-CN')} 信用点`)
-        const rewardTxt = parts.length > 0 ? parts.join('、') : '情报信一封'
+        const rewardTxt = parts.length > 0 ? parts.join('、') : tr("ui.FirstTasks.014")
         return (
           <div key={def.id} className="app-station-card">
             <div className="app-station-head">
               <span className="app-station-name">
                 {done ? '✓' : '◆'} {done && def.chain ? `${def.chain.name}${levelInName}` : def.title}
-                {claimable ? <em className="app-chip">可领奖</em> : null}
+                {claimable ? <em className="app-chip">{tr("ui.FirstTasks.015")}</em> : null}
               </span>
               {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」） */}
               {jump && onJump ? (
@@ -132,8 +132,8 @@ export function FirstTasks({
             {/* 进度：已完成 ⇒ 走次数链，读数用「已累计 当前/下一档」 */}
             {done && def.chain && total > 0 ? (
               <div className="app-station-mats">
-                已累计 {count.toLocaleString('zh-CN')}/{goal.toLocaleString('zh-CN')} {unit}
-                {next === null ? '（已到最高档）' : ''}
+                {tr("ui.FirstTasks.016")} {count.toLocaleString('zh-CN')}/{goal.toLocaleString('zh-CN')} {unit}
+                {next === null ? tr("ui.FirstTasks.017") : ''}
               </div>
             ) : null}
             {/* 正文：一段话讲清怎么做 / 做成什么样 / 有什么奖励 */}
@@ -146,23 +146,23 @@ export function FirstTasks({
              */}
             {done && def.chain ? (
               <div className="app-task-reward">
-                <span className="app-dim">奖金 ◆ </span>
-                {nextRewardIsk > 0 ? `第 ${level + 1} 级 ${nextRewardIsk.toLocaleString('zh-CN')} 信用点` : '已到最高档'}
+                <span className="app-dim">{tr("ui.FirstTasks.018")} </span>
+                {nextRewardIsk > 0 ? `第 ${level + 1} 级 ${nextRewardIsk.toLocaleString('zh-CN')} 信用点` : tr("ui.FirstTasks.019")}
               </div>
             ) : (
               <div className="app-task-reward">
-                <span className="app-dim">奖励 ◆ </span>
+                <span className="app-dim">{tr("ui.Expedition.004")} </span>
                 {rewardTxt}
               </div>
             )}
             <div className="app-station-deliver">
               <span className="app-dim">
-                {claimable ? `可领奖金 ${pending.toLocaleString('zh-CN')} 信用点` : done ? '次数目标进行中' : '完成即发情报'}
+                {claimable ? `可领奖金 ${pending.toLocaleString('zh-CN')} 信用点` : done ? tr("ui.FirstTasks.020") : tr("ui.FirstTasks.021")}
               </span>
               {/* 「看情报」：那封信在该条完成时送达（`firstTask` 触发器）⇒ 只在已完成时出现 */}
               {done && onOpenComms ? (
-                <button className="app-btn is-small" title="打开通讯页，读这一条相关的情报" onClick={() => onOpenComms(def.commsId)}>
-                  看情报
+                <button className="app-btn is-small" title={tr("ui.FirstTasks.022")} onClick={() => onOpenComms(def.commsId)}>
+                  {tr("ui.FirstTasks.023")}
                 </button>
               ) : null}
               {claimable ? (
@@ -171,10 +171,10 @@ export function FirstTasks({
                   title={`领取已达级别的链奖金（共 ${pending.toLocaleString('zh-CN')} 信用点）`}
                   onClick={() => {
                     const isk = engine.claimChainRewardAt(def.chain!.id)
-                    onToast(isk > 0 ? `奖金已到账：${isk.toLocaleString('zh-CN')} 信用点。` : '暂无可领奖金。', isk <= 0)
+                    onToast(isk > 0 ? `奖金已到账：${isk.toLocaleString('zh-CN')} 信用点。` : tr("ui.FirstTasks.024"), isk <= 0)
                   }}
                 >
-                  领奖（{pending.toLocaleString('zh-CN')} 信用点）
+                  {tr("ui.FirstTasks.025")}{pending.toLocaleString('zh-CN')} 信用点）
                 </button>
               ) : null}
             </div>

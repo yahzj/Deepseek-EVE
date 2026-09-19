@@ -1984,7 +1984,7 @@ const meSpeedRef = useRef(200)
                   if (!r.ok) onToast(r.error ?? '撤退失败', true)
                 }}
               >
-                {retreatAsk ? '再点确认撤退' : '⚑ 撤退'}
+                {retreatAsk ? tr("ui.ActivityBar.024") : '⚑ 撤退'}
               </button>
             )}
           </>
