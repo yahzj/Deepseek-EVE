@@ -38,7 +38,7 @@ export function SellQtyModal({
     <div className="app-fit-overlay" onClick={onClose}>
       <div className="app-fit-modal is-narrow" onClick={(e) => e.stopPropagation()}>
         <div className="app-fit-modal-head">
-          <span>出售数量 · {name}</span>
+          <span>{tr("ui.SellQtyModal.001")} {name}</span>
           <button className="app-btn is-small" onClick={onClose}>
             {tr("ui.FitPage.055")}
           </button>
@@ -50,7 +50,7 @@ export function SellQtyModal({
           <div className="app-itempick-info">
             <div className="app-itempick-name">{name}</div>
             <div className="app-dim">
-              现有 {max.toLocaleString('zh-CN')} {unit}
+              {tr("ui.SellQtyModal.002")} {max.toLocaleString('zh-CN')} {unit}
               {priceText ? ` · ${priceText}` : ''}
             </div>
           </div>
@@ -77,7 +77,7 @@ export function SellQtyModal({
             disabled={max <= 0 || clamped <= 0}
             onClick={() => onConfirm(clamped)}
           >
-            {confirmLabel ?? '按市价卖出'} {clamped.toLocaleString('zh-CN')} {unit}
+            {confirmLabel ?? tr("ui.SellQtyModal.003")} {clamped.toLocaleString('zh-CN')} {unit}
           </button>
         </div>
       </div>

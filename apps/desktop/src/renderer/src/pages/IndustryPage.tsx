@@ -285,9 +285,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         {batchValue > 0 ? (
           <div
             className={`app-belt-econ-val${netH < 0 ? ' is-neg' : ''}`}
-            title={`净收益估算：每批产物（原材料站内收价） − 每批耗料价值（原料站内收价），× 每小时批次数；不随市场、未计成交税。毛产值 ≈${grossH.toLocaleString('zh-CN')} 信用点/h；${
-              netH < 0 ? tr("ui.IndustryPage.030") : tr("ui.IndustryPage.031")
-            }`}
+            title={tr("ui.IndustryPage.106", { p1: grossH.toLocaleString('zh-CN'), p2: netH < 0 ? tr("ui.IndustryPage.030") : tr("ui.IndustryPage.031") })}
           >
             {MONEY_GLYPH} ≈{netH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}{netH < 0 ? tr("ui.IndustryPage.032") : tr("ui.IndustryPage.033")}
           </div>
@@ -353,13 +351,9 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
                 </span>
                 <span
                   className="app-progress-mini"
-                  title={`当前批进度 ${v.percent}%（${
-                    isBox ? tr("ui.IndustryPage.091", { p1: Math.round(v.cycleMs / 100) / 10 }) : tr("ui.IndustryPage.092", { p1: v.batchUnits, p2: Math.round(v.cycleMs / 100) / 10 })
-                  }；${
-                    v.claimedUnits !== undefined
+                  title={tr("ui.IndustryPage.107", { p1: v.percent, p2: isBox ? tr("ui.IndustryPage.091", { p1: Math.round(v.cycleMs / 100) / 10 }) : tr("ui.IndustryPage.092", { p1: v.batchUnits, p2: Math.round(v.cycleMs / 100) / 10 }), p3: v.claimedUnits !== undefined
                       ? tr("ui.IndustryPage.093", { p1: v.batchUnits })
-                      : tr("ui.IndustryPage.042")
-                  }）`}
+                      : tr("ui.IndustryPage.042") })}
                 >
                   <i style={{ width: `${v.percent}%` }} />
                 </span>

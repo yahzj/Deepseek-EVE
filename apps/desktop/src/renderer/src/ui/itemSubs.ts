@@ -171,7 +171,7 @@ export const BLUEPRINT_SUBS: SubOption[] = [
   { key: 'high', label: tr("ui.itemSubs.018") },
   { key: 'mid', label: tr("ui.itemSubs.019") },
   { key: 'low', label: tr("ui.itemSubs.020") },
-  ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: `${s.label}蓝图` })),
+  ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: tr("ui.itemSubs.028", { p1: s.label }) })),
   { key: 'supply', label: tr("ui.itemSubs.021") },
 ]
 

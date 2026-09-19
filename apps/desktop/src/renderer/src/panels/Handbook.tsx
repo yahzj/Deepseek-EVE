@@ -1345,10 +1345,10 @@ export function Handbook({
               {isCodex ? (
                 <div className="app-hand-viewbar">
                   <button className={`app-hand-viewbtn${view === 'grid' ? ' is-active' : ''}`} onClick={() => changeView('grid')}>
-                    图标
+                    {tr("ui.Handbook.015")}
                   </button>
                   <button className={`app-hand-viewbtn${view === 'list' ? ' is-active' : ''}`} onClick={() => changeView('list')}>
-                    列表
+                    {tr("ui.Handbook.016")}
                   </button>
                 </div>
               ) : null}

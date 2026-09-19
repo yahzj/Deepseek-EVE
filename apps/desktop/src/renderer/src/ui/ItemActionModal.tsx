@@ -10,7 +10,7 @@ export function ItemActionModal({ onClose, children }: { onClose: () => void; ch
     <div className="app-fit-overlay" onClick={onClose}>
       <div className="app-fit-modal is-narrow" onClick={(e) => e.stopPropagation()}>
         <div className="app-fit-modal-head">
-          <span>物品操作</span>
+          <span>{tr("ui.ItemActionModal.001")}</span>
           <button className="app-btn is-small" onClick={onClose}>
             {tr("ui.FitPage.055")}
           </button>

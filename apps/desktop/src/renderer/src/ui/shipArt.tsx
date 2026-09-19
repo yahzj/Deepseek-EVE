@@ -11,6 +11,7 @@
 import type { ReactNode } from 'react'
 import { FOE_ART_EXTRA, SHIP_ART_EXTRA } from './shipArtData'
 import { SHIP_ART_WH } from './shipArtWh'
+import { tr } from '../i18n/locale'
 
 export const SHIP_ART: Record<string, ReactNode> = {
   ...SHIP_ART_EXTRA,
@@ -213,11 +214,11 @@ export function foeFamilyOf(anomaly: { foeFamily?: string } | null | undefined):
  * 「海盗舰系 / 异形生物 / 守墓古舰 / 泰坦巨构 / 鱿烬亡军」）。
  */
 export const FOE_FAMILY_LABEL: Record<string, string> = {
-  A: '海盗',
-  B: '拾荒',
-  C: '异形',
-  D: '守墓',
-  E: '巨构',
-  F: '巡逻', // 已废弃·留档（F 族并入 A 族；仅防旧数据带 'F' 时无标签可显示）
-  G: '鱿烬',
+  A: tr("ui.shipArt.001"),
+  B: tr("ui.shipArt.002"),
+  C: tr("ui.shipArt.003"),
+  D: tr("ui.shipArt.004"),
+  E: tr("ui.shipArt.005"),
+  F: tr("ui.shipArt.006"), // 已废弃·留档（F 族并入 A 族；仅防旧数据带 'F' 时无标签可显示）
+  G: tr("ui.shipArt.007"),
 }

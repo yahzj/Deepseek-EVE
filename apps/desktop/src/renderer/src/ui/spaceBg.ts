@@ -24,6 +24,7 @@
  *
  * 检索入口：`grep spaceBg|rerollSpaceBg|--space-bg`。
  */
+import { tr } from '../i18n/locale'
 const TILES = import.meta.glob('../assets/space/*.jpg', { eager: true, query: '?url', import: 'default' }) as Record<
   string,
   string
@@ -39,10 +40,10 @@ const TILE_URLS: readonly string[] = TILE_KEYS.map((k) => TILES[k]!).filter(
 
 /** 玩家向的短名（设置面板里显示"当前是哪张"）：蓝星云 03 / 星野 04 … */
 const TILE_SETS: ReadonlyArray<{ prefix: string; text: string }> = [
-  { prefix: 'nebula-blue', text: '蓝星云' },
-  { prefix: 'nebula-green', text: '绿星云' },
-  { prefix: 'nebula-purple', text: '紫星云' },
-  { prefix: 'starfield', text: '星野' },
+  { prefix: 'nebula-blue', text: tr("ui.spaceBg.001") },
+  { prefix: 'nebula-green', text: tr("ui.spaceBg.002") },
+  { prefix: 'nebula-purple', text: tr("ui.spaceBg.003") },
+  { prefix: 'starfield', text: tr("ui.spaceBg.004") },
 ]
 
 function shortNameOf(key: string, index: number): string {
@@ -50,7 +51,7 @@ function shortNameOf(key: string, index: number): string {
   for (const s of TILE_SETS) {
     if (base.startsWith(`${s.prefix}-`)) return `${s.text} ${base.slice(s.prefix.length + 1).replace(/\.jpg$/i, '')}`
   }
-  return `背景 ${index + 1}`
+  return tr("ui.spaceBg.005", { p1: index + 1 })
 }
 
 /** 当前底图信息（设置面板显示用） */

@@ -10,6 +10,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Glyph, toneOf } from './Glyphs'
+import { tr } from '../i18n/locale'
 
 export type ItemViewMode = 'grid' | 'list'
 export const ITEM_VIEW_KEY = 'whale-idle:inv-view'
@@ -39,10 +40,10 @@ export function ItemViewBar({ mode, onChange }: { mode: ItemViewMode; onChange: 
   return (
     <div className="app-hand-viewbar" data-ui-group={ICON_LIST_GROUP}>
       <button className={`app-hand-viewbtn${mode === 'grid' ? ' is-active' : ''}`} onClick={() => onChange('grid')}>
-        图标
+        {tr("ui.Handbook.015")}
       </button>
       <button className={`app-hand-viewbtn${mode === 'list' ? ' is-active' : ''}`} onClick={() => onChange('list')}>
-        列表
+        {tr("ui.Handbook.016")}
       </button>
     </div>
   )
@@ -60,14 +61,14 @@ export interface ItemGridCell {
 /** 分类补充说明（仓库/货仓列表与图标模式共用；2026-09-08 船长反馈弹药/无人机存放含义） */
 export function kindExtraNote(kind: string): string | null {
   if (kind === 'drone') {
-    return '无人机需先在 装配页「无人机舱」装入清单（舱容 = 船体 + 甲板扩展；与装配共用 CPU），战斗只放飞已装入的；仓库余量不自动出战。战术导控阵列增伤。敌方点防会击落机群——被击落的无人机自清单永久损失，回港后需重新补充。'
+    return tr("ui.itemView.001")
   }
   if (kind === 'ammo') {
-    return '弹药在战斗中自动消耗：开战时从 仓库/货仓 按需取用（货仓优先）；放仓库同样出战且不随船遗失——货仓里的弹药可随时卸回仓库更安全。'
+    return tr("ui.itemView.002")
   }
   // 2026-09-19 玩家报障修（「回收残骸集齐了 25 个蓝图碎片，但是找不到在哪换成蓝图」）：碎片这一组必须写清去处
   if (kind === 'fragment') {
-    return '蓝图碎片来自残骸回收的高威胁彩头。集齐门槛后，在这一行点「逆向解锁」即可换成该装备的永久蓝图（货仓与仓库的碎片一起扣；需停靠空间站）。集齐前不会重复掉同一本书的碎片，拿到蓝图后它就不再出现。'
+    return tr("ui.itemView.003")
   }
   return null
 }
