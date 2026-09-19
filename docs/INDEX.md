@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **277** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5263** KB · **38198** 行
-- 状态分布：**未标注** 147 · **已确认/已实现** 108 · **进行中** 15 · **待裁定** 6 · **历史留档** 1
-- 孤儿文档（0 引用）**23** 份 · 状态未标注 **147** 份
+- 文档总数 **278** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5304** KB · **38526** 行
+- 状态分布：**未标注** 147 · **已确认/已实现** 108 · **进行中** 16 · **待裁定** 6 · **历史留档** 1
+- 孤儿文档（0 引用）**24** 份 · 状态未标注 **147** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**192** 份
+- 三、现行设计稿（design）：**193** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**17** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,9 +33,9 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 21 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 156 KB / 217 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 56 KB / 619 行 | 66 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 372 KB / 833 行 | 189 / 8 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 163 KB / 220 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 59 KB / 644 行 | 67 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 372 KB / 833 行 | 191 / 9 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 80 KB / 277 行 | 253 / 10 |
 
 ## 七、评审与体检（review） —— 10 份
@@ -53,25 +53,26 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 192 份
+## 三、现行设计稿（design） —— 193 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-20260919-push.md` | 公告待审稿：2026-09-19 推送批（四条） | 待裁定（待船长审核） | 2026-09-19 | 5 KB / 52 行 | 0 / 2 |
 | `docs/design/battle-speed-20260919.md` | 战斗倍速（挂起）· 2026-09-19 | 未标注（挂起） | 2026-09-19 | 3 KB / 38 行 | 1 / 1 |
-| `docs/design/blueprint-shelf-filter-20260919.md` | 报障修复：蓝图书架「选舰船蓝图 / 消耗品蓝图 ⇒ 卡片列表变空」 · 2026-09-19 | 进行中（进行中） | 2026-09-19 | 4 KB / 59 行 | 0 / 0 |
+| `docs/design/blueprint-shelf-filter-20260919.md` | 报障修复：蓝图书架「选舰船蓝图 / 消耗品蓝图 ⇒ 卡片列表变空」 · 2026-09-19 | 进行中（进行中） | 2026-09-19 | 6 KB / 86 行 | 0 / 0 |
 | `docs/design/dead-ship-revive-20260919.md` | 报障修复：阵亡（已损毁）单位被维修脉冲复活 · 2026-09-19 | 进行中（进行中） | 2026-09-19 | 5 KB / 56 行 | 0 / 0 |
-| `docs/design/filters-audit-20260919.md` | 全仓筛选标签盘点（供船长审核与统一口径） · 2026-09-19 | 进行中（进行中） | 2026-09-19 | 11 KB / 142 行 | 0 / 0 |
+| `docs/design/filters-audit-20260919.md` | 全仓筛选标签盘点（供船长审核与统一口径） · 2026-09-19 | 进行中（进行中） | 2026-09-19 | 29 KB / 309 行 | 0 / 0 |
 | `docs/design/fit-hit-rate-20260919.md` | 装配页补「命中率」属性（2026-09-19） | 进行中（进行中） | 2026-09-19 | 4 KB / 45 行 | 0 / 0 |
 | `docs/design/foe-de-retune-20260919.md` | D/E 族数值批：D 族远端 0.2 · E 族构成改爆炸 60/动能 40（2026-09-19 · 二号） | 进行中（进行中） | 2026-09-19 | 5 KB / 44 行 | 0 / 0 |
 | `docs/design/foe-mount-entry-level-20260919.md` | 敌方挂载件「条目级」口径收敛 · A 族冲锋件与劫掠电子舰（2026-09-19） | 进行中（进行中） | 2026-09-19 | 3 KB / 45 行 | 0 / 0 |
 | `docs/design/foe-support-call-20260919.md` | 支援呼叫装置 · 守墓王座舰（陵墓王庭）（2026-09-19） | 进行中（进行中） | 2026-09-19 | 9 KB / 111 行 | 0 / 0 |
 | `docs/design/fragment-redeem-entry-20260919.md` | 碎片兑现入口：物品页「逆向解锁」（2026-09-19 · 二号 · 玩家报障修） | 进行中（进行中） | 2026-09-19 | 4 KB / 42 行 | 0 / 0 |
 | `docs/design/l10n-en-20260919.md` | 英语本地化（可玩骨架）· 工作文档（2026-09-19） | 进行中（进行中） | 2026-09-19 | 16 KB / 186 行 | 3 / 2 |
-| `docs/design/matter-tech-20260919.md` | 谜质科技树（2026-09-19 · 船长逐线裁定） | 进行中（进行中） | 2026-09-19 | 22 KB / 248 行 | 0 / 1 |
+| `docs/design/matter-tech-20260919.md` | 谜质科技树（2026-09-19 · 船长逐线裁定） | 进行中（进行中） | 2026-09-19 | 28 KB / 290 行 | 0 / 1 |
 | `docs/design/save-migration-floor-20260919.md` | 旧档迁移砍到「虫洞起」（v24）＋ 过旧档拒载入（船长 2026-09-19）· 工作文档 | 进行中（进行中） | 2026-09-19 | 5 KB / 66 行 | 0 / 0 |
 | `docs/design/wormhole-box-tier-nebula-20260919.md` | 图纸货柜按层分档 + 星云占比随层递增（2026-09-19） | 进行中（进行中） | 2026-09-19 | 5 KB / 88 行 | 0 / 0 |
 | `docs/design/wreck-groups-20260919.md` | 残骸合并：按「来源种族 × 来源地区」（2026-09-19 · 二号） | 进行中（进行中） | 2026-09-19 | 9 KB / 96 行 | 1 / 4 |
+| `docs/design/wreck-rare-color-20260919.md` | 稀有残骸 / 普通残骸按图标颜色区分 · 2026-09-19 | 进行中（进行中） | 2026-09-19 | 3 KB / 44 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260918-push.md` | 公告待审稿：2026-09-18 推送批（三条） | 已确认/已实现（✅ 已批准） | 2026-09-18 | 5 KB / 65 行 | 1 / 3 |
 | `docs/design/wh-descend-at-exit-20260918.md` | 虫洞「深入下一层」加位置门槛：必须站在下一层入口（船长 2026-09-18）· 工作文档 | 进行中（进行中） | 2026-09-18 | 4 KB / 56 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260916-combat-insurance.md` | 公告待审稿 · 战斗保险机制上线（2026-09-16） | 已确认/已实现（已批准并入库） | 2026-09-16 | 3 KB / 44 行 | 0 / 1 |
@@ -257,7 +258,7 @@
 | `docs/archive/glossary-detail-03-econ-20260915.md` | 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 11 KB / 26 行 | 6 / 0 |
 | `docs/archive/glossary-retired-20260915.md` | 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 3 KB / 16 行 | 3 / 0 |
 | `docs/archive/roadmap-todo-done-20260915.md` | 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 92 KB / 75 行 | 3 / 0 |
-| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 52 / 9 |
+| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 54 / 9 |
 | `docs/archive/roadmap-2026-09-04.md` | 封存卷 · roadmap 批次条目 2026-09-04 | 未标注 | — | 13 KB / 68 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-05.md` | 封存卷 · roadmap 批次条目 2026-09-05 | 未标注 | — | 12 KB / 32 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-06.md` | 封存卷 · roadmap 批次条目 2026-09-06 | 未标注 | — | 2 KB / 10 行 | 1 / 0 |
@@ -288,7 +289,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 52 KB / 524 行 | 52 / 9 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 54 KB / 544 行 | 54 / 9 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -300,7 +301,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 8 / 0 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 2 / 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 / 0 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 52 / 9 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 54 / 9 |
 
 ## 四、已归档设计稿（design/archive） —— 40 份
 
@@ -345,15 +346,15 @@
 | `docs/design/archive/handoff-20260909-dsh-reinstall.md` | 二号会话续接卡(2026-09-09 DSH 重装;交给新继承人) | 未标注 | 2026-09-09 | 5 KB / 48 行 | 5 / 0 |
 | `docs/design/archive/handoff-b3-skills.md` | B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施） | 未标注（打捞对标技能组已实施 ✅） | — | 4 KB / 52 行 | 4 / 0 |
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
-| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 52 / 9 |
+| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 11 KB / 120 行 | 54 / 9 |
 
-## 附：孤儿文档（0 引用，23 份）
+## 附：孤儿文档（0 引用，24 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/blueprint-shelf-filter-20260919.md`（2026-09-19 · 4 KB）—— 报障修复：蓝图书架「选舰船蓝图 / 消耗品蓝图 ⇒ 卡片列表变空」 · 2026-09-19
+- `docs/design/blueprint-shelf-filter-20260919.md`（2026-09-19 · 6 KB）—— 报障修复：蓝图书架「选舰船蓝图 / 消耗品蓝图 ⇒ 卡片列表变空」 · 2026-09-19
 - `docs/design/dead-ship-revive-20260919.md`（2026-09-19 · 5 KB）—— 报障修复：阵亡（已损毁）单位被维修脉冲复活 · 2026-09-19
-- `docs/design/filters-audit-20260919.md`（2026-09-19 · 11 KB）—— 全仓筛选标签盘点（供船长审核与统一口径） · 2026-09-19
+- `docs/design/filters-audit-20260919.md`（2026-09-19 · 29 KB）—— 全仓筛选标签盘点（供船长审核与统一口径） · 2026-09-19
 - `docs/design/fit-hit-rate-20260919.md`（2026-09-19 · 4 KB）—— 装配页补「命中率」属性（2026-09-19）
 - `docs/design/foe-de-retune-20260919.md`（2026-09-19 · 5 KB）—— D/E 族数值批：D 族远端 0.2 · E 族构成改爆炸 60/动能 40（2026-09-19 · 二号）
 - `docs/design/foe-mount-entry-level-20260919.md`（2026-09-19 · 3 KB）—— 敌方挂载件「条目级」口径收敛 · A 族冲锋件与劫掠电子舰（2026-09-19）
@@ -361,6 +362,7 @@
 - `docs/design/fragment-redeem-entry-20260919.md`（2026-09-19 · 4 KB）—— 碎片兑现入口：物品页「逆向解锁」（2026-09-19 · 二号 · 玩家报障修）
 - `docs/design/save-migration-floor-20260919.md`（2026-09-19 · 5 KB）—— 旧档迁移砍到「虫洞起」（v24）＋ 过旧档拒载入（船长 2026-09-19）· 工作文档
 - `docs/design/wormhole-box-tier-nebula-20260919.md`（2026-09-19 · 5 KB）—— 图纸货柜按层分档 + 星云占比随层递增（2026-09-19）
+- `docs/design/wreck-rare-color-20260919.md`（2026-09-19 · 3 KB）—— 稀有残骸 / 普通残骸按图标颜色区分 · 2026-09-19
 - `docs/design/wh-descend-at-exit-20260918.md`（2026-09-18 · 4 KB）—— 虫洞「深入下一层」加位置门槛：必须站在下一层入口（船长 2026-09-18）· 工作文档
 - `docs/review/first-tasks-review-20260917.md`（2026-09-17 · 12 KB）—— 核验件：「第一次」任务系列全表（2026-09-18 版 · 供船长逐条审核）
 - `docs/design/civilian-hp-20260915.md`（2026-09-15 · 5 KB）—— 非战斗舰血量提档（同档官方战斗舰总血中位 ×0.8）
