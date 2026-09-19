@@ -251,7 +251,7 @@ import type {
   WormholeAutoRun,
   WormholeHoldPlacement,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, overlayCardFoes, overlayCardFoesList, type L10nLocale } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, EN_GALAXIES, EN_BELTS, EN_STATIONS, EN_COMMS_FACTIONS, overlayCardFoes, overlayCardFoesList, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
@@ -464,12 +464,12 @@ export class GameEngine {
   skills = SKILLS
   readonly groups = SKILL_GROUPS
   ships = SHIPS.filter((d) => itemReleased(d))
-  readonly belts = BELTS
+  belts = BELTS
   items = ITEMS
   modules = MODULES.filter((d) => itemReleased(d))
   blueprints = BLUEPRINTS.filter((d) => itemReleased(d))
   shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
-  readonly galaxies = GALAXIES
+  galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
   anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
@@ -632,6 +632,8 @@ export class GameEngine {
     const locCards = overlayCardFoesList(overlayList(ANOMALIES_FLAVORED, EN_ANOMALIES, locale), EN_FOE_SHIPS, locale)
     this.anomalies = locCards.filter((a) => !a.hidden)
     this.allAnomalies = locCards
+    this.galaxies = overlayList(GALAXIES, EN_GALAXIES, locale)
+    this.belts = overlayList(BELTS, EN_BELTS, locale)
     this.notify()
   }
 

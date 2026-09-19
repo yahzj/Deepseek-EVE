@@ -677,6 +677,74 @@ export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: s
   return out ?? list
 }
 
+/** 星系（20 · `docs/glossary-en.md` §五）。注意：星系名进 `ctx.galaxies`，矿带名进 `ctx.belts`，两张表分开。 */
+export const EN_GALAXIES: EnTable = {
+  'galaxy-hub': { name: 'Leviathan IV' },
+  'galaxy-kor': { name: 'Kor Frontier' },
+  'galaxy-dust': { name: 'Stardust Wastes' },
+  'galaxy-redring': { name: 'Redring Corridor' },
+  'galaxy-grave': { name: 'Darkstar Graveyard' },
+  'galaxy-abyss': { name: 'Abyss Gate' },
+  'galaxy-auro': { name: 'Auro Waste Ring' },
+  'galaxy-starcore': { name: 'Starcore Labyrinth' },
+  'galaxy-harbor': { name: 'New Harbor Corridor' },
+  'galaxy-haze': { name: 'Hazebelt' },
+  'galaxy-shard': { name: 'Shardbelt' },
+  'galaxy-cinder': { name: 'Cinder Sector' },
+  'galaxy-echo': { name: 'Echo Wastes' },
+  'galaxy-lantern': { name: 'Lantern Passage' },
+  'galaxy-chasm': { name: 'Chasm Deepbelt' },
+  'galaxy-mirage': { name: 'Mirage System' },
+  'galaxy-maw': { name: 'Star Maw' },
+  'galaxy-vault': { name: 'Vault Necropolis' },
+  'galaxy-nadir': { name: 'Nadir Quiet Zone' },
+  'galaxy-voidedge': { name: 'Voidsea Edge' },
+}
+
+/** 矿带（17 · §五；**key 是矿带自己的 id**（`belt-*`），不是星系 id——星系名另见 `EN_GALAXIES`） */
+export const EN_BELTS: EnTable = {
+  'belt-fortune': { name: 'Ring of Plenty' },
+  'belt-scorched': { name: 'Scorched Rift' },
+  'belt-kernite': { name: 'Deepspace Crystal Belt' },
+  'belt-sunshard': { name: 'Dawncrystal Belt' },
+  'belt-gas-neon': { name: 'Neon Cloud Field' },
+  'belt-glowstone': { name: 'Glowcloud Belt' },
+  'belt-hemorphite': { name: 'Redring Crisis Belt' },
+  'belt-crimsonite': { name: 'Mirage Cluster' },
+  'belt-ice-marrow': { name: 'Frostmarrow Ice Ring' },
+  'belt-fluxite': { name: 'Starcore Vein' },
+  'belt-voidshard': { name: 'Voidcrystal Deepbelt' },
+  'belt-ice-frost': { name: 'Bluefrost Ice Ring' },
+  'belt-gas-ionstorm': { name: 'Ionstorm Cloud Field' },
+  'belt-nebulite': { name: 'Starwraith Vein' },
+  'belt-ice-darkstar': { name: 'Darkstar Ice Ring' },
+  'belt-gas-phosphor': { name: 'Phosphor Haze Field' },
+  'belt-gas-aurora': { name: 'Aurora Cloud Field' },
+}
+
+/** 站点（2 · 建站点；阶段名「奠基/完善/建成」嵌在站点定义里，用嵌套覆盖另处理） */
+export const EN_STATIONS: EnTable = {
+  'site-redring': { name: 'Redring Outpost' },
+  'site-cinder': { name: 'Cinder Outpost' },
+}
+
+/** 势力与部门（13 · §六；通讯页的发件人/署名会用） */
+export const EN_COMMS_FACTIONS: EnTable = {
+  dshi: { name: 'Deep Space Industry Association' },
+  'salvage-guild': { name: 'Salvage Guild' },
+  archive: { name: 'The Archive' },
+  'dept-nav-control': { name: 'Nav Control' },
+  'dept-infra': { name: 'Infrastructure Dept' },
+  'dept-survey': { name: 'Survey Office' },
+  'dept-industry': { name: 'Industry Dept' },
+  'dept-smelt': { name: 'Smelting Group' },
+  'dept-training': { name: 'Training Office' },
+  'dept-finance': { name: 'Finance Dept' },
+  'dept-route-safety': { name: 'Route Safety' },
+  'dept-recall': { name: 'Recall & Restart' },
+  'dept-salvage-crew': { name: "Chen's Crew No.1" },
+}
+
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
   if (locale === 'zh') return ctx
   return {
@@ -688,5 +756,9 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     anomalies: overlayCardFoes(overlayMap(ctx.anomalies, EN_ANOMALIES, locale), EN_FOE_SHIPS, locale),
     blueprints: overlayMap(ctx.blueprints, EN_BLUEPRINTS, locale),
     shipBlueprints: overlayMap(ctx.shipBlueprints, EN_SHIP_BLUEPRINTS, locale),
+    galaxies: overlayMap(ctx.galaxies, EN_GALAXIES, locale),
+    belts: overlayMap(ctx.belts, EN_BELTS, locale),
+    stations: overlayMap(ctx.stations, EN_STATIONS, locale),
+    commsFactions: overlayMap(ctx.commsFactions, EN_COMMS_FACTIONS, locale),
   }
 }
