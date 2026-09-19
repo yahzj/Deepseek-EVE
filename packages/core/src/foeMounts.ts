@@ -31,6 +31,13 @@ export const FOE_MOUNT_IDS = {
   droneRangeX4: 'foe-mount-drone-range-x4',
   /** D 族静滞卫舰：**从射程外**挨打 ⇒ 本舰炮台射程 ×1.5（迁移前 `gunRangeMulOnHit: 1.5`） */
   gunRangeX15: 'foe-mount-gun-range-x1-5',
+  /**
+   * E 族导弹残段：**从射程外**挨打 ⇒ 本舰炮台射程 ×1.5。
+   * ⚠ 与 D 族那件**效果类似但各是一件**（船长 2026-09-19：「**只是采用类似的效果的挂载件，
+   * 并不是真的是静滞卫舰的挂载件（因此名字要不同）**」）⇒ id / 名 / 备注**三处都独立**，
+   * 不许两族共用同一件（`content:check` 的炮台受击增程契约按"舰级 → 指定件"逐个核）。
+   */
+  gunRangeX15Titan: 'foe-mount-titan-range-x1-5',
   /** 劫掠捕获网（船长 2026-09-16）：A 族新舰「劫掠电子舰」专属——首次开火即钉住目标 */
   captureWeb: 'foe-mount-capture-web',
   /** **支援呼叫装置**（船长 2026-09-19）：D 族守墓王座舰专属——开战 20 秒后按距离呼叫一支支援军 */
@@ -95,6 +102,16 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     note:
       'D 族静滞卫舰：从它射程之外被命中 ⇒ 本舰炮台射程 ×1.5（迁移前 gunRangeMulOnHit: 1.5）。' +
       '「只允许静滞卫舰」的约束改由 content:check 的挂载件契约守。',
+  },
+  [FOE_MOUNT_IDS.gunRangeX15Titan]: {
+    id: FOE_MOUNT_IDS.gunRangeX15Titan,
+    name: '巨构齐射观瞄',
+    gunRangeOnHit: { mul: 1.5 },
+    note:
+      '船长 2026-09-19：「并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件」＋同日澄清' +
+      '「只是采用类似的效果的挂载件，并不是真的是静滞卫舰的挂载件（因此名字要不同）」' +
+      '⇒ 只为 E 族导弹残段（foe-missile-hulk）立的独立一件：从它射程之外被命中，本舰炮台射程 ×1.5。' +
+      '与 D 族的「守墓远距观瞄」（foe-mount-gun-range-x1-5）效果同档，归属与叙事各自独立，两族不共用同一件。',
   },
   [FOE_MOUNT_IDS.supportCall]: {
     id: FOE_MOUNT_IDS.supportCall,
