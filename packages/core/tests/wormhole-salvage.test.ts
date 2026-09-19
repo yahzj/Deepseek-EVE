@@ -38,6 +38,7 @@ import {
   WORMHOLE_BP_BOX_DEEP,
   wormholeRollSalvageBox,
   wormholeCellCardIdOf,
+  familyOfCard,
   wormholeLootTierOf,
   wormholeLootValueIsk,
   wormholeWreckRecycleIskPerM3,
@@ -793,11 +794,15 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       if ((r2.relics ?? []).length > 0) {
         got = r2.relics![0]
         /**
-         * **2026-09-15 改判后：掉的是"全货柜池"里的任意一种**（贵重品柜 50% + 其余平分 50%），
-         * 不再按本格敌卡的族取安全柜；**2026-09-19 起图纸柜按层过滤**（中 ≥层 5 · 深 ≥层 7）
-         * ⇒ 这里钉"一定在**本层**的池里"。
+         * **2026-09-15 改判后：掉的是"本层货柜池"里的任意一种**（贵重品柜 50% + 其余平分 50%）；
+         * **2026-09-19 两条令**：图纸柜按层过滤（中 ≥层 5 · 深 ≥层 7）＋ **安全货柜按本格敌卡的族取**
+         * （玩家报障「E 族虫洞出了 D 族安全货柜」后船长裁定「两渠道统一」）⇒ 这里钉"一定在**本层本族**的池里"。
          */
-        expect(wormholeRelicBoxPoolOf(ctx, run.depth), `${got} 不在遗迹货柜池里（层 ${run.depth}）`).toContain(got)
+        const cellFam = familyOfCard(ctx, wormholeCellCardIdOf(run, cell2))
+        expect(wormholeRelicBoxPoolOf(ctx, run.depth, cellFam), `${got} 不在遗迹货柜池里（层 ${run.depth} · ${cellFam} 族）`).toContain(got)
+        if (got.startsWith('box-relic-')) {
+          expect(got, `安全货柜必须与本格族一致（本格 ${cellFam} 族）`).toBe(wormholeRelicBoxIdOf(cellFam))
+        }
         // 且它**真的落到了玩家手里**——收货阶梯（2026-09-13 船长「大件货先进临时空间」）：
         // ① 货仓腾得出该形状 ⇒ 进货仓格；② 腾不出 ⇒ 进临时空间；③ 两边都满才散落在该格
         const inHold = (run.hold?.placements ?? []).some((pp) => pp.kind === 'box' && pp.itemId === got)
@@ -838,7 +843,9 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       expect(r.ok).toBe(true)
       expect(r.finished, '首捞不该把 2~3 堆一次捞完').toBe(false)
       expect((r.relics ?? []).length, '首捞就该出遗迹货柜').toBe(1)
-      expect(wormholeRelicBoxPoolOf(ctx, run.depth)).toContain(r.relics![0]!)
+      expect(
+        wormholeRelicBoxPoolOf(ctx, run.depth, familyOfCard(ctx, wormholeCellCardIdOf(run, cell))),
+      ).toContain(r.relics![0]!)
       expect(grid.ruinsRolled, '首捞即记账').toContain(cell.key)
       expect(state.logs.some((l) => l.text.includes('遗迹深处发现'))).toBe(true)
     })

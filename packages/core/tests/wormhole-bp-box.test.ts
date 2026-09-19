@@ -29,7 +29,9 @@ import {
   wormholeBpBoxDepthOf,
   wormholeBpBoxIdOf,
   wormholeBpBoxIdsForDepth,
+  wormholeCellCardIdOf,
   wormholeDilutionPoolOf,
+  familyOfCard,
   wormholePermanentPoolOf,
   wormholeRelicBoxIdOf,
   wormholeRelicBoxPoolOf,
@@ -173,9 +175,10 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
     }
   })
 
-  it('掉落：**贵重品柜 50% + 本层可掉种类平分 50%**（图纸柜 2026-09-19 起按层过滤）', () => {
+  it('掉落：**贵重品柜 50% + 其余平分 50%**（池按层 + 按本格族；2026-09-19 两条船长令）', () => {
     /** 2026-09-15 船长：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」；
-     *  2026-09-19 船长：「图纸货柜·中调到5层才出，深调到7层才出」⇒ 池随层变（被挡掉的档剔除、剩余平分）。 */
+     *  2026-09-19 船长：「图纸货柜·中调到5层才出，深调到7层才出」＋玩家报障「E 族虫洞出了 D 族安全货柜」后
+     *  裁定「A：遗迹渠道也按本格敌卡的族取（两渠道统一）」。 */
     const counts = new Map<string, number>()
     let total = 0
     const depths = [4, 5, 6, 7]
@@ -184,13 +187,18 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
       const run = state.wormhole.run!
       for (const depth of depths) {
         run.depth = depth
-        const pool = wormholeRelicBoxPoolOf(ctx, depth)
         for (const cell of run.grid!.cells) {
+          const fam = familyOfCard(ctx, wormholeCellCardIdOf(run, cell))
+          const pool = wormholeRelicBoxPoolOf(ctx, depth, fam)
           const id = wormholeRollRelicBox(state, ctx, cell)
           if (!id) continue
           total += 1
           counts.set(id, (counts.get(id) ?? 0) + 1)
-          expect(pool, `层 ${depth} 掉了池外的 ${id}`).toContain(id)
+          expect(pool, `层 ${depth} · ${fam} 族掉了池外的 ${id}`).toContain(id)
+          // **安全货柜必须与格子的族一致**（玩家报障的那条）
+          if (id.startsWith('box-relic-')) {
+            expect(id, `层 ${depth}：${fam} 族格子掉了 ${id}`).toBe(wormholeRelicBoxIdOf(fam))
+          }
         }
       }
     }
@@ -199,11 +207,19 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
     // ① 贵重品货柜 ≈50%（跨层汇总）
     expect(share('box-valuables'), `贵重品柜占比 ${(share('box-valuables') * 100).toFixed(1)}%`).toBeGreaterThan(0.42)
     expect(share('box-valuables')).toBeLessThan(0.58)
-    // ② 池规模随层：层 4 = 8 种（其余 7）· 层 5~6 = 9 种（其余 8）· 层 7+ = 10 种（其余 9）
-    expect(wormholeRelicBoxPoolOf(ctx, 4), '层 4 池 = 贵重品 + 7').toHaveLength(8)
-    expect(wormholeRelicBoxPoolOf(ctx, 5), '层 5 池 = 贵重品 + 8').toHaveLength(9)
-    expect(wormholeRelicBoxPoolOf(ctx, 6)).toHaveLength(9)
-    expect(wormholeRelicBoxPoolOf(ctx, 7), '层 7 池 = 贵重品 + 9').toHaveLength(10)
+    // ② 池规模随层（每池含**本族**安全柜 1 种）：层 1~4 = 4 种 · 层 5~6 = 5 种 · 层 7+ = 6 种
+    for (const fam of ['A', 'C', 'D', 'E', 'G']) {
+      expect(wormholeRelicBoxPoolOf(ctx, 4, fam), `层 4 · ${fam} 族池`).toHaveLength(4)
+      expect(wormholeRelicBoxPoolOf(ctx, 5, fam), `层 5 · ${fam} 族池`).toHaveLength(5)
+      expect(wormholeRelicBoxPoolOf(ctx, 6, fam)).toHaveLength(5)
+      expect(wormholeRelicBoxPoolOf(ctx, 7, fam), `层 7 · ${fam} 族池`).toHaveLength(6)
+      // 本族安全柜在池里、别族都不在（两渠道统一的那把尺）
+      const pool7 = wormholeRelicBoxPoolOf(ctx, 7, fam)
+      expect(pool7).toContain(wormholeRelicBoxIdOf(fam))
+      for (const other of ['A', 'C', 'D', 'E', 'G'].filter((f) => f !== fam)) {
+        expect(pool7, `${fam} 族的池里混进了 ${other} 族安全柜`).not.toContain(wormholeRelicBoxIdOf(other))
+      }
+    }
     // ③ **按层过滤**：中层只在 ≥5 露面、深层只在 ≥7 露面；浅层恒在、低层不出现高档
     expect(counts.get('box-bp-shallow') ?? 0, '浅档层 4 也该掉得出来').toBeGreaterThan(0)
     for (const id of ['box-bp-mid', 'box-bp-deep']) expect(counts.get(id) ?? 0, `${id} 一次都没掉出来`).toBeGreaterThan(0)

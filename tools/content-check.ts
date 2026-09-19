@@ -4857,46 +4857,58 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       }
       if (WORMHOLE_RELIC_BOX_CHANCE !== 0.7) bad.push(`遗迹出货柜概率 = ${WORMHOLE_RELIC_BOX_CHANCE}（应为 0.7）`)
       if (WORMHOLE_RELIC_VALUABLES_SHARE !== 0.5) bad.push(`贵重品柜占比 = ${WORMHOLE_RELIC_VALUABLES_SHARE}（应为 0.5）`)
-      // 层门槛（2026-09-19 船长令）：池规模随层变化 + 被挡掉的档不在池里
+      // 层门槛 + 按族（2026-09-19 两条船长令）：池 = 贵重品 + **本族**安全柜 + 本层图纸柜档 + 军用柜
       const ctxForPool = buildSimContext()
+      const FAMILIES = ['A', 'C', 'D', 'E', 'G'] as const
       const sizes: ReadonlyArray<readonly [number, number]> = [
-        [1, 8],
-        [4, 8],
-        [5, 9],
-        [6, 9],
-        [7, 10],
-        [9, 10],
+        [1, 4],
+        [4, 4],
+        [5, 5],
+        [6, 5],
+        [7, 6],
+        [9, 6],
       ]
-      for (const [depth, want] of sizes) {
-        const n = wormholeRelicBoxPoolOf(ctxForPool, depth).length
-        if (n !== want) bad.push(`层 ${depth} 池 = ${n} 种（应为 ${want}）`)
+      for (const fam of FAMILIES) {
+        for (const [depth, want] of sizes) {
+          const n = wormholeRelicBoxPoolOf(ctxForPool, depth, fam).length
+          if (n !== want) bad.push(`${fam} 族层 ${depth} 池 = ${n} 种（应为 ${want}）`)
+        }
+        const pool7 = wormholeRelicBoxPoolOf(ctxForPool, 9, fam)
+        // 安全柜**只许本族**（玩家报障「E 族虫洞出了 D 族安全货柜」⇒ 2026-09-19 改回按族）
+        const own = `box-relic-${fam.toLowerCase()}`
+        if (!pool7.includes(own)) bad.push(`${fam} 族池里没有本族安全柜 ${own}`)
+        for (const other of FAMILIES.filter((f) => f !== fam)) {
+          if (pool7.includes(`box-relic-${other.toLowerCase()}`)) bad.push(`${fam} 族池里混进了 ${other} 族安全柜`)
+        }
+        // 层门槛：中档 ≥5、深档 ≥7
+        if (wormholeRelicBoxPoolOf(ctxForPool, 4, fam).includes(WORMHOLE_BP_BOX_MID)) bad.push(`${fam} 族层 4 池里混进了中档图纸柜（层 5 起才出）`)
+        if (wormholeRelicBoxPoolOf(ctxForPool, 6, fam).includes(WORMHOLE_BP_BOX_DEEP)) bad.push(`${fam} 族层 6 池里混进了深档图纸柜（层 7 起才出）`)
+        // 齐备性：层 7+ 必须齐（贵重品 + 本族安全柜 + 图纸柜三档 + 军用柜）
+        const relicOthers = pool7.filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
+        for (const [label, want] of [
+          ['本族安全柜', [own]],
+          ['图纸柜三档', [...WORMHOLE_BP_BOX_IDS]],
+          ['军用柜', [WORMHOLE_MILITARY_BOX_ID]],
+        ] as const) {
+          for (const id of want) if (!relicOthers.includes(id)) bad.push(`${fam} 族·${label}缺 ${id}`)
+        }
+        // 每种都要"有卡 + 有形状 + 有市场行"（含低层池，覆盖浅档路径）
+        for (const id of new Set([...pool7, ...wormholeRelicBoxPoolOf(ctxForPool, 1, fam)])) {
+          if (!itemsById.has(id)) bad.push(`${id}（物品目录里没有）`)
+          if (!wormholeIsShapedItem(id)) bad.push(`${id}（没有形状登记 ⇒ 掉出来放不进仓）`)
+          if (!rowOf(id)) bad.push(`${id}（没有市场行）`)
+        }
       }
-      if (wormholeRelicBoxPoolOf(ctxForPool, 4).includes(WORMHOLE_BP_BOX_MID)) bad.push('层 4 的池里混进了中档图纸柜（层 5 起才出）')
-      if (wormholeRelicBoxPoolOf(ctxForPool, 6).includes(WORMHOLE_BP_BOX_DEEP)) bad.push('层 6 的池里混进了深档图纸柜（层 7 起才出）')
-      const relicPool = wormholeRelicBoxPoolOf(ctxForPool, 9)
-      if (relicPool.length !== 10) bad.push(`层 7+ 池 = ${relicPool.length} 种（应为 10：贵重品柜 + 其余 9）`)
+      const relicPool = wormholeRelicBoxPoolOf(ctxForPool, 9, 'A')
       if (!relicPool.includes(WORMHOLE_VALUABLES_BOX_ID)) bad.push('池里没有贵重品货柜')
-      const relicOthers = relicPool.filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
-      for (const [label, want] of [
-        ['五族安全柜', ['box-relic-a', 'box-relic-c', 'box-relic-d', 'box-relic-e', 'box-relic-g']],
-        ['图纸柜三档', [...WORMHOLE_BP_BOX_IDS]],
-        ['军用柜', [WORMHOLE_MILITARY_BOX_ID]],
-      ] as const) {
-        for (const id of want) if (!relicOthers.includes(id)) bad.push(`${label}缺 ${id}`)
-      }
-      for (const id of new Set([...relicPool, ...wormholeRelicBoxPoolOf(ctxForPool, 1)])) {
-        if (!itemsById.has(id)) bad.push(`${id}（物品目录里没有）`)
-        if (!wormholeIsShapedItem(id)) bad.push(`${id}（没有形状登记 ⇒ 掉出来放不进仓）`)
-        if (!rowOf(id)) bad.push(`${id}（没有市场行）`)
-      }
       check(
         bad.length === 0,
-        `战利品扩充契约⑦：遗迹掉落池必须"70% · 贵重品 50% · 池随层 8/9/10 种"——${bad.slice(0, 8).join(' · ')}`,
+        `战利品扩充契约⑦：遗迹掉落池必须"70% · 贵重品 50% · 池随层 4/5/6 种 · 安全柜按本格族"——${bad.slice(0, 8).join(' · ')}`,
       )
       console.log(
         `· 遗迹掉落契约：层 2 起固定 ${(WORMHOLE_RELIC_BOX_CHANCE * 100).toFixed(0)}%（层 1 恒 0）· ` +
-          `池随层 8/9/10 种（层 1~4 / 5~6 / 7+）⇒ 贵重品柜 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}% + 其余平分 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}%` +
-          `（层 7+ 各 ${((WORMHOLE_RELIC_VALUABLES_SHARE / 9) * 100).toFixed(1)}%）· 图纸柜门槛：中 ≥${WORMHOLE_BP_BOX_MIN_DEPTH[WORMHOLE_BP_BOX_MID]} 层 · 深 ≥${WORMHOLE_BP_BOX_MIN_DEPTH[WORMHOLE_BP_BOX_DEEP]} 层`,
+          `池随层 4/5/6 种（层 1~4 / 5~6 / 7+，含**本族**安全柜）⇒ 贵重品柜 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}% + 其余平分 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}%` +
+          `（层 7+ 各 ${((WORMHOLE_RELIC_VALUABLES_SHARE / (relicPool.length - 1)) * 100).toFixed(1)}%）· 图纸柜门槛：中 ≥${WORMHOLE_BP_BOX_MIN_DEPTH[WORMHOLE_BP_BOX_MID]} 层 · 深 ≥${WORMHOLE_BP_BOX_MIN_DEPTH[WORMHOLE_BP_BOX_DEEP]} 层`,
       )
     }
   }

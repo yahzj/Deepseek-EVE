@@ -358,20 +358,22 @@ export const WORMHOLE_LUXURY_ITEM_IDS = [
 ] as const
 /**
  * **遗迹掉落的货柜池**（船长 2026-09-15：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」；
- * **2026-09-19 追加层门槛**：中档 ≥层 5、深档 ≥层 7，见 `WORMHOLE_BP_BOX_MIN_DEPTH`）。
+ * **2026-09-19 两处追加**：① 图纸柜档位按层过滤（中 ≥层 5 · 深 ≥层 7，见 `WORMHOLE_BP_BOX_MIN_DEPTH`）；
+ * ② **安全货柜改回"按本格敌卡的族"取** —— 玩家报障「E 族虫洞出了 D 族安全货柜」后，船长裁定
+ * 「**A：遗迹渠道也按本格敌卡的族取（两渠道统一）**」⇒ 与残骸堆渠道同一把尺，柜内内容不再与本趟族错位）。
  *
- * 第 1 个 = **贵重品货柜**（占 `WORMHOLE_RELIC_VALUABLES_SHARE` = 50%）；其余**本层可掉的**种类
- * （安全货柜**五族** A/C/D/E/G · **本层有资格的图纸货柜档** · 军用备货柜）**平分剩下 50%**：
- * 层 1~4 = 8 种（其余 7 种各 ≈7.14%）· 层 5~6 = 9 种（各 6.25%）· 层 7+ = 10 种（各 ≈5.6%）。
- * ⚠ 与 2026-09-15 旧口径的差别：① **不再按本格敌卡的族**取安全柜（五族都进池 ⇒ 也可能掉出别的族的密封柜，
- * 内容物按"柜子自己的族"在拆解时揭）；② **图纸柜按层档过滤**（该日「三档同权、深档浅层也可能掉」已被
- * 2026-09-19 船长令取代）。
- * 池子从 `ctx.items` 派生（`box-relic-a…g`）⇒ 以后补一族自动进池；"池 = 10 种（层 7+）"由内容契约钉住。
+ * 池 = 贵重品货柜（占 `WORMHOLE_RELIC_VALUABLES_SHARE` = 50%）
+ * ＋ **本族安全货柜**（`box-relic-<族小写>`）
+ * ＋ **本层有资格的图纸货柜档**（浅档恒在 · 中 ≥5 · 深 ≥7）
+ * ＋ 军用备货柜 —— 其余种类**平分剩下 50%**：
+ * 层 1~4 = 4 种（其余 3 种各 ≈16.7%）· 层 5~6 = 5 种（各 10%）· 层 7+ = 6 种（各 ≈8.3%）。
+ *
+ * ⚠ 被取代的旧口径：「**不再按本格敌卡的族**取安全柜（五族都进池 ⇒ 也可能掉出别的族的密封柜）」
+ * （2026-09-15 定；2026-09-19 因玩家报障由船长改回按族）。
  */
-export function wormholeRelicBoxPoolOf(ctx: SimContext, depth: number): string[] {
-  const safe = [...ctx.items.keys()]
-    .filter((id) => /^box-relic-[a-z]$/.test(id))
-    .sort()
+export function wormholeRelicBoxPoolOf(ctx: SimContext, depth: number, family: string): string[] {
+  const own = wormholeRelicBoxIdOf(family)
+  const safe = ctx.items.has(own) ? [own] : []
   return [WORMHOLE_VALUABLES_BOX_ID, ...safe, ...wormholeBpBoxIdsForDepth(depth), WORMHOLE_MILITARY_BOX_ID]
 }
 /**
@@ -614,7 +616,8 @@ export function wormholeCellCardIdOf(run: WormholeRunState, cell: WormholeGridCe
 }
 
 /** 某格的产出族（从敌卡 id 反查：`wh-*` 卡都带 `foeFamily`，取不到就当 A 族兜底） */
-function familyOfCard(ctx: SimContext, cardId: string): string {
+/** 本格敌卡的族（ox-relic-* 按它取；两条货柜渠道与专属掉落同一把尺）。未知/缺省 ⇒ 'A' */
+export function familyOfCard(ctx: SimContext, cardId: string): string {
   const card: AnomalyDef | undefined = ctx.anomalies.get(cardId)
   const f = String(card?.foeFamily ?? 'A')
   return (WORMHOLE_FAMILIES as readonly string[]).includes(f) ? f : 'A'
@@ -1793,7 +1796,9 @@ export function wormholeRollRelicBox(
   if (rng() >= wormholeRelicChanceOf(run.depth)) return undefined
   // 命中后分种类。⚠ 这条流是**每格独立**的（种子含 q/r），多抽一个随机数不会影响别的格子"出不出货"。
   if (rng() < WORMHOLE_RELIC_VALUABLES_SHARE) return WORMHOLE_VALUABLES_BOX_ID
-  const others = wormholeRelicBoxPoolOf(ctx, run.depth).filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
+  const others = wormholeRelicBoxPoolOf(ctx, run.depth, familyOfCard(ctx, wormholeCellCardIdOf(run, cell))).filter(
+    (id) => id !== WORMHOLE_VALUABLES_BOX_ID,
+  )
   if (others.length === 0) return undefined
   return others[Math.min(others.length - 1, Math.floor(rng() * others.length))]!
 }

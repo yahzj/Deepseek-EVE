@@ -1188,6 +1188,7 @@ export {
   WORMHOLE_RELIC_BOX_CHANCE,
   WORMHOLE_RELIC_VALUABLES_SHARE,
   wormholeRelicBoxPoolOf,
+  familyOfCard,
   wormholeRelicChanceOf,
   WORMHOLE_RUINS_BATTLE_CHANCE,
   WORMHOLE_RUINS_RARES_MAX,
