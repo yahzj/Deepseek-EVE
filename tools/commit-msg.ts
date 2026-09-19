@@ -90,6 +90,21 @@ function fail(msg: string): never {
 }
 
 /**
+ * **临时消息文件的兜底清理**：`process.exit()` **不会执行 `finally`**（实测踩过：失败路径漏删 ⇒
+ * `$TEMP` 里留了 5 个 `whale-commit-msg-*.txt`）⇒ 除了正常路径的 `finally`，再挂一个 `exit` 钩子。
+ * `process.on('exit')` 在 `process.exit()` 时**照样会跑**，这里只能做同步操作（正好 unlink 是同步的）。
+ */
+let tmpPath: string | null = null
+process.on('exit', () => {
+  if (!tmpPath) return
+  try {
+    unlinkSync(tmpPath)
+  } catch {
+    /* 已删/删不掉都不影响提交结果 */
+  }
+})
+
+/**
  * **按字节解码 + 编码自检**：UTF-8 优先，失败/出替换符时退 GBK(936)。
  * `via` 会写进汇报行——"下次还中招"时一眼看出走的是哪条路。
  */
@@ -158,6 +173,7 @@ async function main(): Promise<void> {
   for (const [i, l] of lines.entries()) console.log(`    ${String(i + 1).padStart(2, ' ')}│ ${l}`)
 
   const tmp = join(tmpdir(), `whale-commit-msg-${process.pid}.txt`)
+  tmpPath = tmp
   writeFileSync(tmp, `${msg}\n`, { encoding: 'utf8' })
   if (cli.dryRun) {
     console.log('· --dry-run：以下命令**不会真的执行**')
