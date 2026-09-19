@@ -243,6 +243,22 @@ describe('英文覆盖层（P2）', () => {
     expect(en.items.get('box-relic-a')?.description).toContain('Takes 2×2 cargo slots')
   })
 
+  it('装备说明：142 条全部有英文说明，且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const [id] of zh.modules) {
+      const other = en.modules.get(id)!
+      if (!other.description) {
+        noDesc.push(id)
+        continue
+      }
+      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+    expect(noDesc, `这些装备还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.modules.get('mod-turret-kin-1')?.description).toBe('Light rapid-fire kinetic gun: ×1.5 vs shields, ×0.75 vs armor.')
+    expect(en.modules.get('mod-shield-kin-1')?.description).toContain('cap 90%')
+  })
+
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {
     for (const [id, text] of Object.entries(EN_SHIPS)) {
       const keys = Object.keys(text).sort()
