@@ -949,7 +949,8 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
  * 口径：
  * - **撤离成功时**按本趟**已取回**的谜质装置台数换算（**1 台 = 1 枚**）；**全损不转**（随货仓一起丢）；
  *   **没捡的不补发**；装置本身的「取回即生效、离洞失效」增益**保留**（本批只新增"转成物品"这一条）；
- * - **只收不卖**（`playerBuyable: false`）、市场行 `demandMultiplier: 1.0` ⇒ **NPC 收购 = 70,000/枚**；
+ * - **只收不卖**（`playerBuyable: false`）、市场行 `demandMultiplier: 1.0` ⇒ **NPC 收购 = 700,000/枚**
+ *   （2026-09-19 船长：「**谜质单价提高到70W**」——同时它是「谜质科技树」的双货币之一，见 `matterTech.ts`）；
  * - 它是**仓库物品**（不占虫洞货仓形状格、不进拆解/精炼/制造链）。
  */
 export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
@@ -958,7 +959,7 @@ export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
     name: '虫洞谜质',
     kind: 'essence',
     unitM3: 0.5,
-    baseSellPriceIsk: 70_000,
+    baseSellPriceIsk: 700_000,
     description: '虫洞内存在的奇幻物资，具备研究价值，不建议出售。装在密封匣里的冷辉结晶，回收商按枚收购。',
   },
 ]

@@ -135,7 +135,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   ⚠ **谜质（`mat-wh-essence`）暂留 exotic**：`-wh-` 专属内容档位另有 2026-09-14 船长裁定
   //   （「所有专属的东西，价格翻4倍」⇒ 用例 `exclusive-market.test.ts` ① 要求 `-wh-` 行 = 奇货档 + 只收不卖），
   //   与"常驻才好卖"冲突 ⇒ 待船长裁决（见汇报），裁决前不动。
-  { key: 'mat-wh-essence', kind: 'item', refId: 'mat-wh-essence', rarity: 'exotic', basePrice: 70_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 虫洞谜质（撤离成功时按台数换算：1 台 = 1 枚；NPC 收购 = 70,000）
+  { key: 'mat-wh-essence', kind: 'item', refId: 'mat-wh-essence', rarity: 'exotic', basePrice: 700_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 虫洞谜质（撤离成功按台数换算：1 台 = 1 枚；NPC 收购 = 700,000；2026-09-19 船长「谜质单价提高到70W」）
   { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 100_000, demandMultiplier: 1.0 }, // 奢侈品·低带（贵重品货柜拆解产物；正常交易）· 2026-09-15 船长「单价差距提高」：2.4 → 10 万
   { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'common', basePrice: 400_000, demandMultiplier: 1.0 }, // 奢侈品·中带（常驻 ⇒ 稳定卖出）· 4.8 → 40 万
   { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'common', basePrice: 2_000_000, demandMultiplier: 1.0 }, // 奢侈品·高带（常驻 ⇒ 稳定卖出）· 9.6 → 200 万
