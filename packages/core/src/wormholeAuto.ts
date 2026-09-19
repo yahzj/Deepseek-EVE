@@ -26,7 +26,7 @@ import { addLog, shipLockedInWormhole } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { WORMHOLE_ORE_ITEM_ID } from './wormhole'
-import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckItemIdOf } from './salvage'
+import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
 import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, WORMHOLE_CORE_WEIGHTS } from './wormholeSalvage'
 import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul } from './wormholeFoes'
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
@@ -501,13 +501,17 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   let coresGained: { type: 'gamma' | 'beta' | 'alpha'; n: number } | null = null
 
   // ① 普通残骸：堆数 = 手动 8.5 × 40% ≈ 3~4 堆，每堆 `WORMHOLE_WRECK_PILE_M3_BASE`(200) m³ × 层收益 × 抖动
+  //（2026-09-19 合并：产出物 = 该卡所属**组**的残骸；洞内 5 组皆常档 ⇒ 数量口径逐字不变）
+  const group = wreckGroupOfCard(cardId, ctx)
+  // `wormholeCardIdOfFamily` 只给真卡 ⇒ 组必然查得到；兜底回落旧 id 只为合成夹具不炸（生产不可达）
+  const wreckKey = group?.key ?? cardId
   const commons = Math.max(1, Math.round(WORMHOLE_AUTO_MANUAL.commons * WORMHOLE_AUTO_YIELD_MUL * taste.commons * (0.8 + rng() * 0.4)))
   const wreckUnits = Math.max(1, Math.round(commons * WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4)))
-  gains.push({ itemId: wreckItemIdOf(cardId), units: wreckUnits })
+  gains.push({ itemId: wreckItemIdOf(wreckKey), units: wreckUnits })
 
   // ② 稀有残骸：期望 = 手动 1.25 × 40% = 0.5 件/趟（基准）⇒ 原型口味再乘一档
   if (rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.rares * WORMHOLE_AUTO_YIELD_MUL * taste.rares)) {
-    gains.push({ itemId: rareWreckItemIdOf(cardId), units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
+    gains.push({ itemId: rareWreckItemIdOf(wreckKey), units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
   }
 
   // ③ 虚空母矿：0.8 堆 × 200 单位 × 层收益 × 抖动

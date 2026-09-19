@@ -70,11 +70,14 @@ import {
 } from '../src/wormholeSalvage'
 import { holdAdd, holdTransferTo, makeHoldState } from '../src/wormholeHold'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
+import { RARE_BOX_DRONE_UNITS, rareWreckItemIdOfCard, wreckItemIdOfCard } from '../src/salvage'
 import { countWare } from '../src/inventory'
 import { rackOf } from '../src/labels'
 
 const ctx = buildSimContext()
+/** 2026-09-19 残骸合并：卡 id → 该卡所属组的残骸物品 id（例：`wh-pirate-scout` → `wreck-a-wh`） */
+const commonWreckOf = (cardId: string): string => wreckItemIdOfCard(cardId)!
+const rareWreckOf = (cardId: string): string => rareWreckItemIdOfCard(cardId)!
 /** 形状件样本（2026-09-15：安全货柜 4 格 → **6 格（3×2）**，本文件的「形状件」口径改用同批新增的
  *  **军用备货柜**（正好 2×2 = 4 格）；安全货柜的新规格见 wormhole-hold 的形状表用例） */
 const BOX_FOR_TEST = 'box-military'
@@ -139,8 +142,8 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
       wormholeEnsureSalvagePiles(state, cell)
       const piles = cell.piles!
       const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell)
-      const commonId = wreckItemIdOf(cardId)
-      const rareId = rareWreckItemIdOf(cardId)
+      const commonId = commonWreckOf(cardId)
+      const rareId = rareWreckOf(cardId)
       const commons = piles.filter((p) => p.itemId === commonId).length
       const rares = piles.filter((p) => p.itemId === rareId).length
       const rolls = Math.floor(commons / WORMHOLE_RARE_JUDGE_PER_COMMONS)
@@ -167,7 +170,7 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
       const c2 = standOn(s2, 'graveyard')
       wormholeEnsureSalvagePiles(s2, c2)
       const card = wormholeCellCardIdOf(s2.wormhole.run!, c2)
-      seenCounts.add((c2.piles ?? []).filter((p) => p.itemId === wreckItemIdOf(card)).length)
+      seenCounts.add((c2.piles ?? []).filter((p) => p.itemId === commonWreckOf(card)).length)
     }
     expect(seenCounts.size, `60 趟里只见过这些普通堆数：${[...seenCounts].sort((a, b) => a - b).join('/')}`)
       .toBeGreaterThanOrEqual(6)
@@ -175,7 +178,7 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
     const probe = enterRun(1)
     const probeCell = standOn(probe, 'graveyard')
     wormholeEnsureSalvagePiles(probe, probeCell)
-    const sample = probeCell.piles!.find((p) => p.itemId === wreckItemIdOf(wormholeCellCardIdOf(probe.wormhole.run!, probeCell)))!
+    const sample = probeCell.piles!.find((p) => p.itemId === commonWreckOf(wormholeCellCardIdOf(probe.wormhole.run!, probeCell)))!
     expect(sample.units).toBeGreaterThan(100)
     expect(sample.units).toBeLessThan(1000)
   })
@@ -188,7 +191,7 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
     // 造满 10 堆（普通 10 ⇒ 3 次稀有判断，稀有忽略）
     wormholeEnsureSalvagePiles(state, cell)
     const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell)
-    cell.piles = Array.from({ length: 10 }, () => ({ itemId: wreckItemIdOf(cardId), units: 100 }))
+    cell.piles = Array.from({ length: 10 }, () => ({ itemId: commonWreckOf(cardId), units: 100 }))
     const turnsBefore = run.turnsLeft
     let actions = 0
     while ((cell.piles ?? []).length > 0) {
@@ -209,7 +212,7 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
       wormholeEnsureSalvagePiles(state, cell)
       const piles = cell.piles!
       const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell)
-      expect(piles.every((p) => p.itemId === rareWreckItemIdOf(cardId))).toBe(true)
+      expect(piles.every((p) => p.itemId === rareWreckOf(cardId))).toBe(true)
       expect(piles.length).toBeGreaterThanOrEqual(WORMHOLE_RUINS_RARES_MIN)
       expect(piles.length).toBeLessThanOrEqual(WORMHOLE_RUINS_RARES_MAX)
     }
@@ -221,8 +224,8 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
     const cell = standOn(state, 'graveyard')
     const cardId = wormholeCellCardIdOf(state.wormhole.run!, cell)
     // 塞满背包（每格 500 m³）
-    run.bag = [{ itemId: wreckItemIdOf(cardId), units: 100_000 }]
-    cell.piles = Array.from({ length: 6 }, () => ({ itemId: wreckItemIdOf(cardId), units: 500 }))
+    run.bag = [{ itemId: commonWreckOf(cardId), units: 100_000 }]
+    cell.piles = Array.from({ length: 6 }, () => ({ itemId: commonWreckOf(cardId), units: 500 }))
     const turnsBefore = run.turnsLeft
     const r = wormholeSalvageAt(state, ctx)
     expect(r.ok).toBe(true)
@@ -323,7 +326,7 @@ describe('虫洞 · 确定性随机流（2026-09-13 修掉的分布坑）', () =
 
 describe('虫洞 · 收益估值口径（F3c：残骸的真价值在回收炉）', () => {
   it('普通残骸按**拆解**估值（不是基础价 1 ISK/单位）；母矿仍按基础卖价', () => {
-    const common = wreckItemIdOf('wh-pirate-scout')
+    const common = commonWreckOf('wh-pirate-scout')
     expect(wormholeWreckRecycleIskPerM3(ctx, common)).toBeCloseTo(56.8, 1) // common 档：5.8 × 9.8
     expect(wormholeLootValueIsk(ctx, common, 500)).toBeCloseTo(28_420, -2)
     expect(wormholeLootValueIsk(ctx, COMMON_ORE_FOR_TEST, 500)).toBeCloseTo(457_500, -2) // 915 × 500
@@ -332,7 +335,7 @@ describe('虫洞 · 收益估值口径（F3c：残骸的真价值在回收炉）
   })
 
   it('稀有残骸：默认**不含**高级箱名义值（读数用），排序时才计入（丢货用）', () => {
-    const rare = rareWreckItemIdOf('wh-pirate-scout')
+    const rare = rareWreckOf('wh-pirate-scout')
     const plain = wormholeLootValueIsk(ctx, rare, 30)
     const forDrop = wormholeLootValueIsk(ctx, rare, 30, { rareChestNominal: true })
     expect(plain).toBeGreaterThan(0)
@@ -341,7 +344,7 @@ describe('虫洞 · 收益估值口径（F3c：残骸的真价值在回收炉）
     // 丢货档位：普通残骸（0）先丢 → 原矿（1）→ 稀有残骸（2）最后
     expect(wormholeLootTierOf(rare)).toBe(2)
     expect(wormholeLootTierOf(COMMON_ORE_FOR_TEST)).toBe(1)
-    expect(wormholeLootTierOf(wreckItemIdOf('wh-pirate-scout'))).toBe(0)
+    expect(wormholeLootTierOf(commonWreckOf('wh-pirate-scout'))).toBe(0)
   })
 })
 describe('虫洞 · 作业装备的槽位（船长 2026-09-14「改回高槽」）', () => {
@@ -522,7 +525,7 @@ describe('虫洞 · 遗迹安全货柜的搬运（船长 F4：「放不下整件
     const grid = state.wormhole.run!.grid!
     const cell = gridCellAt(grid, grid.pos)!
     cell.place = 'graveyard'
-    cell.piles = [{ itemId: wreckItemIdOf('wh-pirate-scout'), units: 200 }]
+    cell.piles = [{ itemId: commonWreckOf('wh-pirate-scout'), units: 200 }]
     const pick = wormholeTakePileAt(state, ctx, 0)
     expect(pick.ok).toBe(false)
     expect(pick.error ?? '').toContain('打捞')
@@ -877,7 +880,7 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       const cardId = wormholeCellCardIdOf(run, cell)
       wormholeEnsureSalvagePiles(state, cell)
       // 塞满背包（同一物品并格 ⇒ 直接溢出，一堆都进不去）
-      run.bag = [{ itemId: wreckItemIdOf(cardId), units: 100_000 }]
+      run.bag = [{ itemId: commonWreckOf(cardId), units: 100_000 }]
       const r = wormholeSalvageAt(state, ctx)
       expect(r.ok).toBe(true)
       expect((r.taken ?? []).length, '一堆都没收走').toBe(0)
@@ -962,8 +965,8 @@ describe('虫洞 · 遗迹收尾战「先提示、确认后再打」（船长 20
       const cell = standOn(s, 'ruins')
       const cardId = wormholeCellCardIdOf(s.wormhole.run!, cell)
       cell.piles = [
-        { itemId: wreckItemIdOf(cardId), units: 100 },
-        { itemId: wreckItemIdOf(cardId), units: 100 },
+        { itemId: commonWreckOf(cardId), units: 100 },
+        { itemId: commonWreckOf(cardId), units: 100 },
       ]
       const r = wormholeActivateAt(s, ctx, undefined, { deferRuinsBattle: true })
       expect(r.ok, r.error).toBe(true)
@@ -1087,7 +1090,7 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     expect(left, '这条流 2000 个键里该有一次命中').toBeGreaterThanOrEqual(0)
     const boxId = wormholeRollSalvageBox(state, ctx, cell, left)!
     // 后造：把该格造成"收走一堆后正好剩 left 堆"（1 台打捞器 ⇒ 一次只收一堆 ⇒ 掷的就是这个键）
-    cell.piles = Array.from({ length: left + 1 }, () => ({ itemId: wreckItemIdOf(wormholeCellCardIdOf(run, cell)), units: 1 }))
+    cell.piles = Array.from({ length: left + 1 }, () => ({ itemId: commonWreckOf(wormholeCellCardIdOf(run, cell)), units: 1 }))
     const before = countWare(state, boxId)
     const r = wormholeSalvageAt(state, ctx)
     expect(r.ok, r.error).toBe(true)
@@ -1130,7 +1133,7 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     cell.r = 0
     // 收走第 1 堆 ⇒ 掷键用 L=hitLeft（命中）；收走第 2 堆 ⇒ 用 L=hitLeft-1（也命中，但被上限截住）
     cell.piles = Array.from({ length: hitLeft + 2 }, () => ({
-      itemId: wreckItemIdOf(wormholeCellCardIdOf(run, cell)),
+      itemId: commonWreckOf(wormholeCellCardIdOf(run, cell)),
       units: 1,
     }))
     const r = wormholeSalvageAt(state, ctx)

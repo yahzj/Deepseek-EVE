@@ -61,7 +61,7 @@ import { advanceWormhole, battleFoeAnomaly, wormholeActivateAt, wormholeBattleVi
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholePlace } from '../src/wormholeGrid'
 import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
-import { rareWreckItemIdOf, wreckItemIdOf } from '../src/salvage'
+import { rareWreckItemIdOfCard, wreckItemIdOfCard } from '../src/salvage'
 import {
   WORMHOLE_ESSENCE_ITEM_ID,
   wormholeDiscardToFit,
@@ -77,6 +77,9 @@ import { holdTransferTo, makeHoldState } from '../src/wormholeHold'
 import { WORMHOLE_MATTER_DEVICE_IDS } from '../src/wormholeMatter'
 
 const ctx = buildSimContext()
+/** 2026-09-19 残骸合并：卡 id → 该卡所属组的残骸物品 id（例：`wh-pirate-scout` → `wreck-a-wh`） */
+const commonWreckOf = (cardId: string): string => wreckItemIdOfCard(cardId)!
+const rareWreckOf = (cardId: string): string => rareWreckItemIdOfCard(cardId)!
 const T3 = 'sh-thresher'
 
 function fresh(seed = 21): GameState {
@@ -974,8 +977,8 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(wormholeEnter(state, ctx, ids, 21).ok).toBe(true)
     const run = state.wormhole.run!
     const card = 'wh-pirate-scout'
-    const common = wreckItemIdOf(card)
-    const rare = rareWreckItemIdOf(card)
+    const common = commonWreckOf(card)
+    const rare = rareWreckOf(card)
     const capBefore = wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))
     expect(capBefore).toBe(20) // 4×T3 合计货仓 10,400 m³ ÷ 500
     // 12 格普通残骸 + 3 格虚空母矿 + 1 格稀有残骸 = 16 格 > 缩容后的 10 格

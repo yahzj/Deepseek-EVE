@@ -20,12 +20,13 @@ function makeState(seed = 7) {
 
 function profile(pool: readonly string[]): RecycleProfile {
   return {
-    anomalyId: 'ano-redring-raiders',
-    galaxyId: 'galaxy-redring',
+    groupKey: 'a-hi',
+    region: 'hi',
     threat: 88,
-    baseDensity: 100,
-    tier: 'dire', // 专属装备命中率 0.55，样本足够快
+    tier: 'dire', // 专属装备命中率 0.10，样本足够快
     lowSec: false,
+    pool: [['min-tritanium', 100]],
+    theme: {},
     lairGear: [...pool],
   }
 }

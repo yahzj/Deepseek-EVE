@@ -5,7 +5,20 @@
  * 以及两张测试蓝图 bp-a（造 mod-a，10 单位矿粉甲，10 分钟）与 bp-b（造 mod-b）。
  */
 import { DEFAULT_BALANCE } from '../src/balance'
-import { FRAGMENT_RECIPES, fragmentItemDefOf, fragmentItemIdOf, rareWreckItemDefOf, rareWreckItemIdOf, wreckItemDefOf, wreckItemIdOf } from '../src/salvage'
+import {
+  FRAGMENT_RECIPES,
+  fragmentItemDefOf,
+  fragmentItemIdOf,
+  rareWreckItemDefOf,
+  rareWreckItemIdOf,
+  RECYCLE_POOLS,
+  recycleTierOf,
+  wreckBaseDensity,
+  wreckItemDefOf,
+  wreckItemIdOf,
+} from '../src/salvage'
+import type { RecycleTier } from '../src/salvage'
+import type { WreckGroupDef, WreckRegion } from '../src/wreckGroups'
 import { isLairCandidate } from '../src/lairs'
 import type {
   AnomalyDef,
@@ -369,9 +382,6 @@ export function anomaly(
     lairGear?: readonly string[]
     /** 窝点地图级别（档位上限：1 = 只出外围、2 = 到核心、3 = 全档；缺省 = 3） */
     lairLevel?: AnomalyDef['lairLevel']
-    /** 回收特色池/追加件（高级箱矿物与主题件来源） */
-    recyclePool?: AnomalyDef['recyclePool']
-    recycleLoot?: AnomalyDef['recycleLoot']
     /** 隐藏卡（遭遇模板；隐藏卡不作窝点候选、无稀有残骸登记） */
     hidden?: boolean
   },
@@ -393,11 +403,22 @@ export function anomaly(
     ...(opts?.foeFamily !== undefined ? { foeFamily: opts.foeFamily } : {}),
     ...(opts?.lairGear !== undefined ? { lairGear: opts.lairGear } : {}),
     ...(opts?.lairLevel !== undefined ? { lairLevel: opts.lairLevel } : {}),
-    ...(opts?.recyclePool !== undefined ? { recyclePool: opts.recyclePool } : {}),
-    ...(opts?.recycleLoot !== undefined ? { recycleLoot: opts.recycleLoot } : {}),
     ...(opts?.hidden !== undefined ? { hidden: opts.hidden } : {}),
     description: '测试用异常点',
   }
+}
+
+/**
+ * **合成卡的残骸组画像**（2026-09-19 合并后：合成卡**一卡一组**，组 key = 卡 id）。
+ * `makeContext` 会按它给每张合成卡建一个组 + 注册普通/稀有残骸物品（与 data 层"按组注册"同形）。
+ * 缺省档位 = `recycleTierOf(wreckBaseDensity(该卡所在星系))`（与合并前的逐卡口径**逐值一致**）、
+ * 缺省池 = 该档基础池、威胁 = 卡威胁、地区 = 卡所在星系安全等级（`wh-*` 卡 = 虫洞）。
+ */
+export type WreckGroupFixture = {
+  tier?: RecycleTier
+  pool?: readonly (readonly [string, number])[]
+  note?: string
+  theme?: { modules?: readonly string[]; mk2?: readonly string[] }
 }
 
 /** 测试世界里的默认星系：母港 hub 与远方星系 far（单程 2 分钟） */
@@ -547,6 +568,8 @@ export function makeTestCtx(opts?: {
   /** 关闭随机事件流（精确断言时间线/日志/rng 的测试用） */
   quietEvents?: boolean
   balance?: BalanceConfig
+  /** 合成卡的残骸组画像覆盖（键 = 卡 id；见 `WreckGroupFixture`） */
+  wreckGroups?: Record<string, WreckGroupFixture>
 }): SimContext {
   const ships = [ship('sandcat'), ship('sandcat2', { cargo: 100, cycle: 6, perCycle: 5 }), ...(opts?.ships ?? [])]
   const belts = [belt('belt-a', 'ore-a'), ...(opts?.belts ?? [])]
@@ -563,18 +586,45 @@ export function makeTestCtx(opts?: {
   const shipsMap = new Map(ships.map((s) => [s.id, s]))
   const galaxiesMap = new Map(galaxies.map((g) => [g.id, g]))
   const itemsMap = new Map(items.map((i) => [i.id, i]))
-  // B3：按敌群自动补残骸物品（打捞回收原料；基础体积默认随威胁派生）
+  const anomaliesMap = new Map(anomalies.map((a) => [a.id, a]))
+  const ctxRef = {
+    galaxies: galaxiesMap,
+    anomalies: anomaliesMap,
+  } as unknown as SimContext
+  /**
+   * **合成卡的残骸组**（2026-09-19 合并后：一卡一组，组 key = 卡 id）——
+   * 档位按"该卡所在星系的基础密度"现算（与合并前的逐卡口径逐值一致），
+   * 池/说明/主题件取 `opts.wreckGroups[卡 id]` 的覆盖（缺省 = 档位基础池、无主题件）。
+   */
+  const wreckGroups = new Map<string, WreckGroupDef>()
   for (const a of anomalies) {
-    const id = wreckItemIdOf(a.id)
-    if (itemsMap.has(id)) continue
-    itemsMap.set(id, wreckItemDefOf(a.id, a.name, a.threat))
+    const galaxy = galaxiesMap.get(a.galaxyId)
+    const sec = typeof galaxy?.security === 'number' ? galaxy.security : 1
+    const region: WreckRegion = a.id.startsWith('wh-') ? 'wh' : sec <= 0 ? 'lo' : 'hi'
+    const fx = opts?.wreckGroups?.[a.id]
+    const tier = fx?.tier ?? recycleTierOf(wreckBaseDensity(a.galaxyId, ctxRef))
+    wreckGroups.set(a.id, {
+      key: a.id,
+      // 未登记族的合成卡用 **F 空位**（制式巡逻·已废弃，专属池恒空）——与合并前"无族 ⇒ 无专属件"同义
+      family: a.foeFamily ?? 'F',
+      region,
+      name: `${a.name}残骸`,
+      rareName: `稀有残骸（${a.name}）`,
+      tier,
+      pool: fx?.pool ?? RECYCLE_POOLS[tier]!,
+      note: fx?.note ?? '',
+      threat: a.threat,
+      theme: fx?.theme ?? {},
+      members: [a.id],
+    })
   }
-  // 赏金任务·窝点：可作窝点目标的敌群各配一件「稀有残骸」（与 data 层 buildSimContext 同口径）
-  for (const a of anomalies) {
-    if (!isLairCandidate(a)) continue
-    const id = rareWreckItemIdOf(a.id)
-    if (itemsMap.has(id)) continue
-    itemsMap.set(id, rareWreckItemDefOf(a.id, a.name))
+  // 残骸物品按**组**注册（普通 + 稀有：合成卡走 `isLairCandidate` 判据，与 data 层同口径）
+  for (const g of wreckGroups.values()) {
+    const id = wreckItemIdOf(g.key)
+    if (!itemsMap.has(id)) itemsMap.set(id, wreckItemDefOf(g))
+    if (!isLairCandidate(anomaliesMap.get(g.key)!)) continue
+    const rareId = rareWreckItemIdOf(g.key)
+    if (!itemsMap.has(rareId)) itemsMap.set(rareId, rareWreckItemDefOf(g))
   }
   const modulesMap = new Map(modules.map((m) => [m.id, m]))
   // B3：碎片物品按"有逆向配方的装备"生成（模块在上下文里才生成，名称取模块名）
@@ -618,5 +668,6 @@ export function makeTestCtx(opts?: {
     commsFactions: new Map(Array.from(opts?.commsFactions ?? [], (f) => [f.id, f])),
     dialogues: new Map(Array.from(opts?.dialogues ?? [], (d) => [d.id, d])),
     balance,
+    wreckGroups,
   }
 }

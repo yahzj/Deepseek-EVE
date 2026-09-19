@@ -72,25 +72,57 @@ export const SIDE_TASK_LEVEL_SCALE: Record<SideTaskLevel, number> = { 1: 1, 2: 1
 export const RESOURCE_TASK_LEVEL_MARGIN: Record<SideTaskLevel, number> = { 1: 1.1, 2: 1.15, 3: 1.2, 4: 1.25, 5: 1.3 }
 
 /**
- * **快递（虚拟货物）各级运费单价（ISK/m³）**（船长 2026-09-18：级别越高奖励越高；
- * 快递的货改用长途运输那套虚拟货物 ⇒ 玩家不再出货款，报酬是**纯运费**）。
- * 单价 × 体积 × 航程系数（见 `COURIER_TRIP_HOURS_REF`）。
+ * **快递各级运费基准（ISK，航程系数 = 1.0 时）**（船长 2026-09-18：「在维持运费的前提下，提高占用的体积数」）。
+ *
+ * 推导：沿用旧的"体积 × 单价"定价（旧体积 300/510/900/1,500/2,400 m³ × 单价 600/900/1,300/1,900/2,700）
+ * ⇒ 基准 = 180,000 / 459,000 / 1,170,000 / 2,850,000 / 6,480,000。
+ * **运费与体积解耦**：体积涨了（见 `COURIER_TASK_LEVEL_VOLUME`），这五个基准一分不动。
  */
-export const COURIER_TASK_LEVEL_RATE: Record<SideTaskLevel, number> = { 1: 600, 2: 900, 3: 1_300, 4: 1_900, 5: 2_700 }
+export const COURIER_TASK_LEVEL_FREIGHT_ISK: Record<SideTaskLevel, number> = {
+  1: 180_000,
+  2: 459_000,
+  3: 1_170_000,
+  4: 2_850_000,
+  5: 6_480_000,
+}
 
-/** 快递各级基准体积（m³；× `SIDE_TASK_LEVEL_SCALE`）⇒ L1 300 / L5 2,400 m³ */
-export const COURIER_TASK_BASE_VOLUME_M3 = 300
+/**
+ * **快递各级"非限时"占用体积（m³）**（船长 2026-09-18：「L5非限时的快递体积提高到2万立方，L1提高到1000，
+ * 其他等比上调，限时快递体积为非限时的一半」）——L1 1,000 ⇒ L5 20,000 等比（每级 ≈×2.11）。
+ *
+ * ⚠ 可达性：20,000 m³ 需**蝠鲼级重载货舰 26,000**（有蓝图）或**皇带鱼级旗舰货舰 108,000**；
+ * 剑鱼级 14,000 装不下非限时 L5，但装得下限时 L5（10,000）。
+ */
+export const COURIER_TASK_LEVEL_VOLUME: Record<SideTaskLevel, number> = {
+  1: 1_000,
+  2: 2_100,
+  3: 4_500,
+  4: 9_500,
+  5: 20_000,
+}
+
+/** **限时快递体积 = 同级别非限时的一半**（船长 2026-09-18） */
+export const COURIER_TIMED_VOLUME_RATIO = 0.5
 
 /**
  * **限时快递的跃迁速度门槛（AU/s）—— 4 档**（船长 2026-09-18 选丙案：「按照剑鱼的标准」：
  * 剑鱼级大型货舰 6.20 / 剑鱼+跃迁计算机 MK2 7.44 / +MK3 8.37 / +MK3×2 10.92；多件按 EVE 曲线合成）。
- * 档位与任务级别对应：**L1 = 普通快递（无门槛）；L2~L5 = 限时快递，门槛依次取本表 4 档**。
+ * 级别对应：**L2→6.20 · L3→7.44 · L4→8.37 · L5→10.92**；L1 若掷成限时取最低档 6.20。
  * ⚠ 最高档（10.92）**已实测可达**（剑鱼低槽 3、CPU 175；MK3 低槽件 CPU 40 ⇒ 两件占 2 槽 80 CPU）。
  */
 export const COURIER_TIMED_WARP_REQ: readonly number[] = [6.2, 7.44, 8.37, 10.92]
 
+/** 快递任务掷成**限时快递**的概率（每单独立掷；其余为普通快递） */
+export const COURIER_TIMED_CHANCE = 0.5
+
 /** 每板**基础**条数（船长 2026-09-18：「初始每个任务数量提高到4」）——资源/快递各 4 条 */
 export const SIDE_TASK_BASE_COUNT = 4
+
+/**
+ * **资源需量的产能倍率**（船长 2026-09-18：「移除 0.25 倍率，改为 1 倍」）：
+ * 基准需量 = 玩家 1 小时可获得该货的量 × 本值（1 = 整一小时产量），再乘级别倍率。
+ */
+export const RESOURCE_NEED_HOUR_FRACTION = 1
 
 /** **每建成一座副空间站**，资源/快递各 +2 条（船长 2026-09-18：「每个建成的空间站让任务数量+2」） */
 export const SIDE_TASK_COUNT_PER_STATION = 2
@@ -98,8 +130,11 @@ export const SIDE_TASK_COUNT_PER_STATION = 2
 /** 快递"接单"上限（船长：「接取的快递任务不会被刷掉」——接了进 `sideTasks.accepted`，跨整板刷新保留） */
 export const COURIER_ACCEPT_MAX = 4
 
-/** 虚拟货物运费：航程系数基准 = **1 小时航程算 1.0**（标称航程分钟 ÷ 60，钳 [0.1, 1.5]） */
-const COURIER_TRIP_HOURS_REF = 60
+/** 虚拟货物运费：航程系数基准 = **10 分钟航程算 1.0**（船长 2026-09-18：「并不失衡啊，
+ *  你要考虑玩家成本问题和任务周期」⇒ 按"标称航程分钟 ÷ 10"折算，**下限 0.5**、无上限） */
+const COURIER_TRIP_MINUTES_REF = 10
+/** 航程系数下限（短程也不低于此；远站按航程线性加价，无上限） */
+const COURIER_TRIP_FACTOR_MIN = 0.5
 
 /** 限时快递时限宽限（基准配置到达时长 × 1.05：同配置无技能时刚好压线，留 5% 缓冲） */
 const TIMED_COURIER_GRACE = 1.05
@@ -304,25 +339,26 @@ export function hourlySupplyOf(state: GameState, ctx: SimContext, itemId: string
 }
 
 /**
- * 资源任务需要量（2026-09-18 新口径）：
- * **基准 = 玩家 1 小时产能 × 0.25**（≈15 分钟产量，L1 一会儿就能凑齐），
- * 再乘级别倍率（L1 15 分钟 … L5 2 小时产量），取整到 10、至少 10。
+ * **资源任务需要量**（2026-09-18 新口径，两轮改定）：
+ * **基准 = 玩家 1 小时可获得该货的量 × 1**（船长：「移除 0.25 倍率，改为 1 倍」⇒ L1 = 1 小时产量，
+ * L5 = 8 小时产量），取整到 10、至少 10。
  */
 function rollResourceNeed(state: GameState, ctx: SimContext, def: MarketGoodDef, level: SideTaskLevel): number {
   const hourly = hourlySupplyOf(state, ctx, def.refId)
-  const raw = hourly * 0.25 * SIDE_TASK_LEVEL_SCALE[level]
+  const raw = hourly * RESOURCE_NEED_HOUR_FRACTION * SIDE_TASK_LEVEL_SCALE[level]
   return Math.max(10, Math.round(raw / 10) * 10)
 }
 
-/** 快递所需货舱体积（m³）：基准 300 × 级别倍率 ⇒ L1 300 / L2 510 / L3 900 / L4 1,500 / L5 2,400 */
-export function courierVolumeFor(level: SideTaskLevel): number {
-  return Math.round(COURIER_TASK_BASE_VOLUME_M3 * SIDE_TASK_LEVEL_SCALE[level])
+/** 快递所需货舱体积（m³）：非限时 = 级别表值；**限时 = 表值 × 0.5**（船长 2026-09-18） */
+export function courierVolumeFor(level: SideTaskLevel, timed = false): number {
+  const base = COURIER_TASK_LEVEL_VOLUME[level]
+  return Math.round(timed ? base * COURIER_TIMED_VOLUME_RATIO : base)
 }
 
-/** 限时快递的跃迁门槛（L2~L5 ⇒ 4 档；L1 = 普通快递 ⇒ null） */
-export function courierWarpReqOf(level: SideTaskLevel): number | null {
-  const idx = level - 2
-  return idx >= 0 && idx < COURIER_TIMED_WARP_REQ.length ? COURIER_TIMED_WARP_REQ[idx]! : null
+/** 限时快递的跃迁门槛（按级别取 4 档；L1 掷成限时时取最低档 6.20） */
+export function courierWarpReqOf(level: SideTaskLevel): number {
+  const idx = Math.max(0, Math.min(COURIER_TIMED_WARP_REQ.length - 1, level - 2))
+  return COURIER_TIMED_WARP_REQ[idx]!
 }
 
 /**
@@ -347,19 +383,19 @@ function resourceRewardIskFor(
 }
 
 /**
- * **快递奖励（虚拟货物 ⇒ 纯运费，2026-09-18 船长定）**：
- * reward = 体积(m³) × `COURIER_TASK_LEVEL_RATE[level]` × 航程系数，向下取整到整百、至少 100。
- * 航程系数 = 标称航程分钟 ÷ 60（**1 小时航程算 1.0**），钳 [0.1, 1.5] ⇒ 远站给钱更多（旧口径与距离无关）。
+ * **快递奖励（虚拟货物 ⇒ 纯运费，2026-09-18 船长两轮定）**：
+ * reward = `COURIER_TASK_LEVEL_FREIGHT_ISK[level]` × 航程系数，向下取整到整百、至少 100。
+ * **运费与体积解耦**（船长：「在维持运费的前提下，提高占用的体积数」）⇒ 体积涨了、运费一分不动。
+ * 航程系数 = 标称航程分钟 ÷ **10**（10 分钟航程 = 1.0），**下限 0.5、无上限** ⇒ 远站线性加价
+ * （船长对"是否失衡"的裁定：「并不失衡啊，你要考虑玩家成本问题和任务周期」）。
  * 快递不再绑商品 ⇒ 不吃市场报价、也不触发市场联动。
  */
-function courierRewardIskFor(
-  state: GameState,
-  volumeM3: number,
-  level: SideTaskLevel,
-  nominalMinutes: number,
-): number {
-  const trip = Math.min(1.5, Math.max(0.1, (Number.isFinite(nominalMinutes) ? nominalMinutes : 10) / COURIER_TRIP_HOURS_REF))
-  const raw = volumeM3 * COURIER_TASK_LEVEL_RATE[level] * trip
+function courierRewardIskFor(state: GameState, level: SideTaskLevel, nominalMinutes: number): number {
+  const trip = Math.max(
+    COURIER_TRIP_FACTOR_MIN,
+    (Number.isFinite(nominalMinutes) ? nominalMinutes : 10) / COURIER_TRIP_MINUTES_REF,
+  )
+  const raw = COURIER_TASK_LEVEL_FREIGHT_ISK[level] * trip
   return Math.max(0, Math.round(Math.max(100, Math.floor(raw / 100) * 100) * tuningMul(state, 'rewardIsk')))
 }
 
@@ -438,17 +474,18 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
     board.resource.push({ id: board.seq, kind: 'resource', goodKey: def.key, refId: def.refId, need, rewardIsk, level })
   }
 
-  // ── 快递任务：虚拟货物（只有体积），L2~L5 走限时快递 ──
+  // ── 快递任务：虚拟货物（只有体积），每单独立掷「普通 / 限时」 ──
   const courierTargets = builtStationTargets(state, ctx)
   if (courierTargets.length > 0) {
     for (let i = 0; i < counts.courier; i += 1) {
       const level = levels[i % levels.length]!
       const picked = courierTargets[nextInt(state.rng, courierTargets.length)]!
-      const volumeM3 = courierVolumeFor(level)
-      const warpReqAus = courierWarpReqOf(level)
+      const timed = nextRandom(state.rng) < COURIER_TIMED_CHANCE
+      const volumeM3 = courierVolumeFor(level, timed)
+      const warpReqAus = timed ? courierWarpReqOf(level) : null
       // 报酬按"母港 → 目标站"的标称航程算（与玩家实际用哪条船无关 ⇒ 不好被换船薅）
       const nominal = shortestTravelMinutes(ctx, HOME_GALAXY_ID, picked.site.galaxyId)
-      const rewardIsk = courierRewardIskFor(state, volumeM3, level, nominal)
+      const rewardIsk = courierRewardIskFor(state, level, nominal)
       const timeLimitMs =
         warpReqAus === null
           ? undefined

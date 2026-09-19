@@ -38,7 +38,8 @@ import { CHAIN_TIERS, FIRST_TASKS } from '../packages/core/src/firstTasks'
 import { wormholeNodesPerLayer } from '../packages/core/src/wormholeFoes'
 import { wormholeScanWindowMs } from '../packages/core/src/wormholeScan'
 import {
-  COURIER_TASK_LEVEL_RATE,
+  COURIER_TASK_LEVEL_FREIGHT_ISK,
+  COURIER_TIMED_VOLUME_RATIO,
   RESOURCE_TASK_LEVEL_MARGIN,
   SIDE_TASK_LEVEL_SCALE,
   courierVolumeFor,
@@ -84,26 +85,27 @@ function sectionSideTasks(): void {
     const perHour = hourlySupplyOf(state, ctx, def.refId)
     const rows: string[] = []
     for (const lv of [1, 2, 3, 4, 5] as const) {
-      const need = Math.max(10, Math.round((perHour * 0.25 * SIDE_TASK_LEVEL_SCALE[lv]) / 10) * 10)
+      const need = Math.max(10, Math.round((perHour * 1 * SIDE_TASK_LEVEL_SCALE[lv]) / 10) * 10)
       const reward = Math.round((need * (def.basePrice ?? 0) * RESOURCE_TASK_LEVEL_MARGIN[lv]) / 100) * 100
       rows.push(`L${lv} ${need.toLocaleString('zh-CN')} ⇒ ${reward.toLocaleString('zh-CN')}`)
     }
     console.log(`  ${def.refId}（1 小时产能 ${Math.round(perHour).toLocaleString('zh-CN')}）: ${rows.join(' · ')}`)
   }
 
-  console.log('\n【快递】各级体积 / 运费 / 跃迁门槛 / 时限')
+  console.log('\n【快递】各级体积（非限时 / 限时减半）/ 运费（与体积解耦）/ 限时门槛与时限')
+  const trip = Math.max(0.5, nominal / 10)
   for (const lv of [1, 2, 3, 4, 5] as const) {
-    const vol = courierVolumeFor(lv)
+    const volNt = courierVolumeFor(lv, false)
+    const volT = courierVolumeFor(lv, true)
     const req = courierWarpReqOf(lv)
-    const trip = Math.min(1.5, Math.max(0.1, nominal / 60))
-    const reward = Math.max(100, Math.floor((vol * COURIER_TASK_LEVEL_RATE[lv] * trip) / 100) * 100)
-    const limitMin = req === null ? null : (nominal * (ctx.balance.travel.warpRefAus / req) * 1.05)
+    const reward = Math.max(100, Math.floor((COURIER_TASK_LEVEL_FREIGHT_ISK[lv] * trip) / 100) * 100)
+    const limitMin = nominal * (ctx.balance.travel.warpRefAus / req) * 1.05
     console.log(
-      `  L${lv}：体积 ${vol.toLocaleString('zh-CN')} m³ ⇒ 运费 ${reward.toLocaleString('zh-CN')} ISK` +
-        (req === null ? ' · 普通快递（无跃迁门槛）' : ` · 限时（跃迁 ≥${req} AU/s，时限 ≈${limitMin!.toFixed(1)} 分钟）`),
+      `  L${lv}：体积 普通 ${volNt.toLocaleString('zh-CN')} m³ / 限时 ${volT.toLocaleString('zh-CN')} m³（×${COURIER_TIMED_VOLUME_RATIO}）` +
+        ` ⇒ 运费 ${reward.toLocaleString('zh-CN')} ISK（与体积无关）· 限时门槛 跃迁 ≥${req} AU/s · 时限 ≈${limitMin.toFixed(1)} 分钟`,
     )
   }
-  console.log('\n（航程系数 = 标称分钟 ÷ 60，钳 0.1~1.5 ⇒ 远站给钱更多；此处按上面那条航程的系数算）')
+  console.log('\n（航程系数 = 标称分钟 ÷ 10，下限 0.5、无上限 ⇒ 远站线性加价；此处按上面那条航程的系数算）')
 }
 
 /** ── 13 条「第一次」任务各自耗时（引擎实跑） ── */

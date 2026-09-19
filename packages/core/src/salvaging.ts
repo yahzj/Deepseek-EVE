@@ -28,7 +28,19 @@ import { bumpFirst } from './firstTasks'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { allFittedModules } from './equipment'
 import { nextRandom, pickWeighted } from './rng'
-import { pullRareWreck, RARE_WRECK_VOLUME_M3, salvageRoundPull, rollIntactHullLoot, WRECK_VOLUME_PER_THREAT, wreckDensityOf, wreckItemIdOf } from './salvage'
+import {
+  pullRareWreck,
+  RARE_WRECK_VOLUME_M3,
+  recycleTierOf,
+  salvageRoundPull,
+  rollIntactHullLoot,
+  wreckBaseDensity,
+  WRECK_VOLUME_PER_THREAT,
+  wreckDensityOf,
+  wreckGroupOfCard,
+  wreckItemIdOf,
+  wreckYieldMultiplierOf,
+} from './salvage'
 import { scaledReturnMs } from './trips'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
@@ -235,7 +247,7 @@ export function pullOneWreck(
   cycleMsReal: number,
 ): { itemId: string; mul: number; volumeM3: number } | null {
   // 稀有残骸必捞（2026-09-10 船长定：赏金任务窝点战利品——数量随难度，打捞必定捞到、捞完为止）
-  const rareId = pullRareWreck(state, galaxyId)
+  const rareId = pullRareWreck(state, galaxyId, ctx)
   if (rareId) {
     const mulRare = salvageRoundPull(state, ctx, galaxyId)
     return { itemId: rareId, mul: mulRare, volumeM3: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') }
@@ -245,12 +257,15 @@ export function pullOneWreck(
   // 2026-09-12 审计 B3：改走单点 `pickWeighted`（按威胁加权；原累加循环 `roll <= acc` 即 `lte` 口径）；
   // 无中选兜底 = 池首（与改前 `chosen = pool[0]` 初值一致）
   const chosen = pickWeighted(state.rng, pool, (p) => p.threat, { bound: 'lte' }) ?? pool[0]!
+  // 2026-09-19 合并：产出物 = 该卡**所属组**的残骸（`wreck-<组 key>`）；组查不到 = 未知卡 ⇒ 不产出
+  const group = wreckGroupOfCard(chosen.anomalyId, ctx)
+  if (!group) return null
   const mul = salvageRoundPull(state, ctx, galaxyId)
-  const wreckId = wreckItemIdOf(chosen.anomalyId)
+  const wreckId = wreckItemIdOf(group.key)
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
   // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
   const baseM3 = Math.max(0.1, Math.round(Math.max(1, chosen.threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
-  // 残骸富集识别学（wreck-assaying，卷B3⑨）：完好舰体命中 → 当场直发该敌群回收彩头
+  // 残骸富集识别学（wreck-assaying，卷B3⑨）：完好舰体命中 → 当场直发该**组**回收彩头
   // （不再折算体积）；判定恒消耗一次随机数保 rng 时序（rate=0 时也掷）
   if (nextRandom(state.rng) < assayChanceOf(state, ctx, cycleMsReal)) {
     const gains = rollIntactHullLoot(state, ctx, chosen.anomalyId)
@@ -258,7 +273,13 @@ export function pullOneWreck(
   }
   // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
-  const volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv)
+  /**
+   * 2026-09-19 船长：「为了平衡价值，可以提高更危险地区的残骸出量。」
+   * ⇒ **出量梯度**按**打捞星系的回收档**乘（不是按残骸身份）——合并把同组各卡的每 m³ 价值拉平后，
+   * 危险度差异由"每轮捞多少 m³"承担（常量 `WRECK_YIELD_TIER_MUL`：常 1.00 / 险 1.15 / 危 1.20）。
+   */
+  const yieldMul = wreckYieldMultiplierOf(recycleTierOf(wreckBaseDensity(galaxyId, ctx)))
+  const volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv) * yieldMul
   return { itemId: wreckId, mul, volumeM3 }
 }
 

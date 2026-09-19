@@ -19,7 +19,7 @@ function mineral(id: string, price: number): ItemDef {
   return { id, name: `矿物${id}`, kind: 'mineral', unitM3: 0.01, baseSellPriceIsk: price, description: '测试矿物' }
 }
 
-function ctxOf() {
+function ctxOf(wreckGroups?: NonNullable<Parameters<typeof makeTestCtx>[0]>['wreckGroups']) {
   return makeTestCtx({
     galaxies: [
       { ...galaxy('galaxy-hub', '母港'), security: 1.0 },
@@ -33,6 +33,7 @@ function ctxOf() {
       // 常档：threat 30 单敌 → 20×14.4 = 288 <428 ✓
       anomaly('ano-kor', 'galaxy-kor', { threat: 30, tactic: 'orbit' }),
     ],
+    ...(wreckGroups !== undefined ? { wreckGroups } : {}),
     items: [
       mineral('min-tritanium', 8),
       mineral('min-pyerite', 12),
@@ -76,21 +77,18 @@ describe('回收画像与保底矿物滚动', () => {
     expect(kor.lowSec).toBe(false)
   })
 
-  it('B3.1：敌群特色池覆盖保底抽取（只出特色矿）；note/loot 随画像透传（2026-09-06）', () => {
-    const base = ctxOf()
-    const flavMap = new Map(base.anomalies)
-    const baseDef = base.anomalies.get('ano-grave')!
-    flavMap.set('ano-grave', {
-      ...baseDef,
-      recyclePool: [['min-darkiron', 100]] as readonly (readonly [string, number])[],
-      recycleNote: '守墓舰残骸：冥铁合金为主',
-      recycleLoot: { modules: ['mod-armor-kin-2'] },
+  it('B3.1：组特色池覆盖保底抽取（只出特色矿）；note/theme 随画像透传（2026-09-06；2026-09-19 改组画像）', () => {
+    const ctx = ctxOf({
+      'ano-grave': {
+        pool: [['min-darkiron', 100]] as readonly (readonly [string, number])[],
+        note: '守墓舰残骸：冥铁合金为主',
+        theme: { modules: ['mod-armor-kin-2'] },
+      },
     })
-    const ctx: SimContext = { ...base, anomalies: flavMap }
     const profile = recycleProfileOf(ctx, wreckItemIdOf('ano-grave'))!
     expect(profile.pool).toEqual([['min-darkiron', 100]])
     expect(profile.note).toContain('冥铁')
-    expect(profile.loot?.modules).toEqual(['mod-armor-kin-2'])
+    expect(profile.theme?.modules).toEqual(['mod-armor-kin-2'])
     const state = createInitialState({ nowWallMs: 0, seed: 23 })
     for (let i = 0; i < 30; i += 1) {
       const out = rollRecycleGuarantee(state, ctx, profile, 10)
@@ -145,24 +143,26 @@ describe('回收画像与保底矿物滚动', () => {
     expect(darkiron).toBeGreaterThan(0)
   })
 
-  it('recycleMineralPoolOf（2026-09-10 界面保底矿物块单点）：特色池优先、缺省回落档位基础池', () => {
+  it('recycleMineralPoolOf（2026-09-10 界面保底矿物块单点）：组池优先、缺省回落档位基础池', () => {
     const base = ctxOf()
-    // 缺省：无特色池 → 回落该档基础池（柯尔 = 常档：钛钢 65 / 银纹 30 / 晶态 5）
+    // 缺省：组画像没写池 → 档位基础池（柯尔 = 常档：钛钢 65 / 银纹 30 / 晶态 5）
     const common = recycleProfileOf(base, wreckItemIdOf('ano-kor'))!
     expect(recycleMineralPoolOf(common)).toEqual([
       ['min-tritanium', 65],
       ['min-pyerite', 30],
       ['min-mexallon', 5],
     ])
-    // 特色池优先：写了 recyclePool 就绝不给档位池
-    const flavMap = new Map(base.anomalies)
-    flavMap.set('ano-kor', { ...base.anomalies.get('ano-kor')!, recyclePool: [['min-nocxium', 3], ['min-isotope', 1]] })
-    const flavored = recycleProfileOf({ ...base, anomalies: flavMap }, wreckItemIdOf('ano-kor'))!
+    // 组池优先：写了 pool 就绝不给档位池（2026-09-19：池从"卡级"上移到"组级"）
+    const flavored = recycleProfileOf(
+      ctxOf({ 'ano-kor': { pool: [['min-nocxium', 3], ['min-isotope', 1]] } }),
+      wreckItemIdOf('ano-kor'),
+    )!
     expect(recycleMineralPoolOf(flavored)).toEqual([['min-nocxium', 3], ['min-isotope', 1]])
-    // 与引擎抽取同源：该残骸只出特色池里的矿
+    // 与引擎抽取同源：该残骸只出组池里的矿
+    const flavCtx = ctxOf({ 'ano-kor': { pool: [['min-nocxium', 3], ['min-isotope', 1]] } })
     const state = createInitialState({ nowWallMs: 0, seed: 77 })
     for (let i = 0; i < 20; i += 1) {
-      const out = rollRecycleGuarantee(state, { ...base, anomalies: flavMap }, flavored, 10)
+      const out = rollRecycleGuarantee(state, flavCtx, flavored, 10)
       expect(['min-nocxium', 'min-isotope']).toContain(out[0]!.mineralId)
     }
   })
@@ -417,7 +417,22 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
       anomalies: [
         anomaly(RARE_ANOMALY, 'galaxy-grave', { threat: 100, tactic: 'brawl', lairCore: '守墓核心' }),
       ],
-      items: [mineral('min-tritanium', 8), rareWreckItemDefOf(RARE_ANOMALY, '稀有残骸')],
+      items: [
+        mineral('min-tritanium', 8),
+        rareWreckItemDefOf({
+          key: RARE_ANOMALY,
+          family: 'D',
+          region: 'lo',
+          name: `目标${RARE_ANOMALY}残骸`,
+          rareName: `稀有残骸（目标${RARE_ANOMALY}）`,
+          tier: 'dire',
+          pool: [['min-tritanium', 100]],
+          note: '',
+          threat: 100,
+          theme: {},
+          members: [RARE_ANOMALY],
+        }),
+      ],
     })
   }
   const boxes = (state: ReturnType<typeof createInitialState>): number =>
@@ -497,20 +512,38 @@ describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09
   const WH_ANOMALY = 'wh-alien-brood'
   const WH_ID = rareWreckItemIdOf(WH_ANOMALY)
   const OUT_ANOMALY = 'ano-grave'
+  const OUT_ID = rareWreckItemIdOf(OUT_ANOMALY)
+
+  function groupOf(key: string, region: 'wh' | 'lo'): Parameters<typeof rareWreckItemDefOf>[0] {
+    return {
+      key,
+      // B 族专属池为空（武装拾荒者随窝点取消）⇒ 高级箱第①支必不中，本组用例只考"第②支主题件"
+      family: 'B',
+      region,
+      name: `目标${key}残骸`,
+      rareName: `稀有残骸（目标${key}）`,
+      tier: 'common',
+      pool: [['min-tritanium', 100]],
+      note: '',
+      threat: 45,
+      theme: {},
+      members: [key],
+    }
+  }
 
   function ctxWithMk3() {
     return makeTestCtx({
       galaxies: [{ ...galaxy('galaxy-hub', '母港'), security: 1.0 }],
       anomalies: [
-        // 洞内卡：id 以 `wh-` 开头、无 `recycleLoot`、无专属池（合成卡没有 lairGear ⇒ 第①支必不中）
-        anomaly(WH_ANOMALY, 'galaxy-hub', { threat: 45, tactic: 'brawl' }),
-        // 洞外对照卡：同样没有 `recycleLoot`，但**不该**吃到回落
-        anomaly(OUT_ANOMALY, 'galaxy-hub', { threat: 45, tactic: 'brawl' }),
+        // 洞内卡：id 以 `wh-` 开头（⇒ 组地区 = 虫洞）、B 族专属池为空（⇒ 高级箱第①支必不中）、组画像无主题件
+        anomaly(WH_ANOMALY, 'galaxy-hub', { threat: 45, tactic: 'brawl', foeFamily: 'B' }),
+        // 洞外对照卡：同样没有主题件，但**不该**吃到回落
+        anomaly(OUT_ANOMALY, 'galaxy-hub', { threat: 45, tactic: 'brawl', foeFamily: 'B' }),
       ],
       items: [
         mineral('min-tritanium', 8),
-        rareWreckItemDefOf(WH_ANOMALY, '孢群兵潮'),
-        rareWreckItemDefOf(OUT_ANOMALY, '对照窝点'),
+        rareWreckItemDefOf(groupOf(WH_ANOMALY, 'wh')),
+        rareWreckItemDefOf(groupOf(OUT_ANOMALY, 'lo')),
       ],
       modules: [moduleDef('mod-turret-kin-3', 'turret', 3), moduleDef('mod-armor-plate-2', 'armor', 2)],
     })
@@ -533,11 +566,12 @@ describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09
     return { mods, logs: state.logs.slice(from).map((l) => l.text) }
   }
 
-  it('回落池：洞内卡取「军用备货柜」同款 MK3 池，洞外卡一律空（回落不外溢）', () => {
+  it('回落池：**虫洞组**取「军用备货柜」同款 MK3 池，洞外组一律空（回落不外溢）', () => {
     const ctx = ctxWithMk3()
     expect(wormholeMk3PoolOf(ctx)).toEqual(['mod-turret-kin-3'])
-    expect(wormholeRareBoxThemePoolOf(ctx, WH_ANOMALY)).toEqual(['mod-turret-kin-3'])
-    expect(wormholeRareBoxThemePoolOf(ctx, OUT_ANOMALY)).toEqual([])
+    expect(wormholeRareBoxThemePoolOf(ctx, 'wh')).toEqual(['mod-turret-kin-3'])
+    expect(wormholeRareBoxThemePoolOf(ctx, 'hi')).toEqual([])
+    expect(wormholeRareBoxThemePoolOf(ctx, 'lo')).toEqual([])
   })
 
   it('洞内稀有残骸：未中族专属时**必给一件装备**（改前只剩一批矿物）', () => {
@@ -547,9 +581,9 @@ describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09
     expect(logs.some((t) => t.includes('额外战利品') && t.includes('主题装备'))).toBe(true)
   })
 
-  it('洞外稀有残骸：没配 `recycleLoot` 的卡**不**吃回落（行为逐字不变，只出矿物）', () => {
+  it('洞外稀有残骸：组画像没有主题件 ⇒ **不**吃回落（行为逐字不变，只出矿物）', () => {
     const ctx = ctxWithMk3()
-    const { mods, logs } = burnOne(ctx, rareWreckItemIdOf(OUT_ANOMALY))
+    const { mods, logs } = burnOne(ctx, OUT_ID)
     expect(Object.keys(mods), `不该出任何主题件，实际 ${JSON.stringify(mods)}`).toEqual([])
     expect(logs.some((t) => t.includes('额外战利品') && t.includes('主题装备'))).toBe(false)
     expect(logs.some((t) => t.includes('额外战利品'))).toBe(true) // 箱照开（只是只有矿物那一支）

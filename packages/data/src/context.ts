@@ -8,18 +8,16 @@ import {
   FRAGMENT_RECIPES,
   fragmentItemDefOf,
   fragmentItemIdOf,
-  hasLairCore,
   rareWreckItemDefOf,
   rareWreckItemIdOf,
   wreckItemDefOf,
   wreckItemIdOf,
+  WRECK_GROUPS,
 } from '@whale/core'
 import type { SimContext } from '@whale/core'
 import { buildSkillCatalog } from './skills'
 import { buildItemCatalog } from './items'
 import { buildBeltCatalog } from './belts'
-import { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'
-import { WORMHOLE_RARE_WRECK_CARD_IDS } from './wormholeFoes'
 import { buildShipCatalog } from './ships'
 import { buildModuleCatalog } from './modules'
 import { buildBlueprintCatalog } from './blueprints'
@@ -38,33 +36,24 @@ export function buildSimContext(): SimContext {
   const galaxies = buildGalaxyCatalog()
   const anomalies = buildAnomalyCatalog()
   const items = new Map(buildItemCatalog())
-  // B3：按敌群自动补残骸物品（打捞回收原料；基础体积默认随威胁派生，可覆盖）
-  for (const a of anomalies.values()) {
-    const id = wreckItemIdOf(a.id)
-    if (items.has(id)) continue
-    items.set(id, wreckItemDefOf(a.id, a.name, a.threat))
-  }
-  // 赏金任务·窝点：具备窝点派生能力（有核心词、非隐藏）的敌群各配一件「稀有残骸」物品——
-  // 只有击败窝点才会落在该星系残骸场、打捞时**必得**，回站精炼炉当「高级箱」开（额外掉落）。
-  // 注册条件 = `hasLairCore(a) || RETIRED_LAIR_CARD_IDS.has(a.id)`（2026-09-11 船长裁决「按方案 2 执行」）：
-  // B 族两卡的 `lairCore` 字段已退役删除（B 族无窝点），但**必须显式白名单保住注册**——
-  // 否则旧档里已获得的 `wreck-rare-ano-harbor-escort` / `wreck-rare-ano-abandoned-platform`
-  // 会解析不到物品定义、在读档后显示成"未知物品"。白名单 ≠ 恢复窝点候选（候选仍由
-  // `isLairCandidate()` 的族规则排除），只是"旧档兼容登记"。详见 `./retiredLairCards.ts`。
-  // ⚠ 第三张白名单 = **洞内敌卡**（F3b · 船长 2026-09-13「打捞…每 3 堆普通，进行一次稀有残骸出现判断」）：
-  // `wh-*` 卡没有窝点核心 ⇒ 不给白名单就**不存在 `wreck-rare-wh-*`**，打捞出的稀有残骸会解析不到定义。
-  // ⚠ **2026-09-15 修（三号 · 船长报障「精炼炉好像缺少虫洞的稀有残骸回收」）**：当年这里给洞内件
-  // 额外标了 `unreleased: true`（注释写"随虫洞一起上线"），但 **2026-09-14 虫洞上线时这一个字段漏摘**——
-  // 而精炼炉「残骸回收」列表走**玩家可见目录**（`visibleItemDefs` / `itemReleased`）⇒ 洞内稀有残骸
-  // **不进回收列表**（打捞带回来的箱子开不了），顺带在手册物品图鉴里也看不到。漏摘没被拦的原因：
-  // 体检那条"虫洞专属内容必须已上线"契约当时只枚举装备/舰船/图纸/无人机，**物品不在判据里**（现已补进去）。
-  // ⇒ 本行与窝点件**同款注册**（不带闸门）。
-  for (const a of anomalies.values()) {
-    const isWhCard = WORMHOLE_RARE_WRECK_CARD_IDS.includes(a.id)
-    if (!hasLairCore(a) && !RETIRED_LAIR_CARD_IDS.has(a.id) && !isWhCard) continue
-    const id = rareWreckItemIdOf(a.id)
-    if (items.has(id)) continue
-    items.set(id, rareWreckItemDefOf(a.id, a.name))
+  /**
+   * B3：残骸物品 = **按「来源种族 × 来源地区」的 13 组**注册（2026-09-19 船长定「合并」；见
+   * `core/wreckGroups.ts` 与 `docs/design/wreck-groups-20260919.md`）——不再是"每卡一种"。
+   *
+   * - **普通残骸 13 种**（`wreck-a-hi` … `wreck-g-wh`）；
+   * - **稀有残骸 13 种**（`wreck-rare-<组 key>`）：注册范围 = **全部 13 组**，理由与旧口径一致——
+   *   ① 窝点战利品（`isLairCandidate`，B 族除外）+ ② 洞内墓场/遗迹打捞（`wh-*` 卡）；
+   *   ③ **B 族（武装拾荒者）的 `b-hi` 只为旧档兼容保留登记**（它既无窝点、也不在洞里 ⇒ 不再新增产出，
+   *      但老档里可能存着 B 族两卡的稀有残骸，迁移后落进 `wreck-rare-b-hi`，必须认得出）。
+   *   ⚠ 旧的两个白名单（`RETIRED_LAIR_CARD_IDS` / `WORMHOLE_RARE_WRECK_CARD_IDS`）**已随本次合并退役**：
+   *   它们的唯一职责是"给旧档里已获得的稀有残骸保住物品定义"，而迁移（v27→v28）已把旧 id 折进组 id，
+   *   组注册对 13 组一视同仁 ⇒ 白名单没有存在意义了（卡表本身仍保留，只作内容记录）。
+   */
+  for (const g of WRECK_GROUPS) {
+    const id = wreckItemIdOf(g.key)
+    if (!items.has(id)) items.set(id, wreckItemDefOf(g))
+    const rareId = rareWreckItemIdOf(g.key)
+    if (!items.has(rareId)) items.set(rareId, rareWreckItemDefOf(g))
   }
   const modules = buildModuleCatalog()
   // B3：碎片物品按"有逆向配方的装备"生成
