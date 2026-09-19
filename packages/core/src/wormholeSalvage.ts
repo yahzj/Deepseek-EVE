@@ -590,13 +590,26 @@ export function wormholePermanentPoolOf(ctx: SimContext, depth: number): string[
 
 /* ═══════════ 三、打捞器与堆的生成 ═══════════ */
 
+/**
+ * **任意编队的打捞器总台数**（按 `shipIds` 现算；0 = 干不了打捞）。
+ * 与 `wormholeSalvagersOf`（本趟编队）**同一把尺**——后者只是把 `run.fleet` 递进来，
+ * 供**准备页**在还没入洞时也能显示"这队有几台打捞器"（船长 2026-09-19）。
+ */
+export function wormholeSalvagersInFleet(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): number {
+  let n = 0
+  for (const uid of shipIds) n += salvagerCyclesOf(state, ctx, uid).length
+  return n
+}
+
 /** **编队打捞器总台数**（各船 `salvagerCyclesOf` 的长度之和；0 = 干不了打捞） */
 export function wormholeSalvagersOf(state: GameState, ctx: SimContext): number {
   const run = state.wormhole.run
   if (!run) return 0
-  let n = 0
-  for (const uid of run.fleet) n += salvagerCyclesOf(state, ctx, uid).length
-  return n
+  return wormholeSalvagersInFleet(state, ctx, run.fleet)
 }
 
 /** 本趟的确定性种子（`run.seed`；老档没有就退到全局 rng 种子） */
@@ -1423,17 +1436,29 @@ function workExtraPiles(state: GameState, eff: number, cellKey: string, depth: n
   for (let i = 0; i < cellKey.length; i++) h = Math.imul(h ^ cellKey.charCodeAt(i), 16777619) >>> 0
   return whole + ((h % 10_000) / 10_000 < frac ? 1 : 0)
 }
-/** **编队采集器台数**（`slot === 'miner'`；0 = 挖不动矿脉） */
-export function wormholeMinersOf(state: GameState, ctx: SimContext): number {
-  const run = state.wormhole.run
-  if (!run) return 0
+/**
+ * **任意编队的采集器总台数**（`slot === 'miner'`；0 = 挖不动矿脉）。
+ * 与 `wormholeMinersOf`（本趟编队）**同一把尺**，理由同 `wormholeSalvagersInFleet`。
+ */
+export function wormholeMinersInFleet(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): number {
   let n = 0
-  for (const uid of run.fleet) {
+  for (const uid of shipIds) {
     const ship = state.fleet[uid]
     if (!ship) continue
     n += allFittedModules(ship.fitted, ctx).filter((m) => m.slot === 'miner').length
   }
   return n
+}
+
+/** **编队采集器台数**（`slot === 'miner'`；0 = 挖不动矿脉） */
+export function wormholeMinersOf(state: GameState, ctx: SimContext): number {
+  const run = state.wormhole.run
+  if (!run) return 0
+  return wormholeMinersInFleet(state, ctx, run.fleet)
 }
 
 /**
