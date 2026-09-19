@@ -2035,7 +2035,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
             label: '虫洞谜质',
             value: n(settle.essences),
             sub:
-              '枚（谜质装置析出 · 只收不卖）' +
+              '枚（谜质装置析出 · 可投入「谜质科技」研究）' +
               (settle.essenceIsk && settle.essenceIsk > 0 ? ` ⇒ 按行价约 ${n(settle.essenceIsk)} 信用点` : ''),
             wide: true,
           },

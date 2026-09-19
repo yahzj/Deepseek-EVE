@@ -443,7 +443,7 @@ export const EN_ITEMS: EnTable = {
   'mat-ammo-back': { name: 'Ammo Recovery Unit', description: 'Enigma fishes spent casings and scraps back after the fight: part of the ammo spent this battle is recovered.' + T_WORM },
   'mat-drone-net': { name: 'Drone Recovery Net', description: 'A recovery net woven from Enigma: more drones shot down by point defense are hauled back to the hangar.' + T_WORM },
   'mat-field-repair': { name: 'Field Repair Unit', description: 'Automatically patches armor and structure after exchanges; inactive outside the wormhole (yields Wormhole Enigma on extraction).' },
-  'mat-wh-essence': { name: 'Wormhole Enigma', description: 'A strange material found inside wormholes with research value; selling it is not advised. Cold-glowing crystals in a sealed case, bought by recyclers per piece.' },
+  'mat-wh-essence': { name: 'Wormhole Enigma', description: 'A strange material found inside wormholes, spent as research material; can also be sold to recyclers per piece. Cold-glowing crystals in a sealed case.' },
   // 货柜
   'box-relic-a': { name: 'Ruins Safe Container (Pirate)', description: 'A whole container dragged out of the ruins: a locked shell with its markings ground off. Only unboxing back at the station reveals what is inside. Takes 2×2 cargo slots.' },
   'box-relic-c': { name: 'Ruins Safe Container (Alien)', description: 'A container dragged out of the ruins: dried biological film clings to its shell. Only unboxing back at the station reveals what is inside. Takes 2×2 cargo slots.' },
