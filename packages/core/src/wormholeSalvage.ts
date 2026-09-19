@@ -295,7 +295,8 @@ export const WORMHOLE_BP_BOX_DEPTH: Readonly<Record<string, number>> = {
  * **虫洞谜质**（船长 2026-09-15 定「虫洞战利品与经济扩充」①）：
  * 谜质装置在**撤离成功那一刻**按 **1 台 = 1 枚**折成这个物品入库（旧口径是"随趟消失、不进仓库"）。
  * 全损走不到折算点 ⇒ 谜质仍是"带出去才算钱"的风险品；装置给的增益照旧效（不受折算影响）。
- * 物品卡见 `data/items.ts` 的 `mat-wh-essence`（0.5 m³ · 只收不卖 · 市场行价 70,000）。
+ * 物品卡见 `data/items.ts` 的 `mat-wh-essence`（0.5 m³ · 只收不卖 · 市场行价 **700,000**——2026-09-19 船长
+ * 「谜质单价提高到70W」；它同时是「谜质科技树」的双货币之一）。
  */
 export const WORMHOLE_ESSENCE_ITEM_ID = 'mat-wh-essence'
 /** 1 台谜质装置析出 1 枚虫洞谜质（船长 2026-09-15 定） */

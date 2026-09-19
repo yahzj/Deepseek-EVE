@@ -715,7 +715,7 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     expect(countWare(state, WORMHOLE_ESSENCE_ITEM_ID) - before, '2 台 ⇒ 2 枚').toBe(2)
     const st = state.wormhole.lastSettle!
     expect(st.essences).toBe(2)
-    expect(st.essenceIsk, '按行价给参考估值（不计入到手合计）').toBe(2 * 70_000)
+    expect(st.essenceIsk, '按行价给参考估值（不计入到手合计）').toBe(2 * 700_000)
     expect(st.boxes, '结算单不把它列成货柜').not.toContain(matterId)
   })
 
