@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, rackOf, SLOT_LABELS } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
@@ -15,7 +15,7 @@ import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
-import { RACK_SUBS, SUB_ALL } from '../ui/itemSubs'
+import { RACK_SUBS, SUB_ALL, itemBucketPasses, rackPasses } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -64,19 +64,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       (def.description ?? '').toLowerCase().includes(wq)
     )
   }
-  /** 一级筛选（物品大类）：选了某一类就只留那一类 */
-  const kindHit = (id: string): boolean => {
-    if (!kindPicked) return true
-    return engine.ctx.items.get(id)?.kind === wareKind
-  }
-  /** 二级筛选（装备槽类，走 core 单点 `rackOf`）：只对装备库生效 */
-  const rackHit = (id: string): boolean => {
-    if (wareRack === SUB_ALL) return true
-    const def = engine.ctx.modules.get(id)
-    return def !== undefined && rackOf(def) === wareRack
-  }
+  /** 一级筛选（物品大类）：选了某一类就只留那一类——判定走**唯一入口** `itemBucketPasses`（甲组·判定单点） */
+  const kindHit = (id: string): boolean => itemBucketPasses(engine.ctx, id, wareKind)
+  /** 二级筛选（装备槽类）：只对装备库生效——同样走唯一入口 `rackPasses`（core `rackOf` 的薄包装） */
+  const rackHit = (id: string): boolean => rackPasses(engine.ctx, id, wareRack)
   const itemHits = rows.filter(([id]) => hitItem(id) && kindHit(id))
-  const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && rackHit(id)) : []
+  const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && rackHit(id) && kindHit(id)) : []
   const hitTotal = itemHits.length + modHits.length
   /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
   const wareNarrowed = wq.length > 0 || kindPicked || wareRack !== SUB_ALL
@@ -251,7 +244,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 className={`app-tasktab${wareRack === SUB_ALL ? ' is-active' : ''}`}
                 onClick={() => setWareRack(SUB_ALL)}
               >
-                全部槽类
+                全部
               </button>
               {RACK_SUBS.map((s) => (
                 <button

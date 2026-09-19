@@ -20,7 +20,7 @@ import { handMarketKeyOf } from '../ui/marketJump'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
-import { BLUEPRINT_SUBS, MODULE_SUBS, RACK_SUBS, SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, moduleSubKeyOf } from '../ui/itemSubs'
+import { BLUEPRINT_SUBS, MODULE_SUBS, RACK_SUBS, SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, itemBucketPasses, moduleSubKeyOf } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
@@ -989,11 +989,10 @@ export function Handbook({
   /** 主筛选判定（判据与 `groupKeyOf` 逐条对齐，避免"筛出来的条目和分组标题不一致"） */
   function mainPasses(c: GridCell, t: Tab, main: string): boolean {
     if (main === SUB_ALL) return true
-    if (t === 'items') return String(c.raw.kind ?? '') === main
-    if (t === 'modules') {
-      const mod = engine.ctx.modules.get(c.key)
-      return mod !== undefined && rackOf(mod) === main
-    }
+    /** 物品 / 装备两页走**唯一入口** `itemBucketPasses`（甲组·判定单点，2026-09-19 六条基线之⑥）：
+     *  物品页的 `main` = 真实物品大类；装备页的 `main` = 槽类键（`high/mid/low`）⇒ 拼成桶键 `module-<rack>`。 */
+    if (t === 'items') return itemBucketPasses(engine.ctx, c.key, main)
+    if (t === 'modules') return itemBucketPasses(engine.ctx, c.key, `module-${main}`)
     if (t === 'ships') return String(c.glyph) === main // 同上：类别键（不是 raw.role）
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) return main === 'ship'
@@ -1391,7 +1390,7 @@ export function Handbook({
                         className={`app-tasktab${subKey === SUB_ALL ? ' is-active' : ''}`}
                         onClick={() => setSubKey(SUB_ALL)}
                       >
-                        全部子类
+                        全部
                       </button>
                       {subOpts.map((o) => (
                         <button

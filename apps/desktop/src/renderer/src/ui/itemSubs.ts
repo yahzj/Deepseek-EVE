@@ -241,7 +241,8 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   if (kind === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(kind)) {
     const mod = ctx.modules.get(good.refId)
     if (!mod) return false
-    return (MODULE_SUB_SLOTS[sub] ?? []).includes(mod.slot)
+    // 二级＝**产物功能分组**（`MODULE_SUBS` 的键）；走 `moduleSubKeyOf` 单点（手册/书架/组装机同源）
+    return moduleSubKeyOf(mod.slot) === sub
   }
   if (kind === 'ship') {
     const ship = ctx.ships.get(good.refId)
@@ -271,6 +272,59 @@ export function moduleSubKeyOf(slot: string): string {
     if (slots.includes(slot)) return key
   }
   return ''
+}
+
+/* ═══════════ 甲组·判定单点（船长 2026-09-19「六条基线」之⑥）═══════════
+ * 起因：「筛选太多太杂」的根因之一是**同一概念有两三份实现**——市场 `subPasses`、手册自带的
+ * `mainPasses/subPassesCell`、物品页仓库的 `kindHit/rackHit` 各写一份，改口径必漂移。
+ * 现收敛成三个入口，各页**只许调用、不许自写**：
+ *   ① `itemBucketPasses` —— **一级**：物品大类 + 「货物/装备/消耗品/货柜」这些桶键；
+ *   ② `rackPasses`       —— **二级（槽类）**：高/中/低槽装备；
+ *   ③ `moduleSubKeyOf`   —— **二级（功能分组）**：采集与货舱 / 武器 / 护盾 …（上面已有，市场也改读它）。
+ * 行为与收敛前**逐字等价**（`tools/_probe-filter-parity.ts` 对全目录 / 全桶键 / 全子类做过对拍）。 */
+
+/**
+ * **一级「物品 / 装备维度」的唯一判定入口**。
+ *
+ * `bucket`（桶键）＝ 各页一级筛选实际用到的键：
+ * - **真实物品大类**：`ITEM_KIND_ORDER` 的 14 个（`ore/mineral/gas/ice/ammo/drone/wreck/container/matter/essence/luxury/fragment/kit/aicore`）；
+ * - **`'item'`** ＝「货物」：除**残骸 / 消耗品 / 货柜**以外的物品（市场一级类型用它，2026-09-08/09-11/09-16 三次拆分的结果）；
+ * - **`'module'`** ＝ 装备（任意槽类）· **`'module-high' | 'module-mid' | 'module-low'`** ＝ 按槽类（市场一级类型）；
+ * - **`'consume'`** ＝ 消耗品整体（弹药/修理组件/无人机）· **`'container'`** ＝ 货柜整体；
+ * - **`SUB_ALL`** ＝ 不筛（恒真）。
+ */
+export function itemBucketPasses(ctx: SimContext, refId: string, bucket: string): boolean {
+  if (bucket === SUB_ALL || bucket === 'all') return true
+  /* ── 装备域（`ctx.modules`）── */
+  if (bucket === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(bucket)) {
+    const mod = ctx.modules.get(refId)
+    if (!mod) return false
+    if (bucket === 'module') return true // 「装备」= 任意槽类
+    return rackOf(mod) === bucket.slice('module-'.length)
+  }
+  /* ── 物品域（`ctx.items`）── */
+  const it = ctx.items.get(refId)
+  if (!it) return false
+  if (bucket === 'item') {
+    if (it.kind === 'wreck') return false
+    if (CONSUME_KIND_KEYS.includes(it.kind)) return false
+    if (CONTAINER_KIND_KEYS.includes(it.kind)) return false
+    return true
+  }
+  if (bucket === 'consume') return CONSUME_KIND_KEYS.includes(it.kind)
+  if (bucket === 'container') return CONTAINER_KIND_KEYS.includes(it.kind)
+  return it.kind === bucket // 真实大类（含 wreck / aicore / fragment …）
+}
+
+/**
+ * **二级「槽类」维度的唯一判定入口**（高 / 中 / 低槽装备）——`rackOf`（core 单点）的薄包装。
+ * 市场那侧的一级就是三个槽类桶，二级走**功能分组**（`moduleSubKeyOf`）；物品页仓库反过来：
+ * 一级是「装备」整体、二级才是槽类 ⇒ 两处都读本函数 / 那个函数，不再各写一份。
+ */
+export function rackPasses(ctx: SimContext, refId: string, rack: string): boolean {
+  if (rack === SUB_ALL) return true
+  const mod = ctx.modules.get(refId)
+  return mod !== undefined && rackOf(mod) === rack
 }
 
 /** 子分类中文名（查不到时回退原键） */
