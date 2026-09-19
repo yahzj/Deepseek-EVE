@@ -133,6 +133,81 @@ function stamp(): string {
 }
 
 /** 通用门槛注入（避免测试档带着半截现场） */
+/**
+ * **蓝图碎片 · 逆向解锁验收档**（2026-09-19 船长：「帮我准备一个蓝图碎片的存档，玩家反应依旧找不到，
+ * 我要实机测试一下」）。
+ *
+ * 一档同时覆盖 **三种状态**（可兑 / 差几片 / 已掌握），并把主控拉回母港停靠（`redeemFragments` 要求
+ * `isAtHomeLike`）——这样"找不到入口"这件事能一次问清是"入口没渲染"还是"位置/材料不满足"：
+ * - 仓库 `frag-mod-miner-2` × 25 ⇒ **可兑**（二档书 · 门槛 25）；
+ * - 仓库 15 片 ＋ **主控货舱 10 片** 的 `frag-mod-cargo-2` ⇒ **可兑**（门槛 25）——顺带证明"仓库＋货舱一本账"；
+ * - 仓库 `frag-mod-miner-3` × 250 ⇒ **可兑**（三档书 · 门槛 250）；
+ * - 仓库 `frag-mod-cargo-3` × 120 ⇒ **差 130 片**（按钮应显示 120/250）；
+ * - **`bp-turret-3` 保持"已掌握"**（真档原样）⇒ 那一行显示「已解锁配方」，作第三种状态对照。
+ *
+ * ⚠ 为什么要把其余五本从 `learnedRecipes` 里摘掉：真档已把六本碎片书全部学过（多半从市场买的），
+ * 不摘的话六行全是"已解锁配方"、逆向按钮全都不可点——**这也正是玩家报"找不到在哪换"的一种情形**。
+ *
+ * 入口两处：**物品页 →「蓝图碎片」分组行**（船长裁定甲案的落点）与**货仓页**（同款按钮）。
+ */
+function injectFragments(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 回到母港停靠 + 清空进行中主控作业（逆向研究要求"停靠空间站"）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  for (const r of state.refineRuns) if (r.active && r.worker === 'pilot') r.active = false
+  for (const m of state.manufacturingRuns) if (m.active && m.worker === 'pilot') m.active = false
+  notes.push('主控已回到母港停靠、清空进行中作业（逆向研究要求停靠空间站）')
+
+  /** 摘掉"已掌握"里指定的蓝图（真档六本全会）——与 `fragmentPoolOf` 的判据反向操作 */
+  const forget = (bpId: string): void => {
+    state.learnedRecipes = state.learnedRecipes.filter((x) => x !== bpId)
+  }
+  for (const bp of ['bp-miner-2', 'bp-cargo-2', 'bp-miner-3', 'bp-cargo-3', 'bp-turret-2']) forget(bp)
+  notes.push(
+    '已把五本碎片书从「已掌握」里摘掉（强化采集器 MK2 / 货舱扩展 MK2 / 精密采集器 MK3 / 折叠货舱扩展 MK3 / ' +
+      '重型炮台 MK2）——真档六本都在 learnedRecipes 里，不摘则六行全是"已解锁配方"、按钮全都不可点',
+  )
+
+  const put = (itemId: string, n: number): void => {
+    state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + n
+  }
+  // ① 二档 · 可兑（25 片）
+  put('frag-mod-miner-2', 25)
+  notes.push('仓库：强化采集器 MK2 碎片 ×25（门槛 25 ⇒ **可兑**，物品页「蓝图碎片」分组行应出现「逆向解锁 25/25」）')
+  // ② 二档 · 可兑（跨仓库＋货舱：15 + 10 = 25）
+  put('frag-mod-cargo-2', 15)
+  const cargo = state.fleet[state.shipId]?.cargo
+  if (cargo) {
+    cargo['frag-mod-cargo-2'] = (cargo['frag-mod-cargo-2'] ?? 0) + 10
+    notes.push('仓库 15 片 ＋ **当前船货舱 10 片** ＝ 25 片的「货舱扩展 MK2」（门槛 25 ⇒ 可兑；证明仓库与货舱一本账）')
+  } else {
+    put('frag-mod-cargo-2', 10)
+    notes.push('仓库：货舱扩展 MK2 碎片 ×25（门槛 25 ⇒ 可兑）')
+  }
+  // ③ 三档 · 可兑（250 片）
+  put('frag-mod-miner-3', 250)
+  notes.push('仓库：精密采集器 MK3 碎片 ×250（门槛 250 ⇒ **可兑**）')
+  // ④ 三档 · 差几片（120/250）
+  put('frag-mod-cargo-3', 120)
+  notes.push('仓库：折叠货舱扩展 MK3 碎片 ×120（门槛 250 ⇒ 应显示 120/250 与"还差 130 片"）')
+  // ⑤ 第三种状态：已掌握（保留 bp-turret-3 不摘）
+  notes.push('「攻坚炮台 MK3（动能）蓝图」保持已掌握（真档原样）⇒ 那一行应显示「已解锁配方」，作对照')
+  notes.push('另「重型炮台 MK2」为 0 片（未集齐的默认显示，作对照）')
+
+  state.wallet.isk += 1_000_000
+  notes.push('钱包 +1,000,000 ISK（无关紧要 · 便于顺带看市场与制造）')
+  return notes
+}
+
 function genericPrep(state: GameState): void {
   // 清掉未了结的遭遇与区域冷却（保持起点干净）
   state.encounter = {
@@ -2569,6 +2644,8 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   etier: injectEtier,
   abyssgate: injectAbyssgate,
   lairgear: injectLairGear,
+  // 蓝图碎片·逆向解锁验收档（2026-09-19 船长：玩家反应依旧找不到入口）
+  fragments: injectFragments,
   dfamily: injectDfamily,
   // gswarm（2026-09-12 P-20a 收口）：G 族等离子蜂群验收档（四艘同型对照船，只差抗性系）
   gswarm: injectGSwarm,
