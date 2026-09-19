@@ -1,6 +1,10 @@
 /**
  * 把 data 包全部内容组装成引擎需要的运行上下文（SimContext）。
  * 桌面层只在启动时构建一次。
+ *
+ * **语言（2026-09-19 船长令「英语本地化」）**：`locale` 缺省 `'zh'` ⇒ 与改动前**逐字一致**；
+ * 传 `'en'` 时在组装完的 ctx 上盖一层英文覆盖表（见 `./l10n`）——只改 `name / description`，
+ * id 与数值一字不动。工具 / 测试 / 模拟全走缺省 ⇒ 既有读数不受影响。
  */
 
 import {
@@ -32,8 +36,9 @@ import { buildCommsCatalog } from './messages'
 import { buildCommsFactionCatalog } from './commsFactions'
 import { buildDialogueCatalog } from './dialogues'
 import { GALAXY_EDGES } from './universe'
+import { localizeCtx, type Locale } from './l10n'
 
-export function buildSimContext(): SimContext {
+export function buildSimContext(locale: Locale = 'zh'): SimContext {
   const galaxies = buildGalaxyCatalog()
   const anomalies = buildAnomalyCatalog()
   const items = new Map(buildItemCatalog())
@@ -64,24 +69,27 @@ export function buildSimContext(): SimContext {
     const id = fragmentItemIdOf(moduleId)
     if (!items.has(id)) items.set(id, fragmentItemDefOf(moduleId, mod.name))
   }
-  return {
-    skills: buildSkillCatalog(),
-    ships: buildShipCatalog(),
-    belts: buildBeltCatalog(),
-    items,
-    modules,
-    blueprints: buildBlueprintCatalog(),
-    shipBlueprints: buildShipBlueprintCatalog(),
-    galaxies,
-    galaxyEdges: GALAXY_EDGES,
-    anomalies,
-    travelEvents: buildTravelEvents(),
-    stations: buildStationCatalog(),
-    marketGoods: buildMarketGoodsCatalog(),
-    commsMessages: buildCommsCatalog(),
-    commsFactions: buildCommsFactionCatalog(),
-    dialogues: buildDialogueCatalog(),
-    matterTech: buildMatterTechCatalog(),
-    balance: DEFAULT_BALANCE,
-  }
+  return localizeCtx(
+    {
+      skills: buildSkillCatalog(),
+      ships: buildShipCatalog(),
+      belts: buildBeltCatalog(),
+      items,
+      modules,
+      blueprints: buildBlueprintCatalog(),
+      shipBlueprints: buildShipBlueprintCatalog(),
+      galaxies,
+      galaxyEdges: GALAXY_EDGES,
+      anomalies,
+      travelEvents: buildTravelEvents(),
+      stations: buildStationCatalog(),
+      marketGoods: buildMarketGoodsCatalog(),
+      commsMessages: buildCommsCatalog(),
+      commsFactions: buildCommsFactionCatalog(),
+      dialogues: buildDialogueCatalog(),
+      matterTech: buildMatterTechCatalog(),
+      balance: DEFAULT_BALANCE,
+    },
+    locale,
+  )
 }
