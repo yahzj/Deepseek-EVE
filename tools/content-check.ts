@@ -102,6 +102,7 @@ import {
   isArmorLineShip,
   shipCategoryKeyOf,
   createFoeSpecs, // 机群火力占比契约的守恒实测（Σ 单发对照）
+  wormholeBranchNaturalHp, // 支援呼叫装置契约：两支守恒实测（自然总血）
   FOE_LAIR_GEAR,
   BOUNTY_ZONE_PLAN,
 // 2026-09-12：安全分区**单一出处**（`sideTasks.securityZoneOf`）——体检不再自己内联重算边界
@@ -2372,7 +2373,10 @@ for (const m of MODULES) {
         .map(([k, v]) => `${k}:${v}`)
         .join(',')
     {
-      const mains = (def.ships ?? []).filter((s) => s.escort !== true)
+      // ⚠ **支援分支条目不算"卡面主体"**（2026-09-19「支援呼叫装置」批）：`enterBranch` 那两条是
+      // **20 秒后才会到场**的援军（幽灵舰 / 静滞卫舰，各按族内构成）；卡面构成说的是**开战即在**的主体
+      // （守墓王座舰 6:4）⇒ 白名单判据只看常驻条目（否则本卡会掉进通用 8:2 分支被误判）。
+      const mains = (def.ships ?? []).filter((s) => s.escort !== true && s.enterBranch === undefined)
       const authority = new Set<string>(FOE_SHIP_MIX_AUTHORITY_IDS)
       if (mains.length > 0 && mains.every((s) => authority.has(s.ship.id))) {
         const eff = mixKey(mains[0]!.dmgMix ?? mains[0]!.ship.dmgMix)
@@ -3378,7 +3382,9 @@ for (const m of MODULES) {
           )
         }
       }
-      const mains = ships.filter((x) => x.escort !== true)
+      // ⚠ **支援分支条目不算"卡面主体"**（2026-09-19「支援呼叫装置」批）：`enterBranch` 那两条是
+      // 20 秒后才会到场的援军（幽灵舰 / 静滞卫舰，各按族内构成），卡面血型/构成/主体只描述常驻编成。
+      const mains = ships.filter((x) => x.escort !== true && x.enterBranch === undefined)
       check(mains.length >= 1, `舰级契约：${def.name} 没有任何非僚机编成条目（至少需要一艘主体）`)
       // 主体 = 单位数最多的非僚机条目（数量相同时取先写的；见上方 ③ 的 prime 定义）
       const prime = mains.reduce<(typeof mains)[number] | undefined>(
@@ -3527,35 +3533,108 @@ for (const m of MODULES) {
     )
   }
 
-  /* ── 增援机制未启用契约（2026-09-11 加）──
-   * 船长裁决原文：「**先完成相应的系统机制，不使用。用作后续机制。**」
-   * 口径：`BattleBalance.foeReinforceEnabled` **关闭期间，任何卡不得携带 `enterAt`**——
-   * 让"未使用"这个状态**由代码守住**（而不是靠人记）：一旦有人在关着开关时给卡写 `enterAt`
-   * （比如以为写了就生效），**内容体检立刻失败并说清依据**。
-   * 启用流程 = 先开开关（`balance.foeReinforceEnabled = true`）再编成条目写 `enterAt`，
-   * 同时按注释解除本契约并补实测（见 `docs/design/foe-reinforce-20260911.md`）。 */
+  /* ── 支援呼叫装置契约（2026-09-19 加；本块由旧「增援机制未启用契约」改写）──
+   * 船长原话：「**战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程之外时，增援2艘静滞卫舰。**」
+   * ＋「因为延迟到场，所以需要一定补偿。**卡计算的实际威胁要*1.1**」（补偿口径取「甲」= 乘在威胁上）。
+   *
+   * 旧契约（2026-09-11「先完成相应的系统机制，不使用。用作后续机制。」）钉的是"关闭期间任何卡不得写
+   * `enterAt`"；**总开关已按本批裁定打开**（`balance.foeReinforceEnabled = true`）⇒ 改成钉这五件事：
+   *   ① **开关必须是 true**：关着又写 `enterAt`/`enterBranch` ⇒ 红（机制不生效，等于死数据）；
+   *   ② **只有挂了「支援呼叫装置」的卡**才允许写 `enterAt` / `enterBranch`（机制细节只对经裁定的这一套负责）；
+   *   ③ **归属**：该件只允许挂在「守墓王座舰」上；**呼叫者条目必须在开战即在的编成里**（不得自己带 `enterAt`）；
+   *   ④ **两支成对 + 守恒**：同卡必须同时有 `inside` / `outside` 两支，两支**自然总血与自然火力各相等**
+   *      （±3%）、`enterAt.sec` 相同且 = 装置的 `delaySec`；
+   *   ⑤ **读数**：挂该装置 ⇒ 派生实际威胁 = round(层威胁 × `threatMul`)——第 ⑤ 条在 core 用例里断言。 */
   {
     const enabled = DEFAULT_BALANCE.battle.foeReinforceEnabled === true
+    const bad: string[] = []
     let carriers = 0
     const named: string[] = []
+    /** 本卡是否挂了「支援呼叫装置」（有效挂载 = 条目 ?? 舰级） */
+    const cardHasSupportCall = (def: (typeof ANOMALIES_FLAVORED)[number]): boolean =>
+      (def.ships ?? []).some((sl) => resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeSupportCall !== undefined)
     for (const def of ANOMALIES_FLAVORED) {
-      for (const slot of def.ships ?? []) {
-        if (!slot.enterAt) continue
-        carriers++
-        named.push(def.name)
-        check(
-          enabled,
-          `增援机制未启用契约：${def.name} 的编成条目携带了 \`enterAt\`，但总开关 \`foeReinforceEnabled\` 为 false——` +
-            `**单波次内增援机制已实现、但按船长裁决不启用**` +
-            `（船长 2026-09-11：「先完成相应的系统机制，不使用。用作后续机制。」）；` +
-            `要启用请先打开总开关（core \`balance.ts\`），再同步解除本契约（tools/content-check.ts）并补实测`,
+      const slots = def.ships ?? []
+      const hasAt = slots.some((sl) => sl.enterAt !== undefined)
+      const hasBranch = slots.some((sl) => sl.enterBranch !== undefined)
+      if (!hasAt && !hasBranch) continue
+      carriers++
+      named.push(def.name)
+      // ① 开关
+      if (!enabled) {
+        bad.push(
+          `${def.name} 携带 \`enterAt\`/\`enterBranch\`，但总开关 \`foeReinforceEnabled\` 为 false` +
+            `（机制不生效；要启用请先打开 core \`balance.ts\` 的开关并同步本节口径）`,
         )
       }
+      // ② 只有挂了该件的卡能用
+      if (!cardHasSupportCall(def)) {
+        bad.push(`${def.name} 写了 \`enterAt\`/\`enterBranch\` 却没挂「支援呼叫装置」——该机制只随此件生效`)
+      }
+      // ③ 归属 + 呼叫者必须在场（不得自己带 enterAt）
+      for (const sl of slots) {
+        const sc = resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeSupportCall
+        if (sc === undefined) continue
+        if (sl.ship.id !== 'foe-d-throne') {
+          bad.push(`${def.name} 的 ${sl.ship.name} 挂了支援呼叫装置——该件只允许挂在「守墓王座舰」上`)
+        }
+        if (sl.enterAt !== undefined) {
+          bad.push(`${def.name} 的 ${sl.ship.name} 既挂支援呼叫装置又写 \`enterAt\`——呼叫者必须在开战即在的编成里`)
+        }
+      }
+      // ④ 两支成对 + 守恒 + 延时一致
+      const ins = slots.filter((sl) => sl.enterBranch === 'inside')
+      const outs = slots.filter((sl) => sl.enterBranch === 'outside')
+      if (ins.length === 0 || outs.length === 0) {
+        bad.push(`${def.name} 的支援分支不成对（inside ${ins.length} 条 / outside ${outs.length} 条）——必须两支都有`)
+      } else {
+        const branchDps = (br: 'inside' | 'outside'): number =>
+          createFoeSpecs(def, DEFAULT_BALANCE.battle)
+            .filter((f) => f.foeReinforceBranch === br)
+            .reduce(
+              (n, f) =>
+                n +
+                f.weapons.reduce(
+                  (m, w) => m + ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs),
+                  0,
+                ),
+              0,
+            )
+        const hpIn = wormholeBranchNaturalHp(def, 'inside')
+        const hpOut = wormholeBranchNaturalHp(def, 'outside')
+        const dpsIn = branchDps('inside')
+        const dpsOut = branchDps('outside')
+        const within = (a: number, b: number): boolean => {
+          const hi = Math.max(a, b)
+          return hi <= 0 ? a === b : Math.abs(a - b) / hi <= 0.03
+        }
+        if (!within(hpIn, hpOut)) {
+          bad.push(`${def.name} 两支支援军的自然总血不等（inside ${hpIn} / outside ${hpOut}）——守恒契约 ≤3%`)
+        }
+        if (!within(dpsIn, dpsOut)) {
+          bad.push(
+            `${def.name} 两支支援军的自然火力不等（inside ${dpsIn.toFixed(1)} / outside ${dpsOut.toFixed(1)} DPS）——守恒契约 ≤3%`,
+          )
+        }
+        const secs = new Set([...ins, ...outs].map((sl) => sl.enterAt?.sec))
+        if (secs.size !== 1 || [...secs][0] === undefined) {
+          bad.push(`${def.name} 两支的 \`enterAt.sec\` 必须一致且非空，实际 ${[...secs].join(' / ')}`)
+        }
+        const delay = slots
+          .map((sl) => resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeSupportCall?.delaySec)
+          .find((v) => v !== undefined)
+        if (delay !== undefined && [...secs][0] !== delay) {
+          bad.push(`${def.name} 两支到场延时 ${[...secs][0]} 秒 ≠ 装置的 \`delaySec\` ${delay} 秒`)
+        }
+      }
     }
+    check(bad.length === 0, `支援呼叫装置契约：${bad.join(' · ')}`)
+    const delay = FOE_MOUNTS[FOE_MOUNT_IDS.supportCall].supportCall
     console.log(
-      `· 增援机制未启用契约：总开关 **${enabled ? "开" : "关"}**，${carriers} 张卡携带 \`enterAt\`` +
+      `· 支援呼叫装置契约：总开关 **${enabled ? "开" : "关"}**，${carriers} 张卡携带 \`enterAt\`/\`enterBranch\`` +
         `${carriers > 0 ? `（${[...new Set(named)].join('、')}）` : ""}——` +
-        `机制（三种触发 / 存档零迁移 / 距离重开）已实现并有用例覆盖，**按船长裁决不启用，留作后续机制**`,
+        `装置 = 「支援呼叫装置」（守墓王座舰专属：开战 ${delay?.delaySec ?? '?'} 秒后按距离二选一增援；` +
+        `延迟补偿 = 实际威胁 ×${delay?.threatMul ?? '?'}）· 两支成对且守恒（血/火力各 ≤3%）· 存档零迁移`,
     )
   }
 

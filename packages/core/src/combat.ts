@@ -25,6 +25,7 @@ import type {
   FoeReinforceTrigger,
   FoeShipDef,
   FoeShipSlot,
+  FoeSupportBranch,
   FoeTactic,
   FoeTargetingMode,
   ModuleDef,
@@ -35,7 +36,7 @@ import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
-import { wormholeFoeThreat } from './wormholeFoes'
+import { wormholeCardThreatOf, wormholeSkippedBranch } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
 import type { WormholeMatterBuffs } from './wormholeMatter'
@@ -243,6 +244,21 @@ export interface UnitSpec {
    *  **建档时已按总开关过滤**：开关关闭时本字段一律不写（= 开战即在）。
    *  带本字段的单位**不进开战编队**，由 `advanceBattleFor` 每拍检查、条件命中才补入。 */
   foeReinforceAt?: FoeReinforceTrigger
+  /**
+   * **支援呼叫分支**（2026-09-19 船长「支援呼叫装置」批）——本条目属于哪一支援军
+   * （`'inside'` = 判定时玩家在呼叫者射程内 / `'outside'` = 在射程外）。
+   *
+   * ⚠ **建档时一律带上**（不受总开关影响）：洞内派生要用它排除"不到场的那一支"
+   * （见 `wormholeSkippedBranch`）——它只是标签，**入场与否仍由 `foeReinforceAt` 决定**。
+   */
+  foeReinforceBranch?: FoeSupportBranch
+  /**
+   * **支援呼叫装置参数**（2026-09-19 船长：「**战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远
+   * 射程之外时，增援2艘静滞卫舰。**」）——挂件在**呼叫者**自己身上：它决定"何时判定 + 判定基准射程"，
+   * 两支的到场单位由卡的条目声明（`enterAt` ＋ `foeReinforceBranch`）。
+   * **建档时按总开关过滤**（关 = 不写 = 本机制完全不参与，零行为变化）。
+   */
+  foeSupportCall?: { delaySec: number; threatMul: number }
   /** **本单位自己的有效射程带**（m）——**只有舰级路径会写**（`createFoeSpecsFromShips`；
    *  含条目 `rangeMul`/`rangeMinM`/`rangeMaxM` 覆写后的绝对值）。
    *  用途：`foeDesiredRange` 在**舰级路径**上以"自己的带"取代旧路径的全局战术表，
@@ -2038,6 +2054,12 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(mount.names.length > 0 ? { foeMountNames: mount.names } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
+      // **支援呼叫分支**（2026-09-19）：纯标签、一律带上（派生侧的"互斥分支记账"要用它）
+      ...(u.slot.enterBranch !== undefined ? { foeReinforceBranch: u.slot.enterBranch } : {}),
+      // **支援呼叫装置**（2026-09-19）：与 `foeReinforceAt` 同款总开关形态（关了不写 ⇒ 零行为变化）
+      ...(bal.foeReinforceEnabled === true && mount.foeSupportCall !== undefined
+        ? { foeSupportCall: mount.foeSupportCall }
+        : {}),
       weapons: [
         {
           label: `${name} 武器组`,
@@ -2094,13 +2116,15 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
   })
 }
 
-/* ═══════ 单波次内增援（2026-09-11 船长裁决：「先完成相应的系统机制，不使用。用作后续机制。」）═══════
+/* ═══════ 单波次内增援（2026-09-11 机制落地 → **2026-09-19 船长批「支援呼叫装置」启用**）═══════
  * **机制**：编成条目的 `enterAt` 给三种入场触发（第几秒 / 击毁几个 / 残血到多少）；
  * 带触发的单位**开战不进战场**，由 `advanceBattleFor` **每拍**检查、条件命中才 `seedUnit` 补入。
  *
- * **与「敌突进」同款形态**（船长 2026-09-10「暂时先取消实装，仅实现功能」的先例）：
- * 机制 / 参数 / 总开关 / 契约 / 用例全部就位，但**任何战斗都不触发**——总开关
- * `BattleBalance.foeReinforceEnabled` 默认 `false`，且契约在关闭期间**禁止任何卡写 `enterAt`**。
+ * **启用依据**（船长 2026-09-19）：「战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程之外时，
+ * 增援2艘静滞卫舰。」⇒ 总开关 `BattleBalance.foeReinforceEnabled = true`；第一批用户 = 洞内深层卡
+ * 「陵墓王庭」，其**分支到场**另见下方 `resolveReinforcements` 与 `FoeMountDef.supportCall`。
+ * 契约由旧「增援机制未启用契约」改写成「**支援呼叫装置契约**」（只允许挂了该件的卡写
+ * `enterAt`/`enterBranch`、两支成对且守恒）——见 `tools/content-check.ts`。
  *
  * **存档零迁移**：不新增任何存档字段——"某个单位是否已入场"**由 `battle.units` 里有没有它的 tag 反推**
  * （`seedUnit` 对已存在的 tag 不覆盖，尸体也留着，故"在场过"永远是"存在"）。
@@ -2108,8 +2132,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
  *
  * **仅舰级路径**：`enterAt` 长在 `FoeShipSlot` 上，旧威胁推导路径（未写 `ships` 的卡）天然不涉及。
  *
- * ⚠ **与多舰补偿系数 `2N/(N+1)` 不可叠加**（两条路：结构解法 vs 数值补偿）——见设计稿
- * `docs/design/foe-reinforce-20260911.md`。
+ * ⚠ **与多舰补偿系数 `2N/(N+1)`**（两条路：结构解法 vs 数值补偿）——见设计稿
+ * `docs/design/foe-reinforce-20260911.md`；洞内派生会把总量归一 ⇒ 本卡不产生叠加。
  */
 
 /** 规范化增援触发条件：只保留**有效**条件（`sec > 0` / `afterKills > 0` / `0 ≤ hpBelow ≤ 1`）；
@@ -2162,12 +2186,71 @@ function reinforceTriggered(
   return false
 }
 
+/* ═══════ 支援呼叫装置（2026-09-19 船长：「战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程
+ * 之外时，增援2艘静滞卫舰。」＋「因为延迟到场，所以需要一定补偿。卡计算的实际威胁要*1.1」）═══════
+ *
+ * **形态**：挂件挂在**呼叫者**（本卡 = 守墓王座舰）身上；两支到场单位由卡的**条目**声明
+ * （`enterAt` 给时点、`enterBranch` 给分支）。每拍判一次，**判完锁死**——由"哪一支已入场"反推
+ * （含尸体）⇒ **零存档字段、读档续战天然可续**。
+ *
+ * **判定**：战斗时钟 ≥ `delaySec` 时，取玩家当前距离 `b.distanceM` 与**呼叫者当时有效的炮台最远射程**
+ * 比较（含我方电子舰的射程削减；与开火门/受击增程同一算法）⇒ 射程内 = `'inside'`、射程外 = `'outside'`。
+ * 呼叫者**被击毁即不再呼叫**（本卡里"击毁王座舰 = 战斗结束"，故实际是死规矩）。
+ */
+
+/** 带「支援呼叫装置」的呼叫者（**存活**才作数）；本卡里 = 守墓王座舰 */
+function supportCallerOf(
+  b: import('./state').BattleState,
+  curFoes: readonly UnitSpec[],
+): UnitSpec | undefined {
+  for (const spec of curFoes) {
+    if (spec.foeSupportCall === undefined) continue
+    const u = b.units[spec.tag]
+    if (u && u.side === 'foe' && u.hp.s > 0 && u.hp.a > 0 && u.hp.h > 0) return spec
+  }
+  return undefined
+}
+
+/** 呼叫者的**当前有效炮台最远射程**（与 `markFoeGunRangeBuff` 的 reach 同一算式） */
+function supportCallerReachM(b: import('./state').BattleState, caller: UnitSpec): number {
+  return caller.weapons.reduce((m, w) => Math.max(m, foeGunMaxRangeOf(b, caller, w)), 0)
+}
+
+/** 已入场的那一支（**含尸体**——尸体留在 `battle.units` 里，故"到场过"永远是"存在"） */
+function arrivedSupportBranch(
+  b: import('./state').BattleState,
+  curFoes: readonly UnitSpec[],
+): FoeSupportBranch | null {
+  for (const spec of curFoes) {
+    const br = spec.foeReinforceBranch
+    if (br !== undefined && b.units[spec.tag]) return br
+  }
+  return null
+}
+
+/** 本拍应当到场的那一支（`null` = 还没到判定时刻 / 呼叫者不在场 ⇒ 分支条目一律不进） */
+function resolveSupportBranch(
+  b: import('./state').BattleState,
+  curFoes: readonly UnitSpec[],
+): FoeSupportBranch | null {
+  const settled = arrivedSupportBranch(b, curFoes)
+  if (settled !== null) return settled // 判过就锁死（另一支本场不再出现）
+  const caller = supportCallerOf(b, curFoes)
+  if (caller === undefined || caller.foeSupportCall === undefined) return null
+  const delayMs = Math.max(0, Math.round(caller.foeSupportCall.delaySec * 1000))
+  if (b.lastTickGameMs - b.startedAtGameMs < delayMs) return null
+  return b.distanceM <= supportCallerReachM(b, caller) ? 'inside' : 'outside'
+}
+
 /**
  * **每拍结算增援入场**（`advanceBattleFor` 主循环内、`stepBattle` **之前**调用——保证"上一拍刚打死的
  * 单位"本拍就能触发援军，且判胜检查看到的是补入后的编队）。
  * - 总开关关闭 → 直接返回（**零行为变化**：此时建档期也根本没写过 `foeReinforceAt`）；
  * - 已入场判定 = `battle.units` 里已有该 tag（含尸体）→ 不重复补入、不需要任何存档字段；
+ * - **分支闸门**（2026-09-19「支援呼叫装置」）：带 `foeReinforceBranch` 的条目，只有与
+ *   `resolveSupportBranch` 的判定一致才进（另一支本场永不出现）；
  * - 入场单位走 `enterReload` —— 与波次转场同款"一段自然哑火窗口"（≈一次装填时长）；
+ * - 到场另推一条**画面提示**（`battle.notices`，与"受击增程"同一处）；
  * - 距离重开：`bal.foeReinforceReopenFrac`（语义同 `waveReopenFrac`；缺省 0 = 原地入场）。
  */
 function resolveReinforcements(
@@ -2180,10 +2263,13 @@ function resolveReinforcements(
   openM: number,
 ): void {
   if (bal.foeReinforceEnabled !== true) return
+  const supportBranch = resolveSupportBranch(b, curFoes)
   const arrived: UnitSpec[] = []
   let arriveIdx = 0
   for (const spec of curFoes) {
     if (b.units[spec.tag]) continue // 已入场（含已阵亡的尸体）
+    // 分支闸门：不属本场判定出来的那一支 ⇒ 本场不再考虑（未判出 = null ⇒ 分支条目一律等待）
+    if (spec.foeReinforceBranch !== undefined && spec.foeReinforceBranch !== supportBranch) continue
     const at = spec.foeReinforceAt
     if (!at) continue // 开战即在的常规单位（未写 enterAt）
     if (!reinforceTriggered(at, b, curFoes)) continue
@@ -2198,6 +2284,14 @@ function resolveReinforcements(
     arrived.push(spec)
   }
   if (arrived.length === 0) return
+  // **到场提示**（船长 2026-09-19：支援呼叫装置那一批「开战提示 + 到场提示」）——画面顶部提示位，
+  // 与"受击增程"同一处；按名归并计数（同一支里同名多艘写成 ×N）
+  const byName = new Map<string, number>()
+  for (const s of arrived) byName.set(s.name, (byName.get(s.name) ?? 0) + 1)
+  pushBattleNotice(
+    b,
+    `敌方增援抵达：${[...byName].map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join('、')}`,
+  )
   // 距离重开（2026-09-11 船长口径：沿用 waveReopenFrac 语义，缺省 0 = 不重开）
   const reopen = bal.foeReinforceReopenFrac ?? 0
   if (reopen > 0 && Number.isFinite(openM)) {
@@ -3172,6 +3266,22 @@ function announceStealthStart(b: import('./state').BattleState): void {
   }
 }
 
+/**
+ * **开战提示：敌方呼叫增援**（船长 2026-09-19「支援呼叫装置」批：「**战斗开始20秒后，增援2艘幽灵舰。
+ * 如果对方在自己最远射程之外时，增援2艘静滞卫舰。**」）——同 `announceStealthStart` 的口径：
+ * 只走**画面顶部提示位**（`battle.notices`，与"敌方增援/受击增程"同一处），不写 `addLog`。
+ * 没挂该件的场次一条都不推 ⇒ 既有读数零变化。
+ */
+function announceSupportCallStart(
+  b: import('./state').BattleState,
+  foes: readonly UnitSpec[],
+): void {
+  const caller = foes.find((f) => f.foeSupportCall !== undefined)
+  if (caller === undefined || caller.foeSupportCall === undefined) return
+  const sec = Math.max(0, Math.round(caller.foeSupportCall.delaySec))
+  pushBattleNotice(b, `敌方呼叫增援：${sec} 秒后抵达`)
+}
+
 /** 按规格把单位补入战斗（多波续刷/读档补缺用；已存在（含 hp 归零的尸体）不覆盖）。
  * enterReload（2026-09-09 波次转场）：增援单位入场需先完成一轮装填（weapons 满倒计时）
  * 才开火——给"增援抵达"一段自然哑火窗口（≈一次装填时长），不改变任何结算语义。 */
@@ -3557,6 +3667,7 @@ export function startBattleFor(
   // **电子舰 · 压制敌舰射程**（2026-09-18）：单船路径同样按编队（= 它自己）算一次
   applyFoeRangeDebuff(state, ctx, battle, [shipId])
   announceStealthStart(battle) // 隐秘行动装置：开战那一刻的提示条（没装装置的场次不推）
+  announceSupportCallStart(battle, foes) // 支援呼叫装置：开战即告诉玩家"有一支援军在路上"（没挂的不推）
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
@@ -3669,10 +3780,15 @@ export function wormholeDerivedAnomaly(
   /**
    * **该卡的自然总火力**（含机群）——决定它的"自然血/火力比 `r`"（甲案口径：血与火力按 `r` 反算）。
    * 用**未派生**的卡建一遍规格即可（与派生无关，纯卡面事实）；同一张卡只算一次（记忆在派生记忆里）。
+   *
+   * ⚠ **互斥支援分支只记一支**（2026-09-19「支援呼叫装置」批）：与 `wormholeNaturalHp` **同一个函数**
+   * 取"被排除的那一支" ⇒ 血与火力两侧口径一致（两支都算会让本卡比同层同档弱约 24%）。
    */
   const naturalDps = (() => {
+    const skip = wormholeSkippedBranch(baseCard)
     let dps = 0
     for (const f of createFoeSpecs(baseCard, ctx.balance.battle)) {
+      if (skip !== null && f.foeReinforceBranch === skip) continue
       for (const w of f.weapons) dps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
     }
     return dps
@@ -3682,9 +3798,11 @@ export function wormholeDerivedAnomaly(
   if (wormholeDerivedMemo !== null && wormholeDerivedMemo.key === memoKey) return wormholeDerivedMemo.card
   const derived = wormholeAnomalyOf(baseCard, spec.depth, spec.kind, spec.waves, {
     // **本层本档的"血尺度"**（单船威胁曲线 × **洞内强度系数**——4 舰对 4 舰口径 × **谜质威胁乘数**）；
-    // 新口径下它经平方化成"威胁预算 T"，再由卡的自然比拆成血与火力（见 `wormholeAnomalyOf`）
+    // 新口径下它经平方化成"威胁预算 T"，再由卡的自然比拆成血与火力（见 `wormholeAnomalyOf`）。
+    // ⚠ 威胁取 `wormholeCardThreatOf`（= 层威胁 × 本卡补偿；挂了「支援呼叫装置」的卡有 ×1.1）
+    // ——与 `wormholeAnomalyOf` 写进派生卡的 `threat` **同一个数** ⇒ 标尺与预算同源。
     hpBudget:
-      foeHpOfThreat(wormholeFoeThreat(spec.depth, spec.kind), ctx.balance.battle) *
+      foeHpOfThreat(wormholeCardThreatOf(baseCard, spec.depth, spec.kind), ctx.balance.battle) *
       WORMHOLE_FOE_BASE_STRENGTH_MUL *
       threatMul,
     tierThreatMul,
@@ -3866,6 +3984,7 @@ export function startFleetBattleFor(
   // **电子舰 · 压制敌舰射程**（2026-09-18）：按本场编队算一次（每拍还会在 `advanceBattleFor` 里重算）
   applyFoeRangeDebuff(state, ctx, battle, ordered)
   announceStealthStart(battle) // 隐秘行动装置：开战那一刻的提示条（逐舰各一条，没装的船不推）
+  announceSupportCallStart(battle, foes) // 支援呼叫装置：开战即告诉玩家"有一支援军在路上"（没挂的不推）
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。

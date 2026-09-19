@@ -9,7 +9,8 @@
  * 放 core 就能让"解析挂载 → 写运行时字段"在**同一处**完成，数据侧只写 id（`FoeShipDef.mounts` /
  * `FoeShipSlot.mounts`）。同类先例：`core/lairs.ts` 的 `FOE_LAIR_GEAR`（敌族掉落池表）。
  *
- * **一件一类效果**（`charge` / `droneRangeOnHit` / `gunRangeOnHit` / `web` 四选一）：`content:check` 会拦混写。
+ * **一件一类效果**（`charge` / `droneRangeOnHit` / `gunRangeOnHit` / `web` / `supportCall` 五选一）：
+ * `content:check` 会拦混写。
  * ⚠ **挂载位一律"条目级"**（2026-09-19 船长：「**海盗电子舰的冲锋也移除，只在洞内单独挂载**」）——
  * 冲锋件全部写在卡的编成条目上（三条 A 族舰级洞外也在用；电子舰也照此收口），舰级只留
  * D/E 的受击增程件。「洞外零冲锋」的守卫因此按**有效挂载**（`slot.mounts ?? ship.mounts`，
@@ -32,6 +33,8 @@ export const FOE_MOUNT_IDS = {
   gunRangeX15: 'foe-mount-gun-range-x1-5',
   /** 劫掠捕获网（船长 2026-09-16）：A 族新舰「劫掠电子舰」专属——首次开火即钉住目标 */
   captureWeb: 'foe-mount-capture-web',
+  /** **支援呼叫装置**（船长 2026-09-19）：D 族守墓王座舰专属——开战 20 秒后按距离呼叫一支支援军 */
+  supportCall: 'foe-mount-support-call',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -93,6 +96,16 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       'D 族静滞卫舰：从它射程之外被命中 ⇒ 本舰炮台射程 ×1.5（迁移前 gunRangeMulOnHit: 1.5）。' +
       '「只允许静滞卫舰」的约束改由 content:check 的挂载件契约守。',
   },
+  [FOE_MOUNT_IDS.supportCall]: {
+    id: FOE_MOUNT_IDS.supportCall,
+    name: '支援呼叫装置',
+    supportCall: { delaySec: 20, threatMul: 1.1 },
+    note:
+      '船长 2026-09-19：「战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程之外时，增援2艘静滞卫舰。」' +
+      '＋「因为延迟到场，所以需要一定补偿。卡计算的实际威胁要*1.1」⇒ 只挂 D 族守墓王座舰' +
+      '（只服务洞内深层卡「陵墓王庭」）。两支由卡的条目声明（enterAt ＋ enterBranch），' +
+      '体检守恒契约要求两支账面总量相等；补偿乘在派生威胁上（血与火力各约 ×1.16）。',
+  },
 }
 
 /** 按 id 取件（未知 id ⇒ `undefined`；体检会把它判红） */
@@ -109,6 +122,8 @@ export interface ResolvedFoeMounts {
   foeGunRangeMulOnHit?: number
   /** **劫掠捕获网**参数（原样带给单位；触发/作用面见 `FoeMountDef.web`） */
   foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
+  /** **支援呼叫装置**参数（原样带给单位；判定/锁存/补偿口径见 `FoeMountDef.supportCall`） */
+  foeSupportCall?: { delaySec: number; threatMul: number }
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /** 未知 id（体检用；引擎侧忽略） */
@@ -136,6 +151,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.droneRangeOnHit) out.foeDroneRangeMulOnHit = def.droneRangeOnHit.mul
     if (def.gunRangeOnHit) out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul
     if (def.web) out.foeCaptureWeb = { ...def.web }
+    if (def.supportCall) out.foeSupportCall = { ...def.supportCall }
   }
   return out
 }
