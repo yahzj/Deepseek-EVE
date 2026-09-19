@@ -77,6 +77,31 @@ export const EN_SHIPS: EnTable = {
 }
 
 /**
+ * 覆盖一层 **数组**目录（界面枚举用：`engine.ships` / `engine.modules` … 都是"原始数组过滤后"的只读表）。
+ * 与 `overlayMap` 同口径：只改 `name` / `description`；一条都没命中时返回**原数组**。
+ */
+export function overlayList<T extends { id: string; name: string; description?: string }>(
+  src: readonly T[],
+  en: EnTable,
+  locale: Locale,
+): readonly T[] {
+  if (locale === 'zh') return src
+  let out: T[] | null = null
+  for (let i = 0; i < src.length; i++) {
+    const def = src[i]!
+    const text = en[def.id]
+    if (!text) continue
+    out ??= [...src]
+    out[i] = {
+      ...def,
+      ...(text.name !== undefined ? { name: text.name } : {}),
+      ...(text.description !== undefined ? { description: text.description } : {}),
+    }
+  }
+  return out ?? src
+}
+
+/**
  * 覆盖一层 Map 目录：**只改 `name` / `description`，其余字段与 id 一字不动**；
  * 表里查不到的 id 原样保留（写错的 id 由用例点名，不在这里静默吞掉）。
  * 一条都没命中时返回**原对象**（省一次拷贝，也让"没翻译"和"翻过"在引用上可分辨）。

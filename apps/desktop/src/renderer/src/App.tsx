@@ -376,7 +376,11 @@ const MOB_SEL_MOVE_TOLERANCE_PX = 24
 export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
   /** 语言（2026-09-19 船长令「英语本地化」）：界面文案走 `t(中文源串)`；缺词条回退中文 */
-  const { t } = useL10n()
+  const { locale, t } = useL10n()
+  /** 切语言 ⇒ 让引擎按语言重建 ctx 与目录表（只换文案，id/数值不动），引擎 `notify()` 后界面整体刷新 */
+  useEffect(() => {
+    engine.setLocale(locale)
+  }, [engine, locale])
 
   // ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：按 visualViewport 真实可见区铺满对齐，
   //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"） ──

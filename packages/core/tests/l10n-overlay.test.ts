@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_SHIPS } from '@whale/data'
+import { EN_SHIPS, SHIPS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -59,5 +59,30 @@ describe('英文覆盖层（P2）', () => {
       const keys = Object.keys(text).sort()
       expect(keys.every((k) => k === 'name' || k === 'description'), `${id} 的覆盖字段：${keys.join(', ')}`).toBe(true)
     }
+  })
+
+  it('数组版覆盖（引擎 `ships` 走这条）：zh 原样返回同一数组，en 只改文案、未登记项回退中文', () => {
+    expect(overlayList(SHIPS, EN_SHIPS, 'zh'), 'zh 应原样返回同一个数组').toBe(SHIPS)
+    const list = overlayList(SHIPS, EN_SHIPS, 'en')
+    expect(list, 'en 应产出新数组').not.toBe(SHIPS)
+    expect(list.length, '长度不变').toBe(SHIPS.length)
+    expect(list.find((d) => d.id === 'sh-thresher')?.name).toBe('Thresher-class Missile Cruiser')
+    const before = SHIPS.find((d) => d.id === 'sh-thresher')!
+    const after = list.find((d) => d.id === 'sh-thresher')!
+    const strip = (d: object): string => {
+      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
+      delete rest.name
+      delete rest.description
+      return JSON.stringify(rest)
+    }
+    expect(strip(after), '除文案外一字不动').toBe(strip(before))
+    // 未登记的 id ⇒ 原样回退中文（舰船 43 条已全覆盖，这里用合成表验这条分支）
+    const synthetic = [
+      { id: 'sh-thresher', name: '长尾鲨级导弹巡洋舰' },
+      { id: 'not-registered', name: '未登记项' },
+    ]
+    const out = overlayList(synthetic, EN_SHIPS, 'en')
+    expect(out[0]!.name).toBe('Thresher-class Missile Cruiser')
+    expect(out[1]!.name, '未登记项应原样保留').toBe('未登记项')
   })
 })

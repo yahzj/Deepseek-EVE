@@ -251,7 +251,7 @@ import type {
   WormholeAutoRun,
   WormholeHoldPlacement,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, buildSimContext } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
@@ -451,13 +451,19 @@ function offlineReportLogText(r: OfflineReport): string {
 }
 
 export class GameEngine {
-  /** 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值） */
-  readonly ctx: SimContext = buildSimContext()
+  /**
+   * 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值）。
+   * ⚠ 2026-09-19 英语本地化：`ctx` 与下面几张目录表**不再是 readonly** —— `setLocale()` 会按语言重建
+   * （只换 `name` / `description`，id 与数值不动；未登记的目录原样回退中文）。缺省中文 ⇒ 行为与改动前一致。
+   */
+  ctx: SimContext = buildSimContext()
+  /** 当前语言（`setLocale` 维护；缺省中文） */
+  private locale: L10nLocale = 'zh'
   /** 界面目录数据（**施工期闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
    *  —— 与下面 `anomalies` 的 `hidden` 过滤同款，2026-09-13 船长铁律） */
   readonly skills = SKILLS
   readonly groups = SKILL_GROUPS
-  readonly ships = SHIPS.filter((d) => itemReleased(d))
+  ships = SHIPS.filter((d) => itemReleased(d))
   readonly belts = BELTS
   readonly items = ITEMS
   readonly modules = MODULES.filter((d) => itemReleased(d))
@@ -473,7 +479,7 @@ export class GameEngine {
    * 组装机按 `run.blueprintId` 反查蓝图等。**别的用途一律用上面的可见目录**
    * （口径与 `allAnomalies` 同款；未上线内容在施工期不可能被玩家持有，故这些路径不会漏）。
    */
-  readonly allShips = SHIPS
+  allShips = SHIPS
   readonly allModules = MODULES
   readonly allBlueprints = BLUEPRINTS
   readonly allShipBlueprints = SHIP_BLUEPRINTS
@@ -600,6 +606,21 @@ export class GameEngine {
     return () => {
       this.listeners.delete(listener)
     }
+  }
+
+  /**
+   * **切语言**（2026-09-19 船长令「希望对游戏进行英语本地化处理」）：
+   * 用当前语言**重建**运行上下文与全部目录表（`buildSimContext(locale)` + 覆盖层），
+   * **只换 `name` / `description`** —— id、数值、存档一字不动；重建后 `notify()` 让界面整体刷新。
+   * ⚠ 未登记的目录（尚无英文覆盖表）会**原样回退中文**，可分批推进（见 `docs/glossary-en.md`）。
+   */
+  setLocale(locale: L10nLocale): void {
+    if (locale === this.locale) return
+    this.locale = locale
+    this.ctx = buildSimContext(locale)
+    this.ships = overlayList(SHIPS, EN_SHIPS, locale).filter((d) => itemReleased(d))
+    this.allShips = overlayList(SHIPS, EN_SHIPS, locale)
+    this.notify()
   }
 
   /** 当前心跳所属计量桶：交火中 = battle，其余 = idle（性能监测分桶用） */
