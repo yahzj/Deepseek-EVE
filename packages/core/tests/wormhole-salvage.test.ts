@@ -200,8 +200,8 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
       actions++
       expect(actions).toBeLessThanOrEqual(3)
     }
-    expect(actions).toBe(3) // ⌈10 ÷ 4⌉
-    expect(run.turnsLeft).toBe(turnsBefore - 3)
+    expect(actions).toBe(2) // 4 台打捞器带效率 ⇒ 每动作不止 4 堆（含「效率额外堆」；2026-09-19 谜质科技树批）
+    expect(run.turnsLeft).toBe(turnsBefore - 2)
     expect(run.bag.length).toBeGreaterThan(0) // 东西进了背包
   })
 
@@ -297,12 +297,12 @@ describe('虫洞 · 打捞（F3b · 船长口径）', () => {
         const r = wormholeCollectOreAt(state, ctx)
         expect(r.ok, `采集失败：${r.error ?? ''}`).toBe(true)
         expect(r.spent).toBe(1)
-        expect(r.taken!.length).toBe(Math.min(2, before)) // 一台一堆、上限 = 台数
+        expect(r.taken!.length).toBeGreaterThanOrEqual(Math.min(2, before)) // 一台一堆起（另有「效率额外堆」可能再多 1）
         batches.push(r.taken!.length)
       }
       expect((cell.piles ?? []).length).toBe(0)
-      expect(batches.length).toBe(Math.ceil(total / 2)) // 总回合 = ⌈堆数 ÷ 台数⌉
-      expect(run.turnsLeft).toBe(turnsBefore - Math.ceil(total / 2))
+      expect(batches.length).toBeLessThanOrEqual(Math.ceil(total / 2)) // 上限 = ⌈堆数 ÷ 台数⌉（带效率 ⇒ 可能更少几趟）
+      expect(run.turnsLeft).toBeGreaterThanOrEqual(turnsBefore - Math.ceil(total / 2))
       const ore = run.bag.filter((s) => s.itemId === 'ore-voidmother')
       expect(ore.length).toBe(1) // 同类只占一格（叠加）
       expect(ore[0]!.units).toBeGreaterThan(0)
@@ -1138,7 +1138,7 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     }))
     const r = wormholeSalvageAt(state, ctx)
     expect(r.ok, r.error).toBe(true)
-    expect(r.taken, '3 台打捞器 ⇒ 这一批收走 3 堆（前两堆的掷键都命中，上限才有得验）').toHaveLength(3)
+    expect(r.taken!.length, '3 台打捞器 ⇒ 至少收 3 堆（另有「效率额外堆」可能再多 1；本用例只验货柜上限 1）').toBeGreaterThanOrEqual(3)
     expect(r.boxes ?? [], '两堆都命中 ⇒ 仍只出 1 个').toHaveLength(1)
   })
 })
