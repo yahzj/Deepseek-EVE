@@ -129,6 +129,7 @@ import {
   deleteFitPreset,
   renameFitPreset,
   saveFitPreset,
+  overwriteFitPreset,
   unfitAllModules,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
@@ -1384,6 +1385,19 @@ export class GameEngine {
   /** 保存当前装配为方案（按**船型**归口；默认「方案 N」；同名覆盖；满 `FIT_PRESET_MAX`（现 10）套且无同名时拒绝） */
   saveFitPresetFor(shipId: string, name?: string): CommandResult {
     const result = saveFitPreset(this.state, this.ctx, shipId, name)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /**
+   * **用当前装配覆盖指定方案**（船长 2026-09-19：装配方案加「替换」按钮）——名称与位置保持原样，
+   * 只换内容；界面侧负责"覆盖前确认"。
+   */
+  overwriteFitPresetAt(shipId: string, index: number): CommandResult {
+    const result = overwriteFitPreset(this.state, this.ctx, shipId, index)
     if (result.ok) {
       void this.persist()
       this.notify()

@@ -283,6 +283,7 @@ export {
   fitPresetsOf,
   fitPresetBrief,
   saveFitPreset,
+  overwriteFitPreset,
   renameFitPreset,
   deleteFitPreset,
   unfitAllModules,

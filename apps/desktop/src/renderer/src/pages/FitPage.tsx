@@ -388,6 +388,11 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   //    套用 = 先卸光再装 + 尽力装（缺件/超载逐条报出，见 core `fitPresets.ts`）。
   const [presetOpen, setPresetOpen] = useState(false)
   const [presetRename, setPresetRename] = useState<{ index: number; name: string } | null>(null)
+  /**
+   * **「替换」的两步确认**（船长 2026-09-19：「给方案加个替换按钮，点击后将当前装配覆盖进目标方案，
+   * 覆盖之前需要玩家确认」）——点「替换」进入本状态，行内变成「用当前装配覆盖？覆盖 / 取消」。
+   */
+  const [presetReplaceAt, setPresetReplaceAt] = useState<number | null>(null)
   /** **方案明细行内展开**（船长 2026-09-17：「允许玩家查看装备方案内用了哪些装备」⇒ 行内展开 · 逐位列含空位） */
   const [presetDetailAt, setPresetDetailAt] = useState<number | null>(null)
   const presetDefId = shipDef?.id ?? ''
@@ -427,6 +432,21 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     }
     onToast('方案已改名。')
     setPresetRename(null)
+  }
+
+  /**
+   * **用当前装配覆盖这套方案**（替换；已过行内确认）——名称与位置保持原样，只换内容。
+   * 空装配会被 core 拒（提示先装几件）。
+   */
+  function handleOverwritePreset(index: number): void {
+    const r = engine.overwriteFitPresetAt(effectiveTarget, index)
+    setPresetReplaceAt(null)
+    if (!r.ok) {
+      onToast(r.error ?? '替换失败。', true)
+      return
+    }
+    setPresetDetailAt(null) // 内容变了：收起旧明细，下次展开重算
+    onToast('已用当前装配覆盖该方案。')
   }
 
   /** 删除方案 */
@@ -938,6 +958,22 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           取消
                         </button>
                       </>
+                    ) : presetReplaceAt === i ? (
+                      /* 替换的两步确认（船长 2026-09-19）：覆盖前先问一句 */
+                      <>
+                        <b>{p.name}</b>
+                        <span className="app-dim">用当前装配覆盖这一套？</span>
+                        <button
+                          className="app-btn is-small is-primary"
+                          title="把当前这艘船的实装（三类槽位 ＋ 无人机舱装载）写进这一套方案；方案名与位置不变"
+                          onClick={() => handleOverwritePreset(i)}
+                        >
+                          确认覆盖
+                        </button>
+                        <button className="app-btn is-small" onClick={() => setPresetReplaceAt(null)}>
+                          取消
+                        </button>
+                      </>
                     ) : (
                       <>
                         <b>{p.name}</b>
@@ -951,6 +987,13 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         </button>
                         <button className="app-btn is-small is-primary" onClick={() => handleApplyPreset(i)}>
                           套用
+                        </button>
+                        <button
+                          className="app-btn is-small"
+                          title="用当前这艘船的装配覆盖这一套方案（覆盖前会先确认；方案名与位置不变）"
+                          onClick={() => setPresetReplaceAt(i)}
+                        >
+                          替换
                         </button>
                         <button
                           className="app-btn is-small"
