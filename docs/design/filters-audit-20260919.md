@@ -209,5 +209,47 @@
 **本遍未做（留给后续遍）**：书架/组装机/精炼炉补灰字前缀（丙/丁）· 精炼炉空串键 ⇒ `SUB_ALL`（丁）·
 市场「全部类型 / 全部{类型名}」已符合基线①（下拉自带上下文）⇒ 不动。
 
+## 八、甲组补丁 · 子维度补齐（同日 · 船长「涉及到特定分类的父分类时，将其子分类也放入」）
+
+**船长原话（照抄）**：「物品仓库页都有装备的槽位了，为什么槽位的子分类没有？建议这种涉及到特定分类的父分类时，
+将其子分类也放入」＋ 圈定范围 = **只补「零新维度」那一批**（弹药/无人机另议）· 时机 = **并进第 1 遍一起验收**。
+
+| # | 位置 | 补的子筛选 | 表 / 判据（全为既有单点） |
+|---|---|---|---|
+| A1 | 物品页·仓库 | 装备 → 槽位 → **功能分组**（新增**第三级**，选了槽位才出） | `RACK_SUBS` + `MODULE_SUBS` |
+| A2 | 物品页·仓库 | 货柜 → **四档** | `CONTAINER_SUBS` + `containerSubKeyOf` |
+| A3 | 物品页·仓库 | 残骸 → **普通 / 稀有** | `WRECK_SUBS` + `wreckTierOf` |
+| A4 | 物品页·仓库 | AI 核心 → **档位**（只列有物品形态的：伽马/贝塔/阿尔法） | `CORE_SUBS` ∩ `ctx.items` |
+| A7 | 物品页·仓库 | 蓝图碎片 → **功能分组** | `frag-<模块 id>` 反解 + `moduleSubKeyOf` |
+| A8 | 手册·物品图鉴 | 货柜/残骸/AI 核心/碎片 各自的子维度（原先**一个二级都没有**） | 同 A2~A4、A7 |
+| A9 | 手册·蓝图图鉴 | 消耗品蓝图 → **产物大类**（弹药 / 修理组件 / 无人机，原先整行不出） | `CONSUME_SUBS` ∩ 实有蓝图产物 |
+| A10 | 市场 | 残骸 → **普通 / 稀有**（原先无子筛选） | `SUBS_OF_KIND.wreck = WRECK_SUBS` |
+
+**实现（新增/修改）**：
+
+- `ui/itemSubs.ts`：新增 **`itemSubPasses(ctx, refId, bucket, sub)`**——二级/三级子维度的**唯一入口**
+  （container→四档 · wreck→档位 · aicore→`ai-core-<档>` · fragment→功能分组 · module/module-*→功能分组 ·
+  item/consume→大类）；新增 `ITEM_SPACE_BUCKETS`（只装物品/装备的桶，供市场侧护栏）；把 `WRECK_SUBS`
+  从工业页**收编过来**（基线⑤），并加 `wreckTierOf`（**委托 core `isRareWreck`**，不再自己判前缀）；
+  `SUBS_OF_KIND` 补 `wreck`；`subPasses` 全面转调 `itemSubPasses`。
+- `pages/ItemsPage.tsx`：三级状态（`wareKind` / `wareSub` / `wareFunc`）＋按一级**现算**的二级维度表；
+  三个维度一律走唯一入口，页面**零自写判定**；切一级同时清二级/三级（基线④）。
+- `panels/Handbook.tsx`：`subOptions` 按页/按主类给维度（物品页四档子维度、蓝图页消耗品产物大类）；
+  `subPassesCell` 物品页转调 `itemSubPasses`、消耗品蓝图按产物大类判。
+- `pages/IndustryPage.tsx`：`WRECK_SUBS` 改 import；档位判据 `recycleProfileOf().rare` ⇒ `wreckTierOf()`
+  （等价，见下）。
+- `ui/Glyphs.tsx`：`inventoryItemTone` 的前缀判断 ⇒ `wreckTierOf()`（残骸配色与筛选**同一把尺**）。
+
+**行为变化**：**新增了 8 处子筛选**（玩家可见）；其余判定逐字等价。**A5 弹药 / A6 无人机**（需新建维度表）未做。
+
+**验证**：临时对拍探针（已按 §6 删除）——
+① 市场二级对拍 **39,605 条 · 0 处不一致**（含"只装物品/装备的桶"护栏这条真实差异，已修）；
+② 工业页档位判据对拍 **52 条一致**（`recycleProfileOf().rare` ⇔ `wreckTierOf` ⇔ core `isRareWreck`）；
+③ 新能力自检：货柜 `safe=5/bp=3/valuables=1/military=1` · 残骸 `common=13/rare=13` · 核心 `gamma/beta/alpha=1` ·
+碎片 `prod=4/weapon=2`（6 张碎片配方）· 装备十组全 > 0 · 消耗品蓝图产物大类 = 弹药/修理组件/无人机；
+④ 探针同时抓到两处真缺陷并修掉：`subPasses` 丢了"桶归属"护栏、`wreckTierOf` 对非残骸 id 恒返回 `common`。
+闸门：`typecheck` 4 包 0 错 · `l10n:check` ✅ · `ui:rot-check` ✅ · `build` ✅ · core **173 文件 / 1,882 测试全绿**。
+
+
 
 

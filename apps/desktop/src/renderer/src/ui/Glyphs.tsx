@@ -9,6 +9,7 @@
  *   技能=圆徽；每种形状内部用不同几何区分分类。
  */
 import type { ReactNode } from 'react'
+import { wreckTierOf } from './itemSubs'
 
 /** glyph 名 → 矢量内容（以 <g> 为单位，使用 currentColor 描边） */
 const SHAPES: Record<string, ReactNode> = {
@@ -980,9 +981,10 @@ export const RARE_WRECK_TONE = '#f4c95d'
  *
  * ⚠ **只在这两页调用**（船长圈定的范围）：手册图鉴 / 工业页回收炉 / 星图打捞页 / 虫洞散货清单
  * 一律维持原样——它们读的是 `TONES` / `itemToneOf`，本函数**不去改那两条**，正是为了不越界。
+ * 判据走 `itemSubs.wreckTierOf`（= core `isRareWreck`，全仓唯一前缀判定）。
  */
 export function inventoryItemTone(itemId: string, kind: string): string {
-  return itemId.startsWith('wreck-rare-') ? RARE_WRECK_TONE : toneOf(kind)
+  return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : toneOf(kind)
 }
 
 /** 导航/标签图标专属色调（2026-09-05 船长：每个图标各自纯色，未选中也着色；选中态由按钮高亮区分） */

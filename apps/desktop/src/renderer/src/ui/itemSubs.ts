@@ -39,7 +39,7 @@
  * - 物品页 ItemsPage：仓库筛选的装备二级（`RACK_SUBS`）与槽类判定（core `rackOf`）。
  * 新增/调整分类只改本文件，各处同时生效。
  */
-import { rackOf, shipSizeLabel, WORMHOLE_BP_BOX_IDS, WORMHOLE_MILITARY_BOX_ID, WORMHOLE_VALUABLES_BOX_ID } from '@whale/core'
+import { isRareWreck, rackOf, shipSizeLabel, WORMHOLE_BP_BOX_IDS, WORMHOLE_MILITARY_BOX_ID, WORMHOLE_VALUABLES_BOX_ID } from '@whale/core'
 import type { MarketGoodDef, SimContext } from '@whale/core'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
@@ -94,6 +94,19 @@ export function containerSubKeyOf(refId: string): string {
   if (refId === WORMHOLE_VALUABLES_BOX_ID) return 'valuables'
   if (refId === WORMHOLE_MILITARY_BOX_ID) return 'military'
   return ''
+}
+
+/** **残骸档位**（普通 / 稀有）——物品页仓库 · 手册物品图鉴 · 市场 · 工业页回收炉**共用同一张表**
+ *  （原写死在 `pages/IndustryPage.tsx`，2026-09-19 按基线⑤收编到本文件）。 */
+export const WRECK_SUBS: SubOption[] = [
+  { key: 'common', label: '普通残骸' },
+  { key: 'rare', label: '稀有残骸' },
+]
+
+/** 残骸档位判据（**单点**）：直接委托 core 的 `isRareWreck`（`wreck-rare-*` 前缀，13 组同源），
+ *  渲染层不再自己判前缀——图标配色（`Glyphs.inventoryItemTone`）与几处筛选都读本函数。 */
+export function wreckTierOf(refId: string): 'rare' | 'common' {
+  return isRareWreck(refId) ? 'rare' : 'common'
 }
 
 /** 「物品」类 = 除残骸与消耗品以外的物品（2026-09-11 起消耗品独立，故此处剔除三类）
@@ -204,7 +217,7 @@ export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low'] as const).map((k) 
 }))
 
 
-/** 主类型 → 可用子分类（残骸 wreck 无二级；三个槽类装备类型共用装备的功能子分类） */
+/** 主类型 → 可用子分类（装备四档桶共用装备的功能子分类；残骸按档位，2026-09-19 补） */
 export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   item: ITEM_SUBS,
   container: CONTAINER_SUBS,
@@ -216,34 +229,23 @@ export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   ship: SHIP_SUBS,
   blueprint: BLUEPRINT_SUBS,
   aicore: CORE_SUBS,
+  // 残骸：普通 / 稀有（2026-09-19 甲组补丁——原先市场「残骸」类型没有任何子筛选）
+  wreck: WRECK_SUBS,
 }
 
-/** 子分类判定（good 是否属于所选子类；sub = SUB_ALL 恒真） */
+/**
+ * 子分类判定（good 是否属于所选子类；sub = SUB_ALL 恒真）。
+ *
+ * **甲组·判定单点**（船长 2026-09-19「六条基线」之⑥）：物品 / 装备两域（市场的「货物」「四个装备桶」
+ * 「消耗品」「货柜」「残骸」五种类型都是它们）一律交**唯一入口** `itemSubPasses`——本条原先自己写了
+ * 一整套分支，与物品页、手册各写一份。市场**特有**的舰船 / 蓝图 / AI 核心三条留着（各自的键空间不同，
+ * 例：AI 核心市场商品的 `refId` 是类型键本身，而仓库物品是 `ai-core-<类型>`）。
+ */
 export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, sub: string): boolean {
-  if (sub === SUB_ALL || kind === 'all' || kind === 'wreck') return true
-  if (kind === 'item') {
-    const it = ctx.items.get(good.refId)
-    // 消耗品三类与货柜已各自独立成类（2026-09-11 / 2026-09-16 船长），「货物」不再包含它们
-    if (it === undefined) return false
-    if (CONSUME_KIND_KEYS.includes(it.kind)) return false
-    if (CONTAINER_KIND_KEYS.includes(it.kind)) return false
-    return it.kind === sub
-  }
-  if (kind === 'container') {
-    // 货柜四档子类（船长 2026-09-16 追答：「货柜要二级子分类」）：按 id 规则派生，见 containerSubKeyOf
-    const it = ctx.items.get(good.refId)
-    return it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind) && containerSubKeyOf(it.id) === sub
-  }
-  if (kind === 'consume') {
-    const it = ctx.items.get(good.refId)
-    return it !== undefined && CONSUME_KIND_KEYS.includes(it.kind) && it.kind === sub
-  }
-  if (kind === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(kind)) {
-    const mod = ctx.modules.get(good.refId)
-    if (!mod) return false
-    // 二级＝**产物功能分组**（`MODULE_SUBS` 的键）；走 `moduleSubKeyOf` 单点（手册/书架/组装机同源）
-    return moduleSubKeyOf(mod.slot) === sub
-  }
+  if (sub === SUB_ALL || kind === 'all') return true
+  if (good.kind === 'item' || good.kind === 'module') return itemSubPasses(ctx, good.refId, kind, sub)
+  // 只装物品/装备的桶：别的商品（舰船/蓝图/核心）**不属此桶**（收敛前各分支自带这条护栏，别丢）
+  if (ITEM_SPACE_BUCKETS.includes(kind)) return false
   if (kind === 'ship') {
     const ship = ctx.ships.get(good.refId)
     return (ship?.role ?? '') === sub
@@ -332,3 +334,52 @@ export function subLabelOf(kind: string, key: string): string {
   const list = SUBS_OF_KIND[kind] ?? []
   return list.find((s) => s.key === key)?.label ?? key
 }
+
+/* ═══════════ 甲组补丁 · 子维度补齐（船长 2026-09-19：「这种涉及到特定分类的父分类时，将其子分类也放入」）═══════════
+ * 原则：**父分类有天然子维度，就该给出子筛选**。补齐范围（船长圈定「零新维度」那一批）：
+ * 物品页仓库/手册物品图鉴的 货柜→四档 · 残骸→普通/稀有 · AI 核心→档位 · 蓝图碎片→功能分组；
+ * 手册蓝图图鉴的 消耗品蓝图→产物大类；市场的 残骸→普通/稀有。
+ * 弹药（弹种/档位）与无人机（机型）**需新建维度表**，另议。 */
+
+/**
+ * **「子维度」的唯一判定入口**（二级 / 三级筛选）：`bucket` = 一级桶键（与 `itemBucketPasses` 同一套），
+ * `sub` = 该桶下的子键；`SUB_ALL` 恒真。
+ *
+ * | 一级桶 | 子键 | 判据 |
+ * |---|---|---|
+ * | `container` | `CONTAINER_SUBS` | `containerSubKeyOf(refId)` |
+ * | `wreck` | `WRECK_SUBS` | `wreckTierOf(refId)` |
+ * | `aicore` | `CORE_SUBS` | `refId === 'ai-core-<子键>'`（**物品空间**：洞内实物形态；市场那侧 refId 是类型键本身，故市场仍走自己的判定） |
+ * | `fragment` | `MODULE_SUBS` | `frag-<模块 id>` 反解后取 `moduleSubKeyOf(slot)` |
+ * | `module` / `module-high·mid·low` | `MODULE_SUBS` | `moduleSubKeyOf(mod.slot)` |
+ * | `item`（货物）/ `consume` | 物品大类 | `item.kind === sub` |
+ * | 其余 | — | 只认 `SUB_ALL` |
+ */
+export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, sub: string): boolean {
+  if (sub === SUB_ALL) return true
+  if (bucket === 'container') {
+    const it = ctx.items.get(refId)
+    return it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind) && containerSubKeyOf(refId) === sub
+  }
+  if (bucket === 'wreck') {
+    // ⚠ 必须先确认"它真是残骸"：`wreckTierOf` 对**非残骸 id** 也返回 `'common'`（前缀判定的天然性质）
+    const it = ctx.items.get(refId)
+    return it !== undefined && it.kind === 'wreck' && wreckTierOf(refId) === sub
+  }
+  if (bucket === 'aicore') return refId === `ai-core-${sub}`
+  if (bucket === 'fragment') {
+    const modId = refId.startsWith('frag-') ? refId.slice('frag-'.length) : ''
+    const mod = modId ? ctx.modules.get(modId) : undefined
+    return mod !== undefined && moduleSubKeyOf(mod.slot) === sub
+  }
+  if (bucket === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(bucket)) {
+    const mod = ctx.modules.get(refId)
+    return mod !== undefined && moduleSubKeyOf(mod.slot) === sub
+  }
+  const it = ctx.items.get(refId)
+  if (!it) return false
+  return it.kind === sub // item（货物）/ consume / 真实大类
+}
+
+/** 一级桶中**只装物品 / 装备**的那些（`itemSubPasses` 的适用范围；其余桶由各页自己判） */
+export const ITEM_SPACE_BUCKETS: readonly string[] = ['item', 'container', 'consume', 'wreck', 'module', ...RACK_KIND_KEYS]
