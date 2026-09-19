@@ -689,11 +689,21 @@ export class GameEngine {
     return this.wormholeSpeedPick
   }
 
-  /** 设置本会话的倍速档位（`0` = 跟随最高档；只会被夹到已解锁档位内） */
+  /** **设置本会话的倍速档位**（`0` = 跟随最高档；只会被夹到已解锁档位内） */
   setWormholeSpeed(x: number): void {
     const opts = this.wormholeSpeedOptions()
     this.wormholeSpeedPick = opts.includes(x) ? x : 0
     this.notify()
+  }
+
+  /**
+   * **研究一级谜质科技**（船长 2026-09-19：「消耗谜质和信用点。**不消耗时间**」）：
+   * 判据与扣款全在 core（`matterTechCanResearch` 同一把尺），这里只负责点完通知界面刷新。
+   */
+  researchMatterTech(id: string): { ok: boolean; error?: string } {
+    const r = researchMatterTech(this.state, this.ctx, id)
+    this.notify()
+    return r
   }
 
   /** **本拍要交给引擎的倍速**：玩家选了就用选的，否则用已解锁的最高档（未解锁 = 1） */

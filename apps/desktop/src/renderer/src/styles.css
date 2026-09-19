@@ -153,6 +153,13 @@ html[data-locale='en'] body {
 
 }
 
+/* 谜质科技详情窗（2026-09-19）：旋转模式下按**虚拟横屏宽**（100vh）定宽——与上面 `.app-modal` 同款口径，
+   否则 `100vw` 取的是手机竖屏宽（~390）⇒ 窗口被挤成窄条。 */
+.app-root.is-mobile-rot .app-mt-modal {
+  width: min(560px, calc(100vh - 40px));
+  max-width: calc(100vh - 24px);
+}
+
 /* ── 虫洞弹层：旋转模式下必须按"虚拟横屏空间"定尺寸（2026-09-14 船长转玩家截图定位）──
    病根：`.app-wh-modal` 自己那套 `width: min(1060px, 92vw)` / `height: min(760px, calc(100vh − 72px))`
    **覆盖了上面那条旋转口径** ⇒ 旋转模式下 `92vw` 取的是**手机竖屏宽**(~390) ⇒ 面板被挤成窄条；
@@ -10697,6 +10704,47 @@ html[data-locale='en'] body {
 }
 .app-wh-scanbar-fill { height: 100%; background: var(--wui-accent); transition: width 240ms linear; }
 .app-wh-scanbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ═══════════ 「扫描虫洞」两个子页 + 谜质科技树（2026-09-19 船长：拆 2 个子页面）═══════════
+   子页包装层只为"切换显示"——`.app-win-body` 是**块级**容器，故包装层不影响原页面布局；
+   非当前子页 `display:none`。整页**固定尺寸不滚**：三列卡片紧凑排布，撑不满一屏也留白。 */
+.app-subpage.is-hidden { display: none; }
+
+.app-mt { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.app-mt-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; }
+.app-mt-essence { display: inline-flex; align-items: center; gap: 5px; color: #d8c6ff; }
+.app-mt-essence b { color: #e9dcff; font-variant-numeric: tabular-nums; }
+/* 三列 = 三条线；列内按层分组（层号在左，节点卡片在右） */
+.app-mt-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.app-mt-col { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--wui-border); border-radius: 4px; padding: 8px; background: rgba(255, 255, 255, 0.02); }
+.app-mt-col-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; letter-spacing: .5px; }
+.app-mt-tier { display: flex; gap: 6px; align-items: flex-start; }
+.app-mt-tier-tag { flex: 0 0 22px; font-size: 10.5px; color: var(--wui-text-dim); font-family: var(--wui-mono); padding-top: 5px; }
+.app-mt-tier-nodes { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+/* 节点卡片：名称 + 等级。状态色：可研究（亮框）/ 已满级（金）/ 前置或货币不足（暗灰） */
+.app-mt-node {
+  display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%;
+  padding: 4px 8px; font-size: 11.5px; color: var(--wui-text, #cfe3f5);
+  background: rgba(64, 88, 112, 0.3); border: 1px solid rgba(120, 150, 180, 0.32);
+  border-radius: 3px; cursor: pointer;
+}
+.app-mt-node:hover { border-color: rgba(140, 190, 235, 0.8); }
+.app-mt-node.is-ready { border-color: rgba(143, 208, 255, 0.75); background: rgba(143, 208, 255, 0.12); }
+.app-mt-node.is-max { border-color: rgba(255, 202, 88, 0.7); background: rgba(255, 202, 88, 0.12); }
+.app-mt-node.is-locked { color: var(--wui-text-dim); }
+.app-mt-node-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-mt-node-lv { font-size: 10.5px; font-family: var(--wui-mono); font-variant-numeric: tabular-nums; color: var(--wui-text-dim); }
+.app-mt-node.is-ready .app-mt-node-lv { color: #8fd0ff; }
+.app-mt-node.is-max .app-mt-node-lv { color: #ffca58; }
+/* 二级详情窗：固定宽度（写法与基类 `.app-modal` 一致：px 定宽 + vw 只做上限 ⇒ 旋转口径体检合规） */
+.app-mt-modal { width: 560px; max-width: calc(100vw - 40px); }
+.app-mt-modal-note { font-size: 12.5px; line-height: 1.6; color: var(--wui-text, #cfe3f5); }
+.app-mt-modal-row { display: flex; gap: 10px; align-items: baseline; margin-top: 8px; font-size: 12px; }
+.app-mt-modal-row-value { color: var(--wui-text, #cfe3f5); }
+.app-mt-cost { display: inline-flex; align-items: center; gap: 5px; color: #e9dcff; font-variant-numeric: tabular-nums; }
+.app-mt-cost.is-max { color: #ffca58; }
+.app-mt-modal-why { margin-top: 8px; font-size: 12px; color: #ffb3a3; }
+.app-mt-modal-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
 .app-wh-hold-overload {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(255, 131, 115, 0.45);
