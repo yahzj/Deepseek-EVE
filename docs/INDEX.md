@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **273** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5193** KB · **37189** 行
-- 状态分布：**未标注** 146 · **已确认/已实现** 108 · **进行中** 11 · **待裁定** 7 · **历史留档** 1
-- 孤儿文档（0 引用）**19** 份 · 状态未标注 **146** 份
+- 文档总数 **273** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5207** KB · **37438** 行
+- 状态分布：**未标注** 147 · **已确认/已实现** 108 · **进行中** 11 · **待裁定** 6 · **历史留档** 1
+- 孤儿文档（0 引用）**19** 份 · 状态未标注 **147** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**188** 份
@@ -272,7 +272,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 待裁定（P0 起草中 · 待船长审后冻结） | — | 12 KB / 213 行 | 4 / 0 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 26 KB / 462 行 | 4 / 0 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -367,7 +367,7 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（146 份，待补一行 `状态：…`）
+## 附：状态未标注（147 份，待补一行 `状态：…`）
 
 - `docs/design/battle-speed-20260919.md`（2026-09-19）—— 战斗倍速（挂起）· 2026-09-19
 - `docs/review/first-tasks-review-20260917.md`（2026-09-17）—— 核验件：「第一次」任务系列全表（2026-09-18 版 · 供船长逐条审核）
@@ -510,6 +510,7 @@
 - `docs/design/weapon-skill-batch.md`（无日期）—— 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四）
 - `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
+- `docs/glossary-en.md`（无日期）—— 英文术语与专名译名表（English Glossary & Naming Table）
 - `docs/glossary.md`（无日期）—— 术语词典（Glossary）
 - `docs/review/A1-bounty-review.md`（无日期）—— A1 · 悬赏通读走查表（22 张）
 - `docs/review/A2-density-review.md`（无日期）—— A2 · 界面信息密度走查（第 1 轮，待船长批注）

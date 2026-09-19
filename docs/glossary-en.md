@@ -1,6 +1,6 @@
 # 英文术语与专名译名表（English Glossary & Naming Table）
 
-状态：**P0 起草中 · 待船长审后冻结**（2026-09-19 立）
+状态：**P0 已冻结**（2026-09-19 立 · 船长五问五答裁决完毕，见 §七）· P0b 专名补齐中
 权威范围：**游戏内可见文案的英文口径**（界面 / 内容数据 / 说明）。开发侧文档、注释、汇报仍用中文（`AGENTS.md` §1）。
 工作文档：`docs/design/l10n-en-20260919.md`。冻结后本表是唯一译名来源；后续批次（P2 内容 / P3 界面）一律按本表出稿。
 
@@ -77,7 +77,7 @@
 | 支援呼叫 | Support Call | |
 | 时序核心 | Chrono Core | |
 | 谜质 / 谜质装置 | Enigma / Enigma Device | ⚠ 见待裁决 ② |
-| 信用点 | ISK | ⚠ 见待裁决 ① |
+| 信用点 | credit / credits | 英文侧**不用 ISK**（船长 2026-09-19 裁决）；中文侧仍写「信用点」 |
 | 离线结算 | Offline Settlement | |
 | 自动作业 | Auto Operations | |
 | 重复清剿 | Repeat Sweep | |
@@ -95,7 +95,7 @@
 
 | 中文 | English | 备注 |
 |---|---|---|
-| ISK 数额 | `476,945,470 ISK` | 千分位用 `,`（`en-US`） |
+| 信用点数额 | `476,945,470 credits`（=1 时写 `1 credit`） | 千分位用 `,`（`en-US`）；**不写 ISK** |
 | m³ | `1,000 m³` | 不变 |
 | km / m | `3,220 m` · `12 km` | 数字与单位间空格 |
 | AU/s | `3.00 AU/s` | 不变 |
@@ -110,7 +110,7 @@
 |---|---|---|
 | sandcat | 沙猫级采矿艇 | `Sandcat-class Mining Corvette` |
 | burrower | 掘洞级采矿艇 | `Burrower-class Mining Corvette` |
-| whale | 鲸吞级采矿艇 | `Whaleswallow-class Mining Corvette` ⚠ 见待裁决 ⑤ |
+| whale | 鲸吞级采矿艇 | `Whaleswallow-class Mining Corvette` |
 | pioneer | 开拓级采矿艇 | `Pioneer-class Mining Corvette` |
 | whale-king | 鲸王级采矿艇 | `Whaleking-class Mining Corvette` |
 | sh-humpback | 座头鲸级矿舰 | `Humpback-class Mining Ship` |
@@ -130,7 +130,7 @@
 | sh-nautilus | 鹦鹉螺级测绘巡洋舰 | `Nautilus-class Survey Cruiser` |
 | sh-tortoise | 陆龟级重装艇 | `Tortoise-class Heavy Corvette` |
 | sh-hawksbill | 玳瑁级重装巡舰 | `Hawksbill-class Heavy Cruiser` |
-| sh-xuanwu | 玄武级重装旗舰 | `Xuanwu-class Heavy Flagship` ⚠ 见待裁决 ③ |
+| sh-xuanwu | 玄武级重装旗舰 | `Leatherback-class Heavy Flagship` | 棱皮龟（海龟里最大的一型，船长 2026-09-19 裁决） |
 | sh-megalodon | 巨齿鲨级战列舰 | `Megalodon-class Battleship` |
 | sh-dunkleosteus | 邓氏鱼级旗舰 | `Dunkleosteus-class Flagship` |
 | sh-flyingfish | 飞鱼级快运舰 | `Flyingfish-class Courier` |
@@ -194,19 +194,268 @@
 | dept-training | 训练处 | `Training Office` | |
 | dept-finance | 财务处 | `Finance Dept` | |
 | dept-route-safety | 航线安全 | `Route Safety` | |
-| dept-recall | 检索重启 | `Recall & Restart` | ⚠ 见待裁决 ④ |
-| dept-salvage-crew | 老陈一队 | `Chen's Crew No.1` | ⚠ 见待裁决 ④ |
+| dept-recall | 检索重启 | `Recall & Restart` | 船长 2026-09-19 认可；若要改名随时说 |
+| dept-salvage-crew | 老陈一队 | `Chen's Crew No.1` | 船长 2026-09-19 认可 |
 
-## 七、待你裁决（⓹ 条，冻结前请点名）
+## 七、已裁决记录（2026-09-19 船长五问五答 · 冻结依据）
 
-① **货币**：英文侧写 `ISK`（代码内部就是 isk，玩家一眼懂）还是 `credit`（更贴「信用点」直译）？中文侧仍写「信用点」不受影响。
-② **谜质 / 谜质装置**：`Enigma / Enigma Device` 还是 `Anomalous Matter / Matter Device`？（中文「谜质」是自造词）
-③ **玄武级**：`Xuanwu-class`（拼音保留）还是 `Black Tortoise-class`（意译）？
-④ **人名 / 特殊部门**：`老陈一队` = `Chen's Crew No.1` OK？`检索重启` 这个部门名我拿不准原意（是"重新检索/重启档案"？）——请给一句解释，我再定英文。
-⑤ **鲸吞级**：`Whaleswallow-class`（直译，略长）还是 `Whale-class`（简洁但丢意象）？
+| # | 议题 | 裁决 |
+|---|---|---|
+| ① | 货币 | **`credit` / `credits`**（英文侧不用 ISK；中文侧仍写「信用点」）⇒ `content:check` 的禁用词契约**无需按语言分叉**（英文侧同样不出现 ISK/EVE/NPC） |
+| ② | 谜质 / 谜质装置 | **`Enigma` / `Enigma Device`** |
+| ③ | 玄武级 | **用某类大型海龟的英文** ⇒ 定为 `Leatherback-class`（棱皮龟，海龟中最大的一型，配「重装旗舰」） |
+| ④ | 老陈一队 / 检索重启 | **`Chen's Crew No.1`** ✓ · `Recall & Restart` 沿用（船长认可；改名随时说） |
+| ⑤ | 鲸吞级 | **`Whaleswallow-class`**（直译保留意象） |
 
-## 八、P0b 待补（同规则，下一批出稿）
+## 八、专名表 · 物品（86）
 
-物品（矿 8 / 材料 14 / 组件 2 / 弹药 6 / 无人机 7 / 货柜 10 / 奢侈品 10 / AI 核心 3 / 谜质装置 20 ≈ **86 条**）·
-技能（**79 条**）· 装备（**142 条**，按「轻型炮台 MK1·动能型 → Light Turret MK1 · Kinetic」这类模式批量出）·
-舰船蓝图（**135 条**，多数由上面舰船名派生）· 异常点（**27 条**）· 敌舰与敌卡（**40 条**）· 无人机机型 / 舰体档 / 站点（少量）。
+| id | 中文 | English |
+|---|---|---|
+| ore-veldspar | 橄榄岩 | `Peridotite` |
+| ore-scorched | 辉长岩 | `Gabbro` |
+| ore-hemorphite | 赤环岩 | `Redring Ore` |
+| ore-glowstone | 辉云岩 | `Glowcloud Ore` |
+| ore-sunshard | 曦棱晶 | `Dawnshard Crystal` |
+| ore-voidshard | 玄晶 | `Voidcrystal` |
+| ore-nebulite | 星幽矿 | `Starwraith Ore` |
+| ore-voidmother | 虚空母矿 | `Voidmother Ore` |
+| min-tritanium | 钛钢合金 | `Tritanium Alloy` |
+| min-pyerite | 银纹超金属 | `Silvervein Supermetal` |
+| min-mexallon | 晶态胶体 | `Crystalline Colloid` |
+| min-nocxium | 重钨合金 | `Heavy Tungsten Alloy` |
+| min-isotope | 同位聚晶 | `Isotope Polycrystal` |
+| min-starcore | 星髓晶 | `Starcore Crystal` |
+| min-darkiron | 冥铁合金 | `Darkiron Alloy` |
+| min-voidcrystal | 虚空晶 | `Void Crystal` |
+| gas-neon | 氖云气 | `Neon Cloud Gas` |
+| gas-phosphor | 磷光霾 | `Phosphor Haze` |
+| gas-ionstorm | 离子风暴云 | `Ionstorm Cloud` |
+| gas-aurora | 极光云 | `Aurora Cloud` |
+| ice-frost | 蓝霜冰 | `Bluefrost Ice` |
+| ice-marrow | 寒髓冰 | `Frostmarrow Ice` |
+| ice-darkstar | 暗星冰 | `Darkstar Ice` |
+| ammo-kinetic-l / -2 | 动能弹药 / MK2 | `Kinetic Ammo` / `Kinetic Ammo MK2` |
+| ammo-explosive-l / -2 | 爆破弹药 / MK2 | `Explosive Ammo` / `Explosive Ammo MK2` |
+| ammo-plasma-l / -2 | 能量弹药 / MK2 | `Energy Ammo` / `Energy Ammo MK2` |
+| drone-scout | 蜂鸟侦察无人机 | `Hummingbird Scout Drone` |
+| drone-assault | 赤鸢战斗无人机 | `Redkite Combat Drone` |
+| drone-heavy | 猎鹰攻坚无人机 | `Falcon Siege Drone` |
+| drone-sentry | 雷鸥哨戒无人机 | `Thundergull Sentry Drone` |
+| drone-exile-bee | 鱿蜂无人机 | `Squidwasp Drone` |
+| drone-wh-c-heavy | 巢卫攻坚无人机 | `Hiveguard Siege Drone` |
+| drone-wh-e-sentry | 构件哨戒无人机 | `Construct Sentry Drone` |
+| repairkit-civ | 民用修理组件 | `Civilian Repair Kit` |
+| repairkit-mil | 军用修理组件 | `Military Repair Kit` |
+| mat-surveyor | 深空测绘仪 | `Deepspace Surveyor` |
+| mat-chrono | 时序核心 | `Chrono Core` |
+| mat-crane | 打捞起重机 | `Salvage Crane` |
+| mat-drill | 采集钻机 | `Mining Drill` |
+| mat-nebula | 星云驱散器 | `Nebula Disperser` |
+| mat-enricher | 母矿富集器 | `Voidmother Enricher` |
+| mat-expander | 舱段扩展器 | `Hold Expander` |
+| mat-suppressor | 压制力场 | `Suppression Field` |
+| mat-boss-analyzer | 守卫解析仪 | `Guardian Analyzer` |
+| mat-extract-cover | 撤离掩护器 | `Extraction Cover` |
+| mat-shield-res | 护盾谐振片 | `Shield Resonance Plate` |
+| mat-armor-res | 装甲强化片 | `Armor Reinforcement Plate` |
+| mat-hull-res | 结构加固片 | `Hull Reinforcement Plate` |
+| mat-tracker | 追踪阵列 | `Tracking Array` |
+| mat-gyro | 陀螺稳定器 | `Gyro Stabilizer` |
+| mat-jammer | 干扰发射器 | `Jammer Emitter` |
+| mat-rangefinder | 射程扩展器 | `Rangefinder Extender` |
+| mat-blindspot | 盲区压制器 | `Blindspot Suppressor` |
+| mat-ammo-dmg | 弹药增效器 | `Ammo Enhancer` |
+| mat-reload | 装填加速器 | `Reload Accelerator` |
+| mat-volley | 齐射协调仪 | `Volley Coordinator` |
+| mat-ammo-back | 弹药回收装置 | `Ammo Recovery Unit` |
+| mat-drone-net | 机群回收网 | `Drone Recovery Net` |
+| mat-field-repair | 战地维修单元 | `Field Repair Unit` |
+| mat-wh-essence | 虫洞谜质 | `Wormhole Enigma` |
+| box-relic-a | 遗迹安全货柜（海盗） | `Ruins Safe Container (Pirate)` |
+| box-relic-c | 遗迹安全货柜（异形） | `Ruins Safe Container (Alien)` |
+| box-relic-d | 遗迹安全货柜（守墓） | `Ruins Safe Container (Gravekeeper)` |
+| box-relic-e | 遗迹安全货柜（巨构） | `Ruins Safe Container (Titan)` |
+| box-relic-g | 遗迹安全货柜（亡军） | `Ruins Safe Container (Deadarmy)` |
+| box-bp-shallow | 图纸货柜（浅层） | `Blueprint Container (Shallow)` |
+| box-bp-mid | 图纸货柜（中层） | `Blueprint Container (Mid)` |
+| box-bp-deep | 图纸货柜（深层） | `Blueprint Container (Deep)` |
+| box-valuables | 贵重品货柜 | `Valuables Container` |
+| box-military | 军用备货柜 | `Military Supply Container` |
+| lux-1 | 星港陈酿 | `Starport Vintage` |
+| lux-2 | 贵族香料 | `Noble Spice` |
+| lux-3 | 失落艺术品 | `Lost Artwork` |
+| lux-4 | 陈年雪茄 | `Aged Cigars` |
+| lux-5 | 异域织物 | `Exotic Textiles` |
+| lux-6 | 香木雕刻 | `Aromatic Wood Carving` |
+| lux-7 | 宫廷乐谱 | `Court Sheet Music` |
+| lux-8 | 古法香膏 | `Ancient Balm` |
+| lux-9 | 星图真迹 | `Original Star Chart` |
+| lux-10 | 王冠遗钻 | `Crown Diamond` |
+| ai-core-gamma / beta / alpha | 伽马 / 贝塔 / 阿尔法 AI 核心 | `Gamma / Beta / Alpha AI Core` |
+
+## 九、专名表 · 技能（79）
+
+| id | 中文 | English |
+|---|---|---|
+| spaceship-command | 舰船操控学 | `Spaceship Command` |
+| navigation | 导航学 | `Navigation` |
+| warp-drive-operation | 跃迁引擎操控 | `Warp Drive Operation` |
+| acceleration-control | 加速控制理论 | `Acceleration Control` |
+| mining-frigate | 采集器入门学 | `Mining Frigate` |
+| industrial-ops | 采矿舰操作 | `Industrial Ship Operations` |
+| armed-ops | 武装舰操作 | `Armed Ship Operations` |
+| armored-ops | 装甲舰操作 | `Armored Ship Operations` |
+| vector-maneuvering | 矢量机动操作 | `Vector Maneuvering` |
+| evasion-maneuvering | 规避机动学 | `Evasive Maneuvering` |
+| targeting-integration | 索敌统合 | `Targeting Integration` |
+| mining | 采矿技术 | `Mining` |
+| deep-space-harvesting | 深空采集学 | `Deep Space Harvesting` |
+| refining | 精炼学 | `Refining` |
+| reprocessing | 高级回收处理 | `Reprocessing` |
+| industry | 工业理论 | `Industry` |
+| materials | 材料学 | `Materials` |
+| industrial-automation | 产线节拍学 | `Production Cadence` |
+| industrial-ai-cap-basic | 工业自动化基础 | `Industrial Automation Basics` |
+| industrial-ai-cap | 工业自动化 | `Industrial Automation` |
+| astro-geology | 星质地质学 | `Astrogeology` |
+| deep-hole-blasting | 深井爆破学 | `Deep-hole Blasting` |
+| rich-vein-prospecting | 富矿勘探学 | `Rich Vein Prospecting` |
+| core-smelting | 炉心熔炼学 | `Core Smelting` |
+| furnace-expansion | 炉膛扩容学 | `Furnace Expansion` |
+| batch-production | 批量生产学 | `Batch Production` |
+| component-standardization | 组件标准化 | `Component Standardization` |
+| ai-servicing | 副船整备学 | `Auxiliary Ship Servicing` |
+| offline-ops | 离线作业管理学 | `Offline Operations` |
+| station-engineering | 建筑工程学 | `Station Engineering` |
+| salvage-recycling | 残骸回收学 | `Salvage Recycling` |
+| salvage-rigging | 打捞装置整备学 | `Salvage Rigging` |
+| wreck-assaying | 残骸富集识别学 | `Wreck Assaying` |
+| salvage-refining | 残骸提纯学 | `Salvage Refining` |
+| gunnery | 炮术学 | `Gunnery` |
+| kinetic-gunnery | 动能炮术 | `Kinetic Gunnery` |
+| missile-launching | 导弹发射学 | `Missile Launching` |
+| laser-cannon | 激光炮学 | `Laser Cannon` |
+| fire-control | 火控阵列学 | `Fire Control` |
+| reload-drills | 武器装填技术 | `Reload Drills` |
+| drone-warfare | 无人机作战学 | `Drone Warfare` |
+| ammunition-condensing | 弹药集约学 | `Ammunition Condensing` |
+| drone-servicing | 无人机整备学 | `Drone Servicing` |
+| drone-strike | 无人机打击学 | `Drone Strike` |
+| drone-durability | 无人机耐久学 | `Drone Durability` |
+| drone-reinforce | 无人机强化学 | `Drone Reinforcement` |
+| drone-recovery | 无人机回收学 | `Drone Recovery` |
+| drone-evasion | 无人机规避学 | `Drone Evasion` |
+| shield-operation | 护盾操作学 | `Shield Operation` |
+| shield-tuning | 护盾调谐学 | `Shield Tuning` |
+| energy-management | 能量管理学 | `Energy Management` |
+| hull-upgrades | 船体加固理论 | `Hull Upgrades` |
+| armor-tuning | 装甲调谐学 | `Armor Tuning` |
+| repair-engineering | 维修工程学 | `Repair Engineering` |
+| hull-quick-repair | 舰体快修学 | `Quick Hull Repair` |
+| station-protocol | 空间站协议学 | `Station Protocol` |
+| ai-expert | AI 核心操作学 | `AI Core Operation` |
+| ai-core-dispatch | AI 核心调度学 | `AI Core Dispatch` |
+| accelerated-learning | 高效学习法 | `Accelerated Learning` |
+| ship-systems-engineering | 舰船系统工程 | `Ship Systems Engineering` |
+| accounting | 会计学 | `Accounting` |
+| trade-negotiation | 贸易谈判学 | `Trade Negotiation` |
+| bounty-hunting | 赏金猎手学 | `Bounty Hunting` |
+| marketing | 营销学 | `Marketing` |
+| source-sweeping | 现货抢购学 | `Source Sweeping` |
+| secondhand-market | 二手市场学 | `Secondhand Market` |
+| signal-analysis | 信号分析学 | `Signal Analysis` |
+| cartography | 星图测绘学 | `Cartography` |
+| signal-filtering | 信号过滤学 | `Signal Filtering` |
+| galactic-happenings | 星际奇遇学 | `Galactic Happenings` |
+| event-dividend | 事件玄学 | `Event Dividend` |
+| chart-archive | 星图记录学 | `Chart Archive` |
+| salvage-diving | 漂流物打捞学 | `Salvage Diving` |
+| seizure-appraisal | 缴获评估学 | `Seizure Appraisal` |
+| lowsec-survival | 低安生存学 | `Low-sec Survival` |
+| deep-space-logistics | 深空物流学 | `Deep Space Logistics` |
+| hauler-ops | 货舰操作 | `Hauler Operations` |
+| compression | 压缩技术 | `Compression` |
+| hold-management | 货舱管理学 | `Hold Management` |
+
+## 十、专名表 · 异常点（27）
+
+| id | 中文 | English |
+|---|---|---|
+| ano-training | 演习场驱逐令 | `Proving Grounds Eviction` |
+| ano-pirate-post | 边境海盗前哨 | `Frontier Pirate Outpost` |
+| ano-abandoned-platform | 占港武装通缉 | `Occupied Port Warrant` |
+| ano-redring-raiders | 赤潮劫掠舰队 | `Red Tide Raider Fleet` |
+| ano-gravekeeper | 坟场守墓者 | `Graveyard Gravekeeper` |
+| ano-ghost-signal | 幽灵舰信号 | `Ghost Ship Signal` |
+| ano-abyss-guard | 深渊之门卫队 | `Abyss Gate Guard` |
+| ano-titan-wreck | 泰坦残骸勘探 | `Titan Wreck Survey` |
+| ano-auro-raiders | 奥罗武装残骸群 | `Auro Armed Wreck Group` |
+| ano-core-section | 巨构核心勘探令 | `Megastructure Core Survey` |
+| ano-starcore-boss | 星髓虫群 | `Starcore Swarm` |
+| ano-cinder-siege | 烬火围攻战 | `Cinder Siege` |
+| ano-echo-haunt | 回音残舰 | `Echo Remnant` |
+| ano-nadir-static | 天底静区封锁 | `Nadir Static Blockade` |
+| ano-maw-hunt | 噬口猎杀令 | `Maw Hunt Order` |
+| ano-vault-sentinel | 穹顶守卫 | `Vault Sentinel` |
+| ano-voidedge-warden | 虚海守望者 | `Voidsea Warden` |
+| ano-harbor-escort | 新港商路护航令 | `New Harbor Convoy Escort` |
+| ano-shard-bandits | 碎晶带劫匪通缉 | `Shardbelt Bandit Warrant` |
+| ano-lantern-saboteurs | 信标猎手悬赏 | `Beacon Hunter Bounty` |
+| ano-haze-ambush | 灰霾伏击团清剿令 | `Haze Ambush Clearance` |
+| ano-mirage-hijackers | 蜃影导航劫持令 | `Mirage Navigation Hijack` |
+| ano-chasm-aberrations | 裂谷畸变体猎杀令 | `Chasm Aberration Hunt` |
+| enc-pirate-1 | 流窜海盗快艇 | `Roaming Pirate Skiff` |
+| enc-pirate-2 | 伏击劫掠队 | `Ambush Raider Squad` |
+| enc-pirate-3 | 狂徒巡逻编队 | `Fanatic Patrol Group` |
+| enc-pirate-4 | 深空屠夫舰队 | `Deepspace Butcher Fleet` |
+
+## 十一、专名表 · 敌舰（25）与虫洞敌卡（15）
+
+| id | 中文 | English |
+|---|---|---|
+| foe-pirate-skiff | 海盗快艇 | `Pirate Skiff` |
+| foe-pirate-corvette | 劫掠护卫舰 | `Raider Frigate` |
+| foe-pirate-sniper | 劫掠狙击舰 | `Raider Sniper` |
+| foe-pirate-raider | 劫掠电子舰 | `Raider EW Ship` |
+| foe-pirate-warlord | 海盗头目舰 | `Pirate Warlord` |
+| foe-scav-skiff | 拾荒武装艇 | `Scavenger Skiff` |
+| foe-scav-armed | 拾荒火力舰 | `Scavenger Gunship` |
+| foe-alien-rift-larva | 畸变幼虫 | `Aberrant Larva` |
+| foe-alien-starcore-larva | 星髓幼虫 | `Starcore Larva` |
+| foe-alien-starcore-adult | 星髓成虫 | `Starcore Adult` |
+| foe-alien-maw | 噬口巨兽 | `Maw Behemoth` |
+| foe-alien-spore-hive | 孢群异虫 | `Spore Hive Aberrant` |
+| foe-d-ghost | 幽灵舰 | `Ghost Ship` |
+| foe-d-longship | 守墓长舰 | `Gravekeeper Longship` |
+| foe-d-stasis | 静滞卫舰 | `Stasis Guard Ship` |
+| foe-d-throne | 守墓王座舰 | `Gravekeeper Throne Ship` |
+| foe-missile-hulk | 导弹残段 | `Missile Hulk` |
+| foe-titan-hulk | 巨构残段 | `Titan Hulk` |
+| foe-auro-hulk | 奥罗残骸段 | `Auro Hulk` |
+| foe-core-section | 核心舱段 | `Core Section` |
+| foe-g-swarm-skiff | 围攻残兵舰 | `Siege Remnant Skiff` |
+| foe-g-echo-remnant | 残响残舰 | `Echo Remnant Ship` |
+| foe-g-nadir-lock | 天底封锁舰 | `Nadir Blockade Ship` |
+| foe-g-exile-battleship | 亡军战列舰 | `Deadarmy Battleship` |
+| foe-g-remnant-tender | 残军补给舰 | `Remnant Tender` |
+| wh-pirate-scout | 劫掠支队 | `Raider Detachment` |
+| wh-pirate-hunt | 劫掠围猎 | `Raider Hunt` |
+| wh-pirate-warband | 海盗战团 | `Pirate Warband` |
+| wh-alien-swarm | 星髓游猎群 | `Starcore Hunting Swarm` |
+| wh-alien-brood | 孢群兵潮 | `Spore Brood Tide` |
+| wh-alien-hive | 噬口深巢 | `Maw Deep Hive` |
+| wh-grave-watch | 守墓巡哨 | `Gravekeeper Patrol` |
+| wh-grave-sentry | 静滞哨链 | `Stasis Sentry Chain` |
+| wh-grave-throne | 陵墓王庭 | `Mausoleum Court` |
+| wh-titan-echo | 巨构残响 | `Titan Echo` |
+| wh-titan-missile | 导弹残响 | `Missile Echo` |
+| wh-titan-hulk | 巨构压境 | `Titan Onslaught` |
+| wh-exile-blockade | 亡军封锁 | `Deadarmy Blockade` |
+| wh-exile-swarm | 残响蜂群 | `Echo Swarm` |
+| wh-exile-line | 残军战列线 | `Remnant Battle Line` |
+
+## 十二、P0b 剩余（同规则，下一批出稿）
+
+装备（**142 条**，按「轻型炮台 MK1·动能型 → `Light Turret MK1 · Kinetic`」这类模式批量出稿）·
+舰船蓝图（**135 条**，多数由舰船/装备名派生，随装备表一起出）· 少量零散表（无人机机型 / 舰体档 / 空间站站点 / 残骸风味 / 旅行事件）。
+
