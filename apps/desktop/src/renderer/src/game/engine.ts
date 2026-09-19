@@ -263,6 +263,7 @@ import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, M
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
+import { tr } from '../i18n/locale'
 
 type Listener = () => void
 
@@ -447,13 +448,13 @@ function offlineReportLogText(r: OfflineReport): string {
   const parts: string[] = [`离开 ${formatDurationMs(r.wallAwayMs)}，结算 ${formatDurationMs(r.settledMs)}`]
   if (r.overflowMs > 0) parts.push(`另有 ${formatDurationMs(r.overflowMs)} 超出上限未结算`)
   parts.push(`钱包 ${r.iskDelta >= 0 ? '+' : '−'}${Math.abs(r.iskDelta).toLocaleString('zh-CN')} 信用点`)
-  if (r.items.length > 0) parts.push(`收获 ${r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join('、')}`)
-  if (r.modules.length > 0) parts.push(`装备入库 ${r.modules.map((m) => `${m.name}×${m.delta}`).join('、')}`)
-  if (r.shipsIn.length > 0) parts.push(`新船入坞 ${r.shipsIn.join('、')}`)
+  if (r.items.length > 0) parts.push(`收获 ${r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017"))}`)
+  if (r.modules.length > 0) parts.push(`装备入库 ${r.modules.map((m) => `${m.name}×${m.delta}`).join(tr("ui.MatterTechTab.017"))}`)
+  if (r.shipsIn.length > 0) parts.push(`新船入坞 ${r.shipsIn.join(tr("ui.MatterTechTab.017"))}`)
   if (r.shipsStored.length > 0)
-    parts.push(`入舰船仓库 ${r.shipsStored.map((s) => `${s.name}×${s.delta}`).join('、')}`)
-  if (r.skillsUp.length > 0) parts.push(`技能 ${r.skillsUp.join('、')}`)
-  if (r.learnedIn.length > 0) parts.push(`学会配方 ${r.learnedIn.join('、')}`)
+    parts.push(`入舰船仓库 ${r.shipsStored.map((s) => `${s.name}×${s.delta}`).join(tr("ui.MatterTechTab.017"))}`)
+  if (r.skillsUp.length > 0) parts.push(`技能 ${r.skillsUp.join(tr("ui.MatterTechTab.017"))}`)
+  if (r.learnedIn.length > 0) parts.push(`学会配方 ${r.learnedIn.join(tr("ui.MatterTechTab.017"))}`)
   if (r.coreJobs.length > 0) parts.push(`AI 核心作业 ${r.coreJobs.join('；')}`)
   return `离线结算报告：${parts.join('；')}。`
 }
@@ -1768,7 +1769,7 @@ export class GameEngine {
 
   /** 进洞时会自动停掉的活动名（「扫描虫洞、开采、打捞」这类中文短名；没有则 null）——准备页预告条用它 */
   wormholeEntryAutoStopText(): string | null {
-    return wormholeEntryAutoStops(this.state).map((a) => a.name).join('、') || null
+    return wormholeEntryAutoStops(this.state).map((a) => a.name).join(tr("ui.MatterTechTab.017")) || null
   }
 
   /**

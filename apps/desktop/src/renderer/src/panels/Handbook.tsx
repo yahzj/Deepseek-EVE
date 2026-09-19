@@ -62,7 +62,7 @@ const COUNT_UNIT: Record<Tab, string> = {
   guide: '条',
   rules: '条',
   items: '种',
-  modules: '件',
+  modules: tr("ui.MarketPage.117"),
   ships: tr("ui.MarketPage.116"),
   blueprints: '张',
   skills: '项',
@@ -385,7 +385,7 @@ const RULE_SECTS: HandGroup[] = [
         title: '采矿 ↔ 远征 转场',
         paras: [
           ['怎么转', '采矿中点悬赏「⇄ 转战出发」= 结束采矿（货随船）并从矿带星系出发；远征中点矿带「⇄ 转开采」= 取消远征（无战果、讨伐同步停）并回港开采。'],
-          ['确认', '均需两次确认。'],
+          [tr("ui.Handbook.014"), '均需两次确认。'],
         ],
       },
       {

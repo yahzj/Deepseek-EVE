@@ -49,7 +49,7 @@ function stopLabel(v: ActivityView): string {
     case 'stop-scan':
       return tr("ui.ActivityBar.008")
     case 'stop-whscan':
-      return '停扫'
+      return tr("ui.ActivityBar.031")
     case 'stop-whauto':
       return tr("ui.ActivityBar.009")
     case 'stop-salvage':
@@ -69,7 +69,7 @@ function stopLabel(v: ActivityView): string {
     case 'cancel-deliver-trip':
       return tr("ui.ActivityBar.013")
     case 'stop-loop':
-      return '停止清剿'
+      return tr("ui.ActivityBar.032")
     case 'stop-hauling':
       return tr("ui.ActivityBar.014")
     default:
@@ -209,7 +209,7 @@ export function ActivityBar({
    * ⚠ 只改悬停文案：**徽标计数、点击去处、渲染结构一律不动**。
    */
   const aiLinesOf = (items: ActivityView[]): string => {
-    if (items.length === 0) return '· （暂无明细）'
+    if (items.length === 0) return tr("ui.ActivityBar.033")
     const lines = items.slice(0, 8).map((v) => {
       const tail =
         v.remainingMs !== null && v.remainingMs > 0
@@ -326,11 +326,11 @@ export function ActivityBar({
                   : v.stop === 'cancel-deliver-trip'
                     ? tr("ui.ActivityBar.020")
                     : v.stop === 'stop-whscan'
-                    ? '停止扫描虫洞：进度保留，下次接着扫'
+                    ? tr("ui.ActivityBar.034")
                     : v.stop === 'stop-scan'
                     ? tr("ui.ActivityBar.021")
                     : v.stop === 'stop-salvage'
-                      ? '停止打捞：本趟已捞的残骸留在船上（未返航不卸货）'
+                      ? tr("ui.ActivityBar.035")
                       : v.stop === 'remove-training'
                         ? tr("ui.ActivityBar.022")
                         : v.stop === 'retreat-battle'
@@ -414,7 +414,7 @@ export function ActivityBar({
               <span className="app-activitybar-fill" style={{ width: `${Math.min(100, Math.max(0, scanBar.percent))}%` }} />
             </span>
             <span className="app-activitybar-scan-time">
-              {scanBar.done ? '✓ 已完成' : `${Math.round(scanBar.percent)}%`}
+              {scanBar.done ? tr("ui.ActivityBar.036") : `${Math.round(scanBar.percent)}%`}
             </span>
           </button>
         ) : null}
@@ -482,7 +482,7 @@ export function ActivityBar({
         {trainItems.length > 0 ? (
           trainItems.map(renderItem)
         ) : (
-          <span className="app-activitybar-idle">✚ 暂未训练——去「技能」页排课。</span>
+          <span className="app-activitybar-idle">{tr("ui.ActivityBar.037")}</span>
         )}
       </div>
     </div>

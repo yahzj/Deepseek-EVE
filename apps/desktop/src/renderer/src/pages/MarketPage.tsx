@@ -25,6 +25,7 @@ import { InfoHover, ItemHover, itemInfoLines, ModuleHover, moduleInfoLines, Ship
 import type { InfoLine } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk } from './common'
+import { fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
@@ -409,10 +410,10 @@ function GoodRow({
           ) : null}
           <span className="app-dim" title={MY_STOCK_TIP}>
             {' '}
-            · 持有 {holdings.toLocaleString('zh-CN')}
+            {tr('ui.MarketPage.126', { n: fmtInt(holdings) })}
           </span>
           {quote.sell === undefined && good.rarity !== 'common' ? (
-            <span className="app-dim"> · 常来看看（每 10 分钟刷新一轮到货）</span>
+            <span className="app-dim">{tr('ui.MarketPage.127')}</span>
           ) : null}
         </div>
       </div>
@@ -641,7 +642,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const trend = marketTrend(state, good.key)
   const holdings = good.kind === 'ship' ? shipStoredCount(state, good.refId) : naturalHoldings(state, good)
   /** 舰船的量词是「艘」（其余商品是「件」）；舰队同型艘数用于"可卖量从哪来"的提示 */
-  const unit = good.kind === 'ship' ? tr("ui.MarketPage.116") : '件'
+  const unit = good.kind === 'ship' ? tr("ui.MarketPage.116") : tr("ui.MarketPage.117")
   const shipInFleet = good.kind === 'ship' ? fleetCountOf(state, good.refId) : 0
   const lock = goodLockedReason(state, good)
   /**
@@ -869,11 +870,11 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
         <span className="app-dim">
           {/* 2026-09-14：舰船的可卖量 = **舰船仓库**艘数（机库里的船不能直接卖）⇒ 舰船把两处读数分开写 */}
           {good.kind === 'ship'
-            ? `可卖 ${holdings.toLocaleString('zh-CN')} 艘（舰船仓库） · 机库 ${shipInFleet.toLocaleString('zh-CN')} 艘`
-            : `持有 ${holdings.toLocaleString('zh-CN')} 件`}{' '}
-          · 中位价 {median !== undefined ? isk(median) : '—'} {tr("ui.FirstTasks.003")}
+            ? tr('ui.MarketPage.123', { a: fmtInt(holdings), b: fmtInt(shipInFleet) })
+            : tr('ui.MarketPage.124', { n: fmtInt(holdings) })}{' '}
+          {tr('ui.MarketPage.125', { v: median !== undefined ? isk(median) : '—' })}
           <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
-            {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' · 平'}
+            {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : tr("ui.MarketPage.118")}
           </span>
         </span>
       }
@@ -1024,18 +1025,18 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 if (p > bid) {
                   return (
                     <>
-                      {tr("ui.MarketPage.062")} {isk(bid)}：先按挂单价排队，等待买家出价回补后成交——想更快出手，把挂价降到不高于收购价即可优先成交
+                      {tr("ui.MarketPage.062")} {isk(bid)}{tr('ui.MarketPage.128')}
                     </>
                   )
                 }
                 if (p < bid) {
                   return (
                     <>
-                      {tr("ui.MarketPage.063")} {isk(bid)}：当前挂价有优势，会优先撮合成交，清仓更快
+                      {tr("ui.MarketPage.063")} {isk(bid)}{tr('ui.MarketPage.129')}
                     </>
                   )
                 }
-                return <>{tr("ui.MarketPage.064")} {isk(bid)}）：按当前收购通道优先撮合成交</>
+                return <>{tr("ui.MarketPage.064")} {isk(bid)}{tr('ui.MarketPage.130')}</>
               }
               // 奇货专项提示（2026-09-08 船长定）：挂单价低于奇货参考价时提醒并给出合适价位
               //（口径保密：不披露 20L/巡游机制，只讲"稀见到货 + 参考价"）
@@ -1050,15 +1051,15 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 }
                 return (
                   <>
-                    {tr("ui.MarketPage.067")} {isk(p)} {tr("ui.MarketPage.068")} {isk(exoLine)} {tr("ui.MarketPage.069")}{isk(exoLine)} 信用点 上下），到货即按单成交
+                    {tr("ui.MarketPage.067")} {isk(p)} {tr("ui.MarketPage.068")} {isk(exoLine)} {tr("ui.MarketPage.069")}{isk(exoLine)} {tr("ui.MarketPage.119")}
                   </>
                 )
               }
               const ask = quote.sell ?? askLineOf(state, engine.ctx, good.key)
-              if (p >= ask) return <>{tr("ui.MarketPage.070")} {isk(ask)}）：现买现得</>
+              if (p >= ask) return <>{tr("ui.MarketPage.070")} {isk(ask)}{tr('ui.MarketPage.131')}</>
               return (
                 <>
-                  {tr("ui.MarketPage.071")} {isk(ask)}：先按挂单价排队，等待卖单回补后成交——想立刻拿到，把挂价提到不低于供应价即可即时买入
+                  {tr("ui.MarketPage.071")} {isk(ask)}{tr('ui.MarketPage.132')}
                 </>
               )
             })()}
@@ -1072,12 +1073,12 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             <div className="app-mkt-confirm-title">{tr("ui.MarketPage.072")} {name}</div>
             <div className="app-mkt-confirm-row">
               <span>{tr("ui.MarketPage.073")}</span>
-              <b>{confirmSell.want.toLocaleString('zh-CN')} {unit}（可卖 {confirmSell.avail.toLocaleString('zh-CN')}）</b>
+              <b>{confirmSell.want.toLocaleString('zh-CN')} {unit}{tr("ui.MarketPage.120")} {confirmSell.avail.toLocaleString('zh-CN')}）</b>
             </div>
             <div className="app-mkt-confirm-row">
               <span>{tr("ui.MarketPage.074")}</span>
               <b className={confirmSell.fillable > 0 ? 'app-trend-up' : ''}>
-                {confirmSell.fillable.toLocaleString('zh-CN')} {unit} · {confirmSell.orders} 笔单
+                {confirmSell.fillable.toLocaleString('zh-CN')} {unit} · {confirmSell.orders} {tr("ui.MarketPage.121")}
               </b>
             </div>
             {confirmSell.fillable > 0 ? (
@@ -1098,8 +1099,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             ) : null}
             {confirmSell.leftover > 0 ? (
               <div className="app-mkt-confirm-note">
-                {tr("ui.MarketPage.078")} {confirmSell.fillable.toLocaleString('zh-CN')} {unit}，其余{' '}
-                {confirmSell.leftover.toLocaleString('zh-CN')} {unit}{tr("ui.MarketPage.079")}
+                {tr("ui.MarketPage.078")} {fmtInt(confirmSell.fillable)} {unit}{tr('ui.MarketPage.133', { n: `${fmtInt(confirmSell.leftover)} ${unit}` })}{tr("ui.MarketPage.079")}
                 {good.kind === 'ship' ? tr("ui.MarketPage.080") : tr("ui.MarketPage.081")}
               </div>
             ) : null}
@@ -1405,7 +1405,7 @@ export function MarketPage({
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
                   right={
                     <span className="app-dim" title={tr("ui.MarketPage.106")}>
-                      {tr("ui.MarketPage.107")} {fmtClock(nextSupplyIn(engine))} · 订单 20 分钟有效
+                      {tr("ui.MarketPage.107")} {fmtClock(nextSupplyIn(engine))}{tr('ui.MarketPage.134')}
                     </span>
                   }
                   rows={stockedFirst(engine, common)}
@@ -1457,7 +1457,8 @@ export function MarketPage({
             title={tr("ui.MarketPage.113")}
             right={
               <span className="app-dim">
-                {tr("ui.MarketPage.114")} {isk(state.wallet.isk)} {tr("ui.MarketPage.115")} {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
+                {tr("ui.MarketPage.114")} {isk(state.wallet.isk)} {tr("ui.MarketPage.115")}{' '}
+                {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))}{tr('ui.MarketPage.135')}
               </span>
             }
           >

@@ -1473,7 +1473,7 @@ function StarMap({
                   赏金任务 {tasksByGalaxy.get(selected.id)!.length} 个：
                   {tasksByGalaxy.get(selected.id)!
                     .map((t) => `${t.lairName ?? t.anomalyId ?? '窝点'}（${t.rewardIsk.toLocaleString('zh-CN')} 信用点）`)
-                    .join('、')}
+                    .join(tr("ui.MatterTechTab.017"))}
                   {taskEtaText.length > 0 ? ` · 剩余 ${taskEtaText}（每天 0 点换新）` : ''}
                 </div>
               ) : null}
@@ -1735,7 +1735,7 @@ function GalaxyActions({
             <span className="app-ico">
               <Glyph name="nav-wormhole" size={13} color={NAV_TONES['nav-wormhole']} />
             </span>
-            虫洞
+            {tr("ui.Expedition.005")}
             <span className="app-dim app-ga-desc">调试入口 · 不消耗库存（玩家入口见「扫描虫洞」页）</span>
           </span>
           <button className="app-btn is-small" onClick={() => onOpenWormhole?.()} title="终局玩法 · 虫洞（调试入口：免库存开一趟，供验收）">
@@ -1953,7 +1953,7 @@ function GalaxyActions({
         const billRowsHere = stationBillView(state, engine.ctx, site)
         const mat = billRowsHere.reduce((s0, r) => s0 + (state.warehouse.items[r.itemId] ?? 0), 0)
         const freeM3 = Math.max(0, Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)))
-        const matNames = billRowsHere.map((r) => `${r.itemName}×${r.remaining.toLocaleString('zh-CN')}`).join('、')
+        const matNames = billRowsHere.map((r) => `${r.itemName}×${r.remaining.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017"))
         const canSend =
           !tripOn && !state.transit.active && !state.standby.active && state.awayGalaxy === null && !pilotBusy && mat > 0 && freeM3 > 0
         const title = tripOn
@@ -2059,7 +2059,7 @@ function AnomalyCard({
   const [goAsk, setGoAsk] = useState(false)
   const lootText = anomaly.loot
     .map((l) => `${engine.ctx.items.get(l.itemId)?.name ?? l.itemId}×${l.units}`)
-    .join('、')
+    .join(tr("ui.MatterTechTab.017"))
   const mining = state.mining
   const miningActive = mining.active
   const pilotName = shipDisplayName(state, engine.ctx, state.shipId)
@@ -2485,7 +2485,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                               onToast(r.ok ? '已放弃该单。' : r.error ?? '无法放弃', !r.ok)
                             }}
                           >
-                            放弃
+                            {tr("ui.Expedition.006")}
                           </button>
                         ) : (
                           <button
@@ -3202,7 +3202,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                               : tripFreeM3 <= 0
                                 ? '货仓已满载——先腾出空闲货仓再安排交付循环'
                                 : wareStock <= 0
-                                  ? `仓库建材不足（当前档需要 ${billRows.map((r) => `${r.itemName}×${r.remaining.toLocaleString('zh-CN')}`).join('、')}）——备料后再出发`
+                                  ? `仓库建材不足（当前档需要 ${billRows.map((r) => `${r.itemName}×${r.remaining.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017"))}）——备料后再出发`
                                   : `从「${galaxy?.name ?? site.galaxyId}」出发：装满货仓（空闲 ${tripFreeM3.toLocaleString('zh-CN')} m³）→ 到点清仓自动交付 → 自动返港续趟至建成或仓库耗尽（可随时取消）`
                       }
                       onClick={() => {

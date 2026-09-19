@@ -172,9 +172,9 @@ function meanHitRateOf(spec: UnitSpec): { rate: number; hitBonus: number; eqMul:
 /** 命中率行的括号明细（只列非缺省项——缺省的 ×1.00 / +0% 不进括号，免得读成"有代价"） */
 function hitDetailText(read: { hitBonus: number; eqMul: number | null; unstable: number }): string {
   const parts: string[] = []
-  if (read.hitBonus > 0) parts.push(`船体加成 +${Math.round(read.hitBonus * 100)}%`)
-  if (read.eqMul !== null && Math.abs(read.eqMul - 1) > 1e-6) parts.push(`索敌 ×${read.eqMul.toFixed(2)}`)
-  if (Math.abs(read.unstable - 1) > 1e-6) parts.push(`推进失稳 ×${read.unstable.toFixed(2)}`)
+  if (read.hitBonus > 0) parts.push(tr("ui.FitPage.111", { p1: Math.round(read.hitBonus * 100) }))
+  if (read.eqMul !== null && Math.abs(read.eqMul - 1) > 1e-6) parts.push(tr("ui.FitPage.112", { p1: read.eqMul.toFixed(2) }))
+  if (Math.abs(read.unstable - 1) > 1e-6) parts.push(tr("ui.FitPage.113", { p1: read.unstable.toFixed(2) }))
   return parts.join(' · ')
 }
 
@@ -202,9 +202,9 @@ function diffSegs(
   // 其余仍只报变化。⚠ 判据是"装后是否超预算"，不是"变化没变化"——已超载的船换同耗件也要照红。
   const remCur = cpuTotal - cpuCur
   const remNext = (cpuTotalNext ?? cpuTotal) - cpuNext
-  if (remNext < 0) add(`CPU 剩 ${minus(remCur)}→${minus(remNext)}（差 ${-remNext}）`, 'down')
+  if (remNext < 0) add(tr("ui.FitPage.114", { p1: minus(remCur), p2: minus(remNext), p3: -remNext }), 'down')
   else if (remNext !== remCur) {
-    add(remNext === 0 ? `CPU 剩 ${minus(remCur)}→0（刚好装满）` : `CPU 剩 ${minus(remCur)}→${remNext}`, 'info')
+    add(remNext === 0 ? tr("ui.FitPage.115", { p1: minus(remCur) }) : tr("ui.FitPage.116", { p1: minus(remCur), remNext: remNext }), 'info')
   }
   // 血量层（取变化最大的两层，避免长卡）
   const hpPairs: Array<{ lab: string; c: number; n: number }> = []
@@ -223,16 +223,16 @@ function diffSegs(
     for (const ty of ['kinetic', 'explosive', 'plasma'] as const) {
       const cpp = Math.round((cb[ty] ?? 0) * 100)
       const npp = Math.round((nb[ty] ?? 0) * 100)
-      if (npp !== cpp) resDiffs.push({ t: `${layer === 'shield' ? tr("ui.FitPage.014") : tr("ui.FitPage.015")}·${TYPE_SN[ty]}抗`, c: cpp, n: npp })
+      if (npp !== cpp) resDiffs.push({ t: tr("ui.FitPage.117", { p1: layer === 'shield' ? tr("ui.FitPage.014") : tr("ui.FitPage.015"), p2: TYPE_SN[ty] }), c: cpp, n: npp })
     }
   }
   resDiffs.sort((a, b) => Math.abs(b.n - b.c) - Math.abs(a.n - a.c))
   for (const d of resDiffs.slice(0, 2)) add(`${d.t} ${d.c}→${d.n}%`, dir(d.n - d.c))
   // 回避 / 机动速度
   const epp = Math.round((next.evasion - cur.evasion) * 100)
-  if (epp !== 0) add(`回避 ${Math.round(cur.evasion * 100)}→${Math.round(next.evasion * 100)}%`, dir(epp))
+  if (epp !== 0) add(tr("ui.FitPage.118", { p1: Math.round(cur.evasion * 100), p2: Math.round(next.evasion * 100) }), dir(epp))
   const spd = Math.round(next.speedMps - cur.speedMps)
-  if (spd !== 0) add(`速度 ${Math.round(cur.speedMps)}→${Math.round(next.speedMps)}`, dir(spd))
+  if (spd !== 0) add(tr("ui.FitPage.119", { p1: Math.round(cur.speedMps), p2: Math.round(next.speedMps) }), dir(spd))
   // 推进器点火期速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」）：
   // 周期化（2026-09-10）后 `speedMps` **不含**推进器加成（走 `thrusterBoost`、只在点火窗口生效）
   // ⇒ 换上/换下推进器时上面那段「速度」恒为 0，卡片看起来"速度没变"。这里补报**点火期**速度
@@ -242,28 +242,28 @@ function diffSegs(
   if (boostCur !== boostNext) {
     const ignCur = Math.round(cur.speedMps * (1 + boostCur))
     const ignNext = Math.round(next.speedMps * (1 + boostNext))
-    add(`点火期速度 ${ignCur}→${ignNext}`, dir(ignNext - ignCur))
+    add(tr("ui.FitPage.120", { ignCur: ignCur, ignNext: ignNext }), dir(ignNext - ignCur))
   }
   // 火力（名义口径见 rawDpsOf 注释；数值直接给，不带 ≈ 前缀）
   const cd = rawDpsOf(cur)
   const nd = rawDpsOf(next)
-  if (cd <= 0 && nd > 0) add('火力 新增', 'up')
-  else if (nd <= 0 && cd > 0) add('火力 归零', 'down')
+  if (cd <= 0 && nd > 0) add(tr("ui.FitPage.121"), 'up')
+  else if (nd <= 0 && cd > 0) add(tr("ui.FitPage.122"), 'down')
   else if (cd > 0 && nd > 0) {
     const pct = (nd / cd - 1) * 100
     if (Math.abs(pct) >= 0.5) {
       // 绝对值格式化（船长 2026-09-05：避免负值自带符号与前缀符号叠成双负号）
       const absPct = Math.abs(pct)
       const show = absPct >= 10 ? String(Math.round(absPct)) : absPct.toFixed(1)
-      add(`火力 ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
+      add(tr("ui.FitPage.123", { p1: pct > 0 ? '+' : '−', show: show }), pct > 0 ? 'up' : 'down')
     }
   }
   // 弹伤倍率本身的变化（换炮台时最关心的一个数；弹种变了也点明）
   if (weapon && weapon.curMult !== null && weapon.nextMult !== null && weapon.curMult !== weapon.nextMult) {
-    add(`弹伤 ${mulText(weapon.curMult)}→${mulText(weapon.nextMult)}`, dir(weapon.nextMult - weapon.curMult))
+    add(tr("ui.FitPage.124", { p1: mulText(weapon.curMult), p2: mulText(weapon.nextMult) }), dir(weapon.nextMult - weapon.curMult))
   }
   if (weapon && weapon.curType !== null && weapon.nextType !== null && weapon.curType !== weapon.nextType) {
-    add(`弹种 ${DMG_LABEL[weapon.curType]}→${DMG_LABEL[weapon.nextType]}`, 'info')
+    add(tr("ui.FitPage.125", { p1: DMG_LABEL[weapon.curType], p2: DMG_LABEL[weapon.nextType] }), 'info')
   }
   // 命中近似（整机相对变化；口径见 meanHitMul）
   const ch = meanHitMul(cur)
@@ -274,7 +274,7 @@ function diffSegs(
       // 同上：绝对值格式化，符号只由前缀给一次
       const absHp = Math.abs(hp)
       const show = absHp >= 10 ? String(Math.round(absHp)) : absHp.toFixed(1)
-      add(`命中 ${hp > 0 ? '+' : '−'}${show}%`, hp > 0 ? 'up' : 'down')
+      add(tr("ui.FitPage.126", { p1: hp > 0 ? '+' : '−', show: show }), hp > 0 ? 'up' : 'down')
     }
   }
   return segs
@@ -310,7 +310,7 @@ function mulText(v: number): string {
 function ammoChipOf(m: ModuleDef): ReactNode | null {
   if (m.slot === 'turret') {
     const t = m.damageType ?? 'kinetic'
-    return <DmgChip t={t} label={`${DMG_LABEL[t]}弹药`} />
+    return <DmgChip t={t} label={tr("ui.FitPage.127", { p1: DMG_LABEL[t] })} />
   }
   if (m.slot === 'missile') return <DmgChip t="explosive" label={tr("ui.FitPage.008")} />
   if (m.slot === 'laser') return <DmgChip t="plasma" label={tr("ui.FitPage.009")} />
@@ -348,7 +348,7 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
         {minus(rem)} / {total}
       </span>
       <span className="app-fit-cpustrip-pct">
-        {over ? `超 ${-rem}` : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(remPct)}%`}
+        {over ? tr("ui.FitPage.128", { p1: -rem }) : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(remPct)}%`}
       </span>
       <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(remPct)} aria-valuemin={0} aria-valuemax={100}>
         <i style={{ width: `${remPct}%` }} />
@@ -419,7 +419,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   /** 卸下（2026-09-11：`unfitAtAt` 改回报 CommandResult——CPU 双向校验下"卸不掉"会带原因） */
   function handleUnfit(rack: RackSlot, index: number): void {
     const r = engine.unfitAtAt(rack, index, effectiveTarget)
-    if (r.ok) onToast('装备已卸下并放回装备库。')
+    if (r.ok) onToast(tr("ui.FitPage.129"))
     else onToast(r.error ?? '卸下失败。', true)
   }
 
@@ -446,7 +446,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       setPresetOpen(true)
       return
     }
-    onToast('已把当前装配存为方案。')
+    onToast(tr("ui.FitPage.130"))
     setPresetOpen(true)
   }
 
@@ -470,7 +470,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       onToast(r.error ?? '改名失败。', true)
       return
     }
-    onToast('方案已改名。')
+    onToast(tr("ui.FitPage.131"))
     setPresetRename(null)
   }
 
@@ -486,7 +486,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       return
     }
     setPresetDetailAt(null) // 内容变了：收起旧明细，下次展开重算
-    onToast('已用当前装配覆盖该方案。')
+    onToast(tr("ui.FitPage.132"))
   }
 
   /** 删除方案 */
@@ -497,7 +497,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       return
     }
     setPresetRename(null)
-    onToast('方案已删除。')
+    onToast(tr("ui.FitPage.133"))
   }
 
   /** 一键卸下全部装备（放回装备库；甲板扩容器一并卸下，超容无人机自动退仓） */
@@ -507,8 +507,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       onToast(r.error ?? '卸下失败。', true)
       return
     }
-    if (r.removed > 0) onToast(`已卸下全部装备 ${r.removed} 件（放回装备库）。`)
-    else onToast('这艘船没有已装装备。', true)
+    if (r.removed > 0) onToast(tr("ui.FitPage.134", { p1: r.removed }))
+    else onToast(tr("ui.FitPage.135"), true)
   }
 
   // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
@@ -625,7 +625,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const had = (fitted?.[rack]?.[index] ?? null) !== null
     const r = engine.swapModuleTo(m.id, rack, index, effectiveTarget)
     if (!r.ok) onToast(r.error ?? '装配失败', true)
-    else onToast(`${m.name} 已${had ? tr("ui.FitPage.022") : tr("ui.FitPage.023")}${rackLabel(rack)}第 ${index + 1} 位。`)
+    else onToast(tr("ui.FitPage.136", { p1: m.name, p2: had ? tr("ui.FitPage.022") : tr("ui.FitPage.023"), p3: rackLabel(rack), p4: index + 1 }))
     setPickBay(null)
   }
 
@@ -639,9 +639,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     if (m.stealthMs === undefined || !shipDef) return ''
     const bits: string[] = []
     if (shipDef.stealthCpuMul !== undefined && shipDef.stealthCpuMul !== 1) {
-      bits.push(`本船特性：CPU ${cpuUseOf(m, shipDef)}（原 ${m.cpuUse ?? 0}）`)
+      bits.push(tr("ui.FitPage.137", { p1: cpuUseOf(m, shipDef), p2: m.cpuUse ?? 0 }))
     }
-    if (shipDef.stealthIgnoresPropulsion === true) bits.push('装推进器也能保持隐身')
+    if (shipDef.stealthIgnoresPropulsion === true) bits.push(tr("ui.FitPage.138"))
     return bits.length > 0 ? ` ← ${bits.join(' · ')}` : ''
   }
 
@@ -654,11 +654,11 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const n = sameKindCount(fitted, engine.ctx, m)
     if (n === 0) return base
     // 2026-09-15 隐秘行动装置（`max` 组）：多件**取最长一件**——明说"不叠加"，免得玩家以为能叠到 50 秒
-    if (st.group === 'max') return `${base} ← 同类第 ${n + 1} 件：取最长一件（不叠加）`
+    if (st.group === 'max') return tr("ui.FitPage.139", { base: base, p2: n + 1 })
     if (st.group === 'curve' || st.group === 'weighted') { // 折权加算与 EVE 曲线同文案：写明第 N 件按权重百分比生效
-      return `${base} ← 同类第 ${n + 1} 件：按 ${Math.round(stackWeight(n + 1) * 100)}% 生效`
+      return tr("ui.FitPage.140", { base: base, p2: n + 1, p3: Math.round(stackWeight(n + 1) * 100) })
     }
-    return `${base} ← 同类第 ${n + 1} 件：只削剩余缺口（收益递减）`
+    return tr("ui.FitPage.141", { base: base, p2: n + 1 })
   }
 
   // 无人机舱总量（船体 + 已装「甲板扩展」= 清单容量上限；装入入口在低槽组下方无人机舱区——
@@ -732,7 +732,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             <button
               className="app-btn is-small is-primary"
               onClick={() => setPresetOpen(true)}
-              title={`查看 / 套用 / 重命名 / 删除本船型的装配方案（最多 ${FIT_PRESET_MAX} 套）；每套可展开「明细」看逐位装了什么`}
+              title={tr("ui.FitPage.142", { FIT_PRESET_MAX: FIT_PRESET_MAX })}
             >
               {tr("ui.FitPage.033")} <em className="app-fit-preset-count">{presets.length}/{FIT_PRESET_MAX}</em>
             </button>
@@ -779,7 +779,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 ),
                 // 无人机舱（上限 = 船体 + 甲板扩展；战斗只放飞下方「无人机舱」清单——2026-09-08 大改）
                 ...(droneBayTotal > 0
-                  ? [{ k: tr("ui.FitPage.035"), v: `${droneBayTotal} m³ · 战斗只放飞下方清单中已装入的无人机` }]
+                  ? [{ k: tr("ui.FitPage.035"), v: tr("ui.FitPage.143", { droneBayTotal: droneBayTotal }) }]
                   : []),
                 // 船体维修装置·运转消耗（2026-09-10 船长：消耗组件需高亮；0 枚红字告警）
                 ...repairKitRows.map((r) => {
@@ -813,7 +813,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                             <span className="app-dim">
                               {' '}
                               {freeRepairRows
-                                .map((r) => `${r.name}：每 ${r.secs} 秒修甲 ${r.armor} / 结构 ${r.hull}`)
+                                .map((r) => tr("ui.FitPage.144", { p1: r.name, p2: r.secs, p3: r.armor, p4: r.hull }))
                                 .join('；')}
                               {tr("ui.FitPage.044")}
                             </span>
@@ -853,7 +853,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                             {`${fmt(Math.round(spec.speedMps))} m/s`}
                             {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
                               <span className="app-dim">
-                                {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs })}）`}
+                                {tr("ui.FitPage.145", { p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))), p2: thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs }) })}
                               </span>
                             ) : null}
                           </>
@@ -867,16 +867,16 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           <>
                             {`${effWarp ? effWarp.aus.toFixed(2) : '-'} AU/s`}
                             {effWarp && effWarp.bonusPct > 0 ? (
-                              <span className="app-dim">{`（装备 +${Math.round(effWarp.bonusPct * 100)}%）`}</span>
+                              <span className="app-dim">{tr("ui.FitPage.146", { p1: Math.round(effWarp.bonusPct * 100) })}</span>
                             ) : null}
-                            <span className="app-dim">{` · 跨星系航行耗时 ×${warpFactor.toFixed(2)}（含航行技能）`}</span>
+                            <span className="app-dim">{tr("ui.FitPage.147", { p1: warpFactor.toFixed(2) })}</span>
                           </>
                         ),
                       },
                     ]
                   : []),
               ]}
-              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按递减方式合成（上限 90%）；多装与「动力」细则见手册速览「装配」。命中率 = 本船炮台 / 导弹架 / 激光炮的整机均值（船体加成加算、索敌件与推进失稳只压掷命中武器；激光必中计 100%），不含敌方回避与距离衰减；超过 100% 的部分是余量，实战里用于抵消射程削减与敌舰回避。`}
+              note={tr("ui.FitPage.148", { p1: slots.high, p2: slots.mid, p3: slots.low })}
             />
           </div>
           </>
@@ -911,7 +911,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         key={`${rack}-${i}`}
                         className="app-fit-slot-icon is-empty"
                         onClick={() => openPick(rack, i)}
-                        title={`第 ${i + 1} 位（空）——点击选择装备`}
+                        title={tr("ui.FitPage.149", { p1: i + 1 })}
                       >
                         <span className="app-fit-slot-icon-glyph">＋</span>
                         <span className="app-fit-slot-icon-name">{tr("ui.FitPage.023")}</span>
@@ -929,7 +929,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                          `ModuleHover` 的内容，标题 + 统一参数表 + 描述），行动提示降为末行注脚。
                          ⚠ 不再写 `title`：同一元素禁 `title` + 富提示并存（两个提示路径互顶）。 */
                       {...hoverTipProps(
-                        moduleHoverContent(fittedDef, `第 ${i + 1} 位 · 点击更换${stealthTraitNote(fittedDef)}`),
+                        moduleHoverContent(fittedDef, tr("ui.FitPage.150", { p1: i + 1, p2: stealthTraitNote(fittedDef) })),
                       )}
                     >
                       <span className="app-fit-slot-icon-glyph">
@@ -1159,8 +1159,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               </select>
               <span className="app-dim">
                 {pickQuery.length > 0 || pickSlot !== 'all'
-                  ? `匹配 ${pickShown.length} 件`
-                  : `${pickShown.length} 件 · 按稀有度排序`}
+                  ? tr("ui.FitPage.151", { p1: pickShown.length })
+                  : tr("ui.FitPage.152", { p1: pickShown.length })}
               </span>
             </div>
             <div className="app-fit-pickgrid">
@@ -1199,7 +1199,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           <DmgChip t={weaponDamageTypeOf(m)} label={layerShortOf(weaponDamageTypeOf(m))} />
                           <span className="app-fit-pick-subtext">
                             ×{countModule(state, m.id)}
-                            {m.dmgMult !== undefined ? ` · 弹伤 ${mulText(m.dmgMult)}` : ''} · 射程 {rangeShort(m)}
+                            {m.dmgMult !== undefined ? tr("ui.FitPage.153", { p1: mulText(m.dmgMult) }) : ''} · 射程 {rangeShort(m)}
                           </span>
                         </>
                       ) : (
@@ -1302,7 +1302,7 @@ function AmmoTierSection({
               const r = engine.setAmmoTierAt(type, null, target)
               if (!r.ok) onToast(r.error ?? '设置失败', true)
             }}
-            title={`${baseName}：本船${baseName}档（未设 = 基础弹；开战时同族取"能装得最多"的一档）`}
+            title={tr("ui.FitPage.154", { baseName: baseName, baseName2: baseName })}
           >
             {baseName}
           </button>
@@ -1312,7 +1312,7 @@ function AmmoTierSection({
               const r = engine.setAmmoTierAt(type, mk2.id, target)
               if (!r.ok) onToast(r.error ?? '设置失败', true)
             }}
-            title={`${mk2.name}：单发更高（${mk2.dmg ?? '?'} vs ${base?.dmg ?? '?'}）；开战按档预载——同族里"能装得最多"的那一档会被实际装填，装不满也照装。仓库 ×${haveMk2}`}
+            title={tr("ui.FitPage.155", { p1: mk2.name, p2: mk2.dmg ?? '?', p3: base?.dmg ?? '?', haveMk2: haveMk2 })}
           >
             {mk2.name}
           </button>
@@ -1435,7 +1435,7 @@ function DroneBaySection({
         ) : null}
       </div>
       {/* 容量条（参考 CPU 条视觉；m³ 口径） */}
-      <div className="app-fit-dronecap" title={`无人机舱容量：已装 ${Math.round(usedM3 * 10) / 10} / ${cap} m³（船体 + 甲板扩展）；清单 CPU 占用 ${droneCpu}（计入预算）`}>
+      <div className="app-fit-dronecap" title={tr("ui.FitPage.156", { p1: Math.round(usedM3 * 10) / 10, cap: cap, droneCpu: droneCpu })}>
         <span className="app-fit-dronecap-label">{tr("ui.FitPage.099")}</span>
         <span className="app-fit-dronecap-num">
           {Math.round(usedM3 * 10) / 10}/{cap} m³
@@ -1457,8 +1457,8 @@ function DroneBaySection({
                `ItemHover` 的内容），原那句"清单口径"降为末行注脚；± 按钮自己的提示照旧内层优先。 */
             {...hoverTipProps(
               def
-                ? itemHoverContent(def, (mid) => engine.ctx.items.get(mid)?.name, '舱内清单：战斗只放飞已装入的；仓库中其余无人机不出战')
-                : `${id}：无人机舱清单（战斗只放飞已装入的；仓库中其余无人机不出战）`,
+                ? itemHoverContent(def, (mid) => engine.ctx.items.get(mid)?.name, tr("ui.FitPage.157"))
+                : tr("ui.FitPage.158", { id: id }),
             )}
           >
             {def ? (
@@ -1512,12 +1512,12 @@ function DroneBaySection({
                       setSelN(1)
                     }}
                     disabled={m <= 0}
-                    title={`${d.description}（单架 ${d.unitM3} m³ · CPU ${d.cpuUse}；仓库 ×${have}）`}
+                    title={tr("ui.FitPage.159", { p1: d.description, p2: d.unitM3, p3: d.cpuUse ?? 0, have: have })}
                   >
                     <Glyph name="drone" size={18} color={toneOf('drone')} />
                     <span className="app-fit-drone-pick-name">{d.name}</span>
                     <span className="app-dim">
-                      {m <= 0 ? tr("ui.FitPage.107") : `仓库 ×${have} · 可装 ${m}`}
+                      {m <= 0 ? tr("ui.FitPage.107") : tr("ui.FitPage.160", { have: have, m: m })}
                     </span>
                   </button>
                 )

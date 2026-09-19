@@ -710,14 +710,14 @@ const meSpeedRef = useRef(200)
             {/* **我方损失**（2026-09-14 船长定：新增三行之一）——这条正是"损失了舰船也显示大捷"的正身 */}
             {br && lostN > 0 ? (
               <div className="app-bts-report-stats is-loss">
-                {tr("ui.BattleScreen.016")}{br.shipsLost.join('、')}（{lostN} {tr("ui.BattleScreen.017")}
+                {tr("ui.BattleScreen.016")}{br.shipsLost.join(tr("ui.MatterTechTab.017"))}（{lostN} {tr("ui.BattleScreen.017")}
               </div>
             ) : null}
             {/* **双方残余**（新增三行之二）：逐舰 盾/甲/结构（当前/上限）+ 敌方残余 */}
             {myUnitsText ? <div className="app-bts-report-stats">{tr("ui.BattleScreen.018")} {myUnitsText} ｜ {foeText}</div> : null}
             {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——没挂件就整行不显示 */}
             {br && br.foeMounts && br.foeMounts.length > 0 ? (
-              <div className="app-bts-report-stats">{tr("ui.BattleScreen.019")}{br.foeMounts.join('、')}</div>
+              <div className="app-bts-report-stats">{tr("ui.BattleScreen.019")}{br.foeMounts.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {/* **弹药消耗**（新增三行之三）：按弹种；0 的弹种不列 */}
             {ammoSeg ? <div className="app-bts-report-stats">{tr("ui.BattleScreen.020")}{ammoSeg}</div> : null}
@@ -736,12 +736,12 @@ const meSpeedRef = useRef(200)
                   {droneReport.rows
                     .filter((r) => r.back > 0)
                     .map((r) => `${r.name}×${r.back}`)
-                    .join('、') || tr("ui.BattleScreen.001")}
+                    .join(tr("ui.MatterTechTab.017")) || tr("ui.BattleScreen.001")}
                   {' ｜ '}{tr("ui.BattleScreen.025")}
                   {droneReport.rows
                     .filter((r) => r.gone > 0)
                     .map((r) => `${r.name}×${r.gone}`)
-                    .join('、') || tr("ui.BattleScreen.001")}
+                    .join(tr("ui.MatterTechTab.017")) || tr("ui.BattleScreen.001")}
                   {tr("ui.BattleScreen.026")}
                 </div>
               </>
@@ -750,7 +750,7 @@ const meSpeedRef = useRef(200)
                 {tr("ui.BattleScreen.027")}
                 {Object.entries(snap.droneLost)
                   .map(([artId, n]) => `${droneModelOf(artId)?.name ?? artId} ×${n}`)
-                  .join('、')}
+                  .join(tr("ui.MatterTechTab.017"))}
                 {tr("ui.BattleScreen.026")}
               </div>
             ) : null}
@@ -2469,9 +2469,9 @@ const meSpeedRef = useRef(200)
                 className="app-bts-chip is-foe"
                 title={
                   b.names.length > 0
-                    ? `敌方射程带（${b.names.join('、')}）：${b.minM}~${b.maxM}m` +
+                    ? `敌方射程带（${b.names.join(tr("ui.MatterTechTab.017"))}）：${b.minM}~${b.maxM}m` +
                       // 2026-09-16 船长「敌舰悬停展示挂载件」：本带的敌方挂载件挂在同一条悬停里
-                      (b.mounts && b.mounts.length > 0 ? ` · 挂载：${b.mounts.join('、')}` : '')
+                      (b.mounts && b.mounts.length > 0 ? ` · 挂载：${b.mounts.join(tr("ui.MatterTechTab.017"))}` : '')
                     : tr("ui.BattleScreen.058")
                 }
               >
@@ -2491,8 +2491,8 @@ const meSpeedRef = useRef(200)
             ) : null}
             {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——有才占位，悬停看全名 */}
             {arcs.foeMounts && arcs.foeMounts.length > 0 ? (
-              <span className="app-bts-chip is-foe" title={`敌方挂载件：${arcs.foeMounts.join('、')}`}>
-                <i /> {tr("ui.BattleScreen.061")}{arcs.foeMounts.join('、')}
+              <span className="app-bts-chip is-foe" title={`敌方挂载件：${arcs.foeMounts.join(tr("ui.MatterTechTab.017"))}`}>
+                <i /> {tr("ui.BattleScreen.061")}{arcs.foeMounts.join(tr("ui.MatterTechTab.017"))}
               </span>
             ) : null}
             {ammoChips.length > 0 ? (

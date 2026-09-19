@@ -348,9 +348,9 @@ export function combatBadges(ship: ShipDef, over?: BadgeOver): ReactNode[] {
   const hp = over?.hp
   const res = over?.resists
   return [
-    layerBadge('s', 'is-shield', '盾', hp?.s ?? ship.shieldHp, res?.shield ?? ship.shieldResist),
-    layerBadge('a', 'is-armor', '甲', hp?.a ?? ship.armorHp, res?.armor ?? ship.armorResist),
-    layerBadge('h', 'is-hull', '结构', hp?.h ?? ship.hullHp, res?.hull ?? ship.hullResist),
+    layerBadge('s', 'is-shield', tr("ui.FitPage.014"), hp?.s ?? ship.shieldHp, res?.shield ?? ship.shieldResist),
+    layerBadge('a', 'is-armor', tr("ui.FitPage.015"), hp?.a ?? ship.armorHp, res?.armor ?? ship.armorResist),
+    layerBadge('h', 'is-hull', tr("ui.ShipPage.023"), hp?.h ?? ship.hullHp, res?.hull ?? ship.hullResist),
   ]
 }
 
@@ -483,7 +483,7 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   // 装甲族（容量 / 抗性 / 机动代价）
   if (foreign('armor')) {
     if (mod.armorHpBonus !== undefined) out.push({ k: tr("ui.shipInfo.016"), v: `+${pct(mod.armorHpBonus)}` })
-    const row = resistAddLine('装甲抗性', mod.armorResistAdd)
+    const row = resistAddLine(tr("ui.FitPage.004"), mod.armorResistAdd)
     if (row) out.push(row)
     if ((mod.speedPenaltyPct ?? 0) > 0) {
       const pen = mod.speedPenaltyPct ?? 0
@@ -501,7 +501,7 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   // 护盾族（容量 / 抗性）
   if (foreign('shield')) {
     if (mod.shieldHpBonus !== undefined) out.push({ k: tr("ui.shipInfo.019"), v: `+${pct(mod.shieldHpBonus)}` })
-    const row = resistAddLine('护盾抗性', mod.shieldResistAdd)
+    const row = resistAddLine(tr("ui.FitPage.002"), mod.shieldResistAdd)
     if (row) out.push(row)
   }
   // 推进器族（加力推进 / 点火代价）
@@ -617,11 +617,11 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: tr("ui.Handbook.010"), v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'shield') {
     if (mod.shieldHpBonus !== undefined) lines.push({ k: tr("ui.shipInfo.019"), v: `+${pct(mod.shieldHpBonus)}` })
-    const row = resistAddLine('护盾抗性', mod.shieldResistAdd)
+    const row = resistAddLine(tr("ui.FitPage.002"), mod.shieldResistAdd)
     if (row) lines.push(row)
   } else if (mod.slot === 'armor') {
     if (mod.armorHpBonus !== undefined) lines.push({ k: tr("ui.shipInfo.016"), v: `+${pct(mod.armorHpBonus)}` })
-    const row = resistAddLine('装甲抗性', mod.armorResistAdd)
+    const row = resistAddLine(tr("ui.FitPage.004"), mod.armorResistAdd)
     if (row) lines.push(row)
     // 重甲件的机动代价（2026-09-10 船长：陵寝装甲层 −25%）——多件不叠加、取最重一件
     if ((mod.speedPenaltyPct ?? 0) > 0) {
@@ -660,7 +660,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         v: (
           <>
             <span className="app-dim">{tr("ui.shipInfo.038")}</span>
-            <DmgChip t={mod.damageType} label={`${DMG_LABEL[mod.damageType]}弹药`} />
+            <DmgChip t={mod.damageType} label={tr("ui.FitPage.127", { p1: DMG_LABEL[mod.damageType] })} />
             <span className="app-dim">{tr("ui.shipInfo.039")}</span>
           </>
         ),
@@ -877,7 +877,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       ),
     })
   }
-  const hullRow = resistAddLine('结构抗性', mod.hullResistAdd)
+  const hullRow = resistAddLine(tr("ui.FitPage.005"), mod.hullResistAdd)
   if (hullRow) lines.push(hullRow)
   /* ── 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；**任何槽位都可能带**，故独立成段）──
    * 口径与引擎一致：附加伤害段/耗弹倍数/射程削减与按系加成/通用单发/装填惩罚/全层抗性削减/出击周期。

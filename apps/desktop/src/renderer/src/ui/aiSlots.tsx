@@ -13,6 +13,7 @@
  */
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreShipUsed, industryAiBonus } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
+import { tr } from '../i18n/locale'
 
 /** 站内工业 AI 工位数字（供标题行与提示共用） */
 export interface IndustryAiSlots {
@@ -70,7 +71,7 @@ export function aiSlotTip(slots: IndustryAiSlots): string {
   // 逐技能写明贡献（未练的技能也列出，便于玩家知道该练什么）
   const detail =
     bonusRows.length > 0
-      ? bonusRows.map((r) => `${r.name} ${r.level} 级 → +${r.slots}`).join('、')
+      ? bonusRows.map((r) => `${r.name} ${r.level} 级 → +${r.slots}`).join(tr("ui.MatterTechTab.017"))
       : '暂无扩容技能'
   return (
     `站内 AI 核心可启动上限 ${cap} 枚 = 共用上限 ${sharedCap}（AI 核心操作学）` +

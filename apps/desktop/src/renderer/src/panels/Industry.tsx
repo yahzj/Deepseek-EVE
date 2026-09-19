@@ -761,7 +761,7 @@ function BlueprintCard({
                       tabIndex={0}
                       title={
                         srcs.length > 0
-                          ? `「${matName}」由精炼炉炼出（${srcs.map(srcName).join('、')} 等）——点击跳到精炼炉该资源卡`
+                          ? `「${matName}」由精炼炉炼出（${srcs.map(srcName).join(tr("ui.MatterTechTab.017"))} 等）——点击跳到精炼炉该资源卡`
                           : `「${matName}」无法经精炼炉产出——点击到市场购买`
                       }
                       onClick={() => onNeedMineral?.(need.itemId)}

@@ -28,7 +28,7 @@ const CHAIN_UNITS: Record<string, string> = {
   bountyWins: tr("ui.FirstTasks.007"),
   repairs: tr("ui.FirstTasks.006"),
   refineBatches: tr("ui.FirstTasks.008"),
-  produceUnits: '件',
+  produceUnits: tr("ui.MarketPage.117"),
   // 2026-09-18 船长换口径：市场链不再数"挂单张数"，改数**交易收入（税后信用点）**
   marketIncome: tr("ui.FirstTasks.003"),
   ships: tr("ui.MarketPage.116"),
@@ -110,7 +110,7 @@ export function FirstTasks({
         for (const c of r?.aiCores ?? []) parts.push(`基础 AI 核心 ×${c.units}`)
         if (r?.wormholeStock) parts.push(`未探索虫洞 ×${r.wormholeStock}`)
         if (r?.isk) parts.push(`${r.isk.toLocaleString('zh-CN')} 信用点`)
-        const rewardTxt = parts.length > 0 ? parts.join('、') : tr("ui.FirstTasks.014")
+        const rewardTxt = parts.length > 0 ? parts.join(tr("ui.MatterTechTab.017")) : tr("ui.FirstTasks.014")
         return (
           <div key={def.id} className="app-station-card">
             <div className="app-station-head">

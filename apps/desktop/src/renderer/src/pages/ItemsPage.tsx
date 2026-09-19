@@ -207,7 +207,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           一级＝各大类 + 「装备」；选「装备」才出二级槽类（与手册装备图鉴同一张 RACK_SUBS 单点表） */}
       <div className="app-fleet-toolbar">
         <div className="app-fleet-row">
-          <span className="app-dim">分类：</span>
+          <span className="app-dim">{tr("ui.ItemsPage.021")}</span>
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
             <button
               role="tab"
@@ -249,7 +249,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         </div>
         {wareKind === 'module' ? (
           <div className="app-fleet-row">
-            <span className="app-dim">槽类：</span>
+            <span className="app-dim">{tr("ui.ItemsPage.022")}</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
@@ -257,7 +257,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 className={`app-tasktab${wareRack === SUB_ALL ? ' is-active' : ''}`}
                 onClick={() => setWareRack(SUB_ALL)}
               >
-                全部槽类
+                {tr("ui.ItemsPage.023")}
               </button>
               {RACK_SUBS.map((s) => (
                 <button
@@ -328,8 +328,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         </span>
                       </div>
                       <div className="app-inv-btns">
-                        <button className="app-btn is-small" onClick={() => handleLoad(id)} title="装到当前驾驶船的货仓（按单位体积占舱；停靠空间站时装卸）">
-                          装到船上
+                        <button className="app-btn is-small" onClick={() => handleLoad(id)} title={tr("ui.ItemsPage.024")}>
+                          {tr("ui.ItemsPage.025")}
                         </button>
                         {buy !== undefined ? (
                           <button className="app-btn is-small is-primary" onClick={() => setSellItem(id)}>
@@ -341,7 +341,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                           <RedeemFragmentButton engine={engine} itemId={id} onToast={onToast} />
                         ) : (
                           <button className="app-btn is-small" disabled>
-                            不在市场目录
+                            {tr("ui.CargoPage.039")}
                           </button>
                         )}
                         {marketGoodOf(engine.ctx, 'item', id) ? (
@@ -358,10 +358,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                             按钮用 is-danger 与"卖出/装船"区分开（破坏性操作）。 */}
                         <button
                           className="app-btn is-small is-danger"
-                          title="丢弃这件物品（可指定任意数量；丢弃后无法找回，也不会得到任何信用点）"
+                          title={tr("ui.ItemsPage.026")}
                           onClick={() => setDiscardItem(id)}
                         >
-                          丢弃
+                          {tr("ui.ItemsPage.027")}
                         </button>
                       </div>
                     </ItemHover>
@@ -376,14 +376,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       {/* 装备库（2026-09-13 筛选：选了某个物品大类时整块不显示；计数随槽类二级筛选收窄） */}
       {showMods ? (
       <Panel
-        title="装备（装备库）"
-        right={<span className="app-dim">{modHits.length} 种 · 空间站库存</span>}
+        title={tr("ui.ItemsPage.028")}
+        right={<span className="app-dim">{modHits.length} {tr("ui.ItemsPage.029")}</span>}
       >
         {modHits.length === 0 ? (
           <div className="app-dim app-inv-empty">
             {wareNarrowed
-              ? '当前筛选下没有装备——换个分类或槽类试试。'
-              : '装备库还是空的——在「市场」页购买或在「工业」页制造装备后，装备会先存放于此，再到「装配」页安装上船。'}
+              ? tr("ui.ItemsPage.030")
+              : tr("ui.ItemsPage.031")}
           </div>
         ) : (
           <ul className="app-inv-list">
@@ -406,17 +406,17 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     <button
                       className="app-btn is-small"
                       onClick={() => handleLoadMod(id)}
-                      title="装入船货仓携带（按 1 m³/件 计入货舱）；安装到槽位请到「装配」页——装配台取料自装备库，船上装备需先卸回"
+                      title={tr("ui.ItemsPage.032")}
                     >
-                      装到船上
+                      {tr("ui.ItemsPage.025")}
                     </button>
                     {modGood && modGood.playerSellable !== false ? (
                       <button className="app-btn is-small is-primary" onClick={() => setSellMod(id)}>
                         {tr("ui.CargoPage.038")}
                       </button>
                     ) : (
-                      <button className="app-btn is-small" disabled title="不在市场流通目录或不可售">
-                        不在市场目录
+                      <button className="app-btn is-small" disabled title={tr("ui.ItemsPage.033")}>
+                        {tr("ui.CargoPage.039")}
                       </button>
                     )}
                     {modGood ? (
@@ -472,16 +472,16 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           })}
           {showMods ? (
           <Panel
-            title="装备（装备库）"
-            right={<span className="app-dim">{modHits.length} 种 · 空间站库存</span>}
+            title={tr("ui.ItemsPage.028")}
+            right={<span className="app-dim">{modHits.length} {tr("ui.ItemsPage.029")}</span>}
           >
             {modHits.length > 0 ? (
               <ItemGlyphGrid cells={modCells} onPick={(key) => setPickMod(key)} />
             ) : (
               <div className="app-dim app-inv-empty">
                 {wareNarrowed
-                  ? '当前筛选下没有装备——换个分类或槽类试试。'
-                  : '装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。'}
+                  ? tr("ui.ItemsPage.030")
+                  : tr("ui.ItemsPage.034")}
               </div>
             )}
           </Panel>
@@ -508,8 +508,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 {/* **碎片详情的「逆向解锁」**（2026-09-19 船长：「建议在物品的蓝图碎片详细页内，
                     也添加一个合并碎片的按钮」）——不是碎片 ⇒ 本组件返回 null，其余物品照旧 */}
                 <RedeemFragmentButton engine={engine} itemId={pickItem} onToast={onToast} />
-                <button className="app-btn is-small" onClick={() => handleLoad(pickItem)} title="装到当前驾驶船的货仓（按单位体积占舱）">
-                  装到船上
+                <button className="app-btn is-small" onClick={() => handleLoad(pickItem)} title={tr("ui.ItemsPage.035")}>
+                  {tr("ui.ItemsPage.025")}
                 </button>
                 {pickItemBuy !== undefined ? (
                   <button
@@ -523,7 +523,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   </button>
                 ) : (
                   <button className="app-btn is-small" disabled>
-                    不在市场目录（无法出售）
+                    {tr("ui.CargoPage.040")}
                   </button>
                 )}
                 {marketGoodOf(engine.ctx, 'item', pickItem) ? (
@@ -563,9 +563,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 <button
                   className="app-btn is-small"
                   onClick={() => handleLoadMod(pickMod)}
-                  title="装入船货仓携带（按 1 m³/件 计入货舱）；安装到槽位请到「装配」页（装配台取料自装备库，船上装备需先卸回）"
+                  title={tr("ui.ItemsPage.036")}
                 >
-                  装到船上
+                  {tr("ui.ItemsPage.025")}
                 </button>
                 {marketGoodOf(engine.ctx, 'module', pickMod) ? (
                   <button
@@ -575,11 +575,11 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       setSellMod(pickMod)
                     }}
                   >
-                    市价卖出（×{pickModUnits.toLocaleString('zh-CN')}）
+                    {tr("ui.ItemsPage.037")}{pickModUnits.toLocaleString('zh-CN')}）
                   </button>
                 ) : (
                   <button className="app-btn is-small" disabled>
-                    不在市场目录（无法出售）
+                    {tr("ui.CargoPage.040")}
                   </button>
                 )}
                 {marketGoodOf(engine.ctx, 'module', pickMod) ? (
@@ -635,7 +635,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             unit="单位"
             priceText="丢弃没有任何收益（要变现请用「市价卖出」或精炼炉）"
             confirmLabel="丢弃"
-            note="丢弃后无法找回。"
+            note={tr("ui.ItemsPage.038")}
             onClose={() => setDiscardItem(null)}
             onConfirm={(qty) => {
               const r = engine.discardWare(discardItem, qty)

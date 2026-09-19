@@ -84,7 +84,7 @@ const FLEET_FILTER_TABS: Array<{ key: FleetFilter; label: string }> = [
   { key: 'all', label: tr("ui.IndustryPage.001") },
   { key: 'pilot', label: tr("ui.ShipPage.010") },
   { key: 'ai', label: tr("ui.ShipPage.118") },
-  { key: 'idle', label: tr("ui.ShipPage.117") },
+  { key: 'idle', label: tr("ui.ShipPage.152") },
   { key: 'damaged', label: tr("ui.ShipPage.119") },
 ]
 

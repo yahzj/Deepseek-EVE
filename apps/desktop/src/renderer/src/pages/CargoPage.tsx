@@ -212,12 +212,12 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           />
           {haulOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 2 }}>
-              ⚠ 长途运输进行中：货仓由虚拟运输货物占满（可用 0 m³）——到站自动结算报酬；任务期间不能装卸与出售。
+              {tr("ui.CargoPage.041")}
             </div>
           ) : null}
           {courierOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 2 }}>
-              ⚠ 快递投送进行中：货舱按 {courierOcc.toLocaleString('zh-CN')} m³ 被虚拟货物占用——到站自动结算运费（超时无报酬）。
+              {tr("ui.CargoPage.042")} {courierOcc.toLocaleString('zh-CN')} {tr("ui.CargoPage.043")}
             </div>
           ) : null}
           {isPiloted ? (
@@ -278,8 +278,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                           <RowGlyph glyph={def.kind} /> {def.name}
                         </span>
                         <span className="app-inv-count">
-                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价{' '}
-                          {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
+                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}{tr('ui.CargoPage.038')}{' '}
+                          {buy !== undefined ? `${isk(buy)} ${tr('ui.FirstTasks.003')}` : '—'}
                         </span>
                       </div>
                       <div className="app-inv-btns">
@@ -302,11 +302,11 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                             <RedeemFragmentButton engine={engine} itemId={id} onToast={onToast} />
                           ) : (
                             <button className="app-btn is-small" disabled>
-                              不在市场目录
+                              {tr("ui.CargoPage.039")}
                             </button>
                           )
                         ) : (
-                          <span className="app-dim app-sr-eta">只读查看</span>
+                          <span className="app-dim app-sr-eta">{tr("ui.CargoPage.044")}</span>
                         )}
                       </div>
                     </ItemHover>
@@ -321,8 +321,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       {/* 船载装备（2026-09-09 船长口径 A：模块可入货仓携带，按 1 m³/件 计入货舱；卸回装备库） */}
       {modRows.length > 0 ? (
         <Panel
-          title="装备（船载）"
-          right={<span className="app-dim">{modRows.length} 种 · 按 1 m³/件 计入货舱</span>}
+          title={tr("ui.CargoPage.045")}
+          right={<span className="app-dim">{modRows.length} {tr("ui.CargoPage.046")}</span>}
         >
           <ul className="app-inv-list">
             {modRows.map(([id, units]) => {
@@ -339,17 +339,17 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       <RowGlyph glyph={def.slot} /> {def.name}
                     </span>
                     <span className="app-inv-count">
-                      ×{units.toLocaleString('zh-CN')}（计入货舱 {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
+                      ×{units.toLocaleString('zh-CN')}{tr("ui.CargoPage.047")} {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
                       {def.cpuUse}
                     </span>
                   </div>
                   <div className="app-inv-btns">
                     {isPiloted ? (
                       <button className="app-btn is-small is-primary" onClick={() => handleUnloadOne(id)}>
-                        卸回装备库
+                        {tr("ui.CargoPage.048")}
                       </button>
                     ) : (
-                      <span className="app-dim app-sr-eta">只读查看</span>
+                      <span className="app-dim app-sr-eta">{tr("ui.CargoPage.044")}</span>
                     )}
                   </div>
                 </li>
@@ -362,7 +362,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       ) : (
         <>
           {rows.length === 0 ? (
-            <div className="app-dim app-inv-empty">货仓是空的——采集与战利品会先落到这里。</div>
+            <div className="app-dim app-inv-empty">{tr("ui.CargoPage.049")}</div>
           ) : (
             ITEM_KIND_ORDER.map((kind) => {
               const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
@@ -383,7 +383,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   key={kind}
                   title={`${itemKindLabel(kind)}（${isPiloted ? tr("ui.CargoPage.005") : tr("ui.CargoPage.006")}）`}
                   hint={extra ? <HintIcon tip={extra} /> : undefined}
-                  right={<span className="app-dim">{kindRows.length} 种</span>}
+                  right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows.length })}</span>}
                 >
                   <ItemGlyphGrid cells={cells} onPick={(key) => setPickId(key)} />
                 </Panel>
@@ -394,8 +394,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           {/* 船载装备（图标卡；2026-09-09 船长口径 A：模块可入货仓携带） */}
           {modRows.length > 0 ? (
             <Panel
-              title="装备（船载）"
-              right={<span className="app-dim">{modRows.length} 种 · 按 1 m³/件 计入货舱</span>}
+              title={tr("ui.CargoPage.045")}
+              right={<span className="app-dim">{modRows.length} {tr("ui.CargoPage.046")}</span>}
             >
               <ItemGlyphGrid
                 cells={modRows.map(([id, units]) => {
@@ -422,8 +422,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickDef.name}</div>
                   <div className="app-dim">
-                    ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}）· 市场收价{' '}
-                    {pickBuy !== undefined ? `${isk(pickBuy)} 信用点` : '—'}
+                    ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}{tr('ui.CargoPage.038')}{' '}
+                    {pickBuy !== undefined ? `${isk(pickBuy)} ${tr('ui.FirstTasks.003')}` : '—'}
                   </div>
                 </div>
               </div>
@@ -432,7 +432,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               <div className="app-dim app-itempick-note">{pickDef.description}</div>
               <div className="app-itempick-actions">
                 {!isPiloted ? (
-                  <div className="app-dim">正在查看「{targetName}」——只读：装卸与出售仅对当前驾驶船可用。</div>
+                  <div className="app-dim">{tr("ui.CargoPage.050")}{targetName}{tr("ui.CargoPage.051")}</div>
                 ) : pickBuy !== undefined ? (
                   <button
                     className="app-btn is-primary is-small"
@@ -448,7 +448,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   <RedeemFragmentButton engine={engine} itemId={pickId} onToast={onToast} />
                 ) : (
                   <button className="app-btn is-small" disabled>
-                    不在市场目录（无法出售）
+                    {tr("ui.CargoPage.040")}
                   </button>
                 )}
                 {pickId && marketGoodOf(engine.ctx, 'item', pickId) ? (
@@ -477,21 +477,21 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickModDef.name}</div>
                   <div className="app-dim">
-                    ×{pickModUnits.toLocaleString('zh-CN')}（计入货舱 {m3(pickModUnits)}）·{' '}
+                    ×{pickModUnits.toLocaleString('zh-CN')}{tr("ui.CargoPage.047")} {m3(pickModUnits)}）·{' '}
                     {SLOT_LABELS[pickModDef.slot] ?? pickModDef.slot} · CPU {pickModDef.cpuUse}
                   </div>
                 </div>
               </div>
               <InfoTable lines={moduleInfoLines(pickModDef)} />
               <div className="app-dim app-itempick-note">
-                {pickModDef.description}——船载仅携带：装配台取料自装备库，船载装备需先卸回。
+                {pickModDef.description}{tr("ui.CargoPage.052")}
               </div>
               <div className="app-itempick-actions">
                 {!isPiloted ? (
-                  <div className="app-dim">正在查看「{targetName}」——只读：装卸仅对当前驾驶船可用。</div>
+                  <div className="app-dim">{tr("ui.CargoPage.050")}{targetName}{tr("ui.CargoPage.053")}</div>
                 ) : (
                   <button className="app-btn is-primary is-small" onClick={() => handleUnloadOne(pickMod)}>
-                    卸回装备库
+                    {tr("ui.CargoPage.048")}
                   </button>
                 )}
               </div>

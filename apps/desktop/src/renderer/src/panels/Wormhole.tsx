@@ -1056,7 +1056,7 @@ export function WormholePanel({
     <div className="app-modal-mask" onClick={handleClose}>
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
-          <span className="app-report-title">{settle ? '本趟结算' : '虫洞'}</span>
+          <span className="app-report-title">{settle ? '本趟结算' : tr("ui.Expedition.005")}</span>
           <span className="app-dim app-wh-devnote">
             {auto
               ? `自动探索 · 选编队派队（最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船 · 约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）`
@@ -1206,7 +1206,7 @@ export function WormholePanel({
               <div className="app-dim app-note">
                 {auto ? (
                   <>
-                    自动探索<b>不建副本、不打战斗</b>：派最多 {WORMHOLE_AUTO_MAX_SHIPS} 条船去一趟（可少派），
+                    {tr("ui.Wormhole.002")}<b>不建副本、不打战斗</b>：派最多 {WORMHOLE_AUTO_MAX_SHIPS} 条船去一趟（可少派），
                     每条各占 <b>1 枚 AI 核心</b>（与副船 AI 任务、站内炉线同一本账），约{' '}
                     {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航结算；收益 = 手动一趟期望的{' '}
                     {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%（<b>直入仓库</b>、不保底），结构/装甲各受损{' '}
@@ -1841,7 +1841,7 @@ export function WormholePanel({
                             ctx.shipBlueprints.get(id)?.name ??
                             id,
                         )
-                        .join('、')}
+                        .join(tr("ui.MatterTechTab.017"))}
                     </div>
                   ) : null}
                   {bossDone ? (
@@ -2028,7 +2028,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
       </div>
       {settle.shipsLost.length > 0 ? (
         <div className="app-wh-settle-loss is-pop" style={{ animationDelay: `${(cells.length + 2) * STEP}ms` }}>
-          损失：{settle.shipsLost.join('、')}（共 {settle.shipsLost.length} 艘，船上装备一并遗失）
+          损失：{settle.shipsLost.join(tr("ui.MatterTechTab.017"))}（共 {settle.shipsLost.length} 艘，船上装备一并遗失）
         </div>
       ) : null}
       {settle.lostIsk > 0 ? (

@@ -353,7 +353,7 @@ function PerfHud({ onClose }: { onClose: () => void }) {
           </div>
           <div className="app-perf-hud-line">
             <span>{tr("ui.App.051")}</span>
-            <span>{t.long.n} 次{t.long.n > 0 ? ` · 最长 ${t.long.maxMs.toFixed(0)}ms` : ''}</span>
+            <span>{tr('ui.App.101', { n: t.long.n })}{t.long.n > 0 ? tr('ui.App.102', { ms: t.long.maxMs.toFixed(0) }) : ''}</span>
           </div>
         </>
       ) : null}
@@ -1192,7 +1192,7 @@ export function App({ engine }: { engine: GameEngine }) {
               <>
                 <span className="app-enc-title">{tr("ui.App.077")} {state.encounter.name}</span>
                 <span className="app-enc-sub">
-                  {shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)}（{state.encounter.origin}）被盯上 ·{' '}
+                  {shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)}（{state.encounter.origin}{tr('ui.App.103')}{' '}
                   {Math.max(1, Math.ceil((state.encounter.deadlineGameMs - state.gameMs) / 1000))} {tr("ui.App.078")}
                 </span>
                 <button
@@ -1243,7 +1243,7 @@ export function App({ engine }: { engine: GameEngine }) {
           <div className="app-report-body">
             <div className="app-dim">
               {tr("ui.App.087")} {formatDurationMs(offlineReport.wallAwayMs)} · 结算 {formatDurationMs(offlineReport.settledMs)}
-              {offlineReport.overflowMs > 0 ? `（另有 ${formatDurationMs(offlineReport.overflowMs)} 超出上限未结算）` : ''}
+              {offlineReport.overflowMs > 0 ? tr('ui.App.104', { d: formatDurationMs(offlineReport.overflowMs) }) : ''}
             </div>
             <div className="app-report-line">
               {tr("ui.App.088")}
@@ -1258,25 +1258,25 @@ export function App({ engine }: { engine: GameEngine }) {
             </div>
             {offlineReport.items.length > 0 ? (
               <div className="app-report-line">
-                {tr("ui.App.089")}{offlineReport.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join('、')}
+                {tr("ui.App.089")}{offlineReport.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017"))}
               </div>
             ) : null}
             {offlineReport.modules.length > 0 ? (
               <div className="app-report-line">
-                {tr("ui.App.090")}{offlineReport.modules.map((m) => `${m.name}×${m.delta}`).join('、')}
+                {tr("ui.App.090")}{offlineReport.modules.map((m) => `${m.name}×${m.delta}`).join(tr("ui.MatterTechTab.017"))}
               </div>
             ) : null}
             {offlineReport.shipsIn.length > 0 ? (
-              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>{tr("ui.App.091")}{offlineReport.shipsIn.join('、')}</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>{tr("ui.App.091")}{offlineReport.shipsIn.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {offlineReport.shipsStored.length > 0 ? (
-              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>{tr("ui.App.092")}{offlineReport.shipsStored.map((s) => `${s.name}×${s.delta}`).join('、')}{tr("ui.App.093")}</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>{tr("ui.App.092")}{offlineReport.shipsStored.map((s) => `${s.name}×${s.delta}`).join(tr("ui.MatterTechTab.017"))}{tr("ui.App.093")}</div>
             ) : null}
             {offlineReport.skillsUp.length > 0 ? (
-              <div className="app-report-line">{tr("ui.App.094")}{offlineReport.skillsUp.join('、')}</div>
+              <div className="app-report-line">{tr("ui.App.094")}{offlineReport.skillsUp.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {offlineReport.learnedIn.length > 0 ? (
-              <div className="app-report-line"><span className="app-ico"><Glyph name="ico-cross" size={13} color={ICO_TONES["ico-cross"]} /></span>{tr("ui.App.095")}{offlineReport.learnedIn.join('、')}</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="ico-cross" size={13} color={ICO_TONES["ico-cross"]} /></span>{tr("ui.App.095")}{offlineReport.learnedIn.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {offlineReport.coreJobs.length > 0 ? (
               <>

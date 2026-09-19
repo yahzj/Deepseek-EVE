@@ -176,15 +176,32 @@ for (const file of walk(ROOT)) {
   /** 命中但**故意不包**（需人工拆句）的跨行碎片（报告用） */
   const manual = new Set<string>()
   /** 待包位置（先收集，最后统一按中文串换 id —— 同串多次出现只造一个 id） */
-  const sites: Array<{ node: ts.Node; zh: string; form: 'jsx-text' | 'attr' | 'expr' | 'arg'; lead?: string; tail?: string }> = []
+  const sites: Array<{
+    node: ts.Node
+    zh: string
+    form: 'jsx-text' | 'attr' | 'expr' | 'arg' | 'template'
+    lead?: string
+    tail?: string
+    /** 模板字面量的插值参数（`{name}` 占位符 ↔ 原表达式文本） */
+    params?: Array<{ name: string; text: string }>
+  }> = []
   /** 同一节点别被两条判据重复认领（否则会被包两层） */
   const claimed = new Set<number>()
   /** 打了 `l10n-keep` 标记（同行或上一行）而**故意不包**的字面量（报告用） */
   const kept = new Set<string>()
   const sourceLines = text.split(/\r?\n/)
-  const addSite = (node: ts.Node, zh: string, form: 'jsx-text' | 'attr' | 'expr' | 'arg', lead?: string, tail?: string): void => {
+  const addSite = (
+    node: ts.Node,
+    zh: string,
+    form: 'jsx-text' | 'attr' | 'expr' | 'arg' | 'template',
+    lead?: string,
+    tail?: string,
+    params?: Array<{ name: string; text: string }>,
+  ): void => {
     const at = node.getStart(sf)
     if (claimed.has(at)) return
+    // 纯空白（含全角空格）不是文案，永远不包
+    if (zh.trim() === '') return
     // 人工标记：这一格不是文案（如类型的字面量联合 key）⇒ 源码里写 `l10n-keep` 让工具绕开
     const line = sf.getLineAndCharacterOfPosition(at).line
     if ((sourceLines[line] ?? '').includes('l10n-keep') || (sourceLines[line - 1] ?? '').includes('l10n-keep')) {
@@ -192,7 +209,7 @@ for (const file of walk(ROOT)) {
       return
     }
     claimed.add(at)
-    sites.push({ node, zh, form, lead, tail })
+    sites.push({ node, zh, form, lead, tail, params })
   }
   const visit = (node: ts.Node): void => {
     // ① JSX 文本子节点
@@ -228,7 +245,7 @@ for (const file of walk(ROOT)) {
     // ⑤ 写死的中文展示文案：对象字面量的属性值 / 数组元素 / 三元分支 / 变量初值 / 返回值
     //    （渲染层里带中文的裸字面量基本都是文案：标签表、状态词表、提示语；比较用的中文串不在此列——
     //     `=== '中文'` 的父节点是 BinaryExpression，不在下面这五类里）
-    if (ts.isStringLiteral(node) && CJK.test(node.text) && !insideTranslateCall(node)) {
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && CJK.test(node.text) && !insideTranslateCall(node)) {
       const p = node.parent
       const displaySpot =
         (ts.isPropertyAssignment(p) && p.initializer === node) ||
@@ -237,6 +254,40 @@ for (const file of walk(ROOT)) {
         (ts.isVariableDeclaration(p) && p.initializer === node) ||
         (ts.isReturnStatement(p) && p.expression === node)
       if (displaySpot) addSite(node, node.text, 'expr')
+    }
+    // ⑥ 调用实参里的中文串（`addLog('已卸下装备。')` / `toast('…')` 一类"直接显示"的实参）
+    if (ts.isCallExpression(node)) {
+      const callee = ts.isIdentifier(node.expression) ? node.expression.text : ''
+      if (callee !== 't' && callee !== 'tr') {
+        for (const arg of node.arguments) {
+          if ((ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) && CJK.test(arg.text) && !insideTranslateCall(arg)) {
+            addSite(arg, arg.text, 'expr')
+          }
+        }
+      }
+    }
+    // ⑦ 无插值模板字面量（`` `装备已卸下。` ``）——比照普通字符串处理
+    // ⑧ **带插值的模板**（`` `已售出 ${n} 单位` ``）⇒ `tr('id', { n })`；中文片段里的 `${…}` 记为 `{名字}`
+    //    占位符名取表达式文本（简单标识符才用原名，其余用 `pN`；重名自动加序号）——这样译文里读写都直观
+    if (ts.isTemplateExpression(node) && !insideTranslateCall(node)) {
+      const raw = node.getText(sf)
+      if (CJK.test(raw)) {
+        if (/[\r\n]/.test(raw)) {
+          manual.add(raw.replace(/\s+/g, ' ').slice(0, 90))
+        } else {
+          const used = new Map<string, number>()
+          const params = node.templateSpans.map((span, i) => {
+            const exprText = span.expression.getText(sf)
+            const base = /^[A-Za-z_$][\w$]*$/.test(exprText) ? exprText : `p${i + 1}`
+            const seen = used.get(base) ?? 0
+            used.set(base, seen + 1)
+            return { name: seen === 0 ? base : `${base}${seen + 1}`, text: exprText }
+          })
+          const parts = [node.head.text, ...node.templateSpans.map((s) => s.literal.text)]
+          const zh = parts.map((part, i) => (i === 0 ? part : `{${params[i - 1]!.name}}${part}`)).join('')
+          addSite(node, zh, 'template', undefined, undefined, params)
+        }
+      }
     }
     ts.forEachChild(node, visit)
   }
@@ -255,7 +306,10 @@ for (const file of walk(ROOT)) {
     else if (s.form === 'attr') edits.push({ start: s.node.getStart(sf), end: s.node.getEnd(), text: `{tr(${JSON.stringify(id)})}` })
     // 旧写法：调用点外层已经是 `t(...)`，这里**只把参数换成 id**（不能再套一层 tr）
     else if (s.form === 'arg') edits.push({ start: s.node.getStart(sf), end: s.node.getEnd(), text: JSON.stringify(id) })
-    else edits.push({ start: s.node.getStart(sf), end: s.node.getEnd(), text: `tr(${JSON.stringify(id)})` })
+    else if (s.form === 'template') {
+      const args = (s.params ?? []).map((p) => `${p.name}: ${p.text}`).join(', ')
+      edits.push({ start: s.node.getStart(sf), end: s.node.getEnd(), text: `tr(${JSON.stringify(id)}, { ${args} })` })
+    } else edits.push({ start: s.node.getStart(sf), end: s.node.getEnd(), text: `tr(${JSON.stringify(id)})` })
   }
   if (edits.length === 0) {
     if (missing.size > 0 || manual.size > 0) report.push({ rel, n: 0, missing, manual })
