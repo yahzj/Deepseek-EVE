@@ -416,6 +416,87 @@ export const EN_SKILLS: EnTable = {
 }
 
 /**
+ * 残骸（26 = 13 组 × 普通/稀有 · `packages/core/src/wreckGroups.ts` 的组名派生）：
+ * 中文侧名 = `组名` / `组名（稀有版）`，id = `wreck-<组key>` / `wreck-rare-<组key>`。
+ * 英文按「<族> Wreck / Rare Wreck（<区>）」——区 = High-sec / Low-sec / Wormhole（与 §九 技能 `Low-sec Survival` 同口径）。
+ */
+export const EN_WRECKS: EnTable = {
+  'wreck-a-hi': { name: 'Pirate Wreck (High-sec)' },
+  'wreck-rare-a-hi': { name: 'Pirate Rare Wreck (High-sec)' },
+  'wreck-b-hi': { name: 'Armed Scavenger Wreck (High-sec)' },
+  'wreck-rare-b-hi': { name: 'Armed Scavenger Rare Wreck (High-sec)' },
+  'wreck-d-hi': { name: 'Gravekeeper Wreck (High-sec)' },
+  'wreck-rare-d-hi': { name: 'Gravekeeper Rare Wreck (High-sec)' },
+  'wreck-a-lo': { name: 'Pirate Wreck (Low-sec)' },
+  'wreck-rare-a-lo': { name: 'Pirate Rare Wreck (Low-sec)' },
+  'wreck-c-lo': { name: 'Alien Wreck (Low-sec)' },
+  'wreck-rare-c-lo': { name: 'Alien Rare Wreck (Low-sec)' },
+  'wreck-d-lo': { name: 'Gravekeeper Wreck (Low-sec)' },
+  'wreck-rare-d-lo': { name: 'Gravekeeper Rare Wreck (Low-sec)' },
+  'wreck-e-lo': { name: 'Titan Megastructure Wreck (Low-sec)' },
+  'wreck-rare-e-lo': { name: 'Titan Megastructure Rare Wreck (Low-sec)' },
+  'wreck-g-lo': { name: 'Deadarmy Wreck (Low-sec)' },
+  'wreck-rare-g-lo': { name: 'Deadarmy Rare Wreck (Low-sec)' },
+  'wreck-a-wh': { name: 'Pirate Wreck (Wormhole)' },
+  'wreck-rare-a-wh': { name: 'Pirate Rare Wreck (Wormhole)' },
+  'wreck-c-wh': { name: 'Alien Wreck (Wormhole)' },
+  'wreck-rare-c-wh': { name: 'Alien Rare Wreck (Wormhole)' },
+  'wreck-d-wh': { name: 'Gravekeeper Wreck (Wormhole)' },
+  'wreck-rare-d-wh': { name: 'Gravekeeper Rare Wreck (Wormhole)' },
+  'wreck-e-wh': { name: 'Titan Megastructure Wreck (Wormhole)' },
+  'wreck-rare-e-wh': { name: 'Titan Megastructure Rare Wreck (Wormhole)' },
+  'wreck-g-wh': { name: 'Deadarmy Wreck (Wormhole)' },
+  'wreck-rare-g-wh': { name: 'Deadarmy Rare Wreck (Wormhole)' },
+}
+
+/** 异常点（27 · `docs/glossary-en.md` §十：悬赏 / 遭遇战卡片名） */
+export const EN_ANOMALIES: EnTable = {
+  'ano-training': { name: 'Proving Grounds Eviction' },
+  'ano-pirate-post': { name: 'Frontier Pirate Outpost' },
+  'ano-abandoned-platform': { name: 'Occupied Port Warrant' },
+  'ano-redring-raiders': { name: 'Red Tide Raider Fleet' },
+  'ano-gravekeeper': { name: 'Graveyard Gravekeeper' },
+  'ano-ghost-signal': { name: 'Ghost Ship Signal' },
+  'ano-abyss-guard': { name: 'Abyss Gate Guard' },
+  'ano-titan-wreck': { name: 'Titan Wreck Survey' },
+  'ano-auro-raiders': { name: 'Auro Armed Wreck Group' },
+  'ano-core-section': { name: 'Megastructure Core Survey' },
+  'ano-starcore-boss': { name: 'Starcore Swarm' },
+  'ano-cinder-siege': { name: 'Cinder Siege' },
+  'ano-echo-haunt': { name: 'Echo Remnant' },
+  'ano-nadir-static': { name: 'Nadir Static Blockade' },
+  'ano-maw-hunt': { name: 'Maw Hunt Order' },
+  'ano-vault-sentinel': { name: 'Vault Sentinel' },
+  'ano-voidedge-warden': { name: 'Voidsea Warden' },
+  'ano-harbor-escort': { name: 'New Harbor Convoy Escort' },
+  'ano-shard-bandits': { name: 'Shardbelt Bandit Warrant' },
+  'ano-lantern-saboteurs': { name: 'Beacon Hunter Bounty' },
+  'ano-haze-ambush': { name: 'Haze Ambush Clearance' },
+  'ano-mirage-hijackers': { name: 'Mirage Navigation Hijack' },
+  'ano-chasm-aberrations': { name: 'Chasm Aberration Hunt' },
+  'enc-pirate-1': { name: 'Roaming Pirate Skiff' },
+  'enc-pirate-2': { name: 'Ambush Raider Squad' },
+  'enc-pirate-3': { name: 'Fanatic Patrol Group' },
+  'enc-pirate-4': { name: 'Deepspace Butcher Fleet' },
+  // 虫洞敌卡（15，`hidden` ⇒ 不进悬赏目录，但战斗/虫洞页会显示；见 glossary §十一）
+  'wh-pirate-scout': { name: 'Raider Detachment' },
+  'wh-pirate-hunt': { name: 'Raider Hunt' },
+  'wh-pirate-warband': { name: 'Pirate Warband' },
+  'wh-alien-swarm': { name: 'Starcore Hunting Swarm' },
+  'wh-alien-brood': { name: 'Spore Brood Tide' },
+  'wh-alien-hive': { name: 'Maw Deep Hive' },
+  'wh-grave-watch': { name: 'Gravekeeper Patrol' },
+  'wh-grave-sentry': { name: 'Stasis Sentry Chain' },
+  'wh-grave-throne': { name: 'Mausoleum Court' },
+  'wh-titan-echo': { name: 'Titan Echo' },
+  'wh-titan-missile': { name: 'Missile Echo' },
+  'wh-titan-hulk': { name: 'Titan Onslaught' },
+  'wh-exile-blockade': { name: 'Deadarmy Blockade' },
+  'wh-exile-swarm': { name: 'Echo Swarm' },
+  'wh-exile-line': { name: 'Remnant Battle Line' },
+}
+
+/**
  * 覆盖一层 **数组**目录（界面枚举用：`engine.ships` / `engine.modules` … 都是"原始数组过滤后"的只读表）。
  * 与 `overlayMap` 同口径：只改 `name` / `description`；一条都没命中时返回**原数组**。
  */
@@ -470,13 +551,20 @@ export function overlayMap<T extends { name: string; description?: string }>(
  * - `locale === 'zh'` ⇒ **原样返回同一个 ctx**（零拷贝、零行为变化：工具 / 测试 / 模拟读数逐字不变）；
  * - `locale === 'en'` ⇒ 逐表覆盖（本批只有舰船；后续批次在此追加 `modules / items / skills / …`）。
  */
+/**
+ * 物品目录的**合并覆盖表**：静态物品（86）＋ 派生残骸（26）。
+ * 合成一次即可——`localizeCtx` 用同一张表覆盖 `ctx.items`（残骸在 `context.ts` 里是先登记、后覆盖的）。
+ */
+export const EN_ITEMS_ALL: EnTable = { ...EN_ITEMS, ...EN_WRECKS }
+
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
   if (locale === 'zh') return ctx
   return {
     ...ctx,
     ships: overlayMap(ctx.ships, EN_SHIPS, locale),
     modules: overlayMap(ctx.modules, EN_MODULES, locale),
-    items: overlayMap(ctx.items, EN_ITEMS, locale),
+    items: overlayMap(ctx.items, EN_ITEMS_ALL, locale),
     skills: overlayMap(ctx.skills, EN_SKILLS, locale),
+    anomalies: overlayMap(ctx.anomalies, EN_ANOMALIES, locale),
   }
 }

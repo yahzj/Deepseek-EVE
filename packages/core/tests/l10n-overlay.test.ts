@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_ITEMS, EN_MODULES, EN_SHIPS, EN_SKILLS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
+import { EN_ANOMALIES, EN_ITEMS, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -87,7 +87,7 @@ describe('英文覆盖层（P2）', () => {
     expect(en.items.get('box-bp-shallow')?.name).toBe('Blueprint Container (Shallow)')
     expect(en.skills.get('gunnery')?.name).toBe('Gunnery')
     expect(en.skills.get('targeting-integration')?.name).toBe('Targeting Integration')
-    // ctx 里含**派生件**：碎片（跟着装备名走 ⇒ 已英文化）与残骸（本批未登记 ⇒ 按设计原样中文）
+    // ctx 里含**派生件**：碎片（跟着装备名走 ⇒ 已英文化）与残骸（EN_WRECKS 已覆盖）
     const derived = [...zh.items.keys()].filter((id) => !ITEMS.some((d) => d.id === id))
     expect(derived.length, 'ctx 里应有派生物品（残骸/碎片）').toBeGreaterThan(0)
     const frags = derived.filter((id) => id.startsWith('frag-'))
@@ -95,7 +95,23 @@ describe('英文覆盖层（P2）', () => {
     expect(frags.length, '应有碎片派生件').toBeGreaterThan(0)
     expect(wrecks.length, '应有残骸派生件').toBeGreaterThan(0)
     for (const id of frags) expect(en.items.get(id)?.name, `${id}（碎片应随装备名英文化）`).not.toBe(zh.items.get(id)?.name)
-    for (const id of wrecks) expect(en.items.get(id)?.name, `${id}（残骸本批不译）`).toBe(zh.items.get(id)?.name)
+    // 残骸（26 条）本批已覆盖 ⇒ 英文名生效（覆盖表见 EN_WRECKS）
+    for (const id of wrecks) expect(en.items.get(id)?.name, `${id}（残骸应有英文名）`).not.toBe(zh.items.get(id)?.name)
+  })
+
+  it('异常点覆盖：42 张全覆盖（23 悬赏 + 4 遭遇模板 + 15 虫洞敌卡）+ 英文名生效', () => {
+    expect(zh.anomalies.size, '异常点/敌卡总数').toBe(42)
+    const missing = [...zh.anomalies.keys()].filter((id) => !(id in EN_ANOMALIES))
+    expect(missing, `这些异常点还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.anomalies.get('ano-maw-hunt')?.name).toBe('Maw Hunt Order')
+    expect(en.anomalies.get('enc-pirate-4')?.name).toBe('Deepspace Butcher Fleet')
+    const strip = (d: object): string => {
+      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
+      delete rest.name
+      delete rest.description
+      return JSON.stringify(rest)
+    }
+    for (const [id, def] of zh.anomalies) expect(strip(en.anomalies.get(id)!), `异常点 ${id} 的数值字段`).toBe(strip(def))
   })
 
   it('物品 / 技能：id 集合一致，除 name/description 外逐字段深比一字不动', () => {

@@ -251,7 +251,7 @@ import type {
   WormholeAutoRun,
   WormholeHoldPlacement,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS, EN_SKILLS, type L10nLocale } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
@@ -471,9 +471,9 @@ export class GameEngine {
   readonly shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
   readonly galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
-  readonly anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
+  anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
-  readonly allAnomalies = ANOMALIES_FLAVORED
+  allAnomalies = ANOMALIES_FLAVORED
   /**
    * **全目录**（含未上线）——只给"玩家已持有 / 已在跑"的解析路径用：装备库按持有数筛、
    * 组装机按 `run.blueprintId` 反查蓝图等。**别的用途一律用上面的可见目录**
@@ -622,8 +622,10 @@ export class GameEngine {
     this.allShips = overlayList(SHIPS, EN_SHIPS, locale)
     this.modules = overlayList(MODULES, EN_MODULES, locale).filter((d) => itemReleased(d))
     this.allModules = overlayList(MODULES, EN_MODULES, locale)
-    this.items = overlayList(ITEMS, EN_ITEMS, locale)
+    this.items = overlayList(ITEMS, EN_ITEMS_ALL, locale)
     this.skills = overlayList(SKILLS, EN_SKILLS, locale)
+    this.anomalies = overlayList(ANOMALIES_FLAVORED, EN_ANOMALIES, locale).filter((a) => !a.hidden)
+    this.allAnomalies = overlayList(ANOMALIES_FLAVORED, EN_ANOMALIES, locale)
     this.notify()
   }
 
