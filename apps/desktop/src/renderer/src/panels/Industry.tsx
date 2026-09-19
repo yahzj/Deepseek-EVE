@@ -41,6 +41,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
+import { useL10n } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
   CONSUME_SUBS,
@@ -107,6 +108,7 @@ export function BlueprintShelfPanel({
   onGotoCraft?: (blueprintId: string) => void
 }) {
   const state = engine.state
+  const { t } = useL10n()
   const entries = Object.entries(state.blueprintStock).filter(([, n]) => n > 0)
   /**
    * **与组装机同样的筛选**（船长 2026-09-14：「蓝图书架也加入组装机同样的筛选」）：
@@ -116,26 +118,64 @@ export function BlueprintShelfPanel({
   const [kind, setKind] = useState<ManuTab>('all')
   const [sub, setSub] = useState<string>(SUB_ALL)
   const [useKind, setUseKind] = useState<BlueprintUse>('all')
-  const subOptions = manuSubsOf(kind)
-  const all = entries.map(([id, n]) => ({ id, n, keys: bpFilterKeysOf(engine, id) }))
-  const shown = all
-    .filter((e) => kind === 'all' || e.keys.tab === kind)
-    .filter((e) => sub === SUB_ALL || e.keys.subKey === sub)
-    .filter((e) => useKind === 'all' || (useKind === 'single' ? e.keys.singleUse : !e.keys.singleUse))
-
+  /** 蓝图书卡（未筛选）：书架 = **手上还没学的书** */
+  const bookCards = entries.map(([id, n]) => ({ id, n, keys: bpFilterKeysOf(engine, id) }))
   /**
    * **碎片逆向卡（2026-09-19 船长：「蓝图书架内确实没有显示可以合并的蓝图碎片。是否忘记添加到蓝图书架了？」）**：
    * 书架原先**只列"手上持有的蓝图书"**，而碎片是"还没有书"的那条路 ⇒ 玩家在这里看不到任何可合并的碎片。
    * 现补一类卡：**碎片进度 > 0 且尚未掌握、且手上没有这本书**的逆向蓝图，卡上直接给「逆向解锁 N/M」。
-   * 读数走 core 单点 `fragmentRedeemRows()`（与兑命令同源），筛选沿用书架那三级（`bpFilterKeysOf`）。
+   * 读数走 core 单点 `fragmentRedeemRows()`（与兑命令同源）；门类归属走 `bpFilterKeysOf`（与蓝图书同一把尺）。
    */
-  const fragShown = engine
+  const fragCards = engine
     .fragmentRedeemRows()
     .filter((r) => !r.learned && r.have > 0 && (state.blueprintStock?.[r.blueprintId] ?? 0) <= 0)
     .map((r) => ({ r, keys: bpFilterKeysOf(engine, r.blueprintId) }))
-    .filter((e) => kind === 'all' || e.keys.tab === kind)
-    .filter((e) => sub === SUB_ALL || e.keys.subKey === sub)
-    .filter((e) => useKind === 'all' || (useKind === 'single' ? e.keys.singleUse : !e.keys.singleUse))
+  const cards = [...bookCards, ...fragCards]
+  /**
+   * **筛选项按"书架上真有卡片"出**（2026-09-19 报障修复 · 船长：「如果选择舰船蓝图或者消耗品蓝图，
+   * 卡片列表会变空」）：书架只列"还没学的书"＋"可逆向的碎片卡"，而**学习一本吃一本书**
+   * （`market.learnBlueprint`）⇒ 把某一门类学完的档，书架上那一门类就是空的。
+   * 旧口径把三个标签**静态全列** ⇒ 选「舰船蓝图」/「消耗品蓝图」必然一张卡都不剩，
+   * 正是 2026-09-14 那条「避免看不见的筛选」要防的坑。现改为**只列真有卡片的档**：
+   * 「全部 / 全部子类 / 全部图纸」三项**常显**，其余按现有卡片现算（键与顺序仍取既有单点表）。
+   */
+  const tabsShown = MANU_TABS.filter((tb) => tb.key === 'all' || cards.some((c) => c.keys.tab === tb.key))
+  const subsShown = manuSubsOf(kind).filter((s) => cards.some((c) => c.keys.tab === kind && c.keys.subKey === s.key))
+  const usesShown = BLUEPRINT_USE_TABS.filter((u) =>
+    u.key === 'all'
+      ? true
+      : cards.some(
+          (c) =>
+            (kind === 'all' || c.keys.tab === kind) &&
+            (sub === SUB_ALL || c.keys.subKey === sub) &&
+            (u.key === 'single' ? c.keys.singleUse : !c.keys.singleUse),
+        ),
+  )
+  /**
+   * **卡片集合变了 ⇒ 原选择可能已经无卡**（学掉最后一张该类书 / 逆向解锁 / 新书到架）：
+   * 回落到「全部」，别让玩家卡在永远空的档（与"不出空标签"同一目的）。
+   */
+  const kindMissing = kind !== 'all' && !tabsShown.some((x) => x.key === kind)
+  const subMissing = !kindMissing && sub !== SUB_ALL && !subsShown.some((x) => x.key === sub)
+  useEffect(() => {
+    if (kindMissing) {
+      setKind('all')
+      setSub(SUB_ALL)
+      setUseKind('all')
+      return
+    }
+    if (subMissing) {
+      setSub(SUB_ALL)
+      setUseKind('all')
+    }
+  }, [kindMissing, subMissing])
+  /** 三级筛选判定（与上面两张"现算表"同一把尺） */
+  const passKeys = (k: { tab: ManuTab; subKey: string; singleUse: boolean }): boolean =>
+    (kind === 'all' || k.tab === kind) &&
+    (sub === SUB_ALL || k.subKey === sub) &&
+    (useKind === 'all' || (useKind === 'single' ? k.singleUse : !k.singleUse))
+  const shown = bookCards.filter((c) => passKeys(c.keys))
+  const fragShown = fragCards.filter((c) => passKeys(c.keys))
 
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
@@ -154,7 +194,7 @@ export function BlueprintShelfPanel({
     else onToast('出售指令已受理：市场收购簿有单即时成交，否则自动挂卖单。')
   }
 
-  if (entries.length === 0 && fragShown.length === 0) {
+  if (cards.length === 0) {
     return (
       <Panel
         title="蓝图书架"
@@ -183,25 +223,27 @@ export function BlueprintShelfPanel({
       }
     >
       {/* 三级筛选与组装机**同一套**（同表、同顺序、同"选了子类才出三级"的规则）——
-          样式逐字复用这两行（`app-task-tabs` + `app-fleet-tabs` + `app-tasktab`） */}
+          样式逐字复用这两行（`app-task-tabs` + `app-fleet-tabs` + `app-tasktab`）；
+          ⚠ **标签集合是现算的**（2026-09-19 报障修复）：只列"书架上真有卡片"的档，
+          「全部 / 全部子类 / 全部图纸」常显——详见上面 `tabsShown / subsShown / usesShown` 的注释 */}
       <div className="app-task-tabs" role="tablist">
-        {MANU_TABS.map((t) => (
+        {tabsShown.map((tb) => (
           <button
-            key={t.key}
+            key={tb.key}
             role="tab"
-            aria-selected={kind === t.key}
-            className={`app-tasktab${kind === t.key ? ' is-active' : ''}`}
+            aria-selected={kind === tb.key}
+            className={`app-tasktab${kind === tb.key ? ' is-active' : ''}`}
             onClick={() => {
-              setKind(t.key)
+              setKind(tb.key)
               setSub(SUB_ALL) // 换一级标签即回「全部子类」（与组装机同款）
               setUseKind('all')
             }}
           >
-            {t.label}
+            {tb.label}
           </button>
         ))}
       </div>
-      {subOptions.length > 0 ? (
+      {subsShown.length > 0 ? (
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
           <button
             role="tab"
@@ -214,7 +256,7 @@ export function BlueprintShelfPanel({
           >
             全部子类
           </button>
-          {subOptions.map((s) => (
+          {subsShown.map((s) => (
             <button
               key={s.key}
               role="tab"
@@ -232,7 +274,7 @@ export function BlueprintShelfPanel({
       ) : null}
       {sub !== SUB_ALL ? (
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          {BLUEPRINT_USE_TABS.map((u) => (
+          {usesShown.map((u) => (
             <button
               key={u.key}
               role="tab"
@@ -325,7 +367,7 @@ export function BlueprintShelfPanel({
         </div>
       ))}
       {shown.length === 0 && fragShown.length === 0 ? (
-        <div className="app-dim app-inv-empty">该筛选下书架里没有对应的书——换个分类、或把「全部子类 / 全部图纸」点回来看看。</div>
+        <div className="app-dim app-inv-empty">{t('这一类书架里没有书，也没有可逆向的碎片。')}</div>
       ) : null}
     </Panel>
   )

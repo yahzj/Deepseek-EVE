@@ -66,4 +66,7 @@ export const EN: Record<string, string> = {
   '信用点': 'credits',
   '星图': 'Star Map',
   '手册': 'Handbook',
+
+  // ── 蓝图书架（2026-09-19 报障修复：筛选项按现有卡片现算，空态文案随之改写）
+  '这一类书架里没有书，也没有可逆向的碎片。': 'No books or redeemable fragments in this category on the shelf.',
 }
