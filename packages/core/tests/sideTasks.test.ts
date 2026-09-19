@@ -417,6 +417,60 @@ describe('v24 时效任务：刷出时的市场影响（防"买来秒交"）', (
 })
 
 describe('v24 时效任务：候选池按星图进度过滤（sideTaskCandidateGoods）', () => {
+  /**
+   * 残骸排除（船长 2026-09-18：「在资源和快递任务中，将所有残骸排除。」）：
+   * 判据 = `ItemDef.kind === 'wreck'`（普通残骸与稀有残骸同属这一类）；
+   * ⚠ 必须连"仓库已有该货即放行"那条快速路径也拦住——否则玩家仓库里躺着残骸时又会被放回候选池。
+   */
+  const WRECK_GOOD = { key: 'wreck-x', kind: 'item' as const, refId: 'wreck-x', rarity: 'common' as const, basePrice: 30, poolTarget: 2_000, supplyFlow: 100 }
+  const WRECK_ITEM = {
+    id: 'wreck-x',
+    name: '测试编队残骸',
+    kind: 'wreck' as const,
+    unitM3: 1,
+    baseSellPriceIsk: 1,
+    description: '测试用残骸物品。',
+  }
+
+  it('残骸不进候选池：未持有不放行，**仓库已有也不放行**；其余候选照旧', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 21 })
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      items: [WRECK_ITEM],
+      marketGoods: [ORE_GOOD, MIN_GOOD, WRECK_GOOD],
+      balance: quietBalance(),
+    })
+    const keysOf = (): string[] => sideTaskCandidateGoods(state, ctx).map((g) => g.key).sort()
+    // 残骸行确实在市场目录里（否则这条用例是空转）——但它不进候选
+    expect([...ctx.marketGoods.keys()]).toContain('wreck-x')
+    expect(keysOf()).toEqual(['it-min-a', 'it-ore-a'])
+    // 仓库已有残骸（本来是"已接触 ⇒ 恒放行"那条路）⇒ 仍不放行
+    state.warehouse.items['wreck-x'] = 500
+    expect(keysOf()).toEqual(['it-min-a', 'it-ore-a'])
+  })
+
+  it('整板刷新不会刷出残骸任务（资源与快递两族都干净）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 23 })
+    const site = stationSite('site-x', 'galaxy-hub', '测试站')
+    state.stationSites['site-x'] = { stage: 3, delivered: {} } // 已建成 ⇒ 快递开刷
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      stations: [site],
+      items: [WRECK_ITEM],
+      marketGoods: [ORE_GOOD, MIN_GOOD, WRECK_GOOD],
+      balance: quietBalance(),
+    })
+    // 仓库里塞满残骸（最容易被"放回来"的那种档）+ 推过几个整点，逐轮核对
+    state.warehouse.items['wreck-x'] = 9_999
+    for (const boundary of [PERIOD, 2 * PERIOD, 3 * PERIOD]) {
+      state.market.lastTickGameMs = boundary
+      advanceSideTasks(state, ctx)
+      const tasks = [...boardOf(state).resource, ...boardOf(state).courier]
+      expect(tasks.length).toBeGreaterThan(0)
+      for (const t of tasks) expect(t.refId).not.toBe('wreck-x')
+    }
+  })
+
   it('未探索星系矿带的产物不出现在候选：只刷 home/无依赖物资；仓库已有或探索该星系后放行', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 11 })
     // 远处矿带产出 ore-far（星系 galaxy-far 未探索）；ammo-kinetic-l = NPC 直供无矿带依赖
