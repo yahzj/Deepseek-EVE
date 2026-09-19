@@ -62,14 +62,14 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
 
   return (
     <>
-      <button className="app-btn" onClick={openAndMark} title="游戏更新公告">
-        公告{unread ? <i className="app-ann-dot" aria-label="有未读公告" /> : null}
+      <button className="app-btn" onClick={openAndMark} title={tr("ui.Announcements.001")}>
+        {tr("ui.Announcements.002")}{unread ? <i className="app-ann-dot" aria-label="有未读公告" /> : null}
       </button>
       {open ? (
         <div className="app-ann-mask" onClick={() => setOpen(false)}>
           <div className="app-ann" onClick={(e) => e.stopPropagation()}>
             <div className="app-ann-head">
-              <span className="app-ann-title">📣 更新公告</span>
+              <span className="app-ann-title">{tr("ui.Announcements.003")}</span>
               <button className="app-btn is-small" onClick={() => setOpen(false)}>
                 {tr("ui.App.100")}
               </button>

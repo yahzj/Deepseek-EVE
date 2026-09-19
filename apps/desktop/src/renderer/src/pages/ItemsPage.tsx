@@ -118,8 +118,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   function handleLoadMod(id: string): void {
     const def = engine.ctx.modules.get(id)
     const loaded = engine.loadWareToCargoFit(id)
-    if (loaded === 0) onToast('船上没有足够空间（模块按 1 m³/件 计入货舱）。', true)
-    else onToast(`已装船 ${def?.name ?? id}×${loaded.toLocaleString('zh-CN')}（按 1 m³/件 计入货舱；装配请先卸回装备库）。`)
+    if (loaded === 0) onToast(tr("ui.ItemsPage.040"), true)
+    else onToast(tr("ui.ItemsPage.041", { p1: def?.name ?? id, p2: loaded.toLocaleString('zh-CN') }))
   }
 
   // 出售数量选择（船长 2026-09-05：支持只卖一部分）
@@ -130,21 +130,21 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   function handleSellQtyItem(id: string, qty: number): void {
     const r = engine.sellWare(id, qty)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`已按市价售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} 信用点。`)
+    else onToast(tr("ui.ItemsPage.042", { p1: r.soldUnits.toLocaleString('zh-CN'), p2: r.gainedIsk.toLocaleString('zh-CN') }))
     setSellItem(null)
     setPickItem(null)
   }
   function handleSellQtyMod(id: string, qty: number): void {
     const good = marketGoodOf(engine.ctx, 'module', id)
     if (!good) {
-      onToast('该装备不在市场流通目录（无法出售）。', true)
+      onToast(tr("ui.ItemsPage.043"), true)
       setSellMod(null)
       setPickMod(null)
       return
     }
     const r = engine.sellHoldingAt(good.key, qty)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`已按市价售出装备（簿吃穿余量自动挂卖单）。`)
+    else onToast(tr("ui.ItemsPage.044"))
     setSellMod(null)
     setPickMod(null)
   }
@@ -616,7 +616,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             glyph={def.kind}
             max={units}
             unit="单位"
-            priceText={buy !== undefined ? `收价 ${isk(buy)} 信用点/单位` : undefined}
+            priceText={buy !== undefined ? tr("ui.CargoPage.055", { p1: isk(buy) }) : undefined}
             note={def.description}
             onClose={() => setSellItem(null)}
             onConfirm={(qty) => handleSellQtyItem(sellItem, qty)}
@@ -640,7 +640,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             onConfirm={(qty) => {
               const r = engine.discardWare(discardItem, qty)
               if (!r.ok) onToast(r.error ?? '丢弃失败', true)
-              else onToast(`已丢弃 ${def.name}×${r.dropped.toLocaleString('zh-CN')}。`)
+              else onToast(tr("ui.ItemsPage.045", { p1: def.name, p2: r.dropped.toLocaleString('zh-CN') }))
               setDiscardItem(null)
             }}
           />

@@ -1318,7 +1318,7 @@ function StarMap({
           const labelText =
             isHub || frontier
               ? isHub
-                ? '母港'
+                ? tr("ui.Expedition.007")
                 : tr("ui.ActivityBar.015")
               : labelMode === 'sec'
                 ? secText(g.security)

@@ -85,49 +85,49 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
   }
   switch (v.stop) {
     case 'remove-training':
-      run(engine.dequeueAt(0), '已取消训练：本级进度保留，重新排同一级可续接。')
+      run(engine.dequeueAt(0), tr("ui.ActivityBar.038"))
       break
     case 'stop-mining':
       run(engine.stopMiningNow(), tr("ui.MapPage.080"))
       break
     case 'stop-scan':
-      run(engine.stopScanNow(), '已终止扫描探索：就地扫描进度已保存，下次续扫。')
+      run(engine.stopScanNow(), tr("ui.ActivityBar.039"))
       break
     case 'stop-whscan':
-      run(engine.wormholeScanStop(), '已停止扫描虫洞：进度保留，下次接着扫。')
+      run(engine.wormholeScanStop(), tr("ui.ActivityBar.040"))
       break
     case 'stop-whauto':
-      if (v.stopParam) run(engine.wormholeAutoStop(v.stopParam), '已召回自动探索队：没有收益、也没有损伤（那条通道就此关闭）。')
+      if (v.stopParam) run(engine.wormholeAutoStop(v.stopParam), tr("ui.ActivityBar.041"))
       break
     case 'stop-salvage':
-      run(engine.stopSalvageOpNow(), '已停止打捞：本趟已捞的残骸仍在船上（未返航不卸货）。')
+      run(engine.stopSalvageOpNow(), tr("ui.ActivityBar.042"))
       break
     case 'cancel-manufacture':
-      if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), '已取消制造：材料全额退回物品仓库。')
+      if (v.stopParam) run(engine.cancelManufacturingAt(v.stopParam), tr("ui.ActivityBar.043"))
       break
     case 'stop-refine':
-      if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), '已停止该台炉：原料未锁定，余料仍在仓库。')
+      if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), tr("ui.ActivityBar.044"))
       break
     case 'recall-expedition':
-      run(engine.recallExpeditionNow(), '远征已召回：舰队返回母港（无战果）。')
+      run(engine.recallExpeditionNow(), tr("ui.ActivityBar.045"))
       break
     case 'recall-standby':
-      run(engine.recallStandbyNow(), '掩护巡逻已召回：舰船返回母港。')
+      run(engine.recallStandbyNow(), tr("ui.ActivityBar.046"))
       break
     case 'retreat-battle':
-      run(engine.retreatNow(), '已撤退：舰队脱离交火并即刻回港。')
+      run(engine.retreatNow(), tr("ui.ActivityBar.047"))
       break
     case 'cancel-ai':
       if (v.stopParam) run(engine.cancelAiTaskAt(v.stopParam), tr("ui.ShipPage.177"))
       break
     case 'cancel-deliver-trip':
-      run(engine.cancelDeliverTripNow(), '交付航线已取消（无惩罚）：已停止交付循环，舰船立即返航停靠最近空间站（本趟装载随进港卸回仓库）。')
+      run(engine.cancelDeliverTripNow(), tr("ui.ActivityBar.048"))
       break
     case 'stop-loop':
-      run(engine.bountyLoopAt(null), '重复清剿已停止。')
+      run(engine.bountyLoopAt(null), tr("ui.ActivityBar.049"))
       break
     case 'stop-hauling':
-      run(engine.stopHaulingNow(), '长途运输已停止：舰船已即时返港停靠出发站（无惩罚）。')
+      run(engine.stopHaulingNow(), tr("ui.ActivityBar.050"))
       break
   }
 }
@@ -219,7 +219,7 @@ export function ActivityBar({
             : ''
       return `· ${v.label}——${v.sub}${tail}`
     })
-    if (items.length > 8) lines.push(`· …另有 ${items.length - 8} 条`)
+    if (items.length > 8) lines.push(tr("ui.ActivityBar.051", { p1: items.length - 8 }))
     return lines.join('\n')
   }
   const aiShipItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'ship')
@@ -294,7 +294,7 @@ export function ActivityBar({
     <div
       key={v.id}
       className={`app-activitybar-item is-${v.kind}`}
-      title={v.stopReason ?? `点击前往「${goText}」页`}
+      title={v.stopReason ?? tr("ui.ActivityBar.052", { goText: goText })}
       onClick={handleItemClick}
     >
       <span className="app-activitybar-icon"><Glyph name={KIND_ICON[v.kind] ?? 'fallback'} size={15} color={NAV_TONES[KIND_ICON[v.kind]] ?? ICO_TONES[KIND_ICON[v.kind]]} /></span>
@@ -345,7 +345,7 @@ export function ActivityBar({
             }
             if (!retreatAsk) {
               setRetreatAsk(true)
-              onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险）——再点一次确认。', true)
+              onToast(tr("ui.ActivityBar.053"), true)
               return
             }
             setRetreatAsk(false)
@@ -429,7 +429,7 @@ export function ActivityBar({
             className="app-activitybar-tuning app-activitybar-promo"
             title={
               `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
-              `截止 ${new Date(p.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, p.untilMs - tuningTick))}` +
+              tr("ui.ActivityBar.054", { p1: new Date(p.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, p.untilMs - tuningTick)) }) +
               `\n点击前往「${p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006")}」页`
             }
             onClick={() => {
@@ -454,7 +454,7 @@ export function ActivityBar({
             className="app-activitybar-tuning"
             title={
               `${t.name}：本期限时加成 ×${t.mul}${t.note ? `\n${t.note}` : ''}\n` +
-              `截止 ${new Date(t.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, t.untilMs - tuningTick))}`
+              tr("ui.ActivityBar.054", { p1: new Date(t.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, t.untilMs - tuningTick)) })
             }
             onClick={() => onGoPage?.('map', 'star')}
           >

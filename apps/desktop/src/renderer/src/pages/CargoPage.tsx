@@ -505,7 +505,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               glyph={sellDef.kind}
               max={sellUnits}
               unit="单位"
-              priceText={sellBuy !== undefined ? `收价 ${isk(sellBuy)} 信用点/单位` : undefined}
+              priceText={sellBuy !== undefined ? tr("ui.CargoPage.055", { p1: isk(sellBuy) }) : undefined}
               note={sellDef.description}
               onClose={() => setSellId(null)}
               onConfirm={(qty) => handleSell(sellId, qty)}

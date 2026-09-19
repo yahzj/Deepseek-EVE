@@ -296,7 +296,7 @@ function PerfHud({ onClose }: { onClose: () => void }) {
   }, [])
   function fmtBox(b?: { n: number; sumMs: number; maxMs: number }): string {
     if (!b || b.n === 0) return '—'
-    return `均 ${(b.sumMs / b.n).toFixed(2)}ms · 峰 ${b.maxMs.toFixed(1)}ms ×${b.n}`
+    return tr("ui.App.105", { p1: (b.sumMs / b.n).toFixed(2), p2: b.maxMs.toFixed(1), p3: b.n })
   }
   async function doCopy(): Promise<void> {
     const rep = perfHub.report()
@@ -529,7 +529,7 @@ export function App({ engine }: { engine: GameEngine }) {
       const btn = el?.closest?.('button') as HTMLButtonElement | null
       if (!btn || !btn.disabled) return
       const reason = btn.title || btn.dataset.disabledReason
-      showToast(reason ? `（按钮不可用）${reason}` : tr("ui.App.053"), true)
+      showToast(reason ? tr("ui.App.106", { reason: reason }) : tr("ui.App.053"), true)
     }
     window.addEventListener('pointerdown', onPointerDown, true)
     return () => window.removeEventListener('pointerdown', onPointerDown, true)
@@ -621,7 +621,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const lowSecPrev = useRef(state.lowSecNotified)
   useEffect(() => {
     if (state.lowSecNotified && !lowSecPrev.current) {
-      showToast('⚠ 已进入低安星系：采矿/停留/远征可能遭遇巡逻拦截或海盗伏击——可迎战或快速脱离，规则见手册「航行须知」。', true)
+      showToast(tr("ui.App.107"), true)
     }
     lowSecPrev.current = state.lowSecNotified
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -780,9 +780,9 @@ export function App({ engine }: { engine: GameEngine }) {
   }
 
   function handleReset(): void {
-    if (!window.confirm('确定要重置档案吗？当前所有进度将被清空。')) return
+    if (!window.confirm(tr("ui.App.108"))) return
     engine.resetGame()
-    showToast('档案已重置，祝新航程顺利。')
+    showToast(tr("ui.App.109"))
   }
 
   const pageProps = { engine, onToast: showToast }
@@ -831,7 +831,7 @@ export function App({ engine }: { engine: GameEngine }) {
 
     // 「第一次」前置（工业/市场）：导航项此时不显示，这里拦的是程序化跳转
     if (!unlocked(state, p)) {
-      showToast(`尚未解锁：先完成「${unlockNeedTitle(p) ?? '前置任务'}」。`, true)
+      showToast(tr("ui.App.110", { p1: unlockNeedTitle(p) ?? '前置任务' }), true)
       return
     }
     /**
@@ -850,7 +850,7 @@ export function App({ engine }: { engine: GameEngine }) {
     // 「第一次」前置（星图四项：先完成第一次扫描）——页签此时不显示，这里拦的是程序化跳转
     if (tabLocked(t)) {
       const k = TAB_UNLOCK_KEY[t]
-      showToast(`尚未解锁：先完成「${(k ? unlockNeedTitle(k) : undefined) ?? '前置任务'}」。`, true)
+      showToast(tr("ui.App.110", { p1: (k ? unlockNeedTitle(k) : undefined) ?? '前置任务' }), true)
       return
     }
     setMapTab(t)
@@ -935,9 +935,9 @@ export function App({ engine }: { engine: GameEngine }) {
           <button
             className="app-btn"
             onClick={copyQqGroup}
-            title={`游戏讨论 QQ 群：${QQ_GROUP}（点击复制群号，到 QQ 搜索群号即可加入）`}
+            title={tr("ui.App.111", { QQ_GROUP: QQ_GROUP })}
           >
-            {qqCopied ? tr("ui.App.060") : `💬 QQ群 ${QQ_GROUP}`}
+            {qqCopied ? tr("ui.App.060") : tr("ui.App.112", { QQ_GROUP: QQ_GROUP })}
           </button>
           <button className="app-btn" onClick={() => setShowHandbook(true)} title={tr("ui.App.061")}>
             {t('ui.App.028')}
@@ -982,8 +982,8 @@ export function App({ engine }: { engine: GameEngine }) {
                 title={
                   unreadN > 0
                     ? item.key === 'task'
-                      ? `赏金任务已更新：${unreadN} 条（进任务中心即清除）`
-                      : `有 ${unreadN} 条未读通讯`
+                      ? tr("ui.App.113", { unreadN: unreadN })
+                      : tr("ui.App.114", { unreadN: unreadN })
                     : undefined
                 }
                 onClick={() => changePage(item.key)}

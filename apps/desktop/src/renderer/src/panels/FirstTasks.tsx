@@ -86,7 +86,7 @@ export function FirstTasks({
   return (
     <div className="app-station-list">
       <div className="app-task-family">
-        ◆ 第一次 · {doneN}/{tasks.length} {tr("ui.FirstTasks.013")}
+        {tr("ui.FirstTasks.026")} {doneN}/{tasks.length} {tr("ui.FirstTasks.013")}
         <span className="app-dim"> · 完成一条收一封情报，其后开出长期次数目标；可领奖的排在最前</span>
       </div>
       {ordered.map(({ def, done, pendingIsk: pending, level, total, count, next, nextRewardIsk }) => {
@@ -107,8 +107,8 @@ export function FirstTasks({
           parts.push(`${nm ?? b.blueprintId} ×${b.units}`)
         }
         for (const s of r?.ships ?? []) parts.push(`${engine.ctx.ships.get(s.defId)?.name ?? s.defId} ×${s.units}`)
-        for (const c of r?.aiCores ?? []) parts.push(`基础 AI 核心 ×${c.units}`)
-        if (r?.wormholeStock) parts.push(`未探索虫洞 ×${r.wormholeStock}`)
+        for (const c of r?.aiCores ?? []) parts.push(tr("ui.FirstTasks.027", { p1: c.units }))
+        if (r?.wormholeStock) parts.push(tr("ui.FirstTasks.028", { p1: r.wormholeStock }))
         if (r?.isk) parts.push(tr("ui.ItemsPage.039", { p1: r.isk.toLocaleString('zh-CN') }))
         const rewardTxt = parts.length > 0 ? parts.join(tr("ui.MatterTechTab.017")) : tr("ui.FirstTasks.014")
         return (
@@ -122,10 +122,10 @@ export function FirstTasks({
               {jump && onJump ? (
                 <button
                   className="app-btn is-small"
-                  title={`前往「${jump.label}」`}
+                  title={tr("ui.FirstTasks.029", { p1: jump.label })}
                   onClick={() => onJump({ page: jump.page, mapTab: jump.mapTab, shipTab: jump.shipTab, industrySec: jump.industrySec })}
                 >
-                  前往{jump.label} ›
+                  {tr("ui.CommsReader.004")}{jump.label} ›
                 </button>
               ) : null}
             </div>
@@ -147,7 +147,7 @@ export function FirstTasks({
             {done && def.chain ? (
               <div className="app-task-reward">
                 <span className="app-dim">{tr("ui.FirstTasks.018")} </span>
-                {nextRewardIsk > 0 ? `第 ${level + 1} 级 ${nextRewardIsk.toLocaleString('zh-CN')} 信用点` : tr("ui.FirstTasks.019")}
+                {nextRewardIsk > 0 ? tr("ui.FirstTasks.030", { p1: level + 1, p2: nextRewardIsk.toLocaleString('zh-CN') }) : tr("ui.FirstTasks.019")}
               </div>
             ) : (
               <div className="app-task-reward">
@@ -157,7 +157,7 @@ export function FirstTasks({
             )}
             <div className="app-station-deliver">
               <span className="app-dim">
-                {claimable ? `可领奖金 ${pending.toLocaleString('zh-CN')} 信用点` : done ? tr("ui.FirstTasks.020") : tr("ui.FirstTasks.021")}
+                {claimable ? tr("ui.FirstTasks.031", { p1: pending.toLocaleString('zh-CN') }) : done ? tr("ui.FirstTasks.020") : tr("ui.FirstTasks.021")}
               </span>
               {/* 「看情报」：那封信在该条完成时送达（`firstTask` 触发器）⇒ 只在已完成时出现 */}
               {done && onOpenComms ? (
@@ -168,13 +168,13 @@ export function FirstTasks({
               {claimable ? (
                 <button
                   className="app-btn is-small is-primary"
-                  title={`领取已达级别的链奖金（共 ${pending.toLocaleString('zh-CN')} 信用点）`}
+                  title={tr("ui.FirstTasks.032", { p1: pending.toLocaleString('zh-CN') })}
                   onClick={() => {
                     const isk = engine.claimChainRewardAt(def.chain!.id)
-                    onToast(isk > 0 ? `奖金已到账：${isk.toLocaleString('zh-CN')} 信用点。` : tr("ui.FirstTasks.024"), isk <= 0)
+                    onToast(isk > 0 ? tr("ui.FirstTasks.033", { p1: isk.toLocaleString('zh-CN') }) : tr("ui.FirstTasks.024"), isk <= 0)
                   }}
                 >
-                  {tr("ui.FirstTasks.025")}{pending.toLocaleString('zh-CN')} 信用点）
+                  {tr("ui.FirstTasks.025")}{pending.toLocaleString('zh-CN')} {tr("ui.FirstTasks.034")}
                 </button>
               ) : null}
             </div>

@@ -19,6 +19,7 @@ import type { ReactNode } from 'react'
 import { COMMS_REPLIES_ENABLED, commsGameClock } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
+import { tr } from '../i18n/locale'
 
 /**
  * 通讯器机身：**大圆角机身外框** + 左侧两颗实体键（SVG 线稿，恒定细描边）。
@@ -49,7 +50,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
           <span
             className="app-comms-avatar"
             style={entry.tone ? { color: entry.tone, borderColor: entry.tone } : undefined}
-            title={entry.fromBrief ?? '来信方'}
+            title={entry.fromBrief ?? tr("ui.CommsReader.001")}
           >
             <Glyph name={entry.glyph} size={50} />
           </span>
@@ -70,14 +71,14 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
                 {entry.alignment}
               </span>
             ) : null}
-            <span className="app-comms-head-time">{commsGameClock(entry.deliveredAtGameMs)} 送达</span>
+            <span className="app-comms-head-time">{commsGameClock(entry.deliveredAtGameMs)} {tr("ui.CommsReader.002")}</span>
           </div>
         </div>
         {entry.kind ? (
           <span
             className="app-chip app-comms-kind"
             style={entry.tone ? { color: entry.tone, borderColor: entry.tone } : undefined}
-            title="这封通讯的性质：提示只是指个方向，委托才是协会派下来的活"
+            title={tr("ui.CommsReader.003")}
           >
             {entry.kind}
           </span>
@@ -134,7 +135,7 @@ export function CommsEave({
           onClick={() => onGoto(entry.hint!.page, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab)}
         >
           <span className="app-comms-goto-text">{entry.hint.text}</span>
-          <span className="app-comms-goto-label">前往</span>
+          <span className="app-comms-goto-label">{tr("ui.CommsReader.004")}</span>
         </button>
       ) : null}
       {extra ? <div className="app-comms-eave-extra">{extra}</div> : null}

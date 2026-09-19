@@ -55,7 +55,7 @@ export function SkillDescText({ text }: { text: string }) {
 export function levelTimesHint(def: SkillDef, factor = 1): string {
   const lines: string[] = []
   for (let lv = 1; lv <= MAX_SKILL_LEVEL; lv++) {
-    lines.push(`Lv${lv}　${formatDurationMs(Math.round(skillLevelTimeMs(def, lv) * factor))}`)
+    lines.push(tr("ui.SkillsPage.029", { lv: lv, p2: formatDurationMs(Math.round(skillLevelTimeMs(def, lv) * factor)) }))
   }
   return `训练时长：\n${lines.join('\n')}`
 }
@@ -133,8 +133,8 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
             />
             <span className="app-dim">
               {q.length > 0
-                ? `匹配 ${searchHits?.length ?? 0} 技能`
-                : `${visibleSkills.length} 技能 · 最高 5 级 · 金色数字=实际效果 · 悬停看各级时长`}
+                ? tr("ui.SkillsPage.030", { p1: searchHits?.length ?? 0 })
+                : tr("ui.SkillsPage.031", { p1: visibleSkills.length })}
             </span>
           </span>
         }
@@ -216,7 +216,7 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
       {totalMs > 0 ? (
         <div className="app-dim app-train-total">
           {tr("ui.SkillsPage.010")} {formatDurationMs(totalMs)}
-          {view.head !== null ? `（含训练中本级剩余 ${formatDurationMs(view.head.remainingMs)}）` : ''}{tr("ui.SkillsPage.011")}
+          {view.head !== null ? tr("ui.SkillsPage.032", { p1: formatDurationMs(view.head.remainingMs) }) : ''}{tr("ui.SkillsPage.011")}
         </div>
       ) : null}
       {view.pending.length > 0 ? (
@@ -317,16 +317,16 @@ function nextLevelAction(
     return {
       label: tr("ui.SkillsPage.020"),
       onClick: () => engine.trainNextLevel(skill.id),
-      title: `队列里已排到 Lv${MAX_SKILL_LEVEL}（技能上限），无法再追加。`,
+      title: tr("ui.SkillsPage.033", { MAX_SKILL_LEVEL: MAX_SKILL_LEVEL }),
       disabled: true,
     }
   }
-  const label = isTraining || st.mine.length > 0 ? `追加→Lv${lastQueued + 1}` : `训练→Lv${current + 1}`
+  const label = isTraining || st.mine.length > 0 ? tr("ui.SkillsPage.034", { p1: lastQueued + 1 }) : tr("ui.SkillsPage.035", { p1: current + 1 })
   const targetLv = lastQueued + 1
   return {
     label,
     onClick: () => engine.trainNextLevel(skill.id),
-    title: `练这一级需 ${def ? formatDurationMs(effLevelMs(def, targetLv, tf)) : ''}`,
+    title: tr("ui.SkillsPage.036", { p1: def ? formatDurationMs(effLevelMs(def, targetLv, tf)) : '' }),
     eta: def ? <span className="app-sr-eta">{tr("ui.SkillsPage.021")} {formatDurationMs(effLevelMs(def, targetLv, tf))}</span> : null,
   }
 }
@@ -419,13 +419,13 @@ function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: Skil
   const statusTxt = isTraining
     ? tr("ui.SkillsPage.027")
     : mine.length > 0
-      ? `排队第${position}位`
+      ? tr("ui.SkillsPage.037", { position: position })
       : maxed
         ? tr("ui.SkillsPage.025")
         : saved > 0 && def
           ? tr("ui.SkillsPage.026")
           : tr("ui.ShipPage.117")
-  const cardTitle = `${title}${mine.length > 0 && !isTraining && waitMs > 0 ? `｜约 ${formatDurationMs(waitMs)} 后开练` : ''}`
+  const cardTitle = `${title}${mine.length > 0 && !isTraining && waitMs > 0 ? tr("ui.SkillsPage.038", { p1: formatDurationMs(waitMs) }) : ''}`
   return (
     <div className={`app-skill-card${isTraining ? ' is-training' : ''}`} title={cardTitle}>
       <div className="app-skill-card-top">
