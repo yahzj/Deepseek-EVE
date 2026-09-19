@@ -1607,11 +1607,15 @@ export function WormholePanel({
                         : []),
                     ].join('\n')}
                   >
-                    谜质 <b>{matterBuffs.devices}</b> 台
+                    {matterBuffs.devices > 0 ? (
+                      <>
+                        谜质 <b>{matterBuffs.devices}</b> 台
+                      </>
+                    ) : null}
+                    {matterBuffs.devices > 0 && techInRun.length > 0 ? ' · ' : null}
                     {techInRun.length > 0 ? (
                       <>
-                        {' '}
-                        · 科技 <b>{techInRunLevels}</b> 级
+                        科技 <b>{techInRunLevels}</b> 级
                       </>
                     ) : null}
                   </span>
