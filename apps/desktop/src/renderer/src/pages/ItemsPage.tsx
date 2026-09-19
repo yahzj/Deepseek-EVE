@@ -46,11 +46,11 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
      一级 = 各大类 + 「装备」；二级 = 该一级的天然子维度（装备→槽类 · 货柜/残骸/AI 核心→档位 ·
      碎片→功能分组）；三级 = 仅「装备」有（槽类 → 功能分组）。表与判定**全部走 `ui/itemSubs.ts` 单点**。
      与搜索取「与」；**不落盘**，切页/重开即重置（与市场、手册同一哲学）。 */
-  const [wareKind, setWareKind] = useState<string>(SUB_ALL)
+  const [wareKind, setWareKind] = useState<string>('all') // 一级「分类」：'all' = 全部（2026-09-19 基线②：一级选择器用 'all'，下级维度才用 SUB_ALL）
   const [wareSub, setWareSub] = useState<string>(SUB_ALL)
   const [wareFunc, setWareFunc] = useState<string>(SUB_ALL)
   /** 一级筛选中（分类 / 装备）；`SUB_ALL` = 全部 */
-  const kindPicked = wareKind !== SUB_ALL
+  const kindPicked = wareKind !== 'all'
   /** 装备是否在展示范围内（选了某个物品大类时，装备库整块不显示） */
   const showMods = wareKind === SUB_ALL || wareKind === 'module'
   const wq = wareQuery.trim().toLowerCase()
@@ -233,10 +233,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
             <button
               role="tab"
-              aria-selected={wareKind === SUB_ALL}
-              className={`app-tasktab${wareKind === SUB_ALL ? ' is-active' : ''}`}
+              aria-selected={wareKind === 'all'}
+              className={`app-tasktab${wareKind === 'all' ? ' is-active' : ''}`}
               onClick={() => {
-                setWareKind(SUB_ALL)
+                setWareKind('all')
                 setWareSub(SUB_ALL)
                 setWareFunc(SUB_ALL)
               }}

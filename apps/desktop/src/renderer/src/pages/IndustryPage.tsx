@@ -41,7 +41,7 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
-import { WRECK_SUBS, wreckTierOf } from '../ui/itemSubs'
+import { WRECK_SUBS, SUB_ALL, wreckTierOf } from '../ui/itemSubs'
 import { useL10n } from '../i18n/locale'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -490,7 +490,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
    * 切一级标签即回「全部子类」——与组装机、市场页 `changeKind` 同款口径。
    */
   const [furnaceTab, setFurnaceTab] = useState<FurnaceTab>('all')
-  const [sub, setSub] = useState<string>('')
+  const [sub, setSub] = useState<string>(SUB_ALL) // 二级子筛选：SUB_ALL = 全部子类（2026-09-19 基线②：去掉空串键）
   /**
    * **精炼炉搜索栏**（船长 2026-09-19：「也给精炼炉和组装机添加搜索栏」；追问后定范围 =
    * **名称 ＋ 产物/材料 ＋ 说明**）：搜资源/残骸/货柜名、它们的说明，以及**产出侧的名字**
@@ -521,7 +521,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场
    *  ⚠ 源矿石同样只看"玩家可见目录"：未上线矿石（如虚空母矿）不能作为跳转目标出现。
    *  ⚠ 2026-09-14：加了筛选标签之后，**必须同时把一级/二级筛选让开**——否则跳到一张被筛掉的卡上，
-   *  高亮根本看不见（`setFurnaceTab('ore')` + `setSub('')`）。 */
+   *  高亮根本看不见（`setFurnaceTab('ore')` + `setSub(SUB_ALL)`）。 */
   function handleNeedMineral(itemId: string): void {
     let src = ''
     for (const def of visibleItemDefs(engine.ctx)) {
@@ -534,7 +534,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
     if (src) {
       setSec('refine')
       setFurnaceTab('ore')
-      setSub('')
+      setSub(SUB_ALL)
       setFocusOreId(src)
       return
     }
@@ -603,7 +603,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
     if (prof) for (const [mineralId] of recycleMineralPoolOf(prof)) outs.push(engine.ctx.items.get(mineralId)?.name ?? mineralId)
     return outs.some((n) => n.toLowerCase().includes(fq))
   }
-  const oreFiltered = sub === '' ? oreDefs : oreDefs.filter((d) => d.kind === sub)
+  const oreFiltered = sub === SUB_ALL ? oreDefs : oreDefs.filter((d) => d.kind === sub)
   /** 残骸档位：判据 = `wreckTierOf`（= core `isRareWreck`，与卡上的「稀有」徽标同源单点） */
   const wreckFiltered =
     sub === 'rare'
@@ -726,7 +726,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
                 className={`app-tasktab${furnaceTab === t.key ? ' is-active' : ''}`}
                 onClick={() => {
                   setFurnaceTab(t.key)
-                  setSub('') // 换一级标签即回「全部子类」（与组装机、市场页 changeKind 同款）
+                  setSub(SUB_ALL) // 换一级标签即回「全部子类」（与组装机、市场页 changeKind 同款）
                 }}
               >
                 {t.label}
@@ -737,9 +737,9 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
-                aria-selected={sub === ''}
-                className={`app-tasktab${sub === '' ? ' is-active' : ''}`}
-                onClick={() => setSub('')}
+                aria-selected={sub === SUB_ALL}
+                className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
+                onClick={() => setSub(SUB_ALL)}
               >
                 全部子类
               </button>

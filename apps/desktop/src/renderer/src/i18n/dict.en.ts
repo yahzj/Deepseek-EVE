@@ -73,4 +73,10 @@ export const EN: Record<string, string> = {
   // ── 工业页搜索栏（2026-09-19 船长：精炼炉与组装机各加一个搜索栏）
   '搜索资源、残骸或产出物…': 'Search resources, wrecks or outputs…',
   '搜索蓝图、产物或材料…': 'Search blueprints, products or materials…',
+
+  // ── 任务中心排序（2026-09-19 船长：加「默认排序（从低到高）」与「价值排序（从高到低）」）
+  '默认排序（从低到高）': 'Default (low to high)',
+  '价值排序（从高到低）': 'Value (high to low)',
+  '默认排序 = 按任务级别从低到高（L1→L5）；价值排序 = 按奖励从高到低':
+    'Default = by task level, low to high (L1→L5); Value = by reward, high to low',
 }

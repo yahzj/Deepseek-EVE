@@ -60,6 +60,7 @@ import {
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH, rareWreckRefsOf } from '../pages/common'
+import { useL10n } from '../i18n/locale'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { FirstTasks } from './FirstTasks'
@@ -259,6 +260,14 @@ const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
   { key: 'bounty', label: '赏金任务' },
 ]
 const TASK_TAB_KEY = 'whale-idle:task-tab'
+
+/* ── 时效任务板（资源 / 快递）的排序（船长 2026-09-19 追加）─────────────────────────
+ * 两档：**默认排序（从低到高）** = 按任务级别 L1→L5；**价值排序（从高到低）** = 按奖励。
+ * 只在「资源任务 / 快递任务」两个子页渲染（重要/赏金没有 L1~L5）；键存本地、与悬赏排序同家族。
+ * ⚠ 两档的**文案在组件内用 `t(...)` 取**（2026-09-19 双语规矩：新增可见文案必须双语，
+ *   而语言可在运行时切换 ⇒ 不能在模块级求值）。 */
+type SideTaskSort = 'level' | 'value'
+const SIDE_TASK_SORT_KEY = 'whale-idle:sidetask-sort'
 
 export function TaskPanel({
   engine,
@@ -2348,12 +2357,39 @@ function fmtDayClock(ms: number): string {
  *  （需建成一座副站解锁；两步：出发投送 → 到站自动结算） */
 function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast: ToastFn; kind: 'resource' | 'courier' }) {
   const state = engine.state
+  const { t } = useL10n()
   const view = engine.sideTasksView()
   // 任务板与市场「补给刷新」同节奏：orderLifeMs.common = 20 分钟一轮（与常驻订单寿命一致）
   const periodMin = Math.max(1, Math.round(engine.ctx.balance.market.orderLifeMs.common / 60_000))
   const isCourier = kind === 'courier'
+  /**
+   * **任务排序**（船长 2026-09-19：「添加个默认排序（从低到高）和价值排序（从高到低）」；
+   * 追问三答：默认排序 = **按任务级别 L1→L5** · 价值排序 = **按奖励从高到低** ·
+   * **两者只在「资源任务」「快递任务」两个子页出现**（重要/赏金没有 L1~L5，故那一页不渲染本行）。
+   * 选择随档存本地（与悬赏排序同一个 `whale-idle:*` 家族）；默认 = 「默认排序」。
+   */
+  const [sort, setSort] = useState<SideTaskSort>(() => {
+    try {
+      return localStorage.getItem(SIDE_TASK_SORT_KEY) === 'value' ? 'value' : 'level'
+    } catch {
+      return 'level'
+    }
+  })
+  function changeSort(next: SideTaskSort): void {
+    setSort(next)
+    try {
+      localStorage.setItem(SIDE_TASK_SORT_KEY, next)
+    } catch {
+      /* 忽略 */
+    }
+  }
   // 快递：**已接单的排在前面**（跨刷新保留；出发/放弃才离场），随后是本批板上的订单
-  const tasks = isCourier ? [...view.accepted, ...view.courier] : view.resource
+  // ⚠ 排序键只作用于**同一组之内**（已接单组 / 本批板组各自排），免得"已接单"被级别混到后面去
+  const bySort = (arr: readonly SideTask[]): SideTask[] =>
+    [...arr].sort((a, b) =>
+      sort === 'value' ? (b.rewardIsk ?? 0) - (a.rewardIsk ?? 0) : (a.level ?? 0) - (b.level ?? 0),
+    )
+  const tasks = isCourier ? [...bySort(view.accepted), ...bySort(view.courier)] : bySort(view.resource)
   // 快递：本批某单是否就是当前在途投送（仍在板上）；整板刷新后原单被换下 → 由顶部横幅继续提示
   const deliverNowId = view.deliver?.taskId ?? null
   // 在途单不在本批板上（整板刷新后）：横幅 + 本批其余订单都显示
@@ -2395,7 +2431,22 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
         <div className="app-dim app-exp-idle">
           建站完成（任意一座副空间站的「建成」档位落成并并入空间站网络）后，协会货运网络才会向你派发投送订单。
         </div>
-      ) : tasks.length === 0 ? (
+      ) : (
+        <>
+          {/* 排序行（船长 2026-09-19）：结构逐字复刻「常驻悬赏」那条（`app-task-sortrow` + `app-select`） */}
+          <div className="app-task-sortrow">
+            <span className="app-dim">任务排序：</span>
+            <select
+              className="app-select"
+              value={sort}
+              onChange={(e) => changeSort(e.target.value as SideTaskSort)}
+              title={t('默认排序 = 按任务级别从低到高（L1→L5）；价值排序 = 按奖励从高到低')}
+            >
+              <option value="level">{t('默认排序（从低到高）')}</option>
+              <option value="value">{t('价值排序（从高到低）')}</option>
+            </select>
+          </div>
+          {tasks.length === 0 ? (
         isCourier && inflightOffBoard ? (
           // 整板刷新把在途单换下：投送不受影响，横幅持续显示到到站结算
           <CourierInFlightBanner view={view} ctx={engine.ctx} />
@@ -2562,6 +2613,8 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
               </div>
             )
           })}
+        </>
+      )}
         </>
       )}
     </div>
