@@ -150,15 +150,37 @@ function defaultName(list: readonly ShipFitPreset[]): string {
 }
 
 /**
- * 玩家指令：**保存当前装配为方案**（`shipId` 那艘船的实装 = 三类槽位 + 无人机舱装载）。
- * `name` 缺省 = 「方案 N」；同名 = **覆盖**（满套时仍可覆盖同名，不必先删）。
+ * **采集"当前装配"**（保存与替换共用）：`shipId` 那艘船的实装 = 三类槽位 ＋ 无人机舱装载。
+ * 空装配（三类槽位与机舱都空）**拒绝**——与 `save.ts` 清洗的「全空方案丢弃」对齐。
  */
-export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string, name?: string): CommandResult {
-  const lock = shipLockedReason(state, shipId, '保存它的装配方案')
+function captureFit(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  what: string,
+): { ok: true; fitted: ShipFitPreset['fitted']; droneLoad: Record<string, number> } | { ok: false; error: string } {
+  const lock = shipLockedReason(state, shipId, what)
   if (lock) return { ok: false, error: lock }
   const shipDef = fleetDefOf(state, ctx, shipId)
   const fleet = state.fleet[shipId]
   if (!shipDef || !fleet) return { ok: false, error: '舰队里找不到该舰船，无法保存装配方案。' }
+  const loadRaw = fleet.droneLoad ?? {}
+  const droneLoad: Record<string, number> = {}
+  for (const [id, n] of Object.entries(loadRaw)) if (n > 0) droneLoad[id] = n
+  const fitted = trimFitted(fleet.fitted)
+  if (fitted.high.length + fitted.mid.length + fitted.low.length === 0 && Object.keys(droneLoad).length === 0) {
+    return { ok: false, error: '这艘船现在没装任何装备、机舱也是空的：先装几件再保存（要清空装配请用「一键卸下全部装备」）。' }
+  }
+  return { ok: true, fitted, droneLoad }
+}
+
+/**
+ * 玩家指令：**保存当前装配为方案**（`shipId` 那艘船的实装 = 三类槽位 + 无人机舱装载）。
+ * `name` 缺省 = 「方案 N」；同名 = **覆盖**（满套时仍可覆盖同名，不必先删）。
+ */
+export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string, name?: string): CommandResult {
+  const shipDef = fleetDefOf(state, ctx, shipId)
+  if (!shipDef) return { ok: false, error: '舰队里找不到该舰船，无法保存装配方案。' }
   const list = [...fitPresetsOf(state, shipDef.id)]
   const wanted = (name ?? '').trim().slice(0, FIT_PRESET_NAME_MAX)
   const finalName = wanted.length > 0 ? wanted : defaultName(list)
@@ -169,24 +191,48 @@ export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string,
       error: `「${shipDef.name}」已有 ${FIT_PRESET_MAX} 套装配方案：先删掉一套，或用一个同名方案覆盖它。`,
     }
   }
-  const loadRaw = fleet.droneLoad ?? {}
-  const droneLoad: Record<string, number> = {}
-  for (const [id, n] of Object.entries(loadRaw)) if (n > 0) droneLoad[id] = n
-  const fitted = trimFitted(fleet.fitted)
-  // ⚠ **空装配不许存**：与 `save.ts` 清洗的「全空方案丢弃」对齐——否则玩家存下的空方案会在读档时
-  //   无声消失（运行时冒烟实测发现）。要清空装配请用「一键卸下全部装备」。
-  if (fitted.high.length + fitted.mid.length + fitted.low.length === 0 && Object.keys(droneLoad).length === 0) {
-    return { ok: false, error: '这艘船现在没装任何装备、机舱也是空的：先装几件再保存（要清空装配请用「一键卸下全部装备」）。' }
-  }
+  const cap = captureFit(state, ctx, shipId, '保存它的装配方案')
+  if (!cap.ok) return { ok: false, error: cap.error }
   const preset: ShipFitPreset = {
     name: finalName,
-    fitted,
-    ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}),
+    fitted: cap.fitted,
+    ...(Object.keys(cap.droneLoad).length > 0 ? { droneLoad: cap.droneLoad } : {}),
   }
   if (at >= 0) list[at] = preset
   else list.push(preset)
   state.fitPresets = { ...(state.fitPresets ?? {}), [shipDef.id]: list }
   addLog(state, 'info', `已保存装配方案「${finalName}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`)
+  return { ok: true }
+}
+
+/**
+ * 玩家指令：**用当前装配覆盖指定的那套方案**（船长 2026-09-19：「给方案加个替换按钮，点击后将当前装配
+ * 覆盖进目标方案，覆盖之前需要玩家确认」）。
+ *
+ * 与 `saveFitPreset` 的区别：**不新建、不改名、不改位置**——只把 `index` 那套的"内容"换成本船的实装；
+ * 方案名原样保留（玩家点的是哪一套就更新哪一套）。空装配同样拒绝（沿用 `captureFit` 的判据）。
+ * ⚠ 界面侧负责"覆盖前确认"（两步/弹窗），core 这层只做覆盖本身。
+ */
+export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: string, index: number): CommandResult {
+  const shipDef = fleetDefOf(state, ctx, shipId)
+  if (!shipDef) return { ok: false, error: '舰队里找不到该舰船，无法替换装配方案。' }
+  const list = [...fitPresetsOf(state, shipDef.id)]
+  const target = list[index]
+  if (!target) return { ok: false, error: '找不到这套装配方案（可能已被删除）。' }
+  const cap = captureFit(state, ctx, shipId, '保存它的装配方案')
+  if (!cap.ok) return { ok: false, error: cap.error }
+  const preset: ShipFitPreset = {
+    name: target.name, // 名称与位置都保持原样
+    fitted: cap.fitted,
+    ...(Object.keys(cap.droneLoad).length > 0 ? { droneLoad: cap.droneLoad } : {}),
+  }
+  list[index] = preset
+  state.fitPresets = { ...(state.fitPresets ?? {}), [shipDef.id]: list }
+  addLog(
+    state,
+    'info',
+    `已用当前装配覆盖方案「${target.name}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`,
+  )
   return { ok: true }
 }
 

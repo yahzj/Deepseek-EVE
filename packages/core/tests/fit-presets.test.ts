@@ -25,6 +25,7 @@ import {
   loadSaveFile,
   renameFitPreset,
   saveFitPreset,
+  overwriteFitPreset,
   serializeSaveFile,
   unfitAllModules,
 } from '../src/index'
@@ -121,6 +122,55 @@ describe('装配方案（预设）：保存', () => {
     addWare(state, 'drone-x', 1)
     expect(adjustDroneLoad(state, ctx, 'drone-x', 1, uid).ok).toBe(true)
     expect(saveFitPreset(state, ctx, uid).ok).toBe(true)
+  })
+
+  /**
+   * **替换**（船长 2026-09-19：「给方案加个替换按钮，点击后将当前装配覆盖进目标方案，覆盖之前需要玩家确认」）：
+   * core 侧 = 用当前实装覆盖 `index` 那套的**内容**，**名称与位置保持原样**、不新建；
+   * 覆盖前的确认由界面负责（行内两步），这里逐条钉住 core 的语义。
+   */
+  it('替换：覆盖目标方案的内容，名称与位置不变、不新建、不动其它方案', () => {
+    const { state, ctx, uid } = world()
+    // 先存两套：甲（一炮）· 乙（装甲）
+    place(state, uid, 'high', 0, 'mod-gun')
+    expect(saveFitPreset(state, ctx, uid, '甲').ok).toBe(true)
+    place(state, uid, 'high', 0, null)
+    place(state, uid, 'low', 0, 'mod-armor')
+    expect(saveFitPreset(state, ctx, uid, '乙').ok).toBe(true)
+    expect(fitPresetsOf(state, 'sh-fit').map((p) => p.name)).toEqual(['甲', '乙'])
+
+    // 把船上改成"炮 + 装甲"，然后**替换第 0 套（甲）**
+    place(state, uid, 'low', 0, 'mod-armor')
+    place(state, uid, 'high', 0, 'mod-gun')
+    expect(overwriteFitPreset(state, ctx, uid, 0).ok).toBe(true)
+    const list = fitPresetsOf(state, 'sh-fit')
+    expect(list.length).toBe(2) // 不新建
+    expect(list.map((p) => p.name)).toEqual(['甲', '乙']) // 名称与位置原样
+    expect(list[0]!.fitted.high).toEqual(['mod-gun'])
+    expect(list[0]!.fitted.low).toEqual(['mod-armor']) // 内容已换成本船实装
+    expect(list[1]!.fitted.low).toEqual(['mod-armor']) // 其它方案一字未动
+    // 日志点名"覆盖"（与"保存"区分）
+    expect(state.logs.some((l) => l.text.includes('已用当前装配覆盖方案「甲」'))).toBe(true)
+  })
+
+  it('替换：空装配被拒（沿用保存的判据）· 序号越界被拒 · 替换不消耗方案名额', () => {
+    const { state, ctx, uid } = world()
+    place(state, uid, 'high', 0, 'mod-gun')
+    expect(saveFitPreset(state, ctx, uid, '甲').ok).toBe(true)
+    // 卸空 ⇒ 替换被拒，方案保持原样
+    place(state, uid, 'high', 0, null)
+    const empty = overwriteFitPreset(state, ctx, uid, 0)
+    expect(empty.ok).toBe(false)
+    expect(empty.ok ? '' : empty.error).toContain('一键卸下全部装备')
+    expect(fitPresetsOf(state, 'sh-fit')[0]!.fitted.high).toEqual(['mod-gun'])
+    // 越界
+    place(state, uid, 'high', 0, 'mod-gun')
+    expect(overwriteFitPreset(state, ctx, uid, 9).ok).toBe(false)
+    // 满 10 套时替换照样成功（不占新名额）
+    for (let i = 0; i < 9; i += 1) expect(saveFitPreset(state, ctx, uid, `乙${i}`).ok).toBe(true)
+    expect(fitPresetsOf(state, 'sh-fit').length).toBe(10)
+    expect(overwriteFitPreset(state, ctx, uid, 3).ok).toBe(true)
+    expect(fitPresetsOf(state, 'sh-fit').length).toBe(10)
   })
 
   it('**每型最多 10 套**（船长 2026-09-17「上限拓展到10套」）· 同名可覆盖 · 改名（同名拒绝）· 删除', () => {
