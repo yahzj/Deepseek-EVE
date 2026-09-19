@@ -272,7 +272,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 37 KB / 653 行 | 5 / 5 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 37 KB / 653 行 | 5 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 

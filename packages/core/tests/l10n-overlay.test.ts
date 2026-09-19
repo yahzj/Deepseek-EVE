@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_SHIPS, SHIPS, overlayList } from '@whale/data'
+import { EN_MODULES, EN_SHIPS, MODULES, SHIPS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -50,8 +50,32 @@ describe('英文覆盖层（P2）', () => {
   })
 
   it('覆盖表 id 必须都在内容表里（写错的 id 会让英文界面冒中文）', () => {
-    const bad = Object.keys(EN_SHIPS).filter((id) => !zh.ships.has(id))
-    expect(bad, `英文覆盖表里这些 id 在舰船表里找不到：${bad.join(', ')}`).toEqual([])
+    const badShip = Object.keys(EN_SHIPS).filter((id) => !zh.ships.has(id))
+    expect(badShip, `舰船覆盖表里这些 id 找不到：${badShip.join(', ')}`).toEqual([])
+    const badMod = Object.keys(EN_MODULES).filter((id) => !zh.modules.has(id))
+    expect(badMod, `装备覆盖表里这些 id 找不到：${badMod.join(', ')}`).toEqual([])
+  })
+
+  it('装备覆盖完整且生效：142 条全覆盖；英文名生效；碎片名跟着装备名走', () => {
+    const missing = [...zh.modules.keys()].filter((id) => !(id in EN_MODULES))
+    expect(missing, `这些装备还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.modules.get('mod-turret-kin-1')?.name).toBe('Light Turret MK1 · Kinetic')
+    expect(en.modules.get('mod-wh-e-dc')?.name).toBe('Megastructure Damage Control Array')
+    // 碎片名派生自装备名 ⇒ 英文下也应是英文（context.ts 里"先覆盖再派生"）
+    const zhFrag = [...zh.items.entries()].find(([, d]) => d.name.includes('轻型炮台 MK1'))
+    const enFrag = zhFrag ? en.items.get(zhFrag[0]) : undefined
+    if (zhFrag && enFrag) expect(enFrag.name).not.toContain('轻型炮台')
+  })
+
+  it('en 的装备表：id 集合一致，除 name/description 外逐字段深比一字不动', () => {
+    expect([...en.modules.keys()].sort()).toEqual([...zh.modules.keys()].sort())
+    const strip = (d: object): string => {
+      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
+      delete rest.name
+      delete rest.description
+      return JSON.stringify(rest)
+    }
+    for (const [id, def] of zh.modules) expect(strip(en.modules.get(id)!), `${id} 的数值字段`).toBe(strip(def))
   })
 
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {

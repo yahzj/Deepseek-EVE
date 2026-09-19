@@ -251,7 +251,7 @@ import type {
   WormholeAutoRun,
   WormholeHoldPlacement,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, type L10nLocale } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
@@ -466,7 +466,7 @@ export class GameEngine {
   ships = SHIPS.filter((d) => itemReleased(d))
   readonly belts = BELTS
   readonly items = ITEMS
-  readonly modules = MODULES.filter((d) => itemReleased(d))
+  modules = MODULES.filter((d) => itemReleased(d))
   readonly blueprints = BLUEPRINTS.filter((d) => itemReleased(d))
   readonly shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
   readonly galaxies = GALAXIES
@@ -480,7 +480,7 @@ export class GameEngine {
    * （口径与 `allAnomalies` 同款；未上线内容在施工期不可能被玩家持有，故这些路径不会漏）。
    */
   allShips = SHIPS
-  readonly allModules = MODULES
+  allModules = MODULES
   readonly allBlueprints = BLUEPRINTS
   readonly allShipBlueprints = SHIP_BLUEPRINTS
   /** 通讯剧本目录（T9） */
@@ -620,6 +620,8 @@ export class GameEngine {
     this.ctx = buildSimContext(locale)
     this.ships = overlayList(SHIPS, EN_SHIPS, locale).filter((d) => itemReleased(d))
     this.allShips = overlayList(SHIPS, EN_SHIPS, locale)
+    this.modules = overlayList(MODULES, EN_MODULES, locale).filter((d) => itemReleased(d))
+    this.allModules = overlayList(MODULES, EN_MODULES, locale)
     this.notify()
   }
 

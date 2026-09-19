@@ -88,7 +88,7 @@ export { FIRST_TASK_MESSAGES } from './firstTaskMessages'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 // 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
-export { localizeCtx, overlayMap, overlayList, EN_SHIPS, type Locale as L10nLocale, type EnText, type EnTable } from './l10n'
+export { localizeCtx, overlayMap, overlayList, EN_SHIPS, EN_MODULES, type Locale as L10nLocale, type EnText, type EnTable } from './l10n'
 
 export type {
   SkillDef,

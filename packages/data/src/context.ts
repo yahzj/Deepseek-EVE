@@ -63,13 +63,9 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
   }
   const modules = buildModuleCatalog()
   // B3：碎片物品按"有逆向配方的装备"生成
-  for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
-    const mod = modules.get(moduleId)
-    if (!mod) continue
-    const id = fragmentItemIdOf(moduleId)
-    if (!items.has(id)) items.set(id, fragmentItemDefOf(moduleId, mod.name))
-  }
-  return localizeCtx(
+  // ⚠ 语言（2026-09-19 英语本地化）：碎片名是从**装备名**派生的 ⇒ 先把 ctx 过一层语言覆盖，
+  //   再用**覆盖后的**装备名生成碎片（否则英文界面里碎片会留着中文装备名）。
+  const base = localizeCtx(
     {
       skills: buildSkillCatalog(),
       ships: buildShipCatalog(),
@@ -92,4 +88,11 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     },
     locale,
   )
+  for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
+    const mod = base.modules.get(moduleId)
+    if (!mod) continue
+    const id = fragmentItemIdOf(moduleId)
+    if (!base.items.has(id)) items.set(id, fragmentItemDefOf(moduleId, mod.name))
+  }
+  return base.items === items ? base : { ...base, items }
 }
