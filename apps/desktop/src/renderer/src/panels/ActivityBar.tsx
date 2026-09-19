@@ -88,7 +88,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       run(engine.dequeueAt(0), '已取消训练：本级进度保留，重新排同一级可续接。')
       break
     case 'stop-mining':
-      run(engine.stopMiningNow(), '已停止开采。')
+      run(engine.stopMiningNow(), tr("ui.MapPage.080"))
       break
     case 'stop-scan':
       run(engine.stopScanNow(), '已终止扫描探索：就地扫描进度已保存，下次续扫。')

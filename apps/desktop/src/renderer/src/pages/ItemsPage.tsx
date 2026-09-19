@@ -324,7 +324,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                           ) : null}
                         </span>
                         <span className="app-inv-count">
-                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价 {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
+                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价 {buy !== undefined ? tr("ui.ItemsPage.039", { p1: isk(buy) }) : '—'}
                         </span>
                       </div>
                       <div className="app-inv-btns">
@@ -497,7 +497,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   <div className="app-itempick-name">{pickItemDef.name}</div>
                   <div className="app-dim">
                     ×{pickItemUnits.toLocaleString('zh-CN')}（{m3(pickItemUnits * pickItemDef.unitM3)}）· 市场收价{' '}
-                    {pickItemBuy !== undefined ? `${isk(pickItemBuy)} 信用点` : '—'}
+                    {pickItemBuy !== undefined ? tr("ui.ItemsPage.039", { p1: isk(pickItemBuy) }) : '—'}
                   </div>
                 </div>
               </div>

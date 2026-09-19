@@ -155,7 +155,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
           /** 「扫描虫洞」未解锁：置灰 + 悬停短提示 + 点击只给引导（判据与页内文案同一把声望尺） */
           const lockedTip =
             t.key === 'whscan' && !engine.wormholeScanUnlocked()
-              ? `尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${engine.wormholeScanStanding()}）——先去做协会的委托攒声望。`
+              ? tr("ui.MapPage.078", { WORMHOLE_SCAN_UNLOCK_STANDING: WORMHOLE_SCAN_UNLOCK_STANDING, p2: engine.wormholeScanStanding() })
               : null
           return (
             <button
@@ -168,7 +168,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
               onClick={() => {
                 // 长途运输未解锁（未建成副空间站）：点击给引导提示，不切标签
                 if (t.key === 'haul' && builtStationCount < 1) {
-                  onToast('长途运输需要先建成至少一座副空间站（与母港之间才有航线可跑）——建站指引见「任务中心 · 重要任务/资源任务」。', true)
+                  onToast(tr("ui.MapPage.079"), true)
                   return
                 }
                 // 扫描虫洞未解锁：同样只给引导（悬停另有短提示）
@@ -277,23 +277,23 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
   }
 
   function handleStop(): void {
-    if (engine.stopMiningNow()) onToast('已停止开采。')
+    if (engine.stopMiningNow()) onToast(tr("ui.MapPage.080"))
   }
 
   function handleAiAssign(beltId: string, shipId: string, coreType: AiCoreType): void {
     const r = engine.assignAiMiningAt(shipId, coreType, beltId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
-    else onToast('AI 副船已出发（详见「舰船」页 AI 指挥中心）。')
+    else onToast(tr("ui.MapPage.081"))
   }
 
   const phaseText = (): string => {
     if (view.phase === 'outbound') {
-      return `${view.shipName || '矿船'} 前往矿带（${view.beltName}）· 约 ${formatDurationMs(view.remainingMs ?? 0)} 后开始采掘`
+      return tr("ui.MapPage.082", { p1: view.shipName || '矿船', p2: view.beltName, p3: formatDurationMs(view.remainingMs ?? 0) })
     }
     if (view.phase === 'returning') {
-      return `${view.shipName || '矿船'} 返航卸货中 · 约 ${formatDurationMs(view.remainingMs ?? 0)} 后到港（本趟 ${view.tripUnits.toLocaleString('zh-CN')} 单位）`
+      return tr("ui.MapPage.083", { p1: view.shipName || '矿船', p2: formatDurationMs(view.remainingMs ?? 0), p3: view.tripUnits.toLocaleString('zh-CN') })
     }
-    return `${view.shipName || '矿船'} 采掘中（${view.beltName}）· 本趟采得 ${view.tripUnits.toLocaleString('zh-CN')} 单位`
+    return tr("ui.MapPage.084", { p1: view.shipName || '矿船', p2: view.beltName, p3: view.tripUnits.toLocaleString('zh-CN') })
   }
 
   return (
@@ -411,8 +411,8 @@ function BeltCard({
     const perHourUnits = Math.round(mp.unitsPerCycle * cyclesPerHour)
     const valuePerHour = Math.round(perHourUnits * valuePerUnit)
     const sec = Math.round(mp.cycleMs / 1000)
-    effLine = `${mp.unitsPerCycle} 单位/循环 · ${sec}s · ≈${perHourUnits.toLocaleString('zh-CN')} 单位/h`
-    valLine = `估价 ≈${valuePerHour.toLocaleString('zh-CN')} 信用点/h`
+    effLine = tr("ui.MapPage.085", { p1: mp.unitsPerCycle, sec: sec, p3: perHourUnits.toLocaleString('zh-CN') })
+    valLine = tr("ui.MapPage.086", { p1: valuePerHour.toLocaleString('zh-CN') })
   }
   // V13：所在星系未探索的矿带不可开采（卡片可见但锁定，提示先扫描）
   const unexplored = belt.galaxyId ? !isExplored(state, belt.galaxyId) : false
@@ -446,7 +446,7 @@ function BeltCard({
       return
     }
     if (state.expedition.phase === 'battle') {
-      onToast('交火中无法抽身采矿——请先让战斗分出胜负，或撤退脱离。', true)
+      onToast(tr("ui.MapPage.087"), true)
       return
     }
     if (!mineAsk) {
@@ -458,7 +458,7 @@ function BeltCard({
   }
 
   function cancelWorker(shipId: string): void {
-    if (engine.cancelAiTaskAt(shipId)) onToast('AI 开采任务已取消（核心已归还）。')
+    if (engine.cancelAiTaskAt(shipId)) onToast(tr("ui.MapPage.088"))
     else onToast(tr("ui.MapPage.077"), true)
   }
 
@@ -482,7 +482,7 @@ function BeltCard({
         {aiCount > 0 ? (
           <span
             className="app-belt-ai-badge"
-            title={`${aiCount} 艘 AI 副船正在此矿带采掘`}
+            title={tr("ui.MapPage.089", { aiCount: aiCount })}
           >
             <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>×{aiCount}
           </span>
@@ -492,13 +492,13 @@ function BeltCard({
       {isActiveBelt ? (
         <div
           className={`app-card-progress${mv.phase !== 'mining' ? ' is-travel' : ''}`}
-          title={`${mv.phaseLabel} · 进度 ${mv.percent}%（${mv.phase === 'mining' ? tr("ui.MapPage.023") : tr("ui.MapPage.024")}）`}
+          title={tr("ui.MapPage.090", { p1: mv.phaseLabel, p2: mv.percent, p3: mv.phase === 'mining' ? tr("ui.MapPage.023") : tr("ui.MapPage.024") })}
         >
           <i style={{ width: `${mv.percent}%` }} />
         </div>
       ) : null}
       <div className="app-belt-ore">
-        {tr("ui.MapPage.025")} {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
+        {tr("ui.MapPage.025")} {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? tr("ui.ItemsPage.039", { p1: isk(buy) }) : '—'}
         {unexplored ? tr("ui.MapPage.026") : ''}
       </div>
       {effLine || valLine ? (
@@ -513,7 +513,7 @@ function BeltCard({
           {belt.outputs.map((o) => {
             const def = engine.ctx.items.get(o.itemId)
             return (
-              <span key={o.itemId} className="app-belt-compose-item" title={`采掘时按权重抽取，长期平均约 ${o.weight}%`}>
+              <span key={o.itemId} className="app-belt-compose-item" title={tr("ui.MapPage.091", { p1: o.weight })}>
                 {def?.name ?? o.itemId} {o.weight}%
               </span>
             )
@@ -536,7 +536,7 @@ function BeltCard({
                     </span>
                     <button
                       className="app-btn is-small is-warn"
-                      title={`取消 ${shipDisplayName(state, engine.ctx, sid)} 在此矿带的开采任务（AI 核心归还核心库）`}
+                      title={tr("ui.MapPage.092", { p1: shipDisplayName(state, engine.ctx, sid) })}
                       onClick={() => cancelWorker(sid)}
                     >
                       {tr("ui.ActivityBar.004")}
@@ -557,7 +557,7 @@ function BeltCard({
             locked
               ? unexplored
                 ? tr("ui.MapPage.028")
-                : `需要「深空工业协会」声望 ${belt.standingReq}（当前 ${standing}）`
+                : tr("ui.MapPage.093", { p1: belt.standingReq ?? 0, standing: standing })
               : isActiveBelt
                 ? tr("ui.MapPage.029")
                 : !canStart
@@ -610,7 +610,7 @@ function BeltCard({
           <button
             className="app-btn is-small"
             disabled={locked || !aiShipId || usableCores.length === 0}
-            title={locked ? (unexplored ? tr("ui.MapPage.021") : `需声望 ${belt.standingReq}`) : usableCores.length === 0 ? tr("ui.MapPage.045") : aiShipId ? tr("ui.MapPage.046") : tr("ui.MapPage.047")}
+            title={locked ? (unexplored ? tr("ui.MapPage.021") : tr("ui.MapPage.094", { p1: belt.standingReq ?? 0 })) : usableCores.length === 0 ? tr("ui.MapPage.045") : aiShipId ? tr("ui.MapPage.046") : tr("ui.MapPage.047")}
             onClick={() => onAiAssign(belt.id, aiShipId, effCore)}
           >
             {tr("ui.MapPage.048")}
@@ -645,8 +645,8 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   const effM3 = Math.min(volH, capM3H)
   const evH = Math.round(effM3 * RECYCLE_YIELD_PER_M3[tier] * RECYCLE_POOL_AVG_ISK[tier] * (1 + 0.08 * refLv))
   return {
-    eff: `${cycles.length} 台打捞器 · ≈${Math.round(volH).toLocaleString('zh-CN')} m³/h（当前密度现算${volH > capM3H ? tr("ui.MapPage.050") : ''}）`,
-    val: `${isk(evH)} 信用点/h 拆解估价（按来源危险度池粗估）`,
+    eff: tr("ui.MapPage.095", { p1: cycles.length, p2: Math.round(volH).toLocaleString('zh-CN'), p3: volH > capM3H ? tr("ui.MapPage.050") : '' }),
+    val: tr("ui.MapPage.096", { p1: isk(evH) }),
   }
 }
 
@@ -706,11 +706,11 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
   const idleShips = idleAiShipIds(state)
 
   const phaseText = (): string => {
-    if (!me.active) return `${shipDisplayName(state, engine.ctx, state.shipId)} 停靠空间站——在下方残骸卡上开始打捞，或指派 AI 副船。`
+    if (!me.active) return tr("ui.MapPage.097", { p1: shipDisplayName(state, engine.ctx, state.shipId) })
     const gName = me.galaxyId ? engine.ctx.galaxies.get(me.galaxyId)?.name : ''
-    if (me.phase === 'outbound') return `${shipDisplayName(state, engine.ctx, state.shipId)} 前往「${gName}」（出航中）`
-    if (me.phase === 'returning') return `${shipDisplayName(state, engine.ctx, state.shipId)} 返航卸货中（本趟约 ${Math.round(me.tripM3 * 100) / 100} m³）`
-    return `${shipDisplayName(state, engine.ctx, state.shipId)} 在「${gName}」持续打捞中 · 本趟约 ${Math.round(me.tripM3 * 100) / 100} m³`
+    if (me.phase === 'outbound') return tr("ui.MapPage.098", { p1: shipDisplayName(state, engine.ctx, state.shipId) ?? "", gName: gName ?? "" })
+    if (me.phase === 'returning') return tr("ui.MapPage.099", { p1: shipDisplayName(state, engine.ctx, state.shipId), p2: Math.round(me.tripM3 * 100) / 100 })
+    return tr("ui.MapPage.100", { p1: shipDisplayName(state, engine.ctx, state.shipId) ?? "", gName: gName ?? "", p3: Math.round(me.tripM3 * 100) / 100 })
   }
 
   function startAt(galaxyId: string): void {
@@ -718,19 +718,19 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
     if (!r.ok) onToast(r.error ?? '无法打捞', true)
   }
   function stopNow(): void {
-    if (engine.stopSalvageOpNow()) onToast('已停止打捞（货物留在船上）。')
+    if (engine.stopSalvageOpNow()) onToast(tr("ui.MapPage.101"))
   }
   function assignAi(galaxyId: string, shipId: string, coreType: AiCoreType): void {
     if (!shipId) {
-      onToast('先选择一艘空闲副船。', true)
+      onToast(tr("ui.MapPage.102"), true)
       return
     }
     const r = engine.assignAiSalvageAt(shipId, coreType, galaxyId)
     if (!r.ok) onToast(r.error ?? '指派失败', true)
-    else onToast('AI 副船已出发打捞（自动循环：满仓返港卸货后自动再出航，取消任务才结束）。')
+    else onToast(tr("ui.MapPage.103"))
   }
   function cancelAi(sid: string): void {
-    if (engine.cancelAiTaskAt(sid)) onToast('AI 打捞任务已取消（核心已归还）。')
+    if (engine.cancelAiTaskAt(sid)) onToast(tr("ui.MapPage.104"))
     else onToast(tr("ui.MapPage.077"), true)
   }
 
@@ -831,7 +831,7 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
   const step = cycles.length > 0 ? Math.min(...cycles) : 0
   return {
     percent: step > 0 ? Math.min(100, Math.round((s.cycleAccMs / step) * 100)) : 0,
-    label: `打捞循环（${cycles.length} 台打捞器）`,
+    label: tr("ui.MapPage.105", { p1: cycles.length }),
     travel: false,
   }
 }
@@ -895,9 +895,9 @@ function WreckCard({
     for (const p of feature.named) if (!namedList.includes(p)) namedList.push(p)
     for (const p of feature.generic) if (!genericList.includes(p)) genericList.push(p)
   }
-  const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? ` 等${notes.length}种倾向` : '')
+  const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? tr("ui.MapPage.106", { p1: notes.length }) : '')
   // 汇总去重后仍限长：具名优先（星图卡是多敌群合并，可能很长）
-  const cap = (list: string[]): string[] => list.slice(0, 4).concat(list.length > 4 ? [`… 等${list.length}组`] : [])
+  const cap = (list: string[]): string[] => list.slice(0, 4).concat(list.length > 4 ? [tr("ui.MapPage.107", { p1: list.length })] : [])
   const flavorLabel = namedList.length > 0 ? tr("ui.MapPage.058") : tr("ui.MapPage.059")
   // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得；回站回收炉开高级箱）
   // 2026-09-11：口径抽到 `pages/common.rareWreckRefsOf`，与星图「星系行动」弹窗共用一份
@@ -915,7 +915,7 @@ function WreckCard({
           {lowSec ? <em className="app-belt-flag">{tr("ui.MapPage.061")}</em> : null}
         </span>
         {aiWorkers.length > 0 ? (
-          <span className="app-belt-ai-badge" title={`${aiWorkers.length} 艘 AI 副船正在此星系打捞`}>
+          <span className="app-belt-ai-badge" title={tr("ui.MapPage.108", { p1: aiWorkers.length })}>
             <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>×{aiWorkers.length}
           </span>
         ) : null}
@@ -930,7 +930,7 @@ function WreckCard({
       {prog ? (
         <div
           className={`app-card-progress${prog.travel ? ' is-travel' : ''}`}
-          title={`${prog.label} · 进度 ${prog.percent}%`}
+          title={tr("ui.MapPage.109", { p1: prog.label, p2: prog.percent })}
         >
           <i style={{ width: `${prog.percent}%` }} />
         </div>
@@ -941,7 +941,7 @@ function WreckCard({
         {rareCount > 0 ? (
           <>
             {' · '}
-            <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体，保底原材料之外必给一件额外战利品：该敌群专属装备或特色装备 + 一批高阶原材料`}>
+            <em className="app-chip is-rare" title={tr("ui.MapPage.110", { rareText: rareText, RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3 })}>
               {tr("ui.MapPage.066")}{rareCount}
             </em>
           </>
@@ -968,7 +968,7 @@ function WreckCard({
                     </span>
                     <button
                       className="app-btn is-small is-warn"
-                      title={`取消 ${shipDisplayName(state, engine.ctx, w.sid)} 在此星系的打捞任务（AI 核心归还核心库）`}
+                      title={tr("ui.MapPage.111", { p1: shipDisplayName(state, engine.ctx, w.sid) })}
                       onClick={() => onAiCancel(w.sid)}
                     >
                       {tr("ui.ActivityBar.004")}

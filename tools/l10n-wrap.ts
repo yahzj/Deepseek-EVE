@@ -297,13 +297,13 @@ for (const file of walk(ROOT)) {
     ts.forEachChild(node, visit)
   }
   visit(sf)
-  // ⚠ **嵌套模板**（外层模板的 `${…}` 里又是模板）不能两条都包：外层那条替换文本会覆盖内层，写出来就是坏行。
-  //   规则：**包内层、外层转人工**（内层先翻，外层整句由人工按参数拼）。2026-09-19 实测踩过一次。
-  const innerRanges = sites.filter((s) => s.form === 'template').map((s) => [s.node.getStart(sf), s.node.getEnd()] as const)
+  // ⚠ **嵌套**（一条 site 的节点范围包住另一条，如外层模板的 `${…}` 里又有模板/中文串）：
+  //   两条都包会互相覆盖 ⇒ 写出来就是坏行（2026-09-19 实测踩过两次：嵌套模板、模板里含三元中文串）。
+  //   规则：**包内层、外层转人工**（内层先翻，外层整句由人工按参数拼）。
+  const allRanges = sites.map((s) => [s.node.getStart(sf), s.node.getEnd()] as const)
   const usableSites = sites.filter((s) => {
-    if (s.form !== 'template') return true
     const [a, b] = [s.node.getStart(sf), s.node.getEnd()]
-    const hasInner = innerRanges.some(([x, y]) => x > a && y < b)
+    const hasInner = allRanges.some(([x, y]) => x > a && y < b)
     if (hasInner) {
       manual.add(s.zh.replace(/\s+/g, ' ').slice(0, 90))
       return false

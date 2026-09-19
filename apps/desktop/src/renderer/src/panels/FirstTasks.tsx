@@ -109,7 +109,7 @@ export function FirstTasks({
         for (const s of r?.ships ?? []) parts.push(`${engine.ctx.ships.get(s.defId)?.name ?? s.defId} ×${s.units}`)
         for (const c of r?.aiCores ?? []) parts.push(`基础 AI 核心 ×${c.units}`)
         if (r?.wormholeStock) parts.push(`未探索虫洞 ×${r.wormholeStock}`)
-        if (r?.isk) parts.push(`${r.isk.toLocaleString('zh-CN')} 信用点`)
+        if (r?.isk) parts.push(tr("ui.ItemsPage.039", { p1: r.isk.toLocaleString('zh-CN') }))
         const rewardTxt = parts.length > 0 ? parts.join(tr("ui.MatterTechTab.017")) : tr("ui.FirstTasks.014")
         return (
           <div key={def.id} className="app-station-card">

@@ -1667,7 +1667,7 @@ function GalaxyActions({
   const aiCoreAvailable = usableCores.length > 0
   function handleAiStandby(): void {
     if (!aiShip) {
-      onToast('先选择一艘空闲副船。', true)
+      onToast(tr("ui.MapPage.102"), true)
       return
     }
     const r = engine.assignAiStandbyAt(aiShip, effCore, galaxy.id)

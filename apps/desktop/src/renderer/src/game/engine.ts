@@ -411,16 +411,16 @@ function buildOfflineReport(
       const s = stats[t]
       if (!s) continue
       const acts: string[] = []
-      if (s.miningTrips > 0) acts.push(`采矿 ×${s.miningTrips} 趟`)
-      if (s.salvageDone > 0) acts.push(`打捞 ×${s.salvageDone} 次`)
-      if (s.refineBatches > 0) acts.push(`精炼 ×${s.refineBatches} 批`)
-      if (s.recycleBatches > 0) acts.push(`回收 ×${s.recycleBatches} 批`)
-      if (s.makeDone > 0) acts.push(`制造完成 ×${s.makeDone}`)
+      if (s.miningTrips > 0) acts.push(tr("ui.engine.001", { p1: s.miningTrips }))
+      if (s.salvageDone > 0) acts.push(tr("ui.engine.002", { p1: s.salvageDone }))
+      if (s.refineBatches > 0) acts.push(tr("ui.engine.003", { p1: s.refineBatches }))
+      if (s.recycleBatches > 0) acts.push(tr("ui.engine.004", { p1: s.recycleBatches }))
+      if (s.makeDone > 0) acts.push(tr("ui.engine.005", { p1: s.makeDone }))
       // 2026-09-14 船长「补」：舰船产出入舰船仓库 ⇒ 单列一条，免得玩家以为船丢了
-      if (s.shipsDone > 0) acts.push(`造船 ×${s.shipsDone}（已入舰船仓库）`)
+      if (s.shipsDone > 0) acts.push(tr("ui.engine.006", { p1: s.shipsDone }))
       if (acts.length === 0) continue
       coreJobs.push(
-        `${aiCoreName(t)}核心：${acts.join(' · ')}${s.income > 0 ? ` · 预估收入 ≈+${s.income.toLocaleString('zh-CN')} 信用点` : ''}`,
+        `${aiCoreName(t)}核心：${acts.join(' · ')}${s.income > 0 ? tr("ui.engine.007", { p1: s.income.toLocaleString('zh-CN') }) : ''}`,
       )
     }
   }
@@ -445,18 +445,18 @@ function buildOfflineReport(
 /** 离线结算报告 → 事件日志单条汇总（2026-09-08 船长定：日志会话级不落盘，
  * 但离线报告本体要进入本局事件日志，供关闭简报后查证） */
 function offlineReportLogText(r: OfflineReport): string {
-  const parts: string[] = [`离开 ${formatDurationMs(r.wallAwayMs)}，结算 ${formatDurationMs(r.settledMs)}`]
-  if (r.overflowMs > 0) parts.push(`另有 ${formatDurationMs(r.overflowMs)} 超出上限未结算`)
-  parts.push(`钱包 ${r.iskDelta >= 0 ? '+' : '−'}${Math.abs(r.iskDelta).toLocaleString('zh-CN')} 信用点`)
-  if (r.items.length > 0) parts.push(`收获 ${r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017"))}`)
-  if (r.modules.length > 0) parts.push(`装备入库 ${r.modules.map((m) => `${m.name}×${m.delta}`).join(tr("ui.MatterTechTab.017"))}`)
-  if (r.shipsIn.length > 0) parts.push(`新船入坞 ${r.shipsIn.join(tr("ui.MatterTechTab.017"))}`)
+  const parts: string[] = [tr("ui.engine.008", { p1: formatDurationMs(r.wallAwayMs), p2: formatDurationMs(r.settledMs) })]
+  if (r.overflowMs > 0) parts.push(tr("ui.engine.009", { p1: formatDurationMs(r.overflowMs) }))
+  parts.push(tr("ui.engine.010", { p1: r.iskDelta >= 0 ? '+' : '−', p2: Math.abs(r.iskDelta).toLocaleString('zh-CN') }))
+  if (r.items.length > 0) parts.push(tr("ui.engine.011", { p1: r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017")) }))
+  if (r.modules.length > 0) parts.push(tr("ui.engine.012", { p1: r.modules.map((m) => `${m.name}×${m.delta}`).join(tr("ui.MatterTechTab.017")) }))
+  if (r.shipsIn.length > 0) parts.push(tr("ui.engine.013", { p1: r.shipsIn.join(tr("ui.MatterTechTab.017")) }))
   if (r.shipsStored.length > 0)
-    parts.push(`入舰船仓库 ${r.shipsStored.map((s) => `${s.name}×${s.delta}`).join(tr("ui.MatterTechTab.017"))}`)
-  if (r.skillsUp.length > 0) parts.push(`技能 ${r.skillsUp.join(tr("ui.MatterTechTab.017"))}`)
-  if (r.learnedIn.length > 0) parts.push(`学会配方 ${r.learnedIn.join(tr("ui.MatterTechTab.017"))}`)
-  if (r.coreJobs.length > 0) parts.push(`AI 核心作业 ${r.coreJobs.join('；')}`)
-  return `离线结算报告：${parts.join('；')}。`
+    parts.push(tr("ui.engine.014", { p1: r.shipsStored.map((s) => `${s.name}×${s.delta}`).join(tr("ui.MatterTechTab.017")) }))
+  if (r.skillsUp.length > 0) parts.push(tr("ui.engine.015", { p1: r.skillsUp.join(tr("ui.MatterTechTab.017")) }))
+  if (r.learnedIn.length > 0) parts.push(tr("ui.engine.016", { p1: r.learnedIn.join(tr("ui.MatterTechTab.017")) }))
+  if (r.coreJobs.length > 0) parts.push(tr("ui.engine.017", { p1: r.coreJobs.join('；') }))
+  return tr("ui.engine.018", { p1: parts.join('；') })
 }
 
 export class GameEngine {
@@ -771,18 +771,18 @@ export class GameEngine {
         lastSavedWall = parsed.savedAtWallMs
       }
     } catch (err) {
-      console.error('读档失败，将开启新档：', err)
+      console.error(tr("ui.engine.019"), err)
       this.state = createInitialState({ prologue: true })
       // 2026-09-11：玩家可见文案不带技术细节（JSON / 版本号 / 异常字符串）——技术原因只进控制台
       const why =
         err instanceof SaveError
           ? err.code === 'PARSE'
-            ? '存档文件已损坏'
+            ? tr("ui.engine.020")
             : err.code === 'FORMAT'
-              ? '存档文件无法识别（不是本游戏的档案）'
-              : '档案制式过旧，无法读取'
-          : '存档文件无法读取'
-      addLog(this.state, 'warn', `${why}——已为你开启新档案。`)
+              ? tr("ui.engine.021")
+              : tr("ui.engine.022")
+          : tr("ui.engine.023")
+      addLog(this.state, 'warn', tr("ui.engine.024", { why: why }))
     }
 
     // V17/V18 装备修复：下架型号迁移 + 每船位数组与船型布局对齐（须在离线结算前完成，
@@ -906,7 +906,7 @@ export class GameEngine {
       const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
       return await saveBridge.save(serializeSaveFile(out))
     } catch (err) {
-      console.error('保存失败：', err)
+      console.error(tr("ui.engine.025"), err)
       return false
     }
   }
@@ -947,7 +947,7 @@ export class GameEngine {
       try {
         parsed = loadSaveFile(read.text)
       } catch (err) {
-        return { ok: false, error: `备份无法解析（${err instanceof Error ? err.message : String(err)}）。` }
+        return { ok: false, error: tr("ui.engine.026", { p1: err instanceof Error ? err.message : String(err) }) }
       }
       const restore = await saveBridge.restore(name)
       if (!restore.ok) return { ok: false, error: restore.error ?? '写回存档失败。' }
@@ -970,7 +970,7 @@ export class GameEngine {
       this.state = parsed.state
       // 2026-09-08 船长定：日志会话级（写盘剥离）——恢复备份不做强制清空，本局日志接续显示
       const saved = await this.persist() // 落盘（墙钟锚 = 现在 → 下次启动不会重复结算）
-      if (!saved) return { ok: false, error: '写回存档失败（存储空间不足或文件被占用）。' }
+      if (!saved) return { ok: false, error: tr("ui.engine.027") }
       this.notify()
       return { ok: true }
     } catch (err) {
@@ -1021,7 +1021,7 @@ export class GameEngine {
       try {
         parsed = loadSaveFile(text)
       } catch (err) {
-        return { ok: false, error: `所选文件无法解析为本游戏存档（${err instanceof Error ? err.message : String(err)}）。` }
+        return { ok: false, error: tr("ui.engine.028", { p1: err instanceof Error ? err.message : String(err) }) }
       }
       const imported = parsed.state
       /**
@@ -1047,7 +1047,7 @@ export class GameEngine {
       }
       this.state = imported
       const saved = await this.persist() // 落盘（写盘剥离日志；墙钟锚 = 现在 → 下次启动不会重复结算）
-      if (!saved) return { ok: false, error: '写回存档失败（存储空间不足或文件被占用）。' }
+      if (!saved) return { ok: false, error: tr("ui.engine.027") }
       this.notify()
       return { ok: true }
     } catch (err) {
@@ -1069,10 +1069,10 @@ export class GameEngine {
   /** 训练某技能到"队列里应排的下一级"（T2 连锁：已学 + 1 + 已排同技能条数） */
   trainNextLevel(skillId: string): CommandResult {
     const current = this.state.skills.trained[skillId] ?? 0
-    if (current >= MAX_SKILL_LEVEL) return { ok: false, error: '该技能已是满级。' }
+    if (current >= MAX_SKILL_LEVEL) return { ok: false, error: tr("ui.engine.029") }
     const queued = this.state.skills.queue.filter((q) => q.skillId === skillId).length
     const target = current + 1 + queued
-    if (target > MAX_SKILL_LEVEL) return { ok: false, error: '该技能已排队到满级，无法再追加。' }
+    if (target > MAX_SKILL_LEVEL) return { ok: false, error: tr("ui.engine.030") }
     const result = enqueueSkill(this.state, skillId, target, this.ctx.skills)
     if (result.ok) {
       void this.persist()
@@ -1266,7 +1266,7 @@ export class GameEngine {
       // 部分成交：货已入库，只提示"只够这些"
       return {
         ok: false,
-        error: `供应簿只够 ${res.bought.toLocaleString('zh-CN')} 件（已买入 ${name}×${res.bought.toLocaleString('zh-CN')}）——其余可挂「挂买单」等 市场补给后自动成交。`,
+        error: tr("ui.engine.031", { p1: res.bought.toLocaleString('zh-CN'), name: name, p3: res.bought.toLocaleString('zh-CN') }),
       }
     }
     switch (res.blocked) {
@@ -1275,20 +1275,24 @@ export class GameEngine {
         const unit = quote.sell ?? 0
         return {
           ok: false,
-          error: `信用点不足：最低一张 ${unit.toLocaleString('zh-CN')} 信用点，钱包 ${Math.floor(this.state.wallet.isk).toLocaleString('zh-CN')} 信用点——减少数量，或用「挂买单」低价排队等成交。`,
+          error: tr("ui.engine.032", { p1: unit.toLocaleString('zh-CN'), p2: Math.floor(this.state.wallet.isk).toLocaleString('zh-CN') }),
         }
       }
       case 'standing':
         return {
           ok: false,
-          error: `暂不能买入：${def ? (bmGateReason(this.state, def) ?? goodLockedReason(this.state, def) ?? '声望未达') : '声望未达'}。`,
+          error: tr('ui.engine.033', {
+            p1: def
+              ? (bmGateReason(this.state, def) ?? goodLockedReason(this.state, def) ?? tr('ui.engine.034'))
+              : tr('ui.engine.034'),
+          }),
         }
       case 'not-buyable':
-        return { ok: false, error: `${name}只收不卖：市场不出售现货（可等玩家二手挂单，或自己制造）。` }
+        return { ok: false, error: tr("ui.engine.035", { name: name }) }
       default:
         return {
           ok: false,
-          error: `${name}当前没有现货：市场供应簿为空——用「挂买单」等 市场补给后自动成交，或过一会儿再来（常驻 20 分钟一轮补给）。`,
+          error: tr("ui.engine.036", { name: name }),
         }
     }
   }
@@ -1457,7 +1461,7 @@ export class GameEngine {
       this.notify()
       return { ok: true }
     }
-    return { ok: false, error: '该位没有可卸下的装备。' }
+    return { ok: false, error: tr("ui.engine.037") }
   }
 
   /** V18：**换装**（某位旧件 → 装备库里的新件）——一次成型、按最终状态校验 CPU。
@@ -1696,7 +1700,7 @@ export class GameEngine {
    */
   wormholeEnterFromStock(stockId: string, shipIds: readonly string[]): CommandResult {
     const item = wormholeStockOf(this.state).find((x) => x.id === stockId)
-    if (!item) return { ok: false, error: '这处虫洞不在了（可能已经探索过）。' }
+    if (!item) return { ok: false, error: tr("ui.engine.038") }
     const r = wormholeEnter(this.state, this.ctx, shipIds, item.seed)
     if (!r.ok) return { ok: false, error: r.error }
     const run = this.state.wormhole.run
@@ -2005,19 +2009,19 @@ export class GameEngine {
   /** 虫洞：**整理货仓格**（把所有形状件按首次适应递减重排；只重排、不丢件） */
   wormholeHoldCompact(): CommandResult {
     const run = this.state.wormhole.run
-    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    if (!run?.hold) return { ok: false, error: tr("ui.engine.039") }
     const r = holdCompact(run.hold, wormholeHoldCapacityOf(this.state, this.ctx))
     if (r.moved > 0 || r.unplaced.length > 0) {
       void this.persist()
       this.notify()
     }
-    return { ok: true, error: r.unplaced.length > 0 ? `有 ${r.unplaced.length} 件放不回格子里（货仓超载）：先抛货。` : undefined }
+    return { ok: true, error: r.unplaced.length > 0 ? tr("ui.engine.040", { p1: r.unplaced.length }) : undefined }
   }
 
   /** 虫洞：**移动一件形状件**（拖拽落点；非法落点 ⇒ 拒绝、位置不变） */
   wormholeHoldMove(id: string, x: number, y: number): CommandResult {
     const run = this.state.wormhole.run
-    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    if (!run?.hold) return { ok: false, error: tr("ui.engine.039") }
     const r = holdMove(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx))
     if (r.ok) {
       void this.persist()
@@ -2035,7 +2039,7 @@ export class GameEngine {
    */
   wormholeHoldDropAt(id: string, x: number, y: number, grab: { dx: number; dy: number }): CommandResult {
     const run = this.state.wormhole.run
-    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    if (!run?.hold) return { ok: false, error: tr("ui.engine.039") }
     const r = holdDropWithGrab(run.hold, id, x, y, wormholeHoldCapacityOf(this.state, this.ctx), grab)
     if (r.ok) {
       void this.persist()
@@ -2046,7 +2050,7 @@ export class GameEngine {
   /** 虫洞：**两件互换位置**（船长 2026-09-13：「物品之间无法交换位置」；形状对不上则拒绝并回滚） */
   wormholeHoldSwap(idA: string, idB: string): CommandResult {
     const run = this.state.wormhole.run
-    if (!run?.hold) return { ok: false, error: '货仓里没有形状件。' }
+    if (!run?.hold) return { ok: false, error: tr("ui.engine.039") }
     const r = holdSwap(run.hold, idA, idB, wormholeHoldCapacityOf(this.state, this.ctx))
     if (r.ok) {
       void this.persist()
@@ -2081,7 +2085,7 @@ export class GameEngine {
       void this.persist()
       this.notify()
     }
-    return { ok: r.dropped.length > 0, error: r.dropped.length > 0 ? undefined : '货仓没有超载，不用抛货。' }
+    return { ok: r.dropped.length > 0, error: r.dropped.length > 0 ? undefined : tr("ui.engine.041") }
   }
 
   /** 虫洞：**货仓读数**（已用格 / 总格 / 超载；界面与按钮置灰共用） */
@@ -2175,12 +2179,12 @@ export class GameEngine {
     grab?: { dx: number; dy: number },
   ): CommandResult {
     const run = this.state.wormhole.run
-    if (!run) return { ok: false, error: '不在虫洞内。' }
+    if (!run) return { ok: false, error: tr("ui.engine.042") }
     run.hold = run.hold ?? makeHoldState()
     const holdCap = wormholeHoldCapacityOf(this.state, this.ctx)
     const src = from === 'hold' ? run.hold : wormholeTempBoard(run)
     const dst = to === 'hold' ? run.hold : wormholeTempBoard(run)
-    if (src === dst) return { ok: false, error: '两边是同一块板。' }
+    if (src === dst) return { ok: false, error: tr("ui.engine.043") }
     const r = holdTransferTo(src, dst, id, to === 'hold' ? holdCap : WORMHOLE_TEMP_CELLS, x, y, grab)
     if (r.ok) {
       // 谜质装置挪动 ⇒ 增益实时派生（进货仓生效 / 出仓失效并**夹紧回合**）
@@ -2194,18 +2198,18 @@ export class GameEngine {
   /** 虫洞：**整理临时空间**（与货仓的「整理」同一把尺：按件大小重排，只重排不丢件） */
   wormholeTempCompact(): CommandResult {
     const run = this.state.wormhole.run
-    if (!run?.tempGrid) return { ok: false, error: '临时空间里没有东西。' }
+    if (!run?.tempGrid) return { ok: false, error: tr("ui.engine.044") }
     const r = holdCompact(run.tempGrid, WORMHOLE_TEMP_CELLS)
     if (r.moved > 0 || r.unplaced.length > 0) {
       void this.persist()
       this.notify()
     }
-    return { ok: true, error: r.unplaced.length > 0 ? `有 ${r.unplaced.length} 件放不回格子里。` : undefined }
+    return { ok: true, error: r.unplaced.length > 0 ? tr("ui.engine.045", { p1: r.unplaced.length }) : undefined }
   }
   /** 虫洞：深入下一层（只在层末可用） */
   wormholeDescend(): CommandResult {
     const run = this.state.wormhole.run
-    if (!run) return { ok: false, error: '不在虫洞内。' }
+    if (!run) return { ok: false, error: tr("ui.engine.042") }
     const blocked = wormholeActionBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
     /**
@@ -2225,7 +2229,7 @@ export class GameEngine {
   /** 虫洞：发起撤离（进入 `extracting` 相位；**下一拍直接结算入港** —— 2026-09-15 起撤离不触发战斗） */
   wormholeExtract(): CommandResult {
     const run = this.state.wormhole.run
-    if (!run) return { ok: false, error: '不在虫洞内。' }
+    if (!run) return { ok: false, error: tr("ui.engine.042") }
     // **超载不许撤离**（船长裁定 8）：先把货抛到容量内（抛货本身任何时候都能做 ⇒ 不会软锁）
     const blocked = wormholeActionBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }
@@ -2238,7 +2242,7 @@ export class GameEngine {
     if (pending.count > 0) {
       return {
         ok: false,
-        error: `临时空间里还有 ${pending.count} 件没处理：到「背包」页「放回货仓」或「丢弃」后再撤离。`,
+        error: tr("ui.engine.046", { p1: pending.count }),
       }
     }
     const r = wormholeExtract(run)
@@ -2485,7 +2489,7 @@ export class GameEngine {
   /** T9：播放/重看通讯剧本（逐句镜像进事件日志 + 标记已读 + 清待播） */
   openDialogue(scriptId: string): CommandResult {
     const script = DIALOGUES.find((d) => d.id === scriptId)
-    if (!script) return { ok: false, error: `未知通讯剧本：${scriptId}。` }
+    if (!script) return { ok: false, error: tr("ui.engine.047", { scriptId: scriptId }) }
     playDialogue(this.state, scriptId, this.ctx, script.lines)
     void this.persist()
     this.notify()
