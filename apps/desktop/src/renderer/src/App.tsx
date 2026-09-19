@@ -10,6 +10,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
+import { useL10n } from './i18n/locale'
 import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
@@ -153,6 +154,7 @@ const FS_KEY = 'whale-idle:ui-fs'
 /** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs；
  *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张 */
 function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onClose: () => void }) {
+  const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
   const [fs, setFs] = useState(() => readNum(FS_KEY, 1, 0.85, 1.25))
   /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
@@ -174,50 +176,76 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="app-settings-title">设置</div>
-        <div className="app-settings-sub">界面缩放、字体大小与宇宙背景，即时生效 · 缩放与字号自动记忆</div>
+        <div className="app-settings-title">{t('设置')}</div>
+        <div className="app-settings-sub">
+          {t('界面缩放、字体大小与宇宙背景，即时生效 · 缩放与字号自动记忆')}
+        </div>
         <div className="app-settings-list">
+          {/* 语言（2026-09-19 船长令「英语本地化」）：默认跟随系统，这里可随时覆盖；语言不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">界面缩放</span>
+              <span className="app-settings-label">{t('语言')}</span>
+              <span className="app-settings-val">{locale === 'zh' ? '中文' : 'English'}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${locale === 'zh' ? ' is-primary' : ''}`}
+                onClick={() => setLocale('zh')}
+              >
+                中文
+              </button>
+              <button
+                className={`app-btn is-small${locale === 'en' ? ' is-primary' : ''}`}
+                onClick={() => setLocale('en')}
+              >
+                English
+              </button>
+            </div>
+            <div className="app-settings-desc">{t('界面语言（即时生效；默认跟随系统）')}</div>
+          </div>
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('界面缩放')}</span>
               <span className="app-settings-val">{Math.round(zoom * 100)}%</span>
             </div>
             <input className="app-settings-slider" type="range" min={0.8} max={1.25} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
-            <div className="app-settings-desc">整窗缩放：面板几何与文字一起放大/缩小（80%~125%）</div>
+            <div className="app-settings-desc">{t('整窗缩放：面板几何与文字一起放大/缩小（80%~125%）')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">字体大小</span>
+              <span className="app-settings-label">{t('字体大小')}</span>
               <span className="app-settings-val">{Math.round(fs * 100)}%</span>
             </div>
             <input className="app-settings-slider" type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
-            <div className="app-settings-desc">独立于界面缩放，只调整文字（85%~125%）</div>
+            <div className="app-settings-desc">{t('独立于界面缩放，只调整文字（85%~125%）')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">宇宙背景</span>
-              <span className="app-settings-val">{bg ? bg.label : '未启用'}</span>
+              <span className="app-settings-label">{t('宇宙背景')}</span>
+              <span className="app-settings-val">{bg ? bg.label : t('未启用')}</span>
             </div>
             <div className="app-settings-btns">
               <button
                 className="app-btn is-small"
                 onClick={() => setBg(rerollSpaceBg())}
                 disabled={!bg}
-                title="换成另一张随机底图（立即生效）"
+                title={t('换成另一张随机底图（立即生效）')}
               >
-                换一张
+                {t('换一张')}
               </button>
             </div>
             <div className="app-settings-desc">
-              {bg ? `${bg.total} 张无缝星图铺在界面最底层，每次启动随机一张；这里换的这张本场有效（下次启动仍随机）` : '背景图缺失：当前用的是默认深色底'}
+              {bg
+                ? t('{n} 张无缝星图铺在界面最底层，每次启动随机一张；这里换的这张本场有效（下次启动仍随机）', { n: bg.total })
+                : t('背景图缺失：当前用的是默认深色底')}
             </div>
           </div>
         </div>
         <div className="app-settings-foot">
-          <span className="app-dim">可随时从顶栏「设置」调回</span>
+          <span className="app-dim">{t('可随时从顶栏「设置」调回')}</span>
           <span className="app-settings-btns">
             <button className="app-btn is-small" onClick={() => { setZoom(1); setFs(1) }}>
-              恢复默认
+              {t('恢复默认')}
             </button>
             <button
               className="app-btn is-small is-primary"
@@ -226,7 +254,7 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
                 onClose()
               }}
             >
-              完成
+              {t('完成')}
             </button>
           </span>
         </div>
@@ -347,6 +375,8 @@ const MOB_SEL_MOVE_TOLERANCE_PX = 24
 
 export function App({ engine }: { engine: GameEngine }) {
   const [, force] = useReducer((n: number) => n + 1, 0)
+  /** 语言（2026-09-19 船长令「英语本地化」）：界面文案走 `t(中文源串)`；缺词条回退中文 */
+  const { t } = useL10n()
 
   // ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：按 visualViewport 真实可见区铺满对齐，
   //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"） ──
@@ -905,10 +935,10 @@ export function App({ engine }: { engine: GameEngine }) {
             {qqCopied ? '✓ 群号已复制' : `💬 QQ群 ${QQ_GROUP}`}
           </button>
           <button className="app-btn" onClick={() => setShowHandbook(true)} title="玩法说明与图鉴">
-            手册
+            {t('手册')}
           </button>
           <button className="app-btn" onClick={() => setShowSettings(true)} title="界面缩放与字体大小">
-            设置
+            {t('设置')}
           </button>
           <button className="app-btn" onClick={() => void handleSave()}>
             保存
@@ -957,7 +987,7 @@ export function App({ engine }: { engine: GameEngine }) {
                   <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
                   {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
                 </span>
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             )
           })}

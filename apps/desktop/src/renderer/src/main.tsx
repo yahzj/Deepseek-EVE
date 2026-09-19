@@ -6,6 +6,7 @@ import { App } from './App'
 import { GameEngine } from './game/engine'
 import { runAutoPerf } from './game/autoPerf'
 import { applySpaceBg } from './ui/spaceBg'
+import { L10nProvider, tr } from './i18n/locale'
 import './styles.css'
 
 // 宇宙背景（2026-09-10 船长）：启动时抽一张无缝贴图并写入 --space-bg；
@@ -15,7 +16,9 @@ applySpaceBg()
 const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)
 
-root.render(<div className="app-loading">正在启动星门引擎……</div>)
+root.render(
+  <div className="app-loading">{tr('正在启动星门引擎……')}</div>,
+)
 
 engine
   .start()
@@ -28,7 +31,11 @@ engine
         const spec = JSON.parse(perfJson) as Parameters<typeof runAutoPerf>[1]
         void import('./game/perf').then(({ perfHub }) => {
           perfHub.activate()
-          root.render(<App engine={engine} />)
+          root.render(
+            <L10nProvider>
+              <App engine={engine} />
+            </L10nProvider>,
+          )
           void runAutoPerf(engine, spec)
         })
         return
@@ -36,9 +43,15 @@ engine
         console.error('性能自动采集启动失败：', err)
       }
     }
-    root.render(<App engine={engine} />)
+    root.render(
+      <L10nProvider>
+        <App engine={engine} />
+      </L10nProvider>,
+    )
   })
   .catch((err: unknown) => {
     console.error('引擎启动失败：', err)
-    root.render(<div className="app-loading">启动失败：{String(err)}（详见开发者控制台）</div>)
+    root.render(
+      <div className="app-loading">{tr('启动失败：{err}（详见开发者控制台）', { err: String(err) })}</div>,
+    )
   })

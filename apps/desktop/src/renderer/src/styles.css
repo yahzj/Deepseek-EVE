@@ -26,6 +26,12 @@ body {
 
 }
 
+/* 英文界面换 Latin 优先字体栈（2026-09-19 船长令「英语本地化」）：中文栈的 Latin 字形偏窄且字重单薄，
+   英文下改用系统 UI 字体；中文侧一字不动（`html[data-locale='en']` 由 i18n/locale.tsx 挂上）。 */
+html[data-locale='en'] body {
+  font-family: 'Segoe UI', Inter, 'Helvetica Neue', system-ui, -apple-system, 'Noto Sans', Arial, sans-serif;
+}
+
 /* ---------- 启动画面 ---------- */
 
 .app-loading {
