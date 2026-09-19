@@ -39,6 +39,7 @@ import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, wormholeAnoma
 import { wormholeCardThreatOf, wormholeSkippedBranch } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
+import { matterTechWhBuffs } from './matterTech'
 import type { WormholeMatterBuffs } from './wormholeMatter'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { cargoItemsOf, cargoOfShip, countWare, removeItem, removeWare, addWare } from './inventory'
@@ -3485,7 +3486,7 @@ function buildMyUnitSpecs(
    * 快照里的 `foeMainType` 决定三张谐振片对哪一系加抗性。
    */
   const wh = battle.wormhole
-  const matterBuffs = wh ? wormholeMatterBuffs(state.wormhole.run?.hold) : null
+  const matterBuffs = wh ? wormholeMatterBuffs(state.wormhole.run?.hold, matterTechWhBuffs(state, ctx)) : null
   const matterFoeMain: DamageType = wh?.foeMainType ?? 'kinetic'
   if (!fleet || fleet.length === 0) {
     const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
@@ -3951,7 +3952,7 @@ export function startFleetBattleFor(
   applyFleetLockAura(specs)
   // **谜质 B1：我方静态增益**（抗性 / 命中 / 回避 / 射程 / 单发 / 装填）——只在洞内战斗里生效
   if (matterMods) {
-    const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)
+    const buffs = wormholeMatterBuffs(state.wormhole.run?.hold, matterTechWhBuffs(state, ctx))
     for (const spec of specs) applyMatterPlayerBuffs(spec, buffs, matterMods.foeMainType)
   }
   const me = specs[0]!
