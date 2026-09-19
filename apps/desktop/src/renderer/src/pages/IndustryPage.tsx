@@ -319,7 +319,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
               title={
                 isWreck
                   ? tr("ui.IndustryPage.036")
-                  : `前往星图「矿带开采」定位出产该原料的矿带${gotoTarget.ids.length > 1 ? tr("ui.IndustryPage.085", { p1: gotoTarget.ids.length }) : ''}`
+                  : tr("ui.IndustryPage.101", { p1: gotoTarget.ids.length > 1 ? tr("ui.IndustryPage.085", { p1: gotoTarget.ids.length }) : '' })
               }
               onClick={() => onGotoMap(gotoTarget.tab, gotoTarget.ids)}
             >

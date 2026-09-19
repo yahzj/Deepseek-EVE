@@ -208,7 +208,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           <ProgressBar
             value={cap > 0 ? ((used + haulOcc + courierOcc) / cap) * 100 : 0}
             tone={haulOcc + courierOcc > 0 ? 'warn' : cap > 0 && used / cap > 0.85 ? 'danger' : cap > 0 && used / cap > 0.6 ? 'warn' : 'normal'}
-            label={`${targetName} · 已占用 ${m3(used + haulOcc + courierOcc)} / ${cap > 0 ? cap.toLocaleString('zh-CN') : '—'} m³`}
+            label={tr("ui.CargoPage.056", { targetName: targetName, p2: m3(used + haulOcc + courierOcc), p3: cap > 0 ? cap.toLocaleString('zh-CN') : '—' })}
           />
           {haulOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 2 }}>
@@ -332,7 +332,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 <li
                   key={id}
                   className="app-inv-row"
-                  title={`${def.description}——船载仅携带；装配台取料自装备库，船载装备需先卸回。`}
+                  title={tr("ui.CargoPage.057", { p1: def.description })}
                 >
                   <div className="app-inv-main">
                     <span className="app-inv-name">
@@ -404,7 +404,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     key: id,
                     glyph: def?.slot ?? 'mod',
                     name: def?.name ?? id,
-                    sub: `×${units.toLocaleString('zh-CN')} · 计入货舱 ${m3(units)}`,
+                    sub: tr("ui.CargoPage.058", { p1: units.toLocaleString('zh-CN'), p2: m3(units) }),
                     title: def?.description,
                   }
                 })}

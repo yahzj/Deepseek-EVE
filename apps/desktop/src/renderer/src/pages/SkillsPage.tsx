@@ -57,7 +57,7 @@ export function levelTimesHint(def: SkillDef, factor = 1): string {
   for (let lv = 1; lv <= MAX_SKILL_LEVEL; lv++) {
     lines.push(tr("ui.SkillsPage.029", { lv: lv, p2: formatDurationMs(Math.round(skillLevelTimeMs(def, lv) * factor)) }))
   }
-  return `训练时长：\n${lines.join('\n')}`
+  return tr("ui.SkillsPage.039", { p1: lines.join('\n') })
 }
 
 /** 技能行时长（毫秒）：基础 × 高效学习法系数（引擎推进/预估同源） */

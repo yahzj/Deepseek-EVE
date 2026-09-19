@@ -13,6 +13,7 @@
  * - 或自动采集模式 window.__AUTOPERF__（Electron 环境变量 WHALE_AUTOPERF，本机跑分用）。
  */
 
+import { tr } from '../i18n/locale'
 export type PerfBucket = 'idle' | 'battle'
 
 /** 一个计量段（全局总量或单个场景切片的形态一致） */
@@ -51,7 +52,7 @@ class PerfHub {
   private sceneWall = 0
   private segName = ''
   private seg: PerfSegment | null = null
-  private totals = this.freshSeg('总览', 0)
+  private totals = this.freshSeg(tr("ui.perf.001"), 0)
   private segments: PerfSegment[] = []
   private timeline: TimePoint[] = []
   private fpsTimer: number | null = null
@@ -237,7 +238,7 @@ class PerfHub {
     void finalize(this.seg)
     const heapAvg = this.heapSamples.length > 0 ? this.heapSamples.reduce((a, b) => a + b, 0) / this.heapSamples.length : 0
     return {
-      tool: '大鲸鱼·性能快照（perfHub 2026-09-08）',
+      tool: tr("ui.perf.002"),
       iso: new Date().toISOString(),
       recordingMs: Math.round(performance.now() - this.startWall),
       hardware: { cores: navigator.hardwareConcurrency ?? null },

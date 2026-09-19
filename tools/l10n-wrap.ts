@@ -148,9 +148,10 @@ function idFor(zh: string, stem: string): string | null {
   if (hit) return hit.id
   const en = enMap[zh]
   if (en === undefined) return null
-  // 形态：非空 · 不许制表/换行 · 首尾**至多一个空格**（JSX 文本片段与相邻 `{表达式}` 之间要靠这个空格
-  // 排版，如 `{n}（结构 500）` ⇒ `{n} (structure 500)`；多余空白仍是错的）
-  if (en.trim() === '' || /[\r\n\t]/.test(en) || /^ {2,}| {2,}$/.test(en)) throw new Error(`英文值形态不合规（空/含制表换行/首尾多余空白）：「${zh}」→「${en}」`)
+  // 形态：非空 · 不许制表符与 `\r` · 首尾**至多一个空格**（JSX 文本片段与相邻 `{表达式}` 之间要靠这个空格
+  // 排版，如 `{n}（结构 500）` ⇒ `{n} (structure 500)`；多余空白仍是错的）。
+  // `\n` 放行：多行悬浮提示（`title` + `white-space: pre-line`）是合法整句。
+  if (en.trim() === '' || /[\r\t]/.test(en) || /^ {2,}| {2,}$/.test(en)) throw new Error(`英文值形态不合规（空/含制表或 \\r/首尾多余空白）：「${zh}」→「${en}」`)
   // 中日韩字符：只有**语言自称**一类允许原样保留（en === zh，如「中文」）
   if (CJK.test(en) && en !== zh) throw new Error(`英文值残留中日韩字符：「${zh}」→「${en}」`)
   const id = mintId(stem)
@@ -277,21 +278,19 @@ for (const file of walk(ROOT)) {
     if (ts.isTemplateExpression(node) && !insideTranslateCall(node)) {
       const raw = node.getText(sf)
       if (CJK.test(raw)) {
-        if (/[\r\n]/.test(raw)) {
-          manual.add(raw.replace(/\s+/g, ' ').slice(0, 90))
-        } else {
-          const used = new Map<string, number>()
-          const params = node.templateSpans.map((span, i) => {
-            const exprText = span.expression.getText(sf)
-            const base = /^[A-Za-z_$][\w$]*$/.test(exprText) ? exprText : `p${i + 1}`
-            const seen = used.get(base) ?? 0
-            used.set(base, seen + 1)
-            return { name: seen === 0 ? base : `${base}${seen + 1}`, text: exprText }
-          })
-          const parts = [node.head.text, ...node.templateSpans.map((s) => s.literal.text)]
-          const zh = parts.map((part, i) => (i === 0 ? part : `{${params[i - 1]!.name}}${part}`)).join('')
-          addSite(node, zh, 'template', undefined, undefined, params)
-        }
+        const used = new Map<string, number>()
+        const params = node.templateSpans.map((span, i) => {
+          const exprText = span.expression.getText(sf)
+          const base = /^[A-Za-z_$][\w$]*$/.test(exprText) ? exprText : `p${i + 1}`
+          const seen = used.get(base) ?? 0
+          used.set(base, seen + 1)
+          return { name: seen === 0 ? base : `${base}${seen + 1}`, text: exprText }
+        })
+        // 多行模板**照收**：`title` 里的 `\n` 由提示层的 `white-space: pre-line` 原样换行（合法整句）；
+        // 统一归一成 `\n`（表里以转义形式存，运行时还原成真换行）
+        const parts = [node.head.text, ...node.templateSpans.map((s) => s.literal.text)].map((p) => p.replace(/\r\n?/g, '\n'))
+        const zh = parts.map((part, i) => (i === 0 ? part : `{${params[i - 1]!.name}}${part}`)).join('')
+        addSite(node, zh, 'template', undefined, undefined, params)
       }
     }
     ts.forEachChild(node, visit)
@@ -394,8 +393,8 @@ if (manualAll.size > 0) {
   for (const m of [...manualAll].sort()) console.log(`    ${JSON.stringify(m)}`)
 }
 if (missingAll.size > 0) {
-  console.log(`\n· **缺译未包** ${missingAll.size} 条中文串（补进 --en 映射后重跑）：`)
-  for (const m of [...missingAll].sort()) console.log(`    ${m}`)
+  console.log(`\n· **缺译未包** ${missingAll.size} 条中文串（补进 --en 映射后重跑；换行以 \\n 转义显示）：`)
+  for (const m of [...missingAll].sort()) console.log(`    ${m.replace(/\n/g, '\\n')}`)
 }
 if (LIST) {
   console.log('\n· `--list`：逐文件候选：')

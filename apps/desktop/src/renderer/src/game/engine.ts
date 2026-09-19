@@ -420,7 +420,7 @@ function buildOfflineReport(
       if (s.shipsDone > 0) acts.push(tr("ui.engine.006", { p1: s.shipsDone }))
       if (acts.length === 0) continue
       coreJobs.push(
-        `${aiCoreName(t)}核心：${acts.join(' · ')}${s.income > 0 ? tr("ui.engine.007", { p1: s.income.toLocaleString('zh-CN') }) : ''}`,
+        tr("ui.engine.048", { p1: aiCoreName(t), p2: acts.join(' · '), p3: s.income > 0 ? tr("ui.engine.007", { p1: s.income.toLocaleString('zh-CN') }) : '' }),
       )
     }
   }

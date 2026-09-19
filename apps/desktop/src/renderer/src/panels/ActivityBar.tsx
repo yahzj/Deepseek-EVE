@@ -370,7 +370,7 @@ export function ActivityBar({
         {aiShips > 0 ? (
           <button
             className="app-activitybar-ai is-ship"
-            title={`AI 副船 ${aiShips} 艘——正在执行的活动：\n${aiLinesOf(aiShipItems)}\n${aiSlotsNote}\n点击前往「舰船」的 AI 指挥中心`}
+            title={tr("ui.ActivityBar.056", { aiShips: aiShips, p2: aiLinesOf(aiShipItems), aiSlotsNote: aiSlotsNote })}
             onClick={() => onAiCenter?.()}
           >
             <span className="app-ico">
@@ -382,7 +382,7 @@ export function ActivityBar({
         {aiProd > 0 ? (
           <button
             className="app-activitybar-ai is-industry"
-            title={`站内 AI 作业 ${aiProd} 条——正在执行的活动：\n${aiLinesOf(aiProdItems)}\n${aiSlotsNote}\n点击前往「工业」页查看或停止`}
+            title={tr("ui.ActivityBar.057", { aiProd: aiProd, p2: aiLinesOf(aiProdItems), aiSlotsNote: aiSlotsNote })}
             onClick={() => onGoPage?.('industry')}
           >
             <span className="app-ico">
@@ -397,8 +397,8 @@ export function ActivityBar({
             className={`app-activitybar-scan${scanBar.done ? ' is-done' : ''}`}
             title={
               scanBar.done
-                ? `扫描完成：「${scanName(scanBar.galaxyId)}」的情报已录入星图——进「星图」看过之后这条才收起。\n点击查看（顺带进「星图」页）`
-                : `扫描艇正在扫描「${scanName(scanBar.galaxyId)}」 · 剩 ${formatDurationMs(scanBar.remainingMs)}\n扫描不占主控：期间照常安排别的活动。点击前往「星图」页（可在那儿终止扫描，已扫部分会保留）`
+                ? tr("ui.ActivityBar.055", { p1: scanName(scanBar.galaxyId) })
+                : tr("ui.ActivityBar.058", { p1: scanName(scanBar.galaxyId), p2: formatDurationMs(scanBar.remainingMs) })
             }
             onClick={() => {
               // 完成态点一下 = 看过（收条）；进行中点一下 = 纯跳转（星图页有「终止扫描」）
@@ -430,7 +430,7 @@ export function ActivityBar({
             title={
               `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
               tr("ui.ActivityBar.054", { p1: new Date(p.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, p.untilMs - tuningTick)) }) +
-              `\n点击前往「${p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006")}」页`
+              tr("ui.ActivityBar.059", { p1: p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006") })
             }
             onClick={() => {
               if (p.open === 'wormhole-scan') {
@@ -453,7 +453,7 @@ export function ActivityBar({
             key={`${t.key}-${t.untilMs}`}
             className="app-activitybar-tuning"
             title={
-              `${t.name}：本期限时加成 ×${t.mul}${t.note ? `\n${t.note}` : ''}\n` +
+              tr("ui.ActivityBar.060", { p1: t.name, p2: t.mul, p3: t.note ? `\n${t.note}` : '' }) +
               tr("ui.ActivityBar.054", { p1: new Date(t.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, t.untilMs - tuningTick)) })
             }
             onClick={() => onGoPage?.('map', 'star')}
