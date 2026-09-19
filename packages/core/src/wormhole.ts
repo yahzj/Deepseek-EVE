@@ -366,6 +366,16 @@ export interface WormholeRunState {
    */
   turnsBase?: number
   /**
+   * **入场时已折算进 `turnsBase` 的谜质科技回合加成**（2026-09-19 谜质科技批）：
+   * 「时序锚定器」是**永久加成**（+10/级），与货仓里的「时序核心」装置分开相加——
+   * 本趟上限 = `turnsBase + 10 × 时序核心台数 + (科技现有加成 − 本字段)`，由 `wormholeSyncMatterTurns`
+   * **幂等**同步 ⇒ **入洞后再点锚定器，本趟立刻多走几步**（与"捡到时序核心就多走几步"同一套夹紧逻辑）。
+   *
+   * 缺省（老档在途趟）⇒ 同步时**视作"已按当前科技折算过"** ⇒ 增减量为 0
+   * ⇒ 行为与该批之前逐字一致（不会把已含在 `turnsBase` 里的加成再加一遍）。
+   */
+  turnsTechBonus?: number
+  /**
    * **遗迹守备已被惊动、等玩家确认迎战**（F3c 界面批 · 船长 2026-09-13：战斗不该毫无提示地突然发生，
    * 要先提示玩家惊扰了守卫、玩家确认后再跳转）。为真时**别的动作一律被拦**（见 gridActionBlocked），
    * 直到玩家点「迎战」（wormholeStartBattle('ruins') 成功即清）。可选字段 ⇒ 老档零迁移。
@@ -666,7 +676,8 @@ export function wormholeStartRun(
       nodeIndex: 0,
       turnsLeft: adm.turnBudget,
       turnsTotal: adm.turnBudget,
-      turnsBase: adm.turnBudget,
+      turnsBase: adm.turnBudget - techTurnBonus,
+      turnsTechBonus: techTurnBonus,
       fleet: [...shipIds],
       totalMass: adm.totalMass,
       bag: [],

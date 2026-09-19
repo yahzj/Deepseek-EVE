@@ -186,7 +186,7 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
     expect(wormholeExtract(run).ok).toBe(true)
     // 幂等：再同步一次不变
     const snap = { total: run.turnsTotal, left: run.turnsLeft }
-    wormholeSyncMatterTurns(state)
+    wormholeSyncMatterTurns(state, ctx)
     expect(run.turnsTotal).toBe(snap.total)
     expect(run.turnsLeft).toBe(snap.left)
   })
@@ -196,12 +196,12 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
     const run = state.wormhole.run!
     delete run.turnsBase
     const total = run.turnsTotal
-    wormholeSyncMatterTurns(state)
+    wormholeSyncMatterTurns(state, ctx)
     expect(run.turnsBase).toBe(total)
     expect(run.turnsTotal).toBe(total)
     // 手工把一台装置塞进货仓（模拟老档里本来就有装置的情形）⇒ 下一次同步把上限抬到 base + 10
     run.hold = { placements: [{ id: 'x', kind: 'box', itemId: 'mat-chrono', x: 0, y: 0, w: 2, h: 2 }], cols: 8 }
-    wormholeSyncMatterTurns(state)
+    wormholeSyncMatterTurns(state, ctx)
     expect(run.turnsTotal).toBe(total + 10)
   })
 

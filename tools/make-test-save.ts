@@ -72,6 +72,12 @@
  *         ⇒ 一档验完「整理 / 大件小件换位 / 抓任意一格拖动」三处修复与整条链路（打捞·采集·惊扰守卫·
  *         交火·谜质增益·货柜拆解）。
  *
+ *  - mt-lab **谜质科技实验档**（2026-09-19 · 船长：「给我个拥有谜质和虫洞的存档，我打算实机测试
+ *         不同科技的影响」）：谜质 ×2,000 + 信用点 +3B（点满全树 1,196 枚 / 约 1.43B）·
+ *         声望 60（过「扫描虫洞」门槛 40）· **货仓刻意空着（纯科技读数）**、仓库另备谜质装置供对照 ·
+ *         第 2 层站在「舰船信号」上（脚下按迎战即开打）＋ 同层遗迹/矿脉/谜质格 ·
+ *         工业线备料（遗迹货柜五族各 ×4 / 虚空母矿 ×5,000 / 残骸各 ×6）。
+ *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
  * docs/test-saves/README.md 档案清单）再生成。
@@ -2469,6 +2475,212 @@ function injectWormholeLogi(state: GameState): string[] {
  *   `wh-pirate-warband`"的种子**，摆好现场后**再算一遍断言**（卡不对直接抛错，绝不产出错档）；
  * - 出口已知 ⇒ 想撤随时撤；同层其余格原样保留（可自由探索，不挡事）。
  */
+/**
+ * **谜质科技实验档**（2026-09-19 · 船长：「给我个拥有谜质和虫洞的存档，我打算实机测试不同科技的影响」）。
+ *
+ * 这一档存在的理由：科技的**效果全在洞内/工业链路上**，而正常玩到"有谜质 + 有虫洞 + 有余钱"要很久；
+ * 且科技是**逐级叠加**的，只有把"点树"和"读数"放在同一档里来回切，才看得出每一级到底改了什么。
+ *
+ * 配方（尽量让"改动前后"都有可比读数）：
+ * - **钱与料给足**：+3,000,000,000 信用点 + 虫洞谜质 ×2,000
+ *   （点满 23 节点全树共需 **1,196 枚 / 约 1.43B** ⇒ 够点满还有余量做"单点对照"）；
+ * - **协会声望 60** ⇒ 过「扫描虫洞」解锁门槛（40）：星图 → 扫描虫洞 →「谜质科技」子页直接可点；
+ * - **货仓刻意不带谜质装置** ⇒ 第一趟读数 = **纯科技**（想对照"装置 vs 科技"，仓库另备
+ *   时序核心 ×2 / 打捞吊臂 ×2 / 母矿富集器 ×2 / 货仓扩展 ×1，自己装进货仓即可）；
+ * - **现场 = 第 2 层 · 站在「舰船信号」上**（脚下按「迎战」即开打）＋ 同层 遗迹 / 矿脉 / 谜质格 / 墓场
+ *   ⇒ 一档同时验：战斗线（抗性·命中·回避·射程·威胁·回收·自修）、探索线（打捞/采集效率·货仓格·扫描间隔）、
+ *   工业线（撤离后：拆货柜 · 精炼虚空晶 · 回收残骸保底）；
+ * - **工业线材料**：遗迹安全货柜 ×4/族 · 虚空母矿 ×5,000 · 残骸（普通+稀有）各若干 ⇒ 工业页可连拆连炼。
+ *
+ * ⚠ 两条会让人误判的既有口径（一并写进 notes）：
+ * 1. **锚定器（回合）趟内也生效**（2026-09-19 起）：入洞后再点，本趟上限立刻 +10/级；
+ * 2. **倍速**要先把「时间压缩矩阵」点到 1 级，战斗窗口顶部中间才会出现 ×1/×2/×4 控件
+ *    （选了会**记住**，下次开游戏沿用）。
+ */
+function injectMatterTechLab(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // ① 钱与研究材料：点满全树 1,196 枚 / 约 1.43B ⇒ 给足余量做单点对照
+  state.wallet.isk += 3_000_000_000
+  state.warehouse.items[WORMHOLE_ESSENCE_ITEM_ID] =
+    (state.warehouse.items[WORMHOLE_ESSENCE_ITEM_ID] ?? 0) + 2_000
+  notes.push(
+    '钱包 **+3,000,000,000 信用点** · 仓库 **虫洞谜质 ×2,000 枚**（点满全树需 1,196 枚 / 约 1.43B，余量做单点对照）',
+  )
+  // ② 解锁门槛：协会声望 60（「扫描虫洞」要 40）
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 60)
+  notes.push('「深空工业协会」声望 = **60**（过「扫描虫洞」门槛 40）⇒ 星图 → 扫描虫洞 →「**谜质科技**」子页直接可点树')
+  // ③ 战斗系技能 Lv3（与洞内其余验收档同款基准，读数才可比）
+  for (const k of [
+    'gunnery',
+    'fire-control',
+    'reload-drills',
+    'shield-operation',
+    'armor-tuning',
+    'vector-maneuvering',
+    'evasion-maneuvering',
+    'targeting-integration',
+  ]) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  // ④ 弹药与修理组件管够
+  for (const key of [
+    'ammo-kinetic-l',
+    'ammo-kinetic-2',
+    'ammo-explosive-l',
+    'ammo-explosive-2',
+    'ammo-plasma-l',
+    'ammo-plasma-2',
+  ]) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 40
+  }
+  // ⑤ 工业线三件的料：拆货柜（拆解周期）· 虚空母矿（虚空晶 +10%/级）· 残骸（保底原材料 +5%/级）
+  for (const b of ['box-relic-a', 'box-relic-c', 'box-relic-d', 'box-relic-e', 'box-relic-g']) {
+    state.warehouse.items[b] = (state.warehouse.items[b] ?? 0) + 4
+  }
+  state.warehouse.items[WORMHOLE_ORE_ITEM_ID] = (state.warehouse.items[WORMHOLE_ORE_ITEM_ID] ?? 0) + 5_000
+  for (const w of ['wreck-a-lo', 'wreck-c-lo', 'wreck-rare-a-lo', 'wreck-rare-d-lo']) {
+    state.warehouse.items[w] = (state.warehouse.items[w] ?? 0) + 6
+  }
+  notes.push(
+    '仓库备料：遗迹安全货柜五族 **各 ×4**（工业页可连拆 · 验「货柜拆解技术」）· **虚空母矿 ×5,000**' +
+      '（精炼验「虚空精炼技术」）· 残骸（普通 2 种 + 稀有 2 种）**各 ×6**（回收验「残骸解析技术」）',
+  )
+  // ⑥ 谜质装置放**仓库**（不进本趟货仓）：想对照"装置 vs 科技"再自己装
+  for (const [id, n] of [
+    ['mat-chrono', 2],
+    ['mat-crane', 2],
+    ['mat-enricher', 2],
+    ['mat-expander', 1],
+  ] as const) {
+    state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + n
+  }
+  notes.push(
+    '仓库另备谜质装置（**本趟货仓刻意空着 ⇒ 第一趟读数 = 纯科技**）：时序核心 ×2（回合 +10/台）· ' +
+      '打捞吊臂 ×2 · 母矿富集器 ×2 · 货仓扩展 ×1 —— 想对照"装置 vs 科技"再装进货仓',
+  )
+  // ⑦ 编队：2× 长尾鲨（主战满配）+ 2× 玳瑁（重装）⇒ 洞内打得动，改动前后都有可比读数
+  const ctx = buildSimContext()
+  const uids: string[] = []
+  const thresherFit = {
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-2'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
+  }
+  const hawksbillFit = {
+    high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'],
+    mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+    low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2'],
+  }
+  const fleetPlan: Array<[string, string, typeof thresherFit]> = [
+    ['sh-thresher', '长尾鲨①·主战（科技对照）', thresherFit],
+    ['sh-thresher', '长尾鲨②·主战（科技对照）', thresherFit],
+    ['sh-hawksbill', '玳瑁①·重装', hawksbillFit],
+    ['sh-hawksbill', '玳瑁②·重装', hawksbillFit],
+  ]
+  for (const [shipId, name, fit] of fleetPlan) {
+    const uid = addShipToFleet(state, shipId)
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...fit.high], mid: [...fit.mid], low: [...fit.low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (uids.length === 0) state.shipId = uid
+    uids.push(uid)
+  }
+  notes.push('编队：**2× 长尾鲨级巡洋（T3 主战满配）＋ 2× 玳瑁级重装巡舰（T3）** · 全血满耐久 · 战斗系技能 Lv3')
+  // ⑧ 入场：第 2 层 · 站在「舰船信号」上（脚下按迎战即开打）
+  // ⚠ 落点要**多舰敌卡**：单舰弱敌几拍就没了，测不出抗性/命中/回避这些科技的前后差异
+  //   ⇒ 与 `wh-ewar` 同款做法：先搜种子 + 格（同一函数链算出会遇上哪张卡），再写死现场。
+  let found: { seed: number; q: number; r: number; cardId: string; ships: number } | null = null
+  for (let seed = 20260920; seed < 20260920 + 400 && !found; seed++) {
+    const family = wormholeFamilyOfSeed(seed)
+    const probe = wormholeMakeGrid(seed, 2, 0)
+    for (const c of probe.cells) {
+      const cardId = wormholeCardIdForRun({
+        family,
+        seed,
+        depth: 2,
+        kind: 'node',
+        nodeIndex: gridContentIndex(probe, c),
+      })
+      const card = ctx.anomalies.get(cardId)
+      const ships = (card?.ships ?? []).reduce((n, sl) => n + (sl.count ?? 1), 0)
+      if (ships >= 3) {
+        found = { seed, q: c.q, r: c.r, cardId, ships }
+        break
+      }
+    }
+  }
+  if (!found) throw new Error('没搜到"多舰敌卡"的落点种子（卡表或权重被改过？）')
+  const seed = found.seed
+  state.wormhole = { run: null, lastFleetLost: 0 } // 清掉在途副本（本档要指定现场）
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.depth = 2
+  run.turnsLeft = enter.run!.turnsTotal
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0
+  run.family = wormholeFamilyOfSeed(seed) // 与种子一致；写死防两套口径
+  run.grid = wormholeMakeGrid(seed, 2, 0)
+  const grid = run.grid
+  const cells = grid.cells
+  /** 扫过 + 走过（地图已知、落地即测） */
+  const reveal = (c: (typeof cells)[number]): void => {
+    if (!grid.scanned.includes(c.key)) grid.scanned.push(c.key)
+    if (!grid.visited.includes(c.key)) grid.visited.push(c.key)
+  }
+  const startCell = cells.find((c) => c.q === found!.q && c.r === found!.r)
+  if (!startCell) throw new Error(`盘里没有格 ${found.q},${found.r}`)
+  startCell.place = 'ship' // 脚下 = 舰船信号 ⇒ 按「迎战」即开打（与 wh-ewar 同款落点口径）
+  startCell.piles = []
+  grid.pos = { q: startCell.q, r: startCell.r }
+  grid.start = { q: startCell.q, r: startCell.r }
+  reveal(startCell)
+  grid.activated = (grid.activated ?? []).filter((k) => k !== startCell.key)
+  /** 现场断言：脚下这一格按**引擎同一函数**算出来必须是那张多舰卡 */
+  const cardNow = wormholeCardIdForRun({
+    family: run.family,
+    seed: run.seed,
+    depth: run.depth,
+    kind: 'node',
+    nodeIndex: gridContentIndex(grid, grid.pos),
+  })
+  if (cardNow !== found.cardId) throw new Error(`现场卡不对：期望 ${found.cardId}，实得 ${cardNow}`)
+  const card = ctx.anomalies.get(found.cardId)
+  notes.push(
+    `**第 2 层 · 站在「舰船信号」(Q${startCell.q} R${startCell.r})** ⇒ 点脚下那格按「迎战」即对上 ` +
+      `**${card?.name ?? found.cardId}**（${(card?.ships ?? []).map((sl) => `${sl.ship.name}×${sl.count ?? 1}`).join(' ＋ ')}）` +
+      ` —— 3 舰级别的战斗，战斗线科技的前后差异才看得出来（脚本按 \`wormholeCardIdForRun\` 算出并当场断言）`,
+  )
+  // 同层再摆三格：遗迹（打捞 ⇒ 顺带验打捞效率/额外堆）· 矿脉（采集）· 谜质（取回装置）
+  const others = cells.filter((c) => c.key !== startCell.key)
+  for (const [cell, place, label, hint] of [
+    [others[0]!, 'ruins', '遗迹', '打捞稀有残骸 ⇒ 验「引力吊臂」与"效率 → 额外堆"'],
+    [others[1]!, 'vein', '矿脉', '采集虚空母矿 ⇒ 验「富集钻头」与额外堆'],
+    [others[2]!, 'matter', '谜质', '激活取回一台谜质储存器（本档货仓空着，正好当第一台装置用）'],
+  ] as const) {
+    cell.place = place
+    cell.piles = []
+    reveal(cell)
+    if (place === 'ruins') wormholeEnsureSalvagePiles(state, cell)
+    if (place === 'vein') wormholeEnsureVeinPiles(state, cell)
+    notes.push(`同层**${label}** (Q${cell.q} R${cell.r})：${hint}`)
+  }
+  grid.exitKnown = true
+  notes.push('出口已知（随时可撤离：撤离后仓库那批货柜/母矿/残骸就是工业线三件的试验料）· 守卫未清（深入要先打守卫）')
+  notes.push(
+    '⚠ 两条容易误判的既有口径：① **锚定器（回合）趟内也生效**——入洞后再点，本趟上限立刻 +10/级；' +
+      '② **倍速**要先点「时间压缩矩阵」1 级，战斗窗口顶部中间才出现 ×1/×2/×4 控件（选了会记住，下次沿用）',
+  )
+  return notes
+}
+
 function injectWormholeEwar(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
@@ -2615,6 +2827,13 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
    *   谜质精华与奢侈品三档若干（物品页/市场看得到）；**扫描页预置 2 处已发现虫洞**（看卡片"敌情行"）。
    */
   'wh-logi': injectWormholeLogi,
+  /**
+   * **谜质科技实验档**（2026-09-19 船长：「给我个拥有谜质和虫洞的存档，我打算实机测试不同科技的影响」）：
+   * 谜质 ×2,000 + 信用点 +3B（点满全树 1,196 枚 / 约 1.43B）· 声望 60（过扫描虫洞门槛）·
+   * **货仓刻意不带装置**（纯科技读数；仓库另备装置供对照）· 第 2 层站在「舰船信号」上 ＋
+   * 同层遗迹/矿脉/谜质格 ＋ 工业线备料（货柜/虚空母矿/残骸）。
+   */
+  'mt-lab': injectMatterTechLab,
 
   /**
    * **虫洞 · 路径拦截验收档**（2026-09-16 · 船长「路径拦截」机制）：
