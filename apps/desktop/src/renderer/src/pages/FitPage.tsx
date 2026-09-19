@@ -140,6 +140,43 @@ function meanHitMul(spec: UnitSpec): number | null {
   return (spec.hitMul ?? 1) * (s / ws.length)
 }
 
+/** **整机命中率（含余量）**（船长 2026-09-19 报障「装配界面的舰船属性里，少了命中率属性」，
+ *  口径两步定：先选 A（纸面加算口径），再令「**解除上限锁** —— 超出上限的部分能够抵消射程的命中削减」）：
+ *  掷命中武器（炮台 / 导弹架）取 `(基础命中 + 船体命中加成) × 索敌件 × 推进失稳`，激光必中计 100%，
+ *  **一律不截断** ⇒ 读数可以 >100%，那部分余量正是实战里被射程衰减与敌舰回避消费掉的量。
+ *
+ *  ⚠ 三个引擎对齐点（都是逐字核过 `combat.hitChance` / 开火分支的）：
+ *  ① 船体加成是**加算**在武器基础命中上（`types.ts` 的 `hitBonus` 注释：加到武器命中率上）；
+ *  ② 索敌件（`eqHitMul`）与推进失稳（`hitMul`）**只作用于掷命中武器**——激光 `hit = 1` 必中、不吃失稳；
+ *  ③ 引擎的 `clamp(0,1,…)` 是**最后一步**（在距离衰减之后）⇒ 本行刻意不截断，把余量留给玩家读。
+ *  ⚠ 基础舰炮与无人机是 `kind:'fixed'`（必中）⇒ 不进均值（与 `rawDpsOf` 同一取舍）。 */
+function meanHitRateOf(spec: UnitSpec): { rate: number; hitBonus: number; eqMul: number | null; unstable: number } | null {
+  const ws = spec.weapons.filter((w) => w.kind === 'gun' || w.kind === 'beam')
+  if (ws.length === 0) return null
+  const hitBonus = spec.hitBonus ?? 0
+  const unstable = spec.hitMul ?? 1
+  let sum = 0
+  let eqMul: number | null = null
+  for (const w of ws) {
+    if (w.kind === 'beam') {
+      sum += 1
+      continue
+    }
+    if (w.eqHitMul !== undefined) eqMul = w.eqHitMul
+    sum += ((w.hitRate ?? 0.5) + hitBonus) * (w.eqHitMul ?? 1) * unstable
+  }
+  return { rate: sum / ws.length, hitBonus, eqMul, unstable }
+}
+
+/** 命中率行的括号明细（只列非缺省项——缺省的 ×1.00 / +0% 不进括号，免得读成"有代价"） */
+function hitDetailText(read: { hitBonus: number; eqMul: number | null; unstable: number }): string {
+  const parts: string[] = []
+  if (read.hitBonus > 0) parts.push(`船体加成 +${Math.round(read.hitBonus * 100)}%`)
+  if (read.eqMul !== null && Math.abs(read.eqMul - 1) > 1e-6) parts.push(`索敌 ×${read.eqMul.toFixed(2)}`)
+  if (Math.abs(read.unstable - 1) > 1e-6) parts.push(`推进失稳 ×${read.unstable.toFixed(2)}`)
+  return parts.join(' · ')
+}
+
 /** 装后 − 装前 差异段；数值全部来自 createPlayerSpec 同源合成（与战斗引擎一致），只报真实变化。
  *  `weapon` = 该槽位新旧武器的**弹伤倍率**（可选）：换了炮台/导弹架/激光炮时，
  *  除"火力 ±%"外再明示倍率本身的变化（2026-09-11 船长：只看火力看不到弹药伤害倍率）。 */
@@ -332,8 +369,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const slots = shipDef ? shipSlotsOf(shipDef) : { high: 1, mid: 1, low: 1 }
   // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力曲线、回避含陀螺缺口）
   const spec = shipDef ? createPlayerSpec(state, engine.ctx, effectiveTarget) : null
-  // V18.1 索敌阵列（命中件）：炮台命中乘子（收敛后；条目层）
-  const gunEq = spec?.weapons.find((w) => w.kind === 'gun')?.eqHitMul
+  // 命中率（2026-09-19 船长：「装配界面的舰船属性里，少了命中率属性」）：整机读数 + 括号明细
+  // （船体加成 / 索敌件 / 推进失稳）——口径见 meanHitRateOf
+  const hitRead = spec ? meanHitRateOf(spec) : null
+  const hitDetail = hitRead ? hitDetailText(hitRead) : ''
   // 2026-09-14 跃迁计算机：本船**有效跃迁速度**（船表值 × 装备加成，与引擎 `travel.warpSpeedAus` 同源）
   // 与**航行时间因子**（`travelTimeFactor`：含跃迁速度与航行技能族）——只影响跨星系航行，不进战斗。
   const effWarp = shipDef
@@ -788,13 +827,19 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       { k: '护盾抗性（含装备）', v: resChipsAll(spec.resists.shield) },
                       { k: '装甲抗性（含装备）', v: resChipsAll(spec.resists.armor) },
                       { k: '结构抗性', v: resChipsAll(spec.resists.hull) },
-                      { k: '回避率（含装备）', v: `${Math.round(spec.evasion * 100)}%` },
                       {
-                        k: '开火命中修正（含装备）',
-                        v: `推进失稳 ×${(spec.hitMul ?? 1).toFixed(2)}${
-                          gunEq !== undefined ? ` · 索敌 ×${gunEq.toFixed(2)}` : ''
-                        }`,
+                        k: '命中率（含装备）',
+                        v:
+                          hitRead === null ? (
+                            '—'
+                          ) : (
+                            <>
+                              {`${Math.round(hitRead.rate * 100)}%`}
+                              {hitDetail !== '' ? <span className="app-dim">{`（${hitDetail}）`}</span> : null}
+                            </>
+                          ),
                       },
+                      { k: '回避率（含装备）', v: `${Math.round(spec.evasion * 100)}%` },
                       // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
                       // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
                       // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
@@ -830,7 +875,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     ]
                   : []),
               ]}
-              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按递减方式合成（上限 90%）；多装与「动力」细则见手册速览「装配」。`}
+              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按递减方式合成（上限 90%）；多装与「动力」细则见手册速览「装配」。命中率 = 本船炮台 / 导弹架 / 激光炮的整机均值（船体加成加算、索敌件与推进失稳只压掷命中武器；激光必中计 100%），不含敌方回避与距离衰减；超过 100% 的部分是余量，实战里用于抵消射程削减与敌舰回避。`}
             />
           </div>
           </>
