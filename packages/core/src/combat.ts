@@ -545,7 +545,13 @@ export function pulseFoeRepair(
   foeSpecs: ReadonlyArray<UnitSpec>,
   ledger: { nextPulseAtMs?: number; pulses: number; healed: number },
 ): void {
-  const donors = foeSpecs.filter((s) => (s.repairPct ?? 0) > 0 && b.units[s.tag])
+  /**
+   * ⚠ **2026-09-19 报障修复**（船长转述玩家：「**生物损管腔之类的修理会让已经损毁的船复活**」）：
+   * 供血方必须**还活着**（`isAlive`）——尸体不再产生修理值。判据与被动护盾回充同源，
+   * 理由是同一把尺：尸体在 `battle.units` 里**永不摘除**（多波/战报/「在场过 = 存在」都靠它）⇒
+   * 只查字段存在、不查存活，就会让"阵亡的后勤舰照旧供血"。
+   */
+  const donors = foeSpecs.filter((s) => (s.repairPct ?? 0) > 0 && isAlive(b, s.tag))
   if (donors.length === 0) return
   const perSecond = donors.reduce((sum, s) => sum + foeNominalDpsOf(s) * (s.repairPct ?? 0), 0)
   const amount = (perSecond * REPAIR_PULSE_MS) / 1000
@@ -558,6 +564,8 @@ export function pulseFoeRepair(
     if ((s.repairPct ?? 0) > 0) continue // 永不以任何后勤舰为目标（含自己）
     const rt = b.units[s.tag]
     if (!rt) continue
+    // 阵亡敌舰不修（2026-09-19 报障修复）：三层全 0 ⇒ 修活 = 玩家的"已沉没"敌舰复活
+    if (!isAlive(b, s.tag)) continue
     const capA = Math.max(0, s.hp.a)
     const capH = Math.max(0, s.hp.h)
     if (rt.hp.a >= capA && rt.hp.h >= capH) continue
@@ -3091,6 +3099,13 @@ export function pulseShieldCharge(b: import('./state').BattleState, me: UnitSpec
  *   若所有候选都不可修 ⇒ 本跳空转（**不耗组件**，与"痊愈空转"同口径）；
  * - 修复上限取**被修那艘**的出场满值（`allySpecs` 里那一份），不是后勤舰自己的；
  * - **只换目标、不改量**（船长 2026-09-16 三问三答之「甲」）。
+ *
+ * ⚠ **2026-09-19 报障修复**（船长转述玩家：「**生物损管腔之类的修理会让已经损毁的船复活**」）：
+ * **阵亡（三层全 0）的单位不可被任何维修路径修回来**——两条都堵：
+ * - **本舰阵亡 ⇒ 整台装置停机**（`nextPulseAtMs = undefined`，尸体不会回到场上，无需再排程）；
+ * - **后勤舰选靶跳过尸体**：尸体的"剩余比例"恒为 0 ⇒ 旧口径下**每一跳都必然首选尸体**，
+ *   既修活了它、又让活着的重伤队友拿不到这一跳。
+ * 判据 = `isAlive`，与被动护盾回充 / 护盾充能脉冲 / 结束判定**同一把尺**（那三处本来就查存活）。
  */
 function pulseRepairsFor(
   state: GameState,
@@ -3103,6 +3118,10 @@ function pulseRepairsFor(
   void ctx
   const meRt = b.units[spec.tag]
   if (!meRt || r.nextPulseAtMs === undefined) return
+  if (!isAlive(b, spec.tag)) {
+    r.nextPulseAtMs = undefined // 阵亡 = 永久停机（2026-09-19 报障修复）
+    return
+  }
   /**
    * **修谁**：后勤舰 ⇒ 三层剩余比例最低的**可修**队友（含自己）；其余舰 ⇒ 自己（旧口径）。
    * ⚠ 只换 `spec`/`hp` 两处来源，下面每台装置的额度分配逻辑**一字未动**。
@@ -3115,6 +3134,7 @@ function pulseRepairsFor(
     for (const [tag, s] of allySpecs) {
       const rt = b.units[tag]
       if (!rt) continue // 已不在场（沉了/被摘）
+      if (!isAlive(b, tag)) continue // 阵亡队友不修（2026-09-19 报障修复：尸体不可复活）
       const capA0 = Math.max(0, s.hp.a)
       const capH0 = Math.max(0, s.hp.h)
       if (rt.hp.a >= capA0 && rt.hp.h >= capH0) continue // 甲+结构 都满 ⇒ 装置无事可做
