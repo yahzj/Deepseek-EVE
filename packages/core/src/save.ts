@@ -32,6 +32,8 @@ import { emptyFitted, uidDefId } from './labels'
 import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
 import { FIT_PRESET_MAX, FIT_PRESET_NAME_MAX } from './fitPresets'
+// v27→v28 残骸合并（2026-09-19）：旧"每卡一种"残骸 id → 新「族 × 地区」组 id
+import { migratedWreckItemId } from './wreckGroups'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -752,6 +754,186 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
         next.firstStats = stats
       }
     }
+    return next
+  },
+  27: (raw) => {
+    /**
+     * v27 -> v28（2026-09-19 船长定）：「**残骸按来源种族 × 来源地区合并**」的一次性老档折算。
+     *
+     * 口径（船长六答：合并粒度 = 族×地区 · 保值合并 · 组内主流档 · 稀有一起合并 · **写存档迁移** ·
+     * 族称取完整名）：旧档里"每卡一种"的残骸（普通 42 + 稀有 37 = 79 种）全部折进**所属组**的残骸，
+     * 数量**同组累加**——玩家一件不丢，只是同族同地区的箱子并成一件（映射表 = `WRECK_GROUP_OF_MEMBER`，
+     * 与运行时新产出同一张索引，见 `core/wreckGroups.ts`）。
+     *
+     * 折算范围（键 = 残骸物品 id）：
+     * ① 持有：`warehouse.items` · 各舰 `cargo` · 挂卖锁仓 `escrowItems`（**同组累加**）；
+     * ② 稀有残骸三本账：`rareBurnUnits` / `rareBoxesOpened` / `rareOpenedUnits`（同组累加）；
+     * ③ 炉子：`refineRuns[].itemId`（只换 id，**多炉不合并**——两台烧同一种料是合法状态）；
+     * ④ 我的挂单：`orders[].good`（只换 key，**不同价的挂单各自保留**）；
+     * ⑤ 洞内趟内：`run.bag` / `run.grid.cells[].piles` / `run.hold.placements[].itemId`
+     *    与自动探索报告 `gains[].itemId`（只换 id，堆不合并）；
+     * ⑥ 市场派生量（`pools` / `npcBuy` / `npcSell` / `digest` / `priceHistory` 里的**旧残骸键**）**直接删**：
+     *    NPC 簿与池由 `ensureMarket` 按目录惰性重建（合并后的 8 行开盘即有），旧键留着只是垃圾；
+     * ⑦ **不动**：`galaxyWrecks[].rareBy`（按卡记账 ⇒ 星图「稀有残骸 ×N（来源窝点名）」照旧）与 `rare` 计数。
+     *
+     * 幂等：新 id（`wreck-a-hi`）不是 `WRECK_GROUP_OF_MEMBER` 的键 ⇒ 再跑一遍是空操作
+     * （合成卡的旧 id 也查不到 ⇒ 原样保留，只影响测试夹具）。
+     */
+    const next: RawState = { ...raw }
+
+    /** 数量表折算：残骸键同组累加，非残骸键原样保留 */
+    const remapCounts = (src: unknown): { out: Record<string, unknown>; changed: boolean } => {
+      const table = asRaw(src)
+      const out: Record<string, unknown> = {}
+      let changed = false
+      for (const [key, value] of Object.entries(table)) {
+        const mapped = migratedWreckItemId(key)
+        if (mapped === null) {
+          out[key] = value
+          continue
+        }
+        changed = true
+        const add = typeof value === 'number' && Number.isFinite(value) ? value : 0
+        const prev = typeof out[mapped] === 'number' ? (out[mapped] as number) : 0
+        out[mapped] = prev + add
+      }
+      return { out, changed }
+    }
+    /** 单键折算（对象/记录里的 id 字段） */
+    const remapId = (v: unknown): string | null => {
+      if (typeof v !== 'string' || v.length === 0) return null
+      return migratedWreckItemId(v)
+    }
+    /** 堆数组折算（`{itemId, units}` 列表；只换 id，不合并堆） */
+    const remapPiles = (src: unknown): { out: unknown[]; changed: boolean } => {
+      if (!Array.isArray(src)) return { out: [], changed: false }
+      let changed = false
+      const out = src.map((row) => {
+        const o = asRaw(row)
+        const mapped = remapId(o.itemId)
+        if (mapped === null) return row
+        changed = true
+        return { ...o, itemId: mapped }
+      })
+      return { out, changed }
+    }
+
+    // ① 持有（仓库 / 货舱 / 挂卖锁仓）
+    const warehouse = asRaw(next.warehouse)
+    const ware = remapCounts(warehouse.items)
+    if (ware.changed) next.warehouse = { ...warehouse, items: ware.out }
+    const escrow = remapCounts(next.escrowItems)
+    if (escrow.changed) next.escrowItems = escrow.out
+    const fleet = asRaw(next.fleet)
+    const fleetOut: Record<string, unknown> = {}
+    let fleetChanged = false
+    for (const [shipId, shipRaw] of Object.entries(fleet)) {
+      const ship = asRaw(shipRaw)
+      const cargo = remapCounts(ship.cargo)
+      if (cargo.changed) {
+        fleetOut[shipId] = { ...ship, cargo: cargo.out }
+        fleetChanged = true
+      } else {
+        fleetOut[shipId] = shipRaw
+      }
+    }
+    if (fleetChanged) next.fleet = fleetOut
+
+    // ② 稀有残骸三本账
+    for (const field of ['rareBurnUnits', 'rareBoxesOpened', 'rareOpenedUnits'] as const) {
+      const r = remapCounts(next[field])
+      if (r.changed) next[field] = r.out
+    }
+
+    // ③ 炉子（只换 id：`claimedUnits` 等炉内料账随行）
+    if (Array.isArray(next.refineRuns)) {
+      next.refineRuns = (next.refineRuns as unknown[]).map((row) => {
+        const o = asRaw(row)
+        const mapped = remapId(o.itemId)
+        return mapped === null ? row : { ...o, itemId: mapped }
+      })
+    }
+
+    // ④ 我的挂单
+    if (Array.isArray(next.orders)) {
+      next.orders = (next.orders as unknown[]).map((row) => {
+        const o = asRaw(row)
+        const mapped = remapId(o.good)
+        return mapped === null ? row : { ...o, good: mapped }
+      })
+    }
+
+    // ⑤ 洞内趟内（背包 / 格内堆 / 货仓格排布）
+    const wh = asRaw(next.wormhole)
+    const run = asRaw(wh.run)
+    if (Object.keys(run).length > 0) {
+      let runChanged = false
+      const bag = remapPiles(run.bag)
+      if (bag.changed) {
+        run.bag = bag.out
+        runChanged = true
+      }
+      const grid = asRaw(run.grid)
+      if (Array.isArray(grid.cells)) {
+        let cellsChanged = false
+        const cells = (grid.cells as unknown[]).map((cellRaw) => {
+          const cell = asRaw(cellRaw)
+          const piles = remapPiles(cell.piles)
+          if (!piles.changed) return cellRaw
+          cellsChanged = true
+          return { ...cell, piles: piles.out }
+        })
+        if (cellsChanged) {
+          run.grid = { ...grid, cells }
+          runChanged = true
+        }
+      }
+      const hold = asRaw(run.hold)
+      if (Array.isArray(hold.placements)) {
+        let holdChanged = false
+        const placements = (hold.placements as unknown[]).map((row) => {
+          const o = asRaw(row)
+          const mapped = remapId(o.itemId)
+          if (mapped === null) return row
+          holdChanged = true
+          return { ...o, itemId: mapped }
+        })
+        if (holdChanged) {
+          run.hold = { ...hold, placements }
+          runChanged = true
+        }
+      }
+      if (runChanged) next.wormhole = { ...wh, run }
+    }
+    // 自动探索报告（历史读数：不折算会在报告里显示成裸 id）
+    if (Array.isArray(next.wormholeAutoReports)) {
+      let reportsChanged = false
+      const reports = (next.wormholeAutoReports as unknown[]).map((row) => {
+        const o = asRaw(row)
+        const gains = remapPiles(o.gains)
+        if (!gains.changed) return row
+        reportsChanged = true
+        return { ...o, gains: gains.out }
+      })
+      if (reportsChanged) next.wormholeAutoReports = reports
+    }
+
+    // ⑥ 市场派生量：删掉旧残骸键（池/簿/消化队列/价格小史），新键由 ensureMarket 惰性重建
+    const market = asRaw(next.market)
+    if (Object.keys(market).length > 0) {
+      let marketChanged = false
+      for (const field of ['pools', 'npcBuy', 'npcSell', 'digest', 'priceHistory'] as const) {
+        const table = asRaw(market[field])
+        const keys = Object.keys(table).filter((k) => migratedWreckItemId(k) !== null)
+        if (keys.length === 0) continue
+        const out: Record<string, unknown> = { ...table }
+        for (const k of keys) delete out[k]
+        market[field] = out
+        marketChanged = true
+      }
+      if (marketChanged) next.market = market
+    }
+
     return next
   },
 }

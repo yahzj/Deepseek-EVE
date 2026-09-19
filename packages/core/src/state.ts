@@ -17,7 +17,7 @@ import type { WormholeState } from './wormhole'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 27
+export const CURRENT_STATE_VERSION = 28
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -1801,8 +1801,18 @@ export type GameStateV26 = Omit<GameStateV25, 'version'> & {
 export type GameStateV27 = Omit<GameStateV26, 'version'> & {
   version: 27
 }
-/** 对外统一称呼：当前版本状态（v27 = v26 + 市场链一次性折算） */
-export type GameState = GameStateV27
+/**
+ * 第二十八版存档结构（v28 = v27 + **残骸合并**，2026-09-19 船长）。
+ *
+ * 「残骸按来源种族 × 来源地区合并」把"每卡一种"的 79 种残骸并为 **13 组**（26 种物品）——
+ * **结构本身一个字没变**（物品 id 就是字符串键），升版只为让 v27→v28 那段
+ * "旧残骸 id → 组 id"的**同组累加折算只跑一次**（见 `save.ts` 的 `MIGRATIONS[27]`）。
+ */
+export type GameStateV28 = Omit<GameStateV27, 'version'> & {
+  version: 28
+}
+/** 对外统一称呼：当前版本状态（v28 = v27 + 残骸合并） */
+export type GameState = GameStateV28
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -2167,11 +2177,11 @@ export function createInitialState(opts?: {
   seed?: number
   nowWallMs?: number
   prologue?: boolean
-}): GameStateV27 {
+}): GameStateV28 {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV27 = {
-    version: 27,
+  const state: GameStateV28 = {
+    version: 28,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,

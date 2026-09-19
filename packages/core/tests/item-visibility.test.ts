@@ -67,9 +67,9 @@ describe('物品目录级可见性（2026-09-13 立闸 · 2026-09-14 虫洞上�
    * 打捞带回仓库的洞内稀有残骸**在回收列表里看不到**、高级箱开不了（手册物品图鉴同样看不到）。
    * 本用例钉两侧：**玩家可见目录里有它** ＋ **它确实是高级箱画像**（`recycleProfileOf(...).rare`）。
    */
-  it('洞内稀有残骸（`wreck-rare-wh-*`）：在玩家可见目录里，且是高级箱画像', () => {
-    const whWrecks = [...ctx.items.values()].filter((d) => d.id.startsWith('wreck-rare-wh-'))
-    expect(whWrecks.length, '一件洞内稀有残骸都没有（`context.ts` 的白名单注册断了？）').toBeGreaterThan(0)
+  it('洞内稀有残骸（`wreck-rare-*-wh`）：在玩家可见目录里，且是高级箱画像', () => {
+    const whWrecks = [...ctx.items.values()].filter((d) => d.id.startsWith('wreck-rare-') && d.id.endsWith('-wh'))
+    expect(whWrecks.length, '一件洞内稀有残骸都没有（`context.ts` 的 13 组注册断了？）').toBe(5)
     const visibleIds = new Set(visibleItemDefs(ctx).map((d) => d.id))
     for (const def of whWrecks) {
       expect(itemReleased(def), `${def.id}（${def.name}）仍被闸门挡着`).toBe(true)

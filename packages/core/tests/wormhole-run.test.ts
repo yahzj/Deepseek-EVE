@@ -784,11 +784,12 @@ describe('虫洞 · 层曲线（收益涨得比威胁快 —— 船长 2026-09-1
 })
 
 describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
-  // ⚠ 版本号随存档结构演进往上抬：v26 = 「第一次」老档一次性判定；v27 = 市场链换口径的一次性折算
-  it('新档带空虫洞状态；当前存档版本 = 27（v27 = 市场链换口径的一次性老档折算）', () => {
-    expect(CURRENT_STATE_VERSION).toBe(27)
+  // ⚠ 版本号随存档结构演进往上抬：v26 = 「第一次」老档一次性判定；v27 = 市场链换口径的一次性折算；
+  // v28 = 残骸合并（旧"每卡一种"残骸 id → 「族 × 地区」13 组的同组累加折算，2026-09-19）
+  it('新档带空虫洞状态；当前存档版本 = 28（v28 = 残骸合并的一次性老档折算）', () => {
+    expect(CURRENT_STATE_VERSION).toBe(28)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
-    expect(s.version).toBe(27)
+    expect(s.version).toBe(28)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 

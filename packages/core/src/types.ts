@@ -5,6 +5,9 @@
  * 具体内容（采矿学、导航学…）由数据包（@whale/data）提供，这样以后加内容 = 加数据，不用改引擎。
  */
 
+// 只借类型（`wreckGroups.ts` 反向也只借 `FoeFamily` / `RecycleTier` 类型）⇒ 运行期零循环
+import type { WreckGroupDef } from './wreckGroups'
+
 /** 一条技能的定义（数据表里每条记录的格式） */
 export interface SkillDef {
   /** 唯一编号，存进存档用的是它（例如 "mining"），改名不影响存档 */
@@ -2008,9 +2011,10 @@ export interface AnomalyDef {
   description: string
   /** B1 遭遇战斗模板：不出现在悬赏目录/星图徽标（供低安遭遇战使用） */
   hidden?: boolean
-  /* ═══ B3.1 敌群特色回收（2026-09-06 船长定档；可缺省 → 三档基础池/三层彩头默认） ═══ */
-  /** 保底矿物权重池（同档矿物）；池均价 ≈ 档基数 × m（m = 危险度溢价 × 威胁线性，content-check 断言） */
-  recyclePool?: ReadonlyArray<readonly [string, number]>
+  /* ═══ B3.1 敌群特色回收（2026-09-06 船长定档）——⚠ **2026-09-19 已退役**：
+   *  残骸改按「来源种族 × 来源地区」合并为 13 组，回收画像（池/说明/主题件/档位）一律走
+   *  `core/wreckGroups.ts` 的组表；卡级 `recyclePool` / `recycleNote` / `recycleLoot` 三个字段已删除，
+   *  卡级池表退居 `data/src/salvageFlavors.ts`（只作**构建依据与体检输入**，运行时不再读取）。 ═══ */
   /* ═══ 赏金任务·敌人窝点（2026-09-10 船长定） ═══ */
   /** 敌族（A~G；与美术层 FOE_ART 族字母同源）——决定窝点三档称呼与专属装备分配。
    *  **每张敌军卡必须显式登记**（2026-09-11 船长：F 族废弃后取消缺省兜底，改强制显式登记）；
@@ -2031,11 +2035,6 @@ export interface AnomalyDef {
    * 另有族级下限契约：每个有窝点成员的敌族**至少一张 3 级**（船长 2026-09-10 定）。
    */
   lairLevel?: 1 | 2 | 3
-  /** 玩家可见的"残骸产出倾向"一句话 */
-  recycleNote?: string
-  /** 主题追加件集（2026-09-08"追加"语义：只在默认池上追加，默认池一件不少；武器不入主题，
-   *  穹顶守卫三把 MK3 武器为唯一白名单） */
-  recycleLoot?: { modules?: readonly string[]; mk2?: readonly string[] }
 }
 
 /** 模拟需要的全部静态内容（由数据包构建后一次性传入） */
@@ -2062,6 +2061,13 @@ export interface SimContext {
   /** 通讯剧本目录（T9 建站介绍/庆贺等；通讯页与剧本共处一个收件箱，见 core/comms.ts） */
   dialogues: ReadonlyMap<string, DialogueScriptDef>
   balance: BalanceConfig
+  /**
+   * **残骸组覆盖表**（2026-09-19 残骸合并）：正式 13 组住在 `core/wreckGroups.ts`（静态，存档迁移也要用），
+   * 这里只放**用例/扩展注入的额外组**——合成敌卡（如 `ano-far`）在生产表里查不到，
+   * 用例就把它的组塞进这张表，`wreckGroupOfCard` / `recycleProfileOf` 会**先查它、再回落到静态表**。
+   * 生产（`buildSimContext`）不填。
+   */
+  wreckGroups?: ReadonlyMap<string, WreckGroupDef>
 }
 
 /* ═══════════════ T9：副空间站建站点与通讯对话（静态内容） ═══════════════ */

@@ -171,24 +171,25 @@ function injectRareBox(state: GameState): string[] {
   }
   notes.push(`星图全部点亮（新增 ${lit} 个）——赏金任务日板与全部稀有残骸来源可达`)
   // ① 五族稀有残骸进仓库（计数即体积：1 件 = 30 单位 = 30 m³）
+  // ⚠ 2026-09-19 残骸合并：稀有残骸按「族 × 地区」并组 ⇒ 这五张卡分别落在 A·低安 / C·低安 /
+  //   D·低安 / E·低安 / G·低安 五个组上（本档仍是"五族各一件"，只是名字变成组名）
   const rareSet: Array<[string, string, number]> = [
-    ['ano-mirage-hijackers', 'A 海盗·蜃影劫持团', 3],
-    ['ano-maw-hunt', 'C 异形·噬口猎食群', 2],
-    ['ano-vault-sentinel', 'D 守墓古舰·穹顶守卫', 2],
-    ['ano-titan-wreck', 'E 泰坦巨构·泰坦残骸勘探', 2],
-    ['ano-nadir-static', 'G 鱿烬亡军·天底封锁军', 2],
+    ['wreck-rare-a-lo', 'A 海盗·低安', 3],
+    ['wreck-rare-c-lo', 'C 异形生物·低安', 2],
+    ['wreck-rare-d-lo', 'D 守墓者·低安', 2],
+    ['wreck-rare-e-lo', 'E 泰坦巨构·低安', 2],
+    ['wreck-rare-g-lo', 'G 鱿烬亡军·低安', 2],
   ]
   const per = RARE_WRECK_VOLUME_M3
-  for (const [anomalyId, label, count] of rareSet) {
-    const id = rareWreckItemIdOf(anomalyId)
+  for (const [id, label, count] of rareSet) {
     state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + per * count
     notes.push(`仓库预置稀有残骸「${label}」×${count} 件（${per * count} m³）`)
   }
   notes.push(`合计 11 件稀有残骸（${per * 11} m³）——工业页「残骸回收」里每族一张卡，各带「高级箱」徽标`)
   // ② 普通残骸做对照（不锁量：仍是"整批直到料尽"）
-  state.warehouse.items['wreck-ano-gravekeeper'] = (state.warehouse.items['wreck-ano-gravekeeper'] ?? 0) + 100
-  state.warehouse.items['wreck-ano-abyss-guard'] = (state.warehouse.items['wreck-ano-abyss-guard'] ?? 0) + 100
-  notes.push('仓库预置普通残骸 坟场守墓者/深渊之门卫队 各 100 m³（对照：普通残骸不锁量、整批拆到料尽）')
+  state.warehouse.items['wreck-d-lo'] = (state.warehouse.items['wreck-d-lo'] ?? 0) + 100
+  state.warehouse.items['wreck-c-lo'] = (state.warehouse.items['wreck-c-lo'] ?? 0) + 100
+  notes.push('仓库预置普通残骸 守墓者（低安）/异形生物（低安）各 100 m³（对照：普通残骸不锁量、整批拆到料尽）')
   // ③ 多台并行：AI 核心上限技能 + 基础核心（主控 1 台 + AI 各 1 台）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 2)
   state.aiCores.basic = Math.max(state.aiCores.basic ?? 0, 2)
@@ -434,9 +435,10 @@ function injectB3(state: GameState): string[] {
   state.galaxyWrecks['galaxy-vault'] = { density: 70, rare: 0 }
   notes.push('坟场/深渊/穹顶墓园残骸密度预置 60/50/70（打捞即见肥瘦随密度变化）')
   // 4) 仓库预置残骸（回收开箱立即可测：保底矿物 + 彩头）
-  state.warehouse.items['wreck-ano-gravekeeper'] = (state.warehouse.items['wreck-ano-gravekeeper'] ?? 0) + 100
-  state.warehouse.items['wreck-ano-abyss-guard'] = (state.warehouse.items['wreck-ano-abyss-guard'] ?? 0) + 100
-  notes.push('仓库预置 坟场守墓者/深渊之门卫队 残骸各 100 m³——工业页「残骸回收」可直接开箱')
+  // 2026-09-19 合并：坟场守墓者 → `wreck-d-lo`（守墓者·低安）、深渊之门卫队 → `wreck-c-lo`（异形生物·低安）
+  state.warehouse.items['wreck-d-lo'] = (state.warehouse.items['wreck-d-lo'] ?? 0) + 100
+  state.warehouse.items['wreck-c-lo'] = (state.warehouse.items['wreck-c-lo'] ?? 0) + 100
+  notes.push('仓库预置 守墓者（低安）/异形生物（低安）残骸各 100 m³——工业页「残骸回收」可直接开箱')
   // 5) AI 打捞任务门槛（名额 1 + 基础核心）
   state.skills.trained['ai-expert'] = Math.max(state.skills.trained['ai-expert'] ?? 0, 1)
   state.aiCores.basic = (state.aiCores.basic ?? 0) + 1

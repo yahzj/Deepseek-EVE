@@ -720,8 +720,8 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         const burnedAfter = burnedBefore + qty
         const rarePayout = profile.rare === true && Math.floor(burnedAfter / RARE_UNIT_M3) > Math.floor(burnedBefore / RARE_UNIT_M3)
         if (rarePayout) {
-          // 主题件回落池（2026-09-16 船长甲1案）：洞内卡没配 `recycleLoot` ⇒ 用"军用备货柜"同款 MK3 池兜住
-          const extra = rollRareBoxExtra(state, ctx, profile, wormholeRareBoxThemePoolOf(ctx, profile.anomalyId))
+          // 主题件回落池（2026-09-16 船长甲1案）：洞内组没有主题件 ⇒ 用"军用备货柜"同款 MK3 池兜住
+          const extra = rollRareBoxExtra(state, ctx, profile, wormholeRareBoxThemePoolOf(ctx, profile.region))
           if (extra) {
             for (const modId of extra.modules) {
               state.moduleBay[modId] = (state.moduleBay[modId] ?? 0) + 1

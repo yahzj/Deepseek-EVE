@@ -28,6 +28,7 @@ import {
   RECYCLE_YIELD_PER_M3,
   RECYCLE_POOL_AVG_ISK,
   RARE_WRECK_VOLUME_M3,
+  wreckGroupOfAnomaly,
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
@@ -874,16 +875,20 @@ function WreckCard({
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[0] ?? 'basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
-  // B3.1：星系卡「回收产出倾向 / 特色掉落」汇总（= 该星系各悬赏敌群；回收卡同款行，去重合并）。
-  // 2026-09-10 船长定"说明精简"：特色掉落只讲特色（主题件具名 + 系列泛化），星图卡不加保底矿物块
-  // （星系级没有单一矿池；该星系矿池信息由下面每张悬赏卡各自的回收卡承载）。
+  // B3.1：星系卡「回收产出倾向 / 特色掉落」汇总（= 该星系各悬赏敌群**所属的残骸组**；回收卡同款行，去重合并）。
+  // 2026-09-10 船长定"说明精简"：特色掉落只讲特色（主题件具名 + 系列泛化），星图卡不加保底矿物块。
+  // 2026-09-19 残骸合并：卡级特色已退役 ⇒ 改按**组**去重（同族同地区的多张卡只算一份）。
   const notes: string[] = []
   const namedList: string[] = []
   const genericList: string[] = []
+  const groupKeys: string[] = []
   for (const a of anomalies) {
-    if (a.recycleNote && !notes.includes(a.recycleNote)) notes.push(a.recycleNote)
+    const group = wreckGroupOfAnomaly(a.id)
+    if (!group || groupKeys.includes(group.key)) continue
+    groupKeys.push(group.key)
+    if (group.note.length > 0 && !notes.includes(group.note)) notes.push(group.note)
     const feature = recycleFeatureOf(
-      { lowSec, threat: a.threat, loot: a.recycleLoot },
+      { lowSec, threat: group.threat, loot: group.theme },
       { mods: engine.ctx.modules, items: engine.ctx.items },
     )
     for (const p of feature.named) if (!namedList.includes(p)) namedList.push(p)

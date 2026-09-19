@@ -14,7 +14,6 @@
 
 import type { AnomalyDef } from '@whale/core'
 import { foeLayerSplit } from '@whale/core'
-import { withRecycleFlavor } from './salvageFlavors'
 import { WORMHOLE_FOE_CARDS } from './wormholeFoes'
 import {
   FOE_ALIEN_MAW,
@@ -1391,9 +1390,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     description: '低安遭遇模板：高危屠夫舰队（隐藏）。',
   },
 ]
-/** 构建异常点目录（含 B3.1 敌群回收特色合并，2026-09-06） */
+/** 构建异常点目录（2026-09-19 残骸合并后：卡上不再挂回收特色，一律走 `core/wreckGroups.ts` 的组表） */
 export function buildAnomalyCatalog(): ReadonlyMap<string, AnomalyDef> {
-  return new Map(ANOMALIES.map((a) => [a.id, withRecycleFlavor(a)]))
+  return new Map(ANOMALIES.map((a) => [a.id, a]))
 }
-/** 合并回收特色后的全量目录（桌面端 UI 目录同源；2026-09-06） */
-export const ANOMALIES_FLAVORED: readonly AnomalyDef[] = ANOMALIES.map(withRecycleFlavor)
+/** 全量敌卡目录（桌面端 UI 目录同源；名字里的 "FLAVORED" 是历史名——卡级回收特色已退役，保留导出名免动全仓引用） */
+export const ANOMALIES_FLAVORED: readonly AnomalyDef[] = ANOMALIES

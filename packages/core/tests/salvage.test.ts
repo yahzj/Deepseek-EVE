@@ -26,8 +26,9 @@ import {
   wreckDensityOf,
   wreckItemDefOf,
   wreckItemIdOf,
-  anomalyIdOfWreck,
+  wreckGroupKeyOfItemId,
 } from '../src/salvage'
+import { WRECK_GROUPS, WRECK_GROUP_BY_KEY, migratedWreckItemId } from '../src/wreckGroups'
 
 /** 带 security 的测试星系（hub=母港高安 1.0 / kor=中安 0.5 / grave=低安 −1.0 / abyss −0.7） */
 function ctxOf() {
@@ -149,16 +150,33 @@ describe('闲置漂移（打捞中挂起；回 base 自动清记录）', () => {
   })
 })
 
-describe('残骸物品（按敌群注册；乙案：计数 = 体积 → unit 恒 1 m³，数量即体积）', () => {
-  it('id/名称/计数口径正确；id ↔ 敌群互转', () => {
-    const def = wreckItemDefOf('ano-training', '演习场驱逐令', 6)
-    expect(def.id).toBe('wreck-ano-training')
+describe('残骸物品（按「族 × 地区」组注册；乙案：计数 = 体积 → unit 恒 1 m³，数量即体积）', () => {
+  it('13 组定表：id/名称/计数口径正确；卡 id 与组 id 双向可达（含旧"每卡一种"的 id）', () => {
+    const group = WRECK_GROUP_BY_KEY.get('b-hi')!
+    const def = wreckItemDefOf(group)
+    expect(def.id).toBe('wreck-b-hi')
+    expect(def.name).toBe('武装拾荒者残骸（高安）')
     expect(def.kind).toBe('wreck')
     expect(def.unitM3).toBe(1) // 计数 = 体积（m³）：数量即体积
     expect(def.baseSellPriceIsk).toBe(1) // 残骸物品本身不带价（站内收价由市场收购卡定，见 marketCatalog 残骸卡）
-    expect(wreckItemIdOf('ano-x')).toBe('wreck-ano-x')
-    expect(anomalyIdOfWreck('wreck-ano-x')).toBe('ano-x')
-    expect(anomalyIdOfWreck('ore-a')).toBeNull()
+    // 组 id ↔ 卡 id：两种写法都认（旧档兼容与迁移共用一条索引）
+    expect(wreckItemIdOf('a-hi')).toBe('wreck-a-hi')
+    expect(wreckGroupKeyOfItemId('wreck-a-hi')).toBe('a-hi')
+    expect(wreckGroupKeyOfItemId('wreck-ano-training')).toBe('b-hi') // 旧 id：演习场驱逐令 → 武装拾荒者·高安
+    expect(wreckGroupKeyOfItemId('wreck-rare-wh-pirate-scout')).toBe('a-wh')
+    expect(wreckGroupKeyOfItemId('ore-a')).toBeNull()
+    // 13 组 × （普通 13 + 稀有 13）
+    expect(WRECK_GROUPS.length).toBe(13)
+    expect(WRECK_GROUPS.filter((g) => g.region === 'wh').length).toBe(5)
+  })
+
+  it('存档迁移映射：旧 id → 组 id（普通与稀有）· 未知 id 原样不动', () => {
+    expect(migratedWreckItemId('wreck-ano-gravekeeper')).toBe('wreck-d-lo')
+    expect(migratedWreckItemId('wreck-rare-ano-harbor-escort')).toBe('wreck-rare-b-hi')
+    expect(migratedWreckItemId('wreck-rare-wh-alien-hive')).toBe('wreck-rare-c-wh')
+    expect(migratedWreckItemId('wreck-a-hi')).toBeNull() // 新 id 不是旧键 ⇒ 幂等
+    expect(migratedWreckItemId('wreck-ano-unknown')).toBeNull()
+    expect(migratedWreckItemId('ore-a')).toBeNull()
   })
 })
 

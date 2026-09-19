@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addWare, createInitialState, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, startRecycleRun } from '../src/index'
+import { addWare, createInitialState, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, startRecycleRun, wreckGroupKeyOfAnomaly } from '../src/index'
 import { advanceRefining } from '../src/industry'
 import { RARE_BOX_GEAR_CHANCE } from '../src/salvage'
 
@@ -26,7 +26,8 @@ describe('回收残骸日志名称口径（2026-09-11 船长反馈修复）', ()
         RARE_BOX_GEAR_CHANCE[k as keyof typeof RARE_BOX_GEAR_CHANCE] = 1
       }
       const state = createInitialState({ nowWallMs: 0, seed: 7 })
-      const rareId = rareWreckItemIdOf('ano-redring-raiders')!
+      // 2026-09-19 合并：A 族·高安的稀有残骸 = `wreck-rare-a-hi`（赤潮劫掠舰队那张卡所属的组）
+      const rareId = rareWreckItemIdOf(wreckGroupKeyOfAnomaly('ano-redring-raiders')!)
       const gearName = ctx.modules.get('mod-lair-turret-a')?.name ?? '' // 池内三件之一必出
       expect(gearName.length).toBeGreaterThan(0)
 
