@@ -463,15 +463,87 @@ export function wormholeMatterThreatMul(buffs: WormholeMatterBuffs, kind: 'node'
   return Math.max(WORMHOLE_MATTER_THREAT_FLOOR_MUL, Math.min(1, mul))
 }
 
-/** 按类别把台数 × 每枚值汇成增益（**唯一派生点**：改口径只动这里；四类封顶也在这里夹） */
-export function wormholeMatterBuffs(hold: WormholeHoldState | null | undefined): WormholeMatterBuffs {
+/**
+ * **谜质科技树的增益贡献**（2026-09-19 船长「消耗谜质升级的研究科技树」批）——
+ * 形状刻意与 `WormholeMatterBuffs` 的**同类字段同名**，但语义是"**加多少**"：
+ * 威胁两项给的是**削减量**（0.09 = −9%），与装置的"减威胁"同轴，最后一起合成并夹同一个封顶。
+ * 产出点 = `core/matterTech.ts` 的 `matterTechWhBuffs`（按 `effect` 关键字汇总）。
+ */
+export interface WormholeTechBuffs {
+  /** 洞内**最大回合数**（永久加成；与本趟装置分开相加） */
+  turnBonus: number
+  /** 洞内货仓有效格 */
+  holdCells: number
+  resistShield: number
+  resistArmor: number
+  resistHull: number
+  hitBonus: number
+  evasion: number
+  enemyHitDown: number
+  weaponRangePct: number
+  reloadPct: number
+  damagePct: number
+  blindReduce: number
+  /** 节点战威胁**削减量** */
+  threatNode: number
+  /** 层末守卫威胁**削减量** */
+  threatBoss: number
+  droneRecoveryPct: number
+  fieldRepairPct: number
+}
+
+/** 无科技时的零值 */
+export const WORMHOLE_TECH_BUFFS_NONE: WormholeTechBuffs = {
+  turnBonus: 0,
+  holdCells: 0,
+  resistShield: 0,
+  resistArmor: 0,
+  resistHull: 0,
+  hitBonus: 0,
+  evasion: 0,
+  enemyHitDown: 0,
+  weaponRangePct: 0,
+  reloadPct: 0,
+  damagePct: 0,
+  blindReduce: 0,
+  threatNode: 0,
+  threatBoss: 0,
+  droneRecoveryPct: 0,
+  fieldRepairPct: 0,
+}
+
+/** 按类别把台数 × 每枚值汇成增益（**唯一派生点**：改口径只动这里；四类封顶也在这里夹）。
+ *  `tech` = **谜质科技树**的贡献（2026-09-19 批）——在合成威胁与夹紧**之前**并入 ⇒ 与装置
+ *  **同一个增益袋、同一套封顶**，不必再写第二份夹紧逻辑。 */
+export function wormholeMatterBuffs(
+  hold: WormholeHoldState | null | undefined,
+  tech?: WormholeTechBuffs,
+): WormholeMatterBuffs {
   const list = wormholeMatterCounts(hold)
-  if (list.length === 0) return WORMHOLE_MATTER_BUFFS_NONE
+  if (list.length === 0 && tech === undefined) return WORMHOLE_MATTER_BUFFS_NONE
   const out: WormholeMatterBuffs = { ...WORMHOLE_MATTER_BUFFS_NONE, list }
   /** 三条威胁类各自的"减威胁"总量（先累加，最后按档合成并夹 −50%） */
   let threatAll = 0
   let threatBoss = 0
   let threatExtract = 0
+  if (tech !== undefined) {
+    out.turnBonus += tech.turnBonus
+    out.holdCells += tech.holdCells
+    out.resistShield += tech.resistShield
+    out.resistArmor += tech.resistArmor
+    out.resistHull += tech.resistHull
+    out.hitBonus += tech.hitBonus
+    out.evasion += tech.evasion
+    out.enemyHitDown += tech.enemyHitDown
+    out.weaponRangePct += tech.weaponRangePct
+    out.reloadPct += tech.reloadPct
+    out.damagePct += tech.damagePct
+    out.blindReduce += tech.blindReduce
+    out.droneRecoveryPct += tech.droneRecoveryPct
+    out.fieldRepairPct += tech.fieldRepairPct
+    threatAll += tech.threatNode
+    threatBoss += tech.threatBoss
+  }
   for (const { device, count } of list) {
     out.devices += count
     const v = device.per * count

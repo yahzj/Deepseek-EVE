@@ -7,7 +7,7 @@
  * + 市场派生量的旧键清理 + **幂等**（新档再过一遍是空操作）。
  */
 import { describe, expect, it } from 'vitest'
-import { createInitialState } from '../src/state'
+import { CURRENT_STATE_VERSION, createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { migratedWreckItemId } from '../src/wreckGroups'
@@ -40,7 +40,7 @@ describe('残骸合并 · 存档迁移（v27 → v28）', () => {
       s.escrowItems['frag-mod-miner-2'] = 4
     })
     const out = roundTrip(legacy)
-    expect(out.version).toBe(28)
+    expect(out.version).toBe(CURRENT_STATE_VERSION) // v27 档一路迁到当前版本（v28 残骸合并 → v29 谜质科技树）
     expect(out.warehouse.items['wreck-d-lo']).toBe(105) // 40 + 60 + 5
     expect(out.warehouse.items['wreck-ano-gravekeeper']).toBeUndefined()
     expect(out.warehouse.items['min-tritanium']).toBe(999)

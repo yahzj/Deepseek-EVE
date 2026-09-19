@@ -46,6 +46,8 @@ import {
 import type { HexCell, WormholeGridCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
 // F3c 谜质：装置效果一律从货仓**现算**（扫描半径 / 额外驱散星云走这里；回合类走 `wormholeSyncMatterTurns`）
 import { wormholeMatterBuffs } from './wormholeMatter'
+// 谜质科技树（2026-09-19 船长批）：「最大回合数」永久加成在**入场裁定**时并入回合预算
+import { matterTechWhBuffs } from './matterTech'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -94,17 +96,22 @@ export function wormholeShipMass(ship: ShipDef): number {
  * 轻重差幅 1.93 倍 → **1.94 倍** ⇒「越重时间越短」的强度不变。
  * 谜质「时序核心」仍 **+10 回合/台**（其相对价值由 4×T3 的 31.3% 降到 18.9%，属已登记的连带）。
  */
-export const WORMHOLE_TURN_BASE = 100
+export const WORMHOLE_TURN_BASE = 80
 export const WORMHOLE_TURN_MASS_COEF = 0.53
 
 /**
  * **总质量 → 可探索回合数**（越重、时间越短）：
- * `floor(100 × (1 − 总质量 ÷ 16,000 × 0.53))`（基础沿革 55 → 60（2026-09-14）→ **100**（2026-09-15））。
- * 设计稿 §4.3 的实测表逐格复现（4×T1 = 93 … 2×T4+1×T2 = 48）。
+ * `floor(80 × (1 − 总质量 ÷ 16,000 × 0.53)) + 科技加成`（基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15）
+ * → **80**（2026-09-19 船长「谜质科技树」批：「**加入科技后，初始回合数削减到80回合**」））。
+ * 设计稿 §4.3 的实测表逐格复现 ⇒ 改基数后整体下调：4×T3 `53 → 42`、空载 `100 → 80`（读数已写回设计稿）。
+ *
+ * @param techTurnBonus **谜质科技**给的「**最大回合数**」永久加成（`mt-explore-turn` 每级 +10；
+ *   船长：「探索回合增加是增加**最大回合数**（不是本趟回合）」）——与**本趟**的装置
+ *   「时序核心 +10/台」**分开相加**（后者由 `wormholeSyncMatterTurns` 在趟内同步）。
  */
-export function wormholeTurnBudget(totalMass: number): number {
+export function wormholeTurnBudget(totalMass: number, techTurnBonus = 0): number {
   const ratio = Math.max(0, Math.min(1, totalMass / WORMHOLE_TOTAL_MASS_CAP))
-  return Math.floor(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF))
+  return Math.floor(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF)) + Math.max(0, Math.floor(techTurnBonus))
 }
 
 /** 回合消耗口径（船长 2026-09-12 定）——每节点 1、每多打一波 +1、每捡一堆 +1 */
@@ -163,13 +170,18 @@ export const WORMHOLE_ADMISSION_TEXT: Record<WormholeAdmissionCode, string> = {
  * 首艘同型实例的 uid 就等于船型 id，但第 2 艘起是 `船型id#2` ⇒ 直接 `ctx.ships.get(id)`
  * 会在"带两艘同型船"时误判 `unknown-ship`。故按 `uidDefId` 剥掉 `#N` 再查表。
  */
-export function wormholeAdmission(ctx: SimContext, shipIds: readonly string[]): WormholeAdmission {
+export function wormholeAdmission(
+  ctx: SimContext,
+  shipIds: readonly string[],
+  /** **谜质科技**的「最大回合数」永久加成（`matterTechWhBuffs(state, ctx).turnBonus`；缺省 0 = 零变化） */
+  techTurnBonus = 0,
+): WormholeAdmission {
   const none = (code: WormholeAdmissionCode, totalMass = 0): WormholeAdmission => ({
     ok: false,
     code,
     totalMass,
     massRatio: totalMass / WORMHOLE_TOTAL_MASS_CAP,
-    turnBudget: wormholeTurnBudget(totalMass),
+    turnBudget: wormholeTurnBudget(totalMass, techTurnBonus),
   })
   if (shipIds.length === 0) return none('no-ship')
   if (shipIds.length > WORMHOLE_MAX_SHIPS) return none('too-many-ships')
@@ -187,7 +199,7 @@ export function wormholeAdmission(ctx: SimContext, shipIds: readonly string[]): 
     code: 'ok',
     totalMass,
     massRatio: totalMass / WORMHOLE_TOTAL_MASS_CAP,
-    turnBudget: wormholeTurnBudget(totalMass),
+    turnBudget: wormholeTurnBudget(totalMass, techTurnBonus),
   }
 }
 
@@ -636,8 +648,13 @@ export function wormholeStartRun(
    * ——本函数拿不到 `state`（测试与工具直接用它建盘），故由调用方（`wormholeEnter`）传 `blankShareFactorOf(state)`。
    */
   blankShareFactor = 1,
+  /**
+   * **谜质科技**的「最大回合数」永久加成（`matterTechWhBuffs(state, ctx).turnBonus`；缺省 0 = 旧行为）。
+   * 与 `blankShareFactor` 同款理由：本函数拿不到 `state`，由调用方（`wormholeEnter` / 界面预览）传入。
+   */
+  techTurnBonus = 0,
 ): WormholeStartResult {
-  const adm = wormholeAdmission(ctx, shipIds)
+  const adm = wormholeAdmission(ctx, shipIds, techTurnBonus)
   if (!adm.ok) return { ok: false, error: WORMHOLE_ADMISSION_TEXT[adm.code] }
   const depth = 1
   return {
@@ -1588,7 +1605,7 @@ export function wormholeEnter(
       }
     }
   }
-  const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state))
+  const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), matterTechWhBuffs(state, ctx).turnBonus)
   if (!r.ok || !r.run) return r
   r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
   // 出生信息（丙/丁）：层夹 1~9；原型与族缺省 ⇒ 按种子现算（与库存列表显示的同源）

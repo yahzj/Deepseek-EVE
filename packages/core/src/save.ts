@@ -319,6 +319,16 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
 
     return next
   },
+  /**
+   * v28 -> v29（2026-09-19 船长：「消耗谜质升级的研究科技树」）：**纯新增字段** ——
+   * 补 `research.levels = {}`（一级未点）⇒ 老档读进来就是"科技树全空"，
+   * 所有科技效果项为 0 ⇒ **零行为变化**（唯一例外 = 本批同时改的基础回合 100 → 80，那是难度改动、
+   * 与迁移无关）。幂等：已有 `research` 的档原样保留。
+   */
+  28: (raw) => {
+    if (raw.research !== undefined) return raw
+    return { ...raw, research: { levels: {} } }
+  },
 }
 /** 字符串或 null 归一（迁移辅助） */
 function asNullableString(v: unknown): string | null {
@@ -2787,6 +2797,20 @@ function normalizeState(raw: unknown): GameState {
   }
   const wormhole = cleanWormhole()
 
+  /**
+   * **谜质科技树等级**（v29 · 2026-09-19 船长批）：只存"哪一项研究到了几级"。
+   * 逐项清洗：键必须是字符串、值取**非负整数**（等级上限由节点表 `maxLevel` 在**研究时**把关；
+   * 这里不查表 ⇒ 数据侧改 `maxLevel` 也不会让老档的等级被截断，读数只会按新上限显示）。
+   */
+  const researchRaw = asRaw(src.research)
+  const techLevelsRaw = asRaw(researchRaw.levels)
+  const techLevels: Record<string, number> = {}
+  for (const [key, value] of Object.entries(techLevelsRaw)) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue
+    techLevels[key] = Math.floor(value)
+  }
+  const research: GameState['research'] = { levels: techLevels }
+
   const normalized: GameState = {
     version: CURRENT_STATE_VERSION,
     gameMs:
@@ -2878,6 +2902,7 @@ function normalizeState(raw: unknown): GameState {
     ...(Object.keys(firstStats).length > 0 ? { firstStats } : {}),
     sideTasks,
     wormhole,
+    research,
     logs,
   }
   // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）

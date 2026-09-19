@@ -53,7 +53,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-civ',
     name: '民用采集器',
-    slot: 'miner',
+    slot: 'miner',
+    workEfficiency: 0, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.1,
     description: '产量 +10%。空间站平价货，新手第一件看得起的强化。',
@@ -62,7 +63,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-1',
     name: '强化采集器 MK1',
-    slot: 'miner',
+    slot: 'miner',
+    workEfficiency: 0.2, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.2,
     description: '提升 20% 循环产量。工业入门的第一件自制装备。',
@@ -71,7 +73,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-2',
     name: '强化采集器 MK2',
-    slot: 'miner',
+    slot: 'miner',
+    workEfficiency: 0.4, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.5,
     description: '提升 50% 循环产量。双管谐振钻头，深空工业的标杆装备。',
@@ -80,7 +83,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-3',
     name: '精密采集器 MK3',
-    slot: 'miner',
+    slot: 'miner',
+    workEfficiency: 0.6, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.8,
     description: '产量 +80%。协会精密工业的结晶（蓝图可造，见组装机）；40 CPU 已接近小型船满载。',
@@ -89,7 +93,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-proto',
     name: '异星原型采集器',
-    slot: 'miner',
+    slot: 'miner',
+    workEfficiency: 0.8, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 1.1,
     description: '产量 +110%。来源不明的异星技术，无法复制——不可制造。',
@@ -1087,7 +1092,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-salvager-1',
     name: '打捞器 MK1',
-    slot: 'salvager',
+    slot: 'salvager',
+    workEfficiency: 0.2, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     cpuUse: 2,
     salvageCycleMs: 10_000,
@@ -1096,7 +1102,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-salvager-2',
     name: '打捞器 MK2',
-    slot: 'salvager',
+    slot: 'salvager',
+    workEfficiency: 0.4, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     cpuUse: 6,
     salvageCycleMs: 8_000,
@@ -1105,7 +1112,8 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-salvager-3',
     name: '打捞器 MK3',
-    slot: 'salvager',
+    slot: 'salvager',
+    workEfficiency: 0.6, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     cpuUse: 15,
     salvageCycleMs: 6_000,

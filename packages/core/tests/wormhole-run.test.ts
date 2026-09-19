@@ -413,8 +413,8 @@ describe('虫洞 · 起程与副本推进', () => {
     expect(run.phase).toBe('inside')
     expect(run.depth).toBe(1)
     expect(run.totalMass).toBe(2_000)
-    expect(run.turnsTotal).toBe(93) // 4×T1 = 93 回合（基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15））
-    expect(run.turnsLeft).toBe(93)
+    expect(run.turnsTotal).toBe(74) // 4×T1 = 74 回合（基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15）→ **80**（2026-09-19 谜质科技树批））
+    expect(run.turnsLeft).toBe(74)
     expect(run.bag).toEqual([])
     // F3a-2：层内内容全部由网格承载；旧的线性节点字段不再生成
     expect(run.pendingNode).toBeNull()
@@ -842,10 +842,10 @@ describe('虫洞 · 层曲线（收益涨得比威胁快 —— 船长 2026-09-1
 describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
   // ⚠ 版本号随存档结构演进往上抬：v26 = 「第一次」老档一次性判定；v27 = 市场链换口径的一次性折算；
   // v28 = 残骸合并（旧"每卡一种"残骸 id → 「族 × 地区」13 组的同组累加折算，2026-09-19）
-  it('新档带空虫洞状态；当前存档版本 = 28（v28 = 残骸合并的一次性老档折算）', () => {
-    expect(CURRENT_STATE_VERSION).toBe(28)
+  it('新档带空虫洞状态；当前存档版本 = 29（v29 = 谜质科技树，v28 = 残骸合并的一次性老档折算）', () => {
+    expect(CURRENT_STATE_VERSION).toBe(29)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
-    expect(s.version).toBe(28)
+    expect(s.version).toBe(29)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 
@@ -870,7 +870,7 @@ describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
     expect(back.phase).toBe('inside')
     expect(back.depth).toBe(1)
     expect(back.turnsLeft).toBe(run.turnsLeft)
-    expect(back.turnsTotal).toBe(93)
+    expect(back.turnsTotal).toBe(74)
     expect(back.fleet).toEqual([T1, T1, T1, T1])
     expect(back.bag).toEqual([{ itemId: 'ore-voidmother', units: 800 }])
     // 层内网格随档（F3a）：位置/真相/已扫描/终点都在（细项由 wormhole-grid.test.ts 钉）
