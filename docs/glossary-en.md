@@ -648,5 +648,48 @@
 > 一次性舰船图纸（`sbp-once-*`）与虫洞族图纸（`sbp-wh-*`）同规则；族图纸用 §四 的族舰名
 > （如 `Raider Heavy Assault Cruiser Blueprint`）。
 
+## 十三、专名表 · 旅行事件（8）· ⚠ 新增待船长过目
+
+| id | 中文 | English |
+|---|---|---|
+| ev-derelict | 漂流集装箱 | `Drifting Container` |
+| ev-mineral-cloud | 原材料碎云 | `Raw Material Debris Cloud` |
+| ev-aurora | 跃迁极光 | `Warp Aurora` |
+| ev-scout | 海盗侦察 | `Pirate Scout` |
+| ev-meteor | 流星雨 | `Meteor Shower` |
+| ev-big-cargo | 协会遗失货柜 | `Lost Association Container` |
+| ev-ore-patch | 富矿残脉 | `Rich Ore Remnant` |
+| ev-signal | 古老信号 | `Ancient Signal` |
+
+## 十四、专名表 · 谜质科技（23）· ⚠ 新增待船长过目
+
+沿用既有术语（拆解 = `Unbox` · 残骸 = `Wreck` · 谐振 = `Resonant` · 压制力场 = `Suppression Field`）。
+
+| id | 中文 | English |
+|---|---|---|
+| mt-explore-turn | 时序锚定器 | `Chrono Anchor` |
+| mt-explore-salvage | 引力吊臂 | `Gravitic Crane` |
+| mt-explore-collect | 富集钻头 | `Enrichment Drill` |
+| mt-explore-hold | 折叠货舱 | `Folding Hold` |
+| mt-explore-scan | 谐振信号滤波阵列 | `Resonant Signal Filter Array` |
+| mt-explore-speed | 时间压缩矩阵 | `Time Compression Matrix` |
+| mt-battle-shield | 谐振护盾阵列 | `Resonant Shield Array` |
+| mt-battle-armor | 装甲重排 | `Armor Realignment` |
+| mt-battle-hull | 骨架强化 | `Frame Reinforcement` |
+| mt-battle-hit | 追踪校准 | `Tracking Calibration` |
+| mt-battle-evasion | 陀螺规避 | `Gyro Evasion` |
+| mt-battle-noise | 信号噪化 | `Signal Noise` |
+| mt-battle-range | 测距延展 | `Rangefinding Extension` |
+| mt-battle-reload | 装填机构优化 | `Reload Mechanism Optimization` |
+| mt-battle-damage | 弹丸强化 | `Projectile Reinforcement` |
+| mt-battle-blind | 近盲抑制 | `Blind Zone Suppression` |
+| mt-battle-threat-node | 压制力场增幅 | `Suppression Field Amplification` |
+| mt-battle-threat-boss | 守卫解析 | `Guardian Analysis` |
+| mt-battle-drone | 谐振回收网 | `Resonant Recovery Net` |
+| mt-battle-repair | 战地自修 | `Field Self-repair` |
+| mt-industry-unbox | 货柜拆解技术 | `Container Unboxing` |
+| mt-industry-void | 虚空精炼技术 | `Void Refining` |
+| mt-industry-wreck | 残骸解析技术 | `Wreck Analysis` |
+
 
 

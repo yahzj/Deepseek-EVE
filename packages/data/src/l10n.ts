@@ -745,6 +745,45 @@ export const EN_COMMS_FACTIONS: EnTable = {
   'dept-salvage-crew': { name: "Chen's Crew No.1" },
 }
 
+/** 旅行事件（8 · 译名表 §十三；`ctx.travelEvents` 是**数组** ⇒ 用 overlayList） */
+export const EN_TRAVEL_EVENTS: EnTable = {
+  'ev-derelict': { name: 'Drifting Container' },
+  'ev-mineral-cloud': { name: 'Raw Material Debris Cloud' },
+  'ev-aurora': { name: 'Warp Aurora' },
+  'ev-scout': { name: 'Pirate Scout' },
+  'ev-meteor': { name: 'Meteor Shower' },
+  'ev-big-cargo': { name: 'Lost Association Container' },
+  'ev-ore-patch': { name: 'Rich Ore Remnant' },
+  'ev-signal': { name: 'Ancient Signal' },
+}
+
+/** 谜质科技（23 · 译名表 §十四；沿用既有术语：拆解 = Unbox · 残骸 = Wreck · 谐振 = Resonant） */
+export const EN_MATTER_TECH: EnTable = {
+  'mt-explore-turn': { name: 'Chrono Anchor' },
+  'mt-explore-salvage': { name: 'Gravitic Crane' },
+  'mt-explore-collect': { name: 'Enrichment Drill' },
+  'mt-explore-hold': { name: 'Folding Hold' },
+  'mt-explore-scan': { name: 'Resonant Signal Filter Array' },
+  'mt-explore-speed': { name: 'Time Compression Matrix' },
+  'mt-battle-shield': { name: 'Resonant Shield Array' },
+  'mt-battle-armor': { name: 'Armor Realignment' },
+  'mt-battle-hull': { name: 'Frame Reinforcement' },
+  'mt-battle-hit': { name: 'Tracking Calibration' },
+  'mt-battle-evasion': { name: 'Gyro Evasion' },
+  'mt-battle-noise': { name: 'Signal Noise' },
+  'mt-battle-range': { name: 'Rangefinding Extension' },
+  'mt-battle-reload': { name: 'Reload Mechanism Optimization' },
+  'mt-battle-damage': { name: 'Projectile Reinforcement' },
+  'mt-battle-blind': { name: 'Blind Zone Suppression' },
+  'mt-battle-threat-node': { name: 'Suppression Field Amplification' },
+  'mt-battle-threat-boss': { name: 'Guardian Analysis' },
+  'mt-battle-drone': { name: 'Resonant Recovery Net' },
+  'mt-battle-repair': { name: 'Field Self-repair' },
+  'mt-industry-unbox': { name: 'Container Unboxing' },
+  'mt-industry-void': { name: 'Void Refining' },
+  'mt-industry-wreck': { name: 'Wreck Analysis' },
+}
+
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
   if (locale === 'zh') return ctx
   return {
@@ -760,5 +799,8 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     belts: overlayMap(ctx.belts, EN_BELTS, locale),
     stations: overlayMap(ctx.stations, EN_STATIONS, locale),
     commsFactions: overlayMap(ctx.commsFactions, EN_COMMS_FACTIONS, locale),
+    // matterTech 在 SimContext 里是可选字段（缺省 = 该档内容没装）⇒ 有才覆盖
+    ...(ctx.matterTech ? { matterTech: overlayMap(ctx.matterTech, EN_MATTER_TECH, locale) } : {}),
+    travelEvents: overlayList(ctx.travelEvents, EN_TRAVEL_EVENTS, locale),
   }
 }

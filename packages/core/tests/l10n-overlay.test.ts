@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
+import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_TRAVEL_EVENTS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -193,6 +193,27 @@ describe('英文覆盖层（P2）', () => {
     for (const [id, def] of zh.galaxies) expect(strip(en.galaxies.get(id)!), `星系 ${id}`).toBe(strip(def))
     for (const [id, def] of zh.belts) expect(strip(en.belts.get(id)!), `矿带 ${id}`).toBe(strip(def))
     for (const [id, def] of zh.commsFactions) expect(strip(en.commsFactions.get(id)!), `势力 ${id}`).toBe(strip(def))
+  })
+
+  it('旅行事件 + 谜质科技：全覆盖 + 英文名生效 + 数值深比一字不动', () => {
+    const missEv = zh.travelEvents.filter((e) => !(e.id in EN_TRAVEL_EVENTS)).map((e) => e.id)
+    expect(missEv, `这些旅行事件还没英文名：${missEv.join(', ')}`).toEqual([])
+    const missMt = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH))
+    expect(missMt, `这些谜质科技还没英文名：${missMt.join(', ')}`).toEqual([])
+    expect(en.travelEvents.find((e) => e.id === 'ev-aurora')?.name).toBe('Warp Aurora')
+    expect(en.matterTech?.get('mt-industry-unbox')?.name).toBe('Container Unboxing')
+    expect(en.matterTech?.get('mt-battle-threat-boss')?.name).toBe('Guardian Analysis')
+    const strip = (d: object): string => {
+      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
+      delete rest.name
+      delete rest.description
+      return JSON.stringify(rest)
+    }
+    for (const e of zh.travelEvents) {
+      const other = en.travelEvents.find((x) => x.id === e.id)!
+      expect(strip(other), `旅行事件 ${e.id}`).toBe(strip(e))
+    }
+    for (const [id, def] of zh.matterTech ?? new Map()) expect(strip(en.matterTech!.get(id)!), `谜质科技 ${id}`).toBe(strip(def))
   })
 
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {

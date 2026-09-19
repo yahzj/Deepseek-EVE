@@ -106,6 +106,8 @@ export {
   EN_BELTS,
   EN_STATIONS,
   EN_COMMS_FACTIONS,
+  EN_TRAVEL_EVENTS,
+  EN_MATTER_TECH,
   overlayCardFoes,
   overlayCardFoesList,
   type Locale as L10nLocale,
