@@ -52,16 +52,20 @@ describe('劫掠电子舰 · 舰级与挂载件', () => {
     expect(s.evasion).toBe(0.3)
     expect(s.shotDmg).toBe(30)
     expect(Math.round(bal.hullClassBaseSpeedMps[1] * s.speedRatio)).toBe(374)
-    expect(s.mounts).toEqual(['foe-mount-charge-pirate', 'foe-mount-capture-web'])
+    // 2026-09-19 船长：「海盗电子舰的冲锋也移除，只在洞内单独挂载」⇒ 舰级不带件（两件写在战团条目上，见下）
+    expect(s.mounts, '劫掠电子舰舰级不得带挂载件').toBeUndefined()
   })
 
-  it('编成：头目×1 + 电子舰×1 + 快艇×2（单位数仍 4）', () => {
+  it('编成：头目×1 + 电子舰×1 + 快艇×2（单位数仍 4）· 两件挂载写在电子舰条目上', () => {
     const card = ctx.anomalies.get(CARD)!
     expect((card.ships ?? []).map((s) => [s.ship.id, s.count ?? 1])).toEqual([
       ['foe-pirate-warlord', 1],
       [EWAR, 1],
       ['foe-pirate-skiff', 2],
     ])
+    // 有效挂载是「条目 ?? 舰级」（替换不是叠加）⇒ 条目必须两件都写
+    const ew = (card.ships ?? []).find((s) => s.ship.id === EWAR)!
+    expect(ew.mounts).toEqual(['foe-mount-charge-pirate', 'foe-mount-capture-web'])
   })
 
   it('规格层：队伍里那一条带着捕获网参数与冲锋资格（闪避也走舰级覆写）', () => {

@@ -10,8 +10,10 @@
  * `FoeShipSlot.mounts`）。同类先例：`core/lairs.ts` 的 `FOE_LAIR_GEAR`（敌族掉落池表）。
  *
  * **一件一类效果**（`charge` / `droneRangeOnHit` / `gunRangeOnHit` / `web` 四选一）：`content:check` 会拦混写。
- * ⚠ 新舰「劫掠电子舰」是**唯一把两件挂在舰级**上的单位（冲锋 + 捕获网，它不外借给洞外）——
- * 「洞外零冲锋」的守卫因此按**有效挂载**（条目 ?? 舰级）判，见 `content-check` 敌方挂载件契约 ③。
+ * ⚠ **挂载位一律"条目级"**（2026-09-19 船长：「**海盗电子舰的冲锋也移除，只在洞内单独挂载**」）——
+ * 冲锋件全部写在卡的编成条目上（三条 A 族舰级洞外也在用；电子舰也照此收口），舰级只留
+ * D/E 的受击增程件。「洞外零冲锋」的守卫因此按**有效挂载**（`slot.mounts ?? ship.mounts`，
+ * **替换**不是叠加）判，见 `content-check` 敌方挂载件契约 ③。
  */
 import type { FoeMountDef, FoeMountId } from './types'
 

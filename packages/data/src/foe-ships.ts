@@ -1060,7 +1060,9 @@ export const FOE_G_REMNANT_TENDER: FoeShipDef = {
  * 靠两件挂载件吃饭：**劫掠冲锋推进器**（×1.6 / 30 秒）＋**劫掠捕获网**（首次开火即钉住目标）。
  * 速度 = 1 护卫舰基准 340 × `1.10` = **374** m/s（仍满足 A 族「每档高于本档基准」）；
  * 射程带沿用劫掠护卫舰的 ±15% 口径（326~4275）；战术 `orbit`（中距环绕支援）。
- * ⚠ 只服务「海盗战团」（深层卡）——`mounts` 挂在**舰级**上与挂条目等价（本舰不外借）。 */
+ * ⚠ **舰级不带任何挂载件**（2026-09-19 船长：「**海盗电子舰的冲锋也移除，只在洞内单独挂载**」）——
+ * 两件一律写在「海盗战团」的**条目**上，与 A 族另三条舰级同口径；本舰不外借（只服务深层战团）。
+ * ⚠ 有效挂载是 `条目 ?? 舰级`（**替换**不是叠加）⇒ 条目必须**两件都写**，只写一件会顶掉另一件。 */
 export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
   id: 'foe-pirate-raider',
   name: '劫掠电子舰',
@@ -1079,7 +1081,7 @@ export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
   dmgMix: { kinetic: 8, explosive: 2 },
   tactic: 'orbit',
   evasion: 0.3, // **闪避提高**（舰级覆写；族内其余舰级缺省 0.12）
-  mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb],
+  // 挂载件（冲锋 + 捕获网）**一律写在深层「海盗战团」的条目上**——见上方注释与船长的 2026-09-19 裁定
 }
 
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */

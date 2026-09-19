@@ -2999,13 +2999,17 @@ for (const m of MODULES) {
     }
     /* ⑤g **敌方挂载件契约**（2026-09-16 船长三句：「**能否将冲锋设置成类似舰船装备的挂载物？这样只要给敌人
      *    装配就行了**」＋「**除了C族，将D族和E族的射程增加也迁成挂载件**」＋ A 族洞内海盗
-     *    「**冲锋倍率为1.6，冷却30秒**」）。钉五件事：
+     *    「**冲锋倍率为1.6，冷却30秒**」；2026-09-19 追加「**海盗电子舰的冲锋也移除，只在洞内单独挂载**」）。
+     *    钉六件事：
      *    ① **C 族**：全族每条舰级的冲锋件倍率 = 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`、冷却 10 秒；
      *    ② **A 族**：**洞内三张 A 族卡的每条编成条目**必须挂海盗冲锋件，参数 = **×1.6 / 30 秒**；
      *    ③ **洞外不许挂冲锋件**——A 族那三条舰级洞外（低安遭遇 / 悬赏）也在用，
      *       挂舰级就会连洞外一起冲（这正是船长选"条目级挂载"的原因）；
+     *       ⚠ 2026-09-19 起**冲锋件一律挂条目**（电子舰的舰级例外取消）⇒ 舰级带冲锋件即判红；
      *    ④ 挂载件 id 必须都在 `FOE_MOUNTS` 里（写错 id = 红灯，引擎侧不生效）；
-     *    ⑤ D/E 的增程件归属沿用原口径（D 只静滞卫舰 · E 只带机群的三舰）。 */
+     *    ⑤ D/E 的增程件归属沿用原口径（D 只静滞卫舰 · E 只带机群的三舰）；
+     *    ⑥ **捕获网归属（全局判）**：只允许挂在「劫掠电子舰」上，且**凡引用它的卡必须显式挂件**
+     *       （原先是舰级自带 ⇒ 舰级清空后改由条目声明，见下）。 */
     {
       const bad: string[] = []
       const wantPirate = FOE_MOUNTS[FOE_MOUNT_IDS.chargePirate].charge!
@@ -3038,19 +3042,25 @@ for (const m of MODULES) {
             bad.push(`${id} 的 ${sl.ship.name}（条目或舰级）未挂海盗冲锋件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）`)
           }
         }
-        // **捕获网件归属**（船长 2026-09-16）：只允许出现在「劫掠电子舰」上，且深层战团必须带它一条
-        for (const sl of slots) {
-          const eff = sl.mounts ?? sl.ship.mounts
-          const hasWeb = resolveFoeMounts(eff).foeCaptureWeb !== undefined
+      // **捕获网件归属**（船长 2026-09-16；2026-09-19 随"挂载一律条目级"收口改成**全局判**）：
+      // ① 该件**只允许**出现在「劫掠电子舰」上；② **凡引用劫掠电子舰的卡，其条目必须显式挂它**
+      //    （原先靠舰级自带 ⇒ 舰级清空后必须由条目声明；深层战团那条也由本判据覆盖）。
+      for (const a of ANOMALIES_FLAVORED) {
+        for (const sl of a.ships ?? []) {
+          const hasWeb = resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeCaptureWeb !== undefined
           if (hasWeb && sl.ship.id !== 'foe-pirate-raider') {
-            bad.push(`${id} 的 ${sl.ship.name} 挂了劫掠捕获网——该件只允许挂在「劫掠电子舰」上`)
+            bad.push(`${a.id} 的 ${sl.ship.name} 挂了劫掠捕获网——该件只允许挂在「劫掠电子舰」上`)
           }
-          if (sl.ship.id === 'foe-pirate-raider' && !hasWeb) bad.push(`${id} 的劫掠电子舰没挂捕获网件`)
+          if (sl.ship.id === 'foe-pirate-raider' && !hasWeb) {
+            bad.push(`${a.id} 的劫掠电子舰没挂捕获网件——该件须挂在条目上（舰级已不带件）`)
+          }
         }
       }
+      }
       // ③ 洞外不许挂冲锋件（除 C 族舰级、洞内三张 A 族卡条目）。
-      //    ⚠ 按**有效挂载**（条目 ?? 舰级）判：新舰「劫掠电子舰」把海盗冲锋件写在**舰级**上
-      //    （它只进深层战团），若只看条目，日后把它放进洞外卡会漏检 ⇒ 冲锋跟着上洞外。
+      //    ⚠ 按**有效挂载**（条目 ?? 舰级）判——冲锋件 2026-09-19 起**一律挂条目**（船长：
+      //    「海盗电子舰的冲锋也移除，只在洞内单独挂载」，原先电子舰把两件挂在舰级上的例外已取消）
+      //    ⇒ 任何舰级带冲锋件都会让引用它的洞外卡一起冲，这里直接判红。
       const whSet = new Set(whPirateCards)
       for (const a of ANOMALIES_FLAVORED) {
         if (whSet.has(a.id)) continue
