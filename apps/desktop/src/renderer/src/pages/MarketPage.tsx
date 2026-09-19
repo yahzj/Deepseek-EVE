@@ -162,7 +162,7 @@ function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
     const eff = Math.round((engine.ctx.balance.aiCore.efficiency[good.refId as never] ?? 1) * 100)
     const tier =
       good.refId === 'basic' ? tr("ui.MarketPage.012") : good.refId === 'gamma' ? tr("ui.MarketPage.013") : good.refId === 'beta' ? tr("ui.MarketPage.014") : tr("ui.MarketPage.015")
-    desc = `${tier}（效率 ${eff}%）：指派 AI 副船任务时使用，任务结束自动归还核心库；更高阶核心通常由高威胁远征缴获或奇货市场流出。`
+    desc = tr("ui.MarketPage.136", { tier: tier, eff: eff })
   }
   return `${head}\n${desc || '（暂无说明）'}`
 }
@@ -212,7 +212,7 @@ function blueprintHoverLines(
       ...prodLines,
       ...(bp.description ? [{ k: tr("ui.MarketPage.017"), v: bp.description }] : []),
       { k: tr("ui.MarketPage.018"), v: materials },
-      { k: tr("ui.MarketPage.019"), v: `${formatDurationMs(bp.buildSeconds * 1000)} · 免费` },
+      { k: tr("ui.MarketPage.019"), v: tr("ui.MarketPage.137", { p1: formatDurationMs(bp.buildSeconds * 1000) }) },
     ],
     note: prodDesc || bp.description,
   }
@@ -280,7 +280,7 @@ function GoodHover({
         title={goodName(ctx, good.key)}
         lines={[
           { k: tr("ui.MarketPage.002"), v: tier },
-          { k: tr("ui.MarketPage.021"), v: `${eff}%（AI 副船工作速度；不影响奖励）` },
+          { k: tr("ui.MarketPage.021"), v: tr("ui.MarketPage.138", { eff: eff }) },
         ]}
         note={tr("ui.MarketPage.022")}
         className={rowCls}
@@ -435,9 +435,11 @@ function placeOrderToast(
   unit = '件',
 ): string {
   const n = (v: number): string => v.toLocaleString('zh-CN')
-  if (filled <= 0) return `已挂${side}单：${name}×${n(want)} @ ${isk(price)} 信用点（挂在簿上，等对手单成交）`
-  if (resting <= 0) return `${side}单已即时成交：${name}×${n(filled)} @ ${isk(price)} 信用点`
-  return `${side}单已即时成交 ${n(filled)} ${unit}，余 ${n(resting)} ${unit}挂单 @ ${isk(price)} 信用点`
+  // side 是字面量联合 key（不是文案）⇒ 显示时才按 id 取译名（l10n-keep 的同款口径）
+  const sideText = side === '买' ? tr('ui.MarketPage.159') : tr('ui.MarketPage.160')
+  if (filled <= 0) return tr("ui.MarketPage.139", { side: sideText, name: name, p3: n(want), p4: isk(price) })
+  if (resting <= 0) return tr("ui.MarketPage.140", { side: sideText, name: name, p3: n(filled), p4: isk(price) })
+  return tr("ui.MarketPage.141", { side: sideText, p2: n(filled), unit: unit, p4: n(resting), unit2: unit, p6: isk(price) })
 }
 
 /**
@@ -450,9 +452,9 @@ function taxTipText(state: GameState, ctx: PageProps['engine']['ctx']): string {
   const lvB = state.skills.trained[ctx.balance.market.taxSkillBId] ?? 0
   const skillNote =
     lvA + lvB > 0
-      ? `（会计学 Lv${lvA} −${lvA * 8}% · 贸易谈判学 Lv${lvB} −${lvB * 8}%）`
+      ? tr("ui.MarketPage.142", { lvA: lvA, p2: lvA * 8, lvB: lvB, p4: lvB * 8 })
       : tr("ui.MarketPage.033")
-  return `贸易税：卖出成交按成交额收税——当前税率 ${Math.round(rate * 1000) / 10}%${skillNote}。挂单、自动转挂单与买入一律免费。`
+  return tr("ui.MarketPage.143", { p1: Math.round(rate * 1000) / 10, skillNote: skillNote })
 }
 
 /** 协会市场的撮合与星标说明（挂单簿语义、冲击动量、行首星标；2026-09-13 收进列表标题后的圆形感叹号） */
@@ -534,10 +536,10 @@ const MIN_POINT_SPACING_PX = 12
 function sampleAgoLabel(fullLen: number, absIdx: number): string {
   const mins = ((fullLen - 1 - absIdx) * PRICE_SAMPLE_MS) / 60_000
   if (mins <= 0) return tr("ui.MarketPage.036")
-  if (mins < 60) return `约 ${mins} 分钟前`
+  if (mins < 60) return tr("ui.MarketPage.144", { mins: mins })
   const h = Math.floor(mins / 60)
   const m = mins % 60
-  return m === 0 ? `约 ${h} 小时前` : `约 ${h} 小时 ${m} 分前`
+  return m === 0 ? tr("ui.MarketPage.145", { h: h }) : tr("ui.MarketPage.146", { h: h, m: m })
 }
 
 function PriceChart({ hist }: { hist: readonly number[] }) {
@@ -767,13 +769,13 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   }, [good.key, tab])
   function doBuy(): void {
     if (lock) {
-      onToast(`暂不能买入：${lock}。`, true)
+      onToast(tr("ui.MarketPage.147", { lock: lock }), true)
       return
     }
     const n = Math.max(1, Math.floor(qty || 1))
     const r = engine.buyGoodAt(good.key, n)
     if (!r.ok) onToast(r.error ?? '买入失败', true)
-    else onToast(`已买入 ${name}×${n.toLocaleString('zh-CN')}（详见日志）。`)
+    else onToast(tr("ui.MarketPage.148", { name: name, p2: n.toLocaleString('zh-CN') }))
   }
   function doSell(q?: number): void {
     const n = Math.max(1, Math.min(holdings, Math.floor(q ?? (qty || 1))))
@@ -789,10 +791,10 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       const rest = r.remaining ?? 0
       onToast(
         rest > 0
-          ? `已提交出售 ${name}×${n} 艘：即时成交 ${filled} 艘${filled > 0 ? `（税后 ${isk(r.total ?? 0)} 信用点）` : ''}，余 ${rest} 艘已留簿挂单（可随时撤销退回舰船仓库）。`
-          : `已按市价卖出 ${name}×${filled} 艘（税后入账 ${isk(r.total ?? 0)} 信用点）。`,
+          ? `已提交出售 ${name}×${n} 艘：即时成交 ${filled} 艘${filled > 0 ? tr("ui.MarketPage.149", { p1: isk(r.total ?? 0) }) : ''}，余 ${rest} 艘已留簿挂单（可随时撤销退回舰船仓库）。`
+          : tr("ui.MarketPage.150", { name: name, filled: filled, p3: isk(r.total ?? 0) }),
       )
-    } else onToast(`已按市价卖出 ${name}×${n.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
+    } else onToast(tr("ui.MarketPage.151", { name: name, p2: n.toLocaleString('zh-CN') }))
   }
   /** 全部卖出：先预览（可成交件数/毛额/税/净到账）再弹确认——不直接执行（船长 2026-09-05） */
   function askSellAll(): void {
@@ -816,10 +818,10 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       const rest = r.remaining ?? 0
       onToast(
         rest > 0
-          ? `已提交出售 ${name}×${holdings} 艘：即时成交 ${filled} 艘${filled > 0 ? `（税后 ${isk(r.total ?? 0)} 信用点）` : ''}，余 ${rest} 艘已留簿挂单（可撤销退回舰船仓库）。`
-          : `已全部卖出 ${name}×${filled} 艘（税后入账 ${isk(r.total ?? 0)} 信用点）。`,
+          ? `已提交出售 ${name}×${holdings} 艘：即时成交 ${filled} 艘${filled > 0 ? tr("ui.MarketPage.149", { p1: isk(r.total ?? 0) }) : ''}，余 ${rest} 艘已留簿挂单（可撤销退回舰船仓库）。`
+          : tr("ui.MarketPage.152", { name: name, filled: filled, p3: isk(r.total ?? 0) }),
       )
-    } else onToast(`已全部卖出 ${name}×${holdings.toLocaleString('zh-CN')}（吃穿簿余量自动挂单）。`)
+    } else onToast(tr("ui.MarketPage.153", { name: name, p2: holdings.toLocaleString('zh-CN') }))
   }
   function doPlace(): void {
     const n = Math.max(1, Math.floor(qty || 1))
@@ -829,26 +831,26 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       // 2026-09-11（预扣冻结）：余额不足同样明示（core 单点口径：挂 1 件需预扣多少、钱包多少）
       const gate = engine.buyOrderBlocked(good.key, p, n)
       if (gate) {
-        onToast(`挂买单失败：${gate}`, true)
+        onToast(tr("ui.MarketPage.154", { gate: gate }), true)
         return
       }
       const res = engine.placeBuyOrderAt(good.key, p, n)
-      if (res === null) onToast('挂买单失败：该商品当前不接受这个价格的挂单（可先试市价买入）。', true)
+      if (res === null) onToast(tr("ui.MarketPage.155"), true)
       else {
         // 2026-09-10：挂单瞬间会先与现有卖单簿面对冲成交 → 回执写明即时成交部分
         const exoNote =
           good.rarity === 'exotic' && p < askLineOf(state, engine.ctx, good.key)
-            ? `。注意：挂价低于奇货参考价（约 ${isk(askLineOf(state, engine.ctx, good.key))} 信用点），可能长期无法成交——建议挂到参考价附近`
+            ? tr("ui.MarketPage.156", { p1: isk(askLineOf(state, engine.ctx, good.key)) })
             : ''
         // 2026-09-11：预扣口径写进回执（实际挂量可能因余额缩量；预扣撤单即退回）
-        const shrinkNote = res.placed < n ? `（余额只够 ${n.toLocaleString('zh-CN')} 件中的 ${res.placed.toLocaleString('zh-CN')} 件，已按余额缩量）` : ''
-        const escrowNote = res.escrow > 0 ? `（已预扣 ${isk(res.escrow)} 信用点，撤单退回）` : ''
-        onToast(`${placeOrderToast('买', name, res.placed, p, res.filled, res.resting)}${shrinkNote}${escrowNote}${exoNote}。`)
+        const shrinkNote = res.placed < n ? tr("ui.MarketPage.157", { p1: n.toLocaleString('zh-CN'), p2: res.placed.toLocaleString('zh-CN') }) : ''
+        const escrowNote = res.escrow > 0 ? tr("ui.MarketPage.158", { p1: isk(res.escrow) }) : ''
+        onToast(`${placeOrderToast('买' /* l10n-keep：side 是字面量联合 key */, name, res.placed, p, res.filled, res.resting)}${shrinkNote}${escrowNote}${exoNote}。`)
       }
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
       if (!r.ok) onToast(r.error ?? '挂卖单失败。', true)
-      else onToast(`${placeOrderToast('卖', name, n, p, r.filled ?? 0, r.resting ?? n, unit)}。`)
+      else onToast(`${placeOrderToast('卖' /* l10n-keep：同上 */, name, n, p, r.filled ?? 0, r.resting ?? n, unit)}。`)
     }
   }
   /**
@@ -864,7 +866,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   return (
     <>
     <Panel
-      title={`市场详情 · ${name}`}
+      title={tr("ui.MarketPage.161", { name: name })}
       hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
       right={
         <span className="app-dim">
@@ -965,7 +967,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 <span className="app-dim">{tr("ui.Expedition.003")}</span>
                 <input className="app-input" type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
                 {tab === 'sell' ? (
-                  <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={`把数量填为全部可卖（${holdings} ${unit}）`}>
+                  <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={tr("ui.MarketPage.162", { holdings: holdings, unit: unit })}>
                     {tr("ui.IndustryPage.001")}
                   </button>
                 ) : null}
@@ -991,7 +993,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                     : quote.sell === undefined
                       ? tr("ui.MarketPage.057")
                       : state.wallet.isk < quote.sell
-                        ? `信用点不足：最低一张 ${isk(quote.sell)} 信用点，钱包 ${isk(Math.floor(state.wallet.isk))} 信用点`
+                        ? tr("ui.MarketPage.163", { p1: isk(quote.sell), p2: isk(Math.floor(state.wallet.isk)) })
                         : undefined
                 }
                 onClick={tab === 'buy' ? doBuy : () => doSell()}
@@ -1010,9 +1012,9 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           {good.kind === 'ship' ? (
             <div className={`app-dim app-sr-eta${holdings <= 0 && shipInFleet > 0 ? ' is-warn' : ''}`}>
               {holdings > 0
-                ? `可卖 ${holdings} 艘来自舰船仓库（仓里的船都是全新船）：挂卖单按你填的单价排队，市价卖出则先吃收购簿、余量自动留簿挂单。`
+                ? tr("ui.MarketPage.164", { holdings: holdings })
                 : shipInFleet > 0
-                  ? `舰船仓库里没有可卖的船——机库还有 ${shipInFleet} 艘：先到舰船页把船「移入舰船仓库」（需满耐久、无装配、未锁定），再回这里出售。`
+                  ? tr("ui.MarketPage.165", { shipInFleet: shipInFleet })
                   : tr("ui.MarketPage.061")}
             </div>
           ) : null}
@@ -1193,10 +1195,10 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
               </span>
               <span className="app-inv-count">
                 {order.side === 'sell' ? tr("ui.MarketPage.089") : tr("ui.MarketPage.090")} {order.price.toLocaleString('zh-CN')} {tr("ui.MarketPage.091")} {order.qty.toLocaleString('zh-CN')}
-                {order.filled > 0 ? `（已成交 ${order.filled.toLocaleString('zh-CN')}）` : ''}
+                {order.filled > 0 ? tr("ui.MarketPage.166", { p1: order.filled.toLocaleString('zh-CN') }) : ''}
                 {/* 2026-09-11（船长裁决「甲」预扣冻结）：买单显示"已预扣多少"，让玩家看得见这笔钱在哪 */}
                 {order.side === 'buy' && (order.escrowIsk ?? 0) > 0
-                  ? ` · 已预扣 ${(order.escrowIsk ?? 0).toLocaleString('zh-CN')} 信用点`
+                  ? tr("ui.MarketPage.167", { p1: (order.escrowIsk ?? 0).toLocaleString('zh-CN') })
                   : ''}
               </span>
             </div>
@@ -1220,7 +1222,7 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
                         ? tr("ui.MarketPage.094")
                         : tr("ui.MarketPage.095")
                       : back > 0
-                        ? `买单已撤销：预扣 ${isk(back)} 信用点 已退回钱包。`
+                        ? tr("ui.MarketPage.168", { p1: isk(back) })
                         : tr("ui.MarketPage.096"),
                   )
                 }}
@@ -1332,7 +1334,7 @@ export function MarketPage({
                 className="app-mkt-kind"
                 value={sub}
                 onChange={(e) => setSub(e.target.value)}
-                title={`${KIND_TEXT[kind]}下的子分类`}
+                title={tr("ui.MarketPage.169", { p1: KIND_TEXT[kind] })}
               >
                 <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{KIND_TEXT[kind]}</option>
                 {kindSubs.map((s) => (
@@ -1350,7 +1352,7 @@ export function MarketPage({
               engine={engine}
               title={
                 query.length > 0
-                  ? `搜索结果：${kw.trim()}`
+                  ? tr("ui.MarketPage.170", { p1: kw.trim() })
                   : `全部 ${KIND_TEXT[kind] ?? kind}${
                       sub !== SUB_ALL && kindSubs ? ` · ${kindSubs.find((s) => s.key === sub)?.label ?? ''}` : ''
                     }`

@@ -5,6 +5,7 @@
  *   主档一个键 + 时间戳命名的浏览器内备份（备份/恢复面板与桌面同一套体验）。
  * 引擎与界面一律经 saveBridge 访问，两端零分支差异。
  */
+import { tr } from '../i18n/locale'
 
 /** 备份文件名（与桌面主进程同构：save-YYYYMMDD-HHmmss(.json)，可选 -n 去重后缀） */
 const BP_NAME_RE = /^save-\d{8}-\d{6}(-\d+)?\.json$/
@@ -97,13 +98,13 @@ const localStorageBridge: WhaleApi = {
   },
   async backup(): Promise<{ ok: boolean; name?: string; error?: string }> {
     const text = ls().getItem(SAVE_KEY)
-    if (text === null) return { ok: false, error: '还没有可备份的存档。' }
+    if (text === null) return { ok: false, error: tr("ui.storage.001") }
     const now = new Date()
     let name = stampOf(now)
     for (let n = 1; ls().getItem(BP_PREFIX + name) !== null; n += 1) {
       name = stampOf(new Date(now.getTime() + n))
     }
-    if (!setWithBudget(BP_PREFIX + name, text)) return { ok: false, error: '浏览器存储空间不足，无法备份。' }
+    if (!setWithBudget(BP_PREFIX + name, text)) return { ok: false, error: tr("ui.storage.002") }
     // 超出上限删最旧（保留最近的）
     const backups = collectBackups().sort((a, b) => b.wall - a.wall)
     for (const b of backups.slice(BP_CAP)) ls().removeItem(BP_PREFIX + b.name)
@@ -118,25 +119,25 @@ const localStorageBridge: WhaleApi = {
   async readBackup(name: string): Promise<{ ok: boolean; text?: string; error?: string }> {
     const key = backupKeyOf(name)
     const text = key === null ? null : ls().getItem(key)
-    if (text === null) return { ok: false, error: '找不到该备份。' }
+    if (text === null) return { ok: false, error: tr("ui.storage.003") }
     return { ok: true, text }
   },
   async restore(name: string): Promise<{ ok: boolean; error?: string }> {
     const key = backupKeyOf(name)
     const text = key === null ? null : ls().getItem(key)
-    if (text === null) return { ok: false, error: '找不到该备份。' }
+    if (text === null) return { ok: false, error: tr("ui.storage.003") }
     /**
      * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 这里**不再**为当前档补一份备份
      * （桌面主进程那条同款，一起删）。要留退路请先点「备份当前档」——手动备份与备份列表照旧。
      */
-    if (!setWithBudget(SAVE_KEY, text)) return { ok: false, error: '浏览器存储空间不足，恢复失败。' }
+    if (!setWithBudget(SAVE_KEY, text)) return { ok: false, error: tr("ui.storage.004") }
     return { ok: true }
   },
   /** 删除某份浏览器内备份（只删备份键，不影响主档键） */
   async deleteBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     const key = backupKeyOf(name)
-    if (key === null) return { ok: false, error: '非法的备份文件名。' }
-    if (ls().getItem(key) === null) return { ok: false, error: '找不到该备份。' }
+    if (key === null) return { ok: false, error: tr("ui.storage.005") }
+    if (ls().getItem(key) === null) return { ok: false, error: tr("ui.storage.003") }
     ls().removeItem(key)
     return { ok: true }
   },
@@ -167,12 +168,12 @@ const localStorageBridge: WhaleApi = {
           return
         }
         if (file.size > 10 * 1024 * 1024) {
-          finish({ ok: false, error: '文件过大（超过 10MB），不像是本游戏存档。' })
+          finish({ ok: false, error: tr("ui.storage.006") })
           return
         }
         const reader = new FileReader()
         reader.onload = (): void => finish({ ok: true, text: String(reader.result ?? '') })
-        reader.onerror = (): void => finish({ ok: false, error: '读取文件失败。' })
+        reader.onerror = (): void => finish({ ok: false, error: tr("ui.storage.007") })
         reader.readAsText(file, 'utf-8')
       })
       input.addEventListener('cancel', () => finish({ ok: false, canceled: true }))
@@ -217,7 +218,7 @@ const localStorageBridge: WhaleApi = {
       setTimeout(() => URL.revokeObjectURL(url), 10_000)
       return { ok: true }
     } catch (err) {
-      return { ok: false, error: `导出失败（${String(err)}）。` }
+      return { ok: false, error: tr("ui.storage.008", { p1: String(err) }) }
     }
   },
 }

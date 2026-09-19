@@ -351,6 +351,9 @@ for (const file of walk(ROOT)) {
     if (lastImport) {
       const endLine = sf.getLineAndCharacterOfPosition(lastImport.getEnd()).line
       insertAt = Math.min(endLine + 1, lines.length)
+    } else if (sf.statements.length > 0) {
+      // 文件里一条 import 都没有：插在**第一条语句之前**（不能按行号 1 硬插——那会落进头部块注释里）
+      insertAt = sf.getLineAndCharacterOfPosition(sf.statements[0]!.getStart(sf)).line
     }
     lines.splice(insertAt, 0, importLine)
     out = lines.join(EOL)

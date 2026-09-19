@@ -1404,7 +1404,7 @@ export function WormholePanel({
                     AI 核心 <b>{picked.length}</b> / 可派 <b>{autoCores?.free ?? 0}</b>（上限 {autoCores?.cap ?? 0}）
                   </span>
                   <span className="app-wh-cell">
-                    时长 约 <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> 分钟
+                    时长 约 <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> {tr("ui.DebugPanel.007")}
                   </span>
                   <span className="app-wh-cell">
                     收益 = 手动一趟的 <b>{Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%</b>（直入仓库 · 不保底）
