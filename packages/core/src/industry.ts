@@ -19,6 +19,7 @@
  *   与旧版空间站收购价一致（波动来自池淤积与冲击动量）；
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
+import { matterTechUnboxCut, matterTechVoidYield, matterTechWreckYield } from './matterTech'
 import { addLog, shipLockedReason, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
@@ -329,7 +330,9 @@ export function startUnboxRun(
     }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
-  let cycleEff = Math.max(1, Math.round(UNBOX_CYCLE_MS / eff))
+  // 谜质科技「货柜拆解技术」：每级 −25%（加法口径 ⇒ 满级 −75%；船长 2026-09-19）
+  const unboxBase = Math.round(UNBOX_CYCLE_MS * (1 - matterTechUnboxCut(state, ctx)))
+  let cycleEff = Math.max(1, Math.round(unboxBase / eff))
   // 产线节拍学（与精炼 / 回收同款）：每级 −5% 周期（手动与 AI 核心驱动同享）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
   if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
@@ -711,7 +714,10 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         // 所得同时累计进 r.recAcc（停炉/结束日志出明细）
         const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }
         const volumeM3 = qty * def.unitM3
-        const out = rollRecycleGuarantee(state, ctx, profile, volumeM3)
+        // 谜质科技「残骸解析技术」：抬**保底原材料**产出（船长 2026-09-19；概率彩头/碎片/高级箱一律不动）
+        const guaranteeMul = 1 + matterTechWreckYield(state, ctx)
+        const outRaw = rollRecycleGuarantee(state, ctx, profile, volumeM3)
+        const out = guaranteeMul > 1 ? outRaw.map((r) => ({ ...r, units: Math.round(r.units * guaranteeMul) })) : outRaw
         for (const row of out) addWare(state, row.mineralId, row.units)
         batchIncome += out.reduce((s, row) => s + row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0), 0)
         // 稀有残骸专属：累计已烧体积跨过 `RARE_UNIT_M3`（30 m³）的每一个整数倍，都**必给**一次彩头
@@ -786,7 +792,9 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         for (const row of def.refine ?? []) {
           const mineral = ctx.items.get(row.mineralId)
           if (!mineral || mineral.kind !== 'mineral') continue
-          const units = Math.floor(qty * row.perOre * rate)
+          // 谜质科技「虚空精炼技术」：只抬「虚空母矿 → 虚空晶」这一支（船长 2026-09-19；其它矿种与副产物不动）
+          const rowMul = row.mineralId === 'min-voidcrystal' ? 1 + matterTechVoidYield(state, ctx) : 1
+          const units = Math.floor(qty * row.perOre * rate * rowMul)
           if (units > 0) {
             addWare(state, row.mineralId, units)
             acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + units
