@@ -1277,8 +1277,10 @@ export function ManufacturingPanel({
       }
     >
       {/* 筛选固定、说明进标题后的圆形感叹号（固定头+下滚）：各筛选行常驻，卡网格独立内滚。
-          ⚠ 行序（2026-09-19 丙组）：**学会（并列属性·第一行）→ 门类（一级）→ 子类（二级）→ 图纸（三级）**；
-          胶囊行一律「全部」+ 同行灰字前缀（基线①）。 */}
+          ⚠ 行序（2026-09-19 丙组）：**学会（并列属性）+ 门类（一级）同排一行 → 子类（二级）→ 图纸（三级）**；
+          胶囊行一律「全部」+ 同行灰字前缀（基线①）。
+          ⚠ **学会与门类同排**（船长 2026-09-19：「建议和门类放在同一行。除非宽度不够才另外起一行」）——
+          `.app-fleet-row` 自带 `flex-wrap: wrap`，窗口窄时门类那组会自动折到下一行，无需另写断点。 */}
       <div className="app-fleet-row">
         <span className="app-dim">学会：</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
@@ -1294,8 +1296,6 @@ export function ManufacturingPanel({
             </button>
           ))}
         </div>
-      </div>
-      <div className="app-fleet-row">
         <span className="app-dim">门类：</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
           {MANU_TABS.map((t) => (
