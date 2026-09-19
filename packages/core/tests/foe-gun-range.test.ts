@@ -191,23 +191,28 @@ describe("敌方炮台受击增程（D 族静滞卫舰 · 仅该型舰）", () =
     const w = stasis.weapons[0]!;
     expect(w.minRangeM).toBe(2_062);
     expect(w.maxRangeM).toBe(12_000);
-    expect(w.falloff).toBe(0.5);
+    // ⚠ 不写死数值：D 族远端 2026-09-19 由 0.5 改 **0.2**（船长「将D族单独调整，远端改为 0.2」）——
+    //   本用例的口径是"折减曲线的形状"，数值一律读舰级现值 ⇒ 日后调族值不必再改这里。
+    const ff = w.falloff
+    expect(ff).toBeGreaterThan(0)
+    expect(ff).toBeLessThanOrEqual(1)
 
     battle.foeGunRangeBuff = 1.5;
     // ① 原区间内：与 `beamPowerFactor`（光束原公式）逐字相等（含近端、中点、最远端）
     for (const dist of [2_062, 4_000, 7_000, 9_000, 12_000]) {
       expect(foeGunPowerFactorOf(battle, stasis, w, dist)).toBeCloseTo(beamPowerFactor(dist, w), 12);
     }
-    // ② 原最远端仍是 falloff（0.5）——"旧距离内读数不变"的锚点
-    expect(foeGunPowerFactorOf(battle, stasis, w, 12_000)).toBeCloseTo(0.5, 12);
-    // ③ 延长段继续掉（同斜率）：斜率 = (1 − 0.5) / (12,000 − 2,062)
-    const slope = (1 - 0.5) / (12_000 - 2_062);
-    expect(foeGunPowerFactorOf(battle, stasis, w, 15_000)).toBeCloseTo(0.5 - slope * 3_000, 12);
-    expect(foeGunPowerFactorOf(battle, stasis, w, 18_000)).toBeCloseTo(0.5 - slope * 6_000, 12);
-    expect(foeGunPowerFactorOf(battle, stasis, w, 18_000)).toBeLessThan(0.25); // 明确不是 0.5 的平台
+    // ② 原最远端仍是 falloff ——"旧距离内读数不变"的锚点
+    expect(foeGunPowerFactorOf(battle, stasis, w, 12_000)).toBeCloseTo(ff, 12);
+    // ③ 延长段继续掉（同斜率）：斜率 = (1 − falloff) / (12,000 − 2,062)
+    //   ⚠ 折减**保底 0**（`foeGunPowerFactorOf` 末段 `Math.max(0, …)`）：18 km 处已跌破 0 ⇒ 夹到 0
+    const slope = (1 - ff) / (12_000 - 2_062);
+    expect(foeGunPowerFactorOf(battle, stasis, w, 15_000)).toBeCloseTo(Math.max(0, ff - slope * 3_000), 12);
+    expect(foeGunPowerFactorOf(battle, stasis, w, 18_000)).toBeCloseTo(Math.max(0, ff - slope * 6_000), 12);
+    expect(foeGunPowerFactorOf(battle, stasis, w, 18_000)).toBeLessThan(ff); // 明确不是"趴在 falloff 平台上"
     // ④ 未触发时延长段的读数不存在（超射程照旧不打：门在外层，这里只证明不外推）
     battle.foeGunRangeBuff = undefined;
-    expect(foeGunPowerFactorOf(battle, stasis, w, 18_000)).toBeCloseTo(0.5, 12);
+    expect(foeGunPowerFactorOf(battle, stasis, w, 18_000)).toBeCloseTo(ff, 12);
   });
 
   it("触发（真引擎 · 2026-09-16 新距离门）：**从它射程外**命中 ⇒ 该型舰射程 ×1.5 + 一条战斗画面提示；只触发一次", () => {

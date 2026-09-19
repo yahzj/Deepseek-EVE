@@ -419,8 +419,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   },
   {
     id: 'ano-titan-wreck',
-    // **50% 爆炸 + 50% 动能**（船长 2026-09-11「该系敌人伤害比例为 50% 爆炸 50% 动能」；与舰级同值）
-    dmgMix: { kinetic: 5, explosive: 5 },
+    // **爆炸 60% + 动能 40%**（船长 2026-09-19「所有E族的默认伤害比改为爆炸60%，动能40%」；与舰级同值）
+    dmgMix: { explosive: 6, kinetic: 4 },
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '泰坦残骸', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
     lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
@@ -483,7 +483,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //   （原 129，**−0.8%**）
     // - **速度 412 → 0**（船长：「族速度倍率设为 0。**依靠无人机攻击炮台范围外敌人**」）：
     //   武装残骸是**静物**，火力改由**警戒机群**投送（机型射程 4,500m，远出炮台带）
-    // - **构成改 50% 动能 + 50% 爆炸**（E 族族格 —— 飞船侧与窝点派生侧同值，船长本批裁定）
+    // - **构成改爆炸 60% + 动能 40%**（E 族族格 —— 飞船侧与窝点派生侧同值；船长 2026-09-19
+    //   「所有E族的默认伤害比改为爆炸60%，动能40%」，原 50:50 作废）
     // - **战术改 orbit**（族规）**但作战距离不变**：舰级上写了 `desireRangeM: 516` 钉住现状
     //   （1~2,581 × brawl 0.20 ≈ 516）
     // - 旧路径的 `escorts 2`（僚机 ×2）改为**显式编成条目**（`escort: true` ⇒ 显示名带「轻装」前缀）
@@ -520,7 +521,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
     defProfile: 'armor',
-    dmgMix: { kinetic: 5, explosive: 5 }, // **50% 动能 + 50% 爆炸**（E 族族格；船长 2026-09-11「E 族单独调整」）
+    dmgMix: { explosive: 6, kinetic: 4 }, // **爆炸 60% + 动能 40%**（E 族族格；船长 2026-09-19 改判，原 50:50）
     standingReq: 8,
     standingGain: 3,
     rewardIsk: 310000,
@@ -563,7 +564,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     threat: 84,
     tactic: 'orbit', // 族规「中距为主」（舰级已解除期望距离钉住 ⇒ 交距 = 带内插值 0.55 × 10,000 ≈ 5,545m）
     defProfile: 'armor',
-    dmgMix: { kinetic: 5, explosive: 5 }, // 50% 动能 + 50% 爆炸（E 族族格）
+    dmgMix: { explosive: 6, kinetic: 4 }, // 爆炸 60% + 动能 40%（E 族族格；船长 2026-09-19 改判）
     standingReq: 11, // 与 噬口猎杀令（80）同档；低于 坟场守墓者 / 虚海守望者（88，12）
     standingGain: 4,
     rewardIsk: 1_000_000, // T84 段：介于 噬口 850,000（80）与 坟场 1,100,000（88）之间

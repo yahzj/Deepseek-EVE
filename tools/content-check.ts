@@ -2314,8 +2314,6 @@ for (const m of MODULES) {
   let pureBeam = 0
   /** 「舰级口径优先」白名单计数（船长 2026-09-15） */
   let whitelisted = 0
-  /** E 族特例（5:5）计数——见下方 ④ */
-  let symmetric = 0
   const positive = (mix: Partial<Record<string, number>> | undefined): Array<[string, number]> =>
     Object.entries(mix ?? {}).filter(([, v]) => typeof v === 'number' && v > 0) as Array<[string, number]>
   for (const def of ANOMALIES_FLAVORED) {
@@ -2364,9 +2362,9 @@ for (const m of MODULES) {
       continue
     }
     // **④b「舰级口径优先」白名单**（船长 2026-09-15：「**撞到的契约开白名单**」）——
-    // 主体舰级登记了自有构成口径的卡（D 族战列舰 6:4 · E 族导弹残段纯爆炸，见 `FOE_SHIP_MIX_AUTHORITY_IDS`）：
-    // 卡面按"**与主体一致**"校验，**不套**通用主 8 副 2、也不套 E 族 5:5。
-    // ⚠ 放行的只是"不必等于 8:2 / 5:5"——卡面写错（与主体不符）照样红。
+    // 主体舰级登记了自有构成口径的卡（D 族战列舰 6:4 · 导弹残段纯爆炸 · **E 族三条 6:4**，
+    // 见 `FOE_SHIP_MIX_AUTHORITY_IDS`）：卡面按"**与主体一致**"校验，**不套**通用主 8 副 2。
+    // ⚠ 放行的只是"不必等于 8:2"——卡面写错（与主体不符）照样红；**派生窝点仍按通用 6:4 校验**。
     const mixKey = (m?: Partial<Record<string, number>>): string =>
       Object.entries(m ?? {})
         .filter(([, v]) => (v ?? 0) > 0)
@@ -2381,7 +2379,7 @@ for (const m of MODULES) {
         check(
           mixKey(def.dmgMix) === eff,
           `混伤白名单：${def.name} 的卡面构成（${mixKey(def.dmgMix)}）与主体舰级「${mains[0]!.ship.name}」的有效构成（${eff}）不一致——` +
-            `白名单只放行"不必等于 8:2/5:5"，卡面仍须与主体逐键一致`,
+            `白名单只放行"不必等于 8:2"，卡面仍须与主体逐键一致`,
         )
         // **纯系卡必须留"收束旋钮"**（与纯能量分支同款纪律）：单系卡只有靠"掷命中 + 命中 < 1"
         // 收住远端收益；必中光束 + 无衰减 = 既必中又满效，等于没有约束。
@@ -2394,29 +2392,28 @@ for (const m of MODULES) {
               `（掷命中 + 命中 < 1；实测 energyForm=${String(ship.energyForm)} / hitRate=${ship.hitRate}）`,
           )
         }
+        // **派生窝点同样校验**（2026-09-19 补：E 族 5:5 特例作废后，白名单卡也要走"同主副 + 6:4"，
+        // 否则这条路径会因 `continue` 而失去覆盖）
+        const lair = lairAnomalyOf(def, 3)
+        const lRows = positive(lair.dmgMix)
+        const lSorted = [...lRows].sort((a, b) => b[1] - a[1])
+        const main = (Object.entries(def.dmgMix ?? {}) as Array<[string, number]>)
+          .filter(([, v]) => v > 0)
+          .sort((a, b) => b[1] - a[1])[0]?.[0] as DamageType | undefined
+        check(
+          lRows.length === 2 &&
+            lSorted[0]![1] === 6 &&
+            lSorted[1]![1] === 4 &&
+            (main === undefined || (lSorted[0]![0] as DamageType) === main),
+          `混伤白名单：${def.name} 的窝点派生应为同主系 + 副系 6:4（全局份额），实际 ${JSON.stringify(lair.dmgMix)}`,
+        )
         whitelisted += 1
         continue
       }
     }
-    // **④ E 族特例**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
-    // 泰坦巨构全族 = **50% 动能 + 50% 爆炸**（族格「动能 + 爆炸为主」的对称落点）——
-    // **常驻卡与窝点派生卡一律 5:5**（窝点不套 6:4：族级特例优先于"窝点比悬赏更混"的一般口径）。
-    if (def.foeFamily === 'E') {
-      const w = new Map(rows)
-      check(
-        rows.length === 2 && w.get('kinetic') === 5 && w.get('explosive') === 5,
-        `混伤契约：E 族（泰坦巨构）${def.name} 应写 **50% 动能 + 50% 爆炸**（\`{ kinetic: 5, explosive: 5 }\`）——` +
-          `船长 2026-09-11「**E 族单独调整，包括 E 族赏金任务的伤害比例**」；实际 ${JSON.stringify(def.dmgMix)}`,
-      )
-      const eLair = lairAnomalyOf(def, 3)
-      const eRows = positive(eLair.dmgMix)
-      check(
-        eRows.length === 2 && eRows.every(([, v]) => v === 5),
-        `混伤契约：E 族 ${def.name} 的**窝点派生卡**应同为 5:5（不套全局 6:4），实际 ${JSON.stringify(eLair.dmgMix)}`,
-      )
-      symmetric += 1
-      continue
-    }
+    // **④ 2026-09-19 起：E 族不再有特例**（船长「所有E族的默认伤害比改为爆炸60%，动能40%」——
+    // 旧「E 族 = 50% 动能 + 50% 爆炸（常驻卡与窝点派生卡一律 5:5）」随本条作废；E 族三条舰级已登记进
+    // `FOE_SHIP_MIX_AUTHORITY_IDS` ⇒ 走上面的白名单分支：卡面 = 主体构成 + **派生窝点按全局 6:4**）。
     check(rows.length === 2, `混伤契约：${def.name} 应写两系 dmgMix（主 8 : 副 2），实际 ${rows.length} 系`)
     if (rows.length !== 2) continue
     const sorted = [...rows].sort((a, b) => b[1] - a[1])
@@ -2439,9 +2436,8 @@ for (const m of MODULES) {
   }
   console.log(
     `· 敌方混伤契约：${mixed} 张敌军卡主 8 : 副 2（窝点派生 6:4、主系不变）；教学卡保持纯系` +
-      `${symmetric > 0 ? `；**E 族特例 ${symmetric} 张 50% 动能 + 50% 爆炸**（窝点派生同值，不套 6:4）` : ""}` +
       `${pureBeam > 0 ? `；纯能量卡 ${pureBeam} 张（单系 plasma + 收束旋钮：舰级路径须显式 energyForm，旧路径须显式 foeFalloff）` : ""}` +
-      `${whitelisted > 0 ? `；**舰级口径优先** ${whitelisted} 张（船长 2026-09-15「撞到的契约开白名单」：卡面 = 主体构成，不套 8:2/5:5）` : ""}`,
+      `${whitelisted > 0 ? `；**舰级口径优先** ${whitelisted} 张（船长 2026-09-15「撞到的契约开白名单」：卡面 = 主体构成，不套 8:2；**窝点派生仍按全局 6:4**）` : ""}`,
   )
 
   /* ── 敌速口径契约（2026-09-10 加）──

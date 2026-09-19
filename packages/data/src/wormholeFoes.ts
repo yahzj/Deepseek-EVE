@@ -174,8 +174,8 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // E 族签名 = **平台（机库 + 无人机承载）**：不打人、靠机群投送火力 ⇒ 选靶模式 **随机**（族格）
     foeTargeting: 'random',
     // ⚠ 本卡**刻意不写** `foeTargetingChance`（同 G 卡：随机模式下该字段无意义）
-    // 混伤 **50% 动能 + 50% 爆炸**（船长 2026-09-11「该系敌人伤害比例为 50% 爆炸 50% 动能」；E 族族格）
-    dmgMix: { kinetic: 5, explosive: 5 },
+    // 混伤 **爆炸 60% + 动能 40%**（船长 2026-09-19「所有E族的默认伤害比改为爆炸60%，动能40%」；E 族族格）
+    dmgMix: { explosive: 6, kinetic: 4 },
     // 编成 = 奥罗残骸段 ×1（T3 静物残骸 + **警戒机群 5 架**；族内最"旧"最轻的一截）
     // ⚠ **`dmgMul = 0.9` 是逐卡读数配出来的，别照抄其它卡的 0.5**——本卡是洞内**唯一带机群**的卡：
     // 机群**发数多、单发轻**，同一条 `dmgMul` 下实收远低于其它卡。实测
@@ -387,8 +387,8 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'random',
-    // 卡面与主体一致（巨构残段 = 动能 5 : 爆炸 5，E 族全族口径）⇒ 无需覆写
-    dmgMix: { kinetic: 5, explosive: 5 },
+    // 卡面与主体一致（巨构残段 = 爆炸 6 : 动能 4，E 族全族口径）⇒ 无需覆写
+    dmgMix: { explosive: 6, kinetic: 4 },
     // 编成 = **巨构残段 ×1**（船长 2026-09-15：「**E族浅层为奥罗残骸段，深层为巨构残骸段。**」；
     // T4 · 机群 7 架 · 受击增程 ×4）——本卡把"悬赏专属"的巨构残段接进洞内深层。
     ships: [{ ship: FOE_SHIP_TITAN_HULK, count: 1 }],
