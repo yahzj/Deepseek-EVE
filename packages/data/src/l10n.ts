@@ -560,80 +560,239 @@ export const EN_SKILLS: EnTable = {
  * 中文侧名 = `组名` / `组名（稀有版）`，id = `wreck-<组key>` / `wreck-rare-<组key>`。
  * 英文按「<族> Wreck / Rare Wreck（<区>）」——区 = High-sec / Low-sec / Wormhole（与 §九 技能 `Low-sec Survival` 同口径）。
  */
-export const EN_WRECKS: EnTable = {
-  'wreck-a-hi': { name: 'Pirate Wreck (High-sec)' },
-  'wreck-rare-a-hi': { name: 'Pirate Rare Wreck (High-sec)' },
-  'wreck-b-hi': { name: 'Armed Scavenger Wreck (High-sec)' },
-  'wreck-rare-b-hi': { name: 'Armed Scavenger Rare Wreck (High-sec)' },
-  'wreck-d-hi': { name: 'Gravekeeper Wreck (High-sec)' },
-  'wreck-rare-d-hi': { name: 'Gravekeeper Rare Wreck (High-sec)' },
-  'wreck-a-lo': { name: 'Pirate Wreck (Low-sec)' },
-  'wreck-rare-a-lo': { name: 'Pirate Rare Wreck (Low-sec)' },
-  'wreck-c-lo': { name: 'Alien Wreck (Low-sec)' },
-  'wreck-rare-c-lo': { name: 'Alien Rare Wreck (Low-sec)' },
-  'wreck-d-lo': { name: 'Gravekeeper Wreck (Low-sec)' },
-  'wreck-rare-d-lo': { name: 'Gravekeeper Rare Wreck (Low-sec)' },
-  'wreck-e-lo': { name: 'Titan Megastructure Wreck (Low-sec)' },
-  'wreck-rare-e-lo': { name: 'Titan Megastructure Rare Wreck (Low-sec)' },
-  'wreck-g-lo': { name: 'Deadarmy Wreck (Low-sec)' },
-  'wreck-rare-g-lo': { name: 'Deadarmy Rare Wreck (Low-sec)' },
-  'wreck-a-wh': { name: 'Pirate Wreck (Wormhole)' },
-  'wreck-rare-a-wh': { name: 'Pirate Rare Wreck (Wormhole)' },
-  'wreck-c-wh': { name: 'Alien Wreck (Wormhole)' },
-  'wreck-rare-c-wh': { name: 'Alien Rare Wreck (Wormhole)' },
-  'wreck-d-wh': { name: 'Gravekeeper Wreck (Wormhole)' },
-  'wreck-rare-d-wh': { name: 'Gravekeeper Rare Wreck (Wormhole)' },
-  'wreck-e-wh': { name: 'Titan Megastructure Wreck (Wormhole)' },
-  'wreck-rare-e-wh': { name: 'Titan Megastructure Rare Wreck (Wormhole)' },
-  'wreck-g-wh': { name: 'Deadarmy Wreck (Wormhole)' },
-  'wreck-rare-g-wh': { name: 'Deadarmy Rare Wreck (Wormhole)' },
+/**
+ * 残骸（26 = 13 组 × 普通/稀有 · `packages/core/src/wreckGroups.ts` 的组名派生）。
+ * 中文侧完全同构 ⇒ **名称与说明都按模板派生**（族名 + 区名两张小表，26 段不重复录入）：
+ * - 普通：`<族>（<区>）编队的舰体残骸（按 m³ 计舱）：…出售应急，或经精炼炉「残骸回收」拆解…`
+ * - 稀有：`<族>（<区>）窝点核心舱段的完好残骸（单件 30 m³）：…必给一件该敌族专属装备或特色装备…`
+ */
+const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
+  a: 'Pirate',
+  b: 'Armed Scavenger',
+  c: 'Alien',
+  d: 'Gravekeeper',
+  e: 'Titan Megastructure',
+  g: 'Deadarmy',
+}
+const WRECK_AREA_EN: Readonly<Record<string, string>> = { hi: 'High-sec', lo: 'Low-sec', wh: 'Wormhole' }
+
+/** 残骸 id → { name, description }（组名/区分/稀有与否全从 id 解出，与中文表同构） */
+function wreckEnText(id: string): EnText {
+  const m = /^wreck-(rare-)?([a-g])-(hi|lo|wh)$/.exec(id)
+  if (!m) throw new Error(`残骸 id 形态不符：${id}`)
+  const rare = m[1] !== undefined
+  const fam = WRECK_FAMILY_EN[m[2]!]!
+  const area = WRECK_AREA_EN[m[3]!]!
+  return {
+    name: rare ? `${fam} Rare Wreck (${area})` : `${fam} Wreck (${area})`,
+    description: rare
+      ? `Intact wreck of a ${fam} (${area}) lair core section — 30 m³ per piece. Break it down in the recycler back at the station: beyond guaranteed raw materials it always yields one piece of that foe family's exclusive or themed equipment, plus a batch of high-grade materials.`
+      : `${fam} (${area}) formation hull wreckage, measured by m³. Sell it at a station market for scrap in a pinch, or break it down with the refinery's Wreck Recycling — guaranteed raw materials plus a chance of themed loot; breaking it down pays more.`,
+  }
 }
 
-/** 异常点（27 · `docs/glossary-en.md` §十：悬赏 / 遭遇战卡片名） */
+const WRECK_IDS = [
+  'wreck-a-hi',
+  'wreck-rare-a-hi',
+  'wreck-b-hi',
+  'wreck-rare-b-hi',
+  'wreck-d-hi',
+  'wreck-rare-d-hi',
+  'wreck-a-lo',
+  'wreck-rare-a-lo',
+  'wreck-c-lo',
+  'wreck-rare-c-lo',
+  'wreck-d-lo',
+  'wreck-rare-d-lo',
+  'wreck-e-lo',
+  'wreck-rare-e-lo',
+  'wreck-g-lo',
+  'wreck-rare-g-lo',
+  'wreck-a-wh',
+  'wreck-rare-a-wh',
+  'wreck-c-wh',
+  'wreck-rare-c-wh',
+  'wreck-d-wh',
+  'wreck-rare-d-wh',
+  'wreck-e-wh',
+  'wreck-rare-e-wh',
+  'wreck-g-wh',
+  'wreck-rare-g-wh',
+] as const
+
+export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
+
+/** 异常点 / 敌卡（42 · `docs/glossary-en.md` §十/§十一）—— **名称 + 说明** */
 export const EN_ANOMALIES: EnTable = {
-  'ano-training': { name: 'Proving Grounds Eviction' },
-  'ano-pirate-post': { name: 'Frontier Pirate Outpost' },
-  'ano-abandoned-platform': { name: 'Occupied Port Warrant' },
-  'ano-redring-raiders': { name: 'Red Tide Raider Fleet' },
-  'ano-gravekeeper': { name: 'Graveyard Gravekeeper' },
-  'ano-ghost-signal': { name: 'Ghost Ship Signal' },
-  'ano-abyss-guard': { name: 'Abyss Gate Guard' },
-  'ano-titan-wreck': { name: 'Titan Wreck Survey' },
-  'ano-auro-raiders': { name: 'Auro Armed Wreck Group' },
-  'ano-core-section': { name: 'Megastructure Core Survey' },
-  'ano-starcore-boss': { name: 'Starcore Swarm' },
-  'ano-cinder-siege': { name: 'Cinder Siege' },
-  'ano-echo-haunt': { name: 'Echo Remnant' },
-  'ano-nadir-static': { name: 'Nadir Static Blockade' },
-  'ano-maw-hunt': { name: 'Maw Hunt Order' },
-  'ano-vault-sentinel': { name: 'Vault Sentinel' },
-  'ano-voidedge-warden': { name: 'Voidsea Warden' },
-  'ano-harbor-escort': { name: 'New Harbor Convoy Escort' },
-  'ano-shard-bandits': { name: 'Shardbelt Bandit Warrant' },
-  'ano-lantern-saboteurs': { name: 'Beacon Hunter Bounty' },
-  'ano-haze-ambush': { name: 'Haze Ambush Clearance' },
-  'ano-mirage-hijackers': { name: 'Mirage Navigation Hijack' },
-  'ano-chasm-aberrations': { name: 'Chasm Aberration Hunt' },
-  'enc-pirate-1': { name: 'Roaming Pirate Skiff' },
-  'enc-pirate-2': { name: 'Ambush Raider Squad' },
-  'enc-pirate-3': { name: 'Fanatic Patrol Group' },
-  'enc-pirate-4': { name: 'Deepspace Butcher Fleet' },
-  // 虫洞敌卡（15，`hidden` ⇒ 不进悬赏目录，但战斗/虫洞页会显示；见 glossary §十一）
-  'wh-pirate-scout': { name: 'Raider Detachment' },
-  'wh-pirate-hunt': { name: 'Raider Hunt' },
-  'wh-pirate-warband': { name: 'Pirate Warband' },
-  'wh-alien-swarm': { name: 'Starcore Hunting Swarm' },
-  'wh-alien-brood': { name: 'Spore Brood Tide' },
-  'wh-alien-hive': { name: 'Maw Deep Hive' },
-  'wh-grave-watch': { name: 'Gravekeeper Patrol' },
-  'wh-grave-sentry': { name: 'Stasis Sentry Chain' },
-  'wh-grave-throne': { name: 'Mausoleum Court' },
-  'wh-titan-echo': { name: 'Titan Echo' },
-  'wh-titan-missile': { name: 'Missile Echo' },
-  'wh-titan-hulk': { name: 'Titan Onslaught' },
-  'wh-exile-blockade': { name: 'Deadarmy Blockade' },
-  'wh-exile-swarm': { name: 'Echo Swarm' },
-  'wh-exile-line': { name: 'Remnant Battle Line' },
+  'ano-training': {
+    name: 'Proving Grounds Eviction',
+    description: "The Deep Space Industry Association's routine clearance order: scavengers have picked over exercise wrecks at the proving grounds for years, and the Association pays per eviction. A standing bounty that can be taken again and again — a new pilot's first long-term contract.",
+  },
+  'ano-pirate-post': {
+    name: 'Frontier Pirate Outpost',
+    description: 'A familiar face in the wanted lists: the outpost pirates of the Kor Frontier have raided starter trade routes for years. A standing bounty — win and it settles, and it can be taken again.',
+  },
+  'ano-abandoned-platform': {
+    name: 'Occupied Port Warrant',
+    description: 'A long-standing warrant: armed scavengers have squatted on an abandoned mining platform for years, and the Association pays to clear their firing positions.',
+  },
+  'ano-redring-raiders': {
+    name: 'Red Tide Raider Fleet',
+    description: 'A veteran raider fleet of the Redring Corridor whose warrant has hung on the Association board for five years — repel its main force to settle, and it can be taken again.',
+  },
+  'ano-gravekeeper': {
+    name: 'Graveyard Gravekeeper',
+    description: 'The gravekeeper fleet of the Darkstar Graveyard never rotates, and the Association never withdraws its warrant: repel them once, settle once.',
+  },
+  'ano-ghost-signal': {
+    name: 'Ghost Ship Signal',
+    description: 'A case left open a long time: the ghost ship appears and vanishes deep in the red rings. The Association pays a survey bounty for every successful contact — what it is, no one has said clearly to this day.',
+  },
+  'ano-abyss-guard': {
+    name: 'Abyss Gate Guard',
+    description: 'The Abyss Gate is manned year-round, and year-round it needs civilian firepower to share the defense. An Association standing bounty: settles per run, with standing granted only on the first win.',
+  },
+  'ano-titan-wreck': {
+    name: 'Titan Wreck Survey',
+    description: "An ancient titan wreck lies in the abyssal shipping lane, and the Association has long sought armed-escort surveys and clearance — repel the wreck's guard and the bounty is paid.",
+  },
+  'ano-auro-raiders': {
+    name: 'Auro Armed Wreck Group',
+    description: "Storms keep reactivating the armed wrecks of the Auro Waste Ring, so the Association's hunt order stays open: settles per run and can be taken again.",
+  },
+  'ano-core-section': {
+    name: 'Megastructure Core Survey',
+    description: 'At the deepest point of the abyssal lane stands an almost intact megastructure — its remaining automation still runs and its sentry swarm still patrols. The Association offers a standing bounty to anyone who can open it up.',
+  },
+  'ano-starcore-boss': {
+    name: 'Starcore Swarm',
+    description: 'Something is nesting deep in the Starcore Labyrinth. The Association lists it as a top-tier standing bounty: those who go in must count their lives on the way out.',
+  },
+  'ano-cinder-siege': {
+    name: 'Cinder Siege',
+    description: 'The defense line in the Cinder Sector never stops fighting, and the Association has long paid civilian firepower to reinforce it — repel one siege formation, settle one bounty.',
+  },
+  'ano-echo-haunt': {
+    name: 'Echo Remnant',
+    description: 'The remnant ships of the Echo Wastes keep "reviving", which the Association blames on leftover automation. A standing clearance order that settles per run.',
+  },
+  'ano-nadir-static': {
+    name: 'Nadir Static Blockade',
+    description: "The Nadir is a dead end and the deadarmy's last stronghold. The Association blockades the area year-round and pays for every clearance that breaks the line.",
+  },
+  'ano-maw-hunt': {
+    name: 'Maw Hunt Order',
+    description: 'The Star Maw has swallowed too many fleets. The Association pays for anything that weakens its garrison — a standing order that can be taken again.',
+  },
+  'ano-vault-sentinel': {
+    name: 'Vault Sentinel',
+    description: 'The gravekeeper fleet of the Vault Necropolis is the oldest armed force still in existence, and the Association lists it as the highest bounty in the sector — no one knows why they still patrol.',
+  },
+  'ano-voidedge-warden': {
+    name: 'Voidsea Warden',
+    description: 'The warden of the Voidsea Edge answers only the strong. The Association keeps this top-tier warrant open year-round, waiting for whoever can bring a battle report back alive.',
+  },
+  'ano-harbor-escort': {
+    name: 'New Harbor Convoy Escort',
+    description: 'Raids on the trade lanes of the New Harbor Corridor never stop. The Association pays for convoy escort and defense year-round: repel small raiding boats, settle per run — a new pilot\'s first standing contract.',
+  },
+  'ano-shard-bandits': {
+    name: 'Shardbelt Bandit Warrant',
+    description: 'In the crystal dust of the Shardbelt hides a band that specializes in robbing dawncrystal freighters. The warrant stays open and can be taken again.',
+  },
+  'ano-lantern-saboteurs': {
+    name: 'Beacon Hunter Bounty',
+    description: 'The beacon array of the Lantern Passage has been sabotaged repeatedly, and repairs are costly. The Association pays to hunt down the repeat offenders — this contract stays open.',
+  },
+  'ano-haze-ambush': {
+    name: 'Haze Ambush Clearance',
+    description: 'The ionized clouds of the Hazebelt are a natural ambush ground — a raider band has camped on the ring-core route for years. The Association issues a standing clearance order that settles per run.',
+  },
+  'ano-mirage-hijackers': {
+    name: 'Mirage Navigation Hijack',
+    description: "The Mirage's gravitational lens makes a natural ambush, and pirates use it to hijack straying merchantmen. The Association pays year-round to clear out these navigation hijackers.",
+  },
+  'ano-chasm-aberrations': {
+    name: 'Chasm Aberration Hunt',
+    description: 'Gravitational distortion in the Chasm Deepbelt breeds swarming aberrations that threaten the deep mine shafts. The Association lists them as a standing high-risk hunt order.',
+  },
+  'enc-pirate-1': {
+    name: 'Roaming Pirate Skiff',
+    description: 'Low-sec encounter template: a small roaming pirate group (hidden; not shown in the bounty board).',
+  },
+  'enc-pirate-2': {
+    name: 'Ambush Raider Squad',
+    description: 'Low-sec encounter template: a medium ambush squad (hidden).',
+  },
+  'enc-pirate-3': {
+    name: 'Fanatic Patrol Group',
+    description: 'Low-sec encounter template: a heavy fanatic formation (hidden).',
+  },
+  'enc-pirate-4': {
+    name: 'Deepspace Butcher Fleet',
+    description: 'Low-sec encounter template: a high-risk butcher fleet (hidden).',
+  },
+  // 虫洞敌卡（15，hidden ⇒ 不进悬赏目录，但战斗/虫洞页会显示）
+  'wh-pirate-scout': {
+    name: 'Raider Detachment',
+    description: 'Wormhole encounter: a small raiding detachment (hidden card, spawned by the wormhole only).',
+  },
+  'wh-pirate-hunt': {
+    name: 'Raider Hunt',
+    description: 'Wormhole encounter: raider hunters covering each other, one near and one far (hidden card, spawned by the wormhole only).',
+  },
+  'wh-pirate-warband': {
+    name: 'Pirate Warband',
+    description: 'Wormhole encounter: a pirate warband with the warlord himself in the line (hidden card, spawned by the wormhole only).',
+  },
+  'wh-alien-swarm': {
+    name: 'Starcore Hunting Swarm',
+    description: 'Wormhole encounter: a hunting pack of starcore adults (hidden card, spawned by the wormhole only).',
+  },
+  'wh-alien-brood': {
+    name: 'Spore Brood Tide',
+    description: 'Wormhole encounter: spore aberrants leading starcore adults in (hidden card, spawned by the wormhole only).',
+  },
+  'wh-alien-hive': {
+    name: 'Maw Deep Hive',
+    description: 'Wormhole encounter: a deep hive where the maw behemoth lairs (hidden card, spawned by the wormhole only).',
+  },
+  'wh-grave-watch': {
+    name: 'Gravekeeper Patrol',
+    description: 'Wormhole encounter: a patrol formation left behind by the gravekeepers (hidden card, spawned by the wormhole only).',
+  },
+  'wh-grave-sentry': {
+    name: 'Stasis Sentry Chain',
+    description: 'Wormhole encounter: two stasis sentry links, one near and one far (hidden card, spawned by the wormhole only).',
+  },
+  'wh-grave-throne': {
+    name: 'Mausoleum Court',
+    description: 'Wormhole encounter: the throne guard at the deepest point of the mausoleum (hidden card, spawned by the wormhole only).',
+  },
+  'wh-titan-echo': {
+    name: 'Titan Echo',
+    description: 'Wormhole encounter: a megastructure wreck still discharging, with its sentry swarm (hidden card, spawned by the wormhole only).',
+  },
+  'wh-titan-missile': {
+    name: 'Missile Echo',
+    description: 'Wormhole encounter: a missile section still firing salvoes (hidden card, spawned by the wormhole only).',
+  },
+  'wh-titan-hulk': {
+    name: 'Titan Onslaught',
+    description: 'Wormhole encounter: a whole megastructure wreck section with its sentry swarm (hidden card, spawned by the wormhole only).',
+  },
+  'wh-exile-blockade': {
+    name: 'Deadarmy Blockade',
+    description: 'Wormhole encounter: a blockade squad of the deadarmy (hidden card, spawned by the wormhole only).',
+  },
+  'wh-exile-swarm': {
+    name: 'Echo Swarm',
+    description: 'Wormhole encounter: a swarm formed by two echo remnant ships (hidden card, spawned by the wormhole only).',
+  },
+  'wh-exile-line': {
+    name: 'Remnant Battle Line',
+    description: "Wormhole encounter: the deadarmy's last battle line with its swarm escort (hidden card, spawned by the wormhole only).",
+  },
 }
 
 /**
@@ -815,55 +974,61 @@ export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: s
   return out ?? list
 }
 
-/** 星系（20 · `docs/glossary-en.md` §五）。注意：星系名进 `ctx.galaxies`，矿带名进 `ctx.belts`，两张表分开。 */
+/** 星系（20 · `docs/glossary-en.md` §五）—— **名称 + 说明**。星图节点进 `ctx.galaxies`，矿带名进 `ctx.belts`，两张表分开。 */
 export const EN_GALAXIES: EnTable = {
-  'galaxy-hub': { name: 'Leviathan IV' },
-  'galaxy-kor': { name: 'Kor Frontier' },
-  'galaxy-dust': { name: 'Stardust Wastes' },
-  'galaxy-redring': { name: 'Redring Corridor' },
-  'galaxy-grave': { name: 'Darkstar Graveyard' },
-  'galaxy-abyss': { name: 'Abyss Gate' },
-  'galaxy-auro': { name: 'Auro Waste Ring' },
-  'galaxy-starcore': { name: 'Starcore Labyrinth' },
-  'galaxy-harbor': { name: 'New Harbor Corridor' },
-  'galaxy-haze': { name: 'Hazebelt' },
-  'galaxy-shard': { name: 'Shardbelt' },
-  'galaxy-cinder': { name: 'Cinder Sector' },
-  'galaxy-echo': { name: 'Echo Wastes' },
-  'galaxy-lantern': { name: 'Lantern Passage' },
-  'galaxy-chasm': { name: 'Chasm Deepbelt' },
-  'galaxy-mirage': { name: 'Mirage System' },
-  'galaxy-maw': { name: 'Star Maw' },
-  'galaxy-vault': { name: 'Vault Necropolis' },
-  'galaxy-nadir': { name: 'Nadir Quiet Zone' },
-  'galaxy-voidedge': { name: 'Voidsea Edge' },
+  'galaxy-hub': { name: 'Leviathan IV', description: 'Home system: headquarters of the Deep Space Industry Association, and where every route begins.' },
+  'galaxy-kor': { name: 'Kor Frontier', description: 'Remains of an early colony, where pirates often lie in ambush.' },
+  'galaxy-dust': { name: 'Stardust Wastes', description: 'An abandoned mining district thick with stardust — a graveyard of old industrial platforms.' },
+  'galaxy-redring': { name: 'Redring Corridor', description: 'A red ring spans the system: the home lair of raider fleets.' },
+  'galaxy-grave': { name: 'Darkstar Graveyard', description: 'The graveyard of ancient fleets; the gravekeepers are said never to sleep.' },
+  'galaxy-abyss': { name: 'Abyss Gate', description: 'An ancient jump gate stands here under heavy guard — no one who went through has come back to say what lies beyond.' },
+  'galaxy-auro': { name: 'Auro Waste Ring', description: 'A ring of asteroid ruins where armed wrecks from an old war still roam.' },
+  'galaxy-starcore': { name: 'Starcore Labyrinth', description: 'The labyrinth core of a dense nebula where navigators fail — only charts get you through.' },
+  'galaxy-harbor': { name: 'New Harbor Corridor', description: 'A supply corridor on the outer ring of the home system, plied by merchant convoys and Association patrols.' },
+  'galaxy-haze': { name: 'Hazebelt', description: 'Shrouded year-round in ionized haze, with half its old beacons out of repair.' },
+  'galaxy-shard': { name: 'Shardbelt', description: 'A floating graveyard of giant shattered crystals that refract strange rainbows.' },
+  'galaxy-cinder': { name: 'Cinder Sector', description: 'A dark ash belt left by an interstellar fire a century ago.' },
+  'galaxy-echo': { name: 'Echo Wastes', description: 'Radio echoes repeat here; they say you can hear the last distress calls of sunken ships.' },
+  'galaxy-lantern': { name: 'Lantern Passage', description: 'An ancient navigation beacon array, still working with no one to maintain it.' },
+  'galaxy-chasm': { name: 'Chasm Deepbelt', description: 'A deep trench left where a planetary system was torn apart, riddled with gravity anomalies.' },
+  'galaxy-mirage': { name: 'Mirage System', description: 'Strong gravitational lensing twists the stars here into mirages.' },
+  'galaxy-maw': { name: 'Star Maw', description: 'A giant rift slowly swallowing starlight; the Association forbids going deep inside.' },
+  'galaxy-vault': { name: 'Vault Necropolis', description: 'Dome shelters where an ancient civilization sealed away its fleet; the gravekeeper fleet still patrols them.' },
+  'galaxy-nadir': { name: 'Nadir Quiet Zone', description: 'A dead-silent zone directly below the galactic plane where no body cares to linger.' },
+  'galaxy-voidedge': { name: 'Voidsea Edge', description: 'Where navigable space meets the Voidsea — the end is right behind you.' },
 }
 
 /** 矿带（17 · §五；**key 是矿带自己的 id**（`belt-*`），不是星系 id——星系名另见 `EN_GALAXIES`） */
 export const EN_BELTS: EnTable = {
-  'belt-fortune': { name: 'Ring of Plenty' },
-  'belt-scorched': { name: 'Scorched Rift' },
-  'belt-kernite': { name: 'Deepspace Crystal Belt' },
-  'belt-sunshard': { name: 'Dawncrystal Belt' },
-  'belt-gas-neon': { name: 'Neon Cloud Field' },
-  'belt-glowstone': { name: 'Glowcloud Belt' },
-  'belt-hemorphite': { name: 'Redring Crisis Belt' },
-  'belt-crimsonite': { name: 'Mirage Cluster' },
-  'belt-ice-marrow': { name: 'Frostmarrow Ice Ring' },
-  'belt-fluxite': { name: 'Starcore Vein' },
-  'belt-voidshard': { name: 'Voidcrystal Deepbelt' },
-  'belt-ice-frost': { name: 'Bluefrost Ice Ring' },
-  'belt-gas-ionstorm': { name: 'Ionstorm Cloud Field' },
-  'belt-nebulite': { name: 'Starwraith Vein' },
-  'belt-ice-darkstar': { name: 'Darkstar Ice Ring' },
-  'belt-gas-phosphor': { name: 'Phosphor Haze Field' },
-  'belt-gas-aurora': { name: 'Aurora Cloud Field' },
+  'belt-fortune': { name: 'Ring of Plenty', description: "The starter belt on the station's outer ring: safe, plentiful and never exhausted." },
+  'belt-scorched': { name: 'Scorched Rift', description: 'A rift left by a shattered volcanic body, rich in Gabbro.' },
+  'belt-kernite': { name: 'Deepspace Crystal Belt', description: 'A starter mixed belt where several ores coexist: now and then you dig up a little Redring Ore.' },
+  'belt-sunshard': { name: 'Dawncrystal Belt', description: 'A crystal layer lit at just the right dawn angle — the ideal place to mine Dawnshard Crystal (requires standing 2).' },
+  'belt-gas-neon': { name: 'Neon Cloud Field', description: 'A cluster of low-gravity gas fields — the first place you can harvest gas (requires standing 2).' },
+  'belt-glowstone': { name: 'Glowcloud Belt', description: "A rich vein at the ring's center: high-purity Glowcloud Ore with occasional Dawnshard Crystal alongside (requires standing 3)." },
+  'belt-hemorphite': { name: 'Redring Crisis Belt', description: 'A high-pressure seam deep in a pirate hub, where Redring Ore and Gabbro interleave (requires standing 3).' },
+  'belt-crimsonite': { name: 'Mirage Cluster', description: 'A crystal cluster belt twisted out by gravitational lensing, where Dawnshard Crystal and Glowcloud Ore grow together (requires standing 5).' },
+  'belt-ice-marrow': { name: 'Frostmarrow Ice Ring', description: 'An ancient ice ring with marrow-like veining and a key source of Starcore Crystal (requires standing 5).' },
+  'belt-fluxite': { name: 'Starcore Vein', description: 'A double crystal vein in the labyrinth core, where Dawnshard Crystal and Glowcloud Ore grow together (requires standing 4).' },
+  'belt-voidshard': { name: 'Voidcrystal Deepbelt', description: 'A black Voidcrystal seam in the deep-space rift belt (requires standing 7).' },
+  'belt-ice-frost': { name: 'Bluefrost Ice Ring', description: 'A blue-white ice ring whose layers lock in high-purity Isotope Polycrystal (requires standing 6).' },
+  'belt-gas-ionstorm': { name: 'Ionstorm Cloud Field', description: 'A raging ion stream field: a proving ground where reward and risk come together (requires standing 8).' },
+  'belt-nebulite': { name: 'Starwraith Vein', description: 'A legendary vein deep in the nebula, reserved for decorated Association pilots (requires standing 11).' },
+  'belt-ice-darkstar': { name: 'Darkstar Ice Ring', description: 'A light-swallowing black ice ring — the most demanding mining site in the universe (requires standing 11).' },
+  'belt-gas-phosphor': { name: 'Phosphor Haze Field', description: 'Corrosive phosphor haze deep in the graveyard: a rare gas deposit of very high refining value (requires standing 9).' },
+  'belt-gas-aurora': { name: 'Aurora Cloud Field', description: 'Aurora particle clouds above the Vault Necropolis — the highest-threshold mining site in the universe (requires standing 13).' },
 }
 
 /** 站点（2 · 建站点；阶段名「奠基/完善/建成」嵌在站点定义里，用嵌套覆盖另处理） */
 export const EN_STATIONS: EnTable = {
-  'site-redring': { name: 'Redring Outpost' },
-  'site-cinder': { name: 'Cinder Outpost' },
+  'site-redring': {
+    name: 'Redring Outpost',
+    description: 'The Redring Corridor is a hub of deep-space shipping, yet pirates hold it year-round. The Association Infrastructure Dept plans an outpost here: built in three stages from refined materials, and folded into the Association base network once complete.',
+  },
+  'site-cinder': {
+    name: 'Cinder Outpost',
+    description: 'A high-risk mining district deep in the Cinder Sector needs a staging station. The Infrastructure Dept commissions it in three stages from refined materials: the foundation is especially heavy on Tritanium Alloy, and later stages use rarer stock. Once complete it joins the Association base network.',
+  },
 }
 
 /** 势力与部门（13 · §六；通讯页的发件人/署名会用） */
