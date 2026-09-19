@@ -22,8 +22,10 @@
  *
  * 版本自检（`tools-audit` 认这三条）：
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v25**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-15**（首版：233 份文档入库，孤儿 11 / 状态未标注 122；幂等与 `--check` 负向各验一次）
- *   - 本工具最后跑过：**2026-09-15**
+ *   - 本工具最后核对：**2026-09-19**（行尾归一：kb / lines / 引用计数改按 LF 归一后计算——
+ *     背景：主树 LF 与其余工作树 CRLF 的内容逐字相同却生成不同索引，`--check` 在其中一棵恒红；
+ *     归一只影响本工具读到的文本，索引输出仍 CRLF；改后两树生成逐字一致）
+ *   - 本工具最后跑过：**2026-09-19**（271→273 份文档、`--check` 双树各验一次）
  */
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, basename, dirname, sep } from 'node:path'
@@ -136,7 +138,7 @@ function sourceCorpus(): string {
       const p = join(dir, name)
       const st = statSync(p)
       if (st.isDirectory()) walk(p)
-      else if (exts.some((e) => name.endsWith(e)) && st.size < 2_000_000) parts.push(readFileSync(p, 'utf8'))
+      else if (exts.some((e) => name.endsWith(e)) && st.size < 2_000_000) parts.push(readFileSync(p, 'utf8').replace(/\r\n/g, '\n'))
     }
   }
   for (const d of ['packages', 'apps', 'tools', 'web']) {
@@ -151,7 +153,10 @@ function sourceCorpus(): string {
 
 function build(): { rows: DocRow[]; text: string } {
   const files = collectMarkdown(DOCS).concat([join(ROOT, 'AGENTS.md')].filter((p) => { try { return statSync(p).isFile() } catch { return false } }))
-  const loaded = files.map((p) => ({ rel: posix(relative(ROOT, p)), text: readFileSync(p, 'utf8') }))
+  // 2026-09-19：读取即把 CRLF 归一为 LF —— 本索引的 kb / lines / 引用计数**只该随内容变、不该随行尾变**。
+  // 背景：两棵工作树（主树 LF / 其余 CRLF）内容逐字相同却因行尾差 1 字节/行 ⇒ 生成的 INDEX 不同、
+  // `--check` 在其中一棵恒红。归一只影响本工具读到的文本，索引自身输出仍是 CRLF（见文件尾）。
+  const loaded = files.map((p) => ({ rel: posix(relative(ROOT, p)), text: readFileSync(p, 'utf8').replace(/\r\n/g, '\n') }))
   const { perDoc, codeRefs } = countRefs(loaded, sourceCorpus())
 
   const rows: DocRow[] = loaded.map((f) => {
