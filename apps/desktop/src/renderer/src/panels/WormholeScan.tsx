@@ -47,7 +47,7 @@ import { tr } from '../i18n/locale'
  */
 function foundDateLabel(state: GameState, foundAtGameMs: number): string {
   const d = new Date((state.character?.startedAtWallMs ?? 0) + Math.max(0, foundAtGameMs))
-  return `${d.getMonth() + 1}月${d.getDate()}日`
+  return tr("ui.WormholeScan.044", { p1: d.getMonth() + 1, p2: d.getDate() })
 }
 
 /** 库存项的**标准一行**（卡片与放弃弹窗共用同一口径）：族徽 + 「原型名，发现于 X月X日」 */
@@ -56,7 +56,7 @@ function stockLineOf(
   item: { family: WormholeFamily; archetype: WormholeArchetype; foundAtGameMs: number },
 ): { glyph: string; text: string } {
   const glyph = `fam-${item.family.toLowerCase()}`
-  return { glyph, text: `${WORMHOLE_ARCHETYPE_LABELS[item.archetype]}，发现于 ${foundDateLabel(state, item.foundAtGameMs)}` }
+  return { glyph, text: tr("ui.WormholeScan.045", { p1: WORMHOLE_ARCHETYPE_LABELS[item.archetype], p2: foundDateLabel(state, item.foundAtGameMs) }) }
 }
 
 export function WormholeScanTab({
@@ -120,7 +120,7 @@ export function WormholeScanTab({
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
-          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（每级 −4%，满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${stockMax} 处（「星图记录学」每级 +2，满级 +10）。`}
+          tip={tr("ui.WormholeScan.046", { p1: formatDurationMs(WORMHOLE_SCAN_BASE_MS), stockMax: stockMax })}
         />
       }
       right={
@@ -194,7 +194,7 @@ export function WormholeScanTab({
                 onClick={() => {
                   const r = engine.wormholeScanStop()
                   if (!r.ok) onToast(r.error ?? '停不了。', true)
-                  else onToast('已停扫：进度保留，下次接着扫。')
+                  else onToast(tr("ui.WormholeScan.047"))
                 }}
               >
                 {tr("ui.WormholeScan.009")}
@@ -207,7 +207,7 @@ export function WormholeScanTab({
                 onClick={() => {
                   const r = engine.wormholeScanStart()
                   if (!r.ok) onToast(r.error ?? '无法开扫。', true)
-                  else onToast('开始扫描虫洞：主控就地展开扫描阵列。')
+                  else onToast(tr("ui.WormholeScan.048"))
                 }}
               >
                 {tr("ui.WormholeScan.011")}
@@ -269,7 +269,7 @@ export function WormholeScanTab({
                       className="app-inv-count"
                       title={
                         wormholeIntelTip(engine, item.family, archName) +
-                        `\n族徽＝这一处整趟都是「${famName}」这一族（上面的敌情就是它）。`
+                        tr("ui.WormholeScan.049", { famName: famName })
                       }
                     >
                       {line.text}
@@ -294,7 +294,7 @@ export function WormholeScanTab({
                       title={
                         runs.some((r) => r.stockId === item.id)
                           ? tr("ui.WormholeScan.019")
-                          : `自动派最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条船去探（每条占 1 枚 AI 核心，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）——打开与主控探索同一个准备页选编队`
+                          : tr("ui.WormholeScan.050", { WORMHOLE_AUTO_MAX_SHIPS: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
                       }
                       onClick={() => onAutoExplore(item.id)}
                     >
@@ -355,7 +355,7 @@ export function WormholeScanTab({
                           onClick={() => {
                             const r = engine.wormholeStockDiscard(item.id)
                             if (!r.ok) onToast(r.error ?? '放弃失败。', true)
-                            else onToast('已放弃这一处虫洞。')
+                            else onToast(tr("ui.WormholeScan.051"))
                             setDiscardAsk(null)
                           }}
                         >
@@ -402,7 +402,7 @@ export function WormholeScanTab({
                         onClick={() => {
                           const r = engine.wormholeAutoStop(run.id)
                           if (!r.ok) onToast(r.error ?? '召回失败。', true)
-                          else onToast('已召回自动探索队（无收益、无损伤；通道就此关闭）。')
+                          else onToast(tr("ui.WormholeScan.052"))
                         }}
                       >
                         {tr("ui.ActivityBar.009")}
@@ -418,7 +418,7 @@ export function WormholeScanTab({
         {reports.length > 0 ? (
           <>
             <div className="app-bay-title">
-              {tr("ui.WormholeScan.031")} {reports.length} 份{pending > 0 ? `（待确认 ${pending}）` : ''}
+              {tr("ui.WormholeScan.031")} {reports.length} 份{pending > 0 ? tr("ui.WormholeScan.053", { pending: pending }) : ''}
             </div>
             {pending > 1 ? (
               <div className="app-wh-scanbar-actions">
@@ -426,7 +426,7 @@ export function WormholeScanTab({
                   className="app-btn is-small"
                   onClick={() => {
                     const n = engine.wormholeAutoConfirmAll()
-                    onToast(n > 0 ? `已确认 ${n} 份报告。` : tr("ui.WormholeScan.032"))
+                    onToast(n > 0 ? tr("ui.WormholeScan.054", { n: n }) : tr("ui.WormholeScan.032"))
                   }}
                 >
                   {tr("ui.WormholeScan.033")}
@@ -460,7 +460,7 @@ export function WormholeScanTab({
                         ? rep.damage
                             .map(
                               (d) =>
-                                `${d.name} 结构 −${d.durabilityLossPct}%（现 ${d.durabilityPct}%）/ 装甲 −${d.armorLossPct}%（现 ${d.armorPct}%）`,
+                                tr("ui.WormholeScan.055", { p1: d.name, p2: d.durabilityLossPct, p3: d.durabilityPct, p4: d.armorLossPct, p5: d.armorPct }),
                             )
                             .join('；')
                         : tr("ui.BattleScreen.001")}

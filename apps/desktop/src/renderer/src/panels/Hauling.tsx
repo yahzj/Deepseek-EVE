@@ -112,7 +112,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
 
   /** 标题右的状态读数（与同级「残骸打捞」同款：一句，不长篇） */
   const haulStateText = haulingActive
-    ? `运输中 · 本段驶往「${h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId)?.name ?? '空间站'}」`
+    ? tr("ui.Hauling.026", { p1: h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId)?.name ?? '空间站' })
     : dockedOk
       ? tr("ui.Hauling.006")
       : tr("ui.Hauling.007")
@@ -188,7 +188,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                       <ProgressBar
                         value={h.legMs > 0 ? Math.min(100, (h.phaseAccMs / h.legMs) * 100) : 0}
                         tone="warn"
-                        label={`本段驶往「${h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId!)?.name ?? '空间站'}」· 剩余约 ${fmtMin(Math.max(0, h.legMs - h.phaseAccMs))}`}
+                        label={tr("ui.Hauling.027", { p1: h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId!)?.name ?? '空间站', p2: fmtMin(Math.max(0, h.legMs - h.phaseAccMs)) })}
                       />
                       <button className="app-btn is-small" onClick={stopNow} title={tr("ui.Hauling.021")}>
                         {tr("ui.ActivityBar.014")}

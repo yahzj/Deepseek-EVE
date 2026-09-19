@@ -794,7 +794,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     k: tr("ui.FitPage.039"),
                     v: (
                       <>
-                        <em className="app-chip is-cost">{r.name} ×1 / {r.perJumpSecs} 秒</em>
+                        <em className="app-chip is-cost">{tr('ui.FitPage.163', { name: r.name, s: r.perJumpSecs })}</em>
                         <span className={`app-kit-stock ${cls}`}>
                           {' '}{tr("ui.FitPage.040")} {r.stock} {tr("ui.FitPage.041")}{hint}）
                         </span>
@@ -1199,7 +1199,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           <DmgChip t={weaponDamageTypeOf(m)} label={layerShortOf(weaponDamageTypeOf(m))} />
                           <span className="app-fit-pick-subtext">
                             ×{countModule(state, m.id)}
-                            {m.dmgMult !== undefined ? tr("ui.FitPage.153", { p1: mulText(m.dmgMult) }) : ''} · 射程 {rangeShort(m)}
+                            {m.dmgMult !== undefined ? tr("ui.FitPage.153", { p1: mulText(m.dmgMult) }) : ''}{tr('ui.FitPage.162', { r: rangeShort(m) })}
                           </span>
                         </>
                       ) : (

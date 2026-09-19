@@ -1242,7 +1242,7 @@ export function App({ engine }: { engine: GameEngine }) {
           </div>
           <div className="app-report-body">
             <div className="app-dim">
-              {tr("ui.App.087")} {formatDurationMs(offlineReport.wallAwayMs)} · 结算 {formatDurationMs(offlineReport.settledMs)}
+              {tr("ui.App.087")} {formatDurationMs(offlineReport.wallAwayMs)}{tr('ui.App.115', { d: formatDurationMs(offlineReport.settledMs) })}
               {offlineReport.overflowMs > 0 ? tr('ui.App.104', { d: formatDurationMs(offlineReport.overflowMs) }) : ''}
             </div>
             <div className="app-report-line">

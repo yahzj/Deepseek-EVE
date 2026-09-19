@@ -4,6 +4,7 @@
  * 数据同源：core aiTaskView（与引擎推进同一套公式）。
  */
 import { formatDurationMs } from '@whale/core'
+import { tr } from '../i18n/locale'
 import type { AiTaskView } from '@whale/core'
 
 export function AiTaskBar({ view }: { view: AiTaskView | null }) {
@@ -14,7 +15,7 @@ export function AiTaskBar({ view }: { view: AiTaskView | null }) {
     <span className="app-ai-taskbar">
       {showEta ? (
         <span className="app-dim">
-          {view.label} · 剩余约 {formatDurationMs(view.remainingMs ?? 0)}
+          {view.label}{tr('ui.aiProgress.001', { d: formatDurationMs(view.remainingMs ?? 0) })}
         </span>
       ) : (
         <span className="app-dim">{view.label}</span>

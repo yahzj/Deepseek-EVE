@@ -181,18 +181,18 @@ export function BlueprintShelfPanel({
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
     if (!r.ok) onToast(r.error ?? '学习失败', true)
-    else onToast('已学习该配方：可到组装机无限次制造。')
+    else onToast(tr("ui.Industry.095"))
   }
 
   function handleSell(blueprintId: string): void {
     const key = bpGoodKey(engine, blueprintId)
     if (!key) {
-      onToast('该蓝图不在市场流通目录（无法出售）。', true)
+      onToast(tr("ui.Industry.096"), true)
       return
     }
     const r = engine.sellHoldingAt(key)
     if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast('出售指令已受理：市场收购簿有单即时成交，否则自动挂卖单。')
+    else onToast(tr("ui.Industry.097"))
   }
 
   if (cards.length === 0) {
@@ -350,7 +350,7 @@ export function BlueprintShelfPanel({
       {fragShown.map(({ r }) => (
         <div key={`frag-${r.fragmentItemId}`} className="app-belt-card app-shelf-card is-frag">
           <div className="app-belt-head">
-            <span className="app-belt-name" title={`${r.blueprintName}（碎片 ${r.have}/${r.need}）`}>
+            <span className="app-belt-name" title={tr("ui.Industry.098", { p1: r.blueprintName, p2: r.have, p3: r.need })}>
               ▦ {r.blueprintName}
             </span>
             <span className="app-chip" style={{ marginLeft: 'auto' }}>
@@ -360,7 +360,7 @@ export function BlueprintShelfPanel({
           <div className="app-belt-desc">
             {r.have >= r.need
               ? tr("ui.Industry.020")
-              : `碎片未集齐：还差 ${r.need - r.have} 片（来自残骸回收的彩头掉落）`}
+              : tr("ui.Industry.099", { p1: r.need - r.have })}
           </div>
           <div className="app-belt-actions">
             <RedeemFragmentButton engine={engine} itemId={r.fragmentItemId} onToast={onToast} />
@@ -577,11 +577,11 @@ function BlueprintCard({
    *  「去市场」同一个入口 `onGotoMarket`，全仓一处口径）；买不买、按什么价挂单由玩家在详情里自己定。 */
   function handleGotoMarket(): void {
     if (!goodKey) {
-      onToast('该蓝图不在市场流通目录。', true)
+      onToast(tr("ui.Industry.100"), true)
       return
     }
     if (!onGotoMarket) {
-      onToast('当前入口不支持跳转市场：请从左侧「市场」页搜索这张蓝图。', true)
+      onToast(tr("ui.Industry.101"), true)
       return
     }
     onGotoMarket(goodKey)
@@ -594,11 +594,11 @@ function BlueprintCard({
    */
   function handleGotoWormhole(): void {
     if (!whUnlocked) {
-      onToast(`虫洞尚未解锁：需「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${whStanding}）。`, true)
+      onToast(tr("ui.Industry.102", { WORMHOLE_SCAN_UNLOCK_STANDING: WORMHOLE_SCAN_UNLOCK_STANDING, whStanding: whStanding }), true)
       return
     }
     if (!onGotoWormhole) {
-      onToast('当前入口不支持跳转虫洞：请从左侧「星图」→「出港 · 扫描虫洞」进入。', true)
+      onToast(tr("ui.Industry.103"), true)
       return
     }
     onGotoWormhole()
@@ -608,7 +608,7 @@ function BlueprintCard({
   function handleLearnFromShelf(): void {
     const r = engine.learnBlueprintAt(blueprintId)
     if (!r.ok) onToast(r.error ?? '学习失败', true)
-    else onToast('已学习该配方：现在可以开始制造了。')
+    else onToast(tr("ui.Industry.104"))
   }
 
   function runWith(worker: AiCoreType | 'pilot'): void {
@@ -620,14 +620,14 @@ function BlueprintCard({
     onToast(
       worker === 'pilot'
         ? tr("ui.Industry.031")
-        : `${aiCoreName(worker)}已接入：材料已扣除，线已开（核心占用一枚，完成/取消自动归还）。`,
+        : tr("ui.Industry.105", { p1: aiCoreName(worker) }),
     )
   }
 
   function handleCancel(runId: number): void {
     const r = engine.cancelManufacturingAt(runId)
     if (!r.ok) onToast(r.error ?? '取消失败', true)
-    else onToast('已取消该条制造线：材料全额退回物品仓库（AI 核心已归还），其余线不受影响。')
+    else onToast(tr("ui.Industry.106"))
   }
 
   // 2026-09-10 船长定：循环制造（开关 + 目标批数）从逐条制造线**上移到整张生产卡**——
@@ -712,7 +712,7 @@ function BlueprintCard({
           ) : bookCount > 0 ? (
             <span className="app-chip">{tr("ui.Industry.042")}{bookCount}</span>
           ) : lock ? (
-            <span className="app-chip is-exotic" title={`${lock}——这只影响「在市场买这本书」，不影响组装机开工`}>
+            <span className="app-chip is-exotic" title={tr("ui.Industry.107", { lock: lock })}>
               ✕ {lock}
             </span>
           ) : (
@@ -724,7 +724,7 @@ function BlueprintCard({
 
       <div className="app-belt-ore">
         {tr("ui.Handbook.013")}{productNode ?? productLabel}
-        <span className="app-dim" title={`自己已有的成品数量：${ownedWhere}；已挂单托管的量不计在内（与市场页「持有」同源）`}>
+        <span className="app-dim" title={tr("ui.Industry.108", { ownedWhere: ownedWhere })}>
           （{ownedWhere} {ownedCount.toLocaleString('zh-CN')}）
         </span>
         {running ? (
@@ -761,8 +761,8 @@ function BlueprintCard({
                       tabIndex={0}
                       title={
                         srcs.length > 0
-                          ? `「${matName}」由精炼炉炼出（${srcs.map(srcName).join(tr("ui.MatterTechTab.017"))} 等）——点击跳到精炼炉该资源卡`
-                          : `「${matName}」无法经精炼炉产出——点击到市场购买`
+                          ? tr("ui.Industry.109", { matName: matName, p2: srcs.map(srcName).join(tr("ui.MatterTechTab.017")) })
+                          : tr("ui.Industry.110", { matName: matName })
                       }
                       onClick={() => onNeedMineral?.(need.itemId)}
                     >
@@ -783,9 +783,7 @@ function BlueprintCard({
         {netPerH !== null ? (
           <div
             className={`app-belt-econ-val${netPerH < 0 ? ' is-neg' : ''}`}
-            title={`净收益估算：每件产物（市场现货基准价）− 每件材料（站内收价，材料学折扣后），按当前技能单件耗时折算每小时；不随市场收购波动、未计成交税。${
-              netPerH < 0 ? tr("ui.Industry.051") : tr("ui.Industry.052")
-            }`}
+            title={tr("ui.Industry.111", { p1: netPerH < 0 ? tr("ui.Industry.051") : tr("ui.Industry.052") })}
           >
             {MONEY_GLYPH} ≈{netPerH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}{netPerH < 0 ? tr("ui.Industry.053") : tr("ui.Industry.054")}
           </div>
@@ -800,7 +798,7 @@ function BlueprintCard({
           <div className="app-belt-loop">
             <label
               className="app-toggle"
-              title={`循环制造：本卡全部制造线完成一件后自动续做同一蓝图（含主控亲自那条；劳动者/核心保持占用）；${loop.on ? tr("ui.Industry.055") : tr("ui.Industry.056")}本卡在跑的线完成当前件即止`}
+              title={tr("ui.Industry.112", { p1: loop.on ? tr("ui.Industry.055") : tr("ui.Industry.056") })}
             >
               <input
                 type="checkbox"
@@ -842,7 +840,7 @@ function BlueprintCard({
             {loop.produced > 0 ? <span className="app-mf-made">{tr("ui.Industry.061")} {loop.produced.toLocaleString('zh-CN')} 件</span> : null}
             {loop.stopWhy.length > 0 ? <span className="app-mf-why">{tr("ui.Industry.062")}{loop.stopWhy}</span> : null}
             <span className="app-dim app-mf-note">
-              {tr("ui.Industry.063")}{runs.length > 0 ? `（当前 ${runs.length} 条）` : ''}
+              {tr("ui.Industry.063")}{runs.length > 0 ? tr("ui.Industry.113", { p1: runs.length }) : ''}
             </span>
           </div>
         ) : null}
@@ -854,12 +852,12 @@ function BlueprintCard({
               <span key={v.id} className="app-belt-worker">
                 <span
                   className="app-belt-worker-name"
-                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065")}${v.worker === null ? tr("ui.Industry.066") : ''}`}
+                  title={tr("ui.Industry.114", { p1: formatDurationMs(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
                 >
-                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : `⚙ ${v.workerLabel}驱动`} · 剩余约{' '}
+                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })} · 剩余约{' '}
                   {formatDurationMs(v.remainingMs)}
                 </span>
-                <span className="app-progress-mini" title={`制造进度 ${v.percent}%`}>
+                <span className="app-progress-mini" title={tr("ui.Industry.116", { p1: v.percent })}>
                   <i style={{ width: `${v.percent}%` }} />
                 </span>
                 <button
@@ -923,7 +921,7 @@ function BlueprintCard({
              ⚠ 顺序上提到「去哪买/去哪捞」之前：手里有书就该先能学（这正是上一批"拿着书却只看到需要声望"的坑）。 */
           <button
             className="app-btn is-small"
-            title={`蓝图书架已有这本图纸 ×${bookCount}：点此学习（不消耗书），学会后本卡永久可造`}
+            title={tr("ui.Industry.117", { bookCount: bookCount })}
             onClick={handleLearnFromShelf}
           >
             {tr("ui.Industry.074")}
@@ -941,7 +939,7 @@ function BlueprintCard({
             title={
               whUnlocked
                 ? tr("ui.Industry.075")
-                : `虫洞尚未解锁：需「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${whStanding}）——先去协会攒声望`
+                : tr("ui.Industry.118", { WORMHOLE_SCAN_UNLOCK_STANDING: WORMHOLE_SCAN_UNLOCK_STANDING, whStanding: whStanding })
             }
             onClick={handleGotoWormhole}
           >
@@ -1063,7 +1061,7 @@ export function ManufacturingPanel({
       const prodName = shipDef?.name ?? sbp.shipId
       /** 产物名后的参数（货舱/循环）：**不上色**（2026-09-13 船长：「只需要将『护盾扩展器 MK1』这部分换色」） */
       const prodParams = shipDef
-        ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
+        ? tr("ui.Industry.119", { p1: shipDef.cargoM3.toLocaleString('zh-CN'), p2: shipDef.cycleSeconds, p3: shipDef.oreUnitsPerCycle })
         : ''
       const prodLabel = prodName + prodParams
       // 产物名**一律金色**（2026-09-13 船长：「只需要将产物染成金色就够了，不用根据类型分成不同颜色」——
@@ -1142,7 +1140,7 @@ export function ManufacturingPanel({
       const itemDef = engine.ctx.items.get(bp.itemId)
       const units = bp.outputUnits ?? 1
       const prodName = itemDef?.name ?? bp.itemId
-      const prodLabel = `${prodName} ×${units} 发`
+      const prodLabel = tr("ui.Industry.120", { prodName: prodName, units: units })
       // 产物名金色（按类型分色作废，2026-09-13 船长）；「×N 发」等参数不上色
       const prodText = (
         <>

@@ -298,7 +298,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             key={kind}
             title={`${itemKindLabel(kind)}`}
             hint={extra ? <HintIcon tip={extra} /> : undefined}
-            right={<span className="app-dim">{kindRows.length} 种</span>}
+            right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows.length })}</span>}
           >
             {kindRows.length === 0 ? (
               <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('ui.ItemsPage.011')}</div>
@@ -324,7 +324,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                           ) : null}
                         </span>
                         <span className="app-inv-count">
-                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价 {buy !== undefined ? tr("ui.ItemsPage.039", { p1: isk(buy) }) : '—'}
+                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}{tr('ui.CargoPage.054')} {buy !== undefined ? tr("ui.ItemsPage.039", { p1: isk(buy) }) : '—'}
                         </span>
                       </div>
                       <div className="app-inv-btns">
@@ -460,7 +460,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 key={kind}
                 title={`${itemKindLabel(kind)}`}
                 hint={extra2 ? <HintIcon tip={extra2} /> : undefined}
-                right={<span className="app-dim">{kindRows2.length} 种</span>}
+                right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows2.length })}</span>}
               >
                 {kindRows2.length === 0 ? (
                   <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('ui.ItemsPage.011')}</div>
@@ -496,7 +496,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickItemDef.name}</div>
                   <div className="app-dim">
-                    ×{pickItemUnits.toLocaleString('zh-CN')}（{m3(pickItemUnits * pickItemDef.unitM3)}）· 市场收价{' '}
+                    ×{pickItemUnits.toLocaleString('zh-CN')}（{m3(pickItemUnits * pickItemDef.unitM3)}{tr('ui.CargoPage.054')}{' '}
                     {pickItemBuy !== undefined ? tr("ui.ItemsPage.039", { p1: isk(pickItemBuy) }) : '—'}
                   </div>
                 </div>

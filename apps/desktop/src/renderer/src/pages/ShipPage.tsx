@@ -1308,7 +1308,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 
       {/* 执行中列表：AI 副船任务 + 站内工业 AI（2026-09-10 船长：统一在一处呈现与停止） */}
       <div className="app-bay-title">
-        {tr("ui.ShipPage.090")} {assignN} · 站内工业 {prodN}
+        {tr("ui.ShipPage.090")} {assignN}{tr('ui.ShipPage.152', { n: prodN })}
       </div>
       {assignN === 0 && prodN === 0 ? (
         <div className="app-dim app-inv-empty">{tr("ui.ShipPage.091")}</div>

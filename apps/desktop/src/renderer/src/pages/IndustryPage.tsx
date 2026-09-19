@@ -665,8 +665,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
                 className="app-dim"
                 title={tr("ui.IndustryPage.061")}
               >
-                {tr("ui.IndustryPage.062")} {Math.round(rate * 100)}% · 运转 {runningCount} {tr("ui.IndustryPage.063")} {oreDefs.length} · 残骸{' '}
-                {wreckDefs.length}
+                {tr("ui.IndustryPage.062")} {Math.round(rate * 100)}{tr('ui.IndustryPage.102', { n: runningCount })} {tr("ui.IndustryPage.063")} {oreDefs.length}{tr('ui.IndustryPage.103', { n: wreckDefs.length })}
                 {boxDefs.length > 0 ? tr("ui.IndustryPage.099", { p1: boxDefs.length }) : ''}
                 {/* 筛选生效时补一个"当前 N 张"（与组装机同款：免得玩家对着收窄后的网格数不清） */}
                 {shownCount !== totalCount ? tr("ui.IndustryPage.100", { shownCount: shownCount }) : ''}

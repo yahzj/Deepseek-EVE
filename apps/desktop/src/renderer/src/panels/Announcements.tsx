@@ -81,7 +81,7 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
                     <span className="app-ann-tag">{a.tag}</span>
                     <span className="app-ann-item-title">{a.title}</span>
                     <span className="app-dim">{a.date}</span>
-                    {a.id === latest?.id ? <em className="app-chip">新</em> : null}
+                    {a.id === latest?.id ? <em className="app-chip">{tr('ui.Announcements.004')}</em> : null}
                   </div>
                   <ul className="app-ann-bullets">
                     {a.bullets.map((b, i) => (

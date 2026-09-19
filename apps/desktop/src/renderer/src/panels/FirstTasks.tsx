@@ -87,7 +87,7 @@ export function FirstTasks({
     <div className="app-station-list">
       <div className="app-task-family">
         {tr("ui.FirstTasks.026")} {doneN}/{tasks.length} {tr("ui.FirstTasks.013")}
-        <span className="app-dim"> · 完成一条收一封情报，其后开出长期次数目标；可领奖的排在最前</span>
+        <span className="app-dim">{tr('ui.FirstTasks.035')}</span>
       </div>
       {ordered.map(({ def, done, pendingIsk: pending, level, total, count, next, nextRewardIsk }) => {
         const jump = FIRST_JUMPS[def.id]
