@@ -278,7 +278,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                           <RowGlyph glyph={def.kind} /> {def.name}
                         </span>
                         <span className="app-inv-count">
-                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}{tr('ui.CargoPage.038')}{' '}
+                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}{tr('ui.CargoPage.054')}{' '}
                           {buy !== undefined ? `${isk(buy)} ${tr('ui.FirstTasks.003')}` : '—'}
                         </span>
                       </div>
@@ -422,7 +422,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickDef.name}</div>
                   <div className="app-dim">
-                    ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}{tr('ui.CargoPage.038')}{' '}
+                    ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}{tr('ui.CargoPage.054')}{' '}
                     {pickBuy !== undefined ? `${isk(pickBuy)} ${tr('ui.FirstTasks.003')}` : '—'}
                   </div>
                 </div>

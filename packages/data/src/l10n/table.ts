@@ -905,7 +905,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MarketPage.119": { zh: "信用点 上下），到货即按单成交", en: "credits), and it fills your order on arrival" },
   "ui.MarketPage.120": { zh: "（可卖", en: " (sellable" },
   "ui.MarketPage.121": { zh: "笔单", en: "orders" },
-  "ui.MarketPage.122": { zh: " · 持有 {n}", en: " · Held {n}" },
   "ui.MarketPage.123": { zh: "可卖 {a} 艘（舰船仓库） · 机库 {b} 艘", en: "Sellable {a} (Ship Storage) · hangar {b}" },
   "ui.MarketPage.124": { zh: "持有 {n} 件", en: "Held: {n}" },
   "ui.MarketPage.125": { zh: "· 中位价 {v} 信用点", en: "· Median price {v} credits" },
