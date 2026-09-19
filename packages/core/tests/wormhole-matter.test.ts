@@ -349,7 +349,7 @@ describe('虫洞 · 谜质装置（F3c B1 批：威胁与战斗静态增益）',
     // 敌卡按同一取值点取（族锁 + 该层档位池）；本用例只关心"谜质对威胁/命中的快照"
     const cardId = wormholeCardIdForRun({ family: run.family, seed: run.seed, depth: run.depth, kind: 'node', nodeIndex: 0 })
     const baseCard = ctx.anomalies.get(cardId)!
-    const mods = wormholeMatterBattleModsOf(state, baseCard, 'node')!
+    const mods = wormholeMatterBattleModsOf(state, ctx, baseCard, 'node')!
     expect(mods.threatMul).toBeCloseTo(0.9, 6)
     expect(mods.foeHitDown).toBeCloseTo(0.1, 6)
     expect(mods.blindReduce).toBeCloseTo(0.1, 6)

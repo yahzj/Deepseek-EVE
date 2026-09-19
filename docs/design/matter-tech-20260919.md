@@ -153,7 +153,7 @@ ISK `6·12·18M`；T3 = 谜质 `10·20·30` / ISK `10·20·30M`。
 
 ## 七、施工分批与进度（2026-09-19）
 
-**批次 1 · 引擎与数据口径（无界面）**
+**批次 1 · 引擎与数据口径（无界面）——✅ 已全部完成并合入 main（2026-09-19）**
 - [x] **谜质行价 70,000 → 700,000**：`items.ts` 的 `baseSellPriceIsk` + 注释、`marketCatalog.ts` 行价、
   `wormholeSalvage.ts` 注释、`wormhole-battle.test.ts` 的 `2×70_000` 断言 ⇒ typecheck 全绿 + core **1837/1837**。
 - [x] 谜质科技树数据表（`data/matterTech.ts`，23 节点）＋核心逻辑（`core/matterTech.ts`：等级/费用/前置/研究/
@@ -165,20 +165,28 @@ ISK `6·12·18M`；T3 = 谜质 `10·20·30` / ISK `10·20·30M`。
       `wormholeAdmission(ctx, shipIds, techTurnBonus)` · `wormholeStartRun(..., techTurnBonus)`（两处调用点
       由 `wormholeEnter` 传 `matterTechWhBuffs(state, ctx).turnBonus`）⇒ 用例读数已更新：
       **4×T1 93→74 · 4×T2 80→64 · 4×T3 53→42 · 满载 47→37 · 空载 100→80**
-- [ ] **未接线（下一轮做）**：① 效率 → 额外堆的**两处掷骰**（`ModuleDef.workEfficiency` 数据已写全：
-  民用 0 / MK1 20 / MK2 40 / MK3 60 / 异星 80，打捞器无民用与异星档 ⇒ 20/40/60）② 扫描虫洞间隔 −5%/级
-  ③ 工业三挂点 ④ **11 处 `wormholeMatterBuffs(...)` 调用点传科技袋**（不传 ⇒ 战斗/货仓类节点暂无效果）
-  ⑤ `content-check` 两条契约 ⑥ `tests/matter-tech.test.ts`
-- [ ] 效率 → 额外堆（`ModuleDef.workEfficiency` 档位表：民用 0 / MK1 20 / MK2 40 / MK3 60 / 异星 80（%）；
-      `wormholeSalvagersOf` / `wormholeMinersOf` 旁加 Σ 效率；`wormholeSalvage.ts` 采集与打捞两处掷骰：
-      `floor(效率)` 保底 + `frac(效率)` 再掷一次；**效率 0 不掷骰**）
-- [ ] 扫描虫洞间隔 −5%/级（`wormholeScan.ts` 的窗口乘算）——**见下方"未接线"**
-- [ ] 工业三挂点（`industry.ts`：货柜拆解周期 ×`(1−0.25×级)` / 虚空母矿→虚空晶产出 ×`(1+0.10×级)` /
-      残骸回收保底原材料 ×`(1+0.05×级)`）
-- [ ] 谜质科技树数据表（`data/matterTech.ts`，23 节点）＋核心逻辑（`core/matterTech.ts`：等级/费用/前置/研究/
-      增益派生）＋ `SimContext.matterTech`（data 侧注册）
-- [ ] `state.research.levels` ＋ `CURRENT_STATE_VERSION 28 → 29` ＋ `MIGRATIONS[28]`（老档补空树）＋ 存档登记
-- [ ] `content-check` 两条契约（谜质科技契约 / 效率档位契约）＋ `tests/matter-tech.test.ts`
+- [x] **效率 → 额外堆**（`ModuleDef.workEfficiency` 档位表：民用 0 / MK1 20 / MK2 40 / MK3 60 / 异星 80（%）；
+      打捞器无民用与异星档 ⇒ 20/40/60）：`wormholeWorkEfficiencyOf(state, ctx, 'salvager'|'miner')`
+      = Σ 各台档位 + 科技加成；`wormholeSalvage.ts` 采集与打捞两处各自 `floor(效率)` 保底堆 +
+      `frac(效率)` 再掷一次（**确定性哈希、不占 RNG 流**），封顶 = 剩余堆数；**效率 ≤ 0 不掷骰**（零行为变化）。
+- [x] 扫描虫洞间隔 −5%/级（`wormholeScanWindowMs(state, techCut)` 乘 `1 − min(0.9, techCut)`，满级 ×0.75；
+      与既有 12 小时 × 三技能 × 星际奇遇学**乘算**）。
+- [x] 工业三挂点（`industry.ts`：货柜拆解周期 ×`(1−0.25×级)`（加法、满级 −75%，90s→22.5s）/
+      虚空母矿→虚空晶产出 ×`(1+0.10×级)`（只作用 `min-voidcrystal` 一行）/ 残骸回收保底原材料 ×`(1+0.05×级)`）。
+- [x] **科技袋接入既有消费点（7 处传 `matterTechWhBuffs(state, ctx)`）**：`combat.ts` 2 处（3457 那处无 `ctx`
+      签名，保持单参）、`wormholeBattle.ts`、`wormholeSalvage.ts` 3 处（货仓格 / 采集 / 打捞）、
+      `wormholeEnter` 的回合预算；`wormholeSalvage.ts:2006` 的 `oreYieldMul` 与 `wormhole.ts:1004`
+      **有意保持单参**（两者只吃装置效果，科技无对应 `effect` ⇒ 无影响，已留注释防日后漏接）。
+- [x] `content-check` 两条契约（**谜质科技契约**：id 唯一 / 费用表长度=等级且逐级非降 / 首级费用随层上升 /
+      前置同支·更低层·级数可达 / 每个 `effect` 在 core 有读取点；**效率档位契约**：只有打捞器·采集器能带
+      `workEfficiency`、取值落在 0~0.8 档位、两个槽每个模块必须给、按表内顺序非降）
+      ＋ **反向探针验过"真会红"**（改坏一处档位与一处 `effect` ⇒ 两条契约各自点名、退出码 1，随后已回退）。
+- [x] **顺带补缺口**：`MATTER_TECH_NODES` / `buildMatterTechCatalog` 从 `packages/data` 桶导出——此前只能
+      直连 `./matterTech` 引到，体检 import 取到 `undefined` ⇒ **这正是上一轮"Node 模块加载失败"的根因**
+      （`tools/` 不在 typecheck 覆盖内，四道闸门拦不住）。
+- [x] `tests/matter-tech.test.ts`（9 用例全绿）；顺带**修出一个真 BUG**：倍速原按 `1 + Σ(级×per)` 会算成
+      1 级 ×3，已改为 `per^级` ⇒ **1 级 ×2 · 2 级 ×4**（`matterTechBattleSpeed`）。
+- [x] 闸门读数：`typecheck` 四包全绿 · core **1872/1872**（172 文件 · 0 skipped）· `content:check` 通过。
 
 **批次 2 · 界面与倍速**
 - [ ] 洞内战斗倍速时间轴（`combat.ts`：`战斗目标时刻 = battle.startedAtGameMs + (state.gameMs − startedAtGameMs) × 倍速`；

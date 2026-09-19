@@ -64,6 +64,8 @@ import {
   // 2026-09-19 残骸合并：卡级特色表退居"构建依据"，运行时与契约一律走 core 的 13 组表
   RECYCLE_FLAVOR,
   RECYCLE_LOOT_PILOT,
+  // 2026-09-19 谜质科技树：契约直接读数据表（id/效果白名单/逐级费用/前置三层）
+  MATTER_TECH_NODES,
 } from '@whale/data'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
@@ -3642,6 +3644,156 @@ for (const m of MODULES) {
         `装置 = 「支援呼叫装置」（守墓王座舰专属：开战 ${delay?.delaySec ?? '?'} 秒后按距离二选一增援；` +
         `延迟补偿 = 实际威胁 ×${delay?.threatMul ?? '?'}）· 两支成对且守恒（血/火力各 ≤3%）· 存档零迁移`,
     )
+  }
+
+  /* ── 谜质科技契约（2026-09-19 加）：23 节点数据表四层自洽 ──
+   * 背景：谜质科技树是**新加的一整棵数据表**（探索 6 / 战斗 14 / 工业 3），id / 层 / 每级值 / 费用 / 前置
+   * 全在数据侧手写，写错**不报错**——只是按钮莫名不可点、费用错位、或点了没反应。故四层判据：
+   * ① **id 唯一**；② **费用表长度 = 最大等级**且**逐级非降**（谜质与信用点各查一遍）；
+   * ③ **前置**必须存在 · **同支** · **在更低层** · 需求级数 ≤ 被依赖节点的最大等级（防"永远点不了"）；
+   * ④ **同支内层号越大，首级费用越高**（`MatterTechNodeDef.tier` 注释承诺的"费用须随层单调上升"）；
+   * ⑤ 每个 `effect` 关键字在引擎里**真的被读**（core 侧存在 `'<effect>'` 字面量）——防"登记了没接线"。
+   *    ⚠ 本判据只保证"core 里有读取点"，**不保证每个消费点都真的把袋子传下去了**：
+   *    2026-09-19 就是这么漏掉一处真死线的（开战快照只传装置、且被 `devices === 0` 挡死 ⇒
+   *    四个战斗节点只点科技时完全无效）。那一条靠用例钉：`tests/matter-tech.test.ts` 的
+   *    「科技单独生效：一台谜质装置都不带…」。 */
+  {
+    const bad: string[] = []
+    const byId = new Map(MATTER_TECH_NODES.map((n) => [n.id, n]))
+    if (byId.size !== MATTER_TECH_NODES.length) {
+      const seen = new Set<string>()
+      const dup = MATTER_TECH_NODES.filter((n) => (seen.has(n.id) ? true : (seen.add(n.id), false)))
+      bad.push(`id 重复：${dup.map((n) => n.id).join('、')}`)
+    }
+    // ⑤ 的取材：core 全部 .ts 源码拼一份（与下文「限时倍率契约」同款做法，互不依赖）
+    const coreText: string[] = []
+    const walkCore = (dir: string): void => {
+      if (!existsSync(dir)) return
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name)
+        if (e.isDirectory()) walkCore(p)
+        else if (p.endsWith('.ts')) coreText.push(readFileSync(p, 'utf8'))
+      }
+    }
+    walkCore(join(process.cwd(), 'packages', 'core', 'src'))
+    const coreAll = coreText.join('\n')
+    const nonDec = (label: string, arr: readonly number[], name: string): void => {
+      for (let i = 1; i < arr.length; i++) {
+        if (arr[i] < arr[i - 1]) {
+          bad.push(`${name} 的${label}第 ${i + 1} 级（${arr[i]}）低于第 ${i} 级（${arr[i - 1]}）——费用须逐级非降`)
+        }
+      }
+    }
+    for (const n of MATTER_TECH_NODES) {
+      if (n.maxLevel < 1) bad.push(`${n.name} 的最大等级 ${n.maxLevel} < 1`)
+      if (n.essence.length !== n.maxLevel) {
+        bad.push(`${n.name} 的谜质费用 ${n.essence.length} 项 ≠ 最大等级 ${n.maxLevel}`)
+      }
+      if (n.isk.length !== n.maxLevel) {
+        bad.push(`${n.name} 的信用点费用 ${n.isk.length} 项 ≠ 最大等级 ${n.maxLevel}`)
+      }
+      nonDec('谜质费用', n.essence, n.name)
+      nonDec('信用点费用', n.isk, n.name)
+      if (!coreAll.includes(`'${n.effect}'`)) {
+        bad.push(`${n.name} 的效果 \`${n.effect}\` 在引擎里没有任何读取点——登记了没接线（点了不会有任何变化）`)
+      }
+      for (const [depId, need] of Object.entries(n.prereq ?? {})) {
+        const dep = byId.get(depId)
+        if (!dep) {
+          bad.push(`${n.name} 的前置 \`${depId}\` 不存在`)
+          continue
+        }
+        if (dep.branch !== n.branch) {
+          bad.push(`${n.name} 的前置「${dep.name}」跨支（${dep.branch} ≠ ${n.branch}）`)
+        }
+        if (dep.tier >= n.tier) {
+          bad.push(`${n.name}（${n.tier} 层）的前置「${dep.name}」不在更低层（${dep.tier} 层）`)
+        }
+        if (need > dep.maxLevel) {
+          bad.push(`${n.name} 要求前置「${dep.name}」${need} 级，但它最高 ${dep.maxLevel} 级——永远点不了`)
+        }
+      }
+    }
+    // ④ 同支内逐层上升（比的是"首级费用"，层内多节点取最小/最大值夹逼）
+    for (const br of ['explore', 'battle', 'industry'] as const) {
+      const tiers = [...new Set(MATTER_TECH_NODES.filter((n) => n.branch === br).map((n) => n.tier))].sort(
+        (a, b) => a - b,
+      )
+      for (let i = 1; i < tiers.length; i++) {
+        const lo = MATTER_TECH_NODES.filter((n) => n.branch === br && n.tier === tiers[i - 1])
+        const hi = MATTER_TECH_NODES.filter((n) => n.branch === br && n.tier === tiers[i])
+        const pairs: Array<[string, (n: (typeof MATTER_TECH_NODES)[number]) => number]> = [
+          ['谜质', (n) => n.essence[0] ?? 0],
+          ['信用点', (n) => n.isk[0] ?? 0],
+        ]
+        for (const [label, pick] of pairs) {
+          const loMax = Math.max(...lo.map(pick))
+          const hiMin = Math.min(...hi.map(pick))
+          if (hiMin <= loMax) {
+            bad.push(
+              `${br} 支：${tiers[i]} 层的首级${label}（${hiMin}）未高于 ${tiers[i - 1]} 层的（${loMax}）——费用须随层上升`,
+            )
+          }
+        }
+      }
+    }
+    check(bad.length === 0, `谜质科技契约：${bad.join(' · ')}`)
+    if (bad.length === 0) {
+      const byBranch = (['explore', 'battle', 'industry'] as const)
+        .map((b) => `${b} ${MATTER_TECH_NODES.filter((n) => n.branch === b).length}`)
+        .join(' / ')
+      const total = MATTER_TECH_NODES.reduce((s, n) => s + n.maxLevel, 0)
+      console.log(
+        `· 谜质科技契约：${MATTER_TECH_NODES.length} 节点（${byBranch}）· 满树 ${total} 级 · ` +
+          `费用表长度 = 等级且逐级非降 · 首级费用随层上升 · 前置同支且更低层 · ` +
+          `${new Set(MATTER_TECH_NODES.map((n) => n.effect)).size} 个效果关键字条条已在引擎接线`,
+      )
+    }
+  }
+
+  /* ── 效率档位契约（2026-09-19 加）：`ModuleDef.workEfficiency` 的取值与归属 ──
+   * 背景：虫洞内「一台设备一次动作」的旧口径改成「**效率 → 额外堆**」（效率 = Σ 各台 + 科技加成），
+   * 效率档位因此成了**数值口子**：写 15 而不是 0.15、写到非打捞/采集槽、或新加模块忘给档位，
+   * 都不会报错——只会静默变成 0 效率或多出几倍的产出。故钉住三条：
+   * ① 只有 `salvager` / `miner` 槽允许带该字段（其它槽一律不许有）；② 取值必须是 0/0.2/…/0.8 档位；
+   * ③ **这两个槽的每个模块都必须给**（漏给 = 静默 0 效率）且**按表内顺序非降**（MK 梯子只升不降）。 */
+  {
+    const LADDER = [0, 0.2, 0.4, 0.6, 0.8]
+    const WORK_SLOTS = ['salvager', 'miner']
+    const bad: string[] = []
+    for (const m of MODULES) {
+      const eff = m.workEfficiency
+      const isWork = WORK_SLOTS.includes(m.slot)
+      if (eff === undefined) {
+        if (isWork) bad.push(`${m.name}（${m.slot}）没给 \`workEfficiency\`——静默按 0 效率算`)
+        continue
+      }
+      if (!isWork) {
+        bad.push(`${m.name} 的槽位是 ${m.slot}，不该带 \`workEfficiency\`（只属于打捞器/采集器）`)
+      }
+      if (!LADDER.some((v) => Math.abs(v - eff) < 1e-9)) {
+        bad.push(`${m.name} 的效率 ${eff} 不在档位 [${LADDER.join(' / ')}] 上`)
+      }
+    }
+    for (const slot of WORK_SLOTS) {
+      const row = MODULES.filter((m) => m.slot === slot && m.workEfficiency !== undefined)
+      for (let i = 1; i < row.length; i++) {
+        if ((row[i].workEfficiency ?? 0) < (row[i - 1].workEfficiency ?? 0)) {
+          bad.push(
+            `${slot} 槽位按表内顺序效率下降（${row[i - 1].name} ${row[i - 1].workEfficiency} → ${row[i].name} ${row[i].workEfficiency}）`,
+          )
+        }
+      }
+    }
+    check(bad.length === 0, `效率档位契约：${bad.join(' · ')}`)
+    if (bad.length === 0) {
+      const row = MODULES.filter((m) => m.workEfficiency !== undefined)
+      console.log(
+        `· 效率档位契约：${row.length} 台设备带效率档位（打捞器 ` +
+          `${MODULES.filter((m) => m.slot === 'salvager').length} / 采集器 ${MODULES.filter((m) => m.slot === 'miner').length}）· ` +
+          `档位 ∈ [${LADDER.join(' / ')}] · 按表内顺序非降 · 其它槽位一律无该字段`,
+      )
+    }
   }
 
   /* ── 族→战术契约（2026-09-11 加）──

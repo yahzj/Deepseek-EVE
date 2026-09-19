@@ -21,6 +21,7 @@ import {
   matterTechWreckYield,
 } from '../src/matterTech'
 import { WORMHOLE_ESSENCE_ITEM_ID } from '../src/wormholeSalvage'
+import { wormholeMatterBattleModsOf } from '../src/combat'
 import { wormholeAdmission, wormholeTurnBudget } from '../src/wormhole'
 import { wormholeMatterBuffs } from '../src/wormholeMatter'
 import { CURRENT_STATE_VERSION } from '../src/state'
@@ -126,6 +127,20 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(matterTechBattleSpeed(state, ctx)).toBeGreaterThanOrEqual(2)
     expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(true)
     expect(matterTechBattleSpeed(state, ctx)).toBeGreaterThanOrEqual(4)
+  })
+
+  it('科技单独生效：一台谜质装置都不带，开战快照照样吃科技的战斗节点（回归死线）', () => {
+    const state = world()
+    // 前置链：追踪校准 ≥1 ⇒ 信号噪化 ≥1 ⇒ 压制力场增幅 ≥1
+    expect(researchMatterTech(state, ctx, 'mt-battle-hit').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-battle-noise').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-battle-threat-node').ok).toBe(true)
+    expect(state.wormhole.run?.hold).toBeUndefined() // 本趟货仓里一件装置都没有
+    const card = [...ctx.anomalies.values()][0]!
+    const mods = wormholeMatterBattleModsOf(state, ctx, card, 'node')
+    expect(mods, '只点科技、不带装置时快照为 null ⇒ 战斗四节点全是死线').not.toBeNull()
+    expect(mods!.threatMul).toBeLessThan(1) // 压制力场增幅：节点威胁 −3%/级
+    expect(mods!.foeHitDown).toBeGreaterThan(0) // 信号噪化：敌命中 −1%/级
   })
 
   it('扫描间隔 / 工业三件 / 效率加成：满级读数逐项对上', () => {
