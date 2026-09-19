@@ -247,13 +247,14 @@ export function lairTaskRewardIsk(anomaly: AnomalyDef, tier: LairTier): number {
 export const LAIR_SUB_DMG_SHARE = 0.4
 
 /**
- * **逐族窝点副系份额覆写**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）：
- * E 族（泰坦巨构）全族构成 = **50% 动能 + 50% 爆炸** ⇒ 其**窝点派生卡照此办理**（不套全局 6:4）。
- * 未登记的族一律走 `LAIR_SUB_DMG_SHARE`（全局主 60 / 副 40）。
+ * **逐族窝点副系份额覆写**（2026-09-11 船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」）。
+ *
+ * ⚠ **2026-09-19 起本表为空**（船长「**所有E族的默认伤害比改为爆炸60%，动能40%**」）：E 族不再走
+ * 「窝点 = 5:5」那条族级特例 ⇒ **与其它族一样走 `LAIR_SUB_DMG_SHARE`（全局主 60 / 副 40）**，
+ * 派生窝点的构成与主题卡**逐值一致**（爆炸 60 : 动能 40）。表本身保留：将来若要给某个族单独定
+ * 窝点份额，仍从这里覆写（`?? 全局` 的读取链与体检分支都不用再动）。
  */
-export const LAIR_SUB_DMG_SHARE_BY_FAMILY: Partial<Record<FoeFamily, number>> = {
-  E: 0.5,
-}
+export const LAIR_SUB_DMG_SHARE_BY_FAMILY: Partial<Record<FoeFamily, number>> = {}
 
 /** 敌族签名副伤害类型（优先序：撞主系则顺延到下一个） */
 export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
@@ -261,15 +262,18 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
   B: ['kinetic', 'explosive', 'plasma'], // 武装拾荒者【已停用，留表兜底】
   C: ['explosive', 'plasma', 'kinetic'], // 异形：酸液与生物爆破
   D: ['plasma', 'kinetic', 'explosive'], // 守墓古舰：古舰的能量副炮
-  E: ['explosive', 'plasma', 'kinetic'], // 2026-09-11 船长：E 族副系＝爆炸（「50% 爆炸 50% 动能」） // 泰坦巨构：巨构能量核心
+  // E 族：**爆炸 60 / 动能 40**（2026-09-19 船长「所有E族的默认伤害比改为爆炸60%，动能40%」；
+  // 主系已由动能变**爆炸** ⇒ 副系取签名序里第一个 ≠ 主系者 = **动能**（旧序以爆炸打头，会让副系落到等离子）
+  E: ['kinetic', 'explosive', 'plasma'], // 泰坦巨构：巨构能量核心 + 实弹残炮
   F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【已废弃·留档：2026-09-11 并入 A 族；与 A 表同序，故当年"缺族回落到 A"零差异】
   G: ['explosive', 'kinetic', 'plasma'], // 鱿烬亡军：拼装火药与土制弹头
 }
 
 /**
  * 派生窝点卡（开战/结算/展示统一走这里，数据文件不改）：改威胁、加僚机与波次、换显示名，
- * 并把敌人火力改成**混伤**（主 60% / 副 40%，§LAIR_SUB_DMG_SHARE；**E 族例外 = 5:5**，
- * §`LAIR_SUB_DMG_SHARE_BY_FAMILY`——船长 2026-09-11「E 族单独调整，包括 E 族赏金任务的伤害比例」）。
+ * 并把敌人火力改成**混伤**（主 60% / 副 40%，§`LAIR_SUB_DMG_SHARE`；逐族覆写表
+ * §`LAIR_SUB_DMG_SHARE_BY_FAMILY` **2026-09-19 起为空**——E 族那条 5:5 特例随船长「所有E族的默认
+ * 伤害比改为爆炸60%，动能40%」作废，全族一律 6:4）。
  * 其余字段（战术性格、血型、命中、抗性缺口、回收池…）全部继承主题悬赏 —— 窝点与该星系特色敌人同源。
  * **奖金不在这里改**：卡上的 `rewardIsk` 仍是主题悬赏原值，窝点奖金一律经 `lairBaseRewardIsk`
  * （×赏金倍率 2/4/8）取，避免同一字段两种口径。
@@ -288,7 +292,7 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   const waves = LAIR_WAVES[tier]
   const main = foeMainDamageTypeOf(anomaly)
   const sub = subDamageTypeOf(anomaly, main)
-  // 副系份额：**逐族覆写**（E 族 = 5:5，见 `LAIR_SUB_DMG_SHARE_BY_FAMILY`）?? 全局 6:4
+  // 副系份额：**逐族覆写**（`LAIR_SUB_DMG_SHARE_BY_FAMILY`，2026-09-19 起空表）?? 全局 6:4
   const subShare =
     (anomaly.foeFamily ? LAIR_SUB_DMG_SHARE_BY_FAMILY[anomaly.foeFamily] : undefined) ??
     LAIR_SUB_DMG_SHARE
@@ -322,7 +326,8 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
       : {}),
     ...(waves && !isShipPath ? { waves } : {}),
     // 混伤：窝点用 **6:4**（比常驻悬赏的 8:2 更"混"——窝点本就是更硬的特色敌人）；
-    // **E 族例外**：族级份额 0.5 ⇒ **5:5**（见 `LAIR_SUB_DMG_SHARE_BY_FAMILY`）；
+    // **2026-09-19 起全族一律 6:4**（E 族那条 5:5 族级特例随船长「所有E族…60/40」作废，
+    // `LAIR_SUB_DMG_SHARE_BY_FAMILY` 现为空表）；
     // 显式两系权重即开启混伤（引擎按"正权重键 ≥ 2 系"判定，见 combat.foeDamageComposition）；
     // 主系与主题卡一致（派生态不许改敌人主伤害类型）
     dmgMix: { [main]: mainWeight, [sub]: subWeight },

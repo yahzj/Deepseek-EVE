@@ -51,18 +51,26 @@ describe('敌方混伤：构成（2026-09-10 船长）', () => {
     expect(subDamageTypeOf(card)).toBe('kinetic')
   })
 
-  it('E 族特例（2026-09-11 船长「E 族单独调整，包括 E 族赏金任务的伤害比例」）= 常驻卡与窝点卡一律 50% 动能 + 50% 爆炸', () => {
-    expect(LAIR_SUB_DMG_SHARE_BY_FAMILY.E).toBe(0.5) // 逐族覆写（其余族不写 ⇒ 走全局 6:4）
-    for (const id of ['ano-titan-wreck', 'ano-auro-raiders']) {
+  it('E 族（2026-09-19 船长「所有E族的默认伤害比改为爆炸60%，动能40%」）= 爆炸 60 + 动能 40，常驻卡与窝点卡同值', () => {
+    // 旧口径「E 族 = 5:5」随本条作废 ⇒ 逐族覆写表**空**（E 族与其它族一样走全局 6:4）
+    expect(LAIR_SUB_DMG_SHARE_BY_FAMILY.E).toBeUndefined()
+    for (const id of ['ano-titan-wreck', 'ano-auro-raiders', 'ano-core-section']) {
       const card = ctx.anomalies.get(id)!
-      expect(subDamageTypeOf(card)).toBe('explosive') // 主系动能（并列取动能）⇒ 副系 = 族签名首位'爆炸'
-      for (const target of [card, lairAnomalyOf(card, 3)]) {
+      expect(foeMainDamageType(card)).toBe('explosive') // 主系由动能变**爆炸**
+      expect(subDamageTypeOf(card)).toBe('kinetic') // 副系 = 族签名序里第一个 ≠ 主系者
+      for (const [label, target] of [
+        ['常驻卡', card],
+        ['窝点派生卡', lairAnomalyOf(card, 3)],
+      ] as const) {
         const comp = foeDamageComposition(target)
-        expect(comp).toHaveLength(2)
-        expect(new Set(comp.map((r) => r.type))).toEqual(new Set(['kinetic', 'explosive']))
-        for (const row of comp) expect(row.share).toBeCloseTo(0.5, 6)
+        expect(comp, label).toHaveLength(2)
+        expect(comp[0], label).toEqual({ type: 'explosive', share: 0.6 })
+        expect(comp[1], label).toEqual({ type: 'kinetic', share: 0.4 })
       }
     }
+    // 导弹残段：**依旧是 100% 纯爆炸**（船长同日复核）
+    const missile = ctx.anomalies.get('wh-titan-missile')!
+    expect(foeDamageComposition(missile)).toEqual([{ type: 'explosive', share: 1 }])
     // 其余族不受影响：D 族窝点仍是 6:4（同一函数、同一常量链）
     const dLair = lairAnomalyOf(ctx.anomalies.get('ano-vault-sentinel')!, 3)
     expect(foeDamageComposition(dLair).map((r) => r.share)).toEqual([0.6, 0.4])
