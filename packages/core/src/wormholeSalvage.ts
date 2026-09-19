@@ -293,6 +293,28 @@ export const WORMHOLE_BP_BOX_DEPTH: Readonly<Record<string, number>> = {
   [WORMHOLE_BP_BOX_DEEP]: 5,
 }
 /**
+ * **图纸货柜的掉落层门槛**（船长 2026-09-19：「**图纸货柜·中调到5层才出，图纸货柜·深调到7层才出**」）。
+ *
+ * 口径（同日三问三答定案）：
+ * - 浅档**无门槛**（层 1 起就能掉）· 中档**层 5 起** · 深档**层 7 起**；
+ * - **两条渠道都管**：遗迹首捞（`wormholeRollRelicBox`）与残骸堆（`wormholeRollSalvageBox`）；
+ * - 被挡掉的档**从池里剔除、剩余种类平分** ⇒ **总出货率不变**（70% / 0.75% 一字不动），
+ *   低层只是**拿不到高档**，不是掉不出来；
+ * - **拆解池不受影响**：柜子不记层、按 `WORMHOLE_BP_BOX_DEPTH` 自己的档过滤（浅 T3 · 中 T3+T4 · 深 T3+T4+T5）。
+ *
+ * ⚠ 本条**取代** 2026-09-15 的旧口径「不再按层档取图纸柜（三档同权 · 深档浅层也可能掉）」。
+ */
+export const WORMHOLE_BP_BOX_MIN_DEPTH: Readonly<Record<string, number>> = {
+  [WORMHOLE_BP_BOX_SHALLOW]: 1,
+  [WORMHOLE_BP_BOX_MID]: 5,
+  [WORMHOLE_BP_BOX_DEEP]: 7,
+}
+/** 第 `depth` 层**有资格掉出来**的图纸货柜档（浅档恒在；顺序 = 由浅到深） */
+export function wormholeBpBoxIdsForDepth(depth: number): string[] {
+  const d = Math.max(1, Math.floor(depth))
+  return WORMHOLE_BP_BOX_IDS.filter((id) => d >= (WORMHOLE_BP_BOX_MIN_DEPTH[id] ?? 1))
+}
+/**
  * **虫洞谜质**（船长 2026-09-15 定「虫洞战利品与经济扩充」①）：
  * 谜质装置在**撤离成功那一刻**按 **1 台 = 1 枚**折成这个物品入库（旧口径是"随趟消失、不进仓库"）。
  * 全损走不到折算点 ⇒ 谜质仍是"带出去才算钱"的风险品；装置给的增益照旧效（不受折算影响）。
@@ -335,19 +357,22 @@ export const WORMHOLE_LUXURY_ITEM_IDS = [
   'lux-10',
 ] as const
 /**
- * **遗迹掉落的货柜池**（船长 2026-09-15：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」）。
+ * **遗迹掉落的货柜池**（船长 2026-09-15：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」；
+ * **2026-09-19 追加层门槛**：中档 ≥层 5、深档 ≥层 7，见 `WORMHOLE_BP_BOX_MIN_DEPTH`）。
  *
- * 第 1 个 = **贵重品货柜**（占 `WORMHOLE_RELIC_VALUABLES_SHARE` = 50%）；其余 **9 种**
- * （安全货柜**五族** A/C/D/E/G · 图纸货柜三档 浅/中/深 · 军用备货柜）**平分剩下 50%**（各 ≈5.6%）。
- * ⚠ 与旧口径的两处差别：① **不再按本格敌卡的族**取安全柜（五族都进池 ⇒ 也可能掉出别的族的密封柜，
- * 内容物按"柜子自己的族"在拆解时揭）；② **不再按层档**取图纸柜（三档同权，深档浅层也可能掉）。
- * 池子从 `ctx.items` 派生（`box-relic-a…g`）⇒ 以后补一族自动进池；"池 = 10 种"由内容契约钉住。
+ * 第 1 个 = **贵重品货柜**（占 `WORMHOLE_RELIC_VALUABLES_SHARE` = 50%）；其余**本层可掉的**种类
+ * （安全货柜**五族** A/C/D/E/G · **本层有资格的图纸货柜档** · 军用备货柜）**平分剩下 50%**：
+ * 层 1~4 = 8 种（其余 7 种各 ≈7.14%）· 层 5~6 = 9 种（各 6.25%）· 层 7+ = 10 种（各 ≈5.6%）。
+ * ⚠ 与 2026-09-15 旧口径的差别：① **不再按本格敌卡的族**取安全柜（五族都进池 ⇒ 也可能掉出别的族的密封柜，
+ * 内容物按"柜子自己的族"在拆解时揭）；② **图纸柜按层档过滤**（该日「三档同权、深档浅层也可能掉」已被
+ * 2026-09-19 船长令取代）。
+ * 池子从 `ctx.items` 派生（`box-relic-a…g`）⇒ 以后补一族自动进池；"池 = 10 种（层 7+）"由内容契约钉住。
  */
-export function wormholeRelicBoxPoolOf(ctx: SimContext): string[] {
+export function wormholeRelicBoxPoolOf(ctx: SimContext, depth: number): string[] {
   const safe = [...ctx.items.keys()]
     .filter((id) => /^box-relic-[a-z]$/.test(id))
     .sort()
-  return [WORMHOLE_VALUABLES_BOX_ID, ...safe, ...WORMHOLE_BP_BOX_IDS, WORMHOLE_MILITARY_BOX_ID]
+  return [WORMHOLE_VALUABLES_BOX_ID, ...safe, ...wormholeBpBoxIdsForDepth(depth), WORMHOLE_MILITARY_BOX_ID]
 }
 /**
  * 贵重品货柜拆出的奢侈品件数区间。
@@ -493,17 +518,21 @@ export function wormholeRollCore(state: GameState, cell: WormholeGridCell): stri
  * 「然后在残骸打捞点，设定有极低概率出各种货柜」＋「残骸打捞是指虫洞内的。不分层随机出。」）。
  *
  * 口径：**每收走一堆残骸掷一次 0.75%**；**一次打捞最多出 1 个**（`WORMHOLE_SALVAGE_BOX_MAX`）；
- * **四类货柜类等权**（各 1/4）：遗迹安全货柜（按本趟族）· 图纸货柜（三档等权随机）· 贵重品货柜 · 军用备货柜；
- * **不分层**——深档图纸柜/贵重品柜在浅层也可能翻出来（船长「不分层随机出」）。
+ * **四类货柜类等权**（各 1/4）：遗迹安全货柜（按本趟族）· 图纸货柜（**本层有资格的档**，类内等权）· 贵重品货柜 · 军用备货柜；
+ * ⚠ **2026-09-19 船长令**：图纸货柜档位**按层过滤**（中 ≥层 5 · 深 ≥层 7，见 `WORMHOLE_BP_BOX_MIN_DEPTH`）
+ * ——该日之前「三档同权、深档浅层也能翻出来」的「不分层」只对**其余三类**仍然成立。
  * 只在 `graveyard`（残骸地点）生效；遗迹另有自己的专属掉落，不叠加。
  */
 export const WORMHOLE_SALVAGE_BOX_CHANCE = 0.0075
 /** 一次打捞最多出几个货柜（船长 2026-09-15 定：「每次最多 1 个」） */
 export const WORMHOLE_SALVAGE_BOX_MAX = 1
 
-/** 四类货柜池（类等权；类内等权随机）——`family` = 本趟虫洞族（安全货柜按族取，与遗迹掉落同一把尺） */
-export function wormholeSalvageBoxClassesOf(family: string): readonly (readonly string[])[] {
-  return [[wormholeRelicBoxIdOf(family)], WORMHOLE_BP_BOX_IDS, ['box-valuables'], ['box-military']]
+/**
+ * 四类货柜池（类等权；类内等权随机）——`family` = 本趟虫洞族（安全货柜按族取，与遗迹掉落同一把尺）；
+ * `depth` = 本层层数（**图纸货柜按层过滤**：层 1~4 该类只有浅档、层 5~6 浅/中各半、层 7+ 三档各 1/3）。
+ */
+export function wormholeSalvageBoxClassesOf(family: string, depth: number): readonly (readonly string[])[] {
+  return [[wormholeRelicBoxIdOf(family)], wormholeBpBoxIdsForDepth(depth), ['box-valuables'], ['box-military']]
 }
 
 /**
@@ -529,7 +558,7 @@ export function wormholeRollSalvageBox(
   if (rng() >= WORMHOLE_SALVAGE_BOX_CHANCE) return undefined
   // 类等权（四类各 1/4）→ 类内等权；`Math.min` 只是浮点兜底（理论到不了）
   const family = familyOfCard(ctx, wormholeCellCardIdOf(run, cell))
-  const classes = wormholeSalvageBoxClassesOf(family)
+  const classes = wormholeSalvageBoxClassesOf(family, run.depth)
   const cls = classes[Math.min(classes.length - 1, Math.floor(rng() * classes.length))]!
   return cls[Math.min(cls.length - 1, Math.floor(rng() * cls.length))]!
 }
@@ -1741,13 +1770,15 @@ export function wormholeRelicBoxIdOf(family: string): string {
  * **掷遗迹专属掉落 = 一个货柜**（F4 · 船长 2026-09-13：「装备和蓝图的产出加一个中间件：
  * 玩家从遗迹获得『遗迹安全货柜』…将安全货柜带回后在精炼炉拆解」）。
  *
- * 口径（**2026-09-15 船长改判后**）：
+ * 口径（**2026-09-15 船长改判后**；2026-09-19 追加图纸柜层门槛）：
  * - **概率固定 70%**（`WORMHOLE_RELIC_BOX_CHANCE`；层 2 起，**层 1 恒不出**）；
  * - **命中后按全货柜池抽**：**贵重品货柜 50%**（`WORMHOLE_RELIC_VALUABLES_SHARE`），
- *   其余 9 种（安全柜五族 · 图纸柜三档 · 军用柜）**平分 50%**（各 ≈5.6%）——见 `wormholeRelicBoxPoolOf`；
+ *   其余**本层可掉的**种类（安全柜五族 · **本层有资格的图纸柜档** · 军用柜）**平分 50%**
+ *   —— 层 1~4 各 ≈7.14% · 层 5~6 各 6.25% · 层 7+ 各 ≈5.6%，见 `wormholeRelicBoxPoolOf`；
  * - **不直接入库**：调用方把货柜**散落到该格**，玩家自己拾取（占货仓格数按形状现算；放不下整件拒收）；
  * - 内容物（族专属装备/图纸 · 一次性或永久舰船图纸 · 奢侈品整叠 · MK3 装备）留待精炼炉拆解。
- * ⚠ 旧口径两条已作废（概率随层上升 12%×1.3 封顶 50% · 安全柜 50 : 图纸柜 50），见常量处沿革注释。
+ * ⚠ 旧口径三条已作废（概率随层上升 12%×1.3 封顶 50% · 安全柜 50 : 图纸柜 50 · 图纸柜三档同权不分层），
+ * 见常量处沿革注释。
  */
 export function wormholeRollRelicBox(
   state: GameState,
@@ -1762,7 +1793,7 @@ export function wormholeRollRelicBox(
   if (rng() >= wormholeRelicChanceOf(run.depth)) return undefined
   // 命中后分种类。⚠ 这条流是**每格独立**的（种子含 q/r），多抽一个随机数不会影响别的格子"出不出货"。
   if (rng() < WORMHOLE_RELIC_VALUABLES_SHARE) return WORMHOLE_VALUABLES_BOX_ID
-  const others = wormholeRelicBoxPoolOf(ctx).filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
+  const others = wormholeRelicBoxPoolOf(ctx, run.depth).filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
   if (others.length === 0) return undefined
   return others[Math.min(others.length - 1, Math.floor(rng() * others.length))]!
 }

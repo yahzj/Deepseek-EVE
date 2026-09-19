@@ -143,6 +143,8 @@ securityZoneOf,
   // 2026-09-13 层间盘面 + 星云机制（船长三条裁定）：遗迹下限 / 空占比随层降 / 星云起效层与配额
   WORMHOLE_NEBULA_MIN_DEPTH,
   WORMHOLE_NEBULA_SHARE,
+  WORMHOLE_NEBULA_SHARE_CAP,
+  wormholeNebulaShareFor,
   wormholeEmptyShareFor,
   wormholeMakeGrid,
   wormholeRuinsFloorFor,
@@ -159,6 +161,8 @@ securityZoneOf,
   // 2026-09-14 图纸货柜（船长：遗迹打捞新增 · 占 2 格 · 一次性 + 5% 永久图纸）
   WORMHOLE_BP_BOX_IDS,
   WORMHOLE_BP_BOX_SHALLOW,
+  WORMHOLE_BP_BOX_MID,
+  WORMHOLE_BP_BOX_DEEP,
   WORMHOLE_BP_BOX_DEPTH,
   wormholePermanentPoolOf,
   WORMHOLE_BPBOX_PERMANENT_CHANCE,
@@ -214,6 +218,8 @@ securityZoneOf,
   WORMHOLE_RELIC_BOX_CHANCE,
   WORMHOLE_RELIC_VALUABLES_SHARE,
   wormholeRelicBoxPoolOf,
+  WORMHOLE_BP_BOX_MIN_DEPTH,
+  wormholeBpBoxIdsForDepth,
   wormholeRelicChanceOf,
   wormholeMk3PoolOf,
   wormholeRareBoxThemePoolOf,
@@ -4692,9 +4698,9 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       const bad = want.filter(([, got, exp]) => got !== exp).map(([name, got, exp]) => `${name} = ${got}（应为 ${exp}）`)
       check(bad.length === 0, `战利品扩充契约③：数值与船长口径不符——${bad.join(' · ')}`)
     }
-    // ④ 四类货柜池齐备
+    // ④ 四类货柜池齐备（图纸柜按层过滤：这里取层 9 = 三档齐备；池规模随层见契约⑦）
     {
-      const classes = wormholeSalvageBoxClassesOf(WORMHOLE_FAMILY_ORDER[0]!)
+      const classes = wormholeSalvageBoxClassesOf(WORMHOLE_FAMILY_ORDER[0]!, 9)
       const bad: string[] = []
       if (classes.length !== 4) bad.push(`类数 ${classes.length}（应为 4 类等权）`)
       for (const cls of classes) {
@@ -4836,10 +4842,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       )
     }
     /**
-     * ⑦ **遗迹掉落池**（船长 2026-09-15 改判：「**遗迹出货柜概率提高到70%，货柜类型改为所有货柜中随机，
-     *   贵重品货柜占比50%**」）：概率固定 70%（层 2 起、层 1 恒 0）· 贵重品柜占 50% ·
-     *   池 = **10 种**（贵重品柜 + 安全柜五族 + 图纸柜三档 + 军用柜），每种都要"有卡 + 有形状 + 有市场行"。
-     *   ⚠ 两条旧口径已作废（概率 12%×1.3 封顶 50% · 安全柜 50 : 图纸货柜 50）。
+     * ⑦ **遗迹掉落池**（船长 2026-09-15：「**遗迹出货柜概率提高到70%，货柜类型改为所有货柜中随机，
+     *   贵重品货柜占比50%**」；**2026-09-19：「图纸货柜·中调到5层才出，深调到7层才出」**）：
+     *   概率固定 70%（层 2 起、层 1 恒 0）· 贵重品柜占 50% · 池随层变——**被挡掉的档剔除、剩余平分**：
+     *   层 1~4 = **8 种**（其余 7）· 层 5~6 = **9 种**（其余 8）· 层 7+ = **10 种**（其余 9），
+     *   每种都要"有卡 + 有形状 + 有市场行"。
+     *   ⚠ 旧口径三条已作废（概率 12%×1.3 封顶 50% · 安全柜 50 : 图纸货柜 50 · 图纸柜三档同权不分层）。
      */
     {
       const bad: string[] = []
@@ -4849,8 +4857,24 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       }
       if (WORMHOLE_RELIC_BOX_CHANCE !== 0.7) bad.push(`遗迹出货柜概率 = ${WORMHOLE_RELIC_BOX_CHANCE}（应为 0.7）`)
       if (WORMHOLE_RELIC_VALUABLES_SHARE !== 0.5) bad.push(`贵重品柜占比 = ${WORMHOLE_RELIC_VALUABLES_SHARE}（应为 0.5）`)
-      const relicPool = wormholeRelicBoxPoolOf(buildSimContext())
-      if (relicPool.length !== 10) bad.push(`池 = ${relicPool.length} 种（应为 10：贵重品柜 + 其余 9）`)
+      // 层门槛（2026-09-19 船长令）：池规模随层变化 + 被挡掉的档不在池里
+      const ctxForPool = buildSimContext()
+      const sizes: ReadonlyArray<readonly [number, number]> = [
+        [1, 8],
+        [4, 8],
+        [5, 9],
+        [6, 9],
+        [7, 10],
+        [9, 10],
+      ]
+      for (const [depth, want] of sizes) {
+        const n = wormholeRelicBoxPoolOf(ctxForPool, depth).length
+        if (n !== want) bad.push(`层 ${depth} 池 = ${n} 种（应为 ${want}）`)
+      }
+      if (wormholeRelicBoxPoolOf(ctxForPool, 4).includes(WORMHOLE_BP_BOX_MID)) bad.push('层 4 的池里混进了中档图纸柜（层 5 起才出）')
+      if (wormholeRelicBoxPoolOf(ctxForPool, 6).includes(WORMHOLE_BP_BOX_DEEP)) bad.push('层 6 的池里混进了深档图纸柜（层 7 起才出）')
+      const relicPool = wormholeRelicBoxPoolOf(ctxForPool, 9)
+      if (relicPool.length !== 10) bad.push(`层 7+ 池 = ${relicPool.length} 种（应为 10：贵重品柜 + 其余 9）`)
       if (!relicPool.includes(WORMHOLE_VALUABLES_BOX_ID)) bad.push('池里没有贵重品货柜')
       const relicOthers = relicPool.filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
       for (const [label, want] of [
@@ -4860,15 +4884,19 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       ] as const) {
         for (const id of want) if (!relicOthers.includes(id)) bad.push(`${label}缺 ${id}`)
       }
-      for (const id of relicPool) {
+      for (const id of new Set([...relicPool, ...wormholeRelicBoxPoolOf(ctxForPool, 1)])) {
         if (!itemsById.has(id)) bad.push(`${id}（物品目录里没有）`)
         if (!wormholeIsShapedItem(id)) bad.push(`${id}（没有形状登记 ⇒ 掉出来放不进仓）`)
         if (!rowOf(id)) bad.push(`${id}（没有市场行）`)
       }
-      check(bad.length === 0, `战利品扩充契约⑦：遗迹掉落池必须"70% · 贵重品 50% · 10 种齐备"——${bad.slice(0, 8).join(' · ')}`)
+      check(
+        bad.length === 0,
+        `战利品扩充契约⑦：遗迹掉落池必须"70% · 贵重品 50% · 池随层 8/9/10 种"——${bad.slice(0, 8).join(' · ')}`,
+      )
       console.log(
-        `· 遗迹掉落契约：层 2 起固定 ${(WORMHOLE_RELIC_BOX_CHANCE * 100).toFixed(0)}%（层 1 恒 0）· 池 ${relicPool.length} 种 ⇒ ` +
-          `贵重品柜 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}% + 其余 9 种各 ${((WORMHOLE_RELIC_VALUABLES_SHARE / 9) * 100).toFixed(1)}%`,
+        `· 遗迹掉落契约：层 2 起固定 ${(WORMHOLE_RELIC_BOX_CHANCE * 100).toFixed(0)}%（层 1 恒 0）· ` +
+          `池随层 8/9/10 种（层 1~4 / 5~6 / 7+）⇒ 贵重品柜 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}% + 其余平分 ${(WORMHOLE_RELIC_VALUABLES_SHARE * 100).toFixed(0)}%` +
+          `（层 7+ 各 ${((WORMHOLE_RELIC_VALUABLES_SHARE / 9) * 100).toFixed(1)}%）· 图纸柜门槛：中 ≥${WORMHOLE_BP_BOX_MIN_DEPTH[WORMHOLE_BP_BOX_MID]} 层 · 深 ≥${WORMHOLE_BP_BOX_MIN_DEPTH[WORMHOLE_BP_BOX_DEEP]} 层`,
       )
     }
   }
@@ -6023,7 +6051,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
               )
             }
             const cands = g.cells.filter((c) => c.place !== 'empty' && c.key !== `${g.exit.q},${g.exit.r}`).length
-            const quota = Math.min(Math.ceil(cands * WORMHOLE_NEBULA_SHARE), Math.floor(cands * 0.5))
+            const quota = Math.min(Math.ceil(cands * wormholeNebulaShareFor(depth)), Math.floor(cands * 0.5))
             check(
               nebs.length === quota,
               `层间盘面契约：第 ${depth} 层（seed ${seed}）星云 ${nebs.length} ≠ 配额 ${quota}`,
@@ -6042,7 +6070,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
           `（**保底从层 ${WORMHOLE_RUINS_FLOOR_MIN_DEPTH} 起**；层 1 恒 0 张 · 层 2 无保底）` +
           `（实测均值 ${perDepthRuins.join(' / ')} · ${samples} seed/层）` +
           ` · 空占比（占可分配池）${depths.map((d) => `${(wormholeEmptyShareFor(d) * 100).toFixed(0)}%`).join('/')}` +
-          ` · 星云：层 ${WORMHOLE_NEBULA_MIN_DEPTH} 起、配额 ${(WORMHOLE_NEBULA_SHARE * 100).toFixed(0)}%、只长在有信号的地点上` +
+          ` · 星云：层 ${WORMHOLE_NEBULA_MIN_DEPTH} 起、配额随层 ${(WORMHOLE_NEBULA_SHARE * 100).toFixed(0)}%→${(WORMHOLE_NEBULA_SHARE_CAP * 100).toFixed(0)}%（每层 +5%）、只长在有信号的地点上` +
           `（实测合计 ${nebAcc} 格）`,
       )
     }

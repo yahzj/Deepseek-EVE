@@ -25,13 +25,17 @@ import {
   WORMHOLE_BP_BOX_MID,
   WORMHOLE_BP_BOX_SHALLOW,
   WORMHOLE_BPBOX_PERMANENT_CHANCE,
+  WORMHOLE_RELIC_BOX_CHANCE,
   wormholeBpBoxDepthOf,
   wormholeBpBoxIdOf,
+  wormholeBpBoxIdsForDepth,
   wormholeDilutionPoolOf,
   wormholePermanentPoolOf,
   wormholeRelicBoxIdOf,
   wormholeRelicBoxPoolOf,
+  wormholeRelicChanceOf,
   wormholeRollRelicBox,
+  wormholeSalvageBoxClassesOf,
   wormholeUnboxRoll,
 } from '../src/wormholeSalvage'
 
@@ -169,37 +173,60 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
     }
   })
 
-  it('掉落：命中后 **贵重品柜 50% + 其余 9 种各 ≈5.6%**（不再按层档取图纸柜）', () => {
-    /** 2026-09-15 船长改判：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」 */
+  it('掉落：**贵重品柜 50% + 本层可掉种类平分 50%**（图纸柜 2026-09-19 起按层过滤）', () => {
+    /** 2026-09-15 船长：「货柜类型改为所有货柜中随机，贵重品货柜占比50%」；
+     *  2026-09-19 船长：「图纸货柜·中调到5层才出，深调到7层才出」⇒ 池随层变（被挡掉的档剔除、剩余平分）。 */
     const counts = new Map<string, number>()
     let total = 0
-    const depths = [2, 3, 5]
+    const depths = [4, 5, 6, 7]
     for (let seed = 1; seed <= 80; seed++) {
       const state = enterRun(seed)
       const run = state.wormhole.run!
       for (const depth of depths) {
         run.depth = depth
+        const pool = wormholeRelicBoxPoolOf(ctx, depth)
         for (const cell of run.grid!.cells) {
           const id = wormholeRollRelicBox(state, ctx, cell)
           if (!id) continue
           total += 1
           counts.set(id, (counts.get(id) ?? 0) + 1)
-          // 池 = 10 种：贵重品柜 + 安全柜五族 + 图纸柜三档 + 军用柜
-          expect(wormholeRelicBoxPoolOf(ctx)).toContain(id)
+          expect(pool, `层 ${depth} 掉了池外的 ${id}`).toContain(id)
         }
       }
     }
     expect(total, '样本量应足够（否则比例断言无意义）').toBeGreaterThan(300)
     const share = (id: string): number => (counts.get(id) ?? 0) / total
-    // ① 贵重品货柜 ≈50%
+    // ① 贵重品货柜 ≈50%（跨层汇总）
     expect(share('box-valuables'), `贵重品柜占比 ${(share('box-valuables') * 100).toFixed(1)}%`).toBeGreaterThan(0.42)
     expect(share('box-valuables')).toBeLessThan(0.58)
-    // ② 其余 9 种各 ≈5.6%（0.5/9）——都在池里、都露过面
-    const others = wormholeRelicBoxPoolOf(ctx).filter((id) => id !== 'box-valuables')
-    expect(others, '池 = 10 种（贵重品柜 + 其余 9）').toHaveLength(9)
-    for (const id of others) expect(counts.get(id) ?? 0, `${id} 一次都没掉出来`).toBeGreaterThan(0)
-    // ③ **不再按层档**：深层也会掉浅档图纸柜（旧口径下 Deep 只会出 box-bp-deep）
-    expect(counts.get('box-bp-shallow') ?? 0, '浅档图纸柜在深层也该掉得出来（不分层）').toBeGreaterThan(0)
+    // ② 池规模随层：层 4 = 8 种（其余 7）· 层 5~6 = 9 种（其余 8）· 层 7+ = 10 种（其余 9）
+    expect(wormholeRelicBoxPoolOf(ctx, 4), '层 4 池 = 贵重品 + 7').toHaveLength(8)
+    expect(wormholeRelicBoxPoolOf(ctx, 5), '层 5 池 = 贵重品 + 8').toHaveLength(9)
+    expect(wormholeRelicBoxPoolOf(ctx, 6)).toHaveLength(9)
+    expect(wormholeRelicBoxPoolOf(ctx, 7), '层 7 池 = 贵重品 + 9').toHaveLength(10)
+    // ③ **按层过滤**：中层只在 ≥5 露面、深层只在 ≥7 露面；浅层恒在、低层不出现高档
+    expect(counts.get('box-bp-shallow') ?? 0, '浅档层 4 也该掉得出来').toBeGreaterThan(0)
+    for (const id of ['box-bp-mid', 'box-bp-deep']) expect(counts.get(id) ?? 0, `${id} 一次都没掉出来`).toBeGreaterThan(0)
+  })
+
+  it('图纸柜层门槛：中 ≥5 · 深 ≥7（两条渠道同一把尺）', () => {
+    /** 船长 2026-09-19：「图纸货柜·中调到5层才出，图纸货柜·深调到7层才出」；同裁定：两条渠道都管、剔除后平分 */
+    const at = (d: number): string[] => wormholeBpBoxIdsForDepth(d)
+    expect(at(1), '层 1 只有浅档').toEqual([WORMHOLE_BP_BOX_SHALLOW])
+    expect(at(4), '层 4 仍是只有浅档').toEqual([WORMHOLE_BP_BOX_SHALLOW])
+    expect(at(5), '层 5 起有中档').toEqual([WORMHOLE_BP_BOX_SHALLOW, WORMHOLE_BP_BOX_MID])
+    expect(at(6), '层 6 仍无深档').toEqual([WORMHOLE_BP_BOX_SHALLOW, WORMHOLE_BP_BOX_MID])
+    expect(at(7), '层 7 起三档齐').toEqual([...WORMHOLE_BP_BOX_IDS])
+    expect(at(9)).toEqual([...WORMHOLE_BP_BOX_IDS])
+    // 残骸堆渠道（四类等权：安全柜 / 图纸柜 / 贵重品 / 军用）——图纸柜那一类按层收窄
+    const bpClass = (d: number): readonly string[] => wormholeSalvageBoxClassesOf('A', d)[1]!
+    expect(bpClass(4), '层 4 的残骸堆只能翻出浅档图纸柜').toEqual([WORMHOLE_BP_BOX_SHALLOW])
+    expect(bpClass(5)).toEqual([WORMHOLE_BP_BOX_SHALLOW, WORMHOLE_BP_BOX_MID])
+    expect(bpClass(7)).toEqual([...WORMHOLE_BP_BOX_IDS])
+    // 总出货率不变：渠道的**类数**恒为 4、遗迹概率恒 70%
+    expect(wormholeSalvageBoxClassesOf('A', 4), '层 4 仍是四类').toHaveLength(4)
+    expect(wormholeRelicChanceOf(4)).toBe(0.7)
+    expect(wormholeRelicChanceOf(7)).toBe(0.7)
   })
 
   it('层 1 恒不出货柜（入口闸未变）', () => {

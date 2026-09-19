@@ -253,7 +253,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     unitM3: 1000,
     baseSellPriceIsk: 14_045_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
-      '从遗迹里拖出来的长条货柜：编号被人为磨去一半，比浅层那种压手得多。占货仓 2×1 格。',
+      '从遗迹里拖出来的长条货柜：编号被人为磨去一半，比浅层那种压手得多。占货仓 2×1 格，层 5 起可获取。',
   },
   {
     id: 'box-bp-deep',
@@ -262,7 +262,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     unitM3: 1000,
     baseSellPriceIsk: 25_840_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
-      '从遗迹里拖出来的长条货柜：铭牌上还留着旧主人的舰徽，封条完好无损。占货仓 2×1 格。',
+      '从遗迹里拖出来的长条货柜：铭牌上还留着旧主人的舰徽，封条完好无损。占货仓 2×1 格，层 7 起可获取。',
   },
 ]
 

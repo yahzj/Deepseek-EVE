@@ -336,10 +336,25 @@ export function wormholeRuinsFloorFor(depth: number): number {
  * - **不额外给奖励**：它是"回合税"，不是收益机制（要奖励会与"遗迹下限"叠加过强）。
  */
 export const WORMHOLE_NEBULA_MIN_DEPTH = 4
-/** 星云格配额 = ⌈可长星云的格数 × 该比例⌉（层 4 = 1 · 层 5 = 3） */
-export const WORMHOLE_NEBULA_SHARE = 0.15
-/** 星云最多占掉多少比例的"有信号格"（留出余量，免得整盘全被遮） */
+/**
+ * **星云占比**（船长 2026-09-19：「**提高4层后星云的占比**」；同日三问三答定档）：
+ * 层 4 基数 **20%**，此后每层 **+5%**，**封顶 40%** ⇒ 层 4/5/6/7/8+ = 20/25/30/35/40%。
+ * ⚠ 取代原「层 4 起固定 15%」。配额算法不变：`⌈可长星云的格数 × 本比例⌉`。
+ */
+export const WORMHOLE_NEBULA_SHARE = 0.2
+/** 每层递增量（层 4 起，每下一层 +5%） */
+export const WORMHOLE_NEBULA_SHARE_STEP = 0.05
+/** 封顶（层 8 及更深恒 40%） */
+export const WORMHOLE_NEBULA_SHARE_CAP = 0.4
+/** 星云最多占掉多少比例的"有信号格"（留出余量，免得整盘全被遮；40% 封顶后本护栏不再咬合，保留备用） */
 export const WORMHOLE_NEBULA_MAX_SHARE = 0.5
+
+/** 第 `depth` 层**该用多少星云占比**（层 <4 返回 0 = 没有星云；层 4 起 20% + 每层 5%、封顶 40%） */
+export function wormholeNebulaShareFor(depth: number): number {
+  const d = Math.max(1, Math.floor(depth))
+  if (d < WORMHOLE_NEBULA_MIN_DEPTH) return 0
+  return Math.min(WORMHOLE_NEBULA_SHARE_CAP, WORMHOLE_NEBULA_SHARE + WORMHOLE_NEBULA_SHARE_STEP * (d - WORMHOLE_NEBULA_MIN_DEPTH))
+}
 
 /** **遗迹占残骸信号的比重**（船长：「遗迹概率降低到 30%」⇒ 舰船墓场 70%） */
 export const WORMHOLE_RUINS_SHARE = 0.3
@@ -884,7 +899,8 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
    * **点星云**（船长 2026-09-13；层 4 起）。
    *
    * 只点**有信号的地点**（船长补正「**空地没有星云**」）+ **排除下一层入口**（它是导航标记，
-   * 遮住它只会让玩家白扫）。配额 = `⌈有信号格数 × 15%⌉`，再夹在"最多占一半"以内。
+   * 遮住它只会让玩家白扫）。配额 = `⌈有信号格数 × wormholeNebulaShareFor(层)⌉`
+   * （2026-09-19 船长令后随层递增：层 4/5/6/7/8+ = 20/25/30/35/40%），再夹在"最多占一半"以内。
    * 打乱用**独立随机流**（`seed × 6619 + depth × 81173`）⇒ 不动主流的消耗序列，
    * 层 1~3 的盘面与改造前**逐格一致**（回归可验）。
    */
@@ -892,7 +908,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
     const exitKey = hexKey(exit.q, exit.r)
     const candidates = cells.filter((c) => c.place !== 'empty' && c.key !== exitKey)
     const quotaN = Math.min(
-      Math.ceil(candidates.length * WORMHOLE_NEBULA_SHARE),
+      Math.ceil(candidates.length * wormholeNebulaShareFor(depth)),
       Math.floor(candidates.length * WORMHOLE_NEBULA_MAX_SHARE),
     )
     if (quotaN > 0) {

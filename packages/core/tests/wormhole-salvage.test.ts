@@ -33,6 +33,9 @@ import {
   WORMHOLE_SALVAGE_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_MAX,
   WORMHOLE_BP_BOX_IDS,
+  WORMHOLE_BP_BOX_SHALLOW,
+  WORMHOLE_BP_BOX_MID,
+  WORMHOLE_BP_BOX_DEEP,
   wormholeRollSalvageBox,
   wormholeCellCardIdOf,
   wormholeLootTierOf,
@@ -790,10 +793,11 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       if ((r2.relics ?? []).length > 0) {
         got = r2.relics![0]
         /**
-         * **2026-09-15 改判后：掉的是"全货柜池"里的任意一种**（贵重品柜 50% + 其余 9 种各 ≈5.6%），
-         * 不再按本格敌卡的族、也不按层档取 ⇒ 这里只钉"一定在池里"。
+         * **2026-09-15 改判后：掉的是"全货柜池"里的任意一种**（贵重品柜 50% + 其余平分 50%），
+         * 不再按本格敌卡的族取安全柜；**2026-09-19 起图纸柜按层过滤**（中 ≥层 5 · 深 ≥层 7）
+         * ⇒ 这里钉"一定在**本层**的池里"。
          */
-        expect(wormholeRelicBoxPoolOf(ctx), `${got} 不在遗迹货柜池里`).toContain(got)
+        expect(wormholeRelicBoxPoolOf(ctx, run.depth), `${got} 不在遗迹货柜池里（层 ${run.depth}）`).toContain(got)
         // 且它**真的落到了玩家手里**——收货阶梯（2026-09-13 船长「大件货先进临时空间」）：
         // ① 货仓腾得出该形状 ⇒ 进货仓格；② 腾不出 ⇒ 进临时空间；③ 两边都满才散落在该格
         const inHold = (run.hold?.placements ?? []).some((pp) => pp.kind === 'box' && pp.itemId === got)
@@ -834,7 +838,7 @@ describe('虫洞 · 遗迹收尾战与专属掉落（概率口径的边界）', 
       expect(r.ok).toBe(true)
       expect(r.finished, '首捞不该把 2~3 堆一次捞完').toBe(false)
       expect((r.relics ?? []).length, '首捞就该出遗迹货柜').toBe(1)
-      expect(wormholeRelicBoxPoolOf(ctx)).toContain(r.relics![0]!)
+      expect(wormholeRelicBoxPoolOf(ctx, run.depth)).toContain(r.relics![0]!)
       expect(grid.ruinsRolled, '首捞即记账').toContain(cell.key)
       expect(state.logs.some((l) => l.text.includes('遗迹深处发现'))).toBe(true)
     })
@@ -1030,11 +1034,15 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     expect(WORMHOLE_SALVAGE_BOX_CHANCE).toBe(0.0075)
   })
 
-  it('**四类等权 · 不分层**：层 1 也能翻出深档图纸柜/贵重品柜/军用备货柜（池外零泄漏）', () => {
+  it('**四类等权 · 其余三类不分层；图纸柜按层过滤**（层 1 只有浅档，池外零泄漏）', () => {
+    /**
+     * 船长 2026-09-15「不分层随机出」+ **2026-09-19「图纸货柜·中调到5层才出，深调到7层才出」**：
+     * ⇒ 层 1 仍能翻出**贵重品柜 / 军用备货柜**（这两类不分层），但图纸柜只可能是**浅档**。
+     */
     const families = ['a', 'c', 'd', 'e', 'g']
     const allowed = new Set<string>([
       ...families.map((f) => wormholeRelicBoxIdOf(f.toUpperCase())),
-      ...WORMHOLE_BP_BOX_IDS,
+      WORMHOLE_BP_BOX_SHALLOW, // 层 1 只有浅档图纸柜
       'box-valuables',
       'box-military',
     ])
@@ -1042,12 +1050,12 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     const perClass = { relic: 0, bp: 0, valuables: 0, military: 0 }
     for (let seed = 1; seed <= 40; seed++) {
       const state = enterRun(1, seed)
-      expect(state.wormhole.run!.depth, '本用例全程在层 1（不分层 = 层 1 也出深档）').toBe(1)
+      expect(state.wormhole.run!.depth, '本用例全程在层 1').toBe(1)
       for (let q = 0; q < 40; q++) {
         for (let left = 0; left < 12; left++) {
           const id = wormholeRollSalvageBox(state, ctx, probe(q), left)
           if (!id) continue
-          expect(allowed.has(id), `${id} 不在四类货柜池里`).toBe(true)
+          expect(allowed.has(id), `${id} 不在层 1 的四类货柜池里`).toBe(true)
           seen.add(id)
           if (id.startsWith('box-relic-')) perClass.relic += 1
           else if (id.startsWith('box-bp-')) perClass.bp += 1
@@ -1058,10 +1066,13 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     }
     // 四类都露过面（1.9 万个键 ⇒ 期望 ~144 次命中、每类 ~36 次，缺席概率 ~1e-16）
     for (const [name, n] of Object.entries(perClass)) expect(n, `这一类一次都没出：${name}`).toBeGreaterThan(0)
-    // **不分层**：层 1 出过深档图纸柜 / 贵重品柜 / 军用备货柜（这几种在旧口径里只属于深层/遗迹）
+    // 其余三类**不分层**：层 1 出过贵重品柜 / 军用备货柜
     expect(seen.has('box-valuables')).toBe(true)
     expect(seen.has('box-military')).toBe(true)
-    expect(seen.has('box-bp-deep')).toBe(true)
+    // 图纸柜**按层过滤**：层 1 出浅档、绝不出中/深档（2026-09-19 船长令）
+    expect(seen.has(WORMHOLE_BP_BOX_SHALLOW), '层 1 应能翻出浅档图纸柜').toBe(true)
+    expect(seen.has(WORMHOLE_BP_BOX_MID), '层 1 不该出中档图纸柜').toBe(false)
+    expect(seen.has(WORMHOLE_BP_BOX_DEEP), '层 1 不该出深档图纸柜').toBe(false)
     // 类权重在 ±40% 内（类等权 25%；144 次命中的抽样噪声约 ±8%，带宽留足）
     const total = perClass.relic + perClass.bp + perClass.valuables + perClass.military
     for (const [name, n] of Object.entries(perClass)) {

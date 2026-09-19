@@ -23,6 +23,9 @@ import {
   WORMHOLE_EMPTY_SHARE_FLOOR,
   WORMHOLE_NEBULA_MIN_DEPTH,
   WORMHOLE_NEBULA_SHARE,
+  WORMHOLE_NEBULA_SHARE_STEP,
+  WORMHOLE_NEBULA_SHARE_CAP,
+  wormholeNebulaShareFor,
   WORMHOLE_RUINS_SHARE,
   gridCellAt,
   isNebulaFogged,
@@ -209,9 +212,9 @@ describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空�
           // 下一层入口不长星云（它是导航标记）
           expect(c.key).not.toBe(`${g.exit.q},${g.exit.r}`)
         }
-        // 配额与"可长星云的格数"同源：⌈有信号格数（不含入口）× 15%⌉，且最多占一半
+        // 配额与"可长星云的格数"同源：⌈有信号格数（不含入口）× 本层占比⌉，且最多占一半
         const cands = g.cells.filter((c) => c.place !== 'empty' && c.key !== `${g.exit.q},${g.exit.r}`).length
-        const quota = Math.min(Math.ceil(cands * WORMHOLE_NEBULA_SHARE), Math.floor(cands * 0.5))
+        const quota = Math.min(Math.ceil(cands * wormholeNebulaShareFor(depth)), Math.floor(cands * 0.5))
         expect(nebs.length, `层 ${depth} · seed ${seed} 星云数 ≠ 配额`).toBe(quota)
       }
       // 层 4+ 必须真的常见（不能是 0 配额的摆设）
