@@ -2055,7 +2055,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SaveManager.021": { zh: "把这份备份保存为你指定的文件", en: "Save this backup to a file you choose" },
   "ui.SaveManager.022": { zh: "导出", en: "Export" },
   "ui.SaveManager.023": { zh: "再点一次确认删除（只删这份备份，不影响当前档）", en: "Click again to confirm deletion (only this backup is deleted; the current save is untouched)" },
-  "ui.SaveManager.024": { zh: "删除这份备份（两讨伐确认）", en: "Delete this backup (confirmed twice)" },
+  "ui.SaveManager.024": { zh: "删除这份备份（两次确认）", en: "Delete this backup (confirmed twice)" },
   "ui.SaveManager.025": { zh: "再点确认删除", en: "Click again to confirm" },
   "ui.SaveManager.026": { zh: "恢复", en: "Restore" },
   "ui.SellQtyModal.001": { zh: "出售数量 ·", en: "Sell quantity ·" },
