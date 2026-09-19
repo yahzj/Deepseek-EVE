@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairLedgersOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairLedgersOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -189,6 +189,14 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
   const sceneName = view.combat ? view.anomalyName : (whView?.name ?? '')
   /** 本场是不是洞内战斗（洞内**不能中途撤退**——船长第 8 条） */
   const inWormhole = !!whView && !!combatView
+  /**
+   * **洞内倍速控件**（2026-09-19 谜质科技「时间压缩矩阵」·解挂 `battle-speed-20260919.md`）：
+   * 位置 = 战斗窗口**顶部中间、距离条上方**（船长口径）；**只显示已解锁档**，未解锁（只有 1×）⇒ 整个控件不出现。
+   * 档位选择存在渲染层会话内存里（`engine.setWormholeSpeed`），引擎每拍再夹一次 ⇒ 界面传错也拿不到未解锁速度。
+   */
+  const speedOptions = inWormhole ? engine.wormholeSpeedOptions() : []
+  const speedPick = engine.wormholeSpeedPickValue()
+  const speedActive = speedPick > 1 ? speedPick : (speedOptions[speedOptions.length - 1] ?? 1)
   const arcs = battleArcsFor(
     state,
     engine.ctx,
@@ -1351,7 +1359,10 @@ const meSpeedRef = useRef(200)
    */
   const ARRIVAL_FX_MS = 1300
   /** 单舰飞入时长（ms）与逐舰错峰（ms）——**与引擎同源**（`core/combat.ts` 的两个常量：
-   *  入场窗口就是拿它们算的 ⇒「动画没结束不开火」与"看得见的动画"永远同一个数，不许各写一份）。 */
+   *  入场窗口就是拿它们算的 ⇒「动画没结束不开火」与"看得见的动画"永远同一个数，不许各写一份）。
+   *  ⚠ **倍速批（2026-09-19）**：引擎侧窗口按倍速等比放大（`battleShowWindowMs`：倍速只压战斗进程、
+   *  不压演出）⇒ 界面这几处比较也必须过同一个函数，否则"动画演完那一刻窗口正好结束"的同步就断了。
+   *  下面读的是**战斗时钟差值**，乘回倍速后对应的**真实时长仍是原值**（动画本身照原速播，未动）。 */
   const ARRIVAL_FLY_MS = BATTLE_ARRIVAL_FLY_MS
   const ARRIVAL_STAGGER_MS = BATTLE_ARRIVAL_STAGGER_MS
   /** 起点余量（px）：让起点**完全落在屏幕外**（泳道 `overflow: hidden`，超出即不可见） */
@@ -1359,7 +1370,7 @@ const meSpeedRef = useRef(200)
   /** **开战那一刻谁在入场**（船长 2026-09-13：洞内 = 敌方跃迁入场、洞外 = 我方）——只用于**首波**；
    *  此后每一次波次转场/增援由引擎的 `enteredAtMs` 逐舰驱动（见下 `arrivingTagOf`，船长 2026-09-14「③补」）。 */
   const arrivalSide: 'me' | 'foe' | null =
-    battle.lastTickGameMs - battle.startedAtGameMs <= ARRIVAL_FX_MS ? (inWormhole ? 'foe' : 'me') : null
+    battle.lastTickGameMs - battle.startedAtGameMs <= battleShowWindowMs(battle, ARRIVAL_FX_MS) ? (inWormhole ? 'foe' : 'me') : null
   /**
    * **逐舰入场判定**（船长 2026-09-14「③补。并且参考①动画没结束不开火」）：
    * 引擎给**每一次入场**（洞内首波 / 每一次波次转场 / 单波内增援）的每条舰写了 `enteredAtMs`
@@ -1370,7 +1381,7 @@ const meSpeedRef = useRef(200)
     const at = battle.units[tag]?.enteredAtMs
     if (at === undefined) return false
     const since = battle.lastTickGameMs - at
-    return since >= 0 && since < ARRIVAL_FLY_MS
+    return since >= 0 && since < battleShowWindowMs(battle, ARRIVAL_FLY_MS)
   }
   const foeArriving = (tag: string): boolean => arrivingTagOf(tag) || arrivalSide === 'foe'
   /** 我方飞入起点位移（负 = 自左缘外飞入；0 = 战斗位置） */
@@ -1417,7 +1428,7 @@ const meSpeedRef = useRef(200)
       text: waveNext > 0 ? `第 ${waveNext}/${foeAnomaly?.waves?.length} 波增援正在接近…` : '敌方增援正在接近…',
     })
   for (const [i, n] of (battle.notices ?? []).entries()) {
-    if (battle.lastTickGameMs - n.atMs > NOTICE_LIFE_MS) continue
+    if (battle.lastTickGameMs - n.atMs > battleShowWindowMs(battle, NOTICE_LIFE_MS)) continue
     noticeItems.push({ key: `notice-${i}-${n.atMs}`, text: n.text })
   }
 
@@ -1990,6 +2001,27 @@ const meSpeedRef = useRef(200)
           若船长要留，恢复成"折叠一行"的紧凑读数即可（原实现见 git 历史：`.app-bts-fleet` 那一块）。 */}
 
       <div className="app-bts-stage">
+        {/* **洞内倍速**（船长 2026-09-19：位置 = 顶部中间、距离条上方；只显示已解锁档）——
+            倍速只压战斗进程，演出动画（入场/转场/击杀慢镜）照原速播，见 `battleShowWindowMs`。 */}
+        {speedOptions.length > 1 ? (
+          <div className="app-bts-speedx">
+            <span className="app-dim">洞内倍速</span>
+            {speedOptions.map((x) => (
+              <button
+                key={x}
+                className={`app-btn is-small${x === speedActive ? ' is-active' : ''}`}
+                title={
+                  x === 1
+                    ? '按原速进行战斗（动画与战斗进程同步）'
+                    : `战斗进程 ×${x}：同样的现实时间里打得更快；入场/转场/击杀演出仍按原速播放`
+                }
+                onClick={() => engine.setWormholeSpeed(x)}
+              >
+                ×{x}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}
         <div className="app-bts-ruler">
           {/* **双方速度**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」；

@@ -223,6 +223,14 @@ import {
   wormholeStartBattle,
   wormholeDebugReset,
   acknowledgeScanView,
+  // 谜质科技（2026-09-19）：研究入口 / 洞内倍速档位
+  researchMatterTech,
+  matterTechCanResearch,
+  matterTechLevels,
+  matterTechEssenceHeld,
+  matterTechNodes,
+  matterTechCostAt,
+  matterTechBattleSpeedTiers,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -505,6 +513,13 @@ export class GameEngine {
   private pumpMs = 100
   /** 优化：本场远征是否由"重复清剿"自动发起（期间战斗界面默认最小化，不自动弹全屏战场） */
   private autoSortie = false
+  /**
+   * **洞内战斗倍速的选择**（2026-09-19 谜质科技「时间压缩矩阵」）：
+   * `0` = 跟随"已解锁的最高档"（买了科技立刻见效）；否则 = 玩家在战斗窗口里选的档位。
+   * **只在本会话内存里**（不落档）：心跳每拍把它交给 `advanceGame`，引擎再夹到"洞内 + 已解锁档位"内
+   * （离线结算根本不传 ⇒ 一律 1×，船长口径）。切档连续、不跳变，见 `combat.battleClockNowMs`。
+   */
+  private wormholeSpeedPick = 0
 
   /* ═══ 悬赏胜率蒙特卡洛缓存（2026-09-09 船长确认 N=21：战力指纹变化 → 分帧全板预热） ═══ */
   private winCache = new Map<string, BountyWinMC>() // anomalyId → 当前指纹下的预估结果
@@ -652,9 +667,40 @@ export class GameEngine {
     const rec = perfHub.recording
     const t0 = rec ? performance.now() : 0
     const bucket = this.currentBucket()
-    advanceGame(this.state, ms, this.ctx, { nowWallMs: Date.now() })
+    advanceGame(this.state, ms, this.ctx, {
+      nowWallMs: Date.now(),
+      // 洞内倍速：**只有前台心跳传**（离线结算走 simulateOffline，不经这里 ⇒ 恒 1×）
+      battleSpeedX: this.requestedWormholeSpeed(),
+    })
     this.drainSystemNotice()
     if (rec) perfHub.recordAdvance(bucket, performance.now() - t0)
+  }
+
+  /* ═══ 洞内战斗倍速（2026-09-19 谜质科技「时间压缩矩阵」）═══
+   * 引擎侧只认"想要几倍"，实际生效值由 `combat.advanceBattleFor` 夹到"洞内 + 已解锁档位"内。 */
+
+  /** **已解锁的倍速档位**（含 1×；未解锁 = `[1]`）——战斗窗口的控件按它渲染 */
+  wormholeSpeedOptions(): number[] {
+    return matterTechBattleSpeedTiers(this.state, this.ctx)
+  }
+
+  /** 本会话玩家选的档位（`0` = 跟随已解锁最高档） */
+  wormholeSpeedPickValue(): number {
+    return this.wormholeSpeedPick
+  }
+
+  /** 设置本会话的倍速档位（`0` = 跟随最高档；只会被夹到已解锁档位内） */
+  setWormholeSpeed(x: number): void {
+    const opts = this.wormholeSpeedOptions()
+    this.wormholeSpeedPick = opts.includes(x) ? x : 0
+    this.notify()
+  }
+
+  /** **本拍要交给引擎的倍速**：玩家选了就用选的，否则用已解锁的最高档（未解锁 = 1） */
+  private requestedWormholeSpeed(): number {
+    const opts = this.wormholeSpeedOptions()
+    const max = opts[opts.length - 1] ?? 1
+    return this.wormholeSpeedPick > 1 ? this.wormholeSpeedPick : max
   }
 
   /** 一次性系统提示（2026-09-08 交付循环终止弹窗）：引擎写入 state.deliveryNotice →

@@ -117,16 +117,16 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(72)
   })
 
-  it('洞内倍速：未点 = 1×（未解锁）；1 级 = 2×、2 级 = 4×', () => {
+  it('洞内倍速：未点 = 1×（未解锁）；1 级 = 2×、2 级 = 4×（乘法口径，不是 Σ）', () => {
     const state = world()
     expect(matterTechBattleSpeed(state, ctx)).toBe(1)
     expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true) // 前置链:锚定器 ≥2
     expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
     expect(researchMatterTech(state, ctx, 'mt-explore-scan').ok).toBe(true)
     expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(true)
-    expect(matterTechBattleSpeed(state, ctx)).toBeGreaterThanOrEqual(2)
+    expect(matterTechBattleSpeed(state, ctx)).toBe(2)
     expect(researchMatterTech(state, ctx, 'mt-explore-speed').ok).toBe(true)
-    expect(matterTechBattleSpeed(state, ctx)).toBeGreaterThanOrEqual(4)
+    expect(matterTechBattleSpeed(state, ctx)).toBe(4)
   })
 
   it('科技单独生效：一台谜质装置都不带，开战快照照样吃科技的战斗节点（回归死线）', () => {

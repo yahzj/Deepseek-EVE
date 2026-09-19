@@ -2128,7 +2128,8 @@ export type MatterTechEffect =
   | 'whHoldCells'
   /** 扫描虫洞间隔 −v/级（v = 0.05） */
   | 'whScanCut'
-  /** **洞内战斗倍速**：v = 每级把倍率 +2（1 级 = ×2、2 级 = ×4；见 `combat` 的倍速时间轴） */
+  /** **洞内战斗倍速**：v = 每级**倍率底数**（2 ⇒ 1 级 ×2、2 级 ×4）——⚠ 全表**唯一按乘法**算的效果，
+   *  取 `v^级`，**不走** `Σ 等级 × v`（见 `matterTechBattleSpeed` 与 `combat` 的倍速时间轴） */
   | 'whBattleSpeed'
   /* ── 洞内战斗增益（与谜质装置同一个增益袋 `WormholeMatterBuffs`） ── */
   | 'whResistShield'
