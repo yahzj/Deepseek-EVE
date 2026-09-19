@@ -456,6 +456,16 @@
 
 ## 十二、P0b 剩余（同规则，下一批出稿）
 
-装备（**142 条**，按「轻型炮台 MK1·动能型 → `Light Turret MK1 · Kinetic`」这类模式批量出稿）·
-舰船蓝图（**135 条**，多数由舰船/装备名派生，随装备表一起出）· 少量零散表（无人机机型 / 舰体档 / 空间站站点 / 残骸风味 / 旅行事件）。
+装备（**142 条**，按「轻型炮台 MK1·动能型 → `Light Turret MK1 · Kinetic`」这类模式批量出稿）· 少量零散表（无人机机型 / 舰体档 / 空间站站点 / 残骸风味 / 旅行事件）。
+
+**舰船蓝图（135 条）不另立表，按派生规则出**（中文侧本来就是派生的）：
+
+| 中文形态 | 英文规则 | 例 |
+|---|---|---|
+| `<装备名> 蓝图`（`bp-*`） | `<装备英文名> Blueprint` | 强化采集器 MK1 蓝图 → `Reinforced Mining Laser MK1 Blueprint` |
+| `<舰名>级舰船蓝图`（`sbp-*`） | 取舰船英文名的**舰级段** + `Blueprint` | 开拓级舰船蓝图 → `Pioneer-class Blueprint` · 皇带鱼级舰船蓝图 → `Oarfish-class Blueprint` |
+
+> 一次性舰船图纸（`sbp-once-*`）与虫洞族图纸（`sbp-wh-*`）同规则；族图纸用 §四 的族舰名
+> （如 `Raider Heavy Assault Cruiser Blueprint`）。
+
 
