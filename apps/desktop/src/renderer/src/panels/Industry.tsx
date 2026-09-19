@@ -205,16 +205,18 @@ export function BlueprintShelfPanel({
    * **碎片逆向卡**（2026-09-19 船长：「蓝图书架内确实没有显示可以合并的蓝图碎片。是否忘记添加到蓝图书架了？」）
    * ——与蓝图书**同网格**（同一份 JSX 供"置顶区"与"常规区"共用），卡面标明碎片来源与进度，
    * 动作 = 「逆向解锁 N/M」（`RedeemFragmentButton` 与物品详情弹层共用同一个出口）。
+   *
+   * ⚠ **卡头不挂数量标签**（船长 2026-09-19 追问「为什么在蓝图名称右边加一个碎片数量的标签」）：
+   * 片数在**按钮**（`逆向解锁 N/M`）与**说明行**（还差 N 片 / 已集齐）里已经有了，卡头再挂一颗
+   * 「碎片 N/M」= 同一信息第三次出现；原先那颗是照蓝图书卡的「×N」抄的版式，而书卡的 ×N 是
+   * **重复本数**（决定"学习还是出售"）、碎片没有对应的"本数"概念 ⇒ 版式不必对齐，已删。
    */
   function fragCard(r: ReturnType<GameEngine['fragmentRedeemRows']>[number]): ReactNode {
     return (
       <div key={`frag-${r.fragmentItemId}`} className="app-belt-card app-shelf-card is-frag">
         <div className="app-belt-head">
-          <span className="app-belt-name" title={`${r.blueprintName}（碎片 ${r.have}/${r.need}）`}>
+          <span className="app-belt-name" title={r.blueprintName}>
             ▦ {r.blueprintName}
-          </span>
-          <span className="app-chip" style={{ marginLeft: 'auto' }}>
-            碎片 {r.have}/{r.need}
           </span>
         </div>
         <div className="app-belt-desc">
