@@ -2466,6 +2466,42 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
   return Math.round(top * bal.openRangeFactor + pad)
 }
 
+/**
+ * **战场远端的距离上限**（2026-09-19 船长裁定「甲」）。
+ *
+ * 由来：船长报「部分敌人会增加射程的情况下，战场可以移动的距离还是很短，**无法逃离对方射程**」，
+ * 并定口径「**计算战场宽度时考虑到技能的增程就行，不用直接乘**」⇒ 本函数**沿用 `battleOpenM`
+ * 那套"射程 + 10% 缓冲"公式**（不引入任何常数放大），但两处不同：
+ * 1. **取"当前"射程**——我方那一侧已含技能 / 装配 / 谜质科技的增程（每拍重建的规格带的），
+ *    敌方那一侧读**受击增程生效后**的有效射程（`foeGunMaxRangeOf` / `foeDroneRangeOf`，
+ *    与开火门同一把尺），不再用开战那一刻的旧值；
+ * 2. **只增不减**——`开战距离` 是地板 ⇒ 没有增程时**逐字等于旧行为**（`maxM === openM`）。
+ *
+ * 例（本批实测）：导弹残段基础 11,000m ⇒ 开战距离 12,100m；它挨打增程后射程 16,500m
+ * ⇒ 上限抬到 **18,150m** ⇒ 玩家重新退得到它射程之外（改前上限钉在 12,100m，退不出去）。
+ *
+ * ⚠ 上限只由"双方射程"决定，**与谁快谁慢无关**：能不能真的站到那么远，仍看每拍那场
+ * 速度拔河（`steerStep` 双方各拽一把）——所以"有地方可退" ≠ "一定退得掉"。
+ */
+export function battleMaxDistanceM(
+  b: import('./state').BattleState,
+  me: UnitSpec,
+  foes: readonly UnitSpec[],
+  bal: BattleBalance,
+): number {
+  const open = battleOpenM(me, foes as UnitSpec[], bal)
+  let top = 0
+  for (const w of me.weapons) top = Math.max(top, w.maxRangeM)
+  for (const f of foes) {
+    // 机群武器也在这张表里（`src === 'drone'`）⇒ 按**各自的增程/削减口径**取有效射程，别混用炮台那条
+    for (const w of f.weapons) {
+      top = Math.max(top, w.src === 'drone' ? foeDroneRangeOf(b, w) : foeGunMaxRangeOf(b, f, w))
+    }
+  }
+  const pad = Math.max(bal.openRangePadM, Math.round(top * (bal.openRangePadShare ?? 0.1)))
+  return Math.max(open, Math.round(top * bal.openRangeFactor + pad))
+}
+
 /** **玩家主武器（战术距离口径；船长 2026-09-12 裁定「甲」）** = **射程最远的武器**；
  *  并列射程时取**名义火力大的**（再并列保持武器表顺序）。**三按钮（贴脸/中距/风筝）、出发前战术、
  *  战斗界面「我方射程带」共用这一处**。
@@ -4200,6 +4236,12 @@ export function battleArcsFor(
 ): {
   nearM: number
   openM: number
+  /**
+   * **战场远端 = 距离上限**（2026-09-19 船长裁定「甲」新增）：
+   * 按**当前**双方有效射程现算（含我方技能/科技增程、敌方受击增程），只增不减；
+   * **无增程时逐字等于 `openM`** ⇒ 常规战斗的界面几何/距离尺一字不变。
+   */
+  maxM: number
   /** 敌方当前战术期望距离（与引擎推进同口径：按战术系数换算后钳制在开战距离内）——UI 判断敌舰意图方向用 */
   foeDesireM: number
   ammo: { kin: number; exp: number; pla: number }
@@ -4545,6 +4587,11 @@ export function battleArcsFor(
   return {
     nearM: bal.minDistanceM,
     openM,
+    /**
+     * **战场远端（距离上限）**——2026-09-19 船长裁定「甲」后新增：界面那把距离尺/泳道几何按它定"拉开"那一端，
+     * 这样敌方挨打增程（或我方科技增程）把战场撑宽时，画面与引擎**同一把尺**（无增程时 = `openM`，逐像素不变）。
+     */
+    maxM: battleMaxDistanceM(battle, me, foes, bal),
     foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
@@ -5999,7 +6046,9 @@ function stepBattle(
   const rate =
     steerStep(b.distanceM, b.myDesireM, meV, dtSec) +
     steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
-  b.distanceM = clamp(bal.minDistanceM, openM, b.distanceM + rate)
+  // **距离上限 = 战场远端**（2026-09-19 船长裁定「甲」）：按**当前**双方有效射程现算（含我方技能/科技
+  // 增程与敌方受击增程），只增不减、无增程时逐字等于 `openM` ⇒ 见 `battleMaxDistanceM` 的头注。
+  b.distanceM = clamp(bal.minDistanceM, battleMaxDistanceM(b, me, foes, bal), b.distanceM + rate)
 
   // ── 我方开火（主炮 + 无人机条目）——**逐舰结算**（单船路径 = 只循环一次，逐字等价）──
   // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
