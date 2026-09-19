@@ -1281,6 +1281,9 @@ export function ManufacturingPanel({
           胶囊行一律「全部」+ 同行灰字前缀（基线①）。
           ⚠ **学会与门类同排**（船长 2026-09-19：「建议和门类放在同一行。除非宽度不够才另外起一行」）——
           `.app-fleet-row` 自带 `flex-wrap: wrap`，窗口窄时门类那组会自动折到下一行，无需另写断点。 */}
+      {/* 筛选区（整块外面加 `.app-filter-block` = 与内容之间的**虚线分隔**；背景线不占布局 ⇒ 高宽不变，
+          船长 2026-09-19） */}
+      <div className="app-filter-block">
       <div className="app-fleet-row">
         <span className="app-dim">学会：</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
@@ -1371,6 +1374,7 @@ export function ManufacturingPanel({
           </div>
         </div>
       ) : null}
+      </div>
       <div className="app-win-body">
         <div className="app-belt-grid">
           {sorted.map((it) => (

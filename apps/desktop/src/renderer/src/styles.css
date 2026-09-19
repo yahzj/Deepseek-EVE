@@ -2949,6 +2949,21 @@ html[data-locale='en'] body {
 
 }
 
+/* 筛选区与内容之间的**虚线分隔**（船长 2026-09-19：「筛选行加入虚线分隔（不要影响现有高宽）」）：
+   ⚠ 用**背景线**画，不用 border/padding —— `.app-fleet-row` 之间原本没有任何间距，
+   加 border 或 padding 都会把下面的卡网格整体推下去（`.app-fleet-toolbar` 那套是 padding10 + margin10）。
+   背景线**不占布局空间** ⇒ 行与卡网格的高宽、位置与加线前逐像素一致。 */
+.app-filter-block {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--wui-border) 0 4px,
+    transparent 4px 8px
+  );
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: 100% 1px;
+}
+
 .app-fleet-tabs {
 
   display: flex;
