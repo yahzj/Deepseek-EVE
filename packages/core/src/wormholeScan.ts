@@ -19,6 +19,7 @@
  */
 import { activePromoGifts, promoScanMul, tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
+import { matterTechScanCut } from './matterTech'
 import { addLog, wormholeScanHalt } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
@@ -128,7 +129,11 @@ export function happeningsScanFactor(state: GameState): number {
  * （扫描虫洞不吃目标星系安全等级 —— 它扫的是深空；船长只要求"遇袭期望一致"，没要求时长也吃低安系数）
  * ③**多一项 `happeningsScanFactor`**（星际奇遇学，虫洞专属）。
  */
-export function wormholeScanWindowMs(state: GameState): number {
+export function wormholeScanWindowMs(
+  state: GameState,
+  /** **谜质科技**「谐振信号滤波阵列」的间隔削减（matterTechScanCut(state, ctx)；缺省 0 = 零变化） */
+  techCut = 0,
+): number {
   /**
    * **调试 1 秒化**（船长 2026-09-14：「**希望调试模式也能增加虫洞扫码的速度**」）：
    * 与 `explore.ts` 的星图扫描、`training` 的技能训练、AI 副船任务、本地航行段**同一把开关**
@@ -144,7 +149,8 @@ export function wormholeScanWindowMs(state: GameState): number {
         scanSkillFactor(state) *
         happeningsScanFactor(state) *
         tuningMul(state, 'wormholeScanMs') *
-        promoScanMul(state),
+        promoScanMul(state) *
+        (1 - Math.min(0.9, Math.max(0, techCut))),
     ),
   )
 }
@@ -223,7 +229,7 @@ export function wormholeScanStop(state: GameState): CommandResult {
  *
  * 口径：
  * - **只送一次**（`scan.welcomed` 标记；可选存档字段 ⇒ 零迁移）；
- * - 达标那一刻把 `progressMs` 置成 `wormholeScanWindowMs(state)` ⇒ 玩家点「开始扫描」后**第一拍**
+ * - 达标那一刻把 `progressMs` 置成 `wormholeScanWindowMs(state, matterTechScanCut(state, ctx))` ⇒ 玩家点「开始扫描」后**第一拍**
  *   即产出一处虫洞（**仍要玩家自己点**，不替他开扫）；
  * - **不提示进度预置**（船长 2026-09-14：「不提示」）：日志不写"已预置 100%"这类字样；
  *   **2026-09-14 追加**：日志要提醒**进洞前带采集器与打捞器**（船长：「**解锁虫洞的提示和通讯内，
@@ -237,7 +243,7 @@ export function reconcileWormholeScanWelcome(state: GameState): boolean {
   if (scan.welcomed === true) return false
   if (!wormholeScanUnlocked(state)) return false
   scan.welcomed = true
-  scan.progressMs = wormholeScanWindowMs(state)
+  scan.progressMs = wormholeScanWindowMs(state) // 本函数拿不到 ctx ⇒ 不带科技削减（解锁礼只给"一整个窗口"的进度）
   addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描（进洞前记得带采集器与打捞器）。')
   return true
 }
@@ -399,7 +405,7 @@ export function wormholeStockTake(state: GameState, id: string): WormholeStockIt
 export function advanceWormholeScan(state: GameState, ctx: SimContext, deltaMs: number): void {
   const scan = state.wormholeScan
   if (!scan?.active || deltaMs <= 0) return
-  const windowMs = wormholeScanWindowMs(state)
+  const windowMs = wormholeScanWindowMs(state, matterTechScanCut(state, ctx))
   scan.progressMs += deltaMs
   while (scan.progressMs >= windowMs) {
     if (wormholeStockFull(state)) {
