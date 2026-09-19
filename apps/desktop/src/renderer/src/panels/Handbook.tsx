@@ -64,7 +64,7 @@ const COUNT_UNIT: Record<Tab, string> = {
   items: '种',
   modules: tr("ui.MarketPage.117"),
   ships: tr("ui.MarketPage.116"),
-  blueprints: '张',
+  blueprints: tr("ui.Handbook.017"),
   skills: '项',
 }
 const VIEW_KEY = 'whale-idle:handbook-view'
@@ -125,44 +125,44 @@ const GUIDE_GROUPS: HandGroup[] = [
       {
         title: '采矿',
         paras: [
-          ['怎么开', '出港页「矿带开采」选带出击：原矿进驾驶船货仓，到港自动整仓卸入物品仓库。'],
-          ['怎么变快', '练「采矿技术 / 采集器入门学」提产量、缩循环；「自动循环」与 AI 副船让矿机不停转。'],
+          [tr("ui.Handbook.018"), '出港页「矿带开采」选带出击：原矿进驾驶船货仓，到港自动整仓卸入物品仓库。'],
+          [tr("ui.Handbook.019"), '练「采矿技术 / 采集器入门学」提产量、缩循环；「自动循环」与 AI 副船让矿机不停转。'],
         ],
       },
       {
         title: '装卸',
         paras: [
-          ['自动卸货', '任何舰船进港（停靠母港或已建成副站）都会自动整仓卸入物品仓库（无限容量、不随船）。'],
-          ['手动与例外', '货仓页也可手动卸货——空闲停靠的非驾驶船同样可以。出售仍只对当前驾驶船开放。'],
+          ['自动卸货', tr("ui.Handbook.020")],
+          [tr("ui.Handbook.021"), '货仓页也可手动卸货——空闲停靠的非驾驶船同样可以。出售仍只对当前驾驶船开放。'],
         ],
       },
       {
         title: '精炼',
         paras: [
-          ['怎么开', '工业页把原矿炼成原材料（「产出倍率」由精炼学与高级回收处理提升：基础 120%、技能最高 165%——无技能时炼矿净收益约为原料价值两成）。'],
+          [tr("ui.Handbook.018"), '工业页把原矿炼成原材料（「产出倍率」由精炼学与高级回收处理提升：基础 120%、技能最高 165%——无技能时炼矿净收益约为原料价值两成）。'],
           ['用途', '原材料是制造原料，也可卖出。'],
           ['炉位', '炉位：主控亲自运转限 1 台（占主控工作位），每枚 AI 核心各驱动一台——AI 核心启用数受上限约束，细则见「AI 副船」。'],
           ['用料', '原料不锁定，每批到点从货仓 + 仓库实时扣取。'],
         ],
       },
       {
-        title: '制造与蓝图',
+        title: tr("ui.Handbook.022"),
         paras: [
-          ['买图与学习', '市场可购到所有装备与舰船（协会保底艇、异星原型科技除外）的蓝图书：购图到「蓝图书架」学习一次即永久可造，再到工业页组装机按图备料开工，到点自动入库（装备进装备库、舰船进舰船仓库）。'],
-          ['图纸与现货', '图纸价格随产物档位升高、在市场上出现得也稀罕；赶时间可以继续直接买成品现货，两条渠道并存。'],
-          ['产线归谁', '产线由主控（全局限 1 条、占主控不可离港）或一枚 AI 核心驱动（占用 AI 核心上限，见「AI 副船」）。'],
+          [tr("ui.Handbook.023"), '市场可购到所有装备与舰船（协会保底艇、异星原型科技除外）的蓝图书：购图到「蓝图书架」学习一次即永久可造，再到工业页组装机按图备料开工，到点自动入库（装备进装备库、舰船进舰船仓库）。'],
+          [tr("ui.Handbook.024"), '图纸价格随产物档位升高、在市场上出现得也稀罕；赶时间可以继续直接买成品现货，两条渠道并存。'],
+          [tr("ui.Handbook.025"), tr("ui.Handbook.026")],
         ],
       },
     ],
   },
   {
-    title: '战斗与生存',
+    title: tr("ui.Handbook.027"),
     entries: [
       {
         title: '远征讨伐',
         paras: [
-          ['怎么开', '星图「悬赏情报」选目标「出发」即开战：按火力结算，胜利得奖金 / 战利品 / 声望后自动返航（途中不可召回；停靠最近已建成站，无副站 = 母港）。'],
-          ['失利', '失利扣耐久、可能弃船，同样自动返航（途中可召回）。'],
+          [tr("ui.Handbook.018"), '星图「悬赏情报」选目标「出发」即开战：按火力结算，胜利得奖金 / 战利品 / 声望后自动返航（途中不可召回；停靠最近已建成站，无副站 = 母港）。'],
+          [tr("ui.Handbook.028"), '失利扣耐久、可能弃船，同样自动返航（途中可召回）。'],
           ['路程', '去程已取消（选「出发」即开战）：打完自动返航，返航路程 = 目标↔落点单程；母港本地的悬赏固定约 2 分钟返港。'],
         ],
       },
@@ -170,9 +170,9 @@ const GUIDE_GROUPS: HandGroup[] = [
         title: tr("ui.App.003"),
         paras: [
           ['槽位与退回', '装备库里的模块装到高 / 中 / 低槽位（布局见船卡；受 CPU 约束），卸下自动退回装备库。'],
-          ['叠加规则', '抗性按递减方式合成（同一层装得越多越接近上限 90%，基础抗高的船提升越小）；伤害 / 射速 / 容量可以多装全量叠加（只受 CPU 限制），命中 / 闪避 / 抗性 / 速度同类多装收益递减（第 2 件约剩八成七、第 3 件约剩五成七）。「动力」影响弃船避险与跃迁充能。'],
-          ['CPU 预算', '装配 CPU 预算是唯一硬约束（全部位合计 ≤ 船体 CPU；无人机放飞共用同一份预算）——低槽「协处理器」可为预算扩容（本件自身不占 CPU，卸下即收回：卸到超载会被拒绝，避免"装扩容件塞满再卸掉"套利）。'],
-          ['中槽推进器', '中槽「矢量推进器」是周期点火：开场即点火、持续 60 秒，随后冷却 60 秒——点火期间战斗机动显著提升、开火命中略降（失稳代价同样只在点火期生效），冷却期间两者都回到基础值；战斗界面底部显示推进器倒计时。'],
+          [tr("ui.Handbook.029"), '抗性按递减方式合成（同一层装得越多越接近上限 90%，基础抗高的船提升越小）；伤害 / 射速 / 容量可以多装全量叠加（只受 CPU 限制），命中 / 闪避 / 抗性 / 速度同类多装收益递减（第 2 件约剩八成七、第 3 件约剩五成七）。「动力」影响弃船避险与跃迁充能。'],
+          [tr("ui.Handbook.030"), '装配 CPU 预算是唯一硬约束（全部位合计 ≤ 船体 CPU；无人机放飞共用同一份预算）——低槽「协处理器」可为预算扩容（本件自身不占 CPU，卸下即收回：卸到超载会被拒绝，避免"装扩容件塞满再卸掉"套利）。'],
+          [tr("ui.Handbook.031"), tr("ui.Handbook.032")],
           [tr("ui.Handbook.004"), '无人机在装配页「无人机舱」装入清单（舱容 = 无人机舱 + 甲板扩展，与装配共用 CPU），战斗只放飞已装入的；卸下甲板扩展使机舱变小时，超出的无人机会自动退回仓库；战术导控阵列增伤。'],
           ['机群战损', '敌方近防炮会击落机群——战斗内机群可能全部损坏，战后按回收率找回一部分（基础 20%，「无人机回收学」满级 50%），回收名额优先给价值更高的机型；未回收的才自清单永久损失，战报里会列出这次回收了哪些、净损失哪些；侦察机靠闪避、攻坚机靠厚甲、哨戒机默认被近防炮放过（其余机型全被打光后就轮到它）。'],
         ],
@@ -180,9 +180,9 @@ const GUIDE_GROUPS: HandGroup[] = [
       {
         title: '耐久与维修',
         paras: [
-          ['三层血的留存', '战斗磨损「结构」（= 耐久）与装甲：损伤跨场保留，结构归零弃船（货随船失）；护盾损失不保留（战斗中被动回充、脱战回满）。'],
-          ['怎么修', '恢复：空间站付费维修，或货仓带「修理组件」野外应急（民用 / 军用两档，市场可买、工业页可自制；重复清剿会自动消耗）。'],
-          ['战中续命', '想战中续命，可挂「船体维修装置」——每 5 秒自动修复装甲与结构，每跳吃掉一枚修理组件；实际修复量随装甲与结构容量加成、以及舰体快修学与维修工程学放大。'],
+          [tr("ui.Handbook.033"), '战斗磨损「结构」（= 耐久）与装甲：损伤跨场保留，结构归零弃船（货随船失）；护盾损失不保留（战斗中被动回充、脱战回满）。'],
+          [tr("ui.Handbook.034"), '恢复：空间站付费维修，或货仓带「修理组件」野外应急（民用 / 军用两档，市场可买、工业页可自制；重复清剿会自动消耗）。'],
+          [tr("ui.Handbook.035"), '想战中续命，可挂「船体维修装置」——每 5 秒自动修复装甲与结构，每跳吃掉一枚修理组件；实际修复量随装甲与结构容量加成、以及舰体快修学与维修工程学放大。'],
         ],
       },
     ],
@@ -191,16 +191,16 @@ const GUIDE_GROUPS: HandGroup[] = [
     title: '残骸与回收',
     entries: [
       {
-        title: '打捞残骸',
+        title: tr("ui.Handbook.036"),
         paras: [
-          ['怎么开', '驾驶船高槽装打捞器（无伤害件，升级只减周期）后，在星图「残骸打捞」选星系开捞：自动循环作业，满舱自动返航卸货后自动续捞（勾「本次返航卸货后停止」可做单趟）。'],
-          ['低安风险', '低安星系打捞作业中可能遇袭，规则见「航行须知」。'],
+          [tr("ui.Handbook.018"), '驾驶船高槽装打捞器（无伤害件，升级只减周期）后，在星图「残骸打捞」选星系开捞：自动循环作业，满舱自动返航卸货后自动续捞（勾「本次返航卸货后停止」可做单趟）。'],
+          [tr("ui.Handbook.037"), tr("ui.Handbook.038")],
         ],
       },
       {
-        title: '回收残骸',
+        title: tr("ui.Handbook.039"),
         paras: [
-          ['在哪拆', '打捞的残骸在工业页「残骸回收」里拆解：回收卡按敌群列出这批残骸的「保底原材料」，随 星系危险度 × 敌群威胁 上浮。'],
+          [tr("ui.Handbook.040"), '打捞的残骸在工业页「残骸回收」里拆解：回收卡按敌群列出这批残骸的「保底原材料」，随 星系危险度 × 敌群威胁 上浮。'],
           [tr("ui.MapPage.058"), '另有概率特色掉落——同卡的「特色掉落」栏写出的该敌群增幅装备（含关底穹顶守卫直出 MK3 武器）与高威胁蓝图碎片（MK3 装备只经碎片解锁）。'],
           ['提前看', '星图「残骸打捞」页会先标出该星系的这些内容。'],
         ],
@@ -208,49 +208,49 @@ const GUIDE_GROUPS: HandGroup[] = [
     ],
   },
   {
-    title: '副船与扩张',
+    title: tr("ui.Handbook.041"),
     entries: [
       {
-        title: 'AI 副船',
+        title: tr("ui.Handbook.042"),
         paras: [
-          ['怎么开', '练「AI 核心操作学」（入门向）+ 买基础 AI 核心，可给闲置舰船指派自动采矿 / 打捞 / 掩护巡逻任务——核心效率越高越快。'],
-          ['上限', '同时启用的 AI 核心总数受 AI 核心上限技能约束（Lv0 无法启用），AI 副船与站内精炼炉 / 回收炉 / 制造线共用该上限；站内产业可另练「工业自动化」扩容工业专用工位（每级 +2 枚、不占副船名额）。'],
-          ['在哪指派', '舰船页「AI 指挥中心」可统一指派与取消这些作业。'],
+          [tr("ui.Handbook.018"), '练「AI 核心操作学」（入门向）+ 买基础 AI 核心，可给闲置舰船指派自动采矿 / 打捞 / 掩护巡逻任务——核心效率越高越快。'],
+          [tr("ui.Handbook.043"), '同时启用的 AI 核心总数受 AI 核心上限技能约束（Lv0 无法启用），AI 副船与站内精炼炉 / 回收炉 / 制造线共用该上限；站内产业可另练「工业自动化」扩容工业专用工位（每级 +2 枚、不占副船名额）。'],
+          [tr("ui.Handbook.044"), '舰船页「AI 指挥中心」可统一指派与取消这些作业。'],
         ],
       },
       {
-        title: '副空间站',
+        title: tr("ui.Handbook.045"),
         paras: [
-          ['建成之后', '建成的副站并入协会基地网络：市场买卖、精炼与残骸回收、组装机制造线、维修补给、换驾驶卸货全部可用——设施与仓库和母港共享（同一市场与仓库）。'],
+          [tr("ui.Handbook.046"), '建成的副站并入协会基地网络：市场买卖、精炼与残骸回收、组装机制造线、维修补给、换驾驶卸货全部可用——设施与仓库和母港共享（同一市场与仓库）。'],
           ['返航落点', '采矿 / 打捞自动返航、悬赏的胜利返航都会停到最近已建成的站；手动召回仍回母港（星系扫描自 2026-09-15 起是无人扫描艇，不再牵动舰船与停靠）。'],
-          ['工地', '未建成的工地不提供停靠与任何站内功能：人在现场可提交建材，或停靠空间站后一键「前往工地交付」——每趟装满货仓出航，到点清仓自动交付，并自动往返续运直到建站完成或仓库建材耗尽（途中可随时取消）。'],
+          [tr("ui.Handbook.047"), '未建成的工地不提供停靠与任何站内功能：人在现场可提交建材，或停靠空间站后一键「前往工地交付」——每趟装满货仓出航，到点清仓自动交付，并自动往返续运直到建站完成或仓库建材耗尽（途中可随时取消）。'],
         ],
       },
       {
         title: tr("ui.MapPage.006"),
         paras: [
           ['解锁', '建成至少一座副站后，星图「长途运输」页签开放。'],
-          ['怎么跑', '选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段。'],
-          ['停下', '随时「停止运输」会立即返港停靠，无惩罚。'],
+          [tr("ui.Handbook.048"), '选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段。'],
+          [tr("ui.Handbook.049"), '随时「停止运输」会立即返港停靠，无惩罚。'],
         ],
       },
       {
-        title: '势力与舰船',
+        title: tr("ui.Handbook.050"),
         paras: [
-          ['协会与部门', '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（装甲舰）、蜃楼（航运货舰）。'],
-          ['五个档位', '舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高。'],
-          ['子型号', '同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。'],
+          [tr("ui.Handbook.051"), '深空工业协会是星域唯一的官方力量，舰船分部门出品：鲸盟（采矿工船）、掠食者（武装舰）、甲壳（装甲舰）、蜃楼（航运货舰）。'],
+          [tr("ui.Handbook.052"), '舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高。'],
+          [tr("ui.Handbook.053"), '同档之内还有子型号（炮舰、无人机母舰等）与更精贵的奇货版本。'],
         ],
       },
     ],
   },
   {
-    title: '市场与世界',
+    title: tr("ui.Handbook.054"),
     entries: [
       {
         title: tr("ui.App.033"),
         paras: [
-          ['三个标签', '市场页：常驻供应 / 稀有订单 / 限定奇货三个标签，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。'],
+          [tr("ui.Handbook.055"), '市场页：常驻供应 / 稀有订单 / 限定奇货三个标签，挂单与市价买卖；卖出成交收贸易税（练贸易技能减免）。'],
           ['撮合与冲击', '市场全程挂单簿撮合，收购价低于供应价；集中买卖会带动价格短时偏离（冲击动量），原矿 / 原材料另受库存池调节。'],
         ],
       },
@@ -266,11 +266,11 @@ const GUIDE_GROUPS: HandGroup[] = [
     title: tr("ui.MatterTechTab.001"),
     entries: [
       {
-        title: '发现虫洞',
+        title: tr("ui.Handbook.056"),
         paras: [
-          ['怎么扫', '在星图「扫描虫洞」选项卡开始扫描（主控活动，深空工业协会声望 40 解锁）：扫描窗口基准 12 小时，受「信号分析学 / 星图测绘学 / 信号过滤学」与「星际奇遇学」（每级 −4%，满级 −20%）缩短。'],
-          ['发现之后', '进度满即发现一处虫洞存入库存，最多同时囤 5 处（「星图记录学」满级再 +10 ⇒ 15 处）；每处锁定一个敌族、从第 1 层开始探索，进入即消耗该处——'],
-          ['三种处置', '也可以派副船自动探索（约 5 分钟，收益约为亲自探索的四成，参与舰受损但不丢船），或直接放弃。'],
+          [tr("ui.Handbook.057"), '在星图「扫描虫洞」选项卡开始扫描（主控活动，深空工业协会声望 40 解锁）：扫描窗口基准 12 小时，受「信号分析学 / 星图测绘学 / 信号过滤学」与「星际奇遇学」（每级 −4%，满级 −20%）缩短。'],
+          [tr("ui.Handbook.058"), '进度满即发现一处虫洞存入库存，最多同时囤 5 处（「星图记录学」满级再 +10 ⇒ 15 处）；每处锁定一个敌族、从第 1 层开始探索，进入即消耗该处——'],
+          [tr("ui.Handbook.059"), tr("ui.Handbook.060")],
         ],
       },
       {
@@ -278,7 +278,7 @@ const GUIDE_GROUPS: HandGroup[] = [
         paras: [
           ['编队', '最多带 4 艘船，旗舰过重进不去（会压塌虫洞入口）。'],
           ['折算质量', '带入舰船按级别折算质量（护卫舰 500 / 驱逐舰 1,500 / 巡洋舰 3,500 / 战列舰 7,000）。'],
-          ['回合代价', '编队总质量越高、可探索的回合数越少——4 艘护卫舰 93 回合，4 艘巡洋舰 53 回合。'],
+          [tr("ui.Handbook.061"), '编队总质量越高、可探索的回合数越少——4 艘护卫舰 93 回合，4 艘巡洋舰 53 回合。'],
         ],
       },
       {
@@ -286,14 +286,14 @@ const GUIDE_GROUPS: HandGroup[] = [
         paras: [
           ['推进', '洞内按节点推进（舰船信号 / 墓场与遗迹 / 矿脉 / 谜质 / 漂浮信标）：每层要走到下潜点并打赢层末守卫，才能继续深入。'],
           ['撤离', '随时可以撤离，不消耗回合、不会触发战斗：货仓、货柜与随行战利品一起入港；交火中不能撤。'],
-          ['全损', '船被打沉，该船与它带回的货一起丢；整队失联则本趟一无所得。'],
+          [tr("ui.Handbook.062"), '船被打沉，该船与它带回的货一起丢；整队失联则本趟一无所得。'],
         ],
       },
       {
         title: '货仓与产出',
         paras: [
           [tr("ui.CargoPage.004"), '货仓格数按编队合计货仓折算（每 500 m³ = 1 格），打捞到的安全货柜、图纸货柜各占固定格数。'],
-          ['产出链', '洞内只产原矿「虚空母矿」，回港在精炼炉精炼出「虚空晶」。'],
+          [tr("ui.Handbook.063"), '洞内只产原矿「虚空母矿」，回港在精炼炉精炼出「虚空晶」。'],
           ['深浅曲线', '每深入一层收益 ×1.2、威胁 ×1.16——收益涨得比威胁快。'],
         ],
       },
@@ -313,21 +313,21 @@ const GUIDE_NOTES: string[] = [
 
 const RULE_SECTS: HandGroup[] = [
   {
-    title: '低安安全（安全等级 = 星系风险）',
+    title: tr("ui.Handbook.064"),
     entries: [
       {
-        title: '安全等级',
+        title: tr("ui.Handbook.065"),
         paras: [
           ['标色', '星图星系标色：越高越安全。'],
-          ['三档', '安全等级 ≥ 0.5 为高安，0 至 0.5 之间为中安，≤ 0 为低安——只有低安会遇到巡逻拦截与海盗伏击，安全等级越低越危险、越频繁。'],
+          [tr("ui.Handbook.066"), '安全等级 ≥ 0.5 为高安，0 至 0.5 之间为中安，≤ 0 为低安——只有低安会遇到巡逻拦截与海盗伏击，安全等级越低越危险、越频繁。'],
         ],
       },
       {
-        title: '什么会遇袭',
+        title: tr("ui.Handbook.067"),
         paras: [
-          ['只打「停留与就地作业」', '低安只对「停留与就地作业」动手：矿带采掘中、打捞作业中、扫描虫洞期间、掩护巡逻驻留都可能撞见巡逻拦截或海盗伏击（星系扫描是无人扫描艇，不在其列）。'],
+          [tr("ui.Handbook.068"), tr("ui.Handbook.069")],
           [tr("ui.MapPage.006"), '长途运输途中同样会遇袭——跑运输的舰船在航段里会被当作「停在出发星系」，含低安航段的航线在「长途运输」页会标出这一条。'],
-          ['AI 副船', 'AI 副船同样适用。'],
+          [tr("ui.Handbook.042"), tr("ui.Handbook.070")],
         ],
       },
       {
@@ -339,12 +339,12 @@ const RULE_SECTS: HandGroup[] = [
       {
         title: '触发节奏',
         paras: [
-          ['入场缓冲', '进入低安作业 / 驻留约 5 分钟后才可能遇袭（入场缓冲；扫描虫洞例外——它一开扫就算暴露、无缓冲）。'],
-          ['与随机事件共用时机', '遇袭判定与随机事件共用时机——事件到点时可能撞上巡逻 / 伏击，也可能照常出事件。'],
+          [tr("ui.Handbook.071"), '进入低安作业 / 驻留约 5 分钟后才可能遇袭（入场缓冲；扫描虫洞例外——它一开扫就算暴露、无缓冲）。'],
+          [tr("ui.Handbook.072"), '遇袭判定与随机事件共用时机——事件到点时可能撞上巡逻 / 伏击，也可能照常出事件。'],
         ],
       },
       {
-        title: '在线时',
+        title: tr("ui.Handbook.073"),
         paras: [
           ['横幅二选一', '遭遇会弹出「伏击待决」横幅：可「⚔ 迎战」（进入实时战斗，自动打完）或「» 快速脱离」；60 秒未处置自动脱离。'],
         ],
@@ -358,22 +358,22 @@ const RULE_SECTS: HandGroup[] = [
       {
         title: '结局三档',
         paras: [
-          ['击退', '击退：缴获少量信用点。'],
-          ['受损', '受损：敌方火力越强挨得越狠——先扣装甲、装甲吃穿才伤结构（底线 5%，绝不弃船）。'],
+          [tr("ui.Handbook.074"), tr("ui.Handbook.075")],
+          [tr("ui.Handbook.076"), '受损：敌方火力越强挨得越狠——先扣装甲、装甲吃穿才伤结构（底线 5%，绝不弃船）。'],
           ['被抢', '被抢：至多 30% 船上货物（无货则抢少量钱包）。'],
         ],
       },
       {
         title: '受损后先修再判',
         paras: [
-          ['先自动修补', '遭遇了结后先自动修补：装甲或结构低于 50% 时，船会自己动手补到两者约 60%，或组件用尽。前提是它装着船体维修装置（中槽件），而且只吃与装置对应的那种修理组件——民用装置吃民用修理组件，MK1 / MK2 吃军用修理组件。'],
-          ['修不动就撤', '没装维修装置、对应组件不足、或补完后结构仍低于 50%，才收手返港待命——驾驶船停下采掘 / 打捞 / 扫描虫洞并即时返航最近已建成站，副船中止任务召回（副船结构低于 50% 需修好才能再派）。'],
+          [tr("ui.Handbook.077"), '遭遇了结后先自动修补：装甲或结构低于 50% 时，船会自己动手补到两者约 60%，或组件用尽。前提是它装着船体维修装置（中槽件），而且只吃与装置对应的那种修理组件——民用装置吃民用修理组件，MK1 / MK2 吃军用修理组件。'],
+          [tr("ui.Handbook.078"), '没装维修装置、对应组件不足、或补完后结构仍低于 50%，才收手返港待命——驾驶船停下采掘 / 打捞 / 扫描虫洞并即时返航最近已建成站，副船中止任务召回（副船结构低于 50% 需修好才能再派）。'],
         ],
       },
       {
         title: '迎战也有保险',
         paras: [
-          ['轻损即退', '低安遭遇点「⚔ 迎战」时，本场结构损失过半即自动脱离（轻损退出，不给缴获也不额外扣损），随后同样按上面的撤退规则返港——不会把船打到弃船。'],
+          ['轻损即退', tr("ui.Handbook.079")],
         ],
       },
     ],
@@ -384,21 +384,21 @@ const RULE_SECTS: HandGroup[] = [
       {
         title: '采矿 ↔ 远征 转场',
         paras: [
-          ['怎么转', '采矿中点悬赏「⇄ 转战出发」= 结束采矿（货随船）并从矿带星系出发；远征中点矿带「⇄ 转开采」= 取消远征（无战果、讨伐同步停）并回港开采。'],
-          [tr("ui.Handbook.014"), '均需两次确认。'],
+          [tr("ui.Handbook.080"), '采矿中点悬赏「⇄ 转战出发」= 结束采矿（货随船）并从矿带星系出发；远征中点矿带「⇄ 转开采」= 取消远征（无战果、讨伐同步停）并回港开采。'],
+          [tr("ui.Handbook.014"), tr("ui.Handbook.081")],
         ],
       },
       {
         title: '重复清剿',
         paras: [
-          ['怎么开', '空闲时可开：胜利后自动返航回港（返航路程 = 单程），冷却结束自动再出发，往复巡回。'],
-          ['何时自动暂停', '货仓装不下缴获 / 耐久低于 50% 且修理组件耗尽 / 战败都会自动暂停。'],
+          [tr("ui.Handbook.018"), '空闲时可开：胜利后自动返航回港（返航路程 = 单程），冷却结束自动再出发，往复巡回。'],
+          [tr("ui.Handbook.082"), '货仓装不下缴获 / 耐久低于 50% 且修理组件耗尽 / 战败都会自动暂停。'],
         ],
       },
       {
-        title: '战斗撤退',
+        title: tr("ui.Handbook.083"),
         paras: [
-          ['怎么撤', '交火中可「⚑ 撤退」（活动栏或战场内，两次确认）：轻损脱离、无弃船风险、立刻回港并停止讨伐（自动撤退与超时判负仍需航程返港）。'],
+          [tr("ui.Handbook.084"), tr("ui.Handbook.085")],
         ],
       },
       {
@@ -410,44 +410,44 @@ const RULE_SECTS: HandGroup[] = [
       {
         title: '重复舰船',
         paras: [
-          ['同型多艘', '同型可买多艘：第 2 艘起默认带「#N」。'],
+          [tr("ui.Handbook.086"), '同型可买多艘：第 2 艘起默认带「#N」。'],
           [tr("ui.ShipPage.013"), '可自由改名（10 字内、允许重名），改名后全界面显示自定义名。'],
         ],
       },
       {
         title: '货仓与出售',
         paras: [
-          ['卸货', '任何舰船到港即自动卸货入仓库；货仓页可手动卸货——空闲停靠的非驾驶船同样可卸。'],
+          [tr("ui.Handbook.087"), tr("ui.Handbook.088")],
           ['谁能卖', '出售与装船只对当前驾驶船，且需停靠空间站（母港或已建成副站——共用同一市场与仓库）。'],
         ],
       },
       {
         title: '星系扫描',
         paras: [
-          ['怎么扫', '星图上对「未知信号」（剪影星系）派出一艘无人深空扫描艇：窗口走完即点亮该星系，航线、矿带与悬赏情报全部解锁。窗口基准约 10 分钟，越危险的星系扫得越久；母港（起始星系）例外，十来秒就能扫完。'],
-          ['不占主控', '扫描艇无人驾驶——扫描期间照常采矿 / 打捞 / 远征 / 长途运输 / 进虫洞，反过来这些在忙时也能派艇；一次只派一艘，换目标先在星图页「终止扫描」（已扫部分保留，下次对该星系只补扫剩余窗口）。'],
+          [tr("ui.Handbook.057"), '星图上对「未知信号」（剪影星系）派出一艘无人深空扫描艇：窗口走完即点亮该星系，航线、矿带与悬赏情报全部解锁。窗口基准约 10 分钟，越危险的星系扫得越久；母港（起始星系）例外，十来秒就能扫完。'],
+          [tr("ui.Handbook.089"), '扫描艇无人驾驶——扫描期间照常采矿 / 打捞 / 远征 / 长途运输 / 进虫洞，反过来这些在忙时也能派艇；一次只派一艘，换目标先在星图页「终止扫描」（已扫部分保留，下次对该星系只补扫剩余窗口）。'],
           ['看进度', '进度在顶部活动窗 AI 徽标右侧那条扫描条上；扫完后条子会一直亮着，进「星图」看过才收起。'],
         ],
       },
       {
         title: '离线结算',
         paras: [
-          ['8 小时', '离线最长结算 8 小时，重启自动结算并弹离线简报。'],
+          [tr("ui.Handbook.090"), '离线最长结算 8 小时，重启自动结算并弹离线简报。'],
         ],
       },
     ],
   },
   {
-    title: '战斗 · 伤害克制速查',
+    title: tr("ui.Handbook.091"),
     entries: [
       {
         title: '血条三层',
         paras: [
-          ['承受顺序', '每艘船血量分 护盾 → 装甲 → 结构 三层依次承受（破层溢出向下渗透）。'],
+          [tr("ui.Handbook.092"), '每艘船血量分 护盾 → 装甲 → 结构 三层依次承受（破层溢出向下渗透）。'],
         ],
       },
       {
-        title: '伤害克制矩阵',
+        title: tr("ui.Handbook.093"),
         paras: [
           [tr("ui.BattleScreen.002"), '动能弹药：盾 ×1.5 / 甲 ×0.5 / 结构 ×1（专职拆盾）。'],
           [tr("ui.battleViewCore.001"), '爆破弹药（导弹架）：盾 ×0.5 / 甲 ×1.5 / 结构 ×1（专职破甲）。'],
@@ -459,7 +459,7 @@ const RULE_SECTS: HandGroup[] = [
         title: '抗性合成',
         paras: [
           ['递减合成', '各层抗性按递减方式合成（上限 90%）。'],
-          ['减伤公式', '每层受到的伤害 = 层伤害 × 克制倍率 ×（1 − 该层对应系抗性）——配装时看敌方主伤害类型，选对应层抗与弹种。'],
+          [tr("ui.Handbook.094"), '每层受到的伤害 = 层伤害 × 克制倍率 ×（1 − 该层对应系抗性）——配装时看敌方主伤害类型，选对应层抗与弹种。'],
         ],
       },
     ],
@@ -470,21 +470,21 @@ const RULE_SECTS: HandGroup[] = [
       {
         title: '进洞与离开',
         paras: [
-          ['占主控', '进洞占主控一个活动：探索期间采矿 / 扫描虫洞 / 打捞 / 远征 / 长途运输都开不了，进洞时会自动停掉正在进行的作业（星系扫描是另一条无人扫描艇，不受影响）。'],
-          ['临时离开', '关掉虫洞界面＝临时离开——主控立刻释放、洞内进度原样保存并冻结，回来时要求主控空闲。'],
+          [tr("ui.Handbook.095"), '进洞占主控一个活动：探索期间采矿 / 扫描虫洞 / 打捞 / 远征 / 长途运输都开不了，进洞时会自动停掉正在进行的作业（星系扫描是另一条无人扫描艇，不受影响）。'],
+          [tr("ui.Handbook.096"), tr("ui.Handbook.097")],
         ],
       },
       {
-        title: '回合与全损',
+        title: tr("ui.Handbook.098"),
         paras: [
-          ['回合开销', '扫描与前往各耗 1 回合，打捞、采集每次动作各耗 1 回合；激活地点不耗回合（含迎战层末守卫）。'],
+          [tr("ui.Handbook.099"), '扫描与前往各耗 1 回合，打捞、采集每次动作各耗 1 回合；激活地点不耗回合（含迎战层末守卫）。'],
           ['途中被拦', '点一个地点前往时，若两点连线上挡着一处还没清掉的敌人，舰船会在半路被拦下并就地开战：这次移动的 1 回合照扣、不额外扣回合，位置停在被拦的那一格，打完再由玩家决定往哪走——绕开或先清掉挡路的敌人，都可以避免被拦。'],
           ['踩中埋伏', '走进一个还没扫描过的地点、里面正好是敌人时，舰船会被对方发现：先出提示，玩家确认后才进入战斗（这一场躲不掉，打完才能继续探索）。'],
-          ['全损', '船被打沉：该船与它带回的货一起丢失；整队失联＝本趟没有产出。'],
+          [tr("ui.Handbook.062"), '船被打沉：该船与它带回的货一起丢失；整队失联＝本趟没有产出。'],
         ],
       },
       {
-        title: '临时空间',
+        title: tr("ui.Handbook.100"),
         paras: [
           ['用途', '货仓右侧的备用格区（4×8 = 32 格），用来腾位置或暂存待丢的东西。'],
           ['规则', '里面有东西时不能进行其他操作，离开货仓页前必须放回货仓或丢掉。'],
@@ -493,7 +493,7 @@ const RULE_SECTS: HandGroup[] = [
       {
         title: '谜质储存器',
         paras: [
-          ['占格', '洞内采到的谜质储存器在货仓里占 2×2 格。'],
+          [tr("ui.Handbook.101"), '洞内采到的谜质储存器在货仓里占 2×2 格。'],
           ['时效', '本趟虫洞内生效、离开即消失；拖进临时空间就会失效。'],
         ],
       },
@@ -503,11 +503,11 @@ const RULE_SECTS: HandGroup[] = [
     title: '目标档案',
     entries: [
       {
-        title: '寻找人类',
+        title: tr("ui.Handbook.102"),
         paras: [
-          ['你的身份', '人类已全体失踪——你是一艘前人类时代的舰船 AI。'],
+          [tr("ui.Handbook.103"), tr("ui.Handbook.104")],
           ['线索', '目前没有任何可执行线索，完成方法未知。'],
-          ['方向', '以这座章鱼宇宙人统治的母港为起点，往未知的前方继续航行，壮大自身规模，应对各种危险，或许终会有所发现。'],
+          ['方向', tr("ui.Handbook.105")],
         ],
       },
     ],
@@ -620,7 +620,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       // V17：统一行——各家族真实进公式参数（工业加成 / 武器卡 / 容量+缺口抗性 / 加力推进）
       for (const line of moduleInfoLines(modDef)) rows.push([line.k, line.v])
     } else {
-      rows.push([tr("ui.Handbook.008"), `${slotName(String(r.slot ?? ''))} · 加成 ${Math.round(Number(r.bonus ?? 0) * 100)}%`])
+      rows.push([tr("ui.Handbook.008"), tr("ui.Handbook.106", { p1: slotName(String(r.slot ?? '')), p2: Math.round(Number(r.bonus ?? 0) * 100) })])
     }
   } else if (cell.tab === 'ships') {
     const shipId = String(r.id ?? '')
@@ -633,14 +633,14 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       // ⚠ 行以 `k` 作 React key ⇒ `shipIndirectLines` 的键不得与 `shipInfoLines` 重名（当前无重名）。
       for (const line of shipIndirectLines(shipDef)) rows.push([line.k, line.v])
       rows.push([tr("ui.Handbook.002"), '已生效战斗数值：抗性按递减方式合成（上限 90%）'])
-      rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场无成品现货：舰船蓝图船厂定制；已拥有的可二手出售）' : '市场流通'])
+      rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? tr("ui.Handbook.107") : tr("ui.Handbook.108")])
     } else {
       const cls = shipCategoryKeyOf(r as unknown as { role?: ShipRole; shieldHp?: number; armorHp?: number })
       rows.push([tr("ui.Handbook.009"), `${roleName(cls)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
       rows.push([tr("ui.Handbook.010"), `${Number(r.cargoM3 ?? 0).toLocaleString('zh-CN')} m³`])
-      rows.push([tr("ui.Handbook.011"), `${Number(r.cycleSeconds ?? 0)} 秒 × ${Number(r.oreUnitsPerCycle ?? 0)} 单位/循环`])
+      rows.push([tr("ui.Handbook.011"), tr("ui.shipInfo.130", { p1: Number(r.cycleSeconds ?? 0), p2: Number(r.oreUnitsPerCycle ?? 0) })])
       rows.push([tr("ui.Handbook.012"), `${Math.round(Number(r.agility ?? 0) * 100)}%`])
-      if (Number(r.priceIsk ?? 0) <= 0) rows.push(['获取方式', '仅可制造（市场无成品现货：舰船蓝图船厂定制；已拥有的可二手出售）'])
+      if (Number(r.priceIsk ?? 0) <= 0) rows.push(['获取方式', tr("ui.Handbook.107")])
     }
   } else if (cell.tab === 'blueprints') {
     const materials = (r.materials as Array<{ itemId: string; count: number }> | undefined) ?? []
@@ -653,28 +653,28 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     const prodRows: Array<[string, ReactNode]> = []
     if (itemId !== undefined) {
       const itemDef = engine.ctx.items.get(itemId)
-      productName = `${itemDef?.name ?? itemId}（弹药）`
+      productName = tr("ui.Handbook.109", { p1: itemDef?.name ?? itemId })
       if (itemDef) {
         for (const l of itemInfoLines(itemDef, (id) => engine.ctx.items.get(id)?.name)) prodRows.push([l.k, l.v])
-        if (itemDef.description) prodRows.push(['产物介绍', itemDef.description])
+        if (itemDef.description) prodRows.push([tr("ui.Handbook.110"), itemDef.description])
       }
     } else if (moduleId !== undefined) {
       const modDef = engine.ctx.modules.get(moduleId)
-      productName = `${modDef?.name ?? moduleId}（装备）`
+      productName = tr("ui.Handbook.111", { p1: modDef?.name ?? moduleId })
       if (modDef) {
         // V17：统一行——各家族真实进公式参数（工业加成 / 武器卡 / 容量+缺口抗性 / 加力推进）
         for (const l of moduleInfoLines(modDef)) prodRows.push([l.k, l.v])
-        if (modDef.description) prodRows.push(['产物介绍', modDef.description])
+        if (modDef.description) prodRows.push([tr("ui.Handbook.110"), modDef.description])
       }
     } else {
       const shipDef = engine.ctx.ships.get(shipId ?? '')
-      productName = `${shipDef?.name ?? shipId ?? ''}（舰船）`
+      productName = tr("ui.Handbook.112", { p1: shipDef?.name ?? shipId ?? '' })
       if (shipDef) {
         // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
         for (const l of shipInfoLines(shipDef)) prodRows.push([l.k, l.v])
         // 2026-09-12 船长：舰船蓝图详情同样可见间接属性（与图鉴·舰船分支同口径）
         for (const l of shipIndirectLines(shipDef)) prodRows.push([l.k, l.v])
-        if (shipDef.description) prodRows.push(['产物介绍', shipDef.description])
+        if (shipDef.description) prodRows.push([tr("ui.Handbook.110"), shipDef.description])
       }
     }
     rows.push([tr("ui.MarketPage.016"), productName])
@@ -692,7 +692,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     rows.push(['耗时', `约 ${Math.round(Number(r.buildSeconds ?? 0) / 60)} 分钟（受工业理论缩短）`])
   } else if (cell.tab === 'skills') {
     rows.push(['技能组', String(r.group ?? '')])
-    rows.push(['训练难度', `${Number(r.rank ?? 0)}（数值越大整条线练得越慢）`])
+    rows.push(['训练难度', tr("ui.Handbook.113", { p1: Number(r.rank ?? 0) })])
   }
 
   return (
@@ -854,7 +854,7 @@ export function Handbook({
   const tipsHit = q === '' || GUIDE_NOTES.some((n) => n.toLowerCase().includes(q))
   const pageSeq: Array<{ key: string; label: string }> = [
     ...matched.map((x) => ({ key: x.e.title, label: x.e.title })),
-    ...(tab === 'guide' && tipsHit ? [{ key: TIPS_KEY, label: '小贴士' }] : []),
+    ...(tab === 'guide' && tipsHit ? [{ key: TIPS_KEY, label: tr("ui.Handbook.114") }] : []),
   ]
   const pageIdx = pageSeq.findIndex((p) => p.key === (onTips ? TIPS_KEY : (cur?.e.title ?? '')))
   const prevPage = pageIdx > 0 ? pageSeq[pageIdx - 1]! : null
@@ -920,7 +920,7 @@ export function Handbook({
     tab: 'skills',
     glyph: `group-${s.group}`,
     name: s.name,
-    sub: `${s.group} · 难度 ${s.rank}`,
+    sub: tr("ui.Handbook.115", { p1: s.group, p2: s.rank }),
     raw: s as unknown as RawData,
   }))
 
@@ -948,9 +948,9 @@ export function Handbook({
   /** 分组顺序表（与市场页同源；装备未收录槽位归「其它」） */
   function orderOf(t: Tab): Array<{ key: string; label: string }> {
     if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
-    if (t === 'modules') return MODULE_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: '其它' }])
+    if (t === 'modules') return MODULE_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: tr("ui.Handbook.116") }])
     if (t === 'ships') return SHIP_SUBS.map((s) => ({ key: s.key, label: s.label }))
-    if (t === 'blueprints') return BLUEPRINT_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: '其它' }])
+    if (t === 'blueprints') return BLUEPRINT_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: tr("ui.Handbook.116") }])
     return engine.groups.map((g) => ({ key: g, label: g })) // skills
   }
 
@@ -1069,7 +1069,7 @@ export function Handbook({
                   <div className="app-inv-name">
                     <RowGlyph glyph={item.kind} /> {item.name}
                     <span className="app-chip is-dim">{itemKindText(item)}</span>
-                    <span className="app-dim"> · {item.unitM3} m³/单位</span>
+                    <span className="app-dim"> · {item.unitM3} {tr("ui.Handbook.117")}</span>
                   </div>
                   <div className="app-dim">{item.description}</div>
                   {refine ? <div className="app-hand-sub">精炼（产出倍率 100%）→ {refine}</div> : null}
@@ -1110,7 +1110,7 @@ export function Handbook({
                     <RowGlyph glyph={cls} /> {ship.name}
                     <span className="app-chip is-dim">T{ship.tier}</span>
                     <span className={`app-chip app-role-chip is-${cls}`}>{roleName(cls)}</span>
-                    {ship.priceIsk <= 0 ? <span className="app-chip">仅可制造</span> : null}
+                    {ship.priceIsk <= 0 ? <span className="app-chip">{tr("ui.Handbook.118")}</span> : null}
                   </div>
                   <div className="app-dim">
                     {tr("ui.ShipPage.019")} {ship.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {ship.cycleSeconds} {tr("ui.ShipPage.021")} {ship.oreUnitsPerCycle} 单位 ·
@@ -1136,8 +1136,8 @@ export function Handbook({
               const mats = bp.materials.map((m) => `${engine.ctx.items.get(m.itemId)?.name ?? m.itemId}×${m.count}`).join(' + ')
               const isAmmo = bp.itemId !== undefined
               const product = isAmmo
-                ? `${engine.ctx.items.get(bp.itemId!)?.name ?? bp.itemId!}（弹药）`
-                : `${engine.ctx.modules.get(bp.moduleId!)?.name ?? bp.moduleId!}（装备）`
+                ? tr("ui.Handbook.109", { p1: engine.ctx.items.get(bp.itemId!)?.name ?? bp.itemId! })
+                : tr("ui.Handbook.111", { p1: engine.ctx.modules.get(bp.moduleId!)?.name ?? bp.moduleId! })
               return (
                 <InfoHover
                   key={bp.id}
@@ -1146,7 +1146,7 @@ export function Handbook({
                   lines={[
                     { k: tr("ui.MarketPage.016"), v: product },
                     { k: tr("ui.MarketPage.018"), v: mats },
-                    { k: tr("ui.MarketPage.019"), v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
+                    { k: tr("ui.MarketPage.019"), v: tr("ui.Handbook.119", { p1: (bp.buildSeconds / 60).toFixed(0) }) },
                   ]}
                   note={bp.description}
                   className="app-hand-entry"
@@ -1156,7 +1156,7 @@ export function Handbook({
                   </div>
                   <div className="app-dim">{tr("ui.Handbook.013")}{product}</div>
                   <div className="app-hand-sub">
-                    材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
+                    材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} {tr("ui.Handbook.120")}
                   </div>
                   <div className="app-dim">{bp.description}</div>
                 </InfoHover>
@@ -1172,9 +1172,9 @@ export function Handbook({
                   as="li"
                   title={bp.name}
                   lines={[
-                    { k: tr("ui.MarketPage.016"), v: `${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）` },
+                    { k: tr("ui.MarketPage.016"), v: tr("ui.Handbook.112", { p1: engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId }) },
                     { k: tr("ui.MarketPage.018"), v: mats },
-                    { k: tr("ui.MarketPage.019"), v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
+                    { k: tr("ui.MarketPage.019"), v: tr("ui.Handbook.119", { p1: (bp.buildSeconds / 60).toFixed(0) }) },
                   ]}
                   note={bp.description}
                   className="app-hand-entry"
@@ -1184,7 +1184,7 @@ export function Handbook({
                   </div>
                   <div className="app-dim">{tr("ui.Handbook.013")}{engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）</div>
                   <div className="app-hand-sub">
-                    材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
+                    材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} {tr("ui.Handbook.120")}
                   </div>
                   <div className="app-dim">{bp.description}</div>
                 </InfoHover>
@@ -1217,7 +1217,7 @@ export function Handbook({
       <div className="app-hand-pager">
         {prevPage !== null ? (
           <button className="app-btn is-small app-hand-pager-btn" onClick={() => setPageKey(prevPage.key)}>
-            ‹ 上一条 · {prevPage.label}
+            {tr("ui.Handbook.121")} {prevPage.label}
           </button>
         ) : (
           <span />
@@ -1240,7 +1240,7 @@ export function Handbook({
       return (
         <div className="app-hand-guide">
           <div className="app-hand-sect">
-            <div className="app-bay-title">小贴士</div>
+            <div className="app-bay-title">{tr("ui.Handbook.114")}</div>
             <ul className="app-hand-notes">
               {GUIDE_NOTES.filter((n) => q === '' || n.toLowerCase().includes(q)).map((n) => (
                 <li key={n}>{n}</li>
@@ -1252,7 +1252,7 @@ export function Handbook({
       )
     }
     if (cur === null) {
-      return <div className="app-dim app-inv-empty">{tr("ui.SkillsPage.006")}{query.trim()}」的词条——换个关键词试试。</div>
+      return <div className="app-dim app-inv-empty">{tr("ui.SkillsPage.006")}{query.trim()}{tr("ui.Handbook.122")}</div>
     }
     return (
       <div className="app-hand-guide">
@@ -1281,7 +1281,7 @@ export function Handbook({
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-hand-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
-          <span className="app-report-title">手册 · 图鉴</span>
+          <span className="app-report-title">{tr("ui.Handbook.123")}</span>
           <button className="app-btn is-small" onClick={onClose}>
             {tr("ui.App.086")}
           </button>
@@ -1328,7 +1328,7 @@ export function Handbook({
                   className={`app-hand-subitem app-hand-subsolo${onTips ? ' is-active' : ''}`}
                   onClick={() => setPageKey(TIPS_KEY)}
                 >
-                  <span>小贴士</span>
+                  <span>{tr("ui.Handbook.114")}</span>
                 </button>
               ) : null}
             </nav>
