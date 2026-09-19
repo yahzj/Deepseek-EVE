@@ -12,8 +12,10 @@ import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import {
   COURIER_ACCEPT_MAX,
-  COURIER_TASK_BASE_VOLUME_M3,
-  COURIER_TASK_LEVEL_RATE,
+  COURIER_TASK_LEVEL_FREIGHT_ISK,
+  COURIER_TASK_LEVEL_VOLUME,
+  COURIER_TIMED_CHANCE,
+  COURIER_TIMED_VOLUME_RATIO,
   COURIER_TIMED_WARP_REQ,
   DEFAULT_BALANCE,
   RESOURCE_TASK_LEVEL_MARGIN,
@@ -114,10 +116,10 @@ function expectResourceReward(need: number, buy: number, level: 1 | 2 | 3 | 4 | 
   return r
 }
 
-/** 期望的快递运费（体积 × 级别单价 × 航程系数[标称分钟/10，下限 0.5、无上限]） */
-function expectCourierReward(volumeM3: number, level: 1 | 2 | 3 | 4 | 5, nominalMinutes: number): number {
+/** 期望的快递运费（级别运费基准 × 航程系数[标称分钟/10，下限 0.5]；2026-09-18 起运费与体积解耦） */
+function expectCourierReward(level: 1 | 2 | 3 | 4 | 5, nominalMinutes: number): number {
   const trip = Math.max(0.5, nominalMinutes / 10)
-  return Math.max(100, Math.floor((volumeM3 * COURIER_TASK_LEVEL_RATE[level] * trip) / 100) * 100)
+  return Math.max(100, Math.floor((COURIER_TASK_LEVEL_FREIGHT_ISK[level] * trip) / 100) * 100)
 }
 
 describe('时效任务板 · 条数与级别（2026-09-18 船长改版）', () => {
@@ -151,11 +153,21 @@ describe('时效任务板 · 条数与级别（2026-09-18 船长改版）', () =
     }
   })
 
-  it('级别倍率：同一商品的高级别任务需量更大（L1 15 分钟产量 ⇒ L5 8 倍）', () => {
+  it('级别倍率与体积表：资源需量按 1/1.7/3/5/8 放大；快递体积 L1 1,000 ⇒ L5 20,000、限时减半', () => {
     expect(SIDE_TASK_LEVEL_SCALE[1]).toBe(1)
     expect(SIDE_TASK_LEVEL_SCALE[5]).toBe(8)
-    expect(courierVolumeFor(1)).toBe(COURIER_TASK_BASE_VOLUME_M3)
-    expect(courierVolumeFor(5)).toBe(COURIER_TASK_BASE_VOLUME_M3 * 8)
+    // 船长 2026-09-18：「L5非限时的快递体积提高到2万立方，L1提高到1000，其他等比上调，限时快递体积为非限时的一半」
+    expect(COURIER_TASK_LEVEL_VOLUME[1]).toBe(1_000)
+    expect(COURIER_TASK_LEVEL_VOLUME[5]).toBe(20_000)
+    expect(courierVolumeFor(1)).toBe(1_000)
+    expect(courierVolumeFor(5)).toBe(20_000)
+    expect(courierVolumeFor(5, true)).toBe(10_000)
+    expect(courierVolumeFor(1, true)).toBe(500)
+    for (const lv of [2, 3, 4] as const) {
+      // 等比：相邻级别比值约 2.1（1,000 → 20,000 四步）
+      expect(COURIER_TASK_LEVEL_VOLUME[lv]).toBeGreaterThan(COURIER_TASK_LEVEL_VOLUME[(lv - 1) as 1 | 2 | 3])
+      expect(COURIER_TASK_LEVEL_VOLUME[lv]).toBeLessThan(COURIER_TASK_LEVEL_VOLUME[(lv + 1) as 3 | 4 | 5])
+    }
   })
 
   it('副站多 ⇒ 席位多；L1~L4 每个种子都出现，L5 在剩余席位里能掷出（扫多个种子）', () => {
@@ -297,7 +309,7 @@ describe('时效任务板 · 候选池', () => {
 })
 
 describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
-  it('未建成副站不刷；建成后 4 条、均绑定目标站、体积按级别、报酬按体积与航程', () => {
+  it('未建成副站不刷；建成后 4+2 条、均绑定目标站、体积按级别（限时减半）、运费只按级别与航程', () => {
     const { state, ctx } = makeWorld({ stations: [stationSite('s1', 'galaxy-far', '远方站')], built: ['s1'] })
     marketQuote(state, ctx, 'it-ore-a')
     advanceGame(state, FIRST_OPEN_MS, ctx)
@@ -307,42 +319,67 @@ describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
       expect(t.kind).toBe('courier')
       expect(t.stationId).toBe('s1')
       expect(t.galaxyId).toBe('galaxy-far')
-      expect(t.volumeM3).toBe(courierVolumeFor(t.level!))
+      // 体积：非限时 = 级别表值；限时 = 表值 × 0.5（船长 2026-09-18）
+      expect(t.volumeM3).toBe(courierVolumeFor(t.level!, t.timed === true))
+      if (t.timed === true) expect(t.volumeM3).toBe(Math.round(COURIER_TASK_LEVEL_VOLUME[t.level!] * COURIER_TIMED_VOLUME_RATIO))
       expect(t.refId).toBe('') // 不再绑商品
       expect(t.need).toBe(0)
-      expect(t.rewardIsk).toBe(expectCourierReward(t.volumeM3!, t.level!, 2)) // 母港→远方 = 2 分钟标称
+      // 运费与体积解耦：只看级别 + 航程（母港→远方 = 2 分钟标称）
+      expect(t.rewardIsk).toBe(expectCourierReward(t.level!, 2))
     }
   })
 
-  it('限时快递：L2~L5 门槛 = 剑鱼 4 档（6.20 / 7.44 / 8.37 / 10.92），L1 为普通快递', () => {
-    const { state, ctx } = makeWorld({ stations: [stationSite('s1', 'galaxy-far', '远方站')], built: ['s1'] })
-    marketQuote(state, ctx, 'it-ore-a')
-    advanceGame(state, FIRST_OPEN_MS, ctx)
-    for (const t of sideTaskBoard(state, ctx).courier) {
-      if (t.level === 1) {
-        expect(t.timed).toBeUndefined()
-        expect(t.warpReqAus).toBeUndefined()
-      } else {
-        expect(t.timed).toBe(true)
-        expect(t.warpReqAus).toBe(COURIER_TIMED_WARP_REQ[t.level! - 2])
-        expect(t.timeLimitMs).toBeGreaterThan(0)
+  it('每单独立掷「普通 / 限时」；限时带本级别跃迁门槛与时限，普通两者皆无（扫多个种子都能见到限时）', () => {
+    let sawTimed = false
+    for (let seed = 1; seed <= 6; seed += 1) {
+      const state = createInitialState({ nowWallMs: 0, seed })
+      const ctx = makeTestCtx({
+        quietEvents: true,
+        marketGoods: GOODS,
+        belts: [belt('belt-b', 'ore-b'), belt('belt-c', 'ore-c'), belt('belt-d', 'ore-d')],
+        stations: [stationSite('s1', 'galaxy-far', '远方站')],
+        balance: quietBalance(),
+      })
+      state.stationSites['s1'] = { stage: 3, delivered: {} }
+      marketQuote(state, ctx, 'it-ore-a')
+      advanceGame(state, FIRST_OPEN_MS, ctx)
+      for (const t of sideTaskBoard(state, ctx).courier) {
+        if (t.timed === true) {
+          sawTimed = true
+          expect(t.warpReqAus).toBe(COURIER_TIMED_WARP_REQ[Math.max(0, t.level! - 2)])
+          expect(t.timeLimitMs).toBeGreaterThan(0)
+        } else {
+          expect(t.warpReqAus).toBeUndefined()
+          expect(t.timeLimitMs).toBeUndefined()
+        }
       }
     }
+    expect(sawTimed, `${COURIER_TIMED_CHANCE} 概率下 6 个种子一次限时都没掷出`).toBe(true)
   })
 
-  it('出发：不扣任何物品（虚拟货物）、卸真实货入仓、挂入在途；货舱不足被拒', () => {
+  it('出发：不扣任何物品（虚拟货物）、按体积占舱挂入在途；货舱不足被拒', () => {
     const { state, ctx } = makeWorld({ stations: [stationSite('s1', 'galaxy-far', '远方站')], built: ['s1'] })
     marketQuote(state, ctx, 'it-ore-a')
     advanceGame(state, FIRST_OPEN_MS, ctx)
-    const task = sideTaskBoard(state, ctx).courier.find((t) => t.level === 1)!
-    // 小船（沙猫 800 m³）装不下 L1 的 300 m³？能装 ⇒ 用一艘更小的船验证拒绝
+    const board = sideTaskBoard(state, ctx)
+    // ① 大船（sh-fast 6,000 m³）能装 L1（1,000 m³）
+    const small = board.courier.find((t) => t.level === 1 && t.timed !== true && (t.volumeM3 ?? 0) <= 1_000)!
+    expect(changeShip(state, 'sh-fast', ctx).ok).toBe(true)
     state.warehouse.items['ore-a'] = 123
-    expect(startCourierDelivery(state, ctx, task.id).ok).toBe(true)
+    expect(startCourierDelivery(state, ctx, small.id).ok).toBe(true)
     const d = state.sideTasks.deliver!
-    expect(d.volumeM3).toBe(task.volumeM3)
+    expect(d.volumeM3).toBe(small.volumeM3)
     expect(state.warehouse.items['ore-a']).toBe(123) // 一件都不扣
-    expect(state.warehouse.items['ore-a']).toBeGreaterThan(0)
-    expect(sideTaskBoard(state, ctx).deliver?.taskId).toBe(task.id)
+    expect(sideTaskBoard(state, ctx).deliver?.taskId).toBe(small.id)
+
+    // ② 货舱不足被拒：默认船（沙猫 800 m³）装不下 L1 的 1,000 m³
+    const b = makeWorld({ stations: [stationSite('s1', 'galaxy-far', '远方站')], built: ['s1'] })
+    marketQuote(b.state, b.ctx, 'it-ore-a')
+    advanceGame(b.state, FIRST_OPEN_MS, b.ctx)
+    const big = sideTaskBoard(b.state, b.ctx).courier.find((t) => (t.volumeM3 ?? 0) > 800)!
+    const r = startCourierDelivery(b.state, b.ctx, big.id)
+    expect(r.ok).toBe(false)
+    expect(r.ok ? '' : r.error).toContain('货舱')
   })
 
   it('限时快递跃迁门槛：慢船被拒、快船放行（门槛 = 剑鱼 4 档之一）', () => {
