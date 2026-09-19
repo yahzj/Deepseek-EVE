@@ -56,6 +56,8 @@ interface FileScan {
   literals: Set<string>
   /** 仍含中日韩的字符串字面量个数 */
   cjkLiterals: number
+  /** 其中**已包进 `t()` / `tr()` 第一参数**的个数（P3 进度用） */
+  cjkWrapped: number
   /** `t(...)` / `tr(...)` 调用点个数 */
   calls: number
 }
@@ -64,6 +66,7 @@ function scanFile(file: string): FileScan {
   const text = readFileSync(file, 'utf8')
   const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const literals = new Set<string>()
+  const wrapped = new Set<string>()
   let cjkLiterals = 0
   let calls = 0
   const visit = (node: ts.Node): void => {
@@ -78,12 +81,15 @@ function scanFile(file: string): FileScan {
     ) {
       calls += 1
       const arg0 = node.arguments[0]
-      if (arg0 && (ts.isStringLiteral(arg0) || ts.isNoSubstitutionTemplateLiteral(arg0))) literals.add(arg0.text)
+      if (arg0 && (ts.isStringLiteral(arg0) || ts.isNoSubstitutionTemplateLiteral(arg0))) {
+        literals.add(arg0.text)
+        wrapped.add(arg0.text)
+      }
     }
     ts.forEachChild(node, visit)
   }
   visit(sf)
-  return { rel: relative(process.cwd(), file).split('\\').join('/'), literals, cjkLiterals, calls }
+  return { rel: relative(process.cwd(), file).split('\\').join('/'), literals, cjkLiterals, cjkWrapped: wrapped.size, calls }
 }
 
 /** 从 key/value 里抽 `{名字}` 占位符集合 */
@@ -95,10 +101,12 @@ const files = walk(ROOT).filter((p) => p !== DICT_FILE)
 const scans = files.map(scanFile)
 const allLiterals = new Set<string>()
 let cjkTotal = 0
+let cjkWrappedTotal = 0
 let callTotal = 0
 for (const s of scans) {
   for (const l of s.literals) allLiterals.add(l)
   cjkTotal += s.cjkLiterals
+  cjkWrappedTotal += s.cjkWrapped
   callTotal += s.calls
 }
 
@@ -128,9 +136,15 @@ const top = [...scans].sort((x, y) => y.cjkLiterals - x.cjkLiterals).slice(0, 10
 
 console.log(`· 词典：**${entries.length}** 条英文词条（` + `apps/desktop/src/renderer/src/i18n/dict.en.ts` + '）')
 console.log(`· 接线：渲染层 \`t()\`/\`tr()\` 调用点 **${callTotal}** 处 · 扫描 ${scans.length} 个源文件`)
-console.log(`· 未译读数：渲染层仍含中日韩的字符串字面量 **${cjkTotal}** 条（**报告口径，不阻断**——P3 界面批逐页消化）`)
+console.log(
+  `· 未译读数：渲染层含中日韩的字符串字面量 **${cjkTotal}** 条` +
+    `（其中**已包 t()** ${cjkWrappedTotal} 条 · **未包** ${cjkTotal - cjkWrappedTotal} 条）` +
+    '（**报告口径，不阻断**——P3 界面批逐页消化）',
+)
 console.log('· 未译最多的文件（Top 10）：')
-for (const s of top) console.log(`    ${String(s.cjkLiterals).padStart(4)}  ${s.rel}`)
+for (const s of top) {
+  console.log(`    ${String(s.cjkLiterals).padStart(4)}  ${s.rel}（已包 ${s.cjkWrapped}）`)
+}
 
 if (errors.length > 0) {
   console.error('')

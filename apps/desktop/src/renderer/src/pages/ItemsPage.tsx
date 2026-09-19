@@ -16,6 +16,7 @@ import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type 
 import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import { RACK_SUBS, SUB_ALL } from '../ui/itemSubs'
+import { useL10n } from '../i18n/locale'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -30,6 +31,8 @@ export interface ItemNavProps {
 /** 仓库主视图（含装备库分组） */
 function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
+  /** 语言（2026-09-19 船长令「英语本地化」）：界面串走 `t(中文源串)`；缺词条回退中文 */
+  const { t } = useL10n()
   // 仓库搜索（2026-09-09 船长：标题内搜索栏，按名称/分类/说明过滤仓库物品与装备库）
   const [wareQuery, setWareQuery] = useState('')
   /* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」）：
@@ -85,21 +88,21 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
 
   const KIND_EMPTY: Record<string, string> = {
-    ore: '仓库里没有原矿（自动卸货的矿会先到这里）。',
-    mineral: '还没有原材料——去「工业」页精炼资源。',
-    gas: '仓库里没有气体。',
-    ice: '仓库里没有冰矿。',
-    ammo: '仓库里没有弹药。',
-    drone: '仓库里没有无人机。',
+    ore: t('仓库里没有原矿（自动卸货的矿会先到这里）。'),
+    mineral: t('还没有原材料——去「工业」页精炼资源。'),
+    gas: t('仓库里没有气体。'),
+    ice: t('仓库里没有冰矿。'),
+    ammo: t('仓库里没有弹药。'),
+    drone: t('仓库里没有无人机。'),
   }
 
   function handleLoad(id: string): void {
     const def = engine.ctx.items.get(id)
     if (!def) return
     const loaded = engine.loadWareToCargoFit(id)
-    if (loaded === 0) onToast('船上没有足够空间。', true)
+    if (loaded === 0) onToast(t('船上没有足够空间。'), true)
     else {
-      onToast(`已装船 ${def.name}×${loaded.toLocaleString('zh-CN')}。`)
+      onToast(t('已装船 {name}×{n}。', { name: def.name, n: loaded.toLocaleString('zh-CN') }))
       setPickItem(null)
     }
   }
@@ -174,10 +177,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   return (
     <Panel
       className="is-fill app-fleet-panel"
-      title="仓库"
+      title={t('仓库')}
       hint={
         // 图标视图的用法说明只在图标视图挂出来（2026-09-13 船长：常驻说明收进标题后的圆形感叹号）
-        mode === 'grid' ? <HintIcon tip="图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。" /> : undefined
+        mode === 'grid' ? <HintIcon tip={t('图标视图：按类型分组，点击任意卡片即可执行装卸、卖出等操作。')} /> : undefined
       }
       right={
         <span className="app-head-search-wrap">
@@ -185,13 +188,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           <input
             className="app-head-search"
             type="text"
-            placeholder="搜索仓库…"
+            placeholder={t('搜索仓库…')}
             value={wareQuery}
             onChange={(e) => setWareQuery(e.target.value)}
             spellCheck={false}
           />
           <span className="app-dim">
-            {wareNarrowed ? `匹配 ${hitTotal} 种` : `${hitTotal} 种 · 无限容量 · 不随船`}
+            {wareNarrowed
+              ? t('匹配 {n} 种', { n: hitTotal })
+              : t('{n} 种 · 无限容量 · 不随船', { n: hitTotal })}
           </span>
         </span>
       }
@@ -274,8 +279,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       {wareNarrowed && hitTotal === 0 ? (
         <div className="app-dim app-note">
           {wq.length > 0
-            ? `没有匹配「${wareQuery.trim()}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。`
-            : '当前筛选下仓库里没有东西——换个分类，或点「全部」看全表。'}
+            ? t('没有匹配「{kw}」的仓库物品或装备——换个关键词试试（支持名称/分类/说明）。', { kw: wareQuery.trim() })
+            : t('当前筛选下仓库里没有东西——换个分类，或点「全部」看全表。')}
         </div>
       ) : null}
       {mode === 'list' ? (
@@ -295,7 +300,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             right={<span className="app-dim">{kindRows.length} 种</span>}
           >
             {kindRows.length === 0 ? (
-              <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? '仓库里没有该分类物品。'}</div>
+              <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('仓库里没有该分类物品。')}</div>
             ) : (
               <ul className="app-inv-list">
                 {kindRows.map(([id, units]) => {
@@ -341,10 +346,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         {marketGoodOf(engine.ctx, 'item', id) ? (
                           <button
                             className="app-btn is-small"
-                            title="前往市场查看该物品的订单（价格/挂单/买入）"
+                            title={t('前往市场查看该物品的订单（价格/挂单/买入）')}
                             onClick={() => goMarket('item', id)}
                           >
-                            ↖ 查看市场
+                            {t('↖ 查看市场')}
                           </button>
                         ) : null}
                         {/* 丢弃（船长 2026-09-15：「仓库添加丢弃按钮，允许玩家丢弃任意数量已有物品」）
@@ -416,10 +421,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     {modGood ? (
                       <button
                         className="app-btn is-small"
-                        title="前往市场查看该装备的订单（价格/挂单/买入）"
+                        title={t('前往市场查看该装备的订单（价格/挂单/买入）')}
                         onClick={() => goMarket('module', id)}
                       >
-                        ↖ 查看市场
+                        {t('↖ 查看市场')}
                       </button>
                     ) : null}
                   </div>
@@ -457,7 +462,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 right={<span className="app-dim">{kindRows2.length} 种</span>}
               >
                 {kindRows2.length === 0 ? (
-                  <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? '仓库里没有该分类物品。'}</div>
+                  <div className="app-dim app-inv-empty">{KIND_EMPTY[kind] ?? t('仓库里没有该分类物品。')}</div>
                 ) : (
                   <ItemGlyphGrid cells={cells} onPick={(key) => setPickItem(key)} />
                 )}
@@ -529,7 +534,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       goMarket('item', pickItem)
                     }}
                   >
-                    ↖ 查看市场订单
+                    {t('↖ 查看市场订单')}
                   </button>
                 ) : null}
               </div>
@@ -585,7 +590,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       goMarket('module', pickMod)
                     }}
                   >
-                    ↖ 查看市场订单
+                    {t('↖ 查看市场订单')}
                   </button>
                 ) : null}
               </div>
