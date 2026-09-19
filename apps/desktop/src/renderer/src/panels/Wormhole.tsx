@@ -6,7 +6,7 @@
  * 入口常驻（星图「出港」的「扫描虫洞」标签 + 星图行动区入口 + 活动栏）、数据全部上线、
  * **公开就叫「虫洞」**；玩家侧仍有**解锁门槛**（协会声望 ≥ 40，见 `wormholeScanUnlockStanding`）。
  *
- * 界面构成：准备页（编队检索 + 三联读数）· **探索页（F3a-2：圆盘六边形网格 + 扫描/前往；F5 起
+ * 界面构成：准备页（编队检索 + 编队读数）· **探索页（F3a-2：圆盘六边形网格 + 扫描/前往；F5 起
  * 墓场/遗迹/矿脉走到就铺好产出 ⇒ 按钮是「打捞 / 采集」而不是「激活」）** · 货仓页（F4b 背包式格管理；
  * F5 起散货也是网格里的真摆放件、可拖拽）。层内动作各花 1 回合，未扫描的地点要先警告再确认（船长口径）；
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
@@ -35,7 +35,6 @@ import {
   cargoCapacityM3Of,
   isExitCell,
   shipDisplayName,
-  shipCategoryKeyOf,
   shipSizeLabel,
   wormholeAdmission,
   wormholeBagSlots,
@@ -78,6 +77,13 @@ import {
   wormholeShipAllowed,
   wormholeSalvagersOf,
   wormholeMinersOf,
+  // 2026-09-19 准备页读数（船长）：按**所选编队**现算的打捞器/采集器台数 + 扫描范围
+  wormholeSalvagersInFleet,
+  wormholeMinersInFleet,
+  wormholeScanBonusOf,
+  WORMHOLE_SCAN_RADIUS_BASE,
+  // 2026-09-19：威胁读数必须把**谜质科技**那一份也并进袋子（见下方 matterBuffs 注释）
+  matterTechWhBuffs,
   wormholeShipMass,
   wormholeUnitsPerSlot,
   wormholeShapeOf,
@@ -88,7 +94,7 @@ import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, Wormh
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
-import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
+import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 
 type WhTab = 'prep' | 'map' | 'bag'
@@ -299,10 +305,28 @@ export function WormholePanel({
   /** 编队采集器台数（0 ⇒ 母矿一堆也挖不动：与打捞器同一把尺） */
   const miners = run ? wormholeMinersOf(state, ctx) : 0
   /**
+   * **准备页读数：所选编队的 打捞器 / 采集器 / 扫描范围**（船长 2026-09-19）。
+   *
+   * 为什么在准备页也要看：这三个数决定"这队进洞能干什么"——没有打捞器就吃不了墓场/遗迹、
+   * 没有采集器就挖不动虚空母矿，而扫描范围决定每扫一次能开几圈图。原先它们只在**入洞后**的
+   * 探索页才看得到（都是读 `run` 的口径）⇒ 现在改用**按所选编队现算**的同一把尺
+   * （`wormholeSalvagersInFleet` / `wormholeMinersInFleet` / `wormholeScanBonusOf`），
+   * 还没入洞、还在挑船时就能对着读数配队。
+   *
+   * ⚠ 口径：扫描范围 = `WORMHOLE_SCAN_RADIUS_BASE`（基础 1 圈）＋ **编队**的侦察舰/电子舰加成；
+   * 洞内捞到的谜质装置「测绘仪」还能再 +圈（那是入洞后从货仓现算的，准备页不预告）。
+   */
+  const pickedSalvagers = wormholeSalvagersInFleet(state, ctx, picked)
+  const pickedMiners = wormholeMinersInFleet(state, ctx, picked)
+  const pickedScanRadius = WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, picked)
+  /**
    * **谜质增益**（F3c · 船长 2026-09-13「放在货仓里就生效」）：一律从货仓**现算**，
    * 界面读数、按钮提示与 core 的结算走同一个函数（`wormholeMatterBuffs`）⇒ 不会两套口径。
+   * ⚠ 2026-09-19 补：**必须把谜质科技那一份也传进来**（`matterTechWhBuffs(state, ctx)`）——
+   * 这只袋子是"装置 + 科技"两只来源合并的，原先这里只传装置 ⇒ 点了「压制力场增幅 / 守卫解析」
+   * 之后界面威胁读数**不跟着降**（而引擎实际已经降了）＝读数与实战不符。
    */
-  const matterBuffs = wormholeMatterBuffs(run?.hold)
+  const matterBuffs = wormholeMatterBuffs(run?.hold, matterTechWhBuffs(state, ctx))
   /**
    * **谜质压制后的威胁读数**（F3c B1）：界面与 core 走同一个 `wormholeMatterThreatMul`
    * ⇒ 玩家看到的威胁就是开战真正吃的那个数。
@@ -575,9 +599,10 @@ export function WormholePanel({
         const hay = `${e.name} ${e.def?.name ?? ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
-      // 类别键 = `shipCategoryKeyOf`（2026-09-16 船长：装甲线含"武装舰里装甲占比 > 护盾占比"者）
-      if (whRole !== SUB_ALL && shipCategoryKeyOf(e.def ?? {}) !== whRole) return false
-      if (whTier !== SUB_ALL && `t${e.tier}` !== whTier) return false
+      // 类别 / 级别：走**唯一入口** `shipRolePasses` / `shipTierPasses`（2026-09-19 乙组·判定单点；
+      // 类别 = 派生类别键 `shipCategoryKeyOf`，与舰队/仓库/手册同一把尺）
+      if (!shipRolePasses(e.def, whRole)) return false
+      if (!shipTierPasses(e.def ?? { tier: e.tier }, whTier)) return false
       return true
     }),
     /**
@@ -1390,8 +1415,14 @@ export function WormholePanel({
 
               {/**
                * **读数条**（同一处位置、同一套样式，两种模式两套内容）：
-               * - 手动 ⇒ 三联读数（货仓⇒背包格 / 折算总质量 / 回合预算）；
+               * - 手动 ⇒ 编队读数（货仓⇒背包格 / 折算总质量 / 回合预算 ＋ **打捞器 / 采集器 / 扫描范围**
+               *   三项——船长 2026-09-19：「在虫洞的准备界面，三联读数处添加玩家所选舰船的打捞器数量和
+               *   采集器数量以及扫描范围」）；
                * - 自动 ⇒ 自动探索读数（AI 核心占用 / 时长 / 收益 / 损伤）——船长 2026-09-14 选定。
+               * ⚠ ⟪文案调整 2026-09-19⟫ 标题：原文案是「**三联读数**」（那时确实三项）；本批加三项后改成
+               * 「**编队读数**」——六个读数再叫"三联"就与内容不符了（船长若要保留旧名，改这一处即可）。
+               * ⚠ 旧名还出现在 `docs/glossary.md`（词条描述）与几份旧设计稿/测试档说明里：按 §八 工作期间
+               * **不动旧文档** ⇒ 归档时随工作文档一并更正（已记进本批工作文档的「归档待办」）。
                */}
               <div className="app-bay-title app-wh-sub">{auto ? tr("ui.Wormhole.207") : tr("ui.Wormhole.026")}</div>
               {auto ? (
@@ -1420,6 +1451,27 @@ export function WormholePanel({
                   </span>
                   <span className="app-wh-cell">
                     {tr("ui.Wormhole.095")} <b>{admission.turnBudget}</b>
+                  </span>
+                  {/* 2026-09-19 船长追加的三项：所选编队的作业能力与开图能力（口径见上方注释）
+                      ⚠ 悬停是**纯文本**渲染 ⇒ 不许写 `**` 这类强调记号（会被原样显示给玩家，
+                      content:check 的「文案纯净契约」当场报红抓过本条一次，别再犯） */}
+                  <span
+                    className="app-wh-cell"
+                    title="所选编队的打捞器台数：墓场与遗迹每次打捞按台数回收若干堆；0 台 ⇒ 打捞格干不了活"
+                  >
+                    打捞器 <b>{pickedSalvagers}</b> 台
+                  </span>
+                  <span
+                    className="app-wh-cell"
+                    title="所选编队的采集器台数：矿脉每次采集按台数回收若干堆；0 台 ⇒ 一堆虚空母矿也挖不动"
+                  >
+                    采集器 <b>{pickedMiners}</b> 台
+                  </span>
+                  <span
+                    className="app-wh-cell"
+                    title="本队入洞后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成（编入队伍即生效、可叠加）；洞内捞到的谜质装置「测绘仪」还能再 +圈"
+                  >
+                    扫描范围 <b>{pickedScanRadius}</b> 圈
                   </span>
                 </div>
               )}

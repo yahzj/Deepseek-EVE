@@ -56,7 +56,8 @@
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",
     "docs:seal": "tsx tools/docs-seal.ts",
-    "tools:audit": "tsx tools/tools-audit.ts"
+    "tools:audit": "tsx tools/tools-audit.ts",
+    "commit:msg": "tsx tools/commit-msg.ts"
   },
   "devDependencies": {
     "exceljs": "^4.4.0",

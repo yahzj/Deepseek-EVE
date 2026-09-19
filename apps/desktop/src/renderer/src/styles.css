@@ -10145,7 +10145,7 @@ html[data-locale='en'] body {
 
 /* ═══════════ 终局玩法「虫洞」（E 批 2026-09-13）═══════════
    口径：复用仓内既有家族（app-modal / app-inv-* / app-bay-title / app-btn），
-   只补虫洞专属的：弹层尺寸 · 三联读数条 · 节点图 · 背包网格。
+   只补虫洞专属的：弹层尺寸 · 编队读数条 · 节点图 · 背包网格。
    容器固定尺寸，防内容变化引起跳动（约定 §六）。 */
 .app-wh-modal { width: min(1060px, 92vw); height: min(760px, calc(100vh - 72px)); max-width: calc(100vw - 40px); max-height: calc(100vh - 48px); }
 .app-wh-devnote { font-size: 11px; margin-left: 8px; margin-right: auto; }

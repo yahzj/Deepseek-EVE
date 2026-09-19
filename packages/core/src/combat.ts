@@ -3414,7 +3414,17 @@ export function pushBattleFx(
  * - **装填周期**：周期 ×(1 − 削减)，物理下限 50ms（不封顶，但周期不能到 0）。
  */
 export function applyMatterPlayerBuffs(spec: UnitSpec, b: WormholeMatterBuffs, foeMain: DamageType): void {
-  if (b.devices === 0) return
+  /**
+   * ⚠ **不要在这里按"装置台数"提前返回**（2026-09-19 修 · 船长实测会让"只点科技"完全无效）：
+   * 原实现是 `if (b.devices === 0) return`，而 `devices` **只数货仓里的谜质装置台数**——
+   * 谜质科技贡献（同一只袋子，字段由 `wormholeMatterBuffs` 合并进来）**不带装置也应当生效**。
+   * 实测：3 级测距延展（+12%）在"0 台装置"时最长射程 7,350m **一动不动**，带 1 台装置才 8,232m。
+   *
+   * 现在**不设提前返回**：下面逐项都自带"零值即跳过"的判断（`add <= 0` / `!== 1` 等），
+   * 空袋子（`WORMHOLE_MATTER_BUFFS_NONE`）走一遍等于没走 ⇒ 行为与"提前返回"逐字一致。
+   * 同类事故第二次：第一次在 `wormholeMatterBattleModsOf`（同日已修），教训 = **袋子是"装置 + 科技"两只
+   * 来源合并的，任何按单只来源判空的早退都会把另一只来源一起吞掉**。
+   */
   spec.hitBonus += b.hitBonus
   if (b.evasion > 0) spec.evasion = spec.evasion + b.evasion
   const applyResist = (layer: 'shield' | 'armor' | 'hull', add: number): void => {

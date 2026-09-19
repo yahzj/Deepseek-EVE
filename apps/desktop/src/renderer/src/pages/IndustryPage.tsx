@@ -40,6 +40,7 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
+import { WRECK_SUBS, wreckTierOf } from '../ui/itemSubs'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
@@ -66,11 +67,9 @@ const FURNACE_TABS: Array<{ key: FurnaceTab; label: string }> = [
 type SubOpt = { key: string; label: string }
 /** 可精炼资源按**资源大类**（只列实际存在的档；`ItemDef.kind` 单点） */
 const ORE_KIND_LABEL: Record<string, string> = { ore: tr("ui.IndustryPage.005"), gas: tr("ui.IndustryPage.006"), ice: tr("ui.IndustryPage.007") }
-/** 残骸回收按**档位**（普通 / 稀有）——船长 2026-09-14 选甲；档名 2026-09-16 收口为「稀有残骸」（旧称「稀有 · 高级箱」是施工期叫法，船长：「我并没有设定是游戏内文案」） */
-const WRECK_SUBS: SubOpt[] = [
-  { key: 'common', label: tr("ui.IndustryPage.008") },
-  { key: 'rare', label: tr("ui.IndustryPage.009") },
-]
+/* 残骸回收按**档位**（普通 / 稀有）——2026-09-14 船长选甲；档名 2026-09-16 收口为「稀有残骸」。
+ * 2026-09-19 乙组：表已按基线⑤收编到 `ui/itemSubs.ts`（`WRECK_SUBS`），物品页仓库 /
+ * 手册物品图鉴 / 市场 三处读的是同一张表 ⇒ 本文件不再自带该表（标签仍走唯一表 id）。 */
 
 
 /** 主控此刻不能"亲自运转一台新炉"的原因（null = 主控空闲可开；AI 核心驱动不受此限） */
@@ -574,12 +573,12 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
     .map((k) => ({ key: k, label: ORE_KIND_LABEL[k]! }))
   const subOptions: SubOpt[] = furnaceTab === 'ore' ? oreSubs : furnaceTab === 'wreck' ? WRECK_SUBS : []
   const oreFiltered = sub === '' ? oreDefs : oreDefs.filter((d) => d.kind === sub)
-  /** 残骸档位：`recycleProfileOf(...).rare` 是唯一判据（与卡上的「高级箱」徽标同源） */
+  /** 残骸档位：判据 = `wreckTierOf`（= core `isRareWreck`，与卡上的「稀有」徽标同源单点） */
   const wreckFiltered =
     sub === 'rare'
-      ? wreckDefs.filter((d) => recycleProfileOf(engine.ctx, d.id)?.rare === true)
+      ? wreckDefs.filter((d) => wreckTierOf(d.id) === 'rare')
       : sub === 'common'
-        ? wreckDefs.filter((d) => recycleProfileOf(engine.ctx, d.id)?.rare !== true)
+        ? wreckDefs.filter((d) => wreckTierOf(d.id) !== 'rare')
         : wreckDefs
   const oreShownF = pinMarked(state, 'recipes', oreFiltered, (def) => def.id)
   const wreckShownF = pinMarked(state, 'recipes', wreckFiltered, (def) => def.id)

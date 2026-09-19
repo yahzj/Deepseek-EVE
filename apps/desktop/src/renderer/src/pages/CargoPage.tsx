@@ -24,7 +24,7 @@ import {
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
-import { Glyph, toneOf } from '../ui/Glyphs'
+import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { SellQtyModal } from '../ui/SellQtyModal'
@@ -275,7 +275,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     >
                       <div className="app-inv-main">
                         <span className="app-inv-name">
-                          <RowGlyph glyph={def.kind} /> {def.name}
+                          <RowGlyph glyph={def.kind} tone={inventoryItemTone(id, def.kind)} /> {def.name}
                         </span>
                         <span className="app-inv-count">
                           ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}{tr('ui.CargoPage.054')}{' '}
@@ -375,6 +375,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   name: def?.name ?? id,
                   sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                   title: def?.description,
+                  // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
+                  tone: inventoryItemTone(id, def?.kind ?? kind),
                 }
               })
               const extra = kindExtraNote(kind)
@@ -417,7 +419,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             <ItemActionModal onClose={() => setPickId(null)}>
               <div className="app-itempick-head">
                 <span className="app-itempick-icon">
-                  <Glyph name={pickDef.kind} size={40} color={toneOf(pickDef.kind)} />
+                  <Glyph name={pickDef.kind} size={40} color={inventoryItemTone(pickId, pickDef.kind)} />
                 </span>
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickDef.name}</div>

@@ -20,9 +20,11 @@ import {
   matterTechWorkEffBonus,
   matterTechWreckYield,
 } from '../src/matterTech'
-import { WORMHOLE_ESSENCE_ITEM_ID } from '../src/wormholeSalvage'
-import { wormholeMatterBattleModsOf } from '../src/combat'
-import { wormholeAdmission, wormholeTurnBudget } from '../src/wormhole'
+import { WORMHOLE_ESSENCE_ITEM_ID, wormholeSyncMatterTurns } from '../src/wormholeSalvage'
+import { applyMatterPlayerBuffs, wormholeMatterBattleModsOf } from '../src/combat'
+import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
+import { addShipToFleet } from '../src/shipyard'
+import { wormholeAdmission, wormholeEnter, wormholeTurnBudget } from '../src/wormhole'
 import { wormholeMatterBuffs } from '../src/wormholeMatter'
 import { CURRENT_STATE_VERSION } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -117,6 +119,25 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(72)
   })
 
+  it('入洞后再点「时序锚定器」⇒ 本趟上限立刻 +10/级（永久加成，与装置同一套夹紧、幂等）', () => {
+    const state = world()
+    const a = addShipToFleet(state, 'sh-thresher')
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [a], 4242).ok).toBe(true)
+    const run = state.wormhole.run!
+    const base = run.turnsTotal
+    expect(run.turnsTechBonus).toBe(0) // 入场时一级没点
+    // 洞内现点 2 级锚定器 ⇒ 同步后本趟上限 +20（剩余的也一起多给）
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal).toBe(base + 20)
+    expect(run.turnsLeft).toBe(base + 20)
+    // 幂等：再同步一次不变（不会重复加）
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal).toBe(base + 20)
+  })
+
   it('洞内倍速：未点 = 1×（未解锁）；1 级 = 2×、2 级 = 4×（乘法口径，不是 Σ）', () => {
     const state = world()
     expect(matterTechBattleSpeed(state, ctx)).toBe(1)
@@ -141,6 +162,39 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(mods, '只点科技、不带装置时快照为 null ⇒ 战斗四节点全是死线').not.toBeNull()
     expect(mods!.threatMul).toBeLessThan(1) // 压制力场增幅：节点威胁 −3%/级
     expect(mods!.foeHitDown).toBeGreaterThan(0) // 信号噪化：敌命中 −1%/级
+  })
+
+  it('科技单独生效（我方静态增益同一条死线）：0 台装置时射程/命中/单发也要算进去', () => {
+    /**
+     * 2026-09-19 修的第二条同类死线：`applyMatterPlayerBuffs` 原先开头 `if (b.devices === 0) return`，
+     * 而 `devices` **只数装置台数** ⇒ 只点科技时我方射程/命中/回避/抗性/装填/单发**全部不生效**。
+     * 实测（船长问射程时发现）：3 级测距延展在 0 台装置下最长射程一动不动（7,350m），带 1 台才 8,232m。
+     */
+    const state = world()
+    expect(researchMatterTech(state, ctx, 'mt-battle-hit').ok).toBe(true) // 追踪校准：命中 +1%/级
+    expect(researchMatterTech(state, ctx, 'mt-battle-range').ok).toBe(true) // 测距延展（前置：追踪校准 ≥1）
+    expect(researchMatterTech(state, ctx, 'mt-battle-range').ok).toBe(true) // 2 级 ⇒ +8%
+    expect(state.wormhole.run?.hold).toBeUndefined()
+    const spec = {
+      weapons: [{ maxRangeM: 3000, minRangeM: 500, reloadMs: 2400, name: 'w' }],
+      hitBonus: 0,
+      evasion: 0,
+      resists: {},
+    } as unknown as Parameters<typeof applyMatterPlayerBuffs>[0]
+    applyMatterPlayerBuffs(spec, wormholeMatterBuffs(null, matterTechWhBuffs(state, ctx)), 'kinetic')
+    expect(spec.weapons[0]!.maxRangeM, '测距延展 2 级 ⇒ 3000 × 1.08').toBe(3240)
+    expect(spec.weapons[0]!.minRangeM, '近盲带不跟着放大（放大反而吃亏）').toBe(500)
+    expect(spec.hitBonus, '追踪校准 1 级 ⇒ +1%').toBeCloseTo(0.01, 6)
+    // 空袋子（装置与科技都没有）仍是**零改动**：逐字等价于不调用
+    const plain = {
+      weapons: [{ maxRangeM: 3000, minRangeM: 500, reloadMs: 2400, name: 'w' }],
+      hitBonus: 0,
+      evasion: 0,
+      resists: {},
+    } as unknown as Parameters<typeof applyMatterPlayerBuffs>[0]
+    applyMatterPlayerBuffs(plain, WORMHOLE_MATTER_BUFFS_NONE, 'kinetic')
+    expect(plain.weapons[0]!.maxRangeM).toBe(3000)
+    expect(plain.hitBonus).toBe(0)
   })
 
   it('扫描间隔 / 工业三件 / 效率加成：满级读数逐项对上', () => {

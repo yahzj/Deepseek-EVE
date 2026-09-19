@@ -20,7 +20,23 @@ import { handMarketKeyOf } from '../ui/marketJump'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { Glyph, toneOf } from '../ui/Glyphs'
-import { BLUEPRINT_SUBS, MODULE_SUBS, RACK_SUBS, SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, moduleSubKeyOf } from '../ui/itemSubs'
+import {
+  BLUEPRINT_SUBS,
+  CONTAINER_SUBS,
+  CONSUME_SUBS,
+  CORE_SUBS,
+  MODULE_SUBS,
+  RACK_SUBS,
+  SHIP_SUBS,
+  SHIP_TIER_SUBS,
+  SUB_ALL,
+  WRECK_SUBS,
+  itemBucketPasses,
+  itemSubPasses,
+  moduleSubKeyOf,
+  shipRolePasses,
+  shipTierPasses,
+} from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
@@ -976,26 +992,48 @@ export function Handbook({
     if (t === 'skills') return engine.groups.map((g) => ({ key: g, label: g }))
     return []
   }
-  /** 子筛选（二级）可选项——**只有装备 / 舰船 / 蓝图三页有**，且**必须选了主类才出现**
-   *  （「全部」不带子筛选，与组装机「全部标签不带子筛选」同款；2026-09-13 船长口径：
-   *  「如果有子分类的，主筛选选择之后出现子分类筛选」）；
-   *  蓝图的子级随所选门类变化（装备→槽类 / 舰船→级别 / 消耗品→无，与市场页 `BLUEPRINT_SUBS` 同表同键） */
+  /**
+   * 子筛选（二级）可选项——**必须选了主类才出现**（「全部」不带子筛选；2026-09-13 船长口径：
+   * 「如果有子分类的，主筛选选择之后出现子分类筛选」）。2026-09-19 甲组补丁按船长
+   * 「涉及到特定分类的父分类时，将其子分类也放入」补齐：
+   * - 物品图鉴：货柜→四档 · 残骸→档位 · AI 核心→档位（只列有物品形态的）· 蓝图碎片→功能分组；
+   * - 蓝图图鉴：装备→槽类 / 舰船→级别 / **消耗品→产物大类**（原先消耗品整行不出）；
+   * - 装备图鉴：槽类（主）→ 功能分组（子）；舰船图鉴：类别（主）→ 级别（子）。
+   */
   function subOptions(t: Tab, main: string): SubOption[] {
     if (main === SUB_ALL) return []
     if (t === 'modules') return MODULE_SUBS
     if (t === 'ships') return SHIP_TIER_SUBS
-    if (t === 'blueprints') return main === 'equip' ? RACK_SUBS : main === 'ship' ? SHIP_TIER_SUBS : []
+    if (t === 'items') {
+      if (main === 'container') return CONTAINER_SUBS
+      if (main === 'wreck') return WRECK_SUBS
+      if (main === 'aicore') return CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`))
+      if (main === 'fragment') return MODULE_SUBS
+      return []
+    }
+    if (t === 'blueprints') {
+      if (main === 'equip') return RACK_SUBS
+      if (main === 'ship') return SHIP_TIER_SUBS
+      /** 消耗品蓝图：按**产物大类**细分（弹药 / 修理组件 / 无人机）——只列真有蓝图的大类 */
+      const kinds = new Set<string>()
+      for (const b of engine.blueprints) {
+        if (b.itemId === undefined) continue
+        const k = engine.ctx.items.get(b.itemId)?.kind
+        if (k !== undefined) kinds.add(k)
+      }
+      return CONSUME_SUBS.filter((s) => kinds.has(s.key))
+    }
     return []
   }
   /** 主筛选判定（判据与 `groupKeyOf` 逐条对齐，避免"筛出来的条目和分组标题不一致"） */
   function mainPasses(c: GridCell, t: Tab, main: string): boolean {
     if (main === SUB_ALL) return true
-    if (t === 'items') return String(c.raw.kind ?? '') === main
-    if (t === 'modules') {
-      const mod = engine.ctx.modules.get(c.key)
-      return mod !== undefined && rackOf(mod) === main
-    }
-    if (t === 'ships') return String(c.glyph) === main // 同上：类别键（不是 raw.role）
+    /** 物品 / 装备两页走**唯一入口** `itemBucketPasses`（甲组·判定单点，2026-09-19 六条基线之⑥）：
+     *  物品页的 `main` = 真实物品大类；装备页的 `main` = 槽类键（`high/mid/low`）⇒ 拼成桶键 `module-<rack>`。 */
+    if (t === 'items') return itemBucketPasses(engine.ctx, c.key, main)
+    if (t === 'modules') return itemBucketPasses(engine.ctx, c.key, `module-${main}`)
+    // 舰船图鉴：类别走**唯一入口** `shipRolePasses`（= core `shipCategoryKeyOf`，2026-09-19 乙组）
+    if (t === 'ships') return shipRolePasses(engine.ctx.ships.get(c.key), main)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) return main === 'ship'
       if (c.raw.itemId !== undefined) return main === 'consume'
@@ -1003,15 +1041,22 @@ export function Handbook({
     }
     return String(c.raw.group ?? '') === main // skills
   }
-  /** 子筛选判定（物品与技能无二级，恒真） */
+  /** 子筛选判定（技能页无二级，恒真）——物品 / 装备两页走**唯一入口** `itemSubPasses`（甲组补丁） */
   function subPassesCell(c: GridCell, t: Tab, sub: string): boolean {
     if (sub === SUB_ALL) return true
+    if (t === 'items') return itemSubPasses(engine.ctx, c.key, String(c.raw.kind ?? ''), sub)
     if (t === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? '')) === sub
-    if (t === 'ships') return `t${String(c.raw.tier ?? '')}` === sub
+    // 舰船图鉴：级别走**唯一入口** `shipTierPasses`（2026-09-19 乙组）
+    if (t === 'ships') return shipTierPasses(engine.ctx.ships.get(c.key), sub)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) {
         const ship = engine.ctx.ships.get(String(c.raw.shipId))
         return ship !== undefined && `t${ship.tier}` === sub
+      }
+      // 消耗品蓝图：二级 = 产物大类（弹药 / 修理组件）
+      if (c.raw.itemId !== undefined) {
+        const it = engine.ctx.items.get(String(c.raw.itemId))
+        return it !== undefined && it.kind === sub
       }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
       return mod !== undefined && rackOf(mod) === sub
@@ -1392,7 +1437,7 @@ export function Handbook({
                         className={`app-tasktab${subKey === SUB_ALL ? ' is-active' : ''}`}
                         onClick={() => setSubKey(SUB_ALL)}
                       >
-                        {tr("ui.IndustryPage.064")}
+                        {tr("ui.IndustryPage.001")}
                       </button>
                       {subOpts.map((o) => (
                         <button

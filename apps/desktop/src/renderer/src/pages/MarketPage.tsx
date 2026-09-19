@@ -29,7 +29,7 @@ import { fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS, CONTAINER_KIND_KEYS, RACK_LABELS } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 
@@ -84,37 +84,20 @@ function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): strin
   return KIND_TEXT[good.kind] ?? good.kind
 }
 
-/** 类型过滤判定：「残骸」= item 类里物品大类为残骸者；「物品」不再包含残骸（单独成类）；
- *  装备按槽类三分（高槽/中槽/低槽装备，2026-09-10 船长：移除「装备」类型）——归槽走 core 单点 rackOf。
- *  注意：`kind === 'module'` 已不在类型下拉里，但仍保留判定（子分类判定 `subPasses` 与旧调用方兼容）。 */
+/**
+ * 类型过滤判定（**甲组·判定单点**，船长 2026-09-19「六条基线」之⑥）：物品 / 装备两域一律走
+ * `ui/itemSubs.ts` 的**唯一入口** `itemBucketPasses`——原先本函数自己写了一整套
+ * （残骸 / 槽类 / 消耗品 / 货柜 / 货物的剔除规则），与物品页仓库、手册图鉴各写一份 ⇒ 已收敛。
+ * 本函数现在只保留**市场特有**的部分：舰船 / 蓝图 / AI 核心三种商品按自身 `kind` 同字面判定。
+ *
+ * ⚠ `kind === 'module'` 已不在类型下拉里，但仍保留判定（`subPasses` 与旧调用方兼容）。
+ */
 function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: KindFilter | 'module'): boolean {
   if (kind === 'all') return true
-  if (kind === 'wreck') return itemDefOf(ctx, good)?.kind === 'wreck'
-  if (kind === 'module' || kind === 'module-high' || kind === 'module-mid' || kind === 'module-low') {
-    if (good.kind !== 'module') return false
-    if (kind === 'module') return true
-    const mod = ctx.modules.get(good.refId)
-    return mod !== undefined && rackOf(mod) === kind.slice('module-'.length)
-  }
-  if (kind === 'consume') {
-    // 消耗品 = 弹药 / 修理组件 / 无人机（2026-09-11 船长：独立成类，且从「物品」剔除）
-    const it = itemDefOf(ctx, good)
-    return it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)
-  }
-  if (kind === 'container') {
-    // 货柜 = 遗迹安全货柜 / 图纸货柜 / 贵重品货柜 / 军用备货柜（2026-09-16 船长：独立成类，与「货物」同级）
-    const it = itemDefOf(ctx, good)
-    return it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind)
-  }
-  if (good.kind !== kind) return false
-  const it = itemDefOf(ctx, good)
-  if (kind === 'item') {
-    // 「货物」= 除残骸、消耗品与货柜以外的物品（残骸 2026-09-08 独立 · 消耗品 2026-09-11 独立 · 货柜 2026-09-16 独立）
-    if (it?.kind === 'wreck') return false
-    if (it !== undefined && CONSUME_KIND_KEYS.includes(it.kind)) return false
-    if (it !== undefined && CONTAINER_KIND_KEYS.includes(it.kind)) return false
-  }
-  return true
+  if (good.kind === 'item' || good.kind === 'module') return itemBucketPasses(ctx, good.refId, kind)
+  // 舰船 / 蓝图 / AI 核心：类型键与商品自身 kind 同字面
+  if (kind === 'module' || RACK_KIND_KEYS.includes(kind as (typeof RACK_KIND_KEYS)[number])) return false
+  return good.kind === kind
 }
 
 /** mm:ss（向上取整到秒） */

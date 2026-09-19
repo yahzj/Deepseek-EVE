@@ -6,16 +6,25 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, rackOf, SLOT_LABELS } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
-import { Glyph, toneOf } from '../ui/Glyphs'
+import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
-import { RACK_SUBS, SUB_ALL } from '../ui/itemSubs'
+import {
+  CONTAINER_SUBS,
+  CORE_SUBS,
+  MODULE_SUBS,
+  RACK_SUBS,
+  SUB_ALL,
+  WRECK_SUBS,
+  itemBucketPasses,
+  itemSubPasses,
+} from '../ui/itemSubs'
 import { useL10n } from '../i18n/locale'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -36,11 +45,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const { t } = useL10n()
   // 仓库搜索（2026-09-09 船长：标题内搜索栏，按名称/分类/说明过滤仓库物品与装备库）
   const [wareQuery, setWareQuery] = useState('')
-  /* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」）：
-     一级 = 各大类 + 「装备」；选「装备」时出二级槽类（高/中/低，`RACK_SUBS` 单点表）。
+  /* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」；2026-09-19 甲组补丁按船长
+     「涉及到特定分类的父分类时，将其子分类也放入」补齐）：
+     一级 = 各大类 + 「装备」；二级 = 该一级的天然子维度（装备→槽类 · 货柜/残骸/AI 核心→档位 ·
+     碎片→功能分组）；三级 = 仅「装备」有（槽类 → 功能分组）。表与判定**全部走 `ui/itemSubs.ts` 单点**。
      与搜索取「与」；**不落盘**，切页/重开即重置（与市场、手册同一哲学）。 */
   const [wareKind, setWareKind] = useState<string>(SUB_ALL)
-  const [wareRack, setWareRack] = useState<string>(SUB_ALL)
+  const [wareSub, setWareSub] = useState<string>(SUB_ALL)
+  const [wareFunc, setWareFunc] = useState<string>(SUB_ALL)
   /** 一级筛选中（分类 / 装备）；`SUB_ALL` = 全部 */
   const kindPicked = wareKind !== SUB_ALL
   /** 装备是否在展示范围内（选了某个物品大类时，装备库整块不显示） */
@@ -68,22 +80,37 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       (def.description ?? '').toLowerCase().includes(wq)
     )
   }
-  /** 一级筛选（物品大类）：选了某一类就只留那一类 */
-  const kindHit = (id: string): boolean => {
-    if (!kindPicked) return true
-    return engine.ctx.items.get(id)?.kind === wareKind
+  /**
+   * **一级 → 二级维度**（只有"有天然子维度"的一级才有；表与标题前缀都取单点表）。
+   * AI 核心：仓库里只有物品形态的 gamma/beta/alpha（`basic` 只有市场商品）⇒ 按目录存在性列档。
+   */
+  const subDim: { options: typeof RACK_SUBS; label: string } | null = (() => {
+    if (wareKind === 'module') return { options: RACK_SUBS, label: '槽类' }
+    if (wareKind === 'container') return { options: CONTAINER_SUBS, label: '档位' }
+    if (wareKind === 'wreck') return { options: WRECK_SUBS, label: '档位' }
+    if (wareKind === 'aicore') {
+      return { options: CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`)), label: '档位' }
+    }
+    if (wareKind === 'fragment') return { options: MODULE_SUBS, label: '功能' }
+    return null
+  })()
+  /** **三级维度**：只有「装备」有（槽类 → 功能分组），且**选了槽位才出**（基线③级联） */
+  const funcDim = wareKind === 'module' && wareSub !== SUB_ALL ? MODULE_SUBS : null
+  /**
+   * 三个维度的判定一律走**唯一入口**（甲组·判定单点）：
+   * 一级 `itemBucketPasses` · 二级/三级 `itemSubPasses`；页面**不自写任何判定**。
+   */
+  const dimHit = (id: string): boolean => {
+    if (!itemBucketPasses(engine.ctx, id, wareKind)) return false
+    if (subDim && wareSub !== SUB_ALL && !itemSubPasses(engine.ctx, id, wareKind, wareSub)) return false
+    if (funcDim && wareFunc !== SUB_ALL && !itemSubPasses(engine.ctx, id, 'module', wareFunc)) return false
+    return true
   }
-  /** 二级筛选（装备槽类，走 core 单点 `rackOf`）：只对装备库生效 */
-  const rackHit = (id: string): boolean => {
-    if (wareRack === SUB_ALL) return true
-    const def = engine.ctx.modules.get(id)
-    return def !== undefined && rackOf(def) === wareRack
-  }
-  const itemHits = rows.filter(([id]) => hitItem(id) && kindHit(id))
-  const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && rackHit(id)) : []
+  const itemHits = rows.filter(([id]) => hitItem(id) && dimHit(id))
+  const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && dimHit(id)) : []
   const hitTotal = itemHits.length + modHits.length
   /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
-  const wareNarrowed = wq.length > 0 || kindPicked || wareRack !== SUB_ALL
+  const wareNarrowed = wq.length > 0 || kindPicked || wareSub !== SUB_ALL || wareFunc !== SUB_ALL
 
   // 2026-09-09（船长口径 A）：任何仓库物品都可装船携带（引擎按各自体积装；矿物/弹药/无人机亦同）；
   // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
@@ -202,9 +229,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         </span>
       }
     >
-      {/* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」）——工具条固定在列表上方不随滚动
-          （复刻「我的舰队」那套：app-fleet-toolbar + app-fleet-row + app-tasktab 胶囊）；
-          一级＝各大类 + 「装备」；选「装备」才出二级槽类（与手册装备图鉴同一张 RACK_SUBS 单点表） */}
+      {/* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」；2026-09-19 甲组补丁补齐子维度）
+          —— 工具条固定在列表上方不随滚动（复刻「我的舰队」那套：app-fleet-toolbar + app-fleet-row）；
+          一级＝各大类 + 「装备」；二级/三级**按一级现算**（基线③级联：上级没选就不占位）；
+          胶囊行文案一律「全部」+ 同行灰字前缀（基线①） */}
       <div className="app-fleet-toolbar">
         <div className="app-fleet-row">
           <span className="app-dim">{tr("ui.ItemsPage.021")}</span>
@@ -215,7 +243,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               className={`app-tasktab${wareKind === SUB_ALL ? ' is-active' : ''}`}
               onClick={() => {
                 setWareKind(SUB_ALL)
-                setWareRack(SUB_ALL)
+                setWareSub(SUB_ALL)
+                setWareFunc(SUB_ALL)
               }}
             >
               {tr("ui.IndustryPage.001")}
@@ -228,7 +257,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 className={`app-tasktab${wareKind === kind ? ' is-active' : ''}`}
                 onClick={() => {
                   setWareKind(kind)
-                  setWareRack(SUB_ALL)
+                  setWareSub(SUB_ALL)
+                  setWareFunc(SUB_ALL)
                 }}
               >
                 {itemKindLabel(kind)}
@@ -240,32 +270,65 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               className={`app-tasktab${wareKind === 'module' ? ' is-active' : ''}`}
               onClick={() => {
                 setWareKind('module')
-                setWareRack(SUB_ALL)
+                setWareSub(SUB_ALL)
+                setWareFunc(SUB_ALL)
               }}
             >
               {tr("ui.MarketPage.003")}
             </button>
           </div>
         </div>
-        {wareKind === 'module' ? (
+        {subDim ? (
           <div className="app-fleet-row">
-            <span className="app-dim">{tr("ui.ItemsPage.022")}</span>
+            <span className="app-dim">{subDim.label}{tr('ui.ItemsPage.046')}</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
-                aria-selected={wareRack === SUB_ALL}
-                className={`app-tasktab${wareRack === SUB_ALL ? ' is-active' : ''}`}
-                onClick={() => setWareRack(SUB_ALL)}
+                aria-selected={wareSub === SUB_ALL}
+                className={`app-tasktab${wareSub === SUB_ALL ? ' is-active' : ''}`}
+                onClick={() => {
+                  setWareSub(SUB_ALL)
+                  setWareFunc(SUB_ALL)
+                }}
               >
-                {tr("ui.ItemsPage.023")}
+                {tr("ui.IndustryPage.001")}
               </button>
-              {RACK_SUBS.map((s) => (
+              {subDim.options.map((s) => (
                 <button
                   key={s.key}
                   role="tab"
-                  aria-selected={wareRack === s.key}
-                  className={`app-tasktab${wareRack === s.key ? ' is-active' : ''}`}
-                  onClick={() => setWareRack(s.key)}
+                  aria-selected={wareSub === s.key}
+                  className={`app-tasktab${wareSub === s.key ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setWareSub(s.key)
+                    setWareFunc(SUB_ALL)
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {funcDim ? (
+          <div className="app-fleet-row">
+            <span className="app-dim">功能：</span>
+            <div className="app-task-tabs app-fleet-tabs" role="tablist">
+              <button
+                role="tab"
+                aria-selected={wareFunc === SUB_ALL}
+                className={`app-tasktab${wareFunc === SUB_ALL ? ' is-active' : ''}`}
+                onClick={() => setWareFunc(SUB_ALL)}
+              >
+                全部
+              </button>
+              {funcDim.map((s) => (
+                <button
+                  key={s.key}
+                  role="tab"
+                  aria-selected={wareFunc === s.key}
+                  className={`app-tasktab${wareFunc === s.key ? ' is-active' : ''}`}
+                  onClick={() => setWareFunc(s.key)}
                 >
                   {s.label}
                 </button>
@@ -318,7 +381,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     >
                       <div className="app-inv-main">
                         <span className="app-inv-name">
-                          <RowGlyph glyph={def.kind} /> {def.name}
+                          <RowGlyph glyph={def.kind} tone={inventoryItemTone(id, def.kind)} /> {def.name}
                           {def.kind !== 'ore' && def.kind !== 'mineral' ? (
                             <span className="app-dim">（{ITEM_KIND_LABELS[def.kind]}）</span>
                           ) : null}
@@ -452,6 +515,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 name: def?.name ?? id,
                 sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                 title: def?.description,
+                // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
+                tone: inventoryItemTone(id, def?.kind ?? kind),
               }
             })
             const extra2 = kindExtraNote(kind)
@@ -491,7 +556,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             <ItemActionModal onClose={() => setPickItem(null)}>
               <div className="app-itempick-head">
                 <span className="app-itempick-icon">
-                  <Glyph name={pickItemDef.kind} size={40} color={toneOf(pickItemDef.kind)} />
+                  <Glyph name={pickItemDef.kind} size={40} color={inventoryItemTone(pickItem, pickItemDef.kind)} />
                 </span>
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickItemDef.name}</div>

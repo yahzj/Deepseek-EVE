@@ -590,13 +590,26 @@ export function wormholePermanentPoolOf(ctx: SimContext, depth: number): string[
 
 /* ═══════════ 三、打捞器与堆的生成 ═══════════ */
 
+/**
+ * **任意编队的打捞器总台数**（按 `shipIds` 现算；0 = 干不了打捞）。
+ * 与 `wormholeSalvagersOf`（本趟编队）**同一把尺**——后者只是把 `run.fleet` 递进来，
+ * 供**准备页**在还没入洞时也能显示"这队有几台打捞器"（船长 2026-09-19）。
+ */
+export function wormholeSalvagersInFleet(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): number {
+  let n = 0
+  for (const uid of shipIds) n += salvagerCyclesOf(state, ctx, uid).length
+  return n
+}
+
 /** **编队打捞器总台数**（各船 `salvagerCyclesOf` 的长度之和；0 = 干不了打捞） */
 export function wormholeSalvagersOf(state: GameState, ctx: SimContext): number {
   const run = state.wormhole.run
   if (!run) return 0
-  let n = 0
-  for (const uid of run.fleet) n += salvagerCyclesOf(state, ctx, uid).length
-  return n
+  return wormholeSalvagersInFleet(state, ctx, run.fleet)
 }
 
 /** 本趟的确定性种子（`run.seed`；老档没有就退到全局 rng 种子） */
@@ -988,7 +1001,7 @@ export function wormholeTempStowPiece(
   }
   const r = holdTransferTo(run.tempGrid, run.hold, id, capacity)
   if (!r.ok) return { ok: false, error: r.error }
-  wormholeSyncMatterTurns(state) // 谜质装置进货仓 ⇒ 实时派生（时序核心 +10）；从货仓拿出 ⇒ 夹紧
+  wormholeSyncMatterTurns(state, ctx) // 谜质装置进货仓 ⇒ 实时派生（时序核心 +10）；从货仓拿出 ⇒ 夹紧
   const name = ctx.items.get(p.itemId)?.name ?? p.itemId
   addLog(state, 'info', `🕳 整理：${name} 从临时空间进货仓。`)
   return { ok: true }
@@ -1014,7 +1027,7 @@ export function wormholeTempDiscardPiece(
       if (slot.units <= 0) run.bag = run.bag.filter((s) => s.itemId !== p.itemId)
     }
   }
-  wormholeSyncMatterTurns(state)
+  wormholeSyncMatterTurns(state, ctx)
   const name = ctx.items.get(p.itemId)?.name ?? p.itemId
   addLog(state, 'warn', `🕳 丢弃（临时空间）：${name}${(p.units ?? 0) > 1 ? `×${Math.floor(p.units ?? 0)}` : ''}。`)
   return { ok: true }
@@ -1094,7 +1107,7 @@ export function wormholeStowOrTemp(
   if (wormholeIsShapedItem(itemId)) {
     const stowed = wormholeHoldStow(state, ctx, itemId)
     if (stowed.ok) {
-      wormholeSyncMatterTurns(state) // 谜质装置落进货仓 ⇒ 实时派生（时序核心 +10）
+      wormholeSyncMatterTurns(state, ctx) // 谜质装置落进货仓 ⇒ 实时派生（时序核心 +10）
       return { ok: true, where: 'hold' }
     }
     const temp = wormholeTempAddShape(state, ctx, itemId)
@@ -1160,7 +1173,7 @@ export function wormholeHoldDiscard(
     const gone = holdRemove(run.hold, placementId)
     if (!gone) return { ok: false, error: '没有这个件。' }
     // 谜质装置被抛掉 ⇒ 回合同步（**夹紧**：上限变小、剩余夹到新上限），并把代价写进事件日志
-    wormholeSyncMatterTurns(state)
+    wormholeSyncMatterTurns(state, ctx)
     const hint = wormholeMatterDiscardHint(gone.itemId)
     if (hint) addLog(state, 'warn', `🕳 ${hint}`)
     if (gone.kind === 'cargo') {
@@ -1190,7 +1203,7 @@ export function wormholeHoldDiscard(
   }
   if ((target.units ?? 0) <= 0) holdRemove(run.hold, placementId)
   wormholeHoldSyncCargo(state, ctx)
-  wormholeSyncMatterTurns(state)
+  wormholeSyncMatterTurns(state, ctx)
   addLog(
     state,
     'warn',
@@ -1423,17 +1436,29 @@ function workExtraPiles(state: GameState, eff: number, cellKey: string, depth: n
   for (let i = 0; i < cellKey.length; i++) h = Math.imul(h ^ cellKey.charCodeAt(i), 16777619) >>> 0
   return whole + ((h % 10_000) / 10_000 < frac ? 1 : 0)
 }
-/** **编队采集器台数**（`slot === 'miner'`；0 = 挖不动矿脉） */
-export function wormholeMinersOf(state: GameState, ctx: SimContext): number {
-  const run = state.wormhole.run
-  if (!run) return 0
+/**
+ * **任意编队的采集器总台数**（`slot === 'miner'`；0 = 挖不动矿脉）。
+ * 与 `wormholeMinersOf`（本趟编队）**同一把尺**，理由同 `wormholeSalvagersInFleet`。
+ */
+export function wormholeMinersInFleet(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): number {
   let n = 0
-  for (const uid of run.fleet) {
+  for (const uid of shipIds) {
     const ship = state.fleet[uid]
     if (!ship) continue
     n += allFittedModules(ship.fitted, ctx).filter((m) => m.slot === 'miner').length
   }
   return n
+}
+
+/** **编队采集器台数**（`slot === 'miner'`；0 = 挖不动矿脉） */
+export function wormholeMinersOf(state: GameState, ctx: SimContext): number {
+  const run = state.wormhole.run
+  if (!run) return 0
+  return wormholeMinersInFleet(state, ctx, run.fleet)
 }
 
 /**
@@ -2016,9 +2041,14 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
 /**
  * **谜质·回合上限同步**（F3c · 船长 2026-09-13 裁定「实时派生 + 夹紧」，本函数**幂等**）。
  *
- * 本趟上限 = `turnsBase`（入场预算）＋ 10 × **货仓里**的「时序核心」台数。
+ * 本趟上限 = `turnsBase`（入场时的**基础**预算，已扣掉科技那一份）＋ 10 × **货仓里**的「时序核心」台数
+ * ＋ **谜质科技「时序锚定器」的永久加成**（2026-09-19 谜质科技批）。
  * 为什么用"每次货仓变动后重算一遍"而不是"捡一处 +10、抛一处 −10"：装置会在
  * 货仓 / 临时空间 / 丢弃三条路上来回走，逐处加减迟早漏一处；重算永远收敛到同一个答案。
+ *
+ * **科技那一份为什么要减去 `run.turnsTechBonus`**：入场时已折算进 `turnsBase` 的部分不能重复加
+ * （老档在途趟没有该字段 ⇒ 视作"已按当前科技折算过" ⇒ 增减量 0 ⇒ 行为与该批之前逐字一致）；
+ * 减完之后的差额 > 0 正是"**入洞后又点了锚定器**" ⇒ 本趟立刻多走几步（与捡到时序核心同一套算法）。
  *
  * 夹紧口径：
  * - 上限**变大** ⇒ 剩余**同样多给这么多**（捡到就真能多走几步）；
@@ -2026,14 +2056,17 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
  *   —— 这也是船长问的那条：「丢弃回合相关谜质导致回合数不够」时，玩家只是走不动了，
  *   **撤离永远可用**（`wormholeExtract` 不看回合），不会软锁。
  */
-export function wormholeSyncMatterTurns(state: GameState): void {
+export function wormholeSyncMatterTurns(state: GameState, ctx: SimContext): void {
   const run = state.wormhole.run
   if (!run) return
   const bonus = wormholeMatterBuffs(run.hold).turnBonus
+  const techNow = matterTechWhBuffs(state, ctx).turnBonus
+  const techBaked = run.turnsTechBonus ?? techNow
+  const techGain = Math.max(0, techNow - techBaked)
   // 老档没有 `turnsBase` ⇒ 用"当前上限 − 当前加成"反推（老档本来没有装置 ⇒ 等于 turnsTotal）
-  const base = run.turnsBase ?? run.turnsTotal - bonus
+  const base = run.turnsBase ?? run.turnsTotal - bonus - techBaked
   run.turnsBase = base
-  const want = Math.max(0, Math.round(base + bonus))
+  const want = Math.max(0, Math.round(base + bonus + techGain))
   const delta = want - run.turnsTotal
   run.turnsTotal = want
   if (delta > 0) run.turnsLeft = Math.min(want, run.turnsLeft + delta)

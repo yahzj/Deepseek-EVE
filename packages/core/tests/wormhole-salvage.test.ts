@@ -18,9 +18,9 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, wormholeEnter, wormholeGridScan } from '../src/wormhole'
+import { WORMHOLE_ORE_ITEM_ID as COMMON_ORE_FOR_TEST, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, wormholeEnter, wormholeGridScan, wormholeScanBonusOf } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
-import { gridCellAt, wormholeStream } from '../src/wormholeGrid'
+import { WORMHOLE_SCAN_RADIUS_BASE, gridCellAt, wormholeStream } from '../src/wormholeGrid'
 import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import {
   WORMHOLE_GRAVEYARD_COMMONS_MAX,
@@ -46,6 +46,9 @@ import {
   wormholeEnsureVeinPiles,
   wormholeCollectOreAt,
   wormholeMinersOf,
+  // 2026-09-19 准备页读数：按**所选编队**现算的两个口径（与上面本趟口径同一把尺）
+  wormholeMinersInFleet,
+  wormholeSalvagersInFleet,
   wormholeTakePileAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
@@ -1158,5 +1161,40 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     expect(r.ok, r.error).toBe(true)
     expect(r.taken!.length, '3 台打捞器 ⇒ 至少收 3 堆（另有「效率额外堆」可能再多 1；本用例只验货柜上限 1）').toBeGreaterThanOrEqual(3)
     expect(r.boxes ?? [], '两堆都命中 ⇒ 仍只出 1 个').toHaveLength(1)
+  })
+})
+
+describe('虫洞 · 准备页读数（2026-09-19 船长追加）', () => {
+  /**
+   * 船长原话：「在虫洞的准备界面，三联读数处添加**玩家所选舰船**的打捞器数量和采集器数量以及扫描范围」。
+   *
+   * 为什么单开一档用例：这三个读数原先**只有入洞后**才看得到（core 的两个口径都读 `run.fleet`），
+   * 而准备页是"还没入洞、正在挑船"的时刻 ⇒ 本批加了**按所选编队现算**的同一把尺
+   * （`wormholeSalvagersInFleet` / `wormholeMinersInFleet` + 既有的 `wormholeScanBonusOf`）。
+   * 本用例要钉的正是：**入洞前**就按所选编队算得出来，且**入洞后两把尺完全一致**。
+   */
+  it('入洞前就能按所选编队读出 打捞器/采集器/扫描范围；入洞后与本趟口径一致', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 99 })
+    const a = addShipToFleet(state, T3)
+    const b = addShipToFleet(state, T3)
+    const scan = addShipToFleet(state, 'sh-nautilus') // 鹦鹉螺：`wormholeScanRadiusBonus: 1`（编入即 +1 圈）
+    // 装配：a = 2 打捞器 + 1 采集器；b = 1 打捞器；扫描舰不挂作业装
+    state.fleet[a]!.fitted = { high: [RIG, RIG, MINER], mid: [], low: [] }
+    state.fleet[b]!.fitted = { high: [RIG], mid: [], low: [] }
+    state.fleet[scan]!.fitted = { high: [], mid: [], low: [] }
+    expect(state.wormhole.run, '本用例的前提：还没入洞').toBeNull()
+    // ① 入洞前：按**所选编队**现算（只选 a ⇒ 2/1；加上 b ⇒ 3/1）
+    expect(wormholeSalvagersInFleet(state, ctx, [a])).toBe(2)
+    expect(wormholeMinersInFleet(state, ctx, [a])).toBe(1)
+    expect(wormholeSalvagersInFleet(state, ctx, [a, b])).toBe(3)
+    // ② 扫描范围 = 基础 1 圈 ＋ 编队加成（鹦鹉螺 +1 ⇒ 2 圈；不带它则 1 圈）
+    expect(WORMHOLE_SCAN_RADIUS_BASE).toBe(1)
+    expect(WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, [a, b])).toBe(1)
+    expect(WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, [a, b, scan])).toBe(2)
+    // ③ 入洞后：本趟口径与编队口径必须完全相同（同一把尺，不是两套算法）
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [a, b, scan], 99).ok).toBe(true)
+    expect(wormholeSalvagersOf(state, ctx)).toBe(wormholeSalvagersInFleet(state, ctx, [a, b, scan]))
+    expect(wormholeMinersOf(state, ctx)).toBe(wormholeMinersInFleet(state, ctx, [a, b, scan]))
   })
 })

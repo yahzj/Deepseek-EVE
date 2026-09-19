@@ -1211,6 +1211,8 @@ export {
   // F5（船长 2026-09-13）：到达即铺堆（不用激活）+ 采集器门槛（虚空母矿）——打捞/采集同构
   wormholeEnsureArrivalPiles,
   wormholeMinersOf,
+  // 2026-09-19 准备页读数：按**所选编队**现算（还没入洞也能显示台数）——与本趟口径同一把尺
+  wormholeMinersInFleet,
   wormholeCollectOreAt,
   wormholeFamilyPoolGaps,
   wormholeFamilyPoolOf,
@@ -1283,6 +1285,8 @@ export {
   wormholeRelicBoxIdOf,
   wormholeSalvageAt,
   wormholeSalvagersOf,
+  // 2026-09-19 准备页读数：按**所选编队**现算（理由同上）
+  wormholeSalvagersInFleet,
   // 2026-09-15 战利品与经济扩充（谜质折算 · 两个新货柜的拆解台 · 残骸堆掷货柜）
   WORMHOLE_ESSENCE_ITEM_ID,
   WORMHOLE_ESSENCE_PER_DEVICE,
