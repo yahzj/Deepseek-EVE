@@ -37,8 +37,10 @@ import {
   isRareWreck,
   rareWreckItemIdOf,
   recycleProfileOf,
+  wreckGroupOfCard,
   wreckItemIdOf,
 } from './salvage'
+import type { WreckRegion } from './wreckGroups'
 import {
   canPlace,
   cargoBlockArea,
@@ -379,17 +381,20 @@ export function wormholeMk3PoolOf(ctx: SimContext): string[] {
 /**
  * **洞内稀有残骸「高级箱」的主题件回落池**（船长 2026-09-16 裁定**甲1案**）。
  *
- * 缺口（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内 15 张卡从没配过 `recycleLoot`**
- * ⇒ 高级箱第②支（未中族专属时的"特色装备"）恒空，只剩第③支那批矿物；而洞内卡走常档基础池
+ * 缺口（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内卡从没配过主题件**
+ * ⇒ 高级箱第②支（未中族专属时的"特色装备"）恒空，只剩第③支那批矿物；而洞内走常档基础池
  * （钛钢 65% 权重）、批数恒 300 ⇒ 十有八九就是「钛钢合金 ×300」。
  *
- * 口径：洞内卡回落**「军用备货柜」同款 MK3 池**抽 **1 件**（`wormholeMk3PoolOf`：含武器、
+ * 口径：洞内回落**「军用备货柜」同款 MK3 池**抽 **1 件**（`wormholeMk3PoolOf`：含武器、
  * 不含族专属/虫洞专属（`-wh-` / `mod-lair-`）、不含未上线件）——不新造池，与既有货柜口径同源。
- * ⚠ **只作用于高级箱这一支**：普通洞内残骸的彩头（`rollRecycleLoot`）与矿物池（`recyclePool`）一律不动，
- * 否则会变成"每堆普通残骸都掉 MK3"。洞外卡（非 `wh-`）一律给空池 ⇒ 洞外行为**逐字不变**。
+ * ⚠ **只作用于高级箱这一支**：普通洞内残骸的彩头（`rollRecycleLoot`）与矿物池一律不动，
+ * 否则会变成"每堆普通残骸都掉 MK3"。洞外组（非虫洞地区）一律给空池 ⇒ 洞外行为**逐字不变**。
+ *
+ * ⚠ **2026-09-19 合并后**：判据从"卡 id 以 `wh-` 开头"改成"**组地区 = 虫洞**"
+ * （洞内 5 组的 `theme` 恒为空 ⇒ 与合并前逐字同一条路径）。
  */
-export function wormholeRareBoxThemePoolOf(ctx: SimContext, anomalyId: string): string[] {
-  return anomalyId.startsWith('wh-') ? wormholeMk3PoolOf(ctx) : []
+export function wormholeRareBoxThemePoolOf(ctx: SimContext, region: WreckRegion): string[] {
+  return region === 'wh' ? wormholeMk3PoolOf(ctx) : []
 }
 
 /** 图纸货柜开出**永久图纸**的概率（船长 2026-09-14：「有较低概率出 T3 或 T4 的永久图纸」⇒ 5%） */
@@ -596,8 +601,11 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   if ((cell.piles ?? []).length > 0) return
   if (cell.place !== 'graveyard' && cell.place !== 'ruins') return
   const cardId = wormholeCellCardIdOf(run, cell)
-  const common = wreckItemIdOf(cardId)
-  const rare = rareWreckItemIdOf(cardId)
+  // 2026-09-19 合并：堆里的物品 = 该卡**所属组**的残骸（洞内 5 组，皆常档 ⇒ 堆量与合并前逐字一致）
+  const group = wreckGroupOfCard(cardId)
+  if (!group) return
+  const common = wreckItemIdOf(group.key)
+  const rare = rareWreckItemIdOf(group.key)
   const mul = wormholeLayerRewardMul(run.depth)
   const rng = wormholeStream(runSeedOf(state) * 31 + run.depth * 7919 + (cell.q * 131 + cell.r * 17) * 7)
   const piles: WormholeCellPile[] = []
@@ -1869,13 +1877,15 @@ export function wormholeGrantShipSpoils(state: GameState, ctx: SimContext): { ba
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { bagged: 0, leftOnCell: 0 }
   const cardId = wormholeCellCardIdOf(run, cell)
+  const group = wreckGroupOfCard(cardId, ctx)
+  if (!group) return { bagged: 0, leftOnCell: 0 }
   const mul = wormholeLayerRewardMul(run.depth)
   const rng = wormholeStream(runSeedOf(state) * 7 + run.depth * 331 + (cell.q * 61 + cell.r * 67) * 3 + 11)
   const spoils: WormholeCellPile[] = []
   for (let i = 0; i < WORMHOLE_SHIP_SPOIL_COMMONS; i++) {
-    spoils.push({ itemId: wreckItemIdOf(cardId), units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
+    spoils.push({ itemId: wreckItemIdOf(group.key), units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
   }
-  for (let i = 0; i < WORMHOLE_SHIP_SPOIL_RARES; i++) spoils.push({ itemId: rareWreckItemIdOf(cardId), units: RARE_WRECK_VOLUME_M3 })
+  for (let i = 0; i < WORMHOLE_SHIP_SPOIL_RARES; i++) spoils.push({ itemId: rareWreckItemIdOf(group.key), units: RARE_WRECK_VOLUME_M3 })
   let bagged = 0
   const leftovers: WormholeCellPile[] = []
   for (const s of spoils) {

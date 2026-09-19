@@ -19,6 +19,7 @@ import {
   rareWreckItemIdOf,
   RARE_WRECK_VOLUME_M3,
   startRecycleRun,
+  wreckGroupKeyOfAnomaly,
 } from '../src/index'
 import { createPlayerSpec } from '../src/combat'
 import { addModule } from '../src/equipment'
@@ -38,12 +39,13 @@ function makeState(seed = 31): GameState {
 
 function profile(pool: readonly string[] = FOE_LAIR_GEAR.G): RecycleProfile {
   return {
-    anomalyId: 'ano-cinder-siege',
-    galaxyId: 'galaxy-cinder',
+    groupKey: 'g-lo',
+    region: 'lo',
     threat: 66,
-    baseDensity: 100,
-    tier: 'dire', // 专属命中率 0.55，样本足够快
-    lowSec: false,
+    tier: 'dire',
+    lowSec: true,
+    pool: [['min-tritanium', 100]],
+    theme: {},
     lairGear: [...pool],
   }
 }
@@ -184,7 +186,8 @@ describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-
     try {
       for (const k of Object.keys(RARE_BOX_GEAR_CHANCE)) RARE_BOX_GEAR_CHANCE[k as keyof typeof RARE_BOX_GEAR_CHANCE] = 1
       const state = createInitialState({ nowWallMs: 0, seed: 41 })
-      const rareId = rareWreckItemIdOf(LAIR_CARD)!
+      // 2026-09-19 合并：烬火围攻战（G 族·低安）的稀有残骸 = `wreck-rare-g-lo`
+      const rareId = rareWreckItemIdOf(wreckGroupKeyOfAnomaly(LAIR_CARD)!)
       addWare(state, rareId, RARE_WRECK_VOLUME_M3) // 一个结算单位 = 30 m³（= 3 批 × 10 m³）
       addModule(state, 'mod-lair-drone-tac-g', 1) // 另外两件视为已持有 → 池里只留无人机
       addModule(state, 'mod-lair-drone-relay-g', 1)

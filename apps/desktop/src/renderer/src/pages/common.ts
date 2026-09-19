@@ -1,7 +1,8 @@
 /**
  * 页面公共：Toast 回调类型与通用展示小件。
  */
-import { marketQuote } from '@whale/core'
+import { marketQuote, wreckGroupOfItemId } from '@whale/core'
+import type { SimContext } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 
 /** 全局浮动提示回调（App 提供） */
@@ -72,4 +73,22 @@ export function rareWreckRefsOf(
   const count = refs.reduce((s, [, n]) => s + n, 0)
   const text = refs.map(([aid, n]) => `${engine.ctx.anomalies.get(aid)?.name ?? aid} ×${n}`).join('、')
   return { count, text, refs }
+}
+
+/**
+ * **该残骸组的来源星系**（2026-09-19 残骸合并后新增）。
+ *
+ * 合并前"一件残骸 = 一张卡 = 一个星系"，所以工业页的「去星图打捞」直接跳 `profile.galaxyId`；
+ * 合并后一组覆盖多张卡（例：`a-hi` 覆盖 5 张卡、4 个星系）⇒ 由组表 `members` 反查各卡所在星系，
+ * 去重后返回（星图打捞页对多 id 做并列高亮）。非残骸 / 查不到 ⇒ 空数组。
+ */
+export function wreckSourceGalaxyIdsOf(ctx: SimContext, wreckItemId: string): string[] {
+  const group = wreckGroupOfItemId(wreckItemId)
+  if (!group) return []
+  const ids: string[] = []
+  for (const cardId of group.members) {
+    const gid = ctx.anomalies.get(cardId)?.galaxyId
+    if (gid !== undefined && !ids.includes(gid)) ids.push(gid)
+  }
+  return ids
 }

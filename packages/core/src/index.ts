@@ -487,10 +487,16 @@ export {
   WRECK_RECOVER_MS,
   WRECK_VOLUME_PER_THREAT,
   wreckItemIdOf,
-  anomalyIdOfWreck,
+  // 2026-09-19 残骸合并（族 × 地区）：卡 → 组、物品 id → 组
+  wreckItemIdOfCard,
+  wreckGroupOfKey,
+  wreckGroupOfCard,
+  wreckGroupOfWreckItem,
+  wreckGroupKeyOfItemId,
   // 赏金任务·稀有残骸（窝点战果：必得 + 高级箱额外掉落）
   RARE_WRECK_VOLUME_M3,
   rareWreckItemIdOf,
+  rareWreckItemIdOfCard,
   rareWreckItemDefOf,
   isRareWreck,
   injectRareWreck,
@@ -541,6 +547,23 @@ export {
   rollRecycleLoot,
 } from './salvage'
 export type { RecycleTier, RecycleProfile } from './salvage'
+/* ── 2026-09-19 残骸合并：13 组定表（族 × 地区）＋ 出量梯度（船长 2026-09-19） ── */
+export {
+  WRECK_GROUPS,
+  WRECK_GROUP_BY_KEY,
+  WRECK_GROUP_OF_MEMBER,
+  WRECK_REGION_LABELS,
+  WRECK_FAMILY_NAMES,
+  WRECK_YIELD_TIER_MUL,
+  wreckYieldMultiplierOf,
+  wreckItemIdOfKey,
+  rareWreckItemIdOfKey,
+  wreckGroupKeyOfAnomaly,
+  wreckGroupOfAnomaly,
+  wreckGroupOfItemId,
+  migratedWreckItemId,
+} from './wreckGroups'
+export type { WreckGroupDef, WreckRegion } from './wreckGroups'
 export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, pullOneWreck, legMsFor, outboundLegMsFor } from './salvaging'
 export {
   setAutoLoopBounty,

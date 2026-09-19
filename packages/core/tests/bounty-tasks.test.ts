@@ -52,6 +52,7 @@ import {
   lairAnomalyOf,
   lairBaseRewardIsk,
   lairGearOf,
+  FOE_LAIR_GEAR,
   lairLevelOf,
   lairNameOf,
   lairTiersOf,
@@ -107,7 +108,6 @@ const LAIR_HUB = anomaly('ano-lair-hub', 'galaxy-hub', {
   reward: 20_000,
   lairCore: '测试海盗',
   foeFamily: 'A',
-  recycleLoot: { modules: ['mod-a'] },
   lairGear: ['mod-a'],
 })
 /** 中安 · 异形 */
@@ -130,7 +130,6 @@ const LAIR_LOW1 = anomaly('ano-lair-low1', 'galaxy-far', {
   reward: 60_000,
   lairCore: '测试流亡者',
   foeFamily: 'G',
-  recycleLoot: { modules: ['mod-b'] },
 })
 /** 低安 · 泰坦（带声望门槛 4：用于"接取门槛"断言） */
 const LAIR_LOW2 = anomaly('ano-lair-low2', 'galaxy-low2', {
@@ -166,14 +165,12 @@ const LAIR_B = anomaly('ano-lair-b', 'galaxy-bn', {
   reward: 60_000,
   lairCore: '拾荒团',
   foeFamily: 'B',
-  recycleLoot: { modules: ['mod-b'] },
 })
 /** 无敌族登记、也无卡级专属池的窝点卡（专属池为空 → 主题追加件兜底） */
 const LAIR_NF = anomaly('ano-lair-nf', 'galaxy-nf', {
   threat: 6,
   reward: 8_000,
   lairCore: '无名团伙',
-  recycleLoot: { modules: ['mod-a'] },
 })
 
 const ALL_LAIR_CARDS = [LAIR_HUB, LAIR_MID2, LAIR_MID3, LAIR_LOW1, LAIR_LOW2, LAIR_LOW3, LAIR_LOW4, LAIR_HIGH, LAIR_B, LAIR_NF]
@@ -186,7 +183,20 @@ function makeWorld(seed = 31, stations: StationSiteDef[] = []): { state: GameSta
     to: g.id,
     travelMinutes: 2,
   }))
-  const ctx = makeTestCtx({ quietEvents: true, galaxies: GALAXIES, edges, anomalies: ALL_LAIR_CARDS, stations })
+  const ctx = makeTestCtx({
+    quietEvents: true,
+    galaxies: GALAXIES,
+    edges,
+    anomalies: ALL_LAIR_CARDS,
+    stations,
+    // 2026-09-19 残骸合并：合成卡一卡一组，主题件改由组画像承载（原来挂在卡的 recycleLoot 上）
+    wreckGroups: {
+      'ano-lair-hub': { theme: { modules: ['mod-a'] } },
+      'ano-lair-low1': { theme: { modules: ['mod-b'] } },
+      'ano-lair-b': { theme: { modules: ['mod-b'] } },
+      'ano-lair-nf': { theme: { modules: ['mod-a'] } },
+    },
+  })
   return { state, ctx }
 }
 
@@ -687,13 +697,15 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(third.itemId.startsWith('wreck-rare-')).toBe(false)
   })
 
-  it('高级箱画像：稀有残骸标记 rare（保底照常），并带专属装备池', () => {
+  it('高级箱画像：稀有残骸标记 rare（保底照常），并带**族级**专属装备池', () => {
     const { ctx } = makeWorld()
     expect(recycleProfileOf(ctx, 'wreck-ano-lair-hub')!.rare).toBeUndefined()
     const rare = recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_HUB.id))!
     expect(rare.rare).toBe(true)
-    expect(rare.lairGear).toEqual(['mod-a']) // 卡级池覆盖
-    expect(rare.anomalyId).toBe(LAIR_HUB.id)
+    // 2026-09-19 合并：专属池口径从"卡级覆盖 → 族级"（那张卡的 `lairGear` 覆盖字段本就与族级同值）
+    expect(rare.lairGear).toEqual(FOE_LAIR_GEAR.A)
+    expect(rare.groupKey).toBe(LAIR_HUB.id)
+    expect(rare.theme.modules).toEqual(['mod-a']) // 主题件改由组画像承载
   })
 
   it('稀有残骸**已解禁**（船长 2026-09-10：五族专属装备齐备后开放）：可起炉，首批触发一次高级箱', () => {
@@ -774,7 +786,7 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(extra.note.length).toBeGreaterThan(0)
   })
 
-  it('族级池兜底（G 族 → 专属无人机 + 两个无人机模块）；B 族已撤池；无族无卡级池 → 主题追加件', () => {
+  it('族级池（G 族 → 专属无人机 + 两个无人机模块）；B 族与未登记族（F 空位）→ 池为空 ⇒ 主题追加件兜底', () => {
     const { state, ctx } = makeWorld(29)
     expect(recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_LOW1.id))!.lairGear).toEqual([
       'drone-exile-bee',
@@ -785,6 +797,7 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     expect(lairGearOf(LAIR_B)).toEqual([])
     expect(recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_B.id))!.lairGear).toBeUndefined()
     const nf = recycleProfileOf(ctx, rareWreckItemIdOf(LAIR_NF.id))!
+    // 2026-09-19 合并：卡级 `lairGear` 覆盖字段退役 ⇒ 合成卡未登记族 = F 空位（专属池恒空）
     expect(nf.lairGear).toBeUndefined()
     for (let i = 0; i < 5; i += 1) {
       expect(rollRareBoxExtra(state, ctx, nf)!.modules).toEqual(['mod-a'])

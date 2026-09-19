@@ -61,6 +61,9 @@ import {
   // 2026-09-15 船长「撞到的契约开白名单」：构成口径由舰级说了算的舰级（D 6:4 / E 纯爆炸）
   FOE_SHIP_MIX_AUTHORITY_IDS,
   WORMHOLE_FOE_CARD_IDS,
+  // 2026-09-19 残骸合并：卡级特色表退居"构建依据"，运行时与契约一律走 core 的 13 组表
+  RECYCLE_FLAVOR,
+  RECYCLE_LOOT_PILOT,
 } from '@whale/data'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
@@ -90,6 +93,8 @@ import {
   RARE_WRECK_VOLUME_M3,
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_POOLS,
+  RECYCLE_YIELD_PER_M3,
+  recyclePoolMeanIsk,
   SHIP_ROLE_LABELS,
   FOE_MOUNTS,
   FOE_MOUNT_IDS,
@@ -211,6 +216,14 @@ securityZoneOf,
   wormholeMk3PoolOf,
   wormholeRareBoxThemePoolOf,
   wormholeSalvageBoxClassesOf,
+  // 2026-09-19 残骸合并（族 × 地区）：13 组定表 + 出量梯度 + 卡/物品互查
+  WRECK_GROUPS,
+  WRECK_GROUP_BY_KEY,
+  WRECK_GROUP_OF_MEMBER,
+  WRECK_YIELD_TIER_MUL,
+  wreckGroupOfAnomaly,
+  wreckItemIdOfCard,
+  rareWreckItemIdOfCard,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -1967,49 +1980,126 @@ for (const m of MODULES) {
   )
 }
 
-/* ── B3.1 敌群特色回收池（2026-09-08 收尾：池均价 ÷ 档基数 ∈ 保底乘数 m ±3%）
- *   公式（docs/design/b3-flavor-content.md）：m = mSec(≤1.45) × mThreat(≤1.30)，
- *   mSec = 1 + 0.45×max(0,−sec)；mThreat = 1 + 0.004×threat；档基数 = RECYCLE_POOL_AVG_ISK[tier] */
+/* ── B3.1 残骸组契约（2026-09-19 船长定「残骸按来源种族 × 来源地区合并」；取代原先的"每卡特色池"契约）
+ *   ① **成员覆盖**：全表每张敌卡必须落在**恰好一个**组里，且组的族/地区与卡的数据一致
+ *      （族 = `foeFamily`；地区 = `wh-*` → 虫洞、否则按所在星系安全等级 高安/低安）；
+ *   ② **保值**：组池均价 = 组目标均价 ±3%，其中
+ *      `组目标均价 = 组内各产残骸卡（卡档位当量 × 卡池均价）按威胁加权平均 ÷ 组档位当量`
+ *      （卡池均价取 `salvageFlavors.RECYCLE_FLAVOR` 的原卡级池；缺省池 = 该卡原档位基础池）；
+ *   ③ **不凭空造矿**：组池矿物集合 ⊆ 该组成员卡原池并集；
+ *   ④ **钛钢**：组池必含钛钢合金、且权重占比 ≥40%（船长 2026-09-14「提高钛钢占比到 40~60」）；
+ *   ⑤ **主题件**：组主题件 = 该组成员卡主题件的**并集**（分 modules/mk2 两类，逐项相等）；
+ *   ⑥ **出量梯度**：常档乘数恒 1.00、且 常 ≤ 险 ≤ 危（船长 2026-09-19「提高更危险地区的残骸出量」）。 */
 {
   const ctx = buildSimContext()
-  let flavored = 0
-  for (const def of ANOMALIES_FLAVORED) {
-    if (!def.recyclePool || def.recyclePool.length === 0) continue
-    flavored += 1
-    const galaxy = ctx.galaxies.get(def.galaxyId)
-    const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
-    const mSec = Math.min(1.45, 1 + 0.45 * Math.max(0, -sec))
-    const mThreat = Math.min(1.3, 1 + 0.004 * (def.threat ?? 0))
-    const m = mSec * mThreat
-    const pool = def.recyclePool
-    const wSum = pool.reduce((s, [, w]) => s + w, 0)
-    let avg = 0
-    let missing: string | null = null
-    for (const [id, w] of pool) {
-      const item = ctx.items.get(id)
-      if (!item || (item.baseSellPriceIsk ?? 0) <= 0) {
-        missing = missing ?? `池矿物 ${id} 缺失或价格非法`
+  // ① 成员覆盖 + 族/地区一致
+  const memberOf = new Map<string, string>()
+  let dup = 0
+  for (const g of WRECK_GROUPS) {
+    for (const m of g.members) {
+      if (memberOf.has(m)) dup += 1
+      memberOf.set(m, g.key)
+    }
+  }
+  check(dup === 0, `残骸组契约：有 ${dup} 张卡被登记进多个组`)
+  const missing = ANOMALIES_FLAVORED.filter((a) => !memberOf.has(a.id)).map((a) => a.id)
+  check(missing.length === 0, `残骸组契约：${missing.length} 张卡不属于任何组（${missing.slice(0, 4).join(' / ')}…）`)
+  for (const g of WRECK_GROUPS) {
+    for (const m of g.members) {
+      const a = ANOMALIES_FLAVORED.find((x) => x.id === m)
+      if (!a) {
+        check(false, `残骸组契约：${g.key} 的成员「${m}」在敌卡表里不存在`)
         continue
       }
-      avg += (w / wSum) * item.baseSellPriceIsk!
+      check(a.foeFamily === g.family, `残骸组契约：${m} 的族是 ${a.foeFamily}，但登记进 ${g.key}（族 ${g.family}）`)
+      const sec = typeof ctx.galaxies.get(a.galaxyId)?.security === 'number' ? ctx.galaxies.get(a.galaxyId)!.security! : 1
+      const region = m.startsWith('wh-') ? 'wh' : sec <= 0 ? 'lo' : 'hi'
+      check(region === g.region, `残骸组契约：${m} 的地区是 ${region}，但登记进 ${g.key}（地区 ${g.region}）`)
     }
-    const tier = recycleTierOf(wreckBaseDensity(def.galaxyId, ctx))
-    const base = RECYCLE_POOL_AVG_ISK[tier]
-    const ratio = avg / base
-    const dev = ((ratio - m) / m) * 100
-    check(
-      missing === null && Math.abs(dev) <= 3,
-      `B3.1 ${def.name}（${def.id}）特色池校验失败：${missing ?? `池均价 ${avg.toFixed(2)} ÷ 档基数 ${base} = ${ratio.toFixed(3)}，目标 m=${m.toFixed(3)}（偏差 ${dev.toFixed(1)}% > ±3%）`}`,
-    )
-    // 2026-09-14 船长：「在所有残骸的回收里，添加钛钢合金。已有钛钢合金的不做改变。」
-    // ⇒ **每一张特色池都必须含钛钢**（档位基础池由下面的 B3.2 契约覆盖）
-    check(
-      pool.some(([id]) => id === 'min-tritanium'),
-      `B3.1 ${def.name}（${def.id}）特色池缺钛钢合金（船长 2026-09-14：所有残骸回收都要能出钛钢）`,
-    )
   }
-  check(flavored >= 21, `B3.1 特色池卡数应为 21，实际 ${flavored}`)
-  console.log(`· B3.1 特色回收池：${flavored} 张（约束：池均价 = m × 档基数 ±3% · **每池必含钛钢合金** · 占比 ≥40% 见 B3.3）`)
+  // ② 保值 + ③ 矿物来源 + ④ 钛钢 + ⑤ 主题件
+  const regionOfCard = (a: (typeof ANOMALIES_FLAVORED)[number]): 'hi' | 'lo' | 'wh' => {
+    if (a.id.startsWith('wh-')) return 'wh'
+    const sec = typeof ctx.galaxies.get(a.galaxyId)?.security === 'number' ? ctx.galaxies.get(a.galaxyId)!.security! : 1
+    return sec <= 0 ? 'lo' : 'hi'
+  }
+  const meanOf = (pool: ReadonlyArray<readonly [string, number]>): number =>
+    pool.reduce((s, [, w]) => s + w * (ctx.items.get('') ? 0 : 0), 0) // 占位（真算走 recyclePoolMeanIsk）
+  void meanOf
+  const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+  let groupsChecked = 0
+  for (const g of WRECK_GROUPS) {
+    const producing = ANOMALIES_FLAVORED.filter((a) => g.members.includes(a.id) && (!a.hidden || regionOfCard(a) === 'wh'))
+    check(producing.length > 0, `残骸组契约：${g.key} 没有任何"会产出残骸"的成员卡（洞内卡按 wh 计）`)
+    // 卡池均价（原卡级表优先；缺省 = 该卡原档位基础池）
+    const cardPoolOf = (a: (typeof ANOMALIES_FLAVORED)[number]): ReadonlyArray<readonly [string, number]> =>
+      RECYCLE_FLAVOR[a.id]?.recyclePool ?? RECYCLE_POOLS[recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))]!
+    let wSum = 0
+    let acc = 0
+    for (const a of producing) {
+      const t = recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))
+      const v = RECYCLE_YIELD_PER_M3[t] * recyclePoolMeanIsk(cardPoolOf(a), priceOf)
+      const w = Math.max(1, a.threat)
+      acc += w * v
+      wSum += w
+    }
+    const target = wSum > 0 ? acc / wSum / RECYCLE_YIELD_PER_M3[g.tier] : 0
+    const mean = recyclePoolMeanIsk(g.pool, priceOf)
+    const dev = ((mean / target - 1) * 100)
+    check(
+      Math.abs(dev) <= 3 && Number.isFinite(target) && target > 0,
+      `残骸组契约：${g.key}（${g.name}）组池均价 ${mean.toFixed(2)} ÷ 保值目标 ${target.toFixed(2)} 偏差 ${dev.toFixed(1)}% > ±3%`,
+    )
+    // ③ 矿物来源：组池矿物 ⊆ 成员卡原池并集
+    const union = new Set<string>()
+    for (const a of producing) for (const [id] of cardPoolOf(a)) union.add(id)
+    for (const [id] of g.pool) {
+      check(union.has(id), `残骸组契约：${g.key} 组池含 ${id}，但组内没有哪张卡的池里有它（凭空造矿）`)
+    }
+    // ④ 钛钢
+    const tritWeight = g.pool.filter(([id]) => id === 'min-tritanium').reduce((s, [, w]) => s + w, 0)
+    const poolWeight = g.pool.reduce((s, [, w]) => s + w, 0)
+    check(tritWeight > 0, `残骸组契约：${g.key} 组池缺钛钢合金（船长 2026-09-14：所有残骸回收都要能出钛钢）`)
+    check(
+      poolWeight > 0 && tritWeight / poolWeight >= 0.4,
+      `残骸组契约：${g.key} 钛钢权重占比 ${((tritWeight / poolWeight) * 100).toFixed(1)}% < 40%`,
+    )
+    // ⑤ 主题件 = 成员卡并集
+    for (const key of ['modules', 'mk2'] as const) {
+      const union = new Set<string>()
+      for (const a of ANOMALIES_FLAVORED) {
+        if (!g.members.includes(a.id)) continue
+        for (const id of RECYCLE_LOOT_PILOT[a.id]?.[key] ?? []) union.add(id)
+      }
+      const own = new Set(g.theme[key] ?? [])
+      const bad = [...union].filter((id) => !own.has(id)).concat([...own].filter((id) => !union.has(id)))
+      check(bad.length === 0, `残骸组契约：${g.key} 的 theme.${key} 与成员卡并集不一致（差异：${bad.join(' / ')}）`)
+    }
+    // 组威胁 = 组内产残骸卡威胁的算术平均（取整）
+    const avgThreat = Math.round(producing.reduce((s, a) => s + a.threat, 0) / producing.length)
+    check(g.threat === avgThreat, `残骸组契约：${g.key} 的 threat 记 ${g.threat}，成员产残骸卡平均威胁是 ${avgThreat}`)
+    // 组档位 = 组内产残骸卡的多数档
+    const tally = new Map<RecycleTier, number>()
+    for (const a of producing) {
+      const t = recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))
+      tally.set(t, (tally.get(t) ?? 0) + 1)
+    }
+    const order: RecycleTier[] = ['common', 'risky', 'dire']
+    const majority = [...tally.entries()].sort((a, b) => b[1] - a[1] || order.indexOf(b[0]) - order.indexOf(a[0]))[0]![0]
+    check(g.tier === majority, `残骸组契约：${g.key} 档位记 ${g.tier}，成员产残骸卡多数档是 ${majority}`)
+    groupsChecked += 1
+  }
+  check(WRECK_GROUPS.length === 13, `残骸组契约：组数应为 13，实际 ${WRECK_GROUPS.length}`)
+  // ⑥ 出量梯度：常 ≡ 1.00、常 ≤ 险 ≤ 危
+  check(WRECK_YIELD_TIER_MUL.common === 1, `残骸组契约：常档出量乘数应为 1.00，实际 ${WRECK_YIELD_TIER_MUL.common}`)
+  check(
+    WRECK_YIELD_TIER_MUL.common <= WRECK_YIELD_TIER_MUL.risky && WRECK_YIELD_TIER_MUL.risky <= WRECK_YIELD_TIER_MUL.dire,
+    `残骸组契约：出量乘数必须单调不降（常 ${WRECK_YIELD_TIER_MUL.common} / 险 ${WRECK_YIELD_TIER_MUL.risky} / 危 ${WRECK_YIELD_TIER_MUL.dire}）`,
+  )
+  console.log(
+    `· 残骸组契约：${groupsChecked} 组（成员覆盖 ${memberOf.size} 张卡 · 保值 ±3% · 组池矿物 ⊆ 卡池并集 · 钛钢 ≥40% · 主题件 = 并集 · 组威胁/档位与卡一致）` +
+      ` · 出量梯度 常 ${WRECK_YIELD_TIER_MUL.common} / 险 ${WRECK_YIELD_TIER_MUL.risky} / 危 ${WRECK_YIELD_TIER_MUL.dire}`,
+  )
 
   /* ── B3.2 档位基础池（2026-09-14 船长「所有残骸回收都加钛钢」）：
    *   ① 三档基础池**都必须含钛钢合金**（常驻档本来就有，险/危同批补入）；
@@ -2033,7 +2123,7 @@ for (const m of MODULES) {
   )
 
   /* ── B3.3 钛钢占比下限（2026-09-14 船长第二批「提高钛钢占比到 40~60」+ 三答：
-   *   **只提不降 · 统一 40% · 均价不变**）⇒ 三档基础池 + 每一张特色池的钛钢**权重占比都 ≥40%**；
+   *   **只提不降 · 统一 40% · 均价不变**）⇒ 三档基础池 + **13 个组池**的钛钢**权重占比都 ≥40%**；
    *   已有 65~80% 的池按"只提不降"原样保持（区间上限不是硬闸，硬闸只有下限 40%）。 */
   {
     const shares: { name: string; share: number }[] = []
@@ -2042,10 +2132,7 @@ for (const m of MODULES) {
       return pool.filter(([id]) => id === 'min-tritanium').reduce((s, [, w]) => s + w, 0) / wSum
     }
     for (const tier of ['common', 'risky', 'dire'] as const) shares.push({ name: `档位基础池·${tier}`, share: shareOf(RECYCLE_POOLS[tier]) })
-    for (const def of ANOMALIES_FLAVORED) {
-      if (!def.recyclePool || def.recyclePool.length === 0) continue
-      shares.push({ name: `${def.id}`, share: shareOf(def.recyclePool) })
-    }
+    for (const g of WRECK_GROUPS) shares.push({ name: `组池·${g.key}`, share: shareOf(g.pool) })
     let min = shares[0]!
     for (const s of shares) {
       if (s.share < min.share) min = s
@@ -2054,23 +2141,25 @@ for (const m of MODULES) {
         `B3.3 ${s.name} 钛钢价值占比 ${(s.share * 100).toFixed(1)}% < 40%（船长 2026-09-14：提高钛钢占比到 40~60 ⇒ 只提不降、统一 40%；2026-09-14 二次改判后**池权重即价值占比**）`,
       )
     }
-    console.log(`· B3.3 钛钢价值占比下限：${shares.length} 个池（3 档基础池 + ${shares.length - 3} 张特色池）全部 ≥40%（最低 = ${min.name} ${(min.share * 100).toFixed(1)}%；池权重＝价值占比）`)
+    console.log(`· B3.3 钛钢价值占比下限：${shares.length} 个池（3 档基础池 + ${shares.length - 3} 个组池）全部 ≥40%（最低 = ${min.name} ${(min.share * 100).toFixed(1)}%；池权重＝价值占比）`)
   }
-  // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正）：收价 < 无技能拆解保底（≈57/m³，三档齐平），
-  // 且与档位表一致（常 30 / 险 40 / 危 50，≈该档典型特色回收的五成上下）
+  // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正 + 2026-09-19 并组）：
+  // 收价 = **组档位**价（常 30 / 险 40 / 危 50），须**严格低于**无技能拆解保底（≈57/m³，三档齐平）；
+  // 行数 = 洞外 8 组（洞内 5 组维持无市场行 —— 合并前洞内 15 张隐藏卡本就没有收购行）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }
   const noSkillPerM3 = 82_000 / 1_440
+  check(WRECK_BUY_GOODS.length === 8, `残骸收购卡应有 8 张（洞外 13−5 组），实际 ${WRECK_BUY_GOODS.length}`)
   for (const g of WRECK_BUY_GOODS) {
-    const anoId = g.refId.startsWith('wreck-') ? g.refId.slice('wreck-'.length) : ''
-    const def = ANOMALIES_FLAVORED.find((a) => a.id === anoId)
-    const sec = typeof ctx.galaxies.get(def?.galaxyId ?? '')?.security === 'number' ? ctx.galaxies.get(def!.galaxyId)!.security! : 0.5
-    const density = Math.min(40, Math.max(10, Math.round(10 + 15 * (1 - sec))))
-    const tier = density >= 30 ? 'dire' : density >= 20 ? 'risky' : 'common'
-    check(g.basePrice === wreckBuyPrice[tier], `残骸卡 ${g.key} 价格档错位：期望 ${wreckBuyPrice[tier]}（${tier}），实际 ${g.basePrice}`)
+    const key = g.refId.startsWith('wreck-') ? g.refId.slice('wreck-'.length) : ''
+    const def = WRECK_GROUP_BY_KEY.get(key)
+    check(!!def, `残骸卡 ${g.key} 不是任何一个组的物品 id`)
+    if (!def) continue
+    check(def.region !== 'wh', `残骸卡 ${g.key} 属于洞内组 —— 洞内 5 组不该有市场行`)
+    check(g.basePrice === wreckBuyPrice[def.tier], `残骸卡 ${g.key} 价格档错位：期望 ${wreckBuyPrice[def.tier]}（${def.tier}），实际 ${g.basePrice}`)
     check(g.basePrice < noSkillPerM3, `残骸卡 ${g.key} 收价 ${g.basePrice} 不低于无技能拆解保底 ${noSkillPerM3.toFixed(1)}/m³——会击穿回收线最低锚`)
     check(g.playerBuyable === false, `残骸卡 ${g.key} 必须只收不卖（playerBuyable=false）`)
   }
-  console.log(`· 残骸收购卡：${WRECK_BUY_GOODS.length} 张（收价 = 常 30 / 险 40 / 危 50 ISK·m³，须低于无技能拆解保底）`)
+  console.log(`· 残骸收购卡：${WRECK_BUY_GOODS.length} 张（= 洞外 8 组；收价 = 常 30 / 险 40 / 危 50 ISK·m³，须低于无技能拆解保底）`)
   // 2026-09-08 船长定稿：①主题彩头（recycleLoot 追加件）只允许 sec < 0.5 星系；
   // ②主题追加件不得含武器（炮/激光/导弹架），唯一例外 = 穹顶守卫门槛线追加三把 MK3 武器；
   // ③MK3 一律走碎片，穹顶守卫 × {三把 MK3 武器} 为唯一 MK3 直出白名单
@@ -3854,9 +3943,10 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     }
     if (!isLairCandidate(def)) continue
     lairCards += 1
-    const rareId = rareWreckItemIdOf(def.id)
-    const rareDef = lairCtx.items.get(rareId)
-    check(!!rareDef, `窝点契约：${def.name} 缺稀有残骸物品 ${rareId}（data/context.ts 需按 hasLairCore 注册）`)
+    // 2026-09-19 合并：窝点战利品 = **该卡所属组**的稀有残骸（不再是"每卡一件"）
+    const rareId = rareWreckItemIdOfCard(def.id)
+    const rareDef = rareId === null ? undefined : lairCtx.items.get(rareId)
+    check(!!rareDef, `窝点契约：${def.name} 所属组缺稀有残骸物品 ${rareId ?? '(无组)'}（data/context.ts 需按 WRECK_GROUPS 注册）`)
     if (rareDef) {
       check(rareDef.kind === 'wreck', `窝点契约：稀有残骸 ${rareId} 种类应为 wreck，实际 ${rareDef.kind}`)
       check(
@@ -3925,70 +4015,71 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       `· 敌族登记契约：${famRegistered} 张敌军卡**全部显式登记族**（无缺省兜底；'F' 空位无卡占用）`,
     )
   }
-  /* ── 退役窝点卡契约（2026-09-11 船长「按方案 2 执行」）──
-   * 背景：B 族两卡（新港商路护航令 / 占港武装通缉）的 `lairCore` **已退役删除**（B 族无窝点），
-   * 但 `data/context.ts` 的稀有残骸注册改用显式白名单 `RETIRED_LAIR_CARD_IDS` 保住旧档兼容。
-   * 本契约四条（防止白名单腐烂 / 防止字段被加回来 / 防止退役卡复活成窝点候选）：
-   * ①白名单里的 id **必须真实存在于 ANOMALIES**（写错 id = 白名单形同虚设，旧档照样"未知物品"）；
-   * ②这些卡 **`lairCore` 必须确实为空**（否则"退役"没落地，或后人把字段加回来）；
-   * ③这些卡**必须仍被 `isLairCandidate()` 排除**（否则退役卡重新变成窝点候选、又派发起来）；
-   * ④对应的**稀有残骸物品仍能被注册**（在 ctx.items 里）——这正是白名单存在的唯一目的。 */
+  /* ── 退役窝点卡契约（2026-09-11 船长「按方案 2 执行」；2026-09-19 改口径）──
+   * 背景：B 族两卡（新港商路护航令 / 占港武装通缉）的 `lairCore` **已退役删除**（B 族无窝点）。
+   * 2026-09-19 残骸合并后，`RETIRED_LAIR_CARD_IDS` 白名单**已退役**——旧档里 B 族两卡的稀有残骸
+   * 由存档迁移（v27→v28）折进 `wreck-rare-b-hi`，而组注册对 13 组一视同仁 ⇒ 白名单没有存在意义了。
+   * 本契约保留三条（防字段被加回来 / 防退役卡复活）：
+   * ①这些卡 **`lairCore` 必须确实为空**；②**必须仍被 `isLairCandidate()` 排除**；
+   * ③它们所在的组 `b-hi` 的稀有残骸**仍注册**（旧档迁移的落点，必须认得出）。 */
   {
     let retiredChecked = 0
     for (const id of RETIRED_LAIR_CARD_IDS) {
       const def = ANOMALIES_FLAVORED.find((d) => d.id === id)
-      check(!!def, `退役窝点卡契约：白名单 id「${id}」在 ANOMALIES 里不存在（写错 id ⇒ 旧档稀有残骸照样认不出）`)
+      check(!!def, `退役窝点卡契约：白名单 id「${id}」在 ANOMALIES 里不存在`)
       if (!def) continue
       retiredChecked += 1
       check(
         !hasLairCore(def),
         `退役窝点卡契约：${def.name}（${def.id}）的 lairCore 应为空——2026-09-11 船长裁决「B 族没有窝点、排除出赏金范围」，` +
-          `字段退役后**不得加回来**（旧档兼容已由 RETIRED_LAIR_CARD_IDS 白名单承接）`,
+          `字段退役后**不得加回来**`,
       )
       check(
         !isLairCandidate(def),
         `退役窝点卡契约：${def.name}（${def.id}）仍是窝点候选（isLairCandidate 为真）——退役卡不得重新派发窝点`,
       )
-      const rareId = rareWreckItemIdOf(def.id)
+      const group = wreckGroupOfAnomaly(def.id)
+      const rareId = group ? rareWreckItemIdOf(group.key) : null
       check(
-        lairCtx.items.has(rareId),
-        `退役窝点卡契约：旧档稀有残骸 ${rareId} 未注册（data/context.ts 的注册条件须含 RETIRED_LAIR_CARD_IDS.has(a.id)）` +
+        rareId !== null && lairCtx.items.has(rareId),
+        `退役窝点卡契约：旧档稀有残骸的迁移落点 ${rareId ?? '(无组)'} 未注册（data/context.ts 须按 WRECK_GROUPS 注册 13 组）` +
           `——否则旧档里已有的这件的会显示成"未知物品"`,
       )
     }
     console.log(
-      `· 退役窝点卡契约：${retiredChecked} 张退役卡字段已清、白名单有效、稀有残骸仍可识别` +
-        `（${[...RETIRED_LAIR_CARD_IDS].map((id) => rareWreckItemIdOf(id)).join(" / ")}）`,
+      `· 退役窝点卡契约：${retiredChecked} 张退役卡字段已清、不入窝点候选；旧档迁移落点` +
+        `（${[...RETIRED_LAIR_CARD_IDS].map((id) => rareWreckItemIdOfCard(id) ?? id).join(" / ")}）仍注册`,
     )
   }
 
-  /* ── 洞内高级箱契约（2026-09-16 船长**甲1案**：`rareBoxThemePoolOf` 的洞内回落）──
-   * 背景（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内 15 张卡从没配 `recycleLoot`**
+  /* ── 洞内高级箱契约（2026-09-16 船长**甲1案**：`rareBoxThemePoolOf` 的洞内回落；2026-09-19 改按组）──
+   * 背景（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内卡从没配过主题件**
    * ⇒ 高级箱第②支（未中族专属时的"特色装备"）恒空、只剩第③支那批矿物（常档 300 单位 · 基础池钛钢 65%）。
-   * 裁定甲1 = 洞内卡回落**「军用备货柜」同款 MK3 池**抽 1 件。钉三件事：
+   * 裁定甲1 = 洞内回落**「军用备货柜」同款 MK3 池**抽 1 件。钉三件事：
    *  ① 回落池本身非空（MK3 池被清空 ⇒ 这条兜底会退化成"只有一批矿物"，红线）；
-   *  ② 洞内每张卡的稀有残骸**能建出回收画像**；
-   *  ③ 每张卡的**高级箱主题件池非空**（= 未中族专属时**必有装备**）。
-   *  ⚠ 洞外卡一律回落空池 ⇒ 洞外行为逐字不变（用例另有对照钉子）。 */
+   *  ② 洞内**5 组**的稀有残骸**能建出回收画像**；
+   *  ③ 每组的高级箱主题件池非空（= 未中族专属时**必有装备**）。
+   *  ⚠ 洞外组一律回落空池 ⇒ 洞外行为逐字不变（用例另有对照钉子）。 */
   {
     const mk3 = wormholeMk3PoolOf(lairCtx)
     check(
       mk3.length > 0,
       '洞内高级箱契约：军用备货柜 MK3 池为空——洞内稀有残骸"未中族专属时的主题件回落"会退化成只剩矿物',
     )
+    const whGroups = WRECK_GROUPS.filter((g) => g.region === 'wh')
     const bad: string[] = []
-    for (const cardId of WORMHOLE_RARE_WRECK_CARD_IDS) {
-      const profile = recycleProfileOf(lairCtx, rareWreckItemIdOf(cardId))
+    for (const g of whGroups) {
+      const profile = recycleProfileOf(lairCtx, rareWreckItemIdOf(g.key))
       if (!profile) {
-        bad.push(`${cardId}（建不出回收画像）`)
+        bad.push(`${g.key}（建不出回收画像）`)
         continue
       }
-      const pool = rareBoxThemePoolOf(profile, wormholeRareBoxThemePoolOf(lairCtx, profile.anomalyId))
-      if (pool.length === 0) bad.push(`${cardId}（高级箱主题件池为空）`)
+      const pool = rareBoxThemePoolOf(profile, wormholeRareBoxThemePoolOf(lairCtx, profile.region))
+      if (pool.length === 0) bad.push(`${g.key}（高级箱主题件池为空）`)
     }
     check(bad.length === 0, `洞内高级箱契约：${bad.join(' · ')}`)
     console.log(
-      `· 洞内高级箱契约：${WORMHOLE_RARE_WRECK_CARD_IDS.length} 张洞内卡的稀有残骸高级箱**主题件池均非空**` +
+      `· 洞内高级箱契约：${whGroups.length} 个洞内组的稀有残骸高级箱**主题件池均非空**` +
         `（未中族专属时回落军用备货柜 MK3 池 ${mk3.length} 件抽 1 件）`,
     )
   }
@@ -5327,8 +5418,9 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         leaked += 1
       }
       /** 洞内卡的「稀有残骸」物品（F3b 打捞产物）：**上线后照旧要注册**（否则打捞产物解析不到定义），
-       * 但 2026-09-14 虫洞上线后**不再要求标 `unreleased`**（它本来就该在图鉴里）。 */
-      const rareWh = ctxItems.get(`wreck-rare-${id}`)
+       * 但 2026-09-14 虫洞上线后**不再要求标 `unreleased`**（它本来就该在图鉴里）。
+       * 2026-09-19 合并后：物品 = 该卡**所属组**的稀有残骸（同族同地区共一件）。 */
+      const rareWh = rareWreckItemIdOfCard(id) === null ? undefined : ctxItems.get(rareWreckItemIdOfCard(id)!)
       if (!rareWh) {
         errors.push(`虫洞不可见闸门：洞内敌卡 ${id}（${card.name}）没有注册「稀有残骸」物品 —— 墓场/遗迹打捞出的稀有残骸会解析不到定义（读档后显示成未知物品）`)
       }
@@ -5611,19 +5703,23 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const WH_PREFIXES = ['mod-wh-', 'bp-wh-', 'sbp-wh-', 'sh-wh-', 'drone-wh-'] as const
     /**
      * ⚠ **2026-09-15 补（三号 · 船长报障「精炼炉好像缺少虫洞的稀有残骸回收」）**：上面五个前缀
-     * **盖不到物品**，而洞内稀有残骸的物品 id = `wreck-rare-wh-<卡 id>`（前缀是 `wreck-rare-`）⇒
-     * 它当年那条"施工期标 `unreleased`、上线删字段"的闸门**漏摘了也没人拦**，实机后果 =
-     * 精炼炉「残骸回收」看不到洞内稀有残骸（该列表与手册物品图鉴都走 `visibleItemDefs`）。
-     * 现把物品纳入本契约（id 前缀 `wreck-rare-wh-`）。
+     * **盖不到物品**，而洞内稀有残骸的物品 id 前缀是 `wreck-rare-` ⇒ 它当年那条"施工期标 `unreleased`、
+     * 上线删字段"的闸门**漏摘了也没人拦**，实机后果 = 精炼炉「残骸回收」看不到洞内稀有残骸
+     * （该列表与手册物品图鉴都走 `visibleItemDefs`）。
+     * 现把物品纳入本契约。**2026-09-19 残骸合并**：洞内件的 id 从 `wreck-rare-wh-<卡 id>` 变成
+     * `wreck-rare-<族>-wh`（5 件）⇒ 改用"洞内 5 组"这个集合来点名，不再靠前缀硬编码。
      */
-    const WH_ITEM_PREFIX = 'wreck-rare-wh-'
     /**
      * ⚠ 稀有残骸物品**不在静态 `ITEMS` 数组里**（它们由 `data/src/context.ts` 按敌卡**运行时注册**）
      * ⇒ 本节一律读**真 context 的物品目录**（`buildSimContext().items`），读 `ITEMS` 会得到空集、
      * 哨子就变成永远通过（这条坑是首版写错后实测抓出来的）。
      */
     const whItemCtx = buildSimContext()
-    const whItems = [...whItemCtx.items.values()].filter((i) => i.id.startsWith(WH_ITEM_PREFIX))
+    /** 洞内 5 组的稀有残骸物品 id（2026-09-19 合并后 = `wreck-rare-<族>-wh`） */
+    const WH_ITEM_IDS: ReadonlySet<string> = new Set(
+      WRECK_GROUPS.filter((g) => g.region === 'wh').map((g) => rareWreckItemIdOf(g.key)),
+    )
+    const whItems = [...whItemCtx.items.values()].filter((i) => WH_ITEM_IDS.has(i.id))
     const whTyped: ReadonlyArray<{ kind: string; id: string; name: string; description?: string; unreleased?: boolean }> = [
       ...MODULES.map((m) => ({ kind: '装备', id: m.id, name: m.name, description: m.description, unreleased: m.unreleased })),
       ...SHIPS.map((s) => ({ kind: '舰船', id: s.id, name: s.name, description: s.description, unreleased: s.unreleased })),
@@ -5633,7 +5729,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       ...whItems.map((i) => ({ kind: '残骸', id: i.id, name: i.name, description: i.description, unreleased: i.unreleased })),
     ]
     const isWhContent = (id: string): boolean =>
-      WH_PREFIXES.some((p) => id.startsWith(p)) || id.startsWith(WH_ITEM_PREFIX)
+      WH_PREFIXES.some((p) => id.startsWith(p)) || WH_ITEM_IDS.has(id)
     /**
      * **虫洞专属内容（`mod-wh-` / `sh-wh-` / `bp-wh-` / `sbp-wh-` / `drone-wh-`）现在必须真的在图鉴里**
      * （2026-09-14 船长解除不可见后，把当年"必须标 unreleased"的闸门翻成反向断言）——
@@ -5653,13 +5749,13 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     }
     /**
      * **每张洞内敌卡都要有对应的稀有残骸物品**（2026-09-15 补）：缺一件 = 那一趟打捞带回来的箱子
-     * 在回收炉里找不到定义（旧档更显示成"未知物品"）。注册走 `context.ts` 的白名单
-     * （`hasLairCore` 不覆盖洞内卡），故这里按 `WORMHOLE_FOE_CARD_IDS` 逐张核。
+     * 在回收炉里找不到定义（旧档更显示成"未知物品"）。**2026-09-19 合并**：注册粒度从"每卡一件"变成
+     * "每（族 × 地区）一件" ⇒ 这里按卡核的是**该卡所属组**的那一件（15 张卡落在 5 个洞内组上）。
      */
     for (const card of WORMHOLE_FOE_CARD_IDS) {
-      const wreckId = `wreck-rare-${card}`
-      if (!whItemCtx.items.has(wreckId)) {
-        errors.push(`虫洞专属内容契约：洞内敌卡 ${card} 没有对应的稀有残骸物品 ${wreckId}（打捞回来的箱子开不了）`)
+      const wreckId = rareWreckItemIdOfCard(card)
+      if (wreckId === null || !whItemCtx.items.has(wreckId)) {
+        errors.push(`虫洞专属内容契约：洞内敌卡 ${card} 没有对应的稀有残骸物品 ${wreckId ?? '(无组)'}（打捞回来的箱子开不了）`)
       }
     }
     /* ⑦ **（2026-09-13 F3b 补）按族池契约**（船长：「虫洞专属掉落按种族库走，蓝图也是按种族库」）：

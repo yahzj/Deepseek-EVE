@@ -20,6 +20,9 @@ export {
 export { SHIP_BLUEPRINTS, buildShipBlueprintCatalog } from './shipBlueprints'
 export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
+// 2026-09-19 残骸合并：卡级特色池/主题件表退居**构建依据与体检输入**（运行时一律走 core 的 13 组表）
+export { RECYCLE_FLAVOR, RECYCLE_LOOT_PILOT } from './salvageFlavors'
+export type { RecycleFlavor } from './salvageFlavors'
 // 2026-09-11 退役窝点卡白名单（船长「按方案 2 执行」）：B 族两卡字段退役后，靠显式白名单
 // 保住"旧档里已获得的稀有残骸仍可识别"——详见 `./retiredLairCards.ts` 与 content:check 契约。
 export { RETIRED_LAIR_CARD_IDS } from './retiredLairCards'

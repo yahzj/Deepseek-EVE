@@ -20,7 +20,7 @@
  *
  * 运行：npm run bounty:econ （等价 npx tsx tools/bounty-econ.ts）
  */
-import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, FACTION_RARE_DROP_CHANCE, factionRareDropEffectiveRate, isLairCandidate, LAIR_RARE_WRECK_GAIN, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
+import { addShipToFleet, advanceGame, BOUNTY_BOARD_PERIOD_MS, bountyDayStartWallMs, createInitialState, FACTION_RARE_DROP_CHANCE, factionRareDropEffectiveRate, isLairCandidate, LAIR_RARE_WRECK_GAIN, lairLevelOf, markExplored, RARE_BOX_GEAR_CHANCE, RARE_BOX_MINERAL_UNITS, RARE_WRECK_VOLUME_M3, rareWreckItemIdOfCard, recycleProfileOf, repairDeprecatedModules, rollRareBoxExtra, type GameState, type SimContext } from '@whale/core'
 import { ANOMALIES, buildSimContext } from '@whale/data'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 import { travelLegMs, shortestTravelMinutes } from '../packages/core/src/travel'
@@ -235,7 +235,8 @@ function rareBoxBench(): void {
   const trials = 8_000
   const perBox = new Map<string, number>()
   for (const a of candidates) {
-    const profile = recycleProfileOf(ctx, rareWreckItemIdOf(a.id))!
+    // 2026-09-19 合并：稀有残骸按**组**取画像（同族同地区共一件箱子）——逐卡掷骰仍照旧
+    const profile = recycleProfileOf(ctx, rareWreckItemIdOfCard(a.id)!)!
     const tierN: 1 | 2 | 3 = profile.tier === 'common' ? 1 : profile.tier === 'risky' ? 2 : 3
     const p = RARE_BOX_GEAR_CHANCE[profile.tier]
     let gear = 0

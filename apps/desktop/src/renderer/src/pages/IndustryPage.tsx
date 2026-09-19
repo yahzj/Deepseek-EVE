@@ -43,7 +43,7 @@ import { RowGlyph } from '../ui/itemView'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
-import { MONEY_GLYPH, m3 } from './common'
+import { MONEY_GLYPH, m3, wreckSourceGalaxyIdsOf } from './common'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
@@ -102,11 +102,11 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   const rate = refineRate(state, engine.ctx)
   const total = oreAvailable(state, def.id)
   // 2026-09-09 船长定：「去矿带/去打捞」跳转目标——矿石/气体/冰 → 出产该原料的全部主矿带；
-  // 残骸 → 其来源敌群星系（recycleProfileOf 一对一；打捞星系须已探索才会出现在星图卡列表）
+  // 残骸 → **该组覆盖的来源星系**（2026-09-19 合并后一组对应多张卡 ⇒ 可能多个星系；打捞星系须已探索）
   const gotoTarget: { tab: 'mine' | 'salvage'; ids: string[] } | null = isWreck
     ? (() => {
-        const src = recycleProfileOf(engine.ctx, def.id)
-        return src ? { tab: 'salvage' as const, ids: [src.galaxyId] } : null
+        const ids = wreckSourceGalaxyIdsOf(engine.ctx, def.id)
+        return ids.length > 0 ? { tab: 'salvage' as const, ids } : null
       })()
     : (() => {
         const belts = engine.belts.filter((b) => b.oreId === def.id)
@@ -454,7 +454,7 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
     {
       lowSec: profile.lowSec,
       threat: profile.threat,
-      loot: profile.loot,
+      loot: profile.theme,
       lairGear: profile.lairGear,
     },
     { mods: ctx.modules, items: ctx.items, droneUnits: RARE_BOX_DRONE_UNITS },

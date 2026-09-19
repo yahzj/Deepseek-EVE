@@ -9,7 +9,7 @@
  * 以及 AI 核心档（40/50/60/75%）折算行与产能/积压提示。
  * 用法：npm run salvage:econ（挂 script）
  */
-import { buildSimContext } from '@whale/data'
+import { buildSimContext, RECYCLE_FLAVOR } from '@whale/data'
 import {
   RECYCLE_YIELD_PER_M3,
   RECYCLE_CHANCE,
@@ -24,6 +24,10 @@ import {
   RECYCLE_POOLS,
   recycleTierOf,
   wreckBaseDensity,
+  // 2026-09-19 残骸合并：逐组保值池对照（取代原"逐卡特色池"）
+  WRECK_GROUPS,
+  RECYCLE_YIELD_PER_M3,
+  recyclePoolMeanIsk,
 } from '@whale/core'
 
 const ctx = buildSimContext()
@@ -86,38 +90,39 @@ function main(): void {
       `· ${tier.padEnd(6)} 池均价 ${avg.toFixed(1).padStart(6)} ISK/单位 | 当量 Y = ${RECYCLE_YIELD_PER_M3[tier]} 单位/m³（价值口径：Y × 均价 = ${(RECYCLE_YIELD_PER_M3[tier] * avg).toFixed(1)} ISK/m³） | 保底 EV/h：无技能 ${Math.round(ev).toLocaleString('zh-CN')}（偏差 ${dev.toFixed(1)}%）→ 满技能 ${Math.round(full).toLocaleString('zh-CN')}（偏差 ${fullDev.toFixed(1)}%）`,
     )
   }
-  // B3.1 敌群特色池逐卡对照（2026-09-08：池均价 ÷ 档基数 ∈ 保底乘数 m ±3%；
-  // m = mSec(1+0.45×max(0,−sec) ≤1.45) × mThreat(1+0.004×threat ≤1.30)；content-check 同步断言）
-  console.log('══ B3.1 敌群特色池逐卡对照（目标：池均价 = m × 档基数 ±3%）══')
+  // 2026-09-19 残骸合并：B3.1 从"逐卡特色池"改成"**逐组保值池**"——组池均价 = 组目标均价 ±3%
+  // （组目标均价 = 组内各产残骸卡「卡档位当量 × 卡池均价」按威胁加权平均 ÷ 组档位当量；口径与 content:check 同源）
+  console.log('══ B3.1 残骸组保值池对照（目标：组池均价 = 组目标均价 ±3%）══')
   let bad = 0
   let rows = 0
-  for (const def of ctx.anomalies.values()) {
-    if (!def.recyclePool || def.recyclePool.length === 0) continue
+  const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+  for (const g of WRECK_GROUPS) {
     rows += 1
-    const galaxy = ctx.galaxies.get(def.galaxyId)
-    const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
-    const mSec = Math.min(1.45, 1 + 0.45 * Math.max(0, -sec))
-    const mThreat = Math.min(1.3, 1 + 0.004 * (def.threat ?? 0))
-    const m = mSec * mThreat
-    const pool = def.recyclePool
-    const wSum = pool.reduce((s, [, w]) => s + w, 0)
-    let avg = 0
-    for (const [id, w] of pool) {
-      const item = ctx.items.get(id)
-      avg += (w / wSum) * (item?.baseSellPriceIsk ?? 0)
+    const producing = [...ctx.anomalies.values()].filter(
+      (a) => g.members.includes(a.id) && (!a.hidden || g.region === 'wh'),
+    )
+    let wSum = 0
+    let acc = 0
+    for (const a of producing) {
+      const t = recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))
+      // 卡池取**合并前的卡级池表**（`RECYCLE_FLAVOR` = 构建依据；缺省 = 该卡原档位基础池）
+      const cardPool = RECYCLE_FLAVOR[a.id]?.recyclePool ?? RECYCLE_POOLS[t]!
+      const v = RECYCLE_YIELD_PER_M3[t] * recyclePoolMeanIsk(cardPool, priceOf)
+      const w = Math.max(1, a.threat)
+      acc += w * v
+      wSum += w
     }
-    const tier = recycleTierOf(wreckBaseDensity(def.galaxyId, ctx))
-    const base = RECYCLE_POOL_AVG_ISK[tier]
-    const ratio = avg / base
-    const dev = ((ratio - m) / m) * 100
+    const target = wSum > 0 ? acc / wSum / RECYCLE_YIELD_PER_M3[g.tier] : 0
+    const avg = recyclePoolMeanIsk(g.pool, priceOf)
+    const dev = ((avg / target - 1) * 100)
     const ok = Math.abs(dev) <= 3
     if (!ok) bad += 1
-    const ev = FURNACE_M3_H * RECYCLE_YIELD_PER_M3[tier] * avg
+    const ev = FURNACE_M3_H * RECYCLE_YIELD_PER_M3[g.tier] * avg
     console.log(
-      `· ${def.name}${galaxy ? `（${galaxy.name}）` : ''} m=${m.toFixed(3)} | 池均价 ${avg.toFixed(2)} ÷ 档基数 ${base} = ${ratio.toFixed(3)}（偏差 ${dev >= 0 ? '+' : ''}${dev.toFixed(1)}%）${ok ? ' ✓' : ' ✗ 超差'} | 保底 ≈ ${Math.round(ev).toLocaleString('zh-CN')} ISK/h`,
+      `· ${g.name} 档位 ${g.tier.padEnd(6)} · ${producing.length} 卡 | 组池均价 ${avg.toFixed(2)} ÷ 保值目标 ${target.toFixed(2)}（偏差 ${dev >= 0 ? '+' : ''}${dev.toFixed(1)}%）${ok ? ' ✓' : ' ✗ 超差'} | 保底 ≈ ${Math.round(ev).toLocaleString('zh-CN')} ISK/h`,
     )
   }
-  console.log(`· B3.1 特色池 ${rows} 张，超差 ${bad} 张（≥21 为满配）`)
+  console.log(`· 残骸组 ${rows} 组，超差 ${bad} 组`)
   // 彩头 EV（每 m³ 概率 × 均价；MK2 仅低安池子；**碎片不计入 EV**——
   // 2026-09-10 船长定：碎片不可出售、无市场卡，是"进度"不是产出，单列到下面的碎片进度行）
   const baseEv = FURNACE_M3_H * RECYCLE_CHANCE.base * baseAvg

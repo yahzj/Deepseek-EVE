@@ -39,7 +39,7 @@ import {
   wormholeLootValueIsk,
   wormholeRelicChanceOf,
 } from '../packages/core/src/wormholeSalvage'
-import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckItemIdOf } from '../packages/core/src/salvage'
+import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOfCard, wreckItemIdOfCard } from '../packages/core/src/salvage'
 
 const ctx = buildSimContext()
 const arg = (key: string, dflt: number): number => {
@@ -142,8 +142,8 @@ function layerRow(depth: number): LayerRow {
         const card = wormholeCellCardIdOf(run, cell)
         const mul = wormholeLayerRewardMul(depth)
         acc.shipValue +=
-          2 * wormholeLootValueIsk(ctx, wreckItemIdOf(card), Math.round(WRECK_PILE_M3 * mul)) +
-          wormholeLootValueIsk(ctx, rareWreckItemIdOf(card), RARE_WRECK_VOLUME_M3)
+          2 * wormholeLootValueIsk(ctx, wreckItemIdOfCard(card)!, Math.round(WRECK_PILE_M3 * mul)) +
+          wormholeLootValueIsk(ctx, rareWreckItemIdOfCard(card)!, RARE_WRECK_VOLUME_M3)
         acc.lootSlots += (2 * Math.round(WRECK_PILE_M3 * mul) + RARE_WRECK_VOLUME_M3) / 500
       } else if (c.place === 'beacon') {
         acc.beacons += 1
@@ -220,7 +220,7 @@ for (let d = 1; d <= LAYERS; d++) {
     ].join('\t'),
   )
 }
-const wreckPerSlot = wormholeLootValueIsk(ctx, wreckItemIdOf('wh-pirate-scout'), 500)
+const wreckPerSlot = wormholeLootValueIsk(ctx, wreckItemIdOfCard('wh-pirate-scout')!, 500)
 const orePerSlot = wormholeLootValueIsk(ctx, WORMHOLE_ORE_ITEM_ID, 500)
 console.log('')
 console.log('读法：')

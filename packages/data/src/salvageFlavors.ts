@@ -1,20 +1,27 @@
 /**
- * 主题彩头追加表（2026-09-08 船长定稿：武器移出主题、仅增幅装备；统一"追加"语义）。
- * 规则：
+ * 卡级回收特色表（2026-09-08 船长定稿；**2026-09-19 残骸合并后退役为"构建依据与体检输入"**）。
+ *
+ * ⚠ **运行时不再读取本文件的任何字段**：残骸回收画像（保底矿物池 / 产出倾向说明 / 主题追加件 / 档位）
+ * 一律走 `core/wreckGroups.ts` 的 **13 组表**（船长 2026-09-19「残骸按来源种族 × 来源地区合并」）。
+ * 本文件留下的是**合并的原料与审计依据**，`tools/content-check.ts` 的「残骸组契约」拿它复核三件事：
+ * ① 组池均价 = 保值目标 ±3%（目标由本表的卡级池按威胁加权反推）；
+ * ② 组池的矿物集合 ⊆ 该组成员卡原池的并集（不凭空出现新矿物）；
+ * ③ 组主题件 = 该组成员卡主题件的并集（且仍守"武器不入主题件"的旧规矩，仅守墓者·低安组例外）。
+ * 卡上的 `recyclePool` / `recycleNote` / `recycleLoot` 三个字段已随本次合并从 `AnomalyDef` 删除。
+ *
+ * 规则（原样留档）：
  * - recycleLoot.modules = 中安主题追加件（加到"直出基础池"上；每卡 ≤1 件、非火力增幅件）；
  * - recycleLoot.mk2 = 低安主题追加件（加到"低安门槛 MK2 池"上；默认 7 件一件不少，仅 sec<0 掷）；
  * - 主题件不得含武器；唯一例外 = 关底穹顶守卫 追加三把 MK3 武器（动能/激光/导弹架）；
- * - 有追加件时引擎整池按均价反比缩放（EV 守恒），content-check 断言区划与白名单。
+ * - 有追加件时引擎整池按均价反比缩放（EV 守恒）。
  */
-import type { AnomalyDef } from '@whale/core'
-
 export type RecycleFlavor = {
   recyclePool?: ReadonlyArray<readonly [string, number]>
   recycleNote?: string
   recycleLoot?: { modules?: readonly string[]; mk2?: readonly string[] }
 }
 
-/** 主题追加件（18 张 sec<0.5 悬赏；高安与母港系走默认池，无追加） */
+/** 卡级**主题追加件**（构建依据 · 体检输入：组主题件必须是本表在该组内的并集） */
 export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = {
   // ── 中安（**0 < sec < 0.5**；2026-09-12 船长「0也算低安」后，0.0 的两个星系已移入下段低安档）：直出基础池追加 1 件非火力增幅件 ──
   'ano-lantern-saboteurs': { modules: ['mod-cargo-2'] }, // 信标猎手：长途货舱
@@ -41,6 +48,7 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ano-vault-sentinel': { mk2: ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3'] },
 }
 
+/** 卡级特色池与产出倾向（**构建依据 · 体检输入**；运行时见 `@whale/core` 的 `WRECK_GROUPS`） */
 export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   'ano-harbor-escort': {
     recyclePool: [['min-pyerite', 55], ['min-tritanium', 45]],
@@ -165,10 +173,5 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   },
 }
 
-/** 合并进悬赏卡（工厂函数由 anomalies.ts 调用，避免循环依赖） */
-export function withRecycleFlavor(def: AnomalyDef): AnomalyDef & RecycleFlavor {
-  const f = RECYCLE_FLAVOR[def.id]
-  const loot = RECYCLE_LOOT_PILOT[def.id]
-  if (!f && !loot) return def
-  return { ...def, ...(f ?? {}), recycleLoot: loot ?? f?.recycleLoot }
-}
+/** ⚠ **2026-09-19 已删除 `withRecycleFlavor`**：卡级特色不再并进 `AnomalyDef`（字段已删），
+ *  运行时一律查 `WRECK_GROUPS`；本文件只剩"合并的原料"这一职责。 */

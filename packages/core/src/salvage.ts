@@ -23,7 +23,17 @@ import type { AnomalyDef, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
 import { addWare, countWare } from './inventory'
-import { lairGearOf } from './lairs'
+import { FOE_LAIR_GEAR } from './lairs'
+import {
+  wreckGroupOfAnomaly,
+  wreckGroupOfItemId,
+  WRECK_GROUP_BY_KEY,
+  type WreckGroupDef,
+  type WreckRegion,
+} from './wreckGroups'
+
+/** 出量梯度（船长 2026-09-19）：本模块是"残骸域"的门面，转发 `wreckGroups` 的两个单点方便同域引用 */
+export { WRECK_YIELD_TIER_MUL, wreckYieldMultiplierOf } from './wreckGroups'
 
 /** 保底线（全图固定）：≤ 此值打捞不扣密度、进入保底稳态（2026-09-10 船长拍板 5 → 10） */
 export const WRECK_FLOOR = 10
@@ -48,25 +58,69 @@ export const WRECK_RECOVER_MS = 96 * 3_600_000
 export const WRECK_VOLUME_PER_THREAT = 0.06
 
 /**
- * 残骸物品定义（按敌群生成；B3 乙案：计数 = 体积 → unitM3 = 1，数量即 m³）。
+ * 残骸物品定义（**按「来源种族 × 来源地区」的组生成**；B3 乙案：计数 = 体积 → unitM3 = 1，数量即 m³）。
  * 残骸不直接卖钱（baseSellPrice 占位）——唯一变现 = 精炼炉「残骸回收」开箱；
- * 回收时按物品 id 反查敌群（ctx.anomalies）取星系危险度/威胁决定矿物池与彩头池。
- * 体积量级 = 威胁 ×0.06 m³/份 在打捞/回收结算时按敌群威胁动态计算（见 pullOneWreck）。
+ * 回收时按物品 id 反查**组**（`wreckGroups.ts`）取档位/威胁决定矿物池与彩头池。
+ * 体积量级 = 威胁 ×0.06 m³/份 在打捞/回收结算时按**打捞到的卡**的威胁动态计算（见 pullOneWreck）。
+ *
+ * **2026-09-19 船长定「按来源种族 × 来源地区合并」**：物品从"每卡一种"并为 13 组
+ * （名字 = `<族称>残骸（<高安/低安/虫洞>）`；族称取完整名，见 `WRECK_FAMILY_NAMES`）。
  */
-export function wreckItemDefOf(anomalyId: string, anomalyName: string, threat: number): ItemDef {
+export function wreckItemDefOf(group: WreckGroupDef): ItemDef {
   return {
-    id: wreckItemIdOf(anomalyId),
-    name: `${anomalyName}残骸`,
+    id: wreckItemIdOf(group.key),
+    name: group.name,
     kind: 'wreck',
     unitM3: 1, // 计数 = 体积（m³）
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」编队的舰体残骸（按 m³ 计舱）：可在空间站市场按废料价出售应急，或经精炼炉「残骸回收」拆解——保底原材料 + 概率特色掉落（拆解更值）。`,
+    description: `${group.name.replace('残骸', '')}编队的舰体残骸（按 m³ 计舱）：可在空间站市场按废料价出售应急，或经精炼炉「残骸回收」拆解——保底原材料 + 概率特色掉落（拆解更值）。`,
   }
 }
 
-/** 残骸物品 id（按敌群注册：每悬赏卡/遭遇群一种残骸） */
-export function wreckItemIdOf(anomalyId: string): string {
-  return `wreck-${anomalyId}`
+/** 残骸物品 id（入参 = **组 key**：`wreck-a-hi` / `wreck-d-wh`…；卡 id 请先过 `wreckGroupKeyOfAnomaly`） */
+export function wreckItemIdOf(groupKey: string): string {
+  return `wreck-${groupKey}`
+}
+
+/** 该敌卡的残骸物品 id（卡 → 组；查不到 = 未知/合成卡 ⇒ null）。`ctx.wreckGroups` 可覆盖（用例注入）。 */
+export function wreckItemIdOfCard(anomalyId: string, ctx?: SimContext): string | null {
+  const group = wreckGroupOfCard(anomalyId, ctx)
+  return group ? wreckItemIdOf(group.key) : null
+}
+
+/** 组 key → 组定义（先查 `ctx.wreckGroups`（用例/扩展注入），再查静态 13 组表） */
+export function wreckGroupOfKey(key: string, ctx?: SimContext): WreckGroupDef | null {
+  return ctx?.wreckGroups?.get(key) ?? WRECK_GROUP_BY_KEY.get(key) ?? null
+}
+
+/** 敌卡 id → 组定义（先查 `ctx.wreckGroups` 的成员索引，再查静态表） */
+export function wreckGroupOfCard(anomalyId: string, ctx?: SimContext): WreckGroupDef | null {
+  if (ctx?.wreckGroups) {
+    for (const g of ctx.wreckGroups.values()) {
+      if (g.members.includes(anomalyId)) return g
+    }
+  }
+  return wreckGroupOfAnomaly(anomalyId)
+}
+
+/** 残骸物品 id → 组定义（新 id 与旧"每卡一种"的 id 都认；非残骸/未知 ⇒ null） */
+export function wreckGroupOfWreckItem(itemId: string, ctx?: SimContext): WreckGroupDef | null {
+  const rare = isRareWreck(itemId)
+  if (!rare && !itemId.startsWith('wreck-')) return null
+  const key = itemId.slice(rare ? 'wreck-rare-'.length : 'wreck-'.length)
+  const direct = wreckGroupOfKey(key, ctx)
+  if (direct) return direct
+  if (ctx?.wreckGroups) {
+    for (const g of ctx.wreckGroups.values()) {
+      if (g.members.includes(key)) return g
+    }
+  }
+  return wreckGroupOfAnomaly(key)
+}
+
+/** 残骸物品 id → 组 key（非残骸 id / 未知卡 ⇒ null） */
+export function wreckGroupKeyOfItemId(itemId: string): string | null {
+  return wreckGroupOfItemId(itemId)?.key ?? null
 }
 
 /* ═══════════ 稀有残骸（2026-09-10 船长定：赏金任务·窝点战利品，开启词典预留的"高级箱"口子） ═══════════ */
@@ -74,9 +128,15 @@ export function wreckItemIdOf(anomalyId: string): string {
 /** 稀有残骸单件体积（m³/件；体积即回收开箱的批数来源） */
 export const RARE_WRECK_VOLUME_M3 = 30
 
-/** 稀有残骸物品 id（按敌群注册：窝点战利品继承该敌群的特色池与专属装备） */
-export function rareWreckItemIdOf(anomalyId: string): string {
-  return `wreck-rare-${anomalyId}`
+/** 稀有残骸物品 id（入参 = **组 key**；窝点战利品继承该**族**的专属装备与组特色池） */
+export function rareWreckItemIdOf(groupKey: string): string {
+  return `wreck-rare-${groupKey}`
+}
+
+/** 该敌卡的稀有残骸物品 id（卡 → 组；查不到 = null）。`ctx.wreckGroups` 可覆盖（用例注入）。 */
+export function rareWreckItemIdOfCard(anomalyId: string, ctx?: SimContext): string | null {
+  const group = wreckGroupOfCard(anomalyId, ctx)
+  return group ? rareWreckItemIdOf(group.key) : null
 }
 
 /** 是否稀有残骸 */
@@ -85,21 +145,22 @@ export function isRareWreck(itemId: string): boolean {
 }
 
 /**
- * 稀有残骸物品定义。**计数即体积**——与普通残骸同一台账口径（unitM3 = 1，数量就是 m³）：
+ * 稀有残骸物品定义（**按组**）。**计数即体积**——与普通残骸同一台账口径（unitM3 = 1，数量就是 m³）：
  * 打捞到 1 件 = 入库 `RARE_WRECK_VOLUME_M3`（30）单位 = 30 m³ 货舱/回收批数。
  * **2026-09-10 船长定：已解禁**（二号五族专属装备齐备后开放）——与普通残骸同一条回收链路，
  * 区别只在"首批触发一次高级箱"（`profile.rare === true`；**一炉一箱**，按炉结算不按件累积）。
  * **2026-09-11 船长（说明文案）**：「掉落说明中『必定掉落 / 不重复』会误导玩家，建议删除，只显示掉落列表」
  * ⇒ 物品描述与卡面一律**只列掉落**（专属装备或特色装备 + 高阶矿物），不再写"必定额外掉落"。
+ * **2026-09-19 合并**：名字 = `<族称>稀有残骸（<地区>）`（旧名「稀有残骸（<卡名>）」随合并退役）。
  */
-export function rareWreckItemDefOf(anomalyId: string, anomalyName: string): ItemDef {
+export function rareWreckItemDefOf(group: WreckGroupDef): ItemDef {
   return {
-    id: rareWreckItemIdOf(anomalyId),
-    name: `稀有残骸（${anomalyName}）`,
+    id: rareWreckItemIdOf(group.key),
+    name: group.rareName,
     kind: 'wreck',
     unitM3: 1,
     baseSellPriceIsk: 1,
-    description: `「${anomalyName}」窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体，保底原材料之外必给一件该敌群专属装备或特色装备，另附一批高阶原材料。`,
+    description: `${group.rareName.replace('稀有残骸', '')}窝点核心舱段的完好残骸（单件 ${RARE_WRECK_VOLUME_M3} m³）：回站用回收炉解体，保底原材料之外必给一件该敌族专属装备或特色装备，另附一批高阶原材料。`,
   }
 }
 
@@ -128,15 +189,18 @@ export function rareWreckCountOf(state: GameState, galaxyId: string): number {
  * 打捞一轮里"必捞一件稀有残骸"的判定（船长 2026-09-10：稀有残骸打捞必定捞到、数量随难度）：
  * 该星系有存量 → 扣 1 件并返回其物品 id（按记账顺序取，保证与产出它的敌群同主题）；
  * 无存量返回 null（本轮回落到常规残骸池）。
+ *
+ * ⚠ **2026-09-19 合并后**：账本 `rareBy` 仍**按卡记账**（星图「稀有残骸 ×N（来源窝点名）」照旧），
+ * 但产出物 = 该卡所属**组**的稀有残骸（同族同地区的箱子是同一件）。
  */
-export function pullRareWreck(state: GameState, galaxyId: string): string | null {
+export function pullRareWreck(state: GameState, galaxyId: string, ctx?: SimContext): string | null {
   const rec = state.galaxyWrecks[galaxyId]
   if (!rec) return null
   const by = rec.rareBy ?? {}
   const keys = Object.keys(by).filter((k) => (by[k] ?? 0) > 0)
-  let anomalyId = keys.length > 0 ? keys[0]! : ''
+  const anomalyId = keys.find((k) => rareWreckItemIdOfCard(k, ctx) !== null) ?? ''
   if (anomalyId === '') {
-    // 旧口径兜底（只有 rare 计数、无归族记账）：不产出（避免张冠李戴）
+    // 旧口径兜底（只有 rare 计数、无归族记账）+ 未知卡兜底：不产出（避免张冠李戴）
     return null
   }
   by[anomalyId] = (by[anomalyId] ?? 0) - 1
@@ -144,13 +208,7 @@ export function pullRareWreck(state: GameState, galaxyId: string): string | null
   rec.rareBy = by
   rec.rare = Math.max(0, (rec.rare ?? 0) - 1)
   state.galaxyWrecks[galaxyId] = rec
-  return rareWreckItemIdOf(anomalyId)
-}
-
-/** 残骸物品 id → 敌群（悬赏/遭遇）id；非残骸物品返回 null */
-export function anomalyIdOfWreck(itemId: string): string | null {
-  if (isRareWreck(itemId)) return itemId.slice('wreck-rare-'.length)
-  return itemId.startsWith('wreck-') ? itemId.slice('wreck-'.length) : null
+  return rareWreckItemIdOfCard(anomalyId, ctx)
 }
 
 /** 悬赏敌人总数（主舰+僚机+多波全部单位；无波表 = 1）——2026-09-10 残骸注入按此加成 */
@@ -387,32 +445,28 @@ export function recycleMineralPoolOf(profile: RecycleProfile): ReadonlyArray<rea
   return profile.pool && profile.pool.length > 0 ? profile.pool : RECYCLE_POOLS[profile.tier]!
 }
 
-/** 残骸物品 → 回收画像（敌群威胁/星系危险度/特色池；未知物品返回 null） */
+/** 残骸物品 → 回收画像（**组**档位/威胁/组池；未知物品返回 null） */
 export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleProfile | null {
-  const anomalyId = anomalyIdOfWreck(wreckItemId)
-  if (!anomalyId) return null
-  const anomaly = ctx.anomalies.get(anomalyId)
-  if (!anomaly) return null
-  const base = wreckBaseDensity(anomaly.galaxyId, ctx)
-  const galaxy = ctx.galaxies.get(anomaly.galaxyId)
+  const group = wreckGroupOfWreckItem(wreckItemId, ctx)
+  if (!group) return null
   return {
-    anomalyId,
-    galaxyId: anomaly.galaxyId,
-    threat: anomaly.threat,
-    baseDensity: base,
-    tier: recycleTierOf(base),
-    // **低安判定（含 0）**：2026-09-12 船长裁定「**0 也算低安**」⇒ 由 `sec < 0` 改 **`sec ≤ 0`**
-    // （安全等级恰好 0.0 的烬火星区与回音荒区并入低安档：MK2 完好舰体层与 `recycleLoot.mk2` 主题件）
-    lowSec: typeof galaxy?.security === 'number' && galaxy.security <= 0,
-    // B3.1：敌群特色（2026-09-06）——缺省走三档基础池/三层彩头
-    pool: anomaly.recyclePool,
-    note: anomaly.recycleNote,
-    loot: anomaly.recycleLoot,
-    // 稀有残骸（2026-09-10）：保底照常，另走"必定额外掉落"的高级箱；专属装备池只挂给高级箱
+    groupKey: group.key,
+    region: group.region,
+    threat: group.threat,
+    tier: group.tier,
+    // **低安判定（含 0）**：2026-09-12 船长裁定「**0 也算低安**」⇒ 由 `sec < 0` 改 **`sec ≤ 0`**。
+    // 合并后按**组地区**判：低安组 = true（与旧口径"该卡所在星系 sec ≤ 0"逐卡一致）；
+    // 洞内组 = false（洞内卡挂在母港星系 sec = 1，旧口径也是 false ⇒ 逐字不变）。
+    lowSec: group.region === 'lo',
+    // 组池恒非空（洞内 5 组 = 常档基础池）⇒ 不会走 `RECYCLE_POOLS` 回落
+    pool: group.pool,
+    note: group.note.length > 0 ? group.note : undefined,
+    theme: group.theme,
+    // 稀有残骸（2026-09-10）：保底照常，另走"必定额外掉落"的高级箱；专属装备池按**族**取（与合并前同源）
     ...(isRareWreck(wreckItemId)
       ? (() => {
-          const gear = lairGearOf(anomaly)
-          return gear.length > 0 ? { rare: true, lairGear: gear } : { rare: true }
+          const gear = FOE_LAIR_GEAR[group.family] ?? []
+          return gear.length > 0 ? { rare: true as const, lairGear: gear } : { rare: true as const }
         })()
       : {}),
   }
@@ -435,20 +489,21 @@ export const RARE_BOX_DRONE_UNITS = 10
 export const RARE_BOX_MINERAL_UNITS: Record<RecycleTier, number> = { common: 300, risky: 120, dire: 40 }
 
 /**
- * **高级箱第②支「主题件」的池（单点）**：卡面 `recycleLoot`（`mk2` + `modules`）优先，
+ * **高级箱第②支「主题件」的池（单点）**：组表 `theme`（`mk2` + `modules`）优先，
  * 空则用调用方给的**回落池**。
  *
  * ⚠ **为什么要有回落**（2026-09-16 玩家报障「稀有残骸拆解只拆除了 300 钛钢合金」）：
- * **洞内 15 张卡从没配过 `recycleLoot`** ⇒ 高级箱第②支恒空，5%~10% 没掷中族专属时
- * 这一箱**只剩第③支那批矿物**（常档 300 单位、基础池里钛钢占 65% ⇒ 十有八九显示成「钛钢合金 ×300」）。
- * ⇒ 船长当日裁定**甲1案**：洞内卡回落「军用备货柜」同款 MK3 池抽 1 件
- * （池的构造在 `wormholeSalvage.wormholeRareBoxThemePoolOf`；**洞外卡一律回落空池 ⇒ 逐字不变**）。
+ * **洞内 15 张卡从没配过主题件**（2026-09-19 合并后 = 洞内 5 组的 `theme` 为空）
+ * ⇒ 高级箱第②支恒空，5%~10% 没掷中族专属时这一箱**只剩第③支那批矿物**
+ * （常档 300 单位、基础池里钛钢占 65% ⇒ 十有八九显示成「钛钢合金 ×300」）。
+ * ⇒ 船长当日裁定**甲1案**：洞内回落「军用备货柜」同款 MK3 池抽 1 件
+ * （池的构造在 `wormholeSalvage.wormholeRareBoxThemePoolOf`；**洞外组一律回落空池 ⇒ 逐字不变**）。
  */
 export function rareBoxThemePoolOf(
   profile: RecycleProfile,
   themeFallback: readonly string[] = [],
 ): string[] {
-  const own = [...(profile.loot?.mk2 ?? []), ...(profile.loot?.modules ?? [])]
+  const own = [...(profile.theme?.mk2 ?? []), ...(profile.theme?.modules ?? [])]
   return own.length > 0 ? own : [...themeFallback]
 }
 
@@ -533,21 +588,25 @@ export function rollRareBoxExtra(
 }
 
 export interface RecycleProfile {
-  anomalyId: string
-  galaxyId: string
+  /** 组 key（`a-hi` / `d-wh`…；2026-09-19 起取代旧的 `anomalyId`） */
+  groupKey: string
+  /** 来源地区（高安 / 低安 / 虫洞）——洞内高级箱的"主题件回落池"按它判 */
+  region: WreckRegion
+  /** 组代表威胁（组内各产残骸卡威胁的平均；驱动蓝图碎片门槛与完好舰体彩头层） */
   threat: number
-  baseDensity: number
+  /** 组档位（组内主流档；拆解当量 / 市场收价 / 高级箱命中率都读它） */
   tier: RecycleTier
+  /** 低安组（地区 = 低安，含 sec 0）——低安门槛 MK2 层与主题追加件按它判 */
   lowSec: boolean
-  /** B3.1 特色保底矿物权重池（缺省 = 三档基础池） */
-  pool?: ReadonlyArray<readonly [string, number]>
-  /** 玩家可见"残骸产出倾向"（缺省无） */
+  /** 组保底矿物权重池（恒非空：洞内 5 组 = 常档基础池） */
+  pool: ReadonlyArray<readonly [string, number]>
+  /** 玩家可见"残骸产出倾向"（洞内 5 组无特色 ⇒ 缺省无） */
   note?: string
-  /** 主题追加件（2026-09-08"追加"语义：默认池 + 敌群增幅件；缺省 = 三层默认，无追加） */
-  loot?: { modules?: readonly string[]; mk2?: readonly string[] }
+  /** 组主题追加件并集（2026-09-08"追加"语义：默认池 + 该组主题件；缺省 = 无追加） */
+  theme: { modules?: readonly string[]; mk2?: readonly string[] }
   /** 是否稀有残骸（2026-09-10：赏金任务窝点战利品）——开箱走"高级箱"：保底照常 + **必定**额外掉落 */
   rare?: boolean
-  /** 该敌群的专属装备池（稀有残骸额外掉落优先在此掷；缺省 = 未配置） */
+  /** 该**族**的专属装备池（稀有残骸额外掉落优先在此掷；缺省 = 未配置） */
   lairGear?: readonly string[]
 }
 
@@ -713,9 +772,9 @@ export function fragmentItemDefOf(moduleId: string, moduleName: string): ItemDef
 
 /**
  * 彩头开箱（每批调用；逐具掷骰，确定性走 state.rng）。
- * 主题 = "追加"语义（2026-09-08 船长收口）：默认池一件不少，recycleLoot.modules/mk2 只在各自
- * 默认池上追加敌群主题件（武器不得为主题追加件——穹顶守卫三把 MK3 武器为唯一白名单例外，见 content-check）；
- * 有追加件时整池按均价反比缩放（EV 守恒）；无追加件 = 默认池原概率。
+ * 主题 = "追加"语义（2026-09-08 船长收口）：默认池一件不少，组主题件 `theme.modules/mk2` 只在各自
+ * 默认池上追加该组主题件（武器不得为主题追加件——**守墓者·低安组**的三把 MK3 武器为唯一白名单例外，
+ * 见 content-check）；有追加件时整池按均价反比缩放（EV 守恒）；无追加件 = 默认池原概率。
  */
 export function rollRecycleLoot(
   state: GameState,
@@ -733,7 +792,7 @@ export function rollRecycleLoot(
   }
   // ① 基础件直出线：默认池（8 件，2026-09-08 起含三系 MK1 武器）+ 中安主题追加件
   const defBase = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
-  const appendBase = (profile.loot?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
+  const appendBase = (profile.theme?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
   const defBaseAvg = avgPriceOf(defBase)
   const basePool = [...defBase, ...appendBase]
   const baseChance =
@@ -742,7 +801,7 @@ export function rollRecycleLoot(
       : RECYCLE_CHANCE.base
   // ② 低安门槛线：默认 MK2 池（7 件，武器全保留）+ 低安主题追加件（仅 sec<0 掷）
   const defMk2 = RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
-  const appendMk2 = (profile.loot?.mk2 ?? []).filter((id) => ctx.modules.has(id) && !defMk2.includes(id))
+  const appendMk2 = (profile.theme?.mk2 ?? []).filter((id) => ctx.modules.has(id) && !defMk2.includes(id))
   const defMk2Avg = avgPriceOf(defMk2)
   const mk2Pool = [...defMk2, ...appendMk2]
   const mk2Chance =
@@ -779,20 +838,22 @@ const INTACT_FRAG_T3_COUNT = 1
 
 /**
  * 完好舰体当场直发（主控/AI 打捞共用；在 pullOneWreck 命中完好舰体时调用一次）：
- * 不再折算体积（旧 ×2 移除），改为按该残骸所属敌群的回收画像直发回收彩头：
- * ① 基础件**必中 1 件**（该敌群主题追加件优先，否则默认基础件池 8 件）；
- * ② 低安（sec<0）另按 balance.intactMk2Chance 掷 MK2 档（默认 MK2 池 + 低安主题追加件）；
+ * 不再折算体积（旧 ×2 移除），改为按该敌卡**所属组**的回收画像直发回收彩头：
+ * ① 基础件**必中 1 件**（该组主题件优先，否则默认基础件池 8 件）；
+ * ② 低安组（地区 = 低安）另按 balance.intactMk2Chance 掷 MK2 档（默认 MK2 池 + 组主题件）；
  * ③ 碎片层：威胁 ≥17 按 INTACT_FRAG_T2_CHANCE 掷 MK2 碎片 ×3 片；≥41 追加掷 MK3 碎片 ×1 片。
  * 产物：装备 → 装备库、碎片 → 物品仓库（协会货运直送——打捞舰仍在野外，不占货仓、
  * 不影响满仓返航判定）。返回日志摘要（无任何产物 = null）。
  */
 export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId: string): string | null {
-  const profile = recycleProfileOf(ctx, wreckItemIdOf(anomalyId))
+  const group = wreckGroupOfCard(anomalyId, ctx)
+  if (!group) return null
+  const profile = recycleProfileOf(ctx, wreckItemIdOf(group.key))
   if (!profile) return null
   const gains: string[] = []
   // ① 基础件必中（主题追加件优先；无主题或不在上下文 = 默认基础池）
   const defBase = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
-  const appendBase = (profile.loot?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
+  const appendBase = (profile.theme?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
   if (defBase.length === 0 && appendBase.length === 0) return null
   const basePick =
     appendBase.length > 0
@@ -803,7 +864,7 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
   // ② 低安 MK2 层
   if (profile.lowSec) {
     const defMk2 = RECYCLE_MK2_MODULES.filter((id) => ctx.modules.has(id))
-    const appendMk2 = (profile.loot?.mk2 ?? []).filter((id) => ctx.modules.has(id) && !defMk2.includes(id))
+    const appendMk2 = (profile.theme?.mk2 ?? []).filter((id) => ctx.modules.has(id) && !defMk2.includes(id))
     const mk2Pool = [...defMk2, ...appendMk2]
     if (mk2Pool.length > 0 && nextRandom(state.rng) < ctx.balance.intactMk2Chance) {
       const mk2Pick = pickOne(state.rng, mk2Pool)!

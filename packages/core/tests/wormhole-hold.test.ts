@@ -36,6 +36,10 @@ import {
 } from '../src/wormholeSalvage'
 import { wormholeActivateAt, wormholeTravelTo } from '../src/wormholeBattle'
 import { gridCellAt } from '../src/wormholeGrid'
+import { wreckItemIdOfCard } from '../src/salvage'
+
+/** 2026-09-19 残骸合并：卡 id → 该卡所属组的普通残骸物品 id（例：`wh-pirate-scout` → `wreck-a-wh`） */
+const commonWreckOf = (cardId: string): string => wreckItemIdOfCard(cardId)!
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -261,7 +265,7 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
      */
     setBag(state, [
       { itemId: 'ore-voidmother', units: 10 * 500 },
-      { itemId: 'wreck-wh-pirate-scout', units: 35 * 500 },
+      { itemId: commonWreckOf('wh-pirate-scout'), units: 35 * 500 },
     ])
     expect(wormholeTempUsage(state, ctx).cells).toBe(WORMHOLE_TEMP_CELLS)
     expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(3)
@@ -286,10 +290,10 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     const run = state.wormhole.run!
     setBag(state, [
       { itemId: 'ore-voidmother', units: 6 * 500 },
-      { itemId: 'wreck-wh-pirate-scout', units: 6 * 500 },
+      { itemId: commonWreckOf('wh-pirate-scout'), units: 6 * 500 },
     ]) // 共 12 格：货仓 10 格占满，多出的 2 件落进临时空间（阶梯第二层）
     expect(wormholeTempUsage(state, ctx).cells).toBe(2)
-    const dropped = wormholeDiscardCargo(state, ctx, 'wreck-wh-pirate-scout', 2 * 500)
+    const dropped = wormholeDiscardCargo(state, ctx, commonWreckOf('wh-pirate-scout'), 2 * 500)
     expect(dropped.ok).toBe(true)
     expect(dropped.dropped).toBe(1000)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
@@ -300,7 +304,7 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     expect(blocked.error ?? '').toContain('装不下')
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false) // 被拒 ≠ 超载：状态没动
     // 腾出 4 格（抛掉 2000 单位残骸）⇒ 货柜装得下
-    expect(wormholeDiscardCargo(state, ctx, 'wreck-wh-pirate-scout').ok).toBe(true)
+    expect(wormholeDiscardCargo(state, ctx, commonWreckOf('wh-pirate-scout')).ok).toBe(true)
     const stow = wormholeHoldStow(state, ctx, BOX)
     expect(stow.ok, stow.error ?? '').toBe(true)
     expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 6, shapeCells: 4, used: 10 })
@@ -319,7 +323,7 @@ describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
     // 货仓 10 格 + 临时空间 32 格 = 42 格正好装满 ⇒ 还没超载
     setBag(state, [
       { itemId: 'ore-voidmother', units: 10 * 500 },
-      { itemId: 'wreck-wh-pirate-scout', units: 32 * 500 },
+      { itemId: commonWreckOf('wh-pirate-scout'), units: 32 * 500 },
     ])
     expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0)
     expect(wormholeHoldOverloaded(state, ctx)).toBe(false)
