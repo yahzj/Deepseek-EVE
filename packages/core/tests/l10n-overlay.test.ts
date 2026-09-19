@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_ANOMALIES, EN_ITEMS, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
+import { EN_ANOMALIES, EN_FOE_SHIPS, EN_ITEMS, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -105,10 +105,12 @@ describe('英文覆盖层（P2）', () => {
     expect(missing, `这些异常点还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.anomalies.get('ano-maw-hunt')?.name).toBe('Maw Hunt Order')
     expect(en.anomalies.get('enc-pirate-4')?.name).toBe('Deepspace Butcher Fleet')
+    // 深比时**排除 ships**——卡片内嵌敌舰名本就该换（由上面那条"嵌套覆盖"用例单独逐字段核对）
     const strip = (d: object): string => {
       const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
       delete rest.name
       delete rest.description
+      delete rest.ships
       return JSON.stringify(rest)
     }
     for (const [id, def] of zh.anomalies) expect(strip(en.anomalies.get(id)!), `异常点 ${id} 的数值字段`).toBe(strip(def))
@@ -125,6 +127,50 @@ describe('英文覆盖层（P2）', () => {
     }
     for (const [id, def] of zh.items) expect(strip(en.items.get(id)!), `物品 ${id} 的数值字段`).toBe(strip(def))
     for (const [id, def] of zh.skills) expect(strip(en.skills.get(id)!), `技能 ${id} 的数值字段`).toBe(strip(def))
+  })
+
+  it('蓝图（派生）：装备/物品蓝图与舰船蓝图全覆盖，且英文名由产物名拼出', () => {
+    const missBp = [...zh.blueprints.keys()].filter((id) => !en.blueprints.has(id))
+    expect(missBp, '蓝图 id 集合应一致').toEqual([])
+    const missSbp = [...zh.shipBlueprints.keys()].filter((id) => !en.shipBlueprints.has(id))
+    expect(missSbp, '舰船蓝图 id 集合应一致').toEqual([])
+    // 装备蓝图：<产物英文名> Blueprint
+    expect(en.blueprints.get('bp-miner-1')?.name).toBe('Reinforced Mining Laser MK1 Blueprint')
+    // 舰船蓝图：<舰级段> Blueprint
+    expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Pioneer-class Blueprint')
+    // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
+    const noEn = [...zh.blueprints.values()].filter((bp) => !en.blueprints.get(bp.id)?.name.includes('Blueprint'))
+    expect(noEn.slice(0, 5).map((bp) => bp.id), '这些蓝图没派生到英文名').toEqual([])
+    const strip = (d: object): string => {
+      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
+      delete rest.name
+      delete rest.description
+      return JSON.stringify(rest)
+    }
+    for (const [id, def] of zh.blueprints) expect(strip(en.blueprints.get(id)!), `蓝图 ${id} 的数值字段`).toBe(strip(def))
+    for (const [id, def] of zh.shipBlueprints) expect(strip(en.shipBlueprints.get(id)!), `舰船蓝图 ${id} 的数值字段`).toBe(strip(def))
+  })
+
+  it('卡片内嵌敌舰（嵌套覆盖）：24 种被引用的敌舰全部英文化，且编成/倍率一字不动', () => {
+    const zhFoes = new Map<string, string>()
+    for (const def of zh.anomalies.values()) for (const slot of def.ships ?? []) zhFoes.set(slot.ship.id, slot.ship.name)
+    expect(zhFoes.size, '卡片引用的 distinct 敌舰数').toBeGreaterThan(20)
+    const missing = [...zhFoes.keys()].filter((id) => !(id in EN_FOE_SHIPS))
+    expect(missing, `这些敌舰还没有英文名：${missing.join(', ')}`).toEqual([])
+    // 名字换掉了，而"编成"（每张卡的 ships 长度与倍率）一字不动
+    for (const [id, def] of zh.anomalies) {
+      const other = en.anomalies.get(id)!
+      expect((other.ships ?? []).length, `${id} 的编成长度`).toBe((def.ships ?? []).length)
+      for (let i = 0; i < (def.ships ?? []).length; i++) {
+        const a = def.ships![i]!
+        const b = other.ships![i]!
+        expect(b.ship.id, `${id} 第 ${i} 位敌舰 id`).toBe(a.ship.id)
+        expect(b.hpMul, `${id} 第 ${i} 位血量倍率`).toBe(a.hpMul)
+        expect(b.dmgMul, `${id} 第 ${i} 位伤害倍率`).toBe(a.dmgMul)
+        expect(b.wave, `${id} 第 ${i} 位波次`).toBe(a.wave)
+        expect(b.ship.name, `${id} 第 ${i} 位敌舰名`).not.toBe(a.ship.name)
+      }
+    }
   })
 
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {

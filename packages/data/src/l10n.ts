@@ -14,6 +14,8 @@
  * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
  */
 import type { SimContext } from '@whale/core'
+import { BLUEPRINTS } from './blueprints'
+import { SHIP_BLUEPRINTS } from './shipBlueprints'
 
 export type Locale = 'zh' | 'en'
 
@@ -557,6 +559,124 @@ export function overlayMap<T extends { name: string; description?: string }>(
  */
 export const EN_ITEMS_ALL: EnTable = { ...EN_ITEMS, ...EN_WRECKS }
 
+/**
+ * 从舰船英文名取**舰级段**：含 `-class` 时取到该词为止（`Pioneer-class Mining Corvette` → `Pioneer-class`）；
+ * 虫洞族舰名没有 `-class`（它们是敌舰模板名）⇒ 用整名。
+ */
+function shipClassSegment(enName: string): string {
+  const parts = enName.split(' ')
+  const i = parts.findIndex((p) => p.includes('-class'))
+  return i >= 0 ? parts.slice(0, i + 1).join(' ') : enName
+}
+
+/**
+ * **装备 / 物品蓝图**（派生，不另立表）：`<产物英文名> Blueprint`。
+ * 依据：`BlueprintDef` 自带 `moduleId` / `itemId` ⇒ 直接取产物的英文名拼后缀，
+ * 比逐条翻中文蓝图串更准（中文侧写的是「轻型炮台 MK1（动能）蓝图」，英文侧统一成 `Light Turret MK1 · Kinetic Blueprint`）。
+ */
+export const EN_BLUEPRINTS: EnTable = (() => {
+  const out: Record<string, EnText> = {}
+  for (const bp of BLUEPRINTS) {
+    const product = bp.moduleId ? EN_MODULES[bp.moduleId]?.name : bp.itemId ? EN_ITEMS_ALL[bp.itemId]?.name : undefined
+    if (product) out[bp.id] = { name: `${product} Blueprint` }
+  }
+  return out
+})()
+
+/** **舰船蓝图**（派生）：`<舰级段> Blueprint`（`ShipBlueprintDef.shipId` ⇒ 舰船英文名 ⇒ 取舰级段） */
+export const EN_SHIP_BLUEPRINTS: EnTable = (() => {
+  const out: Record<string, EnText> = {}
+  for (const bp of SHIP_BLUEPRINTS) {
+    const en = EN_SHIPS[bp.shipId]?.name
+    if (en) out[bp.id] = { name: `${shipClassSegment(en)} Blueprint` }
+  }
+  return out
+})()
+
+/** 敌舰（25 · `docs/glossary-en.md` §十一；卡片把它**内嵌**在 `anomaly.ships[].ship` 里 ⇒ 见 `overlayCardFoes`） */
+export const EN_FOE_SHIPS: EnTable = {
+  'foe-pirate-skiff': { name: 'Pirate Skiff' },
+  'foe-pirate-corvette': { name: 'Raider Frigate' },
+  'foe-pirate-sniper': { name: 'Raider Sniper' },
+  'foe-pirate-raider': { name: 'Raider EW Ship' },
+  'foe-pirate-warlord': { name: 'Pirate Warlord' },
+  'foe-scav-skiff': { name: 'Scavenger Skiff' },
+  'foe-scav-armed': { name: 'Scavenger Gunship' },
+  'foe-alien-rift-larva': { name: 'Aberrant Larva' },
+  'foe-alien-starcore-larva': { name: 'Starcore Larva' },
+  'foe-alien-starcore-adult': { name: 'Starcore Adult' },
+  'foe-alien-maw': { name: 'Maw Behemoth' },
+  'foe-alien-spore-hive': { name: 'Spore Hive Aberrant' },
+  'foe-d-ghost': { name: 'Ghost Ship' },
+  'foe-d-longship': { name: 'Gravekeeper Longship' },
+  'foe-d-stasis': { name: 'Stasis Guard Ship' },
+  'foe-d-throne': { name: 'Gravekeeper Throne Ship' },
+  'foe-missile-hulk': { name: 'Missile Hulk' },
+  'foe-titan-hulk': { name: 'Titan Hulk' },
+  'foe-auro-hulk': { name: 'Auro Hulk' },
+  'foe-core-section': { name: 'Core Section' },
+  'foe-g-swarm-skiff': { name: 'Siege Remnant Skiff' },
+  'foe-g-echo-remnant': { name: 'Echo Remnant Ship' },
+  'foe-g-nadir-lock': { name: 'Nadir Blockade Ship' },
+  'foe-g-exile-battleship': { name: 'Deadarmy Battleship' },
+  'foe-g-remnant-tender': { name: 'Remnant Tender' },
+}
+
+/**
+ * **卡片内嵌敌舰**的嵌套覆盖：`AnomalyDef.ships[].ship.name` 是**嵌在卡里**的（不是 ctx 的独立表），
+ * 所以普通 `overlayMap` 够不着 ⇒ 单独走这一层。只改 `ship.name`，其余字段（血量倍率/波次/编成）一字不动。
+ */
+/** 单张卡片的敌舰覆盖：只改 `ship.name`；没命中返回 null（调用方据此决定是否新建容器） */
+function cardFoesOf<T extends { ships?: readonly { ship: { id: string; name: string } }[] }>(
+  def: T,
+  en: EnTable,
+): T | null {
+  const slots = def.ships
+  if (!slots || slots.length === 0) return null
+  let changed = false
+  const mapped = slots.map((slot) => {
+    const text = en[slot.ship.id]
+    if (text?.name === undefined) return slot
+    changed = true
+    return { ...slot, ship: { ...slot.ship, name: text.name } }
+  })
+  return changed ? { ...def, ships: mapped } : null
+}
+
+/** Map 版（`ctx.anomalies` 一类）：逐卡嵌套覆盖 */
+export function overlayCardFoes<T extends { ships?: readonly { ship: { id: string; name: string } }[] }>(
+  cards: ReadonlyMap<string, T>,
+  en: EnTable,
+  locale: Locale,
+): ReadonlyMap<string, T> {
+  if (locale === 'zh') return cards
+  let out: Map<string, T> | null = null
+  for (const [id, def] of cards) {
+    const next = cardFoesOf(def, en)
+    if (!next) continue
+    out ??= new Map(cards)
+    out.set(id, next)
+  }
+  return out ?? cards
+}
+
+/** 数组版（引擎目录 `ANOMALIES_FLAVORED` 一类）：逐卡嵌套覆盖 */
+export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: string; name: string } }[] }>(
+  list: readonly T[],
+  en: EnTable,
+  locale: Locale,
+): readonly T[] {
+  if (locale === 'zh') return list
+  let out: T[] | null = null
+  for (let i = 0; i < list.length; i++) {
+    const next = cardFoesOf(list[i]!, en)
+    if (!next) continue
+    out ??= [...list]
+    out[i] = next
+  }
+  return out ?? list
+}
+
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
   if (locale === 'zh') return ctx
   return {
@@ -565,6 +685,8 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     modules: overlayMap(ctx.modules, EN_MODULES, locale),
     items: overlayMap(ctx.items, EN_ITEMS_ALL, locale),
     skills: overlayMap(ctx.skills, EN_SKILLS, locale),
-    anomalies: overlayMap(ctx.anomalies, EN_ANOMALIES, locale),
+    anomalies: overlayCardFoes(overlayMap(ctx.anomalies, EN_ANOMALIES, locale), EN_FOE_SHIPS, locale),
+    blueprints: overlayMap(ctx.blueprints, EN_BLUEPRINTS, locale),
+    shipBlueprints: overlayMap(ctx.shipBlueprints, EN_SHIP_BLUEPRINTS, locale),
   }
 }

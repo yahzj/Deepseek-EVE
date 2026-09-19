@@ -251,7 +251,7 @@ import type {
   WormholeAutoRun,
   WormholeHoldPlacement,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, type L10nLocale } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, overlayCardFoes, overlayCardFoesList, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
@@ -467,8 +467,8 @@ export class GameEngine {
   readonly belts = BELTS
   items = ITEMS
   modules = MODULES.filter((d) => itemReleased(d))
-  readonly blueprints = BLUEPRINTS.filter((d) => itemReleased(d))
-  readonly shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
+  blueprints = BLUEPRINTS.filter((d) => itemReleased(d))
+  shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
   readonly galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
   anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
@@ -481,8 +481,8 @@ export class GameEngine {
    */
   allShips = SHIPS
   allModules = MODULES
-  readonly allBlueprints = BLUEPRINTS
-  readonly allShipBlueprints = SHIP_BLUEPRINTS
+  allBlueprints = BLUEPRINTS
+  allShipBlueprints = SHIP_BLUEPRINTS
   /** 通讯剧本目录（T9） */
   readonly dialogues = DIALOGUES
 
@@ -624,8 +624,14 @@ export class GameEngine {
     this.allModules = overlayList(MODULES, EN_MODULES, locale)
     this.items = overlayList(ITEMS, EN_ITEMS_ALL, locale)
     this.skills = overlayList(SKILLS, EN_SKILLS, locale)
-    this.anomalies = overlayList(ANOMALIES_FLAVORED, EN_ANOMALIES, locale).filter((a) => !a.hidden)
-    this.allAnomalies = overlayList(ANOMALIES_FLAVORED, EN_ANOMALIES, locale)
+    this.blueprints = overlayList(BLUEPRINTS, EN_BLUEPRINTS, locale).filter((d) => itemReleased(d))
+    this.shipBlueprints = overlayList(SHIP_BLUEPRINTS, EN_SHIP_BLUEPRINTS, locale).filter((d) => itemReleased(d))
+    this.allBlueprints = overlayList(BLUEPRINTS, EN_BLUEPRINTS, locale)
+    this.allShipBlueprints = overlayList(SHIP_BLUEPRINTS, EN_SHIP_BLUEPRINTS, locale)
+    // 卡片名 + **卡片内嵌敌舰**（敌舰名嵌在 anomaly.ships[].ship 里 ⇒ 走嵌套覆盖）
+    const locCards = overlayCardFoesList(overlayList(ANOMALIES_FLAVORED, EN_ANOMALIES, locale), EN_FOE_SHIPS, locale)
+    this.anomalies = locCards.filter((a) => !a.hidden)
+    this.allAnomalies = locCards
     this.notify()
   }
 
