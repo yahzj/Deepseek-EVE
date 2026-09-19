@@ -31,6 +31,7 @@ import {
   refineRate,
   // 2026-09-13：未上线资源不进"可精炼资源"网格 / 材料跳转（施工期闸门）
   visibleItemDefs,
+  ITEM_KIND_LABELS,
 } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -41,6 +42,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
 import { WRECK_SUBS, wreckTierOf } from '../ui/itemSubs'
+import { useL10n } from '../i18n/locale'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
@@ -481,6 +483,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const rate = refineRate(state, engine.ctx)
 
   const [sec, setSec] = useState<'refine' | 'shelf' | 'craft'>(focusSec ?? 'refine')
+  const { t } = useL10n()
   /**
    * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：
    * `furnaceTab` = 一级（活计大类）· `sub` = 二级（资源大类 / 残骸档位；`''` = 全部子类）。
@@ -488,6 +491,13 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
    */
   const [furnaceTab, setFurnaceTab] = useState<FurnaceTab>('all')
   const [sub, setSub] = useState<string>('')
+  /**
+   * **精炼炉搜索栏**（船长 2026-09-19：「也给精炼炉和组装机添加搜索栏」；追问后定范围 =
+   * **名称 ＋ 产物/材料 ＋ 说明**）：搜资源/残骸/货柜名、它们的说明，以及**产出侧的名字**
+   * ——可精炼资源搜精炼产物、残骸搜保底矿物池（"某材料由什么炼出来"也搜得到）。与筛选取「与」。
+   */
+  const [fKw, setFKw] = useState('')
+  const fq = fKw.trim().toLowerCase()
   const runViews = engine.refineRunViews()
   // 组装机「去精炼」跳转目标（矿石卡 id；高亮数秒后自清；2026-09-08 船长定）
   const [focusOreId, setFocusOreId] = useState<string | null>(null)
@@ -576,6 +586,23 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
     .filter((k) => oreDefs.some((d) => d.kind === k))
     .map((k) => ({ key: k, label: ORE_KIND_LABEL[k]! }))
   const subOptions: SubOpt[] = furnaceTab === 'ore' ? oreSubs : furnaceTab === 'wreck' ? WRECK_SUBS : []
+  /**
+   * **搜索命中**（名称 ＋ 产物/材料 ＋ 说明）：`fq` 为空 ⇒ 恒真。
+   * 产出侧名字：可精炼资源取 `def.refine` 的精炼产物名；残骸取 `recycleMineralPoolOf(profile)` 的保底矿物名
+   * （"某材料由什么炼/拆出来"也能搜到）；货柜只按名称与说明。
+   */
+  const fHit = (def: ItemDef): boolean => {
+    if (fq.length === 0) return true
+    if (def.name.toLowerCase().includes(fq)) return true
+    if ((def.description ?? '').toLowerCase().includes(fq)) return true
+    // 大类名也入索引（与物品页仓库的搜索同口径）——否则搜「冰矿」会 0 命中：冰类物品名是
+    // 蓝霜冰 / 寒髓冰 / 暗星冰，**不含「冰矿」二字**（2026-09-19 探针实测）
+    if ((ITEM_KIND_LABELS[def.kind] ?? '').toLowerCase().includes(fq)) return true
+    const outs: string[] = (def.refine ?? []).map((r) => engine.ctx.items.get(r.mineralId)?.name ?? r.mineralId)
+    const prof = def.kind === 'wreck' ? recycleProfileOf(engine.ctx, def.id) : null
+    if (prof) for (const [mineralId] of recycleMineralPoolOf(prof)) outs.push(engine.ctx.items.get(mineralId)?.name ?? mineralId)
+    return outs.some((n) => n.toLowerCase().includes(fq))
+  }
   const oreFiltered = sub === '' ? oreDefs : oreDefs.filter((d) => d.kind === sub)
   /** 残骸档位：判据 = `wreckTierOf`（= core `isRareWreck`，与卡上的「稀有」徽标同源单点） */
   const wreckFiltered =
@@ -584,15 +611,16 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
       : sub === 'common'
         ? wreckDefs.filter((d) => wreckTierOf(d.id) !== 'rare')
         : wreckDefs
-  const oreShownF = pinMarked(state, 'recipes', oreFiltered, (def) => def.id)
-  const wreckShownF = pinMarked(state, 'recipes', wreckFiltered, (def) => def.id)
+  const oreShownF = pinMarked(state, 'recipes', oreFiltered.filter(fHit), (def) => def.id)
+  const wreckShownF = pinMarked(state, 'recipes', wreckFiltered.filter(fHit), (def) => def.id)
+  const boxShownF = boxDefs.filter(fHit)
   /** 一级标签实际要渲染哪几组（「全部」= 四组都渲染，其余只渲染对应那一组） */
   const showOre = furnaceTab === 'all' || furnaceTab === 'ore'
   const showWreck = furnaceTab === 'all' || furnaceTab === 'wreck'
   const showBox = furnaceTab === 'all' || furnaceTab === 'box'
-  /** 当前筛选下"一共几张卡"（读数行用；与组装机的「· 当前 N 张」同款） */
+  /** 当前筛选/搜索下"一共几张卡"（读数行用；与组装机的「· 当前 N 张」同款） */
   const shownCount =
-    (showOre ? oreShownF.length : 0) + (showWreck ? wreckShownF.length : 0) + (showBox ? boxDefs.length : 0)
+    (showOre ? oreShownF.length : 0) + (showWreck ? wreckShownF.length : 0) + (showBox ? boxShownF.length : 0)
   const totalCount = oreDefs.length + wreckDefs.length + boxDefs.length
 
   return (
@@ -658,6 +686,17 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           }
           right={
             <>
+              {/* 搜索栏（船长 2026-09-19）：与物品页/货仓/技能/舰船页/手册同款（标题行右侧） */}
+              <span className="app-head-search-wrap">
+                <input
+                  className="app-head-search"
+                  type="text"
+                  placeholder={t('搜索资源、残骸或产出物…')}
+                  value={fKw}
+                  onChange={(e) => setFKw(e.target.value)}
+                  spellCheck={false}
+                />
+              </span>
               <span
                 className="app-dim"
                 title="产出倍率 = 基础 120% + 精炼学 +6%/级 + 高级回收处理 +3%/级（上限 165%）；残骸回收按保底原材料另算"
@@ -665,8 +704,12 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
                 产出倍率 {Math.round(rate * 100)}% · 运转 {runningCount} 台 · 可精炼 {oreDefs.length} · 残骸{' '}
                 {wreckDefs.length}
                 {boxDefs.length > 0 ? ` · 货柜 ${boxDefs.length}` : ''}
-                {/* 筛选生效时补一个"当前 N 张"（与组装机同款：免得玩家对着收窄后的网格数不清） */}
-                {shownCount !== totalCount ? ` · 当前 ${shownCount} 张` : ''}
+                {/* 搜索/筛选生效时补读数（与组装机同款：免得玩家对着收窄后的网格数不清） */}
+                {fq.length > 0
+                  ? ` · 匹配 ${shownCount} 张`
+                  : shownCount !== totalCount
+                    ? ` · 当前 ${shownCount} 张`
+                    : ''}
               </span>
               <AiSlotText state={state} ctx={engine.ctx} />
             </>
@@ -739,16 +782,18 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             </div>
           ) : null}
 
-          {showBox && boxDefs.length > 0 ? (
+          {showBox && boxShownF.length > 0 ? (
             <div className="app-belt-grid">
-              {boxDefs.map((def) => (
+              {boxShownF.map((def) => (
                 <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
               ))}
             </div>
           ) : null}
-          {showBox && boxDefs.length === 0 ? (
+          {showBox && boxShownF.length === 0 ? (
             <div className="app-dim app-exp-idle">
-              还没有可拆解的货柜——遗迹打捞带回「安全货柜 / 图纸货柜」后会出现在这里（拆开才知道内容物）。
+              {fq.length > 0
+                ? '没有匹配的货柜——换个关键词试试（支持名称与说明）。'
+                : '还没有可拆解的货柜——遗迹打捞带回「安全货柜 / 图纸货柜」后会出现在这里（拆开才知道内容物）。'}
             </div>
           ) : null}
           </div>

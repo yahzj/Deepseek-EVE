@@ -44,11 +44,18 @@ import { RowGlyph } from '../ui/itemView'
 import { useL10n } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
+  BLUEPRINT_LEARN_TABS,
+  BLUEPRINT_USE_TABS,
   CONSUME_SUBS,
+  MANU_TABS,
   MODULE_SUBS,
   SHIP_TIER_SUBS,
   SUB_ALL,
+  manuSubsOf,
   moduleSubKeyOf,
+  type BlueprintLearnKey,
+  type BlueprintUseKey,
+  type ManuTabKey,
   type SubOption,
 } from '../ui/itemSubs'
 
@@ -115,9 +122,9 @@ export function BlueprintShelfPanel({
    * 一级类别（`MANU_TABS`）/ 二级子类（`manuSubsOf`）/ 三级一次性-永久（`BLUEPRINT_USE_TABS`），
    * 三项都走 `bpFilterKeysOf` 同一个单点；三级同样**只在选了子类后才出现**（与组装机逐字同款口径）。
    */
-  const [kind, setKind] = useState<ManuTab>('all')
+  const [kind, setKind] = useState<ManuTabKey>('all')
   const [sub, setSub] = useState<string>(SUB_ALL)
-  const [useKind, setUseKind] = useState<BlueprintUse>('all')
+  const [useKind, setUseKind] = useState<BlueprintUseKey>(SUB_ALL)
   /** 蓝图书卡（未筛选）：书架 = **手上还没学的书** */
   const bookCards = entries.map(([id, n]) => ({ id, n, keys: bpFilterKeysOf(engine, id) }))
   /**
@@ -142,7 +149,7 @@ export function BlueprintShelfPanel({
   const tabsShown = MANU_TABS.filter((tb) => tb.key === 'all' || cards.some((c) => c.keys.tab === tb.key))
   const subsShown = manuSubsOf(kind).filter((s) => cards.some((c) => c.keys.tab === kind && c.keys.subKey === s.key))
   const usesShown = BLUEPRINT_USE_TABS.filter((u) =>
-    u.key === 'all'
+    u.key === SUB_ALL
       ? true
       : cards.some(
           (c) =>
@@ -161,19 +168,19 @@ export function BlueprintShelfPanel({
     if (kindMissing) {
       setKind('all')
       setSub(SUB_ALL)
-      setUseKind('all')
+      setUseKind(SUB_ALL)
       return
     }
     if (subMissing) {
       setSub(SUB_ALL)
-      setUseKind('all')
+      setUseKind(SUB_ALL)
     }
   }, [kindMissing, subMissing])
   /** 三级筛选判定（与上面两张"现算表"同一把尺） */
-  const passKeys = (k: { tab: ManuTab; subKey: string; singleUse: boolean }): boolean =>
+  const passKeys = (k: { tab: ManuTabKey; subKey: string; singleUse: boolean }): boolean =>
     (kind === 'all' || k.tab === kind) &&
     (sub === SUB_ALL || k.subKey === sub) &&
-    (useKind === 'all' || (useKind === 'single' ? k.singleUse : !k.singleUse))
+    (useKind === SUB_ALL || (useKind === 'single' ? k.singleUse : !k.singleUse))
   const shown = bookCards.filter((c) => passKeys(c.keys))
   const fragShown = fragCards.filter((c) => passKeys(c.keys))
   /**
@@ -255,73 +262,83 @@ export function BlueprintShelfPanel({
         <span className="app-dim">
           学习 = 永久可造；一次性图纸只能制造一次
           {/* 筛选生效时补"当前 N 本"（与组装机/精炼炉同款，免得对着收窄后的网格数不清） */}
-          {kind !== 'all' || sub !== SUB_ALL || useKind !== 'all' ? ` · 当前 ${shown.length} 本` : ''}
+          {kind !== 'all' || sub !== SUB_ALL || useKind !== SUB_ALL ? ` · 当前 ${shown.length} 本` : ''}
         </span>
       }
     >
       {/* 三级筛选与组装机**同一套**（同表、同顺序、同"选了子类才出三级"的规则）——
           样式逐字复用这两行（`app-task-tabs` + `app-fleet-tabs` + `app-tasktab`）；
           ⚠ **标签集合是现算的**（2026-09-19 报障修复）：只列"书架上真有卡片"的档，
-          「全部 / 全部子类 / 全部图纸」常显——详见上面 `tabsShown / subsShown / usesShown` 的注释 */}
-      <div className="app-task-tabs" role="tablist">
-        {tabsShown.map((tb) => (
-          <button
-            key={tb.key}
-            role="tab"
-            aria-selected={kind === tb.key}
-            className={`app-tasktab${kind === tb.key ? ' is-active' : ''}`}
-            onClick={() => {
-              setKind(tb.key)
-              setSub(SUB_ALL) // 换一级标签即回「全部子类」（与组装机同款）
-              setUseKind('all')
-            }}
-          >
-            {tb.label}
-          </button>
-        ))}
-      </div>
-      {subsShown.length > 0 ? (
+          「全部 / 全部子类 / 全部图纸」常显——详见上面 `tabsShown / subsShown / usesShown` 的注释；
+          文案 = 裸「全部」+ 同行灰字前缀（基线①，2026-09-19 丙组补） */}
+      <div className="app-fleet-row">
+        <span className="app-dim">门类：</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          <button
-            role="tab"
-            aria-selected={sub === SUB_ALL}
-            className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
-            onClick={() => {
-              setSub(SUB_ALL)
-              setUseKind('all')
-            }}
-          >
-            全部子类
-          </button>
-          {subsShown.map((s) => (
+          {tabsShown.map((tb) => (
             <button
-              key={s.key}
+              key={tb.key}
               role="tab"
-              aria-selected={sub === s.key}
-              className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
+              aria-selected={kind === tb.key}
+              className={`app-tasktab${kind === tb.key ? ' is-active' : ''}`}
               onClick={() => {
-                setSub(s.key)
-                setUseKind('all')
+                setKind(tb.key)
+                setSub(SUB_ALL) // 换一级标签即回「全部子类」（与组装机同款）
+                setUseKind(SUB_ALL)
               }}
             >
-              {s.label}
+              {tb.label}
             </button>
           ))}
         </div>
+      </div>
+      {subsShown.length > 0 ? (
+        <div className="app-fleet-row">
+          <span className="app-dim">子类：</span>
+          <div className="app-task-tabs app-fleet-tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={sub === SUB_ALL}
+              className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
+              onClick={() => {
+                setSub(SUB_ALL)
+                setUseKind(SUB_ALL)
+              }}
+            >
+              全部
+            </button>
+            {subsShown.map((s) => (
+              <button
+                key={s.key}
+                role="tab"
+                aria-selected={sub === s.key}
+                className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
+                onClick={() => {
+                  setSub(s.key)
+                  setUseKind(SUB_ALL)
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
       {sub !== SUB_ALL ? (
-        <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          {usesShown.map((u) => (
-            <button
-              key={u.key}
-              role="tab"
-              aria-selected={useKind === u.key}
-              className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
-              onClick={() => setUseKind(u.key)}
-            >
-              {u.label}
-            </button>
-          ))}
+        <div className="app-fleet-row">
+          <span className="app-dim">图纸：</span>
+          <div className="app-task-tabs app-fleet-tabs" role="tablist">
+            {usesShown.map((u) => (
+              <button
+                key={u.key}
+                role="tab"
+                aria-selected={useKind === u.key}
+                className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
+                onClick={() => setUseKind(u.key)}
+              >
+                {u.label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
       <div className="app-shelf-grid">
@@ -394,45 +411,13 @@ export function BlueprintShelfPanel({
 
 /* ═══════════════ 组装机（2026-09-08 与精炼炉同款劳动者制：主控亲自 / AI 核心驱动；多蓝图 + 同蓝图多线） ═══════════════ */
 
-/** 组装机类型筛选：全部 / 装备 / 舰船 / 消耗品（2026-09-05 基础弹药可自制；
- *  2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——该档实际含弹药 + 修理组件，与市场一级类型「消耗品」对齐） */
-type ManuTab = 'all' | 'equip' | 'ship' | 'supply'
-const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'equip', label: '装备蓝图' },
-  { key: 'ship', label: '舰船蓝图' },
-  { key: 'supply', label: '消耗品蓝图' },
-]
-
-/**
- * 组装机**二级子筛选**（2026-09-11 船长：「对组装机的蓝图添加子筛选，根据产物的类型进行二次分类。
- * 舰船部分按舰船级别划分。」）——按当前一级标签给候选子类，**全部取自 `ui/itemSubs.ts` 单点表**：
- * 装备 = 产物功能九组（`MODULE_SUBS`）· 舰船 = 舰船级别五档（`SHIP_TIER_SUBS`）· 消耗品 = 产物大类（`CONSUME_SUBS`）；
- * 「全部」标签不带子筛选（与市场「全部类型」同款）。
- */
-function manuSubsOf(tab: ManuTab): SubOption[] {
-  if (tab === 'equip') return MODULE_SUBS
-  if (tab === 'ship') return SHIP_TIER_SUBS
-  if (tab === 'supply') return CONSUME_SUBS
-  return []
-}
-
-/**
- * **第三级筛选：一次性蓝图 / 永久蓝图**（船长 2026-09-14：「组装机添加第三个筛选，一次性蓝图和永久蓝图。
- * 需要选完上一级子类后才出现」「蓝图书架也加入组装机同样的筛选」）——**组装机与蓝图书架同一张表**。
- * 显示规则（两处一致）：**只在选了二级子类（`sub !== SUB_ALL`）之后才出现**；切一级标签或换子类一律回「全部图纸」
- * （否则会出现"看不见的筛选"——卡片被筛掉而玩家找不到开关，与 `handleNeedMineral` 那条同一类坑）。
- */
-type BlueprintUse = 'all' | 'perm' | 'single'
-const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUse; label: string }> = [
-  { key: 'all', label: '全部图纸' },
-  { key: 'perm', label: '永久蓝图' },
-  { key: 'single', label: '一次性蓝图' },
-]
+/* 三张筛选表（门类 / 子类 / 图纸 / 学会）**已按基线⑤收编到 `ui/itemSubs.ts`**（2026-09-19 丙组）：
+ * `MANU_TABS` · `manuSubsOf` · `BLUEPRINT_USE_TABS` · `BLUEPRINT_LEARN_TABS`。
+ * 「图纸」与「学会」两个下级维度的「全部」键统一为 `SUB_ALL`（基线②）。 */
 
 /** 蓝图筛选三件套（类别 / 子类 / 是否一次性）——**单点**：组装机与蓝图书架都读它，键与组装机的分组逐字同源
  * （舰船 = `t<级别>` · 装备 = 产物功能 `moduleSubKeyOf(slot)` · 消耗品 = 产物大类 `itemDef.kind`）。 */
-function bpFilterKeysOf(engine: GameEngine, bpId: string): { tab: ManuTab; subKey: string; singleUse: boolean } {
+function bpFilterKeysOf(engine: GameEngine, bpId: string): { tab: ManuTabKey; subKey: string; singleUse: boolean } {
   const sbp = engine.ctx.shipBlueprints.get(bpId)
   if (sbp) {
     const def = engine.ctx.ships.get(sbp.shipId)
@@ -1029,11 +1014,24 @@ export function ManufacturingPanel({
 }) {
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
-  const [tab, setTab] = useState<ManuTab>('all')
+  const [tab, setTab] = useState<ManuTabKey>('all')
+  const { t } = useL10n()
+  /**
+   * **「学会」维度**（并列属性行，**放最上一行**——船长 2026-09-19：「组装机我想添加一个过滤已有蓝图的筛选」
+   * ⇒ 追问后定「放第一行」）：全部 / 已学会 / 未学会。它与门类无关、与搜索取「与」，故不参与级联重置。
+   */
+  const [learn, setLearn] = useState<BlueprintLearnKey>(SUB_ALL)
+  /**
+   * **组装机搜索栏**（船长 2026-09-19：「也给精炼炉和组装机添加搜索栏」；追问后定范围 =
+   * **名称 ＋ 产物/材料 ＋ 说明**）：搜蓝图名、产物名（含产物参数行）、说明，以及**材料名**
+   * （"哪张图纸要用这个材料"也搜得到）。与筛选取「与」。
+   */
+  const [kw, setKw] = useState('')
+  const kq = kw.trim().toLowerCase()
   // 二级子筛选（2026-09-11 船长）；切一级标签即回「全部子类」（与市场页 changeKind 同款口径）
   const [sub, setSub] = useState<string>(SUB_ALL)
   /** 第三级筛选：一次性/永久（**只在选了子类后显示**；见 `BLUEPRINT_USE_TABS` 的注释） */
-  const [useKind, setUseKind] = useState<BlueprintUse>('all')
+  const [useKind, setUseKind] = useState<BlueprintUseKey>(SUB_ALL)
   const subOptions = manuSubsOf(tab)
   /**
    * **书架跳过来的定位**（船长 2026-09-14）：先把三级筛选全部复位（否则目标卡可能正被筛掉 ⇒ 跳过去空白），
@@ -1043,7 +1041,7 @@ export function ManufacturingPanel({
     if (!focusBlueprintId) return
     setTab('all')
     setSub(SUB_ALL)
-    setUseKind('all')
+    setUseKind(SUB_ALL)
   }, [focusBlueprintId])
 
   /** 目录数据（舰船 + 装备统一成条目；制造中冒泡在前，再按名称） */
@@ -1210,6 +1208,22 @@ export function ManufacturingPanel({
   }
 
   const visible = items
+    /** 搜索命中（名称 ＋ 产物/材料 ＋ 说明）：`kq` 为空 ⇒ 恒真；与筛选取「与」 */
+    .filter((it) => {
+      if (kq.length === 0) return true
+      if (it.name.toLowerCase().includes(kq)) return true
+      if (it.productLabel.toLowerCase().includes(kq)) return true
+      if ((it.description ?? '').toLowerCase().includes(kq)) return true
+      // 产物大类名也入索引（与物品页搜索同口径：搜「舰船」「消耗品」这类词也能收窄）
+      if (it.kindLabel.toLowerCase().includes(kq)) return true
+      return it.materials.some((m) => (engine.ctx.items.get(m.itemId)?.name ?? m.itemId).toLowerCase().includes(kq))
+    })
+    // 「学会」维度（并列属性行，与门类无关 ⇒ 独立取「与」）
+    .filter(
+      (it) =>
+        learn === SUB_ALL ||
+        (learn === 'learned' ? ownsBlueprint(state, it.id) : !ownsBlueprint(state, it.id)),
+    )
     .filter(
       (it) =>
         tab === 'all' ||
@@ -1217,8 +1231,8 @@ export function ManufacturingPanel({
     )
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
-    // 三级筛选（2026-09-14 船长）：一次性 / 永久——**只在选了子类后才有开关**，故这里 sub=全部时它恒为 all
-    .filter((it) => useKind === 'all' || (useKind === 'single' ? it.singleUse : !it.singleUse))
+    // 三级筛选（2026-09-14 船长）：一次性 / 永久——**只在选了子类后才有开关**，故这里 sub=全部时它恒为 SUB_ALL
+    .filter((it) => useKind === SUB_ALL || (useKind === 'single' ? it.singleUse : !it.singleUse))
   // 排序口径（类型 → 价格升序 → 同产物的一次性图纸紧随原图纸）**单点在 core**：
   // `sortManuRows`（2026-09-08 船长定 + 2026-09-14 船长改定；详见 core 该段注释与 `tests/manu-order.test.ts`）
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
@@ -1238,81 +1252,123 @@ export function ManufacturingPanel({
       }
       right={
         <>
+          {/* 搜索栏（船长 2026-09-19）：与精炼炉、物品页/货仓/技能/舰船页/手册同款（标题行右侧） */}
+          <span className="app-head-search-wrap">
+            <input
+              className="app-head-search"
+              type="text"
+              placeholder={t('搜索蓝图、产物或材料…')}
+              value={kw}
+              onChange={(e) => setKw(e.target.value)}
+              spellCheck={false}
+            />
+          </span>
           <span className="app-dim">
             制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}
-            {/* 子筛选/三级筛选生效时补一个"当前 N 张"，避免玩家对着收窄后的网格数不清 */}
-            {sub !== SUB_ALL || useKind !== 'all' ? ` · 当前 ${sorted.length} 张` : ''}
+            {/* 任一一维筛选/搜索生效时补读数，避免玩家对着收窄后的网格数不清 */}
+            {kq.length > 0
+              ? ` · 匹配 ${sorted.length} 张`
+              : learn !== SUB_ALL || sub !== SUB_ALL || useKind !== SUB_ALL
+                ? ` · 当前 ${sorted.length} 张`
+                : ''}
           </span>
           <AiSlotText state={state} ctx={engine.ctx} />
         </>
       }
     >
-      {/* 筛选固定、说明进标题后的圆形感叹号（固定头+下滚）：类型标签行 / 子筛选行常驻，卡网格独立内滚 */}
-      <div className="app-task-tabs" role="tablist">
-        {MANU_TABS.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={tab === t.key}
-            className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
-            onClick={() => {
-              setTab(t.key)
-              setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
-              setUseKind('all') // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* 筛选固定、说明进标题后的圆形感叹号（固定头+下滚）：各筛选行常驻，卡网格独立内滚。
+          ⚠ 行序（2026-09-19 丙组）：**学会（并列属性·第一行）→ 门类（一级）→ 子类（二级）→ 图纸（三级）**；
+          胶囊行一律「全部」+ 同行灰字前缀（基线①）。 */}
+      <div className="app-fleet-row">
+        <span className="app-dim">学会：</span>
+        <div className="app-task-tabs app-fleet-tabs" role="tablist">
+          {BLUEPRINT_LEARN_TABS.map((l) => (
+            <button
+              key={l.key}
+              role="tab"
+              aria-selected={learn === l.key}
+              className={`app-tasktab${learn === l.key ? ' is-active' : ''}`}
+              onClick={() => setLearn(l.key)}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="app-fleet-row">
+        <span className="app-dim">门类：</span>
+        <div className="app-task-tabs app-fleet-tabs" role="tablist">
+          {MANU_TABS.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={tab === t.key}
+              className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
+              onClick={() => {
+                setTab(t.key)
+                setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
+                setUseKind(SUB_ALL) // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       {/* 二级子筛选（2026-09-11 船长：按产物的类型二次分类 / 舰船按舰船级别）——
           复刻舰船页「舰队筛选」那套次级标签样式（app-task-tabs + app-fleet-tabs 去下边框 + app-tasktab 胶囊）；
-          「全部」标签不带子筛选（与市场「全部类型」同款） */}
+          「全部」标签不带子筛选（与市场「全部类型」同款）；文案 = 裸「全部」+ 同行前缀（基线①） */}
       {subOptions.length > 0 ? (
-        <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          <button
-            role="tab"
-            aria-selected={sub === SUB_ALL}
-            className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
-            onClick={() => {
-              setSub(SUB_ALL)
-              setUseKind('all') // 回「全部子类」⇒ 三级筛选行随之隐藏，故一并复位
-            }}
-          >
-            全部子类
-          </button>
-          {subOptions.map((s) => (
+        <div className="app-fleet-row">
+          <span className="app-dim">子类：</span>
+          <div className="app-task-tabs app-fleet-tabs" role="tablist">
             <button
-              key={s.key}
               role="tab"
-              aria-selected={sub === s.key}
-              className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
+              aria-selected={sub === SUB_ALL}
+              className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
               onClick={() => {
-                setSub(s.key)
-                setUseKind('all') // 换子类即回「全部图纸」（与一级标签同款口径）
+                setSub(SUB_ALL)
+                setUseKind(SUB_ALL) // 回「全部子类」⇒ 三级筛选行随之隐藏，故一并复位
               }}
             >
-              {s.label}
+              全部
             </button>
-          ))}
+            {subOptions.map((s) => (
+              <button
+                key={s.key}
+                role="tab"
+                aria-selected={sub === s.key}
+                className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
+                onClick={() => {
+                  setSub(s.key)
+                  setUseKind(SUB_ALL) // 换子类即回「全部图纸」（与一级标签同款口径）
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
       {/* **三级筛选：一次性 / 永久**（船长 2026-09-14：「组装机添加第三个筛选，一次性蓝图和永久蓝图。
           需要选完上一级子类后才出现」）——样式逐字复刻上面那行子筛选（`app-task-tabs app-fleet-tabs`）； 
           **选了子类才渲染**：没选子类时它不出现，避免与"全部子类"语义打架 */}
       {sub !== SUB_ALL ? (
-        <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          {BLUEPRINT_USE_TABS.map((u) => (
-            <button
-              key={u.key}
-              role="tab"
-              aria-selected={useKind === u.key}
-              className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
-              onClick={() => setUseKind(u.key)}
-            >
-              {u.label}
-            </button>
-          ))}
+        <div className="app-fleet-row">
+          <span className="app-dim">图纸：</span>
+          <div className="app-task-tabs app-fleet-tabs" role="tablist">
+            {BLUEPRINT_USE_TABS.map((u) => (
+              <button
+                key={u.key}
+                role="tab"
+                aria-selected={useKind === u.key}
+                className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
+                onClick={() => setUseKind(u.key)}
+              >
+                {u.label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
       <div className="app-win-body">

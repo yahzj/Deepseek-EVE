@@ -69,4 +69,8 @@ export const EN: Record<string, string> = {
 
   // ── 蓝图书架（2026-09-19 报障修复：筛选项按现有卡片现算，空态文案随之改写）
   '这一类书架里没有书，也没有可逆向的碎片。': 'No books or redeemable fragments in this category on the shelf.',
+
+  // ── 工业页搜索栏（2026-09-19 船长：精炼炉与组装机各加一个搜索栏）
+  '搜索资源、残骸或产出物…': 'Search resources, wrecks or outputs…',
+  '搜索蓝图、产物或材料…': 'Search blueprints, products or materials…',
 }

@@ -434,3 +434,49 @@ export function shipTierPasses(def: { tier?: number } | undefined, tier: string)
   if (tier === SUB_ALL) return true
   return def !== undefined && `t${def.tier}` === tier
 }
+
+/* ═══════════ 丙组 · 蓝图维度（船长 2026-09-19 六条基线：⑤表收编 ＋ ⑥判定单点）═══════════
+ * 「蓝图书架 / 组装机 / 手册蓝图图鉴 / 市场蓝图档」四处读同一套表；判定单点 = `bpFilterKeysOf`
+ * （住在 `panels/Industry.tsx`——书架与组装机同文件共用，手册/市场各按自己的产物维度判）。 */
+
+/** 组装机 / 蓝图书架「**门类**」维度（一级选择器 ⇒ 「全部」键用 `'all'`，基线②）：
+ *  全部 / 装备蓝图 / 舰船蓝图 / 消耗品蓝图（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」）。 */
+export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply'
+export const MANU_TABS: Array<{ key: ManuTabKey; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'equip', label: '装备蓝图' },
+  { key: 'ship', label: '舰船蓝图' },
+  { key: 'supply', label: '消耗品蓝图' },
+]
+
+/** 组装机/书架「**子类**」候选（按当前门类给；全部取自本文件单点表）：
+ *  装备 = 产物功能十组（`MODULE_SUBS`）· 舰船 = 舰船级别五档（`SHIP_TIER_SUBS`）· 消耗品 = 产物大类（`CONSUME_SUBS`）；
+ *  「全部」门类不带子筛选（与市场「全部类型」同款）。 */
+export function manuSubsOf(tab: ManuTabKey): SubOption[] {
+  if (tab === 'equip') return MODULE_SUBS
+  if (tab === 'ship') return SHIP_TIER_SUBS
+  if (tab === 'supply') return CONSUME_SUBS
+  return []
+}
+
+/** 组装机/书架「**图纸**」维度（三级；下级 ⇒ 「全部」键用 `SUB_ALL`，基线②）：
+ *  全部 / 永久蓝图 / 一次性蓝图（2026-09-14 船长：「组装机添加第三个筛选…需要选完上一级子类后才出现」）。 */
+export type BlueprintUseKey = 'perm' | 'single' | typeof SUB_ALL
+export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string }> = [
+  { key: SUB_ALL, label: '全部' },
+  { key: 'perm', label: '永久蓝图' },
+  { key: 'single', label: '一次性蓝图' },
+]
+
+/**
+ * 组装机「**学会**」维度（并列属性行，**放最上一行**——船长 2026-09-19：
+ * 「组装机我想添加一个过滤已有蓝图的筛选」→ 追问后定「放第一行」）：
+ * 全部 / 已学会 / 未学会。判据 = `ownsBlueprint(state, id)`（core 单点）。
+ * ⚠ 蓝图书架**不加**这一维：书架列的是"还没学的书 ＋ 可逆向的碎片"，按定义都未学会 ⇒ 加了恒空。
+ */
+export type BlueprintLearnKey = 'learned' | 'unlearned' | typeof SUB_ALL
+export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string }> = [
+  { key: SUB_ALL, label: '全部' },
+  { key: 'learned', label: '已学会' },
+  { key: 'unlearned', label: '未学会' },
+]
