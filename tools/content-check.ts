@@ -2802,14 +2802,21 @@ for (const m of MODULES) {
   /** **炮台受击增程倍率上限**（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」⇒ 现值 1.5、上限 2） */
   const GUN_RANGE_ON_HIT_CAP = 2
   /**
-   * **允许挂「炮台受击增程」的舰级白名单**（`FoeShipDef.id`）。
-   * - `foe-d-stasis` D 族「静滞卫舰」：2026-09-12 船长「给 D 族静滞卫舰加入类似 E 族挨打加炮台射程的效果，
-   *   不过仅影响所有静滞卫舰。挨打后射程增加 50%」；
-   * - `foe-missile-hulk` E 族「导弹残段」：2026-09-19 船长「**并挂载类似静滞卫舰的挨打后对方在射程外
-   *   就增加射程的挂载件**」（它 11,000m 是 E 族唯一远射平台 ⇒ 挨打增程 11,000 → 16,500m）。
-   * ⚠ 加新成员**必须同时改这里**（体检会点名未登记的舰级），别绕过判据直接挂件。
+   * **允许挂「炮台受击增程」的舰级 → 它该挂的那一件**（`FoeShipDef.id` → 挂载件 id）。
+   *
+   * **一件一族、不共用**（船长 2026-09-19：「**只是采用类似的效果的挂载件，并不是真的是静滞卫舰的挂载件
+   * （因此名字要不同）**」）：两件效果同档（`gunRangeOnHit ×1.5`）但 id / 名 / 备注各自独立，
+   * 所以本表是**逐舰级点名**，而不是"只要有该效果就行"——要加成员或换件，都得先改这里。
+   * - `foe-d-stasis` D 族「静滞卫舰」→「守墓远距观瞄」：2026-09-12 船长「给 D 族静滞卫舰加入类似 E 族
+   *   挨打加炮台射程的效果，不过仅影响所有静滞卫舰。挨打后射程增加 50%」；
+   * - `foe-missile-hulk` E 族「导弹残段」→「巨构齐射观瞄」：2026-09-19 船长「并挂载类似静滞卫舰的
+   *   挨打后对方在射程外就增加射程的挂载件」＋同日澄清"不是静滞卫舰那件、名字要不同"
+   *   （它 11,000m 是 E 族唯一远射平台 ⇒ 挨打增程 11,000 → 16,500m）。
    */
-  const GUN_RANGE_ON_HIT_SHIP_IDS: readonly string[] = ['foe-d-stasis', 'foe-missile-hulk']
+  const GUN_RANGE_ON_HIT_OWNERS: ReadonlyArray<{ shipId: string; mountId: string }> = [
+    { shipId: 'foe-d-stasis', mountId: FOE_MOUNT_IDS.gunRangeX15 },
+    { shipId: 'foe-missile-hulk', mountId: FOE_MOUNT_IDS.gunRangeX15Titan },
+  ]
     /** **G 族蜂群机射程定值**（船长 2026-09-12：「**敌方蜂群攻击范围提高到 7000**」）——
      *  落点即族格「全 orbit：**蜂群远距压制**」：旧值 2,800m（侦察机档"近身护航"）会让蜂群
      *  **够不着本族卡自己的期望交距**（天底静区封锁 ≈ 3,858m）⇒ 挂上去等于白挂。 */
@@ -2908,12 +2915,21 @@ for (const m of MODULES) {
       //   ⚠ 2026-09-19 船长扩名单：「**并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件**」
       //   （指 E 族「导弹残段」）⇒ 白名单由"只静滞卫舰"改为**按舰级 id 列名**，新成员一律写进下表。
       if (gunOnHit !== undefined) {
+        const owner = GUN_RANGE_ON_HIT_OWNERS.find((o) => o.shipId === ship.id)
         check(
-          GUN_RANGE_ON_HIT_SHIP_IDS.includes(ship.id),
+          owner !== undefined,
           `机群与防空契约：舰级「${ship.name}」（${ship.id}）挂了炮台受击增程——` +
-            `本机制只允许白名单舰级 [${GUN_RANGE_ON_HIT_SHIP_IDS.join(' / ')}]` +
+            `本机制只允许在册舰级 [${GUN_RANGE_ON_HIT_OWNERS.map((o) => o.shipId).join(' / ')}]` +
             `（原为 2026-09-12 船长指名的 D 族「静滞卫舰」，2026-09-19 船长加 E 族「导弹残段」）`,
         )
+        // **一件一族**：该舰级必须挂的是**它自己那件**（船长：效果类似但不是同一件、名字要不同）
+        if (owner) {
+          check(
+            (ship.mounts ?? []).includes(owner.mountId),
+            `机群与防空契约：舰级「${ship.name}」应挂自己的那件「${FOE_MOUNTS[owner.mountId]?.name ?? owner.mountId}」` +
+              `（${owner.mountId}），实挂 [${(ship.mounts ?? []).join(' / ')}]——两族**不共用同一件**`,
+          )
+        }
         check(
           gunOnHit > 1 && gunOnHit <= GUN_RANGE_ON_HIT_CAP,
           `机群与防空契约：舰级「${ship.name}」炮台受击增程倍率 ${gunOnHit} 越界` +
@@ -2924,8 +2940,10 @@ for (const m of MODULES) {
           `机群与防空契约：舰级「${ship.name}」挂了炮台受击增程，但**没有任何卡使用该舰级**——玩家永远遇不到这个机制`,
         )
         gunOnHitShips++
+        const mountName = GUN_RANGE_ON_HIT_OWNERS.find((o) => o.shipId === ship.id)?.mountId
         gunOnHitReadings.push(
-          `${ship.name} ${ship.rangeMinM}~${ship.rangeMaxM}m → ×${gunOnHit} = ${Math.round(ship.rangeMaxM * gunOnHit)}m`,
+          `${ship.name} ${ship.rangeMinM}~${ship.rangeMaxM}m → ×${gunOnHit} = ${Math.round(ship.rangeMaxM * gunOnHit)}m` +
+            `（${mountName ? (FOE_MOUNTS[mountName]?.name ?? mountName) : '舰级旧字段'}）`,
         )
       }
       for (const ds of ship.drones ?? []) {

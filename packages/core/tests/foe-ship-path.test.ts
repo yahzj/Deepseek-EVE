@@ -367,20 +367,24 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
     ])
   })
 
-  it('E 族「导弹残段」：基础射程 3,000~11,000m ＋ 挂「守墓远距观瞄」（从射程外挨打 ⇒ ×1.5）', () => {
+  it('E 族「导弹残段」：基础射程 3,000~11,000m ＋ 挂**自己的**「巨构齐射观瞄」（从射程外挨打 ⇒ ×1.5）', () => {
     const ship = FOE_SHIPS.find((s) => s.id === 'foe-missile-hulk')!
     // 船长 2026-09-19：「将导弹残段的基础射程降低为 11000」
     expect(ship.rangeMinM).toBe(3_000)
     expect(ship.rangeMaxM).toBe(11_000)
     // 船长 2026-09-19：「并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件」
+    //            ＋「只是采用类似的效果的挂载件，并不是真的是静滞卫舰的挂载件（因此名字要不同）」
     const r = resolveFoeMounts(ship.mounts)
     expect(r.foeGunRangeMulOnHit).toBe(1.5)
     expect(r.unknown).toEqual([])
-    // 挨打增程后 = 11,000 × 1.5 = 16,500m（与 D 族静滞卫舰同一件、同一倍率、同一语言）
+    // 挨打增程后 = 11,000 × 1.5 = 16,500m
     expect(Math.round(ship.rangeMaxM * r.foeGunRangeMulOnHit!)).toBe(16_500)
-    // 归属判据（content:check 白名单）里两位成员都还在：静滞卫舰没被换掉、导弹残段加进来了
+    // **一件一族**：与 D 族静滞卫舰**不是同一件**（id 不同 ⇒ 名与备注自然也不同）
     const stasis = FOE_SHIPS.find((s) => s.id === 'foe-d-stasis')!
     expect(resolveFoeMounts(stasis.mounts).foeGunRangeMulOnHit).toBe(1.5)
+    expect(ship.mounts).not.toEqual(stasis.mounts)
+    expect(ship.mounts).toContain('foe-mount-titan-range-x1-5')
+    expect(stasis.mounts).toContain('foe-mount-gun-range-x1-5')
   })
 
   it('A 族每档实速都**高于本档舰种基准**（护卫 340 / 驱逐 295 / 巡洋 258）——船长「速度都快」', () => {
