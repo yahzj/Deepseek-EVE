@@ -2801,6 +2801,15 @@ for (const m of MODULES) {
     const DRONE_RANGE_ON_HIT_CAP = 4
   /** **炮台受击增程倍率上限**（2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」⇒ 现值 1.5、上限 2） */
   const GUN_RANGE_ON_HIT_CAP = 2
+  /**
+   * **允许挂「炮台受击增程」的舰级白名单**（`FoeShipDef.id`）。
+   * - `foe-d-stasis` D 族「静滞卫舰」：2026-09-12 船长「给 D 族静滞卫舰加入类似 E 族挨打加炮台射程的效果，
+   *   不过仅影响所有静滞卫舰。挨打后射程增加 50%」；
+   * - `foe-missile-hulk` E 族「导弹残段」：2026-09-19 船长「**并挂载类似静滞卫舰的挨打后对方在射程外
+   *   就增加射程的挂载件**」（它 11,000m 是 E 族唯一远射平台 ⇒ 挨打增程 11,000 → 16,500m）。
+   * ⚠ 加新成员**必须同时改这里**（体检会点名未登记的舰级），别绕过判据直接挂件。
+   */
+  const GUN_RANGE_ON_HIT_SHIP_IDS: readonly string[] = ['foe-d-stasis', 'foe-missile-hulk']
     /** **G 族蜂群机射程定值**（船长 2026-09-12：「**敌方蜂群攻击范围提高到 7000**」）——
      *  落点即族格「全 orbit：**蜂群远距压制**」：旧值 2,800m（侦察机档"近身护航"）会让蜂群
      *  **够不着本族卡自己的期望交距**（天底静区封锁 ≈ 3,858m）⇒ 挂上去等于白挂。 */
@@ -2848,8 +2857,11 @@ for (const m of MODULES) {
     /** E 族射程读数（逐舰级一条，落到汇总行） */
     const titanRanges: string[] = []
     let onHitShips = 0
-    /** 写了**炮台受击增程**的舰级数（D 族静滞卫舰，落到汇总行） */
+    /** 写了**炮台受击增程**的舰级数（落到汇总行；白名单见 `GUN_RANGE_ON_HIT_SHIP_IDS`） */
     let gunOnHitShips = 0
+    /** 逐舰级的受击增程读数（**按目录实算**——原先这句把"静滞卫舰 12,000 → 18,000"写死在文案里，
+     *  2026-09-19 加进「导弹残段」后它当场过期 ⇒ 改成现算，加成员不必再改这句） */
+    const gunOnHitReadings: string[] = []
     /** 被任何舰级引用的机型 id —— 用来算「**已备未挂**」（P-20a 的教训：漏挂要一眼可辨） */
     const mountedDroneIds = new Set<string>()
     /** G 族机群里是否真的挂了**等离子系**（P-20a 交付物守卫的判据） */
@@ -2891,13 +2903,16 @@ for (const m of MODULES) {
         onHitShips++
       }
       // ⑤c-2 **炮台受击增程**（2026-09-12 船长：「给 D 族静滞卫舰加入类似 E 族挨打加炮台射程的效果，
-      //   不过仅影响所有静滞卫舰。挨打后射程增加 50%」）：只允许 D 族「静滞卫舰」、倍率 ≤ 2；
-      //   且该舰级**必须真出现在某张卡的编成里**（否则是死字段，玩家永远遇不到）
+      //   不过仅影响所有静滞卫舰。挨打后射程增加 50%」）：**点名舰级白名单**、倍率 ≤ 2；
+      //   且该舰级**必须真出现在某张卡的编成里**（否则是死字段，玩家永远遇不到）。
+      //   ⚠ 2026-09-19 船长扩名单：「**并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件**」
+      //   （指 E 族「导弹残段」）⇒ 白名单由"只静滞卫舰"改为**按舰级 id 列名**，新成员一律写进下表。
       if (gunOnHit !== undefined) {
         check(
-          ship.family === 'D' && ship.name === '静滞卫舰',
-          `机群与防空契约：舰级「${ship.name}」（${ship.family} 族）挂了炮台受击增程——` +
-            `本机制目前只允许 **D 族「静滞卫舰」**（船长 2026-09-12 指名）`,
+          GUN_RANGE_ON_HIT_SHIP_IDS.includes(ship.id),
+          `机群与防空契约：舰级「${ship.name}」（${ship.id}）挂了炮台受击增程——` +
+            `本机制只允许白名单舰级 [${GUN_RANGE_ON_HIT_SHIP_IDS.join(' / ')}]` +
+            `（原为 2026-09-12 船长指名的 D 族「静滞卫舰」，2026-09-19 船长加 E 族「导弹残段」）`,
         )
         check(
           gunOnHit > 1 && gunOnHit <= GUN_RANGE_ON_HIT_CAP,
@@ -2909,6 +2924,9 @@ for (const m of MODULES) {
           `机群与防空契约：舰级「${ship.name}」挂了炮台受击增程，但**没有任何卡使用该舰级**——玩家永远遇不到这个机制`,
         )
         gunOnHitShips++
+        gunOnHitReadings.push(
+          `${ship.name} ${ship.rangeMinM}~${ship.rangeMaxM}m → ×${gunOnHit} = ${Math.round(ship.rangeMaxM * gunOnHit)}m`,
+        )
       }
       for (const ds of ship.drones ?? []) {
         droneSlots++
@@ -3019,7 +3037,8 @@ for (const m of MODULES) {
      *       挂舰级就会连洞外一起冲（这正是船长选"条目级挂载"的原因）；
      *       ⚠ 2026-09-19 起**冲锋件一律挂条目**（电子舰的舰级例外取消）⇒ 舰级带冲锋件即判红；
      *    ④ 挂载件 id 必须都在 `FOE_MOUNTS` 里（写错 id = 红灯，引擎侧不生效）；
-     *    ⑤ D/E 的增程件归属沿用原口径（D 只静滞卫舰 · E 只带机群的三舰）；
+     *    ⑤ D/E 的增程件归属：D 只静滞卫舰 · E 只带机群的三舰（**炮台增程**另有白名单
+     *       `GUN_RANGE_ON_HIT_SHIP_IDS`：2026-09-19 起 = 静滞卫舰 + E 族导弹残段）；
      *    ⑥ **捕获网归属（全局判）**：只允许挂在「劫掠电子舰」上，且**凡引用它的卡必须显式挂件**
      *       （原先是舰级自带 ⇒ 舰级清空后改由条目声明，见下）。 */
     {
@@ -3116,7 +3135,7 @@ for (const m of MODULES) {
         // ⚠ 汇总行**按结果分支**（血泪清单：有错时不许仍打印"含等离子 ✓"）
         `${gSwarmShips.length > 0 ? ` · **G 族蜂群机挂载** ${mountedSwarmIds.join(' + ')}${swarmHasPlasma ? '（含等离子 ✓）' : '（⚠ **无机型含等离子** —— 见上方错误）'}` : ''}` +
         `${unmountedDrones.length > 0 ? ` · **已备未挂机型** ${unmountedDrones.map((d) => d.id).join('、')}` : ' · 机型表全部在役'}` +
-        `${gunOnHitShips > 0 ? ` · **炮台受击增程** ${gunOnHitShips} 条舰级 ×1.5（D 族静滞卫舰：被打中 ⇒ 该型舰 12,000 → 18,000m，本场永久、仅该型舰）` : ''}` +
+        `${gunOnHitShips > 0 ? ` · **炮台受击增程** ${gunOnHitShips} 条舰级（被打中 ⇒ ${gunOnHitReadings.join('　')}，本场永久、仅该型舰）` : ''}` +
         ` · **防空属性** ${aaMods.map((m) => `${m.name} ×${m.antiDrone ?? 1}`).join('　')}（能打敌方机群 + 对无人机伤害 ×该值；对舰伤害不受影响）`,
     )
 

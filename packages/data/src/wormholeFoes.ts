@@ -406,7 +406,9 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // **卡面构成 = 主体舰级的自有口径**（纯爆炸，船长「伤害为100%纯爆炸」）
     // ⇒ 已在 `FOE_SHIP_MIX_AUTHORITY_IDS` 登记（"舰级口径优先"白名单），体检不套 E 族 5:5。
     dmgMix: { explosive: 10 },
-    // 编成 = **导弹残段 ×1**（T3 静物导弹平台：100~15,000m · 无视近盲 · 命中不随距离衰减）
+    // 编成 = **导弹残段 ×1**（T3 静物导弹平台：**3,000~11,000m** · 近盲带伤害 ×0.3 · 命中不随距离衰减；
+    // 2026-09-19 船长：「将导弹残段的基础射程降低为 11000」＋「挂载类似静滞卫舰的挨打后对方在射程外
+    // 就增加射程的挂载件」⇒ 该舰级带 `foe-mount-gun-range-x1-5`（挨打 ×1.5 ⇒ 16,500m））
     ships: [{ ship: FOE_MISSILE_HULK, count: 1 }],
     standingReq: 0,
     standingGain: 0,

@@ -352,7 +352,8 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-auro-hulk', tier: 3, speed: 0 },
       { id: 'foe-core-section', tier: 5, speed: 0 }, // 2026-09-12 船长「核心舱段，调为旗舰级」（敌舰唯一 T5）
       // 2026-09-15 批 4：E 族 T3「**导弹残段**」（导弹平台）——族格静物 ⇒ 实速 **0**；
-      // 射程 100~15,000m（船长「提高到 1W5」）· 纯爆炸 · 无视近盲 + 命中不随距离衰减（导弹口径）
+      // 射程 **3,000~11,000m**（2026-09-19 船长「将导弹残段的基础射程降低为 11000」，原下限 100 / 上限 15,000）·
+      // 纯爆炸 · 近盲带 ×0.3 · 命中不随距离衰减（导弹口径）· 挂「守墓远距观瞄」（挨打 ×1.5）
       { id: 'foe-missile-hulk', tier: 3, speed: 0 },
       // G 族（鱿烬亡军）· 2026-09-12 船长「**速度口径按照 1.05 算**」⇒ 全族定值 `speedRatio = 1.05`
       // （340/295/258/205 × 1.05 = 357/310/271/215）。第四档「亡军战列舰」**2026-09-15 已启用**（洞内 G 族深层卡，挂蜂群机 ×3）。
@@ -364,6 +365,22 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // 族定值 1.05 ⇒ 258 × 1.05 = 271（与同族 T3 同速；上场读数待进卡时再跑）
       { id: 'foe-g-remnant-tender', tier: 3, speed: 271 },
     ])
+  })
+
+  it('E 族「导弹残段」：基础射程 3,000~11,000m ＋ 挂「守墓远距观瞄」（从射程外挨打 ⇒ ×1.5）', () => {
+    const ship = FOE_SHIPS.find((s) => s.id === 'foe-missile-hulk')!
+    // 船长 2026-09-19：「将导弹残段的基础射程降低为 11000」
+    expect(ship.rangeMinM).toBe(3_000)
+    expect(ship.rangeMaxM).toBe(11_000)
+    // 船长 2026-09-19：「并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件」
+    const r = resolveFoeMounts(ship.mounts)
+    expect(r.foeGunRangeMulOnHit).toBe(1.5)
+    expect(r.unknown).toEqual([])
+    // 挨打增程后 = 11,000 × 1.5 = 16,500m（与 D 族静滞卫舰同一件、同一倍率、同一语言）
+    expect(Math.round(ship.rangeMaxM * r.foeGunRangeMulOnHit!)).toBe(16_500)
+    // 归属判据（content:check 白名单）里两位成员都还在：静滞卫舰没被换掉、导弹残段加进来了
+    const stasis = FOE_SHIPS.find((s) => s.id === 'foe-d-stasis')!
+    expect(resolveFoeMounts(stasis.mounts).foeGunRangeMulOnHit).toBe(1.5)
   })
 
   it('A 族每档实速都**高于本档舰种基准**（护卫 340 / 驱逐 295 / 巡洋 258）——船长「速度都快」', () => {
