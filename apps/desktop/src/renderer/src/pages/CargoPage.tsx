@@ -15,6 +15,7 @@ import {
   cargoUsedM3Of,
   fleetDefOf,
   haulingOccupiedM3,
+  courierOccupiedM3,
   isAtHomeLike,
   itemKindLabel,
   marketGoodOf,
@@ -60,6 +61,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const cap = cargoCapacityM3Of(state, engine.ctx, targetId)
   // 2026-09-09 长途运输：驾驶船货仓被虚拟"运输货物"全部占用（不产生真实物品；显示用）
   const haulOcc = isPiloted && state.hauling.active ? haulingOccupiedM3(state, engine.ctx) : 0
+  // 2026-09-18 快递改虚拟货物：在途快递按体积占用货舱（与长途运输同款语义）
+  const courierOcc = isPiloted ? courierOccupiedM3(state) : 0
   const rows = Object.entries(cargo).filter(([, n]) => n > 0)
   // 2026-09-09（船长口径 A）：装备（模块）也可入货仓携带——单列「船载」组；按 1 m³/件 计入货舱
   const modRows = rows.filter(([id]) => engine.ctx.modules.get(id) !== undefined)
@@ -176,13 +179,18 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         </div>
         <div className="app-cargo-head">
           <ProgressBar
-            value={cap > 0 ? ((used + haulOcc) / cap) * 100 : 0}
-            tone={haulOcc > 0 ? 'warn' : cap > 0 && used / cap > 0.85 ? 'danger' : cap > 0 && used / cap > 0.6 ? 'warn' : 'normal'}
-            label={`${targetName} · 已占用 ${m3(used + haulOcc)} / ${cap > 0 ? cap.toLocaleString('zh-CN') : '—'} m³`}
+            value={cap > 0 ? ((used + haulOcc + courierOcc) / cap) * 100 : 0}
+            tone={haulOcc + courierOcc > 0 ? 'warn' : cap > 0 && used / cap > 0.85 ? 'danger' : cap > 0 && used / cap > 0.6 ? 'warn' : 'normal'}
+            label={`${targetName} · 已占用 ${m3(used + haulOcc + courierOcc)} / ${cap > 0 ? cap.toLocaleString('zh-CN') : '—'} m³`}
           />
           {haulOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 2 }}>
               ⚠ 长途运输进行中：货仓由虚拟运输货物占满（可用 0 m³）——到站自动结算报酬；任务期间不能装卸与出售。
+            </div>
+          ) : null}
+          {courierOcc > 0 ? (
+            <div className="app-dim" style={{ marginTop: 2 }}>
+              ⚠ 快递投送进行中：货舱按 {courierOcc.toLocaleString('zh-CN')} m³ 被虚拟货物占用——到站自动结算运费（超时无报酬）。
             </div>
           ) : null}
           {isPiloted ? (

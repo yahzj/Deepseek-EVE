@@ -2811,8 +2811,17 @@ function normalizeState(raw: unknown): GameState {
         const galaxyId = typeof r.galaxyId === 'string' ? r.galaxyId : ''
         if (anomalyId.length === 0 || galaxyId.length === 0) continue
       } else {
-        if (goodKey.length === 0 || refId.length === 0) continue
-        if (!Number.isFinite(need) || need <= 0) continue
+        // 资源任务：必须有物品与数量。
+        // **快递任务（2026-09-18 起虚拟货物）**：不绑商品 ⇒ 改判"所需货舱体积 > 0"；
+        // 老档（真实货物时代的快递）仍按物品 + 数量接受（读档后照旧可出发）。
+        const volume = Math.floor(num(r.volumeM3))
+        const virtualCourier = kind === 'courier' && Number.isFinite(volume) && volume > 0
+        if (virtualCourier) {
+          // 虚拟货物快递：商品字段允许为空
+        } else {
+          if (goodKey.length === 0 || refId.length === 0) continue
+          if (!Number.isFinite(need) || need <= 0) continue
+        }
       }
       const task: GameState['sideTasks']['resource'][number] = {
         id,
@@ -2821,6 +2830,19 @@ function normalizeState(raw: unknown): GameState {
         refId,
         need,
         rewardIsk: Number.isFinite(rewardIsk) ? Math.max(0, rewardIsk) : 0,
+      }
+      // 任务级别（2026-09-18：1~5；老档缺省按 1 读——不写键即 1）
+      const lvRaw = Math.floor(num(r.level))
+      if (Number.isFinite(lvRaw) && lvRaw >= 1 && lvRaw <= 5) task.level = lvRaw as 1 | 2 | 3 | 4 | 5
+      // 快递·虚拟货物字段（体积 / 限时 / 跃迁门槛 / 时限）
+      const volumeM3 = Math.floor(num(r.volumeM3))
+      if (Number.isFinite(volumeM3) && volumeM3 > 0) task.volumeM3 = volumeM3
+      if (r.timed === true) {
+        task.timed = true
+        const req = num(r.warpReqAus)
+        if (Number.isFinite(req) && req > 0) task.warpReqAus = req
+        const limit = Math.floor(num(r.timeLimitMs))
+        if (Number.isFinite(limit) && limit > 0) task.timeLimitMs = limit
       }
       // 快递目标绑定（v24 兼容字段；缺省时出发按"最近已建成副站"兜底解析）
       const stationId = typeof r.stationId === 'string' && r.stationId.length > 0 ? r.stationId : ''
@@ -2842,7 +2864,11 @@ function normalizeState(raw: unknown): GameState {
     }
     return out
   }
-  // 快递投送在途挂账（v24 兼容字段，无版本号变化；老档缺省 = null）
+  /**
+   * 快递投送在途挂账（v24 兼容字段，无版本号变化；老档缺省 = null）。
+   * **2026-09-18 起快递是虚拟货物**：`goodKey`/`refId` 可为空、`need` 可为 0，但必须有 `volumeM3 > 0`；
+   * 老档的真实货物投送（goodKey + refId + need > 0）照旧接受。
+   */
   const cleanCourierDeliver = (rawDeliver: unknown): GameState['sideTasks']['deliver'] => {
     if (rawDeliver === null || typeof rawDeliver !== 'object') return null
     const d = asRaw(rawDeliver)
@@ -2855,24 +2881,34 @@ function normalizeState(raw: unknown): GameState {
     const refId = typeof d.refId === 'string' ? d.refId : ''
     const stationId = typeof d.stationId === 'string' ? d.stationId : ''
     const galaxyId = typeof d.galaxyId === 'string' ? d.galaxyId : ''
+    const volumeM3 = Math.floor(num(d.volumeM3))
+    const virtual = Number.isFinite(volumeM3) && volumeM3 > 0
     if (
       !Number.isFinite(taskId) || taskId <= 0 ||
-      !Number.isFinite(need) || need <= 0 ||
       !Number.isFinite(arriveAt) || arriveAt < 0 ||
-      goodKey.length === 0 || refId.length === 0 ||
-      stationId.length === 0 || galaxyId.length === 0
+      stationId.length === 0 || galaxyId.length === 0 ||
+      (virtual ? false : !(Number.isFinite(need) && need > 0 && goodKey.length > 0 && refId.length > 0))
     ) return null
-    return {
+    const out: NonNullable<GameState['sideTasks']['deliver']> = {
       taskId,
       goodKey,
       refId,
-      need,
+      need: Number.isFinite(need) && need > 0 ? need : 0,
       stationId,
       galaxyId,
       departAtGameMs: Number.isFinite(departAt) && departAt >= 0 ? departAt : 0,
       arriveAtGameMs: arriveAt,
       rewardIsk: Number.isFinite(rewardIsk) ? Math.max(0, rewardIsk) : 0,
     }
+    if (virtual) out.volumeM3 = volumeM3
+    const lvRaw = Math.floor(num(d.level))
+    if (Number.isFinite(lvRaw) && lvRaw >= 1 && lvRaw <= 5) out.level = lvRaw as 1 | 2 | 3 | 4 | 5
+    if (d.timed === true) {
+      out.timed = true
+      const dl = Math.floor(num(d.deadlineAtGameMs))
+      if (Number.isFinite(dl) && dl >= 0) out.deadlineAtGameMs = dl
+    }
+    return out
   }
   const stRaw = asRaw(src.sideTasks)
   const sideTaskResource = cleanSideTaskList(stRaw.resource, 'resource')
@@ -2880,6 +2916,11 @@ function normalizeState(raw: unknown): GameState {
   const sideTaskBounty = cleanSideTaskList(stRaw.bounty, 'bounty') // 赏金任务（v24 兼容字段：老档缺省 = 空）
   // 派系活跃（v24 兼容字段：老档缺省 = null；单条，取列表解析的第一条）
   const sideTaskFaction = cleanSideTaskList(stRaw.faction === null || stRaw.faction === undefined ? [] : [stRaw.faction], 'faction')[0] ?? null
+  /**
+   * **已接单的快递**（2026-09-18 船长：「接取的快递任务不会被刷掉」）——整板刷新不清；
+   * ⚠ **空表不写这个键**（老档与新档快照逐字一致，零迁移）。
+   */
+  const sideTaskAccepted = cleanSideTaskList(stRaw.accepted, 'courier')
   const stSeqRaw = Math.floor(num(stRaw.seq))
   let sideTaskSeq = Number.isFinite(stSeqRaw) ? Math.max(1, stSeqRaw) : 1
   // 分配器兜底：不能低于现存任务最大 id（防未来刷新撞号；正常档 seq ≥ 现存最大 id，天然不动）
@@ -2908,6 +2949,7 @@ function normalizeState(raw: unknown): GameState {
      * 玩家进过一次任务中心（记账写入真实日界）后才会出现这个键。
      */
     ...(sideTaskBountySeen > 0 ? { bountySeenWindow: sideTaskBountySeen } : {}),
+    ...(sideTaskAccepted.length > 0 ? { accepted: sideTaskAccepted } : {}),
     deliver: cleanCourierDeliver(stRaw.deliver),
   }
 
