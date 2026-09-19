@@ -257,49 +257,6 @@ describe('V10：占位槽位（shield/armor/propulsion）装配', () => {
 })
 
 describe('V10：存档 v9→v10 迁移（fitted 补三个空槽）', () => {
-  it('v9 档（三槽 fitted）读入后六槽齐全，已装模块保留', () => {
-    const v9 = {
-      version: 9,
-      gameMs: 1_000,
-      savedAtWallMs: 100,
-      logCap: 300,
-      character: { name: '老矿工', startedAtWallMs: 1 },
-      rng: { seed: 3, count: 0 },
-      skills: { trained: {}, queue: [] },
-      wallet: { isk: 50_000 },
-      shipId: 'sandcat',
-      fleet: {
-        sandcat: { durability: 0.8, cargo: { 'ore-a': 60 }, fitted: { miner: 'mod-miner-x', cargo: null, turret: null } },
-      },
-      warehouse: { items: {} },
-      moduleBay: {},
-      aiCores: { basic: 0, gamma: 0, beta: 0, alpha: 0 },
-      aiAssignments: {},
-      market: { pools: {}, npcBuy: {}, npcSell: {}, digest: {}, lastTickGameMs: 0, orderSeq: 0, priceHistory: {} },
-      orders: [],
-      escrowItems: {},
-      escrowShips: {},
-      learnedRecipes: [],
-      blueprintStock: {},
-      mining: { active: false, beltId: null, phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0, autoCycle: true, stopAfterTrip: false },
-      manufacturing: { active: false, blueprintId: null, finishAtGameMs: 0, durationMs: 0 },
-      standings: {},
-      expedition: { active: false, anomalyId: null, finishAtGameMs: 0, durationMs: 0, outMs: 0, combatMs: 0, power: 0, eventId: null, eventFired: false },
-      logs: [],
-    }
-    const text = JSON.stringify({ format: SAVE_FORMAT, version: 9, savedAtWallMs: 100, state: v9 })
-    const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
-    const fitted = loaded.state.fleet['sandcat']!.fitted
-    // v9 六槽 → V18 位数组：turret→high[0]、miner→high[1]、shield→mid[0]、
-    // propulsion→mid[1]、armor→low[0]、cargo→low[1]（v9 档 fitted 只含 miner/cargo/turret）
-    expect(fitted.high[1]).toBe('mod-miner-x')
-    expect(fitted.high[0]).toBeNull()
-    expect(fitted.mid[0]).toBeNull()
-    expect(fitted.mid[1]).toBeNull()
-    expect(fitted.low[0]).toBeNull()
-    expect(fitted.low[1]).toBeNull()
-  })
 
   it('v10 档往返保存不丢位', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 5 })

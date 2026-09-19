@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceGame, clearSkillQueue, enqueueSkill, removeQueueAt } from '../src/engine'
-import { loadSaveFile, SAVE_FORMAT } from '../src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT } from '../src/save'
 import { makeTestCtx, skill } from './helpers'
 
 /** 静默事件的世界：队列推进时间/日志可精确断言 */
@@ -173,7 +173,7 @@ describe('T2 兼容与兜底', () => {
   it('存档容错：savedProgress 只收正数毫秒并封顶一天；缺失自动补空对象', () => {
     const text = JSON.stringify({
       format: SAVE_FORMAT,
-      version: 16,
+      version: MIN_MIGRATABLE_VERSION,
       savedAtWallMs: 0,
       state: {
         skills: {
@@ -186,7 +186,7 @@ describe('T2 兼容与兜底', () => {
     const loaded = loadSaveFile(text)
     expect(loaded.state.skills.savedProgress).toEqual({ a: 12_345, z: 86_400_000 })
 
-    const text2 = JSON.stringify({ format: SAVE_FORMAT, version: 16, savedAtWallMs: 0, state: { skills: {} } })
+    const text2 = JSON.stringify({ format: SAVE_FORMAT, version: MIN_MIGRATABLE_VERSION, savedAtWallMs: 0, state: { skills: {} } })
     expect(loadSaveFile(text2).state.skills.savedProgress).toEqual({})
   })
 })

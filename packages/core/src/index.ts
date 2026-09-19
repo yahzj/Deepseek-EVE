@@ -820,6 +820,7 @@ export {
   SaveError,
   serializeSaveFile,
   loadSaveFile,
+  MIN_MIGRATABLE_VERSION,
 } from './save'
 
 export {

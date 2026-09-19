@@ -27,7 +27,7 @@ import { EXPLORE_EVENTS } from '../src/events'
 import { assignAiExpedition, assignAiMining, gainAiCore } from '../src/ai'
 import { anomaly, belt, galaxy, makeTestCtx, moduleDef, ship , fittedOf } from './helpers'
 import { shipBusyLabel } from '../src/activity'
-import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, serializeSaveFile } from '../src/save'
 
 describe('V13 星图探索：迷雾与剪影', () => {
   let state: GameState
@@ -271,14 +271,14 @@ describe('V13 扫描期事件：加速 + 探索池', () => {
 })
 
 describe('V14 存档迁移与续扫进度', () => {
-  it('v12 档读入：补 explored=[hub]、scanning 默认与 scanProgress 空表，其余无损', () => {
+  it('下限那一版的老档读入：补 explored=[hub]、scanning 默认与 scanProgress 空表，其余无损', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 42 })
     state.wallet.isk = 123_456
     const raw = state as unknown as Record<string, unknown>
     delete raw.exploredGalaxies
     delete raw.scanning
     delete raw.scanProgress
-    raw.version = 12
+    raw.version = MIN_MIGRATABLE_VERSION // 2026-09-19：迁移链下限（原 v12 已不可迁）
     const text = serializeSaveFile(state, 999)
     const loaded = loadSaveFile(text)
     expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)

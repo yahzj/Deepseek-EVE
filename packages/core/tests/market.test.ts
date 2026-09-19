@@ -385,52 +385,6 @@ describe('离线窗口推进（A1：未开市档在离线起点开盘，整段�
   })
 })
 
-describe('A3 回归：v8→v9 迁移后直接 8 小时长离线（市场开市 + 窗口推进 + 配方保留）', () => {
-  let ctx: SimContext
-
-  beforeEach(() => {
-    ctx = makeTestCtx({ quietEvents: true }) // 本用例回归市场离线推进，关闭随机事件隔离干扰
-  })
-
-  it('老档（blueprints 在案）迁移后跑满 8 小时离线上限：不崩溃、市场全程推进', () => {
-    const v8Raw = {
-      version: 8,
-      gameMs: 1_000,
-      savedAtWallMs: 100,
-      logCap: 300,
-      character: { name: '老矿工', startedAtWallMs: 1 },
-      rng: { seed: 2024, count: 3 },
-      skills: { trained: { mining: 3 }, queue: [] },
-      wallet: { isk: 55_000 },
-      shipId: 'sandcat',
-      fleet: {
-        sandcat: { durability: 0.9, cargo: { 'ore-a': 60 }, fitted: { miner: null, cargo: null, turret: null } },
-      },
-      warehouse: { items: { 'ore-a': 300 } },
-      moduleBay: { 'mod-a': 1 },
-      blueprints: ['bp-a', 'bp-b'],
-      aiCores: { basic: 1, gamma: 0, beta: 0, alpha: 0 },
-      aiAssignments: {},
-      mining: { active: false, beltId: null, phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0, autoCycle: true, stopAfterTrip: false },
-      manufacturing: { active: false, blueprintId: null, finishAtGameMs: 0, durationMs: 0 },
-      standings: {},
-      expedition: { active: false, anomalyId: null, finishAtGameMs: 0, durationMs: 0, outMs: 0, combatMs: 0, power: 0, eventId: null, eventFired: false },
-      logs: [],
-    }
-    const loaded = loadSaveFile(JSON.stringify({ format: 'whale-idle-save', version: 8, savedAtWallMs: 100, state: v8Raw }))
-    const state = loaded.state
-    expect(state.version).toBe(CURRENT_STATE_VERSION)
-    expect(state.learnedRecipes).toEqual(['bp-a', 'bp-b']) // 蓝图无损平移
-
-    // 直接 8 小时大离线（480 窗口）
-    advanceGame(state, 8 * 60 * 60_000, ctx)
-    const mk = state.market
-    expect(state.gameMs - mk.lastTickGameMs).toBeLessThan(ctx.balance.market.tickMs) // 窗口补到当前
-    expect(Object.keys(mk.pools).length).toBe(ctx.marketGoods.size) // 全目录开市
-    expect((mk.priceHistory['it-ore-a'] ?? []).length).toBeGreaterThan(0) // 整段离线都有价格采样
-    expect(state.learnedRecipes).toEqual(['bp-a', 'bp-b']) // 配方不受离线影响
-  })
-})
 
 describe('AI 核心可回卖（2026-09-06 船长：四档核心放行；收购档位 0.6L 同 common 单件）', () => {
   let state: GameState

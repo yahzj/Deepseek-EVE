@@ -17,7 +17,7 @@ import { startExpedition } from '../src/expedition'
 import { changeShip } from '../src/shipyard'
 import { shipDisplayName } from '../src/instances'
 import { activityOverview } from '../src/activity'
-import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, galaxy, ship, skipFirstSkillReward } from './helpers'
 
 function world() {
@@ -127,7 +127,7 @@ describe('B1.5 前往星系掩护巡逻（原"待命"；去程取消，即时就
     expect(loaded.standby.galaxyId).toBe('galaxy-far')
     // 旧形状兜底
     const legacy = loadSaveFile(
-      JSON.stringify({ format: SAVE_FORMAT, version: 17, savedAtWallMs: 0, state: { skills: {} } }),
+      JSON.stringify({ format: SAVE_FORMAT, version: MIN_MIGRATABLE_VERSION, savedAtWallMs: 0, state: { skills: {} } }),
     ).state
     expect(legacy.standby.active).toBe(false)
     void ctx

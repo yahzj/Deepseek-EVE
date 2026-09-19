@@ -160,24 +160,6 @@ describe('随机事件系统（V11）', () => {
     expect((state.market.npcSell[RARE_GOOD.key] ?? []).length).toBeGreaterThan(0)
   })
 
-  it('v10 档迁移到 v11：events 默认播种为 0，往返保留 nextAtGameMs', () => {
-    const { state, ctx } = makeWorld()
-    advanceGame(state, 5 * 60_000, ctx) // 让 nextAt 有真实值
-    expect(state.events.nextAtGameMs).toBeGreaterThan(0)
-
-    const raw = JSON.parse(serializeSaveFile(state))
-    raw.state.version = 10
-    delete raw.state.events // 模拟 v10 档（无 events 字段）
-    raw.version = 10
-    const loaded = loadSaveFile(JSON.stringify(raw))
-    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
-    expect(loaded.state.events.nextAtGameMs).toBe(0) // 迁移补默认
-
-    // 往返保留
-    const round = loadSaveFile(serializeSaveFile(loaded.state))
-    expect(round.state.events.nextAtGameMs).toBe(0)
-    expect(round.state.version).toBe(CURRENT_STATE_VERSION)
-  })
 
   /**
    * **随机事件的日志类型 = `event`**（2026-09-14 船长：「突发事件的事件日志内不够显眼」

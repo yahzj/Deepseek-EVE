@@ -7,7 +7,7 @@ import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
-import { loadSaveFile, SAVE_FORMAT } from '../src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT } from '../src/save'
 import { countItem, countWare } from '../src/inventory'
 import { miningStatus, oneLegMs, oneOutboundLegMs, startMining, startMiningFromExpedition } from '../src/mining'
 import { changeShip } from '../src/shipyard'
@@ -147,7 +147,7 @@ describe('T4 存档（善后账本兼容字段）', () => {
   it('shipReturns 往返与容错：只收合法条目，已走封顶单程；缺失自动补空', () => {
     const text = JSON.stringify({
       format: SAVE_FORMAT,
-      version: 16,
+      version: MIN_MIGRATABLE_VERSION,
       savedAtWallMs: 0,
       state: {
         skills: {},
@@ -163,7 +163,7 @@ describe('T4 存档（善后账本兼容字段）', () => {
       sandcat: { beltId: 'belt-a', legMs: 120_000, phaseAccMs: 12_000 },
       broken: { beltId: 'belt-a', legMs: 5_000, phaseAccMs: 5_000 },
     })
-    const text2 = JSON.stringify({ format: SAVE_FORMAT, version: 16, savedAtWallMs: 0, state: { skills: {} } })
+    const text2 = JSON.stringify({ format: SAVE_FORMAT, version: MIN_MIGRATABLE_VERSION, savedAtWallMs: 0, state: { skills: {} } })
     expect(loadSaveFile(text2).state.shipReturns).toEqual({})
   })
 })

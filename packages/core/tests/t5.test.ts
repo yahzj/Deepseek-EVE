@@ -8,7 +8,7 @@ import { createInitialState } from '../src/state'
 import { emptyFitted } from '../src/labels'
 import { isShipLocked, lockShip } from '../src/shipyard'
 import { shipSellable } from '../src/market'
-import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx } from './helpers'
 
 function world() {
@@ -61,7 +61,7 @@ describe('T5 船只锁定（防误售）', () => {
     // 容错：非法值忽略；幽灵船剪掉；缺失补空
     const rawText = JSON.stringify({
       format: SAVE_FORMAT,
-      version: 16,
+      version: MIN_MIGRATABLE_VERSION,
       savedAtWallMs: 0,
       state: {
         fleet: {
@@ -72,7 +72,7 @@ describe('T5 船只锁定（防误售）', () => {
     })
     const loaded2 = loadSaveFile(rawText)
     expect(loaded2.state.shipLocks).toEqual({ sandcat: true })
-    const rawText2 = JSON.stringify({ format: SAVE_FORMAT, version: 16, savedAtWallMs: 0, state: {} })
+    const rawText2 = JSON.stringify({ format: SAVE_FORMAT, version: MIN_MIGRATABLE_VERSION, savedAtWallMs: 0, state: {} })
     expect(loadSaveFile(rawText2).state.shipLocks).toEqual({})
   })
 })

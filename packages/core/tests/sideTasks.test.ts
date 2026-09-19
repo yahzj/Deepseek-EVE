@@ -36,6 +36,7 @@ import {
   courierVolumeFor,
   createInitialState,
   loadSaveFile,
+  MIN_MIGRATABLE_VERSION,
   marketQuote,
   serializeSaveFile,
   sideTaskBoard,
@@ -491,11 +492,11 @@ describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
     expect(acceptCourierTask(loaded, t.id).ok).toBe(true)
   })
 
-  it('v23 老档（无 sideTasks 字段）读入：版本升到当前、补空板（含 deliver=null）；随后正常按整点刷出', () => {
+  it('下限那一版的老档（无 sideTasks 字段）读入：版本升到当前、补空板（含 deliver=null）；随后正常按整点刷出', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 3 })
     const raw = state as unknown as Record<string, unknown>
     delete raw.sideTasks
-    raw.version = 23
+    raw.version = MIN_MIGRATABLE_VERSION // 2026-09-19：迁移链下限（原 v23 已不可迁）
     const loaded = loadSaveFile(serializeSaveFile(raw as unknown as GameState, 0))
     expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
     expect(loaded.state.sideTasks.resource).toHaveLength(0)

@@ -7,7 +7,7 @@ import type { SimContext } from '../src/types'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { RETURN_LEG_MUL } from '../src/balance'
-import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import {
   advanceAutoLoopBounty,
   bountyCooldownRemainingMs,
@@ -255,7 +255,7 @@ describe('T8 存档（v16.1 兼容字段）', () => {
 
     const raw = JSON.stringify({
       format: SAVE_FORMAT,
-      version: 16,
+      version: MIN_MIGRATABLE_VERSION,
       savedAtWallMs: 0,
       state: {
         awayGalaxy: 'junk',

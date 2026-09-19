@@ -139,43 +139,4 @@ describe('T5-B 舰船实例化（v17）', () => {
     expect(state.fleet['sandcat#2']).toBeDefined()
   })
 
-  it('存档 v17：v16 档迁移补 defId/customName（含 escrow），键原样保留；往返保真；超长名截断', () => {
-    const { state, ctx } = world()
-    const uid2 = addShipToFleet(state, 'sandcat')
-    renameShip(state, uid2, '二号')
-    const text = serializeSaveFile(state, state.savedAtWallMs)
-    const loaded = loadSaveFile(text)
-    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
-    expect(loaded.state).toEqual(state)
-
-    // v16 老档（fleet/escrow 条目无 v17 字段）：迁移链补字段
-    const v16 = {
-      format: SAVE_FORMAT,
-      version: 16,
-      savedAtWallMs: 0,
-      state: {
-        ...state,
-        version: 16,
-        // 老形状：条目缺 defId/customName；escrow 快照只有 shipId/durability
-        fleet: {
-          sandcat: { durability: 0.9, cargo: { 'ore-a': 3 }, fitted: state.fleet.sandcat!.fitted },
-          'sh-falconet': { durability: 1, cargo: {}, fitted: state.fleet['sh-falconet']!.fitted },
-        },
-        shipId: 'sandcat',
-        escrowShips: { 1: { shipId: 'sandcat', durability: 0.66 } },
-        shipLocks: { 'sh-falconet': true },
-        logs: [],
-      },
-    }
-    const upgraded = loadSaveFile(JSON.stringify(v16))
-    expect(upgraded.state.version).toBe(CURRENT_STATE_VERSION)
-    expect(upgraded.state.fleet.sandcat!.defId).toBe('sandcat')
-    expect(upgraded.state.fleet.sandcat!.customName).toBeNull()
-    expect(upgraded.state.fleet.sandcat!.cargo['ore-a']).toBe(3)
-    expect(upgraded.state.fleet['sh-falconet']!.defId).toBe('sh-falconet')
-    expect(upgraded.state.escrowShips[1]).toEqual({ shipId: 'sandcat', defId: 'sandcat', durability: 0.66, customName: null })
-    expect(upgraded.state.shipLocks['sh-falconet']).toBe(true)
-    expect(Object.keys(upgraded.state.fleet).sort()).toEqual(['sandcat', 'sh-falconet']) // 键原样
-    void ctx
-  })
 })

@@ -13,7 +13,7 @@ import { advanceGame } from '../src/engine'
 import { startMining } from '../src/mining'
 import { fightEncounter, fleeEncounter, rollLowSecAmbush } from '../src/encounters'
 import { hullLayerCaps } from '../src/shipyard'
-import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, belt, galaxy, anomaly, ship, moduleDef, fittedOf } from './helpers'
 import { wreckDensityOf } from '../src/salvage'
 import { addModule, fitModule } from '../src/equipment'
@@ -324,7 +324,7 @@ describe('B1 低安遭遇（事件线融合 + 5 分钟缓冲）', () => {
     expect(loaded.lowSecNotified).toBe(true)
     // 旧形状（无 encounter 字段）：兜底
     const legacy = loadSaveFile(
-      JSON.stringify({ format: SAVE_FORMAT, version: 17, savedAtWallMs: 0, state: { skills: {} } }),
+      JSON.stringify({ format: SAVE_FORMAT, version: MIN_MIGRATABLE_VERSION, savedAtWallMs: 0, state: { skills: {} } }),
     ).state
     expect(legacy.encounter.active).toBe(false)
     expect(legacy.lowSecNotified).toBe(false)

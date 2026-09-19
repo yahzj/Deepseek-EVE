@@ -136,15 +136,4 @@ describe('V15 存档：debugQuick 字段', () => {
     expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
   })
 
-  it('v14 档迁移：补 debugQuick=false 且其余无损', () => {
-    const s = createInitialState({ nowWallMs: 0, seed: 1 })
-    s.wallet.isk = 77
-    const raw = s as unknown as Record<string, unknown>
-    delete raw.debugQuick
-    raw.version = 14
-    const loaded = loadSaveFile(serializeSaveFile(s, 1000))
-    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
-    expect(loaded.state.debugQuick).toBe(false)
-    expect(loaded.state.wallet.isk).toBe(77)
-  })
 })

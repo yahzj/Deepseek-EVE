@@ -32,19 +32,4 @@ describe('v23 序章·苏醒', () => {
     expect(s.onboarding.step).toBe(99)
   })
 
-  it('v23 旧档读入（迁移链一路升到当前版）：补 onboarding（已完成）、importantTasks={} 与 sideTasks 空板，其余无损', () => {
-    const v23 = createInitialState({ nowWallMs: 0, seed: 2 }) as unknown as Record<string, unknown>
-    delete v23.onboarding
-    delete v23.importantTasks
-    delete v23.sideTasks
-    v23.version = 23
-    const loaded = loadSaveFile(serializeSaveFile(v23 as unknown as GameState, 0))
-    expect(loaded.state.version).toBe(CURRENT_STATE_VERSION)
-    // ⚠ v23→v24 当年补的是 -1（教程未开始）；v25→v26 起一律读到 99（线性教程已退场）
-    expect(loaded.state.onboarding.step).toBe(99)
-    // 老档一次性判定：13 条「第一次」整体判为已完成（v23 档同样吃这条迁移）
-    expect(Object.keys(loaded.state.importantTasks).length).toBeGreaterThanOrEqual(13)
-    expect(loaded.state.sideTasks).toEqual({ seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null })
-    expect(loaded.state.wallet.isk).toBe(DEFAULT_START_ISK)
-  })
 })

@@ -1,22 +1,24 @@
 /**
  * **存档迁移只读体检**（2026-09-17 教程重做批入库）——`npm run save:migrate`。
  *
- * 干什么：把 `docs/test-saves/` 里的**全部**存档（现存 v18 → v25 各代）逐个走一遍 `loadSaveFile` 的迁移链
- * 到当前版本，并逐份核对五件事：
- * ① **能读进来**（迁移链没有断代）；② `onboarding.step` 只落 0（正处序章演出）或 99；
- * ③ 该版本迁移要求的一次性判定都写上了（例：v25→v26 的 13 条「第一次」判为已完成）；
- * ④ **不发奖励、资产不变**（AI 核心 / 蓝图库存 / 钱包三项与原始 JSON 逐字比对）；
- * ⑤ **页面解锁不倒退**（工业 / 市场 / 星图四页签全开）。
+ * 干什么：把 `docs/test-saves/` 里的**全部**存档逐份过一遍 `loadSaveFile`，按版本分两路核对：
+ * - **v≥24（可迁移区间，下限见 `MIN_MIGRATABLE_VERSION`）**：走迁移链升到当前版本，并核对五件事——
+ *   ① **能读进来**（迁移链没有断代）；② `onboarding.step` 只落 0（正处序章演出）或 99；
+ *   ③ 该版本迁移要求的一次性判定都写上了（例：v25→v26 的 13 条「第一次」判为已完成）；
+ *   ④ **不发奖励、资产不变**（AI 核心 / 蓝图库存 / 钱包三项与原始 JSON 逐字比对）；
+ *   ⑤ **页面解锁不倒退**（工业 / 市场 / 星图四页签全开）。
+ * - **v<24（过旧）**：按 2026-09-19 船长裁定**应被拒载入**（`SaveError('VERSION')`）——
+ *   能读进来反而是 ❌（说明老迁移没删干净）。仓里留一份最老的档（v17）专门盯这一路。
  *
  * 为什么要它（§3「结构改动后跑构建 ＋ 必要时真档迁移检查」）：存档结构每升一次版就多一段迁移代码，
  * 而"老档读进来会怎样"看代码看不出来——本工具把仓里 80 份各代真档一次性过一遍，**只读、绝不写档**。
  * 退出码：0 = 全部通过；1 = 有存档读不进或有核对项不达标（逐份 ❌ 点名）。
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v27** · 最后核对 2026-09-18 · 最后跑过 2026-09-18
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v28** · 最后核对 2026-09-19 · 最后跑过 2026-09-19
  */
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { loadSaveFile } from '../packages/core/src/save'
+import { loadSaveFile, MIN_MIGRATABLE_VERSION, SaveError } from '../packages/core/src/save'
 import { CURRENT_STATE_VERSION } from '../packages/core/src/state'
 import { FIRST_TASKS, unlocked } from '../packages/core/src/firstTasks'
 
@@ -37,6 +39,27 @@ for (const f of files) {
     continue
   }
   const rawState = (raw.state ?? {}) as Record<string, any>
+  /**
+   * **过旧档（v<下限）应被拒载入**（船长 2026-09-19：「删除过旧的版本迁移」）：核心抛
+   * `SaveError('VERSION')`，玩家侧由 `engine.start()` 开新档并写日志。能读进来 = 老迁移没删干净。
+   */
+  if (typeof raw.version === 'number' && raw.version < MIN_MIGRATABLE_VERSION) {
+    try {
+      loadSaveFile(text)
+      rows.push(`❌ ${f}（原 v${raw.version}）：**过旧档却被读进来了**——老迁移没删干净？`)
+      bad += 1
+    } catch (e) {
+      const isVersionErr = e instanceof SaveError && e.code === 'VERSION'
+      if (isVersionErr) {
+        okN += 1
+        rows.push(`✅ ${f}（原 v${raw.version} < 下限 v${MIN_MIGRATABLE_VERSION}）：已按预期拒载入`)
+      } else {
+        rows.push(`❌ ${f}（原 v${raw.version}）：拒载入的**错误码不对**（${(e as Error).message}）`)
+        bad += 1
+      }
+    }
+    continue
+  }
   try {
     const { state } = loadSaveFile(text)
     const problems: string[] = []
