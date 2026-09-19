@@ -19,12 +19,14 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
+import { addWare } from '../src/inventory'
 import { addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { aiCoreCapBlock, aiCoreShipUsed, aiCoreUsed, assignAiMining } from '../src/ai'
 import { shipLockedReason } from '../src/state'
 import { shipBusyLabel } from '../src/activity'
 import { wormholeStockPush, wormholeStockOf } from '../src/wormholeScan'
+import { MATTER_TECH_ESSENCE_ITEM_ID, matterTechNodes, researchMatterTech } from '../src/matterTech'
 import {
   WORMHOLE_AUTO_DAMAGE_MAX,
   WORMHOLE_AUTO_DAMAGE_MIN,
@@ -45,8 +47,11 @@ import {
   wormholeAutoShipBlockReason,
   wormholeAutoStart,
   wormholeAutoStop,
+  wormholeAutoTechFactors,
+  wormholeAutoTechIsNeutral,
   wormholeAutoUnconfirmedCount,
 } from '../src/wormholeAuto'
+import { WORMHOLE_ORE_ITEM_ID } from '../src/wormhole'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -346,5 +351,105 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(ho.needed).toBe(true)
     expect(ho.toId).toBeUndefined()
     expect(ho.reason).toContain('没有别的空闲船')
+  })
+})
+
+/**
+ * **自动探索吃「谜质科技」**（船长 2026-09-19 四条裁定，照抄）：
+ * 「自动探索不折扣，因为自动探索本身已经是产出*0.4的情况了，那么过程就不应该折扣」·
+ * 「1，用实际回合。2，按「完成度 ⇒ 损伤最多减半」。3货仓接。AI核心吃。」
+ *
+ * 锁住：① 未点科技 ⇒ 系数全 1、日志不出现科技那一段（零行为变化）；
+ * ② 满树 ⇒ 回合 / 货仓 / 两条效率 / 损伤**逐项对上**（含"实际回合"基数）；
+ * ③ 同种子对照：科技档产出更多、损伤约为一半、绝不丢船。
+ */
+describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', () => {
+  /** 备足研究材料（谜质 + 信用点；满树 1,196 枚 / 约 1.43B） */
+  function rich(opts?: { ships?: number; seed?: number }): GameState {
+    const state = fresh(opts)
+    addWare(state, MATTER_TECH_ESSENCE_ITEM_ID, 5_000)
+    state.wallet.isk = 5_000_000_000
+    return state
+  }
+
+  /** 点满：探索线（回合 / 货仓 / 两条效率）+ 战斗线全 14 节点（损伤减半那一半） */
+  function fullTech(state: GameState): void {
+    for (const node of matterTechNodes(ctx)) {
+      if (node.branch === 'industry') continue
+      for (let i = 0; i < node.maxLevel; i++) {
+        const r = researchMatterTech(state, ctx, node.id)
+        expect(r.ok, `${node.id}：${r.error ?? ''}`).toBe(true)
+      }
+    }
+  }
+
+  it('未点科技 ⇒ 每个系数恒 1；派队返航的日志里不出现「谜质科技」那一段', () => {
+    const state = rich({ ships: 5 })
+    const ships = wormholeAutoDefaultShips(state, ctx)
+    const f = wormholeAutoTechFactors(state, ctx, ships)
+    expect([f.total, f.wreck, f.ore, f.damage]).toEqual([1, 1, 1, 1])
+    expect(wormholeAutoTechIsNeutral(f)).toBe(true)
+    const stockId = stockOne(state)
+    expect(wormholeAutoStart(state, ctx, stockId, ships).ok).toBe(true)
+    state.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
+    advanceWormholeAuto(state, ctx)
+    expect(state.logs.some((l) => l.text.includes('谜质科技'))).toBe(false)
+  })
+
+  it('满树 ⇒ 回合（按本队实际基础回合）/ 货仓 / 打捞与采集效率 / 战斗线完成度 逐项对上', () => {
+    const state = rich({ ships: 5 })
+    const ships = wormholeAutoDefaultShips(state, ctx)
+    expect(ships).toHaveLength(WORMHOLE_AUTO_MAX_SHIPS)
+    fullTech(state)
+    const f = wormholeAutoTechFactors(state, ctx, ships)
+    // 4×长尾鲨 = 14,000 折合质量 ⇒ 基础回合 42（不含科技那一份）；货仓 4×2,600 m³ ÷ 500 = 20 格
+    expect(f.baseTurns).toBe(42)
+    expect(f.baseHold).toBe(20)
+    expect(f.turnMul).toBeCloseTo(1 + 100 / 42, 6) // 时序锚定器 10 级 × +10
+    expect(f.holdMul).toBeCloseTo(1 + 12 / 20, 6) // 折叠货舱 3 级 × +4 格
+    expect(f.total).toBeCloseTo(f.turnMul * f.holdMul, 6)
+    expect(f.salvageEff).toBeCloseTo(0.6, 6) // 引力吊臂 3 级 × 20%
+    expect(f.collectEff).toBeCloseTo(0.6, 6) // 富集钻头 3 级 × 20%
+    expect(f.wreck).toBeCloseTo(f.total * 1.6, 6)
+    expect(f.ore).toBeCloseTo(f.total * 1.6, 6)
+    expect(f.battleProgress).toBe(1)
+    expect(f.damage).toBeCloseTo(0.5, 6) // 战斗线点满 ⇒ 损伤减半
+    expect(wormholeAutoTechIsNeutral(f)).toBe(false)
+  })
+
+  it('同种子对照：科技档产出明显更多、损伤约为一半、结构仍不破保底（绝不丢船）', () => {
+    const plain = rich({ ships: 5, seed: 21 })
+    const teched = rich({ ships: 5, seed: 21 })
+    fullTech(teched)
+    const stockA = stockOne(plain)
+    const stockB = stockOne(teched)
+    const shipsA = wormholeAutoDefaultShips(plain, ctx)
+    const shipsB = wormholeAutoDefaultShips(teched, ctx)
+    expect(wormholeAutoStart(plain, ctx, stockA, shipsA).ok).toBe(true)
+    expect(wormholeAutoStart(teched, ctx, stockB, shipsB).ok).toBe(true)
+    plain.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
+    teched.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
+    advanceWormholeAuto(plain, ctx)
+    advanceWormholeAuto(teched, ctx)
+    const ra = wormholeAutoReportsOf(plain)[0]!
+    const rb = wormholeAutoReportsOf(teched)[0]!
+    // 同一处虫洞（种子/层一致）⇒ 两次结算的掷骰序列同源，可比
+    expect(rb.depth).toBe(ra.depth)
+    // 损伤：科技档（战斗线点满）≤ 无科技档的一半（取整 ±1）
+    for (let i = 0; i < ra.damage.length; i++) {
+      expect(rb.damage[i]!.durabilityLossPct).toBeLessThanOrEqual(Math.round(ra.damage[i]!.durabilityLossPct / 2) + 1)
+      expect(rb.damage[i]!.armorLossPct).toBeLessThanOrEqual(Math.round(ra.damage[i]!.armorLossPct / 2) + 1)
+      expect(rb.damage[i]!.durabilityPct).toBeGreaterThanOrEqual(Math.round(WORMHOLE_AUTO_HULL_FLOOR * 100))
+    }
+    // 产出：普通残骸（该族残骸 id）与矿石都变多
+    const unitOf = (r: typeof ra, prefix: string): number =>
+      r.gains.filter((g) => g.itemId.startsWith(prefix)).reduce((s, g) => s + g.units, 0)
+    expect(unitOf(rb, 'wreck-')).toBeGreaterThan(unitOf(ra, 'wreck-'))
+    expect(unitOf(rb, WORMHOLE_ORE_ITEM_ID)).toBeGreaterThan(unitOf(ra, WORMHOLE_ORE_ITEM_ID))
+    // 日志里写清了实际生效的系数（读数与结算同源）；⚠ 取"返航"那条——
+    // 研究本身也会写「🔬 谜质科技…」日志，按关键词找会先撞上它
+    const log = teched.logs.map((l) => l.text).find((t) => t.includes('自动探索队返航')) ?? ''
+    expect(log).toContain('谜质科技：残骸线')
+    expect(log).toContain('损伤 ×0.50')
   })
 })

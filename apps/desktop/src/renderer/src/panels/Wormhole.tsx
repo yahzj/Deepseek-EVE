@@ -94,6 +94,9 @@ import {
   // 2026-09-19：入洞读数要单独列科技来源（袋子里只剩合流后的标量）⇒ 需要逐节点读等级
   matterTechNodes,
   matterTechLevel,
+  // 2026-09-19 甲案：自动探索的科技系数（与结算同一个函数 ⇒ 准备页读数即返航时生效的那个数）
+  wormholeAutoTechFactors,
+  wormholeAutoTechIsNeutral,
   wormholeShipMass,
   wormholeUnitsPerSlot,
   wormholeShapeOf,
@@ -358,6 +361,14 @@ export function WormholePanel({
     .map((d) => ({ def: d, level: matterTechLevel(state, d.id) }))
     .filter((x) => x.level > 0)
   const techInRunLevels = techInRun.reduce((s, x) => s + x.level, 0)
+  /**
+   * **自动探索吃到的谜质科技系数**（船长 2026-09-19 甲案：「自动探索不折扣」＋「用实际回合 / 战斗线按完成度
+   * 减半 / 货仓接 / AI 核心吃」）。`shipIds` 传**所选编队**（uid）⇒ 准备页读数就是派队后真正生效的那个数
+   * （结算里用的是同一把尺：`wormholeAutoTechFactors(state, ctx, run.shipIds)`）。
+   * ⚠ 手动模式不看这组系数（手动里的每一个数都各自现算，不需要折算）。
+   */
+  const autoTech = wormholeAutoTechFactors(state, ctx, picked)
+  const autoTechNeutral = wormholeAutoTechIsNeutral(autoTech)
   /**
    * **谜质增益**（F3c · 船长 2026-09-13「放在货仓里就生效」）：一律从货仓**现算**，
    * 界面读数、按钮提示与 core 的结算走同一个函数（`wormholeMatterBuffs`）⇒ 不会两套口径。
@@ -1479,10 +1490,41 @@ export function WormholePanel({
                   <span className="app-wh-cell">
                     收益 = 手动一趟的 <b>{Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%</b>（直入仓库 · 不保底）
                   </span>
-                  <span className="app-wh-cell">
-                    损伤 <b>{Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%</b>
+                  <span
+                    className="app-wh-cell"
+                    title={
+                      autoTechNeutral
+                        ? '损伤是每趟各舰的结构与装甲损耗区间；结构有保底，绝不丢船'
+                        : `损伤是每趟各舰的结构与装甲损耗区间（已按谜质科技折算：战斗线完成度 ${Math.round(autoTech.battleProgress * 100)}% ⇒ 损耗 ×${autoTech.damage.toFixed(2)}，最多减半）；结构有保底，绝不丢船`
+                    }
+                  >
+                    损伤{' '}
+                    <b>
+                      {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * autoTech.damage * 100)}%~
+                      {Math.round(WORMHOLE_AUTO_DAMAGE_MAX * autoTech.damage * 100)}%
+                    </b>
                     （绝不丢船）
                   </span>
+                  {/**
+                   * **谜质科技那一格**（船长 2026-09-19 甲案「自动探索不折扣」）：只在真吃到科技时出现
+                   * （未点科技 ⇒ 这一格不出现、损伤区间也一字不变）。系数由 `wormholeAutoTechFactors`
+                   * 现算——**与结算同一个函数** ⇒ 读数就是返航时真正生效的那个数。
+                   * 悬停给逐项细账（回合 / 货仓 / 两条效率 / 战斗线），口径见 core 的 `WormholeAutoTechFactors`。
+                   */}
+                  {!autoTechNeutral ? (
+                    <span
+                      className="app-wh-cell"
+                      title={[
+                        `回合：+${Math.round((autoTech.turnMul - 1) * 100)}%（时序锚定器 ÷ 本队基础 ${autoTech.baseTurns} 回合）`,
+                        `货仓：+${Math.round((autoTech.holdMul - 1) * 100)}%（折叠货舱 ÷ 本队基础 ${autoTech.baseHold} 格）`,
+                        `打捞效率：+${Math.round(autoTech.salvageEff * 100)}%（管残骸 / 稀有残骸 / 遗迹货柜 / AI 核心）`,
+                        `采集效率：+${Math.round(autoTech.collectEff * 100)}%（管虚空母矿）`,
+                        `战斗线完成度 ${Math.round(autoTech.battleProgress * 100)}%：损伤 ×${autoTech.damage.toFixed(2)}`,
+                      ].join('\n')}
+                    >
+                      科技 残骸 <b>×{autoTech.wreck.toFixed(2)}</b> · 母矿 <b>×{autoTech.ore.toFixed(2)}</b>
+                    </span>
+                  ) : null}
                 </div>
               ) : (
                 <div className="app-wh-triad">

@@ -1370,6 +1370,9 @@ export {
   WORMHOLE_AUTO_DAMAGE_MIN,
   WORMHOLE_AUTO_DAMAGE_MAX,
   WORMHOLE_AUTO_REPORT_MAX,
+  // 2026-09-19 船长甲案：自动探索吃「谜质科技」（不折扣）——系数与结算同一个函数，界面读数即实战
+  wormholeAutoTechFactors,
+  wormholeAutoTechIsNeutral,
   wormholeAutoRunsOf,
   wormholeAutoReportsOf,
   wormholeAutoUnconfirmedCount,
@@ -1395,6 +1398,7 @@ export {
 } from './wormholeAuto'
 export type { WormholeAutoRun, WormholeAutoReport } from './state'
 export type { WormholeAutoCandidate, WormholeAutoHandover } from './wormholeAuto'
+export type { WormholeAutoTechFactors } from './wormholeAuto'
 // F4：货仓格管理（船长 2026-09-13：货仓直接代表背包大小 + 背包英雄式格管理）
 export {
   WORMHOLE_HOLD_COLS,
