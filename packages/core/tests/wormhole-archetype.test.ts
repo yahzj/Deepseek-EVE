@@ -202,6 +202,30 @@ describe('虫洞 · 敌族锁定（丁）', () => {
     expect(run.archetype).toBe(wormholeArchetypeOf(seed))
     expect(wormholeCardIdOfFamily(run.family, run.seed)).toBe(WORMHOLE_FAMILY_CARD[wormholeFamilyOfSeed(seed)])
   })
+
+  /**
+   * 船长 2026-09-19：「**虫洞建议取消固定种子，玩家会采用恢复存档的方法搞清楚地图**」（裁定「甲」）
+   * ⇒ 进洞/深入的种子改成**渲染层现掷**（来源不在存档里），而**该处承诺的族与原型照旧兑现**。
+   *
+   * 这条链路靠的就是 `wormholeEnter` 的 `origin` 参数：**显式传入的族/原型优先于按种子现算**
+   * （本文件上一条钉的是"不传 ⇒ 按种子现算"）——两条合起来才保证"换种子 ≠ 换族"。
+   */
+  it('**换种子不换族**（取消固定种子的依托）：`origin` 显式给的族/原型优先于按种子现算', () => {
+    const state = fresh()
+    const ids: string[] = []
+    for (let i = 0; i < 3; i++) ids.push(addShipToFleet(state, T3))
+    const stockSeed = 777 // 库存项当初发现它时用的种子（承诺：族与原型由它定）
+    const promised = { family: wormholeFamilyOfSeed(stockSeed), archetype: wormholeArchetypeOf(stockSeed) }
+    const freshSeed = 987_654_321 // 「现掷」的盘面种子：与库存种子无关
+    expect(wormholeEnter(state, ctx, ids, freshSeed, { depth: 1, ...promised }).ok).toBe(true)
+    const run = state.wormhole.run!
+    expect(run.seed).toBe(freshSeed) // 盘面用新种子 ⇒ 每次进来的地图都不同
+    expect(run.family).toBe(promised.family) // 但族照旧兑现
+    expect(run.archetype).toBe(promised.archetype)
+    // 同一族 + 不同种子 ⇒ 敌卡仍是**该族那一张**（族锁不靠种子）
+    expect(wormholeCardIdOfFamily(run.family, run.seed)).toBe(WORMHOLE_FAMILY_CARD[promised.family])
+    expect(wormholeCardIdOfFamily(run.family, stockSeed)).toBe(WORMHOLE_FAMILY_CARD[promised.family])
+  })
 })
 
 describe('虫洞 · 自动探索的口味（丙 影响产出）', () => {
