@@ -62,6 +62,7 @@ import {
 import type { WormholeHoldPlacement, WormholeHoldState } from './wormholeHold'
 // F3c 谜质装置：效果一律从货仓现算（本文件用到容量 / 打捞·采集堆数 / 母矿产量 / 回合同步）
 import { wormholeMatterBuffs, wormholeMatterDiscardHint } from './wormholeMatter'
+import { matterTechWhBuffs } from './matterTech'
 import {
   WORMHOLE_TURN_PER_WORK,
   WORMHOLE_TURN_PER_PICK,
@@ -692,7 +693,7 @@ export function wormholeHoldCapacityOf(state: GameState, ctx: SimContext): numbe
   const run = state.wormhole.run
   if (!run) return 0
   // 谜质「舱段扩展器」：货仓有效格数 +8/台（现算；物理上不越过货仓真实容量——它只是加格子）
-  return wormholeBagSlotsOfFleet(state, ctx, run.fleet) + wormholeMatterBuffs(run.hold).holdCells
+  return wormholeBagSlotsOfFleet(state, ctx, run.fleet) + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).holdCells
 }
 
 /** 一条散货占几格（数量 ÷ 每格单位数，向上取整；认不出物品 ⇒ 按 1 格兜底） */
@@ -1402,7 +1403,7 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   const baseMiners = wormholeMinersOf(state, ctx)
   if (baseMiners <= 0) return { ok: false, error: '编队里没有采集器：矿脉挖不动（至少装 1 台）。' }
   // 谜质「采集钻机」：每次采集 +1 堆/台（门槛仍看真采集器）
-  const miners = baseMiners + wormholeMatterBuffs(run.hold).collectPiles
+  const miners = baseMiners + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).collectPiles
   wormholeEnsureVeinPiles(state, cell)
   const piles = cell.piles ?? []
   if (piles.length === 0) return { ok: false, error: '这条矿脉已经采空了。' }
@@ -1506,7 +1507,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     return { ok: false, error: '编队里没有打捞器：打捞作业干不了（至少装 1 台）。' }
   }
   // 谜质「打捞起重机」：每次打捞 +1 堆/台（**门槛仍看真打捞器**——装置不替代装备）
-  const rigs = baseRigs + wormholeMatterBuffs(run.hold).salvagePiles
+  const rigs = baseRigs + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).salvagePiles
   wormholeEnsureSalvagePiles(state, cell)
   const piles = cell.piles ?? []
   if (piles.length === 0) {

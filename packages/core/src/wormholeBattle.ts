@@ -32,6 +32,7 @@ import { wormholeAnomalyOf, wormholeCardIdForRun } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
 import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
+import { matterTechWhBuffs } from './matterTech'
 import { wormholeIsShapedItem } from './wormholeHold'
 import {
   wormholeDeliverRelics,
@@ -458,7 +459,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
    * ② **机群回收网**：回收率加成本（在 `settleDroneLosses` 里夹在 100% 以内）；
    * ③ **战地维修单元**：每场交火后自动修补**装甲与结构**（船长：「同时修复护甲」），不耗货仓组件。
    */
-  const matterBuffs = wormholeMatterBuffs(run.hold)
+  const matterBuffs = wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx))
   if (matterBuffs.ammoRefundPct > 0 && battle.ammoLoaded) {
     const fired = {
       kin: Math.max(0, battle.ammoLoaded.kin - battle.ammo.kin),

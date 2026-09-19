@@ -437,7 +437,8 @@ export interface WormholeRunState {
   /**
    * **本层的网格探索状态**（F3a · 2026-09-13 船长确认「探索采用网格地图的形式，整体网格地图呈现圆型」）。
    * 可选字段：老档没有 = 该层走旧口径（零迁移）；新开层由 wormholeMakeGrid(seed, depth) 生成。
-   * 真相（place）随档保存，**遮蔽靠"未扫描不展示"**（evealOf）——不是靠不存。
+   * 真相（place）随档保存，**遮蔽靠"未扫描不展示"**（
+evealOf）——不是靠不存。
    */
   grid?: import('./wormholeGrid').WormholeGridState
   /**
@@ -482,7 +483,7 @@ export interface WormholeRunState {
    * - **能放形状件**（安全货柜 / 谜质储存器 2×2）**与散货件**（1×1）；
    * - **离开背包页前必须清空**（船长 2026-09-14：「强制二选一：丢掉 或 放回」，撤离前同样必须先清空）；
    * - **谜质储存器放进来即失效**（船长 2026-09-14：「谜质储存器拖进小背包会失效」）——增益仍只从
-   *   `run.hold` 现算（`wormholeMatterBuffs(run.hold)`），本账本不参与派生；
+   *   `run.hold` 现算（`wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx))`），本账本不参与派生；
    * - 可选字段 ⇒ **零迁移**（老档没有 = 临时空间是空的）。
    */
   tempGrid?: import('./wormholeHold').WormholeHoldState
