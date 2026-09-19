@@ -241,9 +241,9 @@ export function ExpeditionPanel({
 type TaskSort = 'danger' | 'distance' | 'galaxy' | 'reward' | 'standing'
 const TASK_SORT_KEY = 'whale-idle:task-sort'
 const TASK_SORT_LABEL: Record<TaskSort, string> = {
-  danger: '危险（安全优先）',
+  danger: tr("ui.MapPage.008"),
   distance: '距离最近',
-  galaxy: '星系名称',
+  galaxy: tr("ui.MapPage.009"),
   reward: '奖励最高',
   standing: '声望收益最高',
 }
@@ -482,7 +482,7 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
   return (
     <Panel
       className="is-fill"
-      title="常驻悬赏"
+      title={tr("ui.MapPage.004")}
       right={<span className="app-dim">悬赏任务 {listed.length} 张 · 默认：危险（安全优先）</span>}
     >
       <div className="app-task-sortrow">
@@ -1497,7 +1497,7 @@ function StarMap({
                   title={`赏金任务战果：${rare.text}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体，保底原材料之外必给一件额外战利品（该敌群专属装备，未出则给特色装备）+ 一批高阶原材料`}
                 >
                   <span className="app-ico">◆</span>
-                  <em className="app-chip is-rare">稀有残骸 ×{rare.count}</em>
+                  <em className="app-chip is-rare">{tr("ui.MapPage.066")}{rare.count}</em>
                   <span className="app-dim">（{rare.text}）</span>
                 </div>
               ) : null}
@@ -1690,7 +1690,7 @@ function GalaxyActions({
       setMineAskBelt(beltId)
       onToast(
         '⇄ 远征中开采 = 转场：本次远征将取消（无战果）' +
-          (state.autoLoopAnomalyId !== null ? '，重复清剿同步停止' : '') +
+          (state.autoLoopAnomalyId !== null ? tr("ui.MapPage.039") : '') +
           '——再点一次确认。',
         true,
       )
@@ -1843,11 +1843,11 @@ function GalaxyActions({
                       ? mineAskBelt === b.id
                         ? '再点一次确认：开采将取消本次远征（无战果）'
                         : '远征中：点击转开采（将取消本次远征）'
-                      : '开始开采'
+                      : tr("ui.MapPage.035")
                 }
                 onClick={() => handleMineStart(b.id)}
               >
-                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>再点确认</>) : expOn ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>转开采</>) : (<><span className="app-ico"><Glyph name="nav-mine" size={13} color={NAV_TONES['nav-mine']} /></span>开采</>)}
+                {isMiningThis ? '采掘中' : mineAskBelt === b.id ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>再点确认</>) : expOn ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES['ico-swap']} /></span>{tr("ui.MapPage.034")}</>) : (<><span className="app-ico"><Glyph name="nav-mine" size={13} color={NAV_TONES['nav-mine']} /></span>开采</>)}
               </button>
             </div>
           )
@@ -1910,9 +1910,9 @@ function GalaxyActions({
             打捞作业中
             <span className="app-dim app-ga-desc">
               {state.salvaging.phase === 'outbound'
-                ? '出航中'
+                ? tr("ui.MapPage.056")
                 : state.salvaging.phase === 'returning'
-                  ? '返航卸货中'
+                  ? tr("ui.MapPage.057")
                   : `持续打捞（本趟约 ${Math.round(state.salvaging.tripM3 * 10) / 10} m³）`}
             </span>
           </span>
@@ -1931,13 +1931,13 @@ function GalaxyActions({
           <button
             className="app-btn is-small is-primary"
             disabled={state.salvaging.active}
-            title={state.salvaging.active ? '打捞作业进行中（顶部活动栏可停止）' : '开始打捞（需高槽打捞器；默认自动循环，满舱返航卸货后自动续捞）'}
+            title={state.salvaging.active ? '打捞作业进行中（顶部活动栏可停止）' : tr("ui.MapPage.070")}
             onClick={() => {
               const r = engine.startSalvageOpAt(galaxy.id)
               if (!r.ok) onToast(r.error ?? '无法打捞', true)
             }}
           >
-            <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>开始打捞
+            <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.071")}
           </button>
         </div>
       )}
@@ -2273,7 +2273,7 @@ function AnomalyCard({
       {goAsk ? (
         <div className="app-ano-switch-confirm">
           <div className="app-sell-warn">
-            ⚠ 采矿中出击 = <b>转场</b>：本次采矿将立即结束——本趟已采
+            ⚠ 采矿中出击 = <b>{tr("ui.MapPage.037")}</b>：本次采矿将立即结束——本趟已采
             <b> {mining.tripUnits} 单位</b>留在船上（不卸货），舰船将从
             <b> 当前矿带星系</b>直接出发征讨「{anomaly.name}」。
           </div>

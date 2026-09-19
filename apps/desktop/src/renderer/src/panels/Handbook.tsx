@@ -72,9 +72,9 @@ const VIEW_KEY = 'whale-idle:handbook-view'
 /** 蓝图门类（手册「蓝图图鉴」主筛选）：判据与分组键同源（有 `shipId` = 舰船蓝图、
  *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图） */
 const BP_MAIN: SubOption[] = [
-  { key: 'equip', label: '装备蓝图' },
-  { key: 'ship', label: '舰船蓝图' },
-  { key: 'consume', label: '消耗品蓝图' },
+  { key: 'equip', label: tr("ui.ShipPage.115") },
+  { key: 'ship', label: tr("ui.ShipPage.116") },
+  { key: 'consume', label: tr("ui.ShipPage.114") },
 ]
 /** 各图鉴筛选行的灰字前缀（同「我的舰队」那套「类别：」「级别：」写法，避免多个「全部」混淆） */
 const FILTER_LABEL: Record<Tab, string> = {
@@ -201,7 +201,7 @@ const GUIDE_GROUPS: HandGroup[] = [
         title: '回收残骸',
         paras: [
           ['在哪拆', '打捞的残骸在工业页「残骸回收」里拆解：回收卡按敌群列出这批残骸的「保底原材料」，随 星系危险度 × 敌群威胁 上浮。'],
-          ['特色掉落', '另有概率特色掉落——同卡的「特色掉落」栏写出的该敌群增幅装备（含关底穹顶守卫直出 MK3 武器）与高威胁蓝图碎片（MK3 装备只经碎片解锁）。'],
+          [tr("ui.MapPage.058"), '另有概率特色掉落——同卡的「特色掉落」栏写出的该敌群增幅装备（含关底穹顶守卫直出 MK3 武器）与高威胁蓝图碎片（MK3 装备只经碎片解锁）。'],
           ['提前看', '星图「残骸打捞」页会先标出该星系的这些内容。'],
         ],
       },
@@ -227,7 +227,7 @@ const GUIDE_GROUPS: HandGroup[] = [
         ],
       },
       {
-        title: '长途运输',
+        title: tr("ui.MapPage.006"),
         paras: [
           ['解锁', '建成至少一座副站后，星图「长途运输」页签开放。'],
           ['怎么跑', '选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段。'],
@@ -326,7 +326,7 @@ const RULE_SECTS: HandGroup[] = [
         title: '什么会遇袭',
         paras: [
           ['只打「停留与就地作业」', '低安只对「停留与就地作业」动手：矿带采掘中、打捞作业中、扫描虫洞期间、掩护巡逻驻留都可能撞见巡逻拦截或海盗伏击（星系扫描是无人扫描艇，不在其列）。'],
-          ['长途运输', '长途运输途中同样会遇袭——跑运输的舰船在航段里会被当作「停在出发星系」，含低安航段的航线在「长途运输」页会标出这一条。'],
+          [tr("ui.MapPage.006"), '长途运输途中同样会遇袭——跑运输的舰船在航段里会被当作「停在出发星系」，含低安航段的航线在「长途运输」页会标出这一条。'],
           ['AI 副船', 'AI 副船同样适用。'],
         ],
       },
@@ -677,10 +677,10 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
         if (shipDef.description) prodRows.push(['产物介绍', shipDef.description])
       }
     }
-    rows.push(['产物', productName])
+    rows.push([tr("ui.MarketPage.016"), productName])
     for (const [k, v] of prodRows) rows.push([k, v])
     rows.push([
-      '材料需求',
+      tr("ui.MarketPage.018"),
       <span key="mats" className="app-detail-mats">
         {materials.map((m) => (
           <span key={m.itemId} className="app-detail-mat">
@@ -1144,9 +1144,9 @@ export function Handbook({
                   as="li"
                   title={bp.name}
                   lines={[
-                    { k: '产物', v: product },
-                    { k: '材料需求', v: mats },
-                    { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
+                    { k: tr("ui.MarketPage.016"), v: product },
+                    { k: tr("ui.MarketPage.018"), v: mats },
+                    { k: tr("ui.MarketPage.019"), v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
                   ]}
                   note={bp.description}
                   className="app-hand-entry"
@@ -1154,7 +1154,7 @@ export function Handbook({
                   <div className="app-inv-name">
                     <RowGlyph glyph="blueprint" /> {bp.name}
                   </div>
-                  <div className="app-dim">产物：{product}</div>
+                  <div className="app-dim">{tr("ui.Handbook.013")}{product}</div>
                   <div className="app-hand-sub">
                     材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
                   </div>
@@ -1172,9 +1172,9 @@ export function Handbook({
                   as="li"
                   title={bp.name}
                   lines={[
-                    { k: '产物', v: `${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）` },
-                    { k: '材料需求', v: mats },
-                    { k: '制造', v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
+                    { k: tr("ui.MarketPage.016"), v: `${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）` },
+                    { k: tr("ui.MarketPage.018"), v: mats },
+                    { k: tr("ui.MarketPage.019"), v: `${(bp.buildSeconds / 60).toFixed(0)} 分 · 免费` },
                   ]}
                   note={bp.description}
                   className="app-hand-entry"
@@ -1182,7 +1182,7 @@ export function Handbook({
                   <div className="app-inv-name">
                     <RowGlyph glyph="blueprint" /> {bp.name}
                   </div>
-                  <div className="app-dim">产物：{engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）</div>
+                  <div className="app-dim">{tr("ui.Handbook.013")}{engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}（舰船）</div>
                   <div className="app-hand-sub">
                     材料 {mats} · 耗时 {(bp.buildSeconds / 60).toFixed(0)} 分 · 免费
                   </div>

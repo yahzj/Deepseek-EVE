@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+import { tr } from '../i18n/locale'
 
 function fmtTime(wallMs: number): string {
   return new Date(wallMs).toLocaleString('zh-CN', { hour12: false })
@@ -159,7 +160,7 @@ export function SaveManager({
                       disabled={busy}
                       title={armDelete === b.name ? '再点一次确认删除（只删这份备份，不影响当前档）' : '删除这份备份（两讨伐确认）'}
                     >
-                      {armDelete === b.name ? '再点确认删除' : '删除'}
+                      {armDelete === b.name ? '再点确认删除' : tr("ui.FitPage.068")}
                     </button>
                     <button className="app-btn is-small is-primary" onClick={() => void handleRestore(b.name)} disabled={busy}>
                       恢复

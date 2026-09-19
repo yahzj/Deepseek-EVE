@@ -38,17 +38,17 @@ const KIND_TEXT: Record<string, string> = {
    * 一级类型中文名由「物品」改为「**货物**」（子分类补「奢侈品」，见 `ui/itemSubs.ts` 的 `ITEM_SUBS`）。
    * ⚠ 这**只是市场类型下拉的显示名**：导航页「物品」与手册「物品图鉴」走各自的单点，未随本改（等船长点名）。
    */
-  item: '货物',
+  item: tr("ui.MarketPage.005"),
   /**
    * **2026-09-16 船长**：「**将货柜添加到市场的分类里，和货物同级**」——货柜（`container`：五族遗迹安全货柜 ·
    * 三档图纸货柜 · 贵重品货柜 · 军用备货柜）从「货物」里**剔出、独立成一级类型**，与「残骸」（2026-09-08）、
    * 「消耗品」（2026-09-11）两次同类拆分同一套口径（键集合单点 = `ui/itemSubs.ts` 的 `CONTAINER_KIND_KEYS`）。
    * ⚠ 无二级子分类（照「残骸」先例；要分"安全/图纸/贵重品/军用"再说一声）。
    */
-  container: '货柜',
+  container: tr("ui.MarketPage.006"),
   // 2026-09-11 船长：「应该将消耗品独立出来」——消耗品（弹药/修理组件/无人机）独立成一级类型，
   // 并从「物品」里剔除（与当年「残骸」独立成类的口径一致；子分类见 ui/itemSubs.ts CONSUME_SUBS）
-  consume: '消耗品',
+  consume: tr("ui.MarketPage.007"),
   // 2026-09-10 船长：类型筛选移除「装备」，改为高 / 中 / 低槽三个类型（子分类仍是装备的功能分组）
   // ⚠ 中文名走 `ui/itemSubs.ts` 的 `RACK_LABELS` 单点（手册图鉴筛选与仓库筛选读同一份，2026-09-13）
   'module-high': RACK_LABELS.high,
@@ -56,12 +56,12 @@ const KIND_TEXT: Record<string, string> = {
   'module-low': RACK_LABELS.low,
   ship: tr("ui.App.002"),
   blueprint: tr("ui.MarketPage.004"),
-  aicore: '核心',
-  wreck: '残骸',
+  aicore: tr("ui.MarketPage.008"),
+  wreck: tr("ui.MarketPage.009"),
 }
 const KIND_OPTIONS = ['all', 'item', 'container', 'consume', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
-const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: tr("ui.IndustryPage.035"), exotic: '限定' }
+const RARITY_TEXT: Record<MarketRarity, string> = { common: tr("ui.MarketPage.010"), rare: tr("ui.IndustryPage.035"), exotic: tr("ui.MarketPage.011") }
 
 /* 类型子分类表已抽到 ui/itemSubs.ts（市场页与手册图鉴共用同一套口径） */
 /** 目录条目对应的物品定义（item 类才查物品表） */
@@ -74,7 +74,7 @@ function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
  * 其余物品走 itemKindText 单点（2026-09-10：无人机 → 无人机 · 侦察机，子属性并入种类） */
 function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): string {
   const it = itemDefOf(ctx, good)
-  if (it) return it.kind === 'wreck' ? '残骸' : itemKindText(it)
+  if (it) return it.kind === 'wreck' ? tr("ui.MarketPage.009") : itemKindText(it)
   if (good.kind === 'module') {
     const mod = ctx.modules.get(good.refId)
     const rack = mod ? rackOf(mod) : undefined
@@ -160,7 +160,7 @@ function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
   else if (good.kind === 'aicore') {
     const eff = Math.round((engine.ctx.balance.aiCore.efficiency[good.refId as never] ?? 1) * 100)
     const tier =
-      good.refId === 'basic' ? 'AI 副船的标准核心' : good.refId === 'gamma' ? '伽马级核心' : good.refId === 'beta' ? '贝塔级核心' : '阿尔法级核心'
+      good.refId === 'basic' ? tr("ui.MarketPage.012") : good.refId === 'gamma' ? tr("ui.MarketPage.013") : good.refId === 'beta' ? tr("ui.MarketPage.014") : tr("ui.MarketPage.015")
     desc = `${tier}（效率 ${eff}%）：指派 AI 副船任务时使用，任务结束自动归还核心库；更高阶核心通常由高威胁远征缴获或奇货市场流出。`
   }
   return `${head}\n${desc || '（暂无说明）'}`
@@ -207,11 +207,11 @@ function blueprintHoverLines(
   return {
     title: bp.name,
     lines: [
-      { k: '产物', v: productName },
+      { k: tr("ui.MarketPage.016"), v: productName },
       ...prodLines,
-      ...(bp.description ? [{ k: '蓝图说明', v: bp.description }] : []),
-      { k: '材料需求', v: materials },
-      { k: '制造', v: `${formatDurationMs(bp.buildSeconds * 1000)} · 免费` },
+      ...(bp.description ? [{ k: tr("ui.MarketPage.017"), v: bp.description }] : []),
+      { k: tr("ui.MarketPage.018"), v: materials },
+      { k: tr("ui.MarketPage.019"), v: `${formatDurationMs(bp.buildSeconds * 1000)} · 免费` },
     ],
     note: prodDesc || bp.description,
   }
@@ -272,16 +272,16 @@ function GoodHover({
   } else if (good.kind === 'aicore') {
     const eff = Math.round((engine.ctx.balance.aiCore.efficiency[good.refId as never] ?? 1) * 100)
     const tier =
-      good.refId === 'basic' ? '基础核心' : good.refId === 'gamma' ? '伽马级核心' : good.refId === 'beta' ? '贝塔级核心' : '阿尔法级核心'
+      good.refId === 'basic' ? tr("ui.MarketPage.020") : good.refId === 'gamma' ? tr("ui.MarketPage.013") : good.refId === 'beta' ? tr("ui.MarketPage.014") : tr("ui.MarketPage.015")
     return (
       <InfoHover
         as="li"
         title={goodName(ctx, good.key)}
         lines={[
           { k: tr("ui.MarketPage.002"), v: tier },
-          { k: '效率', v: `${eff}%（AI 副船工作速度；不影响奖励）` },
+          { k: tr("ui.MarketPage.021"), v: `${eff}%（AI 副船工作速度；不影响奖励）` },
         ]}
-        note="指派 AI 副船任务时使用，任务结束自动归还核心库；更高阶核心通常由高威胁远征缴获或奇货市场流出。"
+        note={tr("ui.MarketPage.022")}
         className={rowCls}
       >
         {children}
@@ -298,7 +298,7 @@ function GoodHover({
 /** 「自己的库存」口径说明（悬停用）：与"能卖出的量"同源；已挂单托管的量不计在内
  *  ⚠ 2026-09-14 船长：舰船拆成「舰船仓库 ＋ 在役舰队」两处（仓库是出售入口）⇒ 舰船那一档改成两者相加 */
 const MY_STOCK_TIP =
-  '自己的库存：物品 → 物品仓库、装备 → 装备库、蓝图 → 图书存量、AI 核心 → 核心库、舰船 → 舰船仓库 ＋ 在役舰队同型艘数（挂单托管中的不计）；舰船出售在舰船页「舰船仓库」操作'
+  tr("ui.MarketPage.023")
 
 /** 玩家自己这件东西的库存（舰船 = 舰船仓库 ＋ 在役舰队；其余走 core「自然库存」单点） */
 function myStockOf(state: GameState, good: MarketGoodDef): number {
@@ -366,19 +366,19 @@ function GoodRow({
           {good.kind === 'blueprint' ? (
             <>
               {state.learnedRecipes.includes(good.refId) ? (
-                <span className="app-chip is-learned" title="已掌握该蓝图：可在工业页无限自制">
-                  已学习
+                <span className="app-chip is-learned" title={tr("ui.MarketPage.024")}>
+                  {tr("ui.MarketPage.025")}
                 </span>
               ) : null}
               {(state.blueprintStock[good.refId] ?? 0) > 0 ? (
-                <span className="app-chip is-stock" title="蓝图书已在物品仓库中（本行用于图纸交易，图书按张使用）">
-                  已获得 ×{(state.blueprintStock[good.refId] ?? 0).toLocaleString('zh-CN')}
+                <span className="app-chip is-stock" title={tr("ui.MarketPage.026")}>
+                  {tr("ui.MarketPage.027")}{(state.blueprintStock[good.refId] ?? 0).toLocaleString('zh-CN')}
                 </span>
               ) : null}
             </>
           ) : null}
           {good.rarity === 'rare' ? <span className="app-chip is-rare">{tr("ui.IndustryPage.035")}</span> : null}
-          {good.rarity === 'exotic' ? <span className="app-chip is-exotic">限定奇货</span> : null}
+          {good.rarity === 'exotic' ? <span className="app-chip is-exotic">{tr("ui.MarketPage.028")}</span> : null}
           {lockShow ? (
             <span className="app-chip is-exotic" title={lockShow}>
               <span className="app-ico">
@@ -390,13 +390,13 @@ function GoodRow({
         </div>
         <div className="app-inv-count">
           <span className="app-mkt-quote">
-            收购 <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
+            {tr("ui.MarketPage.029")} <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
             <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
               {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' ·'}
             </span>
           </span>
           <span className="app-mkt-quote">
-            供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : good.playerBuyable === false ? '只收不卖' : '暂无现货'}</b>
+            {tr("ui.MarketPage.030")} <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : good.playerBuyable === false ? tr("ui.MarketPage.031") : tr("ui.MarketPage.032")}</b>
             {quote.sellQty > 1 ? ` ×${quote.sellQty.toLocaleString('zh-CN')}` : ''}
           </span>
           {life !== undefined ? (
@@ -450,13 +450,13 @@ function taxTipText(state: GameState, ctx: PageProps['engine']['ctx']): string {
   const skillNote =
     lvA + lvB > 0
       ? `（会计学 Lv${lvA} −${lvA * 8}% · 贸易谈判学 Lv${lvB} −${lvB * 8}%）`
-      : '（基础 5%；练「会计学 / 贸易谈判学」各 −8%/级，双满仅剩 1%）'
+      : tr("ui.MarketPage.033")
   return `贸易税：卖出成交按成交额收税——当前税率 ${Math.round(rate * 1000) / 10}%${skillNote}。挂单、自动转挂单与买入一律免费。`
 }
 
 /** 协会市场的撮合与星标说明（挂单簿语义、冲击动量、行首星标；2026-09-13 收进列表标题后的圆形感叹号） */
 const MKT_MECH_TIP =
-  '协会市场全程走挂单簿撮合：收购价低于供应价；集中买卖会带来价格短时偏离（冲击动量），原矿/原材料另受库存池调节。每行可「挂单买 / 挂单卖」自定价等待成交。行首星标＝标记收藏（被标记的商品在默认排序下置顶，随时再点一下取消）。'
+  tr("ui.MarketPage.034")
 
 /** 有货冒泡上浮（供应簿有现货的排前面）；其余保持目录稳定顺序。
  *  2026-09-10 船长定：默认排序下已标记（收藏）的商品置顶——两栏与搜索结果都是这一套默认口径。 */
@@ -506,7 +506,7 @@ function MarketColumn({
     // is-fill + 去掉列表自身 max-height 帽：列表交给 Panel body 二级内滚（一级页不滚）
     <Panel className="is-fill" title={title} hint={hint} right={right}>
       {rows.length === 0 ? (
-        <div className="app-dim app-inv-empty">{empty ?? '没有匹配的订单（试试清空搜索、切换类型或子分类）。'}</div>
+        <div className="app-dim app-inv-empty">{empty ?? tr("ui.MarketPage.035")}</div>
       ) : (
         <ul className="app-inv-list">
           {rows.map((good) => (
@@ -532,7 +532,7 @@ const MIN_POINT_SPACING_PX = 12
 /** 采样点「约 N 分钟前」标注（样本间隔 = `PRICE_SAMPLE_MS`（30 分钟）；最新样本 = 现在） */
 function sampleAgoLabel(fullLen: number, absIdx: number): string {
   const mins = ((fullLen - 1 - absIdx) * PRICE_SAMPLE_MS) / 60_000
-  if (mins <= 0) return '现在'
+  if (mins <= 0) return tr("ui.MarketPage.036")
   if (mins < 60) return `约 ${mins} 分钟前`
   const h = Math.floor(mins / 60)
   const m = mins % 60
@@ -560,7 +560,7 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
   if (fullLen < 2) {
     return (
       <div className="app-mkt-chart-empty">
-        <span className="app-dim">暂无历史样本——市场运行一段时间后自动采样（每 30 分钟一次，保留 48 窗 / 约 24 小时）</span>
+        <span className="app-dim">{tr("ui.MarketPage.037")}</span>
       </div>
     )
   }
@@ -610,8 +610,8 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
           <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
         </svg>
         {/* 高低价标注用 HTML 覆盖层（非 SVG 文本），避免 preserveAspectRatio=none 拉伸字形 */}
-        <span className="app-mkt-chart-hi">高价 {isk(dataMx)}</span>
-        <span className="app-mkt-chart-lo">低价 {isk(dataMn)}</span>
+        <span className="app-mkt-chart-hi">{tr("ui.MarketPage.038")} {isk(dataMx)}</span>
+        <span className="app-mkt-chart-lo">{tr("ui.MarketPage.039")} {isk(dataMn)}</span>
         {hover !== null && hover < slice.length ? (
           <div
             className={`app-mkt-chart-tip${mapY(slice[hover]!) < 40 ? ' is-below' : ''}`}
@@ -622,7 +622,7 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
               top: `${(mapY(slice[hover]!) / h) * 100}%`,
             }}
           >
-            ≈{isk(slice[hover]!)} 信用点 · {sampleAgoLabel(fullLen, offset + hover)}
+            ≈{isk(slice[hover]!)} {tr("ui.MarketPage.040")} {sampleAgoLabel(fullLen, offset + hover)}
           </div>
         ) : null}
     </div>
@@ -777,7 +777,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   function doSell(q?: number): void {
     const n = Math.max(1, Math.min(holdings, Math.floor(q ?? (qty || 1))))
     if (n <= 0 || holdings <= 0) {
-      onToast(good.kind === 'ship' ? '舰船仓库里没有可卖的舰船：先在舰船页把船移入舰船仓库。' : '没有可卖的库存。', true)
+      onToast(good.kind === 'ship' ? tr("ui.MarketPage.041") : tr("ui.MarketPage.042"), true)
       return
     }
     const r = engine.sellHoldingAt(good.key, n)
@@ -796,7 +796,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   /** 全部卖出：先预览（可成交件数/毛额/税/净到账）再弹确认——不直接执行（船长 2026-09-05） */
   function askSellAll(): void {
     if (holdings <= 0) {
-      onToast(good.kind === 'ship' ? '舰船仓库里没有可卖的舰船：先在舰船页把船移入舰船仓库。' : '没有可卖的库存。', true)
+      onToast(good.kind === 'ship' ? tr("ui.MarketPage.041") : tr("ui.MarketPage.042"), true)
       return
     }
     const pv = engine.sellPreviewAt(good.key, holdings)
@@ -883,24 +883,24 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           <PriceChart hist={hist} />
           <div className="app-mkt-detail-quotes">
             <div className="app-mkt-quote">
-              收购 <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
+              {tr("ui.MarketPage.029")} <b className="app-gold">{quote.buy !== undefined ? isk(quote.buy) : '—'}</b>
             </div>
             <div className="app-mkt-quote">
-              供应 <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : buyable ? '暂无现货' : '只收不卖'}</b>
+              {tr("ui.MarketPage.030")} <b className={quote.sell !== undefined ? 'app-price-sell' : ''}>{quote.sell !== undefined ? isk(quote.sell) : buyable ? tr("ui.MarketPage.032") : tr("ui.MarketPage.031")}</b>
             </div>
             <div className="app-mkt-quote">
-              库存池 {good.poolTarget && good.poolTarget > 0 ? Math.floor(state.market.pools[good.key]?.q ?? 0).toLocaleString('zh-CN') : '—'}
+              {tr("ui.MarketPage.043")} {good.poolTarget && good.poolTarget > 0 ? Math.floor(state.market.pools[good.key]?.q ?? 0).toLocaleString('zh-CN') : '—'}
             </div>
           </div>
         </div>
         <div className="app-mkt-detail-books" ref={booksRef}>
           <div className="app-mkt-book">
-            <div className="app-mkt-book-title">买盘（收你的货）</div>
+            <div className="app-mkt-book-title">{tr("ui.MarketPage.044")}</div>
             {buyOrders.map((o, i) => (
               <div
                 key={`b${i}`}
                 className="app-mkt-depth is-click"
-                title="点击 = 切到「卖出」并预填该收购价与数量——可直接挂卖单（或改价/改量）"
+                title={tr("ui.MarketPage.045")}
                 onClick={() => fillFromBook('sell', o.price, o.qty)}
               >
                 <span className="app-mkt-depth-price">{isk(o.price)}</span>
@@ -910,15 +910,15 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 <span className="app-mkt-depth-qty">{o.qty.toLocaleString('zh-CN')}</span>
               </div>
             ))}
-            {buyOrders.length === 0 ? <div className="app-dim app-sr-eta">暂无收购单</div> : null}
+            {buyOrders.length === 0 ? <div className="app-dim app-sr-eta">{tr("ui.MarketPage.046")}</div> : null}
           </div>
           <div className="app-mkt-book">
-            <div className="app-mkt-book-title">卖盘（卖给你的货）</div>
+            <div className="app-mkt-book-title">{tr("ui.MarketPage.047")}</div>
             {sellOrders.map((o, i) => (
               <div
                 key={`s${i}`}
                 className="app-mkt-depth is-click"
-                title="点击 = 切到「买入」并预填该供应价与数量——可直接挂买单（或改价/改量）"
+                title={tr("ui.MarketPage.048")}
                 onClick={() => fillFromBook('buy', o.price, o.qty)}
               >
                 <span className="app-mkt-depth-price">{isk(o.price)}</span>
@@ -929,7 +929,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               </div>
             ))}
             {sellOrders.length === 0 ? (
-              <div className="app-dim app-sr-eta">{buyable ? '暂无供应单' : '空间站回收点：只收购，不出售'}</div>
+              <div className="app-dim app-sr-eta">{buyable ? tr("ui.MarketPage.049") : tr("ui.MarketPage.050")}</div>
             ) : null}
           </div>
         </div>
@@ -946,9 +946,9 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                     disabled={!buyable}
                     className={`app-mkt-side is-buy${tab === 'buy' ? ' is-active' : ''}${buyable ? '' : ' is-disabled'}`}
                     onClick={() => setTab('buy')}
-                    title={buyable ? undefined : '该商品空间站只收购，不对外出售'}
+                    title={buyable ? undefined : tr("ui.MarketPage.051")}
                   >
-                    买入
+                    {tr("ui.MarketPage.052")}
                   </button>
                   <button
                     role="tab"
@@ -956,7 +956,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                     className={`app-mkt-side is-sell${tab === 'sell' ? ' is-active' : ''}`}
                     onClick={() => setTab('sell')}
                   >
-                    卖出
+                    {tr("ui.MarketPage.053")}
                   </button>
                 </div>
               </div>
@@ -970,14 +970,14 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 ) : null}
               </div>
               <div className="app-mkt-trade-row">
-                <span className="app-dim">单价</span>
+                <span className="app-dim">{tr("ui.MarketPage.054")}</span>
                 <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
                 <span className="app-dim">{tr("ui.FirstTasks.003")}</span>
               </div>
             </div>
             <div className="app-mkt-actions">
               <button className="app-btn is-small" onClick={doPlace}>
-                {tab === 'buy' ? '挂买单' : '挂卖单'}
+                {tab === 'buy' ? tr("ui.MarketPage.055") : tr("ui.MarketPage.056")}
               </button>
               {/* 市价买入（2026-09-11 船长实测反馈修复）：**没有可吃单 / 钱包连最低一张都不够时按钮禁用**，
                   并把原因写在 title 里——此前按钮一直可点，点下去只会报一句"供应簿只剩 0 件"（原因其实是钱不够/声望闸/无货） */}
@@ -988,18 +988,18 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                   tab !== 'buy'
                     ? undefined
                     : quote.sell === undefined
-                      ? '供应簿暂无现货：改用「挂买单」等市场补给后自动成交'
+                      ? tr("ui.MarketPage.057")
                       : state.wallet.isk < quote.sell
                         ? `信用点不足：最低一张 ${isk(quote.sell)} 信用点，钱包 ${isk(Math.floor(state.wallet.isk))} 信用点`
                         : undefined
                 }
                 onClick={tab === 'buy' ? doBuy : () => doSell()}
               >
-                {tab === 'buy' ? '市价买入' : '市价卖出'}
+                {tab === 'buy' ? tr("ui.MarketPage.058") : tr("ui.CargoPage.038")}
               </button>
               {tab === 'sell' ? (
-                <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title="先预览实际成交与到账，确认后再卖出全部可卖">
-                  全部卖出（{holdings} {unit}）
+                <button className="app-btn is-small is-sellall" disabled={holdings <= 0} onClick={askSellAll} title={tr("ui.MarketPage.059")}>
+                  {tr("ui.MarketPage.060")}{holdings} {unit}）
                 </button>
               ) : null}
             </div>
@@ -1012,7 +1012,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 ? `可卖 ${holdings} 艘来自舰船仓库（仓里的船都是全新船）：挂卖单按你填的单价排队，市价卖出则先吃收购簿、余量自动留簿挂单。`
                 : shipInFleet > 0
                   ? `舰船仓库里没有可卖的船——机库还有 ${shipInFleet} 艘：先到舰船页把船「移入舰船仓库」（需满耐久、无装配、未锁定），再回这里出售。`
-                  : '还没有舰船可卖：到舰船页「舰船仓库」看看（组装机造好的船会先入仓库）。'}
+                  : tr("ui.MarketPage.061")}
             </div>
           ) : null}
           {/* 价格指引（2026-09-08 船长定：不向玩家披露站内吸收/巡游通道——只保留普通撮合语义的指导文案） */}
@@ -1024,18 +1024,18 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 if (p > bid) {
                   return (
                     <>
-                      挂价高于当前收购价 {isk(bid)}：先按挂单价排队，等待买家出价回补后成交——想更快出手，把挂价降到不高于收购价即可优先成交
+                      {tr("ui.MarketPage.062")} {isk(bid)}：先按挂单价排队，等待买家出价回补后成交——想更快出手，把挂价降到不高于收购价即可优先成交
                     </>
                   )
                 }
                 if (p < bid) {
                   return (
                     <>
-                      挂价低于收购价 {isk(bid)}：当前挂价有优势，会优先撮合成交，清仓更快
+                      {tr("ui.MarketPage.063")} {isk(bid)}：当前挂价有优势，会优先撮合成交，清仓更快
                     </>
                   )
                 }
-                return <>平价挂卖（= 收购价 {isk(bid)}）：按当前收购通道优先撮合成交</>
+                return <>{tr("ui.MarketPage.064")} {isk(bid)}）：按当前收购通道优先撮合成交</>
               }
               // 奇货专项提示（2026-09-08 船长定）：挂单价低于奇货参考价时提醒并给出合适价位
               //（口径保密：不披露 20L/巡游机制，只讲"稀见到货 + 参考价"）
@@ -1044,21 +1044,21 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 if (p >= exoLine) {
                   return (
                     <>
-                      挂价已达奇货参考价（约 {isk(exoLine)} 信用点）：协会奇货到货（行情价上下浮动）时会直接按单成交
+                      {tr("ui.MarketPage.065")} {isk(exoLine)} {tr("ui.MarketPage.066")}
                     </>
                   )
                 }
                 return (
                   <>
-                    挂价 {isk(p)} 信用点 低于奇货参考价（约 {isk(exoLine)} 信用点）：奇货只按稀见到货，挂太低很可能长期无人接单——建议把挂价提到参考价附近（{isk(exoLine)} 信用点 上下），到货即按单成交
+                    {tr("ui.MarketPage.067")} {isk(p)} {tr("ui.MarketPage.068")} {isk(exoLine)} {tr("ui.MarketPage.069")}{isk(exoLine)} 信用点 上下），到货即按单成交
                   </>
                 )
               }
               const ask = quote.sell ?? askLineOf(state, engine.ctx, good.key)
-              if (p >= ask) return <>平价买入（= 供应价 {isk(ask)}）：现买现得</>
+              if (p >= ask) return <>{tr("ui.MarketPage.070")} {isk(ask)}）：现买现得</>
               return (
                 <>
-                  挂价低于供应价 {isk(ask)}：先按挂单价排队，等待卖单回补后成交——想立刻拿到，把挂价提到不低于供应价即可即时买入
+                  {tr("ui.MarketPage.071")} {isk(ask)}：先按挂单价排队，等待卖单回补后成交——想立刻拿到，把挂价提到不低于供应价即可即时买入
                 </>
               )
             })()}
@@ -1069,13 +1069,13 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       {confirmSell ? (
         <div className="app-mkt-confirm-mask" onClick={() => setConfirmSell(null)}>
           <div className="app-mkt-confirm" onClick={(e) => e.stopPropagation()}>
-            <div className="app-mkt-confirm-title">确认全部卖出 · {name}</div>
+            <div className="app-mkt-confirm-title">{tr("ui.MarketPage.072")} {name}</div>
             <div className="app-mkt-confirm-row">
-              <span>卖出数量</span>
+              <span>{tr("ui.MarketPage.073")}</span>
               <b>{confirmSell.want.toLocaleString('zh-CN')} {unit}（可卖 {confirmSell.avail.toLocaleString('zh-CN')}）</b>
             </div>
             <div className="app-mkt-confirm-row">
-              <span>收购簿可立即成交</span>
+              <span>{tr("ui.MarketPage.074")}</span>
               <b className={confirmSell.fillable > 0 ? 'app-trend-up' : ''}>
                 {confirmSell.fillable.toLocaleString('zh-CN')} {unit} · {confirmSell.orders} 笔单
               </b>
@@ -1083,30 +1083,30 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             {confirmSell.fillable > 0 ? (
               <>
                 <div className="app-mkt-confirm-row">
-                  <span>预计成交额（毛额）</span>
+                  <span>{tr("ui.MarketPage.075")}</span>
                   <b className="app-gold">{isk(confirmSell.gross)} {tr("ui.FirstTasks.003")}</b>
                 </div>
                 <div className="app-mkt-confirm-row">
-                  <span>贸易税</span>
+                  <span>{tr("ui.MarketPage.076")}</span>
                   <b>−{isk(confirmSell.tax)} {tr("ui.FirstTasks.003")}</b>
                 </div>
                 <div className="app-mkt-confirm-row is-net">
-                  <span>预计实际到账（税后）</span>
+                  <span>{tr("ui.MarketPage.077")}</span>
                   <b className="app-gold">{isk(confirmSell.net)} {tr("ui.FirstTasks.003")}</b>
                 </div>
               </>
             ) : null}
             {confirmSell.leftover > 0 ? (
               <div className="app-mkt-confirm-note">
-                ⚠ 收购簿只能吃下 {confirmSell.fillable.toLocaleString('zh-CN')} {unit}，其余{' '}
-                {confirmSell.leftover.toLocaleString('zh-CN')} {unit}将自动按边际价挂限价卖单——
-                {good.kind === 'ship' ? '可随时撤销，船退回舰船仓库。' : '挂单成交前不计入本次到账（挂单免费，可随时撤销）。'}
+                {tr("ui.MarketPage.078")} {confirmSell.fillable.toLocaleString('zh-CN')} {unit}，其余{' '}
+                {confirmSell.leftover.toLocaleString('zh-CN')} {unit}{tr("ui.MarketPage.079")}
+                {good.kind === 'ship' ? tr("ui.MarketPage.080") : tr("ui.MarketPage.081")}
               </div>
             ) : null}
             {confirmSell.fillable <= 0 ? (
               <div className="app-mkt-confirm-note">
-                ⚠ 当前收购簿为空：本次不会立即成交，
-                {good.kind === 'ship' ? '全部数量将转为限价卖单挂着（撤销即退回舰船仓库）。' : '全部数量将提示改为挂限价卖单。'}
+                {tr("ui.MarketPage.082")}
+                {good.kind === 'ship' ? tr("ui.MarketPage.083") : tr("ui.MarketPage.084")}
               </div>
             ) : null}
             <div className="app-mkt-confirm-btns">
@@ -1114,7 +1114,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 {tr("ui.ActivityBar.004")}
               </button>
               <button className="app-btn is-small is-sellall" onClick={doSellAll}>
-                确认全部卖出
+                {tr("ui.MarketPage.085")}
               </button>
             </div>
           </div>
@@ -1178,7 +1178,7 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
   if (state.orders.length === 0) {
     return (
       <div className="app-dim app-inv-empty" ref={wrapRef}>
-        没有挂单。市价单吃穿簿后的剩余会自动挂单（可在此撤销，货退回库存）。
+        {tr("ui.MarketPage.086")}
       </div>
     )
   }
@@ -1189,10 +1189,10 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
           <li key={order.id} className="app-inv-row">
             <div className="app-inv-main">
               <span className="app-inv-name">
-                {order.side === 'sell' ? '▼ 卖单' : '▲ 买单'}：{goodName(engine.ctx, order.good)}
+                {order.side === 'sell' ? tr("ui.MarketPage.087") : tr("ui.MarketPage.088")}：{goodName(engine.ctx, order.good)}
               </span>
               <span className="app-inv-count">
-                {order.side === 'sell' ? '挂卖' : '挂买'} {order.price.toLocaleString('zh-CN')} 信用点 · 剩余 {order.qty.toLocaleString('zh-CN')}
+                {order.side === 'sell' ? tr("ui.MarketPage.089") : tr("ui.MarketPage.090")} {order.price.toLocaleString('zh-CN')} {tr("ui.MarketPage.091")} {order.qty.toLocaleString('zh-CN')}
                 {order.filled > 0 ? `（已成交 ${order.filled.toLocaleString('zh-CN')}）` : ''}
                 {/* 2026-09-11（船长裁决「甲」预扣冻结）：买单显示"已预扣多少"，让玩家看得见这笔钱在哪 */}
                 {order.side === 'buy' && (order.escrowIsk ?? 0) > 0
@@ -1204,9 +1204,9 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
               <button
                 className="app-btn is-small"
                 onClick={() => onJump(order.good)}
-                title="跳到市场列表：按该商品搜索并打开行情详情"
+                title={tr("ui.MarketPage.092")}
               >
-                查看行情
+                {tr("ui.MarketPage.093")}
               </button>
               <button
                 className="app-btn is-small is-warn"
@@ -1217,15 +1217,15 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
                   onToast(
                     order.side === 'sell'
                       ? engine.ctx.marketGoods.get(order.good)?.kind === 'ship'
-                        ? '卖单已撤销：舰船已退回舰船仓库。'
-                        : '卖单已撤销：货物退回库存。'
+                        ? tr("ui.MarketPage.094")
+                        : tr("ui.MarketPage.095")
                       : back > 0
                         ? `买单已撤销：预扣 ${isk(back)} 信用点 已退回钱包。`
-                        : '买单已撤销。',
+                        : tr("ui.MarketPage.096"),
                   )
                 }}
               >
-                撤单
+                {tr("ui.MarketPage.097")}
               </button>
             </div>
           </li>
@@ -1315,12 +1315,12 @@ export function MarketPage({
             <input
               className="app-mkt-search-input"
               type="search"
-              placeholder="搜索市场（同时检索常驻 / 稀有 / 限定奇货）：名称 / 商品键"
+              placeholder={tr("ui.MarketPage.098")}
               value={kw}
               onChange={(e) => setKw(e.target.value)}
             />
             <select className="app-mkt-kind" value={kind} onChange={(e) => changeKind(e.target.value as KindFilter)}>
-              <option value="all">全部类型</option>
+              <option value="all">{tr("ui.MarketPage.099")}</option>
               {KIND_OPTIONS.filter((k) => k !== 'all').map((k) => (
                 <option key={k} value={k}>
                   {KIND_TEXT[k]}
@@ -1356,7 +1356,7 @@ export function MarketPage({
                     }`
               }
               hint={<HintIcon tip={MKT_MECH_TIP} />}
-              right={<span className="app-dim">常驻 / 稀有 / 限定奇货一次搜全（商品按稀有度徽标区分）</span>}
+              right={<span className="app-dim">{tr("ui.MarketPage.100")}</span>}
               rows={filteredAll}
               selKey={activeSelKey}
               onSelect={setSelKey}
@@ -1374,38 +1374,38 @@ export function MarketPage({
                   onClick={() => setMktTab('common')}
                 >
                   <span>≡</span>
-                  <span>常驻订单</span>
+                  <span>{tr("ui.MarketPage.101")}</span>
                 </button>
                 <button
                   role="tab"
                   aria-selected={mktTab === 'rare'}
                   className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
                   onClick={() => setMktTab('rare')}
-                  title="稀有订单寿命 36 分钟、蓝图书 6 小时——每 10 分钟一轮到货，切回本标签才能看到现存单"
+                  title={tr("ui.MarketPage.102")}
                 >
                   <span>✦</span>
-                  <span>稀有订单</span>
+                  <span>{tr("ui.MarketPage.103")}</span>
                 </button>
                 <button
                   role="tab"
                   aria-selected={mktTab === 'exotic'}
                   className={`app-subtab${mktTab === 'exotic' ? ' is-active' : ''}`}
                   onClick={() => setMktTab('exotic')}
-                  title="限定奇货 6 小时有效——每 10 分钟一轮到货，切回本标签才能看到现存单"
+                  title={tr("ui.MarketPage.104")}
                 >
                   <span>◈</span>
-                  <span>限定奇货</span>
+                  <span>{tr("ui.MarketPage.028")}</span>
                 </button>
               </div>
 
               {mktTab === 'common' ? (
                 <MarketColumn
                   engine={engine}
-                  title="常驻供应"
+                  title={tr("ui.MarketPage.105")}
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
                   right={
-                    <span className="app-dim" title="市场每 60 秒按窗口补给/刷新订单（含离线期间）">
-                      下次补给 {fmtClock(nextSupplyIn(engine))} · 订单 20 分钟有效
+                    <span className="app-dim" title={tr("ui.MarketPage.106")}>
+                      {tr("ui.MarketPage.107")} {fmtClock(nextSupplyIn(engine))} · 订单 20 分钟有效
                     </span>
                   }
                   rows={stockedFirst(engine, common)}
@@ -1415,9 +1415,9 @@ export function MarketPage({
               ) : mktTab === 'rare' ? (
                 <MarketColumn
                   engine={engine}
-                  title="稀有订单"
+                  title={tr("ui.MarketPage.103")}
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
-                  right={<span className="app-dim">每 10 分钟一轮到货 · 稀有 36 分钟寿命（蓝图书 6 小时）· 时钟=现存单到期</span>}
+                  right={<span className="app-dim">{tr("ui.MarketPage.108")}</span>}
                   rows={rareOrderRows(engine, rareCol)}
                   selKey={activeSelKey}
                   onSelect={setSelKey}
@@ -1425,9 +1425,9 @@ export function MarketPage({
               ) : (
                 <MarketColumn
                   engine={engine}
-                  title="限定奇货"
+                  title={tr("ui.MarketPage.028")}
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
-                  right={<span className="app-dim">每 10 分钟一轮到货 · 限定奇货 6 小时有效 · 时钟=现存单到期</span>}
+                  right={<span className="app-dim">{tr("ui.MarketPage.109")}</span>}
                   rows={rareOrderRows(engine, exoticCol)}
                   empty="当前没有限定奇货到货——每 10 分钟一轮，稍后再看。"
                   selKey={activeSelKey}
@@ -1443,21 +1443,21 @@ export function MarketPage({
             <MarketDetail engine={engine} onToast={onToast} good={activeGood} />
           ) : (
             <Panel
-              title="市场详情"
+              title={tr("ui.MarketPage.110")}
               hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
-              right={<span className="app-dim">点击左侧商品的「 详情」查看行情</span>}
+              right={<span className="app-dim">{tr("ui.MarketPage.111")}</span>}
             >
               <div className="app-dim app-inv-empty">
-                从左侧列表选择一件商品，即可查看价格曲线、买卖盘深度与交易面板。
+                {tr("ui.MarketPage.112")}
               </div>
             </Panel>
           )}
           {/* 2026-09-08 船长：我的挂单并入右栏详情页下方（右栏弹性补齐到与左侧同高） */}
           <Panel
-            title="我的挂单"
+            title={tr("ui.MarketPage.113")}
             right={
               <span className="app-dim">
-                余额 {isk(state.wallet.isk)} 信用点 · 托管在售/在途 {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
+                {tr("ui.MarketPage.114")} {isk(state.wallet.isk)} {tr("ui.MarketPage.115")} {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))} 件
               </span>
             }
           >

@@ -891,7 +891,7 @@ export function WormholePanel({
           <>
             {workCell && bulkPiles > 0 ? (
               <div className="app-dim app-note">
-                {veinCell ? '虚空母矿' : '残骸'}堆 {bulkPiles} 堆{veinCell ? '' : '（稀有在前）'} · 编队
+                {veinCell ? '虚空母矿' : tr("ui.MarketPage.009")}堆 {bulkPiles} 堆{veinCell ? '' : '（稀有在前）'} · 编队
                 {rigName} <b>{rigs}</b> 台 ⇒ 每回合回收 {Math.min(Math.max(rigs, 0), bulkPiles)} 堆、共{' '}
                 {rigs > 0 ? Math.ceil(bulkPiles / rigs) : '—'} 回合
                 {rigs <= 0 ? `（没有${rigName}：先给编队装上${rigName}）` : ''} · 走到这一格就铺好了，不用激活
@@ -899,7 +899,7 @@ export function WormholePanel({
             ) : null}
             {shapedPiles.length > 0 ? (
               <div className="app-dim app-note">
-                另有 <b>{shapedPiles.length}</b> 件货柜：打捞器搬不动它 ——
+                {tr("ui.FitPage.072")} <b>{shapedPiles.length}</b> 件货柜：打捞器搬不动它 ——
                 点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；腾不出 2×2 会先放进临时空间）。
               </div>
             ) : null}
@@ -1949,7 +1949,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
   const cells: Array<{ label: string; value: string; sub: string; wide?: boolean }> = [
     { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} 信用点` },
     { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: tr("ui.FirstTasks.003") },
-    { label: '货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
+    { label: tr("ui.MarketPage.006"), value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
     { label: '随行战利品', value: String(settle.relics.length), sub: '件（装备 / 图纸）' },
     /**
      * **AI 核心**（2026-09-14 船长：「结算单另加一格「AI 核心 N 枚」」＋「附按行价约 N 信用点」）。
@@ -2659,7 +2659,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               : p.itemId.startsWith('box-bp-')
                 ? '图纸'
                 : p.itemId.startsWith('ai-core-')
-                  ? '核心' // AI 核心（2026-09-14）：1×1 = 1 格，短标签与货柜的「图纸」同一档
+                  ? tr("ui.MarketPage.008") // AI 核心（2026-09-14）：1×1 = 1 格，短标签与货柜的「图纸」同一档
                   : (matterDev?.short ?? '货柜')
             return (
               <div

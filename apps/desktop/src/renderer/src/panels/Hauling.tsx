@@ -27,6 +27,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { isk } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+import { tr } from '../i18n/locale'
 
 interface RouteCard {
   key: string
@@ -119,7 +120,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
   return (
     <Panel
       className="is-fill win-fixed-body"
-      title="长途运输"
+      title={tr("ui.MapPage.006")}
       hint={
         <HintIcon tip="在任意已建成站点（母港或副空间站）停靠即可接单：任选两座站点之间的航线往返运输，每段按「货仓容量 × 费率 × 航程」结算报酬；不在航线端点时会先飞「就位段」到较近端点，再自动循环。随时可停止（活动栏或航线卡「停止运输」= 即时返港，无需返程时间）。" />
       }

@@ -202,11 +202,11 @@ export function BlueprintShelfPanel({
         hint={
           // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
           // 2026-09-14 船长：虫洞专属图纸市场买不到 ⇒ 组装机那张卡改「去虫洞（遗迹打捞）」，这里同步改口径
-          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）；在市场流通的那些同样可以在组装机卡上看订单。虫洞专属图纸（装备 / 舰船）市场不出售——组装机卡上是「去虫洞（遗迹打捞）」，进洞在遗迹与图纸货柜里捞。此外：残骸回收攒到的蓝图碎片集齐后，也会作为一张卡出现在本架上，点「逆向解锁」即换到永久蓝图。" />
+          <HintIcon tip={tr("ui.Industry.005")} />
         }
-        right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}
+        right={<span className="app-dim">{tr("ui.Industry.006")}</span>}
       >
-        <div className="app-dim app-inv-empty">书架上还没有蓝图书（残骸回收攒到碎片后，这里会出现可逆向解锁的图纸卡）。</div>
+        <div className="app-dim app-inv-empty">{tr("ui.Industry.007")}</div>
       </Panel>
     )
   }
@@ -217,7 +217,7 @@ export function BlueprintShelfPanel({
       title={tr("ui.IndustryPage.060")}
       right={
         <span className="app-dim">
-          学习 = 永久可造；一次性图纸只能制造一次
+          {tr("ui.Industry.008")}
           {/* 筛选生效时补"当前 N 本"（与组装机/精炼炉同款，免得对着收窄后的网格数不清） */}
           {kind !== 'all' || sub !== SUB_ALL || useKind !== 'all' ? ` · 当前 ${shown.length} 本` : ''}
         </span>
@@ -310,13 +310,13 @@ export function BlueprintShelfPanel({
               <div className="app-belt-desc">
                 {su
                   ? learned
-                    ? '一次性图纸：已永久学会该配方，这张用不上（不消耗）'
+                    ? tr("ui.Industry.009")
                     : willConsume
-                      ? '一次性图纸：制造名额已用尽，这张开工时会直接消耗并制造一次'
-                      : '一次性图纸：不能学习——到组装机开工时消耗，只能制造一次'
+                      ? tr("ui.Industry.010")
+                      : tr("ui.Industry.011")
                   : learned
-                    ? '配方已学会（重复书可出售）'
-                    : '尚未学习——学习后永久可造'}
+                    ? tr("ui.Industry.012")
+                    : tr("ui.Industry.013")}
               </div>
               <div className="app-belt-actions">
                 {/* **去组装机**（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图直接跳转对应组装机」）——
@@ -324,20 +324,20 @@ export function BlueprintShelfPanel({
                 {onGotoCraft ? (
                   <button
                     className="app-btn is-small"
-                    title="跳到组装机并定位这张图纸的卡片（那里才能开工制造）"
+                    title={tr("ui.Industry.014")}
                     onClick={() => onGotoCraft(id)}
                   >
-                    去组装机
+                    {tr("ui.Industry.015")}
                   </button>
                 ) : null}
                 {!learned && !su ? (
                   <button className="app-btn is-small is-primary" onClick={() => handleLearn(id)}>
-                    学习
+                    {tr("ui.Industry.016")}
                   </button>
                 ) : null}
                 {!su ? (
-                  <button className="app-btn is-small" onClick={() => handleSell(id)} title="按市场收购价卖出这本蓝图书（重复书只能出售）">
-                    市价出售
+                  <button className="app-btn is-small" onClick={() => handleSell(id)} title={tr("ui.Industry.017")}>
+                    {tr("ui.Industry.018")}
                   </button>
                 ) : null}
               </div>
@@ -354,12 +354,12 @@ export function BlueprintShelfPanel({
               ▦ {r.blueprintName}
             </span>
             <span className="app-chip" style={{ marginLeft: 'auto' }}>
-              碎片 {r.have}/{r.need}
+              {tr("ui.Industry.019")} {r.have}/{r.need}
             </span>
           </div>
           <div className="app-belt-desc">
             {r.have >= r.need
-              ? '碎片已集齐——逆向解锁后永久可造（残骸回收的彩头掉落）'
+              ? tr("ui.Industry.020")
               : `碎片未集齐：还差 ${r.need - r.have} 片（来自残骸回收的彩头掉落）`}
           </div>
           <div className="app-belt-actions">
@@ -368,7 +368,7 @@ export function BlueprintShelfPanel({
         </div>
       ))}
       {shown.length === 0 && fragShown.length === 0 ? (
-        <div className="app-dim app-inv-empty">{t('这一类书架里没有书，也没有可逆向的碎片。')}</div>
+        <div className="app-dim app-inv-empty">{tr("ui.Industry.094")}</div>
       ) : null}
     </Panel>
   )
@@ -381,9 +381,9 @@ export function BlueprintShelfPanel({
 type ManuTab = 'all' | 'equip' | 'ship' | 'supply'
 const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
   { key: 'all', label: tr("ui.IndustryPage.001") },
-  { key: 'equip', label: '装备蓝图' },
-  { key: 'ship', label: '舰船蓝图' },
-  { key: 'supply', label: '消耗品蓝图' },
+  { key: 'equip', label: tr("ui.ShipPage.115") },
+  { key: 'ship', label: tr("ui.ShipPage.116") },
+  { key: 'supply', label: tr("ui.ShipPage.114") },
 ]
 
 /**
@@ -407,9 +407,9 @@ function manuSubsOf(tab: ManuTab): SubOption[] {
  */
 type BlueprintUse = 'all' | 'perm' | 'single'
 const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUse; label: string }> = [
-  { key: 'all', label: '全部图纸' },
-  { key: 'perm', label: '永久蓝图' },
-  { key: 'single', label: '一次性蓝图' },
+  { key: 'all', label: tr("ui.Industry.022") },
+  { key: 'perm', label: tr("ui.Industry.023") },
+  { key: 'single', label: tr("ui.Industry.024") },
 ]
 
 /** 蓝图筛选三件套（类别 / 子类 / 是否一次性）——**单点**：组装机与蓝图书架都读它，键与组装机的分组逐字同源
@@ -442,17 +442,17 @@ function isWormholeBlueprint(bpId: string): boolean {
  * 与精炼炉卡的手动判定同口径：手动工作位全局限 1 条（精炼炉/回收炉/制造线共用）） */
 function manualBuildNote(state: GameState): string | null {
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return '你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。'
+    return tr("ui.Industry.025")
   }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。'
+    return tr("ui.Industry.026")
   }
   if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
   if (state.mining.active) return tr("ui.IndustryPage.011")
   if (state.salvaging.active) return tr("ui.IndustryPage.012")
   if (state.expedition.active) return tr("ui.IndustryPage.013")
   if (state.standby.active) return tr("ui.IndustryPage.014")
-  if (state.transit.active) return '返航途中：到站后再开线。'
+  if (state.transit.active) return tr("ui.Industry.027")
   return null
 }
 
@@ -537,11 +537,11 @@ function BlueprintCard({
   const oneTimeNote = !singleUse
     ? null
     : owned
-      ? '已永久学会该配方：这张一次性图纸用不上（不消耗，可留作纪念或转手）'
+      ? tr("ui.Industry.028")
       : cap.kind === 'exhausted'
-        ? '这张一次性图纸的制造名额已用尽：要再造需要再获得一张同名图纸'
+        ? tr("ui.Industry.029")
         : cap.kind !== 'ok'
-          ? '一次性图纸不在蓝图书架：需要先获得这张图纸'
+          ? tr("ui.Industry.030")
           : null
   const short = missingMaterials(state, engine.ctx, spec)
   const goodKey = bpGoodKey(engine, blueprintId)
@@ -619,7 +619,7 @@ function BlueprintCard({
     }
     onToast(
       worker === 'pilot'
-        ? '主控亲自开工：材料已扣除，线已开（期间不可离港作业）。'
+        ? tr("ui.Industry.031")
         : `${aiCoreName(worker)}已接入：材料已扣除，线已开（核心占用一枚，完成/取消自动归还）。`,
     )
   }
@@ -677,15 +677,15 @@ function BlueprintCard({
     manualNote ??
     feedTxt ??
     (running
-      ? '主控亲自再加开一条线：材料立即扣除（主控手动工作位全局限 1 条，其余线须 AI 驱动）'
-      : '主控亲自开一条制造线：材料立即扣除，期间不可离港作业')
+      ? tr("ui.Industry.032")
+      : tr("ui.Industry.033"))
   const aiTitle = feedTxt
     ? feedTxt
     : core
       ? running
-        ? '接入一枚闲置 AI 核心再加开一条线（核心出库占用；完成/取消自动归还）'
-        : '接入 AI 核心自动制造：材料立即扣除（核心出库占用一枚；不占主控与副船名额）'
-      : '没有可用 AI 核心——先在市场购买「基础 AI 核心」（空间站直购）。'
+        ? tr("ui.Industry.034")
+        : tr("ui.Industry.035")
+      : tr("ui.Industry.036")
 
   return (
     <div className={`app-belt-card is-assembler${highlighted ? ' is-goto' : ''}`}>
@@ -694,7 +694,7 @@ function BlueprintCard({
           <RowGlyph glyph={productGlyph} /> {name}
           {running ? (
             <em className="app-belt-flag is-run">
-              {kindLabel === '舰船' ? '造船中' : '制造中'}
+              {kindLabel === '舰船' ? tr("ui.Industry.037") : tr("ui.Industry.038")}
               {runs.length > 1 ? ` ×${runs.length}` : ''}
             </em>
           ) : null}
@@ -704,13 +704,13 @@ function BlueprintCard({
         <span className="app-belt-head-right">
           <MarkStar engine={engine} kind="blueprints" id={blueprintId} />
           {owned ? (
-            <span className="app-chip">已学会</span>
+            <span className="app-chip">{tr("ui.Industry.039")}</span>
           ) : singleUse && bookCount > 0 ? (
-            <span className="app-chip is-stock" title="一次性图纸：不能学习，只能到组装机直接制造一次（开工时消耗这张图纸）">
-              一次性图纸 ×{bookCount}
+            <span className="app-chip is-stock" title={tr("ui.Industry.040")}>
+              {tr("ui.Industry.041")}{bookCount}
             </span>
           ) : bookCount > 0 ? (
-            <span className="app-chip">蓝图书 ×{bookCount}</span>
+            <span className="app-chip">{tr("ui.Industry.042")}{bookCount}</span>
           ) : lock ? (
             <span className="app-chip is-exotic" title={`${lock}——这只影响「在市场买这本书」，不影响组装机开工`}>
               ✕ {lock}
@@ -723,17 +723,17 @@ function BlueprintCard({
       <div className="app-belt-desc">{description}</div>
 
       <div className="app-belt-ore">
-        产物：{productNode ?? productLabel}
+        {tr("ui.Handbook.013")}{productNode ?? productLabel}
         <span className="app-dim" title={`自己已有的成品数量：${ownedWhere}；已挂单托管的量不计在内（与市场页「持有」同源）`}>
           （{ownedWhere} {ownedCount.toLocaleString('zh-CN')}）
         </span>
         {running ? (
           <>
             {' '}
-            · 已开 {runs.length} 条线，首条约 {formatDurationMs(Math.min(...runs.map((v) => v.remainingMs)))} 到点
+            · 已开 {runs.length} {tr("ui.Industry.043")} {formatDurationMs(Math.min(...runs.map((v) => v.remainingMs)))} {tr("ui.Industry.044")}
           </>
         ) : (
-          <> · 主控耗时 {formatDurationMs(buildMs)}（技能修正后；AI 核心另按效率拉长）</>
+          <> · 主控耗时 {formatDurationMs(buildMs)}{tr("ui.Industry.045")}</>
         )}
       </div>
       <ul className="app-bp-mats">
@@ -747,7 +747,7 @@ function BlueprintCard({
             <li key={need.itemId} className={`app-bp-mat${!enough && !running ? ' is-short' : ''}`}>
               {matName} ×{needCount.toLocaleString('zh-CN')}
               {needCount !== need.count ? (
-                <span className="app-dim">（原 ×{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span>
+                <span className="app-dim">{tr("ui.Industry.046")}{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span>
               ) : null}
               <span className="app-dim">{tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}）</span>
               {onNeedMineral ? (
@@ -766,7 +766,7 @@ function BlueprintCard({
                       }
                       onClick={() => onNeedMineral?.(need.itemId)}
                     >
-                      {srcs.length > 0 ? '⚒ 去精炼' : '🛒 去市场'}
+                      {srcs.length > 0 ? tr("ui.Industry.047") : tr("ui.Industry.048")}
                     </span>
                   )
                 })()
@@ -777,17 +777,17 @@ function BlueprintCard({
       </ul>
       <div className="app-belt-econ">
         <div>
-          理论收益率：
-          {running && feedTxt ? <span className="app-dim">（余料不足「加开一条线」，缺口见按钮提示）</span> : null}
+          {tr("ui.Industry.049")}
+          {running && feedTxt ? <span className="app-dim">{tr("ui.Industry.050")}</span> : null}
         </div>
         {netPerH !== null ? (
           <div
             className={`app-belt-econ-val${netPerH < 0 ? ' is-neg' : ''}`}
             title={`净收益估算：每件产物（市场现货基准价）− 每件材料（站内收价，材料学折扣后），按当前技能单件耗时折算每小时；不随市场收购波动、未计成交税。${
-              netPerH < 0 ? '当前价格与技能下制造不如直接卖材料。' : '卖出给空间站按收购档（约 6~7 折），自用装配则按现货价计。'
+              netPerH < 0 ? tr("ui.Industry.051") : tr("ui.Industry.052")
             }`}
           >
-            {MONEY_GLYPH} ≈{netPerH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}{netPerH < 0 ? '（净亏：直接卖材料更划算）' : '（净 · 现货价）'}
+            {MONEY_GLYPH} ≈{netPerH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}{netPerH < 0 ? tr("ui.Industry.053") : tr("ui.Industry.054")}
           </div>
         ) : null}
       </div>
@@ -800,7 +800,7 @@ function BlueprintCard({
           <div className="app-belt-loop">
             <label
               className="app-toggle"
-              title={`循环制造：本卡全部制造线完成一件后自动续做同一蓝图（含主控亲自那条；劳动者/核心保持占用）；${loop.on ? '关闭后' : '打开后'}本卡在跑的线完成当前件即止`}
+              title={`循环制造：本卡全部制造线完成一件后自动续做同一蓝图（含主控亲自那条；劳动者/核心保持占用）；${loop.on ? tr("ui.Industry.055") : tr("ui.Industry.056")}本卡在跑的线完成当前件即止`}
             >
               <input
                 type="checkbox"
@@ -809,11 +809,11 @@ function BlueprintCard({
                 onChange={(e) => commitLoop(e.target.checked, e.target.checked ? (goalDraft || (loop.goal > 0 ? String(loop.goal) : '')) : '')}
               />
               <span className="app-toggle-track" aria-hidden="true" />
-              <span className="app-toggle-label">循环制造</span>
+              <span className="app-toggle-label">{tr("ui.Industry.057")}</span>
             </label>
             {loop.on ? (
               <span className="app-mf-goal">
-                目标
+                {tr("ui.Industry.058")}
                 <input
                   type="number"
                   min={1}
@@ -834,15 +834,15 @@ function BlueprintCard({
                       commitLoop(true, (e.target as HTMLInputElement).value)
                     }
                   }}
-                  title="目标批数：本卡全部制造线合计做到这么多批就停（留空 = 直到材料不足自动停）；一批的产出件数见蓝图说明；回车、点空白处、或离开本页都会记住"
+                  title={tr("ui.Industry.059")}
                 />
-                件<em className="app-dim">（全卡合计）</em>
+                件<em className="app-dim">{tr("ui.Industry.060")}</em>
               </span>
             ) : null}
-            {loop.produced > 0 ? <span className="app-mf-made">已产 {loop.produced.toLocaleString('zh-CN')} 件</span> : null}
-            {loop.stopWhy.length > 0 ? <span className="app-mf-why">已停线：{loop.stopWhy}</span> : null}
+            {loop.produced > 0 ? <span className="app-mf-made">{tr("ui.Industry.061")} {loop.produced.toLocaleString('zh-CN')} 件</span> : null}
+            {loop.stopWhy.length > 0 ? <span className="app-mf-why">{tr("ui.Industry.062")}{loop.stopWhy}</span> : null}
             <span className="app-dim app-mf-note">
-              作用于本卡全部制造线{runs.length > 0 ? `（当前 ${runs.length} 条）` : ''}
+              {tr("ui.Industry.063")}{runs.length > 0 ? `（当前 ${runs.length} 条）` : ''}
             </span>
           </div>
         ) : null}
@@ -854,9 +854,9 @@ function BlueprintCard({
               <span key={v.id} className="app-belt-worker">
                 <span
                   className="app-belt-worker-name"
-                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? '入舰船仓库' : '入库'}${v.worker === null ? '（旧作业：老规则免占用线，跑完即止）' : ''}`}
+                  title={`总耗时 ${formatDurationMs(v.durationMs)}；到点自动${kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065")}${v.worker === null ? tr("ui.Industry.066") : ''}`}
                 >
-                  {v.worker === null ? '⚙ 旧作业' : v.worker === 'pilot' ? '⛏ 主控亲自' : `⚙ ${v.workerLabel}驱动`} · 剩余约{' '}
+                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : `⚙ ${v.workerLabel}驱动`} · 剩余约{' '}
                   {formatDurationMs(v.remainingMs)}
                 </span>
                 <span className="app-progress-mini" title={`制造进度 ${v.percent}%`}>
@@ -865,9 +865,9 @@ function BlueprintCard({
                 <button
                   className="app-btn is-small is-warn"
                   onClick={() => handleCancel(v.id)}
-                  title="取消这条制造线：材料按材料学折扣后的实际用量全额退回（AI 核心自动归还），其它线不受影响"
+                  title={tr("ui.Industry.069")}
                 >
-                  ■ 取消
+                  {tr("ui.Industry.070")}
                 </button>
               </span>
             ))}
@@ -882,7 +882,7 @@ function BlueprintCard({
               title={oneTimeNote ?? manualTitle}
               onClick={() => runWith('pilot')}
             >
-              手动制造
+              {tr("ui.Industry.071")}
             </button>
             {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10） */}
             <div className="app-belt-ai">
@@ -894,7 +894,7 @@ function BlueprintCard({
                 title={
                   usableCores.length === 0
                     ? tr("ui.IndustryPage.051")
-                    : '选择接入 AI 核心：一枚核心驱动一条线（驱动期间该核心被占用并计入 AI 核心启用上限——上限由 AI 核心上限技能决定，与 AI 副船任务共用）'
+                    : tr("ui.Industry.072")
                 }
               >
                 {usableCores.length === 0 ? (
@@ -913,7 +913,7 @@ function BlueprintCard({
                 title={oneTimeNote ?? (core ? aiTitle : tr("ui.IndustryPage.055"))}
                 onClick={() => core && runWith(core)}
               >
-                AI 制造
+                {tr("ui.Industry.073")}
               </button>
             </div>
           </>
@@ -926,7 +926,7 @@ function BlueprintCard({
             title={`蓝图书架已有这本图纸 ×${bookCount}：点此学习（不消耗书），学会后本卡永久可造`}
             onClick={handleLearnFromShelf}
           >
-            学习该配方（书架已有书）
+            {tr("ui.Industry.074")}
           </button>
         ) : whBlueprint ? (
           /**
@@ -940,12 +940,12 @@ function BlueprintCard({
             disabled={!whUnlocked}
             title={
               whUnlocked
-                ? '虫洞专属图纸：市场不出售（只收不卖）——点此跳到「扫描虫洞」进洞，在遗迹与图纸货柜里打捞同名图纸'
+                ? tr("ui.Industry.075")
                 : `虫洞尚未解锁：需「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${whStanding}）——先去协会攒声望`
             }
             onClick={handleGotoWormhole}
           >
-            {whUnlocked ? '去虫洞（遗迹打捞）' : '✕ 虫洞未解锁'}
+            {whUnlocked ? tr("ui.Industry.076") : tr("ui.Industry.077")}
           </button>
         ) : singleUse && bookBuyable ? (
           /* 一次性图纸（2026-09-14 船长：「组装机的一次性蓝图制造如果没有蓝图，也改为跳转市场，
@@ -955,12 +955,12 @@ function BlueprintCard({
             className="app-btn is-small"
             title={
               cap.kind === 'exhausted'
-                ? '本门一次性图纸的名额已用尽：要再造需要再获得一张同名图纸——点此跳市场看这张图纸的订单（稀有订单层 / 奇货偶有现货）'
-                : '一次性图纸：不能学习，只能用一次——组装机开工时消耗。点此跳市场看这张图纸的订单（稀有订单层 / 奇货偶有现货）'
+                ? tr("ui.Industry.078")
+                : tr("ui.Industry.079")
             }
             onClick={handleGotoMarket}
           >
-            市场求购蓝图书{cap.kind === 'exhausted' ? '（名额已用尽）' : ''}
+            {tr("ui.Industry.080")}{cap.kind === 'exhausted' ? tr("ui.Industry.081") : ''}
           </button>
         ) : singleUse ? (
           /* 一次性图纸**不在市场流通**的（既非虫洞线、市场目录里也没有它）：写清唯一来源，不挂死路按钮 */
@@ -969,21 +969,21 @@ function BlueprintCard({
             disabled
             title={
               cap.kind === 'exhausted'
-                ? '本门一次性图纸的名额已用尽：这张不在市场流通，只能从稀有残骸的额外战利品里再得到一张同名图纸'
-                : '一次性图纸：不能学习，只能用一次。这张不在市场流通——只能从稀有残骸的额外战利品里得到'
+                ? tr("ui.Industry.082")
+                : tr("ui.Industry.083")
             }
           >
-            {cap.kind === 'exhausted' ? '✕ 制造名额已用尽（稀有残骸）' : '✕ 需要一次性图纸（稀有残骸）'}
+            {cap.kind === 'exhausted' ? tr("ui.Industry.084") : tr("ui.Industry.085")}
           </button>
         ) : bookBuyable ? (
           /* 求购 = 只跳市场行情详情，不替玩家下单（2026-09-14 船长口径） */
-          <button className="app-btn is-small" title="跳到市场的该蓝图行情详情：买现货或按自己的价挂买单" onClick={handleGotoMarket}>
-            市场求购蓝图书
+          <button className="app-btn is-small" title={tr("ui.Industry.086")} onClick={handleGotoMarket}>
+            {tr("ui.Industry.080")}
           </button>
         ) : (
           /* 市场目录里根本没有这张图（可获得的渠道不在市场）：别给死路按钮 */
-          <button className="app-btn is-small" disabled title="这张图纸不在市场流通目录——来源见产物说明（洞内打捞 / 稀有残骸的额外战利品等）">
-            ✕ 无市场渠道
+          <button className="app-btn is-small" disabled title={tr("ui.Industry.087")}>
+            {tr("ui.Industry.088")}
           </button>
         )}
       </div>
@@ -1097,7 +1097,7 @@ export function ManufacturingPanel({
         productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
         // 舰船产物：机库同型艘数（与市场页「持有」同口径；core 自然库存对舰船恒 0）
         ownedCount: shipStockOf(sbp.shipId),
-        ownedWhere: '仓库＋机库',
+        ownedWhere: tr("ui.Industry.089"),
         bookPrice: bookPriceOf(engine, sbp.id, 0),
         productKey: `ship:${sbp.shipId}`,
         singleUse: sbp.singleUse === true,
@@ -1152,7 +1152,7 @@ export function ManufacturingPanel({
       )
       items.push({
         id: bp.id,
-        kindLabel: '消耗品',
+        kindLabel: tr("ui.MarketPage.007"),
         subKey: itemDef?.kind ?? '',
         productGlyph: itemDef?.kind ?? 'blueprint',
         name: bp.name,
@@ -1216,12 +1216,12 @@ export function ManufacturingPanel({
       title={tr("ui.IndustryPage.059")}
       hint={
         // 常驻说明收进标题后的圆形感叹号（2026-09-13 船长口径）；2026-09-14 船长点名："组装机的说明并没有隐藏"
-        <HintIcon tip="已学会的配方才能开工；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。" />
+        <HintIcon tip={tr("ui.Industry.090")} />
       }
       right={
         <>
           <span className="app-dim">
-            制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}
+            {tr("ui.Industry.091")} {runViews.length} {tr("ui.Industry.092")} {equipN} · 舰船 {shipN} · 已学会 {learnedN}
             {/* 子筛选/三级筛选生效时补一个"当前 N 张"，避免玩家对着收窄后的网格数不清 */}
             {sub !== SUB_ALL || useKind !== 'all' ? ` · 当前 ${sorted.length} 张` : ''}
           </span>
@@ -1324,7 +1324,7 @@ export function ManufacturingPanel({
           ))}
         </div>
         {sorted.length === 0 ? (
-          <div className="app-dim app-exp-idle">该筛选下暂无蓝图——换个分类、或把「全部子类 / 全部图纸」点回来看看。</div>
+          <div className="app-dim app-exp-idle">{tr("ui.Industry.093")}</div>
         ) : null}
       </div>
     </Panel>

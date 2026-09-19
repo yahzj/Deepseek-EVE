@@ -11,6 +11,7 @@
  * 文案与类名对齐工业页回收卡既有行（同族最小差异，不另起样式）。
  */
 import { FRAGMENT_RECIPES, recycleBatchValueFromYield, recyclePoolMeanIsk } from '@whale/core'
+import { tr } from '../i18n/locale'
 
 /** 一件掉落物的名字来源（模块或物品；无人机物品按「×N 架」写） */
 type NameMaps = {
@@ -76,7 +77,7 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
     // 2026-09-11 船长：「掉落说明中『必定掉落 / 不重复』会误导玩家，建议删除，只显示掉落列表」
     // ⇒ 具名行只列件名（不再附「该敌群专属装备，每炉必给一件」这类保底口径）。
     named.push(names.join('、'))
-    return { label: '特色掉落', named, generic: [], tone: 'strong' }
+    return { label: tr("ui.MapPage.058"), named, generic: [], tone: 'strong' }
   }
   // 主题追加件（中安 modules 组、低安 mk2 组）——按敌群特色具名
   const themed = [...(src.loot?.modules ?? []), ...(src.loot?.mk2 ?? [])]
@@ -89,10 +90,10 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
   const series = ['民用与 MK1 系列装备']
   if (src.lowSec) series.push('MK2 系列装备')
   // 有具名特色件时用「另有…」；没有（整行退为「其他掉落」）时直接给系列名
-  generic.push(`${named.length > 0 ? '另有' : ''}${series.join('、')}`)
+  generic.push(`${named.length > 0 ? tr("ui.FitPage.072") : ''}${series.join('、')}`)
   const frag = fragClause(src.threat)
   if (frag) generic.push(frag)
-  return { label: named.length > 0 ? '特色掉落' : '其他掉落', named, generic, tone: 'normal' }
+  return { label: named.length > 0 ? tr("ui.MapPage.058") : tr("ui.MapPage.059"), named, generic, tone: 'normal' }
 }
 
 /**

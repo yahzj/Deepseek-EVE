@@ -40,7 +40,7 @@ export function SellQtyModal({
         <div className="app-fit-modal-head">
           <span>出售数量 · {name}</span>
           <button className="app-btn is-small" onClick={onClose}>
-            关闭
+            {tr("ui.FitPage.055")}
           </button>
         </div>
         <div className="app-itempick-head">

@@ -176,7 +176,7 @@ export const BLUEPRINT_SUBS: SubOption[] = [
 ]
 
 export const CORE_SUBS: SubOption[] = [
-  { key: 'basic', label: '基础核心' },
+  { key: 'basic', label: tr("ui.MarketPage.020") },
   { key: 'gamma', label: '伽马核心' },
   { key: 'beta', label: '贝塔核心' },
   { key: 'alpha', label: '阿尔法核心' },

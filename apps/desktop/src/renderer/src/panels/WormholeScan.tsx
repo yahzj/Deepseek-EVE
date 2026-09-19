@@ -115,7 +115,7 @@ export function WormholeScanTab({
   return (
     <Panel
       className="is-fill win-fixed-body"
-      title="扫描虫洞"
+      title={tr("ui.MapPage.007")}
       /* 常驻说明进标题后的 ⓘ（2026-09-14 船长：「和外面的其他页面一样，添加圆形感叹号用于进行说明」；
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={

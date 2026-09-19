@@ -60,15 +60,15 @@ export interface MapGotoTarget {
  */
 export type { TaskFocusTarget } from './TaskCenterPage'
 export const MAP_TABS: Array<{ key: MapTab; label: string; icon: string }> = [
-  { key: 'star', label: '星图·远征', icon: 'nav-map' },
-  { key: 'mine', label: '矿带开采', icon: 'nav-mine' },
-  { key: 'bounty', label: '常驻悬赏', icon: 'nav-bounty' },
-  { key: 'salvage', label: '残骸打捞', icon: 'nav-salvage' },
+  { key: 'star', label: tr("ui.MapPage.002"), icon: 'nav-map' },
+  { key: 'mine', label: tr("ui.MapPage.003"), icon: 'nav-mine' },
+  { key: 'bounty', label: tr("ui.MapPage.004"), icon: 'nav-bounty' },
+  { key: 'salvage', label: tr("ui.MapPage.005"), icon: 'nav-salvage' },
   /* 长途运输（2026-09-09 船长：独立出任务中心、置于残骸打捞之后；至少建成一座副空间站解锁） */
-  { key: 'haul', label: '长途运输', icon: 'nav-haul' },
+  { key: 'haul', label: tr("ui.MapPage.006"), icon: 'nav-haul' },
   /* 任务中心 2026-09-14 已搬成左侧导航的独立一级页（船长：移出星图、放在通讯上方）⇒ 本页不再有该选项卡 */
   /* 扫描虫洞（2026-09-14 船长：放进「出港界面的选项卡内」）：✅ 同日解除不可见 ⇒ **常驻标签**（解锁门槛在页内：协会声望 ≥ 40） */
-  { key: 'whscan', label: '扫描虫洞', icon: 'nav-wormhole' },
+  { key: 'whscan', label: tr("ui.MapPage.007"), icon: 'nav-wormhole' },
 ]
 
 /**
@@ -88,17 +88,17 @@ export const TAB_UNLOCK_KEY: Partial<Record<MapTab, string>> = {
 type BeltSortKey = 'danger' | 'galaxy' | 'value' | 'name'
 const BELT_SORT_KEY = 'whale-idle:mine-sort'
 const BELT_SORT_LABEL: Record<BeltSortKey, string> = {
-  danger: '危险（安全优先）',
-  galaxy: '星系名称',
-  value: '原矿价值最高',
-  name: '矿带名称',
+  danger: tr("ui.MapPage.008"),
+  galaxy: tr("ui.MapPage.009"),
+  value: tr("ui.MapPage.010"),
+  name: tr("ui.MapPage.011"),
 }
 type WreckSortKey = 'danger' | 'galaxy' | 'density' | 'name'
 const WRECK_SORT_KEY = 'whale-idle:salvage-sort'
 const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
-  danger: '危险（安全优先）',
-  galaxy: '星系名称',
-  density: '残骸密度最高',
+  danger: tr("ui.MapPage.008"),
+  galaxy: tr("ui.MapPage.009"),
+  density: tr("ui.MapPage.012"),
   name: tr("ui.MapPage.001"),
 }
 
@@ -299,16 +299,16 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
   return (
     <Panel
       className="is-fill"
-      title="本地矿带开采"
-      right={view.active ? <span className="app-dim">作业中 · 实时进度与「停止」见顶部活动栏</span> : null}
+      title={tr("ui.MapPage.013")}
+      right={view.active ? <span className="app-dim">{tr("ui.MapPage.014")}</span> : null}
     >
       {/* T1：作业状态与停止入口已收敛到顶部活动窗口；换驾驶=到「舰船」页直接切换（旧船自动返航卸货） */}
       {view.active ? (
         <div className="app-dim app-inv-empty">
-          {phaseText()}——本卡「停止开采」也可直接操作；想换船去「舰船」页切换驾驶，旧船会自动返航卸货。
+          {phaseText()}{tr("ui.MapPage.015")}
         </div>
       ) : (
-        <div className="app-dim app-inv-empty">在下方矿带卡片上开始采掘——指令下达即抵达矿带开工。</div>
+        <div className="app-dim app-inv-empty">{tr("ui.MapPage.016")}</div>
       )}
 
       {/* 设置行 */}
@@ -320,7 +320,7 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
             disabled={view.active}
             onChange={(e) => engine.setAutoCycleAt(e.target.checked)}
           />
-          自动循环（满舱返航卸入仓库 → 去程并入返航 → 自动再采掘）
+          {tr("ui.MapPage.017")}
         </label>
         <label className="app-check">
           <input
@@ -329,13 +329,13 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
             disabled={!view.autoCycle || !view.active}
             onChange={(e) => engine.setStopAfterTripAt(e.target.checked)}
           />
-          本次返航卸货后停止
+          {tr("ui.MapPage.018")}
         </label>
       </div>
 
       {/* 矿带排序行（默认：危险 = 星系安全等级降序 = 安全在前；选择存本地） */}
       <div className="app-task-sortrow">
-        <span className="app-dim">矿带排序：</span>
+        <span className="app-dim">{tr("ui.MapPage.019")}</span>
         <select className="app-select" value={sort} onChange={(e) => changeSort(e.target.value as BeltSortKey)}>
           {(Object.keys(BELT_SORT_LABEL) as BeltSortKey[]).map((k) => (
             <option key={k} value={k}>
@@ -470,12 +470,12 @@ function BeltCard({
       <div className="app-belt-head">
         <span className="app-belt-name">
           {belt.name}
-          {isActiveBelt ? <em className="app-belt-flag is-run"><span className="app-ico"><Glyph name="nav-mine" size={12} color={NAV_TONES["nav-mine"]} /></span>主控采掘中</em> : null}
+          {isActiveBelt ? <em className="app-belt-flag is-run"><span className="app-ico"><Glyph name="nav-mine" size={12} color={NAV_TONES["nav-mine"]} /></span>{tr("ui.MapPage.020")}</em> : null}
           {locked ? (
             unexplored ? (
-              <em className="app-belt-flag"><span className="app-ico"><Glyph name="ico-scan" size={12} color={ICO_TONES["ico-scan"]} /></span>所在星系未探索</em>
+              <em className="app-belt-flag"><span className="app-ico"><Glyph name="ico-scan" size={12} color={ICO_TONES["ico-scan"]} /></span>{tr("ui.MapPage.021")}</em>
             ) : (
-              <em className="app-belt-flag">✕ 需声望 {belt.standingReq}</em>
+              <em className="app-belt-flag">{tr("ui.MapPage.022")} {belt.standingReq}</em>
             )
           ) : null}
         </span>
@@ -492,17 +492,17 @@ function BeltCard({
       {isActiveBelt ? (
         <div
           className={`app-card-progress${mv.phase !== 'mining' ? ' is-travel' : ''}`}
-          title={`${mv.phaseLabel} · 进度 ${mv.percent}%（${mv.phase === 'mining' ? '当前采掘循环' : '行程'}）`}
+          title={`${mv.phaseLabel} · 进度 ${mv.percent}%（${mv.phase === 'mining' ? tr("ui.MapPage.023") : tr("ui.MapPage.024")}）`}
         >
           <i style={{ width: `${mv.percent}%` }} />
         </div>
       ) : null}
       <div className="app-belt-ore">
-        所在 {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
-        {unexplored ? '（到「星图·远征」对该星系「未知信号」扫描后解锁）' : ''}
+        {tr("ui.MapPage.025")} {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
+        {unexplored ? tr("ui.MapPage.026") : ''}
       </div>
       {effLine || valLine ? (
-        <div className="app-belt-econ" title="按物品本身估价（不随市场浮动）计算：每小时循环数 × 每循环产量 × 加权估价">
+        <div className="app-belt-econ" title={tr("ui.MapPage.027")}>
           {effLine ? <div><span className="app-ico"><Glyph name="nav-mine" size={12} color={NAV_TONES["nav-mine"]} /></span>{effLine}</div> : null}
           {valLine ? <div className="app-belt-econ-val">{MONEY_GLYPH} {valLine}</div> : null}
         </div>
@@ -556,33 +556,33 @@ function BeltCard({
           title={
             locked
               ? unexplored
-                ? '所在星系未探索：先在星图对其「未知信号」执行扫描探索'
+                ? tr("ui.MapPage.028")
                 : `需要「深空工业协会」声望 ${belt.standingReq}（当前 ${standing}）`
               : isActiveBelt
-                ? '停止当前开采'
+                ? tr("ui.MapPage.029")
                 : !canStart
-                  ? '采矿作业进行中：先停止当前开采'
+                  ? tr("ui.MapPage.030")
                   : mineAsk
-                    ? '确认已展开在下方——用面板按钮操作'
+                    ? tr("ui.MapPage.031")
                     : expeditionOn
-                      ? '远征中：点击展开转开采确认（将取消本次远征并停止讨伐）'
+                      ? tr("ui.MapPage.032")
                       : undefined
           }
           onClick={mineStartClick}
         >
-          {isActiveBelt ? '停止开采' : expeditionOn ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES["ico-swap"]} /></span>转开采</>) : (<><span className="app-ico"><Glyph name="nav-mine" size={13} color={NAV_TONES["nav-mine"]} /></span>开始开采</>)}
+          {isActiveBelt ? tr("ui.MapPage.033") : expeditionOn ? (<><span className="app-ico"><Glyph name="ico-swap" size={13} color={ICO_TONES["ico-swap"]} /></span>{tr("ui.MapPage.034")}</>) : (<><span className="app-ico"><Glyph name="nav-mine" size={13} color={NAV_TONES["nav-mine"]} /></span>{tr("ui.MapPage.035")}</>)}
         </button>
         {/* T4 延后项：远征中转开采的醒目内联警示（取代易忽略的底部提示） */}
         {mineAsk ? (
           <div className="app-ano-switch-confirm">
             <div className="app-sell-warn">
-              ⚠ 远征中开采 = <b>转场</b>：本次远征将立即取消——
-              <b> 无战果、无返程</b>
-              {state.autoLoopAnomalyId !== null ? '，重复清剿同步停止' : ''}，随即在「{belt.name}」开始采矿。
+              {tr("ui.MapPage.036")} <b>{tr("ui.MapPage.037")}</b>：本次远征将立即取消——
+              <b> {tr("ui.MapPage.038")}</b>
+              {state.autoLoopAnomalyId !== null ? tr("ui.MapPage.039") : ''}，随即在「{belt.name}{tr("ui.MapPage.040")}
             </div>
             <div className="app-sell-confirm-btns">
               <button className="app-btn is-small is-danger" onClick={mineStartClick}>
-                确认开采
+                {tr("ui.MapPage.041")}
               </button>
               <button className="app-btn is-small" onClick={() => setMineAsk(false)}>
                 {tr("ui.ActivityBar.004")}
@@ -592,8 +592,8 @@ function BeltCard({
         ) : null}
 
         <div className="app-belt-ai">
-          <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title="选择空闲副船">
-            <option value="">— 空闲副船 —</option>
+          <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title={tr("ui.MapPage.042")}>
+            <option value="">{tr("ui.MapPage.043")}</option>
             {idleShips.map((id) => {
               return (
                 <option key={id} value={id}>
@@ -602,7 +602,7 @@ function BeltCard({
               )
             })}
           </select>
-          <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title="AI 核心类型（无库存类型不列出）">
+          <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title={tr("ui.MapPage.044")}>
             {usableCores.map((t) => (
               <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
@@ -610,10 +610,10 @@ function BeltCard({
           <button
             className="app-btn is-small"
             disabled={locked || !aiShipId || usableCores.length === 0}
-            title={locked ? (unexplored ? '所在星系未探索' : `需声望 ${belt.standingReq}`) : usableCores.length === 0 ? '没有可用的 AI 核心——先购入基础核心或等远征掉落' : aiShipId ? '指派 AI 副船开采此矿带' : '先在下拉中选择空闲副船'}
+            title={locked ? (unexplored ? tr("ui.MapPage.021") : `需声望 ${belt.standingReq}`) : usableCores.length === 0 ? tr("ui.MapPage.045") : aiShipId ? tr("ui.MapPage.046") : tr("ui.MapPage.047")}
             onClick={() => onAiAssign(belt.id, aiShipId, effCore)}
           >
-            指派 AI 开采
+            {tr("ui.MapPage.048")}
           </button>
         </div>
       </div>
@@ -629,7 +629,7 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)
   const anomalies = engine.anomalies.filter((a) => a.galaxyId === galaxyId)
   if (cycles.length === 0 || anomalies.length === 0) {
-    return { eff: cycles.length === 0 ? '未装配打捞器（舰船页高槽安装后显示效率）' : null, val: null }
+    return { eff: cycles.length === 0 ? tr("ui.MapPage.049") : null, val: null }
   }
   const roundsPerHour = cycles.reduce((s, c) => s + 3_600_000 / c, 0)
   const avgThreat = anomalies.reduce((s, a) => s + a.threat, 0) / anomalies.length
@@ -645,7 +645,7 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   const effM3 = Math.min(volH, capM3H)
   const evH = Math.round(effM3 * RECYCLE_YIELD_PER_M3[tier] * RECYCLE_POOL_AVG_ISK[tier] * (1 + 0.08 * refLv))
   return {
-    eff: `${cycles.length} 台打捞器 · ≈${Math.round(volH).toLocaleString('zh-CN')} m³/h（当前密度现算${volH > capM3H ? '，超出回收炉速按炉速计' : ''}）`,
+    eff: `${cycles.length} 台打捞器 · ≈${Math.round(volH).toLocaleString('zh-CN')} m³/h（当前密度现算${volH > capM3H ? tr("ui.MapPage.050") : ''}）`,
     val: `${isk(evH)} 信用点/h 拆解估价（按来源危险度池粗估）`,
   }
 }
@@ -741,11 +741,11 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
   return (
     <Panel
       className="is-fill"
-      title="残骸打捞"
+      title={tr("ui.MapPage.005")}
       hint={
-        <HintIcon tip="驾驶船高槽装打捞器即可开捞：自动循环作业——满舱返航卸货后自动续捞（可勾「本次返航卸货后停止」做单趟）；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。" />
+        <HintIcon tip={tr("ui.MapPage.051")} />
       }
-      right={<span className="app-dim">密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓</span>}
+      right={<span className="app-dim">{tr("ui.MapPage.052")}</span>}
     >
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 
@@ -758,7 +758,7 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
             disabled={me.active}
             onChange={(e) => engine.setSalvageAutoCycleAt(e.target.checked)}
           />
-          自动循环（满舱返航卸入仓库 → 去程并入返航 → 自动再打捞）
+          {tr("ui.MapPage.053")}
         </label>
         <label className="app-check">
           <input
@@ -767,17 +767,17 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
             disabled={!autoCycleOn || !me.active}
             onChange={(e) => engine.setSalvageStopAfterTripAt(e.target.checked)}
           />
-          本次返航卸货后停止
+          {tr("ui.MapPage.018")}
         </label>
       </div>
 
       {sortedGalaxies.length === 0 ? (
-        <div className="app-dim app-inv-empty">还没有可打捞的星系——先扫描探索点亮星图（星系内要有悬赏目标才会产生残骸）。</div>
+        <div className="app-dim app-inv-empty">{tr("ui.MapPage.054")}</div>
       ) : (
         <>
           {/* 打捞排序行（默认：危险 = 星系安全等级降序 = 安全在前；选择存本地） */}
           <div className="app-task-sortrow">
-            <span className="app-dim">打捞排序：</span>
+            <span className="app-dim">{tr("ui.MapPage.055")}</span>
             <select className="app-select" value={sort} onChange={(e) => changeSort(e.target.value as WreckSortKey)}>
               {(Object.keys(WRECK_SORT_LABEL) as WreckSortKey[]).map((k) => (
                 <option key={k} value={k}>
@@ -820,12 +820,12 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
   const ctx = engine.ctx
   if (s.phase === 'outbound') {
     const leg = Math.max(1, outboundLegMsFor(state, ctx, s.galaxyId))
-    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '出航中', travel: true }
+    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: tr("ui.MapPage.056"), travel: true }
   }
   if (s.phase === 'returning') {
     // 返航腿 = 满载返航 + 空船去程（去程并入返航）
     const leg = Math.max(1, legMsFor(state, ctx, s.galaxyId) + outboundLegMsFor(state, ctx, s.galaxyId))
-    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: '返航卸货中', travel: true }
+    return { percent: Math.min(100, Math.round((s.phaseAccMs / leg) * 100)), label: tr("ui.MapPage.057"), travel: true }
   }
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)
   const step = cycles.length > 0 ? Math.min(...cycles) : 0
@@ -898,7 +898,7 @@ function WreckCard({
   const flavorNote = notes.slice(0, 3).join('；') + (notes.length > 3 ? ` 等${notes.length}种倾向` : '')
   // 汇总去重后仍限长：具名优先（星图卡是多敌群合并，可能很长）
   const cap = (list: string[]): string[] => list.slice(0, 4).concat(list.length > 4 ? [`… 等${list.length}组`] : [])
-  const flavorLabel = namedList.length > 0 ? '特色掉落' : '其他掉落'
+  const flavorLabel = namedList.length > 0 ? tr("ui.MapPage.058") : tr("ui.MapPage.059")
   // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得；回站回收炉开高级箱）
   // 2026-09-11：口径抽到 `pages/common.rareWreckRefsOf`，与星图「星系行动」弹窗共用一份
   const { count: rareCount, text: rareText } = rareWreckRefsOf(engine, g.id)
@@ -911,8 +911,8 @@ function WreckCard({
       <div className="app-belt-head">
         <span className="app-belt-name">
           {g.name}
-          {isActive ? <em className="app-belt-flag is-run"><span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>主控打捞中</em> : null}
-          {lowSec ? <em className="app-belt-flag">⚠ 低安（打捞可能遇袭）</em> : null}
+          {isActive ? <em className="app-belt-flag is-run"><span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.060")}</em> : null}
+          {lowSec ? <em className="app-belt-flag">{tr("ui.MapPage.061")}</em> : null}
         </span>
         {aiWorkers.length > 0 ? (
           <span className="app-belt-ai-badge" title={`${aiWorkers.length} 艘 AI 副船正在此星系打捞`}>
@@ -920,7 +920,7 @@ function WreckCard({
           </span>
         ) : null}
       </div>
-      <div className="app-belt-desc">该星系敌群残骸：共 {anomalies.length} 类悬赏目标会持续沉积残骸密度。</div>
+      <div className="app-belt-desc">{tr("ui.MapPage.062")} {anomalies.length} {tr("ui.MapPage.063")}</div>
       <FlavorTip
         note={flavorNote}
         featureLabel={flavorLabel}
@@ -936,19 +936,19 @@ function WreckCard({
         </div>
       ) : null}
       <div className="app-belt-ore">
-        残骸密度 <b>{density.toFixed(1)}</b>
-        {lowSec ? '（低安残骸可出 MK2 与高级碎片）' : ''} · 安全 {g.security?.toFixed(1)}
+        {tr("ui.MapPage.064")} <b>{density.toFixed(1)}</b>
+        {lowSec ? tr("ui.MapPage.065") : ''} · 安全 {g.security?.toFixed(1)}
         {rareCount > 0 ? (
           <>
             {' · '}
             <em className="app-chip is-rare" title={`赏金任务战果：${rareText}——打捞时必定捞到（每件 ${RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体，保底原材料之外必给一件额外战利品：该敌群专属装备或特色装备 + 一批高阶原材料`}>
-              稀有残骸 ×{rareCount}
+              {tr("ui.MapPage.066")}{rareCount}
             </em>
           </>
         ) : null}
       </div>
       {est.eff || est.val ? (
-        <div className="app-belt-econ" title="估算 = 当前打捞器装配 × 当前密度 × 打捞/回收技能（参考值，实际所得以回收拆解结算为准）">
+        <div className="app-belt-econ" title={tr("ui.MapPage.067")}>
           {est.eff ? <div><span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{est.eff}</div> : null}
           {est.val ? <div className="app-belt-econ-val">{MONEY_GLYPH} {est.val}</div> : null}
         </div>
@@ -984,28 +984,28 @@ function WreckCard({
         ) : null}
         {isActive ? (
           <button className="app-btn is-small is-warn" onClick={onStop}>
-            停止打捞
+            {tr("ui.MapPage.068")}
           </button>
         ) : (
           <button
             className="app-btn is-small is-primary"
             disabled={activeAnywhere}
-            title={activeAnywhere ? '已有打捞作业进行中（其它星系）——先停止或等满仓自动返航' : '开始打捞（需高槽打捞器；默认自动循环，满舱返航卸货后自动续捞）'}
+            title={activeAnywhere ? tr("ui.MapPage.069") : tr("ui.MapPage.070")}
             onClick={onStart}
           >
-            <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>开始打捞
+            <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.071")}
           </button>
         )}
         <div className="app-belt-ai">
-          <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title="选择空闲副船（需该船高槽装有打捞器）">
-            <option value="">— 空闲副船 —</option>
+          <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title={tr("ui.MapPage.072")}>
+            <option value="">{tr("ui.MapPage.043")}</option>
             {idleShips.map((id) => (
               <option key={id} value={id}>
                 {shipDisplayName(state, engine.ctx, id)}
               </option>
             ))}
           </select>
-          <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title="AI 核心类型（效率越高行程/周期越快；无库存类型不列出）">
+          <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title={tr("ui.MapPage.073")}>
             {usableCores.map((t) => (
               <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
@@ -1013,10 +1013,10 @@ function WreckCard({
           <button
             className="app-btn is-small"
             disabled={activeAnywhere || !aiShipId || usableCores.length === 0}
-            title={activeAnywhere ? '主控打捞作业进行中——AI 不受限，仍可派副船（副船独立于主控）' : usableCores.length === 0 ? '没有可用的 AI 核心——先购入基础核心或等远征掉落' : aiShipId ? '指派 AI 副船打捞此星系（自动循环，取消任务才结束）' : '先在下拉中选择空闲副船'}
+            title={activeAnywhere ? tr("ui.MapPage.074") : usableCores.length === 0 ? tr("ui.MapPage.045") : aiShipId ? tr("ui.MapPage.075") : tr("ui.MapPage.047")}
             onClick={() => onAiAssign(g.id, aiShipId, effCore)}
           >
-            指派 AI 打捞
+            {tr("ui.MapPage.076")}
           </button>
         </div>
       </div>

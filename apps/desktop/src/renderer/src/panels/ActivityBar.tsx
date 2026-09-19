@@ -281,12 +281,12 @@ export function ActivityBar({
     const goText =
       target.page === 'map'
         ? target.mapTab === 'mine'
-          ? '矿带开采'
+          ? tr("ui.MapPage.003")
           : target.mapTab === 'bounty'
             ? '悬赏情报'
             : target.mapTab === 'task'
               ? tr("ui.App.008")
-              : '星图·远征'
+              : tr("ui.MapPage.002")
         : target.page === 'industry'
           ? tr("ui.App.006")
           : tr("ui.App.007")
@@ -430,7 +430,7 @@ export function ActivityBar({
             title={
               `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
               `截止 ${new Date(p.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, p.untilMs - tuningTick))}` +
-              `\n点击前往「${p.open === 'wormhole-scan' ? '扫描虫洞' : tr("ui.ActivityBar.006")}」页`
+              `\n点击前往「${p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006")}」页`
             }
             onClick={() => {
               if (p.open === 'wormhole-scan') {

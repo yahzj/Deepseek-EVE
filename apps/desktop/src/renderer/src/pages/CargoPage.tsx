@@ -286,7 +286,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                         {isPiloted && buy !== undefined ? (
                           <>
                             <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>
-                              市价卖出
+                              {tr("ui.CargoPage.038")}
                             </button>
                             <button
                               className="app-btn is-small"
@@ -441,7 +441,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       setSellId(pickId)
                     }}
                   >
-                    市价卖出
+                    {tr("ui.CargoPage.038")}
                   </button>
                 ) : fragIds.has(pickId) ? (
                   /* 2026-09-19 玩家报障修：碎片这一路在弹层里也要能兑（与物品页同一个组件） */

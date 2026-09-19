@@ -68,7 +68,7 @@ const FleetArt = memo(function FleetArt({ shipId, role }: { shipId: string; role
 
 /** 市场稀有度中文标签 */
 function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
-  return rarity === 'common' ? '常驻' : rarity === 'rare' ? tr("ui.IndustryPage.035") : '限定奇货'
+  return rarity === 'common' ? tr("ui.MarketPage.010") : rarity === 'rare' ? tr("ui.IndustryPage.035") : tr("ui.MarketPage.028")
 }
 
 /** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05）
@@ -100,6 +100,12 @@ interface CraftOption {
   materials: readonly { itemId: string; count: number }[]
   buildSeconds: number
 }
+/** 组装机下拉的分档顺序与译名 id（`CraftOption.group` 是**字面量联合 key**，显示时才按 id 取译名） */
+const CRAFT_GROUPS: ReadonlyArray<{ key: CraftOption['group']; id: string }> = [
+  { key: '装备蓝图', id: 'ui.ShipPage.115' },
+  { key: '舰船蓝图', id: 'ui.ShipPage.116' },
+  { key: '消耗品蓝图', id: 'ui.ShipPage.114' },
+]
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
   { key: 'fleet', label: tr("ui.ShipPage.001"), icon: 'nav-ship' },
   { key: 'ai', label: tr("ui.ShipPage.057"), icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
@@ -952,6 +958,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         id: bp.id,
         name: `${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId} ×${units}`,
         group: '消耗品蓝图', // 2026-09-14 文案体检：档名随 2026-09-11 改名口径（原「弹药蓝图」实际含弹药＋修理组件）
+        // ⚠ 这一格是 `CraftOption.group` 的**字面量联合 key**（不是文案）⇒ 保持中文原样，
+        //   显示译名在渲染处按 id 取（见 `CRAFT_GROUPS`，2026-09-19 本地化）
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
       })
@@ -1262,11 +1270,11 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               title={tr("ui.ShipPage.087")}
             >
               {craftLearned.length === 0 ? <option value="">{tr("ui.ShipPage.088")}</option> : null}
-              {(['装备蓝图', '舰船蓝图', '消耗品蓝图'] as const).map((group) =>
-                craftLearned.some((o) => o.group === group) ? (
-                  <optgroup key={group} label={group}>
+              {CRAFT_GROUPS.map(({ key, id }) =>
+                craftLearned.some((o) => o.group === key) ? (
+                  <optgroup key={key} label={tr(id)}>
                     {craftLearned
-                      .filter((o) => o.group === group)
+                      .filter((o) => o.group === key)
                       .map((o) => (
                         <option key={o.id} value={o.id}>
                           {o.name}
@@ -1310,7 +1318,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             let desc = ''
             if (task.kind === 'mining') {
               const belt = engine.ctx.belts.get(task.beltId)
-              const phaseLabel = task.phase === 'returning' ? '返航中' : task.phase === 'outbound' ? '出航中' : '采掘中'
+              const phaseLabel = task.phase === 'returning' ? '返航中' : task.phase === 'outbound' ? tr("ui.MapPage.056") : '采掘中'
               desc = `采矿 ${belt?.name ?? task.beltId} · ${phaseLabel} · 本趟 ${task.tripUnits} 单位`
             } else if (task.kind === 'expedition') {
               // 防御分支：AI 远征已停用（2026-09-05 软下线、2026-09-08 UI 隐藏），理论不出现——老档残留兜底显示

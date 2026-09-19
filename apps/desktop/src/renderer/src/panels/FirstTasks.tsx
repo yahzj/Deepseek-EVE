@@ -50,18 +50,18 @@ interface TaskJump {
 }
 const FIRST_JUMPS: Record<string, TaskJump> = {
   'first-scan': { page: 'map', mapTab: 'star', label: tr("ui.ActivityBar.006") },
-  'first-mine': { page: 'map', mapTab: 'mine', label: '矿带开采' },
-  'first-salvage': { page: 'map', mapTab: 'salvage', label: '残骸打捞' },
+  'first-mine': { page: 'map', mapTab: 'mine', label: tr("ui.MapPage.003") },
+  'first-salvage': { page: 'map', mapTab: 'salvage', label: tr("ui.MapPage.005") },
   'first-repair': { page: 'ship', shipTab: 'fleet', label: '舰队' },
-  'first-bounty': { page: 'map', mapTab: 'bounty', label: '常驻悬赏' },
+  'first-bounty': { page: 'map', mapTab: 'bounty', label: tr("ui.MapPage.004") },
   'first-refine': { page: 'industry', industrySec: 'refine', label: tr("ui.ShipPage.097") },
   'first-produce': { page: 'industry', industrySec: 'craft', label: tr("ui.IndustryPage.059") },
   'first-order': { page: 'market', label: tr("ui.App.005") },
   'first-ship': { page: 'industry', industrySec: 'craft', label: '组装机·造船' },
   'first-skill': { page: 'skills', label: tr("ui.App.007") },
   'first-ai': { page: 'ship', shipTab: 'ai', label: tr("ui.ShipPage.057") },
-  'first-haul': { page: 'map', mapTab: 'haul', label: '长途运输' },
-  'first-wormhole': { page: 'map', mapTab: 'whscan', label: '扫描虫洞' },
+  'first-haul': { page: 'map', mapTab: 'haul', label: tr("ui.MapPage.006") },
+  'first-wormhole': { page: 'map', mapTab: 'whscan', label: tr("ui.MapPage.007") },
 }
 
 export function FirstTasks({

@@ -333,7 +333,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         </button>
                         {buy !== undefined ? (
                           <button className="app-btn is-small is-primary" onClick={() => setSellItem(id)}>
-                            市价卖出
+                            {tr("ui.CargoPage.038")}
                           </button>
                         ) : /* 2026-09-19 玩家报障修：蓝图碎片不在市场流通目录，但**必须给一条兑现路**
                               （碎片 → 永久蓝图）——把原来的纯禁用按钮换成「逆向解锁」（组件与货仓页共用）。 */
@@ -412,7 +412,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     </button>
                     {modGood && modGood.playerSellable !== false ? (
                       <button className="app-btn is-small is-primary" onClick={() => setSellMod(id)}>
-                        市价卖出
+                        {tr("ui.CargoPage.038")}
                       </button>
                     ) : (
                       <button className="app-btn is-small" disabled title="不在市场流通目录或不可售">
@@ -519,7 +519,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       setSellItem(pickItem)
                     }}
                   >
-                    市价卖出
+                    {tr("ui.CargoPage.038")}
                   </button>
                 ) : (
                   <button className="app-btn is-small" disabled>
