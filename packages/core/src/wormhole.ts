@@ -1000,6 +1000,9 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   /**
    * **谜质增益**（F3c · 船长 2026-09-13）：扫描半径 +圈、每次额外驱散若干格星云。
    * 一律**现算**（装置躺在货仓里就生效，不必再同步状态）。
+   * ⚠ **有意只吃装置**（2026-09-19）：本处读的是「扫描半径 / 星云驱散」，科技树里没有对应
+   * `effect`（科技那条叫 `whScanCut` = **扫描间隔**，是另一回事，走 `wormholeScan.ts`）⇒
+   * 若日后真给科技加"扫描半径"，**这里必须补 `matterTechWhBuffs(state, ctx)`**，否则静默无效。
    */
   const buffs = wormholeMatterBuffs(run.hold)
   const targets = gridScanTargets(grid, buffs.scanRadius)

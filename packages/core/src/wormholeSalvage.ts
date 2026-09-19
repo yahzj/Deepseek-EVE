@@ -2002,6 +2002,7 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
    * 谜质「母矿富集器」：**铺堆那一刻**按倍率放大（+25%/台）。
    * 铺在"到达那一刻"（`wormholeEnsureArrivalPiles`）⇒ 装置是**到那儿之前**背上才吃得到，
    * 这与"放在货仓里就生效"一致：堆一旦铺好就不再回头改（免得同一格进进出出反复变数）。
+   * ⚠ **有意只吃装置**（2026-09-19）：矿脉富集倍率没有对应的科技 `effect`；日后若加，这里要补科技袋。
    */
   const mul = wormholeMatterBuffs(run.hold).oreYieldMul
   cell.piles = mul === 1 ? piles : piles.map((p) => ({ ...p, units: Math.max(1, Math.round(p.units * mul)) }))

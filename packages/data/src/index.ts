@@ -87,6 +87,8 @@ export {
 export { FIRST_TASK_MESSAGES } from './firstTaskMessages'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
+// 2026-09-19 谜质科技树：23 节点数据表（体检「谜质科技契约」逐条校验 id/费用/前置）
+export { MATTER_TECH_NODES, buildMatterTechCatalog } from './matterTech'
 // 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
 export {
   localizeCtx,

@@ -3448,14 +3448,19 @@ export function applyMatterPlayerBuffs(spec: UnitSpec, b: WormholeMatterBuffs, f
 /**
  * **谜质在开战那一刻的快照**（F3c B1）：威胁乘数（按用途三档、各自 −50% 封顶）/ 敌队主伤害系 /
  * 敌方削弱两项。**只在洞内战斗里调用**（`state.wormhole.run?.hold` 就是本趟的装置）。
+ *
+ * ⚠ **2026-09-19 修**：科技树与装置是**同一个增益袋**，本快照必须**一并吃科技**
+ * （原实现只传装置、且开头 `devices === 0` 直接返回 `null` ⇒ 「压制力场增幅 / 守卫解析 /
+ * 信号噪化 / 近盲抑制」四个节点**只点科技、不带装置时完全无效**：真死线，本批修）。
+ * 是否返回快照一律由下方 `any` 判据说话——它已逐项覆盖科技与装置的全部战斗字段。
  */
 export function wormholeMatterBattleModsOf(
   state: GameState,
+  ctx: SimContext,
   baseCard: AnomalyDef,
   kind: 'node' | 'boss' | 'extract' | 'ruins',
 ): { threatMul: number; foeMainType: DamageType; foeHitDown: number; blindReduce: number; volleyOverflow: boolean } | null {
-  const buffs = wormholeMatterBuffs(state.wormhole.run?.hold)
-  if (buffs.devices === 0) return null
+  const buffs = wormholeMatterBuffs(state.wormhole.run?.hold, matterTechWhBuffs(state, ctx))
   const bucket: 'node' | 'boss' | 'extract' = kind === 'boss' ? 'boss' : kind === 'extract' ? 'extract' : 'node'
   const threatMul = wormholeMatterThreatMul(buffs, bucket)
   /**
@@ -3906,7 +3911,7 @@ export function startFleetBattleFor(
    * 敌队主伤害系（三张谐振片"单层单系"只对它加抗性）、敌方削弱两项。
    * 快照随 `battle.wormhole` 落进战斗 ⇒ 逐拍重建读同一份。
    */
-  const matterMods = wormhole ? wormholeMatterBattleModsOf(state, baseCard, wormhole.kind) : null
+  const matterMods = wormhole ? wormholeMatterBattleModsOf(state, ctx, baseCard, wormhole.kind) : null
   // 洞内敌卡：按层派生（**与逐拍重建同源**，见 `wormholeDerivedAnomaly` 的注释）
   const anomaly = wormhole
     ? wormholeDerivedAnomaly(ctx, baseCard, {
