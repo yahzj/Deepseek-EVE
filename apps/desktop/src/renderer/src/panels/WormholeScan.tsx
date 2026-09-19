@@ -36,6 +36,7 @@ import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
+import { tr } from '../i18n/locale'
 
 /**
  * **「发现于 9月14日」**（船长 2026-09-14：卡片上不要相对时间，要日期）。
@@ -462,7 +463,7 @@ export function WormholeScanTab({
                                 `${d.name} 结构 −${d.durabilityLossPct}%（现 ${d.durabilityPct}%）/ 装甲 −${d.armorLossPct}%（现 ${d.armorPct}%）`,
                             )
                             .join('；')
-                        : '无'}
+                        : tr("ui.BattleScreen.001")}
                     </span>
                     <span className="app-inv-count">
                       {rep.shipIds.length} 条舰全部安全返航 · {rep.coresReleased} 枚 AI 核心已释放 · 完成于{' '}

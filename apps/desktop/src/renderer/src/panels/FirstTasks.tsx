@@ -18,6 +18,7 @@
 import { firstTaskBoard, visibleFirstTasks } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
+import { tr } from '../i18n/locale'
 
 /** 链进度的计数单位（**纯显示用**，与 core 的阈值表同源；`tierKey` 缺项 ⇒ 不写单位） */
 const CHAIN_UNITS: Record<string, string> = {
@@ -29,7 +30,7 @@ const CHAIN_UNITS: Record<string, string> = {
   refineBatches: '批',
   produceUnits: '件',
   // 2026-09-18 船长换口径：市场链不再数"挂单张数"，改数**交易收入（税后信用点）**
-  marketIncome: '信用点',
+  marketIncome: tr("ui.FirstTasks.003"),
   ships: '艘',
   aiAssigns: '次',
   haulTrips: '趟',
@@ -48,17 +49,17 @@ interface TaskJump {
   label: string
 }
 const FIRST_JUMPS: Record<string, TaskJump> = {
-  'first-scan': { page: 'map', mapTab: 'star', label: '星图' },
+  'first-scan': { page: 'map', mapTab: 'star', label: tr("ui.ActivityBar.006") },
   'first-mine': { page: 'map', mapTab: 'mine', label: '矿带开采' },
   'first-salvage': { page: 'map', mapTab: 'salvage', label: '残骸打捞' },
   'first-repair': { page: 'ship', shipTab: 'fleet', label: '舰队' },
   'first-bounty': { page: 'map', mapTab: 'bounty', label: '常驻悬赏' },
-  'first-refine': { page: 'industry', industrySec: 'refine', label: '精炼炉' },
-  'first-produce': { page: 'industry', industrySec: 'craft', label: '组装机' },
-  'first-order': { page: 'market', label: '市场' },
+  'first-refine': { page: 'industry', industrySec: 'refine', label: tr("ui.ShipPage.097") },
+  'first-produce': { page: 'industry', industrySec: 'craft', label: tr("ui.IndustryPage.059") },
+  'first-order': { page: 'market', label: tr("ui.App.005") },
   'first-ship': { page: 'industry', industrySec: 'craft', label: '组装机·造船' },
-  'first-skill': { page: 'skills', label: '技能' },
-  'first-ai': { page: 'ship', shipTab: 'ai', label: 'AI 指挥中心' },
+  'first-skill': { page: 'skills', label: tr("ui.App.007") },
+  'first-ai': { page: 'ship', shipTab: 'ai', label: tr("ui.ShipPage.057") },
   'first-haul': { page: 'map', mapTab: 'haul', label: '长途运输' },
   'first-wormhole': { page: 'map', mapTab: 'whscan', label: '扫描虫洞' },
 }

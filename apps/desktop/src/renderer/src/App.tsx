@@ -42,6 +42,7 @@ import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { MoneyFit } from './ui/MoneyFit'
+import { tr } from './i18n/locale'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -81,7 +82,7 @@ const LOG_KINDS: readonly LogKind[] = ['system', 'info', 'queue', 'levelup', 'wa
 const KIND_LABEL: Record<LogKind, string> = {
   system: '系统',
   info: '信息',
-  queue: '训练',
+  queue: tr("ui.App.027"),
   levelup: '升级',
   warn: '警告',
   trade: '交易',
@@ -1249,7 +1250,7 @@ export function App({ engine }: { engine: GameEngine }) {
               <b className={offlineReport.iskDelta >= 0 ? 'app-trend-up' : 'app-trend-down'}>
                 {moneyDelta(offlineReport.iskDelta)}
               </b>{' '}
-              信用点
+              {tr("ui.FirstTasks.003")}
               {/**
                * ⚠ 这里**保留全精度**（不走万/亿分级）：离线结算报告是"玩家要看清楚这趟挣了多少"的地方，
                * 与左侧栏那个"一眼扫过"的余额栏用途不同（船长 2026-09-13 只要求处理"钱位数过多"的显示）。

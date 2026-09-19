@@ -61,19 +61,20 @@ import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ShipSprite } from '../ui/ShipSprite'
 import type { PageProps } from './common'
+import { tr } from '../i18n/locale'
 
 
 /** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复；火力加成例外——船长
  * 2026-09-05：不入血量徽章组，作为下方属性行展示，故从过滤名单中放行） */
 const COMBAT_BASE_KEYS = new Set([
-  '护盾',
-  '护盾抗性',
-  '装甲',
-  '装甲抗性',
-  '结构',
-  '结构抗性',
-  '命中加成',
-  '回避率',
+  tr("ui.FitPage.001"),
+  tr("ui.FitPage.002"),
+  tr("ui.FitPage.003"),
+  tr("ui.FitPage.004"),
+  tr("ui.ShipPage.023"),
+  tr("ui.FitPage.005"),
+  tr("ui.FitPage.006"),
+  tr("ui.FitPage.007"),
 ])
 
 /** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽；
@@ -110,7 +111,7 @@ interface FitSeg {
   c: 'up' | 'down' | 'info' | 'none'
 }
 
-const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = { s: '盾', a: '甲', h: '结构' }
+const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = { s: '盾', a: '甲', h: tr("ui.ShipPage.023") }
 const TYPE_SN: Record<string, string> = { kinetic: '动', explosive: '爆', plasma: '热' }
 
 /** 负数按本仓文案惯例用真减号 U+2212 显示（CPU 剩 −12 而非 -12） */
@@ -291,7 +292,7 @@ function weaponDamageTypeOf(m: ModuleDef): DamageType {
 
 /** 层位克制短串（如「盾×1.5·甲×0.5」；×1 的层省略）——数值与 `combat.typeLayerMult` 同源，挂在弹种 chip 上 */
 function layerShortOf(t: DamageType): string {
-  const name = { shield: '盾', armor: '甲', hull: '结构' } as const
+  const name = { shield: '盾', armor: '甲', hull: tr("ui.ShipPage.023") } as const
   const parts: string[] = []
   for (const l of ['shield', 'armor', 'hull'] as const) {
     const v = typeLayerMult(t, l)
@@ -311,8 +312,8 @@ function ammoChipOf(m: ModuleDef): ReactNode | null {
     const t = m.damageType ?? 'kinetic'
     return <DmgChip t={t} label={`${DMG_LABEL[t]}弹药`} />
   }
-  if (m.slot === 'missile') return <DmgChip t="explosive" label="爆破弹药" />
-  if (m.slot === 'laser') return <DmgChip t="plasma" label="能量弹药" />
+  if (m.slot === 'missile') return <DmgChip t="explosive" label={tr("ui.FitPage.008")} />
+  if (m.slot === 'laser') return <DmgChip t="plasma" label={tr("ui.FitPage.009")} />
   return null
 }
 
@@ -826,7 +827,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                   ? [
                       { k: '护盾抗性（含装备）', v: resChipsAll(spec.resists.shield) },
                       { k: '装甲抗性（含装备）', v: resChipsAll(spec.resists.armor) },
-                      { k: '结构抗性', v: resChipsAll(spec.resists.hull) },
+                      { k: tr("ui.FitPage.005"), v: resChipsAll(spec.resists.hull) },
                       {
                         k: '命中率（含装备）',
                         v:
@@ -1000,7 +1001,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           改好
                         </button>
                         <button className="app-btn is-small" onClick={() => setPresetRename(null)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </>
                     ) : presetReplaceAt === i ? (
@@ -1016,7 +1017,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           确认覆盖
                         </button>
                         <button className="app-btn is-small" onClick={() => setPresetReplaceAt(null)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </>
                     ) : (
@@ -1073,7 +1074,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         </div>
                       ))}
                       <div className="app-fit-preset-detail-line">
-                        <span className="app-fit-preset-detail-rack">无人机</span>
+                        <span className="app-fit-preset-detail-rack">{tr("ui.Handbook.004")}</span>
                         {detail.drones.length === 0 ? (
                           <span className="app-fit-preset-detail-cell is-empty">未装载</span>
                         ) : (
@@ -1421,7 +1422,7 @@ function DroneBaySection({
     <div className="app-fit-dronebay">
       <div className="app-fit-dronebay-head">
         <span className="app-fit-dronebay-title">
-          无人机舱
+          {tr("ui.FitPage.010")}
           <span className="app-dim">（敌方点防会击落机群，被击落后自清单永久损失）</span>
           {droneCpu > 0 ? (
             <span className="app-dim">（清单占用 CPU {droneCpu}）</span>

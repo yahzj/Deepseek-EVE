@@ -25,6 +25,7 @@ import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
+import { tr } from '../i18n/locale'
 
 /** 宽类型标签索引（详情窗数据来自 raw，键是 string） */
 const kindName = (k: string): string => (ITEM_KIND_LABELS as Record<string, string>)[k] ?? k
@@ -79,7 +80,7 @@ const BP_MAIN: SubOption[] = [
 const FILTER_LABEL: Record<Tab, string> = {
   guide: '',
   rules: '',
-  items: '分类',
+  items: tr("ui.Handbook.003"),
   modules: '槽类',
   ships: '类别',
   blueprints: '门类',
@@ -166,13 +167,13 @@ const GUIDE_GROUPS: HandGroup[] = [
         ],
       },
       {
-        title: '装配',
+        title: tr("ui.App.003"),
         paras: [
           ['槽位与退回', '装备库里的模块装到高 / 中 / 低槽位（布局见船卡；受 CPU 约束），卸下自动退回装备库。'],
           ['叠加规则', '抗性按递减方式合成（同一层装得越多越接近上限 90%，基础抗高的船提升越小）；伤害 / 射速 / 容量可以多装全量叠加（只受 CPU 限制），命中 / 闪避 / 抗性 / 速度同类多装收益递减（第 2 件约剩八成七、第 3 件约剩五成七）。「动力」影响弃船避险与跃迁充能。'],
           ['CPU 预算', '装配 CPU 预算是唯一硬约束（全部位合计 ≤ 船体 CPU；无人机放飞共用同一份预算）——低槽「协处理器」可为预算扩容（本件自身不占 CPU，卸下即收回：卸到超载会被拒绝，避免"装扩容件塞满再卸掉"套利）。'],
           ['中槽推进器', '中槽「矢量推进器」是周期点火：开场即点火、持续 60 秒，随后冷却 60 秒——点火期间战斗机动显著提升、开火命中略降（失稳代价同样只在点火期生效），冷却期间两者都回到基础值；战斗界面底部显示推进器倒计时。'],
-          ['无人机', '无人机在装配页「无人机舱」装入清单（舱容 = 无人机舱 + 甲板扩展，与装配共用 CPU），战斗只放飞已装入的；卸下甲板扩展使机舱变小时，超出的无人机会自动退回仓库；战术导控阵列增伤。'],
+          [tr("ui.Handbook.004"), '无人机在装配页「无人机舱」装入清单（舱容 = 无人机舱 + 甲板扩展，与装配共用 CPU），战斗只放飞已装入的；卸下甲板扩展使机舱变小时，超出的无人机会自动退回仓库；战术导控阵列增伤。'],
           ['机群战损', '敌方近防炮会击落机群——战斗内机群可能全部损坏，战后按回收率找回一部分（基础 20%，「无人机回收学」满级 50%），回收名额优先给价值更高的机型；未回收的才自清单永久损失，战报里会列出这次回收了哪些、净损失哪些；侦察机靠闪避、攻坚机靠厚甲、哨戒机默认被近防炮放过（其余机型全被打光后就轮到它）。'],
         ],
       },
@@ -291,7 +292,7 @@ const GUIDE_GROUPS: HandGroup[] = [
       {
         title: '货仓与产出',
         paras: [
-          ['货仓', '货仓格数按编队合计货仓折算（每 500 m³ = 1 格），打捞到的安全货柜、图纸货柜各占固定格数。'],
+          [tr("ui.CargoPage.004"), '货仓格数按编队合计货仓折算（每 500 m³ = 1 格），打捞到的安全货柜、图纸货柜各占固定格数。'],
           ['产出链', '洞内只产原矿「虚空母矿」，回港在精炼炉精炼出「虚空晶」。'],
           ['深浅曲线', '每深入一层收益 ×1.2、威胁 ×1.16——收益涨得比威胁快。'],
         ],
@@ -410,7 +411,7 @@ const RULE_SECTS: HandGroup[] = [
         title: '重复舰船',
         paras: [
           ['同型多艘', '同型可买多艘：第 2 艘起默认带「#N」。'],
-          ['改名', '可自由改名（10 字内、允许重名），改名后全界面显示自定义名。'],
+          [tr("ui.ShipPage.013"), '可自由改名（10 字内、允许重名），改名后全界面显示自定义名。'],
         ],
       },
       {
@@ -448,9 +449,9 @@ const RULE_SECTS: HandGroup[] = [
       {
         title: '伤害克制矩阵',
         paras: [
-          ['动能', '动能弹药：盾 ×1.5 / 甲 ×0.5 / 结构 ×1（专职拆盾）。'],
-          ['高爆', '爆破弹药（导弹架）：盾 ×0.5 / 甲 ×1.5 / 结构 ×1（专职破甲）。'],
-          ['能量', '能量弹药（激光炮）：盾 ×1.25 / 甲 ×1 / 结构 ×1（拆盾也强、无弱点）。'],
+          [tr("ui.BattleScreen.002"), '动能弹药：盾 ×1.5 / 甲 ×0.5 / 结构 ×1（专职拆盾）。'],
+          [tr("ui.battleViewCore.001"), '爆破弹药（导弹架）：盾 ×0.5 / 甲 ×1.5 / 结构 ×1（专职破甲）。'],
+          [tr("ui.battleViewCore.002"), '能量弹药（激光炮）：盾 ×1.25 / 甲 ×1 / 结构 ×1（拆盾也强、无弱点）。'],
           ['界面提示', '弹药 chip 颜色 = 对应克制层色（盾蓝 / 甲红 / 结构黄），悬停可见矩阵。'],
         ],
       },
@@ -593,10 +594,10 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     const kind = String(r.kind ?? '')
     // 2026-09-10 船长：无人机把归类子属性并入「种类」（无人机 · 侦察机）——走 core 单点
     rows.push([
-      '种类',
+      tr("ui.Handbook.005"),
       itemKindText({ kind: kind as ItemKind, droneClass: r.droneClass as DroneClass | undefined }),
     ])
-    rows.push(['单位体积', `${Number(r.unitM3 ?? 0)} m³`])
+    rows.push([tr("ui.Handbook.006"), `${Number(r.unitM3 ?? 0)} m³`])
     // V10.5：弹药/无人机补充伤害契约（与其它界面统一由 shipInfo 生成）
     const itemId = String(r.id ?? '')
     const itemDef = itemId ? engine.ctx.items.get(itemId) : undefined
@@ -606,7 +607,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     const refine = (r.refine as Array<{ mineralId: string; perOre: number }> | undefined) ?? []
     if (refine.length > 0) {
       rows.push([
-        '精炼配方',
+        tr("ui.Handbook.007"),
         refine
           .map((row) => `${engine.ctx.items.get(row.mineralId)?.name ?? row.mineralId} ×${row.perOre}`)
           .join('　'),
@@ -619,7 +620,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       // V17：统一行——各家族真实进公式参数（工业加成 / 武器卡 / 容量+缺口抗性 / 加力推进）
       for (const line of moduleInfoLines(modDef)) rows.push([line.k, line.v])
     } else {
-      rows.push(['槽位', `${slotName(String(r.slot ?? ''))} · 加成 ${Math.round(Number(r.bonus ?? 0) * 100)}%`])
+      rows.push([tr("ui.Handbook.008"), `${slotName(String(r.slot ?? ''))} · 加成 ${Math.round(Number(r.bonus ?? 0) * 100)}%`])
     }
   } else if (cell.tab === 'ships') {
     const shipId = String(r.id ?? '')
@@ -631,14 +632,14 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       // （最大速度/跃迁速度/质量/锁定范围/信号半径/扫描分辨率/跃迁充能；与装配页同一数据源）。
       // ⚠ 行以 `k` 作 React key ⇒ `shipIndirectLines` 的键不得与 `shipInfoLines` 重名（当前无重名）。
       for (const line of shipIndirectLines(shipDef)) rows.push([line.k, line.v])
-      rows.push(['说明', '已生效战斗数值：抗性按递减方式合成（上限 90%）'])
+      rows.push([tr("ui.Handbook.002"), '已生效战斗数值：抗性按递减方式合成（上限 90%）'])
       rows.push(['获取方式', Number(r.priceIsk ?? 0) <= 0 ? '仅可制造（市场无成品现货：舰船蓝图船厂定制；已拥有的可二手出售）' : '市场流通'])
     } else {
       const cls = shipCategoryKeyOf(r as unknown as { role?: ShipRole; shieldHp?: number; armorHp?: number })
-      rows.push(['定位 / 档次', `${roleName(cls)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
-      rows.push(['货舱容量', `${Number(r.cargoM3 ?? 0).toLocaleString('zh-CN')} m³`])
-      rows.push(['采集性能', `${Number(r.cycleSeconds ?? 0)} 秒 × ${Number(r.oreUnitsPerCycle ?? 0)} 单位/循环`])
-      rows.push(['动力（机动 / 跃迁充能）', `${Math.round(Number(r.agility ?? 0) * 100)}%`])
+      rows.push([tr("ui.Handbook.009"), `${roleName(cls)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
+      rows.push([tr("ui.Handbook.010"), `${Number(r.cargoM3 ?? 0).toLocaleString('zh-CN')} m³`])
+      rows.push([tr("ui.Handbook.011"), `${Number(r.cycleSeconds ?? 0)} 秒 × ${Number(r.oreUnitsPerCycle ?? 0)} 单位/循环`])
+      rows.push([tr("ui.Handbook.012"), `${Math.round(Number(r.agility ?? 0) * 100)}%`])
       if (Number(r.priceIsk ?? 0) <= 0) rows.push(['获取方式', '仅可制造（市场无成品现货：舰船蓝图船厂定制；已拥有的可二手出售）'])
     }
   } else if (cell.tab === 'blueprints') {
@@ -745,13 +746,13 @@ function CellDetail({
           {marketKey !== null && onGotoMarket ? (
             <button
               className="app-btn is-small app-detail-goto"
-              title="前往市场查看该物品的订单（价格/挂单/买入）"
+              title={tr("ui.CargoPage.003")}
               onClick={() => {
                 onClose()
                 onGotoMarket(marketKey)
               }}
             >
-              ↖ 查看市场
+              {tr("ui.CargoPage.001")}
             </button>
           ) : null}
         </div>
@@ -1112,7 +1113,7 @@ export function Handbook({
                     {ship.priceIsk <= 0 ? <span className="app-chip">仅可制造</span> : null}
                   </div>
                   <div className="app-dim">
-                    货舱 {ship.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {ship.cycleSeconds} 秒 × {ship.oreUnitsPerCycle} 单位 ·
+                    {tr("ui.ShipPage.019")} {ship.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {ship.cycleSeconds} {tr("ui.ShipPage.021")} {ship.oreUnitsPerCycle} 单位 ·
                     动力 {Math.round(ship.agility * 100)}%
                   </div>
                   <div className="app-hand-sub">
@@ -1366,7 +1367,7 @@ export function Handbook({
                       className={`app-tasktab${mainKey === SUB_ALL ? ' is-active' : ''}`}
                       onClick={() => pickMain(SUB_ALL)}
                     >
-                      全部
+                      {tr("ui.IndustryPage.001")}
                     </button>
                     {mainOpts.map((o) => (
                       <button
@@ -1391,7 +1392,7 @@ export function Handbook({
                         className={`app-tasktab${subKey === SUB_ALL ? ' is-active' : ''}`}
                         onClick={() => setSubKey(SUB_ALL)}
                       >
-                        全部子类
+                        {tr("ui.IndustryPage.064")}
                       </button>
                       {subOpts.map((o) => (
                         <button

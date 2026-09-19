@@ -68,6 +68,7 @@ import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { ShipSprite } from '../ui/ShipSprite'
 import { debugEnabled } from './DebugPanel'
+import { tr } from '../i18n/locale'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
  * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
@@ -329,7 +330,7 @@ export function TaskPanel({
   return (
     <Panel
       className="is-fill win-fixed-body"
-      title="任务中心"
+      title={tr("ui.App.008")}
       right={<span className="app-dim">建站 {stationCount} · 抵达对应星系后出现</span>}
     >
       {/* 子标签固定（固定头+下滚）：重要/资源/快递/赏金任务 常显，下方任务内容独立内滚 */}
@@ -551,7 +552,7 @@ type LabelMode = 'name' | 'sec' | 'faction'
 /** 本地记忆键（与其它星图偏好同前缀） */
 const LABEL_KEY = 'whale-idle:starmap-label'
 const LABEL_MODES: ReadonlyArray<{ key: LabelMode; label: string; tip: string }> = [
-  { key: 'name', label: '名称', tip: '星系节点下方显示星系名称（默认）' },
+  { key: 'name', label: tr("ui.MapPage.001"), tip: '星系节点下方显示星系名称（默认）' },
   { key: 'sec', label: '安全等级', tip: '星系节点下方显示安全等级数字（−1.0 高危 ~ +1.0 安全），颜色沿用安全色阶' },
   { key: 'faction', label: '敌对派系', tip: '星系节点下方显示该星系的敌对派系标签（按敌族配色），星系后方给出该势力的范围光晕' },
 ]
@@ -1572,7 +1573,7 @@ function StarMap({
               重置默认
             </button>
             <button className="app-btn is-small" onClick={() => setEditing(false)}>
-              完成
+              {tr("ui.App.024")}
             </button>
           </>
         )}
@@ -1790,7 +1791,7 @@ function GalaxyActions({
           }
         >
           {usableCores.length === 0 ? (
-            <option value="">无可用 AI 核心</option>
+            <option value="">{tr("ui.ShipPage.070")}</option>
           ) : (
             usableCores.map((t) => (
               <option key={t} value={t}>
@@ -1874,7 +1875,7 @@ function GalaxyActions({
             <span className="app-ga-main">
               <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
               <span className="app-dim app-ga-desc">
-                威胁 {a.threat} · 奖金 {Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} 信用点
+                威胁 {a.threat} · 奖金 {Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                 {state.completedBounties.includes(a.id) ? ' · 已首胜' : ''}
               </span>
             </span>
@@ -1916,7 +1917,7 @@ function GalaxyActions({
             </span>
           </span>
           <button className="app-btn is-small is-warn" onClick={() => engine.stopSalvageOpNow()}>
-            停止
+            {tr("ui.ActivityBar.005")}
           </button>
         </div>
       ) : (
@@ -2208,7 +2209,7 @@ function AnomalyCard({
         })()}
       </div>
       <div className="app-ano-reward">
-        奖金 {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} 信用点
+        奖金 {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
         {factionHit ? <span className="app-dim" title={`敌对派系活跃加成：原始奖金 ${anomaly.rewardIsk.toLocaleString('zh-CN')} ×1.1`}>（敌对派系活跃 +10%）</span> : null}
         {anomaly.loot.length > 0 ? ` + ${lootText}` : ''} · 声望 +{anomaly.standingGain}
         {bountyCleared ? <span className="app-dim" title="该悬赏已首胜：重复完成不再获得声望，可转向新目标提升协会声望">（已首胜）</span> : null}
@@ -2284,7 +2285,7 @@ function AnomalyCard({
               确认转战
             </button>
             <button className="app-btn is-small" onClick={() => setGoAsk(false)}>
-              取消
+              {tr("ui.ActivityBar.004")}
             </button>
           </div>
         </div>
@@ -2463,7 +2464,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   {/* 奖励独立成行 + 金色 */}
                   <div className="app-task-reward">
                     <span className="app-dim">{t.timed === true ? '运费（含加急 +50%） ◆ ' : '运费 ◆ '}</span>
-                    {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
+                    {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                   </div>
                   <div className="app-station-deliver">
                     <span className="app-dim">
@@ -2544,7 +2545,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                 {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
                 <div className="app-task-reward">
                   <span className="app-dim">奖励 ◆ </span>
-                  {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
+                  {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                 </div>
                 <div className="app-station-deliver">
                   <span className="app-dim">
@@ -2718,7 +2719,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       <span className="app-dim">（原 {factionCard.threat}，+10%）</span>
                     </span>
                     <span>
-                      <span className="app-lair-key">奖金</span> {MONEY_GLYPH} {reward2.toLocaleString('zh-CN')} 信用点
+                      <span className="app-lair-key">奖金</span> {MONEY_GLYPH} {reward2.toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                       <span className="app-dim">（原 {factionCard.rewardIsk.toLocaleString('zh-CN')}，+10%）</span>
                     </span>
                   </div>
@@ -2738,7 +2739,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     </span>
                   </div>
                   <div className="app-ano-reward">
-                    <span className="app-lair-key">稀有残骸</span>{' '}
+                    <span className="app-lair-key">{tr("ui.IndustryPage.009")}</span>{' '}
                     {Math.round(FACTION_RARE_DROP_CHANCE * 100)}% 概率 ×{FACTION_RARE_DROP_COUNT}
                     <span className="app-dim" title="命中则落在该星系残骸场（打捞必得）；本条打赢不下板，当天可反复刷">
                       （胜利掉落，可反复刷）
@@ -2942,12 +2943,12 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               </div>
               {/* 收益行：赏金 = 窝点奖金 + 任务酬金（合并成一条，避免两个数重复）；稀有残骸为战利品 */}
               <div className="app-ano-reward">
-                <span className="app-lair-key">赏金</span> {MONEY_GLYPH} {totalIsk.toLocaleString('zh-CN')} 信用点
+                <span className="app-lair-key">赏金</span> {MONEY_GLYPH} {totalIsk.toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                 <span className="app-dim" title={`窝点奖金 ${lairRewardIsk.toLocaleString('zh-CN')}（含赏金猎手学系数）+ 任务酬金 ${t.rewardIsk.toLocaleString('zh-CN')}（刷出时锁定）——胜利时一起入账`}>
                   {' '}（奖金 {lairRewardIsk.toLocaleString('zh-CN')} + 酬金 {t.rewardIsk.toLocaleString('zh-CN')}）
                 </span>
                 {' · '}
-                <span className="app-lair-key">稀有残骸</span> ×{rareGain}
+                <span className="app-lair-key">{tr("ui.IndustryPage.009")}</span> ×{rareGain}
               </div>
               <div className="app-ano-desc">
                 肃清后该星系留下稀有残骸——打捞必得，先带回仓库存放。
@@ -3120,7 +3121,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                   .join(' + ')
                 return (
                   <span key={t.name} className={`app-station-tier${prog.stage > i ? ' is-done' : ''}${prog.stage === i && !built ? ' is-cur' : ''}`}>
-                    {i + 1}·{t.name}：{billTxt}（{tierNeedOf(state, site, i).toLocaleString('zh-CN')} 单位）{prog.stage > i ? ' ✓' : ''}
+                    {i + 1}·{t.name}：{billTxt}（{tierNeedOf(state, site, i).toLocaleString('zh-CN')} {tr("ui.ShipPage.100")}{prog.stage > i ? ' ✓' : ''}
                   </span>
                 )
               })}
@@ -3165,7 +3166,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                       min={0}
                       max={avail}
                       value={Number.isFinite(qty) && qty > 0 ? qty : ''}
-                      placeholder="数量"
+                      placeholder={tr("ui.Expedition.003")}
                       onChange={(e) => setQty(Number(e.target.value))}
                       style={{ width: 90 }}
                     />

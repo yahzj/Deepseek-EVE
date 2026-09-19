@@ -30,6 +30,7 @@ import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { SUB_ALL, subPasses, SUBS_OF_KIND, CONSUME_KIND_KEYS, CONTAINER_KIND_KEYS, RACK_LABELS } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
+import { tr } from '../i18n/locale'
 
 const KIND_TEXT: Record<string, string> = {
   /**
@@ -53,14 +54,14 @@ const KIND_TEXT: Record<string, string> = {
   'module-high': RACK_LABELS.high,
   'module-mid': RACK_LABELS.mid,
   'module-low': RACK_LABELS.low,
-  ship: '舰船',
-  blueprint: '蓝图',
+  ship: tr("ui.App.002"),
+  blueprint: tr("ui.MarketPage.004"),
   aicore: '核心',
   wreck: '残骸',
 }
 const KIND_OPTIONS = ['all', 'item', 'container', 'consume', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
-const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: '稀有', exotic: '限定' }
+const RARITY_TEXT: Record<MarketRarity, string> = { common: '常驻', rare: tr("ui.IndustryPage.035"), exotic: '限定' }
 
 /* 类型子分类表已抽到 ui/itemSubs.ts（市场页与手册图鉴共用同一套口径） */
 /** 目录条目对应的物品定义（item 类才查物品表） */
@@ -77,7 +78,7 @@ function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): strin
   if (good.kind === 'module') {
     const mod = ctx.modules.get(good.refId)
     const rack = mod ? rackOf(mod) : undefined
-    return rack !== undefined ? (KIND_TEXT[`module-${rack}`] ?? '装备') : '装备'
+    return rack !== undefined ? (KIND_TEXT[`module-${rack}`] ?? '装备') : tr("ui.MarketPage.003")
   }
   return KIND_TEXT[good.kind] ?? good.kind
 }
@@ -277,7 +278,7 @@ function GoodHover({
         as="li"
         title={goodName(ctx, good.key)}
         lines={[
-          { k: '等级', v: tier },
+          { k: tr("ui.MarketPage.002"), v: tier },
           { k: '效率', v: `${eff}%（AI 副船工作速度；不影响奖励）` },
         ]}
         note="指派 AI 副船任务时使用，任务结束自动归还核心库；更高阶核心通常由高威胁远征缴获或奇货市场流出。"
@@ -376,7 +377,7 @@ function GoodRow({
               ) : null}
             </>
           ) : null}
-          {good.rarity === 'rare' ? <span className="app-chip is-rare">稀有</span> : null}
+          {good.rarity === 'rare' ? <span className="app-chip is-rare">{tr("ui.IndustryPage.035")}</span> : null}
           {good.rarity === 'exotic' ? <span className="app-chip is-exotic">限定奇货</span> : null}
           {lockShow ? (
             <span className="app-chip is-exotic" title={lockShow}>
@@ -870,7 +871,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
           {good.kind === 'ship'
             ? `可卖 ${holdings.toLocaleString('zh-CN')} 艘（舰船仓库） · 机库 ${shipInFleet.toLocaleString('zh-CN')} 艘`
             : `持有 ${holdings.toLocaleString('zh-CN')} 件`}{' '}
-          · 中位价 {median !== undefined ? isk(median) : '—'} 信用点
+          · 中位价 {median !== undefined ? isk(median) : '—'} {tr("ui.FirstTasks.003")}
           <span className={trend > 0 ? 'app-trend-up' : trend < 0 ? 'app-trend-down' : 'app-trend-flat'}>
             {trend > 0 ? ' ▲' : trend < 0 ? ' ▼' : ' · 平'}
           </span>
@@ -960,18 +961,18 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
                 </div>
               </div>
               <div className="app-mkt-trade-row">
-                <span className="app-dim">数量</span>
+                <span className="app-dim">{tr("ui.Expedition.003")}</span>
                 <input className="app-input" type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
                 {tab === 'sell' ? (
                   <button className="app-btn is-small" disabled={holdings <= 0} onClick={() => setQty(Math.max(1, holdings))} title={`把数量填为全部可卖（${holdings} ${unit}）`}>
-                    全部
+                    {tr("ui.IndustryPage.001")}
                   </button>
                 ) : null}
               </div>
               <div className="app-mkt-trade-row">
                 <span className="app-dim">单价</span>
                 <input className="app-input" type="number" min={1} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
-                <span className="app-dim">信用点</span>
+                <span className="app-dim">{tr("ui.FirstTasks.003")}</span>
               </div>
             </div>
             <div className="app-mkt-actions">
@@ -1083,15 +1084,15 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
               <>
                 <div className="app-mkt-confirm-row">
                   <span>预计成交额（毛额）</span>
-                  <b className="app-gold">{isk(confirmSell.gross)} 信用点</b>
+                  <b className="app-gold">{isk(confirmSell.gross)} {tr("ui.FirstTasks.003")}</b>
                 </div>
                 <div className="app-mkt-confirm-row">
                   <span>贸易税</span>
-                  <b>−{isk(confirmSell.tax)} 信用点</b>
+                  <b>−{isk(confirmSell.tax)} {tr("ui.FirstTasks.003")}</b>
                 </div>
                 <div className="app-mkt-confirm-row is-net">
                   <span>预计实际到账（税后）</span>
-                  <b className="app-gold">{isk(confirmSell.net)} 信用点</b>
+                  <b className="app-gold">{isk(confirmSell.net)} {tr("ui.FirstTasks.003")}</b>
                 </div>
               </>
             ) : null}
@@ -1110,7 +1111,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
             ) : null}
             <div className="app-mkt-confirm-btns">
               <button className="app-btn is-small" onClick={() => setConfirmSell(null)}>
-                取消
+                {tr("ui.ActivityBar.004")}
               </button>
               <button className="app-btn is-small is-sellall" onClick={doSellAll}>
                 确认全部卖出
@@ -1333,7 +1334,7 @@ export function MarketPage({
                 onChange={(e) => setSub(e.target.value)}
                 title={`${KIND_TEXT[kind]}下的子分类`}
               >
-                <option value={SUB_ALL}>全部{KIND_TEXT[kind]}</option>
+                <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{KIND_TEXT[kind]}</option>
                 {kindSubs.map((s) => (
                   <option key={s.key} value={s.key}>
                     {s.label}

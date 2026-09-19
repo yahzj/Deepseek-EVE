@@ -51,6 +51,7 @@ import {
   moduleSubKeyOf,
   type SubOption,
 } from '../ui/itemSubs'
+import { tr } from '../i18n/locale'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
@@ -197,7 +198,7 @@ export function BlueprintShelfPanel({
   if (cards.length === 0) {
     return (
       <Panel
-        title="蓝图书架"
+        title={tr("ui.IndustryPage.060")}
         hint={
           // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
           // 2026-09-14 船长：虫洞专属图纸市场买不到 ⇒ 组装机那张卡改「去虫洞（遗迹打捞）」，这里同步改口径
@@ -213,7 +214,7 @@ export function BlueprintShelfPanel({
   return (
     <Panel
       className="is-fill"
-      title="蓝图书架"
+      title={tr("ui.IndustryPage.060")}
       right={
         <span className="app-dim">
           学习 = 永久可造；一次性图纸只能制造一次
@@ -254,7 +255,7 @@ export function BlueprintShelfPanel({
               setUseKind('all')
             }}
           >
-            全部子类
+            {tr("ui.IndustryPage.064")}
           </button>
           {subsShown.map((s) => (
             <button
@@ -379,7 +380,7 @@ export function BlueprintShelfPanel({
  *  2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——该档实际含弹药 + 修理组件，与市场一级类型「消耗品」对齐） */
 type ManuTab = 'all' | 'equip' | 'ship' | 'supply'
 const MANU_TABS: Array<{ key: ManuTab; label: string }> = [
-  { key: 'all', label: '全部' },
+  { key: 'all', label: tr("ui.IndustryPage.001") },
   { key: 'equip', label: '装备蓝图' },
   { key: 'ship', label: '舰船蓝图' },
   { key: 'supply', label: '消耗品蓝图' },
@@ -446,11 +447,11 @@ function manualBuildNote(state: GameState): string | null {
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。'
   }
-  if (state.awayGalaxy !== null) return '你不在空间站（母港或已建成副站）——先返航停靠。'
-  if (state.mining.active) return '采矿作业中：先停止开采。'
-  if (state.salvaging.active) return '打捞作业中：先停止打捞（或等满仓自动返航）。'
-  if (state.expedition.active) return '远征中：先召回或等待结束。'
-  if (state.standby.active) return '掩护巡逻进行中：先召回。'
+  if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
+  if (state.mining.active) return tr("ui.IndustryPage.011")
+  if (state.salvaging.active) return tr("ui.IndustryPage.012")
+  if (state.expedition.active) return tr("ui.IndustryPage.013")
+  if (state.standby.active) return tr("ui.IndustryPage.014")
   if (state.transit.active) return '返航途中：到站后再开线。'
   return null
 }
@@ -748,7 +749,7 @@ function BlueprintCard({
               {needCount !== need.count ? (
                 <span className="app-dim">（原 ×{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span>
               ) : null}
-              <span className="app-dim">（仓库 {have.toLocaleString('zh-CN')}）</span>
+              <span className="app-dim">{tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}）</span>
               {onNeedMineral ? (
                 (() => {
                   const srcs = refineSourcesOf(engine, need.itemId)
@@ -786,7 +787,7 @@ function BlueprintCard({
               netPerH < 0 ? '当前价格与技能下制造不如直接卖材料。' : '卖出给空间站按收购档（约 6~7 折），自用装配则按现货价计。'
             }`}
           >
-            {MONEY_GLYPH} ≈{netPerH.toLocaleString('zh-CN')} 信用点/h{netPerH < 0 ? '（净亏：直接卖材料更划算）' : '（净 · 现货价）'}
+            {MONEY_GLYPH} ≈{netPerH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}{netPerH < 0 ? '（净亏：直接卖材料更划算）' : '（净 · 现货价）'}
           </div>
         ) : null}
       </div>
@@ -892,12 +893,12 @@ function BlueprintCard({
                 disabled={usableCores.length === 0}
                 title={
                   usableCores.length === 0
-                    ? '无可用 AI 核心：核心库为空或全部已在占用中——去市场购入「基础 AI 核心」（空间站直购），或先取消占用中的任务、训练「AI 核心操作学」/「工业自动化」扩容'
+                    ? tr("ui.IndustryPage.051")
                     : '选择接入 AI 核心：一枚核心驱动一条线（驱动期间该核心被占用并计入 AI 核心启用上限——上限由 AI 核心上限技能决定，与 AI 副船任务共用）'
                 }
               >
                 {usableCores.length === 0 ? (
-                  <option value="">无可用 AI 核心</option>
+                  <option value="">{tr("ui.ShipPage.070")}</option>
                 ) : (
                   usableCores.map((t) => (
                     <option key={t} value={t}>
@@ -909,7 +910,7 @@ function BlueprintCard({
               <button
                 className="app-btn is-small"
                 disabled={!core || short.length > 0}
-                title={oneTimeNote ?? (core ? aiTitle : '无可用 AI 核心：先去市场购入「基础 AI 核心」，或等占用中的核心归还')}
+                title={oneTimeNote ?? (core ? aiTitle : tr("ui.IndustryPage.055"))}
                 onClick={() => core && runWith(core)}
               >
                 AI 制造
@@ -1070,7 +1071,7 @@ export function ManufacturingPanel({
       const prodText = <span className="app-gold">{prodName}</span>
       items.push({
         id: sbp.id,
-        kindLabel: '舰船',
+        kindLabel: tr("ui.App.002"),
         // 舰船蓝图按**舰船级别**分档（2026-09-11 船长；键与 itemSubs.SHIP_TIER_SUBS 同源）
         subKey: shipDef ? `t${shipDef.tier}` : '',
         productGlyph: shipDef?.role ?? 'blueprint',
@@ -1112,7 +1113,7 @@ export function ManufacturingPanel({
       const prodText = <span className="app-gold">{prodLabel}</span>
       items.push({
         id: bp.id,
-        kindLabel: '装备',
+        kindLabel: tr("ui.MarketPage.003"),
         // 装备蓝图按**产物功能**分组（2026-09-11 船长：「根据产物的类型进行二次分类」；键与 MODULE_SUBS 同源）
         subKey: moduleDef ? moduleSubKeyOf(moduleDef.slot) : '',
         productGlyph: moduleDef?.slot ?? 'blueprint',
@@ -1126,7 +1127,7 @@ export function ManufacturingPanel({
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
         productBase: moduleDef ? productBaseOf(engine, 'module', bp.moduleId!) : 0,
         ownedCount: moduleDef ? countModule(state, bp.moduleId!) : 0, // 装备产物 → 装备库件数
-        ownedWhere: '装备库',
+        ownedWhere: tr("ui.Industry.004"),
         bookPrice: bookPriceOf(engine, bp.id, 0),
         productKey: `module:${bp.moduleId}`,
         singleUse: bp.singleUse === true,
@@ -1170,7 +1171,7 @@ export function ManufacturingPanel({
         canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
         productBase: itemDef ? productBaseOf(engine, 'item', bp.itemId, units) : 0,
         ownedCount: itemDef ? countWare(state, bp.itemId) : 0, // 弹药/物品产物 → 物品仓库单位数
-        ownedWhere: '仓库',
+        ownedWhere: tr("ui.ItemsPage.001"),
         bookPrice: bookPriceOf(engine, bp.id, 0),
         productKey: `item:${bp.itemId}`,
         singleUse: bp.singleUse === true,
@@ -1212,7 +1213,7 @@ export function ManufacturingPanel({
   return (
     <Panel
       className="is-fill win-fixed-body"
-      title="组装机"
+      title={tr("ui.IndustryPage.059")}
       hint={
         // 常驻说明收进标题后的圆形感叹号（2026-09-13 船长口径）；2026-09-14 船长点名："组装机的说明并没有隐藏"
         <HintIcon tip="已学会的配方才能开工；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。" />
@@ -1260,7 +1261,7 @@ export function ManufacturingPanel({
               setUseKind('all') // 回「全部子类」⇒ 三级筛选行随之隐藏，故一并复位
             }}
           >
-            全部子类
+            {tr("ui.IndustryPage.064")}
           </button>
           {subOptions.map((s) => (
             <button

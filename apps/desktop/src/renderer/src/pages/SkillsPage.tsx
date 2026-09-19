@@ -19,6 +19,7 @@ import { plainSkillDesc } from '../ui/skillText'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { ItemViewBar, type ItemViewMode } from '../ui/itemView'
 import type { PageProps } from './common'
+import { tr } from '../i18n/locale'
 
 /** 技能目录视图偏好（独立于仓库/货仓/图鉴；默认图标 = 与 icon-list-view 族一致） */
 const SKILLS_VIEW_KEY = 'whale-idle:skills-view'
@@ -147,7 +148,7 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
               className={`app-tasktab${groupTab === 'all' ? ' is-active' : ''}`}
               onClick={() => setGroupTab('all')}
             >
-              全部
+              {tr("ui.IndustryPage.001")}
             </button>
             {groups.map((g) => (
               <button

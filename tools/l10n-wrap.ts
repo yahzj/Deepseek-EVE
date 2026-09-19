@@ -136,7 +136,9 @@ function idFor(zh: string, stem: string): string | null {
   if (hit) return hit.id
   const en = enMap[zh]
   if (en === undefined) return null
-  if (en.trim() === '' || en !== en.trim()) throw new Error(`英文值形态不合规（空或含首尾空白）：「${zh}」→「${en}」`)
+  // 形态：非空 · 不许制表/换行 · 首尾**至多一个空格**（JSX 文本片段与相邻 `{表达式}` 之间要靠这个空格
+  // 排版，如 `{n}（结构 500）` ⇒ `{n} (structure 500)`；多余空白仍是错的）
+  if (en.trim() === '' || /[\r\n\t]/.test(en) || /^ {2,}| {2,}$/.test(en)) throw new Error(`英文值形态不合规（空/含制表换行/首尾多余空白）：「${zh}」→「${en}」`)
   if (CJK.test(en)) throw new Error(`英文值残留中日韩字符：「${zh}」→「${en}」`)
   const id = mintId(stem)
   const row: Row = { id, zh, en }
@@ -167,6 +169,14 @@ for (const file of walk(ROOT)) {
   const manual = new Set<string>()
   /** 待包位置（先收集，最后统一按中文串换 id —— 同串多次出现只造一个 id） */
   const sites: Array<{ node: ts.Node; zh: string; form: 'jsx-text' | 'attr' | 'expr' | 'arg'; lead?: string; tail?: string }> = []
+  /** 同一节点别被两条判据重复认领（否则会被包两层） */
+  const claimed = new Set<number>()
+  const addSite = (node: ts.Node, zh: string, form: 'jsx-text' | 'attr' | 'expr' | 'arg', lead?: string, tail?: string): void => {
+    const at = node.getStart(sf)
+    if (claimed.has(at)) return
+    claimed.add(at)
+    sites.push({ node, zh, form, lead, tail })
+  }
   const visit = (node: ts.Node): void => {
     // ① JSX 文本子节点
     if (ts.isJsxText(node)) {
@@ -178,33 +188,38 @@ for (const file of walk(ROOT)) {
         if (/[\r\n]/.test(trimmed) || trimmed.length < 2 || /^[%·）)、，。：；]|%$/.test(trimmed)) {
           manual.add(trimmed)
         } else {
-          sites.push({
-            node,
-            zh: trimmed,
-            form: 'jsx-text',
-            lead: raw.slice(0, raw.indexOf(trimmed)),
-            tail: raw.slice(raw.indexOf(trimmed) + trimmed.length),
-          })
+          addSite(node, trimmed, 'jsx-text', raw.slice(0, raw.indexOf(trimmed)), raw.slice(raw.indexOf(trimmed) + trimmed.length))
         }
       }
     }
     // ② 展示类属性的字符串初值
     if (ts.isJsxAttribute(node) && node.initializer && ts.isStringLiteral(node.initializer) && ts.isIdentifier(node.name)) {
       const val = node.initializer.text
-      if (DISPLAY_ATTRS.has(node.name.text) && CJK.test(val) && !insideTranslateCall(node)) {
-        sites.push({ node: node.initializer, zh: val, form: 'attr' })
-      }
+      if (DISPLAY_ATTRS.has(node.name.text) && CJK.test(val) && !insideTranslateCall(node)) addSite(node.initializer, val, 'attr')
     }
     // ③ JSX 表达式容器里的三元/逻辑分支字符串
     if (ts.isStringLiteral(node) && CJK.test(node.text) && !insideTranslateCall(node)) {
       const p = node.parent
       const inJsx = p !== undefined && (ts.isConditionalExpression(p) || ts.isBinaryExpression(p) || ts.isParenthesizedExpression(p))
-      if (inJsx && ts.isJsxExpression(p.parent ?? p)) sites.push({ node, zh: node.text, form: 'expr' })
+      if (inJsx && ts.isJsxExpression(p.parent ?? p)) addSite(node, node.text, 'expr')
     }
     // ④ 旧写法残留：`t('中文')` / `tr('中文')`（词典时代「中文串当 key」，中文串只换了 id 的位置）
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && (node.expression.text === 't' || node.expression.text === 'tr')) {
       const arg0 = node.arguments[0]
-      if (arg0 && ts.isStringLiteral(arg0) && CJK.test(arg0.text)) sites.push({ node: arg0, zh: arg0.text, form: 'arg' })
+      if (arg0 && ts.isStringLiteral(arg0) && CJK.test(arg0.text)) addSite(arg0, arg0.text, 'arg')
+    }
+    // ⑤ 写死的中文展示文案：对象字面量的属性值 / 数组元素 / 三元分支 / 变量初值 / 返回值
+    //    （渲染层里带中文的裸字面量基本都是文案：标签表、状态词表、提示语；比较用的中文串不在此列——
+    //     `=== '中文'` 的父节点是 BinaryExpression，不在下面这五类里）
+    if (ts.isStringLiteral(node) && CJK.test(node.text) && !insideTranslateCall(node)) {
+      const p = node.parent
+      const displaySpot =
+        (ts.isPropertyAssignment(p) && p.initializer === node) ||
+        ts.isArrayLiteralExpression(p) ||
+        (ts.isConditionalExpression(p) && (p.whenTrue === node || p.whenFalse === node)) ||
+        (ts.isVariableDeclaration(p) && p.initializer === node) ||
+        (ts.isReturnStatement(p) && p.expression === node)
+      if (displaySpot) addSite(node, node.text, 'expr')
     }
     ts.forEachChild(node, visit)
   }
@@ -235,14 +250,19 @@ for (const file of walk(ROOT)) {
   edits.sort((a, b) => b.start - a.start)
   let out = text
   for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end)
-  // 补 import（相对路径按文件深度算；已有 `tr` 导入/调用则不重复插）
+  // 补 import（相对路径按文件深度算；已有 `tr` 导入则不重复插）
+  // ⚠ 插入点必须取**最后一条 import 语句的结束位置**——按行找「以 import 开头」会插进多行 import 块中间
   if (!/import\s*\{[^}]*\btr\b[^}]*\}\s*from/.test(out)) {
     const depth = rel.split('/').length - 1
     const up = depth === 0 ? './' : '../'.repeat(depth)
     const importLine = `import { tr } from '${up}i18n/locale'`
+    const lastImport = sf.statements.filter((st) => ts.isImportDeclaration(st)).pop()
     const lines = out.split(/\r?\n/)
-    let insertAt = 0
-    for (let i = 0; i < lines.length; i++) if (lines[i]!.startsWith('import ')) insertAt = i + 1
+    let insertAt = 1
+    if (lastImport) {
+      const endLine = sf.getLineAndCharacterOfPosition(lastImport.getEnd()).line
+      insertAt = Math.min(endLine + 1, lines.length)
+    }
     lines.splice(insertAt, 0, importLine)
     out = lines.join(EOL)
   }

@@ -151,7 +151,9 @@ for (const [id, e] of entries) {
   const b = placeholders(e.en)
   if (a.join('|') !== b.join('|')) badPh.push(`「${id}」中 ${a.join(',') || '无'} / 英 ${b.join(',') || '无'}`)
   if (CJK.test(e.en) && !CJK_ALLOW.has(id)) badCjk.push(`「${id}」→「${e.en}」`)
-  if (e.zh.trim() === '' || e.en.trim() === '' || e.zh !== e.zh.trim() || e.en !== e.en.trim()) badShape.push(`「${id}」`)
+  // 形态：非空 · 不许制表/换行 · 首尾**至多一个空格**（JSX 文本片段与相邻 `{表达式}` 之间要靠这个空格排版，
+  // 如 `{n}（结构 500）` ⇒ `{n} (structure 500)`；多余空白仍是错的）
+  if (e.zh.trim() === '' || e.en.trim() === '' || /[\r\n\t]/.test(e.zh + e.en) || /^ {2,}| {2,}$/.test(e.zh) || /^ {2,}| {2,}$/.test(e.en)) badShape.push(`「${id}」`)
 }
 check(badPh.length === 0, `占位符不对齐 ${badPh.length} 条：${badPh.slice(0, 6).join(' · ')}${badPh.length > 6 ? ' …' : ''}`)
 check(badCjk.length === 0, `英文值残留中日韩字符 ${badCjk.length} 条：${badCjk.slice(0, 6).join(' · ')}${badCjk.length > 6 ? ' …' : ''}`)

@@ -16,6 +16,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
+import { tr } from '../i18n/locale'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -44,7 +45,7 @@ function stopLabel(v: ActivityView): string {
     case 'remove-training':
       return '移除'
     case 'stop-mining':
-      return '停止'
+      return tr("ui.ActivityBar.005")
     case 'stop-scan':
       return '终止'
     case 'stop-whscan':
@@ -52,9 +53,9 @@ function stopLabel(v: ActivityView): string {
     case 'stop-whauto':
       return '召回'
     case 'stop-salvage':
-      return '停止'
+      return tr("ui.ActivityBar.005")
     case 'cancel-manufacture':
-      return '取消'
+      return tr("ui.ActivityBar.004")
     case 'stop-refine':
       return '停炉'
     case 'recall-expedition':
@@ -64,7 +65,7 @@ function stopLabel(v: ActivityView): string {
     case 'retreat-battle':
       return '撤退'
     case 'cancel-ai':
-      return '取消'
+      return tr("ui.ActivityBar.004")
     case 'cancel-deliver-trip':
       return '取消交付'
     case 'stop-loop':
@@ -284,11 +285,11 @@ export function ActivityBar({
           : target.mapTab === 'bounty'
             ? '悬赏情报'
             : target.mapTab === 'task'
-              ? '任务中心'
+              ? tr("ui.App.008")
               : '星图·远征'
         : target.page === 'industry'
-          ? '工业'
-          : '技能'
+          ? tr("ui.App.006")
+          : tr("ui.App.007")
     return (
     <div
       key={v.id}
@@ -429,7 +430,7 @@ export function ActivityBar({
             title={
               `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
               `截止 ${new Date(p.untilMs - 1).toLocaleDateString('zh-CN')}（当天整天有效）· 剩 ${formatDurationMs(Math.max(0, p.untilMs - tuningTick))}` +
-              `\n点击前往「${p.open === 'wormhole-scan' ? '扫描虫洞' : '星图'}」页`
+              `\n点击前往「${p.open === 'wormhole-scan' ? '扫描虫洞' : tr("ui.ActivityBar.006")}」页`
             }
             onClick={() => {
               if (p.open === 'wormhole-scan') {

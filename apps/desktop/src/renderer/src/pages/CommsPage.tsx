@@ -27,6 +27,7 @@ import { CommsDeviceFrame, CommsEave, CommsScreen } from '../panels/CommsReader'
 import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
+import { tr } from '../i18n/locale'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -80,7 +81,7 @@ export function CommsPage({
     <div className="page-stack page-fill">
       <Panel
         className="is-fill win-fixed-body"
-        title="通讯"
+        title={tr("ui.App.009")}
       hint={
         <HintIcon tip="协会各部门与合作方有事会直接发到这里。带「前往」的通讯只是提示你该去哪儿，具体事务仍要在对应页面上办。" />
       }

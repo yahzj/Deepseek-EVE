@@ -43,6 +43,7 @@ import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
+import { tr } from '../i18n/locale'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
 export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul' | 'whscan'
@@ -98,7 +99,7 @@ const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
   danger: '危险（安全优先）',
   galaxy: '星系名称',
   density: '残骸密度最高',
-  name: '名称',
+  name: tr("ui.MapPage.001"),
 }
 
 export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole, onAutoExploreWormhole }: PageProps & {
@@ -538,7 +539,7 @@ function BeltCard({
                       title={`取消 ${shipDisplayName(state, engine.ctx, sid)} 在此矿带的开采任务（AI 核心归还核心库）`}
                       onClick={() => cancelWorker(sid)}
                     >
-                      取消
+                      {tr("ui.ActivityBar.004")}
                     </button>
                   </div>
                   <div className="app-belt-worker-line">
@@ -584,7 +585,7 @@ function BeltCard({
                 确认开采
               </button>
               <button className="app-btn is-small" onClick={() => setMineAsk(false)}>
-                取消
+                {tr("ui.ActivityBar.004")}
               </button>
             </div>
           </div>
@@ -970,7 +971,7 @@ function WreckCard({
                       title={`取消 ${shipDisplayName(state, engine.ctx, w.sid)} 在此星系的打捞任务（AI 核心归还核心库）`}
                       onClick={() => onAiCancel(w.sid)}
                     >
-                      取消
+                      {tr("ui.ActivityBar.004")}
                     </button>
                   </div>
                   <div className="app-belt-worker-line">

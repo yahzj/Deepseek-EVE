@@ -6,6 +6,7 @@
  */
 import { useState, type ReactNode } from 'react'
 import { Glyph } from './Glyphs'
+import { tr } from '../i18n/locale'
 
 export function SellQtyModal({
   name,
@@ -66,7 +67,7 @@ export function SellQtyModal({
           />
           <span className="app-dim">{unit}</span>
           <button className="app-btn is-small" onClick={() => setQty(max)}>
-            全部
+            {tr("ui.IndustryPage.001")}
           </button>
         </div>
         {note ? <div className="app-dim app-itempick-note">{note}</div> : null}

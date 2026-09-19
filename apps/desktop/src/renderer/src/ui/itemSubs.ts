@@ -41,6 +41,7 @@
  */
 import { rackOf, shipSizeLabel, WORMHOLE_BP_BOX_IDS, WORMHOLE_MILITARY_BOX_ID, WORMHOLE_VALUABLES_BOX_ID } from '@whale/core'
 import type { MarketGoodDef, SimContext } from '@whale/core'
+import { tr } from '../i18n/locale'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
 export const SUB_ALL = 'sub-all'
@@ -56,9 +57,9 @@ export interface SubOption {
  * 弹药（打完就少）/ 修理组件（战斗中烧）/ 无人机（永久损失制，用一场少一批）。
  */
 export const CONSUME_SUBS: SubOption[] = [
-  { key: 'ammo', label: '弹药' },
-  { key: 'kit', label: '修理组件' },
-  { key: 'drone', label: '无人机' },
+  { key: 'ammo', label: tr("ui.BattleScreen.003") },
+  { key: 'kit', label: tr("ui.itemSubs.001") },
+  { key: 'drone', label: tr("ui.Handbook.004") },
 ]
 
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
@@ -102,10 +103,10 @@ export function containerSubKeyOf(refId: string): string {
  *  **奢侈品**（`luxury`）一档（三件纯贸易品：星港陈酿 / 贵族香料 / 失落艺术品，出自贵重品货柜拆解），
  *  一级类型中文名「物品」→「**货物**」在 `MarketPage.KIND_TEXT` 单点改。 */
 export const ITEM_SUBS: SubOption[] = [
-  { key: 'ore', label: '原矿' },
+  { key: 'ore', label: tr("ui.IndustryPage.005") },
   { key: 'mineral', label: '原材料' },
-  { key: 'gas', label: '气体' },
-  { key: 'ice', label: '冰矿' },
+  { key: 'gas', label: tr("ui.IndustryPage.006") },
+  { key: 'ice', label: tr("ui.IndustryPage.007") },
   { key: 'luxury', label: '奢侈品' },
 ]
 
@@ -113,8 +114,8 @@ export const ITEM_SUBS: SubOption[] = [
 export const MODULE_SUBS: SubOption[] = [
   { key: 'prod', label: '采集与货舱' },
   { key: 'weapon', label: '武器' },
-  { key: 'shield', label: '护盾' },
-  { key: 'armor', label: '装甲' },
+  { key: 'shield', label: tr("ui.FitPage.001") },
+  { key: 'armor', label: tr("ui.FitPage.003") },
   { key: 'prop', label: '推进器' },
   { key: 'drone', label: '无人机装置' },
   { key: 'support', label: '支援件（辅助与维修）' },

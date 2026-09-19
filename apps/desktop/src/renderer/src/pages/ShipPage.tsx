@@ -42,6 +42,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk } from './common'
+import { tr } from '../i18n/locale'
 
 // ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
 //    屏幕宽度不足时隐藏舰船图形）──
@@ -67,7 +68,7 @@ const FleetArt = memo(function FleetArt({ shipId, role }: { shipId: string; role
 
 /** 市场稀有度中文标签 */
 function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
-  return rarity === 'common' ? '常驻' : rarity === 'rare' ? '稀有' : '限定奇货'
+  return rarity === 'common' ? '常驻' : rarity === 'rare' ? tr("ui.IndustryPage.035") : '限定奇货'
 }
 
 /** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05）
@@ -80,8 +81,8 @@ export type ShipTab = 'fleet' | 'ai' | 'store'
  *  列表顺序固定为「机库序 + 已标记置顶」（即原「默认排序」口径，收藏置顶规则继续成立）。 */
 type FleetFilter = 'all' | 'pilot' | 'ai' | 'idle' | 'damaged'
 const FLEET_FILTER_TABS: Array<{ key: FleetFilter; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'pilot', label: '驾驶中' },
+  { key: 'all', label: tr("ui.IndustryPage.001") },
+  { key: 'pilot', label: tr("ui.ShipPage.010") },
   { key: 'ai', label: 'AI 执勤' },
   { key: 'idle', label: '空闲' },
   { key: 'damaged', label: '待维修' },
@@ -100,19 +101,19 @@ interface CraftOption {
   buildSeconds: number
 }
 const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: string }> = [
-  { key: 'fleet', label: '我的舰队', icon: 'nav-ship' },
-  { key: 'ai', label: 'AI 指挥中心', icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
+  { key: 'fleet', label: tr("ui.ShipPage.001"), icon: 'nav-ship' },
+  { key: 'ai', label: tr("ui.ShipPage.057"), icon: 'nav-ai', title: 'AI 副船：指派采矿/打捞/掩护巡逻' },
   // 2026-09-14 船长：「舰船市场」→「舰船仓库」（图标沿用物品仓库那只箱子，语义 = 存放）
-  { key: 'store', label: '舰船仓库', icon: 'nav-items', title: '组装机造好的船先入这里（同型堆叠）：可转入舰队，也可直接在市场出售' },
+  { key: 'store', label: tr("ui.ShipPage.036"), icon: 'nav-items', title: '组装机造好的船先入这里（同型堆叠）：可转入舰队，也可直接在市场出售' },
 ]
 
 /** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
  *  仓里有货 = 已拥有；仓里为空 = 未拥有，即使在役舰队有同型） */
 type StoreOwnFilter = 'all' | 'owned' | 'unowned'
 const STORE_OWN_TABS: Array<{ key: StoreOwnFilter; label: string }> = [
-  { key: 'all', label: '全部' },
+  { key: 'all', label: tr("ui.IndustryPage.001") },
   { key: 'owned', label: '已拥有' },
-  { key: 'unowned', label: '未拥有' },
+  { key: 'unowned', label: tr("ui.ShipPage.041") },
 ]
 
 export function ShipPage({
@@ -359,7 +360,7 @@ export function ShipPage({
       {/* ───── 我的舰队 ───── */}
       <Panel
         className="is-fill app-fleet-panel"
-        title="我的舰队"
+        title={tr("ui.ShipPage.001")}
         right={
           // 搜索栏进标题行（2026-09-11 船长：「将搜索栏移到标题内，目前不够美观」）——
           // 复刻仓库页 / 技能目录同一套写法（`.app-head-search-wrap` + `.app-head-search` + 灰字计数），
@@ -368,13 +369,14 @@ export function ShipPage({
             <input
               className="app-head-search"
               type="text"
-              placeholder="搜索舰船…"
+              placeholder={tr("ui.ShipPage.002")}
               value={fleetQ}
               onChange={(e) => setFleetQ(e.target.value)}
               spellCheck={false}
             />
             <span className="app-dim">
-              {fleetFiltered ? `匹配 ${fleetShown.length} / 共 ${fleetTotal} 艘` : `${fleetTotal} 艘`} · 当前驾驶：
+              {fleetFiltered ? tr('ui.ShipPage.107', { shown: fleetShown.length, total: fleetTotal }) : tr('ui.ShipPage.108', { total: fleetTotal })}
+              {tr('ui.ShipPage.109')}
               <span className={`app-pilot-name${switchFxUid !== null ? ' is-pulse' : ''}`}>
                 {shipDisplayName(state, ctx, state.shipId)}
               </span>
@@ -395,7 +397,7 @@ export function ShipPage({
             每行各带灰字前缀，避免多个「全部」混淆（前缀写法同星图页「矿带排序：」） */}
         <div className="app-fleet-toolbar">
           <div className="app-fleet-row">
-            <span className="app-dim">状态：</span>
+            <span className="app-dim">{tr("ui.ShipPage.003")}</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               {FLEET_FILTER_TABS.map((t) => (
                 <button
@@ -412,7 +414,7 @@ export function ShipPage({
             {/* 计数已上移到面板标题行（与仓库页 / 技能目录同口径），工具条只留各维筛选 */}
           </div>
           <div className="app-fleet-row">
-            <span className="app-dim">类别：</span>
+            <span className="app-dim">{tr("ui.ShipPage.004")}</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
@@ -420,7 +422,7 @@ export function ShipPage({
                 className={`app-tasktab${fleetRole === SUB_ALL ? ' is-active' : ''}`}
                 onClick={() => setFleetRole(SUB_ALL)}
               >
-                全部
+                {tr("ui.IndustryPage.001")}
               </button>
               {SHIP_SUBS.map((s) => (
                 <button
@@ -436,7 +438,7 @@ export function ShipPage({
             </div>
           </div>
           <div className="app-fleet-row">
-            <span className="app-dim">级别：</span>
+            <span className="app-dim">{tr("ui.ShipPage.005")}</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
@@ -444,7 +446,7 @@ export function ShipPage({
                 className={`app-tasktab${fleetTier === SUB_ALL ? ' is-active' : ''}`}
                 onClick={() => setFleetTier(SUB_ALL)}
               >
-                全部
+                {tr("ui.IndustryPage.001")}
               </button>
               {SHIP_TIER_SUBS.map((s) => (
                 <button
@@ -464,7 +466,7 @@ export function ShipPage({
         {fleetShown.length === 0 ? (
           <div className="app-dim app-note">
             {Object.keys(state.fleet).length === 0
-              ? '机库里还没有舰船。'
+              ? tr("ui.ShipPage.006")
               : `没有匹配的舰船${fq.length > 0 ? `（关键词「${fleetQ.trim()}」）` : '（当前筛选）'}——换个关键词或筛选条件试试。`}
           </div>
         ) : (
@@ -494,22 +496,22 @@ export function ShipPage({
                     {/* 2026-09-13 船长：子分类徽标（只有虫洞族专属舰船有 `subClass`）；样式复用同级角色 chip */}
                     {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
                     <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipCategoryLabelOf(def)}</em>
-                    {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">定制</em> : null}
+                    {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">{tr("ui.ShipPage.007")}</em> : null}
                     {isLockedShip ? (
-                      <em className="app-chip app-lock-chip" title="已锁定：此船不可移入舰船仓库（防误操作）">
+                      <em className="app-chip app-lock-chip" title={tr("ui.ShipPage.008")}>
                         <span className="app-ico">
                           <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
                         </span>
-                        锁定
+                        {tr("ui.ShipPage.009")}
                       </em>
                     ) : null}
                   </span>
                   <span className="app-ship-top-right">
                     <MarkStar engine={engine} kind="ships" id={uid} />
                     {isCurrent ? (
-                      <span className="app-chip">驾驶中</span>
+                      <span className="app-chip">{tr("ui.ShipPage.010")}</span>
                     ) : isWorking ? (
-                      <span className="app-chip">AI 执勤中</span>
+                      <span className="app-chip">{tr("ui.ShipPage.011")}</span>
                     ) : null}
                     <button
                       className="app-btn is-small"
@@ -519,20 +521,20 @@ export function ShipPage({
                       <span className="app-ico">
                         <Glyph name="nav-fit" size={13} color={NAV_TONES['nav-fit']} />
                       </span>
-                      装配
+                      {tr("ui.App.003")}
                     </button>
                     {!isRenaming ? (
                       <button
                         className="app-btn is-small"
-                        title={shipState.customName ? `已自定义名称——点击改名（或恢复默认）` : '自由改名（免费，10 字内，可重名；同型默认自动带 #N）'}
+                        title={shipState.customName ? `已自定义名称——点击改名（或恢复默认）` : tr("ui.ShipPage.012")}
                         onClick={() => startRename(uid, shipState.customName)}
                       >
-                        改名
+                        {tr("ui.ShipPage.013")}
                       </button>
                     ) : null}
                     <button
                       className={`app-btn is-small app-lock-btn${isLockedShip ? ' is-warn' : ''}`}
-                      title={isLockedShip ? '已锁定防误操作——点击解锁' : '锁定此船，防止误移入舰船仓库（锁定后仍可驾驶/派 AI）'}
+                      title={isLockedShip ? tr("ui.ShipPage.014") : tr("ui.ShipPage.015")}
                       onClick={() => handleToggleLock(uid, isLockedShip)}
                     >
                       {isLockedShip ? (
@@ -542,7 +544,7 @@ export function ShipPage({
                           <span className="app-ico">
                             <Glyph name="ico-lock" size={12} color={ICO_TONES['ico-lock']} />
                           </span>
-                          锁定
+                          {tr("ui.ShipPage.009")}
                         </>
                       )}
                     </button>
@@ -555,7 +557,7 @@ export function ShipPage({
                       value={renameDraft}
                       maxLength={10}
                       autoFocus
-                      placeholder="新船名（10 字内，允许重名）"
+                      placeholder={tr("ui.ShipPage.016")}
                       onChange={(e) => setRenameDraft(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') submitRename(uid, renameDraft)
@@ -567,20 +569,20 @@ export function ShipPage({
                       disabled={renameDraft.trim().length === 0}
                       onClick={() => submitRename(uid, renameDraft)}
                     >
-                      确定
+                      {tr("ui.ShipPage.017")}
                     </button>
                     {shipState.customName ? (
                       <button className="app-btn is-small" onClick={() => submitRename(uid, null)}>
-                        恢复默认名
+                        {tr("ui.ShipPage.018")}
                       </button>
                     ) : null}
                     <button className="app-btn is-small" onClick={() => setRenameId(null)}>
-                      取消
+                      {tr("ui.ActivityBar.004")}
                     </button>
                   </div>
                 ) : null}
                 <div className="app-ship-spec">
-                  货舱 {def.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {def.cycleSeconds} 秒 × {def.oreUnitsPerCycle} 单位 · 动力 {Math.round(def.agility * 100)}%
+                  {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.ShipPage.022")} {Math.round(def.agility * 100)}%
                 </div>
                 <div className="app-dur-row">
                   <div className="app-dur-track">
@@ -590,7 +592,7 @@ export function ShipPage({
                     className={`app-dur-text${dur < 0.5 || armor < 0.5 ? ' is-bad' : dur < 1 || armor < 1 ? ' is-mid' : ''}`}
                     title={`结构（=原耐久，与装甲同为跨场保留的损伤；护盾损失不保留）${dur < 1 ? `：结构 ${Math.round(dur * 100)}%` : ''}${armor < 1 ? `，装甲 ${Math.round(armor * 100)}%` : ''}`}
                   >
-                    结构 {Math.round(dur * 100)}%{armor < 1 ? ` · 装甲 ${Math.round(armor * 100)}%` : ''}
+                    {tr("ui.ShipPage.023")} {Math.round(dur * 100)}%{armor < 1 ? ` · 装甲 ${Math.round(armor * 100)}%` : ''}
                   </span>
                   {(dur < 1 || armor < 1) && !isWorking ? (
                     <button
@@ -599,7 +601,7 @@ export function ShipPage({
                       disabled={state.wallet.isk < repairCost}
                       title={`维修需 ${repairCost.toLocaleString('zh-CN')} 信用点（结构+装甲一并修复；护盾无需维修）`}
                     >
-                      维修 {repairCost.toLocaleString('zh-CN')}
+                      {tr("ui.ShipPage.024")} {repairCost.toLocaleString('zh-CN')}
                     </button>
                   ) : null}
                   {isCurrent && (dur < 1 || armor < 1) && kitCount > 0 ? (
@@ -610,12 +612,12 @@ export function ShipPage({
                         if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
                         else onToast('已使用一枚修理组件（基础 HP×容量增幅，民用30/军用70）。')
                       }}
-                      title="消耗驾驶船货仓 1 枚修理组件（民用优先）：基础回复 HP×容量增幅（民用30/军用70）——野外/回港前应急可用"
+                      title={tr("ui.ShipPage.025")}
                     >
                       <span className="app-ico">
                         <Glyph name="ico-cross" size={12} color={ICO_TONES['ico-cross']} />
                       </span>
-                      组件修复 ×{kitCount}
+                      {tr("ui.ShipPage.026")}{kitCount}
                     </button>
                   ) : null}
                 </div>
@@ -623,17 +625,16 @@ export function ShipPage({
                   /* 入仓确认（2026-09-14 船长裁定「甲」：有自定义名先弹确认清名，可取消先去改名）——
                      样式沿用原出售确认块（`.app-sell-confirm`），不新造弹层 */
                   <div className="app-sell-confirm">
-                    <div className="app-sell-confirm-title">确认把「{displayName}」移入舰船仓库？</div>
+                    <div className="app-sell-confirm-title">{tr("ui.ShipPage.027")}{displayName}{tr("ui.ShipPage.028")}</div>
                     <div className="app-dim app-sell-confirm-note">
-                      该船带自定义名「{shipState.customName}」——舰船仓库按同型堆叠计数存放，名字会被清除。
-                      之后可以随时用「转入舰队」取回一艘全新的同型船。
+                      {tr("ui.ShipPage.029")}{shipState.customName}{tr('ui.ShipPage.110')}
                     </div>
                     <div className="app-sell-confirm-btns">
                       <button className="app-btn is-small is-warn" onClick={() => doStore(uid, true)}>
-                        清名并移入仓库
+                        {tr("ui.ShipPage.030")}
                       </button>
                       <button className="app-btn is-small" onClick={() => setStoreConfirmId(null)}>
-                        取消
+                        {tr("ui.ActivityBar.004")}
                       </button>
                     </div>
                   </div>
@@ -641,14 +642,14 @@ export function ShipPage({
                 {!isCurrent && !isWorking ? (
                   /* T5-A 修正（船长反馈）：锁定只拦"移出舰队"，锁定的闲置船仍可切换驾驶 */
                   <div className="app-ship-bottom">
-                    <span className="app-dim">货仓与装备随船保存</span>
+                    <span className="app-dim">{tr("ui.ShipPage.031")}</span>
                     <div className="app-ship-bottom-btns">
                       {isLockedShip ? (
-                        <span className="app-chip app-lock-chip" title="已锁定：此船不可移入舰船仓库（可点上方「解锁」）">
+                        <span className="app-chip app-lock-chip" title={tr("ui.ShipPage.032")}>
                           <span className="app-ico">
                             <Glyph name="ico-lock" size={11} color={ICO_TONES['ico-lock']} />
                           </span>
-                          已锁定
+                          {tr("ui.ShipPage.033")}
                         </span>
                       ) : null}
                       <button
@@ -663,10 +664,10 @@ export function ShipPage({
                         }
                         onClick={() => requestStore(uid, shipState.customName)}
                       >
-                        移入舰船仓库
+                        {tr("ui.ShipPage.034")}
                       </button>
                       <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
-                        切换驾驶
+                        {tr("ui.ShipPage.035")}
                       </button>
                     </div>
                   </div>
@@ -688,21 +689,21 @@ export function ShipPage({
       {activeTab === 'store' ? (
         <Panel
           className="is-fill"
-          title="舰船仓库"
+          title={tr("ui.ShipPage.036")}
           right={
             /* 搜索栏进标题行 + 计数（与「我的舰队」同一套写法：`.app-head-search-wrap` + 灰字计数） */
             <span className="app-head-search-wrap">
               <input
                 className="app-head-search"
                 type="text"
-                placeholder="搜索船型…"
+                placeholder={tr("ui.ShipPage.037")}
                 value={storeQ}
                 onChange={(e) => setStoreQ(e.target.value)}
                 spellCheck={false}
               />
               <span className="app-dim">
-                {storeFiltered ? `匹配 ${storeShown.length} / 共 ${storeAll.length} 型` : `${storeAll.length} 型`} · 仓内{' '}
-                {storeTotalShips} 艘
+                {storeFiltered ? tr('ui.ShipPage.111', { shown: storeShown.length, total: storeAll.length }) : tr('ui.ShipPage.112', { total: storeAll.length })}
+                {tr('ui.ShipPage.113', { n: storeTotalShips })}
               </span>
             </span>
           }
@@ -710,7 +711,7 @@ export function ShipPage({
           {/* 三维筛选（复刻「我的舰队」的工具条样式）：拥有（船长裁定：只看仓库库存）→ 类别 → 级别 */}
           <div className="app-fleet-toolbar">
             <div className="app-fleet-row">
-              <span className="app-dim">拥有：</span>
+              <span className="app-dim">{tr("ui.ShipPage.038")}</span>
               <div className="app-task-tabs app-fleet-tabs" role="tablist">
                 {STORE_OWN_TABS.map((t) => (
                   <button
@@ -726,7 +727,7 @@ export function ShipPage({
               </div>
             </div>
             <div className="app-fleet-row">
-              <span className="app-dim">类别：</span>
+              <span className="app-dim">{tr("ui.ShipPage.004")}</span>
               <div className="app-task-tabs app-fleet-tabs" role="tablist">
                 <button
                   role="tab"
@@ -734,7 +735,7 @@ export function ShipPage({
                   className={`app-tasktab${storeRole === SUB_ALL ? ' is-active' : ''}`}
                   onClick={() => setStoreRole(SUB_ALL)}
                 >
-                  全部
+                  {tr("ui.IndustryPage.001")}
                 </button>
                 {SHIP_SUBS.map((s) => (
                   <button
@@ -750,7 +751,7 @@ export function ShipPage({
               </div>
             </div>
             <div className="app-fleet-row">
-              <span className="app-dim">级别：</span>
+              <span className="app-dim">{tr("ui.ShipPage.005")}</span>
               <div className="app-task-tabs app-fleet-tabs" role="tablist">
                 <button
                   role="tab"
@@ -758,7 +759,7 @@ export function ShipPage({
                   className={`app-tasktab${storeTier === SUB_ALL ? ' is-active' : ''}`}
                   onClick={() => setStoreTier(SUB_ALL)}
                 >
-                  全部
+                  {tr("ui.IndustryPage.001")}
                 </button>
                 {SHIP_TIER_SUBS.map((s) => (
                   <button
@@ -778,7 +779,7 @@ export function ShipPage({
             {storeShown.length === 0 ? (
               <div className="app-dim app-note">
                 {storeAll.length === 0
-                  ? '舰船目录还是空的。'
+                  ? tr("ui.ShipPage.039")
                   : `没有匹配的船型${sq.length > 0 ? `（关键词「${storeQ.trim()}」）` : '（当前筛选）'}——换个关键词或筛选条件试试。`}
               </div>
             ) : (
@@ -800,8 +801,8 @@ export function ShipPage({
                             {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
                             <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipCategoryLabelOf(def)}</em>
                             {stored <= 0 ? (
-                              <em className="app-chip app-lock-chip" title="舰船仓库里还没有这一型（在役舰队里的船不算——「已拥有 / 未拥有」只看仓库库存）">
-                                未拥有
+                              <em className="app-chip app-lock-chip" title={tr("ui.ShipPage.040")}>
+                                {tr("ui.ShipPage.041")}
                               </em>
                             ) : null}
                           </span>
@@ -810,19 +811,19 @@ export function ShipPage({
                           </span>
                         </div>
                         <div className="app-ship-spec">
-                          货舱 {def.cargoM3.toLocaleString('zh-CN')} m³ · 循环 {def.cycleSeconds} 秒 × {def.oreUnitsPerCycle} 单位 · 动力 {Math.round(def.agility * 100)}%
+                          {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.ShipPage.022")} {Math.round(def.agility * 100)}%
                         </div>
                         <div className="app-ship-desc">{def.description}</div>
                         <div className="app-ship-bottom">
                           <span className={stored > 0 ? 'app-ship-price' : 'app-dim'}>
-                            仓库 ×{stored.toLocaleString('zh-CN')}
+                            {tr("ui.ShipPage.042")}{stored.toLocaleString('zh-CN')}
                           </span>
                           {inFleet > 0 ? (
-                            <span className="app-chip" title="在役舰队（机库）里的同型艘数">
-                              舰队 ×{inFleet}
+                            <span className="app-chip" title={tr("ui.ShipPage.043")}>
+                              {tr("ui.ShipPage.044")}{inFleet}
                             </span>
                           ) : null}
-                          {ask !== undefined ? <span className="app-dim">现货 {isk(ask)} 信用点</span> : null}
+                          {ask !== undefined ? <span className="app-dim">{tr("ui.ShipPage.045")} {isk(ask)} {tr("ui.FirstTasks.003")}</span> : null}
                           {lock ? (
                             <span className="app-chip is-exotic" title={lock}>
                               <span className="app-ico">
@@ -835,31 +836,31 @@ export function ShipPage({
                             <button
                               className="app-btn is-small"
                               disabled={stored <= 0}
-                              title={stored > 0 ? '转入舰队：生成一艘全新同型船（满耐久 · 无装配 · 无自定义名）' : '舰船仓库里还没有这一型'}
+                              title={stored > 0 ? tr("ui.ShipPage.046") : tr("ui.ShipPage.047")}
                               onClick={() => doUnstore(def.id)}
                             >
-                              转入舰队
+                              {tr("ui.ShipPage.048")}
                             </button>
                             <button
                               className="app-btn is-small"
                               disabled={stored <= 0}
                               title={
                                 stored > 0
-                                  ? '按当前市场收购价出售 1 艘；无人收购时自动转限价卖单（可撤单退回舰船仓库）'
-                                  : '舰船仓库里还没有这一型'
+                                  ? tr("ui.ShipPage.049")
+                                  : tr("ui.ShipPage.047")
                               }
                               onClick={() => setStoreSellId(def.id)}
                             >
-                              出售 1 艘
+                              {tr("ui.ShipPage.050")}
                             </button>
                             {good ? (
                               <button
                                 className={`app-btn is-small${lock ? '' : ' is-primary'}`}
                                 disabled={!onGotoMarket}
-                                title={lock ?? '前往市场页查看该舰船订单——自动聚焦搜索该船，现货/挂单都在市场操作'}
+                                title={lock ?? tr("ui.ShipPage.051")}
                                 onClick={() => onGotoMarket?.(good.key)}
                               >
-                                去市场查看 / 下单
+                                {tr("ui.ShipPage.052")}
                               </button>
                             ) : null}
                           </div>
@@ -867,17 +868,17 @@ export function ShipPage({
                         {storeSellId === def.id ? (
                           /* 出售二次确认（沿用舰队页原「市价出售」确认块的样式与话术结构） */
                           <div className="app-sell-confirm">
-                            <div className="app-sell-confirm-title">确认出售「{def.name}」1 艘？</div>
+                            <div className="app-sell-confirm-title">{tr("ui.ShipPage.053")}{def.name}{tr("ui.ShipPage.054")}</div>
                             <div className="app-dim app-sell-confirm-note">
-                              将按当前市场收购价即时成交；没有收购单时自动转为限价卖单（可随时撤销退回舰船仓库）。
+                              {tr("ui.ShipPage.055")}
                               {quote?.buy !== undefined ? ` 预计到手约 ${isk(quote.buy)} 信用点（税后以实际成交计）。` : ''}
                             </div>
                             <div className="app-sell-confirm-btns">
                               <button className="app-btn is-small is-warn" onClick={() => doSellStored(def.id)}>
-                                确认出售
+                                {tr("ui.ShipPage.056")}
                               </button>
                               <button className="app-btn is-small" onClick={() => setStoreSellId(null)}>
-                                取消
+                                {tr("ui.ActivityBar.004")}
                               </button>
                             </div>
                           </div>
@@ -1087,10 +1088,10 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   return (
     <Panel
       className="is-fill"
-      title="AI 指挥中心"
+      title={tr("ui.ShipPage.057")}
       right={
         <span className="app-dim">
-          AI 核心启用 {used}/{totalCap}
+          {tr("ui.ShipPage.058")} {used}/{totalCap}
           {industryBonus > 0 ? `（共用 ${cap} + 工业扩容 ${industryBonus}）` : ''}
         </span>
       }
@@ -1098,8 +1099,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       {/* 名额与核心库 */}
       <div className="app-ai-status">
         <span className="app-dim">
-          AI 核心启用上限 {cap} 枚（AI 副船任务与站内精炼炉/回收炉/制造线共用；上限由「AI 核心操作学」决定）
-          {industryBonus > 0 ? '；站内产业另获「工业自动化」扩容 '+industryBonus+' 枚工业专用工位（仅炉/线可用——工业占用先抵这 '+industryBonus+' 枚，不占副船名额；超出扩容的部分才占用共用上限）' : '；站内产业可通过「工业自动化」（每级 +2 枚工业专用工位）扩产'}{cap === 0 && industryBonus <= 0 ? '（先到「技能」页训练 AI 核心操作学）' : ''}
+          {tr("ui.ShipPage.059")} {cap} {tr("ui.ShipPage.060")}
+          {industryBonus > 0 ? '；站内产业另获「工业自动化」扩容 '+industryBonus+' 枚工业专用工位（仅炉/线可用——工业占用先抵这 '+industryBonus+' 枚，不占副船名额；超出扩容的部分才占用共用上限）' : tr("ui.ShipPage.061")}{cap === 0 && industryBonus <= 0 ? tr("ui.ShipPage.062") : ''}
         </span>
         <div className="app-core-badges">
           {AI_CORE_ORDER.map((type) => (
@@ -1108,7 +1109,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             </span>
           ))}
           <button className="app-btn is-small is-primary" onClick={handleBuyCore}>
-            市场购入基础核心{marketQuote(state, engine.ctx, 'core-basic').sell !== undefined ? ` · ${isk(marketQuote(state, engine.ctx, 'core-basic').sell!)} 信用点` : '（暂缺货·可挂单）'}
+            {tr("ui.ShipPage.063")}{marketQuote(state, engine.ctx, 'core-basic').sell !== undefined ? ` · ${isk(marketQuote(state, engine.ctx, 'core-basic').sell!)} 信用点` : tr("ui.ShipPage.064")}
           </button>
         </div>
       </div>
@@ -1126,18 +1127,18 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             disabled={isIndustryTask || idleShips.length === 0}
             title={
               isIndustryTask
-                ? '站内工业 AI 不需要舰船：核心直接接进精炼炉/回收炉/制造线'
+                ? tr("ui.ShipPage.065")
                 : idleShips.length === 0
                   ? '当前没有空闲舰船可指派（舰船均在执勤/出航中）'
                   : '选择空闲舰船'
             }
           >
             <option value="">
-              {isIndustryTask ? '站内工业无需舰船' : idleShips.length === 0 ? '无空闲舰船' : '— 选择空闲舰船 —'}
+              {isIndustryTask ? tr("ui.ShipPage.066") : idleShips.length === 0 ? '无空闲舰船' : '— 选择空闲舰船 —'}
             </option>
             {idleShips.map((id) => (
               <option key={id} value={id}>
-                {shipDisplayName(state, engine.ctx, id)}（结构 {Math.round(durabilityOf(state, id) * 100)}%）
+                {shipDisplayName(state, engine.ctx, id)}{tr("ui.ShipPage.067")} {Math.round(durabilityOf(state, id) * 100)}%）
               </option>
             ))}
           </select>
@@ -1149,12 +1150,12 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             disabled={usableCores.length === 0}
             title={
               usableCores.length === 0
-                ? '无可用 AI 核心：核心库为空或全部已在占用中——去市场购入「基础 AI 核心」，或先取消占用中的任务、训练「AI 核心操作学」提高上限'
-                : 'AI 核心类型（一枚核心驱动一项任务；无库存的类型不会列出）'
+                ? tr("ui.ShipPage.068")
+                : tr("ui.ShipPage.069")
             }
           >
             {usableCores.length === 0 ? (
-              <option value="">无可用 AI 核心</option>
+              <option value="">{tr("ui.ShipPage.070")}</option>
             ) : (
               usableCores.map((t) => (
                 <option key={t} value={t}>
@@ -1167,19 +1168,19 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             className="app-select"
             value={effMode}
             onChange={(e) => setMode(e.target.value as AiAssignMode)}
-            title="任务类型：副船任务（采矿/打捞/掩护巡逻）或站内工业（精炼炉与回收炉/组装机制造线）"
+            title={tr("ui.ShipPage.071")}
           >
             <option value="mining" disabled={!shipTasksOk}>
-              副船 · 采矿任务{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
+              {tr("ui.ShipPage.072")}{shipTasksOk ? '' : tr("ui.ShipPage.073")}
             </option>
             <option value="salvage" disabled={!shipTasksOk}>
-              副船 · 打捞任务{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
+              {tr("ui.ShipPage.074")}{shipTasksOk ? '' : tr("ui.ShipPage.073")}
             </option>
             <option value="standby" disabled={!shipTasksOk}>
-              副船 · 掩护巡逻{shipTasksOk ? '' : '（需先训练「AI 核心操作学」解锁共用上限）'}
+              {tr("ui.ShipPage.075")}{shipTasksOk ? '' : tr("ui.ShipPage.073")}
             </option>
-            <option value="refine">站内 · 精炼炉/回收炉</option>
-            <option value="craft">站内 · 组装机制造线</option>
+            <option value="refine">{tr("ui.ShipPage.076")}</option>
+            <option value="craft">{tr("ui.ShipPage.077")}</option>
           </select>
           {effMode === 'mining' ? (
             <select className="app-select" value={beltId} onChange={(e) => setBeltId(e.target.value)}>
@@ -1201,7 +1202,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             </select>
           ) : effMode === 'salvage' ? (
             <select className="app-select" value={salvageGalaxyId} onChange={(e) => setSalvageGalaxyId(e.target.value)}>
-              <option value="">— 选星系（需已探索且有敌群残骸） —</option>
+              <option value="">{tr("ui.ShipPage.078")}</option>
               {[...engine.ctx.galaxies.values()]
                 .filter((g) => isExplored(state, g.id) && engine.anomalies.some((a) => a.galaxyId === g.id))
                 .map((g) => (
@@ -1215,9 +1216,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               className="app-select"
               value={standbyGalaxyId}
               onChange={(e) => setStandbyGalaxyId(e.target.value)}
-              title="副船前往该星系掩护巡逻并留守（到达后可随时取消召回）"
+              title={tr("ui.ShipPage.079")}
             >
-              <option value="">— 选星系（需已探索） —</option>
+              <option value="">{tr("ui.ShipPage.080")}</option>
               {[...engine.ctx.galaxies.values()]
                 .filter((g) => isExplored(state, g.id))
                 .map((g) => (
@@ -1231,23 +1232,23 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               className="app-select"
               value={effRefineId}
               onChange={(e) => setRefineItemId(e.target.value)}
-              title="♨ 精炼炉炼原矿/气体/冰矿；♻ 回收炉拆残骸（仓库或货仓要有料）"
+              title={tr("ui.ShipPage.081")}
             >
-              {refineAll.length === 0 ? <option value="">没有可精炼的资源或残骸</option> : null}
+              {refineAll.length === 0 ? <option value="">{tr("ui.ShipPage.082")}</option> : null}
               {refineOres.length > 0 ? (
-                <optgroup label="♨ 可精炼资源">
+                <optgroup label={tr("ui.ShipPage.083")}>
                   {refineOres.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name}（货仓+仓库 ×{oreAvailable(state, d.id).toLocaleString('zh-CN')}）
+                      {d.name}{tr("ui.ShipPage.084")}{oreAvailable(state, d.id).toLocaleString('zh-CN')}）
                     </option>
                   ))}
                 </optgroup>
               ) : null}
               {refineWrecks.length > 0 ? (
-                <optgroup label="♻ 残骸回收">
+                <optgroup label={tr("ui.ShipPage.085")}>
                   {refineWrecks.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name}（可拆 {Math.round(oreAvailable(state, d.id) * 10) / 10} m³）
+                      {d.name}{tr("ui.ShipPage.086")} {Math.round(oreAvailable(state, d.id) * 10) / 10} m³）
                     </option>
                   ))}
                 </optgroup>
@@ -1258,9 +1259,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               className="app-select"
               value={effCraftId}
               onChange={(e) => setCraftBpId(e.target.value)}
-              title="只列已学会的蓝图（未学会的先去工业页「蓝图书架」学习）；材料不足会开工失败并提示"
+              title={tr("ui.ShipPage.087")}
             >
-              {craftLearned.length === 0 ? <option value="">没有已学会的蓝图</option> : null}
+              {craftLearned.length === 0 ? <option value="">{tr("ui.ShipPage.088")}</option> : null}
               {(['装备蓝图', '舰船蓝图', '消耗品蓝图'] as const).map((group) =>
                 craftLearned.some((o) => o.group === group) ? (
                   <optgroup key={group} label={group}>
@@ -1282,25 +1283,24 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             disabled={assignBlock !== null}
             title={assignBlock ?? undefined}
           >
-            指派任务
+            {tr("ui.ShipPage.089")}
           </button>
         </div>
       ) : (
         <div className="app-dim app-inv-empty">
-          AI 核心上限为 0（共用上限 0 + 工业扩容 0）：先训练「AI 核心操作学」（rank2 入门向，每级 +1 枚共用上限）即可指派副船任务；
-          站内产业也可先练「工业自动化」解锁工业专用工位（每级 +2 枚，仅炉/线可用）。
+          {tr('ui.ShipPage.106')}
         </div>
       )}
 
       {/* 执行中列表：AI 副船任务 + 站内工业 AI（2026-09-10 船长：统一在一处呈现与停止） */}
       <div className="app-bay-title">
-        执行中 · AI 副船 {assignN} · 站内工业 {prodN}
+        {tr("ui.ShipPage.090")} {assignN} · 站内工业 {prodN}
       </div>
       {assignN === 0 && prodN === 0 ? (
-        <div className="app-dim app-inv-empty">没有正在执行的 AI 任务。</div>
+        <div className="app-dim app-inv-empty">{tr("ui.ShipPage.091")}</div>
       ) : null}
       {assignN === 0 ? (
-        prodN > 0 ? <div className="app-dim app-inv-empty">没有 AI 副船任务。</div> : null
+        prodN > 0 ? <div className="app-dim app-inv-empty">{tr("ui.ShipPage.092")}</div> : null
       ) : (
         <ul className="app-inv-list">
           {Object.entries(state.aiAssignments).map(([sid, assignment]) => {
@@ -1339,7 +1339,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   <div className="app-inv-text">
                   <span className="app-inv-name">{shipDisplayName(state, engine.ctx, sid)}</span>
                   <span className="app-inv-count">
-                    {desc} · {aiCoreName(assignment.coreType)}（效率 {Math.round(eff * 100)}%）
+                    {desc} · {aiCoreName(assignment.coreType)}{tr("ui.ShipPage.093")} {Math.round(eff * 100)}%）
                   </span>
                   <span className="app-inv-count">
                     <AiTaskBar view={aiView} />
@@ -1352,7 +1352,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                     onClick={() => handleCancelAi(sid)}
                     title={`取消 ${shipDisplayName(state, engine.ctx, sid)} 的 AI 任务：副船召回，核心归还核心库`}
                   >
-                    取消任务
+                    {tr("ui.ShipPage.094")}
                   </button>
                 </div>
               </li>
@@ -1365,7 +1365,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       {prodN > 0 ? (
         <>
           <div className="app-dim app-inv-empty">
-            站内工业 AI：可在上方直接指派，参数调整在工业页卡片；这里可随时停止（核心自动归还）。
+            {tr("ui.ShipPage.095")}
           </div>
           <ul className="app-inv-list">
             {aiRefineRuns.map((v) => {
@@ -1377,10 +1377,10 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                     <AiWorkFx kind={isReclaim ? 'reclaim' : 'refine'} />
                     <div className="app-inv-text">
                     <span className="app-inv-name">
-                      {isReclaim ? '回收炉' : '精炼炉'} · {v.itemName}
+                      {isReclaim ? tr("ui.ShipPage.096") : tr("ui.ShipPage.097")} · {v.itemName}
                     </span>
                     <span className="app-inv-count">
-                      {v.workerLabel}核心 · 已 {v.batchesDone} 批（每批 {v.batchUnits.toLocaleString('zh-CN')} 单位）
+                      {v.workerLabel}{tr("ui.ShipPage.098")} {v.batchesDone} {tr("ui.ShipPage.099")} {v.batchUnits.toLocaleString('zh-CN')} {tr("ui.ShipPage.100")}
                     </span>
                     <span className="app-inv-count">
                       <AiTaskBar
@@ -1393,9 +1393,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                     <button
                       className="app-btn is-small is-warn"
                       onClick={() => handleStopIndustry(v.id, false)}
-                      title="停这台炉：已完成批保留；原料未锁定无需退回，AI 核心自动归还"
+                      title={tr("ui.ShipPage.101")}
                     >
-                      停止
+                      {tr("ui.ActivityBar.005")}
                     </button>
                   </div>
                 </li>
@@ -1406,13 +1406,13 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 <div className="app-inv-main is-aiwork">
                   <AiWorkFx kind="craft" />
                   <div className="app-inv-text">
-                  <span className="app-inv-name">组装机 · {v.productName}</span>
+                  <span className="app-inv-name">{tr("ui.ShipPage.102")} {v.productName}</span>
                   <span className="app-inv-count">
                     {/* 循环制造为卡片级（2026-09-10 船长定）：这里显示该卡合计进度，不再按线各写各的 */}
-                    {v.workerLabel}核心 ·{' '}
+                    {v.workerLabel}{tr("ui.ShipPage.103")}{' '}
                     {v.loopOn
                       ? `循环制造 · 本卡合计 ${v.loopProduced.toLocaleString('zh-CN')}${v.loopGoal > 0 ? `/${v.loopGoal.toLocaleString('zh-CN')}` : ''} 批`
-                      : '单件生产'}
+                      : tr("ui.ShipPage.104")}
                   </span>
                   <span className="app-inv-count">
                     <AiTaskBar
@@ -1425,9 +1425,9 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   <button
                     className="app-btn is-small is-warn"
                     onClick={() => handleStopIndustry(v.id, true)}
-                    title="取消这条制造线：材料已扣不退，AI 核心自动归还"
+                    title={tr("ui.ShipPage.105")}
                   >
-                    停止
+                    {tr("ui.ActivityBar.005")}
                   </button>
                 </div>
               </li>

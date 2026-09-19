@@ -44,6 +44,7 @@ import {
   fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
+import { tr } from '../i18n/locale'
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -683,7 +684,7 @@ const meSpeedRef = useRef(200)
     /** 弹药消耗一行：0 的弹种不列；全 0 ⇒ 这一行整行不显示（没开过火就别占版面） */
     const ammoSeg = br
       ? ([
-          ['动能', br.ammoUsed.kin],
+          [tr("ui.BattleScreen.002"), br.ammoUsed.kin],
           ['爆炸', br.ammoUsed.exp],
           ['等离子', br.ammoUsed.pla],
         ] as const)
@@ -735,12 +736,12 @@ const meSpeedRef = useRef(200)
                   {droneReport.rows
                     .filter((r) => r.back > 0)
                     .map((r) => `${r.name}×${r.back}`)
-                    .join('、') || '无'}
+                    .join('、') || tr("ui.BattleScreen.001")}
                   {' ｜ '}净损失：
                   {droneReport.rows
                     .filter((r) => r.gone > 0)
                     .map((r) => `${r.name}×${r.gone}`)
-                    .join('、') || '无'}
+                    .join('、') || tr("ui.BattleScreen.001")}
                   （无人机舱清单已扣除，回港需补充）
                 </div>
               </>
@@ -2449,7 +2450,7 @@ const meSpeedRef = useRef(200)
                 {w.label} {w.minM.toLocaleString('zh-CN')}~{w.maxM.toLocaleString('zh-CN')}m
                 {w.kind === 'gun' ? (
                   w.type ? (
-                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}弹药</span>
+                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}{tr("ui.BattleScreen.003")}</span>
                   ) : (
                     '（无弹）'
                   )

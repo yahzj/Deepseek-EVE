@@ -89,6 +89,7 @@ import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
 import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL } from '../ui/itemSubs'
+import { tr } from '../i18n/locale'
 
 type WhTab = 'prep' | 'map' | 'bag'
 
@@ -99,7 +100,7 @@ type BoardKind = 'hold' | 'temp'
  * 页签文案。⚠ **玩家可见一律叫「货仓」，不叫「背包」**（船长 2026-09-15：「不应该直接叫背包，
  * 展示给玩家看的叫货仓」）——内部标识符仍是 `bag` / `run.bag`（不动存档与代码键名）。
  */
-const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '货仓' }
+const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: tr("ui.CargoPage.004") }
 
 /* ── 探索页动效时长（船长 2026-09-13 拍板：「入场动画时长可以拉长到 1 秒」）──
    飞入 1000ms（进场与到达新层）· 飞出 600ms（深入下一层前先飞走）· 扫描波 900ms ·
@@ -1238,7 +1239,7 @@ export function WormholePanel({
                     <input
                       className="app-head-search"
                       type="text"
-                      placeholder="搜索舰船…"
+                      placeholder={tr("ui.ShipPage.002")}
                       value={whQ}
                       onChange={(e) => setWhQ(e.target.value)}
                       spellCheck={false}
@@ -1249,7 +1250,7 @@ export function WormholePanel({
                   </span>
                   <div className="app-fleet-toolbar app-wh-filters">
                 <div className="app-fleet-row">
-                  <span className="app-dim">类别：</span>
+                  <span className="app-dim">{tr("ui.ShipPage.004")}</span>
                   <div className="app-task-tabs app-fleet-tabs" role="tablist">
                     <button
                       role="tab"
@@ -1257,7 +1258,7 @@ export function WormholePanel({
                       className={`app-tasktab${whRole === SUB_ALL ? ' is-active' : ''}`}
                       onClick={() => setWhRole(SUB_ALL)}
                     >
-                      全部
+                      {tr("ui.IndustryPage.001")}
                     </button>
                     {SHIP_SUBS.map((s) => (
                       <button
@@ -1273,7 +1274,7 @@ export function WormholePanel({
                   </div>
                 </div>
                 <div className="app-fleet-row">
-                  <span className="app-dim">级别：</span>
+                  <span className="app-dim">{tr("ui.ShipPage.005")}</span>
                   <div className="app-task-tabs app-fleet-tabs" role="tablist">
                     <button
                       role="tab"
@@ -1281,7 +1282,7 @@ export function WormholePanel({
                       className={`app-tasktab${whTier === SUB_ALL ? ' is-active' : ''}`}
                       onClick={() => setWhTier(SUB_ALL)}
                     >
-                      全部
+                      {tr("ui.IndustryPage.001")}
                     </button>
                     {SHIP_TIER_SUBS.map((s) => (
                       <button
@@ -1477,7 +1478,7 @@ export function WormholePanel({
                   采集器 <b>{miners}</b> 台
                 </span>
                 <span className="app-wh-cell">回合 <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
-                <span className="app-wh-cell">货仓 <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
+                <span className="app-wh-cell">{tr("ui.CargoPage.004")} <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
                 {/**
                  * **谜质增益读数**（F3c · 船长 2026-09-13）：只在真带装置时出现，悬停逐台列出来
                  * ——效果一律从货仓现算（`wormholeMatterBuffs`），界面与 core 同源。
@@ -1525,7 +1526,7 @@ export function WormholePanel({
                           确认撤离
                         </button>
                         <button className="app-btn is-small" onClick={() => setExtractAsk(false)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </span>
                     </div>
@@ -1735,7 +1736,7 @@ export function WormholePanel({
                           确认前往（1 回合）
                         </button>
                         <button className="app-btn is-small" onClick={() => setPendingCell(null)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </span>
                     </div>
@@ -1947,7 +1948,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
   const total = useCountUp(settle.oreIsk + settle.wreckIsk)
   const cells: Array<{ label: string; value: string; sub: string; wide?: boolean }> = [
     { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} 信用点` },
-    { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: '信用点' },
+    { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: tr("ui.FirstTasks.003") },
     { label: '货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
     { label: '随行战利品', value: String(settle.relics.length), sub: '件（装备 / 图纸）' },
     /**
@@ -2022,7 +2023,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
         ))}
       </div>
       <div className="app-wh-settle-total is-pop" style={{ animationDelay: `${(cells.length + 1) * STEP}ms` }}>
-        本趟到手合计 <b>{n(total)}</b> 信用点
+        本趟到手合计 <b>{n(total)}</b> {tr("ui.FirstTasks.003")}
         {settle.boxes.length > 0 ? ` · 货柜 ${settle.boxes.length} 件` : ''}
       </div>
       {settle.shipsLost.length > 0 ? (
@@ -2912,7 +2913,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               确认抛弃
             </button>
             <button className="app-btn is-small" onClick={() => setAskDiscard(null)}>
-              取消
+              {tr("ui.ActivityBar.004")}
             </button>
           </span>
         </div>
@@ -3013,7 +3014,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                       确认抛弃
                     </button>
                     <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
-                      取消
+                      {tr("ui.ActivityBar.004")}
                     </button>
                   </div>
                 ) : null}

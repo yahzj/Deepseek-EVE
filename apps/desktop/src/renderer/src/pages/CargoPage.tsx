@@ -34,6 +34,7 @@ import type { PageProps } from './common'
 import { useL10n } from '../i18n/locale'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
+import { tr } from '../i18n/locale'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: 'ui.CargoPage.010',
@@ -191,13 +192,13 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 key={id}
                 className={`app-shipchip${isSel ? ' is-active' : ''}${isP ? ' is-piloted' : ''}`}
                 onClick={() => setSelId(id)}
-                title={isP ? '当前驾驶船' : b ?? '该船闲置中'}
+                title={isP ? tr("ui.CargoPage.007") : b ?? '该船闲置中'}
               >
                 <span className="app-shipchip-name">
                   {d ? <span className={`app-role-dot is-${d.role}`} /> : null}
                   {shipDisplayName(state, engine.ctx, id)}
                 </span>
-                {isP ? <span className="app-shipchip-tag">驾驶中</span> : null}
+                {isP ? <span className="app-shipchip-tag">{tr("ui.ShipPage.010")}</span> : null}
                 {b ? <span className="app-shipchip-busy">·{b}</span> : null}
               </button>
             )
@@ -221,7 +222,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           ) : null}
           {isPiloted ? (
             <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={rows.length === 0}>
-              全部卸入仓库
+              {tr("ui.CargoPage.037")}
             </button>
           ) : busy === null ? (
             // 2026-09-08（船长定）：空闲停靠的非驾驶舰船也可直接卸货入仓库（装船/出售仍限驾驶船）
@@ -380,7 +381,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               return (
                 <Panel
                   key={kind}
-                  title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
+                  title={`${itemKindLabel(kind)}（${isPiloted ? tr("ui.CargoPage.005") : tr("ui.CargoPage.006")}）`}
                   hint={extra ? <HintIcon tip={extra} /> : undefined}
                   right={<span className="app-dim">{kindRows.length} 种</span>}
                 >
@@ -453,7 +454,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 {pickId && marketGoodOf(engine.ctx, 'item', pickId) ? (
                   <button
                     className="app-btn is-small"
-                    title="前往市场查看该物品的订单（价格/挂单/买入）"
+                    title={tr("ui.CargoPage.003")}
                     onClick={() => {
                       setPickId(null)
                       goMarket(pickId)
