@@ -866,7 +866,7 @@ export function WormholePanel({
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
               属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
-            {' '}· 坐标 Q{grid.pos.q} · R{grid.pos.r}
+            {' '}{tr('ui.Wormhole.275')}Q{grid.pos.q} · R{grid.pos.r}
             {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
           </span>
         </div>
@@ -891,16 +891,15 @@ export function WormholePanel({
           <>
             {workCell && bulkPiles > 0 ? (
               <div className="app-dim app-note">
-                {veinCell ? tr("ui.Wormhole.187") : tr("ui.MarketPage.009")}堆 {bulkPiles} 堆{veinCell ? '' : tr("ui.Wormhole.243")} · 编队
+                {veinCell ? tr("ui.Wormhole.187") : tr("ui.MarketPage.009")}堆 {bulkPiles} 堆{veinCell ? '' : tr("ui.Wormhole.243")}{tr('ui.Wormhole.276')}
                 {rigName} <b>{rigs}</b> {tr("ui.Wormhole.076")} {Math.min(Math.max(rigs, 0), bulkPiles)} {tr("ui.Wormhole.077")}{' '}
                 {rigs > 0 ? Math.ceil(bulkPiles / rigs) : '—'} {tr("ui.Wormhole.078")}
-                {rigs <= 0 ? tr("ui.Wormhole.244", { rigName: rigName, rigName2: rigName }) : ''} · 走到这一格就铺好了，不用激活
+                {rigs <= 0 ? tr("ui.Wormhole.244", { rigName: rigName, rigName2: rigName }) : ''}{tr('ui.Wormhole.277')}
               </div>
             ) : null}
             {shapedPiles.length > 0 ? (
               <div className="app-dim app-note">
-                {tr("ui.FitPage.072")} <b>{shapedPiles.length}</b> 件货柜：打捞器搬不动它 ——
-                点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；腾不出 2×2 会先放进临时空间）。
+                {tr("ui.FitPage.072")} <b>{shapedPiles.length}</b>{tr('ui.Wormhole.278')}
               </div>
             ) : null}
             {/**
@@ -910,8 +909,7 @@ export function WormholePanel({
             {hereCell.place === 'matter' ? (
               <div className="app-dim app-note">
                 {tr("ui.Wormhole.245")}<b>{wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).name}</b>{tr("ui.Wormhole.008")}
-                {wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).text} —— 取回后装进货仓生效
-                （占 2×2 = 4 格，腾不出会先进临时空间），离开虫洞即失效。
+                {wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).text}{tr('ui.Wormhole.279')}
               </div>
             ) : null}
             {/* **装不下的预告**（船长 2026-09-13）——把"再捞就满"这件事摆在按钮之前，别等捞到一半才发现 */}
@@ -1365,7 +1363,7 @@ export function WormholePanel({
                           {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
                         </span>
                         <span className="app-wh-card-sub">
-                          {tr("ui.Handbook.159")} {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
+                          {tr("ui.Handbook.159")} {def ? n(wormholeShipMass(def)) : '—'}{tr('ui.Wormhole.280')}{n(cargoCapacityM3Of(state, ctx, uid))} m³
                         </span>
                         <span className="app-wh-card-tags">
                           <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
@@ -2741,7 +2739,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   {p.kind === 'cargo' ? ` ×${n(p.units ?? 0)}` : ''}
                   <span className="app-dim">
                     {' '}
-                    · 占 {p.w * p.h} 格
+                    {tr('ui.Wormhole.281', { n: p.w * p.h })}
                     {device ? ` · 谜质装置：放在这里已失效${wormholeMatterDiscardHint(p.itemId) ? `（${wormholeMatterDiscardHint(p.itemId)}）` : ''}` : ''}
                   </span>
                 </li>
@@ -2762,8 +2760,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
         </div>
       ) : null}
       <div className="app-bay-title">
-        {tr("ui.Wormhole.231")} <b>{info.used}</b> / {info.capacity} 格
-        {info.overload ? <span className="app-wh-hold-warn"> · 超载</span> : null}
+        {tr("ui.Wormhole.231")} <b>{info.used}</b> / {info.capacity}{tr('ui.Wormhole.285')}
+        {info.overload ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.282')}</span> : null}
         <span className="app-dim">
           {' '}{tr("ui.Wormhole.273")} {info.cargoCells} {tr("ui.Wormhole.173")} {info.shapeCells} 格
           {info.unplacedCells > 0 ? ` + 放不下 ${info.unplacedCells} 格` : ''}）
@@ -2818,7 +2816,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
         <div className="app-wh-hold-board-side">
           <div className="app-bay-title">
             {tr("ui.Wormhole.059")} <b>{tempInfo.cells}</b> / {tempInfo.capacity} 格
-            {tempInfo.full ? <span className="app-wh-hold-warn"> · 已满</span> : null}
+            {tempInfo.full ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.283')}</span> : null}
           </div>
           {boardView('temp', tempBoard, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, WORMHOLE_TEMP_ROWS, '')}
           <div className="app-wh-actions">
@@ -2835,8 +2833,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             <span className="app-dim">{tr("ui.Wormhole.177")}</span>
           </div>
           <div className="app-dim app-note">
-            腾位置用的临时格：不占货仓容量、不算超载；谜质储存器放这里不生效。
-            离开本页（切去探索/关面板/撤离）前必须处理完：放回货仓 或 丢弃。
+            {tr('ui.Wormhole.284')}
           </div>
         </div>
       </div>
