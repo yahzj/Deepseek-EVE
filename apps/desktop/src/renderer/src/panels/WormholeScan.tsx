@@ -27,11 +27,14 @@ import {
   WORMHOLE_SCAN_UNLOCK_STANDING,
   wormholeStockMaxOf,
   aiCoreName,
+  // 子页「谜质科技」的读数（标题行右侧 + 面板内都要用）
+  matterTechEssenceHeld,
 } from '@whale/core'
 import type { GameState, WormholeArchetype, WormholeFamily } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 
 /**
@@ -99,6 +102,14 @@ export function WormholeScanTab({
   /** 解锁门槛（船长 2026-09-14：需要协会声望 40；解锁时会收到一封通讯 + 直接弹窗） */
   const unlocked = engine.wormholeScanUnlocked()
   const standing = engine.wormholeScanStanding()
+  /**
+   * **两个子页**（船长 2026-09-19：「将现有的扫描虫洞分出 2 个子页面：虫洞探索和谜质科技」）：
+   * `explore` = 原页面一字不动；`matter` = 谜质科技树（`MatterTechTab`）。
+   * 子页切换**不落档**（会话内存；默认进「虫洞探索」= 老行为）。
+   */
+  const [sec, setSec] = useState<'explore' | 'matter'>('explore')
+  /** 谜质读数（子页标题行右侧换口径用） */
+  const essence = matterTechEssenceHeld(state)
 
   return (
     <Panel
@@ -112,14 +123,44 @@ export function WormholeScanTab({
         />
       }
       right={
-        <span className="app-dim">
-          已囤 {stock.length}/{stockMax} 处
-          {runs.length > 0 ? ` · 自动探索 ${runs.length} 趟在跑` : ''}
-          {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''} · 单次窗口 {formatDurationMs(windowMs)}
-        </span>
+        sec === 'matter' ? (
+          <span className="app-dim">
+            虫洞谜质 {essence.toLocaleString('zh-CN')} 枚 · 研究不消耗时间
+          </span>
+        ) : (
+          <span className="app-dim">
+            已囤 {stock.length}/{stockMax} 处
+            {runs.length > 0 ? ` · 自动探索 ${runs.length} 趟在跑` : ''}
+            {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''} · 单次窗口 {formatDurationMs(windowMs)}
+          </span>
+        )
       }
     >
       <div className="app-win-body">
+        {/* **子页标签**（船长 2026-09-19）：虫洞探索（现有内容）/ 谜质科技（研究树）——
+            与「工业」「物品」两页同一套 app-subtabs 写法。 */}
+        <div className="app-subtabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={sec === 'explore'}
+            className={`app-subtab${sec === 'explore' ? ' is-active' : ''}`}
+            onClick={() => setSec('explore')}
+          >
+            虫洞探索
+          </button>
+          <button
+            role="tab"
+            aria-selected={sec === 'matter'}
+            className={`app-subtab${sec === 'matter' ? ' is-active' : ''}`}
+            title="消耗虫洞谜质与信用点研究科技：主要作用于洞内探索与战斗，另含部分洞外工业科技（不消耗时间）"
+            onClick={() => setSec('matter')}
+          >
+            谜质科技
+          </button>
+        </div>
+        {sec === 'matter' ? <MatterTechTab engine={engine} onToast={onToast} /> : null}
+        {/* ───── 以下 = 「虫洞探索」子页（原页面内容，一字未动） ───── */}
+        <div className={`app-subpage${sec === 'explore' ? '' : ' is-hidden'}`}>
         {!unlocked ? (
           <div className="app-wh-scanbar">
             <div className="app-wh-scanbar-label">
@@ -446,6 +487,7 @@ export function WormholeScanTab({
             </ul>
           </>
         ) : null}
+        </div>
       </div>
     </Panel>
   )
