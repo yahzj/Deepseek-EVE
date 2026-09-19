@@ -49,16 +49,16 @@ describe('虫洞 · 入场校验（档位 / 质量 / 艘数）', () => {
     expect(r.code).toBe('tier-too-high')
   })
 
-  it('设计稿 §4 的编成表逐行复现（总质量 / 回合预算；基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15））', () => {
+  it('设计稿 §4 的编成表逐行复现（总质量 / 回合预算；基础沿革 55 → 60（2026-09-14）→ 100（2026-09-15）→ 80（2026-09-19 谜质科技树批））', () => {
     const cases: Array<{ ships: string[]; mass: number; turns: number }> = [
-      { ships: [T1, T1, T1, T1], mass: 2_000, turns: 93 },
-      { ships: [T1, T1, T1, T2], mass: 3_000, turns: 90 },
-      { ships: [T2, T2, T2, T2], mass: 6_000, turns: 80 },
-      { ships: [T3, T3, T2, T2], mass: 10_000, turns: 66 },
-      { ships: [T3, T3, T3, T1], mass: 11_000, turns: 63 },
-      { ships: [T3, T3, T3, T3], mass: 14_000, turns: 53 },
-      { ships: [T4, T4], mass: 14_000, turns: 53 },
-      { ships: [T4, T4, T2], mass: 15_500, turns: 48 },
+      { ships: [T1, T1, T1, T1], mass: 2_000, turns: 74 },
+      { ships: [T1, T1, T1, T2], mass: 3_000, turns: 72 },
+      { ships: [T2, T2, T2, T2], mass: 6_000, turns: 64 },
+      { ships: [T3, T3, T2, T2], mass: 10_000, turns: 53 },
+      { ships: [T3, T3, T3, T1], mass: 11_000, turns: 50 },
+      { ships: [T3, T3, T3, T3], mass: 14_000, turns: 42 },
+      { ships: [T4, T4], mass: 14_000, turns: 42 },
+      { ships: [T4, T4, T2], mass: 15_500, turns: 38 },
     ]
     for (const c of cases) {
       const r = wormholeAdmission(ctx, c.ships)
@@ -79,10 +79,14 @@ describe('虫洞 · 入场校验（档位 / 质量 / 艘数）', () => {
     expect(wormholeAdmission(ctx, ['sh-not-exist']).code).toBe('unknown-ship')
   })
 
-  it('回合公式边界：空载 = 100、满载 = floor(100×0.47) = 47、超载按上限夹住', () => {
-    expect(wormholeTurnBudget(0)).toBe(100)
-    expect(wormholeTurnBudget(WORMHOLE_TOTAL_MASS_CAP)).toBe(Math.floor(100 * 0.47))
+  it('回合公式边界：空载 = 80、满载 = floor(80×0.47) = 37、超载按上限夹住；科技加成直接相加', () => {
+    expect(wormholeTurnBudget(0)).toBe(80)
+    expect(wormholeTurnBudget(WORMHOLE_TOTAL_MASS_CAP)).toBe(Math.floor(80 * 0.47))
     expect(wormholeTurnBudget(99_999)).toBe(wormholeTurnBudget(WORMHOLE_TOTAL_MASS_CAP))
+    // 谜质科技「时序锚定器」：**最大回合数**永久加成直接相加（与质量公式分开；船长 2026-09-19）
+    expect(wormholeTurnBudget(0, 10)).toBe(90)
+    expect(wormholeTurnBudget(WORMHOLE_TOTAL_MASS_CAP, 100)).toBe(Math.floor(80 * 0.47) + 100)
+    expect(wormholeAdmission(ctx, [T1, T1, T1, T1], 10).turnBudget).toBe(84)
   })
 })
 

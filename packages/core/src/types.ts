@@ -1162,6 +1162,15 @@ export interface ModuleDef {
    * speedBonusPct：每件装备以"自己的参数进战斗公式的具体环节"，而非笼统百分比。
    */
   bonus?: number
+  /**
+   * **虫洞内「打捞/采集效率」**（2026-09-19 船长「谜质科技树」批：「给现有的打捞/采集添加效果，根据采集效率，
+   * 有概率额外打捞/采集一堆。如果效率超过100%，溢出部分再计算一次打捞概率」）——
+   * 每次打捞/采集动作，按**Σ（编队里各台的效率）**掷额外堆：`floor(效率)` 保底 + `frac(效率)` 再掷一次。
+   * 档位值（船长 2026-09-19）：民用 **0** · MK1 **0.2** · MK2 **0.4** · MK3 **0.6** · 异星原型 **0.8**。
+   * 只对 `slot: 'salvager' | 'miner'` 有意义（体检有契约）；**本字段不进洞外的采矿/打捞产率公式**
+   * （洞外仍走 `bonus` 与打捞周期）。
+   */
+  workEfficiency?: number
   description: string
   /**
    * **未上线闸门（施工期）**——语义同 `ItemDef.unreleased`（2026-09-13 船长铁律）。
@@ -2099,6 +2108,78 @@ export interface SimContext {
    * 生产（`buildSimContext`）不填。
    */
   wreckGroups?: ReadonlyMap<string, WreckGroupDef>
+  /**
+   * **谜质科技树节点表**（2026-09-19 船长「消耗谜质升级的研究科技树」；`data/src/matterTech.ts`）。
+   * 节点（名 / 层 / 级数 / 每级效果值 / 费用 / 前置）住在数据侧，**效果语义与聚合在 core**
+   * （`core/matterTech.ts` 按 `effect` 关键字汇总，不认 id）⇒ core 不需要 id 清单。
+   */
+  matterTech?: ReadonlyMap<string, MatterTechNodeDef>
+}
+
+/** 谜质科技树的**效果关键字**（core 只认这张表里的值；数据侧写错 = 体检判红 + 引擎忽略） */
+export type MatterTechEffect =
+  /** 洞内**最大回合数** +v/级（v = 回合数；永久加成，与本趟装置分开相加） */
+  | 'whTurnMax'
+  /** 打捞器效率 +v/级（v = 0.2 表示 +20%） */
+  | 'whSalvageEff'
+  /** 采集器效率 +v/级 */
+  | 'whCollectEff'
+  /** 洞内货仓有效格 +v/级 */
+  | 'whHoldCells'
+  /** 扫描虫洞间隔 −v/级（v = 0.05） */
+  | 'whScanCut'
+  /** **洞内战斗倍速**：v = 每级把倍率 +2（1 级 = ×2、2 级 = ×4；见 `combat` 的倍速时间轴） */
+  | 'whBattleSpeed'
+  /* ── 洞内战斗增益（与谜质装置同一个增益袋 `WormholeMatterBuffs`） ── */
+  | 'whResistShield'
+  | 'whResistArmor'
+  | 'whResistHull'
+  | 'whHit'
+  | 'whEvasion'
+  | 'whEnemyHitDown'
+  | 'whRange'
+  | 'whReload'
+  | 'whDamage'
+  | 'whBlindReduce'
+  | 'whThreatNode'
+  | 'whThreatBoss'
+  | 'whDroneRecovery'
+  | 'whFieldRepair'
+  /* ── 洞外工业（2026-09-19 船长重做的三件） ── */
+  /** 货柜拆解周期 −v/级（v = 0.25 = −25%，加法口径） */
+  | 'unboxTimeCut'
+  /** 虚空母矿 → **虚空晶** 回收数量 +v/级（只作用于这一支产出） */
+  | 'voidCrystalYield'
+  /** 残骸回收的**保底原材料**产出 +v/级 */
+  | 'wreckMineralYield'
+
+/** 科技树分支（界面分组 / 契约判据用） */
+export type MatterTechBranch = 'explore' | 'battle' | 'industry'
+
+/** **谜质科技树节点定义**（数据表条目；费用与前置由数据侧给，效果语义见 `MatterTechEffect`） */
+export interface MatterTechNodeDef {
+  id: string
+  name: string
+  branch: MatterTechBranch
+  /** 层级（1~4）：界面按层分行；费用须随层单调上升（体检契约） */
+  tier: number
+  /** 效果关键字 */
+  effect: MatterTechEffect
+  /** **每级**的效果值（语义由 `effect` 决定，见 `MatterTechEffect` 的逐条注释） */
+  per: number
+  /** 最大等级（≥1） */
+  maxLevel: number
+  /** **每级**的谜质消耗（长度须 = `maxLevel`；长度 1 表示每级同价） */
+  essence: readonly number[]
+  /** **每级**的信用点消耗（同 `essence` 的口径） */
+  isk: readonly number[]
+  /**
+   * 前置：`{ nodeId: 需要的最低等级 }`（同线低层；体检契约：前置必须存在、必须同线、层更低）。
+   * 缺省 = 无前置。
+   */
+  prereq?: Readonly<Record<string, number>>
+  /** 玩家可见说明（一句话规格；不写原因解释，括号只许放规格） */
+  note: string
 }
 
 /* ═══════════════ T9：副空间站建站点与通讯对话（静态内容） ═══════════════ */

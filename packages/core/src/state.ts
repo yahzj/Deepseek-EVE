@@ -17,7 +17,7 @@ import type { WormholeState } from './wormhole'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 28
+export const CURRENT_STATE_VERSION = 29
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -1817,8 +1817,30 @@ export type GameStateV27 = Omit<GameStateV26, 'version'> & {
 export type GameStateV28 = Omit<GameStateV27, 'version'> & {
   version: 28
 }
-/** 对外统一称呼：当前版本状态（v28 = v27 + 残骸合并） */
-export type GameState = GameStateV28
+/**
+ * 第二十九版存档结构（v29 = v28 + **谜质科技树等级**，2026-09-19 船长）。
+ *
+ * 「消耗谜质升级的研究科技树」：等级存 `research.levels`（键 = 节点 id、值 = 已研究等级）。
+ * 老档迁移补 `{ levels: {} }`（一级未点）⇒ **零行为变化**（见 `save.ts` 的 `MIGRATIONS[28]`）。
+ */
+export type GameStateV29 = Omit<GameStateV28, 'version'> & {
+  version: 29
+  /**
+   * **谜质科技树**（2026-09-19 船长批；节点表见 `data/src/matterTech.ts`，语义见 `core/matterTech.ts`）。
+   *
+   * ⚠ **可选**：新建档（`createInitialState`）与载入器（`normalizeState`）**恒写入**它；
+   * 标可选只为让"v28 形状的测试夹具"照旧可用（读侧一律 `?? 空树` 兜底 ⇒ 零行为变化）。
+   */
+  research?: MatterTechState
+}
+/** 对外统一称呼：当前版本状态（v29 = v28 + 谜质科技树） */
+export type GameState = GameStateV29
+
+/** **谜质科技树的存档面**：只存"哪一项研究到了几级"——效果一律现算（改数值即热更，不必迁移） */
+export interface MatterTechState {
+  /** 节点 id → 已研究等级（0/缺省 = 未研究） */
+  levels: Record<string, number>
+}
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：
  * 主控亲自运转限 1 台，其余资源/残骸可各由一枚闲置 AI 核心驱动；refineRun 单例改
@@ -2217,11 +2239,11 @@ export function createInitialState(opts?: {
   seed?: number
   nowWallMs?: number
   prologue?: boolean
-}): GameStateV28 {
+}): GameState {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV28 = {
-    version: 28,
+  const state: GameStateV29 = {
+    version: 29,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -2431,6 +2453,7 @@ export function createInitialState(opts?: {
     // 老档/新档快照因此逐字一致（真零迁移）；读侧一律按缺省 0（`firstStatOf`）。
     sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）
     wormhole: { ...EMPTY_WORMHOLE_STATE }, // v25：虫洞副本（施工期对玩家不可见；见 wormhole.ts 头注释）
+    research: { levels: {} }, // v29：谜质科技树（2026-09-19 船长批；老档迁移补空树）
     logs: [],
   }
   if (prologue) {

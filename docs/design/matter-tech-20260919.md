@@ -156,12 +156,23 @@ ISK `6·12·18M`；T3 = 谜质 `10·20·30` / ISK `10·20·30M`。
 **批次 1 · 引擎与数据口径（无界面）**
 - [x] **谜质行价 70,000 → 700,000**：`items.ts` 的 `baseSellPriceIsk` + 注释、`marketCatalog.ts` 行价、
   `wormholeSalvage.ts` 注释、`wormhole-battle.test.ts` 的 `2×70_000` 断言 ⇒ typecheck 全绿 + core **1837/1837**。
-- [ ] 回合基数 100 → 80 ＋ 时序锚定器永久加成（`wormhole.ts` 的 `wormholeTurnBudget` 加 state 版包装；
-      准入（`wormholeAdmission`）与准备页读数两处调用点换成它；本趟的装置 +10/台 照旧相加）
+- [x] 谜质科技树数据表（`data/matterTech.ts`，23 节点）＋核心逻辑（`core/matterTech.ts`：等级/费用/前置/研究/
+      增益派生）＋ `SimContext.matterTech`（data 侧注册）——**全部落地**：研究按 `effect` 关键字聚合、
+      `wormholeMatterBuffs(hold, tech)` 加可选第二参（`WormholeTechBuffs`，与装置同袋同封顶）
+- [x] `state.research.levels` ＋ `CURRENT_STATE_VERSION 28 → 29` ＋ `MIGRATIONS[28]`（老档补空树）＋
+      载入器逐项清洗（非负整数、不查表 ⇒ 改 `maxLevel` 不截断老档）
+- [x] 回合基数 100 → 80 ＋ 时序锚定器永久加成：`wormholeTurnBudget(totalMass, techTurnBonus)`（纯函数留参）·
+      `wormholeAdmission(ctx, shipIds, techTurnBonus)` · `wormholeStartRun(..., techTurnBonus)`（两处调用点
+      由 `wormholeEnter` 传 `matterTechWhBuffs(state, ctx).turnBonus`）⇒ 用例读数已更新：
+      **4×T1 93→74 · 4×T2 80→64 · 4×T3 53→42 · 满载 47→37 · 空载 100→80**
+- [ ] **未接线（下一轮做）**：① 效率 → 额外堆的**两处掷骰**（`ModuleDef.workEfficiency` 数据已写全：
+  民用 0 / MK1 20 / MK2 40 / MK3 60 / 异星 80，打捞器无民用与异星档 ⇒ 20/40/60）② 扫描虫洞间隔 −5%/级
+  ③ 工业三挂点 ④ **11 处 `wormholeMatterBuffs(...)` 调用点传科技袋**（不传 ⇒ 战斗/货仓类节点暂无效果）
+  ⑤ `content-check` 两条契约 ⑥ `tests/matter-tech.test.ts`
 - [ ] 效率 → 额外堆（`ModuleDef.workEfficiency` 档位表：民用 0 / MK1 20 / MK2 40 / MK3 60 / 异星 80（%）；
       `wormholeSalvagersOf` / `wormholeMinersOf` 旁加 Σ 效率；`wormholeSalvage.ts` 采集与打捞两处掷骰：
       `floor(效率)` 保底 + `frac(效率)` 再掷一次；**效率 0 不掷骰**）
-- [ ] 扫描虫洞间隔 −5%/级（`wormholeScan.ts` 的窗口乘算）
+- [ ] 扫描虫洞间隔 −5%/级（`wormholeScan.ts` 的窗口乘算）——**见下方"未接线"**
 - [ ] 工业三挂点（`industry.ts`：货柜拆解周期 ×`(1−0.25×级)` / 虚空母矿→虚空晶产出 ×`(1+0.10×级)` /
       残骸回收保底原材料 ×`(1+0.05×级)`）
 - [ ] 谜质科技树数据表（`data/matterTech.ts`，23 节点）＋核心逻辑（`core/matterTech.ts`：等级/费用/前置/研究/

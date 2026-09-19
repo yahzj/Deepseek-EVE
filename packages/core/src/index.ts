@@ -61,6 +61,10 @@ export type {
   FoeReinforceTrigger,
   /** **支援呼叫装置的两支到场分支**（2026-09-19 船长批；见 `FoeMountDef.supportCall`） */
   FoeSupportBranch,
+  /** **谜质科技树**（2026-09-19 船长批）：效果关键字 / 分支 / 节点定义（表在 `data/src/matterTech.ts`） */
+  MatterTechEffect,
+  MatterTechBranch,
+  MatterTechNodeDef,
   SimContext,
 } from './types'
 
@@ -177,6 +181,29 @@ export {
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
 export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'
+// 谜质科技树（2026-09-19 船长批「消耗谜质升级的研究科技树」）：等级 / 费用 / 前置 / 研究 / 增益派生
+// （节点表住在 data/src/matterTech.ts，经 `ctx.matterTech` 供给；本模块按 effect 关键字聚合）
+export {
+  matterTechNodes,
+  matterTechNodeOf,
+  matterTechLevel,
+  matterTechLevels,
+  matterTechEssenceHeld,
+  matterTechCostAt,
+  matterTechPrereqMissing,
+  matterTechCanResearch,
+  researchMatterTech,
+  matterTechSum,
+  matterTechBattleSpeed,
+  matterTechScanCut,
+  matterTechUnboxCut,
+  matterTechVoidYield,
+  matterTechWreckYield,
+  matterTechWorkEffBonus,
+  matterTechWhBuffs,
+} from './matterTech'
+export { WORMHOLE_TECH_BUFFS_NONE } from './wormholeMatter'
+export type { WormholeTechBuffs } from './wormholeMatter'
 
 export {
   advanceGame,

@@ -27,6 +27,7 @@ import { buildAnomalyCatalog } from './anomalies'
 import { buildTravelEvents } from './travelEvents'
 import { buildMarketGoodsCatalog } from './marketCatalog'
 import { buildStationCatalog } from './stations'
+import { buildMatterTechCatalog } from './matterTech'
 import { buildCommsCatalog } from './messages'
 import { buildCommsFactionCatalog } from './commsFactions'
 import { buildDialogueCatalog } from './dialogues'
@@ -80,6 +81,7 @@ export function buildSimContext(): SimContext {
     commsMessages: buildCommsCatalog(),
     commsFactions: buildCommsFactionCatalog(),
     dialogues: buildDialogueCatalog(),
+    matterTech: buildMatterTechCatalog(),
     balance: DEFAULT_BALANCE,
   }
 }
