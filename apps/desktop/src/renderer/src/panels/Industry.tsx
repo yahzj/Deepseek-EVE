@@ -30,6 +30,7 @@ import {
   WORMHOLE_SCAN_UNLOCK_STANDING,
 } from '@whale/core'
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
+import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import { Panel } from '@whale/ui'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -122,6 +123,20 @@ export function BlueprintShelfPanel({
     .filter((e) => sub === SUB_ALL || e.keys.subKey === sub)
     .filter((e) => useKind === 'all' || (useKind === 'single' ? e.keys.singleUse : !e.keys.singleUse))
 
+  /**
+   * **碎片逆向卡（2026-09-19 船长：「蓝图书架内确实没有显示可以合并的蓝图碎片。是否忘记添加到蓝图书架了？」）**：
+   * 书架原先**只列"手上持有的蓝图书"**，而碎片是"还没有书"的那条路 ⇒ 玩家在这里看不到任何可合并的碎片。
+   * 现补一类卡：**碎片进度 > 0 且尚未掌握、且手上没有这本书**的逆向蓝图，卡上直接给「逆向解锁 N/M」。
+   * 读数走 core 单点 `fragmentRedeemRows()`（与兑命令同源），筛选沿用书架那三级（`bpFilterKeysOf`）。
+   */
+  const fragShown = engine
+    .fragmentRedeemRows()
+    .filter((r) => !r.learned && r.have > 0 && (state.blueprintStock?.[r.blueprintId] ?? 0) <= 0)
+    .map((r) => ({ r, keys: bpFilterKeysOf(engine, r.blueprintId) }))
+    .filter((e) => kind === 'all' || e.keys.tab === kind)
+    .filter((e) => sub === SUB_ALL || e.keys.subKey === sub)
+    .filter((e) => useKind === 'all' || (useKind === 'single' ? e.keys.singleUse : !e.keys.singleUse))
+
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
     if (!r.ok) onToast(r.error ?? '学习失败', true)
@@ -139,18 +154,18 @@ export function BlueprintShelfPanel({
     else onToast('出售指令已受理：市场收购簿有单即时成交，否则自动挂卖单。')
   }
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && fragShown.length === 0) {
     return (
       <Panel
         title="蓝图书架"
         hint={
           // 空态只留"还没有书"这句状态；怎么弄到书的常驻引导收进标题后的圆形感叹号（2026-09-13 船长口径）
           // 2026-09-14 船长：虫洞专属图纸市场买不到 ⇒ 组装机那张卡改「去虫洞（遗迹打捞）」，这里同步改口径
-          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）；在市场流通的那些同样可以在组装机卡上看订单。虫洞专属图纸（装备 / 舰船）市场不出售——组装机卡上是「去虫洞（遗迹打捞）」，进洞在遗迹与图纸货柜里捞。" />
+          <HintIcon tip="到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸不能学习，拿到组装机直接用掉即可（开工时消耗）；在市场流通的那些同样可以在组装机卡上看订单。虫洞专属图纸（装备 / 舰船）市场不出售——组装机卡上是「去虫洞（遗迹打捞）」，进洞在遗迹与图纸货柜里捞。此外：残骸回收攒到的蓝图碎片集齐后，也会作为一张卡出现在本架上，点「逆向解锁」即换到永久蓝图。" />
         }
         right={<span className="app-dim">学习 = 永久可造；一次性图纸不开工不消耗</span>}
       >
-        <div className="app-dim app-inv-empty">书架上还没有蓝图书。</div>
+        <div className="app-dim app-inv-empty">书架上还没有蓝图书（残骸回收攒到碎片后，这里会出现可逆向解锁的图纸卡）。</div>
       </Panel>
     )
   }
@@ -287,7 +302,29 @@ export function BlueprintShelfPanel({
           )
         })}
       </div>
-      {shown.length === 0 ? (
+      {/* **碎片逆向卡**（2026-09-19 船长：书架里看不到可合并的碎片）——与蓝图书同网格、同筛选，
+          卡面标明"碎片"来源与进度，动作 = 「逆向解锁 N/M」 */}
+      {fragShown.map(({ r }) => (
+        <div key={`frag-${r.fragmentItemId}`} className="app-belt-card app-shelf-card is-frag">
+          <div className="app-belt-head">
+            <span className="app-belt-name" title={`${r.blueprintName}（碎片 ${r.have}/${r.need}）`}>
+              ▦ {r.blueprintName}
+            </span>
+            <span className="app-chip" style={{ marginLeft: 'auto' }}>
+              碎片 {r.have}/{r.need}
+            </span>
+          </div>
+          <div className="app-belt-desc">
+            {r.have >= r.need
+              ? '碎片已集齐——逆向解锁后永久可造（残骸回收的彩头掉落）'
+              : `碎片未集齐：还差 ${r.need - r.have} 片（来自残骸回收的彩头掉落）`}
+          </div>
+          <div className="app-belt-actions">
+            <RedeemFragmentButton engine={engine} itemId={r.fragmentItemId} onToast={onToast} />
+          </div>
+        </div>
+      ))}
+      {shown.length === 0 && fragShown.length === 0 ? (
         <div className="app-dim app-inv-empty">该筛选下书架里没有对应的书——换个分类、或把「全部子类 / 全部图纸」点回来看看。</div>
       ) : null}
     </Panel>

@@ -499,6 +499,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               <InfoTable lines={itemInfoLines(pickItemDef, (id) => engine.ctx.items.get(id)?.name)} />
               <div className="app-dim app-itempick-note">{pickItemDef.description}</div>
               <div className="app-itempick-actions">
+                {/* **碎片详情的「逆向解锁」**（2026-09-19 船长：「建议在物品的蓝图碎片详细页内，
+                    也添加一个合并碎片的按钮」）——不是碎片 ⇒ 本组件返回 null，其余物品照旧 */}
+                <RedeemFragmentButton engine={engine} itemId={pickItem} onToast={onToast} />
                 <button className="app-btn is-small" onClick={() => handleLoad(pickItem)} title="装到当前驾驶船的货仓（按单位体积占舱）">
                   装到船上
                 </button>

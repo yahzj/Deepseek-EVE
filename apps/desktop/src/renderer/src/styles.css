@@ -1152,6 +1152,15 @@ body {
 
 }
 
+/* 碎片逆向卡（2026-09-19 船长：书架里看不到可合并的碎片）——同网格，用暖色边区分"这是碎片不是书" */
+.app-shelf-card.is-frag {
+
+  border-color: var(--wui-gold);
+
+  background: rgba(214, 178, 90, 0.06);
+
+}
+
 .app-belt-card {
 
   display: flex;
