@@ -702,9 +702,9 @@ const meSpeedRef = useRef(200)
             </div>
             {snap ? (
               <div className="app-bts-report-stats">
-                {tr("ui.BattleScreen.014")} {snap.meShots} {tr("ui.BattleScreen.015")} {snap.meHits} · 造成伤害{' '}
-                {Math.round(snap.meDmg).toLocaleString('zh-CN')} · 敌方开火{' '}
-                {snap.foeShots} {tr("ui.BattleScreen.015")} {snap.foeHits} · 交火 {durSec}s
+                {tr("ui.BattleScreen.014")} {snap.meShots} {tr("ui.BattleScreen.015")} {snap.meHits}{tr('ui.BattleScreen.097')}{' '}
+                {Math.round(snap.meDmg).toLocaleString('zh-CN')}{tr('ui.BattleScreen.098')}{' '}
+                {snap.foeShots} {tr("ui.BattleScreen.015")} {snap.foeHits}{tr('ui.BattleScreen.099', { s: durSec })}
               </div>
             ) : null}
             {/* **我方损失**（2026-09-14 船长定：新增三行之一）——这条正是"损失了舰船也显示大捷"的正身 */}
@@ -1993,7 +1993,7 @@ const meSpeedRef = useRef(200)
         )}
         <span className="app-gold">{sceneName}</span>
         <span className="app-dim">
-          {tr("ui.BattleScreen.044")} {secs}{tr("ui.BattleScreen.045")} {meStats.meShots}{tr("ui.BattleScreen.046")} {meStats.meHits} · 敌开火 {meStats.foeShots}{tr("ui.BattleScreen.046")} {meStats.foeHits}
+          {tr("ui.BattleScreen.044")} {secs}{tr("ui.BattleScreen.045")} {meStats.meShots}{tr("ui.BattleScreen.046")} {meStats.meHits}{tr('ui.BattleScreen.100')} {meStats.foeShots}{tr("ui.BattleScreen.046")} {meStats.foeHits}
         </span>
       </div>
 

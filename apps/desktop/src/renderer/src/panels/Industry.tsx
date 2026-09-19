@@ -730,10 +730,10 @@ function BlueprintCard({
         {running ? (
           <>
             {' '}
-            · 已开 {runs.length} {tr("ui.Industry.043")} {formatDurationMs(Math.min(...runs.map((v) => v.remainingMs)))} {tr("ui.Industry.044")}
+            {tr('ui.Industry.121', { n: runs.length })} {tr("ui.Industry.043")} {formatDurationMs(Math.min(...runs.map((v) => v.remainingMs)))} {tr("ui.Industry.044")}
           </>
         ) : (
-          <> · 主控耗时 {formatDurationMs(buildMs)}{tr("ui.Industry.045")}</>
+          <>{tr('ui.Industry.122', { d: formatDurationMs(buildMs) })}{tr("ui.Industry.045")}</>
         )}
       </div>
       <ul className="app-bp-mats">
@@ -747,7 +747,7 @@ function BlueprintCard({
             <li key={need.itemId} className={`app-bp-mat${!enough && !running ? ' is-short' : ''}`}>
               {matName} ×{needCount.toLocaleString('zh-CN')}
               {needCount !== need.count ? (
-                <span className="app-dim">{tr("ui.Industry.046")}{need.count.toLocaleString('zh-CN')}，材料学折扣后）</span>
+                <span className="app-dim">{tr("ui.Industry.046")}{need.count.toLocaleString('zh-CN')}{tr('ui.Industry.123')}</span>
               ) : null}
               <span className="app-dim">{tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}）</span>
               {onNeedMineral ? (
@@ -1219,7 +1219,7 @@ export function ManufacturingPanel({
       right={
         <>
           <span className="app-dim">
-            {tr("ui.Industry.091")} {runViews.length} {tr("ui.Industry.092")} {equipN} · 舰船 {shipN} · 已学会 {learnedN}
+            {tr("ui.Industry.091")} {runViews.length} {tr("ui.Industry.092")} {equipN}{tr('ui.Industry.124', { n: shipN })}{tr('ui.Industry.125', { n: learnedN })}
             {/* 子筛选/三级筛选生效时补一个"当前 N 张"，避免玩家对着收窄后的网格数不清 */}
             {sub !== SUB_ALL || useKind !== 'all' ? ` · 当前 ${sorted.length} 张` : ''}
           </span>

@@ -238,10 +238,10 @@ function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
                 ↑
               </button>
               <span>
-                第{p.queueIndex + 1}位 {p.skillName}→Lv{p.targetLevel}
+                {tr('ui.SkillsPage.040', { n: p.queueIndex + 1, name: p.skillName, lv: p.targetLevel })}
               </span>
               {p.progressMs > 0 ? (
-                <span className="app-dim">剩 {formatDurationMs(p.remainingMs)}</span>
+                <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(p.remainingMs) })}</span>
               ) : p.levelMs > 0 ? (
                 <span className="app-dim">{formatDurationMs(p.levelMs)}</span>
               ) : null}
@@ -359,7 +359,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
         <div className="app-sr-training">
           <span className="app-chip is-dim">
             {tr("ui.SkillsPage.023")}{position}位
-            {waitMs > 0 ? <span className="app-sr-eta"> · 约{formatDurationMs(waitMs)}{tr("ui.SkillsPage.024")}</span> : null}
+            {waitMs > 0 ? <span className="app-sr-eta">{tr('ui.SkillsPage.042', { d: formatDurationMs(waitMs) })}{tr("ui.SkillsPage.024")}</span> : null}
           </span>
           {action ? (
             <>
@@ -385,7 +385,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
         ) : null}
         {saved > 0 && def ? (
           <span className="app-sr-eta app-sr-resume">
-            {tr("ui.SkillsPage.026")} {Math.min(100, Math.round((saved / effLevelMs(def, current + 1, tf)) * 100))}%，训练即续接
+            {tr("ui.SkillsPage.026")} {Math.min(100, Math.round((saved / effLevelMs(def, current + 1, tf)) * 100))}{tr('ui.SkillsPage.043')}
           </span>
         ) : null}
       </div>
@@ -397,7 +397,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
       <div className="app-sr-main">
         <span className="app-sr-name">{skill.name}</span>
         <span className="app-sr-sub">
-          {skill.group} · 难度 {skill.rank} · <SkillDescText text={skill.description} />
+          {skill.group}{tr('ui.SkillsPage.044', { r: skill.rank })} <SkillDescText text={skill.description} />
         </span>
       </div>
       <div className="app-sr-lv">
@@ -438,7 +438,7 @@ function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: Skil
         </span>
       </div>
       <div className="app-skill-card-sub">
-        {skill.group} · 难度 {skill.rank} · {statusTxt}
+        {skill.group}{tr('ui.SkillsPage.044', { r: skill.rank })} {statusTxt}
       </div>
       {/* 技能效果全文（与列表视图同源渲染：⟦…⟧ 关键数值照样高亮；2026-09-10 船长定） */}
       <div className="app-skill-card-desc">

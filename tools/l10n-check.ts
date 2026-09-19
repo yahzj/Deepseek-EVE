@@ -84,6 +84,12 @@ function scanFile(file: string): FileScan {
       literals.add(node.text)
       if (CJK.test(node.text)) cjkLiterals += 1
     }
+    // ⚠ JSX **文本节点**也要算进未译读数（2026-09-19 补：此前只数字符串字面量，读数偏低——
+    //    界面里大量中文是 `<span>中文</span>` 这种文本节点，不是字符串字面量）
+    if (ts.isJsxText(node)) {
+      const t = node.getText().trim()
+      if (t !== '' && CJK.test(t)) cjkLiterals += 1
+    }
     if (
       ts.isCallExpression(node) &&
       ts.isIdentifier(node.expression) &&

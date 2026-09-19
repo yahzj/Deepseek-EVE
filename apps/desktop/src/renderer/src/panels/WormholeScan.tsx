@@ -132,7 +132,7 @@ export function WormholeScanTab({
           <span className="app-dim">
             {tr("ui.WormholeScan.002")} {stock.length}/{stockMax} 处
             {runs.length > 0 ? ` · 自动探索 ${runs.length} 趟在跑` : ''}
-            {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''} · 单次窗口 {formatDurationMs(windowMs)}
+            {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''}{tr('ui.WormholeScan.056', { d: formatDurationMs(windowMs) })}
           </span>
         )
       }
@@ -180,7 +180,7 @@ export function WormholeScanTab({
             {tr("ui.WormholeScan.008")} <b>{percent}%</b>
             <span className="app-dim">
               {' '}
-              · 已扫 {formatDurationMs(done)} / {formatDurationMs(windowMs)}
+              {tr('ui.WormholeScan.057', { a: formatDurationMs(done), b: formatDurationMs(windowMs) })}
               {scan.active ? ` · 还需 ${formatDurationMs(Math.max(0, windowMs - done))}` : ''}
             </span>
           </div>
@@ -347,7 +347,7 @@ export function WormholeScanTab({
                         {line.text}
                       </div>
                       <div className="app-dim" style={{ marginTop: 6 }}>
-                        {tr("ui.WormholeScan.023")}<b>{tr("ui.WormholeScan.024")}</b>；库存格腾出来给新的发现，扫描进度不受影响。
+                        {tr("ui.WormholeScan.023")}<b>{tr("ui.WormholeScan.024")}</b>{tr('ui.WormholeScan.058')}
                       </div>
                       <div className="app-wh-scanbar-actions" style={{ marginTop: 10 }}>
                         <button

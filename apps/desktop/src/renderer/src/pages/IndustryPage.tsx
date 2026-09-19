@@ -159,7 +159,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   }
   function stopRun(runId: number, hasClaim: boolean): void {
     const r = engine.stopRefineRunAt(runId)
-    if (!r.ok) onToast(r.error ?? '停炉失败。', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.IndustryPage.105'), true)
     else if (hasClaim)
       onToast(tr("ui.IndustryPage.073"))
     else onToast(tr("ui.IndustryPage.074"))
@@ -372,7 +372,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
                       : tr("ui.IndustryPage.044")
                   }
                 >
-                  停
+                  {tr('ui.IndustryPage.104')}
                 </button>
               </span>
             ))}

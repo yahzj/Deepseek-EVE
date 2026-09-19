@@ -1126,7 +1126,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           <div className="app-fit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-fit-modal-head">
               <span>
-                {RACK_LABELS[pickBay.rack]} · 第 {pickBay.index + 1} 位
+                {tr('ui.FitPage.164', { rack: RACK_LABELS[pickBay.rack], n: pickBay.index + 1 })}
                 {fitted?.[pickBay.rack]?.[pickBay.index] ? tr("ui.FitPage.078") : tr("ui.FitPage.079")}
                 <HintIcon tip={tr("ui.FitPage.080")} />
               </span>

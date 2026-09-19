@@ -179,9 +179,9 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                     <span className="app-dim">{tr("ui.Hauling.016")} {effMin} {tr("ui.Hauling.017")}</span>
                   </div>
                   <div className="app-haul-line app-dim">
-                    {shipName}{tr("ui.Hauling.018")} {cap.toLocaleString('zh-CN')} {tr("ui.Hauling.019")} {isk(range.min)} ~ {isk(range.max)} 信用点
-                    （行情每趟一价 ×5~10）· 往返一趟约 {isk(range.min * 2)} ~ {isk(range.max * 2)} 信用点 ·
-                    时薪约 {isk(hourlyMin)} ~ {isk(hourlyMax)} {tr("ui.Hauling.020")}
+                    {shipName}{tr("ui.Hauling.018")} {cap.toLocaleString('zh-CN')} {tr("ui.Hauling.019")} {isk(range.min)} ~ {isk(range.max)} {tr('ui.FirstTasks.003')}
+                    {tr('ui.Hauling.029', { a: `${isk(range.min * 2)} ~ ${isk(range.max * 2)}`, b: `${isk(hourlyMin)} ~ ${isk(hourlyMax)}` })}{" "}
+                    {tr("ui.Hauling.020")}
                   </div>
                   {isActive ? (
                     <div className="app-haul-line">

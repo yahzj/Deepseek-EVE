@@ -498,7 +498,7 @@ function BeltCard({
         </div>
       ) : null}
       <div className="app-belt-ore">
-        {tr("ui.MapPage.025")} {galaxyName} · 产出 {oreDef?.name ?? belt.oreId} · 市场收价 {buy !== undefined ? tr("ui.ItemsPage.039", { p1: isk(buy) }) : '—'}
+        {tr("ui.MapPage.025")} {galaxyName}{tr('ui.MapPage.112', { ore: oreDef?.name ?? belt.oreId })}{tr('ui.MapPage.113', { v: buy !== undefined ? isk(buy) : '—' })}
         {unexplored ? tr("ui.MapPage.026") : ''}
       </div>
       {effLine || valLine ? (
@@ -576,9 +576,9 @@ function BeltCard({
         {mineAsk ? (
           <div className="app-ano-switch-confirm">
             <div className="app-sell-warn">
-              {tr("ui.MapPage.036")} <b>{tr("ui.MapPage.037")}</b>：本次远征将立即取消——
+              {tr("ui.MapPage.036")} <b>{tr("ui.MapPage.037")}</b>{tr('ui.MapPage.114')}
               <b> {tr("ui.MapPage.038")}</b>
-              {state.autoLoopAnomalyId !== null ? tr("ui.MapPage.039") : ''}，随即在「{belt.name}{tr("ui.MapPage.040")}
+              {state.autoLoopAnomalyId !== null ? tr("ui.MapPage.039") : ''}{tr('ui.MapPage.115')}{belt.name}{tr("ui.MapPage.040")}
             </div>
             <div className="app-sell-confirm-btns">
               <button className="app-btn is-small is-danger" onClick={mineStartClick}>
@@ -937,7 +937,7 @@ function WreckCard({
       ) : null}
       <div className="app-belt-ore">
         {tr("ui.MapPage.064")} <b>{density.toFixed(1)}</b>
-        {lowSec ? tr("ui.MapPage.065") : ''} · 安全 {g.security?.toFixed(1)}
+        {lowSec ? tr("ui.MapPage.065") : ''}{tr('ui.MapPage.116', { v: g.security?.toFixed(1) ?? '—' })}
         {rareCount > 0 ? (
           <>
             {' · '}
