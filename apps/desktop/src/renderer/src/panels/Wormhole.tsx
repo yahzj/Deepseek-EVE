@@ -83,6 +83,8 @@ import {
   wormholeMinersInFleet,
   wormholeScanBonusOf,
   WORMHOLE_SCAN_RADIUS_BASE,
+  // 2026-09-19：威胁读数必须把**谜质科技**那一份也并进袋子（见下方 matterBuffs 注释）
+  matterTechWhBuffs,
   wormholeShipMass,
   wormholeUnitsPerSlot,
   wormholeShapeOf,
@@ -320,8 +322,11 @@ export function WormholePanel({
   /**
    * **谜质增益**（F3c · 船长 2026-09-13「放在货仓里就生效」）：一律从货仓**现算**，
    * 界面读数、按钮提示与 core 的结算走同一个函数（`wormholeMatterBuffs`）⇒ 不会两套口径。
+   * ⚠ 2026-09-19 补：**必须把谜质科技那一份也传进来**（`matterTechWhBuffs(state, ctx)`）——
+   * 这只袋子是"装置 + 科技"两只来源合并的，原先这里只传装置 ⇒ 点了「压制力场增幅 / 守卫解析」
+   * 之后界面威胁读数**不跟着降**（而引擎实际已经降了）＝读数与实战不符。
    */
-  const matterBuffs = wormholeMatterBuffs(run?.hold)
+  const matterBuffs = wormholeMatterBuffs(run?.hold, matterTechWhBuffs(state, ctx))
   /**
    * **谜质压制后的威胁读数**（F3c B1）：界面与 core 走同一个 `wormholeMatterThreatMul`
    * ⇒ 玩家看到的威胁就是开战真正吃的那个数。
