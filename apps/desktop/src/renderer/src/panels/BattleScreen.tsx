@@ -195,8 +195,8 @@ export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine;
    * 档位选择存在渲染层会话内存里（`engine.setWormholeSpeed`），引擎每拍再夹一次 ⇒ 界面传错也拿不到未解锁速度。
    */
   const speedOptions = inWormhole ? engine.wormholeSpeedOptions() : []
-  const speedPick = engine.wormholeSpeedPickValue()
-  const speedActive = speedPick > 1 ? speedPick : (speedOptions[speedOptions.length - 1] ?? 1)
+  /** 高亮档 = 实际生效档（与引擎同一把尺：选过且仍解锁 ⇒ 选的；否则 = 已解锁最高档） */
+  const speedActive = engine.wormholeSpeedActive()
   const arcs = battleArcsFor(
     state,
     engine.ctx,

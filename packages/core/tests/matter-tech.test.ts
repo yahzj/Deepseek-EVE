@@ -20,9 +20,10 @@ import {
   matterTechWorkEffBonus,
   matterTechWreckYield,
 } from '../src/matterTech'
-import { WORMHOLE_ESSENCE_ITEM_ID } from '../src/wormholeSalvage'
+import { WORMHOLE_ESSENCE_ITEM_ID, wormholeSyncMatterTurns } from '../src/wormholeSalvage'
 import { wormholeMatterBattleModsOf } from '../src/combat'
-import { wormholeAdmission, wormholeTurnBudget } from '../src/wormhole'
+import { addShipToFleet } from '../src/shipyard'
+import { wormholeAdmission, wormholeEnter, wormholeTurnBudget } from '../src/wormhole'
 import { wormholeMatterBuffs } from '../src/wormholeMatter'
 import { CURRENT_STATE_VERSION } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -115,6 +116,25 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     // 入场裁定把它算进去（4×T1 = 2,000 质量 ⇒ 74 + 30）
     // 4× 长尾鲨(T3 · 3,500 质量) = 14,000 ⇒ 基础 42 + 科技 30
     expect(wormholeAdmission(ctx, ['sh-thresher', 'sh-thresher', 'sh-thresher', 'sh-thresher'], bonus).turnBudget).toBe(72)
+  })
+
+  it('入洞后再点「时序锚定器」⇒ 本趟上限立刻 +10/级（永久加成，与装置同一套夹紧、幂等）', () => {
+    const state = world()
+    const a = addShipToFleet(state, 'sh-thresher')
+    state.shipId = a
+    expect(wormholeEnter(state, ctx, [a], 4242).ok).toBe(true)
+    const run = state.wormhole.run!
+    const base = run.turnsTotal
+    expect(run.turnsTechBonus).toBe(0) // 入场时一级没点
+    // 洞内现点 2 级锚定器 ⇒ 同步后本趟上限 +20（剩余的也一起多给）
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal).toBe(base + 20)
+    expect(run.turnsLeft).toBe(base + 20)
+    // 幂等：再同步一次不变（不会重复加）
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal).toBe(base + 20)
   })
 
   it('洞内倍速：未点 = 1×（未解锁）；1 级 = 2×、2 级 = 4×（乘法口径，不是 Σ）', () => {

@@ -458,6 +458,32 @@ function offlineReportLogText(r: OfflineReport): string {
   return `离线结算报告：${parts.join('；')}。`
 }
 
+/**
+ * **洞内倍速的"记忆"**（船长 2026-09-19：「倍速采用记忆形式，记住玩家上次选择的倍速」）：
+ * 存 `localStorage`（键空间 `whale-idle:*`，与语言 `whale-idle:locale`、打捞排序同款口径）；
+ * **不进存档** ⇒ 存档保持中立，导出/导入不带着显示偏好走；取不到或越界一律当"还没选过"（`0`）。
+ */
+const WH_SPEED_KEY = 'whale-idle:wh-speed'
+
+/** 读上次选的倍速档位（`0` = 没选过 ⇒ 跟随已解锁最高档） */
+function loadWormholeSpeedPick(): number {
+  try {
+    const v = Number(localStorage.getItem(WH_SPEED_KEY))
+    return Number.isFinite(v) && v >= 1 ? Math.floor(v) : 0
+  } catch {
+    return 0 // 无 localStorage（浏览器策略/降级）⇒ 当没选过
+  }
+}
+
+/** 记住这次选的档位 */
+function saveWormholeSpeedPick(x: number): void {
+  try {
+    localStorage.setItem(WH_SPEED_KEY, String(x))
+  } catch {
+    /* 忽略：存不上只是不记忆，不影响本局生效 */
+  }
+}
+
 export class GameEngine {
   /**
    * 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值）。
@@ -515,11 +541,12 @@ export class GameEngine {
   private autoSortie = false
   /**
    * **洞内战斗倍速的选择**（2026-09-19 谜质科技「时间压缩矩阵」）：
-   * `0` = 跟随"已解锁的最高档"（买了科技立刻见效）；否则 = 玩家在战斗窗口里选的档位。
-   * **只在本会话内存里**（不落档）：心跳每拍把它交给 `advanceGame`，引擎再夹到"洞内 + 已解锁档位"内
-   * （离线结算根本不传 ⇒ 一律 1×，船长口径）。切档连续、不跳变，见 `combat.battleClockNowMs`。
+   * `0` = **还没选过**（跟随"已解锁的最高档"）；`≥1` = 玩家上次选的档位（**含 ×1** ——
+   * 船长 2026-09-19：「倍速采用记忆形式，记住玩家上次选择的倍速」）。
+   * **记忆进本地偏好**（`localStorage`，与语言 / 打捞排序同款口径，**不进存档** ⇒ 存档保持中立）；
+   * 生效值仍由引擎每拍夹到"洞内 + 已解锁档位"内（离线结算根本不传 ⇒ 一律 1×）。
    */
-  private wormholeSpeedPick = 0
+  private wormholeSpeedPick = loadWormholeSpeedPick()
 
   /* ═══ 悬赏胜率蒙特卡洛缓存（2026-09-09 船长确认 N=21：战力指纹变化 → 分帧全板预热） ═══ */
   private winCache = new Map<string, BountyWinMC>() // anomalyId → 当前指纹下的预估结果
@@ -684,15 +711,26 @@ export class GameEngine {
     return matterTechBattleSpeedTiers(this.state, this.ctx)
   }
 
-  /** 本会话玩家选的档位（`0` = 跟随已解锁最高档） */
+  /** 本会话玩家选的档位（`0` = 还没选过） */
   wormholeSpeedPickValue(): number {
     return this.wormholeSpeedPick
   }
 
-  /** **设置本会话的倍速档位**（`0` = 跟随最高档；只会被夹到已解锁档位内） */
+  /**
+   * **本拍实际生效的档位**（界面高亮同一把尺）：玩家选过且仍解锁 ⇒ 用选的；否则 = 已解锁最高档；
+   * 一级没解锁 ⇒ 1。⚠ 哨兵值口径：`0` = 没选过，`1` = **玩家明确选了 ×1**（两者不可混——`×1` 要记得住）。
+   */
+  wormholeSpeedActive(): number {
+    const opts = this.wormholeSpeedOptions()
+    const max = opts[opts.length - 1] ?? 1
+    return opts.includes(this.wormholeSpeedPick) ? this.wormholeSpeedPick : max
+  }
+
+  /** 设置本会话的倍速档位（只接受已解锁档位；**记住这次选择**，下次开游戏沿用） */
   setWormholeSpeed(x: number): void {
     const opts = this.wormholeSpeedOptions()
     this.wormholeSpeedPick = opts.includes(x) ? x : 0
+    saveWormholeSpeedPick(this.wormholeSpeedPick)
     this.notify()
   }
 
@@ -706,11 +744,9 @@ export class GameEngine {
     return r
   }
 
-  /** **本拍要交给引擎的倍速**：玩家选了就用选的，否则用已解锁的最高档（未解锁 = 1） */
+  /** **本拍要交给引擎的倍速**：玩家选过就用选的（**含 ×1**），否则用已解锁的最高档（未解锁 = 1） */
   private requestedWormholeSpeed(): number {
-    const opts = this.wormholeSpeedOptions()
-    const max = opts[opts.length - 1] ?? 1
-    return this.wormholeSpeedPick > 1 ? this.wormholeSpeedPick : max
+    return this.wormholeSpeedActive()
   }
 
   /** 一次性系统提示（2026-09-08 交付循环终止弹窗）：引擎写入 state.deliveryNotice →
@@ -2183,7 +2219,7 @@ export class GameEngine {
     const r = holdTransferTo(src, dst, id, to === 'hold' ? holdCap : WORMHOLE_TEMP_CELLS, x, y, grab)
     if (r.ok) {
       // 谜质装置挪动 ⇒ 增益实时派生（进货仓生效 / 出仓失效并**夹紧回合**）
-      wormholeSyncMatterTurns(this.state)
+      wormholeSyncMatterTurns(this.state, this.ctx)
       void this.persist()
       this.notify()
     }
