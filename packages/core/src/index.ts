@@ -59,6 +59,8 @@ export type {
   FoeDroneDef, // 2026-09-11 敌机机型表（舰载机群；设计稿 foe-drone-system-20260911.md）
   FoeDroneSlot, // 舰级上的机群登记条目（引用机型 + 架数）
   FoeReinforceTrigger,
+  /** **支援呼叫装置的两支到场分支**（2026-09-19 船长批；见 `FoeMountDef.supportCall`） */
+  FoeSupportBranch,
   SimContext,
 } from './types'
 
@@ -1044,6 +1046,11 @@ export {
   wormholeTrimBag,
   // F 批：敌卡按层派生；2026-09-15：一族三档（浅/中/深）+ 出场池 + 分层血量修正
   wormholeFoeThreat,
+  // 2026-09-19「支援呼叫装置」批：本卡实际威胁（含延迟补偿 ×1.1）与互斥支援分支的记账
+  wormholeCardThreatMul,
+  wormholeCardThreatOf,
+  wormholeBranchNaturalHp,
+  wormholeSkippedBranch,
   wormholeAnomalyOf,
   wormholeCardIdForRun,
   wormholeTierOfCard,

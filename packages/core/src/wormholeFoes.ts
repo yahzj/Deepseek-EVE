@@ -8,9 +8,10 @@
  * 口径：设计稿 `docs/design/wormhole-extraction-endgame-20260912.md`
  * §3（节点/层末 BOSS 表）· §4（威胁与收益曲线）· §九 Q11（收益涨得比难度快）。
  */
-import type { AnomalyDef, DamageType, FoeShipSlot, FoeTargetingMode, SimContext } from './types'
+import type { AnomalyDef, DamageType, FoeShipSlot, FoeSupportBranch, FoeTargetingMode, SimContext } from './types'
 import type { WormholeFamily } from './state'
 import { foeDamageComposition } from './combat'
+import { resolveFoeMounts } from './foeMounts'
 
 /* ═══════════ 一、层曲线（威胁 / 收益） ═══════════ */
 
@@ -131,12 +132,47 @@ export const WORMHOLE_FOE_BASE_STRENGTH_MUL = 10
  */
 export const WORMHOLE_THREAT_REF_RATIO = 25
 
-/** 某张敌卡的**自然总血**（按编成条目的舰级绝对值 × 条数，不含派生缩放） */
+/** 某张敌卡的**自然总血**（按编成条目的舰级绝对值 × 条数，不含派生缩放）。
+ *
+ * ⚠ **互斥支援分支只记一支**（2026-09-19「支援呼叫装置」批）：卡里两支（`enterBranch` = inside /
+ * outside）**只会到场一支** ⇒ 若把两支都算进"自然总血"，没到场的那支会白占预算，
+ * 本卡会比同层同档的其它卡弱一截（实测两侧都算 = 弱约 24%），破「同层同档血×火力恒等」红线。
+ * 取**较重的一支**记账（两支账面相等由体检守恒契约钉住）⇒ 到场后总量恰为该层预算。 */
 export function wormholeNaturalHp(base: AnomalyDef): number {
-  return (base.ships ?? []).reduce(
-    (n, s) => n + s.ship.hp * (s.hpMul ?? 1) * Math.max(1, Math.floor(s.count ?? 1)),
-    0,
-  )
+  const skip = wormholeSkippedBranch(base)
+  return (base.ships ?? [])
+    .filter((s) => skip === null || s.enterBranch === undefined || s.enterBranch !== skip)
+    .reduce(
+      (n, s) => n + s.ship.hp * (s.hpMul ?? 1) * Math.max(1, Math.floor(s.count ?? 1)),
+      0,
+    )
+}
+
+/** 某一个支援分支的**自然总血**（含条目倍率与条数；体检守恒契约与"取重者记账"共用） */
+export function wormholeBranchNaturalHp(base: AnomalyDef, branch: FoeSupportBranch): number {
+  return (base.ships ?? [])
+    .filter((s) => s.enterBranch === branch)
+    .reduce(
+      (n, s) => n + s.ship.hp * (s.hpMul ?? 1) * Math.max(1, Math.floor(s.count ?? 1)),
+      0,
+    )
+}
+
+/**
+ * **互斥支援分支里"较轻"的那一支**（`null` = 本卡没有互斥分支 ⇒ 一切照旧、零行为变化）。
+ *
+ * 判据 = **自然总血**（两支账面相等是体检契约，故取重者是确定且无歧义的）；
+ * `wormholeNaturalHp` 不计这一支，`combat` 侧的 `naturalDps` 用同一个函数排除同一支
+ * （两处必须同源，否则血与火力的口径会打架）。
+ */
+export function wormholeSkippedBranch(base: AnomalyDef): FoeSupportBranch | null {
+  const ships = base.ships ?? []
+  const hasIn = ships.some((s) => s.enterBranch === 'inside')
+  const hasOut = ships.some((s) => s.enterBranch === 'outside')
+  if (!hasIn || !hasOut) return null
+  return wormholeBranchNaturalHp(base, 'inside') >= wormholeBranchNaturalHp(base, 'outside')
+    ? 'outside'
+    : 'inside'
 }
 
 /**
@@ -148,6 +184,37 @@ export function wormholeFoeThreat(depth: number, kind: WormholeFoeKind): number 
   if (kind === 'extract') return wormholeExtractThreat(depth)
   if (kind === 'ruins') return Math.round(base * WORMHOLE_RUINS_THREAT_MUL)
   return base
+}
+
+/**
+ * **支援呼叫装置的延迟补偿倍率**（船长 2026-09-19：「因为延迟到场，所以需要一定补偿。
+ * **卡计算的实际威胁要*1.1**」；口径取「**甲**」= 照字面乘在**威胁**上）。
+ *
+ * 本卡任一编成条目（**有效挂载** = 条目 `mounts` ?? 舰级 `ship.mounts`）挂了
+ * `FoeMountDef.supportCall` ⇒ 取它的 `threatMul`（多件取**最大**；正常只有一件）。
+ * 没有该件的卡一律返回 **1** ⇒ 全表其余 14 张洞内卡与洞外一切卡**逐字零变化**。
+ */
+export function wormholeCardThreatMul(base: AnomalyDef): number {
+  let mul = 1
+  for (const s of base.ships ?? []) {
+    const sc = resolveFoeMounts(s.mounts ?? s.ship.mounts).foeSupportCall
+    if (sc !== undefined && sc.threatMul > mul) mul = sc.threatMul
+  }
+  return mul
+}
+
+/**
+ * **本卡本层本次交战的"实际威胁"**（含支援呼叫装置的延迟补偿）——**显示与预算同源**：
+ * `wormholeAnomalyOf` 用它写派生卡的 `threat`，`combat.wormholeDerivedAnomaly` 用它算 `hpBudget`
+ * ⇒ **同一个取整后的数**既是对玩家显示的威胁、也是战力标尺的输入
+ * （「威胁 = 战力标尺」在本卡上依旧成立；该链上血与火力各 ×约 1.16）。
+ */
+export function wormholeCardThreatOf(
+  base: AnomalyDef,
+  depth: number,
+  kind: WormholeFoeKind,
+): number {
+  return Math.round(wormholeFoeThreat(depth, kind) * wormholeCardThreatMul(base))
 }
 
 /**
@@ -517,7 +584,8 @@ export const WORMHOLE_FAMILY_TARGETING_CHANCE = 0.4
 
 /**
  * **把洞内敌卡按层派生**（不改数据文件，与窝点派生 `lairAnomalyOf` 同款做法）：
- * - 威胁：`wormholeFoeThreat(depth, kind)`；
+ * - 威胁：`wormholeFoeThreat(depth, kind)` × **本卡补偿**（`wormholeCardThreatOf`——挂了「支援呼叫装置」
+ *   的卡另有 ×`threatMul`，其它卡逐字不变）；
  * - 舰级路径的**绝对值缩放**：按「锚点威胁 → 目标威胁」的比例同乘每个条目的 `hpMul` / `dmgMul`
  *   （保住"威胁 = 战力标尺"；单发/射程/编成/战术一律不动）；
  * - **波数**：节点的 `waves` 表达"同一编成分 N 波进场" ⇒ 血与火力各摊 `1/N`、按 `slot.wave` 分波
@@ -552,7 +620,7 @@ export function wormholeAnomalyOf(
     fam !== undefined && fam in WORMHOLE_FAMILY_TARGETING
       ? WORMHOLE_FAMILY_TARGETING[fam as WormholeFamily]
       : (base.foeTargeting ?? 'random')
-  const target = wormholeFoeThreat(depth, kind)
+  const target = wormholeCardThreatOf(base, depth, kind)
   const natural = Math.max(1, wormholeNaturalHp(base))
   const budget = (opts?.hpBudget ?? natural) * (opts?.strengthMul ?? 1)
   /**

@@ -1,13 +1,13 @@
 /**
- * **单波次内增援**（2026-09-11 船长裁决：「**先完成相应的系统机制，不使用。用作后续机制。**」）
- * —— 与「敌突进」（`foeChargeEnabled`）同款的"**已实现 · 未启用**"机制。
+ * **单波次内增援**（2026-09-11 机制落地 → **2026-09-19 船长批「支援呼叫装置」启用**）。
  *
  * **机制**：编成条目的 `enterAt` 给三种入场触发（第几秒 / 击毁几个 / 残血到多少）；
  * 带触发的单位**开战不进战场**，`advanceBattleFor` 每拍检查、条件命中才补入（哑火窗口 = 一次装填）。
- * **本文件不依赖任何真实卡使用它**——全部用测试里现造的舰级与卡直接构造。
+ * **本文件不依赖任何真实卡使用它**——全部用测试里现造的舰级与卡直接构造
+ * （真实卡那份见 `foe-support-call.test.ts`）。
  *
  * 覆盖：
- * (a) **开关关闭 = 零行为变化**（建档结果逐字一致、战斗中永不入场、无增援日志）；
+ * (a) **开关显式关闭 = 零行为变化**（建档结果逐字一致、战斗中永不入场、无增援日志）；
  * (b) **开关开启**：时间 / 击毁数 / 残损血量 三种触发各自能按时入场 + 坐标触发（多条目一起到）；
  * (c) 距离重开 `foeReinforceReopenFrac` 两个取值都能跑通（0 = 原地；>0 = 向开战距离回拉）；
  * (d) 边界：触发条件全无效 = 按"未写"处理 = 开战即在（不产生"永不入场"）；已入场不重复补入；
@@ -48,19 +48,20 @@ function cardWith(entries: { count?: number; enterAt?: FoeReinforceTrigger }[]):
   }
 }
 
-/** 开关可调、可带重开比例的测试世界（带一张自定义舰级路径卡） */
+/** 开关可调、可带重开比例的测试世界（带一张自定义舰级路径卡）。
+ *  ⚠ **显式给 `enabled` 才会覆写**（2026-09-19 起默认值已是 true ⇒ "关掉"必须显式传 false）。 */
 function world(
-  opts: { enabled: boolean; reopenFrac?: number; card?: AnomalyDef } = { enabled: false },
+  opts: { enabled?: boolean; reopenFrac?: number; card?: AnomalyDef } = {},
 ): { state: GameState; ctx: SimContext } {
   const ctx: SimContext = makeTestCtx({
     quietEvents: true,
-    ...(opts.enabled || opts.reopenFrac !== undefined
+    ...(opts.enabled !== undefined || opts.reopenFrac !== undefined
       ? {
           balance: {
             ...DEFAULT_BALANCE,
             battle: {
               ...DEFAULT_BALANCE.battle,
-              foeReinforceEnabled: opts.enabled,
+              ...(opts.enabled !== undefined ? { foeReinforceEnabled: opts.enabled } : {}),
               ...(opts.reopenFrac !== undefined ? { foeReinforceReopenFrac: opts.reopenFrac } : {}),
             },
           },
@@ -79,7 +80,7 @@ function world(
 
 /** 开一场战斗（返回 battle；`foe-0` = 开战即在的普通单位，`w0-foe-1..` = 增援位） */
 function startReinforceBattle(
-  opts: { enabled: boolean; reopenFrac?: number; card?: AnomalyDef },
+  opts: { enabled?: boolean; reopenFrac?: number; card?: AnomalyDef },
 ): { state: GameState; ctx: SimContext; b: NonNullable<ReturnType<typeof startBattleFor>> } {
   const { state, ctx } = world(opts)
   const b = startBattleFor(state, ctx, state.shipId, 'ano-reinforce', 0)!
@@ -98,17 +99,17 @@ function killUnit(b: NonNullable<ReturnType<typeof startBattleFor>>, tag: string
   b.units[tag]!.hp = { s: 0, a: 0, h: 0 }
 }
 
-describe('单波次内增援：开关关闭 = 零行为变化（船长裁决：已实现、不启用）', () => {
-  it('默认关闭：建档结果与"完全不写 enterAt"逐字一致（带触发的单位照旧开战即在）', () => {
+describe('单波次内增援：开关**显式关闭** = 零行为变化（2026-09-19 起默认已是 true）', () => {
+  it('显式关闭：建档结果与"完全不写 enterAt"逐字一致（带触发的单位照旧开战即在）', () => {
     const ctx = world({ enabled: false }).ctx
     const withAt = createFoeSpecs(cardWith([{ enterAt: { sec: 5 } }]), ctx.balance.battle)
     const without = createFoeSpecs(cardWith([{}]), ctx.balance.battle)
     expect(withAt).toEqual(without) // 逐字段全等（含 foeReinforceAt 一律不写）
     expect(withAt.some((s) => s.foeReinforceAt !== undefined)).toBe(false)
-    expect(ctx.balance.battle.foeReinforceEnabled).toBe(false) // 默认值口径
+    expect(ctx.balance.battle.foeReinforceEnabled).toBe(false) // 本用例显式关掉了
   })
 
-  it('默认关闭：战斗中行为与普通条目**完全等价**（开战即在、无增援日志）', () => {
+  it('显式关闭：战斗中行为与普通条目**完全等价**（开战即在、无增援日志）', () => {
     const { state, ctx, b } = startReinforceBattle({ enabled: false })
     expect(b.units['foe-0']).toBeDefined()
     // ⚠ 开关关闭时"带 enterAt 的条目"与普通条目**完全等价**——建档期就没有标记，故它**开战就在场**
@@ -119,7 +120,7 @@ describe('单波次内增援：开关关闭 = 零行为变化（船长裁决：�
     expect(state.logs.some((l) => l.text.includes('增援自远处入场'))).toBe(false)
   })
 
-  it('默认关闭：`createBattleState` 不会漏掉任何单位（编队与改动前一致）', () => {
+  it('显式关闭：`createBattleState` 不会漏掉任何单位（编队与改动前一致）', () => {
     const ctx = world({ enabled: false }).ctx
     const bal = ctx.balance.battle
     const me = { tag: 'player', name: '我', side: 'me' as const, hp: { s: 1, a: 1, h: 1 }, weapons: [] } as never
@@ -220,11 +221,11 @@ describe('单波次内增援：距离重开口径（缺省 0 = 不重开；语�
     expect(openM - reopen.b.distanceM).toBeLessThan(200) // 且确实被拉回开战距离附近（误差 = 同拍一步接近）
   })
 
-  it('默认值口径：`foeReinforceReopenFrac = 0`、`foeReinforceEnabled = false`（与「敌突进」同款总开关）', () => {
+  it('默认值口径：`foeReinforceReopenFrac = 0`、`foeReinforceEnabled = true`（2026-09-19 船长批「支援呼叫装置」已启用）', () => {
     const b = makeTestCtx().balance.battle
-    expect(b.foeReinforceEnabled).toBe(false)
+    expect(b.foeReinforceEnabled).toBe(true)
     expect(b.foeReinforceReopenFrac).toBe(0)
-    expect(b.foeChargeEnabled).toBe(false) // 同款先例仍在
+    expect(b.foeChargeEnabled).toBe(false) // 同款先例（敌突进）仍关着
   })
 })
 

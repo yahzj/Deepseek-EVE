@@ -587,6 +587,11 @@ export {
   WORMHOLE_FAMILY_GLYPH,
   wormholeAnomalyOf,
   wormholeNaturalHp,
+  // 「支援呼叫装置」批（2026-09-19）：本卡实际威胁（含延迟补偿）与互斥支援分支的记账
+  wormholeCardThreatMul,
+  wormholeCardThreatOf,
+  wormholeBranchNaturalHp,
+  wormholeSkippedBranch,
   // 一族三档 + 出场池 + 分层血量修正（船长 2026-09-15）
   wormholeCardIdForRun,
   wormholeCardOfTier,

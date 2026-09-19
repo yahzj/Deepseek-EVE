@@ -217,6 +217,8 @@ export type FoeMountId =
   | 'foe-mount-gun-range-x1-5'
   /** 劫掠捕获网（船长 2026-09-16）：首次开火即钉住目标——减速 90% + 关推进器 + 闪避归零 + 射程 −500m */
   | 'foe-mount-capture-web'
+  /** **支援呼叫装置**（船长 2026-09-19）：开战 20 秒后按距离呼叫一支支援军（延迟到场 ⇒ 实际威胁 ×1.1） */
+  | 'foe-mount-support-call'
 
 /**
  * **敌方挂载件定义**（船长 2026-09-16 三句合一的落点）：
@@ -260,9 +262,29 @@ export interface FoeMountDef {
    * ⚠ 只影响**战斗**机动/射程，不影响星图航行。
    */
   web?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
+  /**
+   * **支援呼叫装置**（船长 2026-09-19：「**战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程
+   * 之外时，增援2艘静滞卫舰。**」＋「因为延迟到场，所以需要一定补偿。**卡计算的实际威胁要*1.1**」）。
+   *
+   * 口径：
+   * - **呼叫者** = 挂本件的单位（本卡里 = 守墓王座舰），且必须在**开战即在**的编成里
+   *   （体检会拦"挂在带 `enterAt` 的条目上"）；
+   * - `delaySec`：**开战满 N 秒**判定一次——玩家在呼叫者**当时有效的炮台最远射程**内 ⇒ 到场的是
+   *   `inside` 那一支；在射程外 ⇒ `outside` 那一支。**判完锁死**（另一支本场不再出现），
+   *   锁存不占存档字段（由"哪一支已入场"反推，含尸体）；
+   * - 两支由卡的编成条目声明（`FoeShipSlot.enterBranch` ＋ `enterAt`），**必须成对且账面总量相等**
+   *   （体检守恒契约）；
+   * - `threatMul`：**延迟到场的补偿**——本卡在洞内派生时的**实际威胁 ×本值**（该链上血与火力
+   *   同乘约 ×1.16），卡面 `threat`（缩放锚点）不动。
+   */
+  supportCall?: { delaySec: number; threatMul: number }
   /** 设计备注（不进玩家视野） */
   note?: string
 }
+
+/** **支援呼叫装置的两支到场分支**（2026-09-19 船长批；见 `FoeMountDef.supportCall`）：
+ *  `inside` = 判定时玩家**在呼叫者射程内**；`outside` = 在射程外。 */
+export type FoeSupportBranch = 'inside' | 'outside'
 
 /**
  * **舰种子分类**（2026-09-13 船长定：虫洞专属舰船按子分类重排数值并进界面）。
@@ -1030,13 +1052,13 @@ export interface BattleBalance {
   foeChargeCooldownMs: number
   /** 冲锋威胁门槛：只有威胁 ≥ 此值、且战术为近战（brawl）的敌卡会冲锋（与 pdThreatFloor 同口径；只管老路） */
   foeChargeThreatFloor: number
-  /* ═══ 单波次内增援（2026-09-11 船长裁决：「先完成相应的系统机制，不使用。用作后续机制。」）═══
-   * ⚠ **机制已实现、但按船长裁决不启用** → `foeReinforceEnabled` 默认 false：
-   *   编成条目的 `enterAt`、引擎的每拍补入、契约与用例全部就位，**任何战斗都不会触发**；
-   *   要启用只改这一个开关（并同步解除 content:check「增援机制未启用契约」）。
-   * ⚠ **与多舰补偿系数 `2N/(N+1)` 是结构解法 vs 数值补偿两条路，不可叠加**——
-   *   若将来启用增援，补偿系数必须下调或退场（见 `docs/design/foe-reinforce-20260911.md`）。 */
-  /** 单波次内增援总开关（默认 false = 未启用） */
+  /* ═══ 单波次内增援（2026-09-11 机制落地 → **2026-09-19 船长批「支援呼叫装置」启用**）═══
+   * 启用依据 = 船长 2026-09-19：「战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程之外时，
+   * 增援2艘静滞卫舰。」⇒ `foeReinforceEnabled = true`；守卫由 content:check 的
+   * 「**支援呼叫装置契约**」接管（只允许挂了该件的卡写 `enterAt`/`enterBranch`、两支成对且守恒）。
+   * ⚠ **与多舰补偿系数 `2N/(N+1)` 是结构解法 vs 数值补偿两条路**：洞内派生会把总量归一
+   * （补偿只影响血/火力比 `r`）⇒ 不叠加；全局复核仍挂着（见 `docs/design/foe-reinforce-20260911.md`）。 */
+  /** 单波次内增援总开关（**2026-09-19 起 = true**；关掉 = 建档期不写 `foeReinforceAt`，零行为变化） */
   foeReinforceEnabled: boolean
   /** 增援入场时的**距离重开比例**（语义同 `waveReopenFrac`：向开战距离回拉这个比例；
    * 0 = 原地入场不重开 = 缺省口径） */
@@ -1810,6 +1832,14 @@ export interface FoeShipSlot {
    * ② 日后"同一舰级在不同卡上装不同件"不必改舰级。
    */
   mounts?: readonly FoeMountId[]
+  /**
+   * **支援呼叫分支**（2026-09-19 船长批「支援呼叫装置」）：本条目属于哪一支援军——
+   * `'inside'` = 判定时玩家在**呼叫者射程内**才到场；`'outside'` = 在射程外才到场。
+   *
+   * ⚠ **必须与 `enterAt` 同写**（判定时点由 `enterAt.sec` 给）、**同卡两支成对**，
+   * 且两支的账面总量相等（体检守恒契约）；判定/锁存口径见 `FoeMountDef.supportCall`。
+   */
+  enterBranch?: FoeSupportBranch
   /** 第几波（0 起；缺省 0 = 第一波） */
   wave?: number
   /**
@@ -1885,17 +1915,18 @@ export interface FoeShipSlot {
    *   ⚠ `hpBelow` 指的是**敌方自己**的残血比（分母 = 本波编成满血总量）；若要"玩家残血才来援"，
    *   **请另加字段**（如 `playerHpBelow`），不要改本字段语义。
    *
-   * ⚠ **本机制已实现但按船长裁决不启用**：总开关 `BattleBalance.foeReinforceEnabled` 默认 `false`，
-   * 且 `content:check`「增援机制未启用契约」在开关关闭期间**禁止任何卡写本字段**（关了报错）。
+   * ⚠ **总开关 2026-09-19 起 = true**（船长批「支援呼叫装置」）；`content:check` 的
+   * 「**支援呼叫装置契约**」钉住：**只有挂了该件的卡**能写本字段 / `enterBranch`，两支成对且总量守恒。
    * 存档零迁移：是否已入场**由 `battle.units` 里有没有该 tag 反推**，不占任何新存档字段。
    */
   enterAt?: FoeReinforceTrigger
 }
 
 /**
- * **单波次内增援的入场触发条件**（2026-09-11 船长裁决：机制实现、不启用；见 `FoeShipSlot.enterAt`）。
+ * **单波次内增援的入场触发条件**（2026-09-11 落地；2026-09-19 随「支援呼叫装置」启用）。
  * 任一条件满足即入场；**全部未写（或都是无效值）= 按"未写"处理 = 开战即在**。
  * 条件应为正数（`sec > 0` / `afterKills > 0` / `0 ≤ hpBelow ≤ 1`），非法值按未写处理。
+ * ⚠ **分支到场另由 `FoeShipSlot.enterBranch` ＋ `FoeMountDef.supportCall` 决定**（见两处注释）。
  */
 export interface FoeReinforceTrigger {
   /** 开战满 N 秒后入场（战斗时钟，单位：秒；须 > 0） */
