@@ -146,23 +146,23 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       onToast(r.error ?? '启动失败。', true)
       return
     }
-    const who = worker === 'pilot' ? tr("ui.IndustryPage.020") : `由 ${aiCoreName(worker)}核心驱动`
+    const who = worker === 'pilot' ? tr("ui.IndustryPage.020") : tr("ui.IndustryPage.068", { p1: aiCoreName(worker) })
     onToast(
       isBox
-        ? `货柜拆解开工：${def.name}（可拆 ${total} 件）${who}；每件 ${Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000))} 秒、拆完自动停。`
+        ? tr("ui.IndustryPage.069", { p1: def.name, total: total, who: who, p4: Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000)) })
         : isWreck
           ? isRareBox
-          ? `残骸回收开工：${def.name}。本炉预占 ${Math.min(RARE_WRECK_VOLUME_M3, Math.round(total * 10) / 10)} m³（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入炉内料账——货仓/仓库不再显示这批料，停炉时未用完部分退回物品仓库。${who}；每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停。`
-          : `残骸回收开工：${def.name}（可拆 ${Math.round(total * 10) / 10} m³，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`
-        : `精炼炉开工：${def.name}（可炼 ×${total.toLocaleString('zh-CN')}，货仓+仓库合计）${who}；每批到点实时扣料、耗尽自动停。`,
+          ? tr("ui.IndustryPage.070", { p1: def.name, p2: Math.min(RARE_WRECK_VOLUME_M3, Math.round(total * 10) / 10), RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3, who: who, RECYCLE_BATCH_M3: RECYCLE_BATCH_M3 })
+          : tr("ui.IndustryPage.071", { p1: def.name, p2: Math.round(total * 10) / 10, who: who })
+        : tr("ui.IndustryPage.072", { p1: def.name, p2: total.toLocaleString('zh-CN'), who: who }),
     )
   }
   function stopRun(runId: number, hasClaim: boolean): void {
     const r = engine.stopRefineRunAt(runId)
     if (!r.ok) onToast(r.error ?? '停炉失败。', true)
     else if (hasClaim)
-      onToast('已停该台炉：已完成批保留；本炉未用完的预占料已退回物品仓库（可继续加开其它单位）。')
-    else onToast('已停该台炉：原料未锁定无需退回，余料仍留在货仓/仓库原位（可继续加开其它单位）。')
+      onToast(tr("ui.IndustryPage.073"))
+    else onToast(tr("ui.IndustryPage.074"))
   }
 
   // 数据行：有单位运转 = 台数 + 余量；空闲 = 可用量/批参数
@@ -173,25 +173,25 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   let dataLine: ReactNode
   if (running) {
     dataLine = isBox
-      ? `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')} 件`
+      ? tr("ui.IndustryPage.075", { p1: runs.length, p2: total.toLocaleString('zh-CN') })
       : isWreck
-        ? `运转 ${runs.length} 台 · 合计余 ${Math.round((total + claimHeld) * 10) / 10} m³` +
+        ? tr("ui.IndustryPage.076", { p1: runs.length, p2: Math.round((total + claimHeld) * 10) / 10 }) +
           (claimHeld > 0
-            ? `（其中炉内料账 ${Math.round(claimHeld * 10) / 10} m³、货仓/仓库 ${Math.round(total * 10) / 10} m³）`
+            ? tr("ui.IndustryPage.077", { p1: Math.round(claimHeld * 10) / 10, p2: Math.round(total * 10) / 10 })
             : '')
-        : `运转 ${runs.length} 台 · 合计余 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）`
+        : tr("ui.IndustryPage.078", { p1: runs.length, p2: total.toLocaleString('zh-CN'), p3: m3(total * def.unitM3) })
   } else if (isBox) {
-    dataLine = `可用 ×${total.toLocaleString('zh-CN')} 件 · 每件 ${boxSeconds} 秒 · 拆完自动停（一箱开一件）`
+    dataLine = tr("ui.IndustryPage.079", { p1: total.toLocaleString('zh-CN'), boxSeconds: boxSeconds })
   } else if (isWreck) {
     // 稀有残骸：每炉锁死 1 件（30 m³）——数据行写清"一次起炉 = 开一箱"，免得玩家以为能把多件丢进一炉
     const qty = Math.round(total * 10) / 10
     dataLine = isRareBox
-      ? `可用 ${qty} m³（${Math.floor(total / RARE_WRECK_VOLUME_M3)} 件）· 每炉锁 ${RARE_WRECK_VOLUME_M3} m³ = 1 件 · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 一次起炉 = 开一箱（想多开就再起一炉，同型可多台并行）`
-      : `可用 ${qty} m³ · 每批 ${RECYCLE_BATCH_M3} m³ / ${Math.round(RECYCLE_CYCLE_MS / 1000)} 秒 · 约 ${Math.ceil(total / RECYCLE_BATCH_M3)} 批开完`
+      ? tr("ui.IndustryPage.080", { qty: qty, p2: Math.floor(total / RARE_WRECK_VOLUME_M3), RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3, RECYCLE_BATCH_M3: RECYCLE_BATCH_M3, p5: Math.round(RECYCLE_CYCLE_MS / 1000) })
+      : tr("ui.IndustryPage.081", { qty: qty, RECYCLE_BATCH_M3: RECYCLE_BATCH_M3, p3: Math.round(RECYCLE_CYCLE_MS / 1000), p4: Math.ceil(total / RECYCLE_BATCH_M3) })
   } else {
     const batch = def.refineBatchUnits && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : 10
     const cycleS = def.refineCycleMs && def.refineCycleMs > 0 ? Math.round(def.refineCycleMs / 100) / 10 : 6
-    dataLine = `可用 ×${total.toLocaleString('zh-CN')}（${m3(total * def.unitM3)}）· 每批 ${batch} 单位 / ${cycleS} 秒 · 约 ${Math.ceil(total / batch)} 批炼完`
+    dataLine = tr("ui.IndustryPage.082", { p1: total.toLocaleString('zh-CN'), p2: m3(total * def.unitM3), batch: batch, cycleS: cycleS, p5: Math.ceil(total / batch) })
   }
 
   // 效率估价区：精炼卡显示每批产物与「净 ≈信用点/h」（产物矿物收价 − 耗料原料收价，按双方站内收价、
@@ -221,9 +221,9 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         (id) => engine.ctx.items.get(id)?.name ?? id,
       )
       const mineralTip =
-        `每批产出池内全部原材料（每批 ${RECYCLE_BATCH_M3} m³，含残骸提纯学 +8%/级）：各原材料分到的价值 = 每批保底价值 × 价值占比，` +
+        tr("ui.IndustryPage.083", { RECYCLE_BATCH_M3: RECYCLE_BATCH_M3 }) +
         `单位数 = 该价值 ÷ 单价——单价高的原材料每批不足 1 单位会累计到够 1 再入库；每批总价值有 ±10% 抖动，以回收拆解结算为准。` +
-        (profile.note ? `敌群特色：${profile.note}` : '')
+        (profile.note ? tr("ui.IndustryPage.084", { p1: profile.note }) : '')
       econ = (
         <div className="app-belt-econ">
           {mineralRows.length > 0 ? (
@@ -319,7 +319,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
               title={
                 isWreck
                   ? tr("ui.IndustryPage.036")
-                  : `前往星图「矿带开采」定位出产该原料的矿带${gotoTarget.ids.length > 1 ? `（共 ${gotoTarget.ids.length} 处，全部高亮）` : ''}`
+                  : `前往星图「矿带开采」定位出产该原料的矿带${gotoTarget.ids.length > 1 ? tr("ui.IndustryPage.085", { p1: gotoTarget.ids.length }) : ''}`
               }
               onClick={() => onGotoMap(gotoTarget.tab, gotoTarget.ids)}
             >
@@ -345,19 +345,19 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             {runs.map((v) => (
               <span key={v.id} className="app-belt-worker">
                 <span className="app-belt-worker-name">
-                  {v.worker === 'pilot' ? tr("ui.IndustryPage.041") : `⚙ ${v.workerLabel}核心`} ·{' '}
-                  {isBox ? `已拆 ${v.batchesDone} 件` : isWreck ? `已拆解 ${v.batchesDone} 批` : `已炼 ${v.batchesDone} 批`}
+                  {v.worker === 'pilot' ? tr("ui.IndustryPage.041") : tr("ui.IndustryPage.086", { p1: v.workerLabel })} ·{' '}
+                  {isBox ? tr("ui.IndustryPage.087", { p1: v.batchesDone }) : isWreck ? tr("ui.IndustryPage.088", { p1: v.batchesDone }) : tr("ui.IndustryPage.089", { p1: v.batchesDone })}
                   {v.claimedUnits !== undefined
-                    ? ` · 本炉料余 ${Math.round(v.claimedUnits * 10) / 10} m³`
+                    ? tr("ui.IndustryPage.090", { p1: Math.round(v.claimedUnits * 10) / 10 })
                     : ''}
                 </span>
                 <span
                   className="app-progress-mini"
                   title={`当前批进度 ${v.percent}%（${
-                    isBox ? `每件 ${Math.round(v.cycleMs / 100) / 10} 秒` : `每批 ${v.batchUnits} 单位 / ${Math.round(v.cycleMs / 100) / 10} 秒`
+                    isBox ? tr("ui.IndustryPage.091", { p1: Math.round(v.cycleMs / 100) / 10 }) : tr("ui.IndustryPage.092", { p1: v.batchUnits, p2: Math.round(v.cycleMs / 100) / 10 })
                   }；${
                     v.claimedUnits !== undefined
-                      ? `每批从本炉预占的料账扣 ${v.batchUnits} m³（货仓/仓库不再显示这批料）`
+                      ? tr("ui.IndustryPage.093", { p1: v.batchUnits })
                       : tr("ui.IndustryPage.042")
                   }）`}
                 >
@@ -386,12 +386,12 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             (total <= 0
               ? noStockNote
               : running
-                ? `由你亲自再开一台（主控限 1 台）：与现有单位同炉并行，${isBox ? tr("ui.IndustryPage.045") : tr("ui.IndustryPage.042")}`
+                ? tr("ui.IndustryPage.094", { p1: isBox ? tr("ui.IndustryPage.045") : tr("ui.IndustryPage.042") })
                 : isBox
-                  ? `由你亲自运转一台：循环拆解货柜，一箱开一件、每件 ${Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000))} 秒（期间不可离港作业）`
+                  ? tr("ui.IndustryPage.095", { p1: Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000)) })
                   : isWreck
                     ? isRareBox
-                      ? `由你亲自运转一台：起炉即预占 1 件（${RARE_WRECK_VOLUME_M3} m³）进本炉料账，每批拆 ${RECYCLE_BATCH_M3} m³、料尽自动停（期间不可离港作业）`
+                      ? tr("ui.IndustryPage.096", { RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3, RECYCLE_BATCH_M3: RECYCLE_BATCH_M3 })
                       : tr("ui.IndustryPage.046")
                     : tr("ui.IndustryPage.047"))
           }
@@ -537,7 +537,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
         return
       }
     }
-    onToast(`「${engine.ctx.items.get(itemId)?.name ?? itemId}」没有精炼产出与市场渠道——先采集可炼原料再来看。`, true)
+    onToast(tr("ui.IndustryPage.097", { p1: engine.ctx.items.get(itemId)?.name ?? itemId }), true)
   }
 
   /** 带精炼配方的全部矿石/气体/冰矿（2026-09-08 船长定：精炼炉默认显示所有可精炼资源；空料卡提示引导）
@@ -656,7 +656,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           title={tr("ui.ShipPage.097")}
           hint={
             <HintIcon
-              tip={`你亲自运转限 1 台，其余每枚 AI 核心各驱动一台；原料不锁定，每批到点从「货仓 + 仓库」实时扣取、耗尽自动停炉。稀有残骸例外：起炉即把整件（1 件 = ${RARE_WRECK_VOLUME_M3} m³）转入本炉料账——货仓/仓库不再显示这批料，卡面按"炉内料账 + 货仓/仓库"合计数给出，停炉时未用完部分退回物品仓库。精炼：循环运转到料尽自动停炉。残骸回收：保底原材料 + 概率特色掉落。货柜拆解：一箱开一件，每件 90 秒。`}
+              tip={tr("ui.IndustryPage.098", { RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3 })}
             />
           }
           right={
@@ -667,9 +667,9 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
               >
                 {tr("ui.IndustryPage.062")} {Math.round(rate * 100)}% · 运转 {runningCount} {tr("ui.IndustryPage.063")} {oreDefs.length} · 残骸{' '}
                 {wreckDefs.length}
-                {boxDefs.length > 0 ? ` · 货柜 ${boxDefs.length}` : ''}
+                {boxDefs.length > 0 ? tr("ui.IndustryPage.099", { p1: boxDefs.length }) : ''}
                 {/* 筛选生效时补一个"当前 N 张"（与组装机同款：免得玩家对着收窄后的网格数不清） */}
-                {shownCount !== totalCount ? ` · 当前 ${shownCount} 张` : ''}
+                {shownCount !== totalCount ? tr("ui.IndustryPage.100", { shownCount: shownCount }) : ''}
               </span>
               <AiSlotText state={state} ctx={engine.ctx} />
             </>
