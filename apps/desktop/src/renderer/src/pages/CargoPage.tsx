@@ -28,6 +28,7 @@ import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { SellQtyModal } from '../ui/SellQtyModal'
+import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -92,6 +93,13 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const [pickMod, setPickMod] = useState<string | null>(null)
   const pickModDef = pickMod ? engine.ctx.modules.get(pickMod) : undefined
   const pickModUnits = pickMod ? (cargo[pickMod] ?? 0) : 0
+  /**
+   * **蓝图碎片**（2026-09-19 玩家报障「集齐了 25 个蓝图碎片，找不到在哪换成蓝图」）：
+   * 货仓里也可能躺着碎片（打捞/回收后先落在仓库，玩家装船后就在这儿）⇒ 货仓行与点选弹层
+   * 都给同一个「逆向解锁」按钮（组件单点 `ui/fragmentRedeem`，与物品页共用）。
+   * 判据只认"这件是不是碎片"，按钮状态全部由组件读 core 单点。
+   */
+  const fragIds = new Set(engine.fragmentRedeemRows().map((r) => r.fragmentItemId))
 
   /** 2026-09-09（船长口径 A）：单行卸货——物品 → 物品仓库；模块 → 装备库（引擎分流） */
   function handleUnloadOne(id: string): void {
@@ -270,9 +278,14 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                             </button>
                           </>
                         ) : isPiloted ? (
-                          <button className="app-btn is-small" disabled>
-                            不在市场目录
-                          </button>
+                          /* 2026-09-19 玩家报障修：碎片不在市场目录，但必须给兑现路（与物品页同一个组件） */
+                          fragIds.has(id) ? (
+                            <RedeemFragmentButton engine={engine} itemId={id} onToast={onToast} />
+                          ) : (
+                            <button className="app-btn is-small" disabled>
+                              不在市场目录
+                            </button>
+                          )
                         ) : (
                           <span className="app-dim app-sr-eta">只读查看</span>
                         )}
@@ -411,6 +424,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   >
                     市价卖出
                   </button>
+                ) : fragIds.has(pickId) ? (
+                  /* 2026-09-19 玩家报障修：碎片这一路在弹层里也要能兑（与物品页同一个组件） */
+                  <RedeemFragmentButton engine={engine} itemId={pickId} onToast={onToast} />
                 ) : (
                   <button className="app-btn is-small" disabled>
                     不在市场目录（无法出售）

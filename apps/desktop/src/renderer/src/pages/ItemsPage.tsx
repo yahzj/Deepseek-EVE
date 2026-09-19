@@ -14,6 +14,7 @@ import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
+import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import { RACK_SUBS, SUB_ALL } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -143,6 +144,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     setSellMod(null)
     setPickMod(null)
   }
+
+  /**
+   * **逆向解锁**（2026-09-19 玩家报障「回收残骸集齐了 25 个蓝图碎片，但是找不到在哪换成蓝图」）：
+   * 蓝图碎片（`frag-<装备 id>`）在仓库里那一行直接兑换——读数与兑命令都收在
+   * `ui/fragmentRedeem.tsx` 的 `RedeemFragmentButton`（core 单点 `fragmentRedeemRowsOf` +
+   * `redeemFragments`；货仓页同一个组件），这里只留"哪些行是碎片"的判据。
+   */
+  const fragRows = new Set(engine.fragmentRedeemRows().map((r) => r.fragmentItemId))
 
   // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
   const [pickItem, setPickItem] = useState<string | null>(null)
@@ -320,6 +329,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                           <button className="app-btn is-small is-primary" onClick={() => setSellItem(id)}>
                             市价卖出
                           </button>
+                        ) : /* 2026-09-19 玩家报障修：蓝图碎片不在市场流通目录，但**必须给一条兑现路**
+                              （碎片 → 永久蓝图）——把原来的纯禁用按钮换成「逆向解锁」（组件与货仓页共用）。 */
+                        fragRows.has(id) ? (
+                          <RedeemFragmentButton engine={engine} itemId={id} onToast={onToast} />
                         ) : (
                           <button className="app-btn is-small" disabled>
                             不在市场目录

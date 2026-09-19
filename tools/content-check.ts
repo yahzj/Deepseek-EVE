@@ -111,6 +111,7 @@ securityZoneOf,
   factionRareDropEffectiveRate,
   FACTION_RARE_DROP_COUNT,
   FRAGMENT_RECIPES,
+  fragmentItemIdOf,
   hasLairCore,
   isLairCandidate,
   lairGearOf,
@@ -1160,6 +1161,65 @@ for (const m of MODULES) {
     )
     console.log(
       `· 洞内威胁显示契约：面板三处读数（本层 / 撤离 / 下一层）均走 \`wormholeDisplayThreat\`（引擎威胁 ×${2}）· 裸渲染 0 处`,
+    )
+  }
+
+  /* ── 碎片兑现入口契约（2026-09-19 玩家报障「回收残骸集齐了 25 个蓝图碎片，但是找不到在哪换成蓝图」）──
+   * 病根：`redeemFragments`（core）+ `FRAGMENT_RECIPES` 一直都在、用例也全绿，**但渲染层一次都没接线**
+   * （grep `redeemFragments` 在 apps/desktop 下 0 处、`逆向` 二字 0 处）⇒ 玩家集齐 25/250 片无处可用，
+   * 而碎片说明却写着"可在母港逆向解锁"——**文案承诺了一个不存在的入口**。
+   * 本契约三条，专挡这一类"引擎有、界面没接"的沉默漏接：
+   *  ① 每条逆向配方都要有对应的**碎片物品**（`ctx.items` 里 kind = fragment，名字带"蓝图碎片"）；
+   *  ② 碎片说明必须**点名真实入口**（含「逆向解锁」，且不得再写"母港逆向"这种没有入口的说法）；
+   *  ③ 渲染层必须**至少调用一次** `redeemFragmentsAt`（引擎命令），且物品页要有「逆向解锁」按钮文案。 */
+  {
+    const fragCtx = buildSimContext()
+    const missing: string[] = []
+    let fragChecked = 0
+    for (const [moduleId, recipe] of Object.entries(FRAGMENT_RECIPES)) {
+      fragChecked += 1
+      const fragId = fragmentItemIdOf(moduleId)
+      const def = fragCtx.items.get(fragId)
+      if (!def) {
+        missing.push(`${moduleId}（缺碎片物品 ${fragId}）`)
+        continue
+      }
+      if (def.kind !== 'fragment') missing.push(`${fragId} 的 kind = ${def.kind}（应为 fragment）`)
+      if (!def.name.includes('蓝图碎片')) missing.push(`${fragId} 名字里没有"蓝图碎片"`)
+      const desc = def.description ?? ''
+      if (!desc.includes('逆向解锁')) missing.push(`${fragId} 的说明没点名入口（缺「逆向解锁」）`)
+      if (desc.includes('母港逆向')) missing.push(`${fragId} 的说明还写着"母港逆向"（界面里没有这个入口）`)
+      if (!fragCtx.blueprints.has(recipe.blueprintId)) missing.push(`${fragId} 指向的蓝图 ${recipe.blueprintId} 不存在`)
+    }
+    check(
+      missing.length === 0,
+      `碎片兑现入口契约：${missing.join(' · ')}——碎片必须"有物品、有门槛、说明点名入口"`,
+    )
+    /** 渲染层全量源码（`.ts`/`.tsx` 拼起来即可——这一条只查"有没有接线"，不解析 AST） */
+    const rendererSource = ((): string => {
+      const walk = (dir: string): string[] =>
+        readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+          d.isDirectory()
+            ? walk(join(dir, d.name))
+            : d.name.endsWith('.ts') || d.name.endsWith('.tsx')
+              ? [readFileSync(join(dir, d.name), 'utf8')]
+              : [],
+        )
+      return walk(join(wsRoot, 'apps/desktop/src/renderer/src')).join('\n')
+    })()
+    const redeemCalls = rendererSource.match(/redeemFragmentsAt\s*\(/g) ?? []
+    check(
+      redeemCalls.length > 0,
+      '碎片兑现入口契约：渲染层没有任何 `redeemFragmentsAt(...)` 调用——碎片会再次变成"集齐了没处换"' +
+        '（这是 2026-09-19 玩家报障的原始病根：core 有 `redeemFragments`，界面 0 处接线）',
+    )
+    check(
+      rendererSource.includes('逆向解锁'),
+      '碎片兑现入口契约：渲染层没有「逆向解锁」这个按钮文案——玩家认不出兑换入口',
+    )
+    console.log(
+      `· 碎片兑现入口契约：${fragChecked} 条逆向配方（碎片物品齐备 · 说明点名「逆向解锁」）· ` +
+        `渲染层 \`redeemFragmentsAt\` ${redeemCalls.length} 处调用 · 物品页有「逆向解锁」按钮`,
     )
   }
 
