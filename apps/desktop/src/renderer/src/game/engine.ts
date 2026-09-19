@@ -231,6 +231,7 @@ import {
   matterTechNodes,
   matterTechCostAt,
   matterTechBattleSpeedTiers,
+  matterTechScanCut,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -1788,9 +1789,10 @@ export class GameEngine {
     return wormholeFamilyIntel(family, this.ctx)
   }
 
-  /** 虫洞扫描：本趟窗口（毫秒；12 小时 × 三技能乘算 × 星际奇遇学） */
+  /** 虫洞扫描：本趟窗口（毫秒；12 小时 × 三技能乘算 × 星际奇遇学 × **谜质科技「谐振信号滤波阵列」削减**）
+   *  ⚠ 2026-09-19 报障排查补：读数必须与 `advanceWormholeScan` 的实际窗口同尺（原先没带科技削减 ⇒ 显示偏长） */
   wormholeScanWindow(): number {
-    return wormholeScanWindowMs(this.state)
+    return wormholeScanWindowMs(this.state, matterTechScanCut(this.state, this.ctx))
   }
 
   /**

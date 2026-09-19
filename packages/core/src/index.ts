@@ -1289,6 +1289,13 @@ export {
   wormholeSalvagersOf,
   // 2026-09-19 准备页读数：按**所选编队**现算（理由同上）
   wormholeSalvagersInFleet,
+  /**
+   * 2026-09-19 效率（船长「检查是否有其他丢掉科技的情况」批）：`Σ 各台档位基础效率 ＋ 谜质科技加成`。
+   * `…OfFleet` = 按任意编队现算（准备页预览）、`…Of` = 本趟编队（入洞后读数）——
+   * 与 core 结算"额外堆"共用一段算式（`wormholeSalvage.ts` 内 `workExtraPiles` 的消费口径）。
+   */
+  wormholeWorkEfficiencyOfFleet,
+  wormholeWorkEfficiencyOf,
   // 2026-09-15 战利品与经济扩充（谜质折算 · 两个新货柜的拆解台 · 残骸堆掷货柜）
   WORMHOLE_ESSENCE_ITEM_ID,
   WORMHOLE_ESSENCE_PER_DEVICE,

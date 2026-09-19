@@ -1409,8 +1409,22 @@ export function wormholeWorkEfficiencyOf(
 ): number {
   const run = state.wormhole.run
   if (!run) return 0
+  return wormholeWorkEfficiencyOfFleet(state, ctx, run.fleet, kind)
+}
+
+/**
+ * **同一把尺、按任意编队现算**（2026-09-19 补）：准备页要在**没入洞**时预览所选编队的效率
+ * （准备页与入洞后的「打捞器 / 采集器」读数都带一个效率百分比），而入洞后读的是 `run.fleet`
+ * ⇒ 抽成这份"按编队"的实现，两条路**共用同一段算式**（科技加成那一段一并带上，不会两处漂）。
+ */
+export function wormholeWorkEfficiencyOfFleet(
+  state: GameState,
+  ctx: SimContext,
+  fleet: readonly string[],
+  kind: 'salvager' | 'miner',
+): number {
   let sum = 0
-  for (const uid of run.fleet) {
+  for (const uid of fleet) {
     const ship = state.fleet[uid]
     if (!ship) continue
     for (const m of allFittedModules(ship.fitted, ctx)) {

@@ -20,7 +20,7 @@ import {
   matterTechWorkEffBonus,
   matterTechWreckYield,
 } from '../src/matterTech'
-import { WORMHOLE_ESSENCE_ITEM_ID, wormholeSyncMatterTurns } from '../src/wormholeSalvage'
+import { WORMHOLE_ESSENCE_ITEM_ID, wormholeSyncMatterTurns, wormholeWorkEfficiencyOf, wormholeWorkEfficiencyOfFleet } from '../src/wormholeSalvage'
 import { applyMatterPlayerBuffs, wormholeMatterBattleModsOf } from '../src/combat'
 import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
 import { addShipToFleet } from '../src/shipyard'
@@ -261,6 +261,35 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(matterTechWreckYield(state, ctx)).toBeCloseTo(0.15, 6)
     for (let i = 0; i < 3; i++) researchMatterTech(state, ctx, 'mt-explore-salvage')
     expect(matterTechWorkEffBonus(state, ctx, 'salvage')).toBeCloseTo(0.6, 6)
+  })
+
+  /**
+   * **效率读数（2026-09-19 补 · 界面四处修复之四）**：准备页要在**没入洞**时预览所选编队的效率，
+   * 而入洞后读的是 `run.fleet` ⇒ 两条路必须是**同一段算式**。这条用例钉住四件事：
+   * ① 按任意编队现算 = `Σ 各台档位效率`（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%）；
+   * ② 科技加成（引力吊臂 / 富集钻头各 +20%/级）并进**同一个数**；
+   * ③ 入洞后 `wormholeWorkEfficiencyOf` 与准备页逐位相同；④ 没入洞时本趟口径恒 0（准备页不误读）。
+   */
+  it('效率读数：按编队现算 = Σ 档位效率 ＋ 科技加成；准备页与入洞后同值', () => {
+    const state = world()
+    const a = addShipToFleet(state, 'sh-thresher')
+    const b = addShipToFleet(state, 'sh-thresher')
+    state.shipId = a
+    // 装一台 MK3 打捞器（60%）+ 一台 MK1 打捞器（20%）= 80%；另一条船一台 MK2 采集器（40%）
+    state.fleet[a]!.fitted = { high: ['mod-salvager-3', 'mod-salvager-1'], mid: [], low: [] }
+    state.fleet[b]!.fitted = { high: [], mid: ['mod-miner-2'], low: [] }
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'salvager')).toBeCloseTo(0.8, 6)
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'miner')).toBeCloseTo(0.4, 6)
+    expect(wormholeWorkEfficiencyOf(state, ctx, 'salvager')).toBe(0) // 没入洞 ⇒ 本趟口径 0
+    // 引力吊臂 3 级 = +60%（前置：时序锚定器 ≥1）
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    for (let i = 0; i < 3; i++) expect(researchMatterTech(state, ctx, 'mt-explore-salvage').ok).toBe(true)
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'salvager')).toBeCloseTo(1.4, 6)
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'miner')).toBeCloseTo(0.4, 6) // 只加打捞那条
+    // 入洞后与准备页同值（同一段算式；`run.fleet` = 进洞时那一队）
+    expect(wormholeEnter(state, ctx, [a, b], 777).ok).toBe(true)
+    expect(wormholeWorkEfficiencyOf(state, ctx, 'salvager')).toBeCloseTo(1.4, 6)
+    expect(wormholeWorkEfficiencyOf(state, ctx, 'miner')).toBeCloseTo(0.4, 6)
   })
 })
 

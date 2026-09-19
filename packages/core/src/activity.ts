@@ -10,6 +10,7 @@ import type { SimContext } from './types'
 import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { wormholeScanWindowMs, wormholeStockFull, wormholeStockMaxOf, wormholeStockOf } from './wormholeScan'
+import { matterTechScanCut } from './matterTech'
 import { wormholeAutoRunsOf } from './wormholeAuto'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
@@ -195,7 +196,10 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
    * 库存满 5 时活动会被 `advanceWormholeScan` 停机，这里就不再出行（与"作业结束即消失"一致）。
    */
   if (state.wormholeScan?.active === true) {
-    const windowMs = wormholeScanWindowMs(state)
+    // ⚠ 2026-09-19 报障排查补：进度分母必须与**实际窗口**同尺（`advanceWormholeScan` 用的是带科技削减的
+    // `wormholeScanWindowMs(state, matterTechScanCut(...))`）；否则点了「谐振信号滤波阵列」的玩家
+    // 进度条永远走不满（实际早已扫完）。
+    const windowMs = wormholeScanWindowMs(state, matterTechScanCut(state, ctx))
     const done = Math.min(windowMs, state.wormholeScan.progressMs)
     out.push({
       id: 'whscan',
