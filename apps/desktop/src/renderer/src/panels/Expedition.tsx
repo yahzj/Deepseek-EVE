@@ -331,7 +331,7 @@ export function TaskPanel({
     <Panel
       className="is-fill win-fixed-body"
       title={tr("ui.App.008")}
-      right={<span className="app-dim">{tr("ui.Expedition.129")} {stationCount} · 抵达对应星系后出现</span>}
+      right={<span className="app-dim">{tr("ui.Expedition.129")} {stationCount}{tr('ui.Expedition.365')}</span>}
     >
       {/* 子标签固定（固定头+下滚）：重要/资源/快递/赏金任务 常显，下方任务内容独立内滚 */}
       <div className="app-task-tabs" role="tablist">
@@ -1875,7 +1875,7 @@ function GalaxyActions({
             <span className="app-ga-main">
               <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
               <span className="app-dim app-ga-desc">
-                {tr("ui.Expedition.089")} {a.threat} · 奖金 {Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
+                {tr("ui.Expedition.089")} {a.threat}{tr('ui.Expedition.369')}{Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
                 {state.completedBounties.includes(a.id) ? tr("ui.Expedition.354") : ''}
               </span>
             </span>
@@ -2191,7 +2191,7 @@ function AnomalyCard({
           className="app-dim"
           title={tr("ui.Expedition.218")}
         >
-          {' '}· 敌火力 <FoeDamageMix anomaly={anomaly} />
+          {' '}{tr('ui.Expedition.366')}<FoeDamageMix anomaly={anomaly} />
         </span>
         {/* V17.2：敌方血型色 chip——选弹种依据：动能克盾 ×1.5 / 高爆克甲 ×1.5 */}
         {(() => {
@@ -2203,7 +2203,7 @@ function AnomalyCard({
               className="app-dim"
               title={tr("ui.Expedition.219", { p1: Math.round(split.s * 100), p2: Math.round(split.a * 100), p3: Math.round(split.h * 100) })}
             >
-              {' '}· 敌型 <ProfileChip profile={p} text={cn} />
+              {' '}{tr('ui.Expedition.367')}<ProfileChip profile={p} text={cn} />
             </span>
           )
         })()}
@@ -2211,7 +2211,7 @@ function AnomalyCard({
       <div className="app-ano-reward">
         {tr("ui.Expedition.099")} {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
         {factionHit ? <span className="app-dim" title={tr("ui.Expedition.220", { p1: anomaly.rewardIsk.toLocaleString('zh-CN') })}>{tr("ui.Expedition.321")}</span> : null}
-        {anomaly.loot.length > 0 ? ` + ${lootText}` : ''} · 声望 +{anomaly.standingGain}
+        {anomaly.loot.length > 0 ? ` + ${lootText}` : ''}{tr('ui.Expedition.368')}{anomaly.standingGain}
         {bountyCleared ? <span className="app-dim" title={tr("ui.Expedition.274")}>{tr("ui.Expedition.322")}</span> : null}
       </div>
       <div
@@ -2638,7 +2638,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
             className="app-st-time"
             title={tr("ui.Expedition.233")}
           >
-            {tr("ui.Expedition.281")} {fmtDayClock(view.bountyRemainingMs)} · 每天 0 点换新
+            {tr("ui.Expedition.281")} {fmtDayClock(view.bountyRemainingMs)}{tr('ui.Expedition.370')}
           </span>
         ) : (
           <span className="app-dim">{tr("ui.Expedition.234")}</span>
@@ -2735,7 +2735,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       className="app-dim"
                       title={tr("ui.Expedition.238")}
                     >
-                      {' '}· 敌火力 <FoeDamageMix anomaly={boostCard} />
+                      {' '}{tr('ui.Expedition.366')}<FoeDamageMix anomaly={boostCard} />
                     </span>
                   </div>
                   <div className="app-ano-reward">
@@ -2926,7 +2926,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                     className="app-dim"
                     title={tr("ui.Expedition.240")}
                   >
-                    {' '}· 敌火力 <FoeDamageMix anomaly={card} />
+                    {' '}{tr('ui.Expedition.366')}<FoeDamageMix anomaly={card} />
                   </span>
                 ) : null}
                 {card
@@ -2935,7 +2935,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       const cn = p === 'shield' ? tr("ui.Expedition.272") : p === 'armor' ? tr("ui.Expedition.273") : tr("ui.Expedition.098")
                       return (
                         <span className="app-dim" title={tr("ui.Expedition.241")}>
-                          {' '}· 敌型 <ProfileChip profile={p} text={cn} />
+                          {' '}{tr('ui.Expedition.367')}<ProfileChip profile={p} text={cn} />
                         </span>
                       )
                     })()
@@ -3157,7 +3157,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                     >
                       {billRows.map((r) => (
                         <option key={r.itemId} value={r.itemId}>
-                          {r.itemName}{tr("ui.Expedition.344")} {availOf(r.itemId).toLocaleString('zh-CN')} · 还差 {r.remaining.toLocaleString('zh-CN')}）
+                          {r.itemName}{tr("ui.Expedition.344")} {availOf(r.itemId).toLocaleString('zh-CN')}{tr('ui.Expedition.371')}{r.remaining.toLocaleString('zh-CN')}）
                         </option>
                       ))}
                     </select>
