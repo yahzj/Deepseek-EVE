@@ -84,7 +84,7 @@ function sectionSideTasks(): void {
     const perHour = hourlySupplyOf(state, ctx, def.refId)
     const rows: string[] = []
     for (const lv of [1, 2, 3, 4, 5] as const) {
-      const need = Math.max(10, Math.round((perHour * 0.25 * SIDE_TASK_LEVEL_SCALE[lv]) / 10) * 10)
+      const need = Math.max(10, Math.round((perHour * 1 * SIDE_TASK_LEVEL_SCALE[lv]) / 10) * 10)
       const reward = Math.round((need * (def.basePrice ?? 0) * RESOURCE_TASK_LEVEL_MARGIN[lv]) / 100) * 100
       rows.push(`L${lv} ${need.toLocaleString('zh-CN')} ⇒ ${reward.toLocaleString('zh-CN')}`)
     }
@@ -95,7 +95,7 @@ function sectionSideTasks(): void {
   for (const lv of [1, 2, 3, 4, 5] as const) {
     const vol = courierVolumeFor(lv)
     const req = courierWarpReqOf(lv)
-    const trip = Math.min(1.5, Math.max(0.1, nominal / 60))
+    const trip = Math.max(0.5, nominal / 10)
     const reward = Math.max(100, Math.floor((vol * COURIER_TASK_LEVEL_RATE[lv] * trip) / 100) * 100)
     const limitMin = req === null ? null : (nominal * (ctx.balance.travel.warpRefAus / req) * 1.05)
     console.log(
@@ -103,7 +103,7 @@ function sectionSideTasks(): void {
         (req === null ? ' · 普通快递（无跃迁门槛）' : ` · 限时（跃迁 ≥${req} AU/s，时限 ≈${limitMin!.toFixed(1)} 分钟）`),
     )
   }
-  console.log('\n（航程系数 = 标称分钟 ÷ 60，钳 0.1~1.5 ⇒ 远站给钱更多；此处按上面那条航程的系数算）')
+  console.log('\n（航程系数 = 标称分钟 ÷ 10，下限 0.5、无上限 ⇒ 远站线性加价；此处按上面那条航程的系数算）')
 }
 
 /** ── 13 条「第一次」任务各自耗时（引擎实跑） ── */

@@ -92,14 +92,23 @@ export const COURIER_TIMED_WARP_REQ: readonly number[] = [6.2, 7.44, 8.37, 10.92
 /** 每板**基础**条数（船长 2026-09-18：「初始每个任务数量提高到4」）——资源/快递各 4 条 */
 export const SIDE_TASK_BASE_COUNT = 4
 
+/**
+ * **资源需量的产能倍率**（船长 2026-09-18：「移除 0.25 倍率，改为 1 倍」）：
+ * 基准需量 = 玩家 1 小时可获得该货的量 × 本值（1 = 整一小时产量），再乘级别倍率。
+ */
+export const RESOURCE_NEED_HOUR_FRACTION = 1
+
 /** **每建成一座副空间站**，资源/快递各 +2 条（船长 2026-09-18：「每个建成的空间站让任务数量+2」） */
 export const SIDE_TASK_COUNT_PER_STATION = 2
 
 /** 快递"接单"上限（船长：「接取的快递任务不会被刷掉」——接了进 `sideTasks.accepted`，跨整板刷新保留） */
 export const COURIER_ACCEPT_MAX = 4
 
-/** 虚拟货物运费：航程系数基准 = **1 小时航程算 1.0**（标称航程分钟 ÷ 60，钳 [0.1, 1.5]） */
-const COURIER_TRIP_HOURS_REF = 60
+/** 虚拟货物运费：航程系数基准 = **10 分钟航程算 1.0**（船长 2026-09-18：「并不失衡啊，
+ *  你要考虑玩家成本问题和任务周期」⇒ 按"标称航程分钟 ÷ 10"折算，**下限 0.5**、无上限） */
+const COURIER_TRIP_MINUTES_REF = 10
+/** 航程系数下限（短程也不低于此；远站按航程线性加价，无上限） */
+const COURIER_TRIP_FACTOR_MIN = 0.5
 
 /** 限时快递时限宽限（基准配置到达时长 × 1.05：同配置无技能时刚好压线，留 5% 缓冲） */
 const TIMED_COURIER_GRACE = 1.05
@@ -304,13 +313,13 @@ export function hourlySupplyOf(state: GameState, ctx: SimContext, itemId: string
 }
 
 /**
- * 资源任务需要量（2026-09-18 新口径）：
- * **基准 = 玩家 1 小时产能 × 0.25**（≈15 分钟产量，L1 一会儿就能凑齐），
- * 再乘级别倍率（L1 15 分钟 … L5 2 小时产量），取整到 10、至少 10。
+ * **资源任务需要量**（2026-09-18 新口径，两轮改定）：
+ * **基准 = 玩家 1 小时可获得该货的量 × 1**（船长：「移除 0.25 倍率，改为 1 倍」⇒ L1 = 1 小时产量，
+ * L5 = 8 小时产量），取整到 10、至少 10。
  */
 function rollResourceNeed(state: GameState, ctx: SimContext, def: MarketGoodDef, level: SideTaskLevel): number {
   const hourly = hourlySupplyOf(state, ctx, def.refId)
-  const raw = hourly * 0.25 * SIDE_TASK_LEVEL_SCALE[level]
+  const raw = hourly * RESOURCE_NEED_HOUR_FRACTION * SIDE_TASK_LEVEL_SCALE[level]
   return Math.max(10, Math.round(raw / 10) * 10)
 }
 
@@ -349,7 +358,9 @@ function resourceRewardIskFor(
 /**
  * **快递奖励（虚拟货物 ⇒ 纯运费，2026-09-18 船长定）**：
  * reward = 体积(m³) × `COURIER_TASK_LEVEL_RATE[level]` × 航程系数，向下取整到整百、至少 100。
- * 航程系数 = 标称航程分钟 ÷ 60（**1 小时航程算 1.0**），钳 [0.1, 1.5] ⇒ 远站给钱更多（旧口径与距离无关）。
+ * 航程系数 = 标称航程分钟 ÷ **10**（10 分钟航程 = 1.0），**下限 0.5、无上限** ⇒ 远站线性加价。
+ * （船长对"是否失衡"的裁定：「并不失衡啊，你要考虑玩家成本问题和任务周期」——快递要一条大货舱船
+ * ＋跃迁计算机、且一趟占掉一个任务周期，故按航程给足运费。）
  * 快递不再绑商品 ⇒ 不吃市场报价、也不触发市场联动。
  */
 function courierRewardIskFor(
@@ -358,7 +369,10 @@ function courierRewardIskFor(
   level: SideTaskLevel,
   nominalMinutes: number,
 ): number {
-  const trip = Math.min(1.5, Math.max(0.1, (Number.isFinite(nominalMinutes) ? nominalMinutes : 10) / COURIER_TRIP_HOURS_REF))
+  const trip = Math.max(
+    COURIER_TRIP_FACTOR_MIN,
+    (Number.isFinite(nominalMinutes) ? nominalMinutes : 10) / COURIER_TRIP_MINUTES_REF,
+  )
   const raw = volumeM3 * COURIER_TASK_LEVEL_RATE[level] * trip
   return Math.max(0, Math.round(Math.max(100, Math.floor(raw / 100) * 100) * tuningMul(state, 'rewardIsk')))
 }

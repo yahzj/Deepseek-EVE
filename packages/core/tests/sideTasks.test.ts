@@ -114,9 +114,9 @@ function expectResourceReward(need: number, buy: number, level: 1 | 2 | 3 | 4 | 
   return r
 }
 
-/** 期望的快递运费（体积 × 级别单价 × 航程系数[标称分钟/60，钳 0.1~1.5]） */
+/** 期望的快递运费（体积 × 级别单价 × 航程系数[标称分钟/10，下限 0.5、无上限]） */
 function expectCourierReward(volumeM3: number, level: 1 | 2 | 3 | 4 | 5, nominalMinutes: number): number {
-  const trip = Math.min(1.5, Math.max(0.1, nominalMinutes / 60))
+  const trip = Math.max(0.5, nominalMinutes / 10)
   return Math.max(100, Math.floor((volumeM3 * COURIER_TASK_LEVEL_RATE[level] * trip) / 100) * 100)
 }
 
