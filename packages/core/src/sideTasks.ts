@@ -122,6 +122,14 @@ export function sideTaskCandidateGoods(state: GameState, ctx: SimContext): Marke
   for (const def of ctx.marketGoods.values()) {
     if (def.rarity !== 'common' || def.kind !== 'item' || (def.poolTarget ?? 0) <= 0) continue
     const itemId = def.refId
+    /**
+     * **残骸一律不进资源 / 快递任务**（船长 2026-09-18：「**在资源和快递任务中，将所有残骸排除。**」）。
+     *
+     * 判据走数据（`ItemDef.kind === 'wreck'`）——普通残骸与稀有残骸同属这一类，不看 id 前缀；
+     * ⚠ 位置必须放在"仓库已有即放行"**之前**：否则玩家仓库里躺着残骸时又会被放回候选池。
+     * 残骸的市场行（`WRECK_BUY_GOODS`）与回收链路不受影响：照旧可在市场卖给协会回收站、可入炉拆解。
+     */
+    if (ctx.items.get(itemId)?.kind === 'wreck') continue
     if ((state.warehouse.items[itemId] ?? 0) > 0) {
       out.push(def) // 仓库已有 → 玩家已接触，恒放行
       continue
@@ -161,7 +169,8 @@ export function sideTaskCandidateGoods(state: GameState, ctx: SimContext): Marke
       if (!sourceFound) out.push(def) // 无精炼来源（如远征稀有掉落物）：无矿带依赖，恒放行
       continue
     }
-    // 弹药/修理组件/无人机/残骸/碎片等 NPC 常驻直供（无矿带依赖）：恒可刷
+    // 弹药/修理组件/无人机等 NPC 常驻直供（无矿带依赖）：恒可刷
+    // （**残骸不在其中**：船长 2026-09-18 定「资源与快递任务排除所有残骸」，见本函数开头的判据）
     out.push(def)
   }
   return out

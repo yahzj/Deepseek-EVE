@@ -412,7 +412,7 @@ describe('装备装配与加成', () => {
   })
 })
 
-describe('循环制造（2026-09-10 船长定：开关与目标件数从逐条制造线上移到整张生产卡；全卡合计口径）', () => {
+describe('循环制造（2026-09-10 船长定：开关与目标批数从逐条制造线上移到整张生产卡；全卡合计口径）', () => {
   let state: GameState
   let ctx: SimContext
 
@@ -451,7 +451,7 @@ describe('循环制造（2026-09-10 船长定：开关与目标件数从逐条�
     expect(manufacturingLoopOf(state, 'bp-a').produced).toBe(3)
   })
 
-  it('目标件数 = 全卡合计：达标即停、开关自动关并标停因；在跑件跑完（最多超产 = 线数−1）', () => {
+  it('目标批数 = 全卡合计：达标即停、开关自动关并标停因；在跑件跑完（最多超产 = 线数−1）', () => {
     gainAiCore(state, 'basic', 1)
     state.warehouse.items['min-a'] = 100
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
@@ -462,8 +462,8 @@ describe('循环制造（2026-09-10 船长定：开关与目标件数从逐条�
     expect(loop.on).toBe(false) // 自动关开关
     expect(loop.goal).toBe(2)
     expect(loop.produced).toBe(2) // 合计停在目标数上（停线依据）
-    expect(loop.stopWhy).toBe('已达成目标 2 件') // 卡片上要标停因
-    expect(state.logs.some((l) => l.text.includes('循环制造停止') && l.text.includes('本卡合计 2 件'))).toBe(true)
+    expect(loop.stopWhy).toBe('已达成目标 2 批') // 卡片上要标停因（**单位 = 批**，船长 2026-09-18）
+    expect(state.logs.some((l) => l.text.includes('循环制造停止') && l.text.includes('本卡合计 2 批'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('其余 1 条线跑完当前件即停'))).toBe(true)
     // 在跑的那条（AI 线）跑完当前件即止：合计不再增长，实际产出 = 3（超产 1 = 线数 − 1）
     advanceGame(state, 300_000, ctx) // t=1500s
@@ -511,7 +511,7 @@ describe('循环制造（2026-09-10 船长定：开关与目标件数从逐条�
     expect(state.logs.some((l) => l.text.includes('循环制造停止') && l.text.includes('AI 核心已归还'))).toBe(true)
   })
 
-  it('校验：空蓝图 id 拒绝；goal 0/缺省 = 不限件数；手动关闭不带目标', () => {
+  it('校验：空蓝图 id 拒绝；goal 0/缺省 = 不限**批数**；手动关闭不带目标', () => {
     expect(setManufacturingLoop(state, '', true, null).ok).toBe(false)
     state.warehouse.items['min-a'] = 25
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
@@ -527,6 +527,72 @@ describe('循环制造（2026-09-10 船长定：开关与目标件数从逐条�
     expect(loop.on).toBe(true)
     expect(loop.produced).toBe(0)
     expect(loop.stopWhy).toBe('')
+  })
+
+  /**
+   * **多产出蓝图按「批」计数**（船长 2026-09-18 裁定：UI 说"批"不按"件"）——玩家报障
+   * 「军用修理组件（**3 个/批**）设目标 1000，产出 151 就停了」的取证钉子：`produced`/`goal` 都是**批**，
+   * 所以日志里那句「本卡合计 151 批」= **453 件**；停线原因是材料耗尽（卡片与日志都会标）。
+   */
+  it('多产出蓝图：目标 = **批数**（2 批 × 3 件/批 ⇒ 到手 6 件；日志写"2 批"）', () => {
+    const ctxMulti = makeTestCtx({
+      blueprints: [
+        {
+          id: 'bp-multi',
+          name: '三件套蓝图',
+          itemId: 'min-b', // 复用默认矿产当"产物"，省得再立物品
+          outputUnits: 3,
+          materials: [{ itemId: 'min-a', count: 10 }],
+          buildSeconds: 600,
+          buildCostIsk: 0,
+          priceIsk: 1000,
+          description: '测试用多产出蓝图',
+        },
+      ],
+    })
+    const st = createInitialState({ nowWallMs: 0, seed: 1 })
+    skipFirstSkillReward(st)
+    st.blueprintStock['bp-multi'] = 1
+    learnBlueprint(st, ctxMulti, 'bp-multi')
+    st.warehouse.items['min-a'] = 100
+    expect(setManufacturingLoop(st, 'bp-multi', true, 2).ok).toBe(true)
+    expect(startManufacturing(st, 'bp-multi', 'pilot', ctxMulti).ok).toBe(true)
+    advanceGame(st, 1_200_000, ctxMulti) // 2 批到点
+    const loop = manufacturingLoopOf(st, 'bp-multi')
+    expect(loop.produced).toBe(2) // **批数**（不是件数）
+    expect(loop.stopWhy).toBe('已达成目标 2 批')
+    expect(st.warehouse.items['min-b'] ?? 0).toBe(6) // 2 批 × 3 件/批
+    expect(st.logs.some((l) => l.text.includes('本卡合计 2 批'))).toBe(true)
+  })
+
+  /**
+   * **停线的"连带"范围**（船长 2026-09-18 追问：「有没有可能，其他组装机停止会连带所有组装机一起停止？」）
+   * ——探针实测（两卡各用各的材料、各一条 AI 线）：
+   * - **同一张卡**：一条线缺料停 ⇒ **整卡停**（卡片级开关 + 全卡合计，2026-09-10 船长定）；
+   * - **不同的卡**：互不影响（`manufacturingLoops` 的键 = 蓝图 id，全仓只有"本卡"这一处写入）。
+   * 本条把这两点钉住：跨卡不得退化成"一停全停"。
+   */
+  it('**停线的连带范围**：同卡一条缺料 ⇒ 整卡停（设计）；**不同卡互不影响**（各跑各的）', () => {
+    state.blueprintStock['bp-b'] = 1
+    learnBlueprint(state, ctx, 'bp-b')
+    gainAiCore(state, 'basic', 2)
+    state.warehouse.items['min-a'] = 10 // bp-a：只够 1 批
+    state.warehouse.items['min-b'] = 500 // bp-b：管够
+    expect(setManufacturingLoop(state, 'bp-a', true, 0).ok).toBe(true)
+    expect(setManufacturingLoop(state, 'bp-b', true, 0).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-b', 'basic', ctx).ok).toBe(true)
+    advanceGame(state, 6_000_000, ctx) // 100 分钟游戏时间
+    // A 卡：缺料自动停线（开关关 + 有停因）
+    const a = manufacturingLoopOf(state, 'bp-a')
+    expect(a.on).toBe(false)
+    expect(a.stopWhy).toContain('材料不足')
+    // B 卡：**照跑**（开关仍开、无停因、还在出货）
+    const b = manufacturingLoopOf(state, 'bp-b')
+    expect(b.on, 'B 卡被 A 卡的停线连带了').toBe(true)
+    expect(b.stopWhy).toBe('')
+    expect(b.produced).toBeGreaterThan(0)
+    expect(countModule(state, 'mod-b')).toBeGreaterThan(0) // 产物持续入库
   })
 })
 
