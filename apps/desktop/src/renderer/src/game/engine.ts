@@ -109,6 +109,8 @@ import {
   courierTaskUnlocked,
   courierDelivering,
   startCourierDelivery,
+  acceptCourierTask,
+  abandonAcceptedCourierTask,
   stopMining,
   stopSalvageOp,
   stopScan,
@@ -143,6 +145,8 @@ import {
   haulEndpointName,
   haulLegReward,
   haulingOccupiedM3,
+  cargoCapacityM3,
+  warpSpeedAus,
   HAUL_RATE_PER_M3_MIN,
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
@@ -2454,9 +2458,38 @@ export class GameEngine {
     return result
   }
 
-  /** 快递任务「出发投送」（真实航行：仓库锁定扣货 → 挂入在途 → 到站引擎自动结算） */
+  /** 快递任务「出发投送」（虚拟货物：只占货舱体积 → 挂入在途 → 到站引擎自动结算运费） */
   startCourierDeliveryAt(id: number): CommandResult {
     const result = startCourierDelivery(this.state, this.ctx, id)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 当前驾驶船的货舱容量（m³；快递卡判断"装不装得下"用） */
+  cargoCapacityM3(): number {
+    return cargoCapacityM3(this.state, this.ctx)
+  }
+
+  /** 当前驾驶船的有效跃迁速度（AU/s，含跃迁计算机加成；限时快递门槛判定用） */
+  warpSpeedOfCurrent(): number {
+    return warpSpeedAus(this.state, this.ctx, this.state.shipId)
+  }
+
+  /** 快递「接单」（船长 2026-09-18：接取后不再随整板刷新消失） */
+  acceptCourierAt(id: number): CommandResult {    const result = acceptCourierTask(this.state, id)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 快递「放弃已接单」（腾出接单名额） */
+  abandonAcceptedCourierAt(id: number): CommandResult {
+    const result = abandonAcceptedCourierTask(this.state, id)
     if (result.ok) {
       void this.persist()
       this.notify()

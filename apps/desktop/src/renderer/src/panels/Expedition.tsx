@@ -2340,7 +2340,8 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
   // 任务板与市场「补给刷新」同节奏：orderLifeMs.common = 20 分钟一轮（与常驻订单寿命一致）
   const periodMin = Math.max(1, Math.round(engine.ctx.balance.market.orderLifeMs.common / 60_000))
   const isCourier = kind === 'courier'
-  const tasks = isCourier ? view.courier : view.resource
+  // 快递：**已接单的排在前面**（跨刷新保留；出发/放弃才离场），随后是本批板上的订单
+  const tasks = isCourier ? [...view.accepted, ...view.courier] : view.resource
   // 快递：本批某单是否就是当前在途投送（仍在板上）；整板刷新后原单被换下 → 由顶部横幅继续提示
   const deliverNowId = view.deliver?.taskId ?? null
   // 在途单不在本批板上（整板刷新后）：横幅 + 本批其余订单都显示
@@ -2407,61 +2408,110 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
             const have = state.warehouse.items[t.refId] ?? 0
             const short = Math.max(0, t.need - have)
             if (isCourier) {
-              // —— 快递卡：出发投送 / 投送中（当前在途单）/ 有他单在途 ——
+              // —— 快递卡（2026-09-18 虚拟货物版）：接单 / 出发投送 / 投送中 ——
               const siteId = t.stationId
               const siteName = siteId ? engine.ctx.stations.get(siteId)?.name ?? siteId : undefined
               const galaxyName = t.galaxyId ? engine.ctx.galaxies.get(t.galaxyId)?.name ?? t.galaxyId : undefined
               const isThisInFlight = view.deliver !== null && view.deliver.taskId === t.id
               const otherInFlight = view.deliver !== null && !isThisInFlight
               const expired = view.remainingMs <= 0
-              const lockedTxt = short > 0
-                ? `物品仓库 ${name} 不足：还差 ${short.toLocaleString('zh-CN')} 单位（任务需 ${t.need.toLocaleString('zh-CN')}，现有 ${have.toLocaleString('zh-CN')}）——先把货卸入仓库再出发`
-                : expired
-                  ? '本批任务已到期，等下一批刷新'
-                  : otherInFlight
-                    ? '已有另一笔投送在途中（同一时间仅一笔）：到站结算后再出发'
-                    : undefined
+              const vol = t.volumeM3 ?? 0
+              const cap = engine.cargoCapacityM3()
+              const warp = engine.warpSpeedOfCurrent()
+              const warpShort = t.timed === true && t.warpReqAus !== undefined && warp + 1e-9 < t.warpReqAus
+              const cargoShort = vol > cap
+              const accepted = view.accepted.some((a) => a.id === t.id)
+              const limitMin = t.timeLimitMs !== undefined ? Math.max(1, Math.round(t.timeLimitMs / 60_000)) : null
+              const lockedTxt = cargoShort
+                ? `货舱不足：本单需 ${vol.toLocaleString('zh-CN')} m³，本舰 ${cap.toLocaleString('zh-CN')} m³——换一艘更大的船`
+                : warpShort
+                  ? `限时快递要求跃迁速度 ≥ ${t.warpReqAus} AU/s（本舰 ${warp.toFixed(2)} AU/s）——换快船或装跃迁计算机`
+                  : expired && !accepted
+                    ? '本批任务已到期——可先「接单」保住它，或等下一批刷新'
+                    : otherInFlight
+                      ? '已有另一笔投送在途中（同一时间仅一笔）：到站结算后再出发'
+                      : undefined
               return (
                 <div key={t.id} className="app-station-card">
                   <div className="app-station-head">
                     <span className="app-station-name">
-                      ⌁ 副站投送：{name} × {t.need.toLocaleString('zh-CN')}
-                      <em className="app-chip">真实航程</em>
+                      ⌁ 副站投送 L{t.level ?? 1}：{vol.toLocaleString('zh-CN')} m³
+                      <em className="app-chip">{t.timed === true ? `限时 · 跃迁 ≥${t.warpReqAus} AU/s` : '普通快递'}</em>
                     </span>
-                    <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
+                    <span className="app-dim">{accepted ? '已接单（不随刷新消失）' : `剩余 ${fmtSideClock(view.remainingMs)}`}</span>
                   </div>
                   <div className="app-station-mats">
-                    目标「{siteName ?? '（最近已建成副站）'}」{galaxyName ? `（${galaxyName}）` : ''}：
-                    携 {name}×{t.need.toLocaleString('zh-CN')} 出发投送，按真实航程到站自动结算（不涨声望；到站后舰船将停靠目标副站）。
+                    目标「{siteName ?? '（最近已建成副站）'}」{galaxyName ? `（${galaxyName}）` : ''}：虚拟货物
+                    {vol.toLocaleString('zh-CN')} m³ 按体积占用货舱（不消耗任何物品，出发时真实货物自动卸入仓库），
+                    到站自动结算运费。
+                    {t.timed === true && limitMin !== null
+                      ? ` 限时快递：需在 ${limitMin} 分钟内抵达，超时无报酬（本舰跃迁 ${warp.toFixed(2)} AU/s，门槛 ${t.warpReqAus} AU/s）。`
+                      : ''}
                   </div>
-                  {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
+                  {/* 奖励独立成行 + 金色 */}
                   <div className="app-task-reward">
-                    <span className="app-dim">奖励 ◆ </span>
+                    <span className="app-dim">运费 ◆ </span>
                     {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
                   </div>
                   <div className="app-station-deliver">
                     <span className="app-dim">
-                      仓库现有 {have.toLocaleString('zh-CN')} 单位{short > 0 ? `（差 ${short.toLocaleString('zh-CN')}，先把货卸入仓库再出发）` : ''}
+                      本舰货舱 {cap.toLocaleString('zh-CN')} m³{accepted ? ' · 已接单' : ''}
                     </span>
                     {isThisInFlight ? (
-                      <span className="app-btn is-small is-primary" aria-disabled title="该单正在投送途中——到站自动结算酬金并下板">
+                      <span className="app-btn is-small is-primary" aria-disabled title="该单正在投送途中——到站自动结算运费并离场">
                         投送中 · 预计剩 {fmtSideClock(view.deliver!.remainingMs)}
                       </span>
                     ) : (
-                      <button
-                        className="app-btn is-small is-primary"
-                        disabled={short > 0 || expired || otherInFlight}
-                        title={lockedTxt ?? `出发投送：携 ${name}×${t.need.toLocaleString('zh-CN')} 驶往「${siteName ?? '最近副站'}」，到站领取 ${t.rewardIsk.toLocaleString('zh-CN')} 信用点`}
-                        onClick={() => act(t.id)}
-                      >
-                        出发投送（{Math.min(have, t.need).toLocaleString('zh-CN')}/{t.need.toLocaleString('zh-CN')}）
-                      </button>
+                      <>
+                        {accepted ? (
+                          <button
+                            className="app-btn is-small"
+                            title="放弃这一单（腾出接单名额；该单作废）"
+                            onClick={() => {
+                              const r = engine.abandonAcceptedCourierAt(t.id)
+                              onToast(r.ok ? '已放弃该单。' : r.error ?? '无法放弃', !r.ok)
+                            }}
+                          >
+                            放弃
+                          </button>
+                        ) : (
+                          <button
+                            className="app-btn is-small"
+                            disabled={otherInFlight}
+                            title="接单：这一单不再随 20 分钟整板刷新消失（可慢慢换船/腾货舱），上限 4 单"
+                            onClick={() => {
+                              const r = engine.acceptCourierAt(t.id)
+                              onToast(r.ok ? '已接单——不会再被刷新刷掉。' : r.error ?? '无法接单', !r.ok)
+                            }}
+                          >
+                            接单
+                          </button>
+                        )}
+                        <button
+                          className="app-btn is-small is-primary"
+                          disabled={cargoShort || warpShort || (expired && !accepted) || otherInFlight}
+                          title={lockedTxt ?? `出发投送：虚拟货物 ${vol.toLocaleString('zh-CN')} m³ 驶往「${siteName ?? '最近副站'}」，到站领取 ${t.rewardIsk.toLocaleString('zh-CN')} 信用点`}
+                          onClick={() => {
+                            const r = engine.startCourierDeliveryAt(t.id)
+                            onToast(
+                              r.ok
+                                ? t.timed === true
+                                  ? `已出发——限时单，务必在时限内抵达（超时无报酬）。`
+                                  : '已出发——按真实航程投送，到站自动结算运费。'
+                                : r.error ?? '无法出发投送',
+                              !r.ok,
+                            )
+                          }}
+                        >
+                          出发投送（{vol.toLocaleString('zh-CN')} m³）
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
               )
             }
-            // —— 资源卡：仓库足量即时交付 ——
+            // —— 资源卡：仓库足量即时交付（级别越高，收购量与奖励越大）——
             const canFinish = have >= t.need && view.remainingMs > 0
             const lockedTxt = short > 0
               ? `物品仓库 ${name} 不足：还差 ${short.toLocaleString('zh-CN')} 单位（任务需 ${t.need.toLocaleString('zh-CN')}，现有 ${have.toLocaleString('zh-CN')}）`
@@ -2470,13 +2520,14 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
               <div key={t.id} className="app-station-card">
                 <div className="app-station-head">
                   <span className="app-station-name">
-                    ◈ 限时收购：{name} × {t.need.toLocaleString('zh-CN')}
+                    ◈ 限时收购 L{t.level ?? 1}：{name} × {t.need.toLocaleString('zh-CN')}
                     <em className="app-chip">物品仓库交付</em>
                   </span>
                   <span className="app-dim">剩余 {fmtSideClock(view.remainingMs)}</span>
                 </div>
                 <div className="app-station-mats">
-                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（从物品仓库扣除交付，不接受货仓；不涨声望）。
+                  协会限时收购 {name}×{t.need.toLocaleString('zh-CN')}（L{t.level ?? 1} 档 · 从物品仓库扣除交付，
+                  不接受货仓；不涨声望）。成交后协会撤走这批货、本单的抬价效应一并解除。
                 </div>
                 {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
                 <div className="app-task-reward">
@@ -2920,24 +2971,34 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
   )
 }
 
-/** 快递投送在途横幅：在途单已被整板刷新换下（不在本批板上）时的持续提示；到站自动结算不可取消 */
+/** 快递投送在途横幅（2026-09-18 虚拟货物版）：体积/级别/限时与截止倒计时；到站自动结算不可取消 */
 function CourierInFlightBanner({ view, ctx }: { view: SideTaskBoardView; ctx: SimContext }) {
   const d = view.deliver
   if (!d) return null
-  const itemName = ctx.items.get(d.refId)?.name ?? d.refId
+  const legacyName = d.refId.length > 0 ? ctx.items.get(d.refId)?.name ?? d.refId : ''
+  const head =
+    d.volumeM3 > 0
+      ? `投送中：虚拟货物 ${d.volumeM3.toLocaleString('zh-CN')} m³（L${d.level}${d.timed ? ' · 限时' : ''}）→ 「${d.stationName}」（${d.galaxyName}）`
+      : `投送中：${legacyName} × ${d.need.toLocaleString('zh-CN')} → 「${d.stationName}」（${d.galaxyName}）`
   return (
     <div className="app-station-card is-built">
       <div className="app-station-head">
         <span className="app-station-name">
-          ⌁ 投送中：{itemName} × {d.need.toLocaleString('zh-CN')} → 「{d.stationName}」（{d.galaxyName}）
-          <em className="app-chip">在途</em>
+          ⌁ {head}
+          <em className="app-chip">{d.remainingMs > 0 ? '在途' : '到站结算中'}</em>
         </span>
         <span className="app-dim">
           {d.remainingMs > 0 ? `预计剩 ${fmtSideClock(d.remainingMs)}` : '已到站，正在结算'}
+          {d.deadlineRemainingMs !== null
+            ? d.deadlineRemainingMs >= 0
+              ? ` · 时限剩 ${fmtSideClock(d.deadlineRemainingMs)}`
+              : ' · 已超时（本单无报酬）'
+            : ''}
         </span>
       </div>
       <div className="app-station-mats">
-        货物已在途中（出发时已从仓库锁定扣出）。到站自动结算酬金；期间舰船不可开矿/远征/扫描/打捞/掩护巡逻/换港返航（投送不可取消）。
+        虚拟货物按体积占用货舱（出发时真实货物已自动卸入仓库）。到站自动结算运费；
+        期间舰船不可开矿/远征/扫描/打捞/掩护巡逻/换港返航（投送不可取消）。
       </div>
     </div>
   )

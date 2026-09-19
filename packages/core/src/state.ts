@@ -1889,12 +1889,33 @@ export interface SideTask {
   kind: 'resource' | 'courier' | 'bounty' | 'faction'
   /** 目标物品的市场商品 key（ctx.marketGoods 键；刷出时锁定的报价来源） */
   goodKey: string
-  /** 目标物品 refId（state.warehouse.items 按它计数、出发/完成时扣取） */
+  /** 目标物品 refId（state.warehouse.items 按它计数、出发/完成时扣取）。
+   *  **快递任务自 2026-09-18 起改用虚拟货物 ⇒ 本字段为空串**（改看 `volumeM3`） */
   refId: string
-  /** 需交付单位数（物品仓库持有 ≥ 该值方可出发/完成；刷出时锁定） */
+  /** 需交付单位数（物品仓库持有 ≥ 该值方可出发/完成；刷出时锁定）。
+   *  **快递任务自 2026-09-18 起改用虚拟货物 ⇒ 本字段恒 0**（改看 `volumeM3`） */
   need: number
   /** 完成奖励 ISK（刷出时按当时收购价锚定取整到整百锁定；不给声望） */
   rewardIsk: number
+  /**
+   * **任务级别 1~5**（船长 2026-09-18：「任务将划分级别，级别越高的任务收购的数量/所需的货仓容量越多。
+   * 同样奖励也越高」）。各级"量"倍率/奖励系数见 `sideTasks.ts` 的 `SIDE_TASK_LEVEL_SCALE` /
+   * `RESOURCE_TASK_LEVEL_MARGIN` / `COURIER_TASK_LEVEL_RATE`；**老档缺省按 1 读**（零迁移）。
+   */
+  level?: 1 | 2 | 3 | 4 | 5
+  /**
+   * **快递所需货舱体积（m³）**（船长 2026-09-18：「快递的货采用和长途运输一样的虚拟货物，
+   * 只有占用体积属性」）——不再要求玩家备货：出发时把真实货物卸进仓库、按本体积占用货舱，到站释放。
+   */
+  volumeM3?: number
+  /** 快递：是否**限时快递**（船长：「快递任务有 2 种区分，普通快递和限时快递」）。限时快递对跃迁速度有门槛、
+   *  且有截止时刻，**超时无报酬**（船长选甲案：无报酬 ＋ 任务作废） */
+  timed?: boolean
+  /** 快递：**跃迁速度门槛（AU/s）**——4 档 = 剑鱼 6.20 / 剑鱼+MK2 7.44 / 剑鱼+MK3 8.37 / 剑鱼+MK3×2 10.92
+   *  （`timed === true` 时非空；出发时校验当前舰船，不达标不许出发） */
+  warpReqAus?: number
+  /** 快递：**时限（毫秒）**= 该档基准配置跑完本段航程的时长（出发时刻 + 它 = 截止；超时无报酬、任务作废） */
+  timeLimitMs?: number
   /** 快递目标副站 id（kind='courier' 刷出时绑定；老档缺省时出发按"最近已建成副站"兜底解析） */
   stationId?: string
   /** 快递目标副站所在星系 id（kind='courier' 刷出时绑定）；赏金任务 = 窝点所在星系 */
@@ -1918,11 +1939,11 @@ export interface SideTask {
 export interface CourierDeliveryState {
   /** 所投送任务的稳定 id（整板刷新把原任务换下后，到站仍按原任务 id 结算） */
   taskId: number
-  /** 目标物品的市场商品 key（出发时复制） */
+  /** 目标物品的市场商品 key（出发时复制；**虚拟货物时代恒为空串**） */
   goodKey: string
-  /** 目标物品 refId */
+  /** 目标物品 refId（**虚拟货物时代恒为空串**——快递不再绑商品） */
   refId: string
-  /** 在途投送单位数（出发时已从仓库锁定扣出；到站不再扣） */
+  /** 在途投送单位数（**虚拟货物时代恒 0**，改看 `volumeM3`） */
   need: number
   /** 目标副站 id（出发时校验仍在建成状态） */
   stationId: string
@@ -1934,6 +1955,14 @@ export interface CourierDeliveryState {
   arriveAtGameMs: number
   /** 刷出时锁定的酬金（整板刷新后到站仍按此结算） */
   rewardIsk: number
+  /** 虚拟货物占用体积（m³；出发时按它占用货舱，到站释放）——老档缺省 0 = 旧"真实货物"口径 */
+  volumeM3?: number
+  /** 任务级别（1~5；结算日志与超时判定用；老档缺省 1） */
+  level?: 1 | 2 | 3 | 4 | 5
+  /** 是否限时快递（**超时无报酬**：到站时刻 > 截止时刻 ⇒ 任务作废、不发酬金） */
+  timed?: boolean
+  /** 截止时刻（游戏内毫秒 = 出发时刻 + `timeLimitMs`；仅限时快递有值） */
+  deadlineAtGameMs?: number
 }
 
 /** 任务中心·时效任务板（v24：资源/快递定时任务；2026-09-05 船长拍板，2026-09-06 修订节奏：
@@ -1948,10 +1977,15 @@ export interface SideTasksState {
   /** 本板任务所属轮次的起点整点（游戏内毫秒 = 20 分钟格点；0 = 未开盘）；
    *  下一 20 分钟整点 window + orderLifeMs.common 到点时整板过期替换 */
   window: number
-  /** 资源任务（当前轮，至多 2 条） */
+  /** 资源任务（当前轮；条数 = 4 ＋ 每建成一座副站 +2，见 `sideTasks.ts`） */
   resource: SideTask[]
-  /** 快递任务（当前轮；副站建成解锁后才刷，至多 2 条） */
+  /** 快递任务（当前轮；副站建成解锁后才刷，条数 = 4 ＋ 每建成一座副站 +2） */
   courier: SideTask[]
+  /**
+   * **已接单的快递任务**（船长 2026-09-18：「接取的快递任务不会被刷掉」）——整板刷新**不清**本列表；
+   * 上限 `COURIER_ACCEPT_MAX`（4 单）；出发投送后才离场。**老档缺省 = 无（空）**，零迁移。
+   */
+  accepted?: SideTask[]
   /** 赏金任务（**当日板**；2026-09-10 船长定：每天 2 张高难窝点，24 小时一轮、
    *  **每天本地 0 点整板替换**，与资源/快递的 20 分钟板彼此独立；老档缺省 = 空数组，零迁移） */
   bounty: SideTask[]

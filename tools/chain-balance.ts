@@ -37,12 +37,21 @@ import type { SimContext } from '../packages/core/src/types'
 import { CHAIN_TIERS, FIRST_TASKS } from '../packages/core/src/firstTasks'
 import { wormholeNodesPerLayer } from '../packages/core/src/wormholeFoes'
 import { wormholeScanWindowMs } from '../packages/core/src/wormholeScan'
+import {
+  COURIER_TASK_LEVEL_RATE,
+  RESOURCE_TASK_LEVEL_MARGIN,
+  SIDE_TASK_LEVEL_SCALE,
+  courierVolumeFor,
+  courierWarpReqOf,
+  hourlySupplyOf,
+} from '../packages/core/src/sideTasks'
 
 const SECTIONS: Record<string, () => void> = {
   tasks: sectionTaskTimes,
   chain: sectionChainTimes,
   market: sectionMarketIncome,
   skills: sectionSkillsTime,
+  sidetasks: sectionSideTasks,
 }
 
 const arg = (process.argv[2] ?? 'all').trim()
@@ -54,6 +63,47 @@ for (const [name, fn] of Object.entries(SECTIONS)) {
   if (arg !== 'all' && arg !== name) continue
   console.log(`\n════════ ${name} ════════`)
   fn()
+}
+
+/**
+ * ── 时效任务板：各级资源的需量/奖励 ＋ 各级快递的体积/运费/门槛/时限（真实数据标定读数）──
+ * 口径 = 玩家 1 小时产能锚（`hourlySupplyOf`）× 0.25 × 级别倍率；快递运费 = 体积 × 级别单价 × 航程系数。
+ */
+function sectionSideTasks(): void {
+  const ctx: SimContext = buildSimContext()
+  const state = createInitialState()
+  // 造一座已建成副站 ⇒ 快递解锁（母港 → 红环航道 7 分钟标称）
+  const site = [...ctx.stations.values()].find((s) => s.galaxyId === 'galaxy-redring') ?? [...ctx.stations.values()][0]!
+  state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
+  const nominal = shortestTravelMinutes(ctx, HOME_GALAXY_ID, site.galaxyId)
+  console.log(`副站「${site.name}」（${ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId}）· 母港标称航程 ${nominal} 分钟`)
+
+  console.log('\n【资源任务】各级需量与奖励（取两件代表货：钛钢合金 / 动能弹药 L）')
+  for (const key of ['min-tritanium', 'ammo-kinetic-l']) {
+    const def = ctx.marketGoods.get(key)!
+    const perHour = hourlySupplyOf(state, ctx, def.refId)
+    const rows: string[] = []
+    for (const lv of [1, 2, 3, 4, 5] as const) {
+      const need = Math.max(10, Math.round((perHour * 0.25 * SIDE_TASK_LEVEL_SCALE[lv]) / 10) * 10)
+      const reward = Math.round((need * (def.basePrice ?? 0) * RESOURCE_TASK_LEVEL_MARGIN[lv]) / 100) * 100
+      rows.push(`L${lv} ${need.toLocaleString('zh-CN')} ⇒ ${reward.toLocaleString('zh-CN')}`)
+    }
+    console.log(`  ${def.refId}（1 小时产能 ${Math.round(perHour).toLocaleString('zh-CN')}）: ${rows.join(' · ')}`)
+  }
+
+  console.log('\n【快递】各级体积 / 运费 / 跃迁门槛 / 时限')
+  for (const lv of [1, 2, 3, 4, 5] as const) {
+    const vol = courierVolumeFor(lv)
+    const req = courierWarpReqOf(lv)
+    const trip = Math.min(1.5, Math.max(0.1, nominal / 60))
+    const reward = Math.max(100, Math.floor((vol * COURIER_TASK_LEVEL_RATE[lv] * trip) / 100) * 100)
+    const limitMin = req === null ? null : (nominal * (ctx.balance.travel.warpRefAus / req) * 1.05)
+    console.log(
+      `  L${lv}：体积 ${vol.toLocaleString('zh-CN')} m³ ⇒ 运费 ${reward.toLocaleString('zh-CN')} ISK` +
+        (req === null ? ' · 普通快递（无跃迁门槛）' : ` · 限时（跃迁 ≥${req} AU/s，时限 ≈${limitMin!.toFixed(1)} 分钟）`),
+    )
+  }
+  console.log('\n（航程系数 = 标称分钟 ÷ 60，钳 0.1~1.5 ⇒ 远站给钱更多；此处按上面那条航程的系数算）')
 }
 
 /** ── 13 条「第一次」任务各自耗时（引擎实跑） ── */

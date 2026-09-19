@@ -45,8 +45,8 @@ import { nextInt, nextRandom } from './rng'
 import { marketQuote, levelOf } from './market'
 import { isGalaxyStationBuilt, isSiteBuilt } from './station'
 import { isExplored } from './explore'
-import { countWare, removeWare } from './inventory'
-import { shortestTravelMinutes, travelLegMs, travelMinutesEff } from './travel'
+import { countWare, removeWare, cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
+import { shortestTravelMinutes, travelLegMs, travelMinutesEff, warpSpeedAus } from './travel'
 import { originGalaxyOf } from './location'
 import { DSI_FACTION_ID, standingOf as factionStandingOf } from './expedition'
 import { factionBaseRewardIsk, hasLairCore, isLairCandidate, lairLevelOf, lairNameOf, lairTaskRewardIsk } from './lairs'
@@ -54,21 +54,65 @@ import type { LairTier } from './lairs'
 import type { AnomalyDef } from './types'
 
 /**
- * 资源任务奖励系数（2026-09-06 船长拍板 ×1.04；2026-09-09 船长定上调 → ×1.15）：
- * need × 刷出时收购价（税前）→ 整百。仍强制 < 刷出时供应价（sell ≈ L×1.06 视商品而定，
- * 边沿自动钳制），配买货守卫保证"市价买入交付"必亏。
+ * **任务级别 1~5**（船长 2026-09-18：「任务将划分级别，级别越高的任务收购的数量/所需的货仓容量越多。
+ * 同样奖励也越高」；「L1~L4 任务至少要各出现」⇒ 生成时先保底铺 L1~L4，多余席位才掷更高级）。
  */
-export const RESOURCE_TASK_MARGIN = 1.15
+export type SideTaskLevel = 1 | 2 | 3 | 4 | 5
+export const SIDE_TASK_LEVELS: readonly SideTaskLevel[] = [1, 2, 3, 4, 5]
+
+/** 各级"量"倍率（资源需量 / 快递货舱体积）——L1 为基准量，越高越大 */
+export const SIDE_TASK_LEVEL_SCALE: Record<SideTaskLevel, number> = { 1: 1, 2: 1.7, 3: 3, 4: 5, 5: 8 }
 
 /**
- * 快递任务奖励系数（2026-09-06 ×1.30；2026-09-09 船长定上调 → ×1.50）：
- * need × 刷出时收购价（税前）→ 整百。快递含真实航行耗时（运费补偿型利润），不设买货守卫。
+ * **资源任务各级奖励系数**（船长 2026-09-18：「资源任务的奖励系数下调，
+ * L1~L5 分别为 1.1/1.15/1.2/1.25/1.3」；旧的单值 ×1.15 作废）。
+ * ⚠ 仍保留"**必须低于刷出时供应价**"的防套利红线（船长 2026-09-18 选"取消修改"）：
+ * 薄价差的常驻品（如钛钢合金 8/9）会把 L2~L5 钳到 ≈1.12×，级别差异只在**价差宽**的商品上完整体现。
  */
-export const COURIER_TASK_MARGIN = 1.5
+export const RESOURCE_TASK_LEVEL_MARGIN: Record<SideTaskLevel, number> = { 1: 1.1, 2: 1.15, 3: 1.2, 4: 1.25, 5: 1.3 }
 
-/** 任务刷出时对商品在售常驻供应的削减比例（2026-09-09 船长定随收益上调：0.30 → 0.45）：
- * 协会包收该资源 → 市场在售订单减少（20 分钟板存续期间持续可见，常驻订单自然重铺后恢复） */
-export const SPAWN_SUPPLY_CUT = 0.45
+/**
+ * **快递（虚拟货物）各级运费单价（ISK/m³）**（船长 2026-09-18：级别越高奖励越高；
+ * 快递的货改用长途运输那套虚拟货物 ⇒ 玩家不再出货款，报酬是**纯运费**）。
+ * 单价 × 体积 × 航程系数（见 `COURIER_TRIP_HOURS_REF`）。
+ */
+export const COURIER_TASK_LEVEL_RATE: Record<SideTaskLevel, number> = { 1: 600, 2: 900, 3: 1_300, 4: 1_900, 5: 2_700 }
+
+/** 快递各级基准体积（m³；× `SIDE_TASK_LEVEL_SCALE`）⇒ L1 300 / L5 2,400 m³ */
+export const COURIER_TASK_BASE_VOLUME_M3 = 300
+
+/**
+ * **限时快递的跃迁速度门槛（AU/s）—— 4 档**（船长 2026-09-18 选丙案：「按照剑鱼的标准」：
+ * 剑鱼级大型货舰 6.20 / 剑鱼+跃迁计算机 MK2 7.44 / +MK3 8.37 / +MK3×2 10.92；多件按 EVE 曲线合成）。
+ * 档位与任务级别对应：**L1 = 普通快递（无门槛）；L2~L5 = 限时快递，门槛依次取本表 4 档**。
+ * ⚠ 最高档（10.92）**已实测可达**（剑鱼低槽 3、CPU 175；MK3 低槽件 CPU 40 ⇒ 两件占 2 槽 80 CPU）。
+ */
+export const COURIER_TIMED_WARP_REQ: readonly number[] = [6.2, 7.44, 8.37, 10.92]
+
+/** 每板**基础**条数（船长 2026-09-18：「初始每个任务数量提高到4」）——资源/快递各 4 条 */
+export const SIDE_TASK_BASE_COUNT = 4
+
+/** **每建成一座副空间站**，资源/快递各 +2 条（船长 2026-09-18：「每个建成的空间站让任务数量+2」） */
+export const SIDE_TASK_COUNT_PER_STATION = 2
+
+/** 快递"接单"上限（船长：「接取的快递任务不会被刷掉」——接了进 `sideTasks.accepted`，跨整板刷新保留） */
+export const COURIER_ACCEPT_MAX = 4
+
+/** 虚拟货物运费：航程系数基准 = **1 小时航程算 1.0**（标称航程分钟 ÷ 60，钳 [0.1, 1.5]） */
+const COURIER_TRIP_HOURS_REF = 60
+
+/** 限时快递时限宽限（基准配置到达时长 × 1.05：同配置无技能时刚好压线，留 5% 缓冲） */
+const TIMED_COURIER_GRACE = 1.05
+
+/** 刷出时对池商品抬价步长（`pool.shock += 本值`）；**资源任务完成后按本值回退涨价部分** */
+export const SPAWN_SHOCK_STEP = 0.05
+
+/**
+ * 任务刷出时对商品在售常驻供应的削减比例（2026-09-09 船长定 0.30 → 0.45；
+ * **2026-09-18 随条数翻倍下调到 0.25**——每板条数由 2 增到 4＋每站 +2，
+ * 若不降比例，一轮就有 8＋ 种商品被抽走近半挂单）。同一商品每轮**只被抽一次**（见 refreshBoard）。
+ */
+export const SPAWN_SUPPLY_CUT = 0.25
 
 /** 每日赏金席位总数（2026-09-10 船长定：中安 2 + 低安 3 = 5 个地点/天，档位铺成外围 1·核心 2·深层 2）
  *  ——实际张数受各区候选限制（抽不满就少发），故界面显示以当日实际板为准。 */
@@ -215,53 +259,114 @@ function resolveCourierTarget(state: GameState, ctx: SimContext, task: SideTask)
   return best
 }
 
-/** 从候选池抽 count 个互不重复的商品（rng 固定顺序：先抽首位再抽次位，保证可复现） */
-function drawTaskGoods(state: GameState, pool: MarketGoodDef[], count: number): MarketGoodDef[] {
-  const out: MarketGoodDef[] = []
-  if (pool.length <= 0) return out
+/** 从候选池抽 count 个互不重复的商品（**2026-09-18 扩到任意条数**：Fisher–Yates 洗牌取前 n 个；
+ *  同一商品每轮只出现一次 ⇒ 市场联动"同一商品每轮只被抽一次"天然成立） */
+function drawDistinctGoods(state: GameState, pool: MarketGoodDef[], count: number): MarketGoodDef[] {
   const n = Math.min(count, pool.length)
-  const i1 = nextInt(state.rng, pool.length)
-  out.push(pool[i1]!)
-  if (n >= 2) {
-    const i2 = nextInt(state.rng, pool.length - 1)
-    out.push(pool[i2 >= i1 ? i2 + 1 : i2]!)
+  const idx = pool.map((_, i) => i)
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = nextInt(state.rng, i + 1)
+    const tmp = idx[i]!
+    idx[i] = idx[j]!
+    idx[j] = tmp
   }
-  return out
-}
-
-/** 需要量：round(poolTarget×(0.01 + rng×0.02))，取整到 10、至少 10 */
-function rollNeed(state: GameState, poolTarget: number): number {
-  const raw = poolTarget * (0.01 + nextRandom(state.rng) * 0.02)
-  return Math.max(10, Math.round(raw / 10) * 10)
+  return idx.slice(0, n).map((i) => pool[i]!)
 }
 
 /**
- * 奖励（税前锚定，2026-09-06 船长拍板；2026-09-09 费率上调：资源 ×1.15 / 快递 ×1.50）：
- * 基准单价 = 刷出瞬间该商品收购价 marketQuote().buy（池商品收购价 = 均衡价 L；簿面无收购单时
- * 回落 levelOf）；reward = need × 基准单价 × 系数，向下取整到整百、至少 100。资源任务附加守卫：
- * 刷出时有供应价 sell 时强制 reward < need×sell（边沿溢出则把 reward 钳到 floor((need×sell−1)/100)×100）
- * ——市价买入交付必亏；快递为运费补偿型（真实航行耗时换运费利润），不设买货守卫。
+ * **玩家 1 小时可获得该货的量**（资源任务需量的锚，船长 2026-09-18 批的默认口径：
+ * 「需量上限改为玩家 1 小时产能，避免出现'20 分钟内要 7 万单位'」）：
+ * - 矿石/气体/冰：6 条采矿线满产 = **18,000 单位/小时**（沙猫 50 单位/分 × 6：驾驶 1 ＋ AI 核心 5）；
+ * - 矿物（精炼产物）：18,000 × **无门槛矿带的最优精炼产率**（有门槛的矿带不算，避免超出进度）；
+ * - 其他（弹药/修理组件/无人机等 NPC 直供品）：按市场池量换算（池量 × 1%/小时）。
  */
-function rewardIskFor(
+export function hourlySupplyOf(state: GameState, ctx: SimContext, itemId: string): number {
+  const ORE_PER_HOUR = 18_000
+  const item = ctx.items.get(itemId)
+  if (!item) return 1_000
+  if (item.kind === 'ore' || item.kind === 'gas' || item.kind === 'ice') return ORE_PER_HOUR
+  if (item.kind === 'mineral') {
+    let best = 0
+    for (const belt of ctx.belts.values()) {
+      if ((belt.standingReq ?? 0) > 0) continue // 只算无门槛矿带（进度无关的保底产能）
+      const def = ctx.items.get(belt.oreId)
+      for (const row of def?.refine ?? []) {
+        if (row.mineralId === itemId && row.perOre > best) best = row.perOre
+      }
+    }
+    return best > 0 ? ORE_PER_HOUR * best : 1_000
+  }
+  // NPC 直供品：池量 × 1%（与原"池量 1~3%"同量级的下沿，作为 1 小时可获得的等价量）
+  for (const g of ctx.marketGoods.values()) {
+    if (g.refId === itemId && (g.poolTarget ?? 0) > 0) return (g.poolTarget ?? 0) * 0.01
+  }
+  return 1_000
+}
+
+/**
+ * 资源任务需要量（2026-09-18 新口径）：
+ * **基准 = 玩家 1 小时产能 × 0.25**（≈15 分钟产量，L1 一会儿就能凑齐），
+ * 再乘级别倍率（L1 15 分钟 … L5 2 小时产量），取整到 10、至少 10。
+ */
+function rollResourceNeed(state: GameState, ctx: SimContext, def: MarketGoodDef, level: SideTaskLevel): number {
+  const hourly = hourlySupplyOf(state, ctx, def.refId)
+  const raw = hourly * 0.25 * SIDE_TASK_LEVEL_SCALE[level]
+  return Math.max(10, Math.round(raw / 10) * 10)
+}
+
+/** 快递所需货舱体积（m³）：基准 300 × 级别倍率 ⇒ L1 300 / L2 510 / L3 900 / L4 1,500 / L5 2,400 */
+export function courierVolumeFor(level: SideTaskLevel): number {
+  return Math.round(COURIER_TASK_BASE_VOLUME_M3 * SIDE_TASK_LEVEL_SCALE[level])
+}
+
+/** 限时快递的跃迁门槛（L2~L5 ⇒ 4 档；L1 = 普通快递 ⇒ null） */
+export function courierWarpReqOf(level: SideTaskLevel): number | null {
+  const idx = level - 2
+  return idx >= 0 && idx < COURIER_TIMED_WARP_REQ.length ? COURIER_TIMED_WARP_REQ[idx]! : null
+}
+
+/**
+ * **资源任务奖励**（税前锚定，2026-09-06 船长拍板；2026-09-18 船长改分级系数 1.1~1.3）：
+ * reward = need × 刷出瞬间收购价 × `RESOURCE_TASK_LEVEL_MARGIN[level]`，向下取整到整百、至少 100；
+ * **附加守卫（未改）**：刷出时有供应价时强制 reward < need×sell（市价买入交付必亏）。
+ */
+function resourceRewardIskFor(
   state: GameState,
   ctx: SimContext,
   goodKey: string,
   need: number,
-  kind: SideTask['kind'],
+  level: SideTaskLevel,
 ): number {
   const quote = marketQuote(state, ctx, goodKey)
   const base = quote.buy !== undefined && quote.buy > 0 ? quote.buy : Math.max(1, levelOf(state, ctx, goodKey))
-  const margin = kind === 'courier' ? COURIER_TASK_MARGIN : RESOURCE_TASK_MARGIN
-  let reward = Math.max(100, Math.floor((need * base * margin) / 100) * 100)
-  if (kind === 'resource' && quote.sell !== undefined && reward >= need * quote.sell) {
+  let reward = Math.max(100, Math.floor((need * base * RESOURCE_TASK_LEVEL_MARGIN[level]) / 100) * 100)
+  if (quote.sell !== undefined && reward >= need * quote.sell) {
     reward = Math.min(reward, Math.floor((need * quote.sell - 1) / 100) * 100)
   }
-  // 限时倍率（2026-09-15）：`rewardIsk` 乘在资源/快递任务的奖励上
   return Math.max(0, Math.round(reward * tuningMul(state, 'rewardIsk')))
 }
 
+/**
+ * **快递奖励（虚拟货物 ⇒ 纯运费，2026-09-18 船长定）**：
+ * reward = 体积(m³) × `COURIER_TASK_LEVEL_RATE[level]` × 航程系数，向下取整到整百、至少 100。
+ * 航程系数 = 标称航程分钟 ÷ 60（**1 小时航程算 1.0**），钳 [0.1, 1.5] ⇒ 远站给钱更多（旧口径与距离无关）。
+ * 快递不再绑商品 ⇒ 不吃市场报价、也不触发市场联动。
+ */
+function courierRewardIskFor(
+  state: GameState,
+  volumeM3: number,
+  level: SideTaskLevel,
+  nominalMinutes: number,
+): number {
+  const trip = Math.min(1.5, Math.max(0.1, (Number.isFinite(nominalMinutes) ? nominalMinutes : 10) / COURIER_TRIP_HOURS_REF))
+  const raw = volumeM3 * COURIER_TASK_LEVEL_RATE[level] * trip
+  return Math.max(0, Math.round(Math.max(100, Math.floor(raw / 100) * 100) * tuningMul(state, 'rewardIsk')))
+}
+
 /** 刷出市场影响（对单个商品一次）：npcSell 合计削减 SPAWN_SUPPLY_CUT 在售量（逐单从尾扣减至 0 移除），
- *  pool.q 扣掉同等数量，pool.shock += 0.05（上限 0.4）；削减比例随报酬上调（2026-09-09 船长定 0.45） */
+ *  pool.q 扣掉同等数量，pool.shock += SPAWN_SHOCK_STEP（上限 0.4）；
+ *  **2026-09-18**：比例 0.45 → 0.25（条数翻倍）；同一商品每轮只被抽一次（`drawDistinctGoods`）；
+ *  **资源任务完成时按 SPAWN_SHOCK_STEP 回退涨价部分**（见 `refundSpawnShock`）。 */
 function applySpawnMarketImpact(state: GameState, def: MarketGoodDef): void {
   const pool = state.market.pools[def.key]
   if (!pool) return
@@ -282,54 +387,141 @@ function applySpawnMarketImpact(state: GameState, def: MarketGoodDef): void {
       pool.q = Math.max(0, pool.q - removeQty)
     }
   }
-  pool.shock = Math.min(0.4, (pool.shock ?? 0) + 0.05)
+  pool.shock = Math.min(0.4, (pool.shock ?? 0) + SPAWN_SHOCK_STEP)
 }
 
-/** 整板刷新：清空两族 → 抽 2 条资源任务（快递解锁且存在合法目标站则同抽 2 条、各绑定一座
- *  已建成副站）→ 奖励锁定 → 一次性市场影响（同商品在资源/快递各出现一次时市场影响只执行一次）。
- *  boundaryMs = 本次刷出的 20 分钟整点（= 该轮任务起点；下一 20 分钟整点 boundaryMs + 周期
- *  到点时整板替换）。在途投送（deliver）不被整板清掉。 */
+/**
+ * **回退"涨价部分"**（船长 2026-09-18：「资源任务的市场联动涨价（只有涨价部分）会在任务完成后移除」）：
+ * 资源任务完成时把刷出时加的那一步 shock 撤掉（钳 ≥0）；**供应削减与池量扣减不回退**——
+ * 那是"防买来秒交"的实质（协会包收的货不会因为交完就退回市场）。
+ */
+export function refundSpawnShock(state: GameState, goodKey: string): void {
+  const pool = state.market.pools[goodKey]
+  if (!pool) return
+  pool.shock = Math.max(0, (pool.shock ?? 0) - SPAWN_SHOCK_STEP)
+}
+
+/**
+ * **整板刷新**（2026-09-18 船长改版）：
+ * ① 清空资源/快递两族（**已接单 `accepted` 不清**——船长：「接取的快递任务不会被刷掉」）；
+ * ② 条数 = `SIDE_TASK_BASE_COUNT`（4）＋ **每建成一座副站 +2**（`builtStationCount`），资源与快递各算；
+ * ③ 级别：**先保底铺 L1~L4 各一条**（船长：「L1~L4 任务至少要各出现」），剩余席位按"越高越可能"的
+ *    权重掷（L1 10 / L2 15 / L3 20 / L4 25 / L5 30）；
+ * ④ 资源任务：抽（与条数等量的）不重复商品，需量 = 玩家 1 小时产能 × 0.25 × 级别倍率，奖励按级别系数；
+ * ⑤ 快递任务：虚拟货物 —— 不再绑商品，按级别给体积与运费；L2~L5 为**限时快递**（跃迁门槛 4 档），
+ *    L1 为普通快递；
+ * ⑥ 市场影响：只对资源任务生效（同商品每轮一次）。
+ * boundaryMs = 本次刷出的 20 分钟整点（= 该轮任务起点；下一 20 分钟整点 boundaryMs + 周期
+ * 到点时整板替换）。在途投送（deliver）与已接单（accepted）都不被整板清掉。
+ */
 function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): void {
   const board = state.sideTasks
   board.window = boundaryMs
   board.resource = []
   board.courier = []
   const pool = sideTaskCandidateGoods(state, ctx)
-  // 候选不足 2 种（无法抽满"2 条不重复"）的整点不刷——真实数据目录 30+ 商品，正常整点照常
-  if (pool.length < 2) return
+  if (pool.length <= 0) return
 
+  const counts = taskCountsFor(state, ctx)
+  const levels = rollLevels(state, Math.max(counts.resource, counts.courier))
   const affected = new Set<string>()
-  const spawnTask = (def: MarketGoodDef, kind: SideTask['kind']): SideTask | null => {
-    const target = def.poolTarget ?? 0
-    if (target <= 0) return null
-    const need = rollNeed(state, target)
-    const rewardIsk = rewardIskFor(state, ctx, def.key, need, kind)
+
+  // ── 资源任务：真实货物（保持原语义），需量/奖励按级别 ──
+  const resGoods = drawDistinctGoods(state, pool, Math.min(counts.resource, pool.length))
+  for (let i = 0; i < resGoods.length; i += 1) {
+    const def = resGoods[i]!
+    const level = levels[i % levels.length]!
+    const need = rollResourceNeed(state, ctx, def, level)
+    const rewardIsk = resourceRewardIskFor(state, ctx, def.key, need, level)
     board.seq += 1
     affected.add(def.key)
-    return { id: board.seq, kind, goodKey: def.key, refId: def.refId, need, rewardIsk }
+    board.resource.push({ id: board.seq, kind: 'resource', goodKey: def.key, refId: def.refId, need, rewardIsk, level })
   }
 
-  for (const def of drawTaskGoods(state, pool, 2)) {
-    const t = spawnTask(def, 'resource')
-    if (t) board.resource.push(t)
-  }
-  // 快递：副站建成解锁且至少存在一座"星系合法"的目标站才刷（刷出即绑定目标副站）
+  // ── 快递任务：虚拟货物（只有体积），L2~L5 走限时快递 ──
   const courierTargets = builtStationTargets(state, ctx)
   if (courierTargets.length > 0) {
-    for (const def of drawTaskGoods(state, pool, 2)) {
-      const t = spawnTask(def, 'courier')
-      if (t) {
-        const picked = courierTargets[nextInt(state.rng, courierTargets.length)]!
-        t.stationId = picked.site.id
-        t.galaxyId = picked.site.galaxyId
-        board.courier.push(t)
-      }
+    for (let i = 0; i < counts.courier; i += 1) {
+      const level = levels[i % levels.length]!
+      const picked = courierTargets[nextInt(state.rng, courierTargets.length)]!
+      const volumeM3 = courierVolumeFor(level)
+      const warpReqAus = courierWarpReqOf(level)
+      // 报酬按"母港 → 目标站"的标称航程算（与玩家实际用哪条船无关 ⇒ 不好被换船薅）
+      const nominal = shortestTravelMinutes(ctx, HOME_GALAXY_ID, picked.site.galaxyId)
+      const rewardIsk = courierRewardIskFor(state, volumeM3, level, nominal)
+      const timeLimitMs =
+        warpReqAus === null
+          ? undefined
+          : Math.round(
+              Math.max(1, nominal) * (ctx.balance.travel.warpRefAus / warpReqAus) * 60_000 * TIMED_COURIER_GRACE,
+            )
+      board.seq += 1
+      board.courier.push({
+        id: board.seq,
+        kind: 'courier',
+        goodKey: '',
+        refId: '',
+        need: 0,
+        rewardIsk,
+        level,
+        volumeM3,
+        stationId: picked.site.id,
+        galaxyId: picked.site.galaxyId,
+        ...(warpReqAus === null ? {} : { timed: true, warpReqAus, timeLimitMs }),
+      })
     }
   }
+
   for (const key of affected) {
     const def = ctx.marketGoods.get(key)
     if (def) applySpawnMarketImpact(state, def)
   }
+}
+
+/** 已建成副空间站数量（快递解锁与"每站 +2 条"共用；= `isSiteBuilt` 的站点数） */
+export function builtStationCount(state: GameState, ctx: SimContext): number {
+  let n = 0
+  for (const site of ctx.stations.values()) if (isSiteBuilt(state, site)) n += 1
+  return n
+}
+
+/** 本板条数：基础 4 ＋ 每建成一座副站 +2（资源/快递各算一遍；快递仍需至少一座站才刷） */
+export function taskCountsFor(state: GameState, ctx: SimContext): { resource: number; courier: number } {
+  const n = SIDE_TASK_BASE_COUNT + SIDE_TASK_COUNT_PER_STATION * builtStationCount(state, ctx)
+  return { resource: n, courier: n }
+}
+
+/**
+ * **级别掷骰**（船长 2026-09-18：「L1~L4 任务至少要各出现」）：先保底铺 L1~L4，剩余席位按
+ * "级别越高越可能"的权重掷（L1 10 / L2 15 / L3 20 / L4 25 / L5 30）⇒ 副站越多，高级任务越多。
+ */
+function rollLevels(state: GameState, count: number): SideTaskLevel[] {
+  const out: SideTaskLevel[] = []
+  for (const lv of SIDE_TASK_LEVELS) {
+    if (out.length >= count) break
+    if (lv <= 4) out.push(lv)
+  }
+  const weights: Array<[SideTaskLevel, number]> = [
+    [1, 10],
+    [2, 15],
+    [3, 20],
+    [4, 25],
+    [5, 30],
+  ]
+  const total = weights.reduce((a, [, w]) => a + w, 0)
+  while (out.length < count) {
+    let r = nextRandom(state.rng) * total
+    let picked: SideTaskLevel = 5
+    for (const [lv, w] of weights) {
+      r -= w
+      if (r < 0) {
+        picked = lv
+        break
+      }
+    }
+    out.push(picked)
+  }
+  return out
 }
 
 /* ═══════════ 赏金日板席位（2026-09-10 船长定：按安全等级抽地点、三档必现） ═══════════ */
@@ -595,14 +787,24 @@ export function isFactionBounty(state: GameState, anomaly: AnomalyDef): boolean 
 export interface SideTaskDeliveryView {
   /** 原任务稳定 id（整板刷新后任务不在板仍按它结算） */
   taskId: number
+  /** 老档真实货物时非空；**虚拟货物时代为空串** */
   refId: string
+  /** 老档真实货物单位数；**虚拟货物时代为 0** */
   need: number
+  /** **虚拟货物占用体积（m³）**（2026-09-18 起） */
+  volumeM3: number
+  /** 任务级别（1~5） */
+  level: 1 | 2 | 3 | 4 | 5
+  /** 是否限时快递（到站超时 ⇒ 无报酬） */
+  timed: boolean
   stationId: string
   galaxyId: string
   stationName: string
   galaxyName: string
   /** 距到站剩余毫秒（0 = 已到站待引擎结算瞬间） */
   remainingMs: number
+  /** 限时快递：距截止剩余毫秒（负数 = 已超时，到站不发酬金；非限时 = null） */
+  deadlineRemainingMs: number | null
 }
 
 /** 任务板只读视图（UI 直接渲染用；remainingMs 随 gameMs 自然缩短，每秒刷新） */
@@ -611,6 +813,8 @@ export interface SideTaskBoardView {
   resource: readonly SideTask[]
   /** 快递任务（当前轮；副站建成解锁后才有） */
   courier: readonly SideTask[]
+  /** **已接单的快递**（跨整板刷新保留；出发/放弃才离场） */
+  accepted: readonly SideTask[]
   /** 赏金任务（当日板；已探索星系里的高难窝点，每天 5 席） */
   bounty: readonly SideTask[]
   /** 敌对派系活跃（当日一条、界面置顶；目标 = 该星系**常驻悬赏**，+10% 奖金/+10% 威胁、胜利概率掉稀有残骸） */
@@ -664,6 +868,7 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
   return {
     resource: board.resource,
     courier: board.courier,
+    accepted: board.accepted ?? [],
     bounty: board.bounty,
     faction: board.faction ?? null,
     courierUnlocked: courierTaskUnlocked(state, ctx),
@@ -672,11 +877,16 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
           taskId: d.taskId,
           refId: d.refId,
           need: d.need,
+          volumeM3: d.volumeM3 ?? 0,
+          level: d.level ?? 1,
+          timed: d.timed === true,
           stationId: d.stationId,
           galaxyId: d.galaxyId,
           stationName: ctx.stations.get(d.stationId)?.name ?? d.stationId,
           galaxyName: ctx.galaxies.get(d.galaxyId)?.name ?? d.galaxyId,
           remainingMs: Math.max(0, d.arriveAtGameMs - state.gameMs),
+          deadlineRemainingMs:
+            d.deadlineAtGameMs === undefined ? null : d.deadlineAtGameMs - state.gameMs,
         }
       : null,
     opened,
@@ -779,18 +989,22 @@ export function completeSideTask(
   }
   list.splice(idx, 1)
   state.wallet.isk += task.rewardIsk
+  // 船长 2026-09-18：「资源任务的市场联动涨价（只有涨价部分）会在任务完成后移除」
+  refundSpawnShock(state, task.goodKey)
   addLog(
     state,
     'trade',
-    `资源任务完成：协会收购 ${name}×${task.need.toLocaleString('zh-CN')}（自仓库交付），奖励 ${task.rewardIsk.toLocaleString('zh-CN')} 信用点已入账。`,
+    `资源任务完成（L${task.level ?? 1}）：协会收购 ${name}×${task.need.toLocaleString('zh-CN')}（自仓库交付），` +
+      `奖励 ${task.rewardIsk.toLocaleString('zh-CN')} 信用点已入账。`,
   )
   return { ok: true }
 }
 
 /**
  * 快递到站结算（引擎到点调用 / 零航程出发即时调用共用）：
- * 置停靠目标副站（dockedSite = 目标站 id、awayGalaxy = null）→ 原任务仍在板则按 taskId 下板
- * → 奖励入账（按刷出时锁定酬金，整板刷新后仍照付）→ 清空在途挂账 → 日志"投送完成"。
+ * 置停靠目标副站（dockedSite = 目标站 id、awayGalaxy = null）→ 原任务仍在板/已接单则按 taskId 离场
+ * → **限时快递超时判甲案**（船长 2026-09-18：**无报酬**、任务作废）→ 否则奖励入账 → 清空在途挂账 → 日志。
+ * 虚拟货物：到站即释放体积（不在货仓里，无实物可卸）。
  */
 function settleCourierDelivery(state: GameState, ctx: SimContext, d: CourierDeliveryState): void {
   const board = state.sideTasks
@@ -804,39 +1018,102 @@ function settleCourierDelivery(state: GameState, ctx: SimContext, d: CourierDeli
   }
   const idx = board.courier.findIndex((t) => t.id === d.taskId)
   if (idx >= 0) board.courier.splice(idx, 1)
-  state.wallet.isk += d.rewardIsk
-  board.deliver = null
-  const itemName = ctx.items.get(d.refId)?.name ?? d.refId
+  const aIdx = (board.accepted ?? []).findIndex((t) => t.id === d.taskId)
+  if (aIdx >= 0) board.accepted!.splice(aIdx, 1)
   const siteName = ctx.stations.get(d.stationId)?.name ?? d.stationId
   const galaxyName = ctx.galaxies.get(d.galaxyId)?.name ?? d.galaxyId
+  const vol = d.volumeM3 ?? 0
+  const timedOut = d.timed === true && d.deadlineAtGameMs !== undefined && state.gameMs > d.deadlineAtGameMs
+  if (timedOut) {
+    // 甲案：限时快递超时 ⇒ 无报酬、任务作废（货已送达，但协会不付运费）
+    board.deliver = null
+    addLog(
+      state,
+      'warn',
+      `限时快递超时：${vol.toLocaleString('zh-CN')} m³ 已送达「${siteName}」（${galaxyName}），` +
+        `但未在时限内抵达——本单无报酬（L${d.level ?? 1} 限时快递作废）。`,
+    )
+    return
+  }
+  state.wallet.isk += d.rewardIsk
+  board.deliver = null
   addLog(
     state,
     'trade',
-    `快递投送完成：${itemName}×${d.need.toLocaleString('zh-CN')} 已送达「${siteName}」（${galaxyName}），酬金 ${d.rewardIsk.toLocaleString('zh-CN')} 信用点已入账。`,
+    `快递投送完成（L${d.level ?? 1}${d.timed === true ? ' · 限时' : ''}）：${vol.toLocaleString('zh-CN')} m³ 已送达` +
+      `「${siteName}」（${galaxyName}），运费 ${d.rewardIsk.toLocaleString('zh-CN')} 信用点已入账。`,
   )
 }
 
+/** 在途快递占用的货舱体积（m³；虚拟货物——只有体积属性，CargoPage 与容量判定读它） */
+export function courierOccupiedM3(state: GameState): number {
+  return state.sideTasks.deliver?.volumeM3 ?? 0
+}
+
 /**
- * 玩家指令：快递「出发投送」（真实航行投送，主控"去程取消"的快递专项例外）。
- * - 条件：该条快递仍在当前轮板（未过期）；同一时刻只允许一笔投送（无其他在途）；
- *   舰船空闲（不在采矿/远征/扫描/打捞/掩护巡逻/返航中）；物品仓库持有 ≥ need；
- *   目标副站 = 刷出时绑定的已建成副站（老档无绑定兜底解析最近建成站）；
- * - 动作：仓库锁定扣出 need（到站不再扣）→ 按"当前位置 → 目标副站星系"真实航程锁定
- *   arriveAtGameMs = 出发时刻 + travelLegMs(shortestTravelMinutes(...)) → 挂入在途账 deliver；
- *   同星系零航程时立即到站结算；航程 > 0 时由引擎推进到点自动结算（奖励入账、任务下板）。
+ * 玩家指令：**接单**（船长 2026-09-18：「接取的快递任务不会被刷掉」）。
+ * 把一条快递从"本板"移进 `sideTasks.accepted`（上限 `COURIER_ACCEPT_MAX`）——此后**整板刷新不动它**，
+ * 玩家可以慢慢换船/等货仓腾空再出发。**接单不校验舰船**（限时快递的跃迁门槛在**出发**时才校验）。
+ */
+export function acceptCourierTask(state: GameState, id: number): CommandResult {
+  const board = state.sideTasks
+  const idx = board.courier.findIndex((t) => t.id === id)
+  if (idx < 0) return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。' }
+  const accepted = (board.accepted ??= [])
+  if (accepted.length >= COURIER_ACCEPT_MAX) {
+    return { ok: false, error: `已接单 ${COURIER_ACCEPT_MAX} 单（上限）：先出发完成一单，或放弃一单再来接。` }
+  }
+  const task = board.courier[idx]!
+  board.courier.splice(idx, 1)
+  accepted.push(task)
+  addLog(
+    state,
+    'info',
+    `已接单（L${task.level ?? 1} 快递 · ${(task.volumeM3 ?? 0).toLocaleString('zh-CN')} m³）：` +
+      `此单不再随任务板刷新消失，随时可出发投送。`,
+  )
+  return { ok: true }
+}
+
+/** 玩家指令：**放弃已接单**的快递（腾出接单名额；该单作废，不再回板上） */
+export function abandonAcceptedCourierTask(state: GameState, id: number): CommandResult {
+  const accepted = state.sideTasks.accepted ?? []
+  const idx = accepted.findIndex((t) => t.id === id)
+  if (idx < 0) return { ok: false, error: '该单不在"已接单"列表里。' }
+  accepted.splice(idx, 1)
+  return { ok: true }
+}
+
+/** 找一条快递任务（板上 ∪ 已接单） */
+function findCourierTask(state: GameState, id: number): { task: SideTask; accepted: boolean } | null {
+  const board = state.sideTasks
+  const onBoard = board.courier.find((t) => t.id === id)
+  if (onBoard) return { task: onBoard, accepted: false }
+  const acc = (board.accepted ?? []).find((t) => t.id === id)
+  return acc ? { task: acc, accepted: true } : null
+}
+
+/**
+ * 玩家指令：快递「出发投送」（虚拟货物 · 2026-09-18 船长改版）。
+ * - 条件：该条在**板上**（未过期）或**已接单**（不过期）；同一时刻只允许一笔投送；舰船空闲；
+ *   **货舱容量 ≥ 任务体积**（体积不够的方案直接拒）；**限时快递**还要求当前舰船跃迁速度 ≥ 门槛；
+ * - 动作：把**真实货物卸进仓库**（虚拟货物占仓语义）→ 按"当前位置 → 目标站星系"真实航程锁定
+ *   arriveAtGameMs；限时快递同时锁 deadlineAtGameMs（甲案：超时无报酬）；
+ *   同星系零航程时立即到站结算。
  */
 export function startCourierDelivery(state: GameState, ctx: SimContext, id: number): CommandResult {
   const board = state.sideTasks
   if (board.deliver !== null) {
     return { ok: false, error: '快递投送途中：同一时间只能投送一笔——请先等当前投送到站结算，再出发下一单。' }
   }
-  const task = board.courier.find((t) => t.id === id)
-  if (!task) {
+  const found = findCourierTask(state, id)
+  if (!found) {
     return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。' }
   }
-  // 到期护栏：游戏时间已越过本轮到点（下一 20 分钟整点）时拒绝，防"卡点出发过期任务"
-  if (state.gameMs >= board.window + boardPeriodMs(ctx)) {
-    return { ok: false, error: '该任务已到期——新一批任务即将刷新。' }
+  const task = found.task
+  // 到期护栏：板上任务在整板刷新后作废；**已接单的不受此限**（接单的意义就在这里）
+  if (!found.accepted && state.gameMs >= board.window + boardPeriodMs(ctx)) {
+    return { ok: false, error: '该任务已到期——新一批任务即将刷新（可先「接单」保住它）。' }
   }
   // 舰船空闲互斥（快递出发 = 主控携货真实航行；与其余出航作业互为前置）
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出发投送。' }
@@ -848,12 +1125,22 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
   if (!targetSite) {
     return { ok: false, error: '目标副站不可用（未建成或星系未知）——暂时无法投送该单。' }
   }
-  const itemName = ctx.items.get(task.refId)?.name ?? task.refId
-  const have = countWare(state, task.refId)
-  if (have < task.need) {
+  const vol = task.volumeM3 ?? 0
+  const cap = cargoCapacityM3Of(state, ctx, state.shipId)
+  if (vol > cap) {
     return {
       ok: false,
-      error: `物品仓库中的 ${itemName} 不足：还差 ${(task.need - have).toLocaleString('zh-CN')} 单位（任务需 ${task.need.toLocaleString('zh-CN')}，现有 ${have.toLocaleString('zh-CN')}）。`,
+      error: `当前舰船货舱不足：本单需 ${vol.toLocaleString('zh-CN')} m³，本舰货舱 ${cap.toLocaleString('zh-CN')} m³——换一艘更大的船再来。`,
+    }
+  }
+  // 限时快递：跃迁速度门槛（船长 2026-09-18「限时快递对玩家舰船的跃迁速度有要求」）
+  if (task.timed === true && task.warpReqAus !== undefined) {
+    const warp = warpSpeedAus(state, ctx, state.shipId)
+    if (warp + 1e-9 < task.warpReqAus) {
+      return {
+        ok: false,
+        error: `限时快递要求跃迁速度 ≥ ${task.warpReqAus} AU/s（当前舰船 ${warp.toFixed(2)} AU/s）——换船或装跃迁计算机。`,
+      }
     }
   }
   // 真实航程：当前所在星系 → 目标副站所在星系（出发时锁定；同站/同星系 = 0）
@@ -862,22 +1149,24 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
   if (!Number.isFinite(travelMin)) {
     return { ok: false, error: `「${ctx.galaxies.get(targetSite.galaxyId)?.name ?? targetSite.galaxyId}」不在当前可达航路内，无法出发投送。` }
   }
-  // 出发：仓库锁定扣出 need（转入在途挂账；到站不再扣）
-  if (!removeWare(state, task.refId, task.need)) {
-    return { ok: false, error: `${itemName} 出库失败（库存不足）。` }
-  }
+  // 虚拟货物：真实货物卸进仓库（不消耗任何物品；货舱被虚拟货物按体积占用）
+  const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
   const departAt = state.gameMs
   const arriveAt = departAt + travelLegMs(state, ctx, travelMin)
+  const deadlineAt = task.timed === true && task.timeLimitMs !== undefined ? departAt + task.timeLimitMs : undefined
   const d: CourierDeliveryState = {
     taskId: task.id,
-    goodKey: task.goodKey,
-    refId: task.refId,
-    need: task.need,
+    goodKey: '',
+    refId: '',
+    need: 0,
     stationId: targetSite.id,
     galaxyId: targetSite.galaxyId,
     departAtGameMs: departAt,
     arriveAtGameMs: arriveAt,
     rewardIsk: task.rewardIsk,
+    volumeM3: vol,
+    level: task.level ?? 1,
+    ...(deadlineAt === undefined ? {} : { timed: true, deadlineAtGameMs: deadlineAt }),
   }
   const siteName = ctx.stations.get(targetSite.id)?.name ?? targetSite.id
   const galaxyName = ctx.galaxies.get(targetSite.galaxyId)?.name ?? targetSite.galaxyId
@@ -888,10 +1177,16 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
     return { ok: true }
   }
   board.deliver = d
+  const limitNote =
+    deadlineAt === undefined
+      ? ''
+      : `（限时快递：需在 ${Math.max(1, Math.round((deadlineAt - departAt) / 60_000))} 分钟内抵达，超时无报酬）`
   addLog(
     state,
     'info',
-    `快递投送出发：携 ${itemName}×${task.need.toLocaleString('zh-CN')} 驶往「${siteName}」（${galaxyName}），预计航行约 ${Math.max(1, travelMinutesEff(state, ctx, travelMin))} 分钟——到站自动结算酬金。`,
+    `快递出发（L${d.level ?? 1}）：虚拟货物 ${vol.toLocaleString('zh-CN')} m³ 已装舱` +
+      `${unloaded > 0 ? `（原有货物 ${unloaded} 单位已卸入仓库）` : ''}，驶往「${siteName}」（${galaxyName}），` +
+      `预计航行约 ${Math.max(1, travelMinutesEff(state, ctx, travelMin))} 分钟${limitNote}。`,
   )
   return { ok: true }
 }

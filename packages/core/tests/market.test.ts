@@ -124,6 +124,12 @@ describe('市场动态：冲击 / 池压力 / 内部消化', () => {
   it('窗口净成交量超阈值（>2×参考量）→ 冲击动量 ±10% 且可叠加、随后衰减', () => {
     marketQuote(state, ctx, 'min-a') // 开盘
     state.wallet.isk = 10_000_000
+    /**
+     * ⚠ 时效任务板每 20 分钟刷新时会对被抽中的商品 `shock += 0.05`（资源任务的市场联动；
+     * 2026-09-18 起每板 4＋ 条）⇒ 本用例只测**市场自身的冲击/衰减动力学**，
+     * 故把任务板窗口推到远处，让它在用例期间不刷新（否则衰减断言会被任务刷出的抬价顶住）。
+     */
+    state.sideTasks.window = state.gameMs + 100 * 60 * 60_000
     // 等 3 个窗口积累供应簿（每窗口簿薄就补单，约 2~4 档 × 500）
     advanceGame(state, 180_000, ctx)
     const sellQty = state.market.npcSell['min-a']!.reduce((a, o) => a + o.qty, 0)
