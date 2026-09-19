@@ -589,7 +589,7 @@ export interface ManufacturingView {
   loopOn: boolean
   /** 本卡循环目标批数（全卡合计口径；0/缺省 = 直到材料不足） */
   loopGoal: number
-  /** 本卡本轮合计产出件数（开关打开期间累加；与同卡其它线共享） */
+  /** 本卡本轮合计产出**批数**（开关打开期间累加；与同卡其它线共享；一件的产出见 `outputUnits`） */
   loopProduced: number
 }
 
