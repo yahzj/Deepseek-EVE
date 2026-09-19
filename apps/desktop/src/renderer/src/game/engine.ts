@@ -251,7 +251,7 @@ import type {
   WormholeAutoRun,
   WormholeHoldPlacement,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, type L10nLocale } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS, EN_SKILLS, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
@@ -461,11 +461,11 @@ export class GameEngine {
   private locale: L10nLocale = 'zh'
   /** 界面目录数据（**施工期闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
    *  —— 与下面 `anomalies` 的 `hidden` 过滤同款，2026-09-13 船长铁律） */
-  readonly skills = SKILLS
+  skills = SKILLS
   readonly groups = SKILL_GROUPS
   ships = SHIPS.filter((d) => itemReleased(d))
   readonly belts = BELTS
-  readonly items = ITEMS
+  items = ITEMS
   modules = MODULES.filter((d) => itemReleased(d))
   readonly blueprints = BLUEPRINTS.filter((d) => itemReleased(d))
   readonly shipBlueprints = SHIP_BLUEPRINTS.filter((d) => itemReleased(d))
@@ -622,6 +622,8 @@ export class GameEngine {
     this.allShips = overlayList(SHIPS, EN_SHIPS, locale)
     this.modules = overlayList(MODULES, EN_MODULES, locale).filter((d) => itemReleased(d))
     this.allModules = overlayList(MODULES, EN_MODULES, locale)
+    this.items = overlayList(ITEMS, EN_ITEMS, locale)
+    this.skills = overlayList(SKILLS, EN_SKILLS, locale)
     this.notify()
   }
 

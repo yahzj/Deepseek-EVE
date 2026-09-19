@@ -88,11 +88,16 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     },
     locale,
   )
+  // 碎片追加在**覆盖后的**物品表上（`base.items` 已是英文覆盖版；写回原 `items` 会把覆盖丢掉）
+  const itemsFinal = new Map(base.items)
+  let addedFragment = false
   for (const moduleId of Object.keys(FRAGMENT_RECIPES)) {
     const mod = base.modules.get(moduleId)
     if (!mod) continue
     const id = fragmentItemIdOf(moduleId)
-    if (!base.items.has(id)) items.set(id, fragmentItemDefOf(moduleId, mod.name))
+    if (itemsFinal.has(id)) continue
+    itemsFinal.set(id, fragmentItemDefOf(moduleId, mod.name))
+    addedFragment = true
   }
-  return base.items === items ? base : { ...base, items }
+  return addedFragment ? { ...base, items: itemsFinal } : base
 }

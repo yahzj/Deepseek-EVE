@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_MODULES, EN_SHIPS, MODULES, SHIPS, overlayList } from '@whale/data'
+import { EN_ITEMS, EN_MODULES, EN_SHIPS, EN_SKILLS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -76,6 +76,39 @@ describe('英文覆盖层（P2）', () => {
       return JSON.stringify(rest)
     }
     for (const [id, def] of zh.modules) expect(strip(en.modules.get(id)!), `${id} 的数值字段`).toBe(strip(def))
+  })
+
+  it('物品 / 技能覆盖：静态表全覆盖（86 / 79）+ 英文名生效（含派生件走中文的例外）', () => {
+    const missItem = ITEMS.filter((d) => !(d.id in EN_ITEMS)).map((d) => d.id)
+    expect(missItem, `这些物品还没有英文名：${missItem.slice(0, 8).join(', ')}`).toEqual([])
+    const missSkill = SKILLS.filter((d) => !(d.id in EN_SKILLS)).map((d) => d.id)
+    expect(missSkill, `这些技能还没有英文名：${missSkill.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.items.get('min-tritanium')?.name).toBe('Tritanium Alloy')
+    expect(en.items.get('box-bp-shallow')?.name).toBe('Blueprint Container (Shallow)')
+    expect(en.skills.get('gunnery')?.name).toBe('Gunnery')
+    expect(en.skills.get('targeting-integration')?.name).toBe('Targeting Integration')
+    // ctx 里含**派生件**：碎片（跟着装备名走 ⇒ 已英文化）与残骸（本批未登记 ⇒ 按设计原样中文）
+    const derived = [...zh.items.keys()].filter((id) => !ITEMS.some((d) => d.id === id))
+    expect(derived.length, 'ctx 里应有派生物品（残骸/碎片）').toBeGreaterThan(0)
+    const frags = derived.filter((id) => id.startsWith('frag-'))
+    const wrecks = derived.filter((id) => id.startsWith('wreck-'))
+    expect(frags.length, '应有碎片派生件').toBeGreaterThan(0)
+    expect(wrecks.length, '应有残骸派生件').toBeGreaterThan(0)
+    for (const id of frags) expect(en.items.get(id)?.name, `${id}（碎片应随装备名英文化）`).not.toBe(zh.items.get(id)?.name)
+    for (const id of wrecks) expect(en.items.get(id)?.name, `${id}（残骸本批不译）`).toBe(zh.items.get(id)?.name)
+  })
+
+  it('物品 / 技能：id 集合一致，除 name/description 外逐字段深比一字不动', () => {
+    expect([...en.items.keys()].sort()).toEqual([...zh.items.keys()].sort())
+    expect([...en.skills.keys()].sort()).toEqual([...zh.skills.keys()].sort())
+    const strip = (d: object): string => {
+      const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
+      delete rest.name
+      delete rest.description
+      return JSON.stringify(rest)
+    }
+    for (const [id, def] of zh.items) expect(strip(en.items.get(id)!), `物品 ${id} 的数值字段`).toBe(strip(def))
+    for (const [id, def] of zh.skills) expect(strip(en.skills.get(id)!), `技能 ${id} 的数值字段`).toBe(strip(def))
   })
 
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {
