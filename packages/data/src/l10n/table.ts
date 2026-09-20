@@ -3636,7 +3636,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.227": { zh: "虫洞谜质：取回后装进货仓（占 2×2 = 4 格），本趟探索期间一直生效——不一样的地点藏着不一样的装置，离开虫洞即失效。", en: "Wormhole Enigma: once recovered it goes into the hold (taking a 2×2 = 4 block) and stays active for the whole run — different sites hide different devices, and all of them lapse when you leave the wormhole." },
   "ui.Wormhole.228": { zh: "空位：可放货柜", en: "Free space: fits containers" },
   "ui.Wormhole.229": { zh: "空位：临时空间（离开货仓页前必须清空）", en: "Free space: temporary space (must be emptied before you leave the cargo hold page)" },
-  "ui.Wormhole.230": { zh: "离开货仓页前必须先清空。", en: "It has to be emptied before you leave the cargo hold page." },
+  "ui.Wormhole.230": { zh: "切换页签前必须先清空。", en: "It has to be emptied before switching tabs." },
   "ui.Wormhole.231": { zh: "货仓 · 已用", en: "Hold · used " },
   "ui.Wormhole.232": { zh: "货仓超载：沉船拖走了货舱，现在装不下（", en: "Hold overloaded: the sinking ship dragged the hold down and it no longer fits (" },
   "ui.Wormhole.233": { zh: "货柜 ·", en: "Containers ·" },
