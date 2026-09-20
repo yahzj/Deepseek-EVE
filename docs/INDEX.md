@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **282** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5355** KB · **39047** 行
+- 文档总数 **282** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5361** KB · **39106** 行
 - 状态分布：**未标注** 151 · **已确认/已实现** 108 · **进行中** 16 · **待裁定** 6 · **历史留档** 1
 - 孤儿文档（0 引用）**22** 份 · 状态未标注 **151** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 23 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 163 KB / 220 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 59 KB / 644 行 | 67 / 3 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 164 KB / 221 行 | 13 / 1 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 61 KB / 660 行 | 68 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 372 KB / 833 行 | 194 / 9 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 80 KB / 277 行 | 253 / 10 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 289 行 | 255 / 10 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -70,9 +70,9 @@
 | `docs/design/foe-mount-entry-level-20260919.md` | 敌方挂载件「条目级」口径收敛 · A 族冲锋件与劫掠电子舰（2026-09-19） | 进行中（进行中） | 2026-09-19 | 3 KB / 45 行 | 0 / 0 |
 | `docs/design/foe-support-call-20260919.md` | 支援呼叫装置 · 守墓王座舰（陵墓王庭）（2026-09-19） | 进行中（进行中） | 2026-09-19 | 9 KB / 111 行 | 0 / 0 |
 | `docs/design/fragment-redeem-entry-20260919.md` | 碎片兑现入口：物品页「逆向解锁」（2026-09-19 · 二号 · 玩家报障修） | 进行中（进行中） | 2026-09-19 | 4 KB / 42 行 | 0 / 0 |
-| `docs/design/handoff-20260919-matter-tech-d2.md` | 谜质科技批 · 续接卡（二号 · d2 · 2026-09-19） | 未标注 | 2026-09-19 | 9 KB / 102 行 | 2 / 0 |
+| `docs/design/handoff-20260919-matter-tech-d2.md` | 谜质科技批 · 续接卡（二号 · d2 · 2026-09-19） | 未标注 | 2026-09-19 | 10 KB / 111 行 | 2 / 0 |
 | `docs/design/l10n-en-20260919.md` | 英语本地化（可玩骨架）· 工作文档（2026-09-19） | 进行中（进行中） | 2026-09-19 | 8 KB / 101 行 | 4 / 2 |
-| `docs/design/matter-tech-20260919.md` | 谜质科技树（2026-09-19 · 船长逐线裁定） | 进行中（进行中） | 2026-09-19 | 44 KB / 466 行 | 7 / 3 |
+| `docs/design/matter-tech-20260919.md` | 谜质科技树（2026-09-19 · 船长逐线裁定） | 进行中（进行中） | 2026-09-19 | 45 KB / 487 行 | 8 / 3 |
 | `docs/design/save-migration-floor-20260919.md` | 旧档迁移砍到「虫洞起」（v24）＋ 过旧档拒载入（船长 2026-09-19）· 工作文档 | 进行中（进行中） | 2026-09-19 | 5 KB / 66 行 | 0 / 0 |
 | `docs/design/wormhole-box-tier-nebula-20260919.md` | 图纸货柜按层分档 + 星云占比随层递增（2026-09-19） | 进行中（进行中） | 2026-09-19 | 5 KB / 88 行 | 0 / 0 |
 | `docs/design/wreck-groups-20260919.md` | 残骸合并：按「来源种族 × 来源地区」（2026-09-19 · 二号） | 进行中（进行中） | 2026-09-19 | 9 KB / 96 行 | 1 / 4 |
