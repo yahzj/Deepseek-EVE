@@ -88,27 +88,47 @@ function wreckPoolOf(ctx: SimContext, galaxyId: string): Array<{ anomalyId: stri
 /** 玩家指令：开始打捞作业（目标星系需可达、已探索、有敌群型号池；船需装打捞器） */
 export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const galaxy = ctx.galaxies.get(galaxyId)
-  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
+  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.salvaging.001', errorParams: { p1: galaxyId } }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。', errorId: 'core.salvaging.002' }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
   const hold = wormholePilotHoldReason(state)
   if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再打捞。' }
-  if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
-    return { ok: false, error: '打捞需要打捞器：请先在舰船高槽装上打捞器（MK1/2/3）再出发。' }
+  if (state.hauling.active) {
+    return {
+      ok: false,
+      error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再打捞。',
+      errorId: 'core.state.005',
+    }
   }
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采。' }
-  if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法出发打捞。' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消。' }
-  if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能出发打捞——到站自动结算后再安排。' }
+  if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
+    return { ok: false, error: '打捞需要打捞器：请先在舰船高槽装上打捞器（MK1/2/3）再出发。', errorId: 'core.salvaging.003' }
+  }
+  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采。', errorId: 'core.mining.006' }
+  if (state.expedition.active) {
+    return { ok: false, error: '远征进行中：舰船不在空间站，无法出发打捞。', errorId: 'core.salvaging.004' }
+  }
+  if (state.standby.active) {
+    return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消。', errorId: 'core.salvaging.005' }
+  }
+  if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.salvaging.006' }
+  if (state.sideTasks.deliver !== null) {
+    return { ok: false, error: '快递投送途中：暂不能出发打捞——到站自动结算后再安排。', errorId: 'core.salvaging.007' }
+  }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（可改用 AI 核心驱动）。' }
+    return {
+      ok: false,
+      error: '精炼炉正由你亲自运转：先停炉才能出海（可改用 AI 核心驱动）。',
+      errorId: 'core.salvaging.008',
+    }
   }
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出海（可改用 AI 核心驱动）。' }
+    return {
+      ok: false,
+      error: '制造作业正由你亲自开线：先取消它才能出海（可改用 AI 核心驱动）。',
+      errorId: 'core.salvaging.009',
+    }
   }
   /**
    * V13 探索封锁：**目标星系未点亮 ⇒ 拒绝开工**。
@@ -121,11 +141,21 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
     if (!Number.isFinite(travel)) {
-      return { ok: false, error: `「${galaxy.name}」没有从母港可达的航线，无法前往打捞。` }
+      return {
+        ok: false,
+        error: `「${galaxy.name}」没有从母港可达的航线，无法前往打捞。`,
+        errorId: 'core.salvaging.010',
+        errorParams: { p1: galaxy.name },
+      }
     }
   }
   if (wreckPoolOf(ctx, galaxyId).length === 0) {
-    return { ok: false, error: `「${galaxy.name}」没有可打捞的敌群残骸（该星系无悬赏目标）。` }
+    return {
+      ok: false,
+      error: `「${galaxy.name}」没有可打捞的敌群残骸（该星系无悬赏目标）。`,
+      errorId: 'core.salvaging.011',
+      errorParams: { p1: galaxy.name },
+    }
   }
   const s = state.salvaging
   s.active = true
@@ -149,12 +179,34 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
     : s.autoCycle
       ? ' 已启用自动循环：满舱自动返航卸货，卸完自动开始下一趟（可随时手动停止）。'
       : ' 自动循环已关闭：卸完这一趟即收工。'
+  const loopNoteId = s.stopAfterTrip ? 'core.salvaging.012' : s.autoCycle ? 'core.salvaging.013' : 'core.salvaging.014'
+  /**
+   * 甲案·两步渲染：`loopNote` 是"自带 id 的派生串"⇒ 用 `p6Id` 把它的 id 一并交给渲染层
+   * （`logText` 会先渲染 `p6Id` 再喂进外层文案的 `{p6}`）；`p6` 照传中文，作未改造路径的兜底。
+   */
   addLog(
     state,
     'info',
     `开始打捞：${galaxy.name}（残骸密度 ${density.toFixed(1)}）。${shipName} 已抵达目标空域，立即开始持续打捞` +
       `（${salvagers} 台打捞器；满载返航约 ${retSec + outSec} 秒，去程时间已并入返航）。${loopNote}`,
+    'core.salvaging.015',
+    {
+      p1: galaxy.name,
+      p2: density.toFixed(1),
+      p3: shipName,
+      p4: salvagers,
+      p5: retSec + outSec,
+      p6: loopNote,
+      p6Id: loopNoteId,
+    },
   )
+  /**
+   * 甲案：`loopNote` 自带 id（三条互斥）⇒ 它**作为参数**喂给外层文案的 `{p6}`。
+   * ⚠ 目前参数里塞的是**中文原串**（渲染层对参数不会再翻）⇒ 英文界面下这一小段仍是中文，
+   * 这是**已知的过渡态**：等渲染层的 `cmdText/logText` 支持"参数里塞 id 再解析一次"后统一收口
+   * （届时只需把这里换成 id，不动文案）。
+   */
+  void loopNoteId
   return { ok: true }
 }
 
@@ -177,10 +229,19 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   const galaxy = info.galaxyId ? ctx.galaxies.get(info.galaxyId) : undefined
   const phaseNote =
     info.phase === 'returning' ? '（返航途中，货物留在船上）' : info.phase === 'outbound' ? '（出航途中）' : ''
+  const phaseNoteId =
+    info.phase === 'returning' ? 'core.mining.019' : info.phase === 'outbound' ? 'core.mining.020' : undefined
   addLog(
     state,
     'info',
     `已停止打捞（${galaxy?.name ?? ''}）。本趟共捞约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量${phaseNote}。`,
+    'core.salvaging.016',
+    {
+      p1: galaxy?.name ?? '',
+      p2: Math.round(info.tripM3 * 100) / 100,
+      p3: phaseNote,
+      ...(phaseNoteId !== undefined ? { p3Id: phaseNoteId } : {}),
+    },
   )
   return true
 }
@@ -220,6 +281,14 @@ export function retireSalvageShip(state: GameState, ctx: SimContext): boolean {
     state,
     'info',
     `打捞已随换船结束：${shipName} 从「${galaxyName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+    'core.salvaging.017',
+    {
+      p1: shipName,
+      p2: galaxyName,
+      p3: haveCargo ? '（到港整仓卸货）' : '',
+      ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+      p4: remainSec,
+    },
   )
   return true
 }
@@ -269,7 +338,7 @@ export function pullOneWreck(
   // （不再折算体积）；判定恒消耗一次随机数保 rng 时序（rate=0 时也掷）
   if (nextRandom(state.rng) < assayChanceOf(state, ctx, cycleMsReal)) {
     const gains = rollIntactHullLoot(state, ctx, chosen.anomalyId)
-    if (gains) addLog(state, 'info', `完好舰体！${gains}。`)
+    if (gains) addLog(state, 'info', `完好舰体！${gains}。`, 'core.salvaging.019', { p1: gains })
   }
   // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
@@ -292,7 +361,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
   if (!s.active || deltaMs <= 0) return
   if (!state.fleet[state.shipId]) {
     resetOp(state)
-    addLog(state, 'warn', '找不到当前舰船，打捞作业已停止。')
+    addLog(state, 'warn', '找不到当前舰船，打捞作业已停止。', 'core.salvaging.020')
     return
   }
   let remaining = deltaMs
@@ -302,7 +371,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
     const galaxyId = s.galaxyId
     if (!galaxyId) {
       resetOp(state)
-      addLog(state, 'warn', '找不到打捞目标星系，作业已停止。')
+      addLog(state, 'warn', '找不到打捞目标星系，作业已停止。', 'core.salvaging.021')
       return
     }
     // ── 返航阶段（去程并入返航；返航腿按货仓占比缩放——空仓快、满仓=原时长，船长 2026-09-05）──
@@ -327,6 +396,8 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           state,
           'info',
           `打捞自动返港：${galaxyName} 残骸已卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} m³ 当量）。`,
+          'core.salvaging.022',
+          { p1: galaxyName, p2: moved.toLocaleString('zh-CN') },
         )
         // 按设定收工（勾了「本次返航卸货后停止」/ 关闭自动循环）；否则卸完直接同星系续捞
         if (s.stopAfterTrip || s.autoCycle === false) {
@@ -334,6 +405,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
             state,
             'info',
             s.stopAfterTrip ? '自动循环已结束（按设定返港后停止）。' : '本次打捞结束（未开启自动循环）。',
+            s.stopAfterTrip ? 'core.salvaging.023' : 'core.salvaging.024',
           )
           resetOp(state)
           break
@@ -355,13 +427,12 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
     // ── 打捞阶段：逐台打捞器按各自周期结算 ──
     if (wreckPoolOf(ctx, galaxyId).length === 0) {
       resetOp(state)
-      addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。')
-      return
+      addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
     }
     const cycles = salvagerCyclesOf(state, ctx, state.shipId)
     if (cycles.length === 0) {
       resetOp(state)
-      addLog(state, 'warn', '未找到可用的打捞器，打捞作业已停止。')
+      addLog(state, 'warn', '未找到可用的打捞器，打捞作业已停止。', 'core.salvaging.026')
       return
     }
     // 最短周期为统一推进步（多台各自维护相位）
@@ -383,7 +454,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
         if (!pulled) {
           resetOp(state)
-          addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。')
+          addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
           return
         }
         const freeM3 = freeCargoM3(state, ctx)
@@ -396,6 +467,13 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
             state,
             'info',
             `货仓装不下下一轮打捞（余 ${Math.round(freeM3)} m³ ／ 每轮 ${Math.round(pulled.volumeM3)} m³）：自动返航卸货（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³，约 ${mergedSec} 秒，去程已并入返航）。`,
+            'core.salvaging.027',
+            {
+              p1: Math.round(freeM3),
+              p2: Math.round(pulled.volumeM3),
+              p3: Math.round(s.tripM3 * 100) / 100,
+              p4: mergedSec,
+            },
           )
           break
         }

@@ -23,6 +23,7 @@ export function fmtNum(n: number, digits = 2): string {
 }
 
 /** 信用点单位词（英文单复数有别；中文恒「信用点」） */
+// l10n-keep：本函数就是**按语言自取**的本地化实现（zh 分支返回「信用点」），不是漏译
 export function creditUnit(n: number): string {
   return isEn() ? (Math.abs(n) === 1 ? 'credit' : 'credits') : '信用点'
 }

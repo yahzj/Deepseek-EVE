@@ -75,7 +75,12 @@ function ensureMarks(state: GameState): MarksState {
  */
 export function toggleMark(state: GameState, ctx: SimContext, kind: MarkKind, id: string): CommandResult {
   if (!markTargetExists(state, ctx, kind, id)) {
-    return { ok: false, error: `没有可标记的${MARK_KIND_TEXT[kind]}（${id}）。` }
+    return {
+      ok: false,
+      error: `没有可标记的${MARK_KIND_TEXT[kind]}（${id}）。`,
+      errorId: 'core.marks.001',
+      errorParams: { p1: MARK_KIND_TEXT[kind], p2: id },
+    }
   }
   const marks = ensureMarks(state)
   const list = marks[kind]

@@ -17,7 +17,7 @@ const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)
 
 root.render(
-  <div className="app-loading">{tr('正在启动星门引擎……')}</div>,
+  <div className="app-loading">{tr('ui.main.001')}</div>,
 )
 
 engine
@@ -40,7 +40,7 @@ engine
         })
         return
       } catch (err) {
-        console.error('性能自动采集启动失败：', err)
+        console.error(tr("ui.main.003"), err)
       }
     }
     root.render(
@@ -50,8 +50,8 @@ engine
     )
   })
   .catch((err: unknown) => {
-    console.error('引擎启动失败：', err)
+    console.error(tr("ui.main.004"), err)
     root.render(
-      <div className="app-loading">{tr('启动失败：{err}（详见开发者控制台）', { err: String(err) })}</div>,
+      <div className="app-loading">{tr('ui.main.002', { err: String(err) })}</div>,
     )
   })

@@ -49,13 +49,23 @@ import {
   WORMHOLE_VALUABLES_BOX_ID,
 } from '@whale/core'
 import type { MarketGoodDef, SimContext } from '@whale/core'
+import { tr } from '../i18n/locale'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
 export const SUB_ALL = 'sub-all'
 
+/**
+ * 一个筛选子项：`key` = 判定键；`label` = **中文原串**（同时充当"键表"里的可读常量）。
+ *
+ * ⚠ **`label` 一律不在界面直接显示**：渲染处必须走 `tr(id)` 取当前语言（`id` 见各表；
+ * 三张 `*_TABS` 门类表已逐项带 `id`）。所以本文件里出现的 `label: '中文'` 是**数据/键**、
+ * 不是漏译 —— 这批 `label` 已由文件内的 `l10n-keep-start` / `l10n-keep-end` 区间统一声明。
+ */
 export interface SubOption {
   key: string
   label: string
+  /** 本地化 id（有则渲染处用它取词；缺 = 尚未接线，仍显示 `label`） */
+  id?: string
 }
 
 /**
@@ -64,9 +74,9 @@ export interface SubOption {
  * 弹药（打完就少）/ 修理组件（战斗中烧）/ 无人机（永久损失制，用一场少一批）。
  */
 export const CONSUME_SUBS: SubOption[] = [
-  { key: 'ammo', label: '弹药' },
-  { key: 'kit', label: '修理组件' },
-  { key: 'drone', label: '无人机' },
+  { key: 'ammo', label: tr("ui.BattleScreen.003") },
+  { key: 'kit', label: tr("ui.itemSubs.001") },
+  { key: 'drone', label: tr("ui.Handbook.004") },
 ]
 
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
@@ -85,10 +95,10 @@ export const CONTAINER_KIND_KEYS: readonly string[] = ['container']
 
 /** 货柜的四个二级子类（顺序 = 渲染顺序；"安全柜"五族在前，"贵重品/军用"两个新柜在后） */
 export const CONTAINER_SUBS: SubOption[] = [
-  { key: 'safe', label: '遗迹安全货柜' },
-  { key: 'bp', label: '图纸货柜' },
-  { key: 'valuables', label: '贵重品货柜' },
-  { key: 'military', label: '军用备货柜' },
+  { key: 'safe', label: tr("ui.itemSubs.002") },
+  { key: 'bp', label: tr("ui.itemSubs.003") },
+  { key: 'valuables', label: tr("ui.itemSubs.004") },
+  { key: 'military', label: tr("ui.itemSubs.005") },
 ]
 
 /**
@@ -107,8 +117,8 @@ export function containerSubKeyOf(refId: string): string {
 /** **残骸档位**（普通 / 稀有）——物品页仓库 · 手册物品图鉴 · 市场 · 工业页回收炉**共用同一张表**
  *  （原写死在 `pages/IndustryPage.tsx`，2026-09-19 按基线⑤收编到本文件）。 */
 export const WRECK_SUBS: SubOption[] = [
-  { key: 'common', label: '普通残骸' },
-  { key: 'rare', label: '稀有残骸' },
+  { key: 'common', label: tr("ui.IndustryPage.008") },
+  { key: 'rare', label: tr("ui.IndustryPage.009") },
 ]
 
 /** 残骸档位判据（**单点**）：直接委托 core 的 `isRareWreck`（`wreck-rare-*` 前缀，13 组同源），
@@ -123,35 +133,35 @@ export function wreckTierOf(refId: string): 'rare' | 'common' {
  *  **奢侈品**（`luxury`）一档（三件纯贸易品：星港陈酿 / 贵族香料 / 失落艺术品，出自贵重品货柜拆解），
  *  一级类型中文名「物品」→「**货物**」在 `MarketPage.KIND_TEXT` 单点改。 */
 export const ITEM_SUBS: SubOption[] = [
-  { key: 'ore', label: '原矿' },
-  { key: 'mineral', label: '原材料' },
-  { key: 'gas', label: '气体' },
-  { key: 'ice', label: '冰矿' },
+  { key: 'ore', label: '原矿', id: 'ui.IndustryPage.005' },
+  { key: 'mineral', label: '原材料', id: 'ui.itemSubs.006' },
+  { key: 'gas', label: '气体', id: 'ui.IndustryPage.006' },
+  { key: 'ice', label: '冰矿', id: 'ui.IndustryPage.007' },
   // 2026-09-20 零件体系：零件在「货物」下按基础/高级两档（键 = `part-<档>`，与组装机零件门类同一套 `PART_SUBS`）
-  { key: 'part-basic', label: '基础零件' },
-  { key: 'part-advanced', label: '高级零件' },
-  { key: 'luxury', label: '奢侈品' },
+  { key: 'part-basic', label: '基础零件', id: 'ui.itemSubs.033' },
+  { key: 'part-advanced', label: '高级零件', id: 'ui.itemSubs.034' },
+  { key: 'luxury', label: '奢侈品', id: 'ui.itemSubs.007' },
 ]
 
 /** 零件「基础 / 高级」维度（2026-09-20 零件体系：组装机「零件」门类二级筛选与市场「货物」子分类共用）。
  *  键 = `part-<档>`（基础 = 隐式蓝图直接可造 / 高级 = 需学习蓝图）。 */
 export const PART_SUBS: SubOption[] = [
-  { key: 'part-basic', label: '基础零件' },
-  { key: 'part-advanced', label: '高级零件' },
+  { key: 'part-basic', label: '基础零件', id: 'ui.itemSubs.033' },
+  { key: 'part-advanced', label: '高级零件', id: 'ui.itemSubs.034' },
 ]
 
 /** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
 export const MODULE_SUBS: SubOption[] = [
-  { key: 'prod', label: '采集与货舱' },
-  { key: 'weapon', label: '武器' },
-  { key: 'shield', label: '护盾' },
-  { key: 'armor', label: '装甲' },
-  { key: 'prop', label: '推进器' },
-  { key: 'drone', label: '无人机装置' },
-  { key: 'support', label: '支援件（辅助与维修）' },
-  { key: 'cpu', label: '协处理器（CPU 扩容）' },
-  { key: 'salvager', label: '打捞器' },
-  { key: 'lock', label: '目标锁定' },
+  { key: 'prod', label: tr("ui.itemSubs.008") },
+  { key: 'weapon', label: tr("ui.itemSubs.009") },
+  { key: 'shield', label: tr("ui.FitPage.001") },
+  { key: 'armor', label: tr("ui.FitPage.003") },
+  { key: 'prop', label: tr("ui.BattleScreen.004") },
+  { key: 'drone', label: tr("ui.itemSubs.010") },
+  { key: 'support', label: tr("ui.itemSubs.011") },
+  { key: 'cpu', label: tr("ui.itemSubs.012") },
+  { key: 'salvager', label: tr("ui.Wormhole.001") },
+  { key: 'lock', label: tr("ui.itemSubs.013") },
 ]
 
 export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
@@ -168,11 +178,11 @@ export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
 }
 
 export const SHIP_SUBS: SubOption[] = [
-  { key: 'industrial', label: '采矿舰' },
-  { key: 'hauler', label: '货运舰' },
-  { key: 'armed', label: '武装舰' },
+  { key: 'industrial', label: tr("ui.itemSubs.014") },
+  { key: 'hauler', label: tr("ui.itemSubs.015") },
+  { key: 'armed', label: tr("ui.itemSubs.016") },
   // 2026-09-16 船长：「将重装舰类的名称改为装甲舰」（键仍 = role id，机制零迁移）
-  { key: 'armored', label: '装甲舰' },
+  { key: 'armored', label: tr("ui.itemSubs.017") },
 ]
 
 /** 舰船级别（T1~T5；顺序即渲染顺序，分组判定与子分类判定共用一处） */
@@ -198,20 +208,20 @@ export const SHIP_TIER_SUBS: SubOption[] = SHIP_TIER_KEYS.map((t) => ({
  * （复用 `MODULE_SUBS`），因组装机已用标签行区分装备/舰船/消耗品三大类，槽类不足以收窄 81 张装备蓝图。
  */
 export const BLUEPRINT_SUBS: SubOption[] = [
-  { key: 'high', label: '高槽装备蓝图' },
-  { key: 'mid', label: '中槽装备蓝图' },
-  { key: 'low', label: '低槽装备蓝图' },
+  { key: 'high', label: '高槽装备蓝图', id: 'ui.itemSubs.018' },
+  { key: 'mid', label: '中槽装备蓝图', id: 'ui.itemSubs.019' },
+  { key: 'low', label: '低槽装备蓝图', id: 'ui.itemSubs.020' },
   ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: `${s.label}蓝图` })),
-  { key: 'supply', label: '消耗品蓝图（弹药·修理组件）' },
+  { key: 'supply', label: '消耗品蓝图（弹药·修理组件）', id: 'ui.itemSubs.021' },
   // 2026-09-20 零件体系：高级零件蓝图（常驻市场）——基础零件为隐式蓝图无书，故只有高级一档
-  { key: 'part-advanced', label: '零件蓝图' },
+  { key: 'part-advanced', label: '零件蓝图', id: 'ui.itemSubs.035' },
 ]
 
 export const CORE_SUBS: SubOption[] = [
-  { key: 'basic', label: '基础核心' },
-  { key: 'gamma', label: '伽马核心' },
-  { key: 'beta', label: '贝塔核心' },
-  { key: 'alpha', label: '阿尔法核心' },
+  { key: 'basic', label: tr("ui.MarketPage.020") },
+  { key: 'gamma', label: tr("ui.itemSubs.022") },
+  { key: 'beta', label: tr("ui.itemSubs.023") },
+  { key: 'alpha', label: tr("ui.itemSubs.024") },
 ]
 
 /**
@@ -225,9 +235,9 @@ export type RackKind = (typeof RACK_KIND_KEYS)[number]
  *  市场页「类型」下拉的三项（`module-high/mid/low`）、手册「装备图鉴」主筛选、
  *  手册「蓝图图鉴」装备蓝图的子筛选、物品页仓库的装备二级筛选，全部读这里。 */
 export const RACK_LABELS: Record<string, string> = {
-  high: '高槽装备',
-  mid: '中槽装备',
-  low: '低槽装备',
+  high: tr("ui.itemSubs.025"),
+  mid: tr("ui.itemSubs.026"),
+  low: tr("ui.itemSubs.027"),
 }
 
 /** 装备槽类子项（顺序 = 高 / 中 / 低；手册与仓库的筛选行直接渲染这张表） */
@@ -457,19 +467,19 @@ export const ITEM_SPACE_BUCKETS: readonly string[] = ['item', 'container', 'cons
 /** **我的舰队「状态」维度**（并列属性行，第一行）：全部 / 驾驶中 / AI 执勤 / 空闲 / 待维修。
  *  「全部」键 = `SUB_ALL`（基线②：下级/维度选择器一律用它；`'all'` 只留给一级选择器）。 */
 export const FLEET_STATE_TABS: SubOption[] = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'pilot', label: '驾驶中' },
-  { key: 'ai', label: 'AI 执勤' },
-  { key: 'idle', label: '空闲' },
-  { key: 'damaged', label: '待维修' },
+  { key: SUB_ALL, label: tr("ui.IndustryPage.001") },
+  { key: 'pilot', label: tr("ui.ShipPage.010") },
+  { key: 'ai', label: tr("ui.ShipPage.118") },
+  { key: 'idle', label: tr("ui.ShipPage.117") },
+  { key: 'damaged', label: tr("ui.ShipPage.119") },
 ]
 
 /** **舰船仓库「拥有」维度**（并列属性行，第一行）：全部 / 已拥有 / 未拥有。
  *  判据口径见 2026-09-14 船长裁定「乙」：**只看仓库库存**（在役舰队里的同型不算"已拥有"）。 */
 export const STORE_OWN_TABS: SubOption[] = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'owned', label: '已拥有' },
-  { key: 'unowned', label: '未拥有' },
+  { key: SUB_ALL, label: tr("ui.IndustryPage.001") },
+  { key: 'owned', label: tr("ui.ShipPage.122") },
+  { key: 'unowned', label: tr("ui.ShipPage.041") },
 ]
 
 /** 舰船定义的最小形状（类别判据只需要 role + 盾/甲结构值） */
@@ -498,18 +508,18 @@ export function shipTierPasses(def: { tier?: number } | undefined, tier: string)
  *  全部 / 装备蓝图 / 舰船蓝图 / 消耗品蓝图（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」）。 */
 export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply' | 'part'
 /** 蓝图书架 / 手册 / 市场蓝图档的门类表（**旧口径不动**，2026-09-20 船长：「只改组装机」） */
-export const MANU_TABS: Array<{ key: ManuTabKey; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'equip', label: '装备蓝图' },
-  { key: 'ship', label: '舰船蓝图' },
-  { key: 'supply', label: '消耗品蓝图' },
+export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = [
+  { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'equip', label: '装备蓝图', id: 'ui.ShipPage.115' },
+  { key: 'ship', label: '舰船蓝图', id: 'ui.ShipPage.116' },
+  { key: 'supply', label: '消耗品蓝图', id: 'ui.ShipPage.114' },
 ]
 /** 组装机专用门类表（2026-09-20 船长：舰船蓝图拆去造船厂；改名去「蓝图」二字；新增「零件」分页） */
-export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'equip', label: '装备' },
-  { key: 'part', label: '零件' },
-  { key: 'supply', label: '消耗品' },
+export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string; id: string }> = [
+  { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'equip', label: '装备', id: 'ui.MarketPage.178' },
+  { key: 'part', label: '零件', id: 'ui.itemSubs.036' },
+  { key: 'supply', label: '消耗品', id: 'ui.itemSubs.037' },
 ]
 
 /** 组装机/书架「**子类**」候选（按当前门类给；全部取自本文件单点表）：
@@ -526,10 +536,10 @@ export function manuSubsOf(tab: ManuTabKey): SubOption[] {
 /** 组装机/书架「**图纸**」维度（三级；下级 ⇒ 「全部」键用 `SUB_ALL`，基线②）：
  *  全部 / 永久蓝图 / 一次性蓝图（2026-09-14 船长：「组装机添加第三个筛选…需要选完上一级子类后才出现」）。 */
 export type BlueprintUseKey = 'perm' | 'single' | typeof SUB_ALL
-export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string }> = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'perm', label: '永久蓝图' },
-  { key: 'single', label: '一次性蓝图' },
+export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string; id: string }> = [
+  { key: SUB_ALL, label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'perm', label: '永久蓝图', id: 'ui.itemSubs.029' },
+  { key: 'single', label: '一次性蓝图', id: 'ui.itemSubs.030' },
 ]
 
 /**
@@ -539,8 +549,9 @@ export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string }> 
  * ⚠ 蓝图书架**不加**这一维：书架列的是"还没学的书 ＋ 可逆向的碎片"，按定义都未学会 ⇒ 加了恒空。
  */
 export type BlueprintLearnKey = 'learned' | 'unlearned' | typeof SUB_ALL
-export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string }> = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'learned', label: '已学会' },
-  { key: 'unlearned', label: '未学会' },
+export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string; id: string }> = [
+  { key: SUB_ALL, label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'learned', label: '已学会', id: 'ui.itemSubs.031' },
+  { key: 'unlearned', label: '未学会', id: 'ui.itemSubs.032' },
 ]
+// l10n-keep-end

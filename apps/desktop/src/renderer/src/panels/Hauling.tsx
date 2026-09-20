@@ -27,6 +27,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { isk } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+import { tr, cmdText } from '../i18n/locale'
 
 interface RouteCard {
   key: string
@@ -45,9 +46,9 @@ function fmtMin(ms: number): string {
   if (s >= 60) {
     const m = Math.floor(s / 60)
     const rs = s % 60
-    return rs > 0 ? `${m} 分 ${rs} 秒` : `${m} 分钟`
+    return rs > 0 ? tr("ui.Hauling.001", { m: m, rs: rs }) : tr("ui.Hauling.002", { m: m })
   }
-  return `${s} 秒`
+  return tr("ui.Hauling.003", { s: s })
 }
 
 export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -97,42 +98,42 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
 
   function startTo(aId: string | null, bId: string | null): void {
     const r = engine.startHaulingAt(aId, bId)
-    if (!r.ok) onToast(r.error ?? '无法开始运输。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Hauling.030'), true)
     else if (dockedOk && (docked === aId || docked === bId))
-      onToast('长途运输开始：虚拟货物占满货仓，往返航行中……')
-    else onToast('长途运输开始：先飞就位段到较近端点，随后自动往返（虚拟货物占满货仓）。')
+      onToast(tr("ui.Hauling.004"))
+    else onToast(tr("ui.Hauling.005"))
   }
 
   function stopNow(): void {
     const r = engine.stopHaulingNow()
-    if (!r.ok) onToast(r.error ?? '停止失败。', true)
-    else onToast('长途运输已停止：舰船已即时返港停靠出发站（无惩罚）。')
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Hauling.031'), true)
+    else onToast(tr("ui.ActivityBar.050"))
   }
 
   /** 标题右的状态读数（与同级「残骸打捞」同款：一句，不长篇） */
   const haulStateText = haulingActive
-    ? `运输中 · 本段驶往「${h.toSiteId === null ? '母港' : ctx.stations.get(h.toSiteId)?.name ?? '空间站'}」`
+    ? tr("ui.Hauling.026", { p1: h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId)?.name ?? tr('ui.Hauling.032') })
     : dockedOk
-      ? '待机 · 停在站点，可接单'
-      : '待机 · 舰船在途（返航停靠后可接单）'
+      ? tr("ui.Hauling.006")
+      : tr("ui.Hauling.007")
 
   return (
     <Panel
       className="is-fill win-fixed-body"
-      title="长途运输"
+      title={tr("ui.MapPage.006")}
       hint={
-        <HintIcon tip="在任意已建成站点（母港或副空间站）停靠即可接单：任选两座站点之间的航线往返运输，每段按「货仓容量 × 费率 × 航程」结算报酬；不在航线端点时会先飞「就位段」到较近端点，再自动循环。随时可停止（活动栏或航线卡「停止运输」= 即时返港，无需返程时间）。" />
+        <HintIcon tip={tr("ui.Hauling.008")} />
       }
       right={
         <span className="app-dim">
-          已建成站点 {endpoints.length} 座 · 航线 {routes.length} 条 · {haulStateText}
+          {tr("ui.Hauling.009")} {endpoints.length} {tr("ui.Hauling.010")} {routes.length} {tr("ui.Hauling.011")} {haulStateText}
         </span>
       }
     >
       <div className="app-win-body">
         {endpoints.length < 2 ? (
           <div className="app-dim app-inv-empty">
-            暂无可行航线——先完成一座副空间站的建设（任务中心「重要任务/资源任务」有建站指引），建成后即可在两站间跑运输。
+            {tr("ui.Hauling.012")}
           </div>
         ) : (
           <div className="app-haul-list">
@@ -168,45 +169,45 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                       {exposed ? (
                         <span
                           className="app-chip is-warn"
-                          title="该航线含低安航段：运输途中会像「停在当地」一样被巡逻与海盗盯上，可能遭伏击（进入低安约 5 分钟后开始判定）。途中被袭由舰船自行处置——会先用修理组件补装甲与结构。"
+                          title={tr("ui.Hauling.013")}
                         >
-                          低安航路 · 途中可能遇袭
+                          {tr("ui.Hauling.014")}
                         </span>
                       ) : null}
-                      {isActive ? <span className="app-chip app-haul-running">运输中</span> : null}
+                      {isActive ? <span className="app-chip app-haul-running">{tr("ui.Hauling.015")}</span> : null}
                     </span>
-                    <span className="app-dim">单程约 {effMin} 分钟（按当前航行技能）</span>
+                    <span className="app-dim">{tr("ui.Hauling.016")} {effMin} {tr("ui.Hauling.017")}</span>
                   </div>
                   <div className="app-haul-line app-dim">
-                    {shipName}（货仓 {cap.toLocaleString('zh-CN')} m³）· 单段约 {isk(range.min)} ~ {isk(range.max)} 信用点
-                    （行情每趟一价 ×5~10）· 往返一趟约 {isk(range.min * 2)} ~ {isk(range.max * 2)} 信用点 ·
-                    时薪约 {isk(hourlyMin)} ~ {isk(hourlyMax)} 信用点（按当前航行技能）
+                    {shipName}{tr("ui.Hauling.018")} {cap.toLocaleString('zh-CN')} {tr("ui.Hauling.019")} {isk(range.min)} ~ {isk(range.max)} {tr('ui.FirstTasks.003')}
+                    {tr('ui.Hauling.029', { a: `${isk(range.min * 2)} ~ ${isk(range.max * 2)}`, b: `${isk(hourlyMin)} ~ ${isk(hourlyMax)}` })}{" "}
+                    {tr("ui.Hauling.020")}
                   </div>
                   {isActive ? (
                     <div className="app-haul-line">
                       <ProgressBar
                         value={h.legMs > 0 ? Math.min(100, (h.phaseAccMs / h.legMs) * 100) : 0}
                         tone="warn"
-                        label={`本段驶往「${h.toSiteId === null ? '母港' : ctx.stations.get(h.toSiteId!)?.name ?? '空间站'}」· 剩余约 ${fmtMin(Math.max(0, h.legMs - h.phaseAccMs))}`}
+                        label={tr("ui.Hauling.027", { p1: h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId!)?.name ?? tr('ui.Hauling.032'), p2: fmtMin(Math.max(0, h.legMs - h.phaseAccMs)) })}
                       />
-                      <button className="app-btn is-small" onClick={stopNow} title="立即停止：即时返港停靠出发站，无需返程时间（无惩罚）">
-                        停止运输
+                      <button className="app-btn is-small" onClick={stopNow} title={tr("ui.Hauling.021")}>
+                        {tr("ui.ActivityBar.014")}
                       </button>
                     </div>
                   ) : (
                     <div className="app-haul-actions">
                       {haulingActive ? (
-                        <span className="app-dim">长途运输进行中（见上方航线卡）——先停止才能换线。</span>
+                        <span className="app-dim">{tr("ui.Hauling.022")}</span>
                       ) : !dockedOk ? (
-                        <span className="app-dim">先返航停靠到任意空间站即可开始（不要求是航线端点）。</span>
+                        <span className="app-dim">{tr("ui.Hauling.023")}</span>
                       ) : null}
                       {canStart ? (
                         <button
                           className="app-btn is-small is-primary"
-                          title={`开始往返运输：${rt.aName} ⇄ ${rt.bName}（不在端点时先就位飞行）`}
+                          title={tr("ui.Hauling.024", { p1: rt.aName, p2: rt.bName })}
                           onClick={() => startTo(rt.aId, rt.bId)}
                         >
-                          开始运输
+                          {tr("ui.Hauling.025")}
                         </button>
                       ) : null}
                     </div>

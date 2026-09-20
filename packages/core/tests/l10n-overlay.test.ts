@@ -278,6 +278,82 @@ describe('英文覆盖层（P2）', () => {
     expect(en.skills.get('gunnery')?.description).toContain('+⟦5%⟧')
   })
 
+  it('异常点说明：42 条全部有英文说明，且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const [id] of zh.anomalies) {
+      const other = en.anomalies.get(id)!
+      if (!other.description) {
+        noDesc.push(id)
+        continue
+      }
+      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+    expect(noDesc, `这些异常点还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.anomalies.get('ano-maw-hunt')?.description).toContain('Star Maw')
+    expect(en.anomalies.get('wh-pirate-scout')?.description).toContain('spawned by the wormhole only')
+  })
+
+  it('星系 / 矿带 / 站点 / 残骸说明：全部有英文说明且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const groups: ReadonlyArray<readonly [string, Iterable<[string, { description?: string }]>]> = [
+      ['星系', zh.galaxies],
+      ['矿带', zh.belts],
+      ['站点', zh.stations],
+      ['残骸', [...zh.items].filter(([id]) => id.startsWith('wreck-'))],
+    ]
+    for (const [label, entries] of groups) {
+      const noDesc: string[] = []
+      for (const [id] of entries) {
+        const other = en.galaxies.has(id) ? en.galaxies.get(id) : en.belts.has(id) ? en.belts.get(id) : en.stations.has(id) ? en.stations.get(id) : en.items.get(id)
+        if (!other?.description) {
+          noDesc.push(id)
+          continue
+        }
+        expect(cjk.test(other.description), `${label} ${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      }
+      expect(noDesc, `${label} 里这些还没有英文说明：${noDesc.slice(0, 6).join(', ')}`).toEqual([])
+    }
+    expect(en.galaxies.get('galaxy-hub')?.description).toContain('Deep Space Industry Association')
+    expect(en.belts.get('belt-fortune')?.description).toContain('never exhausted')
+    expect(en.stations.get('site-cinder')?.description).toContain('Tritanium Alloy')
+    expect(en.items.get('wreck-a-hi')?.description).toContain('Wreck Recycling')
+    expect(en.items.get('wreck-rare-g-wh')?.description).toContain('Deadarmy (Wormhole)')
+  })
+
+  it('蓝图说明：135 条装备/物品蓝图全部有英文说明，且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const [id] of zh.blueprints) {
+      const other = en.blueprints.get(id)!
+      if (!other.description) {
+        noDesc.push(id)
+        continue
+      }
+      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+    expect(noDesc, `这些蓝图还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.blueprints.get('bp-miner-1')?.description).toContain('Tritanium Alloy')
+    expect(en.blueprints.get('bp-wh-e-pd')?.description).toContain('intercept swarms')
+  })
+
+  it('舰船蓝图说明：57 条全部有英文说明（含 sbp-once-* 按本体派生）且不残留中日韩字符', () => {
+    const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const noDesc: string[] = []
+    for (const [id] of zh.shipBlueprints) {
+      const other = en.shipBlueprints.get(id)!
+      if (!other.description) {
+        noDesc.push(id)
+        continue
+      }
+      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+    }
+    expect(noDesc, `这些舰船蓝图还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
+    expect(en.shipBlueprints.get('sbp-pioneer')?.description).toContain('5,200 m³')
+    // 一次性图纸与本体同说明（中文侧逐字相同 ⇒ 英文也照同一条派生）
+    expect(en.shipBlueprints.get('sbp-once-sailfish')?.description).toBe(en.shipBlueprints.get('sbp-sailfish')?.description)
+  })
+
   it('覆盖表只许写 name / description 两个字段（防止有人顺手改数值）', () => {
     for (const [id, text] of Object.entries(EN_SHIPS)) {
       const keys = Object.keys(text).sort()

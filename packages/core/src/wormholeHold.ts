@@ -472,12 +472,23 @@ export function holdAdd(
   hold: WormholeHoldState,
   itemId: string,
   capacity: number,
-): { ok: boolean; placement?: WormholeHoldPlacement; error?: string } {
+): { ok: boolean; placement?: WormholeHoldPlacement; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const shape = wormholeShapeOf(itemId)
-  if (!wormholeIsShapedItem(itemId)) return { ok: false, error: '这件东西是可叠加散货：应该走散货条（holdAddCargo）。' }
-  if (capacity <= 0) return { ok: false, error: '货仓格数为 0：放不下任何形状件。' }
+  if (!wormholeIsShapedItem(itemId)) {
+    return { ok: false, error: '这件东西是可叠加散货：应该走散货条（holdAddCargo）。', errorId: 'core.wormholeHold.001' }
+  }
+  if (capacity <= 0) {
+    return { ok: false, error: '货仓格数为 0：放不下任何形状件。', errorId: 'core.wormholeHold.002' }
+  }
   const spot = findFreeSpot(hold, shape, capacity)
-  if (!spot) return { ok: false, error: `货仓放不下：这件要占 ${shape.w}×${shape.h} = ${shape.w * shape.h} 格。` }
+  if (!spot) {
+    return {
+      ok: false,
+      error: `货仓放不下：这件要占 ${shape.w}×${shape.h} = ${shape.w * shape.h} 格。`,
+      errorId: 'core.wormholeHold.003',
+      errorParams: { p1: shape.w, p2: shape.h, p3: shape.w * shape.h },
+    }
+  }
   const p: WormholeHoldPlacement = {
     id: nextPlacementId(),
     itemId,
@@ -503,9 +514,11 @@ export function holdAddCargo(
   units: number,
   cells: number,
   capacity: number,
-): { ok: boolean; placement?: WormholeHoldPlacement; error?: string } {
+): { ok: boolean; placement?: WormholeHoldPlacement; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const n = Math.max(1, Math.floor(cells))
-  if (capacity <= 0) return { ok: false, error: '货仓格数为 0：放不下任何东西。' }
+  if (capacity <= 0) {
+    return { ok: false, error: '货仓格数为 0：放不下任何东西。', errorId: 'core.wormholeHold.004' }
+  }
   const pick = bestCargoPlacement(hold, n, capacity)
   if (pick) {
     const p: WormholeHoldPlacement = {
@@ -523,7 +536,12 @@ export function holdAddCargo(
     hold.placements.push(p)
     return { ok: true, placement: p }
   }
-  return { ok: false, error: `货仓放不下：这件散货要占 ${n} 格（货仓只剩更少可用格）。` }
+  return {
+    ok: false,
+    error: `货仓放不下：这件散货要占 ${n} 格（货仓只剩更少可用格）。`,
+    errorId: 'core.wormholeHold.005',
+    errorParams: { p1: n },
+  }
 }
 
 /** 移动一件（拖拽落点非法 ⇒ 拒绝，不改状态） */
@@ -533,12 +551,12 @@ export function holdMove(
   x: number,
   y: number,
   capacity: number,
-): { ok: boolean; error?: string } {
+): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const p = hold.placements.find((q) => q.id === id)
-  if (!p) return { ok: false, error: '没有这个件。' }
+  if (!p) return { ok: false, error: '没有这个件。', errorId: 'core.wormholeHold.006' }
   // ⚠ 判据必须带 `fill`（散货件按"真正占的格数"算）：漏了它，移动一条不满的散货会被误判越界/重叠
   if (!canPlace(hold, x, y, { w: p.w, h: p.h }, capacity, id, placementFill(p))) {
-    return { ok: false, error: '这里放不下。' }
+    return { ok: false, error: '这里放不下。', errorId: 'core.wormholeHold.007' }
   }
   p.x = x
   p.y = y
@@ -562,10 +580,10 @@ export function holdSwap(
   idA: string,
   idB: string,
   capacity: number,
-): { ok: boolean; error?: string } {
+): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const a = hold.placements.find((q) => q.id === idA)
   const b = hold.placements.find((q) => q.id === idB)
-  if (!a || !b) return { ok: false, error: '没有这个件。' }
+  if (!a || !b) return { ok: false, error: '没有这个件。', errorId: 'core.wormholeHold.006' }
   if (a.id === b.id) return { ok: true }
   const ax = a.x
   const ay = a.y
@@ -585,7 +603,11 @@ export function holdSwap(
     b.y = ay
     return { ok: true }
   }
-  return { ok: false, error: '两件的形状对不上：换过去会互相压住（先把一件挪开，或点「整理」）。' }
+  return {
+    ok: false,
+    error: '两件的形状对不上：换过去会互相压住（先把一件挪开，或点「整理」）。',
+    errorId: 'core.wormholeHold.008',
+  }
 }
 /**
  * **按「抓取偏移」落件**（界面拖拽专用）：玩家抓的是件内第 `(dx,dy)` 格、光标落在 `(x,y)` 格。
@@ -605,11 +627,13 @@ export function holdDropWithGrab(
   y: number,
   capacity: number,
   grab: { dx: number; dy: number },
-): { ok: boolean; error?: string; x?: number; y?: number } {
+): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>>; x?: number; y?: number } {
   const p = hold.placements.find((q) => q.id === id)
-  if (!p) return { ok: false, error: '没有这个件。' }
+  if (!p) return { ok: false, error: '没有这个件。', errorId: 'core.wormholeHold.006' }
   const spot = pickDropSpot(hold, { w: p.w, h: p.h }, placementFill(p), x, y, capacity, grab, p.id)
-  if (!spot) return { ok: false, error: '这里放不下（它周围没有能摆下这块地方的位置）。' }
+  if (!spot) {
+    return { ok: false, error: '这里放不下（它周围没有能摆下这块地方的位置）。', errorId: 'core.wormholeHold.009' }
+  }
   p.x = spot.x
   p.y = spot.y
   return { ok: true, x: spot.x, y: spot.y }
@@ -631,16 +655,18 @@ export function holdTransferTo(
   x?: number,
   y?: number,
   grab?: { dx: number; dy: number },
-): { ok: boolean; error?: string; x?: number; y?: number } {
+): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>>; x?: number; y?: number } {
   const p = from.placements.find((q) => q.id === id)
-  if (!p) return { ok: false, error: '没有这个件。' }
+  if (!p) return { ok: false, error: '没有这个件。', errorId: 'core.wormholeHold.006' }
   const shape = { w: p.w, h: p.h }
   const fill = placementFill(p)
   const spot =
     x === undefined || y === undefined
       ? findFreeSpot(to, shape, toCapacity, false, fill)
       : pickDropSpot(to, shape, fill, x, y, toCapacity, grab ?? { dx: 0, dy: 0 })
-  if (!spot) return { ok: false, error: '那边放不下这件东西（先整理或丢弃腾位置）。' }
+  if (!spot) {
+    return { ok: false, error: '那边放不下这件东西（先整理或丢弃腾位置）。', errorId: 'core.wormholeHold.010' }
+  }
   from.placements = from.placements.filter((q) => q.id !== id)
   p.x = spot.x
   p.y = spot.y

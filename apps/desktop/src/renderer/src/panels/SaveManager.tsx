@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+import { tr, cmdText } from '../i18n/locale'
 
 function fmtTime(wallMs: number): string {
   return new Date(wallMs).toLocaleString('zh-CN', { hour12: false })
@@ -39,9 +40,9 @@ export function SaveManager({
     setBusy(true)
     const r = await engine.backupNow()
     setBusy(false)
-    if (!r.ok) onToast(r.error ?? '备份失败。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.SaveManager.027'), true)
     else {
-      onToast(`已备份：${r.name ?? ''}`)
+      onToast(tr("ui.SaveManager.001", { p1: r.name ?? '' }))
       void refresh()
     }
   }
@@ -50,9 +51,9 @@ export function SaveManager({
     setBusy(true)
     const r = await engine.restoreBackup(name)
     setBusy(false)
-    if (!r.ok) onToast(r.error ?? '恢复失败。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.SaveManager.028'), true)
     else {
-      onToast(`已恢复到 ${name}（未备份原档：要留退路请先点「备份当前档」）。`)
+      onToast(tr("ui.SaveManager.002", { name: name }))
       onClose()
     }
   }
@@ -63,9 +64,9 @@ export function SaveManager({
     const r = await engine.importSaveFromFile()
     setBusy(false)
     if (r.canceled) return
-    if (!r.ok) onToast(r.error ?? '导入失败。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.SaveManager.029'), true)
     else {
-      onToast('已从所选文件导入存档（未备份原档：要留退路请先点「备份当前档」）。')
+      onToast(tr("ui.SaveManager.003"))
       onClose()
     }
   }
@@ -76,9 +77,9 @@ export function SaveManager({
     const r = await engine.exportSaveToFile()
     setBusy(false)
     if (r.canceled) return
-    if (!r.ok) onToast(r.error ?? '导出失败。', true)
-    else if (r.shared) onToast('存档已导出：已调起系统分享——选「存储到文件」或发给自己即可保存。')
-    else onToast(r.path ? `已导出到：${r.path}` : '存档已开始下载（保存在下载目录；若点了没反应，请改用「系统浏览器」打开本页）。')
+    if (!r.ok) onToast(cmdText(r) || tr('ui.SaveManager.030'), true)
+    else if (r.shared) onToast(tr("ui.SaveManager.004"))
+    else onToast(r.path ? tr("ui.SaveManager.005", { p1: r.path }) : tr("ui.SaveManager.006"))
   }
 
   /** 导出指定备份：同上（桌面选位置；网页/手机优先分享、回落下载） */
@@ -87,9 +88,9 @@ export function SaveManager({
     const r = await engine.exportBackupToFile(name)
     setBusy(false)
     if (r.canceled) return
-    if (!r.ok) onToast(r.error ?? '导出失败。', true)
-    else if (r.shared) onToast('备份已导出：已调起系统分享（选「存储到文件」或发给自己）。')
-    else onToast(r.path ? `已导出：${r.path}` : '备份已开始下载（保存在下载目录）。')
+    if (!r.ok) onToast(cmdText(r) || tr('ui.SaveManager.030'), true)
+    else if (r.shared) onToast(tr("ui.SaveManager.007"))
+    else onToast(r.path ? tr("ui.SaveManager.008", { p1: r.path }) : tr("ui.SaveManager.009"))
   }
 
   /** 删除备份（两讨伐确认；只删备份文件，不影响当前档） */
@@ -102,9 +103,9 @@ export function SaveManager({
     setBusy(true)
     const r = await engine.deleteSaveBackup(name)
     setBusy(false)
-    if (!r.ok) onToast(r.error ?? '删除失败。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.170'), true)
     else {
-      onToast(`已删除备份：${name}`)
+      onToast(tr("ui.SaveManager.010", { name: name }))
       void refresh()
     }
   }
@@ -114,31 +115,31 @@ export function SaveManager({
       <div className="app-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
           <span className="app-report-title">
-            存档管理
-            <HintIcon tip="备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档（2026-09-17 船长定）——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。" />
+            {tr("ui.App.065")}
+            <HintIcon tip={tr("ui.SaveManager.011")} />
           </span>
           <button className="app-btn is-small" onClick={onClose}>
-            ✕ 关闭
+            {tr("ui.App.086")}
           </button>
         </div>
         <div className="app-modal-body">
           <div className="app-save-actions">
             <button className="app-btn is-primary is-small" onClick={() => void handleBackup()} disabled={busy}>
-              备份当前档
+              {tr("ui.SaveManager.012")}
             </button>
-            <button className="app-btn is-small" onClick={() => void handleImport()} disabled={busy} title="选择一个 .json 存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）">
-              导入存档…
+            <button className="app-btn is-small" onClick={() => void handleImport()} disabled={busy} title={tr("ui.SaveManager.013")}>
+              {tr("ui.SaveManager.014")}
             </button>
-            <button className="app-btn is-small" onClick={() => void handleExportCurrent()} disabled={busy} title="把当前进度保存为你指定的文件">
-              导出存档…
+            <button className="app-btn is-small" onClick={() => void handleExportCurrent()} disabled={busy} title={tr("ui.SaveManager.015")}>
+              {tr("ui.SaveManager.016")}
             </button>
-            {busy ? <span className="app-dim">处理中……</span> : null}
+            {busy ? <span className="app-dim">{tr("ui.SaveManager.017")}</span> : null}
           </div>
-          <div className="app-bay-title">备份列表（{backups === null ? '…' : backups.length}）</div>
+          <div className="app-bay-title">{tr("ui.SaveManager.018")}{backups === null ? '…' : backups.length}）</div>
           {backups === null ? (
-            <div className="app-dim app-inv-empty">读取中……</div>
+            <div className="app-dim app-inv-empty">{tr("ui.SaveManager.019")}</div>
           ) : backups.length === 0 ? (
-            <div className="app-dim app-inv-empty">还没有备份——点「备份当前档」创建第一份。</div>
+            <div className="app-dim app-inv-empty">{tr("ui.SaveManager.020")}</div>
           ) : (
             <ul className="app-inv-list">
               {backups.map((b) => (
@@ -150,19 +151,19 @@ export function SaveManager({
                     </span>
                   </div>
                   <div className="app-inv-btns">
-                    <button className="app-btn is-small" onClick={() => void handleExportBackup(b.name)} disabled={busy} title="把这份备份保存为你指定的文件">
-                      导出
+                    <button className="app-btn is-small" onClick={() => void handleExportBackup(b.name)} disabled={busy} title={tr("ui.SaveManager.021")}>
+                      {tr("ui.SaveManager.022")}
                     </button>
                     <button
                       className={`app-btn is-small${armDelete === b.name ? ' is-warn' : ''}`}
                       onClick={() => void handleDeleteBackup(b.name)}
                       disabled={busy}
-                      title={armDelete === b.name ? '再点一次确认删除（只删这份备份，不影响当前档）' : '删除这份备份（两讨伐确认）'}
+                      title={armDelete === b.name ? tr("ui.SaveManager.023") : tr("ui.SaveManager.024")}
                     >
-                      {armDelete === b.name ? '再点确认删除' : '删除'}
+                      {armDelete === b.name ? tr("ui.SaveManager.025") : tr("ui.FitPage.068")}
                     </button>
                     <button className="app-btn is-small is-primary" onClick={() => void handleRestore(b.name)} disabled={busy}>
-                      恢复
+                      {tr("ui.SaveManager.026")}
                     </button>
                   </div>
                 </li>

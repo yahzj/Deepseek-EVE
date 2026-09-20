@@ -228,35 +228,65 @@ function setLeg(state: GameState, ctx: SimContext, fromId: string | null, toId: 
  * A⇄B 循环。须停靠空间站（母港或已建成副站；野外不能接）。
  */
 export function startHauling(state: GameState, aSiteId: string | null, bSiteId: string | null, ctx: SimContext): CommandResult {
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（顶部活动栏）再换线。' }
+  if (state.hauling.active) {
+    return { ok: false, error: '长途运输进行中：先停止（顶部活动栏）再换线。', errorId: 'core.hauling.001' }
+  }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
   const hold = wormholePilotHoldReason(state)
   if (hold) return { ok: false, error: hold }
   // 前置：停靠在空间站（母港或已建成副站）
-  if (state.awayGalaxy !== null) return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。' }
+  if (state.awayGalaxy !== null) {
+    return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
+  }
   const endpoints = haulEndpoints(state, ctx)
   const a = endpoints.find((e) => e.siteId === aSiteId)
   const b = endpoints.find((e) => e.siteId === bSiteId)
-  if (!a || !b) return { ok: false, error: '航线端点缺失或尚未建成——请选择两座已建成站点之间的航线。' }
-  if (a.siteId === b.siteId) return { ok: false, error: '航线两端相同——请选两座不同的站点。' }
+  if (!a || !b) {
+    return {
+      ok: false,
+      error: '航线端点缺失或尚未建成——请选择两座已建成站点之间的航线。',
+      errorId: 'core.hauling.003',
+    }
+  }
+  if (a.siteId === b.siteId) {
+    return { ok: false, error: '航线两端相同——请选两座不同的站点。', errorId: 'core.hauling.004' }
+  }
   if (minutesBetween(ctx, a.siteId, b.siteId) <= 0) {
-    return { ok: false, error: '这两座站点之间没有可用航路（或同处一星系），无法运输。' }
+    return {
+      ok: false,
+      error: '这两座站点之间没有可用航路（或同处一星系），无法运输。',
+      errorId: 'core.hauling.005',
+    }
   }
   // 忙碌互斥（与远征同级）
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：先停止开采。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：先停止打捞。' }
-  if (state.expedition.active) return { ok: false, error: '远征进行中：先召回或等待结束。' }
-  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先取消。' }
-  if (state.transit.active) return { ok: false, error: '返航行程中：到站后再安排。' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：到站结算后再安排。' }
+  if (state.mining.active) {
+    return { ok: false, error: '采矿作业进行中：先停止开采。', errorId: 'core.hauling.007' }
+  }
+  if (state.salvaging.active) {
+    return { ok: false, error: '打捞作业进行中：先停止打捞。', errorId: 'core.hauling.008' }
+  }
+  if (state.expedition.active) {
+    return { ok: false, error: '远征进行中：先召回或等待结束。', errorId: 'core.hauling.009' }
+  }
+  if (state.standby.active) {
+    return { ok: false, error: '掩护巡逻进行中：先取消。', errorId: 'core.hauling.010' }
+  }
+  if (state.transit.active) {
+    return { ok: false, error: '返航行程中：到站后再安排。', errorId: 'core.hauling.011' }
+  }
+  if (state.sideTasks.deliver !== null) {
+    return { ok: false, error: '快递投送途中：到站结算后再安排。', errorId: 'core.hauling.012' }
+  }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出航。' }
+    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出航。', errorId: 'core.hauling.013' }
   }
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出航。' }
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出航。', errorId: 'core.hauling.014' }
   }
   const cap = cargoCapacityM3Of(state, ctx, state.shipId)
-  if (cap <= 0) return { ok: false, error: '当前舰船没有可用货仓，无法承运。' }
+  if (cap <= 0) {
+    return { ok: false, error: '当前舰船没有可用货仓，无法承运。', errorId: 'core.hauling.015' }
+  }
   // 自动清仓：真实货物卸入仓库（虚拟货物占满货仓，语义干净）
   const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
   const dockHere = dockedHaulEndpoint(state) // 接单时的停靠端点（可能是航线端点，也可能不是）
@@ -267,7 +297,13 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   } else {
     const toA = minutesBetween(ctx, dockHere, a.siteId)
     const toB = minutesBetween(ctx, dockHere, b.siteId)
-    if (!(toA > 0) && !(toB > 0)) return { ok: false, error: '当前停靠点不在协会航线网内，无法接单。' }
+    if (!(toA > 0) && !(toB > 0)) {
+      return {
+        ok: false,
+        error: '这两座站点之间没有可用航路（或同处一星系）——当前停靠点不在协会航线网内，无法接单。',
+        errorId: 'core.hauling.006',
+      }
+    }
     firstTo = toB > 0 && (toA <= 0 || toB < toA) ? b.siteId : a.siteId
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
@@ -277,19 +313,38 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   h.routeB = b.siteId
   if (!setLeg(state, ctx, dockHere, firstTo)) {
     h.active = false
-    return { ok: false, error: '无法从当前位置就位到该航线——航路不可达。' }
+    return { ok: false, error: '无法从当前位置就位到该航线——航路不可达。', errorId: 'core.hauling.017' }
   }
   // 本趟行情倍率（船长 2026-09-11：每趟掷一次、两段同价；就位段自成一趟，只跑 1 段）
   const isPos = dockHere !== a.siteId && dockHere !== b.siteId
   beginTrip(state, isPos ? 1 : 2)
   const { min, max } = haulRewardRange(ctx, cap, effectiveMinutesBetween(ctx, a.siteId, b.siteId))
-  addLog(
-    state,
-    'info',
+  /**
+   * 甲案（2026-09-20）：多段拼接按"**中间可空附注**"处理——就位提示与卸货备注都可能为空，
+   * 而多段链不能有空段（空 id 会把后面的段整段丢掉）⇒ 把空的那种形态另立一个基础模板
+   * （`.023` 带就位段 / `.024` 不带），两处附注各挂一个段 id；参数按段命名空间排（第 2 段 = `p1p*`）。
+   */
+  const text =
     `长途运输开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
-      (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
-      `，单段报酬随行情浮动在 ${min.toLocaleString('zh-CN')} ~ ${max.toLocaleString('zh-CN')} 信用点（每趟一价，到站结算）${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
-  )
+    (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
+    `，单段报酬随行情浮动在 ${min.toLocaleString('zh-CN')} ~ ${max.toLocaleString('zh-CN')} 信用点（每趟一价，到站结算）${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`
+  const params: Record<string, string | number> = {
+    p1: shipName,
+    p2: a.name,
+    p3: b.name,
+    p4: cap.toLocaleString('zh-CN'),
+    p5: min.toLocaleString('zh-CN'),
+    p6: max.toLocaleString('zh-CN'),
+    p7: effMinutesOf(state, ctx, h.legMinutes),
+  }
+  // 段 2 = 就位段（每段各带自己的 `p1`）· 段 3 = 卸货备注；空的那种形态不挂段 id
+  if (isPos) Object.assign(params, { p1p1: haulEndpointName(ctx, firstTo), p1Id: 'core.state.037' })
+  if (unloaded > 0) {
+    // 就位与否决定谁是"段 2"（段号按实际顺序顺排，不许跳号）
+    if (isPos) Object.assign(params, { p2p1: unloaded, p2Id: 'core.state.039' })
+    else Object.assign(params, { p1p1: unloaded, p1Id: 'core.state.039' })
+  }
+  addLog(state, 'info', text, isPos ? 'core.hauling.023' : 'core.hauling.024', params)
   return { ok: true }
 }
 
@@ -297,9 +352,11 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
 export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
   /** 状态改动走 `state.ts` 的单点 `haulingHalt`（**进洞前自动停运**也用它）⇒ 两条停运路径不会各写一份 */
   const info = haulingHalt(state)
-  if (info === null) return { ok: false, error: '没有进行中的长途运输。' }
+  if (info === null) return { ok: false, error: '没有进行中的长途运输。', errorId: 'core.hauling.018' }
   const originName = haulEndpointName(ctx, info.fromSiteId)
-  addLog(state, 'info', `长途运输已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`)
+  addLog(state, 'info', `长途运输已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`, 'core.hauling.019', {
+    p1: originName,
+  })
   return { ok: true }
 }
 
@@ -336,7 +393,13 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
       if (!setLeg(state, ctx, at, nextTo)) {
         // 航线异常（端点不可达等防御）：就地结束并提示
         h.active = false
-        addLog(state, 'warn', `长途运输异常终止：舰船停靠在「${arrived}」（航线端点不可达）。`)
+        addLog(
+          state,
+          'warn',
+          `长途运输异常终止：舰船停靠在「${arrived}」（航线端点不可达）。`,
+          'core.hauling.020',
+          { p1: arrived },
+        )
         break
       }
       if (h.tripLegsLeft <= 0) {
@@ -346,7 +409,13 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
         beginTrip(state, 2)
       }
       const departTo = haulEndpointName(ctx, h.toSiteId)
-      addLog(state, 'info', `长途运输继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`)
+      addLog(
+        state,
+        'info',
+        `长途运输继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`,
+        'core.hauling.021',
+        { p1: departTo },
+      )
     }
   }
 }
@@ -358,7 +427,13 @@ export function cancelHaulingOnSwitch(state: GameState, ctx: SimContext): void {
   state.hauling = emptyHauling()
   state.dockedSite = null
   state.awayGalaxy = null
-  addLog(state, 'info', `长途运输已随切换驾驶终止（原航线「… → ${wasTo}」；虚拟货物无残留、无惩罚）。`)
+  addLog(
+    state,
+    'info',
+    `长途运输已随切换驾驶终止（原航线「… → ${wasTo}」；虚拟货物无残留、无惩罚）。`,
+    'core.hauling.022',
+    { p1: wasTo },
+  )
 }
 
 /** 引擎内部：长途运输期间驾驶船被虚拟货物占用的货仓容积（其余时刻 0；UI 展示"已用/剩余"用） */

@@ -108,6 +108,7 @@ import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
 import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses } from '../ui/itemSubs'
+import { tr, cmdText } from '../i18n/locale'
 
 type WhTab = 'prep' | 'map' | 'bag'
 
@@ -118,7 +119,7 @@ type BoardKind = 'hold' | 'temp'
  * 页签文案。⚠ **玩家可见一律叫「货仓」，不叫「背包」**（船长 2026-09-15：「不应该直接叫背包，
  * 展示给玩家看的叫货仓」）——内部标识符仍是 `bag` / `run.bag`（不动存档与代码键名）。
  */
-const TAB_LABEL: Record<WhTab, string> = { prep: '准备', map: '探索', bag: '货仓' }
+const TAB_LABEL: Record<WhTab, string> = { prep: tr("ui.Wormhole.063"), map: tr("ui.Wormhole.123"), bag: tr("ui.CargoPage.004") }
 
 /* ── 探索页动效时长（船长 2026-09-13 拍板：「入场动画时长可以拉长到 1 秒」）──
    飞入 1000ms（进场与到达新层）· 飞出 600ms（深入下一层前先飞走）· 扫描波 900ms ·
@@ -386,8 +387,8 @@ export function WormholePanel({
   const nodeThreat = run ? Math.round(wormholeLayerThreat(run.depth) * wormholeMatterThreatMul(matterBuffs, 'node')) : 0
   const matterThreatTip =
     matterBuffs.threatNodeMul < 1 || matterBuffs.threatBossMul < 1
-      ? `谜质压制已生效：节点 / 守卫 ×${matterBuffs.threatNodeMul.toFixed(2)} / ×${(matterBuffs.threatNodeMul * matterBuffs.threatBossMul).toFixed(2)}（合计最多 −50%）`
-      : '带一台「压制力场」就能把节点 / 守卫的威胁一起压下来（合计最多 −50%）。'
+      ? tr("ui.Wormhole.182", { p1: matterBuffs.threatNodeMul.toFixed(2), p2: (matterBuffs.threatNodeMul * matterBuffs.threatBossMul).toFixed(2) })
+      : tr("ui.Wormhole.064")
   /** 当前格上还剩几堆（打捞/采集共用；按钮上显示"本次能回收几堆"） */
   const herePiles = hereCell?.piles ?? []
   /**
@@ -457,7 +458,7 @@ export function WormholePanel({
   const workCell = salvageCell || veinCell
   const canWork = salvageCell ? canSalvage : veinCell ? canCollect : false
   const rigs = salvageCell ? salvagers : miners
-  const rigName = veinCell ? '采集器' : '打捞器'
+  const rigName = veinCell ? tr("ui.Wormhole.238") : tr("ui.Wormhole.001")
   /**
    * **进洞门槛**（核心同一把尺 `wormholeEntryBlockReason`）——**不再用界面徽标 `shipBusyLabel` 自己判**：
    * 两者对「扫描虫洞」口径不同（徽标报"忙"，门槛放行 ⇒ 进洞那一步自动停扫，船长 2026-09-14「进洞自动停止」）。
@@ -671,7 +672,7 @@ export function WormholePanel({
     setPicked((prev) => {
       if (prev.includes(uid)) return prev.filter((x) => x !== uid)
       if (prev.length >= pickCap) {
-        onToast(auto ? `自动探索最多派 ${pickCap} 条船。` : `最多只能带 ${pickCap} 艘船。`, true)
+        onToast(auto ? tr("ui.Wormhole.183", { pickCap: pickCap }) : tr("ui.Wormhole.124", { pickCap: pickCap }), true)
         return prev
       }
       return [...prev, uid]
@@ -680,9 +681,9 @@ export function WormholePanel({
 
   function handleEnter(): void {
     const r = stockId ? engine.wormholeEnterFromStock(stockId, picked) : engine.wormholeEnter(picked)
-    if (!r.ok) onToast(r.error ?? '无法跃入。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.296'), true)
     else {
-      onToast('已跃入虫洞。')
+      onToast(tr("ui.Wormhole.065"))
       setTab('map')
     }
   }
@@ -694,10 +695,10 @@ export function WormholePanel({
   function startAuto(): void {
     if (autoStockId === null) return
     const r = engine.wormholeAutoStart(autoStockId, picked)
-    if (!r.ok) onToast(r.error ?? '派队失败。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.297'), true)
     else {
       onToast(
-        `自动探索队已出发（约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）——报告回来后到「扫描虫洞」页确认。`,
+        tr("ui.Wormhole.184", { p1: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) }),
       )
       onClose()
     }
@@ -723,13 +724,13 @@ export function WormholePanel({
   function pickCell(q: number, r: number): void {
     if (!grid || !run) return
     if (run.battle) {
-      onToast('交火中：先打完这一场。', true)
+      onToast(tr("ui.Wormhole.003"), true)
       return
     }
     const cell = grid.cells.find((c) => c.key === `${q},${r}`)
     if (!cell) return
     if (cell.key === hereKey) {
-      onToast('已经在这个地点了。')
+      onToast(tr("ui.Wormhole.066"))
       return
     }
     const unknown = !grid.scanned.includes(cell.key) && !grid.visited.includes(cell.key)
@@ -753,12 +754,12 @@ export function WormholePanel({
   function travelTo(q: number, r: number, confirmUnknown: boolean, confirmIntercept: boolean): void {
     const res = engine.wormholeTravel(q, r, confirmUnknown, confirmIntercept)
     if (!res.ok) {
-      onToast(res.error ?? '无法前往。', true)
+      onToast(res.error ?? tr('ui.Wormhole.298'), true)
       return
     }
     setPendingCell(null)
     // 到达即触发的两件事（船长 2026-09-13）：信标指路 / 舰船信号就地开打（战斗界面接手，不提示）
-    if (res.beacon) onToast('漂浮信标：下一层入口已标在地图上。')
+    if (res.beacon) onToast(tr("ui.Wormhole.125"))
   }
 
   /**
@@ -770,7 +771,7 @@ export function WormholePanel({
     const before = new Set(grid?.scanned ?? [])
     const res = engine.wormholeScan()
     if (!res.ok) {
-      onToast(res.error ?? '无法扫描。', true)
+      onToast(res.error ?? tr('ui.Wormhole.299'), true)
       return
     }
     const after = grid?.scanned ?? []
@@ -794,14 +795,14 @@ export function WormholePanel({
     const fogged = res.newlyFogged ?? 0
     const parts: string[] = []
     if (fogged > 0 && dispersed > 0) {
-      parts.push(`${fogged} 格被星云遮挡，同时驱散了 ${dispersed} 格星云。`)
+      parts.push(tr("ui.Wormhole.004", { fogged: fogged, dispersed: dispersed }))
     } else if (fogged > 0) {
-      parts.push(`${fogged} 格被星云遮挡——在原位再扫描一次即可驱散。`)
+      parts.push(tr("ui.Wormhole.005", { fogged: fogged }))
     } else if (dispersed > 0) {
-      parts.push(`驱散星云 ${dispersed} 格，信号已显形。`)
+      parts.push(tr("ui.Wormhole.239", { dispersed: dispersed }))
     }
-    if (res.exitScanned === true) parts.push('扫到了下一层入口——已标在地图上。')
-    onToast(parts.length > 0 ? `扫描完成（1 回合）：${parts.join(' ')}` : '扫描完成（1 回合）。')
+    if (res.exitScanned === true) parts.push(tr("ui.Wormhole.067"))
+    onToast(parts.length > 0 ? tr("ui.Wormhole.068", { p1: parts.join(' ') }) : tr("ui.Wormhole.069"))
   }
 
   /**
@@ -817,29 +818,29 @@ export function WormholePanel({
      * 这一格的产出按保守估计装不下时，先喊一句再干活（**不拦着**：打捞到装不下会自己停下、剩下的留在原地）。
      */
     if (holdShortBy > 0) {
-      onToast(`⚠ 货仓可能装不下：这一格约 ${incomingCells} 格、货仓只剩 ${holdFreeCells} 格——装不下的会留在原地。`)
+      onToast(tr("ui.Wormhole.006", { incomingCells: incomingCells, holdFreeCells: holdFreeCells }))
     }
     const res = engine.wormholeActivate()
     if (!res.ok) {
-      onToast(res.error ?? '无法激活。', true)
+      onToast(res.error ?? tr('ui.Wormhole.300'), true)
       return
     }
     if (exitNow || place === 'ship') return // 已开战：交给战斗界面
     if (place === 'graveyard' || place === 'ruins') {
-      playJob('打捞作业中…', `本批 ${res.taken ?? 0} 堆`)
-      onToast(`打捞作业：这一批回收了 ${res.taken ?? 0} 堆。`)
+      playJob(tr("ui.Wormhole.070"), tr("ui.Wormhole.126", { p1: res.taken ?? 0 }))
+      onToast(tr("ui.Wormhole.071", { p1: res.taken ?? 0 }))
       return
     }
     if (place === 'vein') {
-      playJob('采集作业中…', `本批 ${res.taken ?? 0} 堆`)
-      onToast(`采集作业：这一批回收了 ${res.taken ?? 0} 堆虚空母矿。`)
+      playJob(tr("ui.Wormhole.240"), tr("ui.Wormhole.126", { p1: res.taken ?? 0 }))
+      onToast(tr("ui.Wormhole.241", { p1: res.taken ?? 0 }))
     } else if (place === 'matter') {
       /**
        * **取回谜质**（F3c · 船长 2026-09-13）：装置是哪一台按 (种子, 层, 格) 定死，
        * 界面用同一个函数读出来报名字（与 core 落包的那一台必然一致）。
        */
       const dev = wormholeMatterDeviceAt(run?.seed ?? 0, run?.depth ?? 1, hereKey)
-      onToast(`取回谜质「${dev.name}」：${dev.text}——占货仓 2×2 格，离开虫洞即失效。`)
+      onToast(tr("ui.Wormhole.072", { p1: dev.name, p2: dev.text }))
     }
   }
 
@@ -855,7 +856,7 @@ export function WormholePanel({
       const r = engine.wormholeDescend()
       if (!r.ok) {
         setFx('idle')
-        onToast(r.error ?? '无法深入。', true)
+        onToast(cmdText(r) || tr('ui.Wormhole.301'), true)
       }
       // 成功：`layerKey` 变了 ⇒ 那个 effect 会接着播飞入并复位
     }, WORMHOLE_FX_OUT_MS)
@@ -870,14 +871,14 @@ export function WormholePanel({
     }
     const r = engine.wormholeExtract()
     if (!r.ok) {
-      onToast(r.error ?? '无法撤离。', true)
+      onToast(cmdText(r) || tr('ui.Wormhole.302'), true)
       return
     }
     /**
      * **撤离提示**（船长 2026-09-13：「玩家撤离时提醒玩家需要进行撤离战」的旧口径）。
      * ⚠ 2026-09-15 撤离战取消 ⇒ 提示语改为"直接入港"（不再分第 1 层 / 深层，也不再提拦截）。
      */
-    onToast('脱离航道：货仓、货柜与随行战利品直接入港。')
+    onToast(tr("ui.Wormhole.185"))
   }
 
   /**
@@ -905,7 +906,7 @@ export function WormholePanel({
     const ask = tempAsk
     const r = engine.wormholeTempDiscardAll()
     setTempAsk(null)
-    if (r.moved > 0) onToast(`已丢弃临时空间里的 ${r.moved} 件。`, true)
+    if (r.moved > 0) onToast(tr("ui.Wormhole.073", { p1: r.moved }), true)
     resumeAfterTemp(ask)
   }
 
@@ -915,18 +916,18 @@ export function WormholePanel({
     const r = engine.wormholeTempStowAll()
     if (r.stuck.length > 0) {
       setTempAsk(null)
-      onToast(`货仓放不下剩下 ${r.stuck.length} 件：先整理/抛货，或选择「丢掉这些」。`, true)
+      onToast(tr("ui.Wormhole.186", { p1: r.stuck.length }), true)
       return
     }
     setTempAsk(null)
-    if (r.moved > 0) onToast(`已把 ${r.moved} 件放回货仓。`)
+    if (r.moved > 0) onToast(tr("ui.Wormhole.074", { p1: r.moved }))
     resumeAfterTemp(ask)
   }
 
   /** 打捞/采集按钮的悬浮说明（只在真能用时才渲染按钮，故这里只讲"这一批能回收多少"） */
   const workTitle = veinCell
-    ? `采集一批：${rigs} 台采集器一次回收 ${Math.min(rigs, herePiles.length)} 堆虚空母矿`
-    : `打捞一批：${rigs} 台打捞器一次回收 ${Math.min(rigs, herePiles.length)} 堆（优先稀有）`
+    ? tr("ui.Wormhole.242", { rigs: rigs, p2: Math.min(rigs, herePiles.length) })
+    : tr("ui.Wormhole.075", { rigs: rigs, p2: Math.min(rigs, herePiles.length) })
 
   /**
    * **当前地点的信息卡**（船长 2026-09-13：扫描按钮放大后**与它平级**摆在左侧）——
@@ -937,12 +938,12 @@ export function WormholePanel({
     return (
       <>
         <div className="app-wh-node-title">
-          {atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[hereCell.place]}
+          {atExit ? tr("ui.Wormhole.007") : WORMHOLE_PLACE_TEXT[hereCell.place]}
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
               属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
-            {' '}· 坐标 Q{grid.pos.q} · R{grid.pos.r}
-            {grid.activated.includes(hereKey) ? ' · 已处理' : ''}
+            {' '}{tr('ui.Wormhole.275')}Q{grid.pos.q} · R{grid.pos.r}
+            {grid.activated.includes(hereKey) ? tr('ui.Wormhole.303') : ''}
           </span>
         </div>
         {/* **作业进度条**（F2b · 纯表现 380ms）：摆在堆清单正上方——卡片"向下移出"的同时，这条在走 */}
@@ -966,16 +967,15 @@ export function WormholePanel({
           <>
             {workCell && bulkPiles > 0 ? (
               <div className="app-dim app-note">
-                {veinCell ? '虚空母矿' : '残骸'}堆 {bulkPiles} 堆{veinCell ? '' : '（稀有在前）'} · 编队
-                {rigName} <b>{rigs}</b> 台 ⇒ 每回合回收 {Math.min(Math.max(rigs, 0), bulkPiles)} 堆、共{' '}
-                {rigs > 0 ? Math.ceil(bulkPiles / rigs) : '—'} 回合
-                {rigs <= 0 ? `（没有${rigName}：先给编队装上${rigName}）` : ''} · 走到这一格就铺好了，不用激活
+                {veinCell ? tr("ui.Wormhole.187") : tr("ui.MarketPage.009")}{tr('ui.Wormhole.342')} {bulkPiles} {tr('ui.Wormhole.342')}{veinCell ? '' : tr("ui.Wormhole.243")}{tr('ui.Wormhole.276')}
+                {rigName} <b>{rigs}</b> {tr("ui.Wormhole.076")} {Math.min(Math.max(rigs, 0), bulkPiles)} {tr("ui.Wormhole.077")}{' '}
+                {rigs > 0 ? Math.ceil(bulkPiles / rigs) : '—'} {tr("ui.Wormhole.078")}
+                {rigs <= 0 ? tr("ui.Wormhole.244", { rigName: rigName, rigName2: rigName }) : ''}{tr('ui.Wormhole.277')}
               </div>
             ) : null}
             {shapedPiles.length > 0 ? (
               <div className="app-dim app-note">
-                另有 <b>{shapedPiles.length}</b> 件货柜：打捞器搬不动它 ——
-                点下面「拾取装舱」自己搬（占货仓 2×2 = 4 格；腾不出 2×2 会先放进临时空间）。
+                {tr("ui.FitPage.072")} <b>{shapedPiles.length}</b>{tr('ui.Wormhole.278')}
               </div>
             ) : null}
             {/**
@@ -984,17 +984,15 @@ export function WormholePanel({
              */}
             {hereCell.place === 'matter' ? (
               <div className="app-dim app-note">
-                这一格的谜质是「<b>{wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).name}</b>」：
-                {wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).text} —— 取回后装进货仓生效
-                （占 2×2 = 4 格，腾不出会先进临时空间），离开虫洞即失效。
+                {tr("ui.Wormhole.245")}<b>{wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).name}</b>{tr("ui.Wormhole.008")}
+                {wormholeMatterDeviceAt(run?.seed ?? 0, run.depth, hereKey).text}{tr('ui.Wormhole.279')}
               </div>
             ) : null}
             {/* **装不下的预告**（船长 2026-09-13）——把"再捞就满"这件事摆在按钮之前，别等捞到一半才发现 */}
             {holdShortBy > 0 ? (
               <div className="app-wh-hold-soon">
-                货仓可能装不下：这一格还有 {bulkPiles} 堆、约 <b>{incomingCells}</b> 格，
-                货仓只剩 <b>{holdFreeCells}</b> 格（差 {holdShortBy} 格）——装不下的会留在原地，
-                先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。
+                {tr("ui.Wormhole.188")} {bulkPiles} {tr("ui.Wormhole.079")} <b>{incomingCells}</b>
+                {tr('ui.Wormhole.343', { p1: holdFreeCells })}
               </div>
             ) : null}
             {/**
@@ -1022,7 +1020,7 @@ export function WormholePanel({
                     <span className="app-wh-pile-count">×{n(p.units)}</span>
                     <span className="app-wh-pile-sub">
                       {n(p.units * (def?.unitM3 ?? 0))} m³
-                      {shaped ? ' · 整件占 2×2 = 4 格' : ` · 每格 ${n(slotUse)} 单位`}
+                      {shaped ? tr('ui.Wormhole.304') : ` · ${n(slotUse)} ${tr('ui.Expedition.102')}`}
                     </span>
                     {shaped ? (
                       /* **形状件（货柜）**：唯一入口就是这个拾取装舱（打捞/采集都不搬它） */
@@ -1031,19 +1029,19 @@ export function WormholePanel({
                         disabled={!!run.battle || actionBlocked !== null}
                         onClick={() => {
                           const r = engine.wormholeTakePile(i)
-                          if (!r.ok) onToast(r.error ?? '拾取失败。', true)
+                          if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.307'), true)
                           else {
-                            playJob('装舱中…', def?.name ?? '货柜')
-                            onToast('已装上货柜（占 2×2 = 4 格）。')
+                            playJob(tr("ui.Wormhole.189"), def?.name ?? tr('ui.MarketPage.006'))
+                            onToast(tr("ui.Wormhole.080"))
                           }
                         }}
-                        title="拾取装舱：占货仓 2×2 = 4 格；货仓腾不出 2×2 会先放进临时空间"
+                        title={tr("ui.Wormhole.128")}
                       >
-                        拾取装舱
+                        {tr("ui.Wormhole.129")}
                       </button>
                     ) : (
                       /* 母矿与残骸都靠**台数 × 回合**成批回收（船长 F5：规则同打捞）⇒ 不逐堆拾取 */
-                      <span className="app-wh-pile-tag">{veinCell ? '待采集' : '待打捞'}</span>
+                      <span className="app-wh-pile-tag">{veinCell ? tr("ui.Wormhole.081") : tr("ui.Wormhole.082")}</span>
                     )}
                   </div>
                 )
@@ -1055,7 +1053,7 @@ export function WormholePanel({
                   <div key={g.key} className="app-wh-pile is-leaving" aria-hidden>
                     <span className="app-wh-pile-name">{def?.name ?? g.itemId}</span>
                     <span className="app-wh-pile-count">×{n(g.units)}</span>
-                    <span className="app-wh-pile-sub">已收进货仓</span>
+                    <span className="app-wh-pile-sub">{tr("ui.Wormhole.083")}</span>
                   </div>
                 )
               })}
@@ -1080,7 +1078,7 @@ export function WormholePanel({
       return
     }
     if (state.wormhole.run?.battle) {
-      onToast('交火中不能离开虫洞：打完这一场。', true)
+      onToast(tr("ui.Wormhole.009"), true)
       return
     }
     /**
@@ -1103,7 +1101,7 @@ export function WormholePanel({
     if (auto) return
     if (!state.wormhole.run || state.wormhole.run.attending === true) return
     const r = engine.wormholeResume()
-    if (!r.ok) setResumeNote(r.error ?? '暂时回不到虫洞。')
+    if (!r.ok) setResumeNote(cmdText(r) || tr('ui.Wormhole.308'))
     else setResumeNote(null)
     // 只在"刚打开/刚离开"这两种时刻触发；`attending` 变 true 后本效果自动空转
   }, [engine, state.wormhole.run?.attending, auto])
@@ -1131,19 +1129,19 @@ export function WormholePanel({
     <div className="app-modal-mask" onClick={handleClose}>
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
-          <span className="app-report-title">{settle ? '本趟结算' : '虫洞'}</span>
+          <span className="app-report-title">{settle ? tr("ui.Wormhole.130") : tr("ui.Expedition.005")}</span>
           <span className="app-dim app-wh-devnote">
             {auto
-              ? `自动探索 · 选编队派队（最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船 · 约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）`
+              ? tr("ui.Wormhole.190", { WORMHOLE_AUTO_MAX_SHIPS: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
               : settle
                 ? settle.kind === 'extract'
-                  ? '货物入港完毕 · 确认后关闭'
-                  : '编队失联 · 确认后关闭'
+                  ? tr("ui.Wormhole.191")
+                  : tr("ui.Wormhole.192")
                 : run
                   ? run.attending
-                    ? '人在洞里 · 离开即暂停（进度保存）'
-                    : '已离开 · 进度已保存'
-                  : '从「扫描虫洞」页选一处进洞 · 关掉面板即暂停（进度保存）'}
+                    ? tr("ui.Wormhole.010")
+                    : tr("ui.Wormhole.084")
+                  : tr("ui.Wormhole.011")}
           </span>
           {/**
            * **撤离按钮搬到「✕ 关闭」左侧，红色色系，两次讨伐确认**（船长 2026-09-13：
@@ -1167,22 +1165,22 @@ export function WormholePanel({
               }}
               title={
                 run.battle
-                  ? '交火中不能撤离：打完这一场'
+                  ? tr("ui.Wormhole.012")
                   : extractAsk
-                    ? '再点一次确认撤离'
-                    : '撤离本趟：见页顶的确认条（不消耗回合、不触发战斗）'
+                    ? tr("ui.Wormhole.013")
+                    : tr("ui.Wormhole.131")
               }
             >
-              {extractAsk ? '确认撤离' : '撤离'}
+              {extractAsk ? tr("ui.Wormhole.193") : tr("ui.Handbook.163")}
             </button>
           ) : null}
           <button
             className="app-btn is-small"
             disabled={!!run?.battle}
             onClick={handleClose}
-            title={run?.battle ? '交火中不能离开虫洞：打完这一场' : undefined}
+            title={run?.battle ? tr("ui.Wormhole.014") : undefined}
           >
-            ✕ 关闭（离开虫洞）
+            {tr("ui.Wormhole.015")}
           </button>
         </div>
         {/**
@@ -1213,12 +1211,12 @@ export function WormholePanel({
                 <span className="app-wh-tab-label">{TAB_LABEL[k]}</span>
                 <span className="app-wh-tab-sub">
                   {k === 'map'
-                    ? `第 ${run.depth} 层 · 回合 ${run.turnsLeft}/${run.turnsTotal}`
-                    : `货仓 ${holdInfo?.used ?? 0}/${holdInfo?.capacity ?? 0} 格`}
+                    ? tr("ui.Wormhole.194", { p1: run.depth, p2: run.turnsLeft, p3: run.turnsTotal })
+                    : tr("ui.Wormhole.195", { p1: holdInfo?.used ?? 0, p2: holdInfo?.capacity ?? 0 })}
                 </span>
-                {k === 'bag' && overloaded ? <span className="app-wh-tab-warn">超载</span> : null}
+                {k === 'bag' && overloaded ? <span className="app-wh-tab-warn">{tr("ui.Wormhole.196")}</span> : null}
                 {k === 'bag' && !overloaded && actionBlocked !== null ? (
-                  <span className="app-wh-tab-warn">待处理</span>
+                  <span className="app-wh-tab-warn">{tr("ui.Wormhole.085")}</span>
                 ) : null}
               </button>
             ))}
@@ -1257,15 +1255,15 @@ export function WormholePanel({
           {/* 本趟已结束（撤离成功 / 全损）⇒ 回到准备页并说明结果（否则"探索/背包"两页会是空白） */}
           {!settle && !run && tab !== 'prep' ? (
             <div className="app-dim app-inv-empty">
-              本趟已结束（最近一次损失 {state.wormhole.lastFleetLost} 艘）：在「准备」页可再次编队入洞。
+              {tr("ui.Wormhole.132")} {state.wormhole.lastFleetLost} {tr("ui.Wormhole.197")}
             </div>
           ) : null}
           {!settle && tab === 'prep' ? (
             <div className="app-wh-prep">
               <div className="app-bay-title">
                 {auto
-                  ? `准备 · 选编队（最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条副船）`
-                  : `准备 · 选编队（最多 ${WORMHOLE_MAX_SHIPS} 艘）`}
+                  ? tr("ui.Wormhole.086", { WORMHOLE_AUTO_MAX_SHIPS: WORMHOLE_AUTO_MAX_SHIPS })
+                  : tr("ui.Wormhole.087", { WORMHOLE_MAX_SHIPS: WORMHOLE_MAX_SHIPS })}
               </div>
               {/**
                * **敌情一行**（船长 2026-09-16：「给虫洞卡片添加更多信息（虫洞内是什么敌人，
@@ -1281,18 +1279,18 @@ export function WormholePanel({
               <div className="app-dim app-note">
                 {auto ? (
                   <>
-                    自动探索<b>不建副本、不打战斗</b>：派最多 {WORMHOLE_AUTO_MAX_SHIPS} 条船去一趟（可少派），
-                    每条各占 <b>1 枚 AI 核心</b>（与副船 AI 任务、站内炉线同一本账），约{' '}
-                    {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航结算；收益 = 手动一趟期望的{' '}
-                    {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%（<b>直入仓库</b>、不保底），结构/装甲各受损{' '}
-                    {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%
-                    但<b>绝不丢船</b>。<b>主控船也能派</b>——派出去前会把主控换到另一条空闲船上（要你确认）。
+                    {tr("ui.Wormhole.002")}<b>{tr("ui.Wormhole.016")}</b>{tr('ui.Wormhole.365', { p1: WORMHOLE_AUTO_MAX_SHIPS })}{' '}
+                    <b>{tr("ui.Wormhole.017")}</b>{tr("ui.Wormhole.246")}{' '}
+                    {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} {tr("ui.Wormhole.088")}{' '}
+                    {tr('ui.Wormhole.366', { p1: Math.round(WORMHOLE_AUTO_YIELD_MUL * 100) })}<b>{tr("ui.Wormhole.133")}</b>
+                    {tr('ui.Wormhole.367', { p1: Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100), p2: Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100), p3: tr('ui.Wormhole.368') })}
+                    <b>{tr("ui.Wormhole.198")}</b>{tr('ui.Wormhole.363')}<b>{tr("ui.Wormhole.018")}</b>{tr("ui.Wormhole.019")}
                   </>
                 ) : (
                   <>
-                    带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过{' '}
-                    {n(WORMHOLE_TOTAL_MASS_CAP)} 也进不去；总质量越高、可探索回合越短；货仓格数按编队「合计货仓」折算（每{' '}
-                    {n(WORMHOLE_SLOT_M3)} m³ = 1 格，含技能与货舱件加成）。
+                    {tr("ui.Wormhole.089")}{' '}
+                    {n(WORMHOLE_TOTAL_MASS_CAP)} {tr("ui.Wormhole.020")}{' '}
+                    {n(WORMHOLE_SLOT_M3)} {tr("ui.Wormhole.021")}
                   </>
                 )}
               </div>
@@ -1303,7 +1301,7 @@ export function WormholePanel({
                   ⚠ `ShipSprite` **不要传 `name`**：它自带一个绝对定位的舰名标签（`.app-sprite-name`，
                   贴在舰影下缘），会压住卡片自己的舰名（2026-09-13 船长报「名称与 SVG 下方文本重叠」）。
                   检索控件（搜索 + 状态/类别/级别三行筛选）复刻「我的舰队」那套类名与口径。 */}
-              <div className="app-bay-title app-wh-sub">选择舰船（点卡片编入 / 再点撤下）</div>
+              <div className="app-bay-title app-wh-sub">{tr("ui.Wormhole.247")}</div>
               {/**
                * **检索区 + 进入按钮平级**（船长 2026-09-13：「进入虫洞的按钮放大（参考导航栏的出击），
                * 移动到搜索和筛选按钮相同容器内的最右侧」）：左边 = 搜索框 + 类别/级别两行筛选，
@@ -1314,18 +1312,18 @@ export function WormholePanel({
                     <input
                       className="app-head-search"
                       type="text"
-                      placeholder="搜索舰船…"
+                      placeholder={tr("ui.ShipPage.002")}
                       value={whQ}
                       onChange={(e) => setWhQ(e.target.value)}
                       spellCheck={false}
                     />
                     <span className="app-dim">
-                      {whFiltered ? `匹配 ${whShown.length} / 共 ${whEntries.length} 艘` : `${whEntries.length} 艘`}
+                      {whFiltered ? tr("ui.Wormhole.090", { p1: whShown.length, p2: whEntries.length }) : tr("ui.Wormhole.022", { p1: whEntries.length })}
                     </span>
                   </span>
                   <div className="app-fleet-toolbar app-wh-filters">
                 <div className="app-fleet-row">
-                  <span className="app-dim">类别：</span>
+                  <span className="app-dim">{tr("ui.ShipPage.004")}</span>
                   <div className="app-task-tabs app-fleet-tabs" role="tablist">
                     <button
                       role="tab"
@@ -1333,7 +1331,7 @@ export function WormholePanel({
                       className={`app-tasktab${whRole === SUB_ALL ? ' is-active' : ''}`}
                       onClick={() => setWhRole(SUB_ALL)}
                     >
-                      全部
+                      {tr("ui.IndustryPage.001")}
                     </button>
                     {SHIP_SUBS.map((s) => (
                       <button
@@ -1349,7 +1347,7 @@ export function WormholePanel({
                   </div>
                 </div>
                 <div className="app-fleet-row">
-                  <span className="app-dim">级别：</span>
+                  <span className="app-dim">{tr("ui.ShipPage.005")}</span>
                   <div className="app-task-tabs app-fleet-tabs" role="tablist">
                     <button
                       role="tab"
@@ -1357,7 +1355,7 @@ export function WormholePanel({
                       className={`app-tasktab${whTier === SUB_ALL ? ' is-active' : ''}`}
                       onClick={() => setWhTier(SUB_ALL)}
                     >
-                      全部
+                      {tr("ui.IndustryPage.001")}
                     </button>
                     {SHIP_TIER_SUBS.map((s) => (
                       <button
@@ -1383,17 +1381,17 @@ export function WormholePanel({
                     onClick={auto ? handleAutoStart : handleEnter}
                     title={
                       auto
-                        ? (autoGate ?? (picked.length === 0 ? '先勾选至少 1 条船' : undefined))
+                        ? (autoGate ?? (picked.length === 0 ? tr("ui.Wormhole.023") : undefined))
                         : (entryGate ??
-                          (autoStopText ? `进洞会先自动停掉：${autoStopText}` : undefined))
+                          (autoStopText ? tr("ui.Wormhole.248", { autoStopText: autoStopText }) : undefined))
                     }
                   >
-                    {auto ? '派队自动探索' : '进入虫洞'}
+                    {auto ? tr("ui.Wormhole.134") : tr("ui.Expedition.308")}
                   </button>
                   <span className="app-dim">
                     {auto
-                      ? `编队 ${picked.length} / ${WORMHOLE_AUTO_MAX_SHIPS} 条`
-                      : `编队 ${picked.length} / ${WORMHOLE_MAX_SHIPS} 艘`}
+                      ? tr("ui.Wormhole.199", { p1: picked.length, WORMHOLE_AUTO_MAX_SHIPS: WORMHOLE_AUTO_MAX_SHIPS })
+                      : tr("ui.Wormhole.200", { p1: picked.length, WORMHOLE_MAX_SHIPS: WORMHOLE_MAX_SHIPS })}
                   </span>
                 </div>
               </div>
@@ -1404,23 +1402,23 @@ export function WormholePanel({
                   const canPick = ok && !busy
                   const title = !ok
                     ? auto
-                      ? (busy ?? '这条船不能编入自动探索队')
-                      : '该舰过重，会压塌虫洞入口（最多带到 T4）'
+                      ? (busy ?? tr('ui.Wormhole.309'))
+                      : tr("ui.Wormhole.201")
                     : auto
                       ? busy
                         ? busy
                         : uid === state.shipId
                           ? (autoHandover?.toName
-                              ? `编入后把主控换到「${autoHandover.toName}」（派队前会再确认一次）`
-                              : '点一下编入（主控船要换驾驶）')
+                              ? tr("ui.Wormhole.202", { p1: autoHandover.toName })
+                              : tr("ui.Wormhole.135"))
                           : on
-                            ? '再点一下撤下'
-                            : '点一下编入自动探索队'
+                            ? tr("ui.Wormhole.024")
+                            : tr("ui.Wormhole.136")
                       : busy
-                        ? `${busy}：先收工/取消派工，才能编入虫洞`
+                        ? tr("ui.Wormhole.025", { busy: busy })
                         : on
-                          ? '再点一下撤下'
-                          : '点一下编入'
+                          ? tr("ui.Wormhole.024")
+                          : tr("ui.Wormhole.137")
                   return (
                     <li key={uid}>
                       <button
@@ -1440,11 +1438,11 @@ export function WormholePanel({
                           {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
                         </span>
                         <span className="app-wh-card-sub">
-                          折算质量 {def ? n(wormholeShipMass(def)) : '—'} · 货仓 {n(cargoCapacityM3Of(state, ctx, uid))} m³
+                          {tr("ui.Handbook.159")} {def ? n(wormholeShipMass(def)) : '—'}{tr('ui.Wormhole.280')}{n(cargoCapacityM3Of(state, ctx, uid))} m³
                         </span>
                         <span className="app-wh-card-tags">
                           <span className={`app-wh-card-tag${on ? ' is-on' : ''}`}>
-                            {on ? '已编入' : !ok ? '过重' : busy ? '占用中' : '编入'}
+                            {on ? tr("ui.Wormhole.091") : !ok ? tr("ui.Wormhole.203") : busy ? tr("ui.Wormhole.092") : tr("ui.Wormhole.204")}
                           </span>
                           {/* **损伤提示标签**（船长 2026-09-13：「如果舰船有损伤，那么在编入的标签旁新增一个标签
                               提示玩家，防止不小心损坏的船带入虫洞」）：判据与舰队页「待维修」同一把尺
@@ -1452,12 +1450,10 @@ export function WormholePanel({
                           {damaged ? (
                             <span
                               className="app-wh-card-tag is-warn"
-                              title={`该舰带伤（承伤在虫洞内跨节点保留）：${armor < 1 ? `装甲 ${Math.round(armor * 100)}%` : ''}${
-                                armor < 1 && dur < 1 ? ' · ' : ''
-                              }${dur < 1 ? `结构 ${Math.round(dur * 100)}%` : ''}——建议先回站维修或换一艘。`}
+                              title={tr("ui.Wormhole.249", { p1: armor < 1 ? tr("ui.Wormhole.205", { p1: Math.round(armor * 100) }) : '', p2: armor < 1 && dur < 1 ? ' · ' : '', p3: dur < 1 ? tr("ui.Wormhole.206", { p1: Math.round(dur * 100) }) : '' })}
                             >
-                              带伤{armor < 1 ? ` 甲${Math.round(armor * 100)}%` : ''}
-                              {dur < 1 ? ` 构${Math.round(dur * 100)}%` : ''}
+                              {tr("ui.Wormhole.093")}{armor < 1 ? tr('ui.Wormhole.310', { p1: Math.round(armor * 100) }) : ''}
+                              {dur < 1 ? tr('ui.Wormhole.311', { p1: Math.round(dur * 100) }) : ''}
                             </span>
                           ) : null}
                         </span>
@@ -1478,32 +1474,35 @@ export function WormholePanel({
                * ⚠ 旧名还出现在 `docs/glossary.md`（词条描述）与几份旧设计稿/测试档说明里：按 §八 工作期间
                * **不动旧文档** ⇒ 归档时随工作文档一并更正（已记进本批工作文档的「归档待办」）。
                */}
-              <div className="app-bay-title app-wh-sub">{auto ? '自动探索读数' : '编队读数'}</div>
+              <div className="app-bay-title app-wh-sub">{auto ? tr("ui.Wormhole.207") : tr("ui.Wormhole.026")}</div>
               {auto ? (
                 <div className="app-wh-triad">
                   <span className="app-wh-cell">
-                    AI 核心 <b>{picked.length}</b> / 可派 <b>{autoCores?.free ?? 0}</b>（上限 {autoCores?.cap ?? 0}）
+                    {tr("ui.Wormhole.027")} <b>{picked.length}</b> {tr("ui.Wormhole.028")} <b>{autoCores?.free ?? 0}</b>{tr("ui.Wormhole.250")} {autoCores?.cap ?? 0}）
                   </span>
                   <span className="app-wh-cell">
-                    时长 约 <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> 分钟
+                    {tr("ui.Wormhole.138")} <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> {tr("ui.DebugPanel.007")}
                   </span>
                   <span className="app-wh-cell">
-                    收益 = 手动一趟的 <b>{Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%</b>（直入仓库 · 不保底）
+                    {tr("ui.Wormhole.139")} <b>{Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%</b>{tr("ui.Wormhole.251")}
                   </span>
                   <span
                     className="app-wh-cell"
                     title={
                       autoTechNeutral
-                        ? '损伤是每趟各舰的结构与装甲损耗区间；结构有保底，绝不丢船'
-                        : `损伤是每趟各舰的结构与装甲损耗区间（已按谜质科技折算：战斗线完成度 ${Math.round(autoTech.battleProgress * 100)}% ⇒ 损耗 ×${autoTech.damage.toFixed(2)}，最多减半）；结构有保底，绝不丢船`
+                        ? tr('ui.Wormhole.286')
+                        : tr('ui.Wormhole.287', {
+                            p1: Math.round(autoTech.battleProgress * 100),
+                            p2: autoTech.damage.toFixed(2),
+                          })
                     }
                   >
-                    损伤{' '}
+                    {tr("ui.Wormhole.140")}{' '}
                     <b>
                       {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * autoTech.damage * 100)}%~
                       {Math.round(WORMHOLE_AUTO_DAMAGE_MAX * autoTech.damage * 100)}%
                     </b>
-                    （绝不丢船）
+                    {tr("ui.Wormhole.252")}
                   </span>
                   {/**
                    * **谜质科技那一格**（船长 2026-09-19 甲案「自动探索不折扣」）：只在真吃到科技时出现
@@ -1515,54 +1514,54 @@ export function WormholePanel({
                     <span
                       className="app-wh-cell"
                       title={[
-                        `回合：+${Math.round((autoTech.turnMul - 1) * 100)}%（时序锚定器 ÷ 本队基础 ${autoTech.baseTurns} 回合）`,
-                        `货仓：+${Math.round((autoTech.holdMul - 1) * 100)}%（折叠货舱 ÷ 本队基础 ${autoTech.baseHold} 格）`,
-                        `打捞效率：+${Math.round(autoTech.salvageEff * 100)}%（管残骸 / 稀有残骸 / 遗迹货柜 / AI 核心）`,
-                        `采集效率：+${Math.round(autoTech.collectEff * 100)}%（管虚空母矿）`,
-                        `战斗线完成度 ${Math.round(autoTech.battleProgress * 100)}%：损伤 ×${autoTech.damage.toFixed(2)}`,
+                        tr('ui.Wormhole.312', { p1: Math.round((autoTech.turnMul - 1) * 100), p2: autoTech.baseTurns }),
+                        tr('ui.Wormhole.313', { p1: Math.round((autoTech.holdMul - 1) * 100), p2: autoTech.baseHold }),
+                        tr('ui.Wormhole.314', { p1: Math.round(autoTech.salvageEff * 100) }),
+                        tr('ui.Wormhole.315', { p1: Math.round(autoTech.collectEff * 100) }),
+                        tr('ui.Wormhole.316', { p1: Math.round(autoTech.battleProgress * 100), p2: autoTech.damage.toFixed(2) }),
                       ].join('\n')}
                     >
-                      科技 残骸 <b>×{autoTech.wreck.toFixed(2)}</b> · 母矿 <b>×{autoTech.ore.toFixed(2)}</b>
+                      {tr('ui.Wormhole.344')} <b>×{autoTech.wreck.toFixed(2)}</b> {tr('ui.Wormhole.345')} <b>×{autoTech.ore.toFixed(2)}</b>
                     </span>
                   ) : null}
                 </div>
               ) : (
                 <div className="app-wh-triad">
                   <span className="app-wh-cell">
-                    合计货仓 <b>{n(cargoM3)}</b> m³ ⇒ 货仓 <b>{bagSlots}</b> 格
+                    {tr("ui.Wormhole.094")} <b>{n(cargoM3)}</b> {tr("ui.Wormhole.029")} <b>{bagSlots}</b>{tr('ui.Wormhole.346')}
                   </span>
                   <span className="app-wh-cell">
-                    折算总质量 <b>{n(admission.totalMass)}</b> / {n(WORMHOLE_TOTAL_MASS_CAP)}
+                    {tr("ui.Wormhole.141")} <b>{n(admission.totalMass)}</b> / {n(WORMHOLE_TOTAL_MASS_CAP)}
                   </span>
                   <span className="app-wh-cell">
-                    回合预算 <b>{admission.turnBudget}</b>
+                    {tr("ui.Wormhole.095")} <b>{admission.turnBudget}</b>
                   </span>
                   {/* 2026-09-19 船长追加的三项：所选编队的作业能力与开图能力（口径见上方注释）
                       ⚠ 悬停是**纯文本**渲染 ⇒ 不许写 `**` 这类强调记号（会被原样显示给玩家，
                       content:check 的「文案纯净契约」当场报红抓过本条一次，别再犯） */}
                   <span
                     className="app-wh-cell"
-                    title={`所选编队的打捞器台数：墓场与遗迹每次打捞按台数回收若干堆；0 台 ⇒ 打捞格干不了活。打捞效率 ${Math.round(pickedSalvageEff * 100)}%：每满 100% 必多捞 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「引力吊臂」每级 +20%）`}
+                    title={tr('ui.Wormhole.317', { p1: Math.round(pickedSalvageEff * 100) })}
                   >
-                    打捞器 <b>{pickedSalvagers}</b> 台 · 效率 <b>{Math.round(pickedSalvageEff * 100)}%</b>
+                    {tr("ui.Wormhole.001")} <b>{pickedSalvagers}</b> {tr('ui.Wormhole.288')} <b>{Math.round(pickedSalvageEff * 100)}%</b>
                   </span>
                   <span
                     className="app-wh-cell"
-                    title={`所选编队的采集器台数：矿脉每次采集按台数回收若干堆；0 台 ⇒ 一堆虚空母矿也挖不动。采集效率 ${Math.round(pickedCollectEff * 100)}%：每满 100% 必多采 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「富集钻头」每级 +20%）`}
+                    title={tr('ui.Wormhole.318', { p1: Math.round(pickedCollectEff * 100) })}
                   >
-                    采集器 <b>{pickedMiners}</b> 台 · 效率 <b>{Math.round(pickedCollectEff * 100)}%</b>
+                    {tr("ui.Wormhole.238")} <b>{pickedMiners}</b> {tr('ui.Wormhole.288')} <b>{Math.round(pickedCollectEff * 100)}%</b>
                   </span>
                   <span
                     className="app-wh-cell"
-                    title="本队入洞后的扫描范围：基础 1 圈 ＋ 编队里侦察舰/电子舰的加成（编入队伍即生效、可叠加）；洞内捞到的谜质装置「测绘仪」还能再 +圈"
+                    title={tr('ui.Wormhole.319')}
                   >
-                    扫描范围 <b>{pickedScanRadius}</b> 圈
+                    {tr('ui.Wormhole.347')} <b>{pickedScanRadius}</b>{tr('ui.Wormhole.348')}
                   </span>
                 </div>
               )}
               {auto && autoMainPicked && autoHandover?.toName ? (
                 <div className="app-warn app-wh-gate">
-                  队里有主控船：派队时会把<b>主控换到「{autoHandover.toName}」</b>（点「派队自动探索」后再确认一次）。
+                  {tr("ui.Wormhole.253")}<b>{tr("ui.Wormhole.030")}{autoHandover.toName}{tr('ui.Wormhole.364')}</b>{tr("ui.Wormhole.254")}
                 </div>
               ) : null}
               {auto && autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
@@ -1577,8 +1576,8 @@ export function WormholePanel({
                */}
               {!auto && autoStopText !== null ? (
                 <div className="app-note app-dim">
-                  进洞会先自动停掉：<b>{autoStopText}</b>
-                  （扫描进度保留、作业中的货留在船上——与手点活动栏「停止」同一个结果）。
+                  {tr("ui.Wormhole.255")}<b>{autoStopText}</b>
+                  {tr("ui.Wormhole.256")}
                 </div>
               ) : null}
               {/**
@@ -1587,7 +1586,7 @@ export function WormholePanel({
                */}
               {autoStopWarns.map((a) => (
                 <div key={a.kind} className="app-warn app-wh-gate">
-                  ⚠ 进洞会停掉「{a.name}」：本段航程立即中止，舰船<b>即时返港停靠出发站</b>（无惩罚，但这一趟运输就此结束）。
+                  {tr("ui.Wormhole.031")}{a.name}{tr("ui.Wormhole.032")}<b>{tr("ui.Wormhole.096")}</b>{tr("ui.Wormhole.257")}
                 </div>
               ))}
               {/* 进入按钮已上移到检索区右侧（船长 2026-09-13），此处不再重复放一个 */}
@@ -1597,27 +1596,27 @@ export function WormholePanel({
           {!settle && tab === 'map' && run ? (
             <div className="app-wh-run">
               <div className="app-wh-head">
-                <span className="app-wh-cell">第 <b>{run.depth}</b> 层</span>
+                <span className="app-wh-cell">{tr('ui.Wormhole.349', { p1: run.depth })}</span>
                 <span className="app-wh-cell">
-                  已探明 <b>{grid ? grid.visited.length : 0}</b> / {grid ? grid.cells.length : 0} 格
+                  {tr("ui.Wormhole.097")} <b>{grid ? grid.visited.length : 0}</b> / {grid ? grid.cells.length : 0}{tr('ui.Wormhole.346')}
                 </span>
                 <span className="app-wh-cell">
-                  已扫描 <b>{grid ? grid.scanned.length : 0}</b> 格
+                  {tr("ui.Wormhole.098")} <b>{grid ? grid.scanned.length : 0}</b>{tr('ui.Wormhole.346')}
                 </span>
                 <span
                   className="app-wh-cell"
-                  title={`编队打捞器台数：墓场与遗迹每次打捞按台数回收若干堆。打捞效率 ${Math.round(runSalvageEff * 100)}%：每满 100% 必多捞 1 堆，余数按概率`}
+                  title={tr('ui.Wormhole.290', { p1: Math.round(runSalvageEff * 100) })}
                 >
-                  打捞器 <b>{salvagers}</b> 台 · 效率 <b>{Math.round(runSalvageEff * 100)}%</b>
+                  {tr("ui.Wormhole.001")} <b>{salvagers}</b> {tr('ui.Wormhole.288')} <b>{Math.round(runSalvageEff * 100)}%</b>
                 </span>
                 <span
                   className="app-wh-cell"
-                  title={`编队采集器台数：矿脉每次采集按台数回收若干堆。采集效率 ${Math.round(runCollectEff * 100)}%：每满 100% 必多采 1 堆，余数按概率`}
+                  title={tr('ui.Wormhole.291', { p1: Math.round(runCollectEff * 100) })}
                 >
-                  采集器 <b>{miners}</b> 台 · 效率 <b>{Math.round(runCollectEff * 100)}%</b>
+                  {tr("ui.Wormhole.238")} <b>{miners}</b> {tr('ui.Wormhole.288')} <b>{Math.round(runCollectEff * 100)}%</b>
                 </span>
-                <span className="app-wh-cell">回合 <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
-                <span className="app-wh-cell">货仓 <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
+                <span className="app-wh-cell">{tr("ui.Wormhole.078")} <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
+                <span className="app-wh-cell">{tr("ui.CargoPage.004")} <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0}{tr('ui.Wormhole.346')}</span>
                 {/**
                  * **谜质增益读数**（F3c · 船长 2026-09-13）：悬停逐台列出装置 —— 效果一律从货仓现算
                  * （`wormholeMatterBuffs`），界面与 core 同源。
@@ -1634,30 +1633,30 @@ export function WormholePanel({
                     title={[
                       ...(matterBuffs.devices > 0
                         ? [
-                            '谜质装置：',
+                            tr('ui.Wormhole.292'),
                             ...matterBuffs.list.map(
                               ({ device, count }) =>
-                                `· ${device.name}${count > 1 ? ` ×${count}` : ''}：${device.text}`,
+                                tr('ui.Wormhole.320', { p1: device.name, count: count > 1 ? ` ×${count}` : '', p4: device.text }),
                             ),
                           ]
                         : []),
                       ...(techInRun.length > 0
                         ? [
-                            '谜质科技（虫洞探索 / 虫洞战斗线 · 已点）：',
-                            ...techInRun.map(({ def, level }) => `· ${def.name} ${level}/${def.maxLevel} 级：${def.note}`),
+                            tr('ui.Wormhole.293'),
+                            ...techInRun.map(({ def, level }) => tr('ui.Wormhole.340', { p1: def.name, p2: level, p3: def.maxLevel, p4: def.note })),
                           ]
                         : []),
                     ].join('\n')}
                   >
                     {matterBuffs.devices > 0 ? (
                       <>
-                        谜质 <b>{matterBuffs.devices}</b> 台
+                        {tr("ui.Wormhole.208")} <b>{matterBuffs.devices}</b> {tr('ui.Wormhole.288')}
                       </>
                     ) : null}
                     {matterBuffs.devices > 0 && techInRun.length > 0 ? ' · ' : null}
                     {techInRun.length > 0 ? (
                       <>
-                        科技 <b>{techInRunLevels}</b> 级
+                        {tr('ui.Wormhole.294')} <b>{techInRunLevels}</b> {tr('ui.Wormhole.295')}
                       </>
                     ) : null}
                   </span>
@@ -1668,7 +1667,7 @@ export function WormholePanel({
                  * ⚠ 2026-09-15 撤离战取消 ⇒ 原来的"撤离档"读数退役。
                  */}
                 <span className="app-wh-cell" title={matterThreatTip}>
-                  本层威胁 <b>{wormholeDisplayThreat(nodeThreat)}</b>
+                  {tr("ui.Wormhole.142")} <b>{wormholeDisplayThreat(nodeThreat)}</b>
                 </span>
               </div>
               {grid && hereCell ? (
@@ -1681,8 +1680,8 @@ export function WormholePanel({
                   {extractAsk ? (
                     <div className="app-wh-extract-ask">
                       <span>
-                        ⚠ 确认要撤离本趟吗？ 当前 <b>第 {run.depth} 层</b>
-                        ：撤离不消耗回合、不会触发战斗，货仓、货柜与随行战利品<b>直接入港</b>（交火中不能撤）。
+                        {tr("ui.Wormhole.033")} <b>{tr('ui.Wormhole.349', { p1: run.depth })}</b>
+                        {tr('ui.Wormhole.350')}<b>{tr("ui.Wormhole.143")}</b>{tr("ui.Wormhole.258")}
                       </span>
                       <span className="app-wh-actions">
                         <button
@@ -1692,10 +1691,10 @@ export function WormholePanel({
                             doExtract()
                           }}
                         >
-                          确认撤离
+                          {tr("ui.Wormhole.193")}
                         </button>
                         <button className="app-btn is-small" onClick={() => setExtractAsk(false)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </span>
                     </div>
@@ -1716,7 +1715,7 @@ export function WormholePanel({
                   {run.pendingRuinsBattle === true ? (
                     <div className="app-wh-extract-ask">
                       <span>
-                        ⚠ <b>打捞惊动了遗迹守备</b>：深处传来交火前的机械声——这一场躲不掉，打完才能继续探索。
+                        ⚠ <b>{tr("ui.Wormhole.099")}</b>{tr('ui.Wormhole.351')}
                       </span>
                       <span className="app-wh-actions">
                         <button
@@ -1724,13 +1723,13 @@ export function WormholePanel({
                           onClick={() => {
                             const r = engine.wormholeFight('ruins')
                             if (!r.ok) {
-                              onToast(r.error ?? '无法开战。', true)
+                              onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
                               return
                             }
                             // 面板**保持打开**（战斗中自动不渲染）⇒ 战报一关就回到虫洞界面
                           }}
                         >
-                          迎战
+                          {tr("ui.App.080")}
                         </button>
                       </span>
                     </div>
@@ -1744,8 +1743,7 @@ export function WormholePanel({
                   {run.pendingNodeBattle === true ? (
                     <div className="app-wh-extract-ask">
                       <span>
-                        ⚠ <b>踩中埋伏</b>：这个地点（Q{grid?.pos.q ?? 0} · R{grid?.pos.r ?? 0}）出发前
-                        没有扫描过，里面是敌人——对方已经发现我们，打完才能继续探索。
+                        ⚠ <b>{tr("ui.Handbook.308")}</b>{tr('ui.Wormhole.352', { p1: `Q${grid?.pos.q ?? 0} · R${grid?.pos.r ?? 0}` })}
                       </span>
                       <span className="app-wh-actions">
                         <button
@@ -1753,12 +1751,12 @@ export function WormholePanel({
                           onClick={() => {
                             const r = engine.wormholeFight('node')
                             if (!r.ok) {
-                              onToast(r.error ?? '无法开战。', true)
+                              onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
                               return
                             }
                           }}
                         >
-                          开战
+                          {tr("ui.Wormhole.100")}
                         </button>
                       </span>
                     </div>
@@ -1770,12 +1768,12 @@ export function WormholePanel({
                    * 缩放只放大图内内容（以玩家所在格为中心），超出部分由地图框裁掉 ⇒ 外层永不因此滚动。
                    */}
                   <div className="app-wh-maprow">
-                    <div className="app-wh-zoom" role="group" aria-label="地图缩放">
+                    <div className="app-wh-zoom" role="group" aria-label={tr('ui.Wormhole.373')}>
                       <button
                         className="app-wh-zoom-btn"
                         disabled={mapZoom >= WORMHOLE_MAP_ZOOM_MAX}
                         onClick={() => setMapZoom((z) => Math.min(WORMHOLE_MAP_ZOOM_MAX, +(z + WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
-                        title="放大地图"
+                        title={tr("ui.Wormhole.144")}
                       >
                         ＋
                       </button>
@@ -1784,7 +1782,7 @@ export function WormholePanel({
                         className="app-wh-zoom-btn"
                         disabled={mapZoom <= WORMHOLE_MAP_ZOOM_FIT}
                         onClick={() => setMapZoom((z) => Math.max(WORMHOLE_MAP_ZOOM_FIT, +(z - WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
-                        title="缩小地图"
+                        title={tr("ui.Wormhole.209")}
                       >
                         －
                       </button>
@@ -1792,9 +1790,9 @@ export function WormholePanel({
                         className="app-wh-zoom-btn is-text"
                         disabled={mapZoom === WORMHOLE_MAP_ZOOM_FIT}
                         onClick={() => setMapZoom(WORMHOLE_MAP_ZOOM_FIT)}
-                        title="回到适应窗口（整层一次看全）"
+                        title={tr("ui.Wormhole.101")}
                       >
-                        适应
+                        {tr("ui.Wormhole.259")}
                       </button>
                     </div>
                     <div
@@ -1866,7 +1864,7 @@ export function WormholePanel({
                      * 弹出来，与格子自己的 `data-tip` 自绘提示同屏（一个屏幕两个提示）。图例行是地图的
                      * 常驻说明位（与"常驻说明进 ⓘ、状态读数留眼前"同款口径），搬来即不再打架。
                      */}
-                    <HintIcon tip="滚轮缩放地图（也可以点左侧的 ＋/－，或点「适应」回到全图）" />
+                    <HintIcon tip={tr("ui.Wormhole.145")} />
                   </div>
                   {pendingCell ? (
                     <div className="app-wh-ask">
@@ -1874,25 +1872,22 @@ export function WormholePanel({
                         {pendingCell.intercept ? (
                           pendingCell.intercept.known ? (
                             <>
-                              路径上有<b>敌人阻拦</b>（Q{pendingCell.intercept.q} · R{pendingCell.intercept.r}）：
-                              直接前往会在中途被拦下并<b>开战</b>——想清楚再走，也可以换个目的地绕开。
+                              {tr("ui.Wormhole.210")}<b>{tr("ui.Wormhole.146")}</b>{tr('ui.Wormhole.354')}<b>{tr("ui.Wormhole.100")}</b>{tr("ui.Wormhole.034")}
                             </>
                           ) : (
                             <>
-                              路径上<b>可能有敌人阻拦</b>：直接前往会在中途被拦下并<b>开战</b>——
-                              拦路的是什么、会不会撞上交火，现在都还不知道。
+                              {tr("ui.Wormhole.211")}<b>{tr("ui.Wormhole.102")}</b>{tr('ui.Wormhole.353')}<b>{tr("ui.Wormhole.100")}</b>{tr('ui.Wormhole.355')}
                             </>
                           )
                         ) : (
                           <>
-                            即将前往<b>未扫描</b>的地点（Q{pendingCell.q} · R{pendingCell.r}）：那里是什么、
-                            会不会撞上交火，现在都还不知道。
+                            {tr("ui.Wormhole.103")}<b>{tr("ui.Wormhole.147")}</b>{tr("ui.Wormhole.148")}{tr('ui.Wormhole.356')}
                           </>
                         )}
                         {pendingCell.intercept && pendingCell.unknown ? (
                           <>
                             <br />
-                            另外，目标地点（Q{pendingCell.q} · R{pendingCell.r}）<b>还没扫描过</b>。
+                            {tr("ui.Wormhole.104")}Q{pendingCell.q} · R{pendingCell.r}）<b>{tr("ui.Wormhole.260")}</b>{tr('ui.Wormhole.363')}
                           </>
                         ) : null}
                       </span>
@@ -1902,10 +1897,10 @@ export function WormholePanel({
                           disabled={!!run.battle || run.turnsLeft < 1}
                           onClick={() => travelTo(pendingCell.q, pendingCell.r, true, !!pendingCell.intercept)}
                         >
-                          确认前往（1 回合）
+                          {tr("ui.Wormhole.212")}
                         </button>
                         <button className="app-btn is-small" onClick={() => setPendingCell(null)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </span>
                     </div>
@@ -1923,10 +1918,10 @@ export function WormholePanel({
                         className="app-btn is-primary app-wh-scan-big"
                         disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
                         onClick={doScan}
-                        title="扫描当前地点及周围一圈：只揭开还没扫过的格（1 回合）"
+                        title={tr("ui.Wormhole.105")}
                       >
-                        扫描
-                        <span className="app-wh-scan-sub">1 回合 · 揭开周围一圈</span>
+                        {tr("ui.Wormhole.106")}
+                        <span className="app-wh-scan-sub">{tr("ui.Wormhole.035")}</span>
                       </button>
                       {workCell && canWork ? (
                         <button
@@ -1935,9 +1930,9 @@ export function WormholePanel({
                           onClick={doActivate}
                           title={workTitle}
                         >
-                          {veinCell ? '采集' : '打捞'}
+                          {veinCell ? tr("ui.Wormhole.261") : tr("ui.Wormhole.107")}
                           <span className="app-wh-scan-sub">
-                            1 回合 · 回收 {Math.min(Math.max(rigs, 0), herePiles.length)} 堆
+                            {tr("ui.Wormhole.036")} {Math.min(Math.max(rigs, 0), herePiles.length)}{tr('ui.Wormhole.342')}
                           </span>
                         </button>
                       ) : null}
@@ -1948,12 +1943,12 @@ export function WormholePanel({
                           onClick={doActivate}
                           title={
                             atExit
-                              ? '激活下一层入口：迎战本层守卫（打完才能深入 · 不消耗回合）'
-                              : '激活当前地点：按地点类型开战 / 取回谜质（不消耗回合）'
+                              ? tr("ui.Wormhole.149")
+                              : tr("ui.Wormhole.150")
                           }
                         >
-                          {atExit ? '迎战守卫' : '激活此地'}
-                          <span className="app-wh-scan-sub">不耗回合</span>
+                          {atExit ? tr("ui.Wormhole.262") : tr("ui.Wormhole.151")}
+                          <span className="app-wh-scan-sub">{tr("ui.Wormhole.037")}</span>
                         </button>
                       ) : null}
                       {/*
@@ -1966,11 +1961,11 @@ export function WormholePanel({
                           className="app-btn is-primary app-wh-work"
                           disabled={!!run.battle || actionBlocked !== null || run.turnsLeft <= 0 || fxBusy}
                           onClick={doDescend}
-                          title="带着当前进度深入下一层（更深、更值钱、更硬）"
+                          title={tr("ui.Wormhole.108")}
                         >
-                          继续深入
+                          {tr("ui.Wormhole.213")}
                           <span className="app-wh-scan-sub">
-                            第 {run.depth + 1} 层 · 威胁 {wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}
+                            {tr('ui.Wormhole.349', { p1: run.depth + 1 })} {tr("ui.Wormhole.109")} {wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}
                           </span>
                         </button>
                       ) : null}
@@ -1978,14 +1973,14 @@ export function WormholePanel({
                     <div className="app-wh-node">{renderHereNode()}</div>
                   </div>
                   <div className="app-wh-actions">
-                    <span className="app-dim">点格子前往（不限距离 · 1 回合）</span>
+                    <span className="app-dim">{tr("ui.Wormhole.152")}</span>
                   </div>
                   {/**
                    * 撤离进行中的一行读数：`extracting` 只是"已发起撤离、下一拍结算"（2026-09-15 起
                    * 撤离不再触发战斗）⇒ 原来的「拦截舰队正在围堵你」警示条退场。
                    */}
                   {run.phase === 'extracting' && !run.battle ? (
-                    <div className="app-wh-ask">正在脱离航道：货仓与货柜马上入港。</div>
+                    <div className="app-wh-ask">{tr("ui.Wormhole.153")}</div>
                   ) : null}
                   {/**
                    * **动作闸提示**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
@@ -1995,13 +1990,13 @@ export function WormholePanel({
                     <div className="app-wh-hold-overload">
                       <span>{actionBlocked}</span>
                       <button className="app-btn is-small" onClick={() => setTab('bag')}>
-                        去货仓页处理
+                        {tr("ui.Wormhole.110")}
                       </button>
                     </div>
                   ) : null}
                   {(run.relics ?? []).length > 0 ? (
                     <div className="app-dim app-note">
-                      随行战利品（撤离成功后入库）：
+                      {tr("ui.Wormhole.263")}
                       {(run.relics ?? [])
                         .map(
                           (id) =>
@@ -2010,23 +2005,23 @@ export function WormholePanel({
                             ctx.shipBlueprints.get(id)?.name ??
                             id,
                         )
-                        .join('、')}
+                        .join(tr("ui.MatterTechTab.017"))}
                     </div>
                   ) : null}
                   {bossDone ? (
                     <div className="app-dim app-note">
-                      本层守卫已清：可以「继续深入」（更深、更值钱、更硬），也可以把剩下的地点再扫一遍，或直接撤离。
+                      {tr("ui.Wormhole.154")}
                     </div>
                   ) : null}
                   {outOfTurns ? (
-                    <div className="app-wh-ask">回合已耗尽：随时可以撤离（撤离不消耗回合、不触发战斗，货仓与货柜直接入港）。</div>
+                    <div className="app-wh-ask">{tr("ui.Wormhole.111")}</div>
                   ) : null}
                 </>
               ) : (
                 <div className="app-wh-node">
-                  <div className="app-wh-node-title">本层没有网格</div>
+                  <div className="app-wh-node-title">{tr("ui.Wormhole.155")}</div>
                   <div className="app-dim app-note">
-                    这一层用的是旧式线性地图：撤离与深入都照旧可用；重新进洞后会换成网格地图。
+                    {tr("ui.Wormhole.264")}
                   </div>
                   <div className="app-wh-actions">
                     <button
@@ -2034,14 +2029,14 @@ export function WormholePanel({
                       disabled={!!run.battle || actionBlocked !== null}
                       onClick={doExtract}
                     >
-                      撤离
+                      {tr("ui.Handbook.163")}
                     </button>
                     <button
                       className="app-btn is-small is-primary"
                       disabled={!!run.battle || run.turnsLeft <= 0 || !bossDone}
                       onClick={doDescend}
                     >
-                      继续深入
+                      {tr("ui.Wormhole.213")}
                     </button>
                   </div>
                 </div>
@@ -2070,25 +2065,25 @@ export function WormholePanel({
         <div className="app-modal-mask" onClick={() => setMainAsk(false)}>
           <div className="app-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-modal-head">
-              <span className="app-report-title">把主控换到「{autoHandover?.toName ?? '另一条船'}」？</span>
+              <span className="app-report-title">{tr("ui.Wormhole.112")}{autoHandover?.toName ?? tr("ui.Wormhole.113")}{tr("ui.Wormhole.038")}</span>
               <button className="app-btn is-small" onClick={() => setMainAsk(false)}>
-                ✕ 关闭
+                {tr("ui.App.086")}
               </button>
             </div>
             <div className="app-modal-body">
               <div className="app-dim">
-                队里有主控船「{shipDisplayName(state, ctx, state.shipId)}」：派队后<b>主控将由它换到「
-                {autoHandover?.toName ?? '另一条空闲船'}」</b>，它随自动探索队出发（约{' '}
-                {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟；收益 = 手动一趟的{' '}
-                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}% 直入仓库；结构/装甲受损但绝不丢船）。
+                {tr("ui.Wormhole.265")}{shipDisplayName(state, ctx, state.shipId)}{tr("ui.Wormhole.039")}<b>{tr("ui.Wormhole.040")}
+                {autoHandover?.toName ?? tr("ui.Wormhole.114")}{tr('ui.Wormhole.364')}</b>{tr('ui.Wormhole.357')}{' '}
+                {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} {tr("ui.Wormhole.115")}{' '}
+                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}{tr('ui.Wormhole.358')}
               </div>
               {autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
               <div className="app-wh-scanbar-actions" style={{ marginTop: 10 }}>
                 <button className="app-btn is-primary is-small" onClick={startAuto} disabled={autoGate !== null}>
-                  确认派队
+                  {tr("ui.Wormhole.214")}
                 </button>
                 <button className="app-btn is-small" onClick={() => setMainAsk(false)}>
-                  先不派
+                  {tr("ui.Wormhole.041")}
                 </button>
               </div>
             </div>
@@ -2111,15 +2106,15 @@ export function WormholePanel({
  * 并**跨两列独占一行**（4 格是偶数，第 5 格落单会难看）；它是唯一不进「到手合计」的一格。
  */
 /** 核心账本键 → 短名（结算单里那行小字用；全称见 core 的 `aiCoreName`） */
-const CORE_LABEL: Readonly<Record<'gamma' | 'beta' | 'alpha', string>> = { gamma: '伽马', beta: '贝塔', alpha: '阿尔法' }
+const CORE_LABEL: Readonly<Record<'gamma' | 'beta' | 'alpha', string>> = { gamma: tr("ui.Wormhole.042"), beta: tr("ui.Wormhole.215"), alpha: tr("ui.Wormhole.266") }
 
 function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onConfirm: () => void }) {
   const total = useCountUp(settle.oreIsk + settle.wreckIsk)
   const cells: Array<{ label: string; value: string; sub: string; wide?: boolean }> = [
-    { label: '虚空母矿', value: n(settle.oreUnits), sub: `单位 ⇒ ${n(settle.oreIsk)} 信用点` },
-    { label: '残骸（回收炉拆解估值）', value: n(settle.wreckIsk), sub: '信用点' },
-    { label: '货柜', value: String(settle.boxes.length), sub: '件（内容物待拆解）' },
-    { label: '随行战利品', value: String(settle.relics.length), sub: '件（装备 / 图纸）' },
+    { label: tr("ui.Wormhole.187"), value: n(settle.oreUnits), sub: tr("ui.Wormhole.116", { p1: n(settle.oreIsk) }) },
+    { label: tr("ui.Wormhole.156"), value: n(settle.wreckIsk), sub: tr("ui.FirstTasks.003") },
+    { label: tr("ui.MarketPage.006"), value: String(settle.boxes.length), sub: tr("ui.Wormhole.043") },
+    { label: tr("ui.Wormhole.267"), value: String(settle.relics.length), sub: tr("ui.Wormhole.044") },
     /**
      * **AI 核心**（2026-09-14 船长：「结算单另加一格「AI 核心 N 枚」」＋「附按行价约 N 信用点」）。
      * 只在真捞到时才出这一格；`wide` = 跨两列独占一行（4 格是偶数、第 5 格落单会难看）。
@@ -2128,15 +2123,15 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
     ...(settle.cores && Object.keys(settle.cores).length > 0
       ? [
           {
-            label: 'AI 核心',
+            label: tr("ui.Wormhole.027"),
             value: String((settle.cores.gamma ?? 0) + (settle.cores.beta ?? 0) + (settle.cores.alpha ?? 0)),
             sub:
-              '枚（' +
+              tr('ui.Wormhole.374') +
               (['alpha', 'beta', 'gamma'] as const)
                 .filter((t) => (settle.cores?.[t] ?? 0) > 0)
                 .map((t) => `${CORE_LABEL[t]}×${settle.cores?.[t]}`)
                 .join(' · ') +
-              (settle.coresIsk && settle.coresIsk > 0 ? ` ⇒ 按行价约 ${n(settle.coresIsk)} 信用点` : '') +
+              (settle.coresIsk && settle.coresIsk > 0 ? tr('ui.Wormhole.321', { p1: n(settle.coresIsk) }) : '') +
               '）',
             wide: true,
           },
@@ -2150,11 +2145,11 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
     ...(settle.essences && settle.essences > 0
       ? [
           {
-            label: '虫洞谜质',
+            label: tr("ui.MatterTechTab.005"),
             value: n(settle.essences),
             sub:
-              '枚（谜质装置析出 · 可投入「谜质科技」研究）' +
-              (settle.essenceIsk && settle.essenceIsk > 0 ? ` ⇒ 按行价约 ${n(settle.essenceIsk)} 信用点` : ''),
+              tr('ui.Wormhole.322') +
+              (settle.essenceIsk && settle.essenceIsk > 0 ? tr('ui.Wormhole.321', { p1: n(settle.essenceIsk) }) : ''),
             wide: true,
           },
         ]
@@ -2165,17 +2160,17 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
     <div className="app-wh-settle">
       <div className="app-wh-settle-head is-pop">
         <span className={`app-wh-settle-kind${settle.kind === 'extract' ? ' is-good' : ' is-bad'}`}>
-          {settle.kind === 'extract' ? '撤离成功' : '本趟全损'}
+          {settle.kind === 'extract' ? tr("ui.Wormhole.157") : tr("ui.Wormhole.158")}
         </span>
         <span className="app-dim">
-          第 {settle.depth} 层 ·{' '}
+          {tr('ui.Wormhole.349', { p1: settle.depth })} {tr("ui.Wormhole.117")}{' '}
           {settle.kind === 'lost'
-            ? '编队失联，货全丢了'
+            ? tr("ui.Wormhole.216")
             : settle.skippedExtractBattle === true
               ? // 老档的结算单会带这个标记（旧口径「第 1 层免撤离战」）——照旧读得懂
-                '第 1 层没有拦截舰队（直接脱离）'
+                tr("ui.Wormhole.217")
               : // 现行口径（2026-09-15 起）：撤离一律不触发战斗，老档里打赢过撤离战的也归到这一句
-                '已脱离航道'}
+                tr("ui.Wormhole.118")}
         </span>
       </div>
       <div className="app-wh-settle-grid">
@@ -2192,22 +2187,22 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
         ))}
       </div>
       <div className="app-wh-settle-total is-pop" style={{ animationDelay: `${(cells.length + 1) * STEP}ms` }}>
-        本趟到手合计 <b>{n(total)}</b> 信用点
-        {settle.boxes.length > 0 ? ` · 货柜 ${settle.boxes.length} 件` : ''}
+        {tr("ui.Wormhole.159")} <b>{n(total)}</b> {tr("ui.FirstTasks.003")}
+        {settle.boxes.length > 0 ? tr('ui.Wormhole.323', { p1: settle.boxes.length }) : ''}
       </div>
       {settle.shipsLost.length > 0 ? (
         <div className="app-wh-settle-loss is-pop" style={{ animationDelay: `${(cells.length + 2) * STEP}ms` }}>
-          损失：{settle.shipsLost.join('、')}（共 {settle.shipsLost.length} 艘，船上装备一并遗失）
+          {tr("ui.Wormhole.160")}{settle.shipsLost.join(tr("ui.MatterTechTab.017"))}{tr("ui.Wormhole.268")} {settle.shipsLost.length} {tr("ui.Wormhole.218")}
         </div>
       ) : null}
       {settle.lostIsk > 0 ? (
         <div className="app-wh-settle-loss is-pop" style={{ animationDelay: `${(cells.length + 3) * STEP}ms` }}>
-          没带回来的货：约 {n(settle.lostIsk)} 信用点（随编队一起丢了）
+          {tr("ui.Wormhole.161")} {n(settle.lostIsk)} {tr("ui.Wormhole.045")}
         </div>
       ) : null}
       <div className="app-wh-actions app-wh-settle-actions">
         <button className="app-btn is-primary app-wh-settle-ok" onClick={onConfirm}>
-          确认并返回
+          {tr("ui.Wormhole.219")}
         </button>
       </div>
     </div>
@@ -2321,7 +2316,7 @@ function WhGridMap({
       className="app-wh-map"
       viewBox={`0 0 ${w} ${h}`}
       role="img"
-      aria-label={`第 ${grid.radius} 圈网格地图`}
+      aria-label={tr("ui.Wormhole.220", { p1: grid.radius })}
     >
       {/* 舰影底下的柔光（氛围光效；SVG 渐变，不是 CSS 拼形状） */}
       <defs>
@@ -2415,17 +2410,17 @@ function WhGridMap({
           .filter((s) => s.length > 0)
           .join(' ')
         const title = !known
-          ? '未扫描（蓝灰虚线边框）：不知道这里有什么'
+          ? tr("ui.Wormhole.162")
           : isExit
-            ? `下一层入口${cleared ? '（守卫已清）' : '（层末守卫守在这里）'}`
+            ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
             : visited
-              ? `${WORMHOLE_PLACE_TEXT[c.place]}（去过${cleared ? ' · 已清空' : ''}）` +
+              ? tr('ui.Wormhole.325', { p1: WORMHOLE_PLACE_TEXT[c.place], p2: cleared ? tr('ui.Wormhole.303') : '' }) +
                 `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
               : nebula
-                ? '星云遮蔽：这一格的信号被星云挡住——在原地再扫描一次即可驱散'
+                ? tr("ui.Wormhole.163")
                 : signal
-                  ? `${SIGNAL_TEXT[signal]}（还没到达，详情未知）`
-                  : '没有信号：空信息地点'
+                  ? tr("ui.Wormhole.046", { p1: SIGNAL_TEXT[signal] })
+                  : tr("ui.Wormhole.164")
         return (
           <g
             key={c.key}
@@ -2562,11 +2557,11 @@ function WhNebulaGlyph() {
 
 /** 信号名（图例与悬浮提示共用；与 `WORMHOLE_PLACE_TEXT` 分开：信号 ≠ 地点真相） */
 const SIGNAL_TEXT: Readonly<Record<WormholeSignal, string>> = {
-  wreck: '残骸信号',
-  ship: '舰船信号',
-  resource: '资源信号',
-  radar: '雷达信号',
-  beacon: '信标信号',
+  wreck: tr("ui.Wormhole.165"),
+  ship: tr("ui.Wormhole.221"),
+  resource: tr("ui.Wormhole.222"),
+  radar: tr("ui.Wormhole.271"),
+  beacon: tr("ui.Wormhole.047"),
 }
 
 /** 地图图例（与格内符号共用同一个 `WhGlyph` ⇒ 图例与看板永远一致） */
@@ -2580,27 +2575,27 @@ const GRID_LEGEND: ReadonlyArray<{
   /** 「星云」那一档：画星云线稿（船长 2026-09-13 星云机制） */
   nebula?: boolean
 }> = [
-  { key: 'unknown', text: '未扫描（蓝灰虚线边框）', signal: null, none: true },
-  { key: 'nebula', text: '星云遮蔽（再扫描一次驱散）', signal: null, none: true, nebula: true },
-  { key: 'visited', text: '去过（变暗 + 右上小点；清空的连图标一起去掉）', signal: null, none: true, done: true },
+  { key: 'unknown', text: tr("ui.Wormhole.166"), signal: null, none: true },
+  { key: 'nebula', text: tr("ui.Wormhole.167"), signal: null, none: true, nebula: true },
+  { key: 'visited', text: tr("ui.Wormhole.119"), signal: null, none: true, done: true },
   { key: 'wreck', text: SIGNAL_TEXT.wreck, signal: 'wreck' },
   { key: 'ship', text: SIGNAL_TEXT.ship, signal: 'ship' },
   { key: 'resource', text: SIGNAL_TEXT.resource, signal: 'resource' },
   { key: 'radar', text: SIGNAL_TEXT.radar, signal: 'radar' },
   { key: 'beacon', text: SIGNAL_TEXT.beacon, signal: 'beacon' },
-  { key: 'blank', text: '空信息', signal: null },
+  { key: 'blank', text: tr("ui.Wormhole.223"), signal: null },
 ]
 
 /** 地点说明（看板一处说清"这里有什么/能干什么"；数字口径与 core 常量同源） */
 const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
-  empty: '空信息地点：什么都没有，没有可执行的作业。',
-  graveyard: '舰船墓场：走到就铺好普通残骸 3~10 堆（不用激活）、稀有残骸每 3 堆普通判一次——要打捞器，每回合回收 = 台数 的堆。',
-  ruins: '遗迹：走到就铺好稀有残骸 2~3 堆（不用激活），小概率拿到一次性图纸或专属装备；打捞结束大概率触发一场恶战。',
-  ship: '舰船信号：里面是敌人，到达即交火（没扫描过就闯进去，会先被对方发现、确认后再开战）；打赢固定获得残骸与稀有残骸。',
-  vein: '矿脉：走到这一格就铺好虚空母矿 1~3 堆（不用激活）——要采集器，每回合回收 = 台数 的堆。',
+  empty: tr("ui.Wormhole.224"),
+  graveyard: tr("ui.Wormhole.225"),
+  ruins: tr("ui.Wormhole.272"),
+  ship: tr("ui.Wormhole.226"),
+  vein: tr("ui.Wormhole.168"),
   matter:
-    '虫洞谜质：取回后装进货仓（占 2×2 = 4 格），本趟探索期间一直生效——不一样的地点藏着不一样的装置，离开虫洞即失效。',
-  beacon: '漂浮信标：到达即读出它标出的下一层入口位置（地图上会一直标着）。',
+    tr("ui.Wormhole.227"),
+  beacon: tr("ui.Wormhole.169"),
 }
 /**
  * **货仓页 = 形状网格**（F4b · 船长 2026-09-13：「类似背包英雄那种需要管理的背包格（没有背包，
@@ -2705,7 +2700,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     const target = ownerMap(kind).get(`${x},${y}`)
     if (target && target.id !== id) {
       const r = engine.wormholeHoldSwap(id, target.id)
-      if (!r.ok) onToast(r.error ?? '换不了位置。', true)
+      if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.326'), true)
       setDragId(null)
       return
     }
@@ -2713,7 +2708,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
       dragFrom === kind
         ? engine.wormholeHoldDropAt(id, x, y, grabRef.current)
         : engine.wormholeBoardTransfer(dragFrom, kind, id, x, y, grabRef.current)
-    if (!r.ok) onToast(r.error ?? '这里放不下。', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.327'), true)
     setDragId(null)
   }
 
@@ -2773,11 +2768,11 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   ? lockedTitle
                   : p
                     ? p.kind === 'cargo'
-                      ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货件：占 ${p.w}×${p.h} 格，可拖拽）`
-                      : `${def?.name ?? p.itemId}（占 ${p.w}×${p.h} 格，可拖拽）`
+                      ? tr("ui.Wormhole.048", { p1: def?.name ?? p.itemId, p2: n(p.units ?? 0), p3: p.w, p4: p.h })
+                      : tr("ui.Wormhole.049", { p1: def?.name ?? p.itemId, p2: p.w, p3: p.h })
                     : kind === 'hold'
-                      ? '空位：可放货柜'
-                      : '空位：临时空间（离开货仓页前必须清空）'
+                      ? tr("ui.Wormhole.228")
+                      : tr("ui.Wormhole.229")
               }
               draggable={isOrigin}
               onPointerDown={(e) => {
@@ -2826,10 +2821,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             const label = isCargo
               ? `×${n(p.units ?? 0)}`
               : p.itemId.startsWith('box-bp-')
-                ? '图纸'
+                ? tr("ui.Wormhole.120")
                 : p.itemId.startsWith('ai-core-')
-                  ? '核心' // AI 核心（2026-09-14）：1×1 = 1 格，短标签与货柜的「图纸」同一档
-                  : (matterDev?.short ?? '货柜')
+                  ? tr("ui.MarketPage.008") // AI 核心（2026-09-14）：1×1 = 1 格，短标签与货柜的「图纸」同一档
+                  : (matterDev?.short ?? tr('ui.MarketPage.006'))
             return (
               <div
                 key={`fig-${kind}-${p.id}`}
@@ -2843,16 +2838,16 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 }}
                 title={
                   (isCargo
-                    ? `${def?.name ?? p.itemId} ×${n(p.units ?? 0)}（散货件：占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`
+                    ? tr("ui.Wormhole.050", { p1: def?.name ?? p.itemId, p2: n(p.units ?? 0), p3: p.w, p4: p.h })
                     : // 谜质装置：**把这一台的具体效果写在悬停里**（船长 2026-09-15）——
                       // 文字与「取回谜质」的 toast、「谜质 N 台」读数同源（都取 `device.text`，界面不自写文案）
-                      `${def?.name ?? p.itemId}${matterDev ? `：${matterDev.text}` : ''}（占 ${p.w}×${p.h} 格，拖到别的物品上可换位）`) +
+                      tr("ui.Wormhole.051", { p1: def?.name ?? p.itemId, p2: matterDev ? `：${matterDev.text}` : '', p3: p.w, p4: p.h })) +
                   (kind === 'temp'
                     ? isMatter
-                      ? ' · 在临时空间里不生效（谜质增益只认货仓格）'
-                      : ' · 离开货仓页前要放回货仓或丢掉'
+                      ? tr('ui.Wormhole.328')
+                      : tr('ui.Wormhole.329')
                     : kind === 'hold' && isMatter
-                      ? ' · 本趟增益生效中'
+                      ? tr('ui.Wormhole.330')
                       : '')
                 }
                 draggable
@@ -2896,13 +2891,15 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
       {tempAsk !== null && tempPending.length > 0 ? (
         <div className="app-wh-tempask">
           <div className="app-wh-tempask-title">
-            ⚠ 临时空间里还有 <b>{tempPending.length}</b> 件没处理（{tempInfo.cells}/{tempInfo.capacity} 格）：
-            {tempAsk === 'extract' ? '撤离前必须先清空。' : '离开货仓页前必须先清空。'}
+            {tr("ui.Wormhole.052")} <b>{tempPending.length}</b> {tr("ui.Wormhole.053")}{tempInfo.cells}/{tempInfo.capacity} {tr("ui.Wormhole.170")}
+            {tempAsk === 'extract' ? tr("ui.Wormhole.171") : tr("ui.Wormhole.230")}
           </div>
           <ul className="app-wh-tempask-list">
             {tempPending.map((p) => {
               const def = ctx.items.get(p.itemId)
               const device = wormholeMatterDeviceOf(p.itemId)
+              /** 已失效装置的副注（"放在这里不生效"的原因）——null 表示这台装置没有额外说明 */
+              const hintText = wormholeMatterDiscardHint(p.itemId)
               return (
                 <li key={`ask-${p.id}`}>
                   <span className="app-wh-hold-row-ico" style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
@@ -2912,8 +2909,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   {p.kind === 'cargo' ? ` ×${n(p.units ?? 0)}` : ''}
                   <span className="app-dim">
                     {' '}
-                    · 占 {p.w * p.h} 格
-                    {device ? ` · 谜质装置：放在这里已失效${wormholeMatterDiscardHint(p.itemId) ? `（${wormholeMatterDiscardHint(p.itemId)}）` : ''}` : ''}
+                    {tr('ui.Wormhole.281', { n: p.w * p.h })}
+                    {device ? tr('ui.Wormhole.331', { p1: hintText ? tr('ui.Wormhole.339', { p1: hintText }) : '' }) : ''}
                   </span>
                 </li>
               )
@@ -2921,62 +2918,61 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           </ul>
           <div className="app-wh-tempask-actions">
             <button className="app-btn is-small is-warn" onClick={onTempDiscard}>
-              丢掉这些
+              {tr("ui.Wormhole.054")}
             </button>
             <button className="app-btn is-small is-primary" onClick={onTempStow}>
-              放回货仓
+              {tr("ui.Wormhole.172")}
             </button>
             <button className="app-btn is-small" onClick={() => setTempAsk(null)}>
-              先留着（不离开本页）
+              {tr("ui.Wormhole.055")}
             </button>
           </div>
         </div>
       ) : null}
       <div className="app-bay-title">
-        货仓 · 已用 <b>{info.used}</b> / {info.capacity} 格
-        {info.overload ? <span className="app-wh-hold-warn"> · 超载</span> : null}
+        {tr("ui.Wormhole.231")} <b>{info.used}</b> / {info.capacity}{tr('ui.Wormhole.285')}
+        {info.overload ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.282')}</span> : null}
         <span className="app-dim">
-          {' '}（散货 {info.cargoCells} 格 + 货柜 {info.shapeCells} 格
-          {info.unplacedCells > 0 ? ` + 放不下 ${info.unplacedCells} 格` : ''}）
+          {' '}{tr("ui.Wormhole.273")} {tr("ui.Wormhole.375", { p1: info.cargoCells })} {tr("ui.Wormhole.173")} {tr("ui.Wormhole.375", { p1: info.shapeCells })}
+          {info.unplacedCells > 0 ? tr('ui.Wormhole.332', { p1: info.unplacedCells }) : ''}）
         </span>
         {/* 货仓说明**进 ⓘ**（2026-09-14 船长：「虫洞背包页面的货仓说明要进」）——原文一字未改，只搬位置 */}
         <HintIcon
-          tip={`每格 ${n(WORMHOLE_SLOT_M3)} m³；货柜（安全货柜 2×2 · 图纸货柜 2×1）占整块、散货每件最多 1 格（超过 500 m³ 自动分成多件，每件都能单独拖、单独丢）——都能拖拽摆放（点一下选中、再点空格也算落位），装不下就留在原地；「整理」按钮把所有件自动重排。`}
+          tip={tr("ui.Wormhole.174", { p1: n(WORMHOLE_SLOT_M3) })}
         />
       </div>
       {info.overload ? (
         <div className="app-wh-hold-overload">
           <span>
-            货仓超载：沉船拖走了货舱，现在装不下（{info.used}/{info.capacity} 格）。
-            请手动抛弃货物——超载期间不能再拾取/打捞，撤离与深入也要先抛到容量内。
+            {tr("ui.Wormhole.232")}{info.used}/{info.capacity}{tr('ui.Wormhole.359')}
           </span>
           <button
             className="app-btn is-small is-warn"
             onClick={() => {
               const r = engine.wormholeDiscardToFit()
-              if (!r.ok) onToast(r.error ?? '没有可抛的货。', true)
+              if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.333'), true)
             }}
           >
-            一键抛到容量内（按每格价值从低到高）
+            {tr("ui.Wormhole.056")}
           </button>
         </div>
       ) : null}
       <div className="app-wh-hold-boards">
         <div className="app-wh-hold-board-main">
-          {boardView('hold', holdBoard, info.capacity, cols, rows, '锁定格：超出货仓容量')}
+          {boardView('hold', holdBoard, info.capacity, cols, rows, tr("ui.Wormhole.274"))}
           <div className="app-wh-actions">
             <button
               className="app-btn is-small"
               disabled={placements.length === 0}
               onClick={() => {
                 const r = engine.wormholeHoldCompact()
-                if (!r.ok) onToast(r.error ?? '无法整理。', true)
+                if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.334'), true)
               }}
             >
-              整理（自动重排）
+              {tr("ui.Wormhole.175")}
             </button>
             <span className="app-dim">
-              {boxes} 件货柜 + {cargoPieces.length} 件散货 · 拖拽摆放（也可点选中后再点空位）
+              {boxes} {tr("ui.Wormhole.057")} {cargoPieces.length} {tr("ui.Wormhole.058")}
             </span>
           </div>
         </div>
@@ -2988,8 +2984,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
          */}
         <div className="app-wh-hold-board-side">
           <div className="app-bay-title">
-            临时空间 · 已用 <b>{tempInfo.cells}</b> / {tempInfo.capacity} 格
-            {tempInfo.full ? <span className="app-wh-hold-warn"> · 已满</span> : null}
+            {tr("ui.Wormhole.059")} <b>{tempInfo.cells}</b> {tr("ui.Wormhole.376", { p1: tempInfo.capacity })}
+            {tempInfo.full ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.283')}</span> : null}
           </div>
           {boardView('temp', tempBoard, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, WORMHOLE_TEMP_ROWS, '')}
           <div className="app-wh-actions">
@@ -2998,23 +2994,22 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               disabled={tempInfo.placements.length === 0}
               onClick={() => {
                 const r = engine.wormholeTempCompact()
-                if (!r.ok) onToast(r.error ?? '无法整理。', true)
+                if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.334'), true)
               }}
             >
-              整理
+              {tr("ui.Wormhole.176")}
             </button>
-            <span className="app-dim">拖回左边即放回货仓</span>
+            <span className="app-dim">{tr("ui.Wormhole.177")}</span>
           </div>
           <div className="app-dim app-note">
-            腾位置用的临时格：不占货仓容量、不算超载；谜质储存器放这里不生效。
-            离开本页（切去探索/关面板/撤离）前必须处理完：放回货仓 或 丢弃。
+            {tr('ui.Wormhole.284')}
           </div>
         </div>
       </div>
       {/* 货柜清单（形状件：位置读数 + 抛弃；散货条在下面的散货清单里按"类"处理） */}
-      <div className="app-bay-title">货柜 · {boxes} 件</div>
+      <div className="app-bay-title">{tr("ui.Wormhole.233")} {tr("ui.MarketPage.117", { p1: boxes })}</div>
       {boxes === 0 ? (
-        <div className="app-dim app-inv-empty">没有货柜：遗迹打捞出来的安全货柜才会占这种整块格子。</div>
+        <div className="app-dim app-inv-empty">{tr("ui.Wormhole.178")}</div>
       ) : (
         <ul className="app-inv-list">
           {placements
@@ -3038,7 +3033,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     {ctx.items.get(p.itemId)?.name ?? p.itemId}
                   </span>
                   <span className="app-inv-count">
-                    {p.w}×{p.h} 格 · 位置 第 {p.y + 1} 行第 {p.x + 1} 列
+                    {p.w}×{p.h} {tr("ui.Wormhole.179")} {tr("ui.Wormhole.360", { p1: p.y + 1 })} {tr("ui.Wormhole.234")} {tr("ui.Wormhole.360", { p1: p.x + 1 })}
                   </span>
                 </div>
                 <div className="app-inv-btns">
@@ -3052,10 +3047,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                           return
                         }
                         const r = engine.wormholeDiscardHold(p.id)
-                        if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                        if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.335'), true)
                       }}
                     >
-                      抛弃
+                      {tr("ui.Wormhole.180")}
                     </button>
                   )}
                 </div>
@@ -3076,13 +3071,13 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               onClick={() => {
                 const r = engine.wormholeDiscardHold(askDiscard)
                 setAskDiscard(null)
-                if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
+                if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.335'), true)
               }}
             >
-              确认抛弃
+              {tr("ui.Wormhole.235")}
             </button>
             <button className="app-btn is-small" onClick={() => setAskDiscard(null)}>
-              取消
+              {tr("ui.ActivityBar.004")}
             </button>
           </span>
         </div>
@@ -3094,11 +3089,11 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
        * 只丢这一件里的指定数量，其余留在原格；移动在网格里拖那一格即可。
        */}
       <div className="app-bay-title">
-        散货 · {cargoPieces.length} 件
-        <span className="app-dim">（{run.bag.length} 类 · 一件一格、可单独丢/拖）</span>
+        {tr("ui.Wormhole.236")} {tr("ui.MarketPage.117", { p1: cargoPieces.length })}
+        <span className="app-dim">（{run.bag.length} {tr("ui.Wormhole.237")}</span>
       </div>
       {cargoPieces.length === 0 ? (
-        <div className="app-dim app-inv-empty">没有散货：去矿脉挖原矿、去墓场/遗迹打捞残骸。</div>
+        <div className="app-dim app-inv-empty">{tr("ui.Wormhole.181")}</div>
       ) : (
         <ul className="app-inv-list">
           {cargoPieces.map((p, i) => {
@@ -3120,11 +3115,11 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     {def?.name ?? p.itemId} ×{n(units)}
                     <span className="app-dim">
                       {' '}
-                      · 第 {i + 1} 件 · 第 {p.y + 1} 行第 {p.x + 1} 列
+                      {tr('ui.Wormhole.371', { p1: i + 1 })} {tr("ui.Wormhole.060")} {p.y + 1} {tr("ui.Wormhole.234")} {p.x + 1}{tr('ui.Wormhole.360')}
                     </span>
                   </span>
                   <span className="app-inv-count">
-                    {n(units * (def?.unitM3 ?? 0))} m³ · 占 1 格 · 每格 {n(per)} 单位
+                    {n(units * (def?.unitM3 ?? 0))} {tr("ui.Wormhole.061")} {n(per)} {tr("ui.Expedition.102")}
                   </span>
                 </div>
                 <div className="app-inv-btns">
@@ -3133,7 +3128,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                       className="app-btn is-small is-warn"
                       onClick={() => setDiscardAsk({ id: p.id, units })}
                     >
-                      抛弃
+                      {tr("ui.Wormhole.180")}
                     </button>
                   )}
                 </div>
@@ -3153,7 +3148,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                       step={1}
                       value={amount}
                       onChange={(e) => setDiscardAsk({ id: p.id, units: Number(e.target.value) })}
-                      aria-label="抛弃数量"
+                      aria-label={tr('ui.Wormhole.336')}
                     />
                     <input
                       className="app-wh-discard-num"
@@ -3165,10 +3160,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                         const v = Math.round(Number(e.target.value))
                         setDiscardAsk({ id: p.id, units: Number.isFinite(v) ? Math.max(1, Math.min(units, v)) : 1 })
                       }}
-                      aria-label="抛弃数量（可直接输入）"
+                      aria-label={tr('ui.Wormhole.337')}
                     />
                     <span className="app-dim">
-                      共 {n(units)} · 抛弃 <b>{n(amount)}</b> 单位（{n(amount * (def?.unitM3 ?? 0))} m³）· 剩{' '}
+                      {tr('ui.Wormhole.372', { p1: n(units) })}<b>{n(amount)}</b> {tr("ui.Wormhole.121")}{n(amount * (def?.unitM3 ?? 0))} {tr("ui.Wormhole.062")}{' '}
                       {n(units - amount)}
                     </span>
                     <button
@@ -3176,14 +3171,14 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                       onClick={() => {
                         const r = engine.wormholeDiscardHold(p.id, amount)
                         setDiscardAsk(null)
-                        if (!r.ok) onToast(r.error ?? '抛弃失败。', true)
-                        else onToast(`已抛弃 ${n(amount)} 单位 ${def?.name ?? p.itemId}。`)
+                        if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.335'), true)
+                        else onToast(tr("ui.Wormhole.122", { p1: n(amount), p2: def?.name ?? p.itemId }))
                       }}
                     >
-                      确认抛弃
+                      {tr("ui.Wormhole.235")}
                     </button>
                     <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
-                      取消
+                      {tr("ui.ActivityBar.004")}
                     </button>
                   </div>
                 ) : null}

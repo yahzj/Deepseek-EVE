@@ -44,6 +44,7 @@ import {
   fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
+import { tr, cmdText } from '../i18n/locale'
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -433,8 +434,10 @@ const meSpeedRef = useRef(200)
       const br = state.battleReport ?? null
       battleReportRef.current = br && (!snap || br.battleStartedAtGameMs === snap.startedAtGameMs) ? br : null
       reportTextRef.current =
-        battleReportRef.current?.summary ??
-        (snap?.kind === 'me' ? '大捷：敌方编队全灭，舰队开始返航。' : '失利：舰队被迫撤离，详情见事件日志。')
+        (battleReportRef.current?.summaryId !== undefined
+          ? tr(battleReportRef.current.summaryId, battleReportRef.current.summaryParams as Record<string, string | number> | undefined)
+          : battleReportRef.current?.summary) ??
+        (snap?.kind === 'me' ? tr("ui.BattleScreen.005") : tr("ui.BattleScreen.006"))
       setStage('report')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -654,7 +657,7 @@ const meSpeedRef = useRef(200)
     const br = battleReportRef.current
     const won = snap?.kind === 'me'
     const durSec = Math.max(1, Math.round((snap?.durMs ?? 0) / 1000))
-    const fallback = won ? '敌方编队已全灭。' : '舰队被迫撤离。'
+    const fallback = won ? tr("ui.BattleScreen.007") : tr("ui.BattleScreen.008")
     /**
      * **判定四档**（2026-09-14 船长定）：胜且**零沉船、机群无损**才是「大捷」；有损失 ⇒ 「惨胜」；
      * 负 ⇒ 「失利」；没分出胜负就收场（结构撤退/超时/无法交战/主动撤退）⇒ 「脱离」。
@@ -664,28 +667,28 @@ const meSpeedRef = useRef(200)
     const verdict: BattleVerdict = br ? battleVerdictOf(br) : won ? 'great' : 'defeat'
     const lostN = br?.shipsLost.length ?? 0
     const titleOf: Record<BattleVerdict, string> = {
-      great: '⚔ 大捷',
+      great: tr("ui.BattleScreen.009"),
       // 「惨胜」沿用**胜色**（金色），只在标题里带上损失数 —— 不新增一档配色（船长 2026-09-14 批准）
-      pyrrhic: `⚔ 惨胜（损失 ${lostN} 艘）`,
-      defeat: '⚠ 失利',
-      break: '⚠ 脱离',
+      pyrrhic: tr("ui.BattleScreen.078", { lostN: lostN }),
+      defeat: tr("ui.BattleScreen.010"),
+      break: tr("ui.BattleScreen.011"),
     }
     const isWinSide = verdict === 'great' || verdict === 'pyrrhic'
     /** 三层残余一行：`长尾鲨 盾 1240/1240 · 甲 860/860 · 结构 420/420`（多舰用「 ｜ 」连） */
     const myUnitsText = br
-      ? br.myUnits.map((u) => `${u.name} 盾 ${Math.round(u.s)}/${Math.round(u.sMax)} · 甲 ${Math.round(u.a)}/${Math.round(u.aMax)} · 结构 ${Math.round(u.h)}/${Math.round(u.hMax)}`).join(' ｜ ')
+      ? br.myUnits.map((u) => tr("ui.BattleScreen.079", { p1: u.name, p2: Math.round(u.s), p3: Math.round(u.sMax), p4: Math.round(u.a), p5: Math.round(u.aMax), p6: Math.round(u.h), p7: Math.round(u.hMax) })).join(' ｜ ')
       : ''
     const foeText = br
       ? br.foe.alive <= 0
-        ? `敌方 全灭（共 ${br.foe.total} 艘）`
-        : `敌方 存活 ${br.foe.alive}/${br.foe.total} · 残余血量 ${Math.round(br.foe.hpFrac * 100)}%`
+        ? tr("ui.BattleScreen.080", { p1: br.foe.total })
+        : tr("ui.BattleScreen.081", { p1: br.foe.alive, p2: br.foe.total, p3: Math.round(br.foe.hpFrac * 100) })
       : ''
     /** 弹药消耗一行：0 的弹种不列；全 0 ⇒ 这一行整行不显示（没开过火就别占版面） */
     const ammoSeg = br
       ? ([
-          ['动能', br.ammoUsed.kin],
-          ['爆炸', br.ammoUsed.exp],
-          ['等离子', br.ammoUsed.pla],
+          [tr("ui.BattleScreen.002"), br.ammoUsed.kin],
+          [tr("ui.BattleScreen.012"), br.ammoUsed.exp],
+          [tr("ui.BattleScreen.013"), br.ammoUsed.pla],
         ] as const)
           .filter(([, n]) => n > 0)
           .map(([label, n]) => `${label} ×${n}`)
@@ -701,61 +704,61 @@ const meSpeedRef = useRef(200)
             </div>
             {snap ? (
               <div className="app-bts-report-stats">
-                我方开火 {snap.meShots} / 命中 {snap.meHits} · 造成伤害{' '}
-                {Math.round(snap.meDmg).toLocaleString('zh-CN')} · 敌方开火{' '}
-                {snap.foeShots} / 命中 {snap.foeHits} · 交火 {durSec}s
+                {tr("ui.BattleScreen.014")} {snap.meShots} {tr("ui.BattleScreen.015")} {snap.meHits}{tr('ui.BattleScreen.097')}{' '}
+                {Math.round(snap.meDmg).toLocaleString('zh-CN')}{tr('ui.BattleScreen.098')}{' '}
+                {snap.foeShots} {tr("ui.BattleScreen.015")} {snap.foeHits}{tr('ui.BattleScreen.099', { s: durSec })}
               </div>
             ) : null}
             {/* **我方损失**（2026-09-14 船长定：新增三行之一）——这条正是"损失了舰船也显示大捷"的正身 */}
             {br && lostN > 0 ? (
               <div className="app-bts-report-stats is-loss">
-                我方损失：{br.shipsLost.join('、')}（{lostN} 艘 · 船上装备一并遗失）
+                {tr("ui.BattleScreen.016")}{br.shipsLost.join(tr("ui.MatterTechTab.017"))}（{lostN} {tr("ui.BattleScreen.017")}
               </div>
             ) : null}
             {/* **双方残余**（新增三行之二）：逐舰 盾/甲/结构（当前/上限）+ 敌方残余 */}
-            {myUnitsText ? <div className="app-bts-report-stats">双方残余：我方 {myUnitsText} ｜ {foeText}</div> : null}
+            {myUnitsText ? <div className="app-bts-report-stats">{tr("ui.BattleScreen.018")} {myUnitsText} ｜ {foeText}</div> : null}
             {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——没挂件就整行不显示 */}
             {br && br.foeMounts && br.foeMounts.length > 0 ? (
-              <div className="app-bts-report-stats">敌方挂载件：{br.foeMounts.join('、')}</div>
+              <div className="app-bts-report-stats">{tr("ui.BattleScreen.019")}{br.foeMounts.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {/* **弹药消耗**（新增三行之三）：按弹种；0 的弹种不列 */}
-            {ammoSeg ? <div className="app-bts-report-stats">弹药消耗：{ammoSeg}</div> : null}
+            {ammoSeg ? <div className="app-bts-report-stats">{tr("ui.BattleScreen.020")}{ammoSeg}</div> : null}
             {/* 机群战损（2026-09-11 船长：优先回收高价值 + 在战报里显示）：
                 第一行 = 汇总（损坏 / 回收归队 / 净损失），第二行 = 逐型明细（回收 ｜ 净损失，按机型价值降序） */}
             {droneReport ? (
               <>
                 <div className="app-bts-report-stats is-loss">
-                  机群战损：损坏 {droneReport.total} 架 · 回收{' '}
-                  {droneReport.recovered} 架归队（回收率{' '}
-                  {Math.round(droneReport.rate * 100)}% · 优先回收高价值）·
-                  净损失 {droneReport.gone} 架
+                  {tr("ui.BattleScreen.021")} {droneReport.total} {tr("ui.BattleScreen.022")}{' '}
+                  {droneReport.recovered} {tr("ui.BattleScreen.023")}{' '}
+                  {tr("ui.BattleScreen.103", { p1: Math.round(droneReport.rate * 100) })}
+                  {tr("ui.BattleScreen.104", { p1: droneReport.gone })}
                 </div>
                 <div className="app-bts-report-stats is-loss">
-                  回收：
+                  {tr("ui.BattleScreen.024")}
                   {droneReport.rows
                     .filter((r) => r.back > 0)
                     .map((r) => `${r.name}×${r.back}`)
-                    .join('、') || '无'}
-                  {' ｜ '}净损失：
+                    .join(tr("ui.MatterTechTab.017")) || tr("ui.BattleScreen.001")}
+                  {' ｜ '}{tr("ui.BattleScreen.025")}
                   {droneReport.rows
                     .filter((r) => r.gone > 0)
                     .map((r) => `${r.name}×${r.gone}`)
-                    .join('、') || '无'}
-                  （无人机舱清单已扣除，回港需补充）
+                    .join(tr("ui.MatterTechTab.017")) || tr("ui.BattleScreen.001")}
+                  {tr("ui.BattleScreen.026")}
                 </div>
               </>
             ) : snap?.droneLost && Object.keys(snap.droneLost).length > 0 ? (
               <div className="app-bts-report-stats is-loss">
-                机群损失：
+                {tr("ui.BattleScreen.027")}
                 {Object.entries(snap.droneLost)
                   .map(([artId, n]) => `${droneModelOf(artId)?.name ?? artId} ×${n}`)
-                  .join('、')}
-                （无人机舱清单已扣除，回港需补充）
+                  .join(tr("ui.MatterTechTab.017"))}
+                {tr("ui.BattleScreen.026")}
               </div>
             ) : null}
-            <div className="app-bts-report-note">奖励/战利品已入账，舰队自动返航中；本报告 12 秒后自动关闭（完整记录见右侧事件日志）。</div>
+            <div className="app-bts-report-note">{tr("ui.BattleScreen.028")}</div>
             <button className="app-btn" onClick={onClose}>
-              收下战报 · 返回
+              {tr("ui.BattleScreen.029")}
             </button>
           </div>
         </div>
@@ -1432,7 +1435,7 @@ const meSpeedRef = useRef(200)
   if (wavePending)
     noticeItems.push({
       key: 'wave',
-      text: waveNext > 0 ? `第 ${waveNext}/${foeAnomaly?.waves?.length} 波增援正在接近…` : '敌方增援正在接近…',
+      text: waveNext > 0 ? tr("ui.BattleScreen.082", { waveNext: waveNext, p2: foeAnomaly?.waves?.length ?? 0 }) : tr("ui.BattleScreen.030"),
     })
   for (const [i, n] of (battle.notices ?? []).entries()) {
     if (battle.lastTickGameMs - n.atMs > battleShowWindowMs(battle, NOTICE_LIFE_MS)) continue
@@ -1496,8 +1499,8 @@ const meSpeedRef = useRef(200)
     .map((e) => {
       const kits = Object.values(e.ledger.kits).reduce((a, b) => a + b, 0)
       const running = e.ledger.units.some((u) => !u.stopped)
-      const who = e.tag === 'player' ? '主控' : `僚舰 ${e.tag.replace('ally-', '')}`
-      return `${who}：${running ? '运转中' : '停机'}（组件 ×${kits.toLocaleString('zh-CN')}）`
+      const who = e.tag === 'player' ? tr("ui.BattleScreen.031") : tr("ui.BattleScreen.083", { p1: e.tag.replace('ally-', '') })
+      return tr("ui.BattleScreen.084", { who: who, p2: running ? tr("ui.BattleScreen.032") : tr("ui.BattleScreen.033"), p3: kits.toLocaleString('zh-CN') })
     })
     .join('\n')
 
@@ -1507,7 +1510,7 @@ const meSpeedRef = useRef(200)
   const sliderToDesire = (v: number): number => Math.round(farM - (v / 1000) * (farM - nearM))
   const commitDesire = (v: number): void => {
     const r = engine.battleSetDesireAt(sliderToDesire(v))
-    if (!r.ok) onToast(r.error ?? '设置失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
   }
   /**
    * 拖动中：**节流提交**（把期望距离写进引擎，远征按星系记忆 / 洞内记在本趟），
@@ -1586,7 +1589,7 @@ const meSpeedRef = useRef(200)
         key={`web-${l.from}-${l.to}`}
         className="app-bts-web"
         style={{ left: from.x, top: from.y, transform: `rotate(${ang}deg)` }}
-        title="劫掠捕获网：被钉住的舰船机动骤降、推进器熄火、闪避失效、射程缩短——击沉发动者才能解除"
+        title={tr("ui.BattleScreen.034")}
       >
         <i className="app-bts-web-bar" style={{ width: len }} />
       </div>,
@@ -1841,7 +1844,7 @@ const meSpeedRef = useRef(200)
     return (
       <span
         className="app-bts-hangar"
-        title="敌方全队机库备用机：前线战损后自动满血补位（打光母舰才是解法）"
+        title={tr("ui.BattleScreen.035")}
       >
         <span className="app-ico">
           <Glyph name="drone-rack" size={11} color={ICO_TONES['drone-rack']} />
@@ -1966,40 +1969,40 @@ const meSpeedRef = useRef(200)
               className="app-btn is-small"
               disabled={inWormhole}
               onClick={onClose}
-              title={inWormhole ? '洞内交火中不能退出战场：打完这一场（撤离只能在本层结束后发起）' : undefined}
+              title={inWormhole ? tr("ui.BattleScreen.036") : undefined}
             >
-              ← 退出战场
+              {tr("ui.BattleScreen.037")}
             </button>
             {/* 洞内战斗**不给撤退**（船长 2026-09-12 第 8 条：战斗一开必须打完；撤离只在层末发起） */}
             {inWormhole ? (
-              <span className="app-dim app-bts-noretreat" title="副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离">
-                洞内：本场必须打完（战场也不能退出）
+              <span className="app-dim app-bts-noretreat" title={tr("ui.BattleScreen.038")}>
+                {tr("ui.BattleScreen.039")}
               </span>
             ) : (
               <button
                 className={`app-btn is-small is-warn${retreatAsk ? ' is-danger' : ''}`}
-                title="撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险、不收维修费；同时停止重复清剿）"
+                title={tr("ui.BattleScreen.040")}
                 onClick={() => {
                   if (!retreatAsk) {
                     setRetreatAsk(true)
-                    onToast('撤退 = 轻损脱离（仅损失少量舰船耐久、无弃船风险、不收维修费）——再点一次确认。', true)
+                    onToast(tr("ui.BattleScreen.085"), true)
                     return
                   }
                   setRetreatAsk(false)
                   const r = engine.retreatNow()
-                  if (!r.ok) onToast(r.error ?? '撤退失败', true)
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.BattleScreen.101'), true)
                 }}
               >
-                {retreatAsk ? '再点确认撤退' : '⚑ 撤退'}
+                {retreatAsk ? tr("ui.ActivityBar.024") : tr("ui.BattleScreen.041")}
               </button>
             )}
           </>
         ) : (
-          <span className="app-bts-outro-tag">{ended ? (defeat ? '战斗结束 · 正在撤离…' : '战斗结束 · 正在结算…') : ''}</span>
+          <span className="app-bts-outro-tag">{ended ? (defeat ? tr("ui.BattleScreen.042") : tr("ui.BattleScreen.043")) : ''}</span>
         )}
         <span className="app-gold">{sceneName}</span>
         <span className="app-dim">
-          交火 {secs}s · 我方开火 {meStats.meShots}/命中 {meStats.meHits} · 敌开火 {meStats.foeShots}/命中 {meStats.foeHits}
+          {tr("ui.BattleScreen.044")} {secs}{tr("ui.BattleScreen.045")} {meStats.meShots}{tr("ui.BattleScreen.046")} {meStats.meHits}{tr('ui.BattleScreen.100')} {meStats.foeShots}{tr("ui.BattleScreen.046")} {meStats.foeHits}
         </span>
       </div>
 
@@ -2012,15 +2015,15 @@ const meSpeedRef = useRef(200)
             倍速只压战斗进程，演出动画（入场/转场/击杀慢镜）照原速播，见 `battleShowWindowMs`。 */}
         {speedOptions.length > 1 ? (
           <div className="app-bts-speedx">
-            <span className="app-dim">洞内倍速</span>
+            <span className="app-dim">{tr("ui.BattleScreen.047")}</span>
             {speedOptions.map((x) => (
               <button
                 key={x}
                 className={`app-btn is-small${x === speedActive ? ' is-active' : ''}`}
                 title={
                   x === 1
-                    ? '按原速进行战斗（动画与战斗进程同步）'
-                    : `战斗进程 ×${x}：同样的现实时间里打得更快；入场/转场/击杀演出仍按原速播放`
+                    ? tr("ui.BattleScreen.048")
+                    : tr("ui.BattleScreen.086", { x: x })
                 }
                 onClick={() => engine.setWormholeSpeed(x)}
               >
@@ -2040,25 +2043,25 @@ const meSpeedRef = useRef(200)
             <div className="app-bts-ruler-speed">
               <span
                 className="app-bts-speed is-me"
-                title="我方编队机动速度（逐舰平均）：与装配页「机动速度」同口径——点火期显示的是含加力推进倍率的值"
+                title={tr("ui.BattleScreen.049")}
               >
-                ◀ 我方 {Math.round(arcs.meSpeedMps ?? 0).toLocaleString('zh-CN')} m/s
+                {tr("ui.BattleScreen.050")} {Math.round(arcs.meSpeedMps ?? 0).toLocaleString('zh-CN')} m/s
               </span>
               <span
                 className="app-bts-speed is-foe"
-                title="敌方编队机动速度（逐舰平均）：与敌卡/体检里的「实速」同口径——冲锋期显示的是含冲锋倍率的值"
+                title={tr("ui.BattleScreen.051")}
               >
-                敌方 {Math.round(arcs.foeSpeedMps ?? 0).toLocaleString('zh-CN')} m/s ▶
+                {tr("ui.BattleScreen.052")} {Math.round(arcs.foeSpeedMps ?? 0).toLocaleString('zh-CN')} m/s ▶
               </span>
             </div>
           ) : null}
           <div className="app-bts-ruler-head">
-            <span className="app-dim">◀ 拉开（远 {Math.round(farM).toLocaleString('zh-CN')}m）</span>
-            <span className="app-dim">贴脸（近 {Math.round(nearM).toLocaleString('zh-CN')}m）▶</span>
+            <span className="app-dim">{tr("ui.BattleScreen.053")} {Math.round(farM).toLocaleString('zh-CN')}m）</span>
+            <span className="app-dim">{tr("ui.BattleScreen.054")} {Math.round(nearM).toLocaleString('zh-CN')}m）▶</span>
           </div>
           <div className="app-bts-scale">
-            <i className="app-bts-zone is-me" style={{ left: `${pct(mainMeArc?.maxM ?? farM)}%`, width: `${Math.max(0.6, pct(mainMeArc?.minM ?? 0) - pct(mainMeArc?.maxM ?? farM))}%` }} title={`我方主武器有效 ${mainMeArc?.minM ?? 0}~${mainMeArc?.maxM ?? 0}m`} />
-            <i className="app-bts-zone is-foe" style={{ left: `${pct(arcs.foe.maxM)}%`, width: `${Math.max(0.6, pct(arcs.foe.minM) - pct(arcs.foe.maxM))}%` }} title={`敌方射程 ${arcs.foe.minM}~${arcs.foe.maxM}m`} />
+            <i className="app-bts-zone is-me" style={{ left: `${pct(mainMeArc?.maxM ?? farM)}%`, width: `${Math.max(0.6, pct(mainMeArc?.minM ?? 0) - pct(mainMeArc?.maxM ?? farM))}%` }} title={tr("ui.BattleScreen.087", { p1: mainMeArc?.minM ?? 0, p2: mainMeArc?.maxM ?? 0 })} />
+            <i className="app-bts-zone is-foe" style={{ left: `${pct(arcs.foe.maxM)}%`, width: `${Math.max(0.6, pct(arcs.foe.minM) - pct(arcs.foe.maxM))}%` }} title={tr("ui.BattleScreen.088", { p1: arcs.foe.minM, p2: arcs.foe.maxM })} />
             <i className="app-bts-tick" style={{ left: '25%' }} />
             <i className="app-bts-tick" style={{ left: '50%' }} />
             <i className="app-bts-tick" style={{ left: '75%' }} />
@@ -2075,7 +2078,7 @@ const meSpeedRef = useRef(200)
           ref={laneRef}
         >
           {/* 窄屏（手机竖屏）提示：舞台（标尺＋车道）横向可滑动（`.app-bts-swipehint` 只在 ≤640px 显示） */}
-          <span className="app-bts-swipehint">◀ 左右滑动查看战场 ▶</span>
+          <span className="app-bts-swipehint">{tr("ui.BattleScreen.055")}</span>
           {/* 星空背景（三层视差、左右无缝循环；位于战场最底层，低对比不干扰分辨） */}
           <div className="app-bts-stars" aria-hidden="true">
             {starField.map(({ cfg, pts }, li) => (
@@ -2155,7 +2158,7 @@ const meSpeedRef = useRef(200)
                   >
                     <span className="app-bts-name">
                       {u.name}
-                      {u.leader ? <i className="app-bts-fleet-lead">主控</i> : null}
+                      {u.leader ? <i className="app-bts-fleet-lead">{tr("ui.BattleScreen.031")}</i> : null}
                     </span>
                     <ShipSprite
                       /**
@@ -2181,7 +2184,7 @@ const meSpeedRef = useRef(200)
                         <HpTri hp={u.hp} max={u.hpMax} />
                       </div>
                     ) : (
-                      <span className="app-bts-fleet-down">已沉没</span>
+                      <span className="app-bts-fleet-down">{tr("ui.BattleScreen.056")}</span>
                     )}
                   </div>
                 )
@@ -2451,14 +2454,14 @@ const meSpeedRef = useRef(200)
         <div className="app-bts-dock">
           <div className="app-bts-legends">
             {arcs.me.map((w, wi) => (
-              <span key={`lg${wi}`} className="app-bts-chip" title={w.kind === 'gun' && !w.type ? '炮台已无弹药（虚线弧 = 无法发射）' : undefined}>
+              <span key={`lg${wi}`} className="app-bts-chip" title={w.kind === 'gun' && !w.type ? tr("ui.BattleScreen.057") : undefined}>
                 <i style={{ background: w.type ? DMG_COLOR[w.type] : '#93a4b8' }} />
                 {w.label} {w.minM.toLocaleString('zh-CN')}~{w.maxM.toLocaleString('zh-CN')}m
                 {w.kind === 'gun' ? (
                   w.type ? (
-                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}弹药</span>
+                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}{tr("ui.BattleScreen.003")}</span>
                   ) : (
-                    '（无弹）'
+                    tr('ui.BattleScreen.102')
                   )
                 ) : null}
               </span>
@@ -2475,14 +2478,14 @@ const meSpeedRef = useRef(200)
                 className="app-bts-chip is-foe"
                 title={
                   b.names.length > 0
-                    ? `敌方射程带（${b.names.join('、')}）：${b.minM}~${b.maxM}m` +
+                    ? tr("ui.BattleScreen.089", { p1: b.names.join(tr("ui.MatterTechTab.017")), p2: b.minM, p3: b.maxM }) +
                       // 2026-09-16 船长「敌舰悬停展示挂载件」：本带的敌方挂载件挂在同一条悬停里
-                      (b.mounts && b.mounts.length > 0 ? ` · 挂载：${b.mounts.join('、')}` : '')
-                    : '敌方整编队武器（同型聚合）'
+                      (b.mounts && b.mounts.length > 0 ? tr("ui.BattleScreen.090", { p1: b.mounts.join(tr("ui.MatterTechTab.017")) }) : '')
+                    : tr("ui.BattleScreen.058")
                 }
               >
                 <i style={{ background: DMG_COLOR[b.type] }} />
-                敌方 {b.minM.toLocaleString('zh-CN')}~{b.maxM.toLocaleString('zh-CN')}m
+                {tr("ui.BattleScreen.052")} {b.minM.toLocaleString('zh-CN')}~{b.maxM.toLocaleString('zh-CN')}m
                 {b.count > 1 ? ` ×${b.count} 艘` : ''}
                 <span className={`app-a-chip app-a-${b.type}`}>{DMG_LABEL[b.type]}</span>
               </span>
@@ -2491,14 +2494,14 @@ const meSpeedRef = useRef(200)
                 复用同级"运行态 chip"样式（红点 = 告警态），不自造新类。
                 ⚠ 冷却不再写死 10 秒：C 族 10 秒、A 族洞内海盗 30 秒（挂载件各自给，见 `FoeMountDef.charge`） */}
             {foeCharging > 0 ? (
-              <span className="app-bts-repair is-down" title="敌方正在冲锋：各自加速逼近，自身炮台命中你、或压到目标距离即解除，随后进入各自的冷却">
-                <i /> 敌冲锋中{foeCharging > 1 ? ` ×${foeCharging}` : ''}
+              <span className="app-bts-repair is-down" title={tr("ui.BattleScreen.059")}>
+                <i /> {tr("ui.BattleScreen.060")}{foeCharging > 1 ? ` ×${foeCharging}` : ''}
               </span>
             ) : null}
             {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——有才占位，悬停看全名 */}
             {arcs.foeMounts && arcs.foeMounts.length > 0 ? (
-              <span className="app-bts-chip is-foe" title={`敌方挂载件：${arcs.foeMounts.join('、')}`}>
-                <i /> 敌挂载：{arcs.foeMounts.join('、')}
+              <span className="app-bts-chip is-foe" title={tr("ui.BattleScreen.091", { p1: arcs.foeMounts.join(tr("ui.MatterTechTab.017")) })}>
+                <i /> {tr("ui.BattleScreen.061")}{arcs.foeMounts.join(tr("ui.MatterTechTab.017"))}
               </span>
             ) : null}
             {ammoChips.length > 0 ? (
@@ -2515,13 +2518,13 @@ const meSpeedRef = useRef(200)
                 className={`app-bts-repair${repairRunning ? "" : " is-down"}`}
                 title={
                   (repairRunning
-                    ? '船体维修装置运转中：每 5 秒自动修复装甲/结构，每跳消耗 1 枚对应修理组件（每艘船各自的装置、各自的组件）'
-                    : '船体维修装置已停机：修理组件耗尽（或开战时未备组件）——装甲/结构不再自动修复') +
+                    ? tr("ui.BattleScreen.062")
+                    : tr("ui.BattleScreen.063")) +
                   (repairDetail ? `\n${repairDetail}` : '')
                 }
               >
-                <i /> {repairRunning ? '维修装置运转中' : '维修装置停机'}
-                <span className="app-dim">组件 ×{repairTotal.toLocaleString('zh-CN')}</span>
+                <i /> {repairRunning ? tr("ui.BattleScreen.064") : tr("ui.BattleScreen.065")}
+                <span className="app-dim">{tr("ui.BattleScreen.066")}{repairTotal.toLocaleString('zh-CN')}</span>
               </span>
             ) : null}
           </div>
@@ -2540,8 +2543,8 @@ const meSpeedRef = useRef(200)
                   className={`app-bts-reload${ready ? " is-ready" : ""}`}
                   title={
                     ready
-                      ? `${w.label}：装填就绪，进入射程即可开火`
-                      : `${w.label}：装填中 · 剩 ${Math.max(0.1, Math.ceil(remain / 100) / 10)} 秒`
+                      ? tr("ui.BattleScreen.092", { p1: w.label })
+                      : tr("ui.BattleScreen.093", { p1: w.label, p2: Math.max(0.1, Math.ceil(remain / 100) / 10) })
                   }
                 >
                   <i className="app-bts-reload-dot" style={{ background: dotColor }} />
@@ -2553,7 +2556,7 @@ const meSpeedRef = useRef(200)
                     />
                   </span>
                   <span className="app-bts-reload-ms">
-                    {ready ? '就绪' : `${Math.max(0.1, Math.ceil(remain / 100) / 10)}s`}
+                    {ready ? tr("ui.BattleScreen.067") : `${Math.max(0.1, Math.ceil(remain / 100) / 10)}s`}
                   </span>
                 </span>
               )
@@ -2565,12 +2568,12 @@ const meSpeedRef = useRef(200)
                 className={`app-bts-reload${thruster.boosting ? " is-ready" : ""}`}
                 title={
                   thruster.boosting
-                    ? `推进器点火中：战斗中机动 +${Math.round(arcs.thrusterBoost * 100)}%，剩 ${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)} 秒后进入冷却`
-                    : `推进器冷却中：剩 ${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)} 秒——冷却期间无加速，回到基础机动`
+                    ? tr("ui.BattleScreen.094", { p1: Math.round(arcs.thrusterBoost * 100), p2: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) })
+                    : tr("ui.BattleScreen.095", { p1: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) })
                 }
               >
                 <i className="app-bts-reload-dot" style={{ background: thruster.boosting ? '#6fd98a' : '#8aa0b8' }} />
-                <span className="app-bts-reload-name">推进器</span>
+                <span className="app-bts-reload-name">{tr("ui.BattleScreen.004")}</span>
                 <span className="app-bts-reload-track">
                   <i
                     className="app-bts-reload-fill"
@@ -2585,13 +2588,13 @@ const meSpeedRef = useRef(200)
                   />
                 </span>
                 <span className="app-bts-reload-ms">
-                  {thruster.boosting ? `推进 ${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)}s` : `${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)}s`}
+                  {thruster.boosting ? tr("ui.BattleScreen.096", { p1: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) }) : `${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)}s`}
                 </span>
               </span>
             ) : null}
           </div>
           <div className="app-bts-sliderRow">
-            <span className="app-dim app-bts-sideLabel">◀ 拉开</span>
+            <span className="app-dim app-bts-sideLabel">{tr("ui.BattleScreen.068")}</span>
             <div className="app-bts-sliderWrap">
               <input
                 type="range"
@@ -2618,23 +2621,23 @@ const meSpeedRef = useRef(200)
                 onPointerCancel={flushDrag}
                 onBlur={flushDrag}
                 onKeyUp={flushDrag}
-                title="向左拖 = 拉开距离，向右拖 = 贴脸接近（自动记忆）"
+                title={tr("ui.BattleScreen.069")}
               />
-              <i className="app-bts-here" style={{ left: `${pct(visM)}%` }} title="当前实际距离" />
+              <i className="app-bts-here" style={{ left: `${pct(visM)}%` }} title={tr("ui.BattleScreen.070")} />
             </div>
-            <span className="app-dim app-bts-sideLabel">贴脸 ▶</span>
-            <span className="app-gold app-bts-desire">期望 {sliderToDesire(sliderV).toLocaleString('zh-CN')}m</span>
+            <span className="app-dim app-bts-sideLabel">{tr("ui.BattleScreen.071")}</span>
+            <span className="app-gold app-bts-desire">{tr("ui.BattleScreen.072")} {sliderToDesire(sliderV).toLocaleString('zh-CN')}m</span>
           </div>
           <div className="app-bts-ops">
             <span className="app-battle-tacs">
-              <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('assault')}>贴脸</button>
-              <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('mid')}>中距</button>
-              <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('kite')}>风筝</button>
+              <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('assault')}>{tr("ui.BattleScreen.073")}</button>
+              <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('mid')}>{tr("ui.BattleScreen.074")}</button>
+              <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('kite')}>{tr("ui.BattleScreen.075")}</button>
             </span>
             <span className="app-dim app-bts-note">
               {ended
-                ? '交火已结束，正在结算战果…'
-                : '拖条/战术即时生效并记忆偏好；舰船会机动到期望距离，进入射程才开火。'}
+                ? tr("ui.BattleScreen.076")
+                : tr("ui.BattleScreen.077")}
             </span>
           </div>
         </div>

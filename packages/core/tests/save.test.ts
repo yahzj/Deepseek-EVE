@@ -191,6 +191,53 @@ describe('坏档处理', () => {
 })
 
 /**
+ * **core 文案 id（甲案 · 2026-09-20 船长定）的存档往返**：
+ * 日志的 `textId` / `textParams` 要能原样存读（造档工具与备份恢复都走这条路），
+ * 坏值一律当"没有"（界面于是回退 `text` 中文原串 ⇒ 老档行为不变）。
+ */
+describe('日志文案 id 的读写（甲案）', () => {
+  it('addLog 落 id 与参数 → 序列化 → 读回一致', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    addLog(state, 'info', '已停止开采（测试带）。本趟共采得 12 单位原矿。', 'core.mining.021', {
+      p1: '测试带',
+      p2: 12,
+      p3: '原矿',
+      p4: '',
+    })
+    const loaded = loadSaveFile(serializeSaveFile(state, 0)).state
+    const entry = loaded.logs[loaded.logs.length - 1]!
+    expect(entry.textId).toBe('core.mining.021')
+    expect(entry.textParams).toEqual({ p1: '测试带', p2: 12, p3: '原矿', p4: '' })
+    expect(entry.text).toContain('已停止开采') // 中文正文照写（检索与兜底用）
+  })
+
+  it('未传 id 的日志（老写法）读回后没有 textId ⇒ 界面走中文回退', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    addLog(state, 'info', '老写法的一条日志。')
+    const entry = loadSaveFile(serializeSaveFile(state, 0)).state.logs.slice(-1)[0]!
+    expect(entry.textId).toBeUndefined()
+    expect(entry.text).toBe('老写法的一条日志。')
+  })
+
+  it('坏 textId / 坏 textParams 一律当没有（不炸、不半残）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    const file = JSON.parse(serializeSaveFile(state, 0)) as {
+      state: { logs: unknown[] }
+    }
+    file.state.logs = [
+      { id: 1, atGameMs: 0, kind: 'info', text: '甲', textId: 42, textParams: { p1: 'x' } },
+      { id: 2, atGameMs: 0, kind: 'info', text: '乙', textId: '', textParams: '不是对象' },
+      { id: 3, atGameMs: 0, kind: 'info', text: '丙', textId: 'core.mining.001', textParams: { p1: '带', p2: null, p3: true } },
+    ]
+    const loaded = loadSaveFile(JSON.stringify(file)).state
+    expect(loaded.logs[0]!.textId).toBeUndefined() // 非字符串 ⇒ 丢弃
+    expect(loaded.logs[1]!.textId).toBeUndefined() // 空串 ⇒ 丢弃
+    expect(loaded.logs[2]!.textId).toBe('core.mining.001')
+    expect(loaded.logs[2]!.textParams).toEqual({ p1: '带' }) // 非 string/number 的坏值逐项丢弃
+  })
+})
+
+/**
  * **迁移链下限的两条钉子**（船长 2026-09-19：「删除过旧的版本迁移，仅保留虫洞之后的」）：
  * ① **下限那一版（v24）仍能升上来**；② **更早的档一律拒载入**（`SaveError('VERSION')`）——
  * 玩家侧由 `engine.start()` 开新档并写日志（本文件只管核心侧的错误码与文案）。

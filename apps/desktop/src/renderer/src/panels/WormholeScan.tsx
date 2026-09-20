@@ -36,6 +36,7 @@ import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
+import { tr, cmdText } from '../i18n/locale'
 
 /**
  * **「发现于 9月14日」**（船长 2026-09-14：卡片上不要相对时间，要日期）。
@@ -46,7 +47,7 @@ import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
  */
 function foundDateLabel(state: GameState, foundAtGameMs: number): string {
   const d = new Date((state.character?.startedAtWallMs ?? 0) + Math.max(0, foundAtGameMs))
-  return `${d.getMonth() + 1}月${d.getDate()}日`
+  return tr("ui.WormholeScan.044", { p1: d.getMonth() + 1, p2: d.getDate() })
 }
 
 /** 库存项的**标准一行**（卡片与放弃弹窗共用同一口径）：族徽 + 「原型名，发现于 X月X日」 */
@@ -55,7 +56,7 @@ function stockLineOf(
   item: { family: WormholeFamily; archetype: WormholeArchetype; foundAtGameMs: number },
 ): { glyph: string; text: string } {
   const glyph = `fam-${item.family.toLowerCase()}`
-  return { glyph, text: `${WORMHOLE_ARCHETYPE_LABELS[item.archetype]}，发现于 ${foundDateLabel(state, item.foundAtGameMs)}` }
+  return { glyph, text: tr("ui.WormholeScan.045", { p1: WORMHOLE_ARCHETYPE_LABELS[item.archetype], p2: foundDateLabel(state, item.foundAtGameMs) }) }
 }
 
 export function WormholeScanTab({
@@ -114,24 +115,24 @@ export function WormholeScanTab({
   return (
     <Panel
       className="is-fill win-fixed-body"
-      title="扫描虫洞"
+      title={tr("ui.MapPage.007")}
       /* 常驻说明进标题后的 ⓘ（2026-09-14 船长：「和外面的其他页面一样，添加圆形感叹号用于进行说明」；
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
-          tip={`主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 ${formatDurationMs(WORMHOLE_SCAN_BASE_MS)}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（每级 −4%，满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 ${stockMax} 处（「星图记录学」每级 +2，满级 +10）。`}
+          tip={tr("ui.WormholeScan.046", { p1: formatDurationMs(WORMHOLE_SCAN_BASE_MS), stockMax: stockMax })}
         />
       }
       right={
         sec === 'matter' ? (
           <span className="app-dim">
-            虫洞谜质 {essence.toLocaleString('zh-CN')} 枚 · 研究不消耗时间
+            {tr("ui.MatterTechTab.005")} {essence.toLocaleString('zh-CN')} {tr("ui.WormholeScan.001")}
           </span>
         ) : (
           <span className="app-dim">
-            已囤 {stock.length}/{stockMax} 处
-            {runs.length > 0 ? ` · 自动探索 ${runs.length} 趟在跑` : ''}
-            {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''} · 单次窗口 {formatDurationMs(windowMs)}
+            {tr("ui.WormholeScan.002")} {tr("ui.WormholeScan.064", { p1: `${stock.length}/${stockMax}` })}
+            {runs.length > 0 ? ` ${tr("ui.WormholeScan.068", { p1: runs.length })}` : ''}
+            {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''}{tr('ui.WormholeScan.056', { d: formatDurationMs(windowMs) })}
           </span>
         )
       }
@@ -146,16 +147,16 @@ export function WormholeScanTab({
             className={`app-subtab${sec === 'explore' ? ' is-active' : ''}`}
             onClick={() => setSec('explore')}
           >
-            虫洞探索
+            {tr("ui.MatterTechTab.001")}
           </button>
           <button
             role="tab"
             aria-selected={sec === 'matter'}
             className={`app-subtab${sec === 'matter' ? ' is-active' : ''}`}
-            title="消耗虫洞谜质与信用点研究科技：主要作用于洞内探索与战斗，另含部分洞外工业科技（不消耗时间）"
+            title={tr("ui.WormholeScan.003")}
             onClick={() => setSec('matter')}
           >
-            谜质科技
+            {tr("ui.WormholeScan.004")}
           </button>
         </div>
         {sec === 'matter' ? <MatterTechTab engine={engine} onToast={onToast} /> : null}
@@ -165,21 +166,21 @@ export function WormholeScanTab({
           <div className="app-wh-scanbar">
             <div className="app-wh-scanbar-label">
               <span className="app-wh-hold-warn">
-                尚未解锁：需要「深空工业协会」声望 {WORMHOLE_SCAN_UNLOCK_STANDING}（当前 {standing}）
+                {tr("ui.WormholeScan.005")} {WORMHOLE_SCAN_UNLOCK_STANDING}{tr("ui.WormholeScan.006")} {standing}）
               </span>
             </div>
             <div className="app-dim">
-              声望靠协会的委托与任务攒；达到门槛时协会测绘处会发来一封通讯，并当场弹给你看。
+              {tr("ui.WormholeScan.007")}
             </div>
           </div>
         ) : null}
 
         <div className="app-wh-scanbar">
           <div className="app-wh-scanbar-label">
-            进度 <b>{percent}%</b>
+            {tr("ui.WormholeScan.008")} <b>{percent}%</b>
             <span className="app-dim">
               {' '}
-              · 已扫 {formatDurationMs(done)} / {formatDurationMs(windowMs)}
+              {tr('ui.WormholeScan.057', { a: formatDurationMs(done), b: formatDurationMs(windowMs) })}
               {scan.active ? ` · 还需 ${formatDurationMs(Math.max(0, windowMs - done))}` : ''}
             </span>
           </div>
@@ -192,27 +193,27 @@ export function WormholeScanTab({
                 className="app-btn is-small"
                 onClick={() => {
                   const r = engine.wormholeScanStop()
-                  if (!r.ok) onToast(r.error ?? '停不了。', true)
-                  else onToast('已停扫：进度保留，下次接着扫。')
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.059'), true)
+                  else onToast(tr("ui.WormholeScan.047"))
                 }}
               >
-                停止扫描（进度保留）
+                {tr("ui.WormholeScan.009")}
               </button>
             ) : (
               <button
                 className="app-btn is-small is-primary"
                 disabled={blocked !== null}
-                title={blocked ?? '开始扫描虫洞'}
+                title={blocked ?? tr("ui.WormholeScan.010")}
                 onClick={() => {
                   const r = engine.wormholeScanStart()
-                  if (!r.ok) onToast(r.error ?? '无法开扫。', true)
-                  else onToast('开始扫描虫洞：主控就地展开扫描阵列。')
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.060'), true)
+                  else onToast(tr("ui.WormholeScan.048"))
                 }}
               >
-                开始扫描
+                {tr("ui.WormholeScan.011")}
               </button>
             )}
-            {full ? <span className="app-wh-hold-warn">已囤满上限：先去探索掉一处才能继续扫</span> : null}
+            {full ? <span className="app-wh-hold-warn">{tr("ui.WormholeScan.012")}</span> : null}
           </div>
           {blocked !== null && !scan.active ? <div className="app-dim">{blocked}</div> : null}
         </div>
@@ -226,25 +227,25 @@ export function WormholeScanTab({
         {run ? (
           <div className="app-wh-scanbar">
             <div className="app-wh-scanbar-label">
-              <span className="app-wh-hold-warn">有一趟虫洞探索正在进行（临时离开中 · 进度已保存）</span>
+              <span className="app-wh-hold-warn">{tr("ui.WormholeScan.013")}</span>
             </div>
             <div className="app-wh-scanbar-actions">
               <button
                 className="app-btn is-small is-primary"
                 disabled={!onReturn}
-                title="回到虫洞界面接着走这一趟（关掉面板即再次暂停，进度不会丢）"
+                title={tr("ui.WormholeScan.014")}
                 onClick={() => onReturn?.()}
               >
-                返回虫洞
+                {tr("ui.WormholeScan.015")}
               </button>
             </div>
           </div>
         ) : null}
 
         {/* 船长 2026-09-14：标题里要显示**最多能保留多少** ⇒ 写成 `X/Y 处`（Y 随「星图记录学」满级变化） */}
-        <div className="app-bay-title">已发现的虫洞 · {stock.length}/{stockMax} 处</div>
+        <div className="app-bay-title">{tr("ui.WormholeScan.016")} {tr("ui.WormholeScan.064", { p1: `${stock.length}/${stockMax}` })}</div>
         {stock.length === 0 ? (
-          <div className="app-dim app-inv-empty">还没有发现虫洞：开扫后等进度条走满。</div>
+          <div className="app-dim app-inv-empty">{tr("ui.WormholeScan.017")}</div>
         ) : (
           <ul className="app-inv-list">
             {stock.map((item) => {
@@ -258,7 +259,7 @@ export function WormholeScanTab({
                       <span className="app-ico">
                         <Glyph name={line.glyph} size={14} color={ICO_TONES[line.glyph]} />
                       </span>
-                      虫洞
+                      {tr("ui.Expedition.005")}
                     </span>
                     {/**
                      * 卡片只留「**原型名，发现于 X月X日**」（船长 2026-09-14：「只需要显示'遗迹密集，
@@ -268,7 +269,7 @@ export function WormholeScanTab({
                       className="app-inv-count"
                       title={
                         wormholeIntelTip(engine, item.family, archName) +
-                        `\n族徽＝这一处整趟都是「${famName}」这一族（上面的敌情就是它）。`
+                        tr("ui.WormholeScan.049", { famName: famName })
                       }
                     >
                       {line.text}
@@ -285,31 +286,31 @@ export function WormholeScanTab({
                   </div>
                   <div className="app-inv-btns">
                     <button className="app-btn is-small is-primary" onClick={() => onExplore(item.id)}>
-                      探索这一处
+                      {tr("ui.WormholeScan.018")}
                     </button>
                     <button
                       className="app-btn is-small"
                       disabled={runs.some((r) => r.stockId === item.id)}
                       title={
                         runs.some((r) => r.stockId === item.id)
-                          ? '这一处已经在自动探索中'
-                          : `自动派最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条船去探（每条占 1 枚 AI 核心，约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟）——打开与主控探索同一个准备页选编队`
+                          ? tr("ui.WormholeScan.019")
+                          : tr("ui.WormholeScan.050", { WORMHOLE_AUTO_MAX_SHIPS: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
                       }
                       onClick={() => onAutoExplore(item.id)}
                     >
-                      自动探索
+                      {tr("ui.Wormhole.002")}
                     </button>
                     <button
                       className="app-btn is-small is-warn"
                       disabled={runs.some((r) => r.stockId === item.id)}
                       title={
                         runs.some((r) => r.stockId === item.id)
-                          ? '这一处正在自动探索中：先召回那一趟'
-                          : '放弃这一处（腾出库存格；不可恢复）'
+                          ? tr("ui.WormholeScan.020")
+                          : tr("ui.WormholeScan.021")
                       }
                       onClick={() => setDiscardAsk(item.id)}
                     >
-                      放弃
+                      {tr("ui.Expedition.006")}
                     </button>
                   </div>
                 </li>
@@ -333,9 +334,9 @@ export function WormholeScanTab({
                 <div className="app-modal-mask" onClick={() => setDiscardAsk(null)}>
                   <div className="app-modal" onClick={(e) => e.stopPropagation()}>
                     <div className="app-modal-head">
-                      <span className="app-report-title">放弃这一处虫洞？</span>
+                      <span className="app-report-title">{tr("ui.WormholeScan.022")}</span>
                       <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
-                        ✕ 关闭
+                        {tr("ui.App.086")}
                       </button>
                     </div>
                     <div className="app-modal-body">
@@ -346,22 +347,22 @@ export function WormholeScanTab({
                         {line.text}
                       </div>
                       <div className="app-dim" style={{ marginTop: 6 }}>
-                        放弃后这一处就没了、<b>不可恢复</b>；库存格腾出来给新的发现，扫描进度不受影响。
+                        {tr("ui.WormholeScan.023")}<b>{tr("ui.WormholeScan.024")}</b>{tr('ui.WormholeScan.058')}
                       </div>
                       <div className="app-wh-scanbar-actions" style={{ marginTop: 10 }}>
                         <button
                           className="app-btn is-small is-warn"
                           onClick={() => {
                             const r = engine.wormholeStockDiscard(item.id)
-                            if (!r.ok) onToast(r.error ?? '放弃失败。', true)
-                            else onToast('已放弃这一处虫洞。')
+                            if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.061'), true)
+                            else onToast(tr("ui.WormholeScan.051"))
                             setDiscardAsk(null)
                           }}
                         >
-                          确认放弃
+                          {tr("ui.WormholeScan.025")}
                         </button>
                         <button className="app-btn is-small" onClick={() => setDiscardAsk(null)}>
-                          先留着
+                          {tr("ui.WormholeScan.026")}
                         </button>
                       </div>
                     </div>
@@ -379,7 +380,7 @@ export function WormholeScanTab({
 
         {runs.length > 0 ? (
           <>
-            <div className="app-bay-title">自动探索进行中 · {runs.length} 趟</div>
+            <div className="app-bay-title">{tr("ui.WormholeScan.027")} {tr("ui.WormholeScan.065", { p1: runs.length })}</div>
             <ul className="app-inv-list">
               {runs.map((run) => {
                 const span = Math.max(1, run.finishAtGameMs - run.startedAtGameMs)
@@ -387,9 +388,9 @@ export function WormholeScanTab({
                 return (
                   <li key={run.id} className="app-inv-row">
                     <div className="app-inv-main">
-                      <span className="app-inv-name">虫洞 · 自动探索中</span>
+                      <span className="app-inv-name">{tr("ui.WormholeScan.028")}</span>
                       <span className="app-inv-count">
-                        {run.shipIds.length} 条舰（各占 1 枚 AI 核心）· 还剩{' '}
+                        {run.shipIds.length} {tr("ui.WormholeScan.029")}{' '}
                         {formatDurationMs(Math.max(0, run.finishAtGameMs - state.gameMs))}
                       </span>
                     </div>
@@ -397,14 +398,14 @@ export function WormholeScanTab({
                       <span className="app-dim">{prog}%</span>
                       <button
                         className="app-btn is-small is-warn"
-                        title="召回：没有收益、也没有损伤；这处虫洞不退还"
+                        title={tr("ui.WormholeScan.030")}
                         onClick={() => {
                           const r = engine.wormholeAutoStop(run.id)
-                          if (!r.ok) onToast(r.error ?? '召回失败。', true)
-                          else onToast('已召回自动探索队（无收益、无损伤；通道就此关闭）。')
+                          if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.062'), true)
+                          else onToast(tr("ui.WormholeScan.052"))
                         }}
                       >
-                        召回
+                        {tr("ui.ActivityBar.009")}
                       </button>
                     </div>
                   </li>
@@ -417,7 +418,7 @@ export function WormholeScanTab({
         {reports.length > 0 ? (
           <>
             <div className="app-bay-title">
-              探索报告 · {reports.length} 份{pending > 0 ? `（待确认 ${pending}）` : ''}
+              {tr("ui.WormholeScan.031")} {tr("ui.WormholeScan.066", { p1: reports.length })}{pending > 0 ? tr("ui.WormholeScan.053", { pending: pending }) : ''}
             </div>
             {pending > 1 ? (
               <div className="app-wh-scanbar-actions">
@@ -425,10 +426,10 @@ export function WormholeScanTab({
                   className="app-btn is-small"
                   onClick={() => {
                     const n = engine.wormholeAutoConfirmAll()
-                    onToast(n > 0 ? `已确认 ${n} 份报告。` : '没有待确认的报告。')
+                    onToast(n > 0 ? tr("ui.WormholeScan.054", { n: n }) : tr("ui.WormholeScan.032"))
                   }}
                 >
-                  全部标为已读
+                  {tr("ui.WormholeScan.033")}
                 </button>
               </div>
             ) : null}
@@ -437,36 +438,36 @@ export function WormholeScanTab({
                 <li key={rep.id} className="app-inv-row">
                   <div className="app-inv-main">
                     <span className="app-inv-name">
-                      自动探索结果 · {rep.confirmed ? '已确认' : '待确认'}
+                      {tr("ui.WormholeScan.034")} {rep.confirmed ? tr("ui.WormholeScan.035") : tr("ui.WormholeScan.036")}
                     </span>
                     <span className="app-inv-count">
-                      收益（已入仓库）：
+                      {tr("ui.WormholeScan.037")}
                       {rep.gains.length > 0
-                        ? rep.gains.map((g) => `${engine.ctx.items.get(g.itemId)?.name ?? g.itemId} ×${g.units}`).join('、')
-                        : '空手而归'}
+                        ? rep.gains.map((g) => `${engine.ctx.items.get(g.itemId)?.name ?? g.itemId} ×${g.units}`).join(tr("ui.MatterTechTab.017"))
+                        : tr("ui.WormholeScan.038")}
                     </span>
                     {/* AI 核心（2026-09-14）：**不进仓库**（直接进核心库）⇒ 与「收益」分行单列，别混在一起 */}
                     {rep.cores && rep.cores.length > 0 ? (
                       <span className="app-inv-count">
-                        另带回：
-                        {rep.cores.map((c) => `${aiCoreName(c.type)} ×${c.n}`).join('、')}
-                        （已直接接入核心库）
+                        {tr("ui.WormholeScan.039")}
+                        {rep.cores.map((c) => `${aiCoreName(c.type)} ×${c.n}`).join(tr("ui.MatterTechTab.017"))}
+                        {tr("ui.WormholeScan.040")}
                       </span>
                     ) : null}
                     <span className="app-inv-count">
-                      损伤：
+                      {tr("ui.WormholeScan.041")}
                       {rep.damage.length > 0
                         ? rep.damage
                             .map(
                               (d) =>
-                                `${d.name} 结构 −${d.durabilityLossPct}%（现 ${d.durabilityPct}%）/ 装甲 −${d.armorLossPct}%（现 ${d.armorPct}%）`,
+                                tr("ui.WormholeScan.055", { p1: d.name, p2: d.durabilityLossPct, p3: d.durabilityPct, p4: d.armorLossPct, p5: d.armorPct }),
                             )
                             .join('；')
-                        : '无'}
+                        : tr("ui.BattleScreen.001")}
                     </span>
                     <span className="app-inv-count">
-                      {rep.shipIds.length} 条舰全部安全返航 · {rep.coresReleased} 枚 AI 核心已释放 · 完成于{' '}
-                      {formatDurationMs(Math.max(0, state.gameMs - rep.finishedAtGameMs))}前
+                      {rep.shipIds.length} {tr("ui.WormholeScan.042")} {rep.coresReleased} {tr("ui.WormholeScan.043")}{' '}
+                      {tr("ui.WormholeScan.067", { p1: formatDurationMs(Math.max(0, state.gameMs - rep.finishedAtGameMs)) })}
                     </span>
                   </div>
                   <div className="app-inv-btns">
@@ -475,10 +476,10 @@ export function WormholeScanTab({
                         className="app-btn is-small is-primary"
                         onClick={() => {
                           const r = engine.wormholeAutoConfirm(rep.id)
-                          if (!r.ok) onToast(r.error ?? '确认失败。', true)
+                          if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.063'), true)
                         }}
                       >
-                        确认
+                        {tr("ui.Handbook.014")}
                       </button>
                     )}
                   </div>

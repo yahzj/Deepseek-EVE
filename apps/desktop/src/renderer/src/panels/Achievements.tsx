@@ -12,7 +12,7 @@
  * - 悬停说明走 `ui/Tooltip.tsx` 的 `hoverTipProps`（AGENTS §6：富内容一律走它，且**同一元素
  *   不许同时带 `title` 与 `hoverTipProps`**）。
  *
- * 文案：界面文案一律走 `useL10n().t('中文原文')`；徽章名与说明来自内容表 `ctx.achievements`
+ * 文案：界面文案一律走**唯一表的 id**（`useL10n().t('ui.…')` / 模块级 `tr('ui.…')`）；徽章名与说明来自内容表 `ctx.achievements`
  * （英文覆盖层在本地化批接入——本批**未排入本地化排队**，见约定 §十一之二）。
  */
 import { Glyph } from '../ui/Glyphs'
@@ -21,7 +21,7 @@ import { hoverTipProps } from '../ui/Tooltip'
 import { achievementCount, achievementOverview, chainAchievementGroups, formatDurationMs } from '@whale/core'
 import type { AchievementDef } from '@whale/core'
 import type { GameEngine } from '../game/engine'
-import { useL10n } from '../i18n/locale'
+import { tr } from '../i18n/locale'
 
 /** 一枚徽章小卡（固定尺寸，防悬停内容变化引起跳动） */
 function BadgeCard({
@@ -54,18 +54,16 @@ function BadgeCard({
  * 老档补发那批当年真实时刻不可知 ⇒ 明确写"时间未记录"，**不编假时间**。
  */
 function badgeTimeLine(
-  t: (s: string, vars?: Record<string, string | number>) => string,
   earnedAt: number | null,
   legacy: boolean,
 ): string {
-  if (earnedAt === null) return t('尚未获得')
-  if (legacy) return t('已获得（时间未记录）')
-  return t('获得于 {t}', { t: formatDurationMs(earnedAt) })
+  if (earnedAt === null) return tr('ui.Achievements.001')
+  if (legacy) return tr('ui.Achievements.002')
+  return tr('ui.Achievements.003', { t: formatDurationMs(earnedAt) })
 }
 
 /** 成就面板（一级页内容：页内"二级子窗口容器"，固定头 ＋ 内容内滚） */
 export function Achievements({ engine }: { engine: GameEngine }) {
-  const { t } = useL10n()
   const state = engine.state
   const defs = engine.ctx.achievements
   const rows = achievementOverview(state, defs)
@@ -82,27 +80,27 @@ export function Achievements({ engine }: { engine: GameEngine }) {
      */
     <Panel
       className="is-fill win-fixed-body"
-      title={t('成就徽章')}
-      right={<span className="app-dim">{t('已获得 {n}/{total} 枚', { n: owned, total: rows.length })}</span>}
+      title={tr('ui.Achievements.004')}
+      right={<span className="app-dim">{tr('ui.Achievements.005', { n: owned, total: rows.length })}</span>}
     >
       <div className="app-win-body">
-        <div className="app-ach-sec">{t('「第一次」任务')}</div>
+        <div className="app-ach-sec">{tr('ui.Achievements.006')}</div>
         <div className="app-ach-grid">
           {taskRows.map((r) => (
             <BadgeCard
               key={r.def.id}
               def={r.def}
               earnedAt={r.earnedAt}
-              timeLine={badgeTimeLine(t, r.earnedAt, r.legacy)}
+              timeLine={badgeTimeLine(r.earnedAt, r.legacy)}
             />
           ))}
         </div>
-        <div className="app-ach-sec">{t('次数链进度')}</div>
+        <div className="app-ach-sec">{tr('ui.Achievements.007')}</div>
         {chains.map((g) => (
           <div key={g.chainId} className="app-ach-chain">
             <div className="app-ach-chain-head">
               <span className="app-ach-chain-name">{g.name}</span>
-              <span className="app-dim">{t('当前 {lv} 级', { lv: g.progress })}</span>
+              <span className="app-dim">{tr('ui.Achievements.008', { lv: g.progress })}</span>
             </div>
             <div className="app-ach-grid">
               {g.badges.map((def) => {
@@ -112,7 +110,7 @@ export function Achievements({ engine }: { engine: GameEngine }) {
                     key={def.id}
                     def={def}
                     earnedAt={row?.earnedAt ?? null}
-                    timeLine={badgeTimeLine(t, row?.earnedAt ?? null, row?.legacy ?? false)}
+                    timeLine={badgeTimeLine(row?.earnedAt ?? null, row?.legacy ?? false)}
                   />
                 )
               })}

@@ -310,7 +310,13 @@ export function deliverDialogueToComms(state: GameState, ctx: SimContext, script
     ? resolveCommsSender(ctx, script.commsFactionId, script.commsDeptId, undefined, script.commsSigner)
     : undefined
   const from = sender?.from ?? script.title
-  addLog(state, 'info', `[通讯] 收到 ${from} 的一条消息：《${script.subject ?? script.title}》——导航「通讯」可查看。`)
+  addLog(
+    state,
+    'info',
+    `[通讯] 收到 ${from} 的一条消息：《${script.subject ?? script.title}》——导航「通讯」可查看。`,
+    'core.comms.001',
+    { p1: from, p2: script.subject ?? script.title },
+  )
 }
 
 /**
@@ -382,9 +388,14 @@ export function commsUnreadCount(state: GameState, ctx: SimContext): number {
   return commsInbox(state, ctx).filter((e) => !e.read).length
 }
 
-/** 标记单条已读（点开即读） */
-export function markCommsRead(state: GameState, id: string): { ok: boolean; error?: string } {
-  if (state.commsDelivered?.[id] === undefined) return { ok: false, error: '没有这封通讯（可能已被撤销）。' }
+/** 标记单条已读（点开即读）。返回形状与 `CommandResult` 的文案字段对齐（甲案：`errorId`/`errorParams`）。 */
+export function markCommsRead(
+  state: GameState,
+  id: string,
+): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
+  if (state.commsDelivered?.[id] === undefined) {
+    return { ok: false, error: '没有这封通讯（可能已被撤销）。', errorId: 'core.comms.002' }
+  }
   state.commsRead ??= {}
   state.commsRead[id] = true
   return { ok: true }

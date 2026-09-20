@@ -4,6 +4,7 @@
 import { marketQuote, wreckGroupOfItemId } from '@whale/core'
 import type { SimContext } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
 
 /** 全局浮动提示回调（App 提供） */
 export type ToastFn = (text: string, warn?: boolean) => void
@@ -71,7 +72,7 @@ export function rareWreckRefsOf(
   const by = engine.state.galaxyWrecks[galaxyId]?.rareBy ?? {}
   const refs = Object.entries(by).filter(([, n]) => n > 0)
   const count = refs.reduce((s, [, n]) => s + n, 0)
-  const text = refs.map(([aid, n]) => `${engine.ctx.anomalies.get(aid)?.name ?? aid} ×${n}`).join('、')
+  const text = refs.map(([aid, n]) => `${engine.ctx.anomalies.get(aid)?.name ?? aid} ×${n}`).join(tr("ui.MatterTechTab.017"))
   return { count, text, refs }
 }
 

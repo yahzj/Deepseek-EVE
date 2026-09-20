@@ -9,6 +9,7 @@
  * - 视觉纪律：机体与弹点一律 SVG 线稿（禁 CSS 拼形状；动作走 CSS 动画 + 类切换）。
  */
 import type { ReactNode } from 'react'
+import { tr } from '../i18n/locale'
 
 export interface DroneSlot {
   x: number
@@ -76,7 +77,7 @@ const SWARM_BEE_ART: ReactNode = (
 
 export const DRONE_MODELS: Record<string, DroneModel> = {
   'drone-scout': {
-    name: '蜂鸟',
+    name: tr("ui.droneArt.001"),
     tint: '#9fe8ff',
     slots: SLOTS_HIGH(-26),
     bolt: { style: 'dot', len: 7, width: 1.6, tail: false },
@@ -88,7 +89,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     ),
   },
   'drone-assault': {
-    name: '赤鸢',
+    name: tr("ui.droneArt.002"),
     tint: '#ffb98a',
     slots: SLOTS_HIGH(-46),
     bolt: { style: 'dot', len: 10, width: 2.2, tail: false },
@@ -100,7 +101,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     ),
   },
   'drone-heavy': {
-    name: '猎鹰',
+    name: tr("ui.droneArt.003"),
     tint: '#cdd6e0',
     slots: SLOTS_HIGH(-64),
     bolt: { style: 'dot', len: 14, width: 3, tail: true },
@@ -112,7 +113,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     ),
   },
   'drone-sentry': {
-    name: '雷鸥',
+    name: tr("ui.droneArt.004"),
     tint: '#8fd7ef',
     resident: true,
     // 2026-09-10 船长二次定：哨戒常驻伴飞位置改到**母舰上方**
@@ -134,7 +135,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
   // E 族「警戒机」（巨构自带的警戒机群 = **巨构的第二套火力**）：
   // 族色**残铁棕** `#d9b98c`（与 E 族舰体/族色同源）；形体语言 = 巨构残段的**斜装甲楔形 + 断口缺角**。
   'foe-drone-e-alert': {
-    name: '警戒机',
+    name: tr("ui.droneArt.005"),
     tint: '#d9b98c',
     slots: SLOTS_HIGH(-26), // 编队位只在我方出击制里用；敌侧位置由表现层贴敌舰锚点决定
     bolt: { style: 'dot', len: 9, width: 2, tail: false }, // 弹点形制与我方战斗机档同款（"老化失准"靠命中率表达，不靠观感）
@@ -157,21 +158,21 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
    * ⚠ **2026-09-12 教训**：机群机制先落码、**机型资产漏登记** ⇒ 战斗里**看不见蜂群**
    *   （船长实测发现）⇒ 本批同时加下方 `droneModelOrFallback()` 兜底，同类漏登记不再"静默消失"。 */
   'foe-drone-g-bee-kin': {
-    name: '蜂群机',
+    name: tr("ui.droneArt.006"),
     tint: '#cd9fdd',
     slots: SLOTS_HIGH(-26), // 编队位只在我方出击制里用；敌侧位置由表现层贴敌舰锚点决定
     bolt: { style: 'dot', len: 8, width: 1.8, tail: false }, // 小弹点、密度高（"一群致命"）
     art: SWARM_BEE_ART,
   },
   'foe-drone-g-bee-exp': {
-    name: '蜂群机',
+    name: tr("ui.droneArt.006"),
     tint: '#cd9fdd',
     slots: SLOTS_HIGH(-26),
     bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
     art: SWARM_BEE_ART,
   },
   'foe-drone-g-bee-pla': {
-    name: '蜂群机',
+    name: tr("ui.droneArt.006"),
     tint: '#cd9fdd',
     slots: SLOTS_HIGH(-26),
     bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
@@ -180,7 +181,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
   /* ── C 族「孢群机」（异形巢群的活体攻坚机；2026-09-15 挂上「孢群异虫」T3 无人机舰）──
    * 族色**磷光绿** `#9fe6a4`（与 C 族舰体/族色同源）；弹点比蜂群机更重更疏（攻坚机节奏 4,400ms）。 */
   'foe-drone-c-spore': {
-    name: '孢群机',
+    name: tr("ui.droneArt.007"),
     tint: '#9fe6a4',
     slots: SLOTS_HIGH(-26),
     bolt: { style: 'dot', len: 9, width: 2, tail: false },
@@ -194,7 +195,7 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
  * 机体不画、玩家在战斗里**只看到弹道看不到飞机**（船长实测发现）。兜底把"漏登记"从
  * **静默消失**改成**看得见但一眼可辨**（中性灰机体 + 名字回退成机型 id），便于当场发现。 */
 export const DRONE_MODEL_FALLBACK: DroneModel = {
-  name: '未知机型',
+  name: tr("ui.droneArt.008"),
   tint: '#8fa3b8',
   slots: SLOTS_HIGH(-26),
   bolt: { style: 'dot', len: 8, width: 1.8, tail: false },

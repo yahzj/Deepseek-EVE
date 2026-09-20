@@ -14,6 +14,7 @@
  */
 import type { ReactElement } from 'react'
 import type { GameEngine } from '../game/engine'
+import { tr, cmdText } from '../i18n/locale'
 
 export function RedeemFragmentButton({
   engine,
@@ -32,18 +33,18 @@ export function RedeemFragmentButton({
       <button
         className="app-btn is-small"
         disabled
-        title={`「${row.blueprintName}」已掌握：配方永久生效，这一路的碎片不再需要（也不会再掉落）。`}
+        title={tr("ui.fragmentRedeem.001", { p1: row.blueprintName })}
       >
-        已解锁配方
+        {tr("ui.fragmentRedeem.002")}
       </button>
     )
   }
   const enough = row.have >= row.need
   const tip = !enough
-    ? `还差 ${row.need - row.have} 片（现有 ${row.have}/${row.need}）——碎片来自残骸回收的高威胁彩头；集齐后点这里换成「${row.blueprintName}」永久蓝图。`
+    ? tr("ui.fragmentRedeem.003", { p1: row.need - row.have, p2: row.have, p3: row.need, p4: row.blueprintName })
     : row.ready
-      ? `消耗 ${row.need} 片（货仓 + 仓库一起扣）换成「${row.blueprintName}」永久蓝图，之后可在工业页组装机无限次制造。`
-      : `碎片已够（${row.have}/${row.need}）——逆向研究需停靠空间站（母港或已建成副站）。`
+      ? tr("ui.fragmentRedeem.004", { p1: row.need, p2: row.blueprintName })
+      : tr("ui.fragmentRedeem.005", { p1: row.have, p2: row.need })
   return (
     <button
       className={`app-btn is-small${row.ready ? ' is-primary' : ''}`}
@@ -51,11 +52,11 @@ export function RedeemFragmentButton({
       title={tip}
       onClick={() => {
         const r = engine.redeemFragmentsAt(row.moduleId)
-        if (!r.ok) onToast(r.error ?? '逆向研究失败', true)
-        else onToast(`逆向研究完成：已解锁「${row.blueprintName}」，可到工业页组装机无限次制造。`)
+        if (!r.ok) onToast(cmdText(r) || tr('ui.fragmentRedeem.008'), true)
+        else onToast(tr("ui.fragmentRedeem.006", { p1: row.blueprintName }))
       }}
     >
-      逆向解锁 {row.have}/{row.need}
+      {tr("ui.fragmentRedeem.007")} {row.have}/{row.need}
     </button>
   )
 }

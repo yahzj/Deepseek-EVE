@@ -272,10 +272,16 @@ export function startManufacturing(
 ): CommandResult {
   // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自开线仍要求在基地网络内。
   if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。' }
+    return {
+      ok: false,
+      error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。',
+      errorId: 'core.manufacturing.001',
+    }
   }
   const buildable = findBuildable(ctx, blueprintId)
-  if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }
+  if (!buildable) {
+    return { ok: false, error: `未知蓝图：${blueprintId}。`, errorId: 'core.manufacturing.002', errorParams: { p1: blueprintId } }
+  }
   // 配方可用性（2026-09-12 船长定）：普通蓝图 = 必须已学会；一次性图纸 = 有书 + 名额未用尽
   // （⚠ **已永久学会时，一次性书不消耗也不使用** —— 船长裁定「2乙」）
   // 2026-09-20 零件体系：隐式蓝图（learnless = 基础零件）无需学习即可开工。
@@ -287,12 +293,26 @@ export function startManufacturing(
       // 只有"书架没书"时才区分两种拒绝——名额已用尽（要再获得一张）／从未获得过。
       if (cap.kind !== 'ok') {
         if ((state.spentOneTimeRecipes ?? []).includes(blueprintId)) {
-          return { ok: false, error: '这张一次性图纸的制造名额已用尽：需要再获得一张同名一次性图纸。' }
+          return {
+            ok: false,
+            error: '这张一次性图纸的制造名额已用尽：需要再获得一张同名一次性图纸。',
+            errorId: 'core.manufacturing.003',
+          }
         }
-        return { ok: false, error: '一次性图纸不在蓝图书架：请先获得这张图纸。' }
+        return {
+          ok: false,
+          error: '一次性图纸不在蓝图书架：请先获得这张图纸。',
+          errorId: 'core.manufacturing.004',
+        }
       }
     } else {
-      return { ok: false, error: `尚未学会「${blueprintName(ctx, blueprintId)}」的配方：在市场买回蓝图书并学习后才能制造。` }
+      const bpName = blueprintName(ctx, blueprintId)
+      return {
+        ok: false,
+        error: `尚未学会「${bpName}」的配方：在市场买回蓝图书并学习后才能制造。`,
+        errorId: 'core.manufacturing.005',
+        errorParams: { p1: bpName },
+      }
     }
   }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
@@ -303,28 +323,57 @@ export function startManufacturing(
   if (worker === 'pilot') {
     // 主控亲自制造 = 全局限 1 条 + 与手动精炼/回收共用一个手动工作位 + 占主控工作位
     if (manufacturingManualActive(state)) {
-      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。' }
+      return {
+        ok: false,
+        error: '你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。',
+        errorId: 'core.state.031',
+      }
     }
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。' }
+      return {
+        ok: false,
+        error: '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。',
+        errorId: 'core.state.032',
+      }
     }
-    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
-    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
-    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
-    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
-    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
-    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自制造。' }
+    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。', errorId: 'core.state.013' }
+    if (state.salvaging.active) {
+      return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。', errorId: 'core.state.014' }
+    }
+    if (state.expedition.active) {
+      return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
+    }
+    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
+    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
+    if (state.hauling.active) {
+      return {
+        ok: false,
+        error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自制造。',
+        errorId: 'core.state.033',
+      }
+    }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
-      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入组装机。` }
+      return {
+        ok: false,
+        error: `${aiCoreName(worker)} 库存不足，无法接入组装机。`,
+        errorId: 'core.manufacturing.008',
+        errorParams: { p1: aiCoreName(worker) },
+      }
     }
   }
   // 2026-09-08 船长定：取消每次制造费——开工不再校验/收取 buildCostIsk（蓝图数据字段保留为历史遗留）
   const missing = missingMaterials(state, ctx, buildable.spec)
   if (missing.length > 0) {
-    return { ok: false, error: `材料不足：${missing.join('、')}。` }
+    const missingText = missing.join('、')
+    return {
+      ok: false,
+      error: `材料不足：${missingText}。`,
+      errorId: 'core.manufacturing.010',
+      errorParams: { p1: missingText },
+    }
   }
   // 耗时链：calcBuildDurationMs（工业理论 × 批量生产学）为共同基准；AI 先 ÷核心效率；
   // 产线节拍学 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
@@ -337,7 +386,12 @@ export function startManufacturing(
   if (autoLv > 0) durationMs = Math.max(1, Math.round(durationMs * Math.max(0, 1 - 0.05 * autoLv)))
   // AI 线：先占用核心（材料校验之后、扣料之前——失败不产生任何副作用）
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
-    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+    return {
+      ok: false,
+      error: `${aiCoreName(worker)} 占用失败（库存异常）。`,
+      errorId: 'core.manufacturing.009',
+      errorParams: { p1: aiCoreName(worker) },
+    }
   }
   // 扣材料（物品仓库，按材料学折扣后数量）；制造费已于 2026-09-08 取消，不再扣款
   for (const need of buildable.spec.materials) {
@@ -348,7 +402,11 @@ export function startManufacturing(
   //   ⇒ 取消时**书与名额一起退还**（见 `cancelManufacturing` / `refundOneTimeBook`）；
   //   完工仍照旧 = 书已兑现成产物、不退（那才是"只能制造一次"的落点）。
   if (cap.consumeBook && !spendOneTimeBook(state, blueprintId)) {
-    return { ok: false, error: '一次性图纸不在蓝图书架：请先获得这张图纸。' }
+    return {
+      ok: false,
+      error: '一次性图纸不在蓝图书架：请先获得这张图纸。',
+      errorId: 'core.manufacturing.004',
+    }
   }
 
   state.manufacturingRuns.push({
@@ -382,7 +440,9 @@ export function startManufacturing(
  */
 export function cancelManufacturing(state: GameState, ctx: SimContext, runId: number): CommandResult {
   const idx = state.manufacturingRuns.findIndex((r) => r.id === runId)
-  if (idx < 0) return { ok: false, error: '没有找到该制造线（已完成或已取消）。' }
+  if (idx < 0) {
+    return { ok: false, error: '没有找到该制造线（已完成或已取消）。', errorId: 'core.manufacturing.006' }
+  }
   const [mf] = state.manufacturingRuns.splice(idx, 1)
   const buildable = mf.blueprintId ? findBuildable(ctx, mf.blueprintId) : null
   const productName = buildable ? productNameOf(ctx, buildable, mf.blueprintId ?? '') : (mf.blueprintId ?? '')
@@ -404,7 +464,12 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
         (bookBack ? '；一次性图纸已退回蓝图书架（名额同时恢复，可再次开工）。' : '。'),
     )
   } else {
-    addLog(state, 'warn', '制造作业已取消（引用的蓝图记录缺失，无材料可退）。')
+    addLog(
+      state,
+      'warn',
+      '制造作业已取消（引用的蓝图记录缺失，无材料可退）。',
+      'core.manufacturing.011',
+    )
   }
   return { ok: true }
 }
@@ -424,7 +489,7 @@ export function setManufacturingLoop(
   goal?: number | null,
 ): CommandResult {
   if (typeof blueprintId !== 'string' || blueprintId.length === 0) {
-    return { ok: false, error: '没有找到这张生产卡（蓝图记录缺失）。' }
+    return { ok: false, error: '没有找到这张生产卡（蓝图记录缺失）。', errorId: 'core.manufacturing.007' }
   }
   const g = Number.isFinite(goal) ? Math.floor(goal ?? 0) : 0
   const prev = state.manufacturingLoops[blueprintId]
@@ -505,7 +570,13 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         const moduleDef = buildable.moduleId ? ctx.modules.get(buildable.moduleId) : undefined
         if (!moduleDef) return false
         addModule(state, moduleDef.id)
-        addLog(state, 'info', `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`)
+        addLog(
+          state,
+          'info',
+          `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`,
+          'core.manufacturing.014',
+          { p1: moduleDef.name },
+        )
         if (stats && coreType) {
           addAiMakeDone(stats, coreType)
           addAiIncome(stats, coreType, marketBasePrice(ctx, 'module', moduleDef.id))
@@ -547,6 +618,16 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         if (itemDef.kind !== 'part') {
           addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
         }
+        // 2026-09-20 零件体系：零件制造完成**不写事件日志**（船长定）——其余物品照旧
+        if (itemDef.kind !== 'part') {
+          addLog(
+            state,
+            'info',
+            `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`,
+            'core.manufacturing.015',
+            { p1: itemDef.name, p2: n.toLocaleString('zh-CN') },
+          )
+        }
         if (stats && coreType) {
           addAiMakeDone(stats, coreType)
           addAiIncome(stats, coreType, n * (itemDef.baseSellPriceIsk ?? 0))
@@ -562,7 +643,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       }
       const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
       if (!buildable) {
-        addLog(state, 'warn', '制造作业引用的蓝图记录缺失，产出已丢弃（异常）。')
+        addLog(state, 'warn', '制造作业引用的蓝图记录缺失，产出已丢弃（异常）。', 'core.manufacturing.012')
         stopWhy = '蓝图记录缺失'
         break
       }
@@ -570,7 +651,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       // 达成目标时停在"正好等于目标"的**批数**上，随后收尾的在跑件不再计入，故合计即停线依据）
       if (loop && loop.on === true) loop.produced = (loop.produced ?? 0) + 1
       if (!settlePiece(buildable)) {
-        addLog(state, 'warn', '制造作业引用的产物记录缺失，产出已丢弃（异常）。')
+        addLog(state, 'warn', '制造作业引用的产物记录缺失，产出已丢弃（异常）。', 'core.manufacturing.013')
         stopWhy = '产物记录缺失'
         break
       }

@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ANNOUNCEMENTS } from '@whale/data'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
 
 const SEEN_KEY = 'whale-idle:announce-seen'
 
@@ -61,16 +62,16 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
 
   return (
     <>
-      <button className="app-btn" onClick={openAndMark} title="游戏更新公告">
-        公告{unread ? <i className="app-ann-dot" aria-label="有未读公告" /> : null}
+      <button className="app-btn" onClick={openAndMark} title={tr("ui.Announcements.001")}>
+        {tr("ui.Announcements.002")}{unread ? <i className="app-ann-dot" aria-label={tr('ui.Announcements.005')} /> : null}
       </button>
       {open ? (
         <div className="app-ann-mask" onClick={() => setOpen(false)}>
           <div className="app-ann" onClick={(e) => e.stopPropagation()}>
             <div className="app-ann-head">
-              <span className="app-ann-title">📣 更新公告</span>
+              <span className="app-ann-title">{tr("ui.Announcements.003")}</span>
               <button className="app-btn is-small" onClick={() => setOpen(false)}>
-                知道了
+                {tr("ui.App.100")}
               </button>
             </div>
             <div className="app-ann-list">
@@ -80,7 +81,7 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
                     <span className="app-ann-tag">{a.tag}</span>
                     <span className="app-ann-item-title">{a.title}</span>
                     <span className="app-dim">{a.date}</span>
-                    {a.id === latest?.id ? <em className="app-chip">新</em> : null}
+                    {a.id === latest?.id ? <em className="app-chip">{tr('ui.Announcements.004')}</em> : null}
                   </div>
                   <ul className="app-ann-bullets">
                     {a.bullets.map((b, i) => (

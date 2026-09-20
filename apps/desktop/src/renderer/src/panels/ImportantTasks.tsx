@@ -10,6 +10,7 @@
  */
 import { TASK_FIND_HUMANS } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
 
 /** 只剩「寻找人类」这一条贯穿任务（教程卡随线性教程退场）⇒ 不再需要 onToast（没有可点的动作） */
 export function ImportantTasks({ engine }: { engine: GameEngine }) {
@@ -25,9 +26,9 @@ export function ImportantTasks({ engine }: { engine: GameEngine }) {
     <div className="app-imp-quests">
       {findHumanOn ? (
         <div className="app-imp-card is-perm">
-          <div className="app-imp-card-title">◆ 寻找人类</div>
+          <div className="app-imp-card-title">{tr("ui.ImportantTasks.001")}</div>
           <div className="app-imp-card-body">
-            人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；以这座章鱼宇宙人统治的母港为起点，往未知的前方继续航行，壮大自身规模，应对各种危险，或许终会有所发现。
+            {tr("ui.ImportantTasks.002")}
           </div>
           {/**
            * **方向性建议（不是"任务目标"）**——2026-09-13 船长裁定「甲」。
@@ -38,13 +39,13 @@ export function ImportantTasks({ engine }: { engine: GameEngine }) {
            * **保留**，只把它的**读法**从"任务目标"改成"当下能做的事"⇒ 与描述里那句首尾相接。
            */}
           <div className="app-imp-card-goal">
-            <span className="app-imp-goal-key">可做的事</span> 继续探索全部星系，寻找人类踪迹
+            <span className="app-imp-goal-key">{tr("ui.ImportantTasks.003")}</span> {tr("ui.ImportantTasks.004")}
             <span className="app-dim">
-              （已探索 {exploredN}/{galaxyTotal} 星系{allExplored ? ' · 已完成' : ''}）
+              {tr("ui.ImportantTasks.005")} {exploredN}/{galaxyTotal} {tr("ui.FirstTasks.004")}{allExplored ? tr('ui.ImportantTasks.008') : ''}）
             </span>
           </div>
           <div className="app-imp-card-state">
-            {allExplored ? '状态：进行中 · 阶段目标已完成——全图无人类踪迹，线索仍未知' : '状态：进行中 · 完成方法未知'}
+            {allExplored ? tr("ui.ImportantTasks.006") : tr("ui.ImportantTasks.007")}
           </div>
         </div>
       ) : null}

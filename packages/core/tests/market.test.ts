@@ -97,6 +97,51 @@ describe('市场开盘与市价单', () => {
     expect(r.gainedIsk).toBe(gross - Math.round(gross * 0.05)) // 1197
   })
 
+  /* 甲案·多段可空尾巴（2026-09-20）：市价售出日志末尾会挂「（含协会声望加成）」「，贸易税 … 信用点」，
+   * 两段都可空——多段链**不能有空段**（空 id 会把后面整段丢掉），故按实际段数选模板 / 挂 `p{n}Id`。
+   * 这里把"基础 id + 段 id + 段间参数命名空间"钉住，免得以后接线时悄悄丢段。 */
+  it('市价售出日志：有税 ⇒ id 带税段链，中文尾段标点与改造前一致', () => {
+    state.warehouse.items['ore-a'] = 100 // 100 × 12 = 1,200 毛额，5% 税 ⇒ 税 60
+    sellWareItem(state, 'ore-a', ctx)
+    const log = state.logs[state.logs.length - 1]!
+    expect(log.text).toBe('市价售出 矿甲×100（税后入账 1,140 信用点，1 笔），贸易税 60 信用点。')
+    expect(log.textId).toBe('core.market.040') // 无加成的基础模板
+    expect(log.textParams?.p1p1).toBe('60') // 第 2 段（税段）的 {p1} = 税额
+    expect(log.textParams?.p1Id).toBe('core.market.037')
+  })
+
+  it('市价售出日志：免税（无尾巴段）⇒ id 只有基础模板', () => {
+    // 会计学 + 贸易谈判学 各 5 级仍余 1%（浮点）⇒ 直接压 base 税率为 0，才测得到"没有尾巴段"那条路
+    const noTaxCtx = makeTestCtx({ balance: { ...ctx.balance, market: { ...ctx.balance.market, salesTaxRate: 0 } } })
+    state.warehouse.items['ore-a'] = 100
+    sellWareItem(state, 'ore-a', noTaxCtx)
+    const log = state.logs[state.logs.length - 1]!
+    expect(salesTaxRate(state, noTaxCtx)).toBe(0) // 前提：本场景确实免税
+    expect(log.text).toBe('市价售出 矿甲×100（税后入账 1,200 信用点，1 笔）。') // 与改造前逐字一致
+    expect(log.textId).toBe('core.market.040')
+    expect(log.textParams?.p1Id).toBeUndefined() // 没有尾巴段可挂
+  })
+
+  it('市价售出日志：声望加成 ⇒ 换带加成的基础模板', () => {
+    state.standings['dsi'] = 5
+    state.warehouse.items['ore-a'] = 100
+    sellWareItem(state, 'ore-a', ctx)
+    const log = state.logs[state.logs.length - 1]!
+    expect(log.textId).toBe('core.market.038') // 带「（含协会声望加成）」
+    expect(log.text).toContain('（含协会声望加成），贸易税 63 信用点。')
+    expect(log.textParams?.p1Id).toBe('core.market.037')
+  })
+
+  it('市价售出日志：声望加成 ⇒ 换带加成的基础模板', () => {
+    state.standings['dsi'] = 5
+    state.warehouse.items['ore-a'] = 100
+    sellWareItem(state, 'ore-a', ctx)
+    const log = state.logs[state.logs.length - 1]!
+    expect(log.textId).toBe('core.market.038') // 带「（含协会声望加成）」
+    expect(log.text).toContain('（含协会声望加成），贸易税 63 信用点。')
+    expect(log.textParams?.p1Id).toBe('core.market.037')
+  })
+
   it('市价买：吃供应簿并扣款；簿吃穿后剩余留提示（不打折、不入 escrow）', () => {
     state.wallet.isk = 1_000_000
     const res = buyAtMarket(state, ctx, 'it-min-a', 1_000)
@@ -380,6 +425,11 @@ describe('离线窗口推进（A1：未开市档在离线起点开盘，整段�
     expect(state.escrowItems['it-ore-a'] ?? 0).toBe(0)
     expect(state.wallet.isk).toBe(walletBefore + (1_200 - Math.round(1_200 * 0.05))) // 税后 1140
     expect(state.logs.some((l) => l.text.includes('税后入账'))).toBe(true)
+    // 甲案：挂单成交的尾巴段（声望加成 / 贸易税）走"基础模板 + 段 id 链"，段号从 p1 起顺排
+    const filled = state.logs.filter((l) => l.text.startsWith('挂单成交')).at(-1)!
+    expect(filled.textId).toBe('core.market.028')
+    expect(filled.textParams?.p4Id).toBe('core.market.034') // 「（贸易税 {p1} 信用点）」
+    expect(filled.textParams?.p4).toBe('（贸易税 60 信用点）') // 中文原串并存（老档/未改造路径回退用）
     // 市场簿与价格小史已随离线推进
     expect((state.market.priceHistory['it-ore-a'] ?? []).length).toBeGreaterThan(0)
   })

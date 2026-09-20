@@ -181,14 +181,28 @@ export function oneOutboundLegMs(
  */
 function miningPreflight(state: GameState, beltId: string, ctx: SimContext): CommandResult {
   const belt = ctx.belts.get(beltId)
-  if (!belt) return { ok: false, error: `未知采集点：${beltId}。` }
+  if (!belt) {
+    return { ok: false, error: `未知采集点：${beltId}。`, errorId: 'core.mining.001', errorParams: { p1: beltId } }
+  }
   const ore = ctx.items.get(belt.oreId)
-  if (!isMineableItem(ore)) return { ok: false, error: `采集点「${belt.name}」没有对应的可采集资源数据。` }
+  if (!isMineableItem(ore)) {
+    return {
+      ok: false,
+      error: `采集点「${belt.name}」没有对应的可采集资源数据。`,
+      errorId: 'core.mining.002',
+      errorParams: { p1: belt.name },
+    }
+  }
   const needStanding = belt.standingReq ?? 0
   if (needStanding > 0) {
     const have = standingOf(state, DSI_FACTION_ID)
     if (have < needStanding) {
-      return { ok: false, error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（当前 ${have}）——多完成悬赏任务攒声望。` }
+      return {
+        ok: false,
+        error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（当前 ${have}）——多完成悬赏任务攒声望。`,
+        errorId: 'core.mining.003',
+        errorParams: { p1: belt.name, p2: needStanding, p3: have },
+      }
     }
   }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
@@ -196,7 +210,13 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
   if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再开采。' }
+  if (state.hauling.active) {
+    return {
+      ok: false,
+      error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再开采。',
+      errorId: 'core.state.001',
+    }
+  }
   /**
    * V13 探索封锁：**采集点所在星系未点亮 ⇒ 拒绝开工**。
    * ⚠ **2026-09-17 船长改口径**：「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」
@@ -208,7 +228,12 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
   if (belt.galaxyId && belt.galaxyId !== HOME_GALAXY_ID) {
     const travel = shortestTravelMinutes(ctx, HOME_GALAXY_ID, belt.galaxyId)
     if (!Number.isFinite(travel)) {
-      return { ok: false, error: `「${belt.name}」所在星系没有从母港可达的航线，无法前往开采。` }
+      return {
+        ok: false,
+        error: `「${belt.name}」所在星系没有从母港可达的航线，无法前往开采。`,
+        errorId: 'core.mining.005',
+        errorParams: { p1: belt.name },
+      }
     }
   }
   return { ok: true }
@@ -219,16 +244,30 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const pre = miningPreflight(state, beltId, ctx)
   if (!pre.ok) return pre
   const belt = ctx.belts.get(beltId)!
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。' }
-  if (state.expedition.active) return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能开采——到站自动结算后再安排。' }
+  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。', errorId: 'core.mining.006' }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。', errorId: 'core.mining.007' }
+  if (state.expedition.active) {
+    return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。', errorId: 'core.mining.008' }
+  }
+  if (state.standby.active) {
+    return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。', errorId: 'core.mining.009' }
+  }
+  if (state.sideTasks.deliver !== null) {
+    return { ok: false, error: '快递投送途中：暂不能开采——到站自动结算后再安排。', errorId: 'core.mining.010' }
+  }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。' }
+    return {
+      ok: false,
+      error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。',
+      errorId: 'core.mining.011',
+    }
   }
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出海（想自动制造可改用 AI 核心驱动）。' }
+    return {
+      ok: false,
+      error: '制造作业正由你亲自开线：先取消它才能出海（想自动制造可改用 AI 核心驱动）。',
+      errorId: 'core.mining.012',
+    }
   }
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
@@ -256,13 +295,24 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const retSec = Math.max(1, Math.round(oneLegMs(state, ctx, beltId) / 1000))
   const travelStatic = beltTravelMinutes(ctx, belt, fromField)
   const travelNote = travelStatic > 0 ? '（远带矿带：返航已含往返航程）' : ''
+  const travelNoteId = travelStatic > 0 ? 'core.mining.013' : undefined
   const tripNote = m.autoCycle
     ? ' 已启用自动循环：满舱自动返航空间站卸货，卸完自动开始下一趟。'
     : ' 自动循环已关闭：货舱满后将停在矿带。'
+  const tripNoteId = m.autoCycle ? 'core.mining.014' : 'core.mining.015'
   addLog(
     state,
     'info',
     `开始开采：${belt.name}。${shipName} 已抵达矿带，立即开始采掘${cycleNote}（满载返航约 ${retSec + outSec} 秒，去程时间已并入返航${travelNote}）。${tripNote}`,
+    'core.mining.016',
+    {
+      p1: belt.name,
+      p2: shipName,
+      p3: cycleNote,
+      p4: retSec + outSec,
+      p5: travelNoteId !== undefined ? travelNote : '',
+      p6: tripNote,
+    },
   )
   return { ok: true }
 }
@@ -279,12 +329,16 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
   const exp = state.expedition
   if (!exp.active) return startMining(state, beltId, ctx) // 无远征 → 普通开采
   if (exp.phase === 'battle') {
-    return { ok: false, error: '交火中无法抽身采矿——请先让战斗分出胜负，或撤退脱离。' }
+    return {
+      ok: false,
+      error: '交火中无法抽身采矿——请先让战斗分出胜负，或撤退脱离。',
+      errorId: 'core.mining.017',
+    }
   }
   // 转场即手动收手：由讨伐发起的本次远征同步停止讨伐（同撤退口径）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null
-    addLog(state, 'info', '重复清剿已停止（转开采）。')
+    addLog(state, 'info', '重复清剿已停止（转开采）。', 'core.mining.018')
   }
   // 召回式取消远征（无战果；battle 已排除）→ 船回到母港/空间站，随后照常开矿
   const recalled = recallExpedition(state, ctx)
@@ -302,8 +356,19 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
   const oreName = ore ? ore.name : ''
   const phaseNote =
     info.phase === 'returning' ? '（返航途中，货物留在船上）' : info.phase === 'outbound' ? '（出航途中）' : ''
+  const tripUnits = info.tripUnits
   const beltName = belt ? belt.name : '矿带'
-  addLog(state, 'info', `已停止开采（${beltName}）。本趟共采得 ${info.tripUnits} 单位${oreName}${phaseNote}。`)
+  /**
+   * 甲案：`phaseNote` 是"派生串"（自己带 id）⇒ 这里**不翻**，只把中文原串喂给外层文案的 `{p4}`；
+   * 等它所属的文件（`state.ts` 的 `miningHalt`）改造后再接上（`core.state.*`）。
+   */
+  addLog(
+    state,
+    'info',
+    `已停止开采（${beltName}）。本趟共采得 ${tripUnits} 单位${oreName}${phaseNote}。`,
+    'core.mining.021',
+    { p1: beltName, p2: tripUnits, p3: oreName, p4: phaseNote },
+  )
   return true
 }
 
@@ -321,7 +386,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
     m.beltId = null
     m.phase = 'mining'
     m.rvLeft = 0
-    addLog(state, 'warn', '舰队里找不到当前舰船，采矿作业已停止。')
+    addLog(state, 'warn', '舰队里找不到当前舰船，采矿作业已停止。', 'core.mining.022')
     return
   }
 
@@ -360,6 +425,8 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           state,
           'info',
           `自动返港：已把货仓全部卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} 单位，本趟采得 ${oreName}×${trip}）。`,
+          'core.mining.024',
+          { p1: moved.toLocaleString('zh-CN'), p2: oreName, p3: trip },
         )
         if (m.stopAfterTrip || !m.autoCycle) {
           // 按设定结束循环
@@ -369,7 +436,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           m.cycleAccMs = 0
           m.tripUnits = 0
           m.rvLeft = 0
-          addLog(state, 'info', '自动循环已结束（按设定返港后停止）。')
+          addLog(state, 'info', '自动循环已结束（按设定返港后停止）。', 'core.mining.025')
           break
         }
         // 自动循环：空船去程已并入刚才的返航腿 → 直接回到矿带恢复采掘（不再有出航相位）
@@ -396,7 +463,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.phase = 'mining'
       m.cycleAccMs = 0
       m.rvLeft = 0
-      addLog(state, 'warn', '矿带已不存在，采矿作业已停止。')
+      addLog(state, 'warn', '矿带已不存在，采矿作业已停止。', 'core.mining.026')
       return
     }
     const cycleMs = params.cycleMs
@@ -418,7 +485,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.phase = 'mining'
       m.cycleAccMs = 0
       m.rvLeft = 0
-      addLog(state, 'warn', '矿带产物记录缺失，采矿作业已停止。')
+      addLog(state, 'warn', '矿带产物记录缺失，采矿作业已停止。', 'core.mining.027')
       return
     }
 
@@ -442,6 +509,14 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           state,
           'info',
           `货舱装不下下一循环（余 ${Math.round(freeM3)} m³ ／ 每循环 ${Math.round(oreM3PerCycle)} m³）：自动返航空间站卸货（本趟 ${m.tripUnits} 单位${oreNow.name}，返航约 ${Math.max(1, Math.round(mergedMs / 1000))} 秒，去程已并入返航）。`,
+          'core.mining.028',
+          {
+            p1: Math.round(freeM3),
+            p2: Math.round(oreM3PerCycle),
+            p3: m.tripUnits,
+            p4: oreNow.name,
+            p5: Math.max(1, Math.round(mergedMs / 1000)),
+          },
         )
         continue // 剩余时间转入返航阶段
       }
@@ -454,6 +529,13 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         state,
         'warn',
         `货舱装不下下一循环（余 ${Math.round(freeM3)} m³ ／ 每循环 ${Math.round(oreM3PerCycle)} m³）：开采自动停止（本趟 ${m.tripUnits} 单位${oreNow.name}，未开启自动循环）。`,
+        'core.mining.029',
+        {
+          p1: Math.round(freeM3),
+          p2: Math.round(oreM3PerCycle),
+          p3: m.tripUnits,
+          p4: oreNow.name,
+        },
       )
       return
     }
@@ -469,7 +551,13 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
     } else if (nextRandom(state.rng) < richVeinP(params.cycleMs, state, ctx)) {
       units *= 3
       m.rvLeft = 1
-      addLog(state, 'info', `富矿脉！连续 2 个循环产量 ×3，本循环获得 ${units} 单位${oreNow.name}。`)
+      addLog(
+        state,
+        'info',
+        `富矿脉！连续 2 个循环产量 ×3，本循环获得 ${units} 单位${oreNow.name}。`,
+        'core.mining.030',
+        { p1: units, p2: oreNow.name },
+      )
     }
     addItem(state, oreNow.id, units)
     bumpFirst(state, 'mineUnits', units) // 第一次任务/链：累计原矿单位（2026-09-17 教程重做批）
@@ -616,6 +704,8 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
           moved > 0
             ? `${name} 已随远征善后返航到港：货仓已卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。`
             : `${name} 已随远征善后返航到港（货仓为空）。`,
+          moved > 0 ? 'core.mining.031' : 'core.mining.032',
+          moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
         )
         continue
       }
@@ -626,6 +716,8 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
           moved > 0
             ? `${name} 已随打捞善后返航到港：残骸已卸入物品仓库（${moved.toLocaleString('zh-CN')} m³ 当量）。`
             : `${name} 已随打捞善后返航到港（货仓为空）。`,
+          moved > 0 ? 'core.mining.033' : 'core.mining.034',
+          moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
         )
         continue
       }
@@ -635,6 +727,8 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
         moved > 0
           ? `${name} 已返港并卸货（换船善后）：${moved.toLocaleString('zh-CN')} 单位已入物品仓库。`
           : `${name} 已随换船善后返港（货仓为空）。`,
+        moved > 0 ? 'core.mining.035' : 'core.mining.036',
+        moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
       )
     }
   }

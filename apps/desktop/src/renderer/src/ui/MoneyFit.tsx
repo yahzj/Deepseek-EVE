@@ -21,6 +21,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { moneyExactText, moneyFitCandidates } from '@whale/core'
+import { tr } from '../i18n/locale'
 
 /** 测量用的样式：与正文完全同源（字体/字号/字距/字重都由 `inherit` 从容器继承） */
 const PROBE_STYLE: React.CSSProperties = {
@@ -80,7 +81,7 @@ export function MoneyFit({ amount, className }: { amount: number; className?: st
   }, [amount])
 
   return (
-    <span ref={boxRef} className={className} title={`钱包余额：${moneyExactText(amount)}`}>
+    <span ref={boxRef} className={className} title={tr("ui.MoneyFit.001", { p1: moneyExactText(amount) })}>
       {text}
       <span ref={probeRef} style={PROBE_STYLE} aria-hidden="true" />
     </span>

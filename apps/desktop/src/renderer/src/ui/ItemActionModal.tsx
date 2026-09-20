@@ -3,15 +3,16 @@
  * 复用装配换装浮层的 app-fit-overlay / app-fit-modal 视觉族；内容由调用页提供（信息 + 操作按钮）。
  */
 import type { ReactNode } from 'react'
+import { tr } from '../i18n/locale'
 
 export function ItemActionModal({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   return (
     <div className="app-fit-overlay" onClick={onClose}>
       <div className="app-fit-modal is-narrow" onClick={(e) => e.stopPropagation()}>
         <div className="app-fit-modal-head">
-          <span>物品操作</span>
+          <span>{tr("ui.ItemActionModal.001")}</span>
           <button className="app-btn is-small" onClick={onClose}>
-            关闭
+            {tr("ui.FitPage.055")}
           </button>
         </div>
         {children}

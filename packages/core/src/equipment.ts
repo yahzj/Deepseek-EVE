@@ -379,13 +379,13 @@ export function fitModule(
   const lock = shipLockedReason(state, opts?.shipId ?? state.shipId, '改装它')
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
-  if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
+  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001' }
   if (countModule(state, moduleId) < 1) {
-    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。` }
+    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002' }
   }
   const shipId = opts?.shipId ?? state.shipId
   const fitted = state.fleet[shipId]?.fitted
-  if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法装配。' }
+  if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法装配。', errorId: 'core.equipment.003' }
   const rack = opts?.rack ?? rackOf(def)
   // V18 韧性：位数组长度按船布局期望补齐（repair 链负责持久对齐；此处兜底运行态）
   const bays = ensureRackBays(fitted, rack, wantedBaysOf(state, ctx, shipId, rack))
@@ -394,13 +394,23 @@ export function fitModule(
   let index = -1
   if (opts?.index !== undefined) {
     if (opts.index < 0 || opts.index >= bays.length || bays[opts.index] !== null) {
-      return { ok: false, error: `该${rackLabel(rack)}位不可用（第 ${opts.index + 1} 位）。` }
+      return {
+        ok: false,
+        error: `该${rackLabel(rack)}位不可用（第 ${opts.index + 1} 位）。`,
+        errorId: 'core.equipment.007',
+        errorParams: { p1: rackLabel(rack), p2: opts.index + 1 },
+      }
     }
     index = opts.index
   } else {
     index = firstFreeBay(fitted, rack)
     if (index < 0) {
-      return { ok: false, error: `${rackLabel(rack)}已满（${bays.length}/${bays.length}）：先卸下再装。` }
+      return {
+        ok: false,
+        error: `${rackLabel(rack)}已满（${bays.length}/${bays.length}）：先卸下再装。`,
+        errorId: 'core.equipment.008',
+        errorParams: { p1: rackLabel(rack), p2: bays.length, p3: bays.length },
+      }
     }
   }
   // CPU 装配校验（2026-09-11 起走单点预演）：全位合计（含新件 + 该船无人机舱预占清单）
@@ -414,12 +424,20 @@ export function fitModule(
       return {
         ok: false,
         error: `装配超载：合计需 CPU ${used}，预算 ${cpuBudgetOf(state, ctx, shipId)}（无人机舱占用亦计入预算——卸下装备、清一部分无人机，或装一件「协处理器」扩容）。`,
+        errorId: 'core.equipment.009',
+        errorParams: { p1: used, p2: cpuBudgetOf(state, ctx, shipId) },
       }
     }
   }
   removeModule(state, moduleId)
   bays[index] = moduleId
-  addLog(state, 'info', `已装配 ${def.name}（${rackLabel(rack)}第 ${index + 1} 位）。`)
+  addLog(
+    state,
+    'info',
+    `已装配 ${def.name}（${rackLabel(rack)}第 ${index + 1} 位）。`,
+    'core.equipment.021',
+    { p1: def.name, p2: rackLabel(rack), p3: index + 1 },
+  )
   return { ok: true }
 }
 
@@ -448,7 +466,13 @@ export function unfitAt(
   if (ctx && cpuOverloadText(state, ctx, shipId, { remove: { rack, index } }) !== null) return false
   bays[index] = null
   addModule(state, moduleId)
-  addLog(state, 'info', `已卸下并放回装备库（${rackLabel(rack)}第 ${index + 1} 位）。`)
+  addLog(
+    state,
+    'info',
+    `已卸下并放回装备库（${rackLabel(rack)}第 ${index + 1} 位）。`,
+    'core.equipment.022',
+    { p1: rackLabel(rack), p2: index + 1 },
+  )
   if (ctx) trimDroneLoadToBay(state, ctx, shipId)
   return true
 }
@@ -488,19 +512,26 @@ export function swapModuleAt(
   const lock = shipLockedReason(state, opts.shipId ?? state.shipId, '改装它')
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
-  if (!def) return { ok: false, error: `未知装备：${moduleId}。` }
+  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001' }
   const shipId = opts.shipId ?? state.shipId
   const fleet = state.fleet[shipId]
   const fitted = fleet?.fitted
-  if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法换装。' }
+  if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法换装。', errorId: 'core.equipment.004' }
   const bays = ensureRackBays(fitted, opts.rack, wantedBaysOf(state, ctx, shipId, opts.rack))
   if (opts.index < 0 || opts.index >= bays.length) {
-    return { ok: false, error: `该${rackLabel(opts.rack)}位不可用（第 ${opts.index + 1} 位）。` }
+    return {
+      ok: false,
+      error: `该${rackLabel(opts.rack)}位不可用（第 ${opts.index + 1} 位）。`,
+      errorId: 'core.equipment.007',
+      errorParams: { p1: rackLabel(opts.rack), p2: opts.index + 1 },
+    }
   }
   const oldId = bays[opts.index]
-  if (oldId === moduleId) return { ok: false, error: `${def.name} 已装在此位。` }
+  if (oldId === moduleId) {
+    return { ok: false, error: `${def.name} 已装在此位。`, errorId: 'core.equipment.010', errorParams: { p1: def.name } }
+  }
   if (countModule(state, moduleId) < 1) {
-    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。` }
+    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002' }
   }
   const overload = cpuOverloadText(state, ctx, shipId, {
     ...(oldId !== null ? { remove: { rack: opts.rack, index: opts.index } } : {}),
@@ -583,18 +614,30 @@ export function adjustDroneLoad(
   shipId: string = state.shipId,
 ): CommandResult {
   const def = ctx.items.get(droneId)
-  if (!def || def.kind !== 'drone') return { ok: false, error: '只能装载无人机物品。' }
+  if (!def || def.kind !== 'drone') return { ok: false, error: '只能装载无人机物品。', errorId: 'core.equipment.011' }
   const fleet = state.fleet[shipId]
-  if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法装载无人机。' }
-  if (!Number.isInteger(delta) || delta === 0) return { ok: false, error: '数量必须是整数且不能为 0。' }
+  if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法装载无人机。', errorId: 'core.equipment.005' }
+  if (!Number.isInteger(delta) || delta === 0) return { ok: false, error: '数量必须是整数且不能为 0。', errorId: 'core.equipment.012' }
   const load: Record<string, number> = { ...(fleet.droneLoad ?? {}) }
   const cur = load[droneId] ?? 0
   const next = cur + delta
-  if (next < 0) return { ok: false, error: `卸下数量超过已装载（当前 ×${cur}）。` }
+  if (next < 0) {
+    return {
+      ok: false,
+      error: `卸下数量超过已装载（当前 ×${cur}）。`,
+      errorId: 'core.equipment.013',
+      errorParams: { p1: cur },
+    }
+  }
   if (delta > 0) {
     const have = countWare(state, droneId)
     if (have < delta) {
-      return { ok: false, error: `仓库里没有足够的 ${def.name}（差 ${delta - have} 架）。` }
+      return {
+        ok: false,
+        error: `仓库里没有足够的 ${def.name}（差 ${delta - have} 架）。`,
+        errorId: 'core.equipment.014',
+        errorParams: { p1: def.name, p2: delta - have },
+      }
     }
     const cap = droneBayCapOf(state, ctx, shipId)
     // 预算 = 船体 CPU + 已装协处理器加成（2026-09-11 起：装配与放飞共用同一份扩容预算）
@@ -605,10 +648,20 @@ export function adjustDroneLoad(
       (def.cpuUse ?? 0) * delta
     const usedM3 = droneLoadM3(load, ctx) + (def.unitM3 ?? 0) * delta
     if (usedM3 > cap) {
-      return { ok: false, error: `机舱容量不足：${Math.round(usedM3 * 10) / 10}/${cap} m³（先卸下一些，或装「甲板扩展」扩容）。` }
+      return {
+        ok: false,
+        error: `机舱容量不足：${Math.round(usedM3 * 10) / 10}/${cap} m³（先卸下一些，或装「甲板扩展」扩容）。`,
+        errorId: 'core.equipment.015',
+        errorParams: { p1: Math.round(usedM3 * 10) / 10, p2: cap },
+      }
     }
     if (cpuTotal > 0 && usedCpu > cpuTotal) {
-      return { ok: false, error: `CPU 预算不足：合计需 ${usedCpu}/${cpuTotal}（无人机占用计入预算）。` }
+      return {
+        ok: false,
+        error: `CPU 预算不足：合计需 ${usedCpu}/${cpuTotal}（无人机占用计入预算）。`,
+        errorId: 'core.equipment.016',
+        errorParams: { p1: usedCpu, p2: cpuTotal },
+      }
     }
     removeWare(state, droneId, delta)
   } else {
@@ -617,7 +670,19 @@ export function adjustDroneLoad(
   if (next <= 0) delete load[droneId]
   else load[droneId] = next
   fleet.droneLoad = Object.keys(load).length > 0 ? load : undefined
-  addLog(state, 'info', `${delta > 0 ? '装入' : '卸下'} ${def.name} ×${Math.abs(delta)}（舱内 ×${next > 0 ? next : 0}）。`)
+  addLog(
+    state,
+    'info',
+    `${delta > 0 ? '装入' : '卸下'} ${def.name} ×${Math.abs(delta)}（舱内 ×${next > 0 ? next : 0}）。`,
+    'core.equipment.024',
+    {
+      p1: delta > 0 ? '装入' : '卸下',
+      ...(delta > 0 ? {} : { p1Id: 'core.equipment.027' }),
+      p2: def.name,
+      p3: Math.abs(delta),
+      p4: next > 0 ? next : 0,
+    },
+  )
   return { ok: true }
 }
 
@@ -725,15 +790,27 @@ export function setAmmoTier(
   shipId: string = state.shipId,
 ): CommandResult {
   const fleet = state.fleet[shipId]
-  if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法设置弹药档位。' }
-  if (!AMMO_TYPES.includes(type)) return { ok: false, error: '未知弹药类型。' }
+  if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法设置弹药档位。', errorId: 'core.equipment.006' }
+  if (!AMMO_TYPES.includes(type)) return { ok: false, error: '未知弹药类型。', errorId: 'core.equipment.017' }
   if (itemId !== null) {
     const def = ctx.items.get(itemId)
-    if (!def || def.kind !== 'ammo') return { ok: false, error: '只能选择弹药物品。' }
-    if (def.damageType !== type) return { ok: false, error: `${def.name} 不属于 ${type} 系弹药。` }
+    if (!def || def.kind !== 'ammo') return { ok: false, error: '只能选择弹药物品。', errorId: 'core.equipment.018' }
+    if (def.damageType !== type) {
+      return {
+        ok: false,
+        error: `${def.name} 不属于 ${type} 系弹药。`,
+        errorId: 'core.equipment.019',
+        errorParams: { p1: def.name, p2: type },
+      }
+    }
     // 可选档 = 该族基础弹（-l）或 MK2 弹（-2）；未知档位拒绝（未来加档在此扩展）
     if (itemId !== `ammo-${type}-l` && itemId !== `ammo-${type}-2`) {
-      return { ok: false, error: `${def.name} 不是可选的弹药档位。` }
+      return {
+        ok: false,
+        error: `${def.name} 不是可选的弹药档位。`,
+        errorId: 'core.equipment.020',
+        errorParams: { p1: def.name },
+      }
     }
   }
   const pref = { ...(fleet.ammoPref ?? {}) }
@@ -741,7 +818,13 @@ export function setAmmoTier(
   else pref[type] = itemId
   fleet.ammoPref = Object.keys(pref).length > 0 ? pref : undefined
   const name = itemId === null ? '基础弹' : (ctx.items.get(itemId)?.name ?? itemId)
-  addLog(state, 'info', `已设${type}系弹药档位：${name}（开战按此预载）。`)
+  addLog(
+    state,
+    'info',
+    `已设${type}系弹药档位：${name}（开战按此预载）。`,
+    'core.equipment.025',
+    { p1: type, p2: name },
+  )
   return { ok: true }
 }
 
@@ -761,7 +844,13 @@ export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
   const moduleId = bays[legacy.index]!
   bays[legacy.index] = null
   addModule(state, moduleId)
-  addLog(state, 'info', `已卸下并放回装备库（${slotLabel(family)}）。`)
+  addLog(
+    state,
+    'info',
+    `已卸下并放回装备库（${slotLabel(family)}）。`,
+    'core.equipment.023',
+    { p1: slotLabel(family) },
+  )
   return true
 }
 
@@ -1003,7 +1092,13 @@ export function migrateDeprecatedAmmo(state: GameState): number {
     converted += n
   }
   if (converted > 0) {
-    addLog(state, 'info', `弹药改版：旧重型弹已按 1:1 并入通用弹（共 ${converted} 发），相关挂单已撤销。`)
+    addLog(
+      state,
+      'info',
+      `弹药改版：旧重型弹已按 1:1 并入通用弹（共 ${converted} 发），相关挂单已撤销。`,
+      'core.equipment.026',
+      { p1: converted },
+    )
   }
   return converted
 }

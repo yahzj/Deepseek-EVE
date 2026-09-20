@@ -27,6 +27,7 @@ import { CommsDeviceFrame, CommsEave, CommsScreen } from '../panels/CommsReader'
 import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
+import { cmdText, tr } from '../i18n/locale'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -66,13 +67,13 @@ export function CommsPage({
   useEffect(() => {
     if (!current || current.read) return
     const r = engine.markCommsReadAt(current.id)
-    if (!r.ok && r.error) onToast(r.error, true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.CommsPage.012'), true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, current?.read])
 
   function markAll(): void {
     const n = engine.markAllCommsReadNow()
-    onToast(n > 0 ? `已把 ${n} 封通讯标为已读。` : '收件箱里没有未读通讯。')
+    onToast(n > 0 ? tr("ui.CommsPage.001", { n: n }) : tr("ui.CommsPage.002"))
   }
 
 
@@ -80,29 +81,29 @@ export function CommsPage({
     <div className="page-stack page-fill">
       <Panel
         className="is-fill win-fixed-body"
-        title="通讯"
+        title={tr("ui.App.009")}
       hint={
-        <HintIcon tip="协会各部门与合作方有事会直接发到这里。带「前往」的通讯只是提示你该去哪儿，具体事务仍要在对应页面上办。" />
+        <HintIcon tip={tr("ui.CommsPage.003")} />
       }
         right={
           <>
-            <span className="app-dim" title="收件箱永久保留历史记录；剧本通话（建站介绍与并网通报）也会归入这里">
-              {inbox.length} 封 · 未读 {unread}
+            <span className="app-dim" title={tr("ui.CommsPage.004")}>
+              {inbox.length} {tr("ui.CommsPage.005")} {unread}
             </span>
             <button
               className="app-btn is-small"
               disabled={unread === 0}
-              title={unread === 0 ? '没有未读通讯' : '把收件箱里的未读通讯一次全部标为已读'}
+              title={unread === 0 ? tr("ui.CommsPage.006") : tr("ui.CommsPage.007")}
               onClick={markAll}
             >
-              全部标记已读
+              {tr("ui.CommsPage.008")}
             </button>
           </>
         }
       >
         <div className="app-win-body app-comms-body">
           {inbox.length === 0 ? (
-            <div className="app-dim app-exp-idle">收件箱是空的——有新的消息会先让导航栏的「通讯」图标闪起来。</div>
+            <div className="app-dim app-exp-idle">{tr("ui.CommsPage.009")}</div>
           ) : (
             <div className="app-comms-grid">
               {/* 左列：消息列表（内部滚动；右侧屏幕也各自滚） */}
@@ -113,7 +114,7 @@ export function CommsPage({
                     role="listitem"
                     className={`app-comms-item${current && e.id === current.id ? ' is-sel' : ''}${e.read ? '' : ' is-unread'}`}
                     onClick={() => setSel(e.id)}
-                    title={e.fromBrief ? `${e.fromBrief}（${e.read ? '已读' : '未读'}）` : e.read ? '已读' : '未读'}
+                    title={e.fromBrief ? `${e.fromBrief}（${e.read ? tr("ui.CommsPage.010") : tr("ui.CommsPage.011")}）` : e.read ? tr("ui.CommsPage.010") : tr("ui.CommsPage.011")}
                   >
                     <span className="app-comms-item-top">
                       {e.read ? null : <i className="app-comms-dot" />}

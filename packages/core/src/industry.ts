@@ -31,6 +31,7 @@ import { addItem, addWare, countItem, countWare, removeItem, removeWare } from '
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike, stationIndustryBlocked } from './location'
 import { formatDurationMs } from './time'
+import { composeLog, type LogSeg } from './logParts'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
 import { shipDisplayName } from './instances'
@@ -200,14 +201,14 @@ export function startRefineRun(
   }
   const def = ctx.items.get(itemId)
   if (!def) {
-    return { ok: false, error: `未知物品：${itemId}。` }
+    return { ok: false, error: `未知物品：${itemId}。`, errorId: 'core.industry.002', errorParams: { p1: itemId } }
   }
   if (!def.refine || def.refine.length === 0) {
-    return { ok: false, error: `「${def.name}」没有精炼配方（只支持原矿/气体/冰矿）。` }
+    return { ok: false, error: `「${def.name}」没有精炼配方（只支持原矿/气体/冰矿）。`, errorId: 'core.industry.003', errorParams: { p1: def.name } }
   }
   const available = oreAvailable(state, itemId)
   if (available <= 0) {
-    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
+    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
   if (worker === 'pilot') {
@@ -217,22 +218,22 @@ export function startRefineRun(
   if (worker === 'pilot') {
     // 主控亲自运转 = 全局限 1 台 + 占主控工作位：与其它主控作业互斥；与主控手动制造共用手动工作位
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。' }
+      return { ok: false, error: '你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.011' }
     }
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。' }
+      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。', errorId: 'core.state.012' }
     }
-    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
-    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
-    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
-    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
-    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
-    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。' }
+    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。', errorId: 'core.state.013' }
+    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。', errorId: 'core.state.014' }
+    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
+    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
+    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
+    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。', errorId: 'core.state.036' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
-      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。` }
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。`, errorId: 'core.industry.005', errorParams: { p1: aiCoreName(worker) } }
     }
   }
   const { batchUnits, cycleMs } = refineParamsOf(def)
@@ -256,10 +257,12 @@ export function startRefineRun(
     return {
       ok: false,
       error: `可炼量不足一批（每批 ${batchEff} 单位，现有 ${available} 单位）——先集齐再开工。`,
+      errorId: 'core.industry.006',
+      errorParams: { p1: batchEff, p2: available },
     }
   }
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
-    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
   }
   // v20：原料不预锁定——仓库/货仓余量即炉料，每批到点实时扣取
   state.refineRuns.push({
@@ -306,27 +309,27 @@ export function startUnboxRun(
     return { ok: false, error: '精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const def = ctx.items.get(boxItemId)
-  if (!def) return { ok: false, error: `未知物品：${boxItemId}。` }
+  if (!def) return { ok: false, error: `未知物品：${boxItemId}。`, errorId: 'core.industry.002', errorParams: { p1: boxItemId } }
   if (def.kind !== 'container') {
-    return { ok: false, error: `「${def.name}」不是货柜——「货柜拆解」只拆虫洞带回来的货柜（安全货柜 / 图纸货柜）。` }
+    return { ok: false, error: `「${def.name}」不是货柜——「货柜拆解」只拆虫洞带回来的货柜（安全货柜 / 图纸货柜）。`, errorId: 'core.industry.008', errorParams: { p1: def.name } }
   }
   if (oreAvailable(state, boxItemId) <= 0) {
-    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
+    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   if (worker === 'pilot') {
     const hold = wormholePilotHoldReason(state)
     if (hold) return { ok: false, error: hold }
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。' }
+      return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
     }
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开工（AI 核心不受此限）。' }
+      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开工（AI 核心不受此限）。', errorId: 'core.state.035' }
     }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
-      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入「货柜拆解」。` }
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入「货柜拆解」。`, errorId: 'core.industry.007', errorParams: { p1: aiCoreName(worker) } }
     }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
@@ -337,7 +340,7 @@ export function startUnboxRun(
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
   if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
-    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
   }
   state.refineRuns.push({
     active: true,
@@ -367,23 +370,25 @@ export function startRecycleRun(
     return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const def = ctx.items.get(wreckItemId)
-  if (!def) return { ok: false, error: `未知物品：${wreckItemId}。` }
+  if (!def) return { ok: false, error: `未知物品：${wreckItemId}。`, errorId: 'core.industry.002', errorParams: { p1: wreckItemId } }
   if (def.kind !== 'wreck') {
-    return { ok: false, error: `「${def.name}」不是残骸——残骸回收只接受打捞到的残骸。` }
+    return { ok: false, error: `「${def.name}」不是残骸——残骸回收只接受打捞到的残骸。`, errorId: 'core.industry.009', errorParams: { p1: def.name } }
   }
   const profile = recycleProfileOf(ctx, wreckItemId)
   if (!profile) {
-    return { ok: false, error: `「${def.name}」来源记录缺失，无法回收。` }
+    return { ok: false, error: `「${def.name}」来源记录缺失，无法回收。`, errorId: 'core.industry.010', errorParams: { p1: def.name } }
   }
   const available = oreAvailable(state, wreckItemId)
   if (available <= 0) {
-    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。` }
+    return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   // 2026-09-06（船长反馈：数量不足仍能开工）：起炉需 ≥ 一批；运行中余量不足的"尾批"处理不受影响
   if (available < RECYCLE_BATCH_M3) {
     return {
       ok: false,
       error: `残骸不足一批（每批 ${RECYCLE_BATCH_M3} m³，现有 ${Math.round(available * 100) / 100} m³）——先凑够同型号残骸再拆解。`,
+      errorId: 'core.industry.011',
+      errorParams: { p1: RECYCLE_BATCH_M3, p2: Math.round(available * 100) / 100 },
     }
   }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
@@ -394,22 +399,22 @@ export function startRecycleRun(
   if (worker === 'pilot') {
     // 主控亲自回收：全局限 1 台 + 占主控工作位；与主控手动制造共用手动工作位
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。' }
+      return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
     }
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。' }
+      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。', errorId: 'core.state.012' }
     }
-    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。' }
-    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。' }
-    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。' }
-    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。' }
-    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。' }
-    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。' }
+    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。', errorId: 'core.state.013' }
+    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。', errorId: 'core.state.014' }
+    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
+    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
+    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
+    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。', errorId: 'core.state.036' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
-      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入回收炉。` }
+      return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入回收炉。`, errorId: 'core.industry.012', errorParams: { p1: aiCoreName(worker) } }
     }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
@@ -419,7 +424,7 @@ export function startRecycleRun(
   const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
   if (recLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.04 * recLv)))
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
-    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。` }
+    return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
   }
   // 2026-09-11 船长定（第二次修订，最终口径）：
   // **稀有残骸照普通残骸回收的机制走**（不预占、不分"件/单元"、不解锁额外状态），只改两件事：
@@ -453,8 +458,21 @@ export function startRecycleRun(
   return { ok: true }
 }
 
-/** 炉所得明细文本（停炉/料尽/自然结束时附在日志；2026-09-06 精炼与回收统一：
- *  精炼 = 矿物产物列表；回收 = 保底矿物 + 彩头（基础件/低安 MK2/蓝图碎片）。超 6 种折叠 */
+/**
+ * 炉所得明细（停炉/料尽/自然结束时附在日志；2026-09-06 精炼与回收统一：
+ *  精炼 = 矿物产物列表；回收 = 保底矿物 + 额外掉落（基础件/低安 MK2/蓝图碎片）。超 6 种折叠。
+ *
+ * 甲案（2026-09-20）：本函数**自带中文小词**（「保底原材料」「额外掉落」「无人机…架」），
+ * 只给外层日志配一个 id 是不够的（那些词会留在中文）⇒ 一并产出**分段 id 链**：
+ * `text` 仍是逐字不变的中文原串（老档/未改造路径回退用），`parts` 交给调用方按段挂 `p{n}Id`。
+ */
+interface YieldNote {
+  /** 中文原串（行为与改造前逐字一致） */
+  text: string
+  /** 分段：`text` 恒为该段中文，`id`/`params`/`subs` 供调用方挂成段 id 链 */
+  parts: LogSeg[]
+}
+
 function yieldNoteFor(
   state: GameState,
   ctx: SimContext,
@@ -466,7 +484,7 @@ function yieldNoteFor(
     blueprint?: Record<string, number>
   },
   kind: 'refine' | 'recycle',
-): string {
+): YieldNote {
   // 2026-09-11 修复（船长实测反馈「回收残骸出货时的事件日志内显示的额外掉落为装备ID」）：
   // 名表必须**先查装备、再查物品**——旧实现只看 `ctx.items`，而「额外掉落」段里的装备是**模块 id**
   // （如 mod-lair-turret-a），查不到就回落到裸 id，玩家看到的是 `装备 mod-lair-turret-a×1`。
@@ -477,30 +495,69 @@ function yieldNoteFor(
     ctx.blueprints.get(id)?.name ??
     ctx.shipBlueprints.get(id)?.name ??
     id
-  const fmt = (m: Record<string, number>, cap = 6): string => {
+  /** 名字清单（按数量降序、超 6 种折叠） */
+  const listOf = (m: Record<string, number>): { list: string; capped: boolean; total: number } => {
     const es = Object.entries(m).sort((a, b) => b[1]! - a[1]!)
-    const head = es
-      .slice(0, cap)
-      .map(([id, n]) => `${nameOf(id)}×${n}`)
-      .join('、')
-    return es.length > cap ? `${head} 等${es.length}种` : head
+    return {
+      list: es
+        .slice(0, 6)
+        .map(([id, n]) => `${nameOf(id)}×${n}`)
+        .join('、'),
+      capped: es.length > 6,
+      total: es.length,
+    }
   }
-  const parts: string[] = []
+  const parts: YieldNote['parts'] = []
+  const isRecycle = kind === 'recycle'
+  /**
+   * 一类产物 = **一个段**：段文本 `装备 A×1、B×2 等7种`（中文原串按此拼）；
+   * id 链 = 自带词与清单（本段，一个标签一个 id）→ 「等 N 种」尾巴（子段 `.048`，两步渲染，
+   * 先译成 `p2` 再插进本段的 `{p2}`）。
+   */
+  const typeSeg = (label: string, labelId: string, m: { list: string; capped: boolean; total: number }): LogSeg => {
+    const capTxt = ` 等${m.total}种`
+    return {
+      text: `${label}${m.list}${m.capped ? capTxt : ''}`,
+      id: labelId,
+      params: m.capped ? { p1: m.list, p2: capTxt, p2Id: 'core.industry.048', p2p1: m.total } : { p1: m.list },
+    }
+  }
+
   if (Object.keys(rec.min).length > 0) {
-    parts.push(kind === 'recycle' ? `保底原材料 ${fmt(rec.min)}` : fmt(rec.min))
+    const m = listOf(rec.min)
+    // 回收 = 「保底原材料 」+ 清单（.058）；精炼 = 光清单（.044）
+    // 注：段的 `text` 必须非空（`composeLog` 按各段文本拼中文原串，空文本的段会被整段丢掉）
+    parts.push(isRecycle ? typeSeg('保底原材料 ', 'core.industry.058', m) : typeSeg('', 'core.industry.044', m))
   }
-  if (kind === 'recycle') {
-    const loot: string[] = []
-    if (Object.keys(rec.mod).length > 0) loot.push(`装备 ${fmt(rec.mod)}`)
-    const dr = rec.drone ?? {}
-    if (Object.keys(dr).length > 0) loot.push(`无人机 ${fmt(dr)} 架`)
-    const bpAcc = rec.blueprint ?? {}
-    if (Object.keys(bpAcc).length > 0) loot.push(`图纸 ${fmt(bpAcc)} 张`)
-    if (Object.keys(rec.frag).length > 0) loot.push(`蓝图碎片 ${fmt(rec.frag)}`)
+  if (isRecycle) {
     // 2026-09-11：日志文案禁用开发用词「彩头」（玩家反馈"不符合游戏设定的名词"）——统一写「额外掉落」
-    if (loot.length > 0) parts.push(`额外掉落：${loot.join('；')}`)
+    const lootText: string[] = []
+    const lootSubs: LogSeg[] = []
+    if (Object.keys(rec.mod).length > 0) {
+      const m = listOf(rec.mod)
+      lootText.push(`装备 ${m.list}${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('装备 ', 'core.industry.059', m))
+    }
+    const dr = rec.drone ?? {}
+    if (Object.keys(dr).length > 0) {
+      const m = listOf(dr)
+      lootText.push(`无人机 ${m.list} 架${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('无人机 ', 'core.industry.060', m))
+    }
+    const bpAcc = rec.blueprint ?? {}
+    if (Object.keys(bpAcc).length > 0) {
+      const m = listOf(bpAcc)
+      lootText.push(`图纸 ${m.list} 张${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('图纸 ', 'core.industry.061', m))
+    }
+    if (Object.keys(rec.frag).length > 0) {
+      const m = listOf(rec.frag)
+      lootText.push(`蓝图碎片 ${m.list}${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('蓝图碎片 ', 'core.industry.062', m))
+    }
+    if (lootText.length > 0) parts.push({ text: `额外掉落：${lootText.join('；')}`, id: 'core.industry.057', subs: lootSubs })
   }
-  return parts.length > 0 ? parts.join('；') : ''
+  return { text: parts.map((p) => p.text).join('；'), parts }
 }
 
 /**
@@ -528,25 +585,37 @@ function refundClaimedUnits(state: GameState, r: RefineRunState): number {
 
 export function stopRefineRun(state: GameState, ctx: SimContext, runId: number): CommandResult {
   const idx = state.refineRuns.findIndex((r) => r.id === runId)
-  if (idx < 0) return { ok: false, error: '没有找到该台炉（已停或未启动）。' }
+  if (idx < 0) return { ok: false, error: '没有找到该台炉（已停或未启动）。', errorId: 'core.industry.025' }
   const [r] = state.refineRuns.splice(idx, 1)
   const def = r.itemId ? ctx.items.get(r.itemId) : undefined
   const refunded = refundClaimedUnits(state, r)
   if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
   const coreNote = r.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''
   const isRecycle = r.recipe === 'recycle'
-  const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
-  const refundNote =
+  const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
+  const refundName = def?.name ?? r.itemId ?? '未知资源'
+  const refundedTxt = `${Math.round(refunded * 100) / 100}`
+  const lead = `${isRecycle ? '残骸回收炉' : '精炼炉'}已停：${refundName}（已完成 ${r.batchesDone} 批）`
+  const composed = composeLog(lead, [
+    coreNote === '' ? null : { text: coreNote, id: 'core.state.041' },
+    accNote && accNote.text !== ''
+      ? {
+          text: `；${isRecycle ? '回收' : '精炼'}所得：${accNote.text}`,
+          id: isRecycle ? 'core.industry.066' : 'core.industry.067',
+          params: { p1: accNote.text },
+          subs: accNote.parts.map((p) => ({ text: p.text, id: p.id, params: p.params, subs: p.subs })),
+        }
+      : null,
+    // 尾段：退回明细两态（甲案不许可有可无的段——两态各配 id，不留空段）
     refunded > 0
-      ? `未用完的 ${def?.name ?? r.itemId} ${Math.round(refunded * 100) / 100} m³ 已退回物品仓库`
-      : '原料未锁定无需退回，余料仍留在货仓/仓库'
-  addLog(
-    state,
-    'info',
-    `${isRecycle ? '残骸回收炉' : '精炼炉'}已停：${def?.name ?? '未知资源'}（已完成 ${r.batchesDone} 批）${coreNote}` +
-      (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-      `。${refundNote}。`,
-  )
+      ? { text: `。未用完的 ${refundName} ${refundedTxt} m³ 已退回物品仓库。`, id: 'core.industry.070', params: { p1: refundName, p2: refundedTxt } }
+      : { text: '。原料未锁定无需退回，余料仍留在货仓/仓库。', id: 'core.industry.071' },
+  ])
+  addLog(state, 'info', composed.text, isRecycle ? 'core.industry.068' : 'core.industry.069', {
+    p1: refundName,
+    p2: r.batchesDone,
+    ...composed.textParams,
+  })
   return { ok: true }
 }
 
@@ -570,7 +639,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '精炼炉运转异常：资源记录缺失，该台已停（AI 核心已归还）。')
+      addLog(state, 'warn', '精炼炉运转异常：资源记录缺失，该台已停（AI 核心已归还）。', 'core.industry.033')
       continue
     }
     let guard = 0
@@ -582,7 +651,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '残骸回收运转异常：残骸来源记录缺失，该台已停（AI 核心已归还）。')
+      addLog(state, 'warn', '残骸回收运转异常：残骸来源记录缺失，该台已停（AI 核心已归还）。', 'core.industry.034')
       continue
     }
     while (r.active && state.gameMs >= r.finishAtGameMs) {
@@ -601,32 +670,52 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
-        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
+        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
         state.refineRuns.splice(i, 1)
         /**
          * **停机标题与原因按产线分岔**（2026-09-15 船长报障「精炼炉拆解货柜的文字显示不对」）：
          * 货柜拆解不是精炼 ⇒ 标题写「货柜拆解停」、原因写「货柜已拆完（共 N 件）」，
          * 不再套用精炼那套「精炼炉停 … 原料耗尽（共 N 批）」。
          */
-        const stopTitle = isUnbox
-          ? `货柜拆解停：${def.name}`
-          : isRecycle
-            ? `残骸回收炉停：${def.name}`
-            : `精炼炉停：${def.name}`
-        const stopWhy = isUnbox ? `货柜已拆完（共 ${doneBatches} 件）` : `原料耗尽（共 ${doneBatches} 批）`
-        addLog(
-          state,
-          'info',
-          lockDone
-            ? `残骸回收炉停：${def.name} 本炉料账已烧完（共 ${doneBatches} 批）` +
-              (accNote ? `；回收所得：${accNote}` : '') +
-              (wasCore ? '；AI 核心已归还核心库' : '') +
-              `；不足 ${RARE_UNIT_M3} m³（一个回收单元）的零头不预占、不产出，留在货仓/仓库；想继续就再起一炉。`
-            : `${stopTitle} ${stopWhy}` +
-              (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-              (wasCore ? '；AI 核心已归还核心库' : '') +
-              '。',
-        )
+        const coreSeg = wasCore ? { text: '；AI 核心已归还核心库', id: 'core.state.041' } : null
+        const yieldSeg =
+          accNote && accNote.text !== ''
+            ? {
+                // 本段文本是"标签 + 明细"一句：标签走 id，明细（`subs`）逐类走 id
+                text: `；${isRecycle ? '回收' : '精炼'}所得：${accNote.text}`,
+                id: isRecycle ? 'core.industry.066' : 'core.industry.067',
+                params: { p1: accNote.text },
+                subs: accNote.parts.map((p) => ({ text: p.text, id: p.id, params: p.params, subs: p.subs })),
+              }
+            : null
+        if (lockDone) {
+          const composed = composeLog(
+            `残骸回收炉停：${def.name} 本炉料账已烧完（共 ${doneBatches} 批）`,
+            [
+              yieldSeg,
+              coreSeg,
+              {
+                text: `；不足 ${RARE_UNIT_M3} m³（一个回收单元）的零头不预占、不产出，留在货仓/仓库；想继续就再起一炉。`,
+                id: 'core.industry.073',
+                params: { p1: RARE_UNIT_M3 },
+              },
+            ],
+          )
+          addLog(state, 'info', composed.text, 'core.industry.072', { p1: def.name, p2: doneBatches, ...composed.textParams })
+        } else {
+          const stopTitle = isUnbox
+            ? `货柜拆解停：${def.name}`
+            : isRecycle
+              ? `残骸回收炉停：${def.name}`
+              : `精炼炉停：${def.name}`
+          const stopWhy = isUnbox ? `货柜已拆完（共 ${doneBatches} 件）` : `原料耗尽（共 ${doneBatches} 批）`
+          const composed = composeLog(`${stopTitle} ${stopWhy}`, [yieldSeg, coreSeg, { text: '。', id: 'core.state.042' }])
+          addLog(state, 'info', composed.text, isUnbox ? 'core.industry.075' : isRecycle ? 'core.industry.076' : 'core.industry.077', {
+            p1: def.name,
+            p2: doneBatches,
+            ...composed.textParams,
+          })
+        }
         break
       }
       // 2026-09-06（船长拍板：余量不足即停工、余料保留）：到批点时余量不足一批 → 立即停工，
@@ -636,18 +725,36 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
-        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
+        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
         const remainTxt = isRecycle ? `${Math.round(avail * 100) / 100} m³` : `${avail} 单位`
+        const unitTxt = isRecycle ? 'm³' : '单位'
         state.refineRuns.splice(i, 1)
-        addLog(
-          state,
-          'info',
-          `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 余量不足一批（每批 ${
-            r.batchUnits
-          }${isRecycle ? ' m³' : ' 单位'}，余 ${remainTxt}）——已完成 ${doneBatches} 批` +
-            (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-            `，已停工、余料保留在货仓/仓库（凑够一批可再开）${wasCore ? '；AI 核心已归还核心库' : ''}。`,
+        const composed = composeLog(
+          `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 余量不足一批（每批 ${r.batchUnits}${isRecycle ? ' m³' : ' 单位'}，余 ${remainTxt}）——已完成 ${doneBatches} 批`,
+          [
+            accNote && accNote.text !== ''
+              ? {
+                  text: `；${isRecycle ? '回收' : '精炼'}所得：${accNote.text}`,
+                  id: isRecycle ? 'core.industry.066' : 'core.industry.067',
+                  params: { p1: accNote.text },
+                  subs: accNote.parts.map((p) => ({ text: p.text, id: p.id, params: p.params, subs: p.subs })),
+                }
+              : null,
+            // 尾句是"两段相连"（已停工 + 核心归还）：核心段挂着时尾句留 `{p1}` 槽、核心另占一段
+            wasCore
+              ? { text: '，已停工、余料保留在货仓/仓库（凑够一批可再开）', id: 'core.industry.078' }
+              : { text: '，已停工、余料保留在货仓/仓库（凑够一批可再开）。', id: 'core.industry.079' },
+            wasCore ? { text: '；AI 核心已归还核心库。', id: 'core.state.040' } : null,
+          ],
         )
+        addLog(state, 'info', composed.text, isRecycle ? 'core.industry.074' : 'core.industry.083', {
+          p1: def.name,
+          p2: r.batchUnits,
+          p3: unitTxt,
+          p4: remainTxt,
+          p5: doneBatches,
+          ...composed.textParams,
+        })
         break
       }
       const qty = r.batchUnits // 每批整批扣料（不足一批已在上方停工，不再有小批）
@@ -702,11 +809,11 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
                   : drawn.source === 'military'
                     ? '（MK3 装备）'
                     : '（族专属）'
-          addLog(state, 'trade', `📦 拆解 ${def.name}：得到 ${drawnName}${srcTag}。`)
+          addLog(state, 'trade', `📦 拆解 ${def.name}：得到 ${drawnName}${srcTag}。`, 'core.industry.035', { p1: def.name, p2: drawnName, p3: srcTag })
         } else {
           if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
           state.refineRuns.splice(i, 1)
-          addLog(state, 'warn', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`)
+          addLog(state, 'warn', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`, 'core.industry.036', { p1: def.name })
           break
         }
       } else if (isRecycle && profile) {
@@ -763,7 +870,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
               batchIncome += row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0)
             }
-            addLog(state, 'trade', `✦ 额外战利品：稀有残骸解体必给——${extra.note}。`)
+            addLog(state, 'trade', `✦ 额外战利品：稀有残骸解体必给——${extra.note}。`, 'core.industry.037', { p1: extra.note })
           }
         }
         const loot = rollRecycleLoot(state, ctx, profile, qty)
@@ -843,6 +950,8 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
 export interface SellResult {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   soldUnits: number
   gainedIsk: number
 }
@@ -874,14 +983,14 @@ export function discardWareQty(
   itemId: string,
   qty: number,
   ctx: SimContext,
-): { ok: boolean; dropped: number; error?: string } {
+): { ok: boolean; dropped: number; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const have = countWare(state, itemId)
-  if (have <= 0) return { ok: false, dropped: 0, error: '仓库里没有这件物品。' }
+  if (have <= 0) return { ok: false, dropped: 0, error: '仓库里没有这件物品。', errorId: 'core.industry.026' }
   const want = Math.min(have, Math.max(0, Math.floor(qty)))
-  if (want <= 0) return { ok: false, dropped: 0, error: '丢弃数量需大于 0。' }
-  if (!removeWare(state, itemId, want)) return { ok: false, dropped: 0, error: '丢弃失败（物品不足）。' }
+  if (want <= 0) return { ok: false, dropped: 0, error: '丢弃数量需大于 0。', errorId: 'core.industry.027' }
+  if (!removeWare(state, itemId, want)) return { ok: false, dropped: 0, error: '丢弃失败（物品不足）。', errorId: 'core.industry.028' }
   const name = ctx.items.get(itemId)?.name ?? itemId
-  addLog(state, 'info', `⚑ 丢弃 ${name} ×${want.toLocaleString('zh-CN')}（仓库）。`)
+  addLog(state, 'info', `⚑ 丢弃 ${name} ×${want.toLocaleString('zh-CN')}（仓库）。`, 'core.industry.038', { p1: name, p2: want.toLocaleString('zh-CN') })
   return { ok: true, dropped: want }
 }
 
@@ -892,12 +1001,14 @@ export function sellCargoItemQty(state: GameState, itemId: string, qty: number, 
   if (lock) return { ok: false, error: lock, soldUnits: 0, gainedIsk: 0 }
   const have = countItem(state, itemId)
   const want = Math.max(0, Math.floor(qty))
-  if (want <= 0) return { ok: false, error: '出售数量需大于 0。', soldUnits: 0, gainedIsk: 0 }
+  if (want <= 0) return { ok: false, error: '出售数量需大于 0。', errorId: 'core.state.022', soldUnits: 0, gainedIsk: 0 }
   if (want > have) {
     const def = ctx.items.get(itemId)
     return {
       ok: false,
       error: `货仓里只有 ${have} 单位${def ? ` ${def.name}` : ''}，无法卖 ${want} 单位。`,
+      errorId: 'core.industry.014',
+      errorParams: { p1: have, p2: def ? ` ${def.name}` : '', p3: want },
       soldUnits: 0,
       gainedIsk: 0,
     }
@@ -909,12 +1020,14 @@ export function sellCargoItemQty(state: GameState, itemId: string, qty: number, 
 export function sellWareItemQty(state: GameState, itemId: string, qty: number, ctx: SimContext): SellResult {
   const have = countWare(state, itemId)
   const want = Math.max(0, Math.floor(qty))
-  if (want <= 0) return { ok: false, error: '出售数量需大于 0。', soldUnits: 0, gainedIsk: 0 }
+  if (want <= 0) return { ok: false, error: '出售数量需大于 0。', errorId: 'core.state.022', soldUnits: 0, gainedIsk: 0 }
   if (want > have) {
     const def = ctx.items.get(itemId)
     return {
       ok: false,
       error: `仓库里只有 ${have} 单位${def ? ` ${def.name}` : ''}，无法卖 ${want} 单位。`,
+      errorId: 'core.industry.015',
+      errorParams: { p1: have, p2: def ? ` ${def.name}` : '', p3: want },
       soldUnits: 0,
       gainedIsk: 0,
     }
@@ -931,16 +1044,16 @@ function sellItemFrom(
   sourceName: string,
 ): SellResult {
   const def = ctx.items.get(itemId)
-  if (!def) return { ok: false, error: `未知物品：${itemId}`, soldUnits: 0, gainedIsk: 0 }
+  if (!def) return { ok: false, error: `未知物品：${itemId}`, errorId: 'core.industry.002', errorParams: { p1: itemId }, soldUnits: 0, gainedIsk: 0 }
   if (available <= 0) {
-    return { ok: false, error: `${sourceName}里没有 ${def.name}。`, soldUnits: 0, gainedIsk: 0 }
+    return { ok: false, error: `${sourceName}里没有 ${def.name}。`, errorId: 'core.industry.016', errorParams: { p1: sourceName, p2: def.name }, soldUnits: 0, gainedIsk: 0 }
   }
   const good = marketGoodOf(ctx, 'item', itemId)
-  if (!good) return { ok: false, error: `${def.name} 不在市场流通目录中，无法出售。`, soldUnits: 0, gainedIsk: 0 }
+  if (!good) return { ok: false, error: `${def.name} 不在市场流通目录中，无法出售。`, errorId: 'core.industry.017', errorParams: { p1: def.name }, soldUnits: 0, gainedIsk: 0 }
   if (good.playerSellable === false) {
-    return { ok: false, error: `${def.name} 暂不支持玩家出售。`, soldUnits: 0, gainedIsk: 0 }
+    return { ok: false, error: `${def.name} 暂不支持玩家出售。`, errorId: 'core.industry.018', errorParams: { p1: def.name }, soldUnits: 0, gainedIsk: 0 }
   }
-  if (!remove(available)) return { ok: false, error: '取出物品失败。', soldUnits: 0, gainedIsk: 0 }
+  if (!remove(available)) return { ok: false, error: '取出物品失败。', errorId: 'core.industry.029', soldUnits: 0, gainedIsk: 0 }
   // 货先锁定进 escrow，再按市场收购簿即时成交（剩余部分由引擎自动转限价挂单）
   state.escrowItems[good.key] = (state.escrowItems[good.key] ?? 0) + available
   const res = sellAtMarket(state, ctx, good.key, available)
@@ -954,24 +1067,38 @@ function sellItemFrom(
  */
 export function buyShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
   const ship = ctx.ships.get(shipId)
-  if (!ship) return { ok: false, error: `未知舰船：${shipId}。` }
+  if (!ship) return { ok: false, error: `未知舰船：${shipId}。`, errorId: 'core.industry.019', errorParams: { p1: shipId } }
   const good = marketGoodOf(ctx, 'ship', shipId)
-  if (!good) return { ok: false, error: `${ship.name} 不通过市场流通（仅可制造）。` }
+  if (!good) return { ok: false, error: `${ship.name} 不通过市场流通（仅可制造）。`, errorId: 'core.industry.020', errorParams: { p1: ship.name } }
   // 只收不卖（2026-09-09 船长定「蓝图船成品现货下架」：开拓/鲸王；2026-09-11 甲裁决补皇带鱼）：
   // 市场页本就有通用「只收不卖」禁买；此处给出**准确原因**，避免落到"挂收购单失败（余额不足…）"的误导文案
   if (good.playerBuyable === false) {
     return {
       ok: false,
       error: `${ship.name} 仅可制造：市场不售成品现货（可在市场买它的蓝图书自行总装，或留意他人二手挂售）。`,
+      errorId: 'core.industry.021',
+      errorParams: { p1: ship.name },
     }
   }
   const lock = goodLockedReason(state, good)
-  if (lock) return { ok: false, error: `${ship.name} 暂不可购买：${lock}。` }
+  if (lock) {
+    return {
+      ok: false,
+      error: `${ship.name} 暂不可购买：${lock}。`,
+      errorId: 'core.industry.022',
+      errorParams: { p1: ship.name, p2: lock },
+    }
+  }
   const quote = marketQuote(state, ctx, good.key)
   const ask = quote.sell
   if (ask !== undefined) {
     if (state.wallet.isk < ask) {
-      return { ok: false, error: `信用点不足：${ship.name} 市场价约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
+      return {
+      ok: false,
+      error: `信用点不足：${ship.name} 市场价约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。`,
+      errorId: 'core.industry.023',
+      errorParams: { p1: ship.name, p2: ask.toLocaleString('zh-CN'), p3: state.wallet.isk.toLocaleString('zh-CN') },
+    }
     }
     const res = buyAtMarket(state, ctx, good.key, 1)
     const uid = res.bought > 0 ? res.shipUid : null
@@ -988,9 +1115,9 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
         !state.salvaging.active
       if (pilotFree) {
         state.shipId = uid
-        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）并登舰。`)
+        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）并登舰。`, 'core.industry.039', { p1: shipDisplayName(state, ctx, uid), p2: res.total.toLocaleString('zh-CN') })
       } else {
-        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）——驾驶船正在作业，新船已入机库待命（可稍后在舰船页切换驾驶）。`)
+        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）——驾驶船正在作业，新船已入机库待命（可稍后在舰船页切换驾驶）。`, 'core.industry.040', { p1: shipDisplayName(state, ctx, uid), p2: res.total.toLocaleString('zh-CN') })
       }
       return { ok: true }
     }
@@ -998,11 +1125,16 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
   // 市场暂无现货：挂收购单（均衡供应价 ×1.1 保证到货即成交优先）
   const est = estimateShipBid(state, ctx, good.key)
   if (state.wallet.isk < est) {
-    return { ok: false, error: `信用点不足：${ship.name} 收购挂单约 ${est.toLocaleString('zh-CN')} 信用点。` }
+    return {
+      ok: false,
+      error: `信用点不足：${ship.name} 收购挂单约 ${est.toLocaleString('zh-CN')} 信用点。`,
+      errorId: 'core.industry.024',
+      errorParams: { p1: ship.name, p2: est.toLocaleString('zh-CN') },
+    }
   }
   const order = placeBuyOrder(state, ctx, good.key, est, 1)
-  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。' }
-  addLog(state, 'trade', `${ship.name} 市场暂无现货——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动停入机库（可随时撤销）。`)
+  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。', errorId: 'core.state.021' }
+  addLog(state, 'trade', `${ship.name} 市场暂无现货——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动停入机库（可随时撤销）。`, 'core.industry.041', { p1: ship.name, p2: order.price.toLocaleString('zh-CN') })
   return { ok: true }
 }
 
@@ -1036,10 +1168,10 @@ export function redeemFragments(state: GameState, ctx: SimContext, moduleId: str
   const recipe = FRAGMENT_RECIPES[moduleId]
   if (!recipe) return { ok: false, error: `「${moduleId}」没有对应的逆向研究蓝图。` }
   if (!isAtHomeLike(state, ctx)) {
-    return { ok: false, error: '逆向研究随协会基地网络进行：需停靠空间站（母港或已建成副站）。' }
+    return { ok: false, error: '逆向研究随协会基地网络进行：需停靠空间站（母港或已建成副站）。', errorId: 'core.industry.030' }
   }
   if (state.learnedRecipes.includes(recipe.blueprintId)) {
-    return { ok: false, error: '该蓝图已掌握（learnedRecipes 永久生效），无需重复逆向。' }
+    return { ok: false, error: '该蓝图已掌握（learnedRecipes 永久生效），无需重复逆向。', errorId: 'core.industry.031' }
   }
   const def = ctx.modules.get(moduleId)
   const bpDef = ctx.blueprints.get(recipe.blueprintId)
@@ -1064,6 +1196,13 @@ export function redeemFragments(state: GameState, ctx: SimContext, moduleId: str
     state,
     'info',
     `逆向研究完成：${fragDef?.name ?? fragId} ×${recipe.need} → 已解锁「${bpDef?.name ?? recipe.blueprintId}」蓝图（${def?.name ?? moduleId} 可自制备；无需市场购图）。`,
+    'core.industry.042',
+    {
+      p1: fragDef?.name ?? fragId,
+      p2: recipe.need,
+      p3: bpDef?.name ?? recipe.blueprintId,
+      p4: def?.name ?? moduleId,
+    },
   )
   return { ok: true }
 }

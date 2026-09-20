@@ -5,6 +5,7 @@
  */
 import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
 
 const DEBUG_KEY = 'whale-idle:debug'
 
@@ -43,15 +44,15 @@ export function DebugButton({
       <button
         className={`app-btn${quick ? ' is-warn' : ''}`}
         onClick={() => setOpen((v) => !v)}
-        title="调试模式（开发工具）：1 秒化 / 离线快进"
+        title={tr("ui.DebugPanel.001")}
       >
-        ⇄ 调试{quick ? ' · 1秒化' : ''}
+        {tr("ui.DebugPanel.002")}{quick ? tr("ui.DebugPanel.003") : ''}
       </button>
       {open ? (
         <>
           <div className="app-debug-backdrop" onClick={() => setOpen(false)} />
           <div className="app-debug-pop">
-            <div className="app-debug-title">调试模式</div>
+            <div className="app-debug-title">{tr("ui.DebugPanel.004")}</div>
             <label className="app-check">
               <input
                 type="checkbox"
@@ -61,10 +62,10 @@ export function DebugButton({
                   engine.setDebugQuick(e.target.checked)
                 }}
               />
-              1 秒化：训练/采矿/制造/航行/扫描按 1 秒完成，交火即时按胜率判定
+              {tr("ui.DebugPanel.005")}
             </label>
             <div className="app-debug-row">
-              <span className="app-dim">离线快进：</span>
+              <span className="app-dim">{tr("ui.DebugPanel.006")}</span>
               <input
                 className="app-select app-debug-input"
                 type="number"
@@ -73,14 +74,14 @@ export function DebugButton({
                 onChange={(e) => setAmount(e.target.value)}
               />
               <select className="app-select" value={unit} onChange={(e) => setUnit(e.target.value as 'min' | 'hour')}>
-                <option value="min">分钟</option>
-                <option value="hour">小时</option>
+                <option value="min">{tr("ui.DebugPanel.007")}</option>
+                <option value="hour">{tr("ui.DebugPanel.008")}</option>
               </select>
-              <button className="app-btn is-small is-primary" onClick={doFastForward} title="立即按所选时长结算一次（上限 8 小时，弹离线简报）">
-                快进
+              <button className="app-btn is-small is-primary" onClick={doFastForward} title={tr("ui.DebugPanel.009")}>
+                {tr("ui.DebugPanel.010")}
               </button>
             </div>
-            <div className="app-dim app-debug-note">市场刷单节奏不缩短；快进上限 8 小时；两项均为开发工具，不影响正常玩法数值。</div>
+            <div className="app-dim app-debug-note">{tr("ui.DebugPanel.011")}</div>
           </div>
         </>
       ) : null}

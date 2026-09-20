@@ -17,9 +17,10 @@ import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
 import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipCategoryLabelOf, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
+import { tr } from '../i18n/locale'
 
 /** 伤害类型中文名 */
-export const DMG_LABEL: Record<DamageType, string> = { kinetic: '动能', explosive: '高爆', plasma: '能量' }
+export const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
 
 /**
  * 伤害类型色 chip（V17.2 快速辨识）：颜色 = 我方三层血量色——
@@ -64,7 +65,7 @@ export function resistGapText(add: DamageResists | undefined): string {
   const parts = (['kinetic', 'explosive', 'plasma'] as const)
     .map((t) => ({ t, v: add[t] ?? 0 }))
     .filter((x) => x.v > 0)
-    .map((x) => `${DMG_LABEL[x.t]}抗 +${pct(x.v)}`)
+    .map((x) => tr("ui.shipInfo.087", { p1: DMG_LABEL[x.t], p2: pct(x.v) }))
   return parts.join(' · ')
 }
 
@@ -96,7 +97,7 @@ function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | nu
             <span className="app-dim">{` +${pct(x.v)}`}</span>
           </span>
         ))}
-        <span className="app-dim">（上限 90%）</span>
+        <span className="app-dim">{tr("ui.shipInfo.001")}</span>
       </>
     ),
   }
@@ -113,13 +114,13 @@ function propTailOf(mod: ModuleDef): string {
 function repairAmountText(mod: ModuleDef): string {
   const arm = mod.repairArmorHp ?? 0
   const hul = mod.repairHullHp ?? 0
-  if (arm > 0 && hul > 0) return arm === hul ? `装甲与结构各 ${fmt(arm)} 点` : `装甲 ${fmt(arm)} / 结构 ${fmt(hul)} 点`
-  if (arm > 0) return `装甲 ${fmt(arm)} 点`
-  return `结构 ${fmt(hul)} 点`
+  if (arm > 0 && hul > 0) return arm === hul ? tr("ui.shipInfo.088", { p1: fmt(arm) }) : tr("ui.shipInfo.089", { p1: fmt(arm), p2: fmt(hul) })
+  if (arm > 0) return tr("ui.shipInfo.090", { p1: fmt(arm) })
+  return tr("ui.shipInfo.091", { p1: fmt(hul) })
 }
 /** 维修件消耗的组件名（接线单点：repairKit → 物品名） */
 function repairKitName(mod: ModuleDef): string {
-  return mod.repairKit === 'repairkit-mil' ? '军用修理组件' : mod.repairKit === 'repairkit-civ' ? '民用修理组件' : (mod.repairKit ?? '修理组件')
+  return mod.repairKit === 'repairkit-mil' ? tr("ui.shipInfo.002") : mod.repairKit === 'repairkit-civ' ? tr("ui.shipInfo.003") : (mod.repairKit ?? tr('ui.itemSubs.001'))
 }
 
 /**
@@ -132,8 +133,8 @@ function repairShortText(mod: ModuleDef): string {
   const hul = mod.repairHullHp ?? 0
   if (arm <= 0 && hul <= 0) return ''
   const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
-  const amt = [arm > 0 ? `甲${fmt(arm)}` : '', hul > 0 ? `结构${fmt(hul)}` : ''].filter(Boolean).join(' / ')
-  return `每 ${secs} 秒 ${amt}${mod.repairFree === true ? '（无消耗）' : '（耗组件）'}`
+  const amt = [arm > 0 ? tr("ui.shipInfo.092", { p1: fmt(arm) }) : '', hul > 0 ? tr("ui.shipInfo.093", { p1: fmt(hul) }) : ''].filter(Boolean).join(' / ')
+  return tr("ui.shipInfo.094", { secs: secs, amt: amt, p3: mod.repairFree === true ? tr("ui.shipInfo.004") : tr("ui.shipInfo.005") })
 }
 
 /**
@@ -149,7 +150,7 @@ function hullResistShortText(mod: ModuleDef): string {
   const bits = (['kinetic', 'explosive', 'plasma'] as const)
     .filter((t) => (mod.hullResistAdd?.[t] ?? 0) > 0)
     .map((t) => `${DMG_LABEL[t]}+${pct(mod.hullResistAdd![t]!)}`)
-  return bits.length > 0 ? `结构抗 ${bits.join(' ')}` : ''
+  return bits.length > 0 ? tr("ui.shipInfo.095", { p1: bits.join(' ') }) : ''
 }
 
 /**
@@ -160,7 +161,7 @@ function hullResistShortText(mod: ModuleDef): string {
  *  ⚠ 2026-09-16 弹药定名批：弹药名统一到《系+弹药》⇒ 这里的后缀是「弹药」（原「弹」）。 */
 export function turretAmmoText(mod: ModuleDef): string {
   const type = DMG_LABEL[mod.damageType ?? 'kinetic'] ?? mod.damageType
-  return `${type}弹药`
+  return tr("ui.shipInfo.096", { type: type })
 }
 
 /** 短效文案（装配台槽位行 / 装备库行 / 手册网格共用；V18.1 收敛件尾注"多装递减"） */
@@ -168,48 +169,48 @@ export function moduleShortEffect(mod: ModuleDef): string {
   let body = ''
   switch (mod.slot) {
     case 'miner':
-      body = `产量 +${pctOpt(mod.bonus)}`
+      body = tr("ui.shipInfo.097", { p1: pctOpt(mod.bonus) })
       break
     case 'cargo':
-      body = `货舱容量 +${pctOpt(mod.bonus)}`
+      body = tr("ui.shipInfo.098", { p1: pctOpt(mod.bonus) })
       break
     case 'turret': {
-      body = `${turretAmmoText(mod)} · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      body = tr("ui.shipInfo.099", { p1: turretAmmoText(mod), p2: rangeText(mod.minRangeM, mod.maxRangeM) })
       break
     }
     case 'missile': {
       // V18B-1 导弹架：爆炸系武器形态（爆破弹药，近盲安全射距 + 追踪命中）
-      body = `爆破弹药 · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      body = tr("ui.shipInfo.100", { p1: rangeText(mod.minRangeM, mod.maxRangeM) })
       break
     }
     case 'laser': {
       // V18B-2 激光炮：能量系武器形态（能量弹药 · 必中 · 威力随距离轻微衰减）
-      body = `能量弹药 · 射程 ${rangeText(mod.minRangeM, mod.maxRangeM)}`
+      body = tr("ui.shipInfo.101", { p1: rangeText(mod.minRangeM, mod.maxRangeM) })
       break
     }
     case 'shield': {
       const parts: string[] = []
-      if (mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
+      if (mod.shieldHpBonus !== undefined) parts.push(tr("ui.shipInfo.102", { p1: pct(mod.shieldHpBonus) }))
       const gap = resistGapText(mod.shieldResistAdd)
       if (gap) parts.push(gap)
       // 2026-09-14 护盾充能装置（船长：「每 30 秒恢复自身护盾最大值一定比例的护盾量」）：
       // ⚠ 它只有 `shieldPulsePct` 一个效果字段，原先短行**拼出空串**（船长报障「装配时候的卡片上没有说明」）
       // —— 秒数取 core 单点 `SHIELD_PULSE_MS`，不写死 30。
       if ((mod.shieldPulsePct ?? 0) > 0) {
-        parts.push(`每 ${SHIELD_PULSE_MS / 1000} 秒回盾 ${pct(mod.shieldPulsePct ?? 0)}（按满盾）`)
+        parts.push(tr("ui.shipInfo.103", { p1: SHIELD_PULSE_MS / 1000, p2: pct(mod.shieldPulsePct ?? 0) }))
       }
       body = parts.join(' · ')
       break
     }
     case 'armor': {
       const parts: string[] = []
-      if (mod.armorHpBonus !== undefined) parts.push(`甲容 +${pct(mod.armorHpBonus)}`)
+      if (mod.armorHpBonus !== undefined) parts.push(tr("ui.shipInfo.104", { p1: pct(mod.armorHpBonus) }))
       const gap = resistGapText(mod.armorResistAdd)
       if (gap) parts.push(gap)
       // 结构层容量（E 族巨构骨架）：短行也要看得见"最后那段血更厚"
-      if ((mod.hullHpBonus ?? 0) > 0) parts.push(`结构 +${pct(mod.hullHpBonus ?? 0)}`)
+      if ((mod.hullHpBonus ?? 0) > 0) parts.push(tr("ui.shipInfo.105", { p1: pct(mod.hullHpBonus ?? 0) }))
       // 2026-09-10 船长：重甲件的机动代价（陵寝装甲层 −25%）——短行也带代价（同推进器「命中×0.85」写法）
-      if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(`速度×${(1 - (mod.speedPenaltyPct ?? 0)).toFixed(2)}`)
+      if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(tr("ui.shipInfo.106", { p1: (1 - (mod.speedPenaltyPct ?? 0)).toFixed(2) }))
       body = parts.join(' · ')
       break
     }
@@ -220,24 +221,24 @@ export function moduleShortEffect(mod: ModuleDef): string {
       // 件自带覆盖（微型跃迁引擎 10 秒点火）时以件为准）
       const parts: string[] = []
       if (mod.speedBonusPct !== undefined)
-        parts.push(`速度 +${pct(mod.speedBonusPct)}（${thrusterCycleText(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod))}）`)
-      if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(`命中×${(1 - mod.hitPenalty).toFixed(2)}`)
+        parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleText(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod)) }))
+      if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - mod.hitPenalty).toFixed(2) }))
       body = parts.join(' · ')
       break
     }
     case 'drone-rack':
-      body = `无人机舱 +${fmt(mod.droneBayBonusM3)} m³`
+      body = tr("ui.shipInfo.109", { p1: fmt(mod.droneBayBonusM3) })
       break
     case 'salvager':
       // 2026-09-14 补（与护盾充能装置同批查出）：**打捞器短行此前也是空的**——本模板**漏了 salvager 这个槽位分支**
-      body = `每 ${salvageCycleSecs(mod)} 秒 1 具残骸`
+      body = tr("ui.shipInfo.110", { p1: salvageCycleSecs(mod) })
       break
     case 'drone-tac':
-      body = `无人机伤害 +${pctOpt(mod.droneDmgBonus)}`
+      body = tr("ui.shipInfo.111", { p1: pctOpt(mod.droneDmgBonus) })
       break
     case 'drone-relay':
       // 2026-09-10 无人机中继天线：放飞无人机射程加成
-      body = `无人机射程 +${pctOpt(mod.droneRangeBonusPct)}`
+      body = tr("ui.shipInfo.112", { p1: pctOpt(mod.droneRangeBonusPct) })
       break
     case 'support': {
       // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
@@ -245,30 +246,30 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (dmg && Object.keys(dmg).length > 0) {
         body = Object.entries(dmg)
           .filter(([, v]) => (v ?? 0) > 0)
-          .map(([t, v]) => `${DMG_LABEL[t as DamageType]}伤 +${pct(v ?? 0)}`)
+          .map(([t, v]) => tr("ui.shipInfo.113", { p1: DMG_LABEL[t as DamageType], p2: pct(v ?? 0) }))
           .join(' + ')
       } else if (mod.reloadCutPct !== undefined) {
-        body = `装填 −${pct(mod.reloadCutPct)}`
+        body = tr("ui.shipInfo.114", { p1: pct(mod.reloadCutPct) })
       } else if (mod.hitBonusPct !== undefined) {
-        body = `炮台命中 +${pct(mod.hitBonusPct)}`
+        body = tr("ui.shipInfo.115", { p1: pct(mod.hitBonusPct) })
       } else if (mod.evasionGapPct !== undefined) {
-        body = `被命中 −${pct(mod.evasionGapPct)}（缺口）`
+        body = tr("ui.shipInfo.116", { p1: pct(mod.evasionGapPct) })
       } else if (mod.warpSpeedBonusPct !== undefined) {
         // 2026-09-14 跃迁计算机（低槽支援件）：只缩短**星系际航行**时间，不碰战斗机动
-        body = `跃迁速度 +${pct(mod.warpSpeedBonusPct)}（仅跨星系航行）`
+        body = tr("ui.shipInfo.117", { p1: pct(mod.warpSpeedBonusPct) })
       } else if (mod.stealthMs !== undefined) {
         // 2026-09-15 隐秘行动装置（高槽支援件）：开火前隐身——短行必须写明"开火即现形"与推进器禁令
-        body = `开火前隐身 ${mod.stealthMs / 1000} 秒（不被锁定/不被攻击 · 带推进器失效）`
+        body = tr("ui.shipInfo.118", { p1: mod.stealthMs / 1000 })
       }
       break
     }
     case 'target-lock':
       // 2026-09-09 目标锁定阵列：集火首位 + 目标受击加深；**2026-09-17 船长：增伤与集火都改「全队生效」**
-      body = `全队集火首位：全队伤害 +${pctOpt(mod.lockDmgBonus)}`
+      body = tr("ui.shipInfo.119", { p1: pctOpt(mod.lockDmgBonus) })
       break
     case 'cpu':
       // 2026-09-11 协处理器：装配 CPU 预算扩容（本件自身不占 CPU——说清，否则玩家会以为要占 0 是 bug）
-      body = `装配 CPU 上限 +${fmt(mod.cpuBonus)}（本件不占 CPU）`
+      body = tr("ui.shipInfo.120", { p1: fmt(mod.cpuBonus) })
       break
   }
   // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）、结构层抗性与**跨族加成**——短行不丢关键效果
@@ -278,7 +279,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"；
   // 2026-09-15 隐秘行动装置（`max` 组）= **取最长一件、不叠加** ⇒ 既不标"多装递减"也不标"全额叠加"。
   const stShort = stackingOf(mod).group
-  return body + (stShort === 'flat' || stShort === 'max' ? '' : ' · 多装递减')
+  return body + (stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
 }
 
 /** 三系抗性紧凑文本（整数主抗制简化后只列非零项；全零 = "无"） */
@@ -286,7 +287,7 @@ export function resistsText(r: DamageResists | undefined): string {
   const parts = (['kinetic', 'explosive', 'plasma'] as const)
     .map((t) => ({ t, v: r?.[t] ?? 0 }))
     .filter((x) => x.v > 0)
-  if (parts.length === 0) return '无'
+  if (parts.length === 0) return tr("ui.BattleScreen.001")
   return parts.map((x) => `${DMG_LABEL[x.t]} ${pct(x.v)}`).join(' · ')
 }
 
@@ -333,7 +334,7 @@ function layerBadge(
 ): ReactNode {
   const hasResist = resist !== undefined && Object.values(resist).some((v) => (v ?? 0) > 0)
   return (
-    <span key={key} className={`app-combat-badge ${cls}`} title={hasResist ? `抗性：${resistsText(resist)}` : undefined}>
+    <span key={key} className={`app-combat-badge ${cls}`} title={hasResist ? tr("ui.shipInfo.121", { p1: resistsText(resist) }) : undefined}>
       {label} {fmt(hp)}
     </span>
   )
@@ -347,9 +348,9 @@ export function combatBadges(ship: ShipDef, over?: BadgeOver): ReactNode[] {
   const hp = over?.hp
   const res = over?.resists
   return [
-    layerBadge('s', 'is-shield', '盾', hp?.s ?? ship.shieldHp, res?.shield ?? ship.shieldResist),
-    layerBadge('a', 'is-armor', '甲', hp?.a ?? ship.armorHp, res?.armor ?? ship.armorResist),
-    layerBadge('h', 'is-hull', '结构', hp?.h ?? ship.hullHp, res?.hull ?? ship.hullResist),
+    layerBadge('s', 'is-shield', tr("ui.FitPage.014"), hp?.s ?? ship.shieldHp, res?.shield ?? ship.shieldResist),
+    layerBadge('a', 'is-armor', tr("ui.FitPage.015"), hp?.a ?? ship.armorHp, res?.armor ?? ship.armorResist),
+    layerBadge('h', 'is-hull', tr("ui.ShipPage.023"), hp?.h ?? ship.hullHp, res?.hull ?? ship.hullResist),
   ]
 }
 
@@ -357,7 +358,7 @@ export function combatBadges(ship: ShipDef, over?: BadgeOver): ReactNode[] {
 export function slotListText(ship?: ShipDef): string {
   if (ship) {
     const s = shipSlotsOf(ship)
-    return `${RACK_LABELS.high} ${s.high} / ${RACK_LABELS.mid} ${s.mid} / ${RACK_LABELS.low} ${s.low}（复数安装）`
+    return tr("ui.shipInfo.122", { p1: RACK_LABELS.high, p2: s.high, p3: RACK_LABELS.mid, p4: s.mid, p5: RACK_LABELS.low, p6: s.low })
   }
   return MODULE_SLOTS.map((m) => SLOT_LABELS[m]).join(' · ')
 }
@@ -366,7 +367,7 @@ export function slotListText(ship?: ShipDef): string {
 export function shipInfoLines(ship: ShipDef): InfoLine[] {
   const lines: InfoLine[] = [
     {
-      k: '定位 / 档次',
+      k: tr("ui.Handbook.009"),
       // 2026-09-13 船长：**舰种子分类进界面**（只有虫洞族专属舰船写 `subClass`）
       // 2026-09-16 船长：类别名走 `shipCategoryLabelOf`（装甲线 = `role: armored` 或武装舰里装甲占比 > 护盾占比）
       v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipCategoryLabelOf(ship)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
@@ -375,51 +376,51 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     ...(() => {
       const bits: string[] = []
       const rangeText = Object.entries(ship.weaponRangeBonusPct ?? {})
-        .map(([t, v]) => `${DMG_LABEL[t as keyof typeof DMG_LABEL] ?? t}武器射程 +${Math.round((v ?? 0) * 100)}%`)
+        .map(([t, v]) => tr("ui.shipInfo.123", { p1: DMG_LABEL[t as keyof typeof DMG_LABEL] ?? t, p2: Math.round((v ?? 0) * 100) }))
         .join(' · ')
       if (rangeText) bits.push(rangeText)
-      if (ship.fleetDamageBonusPct) bits.push(`全舰单发伤害 +${Math.round(ship.fleetDamageBonusPct * 100)}%（编队光环，多艘取最高）`)
-      if (ship.wormholeScanRadiusBonus) bits.push(`虫洞扫描范围 +${ship.wormholeScanRadiusBonus} 圈（编入队伍即生效、可叠加）`)
+      if (ship.fleetDamageBonusPct) bits.push(tr("ui.shipInfo.124", { p1: Math.round(ship.fleetDamageBonusPct * 100) }))
+      if (ship.wormholeScanRadiusBonus) bits.push(tr("ui.shipInfo.125", { p1: ship.wormholeScanRadiusBonus }))
       // 2026-09-16 船长：后勤舰特性进「船体特性」栏（判据已由 `subClass` 改为数据字段，界面与引擎同源）
-      if (ship.repairPulseTargetsFleet) bits.push('装了维修装置时，维修脉冲改修编队中最缺血的舰船（含自己）')
+      if (ship.repairPulseTargetsFleet) bits.push(tr("ui.shipInfo.126"))
       // 2026-09-16 船长：**侦察舰特性**（「隐秘行动装置所需CPU降低50%，且移除推进器失效惩罚」）——
       // 同样走数据字段 ⇒ 引擎（`equipment.cpuUseOf` / `combat.createPlayerSpec`）与这里同源
       if (ship.stealthCpuMul !== undefined && ship.stealthCpuMul !== 1) {
-        bits.push(`隐秘行动装置 CPU ×${ship.stealthCpuMul}（向上取整）`)
+        bits.push(tr("ui.shipInfo.127", { p1: ship.stealthCpuMul }))
       }
-      if (ship.stealthIgnoresPropulsion === true) bits.push('装推进器也能保持隐身（不受推进器失效限制）')
+      if (ship.stealthIgnoresPropulsion === true) bits.push(tr("ui.shipInfo.128"))
       // 2026-09-18 船长：**电子舰特性 · 压制敌舰武器射程**（多艘乘法叠加 · 与敌方增程做加法 · 下限 3000m）
       if ((ship.foeRangeDebuffPct ?? 0) > 0) {
         bits.push(
-          `压制敌舰武器射程 ${Math.round((ship.foeRangeDebuffPct ?? 0) * 100)}%（多艘乘法叠加；与敌方增程相加；最低 3000 m）`,
+          tr("ui.shipInfo.129", { p1: Math.round((ship.foeRangeDebuffPct ?? 0) * 100) }),
         )
       }
-      return bits.length > 0 ? [{ k: '船体特性', v: bits.join(' · ') }] : []
+      return bits.length > 0 ? [{ k: tr("ui.shipInfo.006"), v: bits.join(' · ') }] : []
     })(),
-    { k: '货舱容量', v: `${fmt(ship.cargoM3)} m³` },
-    { k: '采集性能', v: `${ship.cycleSeconds} 秒 × ${ship.oreUnitsPerCycle} 单位/循环` },
-    { k: '动力（机动 / 跃迁充能）', v: `${Math.round(ship.agility * 100)}%` },
+    { k: tr("ui.Handbook.010"), v: `${fmt(ship.cargoM3)} m³` },
+    { k: tr("ui.Handbook.011"), v: tr("ui.shipInfo.130", { p1: ship.cycleSeconds, p2: ship.oreUnitsPerCycle }) },
+    { k: tr("ui.Handbook.012"), v: `${Math.round(ship.agility * 100)}%` },
   ]
   const hasCombat = (ship.shieldHp ?? 0) > 0 || (ship.armorHp ?? 0) > 0 || (ship.hullHp ?? 0) > 0
   if (hasCombat) {
-    lines.push({ k: '护盾', v: fmt(ship.shieldHp) })
-    lines.push({ k: '护盾抗性', v: resistsText(ship.shieldResist) })
-    lines.push({ k: '装甲', v: fmt(ship.armorHp) })
-    lines.push({ k: '装甲抗性', v: resistsText(ship.armorResist) })
-    lines.push({ k: '结构', v: fmt(ship.hullHp) })
-    lines.push({ k: '结构抗性', v: resistsText(ship.hullResist) })
+    lines.push({ k: tr("ui.FitPage.001"), v: fmt(ship.shieldHp) })
+    lines.push({ k: tr("ui.FitPage.002"), v: resistsText(ship.shieldResist) })
+    lines.push({ k: tr("ui.FitPage.003"), v: fmt(ship.armorHp) })
+    lines.push({ k: tr("ui.FitPage.004"), v: resistsText(ship.armorResist) })
+    lines.push({ k: tr("ui.ShipPage.023"), v: fmt(ship.hullHp) })
+    lines.push({ k: tr("ui.FitPage.005"), v: resistsText(ship.hullResist) })
     if (ship.powerBonus !== undefined && ship.powerBonus > 0) {
-      lines.push({ k: '火力加成', v: `+${Math.round(ship.powerBonus * 100)}%` })
+      lines.push({ k: tr("ui.shipInfo.007"), v: `+${Math.round(ship.powerBonus * 100)}%` })
     }
     // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——本族武器单发加成、跨族可用无加成
     if (ship.weaponFamilyBonus !== undefined) {
       for (const [t, v] of Object.entries(ship.weaponFamilyBonus)) {
         if ((v ?? 0) > 0) {
           lines.push({
-            k: '武器族加成',
+            k: tr("ui.shipInfo.008"),
             v: (
               <>
-                <DmgChip t={t as DamageType} label={`${DMG_LABEL[t as DamageType]}伤`} />
+                <DmgChip t={t as DamageType} label={tr("ui.shipInfo.131", { p1: DMG_LABEL[t as DamageType] })} />
                 <span className="app-dim">{` 本族武器单发 +${pct(v ?? 0)}（装别族武器无加成）`}</span>
               </>
             ),
@@ -428,12 +429,12 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
       }
     }
     // V16.1：命中加成/回避率上主属性（装配台主要属性区内可见）
-    if (ship.hitBonus !== undefined) lines.push({ k: '命中加成', v: `+${Math.round(ship.hitBonus * 100)}%` })
-    if (ship.evasion !== undefined) lines.push({ k: '回避率', v: `${Math.round(ship.evasion * 100)}%` })
+    if (ship.hitBonus !== undefined) lines.push({ k: tr("ui.FitPage.006"), v: `+${Math.round(ship.hitBonus * 100)}%` })
+    if (ship.evasion !== undefined) lines.push({ k: tr("ui.FitPage.007"), v: `${Math.round(ship.evasion * 100)}%` })
   }
-  lines.push({ k: '槽位', v: slotListText(ship) })
+  lines.push({ k: tr("ui.Handbook.008"), v: slotListText(ship) })
   if (ship.cpu !== undefined) lines.push({ k: 'CPU', v: fmt(ship.cpu) })
-  lines.push({ k: '无人机舱', v: ship.droneBayM3 ? `${fmt(ship.droneBayM3)} m³` : '无' })
+  lines.push({ k: tr("ui.FitPage.010"), v: ship.droneBayM3 ? `${fmt(ship.droneBayM3)} m³` : tr("ui.BattleScreen.001") })
   return lines
 }
 
@@ -446,22 +447,22 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
  */
 export function shipIndirectLines(ship: ShipDef, effWarp?: { aus: number; bonusPct: number }): InfoLine[] {
   const lines: InfoLine[] = []
-  if (ship.maxSpeedMps !== undefined) lines.push({ k: '最大速度', v: `${fmt(ship.maxSpeedMps)} m/s` })
+  if (ship.maxSpeedMps !== undefined) lines.push({ k: tr("ui.shipInfo.009"), v: `${fmt(ship.maxSpeedMps)} m/s` })
   if (ship.warpSpeedAus !== undefined) {
     const base = ship.warpSpeedAus
     const boosted = effWarp !== undefined && effWarp.bonusPct > 0 && Math.abs(effWarp.aus - base) > 1e-6
     lines.push({
-      k: '跃迁速度',
-      v: boosted ? `${base} AU/s → ${effWarp.aus.toFixed(2)} AU/s（含装备 +${pct(effWarp.bonusPct)}）` : `${base} AU/s`,
+      k: tr("ui.shipInfo.010"),
+      v: boosted ? tr("ui.shipInfo.132", { base: base, p2: effWarp.aus.toFixed(2), p3: pct(effWarp.bonusPct) }) : `${base} AU/s`,
     })
   }
-  if (ship.massKg !== undefined) lines.push({ k: '质量', v: `${(ship.massKg / 1_000_000).toFixed(1)} 百万 kg` })
-  if (ship.lockRangeM !== undefined) lines.push({ k: '锁定范围', v: `${(ship.lockRangeM / 1000).toFixed(0)} km` })
-  if (ship.signatureM !== undefined) lines.push({ k: '信号半径', v: `${fmt(ship.signatureM)} m` })
-  if (ship.scanResMm !== undefined) lines.push({ k: '扫描分辨率', v: `${fmt(ship.scanResMm)} mm` })
+  if (ship.massKg !== undefined) lines.push({ k: tr("ui.shipInfo.011"), v: tr("ui.shipInfo.133", { p1: (ship.massKg / 1_000_000).toFixed(1) }) })
+  if (ship.lockRangeM !== undefined) lines.push({ k: tr("ui.shipInfo.012"), v: `${(ship.lockRangeM / 1000).toFixed(0)} km` })
+  if (ship.signatureM !== undefined) lines.push({ k: tr("ui.shipInfo.013"), v: `${fmt(ship.signatureM)} m` })
+  if (ship.scanResMm !== undefined) lines.push({ k: tr("ui.shipInfo.014"), v: `${fmt(ship.scanResMm)} mm` })
   // V16.1：跃迁充能（派生自动力 agility，动力越高充能越快；取代旧"起跳时间"）
   const charge = warpChargePct(ship)
-  if (charge !== null) lines.push({ k: '跃迁充能（随动力）', v: `${charge}%` })
+  if (charge !== null) lines.push({ k: tr("ui.shipInfo.015"), v: `${charge}%` })
   return lines
 }
 
@@ -481,17 +482,17 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   const foreign = (owner: ModuleSlot): boolean => mod.slot !== owner
   // 装甲族（容量 / 抗性 / 机动代价）
   if (foreign('armor')) {
-    if (mod.armorHpBonus !== undefined) out.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
-    const row = resistAddLine('装甲抗性', mod.armorResistAdd)
+    if (mod.armorHpBonus !== undefined) out.push({ k: tr("ui.shipInfo.016"), v: `+${pct(mod.armorHpBonus)}` })
+    const row = resistAddLine(tr("ui.FitPage.004"), mod.armorResistAdd)
     if (row) out.push(row)
     if ((mod.speedPenaltyPct ?? 0) > 0) {
       const pen = mod.speedPenaltyPct ?? 0
       out.push({
-        k: '机动代价',
+        k: tr("ui.shipInfo.017"),
         v: (
           <>
-            <em className="app-chip is-cost">{`战斗速度 ×${(1 - pen).toFixed(2)}`}</em>
-            <span className="app-dim">（多件取最重一件）</span>
+            <em className="app-chip is-cost">{tr("ui.shipInfo.134", { p1: (1 - pen).toFixed(2) })}</em>
+            <span className="app-dim">{tr("ui.shipInfo.018")}</span>
           </>
         ),
       })
@@ -499,25 +500,25 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   }
   // 护盾族（容量 / 抗性）
   if (foreign('shield')) {
-    if (mod.shieldHpBonus !== undefined) out.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
-    const row = resistAddLine('护盾抗性', mod.shieldResistAdd)
+    if (mod.shieldHpBonus !== undefined) out.push({ k: tr("ui.shipInfo.019"), v: `+${pct(mod.shieldHpBonus)}` })
+    const row = resistAddLine(tr("ui.FitPage.002"), mod.shieldResistAdd)
     if (row) out.push(row)
   }
   // 推进器族（加力推进 / 点火代价）
   if (foreign('propulsion')) {
     if (mod.speedBonusPct !== undefined) {
       out.push({
-        k: '加力推进',
+        k: tr("ui.shipInfo.020"),
         v: (
           <>
-            {`点火期间战斗速度 +${pct(mod.speedBonusPct)}`}
+            {tr("ui.shipInfo.135", { p1: pct(mod.speedBonusPct) })}
             <span className="app-dim">{propTailOf(mod)}</span>
           </>
         ),
       })
     }
     if ((mod.hitPenalty ?? 0) > 0) {
-      out.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}` })
+      out.push({ k: tr("ui.shipInfo.021"), v: tr("ui.shipInfo.136", { p1: (1 - (mod.hitPenalty ?? 0)).toFixed(2) }) })
     }
   }
   // 维修/自愈（支援槽之外也带得动：生体甲壳板）
@@ -525,57 +526,57 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
     const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
     const isFree = mod.repairFree === true
     out.push({
-      k: isFree ? '生体自愈' : '自动维修',
-      v: `每 ${secs} 秒修复${repairAmountText(mod)}`,
+      k: isFree ? tr("ui.shipInfo.022") : tr("ui.shipInfo.023"),
+      v: tr("ui.shipInfo.137", { secs: secs, p2: repairAmountText(mod) }),
     })
     out.push({
-      k: '运转消耗',
+      k: tr("ui.shipInfo.024"),
       v: isFree ? (
         <>
-          <em className="app-chip is-ok">无消耗</em>
-          <span className="app-dim">（不吃组件，永不停机）</span>
+          <em className="app-chip is-ok">{tr("ui.shipInfo.025")}</em>
+          <span className="app-dim">{tr("ui.shipInfo.026")}</span>
         </>
       ) : (
         <>
-          <em className="app-chip is-cost">{repairKitName(mod)} ×1 / 跳</em>
-          <span className="app-dim">（耗尽即停机）</span>
+          <em className="app-chip is-cost">{repairKitName(mod)} {tr("ui.shipInfo.138")}</em>
+          <span className="app-dim">{tr("ui.shipInfo.027")}</span>
         </>
       ),
     })
   }
   // 无人机三族（甲板扩展 / 战术导控 / 中继天线）
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) {
-    out.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3 ?? 0)} m³` })
+    out.push({ k: tr("ui.shipInfo.028"), v: `+${fmt(mod.droneBayBonusM3 ?? 0)} m³` })
   }
   if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) {
-    out.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus ?? 0)}` })
+    out.push({ k: tr("ui.shipInfo.029"), v: `+${pct(mod.droneDmgBonus ?? 0)}` })
   }
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) {
-    out.push({ k: '无人机射程', v: `+${pct(mod.droneRangeBonusPct ?? 0)}（按机型射程加成）` })
+    out.push({ k: tr("ui.shipInfo.030"), v: tr("ui.shipInfo.139", { p1: pct(mod.droneRangeBonusPct ?? 0) }) })
   }
   // 支援件四族（炮台伤害 / 射速 / 命中 / 回避）
   if (foreign('support')) {
     const dmg = mod.damageTypeBonusPct
     if (dmg && Object.keys(dmg).length > 0) {
       out.push({
-        k: '炮台伤害',
+        k: tr("ui.shipInfo.031"),
         v: `${Object.entries(dmg)
           .filter(([, v]) => (v ?? 0) > 0)
           .map(([t, v]) => `${DMG_LABEL[t as DamageType]} +${pct(v ?? 0)}`)
           .join(' · ')}`,
       })
     }
-    if (mod.reloadCutPct !== undefined) out.push({ k: '射速支援', v: `炮台装填间隔 −${pct(mod.reloadCutPct)}` })
-    if (mod.hitBonusPct !== undefined) out.push({ k: '命中支援', v: `炮台命中 ×${(1 + mod.hitBonusPct).toFixed(2)}` })
-    if (mod.evasionGapPct !== undefined) out.push({ k: '回避支援', v: `敌命中 ×${(1 - mod.evasionGapPct).toFixed(2)}（全船生效）` })
+    if (mod.reloadCutPct !== undefined) out.push({ k: tr("ui.shipInfo.032"), v: tr("ui.shipInfo.140", { p1: pct(mod.reloadCutPct) }) })
+    if (mod.hitBonusPct !== undefined) out.push({ k: tr("ui.shipInfo.033"), v: tr("ui.shipInfo.141", { p1: (1 + mod.hitBonusPct).toFixed(2) }) })
+    if (mod.evasionGapPct !== undefined) out.push({ k: tr("ui.shipInfo.034"), v: tr("ui.shipInfo.142", { p1: (1 - mod.evasionGapPct).toFixed(2) }) })
   }
   // 目标锁定阵列（2026-09-17 船长：增伤与集火都「全队生效」）
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) {
-    out.push({ k: '锁定加深', v: `全队集火首位，全队伤害 +${pct(mod.lockDmgBonus)}` })
+    out.push({ k: tr("ui.shipInfo.035"), v: tr("ui.shipInfo.143", { p1: pct(mod.lockDmgBonus) }) })
   }
   // 协处理器（2026-09-11）：CPU 预算扩容——本职在 cpu 族；写在别的槽位上才算跨族（当前无此件，护栏登记着）
   if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) {
-    out.push({ k: 'CPU 扩容', v: `装配预算 +${fmt(mod.cpuBonus ?? 0)}（本件不占 CPU）` })
+    out.push({ k: tr("ui.shipInfo.144"), v: tr("ui.shipInfo.145", { p1: fmt(mod.cpuBonus ?? 0) }) })
   }
   return out
 }
@@ -585,20 +586,20 @@ function crossFamilyShort(mod: ModuleDef): string {
   const parts: string[] = []
   const foreign = (owner: ModuleSlot): boolean => mod.slot !== owner
   if (foreign('armor')) {
-    if (mod.armorHpBonus !== undefined) parts.push(`甲容 +${pct(mod.armorHpBonus)}`)
-    if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(`速度×${(1 - (mod.speedPenaltyPct ?? 0)).toFixed(2)}`)
+    if (mod.armorHpBonus !== undefined) parts.push(tr("ui.shipInfo.104", { p1: pct(mod.armorHpBonus) }))
+    if ((mod.speedPenaltyPct ?? 0) > 0) parts.push(tr("ui.shipInfo.106", { p1: (1 - (mod.speedPenaltyPct ?? 0)).toFixed(2) }))
   }
-  if (foreign('shield') && mod.shieldHpBonus !== undefined) parts.push(`盾容 +${pct(mod.shieldHpBonus)}`)
+  if (foreign('shield') && mod.shieldHpBonus !== undefined) parts.push(tr("ui.shipInfo.102", { p1: pct(mod.shieldHpBonus) }))
   if (foreign('propulsion')) {
     if (mod.speedBonusPct !== undefined)
-      parts.push(`速度 +${pct(mod.speedBonusPct)}（${thrusterCycleText(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod))}）`)
-    if ((mod.hitPenalty ?? 0) > 0) parts.push(`命中×${(1 - (mod.hitPenalty ?? 0)).toFixed(2)}`)
+      parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleText(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod)) }))
+    if ((mod.hitPenalty ?? 0) > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - (mod.hitPenalty ?? 0)).toFixed(2) }))
   }
-  if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(`机舱 +${fmt(mod.droneBayBonusM3 ?? 0)} m³`)
-  if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) parts.push(`无人机伤害 +${pct(mod.droneDmgBonus ?? 0)}`)
-  if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(`无人机射程 +${pct(mod.droneRangeBonusPct ?? 0)}`)
-  if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(`全队伤害 +${pct(mod.lockDmgBonus)}`)
-  if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(`CPU 上限 +${fmt(mod.cpuBonus ?? 0)}`)
+  if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(tr("ui.shipInfo.146", { p1: fmt(mod.droneBayBonusM3 ?? 0) }))
+  if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) parts.push(tr("ui.shipInfo.111", { p1: pct(mod.droneDmgBonus ?? 0) }))
+  if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(tr("ui.shipInfo.112", { p1: pct(mod.droneRangeBonusPct ?? 0) }))
+  if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(tr("ui.shipInfo.147", { p1: pct(mod.lockDmgBonus) }))
+  if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(tr("ui.shipInfo.148", { p1: fmt(mod.cpuBonus ?? 0) }))
   return parts.join(' · ')
 }
 
@@ -609,28 +610,28 @@ function crossFamilyShort(mod: ModuleDef): string {
  * 上限 90%——基础抗越高的船装同系模块收益越低）；推进器 = 加力推进（战斗速度）。
  */
 export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
-  const lines: InfoLine[] = [{ k: '槽位 / 类型', v: `${SLOT_LABELS[mod.slot]}（${RACK_LABELS[rackOf(mod)]}）` }]
+  const lines: InfoLine[] = [{ k: tr("ui.shipInfo.036"), v: `${SLOT_LABELS[mod.slot]}（${RACK_LABELS[rackOf(mod)]}）` }]
   if (mod.slot === 'miner') {
-    lines.push({ k: '循环产量', v: `+${pctOpt(mod.bonus)}` })
+    lines.push({ k: tr("ui.shipInfo.037"), v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'cargo') {
-    lines.push({ k: '货舱容量', v: `+${pctOpt(mod.bonus)}` })
+    lines.push({ k: tr("ui.Handbook.010"), v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'shield') {
-    if (mod.shieldHpBonus !== undefined) lines.push({ k: '护盾容量', v: `+${pct(mod.shieldHpBonus)}` })
-    const row = resistAddLine('护盾抗性', mod.shieldResistAdd)
+    if (mod.shieldHpBonus !== undefined) lines.push({ k: tr("ui.shipInfo.019"), v: `+${pct(mod.shieldHpBonus)}` })
+    const row = resistAddLine(tr("ui.FitPage.002"), mod.shieldResistAdd)
     if (row) lines.push(row)
   } else if (mod.slot === 'armor') {
-    if (mod.armorHpBonus !== undefined) lines.push({ k: '装甲容量', v: `+${pct(mod.armorHpBonus)}` })
-    const row = resistAddLine('装甲抗性', mod.armorResistAdd)
+    if (mod.armorHpBonus !== undefined) lines.push({ k: tr("ui.shipInfo.016"), v: `+${pct(mod.armorHpBonus)}` })
+    const row = resistAddLine(tr("ui.FitPage.004"), mod.armorResistAdd)
     if (row) lines.push(row)
     // 重甲件的机动代价（2026-09-10 船长：陵寝装甲层 −25%）——多件不叠加、取最重一件
     if ((mod.speedPenaltyPct ?? 0) > 0) {
       const pen = mod.speedPenaltyPct ?? 0
       lines.push({
-        k: '机动代价',
+        k: tr("ui.shipInfo.017"),
         v: (
           <>
-            <em className="app-chip is-cost">{`战斗速度 ×${(1 - pen).toFixed(2)}`}</em>
-            <span className="app-dim">（多件取最重一件）</span>
+            <em className="app-chip is-cost">{tr("ui.shipInfo.134", { p1: (1 - pen).toFixed(2) })}</em>
+            <span className="app-dim">{tr("ui.shipInfo.018")}</span>
           </>
         ),
       })
@@ -640,85 +641,85 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       // 2026-09-10 船长定：推进器改周期点火（点火 60 秒 → 冷却 60 秒，开场即点火）
       // 2026-09-11 船长定精简：去掉"冷却期间无加速"（同义重复）与"说明"行
       lines.push({
-        k: '加力推进',
+        k: tr("ui.shipInfo.020"),
         v: (
           <>
-            {`点火期间战斗速度 +${pct(mod.speedBonusPct)}`}
+            {tr("ui.shipInfo.135", { p1: pct(mod.speedBonusPct) })}
             <span className="app-dim">{propTailOf(mod)}</span>
           </>
         ),
       })
     }
     if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) {
-      lines.push({ k: '点火代价', v: `点火期间开火命中 ×${(1 - mod.hitPenalty).toFixed(2)}` })
+      lines.push({ k: tr("ui.shipInfo.021"), v: tr("ui.shipInfo.136", { p1: (1 - mod.hitPenalty).toFixed(2) }) })
     }
   } else if (mod.slot === 'turret') {
     if (mod.damageType !== undefined) {
       lines.push({
-        k: '弹药',
+        k: tr("ui.BattleScreen.003"),
         v: (
           <>
-            <span className="app-dim">配弹：</span>
-            <DmgChip t={mod.damageType} label={`${DMG_LABEL[mod.damageType]}弹药`} />
-            <span className="app-dim">（固定）</span>
+            <span className="app-dim">{tr("ui.shipInfo.038")}</span>
+            <DmgChip t={mod.damageType} label={tr("ui.FitPage.127", { p1: DMG_LABEL[mod.damageType] })} />
+            <span className="app-dim">{tr("ui.shipInfo.039")}</span>
           </>
         ),
       })
     } else if (mod.ammoPerEngagement !== undefined) {
-      lines.push({ k: '弹药', v: `每场耗弹基数 ×${mod.ammoPerEngagement}` })
+      lines.push({ k: tr("ui.BattleScreen.003"), v: tr("ui.shipInfo.149", { p1: mod.ammoPerEngagement }) })
     }
-    if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
+    if (mod.maxRangeM !== undefined) lines.push({ k: tr("ui.shipInfo.040"), v: rangeText(mod.minRangeM, mod.maxRangeM) })
     // **防空（属性）**（船长 2026-09-12：「**给近防炮系列添加一个属性"防空"，将近防炮的对无人机伤害 ×2
     // 写到防空属性里**」）：一条属性 = ①能筛到敌方机群 ②对无人机伤害 ×该值 ⇒ 渲染为一行「防空」。
     if (mod.antiDrone !== undefined) {
       lines.push({
-        k: '防空',
+        k: tr("ui.shipInfo.041"),
         v: (
           <>
-            {'能打敌方机群'}
+            {tr('ui.shipInfo.180')}
             <span className="app-dim">{`　对无人机伤害 ×${mod.antiDrone}`}</span>
           </>
         ),
       })
     }
     if (mod.hitRate !== undefined || mod.falloff !== undefined) {
-      const hit = mod.hitRate !== undefined ? `基础命中 ${pct(mod.hitRate)}` : ''
-      const ff = mod.falloff !== undefined ? `远端衰减 ×${mod.falloff}` : ''
-      lines.push({ k: '命中', v: [hit, ff].filter(Boolean).join('　') })
+      const hit = mod.hitRate !== undefined ? tr("ui.shipInfo.150", { p1: pct(mod.hitRate) }) : ''
+      const ff = mod.falloff !== undefined ? tr("ui.shipInfo.151", { p1: mod.falloff }) : ''
+      lines.push({ k: tr("ui.shipInfo.042"), v: [hit, ff].filter(Boolean).join('　') })
     }
-    if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
-    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹伤害 ×${mod.dmgMult}` })
+    if (mod.reloadMs !== undefined) lines.push({ k: tr("ui.shipInfo.043"), v: tr("ui.shipInfo.152", { p1: (mod.reloadMs / 1000).toFixed(1) }) })
+    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.153", { p1: mod.dmgMult }) })
   } else if (mod.slot === 'missile') {
     // V18B-1 导弹架：武器卡（与炮台同参数字段，性格差异 = 无视近盲 + 追踪命中）
     lines.push({
-      k: '弹头',
+      k: tr("ui.shipInfo.045"),
       v: (
         <>
-          <span className="app-dim">配弹：</span>
-          <DmgChip t={mod.damageType ?? 'explosive'} label="爆破弹药" />
-          <span className="app-dim">（固定）</span>
+          <span className="app-dim">{tr("ui.shipInfo.038")}</span>
+          <DmgChip t={mod.damageType ?? 'explosive'} label={tr("ui.FitPage.008")} />
+          <span className="app-dim">{tr("ui.shipInfo.039")}</span>
         </>
       ),
     })
-    if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
-    lines.push({ k: '弹道特性', v: '近盲（太近会炸到自己）· 命中不随距离衰减' })
-    if (mod.hitRate !== undefined) lines.push({ k: '追踪命中', v: `${pct(mod.hitRate)}` })
-    if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
-    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `弹头伤害 ×${mod.dmgMult}` })
+    if (mod.maxRangeM !== undefined) lines.push({ k: tr("ui.shipInfo.040"), v: rangeText(mod.minRangeM, mod.maxRangeM) })
+    lines.push({ k: tr("ui.shipInfo.046"), v: tr("ui.shipInfo.047") })
+    if (mod.hitRate !== undefined) lines.push({ k: tr("ui.shipInfo.048"), v: `${pct(mod.hitRate)}` })
+    if (mod.reloadMs !== undefined) lines.push({ k: tr("ui.shipInfo.043"), v: tr("ui.shipInfo.152", { p1: (mod.reloadMs / 1000).toFixed(1) }) })
+    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.154", { p1: mod.dmgMult }) })
   } else if (mod.slot === 'laser') {
     // V18B-2 激光炮：能量系武器形态（必中光束 + 威力随距离衰减）
     lines.push({
-      k: '弹种',
+      k: tr("ui.shipInfo.049"),
       v: (
         <>
-          <span className="app-dim">消耗：</span>
-          <DmgChip t={mod.damageType ?? 'plasma'} label="能量弹药" />
-          <span className="app-dim">（专用）</span>
+          <span className="app-dim">{tr("ui.shipInfo.050")}</span>
+          <DmgChip t={mod.damageType ?? 'plasma'} label={tr("ui.FitPage.009")} />
+          <span className="app-dim">{tr("ui.shipInfo.051")}</span>
         </>
       ),
     })
-    if (mod.maxRangeM !== undefined) lines.push({ k: '射程带', v: rangeText(mod.minRangeM, mod.maxRangeM) })
-    lines.push({ k: '光束特性', v: '必中 · 无近盲' })
+    if (mod.maxRangeM !== undefined) lines.push({ k: tr("ui.shipInfo.040"), v: rangeText(mod.minRangeM, mod.maxRangeM) })
+    lines.push({ k: tr("ui.shipInfo.052"), v: tr("ui.shipInfo.053") })
     if (mod.falloff !== undefined) {
       // 2026-09-11 修：此行原来自算 (1+falloff)/2（×0.65/×0.68），而引擎 `beamPowerFactor` 在旧口径下
       // 实际是最远端 ×0.44/×0.48 —— 面板读数与实战不符。改为**直接问引擎要最远端系数**，
@@ -729,38 +730,38 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         falloff: mod.falloff,
       })
       lines.push({
-        k: '威力衰减',
-        v: `远端威力 ×${far.toFixed(2)}`,
+        k: tr("ui.shipInfo.054"),
+        v: tr("ui.shipInfo.155", { p1: far.toFixed(2) }),
       })
     }
-    if (mod.reloadMs !== undefined) lines.push({ k: '装填', v: `${(mod.reloadMs / 1000).toFixed(1)} 秒/发` })
-    if (mod.dmgMult !== undefined) lines.push({ k: '单发伤害', v: `能量弹药伤害 ×${mod.dmgMult}` })
+    if (mod.reloadMs !== undefined) lines.push({ k: tr("ui.shipInfo.043"), v: tr("ui.shipInfo.152", { p1: (mod.reloadMs / 1000).toFixed(1) }) })
+    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.156", { p1: mod.dmgMult }) })
   } else if (mod.slot === 'drone-rack') {
     if (mod.droneBayBonusM3 !== undefined) {
-      lines.push({ k: '无人机舱扩展', v: `+${fmt(mod.droneBayBonusM3)} m³` })
+      lines.push({ k: tr("ui.shipInfo.028"), v: `+${fmt(mod.droneBayBonusM3)} m³` })
     }
   } else if (mod.slot === 'drone-tac') {
     if (mod.droneDmgBonus !== undefined) {
-      lines.push({ k: '无人机伤害', v: `+${pct(mod.droneDmgBonus)}` })
+      lines.push({ k: tr("ui.shipInfo.029"), v: `+${pct(mod.droneDmgBonus)}` })
     }
   } else if (mod.slot === 'drone-relay') {
     if (mod.droneRangeBonusPct !== undefined) {
       lines.push({
-        k: '无人机射程',
-        v: `+${pct(mod.droneRangeBonusPct)}（按机型射程加成）`,
+        k: tr("ui.shipInfo.030"),
+        v: tr("ui.shipInfo.139", { p1: pct(mod.droneRangeBonusPct) }),
       })
     }
   } else if (mod.slot === 'salvager') {
     // 2026-09-11 船长定精简时补：打捞器此前只显示"叠加方式 + CPU"，看不到真正的效果
     if (mod.salvageCycleMs !== undefined) {
-      lines.push({ k: '打捞周期', v: `每 ${salvageCycleSecs(mod)} 秒 1 具残骸` }) // 与短行同单点
+      lines.push({ k: tr("ui.shipInfo.055"), v: tr("ui.shipInfo.110", { p1: salvageCycleSecs(mod) }) }) // 与短行同单点
     }
   } else if (mod.slot === 'support') {
     // V18.1 支援件：按效果字段渲染（低槽 = 稳定器/射速计算机；中槽 = 索敌/陀螺）
     const dmg = mod.damageTypeBonusPct
     if (dmg && Object.keys(dmg).length > 0) {
       lines.push({
-        k: '炮台伤害',
+        k: tr("ui.shipInfo.031"),
         v: (
           <>
             {Object.entries(dmg)
@@ -776,48 +777,48 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       })
     }
     if (mod.reloadCutPct !== undefined) {
-      lines.push({ k: '射速支援', v: `炮台装填间隔 −${pct(mod.reloadCutPct)}` })
+      lines.push({ k: tr("ui.shipInfo.032"), v: tr("ui.shipInfo.140", { p1: pct(mod.reloadCutPct) }) })
     }
     if (mod.hitBonusPct !== undefined) {
-      lines.push({ k: '命中支援', v: `炮台命中 ×${(1 + (mod.hitBonusPct ?? 0)).toFixed(2)}` })
+      lines.push({ k: tr("ui.shipInfo.033"), v: tr("ui.shipInfo.141", { p1: (1 + (mod.hitBonusPct ?? 0)).toFixed(2) }) })
     }
     if (mod.evasionGapPct !== undefined) {
-      lines.push({ k: '回避支援', v: `敌命中 ×${(1 - (mod.evasionGapPct ?? 0)).toFixed(2)}（全船生效）` })
+      lines.push({ k: tr("ui.shipInfo.034"), v: tr("ui.shipInfo.142", { p1: (1 - (mod.evasionGapPct ?? 0)).toFixed(2) }) })
     }
     // 隐秘行动装置（2026-09-15 船长：高槽 · 自身武器开火前隐身 20/30 秒 · 不被锁定不被攻击）
     if (mod.stealthMs !== undefined) {
       lines.push({
-        k: '隐秘行动',
-        v: `本舰武器开火之前隐身 ${mod.stealthMs / 1000} 秒（敌方无法锁定、无法攻击；一开火立即现形，超时也现形）`,
+        k: tr("ui.shipInfo.056"),
+        v: tr("ui.shipInfo.157", { p1: mod.stealthMs / 1000 }),
       })
-      lines.push({ k: '装置限制', v: '装着推进器时本装置失效' })
+      lines.push({ k: tr("ui.shipInfo.057"), v: tr("ui.shipInfo.058") })
     }
     // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
       const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
       const isFree = mod.repairFree === true
       lines.push({
-        k: isFree ? '生体自愈' : '自动维修',
-        v: `每 ${secs} 秒修复${repairAmountText(mod)}`,
+        k: isFree ? tr("ui.shipInfo.022") : tr("ui.shipInfo.023"),
+        v: tr("ui.shipInfo.137", { secs: secs, p2: repairAmountText(mod) }),
       })
       if (isFree) {
         // 无消耗自愈（异形生体件）：不吃组件、永不停机；同型多件按 EVE 曲线递减
         lines.push({
-          k: '运转消耗',
+          k: tr("ui.shipInfo.024"),
           v: (
             <>
-              <em className="app-chip is-ok">无消耗</em>
-              <span className="app-dim">（不吃组件，永不停机）</span>
+              <em className="app-chip is-ok">{tr("ui.shipInfo.025")}</em>
+              <span className="app-dim">{tr("ui.shipInfo.026")}</span>
             </>
           ),
         })
       } else {
         lines.push({
-          k: '运转消耗',
+          k: tr("ui.shipInfo.024"),
           v: (
             <>
-              <em className="app-chip is-cost">{repairKitName(mod)} ×1 / 跳</em>
-              <span className="app-dim">（耗尽即停机）</span>
+              <em className="app-chip is-cost">{repairKitName(mod)} {tr("ui.shipInfo.138")}</em>
+              <span className="app-dim">{tr("ui.shipInfo.027")}</span>
             </>
           ),
         })
@@ -828,37 +829,37 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
        * 不写这一行 = 玩家看到"每跳 5 点"会以为增厚板/加固理论对维修没用（显示值与实战值漂移的旧坑）。
        */
       lines.push({
-        k: '修复量',
-        v: '实际每跳 = 上表值 × 装甲/结构容量加成 × 恢复量技能（舰体快修学 ＋ 维修工程学，两项都满级 ×1.5）',
+        k: tr("ui.shipInfo.059"),
+        v: tr("ui.shipInfo.060"),
       })
     }
   } else if (mod.slot === 'target-lock') {
     // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 目标受击加深
     // **2026-09-17 船长：增伤与集火都改「全队生效」**（编队取最高一份）
-    lines.push({ k: '集火模式', v: '全队武器集火存活编队首位' })
+    lines.push({ k: tr("ui.shipInfo.061"), v: tr("ui.shipInfo.062") })
     if (mod.lockDmgBonus !== undefined) {
-      lines.push({ k: '锁定加深', v: `全队伤害 +${pct(mod.lockDmgBonus)}` })
+      lines.push({ k: tr("ui.shipInfo.035"), v: tr("ui.shipInfo.147", { p1: pct(mod.lockDmgBonus) }) })
     }
   } else if (mod.slot === 'cpu') {
     // 2026-09-11 协处理器（低槽）：装配 CPU 预算扩容；**本件自身不占 CPU**（船长定）——
     // 两行都写清：扩容多少 + 自己不占（否则玩家看到"CPU 占用 0"会以为是坏的）
     if (mod.cpuBonus !== undefined) {
       lines.push({
-        k: 'CPU 扩容',
+        k: tr("ui.shipInfo.144"),
         v: (
           <>
-            {`装配预算 +${fmt(mod.cpuBonus)}`}
-            <span className="app-dim">（装配与无人机放飞共用这份预算）</span>
+            {tr("ui.shipInfo.158", { p1: fmt(mod.cpuBonus) })}
+            <span className="app-dim">{tr("ui.shipInfo.063")}</span>
           </>
         ),
       })
     }
     lines.push({
-      k: '自身占用',
+      k: tr("ui.shipInfo.064"),
       v: (
         <>
-          <em className="app-chip is-ok">不占 CPU</em>
-          <span className="app-dim">（纯扩容；卸下即收回扩容）</span>
+          <em className="app-chip is-ok">{tr("ui.shipInfo.159")}</em>
+          <span className="app-dim">{tr("ui.shipInfo.065")}</span>
         </>
       ),
     })
@@ -867,56 +868,54 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   // 语义各自成行——容量 = 最后那段血更厚、抗性 = 那段血更耐打
   if ((mod.hullHpBonus ?? 0) > 0) {
     lines.push({
-      k: '结构容量',
+      k: tr("ui.shipInfo.066"),
       v: (
         <>
           <span>{`+${pct(mod.hullHpBonus ?? 0)}`}</span>
-          <span className="app-dim">（最后一段血量）</span>
+          <span className="app-dim">{tr("ui.shipInfo.067")}</span>
         </>
       ),
     })
   }
-  const hullRow = resistAddLine('结构抗性', mod.hullResistAdd)
+  const hullRow = resistAddLine(tr("ui.FitPage.005"), mod.hullResistAdd)
   if (hullRow) lines.push(hullRow)
   /* ── 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；**任何槽位都可能带**，故独立成段）──
    * 口径与引擎一致：附加伤害段/耗弹倍数/射程削减与按系加成/通用单发/装填惩罚/全层抗性削减/出击周期。
    * 缺省不写 ⇒ 既有装备一行都不多。 */
   if ((mod.secondaryDamagePct ?? 0) > 0) {
     lines.push({
-      k: '附加伤害',
-      v: `主段结算后再打一段「主段实收 ×${pct(mod.secondaryDamagePct ?? 0)}」的${
-        DMG_LABEL[(mod.secondaryDamageType ?? 'kinetic') as DamageType]
-      }伤害（与所耗弹药无关）`,
+      k: tr("ui.shipInfo.068"),
+      v: tr("ui.shipInfo.160", { p1: pct(mod.secondaryDamagePct ?? 0), p2: DMG_LABEL[(mod.secondaryDamageType ?? 'kinetic') as DamageType] }),
     })
   }
   if ((mod.ammoPerShot ?? 1) > 1) {
-    lines.push({ k: '耗弹', v: `每次攻击消耗 ${mod.ammoPerShot} 发弹药（一轮按门数 × 本值扣）` })
+    lines.push({ k: tr("ui.shipInfo.069"), v: tr("ui.shipInfo.161", { p1: mod.ammoPerShot ?? 1 }) })
   }
   if ((mod.rangeCutPct ?? 0) > 0) {
-    lines.push({ k: '射程代价', v: `全舰武器射程 −${pct(mod.rangeCutPct ?? 0)}（多件只取最重一件）` })
+    lines.push({ k: tr("ui.shipInfo.070"), v: tr("ui.shipInfo.162", { p1: pct(mod.rangeCutPct ?? 0) }) })
   }
   if (mod.rangeTypeBonusPct) {
     for (const [t, v] of Object.entries(mod.rangeTypeBonusPct)) {
-      if ((v ?? 0) > 0) lines.push({ k: `${DMG_LABEL[t as DamageType]}射程`, v: `+${pct(v ?? 0)}` })
+      if ((v ?? 0) > 0) lines.push({ k: tr("ui.shipInfo.163", { p1: DMG_LABEL[t as DamageType] }), v: `+${pct(v ?? 0)}` })
     }
   }
   if ((mod.damageBonusPct ?? 0) > 0) {
-    lines.push({ k: '单发加成', v: `全部武器单发 +${pct(mod.damageBonusPct ?? 0)}（只进炮台与光束）` })
+    lines.push({ k: tr("ui.shipInfo.071"), v: tr("ui.shipInfo.164", { p1: pct(mod.damageBonusPct ?? 0) }) })
   }
   if ((mod.reloadPenaltyPct ?? 0) > 0) {
-    lines.push({ k: '装填代价', v: `全舰装填 +${pct(mod.reloadPenaltyPct ?? 0)}（多件只取最重一件）` })
+    lines.push({ k: tr("ui.shipInfo.072"), v: tr("ui.shipInfo.165", { p1: pct(mod.reloadPenaltyPct ?? 0) }) })
   }
   if ((mod.allResistPenaltyPct ?? 0) > 0) {
     lines.push({
-      k: '抗性代价',
-      v: `护盾 / 装甲 / 结构抗性各 −${pct(mod.allResistPenaltyPct ?? 0)}（下限 0）`,
+      k: tr("ui.shipInfo.073"),
+      v: tr("ui.shipInfo.166", { p1: pct(mod.allResistPenaltyPct ?? 0) }),
     })
   }
   if ((mod.droneCycleCutPct ?? 0) > 0) {
-    lines.push({ k: '出击周期', v: `放飞无人机的出击周期 −${pct(mod.droneCycleCutPct ?? 0)}` })
+    lines.push({ k: tr("ui.shipInfo.074"), v: tr("ui.shipInfo.167", { p1: pct(mod.droneCycleCutPct ?? 0) }) })
   }
   if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion') {
-    lines.push({ k: '航速', v: `战斗机动 +${pct(mod.speedBonusPct ?? 0)}（点火期间）` })
+    lines.push({ k: tr("ui.shipInfo.075"), v: tr("ui.shipInfo.168", { p1: pct(mod.speedBonusPct ?? 0) }) })
   }
   // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）
   lines.push(...crossFamilyLines(mod))
@@ -925,41 +924,41 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
   const st = stackingOf(mod)
   if (st.group === 'flat') {
-    lines.push({ k: '叠加方式', v: '全额叠加' })
+    lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.077") })
   } else if (st.group === 'max') {
-    lines.push({ k: '叠加方式', v: '取最长一件（不叠加）' })
+    lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.078") })
   } else {
-    lines.push({ k: '叠加方式', v: '多装递减' })
+    lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.079") })
   }
-  if (mod.cpuUse !== undefined) lines.push({ k: 'CPU 占用', v: fmt(mod.cpuUse) })
+  if (mod.cpuUse !== undefined) lines.push({ k: tr("ui.shipInfo.169"), v: fmt(mod.cpuUse) })
   return lines
 }
 
 /** 弹药/无人机统一附加行（物品行在物品图鉴中的补充信息） */
 export function itemCombatLines(item: ItemDef): InfoLine[] {
   const lines: InfoLine[] = []
-  if (item.damageType !== undefined) lines.push({ k: '伤害类型', v: <DmgChip t={item.damageType} /> })
-  if (item.dmg !== undefined) lines.push({ k: '伤害基数', v: fmt(item.dmg) })
+  if (item.damageType !== undefined) lines.push({ k: tr("ui.shipInfo.170"), v: <DmgChip t={item.damageType} /> })
+  if (item.dmg !== undefined) lines.push({ k: tr("ui.shipInfo.171"), v: fmt(item.dmg) })
   if (item.kind === 'drone' && item.cpuUse !== undefined) {
-    lines.push({ k: '放飞 CPU', v: fmt(item.cpuUse) })
-    lines.push({ k: '占用舱容', v: `${item.unitM3} m³/架` })
+    lines.push({ k: tr("ui.shipInfo.080"), v: fmt(item.cpuUse) })
+    lines.push({ k: tr("ui.shipInfo.081"), v: tr("ui.shipInfo.172", { p1: item.unitM3 }) })
     if (item.maxRangeM !== undefined) {
-      lines.push({ k: '射程上限', v: `${fmt(item.maxRangeM)} m（中继天线按百分比加成）` })
+      lines.push({ k: tr("ui.shipInfo.082"), v: tr("ui.shipInfo.173", { p1: fmt(item.maxRangeM) }) })
     }
     // 2026-09-10 船长：命中/衰减下放到机型本体——侦察/战斗/攻坚三型命中不随距离衰减，
     // 哨戒保留正常衰减（射程端点倍率）。与导弹架"追踪命中"同款表述口径。
     if (item.hitRate !== undefined) {
       const ff = item.falloff ?? 0.35
       lines.push({
-        k: '放飞命中',
-        v: ff >= 1 ? `${pct(item.hitRate)}（不随距离衰减）` : `${pct(item.hitRate)}（射程端点 ×${ff.toFixed(2)}）`,
+        k: tr("ui.shipInfo.083"),
+        v: ff >= 1 ? tr("ui.shipInfo.174", { p1: pct(item.hitRate) }) : tr("ui.shipInfo.175", { p1: pct(item.hitRate), p2: ff.toFixed(2) }),
       })
     }
   }
   if (item.kind === 'drone' && item.defense) {
     const d = item.defense
-    lines.push({ k: '生存（三层血）', v: `盾 ${fmt(d.shieldHp)} · 甲 ${fmt(d.armorHp)} · 结构 ${fmt(d.hullHp)}` })
-    lines.push({ k: '回避', v: d.evasion !== undefined ? `${Math.round(d.evasion * 100)}%` : '—' })
+    lines.push({ k: tr("ui.shipInfo.084"), v: tr("ui.shipInfo.176", { p1: fmt(d.shieldHp), p2: fmt(d.armorHp), p3: fmt(d.hullHp) }) })
+    lines.push({ k: tr("ui.shipInfo.085"), v: d.evasion !== undefined ? `${Math.round(d.evasion * 100)}%` : '—' })
   }
   return lines
 }
@@ -999,7 +998,7 @@ export function ShipHover({
   block = false,
   as = 'span',
   className,
-  note = '已生效战斗数值：抗性按递减方式合成（上限 90%）',
+  note = tr('ui.Handbook.181'),
 }: {
   ship: ShipDef
   children: ReactNode
@@ -1141,15 +1140,15 @@ export function ModuleHover({
 /** 物品统一信息行（悬浮窗数据源：种类/体积/收价 + 精炼 + 弹药无人机战斗行 + 修理组件） */
 export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | undefined): InfoLine[] {
   const lines: InfoLine[] = [
-    { k: '种类', v: itemKindText(item) }, // 2026-09-10 无人机：无人机 · 侦察机（子属性并入种类）
-    { k: '单位体积', v: `${item.unitM3} m³` },
+    { k: tr("ui.Handbook.005"), v: itemKindText(item) }, // 2026-09-10 无人机：无人机 · 侦察机（子属性并入种类）
+    { k: tr("ui.Handbook.006"), v: `${item.unitM3} m³` },
   ]
   if ((item.baseSellPriceIsk ?? 0) > 0) {
-    lines.push({ k: '站内收价', v: `${item.baseSellPriceIsk.toLocaleString('zh-CN')} 信用点/单位` })
+    lines.push({ k: tr("ui.shipInfo.086"), v: tr("ui.shipInfo.177", { p1: item.baseSellPriceIsk.toLocaleString('zh-CN') }) })
   }
   if (item.refine !== undefined && item.refine.length > 0) {
     lines.push({
-      k: '精炼配方',
+      k: tr("ui.Handbook.007"),
       v: item.refine.map((r) => `${nameOf ? nameOf(r.mineralId) ?? r.mineralId : r.mineralId} ×${r.perOre}`).join('　'),
     })
   }
@@ -1157,7 +1156,7 @@ export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | u
     for (const l of itemCombatLines(item)) lines.push(l)
   }
   if (item.repairRestore !== undefined) {
-    lines.push({ k: '修理组件', v: `单件基础回复 ${item.repairRestore} HP（结构/装甲各按层容量增幅，层越厚回得越多）` })
+    lines.push({ k: tr("ui.itemSubs.001"), v: tr("ui.shipInfo.178", { p1: item.repairRestore }) })
   }
   return lines
 }

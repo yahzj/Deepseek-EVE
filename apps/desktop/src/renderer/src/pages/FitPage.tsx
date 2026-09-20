@@ -63,28 +63,29 @@ import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ShipSprite } from '../ui/ShipSprite'
 import type { PageProps } from './common'
+import { tr, cmdText } from '../i18n/locale'
 
 
 /** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复；火力加成例外——船长
  * 2026-09-05：不入血量徽章组，作为下方属性行展示，故从过滤名单中放行） */
 const COMBAT_BASE_KEYS = new Set([
-  '护盾',
-  '护盾抗性',
-  '装甲',
-  '装甲抗性',
-  '结构',
-  '结构抗性',
-  '命中加成',
-  '回避率',
+  tr("ui.FitPage.001"),
+  tr("ui.FitPage.002"),
+  tr("ui.FitPage.003"),
+  tr("ui.FitPage.004"),
+  tr("ui.ShipPage.023"),
+  tr("ui.FitPage.005"),
+  tr("ui.FitPage.006"),
+  tr("ui.FitPage.007"),
 ])
 
 /** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽；
  *  2026-09-11 协处理器 = 低槽 CPU 预算扩容件）
  *  2026-09-14 船长「改回高槽」：采集器 / 打捞器回到高槽组（作业装备不再走低槽） */
 const RACK_FAMILIES: Record<RackSlot, string> = {
-  high: '炮台 / 导弹架 / 激光炮 / 采集器 / 打捞器 / 无人机装置',
-  mid: '护盾增强・扩展 / 矢量推进器 / 索敌・陀螺（命中・闪避支援）',
-  low: '装甲镀层・增厚板 / 货舱扩展 / 稳定器・射速计算机（伤害・射速支援）/ 协处理器',
+  high: tr("ui.FitPage.011"),
+  mid: tr("ui.FitPage.012"),
+  low: tr("ui.FitPage.013"),
 }
 
 /** 数字千分位 */
@@ -112,8 +113,8 @@ interface FitSeg {
   c: 'up' | 'down' | 'info' | 'none'
 }
 
-const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = { s: '盾', a: '甲', h: '结构' }
-const TYPE_SN: Record<string, string> = { kinetic: '动', explosive: '爆', plasma: '热' }
+const HP_KEY_LABEL: Record<'s' | 'a' | 'h', string> = { s: tr("ui.FitPage.014"), a: tr("ui.FitPage.015"), h: tr("ui.ShipPage.023") }
+const TYPE_SN: Record<string, string> = { kinetic: tr("ui.FitPage.016"), explosive: tr("ui.FitPage.017"), plasma: tr("ui.FitPage.018") }
 
 /** 负数按本仓文案惯例用真减号 U+2212 显示（CPU 剩 −12 而非 -12） */
 function minus(n: number): string {
@@ -125,7 +126,7 @@ function minus(n: number): string {
 function rawDpsOf(spec: UnitSpec): number {
   let sum = 0
   for (const w of spec.weapons) {
-    if (w.label === '基础舰炮') continue
+    if (w.label === '基础舰炮') continue // l10n-keep：武器形态联合 key（不是文案）
     const per = w.kind === 'gun' ? Object.values(w.shotsByType ?? {})[0] ?? 0 : (w.shotDmg ?? 0)
     sum += per / Math.max(0.1, w.reloadMs / 1000)
   }
@@ -173,9 +174,9 @@ function meanHitRateOf(spec: UnitSpec): { rate: number; hitBonus: number; eqMul:
 /** 命中率行的括号明细（只列非缺省项——缺省的 ×1.00 / +0% 不进括号，免得读成"有代价"） */
 function hitDetailText(read: { hitBonus: number; eqMul: number | null; unstable: number }): string {
   const parts: string[] = []
-  if (read.hitBonus > 0) parts.push(`船体加成 +${Math.round(read.hitBonus * 100)}%`)
-  if (read.eqMul !== null && Math.abs(read.eqMul - 1) > 1e-6) parts.push(`索敌 ×${read.eqMul.toFixed(2)}`)
-  if (Math.abs(read.unstable - 1) > 1e-6) parts.push(`推进失稳 ×${read.unstable.toFixed(2)}`)
+  if (read.hitBonus > 0) parts.push(tr("ui.FitPage.111", { p1: Math.round(read.hitBonus * 100) }))
+  if (read.eqMul !== null && Math.abs(read.eqMul - 1) > 1e-6) parts.push(tr("ui.FitPage.112", { p1: read.eqMul.toFixed(2) }))
+  if (Math.abs(read.unstable - 1) > 1e-6) parts.push(tr("ui.FitPage.113", { p1: read.unstable.toFixed(2) }))
   return parts.join(' · ')
 }
 
@@ -203,9 +204,9 @@ function diffSegs(
   // 其余仍只报变化。⚠ 判据是"装后是否超预算"，不是"变化没变化"——已超载的船换同耗件也要照红。
   const remCur = cpuTotal - cpuCur
   const remNext = (cpuTotalNext ?? cpuTotal) - cpuNext
-  if (remNext < 0) add(`CPU 剩 ${minus(remCur)}→${minus(remNext)}（差 ${-remNext}）`, 'down')
+  if (remNext < 0) add(tr("ui.FitPage.114", { p1: minus(remCur), p2: minus(remNext), p3: -remNext }), 'down')
   else if (remNext !== remCur) {
-    add(remNext === 0 ? `CPU 剩 ${minus(remCur)}→0（刚好装满）` : `CPU 剩 ${minus(remCur)}→${remNext}`, 'info')
+    add(remNext === 0 ? tr("ui.FitPage.115", { p1: minus(remCur) }) : tr("ui.FitPage.116", { p1: minus(remCur), remNext: remNext }), 'info')
   }
   // 血量层（取变化最大的两层，避免长卡）
   const hpPairs: Array<{ lab: string; c: number; n: number }> = []
@@ -224,16 +225,16 @@ function diffSegs(
     for (const ty of ['kinetic', 'explosive', 'plasma'] as const) {
       const cpp = Math.round((cb[ty] ?? 0) * 100)
       const npp = Math.round((nb[ty] ?? 0) * 100)
-      if (npp !== cpp) resDiffs.push({ t: `${layer === 'shield' ? '盾' : '甲'}·${TYPE_SN[ty]}抗`, c: cpp, n: npp })
+      if (npp !== cpp) resDiffs.push({ t: tr("ui.FitPage.117", { p1: layer === 'shield' ? tr("ui.FitPage.014") : tr("ui.FitPage.015"), p2: TYPE_SN[ty] }), c: cpp, n: npp })
     }
   }
   resDiffs.sort((a, b) => Math.abs(b.n - b.c) - Math.abs(a.n - a.c))
   for (const d of resDiffs.slice(0, 2)) add(`${d.t} ${d.c}→${d.n}%`, dir(d.n - d.c))
   // 回避 / 机动速度
   const epp = Math.round((next.evasion - cur.evasion) * 100)
-  if (epp !== 0) add(`回避 ${Math.round(cur.evasion * 100)}→${Math.round(next.evasion * 100)}%`, dir(epp))
+  if (epp !== 0) add(tr("ui.FitPage.118", { p1: Math.round(cur.evasion * 100), p2: Math.round(next.evasion * 100) }), dir(epp))
   const spd = Math.round(next.speedMps - cur.speedMps)
-  if (spd !== 0) add(`速度 ${Math.round(cur.speedMps)}→${Math.round(next.speedMps)}`, dir(spd))
+  if (spd !== 0) add(tr("ui.FitPage.119", { p1: Math.round(cur.speedMps), p2: Math.round(next.speedMps) }), dir(spd))
   // 推进器点火期速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」）：
   // 周期化（2026-09-10）后 `speedMps` **不含**推进器加成（走 `thrusterBoost`、只在点火窗口生效）
   // ⇒ 换上/换下推进器时上面那段「速度」恒为 0，卡片看起来"速度没变"。这里补报**点火期**速度
@@ -243,28 +244,28 @@ function diffSegs(
   if (boostCur !== boostNext) {
     const ignCur = Math.round(cur.speedMps * (1 + boostCur))
     const ignNext = Math.round(next.speedMps * (1 + boostNext))
-    add(`点火期速度 ${ignCur}→${ignNext}`, dir(ignNext - ignCur))
+    add(tr("ui.FitPage.120", { ignCur: ignCur, ignNext: ignNext }), dir(ignNext - ignCur))
   }
   // 火力（名义口径见 rawDpsOf 注释；数值直接给，不带 ≈ 前缀）
   const cd = rawDpsOf(cur)
   const nd = rawDpsOf(next)
-  if (cd <= 0 && nd > 0) add('火力 新增', 'up')
-  else if (nd <= 0 && cd > 0) add('火力 归零', 'down')
+  if (cd <= 0 && nd > 0) add(tr("ui.FitPage.121"), 'up')
+  else if (nd <= 0 && cd > 0) add(tr("ui.FitPage.122"), 'down')
   else if (cd > 0 && nd > 0) {
     const pct = (nd / cd - 1) * 100
     if (Math.abs(pct) >= 0.5) {
       // 绝对值格式化（船长 2026-09-05：避免负值自带符号与前缀符号叠成双负号）
       const absPct = Math.abs(pct)
       const show = absPct >= 10 ? String(Math.round(absPct)) : absPct.toFixed(1)
-      add(`火力 ${pct > 0 ? '+' : '−'}${show}%`, pct > 0 ? 'up' : 'down')
+      add(tr("ui.FitPage.123", { p1: pct > 0 ? '+' : '−', show: show }), pct > 0 ? 'up' : 'down')
     }
   }
   // 弹伤倍率本身的变化（换炮台时最关心的一个数；弹种变了也点明）
   if (weapon && weapon.curMult !== null && weapon.nextMult !== null && weapon.curMult !== weapon.nextMult) {
-    add(`弹伤 ${mulText(weapon.curMult)}→${mulText(weapon.nextMult)}`, dir(weapon.nextMult - weapon.curMult))
+    add(tr("ui.FitPage.124", { p1: mulText(weapon.curMult), p2: mulText(weapon.nextMult) }), dir(weapon.nextMult - weapon.curMult))
   }
   if (weapon && weapon.curType !== null && weapon.nextType !== null && weapon.curType !== weapon.nextType) {
-    add(`弹种 ${DMG_LABEL[weapon.curType]}→${DMG_LABEL[weapon.nextType]}`, 'info')
+    add(tr("ui.FitPage.125", { p1: DMG_LABEL[weapon.curType], p2: DMG_LABEL[weapon.nextType] }), 'info')
   }
   // 命中近似（整机相对变化；口径见 meanHitMul）
   const ch = meanHitMul(cur)
@@ -275,7 +276,7 @@ function diffSegs(
       // 同上：绝对值格式化，符号只由前缀给一次
       const absHp = Math.abs(hp)
       const show = absHp >= 10 ? String(Math.round(absHp)) : absHp.toFixed(1)
-      add(`命中 ${hp > 0 ? '+' : '−'}${show}%`, hp > 0 ? 'up' : 'down')
+      add(tr("ui.FitPage.126", { p1: hp > 0 ? '+' : '−', show: show }), hp > 0 ? 'up' : 'down')
     }
   }
   return segs
@@ -293,7 +294,7 @@ function weaponDamageTypeOf(m: ModuleDef): DamageType {
 
 /** 层位克制短串（如「盾×1.5·甲×0.5」；×1 的层省略）——数值与 `combat.typeLayerMult` 同源，挂在弹种 chip 上 */
 function layerShortOf(t: DamageType): string {
-  const name = { shield: '盾', armor: '甲', hull: '结构' } as const
+  const name = { shield: tr("ui.FitPage.014"), armor: tr("ui.FitPage.015"), hull: tr("ui.ShipPage.023") } as const
   const parts: string[] = []
   for (const l of ['shield', 'armor', 'hull'] as const) {
     const v = typeLayerMult(t, l)
@@ -311,10 +312,10 @@ function mulText(v: number): string {
 function ammoChipOf(m: ModuleDef): ReactNode | null {
   if (m.slot === 'turret') {
     const t = m.damageType ?? 'kinetic'
-    return <DmgChip t={t} label={`${DMG_LABEL[t]}弹药`} />
+    return <DmgChip t={t} label={tr("ui.FitPage.127", { p1: DMG_LABEL[t] })} />
   }
-  if (m.slot === 'missile') return <DmgChip t="explosive" label="爆破弹药" />
-  if (m.slot === 'laser') return <DmgChip t="plasma" label="能量弹药" />
+  if (m.slot === 'missile') return <DmgChip t="explosive" label={tr("ui.FitPage.008")} />
+  if (m.slot === 'laser') return <DmgChip t="plasma" label={tr("ui.FitPage.009")} />
   return null
 }
 
@@ -342,14 +343,14 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
   return (
     <div
       className={`app-fit-cpustrip ${cls}`}
-      title="档位基础：低级 5 / 中级 15 / 高级 40 CPU（炮台更高）；剩余 = 船体上限 + 协处理器扩容 − 已装占用（含无人机舱清单）。剩余 0 = 刚好装满（装得进，但加不了新件）；负数 = 超载（装不上，先卸件或装协处理器扩容）"
+      title={tr("ui.FitPage.019")}
     >
-      <span className="app-fit-cpustrip-label">CPU 剩余</span>
+      <span className="app-fit-cpustrip-label">{tr("ui.FitPage.020")}</span>
       <span className="app-fit-cpustrip-num">
         {minus(rem)} / {total}
       </span>
       <span className="app-fit-cpustrip-pct">
-        {over ? `超 ${-rem}` : rem === 0 ? '刚好装满' : `${Math.round(remPct)}%`}
+        {over ? tr("ui.FitPage.128", { p1: -rem }) : rem === 0 ? tr("ui.FitPage.021") : `${Math.round(remPct)}%`}
       </span>
       <span className={`app-fit-cpustrip-track ${cls}`} role="progressbar" aria-valuenow={Math.round(remPct)} aria-valuemin={0} aria-valuemax={100}>
         <i style={{ width: `${remPct}%` }} />
@@ -420,8 +421,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   /** 卸下（2026-09-11：`unfitAtAt` 改回报 CommandResult——CPU 双向校验下"卸不掉"会带原因） */
   function handleUnfit(rack: RackSlot, index: number): void {
     const r = engine.unfitAtAt(rack, index, effectiveTarget)
-    if (r.ok) onToast('装备已卸下并放回装备库。')
-    else onToast(r.error ?? '卸下失败。', true)
+    if (r.ok) onToast(tr("ui.FitPage.129"))
+    else onToast(cmdText(r) || tr('ui.FitPage.165'), true)
   }
 
   // ── 装配方案（预设）：保存当前装配 / 套用预设（2026-09-14 船长；入口在「装配目标」栏右侧） ──
@@ -443,11 +444,11 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function handleSavePreset(): void {
     const r = engine.saveFitPresetFor(effectiveTarget)
     if (!r.ok) {
-      onToast(r.error ?? '保存失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.166'), true)
       setPresetOpen(true)
       return
     }
-    onToast('已把当前装配存为方案。')
+    onToast(tr("ui.FitPage.130"))
     setPresetOpen(true)
   }
 
@@ -455,7 +456,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function handleApplyPreset(index: number): void {
     const r = engine.applyFitPresetAt(effectiveTarget, index)
     if (!r.ok) {
-      onToast(r.error ?? '套用失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.167'), true)
       return
     }
     setPresetOpen(false)
@@ -468,10 +469,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     if (!presetRename) return
     const r = engine.renameFitPresetAt(presetDefId, presetRename.index, presetRename.name)
     if (!r.ok) {
-      onToast(r.error ?? '改名失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.168'), true)
       return
     }
-    onToast('方案已改名。')
+    onToast(tr("ui.FitPage.131"))
     setPresetRename(null)
   }
 
@@ -483,33 +484,33 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const r = engine.overwriteFitPresetAt(effectiveTarget, index)
     setPresetReplaceAt(null)
     if (!r.ok) {
-      onToast(r.error ?? '替换失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.169'), true)
       return
     }
     setPresetDetailAt(null) // 内容变了：收起旧明细，下次展开重算
-    onToast('已用当前装配覆盖该方案。')
+    onToast(tr("ui.FitPage.132"))
   }
 
   /** 删除方案 */
   function handleDeletePreset(index: number): void {
     const r = engine.deleteFitPresetAt(presetDefId, index)
     if (!r.ok) {
-      onToast(r.error ?? '删除失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.170'), true)
       return
     }
     setPresetRename(null)
-    onToast('方案已删除。')
+    onToast(tr("ui.FitPage.133"))
   }
 
   /** 一键卸下全部装备（放回装备库；甲板扩容器一并卸下，超容无人机自动退仓） */
   function handleUnfitAll(): void {
     const r = engine.unfitAllFor(effectiveTarget)
     if (!r.ok) {
-      onToast(r.error ?? '卸下失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.165'), true)
       return
     }
-    if (r.removed > 0) onToast(`已卸下全部装备 ${r.removed} 件（放回装备库）。`)
-    else onToast('这艘船没有已装装备。', true)
+    if (r.removed > 0) onToast(tr("ui.FitPage.134", { p1: r.removed }))
+    else onToast(tr("ui.FitPage.135"), true)
   }
 
   // ── 槽位换装浮层（船长 2026-09-05：点槽位 → 浮层选装；覆盖左侧舰船属性） ──
@@ -625,8 +626,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const { rack, index } = pickBay
     const had = (fitted?.[rack]?.[index] ?? null) !== null
     const r = engine.swapModuleTo(m.id, rack, index, effectiveTarget)
-    if (!r.ok) onToast(r.error ?? '装配失败', true)
-    else onToast(`${m.name} 已${had ? '换装到' : '装入'}${rackLabel(rack)}第 ${index + 1} 位。`)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.171'), true)
+    else onToast(tr("ui.FitPage.136", { p1: m.name, p2: had ? tr("ui.FitPage.022") : tr("ui.FitPage.023"), p3: rackLabel(rack), p4: index + 1 }))
     setPickBay(null)
   }
 
@@ -640,9 +641,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     if (m.stealthMs === undefined || !shipDef) return ''
     const bits: string[] = []
     if (shipDef.stealthCpuMul !== undefined && shipDef.stealthCpuMul !== 1) {
-      bits.push(`本船特性：CPU ${cpuUseOf(m, shipDef)}（原 ${m.cpuUse ?? 0}）`)
+      bits.push(tr("ui.FitPage.137", { p1: cpuUseOf(m, shipDef), p2: m.cpuUse ?? 0 }))
     }
-    if (shipDef.stealthIgnoresPropulsion === true) bits.push('装推进器也能保持隐身')
+    if (shipDef.stealthIgnoresPropulsion === true) bits.push(tr("ui.FitPage.138"))
     return bits.length > 0 ? ` ← ${bits.join(' · ')}` : ''
   }
 
@@ -655,11 +656,11 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const n = sameKindCount(fitted, engine.ctx, m)
     if (n === 0) return base
     // 2026-09-15 隐秘行动装置（`max` 组）：多件**取最长一件**——明说"不叠加"，免得玩家以为能叠到 50 秒
-    if (st.group === 'max') return `${base} ← 同类第 ${n + 1} 件：取最长一件（不叠加）`
+    if (st.group === 'max') return tr("ui.FitPage.139", { base: base, p2: n + 1 })
     if (st.group === 'curve' || st.group === 'weighted') { // 折权加算与 EVE 曲线同文案：写明第 N 件按权重百分比生效
-      return `${base} ← 同类第 ${n + 1} 件：按 ${Math.round(stackWeight(n + 1) * 100)}% 生效`
+      return tr("ui.FitPage.140", { base: base, p2: n + 1, p3: Math.round(stackWeight(n + 1) * 100) })
     }
-    return `${base} ← 同类第 ${n + 1} 件：只削剩余缺口（收益递减）`
+    return tr("ui.FitPage.141", { base: base, p2: n + 1 })
   }
 
   // 无人机舱总量（船体 + 已装「甲板扩展」= 清单容量上限；装入入口在低槽组下方无人机舱区——
@@ -708,34 +709,34 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
 
   return (
     <div className="page-stack page-fill">
-      <Panel className="is-fill" title="装配台" right={<span className="app-dim">装备随船 · 进入其它船的装配台请在「舰船」页点卡片「⚒ 装配」</span>}>
+      <Panel className="is-fill" title={tr("ui.FitPage.024")} right={<span className="app-dim">{tr("ui.FitPage.025")}</span>}>
         {/* 装配目标（船长 2026-09-05：醒目左置；入口在舰船页卡片，本页不再切换目标） */}
         <div className="app-fit-target">
           <span className="app-fit-target-label">
-            装配目标
-            {isPiloted ? <em className="app-belt-flag is-run">当前舰船</em> : <em className="app-belt-flag">非驾驶船</em>}
+            {tr("ui.FitPage.026")}
+            {isPiloted ? <em className="app-belt-flag is-run">{tr("ui.FitPage.027")}</em> : <em className="app-belt-flag">{tr("ui.FitPage.028")}</em>}
           </span>
           <span className="app-fit-target-ship">{shipName}</span>
           <span className="app-dim app-fit-target-hint">
             {isPiloted
-              ? '当前驾驶船 · 装备随船'
-              : '来自「舰船」页卡片 · 此船不在驾驶（装配不影响驾驶状态）'}
+              ? tr("ui.FitPage.029")
+              : tr("ui.FitPage.030")}
           </span>
           {/* 装配方案（2026-09-14 船长：保存当前装配 / 使用预设装配）——同一船型通用 */}
           <div className="app-fit-preset-bar">
             <button
               className="app-btn is-small"
               onClick={handleSavePreset}
-              title="把当前这艘船的实装（三类槽位装备 + 无人机舱装载）存成一套方案；方案按船型归口，同型号任意一艘都能套用"
+              title={tr("ui.FitPage.031")}
             >
-              保存装配
+              {tr("ui.FitPage.032")}
             </button>
             <button
               className="app-btn is-small is-primary"
               onClick={() => setPresetOpen(true)}
-              title={`查看 / 套用 / 重命名 / 删除本船型的装配方案（最多 ${FIT_PRESET_MAX} 套）；每套可展开「明细」看逐位装了什么`}
+              title={tr("ui.FitPage.142", { FIT_PRESET_MAX: FIT_PRESET_MAX })}
             >
-              装配方案 <em className="app-fit-preset-count">{presets.length}/{FIT_PRESET_MAX}</em>
+              {tr("ui.FitPage.033")} <em className="app-fit-preset-count">{presets.length}/{FIT_PRESET_MAX}</em>
             </button>
           </div>
         </div>
@@ -751,7 +752,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               </div>
               {stageFit.indirect && shipIndirectLines(shipDef, effWarp).length > 0 ? (
                 <div className="app-fit-indirect">
-                  <div className="app-info-note app-fit-indirect-note">间接属性</div>
+                  <div className="app-info-note app-fit-indirect-note">{tr("ui.FitPage.034")}</div>
                   <InfoTable lines={shipIndirectLines(shipDef, effWarp)} />
                 </div>
               ) : null}
@@ -772,7 +773,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               lines={[
                 ...shipInfoLines(shipDef).filter(
                   (l) =>
-                    l.k !== '槽位' &&
+                    l.k !== '槽位' && // l10n-keep：这几条是 core shipInfoLines 的中文标签 key（比较用，非文案）
                     l.k !== '采集性能' &&
                     l.k !== '货舱容量' &&
                     l.k !== 'CPU' && // 上限已由右栏「CPU 剩余」条显示（含技能加成），表格不重复
@@ -780,24 +781,24 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 ),
                 // 无人机舱（上限 = 船体 + 甲板扩展；战斗只放飞下方「无人机舱」清单——2026-09-08 大改）
                 ...(droneBayTotal > 0
-                  ? [{ k: '无人机舱（含甲板扩展）', v: `${droneBayTotal} m³ · 战斗只放飞下方清单中已装入的无人机` }]
+                  ? [{ k: tr("ui.FitPage.035"), v: tr("ui.FitPage.143", { droneBayTotal: droneBayTotal }) }]
                   : []),
                 // 船体维修装置·运转消耗（2026-09-10 船长：消耗组件需高亮；0 枚红字告警）
                 ...repairKitRows.map((r) => {
                   const cls = r.stock <= 0 ? 'is-bad' : r.stock < 10 ? 'is-warn' : 'is-ok'
                   const hint =
                     r.stock <= 0
-                      ? '库存为空——装置开战即停机（不会自动修复）'
+                      ? tr("ui.FitPage.036")
                       : r.stock < 10
-                        ? '存量偏少——长局可能中途停机'
-                        : '存量充足'
+                        ? tr("ui.FitPage.037")
+                        : tr("ui.FitPage.038")
                   return {
-                    k: '维修组件（运转消耗）',
+                    k: tr("ui.FitPage.039"),
                     v: (
                       <>
-                        <em className="app-chip is-cost">{r.name} ×1 / {r.perJumpSecs} 秒</em>
+                        <em className="app-chip is-cost">{tr('ui.FitPage.163', { name: r.name, s: r.perJumpSecs })}</em>
                         <span className={`app-kit-stock ${cls}`}>
-                          {' '}当前 {r.stock} 枚（{hint}）
+                          {' '}{tr("ui.FitPage.040")} {r.stock} {tr("ui.FitPage.041")}{hint}）
                         </span>
                       </>
                     ),
@@ -807,16 +808,16 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 ...(freeRepairRows.length > 0
                   ? [
                       {
-                        k: '生体自愈（无消耗）',
+                        k: tr("ui.FitPage.042"),
                         v: (
                           <>
-                            <em className="app-chip is-ok">无需组件</em>
+                            <em className="app-chip is-ok">{tr("ui.FitPage.043")}</em>
                             <span className="app-dim">
                               {' '}
                               {freeRepairRows
-                                .map((r) => `${r.name}：每 ${r.secs} 秒修甲 ${r.armor} / 结构 ${r.hull}`)
+                                .map((r) => tr("ui.FitPage.144", { p1: r.name, p2: r.secs, p3: r.armor, p4: r.hull }))
                                 .join('；')}
-                              （战斗中自动生效，不会因缺料停机；同型多件收益递减）
+                              {tr("ui.FitPage.044")}
                             </span>
                           </>
                         ),
@@ -826,11 +827,11 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 // 装后合成预览（V18.1：收敛件多装最终值；血量由顶部徽章承担不重复列出——与最上方徽章同源）
                 ...(spec
                   ? [
-                      { k: '护盾抗性（含装备）', v: resChipsAll(spec.resists.shield) },
-                      { k: '装甲抗性（含装备）', v: resChipsAll(spec.resists.armor) },
-                      { k: '结构抗性', v: resChipsAll(spec.resists.hull) },
+                      { k: tr("ui.FitPage.045"), v: resChipsAll(spec.resists.shield) },
+                      { k: tr("ui.FitPage.046"), v: resChipsAll(spec.resists.armor) },
+                      { k: tr("ui.FitPage.005"), v: resChipsAll(spec.resists.hull) },
                       {
-                        k: '命中率（含装备）',
+                        k: tr("ui.FitPage.047"),
                         v:
                           hitRead === null ? (
                             '—'
@@ -841,20 +842,20 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                             </>
                           ),
                       },
-                      { k: '回避率（含装备）', v: `${Math.round(spec.evasion * 100)}%` },
+                      { k: tr("ui.FitPage.048"), v: `${Math.round(spec.evasion * 100)}%` },
                       // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
                       // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
                       // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
                       // 对不上，改为「基础值 +（装推进器时）点火期值 + 周期尾缀」，秒数与 balance 同源。
                       // **2026-09-14 起按船取值**：周期取自本船 `spec` 的两个覆盖字段（微型跃迁引擎 = 10 秒点火）。
                       {
-                        k: '机动速度',
+                        k: tr("ui.FitPage.049"),
                         v: (
                           <>
                             {`${fmt(Math.round(spec.speedMps))} m/s`}
                             {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
                               <span className="app-dim">
-                                {`（加力推进点火期 ${fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost)))} m/s；${thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs })}）`}
+                                {tr("ui.FitPage.145", { p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))), p2: thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs }) })}
                               </span>
                             ) : null}
                           </>
@@ -863,21 +864,21 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       // 跃迁速度（2026-09-14 跃迁计算机）：只影响**跨星系航行耗时**，战斗机动一字不动
                       // ⇒ 与「机动速度」并列单列一行，避免玩家把两个"速度"混为一谈。
                       {
-                        k: '跃迁速度（含装备）',
+                        k: tr("ui.FitPage.050"),
                         v: (
                           <>
                             {`${effWarp ? effWarp.aus.toFixed(2) : '-'} AU/s`}
                             {effWarp && effWarp.bonusPct > 0 ? (
-                              <span className="app-dim">{`（装备 +${Math.round(effWarp.bonusPct * 100)}%）`}</span>
+                              <span className="app-dim">{tr("ui.FitPage.146", { p1: Math.round(effWarp.bonusPct * 100) })}</span>
                             ) : null}
-                            <span className="app-dim">{` · 跨星系航行耗时 ×${warpFactor.toFixed(2)}（含航行技能）`}</span>
+                            <span className="app-dim">{tr("ui.FitPage.147", { p1: warpFactor.toFixed(2) })}</span>
                           </>
                         ),
                       },
                     ]
                   : []),
               ]}
-              note={`槽位布局：${slots.high} 高 / ${slots.mid} 中 / ${slots.low} 低（复数安装）；抗性按递减方式合成（上限 90%）；多装与「动力」细则见手册速览「装配」。命中率 = 本船炮台 / 导弹架 / 激光炮的整机均值（船体加成加算、索敌件与推进失稳只压掷命中武器；激光必中计 100%），不含敌方回避与距离衰减；超过 100% 的部分是余量，实战里用于抵消射程削减与敌舰回避。`}
+              note={tr("ui.FitPage.148", { p1: slots.high, p2: slots.mid, p3: slots.low })}
             />
           </div>
           </>
@@ -899,7 +900,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               <div key={rack} className="app-fit-rack">
                 <div className="app-fit-rack-title">
                   {RACK_LABELS[rack]} <span className="app-dim">（{RACK_FAMILIES[rack]}）</span>
-                  <span className="app-dim">　{filledCount}/{total} 已占</span>
+                  <span className="app-dim">　{filledCount}/{total} {tr("ui.FitPage.051")}</span>
                 </div>
                 <div className="app-fit-icongrid">
                 {Array.from({ length: Math.max(total, bays.length) }, (_, i) => {
@@ -912,10 +913,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         key={`${rack}-${i}`}
                         className="app-fit-slot-icon is-empty"
                         onClick={() => openPick(rack, i)}
-                        title={`第 ${i + 1} 位（空）——点击选择装备`}
+                        title={tr("ui.FitPage.149", { p1: i + 1 })}
                       >
                         <span className="app-fit-slot-icon-glyph">＋</span>
-                        <span className="app-fit-slot-icon-name">装入</span>
+                        <span className="app-fit-slot-icon-name">{tr("ui.FitPage.023")}</span>
                       </button>
                     )
                   }
@@ -930,7 +931,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                          `ModuleHover` 的内容，标题 + 统一参数表 + 描述），行动提示降为末行注脚。
                          ⚠ 不再写 `title`：同一元素禁 `title` + 富提示并存（两个提示路径互顶）。 */
                       {...hoverTipProps(
-                        moduleHoverContent(fittedDef, `第 ${i + 1} 位 · 点击更换${stealthTraitNote(fittedDef)}`),
+                        moduleHoverContent(fittedDef, tr("ui.FitPage.150", { p1: i + 1, p2: stealthTraitNote(fittedDef) })),
                       )}
                     >
                       <span className="app-fit-slot-icon-glyph">
@@ -945,7 +946,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           handleUnfit(rack, i)
                         }}
                       >
-                        卸下
+                        {tr("ui.FitPage.052")}
                       </span>
                     </button>
                   )
@@ -969,16 +970,16 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           <div className="app-fit-modal app-fit-preset-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-fit-modal-head">
               <span>
-                装配方案 · {shipName}
-                <HintIcon tip="方案按船型保存：同一型号的任意一艘（含以后新建的）都能套用。套用 = 先把这艘船现有装备全部卸回装备库、无人机退回仓库，再按方案装；装备库缺件、CPU 超预算或机舱放不下时，能装的先装上，未装的逐条列出（所以方案凑不齐时结果可能不如套用前）。方案里不含弹药档位（弹种仍在右栏手动设）。" />
+                {tr("ui.FitPage.053")} {shipName}
+                <HintIcon tip={tr("ui.FitPage.054")} />
               </span>
               <button className="app-btn is-small" onClick={() => setPresetOpen(false)}>
-                关闭
+                {tr("ui.FitPage.055")}
               </button>
             </div>
             {presets.length === 0 ? (
               <div className="app-dim app-inv-empty">
-                还没有方案——点下面的「把当前装配存为新方案」，或先按当前装配点标题栏右侧的「保存装配」。
+                {tr("ui.FitPage.056")}
               </div>
             ) : (
               <div className="app-fit-preset-list">
@@ -999,26 +1000,26 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         />
                         <span className="app-dim">{fitPresetBrief(p)}</span>
                         <button className="app-btn is-small is-primary" onClick={handleRenamePreset}>
-                          改好
+                          {tr("ui.FitPage.057")}
                         </button>
                         <button className="app-btn is-small" onClick={() => setPresetRename(null)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </>
                     ) : presetReplaceAt === i ? (
                       /* 替换的两步确认（船长 2026-09-19）：覆盖前先问一句 */
                       <>
                         <b>{p.name}</b>
-                        <span className="app-dim">用当前装配覆盖这一套？</span>
+                        <span className="app-dim">{tr("ui.FitPage.058")}</span>
                         <button
                           className="app-btn is-small is-primary"
-                          title="把当前这艘船的实装（三类槽位 ＋ 无人机舱装载）写进这一套方案；方案名与位置不变"
+                          title={tr("ui.FitPage.059")}
                           onClick={() => handleOverwritePreset(i)}
                         >
-                          确认覆盖
+                          {tr("ui.FitPage.060")}
                         </button>
                         <button className="app-btn is-small" onClick={() => setPresetReplaceAt(null)}>
-                          取消
+                          {tr("ui.ActivityBar.004")}
                         </button>
                       </>
                     ) : (
@@ -1028,28 +1029,28 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         <button
                           className="app-btn is-small"
                           onClick={() => setPresetDetailAt(presetDetailAt === i ? null : i)}
-                          title="展开这套方案里逐位装了什么（高/中/低 逐位 ＋ 无人机舱装载）"
+                          title={tr("ui.FitPage.061")}
                         >
-                          {presetDetailAt === i ? '收起' : '明细'}
+                          {presetDetailAt === i ? tr("ui.FitPage.062") : tr("ui.FitPage.063")}
                         </button>
                         <button className="app-btn is-small is-primary" onClick={() => handleApplyPreset(i)}>
-                          套用
+                          {tr("ui.FitPage.064")}
                         </button>
                         <button
                           className="app-btn is-small"
-                          title="用当前这艘船的装配覆盖这一套方案（覆盖前会先确认；方案名与位置不变）"
+                          title={tr("ui.FitPage.065")}
                           onClick={() => setPresetReplaceAt(i)}
                         >
-                          替换
+                          {tr("ui.FitPage.066")}
                         </button>
                         <button
                           className="app-btn is-small"
                           onClick={() => setPresetRename({ index: i, name: p.name })}
                         >
-                          重命名
+                          {tr("ui.FitPage.067")}
                         </button>
                         <button className="app-btn is-small is-warn" onClick={() => handleDeletePreset(i)}>
-                          删除
+                          {tr("ui.FitPage.068")}
                         </button>
                       </>
                     )}
@@ -1069,15 +1070,15 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                               >
                                 <em>{s.index}</em>
                                 {s.name}
-                                {s.missing ? '（未知件）' : ''}
+                                {s.missing ? tr("ui.FitPage.069") : ''}
                               </span>
                             ))}
                         </div>
                       ))}
                       <div className="app-fit-preset-detail-line">
-                        <span className="app-fit-preset-detail-rack">无人机</span>
+                        <span className="app-fit-preset-detail-rack">{tr("ui.Handbook.004")}</span>
                         {detail.drones.length === 0 ? (
-                          <span className="app-fit-preset-detail-cell is-empty">未装载</span>
+                          <span className="app-fit-preset-detail-cell is-empty">{tr("ui.FitPage.070")}</span>
                         ) : (
                           detail.drones.map((d) => (
                             <span
@@ -1085,14 +1086,14 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                               key={d.id}
                             >
                               {d.name} ×{d.count}
-                              {d.missing ? '（未知机型）' : ''}
+                              {d.missing ? tr("ui.FitPage.071") : ''}
                             </span>
                           ))
                         )}
                       </div>
                       {detail.overflow > 0 ? (
                         <div className="app-fit-preset-detail-note">
-                          另有 {detail.overflow} 位超出本船槽位，套用时会被忽略。
+                          {tr("ui.FitPage.072")} {detail.overflow} {tr("ui.FitPage.073")}
                         </div>
                       ) : null}
                     </div>
@@ -1104,17 +1105,17 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             )}
             <div className="app-fit-preset-foot">
               <button className="app-btn is-small" onClick={handleSavePreset}>
-                把当前装配存为新方案
+                {tr("ui.FitPage.074")}
               </button>
               <button
                 className="app-btn is-small is-warn"
                 onClick={handleUnfitAll}
-                title="把三类槽位上的装备全部卸回装备库（甲板扩容器一并卸下，超出机舱的无人机自动退回仓库）"
+                title={tr("ui.FitPage.075")}
               >
-                一键卸下全部装备
+                {tr("ui.FitPage.076")}
               </button>
               <span className="app-dim">
-                套用会先卸光这艘船的装备与无人机，再按方案装；凑不齐的逐条列出。
+                {tr("ui.FitPage.077")}
               </span>
             </div>
           </div>
@@ -1127,12 +1128,12 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           <div className="app-fit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-fit-modal-head">
               <span>
-                {RACK_LABELS[pickBay.rack]} · 第 {pickBay.index + 1} 位
-                {fitted?.[pickBay.rack]?.[pickBay.index] ? '（更换）' : '（装入）'}
-                <HintIcon tip="以下为该槽位可安装的全部装备（装备库库存）；点击即装入/更换（旧件自动卸回装备库）。卡片下方绿/红段为装后与当前对比：火力按名义值估算（全命中、不计距离衰减）；同类多装同样计入 CPU 校验。默认按稀有度从高到低排列。红色的「CPU 剩 …（差 N）」= 装后超预算，这件装不上（先卸件，或低槽装一件「协处理器」扩容）；红色的属性段只是数值下降，照样装得上。" />
+                {tr('ui.FitPage.164', { rack: RACK_LABELS[pickBay.rack], n: pickBay.index + 1 })}
+                {fitted?.[pickBay.rack]?.[pickBay.index] ? tr("ui.FitPage.078") : tr("ui.FitPage.079")}
+                <HintIcon tip={tr("ui.FitPage.080")} />
               </span>
               <button className="app-btn is-small" onClick={() => setPickBay(null)}>
-                关闭
+                {tr("ui.FitPage.055")}
               </button>
             </div>
             {/* 筛选与搜索（2026-09-11 船长定：参考市场页；复刻 app-mkt-search 那套"搜索框 + 分类下拉 + 命中计数"） */}
@@ -1140,7 +1141,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               <input
                 className="app-mkt-search-input"
                 type="search"
-                placeholder="搜索装备：名称 / 槽位 / 说明"
+                placeholder={tr("ui.FitPage.081")}
                 value={pickKw}
                 onChange={(e) => setPickKw(e.target.value)}
                 spellCheck={false}
@@ -1149,9 +1150,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 className="app-mkt-kind"
                 value={pickSlot}
                 onChange={(e) => setPickSlot(e.target.value)}
-                title="按装备分类（槽位）筛选"
+                title={tr("ui.FitPage.082")}
               >
-                <option value="all">全部装备分类</option>
+                <option value="all">{tr("ui.FitPage.083")}</option>
                 {pickSlotOptions(pickBay.rack).map((o) => (
                   <option key={o.slot} value={o.slot}>
                     {o.label}（{o.count}）
@@ -1160,13 +1161,13 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               </select>
               <span className="app-dim">
                 {pickQuery.length > 0 || pickSlot !== 'all'
-                  ? `匹配 ${pickShown.length} 件`
-                  : `${pickShown.length} 件 · 按稀有度排序`}
+                  ? tr("ui.FitPage.151", { p1: pickShown.length })
+                  : tr("ui.FitPage.152", { p1: pickShown.length })}
               </span>
             </div>
             <div className="app-fit-pickgrid">
               {pickShown.length === 0 ? (
-                <div className="app-dim app-exp-idle">没有符合条件的装备——换个关键词或把分类切回「全部装备分类」。</div>
+                <div className="app-dim app-exp-idle">{tr("ui.FitPage.084")}</div>
               ) : null}
               {pickShown.map((m) => {
                 const segs = pickDiffs?.get(m.id)
@@ -1200,7 +1201,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           <DmgChip t={weaponDamageTypeOf(m)} label={layerShortOf(weaponDamageTypeOf(m))} />
                           <span className="app-fit-pick-subtext">
                             ×{countModule(state, m.id)}
-                            {m.dmgMult !== undefined ? ` · 弹伤 ${mulText(m.dmgMult)}` : ''} · 射程 {rangeShort(m)}
+                            {m.dmgMult !== undefined ? tr("ui.FitPage.153", { p1: mulText(m.dmgMult) }) : ''}{tr('ui.FitPage.162', { r: rangeShort(m) })}
                           </span>
                         </>
                       ) : (
@@ -1211,7 +1212,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     </span>
                     {sameAsOld ? (
                       <span className="app-fit-pick-diff">
-                        <span className="dseg is-none">已装在此位</span>
+                        <span className="dseg is-none">{tr("ui.FitPage.085")}</span>
                       </span>
                     ) : segs && segs.length > 0 ? (
                       <span className="app-fit-pick-diff" title={segs.map((s) => s.t).join('　')}>
@@ -1224,7 +1225,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       </span>
                     ) : (
                       <span className="app-fit-pick-diff">
-                        <span className="dseg is-none">装后：战斗无差异</span>
+                        <span className="dseg is-none">{tr("ui.FitPage.086")}</span>
                       </span>
                     )}
                   </button>
@@ -1232,7 +1233,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               })}
               {candidatesOf(pickBay.rack).length === 0 ? (
                 <div className="app-dim app-inv-empty">
-                  装备库没有适配此槽位的装备——市场购买或在「工业」页制造后，回来点击槽位装入。
+                  {tr("ui.FitPage.087")}
                 </div>
               ) : null}
             </div>
@@ -1301,9 +1302,9 @@ function AmmoTierSection({
             className={`app-fit-ammotier-opt${!onMk2 ? ' is-active' : ''}`}
             onClick={() => {
               const r = engine.setAmmoTierAt(type, null, target)
-              if (!r.ok) onToast(r.error ?? '设置失败', true)
+              if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
             }}
-            title={`${baseName}：本船${baseName}档（未设 = 基础弹；开战时同族取"能装得最多"的一档）`}
+            title={tr("ui.FitPage.154", { baseName: baseName, baseName2: baseName })}
           >
             {baseName}
           </button>
@@ -1311,9 +1312,9 @@ function AmmoTierSection({
             className={`app-fit-ammotier-opt${onMk2 ? ' is-active' : ''}`}
             onClick={() => {
               const r = engine.setAmmoTierAt(type, mk2.id, target)
-              if (!r.ok) onToast(r.error ?? '设置失败', true)
+              if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
             }}
-            title={`${mk2.name}：单发更高（${mk2.dmg ?? '?'} vs ${base?.dmg ?? '?'}）；开战按档预载——同族里"能装得最多"的那一档会被实际装填，装不满也照装。仓库 ×${haveMk2}`}
+            title={tr("ui.FitPage.155", { p1: mk2.name, p2: mk2.dmg ?? '?', p3: base?.dmg ?? '?', haveMk2: haveMk2 })}
           >
             {mk2.name}
           </button>
@@ -1323,19 +1324,19 @@ function AmmoTierSection({
           {need > 0 ? (
             <>
               {' · '}
-              本场预载：<b>{effName}</b> 可装 {fmt(eff.can)}/{fmt(need)}
+              {tr("ui.FitPage.088")}<b>{effName}</b> {tr("ui.FitPage.089")} {fmt(eff.can)}/{fmt(need)}
             </>
           ) : null}
           {noneLeft ? (
             <>
               {' · '}
-              <span className="app-fit-ammotier-warn">⚠ 两档都没货：本场将无弹可打</span>
+              <span className="app-fit-ammotier-warn">{tr("ui.FitPage.090")}</span>
             </>
           ) : eff.fellBack && need > 0 ? (
             <>
               {' · '}
               <span className="app-fit-ammotier-warn">
-                ⚠ {pref ? ctx.items.get(pref)?.name ?? '所选档' : '基础弹'}不足，将自动改用{effName}
+                ⚠ {pref ? ctx.items.get(pref)?.name ?? tr('ui.FitPage.173') : tr("ui.FitPage.091")}{tr("ui.FitPage.092")}{effName}
               </span>
             </>
           ) : null}
@@ -1347,8 +1348,8 @@ function AmmoTierSection({
   return (
     <div className="app-fit-ammotier">
       <div className="app-fit-dronebay-head">
-        <span className="app-fit-dronebay-title">弹药档位</span>
-        <span className="app-dim">（出发预载按档消耗；连打同源；同族取"能装得最多"的一档，装不满也照装）</span>
+        <span className="app-fit-dronebay-title">{tr("ui.FitPage.093")}</span>
+        <span className="app-dim">{tr("ui.FitPage.094")}</span>
       </div>
       {rows}
     </div>
@@ -1396,7 +1397,7 @@ function DroneBaySection({
 
   function adj(id: string, delta: number): void {
     const r = engine.adjustDroneLoadAt(id, delta, target)
-    if (!r.ok) onToast(r.error ?? '操作失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.393'), true)
   }
   function clearAll(): void {
     for (const [id, n] of Object.entries(load)) adj(id, -n)
@@ -1429,21 +1430,22 @@ function DroneBaySection({
     <div className="app-fit-dronebay">
       <div className="app-fit-dronebay-head">
         <span className="app-fit-dronebay-title">
-          无人机舱
-          <span className="app-dim">（敌方点防会击落机群，被击落后自清单永久损失；战斗结束会自动从本船货仓、其次物品仓库补足）</span>
+          {tr("ui.FitPage.010")}
+          {/* 并入 main（2026-09-20）：对方把这条说明扩写了（补"战斗结束自动补足"）⇒ 换新 id */}
+          <span className="app-dim">{tr("ui.FitPage.174")}</span>
           {droneCpu > 0 ? (
-            <span className="app-dim">（清单占用 CPU {droneCpu}）</span>
+            <span className="app-dim">{tr("ui.FitPage.096")} {droneCpu}）</span>
           ) : null}
         </span>
         {cells.length > 0 ? (
-          <button className="app-btn is-small is-warn" onClick={clearAll} title="把舱内全部无人机退回仓库">
-            全部卸下
+          <button className="app-btn is-small is-warn" onClick={clearAll} title={tr("ui.FitPage.097")}>
+            {tr("ui.FitPage.098")}
           </button>
         ) : null}
       </div>
       {/* 容量条（参考 CPU 条视觉；m³ 口径） */}
-      <div className="app-fit-dronecap" title={`无人机舱容量：已装 ${Math.round(usedM3 * 10) / 10} / ${cap} m³（船体 + 甲板扩展）；清单 CPU 占用 ${droneCpu}（计入预算）`}>
-        <span className="app-fit-dronecap-label">机舱</span>
+      <div className="app-fit-dronecap" title={tr("ui.FitPage.156", { p1: Math.round(usedM3 * 10) / 10, cap: cap, droneCpu: droneCpu })}>
+        <span className="app-fit-dronecap-label">{tr("ui.FitPage.099")}</span>
         <span className="app-fit-dronecap-num">
           {Math.round(usedM3 * 10) / 10}/{cap} m³
         </span>
@@ -1451,7 +1453,7 @@ function DroneBaySection({
           <i style={{ width: `${pct}%` }} />
         </span>
         <span className="app-dim">
-          {cells.reduce((s, c) => s + c.n, 0)} 架 · CPU {droneCpu}
+          {cells.reduce((s, c) => s + c.n, 0)} {tr("ui.FitPage.100")} {droneCpu}
         </span>
       </div>
       {droneShort ? (
@@ -1469,8 +1471,8 @@ function DroneBaySection({
                `ItemHover` 的内容），原那句"清单口径"降为末行注脚；± 按钮自己的提示照旧内层优先。 */
             {...hoverTipProps(
               def
-                ? itemHoverContent(def, (mid) => engine.ctx.items.get(mid)?.name, '舱内清单：战斗只放飞已装入的；仓库中其余无人机不出战')
-                : `${id}：无人机舱清单（战斗只放飞已装入的；仓库中其余无人机不出战）`,
+                ? itemHoverContent(def, (mid) => engine.ctx.items.get(mid)?.name, tr("ui.FitPage.157"))
+                : tr("ui.FitPage.158", { id: id }),
             )}
           >
             {def ? (
@@ -1479,10 +1481,10 @@ function DroneBaySection({
               </span>
             ) : null}
             <span className="app-fit-drone-cell-name">{def?.name ?? id} ×{n}</span>
-            <button className="app-fit-drone-step" title="卸下一架（退回仓库）" onClick={() => adj(id, -1)}>
+            <button className="app-fit-drone-step" title={tr("ui.FitPage.101")} onClick={() => adj(id, -1)}>
               −
             </button>
-            <button className="app-fit-drone-step" title="再装一架（从仓库）" onClick={() => adj(id, 1)}>
+            <button className="app-fit-drone-step" title={tr("ui.FitPage.102")} onClick={() => adj(id, 1)}>
               +
             </button>
           </div>
@@ -1494,9 +1496,9 @@ function DroneBaySection({
             setSelN(1)
             setOpen(true)
           }}
-          title="从仓库选择机型与数量装入无人机舱"
+          title={tr("ui.FitPage.103")}
         >
-          ＋ 装入
+          {tr("ui.FitPage.104")}
         </button>
       </div>
 
@@ -1505,9 +1507,9 @@ function DroneBaySection({
         <div className="app-fit-overlay" onClick={() => setOpen(false)}>
           <div className="app-fit-modal app-fit-drone-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-fit-modal-head">
-              <span>装入无人机（无人机舱 {Math.round(usedM3 * 10) / 10}/{cap} m³ · 余 CPU {minus(cpuLeftRaw)}）</span>
+              <span>{tr("ui.FitPage.105")} {Math.round(usedM3 * 10) / 10}/{cap} {tr("ui.FitPage.106")} {minus(cpuLeftRaw)}）</span>
               <button className="app-btn is-small" onClick={() => setOpen(false)}>
-                关闭
+                {tr("ui.FitPage.055")}
               </button>
             </div>
             <div className="app-fit-drone-picklist">
@@ -1524,12 +1526,12 @@ function DroneBaySection({
                       setSelN(1)
                     }}
                     disabled={m <= 0}
-                    title={`${d.description}（单架 ${d.unitM3} m³ · CPU ${d.cpuUse}；仓库 ×${have}）`}
+                    title={tr("ui.FitPage.159", { p1: d.description, p2: d.unitM3, p3: d.cpuUse ?? 0, have: have })}
                   >
                     <Glyph name="drone" size={18} color={toneOf('drone')} />
                     <span className="app-fit-drone-pick-name">{d.name}</span>
                     <span className="app-dim">
-                      {m <= 0 ? '无法装入' : `仓库 ×${have} · 可装 ${m}`}
+                      {m <= 0 ? tr("ui.FitPage.107") : tr("ui.FitPage.160", { have: have, m: m })}
                     </span>
                   </button>
                 )
@@ -1537,7 +1539,7 @@ function DroneBaySection({
             </div>
             {selId ? (
               <div className="app-fit-drone-qty">
-                <span>数量：</span>
+                <span>{tr("ui.FitPage.108")}</span>
                 <button className="app-fit-drone-step" disabled={selN <= 1} onClick={() => setSelN(Math.max(1, selN - 1))}>
                   −
                 </button>
@@ -1558,11 +1560,11 @@ function DroneBaySection({
                     setOpen(false)
                   }}
                 >
-                  装入 ×{Math.min(selN, Math.max(1, maxOf(selId)))}
+                  {tr("ui.FitPage.109")}{Math.min(selN, Math.max(1, maxOf(selId)))}
                 </button>
               </div>
             ) : (
-              <div className="app-dim app-fit-drone-empty">仓库没有可装入的无人机（蜂鸟/赤鸢等可在市场购买）。</div>
+              <div className="app-dim app-fit-drone-empty">{tr("ui.FitPage.110")}</div>
             )}
           </div>
         </div>

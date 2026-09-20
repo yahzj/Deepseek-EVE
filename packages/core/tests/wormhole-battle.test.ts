@@ -1123,6 +1123,13 @@ describe('虫洞 · 开战距离与派生一致性（船长 2026-09-13 两条口
     expect(line, '地点战胜利没有战报').toBeTruthy()
     expect(line!).toContain('第 1 层地点')
     expect(line!).toContain('编队残血')
+    // 甲案（2026-09-20）：战报接 id；对手称呼自带中文词 + 层数 ⇒ 两步渲染（`p1Id` + 段内 `p1p1`）
+    const entry = state.logs.filter((l) => l.text.includes('交火结束')).at(-1)!
+    expect(entry.textId).toBe('core.wormholeBattle.029') // 无维修尾巴那一支
+    expect(entry.textParams?.p1Id).toBe('core.wormholeBattle.027') // 「第 {p1} 层地点」
+    expect(entry.textParams?.p1p1).toBe(1)
+    expect(entry.textParams?.p2).toBeGreaterThanOrEqual(0) // 交火秒数
+    expect(entry.textParams?.p7).toBeGreaterThanOrEqual(0) // 编队残血 %
     /**
      * ⚠ **撤离这一支 2026-09-15 改口径**：撤离不再有战斗 ⇒ 不再有「撤离战交火结束」的战报，
      * 只剩一条「撤离成功」的入港日志（老档遗留的撤离战仍会写战报，但新趟不会）。

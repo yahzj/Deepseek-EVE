@@ -17,6 +17,7 @@ import type { GameState, MarkKind } from '@whale/core'
 import { isMarked, markedIds } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { Glyph, ICO_TONES } from './Glyphs'
+import { tr } from '../i18n/locale'
 
 /** 标记星标按钮：点击切换（不触发行/卡自身的点击，如市场行选中、舰船卡按钮组） */
 export function MarkStar({
@@ -37,8 +38,8 @@ export function MarkStar({
       className={`app-mark-btn${on ? ' is-on' : ''}`}
       data-ui-group="mark-star"
       aria-pressed={on}
-      aria-label={on ? '取消标记' : '标记'}
-      title={on ? '已标记：默认排序下置顶显示（点击取消）' : '标记（收藏）：默认排序下置顶显示'}
+      aria-label={on ? tr("ui.marks.001") : tr("ui.marks.002")}
+      title={on ? tr("ui.marks.003") : tr("ui.marks.004")}
       onClick={(e) => {
         e.stopPropagation()
         e.preventDefault()

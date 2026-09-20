@@ -4688,6 +4688,9 @@ export function captureBattleReport(
     breakReason?: BattleBreakReason
     /** 本场引擎写的那条日志原文（弹层正文用它 ⇒ 卡片与日志同源） */
     summary: string
+    /** 甲案：战报正文的文案 id + 参数（含后续段的 `p{n}Id` 绑定；有 ⇒ 弹层按语言渲染） */
+    summaryId?: string
+    summaryParams?: Readonly<Record<string, string | number>>
     /** 覆盖"我方沉船名单"（洞内传船长口径的显示名；缺省 = 从 battle.units 推导） */
     shipsLost?: readonly string[]
   },
@@ -4741,6 +4744,8 @@ export function captureBattleReport(
     ammoUsed,
     dronesGone,
     summary: opts.summary,
+    ...(opts.summaryId !== undefined ? { summaryId: opts.summaryId } : {}),
+    ...(opts.summaryParams !== undefined ? { summaryParams: opts.summaryParams } : {}),
   }
   state.battleReport = rec
   return rec

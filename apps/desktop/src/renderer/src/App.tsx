@@ -43,16 +43,17 @@ import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { MoneyFit } from './ui/MoneyFit'
+import { cmdText, logText, tr } from './i18n/locale'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
-  { key: 'map', label: '点击 出港', icon: 'nav-map' },
-  { key: 'ship', label: '舰船', icon: 'nav-ship' },
-  { key: 'fit', label: '装配', icon: 'nav-fit' },
-  { key: 'items', label: '物品', icon: 'nav-items' },
-  { key: 'market', label: '市场', icon: 'nav-market' },
-  { key: 'industry', label: '工业', icon: 'nav-industry' },
-  { key: 'skills', label: '技能', icon: 'nav-skills' },
+  { key: 'map', label: 'ui.App.001', icon: 'nav-map' },
+  { key: 'ship', label: 'ui.App.002', icon: 'nav-ship' },
+  { key: 'fit', label: 'ui.App.003', icon: 'nav-fit' },
+  { key: 'items', label: 'ui.App.004', icon: 'nav-items' },
+  { key: 'market', label: 'ui.App.005', icon: 'nav-market' },
+  { key: 'industry', label: 'ui.App.006', icon: 'nav-industry' },
+  { key: 'skills', label: 'ui.App.007', icon: 'nav-skills' },
   /**
    * **任务中心**（2026-09-14 船长：「将任务中心界面移出星图，放入左侧导航栏，**通讯的上方**」）：
    * 原先它是星图页（出港）的一个选项卡 —— 那条路要先选中星系才渲染行动区，绕；
@@ -65,8 +66,15 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 页面本体不滚（一级页不滚红线），见 `pages/AchievementsPage.tsx`。
    */
   { key: 'achieve', label: '成就', icon: 'ach-first' },
+  { key: 'task', label: 'ui.App.008', icon: 'nav-task' },
+  /**
+   * **成就**（2026-09-20 船长：「一级页，但是内部再加一个二级子窗口容器」）：
+   * 徽章全由任务与次数链产出 ⇒ 放在任务中心下方；页内是固定头 + 内容内滚的子窗口容器，
+   * 页面本体不滚（一级页不滚红线），见 `pages/AchievementsPage.tsx`。
+   */
+  { key: 'achieve', label: 'ui.App.119', icon: 'ach-first' },
   // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
-  { key: 'comms', label: '通讯', icon: 'nav-mail' },
+  { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
 ]
 
 type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'task' | 'achieve' | 'comms'
@@ -86,24 +94,24 @@ function gameClock(gameMs: number): string {
 
 const LOG_KINDS: readonly LogKind[] = ['system', 'info', 'queue', 'levelup', 'warn', 'trade', 'event']
 const KIND_LABEL: Record<LogKind, string> = {
-  system: '系统',
-  info: '信息',
-  queue: '训练',
-  levelup: '升级',
-  warn: '警告',
-  trade: '交易',
-  event: '事件',
+  system: tr("ui.App.029"),
+  info: tr("ui.App.030"),
+  queue: tr("ui.App.027"),
+  levelup: tr("ui.App.031"),
+  warn: tr("ui.App.032"),
+  trade: tr("ui.App.033"),
+  event: tr("ui.App.034"),
 }
 
 /** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
 const KIND_DESC: Record<LogKind, string> = {
-  system: '系统：欢迎与系统通告等',
-  info: '信息：无资金变动的流程与搬运（采矿/扫描/制造完成/装配/切船/卸货/离线结算等）',
-  queue: '训练：技能队列增删与完成',
-  levelup: '升级：技能升级',
-  warn: '警告：异常/失利/记录缺失',
-  trade: '交易：市场成交与挂单、买船买核心、维修费、远征奖金等一切资金往来',
-  event: '事件：深空偶发奇遇与市场风云（日志带 ✦，在线时会弹小卡）',
+  system: tr("ui.App.035"),
+  info: tr("ui.App.036"),
+  queue: tr("ui.App.037"),
+  levelup: tr("ui.App.038"),
+  warn: tr("ui.App.039"),
+  trade: tr("ui.App.040"),
+  event: tr("ui.App.041"),
 }
 
 /** 开关色点（图例）：色值须与 ui index.css 的 wui-log-* 一致 */
@@ -183,23 +191,23 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="app-settings-title">{t('设置')}</div>
+        <div className="app-settings-title">{t('ui.App.010')}</div>
         <div className="app-settings-sub">
-          {t('界面缩放、字体大小与宇宙背景，即时生效 · 缩放与字号自动记忆')}
+          {t('ui.App.011')}
         </div>
         <div className="app-settings-list">
           {/* 语言（2026-09-19 船长令「英语本地化」）：默认跟随系统，这里可随时覆盖；语言不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('语言')}</span>
-              <span className="app-settings-val">{locale === 'zh' ? '中文' : 'English'}</span>
+              <span className="app-settings-label">{t('ui.App.025')}</span>
+              <span className="app-settings-val">{locale === 'zh' ? tr("ui.App.042") : 'English'}</span>
             </div>
             <div className="app-settings-btns">
               <button
                 className={`app-btn is-small${locale === 'zh' ? ' is-primary' : ''}`}
                 onClick={() => setLocale('zh')}
               >
-                中文
+                {tr("ui.App.042")}
               </button>
               <button
                 className={`app-btn is-small${locale === 'en' ? ' is-primary' : ''}`}
@@ -208,51 +216,51 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
                 English
               </button>
             </div>
-            <div className="app-settings-desc">{t('界面语言（即时生效；默认跟随系统）')}</div>
+            <div className="app-settings-desc">{t('ui.App.026')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('界面缩放')}</span>
+              <span className="app-settings-label">{t('ui.App.012')}</span>
               <span className="app-settings-val">{Math.round(zoom * 100)}%</span>
             </div>
             <input className="app-settings-slider" type="range" min={0.8} max={1.25} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
-            <div className="app-settings-desc">{t('整窗缩放：面板几何与文字一起放大/缩小（80%~125%）')}</div>
+            <div className="app-settings-desc">{t('ui.App.013')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('字体大小')}</span>
+              <span className="app-settings-label">{t('ui.App.014')}</span>
               <span className="app-settings-val">{Math.round(fs * 100)}%</span>
             </div>
             <input className="app-settings-slider" type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
-            <div className="app-settings-desc">{t('独立于界面缩放，只调整文字（85%~125%）')}</div>
+            <div className="app-settings-desc">{t('ui.App.015')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
-              <span className="app-settings-label">{t('宇宙背景')}</span>
-              <span className="app-settings-val">{bg ? bg.label : t('未启用')}</span>
+              <span className="app-settings-label">{t('ui.App.016')}</span>
+              <span className="app-settings-val">{bg ? bg.label : t('ui.App.017')}</span>
             </div>
             <div className="app-settings-btns">
               <button
                 className="app-btn is-small"
                 onClick={() => setBg(rerollSpaceBg())}
                 disabled={!bg}
-                title={t('换成另一张随机底图（立即生效）')}
+                title={t('ui.App.019')}
               >
-                {t('换一张')}
+                {t('ui.App.018')}
               </button>
             </div>
             <div className="app-settings-desc">
               {bg
-                ? t('{n} 张无缝星图铺在界面最底层，每次启动随机一张；这里换的这张本场有效（下次启动仍随机）', { n: bg.total })
-                : t('背景图缺失：当前用的是默认深色底')}
+                ? t('ui.App.020', { n: bg.total })
+                : t('ui.App.021')}
             </div>
           </div>
         </div>
         <div className="app-settings-foot">
-          <span className="app-dim">{t('可随时从顶栏「设置」调回')}</span>
+          <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
             <button className="app-btn is-small" onClick={() => { setZoom(1); setFs(1) }}>
-              {t('恢复默认')}
+              {t('ui.App.023')}
             </button>
             <button
               className="app-btn is-small is-primary"
@@ -261,7 +269,7 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
                 onClose()
               }}
             >
-              {t('完成')}
+              {t('ui.App.024')}
             </button>
           </span>
         </div>
@@ -302,7 +310,7 @@ function PerfHud({ onClose }: { onClose: () => void }) {
   }, [])
   function fmtBox(b?: { n: number; sumMs: number; maxMs: number }): string {
     if (!b || b.n === 0) return '—'
-    return `均 ${(b.sumMs / b.n).toFixed(2)}ms · 峰 ${b.maxMs.toFixed(1)}ms ×${b.n}`
+    return tr("ui.App.105", { p1: (b.sumMs / b.n).toFixed(2), p2: b.maxMs.toFixed(1), p3: b.n })
   }
   async function doCopy(): Promise<void> {
     const rep = perfHub.report()
@@ -327,9 +335,9 @@ function PerfHud({ onClose }: { onClose: () => void }) {
   return (
     <div className="app-perf-hud">
       <div className="app-perf-hud-title">
-        性能快照 · {wallS}s · FPS ≈{fps}
+        {tr("ui.App.043")} {wallS}s · FPS ≈{fps}
         <button className="app-btn is-small" onClick={() => void doCopy()}>
-          {copied ? '✓ 已复制' : '复制报告'}
+          {copied ? tr("ui.App.044") : tr("ui.App.045")}
         </button>
         <button className="app-btn is-small" onClick={onClose}>
           ✕
@@ -338,32 +346,32 @@ function PerfHud({ onClose }: { onClose: () => void }) {
       {t ? (
         <>
           <div className="app-perf-hud-line">
-            <span>引擎推进 · 挂机</span>
+            <span>{tr("ui.App.046")}</span>
             <span>{fmtBox(t.adv.idle)}</span>
           </div>
           <div className="app-perf-hud-line">
-            <span>引擎推进 · 战斗</span>
+            <span>{tr("ui.App.047")}</span>
             <span>{fmtBox(t.adv.battle)}</span>
           </div>
           <div className="app-perf-hud-line">
-            <span>整树刷新 · 挂机</span>
+            <span>{tr("ui.App.048")}</span>
             <span>{fmtBox(t.notify.idle)}</span>
           </div>
           <div className="app-perf-hud-line">
-            <span>整树刷新 · 战斗</span>
+            <span>{tr("ui.App.049")}</span>
             <span>{fmtBox(t.notify.battle)}</span>
           </div>
           <div className="app-perf-hud-line">
-            <span>React 提交</span>
+            <span>{tr("ui.App.050")}</span>
             <span>{fmtBox(t.commit)}</span>
           </div>
           <div className="app-perf-hud-line">
-            <span>长任务</span>
-            <span>{t.long.n} 次{t.long.n > 0 ? ` · 最长 ${t.long.maxMs.toFixed(0)}ms` : ''}</span>
+            <span>{tr("ui.App.051")}</span>
+            <span>{tr('ui.App.101', { n: t.long.n })}{t.long.n > 0 ? tr('ui.App.102', { ms: t.long.maxMs.toFixed(0) }) : ''}</span>
           </div>
         </>
       ) : null}
-      <div className="app-dim app-perf-hud-tip">此面板只记录/展示，不影响游戏；「复制报告」= 发给开发者的完整诊断 JSON</div>
+      <div className="app-dim app-perf-hud-tip">{tr("ui.App.052")}</div>
     </div>
   )
 }
@@ -535,7 +543,7 @@ export function App({ engine }: { engine: GameEngine }) {
       const btn = el?.closest?.('button') as HTMLButtonElement | null
       if (!btn || !btn.disabled) return
       const reason = btn.title || btn.dataset.disabledReason
-      showToast(reason ? `（按钮不可用）${reason}` : '此操作当前不可用。', true)
+      showToast(reason ? tr("ui.App.106", { reason: reason }) : tr("ui.App.053"), true)
     }
     window.addEventListener('pointerdown', onPointerDown, true)
     return () => window.removeEventListener('pointerdown', onPointerDown, true)
@@ -637,7 +645,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const lowSecPrev = useRef(state.lowSecNotified)
   useEffect(() => {
     if (state.lowSecNotified && !lowSecPrev.current) {
-      showToast('⚠ 已进入低安星系：采矿/停留/远征可能遭遇巡逻拦截或海盗伏击——可迎战或快速脱离，规则见手册「航行须知」。', true)
+      showToast(tr("ui.App.107"), true)
     }
     lowSecPrev.current = state.lowSecNotified
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -771,7 +779,7 @@ export function App({ engine }: { engine: GameEngine }) {
       const l = logs[i]!
       if (l.id <= lastSeenLogId.current) break // 只检查新增日志（id 单调递增）
       if (l.kind === 'event' || l.text.startsWith('✦')) { // 随机事件按类型认；其余「✦ 扫描完成/彩头/高级箱」照旧按前缀认
-        setEventToast({ id: l.id, text: l.text })
+        setEventToast({ id: l.id, text: logText(l) }) // 甲案：有 textId ⇒ 按当前语言（无 ⇒ 中文正文）
         if (eventTimer.current !== null) window.clearTimeout(eventTimer.current)
         eventTimer.current = window.setTimeout(() => setEventToast(null), 6000)
         break // 每次最多弹最新一条
@@ -792,13 +800,13 @@ export function App({ engine }: { engine: GameEngine }) {
 
   async function handleSave(): Promise<void> {
     const ok = await engine.persist()
-    showToast(ok ? '存档已写入本地。' : '保存失败！', !ok)
+    showToast(ok ? tr("ui.App.054") : tr("ui.App.055"), !ok)
   }
 
   function handleReset(): void {
-    if (!window.confirm('确定要重置档案吗？当前所有进度将被清空。')) return
+    if (!window.confirm(tr("ui.App.108"))) return
     engine.resetGame()
-    showToast('档案已重置，祝新航程顺利。')
+    showToast(tr("ui.App.109"))
   }
 
   const pageProps = { engine, onToast: showToast }
@@ -847,7 +855,7 @@ export function App({ engine }: { engine: GameEngine }) {
 
     // 「第一次」前置（工业/市场）：导航项此时不显示，这里拦的是程序化跳转
     if (!unlocked(state, p)) {
-      showToast(`尚未解锁：先完成「${unlockNeedTitle(p) ?? '前置任务'}」。`, true)
+      showToast(tr("ui.App.110", { p1: unlockNeedTitle(p) ?? tr('ui.App.116') }), true)
       return
     }
     /**
@@ -866,7 +874,7 @@ export function App({ engine }: { engine: GameEngine }) {
     // 「第一次」前置（星图四项：先完成第一次扫描）——页签此时不显示，这里拦的是程序化跳转
     if (tabLocked(t)) {
       const k = TAB_UNLOCK_KEY[t]
-      showToast(`尚未解锁：先完成「${(k ? unlockNeedTitle(k) : undefined) ?? '前置任务'}」。`, true)
+      showToast(tr("ui.App.110", { p1: (k ? unlockNeedTitle(k) : undefined) ?? tr('ui.App.116') }), true)
       return
     }
     setMapTab(t)
@@ -925,7 +933,7 @@ export function App({ engine }: { engine: GameEngine }) {
         <div className="app-header-left">
           {/* 游戏名（2026-09-11 船长：「将游戏的名称改为大鲸鱼-深空放置」；
               注意「深空工业协会」是**游戏内势力**、不随游戏名改） */}
-          <span className="app-logo">大鲸鱼-深空放置</span>
+          <span className="app-logo">{tr("ui.App.056")}</span>
           <span className="app-pilot">{state.character.name}</span>
         </div>
         <div className="app-header-right">
@@ -936,9 +944,9 @@ export function App({ engine }: { engine: GameEngine }) {
               <button
                 className="app-btn"
                 onClick={() => setPerfOpen((v) => !v)}
-                title="性能监测（诊断工具）：FPS / 引擎推进 / 整树刷新 / React 提交耗时；可一键复制完整快照"
+                title={tr("ui.App.057")}
               >
-                ⏱ 性能
+                {tr("ui.App.058")}
               </button>
             </>
           ) : null}
@@ -946,29 +954,29 @@ export function App({ engine }: { engine: GameEngine }) {
            * ⚠ **金钱栏已移到左侧栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的出港上方」）
            * ⇒ 顶栏这里不再显示余额，只留在线时长与公告/按钮。落点在 `app-nav-side` 首项上方。
            */}
-          <span className="app-clock">在线 {formatDurationMs(state.gameMs)}</span>
+          <span className="app-clock">{tr("ui.App.059")} {formatDurationMs(state.gameMs)}</span>
           <AnnouncementHub engine={engine} />
           <button
             className="app-btn"
             onClick={copyQqGroup}
-            title={`游戏讨论 QQ 群：${QQ_GROUP}（点击复制群号，到 QQ 搜索群号即可加入）`}
+            title={tr("ui.App.111", { QQ_GROUP: QQ_GROUP })}
           >
-            {qqCopied ? '✓ 群号已复制' : `💬 QQ群 ${QQ_GROUP}`}
+            {qqCopied ? tr("ui.App.060") : tr("ui.App.112", { QQ_GROUP: QQ_GROUP })}
           </button>
-          <button className="app-btn" onClick={() => setShowHandbook(true)} title="玩法说明与图鉴">
-            {t('手册')}
+          <button className="app-btn" onClick={() => setShowHandbook(true)} title={tr("ui.App.061")}>
+            {t('ui.App.028')}
           </button>
-          <button className="app-btn" onClick={() => setShowSettings(true)} title="界面缩放与字体大小">
-            {t('设置')}
+          <button className="app-btn" onClick={() => setShowSettings(true)} title={tr("ui.App.062")}>
+            {t('ui.App.010')}
           </button>
           <button className="app-btn" onClick={() => void handleSave()}>
-            保存
+            {tr("ui.App.063")}
           </button>
-          <button className="app-btn" title="备份 / 恢复存档" onClick={() => setShowSaveManager(true)}>
-            存档管理
+          <button className="app-btn" title={tr("ui.App.064")} onClick={() => setShowSaveManager(true)}>
+            {tr("ui.App.065")}
           </button>
           <button className="app-btn is-danger" onClick={handleReset}>
-            重置档案
+            {tr("ui.App.066")}
           </button>
         </div>
       </header>
@@ -998,8 +1006,8 @@ export function App({ engine }: { engine: GameEngine }) {
                 title={
                   unreadN > 0
                     ? item.key === 'task'
-                      ? `赏金任务已更新：${unreadN} 条（进任务中心即清除）`
-                      : `有 ${unreadN} 条未读通讯`
+                      ? tr("ui.App.113", { unreadN: unreadN })
+                      : tr("ui.App.114", { unreadN: unreadN })
                     : undefined
                 }
                 onClick={() => changePage(item.key)}
@@ -1137,17 +1145,17 @@ export function App({ engine }: { engine: GameEngine }) {
         <div className="app-log-dock">
           <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>
             <Panel
-              title="事件日志"
+              title={tr("ui.App.067")}
               right={
                 <div className="app-log-head-right">
-                  <span className="app-dim">游戏内时钟</span>
-                  <button className="app-btn is-small" onClick={() => setLogCollapsed(true)} title="向右收起日志面板">
-                    收起 ›
+                  <span className="app-dim">{tr("ui.App.068")}</span>
+                  <button className="app-btn is-small" onClick={() => setLogCollapsed(true)} title={tr("ui.App.069")}>
+                    {tr("ui.App.070")}
                   </button>
                 </div>
               }
             >
-              <div className="app-log-filters" title="只显示勾选的日志类型（引擎照常记录，不影响存档）；色点 = 该类型的图例">
+              <div className="app-log-filters" title={tr("ui.App.071")}>
                 {LOG_KINDS.map((kind) => {
                   const on = logKinds[kind] ?? true
                   return (
@@ -1164,17 +1172,17 @@ export function App({ engine }: { engine: GameEngine }) {
                 })}
               </div>
               {hiddenAll ? (
-                <div className="app-dim app-log-empty">已隐藏全部日志类型（引擎仍在记录，点上方开关即可恢复显示）。</div>
+                <div className="app-dim app-log-empty">{tr("ui.App.072")}</div>
               ) : (
                 <LogList
-                  logs={visibleLogs.map((l) => ({ id: l.id, kind: l.kind, text: l.text, timeLabel: gameClock(l.atGameMs) }))}
+                  logs={visibleLogs.map((l) => ({ id: l.id, kind: l.kind, text: logText(l), timeLabel: gameClock(l.atGameMs) }))}
                   limit={220}
                 />
               )}
             </Panel>
           </aside>
           {logCollapsed ? (
-            <button className="app-log-handle" onClick={() => setLogCollapsed(false)} title="展开事件日志面板">
+            <button className="app-log-handle" onClick={() => setLogCollapsed(false)} title={tr("ui.App.073")}>
               «
             </button>
           ) : null}
@@ -1187,14 +1195,14 @@ export function App({ engine }: { engine: GameEngine }) {
         {toast ? (
           <div
             className={`app-toast${toast.warn ? ' is-warn' : ''}`}
-            title="点击关闭提示"
+            title={tr("ui.App.074")}
             onClick={dismissToast}
           >
             {toast.text}
           </div>
         ) : null}
         {eventToast ? (
-          <div className="app-event-toast" title="点击关闭提示" onClick={dismissEventToast}>
+          <div className="app-event-toast" title={tr("ui.App.074")} onClick={dismissEventToast}>
             {eventToast.text}
           </div>
         ) : null}
@@ -1203,35 +1211,35 @@ export function App({ engine }: { engine: GameEngine }) {
           <div className={`app-enc-banner${state.encounter.battle ? ' is-fight' : ''}`}>
             {state.encounter.battle ? (
               <span className="app-enc-title">
-                遭遇战中：{shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)} vs{' '}
-                {state.encounter.name}（引擎自动推演，战报稍后）
+                {tr("ui.App.075")}{shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)} vs{' '}
+                {state.encounter.name}{tr("ui.App.076")}
               </span>
             ) : (
               <>
-                <span className="app-enc-title">⚠ 低安遭遇 · {state.encounter.name}</span>
+                <span className="app-enc-title">{tr("ui.App.077")} {state.encounter.name}</span>
                 <span className="app-enc-sub">
-                  {shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)}（{state.encounter.origin}）被盯上 ·{' '}
-                  {Math.max(1, Math.ceil((state.encounter.deadlineGameMs - state.gameMs) / 1000))} 秒内未处置将自动脱离
+                  {shipDisplayName(state, engine.ctx, state.encounter.shipId ?? state.shipId)}（{state.encounter.origin}{tr('ui.App.103')}{' '}
+                  {Math.max(1, Math.ceil((state.encounter.deadlineGameMs - state.gameMs) / 1000))} {tr("ui.App.078")}
                 </span>
                 <button
                   className="app-btn is-small is-primary"
-                  title="进入实时战斗（引擎自动打完）；战斗失利将受损甚至被抢"
+                  title={tr("ui.App.079")}
                   onClick={() => {
                     const r = engine.fightEncounterNow()
-                    if (!r.ok) showToast(r.error ?? '无法应战', true)
+                    if (!r.ok) showToast(cmdText(r) || tr('ui.App.117'), true)
                   }}
                 >
-                  <span className="app-ico"><Glyph name="nav-bounty" size={14} color={NAV_TONES["nav-bounty"]} /></span>迎战
+                  <span className="app-ico"><Glyph name="nav-bounty" size={14} color={NAV_TONES["nav-bounty"]} /></span>{tr("ui.App.080")}
                 </button>
                 <button
                   className="app-btn is-small"
-                  title="立即脱离：按文字结算（可能击退缴获 / 受损 / 被抢小部分货）"
+                  title={tr("ui.App.081")}
                   onClick={() => {
                     const r = engine.fleeEncounterNow()
-                    if (!r.ok) showToast(r.error ?? '无法脱离', true)
+                    if (!r.ok) showToast(cmdText(r) || tr('ui.App.118'), true)
                   }}
                 >
-                  <span className="app-ico"><Glyph name="ico-swap" size={14} color={ICO_TONES["ico-swap"]} /></span>快速脱离
+                  <span className="app-ico"><Glyph name="ico-swap" size={14} color={ICO_TONES["ico-swap"]} /></span>{tr("ui.App.082")}
                 </button>
               </>
             )}
@@ -1244,8 +1252,8 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* ───── 交火中：右上角悬浮入口（主动进入战斗页，不自动切换页面） ───── */}
       {inBattle && !battleOpen ? (
-        <button className="app-battle-float" onClick={() => setBattleOpen(true)} title="进入全屏战场：观察实时战斗，可拖动距离条指挥">
-          战斗中 · 进入战场
+        <button className="app-battle-float" onClick={() => setBattleOpen(true)} title={tr("ui.App.083")}>
+          {tr("ui.App.084")}
         </button>
       ) : null}
 
@@ -1253,22 +1261,22 @@ export function App({ engine }: { engine: GameEngine }) {
       {showOfflineReport ? (
         <div className="app-report-card">
           <div className="app-report-head">
-            <span className="app-report-title">离线简报</span>
+            <span className="app-report-title">{tr("ui.App.085")}</span>
             <button className="app-btn is-small" onClick={() => setReportDismissed(true)}>
-              ✕ 关闭
+              {tr("ui.App.086")}
             </button>
           </div>
           <div className="app-report-body">
             <div className="app-dim">
-              离开 {formatDurationMs(offlineReport.wallAwayMs)} · 结算 {formatDurationMs(offlineReport.settledMs)}
-              {offlineReport.overflowMs > 0 ? `（另有 ${formatDurationMs(offlineReport.overflowMs)} 超出上限未结算）` : ''}
+              {tr("ui.App.087")} {formatDurationMs(offlineReport.wallAwayMs)}{tr('ui.App.115', { d: formatDurationMs(offlineReport.settledMs) })}
+              {offlineReport.overflowMs > 0 ? tr('ui.App.104', { d: formatDurationMs(offlineReport.overflowMs) }) : ''}
             </div>
             <div className="app-report-line">
-              钱包：
+              {tr("ui.App.088")}
               <b className={offlineReport.iskDelta >= 0 ? 'app-trend-up' : 'app-trend-down'}>
                 {moneyDelta(offlineReport.iskDelta)}
               </b>{' '}
-              信用点
+              {tr("ui.FirstTasks.003")}
               {/**
                * ⚠ 这里**保留全精度**（不走万/亿分级）：离线结算报告是"玩家要看清楚这趟挣了多少"的地方，
                * 与左侧栏那个"一眼扫过"的余额栏用途不同（船长 2026-09-13 只要求处理"钱位数过多"的显示）。
@@ -1276,33 +1284,33 @@ export function App({ engine }: { engine: GameEngine }) {
             </div>
             {offlineReport.items.length > 0 ? (
               <div className="app-report-line">
-                收获：{offlineReport.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join('、')}
+                {tr("ui.App.089")}{offlineReport.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017"))}
               </div>
             ) : null}
             {offlineReport.modules.length > 0 ? (
               <div className="app-report-line">
-                装备入库：{offlineReport.modules.map((m) => `${m.name}×${m.delta}`).join('、')}
+                {tr("ui.App.090")}{offlineReport.modules.map((m) => `${m.name}×${m.delta}`).join(tr("ui.MatterTechTab.017"))}
               </div>
             ) : null}
             {offlineReport.shipsIn.length > 0 ? (
-              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>新船入坞：{offlineReport.shipsIn.join('、')}</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>{tr("ui.App.091")}{offlineReport.shipsIn.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {offlineReport.shipsStored.length > 0 ? (
-              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>入舰船仓库：{offlineReport.shipsStored.map((s) => `${s.name}×${s.delta}`).join('、')}（到舰船页可转入舰队）</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ship" size={13} color={NAV_TONES["nav-ship"]} /></span>{tr("ui.App.092")}{offlineReport.shipsStored.map((s) => `${s.name}×${s.delta}`).join(tr("ui.MatterTechTab.017"))}{tr("ui.App.093")}</div>
             ) : null}
             {offlineReport.skillsUp.length > 0 ? (
-              <div className="app-report-line">技能：{offlineReport.skillsUp.join('、')}</div>
+              <div className="app-report-line">{tr("ui.App.094")}{offlineReport.skillsUp.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {offlineReport.learnedIn.length > 0 ? (
-              <div className="app-report-line"><span className="app-ico"><Glyph name="ico-cross" size={13} color={ICO_TONES["ico-cross"]} /></span>学会配方：{offlineReport.learnedIn.join('、')}</div>
+              <div className="app-report-line"><span className="app-ico"><Glyph name="ico-cross" size={13} color={ICO_TONES["ico-cross"]} /></span>{tr("ui.App.095")}{offlineReport.learnedIn.join(tr("ui.MatterTechTab.017"))}</div>
             ) : null}
             {offlineReport.coreJobs.length > 0 ? (
               <>
-                <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ai" size={13} color={NAV_TONES["nav-ai"]} /></span>AI 核心作业</div>
+                <div className="app-report-line"><span className="app-ico"><Glyph name="nav-ai" size={13} color={NAV_TONES["nav-ai"]} /></span>{tr("ui.App.096")}</div>
                 {offlineReport.coreJobs.map((row, i) => (
                   <div key={i} className="app-report-line">{row}</div>
                 ))}
-                <div className="app-dim app-report-tail">AI 核心预估收入按站内收价与市场基准价粗估，实际以成交为准。</div>
+                <div className="app-dim app-report-tail">{tr("ui.App.097")}</div>
               </>
             ) : null}
             {offlineReport.highlights.map((h, i) => (
@@ -1311,7 +1319,7 @@ export function App({ engine }: { engine: GameEngine }) {
               </div>
             ))}
             <div className="app-dim app-report-tail">
-              期间共 {offlineReport.logCount.toLocaleString('zh-CN')} 条新事件，详见右侧事件日志。
+              {tr("ui.App.098")} {offlineReport.logCount.toLocaleString('zh-CN')} {tr("ui.App.099")}
             </div>
           </div>
         </div>
@@ -1331,7 +1339,7 @@ export function App({ engine }: { engine: GameEngine }) {
                 }}
                 extra={
                   <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
-                    知道了
+                    {tr("ui.App.100")}
                   </button>
                 }
               />

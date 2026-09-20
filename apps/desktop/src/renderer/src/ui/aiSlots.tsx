@@ -13,6 +13,7 @@
  */
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreShipUsed, industryAiBonus } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
+import { tr } from '../i18n/locale'
 
 /** 站内工业 AI 工位数字（供标题行与提示共用） */
 export interface IndustryAiSlots {
@@ -70,12 +71,12 @@ export function aiSlotTip(slots: IndustryAiSlots): string {
   // 逐技能写明贡献（未练的技能也列出，便于玩家知道该练什么）
   const detail =
     bonusRows.length > 0
-      ? bonusRows.map((r) => `${r.name} ${r.level} 级 → +${r.slots}`).join('、')
-      : '暂无扩容技能'
+      ? bonusRows.map((r) => tr("ui.aiSlots.001", { p1: r.name, p2: r.level, p3: r.slots })).join(tr("ui.MatterTechTab.017"))
+      : tr("ui.aiSlots.002")
   return (
-    `站内 AI 核心可启动上限 ${cap} 枚 = 共用上限 ${sharedCap}（AI 核心操作学）` +
-    `+ 工业专用扩容 ${bonus}（${detail}）；当前占用 ${used} 枚（精炼炉/回收炉 ${refineUsed} 台 + 制造线 ${makeUsed} 条）。` +
-    `AI 副船任务另占 ${shipUsed} 艘，与站内工业共用同一总上限。`
+    tr("ui.aiSlots.003", { cap: cap, sharedCap: sharedCap }) +
+    tr("ui.aiSlots.004", { bonus: bonus, detail: detail, used: used, refineUsed: refineUsed, makeUsed: makeUsed }) +
+    tr("ui.aiSlots.005", { shipUsed: shipUsed })
   )
 }
 
@@ -84,7 +85,7 @@ export function AiSlotText({ state, ctx }: { state: GameState; ctx: SimContext }
   const slots = aiIndustrySlots(state, ctx)
   return (
     <span className="app-dim" title={aiSlotTip(slots)}>
-      AI 核心可启动 {slots.cap} · 占用 {slots.used}
+      {tr("ui.aiSlots.006")} {slots.cap}{tr('ui.aiSlots.007', { n: slots.used })}
     </span>
   )
 }

@@ -92,6 +92,10 @@ export { MATTER_TECH_NODES, buildMatterTechCatalog } from './matterTech'
 // 2026-09-20 成就徽章（船长「继续之前的成就系统」· 第一批 = 徽章框架，共 63 枚）
 // ⟪未完成 2026-09-20⟫ 第二批（里程碑成就内容）尚未实现 —— 见 data/achievements.ts 头注释
 export { ACHIEVEMENTS, achievementOf, achievementsOfChain } from './achievements'
+// 2026-09-20 成就徽章（船长「继续之前的成就系统」· 第一批 = 徽章框架，共 63 枚）
+// ⟪未完成 2026-09-20⟫ 第二批（里程碑成就内容）尚未实现 —— 见 data/achievements.ts 头注释
+// 2026-09-19 英语本地化（船长令）：**唯一本地化表** `L10N`（id → {zh,en}，一处改全局换语言）
+export { L10N, type L10nEntry } from './l10n/table'
 // 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
 export {
   localizeCtx,

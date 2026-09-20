@@ -204,13 +204,27 @@ export function wormholeScanBlockReason(state: GameState): string | null {
 export function wormholeScanStart(state: GameState, _ctx: SimContext): CommandResult {
   const blocked = wormholeScanBlockReason(state)
   if (blocked) return { ok: false, error: blocked }
-  if ((state.wormholeScan ?? { active: false, progressMs: 0 }).active) return { ok: false, error: '扫描已经在跑。' }
+  if ((state.wormholeScan ?? { active: false, progressMs: 0 }).active) {
+    return { ok: false, error: '扫描已经在跑。', errorId: 'core.wormholeScan.001' }
+  }
   /**
    * ⚠ **续扫不清零**（船长：「停扫保留进度」）：只置回 active，`progressMs` 原样接着累计。
    */
   const scan = (state.wormholeScan = state.wormholeScan ?? { active: false, progressMs: 0 })
   scan.active = true
-  addLog(state, 'info', `🛰 开始扫描虫洞：主控就地展开扫描阵列${scan.progressMs > 0 ? `（续扫：已扫 ${Math.floor(scan.progressMs / 60_000)} 分钟）` : ''}。`)
+  /**
+   * 甲案：续扫与否是**两条完整句**（不是拼接）⇒ 各给一个 id（`.002` 首扫 / `.003` 续扫），
+   * 不做"把括号段当参数"——那样英文括注位置会错、占位符契约也不好守。
+   */
+  const resumed = scan.progressMs > 0
+  const scanMin = Math.floor(scan.progressMs / 60_000)
+  addLog(
+    state,
+    'info',
+    `🛰 开始扫描虫洞：主控就地展开扫描阵列${resumed ? `（续扫：已扫 ${scanMin} 分钟）` : ''}。`,
+    resumed ? 'core.wormholeScan.003' : 'core.wormholeScan.002',
+    resumed ? { p1: scanMin } : undefined,
+  )
   return { ok: true }
 }
 
@@ -218,8 +232,8 @@ export function wormholeScanStart(state: GameState, _ctx: SimContext): CommandRe
 export function wormholeScanStop(state: GameState): CommandResult {
   /** 状态改动走 `state.ts` 的单点 `wormholeScanHalt`（**进洞前自动停扫**也用它）⇒ 两条路径不会各写一份 */
   const mins = wormholeScanHalt(state)
-  if (mins === null) return { ok: false, error: '扫描没在跑。' }
-  addLog(state, 'info', `🛰 停止扫描虫洞（进度保留：已扫 ${mins} 分钟）。`)
+  if (mins === null) return { ok: false, error: '扫描没在跑。', errorId: 'core.wormholeScan.004' }
+  addLog(state, 'info', `🛰 停止扫描虫洞（进度保留：已扫 ${mins} 分钟）。`, 'core.wormholeScan.005', { p1: mins })
   return { ok: true }
 }
 
@@ -244,7 +258,7 @@ export function reconcileWormholeScanWelcome(state: GameState): boolean {
   if (!wormholeScanUnlocked(state)) return false
   scan.welcomed = true
   scan.progressMs = wormholeScanWindowMs(state) // 本函数拿不到 ctx ⇒ 不带科技削减（解锁礼只给"一整个窗口"的进度）
-  addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描（进洞前记得带采集器与打捞器）。')
+  addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描（进洞前记得带采集器与打捞器）。', 'core.wormholeScan.006')
   return true
 }
 
@@ -290,12 +304,20 @@ function rollStockItem(state: GameState, ctx: SimContext): WormholeStockItem {
 export function wormholeStockDiscard(state: GameState, id: string): CommandResult {
   const list = wormholeStockOf(state)
   const hit = list.find((x) => x.id === id)
-  if (!hit) return { ok: false, error: '这处虫洞不在了（可能已经探索过）。' }
+  if (!hit) return { ok: false, error: '这处虫洞不在了（可能已经探索过）。', errorId: 'core.wormholeScan.007' }
   const running = (state.wormholeAuto ?? []).find((r) => r.stockId === id)
-  if (running) return { ok: false, error: '这一处正在自动探索中：先召回那一趟，再放弃。' }
+  if (running) {
+    return { ok: false, error: '这一处正在自动探索中：先召回那一趟，再放弃。', errorId: 'core.wormholeScan.008' }
+  }
   state.wormholeStock = list.filter((x) => x.id !== id)
   const meta = wormholeStockMeta(hit)
-  addLog(state, 'info', `🛰 已放弃一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[meta.archetype]}（那处通道就此关闭）。`)
+  addLog(
+    state,
+    'info',
+    `🛰 已放弃一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[meta.archetype]}（那处通道就此关闭）。`,
+    'core.wormholeScan.009',
+    { p1: WORMHOLE_ARCHETYPE_LABELS[meta.archetype] },
+  )
   return { ok: true }
 }
 
@@ -347,7 +369,13 @@ export function grantWormholeStock(state: GameState, ctx: SimContext, count: num
   const n = Math.max(0, Math.floor(count))
   if (n <= 0) return 0
   for (let i = 0; i < n; i++) stockPushUncapped(state, ctx)
-  addLog(state, 'info', `🛰 已标记 ${n} 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时探索。`)
+  addLog(
+    state,
+    'info',
+    `🛰 已标记 ${n} 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时探索。`,
+    'core.wormholeScan.010',
+    { p1: n },
+  )
   return n
 }
 

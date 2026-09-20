@@ -205,7 +205,7 @@ export function idleAiShipIds(state: GameState): string[] {
 /** 玩家指令：购买基础 AI 核心（V9：市场供应簿按市价买入；无现货自动挂收购单） */
 export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult {
   const good = marketGoodOf(ctx, 'aicore', 'basic')
-  if (!good) return { ok: false, error: '基础 AI 核心暂未在市场流通。' }
+  if (!good) return { ok: false, error: '基础 AI 核心暂未在市场流通。', errorId: 'core.ai.001' }
   const quote = marketQuote(state, ctx, good.key)
   const ask = quote.sell ?? Math.round(levelOf(state, ctx, good.key) * 1.06)
   if (state.wallet.isk < ask) {
@@ -214,14 +214,26 @@ export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult
   if (quote.sell !== undefined) {
     const res = buyAtMarket(state, ctx, good.key, 1)
     if (res.bought > 0) {
-      addLog(state, 'trade', `已购入 基础 AI 核心（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）。AI 核心 = 你的分身，可指派给闲置舰船。`)
+      addLog(
+        state,
+        'trade',
+        `已购入 基础 AI 核心（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）。AI 核心 = 你的分身，可指派给闲置舰船。`,
+        'core.ai.009',
+        { p1: res.total.toLocaleString('zh-CN') },
+      )
       return { ok: true }
     }
   }
   // 供应簿瞬时吃穿：挂收购单（到货自动入核心库）
   const order = placeBuyOrder(state, ctx, good.key, ask, 1)
-  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。' }
-  addLog(state, 'trade', `基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动入核心库（可随时撤销）。`)
+  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。', errorId: 'core.ai.002' }
+  addLog(
+    state,
+    'trade',
+    `基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动入核心库（可随时撤销）。`,
+    'core.ai.010',
+    { p1: order.price.toLocaleString('zh-CN') },
+  )
   return { ok: true }
 }
 
@@ -229,12 +241,16 @@ export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult
 
 /** 共同校验：船、名额、核心、空闲 */
 function checkAssignable(state: GameState, shipId: string, coreType: AiCoreType, ctx: SimContext): CommandResult {
-  if (shipId === state.shipId) return { ok: false, error: '主控船由你亲自驾驶，不能指派 AI。' }
-  if (!state.fleet[shipId]) return { ok: false, error: '舰队里没有这艘船。' }
-  if (shipId in state.aiAssignments) return { ok: false, error: '这艘船已有 AI 任务。' }
+  if (shipId === state.shipId) return { ok: false, error: '主控船由你亲自驾驶，不能指派 AI。', errorId: 'core.ai.003' }
+  if (!state.fleet[shipId]) return { ok: false, error: '舰队里没有这艘船。', errorId: 'core.ai.004' }
+  if (shipId in state.aiAssignments) return { ok: false, error: '这艘船已有 AI 任务。', errorId: 'core.ai.005' }
   // 2026-09-14：自动探索中的船也不能再接 AI 副船任务（参与舰任务期间锁定）
   if ((state.wormholeAuto ?? []).some((r) => r.shipIds.includes(shipId))) {
-    return { ok: false, error: '这艘船正在自动探索中（已锁定）：等它返航，或先在「扫描虫洞」页召回那一趟。' }
+    return {
+      ok: false,
+      error: '这艘船正在自动探索中（已锁定）：等它返航，或先在「扫描虫洞」页召回那一趟。',
+      errorId: 'core.ai.006',
+    }
   }
   const capBlock = aiCoreCapBlock(state, ctx)
   if (capBlock) return { ok: false, error: capBlock }
@@ -272,7 +288,7 @@ export function assignAiMining(
   const block = actionBlockReason(state, belt.galaxyId)
   if (block) return { ok: false, error: block }
   if (!getMiningParams(state, ctx, { shipId, beltId })) {
-    return { ok: false, error: '舰队里找不到该舰船，无法执行采矿任务。' }
+    return { ok: false, error: '舰队里找不到该舰船，无法执行采矿任务。', errorId: 'core.state.006' }
   }
 
   spendAiCore(state, coreType)
@@ -288,6 +304,8 @@ export function assignAiMining(
     state,
     'info',
     `[AI] ${shipName} 开始自动采集 ${belt.name}（${aiCoreName(coreType)}，效率 ${Math.round(eff * 100)}%，满舱自动回港卸货）。`,
+    'core.ai.011',
+    { p1: shipName, p2: belt.name, p3: aiCoreName(coreType), p4: Math.round(eff * 100) },
   )
   return { ok: true }
 }
@@ -330,7 +348,7 @@ export function assignAiExpedition(
     return { ok: false, error: `AI 只接高胜率任务：该目标最终成功率 ${Math.round(chance * 100)}%（需 ≥80%）。` }
   }
   if (durabilityOf(state, shipId) < 0.5) {
-    return { ok: false, error: '该船耐久低于 50%，先维修再出任务。' }
+    return { ok: false, error: '该船耐久低于 50%，先维修再出任务。', errorId: 'core.ai.007' }
   }
   // V13 探索封锁：目标星系未点亮 → 拒绝派发
   const block = actionBlockReason(state, anomaly.galaxyId)
@@ -339,7 +357,7 @@ export function assignAiExpedition(
   const eff = aiEfficiency(state, ctx, coreType)
   // 两阶段：去程（finishAt = 到达时刻），交火由战斗引擎实时推进（同样按效率拉长）
   const outMinutes = shortestTravelMinutes(ctx, HOME_GALAXY_ID, anomaly.galaxyId)
-  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。' }
+  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.state.007' }
   // V12.1：单程按副船自身跃迁/航行技能换算（出发锁定），再按 AI 效率拉长
   const rawOutMs = travelLegMs(state, ctx, outMinutes, shipId)
   const outMs = Math.max(1, Math.round(rawOutMs / eff))
@@ -365,6 +383,14 @@ export function assignAiExpedition(
     state,
     'info',
     `[AI] ${shipName} 出发远征 ${anomaly.name}（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%，胜率 ${Math.round(chance * 100)}%）。`,
+    'core.ai.012',
+    {
+      p1: shipName,
+      p2: anomaly.name,
+      p3: aiCoreName(coreType),
+      p4: Math.round(eff * 100),
+      p5: Math.round(chance * 100),
+    },
   )
   return { ok: true }
 }
@@ -389,7 +415,11 @@ export function assignAiSalvage(
   const block = actionBlockReason(state, galaxyId)
   if (block) return { ok: false, error: block }
   if (salvagerCyclesOf(state, ctx, shipId).length === 0) {
-    return { ok: false, error: '该副船没有打捞器：先在其高槽装上打捞器（MK1/2/3）再派打捞任务。' }
+    return {
+      ok: false,
+      error: '该副船没有打捞器：先在其高槽装上打捞器（MK1/2/3）再派打捞任务。',
+      errorId: 'core.ai.008',
+    }
   }
   let hasPool = false
   for (const a of ctx.anomalies.values()) {
@@ -423,6 +453,8 @@ export function assignAiSalvage(
     state,
     'info',
     `[AI] ${shipName} 出发打捞：${galaxy.name}（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%；自动循环：满仓返港卸货后自动再出航，取消任务才结束）。`,
+    'core.ai.013',
+    { p1: shipName, p2: galaxy.name, p3: aiCoreName(coreType), p4: Math.round(eff * 100) },
   )
   return { ok: true }
 }
@@ -444,7 +476,7 @@ export function assignAiStandby(
   }
   const eff = aiEfficiency(state, ctx, coreType)
   const outMinutes = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
-  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。' }
+  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.state.007' }
   // 单程按副船自身跃迁/技能换算（出发锁定），再按 AI 效率拉长（与远征任务同口径）
   const rawOutMs = travelLegMs(state, ctx, outMinutes, shipId)
   const outMs = Math.max(1, Math.round(rawOutMs / eff))
@@ -467,6 +499,8 @@ export function assignAiStandby(
     state,
     'info',
     `[AI] ${shipName} 出发前往「${galaxy.name}」掩护巡逻（${aiCoreName(coreType)} 效率 ${Math.round(eff * 100)}%）——到达后留守该星系，可随时取消召回。`,
+    'core.ai.014',
+    { p1: shipName, p2: galaxy.name, p3: aiCoreName(coreType), p4: Math.round(eff * 100) },
   )
   return { ok: true }
 }
@@ -478,7 +512,10 @@ export function cancelAiTask(state: GameState, shipId: string, ctx: SimContext):
   delete state.aiAssignments[shipId]
   gainAiCore(state, assignment.coreType)
   const shipName = shipDisplayName(state, ctx, shipId)
-  addLog(state, 'info', `[AI] 已召回 ${shipName}（${aiCoreName(assignment.coreType)} 归还核心库）。`)
+  addLog(state, 'info', `[AI] 已召回 ${shipName}（${aiCoreName(assignment.coreType)} 归还核心库）。`, 'core.ai.015', {
+    p1: shipName,
+    p2: aiCoreName(assignment.coreType),
+  })
   return true
 }
 
@@ -575,7 +612,10 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext, st
     if (!state.fleet[shipId]) {
       delete state.aiAssignments[shipId]
       gainAiCore(state, assignment.coreType)
-      addLog(state, 'warn', `[AI] ${shipId} 已不在舰队中，任务中断（${aiCoreName(assignment.coreType)} 已归还）。`)
+      addLog(state, 'warn', `[AI] ${shipId} 已不在舰队中，任务中断（${aiCoreName(assignment.coreType)} 已归还）。`, 'core.ai.016', {
+        p1: shipId,
+        p2: aiCoreName(assignment.coreType),
+      })
       continue
     }
     // 2026-09-09（修复自愈）：作业船已被切换为驾驶船（换船入口漏召回的历史坏态/竞态残留）——
@@ -588,6 +628,8 @@ export function advanceAi(state: GameState, deltaMs: number, ctx: SimContext, st
         state,
         'warn',
         `[AI] ${shipDisplayName(state, ctx, shipId)} 已是驾驶船——原 AI 任务自动召回（${aiCoreName(assignment.coreType)} 已归还核心库）。`,
+        'core.ai.017',
+        { p1: shipDisplayName(state, ctx, shipId), p2: aiCoreName(assignment.coreType) },
       )
       continue
     }
@@ -616,6 +658,8 @@ function advanceAiStandby(state: GameState, shipId: string, assignment: AiAssign
     state,
     'info',
     `[AI·${shipName}] 已抵达「${galaxy?.name ?? task.galaxyId}」掩护巡逻——取消任务可召回；低安星系留意巡逻与伏击。`,
+    'core.ai.018',
+    { p1: shipName, p2: galaxy?.name ?? task.galaxyId },
   )
 }
 
@@ -676,6 +720,8 @@ function advanceAiMining(
           state,
           'trade',
           `[AI·${shipName}] 自动返港：把 ${moved.toLocaleString('zh-CN')} 单位${oreName}卸入物品仓库（本趟采得 ${task.tripUnits} 单位）。`,
+          'core.ai.019',
+          { p1: shipName, p2: moved.toLocaleString('zh-CN'), p3: oreName, p4: task.tripUnits },
         )
         if (stats) {
           addAiMiningTrip(stats, assignment.coreType)
@@ -698,7 +744,10 @@ function advanceAiMining(
     if (!params) {
       delete state.aiAssignments[shipId]
       gainAiCore(state, assignment.coreType)
-      addLog(state, 'warn', `[AI·${shipName}] 矿带已不存在，任务终止（${aiCoreName(assignment.coreType)} 已归还）。`)
+      addLog(state, 'warn', `[AI·${shipName}] 矿带已不存在，任务终止（${aiCoreName(assignment.coreType)} 已归还）。`, 'core.ai.020', {
+        p1: shipName,
+        p2: aiCoreName(assignment.coreType),
+      })
       return
     }
     const servLv = Math.min(5, state.skills.trained['ai-servicing'] ?? 0)
@@ -728,6 +777,14 @@ function advanceAiMining(
         state,
         'info',
         `[AI·${shipName}] 货仓装不下下一循环（余 ${Math.round(freeM3)} m³ ／ 每循环 ${Math.round(oreM3PerCycle)} m³）：自动返航卸货（本趟 ${task.tripUnits} 单位${oreNow?.name ?? params.ore.name}）。`,
+        'core.ai.021',
+        {
+          p1: shipName,
+          p2: Math.round(freeM3),
+          p3: Math.round(oreM3PerCycle),
+          p4: task.tripUnits,
+          p5: oreNow?.name ?? params.ore.name,
+        },
       )
       continue
     }
@@ -741,7 +798,7 @@ function advanceAiMining(
     } else if (nextRandom(state.rng) < richVeinP(cycleReal, state, ctx)) {
       units *= 3
       task.rvLeft = 1
-      addLog(state, 'info', `[AI·${shipName}] 富矿脉！连续 2 个循环产量 ×3。`)
+      addLog(state, 'info', `[AI·${shipName}] 富矿脉！连续 2 个循环产量 ×3。`, 'core.ai.022', { p1: shipName })
     }
     if (!oreNow) {
       // 记录缺失：按主产物入舱兜底（正常情况下 roll 不会返回 null）
@@ -775,7 +832,11 @@ function advanceAiSalvage(
   const abort = (why: string): void => {
     delete state.aiAssignments[shipId]
     gainAiCore(state, assignment.coreType)
-    addLog(state, 'warn', `[AI·${shipName}] ${why}（${aiCoreName(assignment.coreType)} 已归还）。`)
+    addLog(state, 'warn', `[AI·${shipName}] ${why}（${aiCoreName(assignment.coreType)} 已归还）。`, 'core.ai.023', {
+      p1: shipName,
+      p2: why,
+      p3: aiCoreName(assignment.coreType),
+    })
   }
   const legBaseOf = (): number => {
     if (state.debugQuick) return 1000
@@ -821,6 +882,13 @@ function advanceAiSalvage(
           state,
           'trade',
           `[AI·${shipName}] 打捞自动返港：${galaxyName} 残骸已卸入物品仓库（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。自动循环：继续出航打捞（取消任务即归还${aiCoreName(assignment.coreType)}）。`,
+          'core.ai.024',
+          {
+            p1: shipName,
+            p2: galaxyName,
+            p3: Math.round(task.tripM3 * 100) / 100,
+            p4: aiCoreName(assignment.coreType),
+          },
         )
         if (stats) addAiSalvageDone(stats, assignment.coreType) // 2026-09-08：离线结算按次统计（残骸卖出/拆解变现不计入粗估）
         task.phase = 'outbound'
@@ -869,6 +937,13 @@ function advanceAiSalvage(
             state,
             'info',
             `[AI·${shipName}] 货仓装不下下一轮打捞（余 ${Math.round(freeM3)} m³ ／ 每轮 ${Math.round(pulled.volumeM3)} m³）：自动返航卸货（本趟约 ${Math.round(task.tripM3 * 100) / 100} m³ 当量）。`,
+            'core.ai.025',
+            {
+              p1: shipName,
+              p2: Math.round(freeM3),
+              p3: Math.round(pulled.volumeM3),
+              p4: Math.round(task.tripM3 * 100) / 100,
+            },
           )
           break
         }
@@ -896,7 +971,13 @@ export function advanceAiExpedition(
   if (state.aiAssignments[shipId]?.task?.kind === 'expedition') {
     delete state.aiAssignments[shipId]
     gainAiCore(state, assignment.coreType)
-    addLog(state, 'warn', `[AI·${shipName}] 自动远征暂停受理：历史远征任务已取消，${aiCoreName(assignment.coreType)} 已归还核心库。`)
+    addLog(
+      state,
+      'warn',
+      `[AI·${shipName}] 自动远征暂停受理：历史远征任务已取消，${aiCoreName(assignment.coreType)} 已归还核心库。`,
+      'core.ai.026',
+      { p1: shipName, p2: aiCoreName(assignment.coreType) },
+    )
     return
   }
   // ↓↓↓ 软下线前的完整推进逻辑（out → battle → 结算，保留待恢复）↓↓↓
@@ -913,7 +994,10 @@ export function advanceAiExpedition(
       if (!battle) {
         delete state.aiAssignments[shipId]
         gainAiCore(state, current.coreType)
-        addLog(state, 'warn', `[AI·${shipName}] 远征目标已不存在，任务取消（${aiCoreName(current.coreType)} 已归还）。`)
+        addLog(state, 'warn', `[AI·${shipName}] 远征目标已不存在，任务取消（${aiCoreName(current.coreType)} 已归还）。`, 'core.ai.027', {
+          p1: shipName,
+          p2: aiCoreName(current.coreType),
+        })
         return
       }
       task.battle = battle
@@ -921,14 +1005,17 @@ export function advanceAiExpedition(
       // V13 探索：AI 船实际到港开战 → 点亮目标星系
       const anomalyDef = ctx.anomalies.get(task.anomalyId)
       if (anomalyDef?.galaxyId) markExplored(state, anomalyDef.galaxyId)
-      addLog(state, 'info', `[AI·${shipName}] 抵达目标，进入交火。`)
+      addLog(state, 'info', `[AI·${shipName}] 抵达目标，进入交火。`, 'core.ai.028', { p1: shipName })
       continue
     }
     if (task.phase === 'battle') {
       if (!task.battle) {
         delete state.aiAssignments[shipId]
         gainAiCore(state, current.coreType)
-        addLog(state, 'warn', `[AI·${shipName}] 战斗记录缺失，任务取消（${aiCoreName(current.coreType)} 已归还）。`)
+        addLog(state, 'warn', `[AI·${shipName}] 战斗记录缺失，任务取消（${aiCoreName(current.coreType)} 已归还）。`, 'core.ai.029', {
+          p1: shipName,
+          p2: aiCoreName(current.coreType),
+        })
         return
       }
       const anom = ctx.anomalies.get(task.anomalyId)
@@ -956,7 +1043,7 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   if (!anomaly) {
     delete state.aiAssignments[shipId]
     gainAiCore(state, assignment.coreType)
-    addLog(state, 'warn', `[AI·${shipName}] 远征目标已不存在，任务取消。`)
+    addLog(state, 'warn', `[AI·${shipName}] 远征目标已不存在，任务取消。`, 'core.ai.030', { p1: shipName })
     return
   }
   const galaxy = ctx.galaxies.get(anomaly.galaxyId)
@@ -990,7 +1077,31 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       `${repairUse.length > 0 ? `船体维修装置${repairUse}。` : ''}` +
       `奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
       `${dropText ? `，${dropText}` : ''}。残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`
-    addLog(state, 'trade', aiWinText)
+    /**
+     * **多段文案收口（甲案 · 2026-09-20）**：这条战报由 4 段拼成 ⇒ 用**链式 id** 交给日志：
+     * `core.ai.034`（首句）→ `p1Id` 接 `core.ai.035`（修复装置）→ `p2Id` 接 `core.ai.036`（奖金）
+     * → `p3Id` 接 `core.ai.037`（战利品）→ `p4Id` 接 `core.ai.038`（彩头）→ `p5Id` 接 `core.ai.039`（残骸密度）。
+     * 渲染层 `logText` 会把整条链走完 ⇒ **每一段都按当前语言出**，中文侧逐字不变。
+     */
+    addLog(state, 'trade', aiWinText, 'core.ai.034', {
+      p1: shipName,
+      p2: galaxy?.name ?? '',
+      p3: anomaly.name,
+      p4: durTxt,
+      p5: battle.stats.meShots,
+      p6: battle.stats.meHits,
+      p1Id: 'core.ai.035',
+      p1p1: repairUse,
+      p2Id: 'core.ai.036',
+      p2p1: reward.toLocaleString('zh-CN'),
+      p2p2: lootText.length > 0 ? lootText.join('、') : '',
+      p2p2Id: 'core.ai.037',
+      p3Id: 'core.ai.038',
+      p3p1: dropText ?? '',
+      p4Id: 'core.ai.039',
+      p4p1: wreckNow.toFixed(1),
+      p4p2: (anomaly.threat * 0.4).toFixed(1),
+    })
     /**
      * **结构化战报**（2026-09-14 船长定：四类战斗统一填写）。
      * ⚠ AI 副船的战斗**不弹战报弹层**（只有主控那场弹）⇒ 这份记录只是"四类同源"的完整性，
@@ -1010,7 +1121,10 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       delete state.aiAssignments[shipId]
       gainAiCore(state, assignment.coreType)
       loseShip(state, shipId, ctx, `[AI·${shipName}] 远征失利（${galaxy?.name ?? ''}·${anomaly.name}）后遭追击`)
-      addLog(state, 'warn', `[AI·${shipName}] 舰船损毁，AI 任务结束（${aiCoreName(assignment.coreType)} 已归还）。`)
+      addLog(state, 'warn', `[AI·${shipName}] 舰船损毁，AI 任务结束（${aiCoreName(assignment.coreType)} 已归还）。`, 'core.ai.031', {
+        p1: shipName,
+        p2: aiCoreName(assignment.coreType),
+      })
       return
     }
     const repair = Math.min(state.wallet.isk, Math.floor(anomaly.rewardIsk * bal.defeatCostRatio))
@@ -1020,7 +1134,16 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     const aiLoseText =
       `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 失利（交火 ${durTxt}），维修花去 ${repair.toLocaleString('zh-CN')} 信用点（耐久 ${dur}%）。` +
       `${aiRepairUse.length > 0 ? `船体维修装置${aiRepairUse}。` : ''}`
-    addLog(state, 'warn', aiLoseText)
+    addLog(state, 'warn', aiLoseText, 'core.ai.040', {
+      p1: shipName,
+      p2: galaxy?.name ?? '',
+      p3: anomaly.name,
+      p4: durTxt,
+      p5: repair.toLocaleString('zh-CN'),
+      p6: dur,
+      p1Id: 'core.ai.035',
+      p1p1: aiRepairUse,
+    })
     // 战报（2026-09-14）：AI 副船这一支是"打输、船没沉"（沉船那一支上面 return 了）⇒ `lose`
     captureBattleReport(state, battle, { source: 'ai', outcome: 'lose', summary: aiLoseText })
   }
@@ -1030,9 +1153,9 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
   if ((state.fleet[shipId]?.durability ?? 1) <= 0.3 && won === false) {
     const r = repairShip(state, shipId, ctx)
     if (r.ok) {
-      addLog(state, 'trade', `[AI·${shipName}] 耐久过低，已自动回港维修至 100%。`)
+      addLog(state, 'trade', `[AI·${shipName}] 耐久过低，已自动回港维修至 100%。`, 'core.ai.032', { p1: shipName })
     } else {
-      addLog(state, 'warn', `[AI·${shipName}] 耐久过低但维修费不足，请尽快手动维修。`)
+      addLog(state, 'warn', `[AI·${shipName}] 耐久过低但维修费不足，请尽快手动维修。`, 'core.ai.033', { p1: shipName })
     }
   }
 }

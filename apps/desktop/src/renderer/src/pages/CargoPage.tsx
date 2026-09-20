@@ -32,20 +32,24 @@ import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
+import { useL10n, cmdText } from '../i18n/locale'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
+import { tr } from '../i18n/locale'
 
 const KIND_EMPTY: Record<string, string> = {
-  ore: '船上没有原矿——到「出港」页开采。',
-  mineral: '船上没有原材料（精炼产物直接入仓库）。',
-  gas: '船上没有气体。',
-  ice: '船上没有冰矿。',
-  ammo: '船上没有弹药。',
-  drone: '船上没有无人机。',
+  ore: 'ui.CargoPage.010',
+  mineral: 'ui.CargoPage.011',
+  gas: 'ui.CargoPage.012',
+  ice: 'ui.CargoPage.013',
+  ammo: 'ui.CargoPage.014',
+  drone: 'ui.CargoPage.015',
 }
 
 export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
+  /** 语言（2026-09-19 船长令「英语本地化」）：界面串走 `t(中文源串)`；缺词条回退中文 */
+  const { t } = useL10n()
   const piloted = state.shipId
   const [selId, setSelId] = useState<string>(piloted)
   // 驾驶船变更 → 查看跟随驾驶船（本页历史职责是"驾驶船货仓"，选副船只是临时查看）
@@ -75,12 +79,18 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   function handleSell(id: string, qty: number): void {
     // 2026-09-08（船长定）：市场随"协会基地网络"——母港与已建成副站皆可出售（副站不设独立市场，共用全局市场）
     if (!isAtHomeLike(state, engine.ctx)) {
-      onToast('出售需停靠空间站（母港或已建成副站；当前在野外或修建中工地）。', true)
+      onToast(t('ui.CargoPage.020'), true)
       return
     }
     const r = engine.sellCargo(id, qty)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
-    else onToast(`已售出 ${r.soldUnits.toLocaleString('zh-CN')} 单位，入账 ${r.gainedIsk.toLocaleString('zh-CN')} 信用点。`)
+    if (!r.ok) onToast(cmdText(r) || t('ui.CargoPage.019'), true)
+    else
+      onToast(
+        t('ui.CargoPage.021', {
+          units: r.soldUnits.toLocaleString('zh-CN'),
+          isk: r.gainedIsk.toLocaleString('zh-CN'),
+        }),
+      )
     setSellId(null)
     setPickId(null)
   }
@@ -105,10 +115,14 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   /** 2026-09-09（船长口径 A）：单行卸货——物品 → 物品仓库；模块 → 装备库（引擎分流） */
   function handleUnloadOne(id: string): void {
     const moved = engine.unloadCargoItem(id)
-    if (moved === 0) onToast('货仓里没有该条目。', true)
+    if (moved === 0) onToast(t('ui.CargoPage.022'), true)
     else {
       const isMod = engine.ctx.modules.get(id) !== undefined
-      onToast(isMod ? `已把船载装备卸回装备库 ×${moved.toLocaleString('zh-CN')}。` : `已卸入物品仓库 ×${moved.toLocaleString('zh-CN')}。`)
+      onToast(
+        isMod
+          ? t('ui.CargoPage.023', { n: moved.toLocaleString('zh-CN') })
+          : t('ui.CargoPage.024', { n: moved.toLocaleString('zh-CN') }),
+      )
     }
     setPickId(null)
     setPickMod(null)
@@ -128,39 +142,44 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   function handleUnloadAll(): void {
     // T9：卸货入仓库在任何空间站可用（母港与副站）
     if (state.awayGalaxy !== null) {
-      onToast('舰船在野外：卸货需停靠空间站（母港或副站，可先「返航空间站」）。', true)
+      onToast(t('ui.CargoPage.025'), true)
       return
     }
     const moved = engine.unloadAllToWarehouse()
-    if (moved === 0) onToast('货仓是空的。', true)
-    else onToast(`已把 ${moved.toLocaleString('zh-CN')} 单位货物卸入物品仓库。`)
+    if (moved === 0) onToast(t('ui.CargoPage.026'), true)
+    else onToast(t('ui.CargoPage.027', { n: moved.toLocaleString('zh-CN') }))
   }
 
   /** 2026-09-08（船长定）：非驾驶空闲舰船卸货入仓库 */
   function handleUnloadShip(id: string): void {
     const moved = engine.unloadShipAllToWarehouse(id)
-    if (moved === -1) onToast('找不到该舰船。', true)
-    else if (moved === -2) onToast('该船正在 AI 作业中——卸货需等任务结束（AI 到港会自行卸货）。', true)
-    else if (moved === -3) onToast('该船正在善后返航途中——到港会自动卸货。', true)
-    else if (moved === 0) onToast('货仓是空的。', true)
-    else onToast(`已把「${targetName}」货仓的 ${moved.toLocaleString('zh-CN')} 单位货物卸入物品仓库。`)
+    if (moved === -1) onToast(t('ui.CargoPage.028'), true)
+    else if (moved === -2) onToast(t('ui.CargoPage.029'), true)
+    else if (moved === -3) onToast(t('ui.CargoPage.030'), true)
+    else if (moved === 0) onToast(t('ui.CargoPage.026'), true)
+    else onToast(t('ui.CargoPage.031', { ship: targetName, n: moved.toLocaleString('zh-CN') }))
   }
 
   return (
     <div className="page-stack">
       <Panel
-        title="货仓"
+        title={t('ui.CargoPage.004')}
         hint={
           <HintIcon
             tip={
               isPiloted
-                ? `货仓随船：采集与远征战利品都先落在这里；弃船会连同本页内容一起遗失。资源可以在此直接卖出，或卸入仓库后再处理。${busy ? ` 当前：${busy}。` : ''}`
-                : `正在查看「${targetName}」的货仓：空闲停靠的舰船可直接卸入仓库；装船与出售仍仅限当前驾驶船「${shipDisplayName(state, engine.ctx, piloted)}」。${busy ? ` 该船当前：${busy}，卸货需等作业结束。` : ' 该船闲置中，可卸货。'}`
+                ? t('ui.CargoPage.032') +
+                  (busy ? ' ' + t('ui.CargoPage.033', { b: busy }) : '')
+                : t('ui.CargoPage.034', {
+                    ship: targetName,
+                    piloted: shipDisplayName(state, engine.ctx, piloted),
+                  }) +
+                  (busy ? ' ' + t('ui.CargoPage.035', { b: busy }) : ' ' + t('ui.CargoPage.036'))
             }
           />
         }
         right={
-          isPiloted ? <span className="app-dim">当前驾驶船</span> : <span className="app-dim">查看中 · 可卸货</span>
+          isPiloted ? <span className="app-dim">{t('ui.CargoPage.007')}</span> : <span className="app-dim">{t('ui.CargoPage.008')}</span>
         }
       >
         <div className="app-cargo-ships">
@@ -174,13 +193,13 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 key={id}
                 className={`app-shipchip${isSel ? ' is-active' : ''}${isP ? ' is-piloted' : ''}`}
                 onClick={() => setSelId(id)}
-                title={isP ? '当前驾驶船' : b ?? '该船闲置中'}
+                title={isP ? tr("ui.CargoPage.007") : b ?? tr('ui.CargoPage.060')}
               >
                 <span className="app-shipchip-name">
                   {d ? <span className={`app-role-dot is-${d.role}`} /> : null}
                   {shipDisplayName(state, engine.ctx, id)}
                 </span>
-                {isP ? <span className="app-shipchip-tag">驾驶中</span> : null}
+                {isP ? <span className="app-shipchip-tag">{tr("ui.ShipPage.010")}</span> : null}
                 {b ? <span className="app-shipchip-busy">·{b}</span> : null}
               </button>
             )
@@ -190,21 +209,21 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           <ProgressBar
             value={cap > 0 ? ((used + haulOcc + courierOcc) / cap) * 100 : 0}
             tone={haulOcc + courierOcc > 0 ? 'warn' : cap > 0 && used / cap > 0.85 ? 'danger' : cap > 0 && used / cap > 0.6 ? 'warn' : 'normal'}
-            label={`${targetName} · 已占用 ${m3(used + haulOcc + courierOcc)} / ${cap > 0 ? cap.toLocaleString('zh-CN') : '—'} m³`}
+            label={tr("ui.CargoPage.056", { targetName: targetName, p2: m3(used + haulOcc + courierOcc), p3: cap > 0 ? cap.toLocaleString('zh-CN') : '—' })}
           />
           {haulOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 2 }}>
-              ⚠ 长途运输进行中：货仓由虚拟运输货物占满（可用 0 m³）——到站自动结算报酬；任务期间不能装卸与出售。
+              {tr("ui.CargoPage.041")}
             </div>
           ) : null}
           {courierOcc > 0 ? (
             <div className="app-dim" style={{ marginTop: 2 }}>
-              ⚠ 快递投送进行中：货舱按 {courierOcc.toLocaleString('zh-CN')} m³ 被虚拟货物占用——到站自动结算运费（超时无报酬）。
+              {tr("ui.CargoPage.042")} {courierOcc.toLocaleString('zh-CN')} {tr("ui.CargoPage.043")}
             </div>
           ) : null}
           {isPiloted ? (
             <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={rows.length === 0}>
-              全部卸入仓库
+              {tr("ui.CargoPage.037")}
             </button>
           ) : busy === null ? (
             // 2026-09-08（船长定）：空闲停靠的非驾驶舰船也可直接卸货入仓库（装船/出售仍限驾驶船）
@@ -212,9 +231,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               className="app-btn is-small"
               onClick={() => handleUnloadShip(targetId)}
               disabled={rows.length === 0}
-              title="该船空闲停靠：可直接把货仓卸入物品仓库"
+              title={t('ui.CargoPage.018')}
             >
-              全部卸入仓库
+              {t('ui.CargoPage.037')}
             </button>
           ) : null}
         </div>
@@ -229,15 +248,15 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         if (kindRows.length === 0 && kind !== 'ore') return null
         const emptyText =
           kind === 'ore' && !isPiloted
-            ? `「${targetName}」的货仓里没有原矿。`
-            : KIND_EMPTY[kind] ?? '货仓里没有该分类的货物。'
+            ? t('ui.CargoPage.017', { ship: targetName })
+            : (KIND_EMPTY[kind] !== undefined ? t(KIND_EMPTY[kind]!) : t('ui.CargoPage.016'))
         const extra = kindExtraNote(kind)
         return (
           <Panel
             key={kind}
-            title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
+            title={`${itemKindLabel(kind)}（${isPiloted ? t('ui.CargoPage.005') : t('ui.CargoPage.006')}）`}
             hint={extra ? <HintIcon tip={extra} /> : undefined}
-            right={<span className="app-dim">{kindRows.length} 种</span>}
+            right={<span className="app-dim">{t('ui.CargoPage.009', { n: kindRows.length })}</span>}
           >
             {kindRows.length === 0 ? (
               <div className="app-dim app-inv-empty">{emptyText}</div>
@@ -260,22 +279,22 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                           <RowGlyph glyph={def.kind} tone={inventoryItemTone(id, def.kind)} /> {def.name}
                         </span>
                         <span className="app-inv-count">
-                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}）· 市场收价{' '}
-                          {buy !== undefined ? `${isk(buy)} 信用点` : '—'}
+                          ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}{tr('ui.CargoPage.054')}{' '}
+                          {buy !== undefined ? `${isk(buy)} ${tr('ui.FirstTasks.003')}` : '—'}
                         </span>
                       </div>
                       <div className="app-inv-btns">
                         {isPiloted && buy !== undefined ? (
                           <>
                             <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>
-                              市价卖出
+                              {tr("ui.CargoPage.038")}
                             </button>
                             <button
                               className="app-btn is-small"
-                              title="前往市场查看该物品的订单（价格/挂单/买入）"
+                              title={t('ui.CargoPage.003')}
                               onClick={() => goMarket(id)}
                             >
-                              ↖ 查看市场
+                              {t('ui.CargoPage.001')}
                             </button>
                           </>
                         ) : isPiloted ? (
@@ -284,11 +303,11 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                             <RedeemFragmentButton engine={engine} itemId={id} onToast={onToast} />
                           ) : (
                             <button className="app-btn is-small" disabled>
-                              不在市场目录
+                              {tr("ui.CargoPage.039")}
                             </button>
                           )
                         ) : (
-                          <span className="app-dim app-sr-eta">只读查看</span>
+                          <span className="app-dim app-sr-eta">{tr("ui.CargoPage.044")}</span>
                         )}
                       </div>
                     </ItemHover>
@@ -303,8 +322,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       {/* 船载装备（2026-09-09 船长口径 A：模块可入货仓携带，按 1 m³/件 计入货舱；卸回装备库） */}
       {modRows.length > 0 ? (
         <Panel
-          title="装备（船载）"
-          right={<span className="app-dim">{modRows.length} 种 · 按 1 m³/件 计入货舱</span>}
+          title={tr("ui.CargoPage.045")}
+          right={<span className="app-dim">{modRows.length} {tr("ui.CargoPage.046")}</span>}
         >
           <ul className="app-inv-list">
             {modRows.map(([id, units]) => {
@@ -318,24 +337,24 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   as="li"
                   mod={def}
                   className="app-inv-row"
-                  hint="船载仅携带：装配台取料自装备库，船载装备需先卸回。"
+                  hint={tr("ui.CargoPage.059")}
                 >
                   <div className="app-inv-main">
                     <span className="app-inv-name">
                       <RowGlyph glyph={def.slot} /> {def.name}
                     </span>
                     <span className="app-inv-count">
-                      ×{units.toLocaleString('zh-CN')}（计入货舱 {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
+                      ×{units.toLocaleString('zh-CN')}{tr("ui.CargoPage.047")} {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
                       {def.cpuUse}
                     </span>
                   </div>
                   <div className="app-inv-btns">
                     {isPiloted ? (
                       <button className="app-btn is-small is-primary" onClick={() => handleUnloadOne(id)}>
-                        卸回装备库
+                        {tr("ui.CargoPage.048")}
                       </button>
                     ) : (
-                      <span className="app-dim app-sr-eta">只读查看</span>
+                      <span className="app-dim app-sr-eta">{tr("ui.CargoPage.044")}</span>
                     )}
                   </div>
                 </ModuleHover>
@@ -348,7 +367,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       ) : (
         <>
           {rows.length === 0 ? (
-            <div className="app-dim app-inv-empty">货仓是空的——采集与战利品会先落到这里。</div>
+            <div className="app-dim app-inv-empty">{tr("ui.CargoPage.049")}</div>
           ) : (
             ITEM_KIND_ORDER.map((kind) => {
               const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
@@ -373,9 +392,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               return (
                 <Panel
                   key={kind}
-                  title={`${itemKindLabel(kind)}（${isPiloted ? '驾驶船' : '查看中'}）`}
+                  title={`${itemKindLabel(kind)}（${isPiloted ? tr("ui.CargoPage.005") : tr("ui.CargoPage.006")}）`}
                   hint={extra ? <HintIcon tip={extra} /> : undefined}
-                  right={<span className="app-dim">{kindRows.length} 种</span>}
+                  right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows.length })}</span>}
                 >
                   <ItemGlyphGrid cells={cells} onPick={(key) => setPickId(key)} />
                 </Panel>
@@ -386,8 +405,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           {/* 船载装备（图标卡；2026-09-09 船长口径 A：模块可入货仓携带） */}
           {modRows.length > 0 ? (
             <Panel
-              title="装备（船载）"
-              right={<span className="app-dim">{modRows.length} 种 · 按 1 m³/件 计入货舱</span>}
+              title={tr("ui.CargoPage.045")}
+              right={<span className="app-dim">{modRows.length} {tr("ui.CargoPage.046")}</span>}
             >
               <ItemGlyphGrid
                 cells={modRows.map(([id, units]) => {
@@ -396,11 +415,11 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     key: id,
                     glyph: def?.slot ?? 'mod',
                     name: def?.name ?? id,
-                    sub: `×${units.toLocaleString('zh-CN')} · 计入货舱 ${m3(units)}`,
+                    sub: tr("ui.CargoPage.058", { p1: units.toLocaleString('zh-CN'), p2: m3(units) }),
                     title: def?.description,
                     // 富卡悬停（含"船载仅携带"那句注脚；2026-09-19 与列表模式/仓库同步）
                     hover: def
-                      ? moduleHoverContent(def, '船载仅携带：装配台取料自装备库，船载装备需先卸回。')
+                      ? moduleHoverContent(def, tr('ui.CargoPage.059'))
                       : undefined,
                   }
                 })}
@@ -418,8 +437,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickDef.name}</div>
                   <div className="app-dim">
-                    ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}）· 市场收价{' '}
-                    {pickBuy !== undefined ? `${isk(pickBuy)} 信用点` : '—'}
+                    ×{pickUnits.toLocaleString('zh-CN')}（{m3(pickUnits * pickDef.unitM3)}{tr('ui.CargoPage.054')}{' '}
+                    {pickBuy !== undefined ? `${isk(pickBuy)} ${tr('ui.FirstTasks.003')}` : '—'}
                   </div>
                 </div>
               </div>
@@ -428,7 +447,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               <div className="app-dim app-itempick-note">{pickDef.description}</div>
               <div className="app-itempick-actions">
                 {!isPiloted ? (
-                  <div className="app-dim">正在查看「{targetName}」——只读：装卸与出售仅对当前驾驶船可用。</div>
+                  <div className="app-dim">{tr("ui.CargoPage.050")}{targetName}{tr("ui.CargoPage.051")}</div>
                 ) : pickBuy !== undefined ? (
                   <button
                     className="app-btn is-primary is-small"
@@ -437,26 +456,26 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       setSellId(pickId)
                     }}
                   >
-                    市价卖出
+                    {tr("ui.CargoPage.038")}
                   </button>
                 ) : fragIds.has(pickId) ? (
                   /* 2026-09-19 玩家报障修：碎片这一路在弹层里也要能兑（与物品页同一个组件） */
                   <RedeemFragmentButton engine={engine} itemId={pickId} onToast={onToast} />
                 ) : (
                   <button className="app-btn is-small" disabled>
-                    不在市场目录（无法出售）
+                    {tr("ui.CargoPage.040")}
                   </button>
                 )}
                 {pickId && marketGoodOf(engine.ctx, 'item', pickId) ? (
                   <button
                     className="app-btn is-small"
-                    title="前往市场查看该物品的订单（价格/挂单/买入）"
+                    title={tr("ui.CargoPage.003")}
                     onClick={() => {
                       setPickId(null)
                       goMarket(pickId)
                     }}
                   >
-                    ↖ 查看市场订单
+                    {t('ui.CargoPage.002')}
                   </button>
                 ) : null}
               </div>
@@ -473,21 +492,21 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickModDef.name}</div>
                   <div className="app-dim">
-                    ×{pickModUnits.toLocaleString('zh-CN')}（计入货舱 {m3(pickModUnits)}）·{' '}
+                    ×{pickModUnits.toLocaleString('zh-CN')}{tr("ui.CargoPage.047")} {m3(pickModUnits)}）·{' '}
                     {SLOT_LABELS[pickModDef.slot] ?? pickModDef.slot} · CPU {pickModDef.cpuUse}
                   </div>
                 </div>
               </div>
               <InfoTable lines={moduleInfoLines(pickModDef)} />
               <div className="app-dim app-itempick-note">
-                {pickModDef.description}——船载仅携带：装配台取料自装备库，船载装备需先卸回。
+                {pickModDef.description}{tr("ui.CargoPage.052")}
               </div>
               <div className="app-itempick-actions">
                 {!isPiloted ? (
-                  <div className="app-dim">正在查看「{targetName}」——只读：装卸仅对当前驾驶船可用。</div>
+                  <div className="app-dim">{tr("ui.CargoPage.050")}{targetName}{tr("ui.CargoPage.053")}</div>
                 ) : (
                   <button className="app-btn is-primary is-small" onClick={() => handleUnloadOne(pickMod)}>
-                    卸回装备库
+                    {tr("ui.CargoPage.048")}
                   </button>
                 )}
               </div>
@@ -500,8 +519,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               name={sellDef.name}
               glyph={sellDef.kind}
               max={sellUnits}
-              unit="单位"
-              priceText={sellBuy !== undefined ? `收价 ${isk(sellBuy)} 信用点/单位` : undefined}
+              unit={tr('ui.Expedition.102')}
+              priceText={sellBuy !== undefined ? tr("ui.CargoPage.055", { p1: isk(sellBuy) }) : undefined}
               note={sellDef.description}
               onClose={() => setSellId(null)}
               onConfirm={(qty) => handleSell(sellId, qty)}

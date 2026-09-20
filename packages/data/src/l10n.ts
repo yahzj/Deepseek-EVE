@@ -578,80 +578,239 @@ export const EN_SKILLS: EnTable = {
  * 中文侧名 = `组名` / `组名（稀有版）`，id = `wreck-<组key>` / `wreck-rare-<组key>`。
  * 英文按「<族> Wreck / Rare Wreck（<区>）」——区 = High-sec / Low-sec / Wormhole（与 §九 技能 `Low-sec Survival` 同口径）。
  */
-export const EN_WRECKS: EnTable = {
-  'wreck-a-hi': { name: 'Pirate Wreck (High-sec)' },
-  'wreck-rare-a-hi': { name: 'Pirate Rare Wreck (High-sec)' },
-  'wreck-b-hi': { name: 'Armed Scavenger Wreck (High-sec)' },
-  'wreck-rare-b-hi': { name: 'Armed Scavenger Rare Wreck (High-sec)' },
-  'wreck-d-hi': { name: 'Gravekeeper Wreck (High-sec)' },
-  'wreck-rare-d-hi': { name: 'Gravekeeper Rare Wreck (High-sec)' },
-  'wreck-a-lo': { name: 'Pirate Wreck (Low-sec)' },
-  'wreck-rare-a-lo': { name: 'Pirate Rare Wreck (Low-sec)' },
-  'wreck-c-lo': { name: 'Alien Wreck (Low-sec)' },
-  'wreck-rare-c-lo': { name: 'Alien Rare Wreck (Low-sec)' },
-  'wreck-d-lo': { name: 'Gravekeeper Wreck (Low-sec)' },
-  'wreck-rare-d-lo': { name: 'Gravekeeper Rare Wreck (Low-sec)' },
-  'wreck-e-lo': { name: 'Titan Megastructure Wreck (Low-sec)' },
-  'wreck-rare-e-lo': { name: 'Titan Megastructure Rare Wreck (Low-sec)' },
-  'wreck-g-lo': { name: 'Deadarmy Wreck (Low-sec)' },
-  'wreck-rare-g-lo': { name: 'Deadarmy Rare Wreck (Low-sec)' },
-  'wreck-a-wh': { name: 'Pirate Wreck (Wormhole)' },
-  'wreck-rare-a-wh': { name: 'Pirate Rare Wreck (Wormhole)' },
-  'wreck-c-wh': { name: 'Alien Wreck (Wormhole)' },
-  'wreck-rare-c-wh': { name: 'Alien Rare Wreck (Wormhole)' },
-  'wreck-d-wh': { name: 'Gravekeeper Wreck (Wormhole)' },
-  'wreck-rare-d-wh': { name: 'Gravekeeper Rare Wreck (Wormhole)' },
-  'wreck-e-wh': { name: 'Titan Megastructure Wreck (Wormhole)' },
-  'wreck-rare-e-wh': { name: 'Titan Megastructure Rare Wreck (Wormhole)' },
-  'wreck-g-wh': { name: 'Deadarmy Wreck (Wormhole)' },
-  'wreck-rare-g-wh': { name: 'Deadarmy Rare Wreck (Wormhole)' },
+/**
+ * 残骸（26 = 13 组 × 普通/稀有 · `packages/core/src/wreckGroups.ts` 的组名派生）。
+ * 中文侧完全同构 ⇒ **名称与说明都按模板派生**（族名 + 区名两张小表，26 段不重复录入）：
+ * - 普通：`<族>（<区>）编队的舰体残骸（按 m³ 计舱）：…出售应急，或经精炼炉「残骸回收」拆解…`
+ * - 稀有：`<族>（<区>）窝点核心舱段的完好残骸（单件 30 m³）：…必给一件该敌族专属装备或特色装备…`
+ */
+const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
+  a: 'Pirate',
+  b: 'Armed Scavenger',
+  c: 'Alien',
+  d: 'Gravekeeper',
+  e: 'Titan Megastructure',
+  g: 'Deadarmy',
+}
+const WRECK_AREA_EN: Readonly<Record<string, string>> = { hi: 'High-sec', lo: 'Low-sec', wh: 'Wormhole' }
+
+/** 残骸 id → { name, description }（组名/区分/稀有与否全从 id 解出，与中文表同构） */
+function wreckEnText(id: string): EnText {
+  const m = /^wreck-(rare-)?([a-g])-(hi|lo|wh)$/.exec(id)
+  if (!m) throw new Error(`残骸 id 形态不符：${id}`)
+  const rare = m[1] !== undefined
+  const fam = WRECK_FAMILY_EN[m[2]!]!
+  const area = WRECK_AREA_EN[m[3]!]!
+  return {
+    name: rare ? `${fam} Rare Wreck (${area})` : `${fam} Wreck (${area})`,
+    description: rare
+      ? `Intact wreck of a ${fam} (${area}) lair core section — 30 m³ per piece. Break it down in the recycler back at the station: beyond guaranteed raw materials it always yields one piece of that foe family's exclusive or themed equipment, plus a batch of high-grade materials.`
+      : `${fam} (${area}) formation hull wreckage, measured by m³. Sell it at a station market for scrap in a pinch, or break it down with the refinery's Wreck Recycling — guaranteed raw materials plus a chance of themed loot; breaking it down pays more.`,
+  }
 }
 
-/** 异常点（27 · `docs/glossary-en.md` §十：悬赏 / 遭遇战卡片名） */
+const WRECK_IDS = [
+  'wreck-a-hi',
+  'wreck-rare-a-hi',
+  'wreck-b-hi',
+  'wreck-rare-b-hi',
+  'wreck-d-hi',
+  'wreck-rare-d-hi',
+  'wreck-a-lo',
+  'wreck-rare-a-lo',
+  'wreck-c-lo',
+  'wreck-rare-c-lo',
+  'wreck-d-lo',
+  'wreck-rare-d-lo',
+  'wreck-e-lo',
+  'wreck-rare-e-lo',
+  'wreck-g-lo',
+  'wreck-rare-g-lo',
+  'wreck-a-wh',
+  'wreck-rare-a-wh',
+  'wreck-c-wh',
+  'wreck-rare-c-wh',
+  'wreck-d-wh',
+  'wreck-rare-d-wh',
+  'wreck-e-wh',
+  'wreck-rare-e-wh',
+  'wreck-g-wh',
+  'wreck-rare-g-wh',
+] as const
+
+export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
+
+/** 异常点 / 敌卡（42 · `docs/glossary-en.md` §十/§十一）—— **名称 + 说明** */
 export const EN_ANOMALIES: EnTable = {
-  'ano-training': { name: 'Proving Grounds Eviction' },
-  'ano-pirate-post': { name: 'Frontier Pirate Outpost' },
-  'ano-abandoned-platform': { name: 'Occupied Port Warrant' },
-  'ano-redring-raiders': { name: 'Red Tide Raider Fleet' },
-  'ano-gravekeeper': { name: 'Graveyard Gravekeeper' },
-  'ano-ghost-signal': { name: 'Ghost Ship Signal' },
-  'ano-abyss-guard': { name: 'Abyss Gate Guard' },
-  'ano-titan-wreck': { name: 'Titan Wreck Survey' },
-  'ano-auro-raiders': { name: 'Auro Armed Wreck Group' },
-  'ano-core-section': { name: 'Megastructure Core Survey' },
-  'ano-starcore-boss': { name: 'Starcore Swarm' },
-  'ano-cinder-siege': { name: 'Cinder Siege' },
-  'ano-echo-haunt': { name: 'Echo Remnant' },
-  'ano-nadir-static': { name: 'Nadir Static Blockade' },
-  'ano-maw-hunt': { name: 'Maw Hunt Order' },
-  'ano-vault-sentinel': { name: 'Vault Sentinel' },
-  'ano-voidedge-warden': { name: 'Voidsea Warden' },
-  'ano-harbor-escort': { name: 'New Harbor Convoy Escort' },
-  'ano-shard-bandits': { name: 'Shardbelt Bandit Warrant' },
-  'ano-lantern-saboteurs': { name: 'Beacon Hunter Bounty' },
-  'ano-haze-ambush': { name: 'Haze Ambush Clearance' },
-  'ano-mirage-hijackers': { name: 'Mirage Navigation Hijack' },
-  'ano-chasm-aberrations': { name: 'Chasm Aberration Hunt' },
-  'enc-pirate-1': { name: 'Roaming Pirate Skiff' },
-  'enc-pirate-2': { name: 'Ambush Raider Squad' },
-  'enc-pirate-3': { name: 'Fanatic Patrol Group' },
-  'enc-pirate-4': { name: 'Deepspace Butcher Fleet' },
-  // 虫洞敌卡（15，`hidden` ⇒ 不进悬赏目录，但战斗/虫洞页会显示；见 glossary §十一）
-  'wh-pirate-scout': { name: 'Raider Detachment' },
-  'wh-pirate-hunt': { name: 'Raider Hunt' },
-  'wh-pirate-warband': { name: 'Pirate Warband' },
-  'wh-alien-swarm': { name: 'Starcore Hunting Swarm' },
-  'wh-alien-brood': { name: 'Spore Brood Tide' },
-  'wh-alien-hive': { name: 'Maw Deep Hive' },
-  'wh-grave-watch': { name: 'Gravekeeper Patrol' },
-  'wh-grave-sentry': { name: 'Stasis Sentry Chain' },
-  'wh-grave-throne': { name: 'Mausoleum Court' },
-  'wh-titan-echo': { name: 'Titan Echo' },
-  'wh-titan-missile': { name: 'Missile Echo' },
-  'wh-titan-hulk': { name: 'Titan Onslaught' },
-  'wh-exile-blockade': { name: 'Deadarmy Blockade' },
-  'wh-exile-swarm': { name: 'Echo Swarm' },
-  'wh-exile-line': { name: 'Remnant Battle Line' },
+  'ano-training': {
+    name: 'Proving Grounds Eviction',
+    description: "The Deep Space Industry Association's routine clearance order: scavengers have picked over exercise wrecks at the proving grounds for years, and the Association pays per eviction. A standing bounty that can be taken again and again — a new pilot's first long-term contract.",
+  },
+  'ano-pirate-post': {
+    name: 'Frontier Pirate Outpost',
+    description: 'A familiar face in the wanted lists: the outpost pirates of the Kor Frontier have raided starter trade routes for years. A standing bounty — win and it settles, and it can be taken again.',
+  },
+  'ano-abandoned-platform': {
+    name: 'Occupied Port Warrant',
+    description: 'A long-standing warrant: armed scavengers have squatted on an abandoned mining platform for years, and the Association pays to clear their firing positions.',
+  },
+  'ano-redring-raiders': {
+    name: 'Red Tide Raider Fleet',
+    description: 'A veteran raider fleet of the Redring Corridor whose warrant has hung on the Association board for five years — repel its main force to settle, and it can be taken again.',
+  },
+  'ano-gravekeeper': {
+    name: 'Graveyard Gravekeeper',
+    description: 'The gravekeeper fleet of the Darkstar Graveyard never rotates, and the Association never withdraws its warrant: repel them once, settle once.',
+  },
+  'ano-ghost-signal': {
+    name: 'Ghost Ship Signal',
+    description: 'A case left open a long time: the ghost ship appears and vanishes deep in the red rings. The Association pays a survey bounty for every successful contact — what it is, no one has said clearly to this day.',
+  },
+  'ano-abyss-guard': {
+    name: 'Abyss Gate Guard',
+    description: 'The Abyss Gate is manned year-round, and year-round it needs civilian firepower to share the defense. An Association standing bounty: settles per run, with standing granted only on the first win.',
+  },
+  'ano-titan-wreck': {
+    name: 'Titan Wreck Survey',
+    description: "An ancient titan wreck lies in the abyssal shipping lane, and the Association has long sought armed-escort surveys and clearance — repel the wreck's guard and the bounty is paid.",
+  },
+  'ano-auro-raiders': {
+    name: 'Auro Armed Wreck Group',
+    description: "Storms keep reactivating the armed wrecks of the Auro Waste Ring, so the Association's hunt order stays open: settles per run and can be taken again.",
+  },
+  'ano-core-section': {
+    name: 'Megastructure Core Survey',
+    description: 'At the deepest point of the abyssal lane stands an almost intact megastructure — its remaining automation still runs and its sentry swarm still patrols. The Association offers a standing bounty to anyone who can open it up.',
+  },
+  'ano-starcore-boss': {
+    name: 'Starcore Swarm',
+    description: 'Something is nesting deep in the Starcore Labyrinth. The Association lists it as a top-tier standing bounty: those who go in must count their lives on the way out.',
+  },
+  'ano-cinder-siege': {
+    name: 'Cinder Siege',
+    description: 'The defense line in the Cinder Sector never stops fighting, and the Association has long paid civilian firepower to reinforce it — repel one siege formation, settle one bounty.',
+  },
+  'ano-echo-haunt': {
+    name: 'Echo Remnant',
+    description: 'The remnant ships of the Echo Wastes keep "reviving", which the Association blames on leftover automation. A standing clearance order that settles per run.',
+  },
+  'ano-nadir-static': {
+    name: 'Nadir Static Blockade',
+    description: "The Nadir is a dead end and the deadarmy's last stronghold. The Association blockades the area year-round and pays for every clearance that breaks the line.",
+  },
+  'ano-maw-hunt': {
+    name: 'Maw Hunt Order',
+    description: 'The Star Maw has swallowed too many fleets. The Association pays for anything that weakens its garrison — a standing order that can be taken again.',
+  },
+  'ano-vault-sentinel': {
+    name: 'Vault Sentinel',
+    description: 'The gravekeeper fleet of the Vault Necropolis is the oldest armed force still in existence, and the Association lists it as the highest bounty in the sector — no one knows why they still patrol.',
+  },
+  'ano-voidedge-warden': {
+    name: 'Voidsea Warden',
+    description: 'The warden of the Voidsea Edge answers only the strong. The Association keeps this top-tier warrant open year-round, waiting for whoever can bring a battle report back alive.',
+  },
+  'ano-harbor-escort': {
+    name: 'New Harbor Convoy Escort',
+    description: 'Raids on the trade lanes of the New Harbor Corridor never stop. The Association pays for convoy escort and defense year-round: repel small raiding boats, settle per run — a new pilot\'s first standing contract.',
+  },
+  'ano-shard-bandits': {
+    name: 'Shardbelt Bandit Warrant',
+    description: 'In the crystal dust of the Shardbelt hides a band that specializes in robbing dawncrystal freighters. The warrant stays open and can be taken again.',
+  },
+  'ano-lantern-saboteurs': {
+    name: 'Beacon Hunter Bounty',
+    description: 'The beacon array of the Lantern Passage has been sabotaged repeatedly, and repairs are costly. The Association pays to hunt down the repeat offenders — this contract stays open.',
+  },
+  'ano-haze-ambush': {
+    name: 'Haze Ambush Clearance',
+    description: 'The ionized clouds of the Hazebelt are a natural ambush ground — a raider band has camped on the ring-core route for years. The Association issues a standing clearance order that settles per run.',
+  },
+  'ano-mirage-hijackers': {
+    name: 'Mirage Navigation Hijack',
+    description: "The Mirage's gravitational lens makes a natural ambush, and pirates use it to hijack straying merchantmen. The Association pays year-round to clear out these navigation hijackers.",
+  },
+  'ano-chasm-aberrations': {
+    name: 'Chasm Aberration Hunt',
+    description: 'Gravitational distortion in the Chasm Deepbelt breeds swarming aberrations that threaten the deep mine shafts. The Association lists them as a standing high-risk hunt order.',
+  },
+  'enc-pirate-1': {
+    name: 'Roaming Pirate Skiff',
+    description: 'Low-sec encounter template: a small roaming pirate group (hidden; not shown in the bounty board).',
+  },
+  'enc-pirate-2': {
+    name: 'Ambush Raider Squad',
+    description: 'Low-sec encounter template: a medium ambush squad (hidden).',
+  },
+  'enc-pirate-3': {
+    name: 'Fanatic Patrol Group',
+    description: 'Low-sec encounter template: a heavy fanatic formation (hidden).',
+  },
+  'enc-pirate-4': {
+    name: 'Deepspace Butcher Fleet',
+    description: 'Low-sec encounter template: a high-risk butcher fleet (hidden).',
+  },
+  // 虫洞敌卡（15，hidden ⇒ 不进悬赏目录，但战斗/虫洞页会显示）
+  'wh-pirate-scout': {
+    name: 'Raider Detachment',
+    description: 'Wormhole encounter: a small raiding detachment (hidden card, spawned by the wormhole only).',
+  },
+  'wh-pirate-hunt': {
+    name: 'Raider Hunt',
+    description: 'Wormhole encounter: raider hunters covering each other, one near and one far (hidden card, spawned by the wormhole only).',
+  },
+  'wh-pirate-warband': {
+    name: 'Pirate Warband',
+    description: 'Wormhole encounter: a pirate warband with the warlord himself in the line (hidden card, spawned by the wormhole only).',
+  },
+  'wh-alien-swarm': {
+    name: 'Starcore Hunting Swarm',
+    description: 'Wormhole encounter: a hunting pack of starcore adults (hidden card, spawned by the wormhole only).',
+  },
+  'wh-alien-brood': {
+    name: 'Spore Brood Tide',
+    description: 'Wormhole encounter: spore aberrants leading starcore adults in (hidden card, spawned by the wormhole only).',
+  },
+  'wh-alien-hive': {
+    name: 'Maw Deep Hive',
+    description: 'Wormhole encounter: a deep hive where the maw behemoth lairs (hidden card, spawned by the wormhole only).',
+  },
+  'wh-grave-watch': {
+    name: 'Gravekeeper Patrol',
+    description: 'Wormhole encounter: a patrol formation left behind by the gravekeepers (hidden card, spawned by the wormhole only).',
+  },
+  'wh-grave-sentry': {
+    name: 'Stasis Sentry Chain',
+    description: 'Wormhole encounter: two stasis sentry links, one near and one far (hidden card, spawned by the wormhole only).',
+  },
+  'wh-grave-throne': {
+    name: 'Mausoleum Court',
+    description: 'Wormhole encounter: the throne guard at the deepest point of the mausoleum (hidden card, spawned by the wormhole only).',
+  },
+  'wh-titan-echo': {
+    name: 'Titan Echo',
+    description: 'Wormhole encounter: a megastructure wreck still discharging, with its sentry swarm (hidden card, spawned by the wormhole only).',
+  },
+  'wh-titan-missile': {
+    name: 'Missile Echo',
+    description: 'Wormhole encounter: a missile section still firing salvoes (hidden card, spawned by the wormhole only).',
+  },
+  'wh-titan-hulk': {
+    name: 'Titan Onslaught',
+    description: 'Wormhole encounter: a whole megastructure wreck section with its sentry swarm (hidden card, spawned by the wormhole only).',
+  },
+  'wh-exile-blockade': {
+    name: 'Deadarmy Blockade',
+    description: 'Wormhole encounter: a blockade squad of the deadarmy (hidden card, spawned by the wormhole only).',
+  },
+  'wh-exile-swarm': {
+    name: 'Echo Swarm',
+    description: 'Wormhole encounter: a swarm formed by two echo remnant ships (hidden card, spawned by the wormhole only).',
+  },
+  'wh-exile-line': {
+    name: 'Remnant Battle Line',
+    description: "Wormhole encounter: the deadarmy's last battle line with its swarm escort (hidden card, spawned by the wormhole only).",
+  },
 }
 
 /**
@@ -730,21 +889,232 @@ function shipClassSegment(enName: string): string {
  * 依据：`BlueprintDef` 自带 `moduleId` / `itemId` ⇒ 直接取产物的英文名拼后缀，
  * 比逐条翻中文蓝图串更准（中文侧写的是「轻型炮台 MK1（动能）蓝图」，英文侧统一成 `Light Turret MK1 · Kinetic Blueprint`）。
  */
+/**
+ * **蓝图说明**（135 条 · 中文侧逐条手写、无模板 ⇒ 逐条译；名称仍按产物派生）。
+ * 与中文同一条口径：说明只讲"这张图造什么、吃什么料/什么特性"，不写原因解释。
+ */
+const BP_DESC_EN: Readonly<Record<string, string>> = {
+  'bp-miner-1': 'A starter blueprint: assemble your first mining laser from Tritanium Alloy and Silvervein Supermetal.',
+  'bp-cargo-1': 'A cargo hold refit plan; Crystalline Colloid makes the sealing lining.',
+  'bp-miner-2': 'Resonant drill head plans: a Crystalline Colloid resonance ring plus a Silvervein Supermetal heat sink — a milestone of mid-game industry.',
+  'bp-cargo-2': 'Folding hold technology, built around the capacity a Heavy Tungsten Alloy frame provides.',
+  'bp-pd-e': 'Point defense gun plans: short range, fast fire, and the only gun that can hit enemy drone swarms.',
+  'bp-pd-e-2': 'Uprated point defense gun plans: faster fire, heavier shots, still short-ranged.',
+  'bp-pd-e-3': 'Top-tier point defense gun plans: fire rate and shot weight pushed to the limit, range still that short band.',
+  'bp-turret-1': 'Light kinetic gun plans that give a mining ship a proper gun of its own.',
+  'bp-turret-2': 'Heavy kinetic gun plans with 5.7 km of reach — the go-to long-range suppression gun for any hull.',
+  'bp-miner-civ': 'The most basic mining laser plans; slightly cheaper to build than buying off the market, and good for practice.',
+  'bp-cargo-civ': 'A starter cargo refit plan: the classic Silvervein Supermetal and Crystalline Colloid recipe.',
+  'bp-turret-civ': 'Constabulary-standard cannon plans that let a rookie mining ship look a pirate in the eye.',
+  'bp-miner-3': 'Precision mining laser MK3 plans: an Isotope Polycrystal resonance chamber with Starcore Crystal bearings.',
+  'bp-cargo-3': 'Folding hold MK3 plans; the spatial lining is die-cast from Starcore Crystal.',
+  'bp-turret-3': 'Siege turret MK3 plans: a Darkiron barrel with a Starcore Crystal breech.',
+  'bp-ammo-kinetic': 'Kinetic ammo plans: 120 rounds per batch; ×1.5 vs shields, ×0.75 vs armor.',
+  'bp-ammo-explosive': 'Explosive ammo line plans: 120 rounds per batch; ×1.5 vs armor, ×0.75 vs shields.',
+  'bp-ammo-plasma': 'Energy ammo plans: 120 rounds per batch; ×1.25 vs shields, ×1 vs armor and hull.',
+  'bp-ammo-kinetic-2': 'Kinetic ammo MK2 plans: 120 rounds per batch; ×1.5 vs shields, ×0.75 vs armor.',
+  'bp-ammo-explosive-2': 'Explosive ammo MK2 line plans: 120 rounds per batch; ×1.5 vs armor, ×0.75 vs shields.',
+  'bp-ammo-plasma-2': 'Energy ammo MK2 line plans: 120 rounds per batch; ×1.25 vs shields, ×1 vs armor and hull.',
+  'bp-repairkit-civ': 'Civilian repair kit plans: pressed nano repair compound, 5 kits per batch, base 5 HP.',
+  'bp-repairkit-mil': 'Military repair kit plans: sealed high-density nano repair agent, 3 kits per batch, base 10 HP.',
+  'bp-laser-1': 'An energy beam focusing chamber; lens coating and heat sink decide the beam purity.',
+  'bp-laser-2': 'A reinforced energy beam focusing chamber: longer reach, heavier shots.',
+  'bp-laser-3': 'The top-grade energy beam focusing chamber: range and penetration cap out the laser line.',
+  'bp-missile-1': 'Missile nest and launch rails; the assembler handles guidance fin mounting automatically.',
+  'bp-missile-2': 'Reinforced missile nest and launch rails: heavier rounds, longer reach.',
+  'bp-missile-3': 'Top-grade missile nest and launch rails: range and single-shot power cap out the missile line.',
+  'bp-drone-rack-1': 'A drone deck expansion section with racks, recovery net and power bus all in place.',
+  'bp-drone-rack-2': 'An enlarged drone deck expansion section that carries one tier more drones.',
+  'bp-drone-rack-3': 'The top-grade drone deck expansion: berths and power headroom both maxed.',
+  'bp-drone-tac-1': 'The phased-array computing unit of a tactical control array, with its fire-control data link die-cast in one piece.',
+  'bp-drone-tac-2': 'The reinforced phased-array computing unit of a tactical control array: faster and steadier control.',
+  'bp-drone-tac-3': 'The top-grade phased-array computing unit: the fire-control data link maxed out.',
+  'bp-drone-relay-1': 'The signal relay unit of a guidance relay antenna, amplifying drone command links.',
+  'bp-drone-relay-2': 'A dual-band guidance relay antenna with interference filtering pressed into the relay unit.',
+  'bp-drone-relay-3': 'A long-range phased-array relay antenna; drone commands can run over inter-ship links.',
+  'bp-shield-kin-1': 'Shield generator coil plans (kinetic band tuning), with the magnetic envelope calibrated against ballistic impact.',
+  'bp-shield-exp-1': 'Shield generator coil plans (explosive band tuning): shock fronts are torn apart by the phase difference in the deflection field.',
+  'bp-shield-pla-1': 'Shield generator coil plans (energy band tuning): high-energy beams are refracted and defocused on the polar layer.',
+  'bp-shield-kin-2': 'A kinetic shield amplifier: the magnetic envelope, calibrated against ballistic impact, one step thicker.',
+  'bp-shield-exp-2': 'An explosive shield amplifier: shock fronts torn apart by deflection-field phase difference, one step thicker.',
+  'bp-shield-pla-2': 'An energy shield amplifier: beams refracted and defocused on the polar layer, one step thicker.',
+  'bp-shield-kin-3': 'A kinetic shield amplifier: magnetic envelope calibrated against ballistic impact, resistance maxed.',
+  'bp-shield-exp-3': 'An explosive shield amplifier: shock fronts torn apart by deflection-field phase difference, resistance maxed.',
+  'bp-shield-pla-3': 'An energy shield amplifier: beams refracted and defocused on the polar layer, resistance maxed.',
+  'bp-shield-ext-1': 'A shield capacitor bay: extra storage cells paralleled into the generator bank.',
+  'bp-shield-ext-2': 'An enlarged shield capacitor bay with one more parallel storage group.',
+  'bp-shield-ext-3': 'The top-grade shield capacitor bay: storage cells and bus capacity both maxed.',
+  'bp-shieldchg-1': 'Shield recharge circuit plans: rebuild the generator bank into a time-shared bus that can force a recharge cycle.',
+  'bp-shieldchg-2': 'High-power shield recharge circuit plans: a dedicated recharge bus that doubles the shield restored per tick.',
+  'bp-shieldchg-3': 'Capital-grade shield recharge circuit plans: one tick brings an empty shield back to fighting strength.',
+  'bp-armor-kin-1': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads.',
+  'bp-armor-exp-1': 'Explosive-resistant armor plating: a honeycomb backing plate vents blast pressure outboard.',
+  'bp-armor-pla-1': 'Energy-resistant armor plating: an ablative coating carries beam heat away by vaporizing itself.',
+  'bp-armor-kin-2': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads, one step thicker.',
+  'bp-armor-exp-2': 'Explosive-resistant armor plating: the honeycomb backing vents blast pressure outboard, one step thicker.',
+  'bp-armor-pla-2': 'Energy-resistant armor plating: the ablative coating carries beam heat away, one step thicker.',
+  'bp-armor-kin-3': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads — protection caps out the plating line.',
+  'bp-armor-exp-3': 'Explosive-resistant armor plating: the honeycomb backing vents blast pressure outboard — protection caps out the plating line.',
+  'bp-armor-pla-3': 'Energy-resistant armor plating: the ablative coating carries beam heat away — protection caps out the plating line.',
+  'bp-armor-plate-1': 'Composite armor slab: keel-grade plate that trades hold space for survival.',
+  'bp-armor-plate-2': 'A thicker composite armor slab, keel-grade stock one step up.',
+  'bp-armor-plate-3': 'The top-grade composite armor slab: the thickest layer on the ship, and the biggest hold cost.',
+  'bp-prop-1': 'Vector nozzles and attitude control gear: turning no longer relies on the hull\'s attitude wheels alone.',
+  'bp-prop-2': 'Afterburning vector nozzles and attitude gear: thrust and turning both improved.',
+  'bp-prop-3': 'Top-grade vector nozzles and attitude gear: speed and agility both maxed.',
+  'bp-mwd-1': 'Short-burst warp coils and a single-discharge assembly: ten seconds of displacement is enough to claim a position.',
+  'bp-mwd-2': 'High-power warp coils and fast-discharge capacitors: in ten seconds the ship outruns anything a vector thruster can catch.',
+  'bp-mwd-3': 'Military warp coils and a burst reactor: one ignition is a warp-grade displacement — ten seconds, then a minute of silence.',
+  'bp-stab-kin-1': 'Kinetic turret recoil and compensation gear; the spread from sustained fire is squeezed to the minimum.',
+  'bp-stab-kin-2': 'Kinetic turret recoil and compensation gear; the spread squeezed one step tighter.',
+  'bp-stab-kin-3': 'Kinetic turret recoil and compensation gear; spread squeezed to the minimum in the line.',
+  'bp-stab-exp-1': 'Explosive turret recoil and compensation gear: the torque of a nest salvo is absorbed by counterweights.',
+  'bp-stab-exp-2': 'Explosive turret recoil and compensation gear: more salvo torque absorbed.',
+  'bp-stab-exp-3': 'Explosive turret recoil and compensation gear: salvo torque almost entirely absorbed.',
+  'bp-stab-pla-1': 'Energy turret recoil and compensation gear: capacitor pulse oscillation is damped out of the circuit.',
+  'bp-stab-pla-2': 'Energy turret recoil and compensation gear: circuit damping one step up.',
+  'bp-stab-pla-3': 'Energy turret recoil and compensation gear: circuit oscillation at its lowest in the line.',
+  'bp-rof-1': 'Loading arm cam timing plans: the reload beat is far quicker than by hand.',
+  'bp-rof-2': 'Reinforced loading arm cams: tighter timing, shorter cycle.',
+  'bp-rof-3': 'Top-grade loading arm cams: the reload beat at the mechanical limit.',
+  'bp-warpcomp-2': 'Warp field tuning computer: holds the field at a higher energy level for faster interstellar travel. Stacks with diminishing returns.',
+  'bp-warpcomp-3': 'Top-grade warp field tuning computer: faster interstellar travel. Stacks with diminishing returns.',
+  'bp-track-1': 'Sensor array and signal board: a locked target no longer slips off the fire-control screen.',
+  'bp-track-2': 'Reinforced sensor array and signal board: locks faster and steadier.',
+  'bp-track-3': 'Top-grade sensor array and signal board: lock speed and stability maxed.',
+  'bp-gyro-1': 'Inertial platform and gimbal rings: attitude drift held to milliradians.',
+  'bp-gyro-2': 'Reinforced inertial platform and gimbals: drift squeezed one step further.',
+  'bp-gyro-3': 'Top-grade inertial platform and gimbals: the steadiest attitude reference in the line.',
+  'bp-cpu-1': 'A low-slot compute expansion card that turns idle rack space into usable CPU.',
+  'bp-cpu-2': 'Dual-channel compute expansion card: double the compute with no extra rack space.',
+  'bp-salvager-1': 'Salvage grapples and cutting tools that turn scrap into recoverable material.',
+  'bp-salvager-2': 'Reinforced salvage grapples and cutting tools: one tier more recovered per run.',
+  'bp-salvager-3': 'Top-grade salvage grapples and cutting tools: the highest recovery per run in the line.',
+  'bp-hullrep-civ': 'Nano repair arms and kit injection lines let armor and structure heal slowly in combat.',
+  'bp-hullrep-1': 'Nano repair arms and kit injection lines let armor and structure heal themselves in combat.',
+  'bp-hullrep-2': 'Top-grade nano repair arms and injection lines: restoration and frequency both maxed.',
+  'bp-lock-1': 'Lock procedure and fire-control linkage, written up as a mass-producible drill for holding a target.',
+  'bp-lock-2': 'Reinforced lock procedure: once bitten, a target finds it much harder to shake off.',
+  'bp-lock-3': 'Top-grade lock procedure: spotting and biting happen almost in the same instant.',
+  'bp-stealth-2': "Presses the whole hull's signature below background noise; the materials are easy to find — the masking procedure is the hard part.",
+  'bp-stealth-3': "The top-grade masking procedure: long enough to cross a whole stretch under the enemy's nose, at the cost of nearly all your compute.",
+  'bp-wh-a-frag': 'Raider fragment cannon: explosive main segment, kinetic secondary, 20 rounds per cycle.',
+  'bp-wh-a-hangar': 'Raider hangar: enlarges the drone bay and speeds up the swarm cycle.',
+  'bp-wh-a-prop': 'Raider afterburner: a big speed boost at the cost of accuracy.',
+  'bp-wh-a-coat': 'Raider refraction coating: opens up the evasion gap at the cost of all resistances.',
+  'bp-wh-a-scan': 'Spoils scan array: accuracy well up, range cut.',
+  'bp-wh-a-shield': 'Raider shield cage: shield capacity well up, range cut.',
+  'bp-wh-c-laser': 'Bio prism beam: an always-hit plasma beam with better range and falloff than its tier.',
+  'bp-wh-c-prism': 'Carapace prism layer: raises armor resistance to kinetic, explosive and plasma together.',
+  'bp-wh-c-pulse': 'Bio pulse accelerator: faster reload and a slight speed gain.',
+  'bp-wh-c-missile': 'Spore missile nest: explosive warheads with wide spread, but one salvo covers every enemy.',
+  'bp-wh-c-frame': 'Chitin frame layer: a large structure boost and a slight speed gain.',
+  'bp-wh-d-turret': 'Tombwarden linked cannon: a rapid kinetic gun firing two shots per round, the fastest of its tier.',
+  'bp-wh-d-shield': 'Mausoleum shield core: the top-tier core for shield capacity.',
+  'bp-wh-d-lock': 'Gravekeeper death knell: damage against a locked target rises markedly.',
+  'bp-wh-d-laser': 'Mausoleum prism cannon: an always-hit long-range plasma beam with the longest reach.',
+  'bp-wh-d-loader': 'Gravekeeper rapid loader: cuts reload time sharply.',
+  'bp-wh-d-steady': 'Mausoleum ballistic inscription: raises kinetic and plasma weapon damage together.',
+  'bp-wh-e-dc': 'Megastructure damage control array: kinetic and explosive resistance plus structure strength together.',
+  'bp-wh-e-tac': 'Megastructure control tower: a large boost to drone damage and structure strength.',
+  'bp-wh-e-cpu': 'Megastructure coprocessor: compute unmatched in its tier, at the cost of slower reloads.',
+  'bp-wh-e-pd': 'Megastructure point defense array: shortest range, fastest fire — built to intercept swarms.',
+  'bp-wh-e-shield': 'Megastructure shield matrix: shield capacity with kinetic and plasma resistance together.',
+  'bp-wh-g-hangar': 'Deadarmy hive dock: the largest berth capacity in the line.',
+  'bp-wh-g-fcs': 'Deadarmy fire control: modest gains to both accuracy and damage.',
+  'bp-wh-g-ballistic': 'Wraith ballistic corrector: raises kinetic weapon damage and range.',
+  'bp-wh-g-hull': "Squidwasp hull layer: lifts all three resistances and structure, and makes this ship's drones tougher.",
+  'bp-wh-g-turret': 'Deadarmy wreck cannon: the heaviest single-shot explosive gun, with mid-range reach and rate of fire.',
+  'bp-wh-g-prop': 'Wraith thruster: a large speed boost.',
+  'bp-lair-g-drone': 'One batch yields 50 Squidwasp drones: twice the punch of a standard scout, and the flightiest airframe.',
+  'bp-wh-c-drone': 'One batch yields 50 Hiveguard siege drones: spore-burst warheads crack armor, and their three-layer HP is thicker than a standard siege drone.',
+  // 2026-09-20 零件体系（并入 main）：零件蓝图说明（基础/高级两档各一句，同档逐条同文）
+  'bp-part-circuit': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
+  'bp-part-armor-plate': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
+  'bp-part-frame': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
+  'bp-part-cable': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
+  'bp-part-coolant': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
+  'bp-part-gyro': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
+  'bp-part-lens': 'Basic part: buildable at the assembly unit right away, no blueprint needed.',
+  'bp-part-drone-neural': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
+  'bp-part-shield-gen': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
+  'bp-part-jet-array': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
+  'bp-part-qchip': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
+  'bp-part-keel': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
+  'bp-part-fire-control': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
+  'bp-part-grav-comp': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
+  'bp-wh-e-drone': 'One batch yields 50 Construct sentry drones: kinetic needles break shields, with longer reach and better accuracy than a standard sentry.',
+}
+
 export const EN_BLUEPRINTS: EnTable = (() => {
   const out: Record<string, EnText> = {}
   for (const bp of BLUEPRINTS) {
     const product = bp.moduleId ? EN_MODULES[bp.moduleId]?.name : bp.itemId ? EN_ITEMS_ALL[bp.itemId]?.name : undefined
-    if (product) out[bp.id] = { name: `${product} Blueprint` }
+    if (!product) continue
+    const desc = BP_DESC_EN[bp.id]
+    out[bp.id] = desc !== undefined ? { name: `${product} Blueprint`, description: desc } : { name: `${product} Blueprint` }
   }
   return out
 })()
 
-/** **舰船蓝图**（派生）：`<舰级段> Blueprint`（`ShipBlueprintDef.shipId` ⇒ 舰船英文名 ⇒ 取舰级段） */
+/**
+ * **舰船蓝图说明**（45 条手译 + `sbp-once-*` 12 条按本体派生——中文侧一次性图纸与普通图纸**逐字同说明**）。
+ * 数值（货舱/循环/产量）照抄中文原文，不做本地化换算（单位与千分位与英文侧一致）。
+ */
+const SBP_DESC_EN: Readonly<Record<string, string>> = {
+  'sbp-pioneer': 'Mining corvette; 5,200 m³ hold, 38 units per 9 s cycle — a fifth more output than the Whaleswallow-class.',
+  'sbp-whale-king': 'Mining corvette; 7,000 m³ hold, 58 units per 8 s cycle — the peak output of the mining family.',
+  'sbp-humpback': 'Mining ship; 19,000 m³ hold, 140 units per 30 s cycle — the flagship of mining output.',
+  'sbp-colossal': 'Flagship freighter; 108,000 m³ hold, 129 units per 33 s cycle — a mobile fortress.',
+  'sbp-sandcat': 'Mining corvette; a T1 starter with an 800 m³ hold and 10 units per 12 s cycle.',
+  'sbp-burrower': 'Mining corvette; a T1 starter with a 1,800 m³ hold and 18 units per 11 s cycle.',
+  'sbp-whale': 'Mining corvette; 4,500 m³ hold, 34 units per 10 s cycle — the mining family\'s volume workhorse.',
+  'sbp-bowhead': 'Heavy freighter; 26,000 m³ hold, 110 units per 36 s cycle — the backbone of stockpiling.',
+  'sbp-falconet': 'Armed frigate; the fastest light-firepower platform at T1.',
+  'sbp-shrike': 'Armed frigate; slightly more firepower than the Skipjack-class, at the cost of speed.',
+  'sbp-tigershark': 'Armed frigate; a stronger firepower frame, and a familiar sight on deep-space escort duty.',
+  'sbp-mako': 'Destroyer; 2,300 m³ hold, 15 units per 13 s cycle — balanced between firepower and capacity.',
+  'sbp-whiteshark': 'Gunboat; 3,200 m³ hold, 18 units per 13 s cycle — the volume workhorse of the armed family.',
+  'sbp-swarm': 'Drone frigate; launches swarms to back up its main guns.',
+  'sbp-sentinel': 'Drone carrier; a 3,600 m³ hold with a roomy nest — its firepower comes from the swarm.',
+  'sbp-thresher': 'Missile cruiser; 2,600 m³ hold — opens the fight with a missile salvo.',
+  'sbp-electricray': 'Laser cruiser; 2,500 m³ hold — burns through shields on contact.',
+  'sbp-hammerhead': 'Gunnery cruiser; 2,800 m³ hold — the core of a heavy kinetic broadside.',
+  'sbp-bullshark': 'Assault cruiser; 3,000 m³ hold — thick shields and heavy guns, built to bite.',
+  'sbp-nautilus': 'Survey cruiser; 6,600 m³ hold — joining a fleet widens scan range by one ring.',
+  'sbp-tortoise': 'Light corvette; armor and structure far above its tier, paid for with speed and hold space.',
+  'sbp-hawksbill': 'Heavy cruiser; 9,600 m³ hold, 22 units per 13 s cycle — a warehouse in thick shell.',
+  'sbp-xuanwu': 'Heavy flagship; 15,200 m³ hold and the thickest three-layer HP — the apex of the heavy line.',
+  'sbp-flyingfish': 'Courier; a 5,000 m³ hold at 430 m/s — built for short-haul express runs.',
+  'sbp-sailfish': 'Fast freighter; 8,500 m³ hold, 18 units per 11 s cycle.',
+  'sbp-swordfish': 'Heavy freighter; 14,000 m³ hold, 16 units per 12 s cycle.',
+  'sbp-megalodon': 'Battleship; 4,000 m³ hold — a fire platform that dares to stand at the head of the formation.',
+  'sbp-wh-a-frigate': 'Raider EW frigate; locking and resolution top its tier — it sees first and locks first.',
+  'sbp-wh-a-destroyer': 'Raider gunboat; kinetic batteries give it solid frontal firepower.',
+  'sbp-wh-a-cruiser': 'Raider heavy assault cruiser; kinetic firepower wide open behind a thicker carapace — built to crack hard targets.',
+  'sbp-wh-c-frigate': 'Larva interceptor; impossibly fast, with almost no shields — a carapace holds it together.',
+  'sbp-wh-c-destroyer': 'Carapace interceptor; speed and agility maxed, with armor and structure taking every hit.',
+  'sbp-wh-c-cruiser': 'Hiveswarm heavy assault cruiser; energy main guns behind thick armor and shell — made for head-on collisions.',
+  'sbp-wh-d-frigate': 'Sentry EW frigate; locking and resolution far above its tier — it spots the enemy for the whole fleet.',
+  'sbp-wh-d-destroyer': "Tombwarden command ship; locking, resolution and drone nest all raised — the fleet's eyes and hub.",
+  'sbp-wh-d-cruiser': 'Mausoleum cruiser; the thickest three-layer HP and the most gun mounts, holding the center of the line.',
+  'sbp-wh-e-frigate': 'Construct torpedo frigate; explosive warheads crack armor and hit solidly.',
+  'sbp-wh-e-destroyer': 'Hangar drone combat ship; a big nest and strong drones — a hangar that can fly.',
+  'sbp-wh-e-carrier': 'Megastructure drone combat ship; the largest nest and the highest drone damage — launching is its main weapon.',
+  'sbp-wh-g-frigate': 'Wraith scout frigate; a tiny signature and very high evasion — it sees the others first.',
+  'sbp-wh-g-destroyer': 'Deadarmy logistics ship; the largest hold and nest, following the fleet to resupply and swap drones.',
+  'sbp-wh-g-cruiser': 'Deadarmy torpedo cruiser; explosive warheads with solid accuracy, aimed at the armor of big targets.',
+}
+
+/** **舰船蓝图**（名称派生：`<舰级段> Blueprint`；说明查 `SBP_DESC_EN`，`sbp-once-*` 取本体同说明） */
 export const EN_SHIP_BLUEPRINTS: EnTable = (() => {
   const out: Record<string, EnText> = {}
   for (const bp of SHIP_BLUEPRINTS) {
     const en = EN_SHIPS[bp.shipId]?.name
-    if (en) out[bp.id] = { name: `${shipClassSegment(en)} Blueprint` }
+    if (!en) continue
+    const onceBase = bp.id.startsWith('sbp-once-') ? `sbp-${bp.id.slice('sbp-once-'.length)}` : null
+    const desc = SBP_DESC_EN[bp.id] ?? (onceBase !== null ? SBP_DESC_EN[onceBase] : undefined)
+    out[bp.id] = desc !== undefined ? { name: `${shipClassSegment(en)} Blueprint`, description: desc } : { name: `${shipClassSegment(en)} Blueprint` }
   }
   return out
 })()
@@ -833,55 +1203,61 @@ export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: s
   return out ?? list
 }
 
-/** 星系（20 · `docs/glossary-en.md` §五）。注意：星系名进 `ctx.galaxies`，矿带名进 `ctx.belts`，两张表分开。 */
+/** 星系（20 · `docs/glossary-en.md` §五）—— **名称 + 说明**。星图节点进 `ctx.galaxies`，矿带名进 `ctx.belts`，两张表分开。 */
 export const EN_GALAXIES: EnTable = {
-  'galaxy-hub': { name: 'Leviathan IV' },
-  'galaxy-kor': { name: 'Kor Frontier' },
-  'galaxy-dust': { name: 'Stardust Wastes' },
-  'galaxy-redring': { name: 'Redring Corridor' },
-  'galaxy-grave': { name: 'Darkstar Graveyard' },
-  'galaxy-abyss': { name: 'Abyss Gate' },
-  'galaxy-auro': { name: 'Auro Waste Ring' },
-  'galaxy-starcore': { name: 'Starcore Labyrinth' },
-  'galaxy-harbor': { name: 'New Harbor Corridor' },
-  'galaxy-haze': { name: 'Hazebelt' },
-  'galaxy-shard': { name: 'Shardbelt' },
-  'galaxy-cinder': { name: 'Cinder Sector' },
-  'galaxy-echo': { name: 'Echo Wastes' },
-  'galaxy-lantern': { name: 'Lantern Passage' },
-  'galaxy-chasm': { name: 'Chasm Deepbelt' },
-  'galaxy-mirage': { name: 'Mirage System' },
-  'galaxy-maw': { name: 'Star Maw' },
-  'galaxy-vault': { name: 'Vault Necropolis' },
-  'galaxy-nadir': { name: 'Nadir Quiet Zone' },
-  'galaxy-voidedge': { name: 'Voidsea Edge' },
+  'galaxy-hub': { name: 'Leviathan IV', description: 'Home system: headquarters of the Deep Space Industry Association, and where every route begins.' },
+  'galaxy-kor': { name: 'Kor Frontier', description: 'Remains of an early colony, where pirates often lie in ambush.' },
+  'galaxy-dust': { name: 'Stardust Wastes', description: 'An abandoned mining district thick with stardust — a graveyard of old industrial platforms.' },
+  'galaxy-redring': { name: 'Redring Corridor', description: 'A red ring spans the system: the home lair of raider fleets.' },
+  'galaxy-grave': { name: 'Darkstar Graveyard', description: 'The graveyard of ancient fleets; the gravekeepers are said never to sleep.' },
+  'galaxy-abyss': { name: 'Abyss Gate', description: 'An ancient jump gate stands here under heavy guard — no one who went through has come back to say what lies beyond.' },
+  'galaxy-auro': { name: 'Auro Waste Ring', description: 'A ring of asteroid ruins where armed wrecks from an old war still roam.' },
+  'galaxy-starcore': { name: 'Starcore Labyrinth', description: 'The labyrinth core of a dense nebula where navigators fail — only charts get you through.' },
+  'galaxy-harbor': { name: 'New Harbor Corridor', description: 'A supply corridor on the outer ring of the home system, plied by merchant convoys and Association patrols.' },
+  'galaxy-haze': { name: 'Hazebelt', description: 'Shrouded year-round in ionized haze, with half its old beacons out of repair.' },
+  'galaxy-shard': { name: 'Shardbelt', description: 'A floating graveyard of giant shattered crystals that refract strange rainbows.' },
+  'galaxy-cinder': { name: 'Cinder Sector', description: 'A dark ash belt left by an interstellar fire a century ago.' },
+  'galaxy-echo': { name: 'Echo Wastes', description: 'Radio echoes repeat here; they say you can hear the last distress calls of sunken ships.' },
+  'galaxy-lantern': { name: 'Lantern Passage', description: 'An ancient navigation beacon array, still working with no one to maintain it.' },
+  'galaxy-chasm': { name: 'Chasm Deepbelt', description: 'A deep trench left where a planetary system was torn apart, riddled with gravity anomalies.' },
+  'galaxy-mirage': { name: 'Mirage System', description: 'Strong gravitational lensing twists the stars here into mirages.' },
+  'galaxy-maw': { name: 'Star Maw', description: 'A giant rift slowly swallowing starlight; the Association forbids going deep inside.' },
+  'galaxy-vault': { name: 'Vault Necropolis', description: 'Dome shelters where an ancient civilization sealed away its fleet; the gravekeeper fleet still patrols them.' },
+  'galaxy-nadir': { name: 'Nadir Quiet Zone', description: 'A dead-silent zone directly below the galactic plane where no body cares to linger.' },
+  'galaxy-voidedge': { name: 'Voidsea Edge', description: 'Where navigable space meets the Voidsea — the end is right behind you.' },
 }
 
 /** 矿带（17 · §五；**key 是矿带自己的 id**（`belt-*`），不是星系 id——星系名另见 `EN_GALAXIES`） */
 export const EN_BELTS: EnTable = {
-  'belt-fortune': { name: 'Ring of Plenty' },
-  'belt-scorched': { name: 'Scorched Rift' },
-  'belt-kernite': { name: 'Deepspace Crystal Belt' },
-  'belt-sunshard': { name: 'Dawncrystal Belt' },
-  'belt-gas-neon': { name: 'Neon Cloud Field' },
-  'belt-glowstone': { name: 'Glowcloud Belt' },
-  'belt-hemorphite': { name: 'Redring Crisis Belt' },
-  'belt-crimsonite': { name: 'Mirage Cluster' },
-  'belt-ice-marrow': { name: 'Frostmarrow Ice Ring' },
-  'belt-fluxite': { name: 'Starcore Vein' },
-  'belt-voidshard': { name: 'Voidcrystal Deepbelt' },
-  'belt-ice-frost': { name: 'Bluefrost Ice Ring' },
-  'belt-gas-ionstorm': { name: 'Ionstorm Cloud Field' },
-  'belt-nebulite': { name: 'Starwraith Vein' },
-  'belt-ice-darkstar': { name: 'Darkstar Ice Ring' },
-  'belt-gas-phosphor': { name: 'Phosphor Haze Field' },
-  'belt-gas-aurora': { name: 'Aurora Cloud Field' },
+  'belt-fortune': { name: 'Ring of Plenty', description: "The starter belt on the station's outer ring: safe, plentiful and never exhausted." },
+  'belt-scorched': { name: 'Scorched Rift', description: 'A rift left by a shattered volcanic body, rich in Gabbro.' },
+  'belt-kernite': { name: 'Deepspace Crystal Belt', description: 'A starter mixed belt where several ores coexist: now and then you dig up a little Redring Ore.' },
+  'belt-sunshard': { name: 'Dawncrystal Belt', description: 'A crystal layer lit at just the right dawn angle — the ideal place to mine Dawnshard Crystal (requires standing 2).' },
+  'belt-gas-neon': { name: 'Neon Cloud Field', description: 'A cluster of low-gravity gas fields — the first place you can harvest gas (requires standing 2).' },
+  'belt-glowstone': { name: 'Glowcloud Belt', description: "A rich vein at the ring's center: high-purity Glowcloud Ore with occasional Dawnshard Crystal alongside (requires standing 3)." },
+  'belt-hemorphite': { name: 'Redring Crisis Belt', description: 'A high-pressure seam deep in a pirate hub, where Redring Ore and Gabbro interleave (requires standing 3).' },
+  'belt-crimsonite': { name: 'Mirage Cluster', description: 'A crystal cluster belt twisted out by gravitational lensing, where Dawnshard Crystal and Glowcloud Ore grow together (requires standing 5).' },
+  'belt-ice-marrow': { name: 'Frostmarrow Ice Ring', description: 'An ancient ice ring with marrow-like veining and a key source of Starcore Crystal (requires standing 5).' },
+  'belt-fluxite': { name: 'Starcore Vein', description: 'A double crystal vein in the labyrinth core, where Dawnshard Crystal and Glowcloud Ore grow together (requires standing 4).' },
+  'belt-voidshard': { name: 'Voidcrystal Deepbelt', description: 'A black Voidcrystal seam in the deep-space rift belt (requires standing 7).' },
+  'belt-ice-frost': { name: 'Bluefrost Ice Ring', description: 'A blue-white ice ring whose layers lock in high-purity Isotope Polycrystal (requires standing 6).' },
+  'belt-gas-ionstorm': { name: 'Ionstorm Cloud Field', description: 'A raging ion stream field: a proving ground where reward and risk come together (requires standing 8).' },
+  'belt-nebulite': { name: 'Starwraith Vein', description: 'A legendary vein deep in the nebula, reserved for decorated Association pilots (requires standing 11).' },
+  'belt-ice-darkstar': { name: 'Darkstar Ice Ring', description: 'A light-swallowing black ice ring — the most demanding mining site in the universe (requires standing 11).' },
+  'belt-gas-phosphor': { name: 'Phosphor Haze Field', description: 'Corrosive phosphor haze deep in the graveyard: a rare gas deposit of very high refining value (requires standing 9).' },
+  'belt-gas-aurora': { name: 'Aurora Cloud Field', description: 'Aurora particle clouds above the Vault Necropolis — the highest-threshold mining site in the universe (requires standing 13).' },
 }
 
 /** 站点（2 · 建站点；阶段名「奠基/完善/建成」嵌在站点定义里，用嵌套覆盖另处理） */
 export const EN_STATIONS: EnTable = {
-  'site-redring': { name: 'Redring Outpost' },
-  'site-cinder': { name: 'Cinder Outpost' },
+  'site-redring': {
+    name: 'Redring Outpost',
+    description: 'The Redring Corridor is a hub of deep-space shipping, yet pirates hold it year-round. The Association Infrastructure Dept plans an outpost here: built in three stages from refined materials, and folded into the Association base network once complete.',
+  },
+  'site-cinder': {
+    name: 'Cinder Outpost',
+    description: 'A high-risk mining district deep in the Cinder Sector needs a staging station. The Infrastructure Dept commissions it in three stages from refined materials: the foundation is especially heavy on Tritanium Alloy, and later stages use rarer stock. Once complete it joins the Association base network.',
+  },
 }
 
 /** 势力与部门（13 · §六；通讯页的发件人/署名会用） */

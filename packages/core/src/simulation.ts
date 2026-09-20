@@ -80,7 +80,13 @@ export function simulateOffline(
 
   // 记录结算前的日志条数（必须在写"离线归来"之前取，否则把这条也算进去）
   const before = state.logs.length
-  addLog(state, 'info', `离线归来：已离开 ${formatDurationMs(rawGap)}，开始结算……`)
+  addLog(
+    state,
+    'info',
+    `离线归来：已离开 ${formatDurationMs(rawGap)}，开始结算……`,
+    'core.simulation.001',
+    { p1: formatDurationMs(rawGap) },
+  )
   // nowWallMs = 离线末刻：赏金日板按**现实墙钟**对齐"每天本地 0 点"——离线跨过 0 点即整板换新
   // （跨多日只补最后一道界：中间那些天的板早已作废）。
   const advOpts = {
@@ -123,5 +129,17 @@ export function simulateOffline(
   }
   const minedText = gained.length > 0 ? `；离线采集 ${gained.join('、')}` : ''
   const tail = overflowMs > 0 ? `；超出上限的 ${formatDurationMs(overflowMs)} 未结算` : ''
-  addLog(state, 'info', `离线结算完成：推进 ${formatDurationMs(deltaMs)}${tail}${minedText}，期间发生 ${eventCount} 条事件。`)
+  addLog(
+    state,
+    'info',
+    `离线结算完成：推进 ${formatDurationMs(deltaMs)}${tail}${minedText}，期间发生 ${eventCount} 条事件。`,
+    'core.simulation.002',
+    {
+      p1: formatDurationMs(deltaMs),
+      p2: tail,
+      p3: minedText,
+      p4: eventCount,
+      ...(overflowMs > 0 ? { p2Id: 'core.state.023' } : {}),
+    },
+  )
 }

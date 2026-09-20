@@ -67,6 +67,8 @@ async function tryStartBattle(engine: GameEngine): Promise<boolean> {
     }
     return true
   }
+  // l10n-keep：AUTOPERF_* 是自动化脚本解析的协议标记（开发侧），不翻译
+  // l10n-keep-start：AUTOPERF_* 整段都是自动化脚本解析的协议标记（开发侧 console），不进玩家界面
   console.log('AUTOPERF_WARN 未能发起任何远征（目录可能为空或全部被前置拒绝）')
   return false
 }
@@ -104,7 +106,8 @@ async function runScene(
         // 打完一场后等结算/返航落定，再补开下一场，直到场景时长跑满
         if (!exp.active && engine.state.awayGalaxy === null) {
           const ok = await tryStartBattle(engine)
-          if (ok) console.log('AUTOPERF_INFO 战斗已开启，计时中…')
+          if (ok) // l10n-keep：同上（协议标记）
+  console.log('AUTOPERF_INFO 战斗已开启，计时中…')
         }
       }
       await sleep(500)
@@ -119,7 +122,8 @@ async function runScene(
 /** 主入口：main.tsx 在 App 挂载后调用（仅自动采集模式） */
 export async function runAutoPerf(engine: GameEngine, spec: AutoPerfSpec): Promise<void> {
   if (!spec || !Array.isArray(spec.scenes) || spec.scenes.length === 0) {
-    console.log('AUTOPERF_REPORT_INVALID 场景表为空')
+    // l10n-keep：同上
+  console.log('AUTOPERF_REPORT_INVALID 场景表为空')
     return
   }
   perfHub.activate()
@@ -137,3 +141,4 @@ export async function runAutoPerf(engine: GameEngine, spec: AutoPerfSpec): Promi
   await sleep(400)
   window.close()
 }
+// l10n-keep-end

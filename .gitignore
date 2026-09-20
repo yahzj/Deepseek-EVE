@@ -31,3 +31,7 @@ foe-csv/
 
 # 工具区可重建产物（无头核对用的注入档 / 截图 / 读数 JSON；见 tools/README.md §三）
 tools/_ui-artifacts/
+
+# 提交消息暂存文件（三号收尾时用，别入库）
+_cm.txt
+_commitmsg.txt

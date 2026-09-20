@@ -400,8 +400,15 @@ describe('装配方案（预设）：锁定与一键卸下', () => {
 
 describe('装配方案（预设）：存档', () => {
   it('方案随档往返；**没有方案时不落键**（老档逐字一致）', () => {
+    /**
+     * ⚠ **断言口径（2026-09-20 三号修）**：原先是 `not.toContain('fitPresets')`（裸子串）。
+     * 甲案给日志加了 `textId` 之后，**日志正文里也会出现 `core.fitPresets.009` 这样的字样**
+     * （保存方案那条日志的 id）⇒ 裸子串会被日志误命中，断言不再咬"存档键"。
+     * 改成**按键**断言：`"fitPresets":`（带引号与冒号）——这正是"落没落这个键"的判据。
+     */
+    const hasFitPresetsKey = (json: string): boolean => json.includes('"fitPresets":')
     const { state, ctx, uid } = world()
-    expect(serializeSaveFile(state, 1)).not.toContain('fitPresets')
+    expect(hasFitPresetsKey(serializeSaveFile(state, 1))).toBe(false)
 
     place(state, uid, 'high', 0, 'mod-gun')
     expect(saveFitPreset(state, ctx, uid, '主力').ok).toBe(true)
@@ -413,14 +420,14 @@ describe('装配方案（预设）：存档', () => {
 
     // 删空 ⇒ 键整个消失（清洗不留空表 ⇒ 又回到"老档形状"）
     expect(deleteFitPreset(back, 'sh-fit', 0).ok).toBe(true)
-    expect(serializeSaveFile(back, 3)).not.toContain('fitPresets')
+    expect(hasFitPresetsKey(serializeSaveFile(back, 3))).toBe(false)
 
     // ⚠ 直接压**清洗层**（`normalizeState`）：空表读回来必须是「没有方案」，而不是空对象。
     //   `serializeSaveFile` 走的是内存态、不经过清洗 ⇒ 光靠上面的断言咬不住这一层（负向验证实测）。
     state.fitPresets = {}
     const back2 = loadSaveFile(serializeSaveFile(state, 4)).state
     expect(back2.fitPresets).toBeUndefined()
-    expect(serializeSaveFile(back2, 5)).not.toContain('fitPresets')
+    expect(hasFitPresetsKey(serializeSaveFile(back2, 5))).toBe(false)
   })
 
   it('存档清洗：空名/全空方案丢弃 · **每型截断到 10 条** · 无人机只收正整数', () => {

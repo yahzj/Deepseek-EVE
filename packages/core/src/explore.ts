@@ -164,13 +164,30 @@ export function ensureTransitExplored(state: GameState, ctx: SimContext): void {
  */
 export function startScan(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const galaxy = ctx.galaxies.get(galaxyId)
-  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
-  if (isExplored(state, galaxyId)) return { ok: false, error: `「${galaxy.name}」已在星图中点亮，无需扫描。` }
+  if (!galaxy) {
+    return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.state.024', errorParams: { p1: galaxyId } }
+  }
+  if (isExplored(state, galaxyId)) {
+    return {
+      ok: false,
+      error: `「${galaxy.name}」已在星图中点亮，无需扫描。`,
+      errorId: 'core.explore.001',
+      errorParams: { p1: galaxy.name },
+    }
+  }
   if (!frontierGalaxyIds(state, ctx).includes(galaxyId)) {
-    return { ok: false, error: '该星系不在已知航线边缘，无法直接扫描——先探索它相邻的星系。' }
+    return {
+      ok: false,
+      error: '该星系不在已知航线边缘，无法直接扫描——先探索它相邻的星系。',
+      errorId: 'core.explore.002',
+    }
   }
   if (state.scanning.active) {
-    return { ok: false, error: '扫描艇正在执行另一处扫描：等它扫完，或先在星图页「终止扫描」（已扫部分会保留）。' }
+    return {
+      ok: false,
+      error: '扫描艇正在执行另一处扫描：等它扫完，或先在星图页「终止扫描」（已扫部分会保留）。',
+      errorId: 'core.explore.003',
+    }
   }
 
   // 调试模式 debugQuick：扫描固定 1 秒完成
@@ -182,7 +199,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     sq.finishAtGameMs = state.gameMs + 1000
     sq.originGalaxy = null
     sq.returning = false
-    addLog(state, 'info', '已派出深空扫描艇：1 秒后录入情报。')
+    addLog(state, 'info', '已派出深空扫描艇：1 秒后录入情报。', 'core.explore.004')
     return { ok: true }
   }
   // v14 续扫：终止过的星系只补扫剩余窗口（已完成部分保存在 state.scanProgress；窗口按信号分析学折算）
@@ -236,6 +253,8 @@ function finishScan(state: GameState, ctx: SimContext): void {
     newly
       ? `✦ 扫描完成：「${name}」的情报已录入星图——航线、矿带与悬赏信息全部解锁（扫描艇已收回）。`
       : `✦ 扫描完成：「${name}」的补扫完成，没有发现新的信息（扫描艇已收回）。`,
+    newly ? 'core.explore.008' : 'core.explore.009',
+    { p1: name },
   )
 }
 
@@ -247,11 +266,11 @@ function finishScan(state: GameState, ctx: SimContext): void {
  */
 export function stopScan(state: GameState, ctx: SimContext): CommandResult {
   const s = state.scanning
-  if (!s.active) return { ok: false, error: '当前没有进行中的扫描。' }
+  if (!s.active) return { ok: false, error: '当前没有进行中的扫描。', errorId: 'core.explore.005' }
   const gid = s.galaxyId
   if (gid === null) {
     s.active = false
-    return { ok: false, error: '扫描状态异常，已自动清理。' }
+    return { ok: false, error: '扫描状态异常，已自动清理。', errorId: 'core.explore.006' }
   }
   const galaxy = ctx.galaxies.get(gid)
   const galaxyName = galaxy?.name ?? gid
@@ -279,7 +298,13 @@ export function stopScan(state: GameState, ctx: SimContext): CommandResult {
       `已召回扫描艇：对「${galaxyName}」的就地扫描完成 ${Math.round((keep / effWin) * 100)}%，进度已保存——下次对该星系扫描只需补扫剩余窗口。`,
     )
   } else {
-    addLog(state, 'info', `已召回扫描艇：对「${galaxyName}」的扫描尚未产生进度，随时可以重发。`)
+    addLog(
+      state,
+      'info',
+      `已召回扫描艇：对「${galaxyName}」的扫描尚未产生进度，随时可以重发。`,
+      'core.explore.007',
+      { p1: galaxyName },
+    )
   }
   return { ok: true }
 }

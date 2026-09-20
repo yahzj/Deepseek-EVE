@@ -5,9 +5,10 @@
  */
 import type { ReactNode } from 'react'
 import type { DamageType } from '@whale/core'
+import { tr } from '../i18n/locale'
 /** 伤害类型 → 颜色（动能金 / 高爆橙 / 能量青；弹道、命中与射程弧共用） */
 const DMG_COLOR: Record<DamageType, string> = { kinetic: '#ffd54f', explosive: '#ffa04d', plasma: '#5fd0ff' }
-const DMG_LABEL: Record<DamageType, string> = { kinetic: '动能', explosive: '高爆', plasma: '能量' }
+const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
 const DMG_ORDER: DamageType[] = ['kinetic', 'explosive', 'plasma']
 
 const ROLE_ACCENT: Record<string, string> = {
@@ -490,9 +491,9 @@ function ringPath(r: number): string {
 const HP_LAYER_COLOR = { s: '#3f9fd8', a: '#d34a4a', h: '#e0b83f' } as const
 function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; max: { s: number; a: number; h: number }; label?: ReactNode }) {
   const layers = [
-    { k: 's' as const, zh: '护盾' },
-    { k: 'a' as const, zh: '装甲' },
-    { k: 'h' as const, zh: '结构' },
+    { k: 's' as const, zh: tr("ui.FitPage.001") },
+    { k: 'a' as const, zh: tr("ui.FitPage.003") },
+    { k: 'h' as const, zh: tr("ui.ShipPage.023") },
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>

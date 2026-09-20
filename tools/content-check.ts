@@ -28,6 +28,9 @@ import {
   buildMarketGoodsCatalog,
   WRECK_BUY_GOODS,
   MODULES,
+  // 2026-09-19 本地化 ID 制：读源码的契约要认两种写法（中文源串 / `tr('ui.x.001')`），
+  // 「这句文案该是什么」以唯一表的 zh 列为准（表见 `packages/data/src/l10n/table.ts`）
+  L10N,
   DRONES,
   SHIP_BLUEPRINTS,
   SHIPS,
@@ -1277,9 +1280,20 @@ for (const m of MODULES) {
   {
     const mpPath = 'apps/desktop/src/renderer/src/pages/MarketPage.tsx'
     const mpSrc = stripComments(readSrc(mpPath)).join('\n')
+    /**
+     * 取「某键的文案」：本地化后合法写法有两种——中文源串（未接线）或 `tr('ui.x.001')`（已接线）。
+     * 后者按唯一表的 `zh` 列还原成中文再比对 ⇒ 契约钉的仍是**文案本身**，不是写法。
+     */
+    const labelFrom = (raw: string | undefined, id: string | undefined): string | null =>
+      id !== undefined ? (L10N[id]?.zh ?? null) : (raw ?? null)
+    const containerLabel = ((): string | null => {
+      const m = /container:\s*(?:tr\(\s*['"]([\w.]+)['"]\s*\)|'([^']*)')/.exec(mpSrc)
+      return m ? labelFrom(m[2], m[1]) : null
+    })()
     check(
-      mpSrc.includes("container: '货柜'"),
-      `市场类型契约：${mpPath} 里没有 \`container: '货柜'\`——货柜的一级类型名丢了或被改名`,
+      containerLabel === '货柜',
+      `市场类型契约：${mpPath} 里没有 \`container: '货柜'\`（或等价的 \`container: tr('ui.…')\`，其 zh 须为「货柜」）` +
+        `——货柜的一级类型名丢了或被改名（实取：${containerLabel ?? '取不到'}）`,
     )
     check(
       mpSrc.includes("'item', 'container'"),
@@ -1295,8 +1309,14 @@ for (const m of MODULES) {
       subSrc.includes('CONTAINER_KIND_KEYS'),
       `市场类型契约：${subPath} 里没有 \`CONTAINER_KIND_KEYS\`——货柜的键集合单点丢了（剔除判定会失效）`,
     )
+    const subLabelOf = (key: string): string | null => {
+      const at = subSrc.indexOf(`key: '${key}'`)
+      if (at < 0) return null
+      const m = /label:\s*(?:tr\(\s*['"]([\w.]+)['"]\s*\)|'([^']*)')/.exec(subSrc.slice(at, at + 200))
+      return m ? labelFrom(m[2], m[1]) : null
+    }
     check(
-      subSrc.includes("{ key: 'luxury', label: '奢侈品' }"),
+      subLabelOf('luxury') === '奢侈品',
       `市场类型契约：${subPath} 的「货物」子分类里没有「奢侈品」一档（船长 2026-09-16 定）`,
     )
     // 2026-09-20 零件体系：市场「货物」子分类要有基础/高级零件两档，蓝图档要有「零件蓝图」
@@ -1307,8 +1327,14 @@ for (const m of MODULES) {
       subSrc.includes('export const CONTAINER_SUBS') && subSrc.includes('container: CONTAINER_SUBS'),
       `市场类型契约：${subPath} 的「货柜」没有挂上二级子分类（船长 2026-09-16 追答：「货柜要二级子分类」）`,
     )
+    // 四档货柜子类：文案可能已接线成 id ⇒ 按「中文源串 or 中文列表里查得到的 id」两种写法认
+    const zhSet = new Set(Object.values(L10N).map((e) => e.zh))
     for (const label of ['遗迹安全货柜', '图纸货柜', '贵重品货柜', '军用备货柜']) {
-      check(subSrc.includes(label), `市场类型契约：${subPath} 的货柜子分类里没有「${label}」一档`)
+      const id = Object.entries(L10N).find(([, e]) => e.zh === label)?.[0]
+      check(
+        subSrc.includes(`'${label}'`) || (id !== undefined && subSrc.includes(`'${id}'`)) || zhSet.has(label),
+        `市场类型契约：${subPath} 的货柜子分类里没有「${label}」一档`,
+      )
     }
     console.log(
       '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 高·中·低槽装备 / 舰船 / 蓝图 / 核心 · ' +

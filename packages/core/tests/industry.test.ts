@@ -9,6 +9,7 @@ import { countItem, countWare } from '../src/inventory'
 import { buyShip, refineRate, sellAll, sellWareItem, startRefineRun, stopRefineRun, refineRunViews } from '../src/industry'
 import { advanceGame } from '../src/engine'
 import { countAiCore } from '../src/ai'
+import { L10N } from '@whale/data'
 import { makeTestCtx, ship, skill, skipFirstSkillReward } from './helpers'
 
 describe('精炼与市场（M1 经济）', () => {
@@ -180,6 +181,36 @@ describe('精炼与市场（M1 经济）', () => {
       const fin = state.logs.filter((l) => l.text.includes('原料耗尽'))
       expect(fin.length).toBeGreaterThan(0)
       expect(fin[0]!.text).toContain('精炼所得')
+      // 甲案（2026-09-20）：本条是"多段 + 段内带词"的重头——基础模板 + 所得段 + 明细段 + 句号段
+      expect(fin[0]!.textId).toBe('core.industry.077') // 精炼炉停 … 原料耗尽（共 N 批）
+      expect(fin[0]!.textParams?.p1Id).toBe('core.industry.067') // ；精炼所得：{p1}
+      expect(fin[0]!.textParams?.p1p1Id).toBe('core.industry.044') // 明细段（光清单形态）
+      expect(fin[0]!.textParams?.p1p1p1).toBeDefined() // 清单（内容数据名，按专名不译）
+      expect(fin[0]!.textParams?.p1p1p1).toBe(String(fin[0]!.textParams?.p1p1)) // 段内参数键与渲染层命名空间对齐
+      expect(fin[0]!.textParams?.p2Id).toBe('core.state.042') // 句号段
+      // 渲染层口径复算一遍英文（渲染层在 desktop 侧，core 测试里按同规则走 id 链）：
+      // 段号 `p{n}` / 段内参数 `p{n}p{k}`，逐段取 en 列拼起来 ⇒ 应当整句英文、不残留中文小词
+      const tp = fin[0]!.textParams ?? {}
+      const enOf = (id: string, params: Record<string, string | number>): string =>
+        (L10N[id]?.en ?? `「缺 ${id}」`).replace(/\{(\w+)\}/g, (mm, k: string) => (k in params ? String(params[k]) : mm))
+      const partsEn: string[] = []
+      let curId: string | undefined = fin[0]!.textId
+      for (let i = 0; curId !== undefined && i < 8; i++) {
+        const ns: Record<string, string | number> = {}
+        for (const [k, v] of Object.entries(tp)) {
+          if (/^p\d+p\d+$/.test(k) || /^p\d+Id$/.test(k)) continue
+          ns[k] = v
+        }
+        partsEn.push(enOf(curId, ns))
+        const nxt = tp[`p${i + 1}Id`]
+        curId = typeof nxt === 'string' ? nxt : undefined
+      }
+      const rendered = partsEn.join('')
+      expect(rendered).toContain('Refinery stopped')
+      expect(rendered).toContain('refined:')
+      // 腔调词（炉/所得/句号）全走 id ⇒ 英文侧只剩内容数据名（测试里是「矿甲」这类专名）
+      expect(rendered).toContain('矿甲') // 内容名按专名原样带出（甲案边界内）
+      expect(rendered.replace(/矿甲|矿粉[\w-]+×\d+/g, '')).not.toMatch(/[\u4e00-\u9fff]/)
     })
 
     it('运行中余量不足一批：到批点即停工、余料保留（不再吃小批，2026-09-06 船长拍板）', () => {

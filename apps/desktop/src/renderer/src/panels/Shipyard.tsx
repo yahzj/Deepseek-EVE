@@ -181,7 +181,7 @@ export function ShipyardPanel({
             <input
               className="app-head-search"
               type="text"
-              placeholder={t('搜索蓝图、产物或材料…')}
+              placeholder={t('ui.Shipyard.001')}
               value={kw}
               onChange={(e) => setKw(e.target.value)}
               spellCheck={false}

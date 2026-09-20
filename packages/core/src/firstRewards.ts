@@ -62,5 +62,8 @@ export function grantFirstReward(
     granted.push(`${r.isk.toLocaleString('zh-CN')} 信用点`)
   }
 
-  if (granted.length > 0) addLog(state, 'trade', grantLog(granted.join('、')))
+  if (granted.length > 0) {
+    const names = granted.join('、')
+    addLog(state, 'trade', grantLog(names), 'core.firstRewards.001', { p1: names })
+  }
 }

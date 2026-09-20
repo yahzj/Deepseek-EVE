@@ -37,6 +37,22 @@ export const MAX_AI_CORE_LEVEL = 5
 /** 日志类型：显示端按类型配色/筛选 */
 export type LogKind = 'system' | 'info' | 'queue' | 'levelup' | 'warn' | 'trade' | 'event' // 'event' = 深空偶发奇遇与市场风云（2026-09-14 船长：日志里要显眼 ⇒ 独立类型，不再混在 info）
 
+/**
+ * **一条"可翻译文案"的 id + 参数**（船长 2026-09-20 定「甲案」）：core 只产出 **文案 id + 参数**，
+ * 由渲染层按当前语言渲染；core 自身不碰语言。
+ *
+ * ⚠ 落法（实测选型）：**加法式可选字段**，不把 `string` 改成 `string | CmdText` 联合——
+ * 联合会外溢到全部读取点与用例（首轮实测砸了 30+ 处），而加法式零影响：
+ * 日志 = `LogEntry.text`（中文，照写）+ 可选 `textId` / `textParams`；
+ * 指令错误 = `CommandResult.error`（中文，照写）+ 可选 `errorId` / `errorParams`。
+ */
+export interface CmdText {
+  /** 唯一表里的 id（新域 `core.<文件短名>.<三位序号>`） */
+  readonly id: string
+  /** 插值参数：`{ name: '…' }` 对应文案里的 `{name}` */
+  readonly params?: Readonly<Record<string, string | number>>
+}
+
 /** 一条事件日志 */
 export interface LogEntry {
   /** 自增编号，界面当 key 用 */
@@ -44,7 +60,16 @@ export interface LogEntry {
   /** 发生时游戏内时间（毫秒），以后可回看"第几小时发生了什么" */
   atGameMs: number
   kind: LogKind
+  /**
+   * **中文正文**。甲案改造后它仍照写——三个用途：
+   * ① 老档 / 未改造调用点的兜底显示；② 日志检索与工具断言（`tools/playthrough-sim.ts` 等按正文匹配）；
+   * ③ 出问题时能直接在存档/控制台看到人话。界面渲染**优先** `textId`。
+   */
   text: string
+  /** 甲案：文案 id（有 ⇒ 界面按当前语言渲染；无 ⇒ 显示 `text` 中文原串） */
+  textId?: string
+  /** 甲案：插值参数（`textId` 的 `{…}` 占位符取值） */
+  textParams?: Readonly<Record<string, string | number>>
 }
 
 /** 随机数状态：存种子与使用次数，保证任何时刻都能复现同一串随机 */
@@ -1037,6 +1062,12 @@ export interface BattleReportRecord {
   dronesGone: number
   /** **本场引擎写的那条日志原文**（弹层正文用它 ⇒ 卡片与日志同源，不再靠字符串匹配） */
   summary: string
+  /**
+   * 甲案（2026-09-20）：战报正文的**首段文案 id + 参数**（含后续段的 `p{n}Id` 绑定）。
+   * 有它 ⇒ 弹层按当前语言渲染；没有（老档 / 未改造来源）⇒ 回退 `summary` 中文原串。
+   */
+  summaryId?: string
+  summaryParams?: Readonly<Record<string, string | number>>
 }
 
 /** 单架无人机的战斗生存池（开战自机型 DroneDefense 写入；被点防打空即击落）
@@ -2286,10 +2317,26 @@ export function haulingHalt(state: GameState): { fromSiteId: string | null } | n
   state.dockedSite = info.fromSiteId === null ? null : info.fromSiteId
   return info
 }
-/** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
-export function addLog(state: GameState, kind: LogKind, text: string): void {
+/** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志）。
+ *
+ * `textId` / `textParams`（2026-09-20 甲案，可选）：给界面按语言渲染用；
+ * 不传 ⇒ 界面显示 `text`（中文原串）——即**未改造的调用点与老档的行为一字不变**。 */
+export function addLog(
+  state: GameState,
+  kind: LogKind,
+  text: string,
+  textId?: string,
+  textParams?: Readonly<Record<string, string | number>>,
+): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
-  state.logs.push({ id: lastId + 1, atGameMs: state.gameMs, kind, text })
+  state.logs.push({
+    id: lastId + 1,
+    atGameMs: state.gameMs,
+    kind,
+    text,
+    ...(textId !== undefined ? { textId } : {}),
+    ...(textParams !== undefined ? { textParams } : {}),
+  })
   const cap = state.logCap > 0 ? state.logCap : DEFAULT_LOG_CAP
   if (state.logs.length > cap) {
     state.logs.splice(0, state.logs.length - cap)
@@ -2528,15 +2575,31 @@ export function createInitialState(opts?: {
     logs: [],
   }
   if (prologue) {
-    addLog(state, 'system', '舰载系统苏醒：隐秘泊位·母港。')
-    addLog(state, 'warn', '自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。')
-    addLog(state, 'info', '初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。')
+    addLog(state, 'system', '舰载系统苏醒：隐秘泊位·母港。', 'core.state.025')
+    addLog(state, 'warn', '自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。', 'core.state.026')
+    addLog(
+      state,
+      'info',
+      '初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。',
+      'core.state.027',
+    )
   } else {
     // 开局欢迎行（2026-09-11 船长裁定「甲」）：原来写的是旧游戏名「大鲸鱼深空工业」，
     // 改名后统一指向**游戏内势力**「深空工业协会」（＝教程简报的发件方），设定与文案一致
-    addLog(state, 'system', '欢迎加入「深空工业协会」。')
-    addLog(state, 'info', `初始资金 ${DEFAULT_START_ISK} 信用点已到账；沙猫级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`)
+    addLog(state, 'system', '欢迎加入「深空工业协会」。', 'core.state.028')
+    addLog(
+      state,
+      'info',
+      `初始资金 ${DEFAULT_START_ISK} 信用点已到账；沙猫级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`,
+      'core.state.029',
+      { p1: DEFAULT_START_ISK },
+    )
   }
-  addLog(state, 'info', '星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。')
+  addLog(
+    state,
+    'info',
+    '星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。',
+    'core.state.030',
+  )
   return state
 }

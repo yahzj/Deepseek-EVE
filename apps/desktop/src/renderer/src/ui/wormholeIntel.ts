@@ -11,20 +11,46 @@
  * 数据源一律走 core（`foeDamageComposition` ⇒ 与战斗结算、胜率预估同源）⇒ 卡面不会与实战脱节。
  * 扫描页卡片与进洞准备页**共用本模块**，两处口径不会漂。
  */
-import { DAMAGE_TYPE_LABELS, WORMHOLE_TIER_LABELS } from '@whale/core'
+import { DAMAGE_TYPE_LABEL_IDS, WORMHOLE_FAMILY_ETHNIC_IDS } from '@whale/core'
 import type { WormholeFamily } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { tr } from '../i18n/locale'
+
+/** 甲案（2026-09-20）：三档名/族称/伤害名都有 id（core 段 `core.wormholeFoes.*`）⇒ 悬停整句随语言变 */
+const TIER_IDS: Readonly<Record<string, string>> = {
+  shallow: 'core.wormholeFoes.001',
+  mid: 'core.wormholeFoes.002',
+  deep: 'core.wormholeFoes.003',
+}
 
 /** 一档的构成写法：「动能 80% · 高爆 20%」；单系 ⇒ 「纯高爆」 */
 function partsText(parts: ReadonlyArray<{ type: 'kinetic' | 'explosive' | 'plasma'; share: number }>): string {
-  if (parts.length <= 1) return `纯${DAMAGE_TYPE_LABELS[parts[0]?.type ?? 'kinetic']}`
-  return parts.map((p) => `${DAMAGE_TYPE_LABELS[p.type]} ${Math.round(p.share * 100)}%`).join(' · ')
+  const typeId = (t: 'kinetic' | 'explosive' | 'plasma'): string => tr(DAMAGE_TYPE_LABEL_IDS[t])
+  if (parts.length <= 1) return tr('core.wormholeFoes.012', { p1: typeId(parts[0]?.type ?? 'kinetic') })
+  return parts.map((p) => tr('core.wormholeFoes.013', { p1: typeId(p.type), p2: Math.round(p.share * 100) })).join(' · ')
+}
+
+/** 主系一句话（core 给结构化三元组，这里组当前语言的句子） */
+function primaryTextOf(it: {
+  primaryKind: 'pure' | 'main' | 'mixed'
+  primaryTypeA: 'kinetic' | 'explosive' | 'plasma'
+  primaryTypeB?: 'kinetic' | 'explosive' | 'plasma'
+}): string {
+  const a = tr(DAMAGE_TYPE_LABEL_IDS[it.primaryTypeA])
+  if (it.primaryKind === 'pure') return tr('core.wormholeFoes.012', { p1: a })
+  if (it.primaryKind === 'main') return tr('core.wormholeFoes.014', { p1: a })
+  return tr('core.wormholeFoes.015', { p1: a, p2: tr(DAMAGE_TYPE_LABEL_IDS[it.primaryTypeB ?? 'kinetic']) })
 }
 
 /** 卡片上那一句：「**敌：劫掠支队（A 族 · 海盗）· 动能为主**」 */
 export function wormholeIntelLine(engine: GameEngine, family: WormholeFamily): string {
   const it = engine.wormholeFamilyIntel(family)
-  return `敌：${it.firstCardName}（${it.family} 族 · ${it.ethnic}）· ${it.primaryText}`
+  return tr('core.wormholeFoes.016', {
+    p1: it.firstCardName,
+    p2: it.family,
+    p3: tr(WORMHOLE_FAMILY_ETHNIC_IDS[it.family]),
+    p4: primaryTextOf(it),
+  })
 }
 
 /**
@@ -34,12 +60,12 @@ export function wormholeIntelLine(engine: GameEngine, family: WormholeFamily): s
 export function wormholeIntelTip(engine: GameEngine, family: WormholeFamily, archName?: string): string {
   const it = engine.wormholeFamilyIntel(family)
   const lines = [
-    `敌：${it.firstCardName}（${it.family} 族 · ${it.ethnic}）——整趟都是这一族：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一族。`,
-    '火力构成（会随层数变）：',
-    ...it.tiers.map((t) => ` · ${WORMHOLE_TIER_LABELS[t.tier]} ${t.cardName}：${partsText(t.parts)}`),
+    tr('core.wormholeFoes.017', { p1: it.firstCardName, p2: it.family, p3: tr(WORMHOLE_FAMILY_ETHNIC_IDS[it.family]) }),
+    tr('core.wormholeFoes.018'),
+    ...it.tiers.map((t) =>
+      tr('core.wormholeFoes.019', { p1: tr(TIER_IDS[t.tier] ?? t.tier), p2: t.cardName, p3: partsText(t.parts) }),
+    ),
   ]
-  if (archName) {
-    lines.push(`内容原型「${archName}」＝这一处的地点配比口味（威胁与产出随所在层数上升：越深越险、产出越高）。`)
-  }
+  if (archName) lines.push(tr('core.wormholeFoes.020', { p1: archName }))
   return lines.join('\n')
 }

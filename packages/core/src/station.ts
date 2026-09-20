@@ -185,32 +185,63 @@ export function deliverStationResources(
 ): CommandResult {
   const cargoOnly = opts?.cargoOnly === true
   const site = ctx.stations.get(siteId)
-  if (!site) return { ok: false, error: `未知建站点：${siteId}。` }
+  if (!site) {
+    return { ok: false, error: `未知建站点：${siteId}。`, errorId: 'core.station.001', errorParams: { p1: siteId } }
+  }
   let prog = state.stationSites[siteId]
   if (!prog) {
     prog = { stage: 0, delivered: {} }
     state.stationSites[siteId] = prog // 落库，避免只改临时默认对象
   }
-  if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成，无需再提交。` }
+  if (prog.stage >= site.tiers.length) {
+    return {
+      ok: false,
+      error: `「${site.name}」已建成，无需再提交。`,
+      errorId: 'core.station.002',
+      errorParams: { p1: site.name },
+    }
+  }
   // 旧档/旧口径残留：已交材料恰好满足当前档 → 自动结算推进（最多顺推 6 档防御环）
   advanceTierIfFull(state, ctx, site, prog)
-  if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成，无需再提交。` }
+  if (prog.stage >= site.tiers.length) {
+    return {
+      ok: false,
+      error: `「${site.name}」已建成，无需再提交。`,
+      errorId: 'core.station.002',
+      errorParams: { p1: site.name },
+    }
+  }
   const itemName = ctx.items.get(itemId)?.name ?? itemId
   if (billRemainingOf(state, site, prog.stage, itemId) <= 0) {
     return {
       ok: false,
       error: `「${site.name}」当前档不收这种材料或已收齐——本档材料单：${stationBillText(state, ctx, site)}。`,
+      errorId: 'core.station.003',
+      errorParams: { p1: site.name, p2: stationBillText(state, ctx, site) },
     }
   }
   const want = Math.floor(units)
-  if (!Number.isFinite(want) || want <= 0) return { ok: false, error: '提交数量必须是正整数。' }
+  if (!Number.isFinite(want) || want <= 0) {
+    return { ok: false, error: '提交数量必须是正整数。', errorId: 'core.station.004' }
+  }
   // 前置：在工地现场（停靠该站或野外停留于站点星系——母港仓库无法"跨航区施工"，但船在现场即可卸料）
   if (!playerAtSite(state, site)) {
     const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
-    return { ok: false, error: `需抵达「${site.name}」工地（${g}）才能提交建材——掩护巡逻/作业到场即可，无需停靠。` }
+    return {
+      ok: false,
+      error: `需抵达「${site.name}」工地（${g}）才能提交建材——掩护巡逻/作业到场即可，无需停靠。`,
+      errorId: 'core.station.005',
+      errorParams: { p1: site.name, p2: g },
+    }
   }
   const need = Math.min(want, billRemainingOf(state, site, prog.stage, itemId))
-  if (need <= 0) return { ok: false, error: '该材料当前档已收齐（整档未满前可继续提交材料单上其它项）。' }
+  if (need <= 0) {
+    return {
+      ok: false,
+      error: '该材料当前档已收齐（整档未满前可继续提交材料单上其它项）。',
+      errorId: 'core.station.006',
+    }
+  }
 
   let took = 0
   // 1) 物品仓库（cargoOnly 模式跳过：到点只清本趟装载，不补扣仓库）
@@ -237,11 +268,26 @@ export function deliverStationResources(
     return {
       ok: false,
       error: cargoOnly ? `本趟货仓没有可提交的 ${itemName}（清仓交付只动本趟装载，不扣仓库）。` : `没有可提交的 ${itemName}（仓库与货仓都为空）。`,
+      errorId: cargoOnly ? 'core.station.007' : 'core.station.008',
+      errorParams: { p1: itemName },
     }
   }
   prog.delivered[itemId] = (prog.delivered[itemId] ?? 0) + took
   const tier = site.tiers[prog.stage]!
-  addLog(state, 'info', `「${site.name}」已接收 ${itemName}×${took.toLocaleString('zh-CN')}（档位「${tier.name}」：${stationBillText(state, ctx, site)} 中「${itemName}」还差 ${billRemainingOf(state, site, prog.stage, itemId).toLocaleString('zh-CN')}）。`)
+  addLog(
+    state,
+    'info',
+    `「${site.name}」已接收 ${itemName}×${took.toLocaleString('zh-CN')}（档位「${tier.name}」：${stationBillText(state, ctx, site)} 中「${itemName}」还差 ${billRemainingOf(state, site, prog.stage, itemId).toLocaleString('zh-CN')}）。`,
+    'core.station.009',
+    {
+      p1: site.name,
+      p2: itemName,
+      p3: took.toLocaleString('zh-CN'),
+      p4: tier.name,
+      p5: stationBillText(state, ctx, site),
+      p6: billRemainingOf(state, site, prog.stage, itemId).toLocaleString('zh-CN'),
+    },
+  )
   advanceTierIfFull(state, ctx, site, prog)
   return { ok: true }
 }
@@ -258,10 +304,10 @@ export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: st
   if (site && isSiteBuilt(state, site)) {
     state.awayGalaxy = null
     state.dockedSite = site.id
-    addLog(state, 'info', `已停靠「${site.name}」（${galaxyName}）。`)
+    addLog(state, 'info', `已停靠「${site.name}」（${galaxyName}）。`, 'core.station.010', { p1: site.name, p2: galaxyName })
   } else {
     state.awayGalaxy = galaxyId
-    addLog(state, 'info', `抵达「${galaxyName}」——协会的建站工地就在这里。`)
+    addLog(state, 'info', `抵达「${galaxyName}」——协会的建站工地就在这里。`, 'core.station.011', { p1: galaxyName })
   }
   // 通讯：未建成 + 介绍剧本未读 → 自动挂起一次
   if (site && !isSiteBuilt(state, site) && site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
@@ -273,7 +319,7 @@ export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: st
 /** 通讯播放登记（UI 播放时调用）：逐句镜像进事件日志 + 标记已读 + 清待播 */
 export function playDialogue(state: GameState, scriptId: string, ctx: SimContext, lines: readonly { speaker: string; text: string }[]): void {
   for (const line of lines) {
-    addLog(state, 'info', `[通讯] ${line.speaker}：${line.text}`)
+    addLog(state, 'info', `[通讯] ${line.speaker}：${line.text}`, 'core.station.012', { p1: line.speaker, p2: line.text })
   }
   state.dialogueSeen[scriptId] = true
   if (state.pendingDialogue === scriptId) state.pendingDialogue = null
@@ -295,6 +341,12 @@ export function noteStationSiteAt(state: GameState, ctx: SimContext, galaxyId: s
     state.pendingDialogue = site.introDialogueId
     deliverDialogueToComms(state, ctx, site.introDialogueId)
     const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
-    addLog(state, 'info', `舰船已抵达「${galaxyName}」——协会的建站工地就在这里。可现场提交建材；也可停靠空间站后一键「前往工地交付」。副站建成前不提供停靠与站内功能，建成后并入基地网络并开放泊位与全部服务。`)
+    addLog(
+      state,
+      'info',
+      `舰船已抵达「${galaxyName}」——协会的建站工地就在这里。可现场提交建材；也可停靠空间站后一键「前往工地交付」。副站建成前不提供停靠与站内功能，建成后并入基地网络并开放泊位与全部服务。`,
+      'core.station.013',
+      { p1: galaxyName },
+    )
   }
 }
