@@ -1,26 +1,31 @@
 /**
  * **成就徽章**（船长 2026-09-18 预留接口 ＋ 2026-09-20「继续之前的成就系统」）。
  *
- * 第一批 = **徽章框架**：徽章表在 `data/src/achievements.ts`（63 枚），本模块只管
- * **判定 / 发放 / 去重**；图案与配色是数据侧字段，界面读它。
+ * 两批**都已完成**（2026-09-20）：第一批 = 徽章框架（任务 ＋ 链，63 枚）；
+ * 第二批 = **里程碑成就**（18 枚，判据 = 终身计数）。徽章表在 `data/src/achievements.ts`（**81 枚**），
+ * 本模块只管**判定 / 发放 / 去重**；图案与配色是数据侧字段，界面读它。
  *
- * 三条口径（设计稿 `docs/design/achievements-20260920.md` §3）：
+ * 三条口径（设计稿 `docs/design/achievements-20260920.md` §3 ＋ 展示改版
+ * `docs/design/achievement-display-20260920.md`）：
  * 1. **纯展示**（船长 2026-09-20 裁定）：徽章**不发任何 ISK / 物品 / 数值加成** ⇒ 本模块
  *    **不碰钱包/仓库/货舱**，只写 `state.achievements.earned[id]`。这也是它敢"每拍判定"的原因。
- * 2. **达成即自动发**（船长裁定）：任务徽章在任务 `done` 那一刻发；链徽章在链进度**达到档位**时发。
+ * 2. **达成即自动发**（船长裁定）：任务徽章在任务 `done` 那一刻发；链徽章在链进度**达到档位**时发；
+ *    里程碑徽章在**终身计数达到阈值**时发（三种来源同拍、同一套账）。
  * 3. **只置一次**：`earned[id]` 已有则跳过（与 `importantTasks.done` / 任务奖励同款去重口径）——
  *    所以读档、重复判定、离线结算都不会重复发。
  *
- * ⚠ **挂点**（与 `firstTasks.ts:355` 预留接口说明一致）：`engine.ts` 里
- * `advanceFirstTasks` 那个循环**之后**调用本模块 ⇒ 任务达成与链升级都在同一拍可见。
+ * ⚠ **挂点**（与 `firstTasks.ts` 预留接口说明一致）：`engine.ts` 里
+ * `advanceFirstTasks` 那个循环**之后**调用本模块 ⇒ 任务达成、链升级、里程碑达标都在同一拍可见。
  *
- * `⟪未完成 2026-09-20⟫` **第二批（里程碑成就内容）尚未实现**：数据表里 `category: 'milestone'`
- * 一枚都没有，`advanceAchievements` 也只认任务与链两种来源。第二批落地时在本模块加一支
- * `milestone` 判定即可，`earned` 账本与界面都不用动（本地化排队豁免见约定 §十一之二）。
- * **第一批（任务 ＋ 链共 63 枚）已完成并合入 main ⇒ 不再挂未完成记号。**
+ * **里程碑为什么零新增通路**：它的判据读 `firstStatOf`（`state.firstStats`）——与「第一次」任务、
+ * 次数链**同一本账**；而那本账是**可选字段 + 缺省 0** ⇒ 老档天然自愈（载入后第一拍把够格的补齐），
+ * 既不用写迁移、也不用升级存档版本。四个新计数键（`rareBoxes` / `whMaxDepth` / `whBossClears` /
+ * `matterTechMaxed`）见 `FirstStatKey`；其中两个是**峰值型**（`peakFirst`，只升不降、幂等）。
  */
 import type { GameState } from './state'
 import type { AchievementDef, AchievementSource } from './types'
+import { firstStatOf } from './firstTasks'
+import type { FirstStatKey } from './firstTasks'
 
 /** 徽章表：由数据层注入（`SimContext.achievements`），core 不自带内容 */
 function tableOf(defs: readonly AchievementDef[] | undefined): readonly AchievementDef[] {
@@ -30,10 +35,13 @@ function tableOf(defs: readonly AchievementDef[] | undefined): readonly Achievem
 /**
  * **该来源是否已达成**（`state` 现算，不看徽章账本）：
  * - `task`：任务已完成（`importantTasks[taskId].done === true`）；
- * - `chain`：链进度 ≥ 该档（进度记在 `importantTasks['chain-<id>'].delivered`，见 `advanceFirstChains`）。
+ * - `chain`：链进度 ≥ 该档（进度记在 `importantTasks['chain-<id>'].delivered`，见 `advanceFirstChains`）；
+ * - `milestone`：终身计数 ≥ `target`（`firstStatOf`）——与「第一次」任务、链**同一本账**
+ *   （`state.firstStats`）⇒ 里程碑自动享受"每拍现算补发 · 老档自愈 · 幂等"那整套，不需要另写一条通路。
  */
 export function achievementReached(state: GameState, source: AchievementSource): boolean {
   if (source.kind === 'task') return state.importantTasks[source.taskId]?.done === true
+  if (source.kind === 'milestone') return firstStatOf(state, source.stat as FirstStatKey) >= source.target
   return chainProgress(state, source.chainId) >= source.level
 }
 

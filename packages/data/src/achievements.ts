@@ -26,9 +26,8 @@
  * ⚠ **纯展示**（船长 2026-09-20 裁定）：徽章**不发任何 ISK / 物品 / 数值加成**，只作荣誉记录。
  * ⚠ **本表只描述"是什么"**：发放与判定在 `core/achievements.ts`（**按 `source` 认领，不认 id 前缀**）；
  * 这里写错 `source` ⇒ 体检判红 + 引擎忽略。
- * `⟪未完成 2026-09-20⟫` **第二批（里程碑成就）未做**：届时在 `AchievementCategory` 增 `'milestone'` 一类、
- * 在本表追加条目即可，`kind` 判别与发放/界面/存档都能原样复用（设计稿 §3.4）。
- * **第一批（任务 ＋ 链共 63 枚）已完成并合入 main ⇒ 不再挂未完成记号**（约定 §十一之二：完成即删记号）。
+ * **两批均已完成并合入 main**（第一批 = 任务 ＋ 链 63 枚；第二批 = 里程碑 18 枚 ⇒ 共 **81 枚**），
+ * ⇒ 本表**不挂任何 `⟪未完成⟫` 记号**（约定 §十一之二：完成即删记号）。
  */
 import type { AchievementCategory, AchievementDef } from '@whale/core'
 import { CHAIN_TIERS, FIRST_TASKS } from '@whale/core'
@@ -176,8 +175,91 @@ function chainAchievements(): AchievementDef[] {
   return out
 }
 
-/** **全部徽章**（顺序 = 任务徽章在前、链徽章按任务表顺序；界面按此序展示） */
-export const ACHIEVEMENTS: readonly AchievementDef[] = [...taskAchievements(), ...chainAchievements()]
+/**
+ * **里程碑徽章的配色**：统一取本仓既有语汇里的**金**（`#f4c95d`，与市场「稀有」档、
+ * 装配页金色强调同源）——与链徽章的**四档梯子**分开：链徽章靠颜色分档（同图案），
+ * 里程碑靠**图案**分家族（同颜色）⇒ 两类一眼可辨。
+ */
+const TONE_MILESTONE = '#f4c95d'
+
+/** 一条里程碑定义（数据表内部用；`stat` 取值见 core `FirstStatKey`） */
+interface MilestoneSpec {
+  /** 短名（拼进 id，`ach-mile-<slug>`） */
+  slug: string
+  name: string
+  /** 图案键（渲染层 `ach-mile-<slot>` 一根线稿一族的底纹） */
+  slot: string
+  /** 计数键（core `FirstStatKey`） */
+  stat: string
+  target: number
+  /** 说明模板（只讲规格：哪条量、到多少；`{n}` = 阈值 ＋ 量词） */
+  note: string
+  /** 阈值单位后缀（数字后面的量词）。留空 = 裸数字 */
+  unit: string
+}
+
+/**
+ * **18 枚里程碑成就**（第二批 · 船长 2026-09-20「开始第二批」）。
+ *
+ * 六个家族，阈值依据**实测**（不是拍的）：
+ * - **深渊层深** 2/3/4/5 层 —— 4 船真档编队 12 趟实测**平均到达 2.90 层**、最深见 4~5 层
+ *   ⇒ 阶梯落在真实可达范围内（层 5 属顶配编队才够得着的尖顶档，是有意的梯度）；
+ * - **层末守卫** 2/4 个 —— 与层深阶梯同向（要打到第 N 层，须先清掉沿途 N 个守卫）；
+ * - **稀有残骸的额外战利品** 1/5/20/60/150 件 —— 稀有残骸「每烧满 30 m³ 必给一次」⇒ 一次 = 一件
+ *   （⚠ 玩家可见文案一律写「额外战利品」，**不写"高级箱"**——那是施工期工作名，见 `content:check` 陈旧术语契约）；
+ * - **AI 核心** 1/2/3/4 类 —— 四类核心（基础/伽马/贝塔/阿尔法）**到手过**的类数；
+ * - **副空间站** 1/2 座 —— 全游戏共 2 座可建；
+ * - **谜质科技** 23 项全满级 —— 节点表实测 23 个节点。
+ *
+ * ⚠ **纯展示**（与第一批同口径）：不发任何奖励；判据只读终身计数 ⇒ **老档零迁移**
+ * （新键缺省 0，载入后第一拍按现状补发，见 `core/achievements.ts`）。
+ */
+function milestoneAchievements(): AchievementDef[] {
+  const specs: MilestoneSpec[] = [
+    /* ── 深渊层深（4 枚）── 只计**手动**虫洞：自动探索不经过 `wormholeDescend`（船长裁定） */
+    { slug: 'wh-depth-2', slot: 'depth', name: '初入深渊', stat: 'whMaxDepth', target: 2, unit: ' 层', note: '在虫洞中到达第 {n}。' },
+    { slug: 'wh-depth-3', slot: 'depth', name: '深渊宿将', stat: 'whMaxDepth', target: 3, unit: ' 层', note: '在虫洞中到达第 {n}。' },
+    { slug: 'wh-depth-4', slot: 'depth', name: '深渊之主', stat: 'whMaxDepth', target: 4, unit: ' 层', note: '在虫洞中到达第 {n}。' },
+    { slug: 'wh-depth-5', slot: 'depth', name: '深渊彼岸', stat: 'whMaxDepth', target: 5, unit: ' 层', note: '在虫洞中到达第 {n}。' },
+    /* ── 层末守卫（2 枚）── 累计打掉的守卫数 */
+    { slug: 'wh-boss-2', slot: 'guard', name: '斩层者', stat: 'whBossClears', target: 2, unit: ' 个', note: '累计击破 {n}层末守卫。' },
+    { slug: 'wh-boss-4', slot: 'guard', name: '守关终结者', stat: 'whBossClears', target: 4, unit: ' 个', note: '累计击破 {n}层末守卫。' },
+    /* ── 稀有残骸的额外战利品（5 枚）── 每烧满 30 m³ 必给一次 = 一件
+       ⚠ 文案口径（2026-09-16 起，`content:check` 的「陈旧术语契约」当场抓过我一次）：
+       **不得写"高级箱"**（那是施工期工作名）——叙述一律写「额外战利品」。 */
+    { slug: 'box-1', slot: 'cache', name: '初启箱庭', stat: 'rareBoxes', target: 1, unit: ' 件', note: '累计取得 {n}稀有残骸额外战利品。' },
+    { slug: 'box-5', slot: 'cache', name: '拾荒老手', stat: 'rareBoxes', target: 5, unit: ' 件', note: '累计取得 {n}稀有残骸额外战利品。' },
+    { slug: 'box-20', slot: 'cache', name: '拾荒名匠', stat: 'rareBoxes', target: 20, unit: ' 件', note: '累计取得 {n}稀有残骸额外战利品。' },
+    { slug: 'box-60', slot: 'cache', name: '拾荒巨匠', stat: 'rareBoxes', target: 60, unit: ' 件', note: '累计取得 {n}稀有残骸额外战利品。' },
+    { slug: 'box-150', slot: 'cache', name: '箱庭之主', stat: 'rareBoxes', target: 150, unit: ' 件', note: '累计取得 {n}稀有残骸额外战利品。' },
+    /* ── AI 核心（4 枚）── 四类核心里**到手过**的类数 */
+    { slug: 'core-1', slot: 'core', name: '初识核心', stat: 'aiCoreKinds', target: 1, unit: ' 类', note: '获得过 {n} AI 核心。' },
+    { slug: 'core-2', slot: 'core', name: '双子核', stat: 'aiCoreKinds', target: 2, unit: ' 类', note: '获得过 {n} AI 核心。' },
+    { slug: 'core-3', slot: 'core', name: '三核共鸣', stat: 'aiCoreKinds', target: 3, unit: ' 类', note: '获得过 {n} AI 核心。' },
+    { slug: 'core-4', slot: 'core', name: '四核同心', stat: 'aiCoreKinds', target: 4, unit: ' 类', note: '获得过 {n} AI 核心。' },
+    /* ── 副空间站（2 枚）── 建成并入网的站数 */
+    { slug: 'site-1', slot: 'outpost', name: '拓荒者', stat: 'sitesBuilt', target: 1, unit: ' 座', note: '建成 {n}副空间站。' },
+    { slug: 'site-2', slot: 'outpost', name: '双站总督', stat: 'sitesBuilt', target: 2, unit: ' 座', note: '建成 {n}副空间站。' },
+    /* ── 谜质科技（1 枚）── 满级节点数 = 全表节点数（23）时达成 */
+    { slug: 'tech-tree', slot: 'tech', name: '谜质通晓', stat: 'matterTechMaxed', target: 23, unit: ' 项', note: '谜质科技树 {n}研究全部满级。' },
+  ]
+  return specs.map((s) => ({
+    id: `ach-mile-${s.slug}`,
+    name: s.name,
+    note: s.note.replace('{n}', `${s.target}${s.unit}`),
+    category: 'milestone' as AchievementCategory,
+    pattern: `mile-${s.slot}`,
+    tone: TONE_MILESTONE,
+    source: { kind: 'milestone' as const, stat: s.stat, target: s.target },
+  }))
+}
+
+/** **全部徽章**（顺序 = 任务徽章 → 链徽章 → 里程碑；界面按此序铺同一张网格） */
+export const ACHIEVEMENTS: readonly AchievementDef[] = [
+  ...taskAchievements(),
+  ...chainAchievements(),
+  ...milestoneAchievements(),
+]
 
 /** 按 id 取一枚徽章 */
 export function achievementOf(id: string): AchievementDef | undefined {

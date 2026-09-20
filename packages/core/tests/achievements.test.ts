@@ -1,14 +1,15 @@
 /**
- * **成就徽章**（2026-09-20 船长批「继续之前的成就系统」· 第一批 = 徽章框架）。
+ * **成就徽章**（2026-09-20 船长批「继续之前的成就系统」；**两批都已完成**）。
  *
- * 这一组钉四件事（都是"悄悄坏掉也看不出来"的那种）：
- * ① **表的口径**：63 枚（13 任务 ＋ 50 链）· 档位与船长裁定一致（一般链 1/4/7/10、探索家 1/5）· id 唯一；
+ * 这一组钉几件事（都是"悄悄坏掉也看不出来"的那种）：
+ * ① **表的口径**：81 枚（13 任务 ＋ 50 链 ＋ **18 里程碑**）· 档位与船长裁定一致
+ *    （一般链 1/4/7/10、探索家 1/5）· id 唯一 · 卡名口径；
  * ② **发放去重**：只置一次 ⇒ 重复判定 / 读档往返都不会重复发、也不会篡改已达成的时刻；
  * ③ **纯展示**（船长裁定）：发徽章**不动钱包/仓库/货舱**一分一毫；
- * ④ **老档自愈**：老档的账本可以是空的，载入后第一拍按现状把够格的补上（迁移不补发，见 `save.ts` MIGRATIONS[29]）。
+ * ④ **老档自愈**：老档的账本可以是空的，载入后第一拍按现状把够格的补上（迁移不补发，见 `save.ts` MIGRATIONS[29]）；
+ * ⑤ **里程碑判据**（第二批）：18 条的阈值与计数键 · **峰值型不回退** · 老档（新键缺省）自愈。
  *
- * 第二批（里程碑成就内容）尚未实现 ⇒ 本组只覆盖任务与链两种来源（本文件属**已完成的第一批**，
- * 不挂 `⟪未完成⟫` 记号——约定 §十一之二：完成即删记号）。
+ * 本文件属**已完成的两批**，不挂 `⟪未完成⟫` 记号——约定 §十一之二：完成即删记号。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -21,7 +22,7 @@ import {
   achievementReached,
   advanceAchievements,
 } from '../src/achievements'
-import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, advanceFirstChains, advanceFirstTasks } from '../src/firstTasks'
+import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, peakFirst, advanceFirstChains, advanceFirstTasks } from '../src/firstTasks'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 const ctx = buildSimContext()
@@ -37,15 +38,18 @@ function setChainProgress(state: GameState, chainId: string, level: number): voi
 
 const TASK_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'task')
 const CHAIN_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'chain')
+const MILE_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'milestone')
 
 describe('成就徽章：表的口径（船长 2026-09-20 的两条裁定）', () => {
-  it('总数 = 13 任务徽章 ＋ 50 链徽章 = 63', () => {
+  it('总数 = 13 任务 ＋ 50 链 ＋ 18 里程碑 = 81', () => {
     // 13 条任务各 1 枚
     expect(TASK_BADGES.length).toBe(FIRST_TASKS.length)
     expect(FIRST_TASKS.length).toBe(13)
     // 12 条一般链 × 4 档 ＋ 探索家 2 档 = 50
     expect(CHAIN_BADGES.length).toBe(50)
-    expect(ACHIEVEMENTS.length).toBe(63)
+    // 第二批：六个家族 4+2+5+4+2+1 = 18
+    expect(MILE_BADGES.length).toBe(18)
+    expect(ACHIEVEMENTS.length).toBe(81)
   })
 
   it('id 唯一（重复 id 会让账本互相覆盖）', () => {
@@ -267,13 +271,13 @@ describe('成就徽章：老档自愈（迁移不补发，载入后第一拍补�
 })
 
 describe('成就徽章：界面读数', () => {
-  it('总览按表顺序给全 63 枚，含达成状态与到手时刻', () => {
+  it('总览按表顺序给全 81 枚，含达成状态与到手时刻', () => {
     const state = testState()
     state.gameMs = 42
     state.importantTasks['first-mine'] = { done: true }
     advanceAchievements(state, ACHIEVEMENTS)
     const rows = achievementOverview(state, ACHIEVEMENTS)
-    expect(rows.length).toBe(63)
+    expect(rows.length).toBe(81)
     const mine = rows.find((r) => r.def.id === 'ach-first-mine')!
     expect(mine.earnedAt).toBe(42)
     expect(mine.reached).toBe(true)
@@ -339,5 +343,154 @@ describe('成就徽章：与引擎挂点同拍（任务达成即到手）', () =
     expect(ids).toContain('ach-first-repair')
     // 维修链 mechanic 的 L1 阈值是 1 ⇒ 同拍也该拿到链徽章
     expect(ids).toContain('ach-chain-mechanic-1')
+  })
+})
+
+describe('成就徽章：里程碑（第二批 · 判据只读终身计数）', () => {
+  /** 六个家族的阈值表（与 `data/src/achievements.ts` 的 specs 逐对；改动必须两边一起改） */
+  const EXPECT: Record<string, Array<[string, string, number]>> = {
+    whMaxDepth: [
+      ['ach-mile-wh-depth-2', '初入深渊', 2],
+      ['ach-mile-wh-depth-3', '深渊宿将', 3],
+      ['ach-mile-wh-depth-4', '深渊之主', 4],
+      ['ach-mile-wh-depth-5', '深渊彼岸', 5],
+    ],
+    whBossClears: [
+      ['ach-mile-wh-boss-2', '斩层者', 2],
+      ['ach-mile-wh-boss-4', '守关终结者', 4],
+    ],
+    rareBoxes: [
+      ['ach-mile-box-1', '初启箱庭', 1],
+      ['ach-mile-box-5', '拾荒老手', 5],
+      ['ach-mile-box-20', '拾荒名匠', 20],
+      ['ach-mile-box-60', '拾荒巨匠', 60],
+      ['ach-mile-box-150', '箱庭之主', 150],
+    ],
+    aiCoreKinds: [
+      ['ach-mile-core-1', '初识核心', 1],
+      ['ach-mile-core-2', '双子核', 2],
+      ['ach-mile-core-3', '三核共鸣', 3],
+      ['ach-mile-core-4', '四核同心', 4],
+    ],
+    sitesBuilt: [
+      ['ach-mile-site-1', '拓荒者', 1],
+      ['ach-mile-site-2', '双站总督', 2],
+    ],
+    matterTechMaxed: [['ach-mile-tech-tree', '谜质通晓', 23]],
+  }
+
+  it('18 条的 id / 卡名 / 计数键 / 阈值与设计稿逐条一致', () => {
+    const flat = Object.entries(EXPECT).flatMap(([stat, rows]) => rows.map(([id, name, target]) => ({ stat, id, name, target })))
+    expect(flat.length).toBe(18)
+    for (const e of flat) {
+      const def = ACHIEVEMENTS.find((a) => a.id === e.id)
+      expect(def, `缺 ${e.id}`).toBeTruthy()
+      expect(def!.name).toBe(e.name)
+      expect(def!.category).toBe('milestone')
+      const src = def!.source
+      expect(src.kind).toBe('milestone')
+      if (src.kind !== 'milestone') continue
+      expect(src.stat).toBe(e.stat)
+      expect(src.target).toBe(e.target)
+      // 阈值必须**写进说明**（卡面去掉数字后，说明是玩家唯一能读到规格的地方）
+      expect(def!.note).toContain(String(e.target))
+    }
+    // 图案只认这六个家族（渲染层 `ach-mile-*` 六枚线稿一一对应）
+    const slots = new Set(MILE_BADGES.map((a) => a.pattern))
+    expect([...slots].sort()).toEqual(
+      ['mile-cache', 'mile-core', 'mile-depth', 'mile-guard', 'mile-outpost', 'mile-tech'].sort(),
+    )
+    // 里程碑统一**金色**（与链徽章"同图案按档分色"相反：同色按图案分家族）
+    expect(new Set(MILE_BADGES.map((a) => a.tone)).size).toBe(1)
+  })
+
+  it('判据 = 终身计数 ≥ 阈值：每个家族的每一档都能按阈值精确触发', () => {
+    for (const [stat, rows] of Object.entries(EXPECT)) {
+      for (const [id, , target] of rows) {
+        const below = testState()
+        bumpFirst(below, stat, target - 1)
+        const def = ACHIEVEMENTS.find((a) => a.id === id)!
+        expect(achievementReached(below, def.source), `${id} 在 ${target - 1} 时不该达成`).toBe(false)
+        const at = testState()
+        bumpFirst(at, stat, target)
+        expect(achievementReached(at, def.source), `${id} 在 ${target} 时应达成`).toBe(true)
+      }
+    }
+  })
+
+  it('**峰值型不回退**：下潜纪录被写小、核心花掉、站不拆——纪录只升不降', () => {
+    const state = testState()
+    peakFirst(state, 'whMaxDepth', 5)
+    peakFirst(state, 'whMaxDepth', 2) // 这趟只下到 2 层
+    expect(state.firstStats!.whMaxDepth).toBe(5)
+    // 非有限值一律忽略（Math.max 遇 NaN 会把记录污染成 NaN）
+    peakFirst(state, 'whMaxDepth', Number.NaN)
+    peakFirst(state, 'whMaxDepth', Number.POSITIVE_INFINITY)
+    expect(state.firstStats!.whMaxDepth).toBe(5)
+    // 峰值型也享受"只置一次"：先到 5 层，再回落也不会把已发的徽章收回
+    advanceAchievements(state, ACHIEVEMENTS)
+    peakFirst(state, 'whMaxDepth', 1)
+    const rows = achievementOverview(state, ACHIEVEMENTS)
+    expect(rows.find((r) => r.def.id === 'ach-mile-wh-depth-5')!.earnedAt).not.toBe(null)
+  })
+
+  it('峰值型幂等：同一深度反复报不会重复计数、也不重复发徽章', () => {
+    const state = testState()
+    for (let i = 0; i < 5; i++) peakFirst(state, 'whMaxDepth', 4)
+    expect(state.firstStats!.whMaxDepth).toBe(4)
+    const first = advanceAchievements(state, ACHIEVEMENTS).map((a) => a.id).filter((id) => id.startsWith('ach-mile-wh-depth'))
+    expect(first.sort()).toEqual(['ach-mile-wh-depth-2', 'ach-mile-wh-depth-3', 'ach-mile-wh-depth-4'])
+    // 再来一次：不该有任何新徽章
+    expect(advanceAchievements(state, ACHIEVEMENTS).filter((a) => a.category === 'milestone')).toEqual([])
+  })
+
+  it('老档自愈：老档没有这四个键（firstStats 缺省）⇒ 载入后第一拍按**当前计数**补发', () => {
+    const state = testState()
+    // 模拟"老档"：直接给这本账塞入达标值（老档结构里没有这四个键 ⇒ 读作 0）
+    state.firstStats = { rareBoxes: 20 }
+    expect(state.firstStats.whMaxDepth).toBeUndefined()
+    const newly = advanceAchievements(state, ACHIEVEMENTS).filter((a) => a.category === 'milestone')
+    const ids = newly.map((a) => a.id)
+    // rareBoxes = 20 ⇒ 1/5/20 三枚到手，60/150 还没有
+    expect(ids).toContain('ach-mile-box-1')
+    expect(ids).toContain('ach-mile-box-20')
+    expect(ids).not.toContain('ach-mile-box-60')
+    // 其余家族一个都没到 ⇒ 不该误发
+    expect(ids).not.toContain('ach-mile-wh-depth-2')
+    expect(ids).not.toContain('ach-mile-tech-tree')
+  })
+
+  it('里程碑也走"纯展示"：发徽章不动钱包/仓库/货舱', () => {
+    const state = testState()
+    bumpFirst(state, 'rareBoxes', 150)
+    bumpFirst(state, 'whBossClears', 4)
+    peakFirst(state, 'whMaxDepth', 5)
+    // ⚠ `aiCoreKinds` 是**峰值型**（由 `gainAiCore` 现数库存类数写），不是累计型 ⇒ 用 peakFirst
+    peakFirst(state, 'aiCoreKinds', 4)
+    peakFirst(state, 'sitesBuilt', 2)
+    peakFirst(state, 'matterTechMaxed', 23)
+    const before = {
+      isk: state.wallet.isk,
+      ware: JSON.stringify(state.warehouse ?? {}),
+      ai: JSON.stringify(state.aiCores),
+    }
+    const newly = advanceAchievements(state, ACHIEVEMENTS).filter((a) => a.category === 'milestone')
+    expect(newly.length).toBe(18)
+    expect(state.wallet.isk).toBe(before.isk)
+    expect(JSON.stringify(state.warehouse ?? {})).toBe(before.ware)
+    // ⚠ AI 核心是**读**来判定的（`aiCoreKinds`），发徽章本身不许改动核心库
+    expect(JSON.stringify(state.aiCores)).toBe(before.ai)
+    expect(achievementCount(state)).toBeGreaterThanOrEqual(18)
+  })
+
+  it('读档往返：里程碑计数与已发徽章都原样回来', () => {
+    const state = testState()
+    peakFirst(state, 'whMaxDepth', 3)
+    bumpFirst(state, 'rareBoxes', 7)
+    advanceAchievements(state, ACHIEVEMENTS)
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state
+    expect(back.firstStats!.whMaxDepth).toBe(3)
+    expect(back.firstStats!.rareBoxes).toBe(7)
+    expect(achievementCount(back)).toBe(achievementCount(state))
   })
 })

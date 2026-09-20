@@ -2219,17 +2219,24 @@ export interface MatterTechNodeDef {
 /**
  * **徽章来源**（发放时唯一的认领依据——core **不认 id 前缀**，只认这里的字段）：
  * - `task`：某条「第一次」任务达成（`importantTasks[taskId].done === true`）；
- * - `chain`：某条次数链的进度达到 `level` 档（`importantTasks['chain-<id>'].delivered ≥ level`）。
+ * - `chain`：某条次数链的进度达到 `level` 档（`importantTasks['chain-<id>'].delivered ≥ level`）；
+ * - `milestone`：某条**终身计数**达到 `target`（`firstStatOf(state, stat) ≥ target`）。
+ *
+ * ⚠ `milestone.stat` 是 `string` 而**不是** `FirstStatKey`：`firstTasks.ts` 要 import 本文件的类型，
+ * 反过来被 import 联合类型会成环。取值仍以 `FirstStatKey` 为准（数据侧写错 ⇒ 读数恒 0、
+ * 徽章永不发 —— `content:check` 的「里程碑契约」负责在施工期拦下）。
  */
 export type AchievementSource =
   | { kind: 'task'; taskId: string }
   | { kind: 'chain'; chainId: string; level: number }
+  | { kind: 'milestone'; stat: string; target: number }
 
 /**
  * 徽章分类（界面分组用）：
  * - `first-task`：13 条「第一次」任务的纪念徽章；
  * - `chain`：次数链的档位徽章（船长：1/4/7/10 级各一枚 · 同图案用颜色区分）；
- * - `milestone`：**里程碑成就**（第二批，尚未实现 ⇒ 预留枚举，见设计稿 §3.4）。
+ * - `milestone`：**里程碑成就**（第二批，2026-09-20 落码 —— 内容与阈值见
+ *   `data/src/achievements.ts`，展示改版见工作文档 `docs/design/achievement-display-20260920.md`）。
  */
 export type AchievementCategory = 'first-task' | 'chain' | 'milestone'
 

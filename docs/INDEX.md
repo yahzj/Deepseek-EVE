@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **289** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5452** KB · **39888** 行
+- 文档总数 **289** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5460** KB · **39908** 行
 - 状态分布：**未标注** 157 · **已确认/已实现** 109 · **进行中** 21 · **待裁定** 1 · **历史留档** 1
 - 孤儿文档（0 引用）**25** 份 · 状态未标注 **157** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 23 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 188 KB / 241 行 | 13 / 1 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 191 KB / 242 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 686 行 | 69 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 383 KB / 891 行 | 196 / 11 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 85 KB / 299 行 | 259 / 10 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 386 KB / 897 行 | 196 / 11 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 87 KB / 305 行 | 259 / 10 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -57,8 +57,8 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/achievement-display-20260920.md` | 成就徽章 · 展示改版（2026-09-20）— 工作文档 | 进行中（进行中） | 2026-09-20 | 6 KB / 100 行 | 0 / 2 |
-| `docs/design/achievements-20260920.md` | 成就系统（第一批 · 徽章框架）— 设计稿（2026-09-20） | 已确认/已实现（第一批已完成并合入 main） | 2026-09-20 | 11 KB / 137 行 | 4 / 2 |
+| `docs/design/achievement-display-20260920.md` | 成就徽章 · 展示改版（2026-09-20）— 工作文档 | 进行中（进行中） | 2026-09-20 | 6 KB / 100 行 | 3 / 4 |
+| `docs/design/achievements-20260920.md` | 成就系统（两批均已完成）— 设计稿（2026-09-20） | 已确认/已实现（两批都已完成并合入 main） | 2026-09-20 | 11 KB / 144 行 | 3 / 2 |
 | `docs/design/drone-refill-20260920.md` | 战斗结束立刻补足机群（优先货仓、其次仓库）· 2026-09-20 | 进行中（进行中） | 2026-09-20 | 7 KB / 69 行 | 1 / 0 |
 | `docs/design/faction-rare-drop-20260920.md` | 敌对派系活跃：稀有残骸出率 30% + 保底每 10 次 · 2026-09-20 | 进行中（进行中） | 2026-09-20 | 3 KB / 53 行 | 0 / 0 |
 | `docs/design/handoff-20260920-to-new-pilot1.md` | 交接文档 · 大鲸鱼深空工业 · 2026-09-20 早（一号 → 下一任一号） | 未标注 | 2026-09-20 | 17 KB / 148 行 | 3 / 0 |

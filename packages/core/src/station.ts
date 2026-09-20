@@ -9,6 +9,7 @@ import type { GameState, StationSiteProgress } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext, StationSiteDef, StationTierDef } from './types'
 import { cargoOfShip } from './inventory'
+import { peakFirst } from './firstTasks'
 import { deliverDialogueToComms } from './comms'
 
 /** 读取站点进度（容错默认档 0） */
@@ -149,6 +150,18 @@ function advanceTierIfFull(state: GameState, ctx: SimContext, site: StationSiteD
     prog.stage += 1
     prog.delivered = {}
     if (prog.stage >= site.tiers.length) {
+      /**
+       * **里程碑「副空间站」的计数点**（成就系统第二批 · 船长 2026-09-20）。
+       * 记的是**已建成并入网的站数**（本处是全仓唯一的"升到满档"分支）——
+       * 按**峰值**记（`peakFirst`）：站建成后不会退回，且老档已有建成站的也照旧自愈
+       * （判据是 `stage >= tiers.length`，与 `isAtHomeLike` 同一把尺）。
+       */
+      let built = 0
+      for (const s of ctx.stations.values()) {
+        const p = state.stationSites[s.id]
+        if (p && p.stage >= s.tiers.length) built += 1
+      }
+      peakFirst(state, 'sitesBuilt', built)
       addLog(
         state,
         'trade',

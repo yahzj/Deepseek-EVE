@@ -44,6 +44,19 @@ export type FirstStatKey =
   | 'aiAssigns' // 指派 AI 副船次数
   | 'haulTrips' // 长途运输完成趟数
   | 'wormholeRuns' // 虫洞进洞趟数
+  /**
+   * **里程碑键**（成就系统第二批 · 船长 2026-09-20「开始第二批」）——这四个**不做链阈值**，
+   * 只做里程碑成就的判据；与上面那组同住 `firstStats`（可选字段 ⇒ **老档零迁移**）。
+   * - `rareBoxes`：**累计开出的高级箱数**（稀有残骸每烧满 30 m³ 必给一次 ⇒ 一次彩头 = 一箱）。
+   *   与"每型已开箱数"账本 `state.rareBoxesOpened` 配对：这里记**全局累计**（跨型号求和）。
+   * - `whMaxDepth`：**虫洞到达过的最大层深**（**峰值**，用 `peakFirst` 记 ⇒ 只升不降）。
+   * - `whBossClears`：**累计打掉的层末守卫数**。
+   * - `matterTechMaxed`：**谜质科技已满级的节点数**（**峰值**；满级后不会掉，故按峰值记也自愈）。
+   */
+  | 'rareBoxes'
+  | 'whMaxDepth'
+  | 'whBossClears'
+  | 'matterTechMaxed'
 
 /** 一条「第一次」任务 */
 export interface FirstTaskDef {
@@ -324,6 +337,24 @@ export function bumpFirst(state: GameState, key: string, n = 1): void {
   if (n <= 0) return
   const bag = (state.firstStats ??= {})
   bag[key] = (bag[key] ?? 0) + n
+}
+
+/**
+ * **峰值记录**（里程碑批新增 · 2026-09-20）：把 `key` 抬到 `v`，**只升不降**。
+ *
+ * 为什么要有它（与 `bumpFirst` 的分工）：`bumpFirst` 是"又发生了一次"的累计，
+ * 而有些量是**状态而非事件**——典型 = 「虫洞到达过的最大层深」：那趟打完就没了，
+ * 只能在下潜那一刻把"当前深度"报上来。用峰值记有三条好处：
+ * ① **老档零迁移**（缺省 0）；② **幂等**（同一深度反复报不会重复计数，读档/重算安全）；
+ * ③ **不回退**（不会因为玩家这趟只下到 2 层就把纪录改小）。
+ *
+ * ⚠ 传 `NaN` / 非有限值会被忽略（`Math.max` 遇 `NaN` 会污染成 `NaN`，这里挡掉）。
+ */
+export function peakFirst(state: GameState, key: string, v: number): void {
+  if (!Number.isFinite(v)) return
+  const bag = (state.firstStats ??= {})
+  const prev = bag[key] ?? 0
+  if (v > prev) bag[key] = v
 }
 
 /** 读终身计数（缺省 0；老档没有这个字段 ⇒ 0，零迁移） */

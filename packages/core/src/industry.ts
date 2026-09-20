@@ -833,6 +833,18 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         const burnedAfter = burnedBefore + qty
         const rarePayout = profile.rare === true && Math.floor(burnedAfter / RARE_UNIT_M3) > Math.floor(burnedBefore / RARE_UNIT_M3)
         if (rarePayout) {
+          /**
+           * **开箱账本 ＋ 里程碑计数**（成就系统第二批 · 船长 2026-09-20）。
+           *
+           * ⚠ **这里补掉一处真缺陷**：`state.rareBoxesOpened`（该型残骸"累计已开箱数"）此前
+           * **全仓没有任何业务写入点**——只有读档清洗、初始化与两条测试在写它 ⇒ 那本账一直空转
+           * （`state.ts` 的注释与 `save.ts` 的迁移清单都把它当"已在维护的账本"）。本批在
+           * **全仓唯一的出箱点**（`rarePayout` = "烧满 30 m³ 必给一次彩头"）补上写入，
+           * 顺带把**全局累计**记进 `firstStats.rareBoxes` 供里程碑读取。
+           * 口径：`rarePayout` 一次 = **一箱**（稀有残骸每满 `RARE_UNIT_M3` 必给彩头 ⇒ 1:1）。
+           */
+          if (r.itemId) state.rareBoxesOpened[r.itemId] = (state.rareBoxesOpened[r.itemId] ?? 0) + 1
+          bumpFirst(state, 'rareBoxes')
           // 主题件回落池（2026-09-16 船长甲1案）：洞内组没有主题件 ⇒ 用"军用备货柜"同款 MK3 池兜住
           const extra = rollRareBoxExtra(state, ctx, profile, wormholeRareBoxThemePoolOf(ctx, profile.region))
           if (extra) {

@@ -33,6 +33,7 @@ import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
 import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { matterTechWhBuffs } from './matterTech'
+import { bumpFirst } from './firstTasks'
 import {
   wormholeDeliverRelics,
   wormholeGrantShipSpoils,
@@ -664,6 +665,12 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   }
   if (kind === 'boss') {
     run.bossCleared = run.depth
+    /**
+     * **里程碑「层末守卫」的计数点**（成就系统第二批 · 船长 2026-09-20）。
+     * 口径 = **累计**打掉的守卫数（`bumpFirst`）——每层守卫一条命、一趟内不会重复；
+     * 记在**打赢那一刻**（`kind === 'boss'` 的胜场分支），与上面的 `bossCleared` 同一处，不会漏也不会重。
+     */
+    bumpFirst(state, 'whBossClears')
     addLog(
       state,
       'info',

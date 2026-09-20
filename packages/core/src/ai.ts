@@ -25,7 +25,7 @@ import { addWare, cargoUnitM3, freeCargoM3Of } from './inventory'
 import { pullOneWreck, salvagerCyclesOf } from './salvaging'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
-import { bumpFirst } from './firstTasks'
+import { bumpFirst, peakFirst } from './firstTasks'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
 import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
 import { travelLegMs } from './travel'
@@ -75,6 +75,16 @@ export function countAiCore(state: GameState, type: AiCoreType): number {
 /** 入库 */
 export function gainAiCore(state: GameState, type: AiCoreType, count = 1): void {
   state.aiCores[type] = (state.aiCores[type] ?? 0) + count
+  /**
+   * **里程碑「AI 核心」的计数点**（成就系统第二批 · 船长 2026-09-20）。
+   *
+   * 记的是**库存里拥有过的类数**（本函数是全仓唯一的入库点 ⇒ 天然覆盖所有获得途径：
+   * 遗迹核心、虫洞战果、掉落…），并按**峰值**记（`peakFirst`）——
+   * 这样"曾集齐四类、后来花掉一枚"**不会把纪录改小**（记录的是"见过/拿过"，不是"此刻持有"）。
+   */
+  let kinds = 0
+  for (const t of AI_CORE_ORDER) if ((state.aiCores[t] ?? 0) > 0) kinds += 1
+  peakFirst(state, 'aiCoreKinds', kinds)
 }
 
 /** 出库 */

@@ -10,7 +10,7 @@
  *
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
-import { bumpFirst } from './firstTasks'
+import { bumpFirst, peakFirst } from './firstTasks'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
 import { addLog, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
@@ -807,6 +807,14 @@ export function wormholeDescend(
     return { ok: false, error: '没站在下一层入口：先走到入口（下潜点）再深入。', errorId: 'core.wormhole.008' }
   }
   run.depth += 1
+  /**
+   * **里程碑「深渊层深」的计数点**（成就系统第二批 · 船长 2026-09-20「开始第二批」）。
+   *
+   * 口径三条：① 记的是**峰值**（`peakFirst` ⇒ 只升不降、幂等，反复下潜不重复计数）；
+   * ② **只计手动虫洞**——自动探索走 `wormholeAuto.ts` 的收益模拟、**根本不经过本函数**
+   * （船长裁定「自动不算」）；③ 记在**下潜成功那一刻**（不是"打过守卫"，那是另一个里程碑）。
+   */
+  peakFirst(state, 'whMaxDepth', run.depth)
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
   // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）

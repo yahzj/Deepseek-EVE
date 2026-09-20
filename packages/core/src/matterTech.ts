@@ -21,6 +21,7 @@
 import { addLog } from './state'
 import type { GameState } from './state'
 import { countWare, removeWare } from './inventory'
+import { peakFirst } from './firstTasks'
 import type { MatterTechNodeDef, SimContext } from './types'
 import { WORMHOLE_TECH_BUFFS_NONE } from './wormholeMatter'
 import type { WormholeTechBuffs } from './wormholeMatter'
@@ -176,6 +177,20 @@ export function researchMatterTech(
   state.wallet.isk -= can.cost.isk
   if (!state.research) state.research = { levels: {} }
   state.research.levels[id] = before + 1
+  /**
+   * **里程碑「谜质通晓」的计数点**（成就系统第二批 · 船长 2026-09-20）。
+   *
+   * 记的是**已满级的节点数**（不是"点了几次"）⇒ 用一个**状态量**而不是事件累计：
+   * 改等级上限、加新节点都不会让旧账失真，且**峰值型**（`peakFirst`）= 幂等、只升不降。
+   * 判据 = 每次研究成功后现数一遍全表满级数（23 个节点，遍历成本可忽略）。
+   */
+  {
+    let maxed = 0
+    for (const n of matterTechNodes(ctx)) {
+      if ((state.research.levels[n.id] ?? 0) >= n.maxLevel) maxed += 1
+    }
+    peakFirst(state, 'matterTechMaxed', maxed)
+  }
   addLog(
     state,
     'info',
