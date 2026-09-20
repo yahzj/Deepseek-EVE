@@ -1205,7 +1205,7 @@ function StarMap({
         ))}
         <span className="app-dim">{tr("ui.Expedition.196")}{LABEL_MODES.find((m) => m.key === labelMode)?.label}</span>
       </div>
-      <svg viewBox={`${-MAP_PAD_X} ${-MAP_PAD_TOP} ${MAP_VB_W} ${MAP_VB_H}`} className={`app-starmap${editing ? ' is-editing' : ''}`} role="img" aria-label="星图">
+      <svg viewBox={`${-MAP_PAD_X} ${-MAP_PAD_TOP} ${MAP_VB_W} ${MAP_VB_H}`} className={`app-starmap${editing ? ' is-editing' : ''}`} role="img" aria-label={tr('ui.ActivityBar.006')}>
         {/* 敌对派系"势力范围"光晕的径向渐变（2026-09-11）：每个族一枚，静态光效、不用 filter（第十四章） */}
         <defs>
           {Object.entries(FOE_ACCENT).map(([fam, color]) => (
