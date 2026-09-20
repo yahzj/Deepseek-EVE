@@ -158,18 +158,28 @@ function captureFit(
   ctx: SimContext,
   shipId: string,
   what: string,
-): { ok: true; fitted: ShipFitPreset['fitted']; droneLoad: Record<string, number> } | { ok: false; error: string } {
+): {
+  ok: true
+  fitted: ShipFitPreset['fitted']
+  droneLoad: Record<string, number>
+} | { ok: false; error: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const lock = shipLockedReason(state, shipId, what)
   if (lock) return { ok: false, error: lock }
   const shipDef = fleetDefOf(state, ctx, shipId)
   const fleet = state.fleet[shipId]
-  if (!shipDef || !fleet) return { ok: false, error: '舰队里找不到该舰船，无法保存装配方案。' }
+  if (!shipDef || !fleet) {
+    return { ok: false, error: '舰队里找不到该舰船，无法保存装配方案。', errorId: 'core.fitPresets.001' }
+  }
   const loadRaw = fleet.droneLoad ?? {}
   const droneLoad: Record<string, number> = {}
   for (const [id, n] of Object.entries(loadRaw)) if (n > 0) droneLoad[id] = n
   const fitted = trimFitted(fleet.fitted)
   if (fitted.high.length + fitted.mid.length + fitted.low.length === 0 && Object.keys(droneLoad).length === 0) {
-    return { ok: false, error: '这艘船现在没装任何装备、机舱也是空的：先装几件再保存（要清空装配请用「一键卸下全部装备」）。' }
+    return {
+      ok: false,
+      error: '这艘船现在没装任何装备、机舱也是空的：先装几件再保存（要清空装配请用「一键卸下全部装备」）。',
+      errorId: 'core.fitPresets.004',
+    }
   }
   return { ok: true, fitted, droneLoad }
 }
@@ -180,7 +190,9 @@ function captureFit(
  */
 export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string, name?: string): CommandResult {
   const shipDef = fleetDefOf(state, ctx, shipId)
-  if (!shipDef) return { ok: false, error: '舰队里找不到该舰船，无法保存装配方案。' }
+  if (!shipDef) {
+    return { ok: false, error: '舰队里找不到该舰船，无法保存装配方案。', errorId: 'core.fitPresets.001' }
+  }
   const list = [...fitPresetsOf(state, shipDef.id)]
   const wanted = (name ?? '').trim().slice(0, FIT_PRESET_NAME_MAX)
   const finalName = wanted.length > 0 ? wanted : defaultName(list)
@@ -189,6 +201,8 @@ export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string,
     return {
       ok: false,
       error: `「${shipDef.name}」已有 ${FIT_PRESET_MAX} 套装配方案：先删掉一套，或用一个同名方案覆盖它。`,
+      errorId: 'core.fitPresets.005',
+      errorParams: { p1: shipDef.name, p2: FIT_PRESET_MAX },
     }
   }
   const cap = captureFit(state, ctx, shipId, '保存它的装配方案')
@@ -201,7 +215,11 @@ export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string,
   if (at >= 0) list[at] = preset
   else list.push(preset)
   state.fitPresets = { ...(state.fitPresets ?? {}), [shipDef.id]: list }
-  addLog(state, 'info', `已保存装配方案「${finalName}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`)
+  addLog(state, 'info', `已保存装配方案「${finalName}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`, 'core.fitPresets.009', {
+    p1: finalName,
+    p2: shipDef.name,
+    p3: fitPresetBrief(preset),
+  })
   return { ok: true }
 }
 
@@ -215,10 +233,12 @@ export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string,
  */
 export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: string, index: number): CommandResult {
   const shipDef = fleetDefOf(state, ctx, shipId)
-  if (!shipDef) return { ok: false, error: '舰队里找不到该舰船，无法替换装配方案。' }
+  if (!shipDef) {
+    return { ok: false, error: '舰队里找不到该舰船，无法替换装配方案。', errorId: 'core.fitPresets.002' }
+  }
   const list = [...fitPresetsOf(state, shipDef.id)]
   const target = list[index]
-  if (!target) return { ok: false, error: '找不到这套装配方案（可能已被删除）。' }
+  if (!target) return { ok: false, error: '找不到这套装配方案（可能已被删除）。', errorId: 'core.fitPresets.006' }
   const cap = captureFit(state, ctx, shipId, '保存它的装配方案')
   if (!cap.ok) return { ok: false, error: cap.error }
   const preset: ShipFitPreset = {
@@ -232,6 +252,8 @@ export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: st
     state,
     'info',
     `已用当前装配覆盖方案「${target.name}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`,
+    'core.fitPresets.013',
+    { p1: target.name, p2: shipDef.name, p3: fitPresetBrief(preset) },
   )
   return { ok: true }
 }
@@ -240,16 +262,21 @@ export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: st
 export function renameFitPreset(state: GameState, defId: string, index: number, name: string): CommandResult {
   const list = [...fitPresetsOf(state, defId)]
   const preset = list[index]
-  if (!preset) return { ok: false, error: '找不到这套装配方案（可能已被删除）。' }
+  if (!preset) return { ok: false, error: '找不到这套装配方案（可能已被删除）。', errorId: 'core.fitPresets.006' }
   const finalName = name.trim().slice(0, FIT_PRESET_NAME_MAX)
-  if (finalName.length === 0) return { ok: false, error: '方案名不能为空。' }
+  if (finalName.length === 0) return { ok: false, error: '方案名不能为空。', errorId: 'core.fitPresets.007' }
   if (list.some((p, i) => i !== index && p.name === finalName)) {
-    return { ok: false, error: `已有同名方案「${finalName}」：换个名字，或直接覆盖那一条。` }
+    return {
+      ok: false,
+      error: `已有同名方案「${finalName}」：换个名字，或直接覆盖那一条。`,
+      errorId: 'core.fitPresets.008',
+      errorParams: { p1: finalName },
+    }
   }
   const old = preset.name
   list[index] = { ...preset, name: finalName }
   state.fitPresets = { ...(state.fitPresets ?? {}), [defId]: list }
-  addLog(state, 'info', `装配方案「${old}」已改名为「${finalName}」。`)
+  addLog(state, 'info', `装配方案「${old}」已改名为「${finalName}」。`, 'core.fitPresets.010', { p1: old, p2: finalName })
   return { ok: true }
 }
 
@@ -257,14 +284,14 @@ export function renameFitPreset(state: GameState, defId: string, index: number, 
 export function deleteFitPreset(state: GameState, defId: string, index: number): CommandResult {
   const list = [...fitPresetsOf(state, defId)]
   const preset = list[index]
-  if (!preset) return { ok: false, error: '找不到这套装配方案（可能已被删除）。' }
+  if (!preset) return { ok: false, error: '找不到这套装配方案（可能已被删除）。', errorId: 'core.fitPresets.006' }
   list.splice(index, 1)
   const next = { ...(state.fitPresets ?? {}) }
   if (list.length > 0) next[defId] = list
   else delete next[defId]
   // 删空 ⇒ **连字段一起清掉**（回到"老档形状"：存盘里不出现空表，老档往返逐字一致）
   state.fitPresets = Object.keys(next).length > 0 ? next : undefined
-  addLog(state, 'info', `已删除装配方案「${preset.name}」。`)
+  addLog(state, 'info', `已删除装配方案「${preset.name}」。`, 'core.fitPresets.011', { p1: preset.name })
   return { ok: true }
 }
 
@@ -272,6 +299,8 @@ export function deleteFitPreset(state: GameState, defId: string, index: number):
 export interface UnfitAllResult {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   removed: number
 }
 
@@ -305,7 +334,13 @@ export function unfitAllModules(state: GameState, ctx: SimContext, shipId: strin
     // 槽位变少/舱容变小 ⇒ 超出的无人机自动退回仓库（与 repair 链同口径）
     trimDroneLoadToBay(state, ctx, shipId)
     if (!quiet) {
-      addLog(state, 'info', `已卸下全部装备 ${removed} 件（放回装备库），甲板扩容器一并卸下。`)
+      addLog(
+        state,
+        'info',
+        `已卸下全部装备 ${removed} 件（放回装备库），甲板扩容器一并卸下。`,
+        'core.fitPresets.012',
+        { p1: removed },
+      )
     }
   }
   return { ok: true, removed }
@@ -330,6 +365,8 @@ export function clearDroneLoad(state: GameState, ctx: SimContext, shipId: string
 export interface FitPresetApplyResult {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   /** 玩家可见一行小结（成功时一定有） */
   summary: string
 }
@@ -345,7 +382,9 @@ export function applyFitPreset(state: GameState, ctx: SimContext, shipId: string
   const shipDef = fleetDefOf(state, ctx, shipId)
   if (!shipDef) return { ok: false, error: '舰队里找不到该舰船，无法套用装配方案。', summary: '' }
   const preset = fitPresetsOf(state, shipDef.id)[index]
-  if (!preset) return { ok: false, error: '找不到这套装配方案（可能已被删除）。', summary: '' }
+  if (!preset) {
+    return { ok: false, error: '找不到这套装配方案（可能已被删除）。', errorId: 'core.fitPresets.006', summary: '' }
+  }
 
   // ① 先卸光（装备回库 + 无人机退仓）
   const removed = unfitAllModules(state, ctx, shipId, true).removed
