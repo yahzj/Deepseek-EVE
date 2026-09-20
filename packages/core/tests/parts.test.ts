@@ -33,12 +33,15 @@ function freshState(): GameState {
 }
 
 describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', () => {
-  it('① 基础零件隐式蓝图：无需学习即可开工，一次产 10 件、15 秒一轮、完成不写事件日志', () => {
+  it('① 基础零件隐式蓝图：无需学习即可开工，一次产 10 件、8 秒一轮、完成不写事件日志', () => {
     const s = freshState()
     expect(canStartBlueprint(s, ctx, 'bp-part-circuit')).toBe(true)
     expect(startManufacturing(s, 'bp-part-circuit', 'pilot', ctx).ok).toBe(true)
+    // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：电路基板 15 → 8 秒（原值 ×0.5 · .5 进位）
+    const circuit = BLUEPRINTS.find((b) => b.id === 'bp-part-circuit')!
+    expect(calcBuildDurationMs(s, ctx, { materials: circuit.materials, buildSeconds: circuit.buildSeconds, buildCostIsk: 0 })).toBe(8_000)
     const beforeLogs = s.logs.length
-    advanceGame(s, 16_000, ctx)
+    advanceGame(s, 9_000, ctx)
     expect(countWare(s, 'part-circuit')).toBe(10) // 一次产 10 件
     // 2026-09-20 船长「零件的制造完成不需要发送事件日志」——推进期间可以有别的事件日志，但不该有"制造完成"
     expect(s.logs.slice(beforeLogs).some((l) => l.text.includes('制造完成'))).toBe(false)
@@ -100,13 +103,13 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
       expect(Math.max(...rates) / Math.min(...rates)).toBeLessThanOrEqual(1.5)
     }
     /**
-     * **高级件工时钉死**（2026-09-20 二批船长令「高级零件的制造时间缩短至25%」）：
-     * 原 55/55/58/88/92/170/410 → **14/14/15/22/23/43/103 秒**（原值 ×0.25 四舍五入）；
-     * 基础件 15/16/16/17/21/26/45 **一字不动**。
+     * **工时钉死**（2026-09-20 二批「高级件 ×0.25」＋ 三批「基础件 ×0.5」）：
+     * 高级 原 55/55/58/88/92/170/410 → **14/14/15/22/23/43/103 秒**；
+     * 基础 原 15/16/16/17/21/26/45 → **8/8/8/9/11/13/23 秒**（.5 秒一律进位）。
      */
     const secsOf = (id: string): number => BLUEPRINTS.find((b) => b.id === id)!.buildSeconds
     expect(advances.map(([id]) => secsOf(id))).toEqual([14, 14, 15, 22, 23, 43, 103])
-    expect(basics.map(([id]) => secsOf(id))).toEqual([15, 16, 16, 17, 21, 26, 45])
+    expect(basics.map(([id]) => secsOf(id))).toEqual([8, 8, 8, 9, 11, 13, 23])
   })
 })
 
