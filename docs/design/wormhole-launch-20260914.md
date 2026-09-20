@@ -5,9 +5,9 @@
 >
 > ⚠ **与早先裁定的冲突已记档（AGENTS.md §5.2）**：同日早先的裁定是
 > 「**虫洞不上线，公告合并后发布**」（已落库于 `announcements.ts` 顶部
-> `2026-09-14-release-batch` 的注释与 `docs/design/announcement-draft-20260914-release.md` §三）。
+> `2026-09-14-release-batch` 的注释与 `docs/design/archive/announcement-draft-20260914-release.md` §三）。
 > **该条随本次新裁定作废**：那条公告**一字不改**（它已发布、本来就没提虫洞），
-> 虫洞**另起一条公告**，见 `docs/design/announcement-draft-20260914-wormhole-launch.md`。
+> 虫洞**另起一条公告**，见 `docs/design/archive/announcement-draft-20260914-wormhole-launch.md`。
 > 施工期铁律（2026-09-13「虫洞完成之前，对玩家不可见；完成后需要我拍板」）**随本批作废**，
 > 原文留档在该设计稿的 §「可见性与拍板」。
 >
@@ -25,7 +25,7 @@
 | 6 | **头注释与状态更新**（施工期铁律 ⇒ 上线口径；含"当前可见性"一句话，免得后来者按旧口径改回去） | `packages/core/src/wormhole.ts` · `panels/{Wormhole,WormholeScan}.tsx` · `pages/MapPage.tsx` · `App.tsx` · `game/engine.ts` | 二号 | ✅ 本批 |
 | 7 | **术语词典补总条**：八之一「虫洞」（发现 / 库存 / 入场 / 回合 / 层 / 曲线 / 背包 / 产出 / 撤离 / 互斥 + 作废条款留档），含**虚空母矿 ⇒ 虚空晶**来源链 | `docs/glossary.md` | 二号 | ✅ 本批 |
 | 8 | **手册补虫洞条目**：玩法速览新增一组「虫洞探索」+ 航行须知新增一节「虫洞探索」 | `panels/Handbook.tsx` | 二号 | ✅ 本批 |
-| 9 | **上线公告待审稿**（5 条要点 · 第三人称 · 无开发口径） | `docs/design/announcement-draft-20260914-wormhole-launch.md` | 二号 | ✅ **已定稿待发**（成品 5 条 + 可直接粘贴的落库片段都在文件里；等船长一句「可以」即落库） |
+| 9 | **上线公告待审稿**（5 条要点 · 第三人称 · 无开发口径） | `docs/design/archive/announcement-draft-20260914-wormhole-launch.md` | 二号 | ✅ **已定稿待发**（成品 5 条 + 可直接粘贴的落库片段都在文件里；等船长一句「可以」即落库） |
 | 10 | **四闸门 + 上线读数**（`typecheck` / core 测试 / `content:check` / 构建） | — | 二号 | ✅ 全绿（合并态 typecheck 四包 0 错 · core 138 文件 / 1449 用例 · `content:check` ✅ · 桌面构建 ✅；入口关闭后又复跑一遍） |
 | 11 | **推送闸门**：代码与公告**一次推送**（推送前先确认网络；上次 `git ls-remote` 曾报连接失败） | — | 船长 | ⏳ |
 
@@ -50,7 +50,7 @@
 （当时评估过的另两条：乙 改为跳转「扫描虫洞」页 · 丙 直接删行 —— 均未采用。）
 
 **2. 公告 ⇒ 已定稿待发**：按船长「准备虫洞相关公告」定稿，成品与可直接粘贴的落库片段见
-`docs/design/announcement-draft-20260914-wormhole-launch.md`
+`docs/design/archive/announcement-draft-20260914-wormhole-launch.md`
 （`id` = `2026-09-14-wormhole-launch` · `title` = 虫洞：裂隙探索开放 · `tag` = **内容** · 5 条要点）；
 **等船长一句「可以」即落库**，跑完四闸门后与代码一次推送。
 

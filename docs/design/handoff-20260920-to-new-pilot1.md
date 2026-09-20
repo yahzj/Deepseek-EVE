@@ -114,8 +114,8 @@
      其中两条随归档一并改：`docs/glossary.md` 的「**三联读数**」⇒「**编队读数**」· `docs/test-saves/README.md` 里同一处旧称；
      `EN_MATTER_TECH` 未接进 `ctx.matterTech`（`packages/data/src/context.ts` 一处）——三号接线时一并处理。
    - `docs/design/filters-audit-20260919.md`（**状态：进行中**）→ 同上（结论/数值必须先并入再删）。
-   - 公告稿两份：`announcement-draft-20260919-matter-tech.md`（**已批准、已入库、已推送** ⇒ 归档）·
-     `announcement-draft-20260919-filters.md`（**船长定不发** ⇒ 留档或随归档处理）。
+   - 公告稿两份：`docs/design/archive/announcement-draft-20260919-matter-tech.md`（**已批准、已入库、已推送** ⇒ 归档）·
+     `docs/design/archive/announcement-draft-20260919-filters.md`（**船长定不发** ⇒ 留档或随归档处理）。
 5. **三号侧（`verify40`，不合入）**：本地化工程 51 条提交（P1b ID 制 · P2 内容 100% · P3 界面进行中 · P5 长文批 10）＋
    他续接卡里「**英文名待船长选词**」（`docs/design/l10n-en-20260919.md`，注意：该文件在 main 上是旧版，新版在 `verify40`）。
    **两条已知冲突面**：① 他改了大量 `t()` 接线，我这边也在改 `Wormhole.tsx` 等页 ⇒ **谁先合谁解冲突**；

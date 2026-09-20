@@ -352,7 +352,7 @@ ISK `6·12·18M`；T3 = 谜质 `10·20·30` / ISK `10·20·30M`。
     一致 ⇒ 规则无需改）。
 - [x] **公告**：`ann-matter-tech-20260919` 已按船长批准稿写入 `packages/data/src/announcements.ts`
   （本地提交 `be861452`，**待推送**）；筛选整理批公告按船长决定**不发**（稿留
-  `docs/design/announcement-draft-20260919-filters.md`）。
+  `docs/design/archive/announcement-draft-20260919-filters.md`）。
 
 **批次 6 · 反存档摸图：取消固定种子（2026-09-19 船长）**
 - [x] 船长原话：「**虫洞建议取消固定种子，玩家会采用恢复存档的方法搞清楚地图**」⇒ 裁定「**甲**：进洞 + 深入都现掷」。

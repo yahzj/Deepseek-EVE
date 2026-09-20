@@ -39,6 +39,22 @@
 | `announcement-draft-lowsec-20260911.md` | 2026-09-11 | 船长裁定不发（三份待审稿一并） |
 | `announcement-draft-shipprice-20260911.md` | 2026-09-11 | 船长裁定不发（三份待审稿一并） |
 
+> **2026-09-20 追加归档（11 份 · 一号清理批 · 判据 ① 已结案）**：
+>
+> | 文件 | 日期 | 结案口径 |
+> |---|---|---|
+> | `announcement-draft-20260913-haul-reward.md` | 2026-09-13 | 船长批准并落库 `2026-09-13-haul-security-reward` |
+> | `announcement-draft-20260913-t4-battleship.md` | 2026-09-13 | 内容被 `2026-09-14-release-batch` 吸收（核验件已判结案） |
+> | `announcement-draft-20260913-wormhole.md` | 2026-09-13 | 被 09-14 虫洞上线稿取代（文件头自注） |
+> | `announcement-draft-20260914-release.md` | 2026-09-14 | 船长批准合并为 `2026-09-14-release-batch`（已落库） |
+> | `announcement-draft-20260914-wormhole-launch.md` | 2026-09-14 | 已随上线落库（撤离战条款后作废，稿留历史档） |
+> | `announcement-draft-20260916-combat-insurance.md` | 2026-09-16 | 船长「公告通过」⇒ 已入库 |
+> | `announcement-draft-20260916-wormhole-bloom.md` | 2026-09-16 | 船长批准 ⇒ 已入库逐字照发 |
+> | `announcement-draft-20260918-push.md` | 2026-09-18 | 船长「通过，按此推送」⇒ 三条已入库 |
+> | `announcement-draft-20260919-filters.md` | 2026-09-19 | 船长裁定**不发**（稿留档） |
+> | `announcement-draft-20260919-matter-tech.md` | 2026-09-19 | 船长批准 ⇒ `ann-matter-tech-20260919` 已入库 |
+> | `announcement-draft-20260919-push.md` | 2026-09-19 | 船长「只发任务改版和残骸合并的公告」⇒ ①②已入库、③④不发（状态行已收口） |
+
 ### 3.2 历史交接卡（19 份 · 均已被后续交接件取代）
 
 | 文件 | 归属 | 说明 |

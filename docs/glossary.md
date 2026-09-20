@@ -761,7 +761,7 @@
 - **体检契约翻面**：`content:check` 里原先"要求未上线 / 要求不得提及虫洞"的六族契约**改写为上线后的断言**
   （货柜/谜质/AI 核心按**真实用途**豁免精炼配方：拆解台 / 装置表生效 / 入核心账本；虚空母矿与虫洞专属内容
   反过来**必须可见**；「已上线内容不得出现『虫洞』」那条**保密闸门退休**）。
-- **公告**：待审稿 `docs/design/announcement-draft-20260914-wormhole-launch.md`（**未过审不得写入
+- **公告**：待审稿 `docs/design/archive/announcement-draft-20260914-wormhole-launch.md`（**未过审不得写入
   `announcements.ts`**）。
 - **权威件** = `docs/design/wormhole-extraction-endgame-20260912.md` §「可见性与拍板」（已改写为上线态，
   含"施工期遗留勿再照做"清单）。
