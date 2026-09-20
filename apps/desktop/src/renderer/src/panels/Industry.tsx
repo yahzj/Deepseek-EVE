@@ -194,7 +194,7 @@ export function BlueprintShelfPanel({
 
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
-    if (!r.ok) onToast(cmdText(r) || '学习失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.130'), true)
     else onToast(tr("ui.Industry.095"))
   }
 
@@ -205,7 +205,7 @@ export function BlueprintShelfPanel({
       return
     }
     const r = engine.sellHoldingAt(key)
-    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.CargoPage.019'), true)
     else onToast(tr("ui.Industry.097"))
   }
 
@@ -273,7 +273,7 @@ export function BlueprintShelfPanel({
           「全部 / 全部子类 / 全部图纸」常显——详见上面 `tabsShown / subsShown / usesShown` 的注释；
           文案 = 裸「全部」+ 同行灰字前缀（基线①，2026-09-19 丙组补） */}
       <div className="app-fleet-row">
-        <span className="app-dim">门类：</span>
+        <span className="app-dim">{tr('ui.Industry.134')}</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
           {tabsShown.map((tb) => (
             <button
@@ -294,7 +294,7 @@ export function BlueprintShelfPanel({
       </div>
       {subsShown.length > 0 ? (
         <div className="app-fleet-row">
-          <span className="app-dim">子类：</span>
+          <span className="app-dim">{tr('ui.Industry.129')}</span>
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
             <button
               role="tab"
@@ -305,7 +305,7 @@ export function BlueprintShelfPanel({
                 setUseKind(SUB_ALL)
               }}
             >
-              全部
+              {tr('ui.IndustryPage.001')}
             </button>
             {subsShown.map((s) => (
               <button
@@ -326,7 +326,7 @@ export function BlueprintShelfPanel({
       ) : null}
       {sub !== SUB_ALL ? (
         <div className="app-fleet-row">
-          <span className="app-dim">图纸：</span>
+          <span className="app-dim">{tr('ui.Industry.135')}</span>
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
             {usesShown.map((u) => (
               <button
@@ -611,14 +611,14 @@ function BlueprintCard({
   /** 书已在书架（未学习）：就地学习——与「蓝图书架」的「学习」同一个引擎出口与话术（不花钱、不占制造位） */
   function handleLearnFromShelf(): void {
     const r = engine.learnBlueprintAt(blueprintId)
-    if (!r.ok) onToast(cmdText(r) || '学习失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.130'), true)
     else onToast(tr("ui.Industry.104"))
   }
 
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = engine.startManufacturingAt(blueprintId, worker)
     if (!r.ok) {
-      onToast(cmdText(r) || '开工失败', true)
+      onToast(cmdText(r) || tr('ui.Industry.131'), true)
       return
     }
     onToast(
@@ -630,7 +630,7 @@ function BlueprintCard({
 
   function handleCancel(runId: number): void {
     const r = engine.cancelManufacturingAt(runId)
-    if (!r.ok) onToast(cmdText(r) || '取消失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.132'), true)
     else onToast(tr("ui.Industry.106"))
   }
 
@@ -665,7 +665,7 @@ function BlueprintCard({
     const n = Number.parseInt(goalText, 10)
     const goal = Number.isFinite(n) && n > 0 ? n : null
     const r = engine.setManufacturingLoopAt(blueprintId, on, on ? goal : null)
-    if (!r.ok) onToast(cmdText(r) || '开关操作失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.133'), true)
   }
 
   const feedTxt = short.length > 0 ? short.join('；') : ''
@@ -698,7 +698,7 @@ function BlueprintCard({
           <RowGlyph glyph={productGlyph} /> {name}
           {running ? (
             <em className="app-belt-flag is-run">
-              {kindLabel === '舰船' ? tr("ui.Industry.037") : tr("ui.Industry.038")}
+              {kindLabel === '舰船' ? tr("ui.Industry.037") : tr("ui.Industry.038")} {/* l10n-keep：kindLabel 是内容层联合 key（不是文案），渲染处照 id 取词 */}
               {runs.length > 1 ? ` ×${runs.length}` : ''}
             </em>
           ) : null}
@@ -838,10 +838,10 @@ function BlueprintCard({
                   }}
                   title={tr("ui.Industry.059")}
                 />
-                件<em className="app-dim">{tr("ui.Industry.060")}</em>
+                {tr('ui.MarketPage.117')}<em className="app-dim">{tr("ui.Industry.060")}</em>
               </span>
             ) : null}
-            {loop.produced > 0 ? <span className="app-mf-made">{tr("ui.Industry.061")} {loop.produced.toLocaleString('zh-CN')} 件</span> : null}
+            {loop.produced > 0 ? <span className="app-mf-made">{tr("ui.Industry.061")} {loop.produced.toLocaleString('zh-CN')} {tr('ui.MarketPage.117')}</span> : null}
             {loop.stopWhy.length > 0 ? <span className="app-mf-why">{tr("ui.Industry.062")}{loop.stopWhy}</span> : null}
             <span className="app-dim app-mf-note">
               {tr("ui.Industry.063")}{runs.length > 0 ? tr("ui.Industry.113", { p1: runs.length }) : ''}
@@ -858,7 +858,7 @@ function BlueprintCard({
                   className="app-belt-worker-name"
                   title={tr("ui.Industry.114", { p1: formatDurationMs(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
                 >
-                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })} · 剩余约{' '}
+                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })} tr('ui.Industry.137'){' '}
                   {formatDurationMs(v.remainingMs)}
                 </span>
                 <span className="app-progress-mini" title={tr("ui.Industry.116", { p1: v.percent })}>
@@ -1226,7 +1226,7 @@ export function ManufacturingPanel({
     .filter(
       (it) =>
         tab === 'all' ||
-        (tab === 'ship' ? it.kindLabel === '舰船' : tab === 'equip' ? it.kindLabel === '装备' : it.kindLabel === '消耗品'),
+        (tab === 'ship' ? it.kindLabel === '舰船' : tab === 'equip' ? it.kindLabel === '装备' : it.kindLabel === '消耗品'), // l10n-keep：kindLabel 是内容层联合 key
     )
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
@@ -1284,7 +1284,7 @@ export function ManufacturingPanel({
           船长 2026-09-19） */}
       <div className="app-filter-block">
       <div className="app-fleet-row">
-        <span className="app-dim">学会：</span>
+        <span className="app-dim">{tr('ui.Industry.136')}</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
           {BLUEPRINT_LEARN_TABS.map((l) => (
             <button
@@ -1298,7 +1298,7 @@ export function ManufacturingPanel({
             </button>
           ))}
         </div>
-        <span className="app-dim">门类：</span>
+        <span className="app-dim">{tr('ui.Industry.134')}</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
           {MANU_TABS.map((t) => (
             <button
@@ -1333,7 +1333,7 @@ export function ManufacturingPanel({
                 setUseKind(SUB_ALL) // 回「全部子类」⇒ 三级筛选行随之隐藏，故一并复位
               }}
             >
-              全部
+              {tr('ui.IndustryPage.001')}
             </button>
             {subOptions.map((s) => (
               <button
@@ -1357,7 +1357,7 @@ export function ManufacturingPanel({
           **选了子类才渲染**：没选子类时它不出现，避免与"全部子类"语义打架 */}
       {sub !== SUB_ALL ? (
         <div className="app-fleet-row">
-          <span className="app-dim">图纸：</span>
+          <span className="app-dim">{tr('ui.Industry.135')}</span>
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
             {BLUEPRINT_USE_TABS.map((u) => (
               <button
