@@ -87,25 +87,57 @@ export function matterTechPrereqMissing(
   return out
 }
 
-/** **能不能研究**（只做判据，不扣款）：界面按钮与 `researchMatterTech` 共用同一把尺 */
+/** **能不能研究**（只做判据，不扣款）：界面按钮与 `researchMatterTech` 共用同一把尺。
+ * 返回形状带 `errorId`/`errorParams`（甲案）：调用方（含渲染层）用 `cmdText(can)` 取当前语言的拒绝原因。 */
 export function matterTechCanResearch(
   state: GameState,
   ctx: SimContext,
   id: string,
-): { ok: boolean; error?: string; node?: MatterTechNodeDef; cost?: { essence: number; isk: number } } {
+): {
+  ok: boolean
+  error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
+  node?: MatterTechNodeDef
+  cost?: { essence: number; isk: number }
+} {
   const node = matterTechNodeOf(ctx, id)
-  if (!node) return { ok: false, error: '没有这项研究。' }
+  if (!node) return { ok: false, error: '没有这项研究。', errorId: 'core.matterTech.001' }
   const level = matterTechLevel(state, id)
-  if (level >= node.maxLevel) return { ok: false, error: '这项研究已经满级。', node }
+  if (level >= node.maxLevel) {
+    return { ok: false, error: '这项研究已经满级。', errorId: 'core.matterTech.002', node }
+  }
   const missing = matterTechPrereqMissing(state, ctx, node)
-  if (missing.length > 0) return { ok: false, error: `前置未满：${missing.join('、')}。`, node }
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      error: `前置未满：${missing.join('、')}。`,
+      errorId: 'core.matterTech.003',
+      errorParams: { p1: missing.join('、') },
+      node,
+    }
+  }
   const cost = matterTechCostAt(node, level)
   const have = matterTechEssenceHeld(state)
   if (have < cost.essence) {
-    return { ok: false, error: `虫洞谜质不足：需要 ${cost.essence} 枚，现有 ${have} 枚。`, node, cost }
+    return {
+      ok: false,
+      error: `虫洞谜质不足：需要 ${cost.essence} 枚，现有 ${have} 枚。`,
+      errorId: 'core.matterTech.004',
+      errorParams: { p1: cost.essence, p2: have },
+      node,
+      cost,
+    }
   }
   if (state.wallet.isk < cost.isk) {
-    return { ok: false, error: `信用点不足：需要 ${cost.isk.toLocaleString('zh-CN')}。`, node, cost }
+    return {
+      ok: false,
+      error: `信用点不足：需要 ${cost.isk.toLocaleString('zh-CN')}。`,
+      errorId: 'core.matterTech.005',
+      errorParams: { p1: cost.isk.toLocaleString('zh-CN') },
+      node,
+      cost,
+    }
   }
   return { ok: true, node, cost }
 }
@@ -118,14 +150,28 @@ export function researchMatterTech(
   state: GameState,
   ctx: SimContext,
   id: string,
-): { ok: boolean; error?: string; level?: number } {
+): {
+  ok: boolean
+  error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
+  level?: number
+} {
   const can = matterTechCanResearch(state, ctx, id)
-  if (!can.ok || !can.node || !can.cost) return { ok: false, error: can.error ?? '无法研究。' }
+  if (!can.ok || !can.node || !can.cost) {
+    /** 兜底句（`can` 理论上必带原因，这里防"判据返 ok:false 却不给原因"的将来改动） */
+    return {
+      ok: false,
+      error: can.error ?? '无法研究。',
+      errorId: can.errorId ?? (can.error === undefined ? 'core.matterTech.006' : undefined),
+      errorParams: can.errorParams,
+    }
+  }
   const node = can.node
   const before = matterTechLevel(state, id)
   if (can.cost.essence > 0) {
     const taken = removeWare(state, MATTER_TECH_ESSENCE_ITEM_ID, can.cost.essence)
-    if (!taken) return { ok: false, error: '虫洞谜质不足（账变）。' }
+    if (!taken) return { ok: false, error: '虫洞谜质不足（账变）。', errorId: 'core.matterTech.007' }
   }
   state.wallet.isk -= can.cost.isk
   if (!state.research) state.research = { levels: {} }

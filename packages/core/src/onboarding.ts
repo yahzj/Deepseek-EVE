@@ -32,7 +32,7 @@ export const TASK_FIND_HUMANS = 'find-humans'
 export function publishFindHumans(state: GameState): void {
   if (state.importantTasks[TASK_FIND_HUMANS]) return
   state.importantTasks[TASK_FIND_HUMANS] = { done: false }
-  addLog(state, 'info', '◆ 重要任务发布「寻找人类」：完成方法未知——先在这座城市活下去，再慢慢打听。')
+  addLog(state, 'info', '◆ 重要任务发布「寻找人类」：完成方法未知——先在这座城市活下去，再慢慢打听。', 'core.onboarding.001')
 }
 
 /** 序章收尾（幂等）：步骤落 99 ＋ 发布贯穿任务 */
@@ -46,18 +46,22 @@ function finishPrologue(state: GameState): void {
  * 直接躺进收件箱，不再锁页面）。
  */
 export function beginAfterAwaken(state: GameState): CommandResult {
-  if (state.onboarding.step !== ONB_AWAKEN) return { ok: false, error: '当前不在序章演出阶段。' }
+  if (state.onboarding.step !== ONB_AWAKEN) {
+    return { ok: false, error: '当前不在序章演出阶段。', errorId: 'core.onboarding.002' }
+  }
   finishPrologue(state)
-  addLog(state, 'info', '自检完成——信息库重启，第一份简报已落在导航「通讯」里。')
+  addLog(state, 'info', '自检完成——信息库重启，第一份简报已落在导航「通讯」里。', 'core.onboarding.003')
   return { ok: true }
 }
 
 /** 渲染层：跳过序章演出（未及起名 ⇒ 呼号落默认 PRTS）；与演完等价，不发放任何奖励 */
 export function skipPrologue(state: GameState): CommandResult {
-  if (state.onboarding.step !== ONB_AWAKEN) return { ok: false, error: '序章演出已结束。' }
+  if (state.onboarding.step !== ONB_AWAKEN) {
+    return { ok: false, error: '序章演出已结束。', errorId: 'core.onboarding.004' }
+  }
   if (state.character.name === DEFAULT_PILOT_NAME) state.character.name = 'PRTS'
   finishPrologue(state)
-  addLog(state, 'system', '序章演出已跳过——开始新的航程。')
+  addLog(state, 'system', '序章演出已跳过——开始新的航程。', 'core.onboarding.005')
   return { ok: true }
 }
 
