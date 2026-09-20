@@ -176,8 +176,30 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 3. 「采矿作业中：先停止开采。」这条已出现在 **3 个文件**（industry ×2 + 别处）⇒ 用 `core.state.013`（打捞/远征/巡逻/返航同理）；
 4. **多段拼接**的日志（精炼炉/回收炉的"停炉"那三条 `543/617/642` 附近、AI 战报）**先别接**，
    等"多段文案"形状定了统一做（`ai.ts` 已有同样待办注释）。
-**下一批建议顺序**：`ai.ts` → `industry.ts` → `location.ts` → `market.ts` → `expedition.ts` → `combat.ts` →
-`hauling.ts` → `equipment.ts` → `manufacturing.ts` → `state.ts` → `save.ts` → `wormhole*.ts` → 其余（约 26 个文件 / ≈490 处）。
+**⚠ 2026-09-20 实测「剩余工作量表」（未改造文件；已改完的 `mining`/`salvaging`/`shipyard`/`ai` 不在此列）**：
+
+| 文件 | 剩余 | 文件 | 剩余 | 文件 | 剩余 |
+|---|---|---|---|---|---|
+| `industry.ts` | **72** | `wormholeSalvage.ts` | **54** | `location.ts` | **50** |
+| `expedition.ts` | **45** | `market.ts` | **40** | `equipment.ts` | 29 |
+| `wormhole.ts` | 28 | `wormholeBattle.ts` | 27 | `manufacturing.ts` | 24 |
+| `hauling.ts` | 21 | `sideTasks.ts` | 20 | `fitPresets.ts` | 17 |
+| `engine.ts` | 15 | `wormholeHold.ts` | 13 | `station.ts` | 12 |
+| `encounters.ts` | 11 | `wormholeScan.ts` | 9 | `explore.ts` | 8 |
+| `matterTech.ts` | 6 | `state.ts` | 6 | `onboarding.ts` | 5 |
+| `wormholeAuto.ts` | 4 | `comms.ts` | 3 | `simulation.ts` | 2 |
+| `marks.ts` / `events.ts` / `firstRewards.ts` | 各 1 | | | | |
+
+⚠ **节奏教训（2026-09-20）**：一轮**别挑 >40 的文件**——`industry.ts`（72）就是这么做到一半、上下文耗尽
+被迫整文件回退（不留半成品）。建议：**一轮一个 20~40 的文件**，或一轮两三个 <15 的小文件。
+（`combat.ts` 此前显示的 3 处是误计：它的日志/错误是派生串，见下条待办。）
+
+**下一批建议顺序（按上表从小到大重排，先清小文件攒手感）**：
+`marks.ts` → `events.ts` → `firstRewards.ts` → `simulation.ts` → `comms.ts` → `wormholeAuto.ts` →
+`onboarding.ts` → `matterTech.ts` / `state.ts` → `explore.ts` → `wormholeScan.ts` → `encounters.ts` →
+`station.ts` → `wormholeHold.ts` → `engine.ts` → `fitPresets.ts` → `sideTasks.ts` → `hauling.ts` →
+`manufacturing.ts` → `wormholeBattle.ts` → `wormhole.ts` → `equipment.ts` → **`market.ts`** →
+**`expedition.ts`** → **`location.ts`** → **`wormholeSalvage.ts`** → **`industry.ts`**（大件最后、单独一轮）。
 
 - **日志口径实测与纠偏**（船长追问"老档哪来的历史日志"后查实）：日志**不落盘**（引擎 `persist()` /
   `currentSaveText()` 写盘前剥离）⇒ 真实档 `logs` 恒为空；**但**造档工具（`tools/make-test-save.ts` 等）

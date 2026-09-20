@@ -93,6 +93,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.state.007": { zh: "目标星系不在已知航路内。", en: "The target system is not on any known route." },
   "core.state.008": { zh: "重复清剿已停止。", en: "Repeat sweeps stopped." },
   "core.state.009": { zh: "重复清剿已停止（返航中切换驾驶）。", en: "Repeat sweeps stopped (ship changed while returning)." },
+  "core.state.023": { zh: "；超出上限的 {p1} 未结算", en: "; the {p1} beyond the cap was not settled" },
   /* ── shipyard.ts（船坞：命名 / 换船 / 弃船 / 维修 / 仓储 / 锁定）── */
   "core.shipyard.001": { zh: "机库里没有这艘船。", en: "That ship is not in the hangar." },
   "core.shipyard.002": { zh: "该船用的就是默认名。", en: "That ship already uses its default name." },
@@ -165,8 +166,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.ai.031": { zh: "[AI·{p1}] 舰船损毁，AI 任务结束（{p2} 已归还）。", en: "[AI·{p1}] The ship was destroyed and the AI task ended ({p2} returned)." },
   "core.ai.032": { zh: "[AI·{p1}] 耐久过低，已自动回港维修至 100%。", en: "[AI·{p1}] Durability ran too low; it returned to port automatically and was repaired to 100%." },
   "core.ai.033": { zh: "[AI·{p1}] 耐久过低但维修费不足，请尽快手动维修。", en: "[AI·{p1}] Durability is too low but there are not enough credits for repairs — repair it by hand soon." },
-  /* AI 战报：`aiWinText` / `aiLoseText` 既要进日志、又当战报摘要 ⇒ 拆成可拼接的几段
-     （段与段之间在 core 里用 `''` 相接，避免渲染层再翻一次参数） */
+  /* ⚠ AI 战报（`aiWinText` / `aiLoseText`）与精炼炉/回收炉的"停炉"日志是**多段拼接**：
+     单个 textId 只能覆盖首句 ⇒ 其余段会从日志里消失（比留中文更糟），故**暂不接**。
+     待"多段文案"形状（如 `textParts: string[]` 逐段）定了再统一处理，见 `ai.ts` 内的甲案待办注释。 */
+  /* ── 小文件一批（marks / comms / simulation / wormholeAuto / events / firstRewards）── */
+  "core.marks.001": { zh: "没有可标记的{p1}（{p2}）。", en: "There is no {p1} to mark ({p2})." },
+  "core.comms.001": { zh: "[通讯] 收到 {p1} 的一条消息：《{p2}》——导航「通讯」可查看。", en: "[Comms] A message arrived from {p1}: “{p2}” — open Comms in the navigation to read it." },
+  "core.comms.002": { zh: "没有这封通讯（可能已被撤销）。", en: "That message does not exist (it may have been withdrawn)." },
+  "core.simulation.001": { zh: "离线归来：已离开 {p1}，开始结算……", en: "Back from offline: away for {p1}, settling now…" },
+  "core.simulation.002": { zh: "离线结算完成：推进 {p1}{p2}{p3}，期间发生 {p4} 条事件。", en: "Offline settlement done: advanced {p1}{p2}{p3}, with {p4} events along the way." },
+  "core.wormholeAuto.001": { zh: "这一趟自动探索已经结束了。", en: "That automated exploration run is already over." },
+  "core.wormholeAuto.002": { zh: "🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。", en: "🛰 The automated exploration team was recalled: no spoils and no damage; that passage closes here." },
+  "core.wormholeAuto.003": { zh: "这份报告不在了。", en: "That report is gone." },
+  "core.events.001": { zh: "✦ {p1}", en: "✦ {p1}" },
+  "core.events.002": { zh: "（+{p1} 信用点）", en: " (+{p1} credits)" },
+  "core.firstRewards.001": { zh: "◆ 任务奖励已发放：{p1}。", en: "◆ Task rewards granted: {p1}." },
   "ui.ActivityBar.004": { zh: "取消", en: "Cancel" },
   "ui.ActivityBar.005": { zh: "停止", en: "Stop" },
   "ui.ActivityBar.006": { zh: "星图", en: "Star Map" },

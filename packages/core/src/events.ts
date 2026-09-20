@@ -154,9 +154,22 @@ function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
   return Math.round(Math.min(def.basePrice * bal.maxPriceRatio, Math.max(def.basePrice * bal.minPriceRatio, raw)))
 }
 
-/** 日志里统一写事件文本（金额自动附注） */
+/** 日志里统一写事件文本（金额自动附注）。
+ *
+ * 甲案（2026-09-20）：`✦ ` 前缀与"（+N 信用点）"附注都是**固定外壳** ⇒ 由本函数拼好、
+ * 把外壳的 id 一并交给日志（`core.events.001` / `.002`）；事件正文 `text` 由事件表给（该表未改造前保持中文）。 */
 function logEvent(state: GameState, text: string, amount?: number): void {
-  addLog(state, 'event', `✦ ${text}${amount !== undefined && amount > 0 ? `（+${amount.toLocaleString('zh-CN')} 信用点）` : ''}`)
+  const hasAmount = amount !== undefined && amount > 0
+  const amountNote = hasAmount ? `（+${amount.toLocaleString('zh-CN')} 信用点）` : ''
+  addLog(
+    state,
+    'event',
+    `✦ ${text}${amountNote}`,
+    'core.events.001',
+    hasAmount
+      ? { p1: text, p2: amount.toLocaleString('zh-CN'), p2Id: 'core.events.002' }
+      : { p1: text },
+  )
 }
 
 /** 事件现金 · 已探索星系加成（2026-09-10 船长：探索越多事件奖金越高；导出供测试） */

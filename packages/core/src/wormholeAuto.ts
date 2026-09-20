@@ -547,7 +547,7 @@ export function wormholeRunMeta(run: { seed: number; archetype?: WormholeArchety
 export function wormholeAutoStop(state: GameState, runId: string): CommandResult {
   const runs = wormholeAutoRunsOf(state)
   const run = runs.find((r) => r.id === runId)
-  if (!run) return { ok: false, error: '这一趟自动探索已经结束了。' }
+  if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
   state.wormholeAuto = runs.filter((r) => r.id !== runId)
   addLog(state, 'info', '🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。')
   return { ok: true }
@@ -556,7 +556,7 @@ export function wormholeAutoStop(state: GameState, runId: string): CommandResult
 /** 按参与舰 id 中止（活动栏那一行用） */
 export function wormholeAutoStopByShip(state: GameState, shipId: string): CommandResult {
   const run = wormholeAutoRunsOf(state).find((r) => r.shipIds.includes(shipId))
-  if (!run) return { ok: false, error: '这一趟自动探索已经结束了。' }
+  if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
   return wormholeAutoStop(state, run.id)
 }
 
@@ -734,7 +734,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
 export function wormholeAutoConfirmReport(state: GameState, reportId: string): CommandResult {
   const list = wormholeAutoReportsOf(state)
   const report = list.find((r) => r.id === reportId)
-  if (!report) return { ok: false, error: '这份报告不在了。' }
+  if (!report) return { ok: false, error: '这份报告不在了。', errorId: 'core.wormholeAuto.003' }
   if (report.confirmed) return { ok: true }
   report.confirmed = true
   state.wormholeAutoReports = [...list]
