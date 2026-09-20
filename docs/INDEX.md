@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **285** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5404** KB · **39493** 行
+- 文档总数 **285** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5407** KB · **39494** 行
 - 状态分布：**未标注** 156 · **已确认/已实现** 109 · **进行中** 18 · **待裁定** 1 · **历史留档** 1
 - 孤儿文档（0 引用）**24** 份 · 状态未标注 **156** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -33,7 +33,7 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 23 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 173 KB / 235 行 | 13 / 1 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 176 KB / 236 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 61 KB / 660 行 | 69 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 372 KB / 833 行 | 194 / 9 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 288 行 | 255 / 10 |

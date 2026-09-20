@@ -14,6 +14,8 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipCategoryKeyOf, shipSizeLabel, visibleItemDefs } from '@whale/core'
 import type { DroneClass, ItemKind, ShipRole } from '@whale/core'
+// 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
+import { itemRarityTierOf } from '@whale/data'
 // 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
 // （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
 import { handMarketKeyOf } from '../ui/marketJump'
@@ -539,6 +541,13 @@ interface GridCell {
   sub: string
   /** 完整数据（详情窗用） */
   raw: RawData
+  /**
+   * **稀有度档**（1~5；`undefined` = 不显示标签）。
+   * 2026-09-20 船长：「希望给每个物品的图标模式右上角添加物品稀有度展示的小标签」——
+   * 图鉴网格与仓库/货仓**同一个视觉语言**（`app-hand-cell-rarity`），档位走单点
+   * `itemRarityTierOf()`（含 AI 核心与舰船的键映射）。
+   */
+  rarity?: number
 }
 
 /** 一个分组（仓库同款小节）：分类名 + 数量 + 卡片 */
@@ -583,6 +592,12 @@ function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) 
             <span className="app-hand-cell-icon">
               <Glyph name={c.glyph} size={30} color={tone} />
             </span>
+            {/* 稀有度小标签（2026-09-20 船长）：与仓库/货仓图标模式同一语言 */}
+            {c.rarity !== undefined ? (
+              <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={`稀有度 R${c.rarity}`}>
+                R{c.rarity}
+              </span>
+            ) : null}
             <span className="app-hand-cell-name">{c.name}</span>
             <span className="app-hand-cell-sub">{c.sub}</span>
           </button>
@@ -886,6 +901,7 @@ export function Handbook({
     name: item.name,
     sub: `${kindName(item.kind)} · ${item.unitM3} m³`,
     raw: item as unknown as RawData,
+    rarity: itemRarityTierOf(item.id),
   }))
   const moduleCells: GridCell[] = engine.modules.map((mod) => ({
     key: mod.id,
@@ -894,6 +910,7 @@ export function Handbook({
     name: mod.name,
     sub: `${slotName(mod.slot)} · ${moduleShortEffect(mod)}`,
     raw: mod as unknown as RawData,
+    rarity: itemRarityTierOf(mod.id),
   }))
   const shipCells: GridCell[] = engine.ships.map((ship) => {
     // 2026-09-16 船长：类别键走 `shipCategoryKeyOf` —— 装甲线 = `role: 'armored'` **或**武装舰里装甲占比 > 护盾占比
@@ -906,6 +923,7 @@ export function Handbook({
       name: ship.name,
       sub: `${roleName(cls)} · ${shipSizeLabel(ship.tier)} T${ship.tier} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
       raw: ship as unknown as RawData,
+      rarity: itemRarityTierOf(ship.id),
     }
   })
   const bpCells: GridCell[] = [
@@ -921,6 +939,7 @@ export function Handbook({
             `${kindName(engine.ctx.items.get(bp.itemId)?.kind ?? 'ammo')} · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
           : `装备 · ${engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.moduleId ?? ''}`,
       raw: bp as unknown as RawData,
+      rarity: itemRarityTierOf(bp.id),
     })),
     ...engine.shipBlueprints.map((bp) => ({
       key: bp.id,
@@ -929,6 +948,7 @@ export function Handbook({
       name: bp.name,
       sub: `舰船 · ${engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId}`,
       raw: bp as unknown as RawData,
+      rarity: itemRarityTierOf(bp.id),
     })),
   ]
   const skillCells: GridCell[] = engine.skills.map((s) => ({

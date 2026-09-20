@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
+import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
@@ -253,6 +254,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       sub: `×${units.toLocaleString('zh-CN')}`,
       title: def.description,
       hover: moduleHoverContent(def),
+      // 稀有度小标签（2026-09-20 船长）：装备的市场 refId 本来就是 `mod-<id>` ⇒ 直接传 id
+      rarity: itemRarityTierOf(id),
     })
   }
 
@@ -574,6 +577,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
                 // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
                 tone: inventoryItemTone(id, def?.kind ?? kind),
+                // 稀有度小标签（2026-09-20 船长）：物品按 id 查档（含市场外档表与 AI 核心的映射）
+                rarity: itemRarityTierOf(id),
               }
             })
             const extra2 = kindExtraNote(kind)

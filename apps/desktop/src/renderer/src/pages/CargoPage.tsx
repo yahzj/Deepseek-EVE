@@ -23,6 +23,7 @@ import {
   shipDisplayName,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
+import { itemRarityTierOf } from '@whale/data'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -364,6 +365,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
                   // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
                   tone: inventoryItemTone(id, def?.kind ?? kind),
+                  // 稀有度小标签（2026-09-20 船长）：物品按 id 查档（含市场外档表与 AI 核心的映射）
+                  rarity: itemRarityTierOf(id),
                 }
               })
               const extra = kindExtraNote(kind)

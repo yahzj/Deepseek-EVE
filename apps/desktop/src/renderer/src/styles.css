@@ -7154,6 +7154,36 @@ html[data-locale='en'] body {
 
 }
 
+/* ═══════════ 图标模式的**稀有度小标签**（2026-09-20 船长：「给每个物品的图标模式右上角添加
+   物品稀有度展示的小标签（采用 R1 表示 1 级稀有度，并以此类推）」）═══════════
+   口径：
+   · 位置钉在**格子右上角**（`.app-hand-cell` 加 `position: relative` 当定位上下文；
+     绝对定位**不占布局** ⇒ 格子高度/排布一字未动，不会有新滚动条）。
+   · 文字固定 `R{档}`（R1~R5；档 5 目前无物品使用，样式先备着）。
+   · 配色**同源市场页既有的稀有度色阶**，不新造：1 灰（常驻）· 2 淡青 · 3 琥珀 ·
+     4 = `.app-chip.is-rare` 的金 `#f4c95d` · 5 = `.app-chip.is-exotic` 的品红 `#ff8ad8`。
+   · 小标签是**读数**，不接悬停（不新起第二套提示机制，见 AGENTS §6）。 */
+.app-hand-cell { position: relative; }
+.app-hand-cell-rarity {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 1;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  font-family: var(--wui-mono);
+  font-size: calc(var(--ui-fs, 1) * 9px);
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+}
+.app-hand-cell-rarity.is-r1 { color: #8aa0b8; background: rgba(138, 160, 184, 0.12); }
+.app-hand-cell-rarity.is-r2 { color: #9fe8ff; background: rgba(159, 232, 255, 0.12); }
+.app-hand-cell-rarity.is-r3 { color: #ffca58; background: rgba(255, 202, 88, 0.12); }
+.app-hand-cell-rarity.is-r4 { color: #f4c95d; background: rgba(244, 201, 93, 0.14); }
+.app-hand-cell-rarity.is-r5 { color: #ff8ad8; background: rgba(255, 138, 216, 0.14); }
+
 .app-hand-row-glyph {
 
   display: inline-flex;
