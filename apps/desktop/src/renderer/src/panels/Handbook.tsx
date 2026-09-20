@@ -90,11 +90,13 @@ const COUNT_UNIT: Record<Tab, string> = {
 const VIEW_KEY = 'whale-idle:handbook-view'
 
 /** 蓝图门类（手册「蓝图图鉴」主筛选）：判据与分组键同源（有 `shipId` = 舰船蓝图、
- *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图） */
+ *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图）。2026-09-20 船长裁定「零件蓝图归到该组」：
+ *  有 `itemId` 且**产物是零件**的另立「零件蓝图」门类（此前落进消耗品蓝图那门）。 */
 const BP_MAIN: SubOption[] = [
   { key: 'equip', label: '装备蓝图' },
   { key: 'ship', label: '舰船蓝图' },
   { key: 'consume', label: '消耗品蓝图' },
+  { key: 'part', label: '零件蓝图' },
 ]
 /** 各图鉴筛选行的灰字前缀（同「我的舰队」那套「类别：」「级别：」写法，避免多个「全部」混淆） */
 const FILTER_LABEL: Record<Tab, string> = {
@@ -978,7 +980,12 @@ export function Handbook({
         const ship = engine.ctx.ships.get(String(c.raw.shipId))
         return ship ? `t${ship.tier}` : ''
       }
-      if (c.raw.itemId !== undefined) return 'supply'
+      if (c.raw.itemId !== undefined) {
+        // 2026-09-20 零件体系（船长裁定「归到该组」）：**产物是零件的**归「零件蓝图」组——
+        // 组键沿用市场那张单点表 `BLUEPRINT_SUBS` 里既有的 `part-advanced` 档（其 label 就是「零件蓝图」，
+        // 市场上只有高级零件有书；图鉴这一组连基础零件的隐式蓝图一起列）。
+        return engine.ctx.items.get(String(c.raw.itemId))?.kind === 'part' ? 'part-advanced' : 'supply'
+      }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
       return mod ? rackOf(mod) : ''
     }
@@ -1041,6 +1048,7 @@ export function Handbook({
     if (t === 'blueprints') {
       if (main === 'equip') return RACK_SUBS
       if (main === 'ship') return SHIP_TIER_SUBS
+      if (main !== 'consume') return [] // 「零件蓝图」自成一门，暂不细分（基础/高级已在卡片副行与产物名里）
       /** 消耗品蓝图：按**产物大类**细分（弹药 / 修理组件 / 无人机）——只列真有蓝图的大类 */
       const kinds = new Set<string>()
       for (const b of engine.blueprints) {
@@ -1076,7 +1084,11 @@ export function Handbook({
     if (t === 'ships') return shipRolePasses(engine.ctx.ships.get(c.key), main)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) return main === 'ship'
-      if (c.raw.itemId !== undefined) return main === 'consume'
+      if (c.raw.itemId !== undefined) {
+        // 2026-09-20 船长裁定：产物是零件的走「零件蓝图」门类，其余物品蓝图仍是消耗品蓝图
+        const kind = engine.ctx.items.get(String(c.raw.itemId))?.kind
+        return main === (kind === 'part' ? 'part' : 'consume')
+      }
       return main === 'equip'
     }
     return String(c.raw.group ?? '') === main // skills
