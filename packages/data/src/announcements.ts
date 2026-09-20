@@ -222,7 +222,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     ],
   },
   {
-    // 2026-09-12 船长批准（待审稿 docs/design/announcement-draft-20260912-pilot1-batches.md 卡 4；船长原话「**只说明4,6.**」，逐字照发）。
+    // 2026-09-12 船长批准（待审稿 docs/design/archive/announcement-draft-20260912-pilot1-batches.md 卡 4；船长原话「**只说明4,6.**」，逐字照发）。
     id: '2026-09-12-cpu-coprocessor',
     title: '新装配件「协处理器」：为舰船扩容 CPU',
     date: '2026-09-12',
@@ -235,7 +235,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     ],
   },
   {
-    // 2026-09-12 船长批准（待审稿 docs/design/announcement-draft-20260912-pilot1-batches.md 卡 6；船长原话「**只说明4,6.**」，逐字照发）。
+    // 2026-09-12 船长批准（待审稿 docs/design/archive/announcement-draft-20260912-pilot1-batches.md 卡 6；船长原话「**只说明4,6.**」，逐字照发）。
     id: '2026-09-12-rare-wreck-pity',
     title: '稀有残骸保底与掉落说明',
     date: '2026-09-12',
@@ -248,7 +248,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     ],
   },
   {
-    // 2026-09-12 船长批准（待审稿 docs/design/announcement-draft-20260912-foe-overhaul.md **v3**，逐字照发）。
+    // 2026-09-12 船长批准（待审稿 docs/design/archive/announcement-draft-20260912-foe-overhaul.md **v3**，逐字照发）。
     // 船长两条裁定：「**公告只写一个敌人重做**」＋「**公告只集中在讲述敌人重做上**」
     // ⇒ 本条目**只有一条要点**，且**只讲敌群本体与敌方防空**（星系布置 / 派发规则 / F 族废弃三项**不进公告**）。
     id: '2026-09-12-foe-overhaul',
