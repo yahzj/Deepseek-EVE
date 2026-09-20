@@ -87,8 +87,8 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
     if (!named.includes(name)) named.push(name)
   }
   const generic: string[] = []
-  const series = ['民用与 MK1 系列装备']
-  if (src.lowSec) series.push('MK2 系列装备')
+  const series = [tr('ui.wreckFlavor.001')]
+  if (src.lowSec) series.push(tr('ui.wreckFlavor.002'))
   // 有具名特色件时用「另有…」；没有（整行退为「其他掉落」）时直接给系列名
   generic.push(`${named.length > 0 ? tr("ui.FitPage.072") : ''}${series.join(tr("ui.MatterTechTab.017"))}`)
   const frag = fragClause(src.threat)
@@ -129,7 +129,7 @@ export function mineralRowsOf(
  */
 export function FlavorTip({
   note,
-  featureLabel = '特色掉落',
+  featureLabel = tr('ui.MapPage.058'),
   named = [],
   generic = [],
   tone = 'normal',
@@ -143,7 +143,7 @@ export function FlavorTip({
   if (!note && named.length === 0 && generic.length === 0) return null
   return (
     <div className="app-belt-desc is-tip">
-      {note ? <div className="app-dim">产出倾向：{note}</div> : null}
+      {note ? <div className="app-dim">{tr("ui.wreckFlavor.003")}{note}</div> : null}
       {named.length > 0 || generic.length > 0 ? (
         <div className={`app-belt-feat${tone === 'strong' ? ' is-strong' : ''}`}>
           {featureLabel}：{named.join('；')}
