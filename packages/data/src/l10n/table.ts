@@ -1117,6 +1117,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.CargoPage.057": { zh: "{p1}——船载仅携带；装配台取料自装备库，船载装备需先卸回。", en: "{p1} — carried aboard only; the fitting bay draws from Module Storage, so modules aboard have to be unloaded first." },
   "ui.CargoPage.058": { zh: "×{p1} · 计入货舱 {p2}", en: "×{p1} · {p2} against the hold" },
   "ui.CargoPage.059": { zh: "船载仅携带：装配台取料自装备库，船载装备需先卸回。", en: "Carried aboard only: the fitting bay draws from Module Storage, so modules aboard have to be unloaded first." },
+  "ui.CargoPage.060": { zh: "该船闲置中", en: "That ship is idle" },
   "ui.CommsPage.001": { zh: "已把 {n} 封通讯标为已读。", en: "Marked {n} messages as read." },
   "ui.CommsPage.002": { zh: "收件箱里没有未读通讯。", en: "No unread messages in the inbox." },
   "ui.CommsPage.003": { zh: "协会各部门与合作方有事会直接发到这里。带「前往」的通讯只是提示你该去哪儿，具体事务仍要在对应页面上办。", en: "Association departments and partners message you here directly. A message with Go to only points you at the right page; the real business still happens there." },

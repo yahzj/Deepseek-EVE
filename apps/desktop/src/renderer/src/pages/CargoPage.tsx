@@ -192,7 +192,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 key={id}
                 className={`app-shipchip${isSel ? ' is-active' : ''}${isP ? ' is-piloted' : ''}`}
                 onClick={() => setSelId(id)}
-                title={isP ? tr("ui.CargoPage.007") : b ?? '该船闲置中'}
+                title={isP ? tr("ui.CargoPage.007") : b ?? tr('ui.CargoPage.060')}
               >
                 <span className="app-shipchip-name">
                   {d ? <span className={`app-role-dot is-${d.role}`} /> : null}
@@ -416,7 +416,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     title: def?.description,
                     // 富卡悬停（含"船载仅携带"那句注脚；2026-09-19 与列表模式/仓库同步）
                     hover: def
-                      ? moduleHoverContent(def, '船载仅携带：装配台取料自装备库，船载装备需先卸回。')
+                      ? moduleHoverContent(def, tr('ui.CargoPage.059'))
                       : undefined,
                   }
                 })}
@@ -516,7 +516,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               name={sellDef.name}
               glyph={sellDef.kind}
               max={sellUnits}
-              unit="单位"
+              unit={tr('ui.Expedition.102')}
               priceText={sellBuy !== undefined ? tr("ui.CargoPage.055", { p1: isk(sellBuy) }) : undefined}
               note={sellDef.description}
               onClose={() => setSellId(null)}
