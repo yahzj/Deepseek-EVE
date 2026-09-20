@@ -14,7 +14,7 @@
 | 接线 | 渲染层 `t()`/`tr()` 调用点 **≈3,747 处** |
 | **core 甲案** | **已完成** —— `textId`/`errorId` 引用 **803 处**，全部在表内、形态合规（无遗漏调用点） |
 | 剩余读数 | 渲染层含中日韩字面量 **67 条** —— **全部是"中文当键"的数据**（联合 key / 形状槽键 / 键表 label / 探针 / i18n 实现自身），**无玩家可见漏译**；逐条见 §3② |
-| 未做 | **主进程 / 预加载文案 ≈10 处**（渲染层工具扫不到）· **P4 逐页溢出读数表**（船长要的交付物）· 67 条键类的"改 id"重构（属重构非翻译，需船长点头） |
+| 未做 | **P4 逐页溢出读数表**（船长要的交付物）· 67 条键类的"改 id"重构（属重构非翻译，需船长点头） |
 | 已验证 | typecheck 四包 0 错 · core **1907** 用例全绿 · `l10n:check` · `content:check` · `ui:rot-check` · `build` · `docs:index --check` 全绿 |
 
 ## 0.1 2026-09-20 三号收尾轮做了什么（下次接手先看这段）
@@ -100,16 +100,19 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 - 工具：`npm run l10n:list -- <文件…>`（逐条列行号+文本）· `npm run l10n:check`（汇总读数）。
 - ⚠ 若将来真要清零：**在 `l10n-check` 里加 `l10n-keep` 白名单**（见 §3⑤），别去翻这些键。
 
-### ③ 主进程 / 预加载的文案 ≈10 处（**渲染层工具扫不到，别漏**）
+### ③ 主进程 / 预加载的文案 —— ✅ **已完成**（2026-09-20 三号收尾）
 
-- 扫描根：两个工具的 `ROOT` 都写死在 `apps/desktop/src/renderer/src` ⇒
-  **`apps/desktop/src/main/index.ts` 与 `preload/` 从没被扫过**。
-- 实测（2026-09-19）：`main/index.ts` 有 10 处玩家可见中文——窗口标题 `'大鲸鱼-深空放置'`（第 204 行）·
-  导入/导出对话框的 `title`/`buttonLabel`/`filters[].name`（151~177 行）· 两条错误串（161/171 行）。
-- 处理建议（二选一，**建议甲**）：
-  甲：这 10 处也走唯一表（主进程启动时读语言偏好 + `L10N`，与语言切换解耦但即时性要求低）；
-  乙：给它们打 `l10n-keep` 并在工具里把扫描根扩到 `apps/desktop/src`，明示"主进程只出中文"。
-- ⚠ 无论选哪个，**工具扫描根要扩到 `apps/desktop/src`**（否则这块永远是盲区）。
+- 原盲区成因：两个工具的 `ROOT` 都写死在 `apps/desktop/src/renderer/src` ⇒ `main/`、`preload/` 从没被扫过。
+  **现已把扫描根扩到 `apps/desktop/src`**（`tools/l10n-check.ts`），`l10n:check` 现扫 65 个源文件。
+- 处理（走**甲案**，主进程也读唯一表）：
+  - `main/index.ts` 新增主进程侧 `t(id, params)` + `mainLocale`（缺 id ⇒ 返回 id 本身，与渲染层同口径）；
+  - 14 处文案接 id：窗口标题（复用 `ui.App.056`）· 导入/导出对话框 title/buttonLabel/filters.name ·
+    非法备份名 ×3 · 文件过大 / 读取失败 / 写入失败 / 非法文本；
+  - **语言由渲染层推**：偏好存在渲染进程 `localStorage`（主进程读不到）⇒ 新增
+    `l10n:set-locale`（main IPC）+ `window.whale.setLocale`（preload），
+    由 `i18n/locale.tsx` 的 `L10nProvider` 在挂载与切语言时推一次。
+    窗口标题与系统对话框都是**运行期才建**的 ⇒ 推送晚到无影响（启动瞬间默认中文）。
+- 核验：构建产物 `out/main/index.js` 里已带 `l10n:set-locale` 与译文。
 
 ### ④ P4 逐页溢出读数表（**船长明确要的交付物**）
 
