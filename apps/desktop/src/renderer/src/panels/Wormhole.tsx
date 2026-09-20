@@ -145,6 +145,21 @@ const WORMHOLE_MAP_ZOOM_STEP = 0.25
 /** 滚轮一格的步长（比按钮细一半：滚轮是连续输入，粗档会一跳一跳） */
 const WORMHOLE_MAP_ZOOM_WHEEL_STEP = 0.125
 const WORMHOLE_MAP_ZOOM_MAX = 2.5
+/**
+ * **盘面过大 ⇒ 自动聚焦**（船长 2026-09-20 确认的界面配套；半径同日改成"每层 +1 环、上不封顶"）。
+ *
+ * 为什么需要：地图是"**固定 300px 高的框 ＋ viewBox 随半径放大**"（船长 2026-09-13：「窗口高度固定」）
+ * ⇒ 单格屏幕高度 ≈ `600 / (3R + 2.4)` px：R=4 约 42px · R=8 约 23px · **R=11 约 17px** · R=21 约 9px。
+ * 口径：**半径 > 8 时，换层自动把缩放设到"单格约 20px"**（`(3R + 2.4) / 30`，夹在 FIT~MAX 之间）；
+ * R ≤ 8 恒为 1（适应窗口，观感与改造前一致）。自动只在**换层/进出洞**时发生，玩家随时可手动 ＋/－ 或滚轮改。
+ */
+const WORMHOLE_MAP_AUTOZOOM_MIN_R = 8
+/** 自动缩放的换算基准：`(3R + 2.4) / 30` ⇒ R=9 约 1.0 · R=11 约 1.18 · R=21 约 2.18（再大夹到 MAX） */
+function wormholeMapAutoZoom(radius: number): number {
+  if (!(radius > WORMHOLE_MAP_AUTOZOOM_MIN_R)) return WORMHOLE_MAP_ZOOM_FIT
+  const z = (3 * radius + 2.4) / 30
+  return Math.min(WORMHOLE_MAP_ZOOM_MAX, Math.max(WORMHOLE_MAP_ZOOM_FIT, +z.toFixed(2)))
+}
 
 /** 扫描动画的序号（换一次 = 重播一次；只用于 React key/CSS 重挂，不进存档） */
 let scanFxSeqCounter = 0
@@ -559,6 +574,15 @@ export function WormholePanel({
   }, [])
   useEffect(() => () => wheelCleanupRef.current?.(), [])
   const layerKeyForFx = run ? `${run.seed ?? 0}-${run.depth}` : 'none'
+  /**
+   * **换层时按新半径设一次缩放初值**（船长 2026-09-20 确认的界面配套）：半径 ≤ 8 恒为"适应窗口"，
+   * 更大则自动聚焦到玩家（单格约 20px，见 `wormholeMapAutoZoom`）。依赖用 `layerKeyForFx`
+   * ⇒ 只在换层/进出洞时触发，**玩家手动缩放不会被覆盖**。
+   */
+  useEffect(() => {
+    setMapZoom(wormholeMapAutoZoom(run?.grid?.radius ?? 0))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layerKeyForFx])
   /** 新层挂载 ⇒ 播"从屏幕外飞入"，1 秒后交还操作（进场与深入共用这一条） */
   useEffect(() => {
     if (!run) return

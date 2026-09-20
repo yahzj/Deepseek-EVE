@@ -274,15 +274,17 @@ export const WORMHOLE_EMPTY_MIN_SHARE = 0.5
  * 为什么必须放开它：`空 ≥ 50%` 是一道**硬夹子**——非空格数 = 可分配池 − 空格数，
  * 遗迹/舰船/矿脉**全都只能从这口锅里分**。要让「遗迹格随层增加并给下限」成立，就得给深层腾格子。
  *
- * 口径：`空占比 = max(下限, 50% − 每层递减 × (层 − 1))`（**相对"可分配池"而言**）
- * ⇒ 层 1~6 = **50% / 46% / 42% / 38% / 34% / 32%**（层 6 起触底）。
+ * 口径：`空占比 = max(下限, 50% − 每层递减 × (层 − 1))`（**相对"可分配池"而言**）。
+ * ⚠ 量纲是"**占池**"不是"占总格数"：本层可分配池 = 全部格 − 终点格（终点不参与分配）；
+ * 旧式 `ceil(nAll × 50%)` 在层 1（19 格）得 10 空、池只有 18 ⇒ 实际 55.6% 占池。本批明确为"占池"后
+ * **层 1 逐格不变**（19 格、10 空），变的只是深层。
  *
- * ⚠ **为什么是"占池"而不是"占总格数"**：这一层的可分配池 = 全部格 − 终点格（终点不参与分配）；
- * 旧式 `ceil(nAll × 50%)` 在层 1（19 格）得 10 空，而池只有 18 格 ⇒ 实际是 **55.6% 占池**。
- * 本批把量纲明确成"占池"，并**令层 1 逐格不变**（19 格、10 空）——船长原口径在层 1 上一字未动，
- * 变的只是深层（层 5：池 30 格 ⇒ 空 11 格 = 36.7% 占池、占格 18%，比改造前的 31 格空 50.8% 明显"满"）。
+ * ⚠ **2026-09-20 船长改判**：「空信息地点占比只进行略微下降。**每层降低1%**」（旧口径 = 每层 −4%）
+ * ⇒ 层 1~10 = **50/49/48/47/46/45/44/43/42/41%**，**下限仍取 32%**（船长同批确认保留）⇒ 层 19 触底。
+ * 为什么这么改：半径改成"每层 +1 环、上不封顶"之后，盘面本来就随层变大；再把空占比猛降会让深层
+ * "信号格爆炸"（既没必要、也压垮回合预算）⇒ 只微降，让"越深内容越多"由**盘面变大**承担。
  */
-export const WORMHOLE_EMPTY_SHARE_PER_DEPTH = 0.04
+export const WORMHOLE_EMPTY_SHARE_PER_DEPTH = 0.01
 /** 空地点占比的**地板**（再深也不低于它——保住"三层里有一层是空的"这个体感） */
 export const WORMHOLE_EMPTY_SHARE_FLOOR = 0.32
 /**
@@ -337,19 +339,22 @@ export function wormholeRuinsFloorFor(depth: number): number {
  */
 export const WORMHOLE_NEBULA_MIN_DEPTH = 4
 /**
- * **星云占比**（船长 2026-09-19：「**提高4层后星云的占比**」；同日三问三答定档）：
- * 层 4 基数 **20%**，此后每层 **+5%**，**封顶 40%** ⇒ 层 4/5/6/7/8+ = 20/25/30/35/40%。
- * ⚠ 取代原「层 4 起固定 15%」。配额算法不变：`⌈可长星云的格数 × 本比例⌉`。
+ * **星云占比**（船长 2026-09-19：「**提高4层后星云的占比**」；**2026-09-20 再次改判**：
+ * 「星云遮蔽**每层提高2%**。**封顶80%**」）。
+ *
+ * 口径：层 4 基数 **20%** 不变，此后每层 **+2%**，**封顶 80%**（层 34 触顶）
+ * ⇒ 层 4/5/6/7/8/9/10 = 20/22/24/26/28/30/32%。
+ * ⚠ 旧口径「每层 +5%、封顶 40%」**作废**；旧护栏 `WORMHOLE_NEBULA_MAX_SHARE = 0.5`
+ * （"最多占有信号格的一半"）**同日删除**——它与新封顶重复，留着会让 80% 永远到不了（层 20 起被压回 50%）。
+ * 配额算法不变：`⌈可长星云的格数 × 本比例⌉`。完整 1~10 层表见 `docs/design/wh-grid-ladder-20260920.md`。
  */
 export const WORMHOLE_NEBULA_SHARE = 0.2
-/** 每层递增量（层 4 起，每下一层 +5%） */
-export const WORMHOLE_NEBULA_SHARE_STEP = 0.05
-/** 封顶（层 8 及更深恒 40%） */
-export const WORMHOLE_NEBULA_SHARE_CAP = 0.4
-/** 星云最多占掉多少比例的"有信号格"（留出余量，免得整盘全被遮；40% 封顶后本护栏不再咬合，保留备用） */
-export const WORMHOLE_NEBULA_MAX_SHARE = 0.5
+/** 每层递增量（层 4 起，每下一层 +2%） */
+export const WORMHOLE_NEBULA_SHARE_STEP = 0.02
+/** 封顶（层 34 及更深恒 80%） */
+export const WORMHOLE_NEBULA_SHARE_CAP = 0.8
 
-/** 第 `depth` 层**该用多少星云占比**（层 <4 返回 0 = 没有星云；层 4 起 20% + 每层 5%、封顶 40%） */
+/** 第 `depth` 层**该用多少星云占比**（层 <4 返回 0 = 没有星云；层 4 起 20% + 每层 2%、封顶 80%） */
 export function wormholeNebulaShareFor(depth: number): number {
   const d = Math.max(1, Math.floor(depth))
   if (d < WORMHOLE_NEBULA_MIN_DEPTH) return 0
@@ -391,14 +396,20 @@ export function signalOfPlace(place: WormholePlace): WormholeSignal | null {
 }
 
 /**
- * **每层网格半径**（船长确认「其他按推荐」）：第 1 层 R=2（19 格），**每 2 层 +1**，上限 **R=4**（61 格）。
- * 依据：与现有回合预算（4×T3 = 29~42 回合/趟）相配，一层可行动作约 8~12 次。
+ * **每层网格半径**（**2026-09-20 船长改判**：「**台阶改为 1 层 +1 环，但是上不封顶**」）：
+ * 第 1 层 R=2（19 格），**每 1 层 +1 环**、**不设上限**（旧口径：每 2 层 +1、封顶 R=4）。
+ *
+ * 口径：`R = 2 + (层 − 1)` ⇒ 层 1~10 = 2/3/4/5/6/7/8/9/10/11（19/37/61/91/127/169/217/271/331/**397** 格）。
+ * 依据：船长同日的两条配套裁定——**回合预算已由科技（时序锚定器 ＋100 回合）支撑**，
+ * 空信息占比改为**每层只降 1%**（见 `WORMHOLE_EMPTY_SHARE_PER_DEPTH`）；
+ * 后果（知情）：深层从"清层"变成"挑点"（层 10 的 233 个信号格 vs 满科技约 137 回合），
+ * 全盘视图也会等比缩小 ⇒ 界面侧对 `R > 8` 走"跟随玩家自动放大"（见 `panels/Wormhole.tsx`）。
+ * 完整 1~10 层表见工作文档 `docs/design/wh-grid-ladder-20260920.md`。
  */
 export const WORMHOLE_GRID_R_MIN = 2
-export const WORMHOLE_GRID_R_MAX = 4
 export function wormholeGridRadiusFor(depth: number): number {
   const d = Math.max(1, Math.floor(depth))
-  return Math.min(WORMHOLE_GRID_R_MAX, WORMHOLE_GRID_R_MIN + Math.floor((d - 1) / 2))
+  return WORMHOLE_GRID_R_MIN + (d - 1)
 }
 
 /** **初始扫描半径 = 1 格**（船长原话；后续可由装备/谜质/技能提升——字段留着） */
@@ -520,6 +531,43 @@ export function markExitKnown(grid: WormholeGridState): void {
   grid.exitKnown = true
   const key = hexKey(grid.exit.q, grid.exit.r)
   if (!grid.scanned.includes(key)) grid.scanned.push(key)
+}
+
+/**
+ * **信标揭示"一处谜质信号" —— 第 2 个及以后的信标干的事**（船长 2026-09-20：
+ * 「**信标第一次显示下一层入口，后续还激活其他信标则显示谜质位置**」＋「**信标能穿透星云**」）。
+ *
+ * 口径：
+ * - 挑**离玩家当前位置最近**、`place === 'matter'`、且**还没进 `scanned`** 的那一格
+ *   （"已扫描"就是"已揭示"的记录 ⇒ 玩家自己扫过的谜质格不重复揭示，信标去找下一个）；
+ * - 揭示动作 = 并入 `scanned`（地图上出现**谜质信号**；内容仍要到达才知，与信号遮蔽那套一致）
+ *   ＋ **若该格被星云罩着，一并驱散**（船长明确"信标可穿透星云" ⇒ 复用 `disperseNebulae` 单点）；
+ * - 没有可揭示的谜质格 ⇒ 返回 `null`（调用方就此写一条"没有新的谜质可标"的日志；回合照扣，不退）。
+ *
+ * ⚠ **"第几个信标"不新增存档字段**：由调用方数 `grid.activated` 里 `place === 'beacon'` 的格数即得。
+ */
+export function revealNearestMatterCell(
+  grid: WormholeGridState,
+  from: HexCell,
+): { cell: WormholeGridCell; nebulaDispersed: boolean } | null {
+  let best: WormholeGridCell | null = null
+  let bestD = Number.POSITIVE_INFINITY
+  for (const c of grid.cells) {
+    if (c.place !== 'matter') continue
+    if (grid.scanned.includes(c.key)) continue
+    if (grid.visited.includes(c.key)) continue
+    const d = hexDistance(from, { q: c.q, r: c.r })
+    if (d < bestD) {
+      bestD = d
+      best = c
+    }
+  }
+  if (!best) return null
+  grid.scanned.push(best.key)
+  // **穿透星云**（船长 2026-09-20）：这一格若正被星云罩着，信标直接把雾掀掉
+  const nebulaDispersed = isNebulaFogged(grid, best)
+  if (nebulaDispersed) disperseNebulae(grid, [{ q: best.q, r: best.r }])
+  return { cell: best, nebulaDispersed }
 }
 
 /* ═══════════ 三之一、路径拦截（2026-09-16 船长新增） ═══════════ */
@@ -921,17 +969,16 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
    *
    * 只点**有信号的地点**（船长补正「**空地没有星云**」）+ **排除下一层入口**（它是导航标记，
    * 遮住它只会让玩家白扫）。配额 = `⌈有信号格数 × wormholeNebulaShareFor(层)⌉`
-   * （2026-09-19 船长令后随层递增：层 4/5/6/7/8+ = 20/25/30/35/40%），再夹在"最多占一半"以内。
+   * （2026-09-20 船长令：层 4 起 20% + **每层 2%**、**封顶 80%** ⇒ 层 4~10 = 20/22/24/26/28/30/32%）。
+   * ⚠ 原先还夹一道"最多占有信号格的一半"（`WORMHOLE_NEBULA_MAX_SHARE`）——**同日随新封顶删除**：
+   * 层 20 起声明占比会超 50%，留着就永远到不了 80%。
    * 打乱用**独立随机流**（`seed × 6619 + depth × 81173`）⇒ 不动主流的消耗序列，
    * 层 1~3 的盘面与改造前**逐格一致**（回归可验）。
    */
   if (depth >= WORMHOLE_NEBULA_MIN_DEPTH) {
     const exitKey = hexKey(exit.q, exit.r)
     const candidates = cells.filter((c) => c.place !== 'empty' && c.key !== exitKey)
-    const quotaN = Math.min(
-      Math.ceil(candidates.length * wormholeNebulaShareFor(depth)),
-      Math.floor(candidates.length * WORMHOLE_NEBULA_MAX_SHARE),
-    )
+    const quotaN = Math.ceil(candidates.length * wormholeNebulaShareFor(depth))
     if (quotaN > 0) {
       const nebRng = wormholeStream(seed * 6619 + depth * 81173)
       const idx = candidates.map((_, i) => i)

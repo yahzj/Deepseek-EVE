@@ -39,6 +39,8 @@ import {
   isExitCell,
   isNebulaFogged,
   markExitKnown,
+  // 2026-09-20 船长：第 2 个及以后的信标揭示一处谜质信号（可穿透星云）
+  revealNearestMatterCell,
   signalOfPlace,
   wormholeMakeGrid,
   wormholePathInterceptAt,
@@ -1166,45 +1168,82 @@ export function wormholeGridTravel(
    * 走开就可能找不回去。⇒ 与那两条**同一收口**（它顺便把出口格并入 `scanned`，前往时不再问"未知地点"）。
    */
   if (atExit) markExitKnown(grid)
-  // ── 到达即触发：舰船信号（开打）/ 漂浮信标（标出入口） ──
+  // ── 到达即触发：舰船信号（开打）/ 漂浮信标（第 1 个标出入口 · 后续揭示谜质） ──
   const first = !grid.activated.includes(dest.key)
   const autoBattle = first && dest.place === 'ship'
   const beacon = first && dest.place === 'beacon'
+  /**
+   * **这是第几个信标**（船长 2026-09-20「信标第一次显示下一层入口，后续还激活其他信标则显示谜质位置」）
+   * ——数 `grid.activated` 里已触发过的信标格即可，**不新增存档字段**（本格还没入列 ⇒ +1 = 名次）。
+   */
+  const beaconNo = beacon ? grid.activated.filter((k) => grid.cells.find((c) => c.key === k)?.place === 'beacon').length + 1 : 0
   /**
    * **踩中埋伏**（船长 2026-09-16）：`!scanned` = 玩家点它时这一格**还没扫描过**（信息闸那一步算好的值）
    * ⇒ "走进去才发现里面是敌人"。**拦截不算**（那种玩家在移动前已确认过"会被拦下并开战"）。
    */
   const ambush = autoBattle && !scanned && !intercept
   if (autoBattle || beacon) grid.activated.push(dest.key)
+  /** 后续信标揭示到的那一格（`null` = 本层已没有可揭示的谜质） */
+  let beaconReveal: { cell: WormholeGridCell; nebulaDispersed: boolean } | null = null
   if (beacon) {
-    /**
-     * **信标标出终点**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
-     *
-     * 收口在 `markExitKnown`：置 `exitKnown` ＋ 把出口格并入 `scanned`。
-     * 为什么要并入：原先玩家从信标得知终点位置后，点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」
-     * 的确认框 —— 那句话在此时是**误导**（它不是未知地点，它是终点）。并进去之后前往就走正常路径。
-     * ⚠ 读到信标之前玩家不该"凭空知道"出口格是安全可去的 ⇒ 默认不并；
-     * **2026-09-16 甲案**起，**扫描扫到出口格本身**也走同一个收口（见 `markExitKnown` 的注释）。
-     */
-    markExitKnown(grid)
+    if (beaconNo <= 1) {
+      /**
+       * **第 1 个信标 = 标出下一层入口**（船长 2026-09-13 口径，未变）。
+       *
+       * 收口在 `markExitKnown`：置 `exitKnown` ＋ 把出口格并入 `scanned`。
+       * 为什么要并入：原先玩家从信标得知终点位置后，点它前往仍会撞上「这个地点还没扫描过：前往未知地点？」
+       * 的确认框 —— 那句话在此时是**误导**（它不是未知地点，它是终点）。并进去之后前往就走正常路径。
+       * ⚠ 读到信标之前玩家不该"凭空知道"出口格是安全可去的 ⇒ 默认不并；
+       * **2026-09-16 甲案**起，**扫描扫到出口格本身**也走同一个收口（见 `markExitKnown` 的注释）。
+       */
+      markExitKnown(grid)
+    } else {
+      /**
+       * **第 2 个及以后 = 揭示一处谜质信号**（船长 2026-09-20，落地见 `revealNearestMatterCell`）：
+       * 挑离玩家最近、尚未揭示的谜质格 ⇒ 并入 `scanned`，**并被星云遮着时一并驱散**（船长明确可穿透）。
+       * 本层没有可揭示的谜质 ⇒ 什么都不做（日志照写一句），回合不退还（到达那一步已经扣了）。
+       */
+      beaconReveal = revealNearestMatterCell(grid, { q: dest.q, r: dest.r })
+    }
   }
-  addLog(
-    state,
-    'info',
-    autoBattle
-      ? intercept
-        ? `🕳 途中被拦下（${dest.q},${dest.r}）：对方的舰船信号挡住去路——交火开始 · 剩 ${run.turnsLeft} 回合。`
-        : ambush
-          ? `🕳 踩中埋伏（${dest.q},${dest.r}）：这个地点出发前没扫描过——里面是敌人，准备交火 · 剩 ${run.turnsLeft} 回合。`
-          : `🕳 抵达舰船信号（${dest.q},${dest.r}）：对方已经发现我们——交火开始 · 剩 ${run.turnsLeft} 回合。`
-      : beacon
-        ? `🕳 抵达漂浮信标（${dest.q},${dest.r}）：信标把下一层入口标在了地图上（Q${grid.exit.q} · R${grid.exit.r}）· 剩 ${run.turnsLeft} 回合。`
-        : atExit
-          ? `🕳 抵达下一层入口（${dest.q},${dest.r}）：激活此处将迎战第 ${run.depth} 层守卫 · 剩 ${run.turnsLeft} 回合。`
-          : intercept
-            ? `🕳 途中被拦下（${dest.q},${dest.r}）：这里是${WORMHOLE_PLACE_TEXT[dest.place]}，先处理完再继续 · 剩 ${run.turnsLeft} 回合。`
-            : `🕳 抵达新地点（${dest.q},${dest.r}）：${WORMHOLE_PLACE_TEXT[dest.place]} · 剩 ${run.turnsLeft} 回合。`,
-  )
+  /**
+   * **到达日志**（信标那三条走**本地化 id**：`core.wormhole.029/030/031/032`——2026-09-20 起新写的
+   * 玩家可见文案按约定 §十一之三"先取 id 再写文案"；本调用点其余分支仍是甲案待改造的内联串）。
+   */
+  let arrivalText: string
+  let arrivalId: string | undefined
+  let arrivalParams: Record<string, string | number> | undefined
+  if (autoBattle) {
+    arrivalText = intercept
+      ? `🕳 途中被拦下（${dest.q},${dest.r}）：对方的舰船信号挡住去路——交火开始 · 剩 ${run.turnsLeft} 回合。`
+      : ambush
+        ? `🕳 踩中埋伏（${dest.q},${dest.r}）：这个地点出发前没扫描过——里面是敌人，准备交火 · 剩 ${run.turnsLeft} 回合。`
+        : `🕳 抵达舰船信号（${dest.q},${dest.r}）：对方已经发现我们——交火开始 · 剩 ${run.turnsLeft} 回合。`
+  } else if (beacon) {
+    if (beaconNo <= 1) {
+      arrivalText = `🕳 抵达漂浮信标（${dest.q},${dest.r}）：信标把下一层入口标在了地图上（Q${grid.exit.q} · R${grid.exit.r}）· 剩 ${run.turnsLeft} 回合。`
+      arrivalId = 'core.wormhole.029'
+      arrivalParams = { p1: dest.q, p2: dest.r, p3: grid.exit.q, p4: grid.exit.r, p5: run.turnsLeft }
+    } else if (beaconReveal) {
+      const neb = beaconReveal.nebulaDispersed
+      arrivalText = neb
+        ? `🕳 抵达漂浮信标（${dest.q},${dest.r}）：信标标出一处谜质信号（Q${beaconReveal.cell.q} · R${beaconReveal.cell.r}）——顺带驱散了那里的星云 · 剩 ${run.turnsLeft} 回合。`
+        : `🕳 抵达漂浮信标（${dest.q},${dest.r}）：信标标出一处谜质信号（Q${beaconReveal.cell.q} · R${beaconReveal.cell.r}）· 剩 ${run.turnsLeft} 回合。`
+      arrivalId = neb ? 'core.wormhole.031' : 'core.wormhole.030'
+      arrivalParams = { p1: dest.q, p2: dest.r, p3: beaconReveal.cell.q, p4: beaconReveal.cell.r, p5: run.turnsLeft }
+    } else {
+      arrivalText = `🕳 抵达漂浮信标（${dest.q},${dest.r}）：这块信标没有新的谜质可标 · 剩 ${run.turnsLeft} 回合。`
+      arrivalId = 'core.wormhole.032'
+      arrivalParams = { p1: dest.q, p2: dest.r, p3: run.turnsLeft }
+    }
+  } else if (atExit) {
+    arrivalText = `🕳 抵达下一层入口（${dest.q},${dest.r}）：激活此处将迎战第 ${run.depth} 层守卫 · 剩 ${run.turnsLeft} 回合。`
+  } else if (intercept) {
+    arrivalText = `🕳 途中被拦下（${dest.q},${dest.r}）：这里是${WORMHOLE_PLACE_TEXT[dest.place]}，先处理完再继续 · 剩 ${run.turnsLeft} 回合。`
+  } else {
+    arrivalText = `🕳 抵达新地点（${dest.q},${dest.r}）：${WORMHOLE_PLACE_TEXT[dest.place]} · 剩 ${run.turnsLeft} 回合。`
+  }
+  addLog(state, 'info', arrivalText, arrivalId, arrivalParams)
   return {
     ok: true,
     spent: WORMHOLE_TURN_PER_MOVE,

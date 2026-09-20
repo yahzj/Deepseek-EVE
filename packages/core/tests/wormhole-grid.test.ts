@@ -14,7 +14,6 @@ import { describe, expect, it } from 'vitest'
 import {
   HEX_DIRS,
   WORMHOLE_EMPTY_MIN_SHARE,
-  WORMHOLE_GRID_R_MAX,
   WORMHOLE_RUINS_FLOOR_MIN_DEPTH,
   WORMHOLE_RUINS_SHARE,
   gridTally,
@@ -26,7 +25,9 @@ import {
   hexLine,
   hexNeighbors,
   isExitCell,
+  isNebulaFogged,
   pickPlace,
+  revealNearestMatterCell,
   revealOf,
   signalOfPlace,
   wormholeGridRadiusFor,
@@ -69,13 +70,17 @@ describe('虫洞网格 · 几何（F3a）', () => {
     expect(hexDiskAround(center, 0)).toEqual([center])
   })
 
-  it('每层半径：R=2 起、每 2 层 +1、上限 R=4（船长「其他按推荐」）', () => {
-    expect(wormholeGridRadiusFor(1)).toBe(2)
-    expect(wormholeGridRadiusFor(2)).toBe(2)
-    expect(wormholeGridRadiusFor(3)).toBe(3)
-    expect(wormholeGridRadiusFor(4)).toBe(3)
-    expect(wormholeGridRadiusFor(5)).toBe(4)
-    expect(wormholeGridRadiusFor(99)).toBe(WORMHOLE_GRID_R_MAX)
+  it('每层半径：**每 1 层 +1 环、上不封顶**（船长 2026-09-20「台阶改为1层+1环…上不封顶」）', () => {
+    expect(wormholeGridRadiusFor(1)).toBe(2) // 19 格
+    expect(wormholeGridRadiusFor(2)).toBe(3) // 37
+    expect(wormholeGridRadiusFor(3)).toBe(4) // 61
+    expect(wormholeGridRadiusFor(4)).toBe(5) // 91
+    expect(wormholeGridRadiusFor(5)).toBe(6) // 127
+    expect(wormholeGridRadiusFor(10)).toBe(11) // 397
+    // **无上限**：R = 2 + (层−1) 一路涨下去（旧口径封顶 R=4 已作废）
+    expect(wormholeGridRadiusFor(20)).toBe(21)
+    expect(wormholeGridRadiusFor(99)).toBe(100)
+    expect(hexDiskCount(wormholeGridRadiusFor(10))).toBe(397)
   })
 })
 
@@ -166,9 +171,12 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
      * 为什么：旧式 `空 = ⌈总格数 × 50%⌉` 的口径下，池子 = `格数 − 1 − 空格数` **随终点格自己是否为空**在
      * 两组值之间跳（例如层 3 的池恒为 17 或 18）⇒ 同一层不同 seed 的信标数会在 1/2 之间漂。
      * 现在空格数是**定额**（`⌈(格数−1) × 该层占比⌉`）⇒ 池子定额 ⇒ 各信号计数**逐层定额、与 seed 无关**。
-     * 这是纯改进（校准与用例都不必再留"取整容差"），但数变了 ⇒ 这里按新分配重钉。
+     *
+     * ⚠ **2026-09-20 台阶改判后重钉**（每 1 层 +1 环 ⇒ 盘面/池子都变大，信标数随之上升）：
+     * 层 1~8 = **1/2/3/5/7/9/12/15**（实测 120 seed 恒定）；更深层（如层 10 = 23 或 24）会因
+     * **内容原型的权重微调**浮 1 ⇒ 那种深度改用区间断言，不再钉死。
      */
-    const expectBeacons: Record<number, number> = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 4, 6: 4, 8: 4 }
+    const expectBeacons: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 9, 8: 15 }
     for (const [depthStr, n] of Object.entries(expectBeacons)) {
       const depth = Number(depthStr)
       for (let seed = 1; seed <= 120; seed++) {
@@ -333,6 +341,90 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
       expect(go.ok, `前往出口被拒：${go.error ?? ''}`).toBe(true)
       expect({ q: g.pos.q, r: g.pos.r }).toEqual({ q: g.exit.q, r: g.exit.r })
     }
+  })
+
+  /**
+   * **信标新规**（船长 2026-09-20：「**信标第一次显示下一层入口，后续还激活其他信标则显示谜质位置**」）。
+   *
+   * 口径：第 1 个信标 = 标出下一层入口（原口径不变）；**第 2 个及以后** = 揭示**一处谜质信号**——
+   * 挑离玩家最近、尚未进 `scanned` 的 `matter` 格 ⇒ 并入 `scanned`（地图上出现谜质信号）。
+   * "第几个信标"由 `grid.activated` 里 `place === 'beacon'` 的格数现数，**不新增存档字段**。
+   */
+  it('**信标新规**：第 1 个标入口 · 第 2 个揭示一处最近谜质 · 没有可揭示时是空操作（都有日志）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 777 })
+    const a = addShipToFleet(state, 'sh-thresher')
+    expect(wormholeEnter(state, ctx, [a], 777).ok).toBe(true)
+    const g = state.wormhole.run!.grid!
+    const cellsOf = (): typeof g.cells => g.cells
+    const matterUnscanned = (): typeof g.cells =>
+      cellsOf().filter((c) => c.place === 'matter' && !g.scanned.includes(c.key))
+    /** 把一个"离玩家最近的非入口格"改成信标、扫亮、走过去（挑最近的 ⇒ 直线路径最短，少受路径拦截干扰） */
+    const walkToBeacon = (): void => {
+      const cands = cellsOf()
+        .filter((c) => !g.visited.includes(c.key) && c.place !== 'ship')
+        .sort(
+          (x, y) =>
+            hexDistance({ q: x.q, r: x.r }, g.pos) - hexDistance({ q: y.q, r: y.r }, g.pos) || x.key.localeCompare(y.key),
+        )
+      const target = cands[0]!
+      target.place = 'beacon'
+      target.piles = []
+      if (!g.scanned.includes(target.key)) g.scanned.push(target.key)
+      // 路径拦截只认"未清掉的舰船信号格"：把这条直线上的舰船信号清掉（本用例测信标，不测拦截）
+      for (const c of hexLine(g.pos, { q: target.q, r: target.r })) {
+        const cell = cellsOf().find((x) => x.key === hexKey(c.q, c.r))
+        if (cell && cell.place === 'ship') cell.place = 'empty'
+      }
+      const res = wormholeGridTravel(state, { q: target.q, r: target.r })
+      expect(res.ok, res.error ?? '').toBe(true)
+    }
+    // ① 第 1 个信标：只标出入口，**不动谜质**
+    const matterBefore = matterUnscanned().length
+    expect(matterBefore, '层 1 本就保底 1 个谜质格').toBeGreaterThan(0)
+    walkToBeacon()
+    expect(g.exitKnown, '第 1 个信标标出入口').toBe(true)
+    expect(matterUnscanned().length, '第 1 个信标不该揭示谜质').toBe(matterBefore)
+    expect(state.logs.some((l) => l.text.includes('把下一层入口标在了地图上'))).toBe(true)
+    // ② 第 2 个信标：揭示**一处**（且是离玩家最近的那一处）谜质
+    const nearest = matterUnscanned().sort(
+      (x, y) =>
+        hexDistance({ q: x.q, r: x.r }, g.pos) - hexDistance({ q: y.q, r: y.r }, g.pos) || x.key.localeCompare(y.key),
+    )[0]!
+    walkToBeacon()
+    expect(g.scanned.includes(nearest.key), '第 2 个信标揭示的是"离玩家最近、尚未揭示"的那个谜质格').toBe(true)
+    expect(matterUnscanned().length).toBe(matterBefore - 1)
+    expect(state.logs.some((l) => l.text.includes('信标标出一处谜质信号'))).toBe(true)
+    // ③ 把剩下的谜质全部"提前揭示" ⇒ 再踩信标是**空操作**（不报错、写一条说明）
+    for (const c of matterUnscanned()) g.scanned.push(c.key)
+    walkToBeacon()
+    expect(state.logs.some((l) => l.text.includes('没有新的谜质可标'))).toBe(true)
+  })
+
+  /**
+   * **信标可穿透星云**（船长 2026-09-20：「除了信标能穿透星云这点」⇒ 明确要**能**穿透）。
+   *
+   * 口径：第 2 个及以后的信标揭示谜质格时，**若那一格正被星云罩着，一并驱散**
+   * （复用 `disperseNebulae` 单点；不新增机制）。这条与"扫描遇到星云要先再扫一次"并存——
+   * 星云仍是回合税，只是信标给的线索不交这笔税。
+   */
+  it('**信标可穿透星云**：被星云罩着的谜质格也能被信标揭示，且星云一并驱散', () => {
+    // 直接对单点做（层 4 才有星云；这里手工造"被罩住的谜质格"，不依赖生成器配额）
+    const g = wormholeMakeGrid(4242, 4)
+    const matter = g.cells.find((c) => c.place === 'matter')!
+    expect(matter, '层 4 盘上应有谜质格').toBeDefined()
+    matter.nebula = true
+    g.dispersed = []
+    g.scanned = g.scanned.filter((k) => k !== matter.key)
+    expect(isNebulaFogged(g, matter), '造好的现场：这一格确实被星云遮着').toBe(true)
+    // 把其它谜质格都排除掉，逼信标只能挑它
+    for (const c of g.cells) if (c.place === 'matter' && c.key !== matter.key) g.scanned.push(c.key)
+    const revealed = revealNearestMatterCell(g, g.pos)
+    expect(revealed?.cell.key).toBe(matter.key)
+    expect(revealed?.nebulaDispersed, '穿透：星云被一并驱散').toBe(true)
+    expect(g.scanned.includes(matter.key), '已并入 scanned（地图上出现谜质信号）').toBe(true)
+    expect(isNebulaFogged(g, matter), '星云已散 ⇒ 不再遮着').toBe(false)
+    // 没有可揭示的谜质 ⇒ 返回 null（调用方据此写"没有新的谜质可标"）
+    expect(revealNearestMatterCell(g, g.pos)).toBeNull()
   })
 
   /**

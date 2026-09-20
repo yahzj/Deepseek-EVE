@@ -516,6 +516,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormhole.026": { zh: "已经在虫洞里了：先撤离或结算本趟。", en: "You are already inside a wormhole: withdraw or settle this run first." },
   "core.wormhole.027": { zh: "🛰 进洞前自动停掉「扫描虫洞」（进度保留：已扫 {p1} 分钟）——回来可以接着扫。", en: "🛰 Wormhole scanning was stopped automatically before entering (progress kept: {p1} minutes scanned) — you can pick it up when you return." },
   "core.wormhole.028": { zh: "🚚 进洞前自动停掉「长途运输」（舰船已即时返港停靠「{p1}」，无惩罚）。", en: "🚚 Long-haul transport was stopped automatically before entering (the ship returned at once and docked at “{p1}”, no penalty)." },
+  /* 漂浮信标新规（船长 2026-09-20：第 1 个标入口 · 后续揭示一处谜质、可穿透星云） */
+  "core.wormhole.029": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标把下一层入口标在了地图上（Q{p3} · R{p4}）· 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked the next layer's entrance on the map (Q{p3} · R{p4}) · {p5} turns left." },
+  "core.wormhole.030": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标标出一处谜质信号（Q{p3} · R{p4}）· 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked a spot of Enigma (Q{p3} · R{p4}) · {p5} turns left." },
+  "core.wormhole.031": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标标出一处谜质信号（Q{p3} · R{p4}）——顺带驱散了那里的星云 · 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked a spot of Enigma (Q{p3} · R{p4}) and dispersed the nebula there · {p5} turns left." },
+  "core.wormhole.032": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：这块信标没有新的谜质可标 · 剩 {p3} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it has no further Enigma to mark · {p3} turns left." },
   /* ── 第十七批：equipment.ts（装配 / 换装 / 无人机 / 弹药档位 / 卸下）── */
   "core.equipment.001": { zh: "未知装备：{p1}。", en: "Unknown module: {p1}." },
   "core.equipment.002": { zh: "装备库里没有 {p1}，先去组装机造一件。", en: "There is no {p1} in module storage — build one at the assembly unit first." },
