@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **282** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5361** KB · **39106** 行
-- 状态分布：**未标注** 151 · **已确认/已实现** 108 · **进行中** 16 · **待裁定** 6 · **历史留档** 1
+- 文档总数 **283** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5367** KB · **39212** 行
+- 状态分布：**未标注** 151 · **已确认/已实现** 108 · **进行中** 16 · **待裁定** 7 · **历史留档** 1
 - 孤儿文档（0 引用）**22** 份 · 状态未标注 **151** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**193** 份
+- 三、现行设计稿（design）：**194** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**17** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -34,9 +34,9 @@
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 23 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 164 KB / 221 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 61 KB / 660 行 | 68 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 61 KB / 660 行 | 69 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 372 KB / 833 行 | 194 / 9 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 289 行 | 255 / 10 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 289 行 | 256 / 10 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,10 +53,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 193 份
+## 三、现行设计稿（design） —— 194 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/achievements-20260920.md` | 成就系统（第一批 · 徽章框架）— 设计稿（2026-09-20） | 待裁定（待船长确认） | 2026-09-20 | 6 KB / 106 行 | 1 / 0 |
 | `docs/design/handoff-20260920-to-new-pilot1.md` | 交接文档 · 大鲸鱼深空工业 · 2026-09-20 早（一号 → 下一任一号） | 未标注 | 2026-09-20 | 17 KB / 145 行 | 2 / 0 |
 | `docs/design/announcement-draft-20260919-filters.md` | 公告待审稿：2026-09-19 筛选整理批（一条 · 待船长审核） | 未标注（❌ 船长 2026-09-19 决定） | 2026-09-19 | 3 KB / 36 行 | 2 / 0 |
 | `docs/design/announcement-draft-20260919-matter-tech.md` | 公告待审稿：虫洞「谜质科技」研究树（一条 · 已按船长三条意见修订） | 未标注（✅ 船长 2026-09-19 批准） | 2026-09-19 | 4 KB / 41 行 | 1 / 1 |
