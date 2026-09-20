@@ -163,16 +163,26 @@ function spendOneTimeBook(state: GameState, blueprintId: string): boolean {
  *
  * 两步都要做，缺一不可：
  * ① 书回蓝图书架（`blueprintStock +1`）；
- * ② 从 `spentOneTimeRecipes` 里摘掉 ⇒ **恢复"名额未用尽"**。
+ * ② **在"没有别的同名线还在跑"时**把 `spentOneTimeRecipes` 里的标记摘掉 ⇒ 恢复"名额未用尽"。
  *    只做 ① 的话 `recipeCapability` 仍返回 `exhausted`（判据是那个标记），书回来了也开不了工。
+ *
+ * ⚠ **"还有别的同名线在跑"时【不能】摘标记**（2026-09-20 查多条线挨个撤退时发现的缺口）：
+ * `spentOneTimeRecipes` 是**数组**（只表达"有没有"，不记"几条"），而存量可以 > 1 ⇒ 同名线能同时在跑。
+ * 若在这里无条件摘标记，会出现"**书在架上、却被判名额已用尽**"的静默死结，例如：
+ * 存量 2 → 开 A、B（标记置位）→ 取消 A（退 1 本、摘标记）→ 拿这本再开 C
+ * → **B 完工**（把标记重新置位）→ 取消 C：退书成功但 `filter` 摘不掉 B 的标记 ⇒ 有书也开不了工。
+ * 正确做法：**标记的所有权归"最晚完工的那条线"**——只要还有同名线在跑，就把标记留给它
+ * （它完工时会置位，等于替后续的取消接管了这个标记）；等它也被取消时，才轮到它摘掉。
  *
  * 幂等：不在标记表里就什么都不做（重复调用不会凭空造书）。
  */
 function refundOneTimeBook(state: GameState, blueprintId: string): boolean {
   const spent = state.spentOneTimeRecipes ?? []
   if (!spent.includes(blueprintId)) return false
-  state.spentOneTimeRecipes = spent.filter((id) => id !== blueprintId)
   state.blueprintStock[blueprintId] = (state.blueprintStock[blueprintId] ?? 0) + 1
+  // 还有同名线在跑 ⇒ 标记留着（由它接管；见上面的例子）
+  const stillRunning = state.manufacturingRuns.some((r) => r.active && r.blueprintId === blueprintId)
+  if (!stillRunning) state.spentOneTimeRecipes = spent.filter((id) => id !== blueprintId)
   return true
 }
 

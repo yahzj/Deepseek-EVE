@@ -29,6 +29,7 @@ import {
 } from '../src/manufacturing'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { addWare } from '../src/inventory'
+import { advanceManufacturing } from '../src/manufacturing'
 import { blueprint, makeTestCtx } from './helpers'
 
 /** bp-one：一次性图纸（造 mod-a，10 单位矿粉甲，600 秒）；bp-a 为普通对照 */
@@ -191,8 +192,7 @@ describe('一次性图纸 · 制造（开工扣书、只能造一次、**取消�
     expect(state.blueprintStock['bp-one']).toBe(1)
   })
 
-  it('⑧ 普通蓝图的制造行为逐字不变（不吃书、可无限次；取消也不动书架）', () => {
-    state.learnedRecipes.push('bp-a')
+  it('⑧ 普通蓝图的制造行为逐字不变（不吃书、可无限次；取消也不动书架）', () => {    state.learnedRecipes.push('bp-a')
     // 两条线都用主控亲自？不行（手动位全局限 1 条）⇒ 第二条走 AI 核心；
     // AI 线需核心库存 + 上限技能（与既有制造用例同款前置）
     state.aiCores['basic'] = 2
@@ -211,6 +211,115 @@ describe('一次性图纸 · 制造（开工扣书、只能造一次、**取消�
     expect(cancelManufacturing(state, ctx, state.manufacturingRuns[0]!.id).ok).toBe(true)
     expect(JSON.stringify(state.blueprintStock)).toBe(stockBefore)
     expect(JSON.stringify(state.spentOneTimeRecipes ?? [])).toBe(spentBefore)
+  })
+})
+
+describe('一次性图纸 · **多条线挨个撤退**（船长 2026-09-20 点名要查的场景）', () => {
+  /**
+   * 构造多张**不同**一次性图纸 ＋ 够用的 AI 核心（每条 AI 线占一枚核心）。
+   * 主控亲自位全局限 1 条 ⇒ 其余走 AI 线。
+   */
+  function multiWorld(ids: readonly string[]): { state: GameState; ctx: SimContext } {
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    const ctx = makeTestCtx({
+      blueprints: ids.map((id) => blueprint(id, 'mod-a', [{ itemId: 'min-a', count: 10 }], { singleUse: true })),
+    })
+    addWare(state, 'min-a', 1000)
+    state.aiCores['basic'] = 8
+    state.skills.trained['ai-expert'] = 5 // 核心上限够了
+    for (const id of ids) state.blueprintStock[id] = 1
+    return { state, ctx }
+  }
+
+  it('多张不同一次性图纸同时开工、**挨个取消** ⇒ 每张书都回来、名额都恢复、可再开', () => {
+    const ids = ['bp-x1', 'bp-x2', 'bp-x3']
+    const { state, ctx } = multiWorld(ids)
+    // 三条线同时开工（第一条主控亲自，其余 AI）
+    expect(startManufacturing(state, 'bp-x1', 'pilot', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-x2', 'basic', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-x3', 'basic', ctx).ok).toBe(true)
+    for (const id of ids) {
+      expect(state.blueprintStock[id] ?? 0).toBe(0) // 三本书都吃了
+      expect(state.spentOneTimeRecipes ?? []).toContain(id)
+    }
+    expect(state.manufacturingRuns.filter((r) => r.active)).toHaveLength(3)
+    // 挨个撤退（按开工逆序）
+    const runs = [...state.manufacturingRuns.filter((r) => r.active)]
+    for (const r of runs) {
+      expect(cancelManufacturing(state, ctx, r.id).ok).toBe(true)
+    }
+    expect(state.manufacturingRuns.filter((r) => r.active)).toHaveLength(0)
+    for (const id of ids) {
+      // ① 书回来了 ② 名额标记也摘干净了 ③ 判定回到"可开工"
+      expect(state.blueprintStock[id], `${id} 的书应退回`).toBe(1)
+      expect(state.spentOneTimeRecipes ?? [], `${id} 的名额标记应摘掉`).not.toContain(id)
+      expect(recipeCapability(state, id, true).kind, `${id} 应可再次开工`).toBe('ok')
+    }
+    // 真的能再开（不只是判定好看）
+    expect(startManufacturing(state, 'bp-x1', 'pilot', ctx).ok).toBe(true)
+  })
+
+  /**
+   * ⚠ **本条钉住 2026-09-20 查出的缺口**（船长：「检查多个一次性蓝图工作挨个撤退是否有问题」）。
+   *
+   * 缺口形态：`spentOneTimeRecipes` 是**数组**（只表达"有没有"），存量却可 > 1 ⇒ 同名线能同时在跑。
+   * 取消时若**无条件摘标记**，会出现"**书在架上却被判名额已用尽**"的静默死结：
+   * 存量 2 → 开 A、B → 取消 A（退 1 本、摘标记）→ 拿这本再开 C → **B 完工**（标记重新置位）
+   * → 取消 C：退书成功但 `filter` 摘不掉 B 的标记 ⇒ 有书也永远开不了工。
+   */
+  it('同蓝图同时两条线：先撤一条、再开一条、另一条完工后撤第三条 ⇒ **不能留下"有书却判已用尽"**', () => {
+    const { state, ctx } = multiWorld(['bp-one'])
+    state.blueprintStock['bp-one'] = 2
+    // A（主控亲自）＋ B（AI）——⚠ 制造线**不记开工时刻** ⇒ 想造出"B 完工而 C 还在跑"的中间态，
+    // 只能靠**推进时间错开开工**（B 先跑、C 后跑，B 的完工时刻早于 C）
+    expect(startManufacturing(state, 'bp-one', 'pilot', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-one', 'basic', ctx).ok).toBe(true)
+    expect(state.blueprintStock['bp-one'] ?? 0).toBe(0)
+    const [runA, runB] = state.manufacturingRuns.filter((r) => r.active)
+    // 撤 A ⇒ 退一本；此刻只剩 B 在跑（未完工）⇒ 标记由 B 接管（留着）
+    expect(cancelManufacturing(state, ctx, runA!.id).ok).toBe(true)
+    expect(state.blueprintStock['bp-one']).toBe(1)
+    expect(state.spentOneTimeRecipes ?? [], 'B 还在跑 ⇒ 标记应留着给它接管').toContain('bp-one')
+    // 时间往前走一段后再开 C ⇒ C 的完工时刻明显晚于 B（只错开 1ms 不行：
+    // `advanceManufacturing` 的判据是 `gameMs >= finishAtGameMs`，推进到 B 的完工时刻会把 C 一并结算）
+    state.gameMs += 500_000
+    expect(startManufacturing(state, 'bp-one', 'basic', ctx).ok).toBe(true)
+    expect(state.blueprintStock['bp-one'] ?? 0).toBe(0)
+    const runC = state.manufacturingRuns.find((r) => r.active && r.id !== runB!.id)!
+    expect(runC.finishAtGameMs).toBeGreaterThan(runB!.finishAtGameMs)
+    // **只推进到 B 的完工时刻** ⇒ B 完工（标记留在表里，这就是缺口的触发点），C 仍在跑
+    state.gameMs = runB!.finishAtGameMs + 1
+    advanceManufacturing(state, ctx)
+    expect(state.spentOneTimeRecipes ?? []).toContain('bp-one')
+    const stillRunning = state.manufacturingRuns.filter((r) => r.active)
+    expect(stillRunning, 'B 应已完工、只剩 C 在跑').toHaveLength(1)
+    expect(stillRunning[0]!.id).toBe(runC.id)
+    // 撤 C ⇒ 书必须回来，且**不能留下"有书却判已用尽"**
+    expect(cancelManufacturing(state, ctx, runC.id).ok).toBe(true)
+    expect(state.blueprintStock['bp-one'], 'C 的书应退回').toBe(1)
+    expect(recipeCapability(state, 'bp-one', true).kind, '有书就必须能开工（不得判 exhausted）').toBe('ok')
+    // 真的能再开（⚠ 主控亲自位全局只 1 条 ⇒ 只开一次，别连着开第二条）
+    const reopen = startManufacturing(state, 'bp-one', 'pilot', ctx)
+    expect(reopen.error ?? '').toBe('')
+    expect(reopen.ok).toBe(true)
+  })
+
+  it('三条同名线同时跑、挨个撤退 ⇒ 书数与标记最终都回到开工前', () => {
+    const { state, ctx } = multiWorld(['bp-one'])
+    state.blueprintStock['bp-one'] = 3
+    expect(startManufacturing(state, 'bp-one', 'pilot', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-one', 'basic', ctx).ok).toBe(true)
+    expect(startManufacturing(state, 'bp-one', 'basic', ctx).ok).toBe(true)
+    expect(state.blueprintStock['bp-one'] ?? 0).toBe(0)
+    // 挨个撤（每次只该退一本）
+    for (const expectedLeft of [1, 2, 3]) {
+      const run = state.manufacturingRuns.find((r) => r.active)!
+      expect(cancelManufacturing(state, ctx, run.id).ok).toBe(true)
+      expect(state.blueprintStock['bp-one']).toBe(expectedLeft)
+    }
+    expect(state.blueprintStock['bp-one']).toBe(3) // 三本全回来
+    expect(state.spentOneTimeRecipes ?? []).not.toContain('bp-one') // 标记摘干净
+    expect(recipeCapability(state, 'bp-one', true).kind).toBe('ok')
   })
 })
 
