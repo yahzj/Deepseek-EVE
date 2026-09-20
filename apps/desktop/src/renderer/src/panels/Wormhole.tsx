@@ -1031,7 +1031,7 @@ export function WormholePanel({
                           const r = engine.wormholeTakePile(i)
                           if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.307'), true)
                           else {
-                            playJob(tr("ui.Wormhole.189"), def?.name ?? '货柜')
+                            playJob(tr("ui.Wormhole.189"), def?.name ?? tr('ui.MarketPage.006'))
                             onToast(tr("ui.Wormhole.080"))
                           }
                         }}
@@ -1768,7 +1768,7 @@ export function WormholePanel({
                    * 缩放只放大图内内容（以玩家所在格为中心），超出部分由地图框裁掉 ⇒ 外层永不因此滚动。
                    */}
                   <div className="app-wh-maprow">
-                    <div className="app-wh-zoom" role="group" aria-label="地图缩放">
+                    <div className="app-wh-zoom" role="group" aria-label={tr('ui.Wormhole.373')}>
                       <button
                         className="app-wh-zoom-btn"
                         disabled={mapZoom >= WORMHOLE_MAP_ZOOM_MAX}
@@ -2126,7 +2126,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
             label: tr("ui.Wormhole.027"),
             value: String((settle.cores.gamma ?? 0) + (settle.cores.beta ?? 0) + (settle.cores.alpha ?? 0)),
             sub:
-              '枚（' +
+              tr('ui.Wormhole.374') +
               (['alpha', 'beta', 'gamma'] as const)
                 .filter((t) => (settle.cores?.[t] ?? 0) > 0)
                 .map((t) => `${CORE_LABEL[t]}×${settle.cores?.[t]}`)
@@ -2824,7 +2824,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 ? tr("ui.Wormhole.120")
                 : p.itemId.startsWith('ai-core-')
                   ? tr("ui.MarketPage.008") // AI 核心（2026-09-14）：1×1 = 1 格，短标签与货柜的「图纸」同一档
-                  : (matterDev?.short ?? '货柜')
+                  : (matterDev?.short ?? tr('ui.MarketPage.006'))
             return (
               <div
                 key={`fig-${kind}-${p.id}`}
@@ -2933,7 +2933,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
         {tr("ui.Wormhole.231")} <b>{info.used}</b> / {info.capacity}{tr('ui.Wormhole.285')}
         {info.overload ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.282')}</span> : null}
         <span className="app-dim">
-          {' '}{tr("ui.Wormhole.273")} {info.cargoCells} {tr("ui.Wormhole.173")} {info.shapeCells} 格
+          {' '}{tr("ui.Wormhole.273")} {tr("ui.Wormhole.375", { p1: info.cargoCells })} {tr("ui.Wormhole.173")} {tr("ui.Wormhole.375", { p1: info.shapeCells })}
           {info.unplacedCells > 0 ? tr('ui.Wormhole.332', { p1: info.unplacedCells }) : ''}）
         </span>
         {/* 货仓说明**进 ⓘ**（2026-09-14 船长：「虫洞背包页面的货仓说明要进」）——原文一字未改，只搬位置 */}
@@ -2984,7 +2984,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
          */}
         <div className="app-wh-hold-board-side">
           <div className="app-bay-title">
-            {tr("ui.Wormhole.059")} <b>{tempInfo.cells}</b> / {tempInfo.capacity} 格
+            {tr("ui.Wormhole.059")} <b>{tempInfo.cells}</b> {tr("ui.Wormhole.376", { p1: tempInfo.capacity })}
             {tempInfo.full ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.283')}</span> : null}
           </div>
           {boardView('temp', tempBoard, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, WORMHOLE_TEMP_ROWS, '')}
@@ -3007,7 +3007,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
         </div>
       </div>
       {/* 货柜清单（形状件：位置读数 + 抛弃；散货条在下面的散货清单里按"类"处理） */}
-      <div className="app-bay-title">{tr("ui.Wormhole.233")} {boxes} 件</div>
+      <div className="app-bay-title">{tr("ui.Wormhole.233")} {tr("ui.MarketPage.117", { p1: boxes })}</div>
       {boxes === 0 ? (
         <div className="app-dim app-inv-empty">{tr("ui.Wormhole.178")}</div>
       ) : (
@@ -3033,7 +3033,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     {ctx.items.get(p.itemId)?.name ?? p.itemId}
                   </span>
                   <span className="app-inv-count">
-                    {p.w}×{p.h} {tr("ui.Wormhole.179")} {p.y + 1} {tr("ui.Wormhole.234")} {p.x + 1} 列
+                    {p.w}×{p.h} {tr("ui.Wormhole.179")} {tr("ui.Wormhole.360", { p1: p.y + 1 })} {tr("ui.Wormhole.234")} {tr("ui.Wormhole.360", { p1: p.x + 1 })}
                   </span>
                 </div>
                 <div className="app-inv-btns">
@@ -3089,7 +3089,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
        * 只丢这一件里的指定数量，其余留在原格；移动在网格里拖那一格即可。
        */}
       <div className="app-bay-title">
-        {tr("ui.Wormhole.236")} {cargoPieces.length} 件
+        {tr("ui.Wormhole.236")} {tr("ui.MarketPage.117", { p1: cargoPieces.length })}
         <span className="app-dim">（{run.bag.length} {tr("ui.Wormhole.237")}</span>
       </div>
       {cargoPieces.length === 0 ? (
