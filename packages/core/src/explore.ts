@@ -253,6 +253,8 @@ function finishScan(state: GameState, ctx: SimContext): void {
     newly
       ? `✦ 扫描完成：「${name}」的情报已录入星图——航线、矿带与悬赏信息全部解锁（扫描艇已收回）。`
       : `✦ 扫描完成：「${name}」的补扫完成，没有发现新的信息（扫描艇已收回）。`,
+    newly ? 'core.explore.008' : 'core.explore.009',
+    { p1: name },
   )
 }
 

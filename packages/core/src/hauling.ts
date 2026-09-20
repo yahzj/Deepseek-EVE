@@ -320,16 +320,31 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   beginTrip(state, isPos ? 1 : 2)
   const { min, max } = haulRewardRange(ctx, cap, effectiveMinutesBetween(ctx, a.siteId, b.siteId))
   /**
-   * ⚠ 甲案待办：这条是**多段拼接**（船名 + 航线 + 就位/单段两态 + 报酬区间 + 卸货附注）⇒ 按既口径**不接**，
-   * 归入"多段文案"清单（`textParts` 逐段方案定了统一做）。
+   * 甲案（2026-09-20）：多段拼接按"**中间可空附注**"处理——就位提示与卸货备注都可能为空，
+   * 而多段链不能有空段（空 id 会把后面的段整段丢掉）⇒ 把空的那种形态另立一个基础模板
+   * （`.023` 带就位段 / `.024` 不带），两处附注各挂一个段 id；参数按段命名空间排（第 2 段 = `p1p*`）。
    */
-  addLog(
-    state,
-    'info',
+  const text =
     `长途运输开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
-      (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
-      `，单段报酬随行情浮动在 ${min.toLocaleString('zh-CN')} ~ ${max.toLocaleString('zh-CN')} 信用点（每趟一价，到站结算）${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`,
-  )
+    (isPos ? `——先就位驶往「${haulEndpointName(ctx, firstTo)}」` : `——单段航程约 ${effMinutesOf(state, ctx, h.legMinutes)} 分钟`) +
+    `，单段报酬随行情浮动在 ${min.toLocaleString('zh-CN')} ~ ${max.toLocaleString('zh-CN')} 信用点（每趟一价，到站结算）${unloaded > 0 ? `；船上原有货物已卸入仓库（${unloaded} 单位）` : ''}。`
+  const params: Record<string, string | number> = {
+    p1: shipName,
+    p2: a.name,
+    p3: b.name,
+    p4: cap.toLocaleString('zh-CN'),
+    p5: min.toLocaleString('zh-CN'),
+    p6: max.toLocaleString('zh-CN'),
+    p7: effMinutesOf(state, ctx, h.legMinutes),
+  }
+  // 段 2 = 就位段（每段各带自己的 `p1`）· 段 3 = 卸货备注；空的那种形态不挂段 id
+  if (isPos) Object.assign(params, { p1p1: haulEndpointName(ctx, firstTo), p1Id: 'core.state.037' })
+  if (unloaded > 0) {
+    // 就位与否决定谁是"段 2"（段号按实际顺序顺排，不许跳号）
+    if (isPos) Object.assign(params, { p2p1: unloaded, p2Id: 'core.state.039' })
+    else Object.assign(params, { p1p1: unloaded, p1Id: 'core.state.039' })
+  }
+  addLog(state, 'info', text, isPos ? 'core.hauling.023' : 'core.hauling.024', params)
   return { ok: true }
 }
 

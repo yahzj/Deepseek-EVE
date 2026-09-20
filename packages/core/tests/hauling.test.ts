@@ -119,6 +119,12 @@ describe('长途运输（2026-09-09）', () => {
     expect(state.hauling.phaseAccMs).toBe(0)
     expect(cap).toBeGreaterThan(0)
     expect(legReward(state, ctx)).toBeGreaterThan(0)
+    // 甲案（2026-09-20）：本条是"多段拼接"——端点接单 ⇒ 无就位段，但有"卸货备注"段
+    const log = state.logs.filter((l) => l.text.startsWith('长途运输开始')).at(-1)!
+    expect(log.textId).toBe('core.hauling.024') // 无就位段的基础模板
+    expect(log.textParams?.p1Id).toBe('core.state.039') // 卸货备注 = 第 2 段
+    expect(log.textParams?.p1p1).toBe(50) // 段内 {p1} = 卸下的单位数
+    expect(log.text).toContain('；船上原有货物已卸入仓库（50 单位）。')
   })
 
   it('非端点停靠也能接单：先飞"就位段"到较近端点，再按所选线循环（不要求停在指定港口）', () => {

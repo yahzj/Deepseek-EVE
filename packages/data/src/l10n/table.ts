@@ -202,6 +202,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.explore.005": { zh: "当前没有进行中的扫描。", en: "No scan is in progress." },
   "core.explore.006": { zh: "扫描状态异常，已自动清理。", en: "The scan state was invalid and was cleaned up automatically." },
   "core.explore.007": { zh: "已召回扫描艇：对「{p1}」的扫描尚未产生进度，随时可以重发。", en: "Scan craft recalled: the scan of “{p1}” had made no progress, so it can be sent again at any time." },
+  "core.explore.008": { zh: "✦ 扫描完成：「{p1}」的情报已录入星图——航线、矿带与悬赏信息全部解锁（扫描艇已收回）。", en: "✦ Scan complete: intel on “{p1}” is now on the star map — routes, belts and bounty information are all unlocked (the scan craft has been recalled)." },
+  "core.explore.009": { zh: "✦ 扫描完成：「{p1}」的补扫完成，没有发现新的信息（扫描艇已收回）。", en: "✦ Scan complete: the follow-up scan of “{p1}” turned up nothing new (the scan craft has been recalled)." },
   /* ── 第七批：state.ts（开局文案）+ wormholeScan.ts ── */
   "core.state.025": { zh: "舰载系统苏醒：隐秘泊位·母港。", en: "Ship systems come online: hidden berth, home port." },
   "core.state.026": { zh: "自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。", en: "Self-check anomaly: hull armour and structure are damaged (80%), no crew life signs, and the memory archive is corrupted." },
@@ -321,6 +323,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.hauling.020": { zh: "长途运输异常终止：舰船停靠在「{p1}」（航线端点不可达）。", en: "Long-haul transport ended abnormally: the ship docked at “{p1}” (a route endpoint became unreachable)." },
   "core.hauling.021": { zh: "长途运输继续：已装载前往「{p1}」（虚拟货物，货仓占满）。", en: "Long-haul transport continues: loaded and bound for “{p1}” (virtual freight, hold filled)." },
   "core.hauling.022": { zh: "长途运输已随切换驾驶终止（原航线「… → {p1}」；虚拟货物无残留、无惩罚）。", en: "Long-haul transport ended with the ship change (the route was “… → {p1}”; the virtual freight leaves nothing behind and costs no penalty)." },
+  "core.hauling.023": { zh: "长途运输开始：{p1} 承运「{p2} ⇄ {p3}」（货仓 {p4} m³ 满载虚拟货物）——先就位驶往「{p5}」，单段报酬随行情浮动在 {p6} ~ {p7} 信用点（每趟一价，到站结算）{p8}。", en: "Long-haul transport started: {p1} runs “{p2} ⇄ {p3}” (a hold of {p4} m³ filled with virtual freight) — first move into position at “{p5}”; single-leg pay drifts with the market between {p6} and {p7} credits (one price per trip, settled on arrival){p8}." },
+  "core.hauling.024": { zh: "长途运输开始：{p1} 承运「{p2} ⇄ {p3}」（货仓 {p4} m³ 满载虚拟货物）——单段航程约 {p5} 分钟，单段报酬随行情浮动在 {p6} ~ {p7} 信用点（每趟一价，到站结算）{p8}。", en: "Long-haul transport started: {p1} runs “{p2} ⇄ {p3}” (a hold of {p4} m³ filled with virtual freight) — a single leg takes about {p5} minutes; single-leg pay drifts with the market between {p6} and {p7} credits (one price per trip, settled on arrival){p8}." },
   /* ── 第十四批：manufacturing.ts（组装机：开工校验 / 取消 / 完工）── */
   "core.manufacturing.001": { zh: "组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。", en: "The assembly unit runs on the Association base network: it requires docking at a station (home port or a completed outpost) to start manufacturing (AI cores are not limited by this)." },
   "core.manufacturing.002": { zh: "未知蓝图：{p1}。", en: "Unknown blueprint: {p1}." },
@@ -465,8 +469,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.market.036": { zh: "挂单成交：{p1}×{p2}，税后入账 {p3} 信用点（含协会声望加成）{p4}。", en: "Order filled: {p1}×{p2} brought in {p3} credits after tax (with the Association reputation bonus){p4}." },
   "core.market.037": { zh: "，贸易税 {p1} 信用点", en: ", trading tax {p1} credits" },
   "core.market.038": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）（含协会声望加成）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills) (with the Association reputation bonus){p5}." },
-  "core.market.040": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills){p5}." },
-  /* ── 第十九批：expedition.ts（远征 / 悬赏：出击前置 / 撤退 / 召回）── */
+  "core.market.040": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills){p5}." },  /* ── 第十九批：expedition.ts（远征 / 悬赏：出击前置 / 撤退 / 召回）── */
   "core.expedition.001": { zh: "当前不在交火中。", en: "You are not in combat right now." },
   "core.expedition.002": { zh: "战斗记录缺失。", en: "The battle record is missing." },
   "core.expedition.003": { zh: "未知目标：{p1}。", en: "Unknown target: {p1}." },
@@ -632,6 +635,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.state.022": { zh: "出售数量需大于 0。", en: "The amount to sell must be greater than 0." },
   "core.state.035": { zh: "你已亲自开着一条制造线：先取消或等它完成才能亲自开工（AI 核心不受此限）。", en: "You are already running a production line yourself: cancel it or wait for it to finish before starting by hand (AI cores are not limited by this)." },
   "core.state.036": { zh: "长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival) before running a unit by hand." },
+  "core.state.037": { zh: "——先就位驶往「{p1}」", en: " — first move into position at “{p1}”" },
+  "core.state.039": { zh: "；船上原有货物已卸入仓库（{p1} 单位）", en: "; the cargo already aboard was unloaded into the warehouse ({p1} units)" },
   "ui.ActivityBar.004": { zh: "取消", en: "Cancel" },
   "ui.ActivityBar.005": { zh: "停止", en: "Stop" },
   "ui.ActivityBar.006": { zh: "星图", en: "Star Map" },
