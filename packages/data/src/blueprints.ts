@@ -2518,9 +2518,16 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'part-fire-control',
     outputUnits: 10,
     partTier: 'advanced',
+    /**
+     * 2026-09-20 船长定规：「**高级零件允许使用多个普通零件，但是不许使用同级别高级零件**」
+     * ⇒ 原 `量子协处理器芯 ×10`（7,000/轮）**等值**换成 陀螺稳定器座 10 + 光学透镜组 10 + 重钨合金 10
+     * （4,200＋1,900＋900＝7,000）——料价仍 11,100/轮、定价与毛利率、料/价读数一字不变。
+     */
     materials: [
-      { itemId: 'part-qchip', count: 10 },
       { itemId: 'part-circuit', count: 20 },
+      { itemId: 'part-lens', count: 10 },
+      { itemId: 'part-gyro', count: 10 },
+      { itemId: 'min-nocxium', count: 10 },
       { itemId: 'min-isotope', count: 40 },
     ],
     buildSeconds: 92,
@@ -2534,13 +2541,23 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'part-grav-comp',
     outputUnits: 10,
     partTier: 'advanced',
+    /**
+     * 2026-09-20 船长定规：「**高级零件允许使用多个普通零件，但是不许使用同级别高级零件**」
+     * ⇒ 原 `舰用龙骨组件 ×10`（31,200/轮）**等值**换成 四个基础件 + 三种矿物：
+     * 结构框架 40（5,800）＋装甲板 20（5,000）＋超导电缆 20（3,100）＋陀螺稳定器座 20（8,400）
+     * ＋冥铁合金 +10（7,800）＋星髓晶 +4（980）＋银纹超金属 +10（120）＝ 31,200
+     * ——料价仍 50,000/轮，定价 7,500 与毛利率、料/价读数一字不变。
+     */
     materials: [
-      { itemId: 'part-keel', count: 10 },
+      { itemId: 'part-frame', count: 40 },
+      { itemId: 'part-armor-plate', count: 20 },
+      { itemId: 'part-cable', count: 20 },
+      { itemId: 'part-gyro', count: 20 },
       { itemId: 'min-nocxium', count: 50 },
-      { itemId: 'min-starcore', count: 20 },
-      { itemId: 'min-darkiron', count: 10 },
+      { itemId: 'min-starcore', count: 24 },
+      { itemId: 'min-darkiron', count: 20 },
       { itemId: 'min-mexallon', count: 50 },
-      { itemId: 'min-pyerite', count: 50 },
+      { itemId: 'min-pyerite', count: 60 },
     ],
     buildSeconds: 410,
     buildCostIsk: 0,

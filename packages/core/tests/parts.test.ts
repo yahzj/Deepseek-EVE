@@ -101,6 +101,8 @@ describe('零件体系：配方改造（2026-09-20）', () => {
    *   价值占比口径 · 专属 = 基础 45% + 高级 30% + 矿物 25% · T4 与 T5 = 基础 75% + 矿物 25%（非专属不用高级件）
    *   · **等值替换**（总价分文不变）· 允许删原材料（每张至多留 4 行矿物）。 */
   const BASIC_IDS = new Set(['part-frame', 'part-armor-plate', 'part-cable', 'part-circuit', 'part-coolant'])
+  /** 全部 7 种基础件（上图那 5 种是"专属篮子"用的子集；层级规则要认全） */
+  const ALL_BASIC_IDS = new Set([...BASIC_IDS, 'part-gyro', 'part-lens'])
   const ADV_IDS = new Set(['part-keel', 'part-qchip', 'part-fire-control', 'part-grav-comp', 'part-jet-array', 'part-shield-gen', 'part-drone-neural'])
   const shares = (mats: readonly { itemId: string; count: number }[]): { basic: number; adv: number; raw: number } => {
     let basic = 0
@@ -179,6 +181,38 @@ describe('零件体系：配方改造（2026-09-20）', () => {
       }
     }
   })
+  /**
+   * **零件配方的层级规则**（船长 2026-09-20：「**高级零件允许使用多个普通零件，但是不许使用同级别高级零件**」）。
+   *
+   * 出处：原提案把 `军规火控计算机 = 量子协处理器芯 ×1`、`引力子补偿器 = 舰用龙骨组件 ×1` 写成了
+   * 高级件吃高级件（`git show 31582577` 即如此），船长发现后定此规 ⇒ 两条按**等值替换**改造
+   * （料价分文不变：11,100 / 50,000），把那一行换成**多个基础件 + 矿物**。
+   */
+  it('⑧ 层级规则：高级件可以吃多个基础件，但不得以任何高级件为料；基础件只吃矿物', () => {
+    const partIds = BLUEPRINTS.filter((b) => b.id.startsWith('bp-part-'))
+    expect(partIds.length).toBe(14) // 7 基础（隐式）+ 7 高级
+    for (const bp of partIds) {
+      const parts = bp.materials.filter((m) => ctx.items.get(m.itemId)?.kind === 'part').map((m) => m.itemId)
+      if (bp.partTier === 'advanced') {
+        for (const id of parts) expect(ADV_IDS.has(id), `${bp.id} 以高级件 ${id} 为料`).toBe(false)
+        for (const id of parts) expect(ALL_BASIC_IDS.has(id), `${bp.id} 的零件成分 ${id} 不是基础件`).toBe(true)
+      } else {
+        expect(parts, `${bp.id}（基础件）不该以任何零件为料`).toEqual([])
+      }
+    }
+    // 两条历史配方：等值替换后料价分文不变，且原来那行高级件已移除、基础件变多
+    const fc = BLUEPRINTS.find((b) => b.id === 'bp-part-fire-control')!
+    expect(matValue(fc.materials)).toBe(11_100)
+    expect(fc.materials.some((m) => m.itemId === 'part-qchip')).toBe(false)
+    expect(fc.materials.filter((m) => ALL_BASIC_IDS.has(m.itemId)).length).toBeGreaterThanOrEqual(2)
+    const gc = BLUEPRINTS.find((b) => b.id === 'bp-part-grav-comp')!
+    expect(matValue(gc.materials)).toBe(50_000)
+    expect(gc.materials.some((m) => m.itemId === 'part-keel')).toBe(false)
+    expect(gc.materials.filter((m) => ALL_BASIC_IDS.has(m.itemId)).length).toBe(4)
+    // 冥铁合金仍在（2026-09-20 材料覆盖那条裁定不许被这次替换弄丢）
+    expect(gc.materials.some((m) => m.itemId === 'min-darkiron')).toBe(true)
+  })
+
   it('⑥d 范围边界：T1~T3 普通舰船与 T5 之外的常规蓝图**不进零件体系**（保持 0 零件）', () => {
     const touched = new Set<string>([
       ...T4_IDS,
