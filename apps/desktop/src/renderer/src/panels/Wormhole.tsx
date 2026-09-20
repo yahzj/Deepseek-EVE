@@ -1020,7 +1020,7 @@ export function WormholePanel({
                     <span className="app-wh-pile-count">×{n(p.units)}</span>
                     <span className="app-wh-pile-sub">
                       {n(p.units * (def?.unitM3 ?? 0))} m³
-                      {shaped ? tr('ui.Wormhole.304') : ` · ${n(slotUse)} ${tr('ui.Wormhole.306')}`}
+                      {shaped ? tr('ui.Wormhole.304') : ` · ${n(slotUse)} ${tr('ui.Expedition.102')}`}
                     </span>
                     {shaped ? (
                       /* **形状件（货柜）**：唯一入口就是这个拾取装舱（打捞/采集都不搬它） */

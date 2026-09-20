@@ -171,7 +171,7 @@ export function ExpeditionPanel({
                 title={tr("ui.Expedition.069")}
                 onClick={() => {
                   const r = engine.stopScanNow()
-                  if (!r.ok) onToast(r.error ?? '无法召回扫描艇', true)
+                  if (!r.ok) onToast(r.error ?? tr('ui.Expedition.378'), true)
                   else onToast(tr("ui.Expedition.070"))
                 }}
               >
@@ -189,7 +189,7 @@ export function ExpeditionPanel({
                   <span className="app-ico">
                     <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />
                   </span>
-                  {tr("ui.Expedition.071")}{view.anomalyName}）· 火力 {view.power} {tr("ui.Expedition.008")} {view.threat}{tr("ui.Expedition.009")}
+                  {tr("ui.Expedition.071")}{view.anomalyName}{tr('ui.Expedition.379')} {view.power} {tr("ui.Expedition.008")} {view.threat}{tr("ui.Expedition.009")}
                 </>
               )
               : tr("ui.Expedition.010", { p1: view.anomalyName, p2: view.galaxyName, p3: view.phaseLabel, p4: formatDurationMs(view.remainingMs) })
@@ -206,15 +206,14 @@ export function ExpeditionPanel({
             <span className="app-ico">
               <Glyph name="ico-flag" size={13} color={ICO_TONES['ico-flag']} />
             </span>
-            {tr("ui.Expedition.246")}{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系掩护巡逻驻留——
-            从这里可即时出发远征、扫描或采矿；卸货、维修与换船需返回空间站。
+            {tr("ui.Expedition.246")}{engine.ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}{tr('ui.Expedition.380')}
           </span>
           <button
             className="app-btn is-small"
             title={tr("ui.Expedition.188")}
             onClick={() => {
               const r = engine.flyHomeNow()
-              if (!r.ok) onToast(r.error ?? '无法返航', true)
+              if (!r.ok) onToast(r.error ?? 'ui.Expedition.381', true)
             }}
           >
             <span className="app-ico">
@@ -1083,7 +1082,7 @@ function StarMap({
   function handleScan(g: GalaxyDef): void {
     const r = engine.startScanAt(g.id)
     if (!r.ok) {
-      onToast(r.error ?? '无法发起扫描。', true)
+      onToast(r.error ?? 'ui.Expedition.382', true)
       return // 失败不关窗：错误提示留在弹窗里
     }
     onToast(tr("ui.Expedition.135"))
@@ -1609,7 +1608,7 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
         className="app-btn is-small is-primary"
         onClick={() => {
           const r = engine.useRepairKitNow()
-          if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
+          if (!r.ok) onToast(r.error ?? 'ui.Expedition.383', true)
           else onToast(tr("ui.Expedition.080"))
         }}
         title={tr("ui.Expedition.081")}
@@ -1661,7 +1660,7 @@ function GalaxyActions({
         : undefined
   function handleStandby(): void {
     const r = engine.goStandbyAt(galaxy.id)
-    if (!r.ok) onToast(r.error ?? '无法前往', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.384', true)
     else onToast(tr("ui.Expedition.143", { p1: galaxy.name }))
   }
 
@@ -1679,7 +1678,7 @@ function GalaxyActions({
       return
     }
     const r = engine.assignAiStandbyAt(aiShip, effCore, galaxy.id)
-    if (!r.ok) onToast(r.error ?? '无法派往掩护巡逻', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.385', true)
     else onToast(tr("ui.Expedition.082"))
   }
 
@@ -1697,16 +1696,16 @@ function GalaxyActions({
     if (expOn && !mineAskBelt) {
       setMineAskBelt(beltId)
       onToast(
-        '⇄ 远征中开采 = 转场：本次远征将取消（无战果）' +
+        tr('ui.Expedition.386') +
           (state.autoLoopAnomalyId !== null ? tr("ui.MapPage.039") : '') +
-          '——再点一次确认。',
+          tr('ui.Expedition.387'),
         true,
       )
       return
     }
     setMineAskBelt(null)
     const r = expOn ? engine.startMiningFromExpeditionAt(beltId) : engine.startMiningAt(beltId)
-    if (!r.ok) onToast(r.error ?? '无法开采', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.388', true)
   }
 
   // —— 该星系悬赏（只列当前可接；已首胜标黄不隐藏） ——
@@ -1729,7 +1728,7 @@ function GalaxyActions({
     }
     setGoAskAno(null)
     const r = miningActive ? engine.startExpeditionFromMiningAt(ano.id) : engine.startExpeditionAt(ano.id)
-    if (!r.ok) onToast(r.error ?? '无法出发', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
   }
 
   return (
@@ -1942,7 +1941,7 @@ function GalaxyActions({
             title={state.salvaging.active ? tr("ui.Expedition.149") : tr("ui.MapPage.070")}
             onClick={() => {
               const r = engine.startSalvageOpAt(galaxy.id)
-              if (!r.ok) onToast(r.error ?? '无法打捞', true)
+              if (!r.ok) onToast(r.error ?? 'ui.Expedition.390', true)
             }}
           >
             <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.071")}
@@ -1981,7 +1980,7 @@ function GalaxyActions({
               <span className="app-ico"><Glyph name="ico-flag" size={13} color={ICO_TONES['ico-flag']} /></span>
               {tr("ui.Expedition.150")} {site.name}
               <span className="app-dim app-ga-desc">
-                {tr("ui.Expedition.032")} {mat.toLocaleString('zh-CN')} {tr("ui.Expedition.092")} {matNames}）· 货仓空闲 {freeM3.toLocaleString('zh-CN')} {tr("ui.Expedition.033")}
+                {tr("ui.Expedition.032")} {mat.toLocaleString('zh-CN')} {tr("ui.Expedition.092")} {matNames}{tr('ui.Expedition.391')}{freeM3.toLocaleString('zh-CN')} {tr("ui.Expedition.033")}
               </span>
             </span>
             <button
@@ -1990,7 +1989,7 @@ function GalaxyActions({
               title={title}
               onClick={() => {
                 const r = engine.deliverTripAt(site.id)
-                if (!r.ok) onToast(r.error ?? '无法出发', true)
+                if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
                 else onToast(tr("ui.Expedition.093", { p1: site.name }))
               }}
             >
@@ -2107,20 +2106,20 @@ function AnomalyCard({
     }
     if (!goAsk) {
       const r = engine.startExpeditionAt(anomaly.id)
-      if (!r.ok) onToast(r.error ?? '无法出发', true)
+      if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
       else onToast(tr("ui.Expedition.270"))
       return
     }
     // 面板「确认转战」
     setGoAsk(false)
     const r = engine.startExpeditionFromMiningAt(anomaly.id)
-    if (!r.ok) onToast(r.error ?? '无法转战', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.392', true)
     else onToast(tr("ui.Expedition.151"))
   }
 
   function toggleLoop(): void {
     const r = engine.bountyLoopAt(looping ? null : anomaly.id)
-    if (!r.ok) onToast(r.error ?? '操作失败', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.393', true)
   }
 
   const locked = !reqMet || unexplored
@@ -2173,7 +2172,7 @@ function AnomalyCard({
         })()}
         {cdRemain > 0 ? (
           <span className="app-dim" title={tr("ui.Expedition.097")}>
-            {' '}· <span className="app-ico"><Glyph name="ico-clock" size={12} color={ICO_TONES['ico-clock']} /></span>{tr("ui.Expedition.037")} {Math.max(1, Math.ceil(cdRemain / 1000))} 秒
+            {' '}· <span className="app-ico"><Glyph name="ico-clock" size={12} color={ICO_TONES['ico-clock']} /></span>{tr("ui.Expedition.037")} {Math.max(1, Math.ceil(cdRemain / 1000))}{tr('ui.Expedition.418')}
           </span>
         ) : null}
       </div>
@@ -2281,7 +2280,7 @@ function AnomalyCard({
       {goAsk ? (
         <div className="app-ano-switch-confirm">
           <div className="app-sell-warn">
-            {tr("ui.Expedition.046")} <b>{tr("ui.MapPage.037")}</b>：本次采矿将立即结束——本趟已采
+            {tr("ui.Expedition.046")} <b>{tr("ui.MapPage.037")}</b>{tr('ui.Expedition.419')}
             <b> {mining.tripUnits} {tr("ui.Expedition.102")}</b>{tr("ui.Expedition.278")}
             <b> {tr("ui.Expedition.156")}</b>{tr("ui.Expedition.279")}{anomaly.name}{tr("ui.Expedition.047")}
           </div>
@@ -2399,12 +2398,12 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
     if (isCourier) {
       const r = engine.startCourierDeliveryAt(id)
       if (r.ok) onToast(tr("ui.Expedition.158"))
-      else onToast(r.error ?? '无法出发投送', true)
+      else onToast(r.error ?? 'ui.Expedition.396', true)
       return
     }
     const r = engine.completeSideTaskAt('resource', id)
     if (r.ok) onToast(tr("ui.Expedition.049"))
-    else onToast(r.error ?? '无法完成', true)
+    else onToast(r.error ?? 'ui.Expedition.397', true)
   }
 
   const headText = isCourier
@@ -2420,7 +2419,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
         {!isCourier || view.courierUnlocked ? (
           view.opened || tasks.length > 0 ? (
             <span className="app-st-time" title={tr("ui.Expedition.221", { periodMin: periodMin })}>
-              {tr("ui.Expedition.281")} {fmtSideClock(view.remainingMs)} · 每 {periodMin} {tr("ui.Expedition.106")}
+              {tr("ui.Expedition.281")} {fmtSideClock(view.remainingMs)}{tr('ui.Expedition.420')}{periodMin} {tr("ui.Expedition.106")}
             </span>
           ) : (
             <span className="app-dim">{tr("ui.Expedition.326")} {periodMin} {tr("ui.Expedition.107")}</span>
@@ -2504,9 +2503,8 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                     <span className="app-dim">{accepted ? tr("ui.Expedition.161") : tr("ui.Expedition.109", { p1: fmtSideClock(view.remainingMs) })}</span>
                   </div>
                   <div className="app-station-mats">
-                    {tr("ui.Expedition.283")}{siteName ?? tr("ui.Expedition.329")}」{galaxyName ? `（${galaxyName}）` : ''}：虚拟货物
-                    {vol.toLocaleString('zh-CN')} m³ 按体积占用货舱（不消耗任何物品，出发时真实货物自动卸入仓库），
-                    到站自动结算运费。
+                    {tr("ui.Expedition.283")}{siteName ?? tr("ui.Expedition.329")}」{galaxyName ? `（${galaxyName}）` : ''}{tr('ui.Expedition.421')}
+                    {vol.toLocaleString('zh-CN')}{tr('ui.Expedition.422')}
                     {t.timed === true && limitMin !== null
                       ? ` 限时快递：需在 ${limitMin} 分钟内抵达，超时无报酬（本舰跃迁 ${warp.toFixed(2)} AU/s，门槛 ${t.warpReqAus} AU/s）。`
                       : ''}
@@ -2532,7 +2530,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                             title={tr("ui.Expedition.228")}
                             onClick={() => {
                               const r = engine.abandonAcceptedCourierAt(t.id)
-                              onToast(r.ok ? tr("ui.Expedition.163") : r.error ?? '无法放弃', !r.ok)
+                              onToast(r.ok ? tr("ui.Expedition.163") : r.error ?? 'ui.Expedition.401', !r.ok)
                             }}
                           >
                             {tr("ui.Expedition.006")}
@@ -2544,7 +2542,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                             title={tr("ui.Expedition.164")}
                             onClick={() => {
                               const r = engine.acceptCourierAt(t.id)
-                              onToast(r.ok ? tr("ui.Expedition.165") : r.error ?? '无法接单', !r.ok)
+                              onToast(r.ok ? tr("ui.Expedition.165") : r.error ?? 'ui.Expedition.402', !r.ok)
                             }}
                           >
                             {tr("ui.Expedition.166")}
@@ -2553,7 +2551,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                         <button
                           className="app-btn is-small is-primary"
                           disabled={cargoShort || warpShort || (expired && !accepted) || otherInFlight}
-                          title={lockedTxt ?? tr("ui.Expedition.110", { p1: vol.toLocaleString('zh-CN'), p2: siteName ?? '最近副站', p3: t.rewardIsk.toLocaleString('zh-CN') })}
+                          title={lockedTxt ?? tr("ui.Expedition.110", { p1: vol.toLocaleString('zh-CN'), p2: siteName ?? 'ui.Expedition.403', p3: t.rewardIsk.toLocaleString('zh-CN') })}
                           onClick={() => {
                             const r = engine.startCourierDeliveryAt(t.id)
                             onToast(
@@ -2561,7 +2559,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                                 ? t.timed === true
                                   ? tr("ui.Expedition.111")
                                   : tr("ui.Expedition.112")
-                                : r.error ?? '无法出发投送',
+                                : r.error ?? 'ui.Expedition.396',
                               !r.ok,
                             )
                           }}
@@ -2589,8 +2587,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                   <span className="app-dim">{tr("ui.Expedition.114")} {fmtSideClock(view.remainingMs)}</span>
                 </div>
                 <div className="app-station-mats">
-                  {tr("ui.Expedition.115")} {name}×{t.need.toLocaleString('zh-CN')}（L{t.level ?? 1} 档 · 从物品仓库扣除交付，
-                  不接受货仓；不涨声望）。成交后协会撤走这批货、本单的抬价效应一并解除。
+                  {tr("ui.Expedition.115")} {name}×{t.need.toLocaleString('zh-CN')}（L{t.level ?? 1}{tr('ui.Expedition.423')}
                 </div>
                 {/* 奖励独立成行 + 金色（船长 2026-09-18：「所有任务卡片都有的问题，奖励不明显」） */}
                 <div className="app-task-reward">
@@ -2667,7 +2664,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
     }
     setGoAsk(null)
     const r = engine.startLairExpeditionAt(t.anomalyId ?? '', (t.lairTier ?? 1) as 1 | 2 | 3, miningActive)
-    if (!r.ok) onToast(r.error ?? '无法出发', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
     else if (miningActive) onToast(tr("ui.Expedition.151"))
     else onToast(tr("ui.Expedition.285"))
   }
@@ -2690,7 +2687,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
     const r = miningActive
       ? engine.startExpeditionFromMiningAt(faction!.anomalyId ?? '')
       : engine.startExpeditionAt(faction!.anomalyId ?? '')
-    if (!r.ok) onToast(r.error ?? '无法出发', true)
+    if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
     else if (miningActive) onToast(tr("ui.Expedition.151"))
     else onToast(tr("ui.Expedition.270"))
   }
@@ -2701,7 +2698,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
         <span>
           {tr("ui.Expedition.286")}
           {tasks.length > 0 ? <span className="app-dim"> · {tierSummary}</span> : null}
-          {faction ? <span className="app-dim"> · 敌对派系活跃 1</span> : null}
+          {faction ? <span className="app-dim">{tr('ui.Expedition.405')}</span> : null}
         </span>
         {view.bountyOpened || tasks.length > 0 ? (
           <span
@@ -2810,14 +2807,13 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                   </div>
                   <div className="app-ano-reward">
                     <span className="app-lair-key">{tr("ui.IndustryPage.009")}</span>{' '}
-                    {Math.round(FACTION_RARE_DROP_CHANCE * 100)}% 概率 ×{FACTION_RARE_DROP_COUNT}
+                    {Math.round(FACTION_RARE_DROP_CHANCE * 100)}{tr('ui.Expedition.406')}{FACTION_RARE_DROP_COUNT}
                     <span className="app-dim" title={tr("ui.Expedition.117")}>
                       {tr("ui.Expedition.335")}
                     </span>
                   </div>
                   <div className="app-ano-desc">
-                    该星系敌群正在集中活动：当天它的全部悬赏奖金 +10%、敌人威胁 +10%；肃清有概率留下稀有残骸，
-                    打捞必得、先带回仓库存放。
+                    {tr('ui.Expedition.407')}
                   </div>
                   <div className="app-station-deliver">
                     <span className="app-dim">
@@ -2856,11 +2852,11 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       onClick={() => {
                         if (!faction.anomalyId) return
                         const r = engine.bountyLoopAt(loopOn2 ? null : faction.anomalyId)
-                        if (!r.ok) onToast(r.error ?? '操作失败', true)
+                        if (!r.ok) onToast(r.error ?? 'ui.Expedition.393', true)
                       }}
                     >
                       {loopOn2 ? (
-                        '停止剿灭'
+                        tr('ui.Expedition.408')
                       ) : (
                         <>
                           <span className="app-ico">
@@ -2879,8 +2875,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           {/* 5 席已清空时：派系活跃卡仍在（上方），这里补一行说明为什么席位是空的 */}
           {tasks.length === 0 ? (
             <div className="app-dim app-exp-idle">
-              本日 5 席赏金任务已全部完成——上方的「敌对派系活跃」当天仍然有效（该星系常驻悬赏照常 +10% 奖金与威胁、
-              胜利照常掉稀有残骸）；明天 0 点整板刷新。
+              {tr('ui.Expedition.409')}
             </div>
           ) : null}
           {tasks.map((t) => {
@@ -2968,7 +2963,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 ) : null}
                 {waves >= 2 ? (
                   <span>
-                    <span className="app-lair-key">{tr("ui.Expedition.120")}</span> {waves} 波
+                    <span className="app-lair-key">{tr("ui.Expedition.120")}</span> {waves}{tr('ui.Expedition.410')}
                   </span>
                 ) : null}
                 {/* 地图级别提示（2026-09-10 船长定）：级别 < 3 的星系出不了高档位，不写清楚玩家会当成 bug */}
@@ -3080,8 +3075,7 @@ function CourierInFlightBanner({ view, ctx }: { view: SideTaskBoardView; ctx: Si
         </span>
       </div>
       <div className="app-station-mats">
-        虚拟货物按体积占用货舱（出发时真实货物已自动卸入仓库）。到站自动结算运费；
-        期间舰船不可开矿/远征/扫描/打捞/掩护巡逻/换港返航（投送不可取消）。
+        {tr('ui.Expedition.411')}
       </div>
     </div>
   )
@@ -3157,11 +3151,11 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                   </span>
                 ) : null}
                 {presentAtSite && state.dockedSite === site.id ? (
-                  ' · 已停靠'
+                  tr('ui.Expedition.412')
                 ) : state.awayGalaxy === null && state.dockedSite === null ? (
-                  ' · 母港'
+                  tr('ui.Expedition.413')
                 ) : state.awayGalaxy === site.galaxyId ? (
-                  ' · 工地现场（可提交建材）'
+                  tr('ui.Expedition.414')
                 ) : (
                   ''
                 )}
@@ -3207,7 +3201,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                     <div>
                       {billRows.map((r) => (
                         <div key={r.itemId} className="app-dim">
-                          {r.itemName}：已缴 {r.delivered.toLocaleString('zh-CN')} / {r.need.toLocaleString('zh-CN')}
+                          {r.itemName}{tr('ui.Expedition.415')}{r.delivered.toLocaleString('zh-CN')} / {r.need.toLocaleString('zh-CN')}
                           {r.remaining > 0 ? tr("ui.Expedition.342", { p1: r.remaining.toLocaleString('zh-CN') }) : ' ✓'}
                         </div>
                       ))}
@@ -3246,7 +3240,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                       title={want > 0 ? tr("ui.Expedition.183", { p1: want.toLocaleString('zh-CN') }) : tr("ui.Expedition.243")}
                       onClick={() => {
                         const r = engine.deliverSiteAt(site.id, itemId, want)
-                        if (!r.ok) onToast(r.error ?? '提交失败', true)
+                        if (!r.ok) onToast(r.error ?? tr('ui.Expedition.416'), true)
                         else onToast(tr("ui.Expedition.184"))
                         setQty(0)
                       }}
@@ -3277,7 +3271,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                       }
                       onClick={() => {
                         const r = engine.deliverTripAt(site.id)
-                        if (!r.ok) onToast(r.error ?? '无法出发', true)
+                        if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
                         else onToast(tr("ui.Expedition.093", { p1: site.name }))
                       }}
                     >
@@ -3295,7 +3289,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                 onClick={() => {
                   const r = engine.openDialogue(intro.id)
                   if (r.ok) setComm(intro.id)
-                  else onToast(r.error ?? '通讯失败', true)
+                  else onToast(r.error ?? 'ui.Expedition.417', true)
                 }}
               >
                 <span className="app-ico"><Glyph name="ico-antenna" size={13} color={ICO_TONES["ico-antenna"]} /></span>{tr("ui.Expedition.347")}
