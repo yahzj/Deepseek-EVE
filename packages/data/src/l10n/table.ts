@@ -3755,4 +3755,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.WormholeScan.056": { zh: " · 单次窗口 {d}", en: " · window {d}" },
   "ui.WormholeScan.057": { zh: " · 已扫 {a} / {b}", en: " · scanned {a} / {b}" },
   "ui.WormholeScan.058": { zh: "；库存格腾出来给新的发现，扫描进度不受影响。", en: "; the storage slot frees up for new finds, and scanning progress is unaffected." },
+  "ui.WormholeScan.059": { zh: "停不了。", en: "Cannot stop it." },
+  "ui.WormholeScan.060": { zh: "无法开扫。", en: "Cannot start a scan." },
+  "ui.WormholeScan.061": { zh: "放弃失败。", en: "Could not give it up." },
+  "ui.WormholeScan.062": { zh: "召回失败。", en: "Recall failed." },
+  "ui.WormholeScan.063": { zh: "确认失败。", en: "Confirmation failed." },
+  "ui.WormholeScan.064": { zh: "{p1} 处", en: "{p1} sites" },
+  "ui.WormholeScan.065": { zh: "{p1} 趟", en: "{p1} runs" },
+  "ui.WormholeScan.066": { zh: "{p1} 份", en: "{p1} reports" },
+  "ui.WormholeScan.067": { zh: "{p1}前", en: "{p1} ago" },
+  "ui.WormholeScan.068": { zh: " · 自动探索 {p1} 趟在跑", en: " · {p1} auto-explore runs under way" }
 }

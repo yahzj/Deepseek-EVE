@@ -130,8 +130,8 @@ export function WormholeScanTab({
           </span>
         ) : (
           <span className="app-dim">
-            {tr("ui.WormholeScan.002")} {stock.length}/{stockMax} 处
-            {runs.length > 0 ? ` · 自动探索 ${runs.length} 趟在跑` : ''}
+            {tr("ui.WormholeScan.002")} {tr("ui.WormholeScan.064", { p1: `${stock.length}/${stockMax}` })}
+            {runs.length > 0 ? ` ${tr("ui.WormholeScan.068", { p1: runs.length })}` : ''}
             {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''}{tr('ui.WormholeScan.056', { d: formatDurationMs(windowMs) })}
           </span>
         )
@@ -193,7 +193,7 @@ export function WormholeScanTab({
                 className="app-btn is-small"
                 onClick={() => {
                   const r = engine.wormholeScanStop()
-                  if (!r.ok) onToast(cmdText(r) || '停不了。', true)
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.059'), true)
                   else onToast(tr("ui.WormholeScan.047"))
                 }}
               >
@@ -206,7 +206,7 @@ export function WormholeScanTab({
                 title={blocked ?? tr("ui.WormholeScan.010")}
                 onClick={() => {
                   const r = engine.wormholeScanStart()
-                  if (!r.ok) onToast(cmdText(r) || '无法开扫。', true)
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.060'), true)
                   else onToast(tr("ui.WormholeScan.048"))
                 }}
               >
@@ -243,7 +243,7 @@ export function WormholeScanTab({
         ) : null}
 
         {/* 船长 2026-09-14：标题里要显示**最多能保留多少** ⇒ 写成 `X/Y 处`（Y 随「星图记录学」满级变化） */}
-        <div className="app-bay-title">{tr("ui.WormholeScan.016")} {stock.length}/{stockMax} 处</div>
+        <div className="app-bay-title">{tr("ui.WormholeScan.016")} {tr("ui.WormholeScan.064", { p1: `${stock.length}/${stockMax}` })}</div>
         {stock.length === 0 ? (
           <div className="app-dim app-inv-empty">{tr("ui.WormholeScan.017")}</div>
         ) : (
@@ -354,7 +354,7 @@ export function WormholeScanTab({
                           className="app-btn is-small is-warn"
                           onClick={() => {
                             const r = engine.wormholeStockDiscard(item.id)
-                            if (!r.ok) onToast(cmdText(r) || '放弃失败。', true)
+                            if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.061'), true)
                             else onToast(tr("ui.WormholeScan.051"))
                             setDiscardAsk(null)
                           }}
@@ -380,7 +380,7 @@ export function WormholeScanTab({
 
         {runs.length > 0 ? (
           <>
-            <div className="app-bay-title">{tr("ui.WormholeScan.027")} {runs.length} 趟</div>
+            <div className="app-bay-title">{tr("ui.WormholeScan.027")} {tr("ui.WormholeScan.065", { p1: runs.length })}</div>
             <ul className="app-inv-list">
               {runs.map((run) => {
                 const span = Math.max(1, run.finishAtGameMs - run.startedAtGameMs)
@@ -401,7 +401,7 @@ export function WormholeScanTab({
                         title={tr("ui.WormholeScan.030")}
                         onClick={() => {
                           const r = engine.wormholeAutoStop(run.id)
-                          if (!r.ok) onToast(cmdText(r) || '召回失败。', true)
+                          if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.062'), true)
                           else onToast(tr("ui.WormholeScan.052"))
                         }}
                       >
@@ -418,7 +418,7 @@ export function WormholeScanTab({
         {reports.length > 0 ? (
           <>
             <div className="app-bay-title">
-              {tr("ui.WormholeScan.031")} {reports.length} 份{pending > 0 ? tr("ui.WormholeScan.053", { pending: pending }) : ''}
+              {tr("ui.WormholeScan.031")} {tr("ui.WormholeScan.066", { p1: reports.length })}{pending > 0 ? tr("ui.WormholeScan.053", { pending: pending }) : ''}
             </div>
             {pending > 1 ? (
               <div className="app-wh-scanbar-actions">
@@ -467,7 +467,7 @@ export function WormholeScanTab({
                     </span>
                     <span className="app-inv-count">
                       {rep.shipIds.length} {tr("ui.WormholeScan.042")} {rep.coresReleased} {tr("ui.WormholeScan.043")}{' '}
-                      {formatDurationMs(Math.max(0, state.gameMs - rep.finishedAtGameMs))}前
+                      {tr("ui.WormholeScan.067", { p1: formatDurationMs(Math.max(0, state.gameMs - rep.finishedAtGameMs)) })}
                     </span>
                   </div>
                   <div className="app-inv-btns">
@@ -476,7 +476,7 @@ export function WormholeScanTab({
                         className="app-btn is-small is-primary"
                         onClick={() => {
                           const r = engine.wormholeAutoConfirm(rep.id)
-                          if (!r.ok) onToast(cmdText(r) || '确认失败。', true)
+                          if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.063'), true)
                         }}
                       >
                         {tr("ui.Handbook.014")}
