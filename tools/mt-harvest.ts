@@ -30,9 +30,13 @@
  * 口径：**科技树零投资**（`research.levels` 空 = 未点任何科技）——本读数要回答的正是
  * 「攒够 1,196 枚要几趟」，起点就该是没科技的状态。科技只抬收益，垫高后的读数另跑。
  *
- * 读数结论（2026-09-20）见工作文档 `docs/design/matter-tech-20260919.md` §十：
- * 八层全扫上界 **23.8 枚/趟**；**瓶颈是层末守卫**（参考编队打层 1 守卫仅约 1/3 存活，
- * 全损则谜质全丢）⇒ 真实约束是"每趟能安全带出几枚"，不是谜质密度。
+ * 读数结论（2026-09-20 · **经一次重大更正**）见工作文档 `docs/design/matter-tech-20260919.md` §十：
+ * - 八层全扫上界 **23.8 枚/趟**（层 1/2 恰好 1 个谜质格、层 3 恰好 2 个 ⇒ 保底是承重墙）；
+ * - 折算**只在撤离成功时**发生（全损 = 谜质全丢），`1 台 = 1 枚`；
+ * - **真正约束是回合预算**：42 回合只够扫 2~3 层（实测平均到达 2.78 层）⇒
+ *   **每趟安全带出 2.67 枚**（最大 4），满树 1,196 枚 ≈ **450 趟**；
+ * - ⚠ **初版结论"层 1 守卫是硬闸门、只有 1/3 存活"已作废**——那是编队技能 id 写错（零有效技能）造成的假象；
+ *   真档编队打层 1 守卫 **12/12 全存活**。详见 §10.3 的 A/B。
  */
 import { addShipToFleet, createInitialState } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
@@ -60,35 +64,128 @@ import {
 
 const ctx: SimContext = buildSimContext()
 
-/* ═══════════════ 参考编队（与 wormhole-econ 的 full 档同源：4×长尾鲨 · 11 槽满配） ═══════════════ */
+/* ═══════════════ 参考编队 ═══════════════ */
 
+/**
+ * ⚠⚠ **2026-09-20 重大修正（船长质疑"是不是你配置舰船的问题" — 属实）**：
+ *
+ * 原来这套 `SKILLS` 是照抄 `wormhole-econ.ts` 的，其中 **6 个里有 5 个在游戏里根本不存在**：
+ * `missile-ops` / `shield-ops` / `armor-ops` / `evasive-maneuvers` / `targeting` 全是**假 id**
+ * （真名是 `missile-launching` / `shield-operation` / `armored-ops` /
+ * `evasion-maneuvering` / `targeting-integration`）；只有 `gunnery` 是真的。
+ * ⇒ 那个"参考编队"其实是**零有效技能裸奔**，于是"打层 1 守卫只有约 1/3 存活"的读数是
+ * **编队没配好**造成的假象，不是游戏难度。
+ *
+ * 现在两套都给，**默认用真档口径**（`--fit=ref` 可切回旧口径做 A/B）：
+ * - `real`（默认）：**真档同款**——技能表照抄 `test-save-mt-lab`（船长实际在玩的档），
+ *   装配也照抄真档（2×长尾鲨"搜打撤满配"低槽为空 ＋ 2×玳瑁"重装"3×MK3＋双甲）。
+ * - `ref`：旧的 4×长尾鲨 `full` 档（**技能假名已修**为真名，供对照）。
+ */
+const FIT_ARG = (process.argv.find((a) => a.startsWith('--fit=')) ?? '--fit=real').split('=')[1]
+type FitMode = 'real' | 'ref'
+const FIT: FitMode = FIT_ARG === 'ref' ? 'ref' : 'real'
+
+/** 参考编队（4×长尾鲨） */
 const REF_SHIP = 'sh-thresher'
 const REF_FIT_FULL = {
   high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-salvager-3', 'mod-miner-3'],
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
-const SKILLS: Record<string, number> = {
+
+/**
+ * **真档编队**（`test-save-mt-lab-20260919-201207` 原样）：
+ * `sh-thresher#9` / `sh-thresher#10`（搜打撤满配，**低槽空**）＋ `sh-hawksbill` / `sh-hawksbill#2`（重装）。
+ */
+const REAL_FLEET: ReadonlyArray<{ id: string; fitted: { high: string[]; mid: string[]; low: string[] } }> = [
+  {
+    id: 'sh-thresher',
+    fitted: {
+      high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-miner-3', 'mod-salvager-3'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+      low: [],
+    },
+  },
+  {
+    id: 'sh-thresher',
+    fitted: {
+      high: ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2', 'mod-miner-3', 'mod-salvager-3'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+      low: [],
+    },
+  },
+  {
+    id: 'sh-hawksbill',
+    fitted: {
+      high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+      low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2'],
+    },
+  },
+  {
+    id: 'sh-hawksbill',
+    fitted: {
+      high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2', 'mod-shield-kin-2'],
+      low: ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2'],
+    },
+  },
+]
+
+/**
+ * **真档技能表**（照抄 `test-save-mt-lab` 的 `skills.trained`，只留与洞内战斗/作业相关的项）。
+ * 全部为**游戏里真实存在的 id**（对照 `packages/data/src/skills.ts`）。
+ */
+const REAL_SKILLS: Record<string, number> = {
+  gunnery: 5,
+  'kinetic-gunnery': 5,
+  'missile-launching': 5,
+  'armed-ops': 4,
+  'fire-control': 4,
+  'targeting-integration': 5,
+  'evasion-maneuvering': 5,
+  'vector-maneuvering': 5,
+  'shield-operation': 5,
+  'shield-tuning': 5,
+  'armored-ops': 1,
+  'armor-tuning': 4,
+  'hull-upgrades': 4,
+  'energy-management': 5,
+  'reload-drills': 4,
+  'ship-systems-engineering': 5,
+  'spaceship-command': 5,
+  navigation: 5,
+  'acceleration-control': 5,
+  'warp-drive-operation': 5,
+}
+
+/** `ref` 档用的技能（**已修假名**；原来是 6 个里 5 个无效 ⇒ 等于零技能） */
+const REF_SKILLS: Record<string, number> = {
   gunnery: 3,
-  'missile-ops': 3,
-  'shield-ops': 3,
-  'armor-ops': 3,
-  'evasive-maneuvers': 3,
-  targeting: 3,
+  'missile-launching': 3,
+  'shield-operation': 3,
+  'armored-ops': 3,
+  'evasion-maneuvering': 3,
+  'targeting-integration': 3,
 }
 
 function makeFleet(seed: number): { state: GameState; uids: string[] } {
   const state = createInitialState({ nowWallMs: 0, seed })
   state.wallet.isk = 20_000_000
-  for (const [id, lv] of Object.entries(SKILLS)) state.skills.trained[id] = lv
+  const skills = FIT === 'real' ? REAL_SKILLS : REF_SKILLS
+  for (const [id, lv] of Object.entries(skills)) state.skills.trained[id] = lv
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[key] = 5_000
   const uids: string[] = []
-  for (let i = 0; i < 4; i++) {
-    const uid = addShipToFleet(state, REF_SHIP)
+  const specs =
+    FIT === 'real'
+      ? REAL_FLEET
+      : Array.from({ length: 4 }, () => ({ id: REF_SHIP, fitted: REF_FIT_FULL }))
+  for (const spec of specs) {
+    const uid = addShipToFleet(state, spec.id)
     state.fleet[uid]!.fitted = {
-      high: [...REF_FIT_FULL.high],
-      mid: [...REF_FIT_FULL.mid],
-      low: [...REF_FIT_FULL.low],
+      high: [...spec.fitted.high],
+      mid: [...spec.fitted.mid],
+      low: [...spec.fitted.low],
     }
     uids.push(uid)
   }
@@ -299,7 +396,16 @@ function simulateRun(seed: number, pol: Policy, maxDepth: number): RunResult {
       continue
     }
 
-    // ② 挑目标（守卫未清 ⇒ 需要去层末入口开战）
+    // ② **守卫已清且我就站在层末入口上 ⇒ 优先深入**（别再去别的已知格转悠了）
+    if (guardCleared && r.depth < maxDepth && isExitCell(g, { q: g.pos.q, r: g.pos.r })) {
+      const dn = wormholeDescend(state, state.rng.seed, wormholeScanBonusOf(ctx, r.fleet))
+      if (!dn.ok) {
+        stopReason = `深入被拒：${dn.error ?? ''}`
+        break
+      }
+      continue
+    }
+    // ③ 挑目标（守卫未清 ⇒ 需要去层末入口开战）
     const target = pickTarget(g, pol, guardCleared, r.turnsLeft)
     if (!target) {
       // 没有目标了：能下就下，否则撤
@@ -463,7 +569,9 @@ function pad(s: string | number, n: number): string {
   return String(s).padStart(n)
 }
 
-console.log(`【谜质「每趟真实收获」读数】参考编队 4×长尾鲨满配 · 科技零投资 · 种子 ${SEED_N} 个 · 层 ${MAX_DEPTH}`)
+console.log(
+  `【谜质「每趟真实收获」读数】编队 = ${FIT === 'real' ? '真档同款（2×长尾鲨搜打撤 ＋ 2×玳瑁重装 · 真档技能）' : '旧参考档 4×长尾鲨（技能假名已修）'} · 科技零投资 · 种子 ${SEED_N} 个 · 层 ${MAX_DEPTH}`,
+)
 
 /* 一、盘面普查 */
 const rows = census(SEEDS, MAX_DEPTH)
