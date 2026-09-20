@@ -493,6 +493,14 @@ export interface WormholeFamilyIntel {
   firstCardId: string
   firstCardName: string
   primaryText: string
+  /**
+   * **主系一句话的结构化形态**（甲案 2026-09-20）：渲染层按它组当前语言的句子。
+   * `primaryText` 保留为中文原串（老调用点/回退用）。
+   * - `pure`：单系 ⇒「纯{p1}」· `main`：头名 ≥75% ⇒「{p1}为主」· `mixed`：⇒「{p1} / {p2}并重」
+   */
+  primaryKind: 'pure' | 'main' | 'mixed'
+  primaryTypeA: DamageType
+  primaryTypeB?: DamageType
   tiers: ReadonlyArray<{
     tier: WormholeCardTier
     cardId: string
@@ -501,11 +509,28 @@ export interface WormholeFamilyIntel {
   }>
 }
 
-/** 三档的**显示顺序与中文名**（浅 → 中 → 深；与 `WORMHOLE_CARD_TIERS` 同集合） */
+/** 三档的**显示顺序与中文名**（浅 → 中 → 深；与 `WORMHOLE_CARD_TIERS` 同集合）。
+ *  甲案 id：浅/中/深 = `core.wormholeFoes.001/.002/.003`（渲染层按它取当前语言）。 */
 export const WORMHOLE_TIER_LABELS: Readonly<Record<WormholeCardTier, string>> = {
   shallow: '浅层',
   mid: '中层',
   deep: '深层',
+}
+
+/** 伤害类型的**中文名 id**（与 `DAMAGE_TYPE_LABELS` 同集合；甲案 2026-09-20） */
+export const DAMAGE_TYPE_LABEL_IDS: Readonly<Record<DamageType, string>> = {
+  kinetic: 'core.wormholeFoes.004',
+  explosive: 'core.wormholeFoes.005',
+  plasma: 'core.wormholeFoes.006',
+}
+
+/** 族称的中文名 id（与 `WORMHOLE_FAMILY_ETHNIC` 同集合；甲案 2026-09-20） */
+export const WORMHOLE_FAMILY_ETHNIC_IDS: Readonly<Record<WormholeFamily, string>> = {
+  A: 'core.wormholeFoes.007',
+  C: 'core.wormholeFoes.008',
+  D: 'core.wormholeFoes.009',
+  E: 'core.wormholeFoes.010',
+  G: 'core.wormholeFoes.011',
 }
 
 /**
@@ -526,18 +551,23 @@ export function wormholeFamilyIntel(family: WormholeFamily, ctx: SimContext): Wo
   })
   const shallow = tiers[0]!
   const parts = shallow.parts
+  const typeA: DamageType = parts[0]?.type ?? 'kinetic'
+  const primaryKind: 'pure' | 'main' | 'mixed' = parts.length <= 1 ? 'pure' : parts[0]!.share >= 0.75 ? 'main' : 'mixed'
   const primaryText =
-    parts.length <= 1
-      ? `纯${DAMAGE_TYPE_LABELS[parts[0]?.type ?? 'kinetic']}`
-      : parts[0]!.share >= 0.75
-        ? `${DAMAGE_TYPE_LABELS[parts[0]!.type]}为主`
-        : `${DAMAGE_TYPE_LABELS[parts[0]!.type]} / ${DAMAGE_TYPE_LABELS[parts[1]!.type]}并重`
+    primaryKind === 'pure'
+      ? `纯${DAMAGE_TYPE_LABELS[typeA]}`
+      : primaryKind === 'main'
+        ? `${DAMAGE_TYPE_LABELS[typeA]}为主`
+        : `${DAMAGE_TYPE_LABELS[typeA]} / ${DAMAGE_TYPE_LABELS[parts[1]!.type]}并重`
   return {
     family,
     ethnic: WORMHOLE_FAMILY_ETHNIC[family],
     firstCardId: shallow.cardId,
     firstCardName: shallow.cardName,
     primaryText,
+    primaryKind,
+    primaryTypeA: typeA,
+    ...(primaryKind === 'mixed' ? { primaryTypeB: parts[1]!.type } : {}),
     tiers,
   }
 }

@@ -1054,6 +1054,8 @@ export {
   WORMHOLE_FAMILY_ETHNIC,
   WORMHOLE_TIER_LABELS,
   DAMAGE_TYPE_LABELS,
+  WORMHOLE_FAMILY_ETHNIC_IDS,
+  DAMAGE_TYPE_LABEL_IDS,
   wormholeFamilyIntel,
   wormholeFamilyOfSeed,
   wormholeCardIdOfFamily,
