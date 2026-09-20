@@ -194,16 +194,24 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 
 ## 6. 待船长裁决
 
-1. **游戏英文名**（⚠ **仍需船长定**）：船长给出 `Great Whale: Deep Space Idle`；三号复核提了撞名证据——
-   副标题已有[同名 H5 游戏](https://gamerankedreview.com/blog/h5-game/deep-space-idle) ·
-   `Great Whale` 是[万智牌蓝卡名](https://gatherer.wizards.com/UZ/en-us/77/great-whale) ＋ Steam 有
-   [The Great Whale Road](https://steamdb.info/app/464830/patchnotes/)；备选：`Great Whale Idle`（推荐）·
-   `Whale Pact: Deep Space Idle` · `Great Whale: Void Idle`。
-   **现在只需改 1 处文本**：表项 `ui.App.056` 的 `en`（现为 `Whale · Deep Space Idle`）——
-   窗口标题与产品名都已走这一条（见下），改完中英两侧一起变。
-   （登记处另有：`docs/glossary-en.md` · `package.json` 与商店稿英文名。）
+1. ✅ **游戏英文名 —— 已定（2026-09-20 船长：「按我推荐的来吧」）**：采纳推荐项 **`Great Whale Idle`**。
+   唯一真源 = 表项 `ui.App.056` 的 `en`（窗口标题读 `t('ui.App.056')`，不再硬编码）；
+   已同步 `docs/glossary-en.md` §〇「游戏名」（登记采纳值与未采用理由）·
+   `package.json` 的 `description` · `apps/desktop/package.json` 的 `author`。
+   **以后再改名只需改表项 1 处**（中英两侧随之而变）。未采用 `Great Whale: Deep Space Idle` 的理由见词典 §〇。
 2. **`ui.ShipPage.106` 与手册页的「入门向」**（设计侧表述）：英文侧已按中性译法处理（`(rank 2)`），
    **中文未擅改**，等船长定是否清理中文。
+
+### 6.0 白名单口径（2026-09-20 船长裁：「列入白名单，保持现状」）
+
+- **54 条**"中文当键"的数据（类型联合 key · `kindLabel` 比较键 · 形状槽键 · 键表 `label` ·
+  性能探针 console 串 · `i18n/fmt.ts` 的按语言自取分支）⇒ **不做改 id 重构，保持现状**。
+  它们已由源码里的 `l10n-keep` 声明覆盖，`l10n:check` 单列为「已声明不译」并**逐条点名**
+  ⇒ **未译读数保持 0 且可核**。
+- 声明写法两种：① 就近 `// l10n-keep：…`（同行或前 6 行内）；② 整段 `l10n-keep-start` … `l10n-keep-end`。
+- 另有一条**自动规则**（无需声明）：纯全角标点/空白（`　`、`」`、`。`）语言中立 ⇒ 不计未译。
+- ⚠ 复核入口：`npm run l10n:check`（看「已声明不译的 N 条」逐条清单）·
+  `npm run l10n:check -- --list-untranslated`（列**未声明**项，应为空）。
 
 ### 6.1 已定的两项（2026-09-20 船长：甲案 + 先修复）
 - **core 文案口径 = 甲案**（core 只产出「文案 id + 参数」，渲染层按语言渲染）。落地要点：

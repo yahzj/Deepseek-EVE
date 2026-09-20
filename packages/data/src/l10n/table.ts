@@ -912,7 +912,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.053": { zh: "此操作当前不可用。", en: "That action is not available right now." },
   "ui.App.054": { zh: "存档已写入本地。", en: "Save written to disk." },
   "ui.App.055": { zh: "保存失败！", en: "Save failed!" },
-  "ui.App.056": { zh: "大鲸鱼-深空放置", en: "Whale · Deep Space Idle" },
+  "ui.App.056": { zh: "大鲸鱼-深空放置", en: "Great Whale Idle" },
   "ui.App.057": { zh: "性能监测（诊断工具）：FPS / 引擎推进 / 整树刷新 / React 提交耗时；可一键复制完整快照", en: "Performance monitor (a diagnostic tool): FPS, engine ticks, whole-tree renders, React commit time; copy the full snapshot in one click" },
   "ui.App.058": { zh: "⏱ 性能", en: "⏱ Performance" },
   "ui.App.059": { zh: "在线", en: "Online" },
