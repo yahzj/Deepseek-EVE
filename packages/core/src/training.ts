@@ -47,9 +47,6 @@ const RANK_BASE_MS: Record<number, number> = {
 /** 等级系数（船长 2026-09-05 定）：[Lv1, Lv2, Lv3, Lv4, Lv5] */
 export const LEVEL_TIME_COEF: readonly number[] = [1, 2, 4, 16, 64]
 
-/** 每个技能定义允许单独覆盖的字段名 */
-export const CUSTOM_BASE_MS_FIELD = 'baseMs' as const
-
 /**
  * 从 (level-1) 级升到 level 级要多久（毫秒）。level 从 1 开始计。
  * 例：skillLevelTimeMs(def, 1) = 训练到 1 级；skillLevelTimeMs(def, 2) = 从 1 级升 2 级。
