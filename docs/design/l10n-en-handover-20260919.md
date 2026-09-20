@@ -154,13 +154,19 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 然后 `npm run ui:overflow`。⚠ 手机档必须连 **UA/触摸**一起模拟（只改视口不会触发自动旋转，会量到假读数）。
 ⚠ 浏览器切语言在网页版靠渲染层暴露的 `window.__setLocale`（桌面端是主进程桥 `window.whale`）。
 
-### ⑤ 收尾核对
+### ⑤ 收尾核对 —— ✅ **已做完**（2026-09-20 三号收尾，船长裁「一=乙 · 二=甲 · 三=先确认」）
 
-- 若要做 §3② 的重构：在 `l10n-check` 里把 `l10n-keep` 标记项列为白名单，让读数归零可核。
-- 4 条未接线条目（`ui.Industry.019/098`、`ui.ItemsPage.022/023`）：其中文在源码里仍大量出现，
-  下次接线会**按 zh 自动复用**；若确认已废则删。
-- core 段另有 **19 条孤儿条目**（表里有、源码从不引用，如 `core.state.002`/`core.wormhole.019`）：
-  **未擅自删**，待船长定"接线上还是清掉"。
+- **`l10n-keep` 白名单已落地**（§3② 的"归零可核"）：`l10n-check` 认识 ① 同行/前 6 行的就近标记、
+  ② `l10n-keep-start` … `l10n-keep-end` **区间**；另加"纯标点/空白不算文案"规则与
+  **`--list-untranslated`** 开关（逐条列未声明项）。⇒ **未译读数 65 → 0**（54 条已声明不译、逐条点名）。
+- **孤儿/陈条已清 25 条**（逐条核过"源码真不引用"再删）：原 18 条 core/ui 孤儿 + 裁决三的 4 条
+  + 3 条被替代的陈条。⇒ **表 3760 条 = 源码引用 3760 个 id（1:1 对齐，零孤儿）**。
+- **顺手修掉一个真 bug**：`Industry.tsx` 的 `tr('ui.Industry.137')` 漏传参数（界面会显示字面 `{p1}`）。
+- **P4 读数表已交付**（§3④）· **手机档允许滚动**的裁定已写进工具判据。
+
+> 遗留的"可选项"（都不是缺陷，需船长点头才动）：
+> 1. 54 条"中文当键"的**改 id 重构**（属重构非翻译）；
+> 2. 手机横屏那 7 页已有滚动条（船长已允许，无需处理）。
 
 ## 4. 每批工作的标准流程
 
@@ -188,14 +194,14 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 
 ## 6. 待船长裁决
 
-1. **游戏英文名**：船长给出 `Great Whale: Deep Space Idle`；三号复核提了撞名证据——
+1. **游戏英文名**（⚠ **仍需船长定**）：船长给出 `Great Whale: Deep Space Idle`；三号复核提了撞名证据——
    副标题已有[同名 H5 游戏](https://gamerankedreview.com/blog/h5-game/deep-space-idle) ·
    `Great Whale` 是[万智牌蓝卡名](https://gatherer.wizards.com/UZ/en-us/77/great-whale) ＋ Steam 有
    [The Great Whale Road](https://steamdb.info/app/464830/patchnotes/)；备选：`Great Whale Idle`（推荐）·
-   `Whale Pact: Deep Space Idle` · `Great Whale: Void Idle`。**选定后改 4 处**：表项 `ui.App.056`
-   （现为 `zh: "大鲸鱼-深空放置"` / `en: "Whale · Deep Space Idle"`）· Electron 窗口标题
-   （`apps/desktop/src/main/index.ts:204` 的 `title: '大鲸鱼-深空放置'`）·
-   `docs/glossary-en.md` 登记 · `package.json` 与商店稿英文名。
+   `Whale Pact: Deep Space Idle` · `Great Whale: Void Idle`。
+   **现在只需改 1 处文本**：表项 `ui.App.056` 的 `en`（现为 `Whale · Deep Space Idle`）——
+   窗口标题与产品名都已走这一条（见下），改完中英两侧一起变。
+   （登记处另有：`docs/glossary-en.md` · `package.json` 与商店稿英文名。）
 2. **`ui.ShipPage.106` 与手册页的「入门向」**（设计侧表述）：英文侧已按中性译法处理（`(rank 2)`），
    **中文未擅改**，等船长定是否清理中文。
 
@@ -230,9 +236,13 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
    `core.state.010`，句式 `{p1}随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。`，
    `{p1}` = `精炼炉` / `精炼炉的「货柜拆解」` / `残骸回收炉`；
 3. 「采矿作业中：先停止开采。」这条已出现在 **3 个文件**（industry ×2 + 别处）⇒ 用 `core.state.013`（打捞/远征/巡逻/返航同理）；
-4. **多段拼接**的日志（精炼炉/回收炉的"停炉"那三条 `543/617/642` 附近、AI 战报）**先别接**，
-   等"多段文案"形状定了统一做（`ai.ts` 已有同样待办注释）。
-**⚠ 2026-09-20 实测「剩余工作量表」（未改造文件；已改完的 `mining`/`salvaging`/`shipyard`/`ai` 不在此列）**：
+4. **多段拼接**的日志（精炼炉/回收炉的"停炉"那三条 `543/617/642` 附近、AI 战报）—— ✅ **已按 §0.1-2 的机制做完**（composeLog + 空段禁令 + 两步渲染）。
+**✅ 本节余下内容（第五批半途记录 + 剩余工作量表 + 节奏教训）已全部解决**：
+下面那张"剩余工作量表"里的**每一个文件都已改造完毕**，多段拼接那三条也按 §0.1-2 的机制做透了
+（`composeLog` + 空段禁令 + 两步渲染）；`core.state.010` 那三条最终**没走共用条目**——
+因为中英语序不同（`{p1}` 前置在英文里读不通），改为各文件独立条目（见 §5 坑位记录）。
+以下**保留为历史记录**（说明当时是怎么判断与踩坑的），**不要照着它开工**：
+
 
 | 文件 | 剩余 | 文件 | 剩余 | 文件 | 剩余 |
 |---|---|---|---|---|---|
@@ -248,7 +258,7 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 
 ⚠ **节奏教训（2026-09-20）**：一轮**别挑 >40 的文件**——`industry.ts`（72）就是这么做到一半、上下文耗尽
 被迫整文件回退（不留半成品）。建议：**一轮一个 20~40 的文件**，或一轮两三个 <15 的小文件。
-（`combat.ts` 此前显示的 3 处是误计：它的日志/错误是派生串，见下条待办。）
+（`combat.ts` 此前显示的 3 处是误计：它的日志/错误是派生串——这条**已在收尾时逐条核过**，无真漏译。）
 
 **下一批建议顺序（按上表从小到大重排，先清小文件攒手感）**：
 `marks.ts` → `events.ts` → `firstRewards.ts` → `simulation.ts` → `comms.ts` → `wormholeAuto.ts` →
