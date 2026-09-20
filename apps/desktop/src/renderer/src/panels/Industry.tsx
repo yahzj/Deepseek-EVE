@@ -287,7 +287,7 @@ export function BlueprintShelfPanel({
                 setUseKind(SUB_ALL)
               }}
             >
-              {tb.label}
+              {tr(tb.id)}
             </button>
           ))}
         </div>
@@ -336,7 +336,7 @@ export function BlueprintShelfPanel({
                 className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
                 onClick={() => setUseKind(u.key)}
               >
-                {u.label}
+                {tr(u.id)}
               </button>
             ))}
           </div>
@@ -1294,7 +1294,7 @@ export function ManufacturingPanel({
               className={`app-tasktab${learn === l.key ? ' is-active' : ''}`}
               onClick={() => setLearn(l.key)}
             >
-              {l.label}
+              {tr(l.id)}
             </button>
           ))}
         </div>
@@ -1312,7 +1312,7 @@ export function ManufacturingPanel({
                 setUseKind(SUB_ALL) // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
               }}
             >
-              {t.label}
+              {tr(t.id)}
             </button>
           ))}
         </div>
@@ -1367,7 +1367,7 @@ export function ManufacturingPanel({
                 className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
                 onClick={() => setUseKind(u.key)}
               >
-                {u.label}
+                {tr(u.id)}
               </button>
             ))}
           </div>

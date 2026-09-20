@@ -1,11 +1,18 @@
 /**
- * 临时探针：按 `tools/l10n-check.ts` 的**同一条判据**列出"未译条目"的精确行号与文本。
- * 为什么需要：`l10n:check` 只打 Top 10 汇总，逐页消化界面批时得看到**每一条**。
- * 一次性工具，用完即删（`_` 前缀 = 仓库口径的临时探针）。
+ * **界面批·未译清单（逐条列点）** · 2026-09-20 立。
  *
- * 用法：`npx tsx tools/_l10n-list.ts <文件相对路径…>`（不给参数则扫全渲染层）
- */
-import { readFileSync } from 'node:fs'
+ * 为什么需要它：`npm run l10n:check` 只打 Top 10 汇总，而界面批是**逐页消化**——
+ * 得看到某一页到底哪几条没译、在第几行。本工具用与 `l10n-check.ts` **同一条判据**
+ * （TS AST：含 CJK 的字符串字面量 / JSX 文本节点，排除 `t()`/`tr()` 的入参）逐条列出。
+ *
+ * 用法：
+ * - `npx tsx tools/l10n-list.ts`                        → 扫全渲染层
+ * - `npx tsx tools/l10n-list.ts <文件…>`                → 只看指定文件（逐页消化时用这个）
+ * - `npm run l10n:list -- apps/desktop/src/renderer/src/pages/ShipPage.tsx`
+ *
+ * 注：`l10n-keep` 注释标记的条目（内容层联合 key 等"不是文案"的中文）仍会列出，
+ * 它们是**故意保留**的——判断标准见各文件注释。
+ */import { readFileSync } from 'node:fs'
 import { relative } from 'node:path'
 import ts from 'typescript'
 

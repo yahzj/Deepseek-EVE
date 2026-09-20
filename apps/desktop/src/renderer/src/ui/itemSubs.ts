@@ -54,9 +54,18 @@ import { tr } from '../i18n/locale'
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
 export const SUB_ALL = 'sub-all'
 
+/**
+ * 一个筛选子项：`key` = 判定键；`label` = **中文原串**（同时充当"键表"里的可读常量）。
+ *
+ * ⚠ **`label` 一律不在界面直接显示**：渲染处必须走 `tr(id)` 取当前语言（`id` 见各表；
+ * 三张 `*_TABS` 门类表已逐项带 `id`）。所以本文件里出现的 `label: '中文'` 是**数据/键**、
+ * 不是漏译 —— `npm run l10n:list` 仍会把它们数列出来，属**已知残留**，收尾时按需补 `id`。
+ */
 export interface SubOption {
   key: string
   label: string
+  /** 本地化 id（有则渲染处用它取词；缺 = 尚未接线，仍显示 `label`） */
+  id?: string
 }
 
 /**
@@ -443,11 +452,11 @@ export function shipTierPasses(def: { tier?: number } | undefined, tier: string)
 /** 组装机 / 蓝图书架「**门类**」维度（一级选择器 ⇒ 「全部」键用 `'all'`，基线②）：
  *  全部 / 装备蓝图 / 舰船蓝图 / 消耗品蓝图（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」）。 */
 export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply'
-export const MANU_TABS: Array<{ key: ManuTabKey; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'equip', label: '装备蓝图' },
-  { key: 'ship', label: '舰船蓝图' },
-  { key: 'supply', label: '消耗品蓝图' },
+export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = [
+  { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'equip', label: '装备蓝图', id: 'ui.ShipPage.115' },
+  { key: 'ship', label: '舰船蓝图', id: 'ui.ShipPage.116' },
+  { key: 'supply', label: '消耗品蓝图', id: 'ui.ShipPage.114' },
 ]
 
 /** 组装机/书架「**子类**」候选（按当前门类给；全部取自本文件单点表）：
@@ -463,10 +472,10 @@ export function manuSubsOf(tab: ManuTabKey): SubOption[] {
 /** 组装机/书架「**图纸**」维度（三级；下级 ⇒ 「全部」键用 `SUB_ALL`，基线②）：
  *  全部 / 永久蓝图 / 一次性蓝图（2026-09-14 船长：「组装机添加第三个筛选…需要选完上一级子类后才出现」）。 */
 export type BlueprintUseKey = 'perm' | 'single' | typeof SUB_ALL
-export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string }> = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'perm', label: '永久蓝图' },
-  { key: 'single', label: '一次性蓝图' },
+export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string; id: string }> = [
+  { key: SUB_ALL, label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'perm', label: '永久蓝图', id: 'ui.itemSubs.029' },
+  { key: 'single', label: '一次性蓝图', id: 'ui.itemSubs.030' },
 ]
 
 /**
@@ -476,8 +485,8 @@ export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string }> 
  * ⚠ 蓝图书架**不加**这一维：书架列的是"还没学的书 ＋ 可逆向的碎片"，按定义都未学会 ⇒ 加了恒空。
  */
 export type BlueprintLearnKey = 'learned' | 'unlearned' | typeof SUB_ALL
-export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string }> = [
-  { key: SUB_ALL, label: '全部' },
-  { key: 'learned', label: '已学会' },
-  { key: 'unlearned', label: '未学会' },
+export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string; id: string }> = [
+  { key: SUB_ALL, label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'learned', label: '已学会', id: 'ui.itemSubs.031' },
+  { key: 'unlearned', label: '未学会', id: 'ui.itemSubs.032' },
 ]
