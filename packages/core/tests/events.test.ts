@@ -2,6 +2,7 @@
  * 随机事件系统（V11）单元测试：间隔语义、确定性、市场大类 A/B 落地、存档迁移。
  */
 import { describe, expect, it } from 'vitest'
+import { L10N } from '@whale/data'
 import { advanceGame } from '../src/engine'
 import { fireMarketOrderEvent, fireMarketShockEvent, eventCadenceFactor, exploredRewardMul } from '../src/events'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -176,15 +177,82 @@ describe('随机事件系统（V11）', () => {
     expect(evs.every((l) => l.text.startsWith('✦'))).toBe(true) // 前缀保留
     expect(state.logs.some((l) => l.kind === 'info' && l.text.startsWith('✦'))).toBe(false) // 不再混在 info 里
     /**
-     * 甲案（2026-09-20）：事件正文 82 条走**两步渲染**——外壳 `core.events.001` 的 `{p1}` 由
-     * `p1Id` 给出（正文 id 在 `core.events.*` 段），`p1` 仍是中文原串（老档/未改造路径回退用）。
+     * 甲案（2026-09-20）：事件正文 82 条走**两步渲染**——外壳 `core.events.001`（`✦ {p1}{p2}`）
+     * 的 `{p1}` 由 `p1Id` 给出（正文 id 在 `core.events.*` 段），`{p2}`（金额附注）是
+     * **段内子段** `p2Id` + `p2p1`，不是段链的第 2 段。
+     *
+     * 2026-09-20 实障回归（船长报「事件日志重复文本、数值显示为 +{p1}」）：旧写法把附注挂成
+     * `p2Id` ⇒ 渲染层当成"整条链的第 2 段"，附注被顶进 `{p1}` 当正文又渲一遍（重复），
+     * 而第 2 段的段内命名空间是 `p2*` ⇒ 它自己的 `{p1}` 无人供给、原样漏出。这里钉住正确形态。
      */
     for (const l of evs) {
       expect(l.textId).toBe('core.events.001') // ✦ {p1}{p2}
       expect(typeof l.textParams?.p1Id).toBe('string')
       expect(String(l.textParams?.p1Id)).toMatch(/^core\.events\.\d{3}$/)
       expect(l.text).toContain(String(l.textParams?.p1)) // 中文原串确实拼在正文里
-      if (l.text.includes('（+')) expect(l.textParams?.p2Id).toBe('core.events.002')
+      if (l.text.includes('（+')) {
+        // 附注是**子段**：段 id + 段内参数 ×1；`p2` 只是中文原串兜底
+        expect(l.textParams?.p2Id).toBe('core.events.002')
+        expect(l.textParams?.p2p1).toBeDefined()
+        expect(l.text).toContain(String(l.textParams?.p2))
+      }
+    }
+    /**
+     * **按渲染层口径复算整句**（渲染层在 desktop 侧，core 测试里按同规则走 id 链）：
+     * 复现船长报的实障——`en` 列里 `core.events.001` 是 `✦ {p1}{p2}`、`core.events.002`
+     * 是 ` (+{p1} credits)`。旧写法下 `{p2}` 无人供给、又被当成第 2 段顶进 `{p1}` ⇒
+     * 拼出 `✦ （+12,345 信用点）`（正文被吞）**再**接一段 ` (+{p1} credits)`（原样漏占位符）。
+     */
+    for (const l of evs) {
+      const tp = l.textParams ?? {}
+      const enOf = (id: string, params: Record<string, string | number>): string =>
+        (L10N[id]?.en ?? `「缺 ${id}」`).replace(/\{(\w+)\}/g, (mm, k: string) => (k in params ? String(params[k]) : mm))
+      const parts: string[] = []
+      const rawParts = (tp as { parts?: unknown }).parts
+      const segIds = [
+        l.textId,
+        ...(Array.isArray(rawParts) ? rawParts.filter((x): x is string => typeof x === 'string' && x !== '') : []),
+      ]
+      for (let i = 0; i < segIds.length; i++) {
+        const ns: Record<string, string | number> = {}
+        if (i === 0) {
+          for (const [k, v] of Object.entries(tp)) {
+            if (/^p\d+p\d+$/.test(k) || /^p\d+Id$/.test(k)) continue
+            ns[k] = v
+          }
+          // 槽译文代回（`p{n}Id` ＝ 首段 `{pN}` 这一槽那句话的 id，与 locale.tsx 同步）
+          for (const [k, v] of Object.entries(tp)) {
+            if (!/^p\d+Id$/.test(k)) continue
+            const tpl = typeof v === 'string' ? L10N[v] : undefined
+            if (tpl === undefined) continue
+            const slot = k.slice(0, -2)
+            const deep: Record<string, string | number> = {}
+            for (const p of tpl.zh.matchAll(/\{(\w+)\}/g)) {
+              const name = p[1]!
+              const scoped = tp[`${slot}${name}`]
+              if (scoped !== undefined) deep[name] = scoped
+              else if (Object.prototype.hasOwnProperty.call(tp, name)) deep[name] = tp[name]!
+            }
+            delete ns[slot]
+            ns[slot] = enOf(v as string, deep)
+          }
+        } else {
+          const prefix = `p${i}`
+          for (const [k, v] of Object.entries(tp)) {
+            if (k.startsWith(prefix) && k.length > prefix.length && !k.endsWith('Id')) ns[k.slice(prefix.length)] = v
+          }
+        }
+        parts.push(enOf(segIds[i]!, ns))
+      }
+      const rendered = parts.join('')
+      expect(rendered).not.toContain('{') // 不得残留未替换的占位符
+      expect(rendered.startsWith('✦ ')).toBe(true)
+      // 正文必须真的在：旧写法把附注顶进 {p1} ⇒ 正文被吞、整句只剩两条附注
+      const bodyId = String(tp.p1Id)
+      const bodyEn = (L10N[bodyId]?.en ?? '')
+      if (bodyEn !== '') expect(rendered).toContain(bodyEn)
+      // 附注只许出现一次（旧写法会渲两遍 ⇒ 重复文本）
+      if (l.text.includes('（+')) expect(rendered.split('credits').length - 1).toBe(1)
     }
     const back = loadSaveFile(serializeSaveFile(state))
     expect(back.state.logs.filter((l) => l.kind === 'event').length).toBe(evs.length) // 白名单缺它就会变 0

@@ -165,18 +165,44 @@ function clampPrice(ctx: SimContext, def: MarketGoodDef, raw: number): number {
  * 甲案（2026-09-20）：`✦ ` 前缀与"（+N 信用点）"附注都是**固定外壳** ⇒ 由本函数拼好、
  * 把外壳的 id 一并交给日志（`core.events.001` / `.002`）；事件正文的 `id` 由事件表给
  * （`FlavorEntry.id`，共 82 条，中英都在唯一表 `core.events.*`）⇒ 走两步渲染挂 `p1Id`。 */
-function logEvent(state: GameState, text: string, amount?: number, id?: string): void {
+function logEvent(
+  state: GameState,
+  text: string,
+  amount?: number,
+  id?: string,
+  params?: Record<string, string | number>,
+): void {
   const hasAmount = amount !== undefined && amount > 0
   const amountNote = hasAmount ? `（+${amount.toLocaleString('zh-CN')} 信用点）` : ''
-  // 正文 `id` 一律挂 `p1Id`（渲染层先译为当前语言再喂进外壳，中英各一套都在唯一表里）
-  const body: Record<string, string | number> = id !== undefined ? { p1: text, p1Id: id } : { p1: text }
-  addLog(
-    state,
-    'event',
-    `✦ ${text}${amountNote}`,
-    'core.events.001',
-    hasAmount ? { ...body, p2: amount.toLocaleString('zh-CN'), p2Id: 'core.events.002' } : body,
-  )
+  // 正文 `id` 一律挂 `p1Id`（渲染层先译为当前语言再喂进外壳，中英各一套都在唯一表里）。
+  //
+  // `text` 是**整句中文**（两步渲染的兜底串）；但市场类事件的模板本身就是**带槽**的
+  // （`core.events.084~.090`：`{p1}` 商品名 / `{p2}` 价格 …）⇒ 调用点必须再用 `params` 把
+  // **槽的实际值**给出来：渲染层拿"表里的 zh"与"槽现值"逐字比对，一致才代入并翻成英文
+  // （见 `locale.tsx` 的"槽位 id 代回"）。不给槽值 ⇒ 英文侧留 `{p1}`（2026-09-20 实障）。
+  // `p2` 恒给（无金额时为空串）：外壳 `{p2}` 槽必须**总有值**，否则 `interpolate` 按"键不存在"跳过 ⇒ 漏出 `{p2}`
+  const body: Record<string, string | number> = {
+    p1: text,
+    p2: '',
+    ...(params ?? {}),
+    ...(id !== undefined ? { p1Id: id } : {}),
+  }
+  /**
+   * 金额附注是**外壳里的第 2 个槽**（`✦ {p1}{p2}`），**不是段链的第 2 段**。
+   *
+   * 2026-09-20 实障修正（船长报「事件日志重复文本、数值显示为 +{p1}」）：此前写成
+   * `{ p2: …, p2Id: 'core.events.002' }`——而 `p2Id` 在渲染层表示"**`{p2}` 这一槽那句话的 id**"
+   * （槽译文），渲染层便把它顶进 `{p1}`（正文被吞）、又照旧当第 2 段渲一遍（**重复**），
+   * 且第 2 段的段内命名空间是 `p2*` ⇒ 它自己的 `{p1}` 无人供给、**原样漏出**。
+   *
+   * 正确形态与 `market.ts`（`p4Id` + `p4`）、`industry.ts`（`p2Id` + `p2p1`）同款：
+   * `pN` 是**中文原串兜底**、`pNId` 是这一槽的 id、`pNp1` 是槽内参数（`{p1}` 取它）。
+   * 外壳把 `{p1}`（正文）与 `{p2}`（附注）拼成整句 ⇒ **无需段链**。
+   */
+  addLog(state, 'event', `✦ ${text}${amountNote}`, 'core.events.001', {
+    ...body,
+    ...(hasAmount ? { p2: amountNote, p2Id: 'core.events.002', p2p1: amount.toLocaleString('zh-CN') } : {}),
+  })
 }
 
 /** 事件现金 · 已探索星系加成（2026-09-10 船长：探索越多事件奖金越高；导出供测试） */
@@ -225,12 +251,12 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext): void {
   if (variant === 0) {
     const def = goods[nextInt(state.rng, goods.length)]!
     mk.pools[def.key]!.shock += 0.1
-    logEvent(state, `协会发布收购周通告：「${goodName(ctx, def.key)}」热度上升，行情看涨。`, undefined, 'core.events.084')
+    logEvent(state, `协会发布收购周通告：「${goodName(ctx, def.key)}」热度上升，行情看涨。`, undefined, 'core.events.084', { p1: goodName(ctx, def.key) })
   } else if (variant === 1) {
     const def = goods[nextInt(state.rng, goods.length)]!
     mk.pools[def.key]!.shock -= 0.08
     mk.pools[def.key]!.q += Math.round(def.poolTarget! * 0.15)
-    logEvent(state, `站台倾销潮：有人集中抛售「${goodName(ctx, def.key)}」，价格被压低。`, undefined, 'core.events.085')
+    logEvent(state, `站台倾销潮：有人集中抛售「${goodName(ctx, def.key)}」，价格被压低。`, undefined, 'core.events.085', { p1: goodName(ctx, def.key) })
   } else if (variant === 2) {
     for (const def of goods) {
       const mk2 = mk.pools[def.key]!
@@ -247,11 +273,11 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext): void {
     if (buy) {
       const price = clampPrice(ctx, def, Math.round(level * (0.99 + nextRandom(state.rng) * 0.02)))
       mk.npcBuy[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
-      logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.087')
+      logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.087', { p1: price.toLocaleString('zh-CN'), p2: goodName(ctx, def.key), p3: qty.toLocaleString('zh-CN') })
     } else {
       const price = clampPrice(ctx, def, Math.max(Math.round(level * (1.05 + nextRandom(state.rng) * 0.02)), level + 1))
       mk.npcSell[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
-      logEvent(state, `突现大宗抛售：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位放出「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.088')
+      logEvent(state, `突现大宗抛售：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位放出「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.088', { p1: price.toLocaleString('zh-CN'), p2: goodName(ctx, def.key), p3: qty.toLocaleString('zh-CN') })
     }
   }
 }
@@ -296,6 +322,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
       `黑市商人挂出一件「${name}」：开价 ${price.toLocaleString('zh-CN')} 信用点（约为行情价 ×${mul.toFixed(1)} 的溢价现货），仅存 ${Math.round(BLACK_MARKET_LIFE_MS / 60_000)} 分钟，手慢无——急用免蹲货，不差钱可出手。`,
       undefined,
       'core.events.089',
+      { p1: name, p2: price.toLocaleString('zh-CN'), p3: mul.toFixed(1), p4: Math.round(BLACK_MARKET_LIFE_MS / 60_000) },
     )
   } else {
     const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
@@ -306,6 +333,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext): void {
       `神秘买家以 ${price.toLocaleString('zh-CN')} 信用点的天价求购「${name}」×1——远高于常态收购价，约 ${Math.round(lifeMs / 60_000)} 分钟内有效。`,
       undefined,
       'core.events.090',
+      { p1: price.toLocaleString('zh-CN'), p2: name, p3: Math.round(lifeMs / 60_000) },
     )
   }
 }

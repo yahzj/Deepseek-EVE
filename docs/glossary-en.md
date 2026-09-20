@@ -705,3 +705,18 @@
 
 
 
+
+## 十五、实现口径（id 映射制 · 2026-09-20 船长定）
+
+> 本段是**工程口径**（不是译名）：新写玩家可见文案时照这个来；细则见 `docs/development-conventions.md` §十一之三。
+
+| 项 | 口径 | 备注 |
+|---|---|---|
+| 文案真源 | **唯一表** `packages/data/src/l10n/table.ts`（`id → { zh, en }`） | 源码不留中文字面量；缺 id 时界面显示 id 本身，便于定位漏登记 |
+| id 形态 | `<域>.<文件短名>.<三位序号>` | 域：`ui.` `core.` `ship.` `mod.` `item.` `skill.` `ano.` `gal.` `bp.` `wreck.` `station.` `faction.` `travel.` `matter.` |
+| 引用方式 | 组件 `useL10n().t(id, params)` · 模块级 `tr(id, params)` · core `textId`/`errorId` ＋ `errorParams` | 指令错误统一走渲染层 `cmdText(r)` |
+| 不译声明 | `l10n-keep`（就近注释，或 `l10n-keep-start`…`-end` 区间） | 用于"中文当键"的数据：联合 key / 形状槽键 / 键表 label / 开发探针 / i18n 实现自身 |
+| 自动放行 | 纯全角标点/空白（`　` `」` `。`）语言中立 | 不计入未译读数 |
+| 闸门 | `npm run l10n:check` 必跑；`npm run l10n:list -- <文件>` 逐条看未译 | 未声明中文串应为 0 |
+| 界面读数注意 | **导航项数随「第一次」前置变**（新档 8 项、老档 10 项） | `FIRST_UNLOCKS`：工业←采集 · 市场←生产 · 星图内页签←扫描 |
+| 游戏名 | 中文「大鲸鱼-深空放置」／英文 **`Great Whale Idle`** | 唯一真源 `ui.App.056`；Electron 窗口标题读同一条 |

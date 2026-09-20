@@ -132,6 +132,37 @@ function composeParts(
     if (i === 0) {
       const out: Record<string, string | number> = {}
       for (const [k, v] of Object.entries(all)) if (!/^p\d+p\d+$/.test(k) && !/^p\d+Id$/.test(k)) out[k] = v
+      /**
+       * **槽位 id 代回（2026-09-20 实障修正）**：`p{n}Id` ＝ 首段 `{pN}` 这一槽那句话的 id。
+       *
+       * 此前它被当成"**整条链的第 n+1 段**"（链指针），于是船长报的实障出现：正文被换成槽译文、
+       * 又被当链段渲一遍（重复），且第 n 段的段内命名空间是 `p{n}*` ⇒ 它自己的 `{p1}` 无人供给、
+       * 原样漏出（`+{p1}`）。**链段现在由 core 用 `parts` 显式声明**，`p{n}Id` 只表示槽译文。
+       *
+       * 取参：该模板的占位符按"**槽号 + 占位符名**"（`p{n}p{k}`）取；取不全就保持原槽值
+       * （宁可少译，不许改中文——中文侧恒等于 core 记录的中文原串）。
+       */
+      for (const [k, v] of Object.entries(all)) {
+        if (!/^p\d+Id$/.test(k)) continue
+        const tpl = typeof v === 'string' ? L10N[v] : undefined
+        if (tpl === undefined) continue
+        const slot = k.slice(0, -2)
+        const deep: Record<string, string | number> = {}
+        for (const p of tpl.zh.matchAll(/\{(\w+)\}/g)) {
+          const name = p[1]!
+          // 先取"槽号 + 占位符名"（`p{n}p{k}`）；没有再回落顶层同名（`{p1}` 这类与槽同名的写法）
+          const scoped = all[`${slot}${name}`]
+          if (scoped !== undefined) deep[name] = scoped
+          else if (Object.prototype.hasOwnProperty.call(all, name)) deep[name] = all[name]!
+        }
+        /**
+         * 该槽**有槽译文** ⇒ 从首段参数里移出：译文已含必要的值，若还留着原始值，
+         * 它会覆盖掉刚算好的译文（后写入者胜）。取不全时也移出——宁可漏 `{pN}`
+         * （体检用例会点名），也不许悄悄改掉中文。
+         */
+        delete out[slot]
+        out[slot] = interpolate(tpl[activeLocale], deep)
+      }
       return out
     }
     const prefix = `p${i}`
@@ -141,13 +172,16 @@ function composeParts(
     }
     return out
   }
+  /**
+   * 段链：core 用 `parts` **显式声明**第 2 段起的 id（缺席即单段）。
+   * 单段外壳（`✦ {p1}{p2}` 那类"正文 + 可选附注"）**不走段链**——附注是外壳的第二个槽。
+   */
+  const rawParts = (all as { parts?: unknown }).parts
+  const parts = Array.isArray(rawParts) ? rawParts.filter((x): x is string => typeof x === 'string' && x !== '').slice(0, 7) : []
   let out = ''
-  let id: string | undefined = entry.textId
-  for (let i = 0; id !== undefined && i < 8; i++) {
-    out += text(id, paramsFor(i))
-    const next = all[`p${i + 1}Id`]
-    id = typeof next === 'string' && next !== '' ? next : undefined
-  }
+  if (parts.length === 0) return text(entry.textId, paramsFor(0))
+  out += text(entry.textId, paramsFor(0))
+  for (let i = 0; i < parts.length; i++) out += text(parts[i]!, paramsFor(i + 1))
   return out
 }
 

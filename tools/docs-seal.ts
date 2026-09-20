@@ -22,10 +22,15 @@
  *   npm run docs:seal -- --window=60 # 临时把滚动窗口调大（默认 20 条）
  *
  * 版本自检（`tools-audit` 认这三条）：
- *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v25**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-15**（首版：把 2026-09-04~09-15 的批次条目按日分 9 卷封存，
- *     roadmap 1523 KB → 约 100 KB；守恒校验与幂等各验一次）
- *   - 本工具最后跑过：**2026-09-15**
+ *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v30**（`CURRENT_STATE_VERSION`）
+ *   - 本工具最后核对：**2026-09-20**（三处：① `## 未完成功能清单` 补进待办白名单——该段是船长
+ *     2026-09-20 令建的，原不在 `KEEP_SECTIONS` ⇒ 跑一次 seal 会**连段带头整块丢掉**（`--dry-run`
+ *     会把它列进"不保留的段头"）；② `ENTRY_RE` 认跨日写法 `- YYYY-MM-DD/DD：`——原正则认不出这类
+ *     条目首行 ⇒ 它被当成"窗口里的普通文本"、随窗口重建**整条静默丢掉**（实证：09-19/20 的「英语
+ *     本地化」「谜质科技树」两条，已从 git HEAD 复原）；③ 新增**窗口区"一行都不许丢"守卫**（逐行比对
+ *     新 roadmap ∪ 封存卷，有丢就抛错不写盘）⇒ 这两类事故以后会被工具自己拦住）
+ *   - 本工具最后跑过：**2026-09-20**（两次：首次 28→20 条时丢了上面那两条 ⇒ 修工具 + 复原后重跑
+ *     22 条 → 保留 20 条、封存 2 条进 09-17 卷；三次跑的 `--dry-run` 均报"不保留的段头：（无）"）
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -33,7 +38,14 @@ import { join } from 'node:path'
 const ROOT = process.cwd()
 const ROADMAP = join(ROOT, 'docs/roadmap.md')
 const ARCHIVE = join(ROOT, 'docs/archive')
-const ENTRY_RE = /^- (20\d{2}-\d{2}-\d{2})：/
+/**
+ * 条目首行：`- 2026-09-20：…`。
+ * ⚠ **2026-09-20 修**：日期允许**跨日写法**（`- 2026-09-19/20：…`，表示 19~20 日做的事）。
+ * 原正则 `^- (20\d{2}-\d{2}-\d{2})：` 认不出这种行 ⇒ 该条目被当成"窗口里的普通文本"，
+ * 而「最近批次」段是本工具自己重建的 ⇒ **整条被静默丢掉、封存卷里也查不到**
+ * （实证：09-19/20 的「英语本地化」与「谜质科技树」两条，跑一次 seal 就没了，从 git HEAD 复原）。
+ */
+const ENTRY_RE = /^- (20\d{2}-\d{2}-\d{2}(?:\/\d{1,2}(?:-\d{1,2})?)?)：/
 const HEAD_RE = /^## /
 
 const args = process.argv.slice(2)
@@ -43,6 +55,7 @@ const WINDOW = Number((args.find((a) => a.startsWith('--window=')) ?? '').split(
 /** 待办活面：这些段整段留在 roadmap（段头匹配前缀，顺序按原文） */
 const KEEP_SECTIONS = [
   '## 置顶',
+  '## 未完成功能清单',
   '## A.',
   '## B.',
   '## C.',
@@ -249,6 +262,41 @@ out.push('')
 out.push('> 上面每卷都是**原文冻结件**：不重写、不摘要、不追加。`docs/archive/README.md` 另有"已办结待办单"卷。')
 out.push('')
 const nextText = out.join('\r\n').replace(/(\r?\n){3,}/g, '\r\n\r\n')
+
+/**
+ * 🛡 **窗口区"一行都不许丢"守卫**（2026-09-20 加）。
+ *
+ * 为什么：滚动窗口段（`## 最近批次`）由本工具**整段重建**，而"什么算一条条目"只由 `ENTRY_RE` 判 ——
+ * 判不出的行（跨日写法的条目首行、手写的批次说明、分隔线…）就既不在 `keep` 里、也不会进封存卷
+ * ⇒ **写盘即永久丢失**（实证：09-19/20 那两条，靠 git HEAD 才捞回来）。
+ *
+ * 口径：把**窗口区**（`## 最近批次` → `## 封存卷索引` 之间）原有的非空行逐行比对 ——
+ * 每一行要么出现在新 roadmap 里、要么已落在某个封存卷（含本次要写的），否则**抛错不写盘**。
+ * 只查窗口区（待办段与段头另有白名单机制、卷索引是自生成件）。
+ */
+function windowLinesOf(text: string): string[] {
+  const ls = text.split(/\r?\n/)
+  const from = ls.findIndex((l) => l.startsWith('## 最近批次'))
+  const to = ls.findIndex((l) => l.startsWith('## 封存卷索引'))
+  if (from < 0 || to < 0 || to <= from) return []
+  return ls.slice(from + 1, to).filter((l) => l.trim() !== '')
+}
+const nextLines = new Set(nextText.split(/\r?\n/))
+const volumeLines = new Set<string>()
+for (const f of existsSync(ARCHIVE) ? readdirSync(ARCHIVE) : []) {
+  if (!/^roadmap-20\d{2}-\d{2}-\d{2}\.md$/.test(f)) continue
+  for (const l of readFileSync(join(ARCHIVE, f), 'utf8').split(/\r?\n/)) volumeLines.add(l)
+}
+// 本次要写的封存卷内容也算"已落地"（卷是追加写，行会逐字进去）
+for (const v of volumes) for (const e of v.entries) for (const l of e) volumeLines.add(l)
+const lostLines = windowLinesOf(raw).filter((l) => !nextLines.has(l) && !volumeLines.has(l))
+if (lostLines.length > 0) {
+  throw new Error(
+    `窗口区有 ${lostLines.length} 行既不在新 roadmap 也不在封存卷里（会被静默丢掉）：\n` +
+      lostLines.slice(0, 5).map((l) => `  ${l.slice(0, 120)}`).join('\n') +
+      `\n⇒ 若是条目首行，多半是日期写法没被 ENTRY_RE 认出；别绕过，先修 ENTRY_RE。`,
+  )
+}
 
 // ── ④ 落盘 ──
 console.log(`条目 ${entries.length} 条 · 保留窗口 ${keep.length} 条 · 拟封存 ${sealing.length} 条（卷里已有 ${alreadySealed}）`)

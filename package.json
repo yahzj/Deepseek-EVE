@@ -55,6 +55,7 @@
     "l10n:check": "tsx tools/l10n-check.ts",
     "l10n:list": "tsx tools/l10n-list.ts",
     "l10n:wrap": "tsx tools/l10n-wrap.ts",
+    "l10n:render": "tsx tools/l10n-render-probe.ts",
     "art:ships": "tsx tools/shipart-preview.ts",
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",

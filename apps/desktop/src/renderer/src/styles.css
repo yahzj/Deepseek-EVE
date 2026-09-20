@@ -10325,10 +10325,16 @@ html[data-locale='en'] body {
   background-size: auto, 256px 256px, 180px 180px, 210px 210px, 150px 150px, 240px 240px, 170px 170px, 200px 200px;
   background-position: center;
   background-repeat: no-repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat;
+  /* 拖动地图（船长 2026-09-20「允许玩家拖动虫洞探索地图」）：手指按在图上 = 拖图、不滚页面；
+     光标给"可拖 / 正在拖"的语义（拖动态由面板加 `.is-panning`）。 */
+  touch-action: none; cursor: grab;
 }
+.app-wh-mapbox.is-panning { cursor: grabbing; }
 .app-wh-map { width: 100%; height: 100%; color: var(--wui-accent); display: block; overflow: hidden; }
 /* 缩放层：只影响图内内容（**以玩家所在格为锚点**放大：那一格原地不动、四周长开），不动地图框与坐标口径 */
 .app-wh-zoomlayer { transition: transform 220ms ease-out; }
+/* 拖动中关掉过渡：`pan` 是每帧更新的（pointermove），留着 220ms 过渡会让地图"追着手指飘" */
+.app-wh-zoomlayer.is-panning { transition: none; }
 /* ── **路径预览线**（船长 2026-09-16 路径拦截）：待确认的这次移动 —— 当前格 → 目标格的直线 ──
    画在所有格子**之下**（不挡图标/舰影）；细描边 + 虚线，与地图同语言（SVG 线稿，不用 CSS 拼形状）。
    `is-blocked` = 拦路的那一格**还没扫描**（§5.2 甲案：不指名那一格，只把整条线置为警示色）。 */

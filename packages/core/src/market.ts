@@ -1520,8 +1520,15 @@ export function sellAtMarket(
       p4: fillPrices.length.toLocaleString('zh-CN'),
     }
     const id = mult > 1 ? 'core.market.038' : 'core.market.040'
-    // 尾巴段（声望加成）已在模板正文里；只有贸易税要按段链上挂，空段不可入链
-    if (tax > 0) addLog(state, 'trade', text, id, { ...params, p1Id: 'core.market.037', p1p1: tax.toLocaleString('zh-CN') })
+    /**
+     * 尾巴槽（`core.market.040/038` 的 `{p5}`）：`p5Id` 给这一槽的 id、`p5p1` 给槽内参数。
+     *
+     * ⚠ 2026-09-20 实障修正：此前写成 `p1Id: 'core.market.037', p1p1: 税额`——**槽号写错了**
+     * （`p1` 早已是商品名），于是渲染层把税注顶进 `{p1}`、商品名丢失、`{p5}` 漏出未替换。
+     * `core.market.037` 是**尾段**模板（「，贸易税 {p1} 信用点」），要挂在 `{p5}` 这一槽上。
+     * 同理 `core.market.038` 的声望加成已写进模板正文，这里只补贸易税。
+     */
+    if (tax > 0) addLog(state, 'trade', text, id, { ...params, p5Id: 'core.market.037', p5p1: tax.toLocaleString('zh-CN') })
     else addLog(state, 'trade', text, id, params)
   }
   if (remaining > 0 && sold > 0) {

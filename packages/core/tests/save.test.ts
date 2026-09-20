@@ -2,9 +2,16 @@
  * 存档系统（读写 / 迁移 / 容错）的单元测试（M1：v1 → v2 迁移链）。
  */
 import { describe, expect, it } from 'vitest'
+import { buildSimContext } from '@whale/data'
 import { addLog, createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import { loadSaveFile, MIN_MIGRATABLE_VERSION, SaveError, SAVE_FORMAT, serializeSaveFile } from '../src/save'
+import { addShipToFleet } from '../src/shipyard'
+import { wormholeEnter } from '../src/wormhole'
+import { wormholeMakeGrid } from '../src/wormholeGrid'
 import { fittedOf } from './helpers'
+
+/** 真上下文（进洞要看船体准入与扫描件，`makeTestCtx` 的裁剪版不够用） */
+const simCtx = buildSimContext()
 
 describe('存档往返（v7）', () => {
   it('保存后再读回：内容完全一致（含舰队/仓库/采矿/队列/日志）', () => {
@@ -139,6 +146,34 @@ describe('循环制造上移到卡片级的老档归并（2026-09-10 船长定�
   })
 })
 
+
+describe('虫洞网格读档回归（玩家报障 2026-09-20：「深入下一层后，显示本层没有网格」）', () => {
+  /**
+   * 根因：`cleanWormholeGrid` 当年写死 `radius <= 8`（阶梯封顶 R=4 时代的余量），
+   * 而 2026-09-20 阶梯改成「每 1 层 +1 环、上不封顶」⇒ **层 8 起（R=9+）的盘被整块丢掉**，
+   * 该层退回旧式线性地图 ⇒ 界面显示「本层没有网格」。
+   * 本用例逐层走一遍**真实存档往返**，把"阶梯 ↔ 读档护栏"的耦合钉死。
+   */
+  it('存档往返逐层保住网格（层 1~40，含 R>8 的深层盘）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 20260920 })
+    const uid = addShipToFleet(state, 'sh-thresher')
+    state.shipId = uid
+    const entry = wormholeEnter(state, simCtx, [uid], 20260920)
+    expect(entry.ok, entry.error).toBe(true)
+    for (const depth of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 20, 40]) {
+      const run = state.wormhole.run!
+      run.depth = depth
+      run.bossCleared = depth
+      const grid = wormholeMakeGrid(20260920, depth, 0, 1)
+      run.grid = grid
+      const back = loadSaveFile(serializeSaveFile(state, 0)).state.wormhole.run
+      expect(back?.grid, `层 ${String(depth)}（R=${String(grid.radius)}）的盘在读档后丢了`).toBeDefined()
+      expect(back!.grid!.radius, `层 ${String(depth)}`).toBe(grid.radius)
+      expect(back!.grid!.cells.length, `层 ${String(depth)}`).toBe(grid.cells.length)
+      expect(back!.grid!.pos, `层 ${String(depth)}`).toEqual(grid.pos)
+    }
+  })
+})
 
 describe('坏档处理', () => {
   it('不是 JSON → PARSE 错误', () => {

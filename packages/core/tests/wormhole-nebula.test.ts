@@ -120,19 +120,21 @@ describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空�
     expect(d3).toBeGreaterThanOrEqual(2) // 层 3 的下限
   })
 
-  it('**空占比随层下降**：层 1 = 50% → 层 6 触底 32%（"占可分配池"，层 1 逐格不变）', () => {
+  it('**空占比随层下降**：每层 −1%（2026-09-20 船长改判）· 层 19 触底 32%（"占可分配池"，层 1 逐格不变）', () => {
     expect(wormholeEmptyShareFor(1)).toBeCloseTo(0.5, 6)
-    expect(wormholeEmptyShareFor(2)).toBeCloseTo(0.46, 6)
-    expect(wormholeEmptyShareFor(3)).toBeCloseTo(0.42, 6)
-    expect(wormholeEmptyShareFor(4)).toBeCloseTo(0.38, 6)
-    expect(wormholeEmptyShareFor(5)).toBeCloseTo(0.34, 6)
-    expect(wormholeEmptyShareFor(6)).toBeCloseTo(WORMHOLE_EMPTY_SHARE_FLOOR, 6)
-    expect(wormholeEmptyShareFor(9)).toBeCloseTo(WORMHOLE_EMPTY_SHARE_FLOOR, 6)
+    expect(wormholeEmptyShareFor(2)).toBeCloseTo(0.49, 6)
+    expect(wormholeEmptyShareFor(3)).toBeCloseTo(0.48, 6)
+    expect(wormholeEmptyShareFor(4)).toBeCloseTo(0.47, 6)
+    expect(wormholeEmptyShareFor(5)).toBeCloseTo(0.46, 6)
+    expect(wormholeEmptyShareFor(10)).toBeCloseTo(0.41, 6)
+    // 触底：50% − 1%×18 = 32% ⇒ 层 19 起恒 32%
+    expect(wormholeEmptyShareFor(19)).toBeCloseTo(WORMHOLE_EMPTY_SHARE_FLOOR, 6)
+    expect(wormholeEmptyShareFor(30)).toBeCloseTo(WORMHOLE_EMPTY_SHARE_FLOOR, 6)
     /**
      * 实际盘面：空格数 = `⌈池 × 占比⌉`（池 = 总格数 − 1），终点格自己也可能变空
      * ⇒ 允许 +1 的取整/终点余量。
      */
-    for (const depth of [1, 2, 3, 4, 5, 7]) {
+    for (const depth of [1, 2, 3, 4, 5, 7, 10]) {
       const s = wormholeEmptyShareFor(depth)
       for (const seed of SEEDS.slice(0, 30)) {
         const g = gridOf(depth, seed)
@@ -146,12 +148,25 @@ describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空�
     const g1 = gridOf(1, 2026)
     expect(g1.cells.length).toBe(19)
     expect(g1.cells.filter((c) => c.place === 'empty').length).toBe(10)
-    // 深层要**明显**比浅层"满"（占格比例下降这条要看得见）
+    /**
+     * ⚠ **2026-09-20 起"深层更满"由盘面变大承担，不再靠猛降空占比**：
+     * 旧断言「层 5 的空格占比比层 1 低 10 个百分点以上」**作废**（−1%/层 ⇒ 只低 4 个百分点）。
+     * 现在验的是**信号格绝对值随层增长**——注意台阶同日**两次改判**（先"每 1 层 +1 环"、
+     * 当日又按船长令**回退成"每 2 层 +1 环、不封顶"**）⇒ 涨得比第一版慢，取层 14（R8）来比：
+     * 层 14 的信号格 > 层 1 的 10 倍。
+     */
+    const signalCells = (depth: number): number => {
+      const g = gridOf(depth, 2026)
+      return g.cells.filter((c) => c.place !== 'empty').length
+    }
+    expect(signalCells(14)).toBeGreaterThan(signalCells(1) * 10)
+    expect(signalCells(14)).toBeGreaterThan(signalCells(6))
+    expect(signalCells(6)).toBeGreaterThan(signalCells(1))
     const emptyRatio = (depth: number): number => {
       const g = gridOf(depth, 2026)
       return g.cells.filter((c) => c.place === 'empty').length / g.cells.length
     }
-    expect(emptyRatio(5)).toBeLessThan(emptyRatio(1) - 0.1)
+    expect(emptyRatio(5)).toBeLessThan(emptyRatio(1)) // 仍在变满，只是幅度小（船长「只进行略微下降」）
   })
 
   it('**事件玄学**（event-dividend）把空地点按**相对**削减：每级 −4% / 满级 ×0.8（地板之后乘）', () => {
@@ -212,9 +227,10 @@ describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空�
           // 下一层入口不长星云（它是导航标记）
           expect(c.key).not.toBe(`${g.exit.q},${g.exit.r}`)
         }
-        // 配额与"可长星云的格数"同源：⌈有信号格数（不含入口）× 本层占比⌉，且最多占一半
+        // 配额与"可长星云的格数"同源：⌈有信号格数（不含入口）× 本层占比⌉
+        // ⚠ 2026-09-20 起**没有第二道"最多占一半"的护栏了**（船长把封顶抬到 80%，护栏删除）
         const cands = g.cells.filter((c) => c.place !== 'empty' && c.key !== `${g.exit.q},${g.exit.r}`).length
-        const quota = Math.min(Math.ceil(cands * wormholeNebulaShareFor(depth)), Math.floor(cands * 0.5))
+        const quota = Math.ceil(cands * wormholeNebulaShareFor(depth))
         expect(nebs.length, `层 ${depth} · seed ${seed} 星云数 ≠ 配额`).toBe(quota)
       }
       // 层 4+ 必须真的常见（不能是 0 配额的摆设）
@@ -375,7 +391,7 @@ describe('虫洞 · 星云遮蔽与驱散（船长 2026-09-13）', () => {
     // 顺带核一下权重表没被本批动过（遗迹下限是"借信号"，不是改权重）
     expect(WORMHOLE_SIGNAL_WEIGHTS.wreck).toBe(28)
     expect(WORMHOLE_RUINS_SHARE).toBe(0.3)
-    expect(wormholeGridRadiusFor(5)).toBe(4)
+    expect(wormholeGridRadiusFor(5)).toBe(4) // 2026-09-20 二次改判：每 2 层 +1 环（层 5 = R4）
   })
 
   it('星云格**不挡"前往"**：走到未驱散的星云格不需要额外确认（那儿不等于"未知地点"）', () => {

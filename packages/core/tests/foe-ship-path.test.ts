@@ -399,6 +399,54 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
     }
   })
 
+  it('A 族全族贴脸：除劫掠狙击舰外近界 = 1（舰级 + 卡面覆写都算）——船长 2026-09-20', () => {
+    // 船长原话：「**将除劫掠狙击艇外的A族船，最小射程改为1.**」（狙击艇 = 舰级表里的「劫掠狙击舰」）
+    const pirates = FOE_SHIPS.filter((s) => s.family === 'A')
+    expect(pirates.map((s) => s.id)).toEqual([
+      'foe-pirate-skiff',
+      'foe-pirate-corvette',
+      'foe-pirate-sniper',
+      'foe-pirate-warlord',
+      'foe-pirate-raider',
+    ])
+    for (const s of pirates) {
+      if (s.id === 'foe-pirate-sniper') {
+        expect(s.rangeMinM, s.id).toBe(1255) // 狙击舰豁免（kite 拉距的立身之本）
+        continue
+      }
+      expect(s.rangeMinM, s.id).toBe(1)
+    }
+    // 卡面：凡**含狙击舰条目**的卡整张豁免（它们的近界 = 狙击舰带 ×变体倍率）；
+    // 其余 A 族卡上写了 `rangeMinM` 的条目一律 1（含四张旧隐藏模板 enc-pirate-1..4）
+    const scanned: string[] = []
+    const withOverride: string[] = []
+    for (const card of ANOMALIES) {
+      if (card.foeFamily !== 'A') continue
+      const slots = card.ships ?? []
+      if (slots.length === 0) continue
+      if (slots.some((sl) => sl.ship.id === 'foe-pirate-sniper')) continue
+      for (const sl of slots) {
+        if (sl.rangeMinM === undefined) continue
+        expect(sl.rangeMinM, `${card.id} / ${sl.ship.id}`).toBe(1)
+        if (!withOverride.includes(card.id)) withOverride.push(card.id)
+      }
+      scanned.push(card.id)
+    }
+    // 扫描面与命中面都不许空跑/写错（判据一旦写歪，整段会被静默跳过）
+    expect(scanned).toEqual([
+      'wh-pirate-scout',
+      'wh-pirate-hunt',
+      'wh-pirate-warband',
+      'ano-pirate-post',
+      'ano-shard-bandits',
+      'ano-lantern-saboteurs',
+      'enc-pirate-1',
+      'enc-pirate-2',
+      'enc-pirate-4',
+    ])
+    expect(withOverride).toEqual(['enc-pirate-1', 'enc-pirate-2', 'enc-pirate-4'])
+  })
+
   it('B 族（武装拾荒者）每档实速都**低于**本档舰种基准——船长「速度偏慢」＋新手过渡族', () => {
     const shell = anomaly('ano-t-hull-undershoot', 'galaxy-hub', { threat: 20 })
     const scavs = FOE_SHIPS.filter((s) => s.family === 'B')
