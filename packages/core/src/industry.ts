@@ -457,8 +457,33 @@ export function startRecycleRun(
   return { ok: true }
 }
 
-/** 炉所得明细文本（停炉/料尽/自然结束时附在日志；2026-09-06 精炼与回收统一：
- *  精炼 = 矿物产物列表；回收 = 保底矿物 + 彩头（基础件/低安 MK2/蓝图碎片）。超 6 种折叠 */
+/**
+ * 炉所得明细（停炉/料尽/自然结束时附在日志；2026-09-06 精炼与回收统一：
+ *  精炼 = 矿物产物列表；回收 = 保底矿物 + 额外掉落（基础件/低安 MK2/蓝图碎片）。超 6 种折叠。
+ *
+ * 甲案（2026-09-20）：本函数**自带中文小词**（「保底原材料」「额外掉落」「无人机…架」），
+ * 只给外层日志配一个 id 是不够的（那些词会留在中文）⇒ 一并产出**分段 id 链**：
+ * `text` 仍是逐字不变的中文原串（老档/未改造路径回退用），`parts` 交给调用方按段挂 `p{n}Id`。
+ */
+/**
+ * 一条甲案日志的**一个段**：`id` + 段内参数；`subs` 是"段里还嵌着自带小词的更细段"
+ * （例「额外掉落：」后面跟 装备/无人机/图纸 三类）。递归排法与渲染层 `composeParts`
+ * 的段内命名空间逐层对应（`p{n}` → `p{n}p{k}` → …），渲染层无需改。
+ */
+type LogSeg = {
+  text: string
+  id?: string
+  params?: Record<string, string | number>
+  subs?: LogSeg[]
+}
+
+interface YieldNote {
+  /** 中文原串（行为与改造前逐字一致） */
+  text: string
+  /** 分段：`text` 恒为该段中文，`id`/`params`/`subs` 供调用方挂成段 id 链 */
+  parts: LogSeg[]
+}
+
 function yieldNoteFor(
   state: GameState,
   ctx: SimContext,
@@ -470,7 +495,7 @@ function yieldNoteFor(
     blueprint?: Record<string, number>
   },
   kind: 'refine' | 'recycle',
-): string {
+): YieldNote {
   // 2026-09-11 修复（船长实测反馈「回收残骸出货时的事件日志内显示的额外掉落为装备ID」）：
   // 名表必须**先查装备、再查物品**——旧实现只看 `ctx.items`，而「额外掉落」段里的装备是**模块 id**
   // （如 mod-lair-turret-a），查不到就回落到裸 id，玩家看到的是 `装备 mod-lair-turret-a×1`。
@@ -481,30 +506,69 @@ function yieldNoteFor(
     ctx.blueprints.get(id)?.name ??
     ctx.shipBlueprints.get(id)?.name ??
     id
-  const fmt = (m: Record<string, number>, cap = 6): string => {
+  /** 名字清单（按数量降序、超 6 种折叠） */
+  const listOf = (m: Record<string, number>): { list: string; capped: boolean; total: number } => {
     const es = Object.entries(m).sort((a, b) => b[1]! - a[1]!)
-    const head = es
-      .slice(0, cap)
-      .map(([id, n]) => `${nameOf(id)}×${n}`)
-      .join('、')
-    return es.length > cap ? `${head} 等${es.length}种` : head
+    return {
+      list: es
+        .slice(0, 6)
+        .map(([id, n]) => `${nameOf(id)}×${n}`)
+        .join('、'),
+      capped: es.length > 6,
+      total: es.length,
+    }
   }
-  const parts: string[] = []
+  const parts: YieldNote['parts'] = []
+  const isRecycle = kind === 'recycle'
+  /**
+   * 一类产物 = **一个段**：段文本 `装备 A×1、B×2 等7种`（中文原串按此拼）；
+   * id 链 = 自带词与清单（本段，一个标签一个 id）→ 「等 N 种」尾巴（子段 `.048`，两步渲染，
+   * 先译成 `p2` 再插进本段的 `{p2}`）。
+   */
+  const typeSeg = (label: string, labelId: string, m: { list: string; capped: boolean; total: number }): LogSeg => {
+    const capTxt = ` 等${m.total}种`
+    return {
+      text: `${label}${m.list}${m.capped ? capTxt : ''}`,
+      id: labelId,
+      params: m.capped ? { p1: m.list, p2: capTxt, p2Id: 'core.industry.048', p2p1: m.total } : { p1: m.list },
+    }
+  }
+
   if (Object.keys(rec.min).length > 0) {
-    parts.push(kind === 'recycle' ? `保底原材料 ${fmt(rec.min)}` : fmt(rec.min))
+    const m = listOf(rec.min)
+    // 回收 = 「保底原材料 」+ 清单（.058）；精炼 = 光清单（.044）
+    // 注：段的 `text` 必须非空（`composeLog` 按各段文本拼中文原串，空文本的段会被整段丢掉）
+    parts.push(isRecycle ? typeSeg('保底原材料 ', 'core.industry.058', m) : typeSeg('', 'core.industry.044', m))
   }
-  if (kind === 'recycle') {
-    const loot: string[] = []
-    if (Object.keys(rec.mod).length > 0) loot.push(`装备 ${fmt(rec.mod)}`)
-    const dr = rec.drone ?? {}
-    if (Object.keys(dr).length > 0) loot.push(`无人机 ${fmt(dr)} 架`)
-    const bpAcc = rec.blueprint ?? {}
-    if (Object.keys(bpAcc).length > 0) loot.push(`图纸 ${fmt(bpAcc)} 张`)
-    if (Object.keys(rec.frag).length > 0) loot.push(`蓝图碎片 ${fmt(rec.frag)}`)
+  if (isRecycle) {
     // 2026-09-11：日志文案禁用开发用词「彩头」（玩家反馈"不符合游戏设定的名词"）——统一写「额外掉落」
-    if (loot.length > 0) parts.push(`额外掉落：${loot.join('；')}`)
+    const lootText: string[] = []
+    const lootSubs: LogSeg[] = []
+    if (Object.keys(rec.mod).length > 0) {
+      const m = listOf(rec.mod)
+      lootText.push(`装备 ${m.list}${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('装备 ', 'core.industry.059', m))
+    }
+    const dr = rec.drone ?? {}
+    if (Object.keys(dr).length > 0) {
+      const m = listOf(dr)
+      lootText.push(`无人机 ${m.list} 架${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('无人机 ', 'core.industry.060', m))
+    }
+    const bpAcc = rec.blueprint ?? {}
+    if (Object.keys(bpAcc).length > 0) {
+      const m = listOf(bpAcc)
+      lootText.push(`图纸 ${m.list} 张${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('图纸 ', 'core.industry.061', m))
+    }
+    if (Object.keys(rec.frag).length > 0) {
+      const m = listOf(rec.frag)
+      lootText.push(`蓝图碎片 ${m.list}${m.capped ? ` 等${m.total}种` : ''}`)
+      lootSubs.push(typeSeg('蓝图碎片 ', 'core.industry.062', m))
+    }
+    if (lootText.length > 0) parts.push({ text: `额外掉落：${lootText.join('；')}`, id: 'core.industry.057', subs: lootSubs })
   }
-  return parts.length > 0 ? parts.join('；') : ''
+  return { text: parts.map((p) => p.text).join('；'), parts }
 }
 
 /**
@@ -530,6 +594,28 @@ function refundClaimedUnits(state: GameState, r: RefineRunState): number {
   return left
 }
 
+/**
+ * 把"若干可选段"拼成一条甲案日志：返回中文原串 + 段 id 链。
+ * - 第 1 段由调用方传给 `addLog` 的 `textId`；`segs[0]` 即第 2 段（`p1Id`），依此类推；
+ * - 段**自带中文小词**时用 `subs` 拆成更细的段（`p{n}p{k}`、再深一层 `p{n}p{k}p{j}`…）。
+ */
+
+function composeLog(lead: string, segs: Array<LogSeg | null | undefined>): { text: string; textParams: Record<string, string | number> } {
+  const kept = segs.filter((s): s is LogSeg => !!s && s.text !== '')
+  const textParams: Record<string, string | number> = {}
+  const walk = (seg: LogSeg, prefix: string): void => {
+    // 本段的 id 挂在上一段的 `{p<prefix>}` 槽上；段内参数进 `p<prefix>p<k>`（k 从 1 起）。
+    // ⚠ 段号本身是多字符（`1p1`）⇒ 参数键必须补上那个 `p`（`p1p1`），与渲染层 `composeParts`
+    // 的 `^p\d+p\d+$` 命名空间对齐；写成 `p11` 渲染层就取不到了。
+    if (seg.id !== undefined) textParams[`p${prefix}Id`] = seg.id
+    let k = 0
+    for (const v of Object.values(seg.params ?? {})) textParams[`p${prefix}p${++k}`] = v
+    for (const [j, sub] of (seg.subs ?? []).entries()) walk(sub, `${prefix}p${j + 1}`)
+  }
+  for (const [i, seg] of kept.entries()) walk(seg, String(i + 1))
+  return { text: lead + kept.map((s) => s.text).join(''), textParams }
+}
+
 export function stopRefineRun(state: GameState, ctx: SimContext, runId: number): CommandResult {
   const idx = state.refineRuns.findIndex((r) => r.id === runId)
   if (idx < 0) return { ok: false, error: '没有找到该台炉（已停或未启动）。', errorId: 'core.industry.025' }
@@ -539,18 +625,30 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
   if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
   const coreNote = r.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''
   const isRecycle = r.recipe === 'recycle'
-  const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
-  const refundNote =
+  const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
+  const refundName = def?.name ?? r.itemId ?? '未知资源'
+  const refundedTxt = `${Math.round(refunded * 100) / 100}`
+  const lead = `${isRecycle ? '残骸回收炉' : '精炼炉'}已停：${refundName}（已完成 ${r.batchesDone} 批）`
+  const composed = composeLog(lead, [
+    coreNote === '' ? null : { text: coreNote, id: 'core.state.041' },
+    accNote && accNote.text !== ''
+      ? {
+          text: `；${isRecycle ? '回收' : '精炼'}所得：${accNote.text}`,
+          id: isRecycle ? 'core.industry.066' : 'core.industry.067',
+          params: { p1: accNote.text },
+          subs: accNote.parts.map((p) => ({ text: p.text, id: p.id, params: p.params, subs: p.subs })),
+        }
+      : null,
+    // 尾段：退回明细两态（甲案不许可有可无的段——两态各配 id，不留空段）
     refunded > 0
-      ? `未用完的 ${def?.name ?? r.itemId} ${Math.round(refunded * 100) / 100} m³ 已退回物品仓库`
-      : '原料未锁定无需退回，余料仍留在货仓/仓库'
-  addLog(
-    state,
-    'info',
-    `${isRecycle ? '残骸回收炉' : '精炼炉'}已停：${def?.name ?? '未知资源'}（已完成 ${r.batchesDone} 批）${coreNote}` +
-      (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-      `。${refundNote}。`,
-  )
+      ? { text: `。未用完的 ${refundName} ${refundedTxt} m³ 已退回物品仓库。`, id: 'core.industry.070', params: { p1: refundName, p2: refundedTxt } }
+      : { text: '。原料未锁定无需退回，余料仍留在货仓/仓库。', id: 'core.industry.071' },
+  ])
+  addLog(state, 'info', composed.text, isRecycle ? 'core.industry.068' : 'core.industry.069', {
+    p1: refundName,
+    p2: r.batchesDone,
+    ...composed.textParams,
+  })
   return { ok: true }
 }
 
@@ -605,32 +703,52 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
-        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
+        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
         state.refineRuns.splice(i, 1)
         /**
          * **停机标题与原因按产线分岔**（2026-09-15 船长报障「精炼炉拆解货柜的文字显示不对」）：
          * 货柜拆解不是精炼 ⇒ 标题写「货柜拆解停」、原因写「货柜已拆完（共 N 件）」，
          * 不再套用精炼那套「精炼炉停 … 原料耗尽（共 N 批）」。
          */
-        const stopTitle = isUnbox
-          ? `货柜拆解停：${def.name}`
-          : isRecycle
-            ? `残骸回收炉停：${def.name}`
-            : `精炼炉停：${def.name}`
-        const stopWhy = isUnbox ? `货柜已拆完（共 ${doneBatches} 件）` : `原料耗尽（共 ${doneBatches} 批）`
-        addLog(
-          state,
-          'info',
-          lockDone
-            ? `残骸回收炉停：${def.name} 本炉料账已烧完（共 ${doneBatches} 批）` +
-              (accNote ? `；回收所得：${accNote}` : '') +
-              (wasCore ? '；AI 核心已归还核心库' : '') +
-              `；不足 ${RARE_UNIT_M3} m³（一个回收单元）的零头不预占、不产出，留在货仓/仓库；想继续就再起一炉。`
-            : `${stopTitle} ${stopWhy}` +
-              (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-              (wasCore ? '；AI 核心已归还核心库' : '') +
-              '。',
-        )
+        const coreSeg = wasCore ? { text: '；AI 核心已归还核心库', id: 'core.state.041' } : null
+        const yieldSeg =
+          accNote && accNote.text !== ''
+            ? {
+                // 本段文本是"标签 + 明细"一句：标签走 id，明细（`subs`）逐类走 id
+                text: `；${isRecycle ? '回收' : '精炼'}所得：${accNote.text}`,
+                id: isRecycle ? 'core.industry.066' : 'core.industry.067',
+                params: { p1: accNote.text },
+                subs: accNote.parts.map((p) => ({ text: p.text, id: p.id, params: p.params, subs: p.subs })),
+              }
+            : null
+        if (lockDone) {
+          const composed = composeLog(
+            `残骸回收炉停：${def.name} 本炉料账已烧完（共 ${doneBatches} 批）`,
+            [
+              yieldSeg,
+              coreSeg,
+              {
+                text: `；不足 ${RARE_UNIT_M3} m³（一个回收单元）的零头不预占、不产出，留在货仓/仓库；想继续就再起一炉。`,
+                id: 'core.industry.073',
+                params: { p1: RARE_UNIT_M3 },
+              },
+            ],
+          )
+          addLog(state, 'info', composed.text, 'core.industry.072', { p1: def.name, p2: doneBatches, ...composed.textParams })
+        } else {
+          const stopTitle = isUnbox
+            ? `货柜拆解停：${def.name}`
+            : isRecycle
+              ? `残骸回收炉停：${def.name}`
+              : `精炼炉停：${def.name}`
+          const stopWhy = isUnbox ? `货柜已拆完（共 ${doneBatches} 件）` : `原料耗尽（共 ${doneBatches} 批）`
+          const composed = composeLog(`${stopTitle} ${stopWhy}`, [yieldSeg, coreSeg, { text: '。', id: 'core.state.042' }])
+          addLog(state, 'info', composed.text, isUnbox ? 'core.industry.075' : isRecycle ? 'core.industry.076' : 'core.industry.077', {
+            p1: def.name,
+            p2: doneBatches,
+            ...composed.textParams,
+          })
+        }
         break
       }
       // 2026-09-06（船长拍板：余量不足即停工、余料保留）：到批点时余量不足一批 → 立即停工，
@@ -640,18 +758,36 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         refundClaimedUnits(state, r) // 私有料账残余退回仓库（正常走完 = 0，无副作用）
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
         const wasCore = r.worker !== 'pilot'
-        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : ''
+        const accNote = r.recAcc ? yieldNoteFor(state, ctx, r.recAcc, isRecycle ? 'recycle' : 'refine') : null
         const remainTxt = isRecycle ? `${Math.round(avail * 100) / 100} m³` : `${avail} 单位`
+        const unitTxt = isRecycle ? 'm³' : '单位'
         state.refineRuns.splice(i, 1)
-        addLog(
-          state,
-          'info',
-          `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 余量不足一批（每批 ${
-            r.batchUnits
-          }${isRecycle ? ' m³' : ' 单位'}，余 ${remainTxt}）——已完成 ${doneBatches} 批` +
-            (accNote ? `；${isRecycle ? '回收' : '精炼'}所得：${accNote}` : '') +
-            `，已停工、余料保留在货仓/仓库（凑够一批可再开）${wasCore ? '；AI 核心已归还核心库' : ''}。`,
+        const composed = composeLog(
+          `${isRecycle ? `残骸回收炉停：${def.name}` : `精炼炉停：${def.name}`} 余量不足一批（每批 ${r.batchUnits}${isRecycle ? ' m³' : ' 单位'}，余 ${remainTxt}）——已完成 ${doneBatches} 批`,
+          [
+            accNote && accNote.text !== ''
+              ? {
+                  text: `；${isRecycle ? '回收' : '精炼'}所得：${accNote.text}`,
+                  id: isRecycle ? 'core.industry.066' : 'core.industry.067',
+                  params: { p1: accNote.text },
+                  subs: accNote.parts.map((p) => ({ text: p.text, id: p.id, params: p.params, subs: p.subs })),
+                }
+              : null,
+            // 尾句是"两段相连"（已停工 + 核心归还）：核心段挂着时尾句留 `{p1}` 槽、核心另占一段
+            wasCore
+              ? { text: '，已停工、余料保留在货仓/仓库（凑够一批可再开）', id: 'core.industry.078' }
+              : { text: '，已停工、余料保留在货仓/仓库（凑够一批可再开）。', id: 'core.industry.079' },
+            wasCore ? { text: '；AI 核心已归还核心库。', id: 'core.state.040' } : null,
+          ],
         )
+        addLog(state, 'info', composed.text, isRecycle ? 'core.industry.074' : 'core.industry.083', {
+          p1: def.name,
+          p2: r.batchUnits,
+          p3: unitTxt,
+          p4: remainTxt,
+          p5: doneBatches,
+          ...composed.textParams,
+        })
         break
       }
       const qty = r.batchUnits // 每批整批扣料（不足一批已在上方停工，不再有小批）
