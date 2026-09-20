@@ -8,8 +8,9 @@
  * 物品页仓库 / 货仓、装配页装备列表 等一切「icon-list-view」界面。
  * 检索入口：`grep data-ui-group="icon-list-view"`（渲染层）或 grep `ItemViewBar|ItemGlyphGrid|RowGlyph`。
  */
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Glyph, toneOf } from './Glyphs'
+import { hoverTipProps } from './Tooltip'
 
 export type ItemViewMode = 'grid' | 'list'
 export const ITEM_VIEW_KEY = 'whale-idle:inv-view'
@@ -54,7 +55,16 @@ export interface ItemGridCell {
   glyph: string
   name: string
   sub?: string
+  /** **纯文本**提示（单行；有 `hover` 时以 `hover` 为准——两者不许并存，见 `ui/Tooltip.tsx`） */
   title?: string
+  /**
+   * **富内容悬停卡**（`itemHoverContent` / `moduleHoverContent` 的产物）——2026-09-19 船长报障
+   * 「悬停不是显示富文本详细，又改回简易介绍了」：
+   * 图标模式的卡片原先一律只挂 `title={desc}`（简易介绍），与**同页列表模式**（`ItemHover`/`ModuleHover`
+   * 富卡）不一致；现由本字段带富卡内容，`ItemGlyphGrid` 统一用 `hoverTipProps` 接线
+   * （与全站富卡同一条路：同一延迟、同一单例层；⚠ 同一个元素**禁** `title` + `hoverTipProps` 并存）。
+   */
+  hover?: ReactNode
   /**
    * 图标色覆盖（缺省 = `toneOf(glyph)`）。
    * 用途只有一个：货仓页 / 物品页仓库给**稀有残骸**上稀有金（船长 2026-09-19）；
@@ -95,19 +105,27 @@ export function RowGlyph({ glyph, tone }: { glyph: string; tone?: string }) {
   )
 }
 
-/** 图标网格（手册 app-hand-grid/cell 同款；供物品/装备浏览用，可选点击回调） */
+/**
+ * 图标网格（手册 app-hand-grid/cell 同款；供物品/装备浏览用，可选点击回调）。
+ *
+ * ⚠ **悬停**（2026-09-19 船长报障）：格子带 `hover`（富卡内容）时走 `hoverTipProps`——与列表模式的
+ * `ItemHover`/`ModuleHover` 同一条路、同一延迟；只有没给 `hover` 的调用方（如装配页自建的候选卡）
+ * 才退回纯文本 `title`。**两者不许并存**（会互顶，见 `ui/Tooltip.tsx`）。
+ */
 export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick?: (key: string) => void }) {
   if (cells.length === 0) return null
   return (
     <div className="app-hand-grid" data-ui-group={ICON_LIST_GROUP}>
       {cells.map((c) => {
         const tone = c.tone ?? toneOf(c.glyph)
+        const tip = c.hover !== undefined ? hoverTipProps(c.hover) : null
         return (
           <div
             key={c.key}
             className="app-hand-cell"
             style={{ '--tone': tone } as CSSProperties}
-            title={c.title}
+            title={tip === null ? c.title : undefined}
+            {...(tip ?? {})}
             onClick={onPick ? () => onPick(c.key) : undefined}
           >
             <span className="app-hand-cell-icon">

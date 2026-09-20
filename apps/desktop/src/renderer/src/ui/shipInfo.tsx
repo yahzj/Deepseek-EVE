@@ -1057,14 +1057,17 @@ export function moduleHoverContent(mod: ModuleDef, hint?: ReactNode): ReactNode 
 }
 
 /**
- * 通用信息悬浮（全站列表行悬浮的统一皮肤）：标题 + InfoTable 统一参数表 + 备注行。
+ * 通用信息悬浮（全站列表行悬浮的统一皮肤）：标题 + InfoTable 统一参数表 + 备注行 + 追加行。
  * 装备/物品/蓝图/AI 核心/舰船等悬浮窗共用同一视觉与布局，避免各页悬浮风格割裂。
  * as/className 透传以兼容行级 li/div 包裹；children = 原行内容（悬浮热区）。
+ * `extra` = 备注行之后的**追加注脚**（与 `infoCardContent` 的第 4 参同义：给"这一处特有的行动/机制提示"，
+ * 如货仓页的"船载仅携带"）；不传 ⇒ 与改动前逐字一致。
  */
 export function InfoHover({
   title,
   lines,
   note,
+  extra,
   children,
   as = 'span',
   className,
@@ -1072,11 +1075,12 @@ export function InfoHover({
   title: ReactNode
   lines: InfoLine[]
   note?: ReactNode
+  extra?: ReactNode
   children: ReactNode
   as?: ElementType
   className?: string
 }) {
-  const content = infoCardContent(title, lines, note)
+  const content = infoCardContent(title, lines, note, extra)
   const Tag = as as ElementType
   return (
     <Tag
@@ -1104,21 +1108,31 @@ export function itemHoverContent(
 /**
  * 悬停说明（装备条目/卡片）：统一富卡（InfoHover）——名称 + moduleInfoLines 统一参数表
  * （槽位/效果/抗性/代价 + CPU 占用，装配资源是选购与换装决策的重要信息）+ 数据表描述。
- * 由市场行、装配台装备库行、已装槽位行与手册列表挂载。
+ * 由市场行、物品页仓库装备行（2026-09-19 报障后补）、装配台装备库行、已装槽位行、货仓船载行与手册列表挂载。
+ * `hint` = 追加一行行动/机制提示（与描述同款注脚样式；等价于 `moduleHoverContent(mod, hint)` 的第二个参数）。
  */
 export function ModuleHover({
   mod,
   children,
   as = 'span',
   className,
+  hint,
 }: {
   mod: ModuleDef
   children: ReactNode
   as?: ElementType
   className?: string
+  hint?: ReactNode
 }) {
   return (
-    <InfoHover title={mod.name} lines={moduleInfoLines(mod)} note={mod.description} as={as} className={className}>
+    <InfoHover
+      title={mod.name}
+      lines={moduleInfoLines(mod)}
+      note={mod.description}
+      extra={hint ? <div className="app-info-note">{hint}</div> : null}
+      as={as}
+      className={className}
+    >
       {children}
     </InfoHover>
   )

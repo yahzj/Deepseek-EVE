@@ -347,6 +347,52 @@
 **四遍全毕**：甲（物品与装备）· 乙（舰船）· 丙（蓝图）· 丁（工业与其它）＋ 戊组六条基线规范——
 全部为**本地提交、待船长实机验收**；验收通过后一次性推送。
 
+## 十三、报障修复（船长 2026-09-19 验收中发现 · 仓库页两条）
+
+**船长原话（照抄）**：「**仓库内，部分筛选标签无效（比如装备-高槽装备）**」＋
+「**而且为啥悬停不是显示富文本详细，又改回简易介绍了**」。
+
+### ① 仓库筛选：装备的二级「槽类」三档全筛空（丁组遗留）
+
+- **根因（键空间错配）**：仓库的「装备」档二级是**槽类**（`RACK_SUBS`：高/中/低），
+  而页面把槽类键喂给了 `itemSubPasses(ctx, id, 'module', 'high')`——那个入口对 `module` 桶认的是
+  **功能分组键**（`moduleSubKeyOf`：prod/weapon/…）⇒ 恒假。三级「功能分组」判据本身没问题，
+  但二级已把一切筛空，所以三级也跟着用不了。
+- **修法**：二级判定抽成 `subHit`，**装备档走 `rackPasses`（槽类单点）**、其余档继续走 `itemSubPasses`；
+  三级仍走 `itemSubPasses(..., 'module', 功能键)`。页面依旧不自写判定。
+- **探针读数**（`tools/_probe-warehouse-filter.ts`，取证后按 §6 已删）：全目录 142 种模块 ——
+  高槽 旧 **0** → 新 **55** · 中槽 旧 **0** → 新 **39** · 低槽 旧 **0** → 新 **48**（55+39+48 = 142，全覆盖）；
+  三级功能十组 142/142 覆盖正常；其余二级维度（货柜 5/3/1/1 · 残骸 13/13 · 核心 3 · 碎片 6）**均非 0** ⇒
+  **只有「装备」这一档坏了**。
+
+### ② 同一页：一级选「全部」时装备库整块不显示（丁组遗留）
+
+- **根因**：`showMods = wareKind === SUB_ALL || wareKind === 'module'` ——丁组把一级键从 `SUB_ALL`
+  改成 `'all'` 时**漏改了相邻这一行**，而 `SUB_ALL` 在 `wareKind` 里永不出现 ⇒ 默认进仓库页（全部）
+  时装备库**整块不渲染**，只有点「装备」才出现。
+- **修法**：`wareKind === 'all' || wareKind === 'module'`（并同步两处过期注释的键口径）。
+- **探针读数**：`wareKind='all'` 旧 `false` → 新 `true`；`module` 两版都 `true`；`ore`/`fragment` 两版都 `false`。
+
+### ③ 悬停：装备行与图标卡只给"简易介绍"，没走富文本详细
+
+- **现象**：仓库**列表**模式的物品行是富卡（`ItemHover`），而**装备行**是 `title={def.description}`；
+  **图标**模式（`useItemView` 默认就是图标视图）**全部卡片**也都只有 `title` ⇒ 悬停只弹一句描述。
+- **修法（全站同一条路）**：
+  · `ui/itemView.tsx`：`ItemGridCell` 新增 `hover?: ReactNode`，`ItemGlyphGrid` 有 `hover` 时改用
+    `hoverTipProps`（与全站富卡同延迟、同单例层），没给的调用方原样退回纯文本 `title`；
+  · `ui/shipInfo.tsx`：`InfoHover` 补 `extra`（`infoCardContent` 的第 4 参）、`ModuleHover` 补 `hint`；
+  · `pages/ItemsPage.tsx`：装备行改挂 `ModuleHover`（名称 + 参数表 + 描述），物品卡与装备卡各挂
+    `itemHoverContent` / `moduleHoverContent`；
+  · `pages/CargoPage.tsx`（货仓，同一族的兄弟页，一并对齐）：船载装备行改挂 `ModuleHover`，
+    原来那句"船载仅携带…"降为卡内注脚（`hint`）；物品卡与装备卡同样挂富卡。
+- ⚠ **未动**：手册图鉴的**图标网格**（`Handbook.tsx` 自建的 `app-hand-cell`，另一套 cell 类型）仍是纯文本
+  `title`——不在本次报障范围，要统一说一声（它的列表模式本来就是富卡）。
+
+**验证**：`typecheck` 四包 0 错 · core 1,896 全绿 · `content:check` ✅ · `ui:rot-check` ✅ · `l10n:check` ✅ ·
+`build` ✅ · `flow:newgame` ✅。**悬停观感按 §6 交船长实机判**（本批只保证"内容是富卡、走的是统一提示层"）。
+
+**本地提交、待验收**（未推送）。
+
 
 
 

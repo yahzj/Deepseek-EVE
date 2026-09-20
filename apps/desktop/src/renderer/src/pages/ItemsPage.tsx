@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
+import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
@@ -24,6 +24,7 @@ import {
   WRECK_SUBS,
   itemBucketPasses,
   itemSubPasses,
+  rackPasses,
 } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -49,10 +50,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const [wareKind, setWareKind] = useState<string>('all') // 一级「分类」：'all' = 全部（2026-09-19 基线②：一级选择器用 'all'，下级维度才用 SUB_ALL）
   const [wareSub, setWareSub] = useState<string>(SUB_ALL)
   const [wareFunc, setWareFunc] = useState<string>(SUB_ALL)
-  /** 一级筛选中（分类 / 装备）；`SUB_ALL` = 全部 */
+  /**
+   * 一级筛选中（分类 / 装备）。
+   * ⚠ 键口径（2026-09-19 基线②）：**一级选择器的"全部" = `'all'`**，`SUB_ALL` 只留给下级维度。
+   */
   const kindPicked = wareKind !== 'all'
-  /** 装备是否在展示范围内（选了某个物品大类时，装备库整块不显示） */
-  const showMods = wareKind === SUB_ALL || wareKind === 'module'
+  /** 装备是否在展示范围内（「全部」与「装备」都在范围内；选了某个物品大类时装备库整块不显示） */
+  const showMods = wareKind === 'all' || wareKind === 'module'
   const wq = wareQuery.trim().toLowerCase()
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
   const modRows = Object.entries(state.moduleBay).filter(([, n]) => n > 0)
@@ -94,11 +98,25 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const funcDim = wareKind === 'module' && wareSub !== SUB_ALL ? MODULE_SUBS : null
   /**
    * 三个维度的判定一律走**唯一入口**（甲组·判定单点）：
-   * 一级 `itemBucketPasses` · 二级/三级 `itemSubPasses`；页面**不自写任何判定**。
+   * 一级 `itemBucketPasses` · 二级 `rackPasses`（装备槽类）/ `itemSubPasses`（其余）· 三级 `itemSubPasses`；
+   * 页面**不自写任何判定**。
+   *
+   * ⚠ **2026-09-19 报障修**（船长「仓库内，部分筛选标签无效（比如装备-高槽装备）」）：
+   * 二级维度有两套**不同的键空间**——「装备」档的二级是**槽类**（`RACK_SUBS`：high/mid/low ⇒ 判据 `rackPasses`），
+   * 其余各档的二级是 `itemSubPasses` 的子键（货柜四档 / 残骸两档 / 核心档位 / 碎片功能分组）。
+   * 原先这里**一律**调 `itemSubPasses(ctx, id, 'module', wareSub)`，而那个入口对 `module` 桶认的是
+   * **功能分组键**（`moduleSubKeyOf`：prod/weapon/…）⇒ 拿槽类键 `high` 去比**永远为假**：
+   * 高/中/低三档一个都筛不出来（三级「功能」也跟着不可用，因为二级已经把一切筛空了）。
    */
+  const subHit = (id: string): boolean => {
+    if (!subDim || wareSub === SUB_ALL) return true
+    return wareKind === 'module'
+      ? rackPasses(engine.ctx, id, wareSub)
+      : itemSubPasses(engine.ctx, id, wareKind, wareSub)
+  }
   const dimHit = (id: string): boolean => {
     if (!itemBucketPasses(engine.ctx, id, wareKind)) return false
-    if (subDim && wareSub !== SUB_ALL && !itemSubPasses(engine.ctx, id, wareKind, wareSub)) return false
+    if (!subHit(id)) return false
     if (funcDim && wareFunc !== SUB_ALL && !itemSubPasses(engine.ctx, id, 'module', wareFunc)) return false
     return true
   }
@@ -191,11 +209,22 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
 
   // 图标/列表切换（手册同款；网格为浏览视图）
   const [mode, setMode] = useItemView()
+  /**
+   * 装备卡片（图标模式）——`hover` 挂**富卡**（`moduleHoverContent`：名称 + 参数表 + 描述），
+   * 与列表模式的 `ModuleHover` 同一内容（船长 2026-09-19 报障：图标模式原先是纯文本简介）。
+   */
   const modCells: ItemGridCell[] = []
   for (const [id, units] of modHits) {
     const def = engine.ctx.modules.get(id)
     if (!def) continue
-    modCells.push({ key: id, glyph: def.slot, name: def.name, sub: `×${units.toLocaleString('zh-CN')}`, title: def.description })
+    modCells.push({
+      key: id,
+      glyph: def.slot,
+      name: def.name,
+      sub: `×${units.toLocaleString('zh-CN')}`,
+      title: def.description,
+      hover: moduleHoverContent(def),
+    })
   }
 
   return (
@@ -449,7 +478,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               if (!def) return null
               const modGood = marketGoodOf(engine.ctx, 'module', id)
               return (
-                <li key={id} className="app-inv-row" title={def.description}>
+                /* 富卡悬停：与市场行 / 装配台装备库行 / 手册列表同一张卡（`ModuleHover` = 名称 + 参数表 + 描述）。
+                   ⚠ 2026-09-19 船长报障「悬停不是显示富文本详细，又改回简易介绍了」——原先这里只挂
+                   `title={def.description}`（简易介绍），同一页的物品行却是富卡 ⇒ 装备行改挂富卡。 */
+                <ModuleHover key={id} as="li" mod={def} className="app-inv-row">
                   <div className="app-inv-main">
                     <span className="app-inv-name">
                       <RowGlyph glyph={def.slot} /> {def.name}
@@ -486,7 +518,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       </button>
                     ) : null}
                   </div>
-                </li>
+                </ModuleHover>
               )
             })}
           </ul>
@@ -509,6 +541,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 name: def?.name ?? id,
                 sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                 title: def?.description,
+                // 富卡悬停（与列表模式的 ItemHover 同一内容；船长 2026-09-19 报障：图标模式原先是纯文本简介）
+                hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
                 // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
                 tone: inventoryItemTone(id, def?.kind ?? kind),
               }
