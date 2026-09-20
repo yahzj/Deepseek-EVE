@@ -934,6 +934,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'component-standardization', per: 0.008, call: 'manufacturing.ts materialFactor' },
     { skill: 'ai-servicing', per: 0.03, call: 'ai.ts（副船采矿循环）' },
     { skill: 'offline-ops', per: 0.2, call: 'simulation.ts simulateOffline（基础 8 小时）' },
+    { skill: 'unattended-dispatch', per: 0.4, call: 'simulation.ts simulateOffline（基础 8 小时 · 2026-09-20 上位技能）' },
     { skill: 'station-engineering', per: 0.08, call: 'station.ts engFactor' },
     { skill: 'salvage-recycling', per: 0.04, call: 'industry.ts（回收炉周期）' },
     { skill: 'salvage-rigging', per: 0.03, call: 'salvaging.ts（打捞器周期）' },

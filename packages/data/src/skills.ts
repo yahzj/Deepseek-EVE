@@ -238,7 +238,7 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'offline-ops',
     name: '离线作业管理学',
-    group: '工业',
+    group: '工程',
     rank: 3,
     description: '无人值守作业调度：离线结算时长每级 +⟦20%⟧（基础 8 小时，满级 16 小时）。',
   },
@@ -466,6 +466,15 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工程',
     rank: 2,
     description: '舰船电力与环路布局优化：船体 CPU 每级 +⟦5%⟧（满级 +⟦25%⟧；只提高装配与无人机放飞的总预算，不改单件装备的 CPU 占用）。',
+  },
+  {
+    id: 'unattended-dispatch',
+    name: '无人值守调度学',
+    group: '工程',
+    rank: 4,
+    // 2026-09-20 船长定：「新增离线作业管理学的上位技能：效果为离线结算时长每级 +40%.技能rank4」
+    // 与「离线作业管理学」并存叠加（加算）：双满级 = 8h × (1+1.0+2.0) = 32 小时。
+    description: '无人值守的作业统筹：离线结算时长每级 +⟦40%⟧（基础 8 小时，满级 24 小时；与「离线作业管理学」叠加计算）。',
   },
 
   // ───────── 贸易（V9+：市场税率减免） ─────────

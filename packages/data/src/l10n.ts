@@ -503,6 +503,7 @@ export const EN_SKILLS: EnTable = {
   'component-standardization': { name: 'Component Standardization', description: 'Standardized common components: blueprint material cost drops a further ⟦0.8%⟧ per level (multiplies with Materials).' },
   'ai-servicing': { name: 'Auxiliary Ship Servicing', description: 'Mining equipment servicing on AI auxiliaries: each level shortens the auxiliary mining cycle by ⟦3%⟧ (multiplies on top of AI core efficiency).' },
   'offline-ops': { name: 'Offline Operations', description: 'Unattended operation scheduling: +⟦20%⟧ offline settlement duration per level (8 hours base, 16 hours maxed).' },
+  'unattended-dispatch': { name: 'Unattended Dispatching', description: 'Unattended operation coordination: +⟦40%⟧ offline settlement duration per level (8 hours base, 24 hours maxed; stacks with Offline Operations).' },
   'station-engineering': { name: 'Station Engineering', description: 'Outpost engineering standards: −⟦8%⟧ construction materials per level (max −⟦40%⟧).' },
   'salvage-recycling': { name: 'Salvage Recycling', description: 'Wreck reprocessing (refinery wreck breakdown) batch optimization: −⟦4%⟧ batch cycle per level (manual and AI-core operation alike).' },
   'salvage-rigging': { name: 'Salvage Rigging', description: 'Salvager maintenance and tuning: each level shortens the salvager cycle by ⟦3%⟧ (applies to the player ship and AI alike).' },
