@@ -73,6 +73,14 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9 15l-1.2 1.2" />
     </g>
   ),
+  /* ── 零件（2026-09-20 零件体系：工业中间件）——芯片意象（外环 + 方芯 + 四向引脚），与 kit/fragment 同语言。 */
+  part: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <rect x="8.7" y="8.7" width="6.6" height="6.6" rx="1" />
+      <path d="M10.6 8.7V7.1M13.4 8.7V7.1M10.6 16.9v-1.6M13.4 16.9v-1.6M8.7 10.6H7.1M8.7 13.4H7.1M16.9 10.6h-1.6M16.9 13.4h-1.6" />
+    </g>
+  ),
   fragment: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -970,6 +978,7 @@ export const TONES: Record<string, string> = {
   wreck: '#b8a37a', // 残骸：旧黄铜/锈色（回收料的观感）
   kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
+  part: '#9fd0e8', // 零件：冷钢蓝（工业中间件，与原材料蓝区分一档偏灰）
   container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
   matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
   essence: '#69e2ff', // 虫洞谜质：比装置形更亮的冷辉青（同一族、亮一档）

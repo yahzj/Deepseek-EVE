@@ -112,18 +112,33 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
       4: [32_400, 72_000], // 9~20 时
       5: [162_000, 162_000], // 45 时（T4 带下沿 ×5）
     }
+    // 2026-09-20 零件体系：使用零件的舰船（专属 15 艘 + 皇带鱼）建造时间砍到 1/5 ⇒ 出旧带是设计
+    const partTimeShips = new Set(
+      SHIP_BLUEPRINTS.filter((b) => b.id.startsWith('sbp-wh-') || b.id.includes('colossal')).map((b) => b.id),
+    )
     for (const bp of SHIP_BLUEPRINTS) {
       const s = shipOf(bp.shipId)
+      if (partTimeShips.has(bp.id)) continue
       const [lo, hi] = band[s.tier]!
       expect(bp.buildSeconds, `${s.name}（${bp.id}）工期 ${bp.buildSeconds}s 出带 ${lo}~${hi}`).toBeGreaterThanOrEqual(lo)
       expect(bp.buildSeconds, `${s.name}（${bp.id}）工期 ${bp.buildSeconds}s 出带 ${lo}~${hi}`).toBeLessThanOrEqual(hi)
     }
     const avg = (tier: number): number => {
-      const list = SHIP_BLUEPRINTS.filter((bp) => shipOf(bp.shipId).tier === tier).map((bp) => bp.buildSeconds)
+      const list = SHIP_BLUEPRINTS.filter((bp) => shipOf(bp.shipId).tier === tier && !partTimeShips.has(bp.id)).map((bp) => bp.buildSeconds)
       return list.reduce((a, b) => a + b, 0) / list.length
     }
     const ratio = avg(4) / avg(3)
     expect(ratio).toBeGreaterThan(3) // 船长口径：T4 平均翻 3~4 倍
     expect(ratio).toBeLessThan(4)
+  })
+
+  it('零件体系（2026-09-20 船长「大幅减少使用零件的舰船的建造时间」）：使用零件的舰船工期 = 原值 1/5', () => {
+    // 皇带鱼（永久 + 一次性）：45 时 → 9 时
+    expect(bpOfShip('sh-colossal')?.buildSeconds).toBe(32_400)
+    expect(SHIP_BLUEPRINTS.filter((b) => b.id === 'sbp-once-colossal')[0]?.buildSeconds).toBe(32_400)
+    // 专属舰三档：T1 20 分 → 4 分 · T2 70 分 → 14 分 · T3 4 时 → 48 分
+    expect(bpOfShip('sh-wh-a-frigate')?.buildSeconds).toBe(240)
+    expect(bpOfShip('sh-wh-a-destroyer')?.buildSeconds).toBe(840)
+    expect(bpOfShip('sh-wh-a-cruiser')?.buildSeconds).toBe(2_880)
   })
 })

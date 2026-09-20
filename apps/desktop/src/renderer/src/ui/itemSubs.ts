@@ -441,12 +441,20 @@ export function shipTierPasses(def: { tier?: number } | undefined, tier: string)
 
 /** 组装机 / 蓝图书架「**门类**」维度（一级选择器 ⇒ 「全部」键用 `'all'`，基线②）：
  *  全部 / 装备蓝图 / 舰船蓝图 / 消耗品蓝图（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」）。 */
-export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply'
+export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply' | 'part'
+/** 蓝图书架 / 手册 / 市场蓝图档的门类表（**旧口径不动**，2026-09-20 船长：「只改组装机」） */
 export const MANU_TABS: Array<{ key: ManuTabKey; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'equip', label: '装备蓝图' },
   { key: 'ship', label: '舰船蓝图' },
   { key: 'supply', label: '消耗品蓝图' },
+]
+/** 组装机专用门类表（2026-09-20 船长：舰船蓝图拆去造船厂；改名去「蓝图」二字；新增「零件」分页） */
+export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'equip', label: '装备' },
+  { key: 'part', label: '零件' },
+  { key: 'supply', label: '消耗品' },
 ]
 
 /** 组装机/书架「**子类**」候选（按当前门类给；全部取自本文件单点表）：

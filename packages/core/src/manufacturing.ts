@@ -50,6 +50,10 @@ export interface BuildSpec {
   materials: BlueprintDef['materials']
   buildSeconds: number
   buildCostIsk: number
+  /** 零件档位（2026-09-20 零件体系：basic = 吃「零件成型工艺学」· advanced = 吃「精密装配学」） */
+  partTier?: 'basic' | 'advanced'
+  /** 隐式蓝图（2026-09-20 零件体系：基础零件无需学习即可开工） */
+  learnless?: boolean
 }
 
 /** 按 id 解析一张可制造蓝图（先查装备/物品类蓝图，再查舰船蓝图；
@@ -137,6 +141,8 @@ export function isSingleUseBlueprint(ctx: SimContext, blueprintId: string): bool
  */
 export function canStartBlueprint(state: GameState, ctx: SimContext, blueprintId: string): boolean {
   if (ownsBlueprint(state, blueprintId)) return true
+  // 2026-09-20 零件体系：隐式蓝图（基础零件）无需学习即可开工
+  if (ctx.blueprints.get(blueprintId)?.learnless === true) return true
   if (!isSingleUseBlueprint(ctx, blueprintId)) return false
   return recipeCapability(state, blueprintId, true).kind === 'ok'
 }
@@ -181,13 +187,21 @@ function blueprintName(ctx: SimContext, blueprintId: string): string {
   return ctx.blueprints.get(blueprintId)?.name ?? ctx.shipBlueprints.get(blueprintId)?.name ?? blueprintId
 }
 
-/** 按当前技能计算制造耗时（毫秒），开工时锁定（工业理论 −5%/级 × 批量生产学 −4%/级 乘算） */
+/** 按当前技能计算制造耗时（毫秒），开工时锁定（工业理论 −5%/级 × 批量生产学 −4%/级 乘算；
+ * 2026-09-20 零件体系：基础零件再吃「零件成型工艺学」−8%/级、高级零件吃「精密装配学」−8%/级） */
 export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: BuildSpec): number {
   const bal = ctx.balance.manufacturing
   const level = state.skills.trained[bal.timeSkillId] ?? 0
   const batchLv = Math.min(5, state.skills.trained['batch-production'] ?? 0)
   // 2026-09-08（船长定：移除「最多缩短 60%」下限护栏；工业理论×批量生产学乘算本身有界）
-  const ratio = Math.max(0, (1 - bal.timePerLevel * level) * (1 - 0.03 * batchLv))
+  let ratio = Math.max(0, (1 - bal.timePerLevel * level) * (1 - 0.03 * batchLv))
+  if (spec.partTier === 'basic') {
+    const lv = Math.min(5, state.skills.trained['part-forming'] ?? 0)
+    ratio *= 1 - 0.08 * lv
+  } else if (spec.partTier === 'advanced') {
+    const lv = Math.min(5, state.skills.trained['precision-assembly'] ?? 0)
+    ratio *= 1 - 0.08 * lv
+  }
   // 调试模式 debugQuick：制造固定 1 秒
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }
@@ -254,9 +268,10 @@ export function startManufacturing(
   if (!buildable) return { ok: false, error: `未知蓝图：${blueprintId}。` }
   // 配方可用性（2026-09-12 船长定）：普通蓝图 = 必须已学会；一次性图纸 = 有书 + 名额未用尽
   // （⚠ **已永久学会时，一次性书不消耗也不使用** —— 船长裁定「2乙」）
+  // 2026-09-20 零件体系：隐式蓝图（learnless = 基础零件）无需学习即可开工。
   const singleUse = isSingleUseBlueprint(ctx, blueprintId)
   const cap = recipeCapability(state, blueprintId, singleUse)
-  if (!ownsBlueprint(state, blueprintId)) {
+  if (!ownsBlueprint(state, blueprintId) && buildable.spec.learnless !== true) {
     if (singleUse) {
       // ⚠ **先看"书架有没有书"**：有书就能用掉（可能是重复获得的那张）；
       // 只有"书架没书"时才区分两种拒绝——名额已用尽（要再获得一张）／从未获得过。

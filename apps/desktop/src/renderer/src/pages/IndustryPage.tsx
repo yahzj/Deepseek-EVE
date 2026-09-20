@@ -37,6 +37,7 @@ import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { useEffect, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
+import { ShipyardPanel } from '../panels/Shipyard'
 import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
@@ -477,12 +478,12 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   onGotoWormhole?: () => void
   /** **内层段定位**（船长 2026-09-18：「第一次」卡片的跳转按钮要直达精炼炉 / 组装机）——
    *  页在切走时重挂载（`key={page}`）⇒ 取初值即可，不必 seq 机制。 */
-  focusSec?: 'refine' | 'shelf' | 'craft' | null
+  focusSec?: 'refine' | 'shelf' | 'craft' | 'shipyard' | null
 }) {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
 
-  const [sec, setSec] = useState<'refine' | 'shelf' | 'craft'>(focusSec ?? 'refine')
+  const [sec, setSec] = useState<'refine' | 'shelf' | 'craft' | 'shipyard'>(focusSec ?? 'refine')
   const { t } = useL10n()
   /**
    * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：
@@ -647,6 +648,15 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
         </button>
         <button
           role="tab"
+          aria-selected={sec === 'shipyard'}
+          className={`app-subtab${sec === 'shipyard' ? ' is-active' : ''}`}
+          onClick={() => setSec('shipyard')}
+        >
+          <span>⚓</span>
+          <span>造船厂</span>
+        </button>
+        <button
+          role="tab"
           aria-selected={sec === 'shelf'}
           className={`app-subtab${sec === 'shelf' ? ' is-active' : ''}`}
           onClick={() => setSec('shelf')}
@@ -665,13 +675,22 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           onGotoWormhole={onGotoWormhole}
           focusBlueprintId={craftFocus}
         />
+      ) : sec === 'shipyard' ? (
+        <ShipyardPanel
+          engine={engine}
+          onToast={onToast}
+          onNeedMineral={handleNeedMineral}
+          onGotoMarket={onGotoMarket}
+          onGotoWormhole={onGotoWormhole}
+          focusBlueprintId={craftFocus}
+        />
       ) : sec === 'shelf' ? (
         <BlueprintShelfPanel
           engine={engine}
           onToast={onToast}
           onGotoCraft={(bpId) => {
-            // 切栏 + 复位组装机筛选（面板在 focus 变化时自己复位）＋ 定位高亮那张卡
-            setSec('craft')
+            // 2026-09-20 零件体系：舰船书跳造船厂、其余书跳组装机；切栏 + 定位高亮那张卡
+            setSec(engine.ctx.shipBlueprints.has(bpId) ? 'shipyard' : 'craft')
             setCraftFocus(bpId)
           }}
         />

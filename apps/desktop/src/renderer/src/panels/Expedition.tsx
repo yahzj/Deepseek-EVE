@@ -283,7 +283,7 @@ export function TaskPanel({
   /** 「第一次」卡片的「看情报」（App 层定位到那封情报信） */
   onOpenComms?: (messageId: string) => void
   /** 「第一次」卡片的跳转按钮（App 层切页面/页签，自带解锁闸门） */
-  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' }) => void
+  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard' }) => void
 }) {
   const [tab, setTab] = useState<TaskTabKey>(() => {
     try {

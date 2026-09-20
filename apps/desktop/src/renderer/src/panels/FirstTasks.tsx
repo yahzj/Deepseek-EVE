@@ -42,8 +42,8 @@ interface TaskJump {
   page: string
   mapTab?: string
   shipTab?: string
-  /** 工业页内层段（`refine` 精炼炉 / `craft` 组装机） */
-  industrySec?: 'refine' | 'shelf' | 'craft'
+  /** 工业页内层段（`refine` 精炼炉 / `craft` 组装机 / `shipyard` 造船厂） */
+  industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard'
   /** 按钮上写的去处（「前往××」） */
   label: string
 }
@@ -56,7 +56,7 @@ const FIRST_JUMPS: Record<string, TaskJump> = {
   'first-refine': { page: 'industry', industrySec: 'refine', label: '精炼炉' },
   'first-produce': { page: 'industry', industrySec: 'craft', label: '组装机' },
   'first-order': { page: 'market', label: '市场' },
-  'first-ship': { page: 'industry', industrySec: 'craft', label: '组装机·造船' },
+  'first-ship': { page: 'industry', industrySec: 'shipyard', label: '造船厂' },
   'first-skill': { page: 'skills', label: '技能' },
   'first-ai': { page: 'ship', shipTab: 'ai', label: 'AI 指挥中心' },
   'first-haul': { page: 'map', mapTab: 'haul', label: '长途运输' },
@@ -74,7 +74,7 @@ export function FirstTasks({
   /** 「看情报」：跳到通讯页并选中这条任务的那封情报信 */
   onOpenComms?: (messageId: string) => void
   /** 跳转按钮：去这件活所在的页面（App 层切换页面/页签，并自带解锁闸门的提示） */
-  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' }) => void
+  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard' }) => void
 }) {
   const state = engine.state
   const tasks = visibleFirstTasks(state)

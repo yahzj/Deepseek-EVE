@@ -288,7 +288,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-15：+6（谜质精华 · 奢侈品 ×3 · 贵重品货柜 · 军用备货柜）→ 物品总数 73→**79**
 // 2026-09-16：奢侈品扩到十款（船长「添加更多奢侈品，让奢侈品有10个类型，分布在目前的3个奢侈品价格附近」）
 //   ⇒ +7（陈年雪茄 / 异域织物 / 香木雕刻 / 宫廷乐谱 / 古法香膏 / 星图真迹 / 王冠遗钻）→ 物品总数 79→**86**
-check(itemDefs.length === 86, `物品总数应为 86，实际 ${itemDefs.length}`)
+check(itemDefs.length === 100, `物品总数应为 100，实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -444,6 +444,9 @@ for (const item of itemDefs) {
         item.kind === 'ammo' ||
         item.kind === 'drone' ||
         item.kind === 'kit' ||
+        /* **零件**（2026-09-20 零件体系）：组装机制造的中间件（基础 = 隐式蓝图、高级 = 蓝图），
+         * 无精炼配方是设计——豁免（制造链由蓝图表保证）。 */
+        item.kind === 'part' ||
         /* **虫洞谜质（精华）与奢侈品**（船长 2026-09-15 确认的一批）：**纯贸易品**——只用来卖钱，
          * 不入精炼 / 拆解 / 制造链，故"没有配方"是**设计**（豁免）；来源分别是「撤离成功按台数换算」
          * 与「贵重品货柜拆解」（口径见 docs/glossary.md 八之二「战利品四件」）。 */
@@ -501,13 +504,15 @@ for (const bp of BLUEPRINTS) {
   }
   for (const need of bp.materials) {
     const mat = items.get(need.itemId)
-    check(!!mat && mat.kind === 'mineral', `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物`)
+    // 2026-09-20 零件体系：配方材料允许矿物或零件（零件本身由蓝图/隐式蓝图产出）
+    check(!!mat && (mat.kind === 'mineral' || mat.kind === 'part'), `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物/零件`)
     check(need.count > 0 && Number.isInteger(need.count), `蓝图 ${bp.id} 材料数量非法`)
   }
   // **一次性图纸豁免**（2026-09-12 船长：「玩家无法学会，只能制造一次的图纸」）：
   // 它**不上市场**（不能买入/不能学），来源由后续裁定指定（掉落/奖励），故不要求市场卡。
+  // **隐式蓝图豁免**（2026-09-20 零件体系：基础零件无需学习，无书、不上市场）。
   check(
-    bp.singleUse === true || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === bp.id),
+    bp.singleUse === true || bp.learnless === true || MARKET_GOODS.some((g) => g.kind === 'blueprint' && g.refId === bp.id),
     `装备蓝图 ${bp.id} 没有市场卡（无法购书学习）`,
   )
   // 一次性图纸**不得进逆向研究**（否则碎片能刷出永久配方；船长同日裁定「6 不进」）
@@ -523,7 +528,8 @@ for (const sbp of SHIP_BLUEPRINTS) {
   check(shipIdSet.has(sbp.shipId), `舰船蓝图 ${sbp.id} → 舰船 ${sbp.shipId} 不存在`)
   for (const need of sbp.materials) {
     const mat = items.get(need.itemId)
-    check(!!mat && mat.kind === 'mineral', `舰船蓝图 ${sbp.id} 材料 ${need.itemId} 不存在或不是矿物`)
+    // 2026-09-20 零件体系：舰船配方材料允许矿物或零件
+    check(!!mat && (mat.kind === 'mineral' || mat.kind === 'part'), `舰船蓝图 ${sbp.id} 材料 ${need.itemId} 不存在或不是矿物/零件`)
   }
   /**
    * **船蓝图"无市场行"白名单**（2026-09-18 船长裁定新建 `sbp-sandcat` 时立的）：
@@ -976,6 +982,8 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'hold-management', per: 0.03, call: 'inventory.ts（货仓容量）' },
     { skill: 'bounty-hunting', per: 0.08, call: 'expedition.ts bountyRewardFactor' },
     { skill: 'cartography', per: 0.06, call: 'explore.ts scanSkillFactor（2026-09-11 船长裁决「乙」接活到就地扫描窗口）' },
+    { skill: 'part-forming', per: 0.08, call: 'manufacturing.ts calcBuildDurationMs（基础零件制造时间 · 2026-09-20 零件体系）' },
+    { skill: 'precision-assembly', per: 0.08, call: 'manufacturing.ts calcBuildDurationMs（高级零件制造时间 · 2026-09-20 零件体系）' },
   ]
   const skillById = new Map(SKILLS.map((s) => [s.id, s]))
   const claimsOfSkill = (d: string): number[] => [...d.matchAll(/⟦([\d.]+)/g)].map((m) => Number(m[1]))
@@ -4659,6 +4667,13 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
       ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
       ['sbp-sandcat', '沙猫级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
+      ['bp-part-circuit', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
+      ['bp-part-armor-plate', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
+      ['bp-part-frame', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
+      ['bp-part-cable', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
+      ['bp-part-coolant', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
+      ['bp-part-gyro', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
+      ['bp-part-lens', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
     ]
     const noRowOk = new Set(NO_ROW_OK.map(([id]) => id))
     const rowKeys = new Set(MARKET_GOODS.map((g) => g.refId))
@@ -4710,7 +4725,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * **整类图鉴的按钮静默消失**——玩家看不见"少了个按钮"，只有这条契约会点名。 */
   {
     const jumpCtx = buildSimContext()
-    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat'])
+    const handNoJumpOk = new Set(['sandcat', 'sh-dunkleosteus', 'sbp-sandcat', 'bp-part-circuit', 'bp-part-armor-plate', 'bp-part-frame', 'bp-part-cable', 'bp-part-coolant', 'bp-part-gyro', 'bp-part-lens'])
     const unreleasedRowIds = new Set(
       MARKET_GOODS.filter((g) => (g as { unreleased?: boolean }).unreleased === true).map((g) => g.refId),
     )
@@ -6317,6 +6332,10 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
        * 但也**不参与**档位系数与料/价比对（没有产物现货价可比），单独计数留痕。 */
       if (bp.singleUse === true) {
         exemptSingleUse += 1
+        continue
+      }
+      /* **隐式蓝图豁免**（2026-09-20 零件体系：基础零件无需学习，无书、不上市场）。 */
+      if (bp.learnless === true) {
         continue
       }
       errors.push(`蓝图价格口径：${bp.id}（${label}）在市场目录里没有蓝图行——玩家买不到，也无法比对书价`)

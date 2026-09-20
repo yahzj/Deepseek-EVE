@@ -75,10 +75,15 @@ describe('专属内容上市场（2026-09-14 船长「允许玩家挂卖」批�
   })
 
   it('② 价 = 基准 ×4：料÷0.45×4（装备/图纸）· 同槽位最高档×4（窝点件）· 货值×4（无人机）· 舰价×0.5（舰船图纸）', () => {
-    // 装备与图纸同料单 ⇒ 同价，且 = 材料 ÷ 0.45 ×4（取整 500）
+    // 装备与图纸同料单 ⇒ 同价（书价 = 市场行值这条硬契约照旧）
     expect(priceOf('mod-wh-a-frag')).toBe(priceOf('bp-wh-a-frag'))
-    expect(priceOf('bp-wh-a-frag')).toBe(round500((matValue('bp-wh-a-frag') / 0.45) * 4))
-    expect(priceOf('mod-wh-g-prop')).toBe(round500((matValue('bp-wh-g-prop') / 0.45) * 4))
+    // ⚠ 2026-09-20 零件体系：配方追加零件使材料总价 +50%（按基础收价口径），但成品/书价**不涨**
+    //   （船长「可以根据零件涨价约50%」指配方成本）——料÷0.45×4 的旧等式随零件 +50% 作废。
+    expect(priceOf('bp-wh-a-frag')).toBe(5_244_500) // 原书价不变
+    const fragMat = BLUEPRINTS.find((b) => b.id === 'bp-wh-a-frag')!.materials
+    expect(fragMat.some((m) => m.itemId === 'part-qchip')).toBe(true)
+    expect(fragMat.some((m) => m.itemId === 'part-circuit')).toBe(true)
+    expect(priceOf('mod-wh-g-prop')).toBeGreaterThan(0)
     // 窝点专属件（无料单）：同槽位最高档**常规件** ×4
     // ⚠ 基准只取常规件（排除专属自身：新加的专属行价本身就是 ×4 的，拿它当基准会自我放大）
     const normalTop = (slot: string): number =>
@@ -176,17 +181,29 @@ describe('专属内容上市场（2026-09-14 船长「允许玩家挂卖」批�
     expect(sawBogusDrone).toBe(false)
   })
 
-  it('⑦ 例外表（有意不补市场行）：沙猫级 / 邓氏鱼级 / 沙猫级舰船蓝图；其余可获得内容全部有市场行', () => {
+  it('⑦ 例外表（有意不补市场行）：沙猫级 / 邓氏鱼级 / 沙猫级舰船蓝图 / 基础零件隐式蓝图；其余可获得内容全部有市场行', () => {
     const rowKeys = new Set(MARKET_GOODS.map((g) => g.refId))
     expect(rowKeys.has('sandcat')).toBe(false)
     expect(rowKeys.has('sh-dunkleosteus')).toBe(false)
     // 2026-09-18 船长裁定新建的沙猫级舰船蓝图只作「第一次生产」的任务奖励发放，不进市场
     expect(rowKeys.has('sbp-sandcat')).toBe(false)
-    const noRowOk = ['sandcat', 'sh-dunkleosteus', 'sbp-sandcat']
+    const noRowOk = [
+      'sandcat',
+      'sh-dunkleosteus',
+      'sbp-sandcat',
+      // 2026-09-20 零件体系：基础零件隐式蓝图（无需学习、无书、不上市场）
+      'bp-part-circuit',
+      'bp-part-armor-plate',
+      'bp-part-frame',
+      'bp-part-cable',
+      'bp-part-coolant',
+      'bp-part-gyro',
+      'bp-part-lens',
+    ]
     const gaps: string[] = []
     for (const it of ITEMS) if (itemReleased(it) && !rowKeys.has(it.id) && !noRowOk.includes(it.id)) gaps.push(it.id)
     for (const m of MODULES) if (itemReleased(m) && !rowKeys.has(m.id)) gaps.push(m.id)
-    for (const b of BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id)) gaps.push(b.id)
+    for (const b of BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id) && !noRowOk.includes(b.id)) gaps.push(b.id)
     for (const b of SHIP_BLUEPRINTS) if (itemReleased(b) && !rowKeys.has(b.id) && !noRowOk.includes(b.id)) gaps.push(b.id)
     expect(gaps).toEqual([])
   })

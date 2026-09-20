@@ -48,6 +48,7 @@ import {
   BLUEPRINT_USE_TABS,
   CONSUME_SUBS,
   MANU_TABS,
+  MANU_TABS_CRAFT,
   MODULE_SUBS,
   SHIP_TIER_SUBS,
   SUB_ALL,
@@ -70,7 +71,7 @@ function bpGoodKey(engine: GameEngine, blueprintId: string): string | null {
 }
 
 /** 产物现货基准价（产物在市场目录的 basePrice；弹药等按单次产出数量折算） */
-function productBaseOf(engine: GameEngine, kind: 'module' | 'ship' | 'item', refId: string, units = 1): number {
+export function productBaseOf(engine: GameEngine, kind: 'module' | 'ship' | 'item', refId: string, units = 1): number {
   for (const good of engine.ctx.marketGoods.values()) {
     if (good.kind === kind && good.refId === refId) return (good.basePrice ?? 0) * units
   }
@@ -90,7 +91,7 @@ function refineSourcesOf(engine: GameEngine, mineralId: string): string[] {
 }
 
 /** 蓝图书市场价（组装机排序用：市场目录 basePrice；缺省 = 蓝图字段；再无 = 沉底） */
-function bookPriceOf(engine: GameEngine, blueprintId: string, fallback: number): number {
+export function bookPriceOf(engine: GameEngine, blueprintId: string, fallback: number): number {
   const k = bpGoodKey(engine, blueprintId)
   if (k) {
     for (const g of engine.ctx.marketGoods.values()) {
@@ -351,6 +352,8 @@ export function BlueprintShelfPanel({
           const su = bp?.singleUse === true
           const willConsume = su && !learned && (state.spentOneTimeRecipes ?? []).includes(id)
           const kindShip = (bp && 'shipId' in bp) || (!bp && engine.allShipBlueprints.some((b) => b.id === id))
+          // 2026-09-20 零件体系：舰船书「去造船厂」、其余「去组装机」
+          const isShipBook = kindShip
           return (
             <div key={id} className={`app-belt-card app-shelf-card${learned ? ' is-learned' : ''}`}>
               <div className="app-belt-head">
@@ -374,15 +377,19 @@ export function BlueprintShelfPanel({
                     : '尚未学习——学习后永久可造'}
               </div>
               <div className="app-belt-actions">
-                {/* **去组装机**（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图直接跳转对应组装机」）——
-                    切到组装机标签并定位这张卡；组装机那一侧会先清掉三级筛选，保证目标卡一定在网格里 */}
+                {/* **去组装机 / 去造船厂**（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图直接跳转对应组装机」；
+                    2026-09-20 零件体系：舰船书改跳造船厂）——切到对应标签并定位这张卡 */}
                 {onGotoCraft ? (
                   <button
                     className="app-btn is-small"
-                    title="跳到组装机并定位这张图纸的卡片（那里才能开工制造）"
+                    title={
+                      isShipBook
+                        ? '跳到造船厂并定位这张图纸的卡片（那里才能开工建造）'
+                        : '跳到组装机并定位这张图纸的卡片（那里才能开工制造）'
+                    }
                     onClick={() => onGotoCraft(id)}
                   >
-                    去组装机
+                    {isShipBook ? '去造船厂' : '去组装机'}
                   </button>
                 ) : null}
                 {!learned && !su ? (
@@ -461,7 +468,7 @@ function manualBuildNote(state: GameState): string | null {
 
 /** 一张可制造蓝图的展示卡（与精炼炉卡同款结构：运转名册逐线 = 劳动者 + 进度 + 取消；
  * 开工按钮 = 手动制造（主控亲自）/ AI 核心下拉 + AI 制造；已学会 + 材料够即可随时加开（制造费已于 2026-09-08 取消）） */
-function BlueprintCard({
+export function BlueprintCard({
   engine,
   onToast,
   blueprintId,
@@ -480,6 +487,7 @@ function BlueprintCard({
   onGotoMarket,
   onGotoWormhole,
   highlighted,
+  learnless,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -512,12 +520,14 @@ function BlueprintCard({
   onGotoWormhole?: () => void
   /** 被「蓝图书架 → 去组装机」定位到的那张卡（页面层同一套 `.app-belt-card.is-goto` 高亮） */
   highlighted?: boolean
+  /** 2026-09-20 零件体系：隐式蓝图（基础零件）——无需学习即视为已学会，卡面显示「无需图纸」 */
+  learnless?: boolean
 }) {
   const state = engine.state
   // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
   const runs = manufacturingRunViews(state, engine.ctx).filter((v) => v.blueprintId === blueprintId)
   const running = runs.length > 0
-  const owned = ownsBlueprint(state, blueprintId)
+  const owned = learnless === true || ownsBlueprint(state, blueprintId)
   // 制造费已取消（2026-09-08）：耗时/缺口等 spec 计算的费用字段恒置 0
   const spec = { materials, buildSeconds, buildCostIsk: 0 }
   const buildMs = calcBuildDurationMs(state, engine.ctx, spec)
@@ -710,7 +720,11 @@ function BlueprintCard({
             ⚠ 「市场门槛」这枚**只是提示**（2026-09-14 船长：组装机不再用声望挡启动）——它不挡任何按钮 */}
         <span className="app-belt-head-right">
           <MarkStar engine={engine} kind="blueprints" id={blueprintId} />
-          {owned ? (
+          {learnless ? (
+            <span className="app-chip" title="基础零件：无需图纸学习，组装机直接可造。">
+              无需图纸
+            </span>
+          ) : owned ? (
             <span className="app-chip">已学会</span>
           ) : singleUse && bookCount > 0 ? (
             <span className="app-chip is-stock" title="一次性图纸：不能学习，只能到组装机直接制造一次（开工时消耗这张图纸）">
@@ -1073,57 +1087,12 @@ export function ManufacturingPanel({
     productKey: string
     /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
     singleUse: boolean
+    /** 2026-09-20 零件体系：隐式蓝图（基础零件无需学习） */
+    learnless: boolean
   }> = []
   /** 该船型的**总持有**（2026-09-14 舰船仓库批：组装机产出先进仓库 ⇒ 读口径改走 core 单点
-   *  `shipOwnedCount` = 舰船仓库 ＋ 在役舰队；原先只数机库，会让"仓里堆着 3 艘"显示成 0） */
-  const shipStockOf = (shipId: string): number => shipOwnedCount(state, shipId)
-  const pushShip = (): void => {
-    for (const sbp of engine.shipBlueprints) {
-      const shipDef = engine.ctx.ships.get(sbp.shipId)
-      const prodName = shipDef?.name ?? sbp.shipId
-      /** 产物名后的参数（货舱/循环）：**不上色**（2026-09-13 船长：「只需要将『护盾扩展器 MK1』这部分换色」） */
-      const prodParams = shipDef
-        ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
-        : ''
-      const prodLabel = prodName + prodParams
-      // 产物名**一律金色**（2026-09-13 船长：「只需要将产物染成金色就够了，不用根据类型分成不同颜色」——
-      // 先前的按类型分色作废）；其余文字的金色在本卡内取消（见 `.app-belt-card.is-assembler` 那条 CSS）
-      const prodText = <span className="app-gold">{prodName}</span>
-      items.push({
-        id: sbp.id,
-        kindLabel: '舰船',
-        // 舰船蓝图按**舰船级别**分档（2026-09-11 船长；键与 itemSubs.SHIP_TIER_SUBS 同源）
-        subKey: shipDef ? `t${shipDef.tier}` : '',
-        productGlyph: shipDef?.role ?? 'blueprint',
-        name: sbp.name,
-        description: sbp.description,
-        materials: sbp.materials,
-        buildSeconds: sbp.buildSeconds,
-        productLabel: prodLabel,
-        // note = 船介绍（与市场舰船商品行同口径：悬浮显示舰船介绍而非默认战斗数值说明）
-        productNode: shipDef ? (
-          <ShipHover ship={shipDef} note={shipDef.description}>
-            {prodText}
-            {prodParams}
-          </ShipHover>
-        ) : (
-          <>
-            {prodText}
-            {prodParams}
-          </>
-        ),
-        running: runViews.some((v) => v.blueprintId === sbp.id),
-        canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
-        productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
-        // 舰船产物：机库同型艘数（与市场页「持有」同口径；core 自然库存对舰船恒 0）
-        ownedCount: shipStockOf(sbp.shipId),
-        ownedWhere: '仓库＋机库',
-        bookPrice: bookPriceOf(engine, sbp.id, 0),
-        productKey: `ship:${sbp.shipId}`,
-        singleUse: sbp.singleUse === true,
-      })
-    }
-  }
+   *  `shipOwnedCount` = 舰船仓库 ＋ 在役舰队；原先只数机库，会让"仓里堆着 3 艘"显示成 0）
+   *  ⚠ 2026-09-20 零件体系：舰船蓝图已迁入**造船厂**子页（`panels/Shipyard.tsx`），本面板不再渲染舰船。 */
   const pushEquip = (): void => {
     for (const bp of engine.blueprints) {
       if (bp.itemId !== undefined) continue // 弹药等物品蓝图单独分类
@@ -1151,15 +1120,18 @@ export function ManufacturingPanel({
         bookPrice: bookPriceOf(engine, bp.id, 0),
         productKey: `module:${bp.moduleId}`,
         singleUse: bp.singleUse === true,
+        learnless: false,
       })
     }
   }
   /** 消耗品蓝图（2026-09-05：基础弹自制；产物为物品按 outputUnits 入仓）
-   *  2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——本档实际含弹药 + 修理组件，按**产物大类**再筛 */
+   *  2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——本档实际含弹药 + 修理组件，按**产物大类**再筛
+   *  ⚠ 2026-09-20 零件体系：产物为**零件**的蓝图（含隐式蓝图）不在本档，归入「零件」门类。 */
   const pushSupply = (): void => {
     for (const bp of engine.blueprints) {
       if (bp.itemId === undefined) continue
       const itemDef = engine.ctx.items.get(bp.itemId)
+      if (itemDef?.kind === 'part') continue // 零件走 pushPart
       const units = bp.outputUnits ?? 1
       const prodName = itemDef?.name ?? bp.itemId
       const prodLabel = `${prodName} ×${units} 发`
@@ -1195,18 +1167,61 @@ export function ManufacturingPanel({
         bookPrice: bookPriceOf(engine, bp.id, 0),
         productKey: `item:${bp.itemId}`,
         singleUse: bp.singleUse === true,
+        learnless: false,
       })
     }
   }
-  pushShip()
+  /** 零件蓝图（2026-09-20 船长「组装机内新增零件分页」）：产物 kind = `part` 的全部蓝图——
+   *  基础 7 张 = 隐式蓝图（无需学习直接造）；高级 7 张 = 正常蓝图（学书后造）。无二级子筛选。 */
+  const pushPart = (): void => {
+    for (const bp of engine.blueprints) {
+      if (bp.itemId === undefined) continue
+      const itemDef = engine.ctx.items.get(bp.itemId)
+      if (itemDef?.kind !== 'part') continue
+      const prodName = itemDef?.name ?? bp.itemId
+      // 产物名金色（按类型分色作废，2026-09-13 船长）
+      const prodText = <span className="app-gold">{prodName}</span>
+      items.push({
+        id: bp.id,
+        kindLabel: '零件',
+        subKey: '',
+        productGlyph: 'part',
+        name: bp.name,
+        description: bp.description,
+        materials: bp.materials,
+        buildSeconds: bp.buildSeconds,
+        productLabel: prodName,
+        productNode: itemDef ? (
+          <ItemHover item={itemDef} nameOf={(id) => engine.ctx.items.get(id)?.name}>
+            {prodText}
+          </ItemHover>
+        ) : (
+          prodText
+        ),
+        running: runViews.some((v) => v.blueprintId === bp.id),
+        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
+        productBase: itemDef ? productBaseOf(engine, 'item', bp.itemId, bp.outputUnits ?? 1) : 0,
+        ownedCount: itemDef ? countWare(state, bp.itemId) : 0,
+        ownedWhere: '仓库',
+        bookPrice: bookPriceOf(engine, bp.id, 0),
+        productKey: `item:${bp.itemId}`,
+        singleUse: bp.singleUse === true,
+        learnless: bp.learnless === true,
+      })
+    }
+  }
   pushEquip()
+  pushPart()
   pushSupply()
 
-  /** 可开工判定（与卡片按钮同口径）：已学会（或一次性图纸有货且名额未用尽）+ 材料足
+  /** 可开工判定（与卡片按钮同口径）：已学会（或一次性图纸有货且名额未用尽；隐式蓝图无需学习）+ 材料足
    *  （制造费已取消；劳动者判定由卡片按钮各自表达） */
   function canStartNow(blueprintId: string, materials: readonly MaterialNeed[], buildSeconds: number): boolean {
     const su = engine.ctx.blueprints.get(blueprintId)?.singleUse === true
       || engine.ctx.shipBlueprints.get(blueprintId)?.singleUse === true
+    if (engine.ctx.blueprints.get(blueprintId)?.learnless === true) {
+      return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
+    }
     if (!ownsBlueprint(state, blueprintId) && recipeCapability(state, blueprintId, su).kind !== 'ok') return false
     return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
   }
@@ -1222,16 +1237,22 @@ export function ManufacturingPanel({
       if (it.kindLabel.toLowerCase().includes(kq)) return true
       return it.materials.some((m) => (engine.ctx.items.get(m.itemId)?.name ?? m.itemId).toLowerCase().includes(kq))
     })
-    // 「学会」维度（并列属性行，与门类无关 ⇒ 独立取「与」）
+    // 「学会」维度（并列属性行，与门类无关 ⇒ 独立取「与」；隐式蓝图视为已学会，2026-09-20 零件体系）
     .filter(
       (it) =>
         learn === SUB_ALL ||
-        (learn === 'learned' ? ownsBlueprint(state, it.id) : !ownsBlueprint(state, it.id)),
+        (learn === 'learned'
+          ? it.learnless || ownsBlueprint(state, it.id)
+          : !it.learnless && !ownsBlueprint(state, it.id)),
     )
     .filter(
       (it) =>
         tab === 'all' ||
-        (tab === 'ship' ? it.kindLabel === '舰船' : tab === 'equip' ? it.kindLabel === '装备' : it.kindLabel === '消耗品'),
+        (tab === 'equip'
+          ? it.kindLabel === '装备'
+          : tab === 'part'
+            ? it.kindLabel === '零件'
+            : it.kindLabel === '消耗品'),
     )
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
@@ -1243,7 +1264,8 @@ export function ManufacturingPanel({
   // （标签本身是筛选、不是排序键，故各处标签都按同一口径置顶）；组内保持类型→价格顺序。
   const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
   const equipN = items.filter((i) => i.kindLabel === '装备').length
-  const shipN = items.filter((i) => i.kindLabel === '舰船').length
+  const partN = items.filter((i) => i.kindLabel === '零件').length
+  const supplyN = items.filter((i) => i.kindLabel === '消耗品').length
   const learnedN = items.filter((i) => ownsBlueprint(state, i.id)).length
 
   return (
@@ -1252,7 +1274,7 @@ export function ManufacturingPanel({
       title="组装机"
       hint={
         // 常驻说明收进标题后的圆形感叹号（2026-09-13 船长口径）；2026-09-14 船长点名："组装机的说明并没有隐藏"
-        <HintIcon tip="已学会的配方才能开工；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。" />
+        <HintIcon tip="已学会的配方才能开工（基础零件无需图纸）；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。" />
       }
       right={
         <>
@@ -1268,7 +1290,7 @@ export function ManufacturingPanel({
             />
           </span>
           <span className="app-dim">
-            制造线 {runViews.length} 条 · 装备 {equipN} · 舰船 {shipN} · 已学会 {learnedN}
+            制造线 {runViews.length} 条 · 装备 {equipN} · 零件 {partN} · 消耗品 {supplyN} · 已学会 {learnedN}
             {/* 任一一维筛选/搜索生效时补读数，避免玩家对着收窄后的网格数不清 */}
             {kq.length > 0
               ? ` · 匹配 ${sorted.length} 张`
@@ -1305,7 +1327,7 @@ export function ManufacturingPanel({
         </div>
         <span className="app-dim">门类：</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          {MANU_TABS.map((t) => (
+          {MANU_TABS_CRAFT.map((t) => (
             <button
               key={t.key}
               role="tab"
@@ -1402,6 +1424,7 @@ export function ManufacturingPanel({
               onGotoMarket={onGotoMarket}
               onGotoWormhole={onGotoWormhole}
               highlighted={focusBlueprintId === it.id}
+              learnless={it.learnless}
             />
           ))}
         </div>
