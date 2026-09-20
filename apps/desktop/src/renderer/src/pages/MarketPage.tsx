@@ -79,7 +79,7 @@ function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): strin
   if (good.kind === 'module') {
     const mod = ctx.modules.get(good.refId)
     const rack = mod ? rackOf(mod) : undefined
-    return rack !== undefined ? (KIND_TEXT[`module-${rack}`] ?? '装备') : tr("ui.MarketPage.003")
+    return rack !== undefined ? (KIND_TEXT[`module-${rack}`] ?? tr('ui.MarketPage.178')) : tr("ui.MarketPage.003")
   }
   return KIND_TEXT[good.kind] ?? good.kind
 }
@@ -147,7 +147,7 @@ function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
       good.refId === 'basic' ? tr("ui.MarketPage.012") : good.refId === 'gamma' ? tr("ui.MarketPage.013") : good.refId === 'beta' ? tr("ui.MarketPage.014") : tr("ui.MarketPage.015")
     desc = tr("ui.MarketPage.136", { tier: tier, eff: eff })
   }
-  return `${head}\n${desc || '（暂无说明）'}`
+  return `${head}\n${desc || tr('ui.MarketPage.171')}`
 }
 
 /** 蓝图悬浮参数行（产物/产物属性/材料/制造）；装备/弹药/舰船蓝图共用同一形状。
@@ -409,7 +409,7 @@ function GoodRow({
 /** 挂单回执文案（2026-09-10 船长定：挂单瞬间先与现有簿面对冲 → 回执写明即时成交部分）
  *  `unit`：量词（舰船「艘」/ 其余「件」；2026-09-14 舰船挂卖单放行后加） */
 function placeOrderToast(
-  side: '买' | '卖',
+  side: '买' | '卖', // l10n-keep：side 是字面量联合 key（显示时按 id 取译名）
   name: string,
   want: number,
   price: number,
@@ -575,7 +575,7 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
           viewBox={`0 0 ${w} ${h}`}
           preserveAspectRatio="none"
           role="img"
-          aria-label="价格趋势"
+          aria-label={tr('ui.MarketPage.172')}
           onMouseLeave={() => setHover(null)}
         >
           <polyline points={pts} fill="none" stroke="var(--wui-gold)" strokeWidth="2" opacity="0.9" />
@@ -757,7 +757,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     }
     const n = Math.max(1, Math.floor(qty || 1))
     const r = engine.buyGoodAt(good.key, n)
-    if (!r.ok) onToast(cmdText(r) || '买入失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.173'), true)
     else onToast(tr("ui.MarketPage.148", { name: name, p2: n.toLocaleString('zh-CN') }))
   }
   function doSell(q?: number): void {
@@ -767,7 +767,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       return
     }
     const r = engine.sellHoldingAt(good.key, n)
-    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.174'), true)
     else if (good.kind === 'ship') {
       // 舰船：即时成交的部分吃收购簿，其余**留簿挂着**（可撤销退回舰船仓库）——回执把两段都说清
       const filled = r.sold ?? 0
@@ -787,7 +787,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     }
     const pv = engine.sellPreviewAt(good.key, holdings)
     if (!pv.ok) {
-      onToast(pv.error ?? '无法卖出', true)
+      onToast(pv.error ?? tr('ui.MarketPage.175'), true)
       return
     }
     setConfirmSell(pv)
@@ -795,7 +795,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   function doSellAll(): void {
     setConfirmSell(null)
     const r = engine.sellHoldingAt(good.key, holdings)
-    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.174'), true)
     else if (good.kind === 'ship') {
       const filled = r.sold ?? 0
       const rest = r.remaining ?? 0
@@ -832,7 +832,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       }
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
-      if (!r.ok) onToast(cmdText(r) || '挂卖单失败。', true)
+      if (!r.ok) onToast(cmdText(r) || tr('ui.MarketPage.176'), true)
       else onToast(`${placeOrderToast('卖' /* l10n-keep：同上 */, name, n, p, r.filled ?? 0, r.resting ?? n, unit)}。`)
     }
   }
@@ -1414,7 +1414,7 @@ export function MarketPage({
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
                   right={<span className="app-dim">{tr("ui.MarketPage.109")}</span>}
                   rows={rareOrderRows(engine, exoticCol)}
-                  empty="当前没有限定奇货到货——每 10 分钟一轮，稍后再看。"
+                  empty={tr('ui.MarketPage.177')}
                   selKey={activeSelKey}
                   onSelect={setSelKey}
                 />
