@@ -730,8 +730,8 @@ const meSpeedRef = useRef(200)
                 <div className="app-bts-report-stats is-loss">
                   {tr("ui.BattleScreen.021")} {droneReport.total} {tr("ui.BattleScreen.022")}{' '}
                   {droneReport.recovered} {tr("ui.BattleScreen.023")}{' '}
-                  {Math.round(droneReport.rate * 100)}% · 优先回收高价值）·
-                  净损失 {droneReport.gone} 架
+                  {tr("ui.BattleScreen.103", { p1: Math.round(droneReport.rate * 100) })}
+                  {tr("ui.BattleScreen.104", { p1: droneReport.gone })}
                 </div>
                 <div className="app-bts-report-stats is-loss">
                   {tr("ui.BattleScreen.024")}
@@ -1510,7 +1510,7 @@ const meSpeedRef = useRef(200)
   const sliderToDesire = (v: number): number => Math.round(farM - (v / 1000) * (farM - nearM))
   const commitDesire = (v: number): void => {
     const r = engine.battleSetDesireAt(sliderToDesire(v))
-    if (!r.ok) onToast(cmdText(r) || '设置失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
   }
   /**
    * 拖动中：**节流提交**（把期望距离写进引擎，远征按星系记忆 / 洞内记在本趟），
@@ -1990,7 +1990,7 @@ const meSpeedRef = useRef(200)
                   }
                   setRetreatAsk(false)
                   const r = engine.retreatNow()
-                  if (!r.ok) onToast(cmdText(r) || '撤退失败', true)
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.BattleScreen.101'), true)
                 }}
               >
                 {retreatAsk ? tr("ui.ActivityBar.024") : tr("ui.BattleScreen.041")}
@@ -2461,7 +2461,7 @@ const meSpeedRef = useRef(200)
                   w.type ? (
                     <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}{tr("ui.BattleScreen.003")}</span>
                   ) : (
-                    '（无弹）'
+                    tr('ui.BattleScreen.102')
                   )
                 ) : null}
               </span>

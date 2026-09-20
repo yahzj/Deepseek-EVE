@@ -841,7 +841,7 @@ export function App({ engine }: { engine: GameEngine }) {
 
     // 「第一次」前置（工业/市场）：导航项此时不显示，这里拦的是程序化跳转
     if (!unlocked(state, p)) {
-      showToast(tr("ui.App.110", { p1: unlockNeedTitle(p) ?? '前置任务' }), true)
+      showToast(tr("ui.App.110", { p1: unlockNeedTitle(p) ?? tr('ui.App.116') }), true)
       return
     }
     /**
@@ -860,7 +860,7 @@ export function App({ engine }: { engine: GameEngine }) {
     // 「第一次」前置（星图四项：先完成第一次扫描）——页签此时不显示，这里拦的是程序化跳转
     if (tabLocked(t)) {
       const k = TAB_UNLOCK_KEY[t]
-      showToast(tr("ui.App.110", { p1: (k ? unlockNeedTitle(k) : undefined) ?? '前置任务' }), true)
+      showToast(tr("ui.App.110", { p1: (k ? unlockNeedTitle(k) : undefined) ?? tr('ui.App.116') }), true)
       return
     }
     setMapTab(t)
@@ -1210,7 +1210,7 @@ export function App({ engine }: { engine: GameEngine }) {
                   title={tr("ui.App.079")}
                   onClick={() => {
                     const r = engine.fightEncounterNow()
-                    if (!r.ok) showToast(cmdText(r) || '无法应战', true)
+                    if (!r.ok) showToast(cmdText(r) || tr('ui.App.117'), true)
                   }}
                 >
                   <span className="app-ico"><Glyph name="nav-bounty" size={14} color={NAV_TONES["nav-bounty"]} /></span>{tr("ui.App.080")}
@@ -1220,7 +1220,7 @@ export function App({ engine }: { engine: GameEngine }) {
                   title={tr("ui.App.081")}
                   onClick={() => {
                     const r = engine.fleeEncounterNow()
-                    if (!r.ok) showToast(cmdText(r) || '无法脱离', true)
+                    if (!r.ok) showToast(cmdText(r) || tr('ui.App.118'), true)
                   }}
                 >
                   <span className="app-ico"><Glyph name="ico-swap" size={14} color={ICO_TONES["ico-swap"]} /></span>{tr("ui.App.082")}

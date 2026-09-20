@@ -982,7 +982,7 @@ export class GameEngine {
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const read = await saveBridge.readBackup(name)
-      if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? '读取备份失败。' }
+      if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? tr('ui.engine.049') }
       let parsed: ReturnType<typeof loadSaveFile>
       try {
         parsed = loadSaveFile(read.text)
@@ -990,7 +990,7 @@ export class GameEngine {
         return { ok: false, error: tr("ui.engine.026", { p1: err instanceof Error ? err.message : String(err) }) }
       }
       const restore = await saveBridge.restore(name)
-      if (!restore.ok) return { ok: false, error: restore.error ?? '写回存档失败。' }
+      if (!restore.ok) return { ok: false, error: restore.error ?? tr('ui.engine.050') }
       // 2026-09-09（船长定）：恢复备份与导入/启动同口径——按"档内保存墙钟 → 现在"补算离线进度
       // （≥60 秒且简报非空则弹出离线简报卡；墙钟在未来则跳过）。日志仍会话级不落盘。
       const now = Date.now()
@@ -1043,7 +1043,7 @@ export class GameEngine {
   async exportBackupToFile(name: string): Promise<{ ok: boolean; path?: string; shared?: boolean; canceled?: boolean; error?: string }> {
     try {
       const read = await saveBridge.readBackup(name)
-      if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? '读取备份失败。' }
+      if (!read.ok || read.text === undefined) return { ok: false, error: read.error ?? tr('ui.engine.049') }
       return await saveBridge.exportSaveToFile(read.text)
     } catch (err) {
       return { ok: false, error: String(err) }
@@ -1412,7 +1412,7 @@ export class GameEngine {
     // 2026-09-14：舰船也走这条（可卖 = 舰船仓库艘数）⇒ 回执带上 sold/total/remaining，
     // 界面才能把"即时成交几艘、留簿几艘"说清楚（物品侧忽略这三个字段）
     if (res.ok) return { ok: true, sold: res.sold, total: res.total, remaining: res.remaining }
-    return { ok: false, error: res.error ?? '出售失败。' }
+    return { ok: false, error: res.error ?? tr('core.market.007') }
   }
 
   /** 市价卖出预览（只读）：全部卖出确认框用——可成交件数/毛额/税/税后到账/剩余 */
@@ -1451,7 +1451,7 @@ export class GameEngine {
       void this.persist()
       this.notify()
     }
-    return res.ok ? { ok: true } : { ok: false, error: res.reason ?? '出售失败。' }
+    return res.ok ? { ok: true } : { ok: false, error: res.reason ?? tr('core.market.007') }
   }
 
   /** 开始制造（2026-09-08 劳动者制与精炼炉同款：worker='pilot' 主控亲自（全局限 1 条、占主控）/ AI 核心类型 = 一枚核心驱动一条线；
