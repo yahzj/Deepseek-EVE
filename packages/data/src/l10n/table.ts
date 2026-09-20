@@ -593,6 +593,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeSalvage.035": { zh: "🕳 随行战利品入库：{p1}。", en: "🕳 Loot along the way stored: {p1}." },
   "core.wormholeSalvage.036": { zh: "🕳 战果里有 {p1} 堆装不下：先散落在该地点，可以照打捞规则回收。", en: "🕳 {p1} piles of spoils did not fit: they are left loose at this spot and can be recovered by the usual salvage rules." },
   "core.wormholeSalvage.037": { zh: "🕳 战果入库：{p1} 堆残骸（含稀有）。", en: "🕳 Spoils stored: {p1} piles of wrecks (rare ones included)." },
+  "core.wormholeSalvage.038": { zh: "没有这个件。", en: "There is no such piece." },
   /* ── 第二十二批（压轴）：industry.ts（精炼 / 回收 / 拆解 / 丢弃 / 出售 / 买船 / 逆向）── */
   "core.industry.002": { zh: "未知物品：{p1}。", en: "Unknown item: {p1}." },
   "core.industry.003": { zh: "「{p1}」没有精炼配方（只支持原矿/气体/冰矿）。", en: "“{p1}” has no refining recipe (only ore, gas and ice are supported)." },

@@ -380,7 +380,7 @@ export function applyFitPreset(state: GameState, ctx: SimContext, shipId: string
   const lock = shipLockedReason(state, shipId, '换装')
   if (lock) return { ok: false, error: lock, summary: '' }
   const shipDef = fleetDefOf(state, ctx, shipId)
-  if (!shipDef) return { ok: false, error: '舰队里找不到该舰船，无法套用装配方案。', summary: '' }
+  if (!shipDef) return { ok: false, error: '舰队里找不到该舰船，无法套用装配方案。', errorId: 'core.fitPresets.003', summary: '' }
   const preset = fitPresetsOf(state, shipDef.id)[index]
   if (!preset) {
     return { ok: false, error: '找不到这套装配方案（可能已被删除）。', errorId: 'core.fitPresets.006', summary: '' }

@@ -1190,12 +1190,12 @@ export function wormholeHoldDiscard(
   const run = state.wormhole.run
   if (!run?.hold) return { ok: false, error: '货仓里没有可抛弃的件。', errorId: 'core.wormholeSalvage.009' }
   const target = run.hold.placements.find((p) => p.id === placementId)
-  if (!target) return { ok: false, error: '没有这个件。' }
+  if (!target) return { ok: false, error: '没有这个件。', errorId: 'core.wormholeSalvage.038' }
   const name = ctx.items.get(target.itemId)?.name ?? target.itemId
   // 形状件：只认整件
   if (target.kind === 'box' || units === undefined) {
     const gone = holdRemove(run.hold, placementId)
-    if (!gone) return { ok: false, error: '没有这个件。' }
+    if (!gone) return { ok: false, error: '没有这个件。', errorId: 'core.wormholeSalvage.038' }
     // 谜质装置被抛掉 ⇒ 回合同步（**夹紧**：上限变小、剩余夹到新上限），并把代价写进事件日志
     wormholeSyncMatterTurns(state, ctx)
     const hint = wormholeMatterDiscardHint(gone.itemId)

@@ -1245,7 +1245,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   }
   const atExit = isExitCell(grid, cell)
   if (!atExit && (cell.place === 'empty' || cell.place === 'beacon')) {
-    return { ok: false, error: '这里什么都没有：没有可执行的作业。' }
+    return { ok: false, error: '这里什么都没有：没有可执行的作业。', errorId: 'core.wormhole.021' }
   }
   /**
    * **资源点与墓场/遗迹不用激活**（船长 2026-09-13：「资源点和墓场遗迹改为不用激活」）：
