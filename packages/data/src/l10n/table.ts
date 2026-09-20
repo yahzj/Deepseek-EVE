@@ -174,7 +174,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.simulation.002": { zh: "离线结算完成：推进 {p1}{p2}{p3}，期间发生 {p4} 条事件。", en: "Offline settlement done: advanced {p1}{p2}{p3}, with {p4} events along the way." },
   "core.wormholeAuto.001": { zh: "这一趟自动探索已经结束了。", en: "That automated exploration run is already over." },
   "core.wormholeAuto.003": { zh: "这份报告不在了。", en: "That report is gone." },
-  "core.events.001": { zh: "✦ {p1}", en: "✦ {p1}" },
+  "core.events.001": { zh: "✦ {p1}{p2}", en: "✦ {p1}{p2}" },
   "core.events.002": { zh: "（+{p1} 信用点）", en: " (+{p1} credits)" },
   "core.events.003": { zh: "深空漂流货柜被你的牵引光捕获，里面有一箱完好的电路板。", en: "A drifting deep-space container caught in your tractor beam: one crate of intact circuit boards inside." },
   "core.events.004": { zh: "一段协会广播：祝所有矿工满载而归，本周咖啡补给半价。", en: "An Association broadcast: best of luck to every miner out there — coffee rations are half price this week." },
