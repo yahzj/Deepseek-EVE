@@ -269,8 +269,15 @@ async function main(): Promise<void> {
             await waitFor(cdp, `!!document.querySelector('main')`, `${page.key} 渲染`)
             await sleep(260) // 等布局稳定（图表/网格/异步块）
             const r = await cdp.evalJS<PageReading>(READ_PAGE)
-            results.push({ 档: save.name, 窗口: vp.label, 语言: locale, 页: page.key, ...r })
-            const flag = r.页面纵向滚动 ? '❌ 破红线' : r.内容区滚动 ? '⚠ 内容区在滚' : '✅ 不滚'
+            results.push({ 档: save.name, 窗口: vp.label, 语言: locale, 页: page.key, 手机档: vp.mobile, ...r })
+            /**
+             * 判据（**船长 2026-09-20 裁定**）：**手机档允许出现滚动条**（窄窗/桌面仍不许）。
+             * 手机横屏（844×390）窗口高只有 390px，skills/industry/map/ship 等页装不下——
+             * 船长原话：「手机允许出现滚动条」⇒ 这一档的溢出不算破红线，但仍照实打出来供参考。
+             * ⚠ 按 `vp.mobile` 判、**不按宽度判**：正文 1024 窄窗（桌面口径）与手机横屏 844 是两回事。
+             */
+            const bad = vp.mobile ? false : r.页面纵向滚动
+            const flag = bad ? '❌ 破红线' : vp.mobile && (r.内容区滚动 || r.页面纵向滚动) ? '📱 手机可滚' : r.内容区滚动 ? '⚠ 内容区在滚' : '✅ 不滚'
             console.log(
               `${flag}  ${save.name.padEnd(9)} ${vp.label.padEnd(14)} ${locale}  ${page.key.padEnd(9)}` +
                 `纵溢 ${String(r.纵向溢出).padStart(5)}px  横溢 ${String(r.横向溢出).padStart(4)}px` +
@@ -285,8 +292,12 @@ async function main(): Promise<void> {
   }
   const out = join(OUT_DIR, 'overflow.json')
   writeFileSync(out, JSON.stringify({ generatedAt: new Date().toISOString(), results }, null, 2), 'utf8')
-  const bad = results.filter((r) => r.页面纵向滚动 === true)
-  console.log(`\n共 ${results.length} 组读数 · 破红线（一级页出现滚动条）**${bad.length}** 组`)
+  /** 破红线 = **非手机档**出现页面滚动条（手机档允许滚，见船长 2026-09-20 裁定） */
+  const bad = results.filter((r) => r.手机档 !== true && r.页面纵向滚动 === true)
+  const phoneScrolls = results.filter((r) => r.手机档 === true && (r.内容区滚动 === true || r.页面纵向滚动 === true))
+  console.log(`\n共 ${results.length} 组读数`)
+  console.log(`· **破红线**（桌面/窄窗出现一级页滚动条）：**${bad.length}** 组`)
+  console.log(`· 手机档出现滚动（**船长已允许**，仅作参考）：${phoneScrolls.length} 组`)
   console.log(`明细：${out}`)
 }
 
