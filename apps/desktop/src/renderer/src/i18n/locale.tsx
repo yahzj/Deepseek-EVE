@@ -237,6 +237,16 @@ export function L10nProvider({ children }: { children: ReactNode }): ReactNode {
     saveLocale(next)
     setLocaleState(next)
   }, [])
+  /**
+   * **开发/探针钩子**：把语言切换暴露到 `window.__setLocale`（2026-09-20）。
+   *
+   * 为什么需要：桌面端切语言由设置面板调用；而**无头浏览器探针**（`tools/ui-overflow.ts` 之类）
+   * 需要在"同一档存档、同一页面"上量 zh 与 en 两遍，没有面板可点 ⇒ 给一个显式入口。
+   * 只在渲染进程内存里挂一个函数，不改任何玩家可见行为；不挂 `window.whale`（那是主进程桥）。
+   */
+  useEffect(() => {
+    ;(window as unknown as { __setLocale?: (l: Locale) => void }).__setLocale = setLocale
+  }, [setLocale])
   const t = useCallback(
     (id: string, params?: Record<string, string | number>) => interpolate(textOf(id, locale), params),
     [locale],

@@ -47,6 +47,7 @@
     "liquidity:audit": "tsx tools/liquidity-audit.ts",
     "manufacture:econ": "tsx tools/manufacture-econ.ts",
     "ui:probe": "tsx tools/ui-probe.ts",
+    "ui:overflow": "tsx tools/ui-overflow.ts",
     "ui:geom": "tsx tools/ui-geom.ts",
     "ui:rot-check": "tsx tools/ui-rot-check.ts",
     "ui:tip-check": "tsx tools/tip-audit.ts",
