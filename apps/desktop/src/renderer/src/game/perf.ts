@@ -50,6 +50,8 @@ class PerfHub {
 
   private startWall = 0
   private sceneWall = 0
+  // l10n-keep：下列段名（''(开场)''/''(间隔)''/''(续)''）只进**性能报告 console**，不进玩家界面
+  // l10n-keep-start：性能报告段名（console 输出），不进玩家界面
   private segName = ''
   private seg: PerfSegment | null = null
   private totals = this.freshSeg(tr("ui.perf.001"), 0)
@@ -261,3 +263,4 @@ export function perfAutoEnabled(): boolean {
     return false
   }
 }
+// l10n-keep-end

@@ -95,6 +95,7 @@ export type ShipTab = 'fleet' | 'ai' | 'store'
  *  远征不在其列（引擎软下线，一律拒绝受理）。 */
 type AiAssignMode = 'mining' | 'salvage' | 'standby' | 'refine' | 'craft'
 /** 站内制造线可选的已学会蓝图（含材料单，供缺料判定与提示） */
+// l10n-keep-start：本段的中文全是**联合类型 key / 分组 key**（显示时走 CRAFT_GROUPS 的 id 取词），不是文案
 interface CraftOption {
   id: string
   name: string
@@ -1450,3 +1451,4 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 function standingOfState(state: { standings: Record<string, number> }): number {
   return state.standings['dsi'] ?? 0
 }
+// l10n-keep-end

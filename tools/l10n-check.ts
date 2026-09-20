@@ -40,6 +40,13 @@ import { L10N } from '../packages/data/src/l10n/table'
  */
 const ROOT = join(process.cwd(), 'apps', 'desktop', 'src')
 const CJK = /[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
+/**
+ * **纯标点/空白**不算"未译"（2026-09-20 三号收尾）：
+ * 全角空格 `　`、直角引号 `」`、句号 `。` 这类**语言中立**——中英都这么排版，
+ * 没有"翻不翻"的问题。判据：去掉 CJK 标点与空白后**一个汉字/假名都不剩** ⇒ 跳过。
+ * （否则这类会一直挂在"未译读数"里，把真实进度搅浑。）
+ */
+const isPunctuationOnly = (s: string): boolean => !/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(s)
 /** 额外放行的白名单（条目 id）；常规情形不必用——**语言自称**（`en === zh`，如「中文」）已自动放行 */
 const CJK_ALLOW = new Set<string>([])
 /** id 允许的域前缀（与 `tools/l10n-wrap.ts` 的 DOMAINS 同源；加域两处一起加） */
@@ -66,34 +73,96 @@ interface FileScan {
   cjkLiterals: number
   /** 其中**已包进 `t()` / `tr()` 第一参数**的个数（旧写法残留，正常应为 0 ⇒ 判据②） */
   cjkWrapped: number
+  /**
+   * 其中**已声明"不是文案"**的个数（2026-09-20 船长裁「乙」）：
+   * 源码里带 `l10n-keep` 标记的行上的中文串——类型联合 key / 形状槽键 / 键表 `label` /
+   * 开发探针 console 串 / i18n 实现自身的中文分支。
+   * 口径：**声明过就不算未译**（读数归零可核），但**仍逐条点名**，便于复核声明是否成立。
+   */
+  cjkKept: number
   /** `t(...)` / `tr(...)` 调用点个数 */
   calls: number
   /** 调用点第一参数是字符串字面量时的取值（文件:行 一并记下，便于点名） */
   refs: Array<{ id: string; at: string }>
   /** 文件里出现过的所有字符串字面量（动态传 id 的取值由此认领，见 `used` 的算法） */
   literals: Set<string>
+  /** 被 `l10n-keep` 声明掉的条目（`文件:行 文本`，报告里点名用） */
+  kept: string[]
+  /** **未声明**的中文串（`文件:行 文本`）——`--list-untranslated` 逐条打它，收尾核对靠这个 */
+  untranslated: string[]
 }
 
 function scanFile(file: string): FileScan {
   const text = readFileSync(file, 'utf8')
   const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const rel = relative(process.cwd(), file).split('\\').join('/')
+  const lines = text.split('\n')
+  /**
+   * 某一行（1-based）是否被声明"不是文案"：
+   * ① 行内或**其前 6 行内**有 `l10n-keep`（适合单条/就近声明）；
+   * ② 落在 `l10n-keep-start` … `l10n-keep-end` **区间**内（适合整张键表：
+   *    中文 label 分散几十行，逐条加标记太脆——区间表达更准确）。
+   */
+  const keepRanges: Array<[number, number]> = []
+  {
+    let start = -1
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i]!
+      if (l.includes('l10n-keep-start')) start = i + 1
+      if (l.includes('l10n-keep-end') && start > 0) {
+        keepRanges.push([start, i + 1])
+        start = -1
+      }
+    }
+  }
+  const isKeptLine = (lineNo: number): boolean => {
+    if (keepRanges.some(([a, b]) => lineNo >= a && lineNo <= b)) return true
+    // 同行（`… , // l10n-keep`）与**前 6 行**（注释块写在键表上方）都算声明
+    const from = Math.max(0, lineNo - 7)
+    const to = Math.min(lines.length - 1, lineNo)
+    for (let i = from; i <= to; i++) if (lines[i]!.includes('l10n-keep')) return true
+    return false
+  }
   let cjkLiterals = 0
   let cjkWrapped = 0
+  let cjkKept = 0
   let calls = 0
   const refs: Array<{ id: string; at: string }> = []
+  const kept: string[] = []
+  const untranslated: string[] = []
   /** 文件里出现过的所有字符串字面量（导航标签、`KIND_EMPTY` 一类**动态传 id**的取值靠它认领） */
   const literals = new Set<string>()
   const visit = (node: ts.Node): void => {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       literals.add(node.text)
-      if (CJK.test(node.text)) cjkLiterals += 1
+      // 纯全角标点/空白（`　` 当分隔符用）语言中立 ⇒ 不算文案
+      if (CJK.test(node.text) && !isPunctuationOnly(node.text)) {
+        cjkLiterals += 1
+        const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
+        // 声明过"不是文案"的（`l10n-keep`）⇒ 从"未译"里划走，但仍点名登记，便于复核声明是否成立
+        if (isKeptLine(line)) {
+          cjkKept += 1
+          kept.push(`${rel}:${line} 「${node.text.slice(0, 40)}」`)
+        } else {
+          untranslated.push(`${rel}:${line} 「${node.text.slice(0, 40)}」`)
+        }
+      }
     }
     // ⚠ JSX **文本节点**也要算进未译读数（2026-09-19 补：此前只数字符串字面量，读数偏低——
     //    界面里大量中文是 `<span>中文</span>` 这种文本节点，不是字符串字面量）
     if (ts.isJsxText(node)) {
       const t = node.getText().trim()
-      if (t !== '' && CJK.test(t)) cjkLiterals += 1
+      // 纯全角空白（`　`）在 JSX 里只是排版空白 ⇒ JSX 会把它折成空格，不算文案
+      if (t !== '' && /\S/.test(t) && CJK.test(t) && !isPunctuationOnly(t)) {
+        cjkLiterals += 1
+        const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
+        if (isKeptLine(line)) {
+          cjkKept += 1
+          kept.push(`${rel}:${line} 「${t.slice(0, 40)}」`)
+        } else {
+          untranslated.push(`${rel}:${line} 「${t.slice(0, 40)}」`)
+        }
+      }
     }
     if (
       ts.isCallExpression(node) &&
@@ -111,7 +180,7 @@ function scanFile(file: string): FileScan {
     ts.forEachChild(node, visit)
   }
   visit(sf)
-  return { rel, cjkLiterals, cjkWrapped, calls, refs, literals }
+  return { rel, cjkLiterals, cjkWrapped, cjkKept, calls, refs, literals, kept, untranslated }
 }
 
 /** 从文本里抽 `{名字}` 占位符集合 */
@@ -128,10 +197,14 @@ const cjkRefs: string[] = []
 let callTotal = 0
 let cjkTotal = 0
 let cjkWrappedTotal = 0
+let cjkKeptTotal = 0
+const keptAll: string[] = []
 for (const s of scans) {
   callTotal += s.calls
   cjkTotal += s.cjkLiterals
   cjkWrappedTotal += s.cjkWrapped
+  cjkKeptTotal += s.cjkKept
+  keptAll.push(...s.kept)
   for (const r of s.refs) {
     used.add(r.id)
     if (CJK.test(r.id)) cjkRefs.push(`${r.at} → 「${r.id}」`)
@@ -210,10 +283,28 @@ console.log(`· 表：**${entries.length}** 条（${[...byDomain].map(([d, n]) =
 console.log(`· 接线：渲染层 \`t()\`/\`tr()\` 调用点 **${callTotal}** 处 · 扫描 ${scans.length} 个源文件`)
 console.log(`· core 文案 id（甲案）：**${coreRefs.length}** 处引用（\`textId\` / \`errorId\`）——全部在表内、形态合规`)
 console.log(
-  `· 未译读数：渲染层含中日韩的字符串字面量 **${cjkTotal}** 条` +
-    `（其中**旧写法已包 t()** ${cjkWrappedTotal} 条 · **未包** ${cjkTotal - cjkWrappedTotal} 条）` +
+  `· 未译读数：渲染层含中日韩的字符串字面量 **${cjkTotal - cjkKeptTotal}** 条` +
+    `（其中**旧写法已包 t()** ${cjkWrappedTotal} 条 · **已声明不译 l10n-keep** ${cjkKeptTotal} 条）` +
     '（**报告口径，不阻断**——P3 界面批逐页消化）',
 )
+if (keptAll.length > 0) {
+  console.log(
+    `· 已声明不译的 ${keptAll.length} 条（l10n-keep：类型联合 key / 形状槽键 / 键表 label / 开发探针 / i18n 实现自身）——**声明过就不算未译**，仍逐条点名便于复核：`,
+  )
+  for (const k of keptAll.slice(0, 12)) console.log(`    ${k}`)
+  if (keptAll.length > 12) console.log(`    …（其余 ${keptAll.length - 12} 条见 npm run l10n:list）`)
+}
+/**
+ * `--list-untranslated`：逐条列出**未声明**的中文串（即真正"还没处理"的）。
+ * 为什么需要：上面的 Top 表是**总命中数**（含已声明项），看不出"还剩哪些没声明"——
+ * 收尾核对时得精确知道还剩几条、在哪一行。
+ */
+if (process.argv.includes('--list-untranslated')) {
+  console.log('· 未声明的中文串（逐条）：')
+  for (const s of scans) {
+    for (const item of s.untranslated) console.log(`    ${item}`)
+  }
+}
 if (unused.length > 0) console.log(`· 未接线条目 **${unused.length}** 条（表里有、源码还没用上）：${unused.slice(0, 16).join(' ')}${unused.length > 16 ? ' …' : ''}`)
 if (dupZh.length > 0) console.log(`· 同中文串多条目 **${dupZh.length}** 组（口径「一条文本一个 id」，多为复制粘贴，宜并条）：${dupZh.slice(0, 5).map(([zh, list]) => `「${zh}」=${list.join('/')}`).join(' · ')}${dupZh.length > 5 ? ' …' : ''}`)
 console.log('· 未译最多的文件（Top 10）：')

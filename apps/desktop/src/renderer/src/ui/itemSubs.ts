@@ -59,7 +59,7 @@ export const SUB_ALL = 'sub-all'
  *
  * ⚠ **`label` 一律不在界面直接显示**：渲染处必须走 `tr(id)` 取当前语言（`id` 见各表；
  * 三张 `*_TABS` 门类表已逐项带 `id`）。所以本文件里出现的 `label: '中文'` 是**数据/键**、
- * 不是漏译 —— `npm run l10n:list` 仍会把它们数列出来，属**已知残留**，收尾时按需补 `id`。
+ * 不是漏译 —— 这批 `label` 已由文件内的 `l10n-keep-start` / `l10n-keep-end` 区间统一声明。
  */
 export interface SubOption {
   key: string
@@ -451,6 +451,7 @@ export function shipTierPasses(def: { tier?: number } | undefined, tier: string)
 
 /** 组装机 / 蓝图书架「**门类**」维度（一级选择器 ⇒ 「全部」键用 `'all'`，基线②）：
  *  全部 / 装备蓝图 / 舰船蓝图 / 消耗品蓝图（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」）。 */
+// l10n-keep-start：以下三张门类/图纸/学会筛选表的 `label` 是**键表可读常量**（渲染处一律走 `tr(id)`），不是文案
 export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply'
 export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = [
   { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
@@ -490,3 +491,4 @@ export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string
   { key: 'learned', label: '已学会', id: 'ui.itemSubs.031' },
   { key: 'unlearned', label: '未学会', id: 'ui.itemSubs.032' },
 ]
+// l10n-keep-end

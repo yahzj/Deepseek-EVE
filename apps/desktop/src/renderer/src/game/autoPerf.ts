@@ -68,6 +68,7 @@ async function tryStartBattle(engine: GameEngine): Promise<boolean> {
     return true
   }
   // l10n-keep：AUTOPERF_* 是自动化脚本解析的协议标记（开发侧），不翻译
+  // l10n-keep-start：AUTOPERF_* 整段都是自动化脚本解析的协议标记（开发侧 console），不进玩家界面
   console.log('AUTOPERF_WARN 未能发起任何远征（目录可能为空或全部被前置拒绝）')
   return false
 }
@@ -140,3 +141,4 @@ export async function runAutoPerf(engine: GameEngine, spec: AutoPerfSpec): Promi
   await sleep(400)
   window.close()
 }
+// l10n-keep-end

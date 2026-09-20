@@ -856,6 +856,7 @@ function BlueprintCard({
               <span key={v.id} className="app-belt-worker">
                 <span
                   className="app-belt-worker-name"
+                  // l10n-keep：下面比较用的 kindLabel（'舰船'/'装备'/'消耗品'）是**内容层联合 key**，不是文案
                   title={tr("ui.Industry.114", { p1: formatDurationMs(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
                 >
                   {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })} tr('ui.Industry.137'){' '}
@@ -1237,6 +1238,7 @@ export function ManufacturingPanel({
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
   // （标签本身是筛选、不是排序键，故各处标签都按同一口径置顶）；组内保持类型→价格顺序。
   const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
+  // l10n-keep-start：以下 kindLabel 过滤用的都是**内容层联合 key**（不是文案）
   const equipN = items.filter((i) => i.kindLabel === '装备').length
   const shipN = items.filter((i) => i.kindLabel === '舰船').length
   const learnedN = items.filter((i) => ownsBlueprint(state, i.id)).length
