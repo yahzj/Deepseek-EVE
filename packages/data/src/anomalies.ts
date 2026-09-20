@@ -1232,7 +1232,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         dmgMix: { kinetic: 8, explosive: 2 },
         hitRate: 0.85, // 迁移前缺省命中，守恒
         falloff: 0.5, // 迁移前 `foeFalloff` 缺省 0.5（舰级本体 0.3）⇒ 逐条目覆写，守恒
-        rangeMinM: 350,
+        rangeMinM: 1, // ⚠ 2026-09-20 船长「A 族（除狙击舰）最小射程改为 1」⇒ 本卡近界不再守恒（原 350）；上限仍守恒 4600
         rangeMaxM: 4600,
         speedMul: 281 / (340 * 1.15), // 舰级 T1 实速 391 ⇒ 覆写回 281
       },
@@ -1266,7 +1266,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         split: { s: 0.34, a: 0.33, h: 0.33 }, // 迁移前均衡（舰级本体同值 ⇒ 显式写出以防漂移）
         hitRate: 0.85,
         falloff: 0.5, // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
-        rangeMinM: 383,
+        rangeMinM: 1, // ⚠ 2026-09-20 船长「A 族（除狙击舰）最小射程改为 1」⇒ 近界不再守恒（原 383）；上限仍守恒 5029
         rangeMaxM: 5029,
         speedMul: 291 / (340 * 1.1), // 舰级 T1 实速 374 ⇒ 覆写回 291
       },
@@ -1277,7 +1277,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
         split: { s: 0.34, a: 0.33, h: 0.33 },
         hitRate: 0.85,
         falloff: 0.5,
-        rangeMinM: 383,
+        rangeMinM: 1, // 同上（近界 383 → 1）
         rangeMaxM: 5029,
         speedMul: 291 / (340 * 1.1),
       },
