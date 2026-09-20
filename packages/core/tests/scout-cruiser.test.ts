@@ -7,7 +7,8 @@
  *
  * 本件钉四件事：
  * ① **舰体定案**：T3 / armed / 子分类「侦察舰」· ~~10 槽（4/3/3）~~ ⇒ **11 槽（4/4/3）**
- *    （**2026-09-14 船长：「鹦鹉螺+1槽位」**，对齐 T3 默认线 11；上面原话照抄不动）· 机舱 **80**（同级 50）·
+ *    （**2026-09-14 船长：「鹦鹉螺+1槽位」**，对齐 T3 默认线 11；上面原话照抄不动）·
+ *    机舱 ~~80~~ ⇒ **160**（**2026-09-20 船长：「鹦鹉螺的无人机舱扩大到 160」**，同级 50、母舰 320 未动）·
  *    货舱 **6,600 m³**（原案 ×3）· 循环 14 秒产 **39** 单位 · 行价 9,000,000（贴长尾鲨级）；
  * ② **主效果实测生效**：`wormholeScanRadiusBonus: 1` ⇒ 对编队**求和**；入洞（`wormholeStartRun`）
  *    与深入下层（`wormholeDescend`）都真的把 `grid.scanRadius` 抬 1 圈，两艘可叠加；
@@ -39,14 +40,15 @@ function bpOfShip(shipId: string) {
 }
 
 describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
-  it('舰体定案：T3 侦察舰 · 11 槽（4/4/3，2026-09-14 +1）· 机舱 80 · 货舱 6,600 · 产 39/14 秒', () => {
+  it('舰体定案：T3 侦察舰 · 11 槽（4/4/3，2026-09-14 +1）· 机舱 160 · 货舱 6,600 · 产 39/14 秒', () => {
     const s = shipOf(SCOUT)
     expect(s.name).toBe('鹦鹉螺级测绘巡洋舰')
     expect(s.tier).toBe(3)
     expect(s.role).toBe('armed')
     expect(s.subClass).toBe('侦察舰') // 协会功能舰写子分类（契约已放宽为"白名单 + 非虫洞登记表"）
     expect(s.slots).toEqual({ high: 3, mid: 4, low: 4 }) // 2026-09-18 船长「鹦鹉螺的槽位改成3/4/4」（总数仍 11；原 4/4/3）
-    expect(s.droneBayM3).toBe(80) // 「无人机舱稍大」（同级巡洋 50）
+    // 2026-09-20 船长：「鹦鹉螺的无人机舱扩大到 160」（原「无人机舱稍大」的 80 ⇒ 翻倍）
+    expect(s.droneBayM3).toBe(160)
     expect(s.cargoM3).toBe(6_600) // 「货仓可以乘*3」
     expect(s.cycleSeconds).toBe(14)
     expect(s.oreUnitsPerCycle).toBe(39) // 「采矿提高到39单位」
@@ -56,6 +58,34 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(s.droneDmgBonus).toBe(0.1)
     expect((s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)).toBe(610)
     expect(s.shieldResist?.kinetic).toBe(0.25) // 0.25 的动能抗不在"50 动能抗"移除范围内（保持）
+  })
+
+  /**
+   * **机舱 160 的真实后果**（2026-09-20）：载机量由**舱位**决定（`combat.ts`：`n = min(want, byCpu, byBay)`），
+   * 所以翻倍的是"能带几架"本身。本条按**四型体积档**（侦察 5 / 战斗 10 / 攻坚 20 / 哨戒 40 m³）钉住架数，
+   * 免得日后有人只改数字、却以为它不影响战斗力。
+   */
+  it('机舱 160 ⇒ 载机量四档翻倍：侦察 32 · 战斗 16 · 攻坚 8 · 哨戒 4（且都是"舱位限制"，CPU 不是瓶颈）', () => {
+    const bay = shipOf(SCOUT).droneBayM3 ?? 0
+    expect(bay).toBe(160)
+    const ctx2 = buildSimContext()
+    const byClass: Array<[string, number]> = [
+      ['drone-scout', 32],
+      ['drone-assault', 16],
+      ['drone-heavy', 8],
+      ['drone-sentry', 4],
+    ]
+    const cpuBudget = shipOf(SCOUT).cpu ?? 0
+    for (const [id, want] of byClass) {
+      const def = ctx2.items.get(id)
+      expect(def, `${id} 应存在`).toBeDefined()
+      expect(Math.floor(bay / (def!.unitM3 ?? 1)), `${id} 的舱位载机量`).toBe(want)
+      // CPU 侧要够养这么多架 ⇒ 证明"限制在舱位、不在 CPU"（翻倍是真实放量而非纸面数字）
+      expect(Math.floor(cpuBudget / (def!.cpuUse ?? 1)), `${id} 的 CPU 上限应 ≥ 舱位架数`).toBeGreaterThanOrEqual(want)
+    }
+    // 对照：改前的 80 只够四型各一半 —— 这条同时把"翻倍"这个事实钉死
+    expect(Math.floor(80 / 10)).toBe(8)
+    expect(Math.floor(160 / 10)).toBe(16)
   })
 
   it('主效果实测生效：编队求和；入洞与深入下层都把扫描半径抬 1 圈（两艘可叠加）', () => {
