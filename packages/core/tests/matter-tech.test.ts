@@ -20,7 +20,7 @@ import {
   matterTechWorkEffBonus,
   matterTechWreckYield,
 } from '../src/matterTech'
-import { WORMHOLE_ESSENCE_ITEM_ID, wormholeSyncMatterTurns } from '../src/wormholeSalvage'
+import { WORMHOLE_ESSENCE_ITEM_ID, wormholeSyncMatterTurns, wormholeWorkEfficiencyOf, wormholeWorkEfficiencyOfFleet } from '../src/wormholeSalvage'
 import { applyMatterPlayerBuffs, wormholeMatterBattleModsOf } from '../src/combat'
 import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
 import { addShipToFleet } from '../src/shipyard'
@@ -138,6 +138,55 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(run.turnsTotal).toBe(base + 20)
   })
 
+  /**
+   * **报障修复（船长 2026-09-19 转述玩家）**：「138 剩余回合数，拾取回合数增加的谜质后变成 38 回合」。
+   * 根因：建趟时 `turnsBase = 入场总预算 − 科技加成`（本字段不含科技），而同步的 `want` 只加了
+   * **科技的"增量"**（老档增量恒 0）⇒ 一触发同步就把**已折算的那一份科技整段丢掉**，剩余被夹到新上限。
+   */
+  it('报障修复：捡到「时序核心」不会把已折算的科技回合吃掉（且照常 +10）', () => {
+    const state = world()
+    const fleet = [1, 2, 3, 4].map(() => addShipToFleet(state, 'sh-thresher')) // 4×T3 ⇒ 基础回合 42
+    state.shipId = fleet[0]!
+    // 点满 3 级锚定器（+30 永久加成）再入洞 ⇒ 入场总预算 = 42 + 30
+    for (let i = 0; i < 3; i++) expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    const entered = wormholeEnter(state, ctx, fleet, 4242)
+    expect(entered.ok, entered.error ?? '').toBe(true)
+    const run = state.wormhole.run!
+    expect(run.turnsTotal).toBe(72) // 42 + 30
+    expect(run.turnsBase).toBe(42)
+    expect(run.turnsTechBonus).toBe(30)
+    // 模拟"拾取一台「时序核心」入货仓" ⇒ 触发同步
+    run.hold = { placements: [{ id: 'x', kind: 'box', itemId: 'mat-chrono', x: 0, y: 0, w: 2, h: 2 }], cols: 8 }
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal, '科技那 30 回合不该被同步吃掉').toBe(82) // 42 + 10 + 30
+    expect(run.turnsLeft).toBe(82)
+    // 幂等：再同步不变；丢掉装置 ⇒ 回到 72（只掉装置那 10）
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal).toBe(82)
+    run.hold = { placements: [], cols: 8 }
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal).toBe(72)
+  })
+
+  it('报障修复（老档）：没有 `turnsBase` 的在途趟带科技时，首次同步不吃回合', () => {
+    const state = world()
+    const a = addShipToFleet(state, 'sh-thresher')
+    state.shipId = a
+    for (let i = 0; i < 2; i++) expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    const entered = wormholeEnter(state, ctx, [a], 515)
+    expect(entered.ok, entered.error ?? '').toBe(true)
+    const run = state.wormhole.run!
+    const total = run.turnsTotal
+    delete run.turnsBase // 模拟老档（该字段是 09-13 之后才有的）
+    delete run.turnsTechBonus
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal, '老档反推不该把科技那一份减两次').toBe(total)
+    // 反推后 base 已落盘 ⇒ 此后捡装置照常 +10
+    run.hold = { placements: [{ id: 'y', kind: 'box', itemId: 'mat-chrono', x: 0, y: 0, w: 2, h: 2 }], cols: 8 }
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsTotal).toBe(total + 10)
+  })
+
   it('洞内倍速：未点 = 1×（未解锁）；1 级 = 2×、2 级 = 4×（乘法口径，不是 Σ）', () => {
     const state = world()
     expect(matterTechBattleSpeed(state, ctx)).toBe(1)
@@ -212,6 +261,35 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(matterTechWreckYield(state, ctx)).toBeCloseTo(0.15, 6)
     for (let i = 0; i < 3; i++) researchMatterTech(state, ctx, 'mt-explore-salvage')
     expect(matterTechWorkEffBonus(state, ctx, 'salvage')).toBeCloseTo(0.6, 6)
+  })
+
+  /**
+   * **效率读数（2026-09-19 补 · 界面四处修复之四）**：准备页要在**没入洞**时预览所选编队的效率，
+   * 而入洞后读的是 `run.fleet` ⇒ 两条路必须是**同一段算式**。这条用例钉住四件事：
+   * ① 按任意编队现算 = `Σ 各台档位效率`（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%）；
+   * ② 科技加成（引力吊臂 / 富集钻头各 +20%/级）并进**同一个数**；
+   * ③ 入洞后 `wormholeWorkEfficiencyOf` 与准备页逐位相同；④ 没入洞时本趟口径恒 0（准备页不误读）。
+   */
+  it('效率读数：按编队现算 = Σ 档位效率 ＋ 科技加成；准备页与入洞后同值', () => {
+    const state = world()
+    const a = addShipToFleet(state, 'sh-thresher')
+    const b = addShipToFleet(state, 'sh-thresher')
+    state.shipId = a
+    // 装一台 MK3 打捞器（60%）+ 一台 MK1 打捞器（20%）= 80%；另一条船一台 MK2 采集器（40%）
+    state.fleet[a]!.fitted = { high: ['mod-salvager-3', 'mod-salvager-1'], mid: [], low: [] }
+    state.fleet[b]!.fitted = { high: [], mid: ['mod-miner-2'], low: [] }
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'salvager')).toBeCloseTo(0.8, 6)
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'miner')).toBeCloseTo(0.4, 6)
+    expect(wormholeWorkEfficiencyOf(state, ctx, 'salvager')).toBe(0) // 没入洞 ⇒ 本趟口径 0
+    // 引力吊臂 3 级 = +60%（前置：时序锚定器 ≥1）
+    expect(researchMatterTech(state, ctx, 'mt-explore-turn').ok).toBe(true)
+    for (let i = 0; i < 3; i++) expect(researchMatterTech(state, ctx, 'mt-explore-salvage').ok).toBe(true)
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'salvager')).toBeCloseTo(1.4, 6)
+    expect(wormholeWorkEfficiencyOfFleet(state, ctx, [a, b], 'miner')).toBeCloseTo(0.4, 6) // 只加打捞那条
+    // 入洞后与准备页同值（同一段算式；`run.fleet` = 进洞时那一队）
+    expect(wormholeEnter(state, ctx, [a, b], 777).ok).toBe(true)
+    expect(wormholeWorkEfficiencyOf(state, ctx, 'salvager')).toBeCloseTo(1.4, 6)
+    expect(wormholeWorkEfficiencyOf(state, ctx, 'miner')).toBeCloseTo(0.4, 6)
   })
 })
 

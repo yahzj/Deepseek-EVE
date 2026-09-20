@@ -82,8 +82,21 @@ import {
   wormholeMinersInFleet,
   wormholeScanBonusOf,
   WORMHOLE_SCAN_RADIUS_BASE,
+  /**
+   * 2026-09-19 效率读数（船长「检查是否有其他丢掉科技的情况」四处之一）：
+   * `wormholeWorkEfficiencyOfFleet`（按任意编队现算，准备页用）与 `wormholeWorkEfficiencyOf`
+   * （本趟编队，入洞后用）——**与 core 结算"额外堆"同一把尺**，读数即实战吃到的数。
+   */
+  wormholeWorkEfficiencyOfFleet,
+  wormholeWorkEfficiencyOf,
   // 2026-09-19：威胁读数必须把**谜质科技**那一份也并进袋子（见下方 matterBuffs 注释）
   matterTechWhBuffs,
+  // 2026-09-19：入洞读数要单独列科技来源（袋子里只剩合流后的标量）⇒ 需要逐节点读等级
+  matterTechNodes,
+  matterTechLevel,
+  // 2026-09-19 甲案：自动探索的科技系数（与结算同一个函数 ⇒ 准备页读数即返航时生效的那个数）
+  wormholeAutoTechFactors,
+  wormholeAutoTechIsNeutral,
   wormholeShipMass,
   wormholeUnitsPerSlot,
   wormholeShapeOf,
@@ -250,7 +263,13 @@ export function WormholePanel({
     intercept: { q: number; r: number; known: boolean } | null
   } | null>(null)
 
-  const admission = wormholeAdmission(ctx, picked)
+  /**
+   * ⚠ **2026-09-19 报障排查补**：进场预览必须把**谜质科技「时序锚定器」**那一份算进去
+   * （实际入场走 `wormholeEnter → wormholeStartRun(..., techTurnBonus)` 是带着的）——
+   * 原先这里不传 ⇒ 读数比实际少一大截，玩家会以为科技白点了。
+   */
+  const techTurnBonus = matterTechWhBuffs(state, ctx).turnBonus
+  const admission = wormholeAdmission(ctx, picked, techTurnBonus)
   /* ── 自动探索模式的读数（船长 2026-09-14：准备页两用）─────────────────────────────
      规则来自 core 同一把尺：`wormholeAutoCandidates`（逐船可派性）·
      `wormholeAutoMainHandover`（选了主控 ⇒ 主控换给谁 / 为什么不能换）·
@@ -319,6 +338,38 @@ export function WormholePanel({
   const pickedSalvagers = wormholeSalvagersInFleet(state, ctx, picked)
   const pickedMiners = wormholeMinersInFleet(state, ctx, picked)
   const pickedScanRadius = WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, picked)
+  /**
+   * **打捞 / 采集效率读数**（2026-09-19 补 · 船长「检查是否有其他丢掉科技的情况」四处之一）。
+   *
+   * 效率 = `Σ 各台档位基础效率`（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%）
+   * **＋ 谜质科技加成**（引力吊臂 / 富集钻头各 +20%/级）；消费点 = 每次打捞/采集的**额外堆**
+   * （`floor(效率)` 必得 ＋ 按余数掷一次）。**界面与结算共用同一个函数** ⇒ 显示的百分比就是实战那个数。
+   * 准备页按**所选编队**现算（`…OfFleet`），入洞后按**本趟编队**（`…Of`），两条路同一段算式。
+   */
+  const pickedSalvageEff = wormholeWorkEfficiencyOfFleet(state, ctx, picked, 'salvager')
+  const pickedCollectEff = wormholeWorkEfficiencyOfFleet(state, ctx, picked, 'miner')
+  const runSalvageEff = run ? wormholeWorkEfficiencyOf(state, ctx, 'salvager') : 0
+  const runCollectEff = run ? wormholeWorkEfficiencyOf(state, ctx, 'miner') : 0
+  /**
+   * **已点的洞内科技节点**（入洞读数单列一行"科技"来源）：只收 `lv > 0` 的节点。
+   *
+   * 分类口径走**数据表自带的 `branch`**（第三条线 `industry` = 界面上的「洞外工业」，
+   * 三个节点都在洞外生效 ⇒ 不列进洞内读数），**不另抄一份效果清单**——
+   * 抄一份就有"新节点忘了登记 ⇒ 读数静默少一行"的风险。
+   */
+  const techInRun = matterTechNodes(ctx)
+    .filter((d) => d.branch !== 'industry')
+    .map((d) => ({ def: d, level: matterTechLevel(state, d.id) }))
+    .filter((x) => x.level > 0)
+  const techInRunLevels = techInRun.reduce((s, x) => s + x.level, 0)
+  /**
+   * **自动探索吃到的谜质科技系数**（船长 2026-09-19 甲案：「自动探索不折扣」＋「用实际回合 / 战斗线按完成度
+   * 减半 / 货仓接 / AI 核心吃」）。`shipIds` 传**所选编队**（uid）⇒ 准备页读数就是派队后真正生效的那个数
+   * （结算里用的是同一把尺：`wormholeAutoTechFactors(state, ctx, run.shipIds)`）。
+   * ⚠ 手动模式不看这组系数（手动里的每一个数都各自现算，不需要折算）。
+   */
+  const autoTech = wormholeAutoTechFactors(state, ctx, picked)
+  const autoTechNeutral = wormholeAutoTechIsNeutral(autoTech)
   /**
    * **谜质增益**（F3c · 船长 2026-09-13「放在货仓里就生效」）：一律从货仓**现算**，
    * 界面读数、按钮提示与 core 的结算走同一个函数（`wormholeMatterBuffs`）⇒ 不会两套口径。
@@ -1436,10 +1487,44 @@ export function WormholePanel({
                   <span className="app-wh-cell">
                     {tr("ui.Wormhole.139")} <b>{Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%</b>{tr("ui.Wormhole.251")}
                   </span>
-                  <span className="app-wh-cell">
-                    {tr("ui.Wormhole.140")} <b>{Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100)}%~{Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100)}%</b>
+                  <span
+                    className="app-wh-cell"
+                    title={
+                      autoTechNeutral
+                        ? tr('ui.Wormhole.286')
+                        : tr('ui.Wormhole.287', {
+                            p1: Math.round(autoTech.battleProgress * 100),
+                            p2: autoTech.damage.toFixed(2),
+                          })
+                    }
+                  >
+                    {tr("ui.Wormhole.140")}{' '}
+                    <b>
+                      {Math.round(WORMHOLE_AUTO_DAMAGE_MIN * autoTech.damage * 100)}%~
+                      {Math.round(WORMHOLE_AUTO_DAMAGE_MAX * autoTech.damage * 100)}%
+                    </b>
                     {tr("ui.Wormhole.252")}
                   </span>
+                  {/**
+                   * **谜质科技那一格**（船长 2026-09-19 甲案「自动探索不折扣」）：只在真吃到科技时出现
+                   * （未点科技 ⇒ 这一格不出现、损伤区间也一字不变）。系数由 `wormholeAutoTechFactors`
+                   * 现算——**与结算同一个函数** ⇒ 读数就是返航时真正生效的那个数。
+                   * 悬停给逐项细账（回合 / 货仓 / 两条效率 / 战斗线），口径见 core 的 `WormholeAutoTechFactors`。
+                   */}
+                  {!autoTechNeutral ? (
+                    <span
+                      className="app-wh-cell"
+                      title={[
+                        `回合：+${Math.round((autoTech.turnMul - 1) * 100)}%（时序锚定器 ÷ 本队基础 ${autoTech.baseTurns} 回合）`,
+                        `货仓：+${Math.round((autoTech.holdMul - 1) * 100)}%（折叠货舱 ÷ 本队基础 ${autoTech.baseHold} 格）`,
+                        `打捞效率：+${Math.round(autoTech.salvageEff * 100)}%（管残骸 / 稀有残骸 / 遗迹货柜 / AI 核心）`,
+                        `采集效率：+${Math.round(autoTech.collectEff * 100)}%（管虚空母矿）`,
+                        `战斗线完成度 ${Math.round(autoTech.battleProgress * 100)}%：损伤 ×${autoTech.damage.toFixed(2)}`,
+                      ].join('\n')}
+                    >
+                      科技 残骸 <b>×{autoTech.wreck.toFixed(2)}</b> · 母矿 <b>×{autoTech.ore.toFixed(2)}</b>
+                    </span>
+                  ) : null}
                 </div>
               ) : (
                 <div className="app-wh-triad">
@@ -1457,15 +1542,15 @@ export function WormholePanel({
                       content:check 的「文案纯净契约」当场报红抓过本条一次，别再犯） */}
                   <span
                     className="app-wh-cell"
-                    title="所选编队的打捞器台数：墓场与遗迹每次打捞按台数回收若干堆；0 台 ⇒ 打捞格干不了活"
+                    title={`所选编队的打捞器台数：墓场与遗迹每次打捞按台数回收若干堆；0 台 ⇒ 打捞格干不了活。打捞效率 ${Math.round(pickedSalvageEff * 100)}%：每满 100% 必多捞 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「引力吊臂」每级 +20%）`}
                   >
-                    {tr("ui.Wormhole.001")} <b>{pickedSalvagers}</b> 台
+                    {tr("ui.Wormhole.001")} <b>{pickedSalvagers}</b> {tr('ui.Wormhole.288')} <b>{Math.round(pickedSalvageEff * 100)}%</b>
                   </span>
                   <span
                     className="app-wh-cell"
-                    title="所选编队的采集器台数：矿脉每次采集按台数回收若干堆；0 台 ⇒ 一堆虚空母矿也挖不动"
+                    title={`所选编队的采集器台数：矿脉每次采集按台数回收若干堆；0 台 ⇒ 一堆虚空母矿也挖不动。采集效率 ${Math.round(pickedCollectEff * 100)}%：每满 100% 必多采 1 堆，余数按概率（民用 0 / MK1 20% / MK2 40% / MK3 60% / 异星 80%，谜质科技「富集钻头」每级 +20%）`}
                   >
-                    {tr("ui.Wormhole.238")} <b>{pickedMiners}</b> 台
+                    {tr("ui.Wormhole.238")} <b>{pickedMiners}</b> {tr('ui.Wormhole.288')} <b>{Math.round(pickedCollectEff * 100)}%</b>
                   </span>
                   <span
                     className="app-wh-cell"
@@ -1519,26 +1604,62 @@ export function WormholePanel({
                 <span className="app-wh-cell">
                   {tr("ui.Wormhole.098")} <b>{grid ? grid.scanned.length : 0}</b> 格
                 </span>
-                <span className="app-wh-cell">
-                  {tr("ui.Wormhole.001")} <b>{salvagers}</b> 台
+                <span
+                  className="app-wh-cell"
+                  title={tr('ui.Wormhole.290', { p1: Math.round(runSalvageEff * 100) })}
+                >
+                  {tr("ui.Wormhole.001")} <b>{salvagers}</b> {tr('ui.Wormhole.288')} <b>{Math.round(runSalvageEff * 100)}%</b>
                 </span>
-                <span className="app-wh-cell">
-                  {tr("ui.Wormhole.238")} <b>{miners}</b> 台
+                <span
+                  className="app-wh-cell"
+                  title={tr('ui.Wormhole.291', { p1: Math.round(runCollectEff * 100) })}
+                >
+                  {tr("ui.Wormhole.238")} <b>{miners}</b> {tr('ui.Wormhole.288')} <b>{Math.round(runCollectEff * 100)}%</b>
                 </span>
                 <span className="app-wh-cell">{tr("ui.Wormhole.078")} <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
                 <span className="app-wh-cell">{tr("ui.CargoPage.004")} <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0} 格</span>
                 {/**
-                 * **谜质增益读数**（F3c · 船长 2026-09-13）：只在真带装置时出现，悬停逐台列出来
-                 * ——效果一律从货仓现算（`wormholeMatterBuffs`），界面与 core 同源。
+                 * **谜质增益读数**（F3c · 船长 2026-09-13）：悬停逐台列出装置 —— 效果一律从货仓现算
+                 * （`wormholeMatterBuffs`），界面与 core 同源。
+                 *
+                 * ⚠ ⟪2026-09-19 补⟫ **科技那一份也要显形**（船长「检查是否有其他丢掉科技的情况」四处之一）：
+                 * 这只袋子是"装置 + 科技"合流的，原先只在**带了装置**时出现、悬停也只列装置 ⇒ 光点科技、
+                 * 一台装置不带时这一格整个不出现（科技等于没被玩家看见）。现在两条来源各列一段，
+                 * 只要任一条非空就出现：装置 ⇒「谜质 N 台」，科技 ⇒「科技 M 级」（只列**洞内两条线**
+                 * 的已点节点——洞外工业线不在此列，口径见上方 `techInRun`）。
                  */}
-                {matterBuffs.devices > 0 ? (
+                {matterBuffs.devices > 0 || techInRun.length > 0 ? (
                   <span
                     className="app-wh-cell"
-                    title={matterBuffs.list
-                      .map(({ device, count }) => `· ${device.name}${count > 1 ? ` ×${count}` : ''}：${device.text}`)
-                      .join('\n')}
+                    title={[
+                      ...(matterBuffs.devices > 0
+                        ? [
+                            tr('ui.Wormhole.292'),
+                            ...matterBuffs.list.map(
+                              ({ device, count }) =>
+                                `· ${device.name}${count > 1 ? ` ×${count}` : ''}：${device.text}`,
+                            ),
+                          ]
+                        : []),
+                      ...(techInRun.length > 0
+                        ? [
+                            tr('ui.Wormhole.293'),
+                            ...techInRun.map(({ def, level }) => `· ${def.name} ${level}/${def.maxLevel} 级：${def.note}`),
+                          ]
+                        : []),
+                    ].join('\n')}
                   >
-                    {tr("ui.Wormhole.208")} <b>{matterBuffs.devices}</b> 台
+                    {matterBuffs.devices > 0 ? (
+                      <>
+                        {tr("ui.Wormhole.208")} <b>{matterBuffs.devices}</b> {tr('ui.Wormhole.288')}
+                      </>
+                    ) : null}
+                    {matterBuffs.devices > 0 && techInRun.length > 0 ? ' · ' : null}
+                    {techInRun.length > 0 ? (
+                      <>
+                        {tr('ui.Wormhole.294')} <b>{techInRunLevels}</b> {tr('ui.Wormhole.295')}
+                      </>
+                    ) : null}
                   </span>
                 ) : null}
                 {/**
@@ -2032,7 +2153,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
             label: tr("ui.MatterTechTab.005"),
             value: n(settle.essences),
             sub:
-              '枚（谜质装置析出 · 只收不卖）' +
+              '枚（谜质装置析出 · 可投入「谜质科技」研究）' +
               (settle.essenceIsk && settle.essenceIsk > 0 ? ` ⇒ 按行价约 ${n(settle.essenceIsk)} 信用点` : ''),
             wide: true,
           },

@@ -309,7 +309,7 @@ const meSpeedRef = useRef(200)
     foeSizes: number[]
     /** 玩家舰体积（px；无人机阵位/弹道起点按它定标） */
     meSize: number
-    openM: number
+    farM: number
     nearM: number
     /** `foe` 有值 = 该机群属于**敌方单位 tag**（走 `foePoseAt` 镜像几何；元素键加 `foe:` 前缀）。
      *  `rangeBuff` = **受击增程已触发**（2026-09-11 船长）：机体后撤到远距阵位（见 `foeDroneStation`）。
@@ -329,7 +329,7 @@ const meSpeedRef = useRef(200)
     }>
     /** **我方逐舰锚点**（tag → 锚；2026-09-14「逐舰机群」）：rAF 循环里给僚舰机群取自己的舰位 */
     meAnchors: Map<string, { x: number; y: number }>
-  }>({ foeSizes: [LAY.MAIN], meSize: LAY.MAIN, openM: 1, nearM: 200, wings: [], meAnchors: new Map() })
+  }>({ foeSizes: [LAY.MAIN], meSize: LAY.MAIN, farM: 1, nearM: 200, wings: [], meAnchors: new Map() })
   /** 已被击毁的敌方单位（永久登记：残骸演出结束不复活） */
   const deadRef = useRef<Set<string>>(new Set())
   /**
@@ -371,11 +371,11 @@ const meSpeedRef = useRef(200)
   const battleRef = useRef<BattleHandle | null>(null)
   /** 最近一次"战斗换了"的标记（`startedAtGameMs`）：33ms 循环据此重置尸骸/血量/速度等视觉账本 */
   const battleStartRef = useRef(0)
-  const mapRef = useRef<{ openM: number; nearM: number }>({ openM: 1, nearM: 200 })
+  const mapRef = useRef<{ farM: number; nearM: number }>({ farM: 1, nearM: 200 })
 
   // 滑条两端距（卸载冲刷也要用）
   if (arcs) {
-    mapRef.current = { openM: arcs.openM, nearM: arcs.nearM }
+    mapRef.current = { farM: arcs.maxM, nearM: arcs.nearM }
   }
 
   // ── 阶段推进：live →（分出胜负）→ outro →（引擎结算完成）→ report ──
@@ -565,7 +565,7 @@ const meSpeedRef = useRef(200)
       if (!alive) return
       const d = droneDriveRef.current
       if (d.wings.length > 0) {
-        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.openM, d.nearM, d.meSize)
+        const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.farM, d.nearM, d.meSize)
         const box = droneBoxRef.current
         const w0 = droneWritesRef.current
         if (box) {
@@ -641,8 +641,8 @@ const meSpeedRef = useRef(200)
       if (flushTimerRef.current !== null) window.clearTimeout(flushTimerRef.current)
       const v = dragValRef.current
       const m = mapRef.current
-      if (v !== null && m.openM > 1) {
-        engine.battleSetDesireAt(Math.round(m.openM - (v / 1000) * (m.openM - m.nearM)))
+      if (v !== null && m.farM > 1) {
+        engine.battleSetDesireAt(Math.round(m.farM - (v / 1000) * (m.farM - m.nearM)))
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -768,7 +768,14 @@ const meSpeedRef = useRef(200)
   // 交给 33ms 平滑循环（每渲染同步一次句柄；`dimsRef` 同款模式）
   battleRef.current = battle
   const combat = combatView
-  const openM = arcs.openM
+  /**
+   * `farM` = **战场远端（距离上限）**——⚠ 2026-09-19 起它**不再等于开战距离**：
+   * 引擎按"当前双方有效射程（含我方技能/科技增程 + 敌方受击增程）"现算上限、只增不减
+   * （`arcs.maxM` ← `combat.battleMaxDistanceM`，船长裁定「甲」：计算战场宽度要算上增程、不用常数乘）。
+   * 本文件的泳道几何 / 距离尺 / 滑条 / 「拉开（远 …）」读数**全部按这个远端**画 ⇒ 与引擎同一把尺；
+   * 没有任何增程时它逐字等于开战距离 ⇒ 常规战斗的画面**一字不变**。
+   */
+  const farM = arcs.maxM
   const nearM = arcs.nearM
 
   // 首帧不重放历史开火事件：只从"当前环尾"续播（迟到进战场不补播旧弹道）；
@@ -821,7 +828,7 @@ const meSpeedRef = useRef(200)
   const realDist = battle.distanceM // 引擎实时距离（交火中每 ~100ms 更新）
   const visM = smoothM !== null ? smoothM : realDist // 视觉插值距离（舰列/弧/游标平滑用）
   const now = performance.now()
-  const pct = (m: number): number => approachOf(m, openM, nearM) * 100
+  const pct = (m: number): number => approachOf(m, farM, nearM) * 100
 
   /* ── 敌方"视觉行"与演出期尸骸（2026-09-09 二轮，船长反馈"切换突兀/爆炸未播完/边爆边换位"）：
      尸骸不撤队、原位占槽演完整段（boomAt 前原样停留 → boomAt 起灰化 + 爆炸环 → 淡出）；
@@ -856,7 +863,7 @@ const meSpeedRef = useRef(200)
   // 弹道瞄准用的几何（按上一帧撤出结果的视觉行；本帧渲染队列在阵亡检测后定稿重算）
   // **多舰路径也要喂我方逐舰体积**（2026-09-13 修"弹道统一从第一艘出"）：否则 `layFx.my` 只有主控一条，
   // 我方每一发都从主控炮口飞出去（船长实测："多船战斗时弹道变成统一由第一艘船射出"）。
-  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, openM, nearM, meSize, multiMe ? mySizes : undefined)
+  const layFx = layout(dims, foeSizesFor(rowFxTags), visM, farM, nearM, meSize, multiMe ? mySizes : undefined)
   /**
    * **我方逐舰锚点/体积按 tag 索引**（多舰路径）——开火事件 `fx.tag` 就是发射舰（`player` / `ally-N`），
    * 弹道起点取"那一艘"的锚点与舰体尺寸；单船路径为空表 ⇒ 全部回落到 `layFx.me`（观感与旧版逐像素一致）。
@@ -907,7 +914,7 @@ const meSpeedRef = useRef(200)
           const artId = fx.artId!
           // ⚠ 布局调用统一为**主树新签名**（2026-09-11 舰种体积 + 2026-09-12 斜向菱形：逐舰体积 `foeSizes` /
           //   阵形由 `layout` 内部按体积推导 / 玩家舰体积 `meSize`）——合并时以主树签名为准。
-          const layDown = layout(dims, foeSizesFor(rowFxTags), visDistRef.current, openM, nearM, meSize)
+          const layDown = layout(dims, foeSizesFor(rowFxTags), visDistRef.current, farM, nearM, meSize)
           // **敌机被击落**（2026-09-11 修）：引擎打空一架时也推 droneDown（`side='foe'`）——
           // 但落点必须用**敌机自己**的状态表与姿态函数；旧口径一律走我方 `droneSortieRef` +
           // `dronePoseAt` ⇒ 敌机的爆炸被画到**我方机体那一侧**（船长实测："完全无法察觉"）。
@@ -1331,7 +1338,7 @@ const meSpeedRef = useRef(200)
   /* 2026-09-10 说明：列宽重测**不能**在这里用 useEffect —— 本行位于 `if (!view.combat …) return null`
      守卫之后，战斗结束时提前 return 会跳过该 hook，hooks 数量不一致会让 React 卸载整棵树（黑屏无反应）。
      现改为在守卫之前的 33ms 循环里按 ~330ms 节流核对列宽（见该循环 "列宽核对" 段）。 */
-  const lay = layout(dims, foeSizes, visM, openM, nearM, meSize, mySizes)
+  const lay = layout(dims, foeSizes, visM, farM, nearM, meSize, mySizes)
   /**
    * **跃迁入场**（船长 2026-09-13：「既然开始做战斗效果了，那么能否在开始时做一个入场效果？
    *  为了最小程度防止BUG，**入场效果仅为动画**。玩家和敌舰的位置依旧不改变。入场效果为我方或者敌方
@@ -1434,14 +1441,14 @@ const meSpeedRef = useRef(200)
   }
 
   /* 射程弧：锚定双方舰艏枪口（与弹道同源、随舰身移动）。
-     显示尺与舰列间距共用同一米制比例：sPxPerM = usable/(openM−nearM) px/m。
+     显示尺与舰列间距共用同一米制比例：sPxPerM = usable/(farM−nearM) px/m。
      贴脸基准枪口距 gunBasePx 不用猜测常量，而是由"当前帧实测枪口间距 − 当前距离的像素长"反推：
        gunBasePx = (foeGunX − meGunX) − (visM − nearM)×sPxPerM   （几何常数，随窗口/列宽自动成立）
      于是 弧半径(射程) = gunBasePx + (射程 − nearM)×sPxPerM，当 射程 == 当前距离 时弧端恰好触到敌方枪口；
      弧端到敌枪口的像素缺口正比于"射程 − 当前距离"。 */
   const meGunX = lay.me.x + noseOf(meSize)
   const foeGunX = (lay.foe[0]?.x ?? lay.me.x) - noseOf(lay.sizes[0] ?? LAY.MAIN)
-  const sPxPerM = lay.usable / Math.max(1, openM - nearM) // 与舰列位移同尺（px/m）
+  const sPxPerM = lay.usable / Math.max(1, farM - nearM) // 与舰列位移同尺（px/m）
   const gunBasePx = Math.max(40, foeGunX - meGunX - (visM - nearM) * sPxPerM)
   const arcCap = lay.usable + gunBasePx + 80 // 兜底上限：不超"开局枪口位 + 余量"
   const arcR = (rangeM: number, minPx: number): number =>
@@ -1496,9 +1503,9 @@ const meSpeedRef = useRef(200)
     .join('\n')
 
   /* 距离滑条：值 = 接近度×1000（0 最远拉开 → 1000 贴脸），右拖 = 接近 */
-  const desireM = Math.min(openM, Math.max(nearM, combat.myDesireM))
-  const sliderV = dragV ?? approachOf(desireM, openM, nearM) * 1000
-  const sliderToDesire = (v: number): number => Math.round(openM - (v / 1000) * (openM - nearM))
+  const desireM = Math.min(farM, Math.max(nearM, combat.myDesireM))
+  const sliderV = dragV ?? approachOf(desireM, farM, nearM) * 1000
+  const sliderToDesire = (v: number): number => Math.round(farM - (v / 1000) * (farM - nearM))
   const commitDesire = (v: number): void => {
     const r = engine.battleSetDesireAt(sliderToDesire(v))
     if (!r.ok) onToast(r.error ?? '设置失败', true)
@@ -1544,7 +1551,7 @@ const meSpeedRef = useRef(200)
   }
   const applyTactic = (t: 'assault' | 'mid' | 'kite'): void => {
     const m = battleTacticDesire(state, engine.ctx, t)
-    commitDesire(approachOf(m, openM, nearM) * 1000)
+    commitDesire(approachOf(m, farM, nearM) * 1000)
   }
 
   const meStats = battle.stats
@@ -1759,7 +1766,7 @@ const meSpeedRef = useRef(200)
   droneDriveRef.current = {
     foeSizes,
     meSize,
-    openM,
+    farM,
     nearM,
     meAnchors: meAnchorByTag,
     wings: [
@@ -2047,11 +2054,11 @@ const meSpeedRef = useRef(200)
             </div>
           ) : null}
           <div className="app-bts-ruler-head">
-            <span className="app-dim">{tr("ui.BattleScreen.053")} {Math.round(openM).toLocaleString('zh-CN')}m）</span>
+            <span className="app-dim">{tr("ui.BattleScreen.053")} {Math.round(farM).toLocaleString('zh-CN')}m）</span>
             <span className="app-dim">{tr("ui.BattleScreen.054")} {Math.round(nearM).toLocaleString('zh-CN')}m）▶</span>
           </div>
           <div className="app-bts-scale">
-            <i className="app-bts-zone is-me" style={{ left: `${pct(mainMeArc?.maxM ?? openM)}%`, width: `${Math.max(0.6, pct(mainMeArc?.minM ?? 0) - pct(mainMeArc?.maxM ?? openM))}%` }} title={tr("ui.BattleScreen.087", { p1: mainMeArc?.minM ?? 0, p2: mainMeArc?.maxM ?? 0 })} />
+            <i className="app-bts-zone is-me" style={{ left: `${pct(mainMeArc?.maxM ?? farM)}%`, width: `${Math.max(0.6, pct(mainMeArc?.minM ?? 0) - pct(mainMeArc?.maxM ?? farM))}%` }} title={tr("ui.BattleScreen.087", { p1: mainMeArc?.minM ?? 0, p2: mainMeArc?.maxM ?? 0 })} />
             <i className="app-bts-zone is-foe" style={{ left: `${pct(arcs.foe.maxM)}%`, width: `${Math.max(0.6, pct(arcs.foe.minM) - pct(arcs.foe.maxM))}%` }} title={tr("ui.BattleScreen.088", { p1: arcs.foe.minM, p2: arcs.foe.maxM })} />
             <i className="app-bts-tick" style={{ left: '25%' }} />
             <i className="app-bts-tick" style={{ left: '50%' }} />

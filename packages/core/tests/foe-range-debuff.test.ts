@@ -17,6 +17,8 @@ import { createInitialState } from '../src/state'
 import type { BattleState } from '../src/state'
 import {
   FOE_RANGE_DEBUFF_FLOOR_M,
+  battleMaxDistanceM,
+  battleOpenM,
   createBattleState,
   foeDesiredRange,
   foeDroneRangeOf,
@@ -155,6 +157,79 @@ describe('电子舰 · 压制敌舰武器射程（船长 2026-09-18）', () => {
     // 编队里没有电子舰 ⇒ 0（不写运行态）
     const none = world(0)
     expect(foeRangeDebuffOf(none.state, none.ctx, none.ids)).toBe(0)
+  })
+})
+
+/**
+ * **战场远端（距离上限）**——船长 2026-09-19 报障「部分敌人会增加射程的情况下，战场可以移动的距离
+ * 还是很短，**无法逃离对方射程**」＋口径「**计算战场宽度时考虑到技能的增程就行，不用直接乘**」（裁定「甲」）。
+ *
+ * 改前：上限被钉死在**开战那一刻**的 `openM` ⇒ 敌方挨打增程后射程反超上限 ⇒ 玩家退无可退。
+ * 改后：上限 = `max(开战距离, 1.1 × 当前双方有效射程)`（同一套"射程 + 10% 缓冲"公式，**不乘常数**），
+ * 我方那一侧已含技能/装配/谜质科技增程、敌方那一侧含受击增程，且**只增不减**。
+ */
+describe('战场远端 · 距离上限随增程走（船长 2026-09-19 裁定「甲」）', () => {
+  const bal = base.balance.battle
+  const gun = (maxRangeM: number): { maxRangeM: number; src: 'gun'; minRangeM: number } =>
+    ({ maxRangeM, src: 'gun', minRangeM: 0 })
+  const meSpec = (maxRangeM: number): Parameters<typeof battleMaxDistanceM>[1] =>
+    ({ weapons: [gun(maxRangeM)] } as unknown as Parameters<typeof battleMaxDistanceM>[1])
+  const foeSpec = (
+    maxRangeM: number,
+    mul?: number,
+  ): Parameters<typeof battleMaxDistanceM>[2][number] =>
+    ({
+      weapons: [gun(maxRangeM)],
+      ...(mul !== undefined ? { foeGunRangeMulOnHit: mul } : {}),
+    } as unknown as Parameters<typeof battleMaxDistanceM>[2][number])
+  /** 只是壳的战斗状态：本组函数只读 `foeGunRangeBuff` / `foeDroneRangeBuff` / `meFoeRangeDebuff` */
+  const shell = (): ReturnType<typeof createBattleState> =>
+    createBattleState(
+      { name: 'x', tag: 'player', weapons: [], hp: { s: 1, a: 1, h: 1 } } as never,
+      [],
+      0,
+      1000,
+    )
+
+  it('无任何增程 ⇒ 上限**逐字等于开战距离**（= 旧行为，改前改后画面一致）', () => {
+    const b = shell()
+    const me = meSpec(8_000)
+    const foes = [foeSpec(7_000)]
+    expect(battleOpenM(me, foes as never, bal)).toBe(8_800) // 8000 × 1.0 + max(100, 800)
+    expect(battleMaxDistanceM(b, me, foes, bal)).toBe(8_800)
+  })
+
+  it('我方科技/技能增程已计入（我方 8,232 ⇒ 上限 9,055）', () => {
+    const b = shell()
+    expect(battleMaxDistanceM(b, meSpec(8_232), [foeSpec(7_000)], bal)).toBe(9_055)
+  })
+
+  it('**敌方挨打增程后，上限抬到它射程之外**（导弹残段 11,000 ⇒ 增程 ×1.5 = 16,500 ⇒ 上限 18,150）', () => {
+    const b = shell()
+    const me = meSpec(8_232)
+    const missile = foeSpec(11_000, 1.5)
+    // 未触发增程：上限按 11,000 算（= 12,100，玩家刚好在它射程外一点）
+    expect(battleMaxDistanceM(b, me, [missile], bal)).toBe(12_100)
+    // 触发之后（引擎把整队标量写在 `foeGunRangeBuff`）：上限跟着抬到 18,150 > 16,500 ⇒ **有地方可退**
+    b.foeGunRangeBuff = 1.5
+    const ceiling = battleMaxDistanceM(b, me, [missile], bal)
+    expect(ceiling).toBe(18_150)
+    expect(ceiling, '上限必须大于敌方增程后的射程——否则"逃离对方射程"不可能').toBeGreaterThan(
+      foeGunMaxRangeOf(b, missile as never, gun(11_000) as never),
+    )
+  })
+
+  it('电子舰压制（削敌射程）之后，上限随之收窄；但只要开战距离更大就仍以开战距离为地板', () => {
+    const b = shell()
+    const me = meSpec(8_232)
+    const foe = foeSpec(16_500)
+    expect(battleMaxDistanceM(b, me, [foe], bal)).toBe(18_150)
+    b.meFoeRangeDebuff = 0.15 // 一艘电子舰：16,500 → 14,025
+    expect(battleMaxDistanceM(b, me, [foe], bal)).toBe(18_150) // 地板 = 开战距离（只增不减）
+    // 开战距离本身也随之变小 ⇒ 上限按"当前射程"给：14,025 × 1.1 = 15,428 < 18,150（地板仍生效）
+    b.meFoeRangeDebuff = 0.15
+    const openNow = battleOpenM(me, [foe] as never, bal)
+    expect(battleMaxDistanceM(b, me, [foe], bal)).toBeGreaterThanOrEqual(openNow)
   })
 })
 

@@ -9,7 +9,7 @@
  * - 状态色沿用本仓既有的"可选 / 已满 / 前置未满"语言：可研究 = 亮框、已满级 = 金色、
  *   前置或货币不足 = 暗灰（悬停给原因，不弹窗）。
  *
- * 文案：界面文案一律走 `useL10n().t('中文原文')`（英文缺词条时回退中文，词典补录见 `i18n/dict.en.ts`）；
+ * 文案：界面文案一律走 `useL10n().t('ui.xxx.nnn')`（id 引用，文本只写在唯一表 `packages/data/src/l10n/table.ts`；缺 id ⇒ 显示 id 本身）；
  * 节点名与说明来自数据表 `ctx.matterTech`（英文覆盖层 `EN_MATTER_TECH` 由 l10n 批接入）。
  */
 import { useState } from 'react'

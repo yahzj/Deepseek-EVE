@@ -25,7 +25,8 @@ import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun,
 import { addLog, shipLockedInWormhole } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
-import { WORMHOLE_ORE_ITEM_ID } from './wormhole'
+import { WORMHOLE_ORE_ITEM_ID, wormholeAdmission, wormholeBagSlotsOfFleet } from './wormhole'
+import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
 import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, WORMHOLE_CORE_WEIGHTS } from './wormholeSalvage'
 import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul } from './wormholeFoes'
@@ -150,6 +151,116 @@ export const WORMHOLE_AUTO_DAMAGE_MAX = 0.8
 
 /** 报告保留条数（超出的丢最旧；避免随档无限增长） */
 export const WORMHOLE_AUTO_REPORT_MAX = 20
+
+/* ═══════════ 谜质科技 → 自动探索（船长 2026-09-19 四条裁定） ═══════════
+ *
+ * 船长原话（照抄）：「**自动探索不折扣，因为自动探索本身已经是产出\*0.4的情况了，那么过程就不应该折扣**」
+ * ＋逐条：「**1，用实际回合。2，按「完成度 ⇒ 损伤最多减半」。3货仓接。AI核心吃。**」
+ *
+ * 每条科技都接到它在**手动**里的对应物上、**面值生效不再打折**：
+ * - **时序锚定器**（最大回合 +10/级）⇒ 总量 ×`1 + 加成 ÷ 该队实际基础回合`
+ *   （基础回合 = `wormholeAdmission(ctx, shipIds).turnBudget`，即**不含科技**的那一份——船长选"实际回合"）；
+ * - **折叠货舱**（+4 格/级）⇒ 总量 ×`1 + 加成 ÷ 该队基础货仓格`（船长裁「货仓接」）；
+ * - **引力吊臂 / 富集钻头**（各 +20%/级）⇒ 残骸线（普通残骸 / 稀有残骸 / 遗迹货柜 / AI 核心）×`1 + 打捞加成`、
+ *   虚空母矿线 ×`1 + 采集加成`（船长裁「AI核心吃」⇒ 核心跟残骸线同系数）；
+ * - **战斗线 14 节点** ⇒ 损伤 ×`1 − 50% × 战斗线完成度`（船长裁「按完成度 ⇒ 损伤最多减半」）；
+ * - **不接**：谐振信号滤波阵列（管「扫描虫洞」的**间隔**——那是发现虫洞的活动，不是探索本身）、
+ *   时间压缩矩阵（管洞内战斗的**播放**速度；也不动船长定的 5 分钟）、洞外工业三件（洞外生效）。
+ *
+ * ⚠ **只算科技那一份**：舰上打捞器/采集器的档位效率**不进**自动探索
+ * （`matterTechWorkEffBonus` 而不是 `wormholeWorkEfficiencyOfFleet`）——自动探索的产出基准
+ * `WORMHOLE_AUTO_MANUAL` 本来就不看编队装配，接档位效率等于顺手改了一条船长没裁的口径（已知边界，见工作文档）。
+ *
+ * ⚠ **一级未点 ⇒ 每个系数恒 1** ⇒ 未点科技的玩家读数与报告**一字不变**（用例钉住）。
+ */
+export interface WormholeAutoTechFactors {
+  /** **总量系数**（回合 × 货仓；未点科技 = 1）——四条产出线一起乘 */
+  total: number
+  /** **残骸线系数**（总量 × 打捞效率加成；含普通残骸 / 稀有残骸 / 遗迹货柜 / AI 核心） */
+  wreck: number
+  /** **虚空母矿线系数**（总量 × 采集效率加成） */
+  ore: number
+  /** **损伤系数**（1 = 原区间；战斗线点满 = 0.5 ⇒ 损伤减半） */
+  damage: number
+  /** 细账（读数悬停与结算日志用）：回合系数 / 货仓系数 / 打捞加成 / 采集加成 / 战斗线完成度 */
+  turnMul: number
+  holdMul: number
+  salvageEff: number
+  collectEff: number
+  battleProgress: number
+  /** 本队**不含科技**的基础回合与基础货仓格（界面要写清"除以多少"） */
+  baseTurns: number
+  baseHold: number
+}
+
+/**
+ * **算一趟自动探索吃到的科技系数**（纯函数；界面读数与结算**共用同一个函数** ⇒ 读数即实战）。
+ * `shipIds` = 参与舰的**舰队实例 uid**（与 `wormholeAdmission` / `wormholeBagSlotsOfFleet` 同口径）。
+ */
+export function wormholeAutoTechFactors(
+  state: GameState,
+  ctx: SimContext,
+  shipIds: readonly string[],
+): WormholeAutoTechFactors {
+  const tech = matterTechWhBuffs(state, ctx)
+  /**
+   * ⚠ **编队不成立（没选船 / 超重 / 含无法识别的船型 / 超艘数）⇒ 一律返回中性系数**：
+   * 基础回合与基础货仓格都要拿编队去算，编队不成立时它们会退化成 0/1，
+   * 于是"除以 1"会把系数放大成几十倍，读数就成了胡说（派队本来也会被 `wormholeAutoBlockReason` 拦下）。
+   */
+  const adm = wormholeAdmission(ctx, shipIds)
+  const baseHold0 = adm.ok ? wormholeBagSlotsOfFleet(state, ctx, shipIds) : 0
+  const neutral: WormholeAutoTechFactors = {
+    total: 1,
+    wreck: 1,
+    ore: 1,
+    damage: 1,
+    turnMul: 1,
+    holdMul: 1,
+    salvageEff: 0,
+    collectEff: 0,
+    battleProgress: 0,
+    baseTurns: Math.max(1, adm.turnBudget),
+    baseHold: Math.max(1, baseHold0),
+  }
+  if (!adm.ok) return neutral
+  /** 该队**不含科技**的基础回合（`wormholeAdmission` 缺省 `techTurnBonus = 0` ⇒ 拿到的就是基础那一份） */
+  const baseTurns = Math.max(1, adm.turnBudget)
+  /** 该队**不含科技**的基础货仓格（`wormholeBagSlotsOfFleet` 只算货仓 ⇒ 科技那 4 格/级不在内） */
+  const baseHold = Math.max(1, baseHold0)
+  const turnMul = 1 + tech.turnBonus / baseTurns
+  const holdMul = 1 + tech.holdCells / baseHold
+  const total = turnMul * holdMul
+  const salvageEff = matterTechWorkEffBonus(state, ctx, 'salvage')
+  const collectEff = matterTechWorkEffBonus(state, ctx, 'collect')
+  /** 战斗线完成度 = 已点级数 ÷ 该线总级数（0~1；线内没有节点 ⇒ 0） */
+  let got = 0
+  let max = 0
+  for (const node of matterTechNodes(ctx)) {
+    if (node.branch !== 'battle') continue
+    max += node.maxLevel
+    got += Math.min(node.maxLevel, matterTechLevel(state, node.id))
+  }
+  const battleProgress = max > 0 ? got / max : 0
+  return {
+    total,
+    wreck: total * (1 + salvageEff),
+    ore: total * (1 + collectEff),
+    damage: 1 - 0.5 * battleProgress,
+    turnMul,
+    holdMul,
+    salvageEff,
+    collectEff,
+    battleProgress,
+    baseTurns,
+    baseHold,
+  }
+}
+
+/** 这组系数是否"什么都没吃"（未点科技 ⇒ 界面不出现科技读数、日志不加那段） */
+export function wormholeAutoTechIsNeutral(f: WormholeAutoTechFactors): boolean {
+  return f.wreck === 1 && f.ore === 1 && f.damage === 1
+}
 
 /** 在跑的自动探索（老档没有 ⇒ 空数组） */
 export function wormholeAutoRunsOf(state: GameState): WormholeAutoRun[] {
@@ -496,6 +607,11 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const taste = ARCHETYPE_MUL[meta.archetype]
   const cardId = wormholeCardIdOfFamily(meta.family, run.seed)
   const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? meta.family)
+  /**
+   * **谜质科技**（2026-09-19 船长甲案）：`total` 进四条产出线、`wreck`/`ore` 各再管一条线、`damage` 管损伤。
+   * 未点科技 ⇒ 全 1（逐字零变化）。
+   */
+  const tf = wormholeAutoTechFactors(state, ctx, run.shipIds)
   const gains: Array<{ itemId: string; units: number }> = []
   /** 本趟自动探索捞到的 AI 核心（**不入仓库** ⇒ 不能进 `gains`；报告里单列一行） */
   let coresGained: { type: 'gamma' | 'beta' | 'alpha'; n: number } | null = null
@@ -505,21 +621,22 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const group = wreckGroupOfCard(cardId, ctx)
   // `wormholeCardIdOfFamily` 只给真卡 ⇒ 组必然查得到；兜底回落旧 id 只为合成夹具不炸（生产不可达）
   const wreckKey = group?.key ?? cardId
-  const commons = Math.max(1, Math.round(WORMHOLE_AUTO_MANUAL.commons * WORMHOLE_AUTO_YIELD_MUL * taste.commons * (0.8 + rng() * 0.4)))
+  const commons = Math.max(1, Math.round(WORMHOLE_AUTO_MANUAL.commons * WORMHOLE_AUTO_YIELD_MUL * taste.commons * tf.wreck * (0.8 + rng() * 0.4)))
   const wreckUnits = Math.max(1, Math.round(commons * WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4)))
   gains.push({ itemId: wreckItemIdOf(wreckKey), units: wreckUnits })
 
-  // ② 稀有残骸：期望 = 手动 1.25 × 40% = 0.5 件/趟（基准）⇒ 原型口味再乘一档
-  if (rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.rares * WORMHOLE_AUTO_YIELD_MUL * taste.rares)) {
+  // ② 稀有残骸：期望 = 手动 1.25 × 40% = 0.5 件/趟（基准）⇒ 原型口味再乘一档，最后乘科技（残骸线）
+  //    ⚠ 与货柜/核心一样带 `min(0.95, …)` 老护栏：满树时这一条会顶到 95%（即"几乎必出一件"），是有意的旧上限
+  if (rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.rares * WORMHOLE_AUTO_YIELD_MUL * taste.rares * tf.wreck)) {
     gains.push({ itemId: rareWreckItemIdOf(wreckKey), units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
   }
 
-  // ③ 虚空母矿：0.8 堆 × 200 单位 × 层收益 × 抖动
-  const oreUnits = Math.round(WORMHOLE_AUTO_MANUAL.orePiles * WORMHOLE_AUTO_YIELD_MUL * taste.ore * 200 * mul * (0.8 + rng() * 0.4))
+  // ③ 虚空母矿：0.8 堆 × 200 单位 × 层收益 × 抖动（科技：采集线系数）
+  const oreUnits = Math.round(WORMHOLE_AUTO_MANUAL.orePiles * WORMHOLE_AUTO_YIELD_MUL * taste.ore * tf.ore * 200 * mul * (0.8 + rng() * 0.4))
   if (oreUnits > 0) gains.push({ itemId: WORMHOLE_ORE_ITEM_ID, units: oreUnits })
 
-  // ④ 遗迹安全货柜：期望 ≈0.09 件/趟（手动 0.23 × 40%），层 2 起
-  if (run.depth >= 2 && rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.boxChance * WORMHOLE_AUTO_YIELD_MUL * taste.box)) {
+  // ④ 遗迹安全货柜：期望 ≈0.09 件/趟（手动 0.23 × 40%），层 2 起（科技：残骸线）
+  if (run.depth >= 2 && rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.boxChance * WORMHOLE_AUTO_YIELD_MUL * taste.box * tf.wreck)) {
     gains.push({ itemId: wormholeRelicBoxIdOf(family), units: 1 })
   }
 
@@ -528,8 +645,11 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
    * 命中率 = 手动 0.10 枚/趟 × 40% = **4%/趟**；命中后按**与手动同一条权重**（60/30/10）抽一种。
    * ⚠ 两条与货柜不同：**层 1 也给**（手动那边没有层门槛）；**不入仓库** ⇒ 不能塞进 `gains`
    * （那条循环是 `state.warehouse.items` 累加）⇒ 直接 `gainAiCore`，报告里单列一行。
+   *
+   * ⚠ 2026-09-19 船长：「**AI核心吃**」⇒ 与残骸线同系数（`tf.wreck`：总量 × 打捞效率）。
+   * 4×长尾鲨满树时 `tf.wreck = 3.38 × 1.6 × 1.6 = 8.66` ⇒ 4% → **34.6%/趟**（未到 95% 护栏）。
    */
-  if (rng() < WORMHOLE_AUTO_MANUAL.cores * WORMHOLE_AUTO_YIELD_MUL) {
+  if (rng() < Math.min(0.95, WORMHOLE_AUTO_MANUAL.cores * WORMHOLE_AUTO_YIELD_MUL * tf.wreck)) {
     const total = WORMHOLE_CORE_WEIGHTS.gamma + WORMHOLE_CORE_WEIGHTS.beta + WORMHOLE_CORE_WEIGHTS.alpha
     let pick = rng() * total
     let got: 'gamma' | 'beta' | 'alpha' = 'gamma'
@@ -549,13 +669,17 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     state.warehouse.items[g.itemId] = (state.warehouse.items[g.itemId] ?? 0) + g.units
   }
 
-  // 损伤：结构 / 装甲各掷一次（−40%~−80%）；结构保底 ⇒ 绝不丢船
+  /**
+   * 损伤：结构 / 装甲各掷一次（−40%~−80%）；结构保底 ⇒ 绝不丢船。
+   * ⚠ 2026-09-19：**战斗线**按完成度把两次损耗乘 `tf.damage`（点满 ⇒ 减半：−40%~−80% 变 −20%~−40%）——
+   * 乘在"掷出的损耗"上、**在保底之前** ⇒ `WORMHOLE_AUTO_HULL_FLOOR` 与"绝不丢船"一字不动。
+   */
   const damage = run.shipIds.map((shipId) => {
     const ship = state.fleet[shipId]
     const dura = ship?.durability ?? 1
     const armor = ship?.armorPct ?? 1
-    const dLoss = WORMHOLE_AUTO_DAMAGE_MIN + rng() * (WORMHOLE_AUTO_DAMAGE_MAX - WORMHOLE_AUTO_DAMAGE_MIN)
-    const aLoss = WORMHOLE_AUTO_DAMAGE_MIN + rng() * (WORMHOLE_AUTO_DAMAGE_MAX - WORMHOLE_AUTO_DAMAGE_MIN)
+    const dLoss = (WORMHOLE_AUTO_DAMAGE_MIN + rng() * (WORMHOLE_AUTO_DAMAGE_MAX - WORMHOLE_AUTO_DAMAGE_MIN)) * tf.damage
+    const aLoss = (WORMHOLE_AUTO_DAMAGE_MIN + rng() * (WORMHOLE_AUTO_DAMAGE_MAX - WORMHOLE_AUTO_DAMAGE_MIN)) * tf.damage
     const nextDura = Math.max(WORMHOLE_AUTO_HULL_FLOOR, dura * (1 - dLoss))
     const nextArmor = Math.max(0, armor * (1 - aLoss))
     if (ship) {
@@ -591,10 +715,17 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   /** AI 核心单列（不入仓库，故不在 `gains` 里） */
   const coreText = coresGained ? `，并带回 ${aiCoreName(coresGained.type)} ×${coresGained.n}（已直接接入核心库）` : ''
   const dmgText = damage.map((d) => `${d.name}（结构 −${d.durabilityLossPct}% / 装甲 −${d.armorLossPct}%）`).join('、')
+  /**
+   * **谜质科技那一段**（船长 2026-09-19「过程不折扣」）：只在真吃到科技（`tf` 非中性）时写进日志，
+   * 未点科技的玩家日志**一字不变**。系数与结算同一个来源（`wormholeAutoTechFactors`）⇒ 报出来的就是实际生效的。
+   */
+  const techText = wormholeAutoTechIsNeutral(tf)
+    ? ''
+    : `谜质科技：残骸线 ×${tf.wreck.toFixed(2)} · 母矿线 ×${tf.ore.toFixed(2)} · 损伤 ×${tf.damage.toFixed(2)}。`
   addLog(
     state,
     'info',
-    `🛰 自动探索队返航：带回 ${gainText}（已入仓库）${coreText}；损伤：${dmgText}。` +
+    `🛰 自动探索队返航：带回 ${gainText}（已入仓库）${coreText}；损伤：${dmgText}。${techText}` +
       `${run.shipIds.length} 条舰全部安全返航，${run.shipIds.length} 枚 AI 核心已释放——报告在「扫描虫洞」页等你确认。`,
   )
 }

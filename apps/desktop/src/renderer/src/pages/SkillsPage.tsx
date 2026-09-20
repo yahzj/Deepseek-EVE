@@ -75,7 +75,11 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
     (s) => !HIDDEN_SKILL_IDS.includes(s.id) && (!focusSkillId || s.id === focusSkillId),
   )
   const q = skillQuery.trim().toLowerCase()
-  const searchHits =
+  /**
+   * 搜索命中（跨技能组）——**再与「技能组」筛选取「与」**（2026-09-19 基线⑦：
+   * 旧口径是"搜索时把分类筛选行整行隐藏"（互斥），现统一为交集；分类行**常显**）。
+   */
+  const searchHitsRaw =
     q.length > 0
       ? visibleSkills.filter(
           (s) =>
@@ -84,6 +88,8 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
             plainSkillDesc(s.description).toLowerCase().includes(q),
         )
       : null
+  const searchHits =
+    searchHitsRaw === null || groupTab === 'all' ? searchHitsRaw : searchHitsRaw.filter((s) => s.group === groupTab)
   const tabCount = (g: string): number => visibleSkills.filter((s) => s.group === g).length
   // 图标/列表模式（2026-09-09 船长：技能卡自适应网格——宽度足够同行更多）
   const [view, setView] = useState<ItemViewMode>(readSkillsView)
@@ -139,9 +145,9 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
           </span>
         }
       >
-        {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类；搜索时隐藏 */}
-        {!searchHits ? (
-          <div className="app-task-tabs" role="tablist">
+        {/* 分类筛选（参考任务中心 app-tasktab 样式）：全部 / 各技能分类。
+            ⚠ 2026-09-19 基线⑦：**搜索时不再隐藏本行**（与搜索取「与」——搜索在所选技能组内进行） */}
+        <div className="app-task-tabs" role="tablist">
             <button
               role="tab"
               aria-selected={groupTab === 'all'}
@@ -162,16 +168,19 @@ export function SkillsPage({ engine, focusSkillId }: PageProps & { focusSkillId?
                 <span className="app-dim"> {tabCount(g)}</span>
               </button>
             ))}
-          </div>
-        ) : null}
+        </div>
         <div className="app-skill-groups-wide">
           {searchHits ? (
             <div className="app-skill-group">
-              <div className="app-skill-group-tag">{tr("ui.SkillsPage.005")}{searchHits.length}）</div>
+              <div className="app-skill-group-tag">
+                {tr("ui.SkillsPage.005")}{searchHits.length}
+                {groupTab !== 'all' ? tr('ui.SkillsPage.010', { p1: groupTab }) : ''}）
+              </div>
               {renderItems(searchHits)}
               {searchHits.length === 0 ? (
                 <div className="app-dim" style={{ padding: '6px 4px' }}>
                   {tr("ui.SkillsPage.006")}{skillQuery.trim()}{tr("ui.SkillsPage.007")}
+                  {groupTab !== 'all' ? tr('ui.SkillsPage.011', { p1: groupTab }) : ''}。
                 </div>
               ) : null}
             </div>

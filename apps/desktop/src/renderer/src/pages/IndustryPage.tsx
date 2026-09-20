@@ -31,6 +31,7 @@ import {
   refineRate,
   // 2026-09-13：未上线资源不进"可精炼资源"网格 / 材料跳转（施工期闸门）
   visibleItemDefs,
+  ITEM_KIND_LABELS,
 } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -40,7 +41,8 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
-import { WRECK_SUBS, wreckTierOf } from '../ui/itemSubs'
+import { WRECK_SUBS, SUB_ALL, wreckTierOf } from '../ui/itemSubs'
+import { useL10n } from '../i18n/locale'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
@@ -477,13 +479,21 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const rate = refineRate(state, engine.ctx)
 
   const [sec, setSec] = useState<'refine' | 'shelf' | 'craft'>(focusSec ?? 'refine')
+  const { t } = useL10n()
   /**
    * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：
    * `furnaceTab` = 一级（活计大类）· `sub` = 二级（资源大类 / 残骸档位；`''` = 全部子类）。
    * 切一级标签即回「全部子类」——与组装机、市场页 `changeKind` 同款口径。
    */
   const [furnaceTab, setFurnaceTab] = useState<FurnaceTab>('all')
-  const [sub, setSub] = useState<string>('')
+  const [sub, setSub] = useState<string>(SUB_ALL) // 二级子筛选：SUB_ALL = 全部子类（2026-09-19 基线②：去掉空串键）
+  /**
+   * **精炼炉搜索栏**（船长 2026-09-19：「也给精炼炉和组装机添加搜索栏」；追问后定范围 =
+   * **名称 ＋ 产物/材料 ＋ 说明**）：搜资源/残骸/货柜名、它们的说明，以及**产出侧的名字**
+   * ——可精炼资源搜精炼产物、残骸搜保底矿物池（"某材料由什么炼出来"也搜得到）。与筛选取「与」。
+   */
+  const [fKw, setFKw] = useState('')
+  const fq = fKw.trim().toLowerCase()
   const runViews = engine.refineRunViews()
   // 组装机「去精炼」跳转目标（矿石卡 id；高亮数秒后自清；2026-09-08 船长定）
   const [focusOreId, setFocusOreId] = useState<string | null>(null)
@@ -507,7 +517,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场
    *  ⚠ 源矿石同样只看"玩家可见目录"：未上线矿石（如虚空母矿）不能作为跳转目标出现。
    *  ⚠ 2026-09-14：加了筛选标签之后，**必须同时把一级/二级筛选让开**——否则跳到一张被筛掉的卡上，
-   *  高亮根本看不见（`setFurnaceTab('ore')` + `setSub('')`）。 */
+   *  高亮根本看不见（`setFurnaceTab('ore')` + `setSub(SUB_ALL)`）。 */
   function handleNeedMineral(itemId: string): void {
     let src = ''
     for (const def of visibleItemDefs(engine.ctx)) {
@@ -520,7 +530,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
     if (src) {
       setSec('refine')
       setFurnaceTab('ore')
-      setSub('')
+      setSub(SUB_ALL)
       setFocusOreId(src)
       return
     }
@@ -572,7 +582,24 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
     .filter((k) => oreDefs.some((d) => d.kind === k))
     .map((k) => ({ key: k, label: ORE_KIND_LABEL[k]! }))
   const subOptions: SubOpt[] = furnaceTab === 'ore' ? oreSubs : furnaceTab === 'wreck' ? WRECK_SUBS : []
-  const oreFiltered = sub === '' ? oreDefs : oreDefs.filter((d) => d.kind === sub)
+  /**
+   * **搜索命中**（名称 ＋ 产物/材料 ＋ 说明）：`fq` 为空 ⇒ 恒真。
+   * 产出侧名字：可精炼资源取 `def.refine` 的精炼产物名；残骸取 `recycleMineralPoolOf(profile)` 的保底矿物名
+   * （"某材料由什么炼/拆出来"也能搜到）；货柜只按名称与说明。
+   */
+  const fHit = (def: ItemDef): boolean => {
+    if (fq.length === 0) return true
+    if (def.name.toLowerCase().includes(fq)) return true
+    if ((def.description ?? '').toLowerCase().includes(fq)) return true
+    // 大类名也入索引（与物品页仓库的搜索同口径）——否则搜「冰矿」会 0 命中：冰类物品名是
+    // 蓝霜冰 / 寒髓冰 / 暗星冰，**不含「冰矿」二字**（2026-09-19 探针实测）
+    if ((ITEM_KIND_LABELS[def.kind] ?? '').toLowerCase().includes(fq)) return true
+    const outs: string[] = (def.refine ?? []).map((r) => engine.ctx.items.get(r.mineralId)?.name ?? r.mineralId)
+    const prof = def.kind === 'wreck' ? recycleProfileOf(engine.ctx, def.id) : null
+    if (prof) for (const [mineralId] of recycleMineralPoolOf(prof)) outs.push(engine.ctx.items.get(mineralId)?.name ?? mineralId)
+    return outs.some((n) => n.toLowerCase().includes(fq))
+  }
+  const oreFiltered = sub === SUB_ALL ? oreDefs : oreDefs.filter((d) => d.kind === sub)
   /** 残骸档位：判据 = `wreckTierOf`（= core `isRareWreck`，与卡上的「稀有」徽标同源单点） */
   const wreckFiltered =
     sub === 'rare'
@@ -580,15 +607,16 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
       : sub === 'common'
         ? wreckDefs.filter((d) => wreckTierOf(d.id) !== 'rare')
         : wreckDefs
-  const oreShownF = pinMarked(state, 'recipes', oreFiltered, (def) => def.id)
-  const wreckShownF = pinMarked(state, 'recipes', wreckFiltered, (def) => def.id)
+  const oreShownF = pinMarked(state, 'recipes', oreFiltered.filter(fHit), (def) => def.id)
+  const wreckShownF = pinMarked(state, 'recipes', wreckFiltered.filter(fHit), (def) => def.id)
+  const boxShownF = boxDefs.filter(fHit)
   /** 一级标签实际要渲染哪几组（「全部」= 四组都渲染，其余只渲染对应那一组） */
   const showOre = furnaceTab === 'all' || furnaceTab === 'ore'
   const showWreck = furnaceTab === 'all' || furnaceTab === 'wreck'
   const showBox = furnaceTab === 'all' || furnaceTab === 'box'
-  /** 当前筛选下"一共几张卡"（读数行用；与组装机的「· 当前 N 张」同款） */
+  /** 当前筛选/搜索下"一共几张卡"（读数行用；与组装机的「· 当前 N 张」同款） */
   const shownCount =
-    (showOre ? oreShownF.length : 0) + (showWreck ? wreckShownF.length : 0) + (showBox ? boxDefs.length : 0)
+    (showOre ? oreShownF.length : 0) + (showWreck ? wreckShownF.length : 0) + (showBox ? boxShownF.length : 0)
   const totalCount = oreDefs.length + wreckDefs.length + boxDefs.length
 
   return (
@@ -654,14 +682,29 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           }
           right={
             <>
+              {/* 搜索栏（船长 2026-09-19）：与物品页/货仓/技能/舰船页/手册同款（标题行右侧） */}
+              <span className="app-head-search-wrap">
+                <input
+                  className="app-head-search"
+                  type="text"
+                  placeholder={tr('ui.IndustryPage.111')}
+                  value={fKw}
+                  onChange={(e) => setFKw(e.target.value)}
+                  spellCheck={false}
+                />
+              </span>
               <span
                 className="app-dim"
                 title={tr("ui.IndustryPage.061")}
               >
                 {tr("ui.IndustryPage.062")} {Math.round(rate * 100)}{tr('ui.IndustryPage.102', { n: runningCount })} {tr("ui.IndustryPage.063")} {oreDefs.length}{tr('ui.IndustryPage.103', { n: wreckDefs.length })}
                 {boxDefs.length > 0 ? tr("ui.IndustryPage.099", { p1: boxDefs.length }) : ''}
-                {/* 筛选生效时补一个"当前 N 张"（与组装机同款：免得玩家对着收窄后的网格数不清） */}
-                {shownCount !== totalCount ? tr("ui.IndustryPage.100", { shownCount: shownCount }) : ''}
+                {/* 搜索/筛选生效时补读数（与组装机同款：免得玩家对着收窄后的网格数不清） */}
+                {fq.length > 0
+                  ? tr('ui.IndustryPage.108', { n: shownCount })
+                  : shownCount !== totalCount
+                    ? tr("ui.IndustryPage.100", { shownCount: shownCount })
+                    : ''}
               </span>
               <AiSlotText state={state} ctx={engine.ctx} />
             </>
@@ -678,7 +721,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
                 className={`app-tasktab${furnaceTab === t.key ? ' is-active' : ''}`}
                 onClick={() => {
                   setFurnaceTab(t.key)
-                  setSub('') // 换一级标签即回「全部子类」（与组装机、市场页 changeKind 同款）
+                  setSub(SUB_ALL) // 换一级标签即回「全部子类」（与组装机、市场页 changeKind 同款）
                 }}
               >
                 {t.label}
@@ -689,9 +732,9 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               <button
                 role="tab"
-                aria-selected={sub === ''}
-                className={`app-tasktab${sub === '' ? ' is-active' : ''}`}
-                onClick={() => setSub('')}
+                aria-selected={sub === SUB_ALL}
+                className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
+                onClick={() => setSub(SUB_ALL)}
               >
                 {tr("ui.IndustryPage.064")}
               </button>
@@ -734,16 +777,18 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             </div>
           ) : null}
 
-          {showBox && boxDefs.length > 0 ? (
+          {showBox && boxShownF.length > 0 ? (
             <div className="app-belt-grid">
-              {boxDefs.map((def) => (
+              {boxShownF.map((def) => (
                 <FurnaceCard key={def.id} def={def} engine={engine} onToast={onToast} onGotoMap={onGotoMap} />
               ))}
             </div>
           ) : null}
-          {showBox && boxDefs.length === 0 ? (
+          {showBox && boxShownF.length === 0 ? (
             <div className="app-dim app-exp-idle">
-              {tr("ui.IndustryPage.067")}
+              {fq.length > 0
+                ? tr('ui.IndustryPage.109')
+                : tr("ui.IndustryPage.067")}
             </div>
           ) : null}
           </div>

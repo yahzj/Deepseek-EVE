@@ -23,7 +23,7 @@ import {
   shipDisplayName,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
-import { ItemHover, InfoTable, itemInfoLines, moduleInfoLines } from '../ui/shipInfo'
+import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
@@ -329,10 +329,14 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               const def = engine.ctx.modules.get(id)
               if (!def) return null
               return (
-                <li
+                /* 富卡悬停（与物品行 / 仓库装备行同一张卡）；"船载仅携带"那句降为卡内注脚
+                   （2026-09-19 与仓库同步：装备行的悬停一律是富文本详细，不再只给一句简介）。 */
+                <ModuleHover
                   key={id}
+                  as="li"
+                  mod={def}
                   className="app-inv-row"
-                  title={tr("ui.CargoPage.057", { p1: def.description })}
+                  hint={tr("ui.CargoPage.059")}
                 >
                   <div className="app-inv-main">
                     <span className="app-inv-name">
@@ -352,7 +356,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       <span className="app-dim app-sr-eta">{tr("ui.CargoPage.044")}</span>
                     )}
                   </div>
-                </li>
+                </ModuleHover>
               )
             })}
           </ul>
@@ -375,6 +379,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   name: def?.name ?? id,
                   sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                   title: def?.description,
+                  // 富卡悬停（与列表模式的 ItemHover 同一内容；2026-09-19 与仓库同步）
+                  hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
                   // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
                   tone: inventoryItemTone(id, def?.kind ?? kind),
                 }
@@ -408,6 +414,10 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     name: def?.name ?? id,
                     sub: tr("ui.CargoPage.058", { p1: units.toLocaleString('zh-CN'), p2: m3(units) }),
                     title: def?.description,
+                    // 富卡悬停（含"船载仅携带"那句注脚；2026-09-19 与列表模式/仓库同步）
+                    hover: def
+                      ? moduleHoverContent(def, '船载仅携带：装配台取料自装备库，船载装备需先卸回。')
+                      : undefined,
                   }
                 })}
                 onPick={(key) => setPickMod(key)}
