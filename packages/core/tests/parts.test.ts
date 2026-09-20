@@ -97,32 +97,95 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
 })
 
 describe('零件体系：配方改造（2026-09-20）', () => {
-  it('④ 专属装备材料总价 +50%（含零件）· 书价不变', () => {
+  /* ── 2026-09-20 船长追加裁定「调整专属舰船和装备使用零件的比例，需要提高」：
+   *   价值占比口径 · 专属 = 基础 45% + 高级 30% + 矿物 25% · T4 与 T5 = 基础 75% + 矿物 25%（非专属不用高级件）
+   *   · **等值替换**（总价分文不变）· 允许删原材料（每张至多留 4 行矿物）。 */
+  const BASIC_IDS = new Set(['part-frame', 'part-armor-plate', 'part-cable', 'part-circuit', 'part-coolant'])
+  const ADV_IDS = new Set(['part-keel', 'part-qchip', 'part-fire-control', 'part-grav-comp', 'part-jet-array', 'part-shield-gen', 'part-drone-neural'])
+  const shares = (mats: readonly { itemId: string; count: number }[]): { basic: number; adv: number; raw: number } => {
+    let basic = 0
+    let adv = 0
+    let raw = 0
+    for (const m of mats) {
+      const v = (ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0) * m.count
+      if (BASIC_IDS.has(m.itemId)) basic += v
+      else if (ADV_IDS.has(m.itemId)) adv += v
+      else raw += v
+    }
+    const total = basic + adv + raw
+    return { basic: basic / total, adv: adv / total, raw: raw / total }
+  }
+  const T4_IDS = ['sbp-swordfish', 'sbp-bowhead', 'sbp-xuanwu', 'sbp-megalodon']
+
+  it('④ 专属装备：总价不变（+50% 口径保留）· 占比 = 基础 45% / 高级 30% / 矿物 25% · 书价不变', () => {
     const bp = BLUEPRINTS.find((b) => b.id === 'bp-wh-a-frag')!
-    const hasPart = bp.materials.some((m) => ctx.items.get(m.itemId)?.kind === 'part')
-    expect(hasPart).toBe(true)
-    // 原矿物总价 788,000（26,000×8＋7,000×12＋5,000×20＋110×3,600）→ +50% ≈ 1,182,000
-    const total = matValue(bp.materials)
-    expect(total).toBeGreaterThanOrEqual(788_000 * 1.45)
-    expect(total).toBeLessThanOrEqual(788_000 * 1.55)
+    expect(matValue(bp.materials)).toBe(1_181_970) // 改造前定稿值（等值替换 ⇒ 分文不变）
     expect(bp.priceIsk).toBe(5_244_500) // 书价不变
+    const s = shares(bp.materials)
+    expect(s.basic).toBeCloseTo(0.45, 1)
+    expect(s.adv).toBeCloseTo(0.3, 1)
+    expect(s.raw).toBeCloseTo(0.25, 1)
+    // 全部 30 张专属装备/无人机同口径（±2 个百分点，取整余量）
+    for (const b of BLUEPRINTS.filter((x) => x.id.startsWith('bp-wh-'))) {
+      const k = shares(b.materials)
+      expect(k.basic, `${b.id} 基础件占比`).toBeGreaterThan(0.43)
+      expect(k.basic, `${b.id} 基础件占比`).toBeLessThan(0.47)
+      expect(k.adv, `${b.id} 高级件占比`).toBeGreaterThan(0.28)
+      expect(k.adv, `${b.id} 高级件占比`).toBeLessThan(0.32)
+    }
   })
-  it('⑤ 专属舰船材料 +50% · 工期 ÷5', () => {
+  it('⑤ 专属舰船：总价不变 · 占比同口径（45/30/25）· 工期 ÷5', () => {
     const sbp = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-wh-a-frigate')!
-    const hasKeel = sbp.materials.some((m) => m.itemId === 'part-keel')
-    expect(hasKeel).toBe(true)
-    const total = matValue(sbp.materials)
-    expect(total).toBeGreaterThanOrEqual(340_400 * 1.45)
-    expect(total).toBeLessThanOrEqual(340_400 * 1.55)
+    expect(matValue(sbp.materials)).toBe(510_280) // 改造前定稿值（等值替换）
     expect(sbp.buildSeconds).toBe(240) // 1200 ÷ 5
+    for (const b of SHIP_BLUEPRINTS.filter((x) => x.id.startsWith('sbp-wh-'))) {
+      const k = shares(b.materials)
+      expect(k.basic, `${b.id} 基础件占比`).toBeGreaterThan(0.43)
+      expect(k.adv, `${b.id} 高级件占比`).toBeGreaterThan(0.28)
+      expect(k.raw, `${b.id} 矿物占比`).toBeGreaterThan(0.23)
+    }
   })
-  it('⑥ 皇带鱼：零件等值替换 ⇒ 总价分文不变 · 工期 ÷5', () => {
+  it('⑥ 皇带鱼：总价分文不变 · **只用基础零件**（非专属不吃高级件）· 占比 75/25 · 工期 ÷5', () => {
     const sbp = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-colossal')!
-    // 原总价 307,106,000（8 种矿物按 baseSell）——替换后必须逐分不变
-    expect(matValue(sbp.materials)).toBe(307_106_000)
-    expect(sbp.materials.some((m) => m.itemId === 'part-keel')).toBe(true)
-    expect(sbp.materials.some((m) => m.itemId === 'part-grav-comp')).toBe(true)
+    expect(matValue(sbp.materials)).toBe(307_106_000) // 原总价（8 种矿物口径）⇒ 替换后逐分不变
     expect(sbp.buildSeconds).toBe(32_400) // 162,000 ÷ 5
+    expect(sbp.materials.some((m) => m.itemId === 'part-frame')).toBe(true)
+    for (const m of sbp.materials) expect(ADV_IDS.has(m.itemId), `${m.itemId} 不该出现在非专属配方里`).toBe(false)
+    const s = shares(sbp.materials)
+    expect(s.basic).toBeCloseTo(0.75, 1)
+    expect(s.raw).toBeCloseTo(0.25, 1)
+  })
+  it('⑥c T4 舰船（含一次性孪生共 8 张）：纳入改造 · 只用基础件 · 占比 75/25 · 总价与孪生一致', () => {
+    const T4_TOTALS: Record<string, number> = {
+      'sbp-swordfish': 10_800_000,
+      'sbp-bowhead': 30_340_000,
+      'sbp-xuanwu': 40_450_000,
+      'sbp-megalodon': 101_250_000,
+    }
+    for (const id of T4_IDS) {
+      const bp = SHIP_BLUEPRINTS.find((b) => b.id === id)!
+      const once = SHIP_BLUEPRINTS.find((b) => b.id === `sbp-once-${id.replace('sbp-', '')}`)!
+      expect(matValue(bp.materials), `${id} 总价应保持改造前`).toBe(T4_TOTALS[id])
+      expect(matValue(once.materials), `一次性孪生 ${once.id} 与本体同料同价`).toBe(T4_TOTALS[id])
+      for (const b of [bp, once]) {
+        const s = shares(b.materials)
+        expect(s.basic, `${b.id} 基础件占比`).toBeCloseTo(0.75, 1)
+        expect(s.raw, `${b.id} 矿物占比`).toBeCloseTo(0.25, 1)
+        for (const m of b.materials) expect(ADV_IDS.has(m.itemId), `${b.id} 不该含高级件`).toBe(false)
+      }
+    }
+  })
+  it('⑥d 范围边界：T1~T3 普通舰船与 T5 之外的常规蓝图**不进零件体系**（保持 0 零件）', () => {
+    const touched = new Set<string>([
+      ...T4_IDS,
+      ...T4_IDS.map((id) => `sbp-once-${id.replace('sbp-', '')}`),
+      'sbp-colossal',
+      'sbp-once-colossal',
+    ])
+    for (const b of SHIP_BLUEPRINTS) {
+      if (b.id.startsWith('sbp-wh-') || touched.has(b.id)) continue
+      expect(b.materials.some((m) => ctx.items.get(m.itemId)?.kind === 'part'), `${b.id} 不该有零件`).toBe(false)
+    }
   })
   it('⑥b 材料全覆盖（2026-09-20 船长问「材料是否覆盖了除虚空晶之外的所有材料」）：冥铁合金已进零件链 · 补偿器等值替换料价不变', () => {
     // 引力子补偿器补冥铁（等值替换：料价仍 50,000/轮 = 单件 5,000）
