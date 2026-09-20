@@ -75,33 +75,49 @@ export function wormholeStartBattle(
    * ⚠ 首版工具只在"单场阶梯"里传了它、整趟模拟没传 ⇒ 扫描结果全是同一个系数（读数为假的对比）。
    */
   opts?: { strengthMul?: number },
-): { ok: boolean; error?: string } {
+): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const run = state.wormhole.run
-  if (!run) return { ok: false, error: '不在虫洞内。' }
-  if (run.battle) return { ok: false, error: '战斗还没结束。' }
+  if (!run) return { ok: false, error: '不在虫洞内。', errorId: 'core.wormholeBattle.001' }
+  if (run.battle) return { ok: false, error: '战斗还没结束。', errorId: 'core.wormholeBattle.002' }
   const grid = run.grid
   const here = grid ? gridCellAt(grid, grid.pos) : undefined
   if (kind === 'node') {
     if (grid) {
       // 网格层：战斗由**地点**触发（舰船信号 / 遗迹收尾，后者 F3b 接）
-      if (here?.place !== 'ship') return { ok: false, error: '这里没有可交火的信号。' }
+      if (here?.place !== 'ship') {
+        return { ok: false, error: '这里没有可交火的信号。', errorId: 'core.wormholeBattle.003' }
+      }
     } else {
-      if (!run.pendingNode) return { ok: false, error: '本层已清空：该打层末守卫了。' }
-      if (run.pendingNode.kind !== 'combat') return { ok: false, error: '这个节点不是战斗节点。' }
+      if (!run.pendingNode) {
+        return { ok: false, error: '本层已清空：该打层末守卫了。', errorId: 'core.wormholeBattle.004' }
+      }
+      if (run.pendingNode.kind !== 'combat') {
+        return { ok: false, error: '这个节点不是战斗节点。', errorId: 'core.wormholeBattle.005' }
+      }
     }
   } else if (kind === 'boss') {
     // 网格层：层末守卫守在"下一层入口"那一格上——站上去激活它才开打
     if (grid) {
-      if (!here || !isExitCell(grid, grid.pos)) return { ok: false, error: '层末守卫守在下一层入口：先找到并抵达入口。' }
+      if (!here || !isExitCell(grid, grid.pos)) {
+        return {
+          ok: false,
+          error: '层末守卫守在下一层入口：先找到并抵达入口。',
+          errorId: 'core.wormholeBattle.006',
+        }
+      }
     } else if (run.pendingNode) {
-      return { ok: false, error: '本层还没走完：先处理完层内节点。' }
+      return { ok: false, error: '本层还没走完：先处理完层内节点。', errorId: 'core.wormholeBattle.007' }
     }
-    if ((run.bossCleared ?? 0) >= run.depth) return { ok: false, error: '本层守卫已经清掉了。' }
+    if ((run.bossCleared ?? 0) >= run.depth) {
+      return { ok: false, error: '本层守卫已经清掉了。', errorId: 'core.wormholeBattle.008' }
+    }
   } else if (kind === 'ruins') {
     // **遗迹收尾战**（F3b）：打捞结束时触发；网格层必须站在遗迹格上、且那格已经捞空
-    if (!grid) return { ok: false, error: '遗迹收尾战只在网格层成立。' }
-    if (here?.place !== 'ruins') return { ok: false, error: '这里不是遗迹。' }
-    if ((here.piles ?? []).length > 0) return { ok: false, error: '遗迹还没打捞完：先捞空再打。' }
+    if (!grid) return { ok: false, error: '遗迹收尾战只在网格层成立。', errorId: 'core.wormholeBattle.009' }
+    if (here?.place !== 'ruins') return { ok: false, error: '这里不是遗迹。', errorId: 'core.wormholeBattle.010' }
+    if ((here.piles ?? []).length > 0) {
+      return { ok: false, error: '遗迹还没打捞完：先捞空再打。', errorId: 'core.wormholeBattle.011' }
+    }
   }
   const waves = kind === 'node' && !grid ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
   /**
@@ -126,7 +142,7 @@ export function wormholeStartBattle(
     waves,
     ...(opts?.strengthMul !== undefined ? { strengthMul: opts.strengthMul } : {}),
   })
-  if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。' }
+  if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。', errorId: 'core.wormholeBattle.012' }
   // **洞内开战 = 敌方跃迁入场**（船长 2026-09-13「虫洞内为敌方」）：给首波敌舰盖入场时刻
   // ⇒ 入场窗口内我方打不到它们（船长 2026-09-14「动画没结束不开火」）。
   // 洞外那一场是我方飞入、敌方没有入场动画 ⇒ **不盖**（有动画才有窗口）。
@@ -161,6 +177,8 @@ export function wormholeActivateAt(
 ): {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   spent?: number
   effect?: WormholeActivateEffect
   started?: WormholeFoeKind
@@ -194,7 +212,14 @@ export function wormholeActivateAt(
       return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, pendingBattle: 'ruins' }
     }
     const b = wormholeStartBattle(state, ctx, 'ruins', atGameMs)
-    if (!b.ok) return { ok: false, error: `无法开战：${b.error ?? ''}` }
+    if (!b.ok) {
+      return {
+        ok: false,
+        error: `无法开战：${b.error ?? ''}`,
+        errorId: 'core.wormholeBattle.013',
+        errorParams: { p1: b.error ?? '' },
+      }
+    }
     return { ok: true, spent: s.spent, taken: s.taken?.length ?? 0, effect, started: 'ruins' }
   }
   // **矿脉**（F5：要采集器；规则同打捞）——也走"激活"这个入口，界面一个按钮就够
@@ -228,6 +253,12 @@ export function wormholeActivateAt(
         return {
           ok: false,
           error: `取不回「${device.name}」：${landed.error ?? '货仓放不下'}（它占 2×2 = 4 格，先腾地方或抛货）`,
+          errorId: 'core.wormholeBattle.014',
+          errorParams: {
+            p1: device.name,
+            p2: landed.error ?? '货仓放不下',
+            ...(landed.error === undefined ? { p2Id: 'core.wormholeBattle.015' } : {}),
+          },
         }
       }
       addLog(
@@ -247,7 +278,12 @@ export function wormholeActivateAt(
       run.turnsLeft = turnsBefore
       if (run.grid) run.grid.activated = run.grid.activated.filter((k) => k !== effect.key)
     }
-    return { ok: false, error: `无法开战：${s.error ?? ''}` }
+    return {
+      ok: false,
+      error: `无法开战：${s.error ?? ''}`,
+      errorId: 'core.wormholeBattle.013',
+      errorParams: { p1: s.error ?? '' },
+    }
   }
   return { ok: true, spent: r.spent, effect, started: kind }
 }
@@ -274,6 +310,8 @@ export function wormholeTravelTo(
 ): {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   code?: 'unknown-target' | 'path-blocked'
   spent?: number
   autoBattle?: boolean
@@ -337,7 +375,12 @@ export function wormholeTravelTo(
       g.activated = snap.activated
       g.exitKnown = snap.exitKnown
     }
-    return { ok: false, error: `无法开战：${s.error ?? ''}` }
+    return {
+      ok: false,
+      error: `无法开战：${s.error ?? ''}`,
+      errorId: 'core.wormholeBattle.013',
+      errorParams: { p1: s.error ?? '' },
+    }
   }
   return {
     ok: true,
@@ -474,7 +517,13 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     const n = back.kin + back.exp + back.pla
     if (n > 0) {
       refundAmmo(state, back, battle.ammoIds)
-      addLog(state, 'info', `🕳 弹药回收装置：这一场打出去的弹药回收了 ${n} 发（${Math.round(matterBuffs.ammoRefundPct * 100)}%）。`)
+      addLog(
+        state,
+        'info',
+        `🕳 弹药回收装置：这一场打出去的弹药回收了 ${n} 发（${Math.round(matterBuffs.ammoRefundPct * 100)}%）。`,
+        'core.wormholeBattle.016',
+        { p1: n, p2: Math.round(matterBuffs.ammoRefundPct * 100) },
+      )
     }
   }
   // **机群战损**（与远征 `resolveBattleOutcome` / 遭遇战同款 · 2026-09-13 修）：洞内的无人机照样会被
@@ -501,7 +550,13 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       if ((ship.armorPct ?? 1) + (ship.durability ?? 1) > before) touched += 1
     }
     if (touched > 0) {
-      addLog(state, 'info', `🕳 战地维修单元：编队装甲与结构各回复 ${Math.round(pct * 100)}%（不耗货仓组件）。`)
+      addLog(
+        state,
+        'info',
+        `🕳 战地维修单元：编队装甲与结构各回复 ${Math.round(pct * 100)}%（不耗货仓组件）。`,
+        'core.wormholeBattle.017',
+        { p1: Math.round(pct * 100) },
+      )
     }
   }
   const won = battle.ended === 'me'
@@ -575,7 +630,13 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   }
   if (kind === 'boss') {
     run.bossCleared = run.depth
-    addLog(state, 'info', `🕳 第 ${run.depth} 层守卫已清：可以「继续深入」或「撤离」。`)
+    addLog(
+      state,
+      'info',
+      `🕳 第 ${run.depth} 层守卫已清：可以「继续深入」或「撤离」。`,
+      'core.wormholeBattle.018',
+      { p1: run.depth },
+    )
     return
   }
   // 网格层的地点战：回合已在"激活地点"那一步扣掉、地点也已记进 `activated` ⇒ 这里只报账
@@ -583,18 +644,24 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   if (run.grid) {
     // 舰船信号的战果：打赢**固定**给残骸 2 堆 + 稀有残骸 1 堆（船长口径；放不下的留在格上）
     if (kind === 'node') wormholeGrantShipSpoils(state, ctx)
-    if (run.turnsLeft <= 0) addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`)
+    if (run.turnsLeft <= 0) addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
     return
   }
   // 老档线性节点：结算该节点（扣回合、推进；回合不够 ⇒ 转撤离相位＝只能撤离）
   const r = wormholeAdvanceNode(ctx, run, state.rng.seed)
   if (!r.ok) {
     run.phase = 'extracting'
-    addLog(state, 'warn', `🕳 回合不足以继续推进：只能撤离（${r.error ?? ''}）。`)
+    addLog(
+      state,
+      'warn',
+      `🕳 回合不足以继续推进：只能撤离（${r.error ?? ''}）。`,
+      'core.wormholeBattle.020',
+      { p1: r.error ?? '' },
+    )
     return
   }
   if (r.mustExtract) {
-    addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`)
+    addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
   }
 }
 
@@ -746,7 +813,13 @@ export function deliverWormholeCores(
       .filter((t) => (cores[t] ?? 0) > 0)
       .map((t) => `${aiCoreName(t)}×${cores[t]}`)
       .join('、')
-    addLog(state, 'info', `🕳 带回 ${text}：已直接接入核心库（不占货仓、不入仓库）。`)
+    addLog(
+      state,
+      'info',
+      `🕳 带回 ${text}：已直接接入核心库（不占货仓、不入仓库）。`,
+      'core.wormholeBattle.021',
+      { p1: text },
+    )
   }
   return cores
 }
@@ -868,7 +941,13 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
     if (units > 0) addWare(state, itemId, units)
   }
   if (tempPlacements.length > 0) {
-    addLog(state, 'info', `🕳 临时空间里的 ${tempUnits.size} 类物资一并入港（未整理的也带回来了）。`)
+    addLog(
+      state,
+      'info',
+      `🕳 临时空间里的 ${tempUnits.size} 类物资一并入港（未整理的也带回来了）。`,
+      'core.wormholeBattle.022',
+      { p1: tempUnits.size },
+    )
   }
   // **结算单**（界面弹层用；玩家确认后清掉）
   state.wormhole.lastSettle = {
@@ -929,7 +1008,12 @@ export function advanceWormhole(
      * （旧代码在同一档是"开不出撤离战 ⇒ 按全损处理"，那条兜底随撤离战取消一并搬到本分支）。
      */
     if (run.fleet.length === 0) {
-      addLog(state, 'warn', `🕳 撤离失败：编队已经没了（全灭或档案异常）——本趟按全损处理。`)
+      addLog(
+        state,
+        'warn',
+        `🕳 撤离失败：编队已经没了（全灭或档案异常）——本趟按全损处理。`,
+        'core.wormholeBattle.023',
+      )
       state.wormhole.lastSettle = {
         kind: 'lost',
         depth: run.depth,
