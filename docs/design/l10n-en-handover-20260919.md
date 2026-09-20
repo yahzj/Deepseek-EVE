@@ -162,8 +162,11 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 | 防呆 | `npm run l10n:check` 会扫 `packages/core/src` 里一切 `'core.*'` 字面量：必须在表内且形态合规 |
 | 每批收尾 | 删掉中途多造的条目（未接线条目里出现 `core.*` 就是信号）；跑全套闸门 + core 用例 |
 
-**进度（截至 2026-09-20）**：`mining.ts` ✅（36 条）· `salvaging.ts` ✅（27 条）⇒ 表 **3013** 条（core 段 65）。
-**下一批建议顺序**：`shipyard.ts` → `industry.ts` → `location.ts` → `market.ts` → `expedition.ts` → `ai.ts` → `combat.ts` → `hauling.ts` → `equipment.ts` → `manufacturing.ts` → `state.ts` → `save.ts` → `wormhole*.ts` → 其余（约 30 个文件 / ≈550 处）。
+**进度（截至 2026-09-20）**：`mining.ts` ✅（36 条）· `salvaging.ts` ✅（27 条）· `shipyard.ts` ✅（40 条）
+⇒ 表 **3079** 条（core 段 131；含共用条目命名空间 `core.state.*`：舰队无此船 / 不在已知航路 / 重复清剿已停止 等，
+`ai.ts`、`expedition.ts`、`location.ts` 直接复用）。
+**下一批建议顺序**：`ai.ts` → `industry.ts` → `location.ts` → `market.ts` → `expedition.ts` → `combat.ts` →
+`hauling.ts` → `equipment.ts` → `manufacturing.ts` → `state.ts` → `save.ts` → `wormhole*.ts` → 其余（约 26 个文件 / ≈490 处）。
 
 - **日志口径实测与纠偏**（船长追问"老档哪来的历史日志"后查实）：日志**不落盘**（引擎 `persist()` /
   `currentSaveText()` 写盘前剥离）⇒ 真实档 `logs` 恒为空；**但**造档工具（`tools/make-test-save.ts` 等）
