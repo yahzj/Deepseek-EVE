@@ -41,6 +41,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
+import { partToneKeyOf, toneOf } from '../ui/Glyphs'
 import { useL10n } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -480,6 +481,7 @@ export function BlueprintCard({
   productNode,
   kindLabel,
   productGlyph,
+  productTone,
   productBase,
   ownedCount,
   ownedWhere,
@@ -504,6 +506,8 @@ export function BlueprintCard({
   kindLabel: string
   /** 产物图标键（与图鉴行同口径：物品/弹药 = 物品 kind、装备 = 槽位、舰船 = 船族；卡名前的 SVG 小图标） */
   productGlyph: string
+  /** 图标色覆盖（2026-09-20 零件两档：基础 = 冷钢蓝 / 高级 = 暖金；缺省 = toneOf(glyph)） */
+  productTone?: string
   /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
   productBase: number
   /** 自己已有多少产物（2026-09-10 船长：卡面产物行尾要显示"我拥有多少个成品"） */
@@ -708,7 +712,7 @@ export function BlueprintCard({
     <div className={`app-belt-card is-assembler${highlighted ? ' is-goto' : ''}`}>
       <div className="app-belt-head">
         <span className="app-belt-name">
-          <RowGlyph glyph={productGlyph} /> {name}
+          <RowGlyph glyph={productGlyph} tone={productTone} /> {name}
           {running ? (
             <em className="app-belt-flag is-run">
               {kindLabel === '舰船' ? '造船中' : '制造中'}
@@ -1069,6 +1073,8 @@ export function ManufacturingPanel({
     /** 二级子筛选键（装备 = 产物功能分组 / 舰船 = t<级别> / 消耗品 = 产物大类；与 itemSubs 单点同键） */
     subKey: string
     productGlyph: string
+    /** 图标色覆盖（零件两档分色；缺省 = toneOf(glyph)） */
+    productTone?: string
     name: string
     description: string
     materials: readonly MaterialNeed[]
@@ -1189,6 +1195,7 @@ export function ManufacturingPanel({
         // 2026-09-20 零件体系：二级子筛选 = 基础/高级（键 `part-<档>`，单点 `itemSubs.partTierOf`）
         subKey: bp.partTier ? `part-${bp.partTier}` : '',
         productGlyph: 'part',
+        productTone: toneOf(partToneKeyOf(itemDef.id)),
         name: bp.name,
         description: bp.description,
         materials: bp.materials,
@@ -1421,6 +1428,7 @@ export function ManufacturingPanel({
               productNode={it.productNode}
               kindLabel={it.kindLabel}
               productGlyph={it.productGlyph}
+              productTone={it.productTone}
               productBase={it.productBase}
               ownedCount={it.ownedCount}
               ownedWhere={it.ownedWhere}

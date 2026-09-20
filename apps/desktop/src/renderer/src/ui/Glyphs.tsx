@@ -967,6 +967,22 @@ const SHAPES: Record<string, ReactNode> = {
   ),
 }
 
+/** **零件两档的档位键**（2026-09-20 船长：「将普通零件和高级零件用颜色区分」）：
+ *  基础零件 = `part-basic`（冷钢蓝）· 高级零件 = `part-advanced`（暖金）——两档**共用同一枚 `part` 造型**，
+ *  只靠色调区分（与 `box-relic-*` 按族、`box-bp-*` 按层档、`ai-core-*` 按稀有度同一套做法）。
+ *  映射单点 = 本函数；名单与 data 层 `BlueprintDef.partTier` 同口径（高级 = 需学习蓝图的那 7 件）。 */
+const ADVANCED_PART_IDS = new Set([
+  'part-drone-neural', 'part-shield-gen', 'part-jet-array', 'part-qchip',
+  'part-keel', 'part-fire-control', 'part-grav-comp',
+])
+
+export function partToneKeyOf(itemId: string): string {
+  return ADVANCED_PART_IDS.has(itemId) ? 'part-advanced' : 'part-basic'
+}
+
+SHAPES['part-basic'] = SHAPES.part
+SHAPES['part-advanced'] = SHAPES.part
+
 /** 调色板：分类色调（科幻 UI 亮色系） */
 export const TONES: Record<string, string> = {
   ore: '#5ee6c8',
@@ -978,7 +994,13 @@ export const TONES: Record<string, string> = {
   wreck: '#b8a37a', // 残骸：旧黄铜/锈色（回收料的观感）
   kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
-  part: '#9fd0e8', // 零件：冷钢蓝（工业中间件，与原材料蓝区分一档偏灰）
+  part: '#9fd0e8', // 零件大类兜底色（= 基础零件冷钢蓝）；两档分色见下两条
+  /* ── 零件两档（2026-09-20 船长：「将普通零件和高级零件用颜色区分」）——
+     与 `box-relic-*` 按族、`box-bp-*` 按层档、`ai-core-*` 按稀有度**同一套做法**：
+     共用 `part` 造型、色调按**档位键**取（`part-basic` / `part-advanced`；映射单点 = `partToneKeyOf`）。
+     基础零件 = 冷钢蓝（工业中间件）· 高级零件 = 暖金（更贵重的一档）。 */
+  'part-basic': '#9fd0e8',
+  'part-advanced': '#ffd479',
   container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
   matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
   essence: '#69e2ff', // 虫洞谜质：比装置形更亮的冷辉青（同一族、亮一档）
@@ -1082,6 +1104,8 @@ export function itemIconOf(itemId: string, kind?: string): string {
   if (itemId === 'box-valuables' || itemId === 'box-military') return itemId
   if (itemId.startsWith('ai-core-')) return 'ai-core'
   if (itemId.startsWith('mat-')) return itemId
+  // 2026-09-20 零件两档：图标键 = 档位键（形状同 part、色调分两档）
+  if (kind === 'part') return partToneKeyOf(itemId)
   return kind ?? 'fallback'
 }
 
@@ -1108,6 +1132,8 @@ export const RARE_WRECK_TONE = '#f4c95d'
  * 判据走 `itemSubs.wreckTierOf`（= core `isRareWreck`，全仓唯一前缀判定）。
  */
 export function inventoryItemTone(itemId: string, kind: string): string {
+  // 2026-09-20 零件两档：基础 = 冷钢蓝 / 高级 = 暖金（按物品 id 取色；其余物品照旧按大类）
+  if (kind === 'part') return toneOf(partToneKeyOf(itemId))
   return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : toneOf(kind)
 }
 
