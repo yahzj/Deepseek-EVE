@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from '../../apps/desktop/src/renderer/src/App'
 import { GameEngine } from '../../apps/desktop/src/renderer/src/game/engine'
 import { applySpaceBg } from '../../apps/desktop/src/renderer/src/ui/spaceBg'
+import { L10nProvider, tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
 import '../../apps/desktop/src/renderer/src/styles.css'
 
 // 宇宙背景（2026-09-10 船长）：与桌面入口同口径——启动时抽一张无缝贴图并写入 `--space-bg`，
@@ -15,14 +16,18 @@ applySpaceBg()
 const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)
 
-root.render(<div className="app-loading">正在启动星门引擎……</div>)
+root.render(<div className="app-loading">{tr('ui.main.001')}</div>)
 
 engine
   .start()
   .then(() => {
-    root.render(<App engine={engine} />)
+    root.render(
+    <L10nProvider>
+      <App engine={engine} />
+    </L10nProvider>,
+  )
   })
   .catch((err: unknown) => {
-    console.error('引擎启动失败：', err)
-    root.render(<div className="app-loading">启动失败：{String(err)}（请见开发者控制台）</div>)
+    console.error(tr('ui.main.004'), err)
+    root.render(<div className="app-loading">{tr('ui.main.002', { err: String(err) })}</div>)
   })
