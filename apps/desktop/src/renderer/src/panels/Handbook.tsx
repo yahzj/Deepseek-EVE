@@ -36,6 +36,7 @@ import {
   itemBucketPasses,
   itemSubPasses,
   moduleSubKeyOf,
+  presentSubs,
   shipRolePasses,
   shipTierPasses,
 } from '../ui/itemSubs'
@@ -50,6 +51,8 @@ const slotName = (k: string): string => (SLOT_LABELS as Record<string, string>)[
 const roleName = (k: string): string => (SHIP_ROLE_LABELS as Record<string, string>)[k] ?? k
 
 type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
+/** 有图鉴内容的页（＝ `codexCells` 的键；筛选两级的现算都在这几页上做） */
+type CodexTab = 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
 type ViewMode = 'grid' | 'list'
 /** 详情行数据 */
 type RawData = Record<string, unknown>
@@ -990,7 +993,7 @@ export function Handbook({
     return engine.groups.map((g) => ({ key: g, label: g })) // skills
   }
 
-  const codexCells: Record<'items' | 'modules' | 'ships' | 'blueprints' | 'skills', GridCell[]> = {
+  const codexCells: Record<CodexTab, GridCell[]> = {
     items: itemCells,
     modules: moduleCells,
     ships: shipCells,
@@ -1003,25 +1006,29 @@ export function Handbook({
         集中提问后定：**只做一级的页签 = 物品 / 技能**（无天然第二层），二级只在装备 / 舰船 / 蓝图三页；
         控件复用组装机那一套 `app-task-tabs` + `app-tasktab` 胶囊；与搜索取「与」 ── */
 
-  /** 主筛选（一级）可选项——与各页的**分组键同一套判据**：装备＝槽类、舰船＝角色、蓝图＝门类 */
-  function mainOptions(t: Tab): SubOption[] {
+  /** 主筛选（一级）**候选表**——与各页的**分组键同一套判据**：装备＝槽类、舰船＝角色、蓝图＝门类 */
+  function mainCandidatesOf(t: CodexTab): SubOption[] {
     if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
     if (t === 'modules') return RACK_SUBS
     if (t === 'ships') return SHIP_SUBS
     if (t === 'blueprints') return BP_MAIN
-    if (t === 'skills') return engine.groups.map((g) => ({ key: g, label: g }))
-    return []
+    return engine.groups.map((g) => ({ key: g, label: g }))
   }
   /**
-   * 子筛选（二级）可选项——**必须选了主类才出现**（「全部」不带子筛选；2026-09-13 船长口径：
-   * 「如果有子分类的，主筛选选择之后出现子分类筛选」）。2026-09-19 甲组补丁按船长
-   * 「涉及到特定分类的父分类时，将其子分类也放入」补齐：
+   * **主筛选（一级）可选项 = 候选表里"本页真有卡片"的那些**（2026-09-20 船长「手册的筛选也进行收缩」）——
+   * 「全部」常显；判据与下面的 `mainPasses` 同一把尺（避免出现"选进去必然空"的档）。
+   */
+  function mainOptions(t: CodexTab): SubOption[] {
+    return presentSubs(mainCandidatesOf(t), (key) => codexCells[t].some((c) => mainPasses(c, t, key)))
+  }
+  /** 子筛选（二级）**候选表**——**必须选了主类才出现**（「全部」不带子筛选；2026-09-13 船长口径：
+   *  「如果有子分类的，主筛选选择之后出现子分类筛选」）。2026-09-19 甲组补丁按船长
+   *  「涉及到特定分类的父分类时，将其子分类也放入」补齐：
    * - 物品图鉴：货柜→四档 · 残骸→档位 · AI 核心→档位（只列有物品形态的）· 蓝图碎片→功能分组；
    * - 蓝图图鉴：装备→槽类 / 舰船→级别 / **消耗品→产物大类**（原先消耗品整行不出）；
    * - 装备图鉴：槽类（主）→ 功能分组（子）；舰船图鉴：类别（主）→ 级别（子）。
    */
-  function subOptions(t: Tab, main: string): SubOption[] {
-    if (main === SUB_ALL) return []
+  function subCandidatesOf(t: CodexTab, main: string): SubOption[] {
     if (t === 'modules') return MODULE_SUBS
     if (t === 'ships') return SHIP_TIER_SUBS
     if (t === 'items') {
@@ -1044,6 +1051,19 @@ export function Handbook({
       return CONSUME_SUBS.filter((s) => kinds.has(s.key))
     }
     return []
+  }
+  /**
+   * **子筛选（二级）可选项 = 候选表里"该主类下真有卡片"的那些**（2026-09-20 船长「手册的筛选也进行收缩」）——
+   * 船长点名的同类问题（精炼炉/组装机/市场已改）在手册里的落点：物品图鉴「蓝图碎片」挂着十组功能、
+   * 实际只有「采集与货舱 / 武器」有卡；装备图鉴「高槽」下挂着护盾/装甲/推进器/协处理器四档恒空；
+   * 舰船图鉴「采矿舰」下挂着 T4/T5 恒空。判据与 `mainPasses × subPassesCell` 同一把尺。
+   * ⚠ 只收**选项**：卡片集合（`codexCells` 与下面的分组）一字未动。
+   */
+  function subOptions(t: CodexTab, main: string): SubOption[] {
+    if (main === SUB_ALL) return []
+    return presentSubs(subCandidatesOf(t, main), (key) =>
+      codexCells[t].some((c) => mainPasses(c, t, main) && subPassesCell(c, t, key)),
+    )
   }
   /** 主筛选判定（判据与 `groupKeyOf` 逐条对齐，避免"筛出来的条目和分组标题不一致"） */
   function mainPasses(c: GridCell, t: Tab, main: string): boolean {
