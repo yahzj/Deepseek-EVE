@@ -469,6 +469,20 @@ export function WormholePanel({
   /** 带 `warn` 的（长途运输）要单独摆成**警告条**——船长 2026-09-14：「长途运输发出警告」 */
   const autoStopWarns = auto || run ? [] : engine.wormholeEntryAutoStopList().filter((a) => a.warn)
   /**
+   * **编队未满的软提醒**（船长 2026-09-20：「玩家在虫洞准备界面，选择的舰船不足4艘时，警告玩家」；
+   * 三问口径 = **①软提醒**不拦人 · **②提示方向 = 加入更多舰船会更危险** · **③自动探索不加**）。
+   *
+   * ⚠ **为什么是"更危险"而不是"更弱"**：`WORMHOLE_MAX_SHIPS` 的语义是**上限**、不是"必须带满"——
+   * 反向的取舍是实的：编队越大 ⇒ 总质量越高 ⇒ `wormholeTurnBudget` 给的回合越少
+   * （实测 4×长尾鲨 = 14,000 质量 / 42 回合，单艘 = 3,500 / 70 回合），换来的是背包格与战力。
+   * 故本条只说"再加入会更危险"，**不劝玩家塞满 4 格**、也不动 admission 的判定。
+   *
+   * 只在"手动 + 无本趟 + 编队本身合法"时亮：编队已有硬拦（0 艘/超 4 艘/旗舰/超重）时，
+   * 那条红字就是最该看的话，再叠一条"未满 4 艘"只会分散注意（与下方 `admission` 警告互斥）。
+   * 自动探索由 AI 核心余量定编队（已有 `wormholeAutoBlockReason` 那套理由）⇒ 不重复提醒。
+   */
+  const fleetShortWarn = !auto && !run && admission.ok && picked.length < WORMHOLE_MAX_SHIPS
+  /**
    * **货仓超载**（F4 · 船长裁定 8：沉船后要求玩家手动抛弃货物）：
    * 超载期间不能再装货（拾取/打捞/战果），撤离与深入也要先抛到容量内 ⇒ 界面据此置灰并给提示。
    */
@@ -1569,6 +1583,16 @@ export function WormholePanel({
                 <div className="app-warn app-wh-gate">{WORMHOLE_ADMISSION_TEXT[admission.code]}</div>
               ) : null}
               {!auto && entryGate !== null ? <div className="app-warn app-wh-gate">{entryGate}</div> : null}
+              {/**
+               * **编队未满的软提醒**（船长 2026-09-20）——与上面两条"硬拦"分开摆：
+               * 它是**风险提示**（再加入会更危险），不是门槛 ⇒ 不再叠一条"编队非法"式的红字，
+               * 也不置灰「进入虫洞」按钮（`disabled` 处一字未改）。类名沿用本区既有的 `.app-warn .app-wh-gate`。
+               */}
+              {fleetShortWarn ? (
+                <div className="app-warn app-wh-gate">
+                  {tr('ui.Wormhole.377', { p1: picked.length })}
+                </div>
+              ) : null}
               {/**
                * **进洞会自动停掉哪些活动的预告**（船长 2026-09-14「进洞自动停止」＋「同样落实到采矿/打捞」）：
                * 只说清"会发生什么"，**不拦人**——这几项都是主控亲自在跑的作业，停法与手点活动栏「停止」完全一致

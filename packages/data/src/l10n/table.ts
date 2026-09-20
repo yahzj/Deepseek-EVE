@@ -3773,6 +3773,18 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.374": { zh: "枚（", en: " cores (" },
   "ui.Wormhole.375": { zh: "{p1} 格", en: "{p1} slots" },
   "ui.Wormhole.376": { zh: "/ {p1} 格", en: "/ {p1} slots" },
+  /**
+   * 编队未满的软提醒（船长 2026-09-20「选择的舰船不足4艘时，警告玩家」）。
+   * 口径 = 船长三答：① **软提醒**（不拦人，按钮照旧可点）② **方向 = 再加入舰船会更危险**
+   * ③ **自动探索不加**（那侧编队由 AI 核心余量定，已有自己的门槛理由）。
+   * 中文把"为什么更危险"落到**回合**上：编队越大 ⇒ 总质量越高 ⇒ `wormholeTurnBudget` 给的回合越少
+   * ⇒ 本趟越可能没做完就得撤（实测 4×长尾鲨 42 回合 vs 单艘 70 回合）。
+   * ⚠ 不写"必须带满/至少 4 艘"——`WORMHOLE_MAX_SHIPS` 是**上限**不是要求（取舍见 `Wormhole.tsx` 注释）。
+   */
+  "ui.Wormhole.377": {
+    zh: "当前编队 {p1} 艘：增加舰船会提高总质量、减少本次可用回合，本趟会更危险。",
+    en: "Formation is {p1} ships: adding more raises total mass and cuts the turns available for this run, making it more dangerous.",
+  },
   "ui.Wormhole.363": { zh: "。", en: "." },
   "ui.Wormhole.364": { zh: "」", en: "”" },
   "ui.WormholeScan.001": { zh: "枚 · 研究不消耗时间", en: "cores · research takes no time" },
