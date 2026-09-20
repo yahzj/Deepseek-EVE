@@ -18,8 +18,10 @@
 | `packages/core/src/engine.ts` | 挂点：`advanceFirstChains` **之后**调 `advanceAchievements(state, ctx.achievements)`（任务与链的达成同拍可见） |
 | `packages/data/src/context.ts` · `index.ts` | 注册 `achievements` 目录 ＋ 导出 |
 | `apps/.../ui/Glyphs.tsx` | 新增 `ach-*` 盾徽图案族（14 个形状：`ach-first` ＋ 每条链一枚） |
-| `apps/.../panels/Achievements.tsx` | 二级窗口 ＋ 任务中心入口按钮（`AchievementsButton`） |
-| `apps/.../panels/Expedition.tsx` | 「重要任务」页放入口按钮 |
+| `apps/.../panels/Achievements.tsx` | **页内子窗口容器**：`Panel className="is-fill"` ＋ `app-win-body`（固定头、内容内滚）——与任务中心 `TaskPanel` 同结构 |
+| `apps/.../pages/AchievementsPage.tsx` | 一级页薄壳（`page-stack page-fill` ⇒ 页面本体不滚） |
+| `apps/.../App.tsx` | 左侧导航新增「成就」项（`PageKey` 加 `'achieve'`、登记进 `PAGE_NO_SCROLL`） |
+| `apps/.../panels/Expedition.tsx` | ~~任务中心放入口按钮~~ ⇒ **已撤**（入口改走左侧导航） |
 | `apps/.../styles.css` · `i18n/dict.en.ts` | 样式段（固定尺寸徽章卡）＋ 7 条界面词条 |
 | `packages/core/tests/achievements.test.ts` | **17 条**用例：表口径（枚数/档位/图案配色/上限）· 达成判定 · 发放去重 · **纯展示不动资产** · 老档自愈 · 读档往返 · 界面读数 · 与引擎同拍 |
 
@@ -50,7 +52,7 @@
 | 3 | 本地化新规怎么落地 | **写成约定条文**（未选"再加体检护栏"） |
 | 4 | 成就范围 | **徽章 ＋ 另设一批里程碑成就** |
 | 5 | 发放时机 | **任务达成时自动发** |
-| 6 | 界面位置 | **独立一级页** → 因撞「一级页不滚」红线，追问后改判为 **二级窗口** |
+| 6 | 界面位置 | **独立一级页** → 我提出撞「一级页不滚」红线后改判 **二级窗口** → **2026-09-20 船长再澄清：「一级页，但是内部再加一个二级子窗口容器」** ⇒ 最终 = **左侧导航「成就」一级页 ＋ 页内固定头/内容内滚的子窗口容器**（我此前把"二级窗口"做成了浮层弹窗，是理解偏差，已改） |
 | 7 | 徽章是否给利 | **纯展示，不给任何奖励** |
 | 8 | 老档处理 | **老档已完成的补发** |
 | 9 | 分批 | **分两批：先徽章框架，后里程碑** |
