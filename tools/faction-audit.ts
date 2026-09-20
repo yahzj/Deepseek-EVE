@@ -1,7 +1,9 @@
 /**
  * 敌对派系活跃 · 掉落概率审数（正式工具，2026-09-10 加）：
  * 按**当前真实内容**推算"每天平均能刷几次"，据此给出不同掉落概率下的期望日产出——
- * 2026-09-10 已由船长据本表核定 `FACTION_RARE_DROP_CHANCE`（core/lairs.ts）为 **5%**；
+ * 2026-09-10 曾据本表核定 `FACTION_RARE_DROP_CHANCE`（core/lairs.ts）为 **5%**（理由：只当"顺手摸奖"、不争主供给）；
+ * **2026-09-20 船长改定为 30% + 保底每 10 次**（原话：「敌对派系活跃的稀有残骸出率提高到30%，保底提高到每10次必出一个」，
+ * 冲突说明后选「甲」＝照改并接受派系活跃成为稀有残骸的**主力供给**之一）⇒ 旧的"不争主供给"口径作废；
  * 后续若要再调，改常数后复跑本工具即可对照（表内会标出当前值）。
  *
  * 口径（与引擎同源）：
@@ -100,11 +102,14 @@ console.log(
     `（最快 ${rows[0]?.perHour.toFixed(1)} / 最慢 ${rows[rows.length - 1]?.perHour.toFixed(1)} 趟/时）`,
 )
 console.log(`\n对照：当日 5 席常规赏金若全清 = 档位件数（外围 1 / 核心 2 / 深层 3 各按抽到的档位）→ 约 8~11 件/天`)
-console.log(`当前值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（船长 2026-09-10 核定）`)
 console.log(
-  `保底（船长 2026-09-11「每 20 次必定掉」→ 口径甲）：连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出必掉 ⇒ ` +
+  `当前值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（船长 2026-09-20 改定；旧值 5% 已作废）`,
+)
+console.log(
+  `保底（船长 2026-09-20「每 10 次必出一个」）：连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出必掉 ⇒ ` +
     `**实际 ≈${(factionRareDropEffectiveRate() * 100).toFixed(1)}%/趟**（空手尾巴封在 ${FACTION_RARE_DROP_PITY_ROLLS - 1} 趟）；` +
-    `4h 刷 ≈${(avg4h * factionRareDropEffectiveRate()).toFixed(1)} 件 · 8h 刷 ≈${(((avg4h / 4) * 8) * factionRareDropEffectiveRate()).toFixed(1)} 件`,
+    `4h 刷 ≈${(avg4h * factionRareDropEffectiveRate()).toFixed(1)} 件 · 8h 刷 ≈${(((avg4h / 4) * 8) * factionRareDropEffectiveRate()).toFixed(1)} 件` +
+    `　→ 与上面"5 席赏金全清 ≈8~11 件/天"同级：派系活跃已是稀有残骸的**主力供给**之一（旧口径"不与赏金争主供给"作废）`,
 )
 for (const p of [0.05, 0.1, 0.15, 0.2, 0.3, 0.4]) {
   const mark = Math.abs(p - FACTION_RARE_DROP_CHANCE) < 1e-9 ? ' ← 当前' : ''

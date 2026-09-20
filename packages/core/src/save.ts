@@ -2919,7 +2919,8 @@ function normalizeState(raw: unknown): GameState {
     bountyCooldowns,
     autoLoopAnomalyId,
     autoLoopDroneFloor,
-    // 2026-09-11 稀有残骸保底计数（船长「每 20 次必定掉」）：非负整数，缺省 0（老档从零攒）
+    // 2026-09-11 稀有残骸保底计数（船长定的机制；2026-09-20 起阈值 = 每 10 次必掉）：
+    // 非负整数，缺省 0（老档从零攒）
     rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),
     encounter,
     lowSecNotified,

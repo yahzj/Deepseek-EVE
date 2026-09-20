@@ -1,9 +1,11 @@
 /**
  * 稀有残骸**保底**（2026-09-11 船长：「有玩家反馈，刷了一天没有看到稀有残骸掉落……加一个每 20 次
- * 必定掉的保底」→ 口径裁决「甲：只保底派系活跃那条掷骰链」）。
+ * 必定掉的保底」→ 口径裁决「甲：只保底派系活跃那条掷骰链」；**2026-09-20 船长把出率提到 30%、
+ * 保底收紧为「每 10 次必出一个」**）。
  *
- * 口径：掷骰只发生在**派系活跃目标**（当日选中星系的悬赏）胜利时；**连续 19 次未出 → 第 20 次必掉**；
- * 任何稀有残骸入库（窝点必掉 / 掷中 / 保底）都清零空手计数；计数器随档保留（可选字段、零迁移）。
+ * 口径：掷骰只发生在**派系活跃目标**（当日选中星系的悬赏）胜利时；**连续 N−1 次未出 → 第 N 次必掉**
+ * （N = `FACTION_RARE_DROP_PITY_ROLLS`，2026-09-20 起 = 10）；任何稀有残骸入库（窝点必掉 / 掷中 / 保底）
+ * 都清零空手计数；计数器随档保留（可选字段、零迁移）。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState, SimContext } from '../src/index'
@@ -18,7 +20,7 @@ import {
 import { anomaly, galaxy, makeTestCtx } from './helpers'
 
 /** 世界：一张低安常驻悬赏（派系活跃目标）+ 一张另一星系的普通悬赏 + 一张可作窝点的卡 */
-function world(): { state: GameState; ctx: SimContext } {
+function world(seed = 4242): { state: GameState; ctx: SimContext } {
   const ctx = makeTestCtx({
     quietEvents: true,
     galaxies: [galaxy('g-low', '低安带', { security: -0.4 }), galaxy('g-plain', '普通星系')],
@@ -33,7 +35,7 @@ function world(): { state: GameState; ctx: SimContext } {
       anomaly('ano-lair', 'g-low', { threat: 4, reward: 10_000, lairCore: '藏货据点' }),
     ],
   })
-  const state = createInitialState({ nowWallMs: 0, seed: 4242 })
+  const state = createInitialState({ nowWallMs: 0, seed })
   state.wallet.isk = 10_000_000
   state.exploredGalaxies.push('g-low', 'g-plain')
   // 手动把当日派系活跃钉在 g-low（等价于日板抽签结果；`isFactionBounty` 只读这个口）
@@ -69,19 +71,30 @@ function sortie(state: GameState, ctx: SimContext, anomalyId: string, lairTier?:
   return (state.galaxyWrecks[gid]?.rare ?? 0) - before
 }
 
-describe('稀有残骸保底（派系活跃掷骰链 · 船长 2026-09-11）', () => {
+describe('稀有残骸保底（派系活跃掷骰链 · 船长 2026-09-11 机制 / 2026-09-20 收紧为每 10 次）', () => {
   it(`连刷 ${FACTION_RARE_DROP_PITY_ROLLS - 1} 次未出 ⇒ 第 ${FACTION_RARE_DROP_PITY_ROLLS} 次必掉（并写明保底）`, () => {
     const { state, ctx } = world()
-    state.rareWreckDryStreak = FACTION_RARE_DROP_PITY_ROLLS - 1 // 已空手 19 次
-    const from = state.logs.length
+    state.rareWreckDryStreak = FACTION_RARE_DROP_PITY_ROLLS - 1 // 已空手 N−1 次
     expect(sortie(state, ctx, 'ano-pity')).toBe(1) // 必掉（与 rng 无关）
     expect(state.rareWreckDryStreak).toBe(0) // 出货清零
-    const line = state.logs.slice(from).find((l) => l.text.includes('翻出稀有残骸'))
-    expect(line?.text ?? '').toContain('保底')
-    expect(line?.text ?? '').toContain(`连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出`)
+    /**
+     * 「本次保底」这行字只在**自然骰没中**时出现（自然命中就不写保底——那本来就会掉）。
+     * 2026-09-20 出率 5% → 30% 之后，固定种子的那一趟很可能自然命中（本用例原先就是被这点绊住的），
+     * 故这里**扫几个种子**把"自然没中、由保底补上"的那一次撞出来：既核文案，也顺带核两条路径都成立。
+     */
+    let pityLine: string | null = null
+    for (let seed = 1; seed <= 40 && pityLine === null; seed++) {
+      const w = world(seed)
+      w.state.rareWreckDryStreak = FACTION_RARE_DROP_PITY_ROLLS - 1
+      expect(sortie(w.state, w.ctx, 'ano-pity')).toBe(1) // 两条路径都必须掉
+      expect(w.state.rareWreckDryStreak).toBe(0)
+      pityLine = w.state.logs.find((l) => l.text.includes('本次保底'))?.text ?? null
+    }
+    expect(pityLine, `40 个种子里应能撞到一次"自然骰没中、由保底补上"`).not.toBeNull()
+    expect(pityLine ?? '').toContain(`连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出`)
   })
 
-  it('连刷 40 趟：最长连续空手 ≤ 19（保底封住尾巴），且至少 2 件', () => {
+  it(`连刷 40 趟：最长连续空手 ≤ ${FACTION_RARE_DROP_PITY_ROLLS - 1}（保底封住尾巴），且至少 4 件`, () => {
     const { state, ctx } = world()
     let drops = 0
     let dry = 0
@@ -96,7 +109,7 @@ describe('稀有残骸保底（派系活跃掷骰链 · 船长 2026-09-11）', (
     }
     maxDry = Math.max(maxDry, dry)
     expect(maxDry).toBeLessThanOrEqual(FACTION_RARE_DROP_PITY_ROLLS - 1)
-    expect(drops).toBeGreaterThanOrEqual(2) // 40 趟 ÷ 20 = 至少 2 件保底
+    expect(drops).toBeGreaterThanOrEqual(4) // 保底每 10 趟一件 ⇒ 40 趟至少 4 件（本链只有它注入稀有残骸）
     expect(state.rareWreckDryStreak).toBeLessThan(FACTION_RARE_DROP_PITY_ROLLS)
   })
 

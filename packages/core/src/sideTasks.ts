@@ -798,7 +798,8 @@ export function factionPoolOf(state: GameState, ctx: SimContext): AnomalyDef[] {
  * - 候选 = `factionPoolOf`（已探索的**中安/低安**星系里"有正经悬赏卡（非隐藏、有核心词、奖金 > 0）"的，
  *   且**排除已建成副站的星系**——2026-09-10 船长定）；
  * - 该星系的**全部可见悬赏**当天吃 +10% 奖金 / +10% 威胁；胜利后按概率掉稀有残骸；
- * - **不因打赢而下板**：当天可反复刷（掉落概率按"日均刷取次数"审数，见 FACTION_RARE_DROP_CHANCE）。
+ * - **不因打赢而下板**：当天可反复刷（掉落概率与保底口径见 `FACTION_RARE_DROP_CHANCE` /
+ *   `FACTION_RARE_DROP_PITY_ROLLS`——2026-09-20 船长把出率与保底一并提高，派系活跃已成为稀有残骸的主力供给之一）。
  */
 function spawnFactionActivity(state: GameState, ctx: SimContext): void {
   const board = state.sideTasks

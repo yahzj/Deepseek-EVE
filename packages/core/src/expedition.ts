@@ -590,7 +590,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     // 敌对派系活跃（2026-09-10 船长定）：胜利后**按概率**掉稀有残骸（该星系残骸场、打捞必得）。
     // 这条**不因打赢而下板**（当天可反复刷），故只在命中时写一条日志说明掉了几件。
-    // **保底（2026-09-11 船长：「每 20 次必定掉的保底」→ 口径甲）**：连续 19 次掷骰未出 ⇒ 第 20 次必掉。
+    // **保底（2026-09-11 船长定的机制；2026-09-20 船长把数值收紧为「每 10 次必出一个」）**：
+    // 连续 9 次掷骰未出 ⇒ 第 10 次必掉（阈值走常量 `FACTION_RARE_DROP_PITY_ROLLS`，文案里的次数同源）。
     // 掷骰恒消耗一次随机数（保底触发时也掷、只取 `||`）——保持 rng 时序与未保底时一致，避免别的系统读数漂移。
     if (factionActive) {
       const streak = Math.max(0, Math.floor(state.rareWreckDryStreak ?? 0)) + 1
