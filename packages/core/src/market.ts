@@ -428,6 +428,33 @@ export function marketTrend(state: GameState, goodKey: string): number {
   return 0
 }
 
+/**
+ * **甲案·多段可空尾巴**（2026-09-20）：市场成交日志末尾会挂「（含协会声望加成）」「（贸易税 … 信用点）」两段，
+ * 两段都可能为空——而多段链**不能有空段**（空 id 会把后面的段整段丢掉），
+ * 故按"实际有哪几段"选模板：`p1` 传商品串，尾巴段做进模板正文 ⇒ **译文顺序由英文侧自己定**。
+ * 中文串按原样拼（与改造前逐字一致）。
+ */
+type TradeNote = '' | 'bonus' | 'tax' | 'bonusTax'
+
+function tradeNoteText(note: TradeNote, tax: number): string {
+  const taxTxt = `（贸易税 ${tax.toLocaleString('zh-CN')} 信用点）`
+  if (note === 'bonus') return '（含协会声望加成）'
+  if (note === 'tax') return taxTxt
+  if (note === 'bonusTax') return `（含协会声望加成）${taxTxt}`
+  return ''
+}
+function tradeNoteId(note: TradeNote): string | undefined {
+  switch (note) {
+    case 'bonus':
+      return 'core.market.033'
+    case 'tax':
+      return 'core.market.034'
+    case 'bonusTax':
+      return 'core.market.035'
+    default:
+      return undefined
+  }
+}
 /** 商品显示名 */
 export function goodName(ctx: SimContext, goodKey: string): string {
   const def = ctx.marketGoods.get(goodKey)
@@ -983,13 +1010,23 @@ function settleSell(
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
   if (npc.qty <= 0) state.market.npcBuy[order.good]!.splice(idx, 1)
-  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} 信用点）` : ''
+  const note: TradeNote = tax > 0 ? (mult > 1 ? 'bonusTax' : 'tax') : mult > 1 ? 'bonus' : ''
+  const taxNote = tradeNoteText(note, tax)
   if (state.escrowShips[order.id]) {
     delete state.escrowShips[order.id]
-    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`)
+    const text = `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`
+    if (note === '') {
+      addLog(state, 'trade', text, 'core.market.027', { p1: net.toLocaleString('zh-CN') })
+    } else {
+      addLog(state, 'trade', text, 'core.market.031', { p1: net.toLocaleString('zh-CN'), p2: tax.toLocaleString('zh-CN') })
+    }
   } else {
-    const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${bonusNote}${taxNote}。`)
+    const text = `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`
+    const id = mult > 1 ? 'core.market.036' : 'core.market.028'
+    const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
+    const noteId = tradeNoteId(note)
+    if (noteId === undefined) addLog(state, 'trade', text, id, params)
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
   }
 }
 
@@ -1060,13 +1097,23 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
     pool.netVol -= take
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
-  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} 信用点）` : ''
+  const note: TradeNote = tax > 0 ? (mult > 1 ? 'bonusTax' : 'tax') : mult > 1 ? 'bonus' : ''
+  const taxNote = tradeNoteText(note, tax)
   // 2026-09-08（船长定）：越线抢单成交静默化——日志与普通簿面成交完全一致，不出现"巡游采购"字样
   if (shipSale) {
-    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`)
+    const text = `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`
+    if (note === '') {
+      addLog(state, 'trade', text, 'core.market.027', { p1: net.toLocaleString('zh-CN') })
+    } else {
+      addLog(state, 'trade', text, 'core.market.031', { p1: net.toLocaleString('zh-CN'), p2: tax.toLocaleString('zh-CN') })
+    }
   } else {
-    const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${bonusNote}${taxNote}。`)
+    const text = `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`
+    const id = mult > 1 ? 'core.market.036' : 'core.market.028'
+    const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
+    const noteId = tradeNoteId(note)
+    if (noteId === undefined) addLog(state, 'trade', text, id, params)
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
   }
 }
 
@@ -1204,13 +1251,23 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
     pool.netVol -= take
     if (def?.poolTarget && def.poolTarget > 0) pool.q += take
   }
-  const taxNote = tax > 0 ? `（贸易税 ${tax.toLocaleString('zh-CN')} 信用点）` : ''
+  const note: TradeNote = tax > 0 ? (mult > 1 ? 'bonusTax' : 'tax') : mult > 1 ? 'bonus' : ''
+  const taxNote = tradeNoteText(note, tax)
   // 2026-09-08（船长定）：站内吸收静默化——日志与普通簿面成交完全一致，不出现"让利售出/站内收购"字样
   if (shipSale) {
-    addLog(state, 'trade', `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`)
+    const text = `挂单成交：二手舰船，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`
+    if (note === '') {
+      addLog(state, 'trade', text, 'core.market.027', { p1: net.toLocaleString('zh-CN') })
+    } else {
+      addLog(state, 'trade', text, 'core.market.031', { p1: net.toLocaleString('zh-CN'), p2: tax.toLocaleString('zh-CN') })
+    }
   } else {
-    const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    addLog(state, 'trade', `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${bonusNote}${taxNote}。`)
+    const text = `挂单成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}，税后入账 ${net.toLocaleString('zh-CN')} 信用点${taxNote}。`
+    const id = mult > 1 ? 'core.market.036' : 'core.market.028'
+    const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
+    const noteId = tradeNoteId(note)
+    if (noteId === undefined) addLog(state, 'trade', text, id, params)
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
   }
 }
 
@@ -1453,9 +1510,19 @@ export function sellAtMarket(
     if (def.poolTarget && def.poolTarget > 0) pool.q += sold
   }
   if (sold > 0) {
-    const bonusNote = mult > 1 ? '（含协会声望加成）' : ''
-    const taxNote = tax > 0 ? `，贸易税 ${tax.toLocaleString('zh-CN')} 信用点` : ''
-    addLog(state, 'trade', `市价售出 ${goodName(ctx, goodKey)}×${sold.toLocaleString('zh-CN')}（税后入账 ${net.toLocaleString('zh-CN')} 信用点，${fillPrices.length} 笔）${bonusNote}${taxNote}。`)
+    const text =
+      `市价售出 ${goodName(ctx, goodKey)}×${sold.toLocaleString('zh-CN')}（税后入账 ${net.toLocaleString('zh-CN')} 信用点，${fillPrices.length} 笔）` +
+      `${mult > 1 ? '（含协会声望加成）' : ''}${tax > 0 ? `，贸易税 ${tax.toLocaleString('zh-CN')} 信用点` : ''}。`
+    const params = {
+      p1: goodName(ctx, goodKey),
+      p2: sold.toLocaleString('zh-CN'),
+      p3: net.toLocaleString('zh-CN'),
+      p4: fillPrices.length.toLocaleString('zh-CN'),
+    }
+    const id = mult > 1 ? 'core.market.038' : 'core.market.040'
+    // 尾巴段（声望加成）已在模板正文里；只有贸易税要按段链上挂，空段不可入链
+    if (tax > 0) addLog(state, 'trade', text, id, { ...params, p1Id: 'core.market.037', p1p1: tax.toLocaleString('zh-CN') })
+    else addLog(state, 'trade', text, id, params)
   }
   if (remaining > 0 && sold > 0) {
     const edge = fillPrices[fillPrices.length - 1]!
