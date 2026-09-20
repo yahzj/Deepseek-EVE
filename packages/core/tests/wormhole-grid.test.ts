@@ -23,6 +23,7 @@ import {
   hexDiskCount,
   hexDistance,
   hexKey,
+  hexLine,
   hexNeighbors,
   isExitCell,
   pickPlace,
@@ -186,6 +187,99 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
   })
 
   /**
+   * **同类地点不再扎堆**（船长 2026-09-20 裁定「甲」）。
+   *
+   * 报障/追问原话：「**虫洞内相似地点是否会扎堆出现？**」⇒ 取证：`wormholeMakeGrid` 里挑"空地点"
+   * 用的是洗过牌的副本，但**分配信号类型用的 `pool` 保留了 `hexDiskCells` 的行优先顺序**
+   * ⇒ 逐类连续占位就等于把每类信号铺成盘面上一条**横向带**。实测（3000 张盘）：同类相邻率 0.317
+   * 对随机 0.251（1.26 倍）· 同行同类连 ≥3 格的盘占 **57.0%**（随机 11.9%）· 谜质/矿脉只出现在
+   * 盘的下半部分。修法 = **分配前把 `pool` 也洗一次牌**（独立随机流 ⇒ 空格分布与逐格掷骰不受影响；
+   * 各类格数/遗迹与谜质保底/信标不落入口/同种子同盘一律不变）。
+   *
+   * 本用例把"扎堆"钉成回归断言：同类相邻率对随机对照的倍数、以及"同行同类 3 连"的盘占比。
+   */
+  it('**同类地点不再扎堆**（2026-09-20 甲案：分配前先洗牌）', () => {
+    const PERM = 6
+    let adjObs = 0
+    let adjNull = 0
+    let boards = 0
+    let run3 = 0
+    let run3Null = 0
+    const labelShuffle = (src: string[], rnd: () => number): string[] => {
+      const out = [...src]
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1))
+        const t = out[i]!
+        out[i] = out[j]!
+        out[j] = t
+      }
+      return out
+    }
+    // 固定伪随机（用例必须可复现，不用 Math.random）
+    let rndState = 20260920
+    const rnd = (): number => {
+      rndState = (rndState * 1103515245 + 12345) % 2147483648
+      return rndState / 2147483648
+    }
+    const rowRun3 = (labels: Map<string, string>): boolean => {
+      const rows = new Map<number, Array<[number, string]>>()
+      for (const [k, v] of labels) {
+        const [q, r] = k.split(',').map(Number) as [number, number]
+        const list = rows.get(r) ?? []
+        list.push([q, v])
+        rows.set(r, list)
+      }
+      for (const list of rows.values()) {
+        list.sort((a, b) => a[0] - b[0])
+        let run = 1
+        for (let i = 1; i < list.length; i++) {
+          if (list[i]![0] === list[i - 1]![0] + 1 && list[i]![1] === list[i - 1]![1]) run += 1
+          else run = 1
+          if (run >= 3) return true
+        }
+      }
+      return false
+    }
+    for (const depth of [1, 2, 3, 4, 5]) {
+      for (let seed = 1; seed <= 60; seed++) {
+        const g = wormholeMakeGrid(seed * 31 + depth, depth)
+        const filled = g.cells.filter((c) => c.place !== 'empty')
+        const keys = new Set(filled.map((c) => c.key))
+        const edges: Array<[number, number]> = []
+        filled.forEach((c, i) => {
+          for (const n of hexNeighbors(c)) {
+            if (!keys.has(hexKey(n.q, n.r))) continue
+            const j = filled.findIndex((x) => x.q === n.q && x.r === n.r)
+            if (j > i) edges.push([i, j])
+          }
+        })
+        const labels = filled.map((c) => c.place as string)
+        const sameShare = (arr: string[]): number =>
+          edges.length === 0 ? 0 : edges.filter(([i, j]) => arr[i] === arr[j]).length / edges.length
+        adjObs += sameShare(labels)
+        const mapOf = (arr: string[]): Map<string, string> => new Map(filled.map((c, i) => [c.key, arr[i]!]))
+        let nullShare = 0
+        let nullRun = 0
+        for (let k = 0; k < PERM; k++) {
+          const shuffled = labelShuffle(labels, rnd)
+          nullShare += sameShare(shuffled)
+          if (rowRun3(mapOf(shuffled))) nullRun += 1
+        }
+        adjNull += nullShare / PERM
+        if (rowRun3(mapOf(labels))) run3 += 1
+        run3Null += nullRun / PERM
+        boards += 1
+      }
+    }
+    const ratio = adjObs / adjNull
+    // 修前实测 1.26 倍 / 3 连盘 57.0%；修后应贴近 1.0 / ≈12%（留统计余量）
+    expect(ratio, `同类相邻率倍数 ${ratio.toFixed(3)}（随机对照 ${(adjNull / boards).toFixed(3)}）`).toBeLessThan(1.12)
+    expect(ratio).toBeGreaterThan(0.88)
+    expect(run3 / boards, `同行同类 3 连的盘占比 ${(run3 / boards).toFixed(3)}`).toBeLessThan(0.3)
+    void run3Null
+  })
+
+  /**
    * **信标读出终点 ⇒ 终点格一并算"已知"**（船长 2026-09-13：出口格"未扫描"那条按推荐修）。
    *
    * 为什么：出口格不参与信号分配、`scanned` 里默认没有它；玩家从信标知道终点在哪之后，
@@ -207,8 +301,18 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
       expect(blocked.ok).toBe(false)
       expect(blocked.code).toBe('unknown-target')
     }
-    // ② 走到信标（把邻格改成信标、扫过再走过去）
-    const beacon = g.cells.find((c) => c.key !== startKey)!
+    // ② 走到信标（挑**相邻格**改成信标、扫过再走过去）
+    /**
+     * ⚠ 为什么必须挑相邻格（2026-09-20）：本用例测的是「信标读出终点 ⇒ 出口格记为已知」这条口径，
+     * 而**路径拦截**（2026-09-16：直线路径上若有未清掉的舰船信号格 ⇒ 截断并开战）是**另一条机制**。
+     * 原先这里取 `cells` 里第一个非入口格（行优先序的盘角），靠的是"同类地点成带"这个副作用导致
+     * 路径上恰好没有舰船信号 —— 该副作用已按船长「甲」修掉（分配前洗牌 ⇒ 舰船信号散在全盘）
+     * ⇒ 必须自己挑一格相邻的（直线路径为空，不会被拦）。
+     */
+    const beacon = g.cells.find(
+      (c) => hexDistance({ q: c.q, r: c.r }, g.pos) === 1 && c.key !== exitKey,
+    )!
+    expect(beacon, '入口周围总该有可当信标的邻格').toBeDefined()
     beacon.place = 'beacon'
     beacon.piles = []
     if (!g.scanned.includes(beacon.key)) g.scanned.push(beacon.key)
@@ -217,8 +321,17 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
     // ③ 出口格随之记为已知，且前往它走正常路径（不再需要 confirmUnknown）
     expect(g.scanned.includes(exitKey), '信标读出终点后，出口格应记为已知').toBe(true)
     if (exitKey !== beacon.key) {
+      /**
+       * 先清掉这条直线路径上的**舰船信号**：路径拦截（2026-09-16）会把移动截断在拦截点并开战，
+       * 那是另一条机制；本用例要证的是"出口已知 ⇒ 不必再答'前往未知地点'"。
+       */
+      for (const c of hexLine(g.pos, { q: g.exit.q, r: g.exit.r })) {
+        const cell = g.cells.find((x) => x.key === hexKey(c.q, c.r))
+        if (cell && cell.place === 'ship') cell.place = 'empty'
+      }
       const go = wormholeGridTravel(state, { q: g.exit.q, r: g.exit.r })
       expect(go.ok, `前往出口被拒：${go.error ?? ''}`).toBe(true)
+      expect({ q: g.pos.q, r: g.pos.r }).toEqual({ q: g.exit.q, r: g.exit.r })
     }
   })
 

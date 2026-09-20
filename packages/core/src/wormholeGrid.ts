@@ -815,7 +815,28 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
   quotaOf('wreck').n = wreckN
   const signalOfCell = new Map<string, WormholeSignal>()
   let at = 0
-  const poolShuffled = pool // 已按上面洗牌后的相对顺序（确定性）
+  /**
+   * **分配顺序必须洗牌**（船长 2026-09-20 裁定「甲」；根因见下）——
+   *
+   * ⚠ 原先这里是 `const poolShuffled = pool`，注释写"已按上面洗牌后的相对顺序"，**与实现不符**：
+   * 上面那次 Fisher–Yates 只洗了 `shuffled` 副本、用来挑"空地点"，而 `pool` 是 `others.filter(...)`
+   * ⇒ **保留 `hexDiskCells` 的行优先顺序**（r 从 −R 到 R、行内 q 升序）。于是下面这段"逐类连续占位"
+   * 把每类信号铺成了盘面上的一条**横向带**：实测（600 种子 × 层 1~5 = 3000 张盘）同类相邻率 0.317
+   * 对随机 0.251（1.26 倍）· 同行同类连 ≥3 格的盘占 **57.0%**（随机 11.9%）· 谜质/矿脉只出现在
+   * 盘的下半部分（r ≥ 0 / r ≥ −1）。玩家报的就是"相似地点扎堆"。
+   *
+   * 修法 = **先洗牌再连续占位**：各类**格数**（`quota`，含遗迹下限借格之后的结果）一字不变，
+   * 只把"哪一格归哪一类"随机化。独立随机流（`+17`）⇒ 挑空地那次洗牌与后面逐格 `pickPlace` 的骰子
+   * **一律不受影响**（空地点分布与"残骸 70/30"的读数照旧），且同 `(seed, depth)` 仍必得同盘。
+   */
+  const poolShuffled = [...pool]
+  const orderRng = wormholeStream(seed * 7919 + depth * 104729 + 17)
+  for (let i = poolShuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(orderRng() * (i + 1))
+    const t = poolShuffled[i]!
+    poolShuffled[i] = poolShuffled[j]!
+    poolShuffled[j] = t
+  }
   for (const q of order) {
     const bucket = quota.find((x) => x.k === q)!
     for (let i = 0; i < bucket.n; i++) {
