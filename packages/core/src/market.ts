@@ -1027,7 +1027,13 @@ function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: N
     state.wallet.isk += order.escrowIsk ?? 0
     order.escrowIsk = 0
   }
-  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${actual.toLocaleString('zh-CN')} 信用点）。`)
+  addLog(
+    state,
+    'trade',
+    `挂单买入成交：${goodName(ctx, order.good)}×${take.toLocaleString('zh-CN')}（${actual.toLocaleString('zh-CN')} 信用点）。`,
+    'core.market.029',
+    { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: actual.toLocaleString('zh-CN') },
+  )
 }
 
 /** 越线卖单抢单成交（2026-09-08 船长定：巡游采购按贴线度多件成交 @ 挂单价；税/escrow/池与簿成交同口径） */
@@ -1089,7 +1095,13 @@ function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder):
     if (def?.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - 1)
   }
   // 2026-09-08（船长定）：越线买单静默化——日志与普通买单成交一致，不出现"巡游供货"字样
-  addLog(state, 'trade', `挂单买入成交：${goodName(ctx, order.good)}×1（${order.price.toLocaleString('zh-CN')} 信用点）。`)
+  addLog(
+    state,
+    'trade',
+    `挂单买入成交：${goodName(ctx, order.good)}×1（${order.price.toLocaleString('zh-CN')} 信用点）。`,
+    'core.market.029',
+    { p1: goodName(ctx, order.good), p2: 1, p3: order.price.toLocaleString('zh-CN') },
+  )
 }
 
 /** 买入商品入对应库存（物品→物品仓库；装备→装备库；蓝图→蓝图书；核心→核心库；船→舰队）。
@@ -1328,7 +1340,7 @@ export function cancelOrder(state: GameState, ctx: SimContext, orderId: number):
         // 2026-09-14 船长：从**舰船仓库**挂卖的（纯计数船）撤单**退回舰船仓库**，不进机库
         state.shipStore = state.shipStore ?? {}
         state.shipStore[shipHold.defId] = shipStoredCount(state, shipHold.defId) + 1
-        addLog(state, 'trade', '卖单已撤销：舰船已退回舰船仓库。')
+        addLog(state, 'trade', '卖单已撤销：舰船已退回舰船仓库。', 'core.market.014')
       } else {
         // v17：原实例原样恢复（uid/船型/耐久/自定义名全保留）；异常残留的同 uid 条目先清除
         delete state.fleet[shipHold.shipId]
@@ -1339,12 +1351,18 @@ export function cancelOrder(state: GameState, ctx: SimContext, orderId: number):
           cargo: {},
           fitted: emptyFitted(),
         }
-        addLog(state, 'trade', '卖单已撤销：舰船已退回机库。')
+        addLog(state, 'trade', '卖单已撤销：舰船已退回机库。', 'core.market.015')
       }
     } else {
       state.escrowItems[order.good] = Math.max(0, (state.escrowItems[order.good] ?? 0) - order.qty)
       refundToStorage(state, ctx, order.good, order.qty)
-      addLog(state, 'trade', `卖单已撤销：${goodName(ctx, order.good)}×${order.qty.toLocaleString('zh-CN')} 已退回。`)
+      addLog(
+        state,
+        'trade',
+        `卖单已撤销：${goodName(ctx, order.good)}×${order.qty.toLocaleString('zh-CN')} 已退回。`,
+        'core.market.016',
+        { p1: goodName(ctx, order.good), p2: order.qty.toLocaleString('zh-CN') },
+      )
     }
   } else if (order.side === 'buy') {
     // 2026-09-11（预扣冻结）：把该单未用完的预扣退回钱包（旧档遗留单预扣为 0，自然无退款）
@@ -1352,9 +1370,15 @@ export function cancelOrder(state: GameState, ctx: SimContext, orderId: number):
     if (back > 0) {
       state.wallet.isk += back
       order.escrowIsk = 0
-      addLog(state, 'trade', `买单已撤销：预扣 ${back.toLocaleString('zh-CN')} 信用点已退回钱包。`)
+      addLog(
+        state,
+        'trade',
+        `买单已撤销：预扣 ${back.toLocaleString('zh-CN')} 信用点已退回钱包。`,
+        'core.market.017',
+        { p1: back.toLocaleString('zh-CN') },
+      )
     } else {
-      addLog(state, 'trade', '买单已撤销。')
+      addLog(state, 'trade', '买单已撤销。', 'core.market.018')
     }
   }
   return true
@@ -1437,9 +1461,15 @@ export function sellAtMarket(
     const edge = fillPrices[fillPrices.length - 1]!
     // 剩余自动按边际价挂限价卖单（货已在 escrow 中，不再重复锁定；挂单不收费）
     pushSellOrder(state, goodKey, edge, remaining)
-    addLog(state, 'info', `市价单成交 ${sold.toLocaleString('zh-CN')} 后簿已吃穿，剩余 ${remaining.toLocaleString('zh-CN')} 自动挂限价卖单（免费）。`)
+    addLog(
+      state,
+      'info',
+      `市价单成交 ${sold.toLocaleString('zh-CN')} 后簿已吃穿，剩余 ${remaining.toLocaleString('zh-CN')} 自动挂限价卖单（免费）。`,
+      'core.market.022',
+      { p1: sold.toLocaleString('zh-CN'), p2: remaining.toLocaleString('zh-CN') },
+    )
   } else if (remaining > 0) {
-    addLog(state, 'info', '市场收购簿为空，暂时无人收购——可挂限价卖单等收购单浮现。')
+    addLog(state, 'info', '市场收购簿为空，暂时无人收购——可挂限价卖单等收购单浮现。', 'core.market.019')
   }
   return { sold, total: net, avg: sold > 0 ? Math.round(net / sold) : 0, remaining }
 }
@@ -1516,13 +1546,27 @@ export function buyAtMarket(
     if (def.poolTarget && def.poolTarget > 0) pool.q = Math.max(0, pool.q - bought)
   }
   if (bought > 0) {
-    addLog(state, 'trade', `市价购入 ${goodName(ctx, goodKey)}×${bought.toLocaleString('zh-CN')}（${total.toLocaleString('zh-CN')} 信用点）。`)
+    addLog(
+      state,
+      'trade',
+      `市价购入 ${goodName(ctx, goodKey)}×${bought.toLocaleString('zh-CN')}（${total.toLocaleString('zh-CN')} 信用点）。`,
+      'core.market.023',
+      { p1: goodName(ctx, goodKey), p2: bought.toLocaleString('zh-CN'), p3: total.toLocaleString('zh-CN') },
+    )
   }
   if (remaining > 0) {
     if (bmLock && bought === 0) {
-      addLog(state, 'info', `常驻供应待「深空工业协会」声望 ${def.bmStanding} 解锁。`)
+      addLog(state, 'info', `常驻供应待「深空工业协会」声望 ${def.bmStanding} 解锁。`, 'core.market.020', {
+        p1: def.bmStanding ?? 0,
+      })
     } else {
-      addLog(state, 'info', `市价买入成交 ${bought.toLocaleString('zh-CN')} 后供应簿吃穿，剩余 ${remaining.toLocaleString('zh-CN')}——可稍等补给或挂限价买单。`)
+      addLog(
+        state,
+        'info',
+        `市价买入成交 ${bought.toLocaleString('zh-CN')} 后供应簿吃穿，剩余 ${remaining.toLocaleString('zh-CN')}——可稍等补给或挂限价买单。`,
+        'core.market.024',
+        { p1: bought.toLocaleString('zh-CN'), p2: remaining.toLocaleString('zh-CN') },
+      )
     }
   }
   // 部分成交（bought > 0 但没买满）⇒ 原因归"吃穿"；一件没买到 ⇒ 报精准原因
@@ -1574,7 +1618,13 @@ export function sellShipAtMarket(state: GameState, ctx: SimContext, shipId: stri
     const gross = order.filled * order.price
     return { ok: true, total: netAfterTax(state, ctx, gross) }
   }
-  addLog(state, 'info', `「${display}」未能立即成交，已转为限价卖单（撤销卖单可把船退回机库）。`)
+  addLog(
+    state,
+    'info',
+    `「${display}」未能立即成交，已转为限价卖单（撤销卖单可把船退回机库）。`,
+    'core.market.025',
+    { p1: display },
+  )
   return { ok: true }
 }
 
@@ -1722,21 +1772,23 @@ export function sellStoredShipAtMarket(
 /** 学习蓝图（消耗 1 本 → 永久学会；重复蓝图只能放市场交易）
  *  ⚠ **一次性图纸不可学习**（2026-09-12 船长：「既玩家无法学会，只能制造一次」）——
  *  它只能拿到组装机去造一次（开工时消耗，见 `manufacturing.startManufacturing`）。 */
-export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: string): { ok: boolean; error?: string } {
+export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: string): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const known = ctx.blueprints.get(blueprintId) ?? ctx.shipBlueprints.get(blueprintId)
-  if (!known) return { ok: false, error: `未知蓝图：${blueprintId}。` }
+  if (!known) return { ok: false, error: `未知蓝图：${blueprintId}。`, errorId: 'core.market.001' }
   if (known.singleUse === true) {
-    return { ok: false, error: `「${known.name}」是一次性图纸：不能学习，请到组装机直接用掉（只能制造一次）。` }
+    return { ok: false, error: `「${known.name}」是一次性图纸：不能学习，请到组装机直接用掉（只能制造一次）。`,
+      errorId: 'core.market.002',
+      errorParams: { p1: known.name } }
   }
   const count = state.blueprintStock[blueprintId] ?? 0
-  if (count <= 0) return { ok: false, error: '没有可学习的蓝图书。' }
+  if (count <= 0) return { ok: false, error: '没有可学习的蓝图书。', errorId: 'core.market.003' }
   if (state.learnedRecipes.includes(blueprintId)) {
-    return { ok: false, error: '该配方已学会——多余的蓝图书可以挂到市场出售。' }
+    return { ok: false, error: '该配方已学会——多余的蓝图书可以挂到市场出售。', errorId: 'core.market.004' }
   }
   state.blueprintStock[blueprintId] = count - 1
   if (state.blueprintStock[blueprintId] === 0) delete state.blueprintStock[blueprintId]
   state.learnedRecipes.push(blueprintId)
-  addLog(state, 'info', `已学习「${known.name}」：可前往组装机无限次制造。`)
+  addLog(state, 'info', `已学习「${known.name}」：可前往组装机无限次制造。`, 'core.market.026', { p1: known.name })
   return { ok: true }
 }
 
@@ -1789,24 +1841,34 @@ export function marketSellHolding(
   ctx: SimContext,
   goodKey: string,
   qty?: number,
-): { ok: boolean; error?: string; sold: number; total: number; remaining: number } {
+): {
+  ok: boolean
+  error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
+  sold: number
+  total: number
+  remaining: number
+} {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def) return { ok: false, error: `未知商品：${goodKey}`, sold: 0, total: 0, remaining: 0 }
-  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', sold: 0, total: 0, remaining: 0 }
+  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', sold: 0, total: 0, remaining: 0 }
+  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', sold: 0, total: 0, remaining: 0 }
   if (def.kind === 'ship') {
     // 2026-09-14 船长报障「市场依旧无法挂单或者直接出售舰船」⇒ 卖出侧对舰船放行：
     // **可卖 = 舰船仓库里的艘数**（机库里的船要先在舰船页移入仓库），走仓库出售单点
     const res = sellStoredShipAtMarket(state, ctx, def.refId, qty === undefined ? shipStoredCount(state, def.refId) : qty)
-    if (!res.ok) return { ok: false, error: res.reason ?? '出售失败。', sold: 0, total: 0, remaining: 0 }
+    if (!res.ok) {
+      return { ok: false, error: res.reason ?? '出售失败。', errorId: res.reason === undefined ? 'core.market.007' : undefined, sold: 0, total: 0, remaining: 0 }
+    }
     return { ok: true, sold: res.filled ?? 0, total: res.total ?? 0, remaining: res.resting ?? 0 }
   }
   const available = naturalHoldings(state, def)
   const want = qty === undefined ? available : Math.max(0, Math.floor(qty))
   if (want <= 0 || available <= 0) {
-    return { ok: false, error: '没有可卖的库存。', sold: 0, total: 0, remaining: 0 }
+    return { ok: false, error: '没有可卖的库存。', errorId: 'core.market.008', sold: 0, total: 0, remaining: 0 }
   }
   const n = Math.min(want, available)
-  if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。', sold: 0, total: 0, remaining: 0 }
+  if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。', errorId: 'core.market.009', sold: 0, total: 0, remaining: 0 }
   const res = sellAtMarket(state, ctx, goodKey, n)
   // 收购簿为空 → 一笔未成交：退还锁定货物（此前会被锁进 escrow 且无订单，货物永久丢失——船长 2026-09-05 验证发现）
   if (res.sold === 0 && res.remaining > 0) {
@@ -1814,6 +1876,7 @@ export function marketSellHolding(
     return {
       ok: false,
       error: '市场收购簿为空，暂时无人收购——未出售任何货物，已退回库存。可改挂限价卖单等待收购。',
+      errorId: 'core.market.010',
       sold: 0,
       total: 0,
       remaining: n,
@@ -1832,11 +1895,24 @@ export function marketSellPreview(
   ctx: SimContext,
   goodKey: string,
   qty?: number,
-): { ok: boolean; error?: string; avail: number; want: number; fillable: number; orders: number; gross: number; tax: number; net: number; leftover: number } {
+): {
+  ok: boolean
+  error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
+  avail: number
+  want: number
+  fillable: number
+  orders: number
+  gross: number
+  tax: number
+  net: number
+  leftover: number
+} {
   const def = ctx.marketGoods.get(goodKey)
   const zero = { avail: 0, want: 0, fillable: 0, orders: 0, gross: 0, tax: 0, net: 0, leftover: 0 }
-  if (!def) return { ok: false, error: `未知商品：${goodKey}`, ...zero }
-  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', ...zero }
+  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', ...zero }
+  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', ...zero }
   // 舰船（2026-09-14 船长报障后放行）：可卖 = 舰船仓库艘数；估价口径与「市价卖出」逐条同源
   // （成交走 settleSell ⇒ **只有声望加成、无营销学加成**，故这里也不乘 marketSellSkillMult）
   const avail = def.kind === 'ship' ? shipStoredCount(state, def.refId) : naturalHoldings(state, def)
@@ -1846,6 +1922,7 @@ export function marketSellPreview(
     return {
       ok: false,
       error: def.kind === 'ship' ? '舰船仓库里没有可卖的舰船：先在舰船页把船移入舰船仓库。' : '没有可卖的库存。',
+      errorId: def.kind === 'ship' ? 'core.market.011' : 'core.market.008',
       ...zero,
       avail,
       want,
@@ -1877,18 +1954,31 @@ export function listSellHolding(
   goodKey: string,
   price: number,
   qty?: number,
-): { ok: boolean; error?: string; orderId?: number; price?: number; filled?: number; resting?: number } {
+): {
+  ok: boolean
+  error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
+  orderId?: number
+  price?: number
+  filled?: number
+  resting?: number
+} {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def) return { ok: false, error: `未知商品：${goodKey}` }
-  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。' }
+  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005' }
+  if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006' }
   const isShip = def.kind === 'ship'
   const available = isShip ? shipStoredCount(state, def.refId) : naturalHoldings(state, def)
   const want = qty === undefined ? available : Math.max(0, Math.floor(qty))
   if (want <= 0 || available <= 0) {
-    return { ok: false, error: isShip ? '舰船仓库里没有可卖的舰船：先在舰船页把船移入舰船仓库。' : '没有可卖的库存。' }
+    return {
+      ok: false,
+      error: isShip ? '舰船仓库里没有可卖的舰船：先在舰船页把船移入舰船仓库。' : '没有可卖的库存。',
+      errorId: isShip ? 'core.market.011' : 'core.market.008',
+    }
   }
   if (price <= 0 || price > def.basePrice * ctx.balance.market.maxPriceRatio) {
-    return { ok: false, error: '挂单价异常（需为 0 以上的信用点，且不超过限价上限）。' }
+    return { ok: false, error: '挂单价异常（需为 0 以上的信用点，且不超过限价上限）。', errorId: 'core.market.012' }
   }
   const n = Math.min(want, available)
   if (isShip) {
@@ -1904,7 +1994,9 @@ export function listSellHolding(
       filled += r.filled
       resting += r.resting
     }
-    if (lastId === undefined) return { ok: false, error: '挂卖单失败：请检查舰船仓库库存与价格。' }
+    if (lastId === undefined) {
+      return { ok: false, error: '挂卖单失败：请检查舰船仓库库存与价格。', errorId: 'core.market.013' }
+    }
     addLog(
       state,
       'trade',
@@ -1914,7 +2006,7 @@ export function listSellHolding(
     )
     return { ok: true, orderId: lastId, price: Math.round(price), filled, resting }
   }
-  if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。' }
+  if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。', errorId: 'core.market.009' }
   const order = pushSellOrder(state, goodKey, price, n)
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
   const r = crossOnPlacement(state, ctx, order)
