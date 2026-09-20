@@ -31,6 +31,7 @@ import {
   BLUEPRINT_USE_TABS,
   SHIP_TIER_SUBS,
   SUB_ALL,
+  presentSubs,
   type BlueprintLearnKey,
   type BlueprintUseKey,
 } from '../ui/itemSubs'
@@ -143,6 +144,12 @@ export function ShipyardPanel({
     })
   }
 
+  /** 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：只列真有内容的档 —— 与组装机同一套 `presentSubs` 口径 */
+  const tierShown = presentSubs(SHIP_TIER_SUBS, (key) => items.some((it) => it.subKey === key))
+  const usesShown = presentSubs(BLUEPRINT_USE_TABS, (key) =>
+    items.some((it) => (sub === SUB_ALL || it.subKey === sub) && (key === 'single' ? it.singleUse : !it.singleUse)),
+  )
+
   const visible = items
     .filter((it) => {
       if (kq.length === 0) return true
@@ -224,7 +231,7 @@ export function ShipyardPanel({
             >
               全部
             </button>
-            {SHIP_TIER_SUBS.map((s) => (
+            {tierShown.map((s) => (
               <button
                 key={s.key}
                 role="tab"
@@ -241,11 +248,12 @@ export function ShipyardPanel({
           </div>
         </div>
         {/* 三级筛选：一次性 / 永久（选了子类才出现，与组装机同款） */}
-        {sub !== SUB_ALL ? (
+        {/* 2026-09-20 筛选清理：只剩「全部」一项时整行隐藏 */}
+        {sub !== SUB_ALL && usesShown.length > 1 ? (
           <div className="app-fleet-row">
             <span className="app-dim">图纸：</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
-              {BLUEPRINT_USE_TABS.map((u) => (
+              {usesShown.map((u) => (
                 <button
                   key={u.key}
                   role="tab"

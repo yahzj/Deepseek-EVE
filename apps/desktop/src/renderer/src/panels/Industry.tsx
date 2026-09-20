@@ -54,6 +54,7 @@ import {
   SHIP_TIER_SUBS,
   SUB_ALL,
   manuSubsOf,
+  presentSubs,
   moduleSubKeyOf,
   type BlueprintLearnKey,
   type BlueprintUseKey,
@@ -1054,7 +1055,6 @@ export function ManufacturingPanel({
   const [sub, setSub] = useState<string>(SUB_ALL)
   /** 第三级筛选：一次性/永久（**只在选了子类后显示**；见 `BLUEPRINT_USE_TABS` 的注释） */
   const [useKind, setUseKind] = useState<BlueprintUseKey>(SUB_ALL)
-  const subOptions = manuSubsOf(tab)
   /**
    * **书架跳过来的定位**（船长 2026-09-14）：先把三级筛选全部复位（否则目标卡可能正被筛掉 ⇒ 跳过去空白），
    * 高亮由页面层的 `.app-belt-card.is-goto` + 居中滚动负责（与「去精炼」同一套）。
@@ -1225,6 +1225,24 @@ export function ManufacturingPanel({
   pushPart()
   pushSupply()
 
+  /** 本门类判定（一级门类 → 该卡是否在档内）——二级/三级现算与最终过滤共用一把尺 */
+  const inTab = (kindLabel: string): boolean =>
+    tab === 'all' || (tab === 'equip' ? kindLabel === '装备' : tab === 'part' ? kindLabel === '零件' : kindLabel === '消耗品')
+  /**
+   * **二级子类候选：只列本门类下真有卡片的档**（2026-09-20 船长「明显不存在的子类筛选隐藏」）——
+   * 与蓝图书架同一套现算口径（`presentSubs`）；「全部」档常显（基线②）。
+   */
+  const subOptions = presentSubs(manuSubsOf(tab), (key) => items.some((it) => inTab(it.kindLabel) && it.subKey === key))
+  /**
+   * **三级「图纸」维度（一次性 / 永久）：同样只列真有内容的档**——船长点名的例子：
+   * 「组装机-零件-高级零件-一次性蓝图」在零件门类下不存在 ⇒ 该档消失；过滤后只剩「全部」一项时整行隐藏。
+   */
+  const usesShown = presentSubs(BLUEPRINT_USE_TABS, (key) =>
+    items.some(
+      (it) => inTab(it.kindLabel) && (sub === SUB_ALL || it.subKey === sub) && (key === 'single' ? it.singleUse : !it.singleUse),
+    ),
+  )
+
   /** 可开工判定（与卡片按钮同口径）：已学会（或一次性图纸有货且名额未用尽；隐式蓝图无需学习）+ 材料足
    *  （制造费已取消；劳动者判定由卡片按钮各自表达） */
   function canStartNow(blueprintId: string, materials: readonly MaterialNeed[], buildSeconds: number): boolean {
@@ -1256,15 +1274,7 @@ export function ManufacturingPanel({
           ? it.learnless || ownsBlueprint(state, it.id)
           : !it.learnless && !ownsBlueprint(state, it.id)),
     )
-    .filter(
-      (it) =>
-        tab === 'all' ||
-        (tab === 'equip'
-          ? it.kindLabel === '装备'
-          : tab === 'part'
-            ? it.kindLabel === '零件'
-            : it.kindLabel === '消耗品'),
-    )
+    .filter((it) => inTab(it.kindLabel))
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
     // 三级筛选（2026-09-14 船长）：一次性 / 永久——**只在选了子类后才有开关**，故这里 sub=全部时它恒为 SUB_ALL
@@ -1393,11 +1403,12 @@ export function ManufacturingPanel({
       {/* **三级筛选：一次性 / 永久**（船长 2026-09-14：「组装机添加第三个筛选，一次性蓝图和永久蓝图。
           需要选完上一级子类后才出现」）——样式逐字复刻上面那行子筛选（`app-task-tabs app-fleet-tabs`）； 
           **选了子类才渲染**：没选子类时它不出现，避免与"全部子类"语义打架 */}
-      {sub !== SUB_ALL ? (
+      {/* 2026-09-20 筛选清理：只剩「全部」一项时整行隐藏（该门类下不存在一次性/永久的区分） */}
+      {sub !== SUB_ALL && usesShown.length > 1 ? (
         <div className="app-fleet-row">
           <span className="app-dim">图纸：</span>
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
-            {BLUEPRINT_USE_TABS.map((u) => (
+            {usesShown.map((u) => (
               <button
                 key={u.key}
                 role="tab"

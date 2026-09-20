@@ -42,7 +42,7 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
-import { WRECK_SUBS, SUB_ALL, wreckTierOf } from '../ui/itemSubs'
+import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf } from '../ui/itemSubs'
 import { useL10n } from '../i18n/locale'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -586,7 +586,18 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const oreSubs: SubOpt[] = Object.keys(ORE_KIND_LABEL)
     .filter((k) => oreDefs.some((d) => d.kind === k))
     .map((k) => ({ key: k, label: ORE_KIND_LABEL[k]! }))
-  const subOptions: SubOpt[] = furnaceTab === 'ore' ? oreSubs : furnaceTab === 'wreck' ? WRECK_SUBS : []
+  /**
+   * **二级候选只列真有内容的档**（2026-09-20 船长「明显不存在的子类筛选隐藏」）：
+   * 可精炼资源按资源大类现算（oreDefs 里真有该大类）；残骸按档位现算（没有稀有残骸时不列「稀有」档）。
+   */
+  const subOptions: SubOpt[] =
+    furnaceTab === 'ore'
+      ? oreSubs
+      : furnaceTab === 'wreck'
+        ? presentSubs(WRECK_SUBS, (key) =>
+            wreckDefs.some((d) => (key === 'rare' ? wreckTierOf(d.id) === 'rare' : wreckTierOf(d.id) !== 'rare')),
+          )
+        : []
   /**
    * **搜索命中**（名称 ＋ 产物/材料 ＋ 说明）：`fq` 为空 ⇒ 恒真。
    * 产出侧名字：可精炼资源取 `def.refine` 的精炼产物名；残骸取 `recycleMineralPoolOf(profile)` 的保底矿物名

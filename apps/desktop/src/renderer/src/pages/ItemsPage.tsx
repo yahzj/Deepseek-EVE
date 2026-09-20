@@ -19,6 +19,7 @@ import {
   CONTAINER_SUBS,
   CORE_SUBS,
   MODULE_SUBS,
+  presentSubs,
   RACK_SUBS,
   SUB_ALL,
   WRECK_SUBS,
@@ -85,17 +86,30 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
    * AI 核心：仓库里只有物品形态的 gamma/beta/alpha（`basic` 只有市场商品）⇒ 按目录存在性列档。
    */
   const subDim: { options: typeof RACK_SUBS; label: string } | null = (() => {
-    if (wareKind === 'module') return { options: RACK_SUBS, label: '槽类' }
-    if (wareKind === 'container') return { options: CONTAINER_SUBS, label: '档位' }
-    if (wareKind === 'wreck') return { options: WRECK_SUBS, label: '档位' }
+    // 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：各档**只列仓库里真有内容的档**
+    //（`rows` = 仓库物品条目 · `modRows` = 装备库条目；判定仍走单点 `rackPasses` / `itemSubPasses`）。
+    if (wareKind === 'module') {
+      return { options: presentSubs(RACK_SUBS, (key) => modRows.some(([id]) => rackPasses(engine.ctx, id, key))), label: '槽类' }
+    }
+    if (wareKind === 'container') {
+      return { options: presentSubs(CONTAINER_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'container', key))), label: '档位' }
+    }
+    if (wareKind === 'wreck') {
+      return { options: presentSubs(WRECK_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'wreck', key))), label: '档位' }
+    }
     if (wareKind === 'aicore') {
       return { options: CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`)), label: '档位' }
     }
-    if (wareKind === 'fragment') return { options: MODULE_SUBS, label: '功能' }
+    if (wareKind === 'fragment') {
+      return { options: presentSubs(MODULE_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'fragment', key))), label: '功能' }
+    }
     return null
   })()
-  /** **三级维度**：只有「装备」有（槽类 → 功能分组），且**选了槽位才出**（基线③级联） */
-  const funcDim = wareKind === 'module' && wareSub !== SUB_ALL ? MODULE_SUBS : null
+  /** **三级维度**：只有「装备」有（槽类 → 功能分组），且**选了槽位才出**（基线③级联）；同样只列真有内容的档 */
+  const funcDim =
+    wareKind === 'module' && wareSub !== SUB_ALL
+      ? presentSubs(MODULE_SUBS, (key) => modRows.some(([id]) => itemSubPasses(engine.ctx, id, 'module', key)))
+      : null
   /**
    * 三个维度的判定一律走**唯一入口**（甲组·判定单点）：
    * 一级 `itemBucketPasses` · 二级 `rackPasses`（装备槽类）/ `itemSubPasses`（其余）· 三级 `itemSubPasses`；
