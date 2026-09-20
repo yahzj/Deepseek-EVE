@@ -148,6 +148,23 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
   `LogEntry` 加可选 `textId` / `textParams`（`text` 仍写中文，兼容与检索兜底）；
   `CommandResult.error` 放宽为 `string | { id, params? }`；新域 `core.<文件短名>.<三位序号>`；
   **按文件分批、每文件一提交、随时可停**（老档不迁移）。
+
+#### 6.1.1 甲案实施手册（**照着做，别自己发明**）
+**已落地**（提交 `2d2884eb` 地基 + `mining.ts` · `6a8ab3b1` `salvaging.ts`）：
+| 环节 | 形状 |
+|---|---|
+| 日志 | `addLog(state, kind, 中文, 'core.<文件>.<号>', { p1, p2, … })` —— 后两个参数**可选**，不传就是老行为 |
+| 指令错误 | `{ ok: false, error: 中文, errorId: 'core.<文件>.<号>', errorParams: {…} }` |
+| ⚠ 选型教训 | **不要**把 `error` 改成 `string \| CmdText` 联合：会外溢到全部读取点与用例（实测砸 30+ 处）；**加法式可选字段**才零影响 |
+| 渲染层取值 | `i18n/locale.tsx` 的 `logText(entry)` / `cmdText(r)`：有 id 按当前语言，没有显示中文 |
+| 派生串（两步渲染） | 若某参数**本身是一句带 id 的话**：core 侧照传中文 + 另给 `<键>Id`（如 `p6Id`）；渲染层 `resolveParamIds()` 会先渲染它再喂进外层文案。样板见 `salvaging.ts` 的 `loopNote` |
+| 共用句 | 同一句中文在多文件复用（如"长途运输…再开采/再打捞"）⇒ **拆成两条整句**（`core.state.001` / `.005`），**别用 `{verb}` 参数**（中英语序会错位） |
+| 防呆 | `npm run l10n:check` 会扫 `packages/core/src` 里一切 `'core.*'` 字面量：必须在表内且形态合规 |
+| 每批收尾 | 删掉中途多造的条目（未接线条目里出现 `core.*` 就是信号）；跑全套闸门 + core 用例 |
+
+**进度（截至 2026-09-20）**：`mining.ts` ✅（36 条）· `salvaging.ts` ✅（27 条）⇒ 表 **3013** 条（core 段 65）。
+**下一批建议顺序**：`shipyard.ts` → `industry.ts` → `location.ts` → `market.ts` → `expedition.ts` → `ai.ts` → `combat.ts` → `hauling.ts` → `equipment.ts` → `manufacturing.ts` → `state.ts` → `save.ts` → `wormhole*.ts` → 其余（约 30 个文件 / ≈550 处）。
+
 - **日志口径实测与纠偏**（船长追问"老档哪来的历史日志"后查实）：日志**不落盘**（引擎 `persist()` /
   `currentSaveText()` 写盘前剥离）⇒ 真实档 `logs` 恒为空；**但**造档工具（`tools/make-test-save.ts` 等）
   直接用通用件序列化，故 `docs/test-saves/` 里 **1~300 条日志**；2026-09-08 之前的真实档也带
