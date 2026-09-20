@@ -533,7 +533,10 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         const n = Math.max(1, buildable.outputUnits ?? 1)
         addWare(state, itemDef.id, n)
       bumpFirst(state, 'produceUnits', n) // 第一次任务/链：组装机产出件数
-        addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
+        // 2026-09-20 零件体系：零件制造完成**不写事件日志**（船长定）——其余物品照旧
+        if (itemDef.kind !== 'part') {
+          addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
+        }
         if (stats && coreType) {
           addAiMakeDone(stats, coreType)
           addAiIncome(stats, coreType, n * (itemDef.baseSellPriceIsk ?? 0))
@@ -699,11 +702,18 @@ export interface ManuOrderRow {
   productKey: string
   /** 本卡是否为一次性图纸（`singleUse`） */
   singleUse: boolean
+  /** 零件档位（2026-09-20 零件体系：基础零件默认排序在前、高级在后；非零件缺省 undefined 不参与） */
+  partTier?: 'basic' | 'advanced'
 }
 
 /** 无市场价的书一律沉底（`Number.MAX_SAFE_INTEGER` 不是价格，只表示"排最后"） */
 function manuPriceRank(v: number): number {
   return v > 0 ? v : Number.MAX_SAFE_INTEGER
+}
+
+/** 零件档位排序权重（2026-09-20 船长「默认低级零件排序在前」；非零件 = 0 不参与） */
+function partRank(it: { partTier?: 'basic' | 'advanced' }): number {
+  return it.partTier === 'advanced' ? 1 : 0
 }
 
 /** 组装机卡片排序（见本段顶部口径；不改入参，返回新数组） */
@@ -721,6 +731,7 @@ export function sortManuRows<T extends ManuOrderRow>(rows: readonly T[]): T[] {
     const ab = anchorOf(b)
     return (
       (MANU_KIND_ORDER[a.kindLabel] ?? 9) - (MANU_KIND_ORDER[b.kindLabel] ?? 9) ||
+      partRank(a) - partRank(b) || // 2026-09-20 零件体系：同门类内基础零件排在前
       manuPriceRank(aa.bookPrice) - manuPriceRank(ab.bookPrice) ||
       aa.name.localeCompare(ab.name, 'zh-Hans-CN') ||
       a.productKey.localeCompare(b.productKey) || // 组键兜底：不同产物绝不交错

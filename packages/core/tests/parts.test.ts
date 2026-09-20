@@ -13,7 +13,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { advanceGame } from '../src/engine'
-import { startManufacturing, canStartBlueprint, calcBuildDurationMs } from '../src/manufacturing'
+import { startManufacturing, canStartBlueprint, calcBuildDurationMs, sortManuRows } from '../src/manufacturing'
 import { addWare, countWare } from '../src/inventory'
 import { makeTestCtx } from './helpers'
 
@@ -33,14 +33,17 @@ function freshState(): GameState {
 }
 
 describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', () => {
-  it('① 基础零件隐式蓝图：无需学习即可开工，且产出入库', () => {
+  it('① 基础零件隐式蓝图：无需学习即可开工，一次产 10 件、15 秒一轮、完成不写事件日志', () => {
     const s = freshState()
     expect(canStartBlueprint(s, ctx, 'bp-part-circuit')).toBe(true)
     expect(startManufacturing(s, 'bp-part-circuit', 'pilot', ctx).ok).toBe(true)
-    advanceGame(s, 46_000, ctx)
-    expect(countWare(s, 'part-circuit')).toBe(1)
+    const beforeLogs = s.logs.length
+    advanceGame(s, 16_000, ctx)
+    expect(countWare(s, 'part-circuit')).toBe(10) // 一次产 10 件
+    // 2026-09-20 船长「零件的制造完成不需要发送事件日志」——推进期间可以有别的事件日志，但不该有"制造完成"
+    expect(s.logs.slice(beforeLogs).some((l) => l.text.includes('制造完成'))).toBe(false)
   })
-  it('② 高级零件蓝图：未学会不能开工，学会后可以', () => {
+  it('② 高级零件蓝图：未学会不能开工，学会后可以（60 秒一轮、一次产 10 件）', () => {
     const s = freshState()
     for (const m of BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!.materials) addWare(s, m.itemId, m.count)
     expect(canStartBlueprint(s, ctx, 'bp-part-qchip')).toBe(false)
@@ -48,11 +51,13 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
     s.learnedRecipes = ['bp-part-qchip']
     expect(canStartBlueprint(s, ctx, 'bp-part-qchip')).toBe(true)
     expect(startManufacturing(s, 'bp-part-qchip', 'pilot', ctx).ok).toBe(true)
+    advanceGame(s, 61_000, ctx)
+    expect(countWare(s, 'part-qchip')).toBe(10)
   })
   it('③ 零件技能：基础吃「零件成型工艺学」−8%/级 · 高级吃「精密装配学」−8%/级（乘在工业/批量之上）', () => {
     const s = freshState()
-    const basicSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-circuit')!.materials, buildSeconds: 45, buildCostIsk: 0, partTier: 'basic' as const }
-    const advSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!.materials, buildSeconds: 240, buildCostIsk: 0, partTier: 'advanced' as const }
+    const basicSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-circuit')!.materials, buildSeconds: 15, buildCostIsk: 0, partTier: 'basic' as const }
+    const advSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!.materials, buildSeconds: 60, buildCostIsk: 0, partTier: 'advanced' as const }
     const base = calcBuildDurationMs(s, ctx, basicSpec)
     const adv = calcBuildDurationMs(s, ctx, advSpec)
     s.skills.trained['part-forming'] = 5
@@ -60,6 +65,15 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
     s.skills.trained['part-forming'] = 0
     s.skills.trained['precision-assembly'] = 5
     expect(calcBuildDurationMs(s, ctx, advSpec)).toBe(Math.round(adv * 0.6)) // 满级 −40%
+  })
+  it('③b 零件排序：基础零件默认在前、高级在后（sortManuRows 组内 partTier 优先）', () => {
+    const rows = [
+      { kindLabel: '零件', name: '引力子补偿器蓝图', bookPrice: 10_000_000, productKey: 'item:part-grav-comp', singleUse: false, partTier: 'advanced' as const },
+      { kindLabel: '零件', name: '电路基板制造', bookPrice: 0, productKey: 'item:part-circuit', singleUse: false, partTier: 'basic' as const },
+      { kindLabel: '零件', name: '量子协处理器芯蓝图', bookPrice: 10_000_000, productKey: 'item:part-qchip', singleUse: false, partTier: 'advanced' as const },
+    ]
+    const sorted = sortManuRows(rows)
+    expect(sorted.map((r) => r.name)).toEqual(['电路基板制造', '量子协处理器芯蓝图', '引力子补偿器蓝图'])
   })
 })
 
@@ -110,7 +124,7 @@ describe('零件体系：配方改造（2026-09-20）', () => {
       }
     }
   })
-  it('⑧ 市场渠道（2026-09-20 船长「所有零件及其蓝图都在常驻市场有出售」）：全部常驻 · 高级零件蓝图书价 1,000 万', () => {
+  it('⑧ 市场渠道（2026-09-20 船长「所有零件及其蓝图都在常驻市场有出售」）：全部常驻 · 零件池百万级 · 高级零件蓝图书价 1,000 万', () => {
     for (const partId of [
       'part-circuit', 'part-armor-plate', 'part-frame', 'part-cable', 'part-coolant', 'part-gyro', 'part-lens',
       'part-drone-neural', 'part-shield-gen', 'part-jet-array', 'part-qchip', 'part-keel', 'part-fire-control', 'part-grav-comp',
@@ -118,6 +132,7 @@ describe('零件体系：配方改造（2026-09-20）', () => {
       const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === partId)
       expect(g, `${partId} 无市场行`).toBeTruthy()
       expect(g?.rarity).toBe('common')
+      expect(g?.poolTarget, `${partId} 池未提百万级`).toBeGreaterThanOrEqual(1_000_000)
     }
     for (const bpId of [
       'bp-part-drone-neural', 'bp-part-shield-gen', 'bp-part-jet-array', 'bp-part-qchip',

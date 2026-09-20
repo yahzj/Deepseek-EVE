@@ -1089,6 +1089,8 @@ export function ManufacturingPanel({
     singleUse: boolean
     /** 2026-09-20 零件体系：隐式蓝图（基础零件无需学习） */
     learnless: boolean
+    /** 2026-09-20 零件体系：零件档位（排序用：基础零件默认在前） */
+    partTier?: 'basic' | 'advanced'
   }> = []
   /** 该船型的**总持有**（2026-09-14 舰船仓库批：组装机产出先进仓库 ⇒ 读口径改走 core 单点
    *  `shipOwnedCount` = 舰船仓库 ＋ 在役舰队；原先只数机库，会让"仓里堆着 3 艘"显示成 0）
@@ -1208,6 +1210,7 @@ export function ManufacturingPanel({
         productKey: `item:${bp.itemId}`,
         singleUse: bp.singleUse === true,
         learnless: bp.learnless === true,
+        partTier: bp.partTier,
       })
     }
   }

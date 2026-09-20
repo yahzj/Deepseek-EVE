@@ -164,13 +164,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 }, // 2026-09-11 消耗品池按产能标定（原 4,000/150）
   // 【基础零件 7 种（2026-09-20 零件体系）：常驻池商品——中间件消耗量小于弹药/修理组件，
   //   池按中阶量级（poolTarget 600 / flow 5）；定价 = 材料成本 ×1.37~1.41（船长「普通零件平均涨幅 30~50%」）。】
-  { key: 'part-circuit', kind: 'item', refId: 'part-circuit', rarity: 'common', basePrice: 95, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-armor-plate', kind: 'item', refId: 'part-armor-plate', rarity: 'common', basePrice: 250, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-frame', kind: 'item', refId: 'part-frame', rarity: 'common', basePrice: 145, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-cable', kind: 'item', refId: 'part-cable', rarity: 'common', basePrice: 155, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-coolant', kind: 'item', refId: 'part-coolant', rarity: 'common', basePrice: 115, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-gyro', kind: 'item', refId: 'part-gyro', rarity: 'common', basePrice: 420, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-lens', kind: 'item', refId: 'part-lens', rarity: 'common', basePrice: 190, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
+  { key: 'part-circuit', kind: 'item', refId: 'part-circuit', rarity: 'common', basePrice: 95, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-armor-plate', kind: 'item', refId: 'part-armor-plate', rarity: 'common', basePrice: 250, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-frame', kind: 'item', refId: 'part-frame', rarity: 'common', basePrice: 145, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-cable', kind: 'item', refId: 'part-cable', rarity: 'common', basePrice: 155, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-coolant', kind: 'item', refId: 'part-coolant', rarity: 'common', basePrice: 115, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-gyro', kind: 'item', refId: 'part-gyro', rarity: 'common', basePrice: 420, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-lens', kind: 'item', refId: 'part-lens', rarity: 'common', basePrice: 190, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
   { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
   { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 9, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
   // ── 弹药 MK2（2026-09-09 船长拍板：攻坚/提速消耗品；补给池高价低耗节流，参数可调） ──
@@ -436,13 +436,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-hullrep-2', kind: 'blueprint', refId: 'bp-hullrep-2', rarity: 'rare', basePrice: 5725000, demandMultiplier: 0.65, standingReq: 4 }, // 船体维修装置 MK2（蓝图=产物×3）（入闸）
   // 【高级零件 7 种 + 蓝图 7 张（2026-09-20 零件体系）】：船长「所有零件及其蓝图都在常驻市场有出售，但是高级零件蓝图需要1000W」
   //   ⇒ 全部常驻池商品（与基础零件同款 poolTarget 600 / flow 5）；高级零件蓝图书价 = 1,000 万（basePrice 与 blueprints.ts priceIsk 同值）。
-  { key: 'part-drone-neural', kind: 'item', refId: 'part-drone-neural', rarity: 'common', basePrice: 930, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-shield-gen', kind: 'item', refId: 'part-shield-gen', rarity: 'common', basePrice: 1_010, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-jet-array', kind: 'item', refId: 'part-jet-array', rarity: 'common', basePrice: 1_550, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-qchip', kind: 'item', refId: 'part-qchip', rarity: 'common', basePrice: 700, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-keel', kind: 'item', refId: 'part-keel', rarity: 'common', basePrice: 3_120, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-fire-control', kind: 'item', refId: 'part-fire-control', rarity: 'common', basePrice: 1_670, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
-  { key: 'part-grav-comp', kind: 'item', refId: 'part-grav-comp', rarity: 'common', basePrice: 7_500, demandMultiplier: 0.6, poolTarget: 600, supplyFlow: 5 },
+  { key: 'part-drone-neural', kind: 'item', refId: 'part-drone-neural', rarity: 'common', basePrice: 930, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-shield-gen', kind: 'item', refId: 'part-shield-gen', rarity: 'common', basePrice: 1_010, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-jet-array', kind: 'item', refId: 'part-jet-array', rarity: 'common', basePrice: 1_550, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-qchip', kind: 'item', refId: 'part-qchip', rarity: 'common', basePrice: 700, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-keel', kind: 'item', refId: 'part-keel', rarity: 'common', basePrice: 3_120, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-fire-control', kind: 'item', refId: 'part-fire-control', rarity: 'common', basePrice: 1_670, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
+  { key: 'part-grav-comp', kind: 'item', refId: 'part-grav-comp', rarity: 'common', basePrice: 7_500, demandMultiplier: 0.6, poolTarget: 1_200_000, supplyFlow: 10_000 },
   { key: 'bp-part-drone-neural', kind: 'blueprint', refId: 'bp-part-drone-neural', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
   { key: 'bp-part-shield-gen', kind: 'blueprint', refId: 'bp-part-shield-gen', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
   { key: 'bp-part-jet-array', kind: 'blueprint', refId: 'bp-part-jet-array', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
