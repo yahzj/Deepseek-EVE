@@ -74,6 +74,18 @@
 > 引用同步：`wormhole-extraction-endgame-20260912.md`（2 处）· 本目录 `wrapup-20260912-night-pilot1.md`（2 处）·
 > 新交接卡头部指针 —— 均改写成 `docs/design/archive/…` 全路径（按 §四 口径）。
 
+> **2026-09-20 追加归档（4 份 · 一号清理批）**：
+>
+> | 文件 | 归属 | 说明 |
+> |---|---|---|
+> | `handoff-20260913-to-new-pilot2.md` | 二号 | 2026-09-13 二号交接（虫洞专属内容批的会话卡）——批已结案，本卡使命完成 |
+> | `handoff-20260913-wormhole-content-d2.md` | 二号 | 虫洞专属内容批收尾归档/续接卡——批已结案，本卡使命完成 |
+> | `handoff-20260915-to-new-pilot1.md` | 一号 | 2026-09-15 一号交接——**被 `docs/design/handoff-20260920-to-new-pilot1.md` 取代**（判据 ②：一号只留最新一份） |
+> | `handoff-20260915-verify.md` | 三号 | 2026-09-15 三号交接——三号现役卡在 `verify40` 分支（`docs/design/l10n-en-handover-20260919.md`），本卡使命完成 |
+>
+> 引用同步：`handoff-20260920-to-new-pilot1.md` 头部指针 · `handoff-20260915-to-new-pilot1.md` 与
+> `handoff-20260913-to-new-pilot2.md` 的卡间互指——均改写成 `docs/design/archive/…` 全路径（按 §四 口径）。
+
 ### 3.3 会话收尾归档件（5 份 · 生成即归档）
 
 | 文件 | 归属 | 说明 |
