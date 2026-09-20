@@ -518,7 +518,7 @@ export function WormholePanel({
    * ＋「撤离前必须清空」）：三个触发口（切页 / 关面板 / 撤离）都在面板这一层；确认条画在背包页里
    * ⇒ 触发时**先把页签切到背包**再弹条。
    */
-  const [tempAsk, setTempAsk] = useState<null | 'tab' | 'close' | 'extract'>(null)
+  const [tempAsk, setTempAsk] = useState<null | 'tab' | 'extract'>(null)
   useEffect(() => {
     if (!extractAsk) return
     const t = window.setTimeout(() => setExtractAsk(false), 5000)
@@ -877,7 +877,12 @@ export function WormholePanel({
   }
 
   function doExtract(): void {
-    // **临时空间没清空 ⇒ 先切到背包页弹确认条**（船长 2026-09-14：「撤离前必须清空（丢掉或放回）」）
+    /**
+     * **临时空间没清空 ⇒ 先切到背包页弹确认条**（船长 2026-09-14：「撤离前必须清空（丢掉或放回）」）。
+     * ⚠ **2026-09-20 起这道闸的含义变了**（船长：「**撤离时临时空间的东西全部丢弃。**」）：
+     * 撤离不再把临时空间的东西带回来 ⇒ 这条确认是玩家**最后一次挽回机会**（「放回货仓」救下来，
+     * 「丢掉这些」= 放弃）；真正走到撤离结算时，剩下的件一律丢弃（`wormholeBattle` 收口处落账）。
+     */
     if (engine.wormholeTempPending().count > 0) {
       setTab('bag')
       setTempAsk('extract')
@@ -896,10 +901,11 @@ export function WormholePanel({
   }
 
   /**
-   * **离开背包页的统一关卡**（船长 2026-09-14：「强制二选一：丢掉 或 放回」）：
-   * 临时空间非空就不放行，弹确认条（逐件列出）；处理完**按原意图继续**（切探索 / 关面板 / 撤离）。
+   * **离开背包页的统一关卡**（船长 2026-09-14：「强制二选一：丢掉 或 放回」；
+   * **2026-09-20 船长把"关面板"移出本关卡** ⇒ 现只剩 `'tab'`（切探索页）与 `'extract'`（撤离）两条）：
+   * 临时空间非空就不放行，弹确认条（逐件列出）；处理完**按原意图继续**（切探索 / 撤离）。
    */
-  function leaveBagPage(intent: 'tab' | 'close' | 'extract', go: () => void): void {
+  function leaveBagPage(intent: 'tab' | 'extract', go: () => void): void {
     if (engine.wormholeTempPending().count === 0) {
       go()
       return
@@ -909,9 +915,8 @@ export function WormholePanel({
   }
 
   /** 处理完临时空间之后，把玩家原本想做的事接着做完（切页那条 = 去探索页） */
-  function resumeAfterTemp(ask: null | 'tab' | 'close' | 'extract'): void {
+  function resumeAfterTemp(ask: null | 'tab' | 'extract'): void {
     if (ask === 'extract') doExtract()
-    else if (ask === 'close') onClose()
     else if (ask === 'tab') setTab('map')
   }
 
@@ -1084,6 +1089,13 @@ export function WormholePanel({
    * **临时离开 = 活动停止**（船长 2026-09-13 批准 · 议案 A 第 2 条）：关掉面板就 `wormholeLeave()`
    * ⇒ 主控立刻释放（可以去做别的），**虫洞进度原样保存**、洞内一切冻结（含战斗）。
    * ⚠ **交火中不许离开**（船长 2026-09-13：「虫洞中的战斗画面不可以退出」）：按钮禁用，这里再兜一道。
+   *
+   * ⚠ **2026-09-20 船长改判**：「**虫洞的货仓背包界面，临时空间内有东西时，允许玩家关闭虫洞界面**」
+   * ⇒ **关闭不再被临时空间拦下**（原先会切到背包页并弹「丢掉这些 / 放回货仓」二选一）。
+   * **不会丢东西**：`wormholeLeave()` 只把洞内一切**冻结**（`tempGrid` 与进度原样留在档里），
+   * 下次「返回虫洞」临时空间里的件还在 ⇒ 关面板没有数据风险。
+   * 仍保留的两道闸：**交火中不许离开**（上面那条）· **切页签与撤离**仍走 `leaveBagPage` 的二选一
+   * （船长 2026-09-14 的口径在那两条路径上继续有效）。
    */
   function handleClose(): void {
     /** **自动探索模式**：本面板只是"准备页"，关掉它**不碰洞内那一趟**（不 leave、不切页签） */
@@ -1093,15 +1105,6 @@ export function WormholePanel({
     }
     if (state.wormhole.run?.battle) {
       onToast(tr("ui.Wormhole.009"), true)
-      return
-    }
-    /**
-     * **临时空间没清空 ⇒ 先去背包页处理**（船长 2026-09-14：「离开背包页时丢弃并失效」＋
-     * 「强制二选一：丢掉 或 放回」）：不直接关面板，而是**切到背包页并把确认条弹出来**。
-     */
-    if (state.wormhole.run && engine.wormholeTempPending().count > 0) {
-      setTab('bag')
-      setTempAsk('close')
       return
     }
     if (state.wormhole.run) engine.wormholeLeave()
@@ -2660,9 +2663,9 @@ function WhHold({
 }: {
   engine: GameEngine
   onToast: ToastFn
-  /** 临时空间待清空确认的意图（面板层持有：切页 / 关面板 / 撤离都要过这一关） */
-  tempAsk: null | 'tab' | 'close' | 'extract'
-  setTempAsk: (v: null | 'tab' | 'close' | 'extract') => void
+  /** 临时空间待清空确认的意图（面板层持有：**切探索页 / 撤离**要过这一关；关面板自 2026-09-20 起放行） */
+  tempAsk: null | 'tab' | 'extract'
+  setTempAsk: (v: null | 'tab' | 'extract') => void
   /** 「丢掉这些」/「放回货仓」的实际处置（面板层持有，因为它要用 onClose / 撤离继续流程） */
   onTempDiscard: () => void
   onTempStow: () => void

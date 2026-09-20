@@ -741,13 +741,14 @@ describe('虫洞 · 战斗收口（F 批）', () => {
   })
 
   /**
-   * **临时空间里的东西随趟入港**（2026-09-14 修 · 一号核验查出的缺陷）。
+   * **临时空间里的东西「撤离时全部丢弃」**（**船长 2026-09-20**：「撤离时临时空间的东西全部丢弃。」）。
    *
-   * 收口原来读的是**老档只读字段** `run.temp`（2026-09-14 起账本已迁到 `run.tempGrid`）⇒
-   * 临时空间里的件会在"撤离成功"那一刻**凭空消失**；当时被界面规则「撤离前必须清空临时空间」
-   * 挡成不可达，所以没炸。
+   * ⚠ 本条**推翻**原用例（2026-09-14 修一号核验缺陷时定的「随趟入港」）：当时是为了修"读老字段
+   * `run.temp` ⇒ 撤离那一刻凭空消失"的缺陷，把它改成了**入港**；现在按船长新裁定，**丢弃才是正解**——
+   * 所以这里翻面断言：**背包那批照常到港、临时空间那批一件不到**（"凭空消失"从此是有意为之）。
+   * 界面侧仍保留"撤离前必须清空（丢掉 或 放回）"那道闸（2026-09-14），给玩家一次挽回机会。
    */
-  it('**临时空间随趟入港**：撤离成功时 `tempGrid` 里的散货按单位入库（不再凭空消失）', () => {
+  it('**临时空间撤离即丢弃**：`tempGrid` 里的件不入库（背包那批照常到港）', () => {
     const state = enterRun()
     const run = state.wormhole.run!
     run.depth = 2
@@ -768,8 +769,9 @@ describe('虫洞 · 战斗收口（F 批）', () => {
     const before = countWare(state, WORMHOLE_ORE_ITEM_ID)
     expect(wormholeExtract(run).ok).toBe(true)
     advanceWormhole(state, ctx) // 2026-09-15 起：撤离下一拍直接入港（不再有战斗）
-    // 背包那批 ＋ **临时空间那批**都要到港（修前只到背包那批）
-    expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(before + bagUnits + tempUnits)
+    // **只有背包那批到港**；临时空间那批按船长 2026-09-20 的裁定丢弃
+    expect(countWare(state, WORMHOLE_ORE_ITEM_ID)).toBe(before + bagUnits)
+    expect(state.logs.some((l) => l.text.includes('撤离放弃')), '丢弃要留一条 warn 日志').toBe(true)
   })
 
 

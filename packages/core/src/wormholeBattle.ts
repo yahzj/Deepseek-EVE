@@ -33,7 +33,6 @@ import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
 import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { matterTechWhBuffs } from './matterTech'
-import { wormholeIsShapedItem } from './wormholeHold'
 import {
   wormholeDeliverRelics,
   wormholeGrantShipSpoils,
@@ -907,17 +906,21 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
     .map((p) => p.itemId)
     .filter((id) => ctx.items.get(id)?.kind !== 'matter')
   /**
-   * **临时空间里的东西也随趟带回**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」）：
-   * 临时空间是"船上的缓冲"，不是船外的地方 ⇒ 撤离成功一并入港（失败随趟丢，与背包同一条风险线）。
-   * 形状件（货柜）仍走 `wormholeDeliverRelics` 的物品分支；散货按单位数入仓。
+   * **临时空间里的东西「撤离时全部丢弃」**（**船长 2026-09-20**：「**撤离时临时空间的东西全部丢弃。**」）。
+   *
+   * ⚠ 本条**推翻** 2026-09-13 的旧口径（原文：「大件货先进临时空间，让玩家协调」＋「临时空间是"船上的缓冲"，
+   * 不是船外的地方 ⇒ 撤离成功一并入港」）——旧口径下临时空间的东西会随趟入港，现改为**撤离即丢弃**：
+   * 核心不入核心账、货柜不进拆解池、散货不入仓库、**谜质装置也不折成虫洞谜质**（"全部"含装置）。
+   * 界面侧仍是"撤离前必须清空（丢掉 或 放回）"那道闸（船长 2026-09-14）⇒ 玩家有一次挽回机会；
+   * 但**凡是真的走到本函数**（撤离成功结算），临时空间里的件一律不再随趟回来。
+   * 半路全损那条路径本来也是随趟丢 ⇒ 两条路径现在一致。
    *
    * ⚠ 2026-09-14 修（一号核验查出的缺陷）：账本 2026-09-14 已从**老档只读字段** `run.temp`
    * （一种物品一条的列表）迁到 **`run.tempGrid`**（4×8 格子账本）⇒ 原来读 `run.temp` 恒读空，
    * 临时空间里的件会在"撤离成功"那一刻**凭空消失**（当时被界面规则「撤离前必须清空临时空间」
-   * 挡成不可达，所以没炸）。现在按 `tempGrid` 现算：散货按单位数累加、形状件仍按"件"走。
+   * 挡成不可达，所以没炸）。本条按 `tempGrid` 现算件数——**只用于日志与丢弃提示，不再投递**。
    */
   const tempPlacements = run.tempGrid?.placements ?? []
-  const tempItems = tempPlacements.map((p) => p.itemId)
   /** 临时空间里的散货按物品合并单位数（一件一格 ⇒ 同一物品可能有多件） */
   const tempUnits = new Map<string, number>()
   for (const p of tempPlacements) {
@@ -929,7 +932,7 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
    * **绝不能进 `wormholeDeliverRelics`**（那条会 `addWare` 进仓库 ⇒ 变成"仓库里有 3 个核心却不能用"
    * 的两本账）。半路全损根本走不到这里 ⇒ 核心随背包一起丢（现成口径）。
    */
-  const coreIds = [...boxes, ...tempItems].filter((id) => wormholeCoreTypeOfItemId(id) !== null)
+  const coreIds = boxes.filter((id) => wormholeCoreTypeOfItemId(id) !== null)
   const cores = deliverWormholeCores(state, coreIds)
   /** 行价参考估值（唯一出处 = 市场卡；核心账本那本 key 是 `core-<type>`） */
   const coresIsk = (['gamma', 'beta', 'alpha'] as const).reduce(
@@ -942,18 +945,14 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
    *
    * 口径：**只有撤离成功才折算**（本函数 = 撤离成功的收口点）⇒ 半路全损走的是"随趟丢"那条路，
    * 谜质一枚都拿不到；装置给的增益本趟照旧生效（折算是结算动作，不改 `run` 里的任何账目）。
-   * 台数按**件**算（形状件一件一格，`p.units` 缺省即 1），临时空间里的也一样折。
-   * 折算完的两条投递路径仍按 `kind` 排除 `matter` ⇒ 装置本身不会二次进仓库、也不会进拆解池。
+   * 台数按**件**算（形状件一件一格，`p.units` 缺省即 1）。
+   * ⚠ **只算背包里的**（船长 2026-09-20「撤离时临时空间的东西全部丢弃」）⇒ 临时空间里的装置
+   * 随趟丢、**不折谜质**。
    */
-  const matterDevices =
-    (run.hold?.placements ?? []).reduce(
-      (n, p) => n + (ctx.items.get(p.itemId)?.kind === 'matter' ? Math.max(1, Math.floor(p.units ?? 1)) : 0),
-      0,
-    ) +
-    tempPlacements.reduce(
-      (n, p) => n + (ctx.items.get(p.itemId)?.kind === 'matter' ? Math.max(1, Math.floor(p.units ?? 1)) : 0),
-      0,
-    )
+  const matterDevices = (run.hold?.placements ?? []).reduce(
+    (n, p) => n + (ctx.items.get(p.itemId)?.kind === 'matter' ? Math.max(1, Math.floor(p.units ?? 1)) : 0),
+    0,
+  )
   const essences = matterDevices * WORMHOLE_ESSENCE_PER_DEVICE
   if (essences > 0) {
     addWare(state, WORMHOLE_ESSENCE_ITEM_ID, essences)
@@ -966,20 +965,20 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
   }
   /** 谜质行价参考估值（与核心同一口径：唯一出处 = 市场卡；**不计入「到手合计」**） */
   const essenceIsk = essences * (ctx.marketGoods.get(WORMHOLE_ESSENCE_ITEM_ID)?.basePrice ?? 0)
-  const boxesAll = [...boxes, ...tempItems.filter((id) => wormholeIsShapedItem(id))]
+  /** 货柜/形状件：**只算背包里的**（临时空间那批按船长 2026-09-20 的裁定随趟丢） */
+  const boxesAll = boxes
     .filter((id) => wormholeCoreTypeOfItemId(id) === null)
     .filter((id) => ctx.items.get(id)?.kind !== 'matter') // 谜质装置：上面已折成谜质入库，不再走"入库/拆解"这条路
   if (boxesAll.length > 0) wormholeDeliverRelics(state, ctx, boxesAll)
-  for (const [itemId, units] of tempUnits) {
-    if (wormholeIsShapedItem(itemId)) continue // 上面已按"件"入过（核心同理，已入核心账）
-    if (ctx.items.get(itemId)?.kind === 'matter') continue // 谜质装置同理：已折成谜质
-    if (units > 0) addWare(state, itemId, units)
-  }
+  /**
+   * **临时空间里的东西就地丢弃**（船长 2026-09-20）：不入仓库、不进核心账、不进拆解池、不折谜质；
+   * 写一条 warn 让玩家在日志里看得见（界面那道"撤离前必须清空"的闸是挽回机会，这里是既成事实的落账）。
+   */
   if (tempPlacements.length > 0) {
     addLog(
       state,
-      'info',
-      `🕳 临时空间里的 ${tempUnits.size} 类物资一并入港（未整理的也带回来了）。`,
+      'warn',
+      `🕳 撤离放弃：临时空间里的 ${tempUnits.size} 类物资留在洞里（未整理的按丢弃处理）。`,
       'core.wormholeBattle.022',
       { p1: tempUnits.size },
     )
