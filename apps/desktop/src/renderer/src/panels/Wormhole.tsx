@@ -754,7 +754,7 @@ export function WormholePanel({
   function travelTo(q: number, r: number, confirmUnknown: boolean, confirmIntercept: boolean): void {
     const res = engine.wormholeTravel(q, r, confirmUnknown, confirmIntercept)
     if (!res.ok) {
-      onToast(res.error ?? 'ui.Wormhole.298', true)
+      onToast(res.error ?? tr('ui.Wormhole.298'), true)
       return
     }
     setPendingCell(null)
@@ -771,7 +771,7 @@ export function WormholePanel({
     const before = new Set(grid?.scanned ?? [])
     const res = engine.wormholeScan()
     if (!res.ok) {
-      onToast(res.error ?? 'ui.Wormhole.299', true)
+      onToast(res.error ?? tr('ui.Wormhole.299'), true)
       return
     }
     const after = grid?.scanned ?? []
@@ -822,7 +822,7 @@ export function WormholePanel({
     }
     const res = engine.wormholeActivate()
     if (!res.ok) {
-      onToast(res.error ?? 'ui.Wormhole.300', true)
+      onToast(res.error ?? tr('ui.Wormhole.300'), true)
       return
     }
     if (exitNow || place === 'ship') return // 已开战：交给战斗界面
@@ -856,7 +856,7 @@ export function WormholePanel({
       const r = engine.wormholeDescend()
       if (!r.ok) {
         setFx('idle')
-        onToast(r.error ?? 'ui.Wormhole.301', true)
+        onToast(r.error ?? tr('ui.Wormhole.301'), true)
       }
       // 成功：`layerKey` 变了 ⇒ 那个 effect 会接着播飞入并复位
     }, WORMHOLE_FX_OUT_MS)
@@ -871,7 +871,7 @@ export function WormholePanel({
     }
     const r = engine.wormholeExtract()
     if (!r.ok) {
-      onToast(r.error ?? 'ui.Wormhole.302', true)
+      onToast(r.error ?? tr('ui.Wormhole.302'), true)
       return
     }
     /**
@@ -1029,7 +1029,7 @@ export function WormholePanel({
                         disabled={!!run.battle || actionBlocked !== null}
                         onClick={() => {
                           const r = engine.wormholeTakePile(i)
-                          if (!r.ok) onToast(r.error ?? 'ui.Wormhole.307', true)
+                          if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.307'), true)
                           else {
                             playJob(tr("ui.Wormhole.189"), def?.name ?? '货柜')
                             onToast(tr("ui.Wormhole.080"))
@@ -1101,7 +1101,7 @@ export function WormholePanel({
     if (auto) return
     if (!state.wormhole.run || state.wormhole.run.attending === true) return
     const r = engine.wormholeResume()
-    if (!r.ok) setResumeNote(r.error ?? 'ui.Wormhole.308')
+    if (!r.ok) setResumeNote(r.error ?? tr('ui.Wormhole.308'))
     else setResumeNote(null)
     // 只在"刚打开/刚离开"这两种时刻触发；`attending` 变 true 后本效果自动空转
   }, [engine, state.wormhole.run?.attending, auto])
@@ -2700,7 +2700,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     const target = ownerMap(kind).get(`${x},${y}`)
     if (target && target.id !== id) {
       const r = engine.wormholeHoldSwap(id, target.id)
-      if (!r.ok) onToast(r.error ?? 'ui.Wormhole.326', true)
+      if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.326'), true)
       setDragId(null)
       return
     }
@@ -2708,7 +2708,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
       dragFrom === kind
         ? engine.wormholeHoldDropAt(id, x, y, grabRef.current)
         : engine.wormholeBoardTransfer(dragFrom, kind, id, x, y, grabRef.current)
-    if (!r.ok) onToast(r.error ?? 'ui.Wormhole.327', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.327'), true)
     setDragId(null)
   }
 
@@ -2950,7 +2950,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             className="app-btn is-small is-warn"
             onClick={() => {
               const r = engine.wormholeDiscardToFit()
-              if (!r.ok) onToast(r.error ?? 'ui.Wormhole.333', true)
+              if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.333'), true)
             }}
           >
             {tr("ui.Wormhole.056")}
@@ -2966,7 +2966,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               disabled={placements.length === 0}
               onClick={() => {
                 const r = engine.wormholeHoldCompact()
-                if (!r.ok) onToast(r.error ?? 'ui.Wormhole.334', true)
+                if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.334'), true)
               }}
             >
               {tr("ui.Wormhole.175")}
@@ -2994,7 +2994,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               disabled={tempInfo.placements.length === 0}
               onClick={() => {
                 const r = engine.wormholeTempCompact()
-                if (!r.ok) onToast(r.error ?? 'ui.Wormhole.334', true)
+                if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.334'), true)
               }}
             >
               {tr("ui.Wormhole.176")}
@@ -3047,7 +3047,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                           return
                         }
                         const r = engine.wormholeDiscardHold(p.id)
-                        if (!r.ok) onToast(r.error ?? 'ui.Wormhole.335', true)
+                        if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.335'), true)
                       }}
                     >
                       {tr("ui.Wormhole.180")}
@@ -3071,7 +3071,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               onClick={() => {
                 const r = engine.wormholeDiscardHold(askDiscard)
                 setAskDiscard(null)
-                if (!r.ok) onToast(r.error ?? 'ui.Wormhole.335', true)
+                if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.335'), true)
               }}
             >
               {tr("ui.Wormhole.235")}
@@ -3171,7 +3171,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                       onClick={() => {
                         const r = engine.wormholeDiscardHold(p.id, amount)
                         setDiscardAsk(null)
-                        if (!r.ok) onToast(r.error ?? 'ui.Wormhole.335', true)
+                        if (!r.ok) onToast(r.error ?? tr('ui.Wormhole.335'), true)
                         else onToast(tr("ui.Wormhole.122", { p1: n(amount), p2: def?.name ?? p.itemId }))
                       }}
                     >

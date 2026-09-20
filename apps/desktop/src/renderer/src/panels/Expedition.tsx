@@ -213,7 +213,7 @@ export function ExpeditionPanel({
             title={tr("ui.Expedition.188")}
             onClick={() => {
               const r = engine.flyHomeNow()
-              if (!r.ok) onToast(r.error ?? 'ui.Expedition.381', true)
+              if (!r.ok) onToast(r.error ?? tr('ui.Expedition.381'), true)
             }}
           >
             <span className="app-ico">
@@ -1082,7 +1082,7 @@ function StarMap({
   function handleScan(g: GalaxyDef): void {
     const r = engine.startScanAt(g.id)
     if (!r.ok) {
-      onToast(r.error ?? 'ui.Expedition.382', true)
+      onToast(r.error ?? tr('ui.Expedition.382'), true)
       return // 失败不关窗：错误提示留在弹窗里
     }
     onToast(tr("ui.Expedition.135"))
@@ -1608,7 +1608,7 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
         className="app-btn is-small is-primary"
         onClick={() => {
           const r = engine.useRepairKitNow()
-          if (!r.ok) onToast(r.error ?? 'ui.Expedition.383', true)
+          if (!r.ok) onToast(r.error ?? tr('ui.Expedition.383'), true)
           else onToast(tr("ui.Expedition.080"))
         }}
         title={tr("ui.Expedition.081")}
@@ -1660,7 +1660,7 @@ function GalaxyActions({
         : undefined
   function handleStandby(): void {
     const r = engine.goStandbyAt(galaxy.id)
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.384', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.384'), true)
     else onToast(tr("ui.Expedition.143", { p1: galaxy.name }))
   }
 
@@ -1678,7 +1678,7 @@ function GalaxyActions({
       return
     }
     const r = engine.assignAiStandbyAt(aiShip, effCore, galaxy.id)
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.385', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.385'), true)
     else onToast(tr("ui.Expedition.082"))
   }
 
@@ -1705,7 +1705,7 @@ function GalaxyActions({
     }
     setMineAskBelt(null)
     const r = expOn ? engine.startMiningFromExpeditionAt(beltId) : engine.startMiningAt(beltId)
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.388', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.388'), true)
   }
 
   // —— 该星系悬赏（只列当前可接；已首胜标黄不隐藏） ——
@@ -1728,7 +1728,7 @@ function GalaxyActions({
     }
     setGoAskAno(null)
     const r = miningActive ? engine.startExpeditionFromMiningAt(ano.id) : engine.startExpeditionAt(ano.id)
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.389'), true)
   }
 
   return (
@@ -1941,7 +1941,7 @@ function GalaxyActions({
             title={state.salvaging.active ? tr("ui.Expedition.149") : tr("ui.MapPage.070")}
             onClick={() => {
               const r = engine.startSalvageOpAt(galaxy.id)
-              if (!r.ok) onToast(r.error ?? 'ui.Expedition.390', true)
+              if (!r.ok) onToast(r.error ?? tr('ui.Expedition.390'), true)
             }}
           >
             <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.071")}
@@ -1989,7 +1989,7 @@ function GalaxyActions({
               title={title}
               onClick={() => {
                 const r = engine.deliverTripAt(site.id)
-                if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
+                if (!r.ok) onToast(r.error ?? tr('ui.Expedition.389'), true)
                 else onToast(tr("ui.Expedition.093", { p1: site.name }))
               }}
             >
@@ -2106,20 +2106,20 @@ function AnomalyCard({
     }
     if (!goAsk) {
       const r = engine.startExpeditionAt(anomaly.id)
-      if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
+      if (!r.ok) onToast(r.error ?? tr('ui.Expedition.389'), true)
       else onToast(tr("ui.Expedition.270"))
       return
     }
     // 面板「确认转战」
     setGoAsk(false)
     const r = engine.startExpeditionFromMiningAt(anomaly.id)
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.392', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.392'), true)
     else onToast(tr("ui.Expedition.151"))
   }
 
   function toggleLoop(): void {
     const r = engine.bountyLoopAt(looping ? null : anomaly.id)
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.393', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.393'), true)
   }
 
   const locked = !reqMet || unexplored
@@ -2398,12 +2398,12 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
     if (isCourier) {
       const r = engine.startCourierDeliveryAt(id)
       if (r.ok) onToast(tr("ui.Expedition.158"))
-      else onToast(r.error ?? 'ui.Expedition.396', true)
+      else onToast(r.error ?? tr('ui.Expedition.396'), true)
       return
     }
     const r = engine.completeSideTaskAt('resource', id)
     if (r.ok) onToast(tr("ui.Expedition.049"))
-    else onToast(r.error ?? 'ui.Expedition.397', true)
+    else onToast(r.error ?? tr('ui.Expedition.397'), true)
   }
 
   const headText = isCourier
@@ -2530,7 +2530,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                             title={tr("ui.Expedition.228")}
                             onClick={() => {
                               const r = engine.abandonAcceptedCourierAt(t.id)
-                              onToast(r.ok ? tr("ui.Expedition.163") : r.error ?? 'ui.Expedition.401', !r.ok)
+                              onToast(r.ok ? tr("ui.Expedition.163") : r.error ?? tr('ui.Expedition.401'), !r.ok)
                             }}
                           >
                             {tr("ui.Expedition.006")}
@@ -2542,7 +2542,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                             title={tr("ui.Expedition.164")}
                             onClick={() => {
                               const r = engine.acceptCourierAt(t.id)
-                              onToast(r.ok ? tr("ui.Expedition.165") : r.error ?? 'ui.Expedition.402', !r.ok)
+                              onToast(r.ok ? tr("ui.Expedition.165") : r.error ?? tr('ui.Expedition.402'), !r.ok)
                             }}
                           >
                             {tr("ui.Expedition.166")}
@@ -2551,7 +2551,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                         <button
                           className="app-btn is-small is-primary"
                           disabled={cargoShort || warpShort || (expired && !accepted) || otherInFlight}
-                          title={lockedTxt ?? tr("ui.Expedition.110", { p1: vol.toLocaleString('zh-CN'), p2: siteName ?? 'ui.Expedition.403', p3: t.rewardIsk.toLocaleString('zh-CN') })}
+                          title={lockedTxt ?? tr("ui.Expedition.110", { p1: vol.toLocaleString('zh-CN'), p2: siteName ?? tr('ui.Expedition.403'), p3: t.rewardIsk.toLocaleString('zh-CN') })}
                           onClick={() => {
                             const r = engine.startCourierDeliveryAt(t.id)
                             onToast(
@@ -2559,7 +2559,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                                 ? t.timed === true
                                   ? tr("ui.Expedition.111")
                                   : tr("ui.Expedition.112")
-                                : r.error ?? 'ui.Expedition.396',
+                                : r.error ?? tr('ui.Expedition.396'),
                               !r.ok,
                             )
                           }}
@@ -2664,7 +2664,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
     }
     setGoAsk(null)
     const r = engine.startLairExpeditionAt(t.anomalyId ?? '', (t.lairTier ?? 1) as 1 | 2 | 3, miningActive)
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.389'), true)
     else if (miningActive) onToast(tr("ui.Expedition.151"))
     else onToast(tr("ui.Expedition.285"))
   }
@@ -2687,7 +2687,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
     const r = miningActive
       ? engine.startExpeditionFromMiningAt(faction!.anomalyId ?? '')
       : engine.startExpeditionAt(faction!.anomalyId ?? '')
-    if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
+    if (!r.ok) onToast(r.error ?? tr('ui.Expedition.389'), true)
     else if (miningActive) onToast(tr("ui.Expedition.151"))
     else onToast(tr("ui.Expedition.270"))
   }
@@ -2852,7 +2852,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                       onClick={() => {
                         if (!faction.anomalyId) return
                         const r = engine.bountyLoopAt(loopOn2 ? null : faction.anomalyId)
-                        if (!r.ok) onToast(r.error ?? 'ui.Expedition.393', true)
+                        if (!r.ok) onToast(r.error ?? tr('ui.Expedition.393'), true)
                       }}
                     >
                       {loopOn2 ? (
@@ -3271,7 +3271,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                       }
                       onClick={() => {
                         const r = engine.deliverTripAt(site.id)
-                        if (!r.ok) onToast(r.error ?? 'ui.Expedition.389', true)
+                        if (!r.ok) onToast(r.error ?? tr('ui.Expedition.389'), true)
                         else onToast(tr("ui.Expedition.093", { p1: site.name }))
                       }}
                     >
@@ -3289,7 +3289,7 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
                 onClick={() => {
                   const r = engine.openDialogue(intro.id)
                   if (r.ok) setComm(intro.id)
-                  else onToast(r.error ?? 'ui.Expedition.417', true)
+                  else onToast(r.error ?? tr('ui.Expedition.417'), true)
                 }}
               >
                 <span className="app-ico"><Glyph name="ico-antenna" size={13} color={ICO_TONES["ico-antenna"]} /></span>{tr("ui.Expedition.347")}
