@@ -3558,7 +3558,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.142": { zh: "本层威胁", en: "Layer threat" },
   "ui.Wormhole.143": { zh: "直接入港", en: "Comes straight into port" },
   "ui.Wormhole.144": { zh: "放大地图", en: "Zoom in" },
-  "ui.Wormhole.145": { zh: "滚轮缩放地图（也可以点左侧的 ＋/－，或点「适应」回到全图）", en: "Use the wheel to zoom the map (or the +/− on the left, or Fit to return to the whole map)" },
+  "ui.Wormhole.145": { zh: "滚轮缩放地图（也可以点左侧的 ＋/－，或点「适应」回到全图）；放大后按住地图可以拖动查看", en: "Use the wheel to zoom the map (or the +/− on the left, or Fit to return to the whole map); once zoomed in, press and drag the map to look around" },
   "ui.Wormhole.146": { zh: "敌人阻拦", en: "Blocked by enemies" },
   "ui.Wormhole.147": { zh: "未扫描", en: "Unscanned" },
   "ui.Wormhole.148": { zh: "的地点（Q", en: " destination (Q" },

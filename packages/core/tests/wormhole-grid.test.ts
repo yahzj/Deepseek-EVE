@@ -70,17 +70,17 @@ describe('虫洞网格 · 几何（F3a）', () => {
     expect(hexDiskAround(center, 0)).toEqual([center])
   })
 
-  it('每层半径：**每 1 层 +1 环、上不封顶**（船长 2026-09-20「台阶改为1层+1环…上不封顶」）', () => {
+  it('每层半径：**每 2 层 +1 环、不封顶**（船长 2026-09-20「那还是改回「每 2 层 +1」的机制，不封顶」）', () => {
     expect(wormholeGridRadiusFor(1)).toBe(2) // 19 格
-    expect(wormholeGridRadiusFor(2)).toBe(3) // 37
-    expect(wormholeGridRadiusFor(3)).toBe(4) // 61
-    expect(wormholeGridRadiusFor(4)).toBe(5) // 91
-    expect(wormholeGridRadiusFor(5)).toBe(6) // 127
-    expect(wormholeGridRadiusFor(10)).toBe(11) // 397
-    // **无上限**：R = 2 + (层−1) 一路涨下去（旧口径封顶 R=4 已作废）
-    expect(wormholeGridRadiusFor(20)).toBe(21)
-    expect(wormholeGridRadiusFor(99)).toBe(100)
-    expect(hexDiskCount(wormholeGridRadiusFor(10))).toBe(397)
+    expect(wormholeGridRadiusFor(2)).toBe(2) // 19
+    expect(wormholeGridRadiusFor(3)).toBe(3) // 37
+    expect(wormholeGridRadiusFor(4)).toBe(3) // 37
+    expect(wormholeGridRadiusFor(5)).toBe(4) // 61
+    expect(wormholeGridRadiusFor(10)).toBe(6) // 127
+    // **无上限**：R = 2 + ⌊(层−1)/2⌋ 一路涨下去（旧口径封顶 R=4 已作废；同日先改的"每 1 层 +1"已按船长令回退）
+    expect(wormholeGridRadiusFor(20)).toBe(11)
+    expect(wormholeGridRadiusFor(99)).toBe(51)
+    expect(hexDiskCount(wormholeGridRadiusFor(10))).toBe(127)
   })
 })
 
@@ -172,18 +172,29 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
      * 两组值之间跳（例如层 3 的池恒为 17 或 18）⇒ 同一层不同 seed 的信标数会在 1/2 之间漂。
      * 现在空格数是**定额**（`⌈(格数−1) × 该层占比⌉`）⇒ 池子定额 ⇒ 各信号计数**逐层定额、与 seed 无关**。
      *
-     * ⚠ **2026-09-20 台阶改判后重钉**（每 1 层 +1 环 ⇒ 盘面/池子都变大，信标数随之上升）：
-     * 层 1~8 = **1/2/3/5/7/9/12/15**（实测 120 seed 恒定）；更深层（如层 10 = 23 或 24）会因
-     * **内容原型的权重微调**浮 1 ⇒ 那种深度改用区间断言，不再钉死。
+     * ⚠ **2026-09-20 台阶两次改判后重钉**（当日先"每 1 层 +1 环"、再按船长令**回退成"每 2 层 +1 环、不封顶"**）：
+     * 现值 = 层 1~5 与层 7/8 **逐层定额**（实测 120 seed 恒定）；**层 6 会浮 1（3 或 4）**——
+     * 池子变小后，"内容原型"对四类信号权重的再分配会把**信标配额的取整落点**顶过 0.5 边界
+     * ⇒ 那种深度改断言区间（与旧口径"层 9 起浮 1"同一性质，只是起点提前）。
      */
-    const expectBeacons: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 9, 8: 15 }
-    for (const [depthStr, n] of Object.entries(expectBeacons)) {
+    const expectBeacons: Record<number, readonly [number, number]> = {
+      1: [1, 1],
+      2: [1, 1],
+      3: [2, 2],
+      4: [2, 2],
+      5: [3, 3],
+      6: [3, 4],
+      7: [5, 5],
+      8: [5, 5],
+    }
+    for (const [depthStr, [lo, hi]] of Object.entries(expectBeacons)) {
       const depth = Number(depthStr)
       for (let seed = 1; seed <= 120; seed++) {
         const g = wormholeMakeGrid(seed, depth)
         const startKey = `${g.start.q},${g.start.r}`
         const beacons = g.cells.filter((c) => c.place === 'beacon')
-        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数`).toBe(n)
+        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数`).toBeGreaterThanOrEqual(lo)
+        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数`).toBeLessThanOrEqual(hi)
         expect(
           beacons.some((c) => c.key === startKey),
           `seed ${seed} 层 ${depth}：信标落在了入口格 ${startKey} 上`,

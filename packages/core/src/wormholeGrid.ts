@@ -398,20 +398,24 @@ export function signalOfPlace(place: WormholePlace): WormholeSignal | null {
 }
 
 /**
- * **每层网格半径**（**2026-09-20 船长改判**：「**台阶改为 1 层 +1 环，但是上不封顶**」）：
- * 第 1 层 R=2（19 格），**每 1 层 +1 环**、**不设上限**（旧口径：每 2 层 +1、封顶 R=4）。
+ * **每层网格半径**（**2026-09-20 船长二次改判**：「**那还是改回「每 2 层 +1」的机制，不封顶**」）：
+ * 第 1 层 R=2（19 格），**每 2 层 +1 环**、**不设上限**。
  *
- * 口径：`R = 2 + (层 − 1)` ⇒ 层 1~10 = 2/3/4/5/6/7/8/9/10/11（19/37/61/91/127/169/217/271/331/**397** 格）。
+ * 口径：`R = 2 + ⌊(层 − 1) ÷ 2⌋` ⇒ 层 1~2 = 2 · 层 3~4 = 3 · 层 5~6 = 4 · 层 7~8 = 5 · 层 9~10 = 6 …
+ * （19/19/37/37/61/61/91/91/127/127 格）。⚠ **与旧口径的差别只在"封顶"**：
+ * 旧口径（2026-09-13 起）是"每 2 层 +1、**封顶 R=4**"（层 7 起恒 61 格），
+ * 本裁定**保留节拍、去掉封顶** ⇒ 层 7 起继续长（旧常量 `WORMHOLE_GRID_R_MAX` 已删）。
+ * ⚠ 同日曾先改判为"每 1 层 +1 环"（R = 2+(层−1)），当日按船长本句**改回**——两版都已在
+ * `tests/wormhole-grid.test.ts` 钉住现值，别再回改。
  * 依据：船长同日的两条配套裁定——**回合预算已由科技（时序锚定器 ＋100 回合）支撑**，
  * 空信息占比改为**每层只降 1%**（见 `WORMHOLE_EMPTY_SHARE_PER_DEPTH`）；
- * 后果（知情）：深层从"清层"变成"挑点"（层 10 的 233 个信号格 vs 满科技约 137 回合），
- * 全盘视图也会等比缩小 ⇒ 界面侧对 `R > 8` 走"跟随玩家自动放大"（见 `panels/Wormhole.tsx`）。
- * 完整 1~10 层表见工作文档 `docs/design/wh-grid-ladder-20260920.md`。
+ * 界面侧对 `R > 8` 走"跟随玩家自动放大"（见 `panels/Wormhole.tsx`；现阶梯下 R>8 出现在层 15 之后）。
+ * 完整 1~10 层表见工作文档 `docs/design/wh-grid-ladder-2-20260920.md`。
  */
 export const WORMHOLE_GRID_R_MIN = 2
 export function wormholeGridRadiusFor(depth: number): number {
   const d = Math.max(1, Math.floor(depth))
-  return WORMHOLE_GRID_R_MIN + (d - 1)
+  return WORMHOLE_GRID_R_MIN + Math.floor((d - 1) / 2)
 }
 
 /**

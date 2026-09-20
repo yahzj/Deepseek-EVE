@@ -151,13 +151,17 @@ describe('虫洞 · 层间盘面分配（船长 2026-09-13：遗迹下限 + 空�
     /**
      * ⚠ **2026-09-20 起"深层更满"由盘面变大承担，不再靠猛降空占比**：
      * 旧断言「层 5 的空格占比比层 1 低 10 个百分点以上」**作废**（−1%/层 ⇒ 只低 4 个百分点）。
-     * 现在验的是**信号格绝对值随层大幅增长**（层 10 = 233 格 vs 层 1 = 9 格）。
+     * 现在验的是**信号格绝对值随层增长**——注意台阶同日**两次改判**（先"每 1 层 +1 环"、
+     * 当日又按船长令**回退成"每 2 层 +1 环、不封顶"**）⇒ 涨得比第一版慢，取层 14（R8）来比：
+     * 层 14 的信号格 > 层 1 的 10 倍。
      */
     const signalCells = (depth: number): number => {
       const g = gridOf(depth, 2026)
       return g.cells.filter((c) => c.place !== 'empty').length
     }
-    expect(signalCells(10)).toBeGreaterThan(signalCells(1) * 10)
+    expect(signalCells(14)).toBeGreaterThan(signalCells(1) * 10)
+    expect(signalCells(14)).toBeGreaterThan(signalCells(6))
+    expect(signalCells(6)).toBeGreaterThan(signalCells(1))
     const emptyRatio = (depth: number): number => {
       const g = gridOf(depth, 2026)
       return g.cells.filter((c) => c.place === 'empty').length / g.cells.length
@@ -387,7 +391,7 @@ describe('虫洞 · 星云遮蔽与驱散（船长 2026-09-13）', () => {
     // 顺带核一下权重表没被本批动过（遗迹下限是"借信号"，不是改权重）
     expect(WORMHOLE_SIGNAL_WEIGHTS.wreck).toBe(28)
     expect(WORMHOLE_RUINS_SHARE).toBe(0.3)
-    expect(wormholeGridRadiusFor(5)).toBe(6) // 2026-09-20 起：每 1 层 +1 环（层 5 = R6）
+    expect(wormholeGridRadiusFor(5)).toBe(4) // 2026-09-20 二次改判：每 2 层 +1 环（层 5 = R4）
   })
 
   it('星云格**不挡"前往"**：走到未驱散的星云格不需要额外确认（那儿不等于"未知地点"）', () => {

@@ -161,6 +161,39 @@ function wormholeMapAutoZoom(radius: number): number {
   return Math.min(WORMHOLE_MAP_ZOOM_MAX, Math.max(WORMHOLE_MAP_ZOOM_FIT, +z.toFixed(2)))
 }
 
+/** 地图坐标系的单格边长（viewBox 用户单位；地图框 300px 定高，实际屏幕像素按 viewBox 等比缩放） */
+const WORMHOLE_MAP_CELL_PX = 30
+/** **地图画布尺寸**（viewBox 的 `0 0 w h`）——留白按半径算，六边形顶点正好落在边界上会显得挤 */
+function wormholeMapBoxOf(radius: number): { w: number; h: number } {
+  const R = Math.max(1, Math.floor(radius))
+  return {
+    w: Math.sqrt(3) * WORMHOLE_MAP_CELL_PX * (2 * R + 1.3),
+    h: WORMHOLE_MAP_CELL_PX * (3 * R + 2.4),
+  }
+}
+
+/**
+ * **拖动地图的平移量夹取**（**船长 2026-09-20**：「**以及允许玩家拖动虫洞探索地图**」）。
+ *
+ * 缩放层是"**以玩家所在格为锚点**"放大（见 `WhGridMap` 的 `app-wh-zoomlayer`）⇒ `z` 倍时四边各有
+ * `(z−1)·半幅` 的余量；平移量夹在这个余量内 ⇒ **怎么拖都不会把盘面拖丢**（松手后总有一半以上可见）。
+ * `z = 1`（适应窗口）时余量为 0 ⇒ 拖动自然不生效（整张盘本来就全在框里，没有可拖的余地）。
+ * `pan` 的单位是 **viewBox 用户单位**（与缩放层 transform 同一坐标系），指针像素在拖动处按
+ * `viewBox ÷ 元素像素` 换算（见 `onPointerDown` 里记下的 `kx/ky`）。
+ */
+function wormholeMapPanClamp(
+  pan: { x: number; y: number },
+  zoom: number,
+  box: { w: number; h: number },
+): { x: number; y: number } {
+  const mx = Math.max(0, ((zoom - 1) * box.w) / 2)
+  const my = Math.max(0, ((zoom - 1) * box.h) / 2)
+  return { x: Math.min(mx, Math.max(-mx, pan.x)), y: Math.min(my, Math.max(-my, pan.y)) }
+}
+
+/** 拖动判定阈值（px）：低于它算"点击格子"，不进入拖动 —— 免得手一抖就把点格变成拖图 */
+const WORMHOLE_MAP_DRAG_THRESHOLD_PX = 4
+
 /** 扫描动画的序号（换一次 = 重播一次；只用于 React key/CSS 重挂，不进存档） */
 let scanFxSeqCounter = 0
 function scanFxSeq(): number {
@@ -542,6 +575,34 @@ export function WormholePanel({
   /** 地图缩放（船长 2026-09-13：「在探索界面的左侧给玩家一个缩放按钮或者滚动条……调节探索地图的大小」） */
   const [mapZoom, setMapZoom] = useState(WORMHOLE_MAP_ZOOM_FIT)
   /**
+   * **地图平移**（船长 2026-09-20：「允许玩家拖动虫洞探索地图」）：单位 = viewBox 用户单位，
+   * 与缩放层同一坐标系；拖动时按指针像素换算累加，渲染前经 `wormholeMapPanClamp` 夹取
+   * ⇒ 拖不丢盘面。换层/进出洞时复位（与自动缩放同一处）。`z = 1` 时夹取结果恒为 0（没有可拖的余地）。
+   */
+  const [mapPan, setMapPan] = useState({ x: 0, y: 0 })
+  /** 正在拖动（只影响光标与"拖动时关掉 transform 过渡"，不进存档、不影响别处） */
+  const [mapPanning, setMapPanning] = useState(false)
+  /**
+   * 拖动中的临时账（**用 ref、不进 state**：pointermove 每帧都来，进 state 会白刷一遍）。
+   * `kx/ky` = `viewBox 用户单位 ÷ 元素像素`（按下那一刻量一次；窗口缩放时下次按下自动重算）。
+   */
+  const mapDragRef = useRef<{
+    id: number
+    sx: number
+    sy: number
+    panX: number
+    panY: number
+    kx: number
+    ky: number
+    moved: boolean
+  } | null>(null)
+  /**
+   * **刚拖过 ⇒ 吃掉紧随其后的那次 `click`**：拖动结束时浏览器照旧会往"按下的那一格"派发 click，
+   * 不拦就会"拖完地图顺手走了一步"。用 ref（不是 state）是为了让 `pickCell` 当场读到；
+   * 清空时机 = **下一次 pointerdown**（click 一定在 pointerup 之后、下一次按下之前派发）。
+   */
+  const mapDragAteClickRef = useRef(false)
+  /**
    * **鼠标滚轮缩放地图**（船长 2026-09-13：「允许鼠标滚轮缩放虫洞的探索地图」）。
    *
    * 为什么不用 React 的 `onWheel`：React 把 wheel 挂成**被动监听**（passive）⇒ 里面 `preventDefault()`
@@ -581,6 +642,7 @@ export function WormholePanel({
    */
   useEffect(() => {
     setMapZoom(wormholeMapAutoZoom(run?.grid?.radius ?? 0))
+    setMapPan({ x: 0, y: 0 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layerKeyForFx])
   /** 新层挂载 ⇒ 播"从屏幕外飞入"，1 秒后交还操作（进场与深入共用这一条） */
@@ -761,6 +823,8 @@ export function WormholePanel({
    */
   function pickCell(q: number, r: number): void {
     if (!grid || !run) return
+    /** 刚拖过地图（船长 2026-09-20）：这一次 click 是拖动的尾巴，不吃 —— 免得"拖完顺手走一步" */
+    if (mapDragAteClickRef.current) return
     if (run.battle) {
       onToast(tr("ui.Wormhole.003"), true)
       return
@@ -1839,17 +1903,67 @@ export function WormholePanel({
                       </button>
                       <button
                         className="app-wh-zoom-btn is-text"
-                        disabled={mapZoom === WORMHOLE_MAP_ZOOM_FIT}
-                        onClick={() => setMapZoom(WORMHOLE_MAP_ZOOM_FIT)}
+                        disabled={mapZoom === WORMHOLE_MAP_ZOOM_FIT && mapPan.x === 0 && mapPan.y === 0}
+                        onClick={() => {
+                          setMapZoom(WORMHOLE_MAP_ZOOM_FIT)
+                          setMapPan({ x: 0, y: 0 })
+                        }}
                         title={tr("ui.Wormhole.101")}
                       >
                         {tr("ui.Wormhole.259")}
                       </button>
                     </div>
                     <div
-        className="app-wh-mapbox"
+        className={`app-wh-mapbox${mapPanning ? ' is-panning' : ''}`}
         ref={mapBoxRef}
         style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': `url("${pinnedSpaceBg}")` } : {}) } as React.CSSProperties}
+        /**
+         * **拖动地图**（船长 2026-09-20：「允许玩家拖动虫洞探索地图」）：三件事一起做 ——
+         * ① `pointerdown` 记起点与换算系数（`viewBox ÷ 元素像素`）并**捕获指针**（拖出地图框也不断线）；
+         * ② `pointermove` 超阈值才算"拖"（低于阈值当点击，交给格子）；
+         * ③ `pointerup/cancel` 收尾，拖过就吃掉紧随的那次 click（见 `mapDragAteClickRef`）。
+         * `z = 1`（适应窗口）时没有可拖的余地 ⇒ 直接不接（指针行为与改造前一致）。
+         */
+        onPointerDown={(e) => {
+          mapDragAteClickRef.current = false
+          if (mapZoom <= WORMHOLE_MAP_ZOOM_FIT) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
+          mapDragRef.current = {
+            id: e.pointerId,
+            sx: e.clientX,
+            sy: e.clientY,
+            panX: mapPan.x,
+            panY: mapPan.y,
+            kx: box.w / Math.max(1, rect.width),
+            ky: box.h / Math.max(1, rect.height),
+            moved: false,
+          }
+          e.currentTarget.setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={(e) => {
+          const d = mapDragRef.current
+          if (!d || d.id !== e.pointerId) return
+          const dx = e.clientX - d.sx
+          const dy = e.clientY - d.sy
+          if (!d.moved && Math.hypot(dx, dy) < WORMHOLE_MAP_DRAG_THRESHOLD_PX) return
+          d.moved = true
+          setMapPanning(true)
+          const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
+          setMapPan(wormholeMapPanClamp({ x: d.panX + dx * d.kx, y: d.panY + dy * d.ky }, mapZoom, box))
+        }}
+        onPointerUp={(e) => {
+          const d = mapDragRef.current
+          if (!d || d.id !== e.pointerId) return
+          mapDragRef.current = null
+          setMapPanning(false)
+          if (d.moved) mapDragAteClickRef.current = true
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+        }}
+        onPointerCancel={() => {
+          mapDragRef.current = null
+          setMapPanning(false)
+        }}
       >
                       {/**
                        * ⚠ **这里不许写 `title`**（**2026-09-17 船长报障**：「鼠标在地点上悬停时，会同时出现
@@ -1868,6 +1982,9 @@ export function WormholePanel({
                         scanFx={scanFx}
                         dissolveFx={dissolveFx}
                         zoom={mapZoom}
+                        /* 拖动地图（船长 2026-09-20）：**已夹取**的平移量，与缩放同一层 transform */
+                        pan={wormholeMapPanClamp(mapPan, mapZoom, wormholeMapBoxOf(grid.radius))}
+                        panning={mapPanning}
                         /* 待确认的这次移动：画出直线路径；已知的拦截格才描红指名（甲案） */
                         pathPreview={
                           pendingCell
@@ -2286,6 +2403,8 @@ function WhGridMap({
   scanFx = null,
   dissolveFx = null,
   zoom = 1,
+  pan = { x: 0, y: 0 },
+  panning = false,
   pathPreview = null,
 }: {
   grid: WormholeGridState
@@ -2303,22 +2422,29 @@ function WhGridMap({
   /** 缩放（1 = 适应窗口）：**以玩家所在格为中心**放大，超出地图框的部分被裁掉 */
   zoom?: number
   /**
+   * **拖动地图的平移量**（船长 2026-09-20；单位 = viewBox 用户单位，已在面板侧夹取过）：
+   * 与缩放叠在**同一层 transform** 上 ⇒ 拖动的就是整张盘（格子/舰影/路径线一起走）。
+   */
+  pan?: { x: number; y: number }
+  /** 正在拖动 ⇒ 关掉缩放层的过渡（否则每帧都追 220ms 的动画，手感发飘） */
+  panning?: boolean
+  /**
    * **路径预览**（船长 2026-09-16 路径拦截）：待确认的这次移动 —— 画出"当前格 → 目标格"的直线，
    * 并在**已知**的拦截格上加红框。`hush = true`（拦截格未扫描）⇒ **不指名**：只把路径线置警示色
    * （§5.2 甲案：不泄漏未扫描格的内容）。
    */
   pathPreview?: { q: number; r: number; interceptKey?: string; hush?: boolean } | null
 }) {
-  const size = 30
+  const size = WORMHOLE_MAP_CELL_PX
   const R = Math.max(1, Math.floor(grid.radius))
   /**
    * 画布留白按半径算（六边形顶点正好落在边界上会显得挤）。
    * ⚠ **容器高度不再随圈数长高**（船长 2026-09-13：「窗口高度固定（不会随着地图变大变高）」）：
    * 高度交给 CSS（`.app-wh-mapbox` 定高 300px），这里只出 viewBox —— 圈数越大，
-   * 整张圆盘在同一个框里等比缩得越小；要看清就点左侧的 **＋/－ 缩放**（以玩家所在格为中心放大）。
+   * 整张圆盘在同一个框里等比缩得越小；要看清就点左侧的 **＋/－ 缩放**（以玩家所在格为中心放大）
+   * 或**直接拖动地图**（船长 2026-09-20）。
    */
-  const w = Math.sqrt(3) * size * (2 * R + 1.3)
-  const h = size * (3 * R + 2.4)
+  const { w, h } = wormholeMapBoxOf(R)
   const cx = w / 2
   const cy = h / 2
   // 六边形顶点（尖顶：上下各一个顶点、左右是平边）
@@ -2380,13 +2506,15 @@ function WhGridMap({
       {/**
        * **缩放层**（船长 2026-09-13：左侧缩放按钮调节地图大小）：**以玩家所在格为锚点**放大/缩小 ——
        * 换算：中心为原点 `origin`、平移 `-(k-1)·(玩家 - 中心)` ⇒ 玩家那一格在屏幕上**原地不动**、
-       * 四周围着它长开（放大后自己的位置永远不丢，也不用拖图）。超出的部分由地图框裁掉。
+       * 四周围着它长开（放大后自己的位置永远不丢）。超出的部分由地图框裁掉。
+       * **拖动地图**（船长 2026-09-20）叠在同一层：`pan` 是已夹取的平移量 ⇒ 拖动的是整张盘；
+       * 拖动中加 `is-panning` 把过渡关掉（否则每帧追动画，手感发飘）。
        */}
       <g
-        className="app-wh-zoomlayer"
+        className={`app-wh-zoomlayer${panning ? ' is-panning' : ''}`}
         style={{
           transformOrigin: `${cx.toFixed(1)}px ${cy.toFixed(1)}px`,
-          transform: `translate(${(-(zoom - 1) * (hereX - cx)).toFixed(1)}px, ${(-(zoom - 1) * (hereY - cy)).toFixed(1)}px) scale(${zoom})`,
+          transform: `translate(${(pan.x - (zoom - 1) * (hereX - cx)).toFixed(1)}px, ${(pan.y - (zoom - 1) * (hereY - cy)).toFixed(1)}px) scale(${zoom})`,
         }}
       >
       {/**
