@@ -815,11 +815,26 @@ function advanceAiMining(
       const cargoFallback = state.fleet[shipId]!.cargo
       cargoFallback[params.ore.id] = (cargoFallback[params.ore.id] ?? 0) + units
       task.tripUnits += units
+      /**
+       * **AI 副船的产量计入终身计数**（船长 2026-09-20：「**成就系统和重要任务的累计，
+       * 也计入AI副船的产量**」）。
+       *
+       * 为什么补在这里：`mineUnits` 原先只在**主控采掘循环**（`mining.ts`）里记，
+       * AI 侧只累计了本趟的 `task.tripUnits`（纯日志用）⇒ **同样一单位原矿，玩家亲自采算、
+       * 派 AI 采不算**。而精炼/制造/造船/维修那几项**早就含 AI**（`industry.ts` /
+       * `manufacturing.ts` / `shipyard.ts` 的结算函数主控与 AI 共用）⇒ 补齐后口径统一。
+       *
+       * ⚠ 两处入账点（正常 / 兜底）都要记，否则"矿脉记录缺失"那条支路会静默漏账。
+       * 计数口径与主控一致 = **入舱的实际单位数**（含富矿脉 ×3 之后的数）。
+       */
+bumpFirst(state, 'mineUnits', units)
       continue
     }
     const cargo = state.fleet[shipId]!.cargo
     cargo[oreNow.id] = (cargo[oreNow.id] ?? 0) + units
     task.tripUnits += units
+    // 同上：AI 副船采掘计入终身计数（与主控同口径）
+bumpFirst(state, 'mineUnits', units)
   }
 }
 
@@ -939,6 +954,15 @@ function advanceAiSalvage(
           abort('该星系敌群记录缺失，打捞任务终止')
           return
         }
+        /**
+         * **AI 副船的打捞计入终身计数**（船长 2026-09-20：「成就系统和重要任务的累计，
+         * 也计入AI副船的产量」）。
+         *
+         * 与主控**同口径同位置**：主控那侧写在 `pullOneWreck` 成功之后（`salvaging.ts`），
+         * 这里也放在"确实捞上来一批"之后 ⇒ **成功才算一次**，下面的"货仓装不下"是
+         * 捞上来了但没装下，也照记（与主控的口径一致：捞取动作发生了）。
+         */
+bumpFirst(state, 'salvageRuns')
         const freeM3 = freeCargoM3Of(state, ctx, shipId)
         if (pulled.volumeM3 > freeM3) {
           task.phase = 'returning'

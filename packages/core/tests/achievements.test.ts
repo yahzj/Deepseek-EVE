@@ -22,8 +22,13 @@ import {
   achievementReached,
   advanceAchievements,
 } from '../src/achievements'
-import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, peakFirst, advanceFirstChains, advanceFirstTasks } from '../src/firstTasks'
+import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, peakFirst, firstStatOf, advanceFirstChains, advanceFirstTasks } from '../src/firstTasks'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { advanceGame } from '../src/engine'
+import { assignAiMining, assignAiSalvage, gainAiCore } from '../src/ai'
+import { makeTestCtx, fittedOf, skipFirstSkillReward } from './helpers'
+import type { ModuleDef, SimContext } from '../src/types'
+import { chainProgress } from '../src/achievements'
 
 const ctx = buildSimContext()
 
@@ -328,6 +333,104 @@ describe('成就徽章：界面读数', () => {
     // 说明要保留链名与级别（卡名去掉了数字，信息不能就此丢失）
     expect(abyss10.note).toContain('深渊探索者')
     expect(abyss10.note).toContain('10 级')
+  })
+})
+
+describe('终身计数：AI 副船的产量也计入（船长 2026-09-20 令）', () => {
+  /**
+   * 船长原话：「**成就系统和重要任务的累计，也计入AI副船的产量**」。
+   *
+   * 口径：`firstStats` 是**一把尺**——「第一次」任务与次数链都读它 ⇒ 补上 AI 侧之后，
+   * 成就 / 任务 / 链三层一起生效。这同时**修掉一处不一致**：精炼 / 制造 / 造船 / 维修
+   * 那四项**早就含 AI**（结算函数主控与 AI 共用），只有采掘与打捞漏了。
+   */
+  function aiReadyState(): { state: GameState; ctx: SimContext } {
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.skills.trained['ai-expert'] = 1
+    skipFirstSkillReward(state) // 只考计数，不考「第一次」奖励
+    state.fleet['sandcat2'] = {
+      durability: 1,
+      cargo: {},
+      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
+    }
+    gainAiCore(state, 'basic', 2)
+    // 关富矿脉 ⇒ 数量确定（否则 ×3 会让断言变成概率题）
+    const bal = makeTestCtx().balance
+    return { state, ctx: makeTestCtx({ balance: { ...bal, richVeinChance: 0 } }) }
+  }
+
+  it('AI 采矿：每个循环的原矿都进 `mineUnits`（原先只累计"本趟"给日志用）', () => {
+    const { state, ctx } = aiReadyState()
+    expect(firstStatOf(state, 'mineUnits')).toBe(0)
+    expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
+    // sandcat2 每循环 6 秒 ⇒ 跑 30 秒 = 至少 5 个循环
+    advanceGame(state, 30_000, ctx)
+    const units = firstStatOf(state, 'mineUnits')
+    expect(units).toBeGreaterThan(0)
+    // 与主控同口径 = **入舱的实际单位数**（本趟累计应与终身计数同步增长）
+    const task = state.aiAssignments['sandcat2']!.task as { tripUnits: number }
+    expect(task.tripUnits).toBeGreaterThan(0)
+    expect(units).toBeGreaterThanOrEqual(task.tripUnits)
+  })
+
+  it('AI 采矿的产量能点亮「第一次采集原矿」与采掘链（三层同源）', () => {
+    const { state, ctx } = aiReadyState()
+    expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-a', ctx).ok).toBe(true)
+    /**
+     * ⚠ 别硬编码速率：AI 采矿要**乘核心效率**（`aiEfficiency`，基础核心约 0.4），
+     * 而且**满舱会返航卸货再出航**（产量不是线性——我先试过"实测速率再外推"，
+     * 在返航段直接失效，800/1000 卡住）。
+     * 正确做法 = **分片推进、每片看一次账**，直到越过阈值（这也正是真实运行的样子）。
+     */
+    const need = CHAIN_TIERS.mineUnits![0]!
+    let guard = 0
+    while (firstStatOf(state, 'mineUnits') < need && guard++ < 120) {
+      advanceGame(state, 60_000, ctx)
+      // 任务被中止（例如敌袭善后）就没有继续推进的意义了
+      if (!state.aiAssignments['sandcat2']) break
+    }
+    expect(firstStatOf(state, 'mineUnits')).toBeGreaterThanOrEqual(need)
+    advanceFirstTasks(state, ctx)
+    expect(state.importantTasks['first-mine']?.done).toBe(true)
+    advanceFirstChains(state)
+    expect(chainProgress(state, 'digger')).toBeGreaterThanOrEqual(1)
+    // 徽章也在同一拍到手（任务徽章 ＋ 采掘链 L1）
+    const ids = advanceAchievements(state, ACHIEVEMENTS).map((a) => a.id)
+    expect(ids).toContain('ach-first-mine')
+    expect(ids).toContain('ach-chain-digger-1')
+  })
+
+  it('AI 打捞：每捞上一批进一次 `salvageRuns`（原先只在主控循环里记）', () => {
+    /**
+     * ⚠ 环境要点：AI 打捞**必须先有打捞器**才能进 `salvaging` 相
+     * （`assignAiSalvage` 会拒"没有打捞器的船"）⇒ 这里给测试 ctx 注入一枚合成打捞器
+     * （槽位 `salvager`、周期 10 秒——真实数据里 MK1 就是这个值）。
+     */
+    const salvager: ModuleDef = {
+      id: 'test-salvager',
+      name: '测试打捞器',
+      slot: 'salvager',
+      rack: 'high',
+      cpu: 1,
+      cycleMs: 10_000,
+    } as unknown as ModuleDef
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    state.skills.trained['ai-expert'] = 1
+    skipFirstSkillReward(state)
+    state.fleet['sandcat2'] = {
+      durability: 1,
+      cargo: {},
+      fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }),
+    }
+    state.fleet['sandcat2']!.fitted.high[0] = 'test-salvager'
+    gainAiCore(state, 'basic', 1)
+    const ctx = makeTestCtx({ modules: [salvager] })
+    expect(firstStatOf(state, 'salvageRuns')).toBe(0)
+    const assigned = assignAiSalvage(state, 'sandcat2', 'basic', 'galaxy-hub', ctx)
+    expect(assigned.ok, assigned.error ?? '').toBe(true)
+    // 出航腿 + 若干个打捞周期（本地星系腿短；跑够时间让至少一轮落袋）
+    advanceGame(state, 600_000, ctx)
+    expect(firstStatOf(state, 'salvageRuns')).toBeGreaterThan(0)
   })
 })
 
