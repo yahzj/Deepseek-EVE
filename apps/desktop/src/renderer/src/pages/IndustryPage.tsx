@@ -599,6 +599,15 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           )
         : []
   /**
+   * **内容没了 ⇒ 原选择可能已经空档**：残骸列表是**动态**的（货仓/仓库里没有的那种残骸就不列卡）——
+   * 玩家把最后一块稀有残骸投炉后，「稀有」档随之消失，若选择还停在它上面就成了**看不见的筛选**（卡片全空且无提示）。
+   * 故与蓝图书架同一口径：选择不在候选里就回落到「全部子类」。
+   */
+  const subMissing = sub !== SUB_ALL && !subOptions.some((s) => s.key === sub)
+  useEffect(() => {
+    if (subMissing) setSub(SUB_ALL)
+  }, [subMissing])
+  /**
    * **搜索命中**（名称 ＋ 产物/材料 ＋ 说明）：`fq` 为空 ⇒ 恒真。
    * 产出侧名字：可精炼资源取 `def.refine` 的精炼产物名；残骸取 `recycleMineralPoolOf(profile)` 的保底矿物名
    * （"某材料由什么炼/拆出来"也能搜到）；货柜只按名称与说明。

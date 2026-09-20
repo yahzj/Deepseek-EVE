@@ -5,7 +5,7 @@
  *   矿石/气体/冰矿可装船或卖出，矿物是制造料；
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
@@ -110,6 +110,21 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     wareKind === 'module' && wareSub !== SUB_ALL
       ? presentSubs(MODULE_SUBS, (key) => modRows.some(([id]) => itemSubPasses(engine.ctx, id, 'module', key)))
       : null
+  /**
+   * **仓库内容变了 ⇒ 原选择可能已经空档**：`rows` / `modRows` 是**动态**的（卖掉、装船、投炉都会让某档归零）——
+   * 档位一旦从候选里消失，选择若还停在它上面就成了**看不见的筛选**（列表全空、没有任何选中项可点回去）。
+   * 故与蓝图书架同一口径（2026-09-19）：选择不在候选里 ⇒ 回落「全部」；二级回落时三级一并回落。
+   */
+  const subMissing = subDim !== null && wareSub !== SUB_ALL && !subDim.options.some((s) => s.key === wareSub)
+  const funcMissing = funcDim !== null && wareFunc !== SUB_ALL && !funcDim.some((s) => s.key === wareFunc)
+  useEffect(() => {
+    if (subMissing) {
+      setWareSub(SUB_ALL)
+      setWareFunc(SUB_ALL)
+      return
+    }
+    if (funcMissing) setWareFunc(SUB_ALL)
+  }, [subMissing, funcMissing])
   /**
    * 三个维度的判定一律走**唯一入口**（甲组·判定单点）：
    * 一级 `itemBucketPasses` · 二级 `rackPasses`（装备槽类）/ `itemSubPasses`（其余）· 三级 `itemSubPasses`；
