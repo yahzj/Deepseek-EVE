@@ -40,11 +40,13 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'box-valuables': 1, // common · 382.8 万（只收不卖；2026-09-16 随十款均价重算 = 内容期望 1,531.25 万 ×0.25）
   'box-military': 1, // common · 280 万（只收不卖；2026-09-15 批 B 复核：= MK3 拆解期望 470.95 万 ×0.6）
   'alpha': 4,
-  'ammo-explosive-2': 1,
+  // 2026-09-20 船长：「**弹药 MK2 移动到稀有订单**」⇒ 三系 MK2 的档随渠道由 R1 提到 **R2**
+  //   （与 `rare` 渠道的允许带 2~4 相符；MK1 三系仍 common/R1 不动）
+  'ammo-explosive-2': 2,
   'ammo-explosive-l': 1,
-  'ammo-kinetic-2': 1,
+  'ammo-kinetic-2': 2,
   'ammo-kinetic-l': 1,
-  'ammo-plasma-2': 1,
+  'ammo-plasma-2': 2,
   'ammo-plasma-l': 1,
   'basic': 1,
   'beta': 4,
