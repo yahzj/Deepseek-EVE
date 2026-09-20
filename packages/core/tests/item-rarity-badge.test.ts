@@ -8,13 +8,14 @@
  *    ⚠ 市场里另有一条**可交易**的 `core-<t>` 行（refId `gamma` 等、档 4）——**那是另一回事**，
  *    绝不能把市场短名套到物品 id 上（会把洞内核心错标成 R4；这条是实测踩出来的）；
  * ② 舰船：多数键与物品 id 同形，**只有鲸王是历史遗留的无前缀键** `whale-king`；
- * ③ 残骸/碎片：**根本没有市场行** ⇒ 走市场外档表（`OFF_MARKET_RARITY_TIER`）。
+ * ③ 残骸/碎片：**根本没有市场行**，但档位就在**同一张表**里（2026-09-20 船长：
+ *    「两个稀有度表没有区别就合并，并删除多余的表」⇒ 原先拆出去的 `OFF_MARKET_RARITY_TIER` 已并入）。
  *
  * 另钉一条设计口径：**查不到档就不显示标签**（返回 `undefined`），不硬塞 R1——
  * 沙猫级、零件蓝图这类"船长明令不上市场"的东西本来就不该被标成"常驻档"。
  */
 import { describe, expect, it } from 'vitest'
-import { buildSimContext, itemRarityTierOf, OFF_MARKET_RARITY_TIER, RARITY_TIER } from '@whale/data'
+import { buildSimContext, itemRarityTierOf, RARITY_TIER } from '@whale/data'
 
 const ctx = buildSimContext()
 /** 键是否真的在表里（⚠ 不能用 `T[k] ?? 缺省` 判——值为 0/false 时会被误判成"没有"） */
@@ -50,9 +51,12 @@ describe('稀有度查档单点（图标模式小标签用）', () => {
     expect(itemRarityTierOf('sh-whale-king')).toBe(RARITY_TIER['whale-king'])
   })
 
-  it('③ 残骸/碎片：无市场行 ⇒ 走市场外档表；稀有残骸档次高于普通残骸', () => {
-    expect(itemRarityTierOf('wreck-rare-a-wh')).toBe(OFF_MARKET_RARITY_TIER['wreck-rare-a-wh'])
-    expect(itemRarityTierOf('frag-mod-miner-3')).toBe(OFF_MARKET_RARITY_TIER['frag-mod-miner-3'])
+  it('③ 残骸/碎片：无市场行，但档位就在**同一张表**里；稀有残骸档次高于普通残骸', () => {
+    // 合并后：残骸/碎片的键与市场商品**同表同语义**（不再有第二张表）
+    expect(inTable('wreck-rare-a-wh')).toBe(true)
+    expect(inTable('frag-mod-miner-3')).toBe(true)
+    expect(itemRarityTierOf('wreck-rare-a-wh')).toBe(RARITY_TIER['wreck-rare-a-wh'])
+    expect(itemRarityTierOf('frag-mod-miner-3')).toBe(RARITY_TIER['frag-mod-miner-3'])
     const rare = itemRarityTierOf('wreck-rare-a-wh')!
     const plain = itemRarityTierOf('wreck-a-wh')!
     expect(rare).toBeGreaterThan(plain)
@@ -83,10 +87,25 @@ describe('稀有度查档单点（图标模式小标签用）', () => {
     expect(missingBp.every((id) => id.startsWith('bp-part-') || id === 'sbp-sandcat')).toBe(true)
   })
 
-  it('档位值域：两张表都在 1~5，且键集不重叠（重叠 = 同一物品两个档，查询会静默偏向市场表）', () => {
-    for (const [k, v] of Object.entries(OFF_MARKET_RARITY_TIER)) {
-      expect(Number.isInteger(v) && v >= 1 && v <= 5, `${k} 越界`).toBe(true)
-      expect(RARITY_TIER[k], `${k} 同时在两张表里`).toBeUndefined()
+  it('档位值域：**唯一一张表**里全部为 1~5 整数（合并后不再有第二张表可对不上）', () => {
+    for (const [k, v] of Object.entries(RARITY_TIER)) {
+      expect(Number.isInteger(v) && v >= 1 && v <= 5, `${k} 越界：${v}`).toBe(true)
     }
+  })
+
+  it('合并核对：市场外物品（残骸/碎片）的 24 条键都在表里，且与市场 refId 无冲突', () => {
+    const offMarket = [
+      'wreck-rare-a-hi',
+      'wreck-rare-a-lo',
+      'wreck-rare-a-wh',
+      'wreck-a-wh',
+      'wreck-g-wh',
+      'frag-mod-miner-2',
+      'frag-mod-turret-kin-3',
+    ]
+    for (const k of offMarket) expect(inTable(k), `${k} 应在（唯一）稀有度表里`).toBe(true)
+    // 市场 refId 集合里不该出现这些键（它们没有市场行）——这正是"合并进同表"的前提
+    const refIds = new Set([...ctx.marketGoods.values()].map((g) => g.refId))
+    for (const k of offMarket) expect(refIds.has(k), `${k} 不该有市场行`).toBe(false)
   })
 })

@@ -52,7 +52,7 @@ export { FOE_DRONES, FOE_DRONE_E_ALERT, FOE_DRONE_C_SPORE } from './foe-drones'
 export { TRAVEL_EVENTS, buildTravelEvents } from './travelEvents'
 export { MARKET_GOODS, WRECK_BUY_GOODS, buildMarketGoodsCatalog } from './marketCatalog'
 // 2026-09-09 数字稀有度表（物品本体属性；市场/图鉴/未来掉落统一查）
-export { RARITY_TIER, rarityTierOf, OFF_MARKET_RARITY_TIER, itemRarityTierOf } from './rarityTier'
+export { RARITY_TIER, rarityTierOf, itemRarityTierOf } from './rarityTier'
 // 2026-09-10 无人机四型定位契约（新增机型受 content:check 与 core 测试双重守卫）
 export {
   DRONE_ROLE_SPECS,

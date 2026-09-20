@@ -35,7 +35,6 @@ import {
   FOE_SHIPS,
   FOE_DRONES,
   RARITY_TIER,
-  OFF_MARKET_RARITY_TIER,
   SKILLS,
   DRONE_ROLE_SPECS,
   DRONE_ROLE_ANCHORS,
@@ -346,53 +345,41 @@ for (const g of MARKET_GOODS) {
 check(goodKeys.size === MARKET_GOODS.length, `市场卡键重复（${MARKET_GOODS.length - goodKeys.size} 处）`)
 console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
 
-/* ── 数字稀有度表（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，市场调用）── */
+/* ── 数字稀有度表（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER）──
+ * ⚠ **2026-09-20 合并**（船长：「两个稀有度表没有区别就合并，并删除多余的表」）：原先拆出去的
+ * `OFF_MARKET_RARITY_TIER`（残骸/碎片）已并入本表 ⇒ 本表**同时装两类键**：
+ * ① 市场商品的 refId ② **市场外物品的物品 id**（残骸 `wreck-*` / 碎片 `frag-*`）。
+ * 因此下面**不再有**「键数 = 市场卡数」与「多余键」两条（它们的前提已不存在），改为按两类键分别核对。 */
 {
   const tableKeys = new Set(Object.keys(RARITY_TIER))
   const refSet = new Set(MARKET_GOODS.map((g) => g.refId))
-  check(tableKeys.size === MARKET_GOODS.length, `稀有度表键数 ${tableKeys.size} ≠ 市场卡数 ${MARKET_GOODS.length}`)
   for (const ref of refSet) {
     if (!tableKeys.has(ref)) errors.push(`市场卡 ${ref} 缺稀有度表项（RARITY_TIER）`)
   }
   for (const k of tableKeys) {
-    if (!refSet.has(k)) errors.push(`稀有度表多余键 ${k}（无对应市场卡）`)
     const v = RARITY_TIER[k]!
     check(Number.isInteger(v) && v >= 1 && v <= 5, `稀有度表 ${k} 值非法：${v}（应为 1~5 整数，2026-09-16 上沿 4 → 5）`)
   }
   /**
-   * **市场外档表契约**（2026-09-20 新增 · 图标模式稀有度小标签批）。
-   *
-   * `OFF_MARKET_RARITY_TIER` 装的是**没有市场行、也不该有**的物品（残骸 / 碎片）——
-   * 正因为它们不在市场表里，上一段那套"键集 = 市场卡全集"的护栏**管不到它** ⇒ 这里单独立三条，
-   * 防它悄悄漂成一张谁都能塞的野表：
-   * ① 值必须是 1~5 整数（与主表同语义）；
-   * ② **键必须真实存在**（防改名/删条目后留下死键）——注意物品 id 有**三族来源**，只查静态物品表会全判死键
-   *    （2026-09-20 首次跑就抓到两族）：
-   *    ① 静态物品表 `ITEMS` 的 id；② **碎片**（`frag-<moduleId>`，由 `FRAGMENT_RECIPES` 派生）；
-   *    ③ **残骸**（`wreck-<组键>` / `wreck-rare-<组键>`，由 `WRECK_GROUPS` 的组键派生）。
-   * ③ **与主表键集不得重叠**（同一 id 两张表各一个档 = 两套口径，查询会按主表优先而静默偏向一边）。
+   * **"表里有、市场没有"的键 = 市场外物品**（残骸 / 碎片）：必须真的是某件物品的 id。
+   * 物品 id 有**三族来源**，只查静态物品表会把派生 id 全判死键（2026-09-20 首次跑就抓到两族）：
+   * ① 静态物品表 `ITEMS`；② **碎片**（`frag-<moduleId>`，由 `FRAGMENT_RECIPES` 派生）；
+   * ③ **残骸**（`wreck-<组键>` / `wreck-rare-<组键>`，由 `WRECK_GROUPS` 的组键派生）。
    */
-  const offKeys = Object.keys(OFF_MARKET_RARITY_TIER)
   const itemIds = new Set(itemDefs.map((d) => d.id))
   for (const moduleId of Object.keys(FRAGMENT_RECIPES)) itemIds.add(fragmentItemIdOf(moduleId))
   for (const g of WRECK_GROUPS) {
     itemIds.add(wreckItemIdOfKey(g.key))
     itemIds.add(rareWreckItemIdOfKey(g.key))
   }
-  for (const k of offKeys) {
-    const v = OFF_MARKET_RARITY_TIER[k]!
-    check(Number.isInteger(v) && v >= 1 && v <= 5, `市场外档表 ${k} 值非法：${v}（应为 1~5 整数）`)
-    check(itemIds.has(k), `市场外档表 ${k} 不是任何物品的 id（改名/删除后留下的死键？）`)
-    check(!tableKeys.has(k), `市场外档档表 ${k} 与市场表（RARITY_TIER）**键重复**：同一物品两个档，查询会静默偏向市场表`)
+  for (const k of tableKeys) {
+    if (refSet.has(k)) continue // 市场商品的键（上一条已核）
+    check(itemIds.has(k), `稀有度表多余键 ${k}：既不是任何市场卡的 refId，也不是任何物品的 id（改名/删除后留下的死键？）`)
   }
-  check(offKeys.length > 0, '市场外档表为空（残骸/碎片的档应在此表）')
-  /** 反向：**残骸必须都有档**（它们的 id 不在市场里，漏配就永远没有标签 ⇒ 静默半成品） */
+  /** 反向：**残骸必须有档**（它们不在市场里，漏配就永远没有稀有度 ⇒ 静默半成品） */
   for (const d of itemDefs) {
     if (d.kind !== 'wreck') continue
-    check(
-      OFF_MARKET_RARITY_TIER[d.id] !== undefined,
-      `残骸 ${d.id} 缺市场外档表项（残骸无市场行 ⇒ 不配档就永远不显示稀有度标签）`,
-    )
+    check(RARITY_TIER[d.id] !== undefined, `残骸 ${d.id} 缺稀有度表项（残骸无市场行 ⇒ 不配档就永远不显示稀有度）`)
   }
   /**
    * **渠道 ↔ 数字档的允许带**（**2026-09-16 船长改判**：「**那么修正契约，rate现在允许2~4，
@@ -407,10 +394,6 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
    *   从奇货挪进稀有订单、数字档按船长话**保持 4**，随后船长把这条契约按**区间**放宽）；
    * - `exotic`（限定奇货）⇒ **3 / 4 / 5**（上沿从 4 拓到 **5**：为将来更高档预留，当前无商品用到 5；
    *   下沿仍是 3——「低值奇货可标 3」那条 2026-09-09 口径不动）。
-   *
-   * ⚠ **档位语义跟着松开**（见 `rarityTier.ts` 头注与词典「数字稀有度」条）：数字只驱动**稀有订单渠道**
-   * 的刷新权重（`market.ts` 的 `rareTierWeight` = 档 2 ×1 · 档 3 ×0.15 · **档 4 ×0.05**（2026-09-16
-   * 船长选「选项 B」补的单独系数）· 档 5 暂无系数 ⇒ ×1），奇货渠道出率与数字不挂钩。
    */
   // 渠道一致性（2026-09-20 起）：**common 不约束**；rare = 2~4；exotic = 3~5
   for (const g of MARKET_GOODS) {
