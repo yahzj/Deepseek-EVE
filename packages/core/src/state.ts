@@ -327,6 +327,15 @@ export interface ManufacturingRunState {
   finishAtGameMs: number
   /** 本次作业总耗时（毫秒，开工时按当时技能锁定，中途升技能不影响） */
   durationMs: number
+  /**
+   * **本线开工时确实吃掉了一本一次性图纸**（2026-09-20 船长：「一次性蓝图的制造取消后返还玩家蓝图」）。
+   *
+   * 为什么**显式记账**而不是取消时现推（`isSingleUseBlueprint` ＋ 查 `spentOneTimeRecipes`）：
+   * 那种推断在"同名书存量 > 1、且其中一次已完工"时会**多退**；本字段记的是历史事实（这一线确实扣了书），
+   * 退书时据此判、**只退这一本**。
+   * ⚠ 缺省/false = 没吃书（普通图纸、已学会、旧档遗留线）⇒ 取消时**不动书架**（老档零行为变化）。
+   */
+  bookSpent?: boolean
   /** 【兼容只读·2026-09-10 起停用】旧逐线连续生产字段——循环制造已上移到卡片级
    *  （见 ManufacturingLoopState）；这几个字段只用于读老档时归并，引擎不再写入。 */
   autoRepeat?: boolean

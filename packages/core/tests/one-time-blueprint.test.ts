@@ -4,7 +4,10 @@
  * 船长逐条裁定（本文件锁住的口径）：
  * - **1甲**：仍是"书"——进蓝图书架，但**不能学习**，只能到组装机造一次；
  * - **2乙**：**已永久学会同名配方时**，这本书**不能当"学习"用、也不用掉**（不消耗）；
- * - **3甲**：书在**开工那一刻**扣掉（与材料同源）；取消/失败**不退还**（书代表"一次制造资格"）；
+ * - **3甲**：书在**开工那一刻**扣掉（与材料同源）；
+ *   ⚠ **2026-09-20 船长改判**：「**一次性蓝图的制造取消后返还玩家蓝图**」
+ *   ⇒ **取消（未完工）时书与"名额"一起退还**；**完工仍不退**（书已兑现成产物，那才是"只能制造一次"的落点）。
+ *   （原口径"取消/失败不退还"作废，见 `manufacturing.ts` 的 `refundOneTimeBook`。）
  * - **4乙**：可卖（本批不额外做限制；能否上市场由是否登记市场卡决定）；
  * - **5**：本批**只做机制**，来源后续裁定；
  * - **6不进**：不得出现在碎片逆向配方表（由 `content:check` 契约拦）；
@@ -114,7 +117,7 @@ describe('一次性图纸 · 学习与可用性判定', () => {
   })
 })
 
-describe('一次性图纸 · 制造（开工扣书、只能造一次、取消不退）', () => {
+describe('一次性图纸 · 制造（开工扣书、只能造一次、**取消退书**）', () => {
   let state: GameState
   let ctx: SimContext
   beforeEach(() => {
@@ -141,22 +144,54 @@ describe('一次性图纸 · 制造（开工扣书、只能造一次、取消不
     expect(again.error ?? '').toContain('名额已用尽')
   })
 
-  it('⑦ 再获得一张 ⇒ 又能造一次；且取消制造不退这张书', () => {
-    state.blueprintStock['bp-one'] = 2
+  /**
+   * **船长 2026-09-20：「一次性蓝图的制造取消后返还玩家蓝图」** —— 本条取代原「取消不退」口径。
+   * 关键点：退书**必须连名额标记一起恢复**，否则书回来了仍判 `exhausted`（那是"假退"）。
+   */
+  it('⑦ 取消制造 ⇒ 一次性图纸退回书架，且**名额同时恢复**（可再次开工）', () => {
+    state.blueprintStock['bp-one'] = 1
     expect(startManufacturing(state, 'bp-one', 'pilot', ctx).ok).toBe(true)
-    expect(state.blueprintStock['bp-one']).toBe(1) // 吃掉一本
+    expect(state.blueprintStock['bp-one'] ?? 0).toBe(0) // 开工吃掉
     const run = state.manufacturingRuns.find((x) => x.active)!
     expect(cancelManufacturing(state, ctx, run.id).ok).toBe(true)
-    expect(state.blueprintStock['bp-one']).toBe(1) // 取消不退书
-    expect(state.logs.some((l) => l.text.includes('取消不退'))).toBe(true)
-    // 还剩一本 ⇒ 可以再开一条
-    const r2 = startManufacturing(state, 'bp-one', 'pilot', ctx)
-    expect(r2.error ?? '').toBe('')
-    expect(r2.ok).toBe(true)
+    expect(state.blueprintStock['bp-one']).toBe(1) // 书回来了
+    expect(state.spentOneTimeRecipes ?? []).not.toContain('bp-one') // 名额也恢复了
+    expect(state.logs.some((l) => l.text.includes('一次性图纸已退回蓝图书架'))).toBe(true)
+    // 名额已恢复 ⇒ 同一张书可以再次开工
+    const again = startManufacturing(state, 'bp-one', 'pilot', ctx)
+    expect(again.error ?? '').toBe('')
+    expect(again.ok).toBe(true)
     expect(state.blueprintStock['bp-one'] ?? 0).toBe(0)
   })
 
-  it('⑧ 普通蓝图的制造行为逐字不变（不吃书、可无限次）', () => {
+  it('⑦b 取消**只退这一本**：两条同名线（存量 2）各自独立结算', () => {
+    state.blueprintStock['bp-one'] = 2
+    state.aiCores['basic'] = 2
+    state.skills.trained['ai-expert'] = 1 // AI 上限 +1
+    expect(startManufacturing(state, 'bp-one', 'pilot', ctx).ok).toBe(true)
+    expect(state.blueprintStock['bp-one']).toBe(1)
+    expect(startManufacturing(state, 'bp-one', 'basic', ctx).ok).toBe(true)
+    expect(state.blueprintStock['bp-one'] ?? 0).toBe(0)
+    const runs = state.manufacturingRuns.filter((x) => x.active)
+    expect(runs).toHaveLength(2)
+    // 取消第一条 ⇒ 只回来一本；第二条仍在跑，总存量应为 1（不是 2）
+    expect(cancelManufacturing(state, ctx, runs[0]!.id).ok).toBe(true)
+    expect(state.blueprintStock['bp-one']).toBe(1)
+    expect(state.manufacturingRuns.filter((x) => x.active)).toHaveLength(1)
+  })
+
+  it('⑦c 重复取消同一条线 ⇒ 拒绝（书不会凭空多出来）', () => {
+    state.blueprintStock['bp-one'] = 1
+    expect(startManufacturing(state, 'bp-one', 'pilot', ctx).ok).toBe(true)
+    const run = state.manufacturingRuns.find((x) => x.active)!
+    expect(cancelManufacturing(state, ctx, run.id).ok).toBe(true)
+    expect(state.blueprintStock['bp-one']).toBe(1)
+    const twice = cancelManufacturing(state, ctx, run.id)
+    expect(twice.ok).toBe(false)
+    expect(state.blueprintStock['bp-one']).toBe(1)
+  })
+
+  it('⑧ 普通蓝图的制造行为逐字不变（不吃书、可无限次；取消也不动书架）', () => {
     state.learnedRecipes.push('bp-a')
     // 两条线都用主控亲自？不行（手动位全局限 1 条）⇒ 第二条走 AI 核心；
     // AI 线需核心库存 + 上限技能（与既有制造用例同款前置）
@@ -170,6 +205,12 @@ describe('一次性图纸 · 制造（开工扣书、只能造一次、取消不
     expect(r2.ok).toBe(true) // 同蓝图第二线照旧允许
     expect(isSingleUseBlueprint(ctx, 'bp-a')).toBe(false)
     expect(manufacturingRunViews(state, ctx)).toHaveLength(2)
+    // 普通图纸取消：书架与名额表都不该动（零行为变化）
+    const stockBefore = JSON.stringify(state.blueprintStock)
+    const spentBefore = JSON.stringify(state.spentOneTimeRecipes ?? [])
+    expect(cancelManufacturing(state, ctx, state.manufacturingRuns[0]!.id).ok).toBe(true)
+    expect(JSON.stringify(state.blueprintStock)).toBe(stockBefore)
+    expect(JSON.stringify(state.spentOneTimeRecipes ?? [])).toBe(spentBefore)
   })
 })
 
