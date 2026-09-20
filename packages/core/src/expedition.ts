@@ -191,12 +191,12 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   const whRun = state.wormhole.run
   const whBattle = whRun?.battle ?? null
   const battle = state.expedition.battle ?? whBattle
-  if (!battle) return { ok: false, error: '当前不在交火中。' }
+  if (!battle) return { ok: false, error: '当前不在交火中。', errorId: 'core.expedition.001' }
   const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : state.shipId
   const me = createPlayerSpec(state, ctx, anchorShipId)
   const cardId = whBattle ? whBattle.wormhole?.cardId : state.expedition.anomalyId
   const baseCard = cardId ? ctx.anomalies.get(cardId) : undefined
-  if (!me || !baseCard) return { ok: false, error: '战斗记录缺失。' }
+  if (!me || !baseCard) return { ok: false, error: '战斗记录缺失。', errorId: 'core.expedition.002' }
   const anomaly =
     whBattle && whBattle.wormhole ? wormholeDerivedAnomaly(ctx, baseCard, whBattle.wormhole) : baseCard
   const foes = createFoeSpecs(anomaly, ctx.balance.battle)
@@ -254,7 +254,7 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
   if (effect.kind === 'mineral') {
     const def = ctx.items.get(effect.itemId)
     if (!def) {
-      addLog(state, 'warn', '途中事件出了岔子，本次事件落空。')
+      addLog(state, 'warn', '途中事件出了岔子，本次事件落空。', 'core.expedition.025')
       return
     }
     addItem(state, effect.itemId, effect.units)
@@ -281,13 +281,13 @@ export function bountyRewardFactor(state: GameState): number {
  */
 function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
-  if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
+  if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003' }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
   const hold = wormholePilotHoldReason(state)
   if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再出击。' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再出击。', errorId: 'core.expedition.021' }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
     return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（当前 ${standing}），多完成低级目标攒声望。` }
@@ -300,13 +300,13 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (cd > 0) {
     return { ok: false, error: `「${anomaly.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.round(cd / 1000))} 秒。` }
   }
-  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能出发远征——到站自动结算后再安排。' }
+  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。', errorId: 'core.expedition.006' }
+  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能出发远征——到站自动结算后再安排。', errorId: 'core.expedition.007' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出发远征（想自动精炼可改用 AI 核心驱动）。' }
+    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出发远征（想自动精炼可改用 AI 核心驱动）。', errorId: 'core.expedition.008' }
   }
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出发远征（想自动制造可改用 AI 核心驱动）。' }
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出发远征（想自动制造可改用 AI 核心驱动）。', errorId: 'core.expedition.009' }
   }
   return { ok: true }
 }
@@ -327,26 +327,26 @@ export function startExpedition(
   // 2026-09-10 船长定：档位不再由声望封顶（改由日板席位决定），接取门槛只看卡自身声望要求
   // ——后者已在 expeditionPreflight 里把关。
   if (opts?.lairTier !== undefined && !isLairCandidate(anomaly)) {
-    return { ok: false, error: '该目标不是敌人窝点，无法作为赏金任务目标。' }
+    return { ok: false, error: '该目标不是敌人窝点，无法作为赏金任务目标。', errorId: 'core.expedition.010' }
   }
   // 敌对派系活跃（2026-09-10 船长定）：目标正是当日选中星系的**常驻悬赏** → 本场吃 +10% 奖金/+10% 威胁
   // （与窝点互斥：派系只针对普通悬赏，带着档位出击窝点时不叠加）
   const factionHit = opts?.lairTier === undefined && isFactionBounty(state, anomaly)
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。' }
-  if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
+  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。', errorId: 'core.expedition.022' }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。', errorId: 'core.expedition.023' }
+  if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。', errorId: 'core.expedition.012' }
   // 虫洞锁定（船长 2026-09-13：「已经进洞的船将被锁定」＋「洞内战斗时，洞外可以开新战斗」）：
   // 洞外这场战斗的锚点只能是**洞外的船**——主控若在洞里，先暂停并召回整队再出击。
   if (shipLockedInWormhole(state, state.shipId)) {
-    return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。' }
+    return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。', errorId: 'core.expedition.013' }
   }
   // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
   const from = originGalaxyOf(state, ctx)
   const fromName = ctx.galaxies.get(from)?.name ?? from
   state.awayGalaxy = null
   const outMinutes = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
-  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。' }
+  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.expedition.024' }
   // V12.1：按出发时的船跃迁与航行技能锁定单程耗时（途中升级不影响本次）；用于失利返航腿并入
   const outMs = travelLegMs(state, ctx, outMinutes)
   const now = state.gameMs
@@ -387,7 +387,7 @@ export function startExpedition(
     exp.battle = null
     exp.phase = 'out'
     exp.finishAtGameMs = 0
-    return { ok: false, error: '目标已不存在，无法开战。' }
+    return { ok: false, error: '目标已不存在，无法开战。', errorId: 'core.expedition.014' }
   }
   return { ok: true }
 }
@@ -406,8 +406,8 @@ export function startExpeditionFromMining(
 ): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
-  if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。' }
+  if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
+  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。', errorId: 'core.expedition.012' }
   const m = state.mining
   if (!m.active) return startExpedition(state, anomalyId, ctx, opts) // 无采矿作业 → 普通出发
   const anomaly = ctx.anomalies.get(anomalyId)!
@@ -416,7 +416,7 @@ export function startExpeditionFromMining(
   const from = belt?.galaxyId ?? null
   if (from !== null) {
     const reach = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
-    if (!Number.isFinite(reach)) return { ok: false, error: '目标星系不在矿带所在星系的已知航路内。' }
+    if (!Number.isFinite(reach)) return { ok: false, error: '目标星系不在矿带所在星系的已知航路内。', errorId: 'core.expedition.015' }
   }
   const ore = belt ? ctx.items.get(belt.oreId) : undefined
   const trip = m.tripUnits
@@ -626,7 +626,12 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     exp.finishAtGameMs = endAt + backMs
     if (ret.base === anomaly.galaxyId || anomaly.galaxyId === HOME_GALAXY_ID) {
       // 本地悬赏（2026-09-08 船长定）：目标星系即返航基准 → 固定返港段 120s，防零航程白刷
-      addLog(state, 'info', '战果已入账：舰队返港中（本地悬赏返航段约 2 分钟，胜利返航不可召回）。')
+      addLog(
+        state,
+        'info',
+        '战果已入账：舰队返港中（本地悬赏返航段约 2 分钟，胜利返航不可召回）。',
+        'core.expedition.026',
+      )
     } else {
       addLog(
         state,
@@ -690,7 +695,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   exp.returnAtGameMs = endAtD
   const retD = returnBackMs(state, ctx, anomaly.galaxyId)
   exp.finishAtGameMs = endAtD + (retD.ms > 0 ? retD.ms : exp.outMs * RETURN_LEG_MUL)
-  addLog(state, 'info', '舰队开始返航（去程时间并入返航）。')
+  addLog(state, 'info', '舰队开始返航（去程时间并入返航）。', 'core.expedition.027')
 }
 
 /**
@@ -702,10 +707,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
 export function retreatBattle(state: GameState, ctx: SimContext): CommandResult {
   const exp = state.expedition
   if (!exp.active || exp.phase !== 'battle' || !exp.battle) {
-    return { ok: false, error: '当前不在交火中，无法撤退。' }
+    return { ok: false, error: '当前不在交火中，无法撤退。', errorId: 'core.expedition.016' }
   }
   if (exp.battle.ended !== null) {
-    return { ok: false, error: '战斗已分出胜负，正在结算——无法撤退。' }
+    return { ok: false, error: '战斗已分出胜负，正在结算——无法撤退。', errorId: 'core.expedition.017' }
   }
   settleBattleRetreat(state, ctx, 'manual')
   return { ok: true }
@@ -858,12 +863,12 @@ function settleBattleRetreat(
   // 自动撤退（结构损失过半）与超时判负仍按原口径返航（"被迫撤离，正在返航"）。
   if (mode === 'manual') {
     exp.finishAtGameMs = endAtR
-    addLog(state, 'info', '舰队脱离战场，即刻返回最近的空间站。')
+    addLog(state, 'info', '舰队脱离战场，即刻返回最近的空间站。', 'core.expedition.028')
     return
   }
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
   exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * RETURN_LEG_MUL)
-  addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。')
+  addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。', 'core.expedition.029')
 }
 
 /** 弃船概率（沿用旧公式；power 用火力指数） */export function abandonChance(
@@ -901,7 +906,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         exp.battle = null
         exp.lairTier = undefined
     exp.factionActive = undefined
-        addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。')
+        addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。', 'core.expedition.030')
         return
       }
       continue // 同一帧继续处理交火（离线大推进直接打到结束）
@@ -915,7 +920,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
           exp.anomalyId = null
           exp.lairTier = undefined
     exp.factionActive = undefined
-          addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。')
+          addLog(state, 'warn', '远征目标已不存在，舰队无功而返（异常）。', 'core.expedition.030')
           return
         }
         continue
@@ -995,12 +1000,16 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
  * 2026-09-06：胜利自动返航（returnReason='victory'）不可召回——路程成本必付，防止"打完立即召回免费回家"。 */
 export function recallExpedition(state: GameState, ctx: SimContext): CommandResult {
   const exp = state.expedition
-  if (!exp.active) return { ok: false, error: '当前没有进行中的远征。' }
+  if (!exp.active) return { ok: false, error: '当前没有进行中的远征。', errorId: 'core.expedition.018' }
   if (exp.phase === 'battle') {
-    return { ok: false, error: '交火中无法撤离——请先让战斗分出胜负。' }
+    return { ok: false, error: '交火中无法撤离——请先让战斗分出胜负。', errorId: 'core.expedition.019' }
   }
   if (exp.phase === 'back' && exp.returnReason === 'victory') {
-    return { ok: false, error: '胜利返航中不可召回——战果已结算，返航（去程并入返航）是本次悬赏的必付航程。' }
+    return {
+      ok: false,
+      error: '胜利返航中不可召回——战果已结算，返航（去程并入返航）是本次悬赏的必付航程。',
+      errorId: 'core.expedition.020',
+    }
   }
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
   const name = anomaly
@@ -1091,12 +1100,18 @@ export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: 
   state.autoLoopAnomalyId = anomalyId
   if (anomalyId === null) {
     state.autoLoopDroneFloor = null
-    addLog(state, 'info', '重复清剿已停止。')
+    addLog(state, 'info', '重复清剿已停止。', 'core.state.008')
   } else {
     state.autoLoopDroneFloor = null // 重新开环 ⇒ 清掉上一轮的机群前置记账
     const def = ctx.anomalies.get(anomalyId)
     const name = def?.name ?? anomalyId
-    addLog(state, 'info', `重复清剿已开启：「${name}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。`)
+    addLog(
+      state,
+      'info',
+      `重复清剿已开启：「${name}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。`,
+      'core.expedition.031',
+      { p1: name },
+    )
   }
   return { ok: true }
 }
