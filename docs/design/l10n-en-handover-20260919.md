@@ -294,6 +294,25 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 | 文档 | `docs/glossary-en.md`（术语与专名，权威）· `docs/design/l10n-en-20260919.md`（过程与分期）· 本卡 |
 | 引擎接口 | `GameEngine.setLocale(locale)`（重建 ctx + 目录数组后 `notify()`）⇒ 切语言即时生效 |
 
+## 7.1 ⚠ 合并/大批改动后**必须重启本地 dev**（2026-09-20 实障）
+
+**症状**：网页/桌面端界面里出现 ui.App.001～ui.App.009 这类**裸 id**，像"文本丢失"。
+
+**成因（已实测）**：本地 
+pm run dev（electron-vite，5173）**在合并前就已启动**，它的 HMR/预打包
+缓存里是**旧代码**；而合并带来了新模块（packages/data/src/l10n/table.ts）与新的 ID 制调用点 ⇒
+热更新时模块图打架，	() 拿不到表就回显 id。
+
+**判定**（读数，不猜）：
+- 无头浏览器加载该地址，读导航文本：**正常应为**「点击 出港/舰船/装配/物品/市场/工业/技能/任务中心/成就/通讯」；
+  出现 ui.… 即命中本症。
+- 顺带可核：GET {dev}/@fs/<abs>/packages/data/src/l10n/table.ts 能 200 返回（按需编译正常）⇒ 问题在缓存不在源码。
+
+**处置**：**重启 dev**（Ctrl-C 后重跑 
+pm run dev；网页版则 cd web && npm run dev/preview）。
+必要时删缓存目录 
+ode_modules/.vite 再起。⚠ 只重启、**不要**去关别人的浏览器进程。
+
 ## 8. git 状态与合并步骤
 
 - 现状（**2026-09-20 三号收尾后**）：`verify40` 已并 main 至 `bad7601e`（52 条），合并提交 `90d2cf01`；
