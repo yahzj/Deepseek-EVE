@@ -649,6 +649,8 @@ export type { WormholeCardTier, WormholeFoeKind, WormholeFamilyIntel } from './w
 export interface WormholeStartResult {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   run?: WormholeRunState
 }
 
@@ -730,6 +732,8 @@ export function wormholeMakeNode(seed: number, depth: number, index: number): Wo
 export interface WormholeAdvanceResult {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   /** 本步花掉几回合 */
   spent?: number
   /** 是否进入"层末抉择"（`pendingNode === null`） */
@@ -751,9 +755,9 @@ export function wormholeAdvanceNode(
 ): WormholeAdvanceResult {
   void ctx
   const node = run.pendingNode
-  if (!node) return { ok: false, error: '本层已清空：请选择「继续深入」或「撤离」。' }
+  if (!node) return { ok: false, error: '本层已清空：请选择「继续深入」或「撤离」。', errorId: 'core.wormhole.001' }
   if (run.turnsLeft < node.cost) {
-    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+    return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
   const spent = node.cost
   run.turnsLeft -= spent
@@ -779,14 +783,14 @@ export function wormholeDescend(
   scanBonus = 0,
 ): WormholeAdvanceResult {
   const run = state.wormhole.run
-  if (!run) return { ok: false, error: '当前不在虫洞里。' }
-  if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能深入。' }
-  if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。' }
+  if (!run) return { ok: false, error: '当前不在虫洞里。', errorId: 'core.wormhole.003' }
+  if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能深入。', errorId: 'core.wormhole.004' }
+  if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。', errorId: 'core.wormhole.005' }
   // 层末 BOSS 是门（设计稿 §3）：没打通本层 BOSS 不许往下走
   if ((run.bossCleared ?? 0) < run.depth) {
-    return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。' }
+    return { ok: false, error: '层末守卫还堵在出口：先迎击本层守卫。', errorId: 'core.wormhole.006' }
   }
-  if (run.turnsLeft <= 0) return { ok: false, error: '回合已耗尽：只能撤离。', mustExtract: true }
+  if (run.turnsLeft <= 0) return { ok: false, error: '回合已耗尽：只能撤离。', errorId: 'core.wormhole.007', mustExtract: true }
   /**
    * **深入必须在「下一层入口」（下潜点）那一格**（船长 2026-09-18：「**虫洞前往下一层修改为必须在下一层
    * 入口才可以前往**」）。
@@ -798,7 +802,7 @@ export function wormholeDescend(
    * ⚠ 判据排在**回合耗尽之后**：回合见底时"只能撤离"是更决定性的状态，先报它。
    */
   if (run.grid && !isExitCell(run.grid, run.grid.pos)) {
-    return { ok: false, error: '没站在下一层入口：先走到入口（下潜点）再深入。' }
+    return { ok: false, error: '没站在下一层入口：先走到入口（下潜点）再深入。', errorId: 'core.wormhole.008' }
   }
   run.depth += 1
   run.nodeIndex = 0
@@ -876,7 +880,7 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
  * 打完按新口径结算（赢了入港、输了全损），此后不再有下一场。
  */
 export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
-  if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。' }
+  if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。', errorId: 'core.wormhole.009' }
   run.phase = 'extracting'
   return { ok: true }
 }
@@ -917,6 +921,8 @@ export type WormholeActivateEffect =
 export interface WormholeGridActionResult {
   ok: boolean
   error?: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   /** 拒绝码：`unknown-target` = 目标格没扫过（界面据此先弹「前往未知地点」的确认）；
    *  `path-blocked` = **直线路径上有未清掉的敌人**（界面据此先弹「路径上有敌人阻拦」的确认，见 `confirmIntercept`） */
   code?: 'unknown-target' | 'path-blocked'
@@ -1006,7 +1012,7 @@ function gridActionBlocked(run: WormholeRunState): string | null {
  */
 export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   const hit = gridRun(state)
-  if (!hit) return { ok: false, error: '本层没有网格：无法扫描。' }
+  if (!hit) return { ok: false, error: '本层没有网格：无法扫描。', errorId: 'core.wormhole.010' }
   const { run, grid } = hit
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked }
@@ -1022,10 +1028,10 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   // 圈里"已扫描但还被星云罩着"的格 ⇒ 这一扫把它们驱散；装置再额外补几格圈外的云
   const nebulaTargets = gridNebulaDisperseTargets(grid, buffs.scanRadius, buffs.nebulaDisperse)
   if (targets.length === 0 && nebulaTargets.length === 0) {
-    return { ok: false, error: '周围都扫过了、也没有星云可驱散：换个地点再扫。' }
+    return { ok: false, error: '周围都扫过了、也没有星云可驱散：换个地点再扫。', errorId: 'core.wormhole.011' }
   }
   if (run.turnsLeft < WORMHOLE_TURN_PER_SCAN) {
-    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+    return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
   run.turnsLeft -= WORMHOLE_TURN_PER_SCAN
   const revealed: { key: string; signal: WormholeSignal | null }[] = []
@@ -1097,23 +1103,23 @@ export function wormholeGridTravel(
   opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean },
 ): WormholeGridActionResult {
   const hit = gridRun(state)
-  if (!hit) return { ok: false, error: '本层没有网格：无法前往。' }
+  if (!hit) return { ok: false, error: '本层没有网格：无法前往。', errorId: 'core.wormhole.012' }
   const { run, grid } = hit
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked }
   const cell = gridCellAt(grid, target)
-  if (!cell) return { ok: false, error: '那一格不在本层网格里。' }
-  if (cell.key === gridCellAt(grid, grid.pos)?.key) return { ok: false, error: '已经在这个地点了。' }
+  if (!cell) return { ok: false, error: '那一格不在本层网格里。', errorId: 'core.wormhole.013' }
+  if (cell.key === gridCellAt(grid, grid.pos)?.key) return { ok: false, error: '已经在这个地点了。', errorId: 'core.wormhole.014' }
   const scanned = grid.scanned.includes(cell.key) || grid.visited.includes(cell.key)
   if (!scanned && !opts?.confirmUnknown) {
-    return { ok: false, error: '这个地点还没扫描过：前往未知地点？', code: 'unknown-target' }
+    return { ok: false, error: '这个地点还没扫描过：前往未知地点？', errorId: 'core.wormhole.015', code: 'unknown-target' }
   }
   /**
    * ⚠ **回合检查排在拦截确认之前**（2026-09-16）：0 回合时先如实说"只能撤离"，
    * 不该先弹一个**走不成**的拦截确认框（白点一次）；顺序 = 未知地点 → 回合 → 拦截。
    */
   if (run.turnsLeft < WORMHOLE_TURN_PER_MOVE) {
-    return { ok: false, error: '回合不足：只能撤离。', mustExtract: true }
+    return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
   /**
    * ── **路径拦截**（船长 2026-09-16）──
@@ -1130,7 +1136,7 @@ export function wormholeGridTravel(
   if (intercept && opts?.confirmIntercept !== true) {
     return {
       ok: false,
-      error: '路径上有敌人阻拦：前往将在中途被拦截并开战。',
+      error: '路径上有敌人阻拦：前往将在中途被拦截并开战。', errorId: 'core.wormhole.016',
       code: 'path-blocked',
     }
   }
@@ -1228,12 +1234,12 @@ export function wormholeGridTravel(
  */
 export function wormholeGridActivate(state: GameState): WormholeGridActionResult {
   const hit = gridRun(state)
-  if (!hit) return { ok: false, error: '本层没有网格：无法激活。' }
+  if (!hit) return { ok: false, error: '本层没有网格：无法激活。', errorId: 'core.wormhole.017' }
   const { run, grid } = hit
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked }
   const cell = gridCellAt(grid, grid.pos)
-  if (!cell) return { ok: false, error: '当前位置不在网格里。' }
+  if (!cell) return { ok: false, error: '当前位置不在网格里。', errorId: 'core.wormhole.018' }
   if (grid.activated.includes(cell.key)) {
     return { ok: false, error: cell.place === 'beacon' ? '信标已经读过了。' : '这个地点已经处理过了。' }
   }
@@ -1247,10 +1253,10 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
    * 故这三个地点在"激活"这条路上**直接拒绝**。
    */
   if (!atExit && (cell.place === 'vein' || cell.place === 'graveyard' || cell.place === 'ruins')) {
-    return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。' }
+    return { ok: false, error: '这个地点不用激活：直接采集/打捞就行。', errorId: 'core.wormhole.022' }
   }
   if (atExit && (run.bossCleared ?? 0) >= run.depth) {
-    return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。' }
+    return { ok: false, error: '本层守卫已经清掉了：可以「继续深入」或「撤离」。', errorId: 'core.wormhole.023' }
   }
   grid.activated.push(cell.key)
   const effect: WormholeActivateEffect = atExit
@@ -1449,7 +1455,7 @@ function shiftBattleClock(battle: BattleState | null | undefined, deltaMs: numbe
 export function wormholeResume(state: GameState, ctx: SimContext): WormholeStartResult {
   void ctx
   const run = state.wormhole.run
-  if (!run) return { ok: false, error: '现在没有进行中的虫洞探索。' }
+  if (!run) return { ok: false, error: '现在没有进行中的虫洞探索。', errorId: 'core.wormhole.024' }
   const busy = shipActivityBusy(state, state.shipId)
   if (busy) return { ok: false, error: `主控正在${busy}：先把手上的活收工，才能回到虫洞。` }
   shiftBattleClock(run.battle, state.gameMs - (run.leftAtGameMs ?? state.gameMs))
@@ -1578,7 +1584,7 @@ export function wormholeEnter(
    */
   origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily },
 ): WormholeStartResult {
-  if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。' }
+  if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。', errorId: 'core.wormhole.026' }
   const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
   if (blocked) return { ok: false, error: blocked }
   /**
@@ -1592,7 +1598,13 @@ export function wormholeEnter(
   for (const a of halted) {
     if (a.kind === 'whscan') {
       const mins = wormholeScanHalt(state)
-      if (mins !== null) addLog(state, 'info', `🛰 进洞前自动停掉「扫描虫洞」（进度保留：已扫 ${mins} 分钟）——回来可以接着扫。`)
+      if (mins !== null) addLog(
+        state,
+        'info',
+        `🛰 进洞前自动停掉「扫描虫洞」（进度保留：已扫 ${mins} 分钟）——回来可以接着扫。`,
+        'core.wormhole.027',
+        { p1: mins },
+      )
     } else if (a.kind === 'mining') {
       const info = miningHalt(state)
       if (info !== null) {
@@ -1618,7 +1630,13 @@ export function wormholeEnter(
       const info = haulingHalt(state)
       if (info !== null) {
         const originName = info.fromSiteId ? (ctx.stations.get(info.fromSiteId)?.name ?? info.fromSiteId) : '母港'
-        addLog(state, 'info', `🚚 进洞前自动停掉「长途运输」（舰船已即时返港停靠「${originName}」，无惩罚）。`)
+        addLog(
+          state,
+          'info',
+          `🚚 进洞前自动停掉「长途运输」（舰船已即时返港停靠「${originName}」，无惩罚）。`,
+          'core.wormhole.028',
+          { p1: originName },
+        )
       }
     }
   }
