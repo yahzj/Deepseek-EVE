@@ -1078,11 +1078,30 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       `奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootText.length > 0 ? `，战利品 ${lootText.join('、')}` : ''}已入仓库` +
       `${dropText ? `，${dropText}` : ''}。残骸密度 ${wreckNow.toFixed(1)}（本场 +${(anomaly.threat * 0.4).toFixed(1)}）`
     /**
-     * ⚠ **甲案待办（2026-09-20 三号）**：这两条 AI 战报是**多段拼接**（首句 + 船体维修装置 + 奖金/战利品 +
-     * 彩头 + 残骸密度），单个 `textId` 只能覆盖首句 ⇒ 其余段会**从日志里消失**（比留中文更糟）。
-     * 故本批**先不接**，等"多段文案"方案定了再统一处理（表里 `core.ai.034`~`core.ai.040` 已备好）。
+     * **多段文案收口（甲案 · 2026-09-20）**：这条战报由 4 段拼成 ⇒ 用**链式 id** 交给日志：
+     * `core.ai.034`（首句）→ `p1Id` 接 `core.ai.035`（修复装置）→ `p2Id` 接 `core.ai.036`（奖金）
+     * → `p3Id` 接 `core.ai.037`（战利品）→ `p4Id` 接 `core.ai.038`（彩头）→ `p5Id` 接 `core.ai.039`（残骸密度）。
+     * 渲染层 `logText` 会把整条链走完 ⇒ **每一段都按当前语言出**，中文侧逐字不变。
      */
-    addLog(state, 'trade', aiWinText)
+    addLog(state, 'trade', aiWinText, 'core.ai.034', {
+      p1: shipName,
+      p2: galaxy?.name ?? '',
+      p3: anomaly.name,
+      p4: durTxt,
+      p5: battle.stats.meShots,
+      p6: battle.stats.meHits,
+      p1Id: 'core.ai.035',
+      p1p1: repairUse,
+      p2Id: 'core.ai.036',
+      p2p1: reward.toLocaleString('zh-CN'),
+      p2p2: lootText.length > 0 ? lootText.join('、') : '',
+      p2p2Id: 'core.ai.037',
+      p3Id: 'core.ai.038',
+      p3p1: dropText ?? '',
+      p4Id: 'core.ai.039',
+      p4p1: wreckNow.toFixed(1),
+      p4p2: (anomaly.threat * 0.4).toFixed(1),
+    })
     /**
      * **结构化战报**（2026-09-14 船长定：四类战斗统一填写）。
      * ⚠ AI 副船的战斗**不弹战报弹层**（只有主控那场弹）⇒ 这份记录只是"四类同源"的完整性，
@@ -1115,7 +1134,16 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     const aiLoseText =
       `[AI·${shipName}] ⚔ 战报：${galaxy?.name ?? ''}·${anomaly.name} 失利（交火 ${durTxt}），维修花去 ${repair.toLocaleString('zh-CN')} 信用点（耐久 ${dur}%）。` +
       `${aiRepairUse.length > 0 ? `船体维修装置${aiRepairUse}。` : ''}`
-    addLog(state, 'warn', aiLoseText)
+    addLog(state, 'warn', aiLoseText, 'core.ai.040', {
+      p1: shipName,
+      p2: galaxy?.name ?? '',
+      p3: anomaly.name,
+      p4: durTxt,
+      p5: repair.toLocaleString('zh-CN'),
+      p6: dur,
+      p1Id: 'core.ai.035',
+      p1p1: aiRepairUse,
+    })
     // 战报（2026-09-14）：AI 副船这一支是"打输、船没沉"（沉船那一支上面 return 了）⇒ `lose`
     captureBattleReport(state, battle, { source: 'ai', outcome: 'lose', summary: aiLoseText })
   }

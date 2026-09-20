@@ -111,14 +111,53 @@ function resolveParamIds(
   return out
 }
 
+/**
+ * **多段文案收口（甲案配套 · 2026-09-20）**：把"由若干独立句子拼起来的一句日志"整体渲染。
+ *
+ * 约定（core 侧同款写法）：首段的 id 照常在 `textId`；后续段按顺序用 `p{n}Id` 绑定
+ * （`p1Id` = 第 2 段、`p2Id` = 第 3 段 ……），其余参数按段内占位符命名。
+ * 一次把"id 参数也要再翻"的链走到底 ⇒ **拼出来的每一段都是当前语言**，不会再出现半中半英。
+ */
+function composeParts(
+  entry: { text: string; textId?: string; textParams?: Readonly<Record<string, string | number>> },
+  text: (id: string, params?: Record<string, string | number>) => string,
+): string {
+  if (entry.textId === undefined) return entry.text
+  const all: Record<string, string | number> = { ...(entry.textParams ?? {}) }
+  /**
+   * 参数命名空间：**第 1 段**用顶层键（`p1`/`p2`…，与单段日志完全一致）；
+   * **第 n(n≥2) 段**用 `p{n-1}p{k}`（例：第 4 段的 `{p1}` = `p3p1`），段间互不串味。
+   */
+  const paramsFor = (i: number): Record<string, string | number> => {
+    if (i === 0) {
+      const out: Record<string, string | number> = {}
+      for (const [k, v] of Object.entries(all)) if (!/^p\d+p\d+$/.test(k) && !/^p\d+Id$/.test(k)) out[k] = v
+      return out
+    }
+    const prefix = `p${i}`
+    const out: Record<string, string | number> = {}
+    for (const [k, v] of Object.entries(all)) {
+      if (k.startsWith(prefix) && k.length > prefix.length && !k.endsWith('Id')) out[k.slice(prefix.length)] = v
+    }
+    return out
+  }
+  let out = ''
+  let id: string | undefined = entry.textId
+  for (let i = 0; id !== undefined && i < 8; i++) {
+    out += text(id, paramsFor(i))
+    const next = all[`p${i + 1}Id`]
+    id = typeof next === 'string' && next !== '' ? next : undefined
+  }
+  return out
+}
+
 /** 渲染一条 core 日志：有 `textId` ⇒ 按当前语言渲染；否则回退中文正文 */
 export function logText(entry: {
   text: string
   textId?: string
   textParams?: Readonly<Record<string, string | number>>
 }): string {
-  if (entry.textId === undefined) return entry.text
-  return tr(entry.textId, resolveParamIds(entry.textParams))
+  return composeParts(entry, (id, params) => tr(id, params))
 }
 
 /**

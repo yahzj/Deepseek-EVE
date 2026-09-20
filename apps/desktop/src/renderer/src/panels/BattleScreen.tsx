@@ -434,7 +434,9 @@ const meSpeedRef = useRef(200)
       const br = state.battleReport ?? null
       battleReportRef.current = br && (!snap || br.battleStartedAtGameMs === snap.startedAtGameMs) ? br : null
       reportTextRef.current =
-        battleReportRef.current?.summary ??
+        (battleReportRef.current?.summaryId !== undefined
+          ? tr(battleReportRef.current.summaryId, battleReportRef.current.summaryParams as Record<string, string | number> | undefined)
+          : battleReportRef.current?.summary) ??
         (snap?.kind === 'me' ? tr("ui.BattleScreen.005") : tr("ui.BattleScreen.006"))
       setStage('report')
     }

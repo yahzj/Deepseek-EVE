@@ -1047,6 +1047,12 @@ export interface BattleReportRecord {
   dronesGone: number
   /** **本场引擎写的那条日志原文**（弹层正文用它 ⇒ 卡片与日志同源，不再靠字符串匹配） */
   summary: string
+  /**
+   * 甲案（2026-09-20）：战报正文的**首段文案 id + 参数**（含后续段的 `p{n}Id` 绑定）。
+   * 有它 ⇒ 弹层按当前语言渲染；没有（老档 / 未改造来源）⇒ 回退 `summary` 中文原串。
+   */
+  summaryId?: string
+  summaryParams?: Readonly<Record<string, string | number>>
 }
 
 /** 单架无人机的战斗生存池（开战自机型 DroneDefense 写入；被点防打空即击落）
