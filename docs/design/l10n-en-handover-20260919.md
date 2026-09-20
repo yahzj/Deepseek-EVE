@@ -150,7 +150,14 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
   正文 1024 窄窗（桌面口径）与手机横屏 844 是两回事；
 - 结论收敛为：**红线 270/270 成立**（桌面/窄窗 0 组滚动；手机档有滚动但已获准）。
 
-**怎么复跑**：起静态服务托管 `apps/desktop/out/renderer`（4173）+ 无头 Chrome 带 `--remote-debugging-port=9222`，
+**⚠ 测量口径：导航项数随进度变（2026-09-20 船长指出 + 代码核实）**
+App.tsx 的导航渲染有前置门：if (!unlocked(state, item.key)) return null
+（core FIRST_UNLOCKS：**工业** ← 第一次采集原矿 · **市场** ← 第一次生产 · 星图内
+矿带/悬赏/打捞/长途运输 ← 第一次扫描）。**新档只有 8 项可见**（缺市场/工业），
+老档才是 10 项。⇒ 用新档做界面读数/截图时，"少几项"是设计，**不是 bug**。
+（本次我据此误判过一次，船长一句话点破——凡"少东西"先查前置门，再谈缺陷。）
+
+**怎么复跑**：起静态服务托管 pps/desktop/out/renderer（4173）+ 无头 Chrome 带 `--remote-debugging-port=9222`，
 然后 `npm run ui:overflow`。⚠ 手机档必须连 **UA/触摸**一起模拟（只改视口不会触发自动旋转，会量到假读数）。
 ⚠ 浏览器切语言在网页版靠渲染层暴露的 `window.__setLocale`（桌面端是主进程桥 `window.whale`）。
 
