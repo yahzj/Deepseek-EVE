@@ -43,7 +43,7 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
     // 2026-09-20 船长「零件的制造完成不需要发送事件日志」——推进期间可以有别的事件日志，但不该有"制造完成"
     expect(s.logs.slice(beforeLogs).some((l) => l.text.includes('制造完成'))).toBe(false)
   })
-  it('② 高级零件蓝图：未学会不能开工，学会后可以（60 秒一轮、一次产 10 件）', () => {
+  it('② 高级零件蓝图：未学会不能开工，学会后可以（14 秒一轮、一次产 10 件）', () => {
     const s = freshState()
     for (const m of BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!.materials) addWare(s, m.itemId, m.count)
     expect(canStartBlueprint(s, ctx, 'bp-part-qchip')).toBe(false)
@@ -51,13 +51,19 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
     s.learnedRecipes = ['bp-part-qchip']
     expect(canStartBlueprint(s, ctx, 'bp-part-qchip')).toBe(true)
     expect(startManufacturing(s, 'bp-part-qchip', 'pilot', ctx).ok).toBe(true)
-    advanceGame(s, 61_000, ctx)
+    // 2026-09-20 船长「高级零件的制造时间缩短至25%」：协处理器芯 55 → 14 秒（原值 ×0.25 四舍五入）
+    const qchip = BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!
+    expect(calcBuildDurationMs(s, ctx, { materials: qchip.materials, buildSeconds: qchip.buildSeconds, buildCostIsk: 0 })).toBe(14_000)
+    advanceGame(s, 15_000, ctx)
     expect(countWare(s, 'part-qchip')).toBe(10)
   })
   it('③ 零件技能：基础吃「零件成型工艺学」−8%/级 · 高级吃「精密装配学」−8%/级（乘在工业/批量之上）', () => {
     const s = freshState()
-    const basicSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-circuit')!.materials, buildSeconds: 15, buildCostIsk: 0, partTier: 'basic' as const }
-    const advSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!.materials, buildSeconds: 55, buildCostIsk: 0, partTier: 'advanced' as const }
+    /** 两份 spec 直接读**真数据**的工时（2026-09-20 高级件工时调过两批，别在手抄常数里漂） */
+    const basicBp = BLUEPRINTS.find((b) => b.id === 'bp-part-circuit')!
+    const advBp = BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!
+    const basicSpec = { materials: basicBp.materials, buildSeconds: basicBp.buildSeconds, buildCostIsk: 0, partTier: 'basic' as const }
+    const advSpec = { materials: advBp.materials, buildSeconds: advBp.buildSeconds, buildCostIsk: 0, partTier: 'advanced' as const }
     const base = calcBuildDurationMs(s, ctx, basicSpec)
     const adv = calcBuildDurationMs(s, ctx, advSpec)
     s.skills.trained['part-forming'] = 5
@@ -75,7 +81,7 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
     const sorted = sortManuRows(rows)
     expect(sorted.map((r) => r.name)).toEqual(['电路基板制造', '量子协处理器芯蓝图', '引力子补偿器蓝图'])
   })
-  it('③c 收益平衡（2026-09-20 船长「毛利率不变，靠工时把收益差收窄到 1.5 倍内」）：同级收益/秒 ≤1.5 倍', () => {
+  it('③c 收益平衡：同级收益/秒 ≤1.5 倍（首批"靠工时收窄"· 二批"高级件工时 ×0.25"后仍成立）', () => {
     // 收益/秒 = 每轮 10 件毛利 ÷ 轮时；毛利 = (定价 − 材料成本) × 10
     const rateOf = (bpId: string, price: number): number => {
       const bp = BLUEPRINTS.find((b) => b.id === bpId)!
@@ -93,6 +99,14 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
       const rates = group.map(([id, price]) => rateOf(id, price))
       expect(Math.max(...rates) / Math.min(...rates)).toBeLessThanOrEqual(1.5)
     }
+    /**
+     * **高级件工时钉死**（2026-09-20 二批船长令「高级零件的制造时间缩短至25%」）：
+     * 原 55/55/58/88/92/170/410 → **14/14/15/22/23/43/103 秒**（原值 ×0.25 四舍五入）；
+     * 基础件 15/16/16/17/21/26/45 **一字不动**。
+     */
+    const secsOf = (id: string): number => BLUEPRINTS.find((b) => b.id === id)!.buildSeconds
+    expect(advances.map(([id]) => secsOf(id))).toEqual([14, 14, 15, 22, 23, 43, 103])
+    expect(basics.map(([id]) => secsOf(id))).toEqual([15, 16, 16, 17, 21, 26, 45])
   })
 })
 

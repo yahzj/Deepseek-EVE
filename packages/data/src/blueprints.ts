@@ -2319,7 +2319,20 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     description: '一次开工出 50 架构件哨戒无人机：动能长针拆盾，航程与命中都比制式哨戒机更远更高。',
   },
 
-  // ═══════════ 零件蓝图（2026-09-20 船长「组装机内新增零件分页」；基础 = 隐式蓝图无需学习 · 高级 = 需学习） ═══════════
+  /**
+   * ═══════════ 零件蓝图（2026-09-20 船长「组装机内新增零件分页」；基础 = 隐式蓝图无需学习 · 高级 = 需学习） ═══════════
+   *
+   * **工时口径（两批船长令）**：
+   * - 2026-09-20 首批：「**毛利率维持不变，通过调整生产时间适当平衡**（收窄到 1.5 倍以内）」
+   *   ⇒ 每档内部**定价一分未动、只调轮时**：基础件 15/16/16/17/21/26/45 秒（收益差 1.50 倍）·
+   *   高级件 55/55/58/88/92/170/410 秒（收益差 1.46 倍）。
+   * - 2026-09-20 二批（船长：「**将高级零件的制造时间缩短至25%**」）⇒ **只动高级件 7 张**，
+   *   一律取原值 ×0.25 四舍五入到整秒 ⇒ 14/14/15/22/23/43/103 秒
+   *   （**档内收益差 1.48 倍仍 ≤1.5**；**基础件 7 张一字不动**）。
+   *   ⚠ 连带读数：高级件**毛利/秒 ×4**（现 41.8~61.2/秒 → 164.3~243.5/秒），
+   *   相对基础件档（18.0~26.9/秒）由 1.55~3.4 倍拉到 **6.1~13.5 倍**——
+   *   船长知情取舍（要的是"造得出来"，不是"卖得更贵"）。
+   */
   {
     id: 'bp-part-circuit',
     name: '电路基板制造',
@@ -2443,7 +2456,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-mexallon', count: 80 },
       { itemId: 'min-nocxium', count: 30 },
     ],
-    buildSeconds: 55,
+    buildSeconds: 14, // 2026-09-20 船长「高级零件的制造时间缩短至25%」：55 → 14 秒（原值 ×0.25 四舍五入）
     buildCostIsk: 0,
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
@@ -2459,7 +2472,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-mexallon', count: 100 },
       { itemId: 'min-isotope', count: 30 },
     ],
-    buildSeconds: 58,
+    buildSeconds: 15, // 2026-09-20 船长「高级零件的制造时间缩短至25%」：58 → 15 秒（原值 ×0.25 四舍五入）
     buildCostIsk: 0,
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
@@ -2475,7 +2488,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-nocxium', count: 60 },
       { itemId: 'min-isotope', count: 20 },
     ],
-    buildSeconds: 88,
+    buildSeconds: 22, // 2026-09-20 船长「高级零件的制造时间缩短至25%」：88 → 22 秒（原值 ×0.25 四舍五入）
     buildCostIsk: 0,
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
@@ -2491,7 +2504,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-mexallon', count: 50 },
       { itemId: 'min-nocxium', count: 20 },
     ],
-    buildSeconds: 55,
+    buildSeconds: 14, // 2026-09-20 船长「高级零件的制造时间缩短至25%」：55 → 14 秒（原值 ×0.25 四舍五入）
     buildCostIsk: 0,
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
@@ -2507,7 +2520,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-nocxium', count: 80 },
       { itemId: 'min-starcore', count: 20 },
     ],
-    buildSeconds: 170,
+    buildSeconds: 43, // 2026-09-20 船长「高级零件的制造时间缩短至25%」：170 → 43 秒（原值 ×0.25 四舍五入）
     buildCostIsk: 0,
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
@@ -2530,7 +2543,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-nocxium', count: 10 },
       { itemId: 'min-isotope', count: 40 },
     ],
-    buildSeconds: 92,
+    buildSeconds: 23, // 2026-09-20 船长「高级零件的制造时间缩短至25%」：92 → 23 秒（原值 ×0.25 四舍五入）
     buildCostIsk: 0,
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
@@ -2559,7 +2572,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-mexallon', count: 50 },
       { itemId: 'min-pyerite', count: 60 },
     ],
-    buildSeconds: 410,
+    buildSeconds: 103, // 2026-09-20 船长「高级零件的制造时间缩短至25%」：410 → 103 秒（原值 ×0.25 四舍五入）
     buildCostIsk: 0,
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
