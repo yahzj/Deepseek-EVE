@@ -16,7 +16,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -78,9 +78,10 @@ function stopLabel(v: ActivityView): string {
 }
 
 function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
-  const run = (r: { ok: boolean; error?: string } | boolean, okText: string): void => {
+  const run = (r: { ok: boolean; error?: string; errorId?: string; errorParams?: Record<string, string | number> } | boolean, okText: string): void => {
     const ok = typeof r === 'boolean' ? r : r.ok
-    if (!ok) onToast((typeof r === 'object' && r.error) || '操作失败。', true)
+    // 甲案：错误串优先按 id 取当前语言（`cmdText` 没 id 时回退中文原串）
+    if (!ok) onToast((typeof r === 'object' && (cmdText(r) || r.error)) || '操作失败。', true)
     else onToast(okText)
   }
   switch (v.stop) {

@@ -26,7 +26,7 @@ import {
   itemSubPasses,
   rackPasses,
 } from '../ui/itemSubs'
-import { useL10n } from '../i18n/locale'
+import { useL10n, cmdText } from '../i18n/locale'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -174,7 +174,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const [discardItem, setDiscardItem] = useState<string | null>(null)
   function handleSellQtyItem(id: string, qty: number): void {
     const r = engine.sellWare(id, qty)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
     else onToast(tr("ui.ItemsPage.042", { p1: r.soldUnits.toLocaleString('zh-CN'), p2: r.gainedIsk.toLocaleString('zh-CN') }))
     setSellItem(null)
     setPickItem(null)
@@ -188,7 +188,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       return
     }
     const r = engine.sellHoldingAt(good.key, qty)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
     else onToast(tr("ui.ItemsPage.044"))
     setSellMod(null)
     setPickMod(null)
@@ -738,7 +738,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             onClose={() => setDiscardItem(null)}
             onConfirm={(qty) => {
               const r = engine.discardWare(discardItem, qty)
-              if (!r.ok) onToast(r.error ?? '丢弃失败', true)
+              if (!r.ok) onToast(cmdText(r) || '丢弃失败', true)
               else onToast(tr("ui.ItemsPage.045", { p1: def.name, p2: r.dropped.toLocaleString('zh-CN') }))
               setDiscardItem(null)
             }}

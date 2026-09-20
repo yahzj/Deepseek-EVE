@@ -50,7 +50,7 @@ import {
 } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk } from './common'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 // ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
 //    屏幕宽度不足时隐藏舰船图形）──
@@ -240,20 +240,20 @@ export function ShipPage({
   function handleSwitch(id: string): void {
     // 2026-09-15 起：星系扫描是无人扫描艇（不占主控、不牵动舰船）⇒ 换驾驶不再需要"先终止扫描"的确认
     const r = engine.changeShipAt(id)
-    if (!r.ok) onToast(r.error ?? '切换失败', true)
+    if (!r.ok) onToast(cmdText(r) || '切换失败', true)
     else flashSwitchPilot(id)
   }
 
   function handleRepair(id: string): void {
     const r = engine.repairShipAt(id)
-    if (!r.ok) onToast(r.error ?? '维修失败', true)
+    if (!r.ok) onToast(cmdText(r) || '维修失败', true)
     else onToast(tr("ui.ShipPage.153"))
   }
 
   /** T5：锁定/解锁（2026-09-14 起语义 = **防误移入舰船仓库**：舰队出售按钮已撤） */
   function handleToggleLock(id: string, currentlyLocked: boolean): void {
     const r = engine.lockShipAt(id, !currentlyLocked)
-    if (!r.ok) onToast(r.error ?? '操作失败', true)
+    if (!r.ok) onToast(cmdText(r) || '操作失败', true)
     else onToast(currentlyLocked ? tr("ui.ShipPage.123") : tr("ui.ShipPage.124"))
   }
 
@@ -268,7 +268,7 @@ export function ShipPage({
   function doStore(id: string, clearName: boolean): void {
     const r = engine.storeShipAt(id, clearName)
     setStoreConfirmId(null)
-    if (!r.ok) onToast(r.error ?? '移入舰船仓库失败', true)
+    if (!r.ok) onToast(cmdText(r) || '移入舰船仓库失败', true)
     else onToast(clearName ? tr("ui.ShipPage.125") : tr("ui.ShipPage.126"))
   }
 
@@ -279,7 +279,7 @@ export function ShipPage({
   }
   function submitRename(id: string, name: string | null): void {
     const r = engine.renameShipAt(id, name)
-    if (!r.ok) onToast(r.error ?? '改名失败', true)
+    if (!r.ok) onToast(cmdText(r) || '改名失败', true)
     else onToast(name === null ? tr("ui.ShipPage.127") : tr("ui.ShipPage.154", { p1: name.trim() }))
     setRenameId(null)
     setRenameDraft('')
@@ -324,13 +324,13 @@ export function ShipPage({
   }
   function doUnstore(defId: string): void {
     const r = engine.unstoreShipAt(defId)
-    if (!r.ok) onToast(r.error ?? '转入舰队失败', true)
+    if (!r.ok) onToast(cmdText(r) || '转入舰队失败', true)
     else onToast(tr("ui.ShipPage.155"))
   }
   function doSellStored(defId: string): void {
     const r = engine.sellStoredShipAt(defId)
     setStoreSellId(null)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
     else onToast(tr("ui.ShipPage.156"))
   }
 
@@ -614,7 +614,7 @@ export function ShipPage({
                       className="app-btn is-small"
                       onClick={() => {
                         const r = engine.useRepairKitNow()
-                        if (!r.ok) onToast(r.error ?? '使用修理组件失败', true)
+                        if (!r.ok) onToast(cmdText(r) || '使用修理组件失败', true)
                         else onToast(tr("ui.ShipPage.166"))
                       }}
                       title={tr("ui.ShipPage.025")}
@@ -1032,7 +1032,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
 
   function handleBuyCore(): void {
     const r = engine.buyBasicCoreAt()
-    if (!r.ok) onToast(r.error ?? '购买失败', true)
+    if (!r.ok) onToast(cmdText(r) || '购买失败', true)
     else onToast(tr("ui.ShipPage.171"))
   }
 
@@ -1044,7 +1044,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         return
       }
       const r = engine.startManufacturingAt(effCraftId, effCore)
-      if (!r.ok) onToast(r.error ?? 'AI 制造线开工失败', true)
+      if (!r.ok) onToast(cmdText(r) || 'AI 制造线开工失败', true)
       else onToast(tr("ui.ShipPage.173"))
       return
     }
@@ -1057,7 +1057,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
       const r = isWreck
         ? engine.startRecycleRunAt(selRefine.id, effCore)
         : engine.startRefineRunAt(selRefine.id, effCore)
-      if (!r.ok) onToast(r.error ?? 'AI 炉开工失败', true)
+      if (!r.ok) onToast(cmdText(r) || 'AI 炉开工失败', true)
       else
         onToast(
           isWreck
@@ -1076,7 +1076,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         : effMode === 'salvage'
           ? engine.assignAiSalvageAt(shipId, effCore, salvageGalaxyId)
           : engine.assignAiStandbyAt(shipId, effCore, standbyGalaxyId)
-    if (!r.ok) onToast(r.error ?? '指派失败', true)
+    if (!r.ok) onToast(cmdText(r) || '指派失败', true)
     else onToast(tr("ui.ShipPage.176"))
   }
 
@@ -1089,7 +1089,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   /** 停止站内工业 AI（炉/制造线）——与工业页卡片同一批引擎命令，核心自动归还 */
   function handleStopIndustry(runId: number, isMake: boolean): void {
     const r = isMake ? engine.cancelManufacturingAt(runId) : engine.stopRefineRunAt(runId)
-    if (!r.ok) onToast(r.error ?? '停止失败', true)
+    if (!r.ok) onToast(cmdText(r) || '停止失败', true)
     else onToast(isMake ? tr("ui.ShipPage.139") : tr("ui.ShipPage.140"))
   }
 

@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 function fmtTime(wallMs: number): string {
   return new Date(wallMs).toLocaleString('zh-CN', { hour12: false })
@@ -40,7 +40,7 @@ export function SaveManager({
     setBusy(true)
     const r = await engine.backupNow()
     setBusy(false)
-    if (!r.ok) onToast(r.error ?? '备份失败。', true)
+    if (!r.ok) onToast(cmdText(r) || '备份失败。', true)
     else {
       onToast(tr("ui.SaveManager.001", { p1: r.name ?? '' }))
       void refresh()
@@ -51,7 +51,7 @@ export function SaveManager({
     setBusy(true)
     const r = await engine.restoreBackup(name)
     setBusy(false)
-    if (!r.ok) onToast(r.error ?? '恢复失败。', true)
+    if (!r.ok) onToast(cmdText(r) || '恢复失败。', true)
     else {
       onToast(tr("ui.SaveManager.002", { name: name }))
       onClose()
@@ -64,7 +64,7 @@ export function SaveManager({
     const r = await engine.importSaveFromFile()
     setBusy(false)
     if (r.canceled) return
-    if (!r.ok) onToast(r.error ?? '导入失败。', true)
+    if (!r.ok) onToast(cmdText(r) || '导入失败。', true)
     else {
       onToast(tr("ui.SaveManager.003"))
       onClose()
@@ -77,7 +77,7 @@ export function SaveManager({
     const r = await engine.exportSaveToFile()
     setBusy(false)
     if (r.canceled) return
-    if (!r.ok) onToast(r.error ?? '导出失败。', true)
+    if (!r.ok) onToast(cmdText(r) || '导出失败。', true)
     else if (r.shared) onToast(tr("ui.SaveManager.004"))
     else onToast(r.path ? tr("ui.SaveManager.005", { p1: r.path }) : tr("ui.SaveManager.006"))
   }
@@ -88,7 +88,7 @@ export function SaveManager({
     const r = await engine.exportBackupToFile(name)
     setBusy(false)
     if (r.canceled) return
-    if (!r.ok) onToast(r.error ?? '导出失败。', true)
+    if (!r.ok) onToast(cmdText(r) || '导出失败。', true)
     else if (r.shared) onToast(tr("ui.SaveManager.007"))
     else onToast(r.path ? tr("ui.SaveManager.008", { p1: r.path }) : tr("ui.SaveManager.009"))
   }
@@ -103,7 +103,7 @@ export function SaveManager({
     setBusy(true)
     const r = await engine.deleteSaveBackup(name)
     setBusy(false)
-    if (!r.ok) onToast(r.error ?? '删除失败。', true)
+    if (!r.ok) onToast(cmdText(r) || '删除失败。', true)
     else {
       onToast(tr("ui.SaveManager.010", { name: name }))
       void refresh()

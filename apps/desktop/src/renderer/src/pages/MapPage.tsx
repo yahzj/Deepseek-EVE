@@ -43,7 +43,7 @@ import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
 export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul' | 'whscan'
@@ -273,7 +273,7 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
   function handleStart(beltId: string): void {
     // T4 延后项：远征中（确认后）走"取消远征再开采"转场入口
     const r = state.expedition.active ? engine.startMiningFromExpeditionAt(beltId) : engine.startMiningAt(beltId)
-    if (!r.ok) onToast(r.error ?? '无法开采', true)
+    if (!r.ok) onToast(cmdText(r) || '无法开采', true)
   }
 
   function handleStop(): void {
@@ -282,7 +282,7 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
 
   function handleAiAssign(beltId: string, shipId: string, coreType: AiCoreType): void {
     const r = engine.assignAiMiningAt(shipId, coreType, beltId)
-    if (!r.ok) onToast(r.error ?? '指派失败', true)
+    if (!r.ok) onToast(cmdText(r) || '指派失败', true)
     else onToast(tr("ui.MapPage.081"))
   }
 
@@ -715,7 +715,7 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
 
   function startAt(galaxyId: string): void {
     const r = engine.startSalvageOpAt(galaxyId)
-    if (!r.ok) onToast(r.error ?? '无法打捞', true)
+    if (!r.ok) onToast(cmdText(r) || '无法打捞', true)
   }
   function stopNow(): void {
     if (engine.stopSalvageOpNow()) onToast(tr("ui.MapPage.101"))
@@ -726,7 +726,7 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
       return
     }
     const r = engine.assignAiSalvageAt(shipId, coreType, galaxyId)
-    if (!r.ok) onToast(r.error ?? '指派失败', true)
+    if (!r.ok) onToast(cmdText(r) || '指派失败', true)
     else onToast(tr("ui.MapPage.103"))
   }
   function cancelAi(sid: string): void {

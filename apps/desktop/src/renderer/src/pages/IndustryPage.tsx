@@ -42,7 +42,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
 import { WRECK_SUBS, SUB_ALL, wreckTierOf } from '../ui/itemSubs'
-import { useL10n } from '../i18n/locale'
+import { useL10n, cmdText } from '../i18n/locale'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
@@ -144,7 +144,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         ? engine.startRecycleRunAt(def.id, worker)
         : engine.startRefineRunAt(def.id, worker)
     if (!r.ok) {
-      onToast(r.error ?? '启动失败。', true)
+      onToast(cmdText(r) || '启动失败。', true)
       return
     }
     const who = worker === 'pilot' ? tr("ui.IndustryPage.020") : tr("ui.IndustryPage.068", { p1: aiCoreName(worker) })
@@ -160,7 +160,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   }
   function stopRun(runId: number, hasClaim: boolean): void {
     const r = engine.stopRefineRunAt(runId)
-    if (!r.ok) onToast(r.error ?? tr('ui.IndustryPage.105'), true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.IndustryPage.105'), true)
     else if (hasClaim)
       onToast(tr("ui.IndustryPage.073"))
     else onToast(tr("ui.IndustryPage.074"))

@@ -44,7 +44,7 @@ import {
   fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -1510,7 +1510,7 @@ const meSpeedRef = useRef(200)
   const sliderToDesire = (v: number): number => Math.round(farM - (v / 1000) * (farM - nearM))
   const commitDesire = (v: number): void => {
     const r = engine.battleSetDesireAt(sliderToDesire(v))
-    if (!r.ok) onToast(r.error ?? '设置失败', true)
+    if (!r.ok) onToast(cmdText(r) || '设置失败', true)
   }
   /**
    * 拖动中：**节流提交**（把期望距离写进引擎，远征按星系记忆 / 洞内记在本趟），
@@ -1990,7 +1990,7 @@ const meSpeedRef = useRef(200)
                   }
                   setRetreatAsk(false)
                   const r = engine.retreatNow()
-                  if (!r.ok) onToast(r.error ?? '撤退失败', true)
+                  if (!r.ok) onToast(cmdText(r) || '撤退失败', true)
                 }}
               >
                 {retreatAsk ? tr("ui.ActivityBar.024") : tr("ui.BattleScreen.041")}

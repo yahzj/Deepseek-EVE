@@ -31,7 +31,7 @@ import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
-import { useL10n } from '../i18n/locale'
+import { useL10n, cmdText } from '../i18n/locale'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { tr } from '../i18n/locale'
@@ -82,7 +82,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       return
     }
     const r = engine.sellCargo(id, qty)
-    if (!r.ok) onToast(r.error ?? t('ui.CargoPage.019'), true)
+    if (!r.ok) onToast(cmdText(r) || t('ui.CargoPage.019'), true)
     else
       onToast(
         t('ui.CargoPage.021', {

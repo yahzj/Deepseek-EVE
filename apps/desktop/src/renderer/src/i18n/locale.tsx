@@ -163,9 +163,11 @@ export function logText(entry: {
 /**
  * 渲染一条 core 指令错误：**有 `errorId` ⇒ 按当前语言**；否则回退 `error`（中文原串）。
  *
- * 入参就是 `CommandResult` 本身（结构型：只要求这三个字段，无需运行时依赖 core）——
- * **core 目前仍只产出中文串**，所以渲染层那 ≈130 处 `onToast(r.error ?? '…')` 暂不改（等价、零风险）；
- * 等某文件改造成 id 后，那个文件的调用点换成 `cmdText(r) || '…'` 即可（逐个文件推进）。
+ * 入参就是 `CommandResult` 本身（结构型：只要求这三个字段，无需运行时依赖 core）。
+ * **全渲染层 105 处 toast 已于 2026-09-20 统一改成 `cmdText(r) || '…'`**：
+ * 有 id 的按语言取，没 id 的回退中文原串（与改前的 `r.error ?? '…'` 等价，零风险）。
+ * 新增调用点**一律写 `cmdText(r) || tr('ui.…')`**，不要再直接读 `r.error`——
+ * 那样会绕过 id，把 core 侧的甲案成果白扔。
  */
 export function cmdText(r: CmdTextSource): string {
   if (r.errorId !== undefined) return tr(r.errorId, resolveParamIds(r.errorParams))

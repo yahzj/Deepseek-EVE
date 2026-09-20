@@ -1121,6 +1121,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.CommsPage.009": { zh: "收件箱是空的——有新的消息会先让导航栏的「通讯」图标闪起来。", en: "The inbox is empty — new messages make the Comms icon in the nav bar flash first." },
   "ui.CommsPage.010": { zh: "已读", en: "Read" },
   "ui.CommsPage.011": { zh: "未读", en: "Unread" },
+  "ui.CommsPage.012": { zh: "标记已读失败。", en: "Could not mark as read." },
   "ui.CommsReader.001": { zh: "来信方", en: "From" },
   "ui.CommsReader.002": { zh: "送达", en: "Delivered" },
   "ui.CommsReader.003": { zh: "这封通讯的性质：提示只是指个方向，委托才是协会派下来的活", en: "What kind of message this is: a hint only points you in a direction, while a contract is real work handed down by the Association" },

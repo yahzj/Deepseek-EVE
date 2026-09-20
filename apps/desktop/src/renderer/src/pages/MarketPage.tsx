@@ -31,7 +31,7 @@ import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 const KIND_TEXT: Record<string, string> = {
   /**
@@ -757,7 +757,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
     }
     const n = Math.max(1, Math.floor(qty || 1))
     const r = engine.buyGoodAt(good.key, n)
-    if (!r.ok) onToast(r.error ?? '买入失败', true)
+    if (!r.ok) onToast(cmdText(r) || '买入失败', true)
     else onToast(tr("ui.MarketPage.148", { name: name, p2: n.toLocaleString('zh-CN') }))
   }
   function doSell(q?: number): void {
@@ -767,7 +767,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       return
     }
     const r = engine.sellHoldingAt(good.key, n)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
     else if (good.kind === 'ship') {
       // 舰船：即时成交的部分吃收购簿，其余**留簿挂着**（可撤销退回舰船仓库）——回执把两段都说清
       const filled = r.sold ?? 0
@@ -795,7 +795,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   function doSellAll(): void {
     setConfirmSell(null)
     const r = engine.sellHoldingAt(good.key, holdings)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
     else if (good.kind === 'ship') {
       const filled = r.sold ?? 0
       const rest = r.remaining ?? 0
@@ -832,7 +832,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       }
     } else {
       const r = engine.placeSellOrderAt(good.key, p, n)
-      if (!r.ok) onToast(r.error ?? '挂卖单失败。', true)
+      if (!r.ok) onToast(cmdText(r) || '挂卖单失败。', true)
       else onToast(`${placeOrderToast('卖' /* l10n-keep：同上 */, name, n, p, r.filled ?? 0, r.resting ?? n, unit)}。`)
     }
   }

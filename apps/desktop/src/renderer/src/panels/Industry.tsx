@@ -41,7 +41,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
-import { useL10n } from '../i18n/locale'
+import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
   BLUEPRINT_LEARN_TABS,
@@ -194,7 +194,7 @@ export function BlueprintShelfPanel({
 
   function handleLearn(blueprintId: string): void {
     const r = engine.learnBlueprintAt(blueprintId)
-    if (!r.ok) onToast(r.error ?? '学习失败', true)
+    if (!r.ok) onToast(cmdText(r) || '学习失败', true)
     else onToast(tr("ui.Industry.095"))
   }
 
@@ -205,7 +205,7 @@ export function BlueprintShelfPanel({
       return
     }
     const r = engine.sellHoldingAt(key)
-    if (!r.ok) onToast(r.error ?? '出售失败', true)
+    if (!r.ok) onToast(cmdText(r) || '出售失败', true)
     else onToast(tr("ui.Industry.097"))
   }
 
@@ -611,14 +611,14 @@ function BlueprintCard({
   /** 书已在书架（未学习）：就地学习——与「蓝图书架」的「学习」同一个引擎出口与话术（不花钱、不占制造位） */
   function handleLearnFromShelf(): void {
     const r = engine.learnBlueprintAt(blueprintId)
-    if (!r.ok) onToast(r.error ?? '学习失败', true)
+    if (!r.ok) onToast(cmdText(r) || '学习失败', true)
     else onToast(tr("ui.Industry.104"))
   }
 
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = engine.startManufacturingAt(blueprintId, worker)
     if (!r.ok) {
-      onToast(r.error ?? '开工失败', true)
+      onToast(cmdText(r) || '开工失败', true)
       return
     }
     onToast(
@@ -630,7 +630,7 @@ function BlueprintCard({
 
   function handleCancel(runId: number): void {
     const r = engine.cancelManufacturingAt(runId)
-    if (!r.ok) onToast(r.error ?? '取消失败', true)
+    if (!r.ok) onToast(cmdText(r) || '取消失败', true)
     else onToast(tr("ui.Industry.106"))
   }
 
@@ -665,7 +665,7 @@ function BlueprintCard({
     const n = Number.parseInt(goalText, 10)
     const goal = Number.isFinite(n) && n > 0 ? n : null
     const r = engine.setManufacturingLoopAt(blueprintId, on, on ? goal : null)
-    if (!r.ok) onToast(r.error ?? '开关操作失败', true)
+    if (!r.ok) onToast(cmdText(r) || '开关操作失败', true)
   }
 
   const feedTxt = short.length > 0 ? short.join('；') : ''

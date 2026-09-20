@@ -36,7 +36,7 @@ import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 /**
  * **「发现于 9月14日」**（船长 2026-09-14：卡片上不要相对时间，要日期）。
@@ -193,7 +193,7 @@ export function WormholeScanTab({
                 className="app-btn is-small"
                 onClick={() => {
                   const r = engine.wormholeScanStop()
-                  if (!r.ok) onToast(r.error ?? '停不了。', true)
+                  if (!r.ok) onToast(cmdText(r) || '停不了。', true)
                   else onToast(tr("ui.WormholeScan.047"))
                 }}
               >
@@ -206,7 +206,7 @@ export function WormholeScanTab({
                 title={blocked ?? tr("ui.WormholeScan.010")}
                 onClick={() => {
                   const r = engine.wormholeScanStart()
-                  if (!r.ok) onToast(r.error ?? '无法开扫。', true)
+                  if (!r.ok) onToast(cmdText(r) || '无法开扫。', true)
                   else onToast(tr("ui.WormholeScan.048"))
                 }}
               >
@@ -354,7 +354,7 @@ export function WormholeScanTab({
                           className="app-btn is-small is-warn"
                           onClick={() => {
                             const r = engine.wormholeStockDiscard(item.id)
-                            if (!r.ok) onToast(r.error ?? '放弃失败。', true)
+                            if (!r.ok) onToast(cmdText(r) || '放弃失败。', true)
                             else onToast(tr("ui.WormholeScan.051"))
                             setDiscardAsk(null)
                           }}
@@ -401,7 +401,7 @@ export function WormholeScanTab({
                         title={tr("ui.WormholeScan.030")}
                         onClick={() => {
                           const r = engine.wormholeAutoStop(run.id)
-                          if (!r.ok) onToast(r.error ?? '召回失败。', true)
+                          if (!r.ok) onToast(cmdText(r) || '召回失败。', true)
                           else onToast(tr("ui.WormholeScan.052"))
                         }}
                       >
@@ -476,7 +476,7 @@ export function WormholeScanTab({
                         className="app-btn is-small is-primary"
                         onClick={() => {
                           const r = engine.wormholeAutoConfirm(rep.id)
-                          if (!r.ok) onToast(r.error ?? '确认失败。', true)
+                          if (!r.ok) onToast(cmdText(r) || '确认失败。', true)
                         }}
                       >
                         {tr("ui.Handbook.014")}

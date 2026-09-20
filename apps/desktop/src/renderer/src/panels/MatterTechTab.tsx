@@ -25,7 +25,7 @@ import {
 import type { MatterTechBranch, MatterTechNodeDef } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
-import { useL10n } from '../i18n/locale'
+import { useL10n, cmdText } from '../i18n/locale'
 import { tr } from '../i18n/locale'
 
 /** 三条线（顺序 = 界面上从左到右；与数据表的 branch 值一一对应） */
@@ -197,7 +197,7 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
                         onClick={() => {
                           const r = engine.researchMatterTech(open.id)
                           if (r.ok) onToast(t("ui.MatterTechTab.019", { name: open.name }))
-                          else onToast(r.error ?? t("ui.MatterTechTab.020"), true)
+                          else onToast(cmdText(r) || t("ui.MatterTechTab.020"), true)
                         }}
                       >
                         {level >= open.maxLevel ? t("ui.SkillsPage.025") : t("ui.MatterTechTab.021", {

@@ -27,7 +27,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { isk } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 interface RouteCard {
   key: string
@@ -98,7 +98,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
 
   function startTo(aId: string | null, bId: string | null): void {
     const r = engine.startHaulingAt(aId, bId)
-    if (!r.ok) onToast(r.error ?? '无法开始运输。', true)
+    if (!r.ok) onToast(cmdText(r) || '无法开始运输。', true)
     else if (dockedOk && (docked === aId || docked === bId))
       onToast(tr("ui.Hauling.004"))
     else onToast(tr("ui.Hauling.005"))
@@ -106,7 +106,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
 
   function stopNow(): void {
     const r = engine.stopHaulingNow()
-    if (!r.ok) onToast(r.error ?? '停止失败。', true)
+    if (!r.ok) onToast(cmdText(r) || '停止失败。', true)
     else onToast(tr("ui.ActivityBar.050"))
   }
 

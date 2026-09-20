@@ -42,7 +42,7 @@ import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { MoneyFit } from './ui/MoneyFit'
-import { logText, tr } from './i18n/locale'
+import { cmdText, logText, tr } from './i18n/locale'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -1210,7 +1210,7 @@ export function App({ engine }: { engine: GameEngine }) {
                   title={tr("ui.App.079")}
                   onClick={() => {
                     const r = engine.fightEncounterNow()
-                    if (!r.ok) showToast(r.error ?? '无法应战', true)
+                    if (!r.ok) showToast(cmdText(r) || '无法应战', true)
                   }}
                 >
                   <span className="app-ico"><Glyph name="nav-bounty" size={14} color={NAV_TONES["nav-bounty"]} /></span>{tr("ui.App.080")}
@@ -1220,7 +1220,7 @@ export function App({ engine }: { engine: GameEngine }) {
                   title={tr("ui.App.081")}
                   onClick={() => {
                     const r = engine.fleeEncounterNow()
-                    if (!r.ok) showToast(r.error ?? '无法脱离', true)
+                    if (!r.ok) showToast(cmdText(r) || '无法脱离', true)
                   }}
                 >
                   <span className="app-ico"><Glyph name="ico-swap" size={14} color={ICO_TONES["ico-swap"]} /></span>{tr("ui.App.082")}

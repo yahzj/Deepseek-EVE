@@ -14,7 +14,7 @@
  */
 import type { ReactElement } from 'react'
 import type { GameEngine } from '../game/engine'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 export function RedeemFragmentButton({
   engine,
@@ -52,7 +52,7 @@ export function RedeemFragmentButton({
       title={tip}
       onClick={() => {
         const r = engine.redeemFragmentsAt(row.moduleId)
-        if (!r.ok) onToast(r.error ?? '逆向研究失败', true)
+        if (!r.ok) onToast(cmdText(r) || '逆向研究失败', true)
         else onToast(tr("ui.fragmentRedeem.006", { p1: row.blueprintName }))
       }}
     >

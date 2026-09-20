@@ -27,7 +27,7 @@ import { CommsDeviceFrame, CommsEave, CommsScreen } from '../panels/CommsReader'
 import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
-import { tr } from '../i18n/locale'
+import { cmdText, tr } from '../i18n/locale'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -67,7 +67,7 @@ export function CommsPage({
   useEffect(() => {
     if (!current || current.read) return
     const r = engine.markCommsReadAt(current.id)
-    if (!r.ok && r.error) onToast(r.error, true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.CommsPage.012'), true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, current?.read])
 
