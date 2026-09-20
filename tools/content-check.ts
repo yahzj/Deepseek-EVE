@@ -35,6 +35,7 @@ import {
   FOE_SHIPS,
   FOE_DRONES,
   RARITY_TIER,
+  OFF_MARKET_RARITY_TIER,
   SKILLS,
   DRONE_ROLE_SPECS,
   DRONE_ROLE_ANCHORS,
@@ -234,6 +235,9 @@ securityZoneOf,
   wreckGroupOfAnomaly,
   wreckItemIdOfCard,
   rareWreckItemIdOfCard,
+  // 2026-09-20 稀有度小标签批：残骸**物品 id** 由组键派生（`wreck-<键>` / `wreck-rare-<键>`）
+  wreckItemIdOfKey,
+  rareWreckItemIdOfKey,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -354,6 +358,41 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
     if (!refSet.has(k)) errors.push(`稀有度表多余键 ${k}（无对应市场卡）`)
     const v = RARITY_TIER[k]!
     check(Number.isInteger(v) && v >= 1 && v <= 5, `稀有度表 ${k} 值非法：${v}（应为 1~5 整数，2026-09-16 上沿 4 → 5）`)
+  }
+  /**
+   * **市场外档表契约**（2026-09-20 新增 · 图标模式稀有度小标签批）。
+   *
+   * `OFF_MARKET_RARITY_TIER` 装的是**没有市场行、也不该有**的物品（残骸 / 碎片）——
+   * 正因为它们不在市场表里，上一段那套"键集 = 市场卡全集"的护栏**管不到它** ⇒ 这里单独立三条，
+   * 防它悄悄漂成一张谁都能塞的野表：
+   * ① 值必须是 1~5 整数（与主表同语义）；
+   * ② **键必须真实存在**（防改名/删条目后留下死键）——注意物品 id 有**三族来源**，只查静态物品表会全判死键
+   *    （2026-09-20 首次跑就抓到两族）：
+   *    ① 静态物品表 `ITEMS` 的 id；② **碎片**（`frag-<moduleId>`，由 `FRAGMENT_RECIPES` 派生）；
+   *    ③ **残骸**（`wreck-<组键>` / `wreck-rare-<组键>`，由 `WRECK_GROUPS` 的组键派生）。
+   * ③ **与主表键集不得重叠**（同一 id 两张表各一个档 = 两套口径，查询会按主表优先而静默偏向一边）。
+   */
+  const offKeys = Object.keys(OFF_MARKET_RARITY_TIER)
+  const itemIds = new Set(itemDefs.map((d) => d.id))
+  for (const moduleId of Object.keys(FRAGMENT_RECIPES)) itemIds.add(fragmentItemIdOf(moduleId))
+  for (const g of WRECK_GROUPS) {
+    itemIds.add(wreckItemIdOfKey(g.key))
+    itemIds.add(rareWreckItemIdOfKey(g.key))
+  }
+  for (const k of offKeys) {
+    const v = OFF_MARKET_RARITY_TIER[k]!
+    check(Number.isInteger(v) && v >= 1 && v <= 5, `市场外档表 ${k} 值非法：${v}（应为 1~5 整数）`)
+    check(itemIds.has(k), `市场外档表 ${k} 不是任何物品的 id（改名/删除后留下的死键？）`)
+    check(!tableKeys.has(k), `市场外档档表 ${k} 与市场表（RARITY_TIER）**键重复**：同一物品两个档，查询会静默偏向市场表`)
+  }
+  check(offKeys.length > 0, '市场外档表为空（残骸/碎片的档应在此表）')
+  /** 反向：**残骸必须都有档**（它们的 id 不在市场里，漏配就永远没有标签 ⇒ 静默半成品） */
+  for (const d of itemDefs) {
+    if (d.kind !== 'wreck') continue
+    check(
+      OFF_MARKET_RARITY_TIER[d.id] !== undefined,
+      `残骸 ${d.id} 缺市场外档表项（残骸无市场行 ⇒ 不配档就永远不显示稀有度标签）`,
+    )
   }
   /**
    * **渠道 ↔ 数字档的允许带**（**2026-09-16 船长改判**：「**那么修正契约，rate现在允许2~4，

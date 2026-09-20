@@ -542,5 +542,76 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
 
 /** 查询：市场行 refId → 数字稀有度（表缺省 = 1；表外键由 content:check 强制不存在） */
 export function rarityTierOf(refId: string): number {
-  return RARITY_TIER[refId] ?? 1
+  return RARITY_TIER[refId] ?? OFF_MARKET_RARITY_TIER[refId] ?? 1
+}
+
+/**
+ * **市场外物品档表**（2026-09-20 船长：「给每个物品的图标模式右上角添加物品稀有度展示的小标签」）。
+ *
+ * 为什么单开一张（而不是并进 `RARITY_TIER`）：`RARITY_TIER` 被 `content:check` 的契约**锁死**为
+ * 「键集 = 市场卡全集」（`tableKeys.size === MARKET_GOODS.length` ＋ "多余键"判红）——
+ * 而下面这 24 条**根本没有市场行、也不该有**（残骸与碎片从不上架交易）：
+ * 硬塞进去要么违契约、要么得给它们造一堆无意义的市场卡（`basePrice = 1 · unreleased`）。
+ *
+ * ⚠ **不是第二套体系**：与 `RARITY_TIER` **同为 1~5 档、同一含义**，只是"不参与市场渠道"的那一段；
+ * 查询一律走单点 `rarityTierOf()`（先查市场表、再回落本表、最后缺省 1）⇒ 调用方不需要知道有两张表。
+ *
+ * 档位怎么定的（**首次分配，可由船长随时改**）：按"获得难度 × 稀缺度"给，锚在既有语义上——
+ *  - **4**：**高安**稀有残骸（高危窝点 S1 级产出，与"稀有订单顶档"同量级）；
+ *  - **3**：**低安 / 虫洞**稀有残骸（要进危险区才拿得到）· **MK3 蓝图碎片**（高阶装备的材料）；
+ *  - **2**：虫洞普通残骸（普通残骸里最难拿的一档）· **MK2 蓝图碎片**；
+ *  - **1**：高安/低安普通残骸（日常刷得到）。
+ */
+export const OFF_MARKET_RARITY_TIER: Readonly<Record<string, number>> = {
+  /* ── 稀有残骸（2026-09-19 船长：「将稀有残骸和普通残骸进行下区分」——界面已用稀有金图标，这里补档） ── */
+  'wreck-rare-a-hi': 4,
+  'wreck-rare-b-hi': 4,
+  'wreck-rare-d-hi': 4,
+  'wreck-rare-a-lo': 3,
+  'wreck-rare-c-lo': 3,
+  'wreck-rare-d-lo': 3,
+  'wreck-rare-e-lo': 3,
+  'wreck-rare-g-lo': 3,
+  'wreck-rare-a-wh': 3,
+  'wreck-rare-c-wh': 3,
+  'wreck-rare-d-wh': 3,
+  'wreck-rare-e-wh': 3,
+  'wreck-rare-g-wh': 3,
+  /* ── 普通残骸 ── */
+  'wreck-a-wh': 2,
+  'wreck-c-wh': 2,
+  'wreck-d-wh': 2,
+  'wreck-e-wh': 2,
+  'wreck-g-wh': 2,
+  /* ── 蓝图碎片（残骸回收彩头；集齐换永久蓝图 ⇒ 档随产物档次） ── */
+  'frag-mod-miner-2': 2,
+  'frag-mod-cargo-2': 2,
+  'frag-mod-turret-kin-2': 2,
+  'frag-mod-miner-3': 3,
+  'frag-mod-cargo-3': 3,
+  'frag-mod-turret-kin-3': 3,
+}
+
+/**
+ * **物品 id → 数字稀有度**（图标模式的小标签用；2026-09-20）。
+ *
+ * 为什么要这个函数而不是直接 `rarityTierOf(id)`：那张表的键**多数与物品 id 同形**
+ * （装备 `mod-*`、蓝图 `bp-*`/`sbp-*`、物品、AI 核心、36 艘舰船都是），但**有一处历史遗留**：
+ * **鲸王**在表里是**无前缀的 `whale-king`**（物品 id `sh-whale-king`、市场行 refId `ship-whale-king`
+ * ——三个名字各不相同）⇒ 去掉 `sh-` 再试一把才解得开。
+ *
+ * ⚠ **别把"市场 refId"当"物品 id"用**（2026-09-20 我在这里踩过一次）：市场里另有一批**可交易**的
+ * 同类行（如 AI 核心 `core-gamma` 的 refId 是 `gamma` 档 4），它与**洞内实物形态**的物品
+ * `ai-core-gamma`（主表档 1）**是两回事**。所以本函数**只做物品 id 的键形态适配**，
+ * 绝不把市场短名（`gamma`）套到物品 id 上——那会把洞内核心错标成 R4。
+ *
+ * ⚠ 返回 `undefined` = **查不到**（既非市场行、也不在市场外档表）⇒ 界面**不显示标签**，而不是硬塞一个 R1。
+ */
+export function itemRarityTierOf(itemId: string): number | undefined {
+  const direct = RARITY_TIER[itemId] ?? OFF_MARKET_RARITY_TIER[itemId]
+  if (direct !== undefined) return direct
+  // 唯一需要的键形态适配：舰船里的历史遗留（鲸王：主表键 `whale-king`，物品 id `sh-whale-king`）
+  const ship = /^sh-(.+)$/.exec(itemId)
+  if (ship) return RARITY_TIER[ship[1]!]
+  return undefined
 }
