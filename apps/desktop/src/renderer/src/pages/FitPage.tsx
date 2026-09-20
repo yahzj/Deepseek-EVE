@@ -124,7 +124,7 @@ function minus(n: number): string {
 function rawDpsOf(spec: UnitSpec): number {
   let sum = 0
   for (const w of spec.weapons) {
-    if (w.label === '基础舰炮') continue
+    if (w.label === '基础舰炮') continue // l10n-keep：武器形态联合 key（不是文案）
     const per = w.kind === 'gun' ? Object.values(w.shotsByType ?? {})[0] ?? 0 : (w.shotDmg ?? 0)
     sum += per / Math.max(0.1, w.reloadMs / 1000)
   }
@@ -420,7 +420,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function handleUnfit(rack: RackSlot, index: number): void {
     const r = engine.unfitAtAt(rack, index, effectiveTarget)
     if (r.ok) onToast(tr("ui.FitPage.129"))
-    else onToast(cmdText(r) || '卸下失败。', true)
+    else onToast(cmdText(r) || tr('ui.FitPage.165'), true)
   }
 
   // ── 装配方案（预设）：保存当前装配 / 套用预设（2026-09-14 船长；入口在「装配目标」栏右侧） ──
@@ -442,7 +442,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function handleSavePreset(): void {
     const r = engine.saveFitPresetFor(effectiveTarget)
     if (!r.ok) {
-      onToast(cmdText(r) || '保存失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.166'), true)
       setPresetOpen(true)
       return
     }
@@ -454,7 +454,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function handleApplyPreset(index: number): void {
     const r = engine.applyFitPresetAt(effectiveTarget, index)
     if (!r.ok) {
-      onToast(cmdText(r) || '套用失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.167'), true)
       return
     }
     setPresetOpen(false)
@@ -467,7 +467,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     if (!presetRename) return
     const r = engine.renameFitPresetAt(presetDefId, presetRename.index, presetRename.name)
     if (!r.ok) {
-      onToast(cmdText(r) || '改名失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.168'), true)
       return
     }
     onToast(tr("ui.FitPage.131"))
@@ -482,7 +482,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const r = engine.overwriteFitPresetAt(effectiveTarget, index)
     setPresetReplaceAt(null)
     if (!r.ok) {
-      onToast(cmdText(r) || '替换失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.169'), true)
       return
     }
     setPresetDetailAt(null) // 内容变了：收起旧明细，下次展开重算
@@ -493,7 +493,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function handleDeletePreset(index: number): void {
     const r = engine.deleteFitPresetAt(presetDefId, index)
     if (!r.ok) {
-      onToast(cmdText(r) || '删除失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.170'), true)
       return
     }
     setPresetRename(null)
@@ -504,7 +504,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function handleUnfitAll(): void {
     const r = engine.unfitAllFor(effectiveTarget)
     if (!r.ok) {
-      onToast(cmdText(r) || '卸下失败。', true)
+      onToast(cmdText(r) || tr('ui.FitPage.165'), true)
       return
     }
     if (r.removed > 0) onToast(tr("ui.FitPage.134", { p1: r.removed }))
@@ -624,7 +624,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const { rack, index } = pickBay
     const had = (fitted?.[rack]?.[index] ?? null) !== null
     const r = engine.swapModuleTo(m.id, rack, index, effectiveTarget)
-    if (!r.ok) onToast(cmdText(r) || '装配失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.171'), true)
     else onToast(tr("ui.FitPage.136", { p1: m.name, p2: had ? tr("ui.FitPage.022") : tr("ui.FitPage.023"), p3: rackLabel(rack), p4: index + 1 }))
     setPickBay(null)
   }
@@ -771,7 +771,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               lines={[
                 ...shipInfoLines(shipDef).filter(
                   (l) =>
-                    l.k !== '槽位' &&
+                    l.k !== '槽位' && // l10n-keep：这几条是 core shipInfoLines 的中文标签 key（比较用，非文案）
                     l.k !== '采集性能' &&
                     l.k !== '货舱容量' &&
                     l.k !== 'CPU' && // 上限已由右栏「CPU 剩余」条显示（含技能加成），表格不重复
@@ -1300,7 +1300,7 @@ function AmmoTierSection({
             className={`app-fit-ammotier-opt${!onMk2 ? ' is-active' : ''}`}
             onClick={() => {
               const r = engine.setAmmoTierAt(type, null, target)
-              if (!r.ok) onToast(cmdText(r) || '设置失败', true)
+              if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
             }}
             title={tr("ui.FitPage.154", { baseName: baseName, baseName2: baseName })}
           >
@@ -1310,7 +1310,7 @@ function AmmoTierSection({
             className={`app-fit-ammotier-opt${onMk2 ? ' is-active' : ''}`}
             onClick={() => {
               const r = engine.setAmmoTierAt(type, mk2.id, target)
-              if (!r.ok) onToast(cmdText(r) || '设置失败', true)
+              if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
             }}
             title={tr("ui.FitPage.155", { p1: mk2.name, p2: mk2.dmg ?? '?', p3: base?.dmg ?? '?', haveMk2: haveMk2 })}
           >
@@ -1334,7 +1334,7 @@ function AmmoTierSection({
             <>
               {' · '}
               <span className="app-fit-ammotier-warn">
-                ⚠ {pref ? ctx.items.get(pref)?.name ?? '所选档' : tr("ui.FitPage.091")}{tr("ui.FitPage.092")}{effName}
+                ⚠ {pref ? ctx.items.get(pref)?.name ?? tr('ui.FitPage.173') : tr("ui.FitPage.091")}{tr("ui.FitPage.092")}{effName}
               </span>
             </>
           ) : null}
@@ -1395,7 +1395,7 @@ function DroneBaySection({
 
   function adj(id: string, delta: number): void {
     const r = engine.adjustDroneLoadAt(id, delta, target)
-    if (!r.ok) onToast(cmdText(r) || '操作失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.393'), true)
   }
   function clearAll(): void {
     for (const [id, n] of Object.entries(load)) adj(id, -n)
