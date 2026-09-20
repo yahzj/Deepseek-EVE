@@ -223,7 +223,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       )
       const mineralTip =
         tr("ui.IndustryPage.083", { RECYCLE_BATCH_M3: RECYCLE_BATCH_M3 }) +
-        `单位数 = 该价值 ÷ 单价——单价高的原材料每批不足 1 单位会累计到够 1 再入库；每批总价值有 ±10% 抖动，以回收拆解结算为准。` +
+        tr('ui.IndustryPage.113') +
         (profile.note ? tr("ui.IndustryPage.084", { p1: profile.note }) : '')
       econ = (
         <div className="app-belt-econ">

@@ -81,7 +81,7 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
   const run = (r: { ok: boolean; error?: string; errorId?: string; errorParams?: Record<string, string | number> } | boolean, okText: string): void => {
     const ok = typeof r === 'boolean' ? r : r.ok
     // 甲案：错误串优先按 id 取当前语言（`cmdText` 没 id 时回退中文原串）
-    if (!ok) onToast((typeof r === 'object' && (cmdText(r) || r.error)) || '操作失败。', true)
+    if (!ok) onToast((typeof r === 'object' && (cmdText(r) || r.error)) || tr('ui.ActivityBar.061'), true)
     else onToast(okText)
   }
   switch (v.stop) {
