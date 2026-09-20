@@ -144,6 +144,9 @@ export function canStartBlueprint(state: GameState, ctx: SimContext, blueprintId
 /**
  * **吃掉一本一次性书**并把名额记为已用尽（开工那一刻调用，与材料扣除同源）。
  * 返回 false = 书架已无书（调用方应视为开工失败）。
+ *
+ * ⚠ **取消时会原样还回来**（2026-09-20 船长：「一次性蓝图的制造取消后返还玩家蓝图」）
+ * ⇒ 退书必须走 `refundOneTimeBook`，把"书"与"名额标记"**一起**恢复，否则书回来了仍判 `exhausted`。
  */
 function spendOneTimeBook(state: GameState, blueprintId: string): boolean {
   const c = state.blueprintStock[blueprintId] ?? 0
@@ -152,6 +155,24 @@ function spendOneTimeBook(state: GameState, blueprintId: string): boolean {
   else state.blueprintStock[blueprintId] = c - 1
   const spent = (state.spentOneTimeRecipes ??= [])
   if (!spent.includes(blueprintId)) spent.push(blueprintId)
+  return true
+}
+
+/**
+ * **退还一本一次性书**（取消制造时调用，与 `spendOneTimeBook` 严格互逆）。
+ *
+ * 两步都要做，缺一不可：
+ * ① 书回蓝图书架（`blueprintStock +1`）；
+ * ② 从 `spentOneTimeRecipes` 里摘掉 ⇒ **恢复"名额未用尽"**。
+ *    只做 ① 的话 `recipeCapability` 仍返回 `exhausted`（判据是那个标记），书回来了也开不了工。
+ *
+ * 幂等：不在标记表里就什么都不做（重复调用不会凭空造书）。
+ */
+function refundOneTimeBook(state: GameState, blueprintId: string): boolean {
+  const spent = state.spentOneTimeRecipes ?? []
+  if (!spent.includes(blueprintId)) return false
+  state.spentOneTimeRecipes = spent.filter((id) => id !== blueprintId)
+  state.blueprintStock[blueprintId] = (state.blueprintStock[blueprintId] ?? 0) + 1
   return true
 }
 
@@ -298,7 +319,9 @@ export function startManufacturing(
     removeWare(state, need.itemId, matNeedCount(state, need.count))
   }
   // 一次性图纸：**开工那一刻吃掉这本书**（船长裁定「3甲」，与材料同源）；
-  // 取消/失败**不退还**（书代表"一次制造资格"，材料才是可退的投入）
+  // ⚠ 2026-09-20 船长改判：「一次性蓝图的制造取消后返还玩家蓝图」
+  //   ⇒ 取消时**书与名额一起退还**（见 `cancelManufacturing` / `refundOneTimeBook`）；
+  //   完工仍照旧 = 书已兑现成产物、不退（那才是"只能制造一次"的落点）。
   if (cap.consumeBook && !spendOneTimeBook(state, blueprintId)) {
     return { ok: false, error: '一次性图纸不在蓝图书架：请先获得这张图纸。' }
   }
@@ -310,6 +333,8 @@ export function startManufacturing(
     worker,
     finishAtGameMs: state.gameMs + durationMs,
     durationMs,
+    // 记下"这一线确实扣了一本一次性书" ⇒ 取消时据此只退这一本（显式记账，不靠事后推断）
+    ...(cap.consumeBook ? { bookSpent: true } : {}),
   })
   const productName = productNameOf(ctx, buildable, blueprintId)
   addLog(
@@ -324,6 +349,11 @@ export function startManufacturing(
  * 玩家指令：取消指定的制造线（v21 按线号定位；T1 活动窗口统一停止）。
  * 材料按蓝图清单全额退回物品仓库（2026-09-08 起开工不收取制造费，无退费一说）；
  * 产物不产生；AI 核心驱动的线取消时核心归还核心库（旧作业无线可退）。
+ *
+ * **一次性图纸一并退还**（2026-09-20 船长：「一次性蓝图的制造取消后返还玩家蓝图」）：
+ * 只要这一线开工时**确实扣了书**（`mf.bookSpent`，未完工就能取消、不分进度），
+ * 就把书与"名额"一起还回去 ⇒ 玩家可以换张卡/换条线重来，不必因为点错一次就损失一张稀缺图纸。
+ * **完工不适用**：跑完的线已不在在跑列表里，书已兑现成产物（那才是"只能制造一次"的落点）。
  */
 export function cancelManufacturing(state: GameState, ctx: SimContext, runId: number): CommandResult {
   const idx = state.manufacturingRuns.findIndex((r) => r.id === runId)
@@ -332,6 +362,11 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
   const buildable = mf.blueprintId ? findBuildable(ctx, mf.blueprintId) : null
   const productName = buildable ? productNameOf(ctx, buildable, mf.blueprintId ?? '') : (mf.blueprintId ?? '')
   if (mf.worker !== undefined && mf.worker !== 'pilot') releaseAiCore(state, mf.worker)
+  /**
+   * **退书**（2026-09-20 船长）——只认 `mf.bookSpent`（本线确实扣过书），不靠事后推断：
+   * 推断（`isSingleUseBlueprint` ＋ 查标记表）在"同名书存量 > 1、且其中一次已完工"时会多退。
+   */
+  const bookBack = mf.bookSpent === true && mf.blueprintId !== null && refundOneTimeBook(state, mf.blueprintId)
   if (buildable) {
     // 退回 = 开工时实际扣除的数量（含材料学折扣），不多退
     for (const need of buildable.spec.materials) {
@@ -341,7 +376,7 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
       state,
       'info',
       `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）` +
-        (mf.blueprintId && isSingleUseBlueprint(ctx, mf.blueprintId) ? '；⚠ 该一次性图纸开工时已消耗，取消不退。' : '。'),
+        (bookBack ? '；一次性图纸已退回蓝图书架（名额同时恢复，可再次开工）。' : '。'),
     )
   } else {
     addLog(state, 'warn', '制造作业已取消（引用的蓝图记录缺失，无材料可退）。')
