@@ -26,6 +26,11 @@ contextBridge.exposeInMainWorld('whale', {
   /** 弹出系统保存对话框，把存档文本写到用户指定位置（导出用；取消 → { ok:false, canceled:true }） */
   exportSaveToFile: (text: string): Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('save:export-to-file', text),
+  /**
+   * 把当前语言推给主进程（2026-09-20）：窗口标题与"导入/导出"系统对话框在主进程生成，
+   * 而语言偏好存在渲染进程的 `localStorage` ⇒ 主进程读不到，只能由渲染层推。
+   */
+  setLocale: (locale: 'zh' | 'en'): Promise<boolean> => ipcRenderer.invoke('l10n:set-locale', locale),
 })
 
 // 性能自动采集（2026-09-08 诊断工具）：主进程环境变量 WHALE_AUTOPERF 注入场景 JSON；

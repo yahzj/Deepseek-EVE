@@ -7,6 +7,23 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
+import { L10N } from '@whale/data'
+
+/* ───────── 主进程本地化（2026-09-20 三号：补上工具扫描盲区） ─────────
+ * 口径与渲染层同源：**文案一律从唯一表 `@whale/data` 的 `L10N` 取 id**。
+ * 为什么语言要由渲染层推送：语言偏好存在渲染进程的 `localStorage`（`whale-idle:locale`），
+ * 主进程读不到 ⇒ 渲染层启动/切语言时 `ipcRenderer.invoke('l10n:set-locale')` 推一次。
+ * 时机安全：窗口标题与系统对话框都是**运行期才建**的，推送晚到不影响（启动瞬间默认中文）。
+ * ⚠ 主进程的 tsconfig 不含 DOM 类型，这里不引渲染层的 `i18n/locale`（那是 React 模块）。 */
+let mainLocale: 'zh' | 'en' = 'zh'
+
+/** 主进程取文案（缺 id ⇒ 返回 id 本身，与渲染层同口径） */
+function t(id: string, params?: Record<string, string | number>): string {
+  const e = L10N[id]
+  const raw = e ? (mainLocale === 'zh' ? e.zh : e.en) : id
+  if (!params) return raw
+  return raw.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m))
+}
 
 /** 存档文件名（放在系统用户数据目录，卸载重装游戏也不丢） */
 const SAVE_FILE_NAME = 'save.json'
@@ -106,7 +123,7 @@ function registerSaveHandlers(): void {
 
   // 读取某份备份的内容（界面先校验"能解析"再决定恢复）
   ipcMain.handle('save:read-backup', async (_event, name: unknown) => {
-    if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: '非法的备份文件名。' }
+    if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: t('ui.main.011') }
     try {
       const text = await fs.readFile(join(app.getPath('userData'), name), 'utf8')
       return { ok: true, text }
@@ -118,7 +135,7 @@ function registerSaveHandlers(): void {
   // 恢复：用目标备份原子覆盖当前档（⚠ 2026-09-17 船长：「导入或者恢复存档时，不要备份现有存档」
   // ⇒ 这里**不再**自动 `backupCurrentSave()`；要留退路请先手动点「备份当前档」）
   ipcMain.handle('save:restore', async (_event, name: unknown) => {
-    if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: '非法的备份文件名。' }
+    if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: t('ui.main.011') }
     try {
       const dir = app.getPath('userData')
       const text = await fs.readFile(join(dir, name), 'utf8')
@@ -134,7 +151,7 @@ function registerSaveHandlers(): void {
 
   // 删除某份备份（2026-09-08 船长定：玩家可清理备份；只删备份文件，不影响当前档）
   ipcMain.handle('save:delete-backup', async (_event, name: unknown) => {
-    if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: '非法的备份文件名。' }
+    if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: t('ui.main.011') }
     try {
       await fs.unlink(join(app.getPath('userData'), name))
       return { ok: true }
@@ -148,9 +165,9 @@ function registerSaveHandlers(): void {
   /** 弹出文件选择框 → 读取所选 .json 存档文本（解析/校验由界面层做） */
   ipcMain.handle('save:pick-import', async () => {
     const opts: Electron.OpenDialogOptions = {
-      title: '选择要导入的存档文件',
-      buttonLabel: '导入此存档',
-      filters: [{ name: '存档 JSON', extensions: ['json'] }],
+      title: t('ui.main.012'),
+      buttonLabel: t('ui.main.013'),
+      filters: [{ name: t('ui.main.014'), extensions: ['json'] }],
       properties: ['openFile'],
     }
     const win = BrowserWindow.getAllWindows()[0]
@@ -158,23 +175,23 @@ function registerSaveHandlers(): void {
     if (r.canceled || r.filePaths.length === 0) return { ok: false, canceled: true }
     try {
       const text = await fs.readFile(r.filePaths[0]!, 'utf8')
-      if (text.length > 10 * 1024 * 1024) return { ok: false, error: '文件过大（超过 10MB），不像是本游戏存档。' }
+      if (text.length > 10 * 1024 * 1024) return { ok: false, error: t('ui.main.005') }
       return { ok: true, text }
     } catch (err) {
-      return { ok: false, error: `读取文件失败（${String(err)}）。` }
+      return { ok: false, error: t('ui.main.006', { p1: String(err) }) }
     }
   })
 
   /** 弹出保存对话框 → 把存档文本写到用户指定位置（原子写：tmp + 改名） */
   ipcMain.handle('save:export-to-file', async (_event, data: unknown) => {
     if (typeof data !== 'string' || data.length > 10 * 1024 * 1024) {
-      return { ok: false, error: '非法的存档文本。' }
+      return { ok: false, error: t('ui.main.007') }
     }
     const opts: Electron.SaveDialogOptions = {
-      title: '导出存档到…',
-      buttonLabel: '导出',
+      title: t('ui.main.008'),
+      buttonLabel: t('ui.main.009'),
       defaultPath: join(app.getPath('userData'), `${backupStamp()}.json`),
-      filters: [{ name: '存档 JSON', extensions: ['json'] }],
+      filters: [{ name: t('ui.main.014'), extensions: ['json'] }],
     }
     const win = BrowserWindow.getAllWindows()[0]
     const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
@@ -185,8 +202,15 @@ function registerSaveHandlers(): void {
       await fs.rename(tmp, r.filePath)
       return { ok: true, path: r.filePath }
     } catch (err) {
-      return { ok: false, error: `写入文件失败（${String(err)}）。` }
+      return { ok: false, error: t('ui.main.010', { p1: String(err) }) }
     }
+  })
+
+  /** 语言由渲染层推送（偏好存在渲染进程的 localStorage，主进程读不到）。
+   *  只收 'zh' | 'en'，其余一律忽略；推送时机见 `i18n/locale.tsx` 的 `L10nProvider`。 */
+  ipcMain.handle('l10n:set-locale', (_event, locale: unknown) => {
+    if (locale === 'zh' || locale === 'en') mainLocale = locale
+    return true
   })
 }
 
@@ -201,7 +225,7 @@ function createWindow(): void {
     autoHideMenuBar: true,
     backgroundColor: '#05080d',
     // 窗口标题 = 游戏名（2026-09-11 船长：「将游戏的名称改为大鲸鱼-深空放置」）
-    title: '大鲸鱼-深空放置',
+    title: t('ui.App.056'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

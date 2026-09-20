@@ -4,29 +4,40 @@
 > 工作文档（过程记录与分期）：`docs/design/l10n-en-20260919.md` · 术语权威：`docs/glossary-en.md`。
 > 本卡只讲**怎么接着干**：状态 · 流程 · 坑 · 剩余 · 验收。
 
-## 0. 30 秒速览（**2026-09-20 三号复核后刷新——原 §1/§3 读数已过期**）
+## 0. 30 秒速览（**2026-09-20 三号收尾后刷新——§1/§3 旧读数已作废**）
 
 | 项 | 值 |
 |---|---|
 | 分支 | `verify40`（三号工作树 `H:\大鲸鱼\Deepseek-EVE-verify`）；**已并 main 至 `bad7601e`**（2026-09-20 并，52 条） |
-| 纪律 | **船长令：翻译全部完成前不合入 main**（只本地提交）；main 侧由一号维护 |
-| 唯一表 | `packages/data/src/l10n/table.ts` —— **2,912 条**（`id → { zh, en }`） |
-| 接线 | 渲染层 `t()`/`tr()` 调用点 **≈3,495 处**（63 个源文件） |
-| 剩余读数 | 渲染层含中日韩字面量 **251 条**（2026-09-20 实测；界面批开工前 323） |
-| 未做 | **core 引擎文案 ≈617 处**（`addLog(` 316 · `error: '中文'` 301）· **主进程文案 ≈10 处** · **P4 逐页溢出读数表** |
-| 已验证 | typecheck 四包 0 错 · core 用例全绿 · `content:check` · `ui:rot-check` · `build` · `docs:index --check` 全绿 |
+| 纪律 | **船长令：全完成后不合入 main、不推送**（只本地提交）；main 侧由一号维护 |
+| 唯一表 | `packages/data/src/l10n/table.ts` —— **3,773 条**（core 734 · ui 3,039） |
+| 接线 | 渲染层 `t()`/`tr()` 调用点 **≈3,747 处** |
+| **core 甲案** | **已完成** —— `textId`/`errorId` 引用 **803 处**，全部在表内、形态合规（无遗漏调用点） |
+| 剩余读数 | 渲染层含中日韩字面量 **67 条** —— **全部是"中文当键"的数据**（联合 key / 形状槽键 / 键表 label / 探针 / i18n 实现自身），**无玩家可见漏译**；逐条见 §3② |
+| 未做 | **主进程 / 预加载文案 ≈10 处**（渲染层工具扫不到）· **P4 逐页溢出读数表**（船长要的交付物）· 67 条键类的"改 id"重构（属重构非翻译，需船长点头） |
+| 已验证 | typecheck 四包 0 错 · core **1907** 用例全绿 · `l10n:check` · `content:check` · `ui:rot-check` · `build` · `docs:index --check` 全绿 |
 
-## 0.1 2026-09-20 三号这一轮做了什么（下次接手先看这段）
+## 0.1 2026-09-20 三号收尾轮做了什么（下次接手先看这段）
 
-1. **并 main（卡 §8 第一件事）**：52 条，12 处冲突 / 27 个冲突块，口径「保留 ID 制、采纳对方结构」。
-   顺带**删掉 main 侧旧词典制残留** `i18n/dict.en.ts`（我方 P1b 已废止该机制）；补 18 条新造表项；
-   4 处旧写法 `t('中文')` → `tr(id)`。提交 `90d2cf01`。
-2. **界面批第一块：虫洞面板**（原 51 条未译 → 0）。提交 `0bd77d0e`。
-   ⚠ **方法学（下次照做）**：剩余未译**绝大多数是"被 `{}` 切碎的 JSX 文本断片"**
-   （`<span>第 <b>{n}</b> 层</span>` 这种），正式两件套**不覆盖这类**——
-   要「读源码 → 整段替换成 `tr(id, {参数})` → 补表」手工做；断片必须**并回整句**再翻
-   （例：`第 {n} 层` 一条、`共 {n} · 抛弃 {x}` 一条），否则英文语序会错位。
-3. 顺手做了**表去重自检**（重复键 0 · BOM 无 · 往返解码乱码 0）——⚠ 手工插条目极易撞号/重复，改完必查。
+1. **core 引擎文案甲案全部落地**（本卡 §3① 那块 = 原 ≈617 处）：市场/长途运输/扫描/炉子停机/
+   训练队列/虫洞战报/事件表 82 条正文 …… 逐文件迁移，`textId`/`errorId` 到 **803 处引用**。
+2. **新增三条甲案机制**（都写进代码注释）：
+   - `composeLog(lead, segs, firstSegNo)`（`packages/core/src/logParts.ts`）：多段可空尾巴拼装 +
+     段内递归子段（`p{n}` → `p{n}p{k}` → …），与渲染层 `composeParts` 命名空间逐层对齐；
+     `firstSegNo` 解决"基础模板已占 `p1…pN` 时段链抢槽"。
+   - **多段链不能有空段**（空 id 会把后面整段丢掉）⇒ 空态另立基础模板，或让上一段留 `{pN}` 槽。
+   - **两步渲染**（`pNId`）：段的内容本身要翻译时，先译好再当参数喂进外层。
+3. **渲染层总开关**（关键发现）：core 侧 id 早已落位，但**渲染层 130 余处 toast 仍直接读 `r.error`**
+   ⇒ 甲案在界面上等于没生效。已统一改 `cmdText(r) || tr('ui.…')`（**105 处 + 手工 2 处**）。
+   **新调用点一律这么写，禁直接读 `r.error`。**
+4. **界面批**：未译 323 → 251 → **67**（本轮从 204 起，逐页消化了 ShipPage / Industry / FitPage /
+   MarketPage / WormholeScan / Wormhole / MapPage / ItemsPage / SaveManager / Expedition / shipInfo /
+   Hauling / wreckFlavor / CargoPage / engine / BattleScreen / App + 九个小文件）。
+5. **新增正式工具 `tools/l10n-list.ts`（`npm run l10n:list -- <文件…>`）**：与 `l10n:check` 同一条 AST
+   判据，**逐条列出**未译的行号与文本（check 只打 Top 10 汇总）。界面批逐页消化靠它。
+6. **虫洞敌情做透（唯一动 core 的界面项）**：族称/三档名/伤害名/主系一句话原本是 core 拼的中文 ⇒
+   core 出 `WORMHOLE_FAMILY_ETHNIC_IDS`/`DAMAGE_TYPE_LABEL_IDS` + 结构化 `primaryKind/primaryTypeA/B`，
+   渲染层组句；探针实测英文整句零残留。
 
 ## 1. 接手先跑这 6 条（确认现状，别凭记忆）
 
@@ -34,8 +45,9 @@
 cd H:\大鲸鱼\Deepseek-EVE-verify
 git log --oneline -3                      # 应为三号 2026-09-20 的本地提交
 npm run typecheck                         # 四包 0 错
-npm run test -w @whale/core               # 全绿
-npm run l10n:check                        # 表 2912 · 未译 251（报告口径不阻断）
+npm run test -w @whale/core               # 1907 用例全绿
+npm run l10n:check                        # 表 3773（core 734 · ui 3039）· core 引用 803 · 未译 67（报告口径不阻断）
+npm run l10n:list -- <某文件>              # 逐条列未译（界面批逐页消化用这个）
 npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:index -- --check
 ```
 
@@ -58,28 +70,35 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
   - `npm run l10n:wrap`：AST 批量接线器（造 id + 写表 + 改源码）；
   - `npm run l10n:check`：体检器（ID 不变量 + 未译读数），是**闸门**。
 
-## 3. 剩余四件事（按优先级）
+## 3. 剩余事项（按优先级）
 
-### ① core 引擎文案 ≈617 处（最大一块，**开工前需船长定口径**）
+### ① core 引擎文案 —— ✅ **已完成**（2026-09-20 三号收尾）
 
-- 位置：`packages/core/src/*.ts` —— `addLog('中文…')` **316** 处 · 命令错误 `error: '中文…'` **301** 处。
-- 建议口径（**待船长确认**）：**core 只产出「文案 id + 参数」**，渲染层按当前语言渲染
-  ⇒ core 与语言解耦、老档日志仍保持中文（船长已定），新日志跟语言。
-- 若改口径 ⇒ 属系统级改动，**走四步闸门**（集中提问 → 中文设计总结 → 等确认 → 再实现）。
-- 备选（更省事但有代价）：只翻"命令错误串"（301 处，界面直接显示），日志文案留中文——需船长点头。
+- 口径（船长已定**甲案**）：**core 只产出「文案 id + 参数」**，渲染层按当前语言渲染 ⇒ core 与语言解耦。
+- 现状：`textId` / `errorId` 引用 **803 处**，`l10n:check` 核过**全部在表内、形态合规**；
+  `packages/core/src` 里已无"只走中文"的玩家可见日志/错误串。
+- 落地的三条机制与两条硬规矩见 §0.1-2；新写 core 日志**照抄同文件邻居的写法**即可。
+- ⚠ 老档日志仍保持中文（船长已定）——`normalizeState` 容忍缺 `textId`，渲染层回退中文原串，别改成回退 id。
 
-### ② 渲染层碎片 / 漏项（**2026-09-20 实测：251 条**，方法已跑通）
+### ② 渲染层碎片 / 漏项 —— **67 条，且全部不是漏译**（2026-09-20 收尾实测）
 
-- 分布（前六）：`panels/Expedition.tsx` **54** · `pages/ShipPage.tsx` **26** · `panels/Industry.tsx` **24** ·
-  `pages/FitPage.tsx` **17** · `pages/MarketPage.tsx` **16** · `panels/MapPage.tsx` **9**；
-  其余散在 `WormholeScan` / `Glyphs` / `itemSubs` / `shipInfo` / `wreckFlavor` / `wormholeIntel` / `App` / `engine` 等。
-- ⚠ **这类就是卡 §0.1-2 说的「JSX 文本断片」**：`npx tsx tools/l10n-wrap.ts` 只报 13 处可自动包，
-  剩下 200+ 全要**手工整句替换**（断片并回整句再翻）。别再指望工具批处理。
-- 已做完的样板：`panels/Wormhole.tsx`（51 → 0，提交 `0bd77d0e`）——照它的改法做下一批即可。
-- 逐文件清单做法（探针不入仓，用完即删）：用 TS AST 列 `StringLiteral` + `JsxText` 里含中日韩的节点
-  （判据与 `tools/l10n-check.ts` 同），或直接读 `l10n:check` 的 Top 10 表。
-- ⚠ **手工插条目必做三条自检**：同 id 不重复（TS1117 会报）· 不撞号（先查该段最大号）·
-  中英 `{占位符}` 集合一致（体检器会报）。
+> 这批**不建议再翻**：它们是"中文当键"的数据，翻成英文反而会让键与内容层对不上。
+> 逐条已加 `l10n-keep` 或口径注释。要清零得**改数据结构**（属重构，需船长点头）。
+
+| 文件 | 条 | 是什么 |
+|---|---|---|
+| `ui/Glyphs.tsx` | 10 | 技能组**形状槽键/色表键**（`group-舰船` …）：后缀必须对齐内容层技能组名才查得到图 |
+| `ui/itemSubs.ts` | 10 | 筛选**键表 `label`**：渲染处走 `tr(id)`，`label` 是键不是文案 |
+| `pages/ShipPage.tsx` | 9 | `CraftOption.group` **联合类型 key**（装备/舰船/消耗品蓝图） |
+| `panels/Industry.tsx` | 7 | `kindLabel`（`'舰船'/'装备'/'消耗品'`）**比较用键** |
+| `pages/MarketPage.tsx` | 7 | `placeOrderToast` 的 `'买' | '卖'` key + `unit='件'` 默认值 |
+| `pages/FitPage.tsx` | 5 | `'基础舰炮'` 武器形态 key + core `shipInfoLines` 的中文标签 key |
+| `game/autoPerf.ts` · `game/perf.ts` | 7 | 性能探针的 console 段名/日志（**不进玩家界面**） |
+| `i18n/fmt.ts` | 1 | `creditUnit()` 按语言自取的中文分支（本身就是本地化实现） |
+| 其余（各 1~2） | 11 | 同类键 / 形状槽 |
+
+- 工具：`npm run l10n:list -- <文件…>`（逐条列行号+文本）· `npm run l10n:check`（汇总读数）。
+- ⚠ 若将来真要清零：**在 `l10n-check` 里加 `l10n-keep` 白名单**（见 §3⑤），别去翻这些键。
 
 ### ③ 主进程 / 预加载的文案 ≈10 处（**渲染层工具扫不到，别漏**）
 
@@ -100,11 +119,11 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 
 ### ⑤ 收尾核对
 
-- 把「故意不译」两类登记进 `l10n-check` 白名单，让读数归零可核：
-  ① `l10n-keep` 标记项（类型字面量联合 key、`game/autoPerf.ts` 的 `AUTOPERF_*` 开发协议串）；
-  ② 逻辑比较用中文串（`=== '中文'` 一类，不进界面）；
+- 若要做 §3② 的重构：在 `l10n-check` 里把 `l10n-keep` 标记项列为白名单，让读数归零可核。
 - 4 条未接线条目（`ui.Industry.019/098`、`ui.ItemsPage.022/023`）：其中文在源码里仍大量出现，
   下次接线会**按 zh 自动复用**；若确认已废则删。
+- core 段另有 **19 条孤儿条目**（表里有、源码从不引用，如 `core.state.002`/`core.wormhole.019`）：
+  **未擅自删**，待船长定"接线上还是清掉"。
 
 ## 4. 每批工作的标准流程
 
@@ -222,8 +241,15 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 
 ## 8. git 状态与合并步骤
 
-- 现状（**2026-09-20 已刷新**）：`verify40` 已并 main 至 `bad7601e`（52 条），合并提交 `90d2cf01`；
-  此后本工作树领先 main（只有本地提交）。**main 若再前进 ⇒ 照下面再并一次**。
+- 现状（**2026-09-20 三号收尾后**）：`verify40` 已并 main 至 `bad7601e`（52 条），合并提交 `90d2cf01`；
+  此后本工作树累计 **122 个本地提交**（core 甲案 + 界面批 + 工具）。
+- **船长令：全完成后不合入 main、不推送**（本轮收尾时仍未并）。**main 若前进 ⇒ 照下面再并一次**。
+- ⚠ 并之前先跑一遍 §1 那 6 条闸门（工作树必须干净，`git stash` 不算干净）：
+  ```powershell
+  git status --porcelain             # 必须空
+  npm run typecheck ; npm run test -w @whale/core ; npm run l10n:check
+  npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:index -- --check
+  ```
 - 步骤（**合并进 verify40，不动 main**）：
   ```powershell
   git log main --oneline -5          # 先看对方改了什么

@@ -220,6 +220,17 @@ export function L10nProvider({ children }: { children: ReactNode }): ReactNode {
     activeLocale = locale
     document.documentElement.dataset.locale = locale
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en'
+    /**
+     * **把语言推给主进程**（2026-09-20）：窗口标题与"导入/导出"系统对话框在主进程生成，
+     * 而语言偏好存在渲染进程的 `localStorage` ⇒ 主进程读不到，只能由这里推。
+     * 在主进程 API 缺失时（浏览器里跑 / 单测）静默忽略。
+     */
+    try {
+      const w = window as unknown as { whale?: { setLocale?: (l: string) => void } }
+      w.whale?.setLocale?.(locale)
+    } catch {
+      /* 非桌面环境：忽略 */
+    }
   }, [locale])
   const setLocale = useCallback((next: Locale) => {
     activeLocale = next

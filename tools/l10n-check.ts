@@ -33,7 +33,12 @@ import { join, relative } from 'node:path'
 import ts from 'typescript'
 import { L10N } from '../packages/data/src/l10n/table'
 
-const ROOT = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src')
+/**
+ * **扫描根**（2026-09-20 扩容）：原来只有渲染层，导致 `main/` 与 `preload/` 是**盲区**——
+ * 主进程的窗口标题与"导入/导出"系统对话框文案扫不到（三号实测有 10 处）。
+ * 现在扫 `apps/desktop/src` 整个（含 main / preload / renderer），两处口径一致。
+ */
+const ROOT = join(process.cwd(), 'apps', 'desktop', 'src')
 const CJK = /[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
 /** 额外放行的白名单（条目 id）；常规情形不必用——**语言自称**（`en === zh`，如「中文」）已自动放行 */
 const CJK_ALLOW = new Set<string>([])
