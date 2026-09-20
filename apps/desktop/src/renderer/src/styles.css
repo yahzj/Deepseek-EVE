@@ -9115,6 +9115,14 @@ html[data-locale='en'] body {
 .app-station-card .app-task-reward {
   margin-top: 2px;
 }
+/* 资源单「均价」（2026-09-19 船长：「在报酬后面用**普通颜色**的字体显示平均每单位资源的价格」）：
+   外层 `.app-task-reward` 是金色（奖励专用）⇒ 这里显式改回**普通正文色**，与奖励从观感上分开；
+   数字用等宽字形族（tabular-nums）让同列表的多行均价对齐，扫一眼就能比大小。 */
+.app-task-reward .app-unit-price {
+  margin-left: 8px;
+  color: var(--wui-text);
+  font-variant-numeric: tabular-nums;
+}
 .app-station-deliver input {
 
   background: #0a1320;

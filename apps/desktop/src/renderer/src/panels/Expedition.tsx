@@ -60,7 +60,7 @@ import {
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { MONEY_GLYPH, rareWreckRefsOf } from '../pages/common'
-import { useL10n } from '../i18n/locale'
+import { tr, useL10n } from '../i18n/locale'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { FirstTasks } from './FirstTasks'
@@ -2596,6 +2596,24 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                 <div className="app-task-reward">
                   <span className="app-dim">奖励 ◆ </span>
                   {MONEY_GLYPH} {t.rewardIsk.toLocaleString('zh-CN')} 信用点
+                  {/**
+                   * **均价**（船长 2026-09-19：「资源任务，在报酬后面用**普通颜色**的字体显示
+                   * **平均每单位资源的价格**」）：`奖励 ÷ 收购量`，四舍五入到整数信用点。
+                   *
+                   * 为什么要它：资源单之间**只有"总价"可比**，而同一档的收购量不同 ⇒ 总价高的单
+                   * 未必单价高（换货/买入交付时，单价才是真正决定赚不赚的数）。
+                   * 颜色：外层 `.app-task-reward` 是金色（奖励专用）⇒ 这里显式用**普通正文色**
+                   * （`.app-unit-price`），与"奖励"从观感上分开——船长要的就是这个对比。
+                   */}
+                  <span
+                    className="app-unit-price"
+                    title={tr('本单均价 = 奖励 ÷ 收购量（{isk} ÷ {need}）', {
+                      isk: t.rewardIsk.toLocaleString('zh-CN'),
+                      need: t.need.toLocaleString('zh-CN'),
+                    })}
+                  >
+                    {tr('均价 {n} 信用点/单位', { n: Math.round(t.rewardIsk / Math.max(1, t.need)).toLocaleString('zh-CN') })}
+                  </span>
                 </div>
                 <div className="app-station-deliver">
                   <span className="app-dim">
