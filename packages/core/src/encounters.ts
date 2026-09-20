@@ -150,7 +150,13 @@ function retreatEncounterShip(
   if (shipId !== state.shipId) {
     // 副船：中止任务召回回港待命（核心归还核心库）
     if (!cancelAiTask(state, shipId, ctx)) return false
-    addLog(state, 'warn', `⚠ [AI·${name}] ${line}——已中止任务召回回港待命（请维修后再派；此状态下无法再派任务）。`)
+    addLog(
+      state,
+      'warn',
+      `⚠ [AI·${name}] ${line}——已中止任务召回回港待命（请维修后再派；此状态下无法再派任务）。`,
+      'core.encounters.001',
+      { p1: name, p2: line },
+    )
     markAmbushRetreat(state)
     return true
   }
@@ -386,7 +392,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     // 2026-09-14 改判：5 秒 —— 见 `balance.encounter.hitFirepowerSec` 与文件头）
     const hit = applyArmorFirstDamage(state, ctx, shipId, ambushHitHp(ctx, enc.threat))
     if (hit && hit.floored) {
-      addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。')
+      addLog(state, 'warn', '⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。', 'core.encounters.002')
     }
     if (hit) addLog(state, 'warn', hitLogText(shipName, galaxyName, enc.name, suffix, hit))
   } else {
@@ -662,28 +668,28 @@ function foeKeyOf(enc: GameState['encounter']): string {
 /** 玩家指令：迎战（进入 V12 实时战斗，自动打完出战报） */
 export function fightEncounter(state: GameState, ctx: SimContext): CommandResult {
   const enc = state.encounter
-  if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。' }
+  if (!enc.active || enc.battle) return { ok: false, error: '当前没有可应战的遭遇。', errorId: 'core.encounters.003' }
   // **洞内战斗时洞外可以开新战斗**（船长 2026-09-13），但**锚点船不能被锁在洞里**：
   // 洞内锚 = `run.fleet[0]`、洞外锚 = 这里那艘 —— 同一艘船被两场战斗同时读写会互相串台。
   if (shipLockedInWormhole(state, enc.shipId ?? state.shipId)) {
-    return { ok: false, error: '这艘船在虫洞里（已锁定）：换一艘应战，或先撤离本趟。' }
+    return { ok: false, error: '这艘船在虫洞里（已锁定）：换一艘应战，或先撤离本趟。', errorId: 'core.encounters.004' }
   }
   // 目标距离（2026-09-11 船长：按星系独立保存）：遭遇所在星系设过就用它，没设过由 startBattleFor
   // 回落射程中段（遭遇模板自带的 galaxyId 是模板产地，不是玩家所在星系，故这里显式传入）
   const battle = startBattleFor(state, ctx, enc.shipId ?? state.shipId, foeKeyOf(enc), state.gameMs, desirePrefOf(state, enc.galaxyId) ?? undefined)
-  if (!battle) return { ok: false, error: '遭遇异常，无法开战。' }
+  if (!battle) return { ok: false, error: '遭遇异常，无法开战。', errorId: 'core.encounters.005' }
   // 连续作战保险（船长 2026-09-11 定：低安遭遇同样适用）——结构剩余低于撤退线（50%）即自动脱离，
   // 绝不拖到弃船（旧行为：应战一直打到分胜负，可能把副船打没）
   battle.hullEscapeFrac = ctx.balance.encounter.retreatHullFrac
   enc.battle = battle
-  addLog(state, 'info', '已应战：遭遇战打响（引擎自动推演，战报稍后）。')
+  addLog(state, 'info', '已应战：遭遇战打响（引擎自动推演，战报稍后）。', 'core.encounters.006')
   return { ok: true }
 }
 
 /** 玩家指令：快速脱离（立即按文字三档结算） */
 export function fleeEncounter(state: GameState, ctx: SimContext): CommandResult {
   const enc = state.encounter
-  if (!enc.active || enc.battle) return { ok: false, error: '当前没有可脱离的遭遇。' }
+  if (!enc.active || enc.battle) return { ok: false, error: '当前没有可脱离的遭遇。', errorId: 'core.encounters.007' }
   resolveTextual(state, ctx, true)
   return { ok: true }
 }
