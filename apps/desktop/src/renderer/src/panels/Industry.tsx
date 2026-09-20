@@ -859,8 +859,8 @@ function BlueprintCard({
                   // l10n-keep：下面比较用的 kindLabel（'舰船'/'装备'/'消耗品'）是**内容层联合 key**，不是文案
                   title={tr("ui.Industry.114", { p1: formatDurationMs(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
                 >
-                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })} tr('ui.Industry.137'){' '}
-                  {formatDurationMs(v.remainingMs)}
+                  {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })}
+                  {tr('ui.Industry.137', { p1: formatDurationMs(v.remainingMs) })}
                 </span>
                 <span className="app-progress-mini" title={tr("ui.Industry.116", { p1: v.percent })}>
                   <i style={{ width: `${v.percent}%` }} />
