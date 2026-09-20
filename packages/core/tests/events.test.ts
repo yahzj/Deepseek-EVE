@@ -175,6 +175,17 @@ describe('随机事件系统（V11）', () => {
     expect(evs.length, '推进 31 分钟至少出一次事件').toBeGreaterThan(0)
     expect(evs.every((l) => l.text.startsWith('✦'))).toBe(true) // 前缀保留
     expect(state.logs.some((l) => l.kind === 'info' && l.text.startsWith('✦'))).toBe(false) // 不再混在 info 里
+    /**
+     * 甲案（2026-09-20）：事件正文 82 条走**两步渲染**——外壳 `core.events.001` 的 `{p1}` 由
+     * `p1Id` 给出（正文 id 在 `core.events.*` 段），`p1` 仍是中文原串（老档/未改造路径回退用）。
+     */
+    for (const l of evs) {
+      expect(l.textId).toBe('core.events.001') // ✦ {p1}{p2}
+      expect(typeof l.textParams?.p1Id).toBe('string')
+      expect(String(l.textParams?.p1Id)).toMatch(/^core\.events\.\d{3}$/)
+      expect(l.text).toContain(String(l.textParams?.p1)) // 中文原串确实拼在正文里
+      if (l.text.includes('（+')) expect(l.textParams?.p2Id).toBe('core.events.002')
+    }
     const back = loadSaveFile(serializeSaveFile(state))
     expect(back.state.logs.filter((l) => l.kind === 'event').length).toBe(evs.length) // 白名单缺它就会变 0
   })
