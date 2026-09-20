@@ -791,9 +791,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Achievements.003": { zh: "获得于 {t}", en: "Earned {t} ago" },
   "ui.Achievements.004": { zh: "成就徽章", en: "Achievement badges" },
   "ui.Achievements.005": { zh: "已获得 {n}/{total} 枚", en: "{n}/{total} earned" },
-  "ui.Achievements.006": { zh: "「第一次」任务", en: "“First time” tasks" },
-  "ui.Achievements.007": { zh: "次数链进度", en: "Repeat-chain progress" },
-  "ui.Achievements.008": { zh: "当前 {lv} 级", en: "currently level {lv}" },
+  /**
+   * ⚠ `ui.Achievements.006 / 007 / 008` 已于 2026-09-20 **删除**（船长令：成就页「不要分系列」）
+   * —— 它们分别是两个分区标题与链进度读数「当前 {lv} 级」，随分区一起取消 ⇒ 全仓再无引用。
+   * 新悬停三行的样式是纯 CSS（`.app-ach-tip-note` / `.app-ach-tip-time`），不需要词条。
+   */
   "ui.Shipyard.001": { zh: "搜索蓝图、产物或材料…", en: "Search blueprints, products or materials…" },
   "ui.ActivityBar.004": { zh: "取消", en: "Cancel" },
   "ui.ActivityBar.005": { zh: "停止", en: "Stop" },

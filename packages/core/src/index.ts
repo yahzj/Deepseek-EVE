@@ -965,7 +965,6 @@ export {
   advanceAchievements,
   achievementOverview,
   achievementCount,
-  chainAchievementGroups,
 } from './achievements'
 export type { AchievementDef, AchievementSource, AchievementCategory } from './types'
 export type { AchievementState } from './state'

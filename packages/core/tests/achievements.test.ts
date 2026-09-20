@@ -20,7 +20,6 @@ import {
   achievementOverview,
   achievementReached,
   advanceAchievements,
-  chainAchievementGroups,
 } from '../src/achievements'
 import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, advanceFirstChains, advanceFirstTasks } from '../src/firstTasks'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -282,16 +281,49 @@ describe('成就徽章：界面读数', () => {
     expect(other.earnedAt).toBe(null)
   })
 
-  it('按链分组：13 条链各带自己的档位徽章与当前进度', () => {
-    const state = testState()
-    setChainProgress(state, 'abyss', 10)
-    const groups = chainAchievementGroups(state, ACHIEVEMENTS)
-    expect(groups.length).toBe(13)
-    const abyss = groups.find((g) => g.chainId === 'abyss')!
-    expect(abyss.progress).toBe(10)
-    expect(abyss.badges.length).toBe(4)
-    const explorer = groups.find((g) => g.chainId === 'explorer')!
-    expect(explorer.badges.length).toBe(2)
+  it('卡名口径：链徽章 = 档位词 ＋ 行当，且**不带「· N 级」**（船长 2026-09-20 改版）', () => {
+    /**
+     * 档位词**按链分表**（与 `data/src/achievements.ts` 同口径）。
+     * ⚠ 不能用统一门槛推导：一般链顶档是 10 级、探索家只有 5 级，
+     * 5 与 10 是各自链的顶档 ⇒ 一律取「传奇」。第一版这里就写错过
+     * （把 5 映射成 4 档，得到「资深探索家」），被本条用例当场抓出。
+     */
+    const WORD_STANDARD: Record<number, string> = { 1: '见习', 4: '资深', 7: '王牌', 10: '传奇' }
+    const WORD_EXPLORER: Record<number, string> = { 1: '见习', 5: '传奇' }
+    /** 船长点名的两枚：探索家那条只 1/5 级 ⇒ 落到**首尾**两档 */
+    const of = (id: string) => ACHIEVEMENTS.find((a) => a.id === id)!
+    expect(of('ach-chain-explorer-1').name).toBe('见习探索家')
+    expect(of('ach-chain-explorer-5').name).toBe('传奇探索家')
+    // 13 条链 × 各自档位：名字必须是「档位词 + 行当」且**不含级别数字**
+    for (const task of FIRST_TASKS) {
+      const chain = task.chain
+      if (!chain) continue
+      const words = chain.id === 'explorer' ? WORD_EXPLORER : WORD_STANDARD
+      for (const a of ACHIEVEMENTS) {
+        if (a.source.kind !== 'chain' || a.source.chainId !== chain.id) continue
+        const word = words[a.source.level]!
+        expect(word, `${a.id} 的档位 ${a.source.level} 没配档位词`).toBeTruthy()
+        expect(a.name.startsWith(word), `${a.id} 应以档位词「${word}」开头，实际「${a.name}」`).toBe(true)
+        // 旧写法是「链名 · N 级」⇒ 卡名不许再出现中点与"级"字
+        expect(a.name.includes('·'), `${a.id} 卡名不该带「·」：${a.name}`).toBe(false)
+        expect(a.name.includes('级'), `${a.id} 卡名不该带「级」：${a.name}`).toBe(false)
+      }
+    }
+    // 50 个链徽章名两两不重名（重名就没法在卡面上区分）
+    const chainNames = ACHIEVEMENTS.filter((a) => a.source.kind === 'chain').map((a) => a.name)
+    expect(chainNames.length).toBe(50)
+    expect(new Set(chainNames).size).toBe(50)
+    // 任务徽章仍与任务标题同名（船长裁定：不改）
+    const first = ACHIEVEMENTS.find((a) => a.source.kind === 'task' && a.source.taskId === 'first-mine')!
+    expect(first.name).toBe(FIRST_TASKS.find((t) => t.id === 'first-mine')!.title)
+  })
+
+  it('卡名不回退成旧写法：说明里仍讲得清"哪条链的哪一档"', () => {
+    const abyss10 = ACHIEVEMENTS.find((a) => a.id === 'ach-chain-abyss-10')!
+    expect(abyss10.name).toBe('传奇深渊行者')
+    // 说明要保留链名与级别（卡名去掉了数字，信息不能就此丢失）
+    expect(abyss10.note).toContain('深渊探索者')
+    expect(abyss10.note).toContain('10 级')
   })
 })
 

@@ -10903,15 +10903,13 @@ html[data-locale='en'] body {
    **同图案 · 颜色区分**（形状与色值都由数据表给，本段不写死任何档位配色）·
    未达成 = 灰阶剪影（可预见"还差哪一枚"）。
    徽章卡**固定尺寸**（防悬停内容长短引起跳动，AGENTS §6 容器定尺寸那条）。 */
-.app-ach-modal { width: 620px; }
-.app-ach-sec {
-  margin: 10px 0 6px; font-size: 12px; font-weight: 600;
-  color: var(--wui-accent); border-bottom: 1px dotted var(--wui-border); padding-bottom: 4px;
-}
-.app-ach-sec:first-child { margin-top: 0; }
-.app-ach-chain { margin-bottom: 8px; }
-.app-ach-chain-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-.app-ach-chain-name { font-size: 12px; color: var(--wui-text); }
+/* ── 成就徽章（2026-09-20 船长改版：**单网格 · 不分系列**）─────────────────────────
+   船长原话：「成就徽章页面内不要分系列，所有成就卡片排列在一起」⇒ 原先的
+   `.app-ach-sec`（分组标题）/ `.app-ach-chain*`（按链分组的小节）连同 `.app-ach-modal`
+   （早期弹窗形态的残留）一并删除——全仓已无引用。
+   悬停富卡的分行（船长：「名字要单独起一行。时间单独起一行。不要挤一块」）：
+   名字行复用既有 `.app-tip .app-ship-hover-title`（金 · 加粗 · `display:block`，与舰船悬停同款），
+   下面两行由本段新增。 */
 .app-ach-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px;
 }
@@ -10932,7 +10930,15 @@ html[data-locale='en'] body {
   position: absolute; top: 2px; right: 4px; font-size: 10px; line-height: 1;
   color: var(--wui-accent); opacity: 0.9;
 }
+/* 悬停富卡：说明行（暗色，独占一行；写法与 `.app-info-note` 同族） */
+.app-tip .app-ach-tip-note {
+  display: block; margin-top: 5px; color: var(--wui-text-dim); font-size: 11px; line-height: 1.5;
+}
+/* 悬停富卡：时间行（**单独一行**，虚线分隔 ⇒ 与说明拉开层次） */
+.app-tip .app-ach-tip-time {
+  display: block; margin-top: 5px; padding-top: 4px;
+  border-top: 1px dashed var(--wui-border); color: var(--wui-text-dim); font-size: 10.5px; line-height: 1.5;
+}
 @media (max-width: 640px) {
-  .app-ach-modal { width: 100%; }
   .app-ach-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
 }

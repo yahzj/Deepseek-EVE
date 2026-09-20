@@ -21,7 +21,6 @@
  */
 import type { GameState } from './state'
 import type { AchievementDef, AchievementSource } from './types'
-import { FIRST_TASKS } from './firstTasks'
 
 /** 徽章表：由数据层注入（`SimContext.achievements`），core 不自带内容 */
 function tableOf(defs: readonly AchievementDef[] | undefined): readonly AchievementDef[] {
@@ -115,32 +114,4 @@ export function achievementOverview(
 /** 已到手枚数（界面读数用；不含"已达未发"的中间态） */
 export function achievementCount(state: GameState): number {
   return Object.keys(state.achievements?.earned ?? {}).length
-}
-
-/**
- * **链的档位徽章**（界面按链分组时用）：给某条链的全部徽章 ＋ 该链当前进度。
- *
- * ⚠ 链的展示名只有一个来源（`FIRST_TASKS` 里那条链的 `name`）⇒ 这里顺带给出来，
- * 免得界面再从数据表捞一遍。
- */
-export function chainAchievementGroups(
-  state: GameState,
-  defs: readonly AchievementDef[] | undefined,
-): Array<{ chainId: string; name: string; progress: number; badges: AchievementDef[] }> {
-  const out: Array<{ chainId: string; name: string; progress: number; badges: AchievementDef[] }> = []
-  for (const task of FIRST_TASKS) {
-    const chain = task.chain
-    if (!chain) continue
-    const badges = tableOf(defs).filter((d) => d.source.kind === 'chain' && d.source.chainId === chain.id)
-    if (badges.length === 0) continue
-    out.push({
-      chainId: chain.id,
-      name: chain.name,
-      progress: chainProgress(state, chain.id),
-      badges,
-    })
-  }
-  // 链的进度以 `importantTasks['chain-<id>'].delivered` 为**唯一账本**（`advanceFirstChains` 写它）。
-  // ⚠ 不在这里另算一遍 `chainProgressOf`：那是"按计数现推"的另一把尺，两把尺并存迟早会对不上。
-  return out
 }

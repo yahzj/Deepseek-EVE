@@ -3,10 +3,17 @@
  * 不过等做完这个之后再考虑，先挂机，可以预留接口」＋ 2026-09-20「继续之前的成就系统」。
  *
  * **第一批 = 徽章框架 · 共 63 枚**（设计稿 `docs/design/achievements-20260920.md`）：
- * - **13 枚任务徽章**：`FIRST_TASKS` 的 13 条「第一次」任务，各 1 枚（达到即发）。
+ * - **13 枚任务徽章**：`FIRST_TASKS` 的 13 条「第一次」任务，各 1 枚（达到即发）
+ *   —— 卡名＝任务标题（「第一次扫描」等），**与任务中心同名**是有意的：它纪念的就是那件事。
  * - **50 枚链徽章**（共 13 条链）：12 条一般「次数链」× **1 / 4 / 7 / 10 级**各 1 枚 = 48 枚。
  * - **2 枚探索家徽章**：「宇宙探索家」`scan` 链**上限只有 5 级**（`CHAIN_TIERS.scan = [5,8,12,16,20]`）
  *   ⇒ 按船长 2026-09-20 裁定**只做 1 级与 5 级**两枚（不套 1/4/7/10）。
+ *
+ * **卡名口径**（船长 2026-09-20 改版：「**宇宙探索家 · 1 级这种非常难看，可以采用见习探索家这种**」）：
+ * - **链徽章** = **档位词 ＋ 行当**（`chainBadgeName`）⇒ `见习探索家` / `传奇赏金猎人`；
+ *   ⚠ **不带级别数字**——档位词已表达进阶；「链名 · N 级」那句旧写法只留在**说明**里。
+ * - **任务徽章** = 任务标题（船长裁定：不改名）。
+ * - 展示改版的完整口径见工作文档 `docs/design/achievement-display-20260920.md`。
  *
  * **图案与配色**（船长：「**图案相同，用颜色区分**」）：
  * - `pattern` = SVG 线稿的图案键（渲染层 `ui/AchievementsGlyph.tsx` 一根线稿一枚底纹）；
@@ -46,6 +53,75 @@ const EXPLORER_CHAIN_ID = 'explorer'
 const EXPLORER_LEVELS: readonly number[] = [1, 5]
 const EXPLORER_TONES: Readonly<Record<number, string>> = { 1: TONE_L1, 5: TONE_L10 }
 
+/**
+ * **档位词**（链徽章名的前半；船长 2026-09-20「比如宇宙探索家 · 1 级这种非常难看，
+ * 可以采用见习探索家这种」）。
+ *
+ * ⚠ **刻意不带级别数字**：档位词本身已表达进阶（见习 → 资深 → 王牌 → 传奇）；
+ * 级别仍可在徽章**说明**与悬停里读到 ⇒ 卡面不必再挂一个「· N 级」。
+ */
+const TIER_WORDS: readonly string[] = ['见习', '资深', '王牌', '传奇']
+/**
+ * **链级别 → 档位词**（两套都写死，**不按门槛推导**）。
+ *
+ * ⚠ 为什么不推导：一般链的顶档是 **10 级**、探索家那条只有 **5 级**——
+ * 两者是**各自链的顶档**，不是同一个门槛。若拿「`level >= 4` 就算资深」这类
+ * 统一门槛去套，探索家的 5 级会被判成「资深探索家」（首尾取色的口径就错了）。
+ * 故按链把三档词写全：一般链 1/4/7/10 ⇒ 见习/资深/王牌/传奇；
+ * 探索家 1/5 ⇒ **见习 / 传奇**（首尾两档，与它那两枚的配色同向）。
+ */
+const STANDARD_TIER_WORDS: Readonly<Record<number, string>> = {
+  1: TIER_WORDS[0]!,
+  4: TIER_WORDS[1]!,
+  7: TIER_WORDS[2]!,
+  10: TIER_WORDS[3]!,
+}
+const EXPLORER_TIER_WORDS: Readonly<Record<number, string>> = {
+  1: TIER_WORDS[0]!,
+  5: TIER_WORDS[3]!,
+}
+
+/**
+ * **链 → 行当**（链徽章名的后半）。**链名本身一字不动**（船长 2026-09-20 裁定）：
+ * 任务中心等处仍显示「宇宙探索家」「学而不厌」；本表只服务徽章名。
+ *
+ * 为什么另立一张而不是直接拼链名：13 条链的**词性并不统一**——
+ * 9 条是人称（深空采掘者 / 维修技师 / 赏金猎人…，拼档位词通顺），
+ * 4 条是成语或事业名（`scholar` 学而不厌 / `dispatch` 舰队调度 /
+ * `freight` 星际货运 / `lineboss` 产线主管）⇒「见习学而不厌」「见习舰队调度」不通。
+ * 故这 4 条单配行当；其余 9 条沿用链名。
+ *
+ * ⚠ `abyss` 取「深渊行者」而非「深渊探索者」：后者与「资深」连写会成
+ * 「资深深渊探索者」（两个「深」叠字）。施工时逐条核对过 13 × 4 个组合，仅此一条有此问题。
+ */
+const CHAIN_RANK: Readonly<Record<string, string>> = {
+  explorer: '探索家',
+  digger: '采掘者',
+  scavenger: '拾荒者',
+  mechanic: '维修师',
+  hunter: '赏金猎人',
+  refiner: '精炼师',
+  lineboss: '产线主管',
+  marketeer: '市场老手',
+  shipwright: '造船厂主',
+  scholar: '学者',
+  dispatch: '调度官',
+  freight: '货运长',
+  abyss: '深渊行者',
+}
+
+/**
+ * **链徽章的卡名** = 档位词 ＋ 行当（例：`见习探索家` · `传奇赏金猎人`）。
+ *
+ * 档位词按**该链自己的档位表**取（探索家走 1/5 那套）；行当查不到时回退链名本身
+ * （新增链若忘了配行当，卡名退化成"档位词 + 链名"而不是空串或崩掉）。
+ */
+function chainBadgeName(chainId: string, chainName: string, level: number): string {
+  const table = chainId === EXPLORER_CHAIN_ID ? EXPLORER_TIER_WORDS : STANDARD_TIER_WORDS
+  const word = table[level] ?? TIER_WORDS[0]!
+  return word + (CHAIN_RANK[chainId] ?? chainName)
+}
+
 /** 任务徽章的说明（船长 2026-09-20：「纯展示」⇒ 只讲"这枚纪念了什么"） */
 function taskNote(title: string): string {
   return `达成「${title}」时获得的纪念徽章。`
@@ -70,6 +146,9 @@ function taskAchievements(): AchievementDef[] {
 /**
  * **50 枚链徽章**（12 条一般链 × 4 档 ＋ 探索家 2 档）——同样由任务表派生，
  * 链的展示名直接取任务表里那条链的 `name`（唯一来源，避免两处写两个名字）。
+ *
+ * ⚠ 卡名走 `chainBadgeName`（档位词 ＋ 行当），**不是**「链名 · N 级」（船长 2026-09-20 改）；
+ * 「链名」仍用在**说明**里 —— 说明要讲"是哪条链的哪一档"，那里带级别才说得清。
  */
 function chainAchievements(): AchievementDef[] {
   const out: AchievementDef[] = []
@@ -85,7 +164,7 @@ function chainAchievements(): AchievementDef[] {
       if (level > top && !isExplorer) continue
       out.push({
         id: `ach-chain-${chain.id}-${level}`,
-        name: `${chain.name} · ${level} 级`,
+        name: chainBadgeName(chain.id, chain.name, level),
         note: `「${chain.name}」进度达到 ${level} 级时获得的纪念徽章。`,
         category: 'chain' as AchievementCategory,
         pattern: chain.id,
