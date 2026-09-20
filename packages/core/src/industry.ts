@@ -31,6 +31,7 @@ import { addItem, addWare, countItem, countWare, removeItem, removeWare } from '
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike, stationIndustryBlocked } from './location'
 import { formatDurationMs } from './time'
+import { composeLog, type LogSeg } from './logParts'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
 import { shipDisplayName } from './instances'
@@ -465,18 +466,6 @@ export function startRecycleRun(
  * 只给外层日志配一个 id 是不够的（那些词会留在中文）⇒ 一并产出**分段 id 链**：
  * `text` 仍是逐字不变的中文原串（老档/未改造路径回退用），`parts` 交给调用方按段挂 `p{n}Id`。
  */
-/**
- * 一条甲案日志的**一个段**：`id` + 段内参数；`subs` 是"段里还嵌着自带小词的更细段"
- * （例「额外掉落：」后面跟 装备/无人机/图纸 三类）。递归排法与渲染层 `composeParts`
- * 的段内命名空间逐层对应（`p{n}` → `p{n}p{k}` → …），渲染层无需改。
- */
-type LogSeg = {
-  text: string
-  id?: string
-  params?: Record<string, string | number>
-  subs?: LogSeg[]
-}
-
 interface YieldNote {
   /** 中文原串（行为与改造前逐字一致） */
   text: string
@@ -592,28 +581,6 @@ function refundClaimedUnits(state: GameState, r: RefineRunState): number {
   addWare(state, r.itemId, left)
   r.claimedUnits = 0
   return left
-}
-
-/**
- * 把"若干可选段"拼成一条甲案日志：返回中文原串 + 段 id 链。
- * - 第 1 段由调用方传给 `addLog` 的 `textId`；`segs[0]` 即第 2 段（`p1Id`），依此类推；
- * - 段**自带中文小词**时用 `subs` 拆成更细的段（`p{n}p{k}`、再深一层 `p{n}p{k}p{j}`…）。
- */
-
-function composeLog(lead: string, segs: Array<LogSeg | null | undefined>): { text: string; textParams: Record<string, string | number> } {
-  const kept = segs.filter((s): s is LogSeg => !!s && s.text !== '')
-  const textParams: Record<string, string | number> = {}
-  const walk = (seg: LogSeg, prefix: string): void => {
-    // 本段的 id 挂在上一段的 `{p<prefix>}` 槽上；段内参数进 `p<prefix>p<k>`（k 从 1 起）。
-    // ⚠ 段号本身是多字符（`1p1`）⇒ 参数键必须补上那个 `p`（`p1p1`），与渲染层 `composeParts`
-    // 的 `^p\d+p\d+$` 命名空间对齐；写成 `p11` 渲染层就取不到了。
-    if (seg.id !== undefined) textParams[`p${prefix}Id`] = seg.id
-    let k = 0
-    for (const v of Object.values(seg.params ?? {})) textParams[`p${prefix}p${++k}`] = v
-    for (const [j, sub] of (seg.subs ?? []).entries()) walk(sub, `${prefix}p${j + 1}`)
-  }
-  for (const [i, seg] of kept.entries()) walk(seg, String(i + 1))
-  return { text: lead + kept.map((s) => s.text).join(''), textParams }
 }
 
 export function stopRefineRun(state: GameState, ctx: SimContext, runId: number): CommandResult {

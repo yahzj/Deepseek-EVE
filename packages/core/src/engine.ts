@@ -14,6 +14,7 @@
  */
 
 import { tuningMul } from './tuning'
+import { composeLog } from './logParts'
 import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { CmdText, GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog } from './types'
@@ -389,24 +390,41 @@ export function removeQueueAt(state: GameState, index: number): boolean {
     }
   }
   let note = ''
+  let noteId: string | undefined
   if (index === 0 && removed.progressMs > 0) {
     // 队首的进度：交给顺延后接替同一级的条目，否则暂存待续接
     const successor = demoted.find((q) => q.targetLevel === removed.targetLevel)
     if (successor) {
       successor.progressMs = removed.progressMs
       note = '已练进度由顺延项承接。'
+      noteId = 'core.engine.017'
     } else {
       const prev = state.skills.savedProgress[removed.skillId] ?? 0
       state.skills.savedProgress[removed.skillId] = Math.max(prev, removed.progressMs)
       note = '本级已练进度已保留，重新训练同一级时自动续接。'
+      noteId = 'core.engine.018'
     }
   }
   const where = index === 0 ? '取消队首' : `移除第 ${index + 1} 位`
   /**
-   * ⚠ 甲案待办：这条是**多段拼接**（`where` + 技能 + 目标级 + note + 顺延句）⇒ 按既口径**本批不接**，
-   * 与 AI 战报、精炼炉停炉那几条一起等"多段文案"方案（`textParts` 逐段）。
+   * 甲案（2026-09-20）：多段拼接——`where` + 技能 + 目标级 + note + 顺延句，其中 `note` 是三种之一、
+   * 末段可空 ⇒ 基础模板按"取消队首 / 移除第 N 位"分岔，末段挂着才带；空段不入链。
+   * ⚠ 基础模板占用了 `p1`（位次）… ⇒ 段链从 `p4` 起排，免得段号与基础参数抢槽。
    */
-  addLog(state, 'queue', `${where}：${removed.skillId}（目标 Lv${removed.targetLevel}）。${note}${demoted.length > 0 ? '后续同技能队列已顺延一级。' : ''}`)
+  const composed = composeLog(
+    `${where}：${removed.skillId}（目标 Lv${removed.targetLevel}）。`,
+    [
+      note === '' ? null : { text: note, id: noteId },
+      demoted.length > 0 ? { text: '后续同技能队列已顺延一级。', id: 'core.engine.016' } : null,
+    ],
+    4,
+  )
+  addLog(state, 'queue', composed.text, index === 0 ? 'core.engine.014' : 'core.engine.015', {
+    p1: index + 1,
+    p2: removed.skillId,
+    p3: removed.targetLevel,
+    ...composed.textParams,
+  })
   return true
 }
 

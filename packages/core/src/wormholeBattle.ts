@@ -413,10 +413,11 @@ function wormholeBattleReport(
   battle: BattleState,
   kind: WormholeFoeKind,
   ctx: SimContext,
-): string {
+): { text: string; textId: string; textParams: Record<string, string | number> } {
   const sec = Math.max(0, Math.round((battle.lastTickGameMs - battle.startedAtGameMs) / 1000))
   const s = battle.stats
   const frac = Math.round(fleetHpFrac(run, battle) * 100)
+  // 对手称呼（「第 N 层守卫」等）自带中文词 + 数字 ⇒ 两步渲染：给它一个 id，外层拿译文当参数
   const what = kind === 'boss'
     ? `第 ${run.depth} 层守卫`
     : kind === 'extract'
@@ -427,15 +428,47 @@ function wormholeBattleReport(
         : run.grid
           ? `第 ${run.depth} 层地点`
           : `第 ${run.depth} 层节点`
+  const whatId =
+    kind === 'boss'
+      ? 'core.wormholeBattle.024'
+      : kind === 'extract'
+        ? 'core.wormholeBattle.025'
+        : kind === 'ruins'
+          ? 'core.wormholeBattle.026'
+          : run.grid
+            ? 'core.wormholeBattle.027'
+            : 'core.wormholeBattle.028'
   // 尾巴（与远征/遭遇同款口径）：船体维修装置消耗——洞内同样吃这套后勤，不写就等于白用
+  // ⚠「船体维修装置 + 消耗清单」是 `repairUsageText` 的派生串（自建中文），按既定边界留在中文
   const repair = repairUsageText(battle, ctx)
   const tail = repair.length > 0 ? ` · 船体维修装置${repair}` : ''
-  return (
+  const text =
     `🕳 ${what}交火结束：${sec}s · 我方开火 ${s.meShots}/命中 ${s.meHits} · 敌方开火 ${s.foeShots}/命中 ${s.foeHits} · ` +
     `编队残血 ${frac}%${tail}。`
-  )
+  return {
+    text,
+    // 尾段（维修消耗）可空 ⇒ 空段不入链：有尾巴时句号另起一段，没尾巴时用"带句号"的基础模板
+    textId: tail === '' ? 'core.wormholeBattle.029' : 'core.wormholeBattle.030',
+    textParams:
+      tail === ''
+        ? { p1: what, p1Id: whatId, p1p1: run.depth, p2: sec, p3: s.meShots, p4: s.meHits, p5: s.foeShots, p6: s.foeHits, p7: frac }
+        : {
+            p1: what,
+            p1Id: whatId,
+            p1p1: run.depth,
+            p2: sec,
+            p3: s.meShots,
+            p4: s.meHits,
+            p5: s.foeShots,
+            p6: s.foeHits,
+            p7: frac,
+            p8: repair,
+            p8Id: 'core.wormholeBattle.031',
+            p9: '。',
+            p9Id: 'core.state.042',
+          },
+  }
 }
-
 /** 在本场战斗里被打沉的我方单位（三层血全 0；`player` = 主控） */
 function sunkShipIds(run: WormholeRunState, battle: BattleState): string[] {
   const out: string[] = []
@@ -607,7 +640,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   }
   // 胜：先出战报（与结算同源），再按战斗用途分流
   if (report) {
-    addLog(state, 'info', report)
+    addLog(state, 'info', report.text, report.textId, report.textParams)
     /**
      * **结构化战报**（2026-09-14 船长定 · 战报改造）：洞内这一支原先写的是「🕳 第 N 层…交火结束：…」
      * ——**不含「战报」二字** ⇒ 弹层永远取不到正文（船长看到的"过于简陋"就是这个）。
@@ -616,7 +649,9 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     captureBattleReport(state, battle, {
       source: 'wormhole',
       outcome: 'win',
-      summary: report,
+      summary: report.text,
+      summaryId: report.textId,
+      summaryParams: report.textParams,
       shipsLost: sunk.map((uid) => ctx.ships.get(uidDefId(uid))?.name ?? uid),
     })
   }
