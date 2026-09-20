@@ -267,6 +267,8 @@ export {
   droneLoadM3,
   // 2026-09-10 船长：卸下甲板扩展等导致机舱变小 → 超出容量的无人机自动卸下并退回仓库
   trimDroneLoadToBay,
+  // 2026-09-20 船长：「战斗结束立刻自动补充，优先货仓，其次是仓库」＋「按本场出发快照补」
+  refillDroneLoadTo,
   // 2026-09-10 船长（G 族专属无人机）：物品持有总数（仓库 + 各船机舱）——「集齐前不重复掉落」判定口径
   ownedItemCount,
   V17_MODULE_MIGRATIONS,
@@ -603,6 +605,10 @@ export {
   advanceAutoLoopBounty,
   autoLoopWaitLabel,
   autoLoopReopenBlockReason,
+  // 2026-09-20：战后自动补足机群 ⇒ 门槛只在"货源不够"时拦人；本函数给装配页显示"还差几架"
+  autoLoopDroneShortfall,
+  // 2026-09-20：本场机群战损读数（before/after/attrition）——**after 是补货前**的存活架数（安全阀单点）
+  droneBattleOutcome,
   bountyCooldownMsFor,
   bountyCooldownRemainingMs,
   BOUNTY_COOLDOWN_BASE_MS,

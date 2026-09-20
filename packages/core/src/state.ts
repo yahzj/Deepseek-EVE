@@ -970,6 +970,12 @@ export interface DroneLossReport {
   recovered: number
   /** 净损失合计 = total − recovered */
   gone: number
+  /**
+   * **补货前的存活架数**（船长 2026-09-20「战斗结束立刻自动补充机群」那一批）——
+   * 战后立刻补足会把清单补回本场出发时的编制，故"战损过半停环"的记账与判定必须读这里，
+   * 不能读补货后的清单（否则安全阀永远判不出来）。
+   */
+  survivors?: number
   /** 逐型明细（按机型价值降序） */
   rows: Array<{ id: string; name: string; value: number; lost: number; back: number; gone: number }>
 }

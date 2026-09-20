@@ -47,7 +47,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { shipCategoryKeyOf, uidDefId } from './labels'
 import { resolveFoeMounts } from './foeMounts'
 import { quickRepairFactor } from './repair'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, stackWeight, weightedSum } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, refillDroneLoadTo, stackWeight, weightedSum } from './equipment'
 import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 
 /** 战斗基本步长（毫秒） */
@@ -4851,6 +4851,11 @@ export function settleDroneLosses(
     }
   }
   fleetShip.droneLoad = Object.keys(load).length > 0 ? load : undefined
+  /**
+   * **补货前的存活架数**（船长 2026-09-20 批：本场结束立刻补足机群）——
+   * 停环记账与"战损过半"判定都必须读这个数，**不能**读补货后的清单（否则安全阀永远判不出来）。
+   */
+  const survivors = Object.values(load).reduce((s, n) => s + n, 0)
   // 结算后清空战损账本（调用幂等：重复结算不会重复扣；战报/日志已带损失摘要）
   battle!.droneLost = undefined
   // **逐舰账本也清掉本舰那一份**（2026-09-14「按舰归属」：多舰各结算一次，清掉才能幂等）
@@ -4859,6 +4864,31 @@ export function settleDroneLosses(
     delete rest[ownerTag]
     battle!.droneLostBy = rest
   }
+  /**
+   * **立刻补足机群**（船长 2026-09-20：「战斗结束立刻自动补充，优先货仓，其次是仓库」＋「按本场出发快照补」）。
+   *
+   * 目标 = **本场出发时的清单快照**（多舰走 `droneLoadAtStartBy[本舰]`，主控回落 `droneLoadAtStart`），
+   * 货源 = 本船货仓 → 物品仓库（`refillDroneLoadTo` 单一入口，受舱容/CPU 校验、不自动购买）。
+   * ⚠ **必须在 `survivors` 之后**：停环记账与战损判定读的是补货前的架数。
+   */
+  const startLoad =
+    battle?.droneLoadAtStartBy?.[ownerTag] ??
+    (ownerTag === 'player' ? battle?.droneLoadAtStart : undefined) ??
+    {}
+  const refill = refillDroneLoadTo(state, ctx, shipId, startLoad)
+  const refillRows = Object.entries(refill.added)
+  const refillTxt = refillRows
+    .map(([id, n]) => {
+      const nm = ctx.items.get(id)?.name ?? id
+      const h = refill.fromHold[id] ?? 0
+      const w = refill.fromWare[id] ?? 0
+      const src = h > 0 && w > 0 ? `货仓 ${h} · 仓库 ${w}` : h > 0 ? `货仓 ${h}` : `仓库 ${w}`
+      return `${nm}×${n}（${src}）`
+    })
+    .join('、')
+  const shortTxt = Object.entries(refill.short)
+    .map(([id, n]) => `${ctx.items.get(id)?.name ?? id} 缺 ${n} 架`)
+    .join('、')
 
   // 展示口径：具名清单按价值降序（高价值在前，与"优先回收"的观感一致）
   const lostParts = byValue.map((r) => `${r.name}×${r.lost}`)
@@ -4876,12 +4906,23 @@ export function settleDroneLosses(
   addLog(
     state,
     'warn',
-    `⚠ 机群战损${who ? `（${who.replace(/：$/, '')}）` : ''}：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除，回港需补充。`,
+    `⚠ 机群战损${who ? `（${who.replace(/：$/, '')}）` : ''}：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除。`,
   )
+  // 立刻补足（船长 2026-09-20）：补货结果单独一行；货源不足再补一行 warn 说明缺多少
+  if (refillRows.length > 0) {
+    addLog(state, 'info', `机群补充${who ? `（${who.replace(/：$/, '')}）` : ''}：${refillTxt}——本场出发时的编制已复位。`)
+  }
+  if (shortTxt.length > 0) {
+    addLog(
+      state,
+      'warn',
+      `⚠ 机群未能补满${who ? `（${who.replace(/：$/, '')}）` : ''}：${shortTxt}——货仓与物品仓库都没有存货了，购买或制造后再到装配页装入。`,
+    )
+  }
   state.droneLossNotice =
     recovered > 0
-      ? `机群战损：损坏 ${total} 架，回收 ${recovered} 架归队（回收率 ${ratePct}%，优先回收高价值），净损失 ${total - recovered} 架。`
-      : `机群战损：${text} 被近防炮击落、共 ${total} 架（回收率 ${ratePct}%，优先回收高价值）——本场没有回收成功，已从无人机舱清单扣除，回港后请补充。`
+      ? `机群战损：损坏 ${total} 架，回收 ${recovered} 架归队（回收率 ${ratePct}%，优先回收高价值），净损失 ${total - recovered} 架。${refillRows.length > 0 ? `已自动补充 ${refillTxt}。` : ''}${shortTxt.length > 0 ? `仍有 ${shortTxt}。` : ''}`
+      : `机群战损：${text} 被近防炮击落、共 ${total} 架（回收率 ${ratePct}%，优先回收高价值）——已从无人机舱清单扣除。${refillRows.length > 0 ? `已自动补充 ${refillTxt}。` : ''}${shortTxt.length > 0 ? `仍有 ${shortTxt}。` : ''}`
   // 结构化结果（2026-09-11：战报弹层要显示"回收了哪些、净损失哪些"；与 battle 起手时刻配对，
   // 避免并行会话/AI 战斗的结果串场）——只在**当前驾驶船**的结算里写，AI 副船的损失不进战报
   if (state.shipId === shipId) {
@@ -4891,6 +4932,7 @@ export function settleDroneLosses(
       total,
       recovered,
       gone: total - recovered,
+      survivors,
       rows: byValue.map((r) => ({
         id: r.id,
         name: r.name,

@@ -621,6 +621,92 @@ export function adjustDroneLoad(
   return { ok: true }
 }
 
+/** `refillDroneLoadTo` 的明细（日志/测试用） */
+export type DroneRefillResult = {
+  /** 表 → 本次真正补进清单的架数（按型） */
+  added: Record<string, number>
+  /** 其中来自**本船货仓**的架数 */
+  fromHold: Record<string, number>
+  /** 其中来自**物品仓库**的架数 */
+  fromWare: Record<string, number>
+  /** 货源不足没补上的架数（按型；空 = 已补满） */
+  short: Record<string, number>
+}
+
+/**
+ * **战后立刻补足机群**（船长 2026-09-20：「**战斗结束立刻自动补充，优先货仓，其次是仓库**」＋
+ * 「**按本场出发快照补**」）。
+ *
+ * 背景：2026-09-08 无人机舱大改 §二.5 把「回港自动补充」定为"结构预留、本轮不激活"（当时还没开
+ * 无人机被击毁）；2026-09-10 开了击毁（永久损失/耗材流）却没把它一起激活 ⇒ 玩家打完一架要手动一架架点 +。
+ * 本函数把那一半补上：**只补回"本场出发时的清单"**（快照由 `battle.droneLoadAtStart` 提供），
+ * 不是"配置目标"落档字段（船长选定，避免新增存档字段；副作用是货源不足时目标会随之下移）。
+ *
+ * 三条硬口径：
+ * ① **货仓优先、仓库其次**（都是"你自己的货"，不自动购买）；
+ * ② 受**舱容 + CPU 预算**双重校验 —— 与 `adjustDroneLoad` 同一把尺（复用 `droneBayCapOf` /
+ *    `cpuBudgetOf` / `fittedCpuUsed` / `droneCpuUsed`），绝不会补到超载；
+ * ③ 补货**只增不减**：目标里没有的型、清单里多出来的型一律不动（那是玩家自己装的）。
+ *
+ * 补录顺序 = 目标机型按**基准价降序**（与"优先回收高价值"同一口径：货源不足时先补贵的那些）。
+ */
+export function refillDroneLoadTo(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  target: Readonly<Record<string, number>>,
+): DroneRefillResult {
+  const out: DroneRefillResult = { added: {}, fromHold: {}, fromWare: {}, short: {} }
+  const fleet = state.fleet[shipId]
+  if (!fleet) return out
+  const load: Record<string, number> = { ...(fleet.droneLoad ?? {}) }
+  const cap = droneBayCapOf(state, ctx, shipId)
+  const cpuTotal = cpuBudgetOf(state, ctx, shipId)
+  const cpuFitted = fittedCpuUsed(fleet.fitted, ctx, fleetDefOf(state, ctx, shipId))
+  let usedM3 = droneLoadM3(load, ctx)
+  let usedCpu = droneCpuUsed(load, ctx)
+  const ids = Object.keys(target)
+    .filter((id) => (target[id] ?? 0) > 0 && ctx.items.get(id)?.kind === 'drone')
+    .sort(
+      (a, b) =>
+        (ctx.items.get(b)?.baseSellPriceIsk ?? 0) - (ctx.items.get(a)?.baseSellPriceIsk ?? 0) ||
+        a.localeCompare(b),
+    )
+  for (const id of ids) {
+    const def = ctx.items.get(id)!
+    const want = Math.max(0, Math.floor((target[id] ?? 0) - (load[id] ?? 0)))
+    if (want <= 0) continue
+    const m3 = def.unitM3 ?? 0
+    const cpu = def.cpuUse ?? 0
+    for (let i = 0; i < want; i++) {
+      if (usedM3 + m3 > cap + 1e-6) break // 舱容
+      if (cpuTotal > 0 && cpuFitted + usedCpu + cpu > cpuTotal) break // CPU 预算
+      if ((fleet.cargo[id] ?? 0) > 0) {
+        // **货仓优先**（船长 2026-09-20：船上现成的先补上）
+        fleet.cargo[id] = (fleet.cargo[id] ?? 0) - 1
+        if (fleet.cargo[id]! <= 0) delete fleet.cargo[id]
+        out.fromHold[id] = (out.fromHold[id] ?? 0) + 1
+      } else if (countWare(state, id) > 0) {
+        // 其次物品仓库（不自动购买）
+        removeWare(state, id, 1)
+        out.fromWare[id] = (out.fromWare[id] ?? 0) + 1
+      } else {
+        out.short[id] = want - i
+        break
+      }
+      load[id] = (load[id] ?? 0) + 1
+      out.added[id] = (out.added[id] ?? 0) + 1
+      usedM3 += m3
+      usedCpu += cpu
+    }
+    // 舱容/CPU 先耗尽 ⇒ 余下的也算"没补上"（玩家看得见缺多少）
+    const got = out.added[id] ?? 0
+    if (got < want && out.short[id] === undefined) out.short[id] = want - got
+  }
+  if (Object.keys(out.added).length > 0) fleet.droneLoad = load
+  return out
+}
+
 /** 弹药 MK2 档位三族键 */
 const AMMO_TYPES: readonly DamageType[] = ['kinetic', 'explosive', 'plasma']
 

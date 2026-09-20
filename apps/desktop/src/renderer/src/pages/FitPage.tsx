@@ -20,6 +20,8 @@ import {
   /** 本场预载需求（与开战装载同一函数）＋ 取档判定（船长 2026-09-16「甲」口径的单点） */
   ammoLoadTotals,
   resolveAmmoTier,
+  /** 战后自动补足机群（2026-09-20）⇒ 机群门槛只在"货源不够"时拦人；这里把缺额写出来 */
+  autoLoopDroneShortfall,
   countModule,
   countWare,
   cpuBudgetOf,
@@ -1416,13 +1418,19 @@ function DroneBaySection({
       const def = ctx.items.get(id)
       return { id, n, def }
     })
+  /**
+   * **机群缺额**（船长 2026-09-20：战斗结束会立刻按本场出发编制自动补足机群，货仓优先、其次仓库）——
+   * 走到"还缺"这一步就说明**货仓与物品仓库都没有存货**了，门槛会拦住重复清剿；
+   * 判据走 core 单点 `autoLoopDroneShortfall`（与 `autoLoopReopenBlockReason` 同一把尺），界面不自算。
+   */
+  const droneShort = autoLoopDroneShortfall(state, target)
 
   return (
     <div className="app-fit-dronebay">
       <div className="app-fit-dronebay-head">
         <span className="app-fit-dronebay-title">
           无人机舱
-          <span className="app-dim">（敌方点防会击落机群，被击落后自清单永久损失）</span>
+          <span className="app-dim">（敌方点防会击落机群，被击落后自清单永久损失；战斗结束会自动从本船货仓、其次物品仓库补足）</span>
           {droneCpu > 0 ? (
             <span className="app-dim">（清单占用 CPU {droneCpu}）</span>
           ) : null}
@@ -1446,6 +1454,11 @@ function DroneBaySection({
           {cells.reduce((s, c) => s + c.n, 0)} 架 · CPU {droneCpu}
         </span>
       </div>
+      {droneShort ? (
+        <div className="app-dim" title="重复清剿停环时记下了当时的机群架数，再开要求装载严格超过它。战斗结束时已自动从本船货仓、其次物品仓库补足；还缺 = 两处都没有存货。">
+          「重复清剿」再开还差 {droneShort.need - droneShort.now} 架（停环时 {droneShort.floor} 架 · 现 {droneShort.now} 架）——货仓与仓库都没有存货，购买或制造后在此装入
+        </div>
+      ) : null}
       {/* 型卡流：一型一卡 ×N（+ / − 微调）；空态只有「装入」 */}
       <div className="app-fit-dronebay-cells">
         {cells.map(({ id, n, def }) => (

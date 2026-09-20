@@ -10,8 +10,13 @@ import { buildSimContext } from '@whale/data'
 import {
   addShipToFleet,
   addWare,
+  autoLoopDroneShortfall,
+  autoLoopReopenBlockReason,
   countWare,
   createInitialState,
+  droneBattleOutcome,
+  refillDroneLoadTo,
+  removeWare,
 } from '../src/index'
 import {
   advanceBattleFor,
@@ -138,7 +143,13 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
       expect(row.lost).toBeLessThanOrEqual(n)
       expect(row.back).toBeGreaterThanOrEqual(Math.floor(row.lost * rate)) // 基础名额不低于 floor
       expect(row.back).toBeLessThanOrEqual(row.lost)
-      expect(load[id] ?? 0).toBe(Math.max(0, (LOAD as Record<string, number>)[id]! - row.gone))
+      /**
+       * ⚠ **2026-09-20 起口径变了**（船长：「战斗结束立刻自动补充，优先货仓，其次是仓库」）：
+       * 结算会**立刻**按本场出发编制补足 ⇒ 有存货时清单**当场复位**（不再停在 `出发 − 净损失`）。
+       * 本用例的仓库备货 = 出发编制（`makeState` 一行一型各备同数）⇒ 补满；净损失由仓库承担。
+       */
+      expect(load[id] ?? 0).toBe((LOAD as Record<string, number>)[id]!) // 补足：回到出发编制
+      expect(countWare(state, id)).toBe(n - row.gone) // 仓库支付的正是净损失那一份
     }
     // 余数确实按价值优先：低价值机型拿到余数 ⇒ 更高价值机型必须已用满自己的余量
     const byValue = [...rep.rows].sort((a, b) => b.value - a.value || a.id.localeCompare(b.id))
@@ -156,8 +167,10 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     // 日志已写
     expect(state.logs.some((l) => l.text.includes('机群战损'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('优先回收高价值'))).toBe(true)
-    // 仓库中的补充库存不受影响（回港可再装）
-    expect(countWare(state, 'drone-heavy')).toBe(4)
+    // 战后立刻补足：写了一条「机群补充」日志（来源明细含货仓/仓库）
+    expect(state.logs.some((l) => l.text.includes('机群补充'))).toBe(true)
+    // ⚠ 仓库不再"原封不动"（旧口径注释「回港可再装」已作废）：净损失由仓库垫付，剩余 = 备货 − 净损失
+    expect(countWare(state, 'drone-heavy')).toBe(4 - (rep.rows.find((r) => r.id === 'drone-heavy')?.gone ?? 0))
   })
 
   it('优先回收高价值（2026-09-11 船长）：余数名额给最贵的机型，其余净损失', () => {
@@ -167,6 +180,7 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     const state = makeState(31, load)
     const fake = {
       droneLost: { ...load },
+      droneLoadAtStart: { ...load },
       startedAtGameMs: 123,
     } as unknown as BattleState
     settleDroneLosses(state, ctx, state.shipId, fake)
@@ -184,8 +198,12 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
       expect(row.back).toBe(0)
       expect(row.gone).toBe(1)
     }
-    // 清单：只减掉"净损失"，回收的哨戒机留在清单里继续服役
-    expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-sentry': 1 })
+    // 清单：先只减掉"净损失"（回收的哨戒机留在清单继续服役），随后**立刻按出发编制补足**：
+    // 仓库备货恰好各 1 架 ⇒ 清单复位成四型各 1、仓库清零（净损失由仓库垫付）
+    expect(state.fleet[state.shipId]!.droneLoad).toEqual(load)
+    // 哨戒机是"回收归队" ⇒ 无需补货，它的仓库备货原封不动；其余三型净损失 1 架 ⇒ 各吃掉仓库那 1 架
+    expect(countWare(state, 'drone-sentry')).toBe(1)
+    for (const id of ['drone-scout', 'drone-assault', 'drone-heavy']) expect(countWare(state, id)).toBe(0)
   })
 
   it('战报结构化结果只写当前驾驶船（AI 副船的结算不串进战报）', () => {
@@ -243,5 +261,132 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     expect(battle.droneLost).toBeUndefined()
     expect(settleDroneLosses(state, ctx, state.shipId, battle)).toBeNull()
     expect(JSON.stringify(state.fleet[state.shipId]!.droneLoad ?? {})).toBe(after)
+  })
+})
+
+/**
+ * **战斗结束立刻补足机群**（船长 2026-09-20：「**战斗结束立刻自动补充，优先货仓，其次是仓库**」＋
+ * 「**按本场出发快照补**」）。
+ *
+ * 背景：`docs/design/drone-bay-rework.md`（2026-09-08）§二.5 把「回港自动补充」定为"结构预留、本轮不激活"，
+ * 而 2026-09-10 开「无人机可被击落」时没把它一起激活 ⇒ 玩家打完一架要手动一架架点 +，还被重复清剿的
+ * 再开门槛拦住。本批把那一半补上：结算时按**本场出发清单**补足，货源 = 本船货仓 → 物品仓库（不自动购买）。
+ */
+describe('战斗结束立刻补足机群（2026-09-20 船长）', () => {
+  /** 直接给"某船"备货：货仓（船上现成）与物品仓库分开摆 */
+  function stock(state: GameState, shipId: string, id: string, hold: number, ware: number): void {
+    if (hold > 0) state.fleet[shipId]!.cargo[id] = (state.fleet[shipId]!.cargo[id] ?? 0) + hold
+    if (ware > 0) addWare(state, id, ware)
+  }
+  const fakeBattle = (
+    start: Record<string, number>,
+    lost: Record<string, number>,
+    by?: Record<string, Record<string, number>>,
+  ): BattleState =>
+    ({ droneLost: { ...lost }, droneLoadAtStart: { ...start }, ...(by ? { droneLoadAtStartBy: by } : {}), startedAtGameMs: 99 }) as unknown as BattleState
+
+  it('立刻补足：净损失 3 架全从**货仓**取（仓库不动）', () => {
+    const state = makeState(61, { 'drone-heavy': 4 })
+    // makeState 已往仓库备了 4 架；这里再往货仓摆 4 架（货仓优先 ⇒ 仓库不该被动）
+    stock(state, state.shipId, 'drone-heavy', 4, 0)
+    const rep = settleDroneLosses(
+      state,
+      ctx,
+      state.shipId,
+      fakeBattle({ 'drone-heavy': 4 }, { 'drone-heavy': 4 }),
+    )
+    expect(rep).toBeTruthy()
+    const r = state.droneLossReport!
+    expect(r.total).toBe(4)
+    expect(r.gone).toBe(3) // 回收 1 架（round(4×0.2)）
+    expect(r.survivors).toBe(1) // **补货前**存活（停环记账读它）
+    expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-heavy': 4 }) // 补回出发编制
+    expect(state.fleet[state.shipId]!.cargo['drone-heavy']).toBe(1) // 货仓 4 − 3
+    expect(countWare(state, 'drone-heavy')).toBe(4) // 仓库未动（货仓够）
+    expect(state.logs.some((l) => l.text.includes('机群补充') && l.text.includes('货仓 3'))).toBe(true)
+  })
+
+  it('货仓不足转仓库：1 架来自货仓、2 架来自仓库', () => {
+    const state = makeState(62, { 'drone-heavy': 4 })
+    stock(state, state.shipId, 'drone-heavy', 1, 0)
+    settleDroneLosses(state, ctx, state.shipId, fakeBattle({ 'drone-heavy': 4 }, { 'drone-heavy': 4 }))
+    expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-heavy': 4 })
+    expect(state.fleet[state.shipId]!.cargo['drone-heavy']).toBeUndefined() // 货仓那 1 架先用掉
+    expect(countWare(state, 'drone-heavy')).toBe(2) // 仓库 4 − 2
+    // 日志同时点出货仓与仓库两个来源
+    expect(state.logs.some((l) => l.text.includes('货仓 1 · 仓库 2'))).toBe(true)
+  })
+
+  it('两边都不够：只补到货源上限，并 warn 说清缺几架（重复清剿门槛随之仍拦住）', () => {
+    const state = makeState(63, { 'drone-heavy': 4 })
+    // ⚠ `addWare` 只接受正数 ⇒ 清空备货要走 `removeWare`
+    for (const [id, n] of Object.entries(state.fleet[state.shipId]!.droneLoad ?? {})) removeWare(state, id, n)
+    expect(countWare(state, 'drone-heavy')).toBe(0)
+    stock(state, state.shipId, 'drone-heavy', 1, 0)
+    settleDroneLosses(state, ctx, state.shipId, fakeBattle({ 'drone-heavy': 4 }, { 'drone-heavy': 4 }))
+    expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-heavy': 2 }) // 幸存 1 + 补 1
+    expect(state.logs.some((l) => l.text.includes('机群未能补满') && l.text.includes('缺 2 架'))).toBe(true)
+    /**
+     * 门槛语义（2026-09-18 定「再开要求当前装载严格大于停环时架数」，2026-09-20 自动补足后自然演化）：
+     * `floor` = **补货前**的存活架数 ⇒ 只要补进了 1 架（现 2 > 1）门槛就放行；
+     * **一架都没补上**（现 = 停环时）才拦，并给出"要补到几架以上"——这正是"货源为空"那一种。
+     */
+    state.autoLoopDroneFloor = 1
+    expect(autoLoopDroneShortfall(state)).toBeNull() // 现 2 架 > 停环时 1 架 ⇒ 放行
+    state.fleet[state.shipId]!.droneLoad = { 'drone-heavy': 1 }
+    expect(autoLoopDroneShortfall(state)).toEqual({ now: 1, floor: 1, need: 2 })
+    expect(autoLoopReopenBlockReason(state) ?? '').toContain('需补到 2 架以上')
+    // 全灭且一架都补不上 ⇒ 走"机群已全灭"那一句（不再写"现 0 架 / 停环时 0 架"那种自相矛盾的话）
+    state.autoLoopDroneFloor = 0
+    state.fleet[state.shipId]!.droneLoad = undefined
+    expect(autoLoopReopenBlockReason(state) ?? '').toContain('机群已全灭')
+  })
+
+  it('补足受**舱容**钳制（`refillDroneLoadTo` 单点）：王鲭机巢放不下就不硬塞', () => {
+    const state = makeState(64, { 'drone-scout': 6 })
+    // 灰鲭鲨机巢 30 m³ · 蜂鸟 5 m³/架 ⇒ 目标 8 架只装得下 6 架
+    const uid = addShipToFleet(state, 'sh-mako')
+    state.shipId = uid
+    state.fleet[uid]!.droneLoad = { 'drone-scout': 6 }
+    addWare(state, 'drone-scout', 8)
+    const out = refillDroneLoadTo(state, ctx, uid, { 'drone-scout': 8 })
+    expect(out.added['drone-scout']).toBeUndefined() // 已满 6 架 = 舱容上限 ⇒ 一架都加不进
+    expect(out.short['drone-scout']).toBe(2)
+    expect(state.fleet[uid]!.droneLoad).toEqual({ 'drone-scout': 6 })
+    // 卸到 4 架再补 ⇒ 只能补到舱容上限 6
+    state.fleet[uid]!.droneLoad = { 'drone-scout': 4 }
+    const out2 = refillDroneLoadTo(state, ctx, uid, { 'drone-scout': 8 })
+    expect(out2.added['drone-scout']).toBe(2)
+    expect(out2.short['drone-scout']).toBe(2)
+    expect(state.fleet[uid]!.droneLoad).toEqual({ 'drone-scout': 6 })
+  })
+
+  it('**安全阀读数**：补足之后仍能判出"战损过半"（`after` 必须是补货前架数，否则静默失效）', () => {
+    const state = makeState(66, { 'drone-heavy': 6 })
+    const battle = fakeBattle({ 'drone-heavy': 6 }, { 'drone-heavy': 6 })
+    settleDroneLosses(state, ctx, state.shipId, battle)
+    // 补足生效：清单当场回到 6 架 —— 若这里读清单判战损，会得到"一架没少" ⇒ 安全阀永远不响
+    expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-heavy': 6 })
+    const out = droneBattleOutcome(state, battle)
+    expect(out.before).toBe(6)
+    expect(out.after).toBe(1) // 净损失 5（回收 1）⇒ 补货前只剩 1 架
+    expect(out.attrition).toBe(true)
+    // 配对保护：换一场编号对不上的战斗 ⇒ 读不到本场报告时回落"出发 − 净损失"，不会张冠李戴
+    const other = { ...battle, startedAtGameMs: 12345 } as unknown as BattleState
+    expect(droneBattleOutcome(state, other).attrition).toBe(false) // before 存在但报告不配对 ⇒ gone 0 ⇒ 未过半
+  })
+
+  it('逐舰各按**自己的**出发快照补（多舰趟次同源）', () => {    const state = makeState(65, { 'drone-heavy': 2 })
+    const wing = addShipToFleet(state, 'sh-sentinel')
+    state.fleet[wing]!.droneLoad = { 'drone-sentry': 4 }
+    addWare(state, 'drone-sentry', 4)
+    const battle = fakeBattle({ 'drone-heavy': 2 }, { 'drone-heavy': 2, 'drone-sentry': 2 }, {
+      player: { 'drone-heavy': 2 },
+      wing: { 'drone-sentry': 4 },
+    })
+    settleDroneLosses(state, ctx, state.shipId, battle, 0, 'player')
+    settleDroneLosses(state, ctx, wing, battle, 0, 'wing')
+    expect(state.fleet[state.shipId]!.droneLoad).toEqual({ 'drone-heavy': 2 }) // 主控按 2 架补
+    expect(state.fleet[wing]!.droneLoad).toEqual({ 'drone-sentry': 4 }) // 僚舰按 4 架补
   })
 })
