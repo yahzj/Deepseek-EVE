@@ -247,7 +247,7 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
       }
       valuePerHour = Math.round(Math.round(mp.unitsPerCycle * cyclesPerHour) * valuePerUnit)
     }
-    return { belt, galaxyName: galaxy?.name ?? '母港', sec: galaxy?.security ?? 1, valuePerHour }
+    return { belt, galaxyName: galaxy?.name ?? tr('ui.Expedition.007'), sec: galaxy?.security ?? 1, valuePerHour }
   })
   const byBeltName = (x: (typeof beltRows)[number], y: (typeof beltRows)[number]): number =>
     x.belt.name.localeCompare(y.belt.name, 'zh-Hans-CN') || x.belt.id.localeCompare(y.belt.id)
@@ -273,7 +273,7 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
   function handleStart(beltId: string): void {
     // T4 延后项：远征中（确认后）走"取消远征再开采"转场入口
     const r = state.expedition.active ? engine.startMiningFromExpeditionAt(beltId) : engine.startMiningAt(beltId)
-    if (!r.ok) onToast(cmdText(r) || '无法开采', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.388'), true)
   }
 
   function handleStop(): void {
@@ -282,18 +282,18 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
 
   function handleAiAssign(beltId: string, shipId: string, coreType: AiCoreType): void {
     const r = engine.assignAiMiningAt(shipId, coreType, beltId)
-    if (!r.ok) onToast(cmdText(r) || '指派失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.196'), true)
     else onToast(tr("ui.MapPage.081"))
   }
 
   const phaseText = (): string => {
     if (view.phase === 'outbound') {
-      return tr("ui.MapPage.082", { p1: view.shipName || '矿船', p2: view.beltName, p3: formatDurationMs(view.remainingMs ?? 0) })
+      return tr("ui.MapPage.082", { p1: view.shipName || tr('ui.MapPage.117'), p2: view.beltName, p3: formatDurationMs(view.remainingMs ?? 0) })
     }
     if (view.phase === 'returning') {
-      return tr("ui.MapPage.083", { p1: view.shipName || '矿船', p2: formatDurationMs(view.remainingMs ?? 0), p3: view.tripUnits.toLocaleString('zh-CN') })
+      return tr("ui.MapPage.083", { p1: view.shipName || tr('ui.MapPage.117'), p2: formatDurationMs(view.remainingMs ?? 0), p3: view.tripUnits.toLocaleString('zh-CN') })
     }
-    return tr("ui.MapPage.084", { p1: view.shipName || '矿船', p2: view.beltName, p3: view.tripUnits.toLocaleString('zh-CN') })
+    return tr("ui.MapPage.084", { p1: view.shipName || tr('ui.MapPage.117'), p2: view.beltName, p3: view.tripUnits.toLocaleString('zh-CN') })
   }
 
   return (
@@ -393,7 +393,7 @@ function BeltCard({
   const mv = miningStatus(state, engine.ctx)
   const standing = state.standings['dsi'] ?? 0
   const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
-  const galaxyName = galaxy?.name ?? '母港'
+  const galaxyName = galaxy?.name ?? tr('ui.Expedition.007')
   // 效率行（试点 2026-09-05）：每循环产量 × 循环时长 → 每小时产出与每小时估价。
   // 估价按物品本身 baseSellPriceIsk（不随市场浮动）；复合带按权重加权期望价值。
   let effLine: string | null = null
@@ -715,7 +715,7 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
 
   function startAt(galaxyId: string): void {
     const r = engine.startSalvageOpAt(galaxyId)
-    if (!r.ok) onToast(cmdText(r) || '无法打捞', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.390'), true)
   }
   function stopNow(): void {
     if (engine.stopSalvageOpNow()) onToast(tr("ui.MapPage.101"))
@@ -726,7 +726,7 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
       return
     }
     const r = engine.assignAiSalvageAt(shipId, coreType, galaxyId)
-    if (!r.ok) onToast(cmdText(r) || '指派失败', true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.196'), true)
     else onToast(tr("ui.MapPage.103"))
   }
   function cancelAi(sid: string): void {

@@ -2618,6 +2618,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.114": { zh: "：本次远征将立即取消——", en: ": this expedition is cancelled at once —" },
   "ui.MapPage.115": { zh: "，随即在「", en: ", then at “" },
   "ui.MapPage.116": { zh: " · 安全 {v}", en: " · security {v}" },
+  "ui.MapPage.117": { zh: "矿船", en: "Mining ship" },
   "ui.MarketPage.002": { zh: "等级", en: "Level" },
   "ui.MarketPage.003": { zh: "装备", en: "Modules" },
   "ui.MarketPage.004": { zh: "蓝图", en: "Blueprint" },
