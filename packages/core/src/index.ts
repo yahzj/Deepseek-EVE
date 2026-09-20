@@ -951,6 +951,17 @@ export {
 } from './firstTasks'
 /* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
 export { grantFirstReward } from './firstRewards'
+/* 成就徽章（2026-09-20 船长批「继续之前的成就系统」· 第一批 = 徽章框架，63 枚，已完成并合入 main）
+ * 第二批（里程碑成就内容）尚未实现 —— 落点见 core/achievements.ts 头注释；本处不挂未完成记号 */
+export {
+  achievementReached,
+  advanceAchievements,
+  achievementOverview,
+  achievementCount,
+  chainAchievementGroups,
+} from './achievements'
+export type { AchievementDef, AchievementSource, AchievementCategory } from './types'
+export type { AchievementState } from './state'
 export { HOME_SCAN_WINDOW_MS } from './explore'
 export type { FirstTaskDef, FirstStatKey } from './firstTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'

@@ -1,9 +1,37 @@
 # 成就系统（第一批 · 徽章框架）— 设计稿（2026-09-20）
 
-> **状态：待船长确认（未开工 · 按 AGENTS §2 四步闸门第 3 步）。**
-> 未完成，按船长 2026-09-20 新规**不计入本地化工作排队**；本文件与将来的代码改动处均标
-> **`⟪未完成 2026-09-20⟫`**（规则见 `docs/development-conventions.md` §十一之二）。
-> 挂账清单位于 `docs/roadmap.md`「未完成功能清单」。
+> **状态：第一批已完成并合入 main（2026-09-20）。**
+> ⚠ **第二批（里程碑成就内容）仍未完成** ⇒ 未完成挂在**第二批**上，`⟪未完成 2026-09-20⟫` 记号保留在
+> **第二批的落点处**（`data/achievements.ts` 的 `milestone` 分类注释、`core/achievements.ts` 头注释、
+> `roadmap` 清单行）；**第一批已完成的代码不再挂记号**（按约定 §十一之二：完成即删记号，残留会让本地化永远跳过它）。
+> 规则见 `docs/development-conventions.md` §十一之二。
+
+## 落码记录（2026-09-20 · 第一批）
+
+| 落点 | 内容 |
+| --- | --- |
+| `packages/data/src/achievements.ts` | 63 枚徽章表：13 任务徽章由 `FIRST_TASKS` **派生** ＋ 50 链徽章由链配置**派生**（任务表增删时自动跟随，不会漏配） |
+| `packages/core/src/achievements.ts` | `achievementReached` / `advanceAchievements`（每拍现算补发 · 幂等）· `achievementOverview` / `achievementCount` / `chainAchievementGroups`（界面读数） |
+| `packages/core/src/types.ts` | `AchievementDef` / `AchievementSource` / `AchievementCategory`（含预留的 `'milestone'`） |
+| `packages/core/src/state.ts` | `GameStateV30` ＋ `AchievementState` ＋ `CURRENT_STATE_VERSION 29 → 30` ＋ 新档写 `{ earned: {} }` |
+| `packages/core/src/save.ts` | `MIGRATIONS[29]`（补空账本）＋ 载入器逐项清洗（时刻取非负整数、**不查表**） |
+| `packages/core/src/engine.ts` | 挂点：`advanceFirstChains` **之后**调 `advanceAchievements(state, ctx.achievements)`（任务与链的达成同拍可见） |
+| `packages/data/src/context.ts` · `index.ts` | 注册 `achievements` 目录 ＋ 导出 |
+| `apps/.../ui/Glyphs.tsx` | 新增 `ach-*` 盾徽图案族（14 个形状：`ach-first` ＋ 每条链一枚） |
+| `apps/.../panels/Achievements.tsx` | 二级窗口 ＋ 任务中心入口按钮（`AchievementsButton`） |
+| `apps/.../panels/Expedition.tsx` | 「重要任务」页放入口按钮 |
+| `apps/.../styles.css` · `i18n/dict.en.ts` | 样式段（固定尺寸徽章卡）＋ 7 条界面词条 |
+| `packages/core/tests/achievements.test.ts` | **17 条**用例：表口径（枚数/档位/图案配色/上限）· 达成判定 · 发放去重 · **纯展示不动资产** · 老档自愈 · 读档往返 · 界面读数 · 与引擎同拍 |
+
+**验证（2026-09-20）**：`typecheck` 四包 0 错 · core **174 文件 / 1913 用例全绿**（新增 17）·
+`content:check` ✅ · `ui:rot-check` ✅（UI 改动必跑）· `ui:tip-check` ✅ · `l10n:check` ✅ ·
+`save:migrate` **71/71**（v25/v28/v29 真档 → v30，资产不变）· 桌面 **build ✅**。
+
+**与设计稿的两处偏差（施工中发现，已在表中修正）**：
+1. 徽章总数 **58 → 63**：设计稿初版把 `FIRST_TASKS` 数成 12 条，实际 **13 条任务 / 13 条链**（见 §3.1）；
+2. **老档补发不写在迁移里**：`MIGRATIONS` 只吃 raw state、拿不到内容表 ⇒ 改由 `advanceAchievements`
+   **载入后第一拍现算补发**（幂等、判定只有一份）。代价 = 补发时刻记"载入后那一拍"而非当年真实时刻；
+   徽章**纯展示** ⇒ 无影响（`save.ts` 的 `MIGRATIONS[29]` 注释已写明）。
 
 ## 一、船长原话（照抄）
 
@@ -32,19 +60,19 @@
 
 ## 三、范围（第一批：徽章框架）
 
-### 3.1 徽章清单 = **58 枚**
+### 3.1 徽章清单 = **63 枚**
 
 | 来源 | 枚数 | 触发 |
 | --- | --- | --- |
-| 12 条「第一次」任务 | **12** | 任务达成（`advanceFirstTasks` 返回新 id 时自动发） |
-| 12 条次数链 × 1/4/7/10 级 | **44** | 链进度达到该档自动发（11 条链各有 10 级 ⇒ 各 4 枚） |
+| 13 条「第一次」任务 | **13** | 任务达成（`advanceFirstTasks` 返回新 id 时自动发） |
+| 12 条一般链 × 1/4/7/10 级 | **48** | 链进度达到该档自动发（各 10 级 ⇒ 各 4 枚） |
 | 宇宙探索家（`scan` 链） | **2** | **1 级与 5 级**（该链上限就是 5 级，`CHAIN_TIERS.scan = [5,8,12,16,20]`） |
-| 合计 | **58** | |
+| 合计 | **63** | |
 
-- ⚠ `scan` 与其他链口径**不同是有意的**（船长 2026-09-20 裁定）：它没有 7/10 级可给。
-- 其余 11 条链：探索家以外的 `salvageRuns` / `bountyWins` / `wormholeRuns` / `repairs` /
-  `aiAssigns` / `haulTrips` / `marketIncome` / `ships` / `mineUnits` / `produceUnits` /
-  `refineBatches` / `skills` 中，除 `scan` 外**均为 10 级**。
+- ⚠ **施工时核对修正**：设计稿初版写「58 枚（12 任务 ＋ 44 链 ＋ 2）」，是把 `FIRST_TASKS` 数成了 12 条；
+  实际 **13 条任务 / 13 条链**（`firstTasks.ts` 实测）⇒ 正确总数 **63**。差额 5 枚 = 漏算的那条任务链的 4 枚 ＋ 任务徽章 1 枚。
+- ⚠ `scan`（宇宙探索家）与其他链口径**不同是有意的**（船长 2026-09-20 裁定）：它上限只有 5 级，没有 7/10 级可给。
+- 其余 12 条链均为 10 级 ⇒ 各 4 枚。
 
 ### 3.2 图案与配色（船长：「图案相同，用颜色区分」）
 

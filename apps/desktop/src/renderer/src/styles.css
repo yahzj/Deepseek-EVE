@@ -10867,3 +10867,42 @@ html[data-locale='en'] body {
   .app-wh-tabs { flex-wrap: wrap; }
   .app-modal-head { flex-wrap: wrap; row-gap: 6px; }
 }
+
+/* ═══════════ 成就徽章（船长 2026-09-20「继续之前的成就系统」· 第一批 = 徽章框架）═══════════
+   口径：**二级窗口**（不占一级导航、不碰「一级页不滚」红线，滚动只在这一层内）·
+   **同图案 · 颜色区分**（形状与色值都由数据表给，本段不写死任何档位配色）·
+   未达成 = 灰阶剪影（可预见"还差哪一枚"）。
+   徽章卡**固定尺寸**（防悬停内容长短引起跳动，AGENTS §6 容器定尺寸那条）。 */
+.app-ach-modal { width: 620px; }
+.app-ach-sec {
+  margin: 10px 0 6px; font-size: 12px; font-weight: 600;
+  color: var(--wui-accent); border-bottom: 1px dotted var(--wui-border); padding-bottom: 4px;
+}
+.app-ach-sec:first-child { margin-top: 0; }
+.app-ach-chain { margin-bottom: 8px; }
+.app-ach-chain-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.app-ach-chain-name { font-size: 12px; color: var(--wui-text); }
+.app-ach-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px;
+}
+.app-ach-badge {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 3px; height: 74px; padding: 6px 4px; box-sizing: border-box; overflow: hidden;
+  border: 1px solid var(--wui-border); border-radius: 6px; background: rgba(15, 26, 40, 0.5);
+}
+/* 未达成：整体压暗（图案本身已转灰阶，这里再压一层底，与已获得拉开层次） */
+.app-ach-badge:not(.is-earned) { opacity: 0.72; }
+.app-ach-badge-art { display: flex; align-items: center; justify-content: center; height: 34px; line-height: 0; }
+.app-ach-name {
+  font-size: 10.5px; line-height: 1.25; text-align: center; color: var(--wui-text-dim);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.app-ach-badge.is-earned .app-ach-name { color: var(--wui-text); }
+.app-ach-check {
+  position: absolute; top: 2px; right: 4px; font-size: 10px; line-height: 1;
+  color: var(--wui-accent); opacity: 0.9;
+}
+@media (max-width: 640px) {
+  .app-ach-modal { width: 100%; }
+  .app-ach-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+}

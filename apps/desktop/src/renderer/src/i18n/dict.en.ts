@@ -79,4 +79,18 @@ export const EN: Record<string, string> = {
   '价值排序（从高到低）': 'Value (high to low)',
   '默认排序 = 按任务级别从低到高（L1→L5）；价值排序 = 按奖励从高到低':
     'Default = by task level, low to high (L1→L5); Value = by reward, high to low',
+
+  // ── 成就徽章（2026-09-20 船长「继续之前的成就系统」· 第一批 = 徽章框架，已完成）
+  //    ⚠ 徽章**名称与说明**来自内容表 `data/src/achievements.ts`，其英文覆盖层尚未接 ⇒
+  //    那 63 条名称/说明**另行排期**（内容层覆盖层的做法见 `packages/data/src/l10n.ts`）；
+  //    这里只登记**界面串**（本就该跟界面批一起做）。
+  //    ⚠ 未完成的是**第二批（里程碑成就内容）**——它的文案按约定 §十一之二不排本地化队列，
+  //    记号落在 milestone 的落点（`data/src/achievements.ts` 头注释 ＋ `roadmap` 清单行）。
+  '成就徽章': 'Achievement Badges',
+  '已获得 {n}/{total} 枚': '{n}/{total} earned',
+  '「第一次」任务': 'First-Time Tasks',
+  '次数链进度': 'Progression Chains',
+  '当前 {lv} 级': 'Level {lv}',
+  '已获得': 'Earned',
+  '尚未获得': 'Not yet earned',
 }
