@@ -26,7 +26,7 @@ import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
 import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX_HARD } from './wormholeScan'
 import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
-import { WORMHOLE_ARCHETYPES, wormholeArchetypeOf } from './wormholeGrid'
+import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, wormholeArchetypeOf } from './wormholeGrid'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
@@ -2627,11 +2627,18 @@ function normalizeState(raw: unknown): GameState {
     }
   }
   // --- 虫洞副本（v25 新字段）：整表容错 —— 结构不认识就当作"不在洞里"（不静默留半截状态）
-  /** 网格探索状态（F3a）：**老档没有 ⇒ 不写**（零迁移）；坏结构整块丢弃（该层退回旧口径） */
+  /**
+   * 网格探索状态（F3a）：**老档没有 ⇒ 不写**（零迁移）；坏结构整块丢弃（该层退回旧口径）。
+   *
+   * ⚠ **半径上限与阶梯解耦**（2026-09-20 修 · 玩家报障「深入下一层后，显示本层没有网格」）：
+   * 原写死 `radius <= 8`，那是"每 2 层 +1、封顶 R=4"时代的余量；阶梯改成"每层 +1 环、不封顶"
+   * 之后 **层 8 起（R=9+）的盘被整块丢掉**（该层退回旧式线性地图）。现取 `WORMHOLE_GRID_SAVE_MAX_R`
+   * （只防坏档，不参与玩法，改阶梯不必动它）。
+   */
   const cleanWormholeGrid = (raw: unknown): WormholeGridState | undefined => {
     const g = asRaw(raw)
     const radius = Math.floor(num(g.radius))
-    if (!(radius >= 1 && radius <= 8)) return undefined
+    if (!(radius >= 1 && radius <= WORMHOLE_GRID_SAVE_MAX_R)) return undefined
     const cellsRaw = Array.isArray(g.cells) ? g.cells : []
     const cells: WormholeGridState['cells'] = []
     for (const it of cellsRaw) {
