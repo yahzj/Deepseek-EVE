@@ -17,7 +17,7 @@ import type { WormholeState } from './wormhole'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 29
+export const CURRENT_STATE_VERSION = 30
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -1848,8 +1848,32 @@ export type GameStateV29 = Omit<GameStateV28, 'version'> & {
    */
   research?: MatterTechState
 }
-/** 对外统一称呼：当前版本状态（v29 = v28 + 谜质科技树） */
-export type GameState = GameStateV29
+/**
+ * 第三十版存档结构（v30 = v29 + **成就徽章**，2026-09-20 船长：「继续之前的成就系统」）。
+ *
+ * 徽章表见 `data/src/achievements.ts`（第一批 63 枚），发放与判定见 `core/achievements.ts`。
+ * 只存"哪几枚到手了 ＋ 到手时刻"——图案/名称/说明一律现算（改内容即热更，不必迁移）。
+ * 老档迁移补 `{ earned: {} }` **并补发**已达成者的徽章（见 `save.ts` 的 `MIGRATIONS[29]`）。
+ */
+export type GameStateV30 = Omit<GameStateV29, 'version'> & {
+  version: 30
+  /**
+   * **成就徽章**（2026-09-20 船长批；第一批 = 任务与次数链共 63 枚，已完成）。
+   * ⚠ 账本结构对两批通用：第二批（里程碑成就）只是往徽章**表**里加条目，**本字段不用改**。
+   *
+   * ⚠ **可选**：新建档（`createInitialState`）与载入器（`normalizeState`）**恒写入**它；
+   * 标可选只为让"v29 形状的测试夹具"照旧可用（读侧一律 `?? 空账` 兜底 ⇒ 零行为变化）。
+   */
+  achievements?: AchievementState
+}
+/** 对外统一称呼：当前版本状态（v30 = v29 + 成就徽章） */
+export type GameState = GameStateV30
+
+/** **成就徽章的存档面**：只存"哪几枚到手了 ＋ 到手时刻"——图案/名称/说明一律现算 */
+export interface AchievementState {
+  /** 徽章 id → 达成时刻（`state.gameMs`；只置一次，与任务奖励同款去重口径） */
+  earned: Record<string, number>
+}
 
 /** **谜质科技树的存档面**：只存"哪一项研究到了几级"——效果一律现算（改数值即热更，不必迁移） */
 export interface MatterTechState {
@@ -2257,8 +2281,8 @@ export function createInitialState(opts?: {
 }): GameState {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV29 = {
-    version: 29,
+  const state: GameStateV30 = {
+    version: 30,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,
@@ -2469,6 +2493,7 @@ export function createInitialState(opts?: {
     sideTasks: { seq: 1, window: 0, resource: [], courier: [], bounty: [], faction: null, bountyWindow: 0, deliver: null }, // v24：任务中心·时效任务板（资源/快递 20 分钟整点开刷；赏金每天本地 0 点开板；faction = 当日派系活跃；deliver = 快递投送在途挂账，缺省 null）
     wormhole: { ...EMPTY_WORMHOLE_STATE }, // v25：虫洞副本（施工期对玩家不可见；见 wormhole.ts 头注释）
     research: { levels: {} }, // v29：谜质科技树（2026-09-19 船长批；老档迁移补空树）
+    achievements: { earned: {} }, // v30：成就徽章（2026-09-20 船长批；老档迁移补空账并补发）
     logs: [],
   }
   if (prologue) {

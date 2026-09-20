@@ -65,6 +65,7 @@ import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { FirstTasks } from './FirstTasks'
 import { ImportantTasks } from './ImportantTasks'
+import { AchievementsButton } from './Achievements'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -360,6 +361,10 @@ export function TaskPanel({
         <div>
           {/* 2026-09-17 教程重做：重要任务＝「第一次」系列（13 条，自由选择）＋后续次数任务 */}
           <FirstTasks engine={engine} onToast={onToast} onOpenComms={onOpenComms} onJump={onJump} />
+          {/* 2026-09-20 成就徽章：入口放这里（徽章全由任务与次数链产出）⇒ 点开是**二级窗口** */}
+          <div className="app-sidetasks-head">
+            <AchievementsButton engine={engine} />
+          </div>
           <ImportantTasks engine={engine} />
           {stationCount > 0 && unbuiltStationIds.length > 0 ? (
             <>

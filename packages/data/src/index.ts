@@ -89,6 +89,9 @@ export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from '.
 export { buildSimContext } from './context'
 // 2026-09-19 谜质科技树：23 节点数据表（体检「谜质科技契约」逐条校验 id/费用/前置）
 export { MATTER_TECH_NODES, buildMatterTechCatalog } from './matterTech'
+// 2026-09-20 成就徽章（船长「继续之前的成就系统」· 第一批 = 徽章框架，共 63 枚）
+// ⟪未完成 2026-09-20⟫ 第二批（里程碑成就内容）尚未实现 —— 见 data/achievements.ts 头注释
+export { ACHIEVEMENTS, achievementOf, achievementsOfChain } from './achievements'
 // 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
 export {
   localizeCtx,

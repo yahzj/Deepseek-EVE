@@ -39,6 +39,7 @@ import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans } from './onboarding'
 import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks } from './firstTasks'
+import { advanceAchievements } from './achievements'
 import { grantFirstReward } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
@@ -201,6 +202,23 @@ export function advanceGame(
   // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
   // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。
   advanceFirstChains(state)
+  /**
+   * **成就徽章**（2026-09-20 船长批「继续之前的成就系统」· 第一批 = 徽章框架）。
+   *
+   * 挂点就是 `firstTasks.ts:355` 预留的那个接口说明所指的位置：**任务判定与链升级都做完之后**
+   * ⇒ 同一拍里"任务达成"与"链升到 1/4/7/10 级"都能立刻领到徽章。
+   *
+   * 三条纪律：
+   * - **纯展示**（船长裁定）：只写 `state.achievements.earned`，**不碰钱包/仓库/货舱**；
+   * - **不写日志、不发通讯**：保持"离线事件条数"等既有口径逐字不变（与 `advanceFirstTasks` 同款理由）；
+   * - **现算补发**（幂等）：判据是 `state` 现状而非事件 ⇒ 老档、漏发、异常中断都靠这条自愈。
+   *
+   * **第二批（里程碑成就内容）尚未实现**：届时在 `data/src/achievements.ts`
+   * 增 `category: 'milestone'` 的条目即可，本处调用一字不用改（见 `core/achievements.ts` 头注释）。
+   * ⚠ **第一批（任务 ＋ 链共 63 枚）已完成并合入 main ⇒ 本处不挂未完成记号**
+   * （约定 §十一之二：完成即删记号；残留会让本地化永远跳过它）。
+   */
+  advanceAchievements(state, ctx.achievements)
 }
 
 /** 技能队列推进（内部函数，不对外） */

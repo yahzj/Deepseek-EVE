@@ -19,8 +19,8 @@
 
 | 功能 | 状态 | 挂起原因 | 恢复入口 |
 | --- | --- | --- | --- |
-| **成就系统 · 第一批（徽章框架）** | **设计稿待船长确认 · 未开工** | 系统级新功能，按 AGENTS §2 四步闸门：已集中提问（9 问）、设计总结已出（58 枚徽章：12 任务 ＋ 44 链 ＋ 2 探索家）、**等船长确认** | 设计稿 = `docs/design/achievements-20260920.md`；确认后落码 = `data/achievements.ts` · `core/achievements.ts` · `state.achievements.earned` ＋ v29→v30 ＋ `panels/Achievements.tsx`（二级窗口） |
-| **成就系统 · 第二批（里程碑成就内容）** | **未开工** | 内容与判定另批定；船长已定「分两批」 | 第一批完成后再议清单 |
+| **成就系统 · 第一批（徽章框架）** | **已完成并合入 main**（2026-09-20） | — | 落码 = `data/achievements.ts`（63 枚）· `core/achievements.ts` · `state.achievements.earned` ＋ **v30** ＋ `panels/Achievements.tsx`（二级窗口，入口在任务中心）。设计稿 `docs/design/achievements-20260920.md` |
+| **成就系统 · 第二批（里程碑成就内容）** | **未开工** ⟪未完成 2026-09-20⟫ | 内容与判定另批定；船长已定「分两批」。第一批已把框架与 `milestone` 分类留好 | 落点 = `data/achievements.ts` 增 `category: 'milestone'` 条目（发放/界面/存档一字不用改）；设计稿 §3.4 |
 
 ## A. 体验走查 + 打磨（建议优先，收口"内容感"）
 - [ ] A1 船长通读悬赏文案与界面观感（2026-09-05 注：需船长走查后按条关闭；2026-09-04 首轮已走查并清理过一批）
