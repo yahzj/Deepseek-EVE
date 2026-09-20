@@ -145,11 +145,15 @@ describe('零件体系：配方改造（2026-09-20）', () => {
       expect(k.raw, `${b.id} 矿物占比`).toBeGreaterThan(0.23)
     }
   })
-  it('⑥ 皇带鱼：总价分文不变 · **只用基础零件**（非专属不吃高级件）· 占比 75/25 · 工期 ÷5', () => {
+  it('⑥ 皇带鱼：总价分文不变 · **只用基础零件**（非专属不吃高级件）· 占比 75/25 · **虚空晶留在配方** · 工期 ÷5', () => {
     const sbp = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-colossal')!
     expect(matValue(sbp.materials)).toBe(307_106_000) // 原总价（8 种矿物口径）⇒ 替换后逐分不变
     expect(sbp.buildSeconds).toBe(32_400) // 162,000 ÷ 5
     expect(sbp.materials.some((m) => m.itemId === 'part-frame')).toBe(true)
+    // 2026-09-20 船长追加：「让虚空晶留在旗舰配方」⇒ 虫洞特产仍是旗舰的招牌料（**原量 10,320**）
+    expect(sbp.materials.find((m) => m.itemId === 'min-voidcrystal')?.count).toBe(10_320)
+    const once = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-once-colossal')!
+    expect(once.materials).toEqual(sbp.materials) // 一次性孪生同料同价
     for (const m of sbp.materials) expect(ADV_IDS.has(m.itemId), `${m.itemId} 不该出现在非专属配方里`).toBe(false)
     const s = shares(sbp.materials)
     expect(s.basic).toBeCloseTo(0.75, 1)

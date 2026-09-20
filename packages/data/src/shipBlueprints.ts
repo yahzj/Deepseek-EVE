@@ -65,9 +65,12 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '皇带鱼级舰船蓝图', // 2026-09-09 船长定：随船改名（原巨灵鲸级）
     shipId: 'sh-colossal',
     materials: [
-      { itemId: 'min-starcore', count: 201_710 },
-      { itemId: 'min-tritanium', count: 1_731_630 },
-      { itemId: 'min-darkiron', count: 17_314 },
+      // 2026-09-20 船长：「让虚空晶留在旗舰配方」⇒ 矿物那 25% 里**虚空晶保留原量 10,320**，
+      // 其余三行按改造前的价值占比分（总价仍逐分不变；基础件 75% 篮子不受影响）
+      { itemId: 'min-voidcrystal', count: 10_320 },
+      { itemId: 'min-tritanium', count: 1_807_395 },
+      { itemId: 'min-darkiron', count: 18_072 },
+      { itemId: 'min-starcore', count: 45_182 },
       { itemId: 'part-frame', count: 635_391 },
       { itemId: 'part-armor-plate', count: 184_263 },
       { itemId: 'part-cable', count: 222_899 },
@@ -1071,9 +1074,11 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-colossal',
     singleUse: true,
     materials: [
-      { itemId: 'min-starcore', count: 201_710 },
-      { itemId: 'min-tritanium', count: 1_731_630 },
-      { itemId: 'min-darkiron', count: 17_314 },
+      // 与 sbp-colossal 同料同价（一次性孪生必须逐字一致；虚空晶原量保留，见上）
+      { itemId: 'min-voidcrystal', count: 10_320 },
+      { itemId: 'min-tritanium', count: 1_807_395 },
+      { itemId: 'min-darkiron', count: 18_072 },
+      { itemId: 'min-starcore', count: 45_182 },
       { itemId: 'part-frame', count: 635_391 },
       { itemId: 'part-armor-plate', count: 184_263 },
       { itemId: 'part-cable', count: 222_899 },
