@@ -21,9 +21,12 @@ import { deliverStationResources, noteStationSiteAt, siteProgress, tierRemaining
 import { cargoCapacityM3Of, cargoOfShip, cargoUsedM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 
 /** 进港卸货附注（2026-09-08 船长定：任何进港时刻自动整仓卸货；返回 >0 单位的附注文本） */
-function dockUnloadNote(state: GameState, shipId: string): string {
+function dockUnloadNote(state: GameState, shipId: string): { text: string; id?: string; unit?: string } {
   const moved = unloadCargoOfShipToWarehouse(state, shipId)
-  return moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''
+  const unit = moved.toLocaleString('zh-CN')
+  return moved > 0
+    ? { text: `货仓已自动卸入物品仓库（${unit} 单位）。`, id: 'core.location.037', unit }
+    : { text: '' }
 }
 
 /** 已建成的空间站星系清单（母港 + 副站建成者），顺序 = 母港优先 */
@@ -152,18 +155,18 @@ export function isIdleField(state: GameState): boolean {
  * 换港返航即时到站（定稿：去程取消）：下达即停靠目标站（finishAtGameMs = 当前时刻，无航行等待）。
  */
 export function startTransitHome(state: GameState, ctx: SimContext): CommandResult {
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：请先停止（活动栏「停止运输」，到站即止）。' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再返航。' }
-  if (state.awayGalaxy === null) return { ok: false, error: '舰船已停靠空间站，无需返航。' }
-  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。' }
-  if (state.transit.active) return { ok: false, error: '返航行程进行中。' }
-  if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征。' }
-  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：请先停止（活动栏「停止运输」，到站即止）。', errorId: 'core.location.001' }
+  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再返航。', errorId: 'core.location.002' }
+  if (state.awayGalaxy === null) return { ok: false, error: '舰船已停靠空间站，无需返航。', errorId: 'core.location.003' }
+  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。', errorId: 'core.location.004' }
+  if (state.transit.active) return { ok: false, error: '返航行程进行中。', errorId: 'core.location.005' }
+  if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征。', errorId: 'core.location.006' }
+  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。', errorId: 'core.location.007' }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。', errorId: 'core.location.008' }
   const from = state.awayGalaxy
   const target = nearestStationGalaxyId(state, ctx, from)
   const mins = shortestTravelMinutes(ctx, from, target)
-  if (!Number.isFinite(mins)) return { ok: false, error: '最近空间站不在已知航路内，无法返航。' }
+  if (!Number.isFinite(mins)) return { ok: false, error: '最近空间站不在已知航路内，无法返航。', errorId: 'core.location.009' }
   const t = state.transit
   const fromName = ctx.galaxies.get(from)?.name ?? from
   const toName = ctx.galaxies.get(target)?.name ?? '空间站'
@@ -182,11 +185,20 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
     const prog = state.stationSites[site.id]
     if (prog && prog.stage >= site.tiers.length && site.galaxyId === target) {
       state.dockedSite = site.id
-      addLog(state, 'info', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。${unloadNote}`)
+      addLog(state, 'info', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。${unloadNote.text}`, 'core.location.039', {
+        p1: site.name,
+        p2: unloadNote.text,
+        ...(unloadNote.id !== undefined ? { p2Id: unloadNote.id } : {}),
+      })
       return { ok: true }
     }
   }
-  addLog(state, 'info', `返航完成：舰船已即时停靠「${toName}」（自「${fromName}」归来）。${unloadNote}`)
+  addLog(state, 'info', `返航完成：舰船已即时停靠「${toName}」（自「${fromName}」归来）。${unloadNote.text}`, 'core.location.040', {
+      p1: toName,
+      p2: fromName,
+      p3: unloadNote.text,
+      ...(unloadNote.id !== undefined ? { p3Id: unloadNote.id } : {}),
+    })
   return { ok: true }
 }
 
@@ -286,37 +298,37 @@ function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDe
  */
 export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: string): CommandResult {
   const site = ctx.stations.get(siteId)
-  if (!site) return { ok: false, error: `未知建站点：${siteId}。` }
+  if (!site) return { ok: false, error: `未知建站点：${siteId}。`, errorId: 'core.location.010' }
   const prog = siteProgress(state, siteId)
-  if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成并网，无需再交付建材。` }
+  if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成并网，无需再交付建材。`, errorId: 'core.location.011' }
   if (state.awayGalaxy !== null) {
-    return { ok: false, error: '舰船在野外：请先「返航空间站」（母港或已建成副站），再从空间站下达「前往工地交付」。' }
+    return { ok: false, error: '舰船在野外：请先「返航空间站」（母港或已建成副站），再从空间站下达「前往工地交付」。', errorId: 'core.location.012' }
   }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再安排交付航线。' }
-  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。' }
-  if (state.transit.active) return { ok: false, error: '已有进行中的行程（返航/交付航线）。' }
-  if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
-  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。' }
+  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再安排交付航线。', errorId: 'core.location.013' }
+  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。', errorId: 'core.location.004' }
+  if (state.transit.active) return { ok: false, error: '已有进行中的行程（返航/交付航线）。', errorId: 'core.location.014' }
+  if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。', errorId: 'core.location.015' }
+  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。', errorId: 'core.location.007' }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。', errorId: 'core.location.008' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。' }
+    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。', errorId: 'core.location.016' }
   }
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港（想自动制造可改用 AI 核心驱动）。' }
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港（想自动制造可改用 AI 核心驱动）。', errorId: 'core.location.017' }
   }
   if (!state.exploredGalaxies.includes(site.galaxyId)) {
     const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
-    return { ok: false, error: `「${g}」尚未探明——先对其执行扫描探索，才能规划交付航线。` }
+    return { ok: false, error: `「${g}」尚未探明——先对其执行扫描探索，才能规划交付航线。`, errorId: 'core.location.018' }
   }
   const from = originGalaxyOf(state, ctx)
   const mins = shortestTravelMinutes(ctx, from, site.galaxyId)
-  if (!Number.isFinite(mins)) return { ok: false, error: `「${site.galaxyId}」不在已知航路内，无法规划航线。` }
+  if (!Number.isFinite(mins)) return { ok: false, error: `「${site.galaxyId}」不在已知航路内，无法规划航线。`, errorId: 'core.location.019' }
   // 出发装载（物理载货模型）：货仓没空位 / 仓库没建材 = 无法启程（点按侧弹窗提示原因）
   const capV = cargoCapacityM3Of(state, ctx, state.shipId)
   const usedV = cargoUsedM3Of(state, ctx, state.shipId)
   const freeV = Math.max(0, Math.floor(capV - usedV))
   if (freeV <= 0) {
-    return { ok: false, error: '货仓没有空闲空间：先卸货入仓库腾出位置，再安排交付循环。' }
+    return { ok: false, error: '货仓没有空闲空间：先卸货入仓库腾出位置，再安排交付循环。', errorId: 'core.location.020' }
   }
   const loaded = loadDeliverCargo(state, ctx, site)
   const loadedTotal = Object.values(loaded).reduce((s, n) => s + n, 0)
@@ -324,6 +336,8 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
     return {
       ok: false,
       error: `仓库没有可装载的建材（当前档需要：${stationBillText(state, ctx, site)}）——备料后再一键出发。`,
+      errorId: 'core.location.021',
+      errorParams: { p1: stationBillText(state, ctx, site) },
     }
   }
   const fromName = ctx.galaxies.get(from)?.name ?? '空间站'
@@ -351,7 +365,7 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
 /** 玩家指令：取消进行中的建站交付航线（无惩罚；取消即立即返航停靠最近已建成空间站） */
 export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): CommandResult {
   const t = state.transit
-  if (!t.active || !t.delivery) return { ok: false, error: '当前没有进行中的建站交付航线。' }
+  if (!t.active || !t.delivery) return { ok: false, error: '当前没有进行中的建站交付航线。', errorId: 'core.location.022' }
   const phase = t.delivery.phase
   const site = ctx.stations.get(t.delivery.siteId)
   // 取消落点 = 最近已建成空间站（相对本次航线所在位置）
@@ -418,13 +432,19 @@ function arriveDeliverSite(
   if (!site) {
     state.awayGalaxy = null
     state.dockedSite = null
-    addLog(state, 'warn', '交付航线异常：工地已不存在，舰船已直接返航母港。')
+    addLog(state, 'warn', '交付航线异常：工地已不存在，舰船已直接返航母港。', 'core.location.034')
     return
   }
   const galaxyName = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
   state.awayGalaxy = site.galaxyId
   state.dockedSite = null
-  addLog(state, 'info', `⚑ 交付航线：舰船已抵达「${galaxyName}」——「${site.name}」工地，本趟装载的建材自动清仓交付中。`)
+  addLog(
+      state,
+      'info',
+      `⚑ 交付航线：舰船已抵达「${galaxyName}」——「${site.name}」工地，本趟装载的建材自动清仓交付中。`,
+      'core.location.035',
+      { p1: galaxyName, p2: site.name },
+    )
   noteStationSiteAt(state, ctx, site.galaxyId)
   // 本趟装载账本：新档 = 出发时装载的全部材料；旧版在途档无 loaded → 以货仓现存当前档材料为账本
   const ledger: Record<string, number> = {}
@@ -470,7 +490,7 @@ function arriveDeliverSite(
       `本次清仓交付建材 ${delivered.toLocaleString('zh-CN')} 单位，当前档还差 ${remain.toLocaleString('zh-CN')} 单位（仓库有料将自动续趟）。`,
     )
   } else {
-    addLog(state, 'info', `本趟未交付任何建材（工地当前需求与货仓装载不匹配）——自动返航。`)
+    addLog(state, 'info', `本趟未交付任何建材（工地当前需求与货仓装载不匹配）——自动返航。`, 'core.location.036')
   }
   // 自动返航最近空间站（真实航程；最近站随本次建成情况实时解析）
   const baseGal = nearestStationGalaxyId(state, ctx, site.galaxyId)
@@ -582,36 +602,36 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
  */
 export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const target = ctx.galaxies.get(galaxyId)
-  if (!target) return { ok: false, error: `未知星系：${galaxyId}。` }
+  if (!target) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.location.033' }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
   const hold = wormholePilotHoldReason(state)
   if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再转场。' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再转场。', errorId: 'core.location.023' }
   const s = state.standby
-  if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能转场掩护巡逻——到站自动结算后再安排。' }
-  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排。' }
-  if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。' }
-  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。' }
+  if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。', errorId: 'core.location.024' }
+  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能转场掩护巡逻——到站自动结算后再安排。', errorId: 'core.location.025' }
+  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排。', errorId: 'core.location.026' }
+  if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。', errorId: 'core.location.015' }
+  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。', errorId: 'core.location.027' }
+  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。', errorId: 'core.location.008' }
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。' }
+    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。', errorId: 'core.location.016' }
   }
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港（想自动制造可改用 AI 核心驱动）。' }
+    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港（想自动制造可改用 AI 核心驱动）。', errorId: 'core.location.017' }
   }
-  if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。` }
+  if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。`, errorId: 'core.location.028' }
   const from = originGalaxyOf(state, ctx)
   if (from === galaxyId && state.awayGalaxy === null) {
-    return { ok: false, error: `舰船已停靠「${target.name}」，无需前往。` }
+    return { ok: false, error: `舰船已停靠「${target.name}」，无需前往。`, errorId: 'core.location.029' }
   }
   if (state.awayGalaxy === galaxyId && isIdleField(state)) {
-    return { ok: false, error: `舰船已在「${target.name}」掩护巡逻。` }
+    return { ok: false, error: `舰船已在「${target.name}」掩护巡逻。`, errorId: 'core.location.030' }
   }
   const mins = shortestTravelMinutes(ctx, from, galaxyId)
-  if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。` }
+  if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。`, errorId: 'core.location.031' }
   // 去程取消（定稿）：即时就位——到达时刻 = 当前，无去程等待；船即刻转场目标星系留守
   s.active = false
   s.galaxyId = null
@@ -654,7 +674,7 @@ export function advanceStandby(state: GameState, ctx: SimContext): void {
 /** 玩家指令：取消旧的掩护巡逻去程（仅旧档在途状态有意义；召回口径：立即回到母港/空间站，无耗时） */
 export function cancelStandby(state: GameState, ctx: SimContext): CommandResult {
   const s = state.standby
-  if (!s.active || s.galaxyId === null) return { ok: false, error: '当前没有进行中的掩护巡逻行程。' }
+  if (!s.active || s.galaxyId === null) return { ok: false, error: '当前没有进行中的掩护巡逻行程。', errorId: 'core.location.032' }
   const name = ctx.galaxies.get(s.galaxyId)?.name ?? s.galaxyId
   s.active = false
   s.galaxyId = null
