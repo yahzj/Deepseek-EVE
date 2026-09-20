@@ -91,6 +91,8 @@ export const EN: Record<string, string> = {
   '「第一次」任务': 'First-Time Tasks',
   '次数链进度': 'Progression Chains',
   '当前 {lv} 级': 'Level {lv}',
-  '已获得': 'Earned',
   '尚未获得': 'Not yet earned',
+  // 完成时间（船长 2026-09-20：「成就系统还要记录成就完成时间。」）：显示游戏内时长
+  '获得于 {t}': 'Earned at {t}',
+  '已获得（时间未记录）': 'Earned (time not recorded)',
 }

@@ -147,10 +147,52 @@ describe('成就徽章：发放与去重（纯展示 · 只置一次）', () => 
     state.gameMs = 1000
     advanceAchievements(state, ACHIEVEMENTS)
     const at = state.achievements!.earned['ach-first-mine']
-    expect(at).toBe(1000)
+    expect(at).toEqual({ atGameMs: 1000, atWallMs: 0 })
     state.gameMs = 9999
     advanceAchievements(state, ACHIEVEMENTS)
-    expect(state.achievements!.earned['ach-first-mine']).toBe(at)
+    expect(state.achievements!.earned['ach-first-mine']).toEqual(at)
+  })
+
+  /**
+   * **完成时间要记下来**（船长 2026-09-20：「成就系统还要记录成就完成时间。」）：
+   * 游戏内时间与真实时间各记一份；未传墙钟时**记 0 = 未记录**（不编假时间）。
+   */
+  it('记完成时间：游戏内时间与真实时间各一份', () => {
+    const state = testState()
+    state.importantTasks['first-mine'] = { done: true }
+    state.gameMs = 3_600_000
+    advanceAchievements(state, ACHIEVEMENTS, 1_700_000_000_000)
+    expect(state.achievements!.earned['ach-first-mine']).toEqual({
+      atGameMs: 3_600_000,
+      atWallMs: 1_700_000_000_000,
+    })
+  })
+
+  it('未传墙钟 ⇒ 真实时间记 0（不编假时间），游戏内时间照记', () => {
+    const state = testState()
+    state.importantTasks['first-mine'] = { done: true }
+    state.gameMs = 500
+    advanceAchievements(state, ACHIEVEMENTS)
+    expect(state.achievements!.earned['ach-first-mine']).toEqual({ atGameMs: 500, atWallMs: 0 })
+  })
+
+  it('时间读数：未到手为 null，老档补发（两时刻皆 0）标 legacy', () => {
+    const state = testState()
+    state.importantTasks['first-mine'] = { done: true }
+    state.gameMs = 42
+    advanceAchievements(state, ACHIEVEMENTS, 1_700_000_000_000)
+    // 手工塞一条"老档补发"记录（两时刻皆 0）
+    state.achievements!.earned['ach-first-scan'] = { atGameMs: 0, atWallMs: 0 }
+    const rows = achievementOverview(state, ACHIEVEMENTS)
+    const mine = rows.find((r) => r.def.id === 'ach-first-mine')!
+    expect(mine.earnedAt).toBe(42)
+    expect(mine.earnedWallMs).toBe(1_700_000_000_000)
+    expect(mine.legacy).toBe(false)
+    const legacyRow = rows.find((r) => r.def.id === 'ach-first-scan')!
+    expect(legacyRow.legacy).toBe(true)
+    const notYet = rows.find((r) => r.def.id === 'ach-chain-abyss-10')!
+    expect(notYet.earnedAt).toBe(null)
+    expect(notYet.legacy).toBe(false)
   })
 
   it('**纯展示**：发徽章不动钱包 / 仓库 / 货舱（船长 2026-09-20 裁定）', () => {
@@ -198,15 +240,30 @@ describe('成就徽章：老档自愈（迁移不补发，载入后第一拍补�
     expect(ids).not.toContain('ach-chain-digger-10')
   })
 
-  it('读档往返：账本落盘后原样恢复，不重复发', () => {
+  it('读档往返：账本落盘后原样恢复（含两个时间），不重复发', () => {
+    const state = testState()
+    state.importantTasks['first-mine'] = { done: true }
+    state.gameMs = 5000
+    advanceAchievements(state, ACHIEVEMENTS, 1_700_000_000_000)
+    const json = serializeSaveFile(state, 0)
+    const { state: back } = loadSaveFile(json)
+    expect(back.achievements?.earned['ach-first-mine']).toEqual({
+      atGameMs: 5000,
+      atWallMs: 1_700_000_000_000,
+    })
+    expect(advanceAchievements(back, ACHIEVEMENTS)).toEqual([])
+  })
+
+  it('读档兼容首版账本（裸数字 = 只记了游戏内时间，墙钟补 0）', () => {
     const state = testState()
     state.importantTasks['first-mine'] = { done: true }
     state.gameMs = 5000
     advanceAchievements(state, ACHIEVEMENTS)
-    const json = serializeSaveFile(state, 0)
-    const { state: back } = loadSaveFile(json)
-    expect(back.achievements?.earned['ach-first-mine']).toBe(5000)
-    expect(advanceAchievements(back, ACHIEVEMENTS)).toEqual([])
+    // 手工降级成首版形状（v30 首版落盘的是 number）
+    const raw = JSON.parse(serializeSaveFile(state, 0)) as { state: { achievements: { earned: Record<string, unknown> } } }
+    raw.state.achievements.earned['ach-first-mine'] = 5000
+    const { state: back } = loadSaveFile(JSON.stringify(raw))
+    expect(back.achievements?.earned['ach-first-mine']).toEqual({ atGameMs: 5000, atWallMs: 0 })
   })
 })
 

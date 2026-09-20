@@ -18,6 +18,7 @@ import {
   MAX_SKILL_LEVEL,
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
+import type { AchievementEarned } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
@@ -2835,15 +2836,24 @@ function normalizeState(raw: unknown): GameState {
 
   /**
    * **成就徽章账本**（v30 · 2026-09-20 船长批）：只存"哪几枚到手了 ＋ 到手时刻"。
-   * 逐项清洗：键必须是字符串、值取**非负整数**（时刻）；**不查表** ⇒ 数据侧改/删徽章表
-   * 也不会让老档的账本被改写（界面按表展示，账本里多余的键自然不显示）。
+   * 逐项清洗（**不查表** ⇒ 数据侧改/删徽章表也不会让老档的账本被改写）：
+   * - 新格式 `{ atGameMs, atWallMs }`：两个时刻各取**非负整数**，坏值归 0；
+   * - ⚠ **兼容首版落盘的裸数字**（v30 首版 `earned[id] = gameMs` 是个 number）：
+   *   当时没记墙钟 ⇒ `atWallMs` 补 0（界面按"未记录"处理，不写假时间）。
    */
   const achRaw = asRaw(src.achievements)
   const achEarnedRaw = asRaw(achRaw.earned)
-  const achEarned: Record<string, number> = {}
+  const achEarned: Record<string, AchievementEarned> = {}
+  const atOf = (v: unknown): number =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0
   for (const [key, value] of Object.entries(achEarnedRaw)) {
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) continue
-    achEarned[key] = Math.floor(value)
+    if (typeof value === 'number') {
+      achEarned[key] = { atGameMs: atOf(value), atWallMs: 0 }
+      continue
+    }
+    if (typeof value !== 'object' || value === null) continue
+    const rec = value as Record<string, unknown>
+    achEarned[key] = { atGameMs: atOf(rec.atGameMs), atWallMs: atOf(rec.atWallMs) }
   }
   const achievements: GameState['achievements'] = { earned: achEarned }
 

@@ -18,7 +18,7 @@
 import { Glyph } from '../ui/Glyphs'
 import { Panel } from '@whale/ui'
 import { hoverTipProps } from '../ui/Tooltip'
-import { achievementCount, achievementOverview, chainAchievementGroups } from '@whale/core'
+import { achievementCount, achievementOverview, chainAchievementGroups, formatDurationMs } from '@whale/core'
 import type { AchievementDef } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { useL10n } from '../i18n/locale'
@@ -27,20 +27,16 @@ import { useL10n } from '../i18n/locale'
 function BadgeCard({
   def,
   earnedAt,
-  label,
-  lockedText,
+  timeLine,
 }: {
   def: AchievementDef
   earnedAt: number | null
-  label: string
-  lockedText: string
+  /** **完成时间那一行**（船长：「还要记录成就完成时间」）——由调用方拼好（走 `t()`，不在这里拼串） */
+  timeLine: string
 }) {
   const got = earnedAt !== null
   return (
-    <div
-      className={`app-ach-badge${got ? ' is-earned' : ''}`}
-      {...hoverTipProps([def.name, def.note, got ? label : lockedText])}
-    >
+    <div className={`app-ach-badge${got ? ' is-earned' : ''}`} {...hoverTipProps([def.name, def.note, timeLine])}>
       <span className="app-ach-badge-art">
         {/* 未达成 ⇒ 灰阶剪影（`color` 传灰，图案形状照旧 ⇒ 玩家看得出"还差哪一枚"） */}
         <Glyph name={`ach-${def.pattern}`} size={30} color={got ? def.tone : '#5a6472'} />
@@ -49,6 +45,22 @@ function BadgeCard({
       {got ? <span className="app-ach-check">✓</span> : null}
     </div>
   )
+}
+
+/**
+ * **徽章悬停的第三行**：未到手 / 到手（含完成时间）/ 老档补发（时间未记录）。
+ *
+ * 完成时间显示**游戏内时间**（`formatDurationMs`，与日志 `atGameMs`、顶栏"在线 X"同一把尺）；
+ * 老档补发那批当年真实时刻不可知 ⇒ 明确写"时间未记录"，**不编假时间**。
+ */
+function badgeTimeLine(
+  t: (s: string, vars?: Record<string, string | number>) => string,
+  earnedAt: number | null,
+  legacy: boolean,
+): string {
+  if (earnedAt === null) return t('尚未获得')
+  if (legacy) return t('已获得（时间未记录）')
+  return t('获得于 {t}', { t: formatDurationMs(earnedAt) })
 }
 
 /** 成就面板（一级页内容：页内"二级子窗口容器"，固定头 ＋ 内容内滚） */
@@ -81,8 +93,7 @@ export function Achievements({ engine }: { engine: GameEngine }) {
               key={r.def.id}
               def={r.def}
               earnedAt={r.earnedAt}
-              label={t('已获得')}
-              lockedText={t('尚未获得')}
+              timeLine={badgeTimeLine(t, r.earnedAt, r.legacy)}
             />
           ))}
         </div>
@@ -94,15 +105,17 @@ export function Achievements({ engine }: { engine: GameEngine }) {
               <span className="app-dim">{t('当前 {lv} 级', { lv: g.progress })}</span>
             </div>
             <div className="app-ach-grid">
-              {g.badges.map((def) => (
-                <BadgeCard
-                  key={def.id}
-                  def={def}
-                  earnedAt={rows.find((r) => r.def.id === def.id)?.earnedAt ?? null}
-                  label={t('已获得')}
-                  lockedText={t('尚未获得')}
-                />
-              ))}
+              {g.badges.map((def) => {
+                const row = rows.find((r) => r.def.id === def.id)
+                return (
+                  <BadgeCard
+                    key={def.id}
+                    def={def}
+                    earnedAt={row?.earnedAt ?? null}
+                    timeLine={badgeTimeLine(t, row?.earnedAt ?? null, row?.legacy ?? false)}
+                  />
+                )
+              })}
             </div>
           </div>
         ))}

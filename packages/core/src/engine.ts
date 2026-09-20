@@ -218,7 +218,7 @@ export function advanceGame(
    * ⚠ **第一批（任务 ＋ 链共 63 枚）已完成并合入 main ⇒ 本处不挂未完成记号**
    * （约定 §十一之二：完成即删记号；残留会让本地化永远跳过它）。
    */
-  advanceAchievements(state, ctx.achievements)
+  advanceAchievements(state, ctx.achievements, opts?.nowWallMs)
 }
 
 /** 技能队列推进（内部函数，不对外） */
