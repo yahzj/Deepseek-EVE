@@ -1013,18 +1013,22 @@ export function completeSideTask(
   id: number,
 ): CommandResult {
   if (kind === 'courier') {
-    return { ok: false, error: '快递任务需先「出发投送」——货物由出发时从仓库锁定扣出，按真实航程到站后自动结算。' }
+    return {
+      ok: false,
+      error: '快递任务需先「出发投送」——货物由出发时从仓库锁定扣出，按真实航程到站后自动结算。',
+      errorId: 'core.sideTasks.001',
+    }
   }
   const board = state.sideTasks
   const list = board.resource
   const idx = list.findIndex((t) => t.id === id)
   if (idx < 0) {
-    return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。' }
+    return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。', errorId: 'core.sideTasks.002' }
   }
   const task = list[idx]!
   // 到期护栏：游戏时间已越过本轮到点（下一 20 分钟整点，引擎尚未推进刷新）时拒绝，防"卡点结算过期任务"
   if (state.gameMs >= board.window + boardPeriodMs(ctx)) {
-    return { ok: false, error: '该任务已到期——新一批任务即将刷新。' }
+    return { ok: false, error: '该任务已到期——新一批任务即将刷新。', errorId: 'core.sideTasks.003' }
   }
   const name = ctx.items.get(task.refId)?.name ?? task.refId
   const have = countWare(state, task.refId)
@@ -1032,10 +1036,17 @@ export function completeSideTask(
     return {
       ok: false,
       error: `物品仓库中的 ${name} 不足：还差 ${(task.need - have).toLocaleString('zh-CN')} 单位（任务需 ${task.need.toLocaleString('zh-CN')}，现有 ${have.toLocaleString('zh-CN')}）。`,
+      errorId: 'core.sideTasks.005',
+      errorParams: {
+        p1: name,
+        p2: (task.need - have).toLocaleString('zh-CN'),
+        p3: task.need.toLocaleString('zh-CN'),
+        p4: have.toLocaleString('zh-CN'),
+      },
     }
   }
   if (!removeWare(state, task.refId, task.need)) {
-    return { ok: false, error: `${name} 出库失败（库存不足）。` }
+    return { ok: false, error: `${name} 出库失败（库存不足）。`, errorId: 'core.sideTasks.006', errorParams: { p1: name } }
   }
   list.splice(idx, 1)
   state.wallet.isk += task.rewardIsk
@@ -1108,10 +1119,17 @@ export function courierOccupiedM3(state: GameState): number {
 export function acceptCourierTask(state: GameState, id: number): CommandResult {
   const board = state.sideTasks
   const idx = board.courier.findIndex((t) => t.id === id)
-  if (idx < 0) return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。' }
+  if (idx < 0) {
+    return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。', errorId: 'core.sideTasks.002' }
+  }
   const accepted = (board.accepted ??= [])
   if (accepted.length >= COURIER_ACCEPT_MAX) {
-    return { ok: false, error: `已接单 ${COURIER_ACCEPT_MAX} 单（上限）：先出发完成一单，或放弃一单再来接。` }
+    return {
+      ok: false,
+      error: `已接单 ${COURIER_ACCEPT_MAX} 单（上限）：先出发完成一单，或放弃一单再来接。`,
+      errorId: 'core.sideTasks.007',
+      errorParams: { p1: COURIER_ACCEPT_MAX },
+    }
   }
   const task = board.courier[idx]!
   board.courier.splice(idx, 1)
@@ -1129,7 +1147,7 @@ export function acceptCourierTask(state: GameState, id: number): CommandResult {
 export function abandonAcceptedCourierTask(state: GameState, id: number): CommandResult {
   const accepted = state.sideTasks.accepted ?? []
   const idx = accepted.findIndex((t) => t.id === id)
-  if (idx < 0) return { ok: false, error: '该单不在"已接单"列表里。' }
+  if (idx < 0) return { ok: false, error: '该单不在"已接单"列表里。', errorId: 'core.sideTasks.008' }
   accepted.splice(idx, 1)
   return { ok: true }
 }
@@ -1154,26 +1172,52 @@ function findCourierTask(state: GameState, id: number): { task: SideTask; accept
 export function startCourierDelivery(state: GameState, ctx: SimContext, id: number): CommandResult {
   const board = state.sideTasks
   if (board.deliver !== null) {
-    return { ok: false, error: '快递投送途中：同一时间只能投送一笔——请先等当前投送到站结算，再出发下一单。' }
+    return {
+      ok: false,
+      error: '快递投送途中：同一时间只能投送一笔——请先等当前投送到站结算，再出发下一单。',
+      errorId: 'core.sideTasks.009',
+    }
   }
   const found = findCourierTask(state, id)
   if (!found) {
-    return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。' }
+    return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。', errorId: 'core.sideTasks.002' }
   }
   const task = found.task
   // 到期护栏：板上任务在整板刷新后作废；**已接单的不受此限**（接单的意义就在这里）
   if (!found.accepted && state.gameMs >= board.window + boardPeriodMs(ctx)) {
-    return { ok: false, error: '该任务已到期——新一批任务即将刷新（可先「接单」保住它）。' }
+    return {
+      ok: false,
+      error: '该任务已到期——新一批任务即将刷新（可先「接单」保住它）。',
+      errorId: 'core.sideTasks.004',
+    }
   }
   // 舰船空闲互斥（快递出发 = 主控携货真实航行；与其余出航作业互为前置）
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出发投送。' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出发投送。' }
-  if (state.expedition.active) return { ok: false, error: '远征作业中：请先处理远征，舰船才能出发投送。' }
-  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏），舰船才能出发投送。' }
-  if (state.transit.active) return { ok: false, error: '返航行程中：到站后再出发投送。' }
+  if (state.mining.active) {
+    return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出发投送。', errorId: 'core.sideTasks.010' }
+  }
+  if (state.salvaging.active) {
+    return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出发投送。', errorId: 'core.sideTasks.011' }
+  }
+  if (state.expedition.active) {
+    return { ok: false, error: '远征作业中：请先处理远征，舰船才能出发投送。', errorId: 'core.sideTasks.012' }
+  }
+  if (state.standby.active) {
+    return {
+      ok: false,
+      error: '掩护巡逻进行中：请先取消（顶部活动栏），舰船才能出发投送。',
+      errorId: 'core.sideTasks.013',
+    }
+  }
+  if (state.transit.active) {
+    return { ok: false, error: '返航行程中：到站后再出发投送。', errorId: 'core.sideTasks.014' }
+  }
   const targetSite = resolveCourierTarget(state, ctx, task)
   if (!targetSite) {
-    return { ok: false, error: '目标副站不可用（未建成或星系未知）——暂时无法投送该单。' }
+    return {
+      ok: false,
+      error: '目标副站不可用（未建成或星系未知）——暂时无法投送该单。',
+      errorId: 'core.sideTasks.015',
+    }
   }
   const vol = task.volumeM3 ?? 0
   const cap = cargoCapacityM3Of(state, ctx, state.shipId)
@@ -1181,6 +1225,8 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
     return {
       ok: false,
       error: `当前舰船货舱不足：本单需 ${vol.toLocaleString('zh-CN')} m³，本舰货舱 ${cap.toLocaleString('zh-CN')} m³——换一艘更大的船再来。`,
+      errorId: 'core.sideTasks.016',
+      errorParams: { p1: vol.toLocaleString('zh-CN'), p2: cap.toLocaleString('zh-CN') },
     }
   }
   // 限时快递：跃迁速度门槛（船长 2026-09-18「限时快递对玩家舰船的跃迁速度有要求」）
@@ -1190,6 +1236,8 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
       return {
         ok: false,
         error: `限时快递要求跃迁速度 ≥ ${task.warpReqAus} AU/s（当前舰船 ${warp.toFixed(2)} AU/s）——换船或装跃迁计算机。`,
+        errorId: 'core.sideTasks.017',
+        errorParams: { p1: task.warpReqAus, p2: warp.toFixed(2) },
       }
     }
   }
@@ -1197,7 +1245,13 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
   const from = originGalaxyOf(state, ctx)
   const travelMin = shortestTravelMinutes(ctx, from, targetSite.galaxyId)
   if (!Number.isFinite(travelMin)) {
-    return { ok: false, error: `「${ctx.galaxies.get(targetSite.galaxyId)?.name ?? targetSite.galaxyId}」不在当前可达航路内，无法出发投送。` }
+    const targetName = ctx.galaxies.get(targetSite.galaxyId)?.name ?? targetSite.galaxyId
+    return {
+      ok: false,
+      error: `「${targetName}」不在当前可达航路内，无法出发投送。`,
+      errorId: 'core.sideTasks.018',
+      errorParams: { p1: targetName },
+    }
   }
   // 虚拟货物：真实货物卸进仓库（不消耗任何物品；货舱被虚拟货物按体积占用）
   const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
