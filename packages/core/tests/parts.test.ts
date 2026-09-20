@@ -57,7 +57,7 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
   it('③ 零件技能：基础吃「零件成型工艺学」−8%/级 · 高级吃「精密装配学」−8%/级（乘在工业/批量之上）', () => {
     const s = freshState()
     const basicSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-circuit')!.materials, buildSeconds: 15, buildCostIsk: 0, partTier: 'basic' as const }
-    const advSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!.materials, buildSeconds: 60, buildCostIsk: 0, partTier: 'advanced' as const }
+    const advSpec = { materials: BLUEPRINTS.find((b) => b.id === 'bp-part-qchip')!.materials, buildSeconds: 55, buildCostIsk: 0, partTier: 'advanced' as const }
     const base = calcBuildDurationMs(s, ctx, basicSpec)
     const adv = calcBuildDurationMs(s, ctx, advSpec)
     s.skills.trained['part-forming'] = 5
@@ -74,6 +74,25 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
     ]
     const sorted = sortManuRows(rows)
     expect(sorted.map((r) => r.name)).toEqual(['电路基板制造', '量子协处理器芯蓝图', '引力子补偿器蓝图'])
+  })
+  it('③c 收益平衡（2026-09-20 船长「毛利率不变，靠工时把收益差收窄到 1.5 倍内」）：同级收益/秒 ≤1.5 倍', () => {
+    // 收益/秒 = 每轮 10 件毛利 ÷ 轮时；毛利 = (定价 − 材料成本) × 10
+    const rateOf = (bpId: string, price: number): number => {
+      const bp = BLUEPRINTS.find((b) => b.id === bpId)!
+      return (10 * (price - matValue(bp.materials))) / bp.buildSeconds
+    }
+    const basics: Array<[string, number]> = [
+      ['bp-part-circuit', 95], ['bp-part-coolant', 115], ['bp-part-frame', 145], ['bp-part-cable', 155],
+      ['bp-part-lens', 190], ['bp-part-armor-plate', 250], ['bp-part-gyro', 420],
+    ]
+    const advances: Array<[string, number]> = [
+      ['bp-part-qchip', 700], ['bp-part-drone-neural', 930], ['bp-part-shield-gen', 1_010],
+      ['bp-part-jet-array', 1_550], ['bp-part-fire-control', 1_670], ['bp-part-keel', 3_120], ['bp-part-grav-comp', 7_500],
+    ]
+    for (const group of [basics, advances]) {
+      const rates = group.map(([id, price]) => rateOf(id, price))
+      expect(Math.max(...rates) / Math.min(...rates)).toBeLessThanOrEqual(1.5)
+    }
   })
 })
 
@@ -105,6 +124,22 @@ describe('零件体系：配方改造（2026-09-20）', () => {
     expect(sbp.materials.some((m) => m.itemId === 'part-grav-comp')).toBe(true)
     expect(sbp.buildSeconds).toBe(32_400) // 162,000 ÷ 5
   })
+  it('⑥b 材料全覆盖（2026-09-20 船长问「材料是否覆盖了除虚空晶之外的所有材料」）：冥铁合金已进零件链 · 补偿器等值替换料价不变', () => {
+    // 引力子补偿器补冥铁（等值替换：料价仍 50,000/轮 = 单件 5,000）
+    const grav = BLUEPRINTS.find((b) => b.id === 'bp-part-grav-comp')!
+    expect(grav.materials.some((m) => m.itemId === 'min-darkiron')).toBe(true)
+    expect(matValue(grav.materials)).toBe(50_000)
+    // 全 8 种原材料里，除虚空晶（虫洞特产）外全部被零件链用到
+    const used = new Set<string>()
+    for (const bp of BLUEPRINTS) {
+      if (!bp.id.startsWith('bp-part-')) continue
+      for (const m of bp.materials) if (m.itemId.startsWith('min-')) used.add(m.itemId)
+    }
+    for (const id of ['min-tritanium', 'min-pyerite', 'min-mexallon', 'min-nocxium', 'min-isotope', 'min-starcore', 'min-darkiron']) {
+      expect(used.has(id), `${id} 没被任何零件用到`).toBe(true)
+    }
+    expect(used.has('min-voidcrystal')).toBe(false) // 虚空晶按船长排除（虫洞特产）
+  })
   it('⑦ 空间站 6 档：零件等值替换 ⇒ 每档总价不变', () => {
     for (const site of STATION_SITES) {
       for (const tier of site.tiers) {
@@ -124,15 +159,28 @@ describe('零件体系：配方改造（2026-09-20）', () => {
       }
     }
   })
-  it('⑧ 市场渠道（2026-09-20 船长「所有零件及其蓝图都在常驻市场有出售」）：全部常驻 · 零件池百万级 · 高级零件蓝图书价 1,000 万', () => {
-    for (const partId of [
+  it('⑧ 市场渠道（「所有零件及其蓝图都在常驻市场有出售」）：全部常驻 · 池总价值分档平滑递增 · 高级零件蓝图书价 1,000 万', () => {
+    const partIds = [
       'part-circuit', 'part-armor-plate', 'part-frame', 'part-cable', 'part-coolant', 'part-gyro', 'part-lens',
       'part-drone-neural', 'part-shield-gen', 'part-jet-array', 'part-qchip', 'part-keel', 'part-fire-control', 'part-grav-comp',
-    ]) {
+    ]
+    for (const partId of partIds) {
       const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === partId)
       expect(g, `${partId} 无市场行`).toBeTruthy()
       expect(g?.rarity).toBe('common')
-      expect(g?.poolTarget, `${partId} 池未提百万级`).toBeGreaterThanOrEqual(1_000_000)
+    }
+    // 2026-09-20 船长「池子更平滑 + 高级零件池总价值逐步上涨」：按价格升序，池总价值不降、池数量不增
+    const sorted = partIds
+      .map((id) => [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === id)!)
+      .sort((a, b) => a.basePrice - b.basePrice)
+    for (let i = 1; i < sorted.length; i += 1) {
+      const prev = sorted[i - 1]!
+      const cur = sorted[i]!
+      expect(
+        (cur.poolTarget ?? 0) * cur.basePrice,
+        `${cur.refId} 池总价值低于更便宜的 ${prev.refId}`,
+      ).toBeGreaterThanOrEqual((prev.poolTarget ?? 0) * prev.basePrice)
+      expect(cur.poolTarget ?? 0, `${cur.refId} 池数量高于更便宜的 ${prev.refId}`).toBeLessThanOrEqual(prev.poolTarget ?? 0)
     }
     for (const bpId of [
       'bp-part-drone-neural', 'bp-part-shield-gen', 'bp-part-jet-array', 'bp-part-qchip',
