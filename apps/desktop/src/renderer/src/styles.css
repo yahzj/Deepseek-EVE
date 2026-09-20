@@ -7154,6 +7154,36 @@ html[data-locale='en'] body {
 
 }
 
+/* ═══════════ 图标模式的**稀有度小标签**（2026-09-20 船长：「给每个物品的图标模式右上角添加
+   物品稀有度展示的小标签（采用 R1 表示 1 级稀有度，并以此类推）」）═══════════
+   口径：
+   · 位置钉在**格子右上角**（`.app-hand-cell` 加 `position: relative` 当定位上下文；
+     绝对定位**不占布局** ⇒ 格子高度/排布一字未动，不会有新滚动条）。
+   · 文字固定 `R{档}`（R1~R5；档 5 目前无物品使用，样式先备着）。
+   · 配色**同源市场页既有的稀有度色阶**，不新造：1 灰（常驻）· 2 淡青 · 3 琥珀 ·
+     4 = `.app-chip.is-rare` 的金 `#f4c95d` · 5 = `.app-chip.is-exotic` 的品红 `#ff8ad8`。
+   · 小标签是**读数**，不接悬停（不新起第二套提示机制，见 AGENTS §6）。 */
+.app-hand-cell { position: relative; }
+.app-hand-cell-rarity {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 1;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  font-family: var(--wui-mono);
+  font-size: calc(var(--ui-fs, 1) * 9px);
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+}
+.app-hand-cell-rarity.is-r1 { color: #8aa0b8; background: rgba(138, 160, 184, 0.12); }
+.app-hand-cell-rarity.is-r2 { color: #9fe8ff; background: rgba(159, 232, 255, 0.12); }
+.app-hand-cell-rarity.is-r3 { color: #ffca58; background: rgba(255, 202, 88, 0.12); }
+.app-hand-cell-rarity.is-r4 { color: #f4c95d; background: rgba(244, 201, 93, 0.14); }
+.app-hand-cell-rarity.is-r5 { color: #ff8ad8; background: rgba(255, 138, 216, 0.14); }
+
 .app-hand-row-glyph {
 
   display: inline-flex;
@@ -10866,4 +10896,43 @@ html[data-locale='en'] body {
   .app-wh-settle-grid { grid-template-columns: minmax(0, 1fr); }
   .app-wh-tabs { flex-wrap: wrap; }
   .app-modal-head { flex-wrap: wrap; row-gap: 6px; }
+}
+
+/* ═══════════ 成就徽章（船长 2026-09-20「继续之前的成就系统」· 第一批 = 徽章框架）═══════════
+   口径：**二级窗口**（不占一级导航、不碰「一级页不滚」红线，滚动只在这一层内）·
+   **同图案 · 颜色区分**（形状与色值都由数据表给，本段不写死任何档位配色）·
+   未达成 = 灰阶剪影（可预见"还差哪一枚"）。
+   徽章卡**固定尺寸**（防悬停内容长短引起跳动，AGENTS §6 容器定尺寸那条）。 */
+.app-ach-modal { width: 620px; }
+.app-ach-sec {
+  margin: 10px 0 6px; font-size: 12px; font-weight: 600;
+  color: var(--wui-accent); border-bottom: 1px dotted var(--wui-border); padding-bottom: 4px;
+}
+.app-ach-sec:first-child { margin-top: 0; }
+.app-ach-chain { margin-bottom: 8px; }
+.app-ach-chain-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.app-ach-chain-name { font-size: 12px; color: var(--wui-text); }
+.app-ach-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px;
+}
+.app-ach-badge {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 3px; height: 74px; padding: 6px 4px; box-sizing: border-box; overflow: hidden;
+  border: 1px solid var(--wui-border); border-radius: 6px; background: rgba(15, 26, 40, 0.5);
+}
+/* 未达成：整体压暗（图案本身已转灰阶，这里再压一层底，与已获得拉开层次） */
+.app-ach-badge:not(.is-earned) { opacity: 0.72; }
+.app-ach-badge-art { display: flex; align-items: center; justify-content: center; height: 34px; line-height: 0; }
+.app-ach-name {
+  font-size: 10.5px; line-height: 1.25; text-align: center; color: var(--wui-text-dim);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.app-ach-badge.is-earned .app-ach-name { color: var(--wui-text); }
+.app-ach-check {
+  position: absolute; top: 2px; right: 4px; font-size: 10px; line-height: 1;
+  color: var(--wui-accent); opacity: 0.9;
+}
+@media (max-width: 640px) {
+  .app-ach-modal { width: 100%; }
+  .app-ach-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
 }

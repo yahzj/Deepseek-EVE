@@ -29,7 +29,7 @@ import { fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses, presentSubs } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 
@@ -1260,7 +1260,17 @@ export function MarketPage({
   const [sub, setSub] = useState<string>(SUB_ALL)
   const query = kw.trim().toLowerCase()
   const filterActive = query.length > 0 || kind !== 'all'
-  const kindSubs: SubOption[] | undefined = kind !== 'all' ? SUBS_OF_KIND[kind] : undefined
+  /**
+   * **二级子分类：只列该类型下真有商品的档**（2026-09-20 船长「明显不存在的子类筛选隐藏」）——
+   * 船长点名的例子：「市场-高槽装备-护盾」（护盾是中槽件，高槽下恒空）⇒ 该档不再出现；
+   * 判据复用市场自己的两把尺（kindPasses + subPasses），「全部」档常显（基线②）。
+   */
+  const kindSubs: SubOption[] | undefined =
+    kind !== 'all'
+      ? presentSubs(SUBS_OF_KIND[kind] ?? [], (key) =>
+          goods.some((g) => kindPasses(engine.ctx, g, kind) && subPasses(engine.ctx, g, kind, key)),
+        )
+      : undefined
   /** 切换主类型时子分类回到"全部子类" */
   const changeKind = (v: KindFilter): void => {
     setKind(v)

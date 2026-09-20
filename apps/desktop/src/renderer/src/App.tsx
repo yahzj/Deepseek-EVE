@@ -29,6 +29,7 @@ import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
 import { CommsEave, CommsScreen } from './panels/CommsReader'
 import { TaskCenterPage } from './pages/TaskCenterPage'
+import { AchievementsPage } from './pages/AchievementsPage'
 import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
@@ -58,15 +59,28 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
    * 原先它是星图页（出港）的一个选项卡 —— 那条路要先选中星系才渲染行动区，绕；
    * 搬成一级页后从左侧导航直达（内层标签与跳转定位照旧，见 `pages/TaskCenterPage.tsx`）。
    */
+  { key: 'task', label: '任务中心', icon: 'nav-task' },
+  /**
+   * **成就**（2026-09-20 船长：「一级页，但是内部再加一个二级子窗口容器」）：
+   * 徽章全由任务与次数链产出 ⇒ 放在任务中心下方；页内是固定头 + 内容内滚的子窗口容器，
+   * 页面本体不滚（一级页不滚红线），见 `pages/AchievementsPage.tsx`。
+   */
+  { key: 'achieve', label: '成就', icon: 'ach-first' },
   { key: 'task', label: 'ui.App.008', icon: 'nav-task' },
+  /**
+   * **成就**（2026-09-20 船长：「一级页，但是内部再加一个二级子窗口容器」）：
+   * 徽章全由任务与次数链产出 ⇒ 放在任务中心下方；页内是固定头 + 内容内滚的子窗口容器，
+   * 页面本体不滚（一级页不滚红线），见 `pages/AchievementsPage.tsx`。
+   */
+  { key: 'achieve', label: 'ui.App.119', icon: 'ach-first' },
   // 2026-09-11 船长定：新增「通讯」页（NPC 消息 = 剧情与任务提示；邮件形图标，未读时闪烁 + 计数）
   { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
 ]
 
-type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'task' | 'comms'
+type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'task' | 'achieve' | 'comms'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'task', 'comms'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'task', 'achieve', 'comms'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -579,7 +593,7 @@ export function App({ engine }: { engine: GameEngine }) {
    * 工业页的**内层段定位**（精炼炉 / 组装机）——「第一次」卡片上的跳转按钮要落到"这件活"那一档
    * （船长 2026-09-18）。一次性：页在切走时重挂载（`key={page}`），故只需给初值。
    */
-  const [indFocus, setIndFocus] = useState<'refine' | 'shelf' | 'craft' | null>(null)
+  const [indFocus, setIndFocus] = useState<'refine' | 'shelf' | 'craft' | 'shipyard' | null>(null)
   // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
   /** 任务中心内层标签定位请求（通讯「前往」与开场信都落在「重要任务」） */
@@ -1115,6 +1129,8 @@ export function App({ engine }: { engine: GameEngine }) {
                 }}
               />
             ) : null}
+            {/* 成就（2026-09-20 一级页）：页内是固定头 + 内容内滚的二级子窗口容器 */}
+            {page === 'achieve' ? <AchievementsPage engine={engine} /> : null}
             {page === 'comms' ? (
               <CommsPage
                 {...pageProps}

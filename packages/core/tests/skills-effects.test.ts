@@ -262,6 +262,31 @@ describe('技能补全 P1：离线作业管理学（结算时长 +20%/级）', (
   })
 })
 
+describe('技能补全：无人值守调度学（离线结算时长 +40%/级 · rank4 · 上位技能，2026-09-20 船长定）', () => {
+  it('只练满上位：40 小时离线 = 24 小时（基础 8 小时 ×3）', () => {
+    const now = 2_000_000_000_000
+    const s = createInitialState({ nowWallMs: now - 40 * 3_600_000, seed: 13 })
+    s.skills.trained['unattended-dispatch'] = 5
+    simulateOffline(s, now - 40 * 3_600_000, now, makeTestCtx())
+    expect(s.gameMs).toBe(24 * 3_600_000)
+  })
+  it('与离线作业管理学并存叠加：双满级 40 小时离线 = 32 小时（8h × (1+1.0+2.0)）', () => {
+    const now = 2_000_000_000_000
+    const s = createInitialState({ nowWallMs: now - 40 * 3_600_000, seed: 13 })
+    s.skills.trained['offline-ops'] = 5
+    s.skills.trained['unattended-dispatch'] = 5
+    simulateOffline(s, now - 40 * 3_600_000, now, makeTestCtx())
+    expect(s.gameMs).toBe(32 * 3_600_000)
+  })
+  it('加算口径：上位 L2 = 8h × (1 + 0.8) = 14.4 小时', () => {
+    const now = 2_000_000_000_000
+    const s = createInitialState({ nowWallMs: now - 20 * 3_600_000, seed: 13 })
+    s.skills.trained['unattended-dispatch'] = 2
+    simulateOffline(s, now - 20 * 3_600_000, now, makeTestCtx())
+    expect(s.gameMs).toBe(14.4 * 3_600_000)
+  })
+})
+
 describe('技能补全 P3b：高效学习法（训练时长 −4%/级）', () => {
   it('零级 ×1；满级 ×0.8', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 20 })

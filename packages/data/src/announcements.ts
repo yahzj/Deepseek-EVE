@@ -19,11 +19,32 @@ export interface AnnouncementDef {
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
     /**
+     * 2026-09-20 船长批准（原话：「**只发稿一**」——两条待审稿里只发零件/造船厂这条；
+     * 「机群战后立刻自动补足」按船长口径不进公告，当作内部修复）。
+     * 批准稿见 `docs/design/archive/announcement-draft-20260920-parts-shipyard.md`，
+     * 本条**逐字照发、未增删断言**。口径来源：船长 2026-09-20 全天裁定
+     * （工作文档 `docs/design/parts-shipyard-20260920.md`：零件体系 / 造船厂拆分 / 配方占比提高）。
+     * 人称与话术：第三人称「玩家」、无第一/第二人称代词、不含开发/验收话语、不写公式（按 §12）。
+     */
+    id: 'ann-parts-shipyard-20260920',
+    title: '工业新增零件体系与造船厂',
+    date: '2026-09-20',
+    tag: '系统',
+    bullets: [
+      '「工业」页新增「造船厂」子页，舰船蓝图从组装机迁到这里；组装机的门类改为「装备 / 零件 / 消耗品」，其中「零件」是新的分页。',
+      '零件分两档：基础零件（结构框架、装甲板、超导电缆、电路基板、冷却导管、陀螺稳定器座、光学透镜组）无需图纸即可开工；高级零件（量子协处理器芯、军规火控计算机、护盾发生装置、能量射流阵列、无人机神经原件、舰用龙骨组件、引力子补偿器）需要图纸，图纸在常驻市场出售、单价 1,000 万信用点。每轮产出 10 件，基础零件约十几秒到四十余秒一轮，高级零件约一分钟到七分钟一轮。',
+      '零件全部在常驻市场出售，市场里的零件池更深、越贵的零件池总价值越高；基础零件为冷蓝色、高级零件为暖金色，仓库、组装机与图鉴的标记一致，筛选还分「基础零件 / 高级零件」两档。',
+      '专属装备与专属舰船的配方改用零件：专属按材料价值 45% 基础件、30% 高级件、25% 原材料；T4 舰船与皇带鱼级改为 75% 基础件、25% 原材料（不含高级件）。所有配方的总造价保持不变，专属舰船的建造时间同时大幅缩短，皇带鱼级仍需要虚空晶。',
+      '三条新技能上线：「无人值守调度学」延长离线结算时长（每级 +40%，与「离线作业管理学」叠加）、「零件成型工艺学」缩短基础零件工时（每级 −8%）、「精密装配学」缩短高级零件工时（每级 −8%）。',
+    ],
+  },
+  {
+    /**
      * 2026-09-19 船长批准（原话：「**批准虫洞「谜质科技」的公告，筛选整理批的不发送**」）。
      * 本条为**补发**——谜质科技 2026-09-19 上线时漏了公告（公告库 0 条 · 二号工作文档
      * `matter-tech-20260919.md` grep「公告」0 处 · 当日四条待审稿也不含它）。
      * 批准稿（含船长三条修订：① 删掉"初始回合 80"削弱句 · ② 倍速那条不写"仅洞内"
-     * ——日后有全局加速 · ③ 不写总投入量级）见 `docs/design/announcement-draft-20260919-matter-tech.md`，
+     * ——日后有全局加速 · ③ 不写总投入量级）见 `docs/design/archive/announcement-draft-20260919-matter-tech.md`，
      * 本条**逐字照发、未增删断言**。口径来源：船长 2026-09-19 对谜质科技的逐线裁定（二号工作文档）。
      * 人称与话术：第三人称「玩家」、无第一/第二人称代词、不含开发/验收话语、不写公式（按 §12）。
      */
@@ -42,7 +63,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
     /**
      * 2026-09-19 船长批准（原话：「**只发任务改版和残骸合并的公告**」；公告范围二选一里取「乙：发两条」）。
-     * 批准稿（四条待审稿 → 最终只发 ①②）见 `docs/design/announcement-draft-20260919-push.md`，
+     * 批准稿（四条待审稿 → 最终只发 ①②）见 `docs/design/archive/announcement-draft-20260919-push.md`，
      * 本条**逐字照发、未增删断言**。口径来源：船长 2026-09-18/19 的时效任务板改版多轮指令。
      * 人称与话术：第三人称「玩家」、无第一/第二人称代词、不含开发/验收话语、不写公式（按 §12）。
      */
@@ -62,7 +83,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     /**
      * 2026-09-19 船长批准（同上「只发任务改版和残骸合并的公告」）。
      * **本条逐字取自二号工作文档 `docs/design/wreck-groups-20260919.md` §七「公告待审稿」**（未经改写）；
-     * 批准稿见 `docs/design/announcement-draft-20260919-push.md` ①。
+     * 批准稿见 `docs/design/archive/announcement-draft-20260919-push.md` ①。
      */
     id: '2026-09-19-wreck-merge',
     title: '残骸按来源种族与地区归并，危险星域出量更高',
@@ -79,7 +100,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
     /**
      * 2026-09-18 船长批准（原话：「**通过，按此推送**」；三问一答里的公告审查项）。
-     * 批准稿（三条待审稿）见 `docs/design/announcement-draft-20260918-push.md`，本三条**逐字照发、未增删断言**。
+     * 批准稿（三条待审稿）见 `docs/design/archive/announcement-draft-20260918-push.md`，本三条**逐字照发、未增删断言**。
      * 口径来源：船长 2026-09-17 教程重做批 ＋ 2026-09-18 的奖励表/扫描时长/次数链标定/交易收入口径。
      * 人称与话术：第三人称「玩家」、无第一/第二人称代词、不含开发/验收话语、不写公式（按 §12）。
      */
@@ -98,7 +119,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
     /**
      * 2026-09-18 船长批准（同上「通过，按此推送」）。批准稿与断言出处见
-     * `docs/design/announcement-draft-20260918-push.md`；功能口径见二号工作文档
+     * `docs/design/archive/announcement-draft-20260918-push.md`；功能口径见二号工作文档
      * `docs/design/ew-range-debuff-20260918.md`（`ShipDef.foeRangeDebuffPct` · 地板 3000m · 鹦鹉螺 3/4/4）。
      */
     id: 'ann-ew-range-20260918',
@@ -115,7 +136,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
     /**
      * 2026-09-18 船长批准（同上「通过，按此推送」）。批准稿见
-     * `docs/design/announcement-draft-20260918-push.md`；功能口径见二号工作文档
+     * `docs/design/archive/announcement-draft-20260918-push.md`；功能口径见二号工作文档
      * `docs/design/fit-preset-10-20260917.md`（`FIT_PRESET_MAX` 3 → 10 · `fitPresetDetailOf`）。
      */
     id: 'ann-fit-preset-10-20260918',
@@ -133,7 +154,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
      * 2026-09-16 船长批准（原话：「**没问题，公告通过。**」）。
      * 口径来源（船长 2026-09-16 原话，照抄）：「**之后给虫洞内和虫洞外添加保险机制，血量 100%，
      * 单次齐射伤害最多只能造成总血量 80% 的伤害（只对我方生效）**」；
-     * 批准稿（四条要点）见 `docs/design/announcement-draft-20260916-combat-insurance.md`，本条目按该要点写成公告体，
+     * 批准稿（四条要点）见 `docs/design/archive/announcement-draft-20260916-combat-insurance.md`，本条目按该要点写成公告体，
      * **未增删任何断言**。人称与话术：第三人称「玩家舰队」、无第一/第二人称代词、不含开发/验收话语（按 §12）。
      */
     id: 'ann-combat-insurance-20260916',
@@ -150,7 +171,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
     /**
      * 2026-09-16 船长批准（随同批代码一起推送；待审稿
-     * `docs/design/announcement-draft-20260916-wormhole-bloom.md` **逐字照发**）。
+     * `docs/design/archive/announcement-draft-20260916-wormhole-bloom.md` **逐字照发**）。
      * 口径来源：船长「将扫描虫洞所需时间*0.25，持续到9月20号，并给予所有玩家5个虫洞（同样持续到
      * 20号为止……」＋展示口径「5和虫洞限时缩短写在一起，但是要润色成虫洞大量生成之类的」；
      * 玩家可见效果 = 扫描窗口 ×0.25（`PROMOS[].scanMul`）＋ 每人一次 5 处（`giftWormholes`，
@@ -168,7 +189,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   },
   {
     /**
-     * 2026-09-14 船长批准（待审稿 `docs/design/announcement-draft-20260914-wormhole-launch.md` **v2 稿**，
+     * 2026-09-14 船长批准（待审稿 `docs/design/archive/announcement-draft-20260914-wormhole-launch.md` **v2 稿**，
      * 逐字照发）。批前经一号**核验件**逐条核对（`docs/review/announcement-factcheck-20260914.md`）：
      * 数字断言全部通过；改了 6 处表述（全损措辞按实现改写·「内容倾向」→**内容原型**·「驻守敌族徽记」→**族徽**·
      * 谜质储存器不算产出·「拆解台」→**工业页「货柜拆解」**·标题去掉作废代号「裂隙」）；
@@ -188,7 +209,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   },
   {
     /**
-     * 2026-09-14 船长批准（原 7 张分卡待审稿：`docs/design/announcement-draft-20260914-release.md`）。
+     * 2026-09-14 船长批准（原 7 张分卡待审稿：`docs/design/archive/announcement-draft-20260914-release.md`）。
      * 船长两次裁定：①「**虫洞不上线，公告合并后发布**」（7 张卡合并为一条、全文不提虫洞）；
      * ②「**缩短公告字数，只提及护盾和战列舰，并且还要精简**」⇒ 去掉界面/提示/战斗/索敌/维修那几块，
      * 只留**护盾**与**战列舰**两条主题，并把细节压到 4 条短要点。
@@ -205,7 +226,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     ],
   },
   {
-    // 2026-09-13 船长批准（待审稿 docs/design/announcement-draft-20260913-haul-reward.md；
+    // 2026-09-13 船长批准（待审稿 docs/design/archive/announcement-draft-20260913-haul-reward.md；
     // 船长原话「并将长途运输改动写入公告」＋「①会，并对手册修正，隐藏航行途中不会遇袭这条。
     // 之后在长途运输内，会遇袭的运输任务需要特意标注出该情况。②写。」⇒ ①运输途中会遇袭与
     // ②遇袭后自动维修**并进同一条**（第 4 条要点），公告仍为 5 条）。
@@ -222,7 +243,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     ],
   },
   {
-    // 2026-09-12 船长批准（待审稿 docs/design/announcement-draft-20260912-pilot1-batches.md 卡 4；船长原话「**只说明4,6.**」，逐字照发）。
+    // 2026-09-12 船长批准（待审稿 docs/design/archive/announcement-draft-20260912-pilot1-batches.md 卡 4；船长原话「**只说明4,6.**」，逐字照发）。
     id: '2026-09-12-cpu-coprocessor',
     title: '新装配件「协处理器」：为舰船扩容 CPU',
     date: '2026-09-12',
@@ -235,7 +256,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     ],
   },
   {
-    // 2026-09-12 船长批准（待审稿 docs/design/announcement-draft-20260912-pilot1-batches.md 卡 6；船长原话「**只说明4,6.**」，逐字照发）。
+    // 2026-09-12 船长批准（待审稿 docs/design/archive/announcement-draft-20260912-pilot1-batches.md 卡 6；船长原话「**只说明4,6.**」，逐字照发）。
     id: '2026-09-12-rare-wreck-pity',
     title: '稀有残骸保底与掉落说明',
     date: '2026-09-12',
@@ -248,7 +269,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     ],
   },
   {
-    // 2026-09-12 船长批准（待审稿 docs/design/announcement-draft-20260912-foe-overhaul.md **v3**，逐字照发）。
+    // 2026-09-12 船长批准（待审稿 docs/design/archive/announcement-draft-20260912-foe-overhaul.md **v3**，逐字照发）。
     // 船长两条裁定：「**公告只写一个敌人重做**」＋「**公告只集中在讲述敌人重做上**」
     // ⇒ 本条目**只有一条要点**，且**只讲敌群本体与敌方防空**（星系布置 / 派发规则 / F 族废弃三项**不进公告**）。
     id: '2026-09-12-foe-overhaul',

@@ -4,8 +4,8 @@
 > 让船长一次批完，不必自己再验数。**本件不改任何公告文案**，也不写 `packages/data/src/announcements.ts`
 > （未批不写入：`AGENTS.md` §7 / 约定第十二章）。
 >
-> 被核验的稿：`docs/design/announcement-draft-20260914-wormhole-launch.md`（主稿 · 5 条要点）·
-> `docs/design/announcement-draft-20260914-push2.md`（第二批 · 4 条要点）。
+> 被核验的稿：`docs/design/archive/announcement-draft-20260914-wormhole-launch.md`（主稿 · 5 条要点）·
+> `docs/design/archive/announcement-draft-20260914-push2.md`（第二批 · 4 条要点）。
 > 核验基线 = `f03c962d`（本件之前的最后一次四闸门全绿状态；审查期间**未改任何代码**）。
 
 ## 0. 结论先行

@@ -133,11 +133,21 @@ export function wreckTierOf(refId: string): 'rare' | 'common' {
  *  **奢侈品**（`luxury`）一档（三件纯贸易品：星港陈酿 / 贵族香料 / 失落艺术品，出自贵重品货柜拆解），
  *  一级类型中文名「物品」→「**货物**」在 `MarketPage.KIND_TEXT` 单点改。 */
 export const ITEM_SUBS: SubOption[] = [
-  { key: 'ore', label: tr("ui.IndustryPage.005") },
-  { key: 'mineral', label: tr("ui.itemSubs.006") },
-  { key: 'gas', label: tr("ui.IndustryPage.006") },
-  { key: 'ice', label: tr("ui.IndustryPage.007") },
-  { key: 'luxury', label: tr("ui.itemSubs.007") },
+  { key: 'ore', label: '原矿', id: 'ui.IndustryPage.005' },
+  { key: 'mineral', label: '原材料', id: 'ui.itemSubs.006' },
+  { key: 'gas', label: '气体', id: 'ui.IndustryPage.006' },
+  { key: 'ice', label: '冰矿', id: 'ui.IndustryPage.007' },
+  // 2026-09-20 零件体系：零件在「货物」下按基础/高级两档（键 = `part-<档>`，与组装机零件门类同一套 `PART_SUBS`）
+  { key: 'part-basic', label: '基础零件', id: 'ui.itemSubs.033' },
+  { key: 'part-advanced', label: '高级零件', id: 'ui.itemSubs.034' },
+  { key: 'luxury', label: '奢侈品', id: 'ui.itemSubs.007' },
+]
+
+/** 零件「基础 / 高级」维度（2026-09-20 零件体系：组装机「零件」门类二级筛选与市场「货物」子分类共用）。
+ *  键 = `part-<档>`（基础 = 隐式蓝图直接可造 / 高级 = 需学习蓝图）。 */
+export const PART_SUBS: SubOption[] = [
+  { key: 'part-basic', label: '基础零件', id: 'ui.itemSubs.033' },
+  { key: 'part-advanced', label: '高级零件', id: 'ui.itemSubs.034' },
 ]
 
 /** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
@@ -198,11 +208,13 @@ export const SHIP_TIER_SUBS: SubOption[] = SHIP_TIER_KEYS.map((t) => ({
  * （复用 `MODULE_SUBS`），因组装机已用标签行区分装备/舰船/消耗品三大类，槽类不足以收窄 81 张装备蓝图。
  */
 export const BLUEPRINT_SUBS: SubOption[] = [
-  { key: 'high', label: tr("ui.itemSubs.018") },
-  { key: 'mid', label: tr("ui.itemSubs.019") },
-  { key: 'low', label: tr("ui.itemSubs.020") },
-  ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: tr("ui.itemSubs.028", { p1: s.label }) })),
-  { key: 'supply', label: tr("ui.itemSubs.021") },
+  { key: 'high', label: '高槽装备蓝图', id: 'ui.itemSubs.018' },
+  { key: 'mid', label: '中槽装备蓝图', id: 'ui.itemSubs.019' },
+  { key: 'low', label: '低槽装备蓝图', id: 'ui.itemSubs.020' },
+  ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: `${s.label}蓝图` })),
+  { key: 'supply', label: '消耗品蓝图（弹药·修理组件）', id: 'ui.itemSubs.021' },
+  // 2026-09-20 零件体系：高级零件蓝图（常驻市场）——基础零件为隐式蓝图无书，故只有高级一档
+  { key: 'part-advanced', label: '零件蓝图', id: 'ui.itemSubs.035' },
 ]
 
 export const CORE_SUBS: SubOption[] = [
@@ -272,6 +284,8 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   if (kind === 'blueprint') {
     const eq = ctx.blueprints.get(good.refId)
     if (eq) {
+      // 零件蓝图（2026-09-20 零件体系）：按基础/高级档；基础零件 = 隐式蓝图无市场行，市场只有高级一档
+      if (eq.partTier) return partSubPasses(ctx, good.refId, sub)
       // 物品蓝图（弹药/修理组件）归消耗品档；模块蓝图按**产物模块的槽类**归高/中/低档
       if (eq.moduleId === undefined) return sub === 'supply'
       const mod = ctx.modules.get(eq.moduleId)
@@ -293,6 +307,29 @@ export function moduleSubKeyOf(slot: string): string {
     if (slots.includes(slot)) return key
   }
   return ''
+}
+
+/* ═══════════ 零件「基础 / 高级」维度（2026-09-20 零件体系）═══════════
+ * 判定单点 = `partTierOf`：蓝图按 `BlueprintDef.partTier`；零件物品按蓝图反查；
+ * 键空间 = `part-basic` / `part-advanced`（`PART_SUBS`，组装机与市场共用）。 */
+
+/** 零件档位（蓝图 id 或零件物品 id 均可传入）：基础 = 隐式蓝图直接可造 / 高级 = 需学习蓝图；非零件返回 null */
+export function partTierOf(ctx: SimContext, refId: string): 'basic' | 'advanced' | null {
+  const bp = ctx.blueprints.get(refId)
+  if (bp?.partTier) return bp.partTier
+  const item = ctx.items.get(refId)
+  if (item?.kind !== 'part') return null
+  for (const b of ctx.blueprints.values()) {
+    if (b.itemId === refId && b.partTier) return b.partTier
+  }
+  return null
+}
+
+/** 零件子筛选判定（`sub` = `part-basic` / `part-advanced`；`SUB_ALL` 恒真） */
+export function partSubPasses(ctx: SimContext, refId: string, sub: string): boolean {
+  if (sub === SUB_ALL) return true
+  const tier = partTierOf(ctx, refId)
+  return tier !== null && `part-${tier}` === sub
 }
 
 /* ═══════════ 甲组·判定单点（船长 2026-09-19「六条基线」之⑥）═══════════
@@ -354,6 +391,22 @@ export function subLabelOf(kind: string, key: string): string {
   return list.find((s) => s.key === key)?.label ?? key
 }
 
+/* ═══════════ 级联筛选的**空档隐藏**（2026-09-20 船长：「进行筛选清理，一些明显不存在某个子类下的筛选建议隐藏」）═══════════
+ * 船长给的两个例子：**组装机-零件-高级零件-一次性蓝图**（零件没有一次性图纸）· **市场-高槽装备-护盾**（护盾是中槽件）。
+ * 口径 = 蓝图书架 2026-09-19 那次报障修复的做法**推广到全线**：
+ *   **「全部」档常显，其余档只在"该维度下真有内容"时出现**（内容判定由调用方给，键与顺序仍取既有单点表）。
+ * 为什么必须这样：静态全列会让玩家选进一个**必然空**的档（2026-09-14 船长「避免看不见的筛选」的原话就是这个坑）。 */
+
+/**
+ * 过滤掉"该维度下没有内容"的档（`SUB_ALL` 常显）。
+ *
+ * @param options 既有单点表（`MANU_TABS` / `manuSubsOf` / `SUBS_OF_KIND[kind]` / `BLUEPRINT_USE_TABS` …）
+ * @param hasAny  判定"该档是否真有内容"——由调用方按自己的数据源现算（不在此处硬编码任何页面数据）
+ */
+export function presentSubs<T extends { key: string }>(options: readonly T[], hasAny: (key: string) => boolean): T[] {
+  return options.filter((s) => s.key === SUB_ALL || hasAny(s.key))
+}
+
 /* ═══════════ 甲组补丁 · 子维度补齐（船长 2026-09-19：「这种涉及到特定分类的父分类时，将其子分类也放入」）═══════════
  * 原则：**父分类有天然子维度，就该给出子筛选**。补齐范围（船长圈定「零新维度」那一批）：
  * 物品页仓库/手册物品图鉴的 货柜→四档 · 残骸→普通/稀有 · AI 核心→档位 · 蓝图碎片→功能分组；
@@ -395,6 +448,8 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
     const mod = ctx.modules.get(refId)
     return mod !== undefined && moduleSubKeyOf(mod.slot) === sub
   }
+  // 零件两档（2026-09-20 零件体系：市场「货物」子分类 part-basic / part-advanced）
+  if (sub === 'part-basic' || sub === 'part-advanced') return partSubPasses(ctx, refId, sub)
   const it = ctx.items.get(refId)
   if (!it) return false
   return it.kind === sub // item（货物）/ consume / 真实大类
@@ -451,22 +506,30 @@ export function shipTierPasses(def: { tier?: number } | undefined, tier: string)
 
 /** 组装机 / 蓝图书架「**门类**」维度（一级选择器 ⇒ 「全部」键用 `'all'`，基线②）：
  *  全部 / 装备蓝图 / 舰船蓝图 / 消耗品蓝图（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」）。 */
-// l10n-keep-start：以下三张门类/图纸/学会筛选表的 `label` 是**键表可读常量**（渲染处一律走 `tr(id)`），不是文案
-export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply'
+export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply' | 'part'
+/** 蓝图书架 / 手册 / 市场蓝图档的门类表（**旧口径不动**，2026-09-20 船长：「只改组装机」） */
 export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = [
   { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
   { key: 'equip', label: '装备蓝图', id: 'ui.ShipPage.115' },
   { key: 'ship', label: '舰船蓝图', id: 'ui.ShipPage.116' },
   { key: 'supply', label: '消耗品蓝图', id: 'ui.ShipPage.114' },
 ]
+/** 组装机专用门类表（2026-09-20 船长：舰船蓝图拆去造船厂；改名去「蓝图」二字；新增「零件」分页） */
+export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string; id: string }> = [
+  { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
+  { key: 'equip', label: '装备', id: 'ui.MarketPage.178' },
+  { key: 'part', label: '零件', id: 'ui.itemSubs.036' },
+  { key: 'supply', label: '消耗品', id: 'ui.itemSubs.037' },
+]
 
 /** 组装机/书架「**子类**」候选（按当前门类给；全部取自本文件单点表）：
- *  装备 = 产物功能十组（`MODULE_SUBS`）· 舰船 = 舰船级别五档（`SHIP_TIER_SUBS`）· 消耗品 = 产物大类（`CONSUME_SUBS`）；
- *  「全部」门类不带子筛选（与市场「全部类型」同款）。 */
+ *  装备 = 产物功能十组（`MODULE_SUBS`）· 舰船 = 舰船级别五档（`SHIP_TIER_SUBS`）· 消耗品 = 产物大类（`CONSUME_SUBS`）·
+ *  零件 = 基础/高级两档（`PART_SUBS`，2026-09-20）；「全部」门类不带子筛选（与市场「全部类型」同款）。 */
 export function manuSubsOf(tab: ManuTabKey): SubOption[] {
   if (tab === 'equip') return MODULE_SUBS
   if (tab === 'ship') return SHIP_TIER_SUBS
   if (tab === 'supply') return CONSUME_SUBS
+  if (tab === 'part') return PART_SUBS
   return []
 }
 

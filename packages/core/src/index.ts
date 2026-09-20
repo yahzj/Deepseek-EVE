@@ -268,6 +268,8 @@ export {
   droneLoadM3,
   // 2026-09-10 船长：卸下甲板扩展等导致机舱变小 → 超出容量的无人机自动卸下并退回仓库
   trimDroneLoadToBay,
+  // 2026-09-20 船长：「战斗结束立刻自动补充，优先货仓，其次是仓库」＋「按本场出发快照补」
+  refillDroneLoadTo,
   // 2026-09-10 船长（G 族专属无人机）：物品持有总数（仓库 + 各船机舱）——「集齐前不重复掉落」判定口径
   ownedItemCount,
   V17_MODULE_MIGRATIONS,
@@ -604,6 +606,10 @@ export {
   advanceAutoLoopBounty,
   autoLoopWaitLabel,
   autoLoopReopenBlockReason,
+  // 2026-09-20：战后自动补足机群 ⇒ 门槛只在"货源不够"时拦人；本函数给装配页显示"还差几架"
+  autoLoopDroneShortfall,
+  // 2026-09-20：本场机群战损读数（before/after/attrition）——**after 是补货前**的存活架数（安全阀单点）
+  droneBattleOutcome,
   bountyCooldownMsFor,
   bountyCooldownRemainingMs,
   BOUNTY_COOLDOWN_BASE_MS,
@@ -952,6 +958,17 @@ export {
 } from './firstTasks'
 /* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
 export { grantFirstReward } from './firstRewards'
+/* 成就徽章（2026-09-20 船长批「继续之前的成就系统」· 第一批 = 徽章框架，63 枚，已完成并合入 main）
+ * 第二批（里程碑成就内容）尚未实现 —— 落点见 core/achievements.ts 头注释；本处不挂未完成记号 */
+export {
+  achievementReached,
+  advanceAchievements,
+  achievementOverview,
+  achievementCount,
+  chainAchievementGroups,
+} from './achievements'
+export type { AchievementDef, AchievementSource, AchievementCategory } from './types'
+export type { AchievementState } from './state'
 export { HOME_SCAN_WINDOW_MS } from './explore'
 export type { FirstTaskDef, FirstStatKey } from './firstTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'

@@ -14,12 +14,14 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipCategoryKeyOf, shipSizeLabel, visibleItemDefs } from '@whale/core'
 import type { DroneClass, ItemKind, ShipRole } from '@whale/core'
+// 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
+import { itemRarityTierOf } from '@whale/data'
 // 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
 // （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
 import { handMarketKeyOf } from '../ui/marketJump'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
-import { Glyph, toneOf } from '../ui/Glyphs'
+import { Glyph, partToneKeyOf, toneOf } from '../ui/Glyphs'
 import {
   BLUEPRINT_SUBS,
   CONTAINER_SUBS,
@@ -34,6 +36,7 @@ import {
   itemBucketPasses,
   itemSubPasses,
   moduleSubKeyOf,
+  presentSubs,
   shipRolePasses,
   shipTierPasses,
 } from '../ui/itemSubs'
@@ -49,6 +52,8 @@ const slotName = (k: string): string => (SLOT_LABELS as Record<string, string>)[
 const roleName = (k: string): string => (SHIP_ROLE_LABELS as Record<string, string>)[k] ?? k
 
 type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
+/** 有图鉴内容的页（＝ `codexCells` 的键；筛选两级的现算都在这几页上做） */
+type CodexTab = 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
 type ViewMode = 'grid' | 'list'
 /** 详情行数据 */
 type RawData = Record<string, unknown>
@@ -86,11 +91,16 @@ const COUNT_UNIT: Record<Tab, string> = {
 const VIEW_KEY = 'whale-idle:handbook-view'
 
 /** 蓝图门类（手册「蓝图图鉴」主筛选）：判据与分组键同源（有 `shipId` = 舰船蓝图、
- *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图） */
+ *  有 `itemId` = 消耗品蓝图、其余 = 装备蓝图）。2026-09-20 船长裁定「零件蓝图归到该组」：
+ *  有 `itemId` 且**产物是零件**的另立「零件蓝图」门类（此前落进消耗品蓝图那门）。 */
 const BP_MAIN: SubOption[] = [
   { key: 'equip', label: tr("ui.ShipPage.115") },
   { key: 'ship', label: tr("ui.ShipPage.116") },
   { key: 'consume', label: tr("ui.ShipPage.114") },
+  { key: 'equip', label: tr("ui.ShipPage.115") },
+  { key: 'ship', label: tr("ui.ShipPage.116") },
+  { key: 'consume', label: tr("ui.ShipPage.114") },
+  { key: 'part', label: tr("ui.Handbook.265") },  // 并入 main：对方新增「零件蓝图」门类（id 新登记）
 ]
 /** 各图鉴筛选行的灰字前缀（同「我的舰队」那套「类别：」「级别：」写法，避免多个「全部」混淆） */
 const FILTER_LABEL: Record<Tab, string> = {
@@ -540,6 +550,13 @@ interface GridCell {
   sub: string
   /** 完整数据（详情窗用） */
   raw: RawData
+  /**
+   * **稀有度档**（1~5；`undefined` = 不显示标签）。
+   * 2026-09-20 船长：「希望给每个物品的图标模式右上角添加物品稀有度展示的小标签」——
+   * 图鉴网格与仓库/货仓**同一个视觉语言**（`app-hand-cell-rarity`），档位走单点
+   * `itemRarityTierOf()`（含 AI 核心与舰船的键映射）。
+   */
+  rarity?: number
 }
 
 /** 一个分组（仓库同款小节）：分类名 + 数量 + 卡片 */
@@ -584,6 +601,12 @@ function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) 
             <span className="app-hand-cell-icon">
               <Glyph name={c.glyph} size={30} color={tone} />
             </span>
+            {/* 稀有度小标签（2026-09-20 船长）：与仓库/货仓图标模式同一语言 */}
+            {c.rarity !== undefined ? (
+              <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={`稀有度 R${c.rarity}`}>
+                R{c.rarity}
+              </span>
+            ) : null}
             <span className="app-hand-cell-name">{c.name}</span>
             <span className="app-hand-cell-sub">{c.sub}</span>
           </button>
@@ -882,10 +905,12 @@ export function Handbook({
   const itemCells: GridCell[] = visibleItemDefs(engine.ctx).map((item) => ({
     key: item.id,
     tab: 'items',
-    glyph: item.kind,
+    // 2026-09-20 零件两档：glyph 用档位键 ⇒ 图鉴里基础/高级零件分色（形状同一枚 part 线稿）
+    glyph: item.kind === 'part' ? partToneKeyOf(item.id) : item.kind,
     name: item.name,
     sub: `${kindName(item.kind)} · ${item.unitM3} m³`,
     raw: item as unknown as RawData,
+    rarity: itemRarityTierOf(item.id),
   }))
   const moduleCells: GridCell[] = engine.modules.map((mod) => ({
     key: mod.id,
@@ -894,6 +919,7 @@ export function Handbook({
     name: mod.name,
     sub: `${slotName(mod.slot)} · ${moduleShortEffect(mod)}`,
     raw: mod as unknown as RawData,
+    rarity: itemRarityTierOf(mod.id),
   }))
   const shipCells: GridCell[] = engine.ships.map((ship) => {
     // 2026-09-16 船长：类别键走 `shipCategoryKeyOf` —— 装甲线 = `role: 'armored'` **或**武装舰里装甲占比 > 护盾占比
@@ -906,6 +932,7 @@ export function Handbook({
       name: ship.name,
       sub: `${roleName(cls)} · ${shipSizeLabel(ship.tier)} T${ship.tier} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
       raw: ship as unknown as RawData,
+      rarity: itemRarityTierOf(ship.id),
     }
   })
   const bpCells: GridCell[] = [
@@ -921,6 +948,7 @@ export function Handbook({
             `${kindName(engine.ctx.items.get(bp.itemId)?.kind ?? 'ammo')} · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
           : tr("ui.Handbook.317", { p1: engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.moduleId ?? '' }),
       raw: bp as unknown as RawData,
+      rarity: itemRarityTierOf(bp.id),
     })),
     ...engine.shipBlueprints.map((bp) => ({
       key: bp.id,
@@ -929,6 +957,7 @@ export function Handbook({
       name: bp.name,
       sub: tr("ui.Handbook.249", { p1: engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId }),
       raw: bp as unknown as RawData,
+      rarity: itemRarityTierOf(bp.id),
     })),
   ]
   const skillCells: GridCell[] = engine.skills.map((s) => ({
@@ -955,7 +984,12 @@ export function Handbook({
         const ship = engine.ctx.ships.get(String(c.raw.shipId))
         return ship ? `t${ship.tier}` : ''
       }
-      if (c.raw.itemId !== undefined) return 'supply'
+      if (c.raw.itemId !== undefined) {
+        // 2026-09-20 零件体系（船长裁定「归到该组」）：**产物是零件的**归「零件蓝图」组——
+        // 组键沿用市场那张单点表 `BLUEPRINT_SUBS` 里既有的 `part-advanced` 档（其 label 就是「零件蓝图」，
+        // 市场上只有高级零件有书；图鉴这一组连基础零件的隐式蓝图一起列）。
+        return engine.ctx.items.get(String(c.raw.itemId))?.kind === 'part' ? 'part-advanced' : 'supply'
+      }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
       return mod ? rackOf(mod) : ''
     }
@@ -970,7 +1004,7 @@ export function Handbook({
     return engine.groups.map((g) => ({ key: g, label: g })) // skills
   }
 
-  const codexCells: Record<'items' | 'modules' | 'ships' | 'blueprints' | 'skills', GridCell[]> = {
+  const codexCells: Record<CodexTab, GridCell[]> = {
     items: itemCells,
     modules: moduleCells,
     ships: shipCells,
@@ -983,25 +1017,29 @@ export function Handbook({
         集中提问后定：**只做一级的页签 = 物品 / 技能**（无天然第二层），二级只在装备 / 舰船 / 蓝图三页；
         控件复用组装机那一套 `app-task-tabs` + `app-tasktab` 胶囊；与搜索取「与」 ── */
 
-  /** 主筛选（一级）可选项——与各页的**分组键同一套判据**：装备＝槽类、舰船＝角色、蓝图＝门类 */
-  function mainOptions(t: Tab): SubOption[] {
+  /** 主筛选（一级）**候选表**——与各页的**分组键同一套判据**：装备＝槽类、舰船＝角色、蓝图＝门类 */
+  function mainCandidatesOf(t: CodexTab): SubOption[] {
     if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
     if (t === 'modules') return RACK_SUBS
     if (t === 'ships') return SHIP_SUBS
     if (t === 'blueprints') return BP_MAIN
-    if (t === 'skills') return engine.groups.map((g) => ({ key: g, label: g }))
-    return []
+    return engine.groups.map((g) => ({ key: g, label: g }))
   }
   /**
-   * 子筛选（二级）可选项——**必须选了主类才出现**（「全部」不带子筛选；2026-09-13 船长口径：
-   * 「如果有子分类的，主筛选选择之后出现子分类筛选」）。2026-09-19 甲组补丁按船长
-   * 「涉及到特定分类的父分类时，将其子分类也放入」补齐：
+   * **主筛选（一级）可选项 = 候选表里"本页真有卡片"的那些**（2026-09-20 船长「手册的筛选也进行收缩」）——
+   * 「全部」常显；判据与下面的 `mainPasses` 同一把尺（避免出现"选进去必然空"的档）。
+   */
+  function mainOptions(t: CodexTab): SubOption[] {
+    return presentSubs(mainCandidatesOf(t), (key) => codexCells[t].some((c) => mainPasses(c, t, key)))
+  }
+  /** 子筛选（二级）**候选表**——**必须选了主类才出现**（「全部」不带子筛选；2026-09-13 船长口径：
+   *  「如果有子分类的，主筛选选择之后出现子分类筛选」）。2026-09-19 甲组补丁按船长
+   *  「涉及到特定分类的父分类时，将其子分类也放入」补齐：
    * - 物品图鉴：货柜→四档 · 残骸→档位 · AI 核心→档位（只列有物品形态的）· 蓝图碎片→功能分组；
    * - 蓝图图鉴：装备→槽类 / 舰船→级别 / **消耗品→产物大类**（原先消耗品整行不出）；
    * - 装备图鉴：槽类（主）→ 功能分组（子）；舰船图鉴：类别（主）→ 级别（子）。
    */
-  function subOptions(t: Tab, main: string): SubOption[] {
-    if (main === SUB_ALL) return []
+  function subCandidatesOf(t: CodexTab, main: string): SubOption[] {
     if (t === 'modules') return MODULE_SUBS
     if (t === 'ships') return SHIP_TIER_SUBS
     if (t === 'items') {
@@ -1014,6 +1052,7 @@ export function Handbook({
     if (t === 'blueprints') {
       if (main === 'equip') return RACK_SUBS
       if (main === 'ship') return SHIP_TIER_SUBS
+      if (main !== 'consume') return [] // 「零件蓝图」自成一门，暂不细分（基础/高级已在卡片副行与产物名里）
       /** 消耗品蓝图：按**产物大类**细分（弹药 / 修理组件 / 无人机）——只列真有蓝图的大类 */
       const kinds = new Set<string>()
       for (const b of engine.blueprints) {
@@ -1024,6 +1063,19 @@ export function Handbook({
       return CONSUME_SUBS.filter((s) => kinds.has(s.key))
     }
     return []
+  }
+  /**
+   * **子筛选（二级）可选项 = 候选表里"该主类下真有卡片"的那些**（2026-09-20 船长「手册的筛选也进行收缩」）——
+   * 船长点名的同类问题（精炼炉/组装机/市场已改）在手册里的落点：物品图鉴「蓝图碎片」挂着十组功能、
+   * 实际只有「采集与货舱 / 武器」有卡；装备图鉴「高槽」下挂着护盾/装甲/推进器/协处理器四档恒空；
+   * 舰船图鉴「采矿舰」下挂着 T4/T5 恒空。判据与 `mainPasses × subPassesCell` 同一把尺。
+   * ⚠ 只收**选项**：卡片集合（`codexCells` 与下面的分组）一字未动。
+   */
+  function subOptions(t: CodexTab, main: string): SubOption[] {
+    if (main === SUB_ALL) return []
+    return presentSubs(subCandidatesOf(t, main), (key) =>
+      codexCells[t].some((c) => mainPasses(c, t, main) && subPassesCell(c, t, key)),
+    )
   }
   /** 主筛选判定（判据与 `groupKeyOf` 逐条对齐，避免"筛出来的条目和分组标题不一致"） */
   function mainPasses(c: GridCell, t: Tab, main: string): boolean {
@@ -1036,7 +1088,11 @@ export function Handbook({
     if (t === 'ships') return shipRolePasses(engine.ctx.ships.get(c.key), main)
     if (t === 'blueprints') {
       if (c.raw.shipId !== undefined) return main === 'ship'
-      if (c.raw.itemId !== undefined) return main === 'consume'
+      if (c.raw.itemId !== undefined) {
+        // 2026-09-20 船长裁定：产物是零件的走「零件蓝图」门类，其余物品蓝图仍是消耗品蓝图
+        const kind = engine.ctx.items.get(String(c.raw.itemId))?.kind
+        return main === (kind === 'part' ? 'part' : 'consume')
+      }
       return main === 'equip'
     }
     return String(c.raw.group ?? '') === main // skills

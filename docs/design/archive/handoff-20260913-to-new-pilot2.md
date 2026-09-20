@@ -1,7 +1,7 @@
 # 交接文档 · 大鲸鱼深空工业 · 2026-09-13（二号 → **新二号**）
 
 > 你是**二号**：本仓「虫洞专属内容」这条线的经办人。本件 + `AGENTS.md` 读完即可开工；
-> 交付物的**逐项读数与待办归属**在 `docs/design/handoff-20260913-wormhole-content-d2.md`（别重复读会话）。
+> 交付物的**逐项读数与待办归属**在 `docs/design/archive/handoff-20260913-wormhole-content-d2.md`（别重复读会话）。
 
 ---
 
@@ -14,7 +14,7 @@ git rev-list --left-right --count main...d2/workspace   # 左=main 独有右=你
 npm run typecheck                      # 四连之一，确认基线可跑
 ```
 然后按需读：`AGENTS.md`（必读）→ `docs/design/wormhole-exclusive-20260913.md`（设计+裁定链）→
-`docs/design/handoff-20260913-wormhole-content-d2.md`（本批交付与待办）→ `docs/glossary.md`（术语权威）。
+`docs/design/archive/handoff-20260913-wormhole-content-d2.md`（本批交付与待办）→ `docs/glossary.md`（术语权威）。
 **开工前先问船长"这一轮做什么"**——他的指令通常极短（例：「1，可以补到0.6。2.10架。3.先不动。4.跟着涨」），
 需要你把它逐条落成"字段 + 数值 + 归属"再复述一遍确认。
 
@@ -64,7 +64,7 @@ npm run typecheck                      # 四连之一，确认基线可跑
 | R2 | 舰船二轮：子分类 9 类 + 全部改名 + 进界面 + 契约删 1 条 | 15 艘平均强度 **1.149** |
 | R3 | 官方三艘重装舰对齐同级 + 价格跟涨 | 陆龟 3/3/4·205·390·450k ｜ 玳瑁 4/4/5·330·910·1.1M |
 | R4 | 三条待落机制全落 | 全体攻击 · 无人机结构 +80% · 鱿蜂改名（25 文件） |
-| 归档 | 交接件 + 设计稿进度表收口 + roadmap 条目 | 本件与 `handoff-20260913-wormhole-content-d2.md` |
+| 归档 | 交接件 + 设计稿进度表收口 + roadmap 条目 | 本件与 `docs/design/archive/handoff-20260913-wormhole-content-d2.md` |
 
 ## 5. 你要做的第一件事
 
@@ -142,7 +142,7 @@ npx tsx tools/battle:calibrate    # 战斗标定（改数值/舰船后抽查）
 - [ ] `AGENTS.md` 已读；§2 四步闸门 / §5.1 禁子代理 / §5.2 冲突先提醒 / §3 四连 / §4 合入与编码纪律 已记牢
 - [ ] 工作区 = `Deepseek-EVE-d2`（分支 `d2/workspace`）；**没有**写主树文件
 - [ ] `git status` 干净、已 `merge main` 追平、四连全绿（**1239 用例**基线：一号补齐族池/扫码后升）
-- [ ] 已读 `handoff-20260913-wormhole-content-d2.md`（本批交付/读数/待办）与设计稿 §0 裁定链
+- [ ] 已读 `docs/design/archive/handoff-20260913-wormhole-content-d2.md`（本批交付/读数/待办）与设计稿 §0 裁定链
 - [ ] 已向船长确认本轮任务与口径（含"要不要按族继续审"）
 - [ ] 明白挂账只剩船长 2 条（公告改名 / 上线动作）与"一号在途文件不要动"
 - [ ] 改完任何数值/文案：跑了四连、重出了相关文档、汇报里写了"改了哪些文件 + 行为变化 + 验证结果 + 已知取舍"，并提醒船长**重启本地产物**

@@ -72,6 +72,16 @@ export interface ItemGridCell {
    * 其余调用方不传 ⇒ 与改动前逐字一致（手册 / 装配 / 货仓的装备卡都不受影响）。
    */
   tone?: string
+  /**
+   * **稀有度档**（1~5；`undefined` = 不显示标签）。
+   *
+   * 2026-09-20 船长：「希望给每个物品的图标模式右上角添加物品稀有度展示的小标签
+   * （采用 R1 表示 1 级稀有度，并以此类推）」。
+   *
+   * 由**调用方**传（`itemRarityTierOf(id)` 查一次），本组件不自查 ⇒ 装配页那类"自建候选卡"
+   * 也能照常不传；查不到档的物品（既非市场行也不在市场外档表里）**不显示标签**，不硬塞 R1。
+   */
+  rarity?: number
 }
 
 /** 分类补充说明（仓库/货仓列表与图标模式共用；2026-09-08 船长反馈弹药/无人机存放含义） */
@@ -132,6 +142,12 @@ export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick
             <span className="app-hand-cell-icon">
               <Glyph name={c.glyph} size={30} color={tone} />
             </span>
+            {/* 稀有度小标签（2026-09-20 船长）：钉在格子右上角；查不到档就不渲染 */}
+            {c.rarity !== undefined ? (
+              <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={`稀有度 R${c.rarity}`}>
+                R{c.rarity}
+              </span>
+            ) : null}
             <span className="app-hand-cell-name">{c.name}</span>
             {c.sub ? <span className="app-hand-cell-sub">{c.sub}</span> : null}
           </div>

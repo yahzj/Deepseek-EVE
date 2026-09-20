@@ -58,9 +58,13 @@ export function simulateOffline(
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
-  // 离线作业管理学（offline-ops，2026-09-08 船长定：+8% → +20%/级）：离线结算上限每级 +20%（基础 8 小时，满级 16 小时）
+  // 离线结算上限双技能（加算叠加）：
+  // - 离线作业管理学 offline-ops（2026-09-08 船长定：+8% → +20%/级）：每级 +0.2（基础 8 小时，满级 16 小时）；
+  // - 无人值守调度学 unattended-dispatch（2026-09-20 船长定：上位技能 +40%/级 · rank4）：每级 +0.4（满级 24 小时）；
+  //   两技能并存叠加：双满级 = 8h × (1 + 1.0 + 2.0) = 32 小时。
   const opsLv = Math.min(5, state.skills.trained['offline-ops'] ?? 0)
-  const capEff = Math.round(capMs * (1 + 0.2 * opsLv))
+  const dispatchLv = Math.min(5, state.skills.trained['unattended-dispatch'] ?? 0)
+  const capEff = Math.round(capMs * (1 + 0.2 * opsLv + 0.4 * dispatchLv))
   const { deltaMs, overflowMs } = offlineSplit(rawGap, capEff)
   if (deltaMs <= 0) return
 

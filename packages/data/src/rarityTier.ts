@@ -1,18 +1,24 @@
 /**
- * 物品稀有度表（数字档；2026-09-09 船长拍板——稀有度入物品本体，市场调用）。
- * 档位语义（隐藏，不进入玩家文案）：1 = 常驻层；**2/3/4 = 可走稀有订单层**（2 大众 / 3 高阶；
- * 4 目前只有 2026-09-16「甲案」挪进稀有订单的 5 艘官方巡洋舰）；**3/4/5 = 可走奇货层**
- * （5 当前无商品使用，为将来更高档预留）。渠道（common/rare/exotic 字符串）与数字分离：
- * 数字只驱动「稀有订单渠道」的刷新权重（`market.ts` 的 `rareTierWeight`：档 2 **×1** ·
- * 档 3 ×0.15 · **档 4 ×0.05**（**2026-09-16 船长选「选项 B」**补的单独系数：当日实测从 ≈32 分钟一件
- * 降到 ≈9.5 小时一件）·
- * 档 5 暂无系数 ⇒ ×1），奇货渠道出率与数字不挂钩（船长定）。
- * ⚠ **2026-09-16 船长改判**：「**修正契约，rate现在允许2~4，exotic拓展到3~5**」⇒ 允许带由
- * 「common 1 / rare 2~3 / exotic 3~4」放宽为**区间**（见下），值域上沿 4 → **5**；
- * 原「4 = 奇货层」那层意思随之松开（档 = 稀有度，渠道另说）。
- * 初值 = v1 机械规则（common→1；rare ≤50 万→2、>50 万→3；exotic→4），
- * 豁免/调整直接改本表（content:check 护栏：键集 = 市场卡全集、值 ∈ 1~5）。
- * 新增/删除市场卡必须同步本表。
+ * **物品稀有度表**（数字档 1~5；2026-09-09 船长拍板「稀有度入物品本体」，2026-09-20 定名与合并）。
+ *
+ * **本表是"物品自身稀有度"的唯一来源**（2026-09-20 船长：「市场稀有采取物品本身稀有度」＋
+ * 「两个稀有度表没有区别就合并，并删除多余的表」）⇒ 原先的 `OFF_MARKET_RARITY_TIER` 已并入本表，
+ * 市场外物品（残骸 / 碎片）与本表同列、同档、同语义。
+ *
+ * ⚠ **渠道归属不受本表管**（2026-09-20 船长：「渠道归属不动」）：一件货进哪个盘口（常驻 / 稀有 / 奇货）
+ * 仍由 `marketCatalog.ts` 的 `rarity`（common/rare/exotic 字符串）决定，本表**不参与**该判定。
+ * 数字档只驱动**稀有订单渠道的刷新权重**（`market.ts` 的 `rareTierWeight`：档 2 **×1** ·
+ * 档 3 ×0.15 · **档 4 ×0.05**（2026-09-16 船长选「选项 B」补的单独系数：当日实测从 ≈32 分钟一件
+ * 降到 ≈9.5 小时一件）· 档 5 暂无系数 ⇒ ×1）；**常驻与奇货渠道的出率与档位无关**（船长定）。
+ *
+ * 档位语义（**隐藏，不进玩家文案**）：1 = 常驻层；2/3/4 = 可走稀有订单层（2 大众 / 3 高阶）；
+ * 3/4/5 = 可走奇货层（5 当前无物品使用，为将来更高档预留）。
+ * ⚠ **2026-09-16 船长改判**：「**修正契约，rate现在允许2~4，exotic拓展到3~5**」⇒ 渠道允许带放宽为**区间**；
+ * ⚠ **2026-09-20 船长再改**：「**「common 渠道档必须=1」的契约废除，改为『common 渠道稀有度不影响交易』**」
+ * ⇒ 常驻渠道**不再约束档位**（实证：`rareTierWeight` 只在 rare/exotic 分支被调用）。
+ *
+ * 初值 = v1 机械规则（common→1；rare ≤50 万→2、>50 万→3；exotic→4），此后**逐条人审**（豁免直接改本表）；
+ * 契约见 `content:check`（键必须真实存在 · 值 ∈ 1~5）。
  *
  * **2026-09-10 船长定（装备价对齐同级武器价 的同批收口）**：MK2/MK3 装备价上调后，
  * 12 件 MK3 装备（护盾增强器三系 / 护盾扩展器 / 装甲镀层三系 / 装甲增厚板 / 矢量推进器 /
@@ -40,11 +46,13 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'box-valuables': 1, // common · 382.8 万（只收不卖；2026-09-16 随十款均价重算 = 内容期望 1,531.25 万 ×0.25）
   'box-military': 1, // common · 280 万（只收不卖；2026-09-15 批 B 复核：= MK3 拆解期望 470.95 万 ×0.6）
   'alpha': 4,
-  'ammo-explosive-2': 1,
+  // 2026-09-20 船长：「**弹药 MK2 移动到稀有订单**」⇒ 三系 MK2 的档随渠道由 R1 提到 **R2**
+  //   （与 `rare` 渠道的允许带 2~4 相符；MK1 三系仍 common/R1 不动）
+  'ammo-explosive-2': 2,
   'ammo-explosive-l': 1,
-  'ammo-kinetic-2': 1,
+  'ammo-kinetic-2': 2,
   'ammo-kinetic-l': 1,
-  'ammo-plasma-2': 1,
+  'ammo-plasma-2': 2,
   'ammo-plasma-l': 1,
   'basic': 1,
   'beta': 4,
@@ -108,6 +116,28 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-mwd-1': 2,
   'bp-mwd-2': 3,
   'bp-mwd-3': 4,
+  // 零件（2026-09-20 零件体系）：全部常驻档 1（船长「所有零件及其蓝图都在常驻市场有出售」）
+  'part-circuit': 1,
+  'part-armor-plate': 1,
+  'part-frame': 1,
+  'part-cable': 1,
+  'part-coolant': 1,
+  'part-gyro': 1,
+  'part-lens': 1,
+  'part-drone-neural': 1,
+  'part-shield-gen': 1,
+  'part-jet-array': 1,
+  'part-qchip': 1,
+  'part-keel': 1,
+  'part-fire-control': 1,
+  'part-grav-comp': 1,
+  'bp-part-drone-neural': 1,
+  'bp-part-shield-gen': 1,
+  'bp-part-jet-array': 1,
+  'bp-part-qchip': 1,
+  'bp-part-keel': 1,
+  'bp-part-fire-control': 1,
+  'bp-part-grav-comp': 1,
   'bp-prop-1': 1,
   'bp-prop-2': 2,
   'bp-prop-3': 3,
@@ -516,9 +546,72 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sh-wh-g-cruiser': 4,
   'sh-wh-g-destroyer': 4,
   'sh-wh-g-frigate': 4,
+
+  /* ══════════ 市场外物品（2026-09-20 船长：「两个稀有度表没有区别就合并，并删除多余的表」）══════════
+   * 残骸与碎片**没有市场行、也不该有**，但**稀有度是物品自身的属性** ⇒ 与市场商品同一张表、同一套 1~5 档。
+   * 档位按"获得难度 × 稀缺度"给（首次分配，可由船长随时改）：
+   *  - **4**：高安稀有残骸（高危窝点 S1 级产出）
+   *  - **3**：低安 / 虫洞稀有残骸 · MK3 蓝图碎片
+   *  - **2**：虫洞普通残骸 · MK2 蓝图碎片
+   *  - **1**：高安 / 低安普通残骸
+   * ⚠ 本段**不参与市场渠道运算**（它们不进任何盘口）——档位只用于界面展示与其它读取物品档的地方。 */
+  'wreck-rare-a-hi': 4,
+  'wreck-rare-b-hi': 4,
+  'wreck-rare-d-hi': 4,
+  'wreck-rare-a-lo': 3,
+  'wreck-rare-c-lo': 3,
+  'wreck-rare-d-lo': 3,
+  'wreck-rare-e-lo': 3,
+  'wreck-rare-g-lo': 3,
+  'wreck-rare-a-wh': 3,
+  'wreck-rare-c-wh': 3,
+  'wreck-rare-d-wh': 3,
+  'wreck-rare-e-wh': 3,
+  'wreck-rare-g-wh': 3,
+  'wreck-a-wh': 2,
+  'wreck-c-wh': 2,
+  'wreck-d-wh': 2,
+  'wreck-e-wh': 2,
+  'wreck-g-wh': 2,
+  'frag-mod-miner-2': 2,
+  'frag-mod-cargo-2': 2,
+  'frag-mod-turret-kin-2': 2,
+  'frag-mod-miner-3': 3,
+  'frag-mod-cargo-3': 3,
+  'frag-mod-turret-kin-3': 3,
 }
 
-/** 查询：市场行 refId → 数字稀有度（表缺省 = 1；表外键由 content:check 强制不存在） */
+/**
+ * **物品稀有度查询**（单点）：键 = 市场行 refId（市场商品）或物品 id（市场外物品，二者同形）。
+ *
+ * 表缺省 = 1。⚠ **表里现在同时装两类键**（2026-09-20 合并后）：
+ * ① 市场商品的 refId（契约核对：每个市场卡都必须有项）；
+ * ② **市场外物品的物品 id**（残骸 / 碎片——它们没有市场行，但稀有度是物品自身的属性）。
+ */
 export function rarityTierOf(refId: string): number {
   return RARITY_TIER[refId] ?? 1
+}
+
+/**
+ * **物品 id → 数字稀有度**（图标模式的小标签用；2026-09-20）。
+ *
+ * 与 `rarityTierOf` 的差别只有一处**键形态适配**：表里**多数键与物品 id 同形**
+ * （装备 `mod-*`、蓝图 `bp-*`/`sbp-*`、物品、AI 核心、36 艘舰船、残骸、碎片都是），
+ * 但**有一处历史遗留**——**鲸王**在表里是无前缀的 `whale-king`（物品 id `sh-whale-king`、
+ * 市场行 refId `ship-whale-king`，三个名字各不相同）⇒ 去掉 `sh-` 再试一把才解得开。
+ *
+ * ⚠ **别把"市场 refId"当"物品 id"用**（2026-09-20 我在这里踩过一次）：市场里另有一批**可交易**的
+ * 同类行（如 AI 核心 `core-gamma` 的 refId 是 `gamma` 档 4），它与**洞内实物形态**的物品
+ * `ai-core-gamma`（表里档 1）**是两回事**。所以本函数**只做物品 id 的键形态适配**，
+ * 绝不把市场短名（`gamma`）套到物品 id 上——那会把洞内核心错标成 R4。
+ *
+ * ⚠ 返回 `undefined` = **查不到**（表里没有这条键）⇒ 界面**不显示标签**，而不是硬塞一个 R1。
+ */
+export function itemRarityTierOf(itemId: string): number | undefined {
+  const direct = RARITY_TIER[itemId]
+  if (direct !== undefined) return direct
+  // 唯一需要的键形态适配：舰船里的历史遗留（鲸王：表键 `whale-king`，物品 id `sh-whale-king`）
+  const ship = /^sh-(.+)$/.exec(itemId)
+  if (ship) return RARITY_TIER[ship[1]!]
+  return undefined
 }

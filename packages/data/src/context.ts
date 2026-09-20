@@ -32,6 +32,7 @@ import { buildTravelEvents } from './travelEvents'
 import { buildMarketGoodsCatalog } from './marketCatalog'
 import { buildStationCatalog } from './stations'
 import { buildMatterTechCatalog } from './matterTech'
+import { ACHIEVEMENTS } from './achievements'
 import { buildCommsCatalog } from './messages'
 import { buildCommsFactionCatalog } from './commsFactions'
 import { buildDialogueCatalog } from './dialogues'
@@ -84,6 +85,7 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
       commsFactions: buildCommsFactionCatalog(),
       dialogues: buildDialogueCatalog(),
       matterTech: buildMatterTechCatalog(),
+      achievements: ACHIEVEMENTS,
       balance: DEFAULT_BALANCE,
     },
     locale,

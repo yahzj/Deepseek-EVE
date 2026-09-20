@@ -15,7 +15,7 @@ import { tuningMul } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole, wormholePilotHoldReason } from './state'
 import type { CommandResult } from './engine'
-import type { GameState } from './state'
+import type { GameState, BattleState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
 import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
@@ -505,16 +505,22 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，
   // 且要在战报文案之前落账（战报要引用损失摘要）
   const droneLostText = settleDroneLosses(state, ctx, state.shipId, battle)
-  // 机群战损过大 → 停重复清剿（永久损失制安全阀：2026-09-10 船长拍板）
-  const droneBefore = Object.values(battle.droneLoadAtStart ?? {}).reduce((s, n) => s + n, 0)
-  const droneAfter = Object.values(state.fleet[state.shipId]?.droneLoad ?? {}).reduce((s, n) => s + n, 0)
-  const droneAttrition =
-    droneBefore > 0 && droneAfter / droneBefore < 0.5 && state.autoLoopAnomalyId === exp.anomalyId
+  // 机群战损过大 → 停重复清剿（永久损失制安全阀：2026-09-10 船长拍板）；读数与判定走单点（见下）
+  const {
+    before: droneBefore,
+    after: droneAfter,
+    attrition: droneAttritionRaw,
+  } = droneBattleOutcome(state, battle)
+  const droneAttrition = droneAttritionRaw && state.autoLoopAnomalyId === exp.anomalyId
   if (droneAttrition) {
+    /** 补货**之后**的实载（用于文案：自动补足了没有；货源不足时差多少） */
+    const droneNow = Object.values(state.fleet[state.shipId]?.droneLoad ?? {}).reduce((s, n) => s + n, 0)
     stopAutoLoopReason(
       state,
-      `机群战损过半（${droneBefore} → ${droneAfter} 架）——请先补充无人机舱清单（装配页装入）再开启重复清剿。`,
-      droneAfter, // 记下停环时的机群架数 ⇒ 再开前必须"确实补过货"（船长 2026-09-18）
+      droneNow >= droneBefore
+        ? `机群战损过半（${droneBefore} → ${droneAfter} 架）——机群已自动补充到 ${droneNow} 架，确认配装后可重新开启重复清剿。`
+        : `机群战损过半（${droneBefore} → ${droneAfter} 架）——货仓与物品仓库存货不足以补满（现 ${droneNow} 架），补充无人机后可重新开启重复清剿。`,
+      droneAfter, // 记下停环时的机群架数（**补货前**）⇒ 再开前必须"确实补过货"（船长 2026-09-18）
     )
   }
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回
@@ -584,7 +590,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     // 敌对派系活跃（2026-09-10 船长定）：胜利后**按概率**掉稀有残骸（该星系残骸场、打捞必得）。
     // 这条**不因打赢而下板**（当天可反复刷），故只在命中时写一条日志说明掉了几件。
-    // **保底（2026-09-11 船长：「每 20 次必定掉的保底」→ 口径甲）**：连续 19 次掷骰未出 ⇒ 第 20 次必掉。
+    // **保底（2026-09-11 船长定的机制；2026-09-20 船长把数值收紧为「每 10 次必出一个」）**：
+    // 连续 9 次掷骰未出 ⇒ 第 10 次必掉（阈值走常量 `FACTION_RARE_DROP_PITY_ROLLS`，文案里的次数同源）。
     // 掷骰恒消耗一次随机数（保底触发时也掷、只取 `||`）——保持 rng 时序与未保底时一致，避免别的系统读数漂移。
     if (factionActive) {
       const streak = Math.max(0, Math.floor(state.rareWreckDryStreak ?? 0)) + 1
@@ -1068,12 +1075,56 @@ export function bountyCooldownRemainingMs(state: GameState, anomalyId: string): 
 }
 
 /**
+ * **本场机群战损读数**（单点；永久损失制安全阀：2026-09-10 船长拍板「战损过半自动停环提示补货」）。
+ *
+ * 返回 `{ before, after, attrition }`：`before` = 出发架数 · `after` = **补货前**的存活架数 ·
+ * `attrition` = `after / before < 50%`（`before = 0` 时恒 false）。
+ *
+ * ⚠ **必须读补货前的存活架数**：2026-09-20 起 `settleDroneLosses` 会在扣账之后**立刻按本场出发编制
+ * 自动补足机群** ⇒ 直接读 `state.fleet[...].droneLoad` 拿到的是**补满后**的架数，这条安全阀会**静默失效**。
+ * 故读战损报告里的 `survivors`（结算时在补货前记下），并与本场 `startedAtGameMs` 配对，避免读到上一场
+ * 或 AI 副船留下的旧报告；报告缺失（老档/异常）时回落到"出发架数 − 净损失"。
+ */
+export function droneBattleOutcome(
+  state: GameState,
+  battle: BattleState,
+): { before: number; after: number; attrition: boolean } {
+  const before = Object.values(battle.droneLoadAtStart ?? {}).reduce((s, n) => s + n, 0)
+  const rep =
+    state.droneLossReport && state.droneLossReport.battleStartedAtGameMs === battle.startedAtGameMs
+      ? state.droneLossReport
+      : null
+  const after = Math.max(0, rep?.survivors ?? before - (rep?.gone ?? 0))
+  return { before, after, attrition: before > 0 && after / before < 0.5 }
+}
+
+/**
+ * **机群缺额**（船长 2026-09-20：战斗结束会自动补足机群 ⇒ 若还缺就是"货源不够"，装配页要看得见还差几架）。
+ *
+ * 返回 `null` = 没被机群门槛拦着。判据 = 停环记账 `autoLoopDroneFloor` 存在且当前装载**没超过它**
+ * （与 `autoLoopReopenBlockReason` 第②条同一把尺，本函数是该判据的**单点**）。
+ * `shipId` 可传非驾驶船（装配页支持给别的船装配）。
+ */
+export function autoLoopDroneShortfall(
+  state: GameState,
+  shipId: string = state.shipId,
+): { now: number; floor: number; need: number } | null {
+  const floor = state.autoLoopDroneFloor
+  if (typeof floor !== 'number') return null
+  const now = Object.values(state.fleet[shipId]?.droneLoad ?? {}).reduce((s, n) => s + n, 0)
+  return now <= floor ? { now, floor, need: floor + 1 } : null
+}
+
+/**
  * **再开重复清剿的前置**（船长 2026-09-18：「**战损/耐久未恢复则先挡住**」）——返回 null = 放行。
  *
  * 两条都是"可恢复"的前置，且都复用既有那把尺：
  * ① **装甲或结构 < 50%**：与出发门槛、自动停环同一档（`advanceAutoLoopBounty` 里那条）。
  * ② **机群战损未补**：停环那一刻记下的架数 `state.autoLoopDroneFloor`（只有"机群战损过半"那一路会写）
- *    ⇒ 再开要求**当前装载严格大于它**（确实补过货）。其余停环原因该字段为 null ⇒ 不套这条。
+ *    ⇒ 再开要求**当前装载严格大于它**（判据单点 = `autoLoopDroneShortfall`）。
+ *
+ * ⚠ 2026-09-20 起战斗结束会**立刻按本场出发编制自动补足机群**（货仓 → 仓库）⇒ 第②条实际只在
+ * **货仓与物品仓库都没货**时才拦人；文案据此改写（说清缺多少、要补到几架），不再写"请手动补装"。
  */
 export function autoLoopReopenBlockReason(state: GameState): string | null {
   const fs = state.fleet[state.shipId]
@@ -1081,12 +1132,11 @@ export function autoLoopReopenBlockReason(state: GameState): string | null {
   if ((fs.armorPct ?? 1) < 0.5 || fs.durability < 0.5) {
     return '装甲或结构低于 50%：先修回 50% 以上，或装上船体维修装置并带够组件。'
   }
-  const floor = state.autoLoopDroneFloor
-  if (typeof floor === 'number') {
-    const now = Object.values(fs.droneLoad ?? {}).reduce((sum, n) => sum + n, 0)
-    if (now <= floor) {
-      return `机群尚未补充（现 ${now} 架 / 停环时 ${floor} 架）：先在装配页补装无人机。`
-    }
+  const short = autoLoopDroneShortfall(state)
+  if (short) {
+    return short.floor <= 0
+      ? '机群已全灭：货仓与物品仓库都没有可补充的无人机——先在装配页装入（购买或制造）再开启重复清剿。'
+      : `机群尚未补充（现 ${short.now} 架 · 停环时 ${short.floor} 架）：需补到 ${short.need} 架以上才可再开——先在装配页装入无人机。`
   }
   return null
 }

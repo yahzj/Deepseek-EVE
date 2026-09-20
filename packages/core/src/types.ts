@@ -47,6 +47,12 @@ export interface RefineRow {
 export type ItemKind =
   | 'ore'
   | 'mineral'
+  /**
+   * **零件**（2026-09-20 船长「组装机内新增零件分页」）：工业中间件——基础零件组装机直接可造
+   * （隐式蓝图、无需学习），高级零件需学习蓝图后制造；供专属装备/专属舰船/旗舰/空间站建材消耗，
+   * 同时可作商品在市场买卖。
+   */
+  | 'part'
   | 'gas'
   | 'ice'
   | 'ammo'
@@ -1500,6 +1506,17 @@ export interface BlueprintDef {
    * **上线动作 = 删掉这一个字段**（与一次性图纸的"落地同批"口径一致）。
    */
   unreleased?: boolean
+  /**
+   * **隐式蓝图**（2026-09-20 零件体系：船长「一些基础零件不用蓝图」）——不需要"学习"即可开工：
+   * 蓝图书架不列这类书（没有书），组装机卡面不显示"已学会/未学会"状态；开工判定跳过学习检查。
+   * 缺省 false（现有蓝图零变化）。
+   */
+  learnless?: boolean
+  /**
+   * **零件档位**（2026-09-20 零件体系）：`basic` = 基础零件（吃「零件成型工艺学」制造时间 −8%/级）·
+   * `advanced` = 高级零件（吃「精密装配学」制造时间 −8%/级）。非零件蓝图缺省 undefined。
+   */
+  partTier?: 'basic' | 'advanced'
 }
 
 /** 星系定义（星图节点；坐标仅用于界面 SVG 布局） */
@@ -2120,6 +2137,14 @@ export interface SimContext {
    * （`core/matterTech.ts` 按 `effect` 关键字汇总，不认 id）⇒ core 不需要 id 清单。
    */
   matterTech?: ReadonlyMap<string, MatterTechNodeDef>
+  /**
+   * **成就徽章表**（2026-09-20 船长「继续之前的成就系统」；`data/src/achievements.ts`）。
+   *
+   * 徽章（名 / 说明 / 图案 / 配色 / 来源）住在数据侧，**判定与发放在 core**
+   * （`core/achievements.ts` 按 `source` 认领，不认 id 前缀）⇒ core 不需要 id 清单。
+   * 缺省（老档/用例不注入）= 空表 ⇒ **零行为变化**（一枚都不发）。
+   */
+  achievements?: readonly AchievementDef[]
 }
 
 /** 谜质科技树的**效果关键字**（core 只认这张表里的值；数据侧写错 = 体检判红 + 引擎忽略） */
@@ -2187,6 +2212,42 @@ export interface MatterTechNodeDef {
   prereq?: Readonly<Record<string, number>>
   /** 玩家可见说明（一句话规格；不写原因解释，括号只许放规格） */
   note: string
+}
+
+/* ═══════════════ 成就徽章（2026-09-20 船长：第一批 = 徽章框架） ═══════════════ */
+
+/**
+ * **徽章来源**（发放时唯一的认领依据——core **不认 id 前缀**，只认这里的字段）：
+ * - `task`：某条「第一次」任务达成（`importantTasks[taskId].done === true`）；
+ * - `chain`：某条次数链的进度达到 `level` 档（`importantTasks['chain-<id>'].delivered ≥ level`）。
+ */
+export type AchievementSource =
+  | { kind: 'task'; taskId: string }
+  | { kind: 'chain'; chainId: string; level: number }
+
+/**
+ * 徽章分类（界面分组用）：
+ * - `first-task`：13 条「第一次」任务的纪念徽章；
+ * - `chain`：次数链的档位徽章（船长：1/4/7/10 级各一枚 · 同图案用颜色区分）；
+ * - `milestone`：**里程碑成就**（第二批，尚未实现 ⇒ 预留枚举，见设计稿 §3.4）。
+ */
+export type AchievementCategory = 'first-task' | 'chain' | 'milestone'
+
+/**
+ * **徽章定义**（数据表条目；发放判定在 `core/achievements.ts`）。
+ * ⚠ **纯展示**（船长 2026-09-20）：不含任何奖励字段。
+ */
+export interface AchievementDef {
+  id: string
+  name: string
+  /** 玩家可见说明（一句话规格；不写原因解释，括号只许放规格） */
+  note: string
+  category: AchievementCategory
+  /** 图案键：同一条链共用一个图案，靠 `tone` 区分档位（渲染层一根线稿一枚底纹） */
+  pattern: string
+  /** 图案颜色（十六进制；取本仓既有"同造型按档分色"语汇，不新造颜色） */
+  tone: string
+  source: AchievementSource
 }
 
 /* ═══════════════ T9：副空间站建站点与通讯对话（静态内容） ═══════════════ */

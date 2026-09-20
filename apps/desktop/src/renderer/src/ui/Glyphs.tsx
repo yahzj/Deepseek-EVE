@@ -73,6 +73,14 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9 15l-1.2 1.2" />
     </g>
   ),
+  /* ── 零件（2026-09-20 零件体系：工业中间件）——芯片意象（外环 + 方芯 + 四向引脚），与 kit/fragment 同语言。 */
+  part: (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <rect x="8.7" y="8.7" width="6.6" height="6.6" rx="1" />
+      <path d="M10.6 8.7V7.1M13.4 8.7V7.1M10.6 16.9v-1.6M13.4 16.9v-1.6M8.7 10.6H7.1M8.7 13.4H7.1M16.9 10.6h-1.6M16.9 13.4h-1.6" />
+    </g>
+  ),
   fragment: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -839,6 +847,121 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="12" cy="16.3" r="1" />
     </g>
   ),
+  /**
+   * ── 成就徽章（2026-09-20 船长批「继续之前的成就系统」）：**盾徽**语言 ──
+   *
+   * 与物品的圆环徽、装备的方框徽、蓝图矩形同一套 24×24 细描边语言。
+   * 命名 = `ach-<pattern>`；**同一条链的四个档位共用同一枚图案**，靠调用方 tone 上色区分
+   * （船长：「**图案相同，用颜色区分**」）⇒ 这里只画形状，颜色一律由 `color` 传入。
+   * ⚠ **第二批（里程碑成就）未做**：届时在此加 `ach-milestone-*` 即可（`⟪未完成 2026-09-20⟫`）。
+   */
+  'ach-first': (
+    <g>
+      {/* 任务纪念徽：盾 + 中央星点 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M12 8.2l1.1 2.2 2.4.3-1.7 1.7.4 2.4-2.2-1.2-2.2 1.2.4-2.4-1.7-1.7 2.4-.3z" />
+    </g>
+  ),
+  'ach-explorer': (
+    <g>
+      {/* 宇宙探索家：星图罗盘 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <circle cx="12" cy="10.6" r="3.2" />
+      <path d="M12 8.4v4.4M9.8 10.6h4.4" />
+    </g>
+  ),
+  'ach-digger': (
+    <g>
+      {/* 深空采掘者：镐与矿脉 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M8.4 12.6l3.4-3.4 3.4 3.4" />
+      <path d="M11.8 9.2v6" />
+    </g>
+  ),
+  'ach-scavenger': (
+    <g>
+      {/* 残骸拾荒者：断裂舱段 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M8.6 9.4h6.8v3.4H8.6z" />
+      <path d="M11 9.4l-1.6 3.4M14 9.4l-1.6 3.4" />
+    </g>
+  ),
+  'ach-mechanic': (
+    <g>
+      {/* 维修技师：扳手环 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M13.6 8.2a2.6 2.6 0 10-2.4 4.4l-2 2 .9.9 2-2a2.6 2.6 0 001.5-5.3z" />
+    </g>
+  ),
+  'ach-hunter': (
+    <g>
+      {/* 赏金猎人：准星 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <circle cx="12" cy="10.8" r="2.6" />
+      <path d="M12 6.6v1.6M12 13.4v1.6M7.8 10.8h1.6M14.6 10.8h1.6" />
+    </g>
+  ),
+  'ach-refiner': (
+    <g>
+      {/* 精炼师：坩埚与滴液 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M8.6 9h6.8l-1.6 3.4H10.2z" />
+      <path d="M12 12.4v2.2" />
+    </g>
+  ),
+  'ach-lineboss': (
+    <g>
+      {/* 产线主管：传送带与齿轮 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <circle cx="12" cy="10.6" r="2.2" />
+      <path d="M8.6 14.2h6.8" />
+    </g>
+  ),
+  'ach-marketeer': (
+    <g>
+      {/* 市场老手：双向箭头 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M9 9.4h5.4l-1.4-1.4M15 12.4H9.6l1.4 1.4" />
+    </g>
+  ),
+  'ach-shipwright': (
+    <g>
+      {/* 造船厂主：船体龙骨 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M8.4 11.6l3.6-2.2 3.6 2.2-3.6 1.6z" />
+    </g>
+  ),
+  'ach-scholar': (
+    <g>
+      {/* 学而不厌：书册 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M9.2 8.6h5.6v4.6H9.2z" />
+      <path d="M12 8.6v4.6" />
+    </g>
+  ),
+  'ach-dispatch': (
+    <g>
+      {/* 舰队调度：三节点编队 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <circle cx="12" cy="8.8" r="1.4" />
+      <circle cx="9.4" cy="12.8" r="1.4" />
+      <circle cx="14.6" cy="12.8" r="1.4" />
+    </g>
+  ),
+  'ach-freight': (
+    <g>
+      {/* 星际货运：货箱 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M9 9.2l3-1.6 3 1.6v3.4l-3 1.6-3-1.6z" />
+    </g>
+  ),
+  'ach-abyss': (
+    <g>
+      {/* 深渊探索者：漩涡 */}
+      <path d="M12 3.4l7 2.6v6.2c0 4-3 6.8-7 8.4-4-1.6-7-4.4-7-8.4V6z" />
+      <path d="M12 7.6a3.2 3.2 0 103.2 3.2 2 2 0 10-2 2" />
+    </g>
+  ),
   fallback: (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -846,6 +969,22 @@ const SHAPES: Record<string, ReactNode> = {
     </g>
   ),
 }
+
+/** **零件两档的档位键**（2026-09-20 船长：「将普通零件和高级零件用颜色区分」）：
+ *  基础零件 = `part-basic`（冷钢蓝）· 高级零件 = `part-advanced`（暖金）——两档**共用同一枚 `part` 造型**，
+ *  只靠色调区分（与 `box-relic-*` 按族、`box-bp-*` 按层档、`ai-core-*` 按稀有度同一套做法）。
+ *  映射单点 = 本函数；名单与 data 层 `BlueprintDef.partTier` 同口径（高级 = 需学习蓝图的那 7 件）。 */
+const ADVANCED_PART_IDS = new Set([
+  'part-drone-neural', 'part-shield-gen', 'part-jet-array', 'part-qchip',
+  'part-keel', 'part-fire-control', 'part-grav-comp',
+])
+
+export function partToneKeyOf(itemId: string): string {
+  return ADVANCED_PART_IDS.has(itemId) ? 'part-advanced' : 'part-basic'
+}
+
+SHAPES['part-basic'] = SHAPES.part
+SHAPES['part-advanced'] = SHAPES.part
 
 /** 调色板：分类色调（科幻 UI 亮色系） */
 export const TONES: Record<string, string> = {
@@ -858,6 +997,13 @@ export const TONES: Record<string, string> = {
   wreck: '#b8a37a', // 残骸：旧黄铜/锈色（回收料的观感）
   kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
   fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
+  part: '#9fd0e8', // 零件大类兜底色（= 基础零件冷钢蓝）；两档分色见下两条
+  /* ── 零件两档（2026-09-20 船长：「将普通零件和高级零件用颜色区分」）——
+     与 `box-relic-*` 按族、`box-bp-*` 按层档、`ai-core-*` 按稀有度**同一套做法**：
+     共用 `part` 造型、色调按**档位键**取（`part-basic` / `part-advanced`；映射单点 = `partToneKeyOf`）。
+     基础零件 = 冷钢蓝（工业中间件）· 高级零件 = 暖金（更贵重的一档）。 */
+  'part-basic': '#9fd0e8',
+  'part-advanced': '#ffd479',
   container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
   matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
   essence: '#69e2ff', // 虫洞谜质：比装置形更亮的冷辉青（同一族、亮一档）
@@ -963,6 +1109,8 @@ export function itemIconOf(itemId: string, kind?: string): string {
   if (itemId === 'box-valuables' || itemId === 'box-military') return itemId
   if (itemId.startsWith('ai-core-')) return 'ai-core'
   if (itemId.startsWith('mat-')) return itemId
+  // 2026-09-20 零件两档：图标键 = 档位键（形状同 part、色调分两档）
+  if (kind === 'part') return partToneKeyOf(itemId)
   return kind ?? 'fallback'
 }
 
@@ -989,6 +1137,8 @@ export const RARE_WRECK_TONE = '#f4c95d'
  * 判据走 `itemSubs.wreckTierOf`（= core `isRareWreck`，全仓唯一前缀判定）。
  */
 export function inventoryItemTone(itemId: string, kind: string): string {
+  // 2026-09-20 零件两档：基础 = 冷钢蓝 / 高级 = 暖金（按物品 id 取色；其余物品照旧按大类）
+  if (kind === 'part') return toneOf(partToneKeyOf(itemId))
   return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : toneOf(kind)
 }
 

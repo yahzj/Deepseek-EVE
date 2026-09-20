@@ -953,9 +953,19 @@ describe('虫洞 · 舰船信号战果（船长：打赢固定给残骸 + 稀有
     const state = enterRun(1)
     const run = state.wormhole.run!
     const grid = run.grid!
-    const here = gridCellAt(grid, grid.pos)!
-    // 找一个邻格改成舰船信号并走过去
-    const target = grid.cells.find((c) => c.key !== `${grid.pos.q},${grid.pos.r}`)!
+    /**
+     * 找一个**邻格**改成舰船信号并走过去（本用例的注释一直是这么写的）。
+     *
+     * ⚠ 2026-09-20：原先取的是 `cells` 里"第一个非当前格"（行优先序的盘角），
+     * 靠的是当时"同类地点成带"这个副作用让**直线路径上恰好没有别的舰船信号**。
+     * 该副作用已按船长「甲」修掉（生成时分配前洗牌 ⇒ 舰船信号散在全盘）⇒ 那样取会撞上
+     * **路径拦截**（2026-09-16：路径上有未清掉的舰船信号 ⇒ 截断并开战，移动被拒）。
+     * 取相邻格 ⇒ 直线路径为空，不会被拦，用例回到"到达即开打"这条口径上。
+     */
+    const nbD = (a: { q: number; r: number }, b: { q: number; r: number }): number =>
+      Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.q + a.r - b.q - b.r))
+    const target = grid.cells.find((c) => nbD(c, grid.pos) === 1)!
+    expect(target, '入口周围总该有邻格').toBeDefined()
     target.place = 'ship'
     grid.scanned.push(target.key)
     const r = wormholeTravelTo(state, ctx, { q: target.q, r: target.r })

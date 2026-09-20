@@ -77,6 +77,10 @@
  *         声望 60（过「扫描虫洞」门槛 40）· **货仓刻意空着（纯科技读数）**、仓库另备谜质装置供对照 ·
  *         第 2 层站在「舰船信号」上（脚下按迎战即开打）＋ 同层遗迹/矿脉/谜质格 ·
  *         工业线备料（遗迹货柜五族各 ×4 / 虚空母矿 ×5,000 / 残骸各 ×6）。
+ *  - bp-cancel **一次性图纸 · 取消退书实测档**（2026-09-20 · 船长：「给我一个存档实机测试」）：
+ *         六种局面 = 单张随手取消 / 多张不同挨个撤退 / **同名两条线（缺口主场景）** /
+ *         普通图纸对照（已学会）/ 名额已用尽对照 / 舰船一次性；备料按图纸材料现算 ×5 ·
+ *         AI 核心 ×8 ＋ 相关技能拉满（多线并行）。
  *
  * 命名规则（2026-09-08 船长定）：测试存档命名必须符合用途——文件名 <feature> 段 = 注册
  * case 名（即该档服务的唯一测试用途），禁止随意命名；新 case 先注册（本注释 + INJECTORS +
@@ -2497,6 +2501,78 @@ function injectWormholeLogi(state: GameState): string[] {
  * 2. **倍速**要先把「时间压缩矩阵」点到 1 级，战斗窗口顶部中间才会出现 ×1/×2/×4 控件
  *    （选了会**记住**，下次开游戏沿用）。
  */
+/**
+ * **一次性图纸 · 取消退书实测档**（2026-09-20 船长：「给我一个存档实机测试」——测当日的改判
+ * 「一次性蓝图的制造取消后返还玩家蓝图」＋ 随后查修的多条同名线缺口）。
+ *
+ * 档内摆好的六种局面（表在组装机「蓝图」下拉 / 蓝图书架上都看得到）：
+ * 1. **单张、随手取消**：`bp-wh-a-frag` ×1 ⇒ 开工再取消，看书回架、名额恢复、能再开工；
+ * 2. **多张不同、挨个撤退**：`bp-wh-a-hangar` / `bp-wh-a-prop` / `bp-wh-a-coat` **各 ×1**
+ *    ⇒ 同时开 3 条线再挨个取消，每张都该回架；
+ * 3. **同名两条线（缺口主场景）**：`bp-wh-a-shield` **×2** ⇒ 开 2 条 → 撤 1 条（回 1 本）→
+ *    拿这本再开 1 条 → 等"未撤的那条完工" → 再撤第三条 ⇒ **不能出现"有书却判名额已用尽"**；
+ * 4. **对照（普通图纸）**：`bp-turret-kin-2` 预置为**已学会** ⇒ 取消时书架与名额表都不该动；
+ * 5. **对照（名额已用尽）**：`bp-wh-a-scan` 预置成"名额已用尽、架上无书"⇒ 卡片应显示"需再获得一张"；
+ * 6. **舰船一次性**：`sbp-wh-a-frigate` ×1 ⇒ 同一条退书通路（产物是舰船，完工入舰船仓库）。
+ *
+ * 备料：四种矿物按"够 5 条装备线 + 1 条舰船线"给（见注释内的算式）；AI 核心 ×8 ＋
+ * 「AI 核心操作学」拉满 ⇒ 可同时开多条 AI 线（主控亲自位全局只 1 条）。
+ */
+function injectBpCancel(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  const ctx = buildSimContext()
+  /**
+   * ⚠ **必须把虫洞趟清干净**（2026-09-20 生成后自检发现）：本档是从**当前真档**改出来的，
+   * 而真档里可能正有一趟虫洞在跑 ⇒ **主控亲自位被它占着**，组装机点「手动制造」会被拒
+   * （实测报"人在虫洞里……先撤离或结算本趟"）⇒ 船长一上手就踩坑。这里清成"不在洞里"。
+   */
+  state.wormhole = { run: null, lastFleetLost: 0 }
+  notes.push('已清空虫洞趟（否则主控亲自位被占，组装机开不了工）')
+  state.wallet.isk += 200_000_000
+  notes.push('钱包 **+200,000,000 信用点**')
+  // ① 六种局面所需的一次性图纸（都是虫洞专属那批：不上市场、不能学、只能造一次）
+  const stockPlan: Array<[string, number]> = [
+    ['bp-wh-a-frag', 1], // ① 单张随手取消
+    ['bp-wh-a-hangar', 1], // ② 多张不同 · 挨个撤退
+    ['bp-wh-a-prop', 1],
+    ['bp-wh-a-coat', 1],
+    ['bp-wh-a-shield', 2], // ③ 同名两条线（缺口主场景）
+    ['sbp-wh-a-frigate', 1], // ⑥ 舰船一次性
+  ]
+  for (const [id, n] of stockPlan) state.blueprintStock[id] = (state.blueprintStock[id] ?? 0) + n
+  notes.push(
+    '蓝图书架预置：`bp-wh-a-frag` ×1 · `bp-wh-a-hangar` / `bp-wh-a-prop` / `bp-wh-a-coat` 各 ×1 · ' +
+      '**`bp-wh-a-shield` ×2**（同名多线用）· `sbp-wh-a-frigate` ×1（舰船一次性）',
+  )
+  // ④ 对照：普通图纸先学会（取消时不该动书架）
+  if (!state.learnedRecipes.includes('bp-turret-kin-2')) state.learnedRecipes.push('bp-turret-kin-2')
+  notes.push('`bp-turret-kin-2` 预置为**已永久学会** ⇒ 组装机可直接开工（对照组：取消不该动任何书）')
+  // ⑤ 对照：一张"名额已用尽、架上无书"的一次性图纸（卡片应提示"要再获得一张"）
+  state.spentOneTimeRecipes = [...(state.spentOneTimeRecipes ?? []).filter((id) => id !== 'bp-wh-a-scan'), 'bp-wh-a-scan']
+  delete state.blueprintStock['bp-wh-a-scan']
+  notes.push('`bp-wh-a-scan` 预置为**名额已用尽、架上无书**（对照组：组装机卡应写"需再获得一张同名图纸"）')
+  // ② 备料：按各图纸 `materials` 现算，四种矿物给足 5 条装备线 + 1 条舰船线
+  const wanted = new Map<string, number>()
+  const planIds = ['bp-wh-a-frag', 'bp-wh-a-hangar', 'bp-wh-a-prop', 'bp-wh-a-coat', 'bp-wh-a-shield', 'sbp-wh-a-frigate']
+  for (const id of planIds) {
+    const bp = ctx.blueprints.get(id) ?? ctx.shipBlueprints.get(id)
+    const mats = (bp as unknown as { materials?: Array<{ itemId: string; count: number }> } | undefined)?.materials ?? []
+    for (const m of mats) wanted.set(m.itemId, (wanted.get(m.itemId) ?? 0) + m.count * 5)
+  }
+  for (const [id, n] of wanted) state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + n
+  notes.push(
+    `组装机备料（按图纸现算 ×5）：${[...wanted.entries()].map(([k, v]) => `${k} ${v.toLocaleString('zh-CN')}`).join(' · ')}`,
+  )
+  // ③ 多线并行：AI 核心 8 枚 + 「AI 核心操作学」满级（主控亲自位全局只 1 条，其余必须走 AI 线）
+  state.aiCores['basic'] = (state.aiCores['basic'] ?? 0) + 8
+  for (const k of ['ai-expert', 'industrial-automation', 'batch-production']) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 5)
+  }
+  notes.push('**基础 AI 核心 ×8** ＋「AI 核心操作学 / 工业自动化 / 批量生产学」拉满 ⇒ 可同时开多条线')
+  return notes
+}
+
 function injectMatterTechLab(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
@@ -2834,6 +2910,13 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
    * 同层遗迹/矿脉/谜质格 ＋ 工业线备料（货柜/虚空母矿/残骸）。
    */
   'mt-lab': injectMatterTechLab,
+
+  /**
+   * **一次性图纸 · 取消退书实测档**（2026-09-20 船长「给我一个存档实机测试」）：
+   * 六种局面（单张随手取消 / 多张不同挨个撤退 / **同名两条线**（缺口主场景）/ 普通图纸对照 /
+   * 名额已用尽对照 / 舰船一次性）＋ 备料（按图纸现算 ×5）＋ AI 核心 ×8。
+   */
+  'bp-cancel': injectBpCancel,
 
   /**
    * **虫洞 · 路径拦截验收档**（2026-09-16 · 船长「路径拦截」机制）：

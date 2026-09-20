@@ -382,7 +382,16 @@ describe('虫洞 · 谜质装置（F3c B1 批：威胁与战斗静态增益）',
       const grid = run.grid!
       const target = grid.cells.find((c) => c.place === 'ship' && c.key !== `${grid.pos.q},${grid.pos.r}`)!
       expect(target, '盘面上应有舰船信号格').toBeDefined()
-      expect(wormholeTravelTo(state, ctx, { q: target.q, r: target.r }, { confirmUnknown: true }).ok).toBe(true)
+      /**
+       * ⚠ 2026-09-20：加 `confirmIntercept` —— 舰船信号原先"成带"（同类地点按行分块铺），
+       * 直线路径上常常恰好没有别的舰船信号；该副作用已按船长「甲」修掉（分配前洗牌 ⇒ 信号散在全盘）
+       * ⇒ 前往任意舰船信号格**很可能被路径拦截**（2026-09-16 那条机制：截断在拦截点并开战）。
+       * 本用例要的是"走到舰船信号格并开战"，拦截点本身也是舰船信号格 ⇒ 确认拦截即可，
+       * 到达哪个舰船信号格无所谓。
+       */
+      expect(
+        wormholeTravelTo(state, ctx, { q: target.q, r: target.r }, { confirmUnknown: true, confirmIntercept: true }).ok,
+      ).toBe(true)
       // 舰船信号 = **到达即开打**（船长 2026-09-13）⇒ 走完这一步战斗就已经开起来了
       if (!run.battle) {
         const act = wormholeActivateAt(state, ctx)

@@ -282,7 +282,7 @@ export function TaskPanel({
   /** 「第一次」卡片的「看情报」（App 层定位到那封情报信） */
   onOpenComms?: (messageId: string) => void
   /** 「第一次」卡片的跳转按钮（App 层切页面/页签，自带解锁闸门） */
-  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' }) => void
+  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard' }) => void
 }) {
   const [tab, setTab] = useState<TaskTabKey>(() => {
     try {
@@ -1052,7 +1052,9 @@ function StarMap({
    * （上抬不破坏对齐感；星图顶部另有 MAP_PAD_TOP 留白，抬到会被裁切就不采用）。
    */
   const FACTION_HALF_W = 27 // 「敌对派系活跃」6 字 × (8.5px + 0.5 字距) ≈ 54 → 半宽 27
-  const FACTION_MARK_TOP = 41 // 标记组顶端相对星系中心的高度（全称标签顶边 ≈ 中心 −34 −7）
+  // 标记组顶端相对星系中心的高度。⚠ 2026-09-20 图标与文字互换后，**顶端改由 ✦（11px 基线 y−34）决定**
+  //   （✦ 顶边 ≈ 中心 −34 −8 = −42 ⇒ 取 41；原为 8.5px 全称标签的顶边）——数值恰好不变。
+  const FACTION_MARK_TOP = 41
   const FACTION_DY_TRIES = [0, -12, -24] as const
   const factionDy = (g: GalaxyDef): number => {
     const p = posOf(g)
@@ -1349,9 +1351,10 @@ function StarMap({
               ) : null}
               {/* 敌对派系活跃（2026-09-10 船长：改红色 + 用方框选中目标星系 + 文字写全称；
                   2026-09-10 追加：**与星系按钮对齐**——✦ 与全称标签横向永远居中在圆点正上方，
-                  不再为躲邻居而左右平移，冲突时整组上抬（factionDy）；标记自带闪缩脉动，见 styles.css）——
+                  不再为躲邻居而左右平移，冲突时整组上抬（factionDy）；标记自带闪缩脉动，见 styles.css；
+                  2026-09-20 船长：**图标与文字行互换** ⇒ ✦ 在上、全称在下，见下方内联说明）——
                   ①红色方框选中该星系（画在圆点之前，圆点压上层）②红色圆点 + 伸缩脉动
-                  ③红色 ✦ 徽标 + 上方「敌对派系活跃」全称标签 ④星系名加粗（颜色仍交给安全等级色阶）
+                  ③红色 ✦ 徽标 + 「敌对派系活跃」全称标签（现 ✦ 在上）④星系名加粗（颜色仍交给安全等级色阶）
                   该星系已被排除在赏金任务抽签池外，故不会与 ⚑ 徽标叠在同一节点 */}
               {isFactionNode ? (
                 <>
@@ -1367,11 +1370,18 @@ function StarMap({
                     const dy = factionDy(g)
                     return (
                       <>
-                        <text x={p.x} y={p.y - 20 + dy} textAnchor="middle" className="app-map-bounty is-faction">
+                        {/**
+                         * **✦ 与全称标签的位置互换**（2026-09-20 船长：「星图的敌对派系活跃里的图标和文字行互换一下」）
+                         * ⇒ 现在 **✦ 徽标在上（y−34）、「敌对派系活跃」全称在下（y−20）**（原为文字在上、✦ 在下）。
+                         * ⚠ 只对调两个 `y` 值、**不动标记组整体定位**：两行互换后"组顶边 = ✦ 顶边"（仍 ≈ 中心−34−8）
+                         * 与"组底边 = 全称降部"（仍 ≈ 中心−20+4）**都没变** ⇒ 上面 `FACTION_MARK_TOP = 41`
+                         * 与 `factionDy` 的避让带（中心−40 ~ −16）**一字不用改**，避让行为与改前完全一致。
+                         */}
+                        <text x={p.x} y={p.y - 34 + dy} textAnchor="middle" className="app-map-bounty is-faction">
                           ✦
                         </text>
-                        <text x={p.x} y={p.y - 34 + dy} textAnchor="middle" className="app-map-faction-cap">
-                          {tr("ui.Expedition.198")}
+                        <text x={p.x} y={p.y - 20 + dy} textAnchor="middle" className="app-map-faction-label">
+                          {tr('ui.Expedition.198')}
                         </text>
                       </>
                     )

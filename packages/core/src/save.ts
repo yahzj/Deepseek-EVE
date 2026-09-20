@@ -18,6 +18,7 @@ import {
   MAX_SKILL_LEVEL,
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
+import type { AchievementEarned } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
@@ -328,6 +329,24 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
   28: (raw) => {
     if (raw.research !== undefined) return raw
     return { ...raw, research: { levels: {} } }
+  },
+  /**
+   * v29 -> v30（2026-09-20 船长：「继续之前的成就系统」）：**纯新增字段** —— 补 `achievements.earned = {}`。
+   *
+   * ⚠ **补发不在这里做，也不需要在这里做**：本层拿不到内容表（`MIGRATIONS` 只吃 raw state，无 ctx），
+   * 而"老档已达成者补发"由 `core/achievements.ts` 的 `advanceAchievements` **在载入后的第一拍现算补上**
+   * （判据是 `state` 现状、幂等 ⇒ 老档一进游戏，够格的徽章就自动到手）。
+   * 好处：① core 不必反向依赖数据层 ② 补发逻辑只有**一份**（不在迁移里再抄一遍判定）
+   * ③ 以后新增判定支线时，老档照样自愈。
+   *
+   * 代价（已接受）：补发时刻记的是"载入后第一拍的 `gameMs`"，不是当年真实达成时间——
+   * 老档无从知道真实时刻，且徽章**纯展示、不影响任何行为**（船长 2026-09-20 裁定）⇒ 无影响。
+   *
+   * 幂等：已有 `achievements` 的档原样保留（不覆盖玩家已到手的徽章）。
+   */
+  29: (raw) => {
+    if (raw.achievements !== undefined) return raw
+    return { ...raw, achievements: { earned: {} } }
   },
 }
 /** 字符串或 null 归一（迁移辅助） */
@@ -2827,6 +2846,29 @@ function normalizeState(raw: unknown): GameState {
   }
   const research: GameState['research'] = { levels: techLevels }
 
+  /**
+   * **成就徽章账本**（v30 · 2026-09-20 船长批）：只存"哪几枚到手了 ＋ 到手时刻"。
+   * 逐项清洗（**不查表** ⇒ 数据侧改/删徽章表也不会让老档的账本被改写）：
+   * - 新格式 `{ atGameMs, atWallMs }`：两个时刻各取**非负整数**，坏值归 0；
+   * - ⚠ **兼容首版落盘的裸数字**（v30 首版 `earned[id] = gameMs` 是个 number）：
+   *   当时没记墙钟 ⇒ `atWallMs` 补 0（界面按"未记录"处理，不写假时间）。
+   */
+  const achRaw = asRaw(src.achievements)
+  const achEarnedRaw = asRaw(achRaw.earned)
+  const achEarned: Record<string, AchievementEarned> = {}
+  const atOf = (v: unknown): number =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0
+  for (const [key, value] of Object.entries(achEarnedRaw)) {
+    if (typeof value === 'number') {
+      achEarned[key] = { atGameMs: atOf(value), atWallMs: 0 }
+      continue
+    }
+    if (typeof value !== 'object' || value === null) continue
+    const rec = value as Record<string, unknown>
+    achEarned[key] = { atGameMs: atOf(rec.atGameMs), atWallMs: atOf(rec.atWallMs) }
+  }
+  const achievements: GameState['achievements'] = { earned: achEarned }
+
   const normalized: GameState = {
     version: CURRENT_STATE_VERSION,
     gameMs:
@@ -2889,7 +2931,8 @@ function normalizeState(raw: unknown): GameState {
     bountyCooldowns,
     autoLoopAnomalyId,
     autoLoopDroneFloor,
-    // 2026-09-11 稀有残骸保底计数（船长「每 20 次必定掉」）：非负整数，缺省 0（老档从零攒）
+    // 2026-09-11 稀有残骸保底计数（船长定的机制；2026-09-20 起阈值 = 每 10 次必掉）：
+    // 非负整数，缺省 0（老档从零攒）
     rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),
     encounter,
     lowSecNotified,
@@ -2919,6 +2962,7 @@ function normalizeState(raw: unknown): GameState {
     sideTasks,
     wormhole,
     research,
+    achievements,
     logs,
   }
   // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）

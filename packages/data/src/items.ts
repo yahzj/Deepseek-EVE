@@ -1122,10 +1122,132 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
   },
 ]
 
+/**
+ * **零件**（2026-09-20 船长「组装机内新增零件分页」）：工业中间件。
+ * 基础 7 件 = 组装机「零件」分页直接可造（隐式蓝图 `bp-part-*`，无需学习；市场常驻可买卖）；
+ * 高级 7 件 = 需学习蓝图（`bp-part-*-advanced` 系蓝图）后制造（市场稀有订单层）。
+ * 用途：专属装备/专属舰船/旗舰配方与空间站建材；定价 = 材料成本 ×1.3~1.5（基础）/ ×1.4~1.6（高级）。
+ */
+export const PARTS: readonly ItemDef[] = [
+  {
+    id: 'part-circuit',
+    name: '电路基板',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 95, // 材料 68（银纹 4×12＋晶态 20）×1.40
+    description: '基础电子中间件：银纹超金属与晶态胶体压制的通用基板，高级零件与专属装备的底层材料。',
+  },
+  {
+    id: 'part-armor-plate',
+    name: '装甲板',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 250, // 材料 180（钛钢 15×8＋银纹 5×12）×1.39
+    description: '基础结构中间件：钛钢合金锻压成板，舰船与重装备的标准披挂。',
+  },
+  {
+    id: 'part-frame',
+    name: '结构框架',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 145, // 材料 104（钛钢 10×8＋银纹 2×12）×1.39
+    description: '基础结构中间件：标准化承力框架，舰体与空间站施工的通用构件。',
+  },
+  {
+    id: 'part-cable',
+    name: '超导电缆',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 155, // 材料 112（银纹 6×12＋晶态 2×20）×1.38
+    description: '基础电子中间件：低损耗超导走线，护盾与能量系统的血管。',
+  },
+  {
+    id: 'part-coolant',
+    name: '冷却导管',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 115, // 材料 84（钛钢 8×8＋晶态 20）×1.37
+    description: '基础散热中间件：钛钢包晶态的循环管路，高热设备的标配。',
+  },
+  {
+    id: 'part-gyro',
+    name: '陀螺稳定器座',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 420, // 材料 300（重钨 2×90＋银纹 10×12）×1.40
+    description: '基础机动中间件：重钨压阵的稳定基座，舰船姿态系统的骨架。',
+  },
+  {
+    id: 'part-lens',
+    name: '光学透镜组',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 190, // 材料 135（晶态 4×20＋同位聚晶 55）×1.41
+    description: '基础光学中间件：晶态胶体研磨成镜，能量武器与扫描设备的准星。',
+  },
+  {
+    id: 'part-drone-neural',
+    name: '无人机神经原件',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 930, // 材料 620（电路基板 2×95＋晶态 8×20＋重钨 3×90）×1.50
+    description: '高级零件：仿生神经束封装的机群指挥单元，无人机与智能设备的思考中枢。',
+  },
+  {
+    id: 'part-shield-gen',
+    name: '护盾发生装置',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 1_010, // 材料 675（超导电缆 2×155＋晶态 10×20＋同位聚晶 3×55）×1.50
+    description: '高级零件：场强发生器成品，护盾模组与旗舰防御阵列的核心。',
+  },
+  {
+    id: 'part-jet-array',
+    name: '能量射流阵列',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 1_550, // 材料 1,030（透镜组 2×190＋重钨 6×90＋同位聚晶 2×55）×1.50
+    description: '高级零件：聚焦喷口阵列，能量武器线的高能终端。',
+  },
+  {
+    id: 'part-qchip',
+    name: '量子协处理器芯',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 700, // 材料 470（电路基板 2×95＋晶态 5×20＋重钨 2×90）×1.49
+    description: '高级零件：量子态运算芯体，火控与锁定设备的算力来源。',
+  },
+  {
+    id: 'part-keel',
+    name: '舰用龙骨组件',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 3_120, // 材料 2,080（结构框架 6×145＋重钨 8×90＋星髓晶 2×245）×1.50
+    description: '高级零件：星髓晶强化的大尺寸承力构件，专属舰船与旗舰的脊梁。',
+  },
+  {
+    id: 'part-fire-control',
+    name: '军规火控计算机',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 1_670, // 材料 1,110（协处理器芯 700＋电路基板 2×95＋同位聚晶 4×55）×1.50
+    description: '高级零件：军用弹道解算整机，专属武器的眼睛与手指。',
+  },
+  {
+    id: 'part-grav-comp',
+    name: '引力子补偿器',
+    kind: 'part',
+    unitM3: 0.1,
+    baseSellPriceIsk: 7_500, // 材料 5,000（龙骨组件 3,120＋重钨 10×90＋星髓晶 4×245）×1.50
+    description: '高级零件：引力场畸变补偿装置，旗舰级结构的终极构件。',
+  },
+]
+
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */
 export const ITEMS: readonly ItemDef[] = [
   ...ORES,
   ...MINERALS,
+  ...PARTS,
   ...GASES,
   ...ICES,
   ...AMMO,

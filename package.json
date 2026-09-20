@@ -34,6 +34,7 @@
     "battle:layout": "tsx tools/battle-layout.ts",
     "wormhole:econ": "tsx tools/wormhole-econ.ts",
     "wormhole:loot": "tsx tools/wormhole-loot.ts",
+    "mt:harvest": "tsx tools/mt-harvest.ts",
     "battle:drone-vs-gun": "tsx tools/drone-vs-gun.ts",
     "battle:hit-profile": "tsx tools/hit-profile.ts",
     "battle:pd-tune": "tsx tools/pd-tune.ts",

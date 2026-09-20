@@ -162,12 +162,30 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 360, poolTarget: 114_000, supplyFlow: 950 },
   // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 }, // 2026-09-11 消耗品池按产能标定（原 4,000/150）
+  // 【基础零件 7 种（2026-09-20 零件体系）：常驻池商品——**池规则 = 幂律连续曲线**
+  //   （船长 2026-09-20：「百万级是最低价格的零件，其他价格的零件在这基础上下调」＋「池子更平滑 + 高级零件池总价值逐步上涨」
+  //    ＋同日追加「**零件池总价允许除以4进行平衡**」）：
+  //   锚 = 最低价零件（电路基板 95 信用点）= **300,000**（原 1,200,000 ÷4）；`poolTarget(p) = 300,000 × (95 / p)^0.55`
+  //   ⇒ 池数量随价格**平滑递减**（30 万 → 2.71 万）、池总价值随价格**平滑递增**（2,850 万 → 2.03 亿）；
+  //   `supplyFlow = poolTarget ÷ 120`（全表既有比例）。定价 = 材料成本 ×1.37~1.41（船长「普通零件平均涨幅 30~50%」）。】
+  { key: 'part-circuit', kind: 'item', refId: 'part-circuit', rarity: 'common', basePrice: 95, demandMultiplier: 0.6, poolTarget: 300_000, supplyFlow: 2_500 },
+  { key: 'part-armor-plate', kind: 'item', refId: 'part-armor-plate', rarity: 'common', basePrice: 250, demandMultiplier: 0.6, poolTarget: 176_200, supplyFlow: 1_468 },
+  { key: 'part-frame', kind: 'item', refId: 'part-frame', rarity: 'common', basePrice: 145, demandMultiplier: 0.6, poolTarget: 237_700, supplyFlow: 1_981 },
+  { key: 'part-cable', kind: 'item', refId: 'part-cable', rarity: 'common', basePrice: 155, demandMultiplier: 0.6, poolTarget: 229_200, supplyFlow: 1_910 },
+  { key: 'part-coolant', kind: 'item', refId: 'part-coolant', rarity: 'common', basePrice: 115, demandMultiplier: 0.6, poolTarget: 270_100, supplyFlow: 2_251 },
+  { key: 'part-gyro', kind: 'item', refId: 'part-gyro', rarity: 'common', basePrice: 420, demandMultiplier: 0.6, poolTarget: 132_500, supplyFlow: 1_104 },
+  { key: 'part-lens', kind: 'item', refId: 'part-lens', rarity: 'common', basePrice: 190, demandMultiplier: 0.6, poolTarget: 204_900, supplyFlow: 1_708 },
   { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
   { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 9, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
   // ── 弹药 MK2（2026-09-09 船长拍板：攻坚/提速消耗品；补给池高价低耗节流，参数可调） ──
-  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'common', basePrice: 45, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 }, // 2026-09-11 消耗品池按产能标定（原 1,200/20）
-  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'common', basePrice: 60, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
-  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'common', basePrice: 80, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
+  // 2026-09-20 船长：「**弹药 MK2 移动到稀有订单**」⇒ 三系 MK2 由 common 改 **rare**（数字档 R1 → R2）。
+  //   ⚠ 与产能池口径的连带：它原先走 `common` 的"池商品阶梯"（`poolTarget` / `supplyFlow` 那套盘口），
+  //   改档后**不再吃那条路** ⇒ 池参数保留不删（改回 common 时需要，也是产能标定的原始读数）。
+  //   ⚠ `common` 的档位**本就不影响交易**（`market.ts` 的 `rareTierWeight` 只在 rare/exotic 分支被调用）
+  //   ⇒ 本次改档的**实质影响 = 供货渠道由"常驻盘口"变为"稀有订单"**，不是加权。
+  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'rare', basePrice: 45, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 }, // 2026-09-11 消耗品池按产能标定（原 1,200/20）
+  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'rare', basePrice: 60, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
+  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'rare', basePrice: 80, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
   // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
   { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 2_400, supplyFlow: 20 }, // 2026-09-11 消耗品池按产能标定（原 300/4）
   { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 }, // 2026-09-11（原 120/1.5；船长定：与其它消耗品同口径，激战单场可吃 23 枚 ⇒ 池约撑 45 场）
@@ -425,6 +443,22 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-salvager-2', kind: 'blueprint', refId: 'bp-salvager-2', rarity: 'rare', basePrice: 1097500, demandMultiplier: 0.65 }, // 打捞器 MK2（蓝图=产物×2.5）
   { key: 'bp-salvager-3', kind: 'blueprint', refId: 'bp-salvager-3', rarity: 'rare', basePrice: 6660000, demandMultiplier: 0.65, standingReq: 4 }, // 打捞器 MK3（蓝图=产物×3）
   { key: 'bp-hullrep-2', kind: 'blueprint', refId: 'bp-hullrep-2', rarity: 'rare', basePrice: 5725000, demandMultiplier: 0.65, standingReq: 4 }, // 船体维修装置 MK2（蓝图=产物×3）（入闸）
+  // 【高级零件 7 种 + 蓝图 7 张（2026-09-20 零件体系）】：船长「所有零件及其蓝图都在常驻市场有出售，但是高级零件蓝图需要1000W」
+  //   ⇒ 全部常驻池商品（池规则同基础零件：同一幂律曲线延续到高级零件）；高级零件蓝图书价 = 1,000 万（basePrice 与 blueprints.ts priceIsk 同值）。
+  { key: 'part-drone-neural', kind: 'item', refId: 'part-drone-neural', rarity: 'common', basePrice: 930, demandMultiplier: 0.6, poolTarget: 85_500, supplyFlow: 713 },
+  { key: 'part-shield-gen', kind: 'item', refId: 'part-shield-gen', rarity: 'common', basePrice: 1_010, demandMultiplier: 0.6, poolTarget: 81_800, supplyFlow: 682 },
+  { key: 'part-jet-array', kind: 'item', refId: 'part-jet-array', rarity: 'common', basePrice: 1_550, demandMultiplier: 0.6, poolTarget: 64_600, supplyFlow: 538 },
+  { key: 'part-qchip', kind: 'item', refId: 'part-qchip', rarity: 'common', basePrice: 700, demandMultiplier: 0.6, poolTarget: 100_000, supplyFlow: 833 },
+  { key: 'part-keel', kind: 'item', refId: 'part-keel', rarity: 'common', basePrice: 3_120, demandMultiplier: 0.6, poolTarget: 44_000, supplyFlow: 367 },
+  { key: 'part-fire-control', kind: 'item', refId: 'part-fire-control', rarity: 'common', basePrice: 1_670, demandMultiplier: 0.6, poolTarget: 62_000, supplyFlow: 517 },
+  { key: 'part-grav-comp', kind: 'item', refId: 'part-grav-comp', rarity: 'common', basePrice: 7_500, demandMultiplier: 0.6, poolTarget: 27_100, supplyFlow: 226 },
+  { key: 'bp-part-drone-neural', kind: 'blueprint', refId: 'bp-part-drone-neural', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
+  { key: 'bp-part-shield-gen', kind: 'blueprint', refId: 'bp-part-shield-gen', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
+  { key: 'bp-part-jet-array', kind: 'blueprint', refId: 'bp-part-jet-array', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
+  { key: 'bp-part-qchip', kind: 'blueprint', refId: 'bp-part-qchip', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
+  { key: 'bp-part-keel', kind: 'blueprint', refId: 'bp-part-keel', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
+  { key: 'bp-part-fire-control', kind: 'blueprint', refId: 'bp-part-fire-control', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
+  { key: 'bp-part-grav-comp', kind: 'blueprint', refId: 'bp-part-grav-comp', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
   { key: 'bp-lock-2', kind: 'blueprint', refId: 'bp-lock-2', rarity: 'rare', basePrice: 1162500, demandMultiplier: 0.65 }, // 目标锁定阵列 MK2（蓝图=产物×2.5）
   { key: 'bp-lock-3', kind: 'blueprint', refId: 'bp-lock-3', rarity: 'rare', basePrice: 6810000, demandMultiplier: 0.65, standingReq: 4 }, // 目标锁定阵列 MK3（蓝图=产物×3）
   // 2026-09-15 隐秘行动装置（高槽 · 开火前隐身 20/30 秒）；2026-09-16 船长定数：MK2 = 300 万（稀有档 3）、

@@ -21,7 +21,8 @@ export const STATION_SITES: readonly StationSiteDef[] = [
         name: '奠基',
         bill: [
           { itemId: 'min-pyerite', count: 1_500 },
-          { itemId: 'min-mexallon', count: 500 },
+          { itemId: 'min-mexallon', count: 442 }, // 2026-09-20 零件体系：−58 件（1,160 信用点）↔ part-frame ×8 等值替换
+          { itemId: 'part-frame', count: 8 },
         ],
         unlockDesc: '施工推进：地基与主体框架搭建（站内功能统一在建成后开放）',
       },
@@ -29,7 +30,8 @@ export const STATION_SITES: readonly StationSiteDef[] = [
         name: '完善',
         bill: [
           { itemId: 'min-tritanium', count: 5_000 },
-          { itemId: 'min-nocxium', count: 1_000 },
+          { itemId: 'min-nocxium', count: 710 }, // 2026-09-20 零件体系：−290 件（26,100 信用点）↔ part-frame ×180 等值替换
+          { itemId: 'part-frame', count: 180 },
         ],
         unlockDesc: '施工推进：设备安装与系统调试（站内功能统一在建成后开放）',
       },
@@ -37,7 +39,8 @@ export const STATION_SITES: readonly StationSiteDef[] = [
         name: '建成',
         bill: [
           { itemId: 'min-isotope', count: 1_200 },
-          { itemId: 'min-starcore', count: 800 },
+          { itemId: 'min-starcore', count: 510 }, // 2026-09-20 零件体系：−290 件（71,050 信用点）↔ part-frame ×490 等值替换
+          { itemId: 'part-frame', count: 490 },
         ],
         unlockDesc: '副站建成：并入空间站网络，开放泊位/卸货/维修/补给/换驾驶及全部站内功能',
       },
@@ -56,17 +59,19 @@ export const STATION_SITES: readonly StationSiteDef[] = [
       {
         name: '奠基',
         bill: [
-          { itemId: 'min-tritanium', count: 9_000 },
+          { itemId: 'min-tritanium', count: 1_750 }, // 2026-09-20 零件体系：−7,250 件（58,000 信用点）↔ part-frame ×400 等值替换
           { itemId: 'min-pyerite', count: 1_000 },
+          { itemId: 'part-frame', count: 400 },
         ],
         unlockDesc: '施工推进：地基与主体框架搭建（站内功能统一在建成后开放）',
       },
       {
         name: '完善',
         bill: [
-          { itemId: 'min-nocxium', count: 3_000 },
+          { itemId: 'min-nocxium', count: 1_550 }, // 2026-09-20 零件体系：−1,450 件（130,500 信用点）↔ part-frame ×900 等值替换
           { itemId: 'min-mexallon', count: 2_000 },
           { itemId: 'min-isotope', count: 1_000 },
+          { itemId: 'part-frame', count: 900 },
         ],
         unlockDesc: '施工推进：设备安装与系统调试（站内功能统一在建成后开放）',
       },
@@ -74,7 +79,8 @@ export const STATION_SITES: readonly StationSiteDef[] = [
         name: '建成',
         bill: [
           { itemId: 'min-starcore', count: 2_000 },
-          { itemId: 'min-darkiron', count: 2_000 },
+          { itemId: 'min-darkiron', count: 1_797 }, // 2026-09-20 零件体系：−203 件（158,340 信用点）↔ part-frame ×1,092 等值替换
+          { itemId: 'part-frame', count: 1_092 },
         ],
         unlockDesc: '副站建成：并入空间站网络，开放泊位/卸货/维修/补给/换驾驶及全部站内功能',
       },

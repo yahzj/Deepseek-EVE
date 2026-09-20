@@ -5,8 +5,9 @@
  *   矿石/气体/冰矿可装船或卖出，矿物是制造料；
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
+import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
@@ -19,6 +20,7 @@ import {
   CONTAINER_SUBS,
   CORE_SUBS,
   MODULE_SUBS,
+  presentSubs,
   RACK_SUBS,
   SUB_ALL,
   WRECK_SUBS,
@@ -89,17 +91,45 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
    * AI 核心：仓库里只有物品形态的 gamma/beta/alpha（`basic` 只有市场商品）⇒ 按目录存在性列档。
    */
   const subDim: { options: typeof RACK_SUBS; label: string } | null = (() => {
-    if (wareKind === 'module') return { options: RACK_SUBS, label: tr("ui.Handbook.192") }
-    if (wareKind === 'container') return { options: CONTAINER_SUBS, label: tr("ui.ItemsPage.047") }
-    if (wareKind === 'wreck') return { options: WRECK_SUBS, label: tr("ui.ItemsPage.047") }
+    // 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：各档**只列仓库里真有内容的档**
+    //（`rows` = 仓库物品条目 · `modRows` = 装备库条目；判定仍走单点 `rackPasses` / `itemSubPasses`）。
+    if (wareKind === 'module') {
+      return { options: presentSubs(RACK_SUBS, (key) => modRows.some(([id]) => rackPasses(engine.ctx, id, key))), label: tr('ui.ItemsPage.022') }
+    }
+    if (wareKind === 'container') {
+      return { options: presentSubs(CONTAINER_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'container', key))), label: tr('ui.ItemsPage.023') }
+    }
+    if (wareKind === 'wreck') {
+      return { options: presentSubs(WRECK_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'wreck', key))), label: tr('ui.ItemsPage.023') }
+    }
     if (wareKind === 'aicore') {
       return { options: CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`)), label: tr("ui.ItemsPage.047") }
     }
-    if (wareKind === 'fragment') return { options: MODULE_SUBS, label: tr("ui.ItemsPage.048") }
+    if (wareKind === 'fragment') {
+      return { options: presentSubs(MODULE_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'fragment', key))), label: tr('ui.ItemsPage.048') }
+    }
     return null
   })()
-  /** **三级维度**：只有「装备」有（槽类 → 功能分组），且**选了槽位才出**（基线③级联） */
-  const funcDim = wareKind === 'module' && wareSub !== SUB_ALL ? MODULE_SUBS : null
+  /** **三级维度**：只有「装备」有（槽类 → 功能分组），且**选了槽位才出**（基线③级联）；同样只列真有内容的档 */
+  const funcDim =
+    wareKind === 'module' && wareSub !== SUB_ALL
+      ? presentSubs(MODULE_SUBS, (key) => modRows.some(([id]) => itemSubPasses(engine.ctx, id, 'module', key)))
+      : null
+  /**
+   * **仓库内容变了 ⇒ 原选择可能已经空档**：`rows` / `modRows` 是**动态**的（卖掉、装船、投炉都会让某档归零）——
+   * 档位一旦从候选里消失，选择若还停在它上面就成了**看不见的筛选**（列表全空、没有任何选中项可点回去）。
+   * 故与蓝图书架同一口径（2026-09-19）：选择不在候选里 ⇒ 回落「全部」；二级回落时三级一并回落。
+   */
+  const subMissing = subDim !== null && wareSub !== SUB_ALL && !subDim.options.some((s) => s.key === wareSub)
+  const funcMissing = funcDim !== null && wareFunc !== SUB_ALL && !funcDim.some((s) => s.key === wareFunc)
+  useEffect(() => {
+    if (subMissing) {
+      setWareSub(SUB_ALL)
+      setWareFunc(SUB_ALL)
+      return
+    }
+    if (funcMissing) setWareFunc(SUB_ALL)
+  }, [subMissing, funcMissing])
   /**
    * 三个维度的判定一律走**唯一入口**（甲组·判定单点）：
    * 一级 `itemBucketPasses` · 二级 `rackPasses`（装备槽类）/ `itemSubPasses`（其余）· 三级 `itemSubPasses`；
@@ -228,6 +258,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       sub: `×${units.toLocaleString('zh-CN')}`,
       title: def.description,
       hover: moduleHoverContent(def),
+      // 稀有度小标签（2026-09-20 船长）：装备的市场 refId 本来就是 `mod-<id>` ⇒ 直接传 id
+      rarity: itemRarityTierOf(id),
     })
   }
 
@@ -551,6 +583,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
                 // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
                 tone: inventoryItemTone(id, def?.kind ?? kind),
+                // 稀有度小标签（2026-09-20 船长）：物品按 id 查档（含市场外档表与 AI 核心的映射）
+                rarity: itemRarityTierOf(id),
               }
             })
             const extra2 = kindExtraNote(kind)

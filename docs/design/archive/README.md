@@ -15,8 +15,8 @@
 ## 二、归档判据（两条任一命中即归档）
 
 1. **公告待审稿**：顶部已有船长显式批复（已写入公告数据 / 船长明判"不发" / 整体作废）⇒ 使命已完成。
-   > **例外**：`announcement-draft-20260912-*.md` 两份虽已作废，但属**当日终局裁定**（船长
-   > 「清理剩余待审稿，不发」），近期还可能与"要不要重发"挂钩 ⇒ **留在 `docs/design/` 一线**。
+   > **（2026-09-20 例外失效）**：`announcement-draft-20260912-*.md` 两份曾因"当日终局裁定、可能关联重发"留一线；
+   > 船长 2026-09-20 裁定「**都进行归档，不发送**」⇒ 例外失效，两份一并移入本目录。
    > 另**在一线目录没有"生效待审稿"这一说**——公告的唯一权威是 `packages/data/src/announcements.ts`。
 2. **交接卡**：仅保留**最新一份**（一号与二号各一）；被它取代的历史交接卡一律归档。
 
@@ -38,6 +38,33 @@
 | `announcement-draft-hauling-20260911.md` | 2026-09-11 | 船长裁定不发（三份待审稿一并）；正文口径已被船长后续改判取代 |
 | `announcement-draft-lowsec-20260911.md` | 2026-09-11 | 船长裁定不发（三份待审稿一并） |
 | `announcement-draft-shipprice-20260911.md` | 2026-09-11 | 船长裁定不发（三份待审稿一并） |
+
+> **2026-09-20 追加归档（11 份 · 一号清理批 · 判据 ① 已结案）**：
+>
+> | 文件 | 日期 | 结案口径 |
+> |---|---|---|
+> | `announcement-draft-20260913-haul-reward.md` | 2026-09-13 | 船长批准并落库 `2026-09-13-haul-security-reward` |
+> | `announcement-draft-20260913-t4-battleship.md` | 2026-09-13 | 内容被 `2026-09-14-release-batch` 吸收（核验件已判结案） |
+> | `announcement-draft-20260913-wormhole.md` | 2026-09-13 | 被 09-14 虫洞上线稿取代（文件头自注） |
+> | `announcement-draft-20260914-release.md` | 2026-09-14 | 船长批准合并为 `2026-09-14-release-batch`（已落库） |
+> | `announcement-draft-20260914-wormhole-launch.md` | 2026-09-14 | 已随上线落库（撤离战条款后作废，稿留历史档） |
+> | `announcement-draft-20260916-combat-insurance.md` | 2026-09-16 | 船长「公告通过」⇒ 已入库 |
+> | `announcement-draft-20260916-wormhole-bloom.md` | 2026-09-16 | 船长批准 ⇒ 已入库逐字照发 |
+> | `announcement-draft-20260918-push.md` | 2026-09-18 | 船长「通过，按此推送」⇒ 三条已入库 |
+> | `announcement-draft-20260919-filters.md` | 2026-09-19 | 船长裁定**不发**（稿留档） |
+> | `announcement-draft-20260919-matter-tech.md` | 2026-09-19 | 船长批准 ⇒ `ann-matter-tech-20260919` 已入库 |
+> | `announcement-draft-20260919-push.md` | 2026-09-19 | 船长「只发任务改版和残骸合并的公告」⇒ ①②已入库、③④不发（状态行已收口） |
+
+> **2026-09-20 追加归档（6 份 · 船长「都进行归档，不发送」· 判据 ①）**：
+>
+> | 文件 | 日期 | 结案口径 |
+> |---|---|---|
+> | `announcement-draft-20260912-foe-overhaul.md` | 2026-09-12 | 09-12 已作废不发；09-20 裁定归档（判据 ① 例外失效） |
+> | `announcement-draft-20260912-pilot1-batches.md` | 2026-09-12 | 09-12 卡 4/卡 6 已入库、其余不发；09-20 裁定归档（例外失效） |
+> | `announcement-draft-20260914-push2.md` | 2026-09-14 | 代码已推、公告待审 ⇒ 09-20 裁定**不发** |
+> | `announcement-draft-20260915-extract-retire.md` | 2026-09-15 | 待审 ⇒ 09-20 裁定**不发** |
+> | `announcement-draft-20260915-wormhole-loot.md` | 2026-09-15 | roadmap W1 挂账「公告待一号发布」⇒ 09-20 裁定**不发**（W1 已销账） |
+> | `announcement-draft-20260916-repair-needs-device.md` | 2026-09-16 | 待审 ⇒ 09-20 裁定**不发** |
 
 ### 3.2 历史交接卡（19 份 · 均已被后续交接件取代）
 
@@ -73,6 +100,18 @@
 >
 > 引用同步：`wormhole-extraction-endgame-20260912.md`（2 处）· 本目录 `wrapup-20260912-night-pilot1.md`（2 处）·
 > 新交接卡头部指针 —— 均改写成 `docs/design/archive/…` 全路径（按 §四 口径）。
+
+> **2026-09-20 追加归档（4 份 · 一号清理批）**：
+>
+> | 文件 | 归属 | 说明 |
+> |---|---|---|
+> | `handoff-20260913-to-new-pilot2.md` | 二号 | 2026-09-13 二号交接（虫洞专属内容批的会话卡）——批已结案，本卡使命完成 |
+> | `handoff-20260913-wormhole-content-d2.md` | 二号 | 虫洞专属内容批收尾归档/续接卡——批已结案，本卡使命完成 |
+> | `handoff-20260915-to-new-pilot1.md` | 一号 | 2026-09-15 一号交接——**被 `docs/design/handoff-20260920-to-new-pilot1.md` 取代**（判据 ②：一号只留最新一份） |
+> | `handoff-20260915-verify.md` | 三号 | 2026-09-15 三号交接——三号现役卡在 `verify40` 分支（`docs/design/l10n-en-handover-20260919.md`），本卡使命完成 |
+>
+> 引用同步：`handoff-20260920-to-new-pilot1.md` 头部指针 · `handoff-20260915-to-new-pilot1.md` 与
+> `handoff-20260913-to-new-pilot2.md` 的卡间互指——均改写成 `docs/design/archive/…` 全路径（按 §四 口径）。
 
 ### 3.3 会话收尾归档件（5 份 · 生成即归档）
 

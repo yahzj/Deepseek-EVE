@@ -3,6 +3,13 @@
  * V10 新增：座头鲸级（稀有现货的替代制造线）与皇带鱼级（鲸盟旗舰货舰，材料含星髓/冥铁/虚空晶；
  * 2026-09-09 船长定随船改名——原巨灵鲸级）。
  * 2026-09-09 船长定：舰船制造速度 ×2（耗时 ÷2，全 4 张）。
+ *
+ * **零件占比（2026-09-20 船长：「调整专属舰船和装备使用零件的比例，需要提高」）**——按**材料价值**计：
+ * - **专属舰船**（`sbp-wh-*` 15 张）：基础零件 45% + 高级零件 30% + 矿物 25%；
+ * - **T4 舰船**（剑鱼/蝠鲼/玄武/巨齿鲨 + 各一次性孪生共 8 张）与 **T5 皇带鱼**（含孪生 2 张）：
+ *   基础零件 75% + 矿物 25%（**非专属不吃高级零件**）；
+ * - **等值替换**：每张的材料总价**分文不变**（书价 / 舰价 / 料价比全部不受影响）；
+ * - **允许删原材料**：每张只留至多 4 行矿物（原价值前 3 名 + 一枚大宗矿作细面额配平）。
  */
 
 import type { ShipBlueprintDef } from '@whale/core'
@@ -58,16 +65,19 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '皇带鱼级舰船蓝图', // 2026-09-09 船长定：随船改名（原巨灵鲸级）
     shipId: 'sh-colossal',
     materials: [
-      { itemId: 'min-tritanium', count: 6_880_000 },
-      { itemId: 'min-pyerite', count: 3_440_000 },
-      { itemId: 'min-mexallon', count: 1_548_000 },
-      { itemId: 'min-nocxium', count: 258_000 },
-      { itemId: 'min-isotope', count: 430_000 },
-      { itemId: 'min-starcore', count: 172_000 },
-      { itemId: 'min-darkiron', count: 68_800 },
+      // 2026-09-20 船长：「让虚空晶留在旗舰配方」⇒ 矿物那 25% 里**虚空晶保留原量 10,320**，
+      // 其余三行按改造前的价值占比分（总价仍逐分不变；基础件 75% 篮子不受影响）
       { itemId: 'min-voidcrystal', count: 10_320 },
+      { itemId: 'min-tritanium', count: 1_807_395 },
+      { itemId: 'min-darkiron', count: 18_072 },
+      { itemId: 'min-starcore', count: 45_182 },
+      { itemId: 'part-frame', count: 635_391 },
+      { itemId: 'part-armor-plate', count: 184_263 },
+      { itemId: 'part-cable', count: 222_899 },
+      { itemId: 'part-circuit', count: 363_678 },
+      { itemId: 'part-coolant', count: 200_286 },
     ],
-    buildSeconds: 162_000, // 皇带鱼级（2026-09-13 工期阶梯：T5 = T4 带下沿 9h ×5 = 45 时；价位重排后不变）
+    buildSeconds: 32_400, // 皇带鱼级（2026-09-13 工期阶梯：T5 = T4 带下沿 9h ×5 = 45 时；价位重排后不变）
     buildCostIsk: 2_400_000,
     priceIsk: 2_560_000_000, // = 行价 640,000,000 × 4（2026-09-13 价位重排：旗舰基准 8 亿 ×0.8）
     description: '旗舰货舰，货舱 108,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）；2026-09-14 随货仓 ×3 改 108,000
@@ -131,10 +141,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '蝠鲼级舰船蓝图',
     shipId: 'sh-bowhead',
     materials: [
-      { itemId: 'min-tritanium', count: 1_590_000 },
-      { itemId: 'min-pyerite', count: 510_000 },
-      { itemId: 'min-mexallon', count: 305_000 },
-      { itemId: 'min-nocxium', count: 60_000 },
+      { itemId: 'min-tritanium', count: 397_537 },
+      { itemId: 'min-pyerite', count: 240_022 },
+      { itemId: 'min-mexallon', count: 76_257 },
+      { itemId: 'part-frame', count: 62_770 },
+      { itemId: 'part-armor-plate', count: 18_204 },
+      { itemId: 'part-cable', count: 22_020 },
+      { itemId: 'part-circuit', count: 35_928 },
+      { itemId: 'part-coolant', count: 19_786 },
     ],
     buildSeconds: 59_610, // 蝠鲼级（2026-09-13 价位重排后按带内插值：67.5M ⇒ 16.6 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -351,10 +365,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '玄武级舰船蓝图',
     shipId: 'sh-xuanwu',
     materials: [
-      { itemId: 'min-tritanium', count: 2_125_000 },
-      { itemId: 'min-pyerite', count: 680_000 },
-      { itemId: 'min-mexallon', count: 400_000 },
-      { itemId: 'min-nocxium', count: 81_000 },
+      { itemId: 'min-tritanium', count: 531_281 },
+      { itemId: 'min-pyerite', count: 321_896 },
+      { itemId: 'min-mexallon', count: 100_005 },
+      { itemId: 'part-frame', count: 83_687 },
+      { itemId: 'part-armor-plate', count: 24_270 },
+      { itemId: 'part-cable', count: 29_358 },
+      { itemId: 'part-circuit', count: 47_901 },
+      { itemId: 'part-coolant', count: 26_380 },
     ],
     buildSeconds: 62_580, // 玄武级（2026-09-13 价位重排后按带内插值：90M ⇒ 17.4 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -393,9 +411,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '剑鱼级舰船蓝图',
     shipId: 'sh-swordfish',
     materials: [
-      { itemId: 'min-tritanium', count: 840_000 },
-      { itemId: 'min-pyerite', count: 225_000 },
-      { itemId: 'min-mexallon', count: 69_000 },
+      { itemId: 'min-tritanium', count: 210_049 },
+      { itemId: 'min-pyerite', count: 56_264 },
+      { itemId: 'min-mexallon', count: 17_253 },
+      { itemId: 'part-frame', count: 22_342 },
+      { itemId: 'part-armor-plate', count: 6_480 },
+      { itemId: 'part-cable', count: 7_838 },
+      { itemId: 'part-circuit', count: 12_789 },
+      { itemId: 'part-coolant', count: 7_043 },
     ],
     buildSeconds: 48_960, // 剑鱼级（2026-09-13 价位重排后按带内插值：24M ⇒ 13.6 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -407,11 +430,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '巨齿鲨级舰船蓝图',
     shipId: 'sh-megalodon',
     materials: [
-      { itemId: 'min-tritanium', count: 4_809_750 },
-      { itemId: 'min-pyerite', count: 1_434_750 },
-      { itemId: 'min-mexallon', count: 810_000 },
-      { itemId: 'min-nocxium', count: 157_500 },
-      { itemId: 'min-isotope', count: 276_000 },
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
     buildSeconds: 72_000, // 巨齿鲨级（2026-09-13 工期阶梯：T4 带 9~20 时，取带上沿）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
@@ -421,8 +447,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
 
   /* ══════════════ 虫洞专属舰船的**一次性图纸**（2026-09-13 船长「所有舰船不掉成品，只掉一次性图纸」）
    * 五族各 3 张（护卫 / 驱逐 / 巡洋），共 15 张：**不上市场、不能学、造一艘吃掉一张**
-   * （与装备一次性图纸同口径；不进碎片逆向表）。材料**必须全是矿物** ⇒ 以**虚空晶**为主 +
-   * 该族特色矿物。`priceIsk = 0`（不上市场 ⇒ 无书价；定制船蓝图不参与档位系数比对）。
+   * （与装备一次性图纸同口径；不进碎片逆向表）。材料 = **零件为主 + 该族特色矿物**
+   * （2026-09-20 船长裁定：按**材料价值**基础零件 45% + 高级零件 30% + 矿物 25%，**等值替换**总价分文不变、
+   * 每张只留至多 4 行矿物——原「材料必须全是矿物」的硬契约同日作废）。`priceIsk = 0`（不上市场 ⇒ 无书价；定制船蓝图不参与档位系数比对）。
    * ⚠ **施工期闸门**：全部标 `unreleased: true`（手册蓝图图鉴 / 组装机蓝图下拉都遍历全目录）。 */
   {
     id: 'sbp-wh-a-frigate',
@@ -430,12 +457,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-a-frigate',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 12_000 },
-      { itemId: 'min-pyerite', count: 3_200 },
-      { itemId: 'min-mexallon', count: 2_200 },
-      { itemId: 'min-voidcrystal', count: 45 },
+      { itemId: 'min-voidcrystal', count: 17 },
+      { itemId: 'min-tritanium', count: 4_660 },
+      { itemId: 'min-mexallon', count: 1_686 },
+      { itemId: 'part-frame', count: 631 },
+      { itemId: 'part-armor-plate', count: 183 },
+      { itemId: 'part-cable', count: 222 },
+      { itemId: 'part-circuit', count: 362 },
+      { itemId: 'part-coolant', count: 199 },
+      { itemId: 'part-keel', count: 31 },
+      { itemId: 'part-qchip', count: 32 },
+      { itemId: 'part-fire-control', count: 9 },
+      { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 1_153_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭电子舰，锁定与分辨率冠绝同级，先看见、先锁上。',
@@ -446,12 +481,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-a-destroyer',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 28_000 },
-      { itemId: 'min-pyerite', count: 7_400 },
-      { itemId: 'min-mexallon', count: 5_000 },
-      { itemId: 'min-voidcrystal', count: 90 },
+      { itemId: 'min-voidcrystal', count: 34 },
+      { itemId: 'min-tritanium', count: 10_700 },
+      { itemId: 'min-mexallon', count: 3_677 },
+      { itemId: 'part-frame', count: 1_370 },
+      { itemId: 'part-armor-plate', count: 397 },
+      { itemId: 'part-cable', count: 481 },
+      { itemId: 'part-circuit', count: 785 },
+      { itemId: 'part-coolant', count: 432 },
+      { itemId: 'part-keel', count: 69 },
+      { itemId: 'part-qchip', count: 71 },
+      { itemId: 'part-fire-control', count: 19 },
+      { itemId: 'part-grav-comp', count: 4 },
     ],
-    buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 2_555_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭炮舰，动能炮阵加持，正面火力扎实。',
@@ -462,12 +505,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-a-cruiser',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 56_000 },
-      { itemId: 'min-pyerite', count: 15_000 },
-      { itemId: 'min-mexallon', count: 9_800 },
-      { itemId: 'min-voidcrystal', count: 160 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'min-tritanium', count: 21_230 },
+      { itemId: 'min-mexallon', count: 7_244 },
+      { itemId: 'part-frame', count: 2_605 },
+      { itemId: 'part-armor-plate', count: 756 },
+      { itemId: 'part-cable', count: 914 },
+      { itemId: 'part-circuit', count: 1_492 },
+      { itemId: 'part-coolant', count: 821 },
+      { itemId: 'part-keel', count: 131 },
+      { itemId: 'part-qchip', count: 135 },
+      { itemId: 'part-fire-control', count: 37 },
+      { itemId: 'part-grav-comp', count: 8 },
     ],
-    buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 4_942_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭重型突击巡洋舰，动能火力全开、甲壳同步加厚，专啃硬目标。',
@@ -478,12 +529,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-c-frigate',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 13_500 },
-      { itemId: 'min-mexallon', count: 3_600 },
-      { itemId: 'min-isotope', count: 600 },
-      { itemId: 'min-voidcrystal', count: 45 },
+      { itemId: 'min-voidcrystal', count: 17 },
+      { itemId: 'min-tritanium', count: 5_190 },
+      { itemId: 'min-mexallon', count: 2_067 },
+      { itemId: 'part-frame', count: 694 },
+      { itemId: 'part-armor-plate', count: 202 },
+      { itemId: 'part-cable', count: 244 },
+      { itemId: 'part-circuit', count: 399 },
+      { itemId: 'part-coolant', count: 219 },
+      { itemId: 'part-keel', count: 35 },
+      { itemId: 'part-qchip', count: 36 },
+      { itemId: 'part-fire-control', count: 10 },
+      { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 1_307_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '幼虫截击舰，快得不像话，护盾几乎不设防、靠甲壳撑着。',
@@ -494,12 +553,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-c-destroyer',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 30_000 },
-      { itemId: 'min-mexallon', count: 7_800 },
-      { itemId: 'min-isotope', count: 1_400 },
-      { itemId: 'min-voidcrystal', count: 90 },
+      { itemId: 'min-voidcrystal', count: 34 },
+      { itemId: 'min-mexallon', count: 4_672 },
+      { itemId: 'min-tritanium', count: 11_625 },
+      { itemId: 'part-frame', count: 1_482 },
+      { itemId: 'part-armor-plate', count: 430 },
+      { itemId: 'part-cable', count: 520 },
+      { itemId: 'part-circuit', count: 849 },
+      { itemId: 'part-coolant', count: 467 },
+      { itemId: 'part-keel', count: 74 },
+      { itemId: 'part-qchip', count: 76 },
+      { itemId: 'part-fire-control', count: 21 },
+      { itemId: 'part-grav-comp', count: 4 },
     ],
-    buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 2_822_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '甲壳截击舰，速度与机动拉满，伤害全由装甲与结构承担。',
@@ -510,12 +577,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-c-cruiser',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 62_000 },
-      { itemId: 'min-mexallon', count: 16_000 },
-      { itemId: 'min-isotope', count: 3_000 },
-      { itemId: 'min-voidcrystal', count: 165 },
+      { itemId: 'min-voidcrystal', count: 62 },
+      { itemId: 'min-tritanium', count: 23_555 },
+      { itemId: 'min-mexallon', count: 9_333 },
+      { itemId: 'part-frame', count: 2_930 },
+      { itemId: 'part-armor-plate', count: 850 },
+      { itemId: 'part-cable', count: 1_028 },
+      { itemId: 'part-circuit', count: 1_678 },
+      { itemId: 'part-coolant', count: 924 },
+      { itemId: 'part-keel', count: 147 },
+      { itemId: 'part-qchip', count: 151 },
+      { itemId: 'part-fire-control', count: 42 },
+      { itemId: 'part-grav-comp', count: 9 },
     ],
-    buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 5_680_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '巢群重型突击巡洋舰，能量主炮配厚甲厚壳，正面硬碰硬。',
@@ -526,12 +601,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-d-frigate',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 14_500 },
-      { itemId: 'min-mexallon', count: 3_800 },
-      { itemId: 'min-starcore', count: 260 },
-      { itemId: 'min-voidcrystal', count: 50 },
+      { itemId: 'min-voidcrystal', count: 19 },
+      { itemId: 'min-mexallon', count: 2_906 },
+      { itemId: 'min-tritanium', count: 5_740 },
+      { itemId: 'part-frame', count: 811 },
+      { itemId: 'part-armor-plate', count: 235 },
+      { itemId: 'part-cable', count: 284 },
+      { itemId: 'part-circuit', count: 464 },
+      { itemId: 'part-coolant', count: 255 },
+      { itemId: 'part-keel', count: 40 },
+      { itemId: 'part-qchip', count: 42 },
+      { itemId: 'part-fire-control', count: 11 },
+      { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 1_536_500, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '哨戒电子舰，锁定与分辨率远压同级，替全队先敌发现。',
@@ -542,13 +625,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-d-destroyer',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 32_000 },
-      { itemId: 'min-mexallon', count: 8_200 },
-      { itemId: 'min-starcore', count: 560 },
-      { itemId: 'min-darkiron', count: 140 },
-      { itemId: 'min-voidcrystal', count: 95 },
+      { itemId: 'min-mexallon', count: 7_928 },
+      { itemId: 'min-voidcrystal', count: 35 },
+      { itemId: 'min-tritanium', count: 12_105 },
+      { itemId: 'part-frame', count: 1_877 },
+      { itemId: 'part-armor-plate', count: 544 },
+      { itemId: 'part-cable', count: 658 },
+      { itemId: 'part-circuit', count: 1_074 },
+      { itemId: 'part-coolant', count: 591 },
+      { itemId: 'part-keel', count: 94 },
+      { itemId: 'part-qchip', count: 97 },
+      { itemId: 'part-fire-control', count: 27 },
+      { itemId: 'part-grav-comp', count: 6 },
     ],
-    buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 3_722_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '陵卫指挥舰，锁定、分辨率与机巢一并拉高，是编队的眼睛与中枢。',
@@ -559,13 +649,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-d-cruiser',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 68_000 },
-      { itemId: 'min-mexallon', count: 17_500 },
-      { itemId: 'min-starcore', count: 1_200 },
-      { itemId: 'min-darkiron', count: 300 },
-      { itemId: 'min-voidcrystal', count: 170 },
+      { itemId: 'min-mexallon', count: 16_629 },
+      { itemId: 'min-voidcrystal', count: 64 },
+      { itemId: 'min-tritanium', count: 25_695 },
+      { itemId: 'part-frame', count: 3_784 },
+      { itemId: 'part-armor-plate', count: 1_098 },
+      { itemId: 'part-cable', count: 1_328 },
+      { itemId: 'part-circuit', count: 2_167 },
+      { itemId: 'part-coolant', count: 1_193 },
+      { itemId: 'part-keel', count: 190 },
+      { itemId: 'part-qchip', count: 196 },
+      { itemId: 'part-fire-control', count: 54 },
+      { itemId: 'part-grav-comp', count: 12 },
     ],
-    buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 7_680_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '陵寝巡洋舰，三层血最厚、炮位最多，站在阵线中央扛火力。',
@@ -576,12 +673,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-e-frigate',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 12_800 },
-      { itemId: 'min-mexallon', count: 3_400 },
-      { itemId: 'min-nocxium', count: 700 },
-      { itemId: 'min-voidcrystal', count: 50 },
+      { itemId: 'min-voidcrystal', count: 19 },
+      { itemId: 'min-mexallon', count: 2_680 },
+      { itemId: 'min-tritanium', count: 5_025 },
+      { itemId: 'part-frame', count: 768 },
+      { itemId: 'part-armor-plate', count: 223 },
+      { itemId: 'part-cable', count: 270 },
+      { itemId: 'part-circuit', count: 440 },
+      { itemId: 'part-coolant', count: 242 },
+      { itemId: 'part-keel', count: 38 },
+      { itemId: 'part-qchip', count: 39 },
+      { itemId: 'part-fire-control', count: 11 },
+      { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 1_437_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '构件鱼雷舰，爆破弹头拆甲，命中扎实。',
@@ -592,12 +697,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-e-destroyer',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 29_000 },
-      { itemId: 'min-mexallon', count: 7_600 },
-      { itemId: 'min-nocxium', count: 1_600 },
-      { itemId: 'min-voidcrystal', count: 95 },
+      { itemId: 'min-voidcrystal', count: 36 },
+      { itemId: 'min-mexallon', count: 5_688 },
+      { itemId: 'min-tritanium', count: 11_065 },
+      { itemId: 'part-frame', count: 1_617 },
+      { itemId: 'part-armor-plate', count: 469 },
+      { itemId: 'part-cable', count: 568 },
+      { itemId: 'part-circuit', count: 927 },
+      { itemId: 'part-coolant', count: 510 },
+      { itemId: 'part-keel', count: 81 },
+      { itemId: 'part-qchip', count: 83 },
+      { itemId: 'part-fire-control', count: 23 },
+      { itemId: 'part-grav-comp', count: 5 },
     ],
-    buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 3_107_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '机库无人机作战舰，机巢与无人机战力双高，一座能跑的机库。',
@@ -608,13 +721,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-e-carrier',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 60_000 },
-      { itemId: 'min-mexallon', count: 15_500 },
-      { itemId: 'min-nocxium', count: 3_400 },
-      { itemId: 'min-darkiron', count: 260 },
-      { itemId: 'min-voidcrystal', count: 175 },
+      { itemId: 'min-mexallon', count: 15_649 },
+      { itemId: 'min-voidcrystal', count: 66 },
+      { itemId: 'min-tritanium', count: 22_805 },
+      { itemId: 'part-frame', count: 3_589 },
+      { itemId: 'part-armor-plate', count: 1_041 },
+      { itemId: 'part-cable', count: 1_259 },
+      { itemId: 'part-circuit', count: 2_055 },
+      { itemId: 'part-coolant', count: 1_131 },
+      { itemId: 'part-keel', count: 180 },
+      { itemId: 'part-qchip', count: 185 },
+      { itemId: 'part-fire-control', count: 51 },
+      { itemId: 'part-grav-comp', count: 11 },
     ],
-    buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 7_172_500, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '巨构无人机作战舰，机巢最大、无人机伤害最高，放飞即是主武器。',
@@ -625,13 +745,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-g-frigate',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 11_500 },
-      { itemId: 'min-mexallon', count: 3_000 },
-      { itemId: 'min-starcore', count: 220 },
-      { itemId: 'min-nocxium', count: 600 },
-      { itemId: 'min-voidcrystal', count: 45 },
+      { itemId: 'min-mexallon', count: 3_431 },
+      { itemId: 'min-voidcrystal', count: 17 },
+      { itemId: 'min-tritanium', count: 4_525 },
+      { itemId: 'part-frame', count: 783 },
+      { itemId: 'part-armor-plate', count: 227 },
+      { itemId: 'part-cable', count: 275 },
+      { itemId: 'part-circuit', count: 449 },
+      { itemId: 'part-coolant', count: 247 },
+      { itemId: 'part-keel', count: 39 },
+      { itemId: 'part-qchip', count: 40 },
+      { itemId: 'part-fire-control', count: 11 },
+      { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 1_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
     buildCostIsk: 0,
     priceIsk: 1_515_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '幽影侦察舰，信号极小、闪避极高，负责先看见别人。',
@@ -642,13 +769,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-g-destroyer',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 26_000 },
-      { itemId: 'min-mexallon', count: 6_800 },
-      { itemId: 'min-starcore', count: 520 },
-      { itemId: 'min-nocxium', count: 1_400 },
-      { itemId: 'min-voidcrystal', count: 85 },
+      { itemId: 'min-mexallon', count: 7_533 },
+      { itemId: 'min-voidcrystal', count: 32 },
+      { itemId: 'min-tritanium', count: 9_940 },
+      { itemId: 'part-frame', count: 1_679 },
+      { itemId: 'part-armor-plate', count: 487 },
+      { itemId: 'part-cable', count: 589 },
+      { itemId: 'part-circuit', count: 962 },
+      { itemId: 'part-coolant', count: 530 },
+      { itemId: 'part-keel', count: 84 },
+      { itemId: 'part-qchip', count: 87 },
+      { itemId: 'part-fire-control', count: 24 },
+      { itemId: 'part-grav-comp', count: 5 },
     ],
-    buildSeconds: 4_200, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
     buildCostIsk: 0,
     priceIsk: 3_335_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '亡军后勤舰，货舱与机巢最大，跟着编队补给、换机。',
@@ -659,13 +793,20 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-wh-g-cruiser',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 54_000 },
-      { itemId: 'min-mexallon', count: 14_000 },
-      { itemId: 'min-starcore', count: 1_000 },
-      { itemId: 'min-nocxium', count: 2_800 },
-      { itemId: 'min-voidcrystal', count: 165 },
+      { itemId: 'min-mexallon', count: 14_870 },
+      { itemId: 'min-voidcrystal', count: 62 },
+      { itemId: 'min-tritanium', count: 20_505 },
+      { itemId: 'part-frame', count: 3_354 },
+      { itemId: 'part-armor-plate', count: 973 },
+      { itemId: 'part-cable', count: 1_177 },
+      { itemId: 'part-circuit', count: 1_921 },
+      { itemId: 'part-coolant', count: 1_058 },
+      { itemId: 'part-keel', count: 169 },
+      { itemId: 'part-qchip', count: 173 },
+      { itemId: 'part-fire-control', count: 48 },
+      { itemId: 'part-grav-comp', count: 10 },
     ],
-    buildSeconds: 14_400, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
     buildCostIsk: 0,
     priceIsk: 6_693_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '亡军鱼雷舰，爆破弹头配扎实命中，专挑大目标的装甲。',
@@ -853,9 +994,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-swordfish',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 840_000 },
-      { itemId: 'min-pyerite', count: 225_000 },
-      { itemId: 'min-mexallon', count: 69_000 },
+      { itemId: 'min-tritanium', count: 210_049 },
+      { itemId: 'min-pyerite', count: 56_264 },
+      { itemId: 'min-mexallon', count: 17_253 },
+      { itemId: 'part-frame', count: 22_342 },
+      { itemId: 'part-armor-plate', count: 6_480 },
+      { itemId: 'part-cable', count: 7_838 },
+      { itemId: 'part-circuit', count: 12_789 },
+      { itemId: 'part-coolant', count: 7_043 },
     ],
     buildSeconds: 48_960,
     buildCostIsk: 0,
@@ -868,10 +1014,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-bowhead',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 1_590_000 },
-      { itemId: 'min-pyerite', count: 510_000 },
-      { itemId: 'min-mexallon', count: 305_000 },
-      { itemId: 'min-nocxium', count: 60_000 },
+      { itemId: 'min-tritanium', count: 397_537 },
+      { itemId: 'min-pyerite', count: 240_022 },
+      { itemId: 'min-mexallon', count: 76_257 },
+      { itemId: 'part-frame', count: 62_770 },
+      { itemId: 'part-armor-plate', count: 18_204 },
+      { itemId: 'part-cable', count: 22_020 },
+      { itemId: 'part-circuit', count: 35_928 },
+      { itemId: 'part-coolant', count: 19_786 },
     ],
     buildSeconds: 59_610,
     buildCostIsk: 0,
@@ -884,10 +1034,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-xuanwu',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 2_125_000 },
-      { itemId: 'min-pyerite', count: 680_000 },
-      { itemId: 'min-mexallon', count: 400_000 },
-      { itemId: 'min-nocxium', count: 81_000 },
+      { itemId: 'min-tritanium', count: 531_281 },
+      { itemId: 'min-pyerite', count: 321_896 },
+      { itemId: 'min-mexallon', count: 100_005 },
+      { itemId: 'part-frame', count: 83_687 },
+      { itemId: 'part-armor-plate', count: 24_270 },
+      { itemId: 'part-cable', count: 29_358 },
+      { itemId: 'part-circuit', count: 47_901 },
+      { itemId: 'part-coolant', count: 26_380 },
     ],
     buildSeconds: 62_580,
     buildCostIsk: 0,
@@ -900,11 +1054,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-megalodon',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 4_809_750 },
-      { itemId: 'min-pyerite', count: 1_434_750 },
-      { itemId: 'min-mexallon', count: 810_000 },
-      { itemId: 'min-nocxium', count: 157_500 },
-      { itemId: 'min-isotope', count: 276_000 },
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
     buildSeconds: 72_000,
     buildCostIsk: 0,
@@ -917,16 +1074,18 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-colossal',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 6_880_000 },
-      { itemId: 'min-pyerite', count: 3_440_000 },
-      { itemId: 'min-mexallon', count: 1_548_000 },
-      { itemId: 'min-nocxium', count: 258_000 },
-      { itemId: 'min-isotope', count: 430_000 },
-      { itemId: 'min-starcore', count: 172_000 },
-      { itemId: 'min-darkiron', count: 68_800 },
+      // 与 sbp-colossal 同料同价（一次性孪生必须逐字一致；虚空晶原量保留，见上）
       { itemId: 'min-voidcrystal', count: 10_320 },
+      { itemId: 'min-tritanium', count: 1_807_395 },
+      { itemId: 'min-darkiron', count: 18_072 },
+      { itemId: 'min-starcore', count: 45_182 },
+      { itemId: 'part-frame', count: 635_391 },
+      { itemId: 'part-armor-plate', count: 184_263 },
+      { itemId: 'part-cable', count: 222_899 },
+      { itemId: 'part-circuit', count: 363_678 },
+      { itemId: 'part-coolant', count: 200_286 },
     ],
-    buildSeconds: 162_000,
+    buildSeconds: 32_400,
     buildCostIsk: 0,
     priceIsk: 320_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '旗舰货舰，货舱 108,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-14 随货仓 ×3（36,000 → 108,000）
@@ -938,3 +1097,4 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
 export function buildShipBlueprintCatalog(): ReadonlyMap<string, ShipBlueprintDef> {
   return new Map(SHIP_BLUEPRINTS.map((bp) => [bp.id, bp]))
 }
+
