@@ -214,7 +214,7 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
     return {
       ok: false,
       error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再开采。',
-      errorId: 'core.mining.004',
+      errorId: 'core.state.001',
     }
   }
   /**

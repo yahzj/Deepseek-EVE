@@ -89,6 +89,28 @@ export function tr(id: string, params?: Record<string, string | number>): string
  * 渲染层用下面两个函数统一收口 ⇒ **切换语言时 core 文案跟着变**，而这层之外一个字都不用改。
  * 过渡期两者都认：没有 id 的（老档日志 / 尚未改造的调用点）**原样显示中文**，行为与改动前一致。 */
 
+/**
+ * **参数收口**：把 `<键>Id` 形态的参数先渲染成文本再喂给外层文案（甲案·两步渲染）。
+ * 约定：`textParams` 里出现 `p6Id: 'core.…'` ⇒ 外层文案的 `{p6}` 用它的译文；
+ * 原 `p6`（中文原串）作为兜底保留 ⇒ 未改造路径与老档行为不变。
+ */
+function resolveParamIds(
+  params: Readonly<Record<string, string | number>> | undefined,
+): Record<string, string | number> | undefined {
+  if (params === undefined) return undefined
+  const out: Record<string, string | number> = {}
+  for (const [k, v] of Object.entries(params)) {
+    if (!k.endsWith('Id')) out[k] = v
+  }
+  for (const [k, v] of Object.entries(params)) {
+    if (!k.endsWith('Id')) continue
+    const base = k.slice(0, -2)
+    const rendered = paramText(v)
+    if (rendered !== '') out[base] = rendered
+  }
+  return out
+}
+
 /** 渲染一条 core 日志：有 `textId` ⇒ 按当前语言渲染；否则回退中文正文 */
 export function logText(entry: {
   text: string
@@ -96,7 +118,7 @@ export function logText(entry: {
   textParams?: Readonly<Record<string, string | number>>
 }): string {
   if (entry.textId === undefined) return entry.text
-  return tr(entry.textId, entry.textParams as Record<string, string | number> | undefined)
+  return tr(entry.textId, resolveParamIds(entry.textParams))
 }
 
 /**
@@ -107,7 +129,7 @@ export function logText(entry: {
  * 等某文件改造成 id 后，那个文件的调用点换成 `cmdText(r) || '…'` 即可（逐个文件推进）。
  */
 export function cmdText(r: CmdTextSource): string {
-  if (r.errorId !== undefined) return tr(r.errorId, r.errorParams as Record<string, string | number> | undefined)
+  if (r.errorId !== undefined) return tr(r.errorId, resolveParamIds(r.errorParams))
   return r.error ?? ''
 }
 
@@ -116,6 +138,25 @@ export interface CmdTextSource {
   readonly error?: string
   readonly errorId?: string
   readonly errorParams?: Readonly<Record<string, string | number>>
+}
+
+/**
+ * **两步渲染：取一个"自带 id 的派生串"，作为参数喂给外层文案。**
+ *
+ * 用法（core 侧同样两步）：
+ * ```ts
+ * // core
+ * addLog(state, 'info', 中文整句, 'core.x.001', { p1: 派生中文, p1Id: 'core.x.002' })
+ * // 渲染层
+ * logText(entry)  // ⇒ tr('core.x.001', { …entry.textParams, p1: entry.textParams?.p1Id ? paramText(entry.textParams.p1Id) : entry.textParams?.p1 })
+ * ```
+ * 为什么需要它：`{p1}` 的内容本身也是一句要翻译的话（如「已勾选本次返航卸货后停止」），
+ * 而参数值**不会再被翻译**——所以按约定给它配一个 `p1Id`，由这里先渲染好再喂进去。
+ */
+export function paramText(idOrRaw: string | number | undefined): string {
+  if (idOrRaw === undefined) return ''
+  if (typeof idOrRaw === 'number') return String(idOrRaw)
+  return idOrRaw.startsWith('core.') ? tr(idOrRaw) : idOrRaw
 }
 
 export interface L10nApi {
