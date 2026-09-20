@@ -2915,8 +2915,18 @@ function normalizeState(raw: unknown): GameState {
 }
 
 /** 保存：把状态序列化成 JSON 字符串（现在时间由调用方传入，测试可固定）。
- * 2026-09-08 船长定：事件日志不落盘——桌面引擎调用前已剥离 state.logs（logs 仅作本局内存滚动），
- * 旧档中的 logs 由引擎载入后清空；本函数保持通用（测试/工具可直接序列化完整状态） */
+ * 2026-09-08 船长定：**事件日志不落盘**——桌面引擎在 `persist()` / `currentSaveText()` 里
+ * **先剥离 `state.logs`**（`apps/desktop/src/renderer/src/game/engine.ts`），故真实档里 `logs` 恒为空数组。
+ *
+ * ⚠ 本函数**保持通用**（测试/工具可序列化完整状态）——`tools/make-test-save.ts` 与
+ * `tools/make-autoperf-save.ts` 直接用它，所以 `docs/test-saves/` 里的档**带日志**（实测有 1~300 条）。
+ *
+ * ⚠ **2026-09-20 三号更正**：此处原写「旧档中的 logs 由引擎载入后清空」，**与代码不符**——
+ * 引擎的载入路径（启动 / 恢复备份 / 导入）都只做"不强制清空"，没有任何一处清空；读取端
+ * `normalizeState` 也照旧解析 `logs`。实情：**载入后照原样带进内存并接续显示**，
+ * 直到被 `persist()` 剥离（即"显示到本局结束"）。2026-09-08 之前的真实档确实带 logs
+ * （实测 `docs/test-saves/user-backup-20260907-234825.json` 300 条）。
+ * 单独修"导入外部档"那条：导入 = 换了一份档，已改为**不透传**旧日志（见引擎 `importSaveFromFile`）。 */
 export function serializeSaveFile(state: GameState, nowWallMs: number = Date.now()): string {
   return JSON.stringify({
     format: SAVE_FORMAT,

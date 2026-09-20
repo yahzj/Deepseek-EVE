@@ -1072,6 +1072,14 @@ export class GameEngine {
       // 与正常启动同口径的载入修复链（须在离线结算前完成，让离线按新参数结算）
       repairDeprecatedModules(imported, this.ctx)
       migrateDeprecatedAmmo(imported)
+      /**
+       * ⚠ **2026-09-20（三号，船长「先修复」）**：**导入外部档一律不带入它的会话日志**。
+       * 为什么：2026-09-08 那条口径「载入不做强制清空」是为**同会话的"恢复备份"**设计的
+       * （本局日志接续显示，见下面 `restoreBackupFromFile` 那条注释）；导入是**换了一整份档**，
+       * 旧档里的日志（实存于 2026-09-08 之前的真档与 `docs/test-saves` 的造档）会混进当前面板。
+       * 与本地化也相关：那些旧日志只有中文正文、没有文案 id ⇒ 英文界面下会半中半英。
+       */
+      imported.logs = []
       // 按时间差补齐离线进度：档内墙钟 → 现在（上限与正常离线一致；墙钟在未来则跳过）
       const now = Date.now()
       const wallFrom = parsed.savedAtWallMs
