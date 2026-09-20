@@ -1479,7 +1479,7 @@ function StarMap({
                   </span>
                   {tr("ui.Expedition.250")} {tasksByGalaxy.get(selected.id)!.length} {tr("ui.Expedition.014")}
                   {tasksByGalaxy.get(selected.id)!
-                    .map((t) => tr("ui.Expedition.015", { p1: t.lairName ?? t.anomalyId ?? '窝点', p2: t.rewardIsk.toLocaleString('zh-CN') }))
+                    .map((t) => tr("ui.Expedition.015", { p1: t.lairName ?? t.anomalyId ?? tr('ui.Expedition.294'), p2: t.rewardIsk.toLocaleString('zh-CN') }))
                     .join(tr("ui.MatterTechTab.017"))}
                   {taskEtaText.length > 0 ? tr("ui.Expedition.350", { taskEtaText: taskEtaText }) : ''}
                 </div>
