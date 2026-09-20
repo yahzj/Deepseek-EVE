@@ -126,6 +126,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.shipyard.030": { zh: "{p1} 已移入舰船仓库（自定义名随之清除）：仓库现有 {p2} 艘。", en: "{p1} was moved into ship storage (its custom name is cleared with it): {p2} stored." },
   "core.shipyard.031": { zh: "{p1} 已移入舰船仓库：仓库现有 {p2} 艘。", en: "{p1} was moved into ship storage: {p2} stored." },
   "core.shipyard.032": { zh: "{p1} 已从舰船仓库转入舰队（机库）。", en: "{p1} moved from ship storage into the fleet (hangar)." },
+  /* ── 共用条目（第二批：工业 / 采矿 / 打捞 多处复用的互斥与前置句）── */
+  "core.state.010": { zh: "{p1}随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "{p1} runs on the Association base network: it requires docking at a station (home port or a completed outpost) to start (AI cores are not limited by this)." },
+  "core.state.011": { zh: "你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。", en: "You are already running a refinery by hand: stop it before opening another by hand (AI cores are not limited by this)." },
+  "core.state.012": { zh: "你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。", en: "You are already running a production line yourself: cancel it or wait for it to finish before opening a unit by hand (AI cores are not limited by this)." },
+  /* ── industry.ts（工业：精炼 / 回收 / 拆解 / 丢弃 / 买船 / 逆向）── */
   /* ── ai.ts（AI 核心：指派 / 任务推进 / 召回 / 战报）── */
   "core.ai.001": { zh: "基础 AI 核心暂未在市场流通。", en: "Basic AI cores are not circulating on the market yet." },
   "core.ai.002": { zh: "挂收购单失败（钱包余额不足或订单无法成立）。", en: "Placing the buy order failed (not enough credits in the wallet, or the order cannot stand)." },

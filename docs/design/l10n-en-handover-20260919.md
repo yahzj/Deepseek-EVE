@@ -165,6 +165,17 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 **进度（截至 2026-09-20）**：`mining.ts` ✅（36 条）· `salvaging.ts` ✅（27 条）· `shipyard.ts` ✅（40 条）
 ⇒ 表 **3079** 条（core 段 131；含共用条目命名空间 `core.state.*`：舰队无此船 / 不在已知航路 / 重复清剿已停止 等，
 `ai.ts`、`expedition.ts`、`location.ts` 直接复用）。
+**⚠ 第五批（`industry.ts`）只做到一半就收工（2026-09-20 · 上下文耗尽的诚实交代）**：
+本轮已把该文件的**前置校验错误串**列全并完成一部分改造，但**未跑闸门、未提交** ⇒ 已 `git checkout` **整文件回退**，
+表里多造的 `core.industry.*` 也已清理（不留半成品）。**下次开工直接从这里继续**：
+1. 该文件的错误串有**两种引号形态**（`error: '…'` 与 `error: \`…\``），**必须两种都扫**
+   （我第一次只扫了单引号，漏了 20+ 条 —— `git grep -n 'error: \`' -- packages/core/src/industry.ts`）；
+2. 「需停靠空间站…」（精炼炉 / 货柜拆解 / 残骸回收炉 三条）已定为**共用条目**
+   `core.state.010`，句式 `{p1}随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。`，
+   `{p1}` = `精炼炉` / `精炼炉的「货柜拆解」` / `残骸回收炉`；
+3. 「采矿作业中：先停止开采。」这条已出现在 **3 个文件**（industry ×2 + 别处）⇒ 用 `core.state.013`（打捞/远征/巡逻/返航同理）；
+4. **多段拼接**的日志（精炼炉/回收炉的"停炉"那三条 `543/617/642` 附近、AI 战报）**先别接**，
+   等"多段文案"形状定了统一做（`ai.ts` 已有同样待办注释）。
 **下一批建议顺序**：`ai.ts` → `industry.ts` → `location.ts` → `market.ts` → `expedition.ts` → `combat.ts` →
 `hauling.ts` → `equipment.ts` → `manufacturing.ts` → `state.ts` → `save.ts` → `wormhole*.ts` → 其余（约 26 个文件 / ≈490 处）。
 
