@@ -2463,6 +2463,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.047": { zh: "档位", en: "Tier" },
   "ui.ItemsPage.048": { zh: "功能", en: "Function" },
   "ui.ItemsPage.049": { zh: "功能：", en: "Function: " },
+  "ui.ItemsPage.050": { zh: "丢弃没有任何收益（要变现请用「市价卖出」或精炼炉）", en: "Discarding brings no return (to turn it into credits, use Sell at market or a refinery)" },
+  "ui.ItemsPage.051": { zh: "丢弃失败", en: "Discard failed" },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
   "ui.itemSubs.002": { zh: "遗迹安全货柜", en: "Ruins safe container" },
   "ui.itemSubs.003": { zh: "图纸货柜", en: "Blueprint container" },

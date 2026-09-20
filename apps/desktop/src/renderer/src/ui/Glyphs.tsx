@@ -522,7 +522,9 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M6.2 8.6h11.6M9.6 11.8h4.8M9.6 14.6h3" />
     </g>
   ),
-  /* ── 技能组（圆徽） ── */
+  /* ── 技能组（圆徽） ──
+   * ⚠ **键名后缀必须保持中文**（group-舰船 …）：它是**形状槽键**，后缀要跟内容层的
+   * 「技能组」中文组名对齐才查得到图 ⇒ 归 l10n-keep（**不是漏译**：玩家看不到这串）。 */
   'group-舰船': (
     <g>
       <circle cx="12" cy="12" r="8.4" />
@@ -926,6 +928,7 @@ export const TONES: Record<string, string> = {
   armored: '#cdd6e0',
   hauler: '#ffd166',
   blueprint: '#d4a0ff',
+  // 同上的形状槽键（色表）：后缀跟内容层组名对齐，保持中文
   'group-舰船': '#6cb6ff',
   'group-工业': '#5ee6c8',
   'group-战斗': '#ff8373',
