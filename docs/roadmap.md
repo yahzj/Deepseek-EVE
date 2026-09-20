@@ -19,7 +19,7 @@
 
 | 功能 | 状态 | 挂起原因 | 恢复入口 |
 | --- | --- | --- | --- |
-| **成就系统 · 第一批（徽章框架）** | **设计稿待船长确认 · 未开工** | 系统级新功能，按 AGENTS §2 四步闸门：已集中提问（5 问）、设计总结已出（58 枚徽章：12 任务 ＋ 46 链）、**等船长确认** | 设计总结见本轮会话；确认后落码 = `data/achievements.ts` · `core/achievements.ts` · `state.achievements.earned` ＋ v29→v30 ＋ `panels/Achievements.tsx`（二级窗口） |
+| **成就系统 · 第一批（徽章框架）** | **设计稿待船长确认 · 未开工** | 系统级新功能，按 AGENTS §2 四步闸门：已集中提问（9 问）、设计总结已出（58 枚徽章：12 任务 ＋ 44 链 ＋ 2 探索家）、**等船长确认** | 设计稿 = `docs/design/achievements-20260920.md`；确认后落码 = `data/achievements.ts` · `core/achievements.ts` · `state.achievements.earned` ＋ v29→v30 ＋ `panels/Achievements.tsx`（二级窗口） |
 | **成就系统 · 第二批（里程碑成就内容）** | **未开工** | 内容与判定另批定；船长已定「分两批」 | 第一批完成后再议清单 |
 
 ## A. 体验走查 + 打磨（建议优先，收口"内容感"）
