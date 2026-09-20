@@ -224,14 +224,23 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
     // 数据表里没有这个技能：不阻塞队列，直接丢弃并警告
     if (!def) {
       state.skills.queue.shift()
-      addLog(state, 'warn', `队列中发现未知技能「${item.skillId}」，已自动移除。`)
+      addLog(
+        state,
+        'warn',
+        `队列中发现未知技能「${item.skillId}」，已自动移除。`,
+        'core.engine.001',
+        { p1: item.skillId },
+      )
       continue
     }
     const current = state.skills.trained[item.skillId] ?? 0
     // 目标早已达到（正常流程中不会出现，属兜底）：出队
     if (current >= item.targetLevel) {
       state.skills.queue.shift()
-      addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`)
+      addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
+        p1: def.name,
+        p2: item.targetLevel,
+      })
       continue
     }
     // 技能上限纵深防御（2026-09-10 玩家反馈"AI 核心调度学能升到 LV6"排查）：入队口与读档都已限制
@@ -239,7 +248,13 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
     // 不会出现 Lv6（效果公式另有 Math.min(5, …)，见 ai.ts）。
     if (current >= MAX_SKILL_LEVEL) {
       state.skills.queue.shift()
-      addLog(state, 'warn', `${def.name} 已是 Lv${MAX_SKILL_LEVEL}（技能上限），队列中该项已自动移除。`)
+      addLog(
+        state,
+        'warn',
+        `${def.name} 已是 Lv${MAX_SKILL_LEVEL}（技能上限），队列中该项已自动移除。`,
+        'core.engine.003',
+        { p1: def.name, p2: MAX_SKILL_LEVEL },
+      )
       continue
     }
     // 冲当前这一级还差多久（调试模式 debugQuick：每级固定 1 秒；高效学习法缩时）
@@ -257,11 +272,14 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
       item.progressMs = 0
       const newLevel = current + 1
       state.skills.trained[item.skillId] = newLevel
-      addLog(state, 'levelup', `${def.name} 提升至 Lv${newLevel}！`)
+      addLog(state, 'levelup', `${def.name} 提升至 Lv${newLevel}！`, 'core.engine.004', { p1: def.name, p2: newLevel })
       if (newLevel >= item.targetLevel) {
         // 已达队列目标：立即出队；富余时间继续给后面的队列项（不浪费）
         state.skills.queue.shift()
-        addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`)
+        addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
+          p1: def.name,
+          p2: item.targetLevel,
+        })
       }
     }
   }
@@ -280,18 +298,28 @@ export function enqueueSkill(
   catalog: SkillCatalog,
 ): CommandResult {
   const def = catalog.get(skillId)
-  if (!def) return { ok: false, error: `未知技能：${skillId}（数据表里没有）。` }
+  if (!def) return { ok: false, error: `未知技能：${skillId}（数据表里没有）。`, errorId: 'core.engine.005', errorParams: { p1: skillId } }
   if (HIDDEN_SKILL_IDS.includes(skillId)) {
-    return { ok: false, error: `「${def.name}」尚在研发中，暂不可训练。` }
+    return { ok: false, error: `「${def.name}」尚在研发中，暂不可训练。`, errorId: 'core.engine.006', errorParams: { p1: def.name } }
   }
   if (!Number.isInteger(targetLevel) || targetLevel < 1 || targetLevel > MAX_SKILL_LEVEL) {
-    return { ok: false, error: `目标等级必须是 1 ~ ${MAX_SKILL_LEVEL} 的整数。` }
+    return {
+      ok: false,
+      error: `目标等级必须是 1 ~ ${MAX_SKILL_LEVEL} 的整数。`,
+      errorId: 'core.engine.007',
+      errorParams: { p1: MAX_SKILL_LEVEL },
+    }
   }
   const current = state.skills.trained[skillId] ?? 0
   if (targetLevel <= current) {
     // 这一级已经练过：暂存的进度已无意义，顺手清掉
     delete state.skills.savedProgress[skillId]
-    return { ok: false, error: `${def.name} 已是 Lv${current}，目标等级必须更高。` }
+    return {
+      ok: false,
+      error: `${def.name} 已是 Lv${current}，目标等级必须更高。`,
+      errorId: 'core.engine.008',
+      errorParams: { p1: def.name, p2: current },
+    }
   }
   // T2 连锁校验：目标 = 已学 + 1 + 同技能已排条数（天然覆盖"重复目标/跳级"两种非法入队）
   const queued = queuedSameCount(state, skillId)
@@ -301,11 +329,15 @@ export function enqueueSkill(
       return {
         ok: false,
         error: `「${def.name}」队列里已排到 Lv${current + queued}，连锁训练需逐级入队：请排 Lv${nextExpected}。`,
+        errorId: 'core.engine.009',
+        errorParams: { p1: def.name, p2: current + queued, p3: nextExpected },
       }
     }
     return {
       ok: false,
       error: `连锁训练需逐级入队：${def.name} 当前 Lv${current}，请先排 Lv${nextExpected}（不能直接跳练 Lv${targetLevel}）。`,
+      errorId: 'core.engine.010',
+      errorParams: { p1: def.name, p2: current, p3: nextExpected, p4: targetLevel },
     }
   }
   const item: TrainingItem = { skillId, targetLevel, progressMs: 0 }
@@ -323,9 +355,16 @@ export function enqueueSkill(
   }
   state.skills.queue.push(item)
   if (state.skills.queue.length === 1) {
-    addLog(state, 'queue', `开始训练：${def.name} → Lv${targetLevel}。`)
+    addLog(state, 'queue', `开始训练：${def.name} → Lv${targetLevel}。`, 'core.engine.011', {
+      p1: def.name,
+      p2: targetLevel,
+    })
   } else {
-    addLog(state, 'queue', `排入队列第 ${state.skills.queue.length} 位：${def.name} → Lv${targetLevel}。`)
+    addLog(state, 'queue', `排入队列第 ${state.skills.queue.length} 位：${def.name} → Lv${targetLevel}。`, 'core.engine.012', {
+      p1: state.skills.queue.length,
+      p2: def.name,
+      p3: targetLevel,
+    })
   }
   return { ok: true }
 }
@@ -363,6 +402,10 @@ export function removeQueueAt(state: GameState, index: number): boolean {
     }
   }
   const where = index === 0 ? '取消队首' : `移除第 ${index + 1} 位`
+  /**
+   * ⚠ 甲案待办：这条是**多段拼接**（`where` + 技能 + 目标级 + note + 顺延句）⇒ 按既口径**本批不接**，
+   * 与 AI 战报、精炼炉停炉那几条一起等"多段文案"方案（`textParts` 逐段）。
+   */
   addLog(state, 'queue', `${where}：${removed.skillId}（目标 Lv${removed.targetLevel}）。${note}${demoted.length > 0 ? '后续同技能队列已顺延一级。' : ''}`)
   return true
 }
@@ -412,7 +455,7 @@ export function clearSkillQueue(state: GameState): number {
       state.skills.savedProgress[head.skillId] = Math.max(prev, head.progressMs)
     }
     state.skills.queue = []
-    addLog(state, 'queue', `已清空训练队列（${count} 项，队首进度已保留）。`)
+    addLog(state, 'queue', `已清空训练队列（${count} 项，队首进度已保留）。`, 'core.engine.013', { p1: count })
   }
   return count
 }
