@@ -110,6 +110,22 @@ import type { ToastFn } from '../pages/common'
 import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 
+/* 探索地图的几何口径（缩放档 / viewBox 尺寸 / 锚点 / 拖动夹取）抽到 `./wormholeMapGeom`：纯函数、无导入
+   ⇒ "拖动可达性 / 自动缩放"这类**读数**能用探针直接核对（面板 import 了 spaceBg 的 `import.meta.glob`，
+   纯 node 下加载不了）。 */
+import {
+  WORMHOLE_MAP_CELL_PX,
+  WORMHOLE_MAP_DRAG_THRESHOLD_PX,
+  WORMHOLE_MAP_ZOOM_FIT,
+  WORMHOLE_MAP_ZOOM_MAX,
+  WORMHOLE_MAP_ZOOM_STEP,
+  WORMHOLE_MAP_ZOOM_WHEEL_STEP,
+  wormholeMapAnchorOf,
+  wormholeMapAutoZoom,
+  wormholeMapBoxOf,
+  wormholeMapPanClamp,
+} from './wormholeMapGeom'
+
 type WhTab = 'prep' | 'map' | 'bag'
 
 /** 两块格板：货仓（8 列）/ **临时空间**（4 列 × 8 行 = 32 格 · 船长 2026-09-14） */
@@ -138,62 +154,6 @@ const WORMHOLE_PILE_OUT_MS = 300
  * 时长与 CSS `.app-wh-jobbar i` 的动画同值。
  */
 const WORMHOLE_FX_JOB_MS = 380
-
-/** 探索地图的缩放档（1 = 适应窗口；每档 +25%，上限 250%）——左侧 ＋/－ 按这个步进 */
-const WORMHOLE_MAP_ZOOM_FIT = 1
-const WORMHOLE_MAP_ZOOM_STEP = 0.25
-/** 滚轮一格的步长（比按钮细一半：滚轮是连续输入，粗档会一跳一跳） */
-const WORMHOLE_MAP_ZOOM_WHEEL_STEP = 0.125
-const WORMHOLE_MAP_ZOOM_MAX = 2.5
-/**
- * **盘面过大 ⇒ 自动聚焦**（船长 2026-09-20 确认的界面配套；半径同日改成"每层 +1 环、上不封顶"）。
- *
- * 为什么需要：地图是"**固定 300px 高的框 ＋ viewBox 随半径放大**"（船长 2026-09-13：「窗口高度固定」）
- * ⇒ 单格屏幕高度 ≈ `600 / (3R + 2.4)` px：R=4 约 42px · R=8 约 23px · **R=11 约 17px** · R=21 约 9px。
- * 口径：**半径 > 8 时，换层自动把缩放设到"单格约 20px"**（`(3R + 2.4) / 30`，夹在 FIT~MAX 之间）；
- * R ≤ 8 恒为 1（适应窗口，观感与改造前一致）。自动只在**换层/进出洞**时发生，玩家随时可手动 ＋/－ 或滚轮改。
- */
-const WORMHOLE_MAP_AUTOZOOM_MIN_R = 8
-/** 自动缩放的换算基准：`(3R + 2.4) / 30` ⇒ R=9 约 1.0 · R=11 约 1.18 · R=21 约 2.18（再大夹到 MAX） */
-function wormholeMapAutoZoom(radius: number): number {
-  if (!(radius > WORMHOLE_MAP_AUTOZOOM_MIN_R)) return WORMHOLE_MAP_ZOOM_FIT
-  const z = (3 * radius + 2.4) / 30
-  return Math.min(WORMHOLE_MAP_ZOOM_MAX, Math.max(WORMHOLE_MAP_ZOOM_FIT, +z.toFixed(2)))
-}
-
-/** 地图坐标系的单格边长（viewBox 用户单位；地图框 300px 定高，实际屏幕像素按 viewBox 等比缩放） */
-const WORMHOLE_MAP_CELL_PX = 30
-/** **地图画布尺寸**（viewBox 的 `0 0 w h`）——留白按半径算，六边形顶点正好落在边界上会显得挤 */
-function wormholeMapBoxOf(radius: number): { w: number; h: number } {
-  const R = Math.max(1, Math.floor(radius))
-  return {
-    w: Math.sqrt(3) * WORMHOLE_MAP_CELL_PX * (2 * R + 1.3),
-    h: WORMHOLE_MAP_CELL_PX * (3 * R + 2.4),
-  }
-}
-
-/**
- * **拖动地图的平移量夹取**（**船长 2026-09-20**：「**以及允许玩家拖动虫洞探索地图**」）。
- *
- * 缩放层是"**以玩家所在格为锚点**"放大（见 `WhGridMap` 的 `app-wh-zoomlayer`）⇒ `z` 倍时四边各有
- * `(z−1)·半幅` 的余量；平移量夹在这个余量内 ⇒ **怎么拖都不会把盘面拖丢**（松手后总有一半以上可见）。
- * `z = 1`（适应窗口）时余量为 0 ⇒ 拖动自然不生效（整张盘本来就全在框里，没有可拖的余地）。
- * `pan` 的单位是 **viewBox 用户单位**（与缩放层 transform 同一坐标系），指针像素在拖动处按
- * `viewBox ÷ 元素像素` 换算（见 `onPointerDown` 里记下的 `kx/ky`）。
- */
-function wormholeMapPanClamp(
-  pan: { x: number; y: number },
-  zoom: number,
-  box: { w: number; h: number },
-): { x: number; y: number } {
-  const mx = Math.max(0, ((zoom - 1) * box.w) / 2)
-  const my = Math.max(0, ((zoom - 1) * box.h) / 2)
-  return { x: Math.min(mx, Math.max(-mx, pan.x)), y: Math.min(my, Math.max(-my, pan.y)) }
-}
-
-/** 拖动判定阈值（px）：低于它算"点击格子"，不进入拖动 —— 免得手一抖就把点格变成拖图 */
-const WORMHOLE_MAP_DRAG_THRESHOLD_PX = 4
-
 /** 扫描动画的序号（换一次 = 重播一次；只用于 React key/CSS 重挂，不进存档） */
 let scanFxSeqCounter = 0
 function scanFxSeq(): number {
@@ -1950,7 +1910,10 @@ export function WormholePanel({
           d.moved = true
           setMapPanning(true)
           const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
-          setMapPan(wormholeMapPanClamp({ x: d.panX + dx * d.kx, y: d.panY + dy * d.ky }, mapZoom, box))
+          const anchor = wormholeMapAnchorOf(run?.grid ?? grid)
+          setMapPan(
+            wormholeMapPanClamp({ x: d.panX + dx * d.kx, y: d.panY + dy * d.ky }, mapZoom, box, anchor),
+          )
         }}
         onPointerUp={(e) => {
           const d = mapDragRef.current
@@ -1982,8 +1945,9 @@ export function WormholePanel({
                         scanFx={scanFx}
                         dissolveFx={dissolveFx}
                         zoom={mapZoom}
-                        /* 拖动地图（船长 2026-09-20）：**已夹取**的平移量，与缩放同一层 transform */
-                        pan={wormholeMapPanClamp(mapPan, mapZoom, wormholeMapBoxOf(grid.radius))}
+                        /* 拖动地图（船长 2026-09-20）：**已夹取**的平移量，与缩放同一层 transform
+                           （夹取按"锚点到两侧边缘的距离"分轴算 ⇒ 站在盘底也拖得到盘顶，见 `wormholeMapPanClamp`） */
+                        pan={wormholeMapPanClamp(mapPan, mapZoom, wormholeMapBoxOf(grid.radius), wormholeMapAnchorOf(grid))}
                         panning={mapPanning}
                         /* 待确认的这次移动：画出直线路径；已知的拦截格才描红指名（甲案） */
                         pathPreview={
@@ -2454,9 +2418,8 @@ function WhGridMap({
   })
   const hereKey = `${grid.pos.q},${grid.pos.r}`
   const exitKey = `${grid.exit.q},${grid.exit.r}`
-  /** 玩家舰影的落点（与格子同一套换算；单独算一份给地图最上层那个 `<g>` 用） */
-  const hereX = cx + Math.sqrt(3) * size * (grid.pos.q + grid.pos.r / 2)
-  const hereY = cy + 1.5 * size * grid.pos.r
+  /** 玩家舰影的落点（与格子同一套换算；拖动夹取用的也是这一把尺 ⇒ 走同一个 helper） */
+  const { x: hereX, y: hereY } = wormholeMapAnchorOf(grid)
   /**
    * **路径预览的折线点**（船长 2026-09-16 路径拦截）：走 core 的 `hexLine`（与引擎判定**同一把尺**），
    * 换算成各格中心的屏幕坐标 ⇒ 一条穿过沿途各格的折线。
