@@ -110,4 +110,24 @@ describe('零件体系：配方改造（2026-09-20）', () => {
       }
     }
   })
+  it('⑧ 市场渠道（2026-09-20 船长「所有零件及其蓝图都在常驻市场有出售」）：全部常驻 · 高级零件蓝图书价 1,000 万', () => {
+    for (const partId of [
+      'part-circuit', 'part-armor-plate', 'part-frame', 'part-cable', 'part-coolant', 'part-gyro', 'part-lens',
+      'part-drone-neural', 'part-shield-gen', 'part-jet-array', 'part-qchip', 'part-keel', 'part-fire-control', 'part-grav-comp',
+    ]) {
+      const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === partId)
+      expect(g, `${partId} 无市场行`).toBeTruthy()
+      expect(g?.rarity).toBe('common')
+    }
+    for (const bpId of [
+      'bp-part-drone-neural', 'bp-part-shield-gen', 'bp-part-jet-array', 'bp-part-qchip',
+      'bp-part-keel', 'bp-part-fire-control', 'bp-part-grav-comp',
+    ]) {
+      const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'blueprint' && x.refId === bpId)
+      expect(g, `${bpId} 无市场行`).toBeTruthy()
+      expect(g?.rarity).toBe('common')
+      expect(g?.basePrice).toBe(10_000_000)
+      expect(BLUEPRINTS.find((b) => b.id === bpId)?.priceIsk).toBe(10_000_000) // 书价与市场行同值
+    }
+  })
 })

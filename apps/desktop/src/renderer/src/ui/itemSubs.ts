@@ -127,7 +127,17 @@ export const ITEM_SUBS: SubOption[] = [
   { key: 'mineral', label: '原材料' },
   { key: 'gas', label: '气体' },
   { key: 'ice', label: '冰矿' },
+  // 2026-09-20 零件体系：零件在「货物」下按基础/高级两档（键 = `part-<档>`，与组装机零件门类同一套 `PART_SUBS`）
+  { key: 'part-basic', label: '基础零件' },
+  { key: 'part-advanced', label: '高级零件' },
   { key: 'luxury', label: '奢侈品' },
+]
+
+/** 零件「基础 / 高级」维度（2026-09-20 零件体系：组装机「零件」门类二级筛选与市场「货物」子分类共用）。
+ *  键 = `part-<档>`（基础 = 隐式蓝图直接可造 / 高级 = 需学习蓝图）。 */
+export const PART_SUBS: SubOption[] = [
+  { key: 'part-basic', label: '基础零件' },
+  { key: 'part-advanced', label: '高级零件' },
 ]
 
 /** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
@@ -193,6 +203,8 @@ export const BLUEPRINT_SUBS: SubOption[] = [
   { key: 'low', label: '低槽装备蓝图' },
   ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: `${s.label}蓝图` })),
   { key: 'supply', label: '消耗品蓝图（弹药·修理组件）' },
+  // 2026-09-20 零件体系：高级零件蓝图（常驻市场）——基础零件为隐式蓝图无书，故只有高级一档
+  { key: 'part-advanced', label: '零件蓝图' },
 ]
 
 export const CORE_SUBS: SubOption[] = [
@@ -262,6 +274,8 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   if (kind === 'blueprint') {
     const eq = ctx.blueprints.get(good.refId)
     if (eq) {
+      // 零件蓝图（2026-09-20 零件体系）：按基础/高级档；基础零件 = 隐式蓝图无市场行，市场只有高级一档
+      if (eq.partTier) return partSubPasses(ctx, good.refId, sub)
       // 物品蓝图（弹药/修理组件）归消耗品档；模块蓝图按**产物模块的槽类**归高/中/低档
       if (eq.moduleId === undefined) return sub === 'supply'
       const mod = ctx.modules.get(eq.moduleId)
@@ -283,6 +297,29 @@ export function moduleSubKeyOf(slot: string): string {
     if (slots.includes(slot)) return key
   }
   return ''
+}
+
+/* ═══════════ 零件「基础 / 高级」维度（2026-09-20 零件体系）═══════════
+ * 判定单点 = `partTierOf`：蓝图按 `BlueprintDef.partTier`；零件物品按蓝图反查；
+ * 键空间 = `part-basic` / `part-advanced`（`PART_SUBS`，组装机与市场共用）。 */
+
+/** 零件档位（蓝图 id 或零件物品 id 均可传入）：基础 = 隐式蓝图直接可造 / 高级 = 需学习蓝图；非零件返回 null */
+export function partTierOf(ctx: SimContext, refId: string): 'basic' | 'advanced' | null {
+  const bp = ctx.blueprints.get(refId)
+  if (bp?.partTier) return bp.partTier
+  const item = ctx.items.get(refId)
+  if (item?.kind !== 'part') return null
+  for (const b of ctx.blueprints.values()) {
+    if (b.itemId === refId && b.partTier) return b.partTier
+  }
+  return null
+}
+
+/** 零件子筛选判定（`sub` = `part-basic` / `part-advanced`；`SUB_ALL` 恒真） */
+export function partSubPasses(ctx: SimContext, refId: string, sub: string): boolean {
+  if (sub === SUB_ALL) return true
+  const tier = partTierOf(ctx, refId)
+  return tier !== null && `part-${tier}` === sub
 }
 
 /* ═══════════ 甲组·判定单点（船长 2026-09-19「六条基线」之⑥）═══════════
@@ -385,6 +422,8 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
     const mod = ctx.modules.get(refId)
     return mod !== undefined && moduleSubKeyOf(mod.slot) === sub
   }
+  // 零件两档（2026-09-20 零件体系：市场「货物」子分类 part-basic / part-advanced）
+  if (sub === 'part-basic' || sub === 'part-advanced') return partSubPasses(ctx, refId, sub)
   const it = ctx.items.get(refId)
   if (!it) return false
   return it.kind === sub // item（货物）/ consume / 真实大类
@@ -458,12 +497,13 @@ export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string }> = [
 ]
 
 /** 组装机/书架「**子类**」候选（按当前门类给；全部取自本文件单点表）：
- *  装备 = 产物功能十组（`MODULE_SUBS`）· 舰船 = 舰船级别五档（`SHIP_TIER_SUBS`）· 消耗品 = 产物大类（`CONSUME_SUBS`）；
- *  「全部」门类不带子筛选（与市场「全部类型」同款）。 */
+ *  装备 = 产物功能十组（`MODULE_SUBS`）· 舰船 = 舰船级别五档（`SHIP_TIER_SUBS`）· 消耗品 = 产物大类（`CONSUME_SUBS`）·
+ *  零件 = 基础/高级两档（`PART_SUBS`，2026-09-20）；「全部」门类不带子筛选（与市场「全部类型」同款）。 */
 export function manuSubsOf(tab: ManuTabKey): SubOption[] {
   if (tab === 'equip') return MODULE_SUBS
   if (tab === 'ship') return SHIP_TIER_SUBS
   if (tab === 'supply') return CONSUME_SUBS
+  if (tab === 'part') return PART_SUBS
   return []
 }
 

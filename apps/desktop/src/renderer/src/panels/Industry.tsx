@@ -1184,7 +1184,8 @@ export function ManufacturingPanel({
       items.push({
         id: bp.id,
         kindLabel: '零件',
-        subKey: '',
+        // 2026-09-20 零件体系：二级子筛选 = 基础/高级（键 `part-<档>`，单点 `itemSubs.partTierOf`）
+        subKey: bp.partTier ? `part-${bp.partTier}` : '',
         productGlyph: 'part',
         name: bp.name,
         description: bp.description,

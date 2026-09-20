@@ -54,6 +54,14 @@ export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number;
   'bp-ammo-kinetic-2': { price: 9_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
   'bp-ammo-explosive-2': { price: 12_750, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
   'bp-ammo-plasma-2': { price: 18_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  // 高级零件蓝图（2026-09-20 船长定：「所有零件及其蓝图都在常驻市场有出售，但是高级零件蓝图需要1000W」）：
+  'bp-part-drone-neural': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
+  'bp-part-shield-gen': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
+  'bp-part-jet-array': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
+  'bp-part-qchip': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
+  'bp-part-keel': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
+  'bp-part-fire-control': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
+  'bp-part-grav-comp': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
 }
 
 /**
@@ -2294,7 +2302,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 300,
     buildCostIsk: 0,
-    priceIsk: 2_300, // 产物 930 ×2.5（MK2 档系数）
+    priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
   {
@@ -2310,7 +2318,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 360,
     buildCostIsk: 0,
-    priceIsk: 2_500, // 产物 1,010 ×2.5
+    priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
   {
@@ -2326,7 +2334,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 480,
     buildCostIsk: 0,
-    priceIsk: 3_900, // 产物 1,550 ×2.5
+    priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
   {
@@ -2342,7 +2350,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 240,
     buildCostIsk: 0,
-    priceIsk: 1_750, // 产物 700 ×2.5
+    priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
   {
@@ -2358,7 +2366,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 900,
     buildCostIsk: 0,
-    priceIsk: 7_800, // 产物 3,120 ×2.5
+    priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
   {
@@ -2374,7 +2382,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 600,
     buildCostIsk: 0,
-    priceIsk: 4_200, // 产物 1,670 ×2.5
+    priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
   {
@@ -2390,7 +2398,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ],
     buildSeconds: 1_200,
     buildCostIsk: 0,
-    priceIsk: 18_800, // 产物 7,500 ×2.5
+    priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
 ]
