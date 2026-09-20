@@ -5,7 +5,9 @@
 > 目录 = `docs/INDEX.md`（机器生成 · `--check` 校验过期）· 指路 = `docs/catalog.md`（手写）· 更早批次原文 = `docs/archive/roadmap-<日期>.md`。
 > 上一张一号卡 = `docs/design/archive/handoff-20260915-to-new-pilot1.md`（那一轮的批次/口径，本卡不重复）。
 > **同一轮还有一张卡**：`docs/design/handoff-20260919-matter-tech-d2.md`（**二号 · 谜质科技批**，已并入 main）——
-> 「谜质科技」那棵树的逐批施工细节与 d2 侧待办在那张卡里；本卡管**一号侧批次 ＋ 总基线 ＋ 全部待裁**。**两份一起读。**
+> ⚠ **2026-09-20 二号已归档该卡**（按约定 §十五：关键内容并入 `docs/glossary.md` §十一「谜质科技树」与
+> `docs/roadmap.md` 对应条目 ⇒ 工作文档与续接卡一并 `git rm`）⇒ **本行与下表那条的路径已不存在**，
+> 「谜质科技」的现行口径请读上述两处老文档。**本条仅由二号补注，一号正文未改。**
 > ⚠ 本卡是**交接件**：下一任开工后把它并入自己的交接卡，或按 AGENTS.md §8（约定 §十五）归档。
 
 ## 0. 一分钟开工
@@ -68,7 +70,7 @@
 |---|---|---|
 | **仓库两条报障修（船长 09-19 验收中发现）** | ① **装备二级「槽类」三档全筛空**：键空间错配（槽类键喂给了认功能分组键的入口）⇒ 改走 `rackPasses`；探针：142 种模块 高槽 0→55 · 中槽 0→39 · 低槽 0→48 ② **一级「全部」时装备库整块不显示**：丁组把一级键改成 `'all'` 时漏改相邻 `showMods` ③ **悬停改富卡**：装备行 + 图标模式全部卡片原先是纯文本 `title` ⇒ 改走 `hoverTipProps`（`ItemGridCell` 新增 `hover`；`InfoHover` 补 `extra`、`ModuleHover` 补 `hint`；货仓页同族对齐） | `50714210` |
 | 二号：资源任务显示每单位均价（已并入 main） | 「报酬后面显示『均价 N 信用点/单位』」 | `a640b72b` · `c9f63199`（合并） |
-| 二号：谜质科技批**续接卡**（船长要求「准备交接卡」） | `docs/design/handoff-20260919-matter-tech-d2.md` ＋ INDEX | `1a97d6d9` · `c0fcea5b`（合并） |
+| 二号：谜质科技批**续接卡**（船长要求「准备交接卡」） | `docs/design/handoff-20260919-matter-tech-d2.md` ＋ INDEX —— ⚠ **该卡已于 2026-09-20 随归档删除**（内容并入 glossary §十一 ＋ roadmap；本条仅留历史，二号补注） | `1a97d6d9` · `c0fcea5b`（合并） |
 | **本卡**（一号 → 下一任一号） | 本文件 ＋ INDEX（哈希见 `git log`） | 文档提交 |
 
 ## 3. 关键口径速查（现行 · 细节先查 `docs/glossary.md` 词条）
@@ -102,17 +104,18 @@
    - **仓库两条报障修**的观感（`filters-audit-20260919.md` §十三）：装备筛选三档出不出货、悬停富卡好不好用；
    - **谜质科技**整棵树的实机手感（实验档 `docs/test-saves/test-save-mt-lab-*.json`，二号造）。
 3. **待船长裁决（都是一句话的事）**：
-   - **满树自动探索的两个读数偏高**（我已在 `matter-tech-20260919.md` 标出）：AI 核心 **34.6%/趟**（一枚核心是稀缺货币）·
-     稀有残骸/货柜**顶到既有 `min(0.95, …)` 旧上限**。要压就给个数（如核心单独封 15%/趟）。
+   - **满树自动探索的两个读数偏高**（原记在 `matter-tech-20260919.md`，该文档已归档 ⇒ 读数现见 `docs/glossary.md` §十一）：AI 核心 **34.6%/趟**（一枚核心是稀缺货币）·
+     稀有残骸/货柜**顶到既有 `min(0.95, …)` 旧上限**。要压就给个数（如核心单独封 15%/趟）。**【本条仍待裁，二号未动】**
    - **筛选「动态性」基线**（`filters-audit-20260919.md` §五.5 / §三⑦）：是否把"只列真有内容的档"（目前**只有蓝图书架**现算）推广到其余页面，
      或统一改成"静态全列 ＋ 空态文案"。
    - **A5 弹药（弹种/档位）· A6 无人机（机型）**两个子维度需要**新建分类表**，等船长口径（`filters-audit-20260919.md` §八/§九）。
    - **模块目录的 `workEfficiency` 是否也进自动探索**（现口径：只算科技那一份，装配档位效率不进）——要接另起一批。
    - **手册图鉴的图标网格**悬停仍是纯文本 `title`（与仓库/货仓已改的富卡不一致）——要不要一起统一。
 4. **归档待办（船长验收 + 合入后当批做 · AGENTS §8 三步）**：
-   - `docs/design/matter-tech-20260919.md`（**状态：进行中**）→ 关键内容并入 roadmap/词典 → **删文件** → 重跑 `npm run docs:index`；
-     其中两条随归档一并改：`docs/glossary.md` 的「**三联读数**」⇒「**编队读数**」· `docs/test-saves/README.md` 里同一处旧称；
-     `EN_MATTER_TECH` 未接进 `ctx.matterTech`（`packages/data/src/context.ts` 一处）——三号接线时一并处理。
+   - ✅ **`docs/design/matter-tech-20260919.md` 已于 2026-09-20 由二号归档完毕**（关键内容并入 `docs/roadmap.md` 条目 ＋
+     `docs/glossary.md` §十一「谜质科技树」→ **删文件** → 重跑 `docs:index`；**「三联读数」⇒「编队读数」已改**，
+     含 `docs/test-saves/README.md` 那处旧称）。⚠ 同一批里**仅剩** `EN_MATTER_TECH` 未接进 `ctx.matterTech`
+     （`packages/data/src/context.ts` 一处）——三号接线时一并处理。
    - `docs/design/filters-audit-20260919.md`（**状态：进行中**）→ 同上（结论/数值必须先并入再删）。
    - 公告稿两份：`docs/design/archive/announcement-draft-20260919-matter-tech.md`（**已批准、已入库、已推送** ⇒ 归档）·
      `docs/design/archive/announcement-draft-20260919-filters.md`（**船长定不发** ⇒ 留档或随归档处理）。
