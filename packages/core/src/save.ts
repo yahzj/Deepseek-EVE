@@ -1687,12 +1687,24 @@ function normalizeState(raw: unknown): GameState {
       if (typeof entry !== 'object' || entry === null) continue
       const e = entry as RawState
       const kind = typeof e.kind === 'string' && LOG_KINDS.has(e.kind) ? (e.kind as LogKind) : 'info'
+      /**
+       * 甲案（2026-09-20）：`textId` / `textParams` **逐条容错读入**——坏值一律当"没有"，
+       * 界面于是回退显示 `text`（老档与本轮之前写下的日志都是这条路）。
+       */
+      const textId = typeof e.textId === 'string' && e.textId !== '' ? e.textId : undefined
+      const paramsRaw = asRaw(e.textParams)
+      const textParams: Record<string, string | number> = {}
+      for (const [k, v] of Object.entries(paramsRaw)) {
+        if (typeof v === 'string' || typeof v === 'number') textParams[k] = v
+      }
       logs.push({
         id: typeof e.id === 'number' && Number.isFinite(e.id) ? Math.floor(e.id) : ++fallbackId,
         atGameMs:
           typeof e.atGameMs === 'number' && Number.isFinite(e.atGameMs) ? Math.floor(e.atGameMs) : 0,
         kind,
         text: typeof e.text === 'string' ? e.text : '',
+        ...(textId !== undefined ? { textId } : {}),
+        ...(textId !== undefined && Object.keys(textParams).length > 0 ? { textParams } : {}),
       })
     }
   }

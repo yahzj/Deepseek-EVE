@@ -42,7 +42,7 @@ import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { MoneyFit } from './ui/MoneyFit'
-import { tr } from './i18n/locale'
+import { logText, tr } from './i18n/locale'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -765,7 +765,7 @@ export function App({ engine }: { engine: GameEngine }) {
       const l = logs[i]!
       if (l.id <= lastSeenLogId.current) break // 只检查新增日志（id 单调递增）
       if (l.kind === 'event' || l.text.startsWith('✦')) { // 随机事件按类型认；其余「✦ 扫描完成/彩头/高级箱」照旧按前缀认
-        setEventToast({ id: l.id, text: l.text })
+        setEventToast({ id: l.id, text: logText(l) }) // 甲案：有 textId ⇒ 按当前语言（无 ⇒ 中文正文）
         if (eventTimer.current !== null) window.clearTimeout(eventTimer.current)
         eventTimer.current = window.setTimeout(() => setEventToast(null), 6000)
         break // 每次最多弹最新一条
@@ -1159,7 +1159,7 @@ export function App({ engine }: { engine: GameEngine }) {
                 <div className="app-dim app-log-empty">{tr("ui.App.072")}</div>
               ) : (
                 <LogList
-                  logs={visibleLogs.map((l) => ({ id: l.id, kind: l.kind, text: l.text, timeLabel: gameClock(l.atGameMs) }))}
+                  logs={visibleLogs.map((l) => ({ id: l.id, kind: l.kind, text: logText(l), timeLabel: gameClock(l.atGameMs) }))}
                   limit={220}
                 />
               )}

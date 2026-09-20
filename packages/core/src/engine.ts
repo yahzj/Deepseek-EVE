@@ -15,7 +15,7 @@
 
 import { tuningMul } from './tuning'
 import { addLog, MAX_SKILL_LEVEL } from './state'
-import type { GameState, TrainingItem } from './state'
+import type { CmdText, GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog } from './types'
 import { skillLevelTimeMs, trainingTimeFactor } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
@@ -45,7 +45,19 @@ import { advanceSideTasks } from './sideTasks'
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
   ok: boolean
+  /**
+   * 失败原因（**中文原串**，永远照写）。甲案（船长 2026-09-20）改造后**另带** `errorId` /
+   * `errorParams`：界面用 `i18n/locale.tsx` 的 `cmdText(r)` 取值 —— 有 id 按当前语言渲染，
+   * 没有就显示这个中文串（老路径/未改造文件的行为一字不变）。
+   *
+   * ⚠ 与 `LogEntry` 同构：**保持 `string` 类型不变**（不做 `string | {…}` 联合）——
+   * 联合类型会外溢到全部读取点与用例（实测砸了 30+ 处），加法式字段则零影响。
+   */
   error?: string
+  /** 甲案：失败原因的**文案 id**（可选；有 ⇒ 界面按当前语言渲染，见 `error` 的说明） */
+  errorId?: string
+  /** 甲案：`errorId` 的插值参数 */
+  errorParams?: Readonly<Record<string, string | number>>
   /**
    * 拒绝码（可选，机器可读）：目前只有虫洞层内动作在用——
    * `unknown-target` = "目标格还没扫描过"，界面据此弹「即将前往未知地点」的确认，而不是当错误报给玩家；

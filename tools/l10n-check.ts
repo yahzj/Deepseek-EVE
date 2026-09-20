@@ -165,6 +165,33 @@ check(badPh.length === 0, `占位符不对齐 ${badPh.length} 条：${badPh.slic
 check(badCjk.length === 0, `英文值残留中日韩字符 ${badCjk.length} 条：${badCjk.slice(0, 6).join(' · ')}${badCjk.length > 6 ? ' …' : ''}`)
 check(badShape.length === 0, `条目值为空或含首尾空白 ${badShape.length} 条：${badShape.slice(0, 6).join(' · ')}${badShape.length > 6 ? ' …' : ''}`)
 
+/**
+ * **core 侧引用核对（甲案 · 2026-09-20 起）**：
+ * `packages/core/src` 里的文案 id 是**手写字符串**——它出现在两种位置：
+ * ① `addLog(...)` 的**第 4 个实参** `textId`；② `CommandResult` 的 `errorId`。
+ * 打错一个字，界面就把 id 原样显示给玩家（与渲染层的死引用同一个坑）。
+ * 所以这里按**字面量**扫：core 源码里出现的一切 `'core.*'` 串都必须是表里存在的合规 id。
+ * （id 只会来自本表，源码里不存在"值恰好长这样"的业务字符串 ⇒ 该判据无误伤。）
+ *
+ * ⚠ 本段**不做**"未译读数"：core 还在按文件迁移中，中文原串是过渡期的正常状态。
+ */
+const CORE_ROOT = join(process.cwd(), 'packages', 'core', 'src')
+const coreRefs: Array<{ id: string; at: string }> = []
+for (const file of walk(CORE_ROOT)) {
+  const text = readFileSync(file, 'utf8')
+  for (const m of text.matchAll(/'(core\.[A-Za-z][A-Za-z0-9]*\.\d{3})'/g)) {
+    const line = text.slice(0, m.index).split('\n').length
+    coreRefs.push({ id: m[1]!, at: `${relative(process.cwd(), file)}:${line}` })
+  }
+}
+const coreBad: string[] = []
+for (const r of coreRefs) {
+  used.add(r.id) // 算"已接线"⇒ 不会误报未接线条目
+  if (!ID_RE.test(r.id)) coreBad.push(`${r.at} → 「${r.id}」形态不合规`)
+  else if (!ids.has(r.id)) coreBad.push(`${r.at} → 「${r.id}」表里没有（界面会显示 id）`)
+}
+check(coreBad.length === 0, `core 侧文案 id 有问题 ${coreBad.length} 处：${coreBad.slice(0, 8).join(' · ')}${coreBad.length > 8 ? ' …' : ''}`)
+
 // 报告读数（不红）
 const unused = entries.map(([id]) => id).filter((id) => !used.has(id))
 const byZh = new Map<string, string[]>()
@@ -176,6 +203,7 @@ for (const [id] of entries) byDomain.set(id.split('.')[0]!, (byDomain.get(id.spl
 
 console.log(`· 表：**${entries.length}** 条（${[...byDomain].map(([d, n]) => `${d} ${n}`).join(' · ')}）· 源码引用 **${used.size}** 个 id`)
 console.log(`· 接线：渲染层 \`t()\`/\`tr()\` 调用点 **${callTotal}** 处 · 扫描 ${scans.length} 个源文件`)
+console.log(`· core 文案 id（甲案）：**${coreRefs.length}** 处引用（\`textId\` / \`errorId\`）——全部在表内、形态合规`)
 console.log(
   `· 未译读数：渲染层含中日韩的字符串字面量 **${cjkTotal}** 条` +
     `（其中**旧写法已包 t()** ${cjkWrappedTotal} 条 · **未包** ${cjkTotal - cjkWrappedTotal} 条）` +

@@ -37,6 +37,22 @@ export const MAX_AI_CORE_LEVEL = 5
 /** 日志类型：显示端按类型配色/筛选 */
 export type LogKind = 'system' | 'info' | 'queue' | 'levelup' | 'warn' | 'trade' | 'event' // 'event' = 深空偶发奇遇与市场风云（2026-09-14 船长：日志里要显眼 ⇒ 独立类型，不再混在 info）
 
+/**
+ * **一条"可翻译文案"的 id + 参数**（船长 2026-09-20 定「甲案」）：core 只产出 **文案 id + 参数**，
+ * 由渲染层按当前语言渲染；core 自身不碰语言。
+ *
+ * ⚠ 落法（实测选型）：**加法式可选字段**，不把 `string` 改成 `string | CmdText` 联合——
+ * 联合会外溢到全部读取点与用例（首轮实测砸了 30+ 处），而加法式零影响：
+ * 日志 = `LogEntry.text`（中文，照写）+ 可选 `textId` / `textParams`；
+ * 指令错误 = `CommandResult.error`（中文，照写）+ 可选 `errorId` / `errorParams`。
+ */
+export interface CmdText {
+  /** 唯一表里的 id（新域 `core.<文件短名>.<三位序号>`） */
+  readonly id: string
+  /** 插值参数：`{ name: '…' }` 对应文案里的 `{name}` */
+  readonly params?: Readonly<Record<string, string | number>>
+}
+
 /** 一条事件日志 */
 export interface LogEntry {
   /** 自增编号，界面当 key 用 */
@@ -44,7 +60,16 @@ export interface LogEntry {
   /** 发生时游戏内时间（毫秒），以后可回看"第几小时发生了什么" */
   atGameMs: number
   kind: LogKind
+  /**
+   * **中文正文**。甲案改造后它仍照写——三个用途：
+   * ① 老档 / 未改造调用点的兜底显示；② 日志检索与工具断言（`tools/playthrough-sim.ts` 等按正文匹配）；
+   * ③ 出问题时能直接在存档/控制台看到人话。界面渲染**优先** `textId`。
+   */
   text: string
+  /** 甲案：文案 id（有 ⇒ 界面按当前语言渲染；无 ⇒ 显示 `text` 中文原串） */
+  textId?: string
+  /** 甲案：插值参数（`textId` 的 `{…}` 占位符取值） */
+  textParams?: Readonly<Record<string, string | number>>
 }
 
 /** 随机数状态：存种子与使用次数，保证任何时刻都能复现同一串随机 */
@@ -2231,10 +2256,26 @@ export function haulingHalt(state: GameState): { fromSiteId: string | null } | n
   state.dockedSite = info.fromSiteId === null ? null : info.fromSiteId
   return info
 }
-/** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志） */
-export function addLog(state: GameState, kind: LogKind, text: string): void {
+/** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志）。
+ *
+ * `textId` / `textParams`（2026-09-20 甲案，可选）：给界面按语言渲染用；
+ * 不传 ⇒ 界面显示 `text`（中文原串）——即**未改造的调用点与老档的行为一字不变**。 */
+export function addLog(
+  state: GameState,
+  kind: LogKind,
+  text: string,
+  textId?: string,
+  textParams?: Readonly<Record<string, string | number>>,
+): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
-  state.logs.push({ id: lastId + 1, atGameMs: state.gameMs, kind, text })
+  state.logs.push({
+    id: lastId + 1,
+    atGameMs: state.gameMs,
+    kind,
+    text,
+    ...(textId !== undefined ? { textId } : {}),
+    ...(textParams !== undefined ? { textParams } : {}),
+  })
   const cap = state.logCap > 0 ? state.logCap : DEFAULT_LOG_CAP
   if (state.logs.length > cap) {
     state.logs.splice(0, state.logs.length - cap)

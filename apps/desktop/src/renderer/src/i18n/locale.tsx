@@ -84,6 +84,40 @@ export function tr(id: string, params?: Record<string, string | number>): string
   return interpolate(textOf(id, activeLocale), params)
 }
 
+/* ═══════════ core 侧文案（甲案 · 2026-09-20 船长定）═══════════
+ * core 不碰语言：它只产出「文案 id + 参数」（`LogEntry.textId` / `CommandResult.error`）。
+ * 渲染层用下面两个函数统一收口 ⇒ **切换语言时 core 文案跟着变**，而这层之外一个字都不用改。
+ * 过渡期两者都认：没有 id 的（老档日志 / 尚未改造的调用点）**原样显示中文**，行为与改动前一致。 */
+
+/** 渲染一条 core 日志：有 `textId` ⇒ 按当前语言渲染；否则回退中文正文 */
+export function logText(entry: {
+  text: string
+  textId?: string
+  textParams?: Readonly<Record<string, string | number>>
+}): string {
+  if (entry.textId === undefined) return entry.text
+  return tr(entry.textId, entry.textParams as Record<string, string | number> | undefined)
+}
+
+/**
+ * 渲染一条 core 指令错误：**有 `errorId` ⇒ 按当前语言**；否则回退 `error`（中文原串）。
+ *
+ * 入参就是 `CommandResult` 本身（结构型：只要求这三个字段，无需运行时依赖 core）——
+ * **core 目前仍只产出中文串**，所以渲染层那 ≈130 处 `onToast(r.error ?? '…')` 暂不改（等价、零风险）；
+ * 等某文件改造成 id 后，那个文件的调用点换成 `cmdText(r) || '…'` 即可（逐个文件推进）。
+ */
+export function cmdText(r: CmdTextSource): string {
+  if (r.errorId !== undefined) return tr(r.errorId, r.errorParams as Record<string, string | number> | undefined)
+  return r.error ?? ''
+}
+
+/** `CommandResult` 里与文案相关的那三个字段（结构型，避免渲染层为类型反向依赖 core） */
+export interface CmdTextSource {
+  readonly error?: string
+  readonly errorId?: string
+  readonly errorParams?: Readonly<Record<string, string | number>>
+}
+
 export interface L10nApi {
   locale: Locale
   setLocale: (locale: Locale) => void

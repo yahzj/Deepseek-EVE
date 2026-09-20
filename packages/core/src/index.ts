@@ -95,6 +95,7 @@ export {
 export type {
   LogKind,
   LogEntry,
+  CmdText,
   RngState,
   TrainingItem,
   SkillsState,
