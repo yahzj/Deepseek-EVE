@@ -2369,6 +2369,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.149": { zh: "舰船蓝图已迁入造船厂子页（panels/Shipyard.tsx），本面板不再渲染舰船。", en: "Ship blueprints have moved to the shipyard subpage (panels/Shipyard.tsx); this panel no longer renders ships." },
   "ui.Industry.150": { zh: "已学会的配方才能开工（基础零件无需图纸）；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。", en: "Only learned recipes can be started (basic parts need no blueprint); you can run 1 line by hand, and every other line is driven by one AI core (several lines of the same blueprint are fine, and different blueprints run in parallel)." },
   "ui.Industry.151": { zh: "制造线 {p1} 条 · 装备 {p2} · 零件 {p3} · 消耗品 {p4} · 已学会 {p5}", en: "{p1} production lines · equipment {p2} · parts {p3} · consumables {p4} · learned {p5}" },
+  "ui.Industry.152": { zh: "{prodName} ×{units} 件", en: "{prodName} ×{units} pcs" },
+  "ui.Industry.153": { zh: " ×{units} 件", en: " ×{units} pcs" },
   "ui.IndustryPage.001": { zh: "全部", en: "All" },
   "ui.IndustryPage.002": { zh: "可精炼资源", en: "Refinable resources" },
   "ui.IndustryPage.003": { zh: "残骸回收", en: "Wreck salvage" },

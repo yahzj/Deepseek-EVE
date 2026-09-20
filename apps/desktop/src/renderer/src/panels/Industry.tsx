@@ -1187,8 +1187,20 @@ export function ManufacturingPanel({
       const itemDef = engine.ctx.items.get(bp.itemId)
       if (itemDef?.kind !== 'part') continue
       const prodName = itemDef?.name ?? bp.itemId
-      // 产物名金色（按类型分色作废，2026-09-13 船长）
-      const prodText = <span className="app-gold">{prodName}</span>
+      /**
+       * ⚠ **产物行要写清"一次生产几件"**（**2026-09-20 船长报障**：「组装机零件的生产卡片内，
+       * 产物那边并没有表明是每次生产 10 个对应零件」）：零件 14 张全是 `outputUnits: 10`（每批 10 件、
+       * 材料也按 10 件配），消耗品档早有 `×N 发` 这种尾巴、零件档当初漏了 ⇒ 与弹药同一款式补上。
+       */
+      const units = bp.outputUnits ?? 1
+      const prodLabel = tr('ui.Industry.152', { prodName: prodName, units: units })
+      // 产物名金色（按类型分色作废，2026-09-13 船长）；「×N 件」等参数不上色
+      const prodText = (
+        <>
+          <span className="app-gold">{prodName}</span>
+          {tr('ui.Industry.153', { units: units })}
+        </>
+      )
       items.push({
         id: bp.id,
         kindLabel: '零件',
@@ -1200,7 +1212,7 @@ export function ManufacturingPanel({
         description: bp.description,
         materials: bp.materials,
         buildSeconds: bp.buildSeconds,
-        productLabel: prodName,
+        productLabel: prodLabel,
         productNode: itemDef ? (
           <ItemHover item={itemDef} nameOf={(id) => engine.ctx.items.get(id)?.name}>
             {prodText}
