@@ -63,7 +63,7 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
   return (
     <>
       <button className="app-btn" onClick={openAndMark} title={tr("ui.Announcements.001")}>
-        {tr("ui.Announcements.002")}{unread ? <i className="app-ann-dot" aria-label="有未读公告" /> : null}
+        {tr("ui.Announcements.002")}{unread ? <i className="app-ann-dot" aria-label={tr('ui.Announcements.005')} /> : null}
       </button>
       {open ? (
         <div className="app-ann-mask" onClick={() => setOpen(false)}>

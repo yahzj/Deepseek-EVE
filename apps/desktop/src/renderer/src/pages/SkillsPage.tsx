@@ -367,7 +367,7 @@ function SkillWideRow({ engine, skill }: { engine: PageProps['engine']; skill: S
       return (
         <div className="app-sr-training">
           <span className="app-chip is-dim">
-            {tr("ui.SkillsPage.023")}{position}位
+            {tr("ui.SkillsPage.045", { p1: position })}
             {waitMs > 0 ? <span className="app-sr-eta">{tr('ui.SkillsPage.042', { d: formatDurationMs(waitMs) })}{tr("ui.SkillsPage.024")}</span> : null}
           </span>
           {action ? (
@@ -466,7 +466,7 @@ function SkillCard({ engine, skill }: { engine: PageProps['engine']; skill: Skil
         ) : null}
         {isTraining && head ? <span className="app-skill-card-eta">{tr("ui.SkillsPage.022")}{head.intoLevel} · {formatDurationMs(head.remainingMs)}</span> : null}
         {mine.length > 0 && !isTraining && waitMs > 0 ? (
-          <span className="app-skill-card-eta">约{formatDurationMs(waitMs)}{tr("ui.SkillsPage.024")}</span>
+          <span className="app-skill-card-eta">{tr("ui.SkillsPage.046", { p1: formatDurationMs(waitMs) })}</span>
         ) : null}
         {saved > 0 && def && !isTraining && mine.length === 0 ? (
           <span className="app-skill-card-eta">

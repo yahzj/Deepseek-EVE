@@ -41,7 +41,7 @@ export function ImportantTasks({ engine }: { engine: GameEngine }) {
           <div className="app-imp-card-goal">
             <span className="app-imp-goal-key">{tr("ui.ImportantTasks.003")}</span> {tr("ui.ImportantTasks.004")}
             <span className="app-dim">
-              {tr("ui.ImportantTasks.005")} {exploredN}/{galaxyTotal} {tr("ui.FirstTasks.004")}{allExplored ? ' · 已完成' : ''}）
+              {tr("ui.ImportantTasks.005")} {exploredN}/{galaxyTotal} {tr("ui.FirstTasks.004")}{allExplored ? tr('ui.ImportantTasks.008') : ''}）
             </span>
           </div>
           <div className="app-imp-card-state">

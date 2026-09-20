@@ -144,7 +144,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         ? engine.startRecycleRunAt(def.id, worker)
         : engine.startRefineRunAt(def.id, worker)
     if (!r.ok) {
-      onToast(cmdText(r) || '启动失败。', true)
+      onToast(cmdText(r) || tr('ui.IndustryPage.112'), true)
       return
     }
     const who = worker === 'pilot' ? tr("ui.IndustryPage.020") : tr("ui.IndustryPage.068", { p1: aiCoreName(worker) })

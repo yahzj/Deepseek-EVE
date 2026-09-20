@@ -83,7 +83,7 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
 
   const skip = (): void => {
     const r = engine.prologueSkip()
-    if (!r.ok) setErr(cmdText(r) || '无法跳过')
+    if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.041'))
   }
 
   const confirm = (): void => {
@@ -92,7 +92,7 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     setPhase('open')
     window.setTimeout(() => {
       const r = engine.prologueAwaken(name)
-      if (!r.ok) setErr(cmdText(r) || '写入失败')
+      if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.042'))
     }, 1900)
   }
 

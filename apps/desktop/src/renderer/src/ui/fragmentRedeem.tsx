@@ -52,7 +52,7 @@ export function RedeemFragmentButton({
       title={tip}
       onClick={() => {
         const r = engine.redeemFragmentsAt(row.moduleId)
-        if (!r.ok) onToast(cmdText(r) || '逆向研究失败', true)
+        if (!r.ok) onToast(cmdText(r) || tr('ui.fragmentRedeem.008'), true)
         else onToast(tr("ui.fragmentRedeem.006", { p1: row.blueprintName }))
       }}
     >
