@@ -1871,8 +1871,24 @@ export type GameState = GameStateV30
 
 /** **成就徽章的存档面**：只存"哪几枚到手了 ＋ 到手时刻"——图案/名称/说明一律现算 */
 export interface AchievementState {
-  /** 徽章 id → 达成时刻（`state.gameMs`；只置一次，与任务奖励同款去重口径） */
-  earned: Record<string, number>
+  /** 徽章 id → 达成记录（只置一次，与任务奖励同款去重口径） */
+  earned: Record<string, AchievementEarned>
+}
+
+/**
+ * **一枚徽章的达成记录**（船长 2026-09-20：「成就系统还要记录成就完成时间。」）。
+ *
+ * 两个时刻都记（口径与玩家可见性分别不同）：
+ * - `atGameMs`：**游戏内时间**（累计毫秒）—— 与日志 `LogEntry.atGameMs` 同一把尺，
+ *   界面用 `formatDurationMs` 显示（"在线 4天21小时"同款），**不随离线时间跳变**；
+ * - `atWallMs`：**真实时间**（墙钟毫秒）——供"什么时候拿的"回看（如成就页显示真实日期）。
+ *
+ * ⚠ `atGameMs = 0 且 atWallMs = 0` = **老档补发**（载入后第一拍按现状补上，当年真实时刻不可知）
+ * ⇒ 界面按"时间未记录"显示，**不要写成"游戏开始时就拿到了"**。
+ */
+export interface AchievementEarned {
+  atGameMs: number
+  atWallMs: number
 }
 
 /** **谜质科技树的存档面**：只存"哪一项研究到了几级"——效果一律现算（改数值即热更，不必迁移） */

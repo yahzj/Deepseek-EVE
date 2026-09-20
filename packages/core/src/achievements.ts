@@ -58,16 +58,32 @@ export function chainProgress(state: GameState, chainId: string): number {
 export function advanceAchievements(
   state: GameState,
   defs: readonly AchievementDef[] | undefined,
+  /** 现实墙钟（毫秒时间戳）——由引擎传入（`advanceGame` 的 `opts.nowWallMs`，与 `advanceSideTasks` 同源） */
+  nowWallMs?: number,
 ): AchievementDef[] {
   const earned = (state.achievements ??= { earned: {} }).earned
   const newly: AchievementDef[] = []
   for (const def of tableOf(defs)) {
     if (earned[def.id] !== undefined) continue
     if (!achievementReached(state, def.source)) continue
-    earned[def.id] = state.gameMs
+    /**
+     * **记两个时刻**（船长 2026-09-20：「还要记录成就完成时间」）：
+     * - `atGameMs` = `state.gameMs`（游戏内时间，与日志 `LogEntry.atGameMs` 同一把尺）；
+     * - `atWallMs` = 引擎传入的**现实墙钟**。
+     *
+     * ⚠ **不在这里调 `Date.now()`**：core 保持确定性（用例/工具能钉住时间）；
+     * 未传墙钟（用例、工具、离线首拍前的极端态）⇒ 记 **0 = 未记录**，界面据此显示"时间未记录"，
+     * 而不是编一个假时间。
+     */
+    earned[def.id] = { atGameMs: state.gameMs, atWallMs: wallNowOf(nowWallMs) }
     newly.push(def)
   }
   return newly
+}
+
+/** 现实墙钟（非有限正数一律当"未记录"= 0） */
+function wallNowOf(v: number | undefined): number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0
 }
 
 /**
@@ -75,17 +91,25 @@ export function advanceAchievements(
  *
  * `reached` 与 `earned[..] !== undefined` 在**正常流程下恒等**（每拍判定会把达成的补上）；
  * 分开给是为了让界面能显示"达成了但这一拍还没发"的中间态（例如刚读档的那一瞬）。
+ *
+ * `earnedAt` = **游戏内时间**（毫秒；`null` = 未到手）；`earnedWallMs` = 真实时间（0 = 未记录）。
+ * `legacy` = 老档补发（两个时刻都为 0）⇒ 界面显示"时间未记录"。
  */
 export function achievementOverview(
   state: GameState,
   defs: readonly AchievementDef[] | undefined,
-): Array<{ def: AchievementDef; earnedAt: number | null; reached: boolean }> {
+): Array<{ def: AchievementDef; earnedAt: number | null; earnedWallMs: number; legacy: boolean; reached: boolean }> {
   const earned = state.achievements?.earned ?? {}
-  return tableOf(defs).map((def) => ({
-    def,
-    earnedAt: earned[def.id] ?? null,
-    reached: achievementReached(state, def.source),
-  }))
+  return tableOf(defs).map((def) => {
+    const rec = earned[def.id]
+    return {
+      def,
+      earnedAt: rec ? rec.atGameMs : null,
+      earnedWallMs: rec?.atWallMs ?? 0,
+      legacy: rec !== undefined && rec.atGameMs === 0 && rec.atWallMs === 0,
+      reached: achievementReached(state, def.source),
+    }
+  })
 }
 
 /** 已到手枚数（界面读数用；不含"已达未发"的中间态） */

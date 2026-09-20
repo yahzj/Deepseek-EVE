@@ -12,6 +12,7 @@
 | --- | --- |
 | `packages/data/src/achievements.ts` | 63 枚徽章表：13 任务徽章由 `FIRST_TASKS` **派生** ＋ 50 链徽章由链配置**派生**（任务表增删时自动跟随，不会漏配） |
 | `packages/core/src/achievements.ts` | `achievementReached` / `advanceAchievements`（每拍现算补发 · 幂等）· `achievementOverview` / `achievementCount` / `chainAchievementGroups`（界面读数） |
+| **完成时间**（船长 2026-09-20 追加：「成就系统还要记录成就完成时间。」） | 账本每条记 **两个时刻**：`atGameMs`（游戏内时间，与日志同尺）＋ `atWallMs`（现实墙钟，由引擎 `opts.nowWallMs` 传入，**core 不调 `Date.now()`** 以保确定性）。界面悬停第三行显示「获得于 {游戏内时长}」；**老档补发**（两时刻皆 0）显示「已获得（时间未记录）」——不编假时间。首版落盘的裸数字在载入器里按"只记了游戏内时间"兼容 |
 | `packages/core/src/types.ts` | `AchievementDef` / `AchievementSource` / `AchievementCategory`（含预留的 `'milestone'`） |
 | `packages/core/src/state.ts` | `GameStateV30` ＋ `AchievementState` ＋ `CURRENT_STATE_VERSION 29 → 30` ＋ 新档写 `{ earned: {} }` |
 | `packages/core/src/save.ts` | `MIGRATIONS[29]`（补空账本）＋ 载入器逐项清洗（时刻取非负整数、**不查表**） |
@@ -25,7 +26,7 @@
 | `apps/.../styles.css` · `i18n/dict.en.ts` | 样式段（固定尺寸徽章卡）＋ 7 条界面词条 |
 | `packages/core/tests/achievements.test.ts` | **17 条**用例：表口径（枚数/档位/图案配色/上限）· 达成判定 · 发放去重 · **纯展示不动资产** · 老档自愈 · 读档往返 · 界面读数 · 与引擎同拍 |
 
-**验证（2026-09-20）**：`typecheck` 四包 0 错 · core **174 文件 / 1913 用例全绿**（新增 17）·
+**验证（2026-09-20）**：`typecheck` 四包 0 错 · core **174 文件 / 1920 用例全绿**（新增 21）·
 `content:check` ✅ · `ui:rot-check` ✅（UI 改动必跑）· `ui:tip-check` ✅ · `l10n:check` ✅ ·
 `save:migrate` **71/71**（v25/v28/v29 真档 → v30，资产不变）· 桌面 **build ✅**。
 
