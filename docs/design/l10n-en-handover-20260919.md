@@ -4,29 +4,43 @@
 > 工作文档（过程记录与分期）：`docs/design/l10n-en-20260919.md` · 术语权威：`docs/glossary-en.md`。
 > 本卡只讲**怎么接着干**：状态 · 流程 · 坑 · 剩余 · 验收。
 
-## 0. 30 秒速览
+## 0. 30 秒速览（**2026-09-20 三号复核后刷新——原 §1/§3 读数已过期**）
 
 | 项 | 值 |
 |---|---|
-| 分支 | `verify40`（三号工作树 `H:\大鲸鱼\Deepseek-EVE-verify`）；**落后 main 27 条**（见 §8 先并一次） |
+| 分支 | `verify40`（三号工作树 `H:\大鲸鱼\Deepseek-EVE-verify`）；**已并 main 至 `bad7601e`**（2026-09-20 并，52 条） |
 | 纪律 | **船长令：翻译全部完成前不合入 main**（只本地提交）；main 侧由一号维护 |
-| 唯一表 | `packages/data/src/l10n/table.ts` —— **2,816 条**（`id → { zh, en }`，383 KB） |
-| 接线 | 渲染层 `t()` / `tr()` 调用点 **3,405 处**（63 个源文件）；表 ↔ 源码引用 **2,812 个 id**（4 条暂未接线） |
-| 剩余读数 | 含 JSX 文本的未译 **308 条**；工具侧「需人工 58 + 缺译 51」 |
-| 未做 | **core 引擎文案 ≈617 处**（`addLog(` 316 · `error: '中文'` 301）· **主进程文案 ≈10 处**（工具盲区）· **P4 逐页溢出读数表** |
-| 已验证 | typecheck 四包 0 错 · core 173 文件 / **1,888 例** · `content:check` · `ui:rot-check` · 构建 · `docs:index` 全绿 |
+| 唯一表 | `packages/data/src/l10n/table.ts` —— **2,912 条**（`id → { zh, en }`） |
+| 接线 | 渲染层 `t()`/`tr()` 调用点 **≈3,495 处**（63 个源文件） |
+| 剩余读数 | 渲染层含中日韩字面量 **251 条**（2026-09-20 实测；界面批开工前 323） |
+| 未做 | **core 引擎文案 ≈617 处**（`addLog(` 316 · `error: '中文'` 301）· **主进程文案 ≈10 处** · **P4 逐页溢出读数表** |
+| 已验证 | typecheck 四包 0 错 · core 用例全绿 · `content:check` · `ui:rot-check` · `build` · `docs:index --check` 全绿 |
+
+## 0.1 2026-09-20 三号这一轮做了什么（下次接手先看这段）
+
+1. **并 main（卡 §8 第一件事）**：52 条，12 处冲突 / 27 个冲突块，口径「保留 ID 制、采纳对方结构」。
+   顺带**删掉 main 侧旧词典制残留** `i18n/dict.en.ts`（我方 P1b 已废止该机制）；补 18 条新造表项；
+   4 处旧写法 `t('中文')` → `tr(id)`。提交 `90d2cf01`。
+2. **界面批第一块：虫洞面板**（原 51 条未译 → 0）。提交 `0bd77d0e`。
+   ⚠ **方法学（下次照做）**：剩余未译**绝大多数是"被 `{}` 切碎的 JSX 文本断片"**
+   （`<span>第 <b>{n}</b> 层</span>` 这种），正式两件套**不覆盖这类**——
+   要「读源码 → 整段替换成 `tr(id, {参数})` → 补表」手工做；断片必须**并回整句**再翻
+   （例：`第 {n} 层` 一条、`共 {n} · 抛弃 {x}` 一条），否则英文语序会错位。
+3. 顺手做了**表去重自检**（重复键 0 · BOM 无 · 往返解码乱码 0）——⚠ 手工插条目极易撞号/重复，改完必查。
 
 ## 1. 接手先跑这 6 条（确认现状，别凭记忆）
 
 ```powershell
 cd H:\大鲸鱼\Deepseek-EVE-verify
-git log --oneline -1                      # 应为三号的本地提交
+git log --oneline -3                      # 应为三号 2026-09-20 的本地提交
 npm run typecheck                         # 四包 0 错
-npm run test -w @whale/core               # 173 文件 / 1888 例
-npm run l10n:check                        # 表 2816 · 未译 308（报告口径不阻断）
-npx tsx tools/l10n-wrap.ts                # 干跑：列「需人工 / 缺译」两份清单
+npm run test -w @whale/core               # 全绿
+npm run l10n:check                        # 表 2912 · 未译 251（报告口径不阻断）
 npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:index -- --check
 ```
+
+⚠ **沙箱**：本仓全部闸门工具走 `tsx`→`esbuild`，在 `workspace-write` 沙箱下会 `spawn EPERM`；
+需 `danger-full-access`（2026-09-20 会话已放开）。
 
 ## 2. 架构一页纸（**先读这段，别改架构**）
 
@@ -54,12 +68,18 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 - 若改口径 ⇒ 属系统级改动，**走四步闸门**（集中提问 → 中文设计总结 → 等确认 → 再实现）。
 - 备选（更省事但有代价）：只翻"命令错误串"（301 处，界面直接显示），日志文案留中文——需船长点头。
 
-### ② 渲染层碎片 / 漏项（≈109 条，方法已成熟）
+### ② 渲染层碎片 / 漏项（**2026-09-20 实测：251 条**，方法已跑通）
 
-- 「需人工 58 条」＝跨行 JSX 断片（`A{expr}B` 形态，工具故意不碰）；
-- 「缺译 51 条」＝工具没覆盖的位置（少数模板/嵌套）；
-- 做法：`npx tsx tools/l10n-wrap.ts --only=<file>` 列清单 → 读源码 → **整段替换**成
-  `tr('ui.<段>.<号>', { 参数 })` → 补表项 → 跑 `l10n:check`。重灾区：`panels/Wormhole.tsx`(31) · `panels/Expedition.tsx`(17)。
+- 分布（前六）：`panels/Expedition.tsx` **54** · `pages/ShipPage.tsx` **26** · `panels/Industry.tsx` **24** ·
+  `pages/FitPage.tsx` **17** · `pages/MarketPage.tsx` **16** · `panels/MapPage.tsx` **9**；
+  其余散在 `WormholeScan` / `Glyphs` / `itemSubs` / `shipInfo` / `wreckFlavor` / `wormholeIntel` / `App` / `engine` 等。
+- ⚠ **这类就是卡 §0.1-2 说的「JSX 文本断片」**：`npx tsx tools/l10n-wrap.ts` 只报 13 处可自动包，
+  剩下 200+ 全要**手工整句替换**（断片并回整句再翻）。别再指望工具批处理。
+- 已做完的样板：`panels/Wormhole.tsx`（51 → 0，提交 `0bd77d0e`）——照它的改法做下一批即可。
+- 逐文件清单做法（探针不入仓，用完即删）：用 TS AST 列 `StringLiteral` + `JsxText` 里含中日韩的节点
+  （判据与 `tools/l10n-check.ts` 同），或直接读 `l10n:check` 的 Top 10 表。
+- ⚠ **手工插条目必做三条自检**：同 id 不重复（TS1117 会报）· 不撞号（先查该段最大号）·
+  中英 `{占位符}` 集合一致（体检器会报）。
 
 ### ③ 主进程 / 预加载的文案 ≈10 处（**渲染层工具扫不到，别漏**）
 
@@ -134,15 +154,19 @@ npm run content:check ; npm run ui:rot-check ; npm run build ; npm run docs:inde
 
 ## 8. git 状态与合并步骤
 
-- 现状：`verify40` 领先 main **51 个提交**；main 相对三号上次合并点（`56a91a58`）**又新增 27 条**
-  （一号/二号：仓库筛选报障修复 · 资源任务均价 · 虫洞科技与取消固定种子等）⇒ **接手第一件事是再并一次**。
+- 现状（**2026-09-20 已刷新**）：`verify40` 已并 main 至 `bad7601e`（52 条），合并提交 `90d2cf01`；
+  此后本工作树领先 main（只有本地提交）。**main 若再前进 ⇒ 照下面再并一次**。
 - 步骤（**合并进 verify40，不动 main**）：
   ```powershell
   git log main --oneline -5          # 先看对方改了什么
   git merge main --no-edit           # 解冲突：保留 ID 制、采纳对方结构
   npm run typecheck ; npm run l10n:check
-  npx tsx tools/l10n-wrap.ts         # 对方新加的中文会出现在「缺译」里 → 照 §4 接线
   ```
+  ⚠ **解冲突三条实战口径（2026-09-20 实测）**：
+  ① 结构取对方、判据取我方——对方把某段重写了就整段取对方，再把其中的中文接成 `tr(id)`；
+  ② **对方可能带回旧词典制残留**（`i18n/dict.en.ts` 一类）⇒ 一律按 ID 制处理，不留第二套机制；
+  ③ 解完**必跑 typecheck**（漏一个 `*/`、少一个 import、变量改名没跟（本次 `openM`→`farM`）
+     都会当场报；`git diff --diff-filter=U` 列表清空后再提交。
 - 合并后**必跑**：typecheck · l10n:check · content:check · ui:rot-check · build · core 用例 · docs:index。
 
 ## 9. 船长验收建议（英文好不好、排版行不行，只有船长能判）
