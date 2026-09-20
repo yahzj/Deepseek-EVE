@@ -54,18 +54,6 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'market', label: 'ui.App.005', icon: 'nav-market' },
   { key: 'industry', label: 'ui.App.006', icon: 'nav-industry' },
   { key: 'skills', label: 'ui.App.007', icon: 'nav-skills' },
-  /**
-   * **任务中心**（2026-09-14 船长：「将任务中心界面移出星图，放入左侧导航栏，**通讯的上方**」）：
-   * 原先它是星图页（出港）的一个选项卡 —— 那条路要先选中星系才渲染行动区，绕；
-   * 搬成一级页后从左侧导航直达（内层标签与跳转定位照旧，见 `pages/TaskCenterPage.tsx`）。
-   */
-  { key: 'task', label: '任务中心', icon: 'nav-task' },
-  /**
-   * **成就**（2026-09-20 船长：「一级页，但是内部再加一个二级子窗口容器」）：
-   * 徽章全由任务与次数链产出 ⇒ 放在任务中心下方；页内是固定头 + 内容内滚的子窗口容器，
-   * 页面本体不滚（一级页不滚红线），见 `pages/AchievementsPage.tsx`。
-   */
-  { key: 'achieve', label: '成就', icon: 'ach-first' },
   { key: 'task', label: 'ui.App.008', icon: 'nav-task' },
   /**
    * **成就**（2026-09-20 船长：「一级页，但是内部再加一个二级子窗口容器」）：
