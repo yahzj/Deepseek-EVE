@@ -3084,6 +3084,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.176": { zh: "盾 {p1} · 甲 {p2} · 结构 {p3}", en: "Shield {p1} · armor {p2} · structure {p3}" },
   "ui.shipInfo.177": { zh: "{p1} 信用点/单位", en: "{p1} credits/unit" },
   "ui.shipInfo.178": { zh: "单件基础回复 {p1} HP（结构/装甲各按层容量增幅，层越厚回得越多）", en: "Base repair {p1} HP per kit (structure and armor each scale with that layer's capacity, so thicker layers restore more)" },
+  "ui.shipInfo.179": { zh: " · 多装递减", en: " · stacks with diminishing returns" },
+  "ui.shipInfo.180": { zh: "能打敌方机群", en: "Can engage enemy drone swarms" },
   "ui.ShipPage.001": { zh: "我的舰队", en: "My Fleet" },
   "ui.ShipPage.002": { zh: "搜索舰船…", en: "Search ships…" },
   "ui.ShipPage.003": { zh: "状态：", en: "Status:" },

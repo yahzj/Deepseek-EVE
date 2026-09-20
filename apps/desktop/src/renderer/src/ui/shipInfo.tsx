@@ -120,7 +120,7 @@ function repairAmountText(mod: ModuleDef): string {
 }
 /** 维修件消耗的组件名（接线单点：repairKit → 物品名） */
 function repairKitName(mod: ModuleDef): string {
-  return mod.repairKit === 'repairkit-mil' ? tr("ui.shipInfo.002") : mod.repairKit === 'repairkit-civ' ? tr("ui.shipInfo.003") : (mod.repairKit ?? '修理组件')
+  return mod.repairKit === 'repairkit-mil' ? tr("ui.shipInfo.002") : mod.repairKit === 'repairkit-civ' ? tr("ui.shipInfo.003") : (mod.repairKit ?? tr('ui.itemSubs.001'))
 }
 
 /**
@@ -279,7 +279,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"；
   // 2026-09-15 隐秘行动装置（`max` 组）= **取最长一件、不叠加** ⇒ 既不标"多装递减"也不标"全额叠加"。
   const stShort = stackingOf(mod).group
-  return body + (stShort === 'flat' || stShort === 'max' ? '' : ' · 多装递减')
+  return body + (stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
 }
 
 /** 三系抗性紧凑文本（整数主抗制简化后只列非零项；全零 = "无"） */
@@ -676,7 +676,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         k: tr("ui.shipInfo.041"),
         v: (
           <>
-            {'能打敌方机群'}
+            {tr('ui.shipInfo.180')}
             <span className="app-dim">{`　对无人机伤害 ×${mod.antiDrone}`}</span>
           </>
         ),
@@ -998,7 +998,7 @@ export function ShipHover({
   block = false,
   as = 'span',
   className,
-  note = '已生效战斗数值：抗性按递减方式合成（上限 90%）',
+  note = tr('ui.Handbook.181'),
 }: {
   ship: ShipDef
   children: ReactNode
