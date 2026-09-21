@@ -1425,6 +1425,37 @@ function doBounty(): void {
       // 只记"确实开始了"的情形（节流到每天一条，避免刷屏）
       mark(`远征已开始：${best.name}（active=true · away=${state.awayGalaxy ?? '母港'}）`)
     }
+    /**
+     * ⚠⚠ **全量搜索 `state.logs` 找这一趟的痕迹**（2026-09-21 第二十四批 · 定性收口）。
+     *
+     * 前几轮已排除"引擎没开始"（`active=true`）；剩下的问题是：
+     * **引擎到底有没有为这一趟写日志？** 之前只在 `auditLogs` 的增量窗口里看，
+     * 而窗口/淘汰会漏。这里直接**遍历当前 `state.logs` 全文**按卡名搜（不限 kind、不限前缀），
+     * 命中就钉住原文 —— 有 ⇒ 只是我前面的过滤口径漏了；没有 ⇒ 引擎确实没写。
+     */
+    const hits = state.logs.filter((x) => x.text.includes(best.name))
+    /**
+     * ⚠ **结局行只认行首前缀**，不能在正文里搜关键词 —— 第二次踩同一个坑：
+     * `⚔ 远征开始（…）：…；失利/撤退同样自动返航。` 这句正文里带"失利/撤退"，
+     * 用 `/大捷|失利|撤退/` 去测就把**出发提示**当成了结局行（实测"结局行 9 条"全是它）。
+     * 引擎的真实结局前缀只有五种（`expedition.ts`）：
+     * `⚔ 战报` 与 `⚔ 撤退` / `⚔ 自动撤退`（外加 `⏱ 战斗超时`）。
+     */
+    const outcomes = hits.filter(
+      (x) =>
+        x.text.startsWith('⚔ 战报') ||
+        x.text.startsWith('⚔ 撤退') ||
+        x.text.startsWith('⚔ 自动撤退') ||
+        x.text.startsWith('⏱ 战斗超时'),
+    )
+    pinnedBountyReports.push(
+      `【定性】${best.name}：startExpedition=ok · active=${String(active)} · ` +
+        `state.logs 命中 ${hits.length} 条 · 其中结局行 ${outcomes.length} 条` +
+        (outcomes.length > 0
+          ? ` → 「${outcomes[outcomes.length - 1]!.text.slice(0, 110)}」`
+          : ' → **没有结局行**（打了但没结算？）'),
+    )
+    if (pinnedBountyReports.length > 400) pinnedBountyReports.shift()
     mark(`远征 ${best.name}`)
   } else issue(`远征 ${best.id} 失败：${r.error}`)
 }
