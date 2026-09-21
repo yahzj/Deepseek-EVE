@@ -183,9 +183,20 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   改档后**不再吃那条路** ⇒ 池参数保留不删（改回 common 时需要，也是产能标定的原始读数）。
   //   ⚠ `common` 的档位**本就不影响交易**（`market.ts` 的 `rareTierWeight` 只在 rare/exotic 分支被调用）
   //   ⇒ 本次改档的**实质影响 = 供货渠道由"常驻盘口"变为"稀有订单"**，不是加权。
-  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'rare', basePrice: 45, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 }, // 2026-09-11 消耗品池按产能标定（原 1,200/20）
-  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'rare', basePrice: 60, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
-  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'rare', basePrice: 80, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320 },
+  /**
+   * ⚠ **2026-09-20 追加（船长令：「3 种 MK2 弹药供应量和收购太少了，起码要足够玩家消耗和交易出售」⇒ 乙案）**：
+   * 稀有订单渠道每张单只有 1~3 件 ⇒ 实测**24 小时只买得到 61~81 发**，而一场 4 舰战斗要烧 ~3,000 发
+   * （`ammoLoadTotals`：4 分钟 ÷ 装填 ×1.5 轮 × 门数 ≈ 755 发/舰）。故给这三件**消耗品**开批量档：
+   * - `rareQtyMul: 200` ⇒ 稀有单件数 1~3 件 **→ 200~600 发/张**（供货与簿面收购两侧同乘）；
+   * - `rareWeightMul: 3` ⇒ 稀有抽取/收购概率 ×3 ⇒ 每系每天约 **3 万发**供货（够 ~10 场战斗），
+   *   且对 167 件 rare 池的挤占可忽略（权重 +6/167）；
+   * - `absorbQtyPerWindow: 21_600` ⇒ **收购额度 = 4,320 × 5**（船长：「收购额度增加约 5 倍」）——
+   *   写在卡上而不再靠下面那两个池参数**顺带**生效（原先"买不到却卖得掉"就是那个残留造成的）。
+   * 池参数（`poolTarget`/`supplyFlow`）**保留不删**：改回 common 时需要，也是当初产能标定的原始读数。
+   */
+  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'rare', basePrice: 45, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 21_600 }, // 2026-09-11 消耗品池按产能标定（原 1,200/20）
+  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'rare', basePrice: 60, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 21_600 },
+  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'rare', basePrice: 80, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 21_600 },
   // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
   { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 2_400, supplyFlow: 20 }, // 2026-09-11 消耗品池按产能标定（原 300/4）
   { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 }, // 2026-09-11（原 120/1.5；船长定：与其它消耗品同口径，激战单场可吃 23 枚 ⇒ 池约撑 45 场）
