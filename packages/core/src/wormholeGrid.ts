@@ -348,7 +348,7 @@ export const WORMHOLE_NEBULA_MIN_DEPTH = 4
  * ⇒ 层 4/5/6/7/8/9/10 = 20/22/24/26/28/30/32%。
  * ⚠ 旧口径「每层 +5%、封顶 40%」**作废**；旧护栏 `WORMHOLE_NEBULA_MAX_SHARE = 0.5`
  * （"最多占有信号格的一半"）**同日删除**——它与新封顶重复，留着会让 80% 永远到不了（层 20 起被压回 50%）。
- * 配额算法不变：`⌈可长星云的格数 × 本比例⌉`。完整 1~10 层表见 `docs/design/wh-grid-ladder-20260920.md`。
+ * 配额算法不变：`⌈可长星云的格数 × 本比例⌉`。完整 1~10 层表见 `docs/roadmap.md` 2026-09-20「虫洞盘面新台阶」那条。
  */
 export const WORMHOLE_NEBULA_SHARE = 0.2
 /** 每层递增量（层 4 起，每下一层 +2%） */
@@ -410,7 +410,7 @@ export function signalOfPlace(place: WormholePlace): WormholeSignal | null {
  * 依据：船长同日的两条配套裁定——**回合预算已由科技（时序锚定器 ＋100 回合）支撑**，
  * 空信息占比改为**每层只降 1%**（见 `WORMHOLE_EMPTY_SHARE_PER_DEPTH`）；
  * 界面侧对 `R > 8` 走"跟随玩家自动放大"（见 `panels/Wormhole.tsx`；现阶梯下 R>8 出现在层 15 之后）。
- * 完整 1~10 层表见工作文档 `docs/design/wh-grid-ladder-2-20260920.md`。
+ * 完整 1~12 层表见 `docs/roadmap.md` 2026-09-20「虫洞盘面阶梯二次改判」那条（归档口径同在那里）。
  */
 export const WORMHOLE_GRID_R_MIN = 2
 export function wormholeGridRadiusFor(depth: number): number {

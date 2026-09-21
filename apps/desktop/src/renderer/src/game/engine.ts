@@ -877,7 +877,7 @@ export class GameEngine {
    * 切分只是把同一段游戏时间分成多小份送进核心引擎，各系统均按时间推进，总量不变。
    *
    * ⚠ **2026-09-20**：交火分支的记账修过一次（本拍 dt 丢帧 ⇒ 进战斗时欠着的现实时间永不补回），
-   * 详见下面那段的注释与 `docs/design/friend-audit-20260920.md`。
+   * 详见下面那段的注释与 `docs/roadmap.md` 2026-09-20「外部审查报告逐条核对与处置」那条。
    */
   private tick(): void {
     const now = Date.now()

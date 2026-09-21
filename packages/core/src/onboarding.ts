@@ -19,7 +19,7 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { addLog, DEFAULT_PILOT_NAME } from './state'
-import { firstTaskProgress, firstTasksMarkSeen } from './firstTasks'
+import { sequentialPrefixDone, firstTasksMarkSeen } from './firstTasks'
 
 /** 序章演出中（渲染层 `PrologueScreen` 推进；演出期间不做任何任务判定） */
 export const ONB_AWAKEN = 0
@@ -27,9 +27,10 @@ export const ONB_AWAKEN = 0
 export const ONB_DONE = 99
 
 /**
- * 贯穿任务「寻找人类」：**「第一次」任务全部完成后发布**，永久无法完成
- * （**2026-09-20 船长令**：「**寻找人类的任务只在完成所有第一次任务后才出现**」——原口径
- * 「序章结束时发布」（2026-09-05 船长：「正常发布，不告诉做法」）**只作废"发布时机"这一半**；
+ * 贯穿任务「寻找人类」：**「第一次」顺序段（前 11 条）完成后发布**，永久无法完成
+ * （**2026-09-20 船长第三道令**：「完成 11 …后，就可以将寻找人类和第一次长途运输以及 第一次虫洞
+ * 同时显示给玩家」——更早那句「寻找人类的任务只在完成所有第一次任务后才出现」**已据此作废**；
+ * 再早的口径「序章结束时发布」（2026-09-05 船长：「正常发布，不告诉做法」）**只作废"发布时机"这一半**；
  * "正常发布 ＋ 不告诉做法 ＋ 完成方法未知"照旧）。
  */
 export const TASK_FIND_HUMANS = 'find-humans'
@@ -44,18 +45,22 @@ export function publishFindHumans(state: GameState): void {
 /**
  * **「寻找人类」发布闸门**（引擎每拍调用，幂等）：三条件齐了才发布——
  * ① 序章演出已结束（演出盖住全屏，此刻发布没意义，与 `comms.ts` 的"开场信"同款判据）；
- * ② 13 条「第一次」任务**一条不剩**（`firstTaskProgress().done >= total`）；
+ * ② 「第一次」的**顺序段（前 11 条）一条不剩**（`firstTasks.sequentialPrefixDone`）；
  * ③ 还没发布过。
  *
- * 为什么是"每拍现算"而不是"挂在第 13 条完成那一刻"：判据全在 `state` 上（`importantTasks[id].done`），
+ * ⚠ **2026-09-20 船长第三道令改判**：「**完成 11 · 第一次指派 AI 副船后，就可以将寻找人类和
+ * 第一次长途运输以及 第一次虫洞同时显示给玩家。寻找人类位于顶部。**」
+ * ⇒ 旧口径「**只在完成所有第一次任务后才出现**」（同日第二道令）**作废**：发布点从"13 条全完成"
+ * 提前到"前 11 条完成"，与末段并列批（长途运输 ＋ 虫洞）**同一拍**出现。
+ * 其余口径照旧：正常发布、不告诉做法、完成方法未知（老档已发布的不会被收回）。
+ *
+ * 为什么是"每拍现算"而不是"挂在第 11 条完成那一刻"：判据全在 `state` 上（`importantTasks[id].done`），
  * 现算 ⇒ 老档、异常中断、将来新增条目都能自愈（与 `achievements` 的现算补发同一套路）。
- * ⚠ 已发布的老档不会被收回：① 里"已存在即返回"，等于给老玩家留了原样。
  */
 export function publishFindHumansWhenReady(state: GameState): boolean {
   if (state.importantTasks[TASK_FIND_HUMANS]) return false
   if (state.onboarding.step !== ONB_DONE) return false
-  const { done, total } = firstTaskProgress(state)
-  if (total === 0 || done < total) return false
+  if (!sequentialPrefixDone(state)) return false
   publishFindHumans(state)
   return true
 }

@@ -25,6 +25,12 @@
  *   **第一条还没完成的**（已完成的也不再占位，进度看页头 N/13）；**旧口径「自由选择完成 ＋ `prereq` 只控可见」作废**
  *   （`prereq` 字段已删）。**判定同样只认当前那一条**（见 `advanceFirstTasks`）：后面的条目即便条件已满足
  *   也**不提前判过**（不提前发奖励/情报信/成就），等轮到那一拍按档内现状补齐（自愈、进度不丢）。
+ * - **末段并列批**（**同日第三道令**：「**完成 11 · 第一次指派 AI 副船后，就可以将寻找人类和第一次长途运输
+ *   以及 第一次虫洞同时显示给玩家。寻找人类位于顶部。**」）：前 **11 条**仍顺序解锁、一次一条；
+ *   它们走完 ⇒ 「第一次长途运输」「第一次虫洞」**一起显示、互不阻塞**（判定也一起判，见 `PARALLEL_TAIL_IDS`），
+ *   贯穿任务「寻找人类」由 `onboarding.publishFindHumansWhenReady` **改在此时发布**、由 `ImportantTasks.tsx`
+ *   画在列表**顶部**（旧口径「13 条全完成才出现」作废）。
+ *   同日第三道令还给**三条原先没有实物奖励**的条目（打捞 / 挂单 / 指派 AI 副船）各补 **10,000 信用点**。
  *   链（里程碑）本身从开局就在累计，但**只在对应的「第一次」完成后才上「里程碑任务」页**
  *   （判据见 `milestoneBoard` 的 `unlocked`）。
  */
@@ -188,7 +194,31 @@ export function dsiStanding(state: GameState): number {
   return state.standings?.[DSI_FACTION_ID] ?? 0
 }
 
-/** 13 条「第一次」任务（**数组序 = 解锁序**：`visibleFirstTasks` 只放当前这一条；2026-09-20 顺序解锁口径） */
+/**
+ * **末段并列批**（**2026-09-20 船长第三道令**：「**完成 11 · 第一次指派 AI 副船后，就可以将寻找人类
+ * 和第一次长途运输以及 第一次虫洞同时显示给玩家。寻找人类位于顶部。**」）。
+ *
+ * 口径：**前 11 条**（「第一次扫描」…「第一次指派 AI 副船」）仍**顺序解锁、一次一条、只判当前那一条**；
+ * 它们走完 ⇒ 这三条**一起显示**——本表只管这两条「第一次」（`visibleFirstTasks` 同时返回两条），
+ * 贯穿任务「寻找人类」不在 `FIRST_TASKS` 里，由 `ImportantTasks.tsx` 画在列表**顶部**。
+ * 并列期间各条**互不阻塞**：判据谁先满足谁先判过（同拍可以判过多条）。
+ */
+export const PARALLEL_TAIL_IDS: readonly string[] = ['first-haul', 'first-wormhole']
+
+/** 该条是否属于末段并列批（顺序段 = 其余 11 条） */
+export function isParallelTail(id: string): boolean {
+  return PARALLEL_TAIL_IDS.includes(id)
+}
+
+/**
+ * **顺序段是否已走完**（前 11 条全完成）——末段并列批与「寻找人类」发布闸门（`onboarding`）共用这一条判据。
+ * 判据读 `state` 现状 ⇒ 每拍现算、幂等（老档与异常中断都能自愈）。
+ */
+export function sequentialPrefixDone(state: GameState): boolean {
+  return FIRST_TASKS.every((d) => isParallelTail(d.id) || state.importantTasks[d.id]?.done === true)
+}
+
+/** 13 条「第一次」任务（**数组序 = 解锁序**：顺序段只放当前这一条；末段并列批见 `PARALLEL_TAIL_IDS`） */
 export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-scan',
@@ -200,7 +230,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     /**
      * 奖励（**2026-09-20 船长令**：「采集器和打捞器给的任务应该往前调，**采集器是扫描星系给**」）：
      * **采集器 MK1** 从「第一次采集原矿」前移到本条——新手第一步就能拿到，装上再去采矿。
-     * （本条此前无实物奖励；前移前的对照见 `docs/design/first-task-reward-move-20260920.md`。）
+     * （本条此前无实物奖励；前移前后的对照见 `docs/roadmap.md` 2026-09-20「首次任务奖励前移」那条。）
      */
     reward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }] },
     chain: { id: 'explorer', name: '宇宙探索家', stat: 'scan', tierKey: 'scan' },
@@ -244,15 +274,22 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     chain: { id: 'refiner', name: '精炼师', stat: 'refineBatches', tierKey: 'refineBatches' },
   },
   {
-    id: 'first-salvage',
-    title: '第一次打捞残骸',
-    brief: '到残骸地点打捞一批',
-    detail: '星系里的残骸点可以派船打捞：保底原材料直接入炉，带稀有标记的残骸更值钱，回收炉还能把旧件重新解体成整件装备。',
-    judge: (state) => (state.firstStats?.salvageRuns ?? 0),
-    commsId: 'first-salvage',
-    // ⚠ **本条自 2026-09-20 起没有实物奖励**（船长令：打捞器 MK1 前移到「第一次采集原矿」）——完成只发情报信
-    //   （卡片上落回「情报信一封」）。日后要给本条补一件奖励，在这里加 `reward` 即可。
-    chain: { id: 'scavenger', name: '残骸拾荒者', stat: 'salvageRuns', tierKey: 'salvageRuns' },
+    /**
+     * **位置：第 4 条**（**2026-09-20 船长第三道令**：「**将第一次完成悬赏和第一次打捞残骸交换位置。**」⇒
+     * 悬赏与打捞对调：原序 打捞(4) → 维修(5) → 悬赏(6)，现序 **悬赏(4) → 维修(5) → 打捞(6)**）。
+     *
+     * 换过来顺带理顺了新手的先后：**先打一场拿钱**（教学场还有本舰主控加成；赢下那一场会在该星系
+     * 留下残骸）⇒ 回港把开局那身 80% 损伤修掉 ⇒ 再带上打捞器去收残骸（第 6 条）。
+     */
+    id: 'first-bounty',
+    title: '第一次完成悬赏',
+    brief: '打赢一场悬赏讨伐',
+    detail: '常驻悬赏按威胁分档：档位越高敌人越厚、火力越重，报酬与协会声望也越高。声望是协会渠道的通行证，市场门槛与虫洞扫描都看它。',
+    judge: (state) => (state.firstStats?.bountyWins ?? 0),
+    commsId: 'first-bounty',
+    // 奖励（船长 2026-09-18）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
+    reward: { ships: [{ defId: 'sh-falconet', units: 1 }] },
+    chain: { id: 'hunter', name: '赏金猎人', stat: 'bountyWins', tierKey: 'bountyWins' },
   },
   {
     id: 'first-repair',
@@ -266,15 +303,20 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     chain: { id: 'mechanic', name: '维修技师', stat: 'repairs', tierKey: 'repairs' },
   },
   {
-    id: 'first-bounty',
-    title: '第一次完成悬赏',
-    brief: '打赢一场悬赏讨伐',
-    detail: '常驻悬赏按威胁分档：档位越高敌人越厚、火力越重，报酬与协会声望也越高。声望是协会渠道的通行证，市场门槛与虫洞扫描都看它。',
-    judge: (state) => (state.firstStats?.bountyWins ?? 0),
-    commsId: 'first-bounty',
-    // 奖励（船长 2026-09-18）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
-    reward: { ships: [{ defId: 'sh-falconet', units: 1 }] },
-    chain: { id: 'hunter', name: '赏金猎人', stat: 'bountyWins', tierKey: 'bountyWins' },
+    /**
+     * **位置：第 6 条**（同上第三道令：与「第一次完成悬赏」对调）。
+     *
+     * 奖励（**同令**：「**没有给予奖励的任务，安排 1 万信用点的奖励填充。**」）⇒ **10,000 信用点**：
+     * 本条原先只有情报信（打捞器 MK1 已在第 2 条「第一次采集原矿」发过，不重复）。
+     */
+    id: 'first-salvage',
+    title: '第一次打捞残骸',
+    brief: '到残骸地点打捞一批',
+    detail: '星系里的残骸点可以派船打捞：保底原材料直接入炉，带稀有标记的残骸更值钱，回收炉还能把旧件重新解体成整件装备。',
+    judge: (state) => (state.firstStats?.salvageRuns ?? 0),
+    commsId: 'first-salvage',
+    reward: { isk: 10_000 },
+    chain: { id: 'scavenger', name: '残骸拾荒者', stat: 'salvageRuns', tierKey: 'salvageRuns' },
   },
   {
     id: 'first-produce',
@@ -295,6 +337,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     detail: '市场吃三路单子：协会挂出的常驻买卖单、玩家自留的挂单、以及贴着价线巡游的抢单。挂价越贴收购线成交越快，挂得高则是在赌巡游采购上门。',
     judge: (state) => (state.firstStats?.orders ?? 0),
     commsId: 'first-order',
+    // 奖励（**2026-09-20 船长第三道令**：「没有给予奖励的任务，安排 1 万信用点的奖励填充」）：10,000 信用点
+    reward: { isk: 10_000 },
     // 2026-09-18 船长改口径：「挂单按照市场交易收入计数」⇒ 判据从挂单张数改成税后交易收入
     chain: { id: 'marketeer', name: '市场老手', stat: 'marketIncome', tierKey: 'marketIncome' },
   },
@@ -334,6 +378,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     // 船长 2026-09-17：「将安排 AI 核心的任务设置为需要玩家完成学习技能才出现」
     judge: (state) => (state.firstStats?.aiAssigns ?? 0),
     commsId: 'first-ai',
+    // 奖励（**2026-09-20 船长第三道令**：「没有给予奖励的任务，安排 1 万信用点的奖励填充」）：10,000 信用点
+    reward: { isk: 10_000 },
     chain: { id: 'dispatch', name: '舰队调度', stat: 'aiAssigns', tierKey: 'aiAssigns' },
   },
   {
@@ -428,11 +474,26 @@ export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
    * 等它轮到那一拍自然补齐（判据是 `state` 现状 ⇒ 自愈、进度不丢）；**一拍最多判过一条**。
    * ⚠ 老档迁移（`save.ts` MIGRATIONS[25]）是把 13 条**一次性**判完成，不经过这里 ⇒ 不受影响。
    */
-  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
-  if (!current) return []
-  if (current.judge(state, ctx) < 1) return []
-  state.importantTasks[current.id] = { done: true }
-  return [current.id]
+  const current = FIRST_TASKS.find((d) => !isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
+  if (current) {
+    if (current.judge(state, ctx) < 1) return []
+    state.importantTasks[current.id] = { done: true }
+    return [current.id]
+  }
+  /**
+   * **末段并列批**（船长 2026-09-20 第三道令）：前 11 条走完 ⇒ 「第一次长途运输」「第一次虫洞」
+   * **一起显示**（「寻找人类」另由 `ImportantTasks.tsx` 画在顶部）⇒ 判定**不再互相阻塞**：
+   * 条目各自独立判过（同拍可能判过多条，返回值就是那一批）。
+   */
+  const out: string[] = []
+  for (const def of FIRST_TASKS) {
+    if (!isParallelTail(def.id)) continue
+    if (state.importantTasks[def.id]?.done === true) continue
+    if (def.judge(state, ctx) < 1) continue
+    state.importantTasks[def.id] = { done: true }
+    out.push(def.id)
+  }
+  return out
 }
 
 /**
@@ -581,16 +642,19 @@ export function unlockNeedTitle(key: string): string | undefined {
   return need === undefined ? undefined : FIRST_TASKS.find((d) => d.id === need)?.title
 }
 /**
- * 任务中心用：**顺序解锁**——只给 `FIRST_TASKS` 里**第一条还没完成的**（它前面的都已完成）。
+ * 任务中心用：**顺序解锁**——顺序段只给 `FIRST_TASKS` 里**第一条还没完成的**（它前面的都已完成）；
+ * **顺序段走完 ⇒ 末段并列批一起给**（「第一次长途运输」＋「第一次虫洞」，见 `PARALLEL_TAIL_IDS`；
+ * 「寻找人类」不在本表，由 `ImportantTasks.tsx` 画在顶部）。
  * 全部完成 ⇒ 空数组（页头读数走 `firstTaskProgress`）。
  * ⚠ **2026-09-20 船长（玩家反馈）**：「新手引导的重要任务一次性太多了，建议按顺序排列解锁」
  * ⇒ 旧口径「13 条自由选择完成 ＋ `prereq` 只控可见、可多线并行」**作废**（`prereq` 字段已删）。
- * ⚠ 本函数与 `advanceFirstTasks` 的"当前那一条"**是同一把尺**（都 = 数组序里第一条 `done !== true`）：
- * 显示哪一条就只判哪一条——这正是船长同日第二道令「未显示的第一次任务可以提前完成」的修法。
+ * ⚠ 本函数与 `advanceFirstTasks` 的"当前那一条 / 当前那一批"**是同一把尺**：
+ * 显示哪些就只判哪些——这正是船长同日第二道令「未显示的第一次任务可以提前完成」的修法。
  */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
-  const next = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
-  return next ? [next] : []
+  const next = FIRST_TASKS.find((d) => !isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
+  if (next) return [next]
+  return FIRST_TASKS.filter((d) => isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
 }
 
 /** 「第一次」的页头读数：**已完成条数 / 总条数**（顺序解锁下"当前第几条"= done + 1） */
@@ -603,27 +667,31 @@ export function firstTaskProgress(state: GameState): { done: number; total: numb
  * **导航「任务中心」的推进提醒**（**2026-09-20 船长令**：「**每推进一阶段第一次任务时，在导航栏的
  * 任务中心选项处进行提醒**」）。
  *
- * 判据 = **当前那一条 ≠ 玩家看过的那一条**（与「赏金新板提示」同款"换板未看"口径，见
+ * 判据 = **当前"显示组"的签名 ≠ 玩家看过的那一组**（与「赏金新板提示」同款"换板未看"口径，见
  * `sideTasks.sideTaskBoard().bountyFresh`）：
- * - 完成一条 ⇒ 下一条顶上 ⇒ `state.firstTaskSeenId` 还是旧的 ⇒ 亮；
+ * - 顺序段：显示组恒为一条 ⇒ 签名就是那条 id（**与旧档存的单条 id 逐字一致 ⇒ 零迁移**）；
+ * - 末段并列批：签名为两条 id 以 `|` 连接（一次性提醒"多了这两条"）；
  * - 进「任务中心」页 ⇒ `firstTasksMarkSeen` 记一笔 ⇒ 灭；
- * - **全部 13 条做完**（没有"当前那一条"）⇒ 不亮。
+ * - **13 条全做完**（没有显示组）⇒ 不亮。
  *
  * ⚠ 老档没有 `firstTaskSeenId` ⇒ 首帧亮一次（与赏金那条「老档默认亮起提示」同一处置）。
- * 返回值带标题：徽标的悬停文案要写清"新的是哪一条"。
+ * 返回值带标题：徽标的悬停文案要写清"新的是哪一条"（并列批时用「、」把两条串起来）。
  */
 export function firstTaskNotice(state: GameState): { taskId: string; title: string } | null {
-  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
-  if (!current) return null
-  if (state.firstTaskSeenId === current.id) return null
-  return { taskId: current.id, title: current.title }
+  const shown = visibleFirstTasks(state)
+  if (shown.length === 0) return null
+  const sig = shown.map((d) => d.id).join('|')
+  if (state.firstTaskSeenId === sig) return null
+  return { taskId: shown[0]!.id, title: shown.map((d) => d.title).join('、') }
 }
 
-/** **记一笔"这一条看过了"**（进「任务中心」页时调用；幂等：同一条不写第二次）。返回是否真的记了。 */
+/** **记一笔"这一组看过了"**（进「任务中心」页时调用；幂等：同一组不写第二次）。返回是否真的记了。 */
 export function firstTasksMarkSeen(state: GameState): boolean {
-  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
-  if (!current || state.firstTaskSeenId === current.id) return false
-  state.firstTaskSeenId = current.id
+  const shown = visibleFirstTasks(state)
+  if (shown.length === 0) return false
+  const sig = shown.map((d) => d.id).join('|')
+  if (state.firstTaskSeenId === sig) return false
+  state.firstTaskSeenId = sig
   return true
 }
 

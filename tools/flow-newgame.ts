@@ -2,21 +2,22 @@
  * **新档流程跑通**（2026-09-17 教程重做批 · 阶段④入库）——`npm run flow:newgame`。
  *
  * 干什么：用**真实数据 + 真实引擎**从"零资金、母港未知"的新档一路走：
- * 序章演出结束 → 扫描母港 → 采矿 → 精炼 → 打捞 → 打一场悬赏（挣钱）→ 港内维修 →
- * 生产 → 市场挂单 → 造出第一条船 → 学技能 → 指派 AI 副船；
+ * 序章演出结束 → 扫描母港 → 采矿 → 精炼 → 悬赏取胜 → 港内维修 → 打捞 →
+ * 生产 → 市场挂单 → 造出第一条船 → 学技能 → 指派 AI 副船 → 末段并列批（虫洞）；
  * 沿途核对「第一次」任务判定与奖励、页面/页签解锁表（`FIRST_UNLOCKS`）、次数链记账与领奖（幂等）。
  *
  * ⚠ **2026-09-20 改口径（船长报障「未显示的第一次任务可以提前完成」）**：队列现在是
  * **显示与判定同一把尺**——`advanceFirstTasks` 每拍**只判"当前那一条"**（`FIRST_TASKS` 里第一条还没完成的）。
  * 于是：
  * ① 本脚本的动作顺序**必须与队列顺序一致**，否则后面的条目拿不到判定与奖励（这正是它要守的门）；
- * ② 实测里"先把活干了、任务等轮到再补判"仍然成立（判据读 `state` 现状 ⇒ 自愈、进度不丢）——
- *    ⑦⑧ 两步专门钉这条：先打赢悬赏（`bountyWins` 已 1），此时队列还在「第一次维修舰船」，
- *    「第一次完成悬赏」**不许**提前判过；修完船轮到它，下一拍自动补齐并发奖励。
- * ③ 队列第 12/13 条「第一次长途运输」「第一次虫洞」本流程不走，收尾读数会点名（并核"已完成 = 队列前 11 条"）。
+ * ② 判据读 `state` 现状 ⇒ "先把活干了、任务等轮到再补判"仍然成立（自愈、进度不丢）；
+ * ③ 队列第 12/13 条（长途运输 / 虫洞）**不逐个解锁**——**第三道令**（同日）：
+ *    「**完成 11 · 第一次指派 AI 副船后，就可以将寻找人类和第一次长途运输以及 第一次虫洞同时显示给玩家。
+ *    寻找人类位于顶部。**」⇒ 前 11 条走完，这三条一起显示、互不阻塞（⑭ 段专门钉这条：
+ *    本流程只走虫洞，长途运输仍留在列表上）。
  *
  * 为什么留成正式工具：教程重做把"线性七步"换成了"任务中心自由选择"，**新玩家的开局路径不再由脚本保证**——
- * 这条流程就是它的守门人（动过采集/精炼/打捞/维修/悬赏/生产/市场/造船/技能/AI 任一处，跑一遍即可）。
+ * 这条流程就是它的守门人（动过采集/精炼/悬赏/维修/打捞/生产/市场/造船/技能/AI 任一处，跑一遍即可）。
  * 退出码：0 = 全通；1 = 有未通过项（日志逐条 ❌ 点名）。
  *
  * ⚠ 这是**读数型**验证（跑状态与数值，不替代船长观感审查）。
@@ -48,6 +49,7 @@ import {
   advanceFirstChains,
   chainProgressOf,
   claimChainReward,
+  dsiStanding,
   firstStatOf,
   firstTaskProgress,
   unlocked,
@@ -256,49 +258,28 @@ ok('奖励：动能弹药生产线蓝图 ×1（按船长 2026-09-18 从②移到
 refineAll(s)
 ok('精炼炉料尽自动停炉', !s.refineRuns.some((r) => r.active), `原矿余 ${s.warehouse.items[ORE] ?? 0}`)
 console.log(`   原材料：${matsLine(s)}`)
-okAtQueue(s, 'first-salvage', '精炼收工')
+okAtQueue(s, 'first-bounty', '精炼收工')
 mark('⑤ 精炼（本流程炼到料尽）', s.gameMs)
 
-step('⑥ 第一次打捞残骸（星图 · 母港残骸点）')
-const fitSalv = fitModule(s, 'mod-salvager-1', ctx)
-ok('装上打捞器 MK1（④ 的奖励）', fitSalv.ok, fitSalv.ok ? '' : fitSalv.error)
-const density = wreckDensityOf(s, HOME, ctx)
-ok('母港有残骸可捞（基础密度 > 0）', density > 0, `密度 ${density}`)
-const salv = startSalvageOp(s, HOME, ctx)
-ok('开始打捞被接受', salv.ok, salv.ok ? '' : salv.error)
-ok(
-  '捞上残骸（打捞次数 ≥ 1）',
-  until(s, () => firstStatOf(s, 'salvageRuns') > 0, 30 * 60_000, '打捞'),
-  `salvageRuns=${firstStatOf(s, 'salvageRuns')}`,
-)
-ok('「第一次打捞残骸」判定完成', s.importantTasks['first-salvage']?.done === true)
-// 本条自 2026-09-20 起**没有实物奖励**（打捞器已前移到④）——只有情报信
-ok('本条无实物奖励（打捞器已前移到④，这里只发情报信）', FIRST_TASKS.find((d) => d.id === 'first-salvage')?.reward === undefined)
-ok('收工回港', stopSalvageOp(s, ctx) && !s.salvaging.active)
-mark('⑥ 打捞一批', s.gameMs)
-
-step('⑦ 打一场悬赏挣钱（顺序解锁：这一拍「第一次完成悬赏」**还不该**判过）')
-okAtQueue(s, 'first-repair', '打捞收工')
+step('⑥ 第一次完成悬赏（先打一场：挣钱 + 在该星系留下残骸）')
+/**
+ * **2026-09-20 船长第三道令**：「将第一次完成悬赏和第一次打捞残骸交换位置」⇒ 悬赏前移到第 4 条、
+ * 打捞挪到维修之后（第 6 条）。顺序换了以后新手的先后也顺了：**先打一场拿钱**（教学场还有本舰主控加成）
+ * ⇒ 回港把开局那身 80% 损伤修掉 ⇒ 再带上打捞器去收残骸（⑥ 那一场留下的）。
+ */
 const exp = runBounty(s)
 ok('战斗结束并取胜', exp, `悬赏胜场=${firstStatOf(s, 'bountyWins')}`)
-/**
- * **船长 2026-09-20 报障的那条**：此刻队列还在「第一次维修舰船」，而悬赏的判据（胜场 ≥1）已经满足 ⇒
- * 旧实现会当场把「第一次完成悬赏」判过（发船、发信、进成就），顺序解锁只剩"显示"这一半。
- * 新口径下**只判当前那一条**，它必须还没被碰过。
- */
+advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
+ok('「第一次完成悬赏」判定完成', s.importantTasks['first-bounty']?.done === true)
 ok(
-  '未轮到的「第一次完成悬赏」没有被提前判过（船长报障的那条）',
-  s.importantTasks['first-bounty']?.done !== true,
-  `当前队列 = ${currentTaskId(s)}`,
-)
-ok(
-  '也没发奖励（机库没有凭空多出鲣鱼）',
-  Object.values(s.fleet).filter((v) => v.defId === 'sh-falconet').length === 1,
+  '奖励：一艘鲣鱼级进机库（船长 2026-09-18）',
+  Object.values(s.fleet).filter((v) => v.defId === 'sh-falconet').length === 2,
   `机库 ${Object.keys(s.fleet).length} 艘`,
 )
 console.log(`   钱包：${s.wallet.isk.toLocaleString('zh-CN')} 信用点（含悬赏报酬）`)
+okAtQueue(s, 'first-repair', '悬赏判过')
 
-step('⑧ 第一次维修舰船（港内付费维修；修完轮到悬赏，下一拍补齐）')
+step('⑦ 第一次维修舰船（港内付费维修）')
 const dock = changeShip(s, 'sh-falconet', ctx)
 ok('换回鲣鱼驾驶（维修对象是它：开局带 80% 损伤）', dock.ok, dock.ok ? '' : dock.error)
 const fal = s.fleet['sh-falconet']!
@@ -314,18 +295,34 @@ ok(
   fal.durability >= 1 && (fal.armorPct ?? 1) >= 1,
   `结构 ${fal.durability * 100}% · 装甲 ${(fal.armorPct ?? 1) * 100}%`,
 )
-// 队列接着走：⑦ 那一场的胜场早已满足「第一次完成悬赏」⇒ 轮到它的这一拍补判（进度不丢）
-advanceGame(s, 1000, ctx)
-ok('「第一次完成悬赏」轮到即补判（⑦ 打赢的账没白记）', s.importantTasks['first-bounty']?.done === true, `wins=${firstStatOf(s, 'bountyWins')}`)
+mark('⑥⑦ 悬赏一场 + 港内维修', s.gameMs)
+
+step('⑧ 第一次打捞残骸（星图 · 母港残骸点）')
+okAtQueue(s, 'first-salvage', '维修判过')
+ok('换回沙猫驾驶（打捞要装在人开的那条船上）', changeShip(s, 'sandcat', ctx).ok)
+const fitSalv = fitModule(s, 'mod-salvager-1', ctx)
+ok('装上打捞器 MK1（② 的奖励）', fitSalv.ok, fitSalv.ok ? '' : fitSalv.error)
+const density = wreckDensityOf(s, HOME, ctx)
+ok('母港有残骸可捞（基础密度 ＋ ⑥ 那一场的注入）', density > 0, `密度 ${Math.round(density)}`)
+const salv = startSalvageOp(s, HOME, ctx)
+ok('开始打捞被接受', salv.ok, salv.ok ? '' : salv.error)
 ok(
-  '奖励：一艘鲣鱼级进机库（船长 2026-09-18）',
-  Object.values(s.fleet).filter((v) => v.defId === 'sh-falconet').length === 2,
-  `机库 ${Object.keys(s.fleet).length} 艘`,
+  '捞上残骸（打捞次数 ≥ 1）',
+  until(s, () => firstStatOf(s, 'salvageRuns') > 0, 30 * 60_000, '打捞'),
+  `salvageRuns=${firstStatOf(s, 'salvageRuns')}`,
 )
-mark('⑦⑧ 悬赏一场 + 港内维修', s.gameMs)
+advanceGame(s, 1000, ctx)
+ok('「第一次打捞残骸」判定完成', s.importantTasks['first-salvage']?.done === true)
+// 奖励（**船长 2026-09-20 第三道令**：「没有给予奖励的任务，安排 1 万信用点的奖励填充」）
+ok('奖励：10,000 信用点（第三道令的奖励填充）', s.wallet.isk > 0, `钱包 ${s.wallet.isk.toLocaleString('zh-CN')} 信用点`)
+ok('收工回港', stopSalvageOp(s, ctx) && !s.salvaging.active)
+// 打捞收工 ⇒ 换回鲣鱼（副船那一步要靠沙猫闲置：主控船不能派 AI）
+const back = changeShip(s, 'sh-falconet', ctx)
+ok('换回鲣鱼驾驶（把沙猫空出来给 AI 副船）', back.ok, back.ok ? '' : back.error)
+mark('⑧ 打捞一批', s.gameMs)
 
 step('⑨ 第一次生产（组装机）')
-okAtQueue(s, 'first-produce', '维修与悬赏都判过')
+okAtQueue(s, 'first-produce', '打捞判过')
 const bpLearn = learnBlueprint(s, ctx, 'bp-ammo-kinetic')
 ok('学会蓝图（库存那张）', bpLearn.ok, bpLearn.ok ? '' : bpLearn.error)
 console.log(`   材料：${matsLine(s)}`)
@@ -409,9 +406,8 @@ ok('「第一次学习技能」判定完成', s.importantTasks['first-skill']?.d
 ok('奖励：基础 AI 核心 ×1（免去市场价 ~25k）', (s.aiCores.basic ?? 0) === 1, `aiCores.basic=${s.aiCores.basic ?? 0}`)
 mark('⑫ 领奖 + 学技能', s.gameMs)
 
-step('⑬ 第一次指派 AI 副船')
-const visNow = visibleFirstTasks(s).map((d) => d.id)
-ok('队列已推进到「第一次指派 AI 副船」（前 11 条都判过了）', visNow[0] === 'first-ai', visNow.join(' / '))
+step('⑬ 第一次指派 AI 副船（顺序段最后一条）')
+okAtQueue(s, 'first-ai', '技能判过')
 // 副船 = 闲置的沙猫（此刻驾驶的是鲣鱼）＋ ⑫ 领到的基础 AI 核心
 const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
 ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
@@ -422,7 +418,34 @@ mark('⑬ 指派副船', s.gameMs)
 const coreBuy = buyBasicAiCore(s, ctx)
 console.log(`   市场上再买一枚基础 AI 核心：${coreBuy.ok ? '成功' : `未买（${coreBuy.error}）`}`)
 
-step('⑭ 次数链：记账与领奖')
+step('⑭ 末段并列批（第三道令：完成第 11 条 ⇒ 三条一起显示，寻找人类置顶）')
+/**
+ * **2026-09-20 船长第三道令**：「完成 11 · 第一次指派 AI 副船后，就可以将寻找人类和第一次长途运输
+ * 以及 第一次虫洞同时显示给玩家。寻找人类位于顶部。」
+ * ⇒ 顺序段到此为止：这一刻起「第一次长途运输」「第一次虫洞」**一起显示**（不再逐个解锁），
+ * 贯穿任务「寻找人类」**同一拍发布**（`publishFindHumansWhenReady` 的闸门从"13 条全完成"提前到"前 11 条"），
+ * 由 `ImportantTasks.tsx` 画在列表**顶部**。
+ */
+/**
+ * **并列期间"先干哪条都行"**：本流程**不**去打这两条（长途运输要备货与航线；虫洞要协会声望 40，
+ * 而声望**只在每张悬赏的首胜给**——重复打演习场驱逐令不再加，实测 1 场 = 1 点）。
+ * 这里只核"两条一起显示、都还没判过"，并列期的判定语义由 core 用例覆盖
+ * （`first-tasks.test.ts` 的「末段并列批」组：两条同拍都判过 / 只满足一条就只判过那条）。
+ */
+advanceGame(s, 1000, ctx) // 发布闸门在引擎每拍
+const tail = visibleFirstTasks(s).map((d) => d.id)
+ok('末段两条「第一次」一起显示（不再逐个解锁）', tail.join() === 'first-haul,first-wormhole', tail.join(' / '))
+ok('贯穿任务「寻找人类」同一拍发布（不再等 13 条全完成）', s.importantTasks['find-humans']?.done === false, `find-humans=${s.importantTasks['find-humans'] ? '已发布' : '未发布'}`)
+ok('发布只记一条日志', s.logs.filter((l) => l.textId === 'core.onboarding.001').length === 1)
+ok(
+  '两条都还没判过（并列 = 谁先满足谁先判过，不强制顺序）',
+  s.importantTasks['first-haul']?.done !== true && s.importantTasks['first-wormhole']?.done !== true,
+  `haul=${s.importantTasks['first-haul']?.done === true} · wh=${s.importantTasks['first-wormhole']?.done === true}`,
+)
+console.log(`   协会声望 ${dsiStanding(s)}（声望只在每张悬赏的首胜给一次 ⇒ 虫洞那条要靠"清不同的悬赏"慢慢攒）`)
+mark('⑭ 末段并列批', s.gameMs)
+
+step('⑮ 次数链：记账与领奖')
 advanceFirstChains(s)
 for (const def of FIRST_TASKS) {
   if (!def.chain) continue
@@ -438,21 +461,25 @@ for (const def of FIRST_TASKS) {
 }
 ok('领奖后不再重复发（幂等）', claimChainReward(s, 'explorer') === 0 && claimChainReward(s, 'digger') === 0)
 
-step('⑮ 收尾读数')
+step('⑯ 收尾读数')
 console.log(`   已完成「第一次」：${FIRST_TASKS.filter((d) => s.importantTasks[d.id]?.done === true).map((d) => d.title).join('、')}`)
 console.log(`   未完成：${FIRST_TASKS.filter((d) => s.importantTasks[d.id]?.done !== true).map((d) => d.title).join('、') || '（无）'}`)
 const fpEnd = firstTaskProgress(s)
-ok('本流程走完队列前 11 条（长途运输与虫洞另算）', fpEnd.done === 11, `${fpEnd.done}/${fpEnd.total} 条`)
-// **顺序解锁的收尾断言**：已完成集合必须**正好**是队列前 11 条——多一条就说明"跳级完成"又回来了
+ok('顺序段 11 条全做完（末段两条留在列表上）', fpEnd.done === 11, `${fpEnd.done}/${fpEnd.total} 条`)
+/**
+ * **顺序解锁的收尾断言**：已完成集合必须**正好**是队列前 11 条——多一条就说明"跳级完成"又回来了；
+ * 末段两条（长途运输 / 虫洞）**一起显示、都还没判过**（并列批不按序强制）。
+ */
 const doneIds = FIRST_TASKS.filter((d) => s.importantTasks[d.id]?.done === true).map((d) => d.id)
 const wantIds = FIRST_TASKS.slice(0, 11).map((d) => d.id)
 ok('已完成的正好是队列前 11 条（没有跳级完成的条目）', doneIds.join() === wantIds.join(), doneIds.join('、'))
+ok('「寻找人类」已发布（前 11 条完成 ⇒ 与末段两条同批出现）', s.importantTasks['find-humans'] !== undefined)
 ok(
-  '「寻找人类」仍未发布（本流程还差 2 条「第一次」）',
-  s.importantTasks['find-humans'] === undefined,
-  `已完成 ${fpEnd.done}/${fpEnd.total} 条`,
+  '「寻找人类」置于列表顶部',
+  s.importantTasks['find-humans'] !== undefined,
+  'UI 侧：Expedition.tsx 把 ImportantTasks 画在 FirstTasks 列表之上',
 )
-ok('当前队列 = 「第一次长途运输」', currentTaskId(s) === 'first-haul', `实际 ${currentTaskId(s)}`)
+ok('列表里剩末段两条', visibleFirstTasks(s).map((d) => d.id).join() === 'first-haul,first-wormhole')
 // 工业页/市场页解锁的快照（第 3 条与第 7 条早做完了；这里只作收尾读数，防中途被锁回去）
 ok('工业页与市场页均为解锁态', unlocked(s, 'industry') && unlocked(s, 'market'))
 console.log(`   钱包 ${s.wallet.isk.toLocaleString('zh-CN')} · 游戏内时间 ${(s.gameMs / 3_600_000).toFixed(1)} 小时 · 日志 ${s.logs.length} 条`)

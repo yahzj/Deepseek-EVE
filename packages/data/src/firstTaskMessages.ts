@@ -50,6 +50,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '残骸堆拆解出的保底原材料可直接入炉；带稀有标记的残骸价值更高。',
       '回收炉能把残骸里的旧件重新解体成整件装备，值得留一批专门拆。',
+      '随信附 10,000 信用点——打捞作业的现结报酬。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-salvage' },
     hint: { text: '在星图里挑一处残骸地点', page: 'map' },
@@ -119,6 +120,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '市场吃三路单子：协会挂出的常驻买卖单、自留的挂单、以及贴着价线的巡游抢单。',
       '挂价越贴近收购价线，成交越快；挂得高就是在赌巡游采购的运气。',
+      '随信附 10,000 信用点——挂单成交前的周转金。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-order' },
     hint: { text: '市场页可以看行情与我的挂单', page: 'market' },
@@ -160,6 +162,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '闲置舰船配上 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。',
       '每项指派占一枚核心；核心等级越高，作业效率越高。',
+      '随信附 10,000 信用点——副船的补给与周转。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ai' },
     hint: { text: '舰船页可给副船派活', page: 'ship' },
