@@ -273,6 +273,35 @@
 **研究通道已通**（一旦有谜质就会自动点），但要真正吃到这条线，
 需要**改虫洞政策去拾取装置**，而那会与"层深优先"抢回合 —— **这是下一轮的取舍点**。
 
+## 四之三、⚠⚠ 合入 main 的真实状态（第十八轮查清 · 与我此前的说法不同，务必先看）
+
+**结论：不能直接 merge。`d2/workspace` 已与 main 分叉，且我的分支在共享文件上是"旧版本"。**
+
+硬证据（第十八轮实测）：
+
+| 检查 | 结果 |
+|---|---|
+| `git merge-base HEAD main` | **`b0ee4974`**（"merge: 追平 main" —— 那是我最后一次追平，**此后没再合过 main**） |
+| 分歧点之后 **main 侧**新增 | **29 个提交**（其他 worker 的工作，如 `feat(ui): 主控活动窗口补齐演出细节…`） |
+| 分歧点之后 **我侧**新增 | **44 个提交**（全部是我的工具与文档） |
+| `git branch --contains ea546c1f` | **只有 `d2/workspace`** ⇒ 我的工具工作**一个提交都没进 main** |
+| `git diff --name-only main..HEAD` | 含 **45 个与工具无关的文件**（`packages/core/src/*`、`apps/desktop/*`、别人的 `docs/design/*`） |
+
+⚠ **那 45 个文件不是"我要带过去的新改动"，而是"我的分支还停在 main 的旧版本上"** ——
+`main..HEAD` 的 diff **看不到"main 有、我没有"的那 29 个提交**，直接 merge 会把它们**退回去**。
+**所以绝不能直接 `git merge d2/workspace` 进 main。**
+
+**正确的合入方式（下一轮二选一）**：
+1. **只搬我的工件**（最小风险，推荐）：把这几个文件逐个搬到 main ——
+   `tools/playthrough-sim.ts`、`docs/design/playthrough-sim-20260921.md`、
+   `docs/design/playthrough-sim-resume.md`、`docs/design/balance-bounty-vs-wormhole-20260921.md`
+   （用 `git checkout d2/workspace -- <path>`，**不经变量中转**），在 main 上单独提交，**不碰其他 45 个文件**。
+2. **先把 main 合进我的分支再合回去**：在 `d2/workspace` 上 `git merge main`、解冲突、
+   复跑四闸门与全量模拟，再整体合回 main。历史最干净但代价大。
+
+⚠ **另记**：远程不可达（`git fetch` 报 `Failed to connect to github.com:443`）⇒ 推送本来也做不了，
+本批只能停在"本地提交"这一层。
+
 ## 五、不要重犯的坑（都踩过）
 
 - ⚠⚠ **`armorPct` / `durability` 的取值是 0~1，`1` = 满**（不是 0~100！第四轮我用原始值实测确认：
