@@ -63,6 +63,7 @@ import {
   recallExpedition,
   salvagerCyclesOf,
   setMiningAutoCycle,
+  setAmmoTier,
   startExpedition,
   startManufacturing,
   startMining,
@@ -175,6 +176,20 @@ const ANOMALY_LIST = [...ctx.anomalies.values()].filter((a) => !a.hidden)
 const SHIP_LIST = [...ctx.ships.values()].filter((s) => s.role === 'armed' || s.role === 'armored').sort((a, b) => a.priceIsk - b.priceIsk)
 const AMMO_KEYS = ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']
 const AMMO_GOODS = [...ctx.marketGoods.values()].filter((g) => AMMO_KEYS.includes(g.refId))
+/** 弹药 **MK2** 三族的市场行（`items.ts`：`ammo-<族>-2`，纯数值上级、**+33% 单发**） */
+const AMMO_MK2_GOODS = [...ctx.marketGoods.values()].filter((g) =>
+  ['ammo-kinetic-2', 'ammo-explosive-2', 'ammo-plasma-2'].includes(g.refId),
+)
+/**
+ * **"可以开始花钱换战力"的现金门槛**（2026-09-21 第十批定）。
+ *
+ * 为什么需要这道闸：第五轮两个隔离实验（装船体维修装置 / 换 MK2 弹药）**都因为挤占早期现金
+ * 而整体退化**（维修装置 ⇒ 现金 −34%；MK2 弹药 ⇒ 现金掉到 4.5 万、层深 0）。
+ * 而本模拟的经济是**前紧后松**：第 12 天 8 亿、第 60 天 **286 亿**
+ * ⇒ 把"多花钱换战力"的支出**推迟到 10 亿目标基本达成之后**，就能既拿战力、又不拖垮那条目标。
+ * 取 **8 亿**（留安全边际；实测第 12 天左右越过）。
+ */
+const SPEND_FOR_POWER_ISK = 800_000_000
 
 function beltValue(b: { oreId: string; outputs?: ReadonlyArray<{ itemId: string; weight: number }> }): number {
   const rows = b.outputs?.length ? b.outputs : [{ itemId: b.oreId, weight: 1 }]
@@ -1083,6 +1098,40 @@ function buyShipAndGear(): void {
     if (countWare(state, g.refId) < 500) {
       const want = 1000 - countWare(state, g.refId)
       if (state.wallet.isk > want * g.basePrice * 2 + 30_000) buyAtMarket(state, ctx, g.key, want)
+    }
+  }
+  /**
+   * **弹药选高档 MK2**（2026-09-21 第十批 · 隔离实验 3，**带现金门槛**）。
+   *
+   * 引擎口径（`combat.resolveAmmoTier`）：开战按"**同族取能装得最多的一档**"装载，
+   * 平局才看"本船 `ammoPref` ＞ 基础弹 ＞ 其余"；而本工具**从没设过 `ammoPref`**、
+   * 也只买基础弹 ⇒ 平局永远落在基础弹上（白丢 **+33% 单发**：动能 6→8 / 爆破 7→9 / 能量 9→12）。
+   *
+   * ⚠ 第五轮**不带门槛**地做过一次，结果**前期经济被打崩**（现金 4.5 万、层深 0）
+   * ⇒ 现加 `SPEND_FOR_POWER_ISK` 闸：**只在 10 亿目标基本达成后才开始换高档弹**。
+   * 备货量要**高于基础弹**（MK2 备 2000、基础弹 1000）：排序第一键是"可装量最大者优先"，
+   * MK2 少于基础弹时平局规则救不了它；`ammoPref` 是第二道保险。
+   */
+  if (state.wallet.isk >= SPEND_FOR_POWER_ISK) {
+    for (const g of AMMO_MK2_GOODS) {
+      if (countWare(state, g.refId) < 1500) {
+        const want = 2000 - countWare(state, g.refId)
+        buyAtMarket(state, ctx, g.key, want)
+      }
+    }
+    for (const uid of Object.keys(state.fleet)) {
+      const def = fleetDefOf(state, ctx, uid)
+      if (!def || (def.role !== 'armed' && def.role !== 'armored')) continue
+      const pref = state.fleet[uid]?.ammoPref ?? {}
+      for (const [type, id] of [
+        ['kinetic', 'ammo-kinetic-2'],
+        ['explosive', 'ammo-explosive-2'],
+        ['plasma', 'ammo-plasma-2'],
+      ] as const) {
+        if (pref[type] === id) continue
+        if (countWare(state, id) < 100) continue
+        setAmmoTier(state, ctx, type, id, uid)
+      }
     }
   }
   // 无人机补给（装配外战力：bay 自动放飞；drone-sentry/assault/heavy 各备 5 架）
