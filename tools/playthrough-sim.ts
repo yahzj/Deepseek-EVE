@@ -1943,16 +1943,21 @@ function doWormhole(): boolean {
     whBattleSeen = false
     /**
      * ⚠ **进洞时记一份"甲/结构实况"**（2026-09-21 加，为验收维修到底有没有生效）：
-     * 层深读数里的"我方残血 %"**包含护盾**（`wormholeHpFrac` 把格内单位的 s+a+h 比上限），
+     * 层深读数里的"我方残血 %"**包含护盾**（`wormholeHpFrac` 把格内单位的甲+结构比上限），
      * 而护盾每场战斗重置 ⇒ 那个百分比**不是"进场血"**。
      * 真正跨趟留存的是 `armorPct` / `durability` ⇒ 只有把它们打出来，才能判断
      * "到达第 1 层 40%"是"进场就残"还是"打了一场很贵的胜仗"。
+     *
+     * ⚠⚠ **两者取值是 0~100，不是 0~1**（2026-09-21 踩到，害我误判一整轮）：
+     * 首版写成 `Math.round((f.armorPct ?? 1) * 100)`，于是存的是 26 时打印成 **2600%**；
+     * 更糟的是我把"残船准入闸"写成 `>= 0.25`，在那个尺度下**恒为真**、闸完全没生效，
+     * 于是一边以为"已经挡掉残船了"、一边看着 `甲0%` 的船照样进洞。默认值也因此要是 **100**。
      */
     const armor = fleetIds
       .map((uid) => {
         const f = state.fleet[uid]
         if (!f) return null
-        return `甲${Math.round((f.armorPct ?? 1) * 100)}%结${Math.round((f.durability ?? 1) * 100)}%`
+        return `甲${Math.round(f.armorPct ?? 100)}%结${Math.round(f.durability ?? 100)}%`
       })
       .filter((x): x is string => !!x)
     mark(`虫洞进洞（第 ${whStats.entries} 趟 · 编队 ${fleetIds.length} 艘 · ${armor.join(' ')}）`)
