@@ -53,7 +53,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-civ',
     name: '民用采集器',
-    slot: 'miner',
+    slot: 'miner',
     workEfficiency: 0, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.1,
@@ -63,7 +63,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-1',
     name: '强化采集器 MK1',
-    slot: 'miner',
+    slot: 'miner',
     workEfficiency: 0.2, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.2,
@@ -73,7 +73,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-2',
     name: '强化采集器 MK2',
-    slot: 'miner',
+    slot: 'miner',
     workEfficiency: 0.4, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.5,
@@ -83,7 +83,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-3',
     name: '精密采集器 MK3',
-    slot: 'miner',
+    slot: 'miner',
     workEfficiency: 0.6, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.8,
@@ -93,7 +93,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-miner-proto',
     name: '异星原型采集器',
-    slot: 'miner',
+    slot: 'miner',
     workEfficiency: 0.8, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 1.1,
@@ -665,6 +665,35 @@ export const MODULES: readonly ModuleDef[] = [
       '每 30 秒脉冲充能，恢复护盾上限的 64%。',
   },
 
+  /* ══════════ 护盾充能力场装置（2026-09-20 船长：「新增高槽装备，护盾充能力场装置 MK2，
+     为所有我方舰船恢复 10% 护盾，冷却时间 10 秒，MK3 的冷却时间缩短至 8 秒。有叠加惩罚。
+     都只有一次性蓝图。一次性蓝图在稀有。装备成品在奇货。MK2 和 MK3 的稀有度分别是 4 和 5。
+     平均价格分别是 400W 和 2000W」）
+     —— **高槽 · 护盾族（`slot: 'shield-field'`，`rackOf` 归 high）**：与上面的「护盾充能装置」
+        （中槽 · 只治本舰 · 固定 30 秒）是**两套独立机制**——本件**治全队**、冷却**按件自带**。
+     ⚠ 两件都**没有 MK1**（与「巨构近防炮」「隐秘行动装置」同款：直接 MK2 起步，MK2/MK3 成对）；
+        两件都**只有一次性蓝图**（`singleUse`），成品走奇货。 ══════════ */
+  {
+    id: 'mod-shieldfield-2',
+    name: '护盾充能力场装置 MK2',
+    slot: 'shield-field',
+    rack: 'high',
+    shieldFieldPct: 0.1,
+    shieldFieldMs: 10_000,
+    cpuUse: 55,
+    description: '每 10 秒展开力场，为我方全队恢复各自护盾上限的 10%。',
+  },
+  {
+    id: 'mod-shieldfield-3',
+    name: '护盾充能力场装置 MK3',
+    slot: 'shield-field',
+    rack: 'high',
+    shieldFieldPct: 0.1,
+    shieldFieldMs: 8_000,
+    cpuUse: 80,
+    description: '每 8 秒展开力场，为我方全队恢复各自护盾上限的 10%。',
+  },
+
   // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入）
   // 2026-09-10 船长定：装甲容量与抗性相关装备 CPU **统一下调 20%**（四舍五入到整数） ══════════
   {
@@ -1092,7 +1121,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-salvager-1',
     name: '打捞器 MK1',
-    slot: 'salvager',
+    slot: 'salvager',
     workEfficiency: 0.2, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     cpuUse: 2,
@@ -1102,7 +1131,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-salvager-2',
     name: '打捞器 MK2',
-    slot: 'salvager',
+    slot: 'salvager',
     workEfficiency: 0.4, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     cpuUse: 6,
@@ -1112,7 +1141,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-salvager-3',
     name: '打捞器 MK3',
-    slot: 'salvager',
+    slot: 'salvager',
     workEfficiency: 0.6, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     cpuUse: 15,

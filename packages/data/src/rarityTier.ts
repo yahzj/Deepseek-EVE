@@ -579,6 +579,14 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'frag-mod-miner-3': 3,
   'frag-mod-cargo-3': 3,
   'frag-mod-turret-kin-3': 3,
+  /* ── 护盾充能力场装置（2026-09-20 船长：「MK2 和 MK3 的稀有度分别是 4 和 5」＋
+     「（一次性蓝图）和装备一致稀有度」）⇒ 成品与书**各按 4 / 5**，共四条 ──
+     ⚠ 书放**稀有渠道**且档 5 ⇒ 令 rare 渠道出现档 5，与旧"rare 带 2~4"冲突
+     ⇒ `content:check` 的该带按船长裁定放宽为 **2~5**（见 changelog 同日那条）。 */
+  'mod-shieldfield-2': 4,
+  'mod-shieldfield-3': 5,
+  'bp-shieldfield-2': 4,
+  'bp-shieldfield-3': 5,
 }
 
 /**

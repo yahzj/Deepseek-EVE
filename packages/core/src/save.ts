@@ -19,6 +19,7 @@ import {
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
 import type { AchievementEarned } from './state'
+import type { BattleShieldFieldLedger } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
 import type { FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
@@ -408,6 +409,9 @@ const BATTLE_FIELDS = {
   // 且**必须随档**：漏了会让僚舰的预载组件与计时在战中重载后凭空消失（与 `myFleet` 漏登记的后果同类）。
   repairBy: { kind: 'persist' },
   shieldChargeBy: { kind: 'persist' },
+  // 2026-09-20 船长：护盾充能力场账本（每 N 秒一跳的计时 + 累计跳数）——**必须随档**：
+  // 漏了会让战中重载后力场计时重置（= 白赚一跳），与 `shieldCharge` 同理。
+  shieldFieldBy: { kind: 'persist' },
   // 2026-09-16 船长：敌方后勤账本（每 5 秒一跳的计时 + 累计修复量）——**必须随档**：
   // 漏了会让战中重载后敌方修理计时重置（= 白赚一跳），与 `repair`/`shieldCharge` 同理。
   foeRepair: { kind: 'persist' },
@@ -573,6 +577,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     return out
   })()
   const shieldChargeBy = cleanLedgerMap(b.shieldChargeBy, cleanShieldCharge)
+  /** 力场账本（2026-09-20 新增；与 `shieldChargeBy` 分开：冷却按件、受益方是全队） */
+  const shieldFieldBy = cleanLedgerMap(b.shieldFieldBy, cleanShieldField)
   const dronePools = cleanDronePools(b.dronePools)
   const foeDronePools = cleanFoeDronePools(b.foeDronePools)
   const droneLost = cleanCountMap(b.droneLost)
@@ -652,6 +658,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     // ── 2026-09-16 逐舰维修（船长裁定「甲」）：逐舰账本同样**必须随档**（丢了 ⇒ 僚舰的组件凭空消失）──
     ...(repairBy !== undefined ? { repairBy } : {}),
     ...(shieldChargeBy !== undefined ? { shieldChargeBy } : {}),
+    // 2026-09-20 力场账本（丢了 ⇒ 战中重载后力场计时重置 = 白赚一跳）
+    ...(shieldFieldBy !== undefined ? { shieldFieldBy } : {}),
     // 2026-09-16 敌方后勤账本（丢了 ⇒ 战中重载后敌方修理计时重置）
     ...(foeRepair !== undefined ? { foeRepair } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
@@ -867,6 +875,27 @@ function cleanShieldCharge(raw: unknown): BattleState['shieldCharge'] | undefine
   const nextPulseAtMs = cleanPosNum(r.nextPulseAtMs)
   return {
     pctPerPulse,
+    pulses: Math.floor(cleanPosNum(r.pulses) ?? 0),
+    ...(nextPulseAtMs !== undefined ? { nextPulseAtMs } : {}),
+  }
+}
+
+/**
+ * **护盾充能力场运行态**（开战写入；2026-09-20 船长新增件）。
+ * 清洗口径与 `cleanShieldCharge` 同款（坏值丢键、不崩、零迁移）：**比例与冷却都必须为正**
+ * 否则视为无装置 —— 冷却为 0 会让脉冲循环里 `nextPulseAtMs += 0` 原地打转（`guardF` 兜底但无意义）。
+ */
+function cleanShieldField(raw: unknown): BattleShieldFieldLedger | undefined {
+  const r = asRaw(raw)
+  if (Object.keys(r).length === 0) return undefined
+  const pctPerPulse = cleanPosNum(r.pctPerPulse)
+  const msPerPulse = cleanPosNum(r.msPerPulse)
+  if (pctPerPulse === undefined || pctPerPulse <= 0) return undefined
+  if (msPerPulse === undefined || msPerPulse <= 0) return undefined
+  const nextPulseAtMs = cleanPosNum(r.nextPulseAtMs)
+  return {
+    pctPerPulse,
+    msPerPulse,
     pulses: Math.floor(cleanPosNum(r.pulses) ?? 0),
     ...(nextPulseAtMs !== undefined ? { nextPulseAtMs } : {}),
   }

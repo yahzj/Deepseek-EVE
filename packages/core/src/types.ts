@@ -1132,6 +1132,13 @@ export type ModuleSlot =
   /** 2026-09-11 船长：协处理器（低槽，装配 CPU 预算扩容；见 ModuleDef.cpuBonus） */
   | 'cpu'
   | 'target-lock'
+  /**
+   * 2026-09-20 船长：「**新增高槽装备，护盾充能力场装置**」——**护盾族**，但**装在高槽**
+   * （见 `ModuleDef.shieldFieldPct`；`rack` 在数据侧显式写 `high`）。
+   * ⚠ 与 `shield`（中槽·护盾装置）分开一族：`rackOf` 的缺省推导是一族一槽，
+   * 单独成族才能让"族 → 槽"保持一一对应（否则要处处依赖显式 `rack`）。
+   */
+  | 'shield-field'
 
 /** V18 槽类（高/中/低；数量制无尺寸位）。舰船槽位布局 = ShipDef.slots 数量 */
 export type RackSlot = 'high' | 'mid' | 'low'
@@ -1341,10 +1348,23 @@ export interface ModuleDef {
    * 无消耗件 ⇒ 同型多件按 EVE 曲线收敛（见 `combat.shieldPulsePctOf`）。
    */
   shieldPulsePct?: number
+  /* ═══ 2026-09-20 护盾充能力场装置（船长：「新增高槽装备，护盾充能力场装置 MK2……为所有我方舰船
+     恢复 10% 护盾，冷却时间 10 秒，MK3 的冷却时间缩短至 8 秒。有叠加惩罚」）——**高槽 · 护盾族**
+     ⚠ 与上面的 `shieldPulsePct`（中槽 · 只作用于**本舰** · 固定 30 秒）是**两套独立机制**：
+     力场是**全队**补盾、且冷却**按件自带**；两者可同装、各按各的节奏跳。 ═══ */
+  /**
+   * **力场每跳的补盾比例**（占**每艘被治疗舰自己**的满盾的几分之几，如 0.1 = 10%）。
+   * 作用对象 = **我方全队存活单位**（不是只本舰）；按各舰**自身满盾**算（船长裁定
+   * 「按携带者自己的满盾」——即每艘船按自己那本账）。
+   * **同舰多件**按 EVE 曲线收敛（`stackWeight`）；**多艘船各带一件 ⇒ 各自独立、可叠加**（船长裁定）。
+   */
+  shieldFieldPct?: number
+  /** **力场脉冲冷却**（ms；MK2 = 10 000 · MK3 = 8 000）。缺省 = 不调度 */
+  shieldFieldMs?: number
   /**
    * 结构层（hull）抗性缺口削减（2026-09-10 船长：异形损管件"大幅提高结构抗性"）——
    * 语义与 shieldResistAdd/armorResistAdd 相同（按系缺口复合，上限 0.9）；
-   * 此前只有船体自带 hullResist，模块无法加，本字段为模块侧入口。
+   * 此前只有船体自带 hullResist，模块侧无入口，本字段为那处入口。
    */
   hullResistAdd?: DamageResists
   /* ═══ V18.1 支援件（support 家族：效果字段判别；多件收敛见 equipment.stackingOf） ═══ */

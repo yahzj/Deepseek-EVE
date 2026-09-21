@@ -26,6 +26,7 @@ export const MODULE_SLOTS: readonly ModuleSlot[] = [
   'support',
   'cpu',
   'target-lock',
+  'shield-field',
 ]
 
 /** 槽位中文名（装配页与日志共用；V18 无人机装置家族同样落在"家族徽标"语义） */
@@ -45,6 +46,7 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
   support: '支援件',
   cpu: '协处理器',
   'target-lock': '锁定装置',
+  'shield-field': '护盾力场',
 }
 
 /** 槽位中文名（单点实现） */
@@ -103,6 +105,8 @@ export function rackOf(def: {
   )
     return 'high'
   if (def.slot === 'shield' || def.slot === 'propulsion') return 'mid'
+  // 2026-09-20 护盾充能力场装置：**护盾族但装高槽**（船长「新增高槽装备」＋「归属护盾族」）
+  if (def.slot === 'shield-field') return 'high'
   // 采集器 / 打捞器：高槽（船长 2026-09-14「改回高槽」——低槽口径作废）
   if (def.slot === 'miner' || def.slot === 'salvager') return 'high'
   // 2026-09-11 协处理器：低槽（与装甲/货舱/支援件同槽类竞争——占一个低槽换 CPU 预算）

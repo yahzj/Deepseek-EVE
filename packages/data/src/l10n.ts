@@ -265,6 +265,10 @@ export const EN_MODULES: EnTable = {
   'mod-shieldchg-1': { name: 'Shield Recharger MK1', description: 'Pulse recharge every 30 s, restoring 24% of max shield.' },
   'mod-shieldchg-2': { name: 'Shield Recharger MK2', description: 'Pulse recharge every 30 s, restoring 40% of max shield.' },
   'mod-shieldchg-3': { name: 'Shield Recharger MK3', description: 'Pulse recharge every 30 s, restoring 64% of max shield.' },
+  /* 护盾充能力场装置（2026-09-20 船长）：高槽 · 护盾族 —— 与上一条中槽「Shield Recharger」区分开：
+     本件治**全队**（"Field"），冷却按件自带（10 s / 8 s）。 */
+  'mod-shieldfield-2': { name: 'Shield Charge Field MK2', description: 'Deploys a field every 10 s, restoring 10% of each ship’s max shield to the whole fleet.' },
+  'mod-shieldfield-3': { name: 'Shield Charge Field MK3', description: 'Deploys a field every 8 s, restoring 10% of each ship’s max shield to the whole fleet.' },
   'mod-armor-kin-1': { name: 'Armor Plating MK1 · Kinetic', description: '+25% kinetic resistance (cap 90%). Plating that counters kinetic ammo.' },
   'mod-armor-exp-1': { name: 'Armor Plating MK1 · Explosive', description: '+25% explosive resistance (cap 90%). Explosives hit armor at ×1.5 — this is the first line of defense.' },
   'mod-armor-pla-1': { name: 'Armor Plating MK1 · Energy', description: '+25% energy resistance (cap 90%). A heat-shielding scheme.' },
@@ -947,6 +951,8 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-shieldchg-1': 'Shield recharge circuit plans: rebuild the generator bank into a time-shared bus that can force a recharge cycle.',
   'bp-shieldchg-2': 'High-power shield recharge circuit plans: a dedicated recharge bus that doubles the shield restored per tick.',
   'bp-shieldchg-3': 'Capital-grade shield recharge circuit plans: one tick brings an empty shield back to fighting strength.',
+  'bp-shieldfield-2': 'Shield charge field emitter plans: a wide-area emitter that recharges the whole fleet at once.',
+  'bp-shieldfield-3': 'High-power shield charge field plans: a faster cycle lets the field recharge the fleet more often.',
   'bp-armor-kin-1': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads.',
   'bp-armor-exp-1': 'Explosive-resistant armor plating: a honeycomb backing plate vents blast pressure outboard.',
   'bp-armor-pla-1': 'Energy-resistant armor plating: an ablative coating carries beam heat away by vaporizing itself.',

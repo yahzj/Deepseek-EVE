@@ -2577,6 +2577,60 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 10_000_000, // 2026-09-20 船长定：高级零件蓝图书价 1,000 万（常驻市场）
     description: '高级零件：需学习蓝图后在组装机制造。',
   },
+
+  /* ══════════ 护盾充能力场装置 · 一次性图纸（2026-09-20 船长：「都只有一次性蓝图。
+     一次性蓝图在稀有。装备成品在奇货」）
+     ⚠ **与全仓既有的 31 张一次性图不同的一点（船长裁定 · 本批首次）**：那 31 张一律
+        **只收不卖**（市场行 `playerBuyable: false`，只能靠掉落）；这两张按船长的话
+        「**一次性蓝图在稀有**」⇒ **上稀有渠道且玩家可买**（不写 `playerBuyable` = 默认 true）。
+     口径（沿用一次性图既有契约）：**书价 = 产物价**（`bp-wh-e-shield` 那条先例）·
+        材料价 = 产物价 × **45%**（本批按 45% 配平，实测 45.1% / 45.0%）。 ══════════ */
+  {
+    id: 'bp-shieldfield-2',
+    name: '护盾充能力场装置图纸 MK2（一次性）',
+    moduleId: 'mod-shieldfield-2',
+    singleUse: true,
+    materials: [
+      { itemId: 'min-tritanium', count: 93_065 },
+      { itemId: 'min-pyerite', count: 23_265 },
+      { itemId: 'min-mexallon', count: 2_325 },
+      { itemId: 'min-darkiron', count: 235 },
+      { itemId: 'part-frame', count: 1_165 },
+      { itemId: 'part-armor-plate', count: 310 },
+      { itemId: 'part-cable', count: 390 },
+      { itemId: 'part-circuit', count: 620 },
+      { itemId: 'part-coolant', count: 350 },
+      { itemId: 'part-shield-gen', count: 95 },
+      { itemId: 'part-qchip', count: 70 },
+    ],
+    buildSeconds: 1_200,
+    buildCostIsk: 0,
+    priceIsk: 4_000_000, // 船长定平均价 400 万；**书价 = 产物价**（一次性图既有口径）
+    description: '护盾充能力场装置 MK2：每 10 秒为我方全队恢复护盾。',
+  },
+  {
+    id: 'bp-shieldfield-3',
+    name: '护盾充能力场装置图纸 MK3（一次性）',
+    moduleId: 'mod-shieldfield-3',
+    singleUse: true,
+    materials: [
+      { itemId: 'min-tritanium', count: 465_325 },
+      { itemId: 'min-pyerite', count: 116_330 },
+      { itemId: 'min-mexallon', count: 11_635 },
+      { itemId: 'min-darkiron', count: 1_165 },
+      { itemId: 'part-frame', count: 5_815 },
+      { itemId: 'part-armor-plate', count: 1_550 },
+      { itemId: 'part-cable', count: 1_940 },
+      { itemId: 'part-circuit', count: 3_100 },
+      { itemId: 'part-coolant', count: 1_745 },
+      { itemId: 'part-shield-gen', count: 465 },
+      { itemId: 'part-qchip', count: 350 },
+    ],
+    buildSeconds: 3_000,
+    buildCostIsk: 0,
+    priceIsk: 20_000_000, // 船长定平均价 2000 万；**书价 = 产物价**
+    description: '护盾充能力场装置 MK3：每 8 秒为我方全队恢复护盾。',
+  },
 ]
 
 
