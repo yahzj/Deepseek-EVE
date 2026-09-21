@@ -250,8 +250,9 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstTaskBoard(state).map((r) => r.def.id)).toEqual(['first-mine'])
 
     // ③ 一次跳完前两条 ⇒ 当前这条永远是"数组序里第一条没完成的"
+    //    ⚠ 第 3 条 = 「第一次操作精炼炉」（**2026-09-20 船长三选②**：它从第 6 条前移到采矿之后）
     state.importantTasks['first-mine'] = { done: true }
-    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-salvage'])
+    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-refine'])
 
     // ④ 13 条全完成 ⇒ 空数组（页头读数走 firstTaskProgress）
     for (const d of FIRST_TASKS) state.importantTasks[d.id] = { done: true }

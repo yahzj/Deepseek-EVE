@@ -79,24 +79,22 @@ describe('新档「母港未知」与前置解锁（船长 2026-09-17）', () =>
       expect(unlocked(state, k), `${k} 应在开局锁上`).toBe(false)
       expect(unlockNeedTitle(k)).toBe('第一次扫描')
     }
-    // 工业页跟「第一次操作精炼炉」**一起**开 ⇒ 提示给的是它的**前一条**
-    expect(unlockNeedTitle('industry')).toBe('第一次完成悬赏')
+    // 工业页跟「第一次操作精炼炉」**一起**开 ⇒ 提示给的是它的**前一条**（精炼已前移到第 3 条 = 采矿之后）
+    expect(unlockNeedTitle('industry')).toBe('第一次采集原矿')
     expect(unlockNeedTitle('market')).toBe('第一次生产')
     // 完成「第一次扫描」⇒ 星图四项一起开（工业/市场仍锁——各有各的前置）
     state.importantTasks['first-scan'] = { done: true }
     for (const k of ['mapMine', 'mapBounty', 'mapSalvage', 'mapHaul']) expect(unlocked(state, k)).toBe(true)
     expect(unlocked(state, 'industry')).toBe(false)
     expect(unlocked(state, 'market')).toBe(false)
-    // 采矿/打捞/维修做完 ⇒ 工业页**仍然锁着**（它等的不是"采矿完成"，而是「精炼」轮到）
-    for (const id of ['first-mine', 'first-salvage', 'first-repair']) {
-      state.importantTasks[id] = { done: true }
-      expect(unlocked(state, 'industry'), `${id} 完成后工业页不该开`).toBe(false)
-    }
-    expect(unlocked(state, 'market')).toBe(false)
-    // 悬赏做完 ⇒ 「第一次操作精炼炉」轮到 ⇒ 工业页与之同时亮起
-    state.importantTasks['first-bounty'] = { done: true }
+    // 采集原矿做完 ⇒ 「第一次操作精炼炉」轮到 ⇒ 工业页与之**同时**亮起（市场另按"第一次生产"）
+    state.importantTasks['first-mine'] = { done: true }
     expect(unlocked(state, 'industry')).toBe(true)
     expect(unlocked(state, 'market')).toBe(false)
+    // 再往后的任务不影响工业页（它已经开了）
+    state.importantTasks['first-refine'] = { done: true }
+    state.importantTasks['first-salvage'] = { done: true }
+    expect(unlocked(state, 'industry')).toBe(true)
     state.importantTasks['first-produce'] = { done: true }
     expect(unlocked(state, 'market')).toBe(true)
   })

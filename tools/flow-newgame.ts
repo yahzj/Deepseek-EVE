@@ -130,7 +130,13 @@ ok('采到原矿', until(s, () => firstStatOf(s, 'mineUnits') > 0, 20 * 60_000, 
 ok('「第一次采集原矿」判定完成', s.importantTasks['first-mine']?.done === true)
 // **2026-09-20 船长令**：打捞器 MK1 从「第一次打捞残骸」前移到本条（挖矿任务就给）⇒ 走到打捞时已在手上
 ok('奖励：打捞器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-salvager-1'] ?? 0) === 1)
-ok('工业页仍锁着（它跟「第一次操作精炼炉」一起开，2026-09-20 船长令）', !unlocked(s, 'industry'))
+// 工业页跟「第一次操作精炼炉」一起开（2026-09-20 船长令 ＋ 三选②：精炼前移到采矿之后 = 第 3 条）
+ok('工业页解锁（与「第一次操作精炼炉」一起开）', unlocked(s, 'industry'))
+ok(
+  '当前这条轮到「第一次操作精炼炉」',
+  visibleFirstTasks(s).map((d) => d.id).join() === 'first-refine',
+  visibleFirstTasks(s).map((d) => d.title).join(' / '),
+)
 // 采一批（精炼按批起炉：**每批 100 单位**，沙猫一趟约 70 ⇒ 新玩家要跑两趟；这就是真实节奏）
 const holdOf = (): number => {
   for (const k of Object.keys(s.fleet)) {
@@ -153,11 +159,8 @@ ok('仓库有原矿可炼（≥ 一批 100）', oreHave >= 100, `${oreId} ×${or
 mark('④ 采矿两趟 + 卸货（"每批 100、一趟约 70"的实际耗时）', s.gameMs)
 
 step('⑤ 第一次操作精炼炉（工业）')
-/**
- * ⚠ **本工具的顺序 ≠ 玩家的顺序**：页面锁是**界面层**的事（App 导航拦截；core 的命令不拦工具与用例），
- * 所以这里能直接起炉。**玩家实际路径**自 2026-09-20 起是：扫描 → 采矿 →（打捞）→ 维修 → 悬赏 → 精炼
- * （工业页在「第一次操作精炼炉」轮到的那一刻才亮）——本流程把悬赏/维修放在后面，读数按脚本顺序给。
- */
+// 精炼是第 3 条（2026-09-20 船长三选②：前移到采矿之后）⇒ **本脚本的顺序 = 玩家顺序**：采矿做完那一拍，
+// 工业页与这张卡同时亮起（页面锁在界面层，core 命令不拦工具与用例）。
 const refine = startRefineRun(s, oreId, 'pilot', ctx)
 ok('起炉被接受', refine.ok, refine.ok ? '' : refine.error)
 ok('精炼出料', until(s, () => firstStatOf(s, 'refineBatches') > 0, 30 * 60_000, '精炼'), `batches=${firstStatOf(s, 'refineBatches')}`)
@@ -202,8 +205,6 @@ ok('接取演习场驱逐令', exp.ok, exp.ok ? '' : exp.error)
 const fleetBefore = Object.keys(s.fleet).length
 ok('战斗结束并取胜', until(s, () => firstStatOf(s, 'bountyWins') > 0 || !s.expedition.active, 20 * 60_000, '战斗'))
 ok('「第一次完成悬赏」判定完成', s.importantTasks['first-bounty']?.done === true, `wins=${firstStatOf(s, 'bountyWins')}`)
-// 工业页跟「第一次操作精炼炉」一起开（2026-09-20 船长令）⇒ 判据是排在精炼**前面全部**做完，
-// 而本流程跳过了「第一次打捞残骸」（收尾处再钉一次"此处仍锁着"）。
 ok(
   '奖励：一艘鲣鱼级进机库（船长 2026-09-18）',
   Object.keys(s.fleet).length === fleetBefore + 1 &&
@@ -302,13 +303,8 @@ ok(
   s.importantTasks['find-humans'] === undefined,
   `已完成 ${fpEnd.done}/${fpEnd.total} 条`,
 )
-// 工业页 = 跟「第一次操作精炼炉」一起开（2026-09-20 船长令）⇒ 判据是排在精炼**前面全部**做完；
-// 本流程跳过了「第一次打捞残骸」 ⇒ 这里应当仍锁着（页面锁在界面层，core 不拦工具，故脚本照样能起炉）
-ok(
-  '工业页仍未解锁（本流程没走打捞 ⇒ 还没轮到「第一次操作精炼炉」）',
-  !unlocked(s, 'industry'),
-  `打捞=${s.importantTasks['first-salvage']?.done === true ? '完成' : '未完成'}`,
-)
+// 工业页解锁的快照（第 3 条「第一次操作精炼炉」已做 ⇒ 早已开着；这里只作收尾读数，防中途被锁回去）
+ok('工业页仍是解锁态（采矿后随「第一次操作精炼炉」一起开）', unlocked(s, 'industry'))
 console.log(`   钱包 ${s.wallet.isk.toLocaleString('zh-CN')} · 游戏内时间 ${(s.gameMs / 3_600_000).toFixed(1)} 小时 · 日志 ${s.logs.length} 条`)
 console.log(`\n${failures === 0 ? '✅ 流程全部通过' : `❌ 有 ${failures} 项未通过`}`)
 process.exit(failures === 0 ? 0 : 1)

@@ -206,6 +206,25 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     chain: { id: 'digger', name: '深空采掘者', stat: 'mineUnits', tierKey: 'mineUnits' },
   },
   {
+    /**
+     * **位置：第 3 条**（**2026-09-20 船长令**「解锁工业界面要和第一次精炼的任务挂钩一起解锁」⇒ 船长三选**②**：
+     * 「把「第一次操作精炼炉」在任务序里前移到采矿之后」）。
+     *
+     * 为什么放在这儿：工业页的解锁判据 = 本条**轮到**（见 `UNLOCK_AT_TASK`）⇒ 采矿一做完，工业页与这张卡
+     * **同时**亮起；顺带让后面那条「第一次打捞残骸」到步时工业页（回收炉）已经可用——它的正文与情报信
+     * 本来就要提到回收炉。
+     */
+    id: 'first-refine',
+    title: '第一次操作精炼炉',
+    brief: '让精炼炉出一批料',
+    detail: '精炼炉按批运转：原料够一批就能起炉，料尽自动停炉，装满则按批续烧。精炼学每级 +6% 产出、高级回收处理每级 +3%，两条练满可到 165%。',
+    judge: (state) => (state.firstStats?.refineBatches ?? 0),
+    commsId: 'first-refine',
+    // 奖励（船长 2026-09-18）：动能弹药生产线蓝图（原挂在②，现按船长裁定移到本条）
+    reward: { blueprints: [{ blueprintId: 'bp-ammo-kinetic', units: 1 }] },
+    chain: { id: 'refiner', name: '精炼师', stat: 'refineBatches', tierKey: 'refineBatches' },
+  },
+  {
     id: 'first-salvage',
     title: '第一次打捞残骸',
     brief: '到残骸地点打捞一批',
@@ -237,17 +256,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     // 奖励（船长 2026-09-18）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
     reward: { ships: [{ defId: 'sh-falconet', units: 1 }] },
     chain: { id: 'hunter', name: '赏金猎人', stat: 'bountyWins', tierKey: 'bountyWins' },
-  },
-  {
-    id: 'first-refine',
-    title: '第一次操作精炼炉',
-    brief: '让精炼炉出一批料',
-    detail: '精炼炉按批运转：原料够一批就能起炉，料尽自动停炉，装满则按批续烧。精炼学每级 +6% 产出、高级回收处理每级 +3%，两条练满可到 165%。',
-    judge: (state) => (state.firstStats?.refineBatches ?? 0),
-    commsId: 'first-refine',
-    // 奖励（船长 2026-09-18）：动能弹药生产线蓝图（原挂在②，现按船长裁定移到本条）
-    reward: { blueprints: [{ blueprintId: 'bp-ammo-kinetic', units: 1 }] },
-    chain: { id: 'refiner', name: '精炼师', stat: 'refineBatches', tierKey: 'refineBatches' },
   },
   {
     id: 'first-produce',
@@ -486,11 +494,12 @@ export const FIRST_UNLOCKS: Readonly<Record<string, string>> = {
  * 精炼炉就在工业页里，按"完成后解锁"会死锁（永远打不开、任务也永远做不完）。
  *
  * ⚠ 旧口径「工业页 ← 第一次采集原矿**完成**」（2026-09-17 船长定的三页前置表）**作废**：
- * 顺序解锁下"采矿"排在「第一次打捞残骸」之前 ⇒ 工业页会比精炼任务早三步出现；
- * 与精炼任务挂钩后，玩家看到那张卡的同时工业页才亮起来（旧并行口径下这两件事本来就是同一刻）。
+ * 顺序解锁下"采矿"当时排在「第一次打捞残骸」之前 ⇒ 工业页会比精炼任务早三步出现。
+ * **2026-09-20 船长三选②**：把「第一次操作精炼炉」**前移到采矿之后（第 3 条）** ⇒ 判据变成"采矿完成"，
+ * 工业页与那张卡**同时**亮起（也顺带让后面那条「第一次打捞残骸」到步时回收炉已经可用）。
  */
 const UNLOCK_AT_TASK: Readonly<Record<string, string>> = {
-  industry: 'first-refine', // 工业页 ← 第一次操作精炼炉**轮到**（前一条 = 第一次完成悬赏）
+  industry: 'first-refine', // 工业页 ← 第一次操作精炼炉**轮到**（它是第 3 条 ⇒ 实际由"采矿完成"触发）
 }
 
 /**
