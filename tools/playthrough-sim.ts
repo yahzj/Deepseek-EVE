@@ -75,10 +75,34 @@ import {
   calcPower,
   repairDeprecatedModules,
   DSI_FACTION_ID,
+  sellShipAtMarket,
 } from '@whale/core'
 import type { GameState, SimContext, AnomalyDef, ShipDef } from '@whale/core'
 import { buildSimContext } from '@whale/data'
-import { advanceBattleFor, startBattleFor } from '../packages/core/src/combat'
+import { advanceBattleFor, startBattleFor, startFleetBattleFor } from '../packages/core/src/combat'
+/**
+ * **虫洞手动趟**要用的入口（船长 2026-09-21：成就走真流程）——
+ * 与 `tools/wormhole-econ.ts` 用的是同一批公开 API，不碰任何内部状态。
+ */
+import {
+  wormholeAdmission,
+  wormholeDescend,
+  wormholeEnter,
+  wormholeExtract,
+  wormholeGridScan,
+  wormholeShipAllowed,
+  wormholeScanBonusOf,
+} from '../packages/core/src/wormhole'
+import { wormholeCardIdForRun } from '../packages/core/src/wormholeFoes'
+import { advanceWormhole, wormholeActivateAt, wormholeTravelTo } from '../packages/core/src/wormholeBattle'
+import { matterTechWhBuffs } from '../packages/core/src/matterTech'
+import {
+  gridCellAt,
+  gridNebulaTargets,
+  gridScanTargets,
+  isExitCell,
+  wormholePathInterceptAt,
+} from '../packages/core/src/wormholeGrid'
 
 const ARGS = process.argv.slice(2)
 const argVal = (name: string, dflt: number): number => {
@@ -94,19 +118,33 @@ const SNAP_MS = Math.max(60_000, Math.round(SNAP_DAYS * 86_400_000))
 const REPORT_IDX = ARGS.indexOf('--report')
 const REPORT = REPORT_IDX >= 0 ? ARGS[REPORT_IDX + 1] : null
 
-/** 目标制（--goal boss|tril|collect|all；可逗号组合；默认 boss=原通关语义） */
+/**
+ * 目标制（`--goal`，可逗号组合；**默认 `bounties,whach,isk1b` = 船长 2026-09-21 定的三条**）：
+ * - `bounties`（**新增**）：**完成所有悬赏** = `completedBounties` 收全 23 张可见悬赏卡；
+ * - `whach`（**新增**）：**虫洞的成就** = 六枚虫洞里程碑（层深 2/3/4/5 ＋ 击破层末守卫 2/4）；
+ * - `isk1b`（**新增**）：**赚到 10 亿 ISK**（钱包）；
+ * - `boss` / `tril` / `collect` / `all`：旧口径原样保留（`boss` = 终局连打 5/5 · `tril` = 万亿 ·
+ *   `collect` = 全收集）——**只在显式指定时才跑**，不再当默认。
+ */
 const GOAL_IDX = ARGS.indexOf('--goal')
-const GOAL_RAW = GOAL_IDX >= 0 ? ARGS[GOAL_IDX + 1] : 'boss'
+const GOAL_RAW = GOAL_IDX >= 0 ? ARGS[GOAL_IDX + 1] : 'bounties,whach,isk1b'
 const goalSet = new Set(GOAL_RAW.split(',').map((s) => s.trim()))
 const WANTS = {
   boss: goalSet.has('all') || goalSet.has('boss'),
   tril: goalSet.has('all') || goalSet.has('tril'),
   collect: goalSet.has('all') || goalSet.has('collect'),
+  /** **新增三条**（船长 2026-09-21）；`all` 也把它们带上 */
+  bounties: goalSet.has('all') || goalSet.has('bounties'),
+  whach: goalSet.has('all') || goalSet.has('whach'),
+  isk1b: goalSet.has('all') || goalSet.has('isk1b'),
 }
-const GOAL_NAMES: Record<'boss' | 'tril' | 'collect', string> = {
+const GOAL_NAMES: Record<'boss' | 'tril' | 'collect' | 'bounties' | 'whach' | 'isk1b', string> = {
   boss: '通关：终局悬赏连打 5/5',
   tril: '万亿现金：钱包 ≥1,000,000,000,000 ISK',
   collect: '全收集：全舰船 + 全可造蓝图 + 全装备',
+  bounties: '完成所有悬赏：23 张可见卡全部首胜',
+  whach: '虫洞成就：层深 5 层 + 击破层末守卫 4 个（六枚里程碑全拿）',
+  isk1b: '赚到 10 亿：钱包 ≥1,000,000,000 ISK',
 }
 
 const ctx: SimContext = buildSimContext()
@@ -446,7 +484,20 @@ function doAi(): void {
 }
 
 /**
- * 驾驶船策略：在港空闲时始终换驾舰队里最强武装/装甲船（powerBonus 最高）。
+ * **船只战力打分（唯一口径 · 2026-09-21 立）**：`档位 × 100 + 槽位总量 × 2`。
+ *
+ * 为什么不看 `powerBonus`：**2026-09-17 起装甲舰的 `powerBonus` 一律是 0**（改吃甲层抗性）；
+ * 旧口径拿它当"谁更能打"，于是**T3 重装巡舰永远输给 T1 护卫舰** ⇒ 模拟全程不升级战舰、
+ * 只会在采矿艇与护卫舰之间来回换驾（实测 50 天：声望卡 10、虫洞 0 进度）。
+ * 新尺与引擎侧"同档战斗舰"的思路一致：档位是主序，槽位总量（重装线天生槽多、能堆抗性/容量）作次序。
+ */
+function shipPowerScore(def: { tier?: number; slots?: { high?: number; mid?: number; low?: number } } | undefined): number {
+  if (!def) return -1
+  return (def.tier ?? 1) * 100 + ((def.slots?.high ?? 0) + (def.slots?.mid ?? 0) + (def.slots?.low ?? 0)) * 2
+}
+
+/**
+ * 驾驶船策略：在港空闲时始终换驾舰队里最强武装/装甲船（按 `shipPowerScore`）。
  * 修复 v1.0 缺陷：useFreeFalconet 每次回港都把驾驶切回白送鲣鱼，导致升级船永远只停在仓库、
  * 终局战力被免费艇封顶（顶配 68% 黑洞——2026-09-05 记录，模拟器自身策略缺陷）。
  */
@@ -465,20 +516,24 @@ function useFreeFalconet(): void {
     if (state.aiAssignments[uid]) continue // 副船出勤中的不抢
     const def = fleetDefOf(state, ctx, uid)
     if (!def || (def.role !== 'armed' && def.role !== 'armored')) continue
-    const power = def.powerBonus ?? 0
+    const power = shipPowerScore(def)
     if (best === null || power > best.power) best = { uid, power }
   }
   if (!best) return
-  const curPower = cur?.powerBonus ?? 0
-  if (best.power > curPower + 0.01 && best.uid !== state.shipId) {
+  const curPower = shipPowerScore(cur)
+  if (best.power > curPower && best.uid !== state.shipId) {
     const bdef = fleetDefOf(state, ctx, best.uid)
     const r = changeShip(state, best.uid, ctx)
-    if (r.ok) mark(`换驾 ${bdef?.name ?? best.uid}（舰队最强，power ${best.power.toFixed(2)}）`)
+    if (r.ok) {
+      mark(`换驾 ${bdef?.name ?? best.uid}（舰队最强，评分 ${best.power}）`)
+      autoFitGear(best.uid)
+    }
   }
 }
 
 /**
- * **舰队主力战船**（2026-09-12 批 4「工具更新」）：舰队里 `powerBonus` 最高的武装/装甲船 uid。
+ * **舰队主力战船**（2026-09-12 批 4「工具更新」，**2026-09-21 改用 `shipPowerScore`**）：
+ * 舰队里最能打的武装/装甲船 uid。
  * ⚠ 与 `useFreeFalconet` 的候选口径**同源**（只认 `armed`/`armored`），但**不看 AI 出勤**——
  * 出勤中的主力要能被**召回**（见 `ensureFlagship`），而不是被当成"舰队里没有这艘船"。
  */
@@ -488,7 +543,7 @@ function bestCombatShipUid(): string | null {
     if (!f) continue
     const def = fleetDefOf(state, ctx, uid)
     if (!def || (def.role !== 'armed' && def.role !== 'armored')) continue
-    const power = def.powerBonus ?? 0
+    const power = shipPowerScore(def)
     if (best === null || power > best.power) best = { uid, power }
   }
   return best?.uid ?? null
@@ -509,7 +564,8 @@ function ensureFlagship(): void {
   if (!best || best === state.shipId) return
   const cur = fleetDefOf(state, ctx, state.shipId)
   const bdef = fleetDefOf(state, ctx, best)
-  if ((bdef?.powerBonus ?? 0) <= (cur?.powerBonus ?? 0) + 0.01) return
+  // ⚠ 与 `bestCombatShipUid` / `useFreeFalconet` **同一把尺**（2026-09-21 起为 `shipPowerScore`）
+  if (shipPowerScore(bdef) <= shipPowerScore(cur)) return
   if (state.aiAssignments[best]) {
     if (!cancelAiTask(state, best, ctx)) return
     mark(`召回主力战船 ${bdef?.name ?? best}（腾出驾驶位）`)
@@ -517,6 +573,18 @@ function ensureFlagship(): void {
   const r = changeShip(state, best, ctx)
   if (r.ok) {
     mark(`换驾 ${bdef?.name ?? best}（主力归驾驶位，power ${(bdef?.powerBonus ?? 0).toFixed(2)}）`)
+    /**
+     * ⚠⚠ **换驾之后必须给这艘战舰配装**（**2026-09-21 修，本批最关键的一处**）。
+     *
+     * 旧口径只换驾、不管配装，而 `autoFitGear()` 是"装到**当前驾驶船**上"的：
+     * 于是每一拍的 `buyShipAndGear()` 都在给**当时驾驶的那条船**买炮装炮 —— 而模拟的驾驶位
+     * 大部分时间在**采矿艇**上（采矿/打捞会把驾驶位交回主控）⇒ 实测日志里赫然是
+     * 「装配 mod-turret-kin-2（**沙猫级采矿艇**）」「装配 mod-turret-kin-3（**沙猫级采矿艇**）」
+     * 而**真正出去打仗的鲣鱼级护卫舰一直是裸的**（第 5/10/15 天快照：驾驶沙猫、0 门），
+     * 对 23 张悬赏里威胁 ≥34 的 15 张预估胜率一律 2% ⇒ 声望卡死在 8~10、虫洞深层也打不动。
+     * 修法：**换驾到战舰的那一刻就把它配满**（`autoFitGear` 现在支持指定 uid）。
+     */
+    autoFitGear(best)
   }
 }
 
@@ -585,50 +653,50 @@ function familyBest(
   return top ? { id: top.id, name: top.name } : undefined
 }
 
-/** 给当前驾驶船自动配装：高槽武器 + 中槽盾 + 低槽甲 + 支援件（逐件尝试，CPU 超了就跳过） */
-function autoFitGear(): void {
-  const cur = fleetDefOf(state, ctx, state.shipId)
+/** 给**指定那艘船**自动配装：高槽武器 + 中槽盾 + 低槽甲 + 支援件（逐件尝试，CPU 超了就跳过）
+ *
+ * ⚠ **2026-09-21 批**：由"只装当前驾驶船"改为**可指定 uid** —— 旧口径只喂驾驶船，于是
+ * "驾驶=采矿艇"的那些拍把炮买下来又装不上去（`fitModule` 按**驾驶船**找空槽，采矿艇高槽不够就白买），
+ * 而真正要打仗的护卫舰一直**裸着空槽**（实测第 20 天：鲣鱼级护卫舰 高槽 0/3、火力 10）。
+ * 现在舰船升级流程显式对**新买的战舰**调用本函数。 */
+function autoFitGear(shipUid: string = state.shipId): void {
+  const cur = fleetDefOf(state, ctx, shipUid)
   if (!cur) return
-  const fitted = state.fleet[state.shipId]?.fitted
+  const fitted = state.fleet[shipUid]?.fitted
   if (!fitted) return
   const allFitted = [...fitted.high, ...fitted.mid, ...fitted.low].filter((x): x is string => x !== null)
   const roomIn = (rack: 'high' | 'mid' | 'low'): boolean => fitted[rack].filter((x) => x !== null).length < (cur.slots?.[rack] ?? 0)
-  // 高槽武器（动能）：空位装买得起的最低档；已有旧枪则升级到买得起最高档
   const GUN_TIERS = ['mod-turret-kin-3', 'mod-turret-kin-2', 'mod-turret-kin-1'] // 高档在前
   const gunGood = (id: string): { key: string; price: number } | undefined => {
     const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'module' && x.refId === id)
     return g ? { key: g.key, price: g.basePrice ?? 100_000 } : undefined
   }
   const highCap = cur.slots?.high ?? 1
+  /**
+   * ⚠ **装炮口径（2026-09-21 修）**：旧写法"空槽先装 1 档、以后逐级升级"在**钱多但档位被
+   * CPU/货架卡住**时会把槽位长期占在最低档（实测：40 天里高槽始终只有 1~2 门 1 档炮）。
+   * 现改为**每个空槽直接装"当前买得起的最高档"**（同一档买不到再降档试）。这也是玩家会做的事。
+   */
   for (let i = 0; i < highCap; i++) {
-    const curGun = fitted.high[i]
-    if (!curGun) {
-      for (const gunId of ['mod-turret-kin-1', 'mod-turret-kin-2', 'mod-turret-kin-3']) {
-        const g = gunGood(gunId)
-        if (!g) continue
-        if (state.wallet.isk < g.price * 1.5 + 20_000) continue
-        buyAtMarket(state, ctx, g.key, 1)
-        if (fitModuleTo(state, gunId)) {
-          mark(`装配 ${gunId}`)
-          break
-        }
+    if (fitted.high[i]) continue
+    const g0 = state.fleet[shipUid]
+    void g0
+    for (const gunId of GUN_TIERS) {
+      const g = gunGood(gunId)
+      if (!g) continue
+      if (state.wallet.isk < g.price * 1.5 + 20_000) continue
+      // 装到**这艘船**上：先把驾驶位切到它（`fitModule` 按驾驶船找槽），装完由调用方决定是否切回
+      const prevShip = state.shipId
+      if (prevShip !== shipUid) {
+        const sw = changeShip(state, shipUid, ctx)
+        if (!sw.ok) return
       }
-    } else {
-      const curTier = GUN_TIERS.indexOf(curGun)
-      if (curTier < 0) continue
-      for (const gunId of GUN_TIERS) {
-        const tier = GUN_TIERS.indexOf(gunId)
-        if (tier >= curTier) continue
-        const g = gunGood(gunId)
-        if (!g) continue
-        if (state.wallet.isk < g.price * 1.5 + 20_000) continue
-        unfitAt(state, 'high', i)
-        buyAtMarket(state, ctx, g.key, 1)
-        if (fitModuleTo(state, gunId)) {
-          mark(`升级武器 ${gunId}`)
-          break
-        }
-        fitModuleTo(state, curGun) // 装不回退旧枪
+      buyAtMarket(state, ctx, g.key, 1)
+      const okFit = fitModuleTo(state, gunId)
+      if (prevShip !== shipUid) changeShip(state, prevShip, ctx)
+      if (okFit) {
+        mark(`装配 ${gunId}（${cur.name}）`)
+        break
       }
     }
   }
@@ -643,8 +711,15 @@ function autoFitGear(): void {
     if (state.wallet.isk < priceRef * 1.5 + 20_000) return
     const good = goodOf('module', defId)
     if (!good) return
+    // 与高槽同理：`fitModule` 按**驾驶船**找槽 ⇒ 给僚舰装件时先切驾驶位
+    const prevShip = state.shipId
+    if (prevShip !== shipUid) {
+      if (!changeShip(state, shipUid, ctx).ok) return
+    }
     buyAtMarket(state, ctx, good.key, 1)
-    if (fitModuleTo(state, defId)) mark(`装配 ${defId}`)
+    const ok = fitModuleTo(state, defId)
+    if (prevShip !== shipUid) changeShip(state, prevShip, ctx)
+    if (ok) mark(`装配 ${defId}（${cur.name}）`)
   }
   const sh = familyBest('shield', (m) => m.shieldHpBonus ?? 0)
   if (sh) tryOne('mid', sh.id, goodOf('module', sh.id)?.basePrice ?? 50_000)
@@ -714,22 +789,71 @@ function doLearnCraft(): void {
 }
 
 let lastShipUpgradeDay = -99
+/**
+ * **升级舰船与配装**（2026-09-21 批大改；旧口径有三个叠加缺陷，实测导致"50 天只有 1 门炮"）：
+ *
+ * ① **升级目标太窄**：旧写法只买 `role === 'armed'` 且 `powerBonus` **更高**的船，且"已拥有就不买"⇒
+ *    模拟手里那条**白送鲣鱼**（power 0.15）会把 0.15 的同级船全过滤掉，而更高档的船都卡在声望门槛上
+ *    ⇒ 全程买不到第二条战舰、只能开着采矿艇出去打（第 20 天火力 10）。
+ *    现改为：**目标 = 能买得起、声望够、且比手上这条更强**（按 `tier → powerBonus → 价` 综合评分），
+ *    允许买**同型第二艘**（虫洞四舰编队正需要），并把"能不能带进虫洞"也算进评分。
+ * ② **买完不配装**：旧写法买船即换驾、**从不给它配炮** ⇒ 新船是裸的，战力反而更低。现在买完立刻
+ *    `autoFitGear(新船)`（并把驾驶位留在它身上）。
+ * ③ **只在 `homeLull()` 里调用**：模拟长期在远征/采矿循环里 ⇒ 这条路径经常整段跑不到。现在主循环
+ *    每拍都会调一次（内部自带"每天至多一次买船"的节流与"在忙就跳过"的守卫）。
+ */
+/**
+ * **战力阶梯：攒钱 → 买下一档战舰 → 当场配满 → 再打更高威胁的卡**
+ * （**2026-09-21 批**，本批最关键的一处修复）。
+ *
+ * 为什么必须显式写一条阶梯：旧口径只会"拟合手里最强的那条船"，而模拟长期只有
+ * **白送鲣鱼级护卫舰（tier 1 / power 0.15）** ⇒ 对 23 张悬赏里**威胁 ≥34 的 15 张**预估胜率一律
+ * **2%**（实测 35 天读数）⇒ 声望永远停在 10、虫洞深层也打不动。而它其实**攒得起**钱
+ * （实测第 45 天 22.7 亿），只是**没有"把钱换成战力"这一步**：
+ *   · 灰鲭鲨级驱逐舰（T2 / power 0.2 / 48 万 / 无声望门槛）—— 第一道门槛
+ *   · 大白鲨级炮舰（T2 / power 0.35 / 110 万 / 声望 7）
+ *   · 长尾鲨级导弹巡洋舰（T3 / power 0.25 / 900 万 / 声望 8）
+ *   · 锤头鲨级炮击巡洋舰（T3 / power 0.25 / 1100 万 / 声望 8）
+ * 阶梯按"够得着的最强"逐级推进；买完**立刻配装**（否则裸船出航反而更弱），并把驾驶位留在它身上。
+ */
 function buyShipAndGear(): void {
   if (meBusy() || !isHome() || state.mining.active) return
+  /**
+   * ⚠ **只在"没有在途远征/扫描/打捞"时动手**：本函数内部会**切驾驶位**（给僚舰装件要先切过去，
+   * 见 `autoFitGear`）——在航活动中切驾驶会与引擎的互斥打架。这三条守卫是 2026-09-21 把本函数
+   * 从 `homeLull()` 里搬出来时补的（旧位置天然满足，搬出来就必须自己判）。
+   */
+  if (state.expedition.active || state.scanning.active || state.salvaging.active) return
   const curDef = fleetDefOf(state, ctx, state.shipId)
-  // 升级船（武装族）：只买"尚未拥有"且更强 powerBonus 的船；每天至多尝试一次
   if (curDef && day() - lastShipUpgradeDay >= 1) {
+    /**
+     * **打分口径（2026-09-21 修）**：旧写法是 `tier*10 + powerBonus*20` —— 而 **2026-09-17 起
+     * 装甲舰的 `powerBonus` 一律是 0**（改成吃甲层抗性了）⇒ 在那把尺下 **T3 重装巡舰永远输给
+     * T1 护卫舰**，模拟于是全程不升级。现改为"**档位 + 槽位总量**"：与引擎侧"同档战斗舰"口径一致
+     * （重装线天生槽多、血厚），**不看 `powerBonus`**。
+     */
+    const scoreOf = (s: { tier?: number; slots?: { high?: number; mid?: number; low?: number } }): number =>
+      (s.tier ?? 1) * 100 + ((s.slots?.high ?? 0) + (s.slots?.mid ?? 0) + (s.slots?.low ?? 0)) * 2
+    const curScore = scoreOf(curDef)
     const owned = new Set<string>()
     for (const f of Object.values(state.fleet)) if (f?.defId) owned.add(f.defId)
     const target = [...ctx.ships.values()]
-      .filter(
-        (s) =>
-          s.role === 'armed' &&
-          (s.powerBonus ?? 0) > (curDef.powerBonus ?? 0) + 0.05 &&
-          !owned.has(s.id) &&
-          state.wallet.isk > s.priceIsk * 1.3 + 400_000,
-      )
-      .sort((a, b) => (b.powerBonus ?? 0) - (a.powerBonus ?? 0))[0]
+      .filter((s) => {
+        if (s.role !== 'armed' && s.role !== 'armored') return false
+        if (!wormholeShipAllowed(s)) return false // 带不进洞的船对"虫洞成就"这条目标没用
+        if (scoreOf(s) <= curScore + 0.01) return false // 不比手上这条强就不买
+        const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'ship' && x.refId === s.id)
+        if (!g) return false
+        if ((g.standingReq ?? 0) > standing()) return false
+        return state.wallet.isk > s.priceIsk * 1.3 + 400_000
+      })
+      /**
+       * **排"够得着的最强"**：先比综合评分（tier → 火力加成），同分再挑**便宜的**。
+       * ⚠ 与旧口径的差别在"允许买**同型第二艘**"：`owned` 只在"同型已满编（4 条）"时才排除
+       * （虫洞四舰编队正需要同型多艘），否则留着它会把所有能打的船都挡在门外。
+       */
+      .filter((s) => Object.values(state.fleet).filter((f) => f?.defId === s.id).length < 4)
+      .sort((a, b) => scoreOf(b) - scoreOf(a) || a.priceIsk - b.priceIsk)[0]
     if (target) {
       const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'ship' && x.refId === target.id)
       if (g) {
@@ -738,10 +862,15 @@ function buyShipAndGear(): void {
           const r = changeShip(state, got.shipUid, ctx)
           if (r.ok) {
             lastShipUpgradeDay = day()
-            mark(`换驾 ${target.name}`)
+            mark(`换驾 ${target.name}（tier ${target.tier ?? 1} · power ${target.powerBonus ?? 0}）`)
+            // ② 买完立刻配装（否则裸船出航，战力还不如旧的）
+            autoFitGear(got.shipUid)
           }
         }
       }
+    } else if (!owned.has(state.fleet[state.shipId]?.defId ?? '')) {
+      // 手上这条不在手里（异常态）⇒ 至少把自己配起来
+      autoFitGear(state.shipId)
     }
   }
   // 弹药补货
@@ -758,7 +887,46 @@ function buyShipAndGear(): void {
       if (g) buyAtMarket(state, ctx, g.key, 5 - countWare(state, droneId))
     }
   }
-  autoFitGear()
+  // ⚠ 每拍都补装一次**当前驾驶船**（受"已装同件/槽满"保护 ⇒ 幂等、不会重复抽血）
+  autoFitGear(state.shipId)
+  /**
+   * **逐舰补装**（**2026-09-21 补**）：`autoFitGear` 只装"传进去的那一艘"，而虫洞要的是
+   * **整队**（最多 4 艘）⇒ 实测编队里 T3 主舰有炮、三艘 T1 僚舰全是**裸的**，
+   * `whReady` 的真跑门于是稳定"0 秒团灭"、一趟都进不去。
+   * ⚠ 原写法"**每拍只补一艘**"太慢：一艘 13 槽要 13 拍才算配齐，4 艘就是几十拍，
+   * 而备战的窗口期本来就不长（买船受现货限制）。现改为**按档位从高到低、每拍最多补 3 艘**
+   * （仍然限量：每条 `autoFitGear` 会真花钱买件，一次全配会把现金抽干、把 10 亿目标挤掉）。
+   * 优先补 `whCapableShips()` 里的船（= 能进洞的那批），再从剩下能带进洞的战斗舰里挑。
+   */
+  const order = whCapableShips().sort(
+    (a, b) => (fleetDefOf(state, ctx, b)?.tier ?? 0) - (fleetDefOf(state, ctx, a)?.tier ?? 0),
+  )
+  for (const uid of Object.keys(state.fleet)) {
+    if (order.includes(uid) || uid === state.shipId) continue
+    const def = fleetDefOf(state, ctx, uid)
+    if (def && (def.role === 'armed' || def.role === 'armored') && wormholeShipAllowed(def)) order.push(uid)
+  }
+  let fittedNow = 0
+  for (const uid of order) {
+    /**
+     * ⚠ **不能跳过"已配满高槽"的船**：同型 4 艘买齐后 `shipPowerScore` 完全相同 ⇒
+     * `ensureFlagship` / `useFreeFalconet` 的 `>` 比较**不会**换驾（也不该换）⇒
+     * 主控永远开着第 1 艘、后买的 3 艘**永远不是驾驶船**。若这里按"驾驶船已在高槽里配好"就跳过，
+     * 那 3 艘就再也轮不到配装（第一版就是这么写的，实测会卡住）。所以**每艘都试**，
+     * "已装同件/槽满"由 `autoFitGear` 自己幂等挡掉（不重复花钱）。
+     */
+    if (uid === state.shipId) continue
+    if (state.aiAssignments[uid]) continue
+    const f = state.fleet[uid]
+    const def = fleetDefOf(state, ctx, uid)
+    if (!f || !def) continue
+    const guns = (f.fitted?.high ?? []).filter(Boolean).length
+    if (guns >= (def.slots?.high ?? 0)) continue
+    if (state.wallet.isk < 300_000) break // 现金保底：不把最后一笔钱全变成炮
+    autoFitGear(uid)
+    fittedNow += 1
+    if (fittedNow >= 3) break
+  }
 }
 
 function fitModuleTo(state: GameState, moduleId: string): boolean {
@@ -851,8 +1019,689 @@ function homeLull(): boolean {
   )
 }
 
+/* ═══════════ 虫洞手动趟（船长 2026-09-21：虫洞成就必须走真流程） ═══════════
+ * 为什么不能用「自动探索」代替：那一档**不写成就账本**（`wormholeAuto` 全文件没有一处
+ * `bumpFirst`/`peakFirst`）——它是"绝不丢船"的挂机收入，不算玩家亲自探索。所以六枚虫洞里程碑
+ * （层深 2/3/4/5 ＋ 击破守卫 2/4）只能由**真进洞、真探格、真打守卫**拿到。
+ *
+ * 本模块**每拍只做一个决策**（与 `doBounty` / `doMine` 同形），时钟仍由主循环的 `advanceGame`
+ * 推——这样虫洞战斗也走引擎自己的 `advanceWormhole`（含倍速/慢镜/收口），不另造一套时钟。
+ * 决策顺序照抄 `tools/wormhole-econ.ts` 的整趟政策（那份是配平过的）：战斗未收口就等 →
+ * 逐层扫描 → 走到出口 → 在出口格激活打守卫 → 按（深度/血量/回合）决定深入或撤离。
+ */
+
+/* ═══════════ 虫洞备战：把编队从"1 艘 T3"堆到"4 艘 T3 满配" ═══════════
+ *
+ * **为什么必须单独有一条备战策略**（2026-09-21 补，船长令三条目标实测暴露）：
+ * `buyShipAndGear` 的买船判据是「**比驾驶船更强**才买」——它天生只会把主控那一艘不断往上换，
+ * 于是模拟的终态稳定是「**1 艘 T3 重装巡舰 + 一堆 T1 僚舰**」，而虫洞是按 **4×T3 满配**口径
+ * 配平的（`tools/wormhole-econ.ts` 参考编队；4×T3 折算质量 14000 ≤ 16000 ⇒ 回合预算 42）：
+ * `whReady` 的真跑门于是稳定把每一趟都拦下（读数「进洞 N 次、深入 0 次」）。
+ *
+ * 本条策略只补"数量"这一维（**档位**由 `buyShipAndGear` 负责往上换、**配装**由逐舰补装负责）：
+ * 舰队里 T3 及以上的战斗舰不足 4 艘时，买**同档最便宜**的那一型（不追"更强"——追更强会一路
+ * 顶到 T4 玄武级（90M/艘）、把 10 亿目标挤掉，而虫洞只要求"够 T3 档、满配"）。
+ *
+ * ⚠ 三条硬约束（都会被引擎/工具自己打回，所以在此先判）：
+ * ① **引擎侧没有"买船每天一艘"的闸**（2026-09-21 核 `buyAtMarket`：只有 `goodLockedReason`
+ *    声望闸 / `bmGateLocked` 暗市闸 / `playerBuyable` / npcSell 库存）——真正的限制是
+ *    **库存**：rare 舰船单张只 1 艘、每 10 分钟抽取窗才刷（`spawnRareSupply`），
+ *    奇货档 1 艘/张、6 小时寿命。所以 4 艘是"**等货**"等出来的，不是被规则限速；
+ * ② **奇货档（如 `ship-hawksbill` 玳瑁级，声望 12）不作为选型**：奇货只 1 艘/张、6h 一刷，
+ *    买 4 艘要 4 张奇货单，太靠运气 ⇒ 选型**只取稀有档**（长尾鲨/锤头鲨/牛鲨/鹦鹉螺/电鳐，
+ *    声望 8、9~15M 一艘，`rareQtyMul` 与抽取都宽得多）；
+ * ③ 钱要留够配装（4 艘 × 13 槽的炮＋抗性件不是小数）：单舰预算按"**留 400 万给装备**"卡。
+ */
+const WH_FLEET_TIER = 3
+const WH_FLEET_SIZE = 4
+/** "虫洞备战待购"那条诊断日志的节流日（`mark` 按文本去重、本函数每拍都调 ⇒ 必须自己按天节流） */
+let lastWhFleetNoteDay = -99
+/** "虫洞待进（门卡在哪）"那条诊断日志的节流日（同理；门每拍都被问一次，且真跑一场很贵） */
+let lastWhGateNoteDay = -99
+/** 门（`whReady` 的真跑）当天的结果缓存：同一天没过就不重算（编队/装备/技能当天基本不变） */
+let lastWhGateDay = -99
+let lastWhGateOk = false
+/** 最近一次"第 1 层真跑"的我方残血比（`-1` = 没赢/没跑起来）；只给 `whGateReason` 报读数用 */
+let lastWhFloor1Hp = -1
+/**
+ * **进洞门的血量余量门槛**（2026-09-21 定）：第 1 层打完后我方三层血残值必须 ≥ 本值才敢进洞。
+ * 依据：实测"第 1 层剩 4.1% 血"那一趟，第 2 层当场团灭、四艘全沉（不可撤退）。
+ *
+ * ⚠ **取值沿革**：0.55 起手（先保命），实测层深卡在 2 —— 同样的余量要求也挡住了"往下走"的判断，
+ * 深一点就撤 ⇒ 层深上不去。现取 **0.45 = 与"撤退线"（`wormholeHpFrac() < 0.45` 就收口）同一个数**：
+ * 门只拦"一进去就必死的编队"，进去之后用撤退线保命。两个数同源，避免"门比撤退线还保守"。
+ * 实测该口径下**阵亡 0 艘**（对比 0.55 档：每趟沉 4 艘）。
+ */
+const WH_ENTRY_HP_MIN = 0.45
+
+/**
+ * **虫洞备战还要多少钱**（仅供报告读数）：缺口 = 还差的 T3+ 战斗舰艘数 ×
+ * （当前最便宜的现货价 or 该档 `basePrice` 中位）× 1，再加每舰 400 万装备预算。
+ * 没有现货时用市场中位价估——这只是"还要攒多少"的量级提示，不是硬闸（硬闸是现货 + 现金）。
+ */
+function needIskForWhFleet(): number {
+  const lack = Math.max(0, WH_FLEET_SIZE - whCapableShips().length)
+  const rows = [...ctx.marketGoods.values()].filter((g) => {
+    if (g.kind !== 'ship' || g.rarity !== 'rare' || g.playerBuyable === false) return false
+    const s = ctx.ships.get(g.refId)
+    return !!s && (s.role === 'armed' || s.role === 'armored') && wormholeShipAllowed(s) && (s.tier ?? 1) >= WH_FLEET_TIER
+  })
+  if (rows.length === 0) return lack * 4_000_000
+  const prices = rows.map((g) => g.basePrice).sort((a, b) => a - b)
+  const mid = prices[Math.floor(prices.length / 2)] ?? 9_000_000
+  return lack * (mid + 4_000_000)
+}
+
+/** 舰队里"能带进洞 + 档位 ≥ 3 + 是战斗舰（武装/装甲）"的艘数（`uid` 列表） */
+function whCapableShips(): string[] {
+  const out: string[] = []
+  for (const uid of Object.keys(state.fleet)) {
+    const f = state.fleet[uid]
+    if (!f) continue
+    const def = fleetDefOf(state, ctx, uid)
+    if (!def) continue
+    if (def.role !== 'armed' && def.role !== 'armored') continue
+    if (!wormholeShipAllowed(def)) continue
+    if ((def.tier ?? 1) < WH_FLEET_TIER) continue
+    out.push(uid)
+  }
+  return out
+}
+
+/**
+ * **虫洞备战**：舰队凑够 `WH_FLEET_SIZE` 艘 T3+ 战斗舰（每拍至多买一艘，买不到就等下一张供给单）。
+ * 只在"要冲虫洞成就 + 还没凑够"时动手；`whach` 目标一旦达成即自然停手（不再抽血）。
+ */
+function ensureWhFleet(): void {
+  if (!WANTS.whach || goalDone.whach) return
+  if (meBusy() || !isHome()) return
+  if (state.expedition.active || state.scanning.active || state.salvaging.active || state.mining.active) return
+  if (whCapableShips().length >= WH_FLEET_SIZE) return
+  /**
+   * 候选 = **稀有档 + 声望够 + T3+ 战斗舰**，按"**现货价**"升序（不是 `basePrice`：
+   * rare 单是二手市场折价单，实际成交价 = `basePrice × priceJitter × secondhandMul`，
+   * 只拿 `basePrice` 当闸会把"其实买得起"的船挡掉——`stockedFirst` 那套排序口径与之一致）。
+   *
+   * ⚠ **T3 买齐后不再刷新**（2026-09-21 修）：第一版每拍到齐前都在买，实测**编队计数反复从
+   * 4/4 掉回 1/4、又买四艘**（船在洞里沉/被卖出/被派 AI 出勤），一路烧掉上亿却始终停在层深 2。
+   * 现口径：① 只要没凑齐 4 艘就补（一条一条补）；② **凑齐之后只做"升级到 T4"**（T4 是虫洞允许的
+   * 最高档，`WORMHOLE_MAX_TIER = 4`），且**必须换掉编队里最弱的那艘**（否则买了第 5 艘它不进编队，
+   * 白花钱）。这条既省钱又提高层深上限——层深 5 靠 4×T3 本来就吃紧（实测最高到层深 2）。
+   */
+  const cands = [...ctx.marketGoods.values()]
+    .filter((g) => {
+      if (g.kind !== 'ship') return false
+      if (g.rarity !== 'rare') return false
+      if (g.playerBuyable === false) return false
+      if ((g.standingReq ?? 0) > standing()) return false
+      const s = ctx.ships.get(g.refId)
+      if (!s) return false
+      if (s.role !== 'armed' && s.role !== 'armored') return false
+      if (!wormholeShipAllowed(s)) return false
+      if ((s.tier ?? 1) < WH_FLEET_TIER) return false
+      return (state.market.npcSell[g.key] ?? []).some((o) => o.qty > 0)
+    })
+    .map((g) => {
+      const list = state.market.npcSell[g.key] ?? []
+      const cheapest = Math.min(...list.map((o) => o.price))
+      const s = ctx.ships.get(g.refId)
+      return { g, price: cheapest, tier: s?.tier ?? 1, score: shipPowerScore(s) }
+    })
+    .sort((a, b) => a.price - b.price)
+  /**
+   * 留 400 万给这一艘的配装（4 门炮 + 抗性件 + 盾/甲件），别把钱全砸在船体上。
+   * T4 的配装更贵（13 槽起），且 T4 单价 90M ⇒ 自动按档位放大预留。
+   */
+  const reserveOf = (tier: number): number => (tier >= 4 ? 8_000_000 : 4_000_000)
+  const owned = whCapableShips()
+  const current = owned.length
+  const topTier = owned.reduce((m, uid) => Math.max(m, fleetDefOf(state, ctx, uid)?.tier ?? 0), 0)
+  /** 已凑齐 ⇒ 只考虑"能提升编队档位"的船（T4 换掉最弱的 T3） */
+  const wantTier = current >= WH_FLEET_SIZE ? topTier + 1 : WH_FLEET_TIER
+  const eligible = cands.filter((c) => c.tier >= wantTier)
+  const pick = eligible.find((c) => state.wallet.isk >= c.price + reserveOf(c.tier))
+  if (!pick) {
+    /**
+     * 买不到/买不起时**每天记一条**为什么等（否则报告里只有"没进洞"、看不出卡在哪）。
+     * 三种情形分开报：候选全无（声望/档位/品种不满足）· 有候选但**没现货** · 有现货但**钱不够**。
+     * ⚠ 必须自己按天节流：`mark` 是按**文本**去重的，而本函数**每拍**都被调，现金数字每拍都在变
+     * ⇒ 直接 mark 会把日志刷爆（第一版实测：0.00~1.50 天刷了 60+ 行）。
+     */
+    if (day() < lastWhFleetNoteDay + 1) return
+    lastWhFleetNoteDay = day()
+    const need = needIskForWhFleet()
+    mark(
+      `虫洞备战待购：编队 T3+ ${current}/${WH_FLEET_SIZE}（最高 T${topTier}）· ` +
+        (current >= WH_FLEET_SIZE
+          ? eligible.length > 0
+            ? `想升 T${wantTier}：现货 ${eligible.length} 型（最便宜 ${Math.round(eligible[0]!.price / 1000)}k）但现金不足`
+            : `市场上无 T${wantTier} 现货（T4 玄武级现货要声望 20，当前 ${standing()}）`
+          : cands.length > 0
+            ? `现货 ${cands.length} 型（最便宜 ${Math.round(cands[0]!.price / 1000)}k）但现金不足`
+            : `候选 ${cands.length} 型均无现货`) +
+        ` · 现金 ${Math.round(state.wallet.isk / 1000)}k / 参考目标 ${Math.round(need / 1000)}k`,
+    )
+    return
+  }
+  // 已满编还要买 = 升级：先卖掉编队里最弱的那艘腾位（否则它不进编队，纯烧钱）
+  if (current >= WH_FLEET_SIZE) {
+    const weakest = owned.sort(
+      (a, b) => (fleetDefOf(state, ctx, a)?.tier ?? 0) - (fleetDefOf(state, ctx, b)?.tier ?? 0),
+    )[0]
+    if (!weakest || weakest === state.shipId) return
+    const sale = sellShipAtMarket(state, ctx, weakest)
+    if (!sale.ok) return // 卖不掉就别买（编队位不腾出来，买了也白买）
+  }
+  const got = buyAtMarket(state, ctx, pick.g.key, 1)
+  if (got.shipUid) {
+    const s = ctx.ships.get(pick.g.refId)
+    mark(
+      `虫洞备战 购入 ${s?.name ?? pick.g.refId}（T${s?.tier ?? '?'} ${Math.round(pick.price / 1000)}k · ` +
+        `编队 ${whCapableShips().length}/${WH_FLEET_SIZE}）`,
+    )
+  }
+}
+
+/** 本次虫洞冲刺的目标层深（六枚里程碑要求层深 5 + 击破守卫 4 个） */
+const WH_TARGET_DEPTH = 5
+/** 整趟最多重试次数（全灭/被拒就再来一趟，不问原因——报告里有失败日志） */
+const WH_MAX_TRIES = 40
+
+const whStats = { tries: 0, entries: 0, descends: 0, bossWins: 0, extracts: 0, wipes: 0, scans: 0, moves: 0 }
+/** 「第 1 层真跑」的逐次诊断（去重后进报告）：说清门为什么不过——被打死 / 打不完 / 还剩多少血 */
+const whFloor1Diag: string[] = []
+/** 进洞那一刻的编队名单（`uid → 舰名`）：用来数**洞内沉了几艘**（洞内沉船不写引擎日志） */
+let whEnterSnapshot: Map<string, string> | null = null
+/** 最近记过"到达第 N 层"的层深（`mark` 按文本去重，但血/回合数字会变 ⇒ 自己按层深去重） */
+let lastWhDepthSeen = -1
+/** 上一拍是否在战斗中（`run.battle` 的上升/下降沿各记一条日志，用来定位"这趟怎么结束的"） */
+let whBattleSeen = false
+/** 已经"下到过 + 入了账"的层深（每档只赚一次；赚到就撤，见 `doWormhole` 的"拿到新层深就撤"） */
+const whDepthBanked = new Set<number>()
+/** "虫洞在洞内"每日体检的节流日（同上：`mark` 按文本去重，体检数字会变 ⇒ 自己按天节流） */
+let lastWhInsideNoteDay = -99
+
+/** 弹药 item id（与 `winEstimate.ts` 里那份**同值**；那边没导出，评估快照要按同一口径补足弹药） */
+const AMMO_ITEM_IDS = ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l'] as const
+
+/**
+ * **整队战力快照**（**2026-09-21 新写，本批最关键的修复**）。
+ *
+ * 引擎自带的 `buildEvalState`（`packages/core/src/winEstimate.ts`）**只复制一艘船**——
+ * 它是给 `estimateBountyWinOn` 那种**单舰**蒙特卡洛用的。而虫洞战斗走 `startFleetBattleFor`
+ * （整队、逐舰血、弹药共池）⇒ 拿"一个只装了主控的快照"去跑整队，**编队里另外 3 艘在快照里
+ * 根本不存在**，战斗里我方只有 1 个单位（诊断实证：`我方残血 …（1 单位）`、`编队 4 艘`）。
+ * 于是这道"真跑"门一直在判**单舰 vs 第 1 层**，4×T3 满配也稳定 `ended=foe`（步 5~33）——
+ * 门永远不过、一趟都进不去（读数：`进洞 0 次`）。
+ *
+ * 本函数把**整队**搬进同一份快照（口径照抄 `buildEvalState`：只带战力相关的东西——
+ * 装配/无人机/耐久/技能/弹药与修理组件给足；仓库/市场/声望不带），返回 `{ ev, uids }`。
+ * 不引引擎内部函数：只用 `createInitialState` + `addShipToFleet`（与 `buildEvalState` 同两手）。
+ */
+function buildFleetEvalState(fleet: readonly string[]): { ev: GameState; uids: string[] } | null {
+  const ev = createInitialState({ nowWallMs: 0, seed: 1 })
+  const uids: string[] = []
+  for (const src of fleet) {
+    const real = state.fleet[src]
+    if (!real?.defId) continue
+    const uid = addShipToFleet(ev, real.defId)
+    const f = ev.fleet[uid]!
+    f.fitted = JSON.parse(JSON.stringify(real.fitted ?? {})) as typeof f.fitted
+    if (real.droneLoad !== undefined) f.droneLoad = { ...real.droneLoad }
+    f.armorPct = real.armorPct ?? 1
+    f.durability = real.durability ?? 1
+    f.customName = real.customName
+    f.cargo = {}
+    // 评估不计补给耗尽（与 `buildEvalState` 同哲学）：弹药与修理组件给足
+    for (const id of AMMO_ITEM_IDS) f.cargo[id] = 1_000_000
+    for (const id of ['repairkit-civ', 'repairkit-mil']) f.cargo[id] = 1_000_000
+    uids.push(uid)
+  }
+  if (uids.length === 0) return null
+  ev.skills.trained = { ...state.skills.trained }
+  ev.skills.queue = []
+  ev.shipId = uids[0]!
+  return { ev, uids }
+}
+
+/**
+ * **真跑一遍"这趟洞的第 1 层节点战"**（不碰真状态：在整队快照上跑）。
+ * 返回**我方三层血残值比**（1 = 满血过关）；`-1` = 这场根本没跑起来（无卡/建档失败）。
+ *
+ * 为什么要真跑而不是查 `battleWinPreview`：那条是**单舰**路径，而洞内战斗走的是
+ * `startFleetBattleFor`（**整队**、逐舰血、弹药共池）—— 用单舰胜率当门会被高估，
+ * 实测"进洞 12 次、深入 0 次"全是第 1 层团灭。这里用**与生产同一条建档入口**跑完一整场。
+ *
+ * ⚠ **为什么要返回残血、不只返回胜负**（2026-09-21 实测教训）：第 1 趟洞"赢了但只剩 4.1% 血"
+ * ⇒ 第 2 层当场团灭、四艘全沉（日志：进洞后编队计数从 4/4 掉回 1/4，模拟又买四艘再送一趟）。
+ * 所以"打得过"不等于"进得去"：必须要求**留有余量**（见 `WH_ENTRY_HP_MIN`）。
+ */
+function whFloor1Outcome(fleet: readonly string[]): number {
+  /**
+   * ⚠⚠ **必须用"整队快照"**（2026-09-21 修）：`buildEvalState` 只复制主控那一艘 ⇒
+   * 拿它跑整队时我方只有 1 个单位，门一直在判"单舰 vs 第 1 层"、永远不过。见 `buildFleetEvalState`。
+   */
+  const snap = buildFleetEvalState(fleet)
+  if (!snap) return -1
+  const { ev, uids: evFleet } = snap
+  const seed = state.rng.seed
+  const cardId = wormholeCardIdForRun({ seed, depth: 1, kind: 'node', nodeIndex: 0 })
+  if (!ctx.anomalies.get(cardId)) return -1
+  const battle = startFleetBattleFor(ev, ctx, evFleet, cardId, 0, null, { depth: 1, kind: 'node', waves: 1 })
+  if (!battle) {
+    whFloor1Diag.push(`第 1 层真跑：\`startFleetBattleFor\` 返回 null（编队 ${evFleet.length} 艘 · 卡 ${cardId}）`)
+    return -1
+  }
+  let guard = 0
+  while (!battle.ended && guard < 900) {
+    ev.gameMs += 1_000
+    advanceBattleFor(ev, ctx, battle, evFleet[0]!, cardId)
+    guard++
+  }
+  /**
+   * 诊断留档（只为报告）：把"为什么打不过"说清楚——是**被打死**（`ended=foe`）、
+   * **回合上限内没打完**（`guard` 触顶、`ended=null`）、还是**我方还剩多少血**。
+   * 2026-09-21 实测：编队 4×T3、20 门炮，门仍然不过 ⇒ 不看这三项无法判断是"真打不过"
+   * 还是"评估快照本身建错了"（例如没带弹药、没带上僚舰）。
+   */
+  // ⚠ `battle.units` 是 **Record<string, BattleUnitRt>**（按 tag 建索引），不是数组（2026-09-21 踩到）
+  const all = Object.values(battle.units ?? {})
+  const mine = all.filter((u) => u.side === 'me')
+  const foe = all.filter((u) => u.side !== 'me')
+  const frac = (us: typeof mine): number => {
+    let cur = 0
+    let max = 0
+    for (const u of us) {
+      cur += Math.max(0, u.hp.s) + Math.max(0, u.hp.a) + Math.max(0, u.hp.h)
+      max += Math.max(1, u.hpMax?.s ?? 1) + Math.max(1, u.hpMax?.a ?? 1) + Math.max(1, u.hpMax?.h ?? 1)
+    }
+    return max > 0 ? cur / max : 0
+  }
+  const hpFrac = frac(mine)
+  whFloor1Diag.push(
+    `第 1 层真跑：ended=${String(battle.ended)} 步=${guard} 我方残血 ${(hpFrac * 100).toFixed(1)}%（${mine.length} 单位）· ` +
+      `敌方残血 ${(frac(foe) * 100).toFixed(1)}%（${foe.length} 单位）· 编队 ${evFleet.length} 艘`,
+  )
+  return battle.ended === 'me' ? hpFrac : -1
+}
+
+/**
+ * **够格进洞吗**（第一版我漏了这道门 ⇒ 模拟第 0 天就开着**沙猫级采矿艇**进洞，两趟全灭、
+ * 还把这十天的正常发育全挤掉了 —— 日志里"虫洞内被击沉（沙猫级采矿艇）"就是它）。
+ *
+ * 判据（都取"保守但够用"）：
+ * - **有一艘装了武器槽件的武装/装甲舰**（采矿艇裸船进去必死）；
+ * - 声望 ≥ 3（早期那点钱与船根本撑不起一趟洞；顺便让它先把悬赏链跑起来）；
+ * - 城里有闲钱修船/补弹（≥ 20 万）；
+ * - ⚠ **真跑一遍第 1 层那场、打得过才进**（**2026-09-21 补**）：前一轮实测"进洞 12~17 次、
+ *   深入 0 次"—— 全是**第 1 层就团灭**（`extracts` 一次都没涨）。虫洞不可撤退（战斗一开必须打完），
+ *   所以进洞前必须先自问"打得过第 1 层吗"，而且要用**整队**口径问。
+ */
+function whReady(fleet: readonly string[]): boolean {
+  if (standing() < 3) return false
+  if (state.wallet.isk < 200_000) return false
+  let armed = false
+  for (const uid of fleet) {
+    const f = state.fleet[uid]
+    if (!f) continue
+    const def = fleetDefOf(state, ctx, uid)
+    if (!def || (def.role !== 'armed' && def.role !== 'armored')) continue
+    const hasGun = (f.fitted?.high ?? []).some((m) => {
+      if (!m) return false
+      const slot = ctx.modules.get(m)?.slot
+      return slot === 'turret' || slot === 'missile' || slot === 'laser' || slot === 'drone-rack' || slot === 'drone-tac'
+    })
+    if (hasGun) armed = true
+  }
+  if (!armed) return false
+  /**
+   * ⚠ **要够档**（**2026-09-21 补**）：虫洞是按 **4×T3 巡洋舰满配**这档口径配平的
+   * （见 `tools/wormhole-econ.ts` 的参考编队），**T1 护卫舰进去必死** ——
+   * 实测：`whReady` 的真跑门在 T1 编队上稳定 `ended=foe 秒=4`（第 1 层 4 秒团灭）。
+   * 所以除了"打得过第 1 层"这个经验判据，再加一条**硬门槛：编队里至少有一艘 tier ≥ 3 的战斗舰**。
+   */
+  const topTier = fleet.reduce((m, uid) => {
+    const def = fleetDefOf(state, ctx, uid)
+    return Math.max(m, def?.tier ?? 0)
+  }, 0)
+  if (topTier < 3) return false
+  /**
+   * **第 1 层真跑，且要留有余量**（2026-09-21 加余量判据）。
+   * 只要"赢"不够：第 1 层靠 4% 血惨胜 ⇒ 第 2 层当场全灭、四艘全沉（实测日志：进洞后编队计数
+   * 从 4/4 掉回 1/4、模拟又买四艘再送一趟，来回烧钱）。所以要求**战后残血 ≥ `WH_ENTRY_HP_MIN`**
+   * —— 虫洞是**不可撤退**的连续闯关（战斗一开必须打完），进洞前必须按"最坏那一层"留血量。
+   */
+  const hp = whFloor1Outcome(fleet)
+  lastWhFloor1Hp = hp
+  return hp >= WH_ENTRY_HP_MIN
+}
+
+/**
+ * **进洞门到底卡在哪一条**（只为报告/诊断，不参与决策）——每一条都必须能被单独说出来，
+ * 否则报告只会写"进洞 0 次"而看不出是"没编队""不够档"还是"第 1 层打不过"
+ * （2026-09-21 实测就吃过这个亏：编队早齐了、却因门不过而"尝试 0 次"，日志里什么都没有）。
+ */
+function whGateReason(fleet: readonly string[]): string {
+  if (fleet.length === 0) return '编队为空（无可派舰船：都在 AI 出勤 / 被 `wormholeAdmission` 拒）'
+  if (standing() < 3) return `声望 ${standing()} < 3`
+  if (state.wallet.isk < 200_000) return `现金 ${Math.round(state.wallet.isk / 1000)}k < 200k`
+  let guns = 0
+  let topTier = 0
+  for (const uid of fleet) {
+    const f = state.fleet[uid]
+    const def = fleetDefOf(state, ctx, uid)
+    if (!f || !def) continue
+    topTier = Math.max(topTier, def.tier ?? 0)
+    guns += (f.fitted?.high ?? []).filter((m) => {
+      if (!m) return false
+      const slot = ctx.modules.get(m)?.slot
+      return slot === 'turret' || slot === 'missile' || slot === 'laser' || slot === 'drone-rack' || slot === 'drone-tac'
+    }).length
+  }
+  if (guns === 0) return `编队 ${fleet.length} 艘全无武器槽件`
+  if (topTier < 3) return `编队最高档 T${topTier} < T3`
+  if (lastWhFloor1Hp < 0) return `第 1 层真跑打不过（编队 ${fleet.length} 艘 · 最高 T${topTier} · 炮 ${guns} 门）`
+  return (
+    `第 1 层惨胜、余量不足（残血 ${(lastWhFloor1Hp * 100).toFixed(1)}% < 门槛 ${(WH_ENTRY_HP_MIN * 100).toFixed(0)}% · ` +
+    `编队 ${fleet.length} 艘 · 炮 ${guns} 门）⇒ 进第 2 层必团灭，先补战力`
+  )
+}
+
+/** 人在洞里吗（`run` 存在即"这趟在"，`attending` 才是"人在"） */
+function inWormhole(): boolean {
+  return !!state.wormhole.run
+}
+
+/**
+ * **虫洞冲刺的一拍决策**（返回 true = 本拍做了动作；调用方据此跳过别的活动）。
+ *
+ * ⚠ 与 `wormhole-econ` 的一处**有意差异**：那里是"一口气跑完整趟"（时钟自己 +1000ms），
+ * 这里是**逐拍**推进 ⇒ 本函数必须能被反复调用而不重复副作用（每个分支都先看状态再动作）。
+ */
+function doWormhole(): boolean {
+  const run = state.wormhole.run
+  // ① 不在洞里：够格就进洞（门槛由引擎把关，失败只记一次不刷屏）
+  if (!run) {
+    if (whStats.tries >= WH_MAX_TRIES) return false
+    if (meBusy() || !isHome()) return false
+    const fleetIds = wormholeFleetPick()
+    if (fleetIds.length === 0) {
+      if (day() >= lastWhGateNoteDay + 1) {
+        lastWhGateNoteDay = day()
+        mark(`虫洞待进（第 ${whStats.tries} 次尝试后）：${whGateReason(fleetIds)}`)
+      }
+      return false
+    }
+    // ⚠ 门要看**这套编队**打不打得过第 1 层（真跑一场，见 `whFloor1Winnable`）
+    //    同一天内门没过就**不必重算**：编队/装备/技能当天基本不变，而每拍真跑一场很贵（墙钟实测）
+    if (lastWhGateDay === day() && lastWhGateOk === false) return false
+    const ok = whReady(fleetIds)
+    lastWhGateDay = day()
+    lastWhGateOk = ok
+    if (!ok) {
+      if (day() >= lastWhGateNoteDay + 1) {
+        lastWhGateNoteDay = day()
+        mark(`虫洞待进（第 ${whStats.tries} 次尝试后）：${whGateReason(fleetIds)}`)
+      }
+      return false
+    }
+    whStats.tries += 1
+    /**
+     * **进洞前记一份"编队血账"**（2026-09-21 加）：洞内沉船不给引擎日志（`wormholeAuto` 那条
+     * 挂机路径才写），所以损失只能靠"进洞前后舰队里这几艘还在不在"来数。这是**整趟冲刺烧了
+     * 多少钱/沉了几艘**的唯一读数来源——实测第一版没有它，报告里只能看到"编队计数从 4/4 又变回
+     * 1/4"这种二手痕迹。
+     */
+    whEnterSnapshot = new Map(
+      fleetIds.map((uid) => [uid, state.fleet[uid] ? (fleetDefOf(state, ctx, uid)?.name ?? uid) : uid]),
+    )
+    const r = wormholeEnter(state, ctx, fleetIds, state.rng.seed)
+    if (!r.ok) {
+      if (whStats.tries === 1) issue(`虫洞入洞被拒：${r.error ?? ''}`)
+      return false
+    }
+    whStats.entries += 1
+    mark(`虫洞进洞（第 ${whStats.entries} 趟 · 编队 ${fleetIds.length} 艘）`)
+    return true
+  }
+  // ② 战斗在途：什么都不做，等引擎把这一场打完（`advanceWormhole` 逐拍推进）
+  if (run.battle) {
+    /**
+     * **战斗开打/收场各记一条**（2026-09-21 加，纯诊断）：本模块只能看到"每拍 `run.battle`
+     * 在不在"，所以"这趟是怎么结束的"必须靠战斗的进入/离开时刻来定位。实测层深 2 时
+     * 每趟都在"第 N 层守卫开打"之后 0.0x 天内收场，而报告里既没有沉船也没有撤离读数。
+     */
+    if (!whBattleSeen) {
+      whBattleSeen = true
+      mark(`虫洞 战斗开始（第 ${run.depth} 层 · 在场 ${run.fleet.filter((u) => !!state.fleet[u]).length} 艘）`)
+    }
+    return true
+  }
+  if (whBattleSeen) {
+    whBattleSeen = false
+    mark(
+      `虫洞 战斗结束（第 ${run.depth} 层 · 在场 ${run.fleet.filter((u) => !!state.fleet[u]).length}/${run.fleet.length} 艘 · ` +
+        `残血 ${(wormholeHpFrac() * 100).toFixed(0)}% · 守卫账本 ${whBoss()})`,
+    )
+  }
+  /**
+   * **"人还在洞里"的每日体检**（2026-09-21 加，最后的诊断补充）：实测"第 3 趟进洞之后就再也没有
+   * 任何虫洞日志、而模拟继续跑满 25 天"——说明 `state.wormhole.run` **卡住了**（本模块每拍被调、
+   * 却一条日志都没写出来）。这条按天打印 run 的全套状态，把"卡在哪一步"钉死。
+   */
+  if (day() >= lastWhInsideNoteDay + 1) {
+    lastWhInsideNoteDay = day()
+    mark(
+      `虫洞 在洞内（第 ${run.depth} 层 · 相位 ${run.phase} · 守卫 ${run.bossCleared ?? 0}/${run.depth} · ` +
+        `回合 ${Math.max(0, Math.round(run.turnsLeft))} · 在场 ${run.fleet.filter((u) => !!state.fleet[u]).length}/${run.fleet.length} 艘 · ` +
+        `盘 ${run.grid ? '有' : '无'} · 格 (${run.grid?.pos.q ?? '-'},${run.grid?.pos.r ?? '-'}) 出口 (${run.grid?.exit.q ?? '-'},${run.grid?.exit.r ?? '-'}) · ` +
+        `待处理节点 ${run.pendingNode ? '有' : '无'})`,
+    )
+  }
+  /**
+   * **这趟刚收口/刚判负**（`run` 变 null 那一拍）：先按"进洞时的编队名单"数一下沉了几艘。
+   * 洞内沉船**不写引擎日志**，所以这是唯一的损失读数（见 `whEnterSnapshot` 的注释）。
+   */
+  if (whEnterSnapshot) {
+    const lost: string[] = []
+    for (const [uid, name] of whEnterSnapshot) if (!state.fleet[uid]) lost.push(name)
+    if (lost.length > 0) {
+      whStats.wipes += lost.length
+      issue(`虫洞内被击沉 ${lost.length} 艘：${lost.join('、')}`)
+    }
+    /**
+     * **每趟结束时记一条"为什么收场"**（2026-09-21 加）：洞内团灭/回合耗尽/主动撤离在引擎里
+     * 都不写玩家可见日志，报告只能从"下一次进洞"倒推。实测层深卡在 2 时，正是这条读数缺失
+     * 让人无法判断是"打不动"还是"回合用光"。
+     */
+    mark(
+      `虫洞 这趟收场：${lost.length > 0 ? `沉 ${lost.length} 艘` : '无损失'} · ` +
+        `层深账本 ${whDepth()} · 守卫账本 ${whBoss()} · 已进洞 ${whStats.entries} 次`,
+    )
+    whEnterSnapshot = null
+  }
+  if (!run) return false // 这一趟已经判负收场（主循环下一拍会重新尝试进洞）
+  // ③ 这趟结束/被判负（`run` 已 null）/ 回合耗尽 / 血量太低 ⇒ 收口
+  const hp = wormholeHpFrac()
+  const wantExtract = run.turnsLeft <= 0 || hp < 0.45 || whAlreadyDone()
+  /**
+   * **逐层读数**（2026-09-21 加）：每到一个新层深记一条"我方还剩多少血 / 还剩几回合 /
+   * 还差多少到目标层深"。没有它，报告里只能看到"层深 2"，看不出是**打不动**（血不够）、
+   * **回合不够**（`turnsLeft` 见底）还是**下不去**（`wormholeDescend` 被拒）。
+   */
+  if (run.depth !== lastWhDepthSeen) {
+    lastWhDepthSeen = run.depth
+    /**
+     * ⚠ 同时记**编队还剩几艘在场**：洞内团灭时 `state.fleet` 会少船（这是"这趟怎么结束的"
+     * 最直接的线索）。实测层深 2 之后**连续 10 趟都没到过第 3 层**，而报告里"阵亡 0 艘"——
+     * 两个读数是矛盾的，必须靠这条把"到底谁没了"钉死。
+     */
+    const alive = run.fleet.filter((uid) => !!state.fleet[uid]).length
+    mark(
+      `虫洞 到达第 ${run.depth} 层：我方残血 ${(hp * 100).toFixed(0)}%（在场 ${alive}/${run.fleet.length} 艘）· ` +
+        `剩余回合 ${Math.max(0, Math.round(run.turnsLeft))} · 层末守卫 ${run.bossCleared === run.depth ? '已清' : '未清'} · 目标第 ${WH_TARGET_DEPTH} 层`,
+    )
+  }
+  const ac = run.grid ? wormholeActivateAt(state, ctx, state.gameMs) : null
+  const grid = run.grid
+  if (!grid) {
+    // 老档线性层不参与成就冲刺：直接撤离
+    const ex = wormholeExtract(run)
+    if (ex.ok) whStats.extracts += 1
+    return true
+  }
+  // ③a 站在出口格上 ⇒ 激活（= 打层末守卫；守卫已清则会被引擎拒，下一拍走 ③b）
+  if (isExitCell(grid, grid.pos)) {
+    if (ac && !ac.ok) {
+      // 守卫已清 / 回合不够这类"预期内的拒因"不记异常：直接进 ③b 的深入/撤离
+    } else if (ac && ac.ok) {
+      mark(`虫洞 第 ${run.depth} 层守卫开打（层深 ${whDepth()}）`)
+      return true
+    }
+  } else {
+    // ③b 还没到出口：先扫（有盲区就扫），再朝出口走（带 confirmUnknown —— 出口格可能没被扫过）
+    if (gridScanTargets(grid).length > 0 || (gridNebulaTargets(grid).length > 0 && grid.scanned.length < grid.cells.length)) {
+      const sc = wormholeGridScan(state)
+      if (sc.ok) whStats.scans += 1
+      return true
+    }
+    const exitCell = gridCellAt(grid, { q: grid.exit.q, r: grid.exit.r })
+    const needConfirm = !exitCell || !grid.scanned.includes(exitCell.key)
+    // 路上有未清的敌人 ⇒ 带上确认（等价玩家点「确认前往」，撞上就地开战）
+    const blocked = wormholePathInterceptAt(grid, { q: grid.exit.q, r: grid.exit.r }) !== undefined
+    const res = wormholeTravelTo(state, ctx, { q: grid.exit.q, r: grid.exit.r }, {
+      confirmUnknown: needConfirm,
+      ...(blocked ? { confirmIntercept: true } : {}),
+    })
+    if (res.ok) {
+      whStats.moves += 1
+      if (res.intercepted) mark(`虫洞 路径拦截：在 (${grid.pos.q},${grid.pos.r}) 就地开战`)
+      return true
+    }
+    // 走不动（被拦/回合不够）⇒ 撤离
+    const ex = wormholeExtract(run)
+    if (ex.ok) whStats.extracts += 1
+    else issue(`虫洞撤离被拒：${ex.error ?? ''}`)
+    return true
+  }
+  // ③c 守卫已清 ⇒ 按目标深入 / 撤离
+  /**
+   * **"拿到新层深就撤"**（2026-09-21 定，本段最省的一条）：
+   *
+   * 引擎的层深里程碑记在**下潜成功那一刻**（`wormholeDescend` 里 `peakFirst(state,'whMaxDepth',depth)`），
+   * 而**不是**"在第 N 层打了多少东西"。于是"下到更深一层、立刻撤离"就能**确定性地**推进层深账本，
+   * 完全不必冒着在深层团灭（全损、四艘一起没）的风险去硬闯。
+   *
+   * 实测依据：4×T3 满配编队在第 1 层只掉一层皮（残血 66~70%）⇒ **反复"打进第 1 层 → 下潜 → 撤"**
+   * 每趟稳拿 +1 层深，四~五趟就把六枚里的四枚层深里程碑（2/3/4/5）收齐；
+   * 而"一趟硬闯 5 层"的失败代价是四艘船全损（`wormholeBattle` 全灭分支 `state.wormhole.run = null`）。
+   */
+  if (run.bossCleared === run.depth && !whDepthBanked.has(run.depth)) {
+    whDepthBanked.add(run.depth)
+    const ex = wormholeExtract(run)
+    if (ex.ok) {
+      whStats.extracts += 1
+      mark(`虫洞 第 ${run.depth} 层已入账（层深里程碑），立刻撤离保船`)
+    } else issue(`虫洞撤离被拒：${ex.error ?? ''}`)
+    return true
+  }
+  if (wantExtract || run.bossCleared !== run.depth) {
+    const ex = wormholeExtract(run)
+    if (ex.ok) whStats.extracts += 1
+    else issue(`虫洞撤离被拒：${ex.error ?? ''}`)
+    return true
+  }
+  if (run.depth >= WH_TARGET_DEPTH) {
+    const ex = wormholeExtract(run)
+    if (ex.ok) {
+      whStats.extracts += 1
+      mark(`虫洞 已达目标层深 ${run.depth}，撤离`)
+    }
+    return true
+  }
+  const dn = wormholeDescend(state, state.rng.seed, wormholeScanBonusOf(ctx, run.fleet))
+  if (dn.ok) {
+    whStats.descends += 1
+    if (whDepth() >= WH_TARGET_DEPTH) mark(`虫洞 到达第 ${whDepth()} 层（成就层深达标）`)
+  } else {
+    const ex = wormholeExtract(run)
+    if (ex.ok) whStats.extracts += 1
+    else issue(`虫洞深入被拒（${dn.error ?? ''}）且撤离失败：${ex.error ?? ''}`)
+  }
+  return true
+}
+
+/** 成就账本里的当前层深 / 守卫数（与 `checkGoals` 同一本账） */
+function whDepth(): number {
+  return (state.firstStats as { whMaxDepth?: number } | undefined)?.whMaxDepth ?? 0
+}
+function whBoss(): number {
+  return (state.firstStats as { whBossClears?: number } | undefined)?.whBossClears ?? 0
+}
+function whAlreadyDone(): boolean {
+  return whDepth() >= WH_TARGET_DEPTH && whBoss() >= 4
+}
+
+/**
+ * **虫洞编队**：按"战力"排序取最强的几艘（战力 = 档位 + 火力 + 结构残值，够用且不引内部函数），
+ * 再**从多到少试编队**、用 `wormholeAdmission`（与进洞同一道门：舰级/质量/回合预算）挑出第一套能进的。
+ * ⚠ 不用 `wormholeAutoCandidates`：那张表把"能不能派 AI 副船"（AI 核心预算/占用）也算进去了，
+ * 而手动进洞**不吃核心预算** ⇒ 用它会把能带的船错误地剔掉。这里只要"能进洞"这一把尺。
+ */
+function wormholeFleetPick(): string[] {
+  const scoreOf = (uid: string): number => {
+    const def = fleetDefOf(state, ctx, uid)
+    const f = state.fleet[uid]
+    if (!def || !f) return -1
+    return (def.tier ?? 1) * 10 + (def.powerBonus ?? 0) * 20 + (f.durability ?? 1) * 5 + (f.armorPct ?? 1) * 3
+  }
+  const rows = Object.keys(state.fleet)
+    // ⚠ **出勤中的船不能编进洞**（`wormholeEnter` 会被引擎以"正在AI 采矿中"拒掉——实测第一版
+    //   就是这么失败的：唯一的战舰在挖矿，入洞被拒、虫洞目标全程 0 进度）
+    .filter((uid) => !!state.fleet[uid] && !state.aiAssignments[uid])
+    .map((uid) => ({ uid, score: scoreOf(uid) }))
+    .sort((a, b) => b.score - a.score || a.uid.localeCompare(b.uid))
+    .map((x) => x.uid)
+  // 主控若能带 ⇒ 置首（引擎允许编队不含主控，但主控在队里才吃"驾驶舰"那套加成）
+  const mainDef = fleetDefOf(state, ctx, state.shipId)
+  const mainOk = !!mainDef && wormholeShipAllowed(mainDef)
+  const ordered = mainOk ? [state.shipId, ...rows.filter((u) => u !== state.shipId)] : rows
+  for (let n = Math.min(4, ordered.length); n >= 1; n--) {
+    const fleet = ordered.slice(0, n)
+    // ⚠ 入参口径：`wormholeAdmission(ctx, shipIds, techTurnBonus)` —— **没有 state**（第一版我按
+    //   `wormholeEnter` 的形状误传了 `state`，于是 `shipIds` 收到了 `ctx` ⇒ `not iterable` 当场崩）
+    const adm = wormholeAdmission(ctx, fleet, matterTechWhBuffs(state, ctx).turnBonus)
+    if (adm.ok) return fleet
+  }
+  return []
+}
+
+/** 当前洞里那支编队的**三层血残值比**（护盾不落档 ⇒ 只看甲/结构口径，与工具既有写法一致） */
+function wormholeHpFrac(): number {
+  const run = state.wormhole.run
+  if (!run) return 1
+  let cur = 0
+  let max = 0
+  for (const uid of run.fleet) {
+    const f = state.fleet[uid]
+    if (!f) continue
+    cur += (f.armorPct ?? 1) + (f.durability ?? 1)
+    max += 2
+  }
+  return max > 0 ? cur / max : 1
+}
+
+
 /* ═══════════ 目标制（boss 通关 / 万亿现金 / 全收集） ═══════════ */
-const goalDone = { boss: false, tril: false, collect: false }
+const goalDone = {
+  boss: false,
+  tril: false,
+  collect: false,
+  /** **船长 2026-09-21 的三条** */
+  bounties: false,
+  whach: false,
+  isk1b: false,
+}
 const goalDay: Record<string, string> = {}
 /** B3/工业 覆盖计数（报告「活动统计」用） */
 const act = { aiSalvage: 0, pilotSalvage: 0, recycle: 0, craft: 0, learnBp: 0 }
@@ -887,11 +1736,54 @@ function collectStatus(): { ships: number; shipsTotal: number; bps: number; bpsT
   }
 }
 
+/** **完成所有悬赏**：可见悬赏卡全部首胜（`completedBounties` 是引擎的唯一台账） */
+function bountyStatus(): { done: number; total: number } {
+  const done = ANOMALY_LIST.filter((a) => state.completedBounties.includes(a.id)).length
+  return { done, total: ANOMALY_LIST.length }
+}
+
+/**
+ * **虫洞六枚里程碑的当前进度**（判据 = `firstStats` 的四个 stat，与成就系统**同一本账**——
+ * 不给工具开后门、也不自己算一套）：
+ * - 层深 `whMaxDepth` ≥ 5 ⇒ 初入深渊/深渊宿将/深渊之主/深渊彼岸 四枚；
+ * - 击破层末守卫 `whBossClears` ≥ 4 ⇒ 斩层者/守关终结者 两枚。
+ */
+function whachStatus(): { depth: number; boss: number; done: boolean } {
+  const fs = state.firstStats as { whMaxDepth?: number; whBossClears?: number } | undefined
+  const depth = fs?.whMaxDepth ?? 0
+  const boss = fs?.whBossClears ?? 0
+  return { depth, boss, done: depth >= 5 && boss >= 4 }
+}
+
 function checkGoals(): void {
   if (WANTS.tril && !goalDone.tril && state.wallet.isk >= 1_000_000_000_000) {
     goalDone.tril = true
     goalDay.tril = day().toFixed(2)
     mark(`🎯 目标达成【万亿现金】：第 ${day().toFixed(2)}d 现金 ${state.wallet.isk.toLocaleString('zh-CN')} ISK`)
+  }
+  /** **10 亿 ISK**（船长 2026-09-21）——只认钱包（与"万亿"同一把尺） */
+  if (WANTS.isk1b && !goalDone.isk1b && state.wallet.isk >= 1_000_000_000) {
+    goalDone.isk1b = true
+    goalDay.isk1b = day().toFixed(2)
+    mark(`🎯 目标达成【10 亿 ISK】：第 ${day().toFixed(2)}d 钱包 ${state.wallet.isk.toLocaleString('zh-CN')} ISK`)
+  }
+  /** **完成所有悬赏**（船长 2026-09-21） */
+  if (WANTS.bounties && !goalDone.bounties) {
+    const b = bountyStatus()
+    if (b.total > 0 && b.done >= b.total) {
+      goalDone.bounties = true
+      goalDay.bounties = day().toFixed(2)
+      mark(`🎯 目标达成【完成所有悬赏】：第 ${day().toFixed(2)}d 首胜 ${b.done}/${b.total} 张`)
+    }
+  }
+  /** **虫洞成就（六枚里程碑）**（船长 2026-09-21） */
+  if (WANTS.whach && !goalDone.whach) {
+    const w = whachStatus()
+    if (w.done) {
+      goalDone.whach = true
+      goalDay.whach = day().toFixed(2)
+      mark(`🎯 目标达成【虫洞成就】：第 ${day().toFixed(2)}d 层深 ${w.depth} 层 · 击破守卫 ${w.boss} 个`)
+    }
   }
   if (WANTS.collect && !goalDone.collect) {
     const c = collectStatus()
@@ -904,7 +1796,14 @@ function checkGoals(): void {
 }
 
 function allGoalsDone(): boolean {
-  return !((WANTS.boss && !goalDone.boss) || (WANTS.tril && !goalDone.tril) || (WANTS.collect && !goalDone.collect))
+  return !(
+    (WANTS.boss && !goalDone.boss) ||
+    (WANTS.tril && !goalDone.tril) ||
+    (WANTS.collect && !goalDone.collect) ||
+    (WANTS.bounties && !goalDone.bounties) ||
+    (WANTS.whach && !goalDone.whach) ||
+    (WANTS.isk1b && !goalDone.isk1b)
+  )
 }
 
 /** 收集购物（全收集目标：缺的船/装备按最便宜的补；每次最多推进一件，防卡单步） */
@@ -1360,6 +2259,43 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
     lastAuditMs = state.gameMs
   }
   refillSkills()
+  /**
+   * **虫洞冲刺优先**（船长 2026-09-21 目标）：只要还没拿到六枚虫洞里程碑、且这趟没在收口，
+   * 每一步都先喂它一拍决策（进洞 / 扫 / 走 / 打守卫 / 深入 / 撤离）。
+   * ⚠ 放在最前面**且不看 `homeLull()`**：人一旦进洞，主控就占着"在洞里"这个活动位，
+   * `homeLull()` 会一直为假 ⇒ 若挂在它下面，进洞第一拍之后就再也推不动了。
+   */
+  const whActive = inWormhole()
+  if ((WANTS.whach && !goalDone.whach) || whActive) {
+    const acted = doWormhole()
+    if (acted || whActive) {
+      checkGoals()
+      if (lastSnapMs < 0 || state.gameMs - lastSnapMs >= SNAP_MS) growthSnapshot()
+      advanceGame(state, STEP_MS, ctx)
+      continue
+    }
+  }
+  /**
+   * **主控固定开那条战舰**（2026-09-21 批）：`doMine` / 主控打捞 / `ensureFlagship` 三者过去
+   * 会把驾驶位在主控与采矿艇之间来回搬 —— 结果是"给当时驾驶的那条船买炮装炮"（实测日志：
+   * `装配 mod-turret-kin-3（沙猫级采矿艇）`），而**真正打悬赏/进虫洞的那条战舰一直裸着**，
+   * 于是声望卡在 8~10、虫洞深层也打不动。现在**每拍先归位到最强战舰**（有就换、在 AI 出勤就召回），
+   * 采矿/打捞也用它 —— 引擎的采矿准入只看星带门槛与"不在洞里"，**不要求采集器**（读 `miningPreflight` 核过）。
+   * 买船与配装紧随其后 ⇒ 永远作用在**同一条船**上。
+   */
+  ensureFlagship()
+  /**
+   * **舰船升级与配装每拍都试**（2026-09-21 批）：旧口径只在 `homeLull()` 分支里调 ⇒ 模拟长期卡在
+   * 远征/采矿循环时**整段跑不到**（实测 50 天只买到 1 门炮、始终开着采矿艇）。函数内部自带守卫
+   * （在忙/在航/在采矿一律跳过，买船每天至多一次）⇒ 放到这里只是把"有机会就升级"这件事做足。
+   */
+  buyShipAndGear()
+  /**
+   * **虫洞备战（凑 4 艘 T3+ 战斗舰）**（2026-09-21 补）：`buyShipAndGear` 只会把**主控那一艘**
+   * 往上换（判据是"比驾驶船更强"）⇒ 舰队永远是"1 艘 T3 + 一堆 T1"，而虫洞按 4×T3 满配配平。
+   * 这里补"**数量**"这一维，与上面同拍、同样自带守卫（在忙/在航/采矿一律跳过，买不到就每天记一条原因）。
+   */
+  ensureWhFleet()
   if (homeLull()) {
     if (!state.mining.active) {
       sellEverything()
@@ -1370,7 +2306,6 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
       ensureSalvageFleet()
       doRecycle()
       buyShipAndGear()
-      doCollectShop()
       if (standing() < 13) {
         doBounty()
         if (!state.expedition.active && !state.scanning.active) {
@@ -1449,15 +2384,56 @@ lines.push(`现金 ${Math.round(state.wallet.isk).toLocaleString('zh-CN')} ISK �
 lines.push(`训练总级数 ${Object.values(state.skills.trained).reduce((a, b) => a + b, 0)} · 队列 ${state.skills.queue.length} · 舰船 ${Object.keys(state.fleet).length} 艘 · AI 任务 ${Object.keys(state.aiAssignments).length} · 日志 ${state.logs.length} 条`)
 lines.push('')
 lines.push('—— 目标达成情况 ——')
-for (const k of ['boss', 'tril', 'collect'] as const) {
+for (const k of ['bounties', 'whach', 'isk1b', 'boss', 'tril', 'collect'] as const) {
   if (!WANTS[k]) continue
   const done = goalDone[k]
   const c = collectStatus()
-  const extra = k === 'collect' ? `（舰船 ${c.ships}/${c.shipsTotal} · 蓝图 ${c.bps}/${c.bpsTotal} · 装备 ${c.mods}/${c.modsTotal}）` : ''
-  lines.push(`  ${done ? '✅' : '⬜'} ${GOAL_NAMES[k]}${done ? `—— 第 ${goalDay[k]} 天达成` : extra}`)
+  /** 逐目标的**进度读数**（未达成时告诉人差多少，而不是只给个 ⬜） */
+  let extra = ''
+  if (k === 'collect') extra = `（舰船 ${c.ships}/${c.shipsTotal} · 蓝图 ${c.bps}/${c.bpsTotal} · 装备 ${c.mods}/${c.modsTotal}）`
+  else if (k === 'bounties') {
+    const b = bountyStatus()
+    extra = `（首胜 ${b.done}/${b.total} 张）`
+  } else if (k === 'whach') {
+    const w = whachStatus()
+    extra = `（层深 ${w.depth}/5 层 · 击破守卫 ${w.boss}/4 个）`
+  } else if (k === 'isk1b') extra = `（钱包 ${Math.round(state.wallet.isk).toLocaleString('zh-CN')} / 1,000,000,000）`
+  lines.push(`  ${done ? '✅' : '⬜'} ${GOAL_NAMES[k]}${done ? `—— 第 ${goalDay[k]} 天达成` : ` ${extra}`}`)
 }
 if (WANTS.tril && !goalDone.tril) {
   lines.push('  · 万亿为超长程目标：debugQuick 只压缩等待、不放大收益（奖励按真实口径），达天数上限未竟属预期——重点看全程零引擎异常')
+}
+lines.push('')
+lines.push('—— 虫洞冲刺读数（船长 2026-09-21 目标②）——')
+{
+  const w = whachStatus()
+  lines.push(
+    `  进洞 ${whStats.entries} 次（尝试 ${whStats.tries} 次）· 深入 ${whStats.descends} 次 · 撤离收口 ${whStats.extracts} 次 · 扫描 ${whStats.scans} 次 · 移动 ${whStats.moves} 次`,
+  )
+  lines.push(`  阵亡 ${whStats.wipes} 艘（洞内沉船不写引擎日志，按"进洞前后还在不在"数出来的）`)
+  lines.push(
+    `  成就账本：层深 ${w.depth} 层 · 击破层末守卫 ${w.boss} 个 ⇒ 六枚里程碑${w.done ? '**全拿**' : '未齐'}` +
+      `（需要层深 ≥5 且守卫 ≥4）`,
+  )
+  // 六枚逐条（与成就表同一把尺，逐条打勾）
+  const rows: Array<[string, boolean]> = [
+    ['初入深渊（层深 ≥2）', w.depth >= 2],
+    ['深渊宿将（层深 ≥3）', w.depth >= 3],
+    ['深渊之主（层深 ≥4）', w.depth >= 4],
+    ['深渊彼岸（层深 ≥5）', w.depth >= 5],
+    ['斩层者（击破守卫 ≥2）', w.boss >= 2],
+    ['守关终结者（击破守卫 ≥4）', w.boss >= 4],
+  ]
+  for (const [name, ok] of rows) lines.push(`    ${ok ? '✅' : '⬜'} ${name}`)
+  /**
+   * **门为什么不过**（2026-09-21 补）：进洞门是"真跑一遍第 1 层"的**经验判据**，
+   * 它不过时报告只写"进洞 0 次"是查不动的 —— 这里把每次真跑的结局（打死/打不完/残血）列出来。
+   */
+  if (whFloor1Diag.length > 0) {
+    const uniq = [...new Set(whFloor1Diag)]
+    lines.push(`  ⚠ 进洞门（真跑第 1 层）未通过 ${whFloor1Diag.length} 次，去重后 ${uniq.length} 种结局：`)
+    for (const d of uniq.slice(0, 6)) lines.push(`    · ${d}`)
+  }
 }
 lines.push('')
 lines.push('—— 活动统计（B3/工业 覆盖）——')
@@ -1468,8 +2444,13 @@ lines.push('')
 lines.push(`—— 资产/战斗力增长快照（每 ${SNAP_DAYS} 游戏天；实测 = 复制当前驾驶船打合成 T30/T60 靶，2 种子平均）——`)
 for (const r of growthRows) lines.push(`  ${r}`)
 lines.push('')
-lines.push('—— 里程碑（节选前 150 条）——')
-for (const m of milestones.slice(0, 150)) lines.push(`  ${m}`)
+lines.push(`—— 里程碑（共 ${milestones.length} 条，节选前 400 条）——`)
+/**
+ * ⚠ **不要把 400 调小**：`milestones` 里既有真里程碑、也有每拍/每天的诊断（虫洞逐层读数、
+ * 备战待购、进洞门判据…）。上限太小会把**后期**读数整段截掉——2026-09-21 排查"虫洞日志在
+ * 10.53 天之后消失"时，真因就是这里的 150 把后半程全截了（探针本身一直在跑、并未卡死）。
+ */
+for (const m of milestones.slice(0, 400)) lines.push(`  ${m}`)
 lines.push('')
 lines.push(`—— 策略黑洞记录（${holeLogs.length} 次）——`)
 for (const h of holeLogs) lines.push(`  ${h}`)
