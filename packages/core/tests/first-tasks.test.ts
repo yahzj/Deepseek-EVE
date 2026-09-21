@@ -30,7 +30,7 @@ import {
   sequentialPrefixDone,
   visibleFirstTasks,
 } from '../src/firstTasks'
-import { sellAtMarket, learnBlueprint } from '../src/market'
+import { sellAtMarket, learnBlueprint, listSellHolding, placeSellOrder } from '../src/market'
 import { startMining, getMiningParams } from '../src/mining'
 import { fitModule } from '../src/equipment'
 import { startRecycleRun, startRefineRun } from '../src/industry'
@@ -45,6 +45,8 @@ const ctx = buildSimContext()
 const HOME = HOME_GALAXY_ID
 /** 母港唯一矿带（丰饶之环 · 声望门槛 0） */
 const BELT = 'belt-fortune'
+/** 母港矿带产的原矿（市场有行、也是「第一次采集原矿」那条的主角） */
+const BELT_ORE = 'ore-veldspar'
 
 /** 非序章档（母港已探明，可直接开采）：只用来测计数与任务判定本身 */
 function testState(): GameState {
@@ -381,7 +383,59 @@ describe('「第一次」顺序（2026-09-20 船长第三道令：「将第一�
     expect(FIRST_TASKS.find((d) => d.id === 'first-bounty')?.reward).toEqual({ ships: [{ defId: 'sh-falconet', units: 1 }] })
   })
 
-  it('打捞那条的 10,000 信用点真的到手（走 `grantFirstReward` 同一路径，只发一次）', () => {
+  it('「第一次挂单销售」的判据走**界面那条路**也记上（2026-09-20 船长报障「第一次挂单销售任务无法完成」）', () => {
+    /**
+     * 病根：界面上唯一的"挂出卖单"入口是市场页 → `engine.placeSellOrderAt` → core 的 **`listSellHolding`**，
+     * 而它走 `pushSellOrder` 那条路、**不经过 `placeSellOrder`** ⇒ 原先只有后者记 `bumpFirst('orders')`，
+     * 界面挂单**永远不计数**、这条任务因此**永远做不完**（工具与用例都直接调 `placeSellOrder`，一直没暴露）。
+     * 本用例钉死两条路各自都记一笔（且不重复）。
+     */
+    const state = testState()
+    reachQueue(state, 'first-order') // 顺序解锁：先推到它前面
+    // 备一批可卖的原矿（原矿是可上市商品）
+    state.warehouse.items[BELT_ORE] = 200
+    const good = [...ctx.marketGoods.values()].find(
+      (g) => g.kind !== 'ship' && g.playerSellable !== false && g.refId === BELT_ORE,
+    )
+    expect(good, '原矿应当有市场行').toBeDefined()
+    expect(firstStatOf(state, 'orders')).toBe(0)
+
+    // ① 界面路径：listSellHolding（= engine.placeSellOrderAt 的底层）
+    const listed = listSellHolding(state, ctx, good!.key, Math.max(1, Math.round(good!.basePrice ?? 1)), 10)
+    expect(listed.ok, listed.error).toBe(true)
+    expect(firstStatOf(state, 'orders')).toBe(1)
+
+    // ② 排队到它那一拍 ⇒ 判过（并从仓库拿走 10 单位作托管）
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-order']?.done).toBe(true)
+    advanceGame(state, 1000, ctx) // 奖励（10,000 信用点）在完成的下一拍发
+    expect(state.wallet.isk).toBeGreaterThan(0)
+
+    // ③ core API 那条路（placeSellOrder）同样记一笔，两条路互不重复
+    const before = firstStatOf(state, 'orders')
+    const o2 = placeSellOrder(state, ctx, good!.key, Math.max(1, Math.round(good!.basePrice ?? 1)), 5)
+    expect(o2, 'core API 挂单应当成功').not.toBeNull()
+    expect(firstStatOf(state, 'orders')).toBe(before + 1)
+  })
+
+  it('整船挂单（舰船仓库 → 挂卖单）也计一次「第一次挂单销售」', () => {
+    const state = testState()
+    reachQueue(state, 'first-order')
+    // 舰船市场行的 refId = 舰船 defId（`shipStore` 的键同源）；沙猫级是"协会保底艇"⇒ 市场没有它的行，
+    // 故用开局那艘鲣鱼级（`sh-falconet`）当货源。
+    state.shipStore = { ...(state.shipStore ?? {}), 'sh-falconet': 1 }
+    const shipGood = [...ctx.marketGoods.values()].find(
+      (g) => g.kind === 'ship' && g.refId === 'sh-falconet' && g.playerSellable !== false,
+    )
+    expect(shipGood, '鲣鱼级应当有可挂卖的市场行').toBeDefined()
+    const r = listSellHolding(state, ctx, shipGood!.key, Math.max(1, Math.round(shipGood!.basePrice ?? 1)), 1)
+    expect(r.ok, r.error).toBe(true)
+    expect(firstStatOf(state, 'orders')).toBe(1)
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-order']?.done).toBe(true)
+  })
+
+  it('「第一次打捞残骸」的 10,000 信用点真的到手（走 `grantFirstReward` 同一路径，只发一次）', () => {
     const s = testState()
     reachQueue(s, 'first-salvage') // 顺序解锁：先推到它前面
     s.firstStats = { ...(s.firstStats ?? {}), salvageRuns: 1 }

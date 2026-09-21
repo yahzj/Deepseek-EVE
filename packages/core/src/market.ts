@@ -2099,12 +2099,24 @@ export function listSellHolding(
         ? `已挂卖单：舰船「${goodName(ctx, goodKey)}」×${resting.toLocaleString('zh-CN')} @ ${Math.round(price).toLocaleString('zh-CN')} 信用点（撤销卖单可把船退回舰船仓库）。`
         : `卖单已即时成交：舰船「${goodName(ctx, goodKey)}」×${filled.toLocaleString('zh-CN')} @ ${Math.round(price).toLocaleString('zh-CN')} 信用点。`,
     )
+    // 见「goods 分支」末尾那条注释：「第一次挂单销售」的判据落点——整船挂单也是一次"挂出卖单"，
+    // 且界面路径不经过 `placeSellOrder` ⇒ 必须在这里记一笔（否则该任务只能靠 core API 才完得成）。
+    bumpFirst(state, 'orders')
     return { ok: true, orderId: lastId, price: Math.round(price), filled, resting }
   }
   if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。', errorId: 'core.market.009' }
   const order = pushSellOrder(state, goodKey, price, n)
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
   const r = crossOnPlacement(state, ctx, order)
+  /**
+   * **「第一次挂单销售」的判据落点（2026-09-20 玩家报障「第一次挂单销售任务无法完成」）**：
+   * 本函数是**界面上唯一**的"挂出卖单"入口（市场页「挂卖单」→ `engine.placeSellOrderAt` → 这里），
+   * 而它走的是 `pushSellOrder` 这条路、**不经过 `placeSellOrder`** ⇒ 原先只有 `placeSellOrder` 里那记
+   * `bumpFirst(state,'orders')`，界面挂单**永远不计数**（工具与用例都直接调 `placeSellOrder`，所以一直没被发现）。
+   * 两条路各自记账、互不重复：`placeSellOrder`（core API / 工具）＋ 本函数（界面）；
+   * 舰船那条分支同上（整船挂单也是一次"挂出卖单"）。
+   */
+  bumpFirst(state, 'orders')
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, n, r))
   return { ok: true, orderId: order.id, price: order.price, filled: r.filled, resting: r.resting }
 }
