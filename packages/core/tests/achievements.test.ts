@@ -42,6 +42,16 @@ function setChainProgress(state: GameState, chainId: string, level: number): voi
   state.importantTasks[`chain-${chainId}`] = { done: false, delivered: level }
 }
 
+/**
+ * 把「第一次」队列推到某条任务前面（2026-09-20：`advanceFirstTasks` 改成**只判当前那一条**，
+ * 未显示的任务不再提前判过）⇒ 要验"某条的徽章"，先得让队列走到它。
+ */
+function reachQueue(state: GameState, taskId: string): void {
+  const idx = FIRST_TASKS.findIndex((t) => t.id === taskId)
+  expect(idx, `未知任务 id：${taskId}`).toBeGreaterThanOrEqual(0)
+  for (const t of FIRST_TASKS.slice(0, idx)) state.importantTasks[t.id] = { done: true }
+}
+
 const TASK_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'task')
 const CHAIN_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'chain')
 const MILE_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'milestone')
@@ -439,6 +449,7 @@ describe('成就徽章：与引擎挂点同拍（任务达成即到手）', () =
   it('任务判定与链记账做完之后才判徽章 ⇒ 同一拍能看到两边的结果', () => {
     const state = testState()
     // 攒够"维修 1 次"（first-repair 的判据）——直接走计数 + 任务判定 + 链记账，再判徽章
+    reachQueue(state, 'first-repair') // 顺序解锁：队列得先走到它（否则判定不认未显示的条目）
     bumpFirst(state, 'repairs', 1)
     advanceFirstTasks(state, ctx)
     advanceFirstChains(state)

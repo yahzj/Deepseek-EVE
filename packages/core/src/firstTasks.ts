@@ -18,11 +18,14 @@
  *   未探索虫洞 ×2 ⇒「第一次虫洞」；
  *   **「第一次打捞残骸」自 2026-09-20 起无实物奖励**（打捞器已前移到挖矿那条）；「第一次挂单销售」「第一次指派 AI 副船」
  *   两条一直只有情报信。发放逻辑在 `firstRewards.grantFirstReward`（老档迁移不发奖励）。
- * - **顺序解锁**（**2026-09-20 船长转玩家反馈**：「**新手引导的重要任务一次性太多了，建议按顺序排列解锁**」；
- *   同时「**已经完成「第一次」任务后的里程碑任务链，建议单开一个任务中心的子页面「里程碑任务」**」）：
+ * - **顺序解锁 ＝ 显示与判定同一把尺**（**2026-09-20 船长转玩家反馈**：「**新手引导的重要任务一次性太多了，
+ *   建议按顺序排列解锁**」；同时「**已经完成「第一次」任务后的里程碑任务链，建议单开一个任务中心的子页面
+ *   「里程碑任务」**」；**同日第二道令**：「**未显示的第一次任务可以提前完成**」＝ 报障）：
  *   13 条「第一次」**串成一条线**——`FIRST_TASKS` 的数组序就是解锁序，`visibleFirstTasks` 只给
  *   **第一条还没完成的**（已完成的也不再占位，进度看页头 N/13）；**旧口径「自由选择完成 ＋ `prereq` 只控可见」作废**
- *   （`prereq` 字段已删）。链（里程碑）本身从开局就在累计，但**只在对应的「第一次」完成后才上「里程碑任务」页**
+ *   （`prereq` 字段已删）。**判定同样只认当前那一条**（见 `advanceFirstTasks`）：后面的条目即便条件已满足
+ *   也**不提前判过**（不提前发奖励/情报信/成就），等轮到那一拍按档内现状补齐（自愈、进度不丢）。
+ *   链（里程碑）本身从开局就在累计，但**只在对应的「第一次」完成后才上「里程碑任务」页**
  *   （判据见 `milestoneBoard` 的 `unlocked`）。
  */
 import type { GameState } from './state'
@@ -416,14 +419,20 @@ export function chainProgressOf(
  * 见 `engine.ts` 的那段循环）；判定/去重/老档语义全都不用改。**成就系统本身本批不做**。
  */
 export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
-  const newly: string[] = []
-  for (const def of FIRST_TASKS) {
-    if (state.importantTasks[def.id]?.done === true) continue
-    if (def.judge(state, ctx) < 1) continue
-    state.importantTasks[def.id] = { done: true }
-    newly.push(def.id)
-  }
-  return newly
+  /**
+   * ⚠ **顺序解锁 = 显示与判定同一把尺**（**2026-09-20 船长报障**：「**未显示的第一次任务可以提前完成**」）。
+   *
+   * 旧实现每拍把 13 条**全部**判一遍 ⇒ 只要"先把某件活干了"（或老档/工具/直接调 core），那条**还没轮到**的
+   * 任务就会被判过：拿奖励、发情报信、进成就 —— 顺序解锁只剩"显示"这一半。
+   * 现在**只判当前那一条**（`FIRST_TASKS` 里第一条还没完成的）：后面的任务即便条件已满足也**不提前判过**；
+   * 等它轮到那一拍自然补齐（判据是 `state` 现状 ⇒ 自愈、进度不丢）；**一拍最多判过一条**。
+   * ⚠ 老档迁移（`save.ts` MIGRATIONS[25]）是把 13 条**一次性**判完成，不经过这里 ⇒ 不受影响。
+   */
+  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
+  if (!current) return []
+  if (current.judge(state, ctx) < 1) return []
+  state.importantTasks[current.id] = { done: true }
+  return [current.id]
 }
 
 /**
@@ -576,6 +585,8 @@ export function unlockNeedTitle(key: string): string | undefined {
  * 全部完成 ⇒ 空数组（页头读数走 `firstTaskProgress`）。
  * ⚠ **2026-09-20 船长（玩家反馈）**：「新手引导的重要任务一次性太多了，建议按顺序排列解锁」
  * ⇒ 旧口径「13 条自由选择完成 ＋ `prereq` 只控可见、可多线并行」**作废**（`prereq` 字段已删）。
+ * ⚠ 本函数与 `advanceFirstTasks` 的"当前那一条"**是同一把尺**（都 = 数组序里第一条 `done !== true`）：
+ * 显示哪一条就只判哪一条——这正是船长同日第二道令「未显示的第一次任务可以提前完成」的修法。
  */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
   const next = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)

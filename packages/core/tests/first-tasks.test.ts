@@ -50,6 +50,19 @@ function testState(): GameState {
   return createInitialState({ nowWallMs: 0, seed: 11 })
 }
 
+/**
+ * **把队列推到某条任务前面**（2026-09-20 船长报障「未显示的第一次任务可以提前完成」后新增）。
+ *
+ * `advanceFirstTasks` 现在**只判当前那一条**（`FIRST_TASKS` 里第一条没完成的）⇒ 想验"轮到它时会发生什么"，
+ * 就得先把排在它前面的任务标记完成。本函数**只写 done 标记**（奖励/通讯由 `advanceFirstTasks` 统一发），
+ * 不触发任何判定 ⇒ 断言到的奖励一定是"这一条自己发的"。
+ */
+function reachQueue(state: GameState, taskId: string): void {
+  const idx = FIRST_TASKS.findIndex((d) => d.id === taskId)
+  expect(idx, `未知任务 id：${taskId}`).toBeGreaterThanOrEqual(0)
+  for (const d of FIRST_TASKS.slice(0, idx)) state.importantTasks[d.id] = { done: true }
+}
+
 describe('「第一次」任务：卡片文案齐备（船长 2026-09-18：正文要"一定量的文本丰富"）', () => {
   it('13 条都写了 detail（一段话讲清怎么做/做什么/奖励）', () => {
     for (const def of FIRST_TASKS) {
@@ -133,6 +146,11 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
 describe('「第一次」任务：奖励（一次性）与计数落点回归', () => {
   it('「第一次学习技能」发基础 AI 核心 ×1（船长 2026-09-17：AI 核心放这条里给），且只发一次', () => {
     const state = testState()
+    /**
+     * ⚠ **顺序解锁下"轮到它"才判过**（2026-09-20 船长报障：未显示的任务不该提前完成）⇒
+     * 本用例钉的是"这一条完成时发什么"，故先把排在它前面的任务标记完成（= 队列走到它了）。
+     */
+    reachQueue(state, 'first-skill')
     expect(state.aiCores.basic ?? 0).toBe(0)
     // 判据 = AI 核心操作学 Lv1（训练过程由 training 侧用例覆盖）⇒ 这里直接置位再走一拍引擎
     state.skills.trained['ai-expert'] = 1
@@ -162,6 +180,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('港内付费维修记一次（任务：「用修理组件或港内维修修一次船」）＋ 奖励民用修理组件 ×20', () => {
     const state = testState()
+    reachQueue(state, 'first-repair') // 顺序解锁：先推到它前面
     state.wallet.isk = 500_000
     const fal = state.fleet['sh-falconet']!
     fal.armorPct = 0.4
@@ -177,6 +196,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次操作精炼炉」发动能弹药生产线蓝图（从②移到本条，船长 2026-09-18）', () => {
     const state = testState()
+    reachQueue(state, 'first-refine') // 顺序解锁：先推到它前面
     state.warehouse.items['ore-veldspar'] = 200
     expect(state.blueprintStock['bp-ammo-kinetic'] ?? 0).toBe(0)
     expect(startRefineRun(state, 'ore-veldspar', 'pilot', ctx).ok).toBe(true)
@@ -187,6 +207,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次完成悬赏」发一艘鲣鱼级（同型自动编号 #2，船长 2026-09-18）', () => {
     const state = testState()
+    reachQueue(state, 'first-bounty') // 顺序解锁：先推到它前面
     const before = Object.keys(state.fleet).length
     // 判据 = 胜场 ≥ 1；直接置位计数再走一拍引擎（战斗本身由战斗侧用例覆盖）
     state.firstStats = { ...(state.firstStats ?? {}), bountyWins: 1 }
@@ -222,6 +243,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次生产」发沙猫级舰船蓝图（2026-09-18 新建，不进市场、只靠本条发放）', () => {
     const state = testState()
+    reachQueue(state, 'first-produce') // 顺序解锁：先推到它前面
     expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(0)
     // 判据 = 组装机产出 ≥ 1 件；直接置位计数再走一拍引擎（制造链路由制造侧用例覆盖）
     state.firstStats = { ...(state.firstStats ?? {}), produceUnits: 1 }
@@ -232,6 +254,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
     const state = testState()
+    reachQueue(state, 'first-ship') // 顺序解锁：先推到它前面
     // 备料 + 学会沙猫级蓝图（正常路径里蓝图来自「第一次生产」的奖励）
     state.blueprintStock['sbp-sandcat'] = 1
     expect(learnBlueprint(state, ctx, 'sbp-sandcat').ok).toBe(true)
@@ -279,6 +302,32 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstTaskProgress(s2)).toEqual({ done: 1, total: 13 })
   })
 
+  it('未显示的第一次任务**不能提前完成**（2026-09-20 船长报障：「未显示的第一次任务可以提前完成」）', () => {
+    const state = testState()
+    // ① 把"排在后面几条"的判据统统先做掉：港内维修一次 ＋ 虫洞声望 40 ＋ 采矿计数 1
+    state.wallet.isk = 500_000
+    state.fleet['sh-falconet']!.armorPct = 0.4
+    expect(repairShip(state, 'sh-falconet', ctx).ok).toBe(true)
+    state.standings['dsi'] = 40
+    state.firstStats = { ...(state.firstStats ?? {}), mineUnits: 1 }
+    advanceGame(state, 1000, ctx)
+    // 只判过当前那一条（第一次扫描）——后面的一律不判过、奖励一件都不发
+    expect(Object.entries(state.importantTasks).filter(([, v]) => v.done === true).map(([k]) => k)).toEqual(['first-scan'])
+    expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(0)
+    expect(state.wormholeStock?.length ?? 0).toBe(0)
+
+    // ② 一拍最多判过一条：下一拍只前进到「第一次采集原矿」，不会顺手把精炼也判掉
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-mine']?.done).toBe(true)
+    expect(state.importantTasks['first-refine']?.done).toBeUndefined()
+
+    // ③ 自愈：轮到时按档内现状补齐（先前做的维修没白干，奖励照发）
+    reachQueue(state, 'first-repair')
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-repair']?.done).toBe(true)
+    expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(20)
+  })
+
   it('里程碑页数据：`milestoneBoard` 给全部 13 条链、`unlocked` 只认"对应「第一次」已完成"', () => {
     const state = testState()
     const all = milestoneBoard(state)
@@ -299,6 +348,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
     const state = testState()
+    reachQueue(state, 'first-wormhole') // 顺序解锁：先推到它前面
     state.standings['dsi'] = 40
     expect(state.wormholeStock?.length ?? 0).toBe(0)
     advanceGame(state, 1000, ctx)
