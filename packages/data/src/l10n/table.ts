@@ -1028,10 +1028,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.033": { zh: "停机", en: "Stopped" },
   "ui.BattleScreen.034": { zh: "劫掠捕获网：被钉住的舰船机动骤降、推进器熄火、闪避失效、射程缩短——击沉发动者才能解除", en: "Raid snare: a pinned ship loses most of its maneuverability, its thrusters cut out, evasion fails and its range shrinks — only sinking the ship that launched the snare breaks it" },
   "ui.BattleScreen.035": { zh: "敌方全队机库备用机：前线战损后自动满血补位（打光母舰才是解法）", en: "Enemy hangar reserves: they replace losses at full HP (wearing down the carriers is the answer)" },
-  "ui.BattleScreen.036": { zh: "洞内交火中不能退出战场：打完这一场（撤离只能在本层结束后发起）", en: "You cannot leave the battlefield during a wormhole engagement: finish this fight (withdrawal can only be called once the layer ends)" },
+  /**
+   * ⚠ **`ui.BattleScreen.036` 已于 2026-09-20 删除**：它是旧裁定（2026-09-13「虫洞中的战斗画面
+   * 不可以退出」）的**禁用理由**文案；船长 2026-09-20 改判「**虫洞内的战斗，允许玩家将战斗窗口
+   * 最小化**」⇒ 洞内那枚按钮不再禁用，该键随之无引用（按纪律删死键，不留悬空文案）。
+   */
   "ui.BattleScreen.037": { zh: "← 退出战场", en: "← Leave battle" },
   "ui.BattleScreen.038": { zh: "副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离", en: "Cannot retreat while the battle is unfinished: clear this node, and withdrawal is offered at the end of the layer" },
-  "ui.BattleScreen.039": { zh: "洞内：本场必须打完（战场也不能退出）", en: "In the wormhole this fight has to be finished (the battlefield cannot be left either)" },
+  /** 洞内"本场必须打完"的提示——**2026-09-20 改文案**：去掉了"（战场也不能退出）" */
+  "ui.BattleScreen.039": { zh: "洞内：本场必须打完（不能撤退）", en: "In the wormhole this fight has to be finished (no retreat)" },
   "ui.BattleScreen.040": { zh: "撤退：轻损脱离战斗并即刻回港（仅损失少量舰船耐久、无弃船风险、不收维修费；同时停止重复清剿）", en: "Retreat: disengage with light damage and dock at once (a little durability lost, no risk of losing the ship, no repair bill; repeat clearance stops too)" },
   "ui.BattleScreen.041": { zh: "⚑ 撤退", en: "⚑ Retreat" },
   "ui.BattleScreen.042": { zh: "战斗结束 · 正在撤离…", en: "Battle over · withdrawing…" },
@@ -1097,6 +1102,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.102": { zh: "（无弹）", en: "(no ammo)" },
   "ui.BattleScreen.103": { zh: "（回收率 {p1}% · 优先回收高价值）·", en: "(recovery rate {p1}% · high-value drones first) ·" },
   "ui.BattleScreen.104": { zh: "净损失 {p1} 架", en: "net loss: {p1} airframes" },
+  /**
+   * 「← 退出战场」的悬停说明（2026-09-20 船长：「**虫洞内的战斗，允许玩家将战斗窗口最小化。**」）。
+   * 洞内与洞外**同一句话**：都只是关掉观看界面，战斗在后台继续推进。
+   */
+  "ui.BattleScreen.105": { zh: "最小化观战窗口：战斗在后台继续，可随时从「战斗中」回来", en: "Minimize the battle view: the fight continues in the background — reopen it any time from “In battle”" },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
