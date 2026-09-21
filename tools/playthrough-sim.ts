@@ -1406,8 +1406,27 @@ function doBounty(): void {
    */
   watchBountyNames.add(best.name)
   const r = startExpedition(state, best.id, ctx)
-  if (r.ok) mark(`远征 ${best.name}`)
-  else issue(`远征 ${best.id} 失败：${r.error}`)
+  if (r.ok) {
+    /**
+     * ⚠⚠ **`r.ok` 之后立刻断言"远征真的开始了没有"**（2026-09-21 第二十三批 · 定性试验）。
+     *
+     * 为什么必须查这一步：实测 `蜃影导航劫持令`（预估 98%）被**选中 4 次**、每次都打印了
+     * `远征 蜃影…`（那是模拟自己的 mark，**只表示 `r.ok === true`**），
+     * 而**引擎日志里没有任何一条提到它**（既无"远征开始"、也无任何结局）。
+     * 两条流的分歧只有三种解释：
+     *   ① `startExpedition` 返回 ok 但**实际没进 `active`**（引擎侧真 bug，要上报）；
+     *   ② 进了 active 但**同一 tick 内被别的东西中止**（互斥/自动停）；
+     *   ③ 引擎确实跑了，只是没写日志（日志 kind 或文案与预期不符）。
+     * 这条断言把 ①②③ 分开：`active` 为假 ⇒ ①/②；为真但无日志 ⇒ ③。
+     */
+    const active = state.expedition.active === true
+    if (!active) issue(`远征未真正开始：${best.name}（startExpedition 返回 ok 但 expedition.active=false）`)
+    else if (day() >= lastBountyNoteDay) {
+      // 只记"确实开始了"的情形（节流到每天一条，避免刷屏）
+      mark(`远征已开始：${best.name}（active=true · away=${state.awayGalaxy ?? '母港'}）`)
+    }
+    mark(`远征 ${best.name}`)
+  } else issue(`远征 ${best.id} 失败：${r.error}`)
 }
 
 /** 刷钱：打当前可赢的收益最高悬赏（含已首胜；boss 够强前都可用） */
