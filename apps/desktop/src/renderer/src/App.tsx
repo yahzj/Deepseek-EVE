@@ -570,6 +570,15 @@ export function App({ engine }: { engine: GameEngine }) {
   useEffect(() => {
     if (page === 'task') engine.markBountyBoardSeen()
   }, [engine, page])
+  /**
+   * **「第一次」推进提醒**（**2026-09-20 船长令**：「**每推进一阶段第一次任务时，在导航栏的任务中心
+   * 选项处进行提醒**」）：口径与上面赏金那条**逐字同款**——当前那一条 ≠ 玩家看过的这一条 ⇒ 亮；
+   * 进「任务中心」页即记账（下面那个 effect）⇒ 灭；页内恒为 null（进入即消，不必等下一拍）。
+   */
+  const firstTaskNew = page === 'task' ? null : engine.firstTaskNotice()
+  useEffect(() => {
+    if (page === 'task') engine.markFirstTaskSeen()
+  }, [engine, page])
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
   const [shipTab, setShipTab] = useState<ShipTab>('fleet')
@@ -986,7 +995,13 @@ export function App({ engine }: { engine: GameEngine }) {
             // 「第一次」前置未达 ⇒ **该导航项不显示**（船长：未解锁页面与任务都隐藏）
             if (!unlocked(state, item.key)) return null
             // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
-            const unreadN = item.key === 'comms' ? commsUnread : item.key === 'task' ? bountyNew : 0
+            // ＋**2026-09-20**：「第一次」推进提醒（有新的一步可做时 +1）
+            const unreadN =
+              item.key === 'comms'
+                ? commsUnread
+                : item.key === 'task'
+                  ? bountyNew + (firstTaskNew !== null ? 1 : 0)
+                  : 0
             return (
               <button
                 key={item.key}
@@ -994,7 +1009,13 @@ export function App({ engine }: { engine: GameEngine }) {
                 title={
                   unreadN > 0
                     ? item.key === 'task'
-                      ? tr("ui.App.113", { unreadN: unreadN })
+                      ? [
+                          // 「第一次」有新的一步 ⇒ 先说它（写清是哪一条），赏金新板另起一行
+                          firstTaskNew !== null ? tr('ui.App.120', { p1: firstTaskNew.title }) : null,
+                          bountyNew > 0 ? tr('ui.App.113', { unreadN: bountyNew }) : null,
+                        ]
+                          .filter((s) => s !== null)
+                          .join('\n')
                       : tr("ui.App.114", { unreadN: unreadN })
                     : undefined
                 }

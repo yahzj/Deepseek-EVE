@@ -993,6 +993,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.117": { zh: "无法应战", en: "Cannot engage" },
   "ui.App.118": { zh: "无法脱离", en: "Cannot disengage" },
   "ui.App.119": { zh: "成就", en: "Achievements" },
+  /* 导航「任务中心」的**「第一次」推进提醒**（**2026-09-20 船长令**：「每推进一阶段第一次任务时，
+     在导航栏的任务中心选项处进行提醒」）——悬停文案，与「赏金任务已更新」那条并列（两条都有时各占一行）。 */
+  "ui.App.120": { zh: "有新的「第一次」任务：{p1}（进任务中心即清除）", en: "New First-time task available: {p1} (cleared once you open the Task Center)" },
   "ui.BattleScreen.001": { zh: "无", en: "None" },
   "ui.BattleScreen.002": { zh: "动能", en: "Kinetic" },
   "ui.BattleScreen.003": { zh: "弹药", en: "Ammo" },

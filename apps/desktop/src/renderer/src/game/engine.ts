@@ -109,6 +109,9 @@ import {
   completeSideTask,
   sideTaskBoard,
   sideTasksMarkBountySeen,
+  // 导航「任务中心」的推进提醒（2026-09-20 船长令）：判定与记账单点都在 core
+  firstTaskNotice,
+  firstTasksMarkSeen,
   courierTaskUnlocked,
   courierDelivering,
   startCourierDelivery,
@@ -2668,6 +2671,20 @@ export class GameEngine {
   /** 记一笔"玩家已看过这一板赏金任务"（进「任务中心」页时调用；幂等）⇒ 徽标灭 */
   markBountyBoardSeen(): void {
     sideTasksMarkBountySeen(this.state)
+  }
+
+  /**
+   * **「第一次」推进提醒**（**2026-09-20 船长令**：「每推进一阶段第一次任务时，在导航栏的任务中心选项处
+   * 进行提醒」）：当前那一条 ≠ 玩家看过的这一条 ⇒ 返回 `{ taskId, title }`（徽标 +1、悬停写标题）；
+   * 看过 / 13 条全做完 ⇒ null。判定单点在 core（`firstTaskNotice`）。
+   */
+  firstTaskNotice(): { taskId: string; title: string } | null {
+    return firstTaskNotice(this.state)
+  }
+
+  /** 记一笔"这一条「第一次」看过了"（进「任务中心」页时调用；幂等）⇒ 推进提醒灭 */
+  markFirstTaskSeen(): void {
+    firstTasksMarkSeen(this.state)
   }
 
   /** 快递任务当前是否解锁（已建成任一副空间站——stage ≥ 档位数） */

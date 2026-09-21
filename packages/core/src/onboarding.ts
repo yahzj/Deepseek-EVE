@@ -19,7 +19,7 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { addLog, DEFAULT_PILOT_NAME } from './state'
-import { firstTaskProgress } from './firstTasks'
+import { firstTaskProgress, firstTasksMarkSeen } from './firstTasks'
 
 /** 序章演出中（渲染层 `PrologueScreen` 推进；演出期间不做任何任务判定） */
 export const ONB_AWAKEN = 0
@@ -60,9 +60,16 @@ export function publishFindHumansWhenReady(state: GameState): boolean {
   return true
 }
 
-/** 序章收尾（幂等）：步骤落 99（**发布「寻找人类」改由发布闸门负责**，见上） */
+/** 序章收尾（幂等）：步骤落 99（**发布「寻找人类」改由发布闸门负责**，见上）＋ 记一笔"当前那条「第一次」已提示过" */
 function finishPrologue(state: GameState): void {
   if (state.onboarding.step !== ONB_DONE) state.onboarding.step = ONB_DONE
+  /**
+   * **导航「任务中心」推进提醒的起点**（**2026-09-20 船长令**：「每推进一阶段第一次任务时…进行提醒」）：
+   * 序章收尾时把"当前那一条"（= 第一次扫描）记为已提示——开场信本来就会指路「待办清单在任务中心」
+   * ⇒ 提醒留给**之后的每一次推进**（完成一条 ⇒ 下一条顶上 ⇒ 徽标亮）。老档不经过这里（step 已 99）
+   * ⇒ 仍是首帧亮一次（与赏金那条「老档默认亮起提示」同款）。
+   */
+  firstTasksMarkSeen(state)
 }
 
 /**

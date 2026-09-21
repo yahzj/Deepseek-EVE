@@ -975,6 +975,10 @@ export {
   firstTaskBoard,
   totalSkillLevels,
   dsiStanding,
+  /* 导航「任务中心」的推进提醒（船长 2026-09-20：每推进一阶段第一次任务时提醒）——
+     判定与记账的单点，界面只读它 */
+  firstTaskNotice,
+  firstTasksMarkSeen,
 } from './firstTasks'
 /* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
 export { grantFirstReward } from './firstRewards'

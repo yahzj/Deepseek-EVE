@@ -588,6 +588,34 @@ export function firstTaskProgress(state: GameState): { done: number; total: numb
   return { done, total: FIRST_TASKS.length }
 }
 
+/**
+ * **导航「任务中心」的推进提醒**（**2026-09-20 船长令**：「**每推进一阶段第一次任务时，在导航栏的
+ * 任务中心选项处进行提醒**」）。
+ *
+ * 判据 = **当前那一条 ≠ 玩家看过的那一条**（与「赏金新板提示」同款"换板未看"口径，见
+ * `sideTasks.sideTaskBoard().bountyFresh`）：
+ * - 完成一条 ⇒ 下一条顶上 ⇒ `state.firstTaskSeenId` 还是旧的 ⇒ 亮；
+ * - 进「任务中心」页 ⇒ `firstTasksMarkSeen` 记一笔 ⇒ 灭；
+ * - **全部 13 条做完**（没有"当前那一条"）⇒ 不亮。
+ *
+ * ⚠ 老档没有 `firstTaskSeenId` ⇒ 首帧亮一次（与赏金那条「老档默认亮起提示」同一处置）。
+ * 返回值带标题：徽标的悬停文案要写清"新的是哪一条"。
+ */
+export function firstTaskNotice(state: GameState): { taskId: string; title: string } | null {
+  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
+  if (!current) return null
+  if (state.firstTaskSeenId === current.id) return null
+  return { taskId: current.id, title: current.title }
+}
+
+/** **记一笔"这一条看过了"**（进「任务中心」页时调用；幂等：同一条不写第二次）。返回是否真的记了。 */
+export function firstTasksMarkSeen(state: GameState): boolean {
+  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
+  if (!current || state.firstTaskSeenId === current.id) return false
+  state.firstTaskSeenId = current.id
+  return true
+}
+
 /** **里程碑页一行**（每条"次数"链一行；`unlocked` = 触发它的那条「第一次」已完成） */
 export interface MilestoneChainRow {
   chainId: string

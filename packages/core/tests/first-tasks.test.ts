@@ -22,6 +22,8 @@ import {
   firstStatOf,
   firstTaskBoard,
   firstTaskProgress,
+  firstTaskNotice,
+  firstTasksMarkSeen,
   milestoneBoard,
   FIRST_TASKS,
   advanceFirstChains,
@@ -368,6 +370,65 @@ describe('「寻找人类」发布闸门（2026-09-20 船长令：「只在完�
     expect(broken.importantTasks[TASK]).toBeUndefined()
     advanceGame(broken, 1000, ctx)
     expect(broken.importantTasks[TASK]?.done).toBe(false)
+  })
+})
+
+describe('导航「任务中心」的推进提醒（2026-09-20 船长令）', () => {
+  /**
+   * 船长原话：「**每推进一阶段第一次任务时，在导航栏的任务中心选项处进行提醒。**」
+   * 口径与「赏金新板提示」同款（换板未看 ⇒ 亮 · 进页记账 ⇒ 灭）：**当前那一条 ≠ 看过的这一条** ⇒ 亮。
+   */
+  it('推进一阶段 ⇒ 亮（带当前那一条的标题）；记账一次 ⇒ 灭且幂等；再推进 ⇒ 又亮', () => {
+    const s = testState()
+    /**
+     * ① **序章收尾已经替新档记过一笔**（开场信负责指路「待办清单在任务中心」）
+     * ⇒ 新档开局不亮（不是"没记过"）；老档不经过序章收尾 ⇒ 首帧亮一次（与本组第 3 例）。
+     */
+    beginAfterAwaken(createInitialState({ nowWallMs: 0, seed: 11, prologue: true }))
+    expect(firstTaskNotice(s), '当前是「第一次扫描」且没记过账 ⇒ 亮（老档语义）').toEqual({
+      taskId: 'first-scan',
+      title: '第一次扫描',
+    })
+    // ② 记一笔 ⇒ 灭；同一条重复记账返回 false（幂等）
+    expect(firstTasksMarkSeen(s)).toBe(true)
+    expect(firstTaskNotice(s)).toBeNull()
+    expect(firstTasksMarkSeen(s)).toBe(false)
+    expect(s.firstTaskSeenId).toBe('first-scan')
+    // ③ 推进一阶段（完成扫描）⇒ 下一条顶上 ⇒ 又亮，且标题换成新那条
+    s.importantTasks['first-scan'] = { done: true }
+    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-mine', title: '第一次采集原矿' })
+    expect(firstTasksMarkSeen(s)).toBe(true)
+    expect(firstTaskNotice(s)).toBeNull()
+  })
+
+  it('序章收尾会记一笔 ⇒ **新档开局不亮**，第一次推进后才亮', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 11, prologue: true })
+    expect(firstTaskNotice(s), '演出期间还没记账').not.toBeNull()
+    beginAfterAwaken(s)
+    expect(s.firstTaskSeenId).toBe('first-scan')
+    expect(firstTaskNotice(s), '序章收尾已提示过第一条 ⇒ 不亮').toBeNull()
+    s.importantTasks['first-scan'] = { done: true }
+    expect(firstTaskNotice(s)?.taskId).toBe('first-mine') // 推进后才亮
+  })
+
+  it('13 条全做完 ⇒ 不亮（没有"当前那一条"）；记账也不写键', () => {
+    const s = testState()
+    for (const d of FIRST_TASKS) s.importantTasks[d.id] = { done: true }
+    expect(firstTaskNotice(s)).toBeNull()
+    expect(firstTasksMarkSeen(s)).toBe(false)
+    expect(s.firstTaskSeenId).toBeUndefined()
+  })
+
+  it('存档往返：记账随档；**没记过账就不写这个键**（老档与新档快照逐字一致 = 真零迁移）', () => {
+    const fresh = testState()
+    const raw = JSON.parse(serializeSaveFile(fresh, 1)) as { state: Record<string, unknown> }
+    expect('firstTaskSeenId' in raw.state, '没记过账不该冒出这个键').toBe(false)
+    expect(loadSaveFile(serializeSaveFile(fresh, 1)).state.firstTaskSeenId).toBeUndefined()
+    // 记过账 ⇒ 往返保留（徽标也不再亮）
+    firstTasksMarkSeen(fresh)
+    const back = loadSaveFile(serializeSaveFile(fresh, 1)).state
+    expect(back.firstTaskSeenId).toBe('first-scan')
+    expect(firstTaskNotice(back)).toBeNull()
   })
 })
 

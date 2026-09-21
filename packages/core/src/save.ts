@@ -2476,6 +2476,17 @@ function normalizeState(raw: unknown): GameState {
     firstStats[key] = Math.floor(n)
   }
 
+  /**
+   * **导航「任务中心」推进提醒的记账**（**2026-09-20 船长令**：「每推进一阶段第一次任务时，
+   * 在导航栏的任务中心选项处进行提醒」）——玩家"看过的当前那一条"的任务 id。
+   *
+   * 兼容字段、**零迁移**：老档缺省 ⇒ 首帧徽标亮一次（与 `bountySeenWindow` 同款处置）；
+   * ⚠ **没记过账就不写这个键**（空串/非字符串一律丢弃）——与 `sideTasks.bountySeenWindow` 同款口径：
+   * 老档与新档的快照往返因此逐字一致。
+   */
+  const firstTaskSeenIdRaw = src.firstTaskSeenId
+  const firstTaskSeenId = typeof firstTaskSeenIdRaw === 'string' && firstTaskSeenIdRaw.length > 0 ? firstTaskSeenIdRaw : undefined
+
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
     rawList: unknown,
@@ -3074,6 +3085,8 @@ function normalizeState(raw: unknown): GameState {
     importantTasks,
     // 「第一次」任务终身计数：**空表不写键**（老档与新档快照逐字一致 = 真零迁移）
     ...(Object.keys(firstStats).length > 0 ? { firstStats } : {}),
+    // 导航「任务中心」推进提醒的记账：**没记过账就不写键**（同款零迁移口径）
+    ...(firstTaskSeenId !== undefined ? { firstTaskSeenId } : {}),
     sideTasks,
     wormhole,
     research,

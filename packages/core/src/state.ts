@@ -1912,6 +1912,16 @@ export type GameStateV25 = Omit<GameStateV24, 'version'> & {
    * 键见 `core/firstTasks.ts` 的 `FirstStatKey`；老档没有 ⇒ 读作 0（链任务从 0 起）。
    */
   firstStats?: FirstStats
+  /**
+   * **「第一次」任务推进到哪一步玩家已经看过**（**2026-09-20 船长令**：「每推进一阶段第一次任务时，
+   * 在导航栏的任务中心选项处进行提醒」）。
+   *
+   * 口径与「赏金新板提示」同款（见 `SideTasksState.bountySeenWindow`）：**当前那一条 ≠ 看过的这一条** ⇒
+   * 导航「任务中心」亮数字徽标；**进「任务中心」页即记账**（`firstTasksMarkSeen`）⇒ 立刻灭；
+   * 再推进一阶段（完成一条、下一条顶上）⇒ 又亮。可选字段、**零迁移**；老档没有它 ⇒ 首帧亮一次。
+   * ⚠ 缺省**不写键**（与 `bountySeenWindow` / `fitPresets` 同款）——无条件写会让新档与老档的快照往返多一个键。
+   */
+  firstTaskSeenId?: string
 }
 /**
  * 第二十六版存档结构：**v26 = v25 + 「第一次」任务系列上线时的一次性老档判定**（2026-09-17 教程重做）。
