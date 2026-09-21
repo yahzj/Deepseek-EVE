@@ -7813,6 +7813,13 @@ html[data-locale='en'] body {
 
 .app-battle-screen-top > span:nth-child(2) { font-size: 14px; font-weight: 700; }
 
+/* **最小化按钮排到窗口右上角**（2026-09-21 船长：「最小化建议放到窗口右上角」）。
+   顶栏是 flex 行；这枚按钮在 DOM 里是**第一个**子元素（当初按阅读顺序写的），但位置口径要的是最右。
+   用 flex `order` 把它推到行尾——**不改 DOM 顺序**，因为 `> span:nth-child(2)` 那条按位次选目标
+   （改顺序会连带打乱它）。
+   ⚠ 别再给壳传 `showMinimizeButton`（壳那枚也在右上角）：两枚都在右，会变回"两个按钮"的老报障。 */
+.app-battle-screen-top > button:first-child { order: 99; margin-left: auto; }
+
 .app-battle-field { flex: 1; display: flex; align-items: center; min-height: 0; padding: 6px 4vw; gap: 0; }
 
 .app-battle-field[data-firing] .app-sprite { filter: drop-shadow(0 0 10px rgba(255,224,138,.8)); }
