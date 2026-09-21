@@ -26,9 +26,23 @@ import type { ComponentType, ReactNode } from 'react'
 import { getMiningParams, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
+import { debugEnabled } from '../panels/DebugPanel'
 import { sceneOfShipwin } from './ShipStatusWin'
 import type { ShipwinScene } from './ShipStatusWin'
 import { WinBox } from './WinBox'
+
+/**
+ * **本窗口的可见开关 = 调试模式**（2026-09-20 船长令：「建议先做一个开关，只有开启调试模式才能看到」）。
+ *
+ * 复用既有调试入口 `panels/DebugPanel.tsx` 的 `debugEnabled()`（`localStorage['whale-idle:debug'] === '1'`，
+ * 与顶栏「⇄ 调试」按钮、性能 Hub 采集同一个开关）——**不另造开关机制**。
+ *
+ * 关掉时本窗口**完全不存在**：既不弹窗、也不出浮动还原标；状态窗（左侧那个保留的小窗）不受影响，
+ * 仍照常按活动换场景。⇒ 玩家侧零变化，船长开调试即可验收。
+ */
+function activityWinEnabled(): boolean {
+  return debugEnabled()
+}
 
 /** 本窗口认得的活动（= `sceneOfShipwin` 的作业态子集；其余场景窗口不弹） */
 export type ActivityKind = 'mine' | 'salvage' | 'haul' | 'scan'
@@ -247,6 +261,8 @@ export function ActivityScreen({
   onMinimize: () => void
   onRestore: () => void
 }): ReactNode {
+  // 调试模式未开 ⇒ 本窗口完全不存在（不弹窗、也不出浮动还原标）
+  if (!activityWinEnabled()) return null
   const kind = activityKindOf(state)
   if (kind === null) return null
   const r = readoutOf(kind, state, ctx)

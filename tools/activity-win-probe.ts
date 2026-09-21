@@ -13,6 +13,11 @@
  *      （`http://127.0.0.1:端口/` 连不上，别据此判断"服务没起"）；
  *   2) 无头 Chrome 带远程调试（默认 `http://127.0.0.1:9333`）。
  *
+ * ⚠ **主控活动窗口有可见开关**（2026-09-20 船长令「只有开启调试模式才能看到」）：
+ * `localStorage['whale-idle:debug'] === '1'`（与顶栏「⇄ 调试」同一个开关）。本工具**自动**处理：
+ * 先测一节"**开关关掉时窗口与浮动标都不存在**"（那才是玩家侧形态），随后各节打开开关再测。
+ * 手工验收同理——DevTools 里 `localStorage.setItem('whale-idle:debug','1')` 后刷新即可看到本窗口。
+ *
  * 用法：`npx tsx tools/activity-win-probe.ts`（等价 `npm run ui:actwin`）
  *   可用 `UI_APP_URL` / `UI_CDP_URL` 覆盖两个地址。
  *
@@ -43,6 +48,12 @@ const CDP = process.env.UI_CDP_URL ?? 'http://127.0.0.1:9333'
 const SAVE_DIR = join(process.cwd(), 'docs', 'test-saves')
 const LOCALE_KEY = 'whale-idle:locale'
 const SAVE_KEY = 'whale:idle:save'
+/**
+ * 主控活动窗口的**可见开关**：`localStorage['whale-idle:debug'] === '1'`（与顶栏「⇄ 调试」同一个
+ * 开关，见 `ui/ActivityScreen.tsx` 的 `activityWinEnabled()`）。探针要测这个窗口，必须先打开它；
+ * 同时探针**专测一节"关掉时不可见"**——那才是玩家侧的真实形态。
+ */
+const DEBUG_KEY = 'whale-idle:debug'
 
 /** 逐行直写（管道里 `console.log` 会攒着不吐，长跑探针看不到进展） */
 function say(line: string): void {
@@ -236,6 +247,31 @@ async function main(): Promise<void> {
   // 先落到目标源一次：about:blank 是不透明源，localStorage 会抛 SecurityError
   await cdp.send('Page.navigate', { url: APP })
   await waitFor(cdp, `document.querySelector('.app-nav-side')`, '首次进入应用的源', 30000)
+
+  // A0. **调试开关关掉时**（= 玩家侧的真实形态）：活动窗口与浮动还原标都**不该存在**
+  await cdp.evalJS(`localStorage.removeItem(${JSON.stringify(DEBUG_KEY)}); 1`)
+  for (const c of CASES.filter((x) => x.name === 'mining')) {
+    let t = readFileSync(join(SAVE_DIR, c.file), 'utf8')
+    if (c.patch) {
+      const obj = JSON.parse(t) as Record<string, unknown>
+      c.patch((obj.state ?? obj) as Record<string, unknown>)
+      t = JSON.stringify(obj)
+    }
+    t = t.replace(/\\/g, '\\\\').replace(/`/g, '\\`')
+    await cdp.evalJS(`localStorage.setItem(${JSON.stringify(SAVE_KEY)}, \`${t}\`); 1`)
+    await cdp.send('Page.navigate', { url: APP })
+    await waitFor(cdp, `document.querySelector('.app-nav-side')`, '主界面（调试关）')
+    // 主控确实在采矿（状态窗应显示 is-work-mine）——用来证明"不是没活动，而是窗口被开关挡住了"
+    const shipCls = await cdp.evalJS<string>(`((document.querySelector('.app-shipwin')||{}).className) || ''`)
+    const win = await read(cdp, '.app-winbox.is-activity')
+    const chip = await read(cdp, '.app-float-chip')
+    say(
+      `  ${'调试关'.padEnd(12)} 状态窗="${shipCls}"（应含 is-work-mine ⇒ 主控确实在作业）` +
+        ` · 活动窗口存在=${win.found ? '是（不该）' : '否（对）'} · 浮动还原标=${chip.found ? '是（不该）' : '否（对）'}`,
+    )
+  }
+  // 之后各节一律**打开**调试开关（本窗口的可见前提）
+  await cdp.evalJS(`localStorage.setItem(${JSON.stringify(DEBUG_KEY)}, '1'); 1`)
 
   for (const vp of [{ w: 1440, h: 900 }, { w: 1280, h: 800 }, { w: 1024, h: 768 }]) {
     await cdp.send('Emulation.setDeviceMetricsOverride', {
