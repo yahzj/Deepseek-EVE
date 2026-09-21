@@ -238,10 +238,26 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
   }
   const sc = state.wormholeScan ?? { active: false, progressMs: 0 }
   const win = wormholeScanWindowMs(state)
+  /**
+   * 扫描进度条**按"小时带"走**（2026-09-20 自查修正）：
+   *
+   * 直接拿整窗口当分母是**看不出来的**——窗口基准 12 小时（还要吃技能与谜质科技的削减），而 tick 是
+   * 10Hz ⇒ 每帧进度只涨 0.0002%，条子实际上是死的。故进度条改为**当前这一小时的完成度**
+   * （每小时扫满一次、条子扫过一遍），整窗的绝对进度由**读数**如实给出（`x.x h / y.y h（z%）`）。
+   * 这样"条子在动"与"数值可信"两件事都有：条子负责动感，数字负责真相。
+   */
+  const HOUR = 3_600_000
+  const inHour = sc.progressMs % HOUR
+  const totalH = win / HOUR
+  const doneH = sc.progressMs / HOUR
+  const pct = win > 0 ? Math.min(100, Math.floor((sc.progressMs / win) * 100)) : 0
   return {
     title: tr('ui.ActivityWin.005'),
-    lines: [`${tr('ui.ActivityWin.017')}${Math.floor((sc.progressMs / 3_600_000) * 10) / 10} h`],
-    progress: win > 0 ? Math.min(1, sc.progressMs / win) : null,
+    lines: [
+      `${tr('ui.ActivityWin.017')}${doneH.toFixed(1)} h / ${totalH.toFixed(1)} h（${pct}%）`,
+      tr('ui.ActivityWin.024', { p1: win > 0 ? Math.max(0, (win - sc.progressMs) / HOUR).toFixed(1) : '—' }),
+    ],
+    progress: win > 0 ? Math.min(1, inHour / HOUR) : null,
     progressLabel: tr('ui.ActivityWin.022'),
   }
 }
