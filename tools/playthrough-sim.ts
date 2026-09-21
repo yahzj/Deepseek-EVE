@@ -775,6 +775,21 @@ function autoFitGear(shipUid: string = state.shipId): void {
   fillRack('low', ar?.id, goodOf('module', ar?.id ?? '')?.basePrice ?? 50_000, 5)
   fillRack('mid', sup1?.id, goodOf('module', sup1?.id ?? '')?.basePrice ?? 30_000, 3)
   fillRack('mid', sup2?.id, goodOf('module', sup2?.id ?? '')?.basePrice ?? 30_000, 3)
+  /**
+   * **船体维修装置**（2026-09-21 第十批 · 隔离实验 4，**带现金门槛**）。
+   *
+   * 机制上对症：层深卡点是"连续多场战斗的累计掉甲/结构"，而维修装置
+   * （`mod-hullrep-2`，中槽 support）**战斗中每 5 秒修装甲与结构各 18 点**。
+   * 第四轮不带门槛试过：单元面收益是真的（健康编队清一层只掉 6%、到场 4/4 艘），
+   * 但整体现金掉 34% ⇒ 当时判定"不合算"。
+   *
+   * 现按第十批定下的口径（**支出必须门控在现金充裕之后**）重做：只在钱包 ≥ 8 亿时装。
+   * 这样它不再与「10 亿」目标抢钱，而那时战力提升才开始对"打得多、活得久"产生复利。
+   */
+  if (state.wallet.isk >= SPEND_FOR_POWER_ISK) {
+    const rep = ['mod-hullrep-2', 'mod-hullrep-1', 'mod-hullrep-civ'].find((id) => !!goodOf('module', id))
+    if (rep) fillRack('mid', rep, goodOf('module', rep)?.basePrice ?? 50_000, 3)
+  }
 }
 
 const craftedOnce = new Set<string>()
