@@ -20,7 +20,7 @@ import { createInitialState } from '../src/state'
 import type { BattleState, GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { stackWeight } from '../src/equipment'
-import { advanceBattleFor, preloadShieldFieldFor, shieldFieldOf, startFleetBattleFor } from '../src/combat'
+import { advanceBattleFor, preloadShieldFieldFor, shieldFieldOf, shieldFieldStreamsOf, startFleetBattleFor } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
 import type { SimContext } from '../src/types'
@@ -108,12 +108,14 @@ describe('护盾充能力场装置：口径（装配快照）', () => {
     expect(f.pct).toBeCloseTo(0.1, 10)
     expect(f.ms).toBe(10_000)
     const led = preloadShieldFieldFor(state, ctx, main)!
-    expect(led.msPerPulse).toBe(10_000)
-    expect(led.pctPerPulse).toBeCloseTo(0.1, 10)
+    // **逐型号一路**（2026-09-21 船长令：不同型号独立回转冷却）
+    expect(led.streams).toHaveLength(1)
+    expect(led.streams[0]).toMatchObject({ modelId: 'f2', ms: 10_000 })
+    expect(led.streams[0]!.pct).toBeCloseTo(0.1, 10)
 
     const w3 = world({ mods: [{ id: 'f3', sec: 8 }], main: ['f3'] })
     expect(shieldFieldOf(w3.state, w3.ctx, w3.main).ms).toBe(8_000)
-    expect(preloadShieldFieldFor(w3.state, w3.ctx, w3.main)!.msPerPulse).toBe(8_000)
+    expect(preloadShieldFieldFor(w3.state, w3.ctx, w3.main)!.streams[0]!.ms).toBe(8_000)
   })
 
   it('没装该族件 ⇒ 值为 0、快照为 null（零行为变化）', () => {
@@ -122,7 +124,7 @@ describe('护盾充能力场装置：口径（装配快照）', () => {
     expect(preloadShieldFieldFor(state, ctx, main)).toBeNull()
   })
 
-  it('**同舰多件按 EVE 曲线收敛**（"有叠加惩罚"）：不是简单相加', () => {
+  it('**同舰同型多件按 EVE 曲线收敛**（"有叠加惩罚"）：不是简单相加', () => {
     const one = world({ mods: [{ id: 'f2', sec: 10 }], main: ['f2'] })
     expect(shieldFieldOf(one.state, one.ctx, one.main).pct).toBeCloseTo(0.1, 10)
     const two = world({ mods: [{ id: 'f2', sec: 10 }], main: ['f2', 'f2'] })
@@ -131,9 +133,14 @@ describe('护盾充能力场装置：口径（装配快照）', () => {
     expect(pct2).toBeCloseTo(0.1 * (1 + stackWeight(2)), 10)
     expect(pct2).toBeGreaterThan(0.1)
     expect(pct2).toBeLessThan(0.2)
+    /**
+     * ⚠ **同型两件仍是"一路"**（同型号 ⇒ 同一个 `modelId`）—— 2026-09-21 的"逐型号独立冷却"是按
+     * **型号**拆路，不是按件：两台 MK2 共用一路（比例已按曲线折减）。这一条同时钉住"拆路没拆过头"。
+     */
+    expect(preloadShieldFieldFor(two.state, two.ctx, two.main)!.streams).toHaveLength(1)
   })
 
-  it('同舰 MK2 ＋ MK3 ⇒ **同族同池：也衰减**（不是各算一件、不能靠换档绕过惩罚）', () => {
+  it('同舰 MK2 ＋ MK3 ⇒ **两路、各自计时**（衰减仍同族合并，换档绕不开惩罚）', () => {
     const mix = world({
       mods: [
         { id: 'f2', sec: 10 },
@@ -142,20 +149,23 @@ describe('护盾充能力场装置：口径（装配快照）', () => {
       main: ['f2', 'f3'],
     })
     const f = shieldFieldOf(mix.state, mix.ctx, mix.main)
-    expect(f.ms).toBe(8_000) // 冷却仍取最短那一档
+    expect(f.ms).toBe(8_000) // 读数 = 最短那一档（调度已不看它）
     /**
-     * ⚠ **2026-09-21 船长改判**（原话：「**护盾充能立场不是多件衰减吗**」⇒ 落成「**同族合并计数：
-     * MK2+MK3 也衰减**」）：收敛池键由**件 id** 改为**同族**（`stackingOf` 的 `'shield-field'`）
-     * ⇒ 混装与"同型两件"**逐字同额**。
-     *
-     * 改前（按 id 计数）：两件各拿满权 ⇒ **0.20**（比同型两件的 18.69% 还高）——"换一档装"就成了
-     * 绕开叠加惩罚的最优解，与"有叠加惩罚"自相矛盾。
+     * ⚠ **2026-09-21 船长两条令叠加后的口径**：
+     * - **衰减按全族**（第一条：「护盾充能立场不是多件衰减吗」）⇒ 第 2 件（不管哪个型号）按曲线折减，
+     *   `pct` 合计 = `0.1 + 0.1×0.869`；改前按 id 计数 ⇒ 混装各拿满权出 0.20（换档即绕过惩罚）；
+     * - **冷却逐型号独立**（第二条：「哪怕同类型装备，只要是不同型号，就要独立的回转冷却」）
+     *   ⇒ **两路**：MK2 每 10 秒一路、MK3 每 8 秒一路，各跳各的。
      */
     expect(f.pct).toBeCloseTo(0.1 * (1 + stackWeight(2)), 10)
+    const streams = shieldFieldStreamsOf(mix.state, mix.ctx, mix.main)
+    expect(streams.map((s) => s.modelId)).toEqual(['f2', 'f3'])
+    expect(streams.map((s) => s.ms)).toEqual([10_000, 8_000])
+    // 两路之和 = 合计读数（拆路不改变"合计补多少"）
+    expect(streams.reduce((n, s) => n + s.pct, 0)).toBeCloseTo(f.pct, 10)
     // 与"两件同型"逐字同额（同池的直接证据）
     const same = world({ mods: [{ id: 'f2', sec: 10 }], main: ['f2', 'f2'] })
     expect(f.pct).toBeCloseTo(shieldFieldOf(same.state, same.ctx, same.main).pct, 10)
-    expect(f.pct).toBeLessThan(0.2)
   })
 
   it('同舰三件（MK2 ×2 ＋ MK3）⇒ 按同池第 3 件折减（不是 2 件 + 1 件满额）', () => {
@@ -256,20 +266,29 @@ describe('护盾充能力场装置：战斗行为', () => {
 })
 
 describe('护盾充能力场装置：随档往返', () => {
-  it('`shieldFieldBy` 往返（重载不重置计时、不白赚一跳）', () => {
-    const { state, ctx, main, ally } = world({ mods: [{ id: 'f2', sec: 10 }], main: ['f2'] })
-    const b = run(state, ctx, [main, ally], 11_000)
+  it('`shieldFieldBy` 往返（重载不重置计时、不白赚一跳；**逐型号多路**一并往返）', () => {
+    const { state, ctx, main, ally } = world({
+      mods: [
+        { id: 'f2', sec: 10 },
+        { id: 'f3', sec: 8 },
+      ],
+      main: ['f2', 'f3'],
+    })
+    const b = run(state, ctx, [main, ally], 25_000)
     const tm = tagOf(b, main)
     expect(b.shieldFieldBy?.[tm]?.pulses).toBeGreaterThanOrEqual(1)
-    expect(b.shieldFieldBy![tm]!.nextPulseAtMs).toBeDefined()
     // 挂进一场可持久化的战斗（远征路径）再序列化
     state.expedition.active = true
     state.expedition.phase = 'battle'
     state.expedition.anomalyId = 'ano-field'
     state.expedition.battle = b
+    const before = b.shieldFieldBy![tm]!
     const back = loadSaveFile(serializeSaveFile(state, 1)).state.expedition.battle
-    expect(back?.shieldFieldBy?.[tm]?.pulses).toBe(b.shieldFieldBy![tm]!.pulses)
-    expect(back?.shieldFieldBy?.[tm]?.nextPulseAtMs).toBe(b.shieldFieldBy![tm]!.nextPulseAtMs)
-    expect(back?.shieldFieldBy?.[tm]?.msPerPulse).toBe(10_000)
+    const after = back?.shieldFieldBy?.[tm]
+    expect(after?.pulses).toBe(before.pulses)
+    // **两路都要在**，且各自的型号/间隔/计时器逐字往返（丢了 ⇒ 重载后那一路白赚一跳）
+    expect(after?.streams.map((s) => [s.modelId, s.ms, s.nextPulseAtMs])).toEqual(
+      before.streams.map((s) => [s.modelId, s.ms, s.nextPulseAtMs]),
+    )
   })
 })

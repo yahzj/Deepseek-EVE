@@ -47,7 +47,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { shipCategoryKeyOf, uidDefId } from './labels'
 import { resolveFoeMounts } from './foeMounts'
 import { quickRepairFactor } from './repair'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, refillDroneLoadTo, stackingOf, stackWeight, weightedSum } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, pulseStreamOf, refillDroneLoadTo, stackingOf, stackWeight, weightedSum } from './equipment'
 import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 
 /** 战斗基本步长（毫秒） */
@@ -2897,17 +2897,27 @@ export function preloadRepairFor(
    * 见下方该分支的注释——那条例外只作用于"无消耗自愈"，耗组件装置照旧吃本增幅。
    */
   const amp = layerAmpOf(state, ctx, shipId)
-  // 无消耗自愈件（2026-09-10 船长：异形生体件）——修复量在**同型多件间按 EVE 曲线收敛**
-  // （权重 100%/87%/57%/28%/11%，与"命中/速度"同类；不吃组件故必须收敛，否则叠装失控）
-  const freeSeen = new Map<string, number>()
-  for (const d of defs) {
+  /**
+   * **逐型号衰减**（**2026-09-21 船长令**：「**包括船体维修装置的不同型号也一样的规则**」）。
+   *
+   * 改前：**耗组件的维修装置按件 id 计数**（每台各拿满权）、无消耗自愈件按**同型**计数 ⇒
+   * 民用级 + MK1 + MK2 三台各修各的满额。现统一走装配单点 `repairStreamsOf`：**维修全族同池**
+   * （`stackingOf` 的 `'repair'`）⇒ 第 n 台按 EVE 曲线折减（100% / 87% / 57%…）。
+   * ⚠ 这是**难度改动**（同舰多台维修的总量下调；船长 2026-09-21 已知情并选定）。
+   *
+   * ⚠⚠ **按"位次"取，不能按 modelId 建映射**：同型号三台的位次是 1/2/3（权重 1 / 0.869 / 0.571），
+   * 映射会把三台都写成第 3 件的权重（我第一版就是这么错的，用例当场抓出）⇒ 现**按下标逐台取**。
+   * ⚠ 这里用的是**逐台**口径（`fittedPulseParts` + 下标），**不是** `repairStreamsOf` —— 后者把同型号
+   * 合并成"一路"（供调度），而每台装置各有各的 `armorPerPulse`，两份口径不能互借。
+   */
+  const parts = fittedPulseParts(state, ctx, shipId, 'repair').filter((p) => pulsePartLive('repair', p))
+  for (let i = 0; i < defs.length; i++) {
+    const d = defs[i]!
     const isFree = d.repairFree === true
-    let w = 1
-    if (isFree) {
-      const n = (freeSeen.get(d.id) ?? 0) + 1
-      freeSeen.set(d.id, n)
-      w = stackWeight(n)
-    }
+    const p = parts[i]
+    const w = stackWeight(i + 1) // ← **全族第 n 台**的权重（跨型号同池）
+    const decayA = (p?.armorHp ?? d.repairArmorHp ?? 0) * w
+    const decayH = (p?.hullHp ?? d.repairHullHp ?? 0) * w
     if (isFree) {
       /**
        * **平值例外**（2026-09-17 船长：「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」）：
@@ -2919,8 +2929,8 @@ export function preloadRepairFor(
         moduleId: d.id,
         kitId: '',
         free: true,
-        armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * w * (flat ? 1 : amp.a))),
-        hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * w * (flat ? 1 : amp.h))),
+        armorPerPulse: Math.max(0, Math.round(decayA * (flat ? 1 : amp.a))),
+        hullPerPulse: Math.max(0, Math.round(decayH * (flat ? 1 : amp.h))),
         stopped: false,
       })
       continue
@@ -2932,8 +2942,8 @@ export function preloadRepairFor(
     units.push({
       moduleId: d.id,
       kitId,
-      armorPerPulse: Math.max(0, Math.round((d.repairArmorHp ?? 0) * quickRepair * amp.a)),
-      hullPerPulse: Math.max(0, Math.round((d.repairHullHp ?? 0) * quickRepair * amp.h)),
+      armorPerPulse: Math.max(0, Math.round(decayA * quickRepair * amp.a)),
+      hullPerPulse: Math.max(0, Math.round(decayH * quickRepair * amp.h)),
       stopped: false,
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
@@ -3078,32 +3088,130 @@ export const SHIELD_PULSE_MS = 30_000
  */
 export const SHIELD_REGEN_FLOOR_PCT = 0.01
 
-/** 装配里「护盾充能装置」的**每跳合计比例**（满盾的几分之几；**同族多件**按 EVE 曲线收敛，无装置 = 0） */
-export function shieldPulsePctOf(state: GameState, ctx: SimContext, shipId: string): number {
+/**
+ * **装配单点：三类"按周期脉冲"装置的原始件序**（**未折减**；每个型号一路，装配序 = 第 n 件）。
+ *
+ * 口径（**2026-09-21 船长两条令的合成**）：
+ * - **衰减池 = 全族**（第一条令：「护盾充能立场不是多件衰减吗」⇒「同族合并计数」）⇒
+ *   **计数在"全族第 n 件"上**（装配序），换型号不能绕开衰减；
+ * - **冷却 = 逐型号**（第二条令：「哪怕同类型装备，只要是不同型号，就要独立的回转冷却」）⇒
+ *   每个 `ModuleDef.id` **一路**，各带自己的 `ms` 与 `nextPulseAtMs`。
+ *
+ * ⚠ **为什么"未折减"的原始值单独出一层**：折减要按**第 n 件的位次**逐件乘，而**同型号多件位次不同**
+ * （三台 MK2 = 1 / 0.869 / 0.571）。第一版我把折减塞进"按 `modelId` 建映射"里 ⇒ **同型号互相覆盖**
+ * （三台都拿到第 3 件的权重 0.571，白掉一大截）。现在折减一律在**按序展开**的那一层做，
+ * 两个消费者（`preloadRepairFor` / 两族的 streams 访问器）都从这里取。
+ */
+function fittedPulseParts(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  kind: 'shield-field' | 'shield-charge' | 'repair',
+): Array<{ modelId: string; pct: number; ms: number; armorHp: number; hullHp: number }> {
   const ship = state.fleet[shipId]
-  if (!ship) return 0
-  const seen = new Map<string, number>()
-  let total = 0
+  if (!ship) return []
+  const out: Array<{ modelId: string; pct: number; ms: number; armorHp: number; hullHp: number }> = []
   for (const d of allFittedModules(ship.fitted, ctx)) {
-    const pct = d.shieldPulsePct ?? 0
-    if (pct <= 0) continue
-    /**
-     * 无消耗件（本件不吃组件）⇒ 多件必须收敛，否则叠装失控（与 `repairFree` 生体件同口径）。
-     * ⚠ **收敛池 = 同族同池，不是同型号**（**2026-09-21 船长改判**：「护盾充能立场不是多件衰减吗」⇒
-     * 落成「**同族合并计数：MK2+MK3 也衰减**」）：键走 `stackingOf(d).kind`（= `'shield-charge'`）
-     * ⇒ **三档 MK1/2/3 混装也按同一条曲线折减**。改前按 `d.id` 计数 ⇒ 混装时每档各拿满权，
-     * 「档次混装」反而成了不吃惩罚的最优解。
-     */
-    const key = stackingOf(d).kind
-    const n = (seen.get(key) ?? 0) + 1
-    seen.set(key, n)
-    total += pct * stackWeight(n)
+    const st = pulseStreamOf(d)
+    if (!st || st.kind !== kind) continue
+    if (kind === 'shield-field') {
+      out.push({
+        modelId: d.id,
+        pct: d.shieldFieldPct ?? 0,
+        ms: Math.max(1, d.shieldFieldMs ?? SHIELD_PULSE_MS),
+        armorHp: 0,
+        hullHp: 0,
+      })
+    } else if (kind === 'shield-charge') {
+      // 本族暂无"逐型号间隔"的件 ⇒ 三档一律 30 秒（日后某档要错开，加个字段即可，本层与调度都不用动）
+      out.push({ modelId: d.id, pct: d.shieldPulsePct ?? 0, ms: SHIELD_PULSE_MS, armorHp: 0, hullHp: 0 })
+    } else {
+      // 维修：间隔由本族常量定（`REPAIR_PULSE_MS` 5 秒），逐台独立计时在 `BattleRepairUnit.nextPulseAtMs`
+      out.push({
+        modelId: d.id,
+        pct: 0,
+        ms: REPAIR_PULSE_MS,
+        armorHp: d.repairArmorHp ?? 0,
+        hullHp: d.repairHullHp ?? 0,
+      })
+    }
   }
-  return total
+  return out
+}
+
+/** 该件是否落在有效范围内（比例为 0 的脉冲件 / 值为 0 的维修件 ⇒ 不参战，也不占衰减位次） */
+function pulsePartLive(kind: 'shield-field' | 'shield-charge' | 'repair', p: { pct: number; armorHp: number; hullHp: number }): boolean {
+  return kind === 'repair' ? p.armorHp > 0 || p.hullHp > 0 : p.pct > 0
 }
 
 /**
- * 护盾充能装置开战快照：每跳合计比例 + 首跳时刻（`startBattleFor` 按开战时刻赋值）。
+ * **逐型号脉冲流（已按全族曲线折减）**——按**装配序**取"全族第 n 件"的权重，再**按型号合并成一路**。
+ *
+ * 两条粒度必须分清（船长 2026-09-21 两条令）：
+ * - **衰减**按**全族位次**（第 n 件 ⇒ `stackWeight(n)`）——同型号三台拿的是 1 / 0.869 / 0.571；
+ * - **一路**按**型号**——同型号多台**只有一路计时器**（同一型号就是同一路冷却），那一路的每跳值 =
+ *   该型号各台折减值之和（三台 MK2 = `pct×(1+0.869+0.571) = pct×2.44`）。
+ *
+ * ⚠ 第一版我在这里**按 `modelId` 建映射**取权重 ⇒ 同型号三台互相覆盖、全拿第 3 件的权重（白掉一大截）。
+ * 现在权重一律**按装配序的下标**取，映射只用于"合并成一路"。
+ */
+function pulseStreamsOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  kind: 'shield-field' | 'shield-charge' | 'repair',
+): Array<{ modelId: string; pct: number; ms: number; armorHp: number; hullHp: number }> {
+  const parts = fittedPulseParts(state, ctx, shipId, kind).filter((p) => pulsePartLive(kind, p))
+  const byModel = new Map<string, { modelId: string; pct: number; ms: number; armorHp: number; hullHp: number }>()
+  parts.forEach((p, i) => {
+    const w = stackWeight(i + 1) // ← **全族第 n 件**（衰减按族）
+    const hit = byModel.get(p.modelId)
+    if (hit) {
+      // 同型号再来一台：**并入同一路**（比例/修复量相加，冷却仍是这一路自己的）
+      hit.pct += p.pct * w
+      hit.armorHp += p.armorHp * w
+      hit.hullHp += p.hullHp * w
+    } else {
+      byModel.set(p.modelId, {
+        modelId: p.modelId,
+        pct: p.pct * w,
+        ms: p.ms,
+        armorHp: p.armorHp * w,
+        hullHp: p.hullHp * w,
+      })
+    }
+  })
+  return [...byModel.values()]
+}
+
+/** 「船体维修装置 / 生体自愈件」的逐型号脉冲流（装配单点；**已按全族曲线折减**，间隔 = 5 秒） */
+export function repairStreamsOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): Array<{ modelId: string; ms: number; armorHp: number; hullHp: number }> {
+  return pulseStreamsOf(state, ctx, shipId, 'repair')
+}
+
+/**
+ * 装配里「护盾充能装置」的**每跳合计比例**（满盾的几分之几；**全族**多件按 EVE 曲线收敛，无装置 = 0）。
+ * ⚠ 这只是"合计值"读数（解析预估等用）；**逐型号怎么跳**看 `shieldChargeStreamsOf`。
+ */
+export function shieldPulsePctOf(state: GameState, ctx: SimContext, shipId: string): number {
+  return shieldChargeStreamsOf(state, ctx, shipId).reduce((n, s) => n + s.pct, 0)
+}
+
+/** 「护盾充能装置」的逐型号脉冲流（装配单点；空数组 = 没装该族件） */
+export function shieldChargeStreamsOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): Array<{ modelId: string; pct: number; ms: number }> {
+  return pulseStreamsOf(state, ctx, shipId, 'shield-charge')
+}
+
+/**
+ * 护盾充能装置开战快照：逐型号脉冲流（`startBattleFor` 按开战时刻给每路排首跳）。
  * 无装置返回 `null`（零行为变化：不写 `battle.shieldCharge`）。
  */
 export function preloadShieldChargeFor(
@@ -3111,10 +3219,10 @@ export function preloadShieldChargeFor(
   ctx: SimContext,
   shipId: string,
 ): import('./state').BattleState['shieldCharge'] | null {
-  const pctPerPulse = shieldPulsePctOf(state, ctx, shipId)
-  if (pctPerPulse <= 0) return null
+  const streams = shieldChargeStreamsOf(state, ctx, shipId)
+  if (streams.length === 0) return null
   // `nextPulseAtMs` 恒为 undefined——由 `startBattleFor` 按开战时刻赋值（与维修装置同款）
-  return { pctPerPulse, nextPulseAtMs: undefined, pulses: 0 }
+  return { streams: streams.map((s) => ({ modelId: s.modelId, pct: s.pct, ms: s.ms })), pulses: 0 }
 }
 
 /* ══════════════ 护盾充能力场装置（2026-09-20 船长；高槽 · 护盾族）══════════════
@@ -3123,58 +3231,51 @@ export function preloadShieldChargeFor(
    ① **叠加惩罚 = 同舰多件才算**（多艘船各带一件 ⇒ 各自独立、可叠加）
    ② **10% 按携带者自己的满盾**（即每艘被治疗的船按**它自己**那本账算） */
 /**
- * **力场每跳的合计比例 ＋ 该用哪个冷却**（装配单点，形状照抄 `shieldPulsePctOf`）。
+ * **力场的每跳合计比例 ＋ 最短间隔**（读数入口；**逐型号怎么跳**看 `shieldFieldStreamsOf`）。
  *
- * 冷却取所装各件的**最短一档**（只有最短那条在跑 ⇒ 多件时的实际节奏）：
- * 同舰「MK2 ＋ MK3」= 每 8 秒一跳、比例按 `stackWeight` 收敛过的合计。
- * 无该族件 ⇒ `{ pct: 0, ms: 0 }`（零行为变化）。
+ * ⚠ 2026-09-21 起 `ms` 只是"最短那一档"的**读数**（解析预估/界面显示用），**不再是调度口径** ——
+ * 调度已改为逐型号多路（船长「不同型号就要独立的回转冷却」）。无该族件 ⇒ `{ pct: 0, ms: 0 }`。
  */
 export function shieldFieldOf(
   state: GameState,
   ctx: SimContext,
   shipId: string,
 ): { pct: number; ms: number } {
-  const ship = state.fleet[shipId]
-  if (!ship) return { pct: 0, ms: 0 }
-  const seen = new Map<string, number>()
-  let total = 0
-  let ms = 0
-  for (const d of allFittedModules(ship.fitted, ctx)) {
-    const pct = d.shieldFieldPct ?? 0
-    if (pct <= 0) continue
-    /**
-     * **同族多件按 EVE 曲线收敛**（船长要求"有叠加惩罚"）——与护盾充能装置同一把尺。
-     * ⚠ **收敛池 = 同族同池，不是同型号**（**2026-09-21 船长改判**：「护盾充能立场不是多件衰减吗」⇒
-     * 「**同族合并计数：MK2+MK3 也衰减**」）：键走 `stackingOf(d).kind`（= `'shield-field'`）
-     * ⇒ **MK2 + MK3 混装同样按 10% + 10%×0.869 = 18.69% 算**（改前各算一件 ⇒ 混装出满额 20%，
-     * 比同型两件还高 —— 惩罚被"换一档"绕过去了）。
-     * ⚠ **多艘船各带一件仍各自独立、可叠加**（船长 2026-09-20 原裁定未变）：本函数只算**这一艘船**的装配。
-     */
-    const key = stackingOf(d).kind
-    const n = (seen.get(key) ?? 0) + 1
-    seen.set(key, n)
-    total += pct * stackWeight(n)
-    const dms = d.shieldFieldMs ?? 0
-    if (dms > 0 && (ms === 0 || dms < ms)) ms = dms
+  const streams = shieldFieldStreamsOf(state, ctx, shipId)
+  if (streams.length === 0) return { pct: 0, ms: 0 }
+  return {
+    pct: streams.reduce((n, s) => n + s.pct, 0),
+    ms: Math.min(...streams.map((s) => s.ms)),
   }
-  return { pct: total, ms }
 }
 
-/** 力场开战快照（每跳合计比例 ＋ **按件自带的冷却**）；无该族件返回 `null` */
+/** 力场的逐型号脉冲流（装配单点；**已按全族曲线折减**，间隔按件自带 10 秒 / 8 秒） */
+export function shieldFieldStreamsOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): Array<{ modelId: string; pct: number; ms: number }> {
+  return pulseStreamsOf(state, ctx, shipId, 'shield-field')
+}
+
+/** 力场开战快照（**逐型号多路**，各带自己的间隔与计时器）；无该族件返回 `null` */
 export function preloadShieldFieldFor(
   state: GameState,
   ctx: SimContext,
   shipId: string,
 ): import('./state').BattleShieldFieldLedger | null {
-  const { pct, ms } = shieldFieldOf(state, ctx, shipId)
-  if (pct <= 0 || ms <= 0) return null
-  // `nextPulseAtMs` 恒为 undefined——由 `startBattleFor` 按开战时刻赋值（与另两套装置同款）
-  return { pctPerPulse: pct, msPerPulse: ms, nextPulseAtMs: undefined, pulses: 0 }
+  const streams = shieldFieldStreamsOf(state, ctx, shipId)
+  if (streams.length === 0) return null
+  // `nextPulseAtMs` 恒为 undefined——由 `startBattleFor` 按开战时刻给**每一路**排首跳
+  return { streams: streams.map((s) => ({ modelId: s.modelId, pct: s.pct, ms: s.ms })), pulses: 0 }
 }
 
 /**
- * **单次力场脉冲**：对**我方全队存活单位**各按其**自身满盾**补 `pct` 比例（船长：
- * 「为**所有我方舰船**恢复 10% 护盾」＋「按携带者自己的满盾」⇒ 每艘被治疗的船按它自己那本账）。
+ * **单次力场脉冲**（**一路**型号跳一次）：对**我方全队存活单位**各按其**自身满盾**补 `pct` 比例
+ * （船长：「为**所有我方舰船**恢复 10% 护盾」＋「按携带者自己的满盾」⇒ 每艘被治疗的船按它自己那本账）。
+ *
+ * ⚠ **2026-09-21 起本函数只管"一路"**（船长令：逐型号独立回转）——调用方按 `ledger.streams` 逐路传
+ * `{ pct, ms }`；改前传整个账本（那时一台只有一路）。
  *
  * ⚠ **施放者阵亡 ⇒ 本次不跳**（与维修/护盾充能装置同款：人没了装置就停）；但**受益方**是
  * 全队存活单位 ⇒ 与"只治自己"的 `pulseShieldChargeFor` 是两回事。
@@ -3183,9 +3284,9 @@ export function preloadShieldFieldFor(
 export function pulseShieldFieldFor(
   b: import('./state').BattleState,
   myUnits: readonly UnitSpec[],
-  ledger: import('./state').BattleShieldFieldLedger,
+  stream: { pct: number },
 ): void {
-  const gain = Math.max(0, ledger.pctPerPulse)
+  const gain = Math.max(0, stream.pct)
   if (gain <= 0) return
   for (const u of myUnits) {
     const rt = b.units[u.tag]
@@ -3209,13 +3310,16 @@ export function pulseShieldChargeFor(
   b: import('./state').BattleState,
   spec: UnitSpec,
   sc: import('./state').BattleShieldChargeLedger,
+  /** 本跳生效的**那一路**（逐型号独立回转；缺省 = 旧口径的"合计一路"，只为外部老读法兼容） */
+  stream?: { pct: number },
 ): void {
   const rt = b.units[spec.tag]
-  if (!rt || sc.nextPulseAtMs === undefined) return
+  if (!rt) return
   if (!isAlive(b, spec.tag)) return
   const capS = Math.max(0, spec.hp.s)
   if (capS <= 0) return
-  const gain = capS * Math.max(0, sc.pctPerPulse)
+  const pct = stream ? stream.pct : sc.streams.reduce((n, s) => n + s.pct, 0)
+  const gain = capS * Math.max(0, pct)
   if (gain > 0) rt.hp.s = Math.min(capS, rt.hp.s + gain)
 }
 
@@ -3259,13 +3363,20 @@ function pulseRepairsFor(
   spec: UnitSpec,
   r: import('./state').BattleRepairLedger,
   allySpecs?: ReadonlyMap<string, UnitSpec>,
-): void {
+  /**
+   * **本跳只结算这一台装置**（**2026-09-21 船长令：逐型号独立回转**）。
+   * 缺省 = `r.units` 里第一台未停机的（老调用方/外部读法兼容）。
+   */
+  only?: import('./state').BattleRepairUnit,
+): boolean {
   void ctx
   const meRt = b.units[spec.tag]
-  if (!meRt || r.nextPulseAtMs === undefined) return
+  if (!meRt) return false
   if (!isAlive(b, spec.tag)) {
-    r.nextPulseAtMs = undefined // 阵亡 = 永久停机（2026-09-19 报障修复）
-    return
+    // 阵亡 = 永久停机（2026-09-19 报障修复：尸体不可复活）；逐台计时器一并清掉
+    r.nextPulseAtMs = undefined
+    for (const u of r.units) u.nextPulseAtMs = undefined
+    return false
   }
   /**
    * **修谁**：后勤舰 ⇒ 三层剩余比例最低的**可修**队友（含自己）；其余舰 ⇒ 自己（旧口径）。
@@ -3296,16 +3407,20 @@ function pulseRepairsFor(
       targetSpec = pickedSpec
       targetRt = pickedRt
     } else {
-      return // 全场都修不动（都满血）⇒ 空转：不耗组件、不动计时器之外任何账
+      return true // 全场都修不动（都满血）⇒ 空转：不耗组件、不动计时器之外任何账（本舰也没死）
     }
   }
   const capA = Math.max(0, targetSpec.hp.a)
   const capH = Math.max(0, targetSpec.hp.h)
   const hp = targetRt.hp
-  let active = 0
-  for (const u of r.units) {
+  /**
+   * **本跳结算哪一台**（2026-09-21 逐型号独立回转）：
+   * - 传了 `only`（生产路径）⇒ 只跑那一台；
+   * - 没传（老调用方）⇒ 逐台都跑一遍（等价改前"一跳结算全部装置"）。
+   */
+  const units = only ? [only] : r.units
+  for (const u of units) {
     if (u.stopped) continue
-    active += 1
     // 无消耗自愈件（repairFree）：不看组件余额、不扣组件、永不停机
     if (u.free) {
       const da0 = Math.max(0, capA - hp.a)
@@ -3325,6 +3440,7 @@ function pulseRepairsFor(
       // 2026-09-11 船长「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
       // ⇒ **不再写日志**（战斗界面底部已有"运转中/已停机"状态与悬停说明，玩家仍看得见）
       u.stopped = true
+      u.nextPulseAtMs = undefined
       continue
     }
     // 额度分配：各层先按自身额度补缺口，层满后剩余额度转投另一层（总上限 = 甲 + 结构额度）
@@ -3344,8 +3460,19 @@ function pulseRepairsFor(
     r.kitsUsedByType[u.kitId] = (r.kitsUsedByType[u.kitId] ?? 0) + 1
   }
   r.pulses += 1
-  if (active === 0) r.nextPulseAtMs = undefined // 全部停机：停调度
-  else r.nextPulseAtMs += REPAIR_PULSE_MS
+  /**
+   * "还有没有活着的装置"必须在**本跳结算之后**重数（本跳可能刚好把最后一台判停）——
+   * 改前我数的是进入本函数时的快照，于是最后一台停机的**那一跳之后**账本还留着计时器，
+   * 会多空转一拍（用例 `组件耗尽自动停机` 抓到：`nextPulseAtMs` 该是 undefined 却还有值）。
+   */
+  const stillActive = r.units.some((u) => !u.stopped)
+  /**
+   * 账本上那一个 `nextPulseAtMs` 是**旧档口径的读数**（"最近一台的首跳"）。逐台计时上线后它不再
+   * 驱动调度（调度走 `units[].nextPulseAtMs`），这里只为兼容旧档迁移与外部读法把它一并前移。
+   */
+  if (!stillActive) r.nextPulseAtMs = undefined // 全部停机：停调度
+  else if (r.nextPulseAtMs !== undefined) r.nextPulseAtMs += REPAIR_PULSE_MS
+  return true
 }
 
 
@@ -3907,14 +4034,31 @@ export function startBattleFor(
   const repair = preloadRepairFor(state, ctx, shipId, bal.maxBattleMs)
   if (repair) {
     const ready = repair.units.filter((u) => !u.stopped)
-    if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS // 开战 5 秒后第一跳
+    // **逐台排首跳**（2026-09-21 逐型号独立回转）：每台各带自己的计时器，开战 5 秒后第一跳
+    for (const u of repair.units) {
+      if (u.stopped) continue
+      u.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+    }
+    if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
     battle.repair = repair
   }
-  // 护盾充能装置（2026-09-14）：**独立 30 秒计时**（与维修装置的 5 秒互不干扰），开战 30 秒后第一跳
+  // 护盾充能装置（2026-09-14）：**独立 30 秒计时**（与维修装置的 5 秒互不干扰），开战 30 秒后第一跳；
+  // **逐型号一路**（2026-09-21）：每路各排各的首跳
   const shieldCharge = preloadShieldChargeFor(state, ctx, shipId)
   if (shieldCharge) {
-    shieldCharge.nextPulseAtMs = battle.startedAtGameMs + SHIELD_PULSE_MS
+    for (const s of shieldCharge.streams) s.nextPulseAtMs = battle.startedAtGameMs + s.ms
     battle.shieldCharge = shieldCharge
+  }
+  /**
+   * **力场（高槽）也要在单船路径建账本**（**2026-09-21 修**）：此前只有多舰路径（`startFleetBattleFor`）
+   * 建 `shieldFieldBy`，单船路径**根本没有这一块** ⇒ 悬赏卡 / 低安遭遇 / AI 副船这些单船场次里，
+   * 装了力场也**一跳都不跳**（我写本条用例时探针实测：`battle.shieldFieldBy` 为 `undefined`）。
+   * 属"装置静默失效"，与 2026-09-16「僚舰装了也白装」同一类缺陷。
+   */
+  const shieldField = preloadShieldFieldFor(state, ctx, shipId)
+  if (shieldField) {
+    for (const s of shieldField.streams) s.nextPulseAtMs = battle.startedAtGameMs + s.ms
+    battle.shieldFieldBy = { [me.tag ?? 'player']: shieldField }
   }
   return battle
 }
@@ -4249,18 +4393,28 @@ export function startFleetBattleFor(
     const r = preloadRepairFor(state, ctx, e.shipId, bal.maxBattleMs)
     if (r) {
       const ready = r.units.filter((u) => !u.stopped)
+      /**
+       * **逐台排首跳**（**2026-09-21 船长令：逐型号独立回转**）：每台装置各带自己的
+       * `nextPulseAtMs`，首跳 = 开战 + 该型号自己的间隔（本族现为常量 `REPAIR_PULSE_MS`）。
+       * ⚠ 旧档在途战斗没有逐台字段 ⇒ `advanceBattleFor` 里走迁移分支（借账本那一个值）。
+       * 账本上的 `nextPulseAtMs` **仍然保留**：它现在是"最近一台的首跳"（旧档/外部读法的兼容读数）。
+       */
+      for (const u of r.units) {
+        if (u.stopped) continue
+        u.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+      }
       if (ready.length > 0) r.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
       repairBy[e.tag] = r
     }
     const sc = preloadShieldChargeFor(state, ctx, e.shipId)
     if (sc) {
-      sc.nextPulseAtMs = battle.startedAtGameMs + SHIELD_PULSE_MS
+      for (const s of sc.streams) s.nextPulseAtMs = battle.startedAtGameMs + s.ms
       shieldChargeBy[e.tag] = sc
     }
     const sf = preloadShieldFieldFor(state, ctx, e.shipId)
     if (sf) {
-      // 首跳 = 开战 + 该件自带冷却（与另两套装置同款：开场即排第一跳）
-      sf.nextPulseAtMs = battle.startedAtGameMs + sf.msPerPulse
+      // **逐路排首跳** = 开战 + 该型号自带冷却（与另两套装置同款：开场即排第一跳）
+      for (const s of sf.streams) s.nextPulseAtMs = battle.startedAtGameMs + s.ms
       shieldFieldBy[e.tag] = sf
     }
   }
@@ -5334,9 +5488,16 @@ export function advanceBattleFor(
       }
     }
     /**
-     * 船体维修装置脉冲（**逐舰** · 2026-09-16 船长裁定「甲」）：本拍内到期的脉冲补齐——
-     * 修复发生在受伤结算之后（≤1 拍延迟，保守口径）；战斗结束/自动撤退后不再补跳。
-     * 逐舰遍历 `repairLedgersOf`（单船路径与老档在途战斗 ⇒ 只有主控那一份，等价旧行为）。
+     * 船体维修装置脉冲（**逐舰 · 逐台** · 2026-09-16 船长「甲」＋ **2026-09-21 逐型号独立回转**）：
+     * 本拍内到期的脉冲补齐——修复发生在受伤结算之后（≤1 拍延迟，保守口径）；战斗结束/自动撤退后不再补跳。
+     *
+     * ⚠ **2026-09-21 船长令**：「**哪怕同类型装备，只要是不同型号，就要独立的回转冷却**」⇒ 循环从
+     * "逐舰、一跳结算全部装置"改为**逐舰 × 逐台**：每台装置按**自己的** `nextPulseAtMs` 到点就跳，
+     * 各修各的量（改前第一台跳完这一拍就结束，装三台与装一台几乎没差别）。
+     *
+     * ⚠ **旧档迁移**（在途战斗没有逐台字段）：借账本那一个 `nextPulseAtMs` 当"本拍是否到期"，
+     * 到期后给所有未停机装置**同时补上这一跳并各自排下一跳**（等价于旧口径的"一跳结算全部"，
+     * 只是从此转入逐台计时；迁移不需要升版本、不动存档字段名）。
      */
     if (!battle.ended && repairLedgersOf(battle).length > 0) {
       const specByTag = new Map(myUnits.map((u) => [u.tag, u]))
@@ -5344,16 +5505,50 @@ export function advanceBattleFor(
         if (battle.ended) break
         const spec = specByTag.get(tag)
         if (!spec) continue // 该舰已不在这场（沉了/被摘）⇒ 它的账本不跳
-        if (ledger.nextPulseAtMs === undefined || ledger.nextPulseAtMs > battle.lastTickGameMs) continue
-        let guardR = 0
-        while (
-          !battle.ended &&
-          ledger.nextPulseAtMs !== undefined &&
-          ledger.nextPulseAtMs <= battle.lastTickGameMs &&
-          guardR < BATTLE_MAX_STEPS
-        ) {
-          pulseRepairsFor(state, ctx, battle, spec, ledger, specByTag)
-          guardR++
+        /** 逐台：own = 本台自己的计时器；旧档（无逐台字段）⇒ 借账本的统一计时器（本拍只判一次到期） */
+        const hasPerUnit = ledger.units.some((u) => u.nextPulseAtMs !== undefined)
+        if (!hasPerUnit) {
+          const legacyAt = ledger.nextPulseAtMs
+          if (legacyAt === undefined || legacyAt > battle.lastTickGameMs) continue
+          /** 迁移落地：本拍给所有未停机装置补跳一次，并把它们各自的计时器排到本拍时刻之后 */
+          for (const u of ledger.units) {
+            if (u.stopped) continue
+            u.nextPulseAtMs = legacyAt
+            }
+        }
+        for (const unit of ledger.units) {
+          if (battle.ended) break
+          if (unit.stopped) continue
+          if (unit.nextPulseAtMs === undefined || unit.nextPulseAtMs > battle.lastTickGameMs) continue
+          let guardR = 0
+          while (
+            !battle.ended &&
+            unit.nextPulseAtMs !== undefined &&
+            unit.nextPulseAtMs <= battle.lastTickGameMs &&
+            guardR < BATTLE_MAX_STEPS
+          ) {
+            const alive = pulseRepairsFor(state, ctx, battle, spec, ledger, specByTag, unit)
+            if (!alive) {
+              // 本舰阵亡 ⇒ 全部装置永久停机（脉冲函数已把账本计时清空）
+              for (const u2 of ledger.units) u2.nextPulseAtMs = undefined
+              break
+            }
+            /**
+             * ⚠ **逐台计时器由谁前移**：`pulseRepairsFor` 只负责"结算这一跳"，计时器推进在**这里** ——
+             * 与另两族（流里 `nextPulseAtMs += ms`）同款，避免"结算函数既改业务又管调度"两处口径。
+             *
+             * ⚠⚠ **必须判"这一跳之后它还活着吗"**：组件耗尽 / 修不动都会在结算里把该台 `stopped` 或
+             * 清掉它自己的计时器；这里若无条件前移，就会把刚清掉的计时器**又写回来**
+             * （我第一版就是这么错的：最后一台停机那一跳之后账本还留着 20,000，用例当场抓出）。
+             */
+            if (unit.stopped) {
+              unit.nextPulseAtMs = undefined
+              if (!ledger.units.some((u) => !u.stopped)) ledger.nextPulseAtMs = undefined
+              break
+            }
+            unit.nextPulseAtMs = (unit.nextPulseAtMs ?? battle.lastTickGameMs) + REPAIR_PULSE_MS
+            guardR++
+          }
         }
       }
     }
@@ -5375,32 +5570,43 @@ export function advanceBattleFor(
         guardF++
       }
     }
-    // 护盾充能装置脉冲（逐舰 · 2026-09-16）：与维修装置**各按各的计时**（30 秒 vs 5 秒），
-    // 同样在受伤结算之后补跳（≤1 拍延迟）；破盾后它是唯一能把盾点起来的路径。
+    /**
+     * 护盾充能装置脉冲（逐舰 · **逐型号** · 2026-09-16 逐舰化 ＋ **2026-09-21 逐型号独立回转**）：
+     * 与维修装置**各按各的计时**（30 秒 vs 5 秒），同样在受伤结算之后补跳（≤1 拍延迟）；
+     * 破盾后它是唯一能把盾点起来的路径。
+     *
+     * ⚠ **一场一路一跳**：每路按自己的 `nextPulseAtMs` 到点就跳、只补**那一路**的比例
+     * （船长令：「不同型号就要独立的回转冷却」）。改前是"一跳补合计值"——MK1 与 MK3 混装会被
+     * 并成一路，弱档的量被并进强档的节奏里。
+     */
     if (!battle.ended && shieldChargeLedgersOf(battle).length > 0) {
       const specByTag = new Map(myUnits.map((u) => [u.tag, u]))
       for (const { tag, ledger } of shieldChargeLedgersOf(battle)) {
         if (battle.ended) break
         const spec = specByTag.get(tag)
         if (!spec) continue
-        if (ledger.nextPulseAtMs === undefined || ledger.nextPulseAtMs > battle.lastTickGameMs) continue
-        let guardS = 0
-        while (
-          !battle.ended &&
-          ledger.nextPulseAtMs !== undefined &&
-          ledger.nextPulseAtMs <= battle.lastTickGameMs &&
-          guardS < BATTLE_MAX_STEPS
-        ) {
-          pulseShieldChargeFor(battle, spec, ledger)
-          ledger.pulses += 1
-          ledger.nextPulseAtMs += SHIELD_PULSE_MS
-          guardS++
+        for (const stream of ledger.streams) {
+          if (battle.ended) break
+          if (stream.nextPulseAtMs === undefined || stream.nextPulseAtMs > battle.lastTickGameMs) continue
+          let guardS = 0
+          while (
+            !battle.ended &&
+            stream.nextPulseAtMs !== undefined &&
+            stream.nextPulseAtMs <= battle.lastTickGameMs &&
+            guardS < BATTLE_MAX_STEPS
+          ) {
+            pulseShieldChargeFor(battle, spec, ledger, stream)
+            ledger.pulses += 1
+            stream.nextPulseAtMs += Math.max(1, stream.ms)
+            guardS++
+          }
         }
       }
     }
     /**
      * **力场脉冲**（2026-09-20 船长「护盾充能力场装置」）：与上面两套**各自计时** ——
-     * 冷却**按件自带**（`ledger.msPerPulse`：MK2 = 10 秒 / MK3 = 8 秒）。
+     * **逐型号各带各的冷却**（`stream.ms`：MK2 = 10 秒 / MK3 = 8 秒；**2026-09-21 船长令**：
+     * 「哪怕同类型装备，只要是不同型号，就要独立的回转冷却」⇒ 由"取最短那一档的一路"改为**逐路**）。
      *
      * ⚠ **必须独立门控**（不能挂在护盾充能那段 `if` 里）：力场与「护盾充能装置」是**两族两件**，
      * 玩家完全可能只装力场不装充能装置 —— 第一版我把它写在上面那个 `if` 内，
@@ -5414,18 +5620,21 @@ export function advanceBattleFor(
       for (const [tag, ledger] of Object.entries(battle.shieldFieldBy!)) {
         if (battle.ended) break
         if (!specByTagF.get(tag) || !isAlive(battle, tag)) continue
-        if (ledger.nextPulseAtMs === undefined || ledger.nextPulseAtMs > battle.lastTickGameMs) continue
-        let guardF = 0
-        while (
-          !battle.ended &&
-          ledger.nextPulseAtMs !== undefined &&
-          ledger.nextPulseAtMs <= battle.lastTickGameMs &&
-          guardF < BATTLE_MAX_STEPS
-        ) {
-          pulseShieldFieldFor(battle, myUnits, ledger)
-          ledger.pulses += 1
-          ledger.nextPulseAtMs += ledger.msPerPulse
-          guardF++
+        for (const stream of ledger.streams) {
+          if (battle.ended) break
+          if (stream.nextPulseAtMs === undefined || stream.nextPulseAtMs > battle.lastTickGameMs) continue
+          let guardF = 0
+          while (
+            !battle.ended &&
+            stream.nextPulseAtMs !== undefined &&
+            stream.nextPulseAtMs <= battle.lastTickGameMs &&
+            guardF < BATTLE_MAX_STEPS
+          ) {
+            pulseShieldFieldFor(battle, myUnits, stream)
+            ledger.pulses += 1
+            stream.nextPulseAtMs += Math.max(1, stream.ms)
+            guardF++
+          }
         }
       }
     }
@@ -7117,7 +7326,12 @@ function steadyPreview(
   const s0 = Math.max(0, me.hp.s)
   const sCap = sMax * SHIELD_REGEN_FLOOR_PCT
   const sX = k > 0 ? sCap / k : Number.POSITIVE_INFINITY
-  const chargePerSec = (shieldPulsePctOf(state, ctx, shipId) * sMax) / (SHIELD_PULSE_MS / 1000)
+  /**
+   * **每秒回盾量 = Σ 逐路「本路比例 × 满盾 ÷ 本路间隔」**（**2026-09-21 逐型号独立回转**后：
+   * 各路各按各的节奏跳，所以必须逐路换算再相加，不能拿"合计比例 ÷ 某个间隔"）。
+   */
+  const chargePerSec =
+    shieldChargeStreamsOf(state, ctx, shipId).reduce((n, s) => n + (s.pct * sMax) / Math.max(1, s.ms) / 1000, 0)
   let ttrMe: number
   if (foeDpsNet <= 0) {
     ttrMe = Number.POSITIVE_INFINITY // 敌方打不动我

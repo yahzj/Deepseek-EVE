@@ -1039,10 +1039,17 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
     const logs0 = state.logs.length
     state.gameMs = 62_000
     advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-rep')
-    // 5s/10s 两跳各扣 1 枚；15s 到期跳发现余额 0 → 停机；20s 到期跳已全停 → 停调度
-    expect(battle.repair!.pulses).toBe(4)
+    // 5s/10s 两跳各扣 1 枚；**15s 到期那一跳**发现余额 0 ⇒ 该台停机（不扣组件）
+    /**
+     * ⚠ **2026-09-21 起 `pulses` 记 3**（改前 4）：维修装置已改为**逐台独立回转**（船长「哪怕同类型
+     * 装备，只要是不同型号，就要独立的回转冷却」）⇒ 停机判定发生在"记这一跳"**之前**
+     * （`kitNow <= 0 ⇒ stopped + continue`）⇒ 那记空跳不再计数；20s 那一拍该台已停机、
+     * **连到期都不判**（改前会把"全停"的账本再前移一次计时器）。停机语义本身未变。
+     */
+    expect(battle.repair!.pulses).toBe(3)
     expect(battle.repair!.kitsUsed).toBe(2)
     expect(battle.repair!.units[0]!.stopped).toBe(true)
+    expect(battle.repair!.units[0]!.nextPulseAtMs).toBeUndefined() // 该台停机 ⇒ 自己的计时器清空
     expect(battle.repair!.nextPulseAtMs).toBeUndefined() // 全部停机 → 停调度
     // 2026-09-11 船长：「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
     expect(state.logs.slice(logs0).some((l) => l.text.includes('维修装置'))).toBe(false)

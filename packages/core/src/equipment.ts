@@ -190,6 +190,10 @@ export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'flat'
  * - **速度（推进器族）→ weighted（折权加算 Σpᵢ·wᵢ，2026-09-20 船长「基础改为加算，但是依旧有多件衰减」）**；
  * - 伤害%/射速/容量%/矿枪/货舱/导控/炮台实体 → flat（加算线性，不额外收敛）。
  * UI 用 group 出"多装递减 / 可多装·全额叠加"标签；装配数件数用 kind 提示第 N 件。
+ *
+ * ⚠ **`kind` 是"衰减池键"**（同键同池、跨型号合并）——**2026-09-21 船长令**起它与
+ * **回转冷却的拆分粒度**是两件事，见 {@link pulseStreamOf}：三类周期脉冲装置按**全族**衰减、
+ * 却按**型号**各走各的冷却。
  */
 export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } {
   const resistKey = (add: DamageResists | undefined): string | null => {
@@ -248,10 +252,49 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
    *   不吃惩罚的最优解）。船长 2026-09-21 裁定「**同族合并计数：MK2+MK3 也衰减**」。
    *   与「跃迁计算机 MK2/MK3 同池」（上面 `warp` 那条）同一口径。
    * - **多艘船各带一件仍各自独立、可叠加**（船长 2026-09-20 原裁定，未变）——收敛池只看**同一艘船**的装配。
+   * - ⚠ **衰减池仍按全族**（**2026-09-21 第二轮船长令**：「**哪怕同类型装备，只要是不同型号，就要独立的
+   *   回转冷却**」——那条讲的是**冷却逐型号独立**，**不动衰减池**：换型号不能绕开衰减）。两者已拆成
+   *   两个函数：本函数出**衰减池键**，{@link pulseStreamOf} 出**冷却流**。
    */
   if (def.shieldFieldPct !== undefined) return { group: 'weighted', kind: 'shield-field' }
   if (def.shieldPulsePct !== undefined) return { group: 'weighted', kind: 'shield-charge' }
+  /**
+   * **船体维修装置 / 生体自愈件**（`repairArmorHp` / `repairHullHp`）= **折权加算**，与上两件同一把尺。
+   *
+   * ⚠ **2026-09-21 补登**（船长第二轮把维修装置一并点名）：「**包括船体维修装置的不同型号也一样的规则**」。
+   * 原先是**每个型号各自拿满权**（`combat.preloadRepairFor` 按件 id 计数）——而维修装置的情况恰恰相反：
+   * 民用级 / MK1 / MK2 / 生体甲壳板 / 生体损管腔**五个型号彼此无关**，装三台就是三份满额修甲。
+   * 现归本键 ⇒ **同舰多台维修装置按全族第 n 台折减**（第 2 台 87%、第 3 台 57%…）。
+   * ⚠ 这是**难度改动**（维修总量下调），船长 2026-09-21 已知情并选定。
+   */
+  if (def.repairArmorHp !== undefined || def.repairHullHp !== undefined) {
+    return { group: 'weighted', kind: 'repair' }
+  }
   return { group: 'flat', kind: def.slot }
+}
+
+/**
+ * **三类「按周期脉冲」装置的冷却流**（`pulseStreamOf`）——**逐型号一路计时器**。
+ *
+ * **船长令（2026-09-21，原话）**：「**漏了一点，哪怕同类型装备，只要是不同型号，就要独立的回转冷却**」
+ * ＋「**包括船体维修装置的不同型号也一样的规则**」⇒ 力场（高槽）/ 护盾充能（中槽）/ 船体维修（中槽）
+ * 三类一律**按型号拆成多路**：各带自己的 `nextPulseAtMs`，各按各的间隔跳、各修各的量。
+ *
+ * 改前是"一台一路"：同舰 MK2+MK3 **共用**一个计时器，间隔取最短的一档（力场 8 秒），
+ * 比例是两件的合计值 —— 于是**两件装置变成一路脉冲**（MK3 的快节奏把 MK2 也带快了、
+ * 而 MK2 的量被并进同一路里）。维修装置更极端：**一路 5 秒脉冲只结算一台装置**（`pulseRepairsFor`
+ * 的循环在第一个"跳得动"的装置上就消耗掉这一跳），装三台与装一台的实际修理量几乎一样。
+ *
+ * ⚠ **与衰减池是两件事**：衰减按**全族**（{@link stackingOf} 的 `kind`），冷却按**型号**（本函数）。
+ * 所以"MK2 一件 + MK3 一件"= **两路**各 10% 起跳、比例各自按全族第 n 件折减。
+ * `def.id` 就是型号（`mod-shieldfield-2` / `mod-hullrep-1` / `mod-lair-dc-c` …），
+ * 这也是唯一的现成粒度、无需新增数据字段。
+ */
+export function pulseStreamOf(def: ModuleDef): { kind: string; modelId: string } | null {
+  if (def.shieldFieldPct !== undefined) return { kind: 'shield-field', modelId: def.id }
+  if (def.shieldPulsePct !== undefined) return { kind: 'shield-charge', modelId: def.id }
+  if (def.repairArmorHp !== undefined || def.repairHullHp !== undefined) return { kind: 'repair', modelId: def.id }
+  return null
 }
 
 /** EVE 叠加曲线第 n 件权重（n 从 1 起）：e^−((n−1)/2.67)² ≈ 100% / 87% / 57% / 28% / 11%… */
