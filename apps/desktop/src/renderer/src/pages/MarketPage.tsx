@@ -1238,10 +1238,43 @@ export function MarketPage({
   const [kw, setKw] = useState('')
   // 行情详情选中商品（船长 2026-09-05：行内「 详情」/外部聚焦展开）
   const [selKey, setSelKey] = useState<string | null>(null)
-  // 右栏大盘默认选中第一个常驻商品；点击其它行或外部聚焦后以 selKey 为准
-  const defaultSelKey = stockedFirst(engine, common)[0]?.key ?? null
+  /**
+   * **窄屏（视口 ≤1180px）＝ 单栏**：此时"市场详情"改**悬浮窗**（船长 2026-09-21）——
+   * 原话：「**在手机或者窄屏的情况下，很难翻到市场详细，建议，当出现将市场详细压缩到订单列表下方时，
+   * 隐藏市场详细。玩家点击某个订单时，以悬浮窗的形式弹出。（仅限手机或者窄屏）**」
+   *
+   * ⚠ **断点必须与 CSS 同源**：单栏由 `styles.css` 的 `@media (max-width: 1180px) { .app-mkt-split
+   * { grid-template-columns: 1fr } }` 决定 ⇒ 这里用**同一个 1180**（改一处必改另一处，`ui:rot-check`
+   * 的窄窗白名单与这条断点同尺）。用 `max-width` 而非测量容器：CSS 用的是视口查询，量容器会在
+   * "窗口恰好 1180"这类边界上与 CSS 判得不一样。
+   */
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1180px)').matches,
+  )
+  /** 窄屏下的详情浮窗（只有点了订单才开；宽屏恒为 false、整条路径不参与） */
+  const [detailOpen, setDetailOpen] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1180px)')
+    const sync = (): void => setNarrow(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+  /**
+   * 窄屏 ⇒ **不默认选中**（否则"隐藏了详情却还高亮第一行"看着莫名其妙）；
+   * `focusSeq`（外部聚焦，如舰船页「去市场」）仍会把 `selKey` 写上 ⇒ 窄屏那条路径直接开浮窗。
+   */
+  const defaultSelKey = narrow ? null : stockedFirst(engine, common)[0]?.key ?? null
   const activeSelKey = selKey ?? defaultSelKey
   const activeGood = activeSelKey ? goods.find((g) => g.key === activeSelKey) ?? null : null
+  useEffect(() => {
+    if (narrow && selKey !== null) setDetailOpen(true)
+  }, [narrow, selKey])
+  /** 详情浮窗的开关（关闭 = 连选中一起清掉，行高亮不留在屏幕上） */
+  const closeDetail = (): void => {
+    setDetailOpen(false)
+    setSelKey(null)
+  }
   const lastFocusSeq = useRef(0)
   useEffect(() => {
     if (focusKey && focusSeq !== undefined && focusSeq !== lastFocusSeq.current) {
@@ -1281,6 +1314,15 @@ export function MarketPage({
     setKw(goodKey)
     changeKind('all')
     setSelKey(goodKey)
+    if (narrow) setDetailOpen(true)
+  }
+  /**
+   * **点一行订单**（船长 2026-09-21）：宽屏 = 照旧把它送进右栏常驻详情；**窄屏 = 弹详情浮窗**。
+   * ⚠ 窄屏**不写 `selKey`**（浮窗自带标题，行高亮留在列表上反而误导）——只开窗。
+   */
+  const onPickGood = (goodKey: string): void => {
+    if (narrow) setDetailOpen(true)
+    else setSelKey(goodKey)
   }
   const filteredAll = useMemo(    () =>
       stockedFirst(
@@ -1354,7 +1396,7 @@ export function MarketPage({
               right={<span className="app-dim">{tr("ui.MarketPage.100")}</span>}
               rows={filteredAll}
               selKey={activeSelKey}
-              onSelect={setSelKey}
+              onSelect={onPickGood}
             />
           ) : (
             <>
@@ -1405,7 +1447,7 @@ export function MarketPage({
                   }
                   rows={stockedFirst(engine, common)}
                   selKey={activeSelKey}
-                  onSelect={setSelKey}
+                  onSelect={onPickGood}
                 />
               ) : mktTab === 'rare' ? (
                 <MarketColumn
@@ -1415,7 +1457,7 @@ export function MarketPage({
                   right={<span className="app-dim">{tr("ui.MarketPage.108")}</span>}
                   rows={rareOrderRows(engine, rareCol)}
                   selKey={activeSelKey}
-                  onSelect={setSelKey}
+                  onSelect={onPickGood}
                 />
               ) : (
                 <MarketColumn
@@ -1426,7 +1468,7 @@ export function MarketPage({
                   rows={rareOrderRows(engine, exoticCol)}
                   empty={tr('ui.MarketPage.177')}
                   selKey={activeSelKey}
-                  onSelect={setSelKey}
+                  onSelect={onPickGood}
                 />
               )}
             </>
@@ -1434,19 +1476,27 @@ export function MarketPage({
         </div>
 
         <div className="app-mkt-right">
-          {activeGood ? (
-            <MarketDetail engine={engine} onToast={onToast} good={activeGood} />
-          ) : (
-            <Panel
-              title={tr("ui.MarketPage.110")}
-              hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
-              right={<span className="app-dim">{tr("ui.MarketPage.111")}</span>}
-            >
-              <div className="app-dim app-inv-empty">
-                {tr("ui.MarketPage.112")}
-              </div>
-            </Panel>
-          )}
+          {/**
+           * **窄屏（单栏）⇒ 不渲染"市场详情"**（船长 2026-09-21）：单栏时它会被压到订单列表**下方**，
+           * 玩家要翻很久才够得着 ⇒ 改为点订单**弹浮窗**（见本文件末尾那一段）。
+           * ⚠ **「我的挂单」照旧留在栏内**（它不是"详情"，宽窄都要能一眼看到钱包与托管额）。
+           * ⚠ 宽屏路径**一字不动**：仍是"详情卡 + 我的挂单"纵向堆叠、仍默认选中第一个常驻商品。
+           */}
+          {!narrow ? (
+            activeGood ? (
+              <MarketDetail engine={engine} onToast={onToast} good={activeGood} />
+            ) : (
+              <Panel
+                title={tr("ui.MarketPage.110")}
+                hint={<HintIcon tip={taxTipText(state, engine.ctx)} />}
+                right={<span className="app-dim">{tr("ui.MarketPage.111")}</span>}
+              >
+                <div className="app-dim app-inv-empty">
+                  {tr("ui.MarketPage.112")}
+                </div>
+              </Panel>
+            )
+          ) : null}
           {/* 2026-09-08 船长：我的挂单并入右栏详情页下方（右栏弹性补齐到与左侧同高） */}
           <Panel
             title={tr("ui.MarketPage.113")}
@@ -1461,6 +1511,31 @@ export function MarketPage({
           </Panel>
         </div>
       </div>
+      {/**
+       * **窄屏的「市场详情」浮窗**（船长 2026-09-21：手机/窄屏下点订单 ⇒ 悬浮窗弹出）。
+       *
+       * 复刻全仓既有的弹层结构（`.app-modal-mask` / `.app-modal` / `.app-modal-head` / `.app-modal-body`，
+       * 与「存档管理」「放弃虫洞」同一套）：点遮罩或「✕ 关闭」都只关窗、**不动任何账**
+       * （关窗顺带清掉选中 ⇒ 列表上不留一行莫名其妙的高亮）。
+       * 内容与宽屏右栏**逐字同源**（同一个 `<MarketDetail>` 组件）——不另做一套窄屏版，
+       * 免得"两个地方各改一半"（挂单/买入按钮的可用态都在那个组件里）。
+       * 只在 `narrow && detailOpen && activeGood` 时渲染 ⇒ 宽屏整条路径不存在。
+       */}
+      {narrow && detailOpen && activeGood ? (
+        <div className="app-modal-mask" onClick={closeDetail}>
+          <div className="app-modal app-modal-wide app-mkt-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-report-title">{goodName(engine.ctx, activeGood.key)}</span>
+              <button className="app-btn is-small" onClick={closeDetail}>
+                {tr('ui.App.086')}
+              </button>
+            </div>
+            <div className="app-modal-body">
+              <MarketDetail engine={engine} onToast={onToast} good={activeGood} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
