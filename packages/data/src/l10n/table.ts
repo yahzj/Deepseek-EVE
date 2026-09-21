@@ -2540,6 +2540,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.107": { zh: "当前批进度 {p1}%（{p2}；{p3}）", en: "Current batch progress {p1}% ({p2}; {p3})" },
   "ui.IndustryPage.108": { zh: " · 匹配 {n} 张", en: " · {n} cards match" },
   "ui.IndustryPage.109": { zh: "没有匹配的货柜——换个关键词试试（支持名称与说明）。", en: "No containers match — try another keyword (name and description both work)." },
+  /* 2026-09-21 船长报障「各个子标签页和筛选似乎并没有本地化」：工业页「造船厂」子标签与造船厂面板标题原先写死中文，补 id */
+  "ui.IndustryPage.110": { zh: "造船厂", en: "Shipyard" },
+  "ui.IndustryPage.114": { zh: "造船厂", en: "Shipyard" },
+  "ui.IndustryPage.115": { zh: "舰船蓝图在这里开工：已学会的配方才能建造（一次性图纸有书即用）；你亲自开限 1 条、其余每条由一枚 AI 核心驱动。造好的船先进舰船仓库。蓝图书仍到「蓝图书架」学习。", en: "Ship blueprints start here: only learned recipes can be built (one-use blueprints build straight from the book). You run one line by hand and each AI core drives one more. Finished ships go into ship storage first. Blueprint books are still studied at the Blueprint Shelf." },
   "ui.IndustryPage.111": { zh: "搜索资源、残骸或产出物…", en: "Search resources, wrecks or output…" },
   "ui.IndustryPage.112": { zh: "启动失败。", en: "Could not start." },
   "ui.IndustryPage.113": { zh: "单位数 = 该价值 ÷ 单价——单价高的原材料每批不足 1 单位会累计到够 1 再入库；每批总价值有 ±10% 抖动，以回收拆解结算为准。", en: "Unit count = that value ÷ unit price — for pricey feedstock, batches that come to less than 1 unit accumulate until a whole unit can be stored; each batch's total value wobbles by ±10%, and the recycling settlement is what counts." },

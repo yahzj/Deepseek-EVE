@@ -46,8 +46,7 @@ import {
   STORE_OWN_TABS,
   SUB_ALL,
   shipRolePasses,
-  shipTierPasses,
-} from '../ui/itemSubs'
+  shipTierPasses, subText } from '../ui/itemSubs'
 import type { PageProps } from './common'
 import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
@@ -425,7 +424,7 @@ export function ShipPage({
                   className={`app-tasktab${fleetFilter === t.key ? ' is-active' : ''}`}
                   onClick={() => setFleetFilter(t.key)}
                 >
-                  {t.label}
+                  {subText(t)}
                 </button>
               ))}
             </div>
@@ -450,7 +449,7 @@ export function ShipPage({
                   className={`app-tasktab${fleetRole === s.key ? ' is-active' : ''}`}
                   onClick={() => setFleetRole(s.key)}
                 >
-                  {s.label}
+                  {subText(s)}
                 </button>
               ))}
             </div>
@@ -474,7 +473,7 @@ export function ShipPage({
                   className={`app-tasktab${fleetTier === s.key ? ' is-active' : ''}`}
                   onClick={() => setFleetTier(s.key)}
                 >
-                  {s.label}
+                  {subText(s)}
                 </button>
               ))}
             </div>
@@ -748,7 +747,7 @@ export function ShipPage({
                     className={`app-tasktab${storeOwn === t.key ? ' is-active' : ''}`}
                     onClick={() => setStoreOwn(t.key)}
                   >
-                    {t.label}
+                    {subText(t)}
                   </button>
                 ))}
               </div>
@@ -772,7 +771,7 @@ export function ShipPage({
                     className={`app-tasktab${storeRole === s.key ? ' is-active' : ''}`}
                     onClick={() => setStoreRole(s.key)}
                   >
-                    {s.label}
+                    {subText(s)}
                   </button>
                 ))}
               </div>
@@ -796,7 +795,7 @@ export function ShipPage({
                     className={`app-tasktab${storeTier === s.key ? ' is-active' : ''}`}
                     onClick={() => setStoreTier(s.key)}
                   >
-                    {s.label}
+                    {subText(s)}
                   </button>
                 ))}
               </div>

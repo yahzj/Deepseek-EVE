@@ -391,6 +391,19 @@ export function subLabelOf(kind: string, key: string): string {
   return list.find((s) => s.key === key)?.label ?? key
 }
 
+/**
+ * **子分类/筛选档的显示文案**（单点；2026-09-21 船长报障：「各个子标签页和筛选似乎并没有本地化」）。
+ *
+ * 有 `id` ⇒ 走 `tr(id)` 取当前语言；无 `id`（尚未接线）⇒ 回退 `label`。
+ * ⚠ **所有渲染 `SubOption` 的地方都必须走这里，不许直接写 `s.label`**——`label` 是数据/键
+ * （见本文件头注释），直接渲染在英文界面下就会漏出中文（本轮报障的正是这批）。
+ * 适用范围不限于本文件的表：`Handbook` / `IndustryPage` / `Shipyard` / `Wormhole` 里那些
+ * `{ id, label }` 形状的门类与筛选项同样适用。
+ */
+export function subText(opt: { id?: string; label: string }): string {
+  return opt.id !== undefined ? tr(opt.id) : opt.label
+}
+
 /* ═══════════ 级联筛选的**空档隐藏**（2026-09-20 船长：「进行筛选清理，一些明显不存在某个子类下的筛选建议隐藏」）═══════════
  * 船长给的两个例子：**组装机-零件-高级零件-一次性蓝图**（零件没有一次性图纸）· **市场-高槽装备-护盾**（护盾是中槽件）。
  * 口径 = 蓝图书架 2026-09-19 那次报障修复的做法**推广到全线**：
