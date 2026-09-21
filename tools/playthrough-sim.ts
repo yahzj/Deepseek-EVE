@@ -1941,7 +1941,21 @@ function doWormhole(): boolean {
      */
     lastWhDepthSeen = -1
     whBattleSeen = false
-    mark(`虫洞进洞（第 ${whStats.entries} 趟 · 编队 ${fleetIds.length} 艘）`)
+    /**
+     * ⚠ **进洞时记一份"甲/结构实况"**（2026-09-21 加，为验收维修到底有没有生效）：
+     * 层深读数里的"我方残血 %"**包含护盾**（`wormholeHpFrac` 把格内单位的 s+a+h 比上限），
+     * 而护盾每场战斗重置 ⇒ 那个百分比**不是"进场血"**。
+     * 真正跨趟留存的是 `armorPct` / `durability` ⇒ 只有把它们打出来，才能判断
+     * "到达第 1 层 40%"是"进场就残"还是"打了一场很贵的胜仗"。
+     */
+    const armor = fleetIds
+      .map((uid) => {
+        const f = state.fleet[uid]
+        if (!f) return null
+        return `甲${Math.round((f.armorPct ?? 1) * 100)}%结${Math.round((f.durability ?? 1) * 100)}%`
+      })
+      .filter((x): x is string => !!x)
+    mark(`虫洞进洞（第 ${whStats.entries} 趟 · 编队 ${fleetIds.length} 艘 · ${armor.join(' ')}）`)
     return true
   }
   // ② 战斗在途：什么都不做，等引擎把这一场打完（`advanceWormhole` 逐拍推进）
@@ -2161,12 +2175,32 @@ function wormholeFleetPick(): string[] {
     const def = fleetDefOf(state, ctx, uid)
     const f = state.fleet[uid]
     if (!def || !f) return -1
-    return (def.tier ?? 1) * 10 + (def.powerBonus ?? 0) * 20 + (f.durability ?? 1) * 5 + (f.armorPct ?? 1) * 3
+    /**
+     * ⚠ **打分必须重罚"残船"**（2026-09-21 第六批）。旧式 `durability*5 + armorPct*3` 只值
+     * 8 分的权重，对上 `tier*10` 根本不够看 ⇒ 实测把 **甲 0%、结构 5%** 的船照样编进编队
+     * （进洞读数实证：`甲0%结5%`）。而 `wormholeHpFrac()` 是按**格内单位血比上限**算的
+     * ⇒ 一艘 0% 甲的船直接把整队血分拉掉一大截（4 艘里 1 艘残到 0% ⇒ 整队读数立刻难看），
+     * 于是"第 2 层到达 40%"根本不是打出来的，是**带了一艘废船**拉低的。
+     * 现改为：把"甲 + 结构"当百分比直接乘进总分（残船几乎必然排到最后）。
+     */
+    const hpScale = Math.max(0, Math.min(1, (f.armorPct ?? 1) * 0.6 + (f.durability ?? 1) * 0.4))
+    const base = (def.tier ?? 1) * 10 + (def.powerBonus ?? 0) * 20
+    return base * hpScale
   }
   const rows = Object.keys(state.fleet)
     // ⚠ **出勤中的船不能编进洞**（`wormholeEnter` 会被引擎以"正在AI 采矿中"拒掉——实测第一版
     //   就是这么失败的：唯一的战舰在挖矿，入洞被拒、虫洞目标全程 0 进度）
     .filter((uid) => !!state.fleet[uid] && !state.aiAssignments[uid])
+    /**
+     * ⚠ **甲/结构太残的船不许带进洞**（2026-09-21 第六批）：维修一天只跑一次，
+     * 而"带一艘甲 0% 的船"等于**白送一个战位**（它几乎打不动、还拉低 `wormholeHpFrac` 读数）。
+     * 阈值取 0.25：低于它的船宁可少带（带 3 艘健康的 > 带 4 艘含 1 艘废的）。
+     */
+    .filter((uid) => {
+      const f = state.fleet[uid]
+      if (!f) return false
+      return (f.armorPct ?? 1) >= 0.25 && (f.durability ?? 1) >= 0.25
+    })
     .map((uid) => ({ uid, score: scoreOf(uid) }))
     .sort((a, b) => b.score - a.score || a.uid.localeCompare(b.uid))
     .map((x) => x.uid)
