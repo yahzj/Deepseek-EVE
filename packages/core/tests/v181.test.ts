@@ -94,7 +94,7 @@ describe('V18.1 收敛机制（纯函数）', () => {
     expect(gapCombine([0.2], 0.1)).toBeCloseTo(0.28, 9)
   })
 
-  it('stackingOf 分组：稳定器/射速 = flat；索敌(命中) = curve；陀螺(闪避) = gap；推进 = curve/speed；盾抗 = gap/系键', () => {
+  it('stackingOf 分组：稳定器/射速 = flat；索敌(命中) = curve；陀螺(闪避) = gap；推进 = weighted/speed（2026-09-20 起加算）；盾抗 = gap/系键', () => {
     expect(stackingOf(moduleDef('s1', 'support', 0, { rack: 'low', damageTypeBonusPct: { kinetic: 0.1 } }))).toEqual({
       group: 'flat',
       kind: 'support',
@@ -102,7 +102,7 @@ describe('V18.1 收敛机制（纯函数）', () => {
     expect(stackingOf(moduleDef('r1', 'support', 0, { rack: 'low', reloadCutPct: 0.05 })).group).toBe('flat')
     expect(stackingOf(moduleDef('t1', 'support', 0, { rack: 'mid', hitBonusPct: 0.08 }))).toEqual({ group: 'curve', kind: 'hit' })
     expect(stackingOf(moduleDef('g1', 'support', 0, { rack: 'mid', evasionGapPct: 0.1 }))).toEqual({ group: 'gap', kind: 'evasion' })
-    expect(stackingOf(moduleDef('p1', 'propulsion', 0, { speedBonusPct: 0.15 }))).toEqual({ group: 'curve', kind: 'speed' })
+    expect(stackingOf(moduleDef('p1', 'propulsion', 0, { speedBonusPct: 0.15 }))).toEqual({ group: 'weighted', kind: 'speed' })
     expect(stackingOf(moduleDef('sk1', 'shield', 0, { shieldResistAdd: { kinetic: 0.5 } })).kind).toBe('shield-kinetic')
     // 2026-09-11 修：结构层抗性同样走缺口复合（引擎 applyAdds），此前被漏判成 flat
     expect(stackingOf(moduleDef('hk1', 'support', 0, { rack: 'mid', hullResistAdd: { plasma: 0.25 } }))).toEqual({
@@ -248,7 +248,7 @@ describe('V18.1 装配与战斗集成', () => {
     expect(spec.resists.shield?.kinetic).toBeCloseTo(0.75, 9)
   })
 
-  it('推进器多件：**爆发倍率**按 EVE 曲线（+15% 与 +50% → ×1.696），命中代价只取最重（×0.80）', () => {
+  it('推进器多件：**爆发倍率**按折权加算（+15% 与 +50% → ×1.630，2026-09-20 船长「基础改为加算，但是依旧有多件衰减」），命中代价只取最重（×0.80）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 6 })
     const { shipDef } = makeBed()
     shipDef.maxSpeedMps = 300
@@ -268,7 +268,9 @@ describe('V18.1 装配与战斗集成', () => {
     const spec = createPlayerSpec(state, ctx, state.shipId)!
     // 2026-09-10 船长：推进器改周期点火——基础速度不变，EVE 曲线作用在**爆发倍率**上
     expect(spec.speedMps).toBeCloseTo(300, 6)
-    expect(1 + (spec.thrusterBoost ?? 0)).toBeCloseTo(curveMult([0.5, 0.15]), 6)
+    // 2026-09-10 船长：推进器改周期点火——基础速度不变，加成作用在**爆发倍率**上
+    // 2026-09-20 船长：多件改「折权加算」⇒ +50% 与 +15% 两件 = 0.5 + 0.15×0.869 = **+63.0%**（旧 EVE 曲线给 +69.6%）
+    expect(1 + (spec.thrusterBoost ?? 0)).toBeCloseTo(1 + 0.5 * stackWeight(1) + 0.15 * stackWeight(2), 6)
     expect(spec.hitMul).toBeCloseTo(0.8, 9) // 最重代价 0.2，而非 0.95×0.8
   })
 

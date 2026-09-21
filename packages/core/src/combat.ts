@@ -1198,7 +1198,14 @@ export function createPlayerSpec(
   const propSpeeds = allFittedModules(fitted, ctx)
     .map((m) => m.speedBonusPct ?? 0)
     .filter((v) => v > 0)
-  const speedEq = curveMult(propSpeeds)
+  /**
+   * **推进器多件 = 折权加算**（**2026-09-20 船长**：「**基础改为加算，但是依旧有多件衰减**」）：
+   * 单体加成按 `stackWeight`（100% / 87% / 57% / 28% / 11%…）折减后**相加** ⇒ 件件递减、总额收敛。
+   * ⚠ 原为 `curveMult`（乘积形 `Π(1+pᵢ·wᵢ)`）：对 +250% 这种大额件会**放大**（2 件 ×11.10、3 件 ×26.95），
+   * 现 2 件 ×5.67、3 件 ×7.10。判据单点 = `equipment.weightedSum`；收敛分组见 `stackingOf`（`weighted`）。
+   * ⚠ 命中 / 跃迁速度 / 目标锁定**仍是 EVE 曲线**（本裁定只动速度）。
+   */
+  const speedEq = 1 + weightedSum(propSpeeds)
   const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
   /**
    * **本单位推进器的点火周期**（2026-09-14 船长新增「微型跃迁引擎」：点火 10 秒 / 冷却 60 秒）。

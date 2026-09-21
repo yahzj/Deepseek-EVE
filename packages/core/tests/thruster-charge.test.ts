@@ -19,9 +19,10 @@ import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
 import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, foeChargeCount, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
 import { DEFAULT_BALANCE } from '../src/balance'
+import { stackWeight } from '../src/equipment'
 import { FOE_MOUNT_IDS, resolveFoeMounts } from '../src/foeMounts'
 import { advanceBattleFor, battleOpenM, createFoeSpecs, foeDesiredRange, startBattleFor } from '../src/combat'
-import { anomaly, galaxy, makeTestCtx, moduleDef } from './helpers'
+import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
 
 function world(): { state: GameState; ctx: SimContext } {
   // 测试世界默认只有采集/货舱件——这里补三档推进器（数值与 data/modules.ts 一致）
@@ -45,6 +46,24 @@ function withThruster(state: GameState, ctx: SimContext, mods: string[]): void {
   repairDeprecatedModules(state, ctx)
 }
 
+/** 同上，但换一艘**三中槽**的船（默认测试船只有 2 中槽，测不到"3 件"档） */
+function world3mid(): { state: GameState; ctx: SimContext } {
+  const ctx = makeTestCtx({
+    quietEvents: true,
+    modules: [
+      moduleDef('mod-prop-1', 'propulsion', 0, { speedBonusPct: 0.3, hitPenalty: 0.05 }),
+      moduleDef('mod-prop-2', 'propulsion', 0, { speedBonusPct: 0.6, hitPenalty: 0.12 }),
+      moduleDef('mod-prop-3', 'propulsion', 0, { speedBonusPct: 1, hitPenalty: 0.2 }),
+      moduleDef('t-mwd-3', 'propulsion', 0, { speedBonusPct: 2.5 }),
+    ],
+    ships: [ship('sandcat3', { slots: { high: 2, mid: 3, low: 2 } })],
+  })
+  const state = createInitialState({ nowWallMs: 0, seed: 7 })
+  addShipToFleet(state, 'sandcat3')
+  state.shipId = 'sandcat3'
+  return { state, ctx }
+}
+
 describe('推进器周期爆发（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）', () => {
   it('周期相位：t=0 点火 → 60s 起冷却 → 120s 再次点火；冷却剩余时间为 60s 起算', () => {
     const bal = makeTestCtx().balance.battle
@@ -65,8 +84,9 @@ describe('推进器周期爆发（2026-09-10 船长定：点火 60 秒 / 冷却 
     expect(spec.thrusterBoost).toBeUndefined()
   })
 
-  it('装推进器：爆发放进 thrusterBoost（不再计入基础 speedMps）；多件按 EVE 曲线收敛', () => {
-    const { state, ctx } = world()
+  it('装推进器：爆发放进 thrusterBoost（不再计入基础 speedMps）；多件 = 折权加算（件件递减）', () => {
+    /** 三中槽的测试船（默认测试船只有 2 中槽 ⇒ 第 3 件会被"超长尾件退库"裁掉，测不到 3 件档） */
+    const { state, ctx } = world3mid()
     withThruster(state, ctx, ['mod-prop-1'])
     const base = createInitialState({ nowWallMs: 0, seed: 7 })
     addShipToFleet(base, 'sandcat2')
@@ -75,13 +95,35 @@ describe('推进器周期爆发（2026-09-10 船长定：点火 60 秒 / 冷却 
     const one = createPlayerSpec(state, ctx, state.shipId)!
     expect(one.speedMps).toBeCloseTo(bare.speedMps, 6) // 基础速度不含推进器
     expect(one.thrusterBoost).toBeGreaterThan(0)
-    // 第二件收益递减（EVE 曲线：第二件按 ×0.87 权重并入）——判据是"第二件的**乘数增量**小于第一件"
+    /**
+     * **2026-09-20 船长**：「**基础改为加算，但是依旧有多件衰减**」——
+     * 口径由 EVE 曲线（`Π(1+pᵢ·wᵢ)`）改成**折权加算**（`Σ pᵢ·wᵢ`，w = 100% / 87% / 57% / 28%…）。
+     * 判据（+30% 的件）：1 件 = **+30%**；2 件 = 0.3 + 0.3×0.869 = **+56.1%**（旧曲线给 +64%）；
+     * 3 件 = 0.3×(1+0.869+0.571) = **+73.2%**（旧曲线 +91.9%）。
+     */
+    expect(one.thrusterBoost!).toBeCloseTo(0.3, 6)
     withThruster(state, ctx, ['mod-prop-1', 'mod-prop-1'])
     const two = createPlayerSpec(state, ctx, state.shipId)!
+    expect(two.thrusterBoost!).toBeCloseTo(0.3 + 0.3 * stackWeight(2), 6)
     expect(two.thrusterBoost!).toBeGreaterThan(one.thrusterBoost!) // 仍更好
     const firstMul = 1 + one.thrusterBoost!
     const secondMul = (1 + two.thrusterBoost!) / firstMul
     expect(secondMul).toBeLessThan(firstMul) // 递减：第二件的乘数 < 第一件的乘数
+    withThruster(state, ctx, ['mod-prop-1', 'mod-prop-1', 'mod-prop-1'])
+    const three = createPlayerSpec(state, ctx, state.shipId)!
+    expect(three.thrusterBoost!).toBeCloseTo(0.3 * (stackWeight(1) + stackWeight(2) + stackWeight(3)), 6)
+  })
+
+  it('大额件（微型跃迁引擎 MK3 +250%）不再被乘积形放大：2 件 ×5.67 · 3 件 ×7.10（旧曲线 ×11.10 / ×26.95）', () => {
+    const { state, ctx } = world3mid()
+    const boostOf = (n: number): number => {
+      state.fleet[state.shipId]!.fitted = { high: [], mid: Array(n).fill('t-mwd-3'), low: [] }
+      repairDeprecatedModules(state, ctx)
+      return createPlayerSpec(state, ctx, state.shipId)!.thrusterBoost ?? 0
+    }
+    expect(1 + boostOf(1)).toBeCloseTo(1 + 2.5, 5) // ×3.50
+    expect(1 + boostOf(2)).toBeCloseTo(1 + 2.5 * (stackWeight(1) + stackWeight(2)), 5) // ×5.67（曲线给 ×11.10）
+    expect(1 + boostOf(3)).toBeCloseTo(1 + 2.5 * (stackWeight(1) + stackWeight(2) + stackWeight(3)), 5) // ×7.10（旧 ×26.95）
   })
 
   it('失稳代价只在点火期生效（2026-09-10 船长追加）：点火期 = 装配值，冷却期 = 1', () => {

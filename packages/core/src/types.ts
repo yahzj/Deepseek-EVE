@@ -1245,8 +1245,9 @@ export interface ModuleDef {
    * （所有航行路径的唯一入口：采矿往返 / 悬赏·远征 / 长途运输 / 扫描返航 / 快递 / AI 副船，
    * **逐船**生效）。**不碰战斗机动**——那是 `speedBonusPct`（矢量推进器）与推进器周期的地盘。
    *
-   * **多件走 EVE 曲线**（`Π(1+pᵢ·wᵢ)`，与"命中/速度"同一条，见 `equipment.curveMult`）：
+   * **多件走 EVE 曲线**（`Π(1+pᵢ·wᵢ)`，与"命中/目标锁定"同一条，见 `equipment.curveMult`）：
    * 多装递减 ⇒ MK2 1/2/3/4 件 = ×1.20 / ×1.41 / ×1.57 / ×1.66；MK3 = ×1.35 / ×1.76 / ×2.11 / ×2.32。
+   * ⚠ **战斗机动速度（`speedBonusPct`）自 2026-09-20 起不再走这条曲线**，改「折权加算」（`equipment.weightedSum`）。
    */
   warpSpeedBonusPct?: number
   /**
