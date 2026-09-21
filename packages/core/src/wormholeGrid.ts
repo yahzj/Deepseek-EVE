@@ -419,6 +419,20 @@ export function wormholeGridRadiusFor(depth: number): number {
 }
 
 /**
+ * **信标出现率**（**2026-09-20 船长**：「**虫洞中，信标的出现率降低到50%，但是有每层1个的保底数量**」）。
+ *
+ * 口径：权重表**不动**（信标仍恒 10 ⇒ `content:check` 的「内容原型＋敌族锁定契约」照旧），
+ * 最大余数法照旧算出该层的**信标名额**（原来的"逐层定额"），随后**逐个名额掷 50%**；
+ * 名额 ≥1 而全部落空时**保底留 1 个**（层 1 起每层恒有指路件）。
+ * 被砍掉的名额**按权重让给其余四类信号**（不变成空地）——这样**空信息占比阶梯一字不动**，
+ * 其余地点数量只是略微上浮。
+ * ⚠ 随机流独立（`+29`）⇒ 空地点洗牌（`+0`）、分配洗牌（`+17`）与逐格 `pickPlace` 的骰子都不受影响，
+ * 且同 `(seed, depth)` 仍必得同盘。
+ * ⚠ **旧口径"信标数逐层定额、不随 seed 漂"（2026-09-13）由此作废**——本令要的就是"率"。
+ */
+export const WORMHOLE_BEACON_RATE = 0.5
+
+/**
  * **读档校验用的半径上限**（只是"坏档护栏"，**不是玩法上限**）。
  *
  * ⚠ **2026-09-20 事故与教训**（玩家报障「**玩家虫洞深入下一层后，显示本层没有网格**」）：
@@ -879,6 +893,36 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
     wreckN += 1
   }
   quotaOf('wreck').n = wreckN
+  /**
+   * **信标 50% 出现率 + 每层保底 1 个**（船长 2026-09-20；见 `WORMHOLE_BEACON_RATE` 的口径注）：
+   * 上面的信标名额是"满额"（原来的逐层定额），这里**逐个名额掷 50%**；全落空且名额 ≥1 ⇒ 保底留 1。
+   * 让出来的名额**按权重补给其余四类**（同一套最大余数法、余数大的先补）⇒ 池子仍被填满
+   * ⇒ **空信息占比阶梯一字不动**，其余地点数量略微上浮。随机流独立（`+29`），其余骰子不受影响。
+   */
+  {
+    const beaconSlots = quotaOf('beacon').n
+    const beaconRng = wormholeStream(seed * 7919 + depth * 104729 + 29)
+    let beaconN = 0
+    for (let i = 0; i < beaconSlots; i++) if (beaconRng() < WORMHOLE_BEACON_RATE) beaconN += 1
+    if (beaconSlots > 0 && beaconN === 0) beaconN = 1 // 保底：每层至少 1 个
+    quotaOf('beacon').n = beaconN
+    const freed = beaconSlots - beaconN
+    if (freed > 0) {
+      const rest = order.filter((k) => k !== 'beacon')
+      const restW = rest.reduce((s, k) => s + signalWeights[k], 0)
+      const add = rest.map((k) => {
+        const exact = (freed * signalWeights[k]) / restW
+        return { k, n: Math.floor(exact), frac: exact - Math.floor(exact) }
+      })
+      let restLeft = freed - add.reduce((s, a) => s + a.n, 0)
+      for (const a of [...add].sort((x, y) => y.frac - x.frac || order.indexOf(x.k) - order.indexOf(y.k))) {
+        if (restLeft <= 0) break
+        a.n += 1
+        restLeft -= 1
+      }
+      for (const a of add) quotaOf(a.k).n += a.n
+    }
+  }
   const signalOfCell = new Map<string, WormholeSignal>()
   let at = 0
   /**

@@ -164,37 +164,37 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
    * ⇒ 信标落在入口格上时玩家站在信标上却读不出终点（F3c 第二段的整趟模拟实测踩到）。
    * 修法 = 与另一格**交换信号**（不是重掷）⇒ 各信号的格数与实测分布一字不变。
    */
-  it('**信标不落入口格**（船长 2026-09-13：「不可以同一格」）——且信标数从"取整漂移"变成**定额**', () => {
+  it('**信标不落入口格** + **50% 出现率与每层保底 1 个**（船长 2026-09-20）', () => {
     /**
-     * ⚠ 2026-09-13 层间盘面批：信标数**从"随 seed 漂 1~2 格"变成逐层定额**。
-     *
-     * 为什么：旧式 `空 = ⌈总格数 × 50%⌉` 的口径下，池子 = `格数 − 1 − 空格数` **随终点格自己是否为空**在
-     * 两组值之间跳（例如层 3 的池恒为 17 或 18）⇒ 同一层不同 seed 的信标数会在 1/2 之间漂。
-     * 现在空格数是**定额**（`⌈(格数−1) × 该层占比⌉`）⇒ 池子定额 ⇒ 各信号计数**逐层定额、与 seed 无关**。
-     *
-     * ⚠ **2026-09-20 台阶两次改判后重钉**（当日先"每 1 层 +1 环"、再按船长令**回退成"每 2 层 +1 环、不封顶"**）：
-     * 现值 = 层 1~5 与层 7/8 **逐层定额**（实测 120 seed 恒定）；**层 6 会浮 1（3 或 4）**——
-     * 池子变小后，"内容原型"对四类信号权重的再分配会把**信标配额的取整落点**顶过 0.5 边界
-     * ⇒ 那种深度改断言区间（与旧口径"层 9 起浮 1"同一性质，只是起点提前）。
+     * ⚠ **2026-09-20 船长**：「**虫洞中，信标的出现率降低到50%，但是有每层1个的保底数量**」——
+     * 原口径（2026-09-13 起）是"信标数**逐层定额、与 seed 无关**"，本令**作废该条**：
+     * 现在按"满额名额逐个掷 50%"，**同一层不同 seed 会不同**（分布见下），只保证：
+     * ① **≥1**（保底）；② **≤ 满额**（名额上限，即旧定额值）。
+     * 实测（400 seed）：层 1/2 恒 1；层 5 = 1×48% / 2×41% / 3×12%（均值 1.64，满额 3）；
+     * 层 7 = 1×20% / 2×31% / 3×32% / 4×14% / 5×3%（均值 2.50，满额 5）。
+     * 被砍掉的名额**让给其余四类信号**（不变成空地）⇒ **空占比阶梯不受影响**（同批实测空格数与改前逐层相同）。
      */
-    const expectBeacons: Record<number, readonly [number, number]> = {
-      1: [1, 1],
-      2: [1, 1],
-      3: [2, 2],
-      4: [2, 2],
-      5: [3, 3],
-      6: [3, 4],
-      7: [5, 5],
-      8: [5, 5],
+    const expectBeacons: Record<number, { lo: number; hi: number; mean: number }> = {
+      1: { lo: 1, hi: 1, mean: 1 },
+      2: { lo: 1, hi: 1, mean: 1 },
+      3: { lo: 1, hi: 2, mean: 1.26 },
+      4: { lo: 1, hi: 2, mean: 1.31 },
+      5: { lo: 1, hi: 3, mean: 1.64 },
+      6: { lo: 1, hi: 4, mean: 1.83 },
+      7: { lo: 1, hi: 5, mean: 2.5 },
+      8: { lo: 1, hi: 5, mean: 2.49 },
     }
-    for (const [depthStr, [lo, hi]] of Object.entries(expectBeacons)) {
+    for (const [depthStr, want] of Object.entries(expectBeacons)) {
       const depth = Number(depthStr)
-      for (let seed = 1; seed <= 120; seed++) {
+      let sum = 0
+      const SEEDS = 120
+      for (let seed = 1; seed <= SEEDS; seed++) {
         const g = wormholeMakeGrid(seed, depth)
         const startKey = `${g.start.q},${g.start.r}`
         const beacons = g.cells.filter((c) => c.place === 'beacon')
-        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数`).toBeGreaterThanOrEqual(lo)
-        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数`).toBeLessThanOrEqual(hi)
+        sum += beacons.length
+        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数（保底 1）`).toBeGreaterThanOrEqual(want.lo)
+        expect(beacons.length, `seed ${seed} 层 ${depth} 的信标数（≤ 满额）`).toBeLessThanOrEqual(want.hi)
         expect(
           beacons.some((c) => c.key === startKey),
           `seed ${seed} 层 ${depth}：信标落在了入口格 ${startKey} 上`,
@@ -202,6 +202,9 @@ describe('虫洞网格 · 生成（F3a · 空 ≥50% / 遗迹 30%）', () => {
         // 出口格本来就不参与信号分配 ⇒ 也不该是信标
         expect(beacons.some((c) => c.key === `${g.exit.q},${g.exit.r}`)).toBe(false)
       }
+      // 均值 ≈ 满额的一半（±0.35）：证明"率"真的落到了 50%，而不是只把定额砍半
+      expect(sum / SEEDS, `层 ${depth} 信标均值`).toBeGreaterThan(want.mean - 0.35)
+      expect(sum / SEEDS, `层 ${depth} 信标均值`).toBeLessThan(want.mean + 0.35)
     }
   })
 
