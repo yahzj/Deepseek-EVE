@@ -18,6 +18,7 @@ import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
+import { WinBox } from '../ui/WinBox'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import {
   DRONE_DWELL_MS,
@@ -181,7 +182,25 @@ type BattleHandle = {
   myFleet?: Array<{ tag: string; shipId: string }>
 }
 
-export function BattleScreen({ engine, onToast, onClose }: { engine: GameEngine; onToast: ToastFn; onClose: () => void }) {
+export function BattleScreen({
+  engine,
+  onToast,
+  onClose,
+  open = true,
+  onRestore,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  onClose: () => void
+  /**
+   * 窗口是否展开（**2026-09-20 船长令：观战窗口改非全屏、可最小化**）。
+   * `false` ⇒ 本组件只渲染右下角浮动还原标（"⚔ 战斗中"），战斗在后台照常推进。
+   * 判定与"何时自动弹出"留在 `App.tsx`（同既有 `battleOpen` 机制），本组件不做业务判断。
+   */
+  open?: boolean
+  /** 点浮动还原标（把窗口弹回来）；缺省时浮动标不可点——调用方必须给 */
+  onRestore?: () => void
+}) {
   const state = engine.state
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
   const whView = wormholeBattleViewOf(state, engine.ctx)
@@ -695,6 +714,16 @@ const meSpeedRef = useRef(200)
           .join(' · ')
       : ''
     return (
+      <WinBox
+        variant="app-winbox is-battle-report"
+        title={titleOf[verdict]}
+        open={open}
+        onMinimize={onClose}
+        minimizeText={tr('ui.App.086')}
+        chipText={titleOf[verdict]}
+        chipTitle={tr('ui.App.083')}
+        onRestore={onRestore ?? onClose}
+      >
       <div className="app-battle-screen is-report">
         <div className="app-bts-report">
           <div className={`app-bts-report-card${isWinSide ? " is-win" : " is-lose"}`}>
@@ -763,6 +792,7 @@ const meSpeedRef = useRef(200)
           </div>
         </div>
       </div>
+      </WinBox>
     )
   }
 
@@ -1956,7 +1986,17 @@ const meSpeedRef = useRef(200)
   })
 
   return (
-    <div className="app-battle-screen">
+    <WinBox
+      variant="app-winbox is-battle"
+      title={tr('ui.BattleScreen.106')}
+      open={open}
+      onMinimize={onClose}
+      minimizeText={tr('ui.BattleScreen.037')}
+      chipText={tr('ui.App.084')}
+      chipTitle={tr('ui.App.083')}
+      onRestore={onRestore ?? onClose}
+    >
+      <div className="app-battle-screen">
       <div className="app-battle-screen-top">
         {stage === 'live' ? (
           <>
@@ -2649,7 +2689,8 @@ const meSpeedRef = useRef(200)
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </WinBox>
   )
 }
 
