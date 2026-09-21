@@ -230,7 +230,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     /**
      * 奖励（**2026-09-20 船长令**：「采集器和打捞器给的任务应该往前调，**采集器是扫描星系给**」）：
      * **采集器 MK1** 从「第一次采集原矿」前移到本条——新手第一步就能拿到，装上再去采矿。
-     * （本条此前无实物奖励；前移前的对照见 `docs/design/first-task-reward-move-20260920.md`。）
+     * （本条此前无实物奖励；前移前后的对照见 `docs/roadmap.md` 2026-09-20「首次任务奖励前移」那条。）
      */
     reward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }] },
     chain: { id: 'explorer', name: '宇宙探索家', stat: 'scan', tierKey: 'scan' },
