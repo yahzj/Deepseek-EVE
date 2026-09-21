@@ -1212,6 +1212,12 @@ export {
   wormholeSignalWeightsFor,
   wormholeRuinsShareFor,
   wormholeRuinsFloorBonusFor,
+  /**
+   * ⚠ **2026-09-20 补导出**：`tools/content-check.ts` 一直在 import 它，但它此前**没进过这道门**
+   * ⇒ 运行时拿到 `undefined` ⇒ 那条「每层保底谜质格数 ≥ 1」的契约**静默失效**（`undefined < 1` 恒假）。
+   * 这是"tools 不在 typecheck 覆盖面内"的一个真实样本（另见 `npm run skill:audit` 那条假技能 id）。
+   */
+  WORMHOLE_MATTER_FLOOR,
 } from './wormholeGrid'
 export type {
   HexCell,

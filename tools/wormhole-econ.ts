@@ -84,6 +84,9 @@ import {
   wormholeSalvageAt,
   wormholeSalvagersOf,
   wormholeTakePileAt,
+  wormholeTempBlockReason,
+  wormholeTempStowAll,
+  wormholeTempDiscardAll,
 } from '../packages/core/src/wormholeSalvage'
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL } from '../packages/core/src/wormholeFoes'
 import { isRareWreck, RARE_WRECK_VOLUME_M3 } from '../packages/core/src/salvage'
@@ -571,6 +574,11 @@ interface LayerActs {
    * 只有绕不开时才硬打 ⇒ 这个数就是"绕不开的拦截税"。
    */
   intercepts: number
+  /**
+   * **清临时空间的次数**（2026-09-20 补的口径）：洞内大件先进"临时空间"，那之后一切动作被拦
+   * ⇒ 政策照玩家的做法先"尽量放回货仓、放不下的丢掉"。恒 0 说明这一趟没拿到过装不进包的大件。
+   */
+  tempClears: number
 }
 
 interface RunOutcome {
@@ -604,11 +612,14 @@ interface RunOutcome {
 /**
  * 整趟政策参数（`--runs` 模式）。
  *
- * ⚠ **已知缺口（2026-09-15 登记）**：本政策**不会处理"临时空间"** —— 洞内拿到的谜质/超格物品进
- * `run.temp` 后，下一次**扫描**会被引擎拒（「临时空间里有 N 件没处理：先到「货仓」页放回货仓或丢弃」），
- * 而政策没有"清临时空间"这一步 ⇒ 趟会**停在那里**（读数记作 `未结束`，收集物**不计入到手**）。
- * 回合预算越高、走得越深越容易撞上（基础 100 的 20 趟里有 5 趟如此）⇒ 看深层读数时**先扣掉未结束趟**，
- * 或给政策补一步"把临时空间搬回货仓/丢弃"（属工具改动，另批）。
+ * ✅ **原「已知缺口」已于 2026-09-20 补上**（船长令「其他按你推荐来」）：政策现在第一步就清"临时空间"
+ * （`wormholeTempBlockReason` ⇒ `wormholeTempStowAll` ⇒ 放不下才 `wormholeTempDiscardAll`，
+ * 与 `mt-harvest.ts` 同名步骤逐字同款、也照玩家在界面上的两条选择）。
+ *
+ * 缺口史（留档）：洞内拿到的谜质/超格物品进 `run.temp` 后，下一次**扫描**会被引擎拒
+ * （「临时空间里有 N 件没处理：先到「货仓」页放回货仓或丢弃」），而政策原先没有这一步 ⇒ 趟**停在那里**
+ * （读数记作 `未结束`、收集物**不计入到手**）。2026-09-15 登记为"属工具改动，另批"；
+ * 修掉假技能 id（同批，见 `SKILLS`）让编队不再"0 技能裸奔"后才暴露：`--runs=20` 里 2 趟中招。
  */
 interface Policy {
   /** 粗残血低于它就撤（默认 0.5） */
@@ -707,7 +718,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
   const layerActs: LayerActs[] = []
   const actsAt = (d: number): LayerActs => {
     while (layerActs.length < d) {
-      layerActs.push({ scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0, intercepts: 0 })
+      layerActs.push({ scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0, intercepts: 0, tempClears: 0 })
     }
     return layerActs[d - 1]!
   }
@@ -856,6 +867,23 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
           break
         }
         bump('fights')
+        continue
+      }
+      /**
+       * ⓪a **临时空间**（**2026-09-20 补 · 船长令**）：洞内拿到装不进背包的大件会先落进"临时空间"，
+       * 那之后**一切动作都被拦**（`wormholeTempBlockReason`）⇒ 政策必须先清它，否则整趟停在那里
+       * （读数记 `未结束`、收集物不计入到手）。
+       *
+       * 这是本工具**自己登记过的已知缺口**（2026-09-15 记在文件头"属工具改动，另批"）——
+       * 修技能 id（同批）让编队不再"0 技能裸奔"后它才暴露出来：`--runs=20` 里 2 趟中招。
+       * 顺序照玩家直觉：**先尽量放回货仓**（谜质装置要留在仓里才能折算），**放不下的才丢**；
+       * 两个动作都走引擎入口（`wormholeTempStowAll` / `wormholeTempDiscardAll`），不手改账本。
+       * 与 `mt-harvest.ts` 的同名步骤逐字同款（口径已被那个工具验证过）。
+       */
+      if (wormholeTempBlockReason(state, ctx)) {
+        wormholeTempStowAll(state, ctx)
+        if (wormholeTempBlockReason(state, ctx)) wormholeTempDiscardAll(state, ctx)
+        bump('tempClears')
         continue
       }
       /**
@@ -1075,7 +1103,7 @@ function simulateRun(seed: number, pol: Policy, fit: RefFit): RunOutcome {
     layerBoxes,
     layerRares,
     layerActs,
-    acts: layerActs.reduce((s, a) => ({ scans: s.scans + a.scans, moves: s.moves + a.moves, salvages: s.salvages + a.salvages, collects: s.collects + a.collects, fights: s.fights + a.fights, discards: s.discards + a.discards, waits: s.waits + a.waits, intercepts: s.intercepts + a.intercepts }), { scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0, intercepts: 0 }),
+    acts: layerActs.reduce((s, a) => ({ scans: s.scans + a.scans, moves: s.moves + a.moves, salvages: s.salvages + a.salvages, collects: s.collects + a.collects, fights: s.fights + a.fights, discards: s.discards + a.discards, waits: s.waits + a.waits, intercepts: s.intercepts + a.intercepts, tempClears: s.tempClears + a.tempClears }), { scans: 0, moves: 0, salvages: 0, collects: 0, fights: 0, discards: 0, waits: 0, intercepts: 0, tempClears: 0 }),
     turnsLeft: state.wormhole.run?.turnsLeft ?? lastTurns,
     turnsTotal,
     nebulaScans,
@@ -1237,7 +1265,8 @@ function runRunsMode(): void {
       o.acts.scans + o.acts.moves + o.acts.salvages + o.acts.collects + o.acts.fights + o.acts.discards,
     ).toFixed(1)} 次` +
       `（扫 ${avg((o) => o.acts.scans).toFixed(1)} / 走 ${avg((o) => o.acts.moves).toFixed(1)} / 打捞 ${avg((o) => o.acts.salvages).toFixed(1)}` +
-      ` / 采集 ${avg((o) => o.acts.collects).toFixed(1)} / 交战 ${avg((o) => o.acts.fights).toFixed(1)} / 抛货 ${avg((o) => o.acts.discards).toFixed(1)}）`,
+      ` / 采集 ${avg((o) => o.acts.collects).toFixed(1)} / 交战 ${avg((o) => o.acts.fights).toFixed(1)} / 抛货 ${avg((o) => o.acts.discards).toFixed(1)}` +
+      ` / 清临时空间 ${avg((o) => o.acts.tempClears).toFixed(1)}）`,
   )
   /**
    * **星云回合税**（2026-09-13 二号追加 · 星云机制落地后的读数）：为驱散星云而**多花的扫描动作数**。
