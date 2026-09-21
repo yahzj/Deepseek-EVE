@@ -216,6 +216,42 @@ function main(): void {
     }
   }
 
+  /* ── ⑤ 窄屏断点同源：JS 的 matchMedia 必须与 CSS 的单栏断点同一个数 ──
+     2026-09-21（船长：「手机或窄屏时隐藏市场详情、点订单弹悬浮窗」）：市场页的 `narrow` 判定走
+     `window.matchMedia('(max-width: 1180px)')`，而"单栏"是 `styles.css` 里
+     `@media (max-width: 1180px) { .app-mkt-split { grid-template-columns: 1fr } }` 定的。
+     两处必须同数——改一处不改另一处会出现"CSS 已切单栏、JS 还当宽屏"（详情既不常驻也不弹窗）
+     这类静默错位。这里把**CSS 那一侧**钉成基准，JS 只能跟着它走。 */
+  const mktCssBreak = (() => {
+    for (const r of rules) {
+      if (isRot(r)) continue
+      if (!classesOf(r.sel).includes('app-mkt-split')) continue
+      const m = r.media.match(/max-width:\s*(\d+)px/)
+      if (m && declsOf(r.decl).some(([p, v]) => p === 'grid-template-columns' && v.trim() === '1fr')) {
+        return Number(m[1])
+      }
+    }
+    return null
+  })()
+  if (mktCssBreak === null) {
+    errors.push('窄屏断点同源：`styles.css` 里找不到 `.app-mkt-split` 的单栏媒体查询（口径搬家或改名？）')
+  } else {
+    const mktTsx = readFileSync(join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'pages', 'MarketPage.tsx'), 'utf8')
+    const jsBreaks = [...mktTsx.matchAll(/matchMedia\(\s*'\(max-width:\s*(\d+)px\)'\s*\)/g)].map((m) => Number(m[1]))
+    if (jsBreaks.length === 0) {
+      errors.push('窄屏断点同源：`MarketPage.tsx` 里找不到 `matchMedia(\'(max-width: Npx)\')`（窄屏判定去哪了？）')
+    } else {
+      for (const n of new Set(jsBreaks)) {
+        if (n !== mktCssBreak) {
+          errors.push(
+            `窄屏断点同源：\`MarketPage.tsx\` 用 ${n}px、而 \`styles.css\` 的 \`.app-mkt-split\` 单栏断点是 ` +
+              `${mktCssBreak}px —— 两处必须同数（否则会出现"CSS 已切单栏、JS 还当宽屏"的静默错位）`,
+          )
+        }
+      }
+    }
+  }
+
   /* ── 输出 ── */
   console.log(
     `· 旋转口径：旋转块规则 ${rotRules.length} 条 · 覆盖类 ${rotProps.size} 个 · ` +

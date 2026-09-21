@@ -172,6 +172,13 @@ html[data-locale='en'] body {
   height: min(760px, calc(var(--mob-h, 100vw) - 32px));
   max-height: calc(var(--mob-h, 100vw) - 24px);
 }
+/* 同族：市场详情浮窗在旋转模式下也别被 100vw 截窄（与 `.app-wh-modal` 那条同口径：
+   宽按 100vh = 旋转后的横向可用宽；高按 `--mob-h` = 旋转后的纵向可用高） */
+.app-root.is-mobile-rot .app-mkt-detail-modal {
+  width: min(960px, calc(100vh - 60px));
+  max-width: calc(100vh - 24px);
+  max-height: calc(var(--mob-h, 100vw) - 32px);
+}
 /* 同族：通讯弹窗与结算卡在旋转模式下也别被 100vw 截窄（与 `.app-ann` 那条同口径）；
    高度按逻辑空间 `--mob-h` 收（旋转下物理竖屏高 ≈844，用 vh 会把卡片撑出屏幕外） */
 .app-root.is-mobile-rot .app-comm-pop {
@@ -5470,8 +5477,23 @@ html[data-locale='en'] body {
 
 }
 
-/* 市场详情卡（2026-09-05：参考盘口——价格曲线/买卖盘深度/持有量/交易面板）；右栏内纵向堆叠 */
+/* ═══ 窄屏的「市场详情」浮窗（2026-09-21 船长：手机/窄屏点订单 ⇒ 悬浮窗弹出）═══════════
+   起因（船长原话）：「在手机或者窄屏的情况下，很难翻到市场详细，建议，当出现将市场详细压缩到订单列表
+   下方时，隐藏市场详细。玩家点击某个订单时，以悬浮窗的形式弹出。（仅限手机或者窄屏）」
+   ⇒ 窄屏（`≤1180px`，与上面那个单栏断点同一把尺）不再渲染右栏详情，改由 `MarketPage` 的
+   `.app-modal-mask` 浮窗承载**同一个** `<MarketDetail>`。
+   ⚠ 这里只把弹层放宽到详情卡装得下的尺寸（`app-modal-wide` = 640px 对详情卡偏窄：里面有
+   折线图 + 买卖五档 + 交易面板三块横排），并给它一个视口高度上限 —— 与全仓弹层同款"内容超出
+   由 `.app-modal-body` 自己滚"，不新造滚动机制。
+   ⚠ **本块故意排在文件靠前那条 `.app-root.is-mobile-rot .app-mkt-detail-modal` 之后**：两条特异性
+   相同（0,2,0），**后者胜** ⇒ 旋转模式下这个 `100vh` 取的正是"旋转后的逻辑视口高"（不是物理竖屏高）。
+   别为了"整洁"把本块往上挪——挪上去就会把旋转口径翻回去（`ui:rot-check` 的物理单位契约会红）。 */
+.app-mkt-detail-modal {
+  width: 960px;
+  max-height: min(760px, calc(100vh - 60px));
+}
 
+/* 市场详情卡（2026-09-05：参考盘口——价格曲线/买卖盘深度/持有量/交易面板）；右栏内纵向堆叠 */
 .app-mkt-detail {
 
   display: flex;
