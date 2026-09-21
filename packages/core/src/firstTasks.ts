@@ -14,8 +14,12 @@
  * - **奖励**：`items` 是**预留接口**（船长：「可以先留出接口」，例：首次悬赏送 MK1 炮、挖矿送采集器）；
  *   本轮只有 ②「第一次采集原矿」真填一张蓝图（`bp-ammo-kinetic`），③「第一次学习技能」按船长 2026-09-17
  *   裁决送**基础 AI 核心 ×1**（接上"指派 AI 副船"那一步），其余留空。
- * - **前置**：`prereq` 只用于"任务在任务中心是否可见"（未满足＝不显示，船长选"两者都隐藏"）；
- *   不锁流程——玩家在功能解锁后本来就能自由做。
+ * - **顺序解锁**（**2026-09-20 船长转玩家反馈**：「**新手引导的重要任务一次性太多了，建议按顺序排列解锁**」；
+ *   同时「**已经完成「第一次」任务后的里程碑任务链，建议单开一个任务中心的子页面「里程碑任务」**」）：
+ *   13 条「第一次」**串成一条线**——`FIRST_TASKS` 的数组序就是解锁序，`visibleFirstTasks` 只给
+ *   **第一条还没完成的**（已完成的也不再占位，进度看页头 N/13）；**旧口径「自由选择完成 ＋ `prereq` 只控可见」作废**
+ *   （`prereq` 字段已删）。链（里程碑）本身从开局就在累计，但**只在对应的「第一次」完成后才上「里程碑任务」页**
+ *   （判据见 `milestoneBoard` 的 `unlocked`）。
  */
 import type { GameState } from './state'
 import type { SimContext } from './types'
@@ -70,8 +74,6 @@ export interface FirstTaskDef {
    * ⚠ 它会超过 §5「说明文案 ≤30 字」那条规矩（那是给商品说明定的）；是否把任务卡正文豁免，已上报船长。
    */
   detail: string
-  /** 前置任务 id（未完成 ⇒ 本任务在任务中心不显示） */
-  prereq?: string
   /** 完成判据：`count` 达到 1（或技能/声望这类直接判） */
   judge: (state: GameState, ctx: SimContext) => number
   /** 完成时发的通讯 id（`messages.ts` 里的 `first-*`） */
@@ -167,7 +169,7 @@ export function dsiStanding(state: GameState): number {
   return state.standings?.[DSI_FACTION_ID] ?? 0
 }
 
-/** 13 条「第一次」任务（顺序 = 任务中心的展示序；`prereq` 只控"是否显示"） */
+/** 13 条「第一次」任务（**数组序 = 解锁序**：`visibleFirstTasks` 只放当前这一条；2026-09-20 顺序解锁口径） */
 export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-scan',
@@ -186,7 +188,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次采集原矿',
     brief: '到矿带采一批原矿',
     detail: '到矿带派出采矿艇：采掘、返航、卸货自动跑完。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——那是绝大多数蓝图的用料。',
-    prereq: 'first-scan',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
     // 奖励（船长 2026-09-18）：「第一次采集原矿」⇒ **采集器 MK1**（`mod-miner-1`＝强化采集器 MK1）
@@ -198,7 +199,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次打捞残骸',
     brief: '到残骸地点打捞一批',
     detail: '星系里的残骸点可以派船打捞：保底原材料直接入炉，带稀有标记的残骸更值钱，回收炉还能把旧件重新解体成整件装备。',
-    prereq: 'first-scan',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
     // 奖励（船长 2026-09-18）：打捞器 MK1
@@ -221,7 +221,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次完成悬赏',
     brief: '打赢一场悬赏讨伐',
     detail: '常驻悬赏按威胁分档：档位越高敌人越厚、火力越重，报酬与协会声望也越高。声望是协会渠道的通行证，市场门槛与虫洞扫描都看它。',
-    prereq: 'first-scan',
     judge: (state) => (state.firstStats?.bountyWins ?? 0),
     commsId: 'first-bounty',
     // 奖励（船长 2026-09-18）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
@@ -233,7 +232,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次操作精炼炉',
     brief: '让精炼炉出一批料',
     detail: '精炼炉按批运转：原料够一批就能起炉，料尽自动停炉，装满则按批续烧。精炼学每级 +6% 产出、高级回收处理每级 +3%，两条练满可到 165%。',
-    prereq: 'first-mine',
     judge: (state) => (state.firstStats?.refineBatches ?? 0),
     commsId: 'first-refine',
     // 奖励（船长 2026-09-18）：动能弹药生产线蓝图（原挂在②，现按船长裁定移到本条）
@@ -245,7 +243,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次生产',
     brief: '让组装机造出一件东西',
     detail: '组装机要三样：蓝图、材料、时间。装上 AI 核心就能无人值守开线，弹药与修理组件这类消耗品最适合常驻。',
-    prereq: 'first-mine',
     judge: (state) => (state.firstStats?.produceUnits ?? 0),
     commsId: 'first-produce',
     // 奖励（船长 2026-09-18）：「新建一张沙猫级的蓝图，按照沙猫级价值 1W 来设定」（`sbp-sandcat`，
@@ -258,7 +255,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次挂单销售',
     brief: '在市场挂出一张卖单',
     detail: '市场吃三路单子：协会挂出的常驻买卖单、玩家自留的挂单、以及贴着价线巡游的抢单。挂价越贴收购线成交越快，挂得高则是在赌巡游采购上门。',
-    prereq: 'first-produce',
     judge: (state) => (state.firstStats?.orders ?? 0),
     commsId: 'first-order',
     // 2026-09-18 船长改口径：「挂单按照市场交易收入计数」⇒ 判据从挂单张数改成税后交易收入
@@ -269,7 +265,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一条船',
     brief: '造出第一艘自造船',
     detail: '造舰与造装备是同一条链路：舰船蓝图＋材料＋机库工位。新船入机库待命，装配页配好槽位与弹档即可编入出港编队。',
-    prereq: 'first-produce',
     judge: (state) => (state.firstStats?.ships ?? 0),
     commsId: 'first-ship',
     // 奖励（船长 2026-09-18）：民用船体维修装置（船长原话写「民用体维修装置」⇒ 按现行装备名落地）
@@ -299,7 +294,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     brief: '给一艘闲置舰船派个 AI 任务',
     detail: '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。每项指派占一枚核心，核心等级越高作业效率越高。',
     // 船长 2026-09-17：「将安排 AI 核心的任务设置为需要玩家完成学习技能才出现」
-    prereq: 'first-skill',
     judge: (state) => (state.firstStats?.aiAssigns ?? 0),
     commsId: 'first-ai',
     chain: { id: 'dispatch', name: '舰队调度', stat: 'aiAssigns', tierKey: 'aiAssigns' },
@@ -309,7 +303,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次长途运输',
     brief: '完成一趟长途运输',
     detail: '长途运输在站与站之间按趟结算，报酬随行情浮动；低安航段会遇袭，出发前把装甲与结构留足余量。',
-    prereq: 'first-scan',
     judge: (state) => (state.firstStats?.haulTrips ?? 0),
     commsId: 'first-haul',
     // 奖励（船长 2026-09-18）：飞鱼级快运舰（直接进机库）
@@ -321,7 +314,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次虫洞',
     brief: '把深空工业协会声望攒到 40',
     detail: '协会声望攒到 40 就能展开虫洞扫描阵列：扫出的通道从第 1 层开始，越深越险也越肥。洞内是搜、打、撤三条线，带不回来的等于没有。',
-    prereq: 'first-scan',
     // 任务目标就是"完成解锁条件的内容"（船长原话）⇒ 判据 = 声望门槛（虫洞解锁线 40）
     judge: (state) => (dsiStanding(state) >= WORMHOLE_UNLOCK_STANDING ? 1 : 0),
     commsId: 'first-wormhole',
@@ -506,9 +498,73 @@ export function unlockNeedTitle(key: string): string | undefined {
   const need = FIRST_UNLOCKS[key]
   return need === undefined ? undefined : FIRST_TASKS.find((d) => d.id === need)?.title
 }
-/** 任务中心用：按前置过滤后的可见任务（未满足前置 ⇒ 不显示） */
+/**
+ * 任务中心用：**顺序解锁**——只给 `FIRST_TASKS` 里**第一条还没完成的**（它前面的都已完成）。
+ * 全部完成 ⇒ 空数组（页头读数走 `firstTaskProgress`）。
+ * ⚠ **2026-09-20 船长（玩家反馈）**：「新手引导的重要任务一次性太多了，建议按顺序排列解锁」
+ * ⇒ 旧口径「13 条自由选择完成 ＋ `prereq` 只控可见、可多线并行」**作废**（`prereq` 字段已删）。
+ */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
-  return FIRST_TASKS.filter((d) => d.prereq === undefined || state.importantTasks[d.prereq]?.done === true)
+  const next = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
+  return next ? [next] : []
+}
+
+/** 「第一次」的页头读数：**已完成条数 / 总条数**（顺序解锁下"当前第几条"= done + 1） */
+export function firstTaskProgress(state: GameState): { done: number; total: number } {
+  const done = FIRST_TASKS.filter((d) => state.importantTasks[d.id]?.done === true).length
+  return { done, total: FIRST_TASKS.length }
+}
+
+/** **里程碑页一行**（每条"次数"链一行；`unlocked` = 触发它的那条「第一次」已完成） */
+export interface MilestoneChainRow {
+  chainId: string
+  /** 链名（例：宇宙探索家） */
+  name: string
+  /** 触发它的「第一次」任务（标题给卡片用） */
+  taskId: string
+  taskTitle: string
+  /** 是否解锁（对应「第一次」已完成 ⇒ 才上「里程碑任务」页） */
+  unlocked: boolean
+  /** 已达成档位 / 总档数 */
+  level: number
+  total: number
+  /** 终身计数与下一档阈值（`next === null` = 已达最高档） */
+  count: number
+  next: number | null
+  /** 当前可领奖金（0 = 没得领）——**只有「里程碑任务」页有领奖入口**（船长 2026-09-20） */
+  pendingIsk: number
+  /** 完成"正在推进的这一级"能拿的奖金；已满档 ⇒ 0 */
+  nextRewardIsk: number
+}
+
+/**
+ * **「里程碑任务」页的数据**（2026-09-20 船长：把"完成「第一次」后的里程碑任务链"单开一个子页面装）。
+ * 返回**全部 13 条链**（含未解锁的，`unlocked: false`）——面板只渲染已解锁的 + 一条"还没解锁任何链"的空态提示，
+ * 判据留在 core 便于用例钉住。**不含任何 UI 文案**（单位等显示口径在面板侧）。
+ */
+export function milestoneBoard(state: GameState): MilestoneChainRow[] {
+  const rows: MilestoneChainRow[] = []
+  for (const def of FIRST_TASKS) {
+    const chain = def.chain
+    if (!chain) continue
+    const prog = chainProgressOf(state, chain)
+    const done = state.importantTasks[def.id]?.done === true
+    const maxed = prog.level >= prog.total
+    rows.push({
+      chainId: chain.id,
+      name: chain.name,
+      taskId: def.id,
+      taskTitle: def.title,
+      unlocked: done,
+      level: prog.level,
+      total: prog.total,
+      count: prog.count,
+      next: prog.next,
+      pendingIsk: chainPendingRewardIsk(state, chain.id),
+      nextRewardIsk: maxed ? 0 : chainLevelRewardIsk(prog.level + 1),
+    })
+  }
+  return rows
 }
 
 /** 任务中心**一张卡的读数**（面板只渲染，不自己算——置顶/隐藏两条规矩都在这里定，便于用例钉住） */
@@ -532,9 +588,11 @@ export interface FirstTaskRow {
 }
 
 /**
- * **任务中心的卡片序列**（2026-09-18 船长两条 UI 规矩的数据侧）：
- * ① 先按前置过滤（`visibleFirstTasks`）→ ② 排掉"已全部完成"的 → ③ **置顶排序**：
- * **可领奖 → 已完成 → 未完成**（组内保持 `FIRST_TASKS` 原序，方便玩家一进来就把奖励收掉）。
+ * **任务中心的卡片序列**（顺序解锁口径下**恒定只有当前这一条**）：
+ * ① `visibleFirstTasks` 只给"第一条还没完成的" → ② `hidden` 那条（已完成 ＋ 链满档 ＋ 无待领）在新口径下
+ * 天然不成立（当前这条必然未完成），保留判据是给用例与老调用方兜底 → ③ 排序在单行时是恒等。
+ * ⚠ 旧口径（2026-09-18：先按前置过滤、再排掉"已全部完成"、再按 可领奖→已完成→未完成 置顶）里
+ * 后两步已随"顺序解锁"失去意义，**保留函数签名与字段**（面板与用例仍读它），语义按上面重述。
  */
 export function firstTaskBoard(state: GameState): FirstTaskRow[] {
   const rows: FirstTaskRow[] = visibleFirstTasks(state).map((def) => {

@@ -83,7 +83,8 @@ ok('市场页锁着（← 第一次生产）', !unlocked(s, 'market'))
 ok('星图·矿带锁着（← 第一次扫描）', !unlocked(s, 'mapMine'))
 ok('舰船/技能/任务中心/通讯不设前置', unlocked(s, 'ship') && unlocked(s, 'skills') && unlocked(s, 'task') && unlocked(s, 'comms'))
 const vis0 = visibleFirstTasks(s).map((d) => d.title)
-ok('任务中心只显示无前置的那几条', vis0.includes('第一次扫描') && !vis0.includes('第一次采集原矿'), vis0.join(' / '))
+// 2026-09-20 顺序解锁（船长转玩家反馈「一次性太多了」）：任务中心**一次只出一条** ⇒ 新档只有「第一次扫描」
+ok('任务中心只显示当前那一条（顺序解锁）', vis0.length === 1 && vis0[0] === '第一次扫描', vis0.join(' / '))
 ok('开局零资金', s.wallet.isk === 0, `isk=${s.wallet.isk}`)
 ok('驾驶 = 鲣鱼（无矿枪、无炮台）', s.shipId === 'sh-falconet')
 
@@ -239,7 +240,17 @@ ok('练到 Lv1', until(s, () => (s.skills.trained['ai-expert'] ?? 0) >= 1, 60 * 
 advanceGame(s, 1000, ctx) // 奖励在引擎每拍（advanceFirstTasks → grantFirstReward）
 ok('「第一次学习技能」判定完成', s.importantTasks['first-skill']?.done === true)
 ok('奖励：基础 AI 核心 ×1（免去市场价 ~25k）', (s.aiCores.basic ?? 0) === 1, `aiCores.basic=${s.aiCores.basic ?? 0}`)
-ok('「第一次指派 AI 副船」此时才出现（前置已满）', visibleFirstTasks(s).some((d) => d.id === 'first-ai'))
+/**
+ * **顺序解锁口径**（2026-09-20 船长转玩家反馈）：任务中心**一次只出一条**，所以"轮到哪一条"看的是
+ * **数组序里第一条没完成的**——本流程没走打捞，此时当前那条是「第一次打捞残骸」，
+ * 而「第一次指派 AI 副船」应当**还没轮到**（但它的判定与可见性无关：下面照样能指派并判完成）。
+ */
+const visNow = visibleFirstTasks(s).map((d) => d.id)
+ok(
+  '「第一次指派 AI 副船」此时还没轮到（顺序解锁 · 当前是「第一次打捞残骸」）',
+  visNow.length === 1 && visNow[0] === 'first-salvage',
+  visNow.join(' / '),
+)
 const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
 ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
 advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）

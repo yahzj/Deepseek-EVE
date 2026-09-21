@@ -64,6 +64,7 @@ import { tr, useL10n, cmdText } from '../i18n/locale'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { FirstTasks } from './FirstTasks'
+import { MilestoneTasks } from './MilestoneTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
@@ -251,9 +252,11 @@ const TASK_SORT_LABEL: Record<TaskSort, string> = {
 /* 注：常驻悬赏已从任务中心抽出，独立成出港「常驻悬赏」标签（见 BountyPanel，船长 2026-09-05）；
  * 2026-09-10 船长定：任务中心设「赏金任务」子页——限时高难窝点目标，与常驻悬赏区分 */
 /* 2026-09-09：长途运输已从任务中心独立为星图「长途运输」标签（残骸打捞之后，见 HaulingPanel；建成副站解锁） */
-type TaskTabKey = 'important' | 'resource' | 'courier' | 'bounty'
+type TaskTabKey = 'important' | 'milestone' | 'resource' | 'courier' | 'bounty'
 const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
   { key: 'important', label: tr("ui.Expedition.302") },
+  /* 2026-09-20 船长（玩家反馈）：完成「第一次」后的里程碑（次数）链单开一页装 */
+  { key: 'milestone', label: tr('ui.Expedition.424') },
   { key: 'resource', label: tr("ui.Expedition.249") },
   { key: 'courier', label: tr("ui.Expedition.128") },
   { key: 'bounty', label: tr("ui.Expedition.250") },
@@ -288,7 +291,7 @@ export function TaskPanel({
     try {
       const v = localStorage.getItem(TASK_TAB_KEY)
       // 旧存 'hauling'（运输任务已独立为星图「长途运输」标签）一律回退「重要任务」
-      return v === 'important' || v === 'resource' || v === 'courier' || v === 'bounty' ? v : 'important'
+      return v === 'important' || v === 'milestone' || v === 'resource' || v === 'courier' || v === 'bounty' ? v : 'important'
     } catch {
       return 'important'
     }
@@ -299,7 +302,7 @@ export function TaskPanel({
     const req = focusTab
     if (!req || req.seq === lastFocusSeq.current) return
     lastFocusSeq.current = req.seq
-    if (req.tab === 'important' || req.tab === 'resource' || req.tab === 'courier' || req.tab === 'bounty') {
+    if (req.tab === 'important' || req.tab === 'milestone' || req.tab === 'resource' || req.tab === 'courier' || req.tab === 'bounty') {
       setTab(req.tab)
       try {
         localStorage.setItem(TASK_TAB_KEY, req.tab)
@@ -357,7 +360,8 @@ export function TaskPanel({
       <div className="app-win-body">
       {tab === 'important' ? (
         <div>
-          {/* 2026-09-17 教程重做：重要任务＝「第一次」系列（13 条，自由选择）＋后续次数任务 */}
+          {/* 2026-09-17 教程重做：重要任务＝「第一次」系列；**2026-09-20 起顺序解锁、一次只出一条**
+              （玩家反馈"一次性太多"），完成后的里程碑（次数）链搬到「里程碑任务」页 */}
           <FirstTasks engine={engine} onToast={onToast} onOpenComms={onOpenComms} onJump={onJump} />
           <ImportantTasks engine={engine} />
           {stationCount > 0 && unbuiltStationIds.length > 0 ? (
@@ -373,6 +377,11 @@ export function TaskPanel({
           ) : (
             <div className="app-dim app-exp-idle">{tr("ui.Expedition.189")}</div>
           )}
+        </div>
+      ) : tab === 'milestone' ? (
+        /* 2026-09-20 船长（玩家反馈）：里程碑（次数）链单开一页；恒显，一条都没解锁时页内给提示 */
+        <div>
+          <MilestoneTasks engine={engine} onToast={onToast} />
         </div>
       ) : tab === 'resource' ? (
         <div>

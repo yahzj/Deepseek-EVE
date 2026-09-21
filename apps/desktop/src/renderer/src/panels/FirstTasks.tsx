@@ -2,20 +2,17 @@
  * **「第一次」任务系列面板**（船长 2026-09-17 教程重做批 · 阶段③；2026-09-18 按船长两轮实机反馈改版）。
  *
  * 口径（船长）：
- * - 13 条「第一次」**自由选择完成**，按前置过滤：**未解锁的不显示**（`visibleFirstTasks`）；
+ * - **顺序解锁**（**2026-09-20 船长转玩家反馈**：「新手引导的重要任务一次性太多了，建议按顺序排列解锁」
+ *   ⇒ 三选**丙案：只显示当前这一条**）——`visibleFirstTasks` 只给"第一条还没完成的"；已完成的**不再占位**，
+ *   进度看页头 N/13（`firstTaskProgress`）。文档/注释里旧的「13 条自由选择完成」已作废。
+ * - **里程碑（次数）链搬去「里程碑任务」页**（同一条反馈；领奖按钮只在那儿）——本页只在该任务卡上留
+ *   **一行只读**：链名 + 当前级别 + 已累计读数 + "在「里程碑任务」页领奖"（不影响"跳去干活"的主按钮）。
  * - 每条完成后由**通讯**送达情报（信件在 `data/src/firstTaskMessages.ts`）＋ 部分条目有实物奖励；
- * - 一张卡随进度改名：未完成 ⇒「第一次··」，已完成 ⇒ 该链的名字**带当前级别**
- *   （船长 2026-09-18：「重要任务进行到哪一个级别要直接在任务名称内告诉玩家」⇒「宇宙探索家3」）；
- * - **2026-09-18 第一轮**：完成置顶（可领奖 → 已完成 → 未完成）· 卡片改用资源任务那张卡（`app-station-card`）·
- *   每条都有跳转按钮 · 已全部完成（链满档且没得领）的卡隐藏；
- * - **2026-09-18 第二轮**（船长实机反馈）：① 名字带级别；② **删掉右上角那行"已达成 L/T 档 · 当前 N"**（与正文重复）
- *   ⇒ 那个位置改放**跳转按钮**（显眼）；③ 正文改用任务的 `detail`（一段话讲清怎么做/做成什么样/奖励），
- *   不再只显示一句话；④ 进度改成 **`已累计 X/Y 单位`**（Y = 下一档阈值）；⑤ **不再挂"已完成"小片**
- *   （船长：「因为可以继续完成，所以名字边上的已经完成的标签显得很不合适」）。
- * - **2026-09-18 第三轮**（船长：L10 逐条重标定）：市场链条目从"挂单张数"改**交易收入（税后信用点）**；
- *   链条目奖金行改写**"完成本级能拿多少"的具体数额**（`nextRewardIsk`，公式不再上卡）。
+ * - **2026-09-18 第一轮**：卡片改用资源任务那张卡（`app-station-card`）· 每条都有跳转按钮；
+ * - **2026-09-18 第二轮**：正文改用任务的 `detail`（一段话讲清怎么做/做成什么样/奖励）；
+ * - **2026-09-18 第三轮**：链条目奖金行改写**"完成本级能拿多少"的具体数额**（`nextRewardIsk`）。
  */
-import { firstTaskBoard, visibleFirstTasks } from '@whale/core'
+import { firstTaskBoard, firstTaskProgress, milestoneBoard } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { tr } from '../i18n/locale'
@@ -78,23 +75,23 @@ export function FirstTasks({
   onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard' }) => void
 }) {
   const state = engine.state
-  const tasks = visibleFirstTasks(state)
-  /** 卡片序列（过滤/隐藏/置顶的判定都在 core 的 `firstTaskBoard`，面板只渲染） */
+  /** 卡片序列（顺序解锁下**恒为当前这一条**；判定都在 core 的 `firstTaskBoard`，面板只渲染） */
   const ordered = firstTaskBoard(state)
-  const doneN = tasks.filter((d) => state.importantTasks[d.id]?.done === true).length
+  /** 页头进度：**已完成 / 总数**（顺序解锁后"当前第几条"= done + 1，见 core `firstTaskProgress`） */
+  const { done: doneN, total: taskTotal } = firstTaskProgress(state)
+  /** 里程碑链读数（每条任务一条链；本页只用它拼"只读一行"，领奖在主页面） */
+  const chains = milestoneBoard(state)
 
   return (
     <div className="app-station-list">
       <div className="app-task-family">
-        {tr("ui.FirstTasks.026")} {doneN}/{tasks.length} {tr("ui.FirstTasks.013")}
+        {tr("ui.FirstTasks.026")} {doneN}/{taskTotal} {tr("ui.FirstTasks.013")}
         <span className="app-dim">{tr('ui.FirstTasks.035')}</span>
       </div>
-      {ordered.map(({ def, done, pendingIsk: pending, level, total, count, next, nextRewardIsk }) => {
+      {ordered.map(({ def, pendingIsk: pending, level, total, count, next, nextRewardIsk }) => {
         const jump = FIRST_JUMPS[def.id]
         const claimable = pending > 0
         const unit = def.chain ? (CHAIN_UNITS[def.chain.tierKey] ?? '') : ''
-        // 名字里的级别 = **正在做的那一级**（完成「第一次」后从 1 起；满档时停在总档数）
-        const levelInName = def.chain && total > 0 ? Math.min(level + 1, total) : 0
         // 进度读数：`已累计 当前/下一档`（下一档为空 ⇒ 已达最高档）
         const goal = next ?? count
         // **奖励一行**（船长 2026-09-18：奖励单独起一行、金色）——名字从内容表查
@@ -111,11 +108,13 @@ export function FirstTasks({
         if (r?.wormholeStock) parts.push(tr("ui.FirstTasks.028", { p1: r.wormholeStock }))
         if (r?.isk) parts.push(tr("ui.ItemsPage.039", { p1: r.isk.toLocaleString('zh-CN') }))
         const rewardTxt = parts.length > 0 ? parts.join(tr("ui.MatterTechTab.017")) : tr("ui.FirstTasks.014")
+        /** 里程碑只读一行（领奖入口在「里程碑任务」页 ⇒ 这里只报读数与去处） */
+        const chainRow = def.chain ? (chains.find((x) => x.taskId === def.id) ?? null) : null
         return (
           <div key={def.id} className="app-station-card">
             <div className="app-station-head">
               <span className="app-station-name">
-                {done ? '✓' : '◆'} {done && def.chain ? `${def.chain.name}${levelInName}` : def.title}
+                {'◆'} {def.title}
                 {claimable ? <em className="app-chip">{tr("ui.FirstTasks.015")}</em> : null}
               </span>
               {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」） */}
@@ -129,25 +128,31 @@ export function FirstTasks({
                 </button>
               ) : null}
             </div>
-            {/* 进度：已完成 ⇒ 走次数链，读数用「已累计 当前/下一档」 */}
-            {done && def.chain && total > 0 ? (
-              <div className="app-station-mats">
-                {tr("ui.FirstTasks.016")} {count.toLocaleString('zh-CN')}/{goal.toLocaleString('zh-CN')} {unit}
-                {next === null ? tr("ui.FirstTasks.017") : ''}
-              </div>
-            ) : null}
             {/* 正文：一段话讲清怎么做 / 做成什么样 / 有什么奖励 */}
             <div className="app-station-mats">{def.detail}</div>
+            {/* 里程碑只读一行（2026-09-20：链的领奖与进度主体在「里程碑任务」页，这里只留指引） */}
+            {chainRow ? (
+              <div className="app-station-mats app-dim">
+                {tr('ui.MilestoneTasks.007', {
+                  p1: chainRow.name,
+                  p2: Math.min(chainRow.level + 1, chainRow.total),
+                  p3: chainRow.count.toLocaleString('zh-CN'),
+                  p4: (chainRow.next ?? chainRow.count).toLocaleString('zh-CN'),
+                  p5: unit,
+                })}
+              </div>
+            ) : null}
             {/**
              * **奖励独立成行 + 金色**（船长 2026-09-18：「奖励不明显，建议将奖励单独起一行，
              * 并采用金色字体（奖励 ◆这几个字可以不用金色）」）；**链条目写"完成本级能拿多少"的具体数额**
-             * （船长 2026-09-18 第二轮：「任务奖金要写清楚当前这级的具体数额，不能让玩家自己算」）
              * ⇒ 直接印第 `level+1` 级的奖金数字，公式不再上卡。
              */}
-            {done && def.chain ? (
+            {def.chain ? (
               <div className="app-task-reward">
                 <span className="app-dim">{tr("ui.FirstTasks.018")} </span>
-                {nextRewardIsk > 0 ? tr("ui.FirstTasks.030", { p1: level + 1, p2: nextRewardIsk.toLocaleString('zh-CN') }) : tr("ui.FirstTasks.019")}
+                {nextRewardIsk > 0
+                  ? tr("ui.FirstTasks.030", { p1: level + 1, p2: nextRewardIsk.toLocaleString('zh-CN') })
+                  : tr("ui.FirstTasks.019")}
               </div>
             ) : (
               <div className="app-task-reward">
@@ -157,26 +162,10 @@ export function FirstTasks({
             )}
             <div className="app-station-deliver">
               <span className="app-dim">
-                {claimable ? tr("ui.FirstTasks.031", { p1: pending.toLocaleString('zh-CN') }) : done ? tr("ui.FirstTasks.020") : tr("ui.FirstTasks.021")}
+                {claimable
+                  ? tr("ui.MilestoneTasks.008", { p1: pending.toLocaleString('zh-CN') })
+                  : tr("ui.FirstTasks.021")}
               </span>
-              {/* 「看情报」：那封信在该条完成时送达（`firstTask` 触发器）⇒ 只在已完成时出现 */}
-              {done && onOpenComms ? (
-                <button className="app-btn is-small" title={tr("ui.FirstTasks.022")} onClick={() => onOpenComms(def.commsId)}>
-                  {tr("ui.FirstTasks.023")}
-                </button>
-              ) : null}
-              {claimable ? (
-                <button
-                  className="app-btn is-small is-primary"
-                  title={tr("ui.FirstTasks.032", { p1: pending.toLocaleString('zh-CN') })}
-                  onClick={() => {
-                    const isk = engine.claimChainRewardAt(def.chain!.id)
-                    onToast(isk > 0 ? tr("ui.FirstTasks.033", { p1: isk.toLocaleString('zh-CN') }) : tr("ui.FirstTasks.024"), isk <= 0)
-                  }}
-                >
-                  {tr("ui.FirstTasks.025")}{pending.toLocaleString('zh-CN')} {tr("ui.FirstTasks.034")}
-                </button>
-              ) : null}
             </div>
           </div>
         )

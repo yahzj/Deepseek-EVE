@@ -21,6 +21,8 @@ import {
   claimChainReward,
   firstStatOf,
   firstTaskBoard,
+  firstTaskProgress,
+  milestoneBoard,
   FIRST_TASKS,
   advanceFirstChains,
   visibleFirstTasks,
@@ -215,27 +217,49 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstStatOf(state, 'ships')).toBe(1)
   })
 
-  it('任务中心序列：可领奖置顶 · 已全部完成（链满档且没得领）隐藏（船长 2026-09-18 两条 UI 规矩）', () => {
+  it('任务中心序列：**顺序解锁，一次只给当前这一条**（船长 2026-09-20 玩家反馈「一次性太多了」）', () => {
     const state = testState()
-    // ① 全都还没做 ⇒ 顺序 = 原序，且没有隐藏项
-    const fresh = firstTaskBoard(state)
-    expect(fresh.every((r) => !r.hidden)).toBe(true)
-    expect(fresh.map((r) => r.def.id)).toEqual(visibleFirstTasks(state).map((d) => d.id))
+    // ① 新档 ⇒ 只有第一条（第一次扫描）
+    expect(firstTaskBoard(state).map((r) => r.def.id)).toEqual(['first-scan'])
+    expect(firstTaskBoard(state).map((r) => r.def.id)).toEqual(visibleFirstTasks(state).map((d) => d.id))
 
-    // ② 扫描链满档（点亮 20 星系）＋ 该条已完成 ＋ 没领过 ⇒ 可领奖 ⇒ 置顶
-    state.exploredGalaxies = [...ctx.galaxies.keys()].slice(0, 20)
+    // ② 做完第一条 ⇒ 换成下一条（已完成的**不再占位**）
     state.importantTasks['first-scan'] = { done: true }
-    advanceFirstChains(state)
-    const board = firstTaskBoard(state)
-    expect(board[0]!.def.id).toBe('first-scan')
-    expect(board[0]!.pendingIsk).toBeGreaterThan(0)
+    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-mine'])
+    expect(firstTaskBoard(state).map((r) => r.def.id)).toEqual(['first-mine'])
 
-    // ③ 领完奖（链满档 + 已领满）⇒ 这条**隐藏**（其余条目照旧显示）
-    const beforeClaim = firstTaskBoard(state)
-    claimChainReward(state, 'explorer')
-    const after = firstTaskBoard(state)
-    expect(after.some((r) => r.def.id === 'first-scan')).toBe(false)
-    expect(after.length).toBe(beforeClaim.length - 1)
+    // ③ 一次跳完前两条 ⇒ 当前这条永远是"数组序里第一条没完成的"
+    state.importantTasks['first-mine'] = { done: true }
+    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-salvage'])
+
+    // ④ 13 条全完成 ⇒ 空数组（页头读数走 firstTaskProgress）
+    for (const d of FIRST_TASKS) state.importantTasks[d.id] = { done: true }
+    expect(visibleFirstTasks(state)).toEqual([])
+    expect(firstTaskBoard(state)).toEqual([])
+    expect(firstTaskProgress(state)).toEqual({ done: 13, total: 13 })
+
+    // ⑤ 页头读数在只做了一条时 = 1/13
+    const s2 = testState()
+    s2.importantTasks['first-scan'] = { done: true }
+    expect(firstTaskProgress(s2)).toEqual({ done: 1, total: 13 })
+  })
+
+  it('里程碑页数据：`milestoneBoard` 给全部 13 条链、`unlocked` 只认"对应「第一次」已完成"', () => {
+    const state = testState()
+    const all = milestoneBoard(state)
+    expect(all).toHaveLength(13)
+    expect(all.every((r) => r.unlocked === false)).toBe(true)
+    // 完成「第一次扫描」⇒ 只有它那条链解锁（顺序解锁口径下这是当前唯一的一条链）
+    state.importantTasks['first-scan'] = { done: true }
+    const rows = milestoneBoard(state)
+    expect(rows.filter((r) => r.unlocked).map((r) => r.chainId)).toEqual(['explorer'])
+    const explorer = rows.find((r) => r.chainId === 'explorer')!
+    expect(explorer.taskId).toBe('first-scan')
+    expect(explorer.taskTitle).toBe('第一次扫描')
+    expect(explorer.total).toBeGreaterThan(0)
+    // 链进度与领奖读数与 core 既有单点同源（面板只渲染）
+    expect(explorer.count).toBe(chainProgressOf(state, FIRST_TASKS[0]!.chain!).count)
+    expect(explorer.pendingIsk).toBe(chainPendingRewardIsk(state, 'explorer'))
   })
 
   it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
@@ -390,23 +414,25 @@ describe('市场链：交易收入（税后）＋ 老档一次性折算', () => 
 })
 
 describe('链条目奖金上卡（船长：写清楚当前这级的具体数额）', () => {
-  it('nextRewardIsk = 第（已达级数+1）级的奖金；满档 ⇒ 0', () => {
+  it('nextRewardIsk = 第（已达级数+1）级的奖金；满档 ⇒ 0（2026-09-20 起读数走 `milestoneBoard`）', () => {
     const state = testState()
     state.importantTasks['first-scan'] = { done: true }
     state.importantTasks['first-mine'] = { done: true }
     state.firstStats = { mineUnits: 2_500 } // 达第 2 级（1,000 / 2,500）
     advanceFirstChains(state)
-    const row = firstTaskBoard(state).find((r) => r.def.id === 'first-mine')!
+    const row = milestoneBoard(state).find((r) => r.chainId === 'digger')!
+    expect(row.unlocked).toBe(true) // 对应「第一次采集原矿」已完成
     expect(row.level).toBe(2)
     expect(row.nextRewardIsk).toBe(chainLevelRewardIsk(3))
     expect(row.nextRewardIsk).toBe(607_500) // 具体数额（不是公式）
 
-    // 满档：没有"下一级" ⇒ 0（这条不置 done——否则"已全部完成"会把卡整行隐藏）
+    // 满档：没有"下一级" ⇒ 0
     const s2 = testState()
     s2.importantTasks['first-scan'] = { done: true }
+    s2.importantTasks['first-mine'] = { done: true }
     s2.firstStats = { mineUnits: CHAIN_TIERS.mineUnits!.at(-1)! }
     advanceFirstChains(s2)
-    const maxedRow = firstTaskBoard(s2).find((r) => r.def.id === 'first-mine')!
+    const maxedRow = milestoneBoard(s2).find((r) => r.chainId === 'digger')!
     expect(maxedRow.level).toBe(10)
     expect(maxedRow.nextRewardIsk).toBe(0)
   })
