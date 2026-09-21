@@ -115,6 +115,8 @@ ok('扫描完成、母港点亮', until(s, () => isExplored(s, HOME), 10 * 60_00
 ok('「第一次扫描」判定完成', s.importantTasks['first-scan']?.done === true)
 advanceGame(s, 1000, ctx)
 ok('情报信「档案补全 · 星图扫描」送达', s.commsDelivered?.['first-scan'] !== undefined)
+// **2026-09-20 船长令**：采集器 MK1 从「第一次采集原矿」前移到本条（扫描星系就给）
+ok('奖励：采集器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
 ok('星图四项一起解锁', unlocked(s, 'mapMine') && unlocked(s, 'mapBounty') && unlocked(s, 'mapSalvage') && unlocked(s, 'mapHaul'))
 ok('工业页仍锁（前置是采集原矿）', !unlocked(s, 'industry'))
 mark('① → ③ 演出结束 + 扫描母港', s.gameMs)
@@ -126,7 +128,8 @@ ok('切换驾驶为沙猫级采矿艇', swap.ok, swap.ok ? '' : swap.error)
 ok('派出采矿被接受', startMining(s, BELT, ctx).ok)
 ok('采到原矿', until(s, () => firstStatOf(s, 'mineUnits') > 0, 20 * 60_000, '采矿'), `mineUnits=${firstStatOf(s, 'mineUnits')}`)
 ok('「第一次采集原矿」判定完成', s.importantTasks['first-mine']?.done === true)
-ok('奖励：采集器 MK1 进装备库（船长 2026-09-18 的奖励表）', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
+// **2026-09-20 船长令**：打捞器 MK1 从「第一次打捞残骸」前移到本条（挖矿任务就给）⇒ 走到打捞时已在手上
+ok('奖励：打捞器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-salvager-1'] ?? 0) === 1)
 ok('工业页解锁', unlocked(s, 'industry'))
 // 采一批（精炼按批起炉：**每批 100 单位**，沙猫一趟约 70 ⇒ 新玩家要跑两趟；这就是真实节奏）
 const holdOf = (): number => {

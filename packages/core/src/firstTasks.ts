@@ -11,9 +11,13 @@
  *   本模块按阈值判"是否达成"⇒ 链任务的进度天然连续（不再逐级手写判定）。
  * - **可推导的口径不用计数**：扫描数 = `exploredGalaxies.length`、技能 = `Σ trained`、
  *   虫洞解锁 = 协会声望（读 `standing`）——少一处计数就少一处漂移。
- * - **奖励**：`items` 是**预留接口**（船长：「可以先留出接口」，例：首次悬赏送 MK1 炮、挖矿送采集器）；
- *   本轮只有 ②「第一次采集原矿」真填一张蓝图（`bp-ammo-kinetic`），③「第一次学习技能」按船长 2026-09-17
- *   裁决送**基础 AI 核心 ×1**（接上"指派 AI 副船"那一步），其余留空。
+ * - **奖励**（现行表见各条的 `reward` 行注释；总口径 = 2026-09-18 船长定的六口袋表 ＋ **2026-09-20 前移**）：
+ *   **采集器 MK1 ⇒「第一次扫描」** · **打捞器 MK1 ⇒「第一次采集原矿」** · 动能弹药生产线蓝图 ⇒「第一次操作精炼炉」·
+ *   民用修理组件 ×20 ⇒「第一次维修舰船」· 一艘鲣鱼级 ⇒「第一次完成悬赏」· 沙猫级舰船蓝图 ⇒「第一次生产」·
+ *   民用船体维修装置 ×1 ⇒「第一条船」· 基础 AI 核心 ×1 ⇒「第一次学习技能」· 一艘飞鱼级快运舰 ⇒「第一次长途运输」·
+ *   未探索虫洞 ×2 ⇒「第一次虫洞」；
+ *   **「第一次打捞残骸」自 2026-09-20 起无实物奖励**（打捞器已前移到挖矿那条）；「第一次挂单销售」「第一次指派 AI 副船」
+ *   两条一直只有情报信。发放逻辑在 `firstRewards.grantFirstReward`（老档迁移不发奖励）。
  * - **顺序解锁**（**2026-09-20 船长转玩家反馈**：「**新手引导的重要任务一次性太多了，建议按顺序排列解锁**」；
  *   同时「**已经完成「第一次」任务后的里程碑任务链，建议单开一个任务中心的子页面「里程碑任务」**」）：
  *   13 条「第一次」**串成一条线**——`FIRST_TASKS` 的数组序就是解锁序，`visibleFirstTasks` 只给
@@ -178,6 +182,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     detail: '星图上只剩剪影的位置＝未解读的未知信号。派一艘深空扫描艇就地扫描，窗口走完即点亮该星系：航线、矿带、悬赏与残骸情报一并解锁。母港只需十来秒，其余星系越危险扫得越久。',
     judge: (state, ctx) => state.exploredGalaxies.filter((g) => ctx.galaxies.has(g)).length,
     commsId: 'first-scan',
+    /**
+     * 奖励（**2026-09-20 船长令**：「采集器和打捞器给的任务应该往前调，**采集器是扫描星系给**」）：
+     * **采集器 MK1** 从「第一次采集原矿」前移到本条——新手第一步就能拿到，装上再去采矿。
+     * （本条此前无实物奖励；前移前的对照见 `docs/design/first-task-reward-move-20260920.md`。）
+     */
+    reward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }] },
     chain: { id: 'explorer', name: '宇宙探索家', stat: 'scan', tierKey: 'scan' },
   },
   {
@@ -190,8 +200,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     detail: '到矿带派出采矿艇：采掘、返航、卸货自动跑完。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——那是绝大多数蓝图的用料。',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
-    // 奖励（船长 2026-09-18）：「第一次采集原矿」⇒ **采集器 MK1**（`mod-miner-1`＝强化采集器 MK1）
-    reward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }] },
+    // 奖励（**2026-09-20 船长令**：「**打捞器应该是挖矿任务给**」）：**打捞器 MK1** 从「第一次打捞残骸」
+    //   前移到本条 ⇒ 顺序解锁下走到「第一次打捞残骸」时手上已经有打捞器（本条原发采集器 MK1，已前移到「第一次扫描」）
+    reward: { modules: [{ moduleId: 'mod-salvager-1', units: 1 }] },
     chain: { id: 'digger', name: '深空采掘者', stat: 'mineUnits', tierKey: 'mineUnits' },
   },
   {
@@ -201,8 +212,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     detail: '星系里的残骸点可以派船打捞：保底原材料直接入炉，带稀有标记的残骸更值钱，回收炉还能把旧件重新解体成整件装备。',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
-    // 奖励（船长 2026-09-18）：打捞器 MK1
-    reward: { modules: [{ moduleId: 'mod-salvager-1', units: 1 }] },
+    // ⚠ **本条自 2026-09-20 起没有实物奖励**（船长令：打捞器 MK1 前移到「第一次采集原矿」）——完成只发情报信
+    //   （卡片上落回「情报信一封」）。日后要给本条补一件奖励，在这里加 `reward` 即可。
     chain: { id: 'scavenger', name: '残骸拾荒者', stat: 'salvageRuns', tierKey: 'salvageRuns' },
   },
   {

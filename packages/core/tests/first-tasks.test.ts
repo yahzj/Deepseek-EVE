@@ -68,14 +68,34 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     expect(state.importantTasks['first-mine']?.done).toBe(true)
   })
 
-  it('奖励只发一次：「第一次采集原矿」发采集器 MK1（船长 2026-09-18），重复推进不再加', () => {
-    const state = testState()
-    expect(startMining(state, BELT, ctx).ok).toBe(true)
-    for (let i = 0; i < 60 && state.importantTasks['first-mine']?.done !== true; i++) advanceGame(state, 5_000, ctx)
-    expect(state.moduleBay['mod-miner-1']).toBe(1)
-    // 再推进一段（计数继续涨）——奖励不再发第二次
-    for (let i = 0; i < 20; i++) advanceGame(state, 5_000, ctx)
-    expect(state.moduleBay['mod-miner-1']).toBe(1)
+  it('奖励前移（船长 2026-09-20：「采集器是扫描星系给，打捞器应该是挖矿任务给」）：两件工具都赶在用到它的那条之前', () => {
+    const mods = (id: string): string[] =>
+      (FIRST_TASKS.find((d) => d.id === id)?.reward?.modules ?? []).map((m) => m.moduleId)
+    expect(mods('first-scan')).toEqual(['mod-miner-1']) // 采集器 MK1
+    expect(mods('first-mine')).toEqual(['mod-salvager-1']) // 打捞器 MK1
+    expect(mods('first-salvage')).toEqual([]) // 打捞那条不再有实物奖励（只发情报信）
+    // 顺序解锁下：扫描 → 采矿 → 打捞 ⇒ 走到「第一次打捞残骸」时打捞器已经在手上
+    const order = FIRST_TASKS.map((d) => d.id)
+    expect(order.indexOf('first-mine')).toBeLessThan(order.indexOf('first-salvage'))
+  })
+
+  it('奖励真的按新口径发：扫描给采集器 MK1、挖矿给打捞器 MK1（各只发一次）', () => {
+    // ① 扫描（非序章档：母港已点亮 ⇒ 首拍即判过）
+    const s1 = testState()
+    advanceGame(s1, 1000, ctx)
+    expect(s1.importantTasks['first-scan']?.done).toBe(true)
+    expect(s1.moduleBay['mod-miner-1']).toBe(1)
+    expect(s1.moduleBay['mod-salvager-1']).toBeUndefined()
+    for (let i = 0; i < 5; i++) advanceGame(s1, 1000, ctx)
+    expect(s1.moduleBay['mod-miner-1']).toBe(1) // 不双发
+    // ② 采矿（计数置位 ⇒ 下一拍判过）
+    const s2 = testState()
+    s2.importantTasks['first-scan'] = { done: true }
+    s2.firstStats = { ...(s2.firstStats ?? {}), mineUnits: 1 }
+    advanceGame(s2, 1000, ctx)
+    expect(s2.importantTasks['first-mine']?.done).toBe(true)
+    expect(s2.moduleBay['mod-salvager-1']).toBe(1)
+    expect(s2.moduleBay['mod-miner-1']).toBeUndefined() // 采集器不再挂这条
   })
 
   it('母港扫描窗口 = 10 秒（船长 2026-09-18）；其余星系照旧 10 分钟基准', () => {
