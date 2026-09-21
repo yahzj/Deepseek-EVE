@@ -1003,6 +1003,21 @@ function ensureDroneLoads(): void {
 function buyShipAndGear(): void {
   if (meBusy() || !isHome() || state.mining.active) return
   /**
+   * **把低档件升级成高档**（2026-09-21 新加，第四批）。
+   *
+   * 为什么必须单独有一条"升级"通道：`autoFitGear` 的装炮循环是
+   * "遇到第一个空槽 → 从高档往下试 → **装上就 break**" ⇒ 钱不够时它会**装上 MK1**，
+   * 而此后那个槽**永远不再是空槽**、再也不会被升级。
+   * 实测证据：`电鳐级激光巡洋舰(高5/5 CPU60/444)` —— 5 门炮只花 60 CPU，
+   * 而 MK3 炮一台就要 52 ⇒ 这 5 门全是 **MK1**（10~12 CPU/门），
+   * 且 CPU 余量 384 完全够换 MK3（**不是 CPU 卡的，是没这条通道**）。
+   *
+   * 口径：**每拍最多升 1 门**（每次升级要真花钱），先升最便宜的那门（把整队铺满高档优先于
+   * 单舰顶配）；只升不降，且必须"新件比旧件强"才动（按 `dmgMult` 比）。
+   */
+  upgradeGunsOneStep()
+  if (meBusy() || !isHome() || state.mining.active) return
+  /**
    * ⚠ **只在"没有在途远征/扫描/打捞"时动手**：本函数内部会**切驾驶位**（给僚舰装件要先切过去，
    * 见 `autoFitGear`）——在航活动中切驾驶会与引擎的互斥打架。这三条守卫是 2026-09-21 把本函数
    * 从 `homeLull()` 里搬出来时补的（旧位置天然满足，搬出来就必须自己判）。
@@ -1128,6 +1143,72 @@ function buyShipAndGear(): void {
 function fitModuleTo(state: GameState, moduleId: string): boolean {
   const r = fitModule(state, moduleId, ctx)
   return r.ok
+}
+
+/**
+ * **把一门低档炮换成同线高档炮**（见 `buyShipAndGear` 里的调用点注释）。
+ *
+ * 只处理**高槽炮**这一条线（`mod-turret-kin-1/2/3`）：这条线的档位差最直接（MK3 单发 5.13 vs
+ * MK1 1.25、约 4 倍），而且实测就是它停在 MK1（5 门 60 CPU）。
+ * 做法：挑"当前装着的最低档炮"那一门 → 卸下（`unfitAt`）→ 买高档 → 装回；
+ * 装不回就把旧件装回去（避免把槽位弄空）。
+ */
+function upgradeGunsOneStep(): void {
+  if (meBusy() || !isHome()) return
+  if (state.expedition.active || state.scanning.active || state.salvaging.active) return
+  const TIERS = ['mod-turret-kin-1', 'mod-turret-kin-2', 'mod-turret-kin-3']
+  const dmgOf = (id: string | null): number => (id ? (ctx.modules.get(id)?.dmgMult ?? 0) : -1)
+  const priceOf = (id: string): number => goodOf('module', id)?.basePrice ?? 0
+  /** 找"最低档、且存在更高档可换"的那一门（跨全舰队，优先便宜的高档） */
+  let best: { uid: string; slot: number; from: string; to: string } | null = null
+  for (const uid of Object.keys(state.fleet)) {
+    const f = state.fleet[uid]
+    const def = fleetDefOf(state, ctx, uid)
+    if (!f || !def) continue
+    if (def.role !== 'armed' && def.role !== 'armored') continue
+    const high = f.fitted?.high ?? []
+    for (let i = 0; i < high.length; i++) {
+      const cur = high[i]
+      if (!cur) continue
+      // 只升这条线的件（别的线不碰）
+      const curIdx = TIERS.indexOf(cur)
+      if (curIdx < 0) continue
+      for (let t = TIERS.length - 1; t > curIdx; t--) {
+        const to = TIERS[t]!
+        const price = priceOf(to)
+        if (price <= 0) continue
+        if (state.wallet.isk < price * 1.5 + 100_000) continue
+        if (!best || price < priceOf(best.to)) best = { uid, slot: i, from: cur, to }
+        break
+      }
+    }
+  }
+  if (!best) return
+  const { uid, slot, from, to } = best
+  const name = fleetDefOf(state, ctx, uid)?.name ?? uid
+  const prevShip = state.shipId
+  if (prevShip !== uid && !changeShip(state, uid, ctx).ok) return
+  // ⚠ 签名是 `unfitAt(state, rack, index, shipId?, ctx?)` 且**返回 boolean**（先写错成 `.ok`）
+  const u = unfitAt(state, 'high', slot, uid, ctx)
+  if (!u) {
+    if (prevShip !== uid) changeShip(state, prevShip, ctx)
+    return
+  }
+  const g = goodOf('module', to)
+  if (!g) {
+    fitModuleTo(state, from) // 买不到高档 ⇒ 把旧件装回去，别留空槽
+    if (prevShip !== uid) changeShip(state, prevShip, ctx)
+    return
+  }
+  buyAtMarket(state, ctx, g.key, 1)
+  const ok = fitModuleTo(state, to)
+  if (!ok) {
+    fitModuleTo(state, from) // 装不上（CPU 等）⇒ 回滚
+    if (prevShip !== uid) changeShip(state, prevShip, ctx)
+    return
+  }
+  if (prevShip !== uid) changeShip(state, prevShip, ctx)
+  mark(`升级火炮 ${from} → ${to}（${name} · 单发 ${dmgOf(from).toFixed(2)} → ${dmgOf(to).toFixed(2)}）`)
 }
 
 function doBounty(): void {
