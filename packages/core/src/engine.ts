@@ -26,7 +26,7 @@ import { advanceManufacturing } from './manufacturing'
 import { advanceRefining } from './industry'
 import { advanceExpedition } from './expedition'
 import { advanceWormhole } from './wormholeBattle'
-import { advanceAi } from './ai'
+import { advanceAi, AI_CORE_ORDER } from './ai'
 import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
@@ -39,8 +39,9 @@ import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
-import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks } from './firstTasks'
+import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
+import { matterTechNodes } from './matterTech'
 import { grantFirstReward } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
@@ -231,12 +232,72 @@ export function advanceGame(
    * - **不写日志、不发通讯**：保持"离线事件条数"等既有口径逐字不变（与 `advanceFirstTasks` 同款理由）；
    * - **现算补发**（幂等）：判据是 `state` 现状而非事件 ⇒ 老档、漏发、异常中断都靠这条自愈。
    *
-   * **第二批（里程碑成就内容）尚未实现**：届时在 `data/src/achievements.ts`
-   * 增 `category: 'milestone'` 的条目即可，本处调用一字不用改（见 `core/achievements.ts` 头注释）。
-   * ⚠ **第一批（任务 ＋ 链共 63 枚）已完成并合入 main ⇒ 本处不挂未完成记号**
-   * （约定 §十一之二：完成即删记号；残留会让本地化永远跳过它）。
+   * ⚠ **两批都已完成并合入 main**（第一批 任务 ＋ 链 63 枚 · 第二批 里程碑 18 枚，均 2026-09-20）
+   * ⇒ 本处**不挂未完成记号**（约定 §十一之二：完成即删记号；残留会让本地化永远跳过它）。
+   * 里程碑那六个计数键另有一层兜底：`reconcileMilestoneStats`（下一行）每拍按 `state` 现算补齐。
    */
+  reconcileMilestoneStats(state, ctx)
   advanceAchievements(state, ctx.achievements, opts?.nowWallMs)
+}
+
+/**
+ * **里程碑计数的"追溯检查"**（**2026-09-20 船长令**：「**里程碑都加入追溯检查**」；
+ * 起因 = 玩家报障「**已经建好了的空间站无法完成成就**」）。
+ *
+ * 18 枚里程碑成就读的**六个计数键**原先**只在事件发生那一刻记账**
+ * （`sitesBuilt` 升满档 · `aiCoreKinds` 核心入库 · `matterTechMaxed` 点满一级 ·
+ * `whMaxDepth` 进层 · `rareBoxes` 开箱 · `whBossClears` 击破守卫）。
+ * 于是"事件发生在成就系统之前/之外"的档（老档，或先做完再更新到本版）账上恒为 0 ⇒ **成就永远拿不到**
+ * （`station.ts` 里那句「老档已有建成站的也照旧自愈」当时只是注释里的一厢情愿）。
+ *
+ * 这里每拍按 `state` 现算一遍，用 `peakFirst` 把账**抬到"现状至少这么多"**——`peakFirst` 只升不降
+ * ⇒ 幂等（重复现算抬不动）、不回退（这趟下得浅不会把纪录改小）、零迁移（缺省 0）。代价是小表遍历。
+ *
+ * **六个键的推导来源与精度**（这就是本函数的全部口径，改判定先改这里）：
+ *
+ * | 键 | 现算来源 | 精度 |
+ * |---|---|---|
+ * | `rareBoxes` | `Σ state.rareBoxesOpened`（与 `industry.ts` 开箱那一刻同一本账） | **精确** |
+ * | `sitesBuilt` | `stage >= tiers.length` 的副站座数（与 `station.ts` 升满档同一把尺） | **精确** |
+ * | `matterTechMaxed` | 已满级节点数（与 `matterTech.ts` 同一把尺） | **精确** |
+ * | `aiCoreKinds` | 库存里 > 0 的核心类数（与 `gainAiCore` 同一把尺） | 下界（把某类花光后现算会少 ⇒ 只抬不降，已记账的档不受影响） |
+ * | `whMaxDepth` | 这趟的 `run.depth` ＋ `lastSettle.depth`（最近一趟的结算单） | **下界**（更早那些趟的层深没留痕） |
+ * | `whBossClears` | 这趟的 `run.bossCleared`（本趟已击破的守卫数） | **下界**（跨趟累计只在事件点记） |
+ *
+ * ⚠ 为什么"下界"可以放心：成就判据是 `计数 >= 阈值`，抬到"至少这么多"只会让**该拿的**拿到，
+ * 不会凭空发——现算值本身就是真实发生过的事实（只是可能比真值小）。
+ */
+function reconcileMilestoneStats(state: GameState, ctx: SimContext): void {
+  // ① 稀有残骸的额外战利品（高级箱）：逐型累计已开箱数求和（与开箱那一刻同一本账）
+  let boxes = 0
+  for (const n of Object.values(state.rareBoxesOpened ?? {})) boxes += n ?? 0
+  peakFirst(state, 'rareBoxes', boxes)
+  // ② 副空间站：`stage >= tiers.length` 的座数
+  let built = 0
+  for (const site of ctx.stations.values()) {
+    const prog = state.stationSites?.[site.id]
+    if (prog && prog.stage >= site.tiers.length) built += 1
+  }
+  peakFirst(state, 'sitesBuilt', built)
+  // ③ 谜质科技：已满级的节点数（`ctx.matterTech` 缺失 = 空表）
+  const nodes = matterTechNodes(ctx)
+  if (nodes.length > 0) {
+    let maxed = 0
+    for (const n of nodes) if ((state.research?.levels?.[n.id] ?? 0) >= n.maxLevel) maxed += 1
+    peakFirst(state, 'matterTechMaxed', maxed)
+  }
+  // ④ AI 核心：库存里 > 0 的类数
+  let kinds = 0
+  for (const t of AI_CORE_ORDER) if ((state.aiCores?.[t] ?? 0) > 0) kinds += 1
+  peakFirst(state, 'aiCoreKinds', kinds)
+  // ⑤⑥ 虫洞：层深与守卫数——先在洞里时读本趟，其次读"最近一趟结算单"残留的层深
+  const run = state.wormhole.run
+  if (run) {
+    peakFirst(state, 'whMaxDepth', run.depth)
+    peakFirst(state, 'whBossClears', run.bossCleared ?? 0)
+  }
+  const settled = state.wormhole.lastSettle?.depth
+  if (settled !== undefined) peakFirst(state, 'whMaxDepth', settled)
 }
 
 /** 技能队列推进（内部函数，不对外） */

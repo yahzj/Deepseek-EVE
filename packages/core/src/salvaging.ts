@@ -98,12 +98,13 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (state.hauling.active) {
     return {
       ok: false,
-      error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再打捞。',
+      error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再打捞。',
       errorId: 'core.state.005',
     }
   }
   if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
-    return { ok: false, error: '打捞需要打捞器：请先在舰船高槽装上打捞器（MK1/2/3）再出发。', errorId: 'core.salvaging.003' }
+    // 2026-09-20 船长令：提示里要**指明去处**（「添加让玩家去装配的提示」）⇒ 文案点到「装配」页
+    return { ok: false, error: '打捞需要打捞器：先到「装配」页给驾驶船的高槽装一台（MK1/2/3）再出发。', errorId: 'core.salvaging.003' }
   }
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采。', errorId: 'core.mining.006' }
   if (state.expedition.active) {

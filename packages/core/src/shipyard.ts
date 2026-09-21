@@ -100,7 +100,28 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   }
   const def = fleetDefOf(state, ctx, shipId)
   if (!def) return { ok: false, error: `未知舰船：${shipId}。` }
-  // 2026-09-09 长途运输：换驾驶 = 立即终止（虚拟货无残留、无惩罚）
+  /**
+   * **顺序纪律（2026-09-20 修）**：能**拒绝**这次换船的校验一律排在"终止长途运输"之前——
+   * 否则玩家点了换驾驶、被别的原因拒掉，本趟运输却已经被杀掉（看到的只是"没换成功"，实际白丢一趟报酬）。
+   * ⇒ 远征（非返航态）与掩护巡逻两条先查；**终止运输居中**（它顺带把 `awayGalaxy`/`dockedSite` 复位，
+   * 是"运输中换船"能过下面那道野外闸的前提）；野外与未建成站两条照旧在后。
+   */
+  if (state.expedition.active && state.expedition.phase !== 'back') {
+    return {
+      ok: false,
+      error:
+        '远征出击/交火中：切换驾驶会中断本次远征（无战果）。请先在顶部活动栏召回远征（交火中可撤退），或等战报返回后再换船。',
+      errorId: 'core.shipyard.005',
+    }
+  }
+  if (state.standby.active) {
+    return { ok: false, error: '舰船正前往掩护巡逻星系途中——到港后再换船。', errorId: 'core.shipyard.006' }
+  }
+  /**
+   * **长途运输：换驾驶 = 立即终止**（2026-09-09 船长定：虚拟货无残留、无惩罚）。
+   * 位置见上面那条顺序纪律：只有"真能换"的调用才会走到这里。
+   * 界面侧另配了同款两讨伐确认（`ui.Hauling.033~035`）：先警告"中断拿不到本趟报酬"，再点一次才换。
+   */
   if (state.hauling.active) cancelHaulingOnSwitch(state, ctx)
   // T8：驾驶船不在站内（野外停留/返航途中）时不可切换
   if (state.awayGalaxy !== null) {
@@ -144,16 +165,6 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
       'core.shipyard.017',
       { p1: oldName, p2: Math.max(1, Math.round(remainMs / 1000)) },
     )
-  } else if (state.expedition.active) {
-    return {
-      ok: false,
-      error:
-        '远征出击/交火中：切换驾驶会中断本次远征（无战果）。请先在顶部活动栏召回远征（交火中可撤退），或等战报返回后再换船。',
-      errorId: 'core.shipyard.005',
-    }
-  }
-  if (state.standby.active) {
-    return { ok: false, error: '舰船正前往掩护巡逻星系途中——到港后再换船。', errorId: 'core.shipyard.006' }
   }
   // 采矿作业中：直接切换成功——旧船按其当前阶段自动返航（到港自动卸货入仓库），采矿作业随之结束
   if (state.mining.active) {

@@ -11,14 +11,21 @@
  *   本模块按阈值判"是否达成"⇒ 链任务的进度天然连续（不再逐级手写判定）。
  * - **可推导的口径不用计数**：扫描数 = `exploredGalaxies.length`、技能 = `Σ trained`、
  *   虫洞解锁 = 协会声望（读 `standing`）——少一处计数就少一处漂移。
- * - **奖励**：`items` 是**预留接口**（船长：「可以先留出接口」，例：首次悬赏送 MK1 炮、挖矿送采集器）；
- *   本轮只有 ②「第一次采集原矿」真填一张蓝图（`bp-ammo-kinetic`），③「第一次学习技能」按船长 2026-09-17
- *   裁决送**基础 AI 核心 ×1**（接上"指派 AI 副船"那一步），其余留空。
- * - **顺序解锁**（**2026-09-20 船长转玩家反馈**：「**新手引导的重要任务一次性太多了，建议按顺序排列解锁**」；
- *   同时「**已经完成「第一次」任务后的里程碑任务链，建议单开一个任务中心的子页面「里程碑任务」**」）：
+ * - **奖励**（现行表见各条的 `reward` 行注释；总口径 = 2026-09-18 船长定的六口袋表 ＋ **2026-09-20 前移**）：
+ *   **采集器 MK1 ⇒「第一次扫描」** · **打捞器 MK1 ⇒「第一次采集原矿」** · 动能弹药生产线蓝图 ⇒「第一次操作精炼炉」·
+ *   民用修理组件 ×20 ⇒「第一次维修舰船」· 一艘鲣鱼级 ⇒「第一次完成悬赏」· 沙猫级舰船蓝图 ⇒「第一次生产」·
+ *   民用船体维修装置 ×1 ⇒「第一条船」· 基础 AI 核心 ×1 ⇒「第一次学习技能」· 一艘飞鱼级快运舰 ⇒「第一次长途运输」·
+ *   未探索虫洞 ×2 ⇒「第一次虫洞」；
+ *   **「第一次打捞残骸」自 2026-09-20 起无实物奖励**（打捞器已前移到挖矿那条）；「第一次挂单销售」「第一次指派 AI 副船」
+ *   两条一直只有情报信。发放逻辑在 `firstRewards.grantFirstReward`（老档迁移不发奖励）。
+ * - **顺序解锁 ＝ 显示与判定同一把尺**（**2026-09-20 船长转玩家反馈**：「**新手引导的重要任务一次性太多了，
+ *   建议按顺序排列解锁**」；同时「**已经完成「第一次」任务后的里程碑任务链，建议单开一个任务中心的子页面
+ *   「里程碑任务」**」；**同日第二道令**：「**未显示的第一次任务可以提前完成**」＝ 报障）：
  *   13 条「第一次」**串成一条线**——`FIRST_TASKS` 的数组序就是解锁序，`visibleFirstTasks` 只给
  *   **第一条还没完成的**（已完成的也不再占位，进度看页头 N/13）；**旧口径「自由选择完成 ＋ `prereq` 只控可见」作废**
- *   （`prereq` 字段已删）。链（里程碑）本身从开局就在累计，但**只在对应的「第一次」完成后才上「里程碑任务」页**
+ *   （`prereq` 字段已删）。**判定同样只认当前那一条**（见 `advanceFirstTasks`）：后面的条目即便条件已满足
+ *   也**不提前判过**（不提前发奖励/情报信/成就），等轮到那一拍按档内现状补齐（自愈、进度不丢）。
+ *   链（里程碑）本身从开局就在累计，但**只在对应的「第一次」完成后才上「里程碑任务」页**
  *   （判据见 `milestoneBoard` 的 `unlocked`）。
  */
 import type { GameState } from './state'
@@ -56,11 +63,23 @@ export type FirstStatKey =
    * - `whMaxDepth`：**虫洞到达过的最大层深**（**峰值**，用 `peakFirst` 记 ⇒ 只升不降）。
    * - `whBossClears`：**累计打掉的层末守卫数**。
    * - `matterTechMaxed`：**谜质科技已满级的节点数**（**峰值**；满级后不会掉，故按峰值记也自愈）。
+   *
+   * ⚠ **2026-09-20 船长令「里程碑都加入追溯检查」**：这六个键（含下面两个）全部由
+   * `engine.reconcileMilestoneStats` 每拍按 `state` 现算兜底（`peakFirst` 只抬不降）⇒
+   * 老档/漏发都能补；哪些是精确值、哪些只是下界，逐条写在该函数里。
    */
   | 'rareBoxes'
   | 'whMaxDepth'
   | 'whBossClears'
   | 'matterTechMaxed'
+  /**
+   * 另两个**峰值型**里程碑键（2026-09-20 补齐类型：它们一直在用，只是漏登记在本联合里）：
+   * - `aiCoreKinds`：**库存里拥有过的 AI 核心类数**（峰值；花掉一枚不回退）；
+   * - `sitesBuilt`：**已建成并入网的副空间站座数**（峰值）。
+   * ⚠ 两者都由 `engine.reconcilePeakStats` 每拍按 `state` 现算兜底 ⇒ 老档/漏发自愈。
+   */
+  | 'aiCoreKinds'
+  | 'sitesBuilt'
 
 /** 一条「第一次」任务 */
 export interface FirstTaskDef {
@@ -178,6 +197,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     detail: '星图上只剩剪影的位置＝未解读的未知信号。派一艘深空扫描艇就地扫描，窗口走完即点亮该星系：航线、矿带、悬赏与残骸情报一并解锁。母港只需十来秒，其余星系越危险扫得越久。',
     judge: (state, ctx) => state.exploredGalaxies.filter((g) => ctx.galaxies.has(g)).length,
     commsId: 'first-scan',
+    /**
+     * 奖励（**2026-09-20 船长令**：「采集器和打捞器给的任务应该往前调，**采集器是扫描星系给**」）：
+     * **采集器 MK1** 从「第一次采集原矿」前移到本条——新手第一步就能拿到，装上再去采矿。
+     * （本条此前无实物奖励；前移前的对照见 `docs/design/first-task-reward-move-20260920.md`。）
+     */
+    reward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }] },
     chain: { id: 'explorer', name: '宇宙探索家', stat: 'scan', tierKey: 'scan' },
   },
   {
@@ -187,12 +212,36 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     //   ⇒ 本批按**现行口径**写成「第一次采集原矿」。若船长要保留"矿物"字样，把它登记为例外即可。
     title: '第一次采集原矿',
     brief: '到矿带采一批原矿',
-    detail: '到矿带派出采矿艇：采掘、返航、卸货自动跑完。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——那是绝大多数蓝图的用料。',
+    // 2026-09-20 船长令：「任务文本添加建议玩家去舰船切换采矿船」——鲣鱼级是护卫舰（无矿枪），
+    //   采矿艇沙猫级开局就在舰船仓库里 ⇒ 文本第一句直接点明"先去舰船页换驾驶"。
+    detail: '先到「舰船」页把驾驶换成采矿艇（沙猫级），再到矿带派出采矿：采掘、返航、卸货自动跑完。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——那是绝大多数蓝图的用料。',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
-    // 奖励（船长 2026-09-18）：「第一次采集原矿」⇒ **采集器 MK1**（`mod-miner-1`＝强化采集器 MK1）
-    reward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }] },
+    // 奖励（**2026-09-20 船长令**：「**打捞器应该是挖矿任务给**」）：**打捞器 MK1** 从「第一次打捞残骸」
+    //   前移到本条 ⇒ 顺序解锁下走到「第一次打捞残骸」时手上已经有打捞器（本条原发采集器 MK1，已前移到「第一次扫描」）
+    // ＋（**同日第二条令**）「**任务完成后额外给玩家 100 橄榄岩用于下一阶段任务**」——下一阶段是「第一次操作精炼炉」，
+    //   精炼**每批要 100 单位**，而沙猫一趟约 70 ⇒ 送这 100 单位正好凑够第一批（免去"还要再跑一趟"的卡顿）。
+    reward: { modules: [{ moduleId: 'mod-salvager-1', units: 1 }], ware: [{ itemId: 'ore-veldspar', units: 100 }] },
     chain: { id: 'digger', name: '深空采掘者', stat: 'mineUnits', tierKey: 'mineUnits' },
+  },
+  {
+    /**
+     * **位置：第 3 条**（**2026-09-20 船长令**「解锁工业界面要和第一次精炼的任务挂钩一起解锁」⇒ 船长三选**②**：
+     * 「把「第一次操作精炼炉」在任务序里前移到采矿之后」）。
+     *
+     * 为什么放在这儿：工业页的解锁判据 = 本条**轮到**（见 `UNLOCK_AT_TASK`）⇒ 采矿一做完，工业页与这张卡
+     * **同时**亮起；顺带让后面那条「第一次打捞残骸」到步时工业页（回收炉）已经可用——它的正文与情报信
+     * 本来就要提到回收炉。
+     */
+    id: 'first-refine',
+    title: '第一次操作精炼炉',
+    brief: '让精炼炉出一批料',
+    detail: '精炼炉按批运转：原料够一批就能起炉，料尽自动停炉，装满则按批续烧。精炼学每级 +6% 产出、高级回收处理每级 +3%，两条练满可到 165%。',
+    judge: (state) => (state.firstStats?.refineBatches ?? 0),
+    commsId: 'first-refine',
+    // 奖励（船长 2026-09-18）：动能弹药生产线蓝图（原挂在②，现按船长裁定移到本条）
+    reward: { blueprints: [{ blueprintId: 'bp-ammo-kinetic', units: 1 }] },
+    chain: { id: 'refiner', name: '精炼师', stat: 'refineBatches', tierKey: 'refineBatches' },
   },
   {
     id: 'first-salvage',
@@ -201,8 +250,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     detail: '星系里的残骸点可以派船打捞：保底原材料直接入炉，带稀有标记的残骸更值钱，回收炉还能把旧件重新解体成整件装备。',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
-    // 奖励（船长 2026-09-18）：打捞器 MK1
-    reward: { modules: [{ moduleId: 'mod-salvager-1', units: 1 }] },
+    // ⚠ **本条自 2026-09-20 起没有实物奖励**（船长令：打捞器 MK1 前移到「第一次采集原矿」）——完成只发情报信
+    //   （卡片上落回「情报信一封」）。日后要给本条补一件奖励，在这里加 `reward` 即可。
     chain: { id: 'scavenger', name: '残骸拾荒者', stat: 'salvageRuns', tierKey: 'salvageRuns' },
   },
   {
@@ -226,17 +275,6 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     // 奖励（船长 2026-09-18）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
     reward: { ships: [{ defId: 'sh-falconet', units: 1 }] },
     chain: { id: 'hunter', name: '赏金猎人', stat: 'bountyWins', tierKey: 'bountyWins' },
-  },
-  {
-    id: 'first-refine',
-    title: '第一次操作精炼炉',
-    brief: '让精炼炉出一批料',
-    detail: '精炼炉按批运转：原料够一批就能起炉，料尽自动停炉，装满则按批续烧。精炼学每级 +6% 产出、高级回收处理每级 +3%，两条练满可到 165%。',
-    judge: (state) => (state.firstStats?.refineBatches ?? 0),
-    commsId: 'first-refine',
-    // 奖励（船长 2026-09-18）：动能弹药生产线蓝图（原挂在②，现按船长裁定移到本条）
-    reward: { blueprints: [{ blueprintId: 'bp-ammo-kinetic', units: 1 }] },
-    chain: { id: 'refiner', name: '精炼师', stat: 'refineBatches', tierKey: 'refineBatches' },
   },
   {
     id: 'first-produce',
@@ -381,14 +419,20 @@ export function chainProgressOf(
  * 见 `engine.ts` 的那段循环）；判定/去重/老档语义全都不用改。**成就系统本身本批不做**。
  */
 export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
-  const newly: string[] = []
-  for (const def of FIRST_TASKS) {
-    if (state.importantTasks[def.id]?.done === true) continue
-    if (def.judge(state, ctx) < 1) continue
-    state.importantTasks[def.id] = { done: true }
-    newly.push(def.id)
-  }
-  return newly
+  /**
+   * ⚠ **顺序解锁 = 显示与判定同一把尺**（**2026-09-20 船长报障**：「**未显示的第一次任务可以提前完成**」）。
+   *
+   * 旧实现每拍把 13 条**全部**判一遍 ⇒ 只要"先把某件活干了"（或老档/工具/直接调 core），那条**还没轮到**的
+   * 任务就会被判过：拿奖励、发情报信、进成就 —— 顺序解锁只剩"显示"这一半。
+   * 现在**只判当前那一条**（`FIRST_TASKS` 里第一条还没完成的）：后面的任务即便条件已满足也**不提前判过**；
+   * 等它轮到那一拍自然补齐（判据是 `state` 现状 ⇒ 自愈、进度不丢）；**一拍最多判过一条**。
+   * ⚠ 老档迁移（`save.ts` MIGRATIONS[25]）是把 13 条**一次性**判完成，不经过这里 ⇒ 不受影响。
+   */
+  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
+  if (!current) return []
+  if (current.judge(state, ctx) < 1) return []
+  state.importantTasks[current.id] = { done: true }
+  return [current.id]
 }
 
 /**
@@ -448,22 +492,39 @@ export function claimChainReward(state: GameState, chainId: string): number {
 }
 
 /**
- * **功能 / 页面解锁表**（船长 2026-09-17 定案 · 数据驱动）：key = 页面或星图页签，value = 需要完成的「第一次」任务 id。
+ * **功能 / 页面解锁表**（船长 2026-09-17 定案 · 数据驱动）：key = 页面或星图页签，
+ * value = **需要完成的**「第一次」任务 id（另一种口径「轮到即解锁」见下面的 `UNLOCK_AT_TASK`）。
  *
  * 口径（船长原话）：「**所有和星图相关的，比如战斗和采矿，需要玩家先完成第一次扫描**（初始将母港星系设置为和其他星系
- * 一样的未知状态，需要扫描才有悬赏和挖矿）」＋「**市场页面和相关任务要玩家先完成第一次生产**」＋
- * 「**工业界面和相关任务则需要玩家先完成第一次采集矿物**」。
+ * 一样的未知状态，需要扫描才有悬赏和挖矿）」＋「**市场页面和相关任务要玩家先完成第一次生产**」；
+ * **工业页那条已改判**（2026-09-20 船长令：「解锁工业界面要和第一次精炼的任务挂钩一起解锁」⇒ 移出本表、
+ * 落到 `UNLOCK_AT_TASK`；旧句「工业界面和相关任务则需要玩家先完成第一次采集矿物」作废）。
  *
- * 用法：界面只读这一张表（`unlocked()` 判定）——**未解锁的页面与任务都不显示**（船长选「两者都隐藏」）。
- * 星图页本体、舰船/装配/物品/技能/任务中心/通讯/手册**不在这张表里** ⇒ 开局即可用。
+ * 用法：界面只读这两张表（`unlocked()` 判定）——**未解锁的页面与任务都不显示**（船长选「两者都隐藏」）。
+ * 星图页本体、舰船/装配/物品/技能/任务中心/通讯/手册**不在表里** ⇒ 开局即可用。
  */
 export const FIRST_UNLOCKS: Readonly<Record<string, string>> = {
-  industry: 'first-mine', // 工业页 ← 第一次采集原矿
   market: 'first-produce', // 市场页 ← 第一次生产
   mapMine: 'first-scan', // 星图·矿带开采 ← 第一次扫描
   mapBounty: 'first-scan', // 星图·常驻悬赏（战斗）← 第一次扫描
   mapSalvage: 'first-scan', // 星图·残骸打捞 ← 第一次扫描
   mapHaul: 'first-scan', // 星图·长途运输 ← 第一次扫描
+}
+
+/**
+ * **跟着某条「第一次」任务"轮到"一起解锁的页面**（**2026-09-20 船长令**：「**解锁工业界面要和
+ * 第一次精炼的任务挂钩一起解锁**」）。
+ *
+ * 判据 = 该任务**轮到**（顺序解锁下 = `FIRST_TASKS` 里排在它前面的都已完成），**不是**"该任务完成"——
+ * 精炼炉就在工业页里，按"完成后解锁"会死锁（永远打不开、任务也永远做不完）。
+ *
+ * ⚠ 旧口径「工业页 ← 第一次采集原矿**完成**」（2026-09-17 船长定的三页前置表）**作废**：
+ * 顺序解锁下"采矿"当时排在「第一次打捞残骸」之前 ⇒ 工业页会比精炼任务早三步出现。
+ * **2026-09-20 船长三选②**：把「第一次操作精炼炉」**前移到采矿之后（第 3 条）** ⇒ 判据变成"采矿完成"，
+ * 工业页与那张卡**同时**亮起（也顺带让后面那条「第一次打捞残骸」到步时回收炉已经可用）。
+ */
+const UNLOCK_AT_TASK: Readonly<Record<string, string>> = {
+  industry: 'first-refine', // 工业页 ← 第一次操作精炼炉**轮到**（它是第 3 条 ⇒ 实际由"采矿完成"触发）
 }
 
 /**
@@ -487,14 +548,35 @@ export function applyFirstBountyBuff(spec: { hitBonus: number; evasion: number }
   spec.evasion += FIRST_BOUNTY_EVASION_BONUS
 }
 
-/** 该页面/页签是否已解锁（表里没有的 key ⇒ 恒真 = 开局可用） */
+/**
+ * 该页面/页签是否已解锁（表里没有的 key ⇒ 恒真 = 开局可用）。
+ * 两种口径：`UNLOCK_AT_TASK`（跟着某条任务"轮到"一起开）优先，其次 `FIRST_UNLOCKS`（该任务完成才开）。
+ */
 export function unlocked(state: GameState, key: string): boolean {
+  const at = UNLOCK_AT_TASK[key]
+  if (at !== undefined) {
+    const idx = FIRST_TASKS.findIndex((d) => d.id === at)
+    if (idx <= 0) return true
+    for (let i = 0; i < idx; i++) {
+      if (state.importantTasks[FIRST_TASKS[i]!.id]?.done !== true) return false
+    }
+    return true
+  }
   const need = FIRST_UNLOCKS[key]
   if (!need) return true
   return state.importantTasks[need]?.done === true
 }
-/** 未解锁时所需的「第一次」任务名（界面提示用；key 不在表里 ⇒ undefined） */
+/**
+ * 未解锁时所需的「第一次」任务名（界面提示用：`ui.App.110`「尚未解锁：先完成「{p1}」。」；
+ * key 不在表里 ⇒ undefined）。
+ * `UNLOCK_AT_TASK` 的 key 给的是**排在它前面那条**（玩家当下真要做完的那件活）。
+ */
 export function unlockNeedTitle(key: string): string | undefined {
+  const at = UNLOCK_AT_TASK[key]
+  if (at !== undefined) {
+    const idx = FIRST_TASKS.findIndex((d) => d.id === at)
+    return (idx > 0 ? FIRST_TASKS[idx - 1] : FIRST_TASKS[0])?.title
+  }
   const need = FIRST_UNLOCKS[key]
   return need === undefined ? undefined : FIRST_TASKS.find((d) => d.id === need)?.title
 }
@@ -503,6 +585,8 @@ export function unlockNeedTitle(key: string): string | undefined {
  * 全部完成 ⇒ 空数组（页头读数走 `firstTaskProgress`）。
  * ⚠ **2026-09-20 船长（玩家反馈）**：「新手引导的重要任务一次性太多了，建议按顺序排列解锁」
  * ⇒ 旧口径「13 条自由选择完成 ＋ `prereq` 只控可见、可多线并行」**作废**（`prereq` 字段已删）。
+ * ⚠ 本函数与 `advanceFirstTasks` 的"当前那一条"**是同一把尺**（都 = 数组序里第一条 `done !== true`）：
+ * 显示哪一条就只判哪一条——这正是船长同日第二道令「未显示的第一次任务可以提前完成」的修法。
  */
 export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
   const next = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
@@ -513,6 +597,34 @@ export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
 export function firstTaskProgress(state: GameState): { done: number; total: number } {
   const done = FIRST_TASKS.filter((d) => state.importantTasks[d.id]?.done === true).length
   return { done, total: FIRST_TASKS.length }
+}
+
+/**
+ * **导航「任务中心」的推进提醒**（**2026-09-20 船长令**：「**每推进一阶段第一次任务时，在导航栏的
+ * 任务中心选项处进行提醒**」）。
+ *
+ * 判据 = **当前那一条 ≠ 玩家看过的那一条**（与「赏金新板提示」同款"换板未看"口径，见
+ * `sideTasks.sideTaskBoard().bountyFresh`）：
+ * - 完成一条 ⇒ 下一条顶上 ⇒ `state.firstTaskSeenId` 还是旧的 ⇒ 亮；
+ * - 进「任务中心」页 ⇒ `firstTasksMarkSeen` 记一笔 ⇒ 灭；
+ * - **全部 13 条做完**（没有"当前那一条"）⇒ 不亮。
+ *
+ * ⚠ 老档没有 `firstTaskSeenId` ⇒ 首帧亮一次（与赏金那条「老档默认亮起提示」同一处置）。
+ * 返回值带标题：徽标的悬停文案要写清"新的是哪一条"。
+ */
+export function firstTaskNotice(state: GameState): { taskId: string; title: string } | null {
+  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
+  if (!current) return null
+  if (state.firstTaskSeenId === current.id) return null
+  return { taskId: current.id, title: current.title }
+}
+
+/** **记一笔"这一条看过了"**（进「任务中心」页时调用；幂等：同一条不写第二次）。返回是否真的记了。 */
+export function firstTasksMarkSeen(state: GameState): boolean {
+  const current = FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)
+  if (!current || state.firstTaskSeenId === current.id) return false
+  state.firstTaskSeenId = current.id
+  return true
 }
 
 /** **里程碑页一行**（每条"次数"链一行；`unlocked` = 触发它的那条「第一次」已完成） */

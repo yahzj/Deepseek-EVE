@@ -1016,6 +1016,58 @@ describe('虫洞 · 遗迹收尾战「先提示、确认后再打」（船长 20
     expect(run.battle).not.toBeNull()
     expect(run.pendingRuinsBattle).toBe(false)
   })
+
+  /**
+   * **2026-09-20 玩家报障修复**：「虫洞打捞有 BUG，我带一个打捞器摸 2、3 残骸的遗迹。**惊动敌人后有时候
+   * 需要继续打捞，把残骸清空才能对敌。**」
+   *
+   * 根因：惊扰判定自 2026-09-16 起提前到**遗迹第一次打捞**（那一刻格上通常还剩 2~3 堆），
+   * 而 `wormholeStartBattle('ruins')` 里还留着旧闸门「遗迹还没打捞完：先捞空再打。」
+   * ⇒ 「迎战」只会报错，别的动作又都被拦着 ⇒ 玩家只能一直捞到清空。
+   * 现在判据 = `run.pendingRuinsBattle`（"这一场欠着"），**堆没清也能打**。
+   */
+  it('**惊动之后：格上还有堆也能「迎战」**（不再要求先捞空）', () => {
+    let state: GameState | null = null
+    for (let seed = 1; seed <= 80 && state === null; seed++) {
+      const s = enterRun(1, seed, 0, 1) // **1 台打捞器**（报障里的配置：一次只收 1 堆）
+      const cell = standOn(s, 'ruins')
+      const cardId = wormholeCellCardIdOf(s.wormhole.run!, cell)
+      cell.piles = [
+        { itemId: commonWreckOf(cardId), units: 100 },
+        { itemId: commonWreckOf(cardId), units: 100 },
+        { itemId: commonWreckOf(cardId), units: 100 },
+      ]
+      const r = wormholeActivateAt(s, ctx, undefined, { deferRuinsBattle: true })
+      expect(r.ok, r.error).toBe(true)
+      if (r.pendingBattle === 'ruins') state = s
+    }
+    const run = state!.wormhole.run!
+    const cell = gridCellAt(run.grid!, run.grid!.pos)!
+    // 前提：惊动了、而且那格**还剩堆**（1 台打捞器只收走 1 堆）
+    expect(run.pendingRuinsBattle).toBe(true)
+    expect((cell.piles ?? []).length).toBeGreaterThan(0)
+
+    // ① 待迎战期间**再点打捞也要被拦**（旧实现这条口子没堵：core 允许、界面按钮也没置灰）
+    const again = wormholeActivateAt(state!, ctx, undefined, { deferRuinsBattle: true })
+    expect(again.ok).toBe(false)
+    expect(again.error ?? '').toContain('迎战')
+
+    // ② 「迎战」当场能打（不再要求捞空）
+    const b = wormholeStartBattle(state!, ctx, 'ruins')
+    expect(b.ok, b.error).toBe(true)
+    expect(run.battle).not.toBeNull()
+    expect(run.pendingRuinsBattle).toBe(false)
+  })
+
+  it('没被惊动时不能凭空开遗迹战（判据仍是 pendingRuinsBattle）', () => {
+    const state = enterRun(1, 1, 0, 1)
+    const cell = standOn(state, 'ruins')
+    cell.piles = []
+    expect(state.wormhole.run!.pendingRuinsBattle).toBeUndefined()
+    const b = wormholeStartBattle(state, ctx, 'ruins')
+    expect(b.ok).toBe(false)
+    expect(b.errorId).toBe('core.wormholeBattle.011')
+  })
 })
 
 /**

@@ -660,13 +660,15 @@ function orderLifeMsOf(def: MarketGoodDef, bal: MarketBalance): number {
 }
 
 /** 抽取命中一张 rare 供给单：解锁原价；闸内 = ×4 暗市单（标 bm，外观同普通稀有单，玩家向隐身）。
- * 数量：船 1 艘/次，其余 1~3 件（同窗可重复抽中同一类型 → 簿上允许同商品多张）。
+ * 数量：船 1 艘/次，其余 1~3 件（同窗可重复抽中同一类型 → 簿上允许同商品多张）；
+ * **消耗品批量档**（`rareQtyMul`，2026-09-20 船长令）⇒ 单张件数 ×本值（弹药 MK2 = 200 ⇒ 200~600 发/张）。
  * 价格：原价/×4 之上再乘 二手市场学折扣（卷B3⑪；见 secondhandMul）。 */
 function spawnRareSupply(state: GameState, ctx: SimContext, def: MarketGoodDef, now: number, locked: boolean): void {
   const poolQ = state.market.pools[def.key]?.q ?? 0
   const L = priceLevel(state, ctx, def, poolQ)
   const lifeMs = orderLifeMsOf(def, ctx.balance.market)
-  const qty = def.kind === 'ship' ? 1 : 1 + nextInt(state.rng, 3)
+  const baseQty = def.kind === 'ship' ? 1 : 1 + nextInt(state.rng, 3)
+  const qty = def.kind === 'ship' ? 1 : baseQty * Math.max(1, Math.round(def.rareQtyMul ?? 1))
   const price = Math.round(sellPrice(def, L) * priceJitter(state) * secondhandMul(state) * (locked ? 4 : 1))
   npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty, locked)
 }
@@ -693,7 +695,10 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
     // 蓝图书权重 ×blueprintWeight（2026-09-10 船长定 5%；旧值 0.5）；闸内另乘 RARE_LOCKED_WEIGHT；
     // 数字稀有度 3 档 ×rareTier3Weight（2026-09-09：稀有订单层内分层，2 大众基准 1）
     const wOf = (def: MarketGoodDef): number =>
-      blueprintWeight(def, ctx) * (bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1) * rareTierWeight(def, ctx)
+      blueprintWeight(def, ctx) *
+      (bmGateLocked(state, def) ? RARE_LOCKED_WEIGHT : 1) *
+      rareTierWeight(def, ctx) *
+      Math.max(1, def.rareWeightMul ?? 1)
     for (const def of ctx.marketGoods.values()) {
       if (def.rarity !== 'rare' || def.playerBuyable === false) continue // 只收商品（残骸等）不出供给单
       defs.push(def)
@@ -859,9 +864,13 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
     // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 3% ×建站扩容；qty 2/张 ×扩容；2026-09-08 船长定；
     // 闸内 ×4 收购价同规则；寿命同供给侧 36 分钟）
     // 2026-09-09 数字稀有度：稀有订单层内分层——3 档收购概率 ×rareTierWeight（同卖单权重表）
+    // **2026-09-20 消耗品批量档**（`rareWeightMul` / `rareQtyMul`，船长令）：概率与单张件数同乘
+    // ⇒ 弹药 MK2 这类消耗品在簿上"看得见在收"（否则一张单只有 2 件，玩家以为没人收购）
     const boost = builtSellBoost(state, ctx)
-    if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.03 * boost * rareTierWeight(def, ctx))) {
-      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), Math.max(1, Math.round(2 * boost * buyVolMul)), locked)
+    const wMul = Math.max(1, def.rareWeightMul ?? 1)
+    const qMul = Math.max(1, Math.round(def.rareQtyMul ?? 1))
+    if (sellable && nextRandom(state.rng) < Math.min(0.9, 0.03 * boost * rareTierWeight(def, ctx) * wMul)) {
+      npcPushBuy(state, ctx, def, now, lifeMs, Math.round(buyPrice(def, L) * priceMul), Math.max(1, Math.round(2 * boost * buyVolMul * qMul)), locked)
     }
   } else if (def.rarity === 'exotic') {
     // 玩家卖方向（二手/多余）：低频出现（每 60s 窗 1% ×建站扩容；寿命同供给侧 6h；qty ×扩容）
@@ -1273,9 +1282,21 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
 
 /* ═══════════ 玩家操作：挂单 / 撤单 / 市价单 / 卖船 ═══════════ */
 
-/** 挂限价卖单：货先入 escrow（调用方应先从库存扣货入 escrowItems；舰船走 placeShipSellOrder） */
+/**
+ * 挂限价卖单：货先入 escrow（**调用方应先从库存扣货入 escrowItems**；舰船走 placeShipSellOrder）。
+ *
+ * ⚠ **主键校验（2026-09-20 外部审计报告后补）**：本函数是"底层记账"，**不替调用方锁库存**
+ * （锁货在 `listSellHolding` / `sellAtMarket` 那几条玩家入口里，走 `lockNaturalStock`）——
+ * 这个契约写在函数注里已有一段时间，但**没有任何一道运行期校验**：传进来的 `goodKey` 哪怕是
+ * `undefined` 或某个不存在的字符串，也照样会挂出一张单、并把 `escrowItems[goodKey]` 加一笔
+ * （`tools/flow-newgame.ts` 把 `good.id`（不存在，应为 `good.key`）传进来时正是这个下场：
+ * 出现 goodKey = `"undefined"` 的幽灵单与幽灵 escrow）。
+ * ⇒ 现在**先查目录**：`ctx.marketGoods` 里没有这个 key 就不挂单（返回 null，与其它入参非法同款）。
+ * 这条只挡"不存在的商品"，不影响既有调用方（它们传的都是目录里真实存在的 key）。
+ */
 export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   if (qty <= 0 || price <= 0) return null
+  if (typeof goodKey !== 'string' || !ctx.marketGoods.has(goodKey)) return null
   const order = pushSellOrder(state, goodKey, price, qty)
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着

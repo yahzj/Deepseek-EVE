@@ -230,6 +230,24 @@ describe('长途运输（2026-09-09）', () => {
     expect(state.shipId).toBe(other)
   })
 
+  /**
+   * **换驾驶被拒 ⇒ 本趟运输必须原封不动**（**2026-09-20 修**）。
+   *
+   * 旧写法把"终止运输"放在 `changeShip` 开头：只要玩家点了换驾驶，**哪怕这次换船会被别的原因拒掉**
+   * （野外/未建成站/掩护巡逻中/远征中…），本趟运输也已经先被杀掉 ⇒ 玩家看到的只是"没换成功"，
+   * 实际白丢一趟报酬。现已挪到所有校验之后 ⇒ 只有真换成功那条路才终止运输。
+   */
+  it('换驾驶被拒（掩护巡逻中）：本趟运输不受影响', () => {
+    startRoute(state, ctx)
+    const other = addShipToFleet(state, 'sandcat2')
+    state.standby.active = true
+    state.standby.galaxyId = 'galaxy-far'
+    const r = changeShip(state, other, ctx)
+    expect(r.ok, '掩护巡逻中应拒绝换驾驶').toBe(false)
+    expect(state.hauling.active, '被拒的换驾驶不该杀掉本趟运输').toBe(true)
+    expect(state.shipId).not.toBe(other)
+  })
+
   it('存档往返保留任务（含本趟行情）；旧档缺 hauling 字段 → 默认空态（零迁移）；缺 tripMul → 0 兜底', () => {
     startRoute(state, ctx)
     advanceGame(state, 30_000, ctx)

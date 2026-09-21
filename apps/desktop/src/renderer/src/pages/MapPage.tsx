@@ -102,7 +102,7 @@ const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
   name: tr("ui.MapPage.001"),
 }
 
-export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole, onAutoExploreWormhole }: PageProps & {
+export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole, onAutoExploreWormhole, onGotoFit }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
   mapGoto?: MapGotoTarget | null
@@ -112,6 +112,11 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
   onExploreWormhole?: (stockId: string) => void
   /** 自动探索：打开**与主控探索同一个准备页**（App 层开面板的自动模式；船长 2026-09-14） */
   onAutoExploreWormhole?: (stockId: string) => void
+  /**
+   * **去「装配」页**（**2026-09-20 船长令**：「打捞需要打捞器的提示，添加让玩家去装配的提示」）：
+   * 打捞页在驾驶船没装打捞器时给一行提示 ＋ 一个直接落到该船装配页的按钮。
+   */
+  onGotoFit?: (shipId: string) => void
 }) {
   // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
   // seq 只在跨页跳转时递增，普通切回本页不重放）
@@ -191,7 +196,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
       {mapTab === 'mine' ? <MiningTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'mine' ? hlIds : []} /> : null}
       {mapTab === 'star' ? <ExpeditionPanel engine={engine} onToast={onToast} onOpenWormhole={onOpenWormhole} /> : null}
       {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
-      {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
+      {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} onGotoFit={onGotoFit} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
       {mapTab === 'haul' ? <HaulingPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'whscan' ? (
         <WormholeScanTab
@@ -650,7 +655,18 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   }
 }
 
-function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onToast: ToastFn; focusIds?: readonly string[] }) {
+function SalvageTab({
+  engine,
+  onToast,
+  onGotoFit,
+  focusIds = [],
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** 「去装配」：跳到驾驶船的装配页（本轮船长令：打捞需要打捞器，得有个去装配的入口） */
+  onGotoFit?: (shipId: string) => void
+  focusIds?: readonly string[]
+}) {
   const state = engine.state
   const me = state.salvaging
   const [sort, setSort] = useState<WreckSortKey>(() => {
@@ -704,6 +720,11 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
     return byWreckName(x, y)
   })
   const idleShips = idleAiShipIds(state)
+  /**
+   * 驾驶船**一台打捞器都没装**（打捞门槛与 core 同一把尺：`salvagerCyclesOf` 空表 ⇔ 出发会被拒）
+   * ⇒ 面板上给一行"去装配"的提示（**2026-09-20 船长令**）。
+   */
+  const noSalvager = salvagerCyclesOf(state, engine.ctx, state.shipId).length === 0
 
   const phaseText = (): string => {
     if (!me.active) return tr("ui.MapPage.097", { p1: shipDisplayName(state, engine.ctx, state.shipId) })
@@ -748,6 +769,30 @@ function SalvageTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; on
       right={<span className="app-dim">{tr("ui.MapPage.052")}</span>}
     >
       <div className="app-dim app-inv-empty">{phaseText()}</div>
+
+      {/**
+       * **打捞需要打捞器 ⇒ 一行提示 ＋ 去「装配」的入口**（**2026-09-20 船长令**：
+       * 「打捞需要打捞器的提示，添加让玩家去装配的提示」）。
+       * 判据 = 驾驶船当前**一台打捞器都没装**（`salvagerCyclesOf` 空表，与 core 出发门槛同一把尺）；
+       * 装的按钮与舰船页那枚「装配」同款（`nav-fit` 字形 ＋ `ui.App.003`），落点是**这艘驾驶船**的装配页。
+       */}
+      {noSalvager ? (
+        <div className="app-dim app-inv-empty app-salvage-need">
+          <span>{tr('ui.MapPage.118')}</span>
+          {onGotoFit ? (
+            <button
+              className="app-btn is-small"
+              title={tr('ui.FirstTasks.029', { p1: tr('ui.App.003') })}
+              onClick={() => onGotoFit(state.shipId)}
+            >
+              <span className="app-ico">
+                <Glyph name="nav-fit" size={13} color={NAV_TONES['nav-fit']} />
+              </span>
+              {tr('ui.App.003')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* 打捞循环设置行（2026-09-09 船长定：与采矿同款；自动循环默认开） */}
       <div className="app-mining-settings">

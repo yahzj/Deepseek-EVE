@@ -155,7 +155,7 @@ export function isIdleField(state: GameState): boolean {
  * 换港返航即时到站（定稿：去程取消）：下达即停靠目标站（finishAtGameMs = 当前时刻，无航行等待）。
  */
 export function startTransitHome(state: GameState, ctx: SimContext): CommandResult {
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：请先停止（活动栏「停止运输」，到站即止）。', errorId: 'core.location.001' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。请先到活动栏点「停止运输」。', errorId: 'core.location.001' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再返航。', errorId: 'core.location.002' }
   if (state.awayGalaxy === null) return { ok: false, error: '舰船已停靠空间站，无需返航。', errorId: 'core.location.003' }
   if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。', errorId: 'core.location.004' }
@@ -608,7 +608,7 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   if (hold) return { ok: false, error: hold }
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再转场。', errorId: 'core.location.023' }
+  if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再转场。', errorId: 'core.location.023' }
   const s = state.standby
   if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。', errorId: 'core.location.024' }
   if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能转场掩护巡逻——到站自动结算后再安排。', errorId: 'core.location.025' }

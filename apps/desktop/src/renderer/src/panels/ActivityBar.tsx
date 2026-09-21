@@ -268,6 +268,17 @@ export function ActivityBar({
   useEffect(() => {
     if (retreatAsk && !hasRetreatActivity) setRetreatAsk(false)
   }, [retreatAsk, hasRetreatActivity])
+  /**
+   * **长途运输的中断确认**（**2026-09-20 船长令**：「当玩家在跑长途运输，要切换其他主控活动打断长途运输时，
+   * 弹出一个警告，告诉玩家中断当前长途运输将无法获得本趟的报酬之类的」）：
+   * 与撤退同款两讨伐确认——第一下只警告（**本趟报酬到站才结，中断就拿不到**），再点一次才真停。
+   * 活动条目消失（运输已结束）时按同款 effect 复位，避免"状态卡在待确认"。
+   */
+  const [haulAsk, setHaulAsk] = useState(false)
+  const hasHaulActivity = playerItems.some((i) => i.stop === 'stop-hauling')
+  useEffect(() => {
+    if (haulAsk && !hasHaulActivity) setHaulAsk(false)
+  }, [haulAsk, hasHaulActivity])
 
   const renderItem = (v: ActivityView) => {
     const target = goFor(v.kind)
@@ -340,6 +351,20 @@ export function ActivityBar({
           }
           onClick={(e) => {
             e.stopPropagation() // 点击"停止/移除/撤退"不触发行跳转
+            /**
+             * **长途运输：先警告、再确认**（船长 2026-09-20）——中断本趟 = 这一趟的报酬拿不到。
+             * 与下面撤退那支同款两讨伐确认（第一次点只亮警告 + 提示，第二次点才执行）。
+             */
+            if (v.stop === 'stop-hauling') {
+              if (!haulAsk) {
+                setHaulAsk(true)
+                onToast(tr('ui.Hauling.033'), true)
+                return
+              }
+              setHaulAsk(false)
+              doStop(v, engine, onToast)
+              return
+            }
             if (v.stop !== 'retreat-battle') {
               doStop(v, engine, onToast)
               return
@@ -353,7 +378,11 @@ export function ActivityBar({
             doStop(v, engine, onToast)
           }}
         >
-          {v.stop === 'retreat-battle' && retreatAsk ? tr("ui.ActivityBar.024") : stopLabel(v)}
+          {v.stop === 'stop-hauling' && haulAsk
+            ? tr('ui.Hauling.034')
+            : v.stop === 'retreat-battle' && retreatAsk
+              ? tr("ui.ActivityBar.024")
+              : stopLabel(v)}
         </button>
       ) : null}
     </div>

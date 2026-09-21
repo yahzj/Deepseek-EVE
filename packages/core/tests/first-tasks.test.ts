@@ -22,6 +22,8 @@ import {
   firstStatOf,
   firstTaskBoard,
   firstTaskProgress,
+  firstTaskNotice,
+  firstTasksMarkSeen,
   milestoneBoard,
   FIRST_TASKS,
   advanceFirstChains,
@@ -48,6 +50,19 @@ function testState(): GameState {
   return createInitialState({ nowWallMs: 0, seed: 11 })
 }
 
+/**
+ * **把队列推到某条任务前面**（2026-09-20 船长报障「未显示的第一次任务可以提前完成」后新增）。
+ *
+ * `advanceFirstTasks` 现在**只判当前那一条**（`FIRST_TASKS` 里第一条没完成的）⇒ 想验"轮到它时会发生什么"，
+ * 就得先把排在它前面的任务标记完成。本函数**只写 done 标记**（奖励/通讯由 `advanceFirstTasks` 统一发），
+ * 不触发任何判定 ⇒ 断言到的奖励一定是"这一条自己发的"。
+ */
+function reachQueue(state: GameState, taskId: string): void {
+  const idx = FIRST_TASKS.findIndex((d) => d.id === taskId)
+  expect(idx, `未知任务 id：${taskId}`).toBeGreaterThanOrEqual(0)
+  for (const d of FIRST_TASKS.slice(0, idx)) state.importantTasks[d.id] = { done: true }
+}
+
 describe('「第一次」任务：卡片文案齐备（船长 2026-09-18：正文要"一定量的文本丰富"）', () => {
   it('13 条都写了 detail（一段话讲清怎么做/做什么/奖励）', () => {
     for (const def of FIRST_TASKS) {
@@ -68,14 +83,45 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     expect(state.importantTasks['first-mine']?.done).toBe(true)
   })
 
-  it('奖励只发一次：「第一次采集原矿」发采集器 MK1（船长 2026-09-18），重复推进不再加', () => {
-    const state = testState()
-    expect(startMining(state, BELT, ctx).ok).toBe(true)
-    for (let i = 0; i < 60 && state.importantTasks['first-mine']?.done !== true; i++) advanceGame(state, 5_000, ctx)
-    expect(state.moduleBay['mod-miner-1']).toBe(1)
-    // 再推进一段（计数继续涨）——奖励不再发第二次
-    for (let i = 0; i < 20; i++) advanceGame(state, 5_000, ctx)
-    expect(state.moduleBay['mod-miner-1']).toBe(1)
+  it('奖励前移（船长 2026-09-20：「采集器是扫描星系给，打捞器应该是挖矿任务给」）：两件工具都赶在用到它的那条之前', () => {
+    const mods = (id: string): string[] =>
+      (FIRST_TASKS.find((d) => d.id === id)?.reward?.modules ?? []).map((m) => m.moduleId)
+    expect(mods('first-scan')).toEqual(['mod-miner-1']) // 采集器 MK1
+    expect(mods('first-mine')).toEqual(['mod-salvager-1']) // 打捞器 MK1
+    expect(mods('first-salvage')).toEqual([]) // 打捞那条不再有实物奖励（只发情报信）
+    // 顺序解锁下：扫描 → 采矿 → 打捞 ⇒ 走到「第一次打捞残骸」时打捞器已经在手上
+    const order = FIRST_TASKS.map((d) => d.id)
+    expect(order.indexOf('first-mine')).toBeLessThan(order.indexOf('first-salvage'))
+    /**
+     * **同日第二条令**：「任务完成后额外给玩家 100 橄榄岩用于下一阶段任务」——
+     * 下一阶段是「第一次操作精炼炉」，精炼每批 100 单位 ⇒ 这批料正好凑够第一炉。
+     */
+    const wares = (id: string) => (FIRST_TASKS.find((d) => d.id === id)?.reward?.ware ?? []).map((w) => `${w.itemId}×${w.units}`)
+    expect(wares('first-mine')).toEqual(['ore-veldspar×100'])
+  })
+
+  it('奖励真的按新口径发：扫描给采集器 MK1、挖矿给打捞器 MK1 ＋ 100 橄榄岩（各只发一次）', () => {
+    // ① 扫描（非序章档：母港已点亮 ⇒ 首拍即判过）
+    const s1 = testState()
+    advanceGame(s1, 1000, ctx)
+    expect(s1.importantTasks['first-scan']?.done).toBe(true)
+    expect(s1.moduleBay['mod-miner-1']).toBe(1)
+    expect(s1.moduleBay['mod-salvager-1']).toBeUndefined()
+    for (let i = 0; i < 5; i++) advanceGame(s1, 1000, ctx)
+    expect(s1.moduleBay['mod-miner-1']).toBe(1) // 不双发
+    // ② 采矿（计数置位 ⇒ 下一拍判过）
+    const s2 = testState()
+    s2.importantTasks['first-scan'] = { done: true }
+    s2.firstStats = { ...(s2.firstStats ?? {}), mineUnits: 1 }
+    const oreBefore = s2.warehouse.items['ore-veldspar'] ?? 0
+    advanceGame(s2, 1000, ctx)
+    expect(s2.importantTasks['first-mine']?.done).toBe(true)
+    expect(s2.moduleBay['mod-salvager-1']).toBe(1)
+    expect(s2.moduleBay['mod-miner-1']).toBeUndefined() // 采集器不再挂这条
+    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore, '额外给 100 橄榄岩').toBe(100)
+    // 再推几拍：不双发
+    for (let i = 0; i < 5; i++) advanceGame(s2, 1000, ctx)
+    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore).toBe(100)
   })
 
   it('母港扫描窗口 = 10 秒（船长 2026-09-18）；其余星系照旧 10 分钟基准', () => {
@@ -100,6 +146,11 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
 describe('「第一次」任务：奖励（一次性）与计数落点回归', () => {
   it('「第一次学习技能」发基础 AI 核心 ×1（船长 2026-09-17：AI 核心放这条里给），且只发一次', () => {
     const state = testState()
+    /**
+     * ⚠ **顺序解锁下"轮到它"才判过**（2026-09-20 船长报障：未显示的任务不该提前完成）⇒
+     * 本用例钉的是"这一条完成时发什么"，故先把排在它前面的任务标记完成（= 队列走到它了）。
+     */
+    reachQueue(state, 'first-skill')
     expect(state.aiCores.basic ?? 0).toBe(0)
     // 判据 = AI 核心操作学 Lv1（训练过程由 training 侧用例覆盖）⇒ 这里直接置位再走一拍引擎
     state.skills.trained['ai-expert'] = 1
@@ -129,6 +180,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('港内付费维修记一次（任务：「用修理组件或港内维修修一次船」）＋ 奖励民用修理组件 ×20', () => {
     const state = testState()
+    reachQueue(state, 'first-repair') // 顺序解锁：先推到它前面
     state.wallet.isk = 500_000
     const fal = state.fleet['sh-falconet']!
     fal.armorPct = 0.4
@@ -144,6 +196,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次操作精炼炉」发动能弹药生产线蓝图（从②移到本条，船长 2026-09-18）', () => {
     const state = testState()
+    reachQueue(state, 'first-refine') // 顺序解锁：先推到它前面
     state.warehouse.items['ore-veldspar'] = 200
     expect(state.blueprintStock['bp-ammo-kinetic'] ?? 0).toBe(0)
     expect(startRefineRun(state, 'ore-veldspar', 'pilot', ctx).ok).toBe(true)
@@ -154,6 +207,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次完成悬赏」发一艘鲣鱼级（同型自动编号 #2，船长 2026-09-18）', () => {
     const state = testState()
+    reachQueue(state, 'first-bounty') // 顺序解锁：先推到它前面
     const before = Object.keys(state.fleet).length
     // 判据 = 胜场 ≥ 1；直接置位计数再走一拍引擎（战斗本身由战斗侧用例覆盖）
     state.firstStats = { ...(state.firstStats ?? {}), bountyWins: 1 }
@@ -189,6 +243,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次生产」发沙猫级舰船蓝图（2026-09-18 新建，不进市场、只靠本条发放）', () => {
     const state = testState()
+    reachQueue(state, 'first-produce') // 顺序解锁：先推到它前面
     expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(0)
     // 判据 = 组装机产出 ≥ 1 件；直接置位计数再走一拍引擎（制造链路由制造侧用例覆盖）
     state.firstStats = { ...(state.firstStats ?? {}), produceUnits: 1 }
@@ -199,6 +254,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
     const state = testState()
+    reachQueue(state, 'first-ship') // 顺序解锁：先推到它前面
     // 备料 + 学会沙猫级蓝图（正常路径里蓝图来自「第一次生产」的奖励）
     state.blueprintStock['sbp-sandcat'] = 1
     expect(learnBlueprint(state, ctx, 'sbp-sandcat').ok).toBe(true)
@@ -230,8 +286,9 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstTaskBoard(state).map((r) => r.def.id)).toEqual(['first-mine'])
 
     // ③ 一次跳完前两条 ⇒ 当前这条永远是"数组序里第一条没完成的"
+    //    ⚠ 第 3 条 = 「第一次操作精炼炉」（**2026-09-20 船长三选②**：它从第 6 条前移到采矿之后）
     state.importantTasks['first-mine'] = { done: true }
-    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-salvage'])
+    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-refine'])
 
     // ④ 13 条全完成 ⇒ 空数组（页头读数走 firstTaskProgress）
     for (const d of FIRST_TASKS) state.importantTasks[d.id] = { done: true }
@@ -243,6 +300,32 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     const s2 = testState()
     s2.importantTasks['first-scan'] = { done: true }
     expect(firstTaskProgress(s2)).toEqual({ done: 1, total: 13 })
+  })
+
+  it('未显示的第一次任务**不能提前完成**（2026-09-20 船长报障：「未显示的第一次任务可以提前完成」）', () => {
+    const state = testState()
+    // ① 把"排在后面几条"的判据统统先做掉：港内维修一次 ＋ 虫洞声望 40 ＋ 采矿计数 1
+    state.wallet.isk = 500_000
+    state.fleet['sh-falconet']!.armorPct = 0.4
+    expect(repairShip(state, 'sh-falconet', ctx).ok).toBe(true)
+    state.standings['dsi'] = 40
+    state.firstStats = { ...(state.firstStats ?? {}), mineUnits: 1 }
+    advanceGame(state, 1000, ctx)
+    // 只判过当前那一条（第一次扫描）——后面的一律不判过、奖励一件都不发
+    expect(Object.entries(state.importantTasks).filter(([, v]) => v.done === true).map(([k]) => k)).toEqual(['first-scan'])
+    expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(0)
+    expect(state.wormholeStock?.length ?? 0).toBe(0)
+
+    // ② 一拍最多判过一条：下一拍只前进到「第一次采集原矿」，不会顺手把精炼也判掉
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-mine']?.done).toBe(true)
+    expect(state.importantTasks['first-refine']?.done).toBeUndefined()
+
+    // ③ 自愈：轮到时按档内现状补齐（先前做的维修没白干，奖励照发）
+    reachQueue(state, 'first-repair')
+    advanceGame(state, 1000, ctx)
+    expect(state.importantTasks['first-repair']?.done).toBe(true)
+    expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(20)
   })
 
   it('里程碑页数据：`milestoneBoard` 给全部 13 条链、`unlocked` 只认"对应「第一次」已完成"', () => {
@@ -265,6 +348,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
 
   it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
     const state = testState()
+    reachQueue(state, 'first-wormhole') // 顺序解锁：先推到它前面
     state.standings['dsi'] = 40
     expect(state.wormholeStock?.length ?? 0).toBe(0)
     advanceGame(state, 1000, ctx)
@@ -336,6 +420,65 @@ describe('「寻找人类」发布闸门（2026-09-20 船长令：「只在完�
     expect(broken.importantTasks[TASK]).toBeUndefined()
     advanceGame(broken, 1000, ctx)
     expect(broken.importantTasks[TASK]?.done).toBe(false)
+  })
+})
+
+describe('导航「任务中心」的推进提醒（2026-09-20 船长令）', () => {
+  /**
+   * 船长原话：「**每推进一阶段第一次任务时，在导航栏的任务中心选项处进行提醒。**」
+   * 口径与「赏金新板提示」同款（换板未看 ⇒ 亮 · 进页记账 ⇒ 灭）：**当前那一条 ≠ 看过的这一条** ⇒ 亮。
+   */
+  it('推进一阶段 ⇒ 亮（带当前那一条的标题）；记账一次 ⇒ 灭且幂等；再推进 ⇒ 又亮', () => {
+    const s = testState()
+    /**
+     * ① **序章收尾已经替新档记过一笔**（开场信负责指路「待办清单在任务中心」）
+     * ⇒ 新档开局不亮（不是"没记过"）；老档不经过序章收尾 ⇒ 首帧亮一次（与本组第 3 例）。
+     */
+    beginAfterAwaken(createInitialState({ nowWallMs: 0, seed: 11, prologue: true }))
+    expect(firstTaskNotice(s), '当前是「第一次扫描」且没记过账 ⇒ 亮（老档语义）').toEqual({
+      taskId: 'first-scan',
+      title: '第一次扫描',
+    })
+    // ② 记一笔 ⇒ 灭；同一条重复记账返回 false（幂等）
+    expect(firstTasksMarkSeen(s)).toBe(true)
+    expect(firstTaskNotice(s)).toBeNull()
+    expect(firstTasksMarkSeen(s)).toBe(false)
+    expect(s.firstTaskSeenId).toBe('first-scan')
+    // ③ 推进一阶段（完成扫描）⇒ 下一条顶上 ⇒ 又亮，且标题换成新那条
+    s.importantTasks['first-scan'] = { done: true }
+    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-mine', title: '第一次采集原矿' })
+    expect(firstTasksMarkSeen(s)).toBe(true)
+    expect(firstTaskNotice(s)).toBeNull()
+  })
+
+  it('序章收尾会记一笔 ⇒ **新档开局不亮**，第一次推进后才亮', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 11, prologue: true })
+    expect(firstTaskNotice(s), '演出期间还没记账').not.toBeNull()
+    beginAfterAwaken(s)
+    expect(s.firstTaskSeenId).toBe('first-scan')
+    expect(firstTaskNotice(s), '序章收尾已提示过第一条 ⇒ 不亮').toBeNull()
+    s.importantTasks['first-scan'] = { done: true }
+    expect(firstTaskNotice(s)?.taskId).toBe('first-mine') // 推进后才亮
+  })
+
+  it('13 条全做完 ⇒ 不亮（没有"当前那一条"）；记账也不写键', () => {
+    const s = testState()
+    for (const d of FIRST_TASKS) s.importantTasks[d.id] = { done: true }
+    expect(firstTaskNotice(s)).toBeNull()
+    expect(firstTasksMarkSeen(s)).toBe(false)
+    expect(s.firstTaskSeenId).toBeUndefined()
+  })
+
+  it('存档往返：记账随档；**没记过账就不写这个键**（老档与新档快照逐字一致 = 真零迁移）', () => {
+    const fresh = testState()
+    const raw = JSON.parse(serializeSaveFile(fresh, 1)) as { state: Record<string, unknown> }
+    expect('firstTaskSeenId' in raw.state, '没记过账不该冒出这个键').toBe(false)
+    expect(loadSaveFile(serializeSaveFile(fresh, 1)).state.firstTaskSeenId).toBeUndefined()
+    // 记过账 ⇒ 往返保留（徽标也不再亮）
+    firstTasksMarkSeen(fresh)
+    const back = loadSaveFile(serializeSaveFile(fresh, 1)).state
+    expect(back.firstTaskSeenId).toBe('first-scan')
+    expect(firstTaskNotice(back)).toBeNull()
   })
 })
 

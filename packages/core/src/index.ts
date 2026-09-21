@@ -281,6 +281,12 @@ export {
   curveMult,
   gapCombine,
   sameKindCount,
+  /**
+   * **"该件属于哪一路回转冷却"**（2026-09-21 船长令「不同型号就要独立的回转冷却」）：
+   * 力场 / 护盾充能 / 维修三类周期脉冲装置按**型号**拆路；非这三类返回 `null`。
+   * ⚠ 与 `stackingOf` 的**衰减池**是两件事：衰减按全族（换型号绕不开），冷却按型号（各走各的）。
+   */
+  pulseStreamOf,
 } from './equipment'
 
 export {
@@ -775,6 +781,11 @@ export {
   shieldFieldOf,
   preloadShieldFieldFor,
   pulseShieldFieldFor,
+  // **逐型号脉冲流**（2026-09-21 船长令「不同型号就要独立的回转冷却」）：读数/工具用逐路入口——
+  // 每路一个型号、各带自己的比例与间隔（衰减仍按全族合并，见 `equipment.stackingOf` 的 kind）
+  shieldFieldStreamsOf,
+  shieldChargeStreamsOf,
+  repairStreamsOf,
   // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
   DRONE_SKILL,
   // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，
@@ -964,11 +975,16 @@ export {
   firstTaskBoard,
   totalSkillLevels,
   dsiStanding,
+  /* 导航「任务中心」的推进提醒（船长 2026-09-20：每推进一阶段第一次任务时提醒）——
+     判定与记账的单点，界面只读它 */
+  firstTaskNotice,
+  firstTasksMarkSeen,
 } from './firstTasks'
 /* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
 export { grantFirstReward } from './firstRewards'
-/* 成就徽章（2026-09-20 船长批「继续之前的成就系统」· 第一批 = 徽章框架，63 枚，已完成并合入 main）
- * 第二批（里程碑成就内容）尚未实现 —— 落点见 core/achievements.ts 头注释；本处不挂未完成记号 */
+/* 成就徽章（2026-09-20 船长批「继续之前的成就系统」）——**两批都已完成并合入 main**：
+ * 第一批 = 徽章框架 63 枚 · 第二批 = 里程碑成就 18 枚（判据 = 终身计数达阈值，六个计数键由
+ * `engine.reconcileMilestoneStats` 每拍现算兜底）。本处**不挂未完成记号**（§十一之二）。 */
 export {
   achievementReached,
   advanceAchievements,
@@ -1098,6 +1114,8 @@ export {
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
   wormholeEntryBlockReason,
+  // 欠着一场战斗（遗迹守备被惊动 / 踩中埋伏）⇒ 层内动作的拒因单点（2026-09-20：打捞那一口也过它）
+  wormholePendingBattleReason,
   // 船长 2026-09-14：「进洞自动停止」——扫描虫洞 / 开采 / 打捞 三项会在进洞那一刻自动停掉
   wormholeEntryAutoStops,
   wormholeShipEntryBusy,
@@ -1199,6 +1217,12 @@ export {
   wormholeSignalWeightsFor,
   wormholeRuinsShareFor,
   wormholeRuinsFloorBonusFor,
+  /**
+   * ⚠ **2026-09-20 补导出**：`tools/content-check.ts` 一直在 import 它，但它此前**没进过这道门**
+   * ⇒ 运行时拿到 `undefined` ⇒ 那条「每层保底谜质格数 ≥ 1」的契约**静默失效**（`undefined < 1` 恒假）。
+   * 这是"tools 不在 typecheck 覆盖面内"的一个真实样本（另见 `npm run skill:audit` 那条假技能 id）。
+   */
+  WORMHOLE_MATTER_FLOOR,
 } from './wormholeGrid'
 export type {
   HexCell,

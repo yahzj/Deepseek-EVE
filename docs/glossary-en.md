@@ -142,7 +142,7 @@
 | sh-nautilus | 鹦鹉螺级测绘巡洋舰 | `Nautilus-class Survey Cruiser` |
 | sh-tortoise | 陆龟级重装艇 | `Tortoise-class Heavy Corvette` |
 | sh-hawksbill | 玳瑁级重装巡舰 | `Hawksbill-class Heavy Cruiser` |
-| sh-xuanwu | 玄武级重装旗舰 | `Leatherback-class Heavy Flagship` | 棱皮龟（海龟里最大的一型，船长 2026-09-19 裁决） |
+| sh-xuanwu | 玄武级重装战列舰 | `Leatherback-class Heavy Battleship` | 棱皮龟（海龟里最大的一型，船长 2026-09-19 裁决）；尾字 2026-09-21 由「旗舰」改「战列舰」（船长「玄武级是战列，不是旗舰」） |
 | sh-megalodon | 巨齿鲨级战列舰 | `Megalodon-class Battleship` |
 | sh-dunkleosteus | 邓氏鱼级旗舰 | `Dunkleosteus-class Flagship` |
 | sh-flyingfish | 飞鱼级快运舰 | `Flyingfish-class Courier` |
@@ -215,7 +215,7 @@
 |---|---|---|
 | ① | 货币 | **`credit` / `credits`**（英文侧不用 ISK；中文侧仍写「信用点」）⇒ `content:check` 的禁用词契约**无需按语言分叉**（英文侧同样不出现 ISK/EVE/NPC） |
 | ② | 谜质 / 谜质装置 | **`Enigma` / `Enigma Device`** |
-| ③ | 玄武级 | **用某类大型海龟的英文** ⇒ 定为 `Leatherback-class`（棱皮龟，海龟中最大的一型，配「重装旗舰」） |
+| ③ | 玄武级 | **用某类大型海龟的英文** ⇒ 定为 `Leatherback-class`（棱皮龟，海龟中最大的一型，配「重装战列舰」） |
 | ④ | 老陈一队 / 检索重启 | **`Chen's Crew No.1`** ✓ · `Recall & Restart` 沿用（船长认可；改名随时说） |
 | ⑤ | 鲸吞级 | **`Whaleswallow-class`**（直译保留意象） |
 

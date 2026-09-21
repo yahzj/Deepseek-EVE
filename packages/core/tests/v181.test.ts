@@ -110,6 +110,23 @@ describe('V18.1 收敛机制（纯函数）', () => {
       kind: 'hull-plasma',
     })
     expect(stackingOf(moduleDef('lk1', 'support', 0, { rack: 'mid', lockDmgBonus: 0.2 }))).toEqual({ group: 'curve', kind: 'lock' })
+    /**
+     * **两件「按周期脉冲」的装置**（2026-09-21 补登 + 改口径 · 船长「护盾充能立场不是多件衰减吗」）：
+     * 它们原先**掉在 `flat` 兜底里** ⇒ 装配页把"多件"标成**全额叠加**，而引擎一直在按 EVE 曲线折减
+     * （面板与实际不符）。现归 `weighted` 并给**同族收敛键** ⇒ MK2/MK3 混装同池。
+     */
+    expect(stackingOf(moduleDef('sf1', 'shield', 0, { rack: 'high', shieldFieldPct: 0.1, shieldFieldMs: 10_000 }))).toEqual({
+      group: 'weighted',
+      kind: 'shield-field',
+    })
+    expect(stackingOf(moduleDef('sc1', 'shield', 0, { rack: 'mid', shieldPulsePct: 0.12 }))).toEqual({
+      group: 'weighted',
+      kind: 'shield-charge',
+    })
+    // 两族**互不同池**（力场与中槽充能装置是两套独立机制，可同装、各按各的节奏跳）
+    expect(stackingOf(moduleDef('sf2', 'shield', 0, { rack: 'high', shieldFieldPct: 0.1 })).kind).not.toBe(
+      stackingOf(moduleDef('sc2', 'shield', 0, { rack: 'mid', shieldPulsePct: 0.12 })).kind,
+    )
   })
 })
 

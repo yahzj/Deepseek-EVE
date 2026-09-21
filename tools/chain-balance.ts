@@ -36,6 +36,7 @@ import { cargoCapacityM3Of } from '../packages/core/src/inventory'
 import type { SimContext } from '../packages/core/src/types'
 import { CHAIN_TIERS, FIRST_TASKS } from '../packages/core/src/firstTasks'
 import { wormholeNodesPerLayer } from '../packages/core/src/wormholeFoes'
+import { wreckDensityOf } from '../packages/core/src/salvage'
 import { wormholeScanWindowMs } from '../packages/core/src/wormholeScan'
 import {
   COURIER_TASK_LEVEL_FREIGHT_ISK,
@@ -158,7 +159,12 @@ function runUntil(s: GameState, cond: () => boolean, budgetMs: number, stepMs = 
 // ── ③ 打捞残骸：需先在邻星系找到残骸点（扫描 10 分钟 + 航程 + 一个打捞循环）──
 {
   const { state: s } = loadSaveFile(readFileSync(join(process.cwd(), 'docs', 'test-saves', 'test-save-lairgear-20260912-174550.json'), 'utf8'))
-  const wreckGal = [...ctx.galaxies.keys()].find((g) => g !== HOME && (ctx.wrecks?.has?.(g) ?? false))
+  /**
+   * ⚠ **2026-09-20 修**：这里原先写 `ctx.wrecks?.has?.(g)` —— `SimContext` **没有 `wrecks` 这个字段**
+   * （残骸组现在是 `ctx.wreckGroups`，密度走 `wreckDensityOf`）⇒ 那句 `?.` 永远短路成 false、
+   * `wreckGal` 恒为 undefined ⇒ 读数里那句"（该档无已知残骸星系…）"永远挂着。改成按密度判。
+   */
+  const wreckGal = [...ctx.galaxies.keys()].find((g) => g !== HOME && wreckDensityOf(s, g, ctx) > 0)
   const legMs = oneLegMs(s, ctx, undefined, undefined)
   say('③ 第一次打捞残骸', `≈ ${min(10 * 60_000 + legMs)} 起`, `邻星系扫描 10 分钟 ＋ 往返航程（母港单程 ${min(legMs)}）＋ 一个打捞循环；${wreckGal ? '' : '（该档无已知残骸星系，按"先扫到有残骸的星系"估）'}`)
 }

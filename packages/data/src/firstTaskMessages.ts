@@ -22,6 +22,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '星图上那些只剩剪影的位置，是尚未解读的未知信号；派深空扫描艇跑一趟就能点亮它。',
       '点亮之后，那处星系的矿带、航道与驻留势力才会进入可作业清单。',
+      '随信附一台采集器 MK1——装上它，采掘效率更高。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-scan' },
     hint: { text: '去星图看看点亮了哪些地方', page: 'map' },
@@ -34,7 +35,8 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     subject: '档案补全 · 采矿与精炼',
     body: [
       '矿带产出原矿；精炼炉把原矿炼成原材料，原材料才是绝大多数蓝图的用料。',
-      '随信附一台采集器 MK1——装上它，采掘效率更高。',
+      '随信附一台打捞器 MK1——装上即可用于打捞作业。',
+      '另附 100 单位橄榄岩：精炼炉每批要 100 单位，这批料够开第一炉。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-mine' },
     hint: { text: '去工业页看看精炼炉与组装机', page: 'industry' },
@@ -48,7 +50,6 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '残骸堆拆解出的保底原材料可直接入炉；带稀有标记的残骸价值更高。',
       '回收炉能把残骸里的旧件重新解体成整件装备，值得留一批专门拆。',
-      '随信附一台打捞器 MK1——装上即可用于打捞作业。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-salvage' },
     hint: { text: '在星图里挑一处残骸地点', page: 'map' },

@@ -14,6 +14,8 @@ import {
   simulateOffline,
 } from '../src/simulation'
 import { formatDurationShort } from '../src/time'
+import { FIRST_TASKS } from '../src/firstTasks'
+import { TASK_FIND_HUMANS } from '../src/onboarding'
 import { makeTestCtx, ore, ship, skill } from './helpers'
 
 describe('离线切分', () => {
@@ -121,6 +123,15 @@ describe('离线结算：采矿产出与摘要', () => {
   it('没在开采时离线：不产生采集摘要，事件计数不为负', () => {
     const state = createInitialState({ nowWallMs: 1_000, seed: 1 })
     const ctx = makeTestCtx()
+    /**
+     * ⚠ 先清掉"开局那一拍就会判过「第一次扫描」"的噪声（母港本就已点亮）：
+     * 2026-09-20 起它带奖励（采集器 MK1）⇒ 离线窗口里会多一条奖励日志，而本用例的
+     * "事件条数 = 新增日志 − 1"（`simulation.ts` 的粗口径）就会数出 1 而不是 0。
+     * 本用例只钉"无事件时计数为 0 而不是 -1"这条回归 ⇒ 把 13 条「第一次」标记为已完成、
+     * 贯穿任务标记为已发布（否则闸门也会补一条发布日志）。
+     */
+    for (const def of FIRST_TASKS) state.importantTasks[def.id] = { done: true }
+    state.importantTasks[TASK_FIND_HUMANS] = { done: false }
     simulateOffline(state, 1_000, 1_000 + 600_000, ctx)
     const summary = state.logs.find((l) => l.text.includes('离线结算完成'))
     expect(summary!.text).not.toContain('离线采集')

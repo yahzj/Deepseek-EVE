@@ -21,6 +21,12 @@
  * 次数链**同一本账**；而那本账是**可选字段 + 缺省 0** ⇒ 老档天然自愈（载入后第一拍把够格的补齐），
  * 既不用写迁移、也不用升级存档版本。四个新计数键（`rareBoxes` / `whMaxDepth` / `whBossClears` /
  * `matterTechMaxed`）见 `FirstStatKey`；其中两个是**峰值型**（`peakFirst`，只升不降、幂等）。
+ *
+ * ⚠ **2026-09-20 船长令「里程碑都加入追溯检查」**：光靠"账本缺省 0 + 每拍补发"只能补**账上已经有的**计数，
+ * 而六个键原先**只在事件点记账** ⇒ "事件发生在成就系统之前"的档（老档、先做完再更新）永远补不上
+ * （玩家报障「已经建好了的空间站无法完成成就」就是这个）。现在**六个键全部**由引擎每拍现算兜底
+ * （`engine.reconcileMilestoneStats`，`peakFirst` 只抬不降）⇒ 能推导的一律追溯补齐；
+ * 推导来源与精度（哪些是精确值、哪些只是下界）逐条写在那个函数里。
  */
 import type { GameState } from './state'
 import type { AchievementDef, AchievementSource } from './types'
