@@ -1187,8 +1187,20 @@ export function WormholePanel({
    * 全屏战场 `.app-battle-screen` 的层级低于弹层遮罩（100 vs 120）⇒ 只要面板还开着就**必然压住战斗**。
    * 这里直接在战斗中不渲染（`whOpen` 仍为真 ⇒ 战斗结束、收口完成后**面板自动回来**，玩家不用再点一次）。
    * ⚠ 这条是"几何层级的硬保证"，与"迎战前先确认再跳转"那道流程互为兜底。
+   *
+   * ⚠⚠ **例外：人不在洞里（`attending !== true`）时必须照常渲染**（**2026-09-21 修船长报障
+   * 「进入虫洞战斗后双方不开火、也不移动改变距离」**）。为什么不渲染会把玩家**锁死**：
+   * 恢复入口（「返回虫洞」⇒ `wormholeResume`）**只在本面板的 effect 里**（见下面那个 `useEffect`）
+   * ⇒ 本行 `return null` 一执行，恢复入口就**根本不渲染**，而洞内一切（含战斗）在 `attending !== true`
+   * 时是**冻结**的（`advanceWormhole` 第一道门）⇒ 战斗永远不会结束 ⇒ 面板永远不回来 ⇒
+   * **玩家点不回虫洞、这一趟连同战斗永久卡住**（旧档缺 `attending` 字段即落进这个死锁，真档实测）。
+   *
+   * 所以判据收紧成"**人在洞里 + 战斗中**"：正常路径（`attending === true`）逐字不变——照样不渲染、
+   * 战场照样独占；只有异常态才放行渲染，让玩家**够得着**恢复入口把 `attending` 拉回 `true`
+   * （`wormholeResume` 会按离开时长前移战斗时钟 ⇒ 战斗从原处续打，不补算、不白掉血）。
+   * 渲染上去也不会压住战场读数：同一趟在途战斗在 `attending` 变 `true` 的下一拍就回到不渲染。
    */
-  if (!auto && run?.battle) return null
+  if (!auto && run?.battle && run.attending === true) return null
 
   return (
     <div className="app-modal-mask" onClick={handleClose}>
