@@ -1948,16 +1948,19 @@ function doWormhole(): boolean {
      * 真正跨趟留存的是 `armorPct` / `durability` ⇒ 只有把它们打出来，才能判断
      * "到达第 1 层 40%"是"进场就残"还是"打了一场很贵的胜仗"。
      *
-     * ⚠⚠ **两者取值是 0~100，不是 0~1**（2026-09-21 踩到，害我误判一整轮）：
-     * 首版写成 `Math.round((f.armorPct ?? 1) * 100)`，于是存的是 26 时打印成 **2600%**；
-     * 更糟的是我把"残船准入闸"写成 `>= 0.25`，在那个尺度下**恒为真**、闸完全没生效，
-     * 于是一边以为"已经挡掉残船了"、一边看着 `甲0%` 的船照样进洞。默认值也因此要是 **100**。
+     * ⚠⚠ **刻度是 0~1，`1` = 满**（2026-09-21 用原始值实测确认：`甲1/结1`、`甲0/结0.05`、
+     * `甲0.5401848541555258/结1`；引擎侧 `repairCostIsk` 也按 `1 - armorPct` 算缺失量）。
+     * **所以这里原样打印、不做任何换算** —— 我先前乘过 100、又把"×100 后是 26"读成
+     * "存的是 26"，据此按 0~100 去调"残船准入闸"（`>= 0.25` 在 0~1 下本来是对的），
+     * 白花了一整轮。教训：**打印原始值**，别在日志里做换算。
      */
     const armor = fleetIds
       .map((uid) => {
         const f = state.fleet[uid]
         if (!f) return null
-        return `甲${Math.round(f.armorPct ?? 100)}%结${Math.round(f.durability ?? 100)}%`
+        const a = f.armorPct ?? 1
+        const d = f.durability ?? 1
+        return `甲${a.toFixed(2)}/结${d.toFixed(2)}`
       })
       .filter((x): x is string => !!x)
     mark(`虫洞进洞（第 ${whStats.entries} 趟 · 编队 ${fleetIds.length} 艘 · ${armor.join(' ')}）`)
