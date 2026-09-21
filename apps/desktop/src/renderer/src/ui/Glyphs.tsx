@@ -419,6 +419,16 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M12 8.9c1.5 1 2.7 1.4 3.5 1.5v2.8c0 2.4-1.5 3.8-3.5 4.5-2-.7-3.5-2.1-3.5-4.5v-2.8c.8-.1 2-.5 3.5-1.5z" />
     </g>
   ),
+  'shield-field': (
+    <g>
+      {/* 护盾充能力场装置（2026-09-20 船长）：护盾族**高槽**件 —— 盾形外套**两圈扩散环**
+          （力场 = 向外扩散的场，与中槽 shield 的"盾 + 内层"造型区分开） */}
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M12 10.2c.9.6 1.6.8 2.1.9v1.7c0 1.4-.9 2.2-2.1 2.6-1.2-.4-2.1-1.2-2.1-2.6v-1.7c.5-.1 1.2-.3 2.1-.9z" />
+      <path d="M8.6 12.6a3.4 3.4 0 0 0 6.8 0" />
+      <path d="M7.4 13.8a4.6 4.6 0 0 0 9.2 0" />
+    </g>
+  ),
   armor: (
     <g>
       <rect x="7" y="7" width="10" height="10" rx="1.7" />
@@ -1118,6 +1128,7 @@ export const TONES: Record<string, string> = {
   missile: '#ff9a6b',
   laser: '#c792ea',
   shield: '#6cb6ff',
+  'shield-field': '#8fd0ff', // 2026-09-20 护盾力场（高槽）：淡一档的盾蓝（与中槽 shield 同族可辨）
   armor: '#cdd6e0',
   propulsion: '#ffb454',
   'drone-rack': '#ffc46b',

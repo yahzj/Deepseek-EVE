@@ -780,6 +780,20 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
     { key: 'mod-wh-g-hull', kind: 'module', refId: 'mod-wh-g-hull', rarity: 'exotic', basePrice: 6_718_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂结构层（料÷0.45×4）
     { key: 'mod-wh-g-turret', kind: 'module', refId: 'mod-wh-g-turret', rarity: 'exotic', basePrice: 6_306_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军残炮（料÷0.45×4）
     { key: 'mod-wh-g-prop', kind: 'module', refId: 'mod-wh-g-prop', rarity: 'exotic', basePrice: 4_709_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵推进器（料÷0.45×4）
+  /* ── 护盾充能力场装置（2026-09-20 船长：「新增高槽装备，护盾充能力场装置 MK2……装备成品在奇货。
+     MK2 和 MK3 的稀有度分别是 4 和 5。平均价格分别是 400W 和 2000W」）
+     ⚠ **本批首次：成品可买**（不写 `playerBuyable` = 默认 true）——与上面那批"只收不卖"的
+        虫洞专属件**不同**，因为船长给的是一句"装备成品在奇货"（上架售卖口径）。
+     稀有度档住在 `rarityTier.ts` 的 `RARITY_TIER` 表（**单点**，本行不带档）⇒ 查得 4 / 5。── */
+    { key: 'mod-shieldfield-2', kind: 'module', refId: 'mod-shieldfield-2', rarity: 'exotic', basePrice: 4_000_000, demandMultiplier: 0.75 }, // 船长定平均价 400 万 · 稀有度 4
+    { key: 'mod-shieldfield-3', kind: 'module', refId: 'mod-shieldfield-3', rarity: 'exotic', basePrice: 20_000_000, demandMultiplier: 0.75 }, // 船长定平均价 2000 万 · 稀有度 5
+  /* ── 护盾充能力场装置的**一次性图纸**（船长：「都只有一次性蓝图。**一次性蓝图在稀有**」）
+     ⚠ 与全仓既有 31 张一次性图（全在奇货且 `playerBuyable: false`）不同：这两张**在稀有渠道、
+       可买**（船长原话）；书价 = 产物价（一次性图既有口径 ⇒ 400 万 / 2000 万）。
+     ⚠ 档位与装备一致（船长：「和装备一致稀有度」）⇒ 4 / 5；**这会让 rare 渠道出现档 5**，
+       与既有"rare 带 2~4"的契约冲突 ⇒ 按 §5.2 已把该带放宽为 **2~5** 并记入 changelog。── */
+    { key: 'bp-shieldfield-2', kind: 'blueprint', refId: 'bp-shieldfield-2', rarity: 'rare', basePrice: 4_000_000, demandMultiplier: 0.7 },
+    { key: 'bp-shieldfield-3', kind: 'blueprint', refId: 'bp-shieldfield-3', rarity: 'rare', basePrice: 20_000_000, demandMultiplier: 0.7 },
   // ── 虫洞舰船 15 艘（`sh-wh-*`：定制船，`priceIsk` 仍为 0 = 定制口径，契约「舰船价格口径」守）──
     { key: 'sh-wh-a-frigate', kind: 'ship', refId: 'sh-wh-a-frigate', rarity: 'exotic', basePrice: 2_306_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰（料÷0.45×4）
     { key: 'sh-wh-a-destroyer', kind: 'ship', refId: 'sh-wh-a-destroyer', rarity: 'exotic', basePrice: 5_109_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰（料÷0.45×4）

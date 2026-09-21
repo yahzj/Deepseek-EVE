@@ -772,6 +772,9 @@ export {
   // 护盾充能脉冲周期（2026-09-14 船长新增件：同上，说明里的「每 30 秒」与它同源）
   SHIELD_PULSE_MS,
   shieldPulsePctOf,
+  shieldFieldOf,
+  preloadShieldFieldFor,
+  pulseShieldFieldFor,
   // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
   DRONE_SKILL,
   // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，

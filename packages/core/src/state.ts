@@ -840,6 +840,16 @@ export interface BattleState {
    * 缺省（老档在途战斗）⇒ 退化成"只有主控充能"，即旧行为。
    */
   shieldChargeBy?: Record<string, BattleShieldChargeLedger>
+  /* ═══ 护盾充能力场装置（2026-09-20 船长：「新增高槽装备，护盾充能力场装置 MK2，为所有我方舰船
+     恢复 10% 护盾，冷却时间 10 秒，MK3 的冷却时间缩短至 8 秒。有叠加惩罚」）——高槽 · 护盾族 ═══ */
+  /**
+   * **逐舰力场账本**（键 = 战斗 tag、含 `player`；与 `shieldChargeBy` 分开：机制不同 ⇒ 两套计时）。
+   *
+   * 与护盾充能装置的三点区别：① **受益方是全队**（不是只本舰）；② **冷却按件自带**
+   * （MK2 = 10 秒 / MK3 = 8 秒，见 `msPerPulse`）；③ 同舰多件仍按 EVE 曲线收敛（"有叠加惩罚"）。
+   * 缺省 = 本场没装该族件（零行为变化）。
+   */
+  shieldFieldBy?: Record<string, BattleShieldFieldLedger>
   /**
    * **敌方后勤账本**（船长 2026-09-16：「**敌人后勤舰则是将 50% 的自身DPS转换为修理值**」＋
    * 「**敌方的修理无法以其他敌方后勤舰为目标（包括自己）**」）。
@@ -1143,6 +1153,21 @@ export interface BattleShieldChargeLedger {
   /** 每跳合计比例（**满盾的几分之几**；同型多件已按 EVE 曲线收敛） */
   pctPerPulse: number
   /** 下一脉冲战斗时刻（开战 = startedAt + 30 秒）；缺省 = 不调度 */
+  nextPulseAtMs?: number
+  /** 累计脉冲次数（战报/读档续战用） */
+  pulses: number
+}
+
+/**
+ * **力场账本**（2026-09-20 船长「护盾充能力场装置」；与 `BattleShieldChargeLedger` 分开存，
+ * 因为**冷却按件**、且受益方是**全队**）。
+ */
+export interface BattleShieldFieldLedger {
+  /** 每跳合计比例（**各受益舰自己满盾的几分之几**；同舰多件已按 EVE 曲线收敛） */
+  pctPerPulse: number
+  /** **本件自带的冷却**（ms；MK2 = 10 000 · MK3 = 8 000；同舰多件取最短那一档） */
+  msPerPulse: number
+  /** 下一脉冲战斗时刻（开战 = startedAt + msPerPulse）；缺省 = 不调度 */
   nextPulseAtMs?: number
   /** 累计脉冲次数（战报/读档续战用） */
   pulses: number

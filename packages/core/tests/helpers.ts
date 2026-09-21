@@ -200,6 +200,10 @@ export function moduleDef(
     hullHpBonus?: number
     /** 护盾充能装置（2026-09-14 船长新增件）：每 30 秒脉冲回满盾的此比例（0.12 = 12%） */
     shieldPulsePct?: number
+    /** 护盾充能力场装置（2026-09-20 船长新增件 · 高槽）：每跳给**全队**回各自满盾的此比例 */
+    shieldFieldPct?: number
+    /** 护盾充能力场装置的**冷却**（ms；MK2 = 10 000 · MK3 = 8 000） */
+    shieldFieldMs?: number
     /** 跃迁计算机（2026-09-14 船长新增件）：星系际航行跃迁速度加成（0.2 = +20%；多装递减） */
     warpSpeedBonusPct?: number
     /** 附加伤害段（掠袭破片炮）：主段实收 ×本值，副弹种缺省 kinetic */
@@ -267,6 +271,9 @@ export function moduleDef(
     ...(opts?.hullHpBonus !== undefined ? { hullHpBonus: opts.hullHpBonus } : {}),
     // 2026-09-14 护盾充能装置（缺省不写 ⇒ 既有用例零变化）
     ...(opts?.shieldPulsePct !== undefined ? { shieldPulsePct: opts.shieldPulsePct } : {}),
+    // 2026-09-20 护盾充能力场装置（高槽；缺省不写 ⇒ 既有用例零变化）
+    ...(opts?.shieldFieldPct !== undefined ? { shieldFieldPct: opts.shieldFieldPct } : {}),
+    ...(opts?.shieldFieldMs !== undefined ? { shieldFieldMs: opts.shieldFieldMs } : {}),
     // 2026-09-14 跃迁计算机（缺省不写 ⇒ 既有用例零变化）
     ...(opts?.warpSpeedBonusPct !== undefined ? { warpSpeedBonusPct: opts.warpSpeedBonusPct } : {}),
     ...(opts?.secondaryDamagePct !== undefined ? { secondaryDamagePct: opts.secondaryDamagePct } : {}),

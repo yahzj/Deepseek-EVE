@@ -3110,6 +3110,77 @@ export function preloadShieldChargeFor(
   return { pctPerPulse, nextPulseAtMs: undefined, pulses: 0 }
 }
 
+/* ══════════════ 护盾充能力场装置（2026-09-20 船长；高槽 · 护盾族）══════════════
+   船长原话：「**新增高槽装备，护盾充能力场装置 MK2，为所有我方舰船恢复 10% 护盾，
+   冷却时间 10 秒，MK3 的冷却时间缩短至 8 秒。有叠加惩罚**」＋ 追问三答：
+   ① **叠加惩罚 = 同舰多件才算**（多艘船各带一件 ⇒ 各自独立、可叠加）
+   ② **10% 按携带者自己的满盾**（即每艘被治疗的船按**它自己**那本账算） */
+/**
+ * **力场每跳的合计比例 ＋ 该用哪个冷却**（装配单点，形状照抄 `shieldPulsePctOf`）。
+ *
+ * 冷却取所装各件的**最短一档**（只有最短那条在跑 ⇒ 多件时的实际节奏）：
+ * 同舰「MK2 ＋ MK3」= 每 8 秒一跳、比例按 `stackWeight` 收敛过的合计。
+ * 无该族件 ⇒ `{ pct: 0, ms: 0 }`（零行为变化）。
+ */
+export function shieldFieldOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): { pct: number; ms: number } {
+  const ship = state.fleet[shipId]
+  if (!ship) return { pct: 0, ms: 0 }
+  const seen = new Map<string, number>()
+  let total = 0
+  let ms = 0
+  for (const d of allFittedModules(ship.fitted, ctx)) {
+    const pct = d.shieldFieldPct ?? 0
+    if (pct <= 0) continue
+    // **同舰多件按 EVE 曲线收敛**（船长要求"有叠加惩罚"）——与护盾充能装置同一把尺
+    const n = (seen.get(d.id) ?? 0) + 1
+    seen.set(d.id, n)
+    total += pct * stackWeight(n)
+    const dms = d.shieldFieldMs ?? 0
+    if (dms > 0 && (ms === 0 || dms < ms)) ms = dms
+  }
+  return { pct: total, ms }
+}
+
+/** 力场开战快照（每跳合计比例 ＋ **按件自带的冷却**）；无该族件返回 `null` */
+export function preloadShieldFieldFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): import('./state').BattleShieldFieldLedger | null {
+  const { pct, ms } = shieldFieldOf(state, ctx, shipId)
+  if (pct <= 0 || ms <= 0) return null
+  // `nextPulseAtMs` 恒为 undefined——由 `startBattleFor` 按开战时刻赋值（与另两套装置同款）
+  return { pctPerPulse: pct, msPerPulse: ms, nextPulseAtMs: undefined, pulses: 0 }
+}
+
+/**
+ * **单次力场脉冲**：对**我方全队存活单位**各按其**自身满盾**补 `pct` 比例（船长：
+ * 「为**所有我方舰船**恢复 10% 护盾」＋「按携带者自己的满盾」⇒ 每艘被治疗的船按它自己那本账）。
+ *
+ * ⚠ **施放者阵亡 ⇒ 本次不跳**（与维修/护盾充能装置同款：人没了装置就停）；但**受益方**是
+ * 全队存活单位 ⇒ 与"只治自己"的 `pulseShieldChargeFor` 是两回事。
+ * 死亡单位跳过（`isAlive`）——护士不拉尸体，与全仓口径一致。
+ */
+export function pulseShieldFieldFor(
+  b: import('./state').BattleState,
+  myUnits: readonly UnitSpec[],
+  ledger: import('./state').BattleShieldFieldLedger,
+): void {
+  const gain = Math.max(0, ledger.pctPerPulse)
+  if (gain <= 0) return
+  for (const u of myUnits) {
+    const rt = b.units[u.tag]
+    if (!rt || !isAlive(b, u.tag)) continue
+    const capS = Math.max(0, rt.hpMax?.s ?? u.hp.s)
+    if (capS <= 0) continue
+    rt.hp.s = Math.min(capS, rt.hp.s + capS * gain)
+  }
+}
+
 /**
  * **单次护盾充能脉冲（逐舰）**：按**该舰满盾 × 每跳比例**补**它自己**的护盾层（夹在满盾）。
  *
@@ -4157,6 +4228,8 @@ export function startFleetBattleFor(
    */
   const repairBy: Record<string, import('./state').BattleRepairLedger> = {}
   const shieldChargeBy: Record<string, import('./state').BattleShieldChargeLedger> = {}
+  /** 力场账本（2026-09-20 新增；与上面两套**各自计时**） */
+  const shieldFieldBy: Record<string, import('./state').BattleShieldFieldLedger> = {}
   for (const e of fleet) {
     const r = preloadRepairFor(state, ctx, e.shipId, bal.maxBattleMs)
     if (r) {
@@ -4169,6 +4242,12 @@ export function startFleetBattleFor(
       sc.nextPulseAtMs = battle.startedAtGameMs + SHIELD_PULSE_MS
       shieldChargeBy[e.tag] = sc
     }
+    const sf = preloadShieldFieldFor(state, ctx, e.shipId)
+    if (sf) {
+      // 首跳 = 开战 + 该件自带冷却（与另两套装置同款：开场即排第一跳）
+      sf.nextPulseAtMs = battle.startedAtGameMs + sf.msPerPulse
+      shieldFieldBy[e.tag] = sf
+    }
   }
   if (Object.keys(repairBy).length > 0) {
     battle.repairBy = repairBy
@@ -4178,6 +4257,7 @@ export function startFleetBattleFor(
     battle.shieldChargeBy = shieldChargeBy
     battle.shieldCharge = shieldChargeBy['player'] ?? Object.values(shieldChargeBy)[0]!
   }
+  if (Object.keys(shieldFieldBy).length > 0) battle.shieldFieldBy = shieldFieldBy
   /**
    * **敌方后勤账本**（船长 2026-09-16）：**只在敌阵里真有 `repairPct > 0` 的舰时才建**
    * （缺省 ⇒ `battle.foeRepair` 不写、tick 里那一块直接跳过 ⇒ 零开销、零行为变化）。
@@ -5300,6 +5380,37 @@ export function advanceBattleFor(
           ledger.pulses += 1
           ledger.nextPulseAtMs += SHIELD_PULSE_MS
           guardS++
+        }
+      }
+    }
+    /**
+     * **力场脉冲**（2026-09-20 船长「护盾充能力场装置」）：与上面两套**各自计时** ——
+     * 冷却**按件自带**（`ledger.msPerPulse`：MK2 = 10 秒 / MK3 = 8 秒）。
+     *
+     * ⚠ **必须独立门控**（不能挂在护盾充能那段 `if` 里）：力场与「护盾充能装置」是**两族两件**，
+     * 玩家完全可能只装力场不装充能装置 —— 第一版我把它写在上面那个 `if` 内，
+     * 结果"只装力场 ⇒ 一跳都不跳"（用例当场抓出）。
+     *
+     * ⚠ **施放者必须存活**（人没了装置就停，与另两套同款）；但**受益方是全队存活单位**
+     * ⇒ 跳一次给 `myUnits` 全体补盾，不是只补施放者。
+     */
+    if (!battle.ended && Object.keys(battle.shieldFieldBy ?? {}).length > 0) {
+      const specByTagF = new Map(myUnits.map((u) => [u.tag, u]))
+      for (const [tag, ledger] of Object.entries(battle.shieldFieldBy!)) {
+        if (battle.ended) break
+        if (!specByTagF.get(tag) || !isAlive(battle, tag)) continue
+        if (ledger.nextPulseAtMs === undefined || ledger.nextPulseAtMs > battle.lastTickGameMs) continue
+        let guardF = 0
+        while (
+          !battle.ended &&
+          ledger.nextPulseAtMs !== undefined &&
+          ledger.nextPulseAtMs <= battle.lastTickGameMs &&
+          guardF < BATTLE_MAX_STEPS
+        ) {
+          pulseShieldFieldFor(battle, myUnits, ledger)
+          ledger.pulses += 1
+          ledger.nextPulseAtMs += ledger.msPerPulse
+          guardF++
         }
       }
     }

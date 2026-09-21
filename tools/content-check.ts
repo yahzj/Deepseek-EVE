@@ -398,13 +398,17 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
    * - `exotic`（限定奇货）⇒ **3 / 4 / 5**（上沿从 4 拓到 **5**：为将来更高档预留，当前无商品用到 5；
    *   下沿仍是 3——「低值奇货可标 3」那条 2026-09-09 口径不动）。
    */
-  // 渠道一致性（2026-09-20 起）：**common 不约束**；rare = 2~4；exotic = 3~5
+  // 渠道一致性（2026-09-20 起）：**common 不约束**；rare = 2~5；exotic = 3~5
+  // ⚠ **2026-09-20 船长改判（本批）**：原 rare 带为 2~4；船长对「护盾充能力场装置」下
+  //   「**一次性蓝图在稀有**」＋「（一次性蓝图档位）**和装备一致稀有度**」⇒ MK3 的书是**档 5**
+  //   而渠道是 **rare** ⇒ 按 §5.2 摆出冲突后按船长裁定把 **rare 带放宽为 2~5**
+  //   （exotic 3~5 不动；common 一如既往不约束）。记账见 changelog 同日那一条。
   for (const g of MARKET_GOODS) {
     const v = RARITY_TIER[g.refId] ?? 0
     if (g.rarity === 'common') {
       // 只要求是个合法档（值域由上一段统一守）；**刻意不要求 = 1**（常驻渠道的档不参与交易运算）
       check(v >= 1 && v <= 5, `稀有度表 ${g.refId}：档位越界 ${v}（应为 1~5）`)
-    } else if (g.rarity === 'rare') check(v >= 2 && v <= 4, `稀有度表 ${g.refId}：rare 渠道应为 2~4，实际 ${v}`)
+    } else if (g.rarity === 'rare') check(v >= 2 && v <= 5, `稀有度表 ${g.refId}：rare 渠道应为 2~5，实际 ${v}`)
     else check(v >= 3 && v <= 5, `稀有度表 ${g.refId}：exotic 渠道应为 3~5，实际 ${v}`)
   }
 }
