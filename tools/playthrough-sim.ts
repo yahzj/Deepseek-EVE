@@ -261,6 +261,16 @@ const BENIGN_NARRATIVE_WARN = ['首次进入低安', '低安遭遇', '被盯上�
 function auditLogs(): void {
   for (let i = lastLogIdx; i < state.logs.length; i++) {
     const l = state.logs[i]!
+    /**
+     * ⚠⚠ **定向钉住要放在最前面、且吃"所有 kind"**（2026-09-21 第二十二批修正）。
+     *
+     * 上一版把 `recordExpeditionLine` 放在 `else if (l.kind === 'trade' && ⚔ 开头)` 里面，
+     * 而这是**一条 else-if 链**：非 `trade`、或不以 `⚔` 开头的行**根本轮不到它** ⇒
+     * 恰恰把"远征开始 / 中止 / 召回"这些**最关键的线索行**滤掉了
+     * （实测钉住列表里只有一条 `大捷！`，蜃影那趟什么都没有）。
+     * 现在改成**无条件先喂给它**：观察名单命中时收下**该 tick 的全部新日志原文**。
+     */
+    recordExpeditionLine(`${l.kind} ${l.text}`)
     if (!LOG_KINDS.has(l.kind)) issue(`日志未知 kind「${l.kind}」：${l.text.slice(0, 100)}`)
     else if (l.kind === 'error' || (l.kind === 'warn' && !BENIGN_NARRATIVE_WARN.some((p) => l.text.includes(p))))
       issue(`引擎[${l.kind}] ${l.text.slice(0, 150)}`)
@@ -279,7 +289,6 @@ function auditLogs(): void {
      */
     else if (l.kind === 'trade' && (l.text.startsWith('⚔ 战报') || l.text.startsWith('⚔ 撤退') || l.text.startsWith('⚔ 自动撤退'))) {
       expeditionResults.push(l.text.slice(0, 110))
-      recordExpeditionLine(l.text) // 定向钉住"未首胜卡"的战报原文（不设窗口）
     }
   }
   // 只留最近 40 条（长档会积累上千条，报告放不下）
@@ -304,7 +313,14 @@ function recordExpeditionLine(text: string): void {
   for (const name of watchBountyNames) {
     if (text.includes(name)) {
       pinnedBountyReports.push(text.slice(0, 160))
-      if (pinnedBountyReports.length > 60) pinnedBountyReports.shift()
+      /**
+       * ⚠ **满了要丢最老的（`shift`），不能丢最新的（`pop`）** —— 与上一版相反。
+       * 上一版用 `shift()` 但容量只有 60：观察名单在**第一次**悬赏就把两张卡记进去了，
+       * 于是 60 条的额度被"演习场驱逐令 / 新港商路护航令"这些**最初的**卡的战报占满，
+       * 后面真正可疑的（蜃影，10.70d）**一条都进不来** —— 实测钉住列表里全是开局那两张卡。
+       * 现在容量放大到 400，且超限时丢最老的 ⇒ 保留"最近"的证据。
+       */
+      if (pinnedBountyReports.length > 400) pinnedBountyReports.shift()
       break
     }
   }
