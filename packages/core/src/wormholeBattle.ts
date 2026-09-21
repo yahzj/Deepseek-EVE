@@ -1019,7 +1019,34 @@ export function advanceWormhole(
   // （不掉血）、撤离不落地、收口不落地——回来接着打，进度原样在。
   if (run.attending !== true) return
   if (run.battle) {
-    if (freezeBattle) return
+    /**
+     * **冻结窗口（`freezeBattle`）⇒ 把战斗时钟整体前移，不是"留着以后补算"**
+     * （**2026-09-21 修船长报障「进入虫洞的战斗后，双方舰船不开火，也不会移动改变距离」**）。
+     *
+     * 与 `expedition.ts` 里主控远征战斗的 `freezeBattle` 分支**逐字同款**（那边的原注释：
+     * 「调试快进冻结主控战斗……快进期间不推进/瞬结主控远征战斗」）：直接把 `lastTickGameMs` 拉到
+     * 全局时钟、并把 `startedAtGameMs` 前移同样的量。
+     *
+     * ⚠⚠ **为什么洞内这条是必须的（我第一版就是漏了它）**：`simulateOffline` 是**带
+     * `freezeBattle: true`** 跑的（`apps/desktop` 的 `engine.ts`），而它同时把 `state.gameMs`
+     * **一次性推进整段离线时长**。原实现这里直接 `return` ⇒ **战斗时钟被落在原地**，
+     * 于是读档后 `state.gameMs − battle.lastTickGameMs` = 整段离线时长（真档实测：**8 小时 = 28,800 秒**），
+     * 而 `advanceBattleFor` 的补帧循环每拍**最多走 `BATTLE_MAX_STEPS × 100ms = 4,000 秒`**
+     * ⇒ 玩家看到的是**极端慢镜 / 卡住的战场**：双方几乎不动、血条几乎不掉，要很久才追平
+     * （8 小时 ≈ 7 拍满负荷补算）。同一处还会污染**交火时长**（战报/秒数会把离线那 8 小时算成战斗时间）。
+     *
+     * 前移之后语义与「临时离开」（`wormholeLeave` + `wormholeResume` 的 `shiftBattleClock`）**完全一致**：
+     * **离开期间的时间不作战时间**，回来从原处续打、不补算、不白掉血。逐拍调用它是幂等的
+     * （同一拍内 `owed` 当场归零，下一拍不动）。
+     */
+    if (freezeBattle) {
+      const owed = Math.max(0, state.gameMs - run.battle.lastTickGameMs)
+      if (owed > 0) {
+        run.battle.lastTickGameMs = state.gameMs
+        run.battle.startedAtGameMs += owed
+      }
+      return
+    }
     advanceBattleFor(state, ctx, run.battle, run.fleet[0] ?? state.shipId, run.battle.wormhole?.cardId ?? null, null, undefined, undefined, { battleSpeedX })
     if (run.battle.ended) {
       // **击杀慢镜**（与远征 `expedition.ts` 同源 · `bal.killcamMs`）：分出胜负后**延迟结算**，

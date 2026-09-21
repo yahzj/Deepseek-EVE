@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **293** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5502** KB · **39922** 行
+- 文档总数 **293** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5505** KB · **39923** 行
 - 状态分布：**未标注** 157 · **已确认/已实现** 109 · **进行中** 25 · **待裁定** 1 · **历史留档** 1
 - 孤儿文档（0 引用）**28** 份 · 状态未标注 **157** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 194 KB / 244 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 686 行 | 70 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 410 KB / 931 行 | 207 / 11 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 98 KB / 392 行 | 260 / 10 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 411 KB / 931 行 | 207 / 11 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 100 KB / 393 行 | 260 / 10 |
 
 ## 七、评审与体检（review） —— 10 份
 
