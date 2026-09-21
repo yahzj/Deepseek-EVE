@@ -1627,7 +1627,7 @@ function buildFleetEvalState(fleet: readonly string[]): { ev: GameState; uids: s
 }
 
 /**
- * **真跑一遍"这趟洞的第 1 层节点战"**（不碰真状态：在整队快照上跑）。
+ * **真跑一遍"某个层深的洞内战斗"**（不碰真状态：在整队快照上跑）。
  * 返回**我方三层血残值比**（1 = 满血过关）；`-1` = 这场根本没跑起来（无卡/建档失败）。
  *
  * 为什么要真跑而不是查 `battleWinPreview`：那条是**单舰**路径，而洞内战斗走的是
@@ -1635,10 +1635,14 @@ function buildFleetEvalState(fleet: readonly string[]): { ev: GameState; uids: s
  * 实测"进洞 12 次、深入 0 次"全是第 1 层团灭。这里用**与生产同一条建档入口**跑完一整场。
  *
  * ⚠ **为什么要返回残血、不只返回胜负**（2026-09-21 实测教训）：第 1 趟洞"赢了但只剩 4.1% 血"
- * ⇒ 第 2 层当场团灭、四艘全沉（日志：进洞后编队计数从 4/4 掉回 1/4，模拟又买四艘再送一趟）。
- * 所以"打得过"不等于"进得去"：必须要求**留有余量**（见 `WH_ENTRY_HP_MIN`）。
+ * ⇒ 第 2 层当场团灭、四艘全沉。所以"打得过"不等于"进得去"：必须要求**留有余量**。
+ *
+ * ⚠⚠ **`depth` 参数化**（2026-09-21 第十五批）：原版写死 `depth: 1`，理由是"进洞门只要看
+ * 第 1 层打不打得过"。但当层深已经能稳定推到 4 时，这个门就**不再有信息量**了 ——
+ * 它一直在验"第 1 层能不能过"（当然能），而真正卡住的是**更深那层**（实测 260 趟都过不了第 4 层）。
+ * 现在由调用方传入"**下一个没入账的层深**"，门才能回答"这趟值不值得下潜到那里"。
  */
-function whFloor1Outcome(fleet: readonly string[]): number {
+function whLayerOutcome(fleet: readonly string[], depth: number): number {
   /**
    * ⚠⚠ **必须用"整队快照"**（2026-09-21 修）：`buildEvalState` 只复制主控那一艘 ⇒
    * 拿它跑整队时我方只有 1 个单位，门一直在判"单舰 vs 第 1 层"、永远不过。见 `buildFleetEvalState`。
@@ -1647,11 +1651,11 @@ function whFloor1Outcome(fleet: readonly string[]): number {
   if (!snap) return -1
   const { ev, uids: evFleet } = snap
   const seed = state.rng.seed
-  const cardId = wormholeCardIdForRun({ seed, depth: 1, kind: 'node', nodeIndex: 0 })
+  const cardId = wormholeCardIdForRun({ seed, depth, kind: 'node', nodeIndex: 0 })
   if (!ctx.anomalies.get(cardId)) return -1
-  const battle = startFleetBattleFor(ev, ctx, evFleet, cardId, 0, null, { depth: 1, kind: 'node', waves: 1 })
+  const battle = startFleetBattleFor(ev, ctx, evFleet, cardId, 0, null, { depth, kind: 'node', waves: 1 })
   if (!battle) {
-    whFloor1Diag.push(`第 1 层真跑：\`startFleetBattleFor\` 返回 null（编队 ${evFleet.length} 艘 · 卡 ${cardId}）`)
+    whFloor1Diag.push(`第 ${depth} 层真跑：\`startFleetBattleFor\` 返回 null（编队 ${evFleet.length} 艘 · 卡 ${cardId}）`)
     return -1
   }
   let guard = 0
@@ -1681,7 +1685,7 @@ function whFloor1Outcome(fleet: readonly string[]): number {
   }
   const hpFrac = frac(mine)
   whFloor1Diag.push(
-    `第 1 层真跑：ended=${String(battle.ended)} 步=${guard} 我方残血 ${(hpFrac * 100).toFixed(1)}%（${mine.length} 单位）· ` +
+    `第 ${depth} 层真跑：ended=${String(battle.ended)} 步=${guard} 我方残血 ${(hpFrac * 100).toFixed(1)}%（${mine.length} 单位）· ` +
       `敌方残血 ${(frac(foe) * 100).toFixed(1)}%（${foe.length} 单位）· 编队 ${evFleet.length} 艘`,
   )
   return battle.ended === 'me' ? hpFrac : -1
@@ -1728,12 +1732,15 @@ function whReady(fleet: readonly string[]): boolean {
   }, 0)
   if (topTier < 3) return false
   /**
-   * **第 1 层真跑，且要留有余量**（2026-09-21 加余量判据）。
-   * 只要"赢"不够：第 1 层靠 4% 血惨胜 ⇒ 第 2 层当场全灭、四艘全沉（实测日志：进洞后编队计数
-   * 从 4/4 掉回 1/4、模拟又买四艘再送一趟，来回烧钱）。所以要求**战后残血 ≥ `WH_ENTRY_HP_MIN`**
-   * —— 虫洞是**不可撤退**的连续闯关（战斗一开必须打完），进洞前必须按"最坏那一层"留血量。
+   * **真跑一遍"下一个没入账的层深"，且要留有余量**（2026-09-21 第十五批改成参数化）。
+   *
+   * 只要"赢"不够：靠 4% 血惨胜 ⇒ 下一层当场全灭、四艘全沉。
+   * 而**目标层深必须是"下一个没拿到的"**：层深 1 早就稳定能过，拿它当门等于没验东西
+   * （实测 260 趟趟趟过第 1 层、却过不了第 4 层，而门一直报"能过"）。
+   * 现在门回答的是真问题："**这趟值不值得下潜到第 N 层**"。
    */
-  const hp = whFloor1Outcome(fleet)
+  const targetDepth = Math.min(WH_TARGET_DEPTH, Math.max(1, whDepth() + 1))
+  const hp = whLayerOutcome(fleet, targetDepth)
   lastWhFloor1Hp = hp
   if (hp >= WH_ENTRY_HP_MIN) return true
   /**
