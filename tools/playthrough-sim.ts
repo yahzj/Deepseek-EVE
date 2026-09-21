@@ -2449,8 +2449,7 @@ function checkGoals(): void {
       goalDay.bounties = day().toFixed(2)
       mark(`🎯 目标达成【完成所有悬赏】：第 ${day().toFixed(2)}d 首胜 ${b.done}/${b.total} 张`)
     }
-  }
-  /** **虫洞成就（六枚里程碑）**（船长 2026-09-21） */
+  }  /** **虫洞成就（六枚里程碑）**（船长 2026-09-21） */
   if (WANTS.whach && !goalDone.whach) {
     const w = whachStatus()
     if (w.done) {
@@ -3089,6 +3088,20 @@ for (const k of ['bounties', 'whach', 'isk1b', 'boss', 'tril', 'collect'] as con
     extra = `（层深 ${w.depth}/5 层 · 击破守卫 ${w.boss}/4 个）`
   } else if (k === 'isk1b') extra = `（钱包 ${Math.round(state.wallet.isk).toLocaleString('zh-CN')} / 1,000,000,000）`
   lines.push(`  ${done ? '✅' : '⬜'} ${GOAL_NAMES[k]}${done ? `—— 第 ${goalDay[k]} 天达成` : ` ${extra}`}`)
+  /**
+   * **"还差哪几张卡"清单**（2026-09-21 加）：悬赏这条目标此前只报"首胜 19/23"，
+   * 看不出**差的是哪 4 张、门槛多少、当前预估胜率多少** —— 而这三项正是决定"还差什么"的全部信息
+   * （实测剩下的都是威胁 84~96 的高档卡，预估胜率 30~45%）。
+   */
+  if (k === 'bounties' && !done) {
+    const left = ANOMALY_LIST.filter((a) => !state.completedBounties.includes(a.id))
+      .sort((x, y) => y.threat - x.threat)
+    for (const a of left) {
+      lines.push(
+        `      · 未首胜：${a.name}（${a.id}）威胁 ${a.threat} · 声望门槛 ${a.standingReq} · 当前预估胜率 ${Math.round(winOf(state, ctx, a) * 100)}%`,
+      )
+    }
+  }
 }
 if (WANTS.tril && !goalDone.tril) {
   lines.push('  · 万亿为超长程目标：debugQuick 只压缩等待、不放大收益（奖励按真实口径），达天数上限未竟属预期——重点看全程零引擎异常')
