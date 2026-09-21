@@ -123,6 +123,23 @@ const ScanFx = memo(function ScanFx() {
   )
 })
 
+/** 长途运输·就位（`tripLegsLeft === 1`）：空舱赶去航线端点——只有航迹与远方端点，没有货柜 */
+const HaulPosFx = memo(function HaulPosFx() {
+  return (
+    <>
+      <g className="app-act-haulbody">
+        <path d="M120 120 L196 92 L268 110 L196 138 Z" />
+        <path className="app-act-flame" d="M120 120 L86 106 L104 120 L86 134 Z" fill="currentColor" stroke="none" opacity="0.75" />
+      </g>
+      <path className="app-act-trail" d="M300 110 H392" />
+      <path className="app-act-trail is-late" d="M330 84 H420" />
+      <path className="app-act-trail is-late2" d="M330 136 H420" />
+      <path d="M468 110 L524 96 L556 110 L524 124 Z" strokeOpacity="0.5" />
+      <circle className="app-act-echo" cx="496" cy="110" r="4" />
+    </>
+  )
+})
+
 const SCENES: Record<ActivityKind, ComponentType> = {
   mine: MineFx,
   salvage: SalvageFx,
@@ -181,12 +198,14 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
     const a = h.routeA === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.routeA)?.name ?? h.routeA)
     const b = h.routeB === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.routeB)?.name ?? h.routeB)
     const to = h.toSiteId === null ? tr('ui.ActivityWin.004') : (ctx.stations.get(h.toSiteId)?.name ?? h.toSiteId)
+    // 就位段（`tripLegsLeft === 1`）= 空舱赶去航线端点，与承运段画面/标题都不同（船长要"区分就位与承运"）
+    const positioning = h.tripLegsLeft <= 1
     return {
-      title: tr('ui.ActivityWin.003'),
+      title: tr(positioning ? 'ui.ActivityWin.030' : 'ui.ActivityWin.003'),
       lines: [
         `${tr('ui.ActivityWin.014')}${a} ⇄ ${b}`,
         `${tr('ui.ActivityWin.015')}${to}`,
-        `${tr('ui.ActivityWin.016')}×${h.tripMul.toFixed(1)}`,
+        positioning ? tr('ui.ActivityWin.031') : `${tr('ui.ActivityWin.016')}×${h.tripMul.toFixed(1)}`,
       ],
       progress: h.legMs > 0 ? Math.min(1, h.phaseAccMs / h.legMs) : null,
       progressLabel: tr('ui.ActivityWin.021'),
@@ -220,7 +239,8 @@ export function ActivityScreen({
   const kind = activityKindOf(state)
   if (kind === null) return null
   const r = readoutOf(kind, state, ctx)
-  const Scene = SCENES[kind]
+  // 长途运输两段不同画面：就位（空舱赶路）vs 承运（挂柜拖尾）
+  const Scene = kind === 'haul' && state.hauling.tripLegsLeft <= 1 ? HaulPosFx : SCENES[kind]
   return (
     <WinBox
       variant="app-winbox is-activity"

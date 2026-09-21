@@ -892,6 +892,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ActivityWin.020": { zh: "本循环进度：达到 100% 产出一次原矿", en: "Cycle progress: at 100% one load of raw ore is produced" },
   "ui.ActivityWin.021": { zh: "本航段进度：达到 100% 抵达下一站并结算", en: "Leg progress: at 100% you arrive at the next port and settle" },
   "ui.ActivityWin.022": { zh: "扫描进度：满一格发现一处虫洞", en: "Scan progress: a full bar finds one wormhole" },
+  "ui.ActivityWin.030": { zh: "长途运输 · 就位中", en: "Long-haul: moving into position" },
+  "ui.ActivityWin.031": { zh: "空舱赶赴航线端点（就位后开始承运）", en: "Running empty to the route endpoint (carrying starts once in position)" },
   "ui.Announcements.004": { zh: "新", en: "New" },
   "ui.Announcements.005": { zh: "有未读公告", en: "Unread announcements" },
   "ui.App.001": { zh: "点击 出港", en: "Undock" },

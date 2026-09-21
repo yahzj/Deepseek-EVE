@@ -153,6 +153,14 @@ html[data-locale='en'] body {
 
 }
 
+/* 操作提示同款口径（2026-09-20 居中改造时补）：旋转模式下"物理竖屏宽"要换成 **100vh**，
+   否则 100vw 会取错轴——本条由 `npm run ui:rot-check` 的物理单位契约点名要求。 */
+.app-root.is-mobile-rot .app-toast {
+
+  max-width: min(560px, calc(100vh - 40px));
+
+}
+
 /* 谜质科技详情窗（2026-09-19）：旋转模式下按**虚拟横屏宽**（100vh）定宽——与上面 `.app-modal` 同款口径，
    否则 `100vw` 取的是手机竖屏宽（~390）⇒ 窗口被挤成窄条。 */
 .app-root.is-mobile-rot .app-mt-modal {
@@ -807,9 +815,16 @@ html[data-locale='en'] body {
 
   left: 50%;
 
-  bottom: 26px;
+  /* 2026-09-20 船长令：「先将错误提示移动到屏幕中间」——原为 `bottom: 26px`（屏幕下方）。
+     现改为**屏幕正中**：横竖都居中（`top/bottom: 50%` + 两轴 translate）。
+     仍是整条可点关闭（见下方 `.app-toast { cursor: pointer }` 那段），z 序不变。 */
+  top: 50%;
 
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
+
+  max-width: min(560px, calc(100vw - 40px));
+
+  text-align: center;
 
   background: #0e1c2c;
 
@@ -3207,6 +3222,8 @@ html[data-locale='en'] body {
 .app-shipwin.is-work-salvage .app-sprite,
 .app-shipwin.is-work-scan .app-sprite { animation: app-swin-float 2.4s ease-in-out infinite; }
 .app-shipwin.is-travel .app-sprite { animation: app-swin-sway 1.9s ease-in-out infinite; }
+/* 长途运输（2026-09-20 新增场景）：承运往返用航行摇摆；就位段也是航行，同款 */
+.app-shipwin.is-work-haul .app-sprite { animation: app-swin-sway 1.9s ease-in-out infinite; }
 .app-shipwin.is-field .app-sprite svg { filter: drop-shadow(0 0 6px rgba(120, 150, 190, 0.14)); }
 .app-shipwin.is-combat { border-color: rgba(255, 110, 90, 0.55); box-shadow: 0 0 14px rgba(255, 90, 70, 0.18) inset; }
 .app-shipwin.is-combat .app-sprite { animation: app-swin-shake 0.5s linear infinite; }

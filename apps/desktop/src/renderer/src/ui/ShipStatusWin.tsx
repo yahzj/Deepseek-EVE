@@ -61,13 +61,15 @@ export type ShipwinScene =
  *  （当时删得对：星系扫描不再占用主控），但**扫描虫洞**（`state.wormholeScan`）自始至终是
  *  主控亲自在扫（要求停靠空间站、且与其它主控活动互斥，见 `wormholeScanBlockReason`）
  *  ⇒ 少了它，扫虫洞时窗口什么都不显示。
- *  ② 长途运输**分段**：就位段（`tripLegsLeft === 1`，空舱赶去航线端点）沿用航行星带；
- *  承运段（`tripLegsLeft >= 2`，满载虚拟货物往返）切 `work-haul` 专属演出。 */
+ *  ② 长途运输**全程归 `work-haul`**：就位段（`tripLegsLeft === 1`，空舱赶去航线端点）与承运段
+ *  （`tripLegsLeft >= 2`，满载虚拟货物往返）**画面不同、但都算"主控在跑长途运输"** ⇒ 活动窗口
+ *  自始至终显示它。2026-09-20 定：船长要"区分就位与承运"，那就得两段都看得见——若就位段仍落
+ *  通用 `travel`，窗口会在刚接单时凭空消失、玩家以为任务断了（实测夹具 `wh-layer4` 即此形态）。 */
 export function sceneOfShipwin(state: GameState): ShipwinScene {
   const b = state.expedition.battle
   if (state.wormhole.run?.battle) return 'combat'
   if (state.expedition.active && b) return 'combat'
-  if (state.hauling.active) return state.hauling.tripLegsLeft >= 2 ? 'work-haul' : 'travel'
+  if (state.hauling.active) return 'work-haul'
   if (state.mining.active) return state.mining.phase === 'returning' ? 'travel' : 'work-mine'
   if (state.salvaging.active) return state.salvaging.phase === 'returning' ? 'travel' : 'work-salvage'
   // ⚠ 2026-09-17 去掉 `state.scanning` 那一档：星系扫描自 2026-09-15 起是**无人扫描艇**
