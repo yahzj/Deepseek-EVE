@@ -17,6 +17,12 @@ import { writeFileSync } from 'node:fs'
 import {
   aiCoreCapBlock,
   aiCoreShipUsed,
+  cpuBudgetOf,
+  fittedCpuUsed,
+  droneCpuUsed,
+  droneLoadM3,
+  refillDroneLoadTo,
+  cargoOfShip,
   aiCoreIndustryUsed,
   industryAiBonus,
   assignAiMining,
@@ -707,29 +713,47 @@ function autoFitGear(shipUid: string = state.shipId): void {
   // `TypeError: Cannot read properties of undefined (reading 'key')`（调用方却已用 `?.` 兜底价格，
   // 口径本就不一致）。这里是第二道保险：`sup1`/`sup2` 是直接扫 `ctx.modules` 得来的，不受
   // `familyBest` 的过滤保护。
-  const tryOne = (rack: 'high' | 'mid' | 'low', defId: string, priceRef: number): void => {
-    if (allFitted.includes(defId) || !roomIn(rack)) return
-    if (state.wallet.isk < priceRef * 1.5 + 20_000) return
-    const good = goodOf('module', defId)
-    if (!good) return
-    // 与高槽同理：`fitModule` 按**驾驶船**找槽 ⇒ 给僚舰装件时先切驾驶位
-    const prevShip = state.shipId
-    if (prevShip !== shipUid) {
-      if (!changeShip(state, shipUid, ctx).ok) return
-    }
-    buyAtMarket(state, ctx, good.key, 1)
-    const ok = fitModuleTo(state, defId)
-    if (prevShip !== shipUid) changeShip(state, prevShip, ctx)
-    if (ok) mark(`装配 ${defId}（${cur.name}）`)
-  }
   const sh = familyBest('shield', (m) => m.shieldHpBonus ?? 0)
-  if (sh) tryOne('mid', sh.id, goodOf('module', sh.id)?.basePrice ?? 50_000)
   const ar = familyBest('armor', (m) => m.armorHpBonus ?? 0)
-  if (ar) tryOne('low', ar.id, goodOf('module', ar.id)?.basePrice ?? 50_000)
   const sup1 = [...ctx.modules.values()].find((m) => m.slot === 'support' && (m.damageTypeBonusPct?.kinetic ?? 0) > 0)
   const sup2 = [...ctx.modules.values()].find((m) => m.slot === 'support' && (m.hitBonusPct ?? 0) > 0)
-  if (sup1) tryOne('mid', sup1.id, goodOf('module', sup1.id)?.basePrice ?? 30_000)
-  if (sup2) tryOne('mid', sup2.id, goodOf('module', sup2.id)?.basePrice ?? 30_000)
+  /**
+   * ⚠⚠ **每个空槽都要装，不能只装一件/族**（**2026-09-21 修，本批第二个关键修复**）。
+   *
+   * 旧写法是"每族只 `tryOne` 一次"，而 `tryOne` 里还有 `allFitted.includes(defId)` 这道闸
+   * ⇒ **每艘船最多只装 1 件盾 + 1 件甲 + 2 件支援 = 4 件**，而 T3 巡洋舰的中低槽有 3~9 个、
+   * 四舰编队合计 12+ 个。实测读数（编队战力明细）就是这样：
+   * `高5/5 中1/2 低1/4` —— **中低槽 3/6 空着**，四舰合计 `炮 20/44 槽`。
+   * 空槽 = 白丢的护盾上限与装甲上限，而虫洞第 1 层的余量正是卡在这上面（残血 35% vs 门槛 45%）。
+   *
+   * 新写法：把"每族一件"改成**反复装到槽满或买不起为止**（每族最多迭代 8 次，防跑飞）。
+   * 幂等性由 `roomIn` + `allFitted` 保证；同族多件是同 id 多件，`allFitted.includes` 会挡住重复 ——
+   * 所以这里改成"**数同族已装件数**"来判断还能不能再装一件。
+   */
+  const countFitted = (defId: string): number => allFitted.filter((x) => x === defId).length
+  const fillRack = (rack: 'mid' | 'low', defId: string | undefined, priceRef: number, max: number): void => {
+    if (!defId) return
+    for (let i = 0; i < max; i++) {
+      if (!roomIn(rack)) return
+      if (state.wallet.isk < priceRef * 1.5 + 20_000) return
+      const good = goodOf('module', defId)
+      if (!good) return
+      const prevShip = state.shipId
+      if (prevShip !== shipUid) {
+        if (!changeShip(state, shipUid, ctx).ok) return
+      }
+      buyAtMarket(state, ctx, good.key, 1)
+      const ok = fitModuleTo(state, defId)
+      if (prevShip !== shipUid) changeShip(state, prevShip, ctx)
+      if (!ok) return // 装不上（CPU 超载/槽位限制）⇒ 这件到此为止，别死循环买
+      mark(`装配 ${defId}（${cur.name} · 第 ${countFitted(defId)} 件）`)
+    }
+  }
+  // 中槽：先铺护盾，再支援件；低槽：铺装甲。各最多 5 件（T3 中/低槽最多 5）
+  fillRack('mid', sh?.id, goodOf('module', sh?.id ?? '')?.basePrice ?? 50_000, 5)
+  fillRack('low', ar?.id, goodOf('module', ar?.id ?? '')?.basePrice ?? 50_000, 5)
+  fillRack('mid', sup1?.id, goodOf('module', sup1?.id ?? '')?.basePrice ?? 30_000, 3)
+  fillRack('mid', sup2?.id, goodOf('module', sup2?.id ?? '')?.basePrice ?? 30_000, 3)
 }
 
 const craftedOnce = new Set<string>()
@@ -885,7 +909,71 @@ function doLearnCraft(): void {
 }
 
 let lastShipUpgradeDay = -99
+
 /**
+ * **把无人机库里的机装进各舰机舱**（2026-09-21 新写；见 `buyShipAndGear` 里的调用点注释）。
+ *
+ * 顺序：① 先补齐货架（三种制式机各备几架，缺了才买）→ ② 给**舰队里每艘有舱的船**按
+ * "单发伤害高者优先"算出目标装载 → ③ 走引擎自己的 `refillDroneLoadTo` 落库
+ * （它自己做舱容 + CPU 双重校验，并从**船上货仓优先、其次物品仓库**取货，不自动买）。
+ *
+ * ⚠ `refillDroneLoadTo` 只对**当前驾驶船**生效（它读 `state.fleet[shipId]`）⇒ 这里要先切驾驶位；
+ * 与 `autoFitGear` 同一手法（切过去 → 装 → 切回来）。切不回去也没关系，主循环每拍会 `ensureFlagship`。
+ */
+function ensureDroneLoads(): void {
+  if (meBusy() || !isHome()) return
+  if (state.expedition.active || state.scanning.active || state.salvaging.active) return
+  /** 制式机优先级 = 单发伤害降序（每 m³ 伤害三档相同 ⇒ 大机先装、小机补空隙） */
+  const DRONE_ORDER = ['drone-heavy', 'drone-assault', 'drone-scout']
+  const droneDefs = DRONE_ORDER.map((id) => ctx.items.get(id)).filter((d): d is NonNullable<typeof d> => !!d)
+  if (droneDefs.length === 0) return
+  for (const uid of Object.keys(state.fleet)) {
+    const f = state.fleet[uid]
+    const def = fleetDefOf(state, ctx, uid)
+    if (!f || !def) continue
+    if (def.role !== 'armed' && def.role !== 'armored') continue
+    const bay = def.droneBayM3 ?? 0
+    if (bay <= 0) continue
+    const cap = cpuBudgetOf(state, ctx, uid)
+    const used = fittedCpuUsed(f.fitted, ctx, def) + droneCpuUsed(f.droneLoad, ctx)
+    let freeCpu = cap > 0 ? cap - used : 0
+    let freeM3 = bay - droneLoadM3(f.droneLoad, ctx)
+    if (freeM3 <= 0) continue
+    /** 目标装载：贪心按"伤害降序"填，装不下就换小一档继续填（尾隙不浪费） */
+    const target: Record<string, number> = {}
+    for (const d of droneDefs) {
+      const m3 = d.unitM3 ?? 1
+      const cpu = d.cpuUse ?? 0
+      while (freeM3 - m3 >= -1e-6 && (cap <= 0 || freeCpu - cpu >= -1e-6)) {
+        // 先补齐货架（缺了才买：船上货仓 + 物品仓库 + 市场余额三道一起看）
+        const have = (f.cargo?.[d.id] ?? 0) + countWare(state, d.id)
+        const want = (target[d.id] ?? 0) + 1
+        if (have < want) {
+          const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === d.id)
+          const price = g?.basePrice ?? d.baseSellPriceIsk ?? 5_000
+          if (!g || state.wallet.isk < price * 10 + 100_000) break // 留钱：别为无人机把现金抽干
+          buyAtMarket(state, ctx, g.key, want - have)
+        }
+        target[d.id] = want
+        freeM3 -= m3
+        freeCpu -= cpu
+      }
+    }
+    if (Object.keys(target).length === 0) continue
+    /**
+     * ⚠ **必须让货在"船上货仓"或"物品仓库"里**：`refillDroneLoadTo` 只从这两处取（不自动买）。
+     * 市场买进来是 `addWare`（物品仓库）⇒ `countWare` 查得到，天然满足。
+     */
+    const prevShip = state.shipId
+    if (prevShip !== uid) {
+      if (!changeShip(state, uid, ctx).ok) continue
+    }
+    const r = refillDroneLoadTo(state, ctx, uid, target)
+    if (prevShip !== uid) changeShip(state, prevShip, ctx)
+    const added = Object.values(r.added).reduce((s, n) => s + n, 0)
+    if (added > 0) mark(`装无人机 ${added} 架（${def.name}）`)
+  }
+}/**
  * **升级舰船与配装**（2026-09-21 批大改；旧口径有三个叠加缺陷，实测导致"50 天只有 1 门炮"）：
  *
  * ① **升级目标太窄**：旧写法只买 `role === 'armed'` 且 `powerBonus` **更高**的船，且"已拥有就不买"⇒
@@ -985,6 +1073,18 @@ function buyShipAndGear(): void {
   }
   // ⚠ 每拍都补装一次**当前驾驶船**（受"已装同件/槽满"保护 ⇒ 幂等、不会重复抽血）
   autoFitGear(state.shipId)
+  /**
+   * **无人机舱装载**（2026-09-21 新写）。
+   *
+   * 背景（实测读数）：编队战力明细里 **无人机 0 架**，而编队每艘 T3 都有 50~160 m³ 的机舱空着
+   * （鹦鹉螺 160 m³、牛鲨/电鳐 50 m³）—— 无人机是**独立于槽位的火力通道**，
+   * 不放飞就是纯浪费（`droneLoad` 从来没被写过：工具只买过无人机，从没装上船）。
+   *
+   * 选型口径 = **每立方米伤害最高**（重舱优先），实测三种制式机每 m³ 伤害是平的 0.6，
+   * 所以按"单发伤害高的先装"就能自然填满（猎鹰 20m³/12 伤 ＞ 赤鸢 10m³/6 伤 ＞ 蜂鸟 5m³/3 伤），
+   * 小舱恰好用轻型机补满、不留空隙。装填走引擎自己的 `refillDroneLoadTo`（舱容 + CPU 双重校验）。
+   */
+  ensureDroneLoads()
   /**
    * **逐舰补装**（**2026-09-21 补**）：`autoFitGear` 只装"传进去的那一艘"，而虫洞要的是
    * **整队**（最多 4 艘）⇒ 实测编队里 T3 主舰有炮、三艘 T1 僚舰全是**裸的**，
@@ -1302,8 +1402,13 @@ function ensureWhFleet(): void {
 
 /** 本次虫洞冲刺的目标层深（六枚里程碑要求层深 5 + 击破守卫 4 个） */
 const WH_TARGET_DEPTH = 5
-/** 整趟最多重试次数（全灭/被拒就再来一趟，不问原因——报告里有失败日志） */
-const WH_MAX_TRIES = 40
+/**
+ * 整趟最多重试次数（全灭/被拒就再来一趟，不问原因——报告里有失败日志）。
+ * ⚠ **2026-09-21 从 40 提到 120**：进洞门放宽 + 无人机装载后，实测 30 天档就**打满 40 次上限**
+ * （读数 `进洞 40 次（尝试 40 次）`），随后整段不再进洞 —— 白白浪费了后半程。
+ * 每一趟本身很便宜（~0.1 游戏天），真正的限制是游戏时间，所以上限只用来防死循环。
+ */
+const WH_MAX_TRIES = 120
 
 const whStats = { tries: 0, entries: 0, descends: 0, bossWins: 0, extracts: 0, wipes: 0, scans: 0, moves: 0 }
 /** 「第 1 层真跑」的逐次诊断（去重后进报告）：说清门为什么不过——被打死 / 打不完 / 还剩多少血 */
@@ -1533,6 +1638,53 @@ function whGateReason(fleet: readonly string[]): string {
   )
 }
 
+/**
+ * **虫洞编队战力明细**（2026-09-21 加，纯诊断）：把将要进洞的那套编队逐舰摊开——
+ * 档位 / 高槽炮数 / 中低槽件数 / 无人机舱内容 / 三层血上限合计。
+ *
+ * 为什么需要：进洞门只给一个"第 1 层残血 35%"，看不出**缺的是火力还是血**、也看不出
+ * **槽位有没有装满**（实测怀疑 `autoFitGear` 因 CPU 超预算而提前 `return`，导致槽位空着）。
+ * 有这条才能判断"该换武器 / 该装无人机 / 该堆血"。
+ */
+function whFleetDigest(fleet: readonly string[]): string {
+  const parts: string[] = []
+  let totGuns = 0
+  let totSlots = 0
+  let totHp = 0
+  let totDrones = 0
+  for (const uid of fleet) {
+    const f = state.fleet[uid]
+    const def = fleetDefOf(state, ctx, uid)
+    if (!f || !def) continue
+    const guns = (f.fitted?.high ?? []).filter(Boolean).length
+    const mids = (f.fitted?.mid ?? []).filter(Boolean).length
+    const lows = (f.fitted?.low ?? []).filter(Boolean).length
+    const dl = f.droneLoad ?? {}
+    const drones = Object.values(dl).reduce((s, n) => s + n, 0)
+    totGuns += guns
+    totSlots += (def.slots?.high ?? 0) + (def.slots?.mid ?? 0) + (def.slots?.low ?? 0)
+    totHp += (def.shieldHp ?? 0) + (def.armorHp ?? 0) + (def.hullHp ?? 0)
+    totDrones += drones
+    /**
+     * ⚠ **CPU 读数**（2026-09-21 加）：中低槽空着最可能的原因是 **CPU 预算被高槽炮吃满**
+     * （MK3 炮一台 cpu 52；5 门 = 260，而 T3 巡洋舰 cpu 只有 330~360）。
+     * 这条把"已用/上限"直接写出来 —— 若是 CPU 卡住，那"多装件"这条路就是死的，
+     * 只能换低 CPU 的武器或靠无人机（无人机**也吃 CPU**，`cpuUse` 4~16）补战力。
+     */
+    const cpuCap = cpuBudgetOf(state, ctx, uid)
+    const cpuUsed = fittedCpuUsed(f.fitted, ctx, def)
+    const bay = def.droneBayM3 ?? 0
+    parts.push(
+      `${def.name}(高${guns}/${def.slots?.high ?? 0} 中${mids}/${def.slots?.mid ?? 0} 低${lows}/${def.slots?.low ?? 0}` +
+        ` 机${drones} 舱${bay}m³ CPU${cpuUsed}/${cpuCap})`,
+    )
+  }
+  return (
+    `编队战力明细：炮 ${totGuns}/${totSlots} 槽 · 无人机 ${totDrones} 架 · 三层血上限合计 ${totHp} —— ` +
+    parts.join(' · ')
+  )
+}
+
 /** 人在洞里吗（`run` 存在即"这趟在"，`attending` 才是"人在"） */
 function inWormhole(): boolean {
   return !!state.wormhole.run
@@ -1568,6 +1720,7 @@ function doWormhole(): boolean {
       if (day() >= lastWhGateNoteDay + 1) {
         lastWhGateNoteDay = day()
         mark(`虫洞待进（第 ${whStats.tries} 次尝试后）：${whGateReason(fleetIds)}`)
+        mark(whFleetDigest(fleetIds))
       }
       return false
     }
