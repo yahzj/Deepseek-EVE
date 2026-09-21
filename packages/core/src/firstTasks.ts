@@ -459,22 +459,38 @@ export function claimChainReward(state: GameState, chainId: string): number {
 }
 
 /**
- * **功能 / 页面解锁表**（船长 2026-09-17 定案 · 数据驱动）：key = 页面或星图页签，value = 需要完成的「第一次」任务 id。
+ * **功能 / 页面解锁表**（船长 2026-09-17 定案 · 数据驱动）：key = 页面或星图页签，
+ * value = **需要完成的**「第一次」任务 id（另一种口径「轮到即解锁」见下面的 `UNLOCK_AT_TASK`）。
  *
  * 口径（船长原话）：「**所有和星图相关的，比如战斗和采矿，需要玩家先完成第一次扫描**（初始将母港星系设置为和其他星系
- * 一样的未知状态，需要扫描才有悬赏和挖矿）」＋「**市场页面和相关任务要玩家先完成第一次生产**」＋
- * 「**工业界面和相关任务则需要玩家先完成第一次采集矿物**」。
+ * 一样的未知状态，需要扫描才有悬赏和挖矿）」＋「**市场页面和相关任务要玩家先完成第一次生产**」；
+ * **工业页那条已改判**（2026-09-20 船长令：「解锁工业界面要和第一次精炼的任务挂钩一起解锁」⇒ 移出本表、
+ * 落到 `UNLOCK_AT_TASK`；旧句「工业界面和相关任务则需要玩家先完成第一次采集矿物」作废）。
  *
- * 用法：界面只读这一张表（`unlocked()` 判定）——**未解锁的页面与任务都不显示**（船长选「两者都隐藏」）。
- * 星图页本体、舰船/装配/物品/技能/任务中心/通讯/手册**不在这张表里** ⇒ 开局即可用。
+ * 用法：界面只读这两张表（`unlocked()` 判定）——**未解锁的页面与任务都不显示**（船长选「两者都隐藏」）。
+ * 星图页本体、舰船/装配/物品/技能/任务中心/通讯/手册**不在表里** ⇒ 开局即可用。
  */
 export const FIRST_UNLOCKS: Readonly<Record<string, string>> = {
-  industry: 'first-mine', // 工业页 ← 第一次采集原矿
   market: 'first-produce', // 市场页 ← 第一次生产
   mapMine: 'first-scan', // 星图·矿带开采 ← 第一次扫描
   mapBounty: 'first-scan', // 星图·常驻悬赏（战斗）← 第一次扫描
   mapSalvage: 'first-scan', // 星图·残骸打捞 ← 第一次扫描
   mapHaul: 'first-scan', // 星图·长途运输 ← 第一次扫描
+}
+
+/**
+ * **跟着某条「第一次」任务"轮到"一起解锁的页面**（**2026-09-20 船长令**：「**解锁工业界面要和
+ * 第一次精炼的任务挂钩一起解锁**」）。
+ *
+ * 判据 = 该任务**轮到**（顺序解锁下 = `FIRST_TASKS` 里排在它前面的都已完成），**不是**"该任务完成"——
+ * 精炼炉就在工业页里，按"完成后解锁"会死锁（永远打不开、任务也永远做不完）。
+ *
+ * ⚠ 旧口径「工业页 ← 第一次采集原矿**完成**」（2026-09-17 船长定的三页前置表）**作废**：
+ * 顺序解锁下"采矿"排在「第一次打捞残骸」之前 ⇒ 工业页会比精炼任务早三步出现；
+ * 与精炼任务挂钩后，玩家看到那张卡的同时工业页才亮起来（旧并行口径下这两件事本来就是同一刻）。
+ */
+const UNLOCK_AT_TASK: Readonly<Record<string, string>> = {
+  industry: 'first-refine', // 工业页 ← 第一次操作精炼炉**轮到**（前一条 = 第一次完成悬赏）
 }
 
 /**
@@ -498,14 +514,35 @@ export function applyFirstBountyBuff(spec: { hitBonus: number; evasion: number }
   spec.evasion += FIRST_BOUNTY_EVASION_BONUS
 }
 
-/** 该页面/页签是否已解锁（表里没有的 key ⇒ 恒真 = 开局可用） */
+/**
+ * 该页面/页签是否已解锁（表里没有的 key ⇒ 恒真 = 开局可用）。
+ * 两种口径：`UNLOCK_AT_TASK`（跟着某条任务"轮到"一起开）优先，其次 `FIRST_UNLOCKS`（该任务完成才开）。
+ */
 export function unlocked(state: GameState, key: string): boolean {
+  const at = UNLOCK_AT_TASK[key]
+  if (at !== undefined) {
+    const idx = FIRST_TASKS.findIndex((d) => d.id === at)
+    if (idx <= 0) return true
+    for (let i = 0; i < idx; i++) {
+      if (state.importantTasks[FIRST_TASKS[i]!.id]?.done !== true) return false
+    }
+    return true
+  }
   const need = FIRST_UNLOCKS[key]
   if (!need) return true
   return state.importantTasks[need]?.done === true
 }
-/** 未解锁时所需的「第一次」任务名（界面提示用；key 不在表里 ⇒ undefined） */
+/**
+ * 未解锁时所需的「第一次」任务名（界面提示用：`ui.App.110`「尚未解锁：先完成「{p1}」。」；
+ * key 不在表里 ⇒ undefined）。
+ * `UNLOCK_AT_TASK` 的 key 给的是**排在它前面那条**（玩家当下真要做完的那件活）。
+ */
 export function unlockNeedTitle(key: string): string | undefined {
+  const at = UNLOCK_AT_TASK[key]
+  if (at !== undefined) {
+    const idx = FIRST_TASKS.findIndex((d) => d.id === at)
+    return (idx > 0 ? FIRST_TASKS[idx - 1] : FIRST_TASKS[0])?.title
+  }
   const need = FIRST_UNLOCKS[key]
   return need === undefined ? undefined : FIRST_TASKS.find((d) => d.id === need)?.title
 }
