@@ -304,21 +304,18 @@ check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 鱿蜂 
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
-const itemGoods = new Map<string, { rarity: string; playerSellable: boolean; playerBuyable: boolean }>()
+/**
+ * 物品 id → **整张市场卡**（2026-09-20：原先这里只投影出 rarity/playerSellable/playerBuyable 三个字段，
+ * 于是「稀有批量档契约」在物品那一支读不到新字段（tools 不在 typecheck 覆盖面内，谁也拦不住）⇒ 改成整卡。）
+ */
+const itemGoods = new Map<string, MarketGoodDef>()
 for (const g of MARKET_GOODS) {
   if (goodKeys.has(g.key)) errors.push(`市场卡键重复：${g.key}`)
   goodKeys.add(g.key)
   switch (g.kind) {
     case 'item':
       check(ctxItems.has(g.refId), `市场卡 ${g.key} → 物品 ${g.refId} 不存在`)
-      if (ctxItems.has(g.refId)) {
-        itemGoods.set(g.refId, {
-          rarity: g.rarity,
-          playerSellable: g.playerSellable !== false,
-          // 2026-09-14 增：专属型号"只收不卖"判据要用它（原先这张表没带 playerBuyable）
-          playerBuyable: g.playerBuyable !== false,
-        })
-      }
+      if (ctxItems.has(g.refId)) itemGoods.set(g.refId, g)
       break
     case 'module':
       check(MODULES.some((m) => m.id === g.refId), `市场卡 ${g.key} → 装备 ${g.refId} 不存在`)
@@ -418,6 +415,9 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
 // ⚠ **2026-09-14 船长改判**：「允许玩家挂卖，顺便检查下其他物品，维持所有物品允许玩家挂卖」
 // ⇒ 专属型号**可以有市场卡，但必须是"只收不卖"**（`playerBuyable: false`：市场不出售现货、
 // 玩家可挂卖/卖给 NPC 收购单）；**可购买的市场卡仍然禁止**（那才是"上市场卖现货"）。
+/** 是否带齐"稀有渠道批量档"（见下方「稀有批量档契约」）：三个字段齐了才算 */
+const hasRareBulk = (g: MarketGoodDef): boolean =>
+  g.rareQtyMul !== undefined && g.rareWeightMul !== undefined && g.absorbQtyPerWindow !== undefined
 for (const item of itemDefs) {
   const good = itemGoods.get(item.id)
   if (item.exclusive === true) {
@@ -429,8 +429,43 @@ for (const item of itemDefs) {
   }
   if (!good) {
     errors.push(`物品 ${item.id}（${item.name}）没有市场卡——将无法买卖（死物品）`)
-  } else if (good.rarity !== 'common') {
-    warn.push(`物品 ${item.id} 的市场卡非常驻（${good.rarity}），玩家产出将无法稳定卖出`)
+  } else if (good.rarity !== 'common' && !hasRareBulk(good)) {
+    /**
+     * ⚠ **2026-09-20 收窄**：原先"非常驻卡一律告警"——但**消耗品**可以在稀有渠道里靠批量档
+     * （`rareQtyMul`/`rareWeightMul` ＋ `absorbQtyPerWindow`）做到"买得到、卖得掉"（船长令 · 乙案，见下条契约）
+     * ⇒ 带齐批量档的卡不再报这条（它的"玩家产出卖不掉"已经解决了）。
+     */
+    warn.push(`物品 ${item.id} 的市场卡非常驻（${good.rarity}）且无批量档，玩家产出将无法稳定卖出`)
+  }
+}
+
+/**
+ * **稀有批量档契约**（**2026-09-20 船长令**：「3 种 MK2 弹药供应量和收购太少了，起码要足够玩家消耗和交易出售」）。
+ *
+ * 规则（三条，都是"写错就悄悄失效"的那种）：
+ * ① `rareQtyMul` / `rareWeightMul` **只对 `rarity: 'rare'` 生效**（接线在 `market.ts` 的稀有分支）⇒ 写在别的档位上是死配置；
+ * ② **必须与 `absorbQtyPerWindow` 同时出现**——只放大"供应/簿面收购单"而不写明收购额度，就会退回
+ *    "买得到、卖不掉"或反过来的**两头不对称**（本轮实测到的正是这个：卡片留着池参数 `supplyFlow`，
+ *    于是吸收仍按池口径 4,320/窗跑，而供货走稀有渠道每天只有几十发）；
+ * ③ `rareQtyMul` 下限 10（< 10 放大不了多少，多半是手滑）。
+ */
+{
+  const guarded: string[] = []
+  for (const g of MARKET_GOODS) {
+    const hasQty = g.rareQtyMul !== undefined
+    const hasW = g.rareWeightMul !== undefined
+    if (!hasQty && !hasW) continue
+    guarded.push(g.key)
+    check(g.rarity === 'rare', `稀有批量档契约：${g.key} 写了 rareQtyMul/rareWeightMul，但 rarity = ${g.rarity}（该档位不生效）`)
+    check(
+      g.absorbQtyPerWindow !== undefined,
+      `稀有批量档契约：${g.key} 写了批量档却没写 absorbQtyPerWindow ⇒ 收购额度会退回池参数顺带值，两头不对称`,
+    )
+    if (hasQty) check((g.rareQtyMul ?? 0) >= 10, `稀有批量档契约：${g.key} 的 rareQtyMul = ${g.rareQtyMul} 过小（< 10）`)
+    if (hasW) check((g.rareWeightMul ?? 0) >= 2, `稀有批量档契约：${g.key} 的 rareWeightMul = ${g.rareWeightMul} 过小（< 2）`)
+  }
+  if (guarded.length > 0) {
+    console.log(`· 稀有批量档契约：${guarded.length} 张卡带批量档（${guarded.slice(0, 6).join(' / ')}${guarded.length > 6 ? ' …' : ''}）`)
   }
 }
 
@@ -6051,8 +6086,17 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         `谜质契约：core 装置表 [${WORMHOLE_MATTER_DEVICE_IDS.join(', ')}] 与 data 物品表 [${matterIds.join(', ')}] 不一致`,
       )
     }
-    if (WORMHOLE_MATTER_FLOOR < 1) {
-      errors.push(`谜质契约：每层保底谜质格数 = ${WORMHOLE_MATTER_FLOOR}，应 ≥ 1（船长：「每层保底 1 个谜质格」）`)
+    /**
+     * ⚠ **2026-09-20 加严**：这条契约此前**静默失效**——`WORMHOLE_MATTER_FLOOR` 没从 core 的 index 导出，
+     * 运行时拿到 `undefined`，而 `undefined < 1` 恒为 false ⇒ 契约永远"通过"（内容体检照样全绿）。
+     * 现在**先把"拿到的是不是数字"也当判据**（拿到 undefined 就红），并已在 core 补上导出。
+     * 这就是"tools 不在 typecheck 覆盖面内"的第二个真实样本（第一个是假技能 id，见 `npm run skill:audit`）。
+     */
+    if (!Number.isFinite(WORMHOLE_MATTER_FLOOR) || WORMHOLE_MATTER_FLOOR < 1) {
+      errors.push(
+        `谜质契约：每层保底谜质格数 = ${WORMHOLE_MATTER_FLOOR}，应是 ≥1 的数字（拿到 undefined 说明常量没从 core 导出；` +
+          `船长：「每层保底 1 个谜质格」）`,
+      )
     }
     /**
      * ⑦b **退役装置不许再抽出**（2026-09-15 · 撤离战取消带出的第一批退役）。

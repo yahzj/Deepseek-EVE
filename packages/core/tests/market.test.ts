@@ -39,9 +39,87 @@ import {
 } from '../src/market'
 import { occupyAiCore } from '../src/ai'
 import { DEFAULT_BALANCE } from '../src/balance'
+import { buildSimContext } from '@whale/data'
 import { makeTestCtx, mineral, moduleDef, ship } from './helpers'
 
 const MIN_A = mineral('min-a') // basePrice 8
+
+/**
+ * **消耗品在稀有渠道的批量档**（**2026-09-20 船长令**：「3 种 MK2 弹药供应量和收购太少了，起码要足够玩家
+ * 消耗和交易出售」⇒ 船长选**乙案**：留在稀有订单渠道 + 给消耗品开批量档 + 收购额度 ×5）。
+ *
+ * 口径（写死在这组用例里，改数值先改这里）：
+ * - `rareQtyMul: 200` ⇒ 稀有单件数 1~3 件 → **200~600 发/张**（供货与收购两侧同乘）；
+ * - `rareWeightMul: 3` ⇒ 稀有抽取/收购概率 ×3；
+ * - `absorbQtyPerWindow: 21_600` ⇒ 收购额度 = 池口径 4,320 × 5。
+ */
+describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 · 乙案）', () => {
+  const ctxReal = buildSimContext()
+  const AMMO_KEYS = ['ammo-kinetic-2', 'ammo-explosive-2', 'ammo-plasma-2'] as const
+
+  it('三张 MK2 弹药卡带齐批量档与收购额度（面值 ×5）', () => {
+    for (const key of AMMO_KEYS) {
+      const def = ctxReal.marketGoods.get(key)!
+      expect(def.rarity, key).toBe('rare')
+      expect(def.rareQtyMul, key).toBe(200)
+      expect(def.rareWeightMul, key).toBe(3)
+      expect(def.absorbQtyPerWindow, key).toBe(21_600) // = 池口径 4,320 × 5
+    }
+  })
+
+  it('稀有抽取：弹药 MK2 出的是批量单（200~600 发/张），未标批量档的稀有货照旧 1~3 件', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    advanceGame(state, 1000, ctxReal) // 开盘
+    /** 另挑一件"普通稀有货"（没写批量档）做对照 —— 用模块（rare 单件里 most 有供应单的那类） */
+    const plain = [...ctxReal.marketGoods.values()].find(
+      (g) => g.rarity === 'rare' && g.rareQtyMul === undefined && g.playerBuyable !== false,
+    )!
+    expect(plain, '目录里应存在未标批量档的稀有货').toBeTruthy()
+    const ammoQty = new Set<number>()
+    const plainQty = new Set<number>()
+    // 每 10 分钟一轮抽取，跑 13 小时（80 轮）——足够把三系弹药都抽到
+    for (let i = 0; i < 80; i++) {
+      advanceGame(state, 10 * 60_000, ctxReal)
+      for (const key of AMMO_KEYS) for (const o of state.market.npcSell[key] ?? []) ammoQty.add(o.qty)
+      for (const o of state.market.npcSell[plain.key] ?? []) plainQty.add(o.qty)
+    }
+    expect(ammoQty.size, '13 小时内应抽到过弹药 MK2 的供货单').toBeGreaterThan(0)
+    for (const q of ammoQty) {
+      expect(q, '批量档：单张 1~3 件 ×200').toBeGreaterThanOrEqual(200)
+      expect(q, '批量档：单张 1~3 件 ×200').toBeLessThanOrEqual(600)
+    }
+    for (const q of plainQty) expect(q, '没写批量档的稀有货照旧').toBeLessThanOrEqual(3)
+  })
+
+  it('簿面收购单同步放大：弹药 MK2 的收购单 ≥200 件/张（对照货仍 2 件档）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    advanceGame(state, 1000, ctxReal)
+    const ammoBuy = new Set<number>()
+    for (let i = 0; i < 120; i++) {
+      advanceGame(state, 60_000, ctxReal)
+      for (const key of AMMO_KEYS) for (const o of state.market.npcBuy[key] ?? []) ammoBuy.add(o.qty)
+    }
+    expect(ammoBuy.size, '2 小时内应出现弹药 MK2 的簿面收购单').toBeGreaterThan(0)
+    for (const q of ammoBuy) expect(q).toBeGreaterThanOrEqual(200)
+  })
+
+  it('收购额度：贴买盘价挂 5 万发，当窗就能被站内吸收（额度 ≥ 21,600/窗）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    advanceGame(state, 1000, ctxReal)
+    for (let i = 0; i < 30; i++) advanceGame(state, 60_000, ctxReal) // 让簿上有报价
+    const key = 'ammo-kinetic-2'
+    // 直接把货"锁"好（本用例只验收购侧：调用方契约见 placeSellOrder 头注）
+    state.escrowItems[key] = 50_000
+    const q = marketQuote(state, ctxReal, key)
+    const price = Math.max(1, Math.round(q.buy ?? 1))
+    const order = placeSellOrder(state, ctxReal, key, price, 50_000)
+    expect(order, '挂单应被接受').not.toBeNull()
+    // 走 5 个 60s 窗（窗口边界对齐在开盘那一拍，单走一拍不一定跨过边界）
+    for (let i = 0; i < 5; i++) advanceGame(state, 60_000, ctxReal)
+    const left = state.orders.find((o) => o.good === key)?.qty ?? 0
+    expect(50_000 - left, '5 个窗内至少吃掉一个额度（21,600）').toBeGreaterThanOrEqual(21_600)
+  })
+})
 
 describe('市场开盘与市价单', () => {
   let state: GameState
