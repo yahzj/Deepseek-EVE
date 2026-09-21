@@ -2100,7 +2100,21 @@ function doWormhole(): boolean {
    * 这份区分让下面 ③c 的分支能"在有值得做的事时先做、再按血撤离"。
    */
   const outOfTurns = run.turnsLeft <= 0
-  const lowHp = hp < 0.45
+  /**
+   * **撤退线的血量阈值**（2026-09-21 第十二批 · 隔离实验 5）。
+   *
+   * 原口径 0.45（与进洞门同源）。实测卡点：清完第 1 层守卫后残血约 **61%**，
+   * 而清第 2 层守卫约吃 **36%** ⇒ 清完约 **25% < 45%** ⇒ 下一拍 `wantExtract` 命中、
+   * **直接撤离，永远下不到第 3 层**（25 天档里"到达第 2 层"只出现 1 次，层深账本停在 2）。
+   *
+   * 为什么可以放低：**层深里程碑记在下潜那一刻**（`wormholeDescend` 的 `peakFirst`），
+   * 而本工具的政策是"**拿到新层深就撤**" ⇒ 只要"清完守卫时还活着"，
+   * **下潜一层就是净赚 +1 层深**，随后立刻撤离、不需要再打赢任何一场。
+   * 所以把线放到 0.2 是**用"可能全损"换"确定 +1 层深"**，而船很便宜（一次买齐 4 艘约 5000 万，
+   * 而模拟第 25 天有 85 亿）⇒ 这笔账明显划算。
+   */
+  const WH_RETREAT_HP = 0.2
+  const lowHp = hp < WH_RETREAT_HP
   const wantExtract = outOfTurns || lowHp || whAlreadyDone()
   /**
    * **逐层读数**（2026-09-21 加）：每到一个新层深记一条"我方还剩多少血 / 还剩几回合 /
@@ -2279,15 +2293,24 @@ function wormholeFleetPick(): string[] {
     .filter((uid) => {
       const f = state.fleet[uid]
       if (!f) return false
-      return (f.armorPct ?? 1) >= 0.25 && (f.durability ?? 1) >= 0.25
+      return (f.armorPct ?? 1) >= 0.6 && (f.durability ?? 1) >= 0.6
     })
     .map((uid) => ({ uid, score: scoreOf(uid) }))
     .sort((a, b) => b.score - a.score || a.uid.localeCompare(b.uid))
     .map((x) => x.uid)
-  // 主控若能带 ⇒ 置首（引擎允许编队不含主控，但主控在队里才吃"驾驶舰"那套加成）
   const mainDef = fleetDefOf(state, ctx, state.shipId)
   const mainOk = !!mainDef && wormholeShipAllowed(mainDef)
-  const ordered = mainOk ? [state.shipId, ...rows.filter((u) => u !== state.shipId)] : rows
+  /**
+   * ⚠⚠ **主控也要过同一道闸**（2026-09-21 第十二批修的一个真 bug）。
+   *
+   * 原写法把主控**无条件置首**（`mainOk ? [state.shipId, ...rows.filter(u => u !== shipId)]`），
+   * 而 `rows` 已经过"甲/结构 ≥ 阈值"的过滤 —— 于是**主控完全绕过了准入闸**。
+   * 实测证据（12~14 天档的进洞读数）：
+   * `甲0.00/结0.26 甲1.00/结1.00 甲1.00/结1.00`、`甲0.00/结0.43 …` ——
+   * **甲被打到 0 的主控照样带队进洞**，那一趟自然撑不到第 2 层，层深也就上不去。
+   */
+  const mainUsable = mainOk && (state.fleet[state.shipId]?.armorPct ?? 1) >= 0.6 && (state.fleet[state.shipId]?.durability ?? 1) >= 0.6
+  const ordered = mainUsable ? [state.shipId, ...rows.filter((u) => u !== state.shipId)] : rows
   for (let n = Math.min(4, ordered.length); n >= 1; n--) {
     const fleet = ordered.slice(0, n)
     // ⚠ 入参口径：`wormholeAdmission(ctx, shipIds, techTurnBonus)` —— **没有 state**（第一版我按
