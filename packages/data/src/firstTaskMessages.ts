@@ -36,6 +36,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '矿带产出原矿；精炼炉把原矿炼成原材料，原材料才是绝大多数蓝图的用料。',
       '随信附一台打捞器 MK1——装上即可用于打捞作业。',
+      '另附 100 单位橄榄岩：精炼炉每批要 100 单位，这批料够开第一炉。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-mine' },
     hint: { text: '去工业页看看精炼炉与组装机', page: 'industry' },

@@ -229,7 +229,7 @@ function setLeg(state: GameState, ctx: SimContext, fromId: string | null, toId: 
  */
 export function startHauling(state: GameState, aSiteId: string | null, bSiteId: string | null, ctx: SimContext): CommandResult {
   if (state.hauling.active) {
-    return { ok: false, error: '长途运输进行中：先停止（顶部活动栏）再换线。', errorId: 'core.hauling.001' }
+    return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到顶部活动栏点「停止运输」再换线。', errorId: 'core.hauling.001' }
   }
   // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
   const hold = wormholePilotHoldReason(state)

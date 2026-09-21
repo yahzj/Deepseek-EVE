@@ -532,6 +532,11 @@ export function WormholePanel({
   /** 撤离的**待确认态**（两讨伐确认：第一次点只亮警告、第二次点才真撤）——5 秒不点自动解除 */
   const [extractAsk, setExtractAsk] = useState(false)
   /**
+   * **进洞的中断确认**（**2026-09-20 船长令**）：跑着长途运输时进洞会自动停运（本趟报酬拿不到）
+   * ⇒ 第一次点「进洞」只警告、再点一次才真进。与活动栏/舰船页同款两讨伐确认、同一组文案。
+   */
+  const [enterHaulAsk, setEnterHaulAsk] = useState(false)
+  /**
    * **临时空间待清空确认**（船长 2026-09-14：「离开背包页时丢弃并失效」＋「强制二选一：丢掉 或 放回」
    * ＋「撤离前必须清空」）：三个触发口（切页 / 关面板 / 撤离）都在面板这一层；确认条画在背包页里
    * ⇒ 触发时**先把页签切到背包**再弹条。
@@ -750,6 +755,16 @@ export function WormholePanel({
   }
 
   function handleEnter(): void {
+    /**
+     * **进洞会中断长途运输**（`wormhole.ts` 的 `haulingHalt` 在进洞那一刻自动停运）⇒
+     * **2026-09-20 船长令**：先弹一次警告（**本趟报酬到站才结，中断就拿不到**），再点一次才真进洞。
+     */
+    if (engine.state.hauling.active && !enterHaulAsk) {
+      setEnterHaulAsk(true)
+      onToast(tr('ui.Hauling.033'), true)
+      return
+    }
+    setEnterHaulAsk(false)
     const r = stockId ? engine.wormholeEnterFromStock(stockId, picked) : engine.wormholeEnter(picked)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.296'), true)
     else {
@@ -1467,13 +1482,15 @@ export function WormholePanel({
                     disabled={auto ? picked.length === 0 || autoGate !== null : !admission.ok || !!run || entryGate !== null}
                     onClick={auto ? handleAutoStart : handleEnter}
                     title={
-                      auto
-                        ? (autoGate ?? (picked.length === 0 ? tr("ui.Wormhole.023") : undefined))
-                        : (entryGate ??
-                          (autoStopText ? tr("ui.Wormhole.248", { autoStopText: autoStopText }) : undefined))
+                      !auto && enterHaulAsk
+                        ? tr('ui.Hauling.035')
+                        : auto
+                          ? (autoGate ?? (picked.length === 0 ? tr("ui.Wormhole.023") : undefined))
+                          : (entryGate ??
+                            (autoStopText ? tr("ui.Wormhole.248", { autoStopText: autoStopText }) : undefined))
                     }
                   >
-                    {auto ? tr("ui.Wormhole.134") : tr("ui.Expedition.308")}
+                    {!auto && enterHaulAsk ? tr('ui.Hauling.034') : auto ? tr("ui.Wormhole.134") : tr("ui.Expedition.308")}
                   </button>
                   <span className="app-dim">
                     {auto

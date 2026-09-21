@@ -186,7 +186,7 @@ export function wormholeScanBlockReason(state: GameState): string | null {
    * 判据与通知一律与 `mining.ts` / `industry.ts` / `manufacturing.ts` 的既有措辞对齐
    * （"想自动××可改用 AI 核心驱动"）。
    */
-  if (state.hauling.active) return '主控正在长途运输：先停止运输（活动栏「停止运输」，到站即止）再开始扫描。'
+  if (state.hauling.active) return '主控正在长途运输：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」再开始扫描。'
   if (state.sideTasks.deliver !== null) return '快递投送在途：到站自动结算后再开始扫描。'
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
     return '精炼炉正由你亲自运转：先停炉才能展开扫描阵列（想自动精炼可改用 AI 核心驱动）。'

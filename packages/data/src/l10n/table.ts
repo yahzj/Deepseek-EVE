@@ -84,8 +84,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.salvaging.027": { zh: "货仓装不下下一轮打捞（余 {p1} m³ ／ 每轮 {p2} m³）：自动返航卸货（本趟约 {p3} m³，约 {p4} 秒，去程已并入返航）。", en: "The hold cannot take another salvage round ({p1} m³ free / {p2} m³ per round): returning to unload automatically (this trip about {p3} m³; roughly {p4} seconds, outbound leg folded in)." },
   /* 「互斥」类共用条目：整句两条（开采 / 打捞各一条）——占位符对齐是要塞，
      所以「动词」不做参数（参数里塞 id 要两层渲染，得不偿失） */
-  "core.state.001": { zh: "长途运输进行中：先停止（活动栏「停止运输」，到站即止）再开采。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival) before mining." },
-  "core.state.005": { zh: "长途运输进行中：先停止（活动栏「停止运输」，到站即止）再打捞。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival) before salvaging." },
+  "core.state.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再开采。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before mining." },
+  "core.state.005": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再打捞。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before salvaging." },
   /* ── 共用条目（多文件复用；这类"谁都用"的句子统一放 state 命名空间）── */
   "core.state.006": { zh: "舰队里找不到该舰船，无法执行采矿任务。", en: "That ship is not in the fleet, so the mining task cannot be started." },
   "core.state.007": { zh: "目标星系不在已知航路内。", en: "The target system is not on any known route." },
@@ -391,7 +391,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.sideTasks.018": { zh: "「{p1}」不在当前可达航路内，无法出发投送。", en: "“{p1}” is not on any currently reachable route, so the delivery cannot set out." },
   "core.sideTasks.020": { zh: "快递出发：舰船先自动返航母港（自「{p1}」），再按母港航线投送。", en: "Delivery started: the ship returns to the home port automatically (from “{p1}”), then flies the home-port route." },
   /* ── 第十三批：hauling.ts（长途运输：接单 / 换线 / 到站 / 异常终止）── */
-  "core.hauling.001": { zh: "长途运输进行中：先停止（顶部活动栏）再换线。", en: "Long-haul transport is running: stop it first (activity bar at the top) before switching routes." },
+  "core.hauling.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到顶部活动栏点「停止运输」再换线。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar at the top first, before switching routes." },
   "core.hauling.002": { zh: "舰船在野外：先返航到空间站再安排长途运输。", en: "The ship is in the field: return to a station before arranging long-haul transport." },
   "core.hauling.003": { zh: "航线端点缺失或尚未建成——请选择两座已建成站点之间的航线。", en: "A route endpoint is missing or unfinished — pick a route between two completed stations." },
   "core.hauling.004": { zh: "航线两端相同——请选两座不同的站点。", en: "Both ends of the route are the same — pick two different stations." },
@@ -432,7 +432,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.manufacturing.015": { zh: "制造完成：{p1} ×{p2} 已放入物品仓库（弹药可出发预载装船）。", en: "Manufacturing done: {p1} ×{p2} went into item storage (ammo can be pre-loaded onto the ship before departure)." },
   "core.state.031": { zh: "你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。", en: "You are already running a production line yourself: cancel it or wait for it to finish before starting another by hand (AI cores are not limited by this)." },
   "core.state.032": { zh: "你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。", en: "You are running a refinery or recycling unit by hand: stop it before starting a production line by hand (AI cores are not limited by this)." },
-  "core.state.033": { zh: "长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自制造。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival) before manufacturing by hand." },
+  "core.state.033": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自制造。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before manufacturing by hand." },
   /* 工业/制造两文件复用的"作业中"互斥句（措辞与 `core.state.002` 那批不同 ⇒ 各占一条） */
   "core.state.013": { zh: "采矿作业中：先停止开采。", en: "A mining run is under way: stop mining first." },
   "core.state.014": { zh: "打捞作业中：先停止打捞（或等满仓自动返航）。", en: "A salvage run is under way: stop it first (or wait for a full hold to bring the ship home)." },
@@ -605,7 +605,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.expedition.018": { zh: "当前没有进行中的远征。", en: "No expedition is under way." },
   "core.expedition.019": { zh: "交火中无法撤离——请先让战斗分出胜负。", en: "Cannot withdraw while shots are being traded — let the fight reach a verdict first." },
   "core.expedition.020": { zh: "胜利返航中不可召回——战果已结算，返航（去程并入返航）是本次悬赏的必付航程。", en: "Cannot recall during a victorious return — the spoils are already booked, and the trip home (with the outbound leg folded in) is the price of this bounty." },
-  "core.expedition.021": { zh: "长途运输进行中：先停止（活动栏「停止运输」，到站即止）再出击。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival) before sortieing." },
+  "core.expedition.021": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再出击。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before sortieing." },
   "core.expedition.022": { zh: "采矿作业进行中：请先停止开采，舰船才能出航。", en: "A mining run is in progress: stop mining before the ship can sail." },
   "core.expedition.023": { zh: "打捞作业进行中：请先停止打捞，舰船才能出航。", en: "A salvage run is in progress: stop salvaging before the ship can sail." },
   "core.expedition.024": { zh: "目标星系不在已知航路内。", en: "The target system is not on any known route." },
@@ -617,7 +617,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.expedition.030": { zh: "远征目标已不存在，舰队无功而返（异常）。", en: "The expedition target no longer exists, so the fleet returns empty-handed (an anomaly)." },
   "core.expedition.031": { zh: "重复清剿已开启：「{p1}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。", en: "Repeat sweeps are on: once “{p1}” finishes, the fleet sets out again when the cooldown ends (it pauses automatically if the hold or durability falls short)." },
   /* ── 第二十批：location.ts（返航 / 建站交付 / 转场掩护巡逻）── */
-  "core.location.001": { zh: "长途运输进行中：请先停止（活动栏「停止运输」，到站即止）。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival)." },
+  "core.location.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。请先到活动栏点「停止运输」。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first." },
   "core.location.002": { zh: "快递投送途中：舰船正在执行投送航行，到站后再返航。", en: "A courier delivery is under way: the ship is on its delivery voyage, so return once it docks." },
   "core.location.003": { zh: "舰船已停靠空间站，无需返航。", en: "The ship is already docked at a station; no return is needed." },
   "core.location.004": { zh: "掩护巡逻进行中——请先取消（顶部活动栏）。", en: "An escort patrol is under way — cancel it first (activity bar at the top)." },
@@ -639,7 +639,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.location.020": { zh: "货仓没有空闲空间：先卸货入仓库腾出位置，再安排交付循环。", en: "The hold has no free space: unload into storage to make room before setting up a delivery loop." },
   "core.location.021": { zh: "仓库没有可装载的建材（当前档需要：{p1}）——备料后再一键出发。", en: "Storage holds no materials to load (this tier needs: {p1}) — stock up before setting out in one click." },
   "core.location.022": { zh: "当前没有进行中的建站交付航线。", en: "No construction delivery route is under way." },
-  "core.location.023": { zh: "长途运输进行中：先停止（活动栏「停止运输」，到站即止）再转场。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival) before relocating." },
+  "core.location.023": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再转场。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before relocating." },
   "core.location.024": { zh: "掩护巡逻进行中：请先取消（顶部活动栏）。", en: "An escort patrol is under way: cancel it first (activity bar at the top)." },
   "core.location.025": { zh: "快递投送途中：暂不能转场掩护巡逻——到站自动结算后再安排。", en: "A courier delivery is under way: relocating for an escort patrol has to wait until it settles on arrival." },
   "core.location.026": { zh: "返航空间站途中：到站后再安排。", en: "On the way back to a station: arrange it after docking." },
@@ -772,7 +772,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.state.021": { zh: "挂收购单失败（钱包余额不足或订单无法成立）。", en: "Placing the buy order failed (not enough credits in the wallet, or the order cannot stand)." },
   "core.state.022": { zh: "出售数量需大于 0。", en: "The amount to sell must be greater than 0." },
   "core.state.035": { zh: "你已亲自开着一条制造线：先取消或等它完成才能亲自开工（AI 核心不受此限）。", en: "You are already running a production line yourself: cancel it or wait for it to finish before starting by hand (AI cores are not limited by this)." },
-  "core.state.036": { zh: "长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。", en: "Long-haul transport is running: stop it first (the Stop transport button in the activity bar; it halts on arrival) before running a unit by hand." },
+  "core.state.036": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自开炉。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before running a unit by hand." },
   "core.state.037": { zh: "——先就位驶往「{p1}」", en: " — first move into position at “{p1}”" },
   "core.state.039": { zh: "；船上原有货物已卸入仓库（{p1} 单位）", en: "; the cargo already aboard was unloaded into the warehouse ({p1} units)" },
   "core.state.040": { zh: "；AI 核心已归还核心库。", en: "; the AI core went back to the core library." },
@@ -2240,6 +2240,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Hauling.030": { zh: "无法开始运输。", en: "Cannot start the haul." },
   "ui.Hauling.031": { zh: "停止失败。", en: "Could not stop it." },
   "ui.Hauling.032": { zh: "空间站", en: "Station" },
+  /* 长途运输的**中断警告**（**2026-09-20 船长令**：「当玩家在跑长途运输，要切换其他主控活动打断长途运输时，
+     弹出一个警告，告诉玩家中断当前长途运输将无法获得本趟的报酬之类的」）——四个中断点共用这三条：
+     活动栏「停止运输」· 长途运输页「停止运输」· 舰船页「换驾驶」· 虫洞「开始探索」。 */
+  "ui.Hauling.033": { zh: "⚠ 再点一次「停止运输」即中断本趟——这一趟的报酬拿不到。", en: "⚠ Click Stop transport once more to interrupt this trip — its pay is forfeited." },
+  "ui.Hauling.034": { zh: "确认中断（拿不到本趟报酬）", en: "Interrupt (forfeit this trip's pay)" },
+  "ui.Hauling.035": { zh: "⚠ 中断当前长途运输：本趟报酬拿不到（报酬到站才结）；舰船即时返港，无其它惩罚。", en: "⚠ Interrupting the running haul: this trip's pay is forfeited (the fee settles on arrival); the ship returns to port at once with no other penalty." },
   "ui.ImportantTasks.001": { zh: "◆ 寻找人类", en: "◆ Search for humanity" },
   "ui.ImportantTasks.002": { zh: "人类已全体失踪——你是一艘前人类时代的舰船 AI。目前没有任何可执行线索，完成方法未知；以这座章鱼宇宙人统治的母港为起点，往未知的前方继续航行，壮大自身规模，应对各种危险，或许终会有所发现。", en: "Humanity has vanished entirely — you are the ship AI of a pre-human era. There is no actionable lead yet and how this ends is unknown; from this home port ruled by octopoid aliens, keep flying into the unknown, grow your scale, face whatever comes, and you may find something." },
   "ui.ImportantTasks.003": { zh: "可做的事", en: "What you can do" },

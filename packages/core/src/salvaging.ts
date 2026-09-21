@@ -98,7 +98,7 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   if (state.hauling.active) {
     return {
       ok: false,
-      error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再打捞。',
+      error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再打捞。',
       errorId: 'core.state.005',
     }
   }

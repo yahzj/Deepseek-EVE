@@ -77,9 +77,15 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     // 顺序解锁下：扫描 → 采矿 → 打捞 ⇒ 走到「第一次打捞残骸」时打捞器已经在手上
     const order = FIRST_TASKS.map((d) => d.id)
     expect(order.indexOf('first-mine')).toBeLessThan(order.indexOf('first-salvage'))
+    /**
+     * **同日第二条令**：「任务完成后额外给玩家 100 橄榄岩用于下一阶段任务」——
+     * 下一阶段是「第一次操作精炼炉」，精炼每批 100 单位 ⇒ 这批料正好凑够第一炉。
+     */
+    const wares = (id: string) => (FIRST_TASKS.find((d) => d.id === id)?.reward?.ware ?? []).map((w) => `${w.itemId}×${w.units}`)
+    expect(wares('first-mine')).toEqual(['ore-veldspar×100'])
   })
 
-  it('奖励真的按新口径发：扫描给采集器 MK1、挖矿给打捞器 MK1（各只发一次）', () => {
+  it('奖励真的按新口径发：扫描给采集器 MK1、挖矿给打捞器 MK1 ＋ 100 橄榄岩（各只发一次）', () => {
     // ① 扫描（非序章档：母港已点亮 ⇒ 首拍即判过）
     const s1 = testState()
     advanceGame(s1, 1000, ctx)
@@ -92,10 +98,15 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     const s2 = testState()
     s2.importantTasks['first-scan'] = { done: true }
     s2.firstStats = { ...(s2.firstStats ?? {}), mineUnits: 1 }
+    const oreBefore = s2.warehouse.items['ore-veldspar'] ?? 0
     advanceGame(s2, 1000, ctx)
     expect(s2.importantTasks['first-mine']?.done).toBe(true)
     expect(s2.moduleBay['mod-salvager-1']).toBe(1)
     expect(s2.moduleBay['mod-miner-1']).toBeUndefined() // 采集器不再挂这条
+    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore, '额外给 100 橄榄岩').toBe(100)
+    // 再推几拍：不双发
+    for (let i = 0; i < 5; i++) advanceGame(s2, 1000, ctx)
+    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore).toBe(100)
   })
 
   it('母港扫描窗口 = 10 秒（船长 2026-09-18）；其余星系照旧 10 分钟基准', () => {

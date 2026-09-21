@@ -143,6 +143,12 @@ export function ShipPage({
   /** 2026-09-14 船长：**移入舰船仓库**替换原先的「市价出售」（出售统一到舰船仓库）。
    *  `storeConfirmId` = 正在展开"入仓会清掉自定义名"确认的那艘船（有名字时才需要确认）。 */
   const [storeConfirmId, setStoreConfirmId] = useState<string | null>(null)
+  /**
+   * **换驾驶的中断确认**（**2026-09-20 船长令**）：正在跑长途运输时换驾驶会中断本趟
+   * （`shipyard.changeShip` 的 `cancelHaulingOnSwitch`）⇒ 第一次点只警告、再点一次才真换。
+   * 记的是"正在等确认的那艘 uid"。
+   */
+  const [switchAskId, setSwitchAskId] = useState<string | null>(null)
   // 2026-09-09 切换驾驶高亮（船长定：无缝切换易误判）：成功后目标船卡 + 「当前驾驶」行做一次约 0.8 秒脉冲
   const [switchFxUid, setSwitchFxUid] = useState<string | null>(null)
   const switchFxTimer = useRef<number | null>(null)
@@ -240,6 +246,17 @@ export function ShipPage({
 
   function handleSwitch(id: string): void {
     // 2026-09-15 起：星系扫描是无人扫描艇（不占主控、不牵动舰船）⇒ 换驾驶不再需要"先终止扫描"的确认
+    /**
+     * **长途运输会因换驾驶而中断**（`shipyard.changeShip` 里 `cancelHaulingOnSwitch`）⇒
+     * **2026-09-20 船长令**：先弹一次警告（**本趟报酬到站才结，中断就拿不到**），再点一次才真换。
+     * 与活动栏「停止运输」/长途运输页那颗按钮同一把尺、同一组文案（`ui.Hauling.033~035`）。
+     */
+    if (engine.state.hauling.active && switchAskId !== id) {
+      setSwitchAskId(id)
+      onToast(tr('ui.Hauling.033'), true)
+      return
+    }
+    setSwitchAskId(null)
     const r = engine.changeShipAt(id)
     if (!r.ok) onToast(cmdText(r) || tr('ui.ShipPage.189'), true)
     else flashSwitchPilot(id)
@@ -672,8 +689,12 @@ export function ShipPage({
                       >
                         {tr("ui.ShipPage.034")}
                       </button>
-                      <button className="app-btn is-small is-primary" onClick={() => handleSwitch(uid)}>
-                        {tr("ui.ShipPage.035")}
+                      <button
+                        className="app-btn is-small is-primary"
+                        title={switchAskId === uid ? tr('ui.Hauling.035') : undefined}
+                        onClick={() => handleSwitch(uid)}
+                      >
+                        {switchAskId === uid ? tr('ui.Hauling.034') : tr("ui.ShipPage.035")}
                       </button>
                     </div>
                   </div>

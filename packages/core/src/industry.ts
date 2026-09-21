@@ -228,7 +228,7 @@ export function startRefineRun(
     if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
-    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。', errorId: 'core.state.036' }
+    if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自开炉。', errorId: 'core.state.036' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
@@ -409,7 +409,7 @@ export function startRecycleRun(
     if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
     if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
     if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
-    if (state.hauling.active) return { ok: false, error: '长途运输进行中：先停止（活动栏「停止运输」，到站即止）再亲自开炉。', errorId: 'core.state.036' }
+    if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自开炉。', errorId: 'core.state.036' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }

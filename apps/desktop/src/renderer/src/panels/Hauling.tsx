@@ -23,6 +23,7 @@ import {
   shipDisplayName,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
+import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { isk } from '../pages/common'
@@ -63,6 +64,11 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
     state.transit.active
   const haulingActive = state.hauling.active
   const h = state.hauling
+  /**
+   * **中断确认**（**2026-09-20 船长令**）：本页的「停止运输」与活动栏那颗同款两讨伐确认——
+   * 第一下只警告（**本趟报酬到站才结，中断就拿不到**），第二下才真停。
+   */
+  const [stopAsk, setStopAsk] = useState(false)
   const dockedOk = state.awayGalaxy === null // 停在任意空间站（母港或已建成副站）即可接单
   const docked = dockedHaulEndpoint(state)
 
@@ -190,8 +196,24 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                         tone="warn"
                         label={tr("ui.Hauling.027", { p1: h.toSiteId === null ? tr("ui.Expedition.007") : ctx.stations.get(h.toSiteId!)?.name ?? tr('ui.Hauling.032'), p2: fmtMin(Math.max(0, h.legMs - h.phaseAccMs)) })}
                       />
-                      <button className="app-btn is-small" onClick={stopNow} title={tr("ui.Hauling.021")}>
-                        {tr("ui.ActivityBar.014")}
+                      <button
+                        className="app-btn is-small"
+                        onClick={() => {
+                          /**
+                           * **中断确认**（船长 2026-09-20）：本页这颗「停止运输」与活动栏那颗同一把尺——
+                           * 第一下只警告（本趟报酬到站才结、中断就拿不到），再点一次才真停。
+                           */
+                          if (!stopAsk) {
+                            setStopAsk(true)
+                            onToast(tr('ui.Hauling.033'), true)
+                            return
+                          }
+                          setStopAsk(false)
+                          stopNow()
+                        }}
+                        title={stopAsk ? tr('ui.Hauling.035') : tr("ui.Hauling.021")}
+                      >
+                        {stopAsk ? tr('ui.Hauling.034') : tr("ui.ActivityBar.014")}
                       </button>
                     </div>
                   ) : (
