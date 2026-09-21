@@ -18,7 +18,7 @@ import type { BattleState, GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { stackWeight } from '../src/equipment'
 import { addWare } from '../src/inventory'
-import { advanceBattleFor, SHIELD_PULSE_MS, shieldPulsePctOf, startBattleFor } from '../src/combat'
+import { advanceBattleFor, SHIELD_PULSE_MS, SHIELD_REGEN_FLOOR_PCT, shieldPulsePctOf, startBattleFor } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
 import type { SimContext } from '../src/types'
@@ -116,6 +116,68 @@ describe('护盾被动回充：按当前盾比例（船长 2026-09-14 改判）'
     expect(after).toBeCloseTo(500 + 500 * k * 0.1, 3)
     // 且**永远不超过满盾**
     expect(after).toBeLessThanOrEqual(1000)
+  })
+})
+
+describe('护盾回充的**速度下限**（2026-09-20 船长追加）', () => {
+  /**
+   * 船长原话：「**舰船护盾的恢复速度下限改为1%。但是当护盾被击穿时，依旧是0%**」
+   * → 追问口径后补：「**满盾依旧是2%，当盾量接近0的时候是1%**」。
+   *
+   * 口径 = 回充速率 `max(当前盾 × 2%/秒, 满盾 × 1%/秒)`：
+   * - **满盾时 2%**（下限不介入）；两条线的交点恰在**半盾（50%）**：`50%×2% = 1%`；
+   * - **低于半盾 ⇒ 下限接管**，回充量不再随盾量继续缩水（治"被打残后本场盾就废了"）；
+   * - **盾 = 0 ⇒ 仍是 0**（"破盾后 0 回复"那条裁定不变，本组第 2 条用例专钉）。
+   */
+  it('**低于半盾 ⇒ 下限接管**：回充按满盾的 1%/秒，不再随盾量缩水', () => {
+    const { state, ctx, uid } = world()
+    const b = startBattleFor(state, ctx, uid, 'ano-chg', 0)!
+    const me = b.units['player']!
+    const k = ctx.balance.battle.shieldRegenPerSec
+    // 盾 100（满盾 1000）：纯指数式只回 100×k×0.1 = 0.2 点；下限给 1000×1%×0.1 = 1.0 点
+    me.hp.s = 100
+    state.gameMs += 100
+    advanceBattleFor(state, ctx, b, uid, 'ano-chg')
+    expect(SHIELD_REGEN_FLOOR_PCT).toBe(0.01)
+    expect(me.hp.s).toBeCloseTo(100 + 1_000 * SHIELD_REGEN_FLOOR_PCT * 0.1, 3)
+    // 且**明显大于**旧口径（证明下限真的在起作用，不是恰好相等）
+    expect(me.hp.s).toBeGreaterThan(100 + 100 * k * 0.1 + 0.5)
+  })
+
+  it('**半盾是两段的交点**：50% 处两条线相等（此处仍是"按当前盾"）', () => {
+    const { state, ctx, uid } = world()
+    const b = startBattleFor(state, ctx, uid, 'ano-chg', 0)!
+    const me = b.units['player']!
+    const k = ctx.balance.battle.shieldRegenPerSec
+    me.hp.s = 500
+    state.gameMs += 100
+    advanceBattleFor(state, ctx, b, uid, 'ano-chg')
+    // 交点：当前盾 × k === 满盾 × 下限 ⇒ 两套算法同值
+    expect(500 * k).toBeCloseTo(1_000 * SHIELD_REGEN_FLOOR_PCT, 10)
+    expect(me.hp.s).toBeCloseTo(500 + 500 * k * 0.1, 3)
+  })
+
+  it('**盾被击穿 ⇒ 依旧是 0%**（下限**不**把破盾救回来）', () => {
+    const { state, ctx, uid } = world()
+    const b = startBattleFor(state, ctx, uid, 'ano-chg', 0)!
+    const me = b.units['player']!
+    me.hp.s = 0
+    for (let i = 0; i < 100; i++) {
+      state.gameMs += 100
+      advanceBattleFor(state, ctx, b, uid, 'ano-chg')
+      if (b.ended) break
+    }
+    expect(me.hp.s).toBe(0)
+  })
+
+  it('下限不越过满盾上限（满盾前那一跳被夹住）', () => {
+    const { state, ctx, uid } = world()
+    const b = startBattleFor(state, ctx, uid, 'ano-chg', 0)!
+    const me = b.units['player']!
+    me.hp.s = 999
+    state.gameMs += 100
+    advanceBattleFor(state, ctx, b, uid, 'ano-chg')
+    expect(me.hp.s).toBeLessThanOrEqual(1_000)
   })
 })
 
