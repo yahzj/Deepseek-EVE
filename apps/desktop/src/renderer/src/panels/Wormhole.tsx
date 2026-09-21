@@ -107,7 +107,7 @@ import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, Wormh
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
-import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses } from '../ui/itemSubs'
+import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 
 /* 探索地图的几何口径（缩放档 / viewBox 尺寸 / 锚点 / 拖动夹取）抽到 `./wormholeMapGeom`：纯函数、无导入
@@ -1443,7 +1443,7 @@ export function WormholePanel({
                         className={`app-tasktab${whRole === s.key ? ' is-active' : ''}`}
                         onClick={() => setWhRole(s.key)}
                       >
-                        {s.label}
+                        {subText(s)}
                       </button>
                     ))}
                   </div>
@@ -1467,7 +1467,7 @@ export function WormholePanel({
                         className={`app-tasktab${whTier === s.key ? ' is-active' : ''}`}
                         onClick={() => setWhTier(s.key)}
                       >
-                        {s.label}
+                        {subText(s)}
                       </button>
                     ))}
                   </div>

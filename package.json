@@ -62,7 +62,8 @@
     "docs:index": "tsx tools/docs-index.ts",
     "docs:seal": "tsx tools/docs-seal.ts",
     "tools:audit": "tsx tools/tools-audit.ts",
-    "commit:msg": "tsx tools/commit-msg.ts"
+    "commit:msg": "tsx tools/commit-msg.ts",
+    "ui:actwin": "tsx tools/activity-win-probe.ts"
   },
   "devDependencies": {
     "exceljs": "^4.4.0",

@@ -26,8 +26,7 @@ import {
   WRECK_SUBS,
   itemBucketPasses,
   itemSubPasses,
-  rackPasses,
-} from '../ui/itemSubs'
+  rackPasses, subText } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
@@ -365,7 +364,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     setWareFunc(SUB_ALL)
                   }}
                 >
-                  {s.label}
+                  {subText(s)}
                 </button>
               ))}
             </div>
@@ -391,7 +390,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   className={`app-tasktab${wareFunc === s.key ? ' is-active' : ''}`}
                   onClick={() => setWareFunc(s.key)}
                 >
-                  {s.label}
+                  {subText(s)}
                 </button>
               ))}
             </div>

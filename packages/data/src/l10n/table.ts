@@ -872,6 +872,32 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Announcements.001": { zh: "游戏更新公告", en: "Game update announcements" },
   "ui.Announcements.002": { zh: "公告", en: "Announcements" },
   "ui.Announcements.003": { zh: "📣 更新公告", en: "📣 Update announcement" },
+  /* ── 主控活动窗口（2026-09-20 船长令：主控执行采掘/打捞/长途运输/扫描虫洞时的动效窗口）── */
+  "ui.ActivityWin.001": { zh: "采掘中", en: "Mining" },
+  "ui.ActivityWin.002": { zh: "打捞中", en: "Salvaging" },
+  "ui.ActivityWin.003": { zh: "长途运输中", en: "Long-haul transport" },
+  "ui.ActivityWin.004": { zh: "母港", en: "Home port" },
+  "ui.ActivityWin.005": { zh: "扫描虫洞中", en: "Scanning for wormholes" },
+  "ui.ActivityWin.006": { zh: "← 最小化", en: "← Minimize" },
+  "ui.ActivityWin.007": { zh: "▶ ", en: "▶ " },
+  "ui.ActivityWin.008": { zh: "展开主控活动窗口：看主控正在做什么", en: "Open the command activity window: see what your ship is doing" },
+  "ui.ActivityWin.010": { zh: "矿带：", en: "Belt: " },
+  "ui.ActivityWin.011": { zh: "本趟采得：", en: "Mined this trip: " },
+  "ui.ActivityWin.012": { zh: "每循环：", en: "Per cycle: " },
+  "ui.ActivityWin.013": { zh: "本趟捞取：", en: "Salvaged this trip: " },
+  "ui.ActivityWin.014": { zh: "航线：", en: "Route: " },
+  "ui.ActivityWin.015": { zh: "当前航段驶往：", en: "Current leg bound for: " },
+  "ui.ActivityWin.016": { zh: "本趟行情：", en: "This trip's market rate: " },
+  "ui.ActivityWin.017": { zh: "本次进度：", en: "Progress this scan: " },
+  "ui.ActivityWin.018": { zh: "打捞器：", en: "Salvagers: " },
+  "ui.ActivityWin.019": { zh: "推进步长：", en: "Step: " },
+  "ui.ActivityWin.020": { zh: "本循环进度：达到 100% 产出一次原矿", en: "Cycle progress: at 100% one load of raw ore is produced" },
+  "ui.ActivityWin.021": { zh: "本航段进度：达到 100% 抵达下一站并结算", en: "Leg progress: at 100% you arrive at the next port and settle" },
+  "ui.ActivityWin.022": { zh: "扫描进度：满一格发现一处虫洞", en: "Scan progress: a full bar finds one wormhole" },
+  "ui.ActivityWin.023": { zh: "打捞进度：满一格捞上一批残骸", en: "Salvage progress: a full bar recovers one batch of wreckage" },
+  "ui.ActivityWin.024": { zh: "还剩约 {p1} 小时扫满（满一格发现一处虫洞）", en: "About {p1} h to a full bar (a full bar finds one wormhole)" },
+  "ui.ActivityWin.030": { zh: "长途运输 · 就位中", en: "Long-haul: moving into position" },
+  "ui.ActivityWin.031": { zh: "空舱赶赴航线端点（就位后开始承运）", en: "Running empty to the route endpoint (carrying starts once in position)" },
   "ui.Announcements.004": { zh: "新", en: "New" },
   "ui.Announcements.005": { zh: "有未读公告", en: "Unread announcements" },
   "ui.App.001": { zh: "点击 出港", en: "Undock" },
@@ -956,7 +982,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.080": { zh: "迎战", en: "Engage" },
   "ui.App.081": { zh: "立即脱离：按文字结算（可能击退缴获 / 受损 / 被抢小部分货）", en: "Disengage now: resolved as text (you may drive them off and take prizes, take damage, or lose a little cargo)" },
   "ui.App.082": { zh: "快速脱离", en: "Quick disengage" },
-  "ui.App.083": { zh: "进入全屏战场：观察实时战斗，可拖动距离条指挥", en: "Open the full-screen battle: watch the fight live and drag the range bar to command it" },
+  "ui.App.083": { zh: "打开战斗窗口：观察实时战斗，可拖动距离条指挥", en: "Open the battle window: watch the fight live and drag the range bar to command it" },
   "ui.App.084": { zh: "战斗中 · 进入战场", en: "In combat · entering battle" },
   "ui.App.085": { zh: "离线简报", en: "Offline report" },
   "ui.App.086": { zh: "✕ 关闭", en: "✕ Close" },
@@ -1036,7 +1062,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 不可以退出」）的**禁用理由**文案；船长 2026-09-20 改判「**虫洞内的战斗，允许玩家将战斗窗口
    * 最小化**」⇒ 洞内那枚按钮不再禁用，该键随之无引用（按纪律删死键，不留悬空文案）。
    */
-  "ui.BattleScreen.037": { zh: "← 退出战场", en: "← Leave battle" },
+  /**
+   * 战斗窗口左上角那枚按钮（2026-09-20 船长报障改文案：「**说是退出战斗其实不准确，应该是最小化
+   * 战斗窗口**」）。它**只关观看窗口**，战斗在后台照常推进 ⇒ 中文与英文都改回"最小化"口径，
+   * 不再用"退出/Leave"（那会让人以为会中止战斗）。
+   */
+  "ui.BattleScreen.037": { zh: "← 最小化", en: "← Minimize" },
   "ui.BattleScreen.038": { zh: "副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离", en: "Cannot retreat while the battle is unfinished: clear this node, and withdrawal is offered at the end of the layer" },
   /** 洞内"本场必须打完"的提示——**2026-09-20 改文案**：去掉了"（战场也不能退出）" */
   "ui.BattleScreen.039": { zh: "洞内：本场必须打完（不能撤退）", en: "In the wormhole this fight has to be finished (no retreat)" },
@@ -1106,10 +1137,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.103": { zh: "（回收率 {p1}% · 优先回收高价值）·", en: "(recovery rate {p1}% · high-value drones first) ·" },
   "ui.BattleScreen.104": { zh: "净损失 {p1} 架", en: "net loss: {p1} airframes" },
   /**
-   * 「← 退出战场」的悬停说明（2026-09-20 船长：「**虫洞内的战斗，允许玩家将战斗窗口最小化。**」）。
+   * 「← 最小化」的悬停说明（2026-09-20 船长：「**虫洞内的战斗，允许玩家将战斗窗口最小化。**」）。
    * 洞内与洞外**同一句话**：都只是关掉观看界面，战斗在后台继续推进。
    */
-  "ui.BattleScreen.105": { zh: "最小化观战窗口：战斗在后台继续，可随时从「战斗中」回来", en: "Minimize the battle view: the fight continues in the background — reopen it any time from “In battle”" },
+  "ui.BattleScreen.105": { zh: "最小化战斗窗口：不中止战斗，它照常在后台推进；可随时点右下角「战斗中」回来", en: "Minimize the battle window: the fight is not stopped — it keeps running in the background; click “In battle” at the bottom right to reopen it" },
+  "ui.BattleScreen.106": { zh: "战斗窗口", en: "Battle window" },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
@@ -2509,6 +2541,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.107": { zh: "当前批进度 {p1}%（{p2}；{p3}）", en: "Current batch progress {p1}% ({p2}; {p3})" },
   "ui.IndustryPage.108": { zh: " · 匹配 {n} 张", en: " · {n} cards match" },
   "ui.IndustryPage.109": { zh: "没有匹配的货柜——换个关键词试试（支持名称与说明）。", en: "No containers match — try another keyword (name and description both work)." },
+  /* 2026-09-21 船长报障「各个子标签页和筛选似乎并没有本地化」：工业页「造船厂」子标签与造船厂面板标题原先写死中文，补 id */
+  "ui.IndustryPage.110": { zh: "造船厂", en: "Shipyard" },
+  "ui.IndustryPage.114": { zh: "造船厂", en: "Shipyard" },
+  "ui.IndustryPage.115": { zh: "舰船蓝图在这里开工：已学会的配方才能建造（一次性图纸有书即用）；你亲自开限 1 条、其余每条由一枚 AI 核心驱动。造好的船先进舰船仓库。蓝图书仍到「蓝图书架」学习。", en: "Ship blueprints start here: only learned recipes can be built (one-use blueprints build straight from the book). You run one line by hand and each AI core drives one more. Finished ships go into ship storage first. Blueprint books are still studied at the Blueprint Shelf." },
   "ui.IndustryPage.111": { zh: "搜索资源、残骸或产出物…", en: "Search resources, wrecks or output…" },
   "ui.IndustryPage.112": { zh: "启动失败。", en: "Could not start." },
   "ui.IndustryPage.113": { zh: "单位数 = 该价值 ÷ 单价——单价高的原材料每批不足 1 单位会累计到够 1 再入库；每批总价值有 ±10% 抖动，以回收拆解结算为准。", en: "Unit count = that value ÷ unit price — for pricey feedstock, batches that come to less than 1 unit accumulate until a whole unit can be stored; each batch's total value wobbles by ±10%, and the recycling settlement is what counts." },

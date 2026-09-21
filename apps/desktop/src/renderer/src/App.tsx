@@ -42,6 +42,7 @@ import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
+import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
 import { MoneyFit } from './ui/MoneyFit'
 import { cmdText, logText, tr } from './i18n/locale'
 
@@ -718,6 +719,21 @@ export function App({ engine }: { engine: GameEngine }) {
     prevInBattleRef.current = inBattle
   }, [inBattle])
 
+  /**
+   * ── 主控活动窗口（2026-09-20 船长令）──
+   * 与战斗窗口同一套机制：**活动开始的上升沿自动弹出一次**；玩家手动最小化后不再自动弹回
+   * （仍可从右下角浮动还原标点回来）。互斥关系由 core 的场景推导统一给出（`activityKindOf`，
+   * 单一事实源 = `sceneOfShipwin`），本层不各自重写判定。
+   */
+  const activityKind = activityKindOf(state)
+  const [activityOpen, setActivityOpen] = useState(false)
+  const prevActivityRef = useRef<string | null>(null)
+  useEffect(() => {
+    // 交火时不抢战斗窗口（战斗优先）：只记录，不弹出
+    if (activityKind !== null && prevActivityRef.current === null && !inBattle) setActivityOpen(true)
+    prevActivityRef.current = activityKind
+  }, [activityKind, inBattle])
+
   // ── 日志偏好：折叠状态 + 六类开关（本地持久化） ──
   const [logCollapsed, setLogCollapsed] = useState<boolean>(() => readLogPrefs().collapsed)
   const [logKinds, setLogKinds] = useState<Record<LogKind, boolean>>(() => readLogPrefs().kinds)
@@ -1264,12 +1280,11 @@ export function App({ engine }: { engine: GameEngine }) {
           return s ? <Communicator script={s} onClose={() => setPendingOpen(null)} /> : null
         })() : null}
 
-      {/* ───── 交火中：右上角悬浮入口（主动进入战斗页，不自动切换页面） ───── */}
-      {inBattle && !battleOpen ? (
-        <button className="app-battle-float" onClick={() => setBattleOpen(true)} title={tr("ui.App.083")}>
-          {tr("ui.App.084")}
-        </button>
-      ) : null}
+      {/**
+       * ───── 交火中：浮动还原标（2026-09-20 改造后**由窗口壳统一渲染**） ─────
+       * 原先这里是一枚独立按钮；观战窗口改非全屏后，最小化与浮动还原标收进 `ui/WinBox.tsx`
+       * （一处实现两处消费：战斗窗口 + 主控活动窗口）⇒ 本层只决定"窗口开不开、哪个在跑"。
+       */}
 
       {/* ───── 离线简报（启动后一次性显示） ───── */}
       {showOfflineReport ? (
@@ -1391,16 +1406,34 @@ export function App({ engine }: { engine: GameEngine }) {
         />
       ) : null}
       {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} /> : null}
-      {battleOpen ? (
+      {/**
+       * ⚠ **2026-09-20**：这里原先那枚独立的「⚔ 战斗中」浮动按钮**已撤**——
+       * 观战窗口改非全屏后，最小化与浮动还原标统一由 `ui/WinBox.tsx` 这个窗口壳渲染
+       * （一处实现两处消费：战斗窗口 + 主控活动窗口）⇒ 本层只负责"何时开、开哪个"。
+       */}
+      {inBattle ? (
         <BattleScreen
           engine={engine}
           onToast={showToast}
+          open={battleOpen}
+          onRestore={() => setBattleOpen(true)}
           onClose={() => {
             // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
             // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
             // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
             setBattleOpen(false)
           }}
+        />
+      ) : null}
+
+      {/* ───── 主控活动窗口（采掘 / 打捞 / 长途运输·承运 / 扫描虫洞；2026-09-20 船长令）───── */}
+      {activityKind !== null ? (
+        <ActivityScreen
+          state={state}
+          ctx={engine.ctx}
+          open={activityOpen}
+          onMinimize={() => setActivityOpen(false)}
+          onRestore={() => setActivityOpen(true)}
         />
       ) : null}
 

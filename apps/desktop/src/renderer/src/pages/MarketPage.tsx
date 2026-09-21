@@ -29,7 +29,7 @@ import { fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses, presentSubs } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses, presentSubs, subText } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 
@@ -1374,7 +1374,7 @@ export function MarketPage({
                 <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{KIND_TEXT[kind]}</option>
                 {kindSubs.map((s) => (
                   <option key={s.key} value={s.key}>
-                    {s.label}
+                    {subText(s)}
                   </option>
                 ))}
               </select>

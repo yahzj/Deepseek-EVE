@@ -32,28 +32,50 @@ import { toneOf } from './Glyphs'
 const WORK_ACCENT: Partial<Record<ShipwinScene, string>> = {
   'work-mine': '#b5e35f',
   'work-salvage': '#6fe3f0',
+  'work-scan': '#8fd0ff', // 扫描蓝：与 .bg-work-scan 的氛围光同族（2026-09-20 接回本场景）
+  'work-haul': '#7fb3ff', // 航运蓝：沿用角色色里的航运槽，与 .bg-work-haul 同族（2026-09-20 新增）
 }
 
 const SWITCH_MS = 520 // 稍长于 CSS 过渡(450ms)，旧层完全结束后再卸载
 const BG_SWITCH_MS = 480 // 背景交叉淡入淡出时长余量
 
 /** 场景枚举 = 状态窗扩展接口（2026-09-10：后续若战斗/采矿等其它环境要同步背景，
- *  在本类型加值 + sceneOfShipwin 推导 + 对应背景类与远景物件内容即可，不扩散到各处） */
-export type ShipwinScene = 'combat' | 'travel' | 'work-mine' | 'work-salvage' | 'work-scan' | 'field' | 'docked'
+ *  在本类型加值 + sceneOfShipwin 推导 + 对应背景类与远景物件内容即可，不扩散到各处）
+ *
+ *  2026-09-20 新增 `'work-haul'`（船长令：给主控活动加动画窗口）——长途运输此前落通用 `travel`，
+ *  没有"在拉货"的表现；用户裁示**区分就位与承运**（见 `docs/design/main-activity-win-20260920.md`）。 */
+export type ShipwinScene =
+  | 'combat'
+  | 'travel'
+  | 'work-mine'
+  | 'work-salvage'
+  | 'work-scan'
+  | 'work-haul'
+  | 'field'
+  | 'docked'
 
 /** 活动 → 场景（纯函数，独立导出：其它消费方（未来的环境背景）可复用同一推导）
  *  ⚠ **2026-09-14 修**：洞内战斗的宿主是 `state.wormhole.run.battle`（不占 `expedition.battle`）——
- *  原先只认远征 ⇒ 洞里打起来时状态窗**不切"交火"场景**（背景/远景物件全是别的场景）。 */
+ *  原先只认远征 ⇒ 洞里打起来时状态窗**不切"交火"场景**（背景/远景物件全是别的场景）。
+ *  ⚠ **2026-09-20 补**：① `work-scan` 分支**接回**——它 2026-09-17 随"星系扫描无人化"被删
+ *  （当时删得对：星系扫描不再占用主控），但**扫描虫洞**（`state.wormholeScan`）自始至终是
+ *  主控亲自在扫（要求停靠空间站、且与其它主控活动互斥，见 `wormholeScanBlockReason`）
+ *  ⇒ 少了它，扫虫洞时窗口什么都不显示。
+ *  ② 长途运输**全程归 `work-haul`**：就位段（`tripLegsLeft === 1`，空舱赶去航线端点）与承运段
+ *  （`tripLegsLeft >= 2`，满载虚拟货物往返）**画面不同、但都算"主控在跑长途运输"** ⇒ 活动窗口
+ *  自始至终显示它。2026-09-20 定：船长要"区分就位与承运"，那就得两段都看得见——若就位段仍落
+ *  通用 `travel`，窗口会在刚接单时凭空消失、玩家以为任务断了（实测夹具 `wh-layer4` 即此形态）。 */
 export function sceneOfShipwin(state: GameState): ShipwinScene {
   const b = state.expedition.battle
   if (state.wormhole.run?.battle) return 'combat'
   if (state.expedition.active && b) return 'combat'
-  if (state.hauling.active) return 'travel'
+  if (state.hauling.active) return 'work-haul'
   if (state.mining.active) return state.mining.phase === 'returning' ? 'travel' : 'work-mine'
   if (state.salvaging.active) return state.salvaging.phase === 'returning' ? 'travel' : 'work-salvage'
   // ⚠ 2026-09-17 去掉 `state.scanning` 那一档：星系扫描自 2026-09-15 起是**无人扫描艇**
   //   （船长：「玩家扫描星系将不再占用玩家的主控活动」「不牵动舰船」）⇒ 本舰并没有在扫描，
   //   状态窗不该把它画成"本舰作业中"（本条是那批无人化改造漏掉的旧闸之一）。
+  if (state.wormholeScan?.active === true) return 'work-scan' // 扫描虫洞：主控本舰在扫（2026-09-20 接回）
   if (state.expedition.active) return 'travel'
   if (state.transit.active) return 'travel'
   if (state.standby.active) return 'field'
@@ -84,6 +106,7 @@ const STAR_COUNT: Record<ShipwinScene, number> = {
   'work-mine': 14,
   'work-salvage': 14,
   'work-scan': 16,
+  'work-haul': 20,
   travel: 28,
   field: 9,
   combat: 8,

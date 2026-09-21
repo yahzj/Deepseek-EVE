@@ -42,7 +42,7 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
-import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf } from '../ui/itemSubs'
+import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -669,7 +669,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           onClick={() => setSec('shipyard')}
         >
           <span>⚓</span>
-          <span>造船厂</span>
+          <span>{tr("ui.IndustryPage.110")}</span>
         </button>
         <button
           role="tab"
@@ -763,7 +763,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
                   setSub(SUB_ALL) // 换一级标签即回「全部子类」（与组装机、市场页 changeKind 同款）
                 }}
               >
-                {t.label}
+                {subText(t)}
               </button>
             ))}
           </div>
@@ -785,7 +785,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
                   className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
                   onClick={() => setSub(s.key)}
                 >
-                  {s.label}
+                  {subText(s)}
                 </button>
               ))}
             </div>

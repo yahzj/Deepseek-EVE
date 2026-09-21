@@ -33,8 +33,7 @@ import {
   SUB_ALL,
   presentSubs,
   type BlueprintLearnKey,
-  type BlueprintUseKey,
-} from '../ui/itemSubs'
+  type BlueprintUseKey, subText } from '../ui/itemSubs'
 import { BlueprintCard, bookPriceOf, productBaseOf } from './Industry'
 
 interface ShipItem {
@@ -171,9 +170,9 @@ export function ShipyardPanel({
   return (
     <Panel
       className="is-fill win-fixed-body"
-      title="造船厂"
+      title={t('ui.IndustryPage.114')}
       hint={
-        <HintIcon tip="舰船蓝图在这里开工：已学会的配方才能建造（一次性图纸有书即用）；你亲自开限 1 条、其余每条由一枚 AI 核心驱动。造好的船先进舰船仓库。蓝图书仍到「蓝图书架」学习。" />
+        <HintIcon tip={t('ui.IndustryPage.115')} />
       }
       right={
         <>
@@ -242,7 +241,7 @@ export function ShipyardPanel({
                   setUseKind(SUB_ALL)
                 }}
               >
-                {s.label}
+                {subText(s)}
               </button>
             ))}
           </div>
