@@ -389,7 +389,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.sideTasks.016": { zh: "当前舰船货舱不足：本单需 {p1} m³，本舰货舱 {p2} m³——换一艘更大的船再来。", en: "The current ship's hold is too small: this order needs {p1} m³ and the ship holds {p2} m³ — come back with a bigger ship." },
   "core.sideTasks.017": { zh: "限时快递要求跃迁速度 ≥ {p1} AU/s（当前舰船 {p2} AU/s）——换船或装跃迁计算机。", en: "A timed delivery requires a warp speed of at least {p1} AU/s (this ship does {p2} AU/s) — switch ships or fit a warp computer." },
   "core.sideTasks.018": { zh: "「{p1}」不在当前可达航路内，无法出发投送。", en: "“{p1}” is not on any currently reachable route, so the delivery cannot set out." },
-  "core.sideTasks.019": { zh: "快递投送需从母港出发：请先返航母港，再出发投送。", en: "Deliveries must set out from the home port: return to the home port first." },
+  "core.sideTasks.020": { zh: "快递出发：舰船先自动返航母港（自「{p1}」），再按母港航线投送。", en: "Delivery started: the ship returns to the home port automatically (from “{p1}”), then flies the home-port route." },
   /* ── 第十三批：hauling.ts（长途运输：接单 / 换线 / 到站 / 异常终止）── */
   "core.hauling.001": { zh: "长途运输进行中：先停止（顶部活动栏）再换线。", en: "Long-haul transport is running: stop it first (activity bar at the top) before switching routes." },
   "core.hauling.002": { zh: "舰船在野外：先返航到空间站再安排长途运输。", en: "The ship is in the field: return to a station before arranging long-haul transport." },

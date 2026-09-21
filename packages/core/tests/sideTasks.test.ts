@@ -400,20 +400,19 @@ describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
     expect(r.ok ? '' : r.error).toContain('货舱')
   })
 
-  it('**出发地恒为母港**（船长 2026-09-20：「所有快递任务，起点都是从母港触发」）：停靠副站时被拒、航程按母港算', () => {
+  it('**出发地恒为母港：不在母港就自动返航**（船长 2026-09-20「出发不用加守卫，点击出发后自动返回母港」）', () => {
     const { state, ctx } = makeWorld({ stations: [stationSite('s1', 'galaxy-far', '远方站')], built: ['s1'] })
     marketQuote(state, ctx, 'it-ore-a')
     advanceGame(state, FIRST_OPEN_MS, ctx)
     expect(changeShip(state, 'sh-fast', ctx).ok).toBe(true)
     const t = sideTaskBoard(state, ctx).courier.find((x) => x.level === 1)!
-    // ① 停靠副站（结算后玩家就留在那儿）⇒ 出发被拒，且给的是"先返航母港"的指引
+    // ① 停靠在副站（到站结算会把玩家留在那儿）⇒ **不拦**，点出发就把船自动送回母港，再按母港航线投送
     state.dockedSite = 's1'
-    const denied = startCourierDelivery(state, ctx, t.id)
-    expect(denied.ok).toBe(false)
-    expect(denied.ok ? '' : denied.error).toContain('母港')
-    // ② 回母港后放行，且**航程按母港 → 目标站**算（与报酬/时限的标称航程同源）
-    state.dockedSite = null
     expect(startCourierDelivery(state, ctx, t.id).ok).toBe(true)
+    expect(state.dockedSite).toBeNull() // 已回母港
+    expect(state.awayGalaxy).toBeNull()
+    expect(state.logs.some((l) => l.text.includes('自动返航母港'))).toBe(true)
+    // ② 航程按**母港 → 目标站**算（与报酬/时限的标称航程同源）
     const d = state.sideTasks.deliver!
     const expectMin = shortestTravelMinutes(ctx, HOME_GALAXY_ID, 'galaxy-far')
     expect(d.arriveAtGameMs - d.departAtGameMs).toBe(travelLegMs(state, ctx, expectMin))
