@@ -47,7 +47,7 @@ import { isGalaxyStationBuilt, isSiteBuilt } from './station'
 import { isExplored } from './explore'
 import { countWare, removeWare, cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff, warpSpeedAus } from './travel'
-import { originGalaxyOf } from './location'
+import { isAtHome } from './location'
 import { DSI_FACTION_ID, standingOf as factionStandingOf } from './expedition'
 import { factionBaseRewardIsk, hasLairCore, isLairCandidate, lairLevelOf, lairNameOf, lairTaskRewardIsk } from './lairs'
 import type { LairTier } from './lairs'
@@ -281,7 +281,7 @@ function builtStationTargets(state: GameState, ctx: SimContext): Array<{ site: S
 }
 
 /** 解析某快递任务的目标副站：任务自带绑定（刷出时锁定）→ 校验仍建成合法；否则（老档无绑定）
- *  兜底 = 距当前位置最近的已建成副站 */
+ *  兜底 = 距**母港**最近的已建成副站（2026-09-20 船长「起点都从母港触发」后与出发地同源） */
 function resolveCourierTarget(state: GameState, ctx: SimContext, task: SideTask): StationSiteDef | null {
   if (task.stationId) {
     const site = ctx.stations.get(task.stationId)
@@ -289,7 +289,7 @@ function resolveCourierTarget(state: GameState, ctx: SimContext, task: SideTask)
   }
   let best: StationSiteDef | null = null
   let bestMin = Number.POSITIVE_INFINITY
-  const from = originGalaxyOf(state, ctx)
+  const from = HOME_GALAXY_ID
   for (const { site } of builtStationTargets(state, ctx)) {
     const m = shortestTravelMinutes(ctx, from, site.galaxyId)
     if (Number.isFinite(m) && m < bestMin) {
@@ -1212,6 +1212,24 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
   if (state.transit.active) {
     return { ok: false, error: '返航行程中：到站后再出发投送。', errorId: 'core.sideTasks.014' }
   }
+  /**
+   * **快递必须从母港出发**（**2026-09-20 船长**：「**所有快递任务，起点都是从母港触发，以避免玩家到达
+   * 某个空间站后原地送快递**」）。
+   *
+   * 为什么：投送的**报酬与限时**本来就是按「**母港 → 目标副站**」的标称航程标定的（见刷出处的
+   * `shortestTravelMinutes(ctx, HOME_GALAXY_ID, …)`），而**航程**此前却是按"玩家当前所在星系"
+   * 算的 ⇒ 玩家一旦停靠到副站（结算会把人留在那），下一单的航程可能短到 0（`arriveAt <= departAt`
+   * 那条"立即结算"分支）⇒ **白拿母港级运费**。现把出发地钉成母港：人必须在母港（`isAtHome`），
+   * 航程也一律按母港算 ⇒ 报酬、限时、真实航程三者同源。
+   * ⚠ 副站都在红环 / 烬火星系（非母港）⇒ 正常内容下航程恒 > 0，"立即结算"分支只作异常兜底保留。
+   */
+  if (!isAtHome(state)) {
+    return {
+      ok: false,
+      error: '快递投送需从母港出发：请先返航母港，再出发投送。',
+      errorId: 'core.sideTasks.019',
+    }
+  }
   const targetSite = resolveCourierTarget(state, ctx, task)
   if (!targetSite) {
     return {
@@ -1242,8 +1260,13 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
       }
     }
   }
-  // 真实航程：当前所在星系 → 目标副站所在星系（出发时锁定；同站/同星系 = 0）
-  const from = originGalaxyOf(state, ctx)
+  /**
+   * 真实航程：**母港 → 目标副站所在星系**（出发时锁定）。
+   * ⚠ **2026-09-20 船长**：「所有快递任务，起点都是从母港触发」——原来这里用的是
+   * `originGalaxyOf(state, ctx)`（玩家当前星系），与报酬/时限的"母港标称航程"不同源，
+   * 停靠副站后能短程甚至零程结算；现与刷出处同一把尺（见上面的出发地守卫）。
+   */
+  const from = HOME_GALAXY_ID
   const travelMin = shortestTravelMinutes(ctx, from, targetSite.galaxyId)
   if (!Number.isFinite(travelMin)) {
     const targetName = ctx.galaxies.get(targetSite.galaxyId)?.name ?? targetSite.galaxyId
