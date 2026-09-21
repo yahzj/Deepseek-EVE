@@ -57,11 +57,12 @@
   ① 序章结束不发布 · 前 12 条做完不发布 · **第 13 条完成那一拍发布**（`done === false`，日志恰好 1 条）；
   ② 幂等：连推若干拍不重复发日志；③ 序章演出期间即使 13 条齐了也不发布，序章一结束即发布；
   ④ 老档：已发布的原样保留（`allExplored` 不被重置、不补日志）；13 条齐却缺这条的异常档下一拍补发布。
-- `npm run typecheck -w @whale/core / @whale/data / @whale/ui` **0 错**；
-  ⚠ **`@whale/desktop` 与 `npm run build` 本轮没能跑到绿**：主树上有**另一个会话的在途改动**
-  （`panels/BattleScreen.tsx` · `App.tsx` · `styles.css` ＋ 新文件 `ui/WinBox.tsx`，落笔时间就在本轮验证期间），
-  当时 `BattleScreen.tsx:1999` 的 JSX 还差一个闭合标签 ⇒ 桌面包 tsc/构建必红。**本件一行都没碰那些文件**，
-  等对方落定后再补跑这两条（推送前必补）。
+- `npm run typecheck -w @whale/core / @whale/data / @whale/ui` **0 错** · `npm run build` ✓ · `npm run ui:rot-check` ✅；
+  ⚠ **全仓 `npm run typecheck` 有一处红，不在本件**：主树上有**另一个会话的在途改动**
+  （`panels/BattleScreen.tsx` · `App.tsx` · `styles.css` ＋ 新文件 `ui/WinBox.tsx`、`ui/ShipStatusWin.tsx`、
+  `ui/ActivityScreen.tsx`，落笔时间就在本轮验证期间），末尾复跑时报的是
+  `src/renderer/src/ui/ActivityScreen.tsx(127~130)` 四处 `TS2322`（`NamedExoticComponent` 不能赋给 `() => Element`）。
+  **本件一行都没碰那些文件**，我的四个包与构建都已绿；推送前若对方仍未落定，再复跑一次全仓 typecheck。
 - `npm run content:check` ✅ · `npm run l10n:check` ✅（无死引用，本件没增删文案 id）。
 - `npm run flow:newgame` **✅ 流程全部通过**（新断言：序章结束仍未发布 · 收尾 9/13 仍未发布）。
 
