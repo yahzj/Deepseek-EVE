@@ -111,13 +111,19 @@ const REF_FIT = {
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-stab-kin-2', 'mod-armor-kin-2'],
 }
+/**
+ * 参考编队的技能档（战斗系 Lv3）。
+ * ⚠ **2026-09-20 修**：原先 5 个 id 是假的（`missile-ops`/`shield-ops`/`armor-ops`/
+ * `evasive-maneuvers`/`targeting`）⇒ 等于没训练，读数虚假悲观；真实 id 见 `data/src/skills.ts`。
+ * 同类问题由 `npm run skill:audit` 常驻体检。
+ */
 const SKILLS: Record<string, number> = {
   gunnery: 3,
-  'missile-ops': 3,
-  'shield-ops': 3,
-  'armor-ops': 3,
-  'evasive-maneuvers': 3,
-  targeting: 3,
+  'missile-launching': 3,
+  'shield-operation': 3,
+  'armored-ops': 3,
+  'evasion-maneuvering': 3,
+  'targeting-integration': 3,
 }
 
 function makeFleet(seed: number): { state: GameState; uids: string[] } {

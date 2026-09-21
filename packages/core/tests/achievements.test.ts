@@ -26,6 +26,7 @@ import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, peakFirst, firstStatOf, advanceFir
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { advanceGame } from '../src/engine'
 import { assignAiMining, assignAiSalvage, gainAiCore } from '../src/ai'
+import { wormholeEnter } from '../src/wormhole'
 import { makeTestCtx, fittedOf, skipFirstSkillReward } from './helpers'
 import type { ModuleDef, SimContext } from '../src/types'
 import { chainProgress } from '../src/achievements'
@@ -479,7 +480,7 @@ describe('成就徽章：里程碑（第二批 · 判据只读终身计数）', 
       ['ach-mile-site-1', '拓荒者', 1],
       ['ach-mile-site-2', '双站总督', 2],
     ],
-    matterTechMaxed: [['ach-mile-tech-tree', '谜质通晓', 23]],
+    matterTechMaxed: [['ach-mile-tech-tree', '谜质通晓', 24]],
   }
 
   it('18 条的 id / 卡名 / 计数键 / 阈值与设计稿逐条一致', () => {
@@ -571,7 +572,7 @@ describe('成就徽章：里程碑（第二批 · 判据只读终身计数）', 
     // ⚠ `aiCoreKinds` 是**峰值型**（由 `gainAiCore` 现数库存类数写），不是累计型 ⇒ 用 peakFirst
     peakFirst(state, 'aiCoreKinds', 4)
     peakFirst(state, 'sitesBuilt', 2)
-    peakFirst(state, 'matterTechMaxed', 23)
+    peakFirst(state, 'matterTechMaxed', 24)
     const before = {
       isk: state.wallet.isk,
       ware: JSON.stringify(state.warehouse ?? {}),
@@ -595,5 +596,97 @@ describe('成就徽章：里程碑（第二批 · 判据只读终身计数）', 
     expect(back.firstStats!.whMaxDepth).toBe(3)
     expect(back.firstStats!.rareBoxes).toBe(7)
     expect(achievementCount(back)).toBe(achievementCount(state))
+  })
+
+  /**
+   * **里程碑计数的"追溯检查"**（**2026-09-20 船长令**：「**里程碑都加入追溯检查**」；
+   * 由玩家报障「已经建好了的空间站无法完成成就」起头）。
+   *
+   * 六个计数键原先只在**事件点**记账 ⇒ 事件发生在成就系统之前（老档、或先做完再更新到本版）的档，
+   * 账上永远是 0 ⇒ 成就拿不到。引擎每拍按 `state` 现算一次（`reconcileMilestoneStats`）⇒
+   * 读档后第一拍就把能推导的补齐（精确值或下界，逐条见那个函数）。
+   */
+  it('已建成的副空间站：账上没有计数，也靠"现算兜底"补齐并发出「拓荒者」', () => {
+    const state = testState()
+    const site = [...ctx.stations.values()][0]!
+    // 模拟"站在成就系统之前的档"：站已建成并入网（stage 满档），但 `firstStats` 里没有 sitesBuilt
+    state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
+    expect(state.firstStats?.sitesBuilt).toBeUndefined()
+    expect(achievementReached(state, { kind: 'milestone', stat: 'sitesBuilt', target: 1 })).toBe(false)
+
+    advanceGame(state, 1000, ctx) // 一拍 ⇒ 现算兜底 + 成就判定
+
+    expect(firstStatOf(state, 'sitesBuilt')).toBeGreaterThanOrEqual(1)
+    const earned = state.achievements?.earned ?? {}
+    expect(earned['ach-mile-site-1'], '「拓荒者」应当补发').toBeDefined()
+    // 幂等：再推几拍不重复、计数不回退
+    for (let i = 0; i < 3; i++) advanceGame(state, 1000, ctx)
+    expect(firstStatOf(state, 'sitesBuilt')).toBeGreaterThanOrEqual(1)
+  })
+
+  it('AI 核心类数 / 谜质满级数同样靠现算兜底（老档读进来那一拍补齐）', () => {
+    const state = testState()
+    // 老档只留下"现状"，没有这三本账
+    gainAiCore(state, 'basic', 1)
+    gainAiCore(state, 'gamma', 1)
+    state.firstStats = {} // 抹掉事件点记的账（模拟成就系统之前的老档）
+    const nodes = [...ctx.matterTech!.values()]
+    state.research = { levels: Object.fromEntries(nodes.map((n) => [n.id, n.maxLevel])) }
+
+    advanceGame(state, 1000, ctx)
+
+    expect(state.firstStats?.aiCoreKinds).toBeGreaterThanOrEqual(2)
+    expect(state.firstStats?.matterTechMaxed).toBe(nodes.length)
+    const earned = state.achievements?.earned ?? {}
+    expect(earned['ach-mile-core-2'], '「双子核」应当补发').toBeDefined()
+    expect(earned['ach-mile-tech-tree'], '「谜质通晓」应当补发').toBeDefined()
+  })
+
+  it('稀有箱（累计型）也追溯：`rareBoxesOpened` 逐型求和 ⇒ 补齐并发出拾荒系徽章', () => {
+    const state = testState()
+    // 老档：账本只留"每型已开箱数"（开箱那一刻与 `bumpFirst('rareBoxes')` 同一行写的）
+    state.rareBoxesOpened = { 'wreck-a': 4, 'wreck-b': 3 }
+    state.firstStats = {}
+    advanceGame(state, 1000, ctx)
+    expect(firstStatOf(state, 'rareBoxes')).toBe(7) // 精确值：4 + 3
+    const earned = state.achievements?.earned ?? {}
+    expect(earned['ach-mile-box-1']).toBeDefined()
+    expect(earned['ach-mile-box-5']).toBeDefined()
+    expect(earned['ach-mile-box-20']).toBeUndefined() // 7 < 20：不该误发
+  })
+
+  it('虫洞层深与守卫数也追溯：洞里读本趟 run，出洞读"最近一趟结算单"的层深', () => {
+    const s1 = testState()
+    // 真进一趟洞（要完整 run 对象，引擎每拍会推进它）
+    expect(wormholeEnter(s1, ctx, [s1.shipId], 4242).ok).toBe(true)
+    s1.firstStats = {}
+    const run = s1.wormhole.run!
+    run.depth = 3
+    run.bossCleared = 2
+    advanceGame(s1, 1000, ctx)
+    expect(firstStatOf(s1, 'whMaxDepth')).toBeGreaterThanOrEqual(3)
+    expect(firstStatOf(s1, 'whBossClears')).toBeGreaterThanOrEqual(2)
+    const e1 = s1.achievements?.earned ?? {}
+    expect(e1['ach-mile-wh-depth-3']).toBeDefined()
+    expect(e1['ach-mile-wh-depth-4']).toBeUndefined() // 只到 3 层
+    expect(e1['ach-mile-wh-boss-2']).toBeDefined()
+
+    // 已出洞的老档：结算单还留着"上一次撤在第 5 层" ⇒ 层深照样追溯（守卫数没留痕 ⇒ 不抬）
+    const s2 = testState()
+    s2.firstStats = {}
+    s2.wormhole.lastSettle = {
+      kind: 'extract',
+      depth: 5,
+      oreUnits: 0,
+      oreIsk: 0,
+      wreckIsk: 0,
+      boxes: [],
+      relics: [],
+      shipsLost: [],
+      lostIsk: 0,
+    }
+    advanceGame(s2, 1000, ctx)
+    expect(firstStatOf(s2, 'whMaxDepth')).toBe(5)
+    expect((s2.achievements?.earned ?? {})['ach-mile-wh-depth-5']).toBeDefined()
   })
 })

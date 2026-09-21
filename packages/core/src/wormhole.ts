@@ -988,13 +988,35 @@ function gridRun(state: GameState): { run: WormholeRunState; grid: WormholeGridS
   return { run, grid: run.grid }
 }
 
+/**
+ * **欠着一场战斗 ⇒ 层内动作的拒因**（`null` = 不欠）。
+ *
+ * 两个来源同一套语言：**遗迹守备被惊动**（`pendingRuinsBattle`）与**踩中埋伏**（`pendingNodeBattle`）——
+ * 都是"提醒过了、等玩家点「迎战/开战」"的挂起态。
+ *
+ * ⚠ **单点**：`gridActionBlocked`（扫描/前往/采集/深入…）、`wormholeActivateAt`（打捞/激活这一口）
+ * 与界面的动作闸（`wormholeSalvage.wormholeActionBlockReason` 的兜底、见渲染层 `wormholeActionBlocked`）
+ * 全读这一份 ⇒ 不会出现"界面拦了、core 没拦"（**2026-09-20 玩家报障**正是这个缺口：
+ * 待迎战期间「打捞」按钮仍可点，见 `wormholeBattle.ts` 的遗迹收尾战注释）。
+ */
+export function wormholePendingBattleReasonOf(run: WormholeRunState | undefined | null): string | null {
+  if (!run) return null
+  if (run.pendingRuinsBattle === true) return '遗迹深处的守备已经惊动：先点「迎战」打完这一场。'
+  if (run.pendingNodeBattle === true) return '对方已经发现我们：先点「开战」打完这一场。'
+  return null
+}
+
+/** 状态版（界面 / 工具用） */
+export function wormholePendingBattleReason(state: GameState): string | null {
+  return wormholePendingBattleReasonOf(state.wormhole.run)
+}
+
 /** 战斗中不许做任何层内动作（与"战斗没结束不能撤/不能深入"同一把尺） */
 function gridActionBlocked(run: WormholeRunState): string | null {
   if (run.battle) return '战斗中：先打完这一场。'
-  // **遗迹守备已惊动**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
-  if (run.pendingRuinsBattle === true) return '遗迹深处的守备已经惊动：先点「迎战」打完这一场。'
-  // **踩中埋伏**（船长 2026-09-16）：与遗迹守备同一套语言 —— 先提醒、玩家确认后才开战
-  if (run.pendingNodeBattle === true) return '对方已经发现我们：先点「开战」打完这一场。'
+  // **遗迹守备已惊动 / 踩中埋伏**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
+  const pendingBattle = wormholePendingBattleReasonOf(run)
+  if (pendingBattle) return pendingBattle
   /**
    * **临时空间里还有东西**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
    * 和之前的超载类似」）：扫描也一并拦下 —— 玩家得先去背包页把它**放回货仓**或**丢弃**。

@@ -60,11 +60,23 @@ export type FirstStatKey =
    * - `whMaxDepth`：**虫洞到达过的最大层深**（**峰值**，用 `peakFirst` 记 ⇒ 只升不降）。
    * - `whBossClears`：**累计打掉的层末守卫数**。
    * - `matterTechMaxed`：**谜质科技已满级的节点数**（**峰值**；满级后不会掉，故按峰值记也自愈）。
+   *
+   * ⚠ **2026-09-20 船长令「里程碑都加入追溯检查」**：这六个键（含下面两个）全部由
+   * `engine.reconcileMilestoneStats` 每拍按 `state` 现算兜底（`peakFirst` 只抬不降）⇒
+   * 老档/漏发都能补；哪些是精确值、哪些只是下界，逐条写在该函数里。
    */
   | 'rareBoxes'
   | 'whMaxDepth'
   | 'whBossClears'
   | 'matterTechMaxed'
+  /**
+   * 另两个**峰值型**里程碑键（2026-09-20 补齐类型：它们一直在用，只是漏登记在本联合里）：
+   * - `aiCoreKinds`：**库存里拥有过的 AI 核心类数**（峰值；花掉一枚不回退）；
+   * - `sitesBuilt`：**已建成并入网的副空间站座数**（峰值）。
+   * ⚠ 两者都由 `engine.reconcilePeakStats` 每拍按 `state` 现算兜底 ⇒ 老档/漏发自愈。
+   */
+  | 'aiCoreKinds'
+  | 'sitesBuilt'
 
 /** 一条「第一次」任务 */
 export interface FirstTaskDef {

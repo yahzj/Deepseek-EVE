@@ -30,6 +30,8 @@ import {
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf, wormholeCardIdForRun } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
+// 「欠着一场战斗」的拒因单点（2026-09-20：打捞这一口也要过它，见 `wormholeActivateAt` 头注）
+import { wormholePendingBattleReason } from './wormhole'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
 import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { matterTechWhBuffs } from './matterTech'
@@ -112,11 +114,24 @@ export function wormholeStartBattle(
       return { ok: false, error: '本层守卫已经清掉了。', errorId: 'core.wormholeBattle.008' }
     }
   } else if (kind === 'ruins') {
-    // **遗迹收尾战**（F3b）：打捞结束时触发；网格层必须站在遗迹格上、且那格已经捞空
+    // **遗迹收尾战**（F3b）：网格层必须站在遗迹格上；**不再要求"那格已捞空"**（见下）
     if (!grid) return { ok: false, error: '遗迹收尾战只在网格层成立。', errorId: 'core.wormholeBattle.009' }
     if (here?.place !== 'ruins') return { ok: false, error: '这里不是遗迹。', errorId: 'core.wormholeBattle.010' }
-    if ((here.piles ?? []).length > 0) {
-      return { ok: false, error: '遗迹还没打捞完：先捞空再打。', errorId: 'core.wormholeBattle.011' }
+    /**
+     * ⚠ **2026-09-20 玩家报障修复**：「虫洞打捞有 BUG，我带一个打捞器摸 2、3 残骸的遗迹。**惊动敌人后
+     * 有时候需要继续打捞，把残骸清空才能对敌。**」
+     *
+     * 根因：惊扰守卫的判定自 **2026-09-16 起提前到"遗迹第一次打捞"**（见 `wormholeSalvage.ts`
+     * 的"遗迹首捞结算"）⇒ 掷中那一刻格上通常还剩 2~3 堆；而这里旧闸门还写着
+     * 「**遗迹还没打捞完：先捞空再打。**」（那是"收尾战挂在捞空那一拍"时代的残留）⇒ 玩家点「迎战」
+     * 只会收到这句拒因，**别的动作又都被 `gridActionBlocked` 拦着** ⇒ 只能一直捞到清空才打得成
+     * （1 台打捞器时尤其明显）。
+     *
+     * 现行判据 = **`run.pendingRuinsBattle`**（"这一场欠着"的凭据，由首捞掷中时置位）：
+     * 既不会漏掉该打的仗，也不会让人凭空开一场"没被惊动"的遗迹战。
+     */
+    if (run.pendingRuinsBattle !== true) {
+      return { ok: false, error: '遗迹深处的守备还没被惊动：先在遗迹格上打捞一次。', errorId: 'core.wormholeBattle.011' }
     }
   }
   const waves = kind === 'node' && !grid ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
@@ -188,6 +203,15 @@ export function wormholeActivateAt(
 } {
   const run = state.wormhole.run
   const turnsBefore = run?.turnsLeft ?? 0
+  /**
+   * **欠着一场战斗 ⇒ 这一口也不许做**（**2026-09-20 玩家报障修复**）：旧实现只拦"超载/临时空间"，
+   * 而「迎战/开战」的挂起态（`pendingRuinsBattle` / `pendingNodeBattle`）只在 `wormhole.ts` 的
+   * `gridActionBlocked` 里拦着 —— 扫描/前往/深入都过那道闸，**可打捞这一口（本函数）没过** ⇒
+   * 待迎战期间玩家可以一直点「打捞」（界面的按钮也没置灰，因为动作闸没报这条）。
+   * 现在两条都读同一份拒因（`wormholePendingBattleReason`）⇒ 界面与 core 一致。
+   */
+  const pendingBattle = wormholePendingBattleReason(state)
+  if (pendingBattle) return { ok: false, error: pendingBattle }
   // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
   const overloaded = wormholeActionBlockReason(state, ctx)
   if (overloaded) return { ok: false, error: overloaded }

@@ -187,8 +187,14 @@ const good = [...ctx.marketGoods.values()].find(
 )
 if (good) {
   const qty = Math.min(1, s.warehouse.items[good.refId] ?? 0)
-  const order = placeSellOrder(s, ctx, good.id, Math.max(1, Math.round(good.basePrice ?? 1)), qty)
-  ok('挂出卖单', order !== null, order ? `${good.id} ×${qty}` : '（挂单被拒）')
+  /**
+   * ⚠ **挂单用的是 `good.key`，不是 `good.id`**（`MarketGoodDef` 只有 `key`/`refId`，没有 `id`）——
+   * 2026-09-20 外部审计报告点出这里写成 `good.id` ⇒ 传进去的是 `undefined`，
+   * 于是挂出一张 goodKey = `"undefined"` 的幽灵单、`escrowItems["undefined"]` 被加 1（读数全是假的）。
+   * 之所以没被 typecheck 拦住：**tools/ 不在 `npm run typecheck` 覆盖面内**（见工作文档 §根因）。
+   */
+  const order = placeSellOrder(s, ctx, good.key, Math.max(1, Math.round(good.basePrice ?? 1)), qty)
+  ok('挂出卖单', order !== null, order ? `${good.key} ×${qty}` : '（挂单被拒）')
   advanceGame(s, 1000, ctx)
   ok('「第一次挂单销售」判定完成', s.importantTasks['first-order']?.done === true)
 } else {

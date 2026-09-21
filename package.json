@@ -53,6 +53,7 @@
     "ui:rot-check": "tsx tools/ui-rot-check.ts",
     "ui:tip-check": "tsx tools/tip-audit.ts",
     "l10n:check": "tsx tools/l10n-check.ts",
+    "skill:audit": "tsx tools/skill-id-audit.ts",
     "l10n:list": "tsx tools/l10n-list.ts",
     "l10n:wrap": "tsx tools/l10n-wrap.ts",
     "l10n:render": "tsx tools/l10n-render-probe.ts",

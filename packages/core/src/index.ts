@@ -1109,6 +1109,8 @@ export {
   wormholeOutOfTurns,
   // 进洞门槛与锁定（船长 2026-09-13：主控闲置 / 进洞的船锁定；洞外开战要避开锁定的锚点）
   wormholeEntryBlockReason,
+  // 欠着一场战斗（遗迹守备被惊动 / 踩中埋伏）⇒ 层内动作的拒因单点（2026-09-20：打捞那一口也过它）
+  wormholePendingBattleReason,
   // 船长 2026-09-14：「进洞自动停止」——扫描虫洞 / 开采 / 打捞 三项会在进洞那一刻自动停掉
   wormholeEntryAutoStops,
   wormholeShipEntryBusy,
