@@ -232,10 +232,9 @@ export function advanceGame(
    * - **不写日志、不发通讯**：保持"离线事件条数"等既有口径逐字不变（与 `advanceFirstTasks` 同款理由）；
    * - **现算补发**（幂等）：判据是 `state` 现状而非事件 ⇒ 老档、漏发、异常中断都靠这条自愈。
    *
-   * **第二批（里程碑成就内容）尚未实现**：届时在 `data/src/achievements.ts`
-   * 增 `category: 'milestone'` 的条目即可，本处调用一字不用改（见 `core/achievements.ts` 头注释）。
-   * ⚠ **第一批（任务 ＋ 链共 63 枚）已完成并合入 main ⇒ 本处不挂未完成记号**
-   * （约定 §十一之二：完成即删记号；残留会让本地化永远跳过它）。
+   * ⚠ **两批都已完成并合入 main**（第一批 任务 ＋ 链 63 枚 · 第二批 里程碑 18 枚，均 2026-09-20）
+   * ⇒ 本处**不挂未完成记号**（约定 §十一之二：完成即删记号；残留会让本地化永远跳过它）。
+   * 里程碑那六个计数键另有一层兜底：`reconcileMilestoneStats`（下一行）每拍按 `state` 现算补齐。
    */
   reconcileMilestoneStats(state, ctx)
   advanceAchievements(state, ctx.achievements, opts?.nowWallMs)
