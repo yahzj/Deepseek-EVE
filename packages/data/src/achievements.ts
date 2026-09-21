@@ -213,6 +213,8 @@ interface MilestoneSpec {
  *
  * ⚠ **纯展示**（与第一批同口径）：不发任何奖励；判据只读终身计数 ⇒ **老档零迁移**
  * （新键缺省 0，载入后第一拍按现状补发，见 `core/achievements.ts`）。
+ * **2026-09-20 船长令「里程碑都加入追溯检查」**：六个计数键由引擎每拍现算兜底
+ * （`engine.reconcileMilestoneStats`）⇒ 事件发生在成就系统之前的档也照旧能拿到。
  */
 function milestoneAchievements(): AchievementDef[] {
   const specs: MilestoneSpec[] = [
