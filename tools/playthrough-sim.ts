@@ -79,6 +79,7 @@ import {
 } from '@whale/core'
 import type { GameState, SimContext, AnomalyDef, ShipDef } from '@whale/core'
 import { buildSimContext } from '@whale/data'
+import { SHIP_BLUEPRINTS } from '@whale/data'
 import { advanceBattleFor, startBattleFor, startFleetBattleFor } from '../packages/core/src/combat'
 /**
  * **虫洞手动趟**要用的入口（船长 2026-09-21：成就走真流程）——
@@ -732,10 +733,105 @@ function autoFitGear(shipUid: string = state.shipId): void {
 }
 
 const craftedOnce = new Set<string>()
-/** 蓝图：市场买书 → 学习 → 制造一件（制造链验证一次；防重复造抽血）。
- * 只处理市场有书可购的配方（碎片/原型专属配方无书，模拟不代打碎片）；无书配方跳过不卡循环。 */
+/** 正在为虫洞编队自造的舰型（`refId → 舰名`；纯诊断用，报告里显示"造船中"） */
+let whShipBuild: string | null = null
+
+/**
+ * **自造舰船补编队**（2026-09-21 新增，解决"稀有现货限速"）。
+ *
+ * 为什么必须自造：rare 舰船**每 10 分钟抽取窗只出 1 艘**（`spawnRareSupply`），而稀有池有几十种商品
+ * 在抢抽取额 ⇒ 实测"一天只凑到 1~2 艘 T3"，4 艘要等好几天；T4（玄武级）现货还要**声望 20**
+ * （实测 60 天只到 15）⇒ 想再上一档战力，**现货路是死的**。
+ *
+ * **一次性舰船蓝图**（`sbp-once-*`，`singleUse: true`）是唯一的量产路：
+ * 书在市场有售（声望 8~25），**买书 → 备料 → 开工**，一次造一艘、书当场吃掉，再造就再买一本；
+ * 料价约 300~400 万/艘（现货 750~1550 万），且**不受抽取限速**（矿料是 common 池，供给充足）。
+ *
+ * ⚠ 三条引擎口径（读 `manufacturing.ts` 核过，第一版差点写错）：
+ * ① **一次性图纸不能"学习"**——`learnBlueprint` 会**明确报错拒绝**（`core.market.002`）
+ *    ⇒ 老 `doLearnCraft` 的 `if (!ownsBlueprint(...)) learn` 这道门会把一次性图纸**永远卡死**
+ *    （买书→学习失败→`return`，无限循环）。本函数**不走学习**，直接 `startManufacturing`。
+ * ② **`spentOneTimeRecipes` 只记"用过的名额"，不是"永久学会"** ⇒ `recipeCapability` 判据是
+ *    "**书架有书**就可用"（书优先于名额）⇒ 再造一次就是**再买一本**。
+ * ③ 未学过的普通图纸 `canStartBlueprint` 返回 false，但一次性图纸只要有书就 true ⇒ 走本函数。
+ */
+function ensureWhShipBuild(): void {
+  if (!WANTS.whach || goalDone.whach) return
+  if (whCapableShips().length >= WH_FLEET_SIZE) {
+    whShipBuild = null
+    return
+  }
+  if (state.manufacturingRuns.length > 0) return // 一次只开一条线
+  if (meBusy() || !isHome()) return
+  if (state.expedition.active || state.scanning.active || state.transit.active || state.standby.active) return
+  const mine = new Set<string>()
+  for (const f of Object.values(state.fleet)) if (f?.defId) mine.add(f.defId)
+  const cands = SHIP_BLUEPRINTS.filter((b) => {
+    if (b.singleUse !== true) return false
+    const good = goodOf('blueprint', b.id)
+    if (!good) return false
+    const s = ctx.ships.get(b.shipId)
+    if (!s) return false
+    if (s.role !== 'armed' && s.role !== 'armored') return false
+    if (!wormholeShipAllowed(s)) return false
+    if ((s.tier ?? 1) < WH_FLEET_TIER) return false
+    if (mine.has(b.shipId)) return false // 同型一艘就够（4 艘全同型没必要）
+    return true
+  }).sort((a, b) => {
+    const sa = ctx.ships.get(a.shipId)
+    const sb = ctx.ships.get(b.shipId)
+    return (sa?.tier ?? 1) - (sb?.tier ?? 1) || a.priceIsk - b.priceIsk
+  })
+  if (cands.length === 0) return
+  const pick = cands[0]!
+  const good = goodOf('blueprint', pick.id)!
+  const sdef = ctx.ships.get(pick.shipId)
+  const stock = state.blueprintStock[pick.id] ?? 0
+  if (stock <= 0) {
+    if (state.wallet.isk < good.basePrice + 30_000) return
+    buyAtMarket(state, ctx, good.key, 1)
+    return
+  }
+  const bld = findBuildable(ctx, pick.id)
+  if (!bld) return
+  // 备料：缺什么买什么（矿料是 common 池、供给充足；买完 return，下一拍再看够不够）
+  const missing = bld.spec.materials.filter((n) => countWare(state, n.itemId) < n.count)
+  if (missing.length > 0) {
+    let cost = 0
+    for (const n of missing) {
+      const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === n.itemId)
+      cost += (g?.basePrice ?? 10) * (n.count - countWare(state, n.itemId))
+    }
+    // 现金策略：先满足 10 亿目标（≥3 亿）再造船；两个目标并行时不把造舰挤掉
+    if (state.wallet.isk < cost + 300_000_000) return
+    for (const n of missing) {
+      const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === n.itemId)
+      if (g) buyAtMarket(state, ctx, g.key, n.count - countWare(state, n.itemId))
+    }
+    return
+  }
+  const basicFree = countAiCore(state, 'basic') > 0 && aiCoreCapBlock(state, ctx, 'industry') === null
+  const worker: 'pilot' | 'basic' = basicFree ? 'basic' : 'pilot'
+  if (worker === 'pilot' && pilotLineBusy()) return
+  const r = startManufacturing(state, pick.id, worker, ctx)
+  if (r.ok) {
+    whShipBuild = sdef?.name ?? pick.shipId
+    act.craft++
+    mark(`🐟 自造舰船开工：${sdef?.name ?? pick.shipId}（一次性蓝图 · 书 ${Math.round(good.basePrice / 1000)}k · 耗时 ${Math.round(pick.buildSeconds / 3600)}h）`)
+  } else issue(`自造舰船 ${pick.id} 开机失败：${r.error}`)
+}
+
+/**
+ * 蓝图：市场买书 → 学习 → 制造一件（制造链验证一次；防重复造抽血）。
+ * 只处理市场有书可购的配方（碎片/原型专属配方无书，模拟不代打碎片）；无书配方跳过不卡循环。
+ */
 function doLearnCraft(): void {
   if (state.manufacturingRuns.length > 0) return
+  /** **虫洞备战优先**：编队缺船时把唯一的制造线让给"自造舰船"（见 `ensureWhShipBuild`） */
+  if (WANTS.whach && !goalDone.whach && whCapableShips().length < WH_FLEET_SIZE) {
+    ensureWhShipBuild()
+    return
+  }
   const bp = [...ctx.blueprints.values()]
     .filter((b) => goodOf('blueprint', b.id) !== undefined)
     .sort((a, b) => a.priceIsk - b.priceIsk)
@@ -1063,6 +1159,8 @@ let lastWhGateDay = -99
 let lastWhGateOk = false
 /** 最近一次"第 1 层真跑"的我方残血比（`-1` = 没赢/没跑起来）；只给 `whGateReason` 报读数用 */
 let lastWhFloor1Hp = -1
+/** "无余量进洞"那条告警的节流日（同一天只提醒一次） */
+let lastWhDesperateDay = -99
 /**
  * **进洞门的血量余量门槛**（2026-09-21 定）：第 1 层打完后我方三层血残值必须 ≥ 本值才敢进洞。
  * 依据：实测"第 1 层剩 4.1% 血"那一趟，第 2 层当场团灭、四艘全沉（不可撤退）。
@@ -1212,6 +1310,10 @@ const whStats = { tries: 0, entries: 0, descends: 0, bossWins: 0, extracts: 0, w
 const whFloor1Diag: string[] = []
 /** 进洞那一刻的编队名单（`uid → 舰名`）：用来数**洞内沉了几艘**（洞内沉船不写引擎日志） */
 let whEnterSnapshot: Map<string, string> | null = null
+/** 进洞那一刻**整个舰队**的艘数（收场时对账用：洞内损失的第二条口径，见收场那一段） */
+let whEnterFleetSize = 0
+/** 进洞那一刻 `state.wormhole.lastFleetLost` 的基线（损失读数 = 它的增量，买替补也抹不掉） */
+let whLostBase = 0
 /** 最近记过"到达第 N 层"的层深（`mark` 按文本去重，但血/回合数字会变 ⇒ 自己按层深去重） */
 let lastWhDepthSeen = -1
 /** 上一拍是否在战斗中（`run.battle` 的上升/下降沿各记一条日志，用来定位"这趟怎么结束的"） */
@@ -1373,7 +1475,31 @@ function whReady(fleet: readonly string[]): boolean {
    */
   const hp = whFloor1Outcome(fleet)
   lastWhFloor1Hp = hp
-  return hp >= WH_ENTRY_HP_MIN
+  if (hp >= WH_ENTRY_HP_MIN) return true
+  /**
+   * **"没有余量也要进"的兜底**（2026-09-21 加，为打破死锁）。
+   *
+   * 背景：进洞门要求第 1 层余量 ≥45%，而 4×T3 满配实测只有 35% ⇒ 门一直拦着、`tries` 停在 0、
+   * **六枚里程碑一枚都拿不到**。想提升战力又卡在同一个环上：
+   * T4 现货要声望 20 / T4 一次性蓝图要声望 25，而声望**只由悬赏首胜发放**（`expedition.ts` 只给
+   * `firstBlood` 加声望）⇒ 剩下 13 张威胁 58~96 的硬卡打不过 ⇒ 声望上不去 ⇒ 战力上不去。
+   *
+   * 为什么"余量不足也值得进"：本工具的虫洞政策是 **"拿到新层深就撤"**（见上面的分支）——
+   * 层深里程碑记在**下潜那一刻**，随后立刻撤离、不硬闯深处。所以残血 35% 也能安全拿到 +1 层深，
+   * 而**不进的收益是 0**。风险由两道闸兜住：① 撤退线（残血 <45% 就收口）；
+   * ② `whDepthBanked`（每档只赚一次，不会反复送死）。
+   */
+  if (hp > 0) {
+    if (day() >= lastWhDesperateDay + 1) {
+      lastWhDesperateDay = day()
+      mark(
+        `⚠ 虫洞无余量进洞（第 1 层残血仅 ${(hp * 100).toFixed(0)}% < 门槛 45%）：` +
+          `战力上不去又不进洞 = 里程碑永远 0 ⇒ 按"拿到层深就撤"赌一趟`,
+      )
+    }
+    return true
+  }
+  return false
 }
 
 /**
@@ -1455,12 +1581,21 @@ function doWormhole(): boolean {
     whEnterSnapshot = new Map(
       fleetIds.map((uid) => [uid, state.fleet[uid] ? (fleetDefOf(state, ctx, uid)?.name ?? uid) : uid]),
     )
+    whEnterFleetSize = Object.keys(state.fleet).length
+    whLostBase = state.wormhole.lastFleetLost ?? 0
     const r = wormholeEnter(state, ctx, fleetIds, state.rng.seed)
     if (!r.ok) {
       if (whStats.tries === 1) issue(`虫洞入洞被拒：${r.error ?? ''}`)
       return false
     }
     whStats.entries += 1
+    /**
+     * ⚠ **进洞时重置两个"上一拍"标记**（2026-09-21 修）：`lastWhDepthSeen` / `whBattleSeen` 是
+     * "值变了才记一条"的**跨趟变量**——不重置的话，新一趟的第 1 层（depth 1）与上一趟相同就不记
+     * 逐层读数了（实测：第 4 趟之后"到达第 N 层"整段消失，报告里只看得到"收场"，查不动）。
+     */
+    lastWhDepthSeen = -1
+    whBattleSeen = false
     mark(`虫洞进洞（第 ${whStats.entries} 趟 · 编队 ${fleetIds.length} 艘）`)
     return true
   }
@@ -1503,20 +1638,24 @@ function doWormhole(): boolean {
    * 洞内沉船**不写引擎日志**，所以这是唯一的损失读数（见 `whEnterSnapshot` 的注释）。
    */
   if (whEnterSnapshot) {
-    const lost: string[] = []
-    for (const [uid, name] of whEnterSnapshot) if (!state.fleet[uid]) lost.push(name)
-    if (lost.length > 0) {
-      whStats.wipes += lost.length
-      issue(`虫洞内被击沉 ${lost.length} 艘：${lost.join('、')}`)
-    }
     /**
-     * **每趟结束时记一条"为什么收场"**（2026-09-21 加）：洞内团灭/回合耗尽/主动撤离在引擎里
-     * 都不写玩家可见日志，报告只能从"下一次进洞"倒推。实测层深卡在 2 时，正是这条读数缺失
-     * 让人无法判断是"打不动"还是"回合用光"。
+     * **损失读数 = 引擎自己的累计账本** `state.wormhole.lastFleetLost`（2026-09-21 改用这条）。
+     *
+     * 为什么不用"进洞前后的编队名单/艘数"对比（我前两版都这么写、**都漏报**）：模拟在船沉掉之后
+     * **当天就把替补买回来**（`ensureWhFleet` 每拍都在跑），于是"收场时舰队又满了"，
+     * 名单对比查不出、艘数差也是 0 ⇒ 报告出现"阵亡 0 艘"而实际全灭（实测 16.22d 那趟：
+     * 战斗开始 4 艘在场、战斗结束 1 艘在场，报告却写"无损失"）。
+     * `lastFleetLost` 是引擎在**击沉那一刻**累加的（`wormholeBattle` 只有两处 `+=`：
+     * 击沉的 `sunk.length` ＋ 全灭时剩下的 `run.fleet.length`）⇒ 买替补也抹不掉，是唯一准的数。
      */
+    const lostNow = state.wormhole.lastFleetLost ?? 0
+    const lostDelta = Math.max(0, lostNow - whLostBase)
+    if (lostDelta > 0) {
+      whStats.wipes += lostDelta
+      issue(`虫洞内损失 ${lostDelta} 艘（引擎账本 lastFleetLost ${whLostBase} → ${lostNow}）`)
+    }
     mark(
-      `虫洞 这趟收场：${lost.length > 0 ? `沉 ${lost.length} 艘` : '无损失'} · ` +
-        `层深账本 ${whDepth()} · 守卫账本 ${whBoss()} · 已进洞 ${whStats.entries} 次`,
+      `虫洞 这趟收场：损失 ${lostDelta} 艘 · 层深账本 ${whDepth()} · 守卫账本 ${whBoss()} · 已进洞 ${whStats.entries} 次`,
     )
     whEnterSnapshot = null
   }
@@ -1586,47 +1725,54 @@ function doWormhole(): boolean {
   }
   // ③c 守卫已清 ⇒ 按目标深入 / 撤离
   /**
-   * **"拿到新层深就撤"**（2026-09-21 定，本段最省的一条）：
+   * **"下潜即入账，然后立刻撤"**（2026-09-21 定，本段最省的一条）。
    *
    * 引擎的层深里程碑记在**下潜成功那一刻**（`wormholeDescend` 里 `peakFirst(state,'whMaxDepth',depth)`），
-   * 而**不是**"在第 N 层打了多少东西"。于是"下到更深一层、立刻撤离"就能**确定性地**推进层深账本，
-   * 完全不必冒着在深层团灭（全损、四艘一起没）的风险去硬闯。
+   * 而**不是**"在第 N 层打了多少东西"。所以政策是：**清掉本层守卫 → 立刻下潜一层（层深 +1 入账）
+   * → 马上撤离保船**。每趟稳拿 +1 层深，4 趟就把四枚层深里程碑（2/3/4/5）收齐，
+   * 完全不必冒着在深层团灭（`wormholeBattle` 全灭分支 = 四艘全损）的风险硬闯。
    *
-   * 实测依据：4×T3 满配编队在第 1 层只掉一层皮（残血 66~70%）⇒ **反复"打进第 1 层 → 下潜 → 撤"**
-   * 每趟稳拿 +1 层深，四~五趟就把六枚里的四枚层深里程碑（2/3/4/5）收齐；
-   * 而"一趟硬闯 5 层"的失败代价是四艘船全损（`wormholeBattle` 全灭分支 `state.wormhole.run = null`）。
+   * ⚠⚠ **顺序必须是"先下潜、再撤离"，不能反过来**（2026-09-21 踩到，白跑一轮）：
+   * 第一版写成"守卫一清、层深已在账上就撤"，而**下潜恰恰是让层深入账的那一步** ⇒
+   * 逻辑自锁：层深 1 已入账 → 清完守卫直接撤 → **永远下不到第 2 层**（实测 14 趟全在第 1 层收场、
+   * 层深账本一直停在 1）。正确顺序：`bossCleared === depth`（本层清完）⇒ **下潜**
+   * （层深变 depth+1、里程碑入账）⇒ 下一拍发现 `depth` 已在 `whDepthBanked` 里 ⇒ 撤离。
    */
-  if (run.bossCleared === run.depth && !whDepthBanked.has(run.depth)) {
-    whDepthBanked.add(run.depth)
-    const ex = wormholeExtract(run)
-    if (ex.ok) {
-      whStats.extracts += 1
-      mark(`虫洞 第 ${run.depth} 层已入账（层深里程碑），立刻撤离保船`)
-    } else issue(`虫洞撤离被拒：${ex.error ?? ''}`)
+  if (run.bossCleared === run.depth) {
+    if (run.depth >= WH_TARGET_DEPTH) {
+      const ex = wormholeExtract(run)
+      if (ex.ok) {
+        whStats.extracts += 1
+        mark(`虫洞 已达目标层深 ${run.depth}（六枚里程碑全拿），撤离`)
+      }
+      return true
+    }
+    if (whDepthBanked.has(run.depth + 1)) {
+      // 下一层的里程碑已经赚过 ⇒ 这趟到此为止，撤（不硬闯已入账的深层）
+      const ex = wormholeExtract(run)
+      if (ex.ok) {
+        whStats.extracts += 1
+        mark(`虫洞 第 ${run.depth} 层守卫已清 · 第 ${run.depth + 1} 层里程碑早已入账 ⇒ 撤离保船`)
+      } else issue(`虫洞撤离被拒：${ex.error ?? ''}`)
+      return true
+    }
+    const dn = wormholeDescend(state, state.rng.seed, wormholeScanBonusOf(ctx, run.fleet))
+    if (dn.ok) {
+      whStats.descends += 1
+      whDepthBanked.add(run.depth) // 本层已清并已下潜（层深里程碑随下潜入账）
+      mark(`虫洞 第 ${run.depth} 层守卫已清 ⇒ 下潜第 ${run.depth + 1} 层（层深里程碑入账）`)
+    } else {
+      const ex = wormholeExtract(run)
+      if (ex.ok) whStats.extracts += 1
+      else issue(`虫洞深入被拒（${dn.error ?? ''}）且撤离失败：${ex.error ?? ''}`)
+    }
     return true
   }
-  if (wantExtract || run.bossCleared !== run.depth) {
+  if (wantExtract) {
     const ex = wormholeExtract(run)
     if (ex.ok) whStats.extracts += 1
     else issue(`虫洞撤离被拒：${ex.error ?? ''}`)
     return true
-  }
-  if (run.depth >= WH_TARGET_DEPTH) {
-    const ex = wormholeExtract(run)
-    if (ex.ok) {
-      whStats.extracts += 1
-      mark(`虫洞 已达目标层深 ${run.depth}，撤离`)
-    }
-    return true
-  }
-  const dn = wormholeDescend(state, state.rng.seed, wormholeScanBonusOf(ctx, run.fleet))
-  if (dn.ok) {
-    whStats.descends += 1
-    if (whDepth() >= WH_TARGET_DEPTH) mark(`虫洞 到达第 ${whDepth()} 层（成就层深达标）`)
-  } else {
-    const ex = wormholeExtract(run)
-    if (ex.ok) whStats.extracts += 1
-    else issue(`虫洞深入被拒（${dn.error ?? ''}）且撤离失败：${ex.error ?? ''}`)
   }
   return true
 }
@@ -2410,7 +2556,7 @@ lines.push('—— 虫洞冲刺读数（船长 2026-09-21 目标②）——')
   lines.push(
     `  进洞 ${whStats.entries} 次（尝试 ${whStats.tries} 次）· 深入 ${whStats.descends} 次 · 撤离收口 ${whStats.extracts} 次 · 扫描 ${whStats.scans} 次 · 移动 ${whStats.moves} 次`,
   )
-  lines.push(`  阵亡 ${whStats.wipes} 艘（洞内沉船不写引擎日志，按"进洞前后还在不在"数出来的）`)
+  lines.push(`  阵亡 ${whStats.wipes} 艘（读数 = 引擎账本 \`wormhole.lastFleetLost\` 的增量，买替补也抹不掉）`)
   lines.push(
     `  成就账本：层深 ${w.depth} 层 · 击破层末守卫 ${w.boss} 个 ⇒ 六枚里程碑${w.done ? '**全拿**' : '未齐'}` +
       `（需要层深 ≥5 且守卫 ≥4）`,
