@@ -1708,6 +1708,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FirstTasks.033": { zh: "奖金已到账：{p1} 信用点。", en: "Payout received: {p1} credits." },
   "ui.FirstTasks.034": { zh: "信用点）", en: "credits)" },
   "ui.FirstTasks.035": { zh: " · 一次只出一条：做完这条，下一条才出现", en: " · one at a time: finish this one and the next appears" },
+  "ui.FirstTasks.036": { zh: " · 剩下的可以按任意顺序做", en: " · the rest can be done in any order" },
   "ui.FitPage.001": { zh: "护盾", en: "Shield" },
   "ui.FitPage.002": { zh: "护盾抗性", en: "Shield resistance" },
   "ui.FitPage.003": { zh: "装甲", en: "Armor" },

@@ -361,9 +361,11 @@ export function TaskPanel({
       {tab === 'important' ? (
         <div>
           {/* 2026-09-17 教程重做：重要任务＝「第一次」系列；**2026-09-20 起顺序解锁、一次只出一条**
-              （玩家反馈"一次性太多"），完成后的里程碑（次数）链搬到「里程碑任务」页 */}
-          <FirstTasks engine={engine} onToast={onToast} onOpenComms={onOpenComms} onJump={onJump} />
+              （玩家反馈"一次性太多"），完成后的里程碑（次数）链搬到「里程碑任务」页。
+              2026-09-20 第三道令：「寻找人类」**置于顶部**（完成第 11 条后它与末段两条一起显示）
+              ⇒ `ImportantTasks`（贯穿任务卡）画在「第一次」列表**之上** */}
           <ImportantTasks engine={engine} />
+          <FirstTasks engine={engine} onToast={onToast} onOpenComms={onOpenComms} onJump={onJump} />
           {stationCount > 0 && unbuiltStationIds.length > 0 ? (
             <>
               <div className="app-dim app-exp-idle">{tr("ui.Expedition.303")}</div>

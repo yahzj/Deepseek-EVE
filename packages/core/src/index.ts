@@ -967,6 +967,10 @@ export {
   advanceFirstChains,
   claimChainReward,
   visibleFirstTasks,
+  /* 末段并列批（2026-09-20 船长第三道令：完成第 11 条后，长途运输/虫洞/寻找人类一起显示） */
+  PARALLEL_TAIL_IDS,
+  isParallelTail,
+  sequentialPrefixDone,
   /* 「第一次」页头读数：已完成条数 / 总条数（2026-09-20 顺序解锁后新增） */
   firstTaskProgress,
   /* 里程碑页（2026-09-20 船长：把"完成「第一次」后的里程碑任务链"单开子页面） */

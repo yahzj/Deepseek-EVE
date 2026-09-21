@@ -68,7 +68,12 @@ export function FirstTasks({
     <div className="app-station-list">
       <div className="app-task-family">
         {tr("ui.FirstTasks.026")} {doneN}/{taskTotal} {tr("ui.FirstTasks.013")}
-        <span className="app-dim">{tr('ui.FirstTasks.035')}</span>
+        {/**
+         * 页头副标题随"显示几条"切换（**2026-09-20 船长第三道令**：完成第 11 条后
+         * 「第一次长途运输」「第一次虫洞」＋「寻找人类」一起显示）：
+         * 顺序段仍是"一次只出一条"，末段并列批换成"这几条按任意顺序做"。
+         */}
+        <span className="app-dim">{ordered.length > 1 ? tr('ui.FirstTasks.036') : tr('ui.FirstTasks.035')}</span>
       </div>
       {ordered.map(({ def }) => {
         const jump = FIRST_JUMPS[def.id]
