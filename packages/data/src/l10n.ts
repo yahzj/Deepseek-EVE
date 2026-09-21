@@ -133,7 +133,7 @@ export const EN_SHIPS: EnTable = {
     description: 'A heavy cruiser: a mobile warehouse in thick shell — a reliable partner for long offline operations.',
   },
   'sh-xuanwu': {
-    name: 'Leatherback-class Heavy Flagship',
+    name: 'Leatherback-class Heavy Battleship',
     description: 'The apex of the heavy line: said to be forged from the rocky shell of an entire asteroid.',
   },
   'sh-megalodon': {

@@ -203,8 +203,8 @@ describe('护盾充能装置（中槽 · 每 30 秒脉冲 · 满盾的一个比�
     }
     expect(b.shieldCharge?.pulses ?? 0).toBeGreaterThanOrEqual(1)
     expect(me.hp.s).toBeGreaterThan(80) // 一跳 12% = 120 点（此后被动回充还在接管）
-    // 首跳时刻恒为"开战 + 30 秒"（step = 100ms 的整数倍）
-    expect((b.shieldCharge!.nextPulseAtMs! - b.startedAtGameMs) % SHIELD_PULSE_MS).toBe(0)
+    // 首跳时刻恒为"开战 + 30 秒"（step = 100ms 的整数倍）——逐型号多路后计时器在**流**上
+    expect((b.shieldCharge!.streams[0]!.nextPulseAtMs! - b.startedAtGameMs) % SHIELD_PULSE_MS).toBe(0)
   })
 
   it('**只作用于主控**：没装装置的船（无 `shieldCharge`）破盾后恒为 0', () => {
@@ -213,12 +213,27 @@ describe('护盾充能装置（中槽 · 每 30 秒脉冲 · 满盾的一个比�
     expect(b.shieldCharge).toBeUndefined()
   })
 
-  it('**同型多件按 EVE 曲线收敛**（不是简单相加）', () => {
+  it('**同族多件按 EVE 曲线收敛**（不是简单相加；MK1/2/3 混装同池）', () => {
     const { state, ctx, uid } = world({ mods: [{ id: 'mod-chg-1', pct: 0.12 }], mid: ['mod-chg-1', 'mod-chg-1'] })
     const two = shieldPulsePctOf(state, ctx, uid)
     expect(two).toBeGreaterThan(0.12)
     expect(two).toBeLessThan(0.24) // 收敛：第二件按 EVE 曲线权重计入（≈87%，不是 100%）
     expect(two).toBeCloseTo(0.12 * (1 + stackWeight(2)), 10) // 与引擎同一把尺（不写死 0.87）
+  })
+
+  it('**档次混装也同池**（MK1 ＋ MK2 按同一条曲线折减，不能靠换档绕过惩罚）', () => {
+    const mods = [
+      { id: 'mod-chg-1', pct: 0.12 },
+      { id: 'mod-chg-2', pct: 0.2 },
+    ]
+    const mix = world({ mods, mid: ['mod-chg-1', 'mod-chg-2'] })
+    const pct = shieldPulsePctOf(mix.state, mix.ctx, mix.uid)
+    // 池口径与"单件效果从强到弱排位"无关（本件是折权加算 Σpᵢ·wᵢ，按装配序取第 n 件）
+    expect(pct).toBeCloseTo(0.12 + 0.2 * stackWeight(2), 10)
+    expect(pct).toBeLessThan(0.32) // 改前按 id 计数 ⇒ 各拿满权 = 0.32（换档即绕过惩罚）
+    // 同池的直接证据：与"两件同型 MK2"在**第一件换成 MK1** 时差额恰好是 0.12 − 0.2
+    const sameKind = world({ mods, mid: ['mod-chg-2', 'mod-chg-2'] })
+    expect(pct).toBeCloseTo(shieldPulsePctOf(sameKind.state, sameKind.ctx, sameKind.uid) - 0.08, 10)
   })
 
   it('**跳数与比例**：MK3（32%）两跳可把 0 盾拉回过半', () => {
@@ -235,17 +250,50 @@ describe('护盾充能装置（中槽 · 每 30 秒脉冲 · 满盾的一个比�
     expect(me.hp.s).toBeGreaterThan(320) // ≥ 两跳：32% → 后续被动回充再抬一截
   })
 
-  it('**随档**：`shieldCharge` 往返（重载不重置 30 秒计时）', () => {
-    const { state, ctx, uid } = world({ mods: [{ id: 'mod-chg-2', pct: 0.2 }], mid: ['mod-chg-2'] })
+  it('**随档**：`shieldCharge` 往返（重载不重置 30 秒计时；**逐型号多路**一并往返）', () => {
+    const { state, ctx, uid } = world({
+      mods: [
+        { id: 'mod-chg-2', pct: 0.2 },
+        { id: 'mod-chg-3', pct: 0.32 },
+      ],
+      mid: ['mod-chg-2', 'mod-chg-3'],
+    })
     const b = run(state, ctx, uid, 31_000)
-    expect(b.shieldCharge?.pctPerPulse).toBeCloseTo(0.2, 10)
+    const before = b.shieldCharge!
+    expect(before.streams.map((s) => s.modelId)).toEqual(['mod-chg-2', 'mod-chg-3'])
     state.expedition.active = true
     state.expedition.phase = 'battle'
     state.expedition.anomalyId = 'ano-chg'
     state.expedition.battle = b
     const back = loadSaveFile(serializeSaveFile(state, 1)).state.expedition.battle
-    expect(back?.shieldCharge?.pctPerPulse).toBeCloseTo(0.2, 10)
-    expect(back?.shieldCharge?.nextPulseAtMs).toBe(b.shieldCharge!.nextPulseAtMs)
-    expect(back?.shieldCharge?.pulses).toBe(b.shieldCharge!.pulses)
+    expect(back?.shieldCharge?.pulses).toBe(before.pulses)
+    // 两路各自的型号/比例/间隔/计时器逐字往返
+    expect(back?.shieldCharge?.streams.map((s) => [s.modelId, s.pct, s.ms, s.nextPulseAtMs])).toEqual(
+      before.streams.map((s) => [s.modelId, s.pct, s.ms, s.nextPulseAtMs]),
+    )
+  })
+
+  it('**逐型号独立回转**：MK1 与 MK3 各按自己的 30 秒跳、各补各的比例（不再并成一路合计值）', () => {
+    /**
+     * ⚠ **2026-09-21 船长令**：「哪怕同类型装备，只要是不同型号，就要独立的回转冷却」。
+     * 两档间隔相同（都是 30 秒）⇒ 实测表现是"同拍各跳各的"；判据看**两路都在**且各带自己的比例，
+     * 而不是一路 `pctPerPulse` 合计值。
+     */
+    const { state, ctx, uid } = world({
+      mods: [
+        { id: 'mod-chg-1', pct: 0.12 },
+        { id: 'mod-chg-3', pct: 0.32 },
+      ],
+      mid: ['mod-chg-1', 'mod-chg-3'],
+    })
+    const b = startBattleFor(state, ctx, uid, 'ano-chg', 0)!
+    const streams = b.shieldCharge!.streams
+    expect(streams).toHaveLength(2)
+    expect(streams[0]!.pct).toBeCloseTo(0.12, 10)
+    expect(streams[1]!.pct).toBeCloseTo(0.32 * stackWeight(2), 10) // 第 2 件按全族曲线折减
+    // 首跳各自排在"开战 + 自己的间隔"
+    for (const s of streams) expect(s.nextPulseAtMs).toBe(b.startedAtGameMs + s.ms)
+    // 合计 = 两路之和（读数口径没变，只是调度拆开了）
+    expect(shieldPulsePctOf(state, ctx, uid)).toBeCloseTo(streams[0]!.pct + streams[1]!.pct, 10)
   })
 })

@@ -1125,6 +1125,16 @@ export interface BattleRepairUnit {
   hullPerPulse: number
   /** 组件耗尽自动停机（不再参与后续脉冲） */
   stopped: boolean
+  /**
+   * **本台装置自己的下一脉冲时刻**（战斗时钟 ms；**2026-09-21 船长令：逐型号独立回转**——
+   * 「**哪怕同类型装备，只要是不同型号，就要独立的回转冷却**」）。
+   *
+   * 逐台一份 ⇒ 同舰装「民用级（5 秒）+ MK2（5 秒）」时**各自按自己的节奏跳、各修各的量**；
+   * 若日后给某档定更长的脉冲间隔（本字段就是那个入口），它也只影响那一档。
+   * ⚠ **旧档（2026-09-21 之前的在途战斗）没有本字段** ⇒ 那些装置在 `advanceBattleFor` 的
+   * 逐台循环里走"借账本那一个 `nextPulseAtMs`"的迁移分支（见那里的注释）。
+   */
+  nextPulseAtMs?: number
 }
 
 /**
@@ -1148,28 +1158,60 @@ export interface BattleRepairLedger {
   kitsUsedByType?: Record<string, number>
 }
 
-/** **一条护盾充能账本**（2026-09-16 逐舰化；与维修装置各按各的计时：30 秒 vs 5 秒） */
+/**
+ * **一条护盾充能账本**（2026-09-16 逐舰化；与维修装置各按各的计时：30 秒 vs 5 秒）。
+ *
+ * ⚠ **2026-09-21 结构改判**（船长「不同型号就要独立的回转冷却」）：原先是
+ * `{ pctPerPulse, nextPulseAtMs, pulses }`（同舰 MK1+MK3 并成一路合计值）⇒ 现改为**逐型号多路**，
+ * 与力场账本同形（`BattleShieldFieldStream`；间隔由本族常量 `SHIELD_PULSE_MS` 定，故流里只存型号与比例）。
+ */
 export interface BattleShieldChargeLedger {
-  /** 每跳合计比例（**满盾的几分之几**；同型多件已按 EVE 曲线收敛） */
-  pctPerPulse: number
-  /** 下一脉冲战斗时刻（开战 = startedAt + 30 秒）；缺省 = 不调度 */
-  nextPulseAtMs?: number
-  /** 累计脉冲次数（战报/读档续战用） */
+  /** 逐型号的脉冲流（**每路一个计时器**；空数组 = 没装该族件、不调度） */
+  streams: BattleShieldFieldStream[]
+  /** 累计脉冲次数（各路线求和；战报/读档续战用） */
   pulses: number
+}
+
+/**
+ * **一路脉冲流**（= **一个型号**的装置）：每路**各自计时**、各按各的间隔跳。
+ *
+ * **2026-09-21 船长令**：「**哪怕同类型装备，只要是不同型号，就要独立的回转冷却**」⇒ 三类周期脉冲
+ * 装置（力场 / 护盾充能 / 船体维修）的"同舰多件"从"一路合计值、取最短间隔"改为**逐型号多路**：
+ * MK2 与 MK3 各是一路，各按 10 秒 / 8 秒跳，各补各的比例。
+ *
+ * 叠加衰减**不受此影响**：收敛池仍按**全族**合并（同一次装配里第 n 件按 EVE 曲线折减，与型号无关，
+ * 见 `equipment.stackingOf` 的 `decayGroup`）——所以 `pct` 里已经含了该型号自己被折掉的那部分。
+ */
+export interface BattleShieldFieldStream {
+  /** **型号 id**（= `ModuleDef.id`；逐型号独立计时的键，也是界面/战报的引用） */
+  modelId: string
+  /** 本路每跳的补盾比例（**各受益舰自己满盾**的几分之几；已含全族衰减） */
+  pct: number
+  /**
+   * **本型号自己的脉冲间隔**（ms；力场 MK2 = 10 000 · MK3 = 8 000；护盾充能 = `SHIELD_PULSE_MS` 30 000）。
+   * ⚠ 逐型号自带是**船长 2026-09-21 令**的形状要求（"不同型号独立回转"）——日后给某档定不同间隔
+   * 只需改数据侧，本字段与调度逻辑都不用动。
+   */
+  ms: number
+  /**
+   * **本路自己的下一脉冲时刻**（战斗时钟 ms；开战 = `startedAtGameMs + 本型号间隔`）；
+   * 缺省/坏值 = 不调度（由 `advanceBattleFor` 在首个到期拍按本族间隔现补）。
+   */
+  nextPulseAtMs?: number
 }
 
 /**
  * **力场账本**（2026-09-20 船长「护盾充能力场装置」；与 `BattleShieldChargeLedger` 分开存，
  * 因为**冷却按件**、且受益方是**全队**）。
+ *
+ * ⚠ **2026-09-21 结构改判**（船长「不同型号就要独立的回转冷却」）：原先是**一台一个账本**：
+ * `{ pctPerPulse, msPerPulse, nextPulseAtMs, pulses }` —— 同舰 MK2+MK3 被并成"一路 8 秒合计值"。
+ * 现改为**一台多路**：`streams[]` 每路一个型号、各带自己的计时器；`pulses` 为各路线总计数（战报用）。
  */
 export interface BattleShieldFieldLedger {
-  /** 每跳合计比例（**各受益舰自己满盾的几分之几**；同舰多件已按 EVE 曲线收敛） */
-  pctPerPulse: number
-  /** **本件自带的冷却**（ms；MK2 = 10 000 · MK3 = 8 000；同舰多件取最短那一档） */
-  msPerPulse: number
-  /** 下一脉冲战斗时刻（开战 = startedAt + msPerPulse）；缺省 = 不调度 */
-  nextPulseAtMs?: number
-  /** 累计脉冲次数（战报/读档续战用） */
+  /** 逐型号的脉冲流（**每路一个计时器**；空数组 = 没装该族件、不调度） */
+  streams: BattleShieldFieldStream[]
+  /** 累计脉冲次数（各路线求和；战报/读档续战用） */
   pulses: number
 }
 

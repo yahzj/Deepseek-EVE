@@ -281,6 +281,12 @@ export {
   curveMult,
   gapCombine,
   sameKindCount,
+  /**
+   * **"该件属于哪一路回转冷却"**（2026-09-21 船长令「不同型号就要独立的回转冷却」）：
+   * 力场 / 护盾充能 / 维修三类周期脉冲装置按**型号**拆路；非这三类返回 `null`。
+   * ⚠ 与 `stackingOf` 的**衰减池**是两件事：衰减按全族（换型号绕不开），冷却按型号（各走各的）。
+   */
+  pulseStreamOf,
 } from './equipment'
 
 export {
@@ -775,6 +781,11 @@ export {
   shieldFieldOf,
   preloadShieldFieldFor,
   pulseShieldFieldFor,
+  // **逐型号脉冲流**（2026-09-21 船长令「不同型号就要独立的回转冷却」）：读数/工具用逐路入口——
+  // 每路一个型号、各带自己的比例与间隔（衰减仍按全族合并，见 `equipment.stackingOf` 的 kind）
+  shieldFieldStreamsOf,
+  shieldChargeStreamsOf,
+  repairStreamsOf,
   // 无人机技能每级参数（2026-09-11：内容体检「技能说明契约」按它核对技能说明里的每级值）
   DRONE_SKILL,
   // 激光"威力随距离"系数（2026-09-11：属性面板「威力衰减」行改由**引擎同一函数**算，

@@ -65,7 +65,7 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     refundRepairKits(state, repair) // 幂等：无组件可退
   })
 
-  it('同型多件按 EVE 曲线收敛：3 件 C1 → 6 + 5 + 3 = 14 点/跳（而非线性 18）', () => {
+  it('同族多件按 EVE 曲线收敛（**逐台折减、按位次**）：3 件 C1 → 6 / 5 / 3 点/跳（而非线性 18）', () => {
     const state = makeState([], [], ['mod-lair-armor-c', 'mod-lair-armor-c'])
     state.fleet[state.shipId]!.fitted.low[1] = 'mod-lair-armor-c'
     // 低槽只有 2 位：再借用中槽一位（同件可装任意槽位由 rack 校验，测试直接写数组）
@@ -73,21 +73,33 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     const repair = preloadRepairFor(state, ctx, state.shipId, ctx.balance.battle.maxBattleMs)!
     const per = repair.units.map((x) => x.armorPerPulse)
     expect(per).toHaveLength(3)
+    /**
+     * ⚠ **2026-09-21**：折减改为**按位次逐台取**（同型号三台的权重是 1 / 0.869 / 0.571）——
+     * 第一版我按 `modelId` 建映射 ⇒ 三台都拿到第 3 件的权重（全 3 点/跳）。用例的下标断言正是守这条。
+     */
     expect(per[0]).toBe(Math.round(6 * stackWeight(1))) // 6
     expect(per[1]).toBe(Math.round(6 * stackWeight(2))) // 5
     expect(per[2]).toBe(Math.round(6 * stackWeight(3))) // 3
     const sum = per.reduce((s, n) => s + n, 0)
     expect(sum).toBeLessThan(18) // 收敛后低于线性
+    // **逐台各有自己的计时器**（2026-09-21 船长令：不同型号独立回转；同型号也一样逐台）
+    for (const u of repair.units) expect(u.nextPulseAtMs).toBeUndefined() // 预载阶段还没排首跳
   })
 
-  it('消耗件与自愈件并存：组件照旧预载、自愈件不占组件', () => {
+  it('消耗件与自愈件并存：组件照旧预载、自愈件不占组件；**折减按全族位次**（MK1 第 1 / 甲壳板第 2）', () => {
     const state = makeState([], ['mod-hullrep-1'], ['mod-lair-armor-c'])
     state.warehouse.items['repairkit-mil'] = 50
     const repair = preloadRepairFor(state, ctx, state.shipId, ctx.balance.battle.maxBattleMs)!
     expect(repair.units).toHaveLength(2)
     const free = repair.units.find((u) => u.free)!
     const kit = repair.units.find((u) => !u.free)!
-    expect(free.armorPerPulse).toBe(6)
+    /**
+     * ⚠ **2026-09-21 起维修全族同池**（船长「包括船体维修装置的不同型号也一样的规则」）：
+     * 装配序 = MK1 在前、甲壳板在后 ⇒ MK1 满值、甲壳板按第 2 件折到 **5 点**（改前：按件 id 计数、
+     * 各拿满权 ⇒ 甲壳板是 6）。这一条同时钉住"跨型号也折减"。
+     */
+    expect(free.armorPerPulse).toBe(Math.round(6 * stackWeight(2)))
+    expect(kit.armorPerPulse).toBe(Math.round(10 * stackWeight(1)))
     expect(kit.kitId).toBe('repairkit-mil')
     expect((repair.kits['repairkit-mil'] ?? 0)).toBeGreaterThan(0)
   })
@@ -99,7 +111,7 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
    * 本用例把三件事一起钉住：① 甲壳板平值 6（哪怕甲容 +20%）；② 损管腔平值 4（哪怕结构 +75%）；
    * ③ **耗组件装置照旧吃**加成（对照，防误伤——09-16 那条对它们仍然有效）。
    */
-  it('**报障修复（船长）**：生体甲壳板 6 · 损管腔 4 都不吃层容量加成；耗组件装置照旧吃', () => {
+  it('**报障修复（船长）**：生体甲壳板/损管腔不吃层容量加成；耗组件装置照旧吃（**折减按全族位次**）', () => {
     const state = makeState([], ['mod-lair-dc-c', 'mod-hullrep-1'], ['mod-lair-armor-c', 'mod-armor-plate-1'])
     // 甲容 +20%（装甲增厚板 MK1）· 结构 +75%（几丁质骨架层，借中槽一位放，本用例只数每跳值）
     state.fleet[state.shipId]!.fitted.mid[2] = 'mod-wh-c-frame'
@@ -108,20 +120,24 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     const shell = repair.units.find((u) => u.moduleId === 'mod-lair-armor-c')!
     const dc = repair.units.find((u) => u.moduleId === 'mod-lair-dc-c')!
     const kit = repair.units.find((u) => u.moduleId === 'mod-hullrep-1')!
-    // ① 甲壳板：平值（原本会被 ×1.2 放大成 7）
+    /**
+     * ⚠ **2026-09-21 折减按位次**：本例装配序 = 损管腔(1) / MK1(2) / 甲壳板(3)
+     * ⇒ 甲壳板拿第 3 件权重。**"不吃层容量加成"这条判据只能看"没被 amp 放大"**：
+     * 平值口径下甲壳板 = `6 × w₃`（≈3.42 → 3）；若误吃 ×1.2 会变成 4 —— 故断言写成"等于按权重算的值"。
+     */
     expect(shell.free).toBe(true)
-    expect(shell.armorPerPulse, '甲壳板的自愈量不该吃装甲容量加成').toBe(6)
+    expect(shell.armorPerPulse, '甲壳板的自愈量不该吃装甲容量加成').toBe(Math.round(6 * stackWeight(3)))
     expect(shell.hullPerPulse).toBe(0)
-    // ② 损管腔：平值（原本会被 ×1.75 放大成 7）
+    // ② 损管腔：平值（第 1 件 ⇒ 满值 4；若误吃 ×1.75 会变成 7）
     expect(dc.free).toBe(true)
-    expect(dc.hullPerPulse, '损管腔的自愈量不该吃结构容量加成').toBe(4)
+    expect(dc.hullPerPulse, '损管腔的自愈量不该吃结构容量加成').toBe(Math.round(4 * stackWeight(1)))
     expect(dc.armorPerPulse).toBe(0)
-    // ③ 耗组件装置：两级都照旧吃加成（甲 ×1.2 = 12 · 结构 ×1.75 = 18）
+    // ③ 耗组件装置：两级都照旧吃加成（第 2 件 ⇒ 甲 10×0.869×1.2 = 10 · 结构 10×0.869×1.75 = 15）
     // ⚠ 非自愈件的 `free` 字段是**缺省**（不是 false）⇒ 断言要写 `?? false`，或直接断言它挂了组件
     expect(kit.kitId, '耗组件装置应当预载组件（对照）').toBe('repairkit-mil')
     expect(kit.free ?? false).toBe(false)
-    expect(kit.armorPerPulse).toBe(12)
-    expect(kit.hullPerPulse).toBe(18)
+    expect(kit.armorPerPulse).toBe(Math.round(10 * stackWeight(2) * 1.2))
+    expect(kit.hullPerPulse).toBe(Math.round(10 * stackWeight(2) * 1.75))
   })
 
   it('C3 酸液喷吐器：必中能量件、射速更慢单发更重、总输出与攻坚激光炮相当', () => {

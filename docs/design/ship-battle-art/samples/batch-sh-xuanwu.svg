@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
-  <!-- 甲壳重装族 3a-3/3：玄武级重装旗舰(T4:三层拱甲 + 巨厚舰体 + 4 引擎 + 多炮组) -->
+  <!-- 甲壳重装族 3a-3/3：玄武级重装战列舰(T4:三层拱甲 + 巨厚舰体 + 4 引擎 + 多炮组) -->
   <defs><style>
     .sky { fill:#0b1016 }.star { fill:#dfe9f2; opacity:.5 }
     .hull { fill:none; stroke:#dfe9f2; stroke-width:2.2; stroke-linejoin:round }
@@ -30,5 +30,5 @@
     <path class="warm" d="M44 46 h8 v8 h-8 z M44 62 h8 v8 h-8 z M56 46 h8 v8 h-8 z M56 62 h8 v8 h-8 z"/>
     <circle class="accf" cx="130" cy="78" r="1.7"/>
   </g>
-  <text class="note" x="40" y="286">玄武级重装旗舰 · sh-xuanwu · 主力 T4·重装旗舰型 — 草稿(三层拱甲巨体 + 四引擎 + 三炮组)</text>
+  <text class="note" x="40" y="286">玄武级重装战列舰 · sh-xuanwu · 主力 T4·重装战列舰型 — 草稿(三层拱甲巨体 + 四引擎 + 三炮组)</text>
 </svg>

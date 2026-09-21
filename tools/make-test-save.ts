@@ -33,7 +33,7 @@
  *         + 支援 + 三族武器/支援备件 + 弹药（实测巡洋对 D~E 段手感与三族差异，定数值方向）。
  *  - shipart 舰船战斗图形目测（2026-09-09 三号，新规格 240×110 图形全量接入后）：钱包 +6000 万
  *         + 声望 13 + 全星系点亮 + 各族代表演示船 ×5（锤头鲨炮巡 MK3 满配驾驶/牛鲨突击巡/玄武
- *         重装旗舰/皇带鱼货舰/座头鲸矿舰）+ 弹药装备库（真机目测我方各族船形与敌族 A~G 型形，
+ *         重装战列舰/皇带鱼货舰/座头鲸矿舰）+ 弹药装备库（真机目测我方各族船形与敌族 A~G 型形，
  *         细节锚点/比例问题回传，详见 ship-battle-art 验收清单）。
  *  - hauling 长途运输实测（2026-09-09，两站往返运输）：红环/烬火两座副站标记"建成"并入基地网络
  *         + 点亮两星系 + 钱包 +300 万 + 蝠鲼级重载货舰（7000 m³ 大货舱）设为驾驶——任务中心「运输
@@ -1272,7 +1272,7 @@ function injectShipArt(state: GameState): string[] {
     // [shipId, 自定义名, high, mid, low]
     ['sh-hammerhead', '锤头鲨·炮击巡洋(驾驶)', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2', 'mod-rof-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
     ['sh-bullshark', '牛鲨·突击巡洋', ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-3'], ['mod-shield-kin-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']],
-    ['sh-xuanwu', '玄武·重装旗舰', ['mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']],
+    ['sh-xuanwu', '玄武·重装战列舰', ['mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2', 'mod-rof-2']],
     ['sh-colossal', '皇带鱼·旗舰货舰', ['mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2', 'mod-gyro-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
     ['sh-humpback', '座头鲸·矿舰', ['mod-turret-kin-2', 'mod-turret-kin-2', 'mod-turret-kin-2'], ['mod-shield-kin-2', 'mod-track-2'], ['mod-stab-kin-2', 'mod-armor-kin-2', 'mod-armor-plate-2']],
   ]
@@ -1285,7 +1285,7 @@ function injectShipArt(state: GameState): string[] {
     if (i === 0) state.shipId = uid
     uids.push(uid)
   })
-  notes.push(`新增各族演示船 ×5：${uids[0]}（锤头鲨·炮击巡洋 MK3 满配，已设为驾驶）、${uids[1]}（牛鲨·突击巡洋 MK3）、${uids[2]}（玄武·重装旗舰）、${uids[3]}（皇带鱼·旗舰货舰）、${uids[4]}（座头鲸·矿舰）——舰船页切驾驶逐艘对照造型（武装/重装/航运/工业族）`)
+  notes.push(`新增各族演示船 ×5：${uids[0]}（锤头鲨·炮击巡洋 MK3 满配，已设为驾驶）、${uids[1]}（牛鲨·突击巡洋 MK3）、${uids[2]}（玄武·重装战列舰）、${uids[3]}（皇带鱼·旗舰货舰）、${uids[4]}（座头鲸·矿舰）——舰船页切驾驶逐艘对照造型（武装/重装/航运/工业族）`)
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
   }

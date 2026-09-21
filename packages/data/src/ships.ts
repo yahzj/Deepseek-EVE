@@ -726,7 +726,7 @@ export const SHIPS: readonly ShipDef[] = [
   },
   {
     id: 'sh-xuanwu',
-    name: '玄武级重装旗舰',
+    name: '玄武级重装战列舰',
     role: 'armored',
     // 子分类「武装货舰」（船长 2026-09-16，同陆龟级）
     subClass: '武装货舰',
