@@ -264,9 +264,28 @@ function auditLogs(): void {
     if (!LOG_KINDS.has(l.kind)) issue(`日志未知 kind「${l.kind}」：${l.text.slice(0, 100)}`)
     else if (l.kind === 'error' || (l.kind === 'warn' && !BENIGN_NARRATIVE_WARN.some((p) => l.text.includes(p))))
       issue(`引擎[${l.kind}] ${l.text.slice(0, 150)}`)
+    /**
+     * **抓"悬赏胜负"的口径**（2026-09-21 第二十批 · 为定性一个异常）。
+     *
+     * 背景：实测 `蜃影导航劫持令`（威胁 48、预估胜率 **98%**）在 10.70d **明确出击过**
+     * （选靶日志 + `startExpedition` 成功），但 `state.completedBounties` 始终不含它、
+     * 首胜恒停 20/23。要区分"那趟被判失利"与"胜了却没记账"，唯一办法是看**引擎自己写的战报**。
+     *
+     * ⚠ **不能用关键词"失利/败退"来判负**（第一版就这么写，实测把 `⚔ 远征开始（…）：…
+     * 失利/撤退同样自动返航。` 这条**出发提示**误判成了败仗 —— 它只是描述返航规则）。
+     * 引擎的真实口径是**行首的结局标记**（读 `expedition.ts` 核过）：
+     * 胜 = `⚔ 战报（…）：大捷！`、败 = `⚔ 战报（…）：失利`、撤退 = `⚔ 撤退` / `⚔ 自动撤退`、
+     * 弃船 = `⚔ 战报（…）：遭重创`、超时 = `⏱ 战斗超时`。所以**只认 `⚔ 战报` 与 `⚔ 撤退/自动撤退`**。
+     */
+    else if (l.kind === 'trade' && (l.text.startsWith('⚔ 战报') || l.text.startsWith('⚔ 撤退') || l.text.startsWith('⚔ 自动撤退')))
+      expeditionResults.push(l.text.slice(0, 110))
   }
+  // 只留最近 40 条（长档会积累上千条，报告放不下）
+  if (expeditionResults.length > 40) expeditionResults.splice(0, expeditionResults.length - 40)
   lastLogIdx = state.logs.length
 }
+/** 悬赏胜负留档（进报告；只留最近 40 条，防长档报告爆掉） */
+const expeditionResults: string[] = []
 
 function audit(): void {
   const bad = (label: string, v: number): void => {
@@ -3134,6 +3153,14 @@ for (const k of ['bounties', 'whach', 'isk1b', 'boss', 'tril', 'collect'] as con
       lines.push(
         `      · 未首胜：${a.name}（${a.id}）威胁 ${a.threat} · 声望门槛 ${a.standingReq} · 当前预估胜率 ${Math.round(winOf(state, ctx, a) * 100)}%`,
       )
+    }
+    /**
+     * **最近 12 条悬赏胜负**（2026-09-21 第二十批）：用来定性"出击了却没记首胜"这类异常
+     * —— 引擎胜时写 `⚔ 战报…大捷！`、负时另有文案，看一眼就知道那趟到底赢没赢。
+     */
+    if (expeditionResults.length > 0) {
+      lines.push('      · 最近悬赏战报（引擎原文节选）：')
+      for (const r of expeditionResults.slice(-12)) lines.push(`        - ${r}`)
     }
   }
 }
