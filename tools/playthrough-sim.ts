@@ -2021,7 +2021,15 @@ function doWormhole(): boolean {
   if (!run) return false // 这一趟已经判负收场（主循环下一拍会重新尝试进洞）
   // ③ 这趟结束/被判负（`run` 已 null）/ 回合耗尽 / 血量太低 ⇒ 收口
   const hp = wormholeHpFrac()
-  const wantExtract = run.turnsLeft <= 0 || hp < 0.45 || whAlreadyDone()
+  /**
+   * ⚠ **回合耗尽**与**血量**分开判（2026-09-21 第六批）：两者后果不同 ——
+   * 回合耗尽 = 引擎也不让下潜（`wormholeDescend` 会以 `mustExtract` 拒），只能撤离；
+   * 低血 = 还能下潜（下潜不耗回合、也不打架），只是**下一层大概率打不动**。
+   * 这份区分让下面 ③c 的分支能"在有值得做的事时先做、再按血撤离"。
+   */
+  const outOfTurns = run.turnsLeft <= 0
+  const lowHp = hp < 0.45
+  const wantExtract = outOfTurns || lowHp || whAlreadyDone()
   /**
    * **逐层读数**（2026-09-21 加）：每到一个新层深记一条"我方还剩多少血 / 还剩几回合 /
    * 还差多少到目标层深"。没有它，报告里只能看到"层深 2"，看不出是**打不动**（血不够）、
