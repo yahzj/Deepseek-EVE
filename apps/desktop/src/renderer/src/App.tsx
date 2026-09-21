@@ -25,6 +25,7 @@ import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
 import { SkillsPage } from './pages/SkillsPage'
+import { SkillsTreePage } from './pages/SkillsTreePage'
 import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
 import { CommsEave, CommsScreen } from './panels/CommsReader'
@@ -66,10 +67,33 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
   { key: 'comms', label: 'ui.App.009', icon: 'nav-mail' },
 ]
 
-type PageKey = 'ship' | 'fit' | 'items' | 'market' | 'industry' | 'skills' | 'map' | 'task' | 'achieve' | 'comms'
+/**
+ * **调试专用导航项**（**2026-09-20 船长令**：「**现有页面先保留，新的页面暂时只有调试模式可见
+ * （导航栏多出一个技能测试入口）**」）。
+ *
+ * - 只在 `localStorage['whale-idle:debug'] === '1'`（刷新后）出现，与既有调试入口
+ *   `panels/DebugPanel.debugEnabled()` **同一把开关**；正式页「技能」`SkillsPage` **一字未动**。
+ * - 指向 `pages/SkillsTreePage.tsx`（技能科技树试作：7 组 × 5 层 ＋ 点节点开详情窗）。
+ */
+const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
+  { key: 'skilltest', label: 'ui.App.121', icon: 'nav-skills' },
+]
+
+type PageKey =
+  | 'ship'
+  | 'fit'
+  | 'items'
+  | 'market'
+  | 'industry'
+  | 'skills'
+  | 'skilltest'
+  | 'map'
+  | 'task'
+  | 'achieve'
+  | 'comms'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'task', 'achieve', 'comms'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'skilltest', 'items', 'task', 'achieve', 'comms'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -1007,7 +1031,7 @@ export function App({ engine }: { engine: GameEngine }) {
            * **精确值恒挂 `title`**。窄栏里优先保住的是**数字**，不是「信用点」三个字。
            */}
           <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
-          {NAV_ITEMS.map((item) => {
+          {[...NAV_ITEMS, ...(readDebugEnabled() ? DEBUG_NAV_ITEMS : [])].map((item) => {
             // 「第一次」前置未达 ⇒ **该导航项不显示**（船长：未解锁页面与任务都隐藏）
             if (!unlocked(state, item.key)) return null
             // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
@@ -1120,6 +1144,8 @@ export function App({ engine }: { engine: GameEngine }) {
               />
             ) : null}
             {page === 'skills' ? <SkillsPage {...pageProps} /> : null}
+            {/* 技能科技树试作（仅调试模式可见；正式页在上面一行） */}
+            {page === 'skilltest' ? <SkillsTreePage {...pageProps} /> : null}
             {page === 'map' ? (
               <MapPage
                 {...pageProps}
