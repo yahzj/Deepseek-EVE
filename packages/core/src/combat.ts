@@ -3062,6 +3062,22 @@ export function repairUsageText(
  */
 export const SHIELD_PULSE_MS = 30_000
 
+/**
+ * **护盾被动回充的速率下限**（2026-09-20 船长：「**舰船护盾的恢复速度下限改为1%。但是当护盾被击穿时，依旧是0%**」；
+ * 追问口径后补：「**满盾依旧是2%，当盾量接近0的时候是1%**」）。
+ *
+ * 口径：**下限 = 该舰满盾的 1% / 秒**（`0.01`）——被动回充取
+ * `max(当前盾 × shieldRegenPerSec, 满盾 × 本值)`：
+ * - 满盾时 `100% × 2% = 2%`（与船长原话的"满盾依旧 2%"一致，下限不介入）；
+ * - 盾降到 **50%** 时两条线相交（`50%×2% = 1% = 下限`），**再低就由下限接管**；
+ * - 盾 = **0** ⇒ 仍是 **0**（"破盾后 0 回复"那条裁定不变，`stepBattle` 里先 `continue` 掉了）。
+ *
+ * 为什么要有它：指数式回充的副作用是**盾越少回得越慢**（剩 2% 时每秒只回 0.04%
+ * ⇒ 从 2% 回到半盾要 **19.6 分钟**）——等于"被打残后这场的盾就废了"。加下限后低盾段
+ * 回充量不再继续缩水（同样这条路变成 **44 秒**）。
+ */
+export const SHIELD_REGEN_FLOOR_PCT = 0.01
+
 /** 装配里「护盾充能装置」的**每跳合计比例**（满盾的几分之几；同型多件按 EVE 曲线收敛，无装置 = 0） */
 export function shieldPulsePctOf(state: GameState, ctx: SimContext, shipId: string): number {
   const ship = state.fleet[shipId]
@@ -6547,13 +6563,25 @@ function stepBattle(
   //   ⇒ 回充变成**指数式**（回满时间 = ln(满盾/当前盾) ÷ 费率），且**盾归零后回充恒为 0**：
   //   盾被打穿 = 本场的分水岭，此后全程由甲/结构承伤。想重新把盾点起来只有一条路 =
   //   中槽「**护盾充能装置**」（`shieldPulsePct`，每 `SHIELD_PULSE_MS` 脉冲回满盾的一个比例）。──
+  // ⚠ **2026-09-20 船长追加「恢复速度下限」**（原话：「舰船护盾的恢复速度下限改为1%。
+  //   **但是当护盾被击穿时，依旧是0%**」→ 追问口径后补：「**满盾依旧是2%，当盾量接近0的时候是1%**」）：
+  //   指数式的副作用是**盾越少回得越慢**（剩 2% 时每秒只回 0.04% ⇒ 回到半盾要 19.6 分钟）
+  //   ⇒ 加一条**下限 = 满盾 × 1% / 秒**：
+  //     盾 > 0 ⇒ `max(当前盾 × k, 满盾 × 1%)`；盾 = 0 ⇒ **仍为 0**（破盾那条裁定不变）。
+  //   效果：满盾时 `100%×2% = 2%`（仍是 2%，下限不介入）；盾降到 50% 以下后由下限接管，
+  //   **回充量不再随盾量继续缩水**（从 2% 回到半盾：19.6 分钟 → 44 秒）。
   if (bal.shieldRegenPerSec > 0) {
     for (const unit of myUnits) {
       const urt = b.units[unit.tag]
       if (!urt || !isAlive(b, unit.tag)) continue
-      if (urt.hp.s >= unit.hp.s || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
-      const regen = urt.hp.s * bal.shieldRegenPerSec * dtSec
-      if (regen > 0) urt.hp.s = Math.min(unit.hp.s, urt.hp.s + regen)
+      // ⚠ 满盾优先取战斗单位的 `hpMax.s`；老档/异常缺省时回退到该单位的 `spec.hp.s`（= 满盾口径）
+      const sMax = urt.hpMax?.s ?? unit.hp.s
+      if (urt.hp.s >= sMax || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
+      // 下限 = 该舰**满盾**的 1%/秒；`urt.hp.s > 0` 是"破盾后 0 回复"那条裁定的落点
+      const floor = sMax * SHIELD_REGEN_FLOOR_PCT
+      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s * bal.shieldRegenPerSec, floor) : 0
+      const regen = rate * dtSec
+      if (regen > 0) urt.hp.s = Math.min(sMax, urt.hp.s + regen)
     }
   }
 
@@ -6950,19 +6978,34 @@ function steadyPreview(
   //   · **破盾后回充归 0**（船长「不留，破盾后 0 回复」）⇒ 之后 D 全打在甲+结构上
   //   · 装了「护盾充能装置」时：把 30 秒脉冲折成**恒定附加回充** `c = 满盾 × 每跳比例 ÷ 30 秒`，
   //     **只在破盾后计入**（盾没破时被动回充远大于它）——这样估算不会对带装置的人过分悲观。
+  // ⚠ **2026-09-20 船长加「恢复速度下限」后本模型必须同改**（原话见 `SHIELD_REGEN_FLOOR_PCT`）：
+  //   引擎的回充已是 `max(当前盾 × k, 满盾 × 1%)` ⇒ **盾低于 50% 后回充不再随盾量缩水**
+  //   （速率恒定 = 满盾的 1%/秒）。本模型若还用纯指数式，会**低估**玩家的盾抗 ⇒ AI 派单误判。
+  //   新的分段动力学（`sMax` = 满盾、`sCap = sMax × 1%` = 恒速下限、`sX = sCap / k` = 两段交点）：
+  //     · `s > sX`：指数段（同旧口径）
+  //     · `sX ≥ s > 0`：**恒速段**（净掉率 = D − sCap；`D ≤ sCap` ⇒ 恒速回充，永远打不穿）
+  //     · `s = 0`：破盾，回充归 0（不变）
   const foeDpsNet = foeDps * foeMul
   const k = bal.shieldRegenPerSec
+  const sMax = Math.max(0, me.hp.s) // ⚠ `UnitSpec` 上**没有** `hpMax`；`steadyPreview` 取的是满盾规格，故这里就是满盾
   const s0 = Math.max(0, me.hp.s)
-  const chargePerSec = (shieldPulsePctOf(state, ctx, shipId) * s0) / (SHIELD_PULSE_MS / 1000)
+  const sCap = sMax * SHIELD_REGEN_FLOOR_PCT
+  const sX = k > 0 ? sCap / k : Number.POSITIVE_INFINITY
+  const chargePerSec = (shieldPulsePctOf(state, ctx, shipId) * sMax) / (SHIELD_PULSE_MS / 1000)
   let ttrMe: number
   if (foeDpsNet <= 0) {
     ttrMe = Number.POSITIVE_INFINITY // 敌方打不动我
-  } else if (k > 0 && s0 > 0 && foeDpsNet <= k * s0) {
+  } else if (k > 0 && s0 > 0 && foeDpsNet <= Math.max(k * s0, sCap)) {
     ttrMe = Number.POSITIVE_INFINITY // 回充顶住敌火：盾永不破 ⇒ 只有超时血比才可能落败
   } else if (k > 0 && s0 > 0) {
-    const tBreak = Math.log(foeDpsNet / (foeDpsNet - k * s0)) / k // 盾被打穿
+    // 第一段：指数衰减到交点（已在交点以下就直接进第二段）
+    const tExp = s0 > sX ? Math.log((foeDpsNet - sCap) / (foeDpsNet - k * s0)) / k : 0
+    // 第二段：从 `min(s0, sX)` 恒速掉到 0
+    const lin = foeDpsNet - sCap
+    const tLin = lin > 0 ? Math.min(s0, sX) / lin : Number.POSITIVE_INFINITY
+    const tBreak = tExp + tLin // 盾被打穿（∞ = 恒速段也顶得住 ⇒ 永远打不穿）
     const after = Math.max(0, foeDpsNet - chargePerSec) // 破盾后：充能装置托底
-    ttrMe = after > 0 ? tBreak + (me.hp.a + me.hp.h) / after : Number.POSITIVE_INFINITY
+    ttrMe = Number.isFinite(tBreak) && after > 0 ? tBreak + (me.hp.a + me.hp.h) / after : Number.POSITIVE_INFINITY
   } else {
     ttrMe = meHpTotal / foeDpsNet // 无回充（费率 0 或无盾）：原口径
   }
