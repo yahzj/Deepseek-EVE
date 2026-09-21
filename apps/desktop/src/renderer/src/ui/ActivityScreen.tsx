@@ -23,7 +23,7 @@
  */
 import { memo } from 'react'
 import type { ComponentType, ReactNode } from 'react'
-import { getMiningParams, wormholeScanWindowMs } from '@whale/core'
+import { getMiningParams, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { sceneOfShipwin } from './ShipStatusWin'
@@ -185,12 +185,23 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
   }
   if (kind === 'salvage') {
     const s = state.salvaging
+    /**
+     * 打捞进度：作业以**最短打捞器周期**为统一推进步（`salvaging.ts`：多台各自维护相位），
+     * 故进度 = `cycleAccMs / 最短周期`——满一格 = 有一台打捞器完成一轮、捞上一次。
+     * 出航/返航段（`phase !== 'salvaging'`）不显示循环进度（那两段是航行，读的是航段进度）。
+     */
+    const cycles = salvagerCyclesOf(state, ctx, state.shipId)
+    const stepMs = cycles.length > 0 ? Math.min(...cycles) : 0
+    const working = s.phase === 'salvaging'
     return {
       title: tr('ui.ActivityWin.002'),
-      lines: [`${tr('ui.ActivityWin.013')}${Math.round(s.tripM3).toLocaleString('zh-CN')} m³`],
-      // 打捞没有单一"当前循环时长"（逐打捞器相位推进）⇒ 用本趟累计步进给出相对势能感
-      progress: null,
-      progressLabel: '',
+      lines: [
+        `${tr('ui.ActivityWin.013')}${Math.round(s.tripM3).toLocaleString('zh-CN')} m³`,
+        `${tr('ui.ActivityWin.018')}${cycles.length}`,
+        `${tr('ui.ActivityWin.019')}${(stepMs / 1000).toFixed(1)} s`,
+      ],
+      progress: working && stepMs > 0 ? Math.min(1, s.cycleAccMs / stepMs) : null,
+      progressLabel: tr('ui.ActivityWin.023'),
     }
   }
   if (kind === 'haul') {

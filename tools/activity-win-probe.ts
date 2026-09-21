@@ -84,6 +84,23 @@ const CASES: Case[] = [
       m.originGalaxy = 'galaxy-hub'
     },
   },
+  {
+    name: 'salvage',
+    file: 'user-backup-20260920-102449.json',
+    expect: '.app-winbox.is-activity',
+    note: '现场点开打捞作业（该档的 colossal 装了 2 台打捞器，周期各 6000ms）',
+    patch: (s) => {
+      s.shipId = 'sh-colossal'
+      const sv = s.salvaging as Record<string, unknown>
+      sv.active = true
+      sv.galaxyId = 'galaxy-hub'
+      sv.phase = 'salvaging'
+      sv.phaseAccMs = 0
+      sv.cycleAccMs = 4_000 // 步长 6000ms ⇒ 进度条应约 67%
+      sv.tripM3 = 1_240
+      sv.deviceAccMs = {}
+    },
+  },
   { name: 'haul-legs2', file: 'test-save-wh-all-20260914-122105.json', expect: '.app-winbox.is-activity', note: '承运段' },
   {
     name: 'haul-legs1',
@@ -159,16 +176,32 @@ interface Reading {
   overflowW: boolean
   overflowH: boolean
   title: string
+  /** 演出层诊断：SVG 在不在、动画元件几个、关键动画类的 animation-name（`none` = 没跑起来） */
+  fx: { svg: boolean; nodes: number; animated: string[]; dead: string[] }
+  /** 进度条：宽度百分比 + 文案（没有进度条时为 null） */
+  bar: string | null
 }
 
 async function read(cdp: Cdp, sel: string): Promise<Reading> {
   return cdp.evalJS<Reading>(`(() => {
     const el = document.querySelector(${JSON.stringify(sel)})
     const de = document.documentElement
-    if (!el) return { sel: ${JSON.stringify(sel)}, found: false, w:0,h:0,left:0,top:0,position:'',docScrollW:de.scrollWidth,docScrollH:de.scrollHeight,overflowW:false,overflowH:false,title:'' }
+    const empty = { sel: ${JSON.stringify(sel)}, found: false, w:0,h:0,left:0,top:0,position:'',docScrollW:de.scrollWidth,docScrollH:de.scrollHeight,overflowW:false,overflowH:false,title:'',fx:{svg:false,nodes:0,animated:[],dead:[]},bar:null }
+    if (!el) return empty
     const r = el.getBoundingClientRect()
     const cs = getComputedStyle(el)
     const t = el.querySelector('.app-winbox-title')
+    // 演出层：逐类查 computed animation-name（none ⇒ CSS 没接上/类名写错）
+    const nodes = [...el.querySelectorAll('[class*="app-act-"]')]
+    const animated = [], dead = []
+    for (const n of nodes) {
+      const cls = [...n.classList].find((c) => c.startsWith('app-act-') && c !== 'app-act-svg' && c !== 'app-act-stage' && c !== 'app-act-dock' && c !== 'app-act-line' && c !== 'app-act-progress' && c !== 'app-act-bar' && c !== 'app-act-pct')
+      if (!cls) continue
+      const an = getComputedStyle(n).animationName
+      if (an && an !== 'none') animated.push(cls)
+      else dead.push(cls)
+    }
+    const barEl = el.querySelector('.app-act-bar')
     return {
       sel: ${JSON.stringify(sel)}, found: true,
       w: Math.round(r.width), h: Math.round(r.height),
@@ -178,6 +211,8 @@ async function read(cdp: Cdp, sel: string): Promise<Reading> {
       overflowW: de.scrollWidth > window.innerWidth + 1,
       overflowH: de.scrollHeight > window.innerHeight + 1,
       title: t ? t.textContent : '',
+      fx: { svg: !!el.querySelector('.app-act-svg'), nodes: nodes.length, animated: [...new Set(animated)], dead: [...new Set(dead)] },
+      bar: barEl ? (barEl.style.width || '0%') : null,
     }
   })()`)
 }
@@ -240,6 +275,13 @@ async function main(): Promise<void> {
       const battle = await read(cdp, '.app-winbox.is-battle')
       const chip = await read(cdp, '.app-float-chip')
       say(line(c.name, act, vp.w, vp.h))
+      // 演出诊断：SVG 在不在、动画元件数、哪些类真的跑着动画、哪些类没接上 CSS、进度条宽度
+      say(
+        `  ${''.padEnd(12)} 演出 SVG=${act.fx.svg ? '有' : '无'} · 元件 ${act.fx.nodes} 个` +
+          ` · 动画中 [${act.fx.animated.join(', ')}]` +
+          (act.fx.dead.length > 0 ? ` · ⚠ 无动画 [${act.fx.dead.join(', ')}]` : '') +
+          ` · 进度条=${act.bar ?? '(无)'}`,
+      )
       say(`  ${''.padEnd(12)} 战斗窗口存在=${battle.found ? '是' : '否'}  浮动还原标存在=${chip.found ? '是' : '否'}`)
     }
     /**
