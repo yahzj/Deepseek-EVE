@@ -2217,15 +2217,20 @@ function doWormhole(): boolean {
       }
       return true
     }
-    if (whDepthBanked.has(run.depth + 1)) {
-      // 下一层的里程碑已经赚过 ⇒ 这趟到此为止，撤（不硬闯已入账的深层）
-      const ex = wormholeExtract(run)
-      if (ex.ok) {
-        whStats.extracts += 1
-        mark(`虫洞 第 ${run.depth} 层守卫已清 · 第 ${run.depth + 1} 层里程碑早已入账 ⇒ 撤离保船`)
-      } else issue(`虫洞撤离被拒：${ex.error ?? ''}`)
-      return true
-    }
+    /**
+     * ⚠⚠ **删掉了"下一层里程碑早已入账 ⇒ 撤离"那条分支**（2026-09-21 第十三批）。
+     *
+     * 原写法：`if (whDepthBanked.has(run.depth + 1)) { 撤离 }`，注释理由是"不硬闯已入账的深层"。
+     * 但它是个**自锁**：只要层深 N+1 被写进 `whDepthBanked`（**哪怕是别趟写的**），
+     * 之后每一次"清完第 N 层守卫"都会被这句直接撤掉、**再也不尝试下潜**
+     * ⇒ 实测 25 天档里层深账本永远停在 2（"到达第 2 层"只成功 1 次）。
+     *
+     * 为什么删掉是安全的：层深里程碑是 **`peakFirst`（只记峰值、只升不降）** ——
+     * 再往下闯**对已成账的里程碑毫无损失**；最坏结果只是"这趟丢了船"，
+     * 而船很便宜（4 艘约 5000 万，而第 25 天有 90 亿）。
+     * 所以正确口径是"**能下就下**"：清完本层守卫就下潜（层深 +1 入账），
+     * 下去之后由撤退线/全灭自然收场。买的是"多一次层深机会"，成本是"偶尔丢一趟船"。
+     */
     const dn = wormholeDescend(state, state.rng.seed, wormholeScanBonusOf(ctx, run.fleet))
     if (dn.ok) {
       whStats.descends += 1
