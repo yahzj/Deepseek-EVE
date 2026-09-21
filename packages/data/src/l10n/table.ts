@@ -450,7 +450,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeBattle.008": { zh: "本层守卫已经清掉了。", en: "This layer's guard is already down." },
   "core.wormholeBattle.009": { zh: "遗迹收尾战只在网格层成立。", en: "The ruins wrap-up fight only applies on grid layers." },
   "core.wormholeBattle.010": { zh: "这里不是遗迹。", en: "This is not a ruins site." },
-  "core.wormholeBattle.011": { zh: "遗迹还没打捞完：先捞空再打。", en: "The ruins are not salvaged out yet: clear the piles before the fight." },
+  "core.wormholeBattle.011": { zh: "遗迹深处的守备还没被惊动：先在遗迹格上打捞一次。", en: "The ruins' guards have not been stirred yet: salvage once on the ruins tile first." },
   "core.wormholeBattle.012": { zh: "无法开战（编队或敌卡缺失）。", en: "The fight cannot start (the formation or the enemy card is missing)." },
   "core.wormholeBattle.013": { zh: "无法开战：{p1}", en: "The fight cannot start: {p1}" },
   "core.wormholeBattle.014": { zh: "取不回「{p1}」：{p2}（它占 2×2 = 4 格，先腾地方或抛货）", en: "Cannot take “{p1}” back: {p2} (it takes a 2×2 = 4 block, so free space or jettison cargo first)" },

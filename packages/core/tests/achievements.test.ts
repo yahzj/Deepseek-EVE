@@ -479,7 +479,7 @@ describe('成就徽章：里程碑（第二批 · 判据只读终身计数）', 
       ['ach-mile-site-1', '拓荒者', 1],
       ['ach-mile-site-2', '双站总督', 2],
     ],
-    matterTechMaxed: [['ach-mile-tech-tree', '谜质通晓', 23]],
+    matterTechMaxed: [['ach-mile-tech-tree', '谜质通晓', 24]],
   }
 
   it('18 条的 id / 卡名 / 计数键 / 阈值与设计稿逐条一致', () => {
@@ -571,7 +571,7 @@ describe('成就徽章：里程碑（第二批 · 判据只读终身计数）', 
     // ⚠ `aiCoreKinds` 是**峰值型**（由 `gainAiCore` 现数库存类数写），不是累计型 ⇒ 用 peakFirst
     peakFirst(state, 'aiCoreKinds', 4)
     peakFirst(state, 'sitesBuilt', 2)
-    peakFirst(state, 'matterTechMaxed', 23)
+    peakFirst(state, 'matterTechMaxed', 24)
     const before = {
       isk: state.wallet.isk,
       ware: JSON.stringify(state.warehouse ?? {}),
@@ -595,5 +595,48 @@ describe('成就徽章：里程碑（第二批 · 判据只读终身计数）', 
     expect(back.firstStats!.whMaxDepth).toBe(3)
     expect(back.firstStats!.rareBoxes).toBe(7)
     expect(achievementCount(back)).toBe(achievementCount(state))
+  })
+
+  /**
+   * **峰值型计数的"现算兜底"**（**2026-09-20 玩家报障**：「**已经建好了的空间站无法完成成就**」）。
+   *
+   * 四个峰值计数原先只在**事件点**记账（升满档 / 核心入库 / 点满一级 / 进层）⇒ 事件发生在成就系统之前
+   * （老档、或先建好站再更新到本版）的档，账上永远是 0 ⇒ 成就拿不到。引擎每拍按 `state` 现算一次
+   * （`reconcilePeakStats`）⇒ 读档后第一拍就补齐。
+   */
+  it('已建成的副空间站：账上没有计数，也靠"现算兜底"补齐并发出「拓荒者」', () => {
+    const state = testState()
+    const site = [...ctx.stations.values()][0]!
+    // 模拟"站在成就系统之前的档"：站已建成并入网（stage 满档），但 `firstStats` 里没有 sitesBuilt
+    state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
+    expect(state.firstStats?.sitesBuilt).toBeUndefined()
+    expect(achievementReached(state, { kind: 'milestone', stat: 'sitesBuilt', target: 1 })).toBe(false)
+
+    advanceGame(state, 1000, ctx) // 一拍 ⇒ 现算兜底 + 成就判定
+
+    expect(firstStatOf(state, 'sitesBuilt')).toBeGreaterThanOrEqual(1)
+    const earned = state.achievements?.earned ?? {}
+    expect(earned['ach-mile-site-1'], '「拓荒者」应当补发').toBeDefined()
+    // 幂等：再推几拍不重复、计数不回退
+    for (let i = 0; i < 3; i++) advanceGame(state, 1000, ctx)
+    expect(firstStatOf(state, 'sitesBuilt')).toBeGreaterThanOrEqual(1)
+  })
+
+  it('AI 核心类数 / 谜质满级数 / 当前层深同样靠现算兜底（老档读进来那一拍补齐）', () => {
+    const state = testState()
+    // 老档只留下"现状"，没有这三本账
+    gainAiCore(state, 'basic', 1)
+    gainAiCore(state, 'gamma', 1)
+    state.firstStats = {} // 抹掉事件点记的账（模拟成就系统之前的老档）
+    const nodes = [...ctx.matterTech!.values()]
+    state.research = { levels: Object.fromEntries(nodes.map((n) => [n.id, n.maxLevel])) }
+
+    advanceGame(state, 1000, ctx)
+
+    expect(state.firstStats?.aiCoreKinds).toBeGreaterThanOrEqual(2)
+    expect(state.firstStats?.matterTechMaxed).toBe(nodes.length)
+    const earned = state.achievements?.earned ?? {}
+    expect(earned['ach-mile-core-2'], '「双子核」应当补发').toBeDefined()
+    expect(earned['ach-mile-tech-tree'], '「谜质通晓」应当补发').toBeDefined()
   })
 })

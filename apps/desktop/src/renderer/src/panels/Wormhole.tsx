@@ -504,6 +504,16 @@ export function WormholePanel({
    */
   const actionBlocked = run ? engine.wormholeActionBlocked() : null
   /**
+   * **"欠着一场战斗"的单独读数**（**2026-09-20 玩家报障**：「惊动敌人后有时候需要继续打捞，
+   * 把残骸清空才能对敌」）：遗迹守备被惊动 / 踩中埋伏之后，**扫描/打捞/激活/深入**要一起置灰
+   * （core 侧 `wormholeActivateAt`、`gridActionBlocked` 都已拦，界面这里只是同步读数），
+   * 但**撤离照旧要能点**（船长 2026-09-16：「确认期间层内动作全被拦，**但撤离照走**」）⇒
+   * 它与 `actionBlocked` 分开：作业按钮读 `workBlocked`，撤离只读 `actionBlocked`。
+   */
+  const layerBlocked = run ? engine.wormholeLayerBlocked() : null
+  /** 作业按钮（扫描 / 打捞·采集 / 激活 / 继续深入）的统一闸：**先报动作闸，再报欠着的战斗** */
+  const workBlocked = actionBlocked ?? layerBlocked
+  /**
    * **进场/换层动效相位**（船长 2026-09-13：「入场动画时长可以拉长到 1 秒，并且可以实现玩家初始舰船
    * 从屏幕外入场的效果（前往下一层时也可以飞出屏幕外，到达时从屏幕外飞入）」）：
    * `in` = 舰影从地图外飞入（进场与到达新层都播）· `out` = 往地图外飞走（深入前先播）· `idle` = 静止。
@@ -1891,8 +1901,9 @@ export function WormholePanel({
         style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': `url("${pinnedSpaceBg}")` } : {}) } as React.CSSProperties}
         /**
          * **拖动地图**（船长 2026-09-20：「允许玩家拖动虫洞探索地图」）：三件事一起做 ——
-         * ① `pointerdown` 记起点与换算系数（`viewBox ÷ 元素像素`）并**捕获指针**（拖出地图框也不断线）；
-         * ② `pointermove` 超阈值才算"拖"（低于阈值当点击，交给格子）；
+         * ① `pointerdown` 只**记起点与换算系数**（`viewBox ÷ 元素像素`）；
+         * ② `pointermove` 超阈值才算"拖"（低于阈值当点击，交给格子）——**指针捕获在这一刻才拿**
+         *    （见下方那条 2026-09-20 报障修复）；
          * ③ `pointerup/cancel` 收尾，拖过就吃掉紧随的那次 click（见 `mapDragAteClickRef`）。
          * `z = 1`（适应窗口）时没有可拖的余地 ⇒ 直接不接（指针行为与改造前一致）。
          */
@@ -1911,7 +1922,19 @@ export function WormholePanel({
             ky: box.h / Math.max(1, rect.height),
             moved: false,
           }
-          e.currentTarget.setPointerCapture(e.pointerId)
+          /**
+           * ⚠ **2026-09-20 玩家报障修复：这里原先"按下即捕获指针"，把格子的点击整条路吃掉了。**
+           *
+           * 报障原话：「进层扫描以后会有卡住的 bug……要缩放到最大才能点击触发」（症状 = 缩放后点格子没反应）。
+           * 根因：`click` 由浏览器派发给 **pointerdown 与 pointerup 两个目标的最近公共祖先**，而
+           * `setPointerCapture` 会把后续指针事件（含 pointerup）**改派到捕获元素**（这里 = 地图框 div）
+           * ⇒ 公共祖先变成地图框 ⇒ 格子的 `onClick` 再也不触发。`z = 1` 时上面那行提前 return（不捕获）
+           * ⇒ **只有"缩放过的地图"点不动**；而换层自动缩放（半径 > 8）一进层就 > 1 ⇒
+           * 报障里"进层以后"与"跟缩放有关"两句都对上了；退出面板再进来会把手动缩放复位 ⇒ "到主界面再返回才好"。
+           *
+           * 现在改成：**只有真的拖起来（越过阈值）才捕获**——纯点击从不捕获，格子的点击在任意缩放下都正常；
+           * 拖动一旦开始，指针捕获照旧（拖出地图框也不断线），并在 `pointerup/cancel` 里释放。
+           */
         }}
         onPointerMove={(e) => {
           const d = mapDragRef.current
@@ -1919,7 +1942,15 @@ export function WormholePanel({
           const dx = e.clientX - d.sx
           const dy = e.clientY - d.sy
           if (!d.moved && Math.hypot(dx, dy) < WORMHOLE_MAP_DRAG_THRESHOLD_PX) return
-          d.moved = true
+          if (!d.moved) {
+            d.moved = true
+            // 拖起来了才捕获指针（此刻起"这一下"确定是拖动，不是点格子）
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId)
+            } catch {
+              /* 指针已经抬起（极短拖）⇒ 不捕获也能拖完这一下 */
+            }
+          }
           setMapPanning(true)
           const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
           const anchor = wormholeMapAnchorOf(run?.grid ?? grid)
@@ -1936,6 +1967,15 @@ export function WormholePanel({
           if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
         }}
         onPointerCancel={() => {
+          mapDragRef.current = null
+          setMapPanning(false)
+        }}
+        /**
+         * **捕获丢了也要收尾**（防"卡住"）：指针被系统/别的元素抢走时 `pointerup` 可能不来，
+         * 若此时还留着 `mapDragRef`/`mapPanning`，之后每一次移动都会被当成拖动（点击再也进不去格子）。
+         * 这条把状态清干净——与 `pointerup` 同一个收尾，只是不"吃掉"下一次 click。
+         */
+        onLostPointerCapture={() => {
           mapDragRef.current = null
           setMapPanning(false)
         }}
@@ -2060,7 +2100,7 @@ export function WormholePanel({
                     <div className="app-wh-workspace-left">
                       <button
                         className="app-btn is-primary app-wh-scan-big"
-                        disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
+                        disabled={!!run.battle || workBlocked !== null || run.turnsLeft < 1 || fxBusy}
                         onClick={doScan}
                         title={tr("ui.Wormhole.105")}
                       >
@@ -2070,7 +2110,7 @@ export function WormholePanel({
                       {workCell && canWork ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || actionBlocked !== null || run.turnsLeft < 1 || fxBusy}
+                          disabled={!!run.battle || workBlocked !== null || run.turnsLeft < 1 || fxBusy}
                           onClick={doActivate}
                           title={workTitle}
                         >
@@ -2083,7 +2123,7 @@ export function WormholePanel({
                       {!workCell && canActivate ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || actionBlocked !== null || fxBusy}
+                          disabled={!!run.battle || workBlocked !== null || fxBusy}
                           onClick={doActivate}
                           title={
                             atExit
@@ -2103,7 +2143,7 @@ export function WormholePanel({
                       {bossDone && atExit ? (
                         <button
                           className="app-btn is-primary app-wh-work"
-                          disabled={!!run.battle || actionBlocked !== null || run.turnsLeft <= 0 || fxBusy}
+                          disabled={!!run.battle || workBlocked !== null || run.turnsLeft <= 0 || fxBusy}
                           onClick={doDescend}
                           title={tr("ui.Wormhole.108")}
                         >
@@ -2130,12 +2170,21 @@ export function WormholePanel({
                    * **动作闸提示**（船长 2026-09-14：「临时空间内有物品就不允许进行其他操作，
                    * 和之前的超载类似」）：两条理由共用这一条警示条 —— 临时空间待处理 / 货仓超载。
                    */}
+                  {/**
+                   * **动作闸的理由行**：`actionBlocked`（临时空间 / 超载，带"去货仓页"按钮）优先；
+                   * 只有"欠着一场战斗"时也照样摆出来（**2026-09-20**：该条不挡撤离 ⇒ 不给货仓按钮，
+                   * 玩家照着读「先点「迎战」打完这一场」即可）。
+                   */}
                   {actionBlocked !== null ? (
                     <div className="app-wh-hold-overload">
                       <span>{actionBlocked}</span>
                       <button className="app-btn is-small" onClick={() => setTab('bag')}>
                         {tr("ui.Wormhole.110")}
                       </button>
+                    </div>
+                  ) : layerBlocked !== null ? (
+                    <div className="app-wh-hold-overload">
+                      <span>{layerBlocked}</span>
                     </div>
                   ) : null}
                   {(run.relics ?? []).length > 0 ? (

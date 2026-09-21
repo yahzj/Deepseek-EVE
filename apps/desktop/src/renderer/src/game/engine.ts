@@ -162,6 +162,7 @@ import {
   wormholeHoldDiscard,
   wormholeDiscardCargo,
   wormholeActionBlockReason,
+  wormholePendingBattleReason,
   wormholeHoldStow,
   wormholeHoldCapacityOf,
   wormholeTempUsage,
@@ -2186,6 +2187,18 @@ export class GameEngine {
    */
   wormholeActionBlocked(): string | null {
     return wormholeActionBlockReason(this.state, this.ctx)
+  }
+
+  /**
+   * 虫洞：**"欠着一场战斗"这一条单独给**（**2026-09-20 玩家报障**：「惊动敌人后有时候需要继续打捞，
+   * 把残骸清空才能对敌」）。
+   *
+   * 为什么不并进 `wormholeActionBlocked()`：那条闸同时管着**撤离**，而船长 2026-09-16 定过
+   * 「确认期间层内动作全被拦，**但撤离照走**（逃生门）」⇒ 并把这条（撤离按钮会一起置灰）。
+   * 面板的用法：**扫描/打捞/激活/深入**读"动作闸 ?? 本条"，**撤离**只读动作闸。
+   */
+  wormholeLayerBlocked(): string | null {
+    return wormholePendingBattleReason(this.state)
   }
 
   /**

@@ -65,6 +65,14 @@ export type FirstStatKey =
   | 'whMaxDepth'
   | 'whBossClears'
   | 'matterTechMaxed'
+  /**
+   * 另两个**峰值型**里程碑键（2026-09-20 补齐类型：它们一直在用，只是漏登记在本联合里）：
+   * - `aiCoreKinds`：**库存里拥有过的 AI 核心类数**（峰值；花掉一枚不回退）；
+   * - `sitesBuilt`：**已建成并入网的副空间站座数**（峰值）。
+   * ⚠ 两者都由 `engine.reconcilePeakStats` 每拍按 `state` 现算兜底 ⇒ 老档/漏发自愈。
+   */
+  | 'aiCoreKinds'
+  | 'sitesBuilt'
 
 /** 一条「第一次」任务 */
 export interface FirstTaskDef {

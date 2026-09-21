@@ -209,7 +209,7 @@ interface MilestoneSpec {
  *   （⚠ 玩家可见文案一律写「额外战利品」，**不写"高级箱"**——那是施工期工作名，见 `content:check` 陈旧术语契约）；
  * - **AI 核心** 1/2/3/4 类 —— 四类核心（基础/伽马/贝塔/阿尔法）**到手过**的类数；
  * - **副空间站** 1/2 座 —— 全游戏共 2 座可建；
- * - **谜质科技** 23 项全满级 —— 节点表实测 23 个节点。
+ * - **谜质科技** 24 项全满级 —— 节点表实测 24 个节点（2026-09-20 加了 C 线 T4「工业多核调度」⇒ 23 → 24）。
  *
  * ⚠ **纯展示**（与第一批同口径）：不发任何奖励；判据只读终身计数 ⇒ **老档零迁移**
  * （新键缺省 0，载入后第一拍按现状补发，见 `core/achievements.ts`）。
@@ -241,7 +241,7 @@ function milestoneAchievements(): AchievementDef[] {
     { slug: 'site-1', slot: 'outpost', name: '拓荒者', stat: 'sitesBuilt', target: 1, unit: ' 座', note: '建成 {n}副空间站。' },
     { slug: 'site-2', slot: 'outpost', name: '双站总督', stat: 'sitesBuilt', target: 2, unit: ' 座', note: '建成 {n}副空间站。' },
     /* ── 谜质科技（1 枚）── 满级节点数 = 全表节点数（23）时达成 */
-    { slug: 'tech-tree', slot: 'tech', name: '谜质通晓', stat: 'matterTechMaxed', target: 23, unit: ' 项', note: '谜质科技树 {n}研究全部满级。' },
+    { slug: 'tech-tree', slot: 'tech', name: '谜质通晓', stat: 'matterTechMaxed', target: 24, unit: ' 项', note: '谜质科技树 {n}研究全部满级。' },
   ]
   return specs.map((s) => ({
     id: `ach-mile-${s.slug}`,

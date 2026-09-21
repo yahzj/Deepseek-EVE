@@ -26,7 +26,7 @@ import { advanceManufacturing } from './manufacturing'
 import { advanceRefining } from './industry'
 import { advanceExpedition } from './expedition'
 import { advanceWormhole } from './wormholeBattle'
-import { advanceAi } from './ai'
+import { advanceAi, AI_CORE_ORDER } from './ai'
 import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
@@ -39,8 +39,9 @@ import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
-import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks } from './firstTasks'
+import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
+import { matterTechNodes } from './matterTech'
 import { grantFirstReward } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
@@ -236,7 +237,46 @@ export function advanceGame(
    * ⚠ **第一批（任务 ＋ 链共 63 枚）已完成并合入 main ⇒ 本处不挂未完成记号**
    * （约定 §十一之二：完成即删记号；残留会让本地化永远跳过它）。
    */
+  reconcilePeakStats(state, ctx)
   advanceAchievements(state, ctx.achievements, opts?.nowWallMs)
+}
+
+/**
+ * **峰值型里程碑计数的"现算兜底"**（**2026-09-20 玩家报障**：「**已经建好了的空间站无法完成成就**」）。
+ *
+ * 四个峰值计数原先**都只在事件点记账**：
+ * `sitesBuilt`（升到满档那一刻 · `station.ts`）· `aiCoreKinds`（入库那一刻 · `ai.ts`）·
+ * `matterTechMaxed`（点完一级那一刻 · `matterTech.ts`）· `whMaxDepth`（进层那一刻 · `wormhole.ts`）。
+ * 于是"事件发生在成就系统之前/之外"的档永远补不上——建好的副站不会因为读档而重记一次升档，
+ * 成就判据读 `firstStatOf` 就一直是旧值 0 ⇒ **成就永远拿不到**（`station.ts` 里那句
+ * 「老档已有建成站的也照旧自愈」当时只是注释里的一厢情愿）。
+ *
+ * 这里每拍按 `state` 现算一遍（三个读数都是小表遍历，代价可忽略），走 `peakFirst` 只升不降 ⇒
+ * 幂等、零迁移、与成就判定那套"现算补发"同源。**`whMaxDepth` 也顺带**：在洞里时按当前层深报一次
+ * （出洞后这个量就只剩事件点能记了——它本来就是"到达过的最大层深"这种状态量）。
+ */
+function reconcilePeakStats(state: GameState, ctx: SimContext): void {
+  // ① 副空间站：`stage >= tiers.length` 的座数（与 `station.ts` 升档那一刻同一把尺）
+  let built = 0
+  for (const site of ctx.stations.values()) {
+    const prog = state.stationSites?.[site.id]
+    if (prog && prog.stage >= site.tiers.length) built += 1
+  }
+  if (built > 0) peakFirst(state, 'sitesBuilt', built)
+  // ② AI 核心：库存里 > 0 的类数（与 `gainAiCore` 同一把尺）
+  let kinds = 0
+  for (const t of AI_CORE_ORDER) if ((state.aiCores?.[t] ?? 0) > 0) kinds += 1
+  if (kinds > 0) peakFirst(state, 'aiCoreKinds', kinds)
+  // ③ 谜质科技：已满级的节点数（与 `matterTech.ts` 同一把尺；`ctx.matterTech` 缺失 = 空表）
+  const nodes = matterTechNodes(ctx)
+  if (nodes.length > 0) {
+    let maxed = 0
+    for (const n of nodes) if ((state.research?.levels?.[n.id] ?? 0) >= n.maxLevel) maxed += 1
+    if (maxed > 0) peakFirst(state, 'matterTechMaxed', maxed)
+  }
+  // ④ 虫洞层深：这趟走到第几层（出洞后这个量不可推导 ⇒ 事件点那条仍是主路）
+  const depth = state.wormhole.run?.depth
+  if (depth !== undefined && depth > 0) peakFirst(state, 'whMaxDepth', depth)
 }
 
 /** 技能队列推进（内部函数，不对外） */
