@@ -277,8 +277,10 @@ function auditLogs(): void {
      * 胜 = `⚔ 战报（…）：大捷！`、败 = `⚔ 战报（…）：失利`、撤退 = `⚔ 撤退` / `⚔ 自动撤退`、
      * 弃船 = `⚔ 战报（…）：遭重创`、超时 = `⏱ 战斗超时`。所以**只认 `⚔ 战报` 与 `⚔ 撤退/自动撤退`**。
      */
-    else if (l.kind === 'trade' && (l.text.startsWith('⚔ 战报') || l.text.startsWith('⚔ 撤退') || l.text.startsWith('⚔ 自动撤退')))
+    else if (l.kind === 'trade' && (l.text.startsWith('⚔ 战报') || l.text.startsWith('⚔ 撤退') || l.text.startsWith('⚔ 自动撤退'))) {
       expeditionResults.push(l.text.slice(0, 110))
+      recordExpeditionLine(l.text) // 定向钉住"未首胜卡"的战报原文（不设窗口）
+    }
   }
   // 只留最近 40 条（长档会积累上千条，报告放不下）
   if (expeditionResults.length > 40) expeditionResults.splice(0, expeditionResults.length - 40)
@@ -286,6 +288,27 @@ function auditLogs(): void {
 }
 /** 悬赏胜负留档（进报告；只留最近 40 条，防长档报告爆掉） */
 const expeditionResults: string[] = []
+/**
+ * **单独"钉住"某张未首胜卡的战报**（2026-09-21 第二十批）。
+ *
+ * 为什么需要：`expeditionResults` 只留最近 40 条，而可疑的那趟（蜃影导航劫持令，10.70d）
+ * 随后被后期条目挤出了窗口 ⇒ 抓不到原文。这里改成**按目标卡定向收集**：
+ * `doBounty` 每选定一张"尚未首胜"的卡就把它的名字记进 `watchBountyNames`，
+ * 之后凡是包含该名字的战报一律进 `pinnedBountyReports`（**不设窗口**）。
+ * 这样"出击了却没记首胜"这类异常一定能留下原文证据。
+ */
+const pinnedBountyReports: string[] = []
+const watchBountyNames = new Set<string>()
+
+function recordExpeditionLine(text: string): void {
+  for (const name of watchBountyNames) {
+    if (text.includes(name)) {
+      pinnedBountyReports.push(text.slice(0, 160))
+      if (pinnedBountyReports.length > 60) pinnedBountyReports.shift()
+      break
+    }
+  }
+}
 
 function audit(): void {
   const bad = (label: string, v: number): void => {
@@ -1360,6 +1383,12 @@ function doBounty(): void {
     lastBountyNoteDay = day()
     mark(`悬赏选靶：${best.name}（威胁 ${best.threat} · 预估 ${Math.round(bestScore * 100)}% · 候选 ${canDo.length} 张）`)
   }
+  /**
+   * ⚠ **把"尚未首胜"的目标卡记进观察名单**（2026-09-21 第二十批）：
+   * 它的战报原文会被**无限期**钉住（见 `recordExpeditionLine`），
+   * 用来定性"出击了却没记首胜"这类异常。已首胜的卡不必钉（浪费窗口）。
+   */
+  watchBountyNames.add(best.name)
   const r = startExpedition(state, best.id, ctx)
   if (r.ok) mark(`远征 ${best.name}`)
   else issue(`远征 ${best.id} 失败：${r.error}`)
@@ -3161,6 +3190,15 @@ for (const k of ['bounties', 'whach', 'isk1b', 'boss', 'tril', 'collect'] as con
     if (expeditionResults.length > 0) {
       lines.push('      · 最近悬赏战报（引擎原文节选）：')
       for (const r of expeditionResults.slice(-12)) lines.push(`        - ${r}`)
+    }
+    /**
+     * **被钉住的"未首胜卡"战报**（2026-09-21 第二十批）：这是定性异常的关键证据 ——
+     * 若这里有该卡的 `大捷！` 却仍列在"未首胜"里 ⇒ **引擎没记 `completedBounties`（真 bug）**；
+     * 若只有 `失利`/`撤退` ⇒ 是预估胜率与实战不符（工具侧口径问题）。
+     */
+    if (pinnedBountyReports.length > 0) {
+      lines.push(`      · 未首胜卡的战报原文（钉住 ${pinnedBountyReports.length} 条，最近的在前）：`)
+      for (const r of pinnedBountyReports.slice(-8)) lines.push(`        - ${r}`)
     }
   }
 }
