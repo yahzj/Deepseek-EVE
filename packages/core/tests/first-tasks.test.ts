@@ -36,6 +36,7 @@ import { startManufacturing } from '../src/manufacturing'
 import { startScan, HOME_SCAN_WINDOW_MS, scanWindowMsFor } from '../src/explore'
 import { countAiCore } from '../src/ai'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { ONB_DONE, beginAfterAwaken } from '../src/onboarding'
 
 const ctx = buildSimContext()
 const HOME = HOME_GALAXY_ID
@@ -269,6 +270,72 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-wormhole']?.done).toBe(true)
     expect(state.wormholeStock?.length ?? 0).toBe(2)
+  })
+})
+
+describe('「寻找人类」发布闸门（2026-09-20 船长令：「只在完成所有第一次任务后才出现」）', () => {
+  const TASK = 'find-humans'
+  /** 序章演出结束的档（**旧口径"序章结束即发布"已作废** ⇒ 这一手不再发布它） */
+  function prologueDone(): GameState {
+    const s = createInitialState({ nowWallMs: 0, seed: 11, prologue: true })
+    expect(beginAfterAwaken(s).ok).toBe(true)
+    expect(s.onboarding.step).toBe(ONB_DONE)
+    return s
+  }
+
+  it('序章结束 ⇒ 不发布；前 12 条做完也不发布；第 13 条完成的那一拍才发布（任务本身仍"进行中"）', () => {
+    const s = prologueDone()
+    advanceGame(s, 1000, ctx)
+    expect(s.importantTasks[TASK]).toBeUndefined()
+    for (const def of FIRST_TASKS.slice(0, 12)) {
+      s.importantTasks[def.id] = { done: true }
+      advanceGame(s, 1000, ctx)
+      expect(s.importantTasks[TASK], `${def.id} 完成后就发布了`).toBeUndefined()
+    }
+    expect(firstTaskProgress(s)).toEqual({ done: 12, total: 13 })
+    // 第 13 条（数组序最后一条 = 「第一次虫洞」）
+    const last = FIRST_TASKS.at(-1)!
+    s.importantTasks[last.id] = { done: true }
+    advanceGame(s, 1000, ctx)
+    expect(s.importantTasks[TASK]).toBeDefined()
+    expect(s.importantTasks[TASK]?.done).toBe(false) // 完成方法未知：永久进行中
+    expect(s.logs.filter((l) => l.textId === 'core.onboarding.001')).toHaveLength(1)
+  })
+
+  it('发布只记一次：连推若干拍不重复发日志、不重置状态', () => {
+    const s = prologueDone()
+    for (const def of FIRST_TASKS) s.importantTasks[def.id] = { done: true }
+    advanceGame(s, 1000, ctx)
+    const once = s.logs.filter((l) => l.textId === 'core.onboarding.001').length
+    expect(once).toBe(1)
+    for (let i = 0; i < 5; i++) advanceGame(s, 1000, ctx)
+    expect(s.logs.filter((l) => l.textId === 'core.onboarding.001').length).toBe(once)
+  })
+
+  it('序章演出期间不发布（演出盖住全屏）：13 条都齐了也要等序章结束', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 11, prologue: true })
+    for (const def of FIRST_TASKS) s.importantTasks[def.id] = { done: true }
+    advanceGame(s, 1000, ctx)
+    expect(s.importantTasks[TASK]).toBeUndefined()
+    expect(beginAfterAwaken(s).ok).toBe(true)
+    advanceGame(s, 1000, ctx)
+    expect(s.importantTasks[TASK]).toBeDefined()
+  })
+
+  it('老档：已发布的原样保留（不收回、不重置 allExplored）；13 条齐却缺这条的档下一拍补发布', () => {
+    // ① 老档里早就有这条（旧口径下序章结束时发的）⇒ 闸门只认"已存在即返回"
+    const old = testState()
+    old.importantTasks[TASK] = { done: false, allExplored: true }
+    for (const def of FIRST_TASKS) old.importantTasks[def.id] = { done: true }
+    advanceGame(old, 1000, ctx)
+    expect(old.importantTasks[TASK]?.allExplored).toBe(true)
+    expect(old.logs.filter((l) => l.textId === 'core.onboarding.001')).toHaveLength(0) // 不补发日志
+    // ② 异常档（13 条齐、缺这条）⇒ 现算补发布
+    const broken = testState()
+    for (const def of FIRST_TASKS) broken.importantTasks[def.id] = { done: true }
+    expect(broken.importantTasks[TASK]).toBeUndefined()
+    advanceGame(broken, 1000, ctx)
+    expect(broken.importantTasks[TASK]?.done).toBe(false)
   })
 })
 

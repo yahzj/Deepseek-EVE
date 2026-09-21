@@ -36,6 +36,7 @@ import {
   chainProgressOf,
   claimChainReward,
   firstStatOf,
+  firstTaskProgress,
   unlocked,
   visibleFirstTasks,
 } from '../packages/core/src/firstTasks'
@@ -88,7 +89,7 @@ ok('任务中心只显示当前那一条（顺序解锁）', vis0.length === 1 &
 ok('开局零资金', s.wallet.isk === 0, `isk=${s.wallet.isk}`)
 ok('驾驶 = 鲣鱼（无矿枪、无炮台）', s.shipId === 'sh-falconet')
 
-step('② 序章演出结束 → 开场信 + 贯穿任务')
+step('② 序章演出结束 → 开场信（贯穿任务「寻找人类」此时**还不发布**）')
 ok('演出结束调用成功', beginAfterAwaken(s).ok)
 for (let i = 0; i < 3; i++) advanceGame(s, 1000, ctx)
 ok('序章 = 已完成', s.onboarding.step === 99)
@@ -100,7 +101,13 @@ ok(
   commsPopupQueue(s)[0] === 'msg-briefing',
   `实际 ${commsPopupQueue(s).slice(0, 3).join(' / ') || '（无）'}`,
 )
-ok('「寻找人类」已发布', s.importantTasks['find-humans'] !== undefined)
+// **2026-09-20 船长令**：「寻找人类的任务只在完成所有第一次任务后才出现」——序章结束不再是发布时机。
+const fp0 = firstTaskProgress(s)
+ok(
+  '「寻找人类」此时还没发布（13 条「第一次」一条都还没做完）',
+  s.importantTasks['find-humans'] === undefined,
+  `已完成 ${fp0.done}/${fp0.total} 条`,
+)
 
 step('③ 第一次扫描（星图）')
 ok('扫描母港被接受', startScan(s, HOME, ctx).ok)
@@ -279,6 +286,12 @@ ok('领奖后不再重复发（幂等）', claimChainReward(s, 'explorer') === 0
 step('⑪ 收尾读数')
 console.log(`   已完成「第一次」：${FIRST_TASKS.filter((d) => s.importantTasks[d.id]?.done === true).map((d) => d.title).join('、')}`)
 console.log(`   未完成：${FIRST_TASKS.filter((d) => s.importantTasks[d.id]?.done !== true).map((d) => d.title).join('、') || '（无）'}`)
+const fpEnd = firstTaskProgress(s)
+ok(
+  '「寻找人类」仍未发布（本流程只走完部分「第一次」）',
+  s.importantTasks['find-humans'] === undefined,
+  `已完成 ${fpEnd.done}/${fpEnd.total} 条`,
+)
 console.log(`   钱包 ${s.wallet.isk.toLocaleString('zh-CN')} · 游戏内时间 ${(s.gameMs / 3_600_000).toFixed(1)} 小时 · 日志 ${s.logs.length} 条`)
 console.log(`\n${failures === 0 ? '✅ 流程全部通过' : `❌ 有 ${failures} 项未通过`}`)
 process.exit(failures === 0 ? 0 : 1)

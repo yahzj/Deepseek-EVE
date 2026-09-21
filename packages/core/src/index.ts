@@ -874,11 +874,13 @@ export {
 } from './save'
 
 export {
-  /* 序章·苏醒（2026-09-17 教程重做后只剩"演出 + 收尾"；线性七步已退场） */
+  /* 序章·苏醒（2026-09-17 教程重做后只剩"演出 + 收尾"；线性七步已退场）
+     ⚠ 2026-09-20 起「寻找人类」不再随序章结束发布 ⇒ 走 `publishFindHumansWhenReady` 闸门 */
   ONB_AWAKEN,
   ONB_DONE,
   TASK_FIND_HUMANS,
   publishFindHumans,
+  publishFindHumansWhenReady,
   beginAfterAwaken,
   skipPrologue,
   advanceFindHumans,

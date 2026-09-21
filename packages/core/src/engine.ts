@@ -37,7 +37,7 @@ import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
-import { advanceFindHumans } from './onboarding'
+import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks } from './firstTasks'
 import { advanceAchievements } from './achievements'
@@ -186,11 +186,8 @@ export function advanceGame(
   // 赏金 = 独立日板，24 小时一轮、每天本地 0 点整板替换（按 nowWallMs 墙钟对齐）。
   // 离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）
   advanceSideTasks(state, ctx, opts?.nowWallMs)
-  // 序章·苏醒：教程自动推进判定（采集达标/修复完成/技能归档/分身就位；廉价，仅教程进行中）
   // 通讯收件箱（2026-09-11）：数据消息按触发条件送达 + 未读记账（幂等；表为空时零开销）
   advanceComms(state, ctx)
-  // 贯穿任务「寻找人类」阶段目标：探索全部星系（里程碑只记一次；未发布/已完成时零开销）
-  advanceFindHumans(state, ctx)
   /**
    * **「第一次」任务系列 ＋ 后续次数链**（2026-09-17 教程重做批 · 阶段②）：判定达成 ⇒ 写
    * `importantTasks[id].done`（**只置一次**，奖励/通讯据此去重）。
@@ -215,6 +212,14 @@ export function advanceGame(
   // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
   // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。
   advanceFirstChains(state)
+  /**
+   * **贯穿任务「寻找人类」的发布闸门**（**2026-09-20 船长令**：「寻找人类的任务只在完成所有第一次任务后
+   * 才出现」）——判据 = 序章已结束 ＋ 13 条「第一次」一条不剩 ＋ 还没发布过（见 `onboarding` 的同名函数）。
+   * 挂在这里（任务判定与链升级都做完之后 ⇒ 第 13 条完成的那一拍就发布），幂等、每拍零开销（已发布即返回）。
+   */
+  publishFindHumansWhenReady(state)
+  // 贯穿任务「寻找人类」阶段目标：探索全部星系（里程碑只记一次；未发布/已完成时零开销）
+  advanceFindHumans(state, ctx)
   /**
    * **成就徽章**（2026-09-20 船长批「继续之前的成就系统」· 第一批 = 徽章框架）。
    *
