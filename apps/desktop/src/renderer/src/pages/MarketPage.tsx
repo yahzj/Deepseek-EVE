@@ -1267,6 +1267,11 @@ export function MarketPage({
    */
   const defaultSelKey = narrow ? null : stockedFirst(engine, common)[0]?.key ?? null
   const activeSelKey = selKey ?? defaultSelKey
+  /**
+   * **列表高亮用的选中键**：窄屏恒为 `null`（详情在浮窗里，列表上再留一行高亮反而误导——船长 2026-09-21 口径），
+   * 而浮窗仍读 `activeGood`（由 `selKey` 推出）⇒ 两者共用同一个 `selKey`，只在**传给列表**这一路掐掉。
+   */
+  const listSelKey = narrow ? null : activeSelKey
   const activeGood = activeSelKey ? goods.find((g) => g.key === activeSelKey) ?? null : null
   useEffect(() => {
     if (narrow && selKey !== null) setDetailOpen(true)
@@ -1319,11 +1324,17 @@ export function MarketPage({
   }
   /**
    * **点一行订单**（船长 2026-09-21）：宽屏 = 照旧把它送进右栏常驻详情；**窄屏 = 弹详情浮窗**。
-   * ⚠ 窄屏**不写 `selKey`**（浮窗自带标题，行高亮留在列表上反而误导）——只开窗。
+   *
+   * ⚠ **2026-09-21 修复（船长报障「手机模式下，市场页面，点击订单不会弹出订单详细」）**：
+   * 初版窄屏这条路**只开窗、不写 `selKey`**，而浮窗的渲染条件是 `narrow && detailOpen && activeGood`，
+   * 其中 `activeGood` 由 `selKey ?? defaultSelKey` 推出——**窄屏的 `defaultSelKey` 恒为 null**
+   * （窄屏不默认选中）⇒ `activeGood` 永远是 null ⇒ **浮窗一个都不渲染**（点了没反应）。
+   * 现在两条路都写 `selKey`（浮窗靠它取商品）；「窄屏列表不留行高亮」那一半改由
+   * `listSelKey`（窄屏恒 null）在**传参**那侧掐掉，语义各归各位。
    */
   const onPickGood = (goodKey: string): void => {
+    setSelKey(goodKey)
     if (narrow) setDetailOpen(true)
-    else setSelKey(goodKey)
   }
   const filteredAll = useMemo(    () =>
       stockedFirst(
@@ -1396,7 +1407,7 @@ export function MarketPage({
               hint={<HintIcon tip={MKT_MECH_TIP} />}
               right={<span className="app-dim">{tr("ui.MarketPage.100")}</span>}
               rows={filteredAll}
-              selKey={activeSelKey}
+              selKey={listSelKey}
               onSelect={onPickGood}
             />
           ) : (
@@ -1447,7 +1458,7 @@ export function MarketPage({
                     </span>
                   }
                   rows={stockedFirst(engine, common)}
-                  selKey={activeSelKey}
+                  selKey={listSelKey}
                   onSelect={onPickGood}
                 />
               ) : mktTab === 'rare' ? (
@@ -1457,7 +1468,7 @@ export function MarketPage({
                   hint={<HintIcon tip={MKT_MECH_TIP} />}
                   right={<span className="app-dim">{tr("ui.MarketPage.108")}</span>}
                   rows={rareOrderRows(engine, rareCol)}
-                  selKey={activeSelKey}
+                  selKey={listSelKey}
                   onSelect={onPickGood}
                 />
               ) : (
@@ -1468,7 +1479,7 @@ export function MarketPage({
                   right={<span className="app-dim">{tr("ui.MarketPage.109")}</span>}
                   rows={rareOrderRows(engine, exoticCol)}
                   empty={tr('ui.MarketPage.177')}
-                  selKey={activeSelKey}
+                  selKey={listSelKey}
                   onSelect={onPickGood}
                 />
               )}
