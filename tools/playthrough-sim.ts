@@ -1307,7 +1307,17 @@ function doBounty(): void {
    * **把"高风险高回报"的动作门控在现金充裕之后**。
    */
   const bold = state.wallet.isk >= SPEND_FOR_POWER_ISK
-  const minWin = bold ? 0.2 : 0.5
+  /**
+   * ⚠ **门槛取 0.02 而不是 0.2**（2026-09-21 第十九批）。
+   *
+   * 第七轮的实测给了反例：50 天档里首胜停在 **20/23**，而剩余三张的**实时预估胜率**
+   * 分别是 0% / 67% / **98%** —— **98% 那张居然一次都没拿下**。
+   * 这说明"预估胜率"（单舰口径的 `battleWinPreview` / 多波蒙特卡洛）与实战并不完全一致，
+   * 而且**冷却一到就会重试**才是磨卡的关键 ⇒ 既然钱不是约束（第 55 天 165 亿），
+   * 门槛放低到 0.02 让"几乎必输"的卡也进池，靠**次数**磨（每次只花一点时间与冷却）。
+   * 真正的上限是游戏天数，不是尝试次数。
+   */
+  const minWin = bold ? 0.02 : 0.5
   let best: AnomalyDef | null = null
   let bestScore = minWin
   for (const a of canDo) {
@@ -1320,6 +1330,17 @@ function doBounty(): void {
   if (!best) return
   ensureFlagship() // 批 4：出征前把驾驶位还给主力战船（它在 AI 出勤就召回）
   counterFitFor(best.id) // 批 4：按目标卡混伤构成换抗性件（盾抗主系 · 甲抗副系）
+  /**
+   * ⚠ **记一条"选中了哪张、预估多少"**（2026-09-21 第十九批诊断）。
+   * 为什么需要：实测 45~55 天档里有一张**预估 98%** 的卡始终拿不下（首胜长期停在 20/23），
+   * 而只看报告无法区分三种可能 —— ① 它根本没被选中（被某个 filter 挡掉）
+   * ② 选中了但 `startExpedition` 被引擎拒（门槛/在航/冷却）③ 打了但输了。
+   * 这条日志把这三种情况分开（配合 `issue` 里的"远征失败"）。
+   */
+  if (day() >= lastBountyNoteDay + 1) {
+    lastBountyNoteDay = day()
+    mark(`悬赏选靶：${best.name}（威胁 ${best.threat} · 预估 ${Math.round(bestScore * 100)}% · 候选 ${canDo.length} 张）`)
+  }
   const r = startExpedition(state, best.id, ctx)
   if (r.ok) mark(`远征 ${best.name}`)
   else issue(`远征 ${best.id} 失败：${r.error}`)
@@ -1429,6 +1450,8 @@ let lastWhFloor1Hp = -1
 let lastWhDesperateDay = -99
 /** 进洞前维修的节流日（不节流会每拍都修、把整段时间卡在维修上，实测过） */
 let lastRepairDay = -99
+/** "悬赏选靶"诊断日志的节流日 */
+let lastBountyNoteDay = -99
 /**
  * **进洞门的血量余量门槛**（2026-09-21 定）：第 1 层打完后我方三层血残值必须 ≥ 本值才敢进洞。
  * 依据：实测"第 1 层剩 4.1% 血"那一趟，第 2 层当场团灭、四艘全沉（不可撤退）。
