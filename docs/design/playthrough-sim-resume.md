@@ -299,6 +299,31 @@
 2. **先把 main 合进我的分支再合回去**：在 `d2/workspace` 上 `git merge main`、解冲突、
    复跑四闸门与全量模拟，再整体合回 main。历史最干净但代价大。
 
+### ⚠⚠⚠ 但**两种方式都必须先做一次"换引擎复验"**（第十九轮查出的硬约束）
+
+`git diff --stat main..HEAD -- packages/core/src` = **17 个文件、+73 / −256**
+⇒ **我这边的引擎是"旧版本"（净少 183 行）**。也就是说：
+
+- **我全部实测读数（虫洞 6/6 · 悬赏 20/23 · 10 亿 16.0 天）都是在旧引擎上跑出来的**；
+- 一旦把工具搬到 main（或把 main 合进来），**引擎就换成了新版本**
+  ⇒ 那些数字**不能直接当交付证据**，必须在 main 的引擎上**复跑一次**。
+
+**第 1 种方式（只搬工具）的兼容性已初步核过**（第十九轮）：
+工具依赖的关键 API 在两侧都存在 —— `matterTechCanResearch` / `researchMatterTech` /
+`wormholeAdmission` / `refillDroneLoadTo` / `setAmmoTier` / `wormholeTravelTo`
+（`git grep` 双分支对照，均在）。但**存在 ≠ 签名相同**，仍须实测。
+
+**建议的复验步骤（下一轮照做）**：
+```powershell
+# 在临时工作树里跑 main 的引擎，不动主树、不动我的分支
+git worktree add ..\Deepseek-EVE-verify2 main
+Copy-Item H:\大鲸鱼\Deepseek-EVE-d2\tools\playthrough-sim.ts ..\Deepseek-EVE-verify2\tools\ -Force
+cd ..\Deepseek-EVE-verify2
+npx tsx tools/playthrough-sim.ts --max-days 30 --goal bounties,whach,isk1b
+# 验收：虫洞六枚是否全拿 · 悬赏是否 ≥20/23 · 10 亿是否达成；若有回退，按批定位
+git worktree remove ..\Deepseek-EVE-verify2
+```
+
 ⚠ **另记**：远程不可达（`git fetch` 报 `Failed to connect to github.com:443`）⇒ 推送本来也做不了，
 本批只能停在"本地提交"这一层。
 
