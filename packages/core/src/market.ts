@@ -1273,9 +1273,21 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
 
 /* ═══════════ 玩家操作：挂单 / 撤单 / 市价单 / 卖船 ═══════════ */
 
-/** 挂限价卖单：货先入 escrow（调用方应先从库存扣货入 escrowItems；舰船走 placeShipSellOrder） */
+/**
+ * 挂限价卖单：货先入 escrow（**调用方应先从库存扣货入 escrowItems**；舰船走 placeShipSellOrder）。
+ *
+ * ⚠ **主键校验（2026-09-20 外部审计报告后补）**：本函数是"底层记账"，**不替调用方锁库存**
+ * （锁货在 `listSellHolding` / `sellAtMarket` 那几条玩家入口里，走 `lockNaturalStock`）——
+ * 这个契约写在函数注里已有一段时间，但**没有任何一道运行期校验**：传进来的 `goodKey` 哪怕是
+ * `undefined` 或某个不存在的字符串，也照样会挂出一张单、并把 `escrowItems[goodKey]` 加一笔
+ * （`tools/flow-newgame.ts` 把 `good.id`（不存在，应为 `good.key`）传进来时正是这个下场：
+ * 出现 goodKey = `"undefined"` 的幽灵单与幽灵 escrow）。
+ * ⇒ 现在**先查目录**：`ctx.marketGoods` 里没有这个 key 就不挂单（返回 null，与其它入参非法同款）。
+ * 这条只挡"不存在的商品"，不影响既有调用方（它们传的都是目录里真实存在的 key）。
+ */
 export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   if (qty <= 0 || price <= 0) return null
+  if (typeof goodKey !== 'string' || !ctx.marketGoods.has(goodKey)) return null
   const order = pushSellOrder(state, goodKey, price, qty)
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着

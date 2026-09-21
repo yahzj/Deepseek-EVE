@@ -872,6 +872,9 @@ export class GameEngine {
    *   一轮（战场首帧敌舰残血/武器已冷却）。现改为只推进到开战瞬间即通知，战场以 age≈0 弹出，
    *   随后交火按 100ms 实时泵推进（积压余额同样按 100ms 分片追平，无整秒隐藏推进）。
    * 切分只是把同一段游戏时间分成多小份送进核心引擎，各系统均按时间推进，总量不变。
+   *
+   * ⚠ **2026-09-20**：交火分支的记账修过一次（本拍 dt 丢帧 ⇒ 进战斗时欠着的现实时间永不补回），
+   * 详见下面那段的注释与 `docs/design/friend-audit-20260920.md`。
    */
   private tick(): void {
     const now = Date.now()
@@ -894,13 +897,27 @@ export class GameEngine {
      */
     const inBattle = (exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
     if (inBattle) {
-      if (this.pendingMs > 0) {
-        // 交火期积压（切页/后台节流等产生）按 100ms 分片追平，避免整段隐藏推进
-        const step = Math.min(this.pendingMs, 100)
+      /**
+       * ⚠ **2026-09-20 修（外部审计报告点名 + 探针复算证实）：本拍的现实时间必须先并进余额再切片。**
+       *
+       * 旧写法是 `if (pendingMs > 0) { step = min(pendingMs, 100); advanceSlice(step); pendingMs -= step }
+       * else advanceSlice(dt)` —— 走上面那一支时**本拍的 `dt` 既没进余额、也没被推进，直接丢掉**；
+       * 而余额（进战斗前挂机攒下的那点，或窗口被后台节流攒下的一大段）会被一路消耗到 0
+       * ⇒ **进战斗那一刻"欠着"的这段现实时间，本会话里再也不会被补上**。
+       *
+       * 探针读数（`tools/_probe-battle-pump.ts`，复刻两支记账、同一串现实时钟）：
+       * - 进战斗时带 500ms 余额、打 10 拍再回挂机：旧写法**最终仍落后现实 1000ms**，新写法 **0**；
+       * - 战斗中窗口被节流 20 秒：旧写法**最终落后 20.9 秒**（那一拍的 20s 被丢），新写法 **0**
+       *   （20s 留进余额、战后按挂机分支一次性补上——与"后台时间照常在回到挂机时补"的既有口径一致）。
+       *
+       * 另一处顺带修正：旧写法在"余额 = 0"时会把一个被节流出来的巨大 `dt` **整段推进**（正是本段注释
+       * 想避免的"整段隐藏推进"）；新写法无论余额多少都按 100ms 切片，大段只会留在余额里等战后补。
+       */
+      this.pendingMs += dt
+      const step = Math.min(this.pendingMs, 100)
+      if (step > 0) {
         this.advanceSlice(step)
         this.pendingMs -= step
-      } else {
-        this.advanceSlice(dt)
       }
       this.notify()
       return

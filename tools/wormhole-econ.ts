@@ -146,14 +146,24 @@ const REF_FIT_OLD = {
   mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-track-2'],
   low: ['mod-salvager-3', 'mod-miner-3'],
 }
-/** 技能档 = 战斗系 Lv3（中位行，与 `battle-calibrate` 的 A1 行同口径） */
+/**
+ * 技能档 = 战斗系 Lv3（中位行，与 `battle-calibrate` 的 A1 行同口径）。
+ *
+ * ⚠ **2026-09-20 修（外部审计报告点名）**：这里原先写着 5 个**不存在的技能 id**
+ * （`missile-ops` / `shield-ops` / `armor-ops` / `evasive-maneuvers` / `targeting`）——真实 id 见
+ * `packages/data/src/skills.ts`：`missile-launching` / `shield-operation` / `armored-ops` /
+ * `evasion-maneuvering` / `targeting-integration`。
+ * 假 id 写进 `state.skills.trained` 等于**没训练**（引擎按真实目录查等级）⇒ 参考编队"0 技能裸奔"，
+ * 本工具与 `counter-audit` 跑出来的胜率曲线**整体虚假悲观**（层 2~8 全 0%）。
+ * 全仓同类问题由 `npm run skill:audit` 常驻体检（本轮只在两个工具里扫出这 10 处）。
+ */
 const SKILLS: Record<string, number> = {
-  'gunnery': 3,
-  'missile-ops': 3,
-  'shield-ops': 3,
-  'armor-ops': 3,
-  'evasive-maneuvers': 3,
-  'targeting': 3,
+  gunnery: 3,
+  'missile-launching': 3,
+  'shield-operation': 3,
+  'armored-ops': 3,
+  'evasion-maneuvering': 3,
+  'targeting-integration': 3,
 }
 
 /**
