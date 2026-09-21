@@ -28,8 +28,11 @@ import { toneOf } from './Glyphs'
  *   背景氛围与漂移物也在 styles.css 里同步到这两个色）；
  * - **其余场景 → 角色色**（Glyphs 的 TONES 角色槽色：工业绿 / 武装红 / 重装橙 / 航运蓝，
  *   与战场 ROLE_ACCENT、舰队卡族色同值）——舰体与其尾焰（currentColor）一起上色。
+ *
+ * **导出给主控活动窗口**（`ui/ActivityScreen.tsx`，2026-09-21）：那个大窗口的舰体与作业件同取这张表
+ * ⇒ 两个窗口的作业配色同一份事实源，不各写一份（船长口径："参考左上角的小窗"）。
  */
-const WORK_ACCENT: Partial<Record<ShipwinScene, string>> = {
+export const WORK_ACCENT: Partial<Record<ShipwinScene, string>> = {
   'work-mine': '#b5e35f',
   'work-salvage': '#6fe3f0',
   'work-scan': '#8fd0ff', // 扫描蓝：与 .bg-work-scan 的氛围光同族（2026-09-20 接回本场景）

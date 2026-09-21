@@ -14,21 +14,25 @@
  * - **旧小窗保留**（`ui/ShipStatusWin.tsx`，左导航「出港」上方）：与本窗口并存，两者都消费
  *   同一个场景推导 `sceneOfShipwin`（唯一事实源，不各写一份判定）。
  *
- * 性能口径（沿用约定第十四章 · 与 `ui/aiWorkFx.tsx` 一致）：每个场景 = 一个小 SVG
- * （约 10~18 个节点）+ 若干条 CSS 动画，**只动 `transform` / `opacity`**；不碰 `filter` /
- * `box-shadow` / 宽高；不新建 rAF；引擎每 tick 整树重渲染由 `memo` 挡住（kind 不变即跳过）。
+ * 性能口径（沿用约定第十四章 · 与 `ui/aiWorkFx.tsx` 一致）：整幅演出 = 一张 SVG
+ * （星野 / 漂浮物 / 作业件 / **真实舰形**）+ 若干条 CSS 动画，**只动 `transform` / `opacity`**；
+ * 不碰 `filter` / `box-shadow` / 宽高；不新建 rAF；引擎每 tick 整树重渲染由 `memo` 挡住
+ * （见 `ActArt`：活动与舰体不变即不重建节点）。
  *
  * 视觉口径：物件一律 **SVG 线稿**（细描边 / `currentColor` / viewBox，约定第九章），
  * 配色与 `ui/ShipStatusWin.tsx` 的 `WORK_ACCENT` 同源（采掘绿 / 打捞青 / 扫描蓝 / 航运蓝）。
  */
 import { memo } from 'react'
-import type { ComponentType, ReactNode } from 'react'
-import { getMiningParams, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
-import type { GameState, SimContext } from '@whale/core'
+import type { CSSProperties, ReactNode } from 'react'
+import { fleetDefOf, getMiningParams, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
+import type { GameState, ShipRole, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { debugEnabled } from '../panels/DebugPanel'
-import { sceneOfShipwin } from './ShipStatusWin'
+import { toneOf } from './Glyphs'
+import { sceneOfShipwin, WORK_ACCENT } from './ShipStatusWin'
 import type { ShipwinScene } from './ShipStatusWin'
+import { ACTIVITY_SCENES, ACT_H, ACT_W } from './activityArt'
+import type { ActSceneId } from './activityArt'
 import { WinBox } from './WinBox'
 
 /**
@@ -68,106 +72,69 @@ export function activityKindOf(state: GameState): ActivityKind | null {
   return activityOf(sceneOfShipwin(state))
 }
 
-/* ═══════════ 四个场景的演出（memo：kind 不变即整棵 SVG 子树跳过 diff） ═══════════ */
+/* ═══════════ 演出：布景与道具 + 真实舰体都在 activityArt 里画进同一张 SVG ═══════════
+ *
+ * 2026-09-21 船长：「目前还是过于简陋」+「还不如左上角的小窗来的精细，需要补齐细节
+ * （包括我方舰船外形等）可以先参考左上角的小窗」。
+ * ⇒ 本文件不再自画舰体（第一版是个菱形占位符），改为：
+ *    ① 背景、漂浮物、作业件、**舰体** = `./activityArt` 的场景组件（内部走 `ShipSpriteShape`，
+ *       与全站同源：25 舰各自外形、引擎尾焰按真实喷口、面板线与发光件沿用 `.shipart-*` 资产类）；
+ *    ② 本文件只管：窗口壳 / 底栏读数与进度条 / 动画节拍（`--act-cycle` 与 `--act-delay`）。
+ *    舰体与作业光带同在一个 `app-act-float` 组里轻浮 ⇒ 光带不脱靶（小窗 `app-swin-work` 同款）。
+ */
 
-/** 采掘：主控射出采掘激光，矿石碎屑错相位回流货舱 */
-const MineFx = memo(function MineFx() {
-  return (
-    <>
-      <path d="M120 120 L196 92 L268 110 L196 138 Z" />
-      <path className="app-act-flame" d="M120 120 L86 106 L104 120 L86 134 Z" fill="currentColor" stroke="none" opacity="0.75" />
-      <path className="app-act-beam" d="M268 110 H430" />
-      <path d="M436 82 L492 60 L556 76 L492 100 Z" />
-      <path d="M443 70 L470 62 M447 90 L478 84" strokeOpacity="0.45" />
-      <rect className="app-act-chip" x="366" y="88" width="9" height="9" />
-      <rect className="app-act-chip is-late" x="404" y="124" width="9" height="9" />
-      <rect className="app-act-chip is-late2" x="346" y="132" width="9" height="9" />
-    </>
-  )
-})
-
-/** 打捞：牵引锥呼吸 + 扫描弧扫过残片，残片被吸向舰体 */
-const SalvageFx = memo(function SalvageFx() {
-  return (
-    <>
-      <path d="M120 120 L196 92 L268 110 L196 138 Z" />
-      <path className="app-act-cone" d="M268 110 L470 62 L470 158 Z" fill="currentColor" fillOpacity="0.1" />
-      <path className="app-act-beam" d="M268 110 H470" />
-      <path className="app-act-arc" d="M420 46 C438 26 462 14 496 8" />
-      <path d="M456 66 L510 84 L476 108 Z" />
-      <path d="M492 132 L544 124 L544 152 Z" />
-      <rect className="app-act-chip" x="386" y="96" width="9" height="9" />
-      <rect className="app-act-chip is-late" x="430" y="128" width="9" height="9" />
-    </>
-  )
-})
-
-/** 长途运输·承运：外挂货柜随舰体轻晃，后方拖出航迹（空舱就位段走通用 travel，不在此列） */
-const HaulFx = memo(function HaulFx() {
-  return (
-    <>
-      <g className="app-act-haulbody">
-        <path d="M96 120 L172 92 L244 110 L172 138 Z" />
-        <path className="app-act-flame" d="M96 120 L62 106 L80 120 L62 134 Z" fill="currentColor" stroke="none" opacity="0.75" />
-        <rect x="176" y="96" width="54" height="26" rx="3" />
-        <rect x="238" y="96" width="42" height="26" rx="3" />
-        <path d="M186 96 V122 M202 96 V122 M248 96 V122 M262 96 V122" strokeOpacity="0.5" />
-      </g>
-      <path className="app-act-trail" d="M300 110 H364" />
-      <path className="app-act-trail is-late" d="M330 84 H392" />
-      <path className="app-act-trail is-late2" d="M330 136 H392" />
-      <path d="M452 110 L508 96 L540 110 L508 124 Z" strokeOpacity="0.5" />
-    </>
-  )
-})
-
-/** 扫描虫洞：主控展开扫描阵列，扇形扫描波自舰体向外掠出，回波信号点闪回 */
-const ScanFx = memo(function ScanFx() {
-  return (
-    <>
-      <path d="M120 120 L196 92 L268 110 L196 138 Z" />
-      <path className="app-act-array" d="M196 92 V62 M196 62 L172 48 M196 62 L220 48" />
-      <path className="app-act-wave" d="M300 44 C332 76 332 144 300 176" />
-      <path className="app-act-wave is-late" d="M356 26 C398 74 398 146 356 194" />
-      <path className="app-act-wave is-late2" d="M412 8 C464 72 464 148 412 212" />
-      <circle className="app-act-echo" cx="466" cy="70" r="5" />
-      <circle className="app-act-echo is-late" cx="486" cy="150" r="4" />
-      <circle className="app-act-echo is-late2" cx="440" cy="112" r="3" />
-    </>
-  )
-})
-
-/** 长途运输·就位（`tripLegsLeft === 1`）：空舱赶去航线端点——只有航迹与远方端点，没有货柜 */
-const HaulPosFx = memo(function HaulPosFx() {
-  return (
-    <>
-      <g className="app-act-haulbody">
-        <path d="M120 120 L196 92 L268 110 L196 138 Z" />
-        <path className="app-act-flame" d="M120 120 L86 106 L104 120 L86 134 Z" fill="currentColor" stroke="none" opacity="0.75" />
-      </g>
-      <path className="app-act-trail" d="M300 110 H392" />
-      <path className="app-act-trail is-late" d="M330 84 H420" />
-      <path className="app-act-trail is-late2" d="M330 136 H420" />
-      <path d="M468 110 L524 96 L556 110 L524 124 Z" strokeOpacity="0.5" />
-      <circle className="app-act-echo" cx="496" cy="110" r="4" />
-    </>
-  )
-})
-
-const SCENES: Record<ActivityKind, ComponentType> = {
-  mine: MineFx,
-  salvage: SalvageFx,
-  haul: HaulFx,
-  scan: ScanFx,
+/** 活动 → 布景 id（长途运输按航段分两支：就位 / 承运） */
+function sceneIdOf(kind: ActivityKind, state: GameState): ActSceneId {
+  if (kind === 'haul') return state.hauling.tripLegsLeft <= 1 ? 'haul-pos' : 'haul'
+  return kind
 }
 
 /** 活动 → 底色氛围类（复用状态窗那套 `.bg-<scene>`，同源配色） */
-const SCENE_CLASS: Record<ActivityKind, string> = {
+const SCENE_CLASS: Record<ActivityKind, ShipwinScene> = {
   mine: 'work-mine',
   salvage: 'work-salvage',
   haul: 'work-haul',
   scan: 'work-scan',
 }
+
+/**
+ * **动画节拍**（2026-09-21 船长：「跟真实进度挂钩」）：
+ * `--act-cycle` = 一个作业周期的毫秒数、`--act-delay` = 已走毫秒取负 ⇒ 进度层动画（`app-act-tick`）
+ * 的**相位锁真实进度**：周期完成那一刻正好是峰值（出货 / 到站 / 扫完一遍的瞬间亮一下）。
+ *
+ * 这里只夹**节拍快慢**：周期短于 1.6s 会闪成一片、长于 12s 会近乎静止（扫描虫洞的"小时带"就是
+ * 3.6e6ms），故夹到 [1.6s, 12s] —— **相位照样按真实进度对齐，读数与进度条不受任何影响**
+ * （真相由底栏读数与进度条负责，动画只负责动感）。
+ */
+const BEAT_MIN_MS = 1_600
+const BEAT_MAX_MS = 12_000
+
+/** 节拍 → 舞台上的 CSS 变量（无周期/无进度 ⇒ 不挂钩，动画走 CSS 里的缺省值） */
+function beatStyle(cycleMs: number | null, progress: number | null): CSSProperties | undefined {
+  if (cycleMs === null || progress === null || cycleMs <= 0) return undefined
+  const cycle = Math.min(BEAT_MAX_MS, Math.max(BEAT_MIN_MS, cycleMs))
+  return { '--act-cycle': `${Math.round(cycle)}ms`, '--act-delay': `-${Math.round(cycle * progress)}ms` } as CSSProperties
+}
+
+/**
+ * 演出层（`memo`：引擎每 tick 整树重渲染时，只要活动与舰体没变就不重建这上百个 SVG 节点——
+ * 星野 96 点 + 漂浮物 + 作业件 + 舰形资产，约 200 个节点，10Hz 白重建是纯浪费）。
+ * 节拍变量挂在外层舞台上，不进来 ⇒ 进度每 tick 变化不会击穿这层 memo。
+ */
+const ActArt = memo(function ActArt({
+  sceneId,
+  shipId,
+  role,
+  accent,
+}: {
+  sceneId: ActSceneId
+  shipId?: string
+  role?: ShipRole
+  accent: string
+}) {
+  const Scene = ACTIVITY_SCENES[sceneId]
+  return <Scene fx={{ shipId, role, accent, engine: true }} />
+})
 
 /* ═══════════ 读数与进度 ═══════════ */
 
@@ -177,6 +144,8 @@ interface Readout {
   /** 进度 0~1；null = 本活动没有可算的进度 */
   progress: number | null
   progressLabel: string
+  /** 一个作业周期的毫秒数（进度条的**分母**＝动画节拍的挂钩点）；null = 本活动算不出周期 */
+  cycleMs: number | null
 }
 
 /** 取一条活动的读数与进度（纯读状态，不改任何东西） */
@@ -195,6 +164,7 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
       ],
       progress: cycle > 0 ? Math.min(1, m.cycleAccMs / cycle) : null,
       progressLabel: tr('ui.ActivityWin.020'),
+      cycleMs: cycle > 0 ? cycle : null,
     }
   }
   if (kind === 'salvage') {
@@ -216,6 +186,7 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
       ],
       progress: working && stepMs > 0 ? Math.min(1, s.cycleAccMs / stepMs) : null,
       progressLabel: tr('ui.ActivityWin.023'),
+      cycleMs: working && stepMs > 0 ? stepMs : null,
     }
   }
   if (kind === 'haul') {
@@ -234,6 +205,7 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
       ],
       progress: h.legMs > 0 ? Math.min(1, h.phaseAccMs / h.legMs) : null,
       progressLabel: tr('ui.ActivityWin.021'),
+      cycleMs: h.legMs > 0 ? h.legMs : null,
     }
   }
   const sc = state.wormholeScan ?? { active: false, progressMs: 0 }
@@ -259,6 +231,8 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
     ],
     progress: win > 0 ? Math.min(1, inHour / HOUR) : null,
     progressLabel: tr('ui.ActivityWin.022'),
+    // 节拍挂钩点＝整窗时长（相位峰值落在"这一小时带扫满"那刻；节拍再长也只夹快慢，见 beatStyle）
+    cycleMs: win > 0 ? win : null,
   }
 }
 
@@ -282,8 +256,9 @@ export function ActivityScreen({
   const kind = activityKindOf(state)
   if (kind === null) return null
   const r = readoutOf(kind, state, ctx)
-  // 长途运输两段不同画面：就位（空舱赶路）vs 承运（挂柜拖尾）
-  const Scene = kind === 'haul' && state.hauling.tripLegsLeft <= 1 ? HaulPosFx : SCENES[kind]
+  // 主控舰真实外形（与状态窗同一把尺：`fleetDefOf` 取 defId、配色取 `WORK_ACCENT`、缺 def 回角色色）
+  const def = fleetDefOf(state, ctx, state.shipId)
+  const accent = WORK_ACCENT[SCENE_CLASS[kind]] ?? toneOf(def?.role)
   return (
     <WinBox
       variant="app-winbox is-activity"
@@ -295,10 +270,10 @@ export function ActivityScreen({
       chipTitle={tr('ui.ActivityWin.008')}
       onRestore={onRestore}
     >
-      <div className={`app-act-stage bg-${SCENE_CLASS[kind]}`}>
+      <div className={`app-act-stage bg-${SCENE_CLASS[kind]}`} style={beatStyle(r.cycleMs, r.progress)}>
         <svg
           className="app-act-svg"
-          viewBox="0 0 560 220"
+          viewBox={`0 0 ${ACT_W} ${ACT_H}`}
           preserveAspectRatio="xMidYMid meet"
           fill="none"
           stroke="currentColor"
@@ -307,7 +282,7 @@ export function ActivityScreen({
           strokeLinejoin="round"
           aria-hidden="true"
         >
-          <Scene />
+          <ActArt sceneId={sceneIdOf(kind, state)} shipId={def?.id} role={def?.role} accent={accent} />
         </svg>
       </div>
       <div className="app-act-dock">

@@ -3334,7 +3334,9 @@ html[data-locale='en'] body {
 
 /* ═══════════ 主控活动窗口（2026-09-20 船长令：主控执行采掘/打捞/长途运输/扫描虫洞时的动效窗口）═══
    演出全部 SVG 线稿（约定第九章）；动画**只动 transform / opacity**（约定第十四章）；
-   底色复用状态窗那套 `.bg-work-*` 氛围层（同源配色），本处只管舞台与读数。 */
+   底色复用状态窗那套 `.bg-work-*` 氛围层（同源配色），本处只管舞台与读数。
+   2026-09-21（船长「还是过于简陋…可以先参考左上角的小窗」）：补齐星野 / 漂浮物 / 作业件细节，
+   舰体改画**真实舰形**（`ShipSpriteShape` 进同一张 SVG）——动画语汇与小窗 `.app-swin-*` 同套，尺度放大。 */
 .app-winbox.is-activity { width: min(860px, 100%); height: min(560px, 100%); }
 .app-act-stage {
   position: relative;
@@ -3351,38 +3353,79 @@ html[data-locale='en'] body {
 .app-winbox.is-activity .app-act-stage.bg-work-salvage .app-act-svg { color: #6fe3f0; }
 .app-winbox.is-activity .app-act-stage.bg-work-scan .app-act-svg { color: #8fd0ff; }
 .app-winbox.is-activity .app-act-stage.bg-work-haul .app-act-svg { color: #7fb3ff; }
-/* 采掘：激光脉动 + 碎屑回流 */
+/* ── 环境层：星野与漂浮物（与小窗 `.app-swin-star` / `.app-swin-drift` 同一套语言）──
+   星点是**整片星空**的底色，固定冷白不跟活动变色（活动色留给"在作业的东西"）；静态不动，省性能。 */
+.app-act-stars circle { fill: #d7e7f4; stroke: none; }
+/* 漂浮物：落位靠 JSX 外层 `<g transform>`，本层只管动画（两者都改 transform ⇒ 必须分层，见 activityArt 注释） */
+.app-act-drift { opacity: 0; animation-name: app-act-drift; animation-timing-function: linear; animation-iteration-count: infinite; transform-box: fill-box; transform-origin: center; }
+.app-act-drift path, .app-act-drift circle { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linejoin: round; }
+.app-act-drift.is-debris { animation-name: app-act-drift-spin; }
+.app-act-drift.is-rock { color: #9fb3a8; }
+.app-act-drift.is-rock.is-small { color: #8ba094; }
+.app-act-drift.is-debris { color: #8fb0c4; }
+.app-act-drift.is-debris.is-small { color: #7592a6; }
+.app-act-drift.is-gate { color: #9fb6d4; }
+.app-act-drift.is-gate.is-small { color: #8296b4; }
+.app-act-drift.is-probe { color: #9fe8ff; }
+.app-act-drift.is-probe.is-small { color: #c9f1ff; }
+.app-act-drift.is-probe circle:last-child { fill: currentColor; stroke: none; }
+/* 作业场景里漂浮物跟着活动色走（口径同小窗 `.app-shipwin.is-work-*`） */
+.app-winbox.is-activity .app-act-stage.bg-work-mine .app-act-drift.is-rock { color: #b5e35f; }
+.app-winbox.is-activity .app-act-stage.bg-work-mine .app-act-drift.is-rock.is-small { color: #8fb44a; }
+.app-winbox.is-activity .app-act-stage.bg-work-salvage .app-act-drift.is-debris { color: #6fe3f0; }
+.app-winbox.is-activity .app-act-stage.bg-work-salvage .app-act-drift.is-debris.is-small { color: #57b8c4; }
+@keyframes app-act-drift { 0% { transform: translateX(160px); opacity: 0; } 8% { opacity: 0.9; } 88% { opacity: 0.65; } 100% { transform: translateX(-130px); opacity: 0; } }
+@keyframes app-act-drift-spin { 0% { transform: translateX(160px) rotate(0deg); opacity: 0; } 8% { opacity: 0.9; } 88% { opacity: 0.65; } 100% { transform: translateX(-130px) rotate(240deg); opacity: 0; } }
+/* ── 舰体层：真实舰形 + 随舰作业件（同一 float 组 ⇒ 一起轻浮，光带不脱靶）── */
+.app-act-float { animation: app-act-float 2.6s ease-in-out infinite; }
+@keyframes app-act-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+/* 待捞残骸：缓慢起伏（位移 1/8 舰高 ⇒ 牵引锥看着不脱靶） */
+.app-act-bob { animation: app-act-bob 4.4s ease-in-out infinite; }
+@keyframes app-act-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* 承运段的外挂货柜与吊索（画在舰形之下，被舰体轮廓压住 = 吊在腹下） */
+.app-act-pod rect { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.app-act-pod path { fill: none; stroke: currentColor; stroke-width: 1.1; }
+.app-act-sling { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.75; }
+/* ── 动感层（与进度无关，固定短周期：负责"在动"）── */
 .app-act-beam { animation: app-act-beam 1.1s ease-in-out infinite; }
 @keyframes app-act-beam { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.95; } }
 .app-act-chip { fill: currentColor; stroke: none; animation: app-act-chip 1.8s linear infinite; }
 .app-act-chip.is-late { animation-delay: 0.6s; }
 .app-act-chip.is-late2 { animation-delay: 1.2s; }
-@keyframes app-act-chip { 0% { transform: translate(0, 0); opacity: 0; } 20% { opacity: 0.95; } 80% { opacity: 0.5; } 100% { transform: translate(-70px, -6px); opacity: 0; } }
-.app-act-flame { transform-box: fill-box; transform-origin: right center; animation: app-act-flame 0.9s ease-in-out infinite; }
-@keyframes app-act-flame { 0%, 100% { opacity: 0.4; transform: scaleX(0.85); } 50% { opacity: 0.9; transform: scaleX(1.08); } }
-/* 打捞：牵引锥呼吸 + 扫描弧 */
+@keyframes app-act-chip { 0% { transform: translate(0, 0); opacity: 0; } 20% { opacity: 0.95; } 80% { opacity: 0.5; } 100% { transform: translate(-150px, -14px); opacity: 0; } }
 .app-act-cone { animation: app-act-cone 1.4s ease-in-out infinite; }
 @keyframes app-act-cone { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-.app-act-arc { animation: app-act-arc 2.2s ease-in-out infinite; }
-@keyframes app-act-arc { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
-/* 长途运输：舰体带柜轻晃 + 航迹拖尾 */
-.app-act-haulbody { transform-box: fill-box; transform-origin: center; animation: app-act-haulbody 2.6s ease-in-out infinite; }
-@keyframes app-act-haulbody { 0%, 100% { transform: translateY(0) rotate(-0.5deg); } 50% { transform: translateY(-3px) rotate(0.5deg); } }
 .app-act-trail { animation: app-act-trail 1.6s linear infinite; }
 .app-act-trail.is-late { animation-delay: 0.5s; }
 .app-act-trail.is-late2 { animation-delay: 1s; }
-@keyframes app-act-trail { 0% { opacity: 0; transform: translateX(26px); } 30% { opacity: 0.75; } 100% { opacity: 0; transform: translateX(-40px); } }
-/* 扫描虫洞：阵列脉动 + 扇形扫描波外掠 + 回波点闪回 */
+@keyframes app-act-trail { 0% { opacity: 0; transform: translateX(48px); } 30% { opacity: 0.75; } 100% { opacity: 0; transform: translateX(-56px); } }
 .app-act-array { animation: app-act-array 2s ease-in-out infinite; }
 @keyframes app-act-array { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 .app-act-wave { animation: app-act-wave 2.4s ease-out infinite; }
 .app-act-wave.is-late { animation-delay: 0.8s; }
 .app-act-wave.is-late2 { animation-delay: 1.6s; }
-@keyframes app-act-wave { 0% { opacity: 0; transform: translateX(-30px); } 25% { opacity: 0.9; } 100% { opacity: 0; transform: translateX(40px); } }
+@keyframes app-act-wave { 0% { opacity: 0; transform: translateX(-40px); } 25% { opacity: 0.9; } 100% { opacity: 0; transform: translateX(56px); } }
 .app-act-echo { fill: currentColor; stroke: none; animation: app-act-echo 2.4s ease-in-out infinite; }
 .app-act-echo.is-late { animation-delay: 0.8s; }
 .app-act-echo.is-late2 { animation-delay: 1.6s; }
 @keyframes app-act-echo { 0%, 40% { opacity: 0; } 55% { opacity: 1; } 100% { opacity: 0.2; } }
+/* 远方虫洞候选（未确认的暗环，慢呼吸） */
+.app-act-wh ellipse, .app-act-wh path { fill: none; stroke: currentColor; stroke-width: 1.3; opacity: 0.28; }
+.app-act-wh { animation: app-act-wh 6.5s ease-in-out infinite; }
+@keyframes app-act-wh { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+/* ── 进度层：相位锁真实作业进度（2026-09-21 船长「跟真实进度挂钩」）──
+   `--act-cycle` = 一个作业周期毫秒数、`--act-delay` = 已走毫秒取负（都由 ActivityScreen 按真实状态算）
+   ⇒ **周期完成那一刻正好是峰值**（出货 / 捞上一件 / 到站 / 扫完一遍的瞬间亮一下），进度归零相位也归零。
+   周期过短过长只夹节拍快慢（见 `beatStyle`），**相位与读数不受影响**。 */
+.app-act-tick { animation-duration: var(--act-cycle, 3s); animation-delay: var(--act-delay, 0s); animation-iteration-count: infinite; animation-timing-function: ease-out; }
+.app-act-vein { animation-name: app-act-vein; }
+@keyframes app-act-vein { 0% { opacity: 0.15; } 55% { opacity: 0.45; } 94% { opacity: 1; } 100% { opacity: 0.15; } }
+.app-act-arc { animation-name: app-act-arc; transform-box: fill-box; transform-origin: center; }
+@keyframes app-act-arc { 0% { opacity: 0.18; transform: scale(0.97); } 94% { opacity: 0.95; transform: scale(1.02); } 100% { opacity: 0.18; transform: scale(0.97); } }
+.app-act-legring { animation-name: app-act-legring; transform-box: fill-box; transform-origin: center; fill: none; stroke: currentColor; stroke-width: 1.4; }
+@keyframes app-act-legring { 0% { opacity: 0.1; transform: scale(0.5); } 94% { opacity: 0.75; transform: scale(1.12); } 100% { opacity: 0.1; transform: scale(0.5); } }
+.app-act-radar { animation-name: app-act-radar; transform-box: fill-box; transform-origin: center; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-dasharray: 7 6; }
+@keyframes app-act-radar { 0% { opacity: 0.1; transform: scale(0.34); } 94% { opacity: 0.7; transform: scale(1.25); } 100% { opacity: 0.1; transform: scale(0.34); } }
 /* 底栏读数与进度条 */
 .app-act-dock { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 14px 12px; border-top: 1px solid var(--wui-border); background: rgba(8, 14, 22, 0.9); }
 .app-act-line { font-size: 12.5px; color: var(--wui-text-dim); }
