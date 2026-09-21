@@ -8069,8 +8069,16 @@ html[data-locale='en'] body {
 .app-bts-unit { position: relative; display: inline-flex; }
 
 /* 敌舰血条随各舰（2026-09-11 船长③「血条跟着各舰走」）：绝对定位于**本舰正下方**，不参与行内布局，
- * 故不影响入场/尸骸动画与行底对齐；宽度与级内偏移由 `battleViewCore.foeBarGeom` 逐舰给出（inline style）。 */
-.app-bts-unit > .app-bts-hpWrap.is-unitBar { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); z-index: 3; }
+ * 故不影响入场/尸骸动画与行底对齐；宽度与级内偏移由 `battleViewCore.foeBarGeom` 逐舰给出（inline style）。
+ *
+ * ⚠ **2026-09-20 修「敌人血条明显短于我方血条」（船长实测报障）**：
+ * 本条挂在 `.app-bts-unit`（`display: inline-flex`）里，而该单位的宽度**就是舰影那一百来像素**；
+ * 内联给的 `width: 185px` 被 `.app-bts-hpWrap` 的 `max-width: 100%` **夹到了父单位宽**
+ * ⇒ 实测仇方条 `offsetWidth=110 / rectW=89`（还叠了入场 `app-bts-foe-in` 的 `scale(.81)`），
+ * 而同一战场上我方那根在 `.app-bts-col` 里、父宽够 ⇒ 185。两者并排看就是"敌方短一截"。
+ * 修法：舰下这根条**不参与父宽夹取**（`max-width: none`）——它的宽度本就由 `foeBarGeom` 按
+ * **同排间距**逐舰算好（拥挤时会收窄或整排竖排堆叠），不需要再用父宽兜一层。 */
+.app-bts-unit > .app-bts-hpWrap.is-unitBar { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); z-index: 3; max-width: none; }
 
 /* 多波次（2026-09-09）：敌单位首次挂载（含波次增援）做入场转场——淡入 + 轻微抬升；
  * 引擎在演出窗口（waveEnterGapMs）结束后才补刷下一波，入场动画即"增援抵达"画面过渡 */
