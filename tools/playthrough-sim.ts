@@ -78,6 +78,7 @@ import {
   unfitAt,
   unloadCargoToWarehouse,
   addShipToFleet,
+  repairShip,
   calcPower,
   repairDeprecatedModules,
   DSI_FACTION_ID,
@@ -107,9 +108,14 @@ import {
   gridCellAt,
   gridNebulaTargets,
   gridScanTargets,
+  hexDistance,
+  hexKey,
+  hexLine,
+  hexNeighbors,
   isExitCell,
   wormholePathInterceptAt,
 } from '../packages/core/src/wormholeGrid'
+import type { HexCell, WormholeGridState } from '../packages/core/src/wormholeGrid'
 
 const ARGS = process.argv.slice(2)
 const argVal = (name: string, dflt: number): number => {
@@ -1342,6 +1348,8 @@ let lastWhGateOk = false
 let lastWhFloor1Hp = -1
 /** "无余量进洞"那条告警的节流日（同一天只提醒一次） */
 let lastWhDesperateDay = -99
+/** 进洞前维修的节流日（不节流会每拍都修、把整段时间卡在维修上，实测过） */
+let lastRepairDay = -99
 /**
  * **进洞门的血量余量门槛**（2026-09-21 定）：第 1 层打完后我方三层血残值必须 ≥ 本值才敢进洞。
  * 依据：实测"第 1 层剩 4.1% 血"那一趟，第 2 层当场团灭、四艘全沉（不可撤退）。
@@ -1772,6 +1780,103 @@ function inWormhole(): boolean {
 }
 
 /**
+ * **这条直线路上有没有"没清掉的舰船信号格"**（= 会不会被拦截）。
+ * 判据与引擎 `wormholePathInterceptAt` **同一把尺**（掐头去尾、未扫描的也算拦、已激活的不算）。
+ */
+function whLineBlocked(grid: WormholeGridState, from: HexCell, to: HexCell): boolean {
+  const line = hexLine(from, to)
+  for (let i = 1; i < line.length - 1; i++) {
+    const c = gridCellAt(grid, line[i]!)
+    if (!c) continue
+    if (c.place !== 'ship') continue
+    if (grid.activated.includes(c.key)) continue
+    return true
+  }
+  return false
+}
+
+/**
+ * **绕开节点直奔出口**（2026-09-21 第五批，本批最关键的行为改动）。
+ *
+ * 为什么：引擎的移动是**两点直线**（`hexLine`），路上撞见未清的舰船信号格会**截断在那格并开战**
+ * （`wormholeTravelTo` 的路径拦截），**不能穿过去**。而本工具原来的走法是"每次直接点出口 →
+ * 撞上就就地开战" ⇒ 每层都要打好几场节点战，**血就是这样在探路阶段掉光的**：
+ * 实测第 2 层到达残血只有 40~49%，而清掉第 2 层守卫还要再掉 ⇒ 清完必 <45%（撤退线）
+ * ⇒ 每趟都在第 2 层撤离、**永远拿不到第 3 层**。
+ *
+ * 改法：**能在不打的情况下就到出口，就绝不打**——
+ * ① 出口直线无阻 ⇒ 直达；
+ * ② 被阻 ⇒ 找一格**中转格** c（当前格的邻居 ∪ 出口的邻居），要求
+ *    `当前→c 无阻` **且** `c→出口 无阻`（两段都是一步代价，共 2 回合，比打一场划算得多）；
+ * ③ 两段都找不到 ⇒ 退回直线（该打就打，进度优先）。
+ *
+ * ⚠ 判据里的"无阻"用的是**引擎同一把尺** `whLineBlocked`；两段都查，避免"绕了半路又撞上"。
+ */
+function whNextTravelStep(grid: WormholeGridState): HexCell {
+  const exit = { q: grid.exit.q, r: grid.exit.r }
+  const here = { q: grid.pos.q, r: grid.pos.r }
+  if (!whLineBlocked(grid, here, exit)) return exit
+  /** 候选中转格：当前格的邻居（优先近的）＋ 出口的邻居 */
+  const cands: HexCell[] = []
+  const seen = new Set<string>()
+  for (const c of [...hexNeighbors(here), ...hexNeighbors(exit)]) {
+    const key = hexKey(c.q, c.r)
+    if (seen.has(key)) continue
+    if (!gridCellAt(grid, c)) continue // 盘外
+    if (key === hexKey(here.q, here.r) || key === hexKey(exit.q, exit.r)) continue
+    seen.add(key)
+    cands.push(c)
+  }
+  cands.sort((a, b) => hexDistance(here, a) - hexDistance(here, b))
+  for (const c of cands) {
+    if (whLineBlocked(grid, here, c)) continue
+    if (whLineBlocked(grid, c, exit)) continue
+    return c
+  }
+  return exit // 绕不开：照旧直达（该打就打）
+}
+
+/**
+ * **进洞前把编队修满**（2026-09-21 第五批，本批最关键的一处）。
+ *
+ * 根因（读数为证）：`armorPct` / `durability` 是**跨趟留存**的——虫洞打完剩 40% 血，
+ * 下一趟就**带着 40% 的甲/结构进场**，于是"到达第 1 层"的残血在 **38%~100% 之间乱跳**，
+ * 而层末守卫战本身要吃掉约 36% ⇒ 越打越薄，层深永远上不去。
+ * 实测证据（同一 20 天档的逐趟读数）：
+ * `到达第 1 层：残血 71% / 73% / 100% / 76% / 38% / 54% / 35% / 82% …` —— 进场血就是残的。
+ *
+ * 而本工具**从来没有调用过 `repairShip`**（全文件搜索无命中）⇒ 甲/结构只降不升。
+ * 修法：每次准备进洞前，把编队里"甲或结构不满"的船**在母港修满**（钱不是问题：实测 30 天有几十亿）。
+ */
+function repairWhFleet(): void {
+  if (meBusy() || !isHome()) return
+  if (state.expedition.active || state.scanning.active || state.salvaging.active) return
+  /**
+   * ⚠ **必须按天节流**（2026-09-21 踩到）：`doWormhole` 在"准备进洞"时**每拍**都会调到本函数，
+   * 而维修失败的船（例如被引擎锁住）会一直"甲不满" ⇒ 本函数每拍都 `return true`，
+   * 主循环于是把**整段时间全花在维修上**：实测 30 天档变成"进洞 0 次、首胜 6/23、现金 46k"，
+   * 比不修还差得多。按天节流 + 成败都记一次，即可既修得上又不卡进度。
+   */
+  if (day() < lastRepairDay + 1) return
+  lastRepairDay = day()
+  let repaired = 0
+  const failed: string[] = []
+  for (const uid of Object.keys(state.fleet)) {
+    const f = state.fleet[uid]
+    const def = fleetDefOf(state, ctx, uid)
+    if (!f || !def) continue
+    if (def.role !== 'armed' && def.role !== 'armored') continue
+    if (f.durability >= 1 && (f.armorPct ?? 1) >= 1) continue
+    const r = repairShip(state, uid, ctx)
+    if (r.ok) repaired += 1
+    else failed.push(`${def.name}:${(r.error ?? '').slice(0, 30)}`)
+  }
+  if (repaired > 0) mark(`进洞备战：维修 ${repaired} 艘（甲/结构回满）`)
+  // 修不动的原因只记一次（去重）：多半是"进洞船只锁定"或"不在母港"
+  for (const msg of failed.slice(0, 3)) issue(`进洞维修失败 ${msg}`)
+}
+
+/**
  * **虫洞冲刺的一拍决策**（返回 true = 本拍做了动作；调用方据此跳过别的活动）。
  *
  * ⚠ 与 `wormhole-econ` 的一处**有意差异**：那里是"一口气跑完整趟"（时钟自己 +1000ms），
@@ -1783,6 +1888,12 @@ function doWormhole(): boolean {
   if (!run) {
     if (whStats.tries >= WH_MAX_TRIES) return false
     if (meBusy() || !isHome()) return false
+    /**
+     * ⚠ **先修船，再算门**（2026-09-21 第五批）：门的判据是"真跑一遍第 1 层的残血"，
+     * 而残血直接吃 `armorPct`/`durability` —— 上一趟打完剩 40%，不修就带着 40% 进场，
+     * 门自然不过、层深也永远上不去。所以**维修必须在门之前**（维修是免费的？不是，但钱不是问题）。
+     */
+    repairWhFleet()
     const fleetIds = wormholeFleetPick()
     if (fleetIds.length === 0) {
       if (day() >= lastWhGateNoteDay + 1) {
@@ -1932,23 +2043,40 @@ function doWormhole(): boolean {
       return true
     }
   } else {
-    // ③b 还没到出口：先扫（有盲区就扫），再朝出口走（带 confirmUnknown —— 出口格可能没被扫过）
+    /**
+     * ③b 还没到出口：先扫（有盲区就扫），再朝出口走。
+     *
+     * ⚠ **扫描的必要性**（2026-09-21 复核）：扫描不只是"开图"——**未扫描的格照样拦路**
+     * （`wormholePathInterceptAt` 裁定 1 = 乙："看不见的敌人也会挡路"）⇒ 不扫就永远绕不开，
+     * 只能一路撞。所以顺序仍是"先把周围扫开、再算无阻路径"，但**路径要按 `whNextTravelStep` 算**
+     * （能不打就不打），而不是傻点出口。
+     */
     if (gridScanTargets(grid).length > 0 || (gridNebulaTargets(grid).length > 0 && grid.scanned.length < grid.cells.length)) {
       const sc = wormholeGridScan(state)
       if (sc.ok) whStats.scans += 1
       return true
     }
-    const exitCell = gridCellAt(grid, { q: grid.exit.q, r: grid.exit.r })
-    const needConfirm = !exitCell || !grid.scanned.includes(exitCell.key)
-    // 路上有未清的敌人 ⇒ 带上确认（等价玩家点「确认前往」，撞上就地开战）
-    const blocked = wormholePathInterceptAt(grid, { q: grid.exit.q, r: grid.exit.r }) !== undefined
-    const res = wormholeTravelTo(state, ctx, { q: grid.exit.q, r: grid.exit.r }, {
+    const target = whNextTravelStep(grid)
+    const targetCell = gridCellAt(grid, target)
+    const needConfirm = !targetCell || !grid.scanned.includes(targetCell.key)
+    /**
+     * ⚠ **`confirmIntercept` 只在"确实绕不开"时才带**：带它 = 授权"撞上就开战"。
+     * 按 `whNextTravelStep` 的口径，无阻时它不会带（于是引擎也不会拦）；
+     * 万一路线仍被拦（比如两段都试过还是不行），带上它保证进度不被卡死。
+     */
+    const blocked = wormholePathInterceptAt(grid, target) !== undefined
+    const isExitTarget = hexKey(target.q, target.r) === hexKey(grid.exit.q, grid.exit.r)
+    const res = wormholeTravelTo(state, ctx, target, {
       confirmUnknown: needConfirm,
       ...(blocked ? { confirmIntercept: true } : {}),
     })
     if (res.ok) {
       whStats.moves += 1
-      if (res.intercepted) mark(`虫洞 路径拦截：在 (${grid.pos.q},${grid.pos.r}) 就地开战`)
+      if (res.intercepted) {
+        mark(`虫洞 路径拦截：在 (${grid.pos.q},${grid.pos.r}) 就地开战`)
+      } else if (!isExitTarget) {
+        mark(`虫洞 绕行中转 (${target.q},${target.r})：为避开路上的舰船信号，不硬打`)
+      }
       return true
     }
     // 走不动（被拦/回合不够）⇒ 撤离
