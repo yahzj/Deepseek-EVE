@@ -106,6 +106,11 @@ import { wormholeCardIdForRun } from '../packages/core/src/wormholeFoes'
 import { advanceWormhole, wormholeActivateAt, wormholeTravelTo } from '../packages/core/src/wormholeBattle'
 import { matterTechWhBuffs } from '../packages/core/src/matterTech'
 import {
+  matterTechCanResearch,
+  matterTechEssenceHeld,
+  researchMatterTech,
+} from '../packages/core/src/matterTech'
+import {
   gridCellAt,
   gridNebulaTargets,
   gridScanTargets,
@@ -1566,6 +1571,9 @@ let lastWhDesperateDay = -99
 let lastRepairDay = -99
 /** "悬赏选靶"诊断日志的节流日 */
 let lastBountyNoteDay = -99
+/** 谜质科技研究的节流日与当日预算（每级要真花谜质；预算防无限循环） */
+let lastMatterTechDay = -99
+let matterTechBudget = 20
 /**
  * **进洞门的血量余量门槛**（2026-09-21 定）：第 1 层打完后我方三层血残值必须 ≥ 本值才敢进洞。
  * 依据：实测"第 1 层剩 4.1% 血"那一趟，第 2 层当场团灭、四艘全沉（不可撤退）。
@@ -2110,6 +2118,64 @@ function repairWhFleet(): void {
   if (repaired > 0) mark(`进洞备战：维修 ${repaired} 艘（甲/结构回满）`)
   // 修不动的原因只记一次（去重）：多半是"进洞船只锁定"或"不在母港"
   for (const msg of failed.slice(0, 3)) issue(`进洞维修失败 ${msg}`)
+}
+
+/**
+ * **谜质科技研究**（2026-09-21 第二十八批 · 补上一个一直没接进模拟的新系统）。
+ *
+ * 背景：目标要求把 2026-09-12 之后的新系统接进模拟，其中**谜质科技**一项此前是空的。
+ * 全文件搜索后发现：本工具**只读**过 `matterTechWhBuffs`（进洞取 turnBonus），
+ * **从来没有研究过任何一级** ⇒ 谜质科技实际上是**没接进来**的状态。
+ *
+ * 机制（读 `matterTech.ts` 核过）：
+ * - 资源 = 谜质（`mat-wh-essence`，**虫洞跑出来的**）＋ 信用点；`researchMatterTech` **点即生效、不耗时间**；
+ * - 判据全走 `matterTechCanResearch`（含前置等级、满级、资源）⇒ 这里只需按优先级挑一个能点的。
+ *
+ * 优先级 = **先开前置、再补"洞内战斗"这条最吃紧的线**（层深卡点是"连续多场战斗的累计掉血"）：
+ * `mt-explore-turn`（+10 最大回合/级，且是整棵树的 1 级前置）
+ * → 盾/甲/结构抗性 → 伤害/装填/命中 → 洞内修复 → 其余。
+ */
+const MATTER_TECH_ORDER = [
+  'mt-explore-turn',
+  'mt-battle-shield',
+  'mt-battle-armor',
+  'mt-battle-hull',
+  'mt-battle-damage',
+  'mt-battle-reload',
+  'mt-battle-hit',
+  'mt-battle-repair',
+  'mt-battle-evasion',
+  'mt-battle-drone',
+  'mt-explore-hold',
+  'mt-explore-scan',
+]
+
+function doMatterTech(): void {
+  if (meBusy() || !isHome()) return
+  if (state.expedition.active || state.scanning.active || state.salvaging.active) return
+  /** 每天最多点 20 级（每级要真花谜质；够用且不会无限循环） */
+  if (day() !== lastMatterTechDay) {
+    lastMatterTechDay = day()
+    matterTechBudget = 20
+  }
+  let done = 0
+  while (matterTechBudget > 0) {
+    const can = MATTER_TECH_ORDER.map((id) => ({ id, r: matterTechCanResearch(state, ctx, id) })).find((x) => x.r.ok)
+    if (!can) break
+    const res = researchMatterTech(state, ctx, can.id)
+    if (!res.ok) {
+      issue(`谜质科技研究失败 ${can.id}：${res.error ?? ''}`)
+      break
+    }
+    matterTechBudget -= 1
+    done += 1
+  }
+  if (done > 0) {
+    mark(
+      `谜质科技 +${done} 级（谜质余 ${Math.round(matterTechEssenceHeld(state))} · ` +
+        `回合加成 +${matterTechWhBuffs(state, ctx).turnBonus}）`,
+    )
+  }
 }
 
 /**
@@ -3126,6 +3192,12 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
       doAi()
       ensureSalvageFleet()
       doRecycle()
+      /**
+       * **谜质科技每拍都试**（2026-09-21 第二十八批）：谜质由虫洞产出，
+       * 而本工具此前**从来没用过**它（只读过 `turnBonus`）⇒ 这是"新系统接入"的一处真空。
+       * `researchMatterTech` 点即生效、不耗时间，所以放在这里与其它"港口动作"同拍即可。
+       */
+      doMatterTech()
       buyShipAndGear()
       if (standing() < 13) {
         doBounty()
