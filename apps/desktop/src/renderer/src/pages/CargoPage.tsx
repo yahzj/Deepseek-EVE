@@ -33,6 +33,7 @@ import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { useL10n, cmdText } from '../i18n/locale'
+import { kindText } from '../ui/labelsText'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { tr } from '../i18n/locale'
@@ -254,7 +255,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         return (
           <Panel
             key={kind}
-            title={`${itemKindLabel(kind)}（${isPiloted ? t('ui.CargoPage.005') : t('ui.CargoPage.006')}）`}
+            title={`${kindText(kind)}（${isPiloted ? t('ui.CargoPage.005') : t('ui.CargoPage.006')}）`}
             hint={extra ? <HintIcon tip={extra} /> : undefined}
             right={<span className="app-dim">{t('ui.CargoPage.009', { n: kindRows.length })}</span>}
           >
@@ -392,7 +393,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               return (
                 <Panel
                   key={kind}
-                  title={`${itemKindLabel(kind)}（${isPiloted ? tr("ui.CargoPage.005") : tr("ui.CargoPage.006")}）`}
+                  title={`${kindText(kind)}（${isPiloted ? tr("ui.CargoPage.005") : tr("ui.CargoPage.006")}）`}
                   hint={extra ? <HintIcon tip={extra} /> : undefined}
                   right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows.length })}</span>}
                 >

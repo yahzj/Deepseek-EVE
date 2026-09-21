@@ -44,6 +44,7 @@ import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
+import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 import type { PageProps } from './common'
@@ -413,7 +414,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             ) : (
               usableCores.map((t) => (
                 <option key={t} value={t}>
-                  {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
+                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
                 </option>
               ))
             )}

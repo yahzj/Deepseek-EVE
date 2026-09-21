@@ -18,6 +18,7 @@ import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef
 import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipCategoryLabelOf, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
+import { kindTextOfItem } from '../ui/labelsText'
 
 /** 伤害类型中文名 */
 export const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
@@ -1154,7 +1155,7 @@ export function ModuleHover({
 /** 物品统一信息行（悬浮窗数据源：种类/体积/收价 + 精炼 + 弹药无人机战斗行 + 修理组件） */
 export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | undefined): InfoLine[] {
   const lines: InfoLine[] = [
-    { k: tr("ui.Handbook.005"), v: itemKindText(item) }, // 2026-09-10 无人机：无人机 · 侦察机（子属性并入种类）
+    { k: tr("ui.Handbook.005"), v: kindTextOfItem(item) }, // 2026-09-10 无人机：无人机 · 侦察机（子属性并入种类）
     { k: tr("ui.Handbook.006"), v: `${item.unitM3} m³` },
   ]
   if ((item.baseSellPriceIsk ?? 0) > 0) {

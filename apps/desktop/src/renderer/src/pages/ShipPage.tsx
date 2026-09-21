@@ -50,6 +50,7 @@ import {
 import type { PageProps } from './common'
 import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
+import { shipRoleText } from '../ui/labelsText'
 
 // ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
 //    屏幕宽度不足时隐藏舰船图形）──
@@ -514,7 +515,7 @@ export function ShipPage({
                     {displayName}
                     {/* 2026-09-13 船长：子分类徽标（只有虫洞族专属舰船有 `subClass`）；样式复用同级角色 chip */}
                     {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
-                    <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipCategoryLabelOf(def)}</em>
+                    <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipRoleText(shipCategoryKeyOf(def))}</em>
                     {def.priceIsk <= 0 && def.id !== 'sandcat' ? <em className="app-belt-flag">{tr("ui.ShipPage.007")}</em> : null}
                     {isLockedShip ? (
                       <em className="app-chip app-lock-chip" title={tr("ui.ShipPage.008")}>
@@ -827,7 +828,7 @@ export function ShipPage({
                             {def.name}
                             {/* 2026-09-13 船长：子分类徽标（市场/图纸列同样显示） */}
                             {def.subClass ? <em className={`app-chip app-role-chip is-${def.role}`}>{def.subClass}</em> : null}
-                            <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipCategoryLabelOf(def)}</em>
+                            <em className={`app-chip app-role-chip is-${shipCategoryKeyOf(def)}`}>{shipRoleText(shipCategoryKeyOf(def))}</em>
                             {stored <= 0 ? (
                               <em className="app-chip app-lock-chip" title={tr("ui.ShipPage.040")}>
                                 {tr("ui.ShipPage.041")}

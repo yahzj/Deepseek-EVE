@@ -32,6 +32,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses, presentSubs, subText } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
+import { kindTextOfItem } from '../ui/labelsText'
 
 const KIND_TEXT: Record<string, string> = {
   /**
@@ -75,7 +76,7 @@ function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
  * 其余物品走 itemKindText 单点（2026-09-10：无人机 → 无人机 · 侦察机，子属性并入种类） */
 function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): string {
   const it = itemDefOf(ctx, good)
-  if (it) return it.kind === 'wreck' ? tr("ui.MarketPage.009") : itemKindText(it)
+  if (it) return it.kind === 'wreck' ? tr("ui.MarketPage.009") : kindTextOfItem(it)
   if (good.kind === 'module') {
     const mod = ctx.modules.get(good.refId)
     const rack = mod ? rackOf(mod) : undefined

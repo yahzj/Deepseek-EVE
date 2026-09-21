@@ -28,6 +28,7 @@ import {
   itemSubPasses,
   rackPasses, subText } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
+import { kindText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -321,7 +322,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   setWareFunc(SUB_ALL)
                 }}
               >
-                {itemKindLabel(kind)}
+                {kindText(kind)}
               </button>
             ))}
             <button
@@ -419,7 +420,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         return (
           <Panel
             key={kind}
-            title={`${itemKindLabel(kind)}`}
+            title={`${kindText(kind)}`}
             hint={extra ? <HintIcon tip={extra} /> : undefined}
             right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows.length })}</span>}
           >
@@ -590,7 +591,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             return (
               <Panel
                 key={kind}
-                title={`${itemKindLabel(kind)}`}
+                title={`${kindText(kind)}`}
                 hint={extra2 ? <HintIcon tip={extra2} /> : undefined}
                 right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows2.length })}</span>}
               >

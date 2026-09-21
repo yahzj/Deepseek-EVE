@@ -45,6 +45,7 @@ import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 import { tr } from '../i18n/locale'
+import { kindTextOfItem } from '../ui/labelsText'
 
 /** 宽类型标签索引（详情窗数据来自 raw，键是 string） */
 const kindName = (k: string): string => (ITEM_KIND_LABELS as Record<string, string>)[k] ?? k
@@ -634,7 +635,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     // 2026-09-10 船长：无人机把归类子属性并入「种类」（无人机 · 侦察机）——走 core 单点
     rows.push([
       tr("ui.Handbook.005"),
-      itemKindText({ kind: kind as ItemKind, droneClass: r.droneClass as DroneClass | undefined }),
+      kindTextOfItem({ kind: kind as ItemKind, droneClass: r.droneClass as DroneClass | undefined }),
     ])
     rows.push([tr("ui.Handbook.006"), `${Number(r.unitM3 ?? 0)} m³`])
     // V10.5：弹药/无人机补充伤害契约（与其它界面统一由 shipInfo 生成）
@@ -1169,7 +1170,7 @@ export function Handbook({
                 >
                   <div className="app-inv-name">
                     <RowGlyph glyph={item.kind} /> {item.name}
-                    <span className="app-chip is-dim">{itemKindText(item)}</span>
+                    <span className="app-chip is-dim">{kindTextOfItem(item)}</span>
                     <span className="app-dim"> · {item.unitM3} {tr("ui.Handbook.117")}</span>
                   </div>
                   <div className="app-dim">{item.description}</div>

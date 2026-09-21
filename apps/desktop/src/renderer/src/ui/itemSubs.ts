@@ -66,6 +66,8 @@ export interface SubOption {
   label: string
   /** 本地化 id（有则渲染处用它取词；缺 = 尚未接线，仍显示 `label`） */
   id?: string
+  /** 配 `id` 用的插值参数（该 id 是带 `{p1}` 的整句模板时才需要，如舰船级别的「T{n} 护卫舰」） */
+  idParam?: string
 }
 
 /**
@@ -196,6 +198,14 @@ export const SHIP_TIER_KEYS = [1, 2, 3, 4, 5] as const
 export const SHIP_TIER_SUBS: SubOption[] = SHIP_TIER_KEYS.map((t) => ({
   key: `t${t}`,
   label: `T${t} ${shipSizeLabel(t)}`,
+  /**
+   * 2026-09-21：`label` 里的舰级名来自 core `shipSizeLabel`（中文），故指到渲染层的本地化版
+   * （`ui/labelsText.ts` 的 `shipTierText`）。**用带 `{p1}` 的整档模板**（`ui.labelsText.xxx` =
+   * `"T{p1} 护卫舰"` / `"T{p1} Frigate"`）——`subText` 只按 id 取整句、不带参数，
+   * 所以档号必须写进译文里，不能只译舰级名（否则英文侧会丢掉 "T1" 前缀）。
+   */
+  id: `ui.labelsText.0${13 + t}`,
+  idParam: String(t),
 }))
 
 /**
@@ -400,8 +410,9 @@ export function subLabelOf(kind: string, key: string): string {
  * 适用范围不限于本文件的表：`Handbook` / `IndustryPage` / `Shipyard` / `Wormhole` 里那些
  * `{ id, label }` 形状的门类与筛选项同样适用。
  */
-export function subText(opt: { id?: string; label: string }): string {
-  return opt.id !== undefined ? tr(opt.id) : opt.label
+export function subText(opt: { id?: string; label: string; idParam?: string }): string {
+  if (opt.id === undefined) return opt.label
+  return opt.idParam !== undefined ? tr(opt.id, { p1: opt.idParam }) : tr(opt.id)
 }
 
 /* ═══════════ 级联筛选的**空档隐藏**（2026-09-20 船长：「进行筛选清理，一些明显不存在某个子类下的筛选建议隐藏」）═══════════
