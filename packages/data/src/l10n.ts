@@ -1314,6 +1314,7 @@ export const EN_MATTER_TECH: EnTable = {
   'mt-industry-unbox': { name: 'Container Unboxing' },
   'mt-industry-void': { name: 'Void Refining' },
   'mt-industry-wreck': { name: 'Wreck Analysis' },
+  'mt-industry-ai': { name: 'Industrial Multi-core Dispatch' },
 }
 
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {

@@ -40,16 +40,26 @@ function world(): ReturnType<typeof createInitialState> {
 }
 
 describe('谜质科技树 · 节点表与货币', () => {
-  it('23 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
+  it('24 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
     const nodes = matterTechNodes(ctx)
-    expect(nodes.length).toBe(23)
-    expect(new Set(nodes.map((n) => n.id)).size).toBe(23)
+    expect(nodes.length).toBe(24)
+    expect(new Set(nodes.map((n) => n.id)).size).toBe(24)
     expect(nodes.every((n) => n.effect.length > 0 && n.maxLevel >= 1)).toBe(true)
-    // 三条线的节点数：探索 6 / 战斗 14 / 工业 3
+    // 三条线的节点数：探索 6 / 战斗 14 / 工业 4（2026-09-20 船长追加工业 T4「工业多核调度」）
     const byBranch = (b: string): number => nodes.filter((n) => n.branch === b).length
-    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([6, 14, 3])
+    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([6, 14, 4])
     // 货币常量与产出侧同源（本模块写的是字面量，防漂）
     expect(MATTER_TECH_ESSENCE_ITEM_ID).toBe(WORMHOLE_ESSENCE_ITEM_ID)
+  })
+
+  it('洞外工业 T4「工业多核调度」：每级 +1 站内工业 AI 工位、最高 5 级（船长 2026-09-20）', () => {
+    const node = matterTechNodes(ctx).find((n) => n.id === 'mt-industry-ai')!
+    expect([node.branch, node.tier, node.effect, node.per, node.maxLevel]).toEqual(['industry', 4, 'industryAiSlots', 1, 5])
+    // 与该支 T3（首级 10 谜质 / 10M）相比首级更高：30 谜质 / 120M（契约 ④ 同款口径）
+    expect(node.essence).toEqual([30, 60, 90, 120, 150])
+    expect(node.isk).toEqual([120_000_000, 240_000_000, 360_000_000, 480_000_000, 600_000_000])
+    // 前置 = 同支更低层的「虚空精炼技术」
+    expect(node.prereq).toEqual({ 'mt-industry-void': 1 })
   })
 })
 

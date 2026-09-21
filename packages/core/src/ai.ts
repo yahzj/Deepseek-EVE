@@ -26,6 +26,7 @@ import { pullOneWreck, salvagerCyclesOf } from './salvaging'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
 import { bumpFirst, peakFirst } from './firstTasks'
+import { matterTechSum } from './matterTech'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
 import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
 import { travelLegMs } from './travel'
@@ -152,11 +153,18 @@ export function aiCoreUsed(state: GameState): number {
 /** 工业专用 AI 工位扩容（2026-09-08 船长定；2026-09-11 改为**按技能记系数**）：
  * `balance.aiCore.industrySkillSlots` 表内技能「每级 +对应枚数」（工业自动化基础 +1/级、工业自动化 +2/级…）
  * ——只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限；
- * 新增"工业 AI 专用扩容技能"只需往该表追加一行。 */
+ * 新增"工业 AI 专用扩容技能"只需往该表追加一行。
+ *
+ * ⚠ **2026-09-20 船长**：「**谜质研究的洞外工业，添加T4科技，增加工业AI上限，每级+1，最高5级**」
+ * ⇒ 另加一支**谜质科技**来源：节点 `mt-industry-ai`「工业多核调度」（T4 · 5 级 · `effect: 'industryAiSlots'`），
+ * 与技能那两支**相加**（效果关键字由 `core/matterTech.matterTechSum` 按 `per × 等级` 汇总——
+ * 此处必须出现 `'industryAiSlots'` 字面量，内容体检的「谜质科技契约」靠它判"登记了没接线"）。
+ * 满配：共用 5（AI 核心操作学 5 级 ×1）+ 技能 15（工业自动化基础 5×1 ＋ 工业自动化 5×2）+ 科技 5 = **25 个站内工位**
+ * （技能等级上限 = `MAX_SKILL_LEVEL` = 5，与 `rank` 无关；两支技能满级合计 +15，见内容体检「AI 扩容技能契约」的读数行）。 */
 export function industryAiBonus(state: GameState, ctx: SimContext): number {
   const table = ctx.balance?.aiCore?.industrySkillSlots
-  if (!table) return 0
-  let bonus = 0
+  let bonus = matterTechSum(state, ctx, 'industryAiSlots')
+  if (!table) return bonus
   for (const [id, perLevel] of Object.entries(table)) {
     bonus += (state.skills.trained[id] ?? 0) * (perLevel ?? 0)
   }

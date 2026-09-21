@@ -5249,9 +5249,28 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       `AI 扩容技能契约：技能「${s.name}」(${s.id}) 说明里承诺工业专用工位，却不在 balance.aiCore.industrySkillSlots 表里（练满也不生效）`,
     )
   }
+  /**
+   * **谜质科技那一路**（2026-09-20 船长：「谜质研究的洞外工业，添加T4科技，增加工业AI上限，每级+1，最高5级」）：
+   * 站内工位现在有三个来源 —— 共用上限（技能）＋ 技能扩容表 ＋ **谜质科技 `industryAiSlots`**。
+   * 反向护栏与上面那条技能契约同款：**节点说明里承诺「专用工位」的，`effect` 必须是 `industryAiSlots`**
+   * （写错关键字 = 体检判红 + 引擎忽略 ⇒ 点了没反应）。
+   */
+  const techSlotNodes = MATTER_TECH_NODES.filter((n) => n.effect === 'industryAiSlots')
+  const techSlots = techSlotNodes.reduce((s, n) => s + n.per * n.maxLevel, 0)
+  for (const n of MATTER_TECH_NODES) {
+    if (!n.note.includes('专用工位')) continue
+    check(
+      n.effect === 'industryAiSlots',
+      `AI 扩容契约：谜质科技节点「${n.name}」(${n.id}) 说明里承诺专用工位，effect 却是 \`${n.effect}\`（应为 industryAiSlots）`,
+    )
+  }
   const sharedCap = MAX_SKILL_LEVEL // 共用上限满级 = AI 核心操作学满级（每级 +1）
   console.log(
-    `· AI 扩容技能契约：${ids.length} 个工业工位技能（${shown.join("、")}）→ 满级站内工位 = 共用 ${sharedCap} + 扩容 ${total} = ${sharedCap + total}`,
+    `· AI 扩容技能契约：${ids.length} 个工业工位技能（${shown.join("、")}）→ 满级站内工位 = 共用 ${sharedCap} + 技能扩容 ${total}` +
+      (techSlots > 0
+        ? ` + 谜质科技 ${techSlots}（${techSlotNodes.map((n) => `${n.name} T${n.tier} +${n.per}/级×${n.maxLevel}`).join('、')}）`
+        : '') +
+      ` = ${sharedCap + total + techSlots}`,
   )
 }
 

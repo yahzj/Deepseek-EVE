@@ -4,6 +4,7 @@
  * 恢复远征时再补回（引擎旧逻辑保留未删）。
  */
 import { beforeEach, describe, expect, it } from 'vitest'
+import { buildSimContext } from '@whale/data'
 import type { MarketGoodDef, SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
@@ -127,6 +128,27 @@ describe('AI 核心库与名额', () => {
     expect(aiCoreUsed(state)).toBe(1)
     expect(aiCoreCapBlock(state, ctx)).not.toBeNull() // 1/1 满 → 副船拒
     expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull() // 1 < 1+15 → 产业可开
+  })
+
+  it('谜质科技 T4「工业多核调度」：每级 +1 站内工位，与技能两支**相加**（船长 2026-09-20）', () => {
+    /** ⚠ 这条要用**真上下文**（`ctx.matterTech` 才有节点表；`makeTestCtx` 是精简世界、没有科技目录） */
+    const realCtx = buildSimContext()
+    const s = createInitialState({ nowWallMs: 0, seed: 3 })
+    /** 全 0 基线 */
+    expect(industryAiBonus(s, realCtx)).toBe(0)
+    /** 科技 5 级 ⇒ +5（`effect: 'industryAiSlots'` · per 1 · maxLevel 5） */
+    s.research = { levels: { 'mt-industry-ai': 5 } }
+    expect(industryAiBonus(s, realCtx)).toBe(5)
+    /** 与技能相加：科技 5 + 基础 5×1 + 工业自动化 5×2 = 20 ⇒ 站内上限 = 共用 5 + 20 = 25 */
+    s.skills.trained['industrial-ai-cap-basic'] = 5
+    s.skills.trained['industrial-ai-cap'] = 5
+    expect(industryAiBonus(s, realCtx)).toBe(20)
+    /** 只点科技、不练技能：共用上限 0 ⇒ 副船仍拒，站内产业可开 */
+    s.skills.trained['industrial-ai-cap-basic'] = 0
+    s.skills.trained['industrial-ai-cap'] = 0
+    expect(industryAiBonus(s, realCtx)).toBe(5)
+    expect(aiCoreCapBlock(s, realCtx) ?? '').toContain('AI 核心上限为 0')
+    expect(aiCoreCapBlock(s, realCtx, 'industry')).toBeNull()
   })
 })
 

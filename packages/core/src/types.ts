@@ -2178,13 +2178,16 @@ export type MatterTechEffect =
   | 'whThreatBoss'
   | 'whDroneRecovery'
   | 'whFieldRepair'
-  /* ── 洞外工业（2026-09-19 船长重做的三件） ── */
+  /* ── 洞外工业（2026-09-19 船长重做的三件 ＋ 2026-09-20 追加的 T4） ── */
   /** 货柜拆解周期 −v/级（v = 0.25 = −25%，加法口径） */
   | 'unboxTimeCut'
   /** 虚空母矿 → **虚空晶** 回收数量 +v/级（只作用于这一支产出） */
   | 'voidCrystalYield'
   /** 残骸回收的**保底原材料**产出 +v/级 */
   | 'wreckMineralYield'
+  /** **站内工业 AI 专用工位上限 +v/级**（v = 1；与技能那两支 `aiCore.industrySkillSlots` **相加**，
+   *  不增加 AI 副船任务上限；消费点 = `core/ai.ts` 的 `industryAiBonus`） */
+  | 'industryAiSlots'
 
 /** 科技树分支（界面分组 / 契约判据用） */
 export type MatterTechBranch = 'explore' | 'battle' | 'industry'
