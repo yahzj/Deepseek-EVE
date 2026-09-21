@@ -1059,7 +1059,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 不可以退出」）的**禁用理由**文案；船长 2026-09-20 改判「**虫洞内的战斗，允许玩家将战斗窗口
    * 最小化**」⇒ 洞内那枚按钮不再禁用，该键随之无引用（按纪律删死键，不留悬空文案）。
    */
-  "ui.BattleScreen.037": { zh: "← 退出战场", en: "← Leave battle" },
+  /**
+   * 战斗窗口左上角那枚按钮（2026-09-20 船长报障改文案：「**说是退出战斗其实不准确，应该是最小化
+   * 战斗窗口**」）。它**只关观看窗口**，战斗在后台照常推进 ⇒ 中文与英文都改回"最小化"口径，
+   * 不再用"退出/Leave"（那会让人以为会中止战斗）。
+   */
+  "ui.BattleScreen.037": { zh: "← 最小化", en: "← Minimize" },
   "ui.BattleScreen.038": { zh: "副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离", en: "Cannot retreat while the battle is unfinished: clear this node, and withdrawal is offered at the end of the layer" },
   /** 洞内"本场必须打完"的提示——**2026-09-20 改文案**：去掉了"（战场也不能退出）" */
   "ui.BattleScreen.039": { zh: "洞内：本场必须打完（不能撤退）", en: "In the wormhole this fight has to be finished (no retreat)" },
@@ -1129,10 +1134,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.103": { zh: "（回收率 {p1}% · 优先回收高价值）·", en: "(recovery rate {p1}% · high-value drones first) ·" },
   "ui.BattleScreen.104": { zh: "净损失 {p1} 架", en: "net loss: {p1} airframes" },
   /**
-   * 「← 退出战场」的悬停说明（2026-09-20 船长：「**虫洞内的战斗，允许玩家将战斗窗口最小化。**」）。
+   * 「← 最小化」的悬停说明（2026-09-20 船长：「**虫洞内的战斗，允许玩家将战斗窗口最小化。**」）。
    * 洞内与洞外**同一句话**：都只是关掉观看界面，战斗在后台继续推进。
    */
-  "ui.BattleScreen.105": { zh: "最小化观战窗口：战斗在后台继续，可随时从「战斗中」回来", en: "Minimize the battle view: the fight continues in the background — reopen it any time from “In battle”" },
+  "ui.BattleScreen.105": { zh: "最小化战斗窗口：不中止战斗，它照常在后台推进；可随时点右下角「战斗中」回来", en: "Minimize the battle window: the fight is not stopped — it keeps running in the background; click “In battle” at the bottom right to reopen it" },
   "ui.BattleScreen.106": { zh: "战斗窗口", en: "Battle window" },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },

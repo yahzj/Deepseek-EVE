@@ -1992,6 +1992,7 @@ const meSpeedRef = useRef(200)
       open={open}
       onMinimize={onClose}
       minimizeText={tr('ui.BattleScreen.037')}
+      showMinimizeButton={false} // 战斗屏自己顶栏已有一枚（船长实测报障：出现两个"退出/最小化"按钮）
       chipText={tr('ui.App.084')}
       chipTitle={tr('ui.App.083')}
       onRestore={onRestore ?? onClose}

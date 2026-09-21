@@ -8059,7 +8059,10 @@ html[data-locale='en'] body {
 
 .app-bts-arcs g { transition: transform 80ms linear; }
 
-.app-bts-col.is-foe .app-battle-hp:not(.is-big) { width: 280px; }
+/* ⚠ 2026-09-20 **删除**了规则 `.app-bts-col.is-foe .app-battle-hp:not(.is-big) { width: 280px }`
+   —— 船长实测报障「**敌人血条明显短于我方血条**」。`is-big` 这个类在 `BattleScreen.tsx` 里
+   **根本没被使用**（是个死类）⇒ 那条 `:not(.is-big)` 恒命中敌方：我方走 `.app-bts-hpWrap` 的
+   300px、敌方被压到 280px，肉眼可见不对等。删掉即两侧同宽（左右两端的标签/数字档位本就一致）。 */
 
 /* V12.4 killcam: boom / cripple / defeat vignette / battle report (ASCII-safe) */
 

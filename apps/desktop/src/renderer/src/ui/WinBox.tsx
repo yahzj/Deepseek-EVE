@@ -27,8 +27,14 @@ export interface WinBoxProps {
   open: boolean
   /** 最小化（关掉窗口，过程继续在后台跑） */
   onMinimize: () => void
-  /** 顶栏最小化按钮的文字（已译文案），如「← 退出战场」「← 最小化」 */
+  /** 顶栏最小化按钮的文字（已译文案），如「← 最小化」 */
   minimizeText: string
+  /**
+   * 是否渲染壳自带的最小化按钮（缺省 true）。
+   * 取 `false` 的场合：**内容自己顶栏里已经有一枚**（战斗屏 `.app-battle-screen-top` 就是），
+   * 否则会出现两个"退出/最小化"按钮——2026-09-20 船长实测报障：「退出战斗的按钮有 2 个」。
+   */
+  showMinimizeButton?: boolean
   /** 浮动还原标上的文字（已译文案），如「⚔ 战斗中」「⛏ 采掘中」 */
   chipText: string
   /** 浮动还原标 `title`（已译文案），说明点它会怎样 */
@@ -52,6 +58,7 @@ export function WinBox({
   open,
   onMinimize,
   minimizeText,
+  showMinimizeButton = true,
   chipText,
   chipTitle,
   onRestore,
@@ -74,9 +81,11 @@ export function WinBox({
           <span className="app-winbox-title">{title}</span>
           <span className="app-winbox-spacer" />
           {headRight}
-          <button className="app-btn is-small" onClick={onMinimize} title={chipTitle}>
-            {minimizeText}
-          </button>
+          {showMinimizeButton ? (
+            <button className="app-btn is-small" onClick={onMinimize} title={chipTitle}>
+              {minimizeText}
+            </button>
+          ) : null}
         </div>
         <div className="app-winbox-body">{children}</div>
       </div>
