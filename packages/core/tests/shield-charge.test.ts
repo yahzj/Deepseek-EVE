@@ -213,12 +213,27 @@ describe('护盾充能装置（中槽 · 每 30 秒脉冲 · 满盾的一个比�
     expect(b.shieldCharge).toBeUndefined()
   })
 
-  it('**同型多件按 EVE 曲线收敛**（不是简单相加）', () => {
+  it('**同族多件按 EVE 曲线收敛**（不是简单相加；MK1/2/3 混装同池）', () => {
     const { state, ctx, uid } = world({ mods: [{ id: 'mod-chg-1', pct: 0.12 }], mid: ['mod-chg-1', 'mod-chg-1'] })
     const two = shieldPulsePctOf(state, ctx, uid)
     expect(two).toBeGreaterThan(0.12)
     expect(two).toBeLessThan(0.24) // 收敛：第二件按 EVE 曲线权重计入（≈87%，不是 100%）
     expect(two).toBeCloseTo(0.12 * (1 + stackWeight(2)), 10) // 与引擎同一把尺（不写死 0.87）
+  })
+
+  it('**档次混装也同池**（MK1 ＋ MK2 按同一条曲线折减，不能靠换档绕过惩罚）', () => {
+    const mods = [
+      { id: 'mod-chg-1', pct: 0.12 },
+      { id: 'mod-chg-2', pct: 0.2 },
+    ]
+    const mix = world({ mods, mid: ['mod-chg-1', 'mod-chg-2'] })
+    const pct = shieldPulsePctOf(mix.state, mix.ctx, mix.uid)
+    // 池口径与"单件效果从强到弱排位"无关（本件是折权加算 Σpᵢ·wᵢ，按装配序取第 n 件）
+    expect(pct).toBeCloseTo(0.12 + 0.2 * stackWeight(2), 10)
+    expect(pct).toBeLessThan(0.32) // 改前按 id 计数 ⇒ 各拿满权 = 0.32（换档即绕过惩罚）
+    // 同池的直接证据：与"两件同型 MK2"在**第一件换成 MK1** 时差额恰好是 0.12 − 0.2
+    const sameKind = world({ mods, mid: ['mod-chg-2', 'mod-chg-2'] })
+    expect(pct).toBeCloseTo(shieldPulsePctOf(sameKind.state, sameKind.ctx, sameKind.uid) - 0.08, 10)
   })
 
   it('**跳数与比例**：MK3（32%）两跳可把 0 盾拉回过半', () => {

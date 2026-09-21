@@ -24,7 +24,7 @@ describe('英文覆盖层（P2）', () => {
 
   it('en：舰船名按译名表覆盖（例：长尾鲨级 → Thresher-class Missile Cruiser）', () => {
     expect(en.ships.get('sh-thresher')?.name).toBe('Thresher-class Missile Cruiser')
-    expect(en.ships.get('sh-xuanwu')?.name).toBe('Leatherback-class Heavy Flagship')
+    expect(en.ships.get('sh-xuanwu')?.name).toBe('Leatherback-class Heavy Battleship')
     expect(en.ships.get('sh-wh-a-cruiser')?.name).toBe('Raider Heavy Assault Cruiser')
   })
 

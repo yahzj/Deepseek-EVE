@@ -133,19 +133,42 @@ describe('护盾充能力场装置：口径（装配快照）', () => {
     expect(pct2).toBeLessThan(0.2)
   })
 
-  it('同舰 MK2 ＋ MK3 ⇒ 冷却取**最短那一档**（只有最短那条在跑）', () => {
-    const { state, ctx, main } = world({
+  it('同舰 MK2 ＋ MK3 ⇒ **同族同池：也衰减**（不是各算一件、不能靠换档绕过惩罚）', () => {
+    const mix = world({
       mods: [
         { id: 'f2', sec: 10 },
         { id: 'f3', sec: 8 },
       ],
       main: ['f2', 'f3'],
     })
+    const f = shieldFieldOf(mix.state, mix.ctx, mix.main)
+    expect(f.ms).toBe(8_000) // 冷却仍取最短那一档
+    /**
+     * ⚠ **2026-09-21 船长改判**（原话：「**护盾充能立场不是多件衰减吗**」⇒ 落成「**同族合并计数：
+     * MK2+MK3 也衰减**」）：收敛池键由**件 id** 改为**同族**（`stackingOf` 的 `'shield-field'`）
+     * ⇒ 混装与"同型两件"**逐字同额**。
+     *
+     * 改前（按 id 计数）：两件各拿满权 ⇒ **0.20**（比同型两件的 18.69% 还高）——"换一档装"就成了
+     * 绕开叠加惩罚的最优解，与"有叠加惩罚"自相矛盾。
+     */
+    expect(f.pct).toBeCloseTo(0.1 * (1 + stackWeight(2)), 10)
+    // 与"两件同型"逐字同额（同池的直接证据）
+    const same = world({ mods: [{ id: 'f2', sec: 10 }], main: ['f2', 'f2'] })
+    expect(f.pct).toBeCloseTo(shieldFieldOf(same.state, same.ctx, same.main).pct, 10)
+    expect(f.pct).toBeLessThan(0.2)
+  })
+
+  it('同舰三件（MK2 ×2 ＋ MK3）⇒ 按同池第 3 件折减（不是 2 件 + 1 件满额）', () => {
+    const { state, ctx, main } = world({
+      mods: [
+        { id: 'f2', sec: 10 },
+        { id: 'f3', sec: 8 },
+      ],
+      main: ['f2', 'f2', 'f3'],
+    })
     const f = shieldFieldOf(state, ctx, main)
+    expect(f.pct).toBeCloseTo(0.1 * (1 + stackWeight(2) + stackWeight(3)), 10)
     expect(f.ms).toBe(8_000)
-    // ⚠ **两件是不同 id ⇒ 各自独立计入、不互相收敛**（收敛只作用于**同型**多件）——
-    //   这是 `stackWeight` 的口径：按"同 id 的第 n 件"折减，不是按"该族第 n 件"。
-    expect(f.pct).toBeCloseTo(0.2, 10)
   })
 })
 

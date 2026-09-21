@@ -235,6 +235,22 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   // 面板与列表短行都写「全额叠加」，与实际的"多装递减"不符。
   const hk = resistKey(def.hullResistAdd)
   if (hk) return { group: 'gap', kind: `hull-${hk}` }
+  /**
+   * **两件「按周期脉冲」的装置（`shieldPulsePct` 中槽充能 / `shieldFieldPct` 高槽力场）**
+   * = **折权加算**（第 2 件起按 `stackWeight` 的 87% / 57% / 28%… 折权后仍相加）。
+   *
+   * ⚠ **2026-09-21 补登 + 改口径（船长：「护盾充能立场不是多件衰减吗」）**：
+   * - **补登**：这两件原先**掉在 `flat` 兜底里** ⇒ 装配页/说明短行把"同型多件"标成**「全额叠加」**，
+   *   而引擎（`combat.shieldPulsePctOf` / `combat.shieldFieldOf`）**一直在按 EVE 曲线折减** —— 面板与
+   *   实际不符；这也是船长那问的第一个来源。
+   * - **改口径**：收敛池由**按件 id 计数**改为**按本键（同族=同池）计数** ⇒ **MK2 与 MK3 混装也算叠加**
+   *   （此前 `2×MK2 + MK3` 会出 28.69%：MK2 那一对按曲线折、MK3 那件**全额**加进去 —— 混装反而成了
+   *   不吃惩罚的最优解）。船长 2026-09-21 裁定「**同族合并计数：MK2+MK3 也衰减**」。
+   *   与「跃迁计算机 MK2/MK3 同池」（上面 `warp` 那条）同一口径。
+   * - **多艘船各带一件仍各自独立、可叠加**（船长 2026-09-20 原裁定，未变）——收敛池只看**同一艘船**的装配。
+   */
+  if (def.shieldFieldPct !== undefined) return { group: 'weighted', kind: 'shield-field' }
+  if (def.shieldPulsePct !== undefined) return { group: 'weighted', kind: 'shield-charge' }
   return { group: 'flat', kind: def.slot }
 }
 

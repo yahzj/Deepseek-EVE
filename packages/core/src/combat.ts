@@ -47,7 +47,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { shipCategoryKeyOf, uidDefId } from './labels'
 import { resolveFoeMounts } from './foeMounts'
 import { quickRepairFactor } from './repair'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, refillDroneLoadTo, stackWeight, weightedSum } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, refillDroneLoadTo, stackingOf, stackWeight, weightedSum } from './equipment'
 import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 
 /** 战斗基本步长（毫秒） */
@@ -3078,7 +3078,7 @@ export const SHIELD_PULSE_MS = 30_000
  */
 export const SHIELD_REGEN_FLOOR_PCT = 0.01
 
-/** 装配里「护盾充能装置」的**每跳合计比例**（满盾的几分之几；同型多件按 EVE 曲线收敛，无装置 = 0） */
+/** 装配里「护盾充能装置」的**每跳合计比例**（满盾的几分之几；**同族多件**按 EVE 曲线收敛，无装置 = 0） */
 export function shieldPulsePctOf(state: GameState, ctx: SimContext, shipId: string): number {
   const ship = state.fleet[shipId]
   if (!ship) return 0
@@ -3087,9 +3087,16 @@ export function shieldPulsePctOf(state: GameState, ctx: SimContext, shipId: stri
   for (const d of allFittedModules(ship.fitted, ctx)) {
     const pct = d.shieldPulsePct ?? 0
     if (pct <= 0) continue
-    // 无消耗件（本件不吃组件）⇒ 同型多件必须收敛，否则叠装失控（与 `repairFree` 生体件同口径）
-    const n = (seen.get(d.id) ?? 0) + 1
-    seen.set(d.id, n)
+    /**
+     * 无消耗件（本件不吃组件）⇒ 多件必须收敛，否则叠装失控（与 `repairFree` 生体件同口径）。
+     * ⚠ **收敛池 = 同族同池，不是同型号**（**2026-09-21 船长改判**：「护盾充能立场不是多件衰减吗」⇒
+     * 落成「**同族合并计数：MK2+MK3 也衰减**」）：键走 `stackingOf(d).kind`（= `'shield-charge'`）
+     * ⇒ **三档 MK1/2/3 混装也按同一条曲线折减**。改前按 `d.id` 计数 ⇒ 混装时每档各拿满权，
+     * 「档次混装」反而成了不吃惩罚的最优解。
+     */
+    const key = stackingOf(d).kind
+    const n = (seen.get(key) ?? 0) + 1
+    seen.set(key, n)
     total += pct * stackWeight(n)
   }
   return total
@@ -3135,9 +3142,17 @@ export function shieldFieldOf(
   for (const d of allFittedModules(ship.fitted, ctx)) {
     const pct = d.shieldFieldPct ?? 0
     if (pct <= 0) continue
-    // **同舰多件按 EVE 曲线收敛**（船长要求"有叠加惩罚"）——与护盾充能装置同一把尺
-    const n = (seen.get(d.id) ?? 0) + 1
-    seen.set(d.id, n)
+    /**
+     * **同族多件按 EVE 曲线收敛**（船长要求"有叠加惩罚"）——与护盾充能装置同一把尺。
+     * ⚠ **收敛池 = 同族同池，不是同型号**（**2026-09-21 船长改判**：「护盾充能立场不是多件衰减吗」⇒
+     * 「**同族合并计数：MK2+MK3 也衰减**」）：键走 `stackingOf(d).kind`（= `'shield-field'`）
+     * ⇒ **MK2 + MK3 混装同样按 10% + 10%×0.869 = 18.69% 算**（改前各算一件 ⇒ 混装出满额 20%，
+     * 比同型两件还高 —— 惩罚被"换一档"绕过去了）。
+     * ⚠ **多艘船各带一件仍各自独立、可叠加**（船长 2026-09-20 原裁定未变）：本函数只算**这一艘船**的装配。
+     */
+    const key = stackingOf(d).kind
+    const n = (seen.get(key) ?? 0) + 1
+    seen.set(key, n)
     total += pct * stackWeight(n)
     const dms = d.shieldFieldMs ?? 0
     if (dms > 0 && (ms === 0 || dms < ms)) ms = dms
