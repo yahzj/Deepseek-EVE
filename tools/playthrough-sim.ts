@@ -1293,8 +1293,23 @@ function doBounty(): void {
       bountyCooldownRemainingMs(state, a.id) <= 0,
   )
   if (canDo.length === 0) return
+  /**
+   * **胜率门槛：钱少时求稳，钱多时敢赌**（2026-09-21 第十六批）。
+   *
+   * 原写法写死 `bestScore = 0.5` ⇒ **只打"预估值 >50% 胜率"的卡**。
+   * 而剩下 13 张未首胜的硬卡威胁 58~96，预估胜率只有 30~45% ⇒ **永远进不了 `canDo` 的候选**
+   * ⇒ 首胜数长期卡在 **10/23**（本工具此前所有档都是这个数）。
+   *
+   * 为什么"敢赌"是对的：**悬赏首胜是声望的唯一来源**（`expedition.ts` 只在 `firstBlood` 时
+   * `+= standingGain`），而声望又锁着 T4（现货 20 / 蓝图 25）⇒ 不敢赌就永远到不了 T4。
+   * 代价只是"打输一场 + 可能的船损 + 冷却"，而**钱早就不是约束**（第 25 天 74 亿、
+   * 第 40 天 108 亿）⇒ 与第十批定下的 `SPEND_FOR_POWER_ISK` 同一思路：
+   * **把"高风险高回报"的动作门控在现金充裕之后**。
+   */
+  const bold = state.wallet.isk >= SPEND_FOR_POWER_ISK
+  const minWin = bold ? 0.2 : 0.5
   let best: AnomalyDef | null = null
-  let bestScore = 0.5
+  let bestScore = minWin
   for (const a of canDo) {
     const w = winOf(state, ctx, a)
     if (w > bestScore) {
@@ -2971,6 +2986,22 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
           doExplore() // 解锁下一批星系（无 frontier 时自然空转）
           if (!state.expedition.active && !state.scanning.active) doFarm() // 打不过新目标时先刷钱升装
         }
+      } else if (WANTS.bounties && !goalDone.bounties) {
+        /**
+         * ⚠⚠ **声望 ≥13 之后仍要继续打悬赏**（2026-09-21 第十六批修的一个真盲区）。
+         *
+         * 原写法：`standing() < 13` 才 `doBounty()`，否则落到"探索/终局/刷钱"那些分支。
+         * 这条闸本意是"声望够了就去推进终局"，但它**顺带把"把 23 张卡打完"这件事也关掉了**
+         * —— 实测所有长档的 `首胜` 都恒定停在 **10/23**、声望恒 15、之后 20 多天只在挖矿卖矿
+         * （档里 `现金 10.47B` 而首胜数一动不动）。
+         *
+         * 为什么必须继续：**悬赏首胜是声望的唯一来源**（`expedition.ts` 只在 `firstBlood` 时
+         * `+= standingGain`），而剩下的 13 张卡正是威胁 58~96 的那批 —— 不打它们，
+         * 声望永远到不了 T4 门槛（现货 20 / 蓝图 25），"完成所有悬赏"这条目标也永远达不成。
+         * 所以只要 `bounties` 目标还挂着，就**优先继续打悬赏**。
+         */
+        doBounty()
+        if (!state.expedition.active && !state.scanning.active) doFarm()
       } else if (exploredCount() < GALAXY_IDS.length) {
         doExplore()
       } else if (!state.expedition.active) {
