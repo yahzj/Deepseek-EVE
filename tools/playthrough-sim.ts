@@ -1497,7 +1497,18 @@ function ensureWhFleet(): void {
   const cands = [...ctx.marketGoods.values()]
     .filter((g) => {
       if (g.kind !== 'ship') return false
-      if (g.rarity !== 'rare') return false
+      /**
+       * ⚠⚠ **不再限制 `rarity === 'rare'`**（2026-09-21 第十八批修的一个真盲区）。
+       *
+       * 原写法只取稀有档，理由是"奇货只 1 艘/张、6 小时一刷，买 4 艘太靠运气"——**对 T3 成立**。
+       * 但 **T4 玄武级（`ship-xuanwu`，90M）是 `exotic` 奇货档** ⇒ 被这条直接排除
+       * → `wantTier` 升到 4 时 `eligible` 恒为空 → **声望到了 20 也永远买不到 T4**。
+       * 实测（35 天档末态）：声望已 **39**、现金 25.9 亿，而编队里**一艘 T4 都没有**。
+       *
+       * 现在的口径：**档位优先于稀有度** —— 只要 `tier >= wantTier` 且买得起就纳入候选；
+       * 奇货档只是"要等货"，而 `ensureWhFleet` 本来就会"买不到就等下一张供给单"
+       * （每拍重试、失败只按天记一条原因）⇒ 等待是免费的。
+       */
       if (g.playerBuyable === false) return false
       if ((g.standingReq ?? 0) > standing()) return false
       const s = ctx.ships.get(g.refId)
