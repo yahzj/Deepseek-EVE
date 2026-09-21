@@ -2735,6 +2735,12 @@ function normalizeState(raw: unknown): GameState {
   const cleanWormhole = (): GameState['wormhole'] => {
     const wRaw = asRaw(src.wormhole)
     const rRaw = asRaw(wRaw.run)
+    /**
+     * 本趟**有没有在途战斗**（清洗一次、下面两处共用：`attending` 的缺省判据 + `run.battle` 落档）。
+     * 坏值 ⇒ `undefined` ⇒ 视为没有（与"战斗字段坏值 = 不在战斗中"同一口径）。
+     */
+    const battleInFlight = cleanBattle(rRaw.battle)
+    const hasBattleInFlight = battleInFlight !== null
     const phaseRaw = rRaw.phase
     const phase: 'inside' | 'extracting' | null =
       phaseRaw === 'inside' || phaseRaw === 'extracting' ? phaseRaw : null
@@ -2778,8 +2784,27 @@ function normalizeState(raw: unknown): GameState {
                     ...cleanWormholePiles(pn.piles),
                   },
             nodesPerLayer: Math.max(1, Math.floor(num(rRaw.nodesPerLayer)) || 2),
-            // **人在洞里**（2026-09-13 · 议案 A）：活动位开关。旧档/坏值 ⇒ false（安全侧：不占主控）
-            attending: rRaw.attending === true,
+            /**
+             * **人在洞里**（2026-09-13 · 议案 A）：活动位开关。
+             *
+             * 默认值分两种（**2026-09-21 修船长报障「进入虫洞战斗后双方不开火、也不移动改变距离」**）：
+             * - **有在途战斗 ⇒ 缺省 `true`**：`battle` 非空就是"人在洞里"的证据，**不存在"战斗中且人已离开"
+             *   的合理状态**（离开通道 `wormholeLeave` 只在面板「✕ 关闭」上，那条入口战斗中一律被拦）。
+             * - 其余（没在途战斗）⇒ 旧档/坏值一律 `false`（安全侧：不占主控），**与改前逐字一致**。
+             *
+             * ⚠ **为什么必须补这一条**：本字段是 2026-09-13（提交 `d2d6f0cf`）才进存档格式的，
+             * **迁移表 v24~v29 没有任何一级补过它** ⇒ 字段诞生前写下、且当时正在打洞内战斗的档，
+             * 读进来 `attending` 变 `false`（`undefined === true`）。而 `advanceWormhole` 的第一道门就是
+             * `if (run.attending !== true) return`（`wormhole.ts`），它又是**唯一**能推进 `run.battle` 的地方
+             * ⇒ 战斗永久冻结：战斗时钟停在 0、双方一炮不发、距离一动不动，**且没有超时兜底、没有日志**。
+             * 更糟的是 UI 侧同时被锁死：战斗在途 ⇒ 虫洞面板 `return null`（`Wormhole.tsx`）⇒
+             * 「返回虫洞」的恢复入口根本不渲染 ⇒ 玩家点不回来。真档实测：读档后跑 10 秒，
+             * `tick=0 / game=10000`、射击 `0/0`。
+             *
+             * 修法取"**缺省按有在途战斗判**"而不是写死 `true`：显式 `false`（玩家真离开过）照旧尊重，
+             * 那一路由 `leftAtGameMs` + 返回时的战斗时钟前移负责，一行不动。
+             */
+            attending: rRaw.attending === true || hasBattleInFlight,
             // 网格探索（F3a）：老档/坏值 ⇒ 不写（该层走旧口径，零迁移）
             ...(cleanWormholeGrid(rRaw.grid) !== undefined ? { grid: cleanWormholeGrid(rRaw.grid) } : {}),
             // 临时离开时刻（回来时按它前移战斗时钟）：坏值/缺省 = 不写（= 没离开过）
@@ -2806,7 +2831,7 @@ function normalizeState(raw: unknown): GameState {
                 })()
               : {}),
             // 进行中的洞内战斗（F 批）：整场按 `cleanBattle` 清洗（坏值 = 视为不在战斗中）
-            ...(cleanBattle(rRaw.battle) ? { battle: cleanBattle(rRaw.battle) } : {}),
+            ...(battleInFlight !== null ? { battle: battleInFlight } : {}),
             // 货仓格（F4）：形状件逐个清洗；坏件丢弃、**重叠的丢弃**（越界保留 ⇒ 那是"超载"态）
             ...(cleanWormholeHold(rRaw.hold) !== undefined ? { hold: cleanWormholeHold(rRaw.hold) } : {}),
             /**
