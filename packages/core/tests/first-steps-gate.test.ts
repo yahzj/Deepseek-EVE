@@ -61,10 +61,11 @@ describe('新档「母港未知」与前置解锁（船长 2026-09-17）', () =>
 
   /**
    * 前置解锁表（阶段③ · 数据驱动）：界面只读 `FIRST_UNLOCKS` / `unlocked()`。
-   * 口径（船长）：工业 ← 第一次采集原矿 · 市场 ← 第一次生产 · 星图四项 ← 第一次扫描；
-   * **未解锁的页面与任务都隐藏**（隐藏是 UI 的事，这里钉的是判定本体）。
+   * 口径：**工业 ← 「第一次操作精炼炉」轮到**（**2026-09-20 船长令**：「解锁工业界面要和第一次精炼的任务
+   * 挂钩一起解锁」⇒ 走 `UNLOCK_AT_TASK`；旧句"工业 ← 第一次采集原矿完成"作废）· 市场 ← 第一次生产 ·
+   * 星图四项 ← 第一次扫描；**未解锁的页面与任务都隐藏**（隐藏是 UI 的事，这里钉的是判定本体）。
    */
-  it('解锁表：开局只放行未登记项；完成对应「第一次」后逐项开放', () => {
+  it('解锁表：开局只放行未登记项；完成对应「第一次」后逐项开放（工业跟精炼任务一起开）', () => {
     const state = newGame()
     // 表里没有的能力（舰船/装配/物品/技能/任务中心/通讯/手册/星图页本体）开局即可用
     expect(unlocked(state, 'ship')).toBe(true)
@@ -78,6 +79,7 @@ describe('新档「母港未知」与前置解锁（船长 2026-09-17）', () =>
       expect(unlocked(state, k), `${k} 应在开局锁上`).toBe(false)
       expect(unlockNeedTitle(k)).toBe('第一次扫描')
     }
+    // 工业页跟「第一次操作精炼炉」**一起**开 ⇒ 提示给的是它的**前一条**（精炼已前移到第 3 条 = 采矿之后）
     expect(unlockNeedTitle('industry')).toBe('第一次采集原矿')
     expect(unlockNeedTitle('market')).toBe('第一次生产')
     // 完成「第一次扫描」⇒ 星图四项一起开（工业/市场仍锁——各有各的前置）
@@ -85,10 +87,14 @@ describe('新档「母港未知」与前置解锁（船长 2026-09-17）', () =>
     for (const k of ['mapMine', 'mapBounty', 'mapSalvage', 'mapHaul']) expect(unlocked(state, k)).toBe(true)
     expect(unlocked(state, 'industry')).toBe(false)
     expect(unlocked(state, 'market')).toBe(false)
-    // 采集原矿 ⇒ 工业开；生产 ⇒ 市场开
+    // 采集原矿做完 ⇒ 「第一次操作精炼炉」轮到 ⇒ 工业页与之**同时**亮起（市场另按"第一次生产"）
     state.importantTasks['first-mine'] = { done: true }
     expect(unlocked(state, 'industry')).toBe(true)
     expect(unlocked(state, 'market')).toBe(false)
+    // 再往后的任务不影响工业页（它已经开了）
+    state.importantTasks['first-refine'] = { done: true }
+    state.importantTasks['first-salvage'] = { done: true }
+    expect(unlocked(state, 'industry')).toBe(true)
     state.importantTasks['first-produce'] = { done: true }
     expect(unlocked(state, 'market')).toBe(true)
   })

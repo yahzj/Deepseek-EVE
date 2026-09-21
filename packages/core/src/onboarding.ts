@@ -9,8 +9,8 @@
  *
  * 本模块现在只剩三件事：
  * - **序章演出**（`ONB_AWAKEN` = 0；渲染层 `PrologueScreen`：黑屏→醒来→自检→呼号）；
- * - 演出结束（或玩家跳过）⇒ `ONB_DONE`，并**发布贯穿任务「寻找人类」**；
- * - 「寻找人类」的阶段目标：全部星系探索完毕记一次里程碑（2026-09-10 船长定）。
+ * - 演出结束（或玩家跳过）⇒ `ONB_DONE`（**2026-09-20 起不再在这里发布「寻找人类」**，见下条）；
+ * - **贯穿任务「寻找人类」的发布闸门** ＋ 它的阶段目标（全部星系探索完毕记一次里程碑，2026-09-10 船长定）。
  *
  * ⚠ 老档迁移（`save.ts`）：`step` 只认 0 与 99——老档的 -1（未开始）／0.5（简报）／1..8（七步中）
  * 一律读成 99（不再有步骤机；其「第一次」任务由一次性判定补记）。
@@ -19,26 +19,50 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { addLog, DEFAULT_PILOT_NAME } from './state'
+import { firstTaskProgress } from './firstTasks'
 
 /** 序章演出中（渲染层 `PrologueScreen` 推进；演出期间不做任何任务判定） */
 export const ONB_AWAKEN = 0
 /** 序章已完成（老档与经典开局一律按此读档） */
 export const ONB_DONE = 99
 
-/** 贯穿任务「寻找人类」：序章结束时发布，永久无法完成（船长 2026-09-05：正常发布，不告诉做法） */
+/**
+ * 贯穿任务「寻找人类」：**「第一次」任务全部完成后发布**，永久无法完成
+ * （**2026-09-20 船长令**：「**寻找人类的任务只在完成所有第一次任务后才出现**」——原口径
+ * 「序章结束时发布」（2026-09-05 船长：「正常发布，不告诉做法」）**只作废"发布时机"这一半**；
+ * "正常发布 ＋ 不告诉做法 ＋ 完成方法未知"照旧）。
+ */
 export const TASK_FIND_HUMANS = 'find-humans'
 
-/** 发布「寻找人类」（幂等）：序章结束时调用 */
+/** 发布「寻找人类」（幂等）：只由 `publishFindHumansWhenReady` 调用 */
 export function publishFindHumans(state: GameState): void {
   if (state.importantTasks[TASK_FIND_HUMANS]) return
   state.importantTasks[TASK_FIND_HUMANS] = { done: false }
   addLog(state, 'info', '◆ 重要任务发布「寻找人类」：完成方法未知——先在这座城市活下去，再慢慢打听。', 'core.onboarding.001')
 }
 
-/** 序章收尾（幂等）：步骤落 99 ＋ 发布贯穿任务 */
+/**
+ * **「寻找人类」发布闸门**（引擎每拍调用，幂等）：三条件齐了才发布——
+ * ① 序章演出已结束（演出盖住全屏，此刻发布没意义，与 `comms.ts` 的"开场信"同款判据）；
+ * ② 13 条「第一次」任务**一条不剩**（`firstTaskProgress().done >= total`）；
+ * ③ 还没发布过。
+ *
+ * 为什么是"每拍现算"而不是"挂在第 13 条完成那一刻"：判据全在 `state` 上（`importantTasks[id].done`），
+ * 现算 ⇒ 老档、异常中断、将来新增条目都能自愈（与 `achievements` 的现算补发同一套路）。
+ * ⚠ 已发布的老档不会被收回：① 里"已存在即返回"，等于给老玩家留了原样。
+ */
+export function publishFindHumansWhenReady(state: GameState): boolean {
+  if (state.importantTasks[TASK_FIND_HUMANS]) return false
+  if (state.onboarding.step !== ONB_DONE) return false
+  const { done, total } = firstTaskProgress(state)
+  if (total === 0 || done < total) return false
+  publishFindHumans(state)
+  return true
+}
+
+/** 序章收尾（幂等）：步骤落 99（**发布「寻找人类」改由发布闸门负责**，见上） */
 function finishPrologue(state: GameState): void {
   if (state.onboarding.step !== ONB_DONE) state.onboarding.step = ONB_DONE
-  publishFindHumans(state)
 }
 
 /**

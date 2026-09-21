@@ -874,11 +874,13 @@ export {
 } from './save'
 
 export {
-  /* 序章·苏醒（2026-09-17 教程重做后只剩"演出 + 收尾"；线性七步已退场） */
+  /* 序章·苏醒（2026-09-17 教程重做后只剩"演出 + 收尾"；线性七步已退场）
+     ⚠ 2026-09-20 起「寻找人类」不再随序章结束发布 ⇒ 走 `publishFindHumansWhenReady` 闸门 */
   ONB_AWAKEN,
   ONB_DONE,
   TASK_FIND_HUMANS,
   publishFindHumans,
+  publishFindHumansWhenReady,
   beginAfterAwaken,
   skipPrologue,
   advanceFindHumans,
@@ -954,7 +956,11 @@ export {
   advanceFirstChains,
   claimChainReward,
   visibleFirstTasks,
-  /* 任务中心卡片序列（过滤 + 隐藏"已全部完成" + 置顶：可领奖 → 已完成 → 未完成） */
+  /* 「第一次」页头读数：已完成条数 / 总条数（2026-09-20 顺序解锁后新增） */
+  firstTaskProgress,
+  /* 里程碑页（2026-09-20 船长：把"完成「第一次」后的里程碑任务链"单开子页面） */
+  milestoneBoard,
+  /* 任务中心卡片序列（顺序解锁下恒为"当前这一条"；签名与字段保留给面板与用例） */
   firstTaskBoard,
   totalSkillLevels,
   dsiStanding,
@@ -972,7 +978,7 @@ export {
 export type { AchievementDef, AchievementSource, AchievementCategory } from './types'
 export type { AchievementState } from './state'
 export { HOME_SCAN_WINDOW_MS } from './explore'
-export type { FirstTaskDef, FirstStatKey } from './firstTasks'
+export type { FirstTaskDef, FirstStatKey, MilestoneChainRow } from './firstTasks'
 export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'
 
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'

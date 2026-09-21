@@ -1092,6 +1092,11 @@ export function App({ engine }: { engine: GameEngine }) {
                 onOpenWormhole={openWormhole}
                 onExploreWormhole={(stockId) => openWormhole(stockId)}
                 onAutoExploreWormhole={(stockId) => openWormholeAuto(stockId)}
+                /** 打捞页「打捞需要打捞器」那行的「去装配」按钮（船长 2026-09-20）：与舰船页同一落点 */
+                onGotoFit={(shipId) => {
+                  setFitShipId(shipId)
+                  changePage('fit')
+                }}
               />
             ) : null}
             {/* 任务中心（2026-09-14 从星图页搬来的一级页）：内层标签定位仍走 taskFocus */}

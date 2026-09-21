@@ -36,6 +36,7 @@ import {
   chainProgressOf,
   claimChainReward,
   firstStatOf,
+  firstTaskProgress,
   unlocked,
   visibleFirstTasks,
 } from '../packages/core/src/firstTasks'
@@ -78,16 +79,17 @@ const step = (n: string): void => console.log(`\n──── ${n} ────`
 step('① 新档（序章）：母港未知、页面按表锁定')
 const s = createInitialState({ nowWallMs: 0, seed: 20260917, prologue: true })
 ok('开局一处理都没点亮', s.exploredGalaxies.length === 0, `explored=${JSON.stringify(s.exploredGalaxies)}`)
-ok('工业页锁着（← 第一次采集原矿）', !unlocked(s, 'industry'))
+ok('工业页锁着（← 与「第一次操作精炼炉」一起开，2026-09-20 船长令）', !unlocked(s, 'industry'))
 ok('市场页锁着（← 第一次生产）', !unlocked(s, 'market'))
 ok('星图·矿带锁着（← 第一次扫描）', !unlocked(s, 'mapMine'))
 ok('舰船/技能/任务中心/通讯不设前置', unlocked(s, 'ship') && unlocked(s, 'skills') && unlocked(s, 'task') && unlocked(s, 'comms'))
 const vis0 = visibleFirstTasks(s).map((d) => d.title)
-ok('任务中心只显示无前置的那几条', vis0.includes('第一次扫描') && !vis0.includes('第一次采集原矿'), vis0.join(' / '))
+// 2026-09-20 顺序解锁（船长转玩家反馈「一次性太多了」）：任务中心**一次只出一条** ⇒ 新档只有「第一次扫描」
+ok('任务中心只显示当前那一条（顺序解锁）', vis0.length === 1 && vis0[0] === '第一次扫描', vis0.join(' / '))
 ok('开局零资金', s.wallet.isk === 0, `isk=${s.wallet.isk}`)
 ok('驾驶 = 鲣鱼（无矿枪、无炮台）', s.shipId === 'sh-falconet')
 
-step('② 序章演出结束 → 开场信 + 贯穿任务')
+step('② 序章演出结束 → 开场信（贯穿任务「寻找人类」此时**还不发布**）')
 ok('演出结束调用成功', beginAfterAwaken(s).ok)
 for (let i = 0; i < 3; i++) advanceGame(s, 1000, ctx)
 ok('序章 = 已完成', s.onboarding.step === 99)
@@ -99,7 +101,13 @@ ok(
   commsPopupQueue(s)[0] === 'msg-briefing',
   `实际 ${commsPopupQueue(s).slice(0, 3).join(' / ') || '（无）'}`,
 )
-ok('「寻找人类」已发布', s.importantTasks['find-humans'] !== undefined)
+// **2026-09-20 船长令**：「寻找人类的任务只在完成所有第一次任务后才出现」——序章结束不再是发布时机。
+const fp0 = firstTaskProgress(s)
+ok(
+  '「寻找人类」此时还没发布（13 条「第一次」一条都还没做完）',
+  s.importantTasks['find-humans'] === undefined,
+  `已完成 ${fp0.done}/${fp0.total} 条`,
+)
 
 step('③ 第一次扫描（星图）')
 ok('扫描母港被接受', startScan(s, HOME, ctx).ok)
@@ -107,8 +115,10 @@ ok('扫描完成、母港点亮', until(s, () => isExplored(s, HOME), 10 * 60_00
 ok('「第一次扫描」判定完成', s.importantTasks['first-scan']?.done === true)
 advanceGame(s, 1000, ctx)
 ok('情报信「档案补全 · 星图扫描」送达', s.commsDelivered?.['first-scan'] !== undefined)
+// **2026-09-20 船长令**：采集器 MK1 从「第一次采集原矿」前移到本条（扫描星系就给）
+ok('奖励：采集器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
 ok('星图四项一起解锁', unlocked(s, 'mapMine') && unlocked(s, 'mapBounty') && unlocked(s, 'mapSalvage') && unlocked(s, 'mapHaul'))
-ok('工业页仍锁（前置是采集原矿）', !unlocked(s, 'industry'))
+ok('工业页仍锁（它跟「第一次操作精炼炉」一起开）', !unlocked(s, 'industry'))
 mark('① → ③ 演出结束 + 扫描母港', s.gameMs)
 
 step('④ 第一次采集原矿（矿带）')
@@ -118,8 +128,15 @@ ok('切换驾驶为沙猫级采矿艇', swap.ok, swap.ok ? '' : swap.error)
 ok('派出采矿被接受', startMining(s, BELT, ctx).ok)
 ok('采到原矿', until(s, () => firstStatOf(s, 'mineUnits') > 0, 20 * 60_000, '采矿'), `mineUnits=${firstStatOf(s, 'mineUnits')}`)
 ok('「第一次采集原矿」判定完成', s.importantTasks['first-mine']?.done === true)
-ok('奖励：采集器 MK1 进装备库（船长 2026-09-18 的奖励表）', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
-ok('工业页解锁', unlocked(s, 'industry'))
+// **2026-09-20 船长令**：打捞器 MK1 从「第一次打捞残骸」前移到本条（挖矿任务就给）⇒ 走到打捞时已在手上
+ok('奖励：打捞器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-salvager-1'] ?? 0) === 1)
+// 工业页跟「第一次操作精炼炉」一起开（2026-09-20 船长令 ＋ 三选②：精炼前移到采矿之后 = 第 3 条）
+ok('工业页解锁（与「第一次操作精炼炉」一起开）', unlocked(s, 'industry'))
+ok(
+  '当前这条轮到「第一次操作精炼炉」',
+  visibleFirstTasks(s).map((d) => d.id).join() === 'first-refine',
+  visibleFirstTasks(s).map((d) => d.title).join(' / '),
+)
 // 采一批（精炼按批起炉：**每批 100 单位**，沙猫一趟约 70 ⇒ 新玩家要跑两趟；这就是真实节奏）
 const holdOf = (): number => {
   for (const k of Object.keys(s.fleet)) {
@@ -142,6 +159,8 @@ ok('仓库有原矿可炼（≥ 一批 100）', oreHave >= 100, `${oreId} ×${or
 mark('④ 采矿两趟 + 卸货（"每批 100、一趟约 70"的实际耗时）', s.gameMs)
 
 step('⑤ 第一次操作精炼炉（工业）')
+// 精炼是第 3 条（2026-09-20 船长三选②：前移到采矿之后）⇒ **本脚本的顺序 = 玩家顺序**：采矿做完那一拍，
+// 工业页与这张卡同时亮起（页面锁在界面层，core 命令不拦工具与用例）。
 const refine = startRefineRun(s, oreId, 'pilot', ctx)
 ok('起炉被接受', refine.ok, refine.ok ? '' : refine.error)
 ok('精炼出料', until(s, () => firstStatOf(s, 'refineBatches') > 0, 30 * 60_000, '精炼'), `batches=${firstStatOf(s, 'refineBatches')}`)
@@ -239,7 +258,17 @@ ok('练到 Lv1', until(s, () => (s.skills.trained['ai-expert'] ?? 0) >= 1, 60 * 
 advanceGame(s, 1000, ctx) // 奖励在引擎每拍（advanceFirstTasks → grantFirstReward）
 ok('「第一次学习技能」判定完成', s.importantTasks['first-skill']?.done === true)
 ok('奖励：基础 AI 核心 ×1（免去市场价 ~25k）', (s.aiCores.basic ?? 0) === 1, `aiCores.basic=${s.aiCores.basic ?? 0}`)
-ok('「第一次指派 AI 副船」此时才出现（前置已满）', visibleFirstTasks(s).some((d) => d.id === 'first-ai'))
+/**
+ * **顺序解锁口径**（2026-09-20 船长转玩家反馈）：任务中心**一次只出一条**，所以"轮到哪一条"看的是
+ * **数组序里第一条没完成的**——本流程没走打捞，此时当前那条是「第一次打捞残骸」，
+ * 而「第一次指派 AI 副船」应当**还没轮到**（但它的判定与可见性无关：下面照样能指派并判完成）。
+ */
+const visNow = visibleFirstTasks(s).map((d) => d.id)
+ok(
+  '「第一次指派 AI 副船」此时还没轮到（顺序解锁 · 当前是「第一次打捞残骸」）',
+  visNow.length === 1 && visNow[0] === 'first-salvage',
+  visNow.join(' / '),
+)
 const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
 ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
 advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
@@ -268,6 +297,14 @@ ok('领奖后不再重复发（幂等）', claimChainReward(s, 'explorer') === 0
 step('⑪ 收尾读数')
 console.log(`   已完成「第一次」：${FIRST_TASKS.filter((d) => s.importantTasks[d.id]?.done === true).map((d) => d.title).join('、')}`)
 console.log(`   未完成：${FIRST_TASKS.filter((d) => s.importantTasks[d.id]?.done !== true).map((d) => d.title).join('、') || '（无）'}`)
+const fpEnd = firstTaskProgress(s)
+ok(
+  '「寻找人类」仍未发布（本流程只走完部分「第一次」）',
+  s.importantTasks['find-humans'] === undefined,
+  `已完成 ${fpEnd.done}/${fpEnd.total} 条`,
+)
+// 工业页解锁的快照（第 3 条「第一次操作精炼炉」已做 ⇒ 早已开着；这里只作收尾读数，防中途被锁回去）
+ok('工业页仍是解锁态（采矿后随「第一次操作精炼炉」一起开）', unlocked(s, 'industry'))
 console.log(`   钱包 ${s.wallet.isk.toLocaleString('zh-CN')} · 游戏内时间 ${(s.gameMs / 3_600_000).toFixed(1)} 小时 · 日志 ${s.logs.length} 条`)
 console.log(`\n${failures === 0 ? '✅ 流程全部通过' : `❌ 有 ${failures} 项未通过`}`)
 process.exit(failures === 0 ? 0 : 1)

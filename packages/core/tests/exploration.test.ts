@@ -253,7 +253,9 @@ describe('V13 扫描期事件：加速 + 探索池', () => {
     state.events.nextAtGameMs = state.gameMs + 30_000
     expect(startScan(state, 'galaxy-far', ctx).ok).toBe(true)
     advanceGame(state, 40_000, ctx) // boost ×2：30s 倒计时被 80s 进度覆盖 → 必触发
-    const last = state.logs[state.logs.length - 1]!
+    // ⚠ 按"最后一条 ✦ 事件"读，而不是"日志最后一条"：开局那一拍还会判过「第一次扫描」
+    //   （母港本就已点亮）⇒ 2026-09-20 起它带奖励，会往日志尾部补一条奖励行（`core.firstRewards.001`）
+    const last = state.logs.filter((l) => l.text.startsWith('✦')).at(-1)!
     expect(last.text.startsWith('✦')).toBe(true)
     expect(EXPLORE_EVENTS.some((e) => last.text.includes(e.text))).toBe(true)
   })
@@ -263,7 +265,7 @@ describe('V13 扫描期事件：加速 + 探索池', () => {
     const ctx = makeTestCtx()
     state.events.nextAtGameMs = state.gameMs + 1_000
     advanceGame(state, 2_000, ctx)
-    const last = state.logs[state.logs.length - 1]!
+    const last = state.logs.filter((l) => l.text.startsWith('✦')).at(-1)! // 同上：只看事件行
     expect(last.text.startsWith('✦')).toBe(true)
     // 常规池文本不应来自探索池（探索池有独特词条）
     expect(EXPLORE_EVENTS.some((e) => last.text.includes(e.text))).toBe(false)
