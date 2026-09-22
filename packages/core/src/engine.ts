@@ -133,6 +133,12 @@ export function advanceGame(
      *  **只有前台心跳传**（在线心跳那一个调用点）；离线结算 / 后台 / 工具 / 用例一律不传 ⇒ 1×。
      *  实际生效值由 `combat.advanceBattleFor` 夹到"洞内 + 科技已解锁档位"内。 */
     battleSpeedX?: number
+    /** **离线结算的静默模式**（船长 2026-09-21 裁定「乙案」）：
+     *  只由 `simulateOffline` 传 `true` ⇒ 随机事件**只推进到点节奏、不产生任何副作用**
+     *  （不写日志、不发钱、不建买卖单、不动行情池）。
+     *  起因：离线大推进会把整段离线里到点的事件一次补发（上限 200）⇒ 上线瞬间日志刷屏、
+     *  一批订单同生同灭、行情池被线性叠加。详见 `events.advanceEvents` 头注。 */
+    offline?: boolean
   },
 ): void {
   const d = Math.floor(deltaMs)
@@ -179,7 +185,7 @@ export function advanceGame(
   // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
   advanceEncounterWatch(state, ctx, d, opts?.freezeBattle)
   // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）
-  advanceEvents(state, d, ctx)
+  advanceEvents(state, d, ctx, opts?.offline === true)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
   // 任务中心·时效任务（v24）：资源/快递 = 与市场「补给刷新」周期（orderLifeMs.common，20 分钟）

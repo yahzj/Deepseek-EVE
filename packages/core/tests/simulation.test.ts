@@ -7,6 +7,7 @@ import { createInitialState } from '../src/state'
 import { enqueueSkill } from '../src/engine'
 import { countItem } from '../src/inventory'
 import { setMiningAutoCycle, startMining } from '../src/mining'
+import { ensureMarket } from '../src/market'
 import {
   DEFAULT_OFFLINE_CAP_MS,
   formatDurationMs,
@@ -142,6 +143,44 @@ describe('离线结算：采矿产出与摘要', () => {
     const state = createInitialState({ nowWallMs: 5_000, seed: 1 })
     simulateOffline(state, 5_000, 3_000, makeTestCtx())
     expect(state.gameMs).toBe(0)
+  })
+
+  /**
+   * **离线静默模式**（船长 2026-09-21 裁定「乙案」，原话照抄：
+   * 「**乙，甚至行情相关文本都不要给。就正常的离线总结。**」）。
+   *
+   * 为什么必须有用例守：离线是**一次性大推进**，而 `advanceEvents` 会把整段离线里到点的
+   * 随机事件**全部补发**（`guard < 200`）⇒ 上线瞬间 ① 事件日志被逐条刷屏、
+   * ② 订单事件的 `expiresAtGameMs` 锚在"触发那一刻"（离线时已跳到结算终点）⇒ 一批订单同生同灭、
+   * ③ `pools[key].shock/q` 被线性叠加。
+   * 本用例钉四件事：**事件确实发生了**（节奏未停）· **日志里没有 event 条** ·
+   * **没有凭空多出订单** · **行情池没被改**。
+   */
+  it('离线期间随机事件静默：只留汇总，不刷日志、不建单、不动行情池', () => {
+    const state = createInitialState({ nowWallMs: 1_000, seed: 7 })
+    const ctx = makeTestCtx({ quietEvents: false }) // 显式**开启**事件流（默认测试上下文是关掉的）
+    ensureMarket(state, ctx)
+    const logCountBefore = state.logs.length
+
+    // 离线 8 小时 ⇒ 事件节奏（10~30 分钟级）必然到点多次
+    simulateOffline(state, 1_000, 1_000 + 8 * 3_600_000, ctx)
+
+    const summary = state.logs.find((l) => l.text.includes('离线结算完成'))
+    expect(summary).toBeDefined()
+    const n = Number(/期间发生 (\d+) 条事件/.exec(summary!.text)?.[1] ?? '0')
+    expect(n).toBeGreaterThan(0) // 事件**照旧发生**（只是静默）
+
+    /**
+     * ⚠ **不要断言"订单簿不变"**（第一版就这么写，实测红了）：市场有自己的
+     * `advanceMarket` 窗口推进（补单/过期/池回归），离线 8 小时必然改变订单簿 ——
+     * 那是**市场系统**的正常行为，不是随机事件造成的。
+     * 所以这里只钉"**没有事件文本**"这一条（事件类日志一定以 `✦` 开头、kind 为 `event`，
+     * 见 `events.logEvent`），它同时覆盖了"行情文本一条都不给"这条船长口径。
+     */
+    const newEventLogs = state.logs
+      .slice(logCountBefore)
+      .filter((l) => l.kind === 'event' || l.text.startsWith('✦'))
+    expect(newEventLogs).toHaveLength(0)
   })
 })
 
