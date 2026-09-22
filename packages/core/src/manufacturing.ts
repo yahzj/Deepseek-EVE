@@ -124,6 +124,36 @@ export function blueprintDefOf(
   return ctx.blueprints.get(blueprintId) ?? ctx.shipBlueprints.get(blueprintId)
 }
 
+/**
+ * **产物 → 蓝图的反查索引**（**2026-09-22 船长令**：「**组装机和造船厂需要零件时，提示不是去组装机，
+ * 而是去市场**」⇒「**希望提示玩家去组装机生产零件，不要提示去市场**」＋「**高级零件依旧去相应的组装机**」）。
+ *
+ * 干什么：给定一个**物品 id**，回答"它能不能在这台组装机/造船厂里造出来、用哪张图造"——
+ * 界面据此把缺料提示从「🛒 去市场」改成「🏭 去组装机」并**直接跳到那张零件卡**（零件不是炼出来的，
+ * 是造出来的；指去市场等于把玩家支错地方）。
+ *
+ * 覆盖：**零件 14 种（基础 7 + 高级 7）** 以及任何"产物是物品"的蓝图（如弹药蓝图）。
+ * **不影响**矿物/原材料（它们没有产出蓝图 ⇒ 走原来的「⚒ 去精炼」/「🛒 去市场」两支）。
+ *
+ * ⚠ **索引按 `ctx` 缓存**（`WeakMap`，与 §十四 性能纪律一致）：工业页一次要渲染上百张卡 × 每卡数行材料，
+ * 逐行扫全表会变成 O(卡 × 行 × 蓝图) —— 缓存后每个 ctx 只建一次表，之后是 O(1) 查表。
+ */
+const productIndexCache = new WeakMap<SimContext, ReadonlyMap<string, BlueprintDef>>()
+
+export function blueprintProducingItem(ctx: SimContext, itemId: string): BlueprintDef | null {
+  let index = productIndexCache.get(ctx)
+  if (index === undefined) {
+    const map = new Map<string, BlueprintDef>()
+    for (const bp of ctx.blueprints.values()) {
+      // 一张图只产一种物品；同产物多图时**先登记的那张为准**（数据表顺序 = 稳定顺序，够用且可复现）
+      if (bp.itemId !== undefined && bp.itemId.length > 0 && !map.has(bp.itemId)) map.set(bp.itemId, bp)
+    }
+    index = map
+    productIndexCache.set(ctx, index)
+  }
+  return index.get(itemId) ?? null
+}
+
 /** 该蓝图是否一次性图纸（2026-09-12 船长定；缺省 false = 普通蓝图） */
 export function isSingleUseBlueprint(ctx: SimContext, blueprintId: string): boolean {
   return blueprintDefOf(ctx, blueprintId)?.singleUse === true

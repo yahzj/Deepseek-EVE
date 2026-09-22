@@ -24,6 +24,8 @@ import {
   canStartBlueprint,
   // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」）——口径单点在 core 纯函数
   sortManuRows,
+  /** 2026-09-22 船长令：缺料是"零件"时提示去组装机（而不是市场）⇒ 产物→蓝图反查（core 单点，含缓存） */
+  blueprintProducingItem,
   // 2026-09-14 舰船仓库批：船型"总持有"读口径（仓库＋在役舰队）
   shipOwnedCount,
   // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
@@ -830,21 +832,33 @@ export const BlueprintCard = memo(function BlueprintCard({
               <span className="app-dim">{tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}）</span>
               {onNeedMineral ? (
                 (() => {
+                  /* 2026-09-22 船长令：「组装机和造船厂需要零件时，提示不是去组装机，而是去市场」⇒
+                     「希望提示玩家去组装机生产零件，不要提示去市场」＋「高级零件依旧去相应的组装机」。
+                     三支（优先级从上到下）：有精炼源 ⇒ 去精炼炉 · **能在这台机器上造出来（如零件）⇒ 去组装机** ·
+                     既炼不出也造不出 ⇒ 去市场。文案按 §十三.5 不写原因解释（旧文案那句「无法经精炼炉产出」
+                     属解释，已随本次改写删掉）。 */
                   const srcs = refineSourcesOf(engine, need.itemId)
                   const srcName = (id: string): string => engine.ctx.items.get(id)?.name ?? id
+                  const madeBy = blueprintProducingItem(engine.ctx, need.itemId)
+                  const title =
+                    srcs.length > 0
+                      ? tr('ui.Industry.109', { matName: matName, p2: srcs.map(srcName).join(tr('ui.MatterTechTab.017')) })
+                      : madeBy
+                        ? tr('ui.Industry.155', { matName: matName, p2: madeBy.name })
+                        : tr('ui.Industry.110', { matName: matName })
                   return (
                     <span
                       className="app-bp-mat-act"
                       role="button"
                       tabIndex={0}
-                      title={
-                        srcs.length > 0
-                          ? tr("ui.Industry.109", { matName: matName, p2: srcs.map(srcName).join(tr("ui.MatterTechTab.017")) })
-                          : tr("ui.Industry.110", { matName: matName })
-                      }
+                      title={title}
                       onClick={() => onNeedMineral?.(need.itemId)}
                     >
-                      {srcs.length > 0 ? tr("ui.Industry.047") : tr("ui.Industry.048")}
+                      {srcs.length > 0
+                        ? tr('ui.Industry.047')
+                        : madeBy
+                          ? tr('ui.Industry.154')
+                          : tr('ui.Industry.048')}
                     </span>
                   )
                 })()

@@ -32,6 +32,8 @@ import {
   // 2026-09-13：未上线资源不进"可精炼资源"网格 / 材料跳转（施工期闸门）
   visibleItemDefs,
   ITEM_KIND_LABELS,
+  /** 2026-09-22 船长令：缺料"零件"要指去组装机 ⇒ 用产物→蓝图反查（核心单点，含缓存） */
+  blueprintProducingItem,
 } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -532,7 +534,11 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
     return () => window.clearTimeout(t)
   }, [focusOreId, craftFocus])
 
-  /** 组装机需求材料点击：有精炼源矿石 → 精炼 tab 并定位该矿石卡；无精炼产出 → 跳市场
+  /** 组装机/造船厂需求材料点击（**2026-09-22 船长令**：「**希望提示玩家去组装机生产零件，不要提示去市场**」
+   *  ＋「**高级零件依旧去相应的组装机**」）——三支，优先级从上到下：
+   *  ① **有精炼源矿石** ⇒ 精炼 tab 并定位该矿石卡；
+   *  ② **能在这台机器上造出来**（零件 14 种 / 任何"产物是物品"的蓝图）⇒ **切到组装机并定位那张零件卡**；
+   *  ③ 既炼不出也造不出 ⇒ 跳市场（原行为）。
    *  ⚠ 源矿石同样只看"玩家可见目录"：未上线矿石（如虚空母矿）不能作为跳转目标出现。
    *  ⚠ 2026-09-14：加了筛选标签之后，**必须同时把一级/二级筛选让开**——否则跳到一张被筛掉的卡上，
    *  高亮根本看不见（`setFurnaceTab('ore')` + `setSub(SUB_ALL)`）。 */
@@ -550,6 +556,13 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
       setFurnaceTab('ore')
       setSub(SUB_ALL)
       setFocusOreId(src)
+      return
+    }
+    /** ② 造得出来（零件等）⇒ 去组装机那张卡（面板常驻 ⇒ 切显示 ＋ 定位高亮；零件图都在 `ctx.blueprints`） */
+    const madeBy = blueprintProducingItem(engine.ctx, itemId)
+    if (madeBy) {
+      setSec('craft')
+      setCraftFocus(madeBy.id)
       return
     }
     for (const g of engine.ctx.marketGoods.values()) {
