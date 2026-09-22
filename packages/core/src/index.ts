@@ -439,6 +439,8 @@ export {
   blueprintDefOf,
   canStartBlueprint,
   oneTimeBookInUse,
+  // 产物 → 蓝图反查（2026-09-22 船长令：缺料提示指去组装机，而不是市场）
+  blueprintProducingItem,
   // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」⇒ 纯函数单点）
   MANU_KIND_ORDER,
   sortManuRows,

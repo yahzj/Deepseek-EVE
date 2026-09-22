@@ -2457,7 +2457,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.107": { zh: "{lock}——这只影响「在市场买这本书」，不影响组装机开工", en: "{lock} — this only affects buying the book on the market, not starting jobs at the assembler" },
   "ui.Industry.108": { zh: "自己已有的成品数量：{ownedWhere}；已挂单托管的量不计在内（与市场页「持有」同源）", en: "How many finished units you already own: {ownedWhere}; anything escrowed in orders is not counted (the same source as Held on the Market page)" },
   "ui.Industry.109": { zh: "「{matName}」由精炼炉炼出（{p2} 等）——点击跳到精炼炉该资源卡", en: "“{matName}” comes out of the refinery (from {p2} and others) — click to jump to that resource's card in the refinery" },
-  "ui.Industry.110": { zh: "「{matName}」无法经精炼炉产出——点击到市场购买", en: "“{matName}” cannot be produced in a refinery — click to buy it on the market" },
+  /* ⟪文案调整 2026-09-22⟫ 原句「「{matName}」无法经精炼炉产出——点击到市场购买」含原因解释（§十三.5）；
+     改后只留指针。本条现在只在"既炼不出、也造不出"时才出现（零件与其它可造物品已改走 154/155）。 */
+  "ui.Industry.110": { zh: "「{matName}」要到市场购买——点击跳转", en: "“{matName}” is bought on the market — click to jump there" },
   "ui.Industry.111": { zh: "净收益估算：每件产物（市场现货基准价）− 每件材料（站内收价，材料学折扣后），按当前技能单件耗时折算每小时；不随市场收购波动、未计成交税。{p1}", en: "Net income estimate: each unit of product (market stock reference price) − each unit of material (station buy price, after the Materials discount), turned into an hourly figure using your current per-unit build time; it does not follow market buy-price swings and excludes trade tax.{p1}" },
   "ui.Industry.112": { zh: "循环制造：本卡全部制造线完成一件后自动续做同一蓝图（含主控亲自那条；劳动者/核心保持占用）；{p1}本卡在跑的线完成当前件即止", en: "Repeat manufacturing: every line on this card starts the same blueprint again as soon as it finishes a unit (the one you run by hand included; the worker or core stays occupied); {p1}lines already running on this card finish their current unit and stop" },
   "ui.Industry.113": { zh: "（当前 {p1} 条）", en: "({p1} running now)" },
@@ -2499,6 +2501,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.151": { zh: "制造线 {p1} 条 · 装备 {p2} · 零件 {p3} · 消耗品 {p4} · 已学会 {p5}", en: "{p1} production lines · equipment {p2} · parts {p3} · consumables {p4} · learned {p5}" },
   "ui.Industry.152": { zh: "{prodName} ×{units} 件", en: "{prodName} ×{units} pcs" },
   "ui.Industry.153": { zh: " ×{units} 件", en: " ×{units} pcs" },
+  /* ⟪文案调整 2026-09-22⟫ 船长报障：「组装机和造船厂需要零件时，提示不是去组装机，而是去市场」⇒
+     「希望提示玩家去组装机生产零件，不要提示去市场」＋「高级零件依旧去相应的组装机」。
+     缺料提示现在三分支：有精炼源 ⇒ 「去精炼」（047）· **能在这台机器上造出来（零件等）⇒ 「去组装机」（154）** ·
+     其余 ⇒ 「去市场」（048）。110 的原句「无法经精炼炉产出」属原因解释（§十三.5 不许）⇒ 一并改写。 */
+  "ui.Industry.154": { zh: "🏭 去组装机", en: "🏭 To the assembly machine" },
+  "ui.Industry.155": { zh: "「{matName}」由组装机造出（图纸：{p2}）——点击跳到那张零件卡", en: "“{matName}” is made on the assembly machine (blueprint: {p2}) — click to jump to that card" },
   "ui.IndustryPage.001": { zh: "全部", en: "All" },
   "ui.IndustryPage.002": { zh: "可精炼资源", en: "Refinable resources" },
   "ui.IndustryPage.003": { zh: "残骸回收", en: "Wreck salvage" },
