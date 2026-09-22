@@ -37,7 +37,7 @@ import { SkillDescText } from './SkillsPage'
 import { plainSkillDesc } from '../ui/skillText'
 import { GAP_Y, HEX_H, HEX_W, PAD, TAG_W, hexPath, layoutBook, nameLines } from '../ui/skillTreeLayout'
 import { Glyph, toneOf } from '../ui/Glyphs'
-import { SKILL_TREE_POSITIONS } from '@whale/data'
+import { SKILL_BRANCHES, SKILL_TREE_POSITIONS } from '@whale/data'
 import { skillBranchText, skillGroupText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr } from '../i18n/locale'
@@ -96,7 +96,11 @@ export function SkillsTreePage({ engine }: PageProps) {
     return { lv, isTraining, queued, maxed, locked, cls }
   }
 
-  /** 本大类下的技能书（按数据顺序 = `SKILL_BRANCHES` 的顺序）与各书成员 */
+  /**
+   * 本大类下的技能书与各书成员。**顺序 = 技能条数多的靠前**（**2026-09-22 船长令**：
+   * 「**然后调整下子类的顺序，技能数量多的窗口优先靠前。**」）；条数相同则按 `SKILL_BRANCHES`
+   * 的登记顺序兜底（稳定、可复现）。这个顺序同时决定「技能书」那一排与「全部」档里各本小图的先后。
+   */
   const booksOf = (group: string): Array<{ branch: string; defs: SkillDef[] }> => {
     const out: Array<{ branch: string; defs: SkillDef[] }> = []
     for (const s of skills) {
@@ -106,7 +110,11 @@ export function SkillsTreePage({ engine }: PageProps) {
       if (hit) hit.defs.push(s)
       else out.push({ branch: br, defs: [s] })
     }
-    return out
+    const declared = (id: string): number => {
+      const i = SKILL_BRANCHES.findIndex((b) => b.id === id)
+      return i < 0 ? Number.MAX_SAFE_INTEGER : i
+    }
+    return out.sort((a, b) => b.defs.length - a.defs.length || declared(a.branch) - declared(b.branch))
   }
 
   const books = useMemo(() => booksOf(groupTab), [skills, groupTab])
