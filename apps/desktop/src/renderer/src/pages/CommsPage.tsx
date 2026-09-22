@@ -20,7 +20,6 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { commsGameClock } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { CommsDeviceFrame, CommsEave, CommsScreen } from '../panels/CommsReader'
@@ -28,6 +27,7 @@ import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
+import { commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -123,10 +123,11 @@ export function CommsPage({
                           <Glyph name={e.glyph} size={18} color={e.tone || undefined} />
                         </span>
                       ) : null}
-                      <span className="app-comms-from">{e.from}</span>
-                      <span className="app-comms-time">{commsGameClock(e.deliveredAtGameMs)}</span>
+                      {/* ⚠ 发件人/时间/主题都是数据侧中文 ⇒ 过 `ui/commsText.ts` 单点映射（2026-09-22 通讯本地化批） */}
+                      <span className="app-comms-from">{commsSenderText(e.from)}</span>
+                      <span className="app-comms-time">{commsClockText(e.deliveredAtGameMs)}</span>
                     </span>
-                    <span className="app-comms-subject">{e.subject}</span>
+                    <span className="app-comms-subject">{commsSubjectText(e.id, e.subject)}</span>
                   </button>
                 ))}
               </div>

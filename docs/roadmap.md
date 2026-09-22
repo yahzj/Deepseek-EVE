@@ -252,6 +252,13 @@
 
 > 越窗即封存（`npm run docs:seal`）；窗口大小 = 20 条，需要临时调大用 `--window=N`。
 
+- 2026-09-22：**通讯本地化 第一批：发件人 / 主题行 / 送达时间（三号 · verify-activity-win → main · 船长令「你继续本地化」）**——
+**①读数**（`npm run l10n:scan` · 英文语境真档）：通讯页 **49 → 6 处**（31 封的主题行、13 个势力/部门名、每行的「第 N 天 HH:MM」全部转英文）。
+**②病根**：通讯文案在**数据侧**——`CommsMessageDef.subject`（`firstTaskMessages.ts` 13 封 + `messages.ts` 17 封）与 `commsFactions.ts` 的势力/部门 `name` 都是中文，core 还把发件人拼成「势力名 · 部门名」（`comms.ts` 的 `resolveCommsSender`）再交给界面。
+**③做法（data/core 一个字节没动）**：新增**渲染层单点** `ui/commsText.ts`——`commsSenderText()`（按**部门中文名**映射，13 条）、`commsSubjectText()`（按**消息稳定 id** 映射，30 条）、`commsClockText()`（用 core 导出的 `COMMS_DAY_MS` 自己算"第几天 + 时:分"，句子走 `ui.comms.044`）；查不到一律原样回落（新剧本漏登记看得见）。词条 **44 条**落 `ui.comms.001~044`，专名以游戏既有英文为准（Cinder Sector / Redring Corridor / Auro Waste Ring / Deadarmy / Low-sec，均取自 `packages/data/src/l10n.ts` 既译）。接线两处：`panels/CommsReader.tsx`（右栏 + 送达弹窗同源）与 `pages/CommsPage.tsx`（左栏列表）。
+**④剩下 6 处（下一批）**：三行**正文段落**（`body`，全库约 90 行 —— 与部门简介 `brief` 一起做）＋ 三处同类小块：立场片「系统」、内容类型片「提示/剧情/委托」（数据侧 `CommsKind`）、跳转文案「回任务中心，点「完成」继续下一步」。
+**⑤闸门**：typecheck 四包 0 错 · `l10n:check` 未译读数仍 **0** · core 184 文件 / 2093 例全绿 · `content:check` ✅ · `ui:rot-check` ✅ · `build` ✅ · `docs:index` ✅。
+
 - 2026-09-22：**手册本地化（三号 · verify-activity-win → main · 船长令「先进行手册的本地化」）**——
 **①读数**（`npm run l10n:scan` 的手册专项 · 英文语境真档）：**314 → 6 处**（物品图鉴 56→6 · 装备图鉴 140→**0** · 舰船图鉴 43→**0** · 蓝图图鉴 35→**0** · 技能速查 40→**0**）；**玩法说明（指南正文）本来就是 0**。
 **②病根全是「接线」，不是数据翻译**（故不用成批造译名）：a) `panels/Handbook.tsx` 的 `kindName` / `slotName` / `roleName` 原先**直读 core 的中文名表**（`ITEM_KIND_LABELS` / `SLOT_LABELS` / `SHIP_ROLE_LABELS`）⇒ 卡片副标题、槽位/角色 chip、详情行、筛选档一起漏；b) 分组顺序表 `orderOf()` 把单点表的 **`id` 丢掉了**（`{ key, label }`）⇒ 渲染处只能回落中文 label；c) 蓝图按舰级的档是**拼接标签**（``label: `${s.label}蓝图` ``，无 id——静态扫描看不见）；d) `ui/shipInfo.tsx` 的推进器周期后缀**原样吃 core 的中文整句**（`thrusterCycleText` / `thrusterCycleFullText`）。

@@ -16,10 +16,11 @@
  * ⚠ 机身 SVG（`CommsDeviceFrame`）**只给通讯页**用：弹窗没有机身，船长要的那半就是"屏幕"。
  */
 import type { ReactNode } from 'react'
-import { COMMS_REPLIES_ENABLED, commsGameClock } from '@whale/core'
+import { COMMS_REPLIES_ENABLED } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { tr } from '../i18n/locale'
+import { commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
 
 /**
  * 通讯器机身：**大圆角机身外框** + 左侧两颗实体键（SVG 线稿，恒定细描边）。
@@ -56,11 +57,13 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
           </span>
         ) : null}
         <div className="app-comms-title-col">
-          <span className="app-comms-title">{entry.subject}</span>
+          {/* ⚠ 主题/发件人/时间都是**数据侧中文**（`CommsMessageDef.subject` 等）⇒ 一律过 `ui/commsText.ts`
+              的单点映射取当前语言（2026-09-22 通讯本地化批）；查不到原样回落，不会变空 */}
+          <span className="app-comms-title">{commsSubjectText(entry.id, entry.subject)}</span>
           {/* 细分隔条：发件人 + 立场小片 + 送达时间（压在标题正下方） */}
           <div className="app-comms-head">
             <span className="app-comms-head-from" style={entry.tone ? { color: entry.tone } : undefined}>
-              {entry.from}
+              {commsSenderText(entry.from)}
             </span>
             {entry.alignment ? (
               <span
@@ -71,7 +74,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
                 {entry.alignment}
               </span>
             ) : null}
-            <span className="app-comms-head-time">{commsGameClock(entry.deliveredAtGameMs)} {tr("ui.CommsReader.002")}</span>
+            <span className="app-comms-head-time">{commsClockText(entry.deliveredAtGameMs)} {tr("ui.CommsReader.002")}</span>
           </div>
         </div>
         {entry.kind ? (
