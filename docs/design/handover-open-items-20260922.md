@@ -83,7 +83,33 @@
 - `npm run l10n:check` ✅ · `npm run content:check` ✅ · `npm run flow:newgame` ✅；
 - 无界面/样式改动 ⇒ 未跑 `ui:rot-check`；无存档结构改动 ⇒ 未跑 `save:migrate`、未升存档版本。
 
+## 六、情报信风格重写 ＋ 英文本地化交给三号（2026-09-22 同日追加）
+
+**① 情报信重写**（船长追问：「**情报信的文案你没根据我的第一次任务的文本风格重新写吗？**」）
+⇒ 13 封通讯的正文 **39 行按船长的任务文本风格整篇重写**（原先只对齐了顺序与「随信附」几行）。
+- 落点：`packages/data/src/firstTaskMessages.ts`（口径写在该文件头注释里）；
+- 风格六条：共事口吻（我们 / 你）· 少破折号 · 情报后带一句建议 · 页面与技能名加「」· 物品用内容表正式名
+  · 三行分工 = 情报 / 建议 / 随信附（写清拿去干什么）；
+- 顺带纠三处：采集器 → **强化采集器 MK1**（正式名）·「三钛 / 类铁」→ **钛钢合金 / 银纹超金属**
+  ·「新船入机库待命」→ **新船先入舰船仓库，在「舰船」页转入舰队**；主题「市场挂单」→「**市场交易**」
+  （与该条判据放宽为"任何一笔市场交易"对齐；**任务标题**要不要跟着改仍待船长定）；
+- 读数：`content:check` ✅（30 条消息契约全过）· `l10n:check` ✅ · `typecheck` 0 错 · core **182 / 2079 全绿**。
+
+**② 英文本地化 ⇒ 交三号**（船长原话：「**英文本地化依旧交给三号**」）
+
+本批新查明的一处缺口（归三号，一号不动）：
+- **通讯消息整类没有英文**：`ctx.messages`（**30 条**，含 13 封「第一次」情报信 ＋ 开场简报 ＋ NPC 来信）
+  的 **主题 / 正文 / 前往提示** 只有中文 ⇒ 英文界面下通讯页整封显示中文；
+- 判据：`packages/data/src/l10n.ts` 的 `localizeCtx` 覆盖了 `ships / modules / items / skills / blueprints /
+  shipBlueprints / galaxies / belts / stations / commsFactions / matterTech / travelEvents`，**没有 `messages`**；
+- 做法建议（供三号选型）：**甲（推荐）** 新增一张 `EN_COMMS_MESSAGES`（`Record<messageId, { subject; body: string[]; hintText? }>`）
+  ＋ 一个 `overlayMessages()`（`overlayList` 同款思路，但字段含数组），在 `localizeCtx` 里加一行 ⇒ 改动集中在数据层；
+  **乙** 走 id 映射表（`msg.<id>.subject` / `msg.<id>.body.N`）——更贴现行 id 制，但要改 `core/comms.ts`
+  与 `CommsPage` 的读取方式，面更大；
+- 13 封情报信的中文刚在 2026-09-22 重写（提交 `da8764ce`）⇒ **英文请照新版中文译**，术语以 `docs/glossary-en.md` 为准。
+
 ---
 
-_维护：本件记录 13 条裁定的落点与读数。船长验收后按 §8 归档：把 roadmap 那份开放项清单里对应的
-13 条逐条关闭（其中 10 条标"船长 2026-09-22 裁定不动"即可销账）→ 删本件 → `npm run docs:index`。_
+_维护：本件记录 13 条裁定的落点与读数 ＋ 情报信重写与三号本地化交接。船长验收后按 §8 归档：把 roadmap
+那份开放项清单里对应的 13 条逐条关闭（其中 10 条标"船长 2026-09-22 裁定不动"即可销账）＋ 把 §六② 并入
+roadmap 的「三号交接开放项」→ 删本件 → `npm run docs:index`。_
