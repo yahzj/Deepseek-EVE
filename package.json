@@ -22,6 +22,7 @@
     "content:check": "tsx tools/content-check.ts",
     "skilltree:layout-check": "tsx tools/skilltree-layout-check.ts",
     "skilltree:export": "tsx tools/skilltree-export.ts",
+    "skilltree:diff": "tsx tools/skilltree-diff.ts",
     "flow:newgame": "tsx tools/flow-newgame.ts",
     "save:migrate": "tsx tools/save-migrate-check.ts",
     "faction:audit": "tsx tools/faction-audit.ts",
