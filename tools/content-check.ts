@@ -999,6 +999,20 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'deep-space-harvesting', per: 0.05, call: 'mining.ts（气/冰）' },
     { skill: 'rich-vein-prospecting', per: 0.2, call: 'mining.ts richVeinFactor' },
     { skill: 'core-smelting', per: 0.04, call: 'industry.ts（精炼炉周期；2026-09-22 起手动与 AI 核心驱动同享）' },
+    { skill: 'furnace-precision', per: 0.04, call: 'industry.ts（精炼炉周期；2026-09-22 精炼系 T4，手动与 AI 同享）' },
+    { skill: 'parts-line', per: 0.04, call: 'manufacturing.ts calcBuildDurationMs（零件类蓝图周期）' },
+    /**
+     * 舰种操作四技能（2026-09-22 船长令）：每级值分散在 combat.ts 的**五个使用点**
+     * （hp / resists / dmgScale / evasion / hitBonus），与技能 id 字面量隔着 `tierOpsLv` 助手
+     * ⇒ 现场复核按 `srcNear: false` 跳过，只做"表 ↔ 技能说明"这条核对（口径见该表注释）。
+     */
+    { skill: 'frigate-ops', per: 0.02, call: 'combat.ts（舰种 T1 闪避 +2 个百分点/级）', srcNear: false },
+    { skill: 'destroyer-ops', per: 0.05, call: 'combat.ts（舰种 T2 单发伤害 +5%/级）', srcNear: false },
+    { skill: 'destroyer-ops', per: 0.02, call: 'combat.ts（舰种 T2 命中 +2 个百分点/级）', srcNear: false },
+    { skill: 'cruiser-ops', per: 0.03, call: 'combat.ts（舰种 T3 单发伤害 +3%/级）', srcNear: false },
+    { skill: 'cruiser-ops', per: 0.02, call: 'combat.ts（舰种 T3 已有抗性 ×(1+2%/级)）', srcNear: false },
+    { skill: 'battleship-ops', per: 0.03, call: 'combat.ts（舰种 T4 三容量 +3%/级）', srcNear: false },
+    { skill: 'battleship-ops', per: 0.02, call: 'combat.ts（舰种 T4 已有抗性 ×(1+2%/级)）', srcNear: false },
     { skill: 'furnace-expansion', per: 0.06, call: 'industry.ts（精炼炉批容；2026-09-22 起手动与 AI 核心驱动同享）' },
     { skill: 'batch-production', per: 0.03, call: 'manufacturing.ts calcBuildDurationMs' },
     { skill: 'materials', per: 0.015, call: 'manufacturing.ts materialFactor' },

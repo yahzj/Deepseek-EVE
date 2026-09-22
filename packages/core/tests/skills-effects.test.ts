@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
-import type { ItemDef, SimContext } from '../src/types'
+import type { DamageResists, ItemDef, SimContext } from '../src/types'
 import { belt, makeTestCtx } from './helpers'
 import { fleetDefOf } from '../src/instances'
 import { travelTimeFactor } from '../src/travel'
@@ -23,6 +23,7 @@ import { marketSellSkillMult } from '../src/market'
 import { lootFactor } from '../src/expedition'
 import { blankShareFactorOf, wormholeEnter } from '../src/wormhole'
 import { SKILLS, buildSimContext } from '@whale/data'
+import { createPlayerSpec } from '../src/combat'
 
 const GAS_X: ItemDef = {
   id: 'gas-x',
@@ -471,6 +472,162 @@ describe('技能改名与 rank 调整（船长 2026-09-22 坐标工作台回稿�
         expect(parent, `${s.id} 的前置 ${p} 必须存在`).toBeDefined()
         expect(parent!.rank <= s.rank, `${s.id} 的前置 ${p} 不许更深`).toBe(true)
       }
+    }
+  })
+})
+
+/**
+ * **2026-09-22 船长令新增六条技能**：「添加一个精炼系T4的精炼炉周期缩短技能，每级4%。
+ * 添加一个制造系T5技能，缩短所有零件生产周期每级4%。添加战舰操作系T4技能，护卫舰操作…驱逐舰操作…
+ * 添加战舰操作系T5技能，巡洋舰操作…战列操作…」
+ *
+ * 口径（船长同日逐条裁定）：舰种操作只对**主控正在驾驶的那一艘**生效、判据 = **舰种 `tier`**；
+ * 闪避/命中加**百分点**；单发伤害与容量**相对乘算**；抗性只对**已有条目**相对乘算（没有抗性的层不动）。
+ */
+describe('2026-09-22 技能批：炉温精调学 / 零件流水线 / 舰种操作四技能', () => {
+  const realCtx = buildSimContext()
+  const byId = (id: string): (typeof SKILLS)[number] | undefined => SKILLS.find((s) => s.id === id)
+  /** 建一艘真船 + 点亮指定技能（全 Lv5） */
+  const withShip = (defId: string, skills: string[] = []): { state: GameState; uid: string } => {
+    const state = createInitialState({ nowWallMs: 0, seed: 31 })
+    const uid = addShipToFleet(state, defId)
+    state.shipId = uid
+    for (const s of skills) state.skills.trained[s] = 5
+    return { state, uid }
+  }
+  /** 取某一层的抗性表（该层可能整层缺席 ⇒ 返回空表，读出来就是 0） */
+  type Spec = NonNullable<ReturnType<typeof createPlayerSpec>>
+  const layerRes = (spec: Spec, layer: 'shield' | 'armor' | 'hull'): DamageResists => spec.resists[layer] ?? {}
+  const shieldRes = (spec: Spec): DamageResists => layerRes(spec, 'shield')
+  const armorRes = (spec: Spec): DamageResists => layerRes(spec, 'armor')
+  const hullResOf = (spec: Spec): DamageResists => layerRes(spec, 'hull')
+
+  it('炉温精调学：精炼周期再 ×0.8（满级）；AI 核心驱动同享（与炉心熔炼学叠乘）', () => {
+    const ctx = makeTestCtx()
+    const state = createInitialState({ nowWallMs: 0, seed: 32 })
+    state.warehouse.items['ore-a'] = 200
+    state.skills.trained['core-smelting'] = 5
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    expect(state.refineRuns[0]!.cycleMs).toBe(4_800) // 6000 ×0.8（只有炉心熔炼学）
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    // 再点满炉温精调学 ⇒ 6000 ×0.8 ×0.8
+    state.skills.trained['furnace-precision'] = 5
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    expect(state.refineRuns[0]!.cycleMs).toBe(3_840)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    // AI 核心驱动同享（basic 效率 0.4 ⇒ 15000，再 ×0.8×0.8）
+    state.aiCores['basic'] = 1
+    state.skills.trained['ai-expert'] = 1
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
+    expect(state.refineRuns[0]!.cycleMs).toBe(9_600)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+  })
+
+  it('零件流水线：零件蓝图周期 ×0.8（满级）；非零件蓝图不受影响', () => {
+    const ctx = makeTestCtx()
+    const state = createInitialState({ nowWallMs: 0, seed: 33 })
+    const spec = (partTier?: 'basic' | 'advanced'): Parameters<typeof calcBuildDurationMs>[2] => ({
+      materials: [],
+      buildSeconds: 100,
+      buildCostIsk: 0,
+      ...(partTier ? { partTier } : {}),
+    })
+    // 只点零件流水线 ⇒ 零件档 ×0.8；其余蓝图原样
+    state.skills.trained['parts-line'] = 5
+    expect(calcBuildDurationMs(state, ctx, spec('basic'))).toBe(80_000)
+    expect(calcBuildDurationMs(state, ctx, spec('advanced'))).toBe(80_000)
+    expect(calcBuildDurationMs(state, ctx, spec())).toBe(100_000)
+    // 与工业理论、批量生产学乘算：×0.8(工业理论满级) ×0.85(批量满级) ×0.8(零件流水线)
+    state.skills.trained['industry'] = 5
+    state.skills.trained['batch-production'] = 5
+    expect(calcBuildDurationMs(state, ctx, spec('basic'))).toBe(54_400)
+    expect(calcBuildDurationMs(state, ctx, spec())).toBe(68_000)
+  })
+
+  it('护卫舰操作：T1 闪避 +10 个百分点（满级）；别的舰种不吃', () => {
+    const t1 = withShip('sh-falconet', ['frigate-ops'])
+    const base1 = withShip('sh-falconet')
+    const spec1 = createPlayerSpec(t1.state, realCtx, t1.uid)!
+    const specBase = createPlayerSpec(base1.state, realCtx, base1.uid)!
+    expect(specBase.evasion).toBeCloseTo(0.2, 6)
+    expect(spec1.evasion).toBeCloseTo(0.3, 6) // +0.02×5
+    // T2 船点同一条技能：不吃
+    const t2 = withShip('sh-mako', ['frigate-ops'])
+    expect(createPlayerSpec(t2.state, realCtx, t2.uid)!.evasion).toBeCloseTo(0.1, 6)
+  })
+
+  it('驱逐舰操作：T2 单发伤害 +25%、命中 +10 个百分点；T3 船不吃', () => {
+    const t2 = withShip('sh-mako', ['destroyer-ops'])
+    const base2 = withShip('sh-mako')
+    const spec2 = createPlayerSpec(t2.state, realCtx, t2.uid)!
+    const specBase = createPlayerSpec(base2.state, realCtx, base2.uid)!
+    expect(specBase.hitBonus).toBeCloseTo(0.17, 6)
+    expect(spec2.hitBonus).toBeCloseTo(0.27, 6) // +0.02×5
+    // 基础舰炮单发 = round(8 × dmgScale)；灰鲭鲨自带 powerBonus +20%（T2 武装舰）⇒ 基线 10，满级再 ×1.25
+    expect(specBase.weapons[0]!.shotDmg).toBe(10) // round(8 × 1.2)
+    expect(spec2.weapons[0]!.shotDmg).toBe(12) // round(8 × 1.2 × 1.25)
+    // T3 巡洋舰（长尾鲨级）点驱逐舰操作：伤害与命中都不吃（逐项与它自己的基线比）
+    const t3 = withShip('sh-thresher', ['destroyer-ops'])
+    const t3Base = withShip('sh-thresher')
+    const specT3 = createPlayerSpec(t3.state, realCtx, t3.uid)!
+    const specT3Base = createPlayerSpec(t3Base.state, realCtx, t3Base.uid)!
+    expect(specT3.hitBonus).toBeCloseTo(specT3Base.hitBonus, 6)
+    expect(specT3.weapons[0]!.shotDmg).toBe(specT3Base.weapons[0]!.shotDmg)
+  })
+
+  it('巡洋舰操作：T3 单发 +15%、已有抗性 ×1.1；没有抗性的层不动', () => {
+    // 牛鲨级（T3・甲层抗性 动能 35% / 等离子 35%）⇒ 满级后各 ×1.1
+    const t3 = withShip('sh-bullshark', ['cruiser-ops'])
+    const base3 = withShip('sh-bullshark')
+    const spec3 = createPlayerSpec(t3.state, realCtx, t3.uid)!
+    const specBase = createPlayerSpec(base3.state, realCtx, base3.uid)!
+    expect(specBase.weapons[0]!.shotDmg).toBe(8)
+    expect(spec3.weapons[0]!.shotDmg).toBe(9) // round(8×1.15)
+    expect(armorRes(specBase).kinetic).toBeCloseTo(0.35, 6)
+    expect(armorRes(spec3).kinetic).toBeCloseTo(0.385, 6) // ×1.1
+    expect(armorRes(spec3).plasma).toBeCloseTo(0.385, 6)
+    // 长尾鲨级（T3，三层抗性全空）⇒ 抗性一点不加（"没有抗性的层不受影响"）
+    const bare = withShip('sh-thresher', ['cruiser-ops'])
+    const specBare = createPlayerSpec(bare.state, realCtx, bare.uid)!
+    expect(shieldRes(specBare).kinetic ?? 0).toBe(0)
+    expect(armorRes(specBare).kinetic ?? 0).toBe(0)
+    expect(hullResOf(specBare).kinetic ?? 0).toBe(0)
+  })
+
+  it('战列操作：T4 三容量各 +15%、已有抗性 ×1.1；T3 船不吃', () => {
+    // 玄武级重装战列舰（T4・甲层抗性 爆能 25% / 动能 35% / 等离子 35%）
+    const t4 = withShip('sh-xuanwu', ['battleship-ops'])
+    const base4 = withShip('sh-xuanwu')
+    const spec4 = createPlayerSpec(t4.state, realCtx, t4.uid)!
+    const specBase = createPlayerSpec(base4.state, realCtx, base4.uid)!
+    expect(spec4.hp.s).toBeCloseTo(specBase.hp.s * 1.15, 4)
+    expect(spec4.hp.a).toBeCloseTo(specBase.hp.a * 1.15, 4)
+    expect(spec4.hp.h).toBeCloseTo(specBase.hp.h * 1.15, 4)
+    expect(armorRes(spec4).kinetic).toBeCloseTo(0.385, 6)
+    expect(armorRes(spec4).explosive).toBeCloseTo(0.275, 6) // 0.25×1.1
+    // T3 巡洋舰（玳瑁级）点战列操作：不吃
+    const t3 = withShip('sh-hawksbill', ['battleship-ops'])
+    const specT3 = createPlayerSpec(t3.state, realCtx, t3.uid)!
+    const base3 = withShip('sh-hawksbill')
+    const specT3Base = createPlayerSpec(base3.state, realCtx, base3.uid)!
+    expect(specT3.hp.a).toBeCloseTo(specT3Base.hp.a, 4)
+  })
+
+  it('四条的声明：书/等级/前置与船长令一致（前置 = 武装舰操作 ＋ 装甲舰操作）', () => {
+    const want: Array<[string, number, string, string[]]> = [
+      ['furnace-precision', 4, 'b-refine', ['core-smelting']],
+      ['parts-line', 5, 'b-craft', ['batch-production']],
+      ['frigate-ops', 4, 'b-warship', ['armed-ops', 'armored-ops']],
+      ['destroyer-ops', 4, 'b-warship', ['armed-ops', 'armored-ops']],
+      ['cruiser-ops', 5, 'b-warship', ['armed-ops', 'armored-ops']],
+      ['battleship-ops', 5, 'b-warship', ['armed-ops', 'armored-ops']],
+    ]
+    for (const [id, rank, branch, prereq] of want) {
+      const def = byId(id)
+      expect(def, `${id} 必须在技能表里`).toBeDefined()
+      expect(def!.rank, `${id} 等级`).toBe(rank)
+      expect(def!.branch, `${id} 技能书`).toBe(branch)
+      expect(def!.prereq ?? [], `${id} 前置`).toEqual(prereq)
     }
   })
 })
