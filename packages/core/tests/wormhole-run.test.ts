@@ -107,18 +107,29 @@ describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13；2026-09-14 起�
    * ⚠ **2026-09-15 再改判**（船长：「玩家扫描星系将不再占用玩家的主控活动」）：**星系扫描**也退出
    * 主控活动表（无人扫描艇）⇒ 本条"不闲置就进不去"的钉子改用**掩护巡逻**（仍然拦住的那一类）。
    */
-  it('**主控不闲置就进不去**：主控在掩护巡逻 ⇒ 拒绝，文案点名忙态；改判后「采矿/扫描星系」都不再拦', () => {
+  it('**主控不闲置就进不去**：主控在掩护巡逻 ⇒ **2026-09-21 起改为进洞自动停**（不再拦）；改判后「采矿/扫描星系」也都不拦', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     state.shipId = a
     state.standby = { active: true, galaxyId: 'galaxy-hub', finishAtGameMs: state.gameMs, legMs: 0 }
+    /**
+     * ⚠ **2026-09-21 第三次改判**（船长：「统一为能够直接切换（自动取消当前活动）」）：
+     * **掩护巡逻**从"拦住进洞"改成"进洞那一刻自动停"（与采矿/打捞同一档）⇒ 不再有"主控正在…"那句拒因。
+     * 仍然拦住进洞的只剩**远征 / 快递投送 / 战斗中 / 洞里 / 返航途中**（见下一段与 ① 用例）。
+     */
     const r = wormholeEnter(state, ctx, [a], 7)
-    expect(r.ok, '主控忙着还能进洞').toBe(false)
-    expect(r.error ?? '').toContain('主控正在')
-    expect(state.wormhole.run).toBeNull()
-    // 收工后就能进
-    state.standby.active = false
-    expect(wormholeEnter(state, ctx, [a], 7).ok).toBe(true)
+    expect(r.ok, '掩护巡逻 ⇒ 进洞自动停').toBe(true)
+    expect(state.standby.active).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('已自动停止「掩护巡逻」'))).toBe(true)
+    // **远征在飞 ⇒ 照旧拦住**（不可中断那一档；2026-09-14 船长：「远征无法自动停」）
+    const state1 = createInitialState({ nowWallMs: 0, seed: 7 })
+    const d = addShipToFleet(state1, T1)
+    state1.shipId = d
+    state1.expedition.active = true
+    const r1 = wormholeEnter(state1, ctx, [d], 7)
+    expect(r1.ok, '远征在飞还能进洞').toBe(false)
+    expect(r1.error ?? '').toContain('不能中断')
+    expect(state1.wormhole.run).toBeNull()
     // **改判后的采矿**：不拦、进洞自动停（细账见 tests/wormhole-activity-lock.test.ts ①″）
     const state2 = createInitialState({ nowWallMs: 0, seed: 7 })
     const b = addShipToFleet(state2, T1)
@@ -844,9 +855,9 @@ describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
   // v28 = 残骸合并（旧"每卡一种"残骸 id → 「族 × 地区」13 组的同组累加折算，2026-09-19）；
   // v29 = 谜质科技树（2026-09-19）；v30 = 成就徽章（2026-09-20）
   it('新档带空虫洞状态；当前存档版本 = 30（v30 = 成就徽章，v29 = 谜质科技树）', () => {
-    expect(CURRENT_STATE_VERSION).toBe(30)
+    expect(CURRENT_STATE_VERSION).toBe(31)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
-    expect(s.version).toBe(30)
+    expect(s.version).toBe(31)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 

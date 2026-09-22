@@ -180,7 +180,7 @@ describe('通讯 · 「第一次」任务情报信（2026-09-17 教程重做：�
     expect(letter!.alignment).toBe('系统')
     expect(letter!.glyph).toBe('nav-ai') // 头像：船内系统用核心形图标（与 NPC 章鱼头分开）
     // 「第一次采集原矿」那封指向工业页（精炼炉与组装机在那里）
-    expect(letter!.hint?.page).toBe('industry')
+    expect(letter!.hint?.page).toBe('task')
   })
 })
 

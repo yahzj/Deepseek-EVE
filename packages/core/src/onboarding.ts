@@ -20,6 +20,7 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { addLog, DEFAULT_PILOT_NAME } from './state'
 import { sequentialPrefixDone, firstTasksMarkSeen } from './firstTasks'
+import { grantStartRewardsForCurrent } from './firstRewards'
 
 /** 序章演出中（渲染层 `PrologueScreen` 推进；演出期间不做任何任务判定） */
 export const ONB_AWAKEN = 0
@@ -65,8 +66,10 @@ export function publishFindHumansWhenReady(state: GameState): boolean {
   return true
 }
 
-/** 序章收尾（幂等）：步骤落 99（**发布「寻找人类」改由发布闸门负责**，见上）＋ 记一笔"当前那条「第一次」已提示过" */
-function finishPrologue(state: GameState): void {
+/** 序章收尾（幂等）：步骤落 99（**发布「寻找人类」改由发布闸门负责**，见上）＋ 记一笔"当前那条「第一次」已提示过"
+ *  ＋（**2026-09-21 船长令**）把**第一条**的起手道具发掉——`ctx` 可选：给不了就跳过（当前第一条没写
+ *  `startReward`，故不影响任何一条现状；日后给第一条补起手道具时，渲染层那条调用已把 ctx 传进来）。 */
+function finishPrologue(state: GameState, ctx?: SimContext): void {
   if (state.onboarding.step !== ONB_DONE) state.onboarding.step = ONB_DONE
   /**
    * **导航「任务中心」推进提醒的起点**（**2026-09-20 船长令**：「每推进一阶段第一次任务时…进行提醒」）：
@@ -75,28 +78,29 @@ function finishPrologue(state: GameState): void {
    * ⇒ 仍是首帧亮一次（与赏金那条「老档默认亮起提示」同款）。
    */
   firstTasksMarkSeen(state)
+  if (ctx) grantStartRewardsForCurrent(state, ctx)
 }
 
 /**
  * 渲染层：序章演出完成（呼号落定）⇒ 序章结束（原先还要进"简报态"读教程，2026-09-17 起简报信
  * 直接躺进收件箱，不再锁页面）。
  */
-export function beginAfterAwaken(state: GameState): CommandResult {
+export function beginAfterAwaken(state: GameState, ctx?: SimContext): CommandResult {
   if (state.onboarding.step !== ONB_AWAKEN) {
     return { ok: false, error: '当前不在序章演出阶段。', errorId: 'core.onboarding.002' }
   }
-  finishPrologue(state)
+  finishPrologue(state, ctx)
   addLog(state, 'info', '自检完成——信息库重启，第一份简报已落在导航「通讯」里。', 'core.onboarding.003')
   return { ok: true }
 }
 
 /** 渲染层：跳过序章演出（未及起名 ⇒ 呼号落默认 PRTS）；与演完等价，不发放任何奖励 */
-export function skipPrologue(state: GameState): CommandResult {
+export function skipPrologue(state: GameState, ctx?: SimContext): CommandResult {
   if (state.onboarding.step !== ONB_AWAKEN) {
     return { ok: false, error: '序章演出已结束。', errorId: 'core.onboarding.004' }
   }
   if (state.character.name === DEFAULT_PILOT_NAME) state.character.name = 'PRTS'
-  finishPrologue(state)
+  finishPrologue(state, ctx)
   addLog(state, 'system', '序章演出已跳过——开始新的航程。', 'core.onboarding.005')
   return { ok: true }
 }

@@ -349,6 +349,17 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
     if (raw.achievements !== undefined) return raw
     return { ...raw, achievements: { earned: {} } }
   },
+  /**
+   * v30 -> v31（**2026-09-21 船长令**：**「第一次」任务不再自动完成，玩家回任务中心点「完成」才推进**
+   * ＋「老档直接完成」）：**纯新增字段** —— 给**老档**打一个一次性收口标记 `firstTaskAutoClaim = true`。
+   *
+   * 为什么标记而不是在这里直接改 `importantTasks`：本层拿不到内容表（`MIGRATIONS` 只吃 raw state、无 ctx），
+   * 而"这条判据满没满"要跑 `judge(state, ctx)` ⇒ 与 v29→v30 的成就补发同款做法：
+   * **迁移只打标记，真正的收口在载入后第一拍由 `engine` 现算完成**（按点击同款发奖发信、进下一条，
+   * 跑完即删键）。这样 ① core 不反向依赖数据层 ② 收口逻辑只有一份（不在迁移里再抄一遍判定）
+   * ③ 新档不带这个键 ⇒ 一律走手动流程。
+   */
+  30: (raw) => ({ ...raw, firstTaskAutoClaim: true }),
 }
 /** 字符串或 null 归一（迁移辅助） */
 function asNullableString(v: unknown): string | null {
@@ -2460,6 +2471,8 @@ function normalizeState(raw: unknown): GameState {
       delivered: typeof r.delivered === 'number' && Number.isFinite(r.delivered) ? Math.max(0, Math.floor(r.delivered)) : undefined,
       // 阶段目标里程碑（键存在才写；否则保持缺省，避免给所有任务塞字段）
       ...(r.allExplored === true ? { allExplored: true } : {}),
+      // 起手道具已发放（2026-09-21：任务开始时给道具的去重键；只在 true 时写，零迁移）
+      ...(r.started === true ? { started: true } : {}),
     }
   }
 
@@ -2486,6 +2499,13 @@ function normalizeState(raw: unknown): GameState {
    */
   const firstTaskSeenIdRaw = src.firstTaskSeenId
   const firstTaskSeenId = typeof firstTaskSeenIdRaw === 'string' && firstTaskSeenIdRaw.length > 0 ? firstTaskSeenIdRaw : undefined
+  /**
+   * **「已达成」播报记账 ＋ 老档一次性收口标记**（2026-09-21 船长令：任务改为**玩家点「完成」**才推进）。
+   * 两个都按"缺省不写键"处理 ⇒ 新档快照不含它们（与上面的 `firstTaskSeenId` 同款口径、零迁移）。
+   */
+  const firstTaskReadyIdRaw = src.firstTaskReadyId
+  const firstTaskReadyId = typeof firstTaskReadyIdRaw === 'string' && firstTaskReadyIdRaw.length > 0 ? firstTaskReadyIdRaw : undefined
+  const firstTaskAutoClaim = src.firstTaskAutoClaim === true ? true : undefined
 
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
@@ -3087,6 +3107,9 @@ function normalizeState(raw: unknown): GameState {
     ...(Object.keys(firstStats).length > 0 ? { firstStats } : {}),
     // 导航「任务中心」推进提醒的记账：**没记过账就不写键**（同款零迁移口径）
     ...(firstTaskSeenId !== undefined ? { firstTaskSeenId } : {}),
+    // 「已达成」播报记账 ＋ 老档一次性收口标记：同样只在有值时写键
+    ...(firstTaskReadyId !== undefined ? { firstTaskReadyId } : {}),
+    ...(firstTaskAutoClaim !== undefined ? { firstTaskAutoClaim } : {}),
     sideTasks,
     wormhole,
     research,

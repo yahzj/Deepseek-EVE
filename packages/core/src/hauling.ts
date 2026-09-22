@@ -27,7 +27,8 @@
  * - 互斥：任务中驾驶船忙碌（等同远征），各出港/站内手动作业入口拒绝；换驾驶 = 立即终止
  *   （虚拟货无残留、无惩罚）；AI 副船本版不支持。
  */
-import { addLog, HOME_GALAXY_ID, haulingHalt, wormholePilotHoldReason } from './state'
+import { addLog, HOME_GALAXY_ID, haulingHalt } from './state'
+import { applyActivityGate } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, HaulingState } from './state'
 import type { SimContext } from './types'
@@ -231,13 +232,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   if (state.hauling.active) {
     return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到顶部活动栏点「停止运输」再换线。', errorId: 'core.hauling.001' }
   }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
-  // 前置：停靠在空间站（母港或已建成副站）
-  if (state.awayGalaxy !== null) {
-    return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
-  }
+  /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const endpoints = haulEndpoints(state, ctx)
   const a = endpoints.find((e) => e.siteId === aSiteId)
   const b = endpoints.find((e) => e.siteId === bSiteId)
@@ -258,34 +253,26 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
       errorId: 'core.hauling.005',
     }
   }
-  // 忙碌互斥（与远征同级）
-  if (state.mining.active) {
-    return { ok: false, error: '采矿作业进行中：先停止开采。', errorId: 'core.hauling.007' }
-  }
-  if (state.salvaging.active) {
-    return { ok: false, error: '打捞作业进行中：先停止打捞。', errorId: 'core.hauling.008' }
-  }
-  if (state.expedition.active) {
-    return { ok: false, error: '远征进行中：先召回或等待结束。', errorId: 'core.hauling.009' }
-  }
-  if (state.standby.active) {
-    return { ok: false, error: '掩护巡逻进行中：先取消。', errorId: 'core.hauling.010' }
-  }
-  if (state.transit.active) {
-    return { ok: false, error: '返航行程中：到站后再安排。', errorId: 'core.hauling.011' }
-  }
-  if (state.sideTasks.deliver !== null) {
-    return { ok: false, error: '快递投送途中：到站结算后再安排。', errorId: 'core.hauling.012' }
-  }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出航。', errorId: 'core.hauling.013' }
-  }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出航。', errorId: 'core.hauling.014' }
-  }
+  /**
+   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
+   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 8 条硬拒，现已收进
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（端点/航路/货仓），
+   * 这条顺序纪律原先就写在本函数里（免得"先停了玩家的活、再说开不了"）。
+   */
   const cap = cargoCapacityM3Of(state, ctx, state.shipId)
   if (cap <= 0) {
     return { ok: false, error: '当前舰船没有可用货仓，无法承运。', errorId: 'core.hauling.015' }
+  }
+  const gateSkip = applyActivityGate(state, 'hauling')
+  if (gateSkip) return gateSkip
+  /**
+   * **位置门槛：停靠在空间站（母港或已建成副站）才能接单**——放在判据**之后**：
+   * 掩护巡逻（野外留守）属"可自动停"那一档，停下时 `haltActivityForSwitch` 会把人即时召回母港
+   * ⇒ 位置门槛正是被这次停机满足的（与 `industry.startRefineRun` 同款处置）。
+   * 船在野外**且没有可停的活动**（纯野外留守）时，仍旧是这一条拒。
+   */
+  if (state.awayGalaxy !== null) {
+    return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
   }
   // 自动清仓：真实货物卸入仓库（虚拟货物占满货仓，语义干净）
   const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)

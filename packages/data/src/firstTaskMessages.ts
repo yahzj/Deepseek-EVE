@@ -7,8 +7,12 @@
  * 口径（沿用 `messages.ts` 的既有纪律）：
  * - 送达条件 = **该「第一次」任务已完成**（新触发 `{ kind: 'firstTask', taskId }`，由 `core/firstTasks`
  *   写入的 `importantTasks[id].done` 判定）⇒ **不再单独挂"造好第一条船"的触发器**（那封并进 `first-ship`）。
+ *   ⚠ **2026-09-21 船长令**：任务改成"玩家回任务中心点「完成」才推进" ⇒ 这里的 `done` 落在那**一次点击**上，
+ *   通讯自然也在点击之后送达（同一拍性未变）。
  * - 发件方 = **舰载信息库 · 检索重启**（船自己的系统，与开场简报同一发件人）。
  * - 正文只给"情报 + 一句提示"，不写开发用语；**玩家就是那条船**（不出现「你的舰船」这类分离说法）。
+ * - **13 封的「前往」一律指向「任务中心」**（**2026-09-21 船长令**：「**任务完成后出现的通讯的跳转改为
+ *   返回任务中心**」）——读完情报正好顺手点「完成」继续下一步；文案各行独立（同一句话，便于逐条改）。
  */
 import type { CommsMessageDef } from '@whale/core'
 
@@ -25,7 +29,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一台采集器 MK1——装上它，采掘效率更高。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-scan' },
-    hint: { text: '去星图看看点亮了哪些地方', page: 'map' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-mine',
@@ -39,7 +43,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '另附 100 单位橄榄岩：精炼炉每批要 100 单位，这批料够开第一炉。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-mine' },
-    hint: { text: '去工业页看看精炼炉与组装机', page: 'industry' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-salvage',
@@ -53,7 +57,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附 10,000 信用点——打捞作业的现结报酬。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-salvage' },
-    hint: { text: '在星图里挑一处残骸地点', page: 'map' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-repair',
@@ -67,7 +71,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附民用修理组件 ×20——野外应急够用一阵。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-repair' },
-    hint: { text: '舰船页可以修理与补给', page: 'ship' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-bounty',
@@ -81,7 +85,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一艘鲣鱼级护卫舰——编入舰队或改作副船都行。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-bounty' },
-    hint: { text: '星图里的常驻悬赏可以接着打', page: 'map' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-refine',
@@ -95,7 +99,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一份「动能弹药生产线」蓝图——材料是钛钢合金，正好由原矿炼出。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-refine' },
-    hint: { text: '工业页的精炼炉可以多开几台', page: 'industry' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-produce',
@@ -109,7 +113,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一张沙猫级舰船蓝图——照着它就能再造几艘矿船。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-produce' },
-    hint: { text: '工业页可给产线装 AI 核心', page: 'industry' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-order',
@@ -123,7 +127,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附 10,000 信用点——挂单成交前的周转金。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-order' },
-    hint: { text: '市场页可以看行情与我的挂单', page: 'market' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-ship',
@@ -137,7 +141,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一台民用船体维修装置——结构层能自己回一点。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ship' },
-    hint: { text: '去舰船页看看新船', page: 'ship' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-skill',
@@ -151,7 +155,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一枚基础 AI 核心——装到闲置舰船上，它就能自己出海。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-skill' },
-    hint: { text: '技能页可以排队训练', page: 'skills' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-ai',
@@ -165,7 +169,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附 10,000 信用点——副船的补给与周转。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ai' },
-    hint: { text: '舰船页可给副船派活', page: 'ship' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-haul',
@@ -179,7 +183,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一艘飞鱼级快运舰——跑长途用它更合适。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-haul' },
-    hint: { text: '星图的长途运输页可以接下一趟', page: 'map' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
   {
     id: 'first-wormhole',
@@ -193,6 +197,6 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信标记 2 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时进入。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-wormhole' },
-    hint: { text: '去星图的「扫描虫洞」看看', page: 'map' },
+    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
   },
 ]

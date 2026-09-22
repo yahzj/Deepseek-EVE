@@ -13,7 +13,8 @@
  */
 import { tuningMul } from './tuning'
 import { bumpFirst } from './firstTasks'
-import { addLog, HOME_GALAXY_ID, shipLockedInWormhole, wormholePilotHoldReason } from './state'
+import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
+import { applyActivityGate } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, BattleState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
@@ -282,12 +283,9 @@ export function bountyRewardFactor(state: GameState): number {
 function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003' }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
+  /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再出击。', errorId: 'core.expedition.021' }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
     return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（当前 ${standing}），多完成低级目标攒声望。` }
@@ -299,14 +297,6 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   const cd = bountyCooldownRemainingMs(state, anomalyId)
   if (cd > 0) {
     return { ok: false, error: `「${anomaly.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.round(cd / 1000))} 秒。` }
-  }
-  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排远征。', errorId: 'core.expedition.006' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能出发远征——到站自动结算后再安排。', errorId: 'core.expedition.007' }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能出发远征（想自动精炼可改用 AI 核心驱动）。', errorId: 'core.expedition.008' }
-  }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能出发远征（想自动制造可改用 AI 核心驱动）。', errorId: 'core.expedition.009' }
   }
   return { ok: true }
 }
@@ -332,21 +322,30 @@ export function startExpedition(
   // 敌对派系活跃（2026-09-10 船长定）：目标正是当日选中星系的**常驻悬赏** → 本场吃 +10% 奖金/+10% 威胁
   // （与窝点互斥：派系只针对普通悬赏，带着档位出击窝点时不叠加）
   const factionHit = opts?.lairTier === undefined && isFactionBounty(state, anomaly)
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出航。', errorId: 'core.expedition.022' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出航。', errorId: 'core.expedition.023' }
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。', errorId: 'core.expedition.012' }
   // 虫洞锁定（船长 2026-09-13：「已经进洞的船将被锁定」＋「洞内战斗时，洞外可以开新战斗」）：
   // 洞外这场战斗的锚点只能是**洞外的船**——主控若在洞里，先暂停并召回整队再出击。
   if (shipLockedInWormhole(state, state.shipId)) {
     return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。', errorId: 'core.expedition.013' }
   }
-  // T8：出发地 = 当前位置（野外停留点或空间站）；作业开始即清野外标记（位置交给作业自身表达）
+  /**
+   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
+   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 6 条硬拒，现已收进
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/声望/探索/冷却）。
+   */
+  const gateSkip = applyActivityGate(state, 'expedition')
+  if (gateSkip) return gateSkip
+  /**
+   * T8：出发地 = 当前位置（野外停留点或空间站）——⚠ **算在判据之后**：掩护巡逻那类可自动停的活动
+   * 停下时舰船已即时归位（`awayGalaxy` 归零）⇒ 出发地要按"停机之后"的位置算，免得出现
+   * "按巡逻星系的航路校验、却从母港出发"的错位。`awayGalaxy` 复位同样放在**全部校验之后**
+   * （2026-09-21 统一批顺手修正：原先它在航路校验之前清标记，校验失败也照清）。
+   */
   const from = originGalaxyOf(state, ctx)
-  const fromName = ctx.galaxies.get(from)?.name ?? from
-  state.awayGalaxy = null
   const outMinutes = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
   if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.expedition.024' }
+  const fromName = ctx.galaxies.get(from)?.name ?? from
+  state.awayGalaxy = null
   // V12.1：按出发时的船跃迁与航行技能锁定单程耗时（途中升级不影响本次）；用于失利返航腿并入
   const outMs = travelLegMs(state, ctx, outMinutes)
   const now = state.gameMs
@@ -407,7 +406,7 @@ export function startExpeditionFromMining(
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
   if (state.expedition.active) return { ok: false, error: '远征进行中，等战报回来再说吧。', errorId: 'core.expedition.011' }
-  if (state.standby.active) return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。', errorId: 'core.expedition.012' }
+  /** ⚠ 掩护巡逻那条硬拒已撤（2026-09-21 统一批）：它是**可自动停**那一档，由内层 `startExpedition` 的 gate 停掉 */
   const m = state.mining
   if (!m.active) return startExpedition(state, anomalyId, ctx, opts) // 无采矿作业 → 普通出发
   const anomaly = ctx.anomalies.get(anomalyId)!

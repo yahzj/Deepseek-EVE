@@ -28,22 +28,22 @@ import { wormholeEnter, wormholeEntryBlockReason, wormholeEntryAutoStops, wormho
 import { shipBusyForWormhole, shipActivityBusy } from '../src/wormhole'
 import { shipBusyLabel } from '../src/activity'
 import { wormholePilotHoldReason } from '../src/state'
+import { gateMainActivity, mainActivityOf } from '../src/activityGate'
 import { startMining } from '../src/mining'
 import { wormholeScanStart, wormholeScanStop, wormholeScanBlockReason, WORMHOLE_SCAN_UNLOCK_STANDING } from '../src/wormholeScan'
 import { startScan, frontierGalaxyIds } from '../src/explore'
-import { startExpedition } from '../src/expedition'
+import { HOME_GALAXY_ID, startExpedition } from '../src/expedition'
+import { shortestTravelMinutes } from '../src/travel'
 import { goStandbyAt } from '../src/location'
 
 const ctx = buildSimContext()
 const T1 = 'sh-falconet'
-/** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目）——这些**照旧拦住进洞** */
+/** 主控活动现场（按各命令写入的字段构造；名字与界面活动栏同类目）——**2026-09-21 起：这一批全部"进洞自动停"** */
 const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
   // ⚠ 「扫描星系」**2026-09-15 起不在这张表里**（船长：无人扫描艇不占主控）——见 ⑤ 那条对照用例
   // ⚠ 远征必须走**真命令**（`expeditionStatus` 还看 phase/目标星系等字段；手搓 active 会造出"假忙"，
   //    2026-09-13 那条老用例就踩过这个坑）
-  ['远征', (s) => void startExpedition(s, 'ano-training', ctx)],
   ['掩护巡逻', (s) => void (s.standby.active = true)],
-  ['快递投送', (s) => void (s.sideTasks.deliver = { taskId: 1, arriveAtGameMs: 600_000 } as never)],
   [
     '亲自开炉（精炼）',
     (s) => {
@@ -58,9 +58,14 @@ const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
   ],
 ]
 
-/** **进洞时会自动停掉**的那一档（船长 2026-09-14：「进洞自动停止」）——不拦人，进洞那一刻停掉它 */
+/** **进洞时会自动停掉**的那一档（船长 2026-09-14「进洞自动停止」；2026-09-21 扩到七项） */
 function startWormholeScan(s: GameState): void {
   s.wormholeScan = { active: true, progressMs: 7 * 60_000 }
+}
+
+/** 远征在途（真命令；2026-09-21 起属于"不可中断"那一档 ⇒ 照旧拦进洞） */
+function startExpeditionHere(s: GameState): void {
+  void startExpedition(s, 'ano-training', ctx)
 }
 
 function fresh(): { state: GameState; pilot: string; mate: string } {
@@ -70,10 +75,15 @@ function fresh(): { state: GameState; pilot: string; mate: string } {
   return { state, pilot: state.shipId, mate }
 }
 
-describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 复查 + 「进洞自动停止」）', () => {
-  it('**① 进洞门槛**：主控手上有任何主控活动 ⇒ 进不去（每一档都要给拒因）', () => {
+describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 复查 + 「进洞自动停止」· 2026-09-21 统一批）', () => {
+  /**
+   * ⚠ **2026-09-21 船长令改判**：「统一为能够直接切换（自动取消当前活动）」＋「3 纳入」（换驾驶与进洞
+   * 并入同一条单点）⇒ 进洞门槛的"主控那一档"改走 `activityGate`：**能自动停的七项一律放行**（进洞那一刻
+   * 停掉 + 统一日志），**只剩远征 / 快递投送 / 战斗中 / 洞里 / 返航途中**才拒。
+   * 本用例钉两件事：① 七项都能识别为"要自动停的"；② 两边忙态口径（`shipActivityBusy` vs `shipBusyLabel`）不漂移。
+   */
+  it('**① 进洞自动停名单**：可自动停的七项都认得出来（忙态两边一致）', () => {
     const notBusy: string[] = []
-    const missed: string[] = []
     const drift: string[] = []
     for (const [name, setup] of ACTIVITIES) {
       const { state, pilot } = fresh()
@@ -83,11 +93,41 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       if (core === null) notBusy.push(name)
       // 两边（进洞门槛的判据 vs 界面忙态徽标）必须同时"忙"
       if ((core !== null) !== (badge !== null)) drift.push(`${name}（${core ?? '闲'} vs ${badge ?? '闲'}）`)
-      if (wormholeEntryBlockReason(state, ctx, [pilot]) === null) missed.push(name)
     }
     expect(notBusy, `这些活动在跑；但"主控忙态"没认出来（现场/判据缺档）`).toEqual([])
     expect(drift, `这些活动两边忙态口径漂移（shipActivityBusy vs shipBusyLabel）`).toEqual([])
-    expect(missed, `这些活动在跑；但主控照样能进洞（漏在门槛外）`).toEqual([])
+  })
+
+  it('**①ˣ 不可中断的两项 ⇒ 照旧拦进洞**（远征 / 快递投送；措辞统一为"不能中断"）', () => {
+    // ── 远征在途：**返航腿**（没有在途战斗，所以拒因就是"远征不能中断"本身） ──
+    {
+      const { state, pilot } = fresh()
+      state.expedition.active = true
+      state.expedition.phase = 'back'
+      state.expedition.battle = null
+      expect(wormholeEntryAutoStops(state)).toEqual([]) // 不在自动停名单里
+      const why = wormholeEntryBlockReason(state, ctx, [pilot])
+      expect(why ?? '', '远征在飞还能进洞').toContain('不能中断')
+      expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(false)
+      expect(state.wormhole.run).toBeNull()
+    }
+    // ── 远征**交火中**（真命令）⇒ 拒因换成"战斗中"那句（船长：「处在战斗中的时候也设置为不可取消」） ──
+    {
+      const { state, pilot } = fresh()
+      startExpeditionHere(state)
+      const why = wormholeEntryBlockReason(state, ctx, [pilot])
+      expect(why ?? '').toContain('战斗中')
+      expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(false)
+    }
+    // ── 快递投送在途（手搓现场：投送没有"接单即出发"的便捷入口） ──
+    {
+      const { state, pilot } = fresh()
+      state.sideTasks.deliver = { taskId: 1, arriveAtGameMs: 600_000 } as never
+      expect(wormholeEntryAutoStops(state)).toEqual([])
+      const why = wormholeEntryBlockReason(state, ctx, [pilot])
+      expect(why ?? '', '快递在途还能进洞').toContain('不能中断')
+      expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(false)
+    }
   })
 
   /**
@@ -103,13 +143,14 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(shipActivityBusy(state, pilot)).toBe('扫描虫洞中')
     expect(wormholeEntryAutoStops(state).map((a) => a.label)).toEqual(['扫描虫洞中'])
     expect(wormholeEntryBlockReason(state, ctx, [pilot])).toBeNull()
-    // 进洞 ⇒ 自动停扫：active 归 false、**进度一字不动**、日志写明"自动停掉"与已扫分钟
+    // 进洞 ⇒ 自动停扫：active 归 false、**进度一字不动**、统一日志带已扫分钟
     const r = wormholeEnter(state, ctx, [pilot], 4242)
     expect(r.ok).toBe(true)
     expect(state.wormholeScan!.active).toBe(false)
     expect(state.wormholeScan!.progressMs).toBe(7 * 60_000)
     const logs = state.logs.map((l) => l.text)
-    expect(logs.some((t) => t.includes('自动停掉') && t.includes('7 分钟'))).toBe(true)
+    expect(logs.some((t) => t.includes('已自动停止「扫描虫洞」') && t.includes('7 分钟'))).toBe(true)
+    expect(state.logs.some((l) => l.textId === 'core.activityGate.007')).toBe(true) // 带读数那一版 id
     /**
      * 进度保留 ⇒ 出洞后能接着扫：人在洞里时扫描仍被挡（`wormholeScanBlockReason` 的那条
      * 「已经在虫洞里了」），**把本趟收掉之后**（`run = null`）就能续扫，且进度还是那 7 分钟。
@@ -138,7 +179,7 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(state.mining.beltId).toBeNull()
       expect(state.mining.tripUnits).toBe(0)
       const logs = state.logs.map((l) => l.text)
-      expect(logs.some((t) => t.includes('自动停掉「开采」') && t.includes('12 单位'))).toBe(true)
+      expect(logs.some((t) => t.includes('已自动停止「开采」') && t.includes('12 单位'))).toBe(true)
     }
     // ── 打捞：同款现场 ──
     {
@@ -155,7 +196,7 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(state.salvaging.galaxyId).toBeNull()
       expect(state.salvaging.tripM3).toBe(0)
       const logs = state.logs.map((l) => l.text)
-      expect(logs.some((t) => t.includes('自动停掉「打捞」') && t.includes('33.5'))).toBe(true)
+      expect(logs.some((t) => t.includes('已自动停止「打捞」') && t.includes('33.5'))).toBe(true)
     }
     // ── 边界：**副船的 AI 采矿**不算主控活动 ⇒ 照旧拦住（不替玩家停别人的派工） ──
     {
@@ -169,12 +210,29 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(blocked ?? '').toContain('AI 采矿中')
       expect(wormholeEntryAutoStops(state)).toEqual([]) // 主控自己没在作业 ⇒ 没有要自动停的东西
     }
+    // ── 边界：**掩护巡逻 / 亲自开炉 / 亲自开线**（2026-09-21 起并入自动停名单） ──
+    for (const [name, setup] of ACTIVITIES) {
+      const { state, pilot } = fresh()
+      setup(state)
+      expect(wormholeEntryAutoStops(state).length, `${name} 应进"进洞自动停"名单`).toBe(1)
+      expect(wormholeEntryBlockReason(state, ctx, [pilot]), `${name} 不该再拦进洞`).toBeNull()
+      expect(wormholeEnter(state, ctx, [pilot], 4242).ok, `${name} 应能进洞`).toBe(true)
+      expect(
+        state.logs.some((l) => l.textId === 'core.activityGate.001' || l.textId === 'core.activityGate.007'),
+        `${name} 停机要写统一日志`,
+      ).toBe(true)
+      expect(state.standby.active).toBe(false)
+      expect(state.refineRuns.some((r) => r.active && r.worker === 'pilot')).toBe(false)
+      expect(state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')).toBe(false)
+    }
     // ── 边界：**远征不在自动停名单里**（船长 2026-09-14：「远征无法自动停」）⇒ 照旧拦住 ──
     {
       const { state, pilot } = fresh()
-      startExpedition(state, 'ano-training', ctx)
+      state.expedition.active = true
+      state.expedition.phase = 'back'
+      state.expedition.battle = null
       expect(wormholeEntryAutoStops(state).map((a) => a.name)).toEqual([])
-      expect(wormholeEntryBlockReason(state, ctx, [pilot]) ?? '').toContain('远征')
+      expect(wormholeEntryBlockReason(state, ctx, [pilot]) ?? '').toContain('不能中断')
     }
   })
 
@@ -199,7 +257,7 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(state.dockedSite).toBeNull() // 出发站 = 母港（fromSiteId null）
     expect(state.awayGalaxy).toBeNull()
     const logs = state.logs.map((l) => l.text)
-    expect(logs.some((t) => t.includes('自动停掉「长途运输」') && t.includes('母港'))).toBe(true)
+    expect(logs.some((t) => t.includes('已自动停止「长途运输」') && t.includes('母港'))).toBe(true)
   })
 
   it('② **洞内锁定**：人在洞里 ⇒ 别的活动开不了（真命令复核）', () => {
@@ -239,35 +297,54 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
   /**
    * **④ 扫描虫洞占着主控**（船长 2026-09-14 玩家反馈：「**虫洞扫描不占用主控活动**」）。
    *
-   * 修前的漏洞 = **判据只有单向**：`wormholeScanBlockReason` 挡住"别人在跑时开扫"，
-   * 却没有任何地方挡住"扫描时去干别的" ⇒ 一边扫描一边出海采矿/打捞/远征。
-   * 修法 = 把它并进各主控活动共用的 `wormholePilotHoldReason`（一处生效，九个入口全覆盖）。
+   * ⚠ **2026-09-21 改口径**（船长：「统一为能够直接切换（自动取消当前活动）」）：判据仍是一处生效、
+   * 九个入口全覆盖，但**行为从"硬拒"改成"自动停扫 + 统一日志"**——扫描进度保留，回来可续扫。
+   * 只有远征/快递那两项（不可中断）才继续"拒"。
    */
-  it('④ **扫描虫洞占用主控**：开采 / 远征 / 掩护巡逻 全部开不了（真命令）', () => {
+  it('④ **扫描虫洞占用主控**：开采 / 掩护巡逻 ⇒ **自动停扫后照常开工**；远征 ⇒ 拒（真命令）', () => {
     const { state } = fresh()
     const beltId = [...ctx.belts.keys()][0]!
     const scanTarget = frontierGalaxyIds(state, ctx)[0]!
     startWormholeScan(state) // 手搓现场：正在扫描虫洞（已扫 7 分钟）
-    // 单点：占用判据必须点名"扫描虫洞"
-    expect(wormholePilotHoldReason(state) ?? '').toContain('扫描虫洞')
-    // 真命令逐条：一律被拒、拒因点名"扫描虫洞"
-    const cases: Array<[string, { ok: boolean; error?: string }]> = [
-      ['开采', startMining(state, beltId, ctx)],
-      ['远征', startExpedition(state, 'ano-training', ctx)],
-      ['掩护巡逻', goStandbyAt(state, 'galaxy-hub', ctx)],
-    ]
-    for (const [name, r] of cases) {
-      expect(r.ok, `${name}：扫描虫洞期间还能开工 = 主控干两件事`).toBe(false)
-      expect(r.error ?? '', `${name} 的拒因要点名"扫描虫洞"`).toContain('扫描虫洞')
-    }
+    // 单点：占着主控这件事仍被认出来（统一判据报"可自动停"）
+    expect(mainActivityOf(state)).toBe('wormholeScan')
+    expect(gateMainActivity(state, 'mining').action).toBe('halt')
+    // 真命令：开采 ⇒ 自动停扫（进度保留）+ 开工
+    const mining = startMining(state, beltId, ctx)
+    expect(mining.ok, '扫描虫洞期间开采应当自动停扫后放行').toBe(true)
+    expect(state.mining.active).toBe(true)
+    expect(state.wormholeScan!.active).toBe(false)
+    expect(state.wormholeScan!.progressMs).toBe(7 * 60_000) // 进度保留
+    expect(state.logs.some((l) => l.text.includes('已自动停止「扫描虫洞」'))).toBe(true)
+    // 远征：开矿在跑 ⇒ 自动停采后照常出发（战争优先）
+    expect(startExpedition(state, 'ano-training', ctx).ok).toBe(true)
+    expect(state.mining.active).toBe(false)
+    // 远征在途（且已交火）⇒ **拒**（不可中断那一档：此刻的拒因是"战斗中"）
+    const whscan = wormholeScanStart(state, ctx)
+    expect(whscan.ok).toBe(false)
+    expect(whscan.error ?? '').toContain('战斗中')
+    expect(wormholeScanBlockReason(state)).toBeNull() // 本入口自己的前置没意见（是战斗/远征在飞拦下的）
+    // 掩护巡逻（远征在途 ⇒ 先拒；把远征收掉再验自动停扫）
+    state.expedition.active = false
+    state.expedition.battle = null
+    state.expedition.phase = 'out'
+    state.wormholeScan = { active: true, progressMs: 7 * 60_000 }
+    /**
+     * ⚠ 目标要选**另一个已探索星系**：母港 = 当前所在，会被 `goStandbyAt` 自己那条"已停靠、无需前往"
+     * 挡下来（2026-09-21 起跨活动判据排在**本入口自己的前置校验之后**，所以这里必须给一个能开工的现场）。
+     */
+    const elsewhere = [...ctx.galaxies.keys()].find(
+      (g) => g !== HOME_GALAXY_ID && Number.isFinite(shortestTravelMinutes(ctx, HOME_GALAXY_ID, g)),
+    )!
+    state.exploredGalaxies.push(elsewhere)
+    const patrol = goStandbyAt(state, elsewhere, ctx)
+    expect(patrol.ok, '扫描虫洞期间掩护巡逻应当自动停扫后放行').toBe(true)
+    expect(state.standby.active).toBe(false) // 即时就位：active 归 false、船在目标星系留守
+    expect(state.awayGalaxy).toBe(elsewhere)
+    expect(state.wormholeScan!.active).toBe(false)
     // 对照（2026-09-15）：**星系扫描不占主控 ⇒ 扫描虫洞期间照样能派扫描艇**
     expect(startScan(state, scanTarget, ctx).ok).toBe(true)
     state.scanning.active = false
-    // 停扫 ⇒ 立刻放行，且**进度保留**（回来可续扫）
-    expect(wormholeScanStop(state).ok).toBe(true)
-    expect(wormholePilotHoldReason(state)).toBeNull()
-    expect(startMining(state, beltId, ctx).ok).toBe(true)
-    expect(state.wormholeScan!.progressMs).toBe(7 * 60_000)
   })
 
   /**
@@ -291,35 +368,59 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
   })
 
   /**
-   * **④′ 反方向也补齐**（同一批修）：长途运输 / 快递在途 / 亲自开炉 / 亲自开线**期间开不了扫**。
-   * 判据读的就是这些字段（与 `mining.ts` / `industry.ts` / `manufacturing.ts` 同一批现场）。
+   * **④′ 反方向也补齐**（同一批修；**2026-09-21 改口径**）：
+   * 长途运输 ⇒ 开扫**先警告**（`core.activityGate.002`，界面两段确认）· 快递在途 ⇒ **拒**（不可中断）·
+   * 亲自开炉 / 亲自开线 ⇒ **自动停掉后照常开扫**。两个方向仍由同一把尺兜住（不再各写一份）。
    */
-  it('④′ 长途运输 / 快递在途 / 亲自开炉 / 亲自开线 ⇒ 开不了扫（两个方向成对）', () => {
-    const expectBlocked = (name: string, patch: (s: GameState) => void, keyword: string): void => {
+  it('④′ 长途运输（警告）/ 快递（拒）/ 亲自开炉·开线（自动停）⇒ 开扫的三种口径', () => {
+    // 长途运输：首击只警告（可中断那一档）
+    {
+      const { state } = fresh()
+      state.hauling = { ...state.hauling, active: true }
+      expect(wormholeScanBlockReason(state)).toBeNull() // 本入口自己的前置没意见
+      const r = wormholeScanStart(state, ctx)
+      expect(r.ok).toBe(false)
+      expect(r.errorId).toBe('core.activityGate.002')
+      expect(r.error ?? '').toContain('本段报酬拿不到')
+      expect(state.wormholeScan?.active).not.toBe(true)
+    }
+    // 快递投送在途：**拒**（在途不可中断）
+    {
+      const { state } = fresh()
+      state.sideTasks.deliver = { taskId: 1, arriveAtGameMs: 600_000 } as never
+      const r = wormholeScanStart(state, ctx)
+      expect(r.ok).toBe(false)
+      expect(r.error ?? '').toContain('不能中断')
+    }
+    // 亲自开炉 / 亲自开线：**自动停掉**后照常开扫（进度丢弃——船长 2026-09-21 答 2）
+    for (const [name, patch] of [
+      [
+        '亲自开炉（精炼）',
+        (s: GameState) => void s.refineRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never),
+      ],
+      [
+        '亲自开线（制造）',
+        (s: GameState) =>
+          void s.manufacturingRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never),
+      ],
+    ] as Array<[string, (s: GameState) => void]>) {
       const { state } = fresh()
       patch(state)
-      const why = wormholeScanBlockReason(state)
-      expect(why, `${name} 期间不该能开扫`).not.toBeNull()
-      expect(why ?? '', `${name} 的拒因要点名它自己`).toContain(keyword)
+      const r = wormholeScanStart(state, ctx)
+      expect(r.ok, `${name} 期间开扫应当自动停掉它`).toBe(true)
+      expect(state.refineRuns.some((x) => x.active && x.worker === 'pilot')).toBe(false)
+      expect(state.manufacturingRuns.some((x) => x.active && x.worker === 'pilot')).toBe(false)
+      expect(state.logs.some((l) => l.text.startsWith('已自动停止「'))).toBe(true)
     }
-    expectBlocked('长途运输', (s) => void (s.hauling = { ...s.hauling, active: true }), '长途运输')
-    expectBlocked('快递投送在途', (s) => void (s.sideTasks.deliver = { taskId: 1, arriveAtGameMs: 600_000 } as never), '快递')
-    expectBlocked(
-      '亲自开炉（精炼）',
-      (s) => void s.refineRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never),
-      '精炼炉',
-    )
-    expectBlocked(
-      '亲自开线（制造）',
-      (s) => void s.manufacturingRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never),
-      '制造',
-    )
-    // 对照：AI 核心驱动的炉/线**不占主控** ⇒ 照旧能开扫
+    // 对照：AI 核心驱动的炉/线**不占主控** ⇒ 照旧能开扫（且**不受影响**）
     {
       const { state } = fresh()
       state.refineRuns.push({ id: 1, active: true, worker: 'basic', blueprintId: 'bp-titanium', count: 1 } as never)
       state.manufacturingRuns.push({ id: 2, active: true, worker: 'basic', blueprintId: 'bp-titanium', count: 1 } as never)
       expect(wormholeScanBlockReason(state), 'AI 核心驱动的产线不占主控').toBeNull()
+      expect(wormholeScanStart(state, ctx).ok).toBe(true)
+      expect(state.refineRuns[0]!.active).toBe(true)
+      expect(state.manufacturingRuns[0]!.active).toBe(true)
     }
   })
 })

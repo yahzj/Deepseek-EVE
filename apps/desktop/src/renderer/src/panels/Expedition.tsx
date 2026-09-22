@@ -1666,11 +1666,12 @@ function GalaxyActions({
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
     state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
-  const pilotBusy =
-    state.mining.active ||
-    state.expedition.active ||
-    state.transit.active ||
-    (state.standby.active && !inFlight)
+  /**
+   * ⚠ **2026-09-21 船长令改口径**：`state.mining.active` **从这条里删掉**（原先采矿中 ⇒ 巡逻按钮直接置灰）——
+   * 采矿属"可自动停"那一档，点下去会先停采（统一日志）再转场；留着它就把统一口径又堵回去了。
+   * 仍留在里面的：远征（统一判据拒）、换港返航（锁定态）、别处的掩护巡逻（同一项，由 core 自己判）。
+   */
+  const pilotBusy = state.expedition.active || state.transit.active || (state.standby.active && !inFlight)
   const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
   const standbyTitle = inFlight
     ? tr("ui.Expedition.205")
@@ -1710,10 +1711,11 @@ function GalaxyActions({
   const expOn = state.expedition.active
   const [mineAskBelt, setMineAskBelt] = useState<string | null>(null)
   function handleMineStart(beltId: string): void {
-    if (state.mining.active) {
-      onToast(tr("ui.Expedition.306"), true)
-      return
-    }
+    /**
+     * ⚠ **2026-09-21 船长答 2「允许切换」**：原先"正在开采 ⇒ 直接 toast 拦住"那条已删——
+     * 换矿带现在**直接切**（core 先停旧带那一趟、货留在船上、写「已切换矿带」日志）。
+     * 远征在飞时那条"转战"两段确认照旧（`startMiningFromExpeditionAt`）。
+     */
     if (expOn && !mineAskBelt) {
       setMineAskBelt(beltId)
       onToast(
@@ -1861,12 +1863,11 @@ function GalaxyActions({
               </span>
               <button
                 className={`app-btn is-small${isMiningThis || mineAskBelt === b.id ? ' is-warn' : ' is-primary'}`}
-                disabled={isMiningThis || state.mining.active}
+                /** **换矿带允许直接切**（船长 2026-09-21 答 2「允许切换」）：别处正在开采也照点（core 先停旧带） */
+                disabled={isMiningThis}
                 title={
-                  state.mining.active
-                    ? isMiningThis
-                      ? tr("ui.Expedition.310")
-                      : tr("ui.Expedition.311")
+                  isMiningThis
+                    ? tr("ui.Expedition.310")
                     : expOn
                       ? mineAskBelt === b.id
                         ? tr("ui.Expedition.025")

@@ -135,23 +135,28 @@ describe('精炼与市场（M1 经济）', () => {
       state.aiCores['basic'] = 2
       state.warehouse.items['ore-a'] = 100
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      // 主控第二台仍被拒（pilot 限 1）
-      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
+      /**
+       * ⚠ **2026-09-21 船长答 1「允许切换」**：再点一次「亲自运转」不再被硬拒——它是**换炉**
+       * （停掉原来那台＝当前那批进度丢弃 ＋ 统一日志），**"pilot 至多 1 台"这条不变量照旧成立**。
+       */
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      expect(state.refineRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
+      expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开炉」'))).toBe(true)
       // 两枚核心开同资源第二、三台（原料不锁定共享扣取）
       expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
       expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
-      expect(state.refineRuns).toHaveLength(3)
-      expect(state.refineRuns.filter((x) => x.worker === 'pilot')).toHaveLength(1)
-      expect(state.refineRuns.every((x) => x.itemId === 'ore-a')).toBe(true)
+      expect(state.refineRuns.filter((x) => x.active)).toHaveLength(3)
+      expect(state.refineRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
+      expect(state.refineRuns.filter((x) => x.active).every((x) => x.itemId === 'ore-a')).toBe(true)
       // 三台各自独立周期（pilot 6s；核心 15s），到点顺次实时扣料
       advanceGame(state, 16_000, ctx)
       // pilot：批 1（6s）、批 2（12s）→ 扣 20；核心两台各批 1（15s）→ 扣 20
       expect(countWare(state, 'ore-a')).toBe(60)
       expect(countWare(state, 'min-a')).toBe(96) // 每批 20 × 4 批 × (2×1.2) → floor 各批 24×4
-      expect(state.refineRuns).toHaveLength(3)
+      expect(state.refineRuns.filter((x) => x.active)).toHaveLength(3)
       // 全部继续推进直到库存耗尽（各自尾批自然收尾）
       advanceGame(state, 200_000, ctx)
-      expect(state.refineRuns).toHaveLength(0)
+      expect(state.refineRuns.filter((x) => x.active)).toHaveLength(0)
       expect(countWare(state, 'ore-a')).toBe(0)
       expect(countAiCore(state, 'basic')).toBe(2) // 双核心归还
     })
@@ -226,19 +231,61 @@ describe('精炼与市场（M1 经济）', () => {
       expect(state.logs.some((l) => l.text.includes('余料保留'))).toBe(true)
     })
 
-    it('无核心/主控忙/不在母港均拒绝启动', () => {
+    it('无核心/不在母港拒绝启动；**采矿中 ⇒ 自动停采后照常开工**（2026-09-21 统一批）', () => {
       state.warehouse.items['ore-a'] = 50
       expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(false) // 无 AI 核心
-      // 采矿中（主控忙）不能亲自运转
+      /**
+       * ⚠ **2026-09-21 船长令改判**：原先"主控忙 ⇒ 硬拒"，现在统一为**能直接切就自动取消当前活动**
+       * （采矿那一档 = 自动停 + 一条统一日志）⇒ 亲自开炉照常开工，矿留在船上。
+       */
       state.mining.active = true
-      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
-      state.mining.active = false
+      state.mining.beltId = [...ctx.belts.keys()][0]!
+      state.mining.phase = 'mining'
+      state.mining.tripUnits = 7
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      expect(state.mining.active).toBe(false)
+      expect(state.logs.some((l) => l.text.includes('已自动停止「开采」'))).toBe(true)
+      expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
       // 不在母港
       state.awayGalaxy = 'galaxy-x'
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
       state.awayGalaxy = null
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
       expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
+    })
+
+    /**
+     * **玩家 2026-09-21 报障**：「为什么我在采矿时无法直接切换精炼炉手动运转？」
+     *
+     * 根因不在判据，在**顺序**：`stationIndustryBlocked`（要停靠空间站）原先排在统一判据**之前**，
+     * 而"采矿/打捞/掩护巡逻/长途运输"这些正在跑的活动都会让舰船显示成"不在站内"⇒ 玩家先撞上
+     * 「需停靠空间站」，可实际上**一停机舰船就即时归位了**。现在判据在前、位置门在后（同一条链）。
+     */
+    it('**位置门排在统一判据之后**：野外/运输中切"亲自开炉"先停机（位置随之满足）', () => {
+      state.warehouse.items['ore-a'] = 50
+      // ① 掩护巡逻（野外留守）中 ⇒ 停巡逻（即时召回，`awayGalaxy` 归零）+ 照常开炉
+      state.standby.active = true
+      state.standby.galaxyId = 'galaxy-hub'
+      state.awayGalaxy = 'galaxy-hub'
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok, '掩护巡逻中应当能直接开炉').toBe(true)
+      expect(state.standby.active).toBe(false)
+      expect(state.awayGalaxy).toBeNull()
+      expect(state.logs.some((l) => l.text.includes('已自动停止「掩护巡逻」'))).toBe(true)
+      expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
+      // ② 长途运输中 ⇒ 报的是**两段确认那句警告**（不是位置错）——首击不停、二击才停
+      state.hauling.active = true
+      state.dockedSite = null
+      state.awayGalaxy = 'galaxy-far'
+      const ask = startRefineRun(state, 'ore-a', 'pilot', ctx)
+      expect(ask.ok).toBe(false)
+      expect(ask.errorId).toBe('core.activityGate.002')
+      expect(ask.error ?? '').toContain('本段报酬拿不到')
+      expect(state.hauling.active, '首击只警告：运输不许被停').toBe(true)
+      // ③ 真的停在野外（无可停的活动）⇒ 位置门照旧拦
+      state.hauling.active = false
+      const blocked = startRefineRun(state, 'ore-a', 'pilot', ctx)
+      expect(blocked.ok).toBe(false)
+      expect(blocked.error ?? '', '野外且没有可停的活动 ⇒ 仍旧是位置门拒').toContain('需停靠空间站')
     })
 
     it('无配方/空库存/未知物品拒绝启动；运行视图可读（多工位逐台一条、带稳定 id）', () => {
@@ -270,12 +317,15 @@ describe('精炼与市场（M1 经济）', () => {
       expect(stopRefineRun(state, ctx, views[0]!.id).ok).toBe(true)
     })
 
-    it('手动运转期间禁止再亲自开炉（pilot 限 1 台）', () => {
+    it('换炉允许直接切（**pilot 仍至多 1 台**：再点一次 = 停原炉 + 开新炉）', () => {
       state.warehouse.items['ore-a'] = 20
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
       // 2026-09-06：开工不再写日志（卡片/活动栏实时可见，避免刷屏）
       expect(state.logs.some((l) => l.text.includes('开工'))).toBe(false)
-      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
+      /** 2026-09-21 船长答 1「允许切换」：换炉不再硬拒——停掉原炉（那批进度丢弃）+ 统一日志 + 开新炉 */
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      expect(state.refineRuns.filter((r) => r.active && r.worker === 'pilot')).toHaveLength(1)
+      expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开炉」') && l.text.includes('进度丢弃'))).toBe(true)
       expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
       expect(state.logs.some((l) => l.text.includes('精炼炉已停'))).toBe(true)
     })

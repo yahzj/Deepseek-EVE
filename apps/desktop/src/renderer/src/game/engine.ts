@@ -28,6 +28,8 @@ import {
   cancelAiTask,
   cancelManufacturing,
   cancelOrder,
+  /** 「第一次」任务：点「完成」推进（2026-09-21 船长令改成手动完成） */
+  claimFirstTask,
   cancelStandby,
   changeShip,
   clearSkillQueue,
@@ -115,6 +117,9 @@ import {
   courierTaskUnlocked,
   courierDelivering,
   startCourierDelivery,
+  // 主控活动切换的单点判据（2026-09-21 船长令；见 `withActivitySwitch`）
+  ACTIVITY_CONFIRM_ID,
+  haltCurrentActivity,
   acceptCourierTask,
   abandonAcceptedCourierTask,
   stopMining,
@@ -468,6 +473,12 @@ function offlineReportLogText(r: OfflineReport): string {
 }
 
 /**
+ * **活动切换"再点一次即确认"的时间窗**（2026-09-21 统一批）：首击弹警告（`ui.Hauling.033` 那句手感），
+ * 同一颗按钮在这个窗口内再点一下才算确认；超时/换按钮 ⇒ 重新警告（别让玩家隔一分钟误触执行）。
+ */
+const SWITCH_ASK_MS = 6000
+
+/**
  * **洞内倍速的"记忆"**（船长 2026-09-19：「倍速采用记忆形式，记住玩家上次选择的倍速」）：
  * 存 `localStorage`（键空间 `whale-idle:*`，与语言 `whale-idle:locale`、打捞排序同款口径）；
  * **不进存档** ⇒ 存档保持中立，导出/导入不带着显示偏好走；取不到或越界一律当"还没选过"（`0`）。
@@ -563,6 +574,37 @@ export class GameEngine {
   private winEval: { ev: GameState; uid: string } | null = null // 战力评估快照（fp 变化时重建）
   private winQueue: string[] = []
   private winLastPumpAt = 0
+
+  /**
+   * **主控活动切换：首击警告、二击执行**（**2026-09-21 船长令**：「统一为能够直接切换（自动取消当前
+   * 活动），像长途运输这种高收益高周期的才加一个警告」）。
+   *
+   * core 的 `activityGate` 在"当前占着主控的是长途运输、而这条指令会中断它"时返回
+   * `core.activityGate.002`（一句写清代价的警告，**不执行**）；界面**同一颗按钮再点一次**即确认 ——
+   * 先按统一单点把当前活动停掉（`haltCurrentActivity`：停机 + 统一日志），再原样重跑一次指令。
+   *
+   * ⚠ 不新造交互、每颗按钮也不需要各自写确认态（沿用 2026-09-20 那套"再点一次"的手感）；
+   * 记录的是**哪一颗按钮**＋时间窗（`SWITCH_ASK_MS`），换一颗按钮会重新走一次警告。
+   */
+  private switchAsk: { key: string; at: number } | null = null
+
+  /** 活动切换的两段确认外包装（见 `switchAsk` 的说明）；`key` = 发起切换的那颗按钮 */
+  private withActivitySwitch(key: string, run: () => CommandResult): CommandResult {
+    const first = run()
+    if (first.ok || first.errorId !== ACTIVITY_CONFIRM_ID) return first
+    const now = Date.now()
+    const armed = this.switchAsk !== null && this.switchAsk.key === key && now - this.switchAsk.at <= SWITCH_ASK_MS
+    if (!armed) {
+      this.switchAsk = { key, at: now }
+      return first // 首击：把警告交给调用点照旧 toast 出来
+    }
+    this.switchAsk = null
+    if (haltCurrentActivity(this.state) !== null) {
+      void this.persist()
+      this.notify()
+    }
+    return run() // 二击：当前活动已停 ⇒ 原指令重跑一次
+  }
 
   /** 战力指纹：驾驶船 + 装配 + 无人机清单 + 技能 + 当前耐久（任一变化 → 全板胜率失效重算） */
   private winFingerprint(): string {
@@ -1180,14 +1222,16 @@ export class GameEngine {
     return count
   }
 
-  /** 开始在矿带开采 */
+  /** 开始在矿带开采（`withActivitySwitch`：会中断长途运输时首击只警告） */
   startMiningAt(beltId: string): CommandResult {
-    const result = startMining(this.state, beltId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('mining', () => {
+      const result = startMining(this.state, beltId, this.ctx)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** T4 延后项：远征中直接转开采（UI 两步确认后调用；取消远征并停止清剿） */
@@ -1212,12 +1256,14 @@ export class GameEngine {
 
   /** B3：开始打捞作业（采矿式自动循环，默认卸货后续捞；需高槽打捞器） */
   startSalvageOpAt(galaxyId: string): CommandResult {
-    const result = startSalvageOp(this.state, galaxyId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('salvaging', () => {
+      const result = startSalvageOp(this.state, galaxyId, this.ctx)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** B3：停止打捞作业 */
@@ -1232,12 +1278,14 @@ export class GameEngine {
 
   /** 启动精炼炉运转（worker：'pilot' = 主控亲自运转（全局限 1 台）/ AI 核心类型 = 核心驱动自动化，每闲置核心 1 台） */
   startRefineRunAt(itemId: string, worker: AiCoreType | 'pilot'): CommandResult {
-    const result = startRefineRun(this.state, itemId, worker, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('refine', () => {
+      const result = startRefineRun(this.state, itemId, worker, this.ctx)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** 停指定台号的炉（v20 按台号定位；同资源多台互不影响）：已完成批保留，原料未锁定无需退回；AI 核心自动归还 */
@@ -1253,20 +1301,24 @@ export class GameEngine {
   /** B3：启动残骸回收（开箱批：10 m³/25s；残骸计数 = 体积；多工位并行） */
   /** 虫洞：**拆解一件遗迹安全货柜**（F4d · 与精炼/回收同一条产线机器；90 秒/件） */
   startUnboxRunAt(boxItemId: string, worker: AiCoreType | 'pilot'): CommandResult {
-    const result = startUnboxRun(this.state, this.ctx, boxItemId, worker)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('refine', () => {
+      const result = startUnboxRun(this.state, this.ctx, boxItemId, worker)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
   startRecycleRunAt(wreckItemId: string, worker: AiCoreType | 'pilot'): CommandResult {
-    const result = startRecycleRun(this.state, wreckItemId, worker, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('refine', () => {
+      const result = startRecycleRun(this.state, wreckItemId, worker, this.ctx)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** 全部精炼炉工位运行视图（v19 多工位：工业页卡片逐台 / 活动栏逐条） */
@@ -1410,6 +1462,22 @@ export class GameEngine {
     return res
   }
 
+  /**
+   * **「第一次」任务：点「完成」**（**2026-09-21 船长令**：「第一次任务不要自动完成。要让玩家回到任务中心
+   * 点击完成才开始下一步，这样给予任务开始前道具的时间点就很明确」）。
+   *
+   * 一次点击做完：写 `done` → 发完成奖励 → 发**下一条的起手道具**（全部在 core 的 `claimFirstTask` 里）；
+   * 情报信在下一拍由 `advanceComms` 送达（触发器照旧读 `done`）。返回失败原因时界面直接 toast。
+   */
+  claimFirstTaskAt(id: string): { ok: boolean; error?: string } {
+    const res = claimFirstTask(this.state, this.ctx, id)
+    if (res.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return res
+  }
+
   /** 撤销自己的挂单（货物退回对应库存） */
   cancelOrderAt(orderId: number): boolean {
     const ok = cancelOrder(this.state, this.ctx, orderId)
@@ -1478,12 +1546,14 @@ export class GameEngine {
   /** 开始制造（2026-09-08 劳动者制与精炼炉同款：worker='pilot' 主控亲自（全局限 1 条、占主控）/ AI 核心类型 = 一枚核心驱动一条线；
    * 扣材料（制造费已取消），时间到自动完成；AI 线完成/取消核心自动归还） */
   startManufacturingAt(blueprintId: string, worker: AiCoreType | 'pilot'): CommandResult {
-    const result = startManufacturing(this.state, blueprintId, worker, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('manufacturing', () => {
+      const result = startManufacturing(this.state, blueprintId, worker, this.ctx)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** 把装备库里的装备装到对应槽位 */
@@ -1632,12 +1702,14 @@ export class GameEngine {
 
   /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
   startExpeditionAt(anomalyId: string): CommandResult {
-    const result = startExpedition(this.state, anomalyId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('expedition', () => {
+      const result = startExpedition(this.state, anomalyId, this.ctx)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
@@ -1653,14 +1725,16 @@ export class GameEngine {
   /** 赏金任务·窝点出击（2026-09-10 船长定）：目标 = 派生窝点，档位随任务锁定
    *  （威胁/波次/僚机按档位强化、胜利后按窝点口径结算酬金与稀有残骸）。 */
   startLairExpeditionAt(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
-    const result = fromMining
-      ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier })
-      : startExpedition(this.state, anomalyId, this.ctx, { lairTier })
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('expedition', () => {
+      const result = fromMining
+        ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier })
+        : startExpedition(this.state, anomalyId, this.ctx, { lairTier })
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** V13 探索：对星图剪影星系发起扫描探索（完成回港点亮该星系） */
@@ -1699,12 +1773,14 @@ export class GameEngine {
    * 进度保留（停扫不清零）；满一个窗口由 `advanceWormholeScan` 在推进里发现一处虫洞。
    */
   wormholeScanStart(): CommandResult {
-    const r = wormholeScanStart(this.state, this.ctx)
-    if (r.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return r
+    return this.withActivitySwitch('wormholeScan', () => {
+      const r = wormholeScanStart(this.state, this.ctx)
+      if (r.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return r
+    })
   }
 
   /** 停「扫描虫洞」（进度保留） */
@@ -2500,12 +2576,14 @@ export class GameEngine {
 
   /** B1.5：前往指定星系掩护巡逻（原"待命"；即时就位，无去程等待） */
   goStandbyAt(galaxyId: string): CommandResult {
-    const result = goStandbyAt(this.state, galaxyId, this.ctx)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('standby', () => {
+      const result = goStandbyAt(this.state, galaxyId, this.ctx)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** B1.5：取消主控掩护巡逻去程（旧档在途；召回回母港） */
@@ -2678,7 +2756,7 @@ export class GameEngine {
    * 进行提醒」）：当前那一条 ≠ 玩家看过的这一条 ⇒ 返回 `{ taskId, title }`（徽标 +1、悬停写标题）；
    * 看过 / 13 条全做完 ⇒ null。判定单点在 core（`firstTaskNotice`）。
    */
-  firstTaskNotice(): { taskId: string; title: string } | null {
+  firstTaskNotice(): { taskId: string; title: string; ready: boolean } | null {
     return firstTaskNotice(this.state)
   }
 
@@ -2717,12 +2795,14 @@ export class GameEngine {
 
   /** 快递任务「出发投送」（虚拟货物：只占货舱体积 → 挂入在途 → 到站引擎自动结算运费） */
   startCourierDeliveryAt(id: number): CommandResult {
-    const result = startCourierDelivery(this.state, this.ctx, id)
-    if (result.ok) {
-      void this.persist()
-      this.notify()
-    }
-    return result
+    return this.withActivitySwitch('deliver', () => {
+      const result = startCourierDelivery(this.state, this.ctx, id)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
   }
 
   /** 当前驾驶船的货舱容量（m³；快递卡判断"装不装得下"用） */

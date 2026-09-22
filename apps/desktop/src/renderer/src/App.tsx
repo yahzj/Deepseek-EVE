@@ -1066,8 +1066,14 @@ export function App({ engine }: { engine: GameEngine }) {
                   unreadN > 0
                     ? item.key === 'task'
                       ? [
-                          // 「第一次」有新的一步 ⇒ 先说它（写清是哪一条），赏金新板另起一行
-                          firstTaskNew !== null ? tr('ui.App.120', { p1: firstTaskNew.title }) : null,
+                          /**
+                           * 「第一次」有新的一步 ⇒ 先说它（写清是哪一条），赏金新板另起一行。
+                           * ⚠ **2026-09-21**：任务改成"玩家点「完成」才推进" ⇒ **已达成**时补一句
+                           * 「（已达成，回任务中心点「完成」）」——否则玩家在别处干完活不知道要回去点。
+                           */
+                          firstTaskNew !== null
+                            ? tr('ui.App.120', { p1: firstTaskNew.title }) + (firstTaskNew.ready ? tr('ui.App.122') : '')
+                            : null,
                           bountyNew > 0 ? tr('ui.App.113', { unreadN: bountyNew }) : null,
                         ]
                           .filter((s) => s !== null)

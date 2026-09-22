@@ -39,10 +39,10 @@ import type { SettleStats } from './settleStats'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
-import { FIRST_TASKS, advanceFirstChains, advanceFirstTasks, peakFirst } from './firstTasks'
+import { FIRST_TASKS, advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
 import { matterTechNodes } from './matterTech'
-import { grantFirstReward } from './firstRewards'
+import { claimFirstTask } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -190,25 +190,32 @@ export function advanceGame(
   // 通讯收件箱（2026-09-11）：数据消息按触发条件送达 + 未读记账（幂等；表为空时零开销）
   advanceComms(state, ctx)
   /**
-   * **「第一次」任务系列 ＋ 后续次数链**（2026-09-17 教程重做批 · 阶段②）：判定达成 ⇒ 写
-   * `importantTasks[id].done`（**只置一次**，奖励/通讯据此去重）。
-   * ⚠ 本阶段**不写日志、不发通讯**——保持"离线事件条数"等既有口径逐字不变；
-   * 阶段②b 接通讯与奖励，阶段③把任务画进任务中心。
+   * **「第一次」任务系列**（2026-09-17 教程重做批 · 阶段②；**2026-09-21 船长令改成"点击完成"**）。
+   *
+   * 船长原话：「**第一次任务不要自动完成。要让玩家回到任务中心点击完成才开始下一步，这样给予任务开始前
+   * 道具的时间点就很明确**」⇒ 这里**只判不写**：`claimableFirstTasks` 只回答"现在能不能完成"，
+   * 完成的推进（写 `done` → 发完成奖励 → 发下一条的起手道具）全在 `firstRewards.claimFirstTask`，
+   * 由玩家在任务中心点「完成」触发。本处只做两件事：
+   * ① **播报一次**「已达成，回任务中心点完成」（`state.firstTaskReadyId` 去重，免得每拍刷屏）；
+   * ② **老档一次性收口**（v30→v31 迁移打的 `firstTaskAutoClaim`）：把读档时"判据已满足却没点过"的积压
+   *    按点击同款走完（发奖/发信/进下一条），跑完即删键 —— 新档不带这个键 ⇒ 一律走手动流程。
    */
-  for (const id of advanceFirstTasks(state, ctx)) {
-    const def = FIRST_TASKS.find((d) => d.id === id)
-    // 发奖（2026-09-18：奖励表扩充到六个口袋，发放逻辑拆到 `firstRewards.ts`；名字由 ctx 查内容表得到）
-    if (def) {
-      grantFirstReward(state, ctx, def, (kind, id2) =>
-        kind === 'blueprint'
-          ? (ctx.blueprints.get(id2)?.name ?? ctx.shipBlueprints.get(id2)?.name ?? id2)
-          : kind === 'ware'
-            ? (ctx.items.get(id2)?.name ?? id2)
-            : kind === 'module'
-              ? (ctx.modules.get(id2)?.name ?? id2)
-              : (ctx.ships.get(id2)?.name ?? id2),
-      )
+  const readyNow = claimableFirstTasks(state, ctx)
+  if (readyNow.length > 0) {
+    const first = readyNow[0]!
+    if (state.firstTaskReadyId !== first.id) {
+      state.firstTaskReadyId = first.id
+      addLog(state, 'info', `◆ 任务已达成：「${first.title}」——回「任务中心」点「完成」继续下一步。`, 'core.firstTasks.001', { p1: first.title })
     }
+  }
+  if (state.firstTaskAutoClaim === true) {
+    // 上限 20 只是护栏（13 条一轮足够）；每轮都重新取"当前可完成"，天然按顺序推进
+    for (let guard = 0; guard < 20; guard += 1) {
+      const c = claimableFirstTasks(state, ctx)[0]
+      if (!c) break
+      claimFirstTask(state, ctx, c.id)
+    }
+    if (claimableFirstTasks(state, ctx).length === 0) delete state.firstTaskAutoClaim
   }
   // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
   // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。

@@ -56,12 +56,13 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
   const state = engine.state
   const ctx = engine.ctx
   const endpoints = haulEndpoints(state, ctx)
-  const busy =
-    state.mining.active ||
-    state.salvaging.active ||
-    state.expedition.active ||
-    state.standby.active ||
-    state.transit.active
+  /**
+   * ⚠ **2026-09-21 船长令改口径**（「统一为能够直接切换（自动取消当前活动）」）：开工门槛**不再**看
+   * 「开采 / 打捞 / 远征 / 掩护巡逻在跑」——这些由 core 的统一判据裁决（可自动停的会先停掉再开工、
+   * 远征直接拒）。界面只保留**位置**：
+   * ① `awayGalaxy === null`（停在空间站才能接单）；② 已在运输中（要先停本趟）。
+   */
+  const busy = state.transit.active
   const haulingActive = state.hauling.active
   const h = state.hauling
   /**

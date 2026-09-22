@@ -28,11 +28,8 @@ describe('远征 V12：两阶段', () => {
     ctx = makeTestCtx()
   })
 
-  it('出发校验：采矿中/远征中/未知目标/声望不足拒绝', () => {
+  it('出发校验：远征中/未知目标/声望不足拒绝', () => {
     expect(startExpedition(state, '不存在的目标', ctx).ok).toBe(false)
-    state.mining.active = true
-    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(false)
-    state.mining.active = false
     // ano-hard 需声望 5，且目标星系需已探索（V13 封锁）
     const r = startExpedition(state, 'ano-hard', ctx)
     expect(r.ok).toBe(false)
@@ -43,6 +40,21 @@ describe('远征 V12：两阶段', () => {
     // 去程取消：下达即进入交火（不再有 out 等待相位）
     expect(state.expedition.phase).toBe('battle')
     expect(state.expedition.active).toBe(true)
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(false) // 远征中 ⇒ 拒（同一项不重复开）
+  })
+
+  /**
+   * ⚠ **2026-09-21 船长令改判**：「统一为能够直接切换（自动取消当前活动）」——采矿属于"可直接切"那一档，
+   * 所以"采矿中出击"不再是硬拒，而是**自动停采 + 一条统一日志**，远征照常出发（本趟矿留在船上）。
+   */
+  it('采矿中出击 ⇒ 自动停采（统一日志），远征照常出发', () => {
+    state.mining.active = true
+    state.mining.beltId = 'belt-a'
+    state.mining.phase = 'mining'
+    state.mining.tripUnits = 3
+    expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
+    expect(state.mining.active).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('已自动停止「开采」'))).toBe(true)
   })
 
   it('去程取消：出发即开战（无 out 等待）；交火打完自动结算', () => {

@@ -24,7 +24,8 @@
  *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
  *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
-import { addLog, wormholePilotHoldReason } from './state'
+import { addLog, haltActivityForSwitch } from './state'
+import { applyActivityGate, logAutoHalt } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, ManufacturingRunState } from './state'
 import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
@@ -270,14 +271,6 @@ export function startManufacturing(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自开线仍要求在基地网络内。
-  if (stationIndustryBlocked(worker, state, ctx)) {
-    return {
-      ok: false,
-      error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。',
-      errorId: 'core.manufacturing.001',
-    }
-  }
   const buildable = findBuildable(ctx, blueprintId)
   if (!buildable) {
     return { ok: false, error: `未知蓝图：${blueprintId}。`, errorId: 'core.manufacturing.002', errorParams: { p1: blueprintId } }
@@ -315,42 +308,39 @@ export function startManufacturing(
       }
     }
   }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
-  if (worker === 'pilot') {
-    const hold = wormholePilotHoldReason(state)
-    if (hold) return { ok: false, error: hold }
+  // 2026-09-08 船长定：取消每次制造费——开工不再校验/收取 buildCostIsk（蓝图数据字段保留为历史遗留）
+  // ⚠ 材料校验放在**统一判据之前**（它是本入口自己的前置，且与停机无关——材料读的是货仓 + 仓库）
+  const missing = missingMaterials(state, ctx, buildable.spec)
+  if (missing.length > 0) {
+    const missingText = missing.join('、')
+    return {
+      ok: false,
+      error: `材料不足：${missingText}。`,
+      errorId: 'core.manufacturing.010',
+      errorParams: { p1: missingText },
+    }
   }
+  /**
+   * 主控亲自制造 ⇒ **跨活动统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，长途运输
+   * 先警告，远征/快递/战斗中/洞里/返航途中一律拒）。
+   *
+   * ⚠ **手动工作位（精炼炉·回收炉·拆解·制造线）之间也允许直接切**（船长当日答 1「允许切换」）：
+   * 由统一判据顺带完成——在跑的手动炉是 `refine` 档 ⇒ gate 判 `halt` ⇒ 停炉（当前那批进度丢弃，
+   * 代价写在统一日志里）＋照常开线。原先那条"手动位互斥"硬拒本轮删除。
+   *
+   * ⚠ 判据排在**位置门槛之前**：停机本身就把舰船即时带回母港/空间站（玩家 2026-09-21 报障
+   * 「采矿时无法直接切换…手动运转」的同一处坑）。
+   */
   if (worker === 'pilot') {
-    // 主控亲自制造 = 全局限 1 条 + 与手动精炼/回收共用一个手动工作位 + 占主控工作位
+    const gateSkip = applyActivityGate(state, 'manufacturing')
+    if (gateSkip) return gateSkip
+    /**
+     * **同档再开一条 = 换线**（**2026-09-21 船长答 1「允许切换」**）：判据见"同一项"一律放行
+     * （`current === next`），所以这里自己收口——停掉手上那条（当前那批进度丢弃）＋统一日志。
+     */
     if (manufacturingManualActive(state)) {
-      return {
-        ok: false,
-        error: '你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。',
-        errorId: 'core.state.031',
-      }
-    }
-    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return {
-        ok: false,
-        error: '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。',
-        errorId: 'core.state.032',
-      }
-    }
-    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。', errorId: 'core.state.013' }
-    if (state.salvaging.active) {
-      return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。', errorId: 'core.state.014' }
-    }
-    if (state.expedition.active) {
-      return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
-    }
-    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
-    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
-    if (state.hauling.active) {
-      return {
-        ok: false,
-        error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自制造。',
-        errorId: 'core.state.033',
-      }
+      haltActivityForSwitch(state, 'manufacturing')
+      logAutoHalt(state, 'manufacturing')
     }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
@@ -364,19 +354,20 @@ export function startManufacturing(
       }
     }
   }
-  // 2026-09-08 船长定：取消每次制造费——开工不再校验/收取 buildCostIsk（蓝图数据字段保留为历史遗留）
-  const missing = missingMaterials(state, ctx, buildable.spec)
-  if (missing.length > 0) {
-    const missingText = missing.join('、')
-    return {
-      ok: false,
-      error: `材料不足：${missingText}。`,
-      errorId: 'core.manufacturing.010',
-      errorParams: { p1: missingText },
-    }
-  }
   // 耗时链：calcBuildDurationMs（工业理论 × 批量生产学）为共同基准；AI 先 ÷核心效率；
   // 产线节拍学 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
+  /**
+   * **位置门槛（放在统一判据之后）**：AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`），
+   * 出海时照常开工；亲自开线要求在基地网络内——而这一步可能刚被上面的自动停机**满足**
+   * （采矿/打捞/掩护巡逻停下时舰船已即时归位）。
+   */
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return {
+      ok: false,
+      error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。',
+      errorId: 'core.manufacturing.001',
+    }
+  }
   let durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
   if (worker !== 'pilot') {
     const eff = aiEfficiency(state, ctx, worker)

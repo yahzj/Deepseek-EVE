@@ -6,6 +6,7 @@
  */
 import { bumpFirst } from './firstTasks'
 import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
+import { cannotInterruptReason } from './activityGate'
 import type { CommandResult } from './engine'
 import type { FittedModules, FleetShipState, GameState } from './state'
 import type { SimContext } from './types'
@@ -100,6 +101,22 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   }
   const def = fleetDefOf(state, ctx, shipId)
   if (!def) return { ok: false, error: `未知舰船：${shipId}。` }
+  /**
+   * **锁定态统一判据**（**2026-09-21 船长令**：「**处在战斗中的时候也设置为不可取消**」＋「3 纳入」
+   * ＝ 换驾驶与进洞并入同一条单点）：**战斗中 / 人在洞里 / 换港返航途中** ⇒ 一律拒，措辞与各
+   * `start*` 入口共用 `activityGate.cannotInterruptReason`（原先换驾驶只靠 `shipLockedReason` 挡"换到
+   * 洞内船"，本船在洞/在战斗里照样能换 ⇒ 现在一条判据全收）。
+   * ⚠ 放在所有"停机"副作用之前（与下面那条顺序纪律同一个道理）。
+   */
+  const lockReason = cannotInterruptReason(state)
+  if (lockReason !== null) {
+    const id = lockReason.includes('战斗中')
+      ? 'core.activityGate.004'
+      : lockReason.includes('虫洞')
+        ? 'core.activityGate.005'
+        : 'core.activityGate.006'
+    return { ok: false, error: lockReason, errorId: id }
+  }
   /**
    * **顺序纪律（2026-09-20 修）**：能**拒绝**这次换船的校验一律排在"终止长途运输"之前——
    * 否则玩家点了换驾驶、被别的原因拒掉，本趟运输却已经被杀掉（看到的只是"没换成功"，实际白丢一趟报酬）。

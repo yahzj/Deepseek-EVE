@@ -97,7 +97,7 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     expect(missingMaterials(state, ctx, ctx.blueprints.get('bp-a')!)).toHaveLength(1)
   })
 
-  it('主控手动开工成功：扣材料、不扣制造费、锁定耗时（600 秒）；主控全局限 1 条', () => {
+  it('主控手动开工成功：扣材料、不扣制造费、锁定耗时（600 秒）；**再开一条 = 直接换线**', () => {
     state.warehouse.items['min-a'] = 10
     const r = startManufacturing(state, 'bp-a', 'pilot', ctx)
     expect(r.ok).toBe(true)
@@ -109,28 +109,34 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     expect(state.manufacturingRuns[0]!.worker).toBe('pilot')
     expect(state.logs.some((l) => l.text.includes('制造开始'))).toBe(true)
     expect(manufacturingManualActive(state)).toBe(true)
-    // 主控手动位全局限 1 条：第二条（哪怕另一张蓝图）被拒
+    /**
+     * ⚠ **2026-09-21 船长答 1「允许切换」**：再开一条不再被硬拒——**停掉原来那条**（当前那批进度丢弃，
+     * 见统一日志）+ 照常开新线；"主控至多 1 条"这条不变量照旧成立（旧的那条已 inactive，但也留在账本里）。
+     */
     state.warehouse.items['min-a'] = 10
     const r2 = startManufacturing(state, 'bp-a', 'pilot', ctx)
-    expect(r2.ok).toBe(false)
-    expect(r2.error).toContain('已亲自开着一条制造线')
-    expect(state.manufacturingRuns).toHaveLength(1) // 未新增
+    expect(r2.ok).toBe(true)
+    expect(manufacturingManualActive(state)).toBe(true)
+    expect(state.manufacturingRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
+    expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开线」'))).toBe(true)
   })
 
-  it('手动工作位与精炼炉/回收炉共用：双向互斥、AI 不受限', () => {
-    // 1) 主控手动精炼在跑 → 亲自开制造线被拒（AI 驱动不受限）
+  it('手动工作位与精炼炉/回收炉共用：**换机器允许直接切**、AI 不受限', () => {
+    // 1) 主控手动精炼在跑 → 直接开制造线 = 停炉换线（不拒）
     state.fleet[state.shipId].cargo['ore-a'] = 10
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
     state.warehouse.items['min-a'] = 10
     const r1 = startManufacturing(state, 'bp-a', 'pilot', ctx)
-    expect(r1.ok).toBe(false)
-    expect(r1.error).toContain('精炼炉/回收炉')
-    expect(state.manufacturingRuns).toHaveLength(0)
-    // AI 核心驱动的制造不受手动位限制（可与手动炉并行）
+    expect(r1.ok, '手动炉在跑也允许直接换线').toBe(true)
+    expect(state.manufacturingRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
+    expect(state.refineRuns.some((x) => x.active && x.worker === 'pilot'), '原炉已停').toBe(false)
+    expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开炉」'))).toBe(true)
+    // AI 核心驱动的制造不受手动位限制（可与手动炉并行）——料要备两份（上一条手动线已扣掉一份）
     state.aiCores['basic'] = 1
+    state.warehouse.items['min-a'] = 10
     expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
-    expect(state.manufacturingRuns).toHaveLength(1)
-    // 2) 主控手动制造线在跑 → 亲自开精炼炉被拒（全新局面：无手动炉干扰）
+    expect(state.manufacturingRuns.filter((x) => x.worker === 'basic')).toHaveLength(1)
+    // 2) 主控手动制造线在跑 → 直接开精炼炉 = 停线换炉（全新局面：无手动炉干扰）
     const s2 = createInitialState({ nowWallMs: 0, seed: 2 })
     s2.blueprintStock['bp-a'] = 1
     learnBlueprint(s2, ctx, 'bp-a')
@@ -138,17 +144,24 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     expect(startManufacturing(s2, 'bp-a', 'pilot', ctx).ok).toBe(true)
     s2.fleet[s2.shipId].cargo['ore-a'] = 10
     const r2 = startRefineRun(s2, 'ore-a', 'pilot', ctx)
-    expect(r2.ok).toBe(false)
-    expect(r2.error).toContain('制造线')
-    expect(s2.refineRuns).toHaveLength(0)
+    expect(r2.ok, '手动线在跑也允许直接换炉').toBe(true)
+    expect(s2.manufacturingRuns.some((x) => x.active && x.worker === 'pilot'), '原线已停').toBe(false)
+    expect(s2.refineRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
   })
 
-  it('主控手动制造中反向封锁出海作业（与精炼炉同款）：采矿被拒', () => {
+  /**
+   * ⚠ **2026-09-21 船长令改判**：「统一为能够直接切换（自动取消当前活动）」——原先"亲自开线中 ⇒
+   * 采矿硬拒"，现在反过来：**开始采矿会把亲自开线自动停掉**（停线 = 当前那批进度丢弃，见
+   * `activityGate.HALT_COST` 与 `haltActivityForSwitch`），并写一条统一日志。
+   */
+  it('主控手动制造中反向封锁：**开始采矿 ⇒ 自动停线（当前那批丢弃）+ 统一日志**', () => {
     state.warehouse.items['min-a'] = 10
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
     const m = startMining(state, 'belt-a', ctx)
-    expect(m.ok).toBe(false)
-    expect(m.error).toContain('制造作业正由你亲自开线')
+    expect(m.ok).toBe(true)
+    expect(state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开线」'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('进度丢弃'))).toBe(true)
   })
 
   it('AI 核心驱动：库存不足拒；出库占用、耗时 ÷效率（基础 0.4 → 1500 秒）、完成自动归还', () => {

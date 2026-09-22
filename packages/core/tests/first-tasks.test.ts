@@ -11,7 +11,8 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState, HOME_GALAXY_ID } from '../src/state'
 import type { GameState } from '../src/state'
-import { advanceGame } from '../src/engine'
+import { advanceGame as engineTick } from '../src/engine'
+import type { SimContext } from '../src/types'
 import {
   CHAIN_REWARD_ISK_BASE,
   CHAIN_TIERS,
@@ -19,6 +20,7 @@ import {
   chainPendingRewardIsk,
   chainProgressOf,
   claimChainReward,
+  claimableFirstTasks,
   firstStatOf,
   firstTaskBoard,
   firstTaskProgress,
@@ -30,6 +32,7 @@ import {
   sequentialPrefixDone,
   visibleFirstTasks,
 } from '../src/firstTasks'
+import { claimFirstTask } from '../src/firstRewards'
 import { sellAtMarket, learnBlueprint, listSellHolding, placeSellOrder } from '../src/market'
 import { startMining, getMiningParams } from '../src/mining'
 import { fitModule } from '../src/equipment'
@@ -51,6 +54,21 @@ const BELT_ORE = 'ore-veldspar'
 /** 非序章档（母港已探明，可直接开采）：只用来测计数与任务判定本身 */
 function testState(): GameState {
   return createInitialState({ nowWallMs: 0, seed: 11 })
+}
+
+/**
+ * **走一拍 ＋ 模拟玩家点「完成」**（**2026-09-21 船长令**：任务不再自动完成 ⇒ 用例里必须"点一下"）。
+ *
+ * 只点**当前可完成**的那条，点完再取一次（末段并列批会连点两条）——正是玩家连点几次的效果。
+ * 判据与界面按钮同源（`claimableFirstTasks`），所以"未轮到的条目不提前完成"这条口径照样成立。
+ */
+function advanceGame(state: GameState, ms: number, c: SimContext): void {
+  engineTick(state, ms, c)
+  for (let i = 0; i < 4; i += 1) {
+    const next = claimableFirstTasks(state, c)[0]
+    if (!next) break
+    claimFirstTask(state, c, next.id)
+  }
 }
 
 /**
@@ -318,21 +336,36 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(repairShip(state, 'sh-falconet', ctx).ok).toBe(true)
     state.standings['dsi'] = 40
     state.firstStats = { ...(state.firstStats ?? {}), mineUnits: 1 }
-    advanceGame(state, 1000, ctx)
-    // 只判过当前那一条（第一次扫描）——后面的一律不判过、奖励一件都不发
+    /**
+     * ⚠ **2026-09-21 起口径再收一道**：引擎**连 `done` 都不写了**（任务改成玩家点「完成」才推进）⇒
+     * 推进一拍之后，**一条都不该被自动判过**；随后"点一次完成"只推进**一条**（不会顺手把后面满足的一起点掉）。
+     * 本用例同时钉这两条。
+     */
+    engineTick(state, 1000, ctx)
+    expect(Object.entries(state.importantTasks).filter(([, v]) => v.done === true)).toEqual([])
+    // ② 点一次「完成」⇒ 只推进当前那一条（第一次扫描）
+    const first = claimableFirstTasks(state, ctx)[0]!
+    expect(first.id).toBe('first-scan')
+    expect(claimFirstTask(state, ctx, first.id).ok).toBe(true)
     expect(Object.entries(state.importantTasks).filter(([, v]) => v.done === true).map(([k]) => k)).toEqual(['first-scan'])
+    // 后面的条目即便判据已满足，也只是"轮到才可点"——这里一条都不许自己冒出来
+    expect(state.importantTasks['first-repair']?.done).toBeUndefined()
+    expect(state.importantTasks['first-wormhole']?.done).toBeUndefined()
     expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(0)
     expect(state.wormholeStock?.length ?? 0).toBe(0)
 
-    // ② 一拍最多判过一条：下一拍只前进到「第一次采集原矿」，不会顺手把精炼也判掉
-    advanceGame(state, 1000, ctx)
+    // ③ 再点一次 ⇒ 推进到「第一次采集原矿」（采矿计数已满足）
+    const second = claimableFirstTasks(state, ctx)[0]!
+    expect(second.id).toBe('first-mine')
+    expect(claimFirstTask(state, ctx, second.id).ok).toBe(true)
     expect(state.importantTasks['first-mine']?.done).toBe(true)
     expect(state.importantTasks['first-refine']?.done).toBeUndefined()
 
-    // ③ 自愈：轮到时按档内现状补齐（先前做的维修没白干，奖励照发）
+    // ④ 自愈：轮到时按档内现状补齐（先前做的维修没白干，奖励照发）
     reachQueue(state, 'first-repair')
-    advanceGame(state, 1000, ctx)
-    expect(state.importantTasks['first-repair']?.done).toBe(true)
+    const third = claimableFirstTasks(state, ctx)[0]!
+    expect(third.id).toBe('first-repair')
+    expect(claimFirstTask(state, ctx, third.id).ok).toBe(true)
     expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(20)
   })
 
@@ -492,7 +525,7 @@ describe('末段并列批（2026-09-20 船长第三道令：完成第 11 条后�
     expect(firstTasksMarkSeen(s)).toBe(true) // 看过当前那一条（第 11 条）
     expect(s.firstTaskSeenId).toBe('first-ai')
     s.importantTasks['first-ai'] = { done: true }
-    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-haul', title: '第一次长途运输、第一次虫洞' })
+    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-haul', title: '第一次长途运输、第一次虫洞', ready: false })
     expect(firstTasksMarkSeen(s)).toBe(true)
     expect(s.firstTaskSeenId).toBe('first-haul|first-wormhole')
     expect(firstTaskNotice(s)).toBeNull()
@@ -590,6 +623,7 @@ describe('导航「任务中心」的推进提醒（2026-09-20 船长令）', ()
     expect(firstTaskNotice(s), '当前是「第一次扫描」且没记过账 ⇒ 亮（老档语义）').toEqual({
       taskId: 'first-scan',
       title: '第一次扫描',
+      ready: false,
     })
     // ② 记一笔 ⇒ 灭；同一条重复记账返回 false（幂等）
     expect(firstTasksMarkSeen(s)).toBe(true)
@@ -598,7 +632,7 @@ describe('导航「任务中心」的推进提醒（2026-09-20 船长令）', ()
     expect(s.firstTaskSeenId).toBe('first-scan')
     // ③ 推进一阶段（完成扫描）⇒ 下一条顶上 ⇒ 又亮，且标题换成新那条
     s.importantTasks['first-scan'] = { done: true }
-    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-mine', title: '第一次采集原矿' })
+    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-mine', title: '第一次采集原矿', ready: false })
     expect(firstTasksMarkSeen(s)).toBe(true)
     expect(firstTaskNotice(s)).toBeNull()
   })

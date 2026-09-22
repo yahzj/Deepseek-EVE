@@ -12,7 +12,14 @@
  */
 import { bumpFirst, peakFirst } from './firstTasks'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
-import { addLog, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
+import { addLog, haltActivityForSwitch, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
+import {
+  gateMainActivityHandoff,
+  KIND_LABEL,
+  logAutoHalt,
+  mainActivityOf,
+  type MainActivityKind,
+} from './activityGate'
 import type { AnomalyDef, ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
@@ -1552,7 +1559,9 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
  */
 export interface WormholeEntryAutoStop {
   /** 判据键（界面/日志用；与 `shipActivityBusy` 的忙态文案一一对应） */
-  kind: 'whscan' | 'mining' | 'salvage' | 'hauling'
+  kind: 'whscan' | 'mining' | 'salvage' | 'hauling' | 'standby' | 'refine' | 'manufacture'
+  /** 统一单点里的活动名（`activityGate.MainActivityKind`）——停机与统一日志都按它走 */
+  mainKind: MainActivityKind
   /** 忙态文案（`shipActivityBusy` 报的就是它） */
   label: string
   /** 日志/界面里用的短名（「扫描虫洞」「开采」「打捞」「长途运输」） */
@@ -1561,29 +1570,48 @@ export interface WormholeEntryAutoStop {
   warn: boolean
 }
 
-/** 当前**会被进洞自动停掉**的活动（可能不止一项：作业之间本应互斥，这里按顺序全收，坏档也不会漏停） */
-export function wormholeEntryAutoStops(state: GameState): WormholeEntryAutoStop[] {
-  const out: WormholeEntryAutoStop[] = []
-  if (state.wormholeScan?.active === true) out.push({ kind: 'whscan', label: '扫描虫洞中', name: '扫描虫洞', warn: false })
-  if (state.mining.active === true) out.push({ kind: 'mining', label: '采矿中', name: '开采', warn: false })
-  if (state.salvaging.active === true) out.push({ kind: 'salvage', label: '打捞中', name: '打捞', warn: false })
-  /** 长途运输：船会被挪回出发站（有可见后果）⇒ `warn`（船长 2026-09-14：「长途运输发出警告」） */
-  if (state.hauling.active === true) out.push({ kind: 'hauling', label: '长途运输中', name: '长途运输', warn: true })
-  return out
+/** 七项"进洞那一刻会被自动停掉"的主控活动 ⇒ 判据键 / 忙态文案 / 是否发警告（长途运输：船会被挪回出发站） */
+const ENTRY_STOP_META: Partial<
+  Record<MainActivityKind, { kind: WormholeEntryAutoStop['kind']; label: string; warn: boolean }>
+> = {
+  wormholeScan: { kind: 'whscan', label: '扫描虫洞中', warn: false },
+  mining: { kind: 'mining', label: '采矿中', warn: false },
+  salvaging: { kind: 'salvage', label: '打捞中', warn: false },
+  hauling: { kind: 'hauling', label: '长途运输中', warn: true },
+  standby: { kind: 'standby', label: '掩护巡逻中', warn: false },
+  refine: { kind: 'refine', label: '亲自开炉中', warn: false },
+  manufacturing: { kind: 'manufacture', label: '亲自开线中', warn: false },
 }
 
-/** 进洞会自动停掉的忙态文案集合（门槛/舰船卡据此放行；空集 = 没有） */
-function wormholeEntryAutoStopLabels(state: GameState): Set<string> {
-  return new Set(wormholeEntryAutoStops(state).map((a) => a.label))
+/**
+ * 当前**会被进洞自动停掉**的活动（0~1 项：作业之间本应互斥）。
+ *
+ * ⚠ **2026-09-21 统一批**：判据改走 `activityGate`（可自动取消的六项 ＋ 长途运输那一档）——
+ * 原先只列"扫描虫洞 / 开采 / 打捞 / 长途运输"四项，**掩护巡逻 / 亲自开炉 / 亲自开线**那三档在
+ * `wormholeEntryBlockReason` 里是硬拒；现在与九项入口同一把尺：能直接切就自动停。
+ * `warnConfirmed = true`：进洞准备页与那颗按钮**已经做过两段确认**（`Wormhole.tsx` 的 `enterHaulAsk`）。
+ */
+export function wormholeEntryAutoStops(state: GameState): WormholeEntryAutoStop[] {
+  const v = gateMainActivityHandoff(state, true)
+  if (v.action !== 'halt' || v.current === undefined) return []
+  const meta = ENTRY_STOP_META[v.current]
+  if (meta === undefined) return []
+  return [{ ...meta, mainKind: v.current, name: KIND_LABEL[v.current] }]
 }
 
 /**
  * **进洞门槛的"逐船忙态"**（门槛与界面的舰船卡共用这一把尺）：
  * 除了**主控那一档会自动停掉的活动**（见 `wormholeEntryAutoStops`）之外，其余一律照 `shipBusyForWormhole` 报忙。
+ *
+ * ⚠ 2026-09-21：放行判据改走 `activityGate`（原先按忙态文案逐字匹配——掩护巡逻那条是**动态**文案，
+ * 逐字匹配根本认不出来）⇒ **只在"主控确实被某项可自动停的主控活动占着"时才放行**（洞内编队/AI 派工照旧报忙）。
  */
 export function wormholeShipEntryBusy(state: GameState, shipId: string): string | null {
   const busy = shipBusyForWormhole(state, shipId)
-  if (busy && shipId === state.shipId && wormholeEntryAutoStopLabels(state).has(busy)) return null
+  if (busy === null) return null
+  if (shipId === state.shipId && mainActivityOf(state) !== null && gateMainActivityHandoff(state, true).action === 'halt') {
+    return null
+  }
   return busy
 }
 
@@ -1601,6 +1629,13 @@ export function wormholeEntryBlockReason(
   shipIds: readonly string[],
 ): string | null {
   void ctx
+  /**
+   * **主控那一档走统一判据**（**2026-09-21 统一批**）：能自动停的照旧放行（进洞那一刻停掉），
+   * **不可中断的（远征 / 快递投送 / 战斗中 / 洞里 / 返航途中）一律拒**，措辞与九项入口共用同一句
+   * （`activityGate`）——原先这里给的是"先把手上的活收工"，说不清为什么不能中断。
+   */
+  const verdict = gateMainActivityHandoff(state, true)
+  if (verdict.action === 'reject' && verdict.message !== undefined) return verdict.message
   const pilotBusy = wormholeShipEntryBusy(state, state.shipId)
   if (pilotBusy) return `主控正在${pilotBusy}：先把手上的活收工，才能指挥虫洞探索。`
   for (const uid of shipIds) {
@@ -1660,56 +1695,41 @@ export function wormholeEnter(
   if (blocked) return { ok: false, error: blocked }
   /**
    * **进洞自动停止**（船长 2026-09-14：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』
-   * **同样落实到采矿/打捞**」＋「**长途运输发出警告**」）：扫描虫洞 / 开采 / 打捞 / 长途运输这四项
-   * 一律**在进洞那一刻停掉**——与玩家手点活动栏「停止」**同一条路径**（状态改动各走 `state.ts` 的单点），
-   * 未返航的货留在船上、长途运输瞬时返港停靠出发站（无惩罚）⇒ 不新增任何损失；
-   * 其余主控活动（含**无法自动停的远征**）仍在门槛那一步拦住（见 `wormholeEntryBlockReason`）。
+   * **同样落实到采矿/打捞**」＋「**长途运输发出警告**」；**2026-09-21 统一批**：判据与停机全部改走
+   * `activityGate` 那条单点 ⇒ 名单扩到**七项**，日志口径也统一成 `core.activityGate.001/.007`）。
+   * 停法与玩家手点活动栏「停止」**完全同一条路径**（状态改动走 `state.ts` 的各 `*Halt`）⇒ **不新增损失**
+   * （扫描进度保留；开采/打捞未返航的货留在船上；长途运输"终止即瞬时返港停靠出发站、无惩罚"）。
+   * 其余不可中断的主控活动（**远征 / 快递投送**）仍在门槛那一步拦住（见 `wormholeEntryBlockReason`）。
    */
-  const halted = wormholeEntryAutoStops(state)
-  for (const a of halted) {
-    if (a.kind === 'whscan') {
+  for (const a of wormholeEntryAutoStops(state)) {
+    // 读数在停机**之前**取（停完字段就清了）；没有可写读数的那几档就不带 detail 段
+    let detail: string | undefined
+    if (a.mainKind === 'wormholeScan') {
       const mins = wormholeScanHalt(state)
-      if (mins !== null) addLog(
-        state,
-        'info',
-        `🛰 进洞前自动停掉「扫描虫洞」（进度保留：已扫 ${mins} 分钟）——回来可以接着扫。`,
-        'core.wormhole.027',
-        { p1: mins },
-      )
-    } else if (a.kind === 'mining') {
+      if (mins !== null) detail = `已扫 ${mins} 分钟，回来可续扫`
+    } else if (a.mainKind === 'mining') {
       const info = miningHalt(state)
       if (info !== null) {
         const belt = info.beltId ? ctx.belts.get(info.beltId) : undefined
         const oreName = belt ? (ctx.items.get(belt.oreId)?.name ?? '') : ''
-        addLog(
-          state,
-          'info',
-          `⛏ 进洞前自动停掉「开采」（${belt?.name ?? '矿带'} · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上）。`,
-        )
+        detail = `${belt?.name ?? '矿带'} · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上`
       }
-    } else if (a.kind === 'salvage') {
+    } else if (a.mainKind === 'salvaging') {
       const info = salvageHalt(state)
       if (info !== null) {
         const gName = info.galaxyId ? (ctx.galaxies.get(info.galaxyId)?.name ?? '') : ''
-        addLog(
-          state,
-          'info',
-          `♻ 进洞前自动停掉「打捞」（${gName} · 本趟约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量，货物留在船上）。`,
-        )
+        detail = `${gName} · 本趟约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量，货物留在船上`
       }
-    } else {
+    } else if (a.mainKind === 'hauling') {
       const info = haulingHalt(state)
       if (info !== null) {
         const originName = info.fromSiteId ? (ctx.stations.get(info.fromSiteId)?.name ?? info.fromSiteId) : '母港'
-        addLog(
-          state,
-          'info',
-          `🚚 进洞前自动停掉「长途运输」（舰船已即时返港停靠「${originName}」，无惩罚）。`,
-          'core.wormhole.028',
-          { p1: originName },
-        )
+        detail = `已即时返港停靠「${originName}」`
       }
+    } else {
+      haltActivityForSwitch(state, a.mainKind)
     }
+    logAutoHalt(state, a.mainKind, detail)
   }
   const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), matterTechWhBuffs(state, ctx).turnBonus)
   if (!r.ok || !r.run) return r
