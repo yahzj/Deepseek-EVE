@@ -252,6 +252,13 @@
 
 > 越窗即封存（`npm run docs:seal`）；窗口大小 = 20 条，需要临时调大用 `--window=N`。
 
+- 2026-09-22：**手册本地化（三号 · verify-activity-win → main · 船长令「先进行手册的本地化」）**——
+**①读数**（`npm run l10n:scan` 的手册专项 · 英文语境真档）：**314 → 6 处**（物品图鉴 56→6 · 装备图鉴 140→**0** · 舰船图鉴 43→**0** · 蓝图图鉴 35→**0** · 技能速查 40→**0**）；**玩法说明（指南正文）本来就是 0**。
+**②病根全是「接线」，不是数据翻译**（故不用成批造译名）：a) `panels/Handbook.tsx` 的 `kindName` / `slotName` / `roleName` 原先**直读 core 的中文名表**（`ITEM_KIND_LABELS` / `SLOT_LABELS` / `SHIP_ROLE_LABELS`）⇒ 卡片副标题、槽位/角色 chip、详情行、筛选档一起漏；b) 分组顺序表 `orderOf()` 把单点表的 **`id` 丢掉了**（`{ key, label }`）⇒ 渲染处只能回落中文 label；c) 蓝图按舰级的档是**拼接标签**（``label: `${s.label}蓝图` ``，无 id——静态扫描看不见）；d) `ui/shipInfo.tsx` 的推进器周期后缀**原样吃 core 的中文整句**（`thrusterCycleText` / `thrusterCycleFullText`）。
+**③修法**：新增 `ui/labelsText.ts` 的 **`slotText`**（槽位→id 映射 15 项：采集器/打捞器/推进器/目标锁定**复用既有 id**，其余 11 项新登记 `ui.labelsText.049~059`）与 **`shipTierText`**（舰级整档模板，复用 `ui.labelsText.014~018`）；`Handbook` 的 kind/role/slot/技能分类一律改走 `kindText` / `shipRoleText` / `slotText` / `skillGroupText`；`orderOf()` 原样带上 `id`/`idParam`、渲染处走 `subText`；补 5 条**舰级蓝图整档模板** `ui.labelsText.060~064`（给拼接档补 id）；推进器周期改为**取 core 的秒数 ＋ 渲染层模板**（新登记 `ui.shipInfo.182/183`，core 一个字节没动）。
+**④剩下 6 处**：物品图鉴里「Cargo Expander MK2**蓝图碎片**」这类**碎片物品名**——名字在数据侧拼出来（`ItemDef` 无 `nameId`），与 AI 核心等物品名同属"**数据侧命名**"批，本批未动（已记在挂账里）。
+**⑤闸门**：typecheck 四包 0 错 · `l10n:check` 未译读数仍 **0** · core 184 文件 / 2093 例全绿 · `content:check` ✅ · `ui:rot-check` ✅ · `build` ✅ · `docs:index` ✅。
+
 - 2026-09-22：**筛选与标签页文案补齐 ＋ 新增「英文语境残留中文」扫描工具（三号 · verify-activity-win → main · 船长报障）**——
 **①船长原话（照抄）**：「**之前关于筛选选项的文案和标签页的文案，还未完成吧？我这边发现有遗漏**」；范围回话：「**可以，按你推荐来**」（= 本批做真漏译＋工具口径，通讯与成就页随后按序做）。
 **②诊断（确实没做完，且静态闸门保不住这一块）**：硬闸门（无死引用/占位符/死键）一直是过的，但 `l10n:check` 把这块长期标成「**未译读数（报告口径，不阻断——P3 界面批逐页消化）**」⇒ 实测**58 条未声明中文串**（`ui/itemSubs.ts` 28 · `panels/Industry.tsx` 14 · `panels/Shipyard.tsx` 11 · `pages/FitPage.tsx` 5）。更要紧的是**静态工具看不见的三类**：a) **模板串拼出来的档**（`itemSubs.ts` 的 `label: \`${s.label}蓝图\``：没有字面量可扫，英文下整句中文）；b) **直接渲染 `.label` 而没走 `subText`** 的筛选档（字面量在表里、渲染处无字面量）；c) **半译句**（前缀走 `tr(id)`、尾巴是字面量拼上去）。

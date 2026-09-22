@@ -86,6 +86,48 @@ export function shipRoleText(role: ShipRole): string {
   return id !== undefined ? tr(id) : role
 }
 
+/**
+ * **模块槽位名**（2026-09-22 补；= core `SLOT_LABELS` 的本地化版）。
+ *
+ * 病根同本文件开头那族：core 的 `SLOT_LABELS` 是纯中文表，手册的装备图鉴卡副标题、槽位 chip、
+ * 详情行都直接读它 ⇒ 英文界面下整片漏中文（飞船长令「先进行手册的本地化」实测：装备图鉴一页 140 处）。
+ * 能复用既有条目的已复用（采集器 / 打捞器 / 推进器 / 目标锁定），其余登记在 `ui.labelsText.049~059`。
+ * ⚠ 新增槽位（`labels.ts` 的 `MODULE_SLOTS` 扩容）时**同步在此加一行**，否则会回落成中文。
+ */
+const SLOT_ID: Record<string, string> = {
+  miner: 'ui.Wormhole.238', // 采集器 / Miners
+  cargo: 'ui.labelsText.049', // 货舱扩展 / Cargo Expander
+  turret: 'ui.labelsText.050', // 炮台 / Turret
+  missile: 'ui.labelsText.051', // 导弹架 / Missile Bay
+  laser: 'ui.labelsText.052', // 激光炮 / Laser
+  salvager: 'ui.Wormhole.001', // 打捞器 / Salvager
+  shield: 'ui.labelsText.053', // 护盾装置 / Shield Unit
+  armor: 'ui.labelsText.054', // 装甲装置 / Armor Unit
+  propulsion: 'ui.BattleScreen.004', // 推进器 / Thruster
+  'drone-rack': 'ui.labelsText.055', // 无人机甲板扩展 / Drone Bay Extension
+  'drone-tac': 'ui.labelsText.056', // 无人机战术 / Drone Tactical
+  'drone-relay': 'ui.labelsText.057', // 无人机中继 / Drone Relay
+  support: 'ui.labelsText.058', // 支援系统 / Support System
+  cpu: 'ui.labelsText.059', // 协处理器 / Coprocessor
+  'target-lock': 'ui.itemSubs.013', // 目标锁定 / Targeting
+}
+
+/** 槽位名（core `SLOT_LABELS[slot]` 的本地化版；查不到原样返回，漏登记看得见） */
+export function slotText(slot: string): string {
+  const id = SLOT_ID[slot]
+  return id !== undefined ? tr(id) : slot
+}
+
+/**
+ * **舰级名**（= core `shipSizeLabel(tier)` 的本地化版）。
+ * 整档模板在 `ui.labelsText.014~018`（`"T{p1} 护卫舰"` / `"T{p1} Frigate"`）⇒ 档号必须由译文自己写，
+ * 故这里传 `p1 = tier`（与 `ui/itemSubs.ts` 的 `SHIP_TIER_SUBS` 同一批 id，不另登记）。
+ */
+export function shipTierText(tier: number): string {
+  const id = `ui.labelsText.0${13 + tier}`
+  return tr(id, { p1: tier })
+}
+
 /** AI 核心档位名（= core `aiCoreName` 的本地化版） */
 export function aiCoreText(type: AiCoreType): string {
   const id = AICORE_ID[type]

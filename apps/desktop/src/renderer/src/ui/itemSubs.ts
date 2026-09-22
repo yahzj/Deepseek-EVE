@@ -225,7 +225,18 @@ export const BLUEPRINT_SUBS: SubOption[] = [
   { key: 'high', label: '高槽装备蓝图', id: 'ui.itemSubs.018' },
   { key: 'mid', label: '中槽装备蓝图', id: 'ui.itemSubs.019' },
   { key: 'low', label: '低槽装备蓝图', id: 'ui.itemSubs.020' },
-  ...SHIP_TIER_SUBS.map((s) => ({ key: s.key, label: `${s.label}蓝图` })),
+  /**
+   * 舰船档接在舰级档后面（`SHIP_TIER_SUBS`）
+   * ⚠ **2026-09-22 补 id**：这一排原先是**拼接标签**（``label: `${s.label}蓝图```、没有 id）
+   * ⇒ 静态扫描看不见（不是字面量），英文界面下市场「蓝图」与手册「蓝图图鉴」按舰级分的档整句中文。
+   * 现给 `ui.labelsText.060~064` 五条**整档模板**（档号写进译文），与舰级档同一套 `idParam` 口径。
+   */
+  ...SHIP_TIER_SUBS.map((s) => ({
+    key: s.key,
+    label: `${s.label}蓝图`,
+    id: `ui.labelsText.0${59 + (s.idParam ? Number(s.idParam) : 0)}`,
+    idParam: s.idParam,
+  })),
   { key: 'supply', label: '消耗品蓝图（弹药·修理组件）', id: 'ui.itemSubs.021' },
   // 2026-09-20 零件体系：高级零件蓝图（常驻市场）——基础零件为隐式蓝图无书，故只有高级一档
   { key: 'part-advanced', label: '零件蓝图', id: 'ui.itemSubs.035' },

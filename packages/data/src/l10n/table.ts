@@ -939,6 +939,46 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.046": { zh: "市场", en: "Market" },
   "ui.labelsText.047": { zh: "悬赏", en: "Bounties" },
   "ui.labelsText.048": { zh: "物流与货舱", en: "Logistics & Cargo" },
+  /**
+   * ── **模块槽位名**（2026-09-22 · 船长令「先进行手册的本地化」补）──
+   *
+   * 病根：core 的 `SLOT_LABELS` 是**纯中文表**，手册的装备图鉴卡副标题（`.app-hand-cell-sub`）、
+   * 槽位 chip、详情行都直接读它 ⇒ 英文界面下整片漏中文（实测：装备图鉴一页 140 处里的大头）。
+   * 口径同 `ui/labelsText.ts` 的其它映射：**渲染层不显示 core 的中文串**，把槽位键映到 id 再取词；
+   * core 一个字节不动。能复用既有条目的已复用（采集器 / 打捞器 / 推进器 / 目标锁定），其余在此登记。
+   */
+  "ui.labelsText.049": { zh: "货舱扩展", en: "Cargo Expander" },
+  "ui.labelsText.050": { zh: "炮台", en: "Turret" },
+  "ui.labelsText.051": { zh: "导弹架", en: "Missile Bay" },
+  "ui.labelsText.052": { zh: "激光炮", en: "Laser" },
+  "ui.labelsText.053": { zh: "护盾装置", en: "Shield Unit" },
+  "ui.labelsText.054": { zh: "装甲装置", en: "Armor Unit" },
+  "ui.labelsText.055": { zh: "无人机甲板扩展", en: "Drone Bay Extension" },
+  "ui.labelsText.056": { zh: "无人机战术", en: "Drone Tactical" },
+  "ui.labelsText.057": { zh: "无人机中继", en: "Drone Relay" },
+  "ui.labelsText.058": { zh: "支援系统", en: "Support System" },
+  "ui.labelsText.059": { zh: "协处理器", en: "Coprocessor" },
+  /**
+   * ── **舰级蓝图档**（同批补）──
+   *
+   * `ui/itemSubs.ts` 的蓝图子类里，舰船档是**拼接出来的**（``label: `${s.label}蓝图` ``、没有 id）
+   * ⇒ 市场「蓝图」与手册「蓝图图鉴」按舰级分的档在英文下整句中文（静态扫描看不见模板串）。
+   * 这里给 5 条**整档模板**（档号写进译文，与 `ui.labelsText.014~018` 的舰级模板同款），
+   * 由 `itemSubs` 用 `id` + `idParam` 取词。
+   */
+  "ui.labelsText.060": { zh: "T{p1} 护卫舰蓝图", en: "T{p1} Frigate Blueprint" },
+  "ui.labelsText.061": { zh: "T{p1} 驱逐舰蓝图", en: "T{p1} Destroyer Blueprint" },
+  "ui.labelsText.062": { zh: "T{p1} 巡洋舰蓝图", en: "T{p1} Cruiser Blueprint" },
+  "ui.labelsText.063": { zh: "T{p1} 战列舰蓝图", en: "T{p1} Battleship Blueprint" },
+  "ui.labelsText.064": { zh: "T{p1} 旗舰蓝图", en: "T{p1} Flagship Blueprint" },
+  /**
+   * **推进器周期后缀的本地化版**（2026-09-22 · 手册本地化批）：
+   * core `thrusterCycleFullText()` 是中文整句，被 `ui/shipInfo.tsx` 直接拼进模块说明里 ⇒
+   * 装备图鉴卡副标题在英文下夹中文。现在渲染层只取 core 的**秒数**（`thrusterCycleSeconds`），
+   * 句子由本条目出（core 不动）。
+   */
+  "ui.shipInfo.182": { zh: "{p1} 秒点火 / {p2} 秒冷却，开场即点火", en: "{p1}s burn / {p2}s cooldown, ignites at the start" },
+  "ui.shipInfo.183": { zh: "点火 {p1} 秒 / 冷却 {p2} 秒", en: "{p1}s burn / {p2}s cooldown" },
   /* ── 主控活动窗口（2026-09-20 船长令：主控执行采掘/打捞/长途运输/扫描虫洞时的动效窗口）── */
   "ui.ActivityWin.001": { zh: "采掘中", en: "Mining" },
   "ui.ActivityWin.002": { zh: "打捞中", en: "Salvaging" },

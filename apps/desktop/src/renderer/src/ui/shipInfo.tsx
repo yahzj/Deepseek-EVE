@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipCategoryLabelOf, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleText, thrusterCycleFullText, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipCategoryLabelOf, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
 import { kindTextOfItem } from '../ui/labelsText'
@@ -106,10 +106,25 @@ function resistAddLine(k: string, add: DamageResists | undefined): InfoLine | nu
 
 /** 推进器周期点火后缀（2026-09-11 精简：只留周期与"开场即点火"，"冷却期间无加速"删；
  *  2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」——
- *  秒数不再写死，改由 core `thrusterCycleFullText()` 取值（与引擎同源）；
- *  **2026-09-14 起按件取值**：件自带覆盖（微型跃迁引擎 = 10 秒点火 / 60 秒冷却）时以件为准） */
+ *  秒数不再写死，改由 core `thrusterCycleSeconds()` 取值（与引擎同源）；
+ *  **2026-09-14 起按件取值**：件自带覆盖（微型跃迁引擎 = 10 秒点火 / 60 秒冷却）时以件为准）
+ *
+ *  ⚠ **2026-09-22 修漏译**（船长令「先进行手册的本地化」）：原先直接用 core 的
+ *  `thrusterCycleFullText()`——那是**中文整句**（`"{p1} 秒点火 / {p2} 秒冷却，开场即点火"`）
+ *  ⇒ 装备图鉴卡副标题在英文界面下夹着这段中文。现改为**取秒数 ＋ 渲染层模板**（core 不动）。 */
 function propTailOf(mod: ModuleDef): string {
-  return `（${thrusterCycleFullText(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod))}）`
+  const { boost, cooldown } = thrusterCycleSeconds(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod))
+  return `（${tr('ui.shipInfo.182', { p1: boost, p2: cooldown })}）`
+}
+
+/**
+ * 推进器周期的**短句版**（`点火 X 秒 / 冷却 Y 秒`，用于「速度 +N%（…）」这类行）。
+ * ⚠ 同 `propTailOf` 的 2026-09-22 修漏译：core 的 `thrusterCycleText()` 是中文整句，被 `ui.shipInfo.107`
+ * 的 `{p2}` 槽直接吃进去 ⇒ 英文界面下夹中文。现取秒数 ＋ 渲染层模板。
+ */
+function thrusterCycleShort(mod: ModuleDef): string {
+  const { boost, cooldown } = thrusterCycleSeconds(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod))
+  return tr('ui.shipInfo.183', { p1: boost, p2: cooldown })
 }
 /** 维修件的每跳修复量文本（跨族行与主分支共用，防两处口径漂移） */
 function repairAmountText(mod: ModuleDef): string {
@@ -236,7 +251,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
       // 件自带覆盖（微型跃迁引擎 10 秒点火）时以件为准）
       const parts: string[] = []
       if (mod.speedBonusPct !== undefined)
-        parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleText(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod)) }))
+        parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleShort(mod) }))
       if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - mod.hitPenalty).toFixed(2) }))
       body = parts.join(' · ')
       break
@@ -607,7 +622,7 @@ function crossFamilyShort(mod: ModuleDef): string {
   if (foreign('shield') && mod.shieldHpBonus !== undefined) parts.push(tr("ui.shipInfo.102", { p1: pct(mod.shieldHpBonus) }))
   if (foreign('propulsion')) {
     if (mod.speedBonusPct !== undefined)
-      parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleText(DEFAULT_BALANCE.battle, thrusterCycleOfModule(mod)) }))
+      parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleShort(mod) }))
     if ((mod.hitPenalty ?? 0) > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - (mod.hitPenalty ?? 0)).toFixed(2) }))
   }
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(tr("ui.shipInfo.146", { p1: fmt(mod.droneBayBonusM3 ?? 0) }))

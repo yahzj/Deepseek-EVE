@@ -39,18 +39,27 @@ import {
   presentSubs,
   shipRolePasses,
   shipTierPasses,
+  subText,
 } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 import { tr } from '../i18n/locale'
-import { kindTextOfItem } from '../ui/labelsText'
+import { kindTextOfItem, shipTierText, skillGroupText, slotText } from '../ui/labelsText'
+import { kindText, shipRoleText } from '../ui/labelsText'
 
-/** 宽类型标签索引（详情窗数据来自 raw，键是 string） */
-const kindName = (k: string): string => (ITEM_KIND_LABELS as Record<string, string>)[k] ?? k
-const slotName = (k: string): string => (SLOT_LABELS as Record<string, string>)[k] ?? k
-const roleName = (k: string): string => (SHIP_ROLE_LABELS as Record<string, string>)[k] ?? k
+/**
+ * 宽类型标签索引（**详情窗数据来自 raw，键是 string**）。
+ *
+ * ⚠ **2026-09-22 船长令「先进行手册的本地化」改判**：这三个助手原先直接读 core 的**中文**名表
+ * （`ITEM_KIND_LABELS` / `SLOT_LABELS` / `SHIP_ROLE_LABELS`）⇒ 手册的卡片副标题、槽位/角色 chip、
+ * 详情行与筛选档在**英文界面下整片漏中文**（实测手册页 314 处里的大头）。现一律走本地化单点
+ * （`ui/labelsText.ts` 的 `kindText` / `slotText` / `shipRoleText`，可复用的 id 都复用，core 不动）。
+ */
+const kindName = (k: string): string => kindText(k as Parameters<typeof kindText>[0])
+const slotName = (k: string): string => slotText(k)
+const roleName = (k: string): string => shipRoleText(k as Parameters<typeof shipRoleText>[0])
 
 type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
 /** 有图鉴内容的页（＝ `codexCells` 的键；筛选两级的现算都在这几页上做） */
@@ -564,6 +573,13 @@ interface GridCell {
 interface CellGroup {
   key: string
   label: string
+  /**
+   * **分组标题的本地化来源**（2026-09-22 补）：分组表的档都带 `id`（`ui/itemSubs.ts` 那几张表），
+   * 标题必须走 `subText` 取当前语言 —— 此前直接渲染表里的中文 `label`，英文界面下整片分组标题是中文
+   * （实测蓝图图鉴「高槽装备蓝图 / T1 护卫舰蓝图…」27 处）。`undefined` = 兜底分组（无档可译）。
+   */
+  id?: string
+  idParam?: string
   cells: GridCell[]
 }
 
@@ -571,7 +587,7 @@ interface CellGroup {
 function groupCells(
   cells: GridCell[],
   keyOf: (c: GridCell) => string,
-  order: readonly { key: string; label: string }[],
+  order: readonly { key: string; label: string; id?: string; idParam?: string }[],
 ): CellGroup[] {
   const byKey = new Map<string, GridCell[]>()
   for (const c of cells) {
@@ -584,7 +600,7 @@ function groupCells(
   for (const o of order) {
     const arr = byKey.get(o.key)
     if (arr && arr.length > 0) {
-      out.push({ key: o.key, label: o.label, cells: arr })
+      out.push({ key: o.key, label: o.label, id: o.id, idParam: o.idParam, cells: arr })
       byKey.delete(o.key)
     }
   }
@@ -676,7 +692,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       rows.push([tr("ui.Handbook.315"), Number(r.priceIsk ?? 0) <= 0 ? tr("ui.Handbook.107") : tr("ui.Handbook.108")])
     } else {
       const cls = shipCategoryKeyOf(r as unknown as { role?: ShipRole; shieldHp?: number; armorHp?: number })
-      rows.push([tr("ui.Handbook.009"), `${roleName(cls)} · ${shipSizeLabel(Number(r.tier ?? 0))} T${Number(r.tier ?? 0)}`])
+      rows.push([tr("ui.Handbook.009"), `${roleName(cls)} · ${shipTierText(Number(r.tier ?? 0))}`])
       rows.push([tr("ui.Handbook.010"), `${Number(r.cargoM3 ?? 0).toLocaleString('zh-CN')} m³`])
       rows.push([tr("ui.Handbook.011"), tr("ui.shipInfo.130", { p1: Number(r.cycleSeconds ?? 0), p2: Number(r.oreUnitsPerCycle ?? 0) })])
       rows.push([tr("ui.Handbook.012"), `${Math.round(Number(r.agility ?? 0) * 100)}%`])
@@ -931,7 +947,7 @@ export function Handbook({
       tab: 'ships',
       glyph: cls,
       name: ship.name,
-      sub: `${roleName(cls)} · ${shipSizeLabel(ship.tier)} T${ship.tier} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
+      sub: `${roleName(cls)} · ${shipTierText(ship.tier)} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
       raw: ship as unknown as RawData,
       rarity: itemRarityTierOf(ship.id),
     }
@@ -966,7 +982,9 @@ export function Handbook({
     tab: 'skills',
     glyph: `group-${s.group}`,
     name: s.name,
-    sub: tr("ui.Handbook.115", { p1: s.group, p2: s.rank }),
+    // ⚠ 技能分类名本地化：`s.group` 是 data 侧的**中文分类键**（`SKILL_GROUPS`），
+    //   直读会在英文界面漏中文（2026-09-22 手册本地化批）⇒ 走 `skillGroupText` 单点
+    sub: tr("ui.Handbook.115", { p1: skillGroupText(s.group), p2: s.rank }),
     raw: s as unknown as RawData,
   }))
 
@@ -996,13 +1014,36 @@ export function Handbook({
     }
     return String(c.raw.group ?? '') // skills
   }
-  /** 分组顺序表（与市场页同源；装备未收录槽位归「其它」） */
-  function orderOf(t: Tab): Array<{ key: string; label: string }> {
+  /**
+   * 分组顺序表（与市场页同源；装备未收录槽位归「其它」）。
+   *
+   * ⚠ **2026-09-22 手册本地化批**：这几行原先把单点表**压成 `{ key, label }`、把 `id` 丢掉了**
+   * ⇒ 分组标题与筛选档只能回落到中文 `label`（英文界面下整片「高槽装备蓝图 / T1 护卫舰蓝图…」）。
+   * 现**原样带上 `id`/`idParam`**，由渲染处的 `subText` 取当前语言；技能分类是 data 侧中文键，
+   * 走 `skillGroupText` 单点映射（无 id 时 `subText` 回落到 `label`，故这里给已译好的 `label`）。
+   */
+  function orderOf(t: Tab): Array<{ key: string; label: string; id?: string; idParam?: string }> {
     if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
-    if (t === 'modules') return MODULE_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: tr("ui.Handbook.116") }])
-    if (t === 'ships') return SHIP_SUBS.map((s) => ({ key: s.key, label: s.label }))
-    if (t === 'blueprints') return BLUEPRINT_SUBS.map((s) => ({ key: s.key, label: s.label })).concat([{ key: '', label: tr("ui.Handbook.116") }])
-    return engine.groups.map((g) => ({ key: g, label: g })) // skills
+    if (t === 'modules')
+      return MODULE_SUBS.map(
+        (s): { key: string; label: string; id?: string; idParam?: string } => ({
+          key: s.key,
+          label: s.label,
+          id: s.id,
+          idParam: s.idParam,
+        }),
+      ).concat([{ key: '', label: tr("ui.Handbook.116") }])
+    if (t === 'ships') return SHIP_SUBS.map((s) => ({ key: s.key, label: s.label, id: s.id, idParam: s.idParam }))
+    if (t === 'blueprints')
+      return BLUEPRINT_SUBS.map(
+        (s): { key: string; label: string; id?: string; idParam?: string } => ({
+          key: s.key,
+          label: s.label,
+          id: s.id,
+          idParam: s.idParam,
+        }),
+      ).concat([{ key: '', label: tr("ui.Handbook.116") }])
+    return engine.groups.map((g) => ({ key: g, label: skillGroupText(g) })) // skills
   }
 
   const codexCells: Record<CodexTab, GridCell[]> = {
@@ -1024,7 +1065,8 @@ export function Handbook({
     if (t === 'modules') return RACK_SUBS
     if (t === 'ships') return SHIP_SUBS
     if (t === 'blueprints') return BP_MAIN
-    return engine.groups.map((g) => ({ key: g, label: g }))
+    // l10n-keep：`g` 是 data 侧的分类**键**（中文即键），渲染前一律过 `skillGroupText` 取当前语言
+    return engine.groups.map((g) => ({ key: g, label: skillGroupText(g) }))
   }
   /**
    * **主筛选（一级）可选项 = 候选表里"本页真有卡片"的那些**（2026-09-20 船长「手册的筛选也进行收缩」）——
@@ -1479,7 +1521,7 @@ export function Handbook({
                         className={`app-tasktab${mainKey === o.key ? ' is-active' : ''}`}
                         onClick={() => pickMain(o.key)}
                       >
-                        {o.label}
+                        {subText(o)}
                       </button>
                     ))}
                   </div>
@@ -1504,7 +1546,7 @@ export function Handbook({
                           className={`app-tasktab${subKey === o.key ? ' is-active' : ''}`}
                           onClick={() => setSubKey(o.key)}
                         >
-                          {o.label}
+                          {subText(o)}
                         </button>
                       ))}
                     </div>
@@ -1523,7 +1565,7 @@ export function Handbook({
                   </div>
                 ) : (
                   groups.map((g) => (
-                    <GroupSection key={g.key} label={g.label} unit={COUNT_UNIT[tab]} count={g.cells.length}>
+                    <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
                       {view === 'grid' ? (
                         <IconGrid cells={g.cells} onPick={setDetail} />
                       ) : (
