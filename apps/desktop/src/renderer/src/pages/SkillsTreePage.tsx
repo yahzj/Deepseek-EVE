@@ -35,133 +35,13 @@ import type { SkillDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { SkillDescText } from './SkillsPage'
 import { plainSkillDesc } from '../ui/skillText'
+import { GAP_Y, HEX_H, HEX_W, PAD, TAG_W, hexPath, layoutBook, nameLines } from '../ui/skillTreeLayout'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { skillBranchText, skillGroupText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr } from '../i18n/locale'
 
-/** 层 = rank（1 最浅 → 5 最深）；自上而下排列 */
-const TIERS: readonly number[] = [1, 2, 3, 4, 5]
-
-/* ───────── 六边形几何（逻辑单位；一格 = 一个技能） ───────── */
-const HEX_W = 96
-const HEX_H = 84
-const GAP_X = 20
-const GAP_Y = 18
-const TAG_W = 26
-const PAD = 10
-/** 孤立点与"有关系的那一片"之间多留一点空（视觉上分组，但仍不画线） */
-const ISO_GAP = 14
-
-/** 平顶六边形（左右出尖、上下平边）——参考图的形状，横向宽正好放两行名字 */
-function hexPath(cx: number, cy: number): string {
-  const w = HEX_W / 2
-  const h = HEX_H / 2
-  const q = HEX_W / 4
-  return [
-    `M ${cx - q} ${cy - h}`,
-    `L ${cx + q} ${cy - h}`,
-    `L ${cx + w} ${cy}`,
-    `L ${cx + q} ${cy + h}`,
-    `L ${cx - q} ${cy + h}`,
-    `L ${cx - w} ${cy}`,
-    'Z',
-  ].join(' ')
-}
-
-/** 名字按不超过 4 字一行折成最多两行（全名不裁字——船长令「先试试看全名的效果」） */
-function nameLines(name: string): string[] {
-  const chars = [...name]
-  if (chars.length <= 4) return [name]
-  const per = Math.ceil(chars.length / 2)
-  return [chars.slice(0, per).join(''), chars.slice(per).join('')]
-}
-
-type BookLayout = {
-  branch: string
-  /** 本图的宽高（viewBox 用） */
-  w: number
-  h: number
-  nodes: Array<{ def: SkillDef; x: number; y: number }>
-  /** 连线（父 → 子） */
-  edges: Array<{ x1: number; y1: number; x2: number; y2: number; sameRank: boolean }>
-}
-
-/**
- * **一本书的排布**（纯函数）：垂直位置 = rank；层内先排"有关系的"（父节点正下方优先），
- * 再排**没有连线的孤立技能**（按 rank 落在后面，彼此不连线）。
- */
-function layoutBook(branch: string, defs: readonly SkillDef[]): BookLayout {
-  const inBook = new Set(defs.map((d) => d.id))
-  /** 谁是"有关系的那一片"：自己吃本图内的前置，或本图内有技能吃自己 */
-  const hasChild = new Set<string>()
-  for (const d of defs) for (const p of d.prereq ?? []) if (inBook.has(p)) hasChild.add(p)
-  const connected = (d: SkillDef): boolean =>
-    (d.prereq ?? []).some((p) => inBook.has(p)) || hasChild.has(d.id)
-
-  /** 逐层排：层内顺序 = 父节点在本层的位次（父越靠左，子越靠左）；孤立点垫后 */
-  const rows = new Map<number, Array<{ def: SkillDef; iso: boolean }>>()
-  const indexOf = new Map<string, number>()
-  let maxRow = 1
-  for (const tier of TIERS) {
-    const list = defs.filter((d) => d.rank === tier)
-    if (list.length === 0) continue
-    maxRow = Math.max(maxRow, tier)
-    const withLine = list.filter(connected)
-    const alone = list.filter((d) => !connected(d))
-    /** 父节点在本层已算出的位次（父在更浅的层 ⇒ 已经排过；父同层 ⇒ 用数据顺序兜底） */
-    const keyOf = (d: SkillDef): number => {
-      const parents = (d.prereq ?? []).filter((p) => inBook.has(p))
-      const idx = parents.map((p) => indexOf.get(p)).filter((v): v is number => v !== undefined)
-      return idx.length > 0 ? Math.min(...idx) : Number.MAX_SAFE_INTEGER - list.indexOf(d)
-    }
-    const sorted = [...withLine].sort((a, b) => keyOf(a) - keyOf(b) || list.indexOf(a) - list.indexOf(b))
-    const ordered = [...sorted, ...alone].map((def) => ({ def, iso: !connected(def) }))
-    ordered.forEach((cell, i) => indexOf.set(cell.def.id, i))
-    rows.set(tier, ordered)
-  }
-
-  /** 行内 x：固定间距；孤立的那几个整体再往右挪一点（不与连线区混在一起） */
-  const nodes: BookLayout['nodes'] = []
-  let maxCols = 1
-  for (const tier of TIERS) {
-    const row = rows.get(tier)
-    if (!row) continue
-    const y = PAD + (tier - 1) * (HEX_H + GAP_Y) + HEX_H / 2
-    let x = PAD + TAG_W + HEX_W / 2
-    row.forEach((cell, i) => {
-      if (i > 0) {
-        const prev = row[i - 1]!
-        x += HEX_W + GAP_X + (!prev.iso && cell.iso ? ISO_GAP : 0)
-      }
-      nodes.push({ def: cell.def, x, y })
-      maxCols = Math.max(maxCols, i + 1)
-    })
-  }
-  const at = new Map(nodes.map((n) => [n.def.id, n]))
-  const edges: BookLayout['edges'] = []
-  for (const n of nodes) {
-    for (const pid of n.def.prereq ?? []) {
-      const p = at.get(pid)
-      if (!p) continue // 前置在本图之外（跨书）⇒ 不画线
-      const sameRank = p.def.rank === n.def.rank
-      edges.push({
-        x1: sameRank ? p.x + HEX_W / 2 : p.x,
-        y1: sameRank ? p.y : p.y + HEX_H / 2,
-        x2: sameRank ? n.x - HEX_W / 2 : n.x,
-        y2: sameRank ? n.y : n.y - HEX_H / 2,
-        sameRank,
-      })
-    }
-  }
-  return {
-    branch,
-    w: PAD * 2 + TAG_W + maxCols * HEX_W + (maxCols - 1) * (GAP_X + ISO_GAP),
-    h: PAD * 2 + maxRow * HEX_H + (maxRow - 1) * GAP_Y,
-    nodes,
-    edges,
-  }
-}
+/** 排布算法抽到纯模块（可离线读坐标核对）：见 `ui/skillTreeLayout.ts` */
 
 type Status = {
   lv: number
@@ -331,22 +211,17 @@ export function SkillsTreePage({ engine }: PageProps) {
                     height={lay.h}
                     role="list"
                   >
-                    {TIERS.map((tier) => {
-                      const has = lay.nodes.some((n) => n.def.rank === tier)
-                      if (!has) return null
-                      const y = PAD + (tier - 1) * (HEX_H + GAP_Y) + HEX_H / 2
-                      return (
-                        <text
-                          key={tier}
-                          className="app-skilltree-tier-tag"
-                          x={PAD + TAG_W / 2}
-                          y={y + 4}
-                          textAnchor="middle"
-                        >
-                          {`T${tier}`}
-                        </text>
-                      )
-                    })}
+                    {lay.tiers.map((tier: number, i: number) => (
+                      <text
+                        key={tier}
+                        className="app-skilltree-tier-tag"
+                        x={PAD + TAG_W / 2}
+                        y={PAD + i * (HEX_H + GAP_Y) + HEX_H / 2 + 4}
+                        textAnchor="middle"
+                      >
+                        {`T${tier}`}
+                      </text>
+                    ))}
                     {lay.edges.map((e, i) =>
                       e.sameRank ? (
                         <line
@@ -393,7 +268,7 @@ export function SkillsTreePage({ engine }: PageProps) {
                               r={4}
                             />
                           ) : null}
-                          <g transform={`translate(${n.x - 11}, ${n.y - 30})`}>
+                          <g transform={`translate(${n.x - 11}, ${n.y - 34})`}>
                             <Glyph name={`group-${n.def.group}`} size={22} className="app-skilltree-glyph" />
                           </g>
                           {lines.map((ln, i) => (
@@ -401,13 +276,15 @@ export function SkillsTreePage({ engine }: PageProps) {
                               key={i}
                               className="app-skilltree-hex-name"
                               x={n.x}
-                              y={n.y + (lines.length === 1 ? 2 : i === 0 ? -4 : 8)}
+                              /* 2026-09-22 船长：「六边形内的文字可以再往下移动，2 行的文字时会和图标重叠」
+                                 ⇒ 图标上移一点、名字再下移（单行 +11 / 两行 +3 与 +15），与等级行也不打架 */
+                              y={n.y + (lines.length === 1 ? 11 : i === 0 ? 3 : 15)}
                               textAnchor="middle"
                             >
                               {ln}
                             </text>
                           ))}
-                          <text className="app-skilltree-hex-lv" x={n.x} y={n.y + 30} textAnchor="middle">
+                          <text className="app-skilltree-hex-lv" x={n.x} y={n.y + 33} textAnchor="middle">
                             {st.maxed ? 'MAX' : `Lv${st.lv}/${MAX_SKILL_LEVEL}`}
                           </text>
                         </g>
