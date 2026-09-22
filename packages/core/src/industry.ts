@@ -248,10 +248,20 @@ export function startRefineRun(
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(cycleMs / eff))
   let batchEff = batchUnits
+  /**
+   * **炉心熔炼学：手动与 AI 核心驱动同享**（2026-09-22 船长令：「炉心熔炼学好像只对主控生效？
+   * 现在希望改成对所有都生效。并修改文案」）。
+   *
+   * 原先这条（与下面的炉膛扩容学一起）**只写在 `worker === 'pilot'` 分支里** ⇒ AI 核心驱动的精炼炉
+   * 一点不吃这两个技能。现在把炉心熔炼学挪出分支、对**所有劳动者**生效（与 2026-09-08 产线节拍学
+   * 「手动与 AI 核心驱动同享」同一改法）；乘算顺序不变：先 ÷核心效率、再吃技能、最后乘产线节拍学。
+   * ⚠ **炉膛扩容学（+6% 批容/级）本次未动**，仍只对主控生效——船长只点了炉心熔炼学；两条要不要
+   * 一起放开，见工作文档里留给船长的待定项（批容放大会连带抬高「可炼量不足一批」那道开工门）。
+   */
+  const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
+  if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
   if (worker === 'pilot') {
-    // 主控手动精炼：炉心熔炼学 −4% 周期/级、炉膛扩容学 +6% 批容/级（AI 核心驱动不受这两个技能影响）
-    const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
-    if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
+    // 主控手动精炼专属：炉膛扩容学 +6% 批容/级（AI 核心驱动不受此技能影响）
     const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
     if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
   }
