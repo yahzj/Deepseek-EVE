@@ -227,8 +227,8 @@ describe('技能补全 P1：制造双技（批量生产学/组件标准化）', 
   })
 })
 
-describe('技能补全 P1：手动精炼双技（炉心熔炼学/炉膛扩容学）与 AI 隔离', () => {
-  it('主控手动：周期 −4%/级、批容 +6%/级；AI 核心驱动不受两技能影响', () => {
+describe('技能补全 P1：手动精炼双技（炉心熔炼学/炉膛扩容学）· 炉心熔炼学 2026-09-22 起对所有劳动者生效', () => {
+  it('主控手动：周期 −4%/级、批容 +6%/级；AI 核心驱动**同享炉心熔炼学**（炉膛扩容学仍只对主控）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 12 })
     const ctx = makeTestCtx()
     state.warehouse.items['ore-a'] = 200
@@ -238,11 +238,15 @@ describe('技能补全 P1：手动精炼双技（炉心熔炼学/炉膛扩容学
     expect(state.refineRuns[0]!.cycleMs).toBe(4_800) // 6000 ×0.8
     expect(state.refineRuns[0]!.batchUnits).toBe(13) // 10 ×1.3
     expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
-    // AI 驱动：不吃手动双技（无 core-smelting/expansion 加成）
+    /**
+     * AI 驱动：**炉心熔炼学照吃**（船长 2026-09-22：「炉心熔炼学好像只对主控生效？
+     * 现在希望改成对所有都生效」）——先 ÷核心效率（basic Lv1 = 0.4 ⇒ 15000），再 ×0.8（满级 −20%）。
+     * 炉膛扩容学**本次未动**，仍只对主控 ⇒ AI 线批容保持 10。
+     */
     state.aiCores['basic'] = 1
     state.skills.trained['ai-expert'] = 1 // 2026-09-08 AI 核心上限制
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
-    expect(state.refineRuns[0]!.cycleMs).toBe(15_000) // 6000 ÷ 0.4
+    expect(state.refineRuns[0]!.cycleMs).toBe(12_000) // 15000 ×0.8
     expect(state.refineRuns[0]!.batchUnits).toBe(10)
     expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
   })

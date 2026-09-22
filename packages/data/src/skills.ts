@@ -295,7 +295,7 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工业',
     rank: 2,
     branch: 'b-refine',
-    description: '精炼炉温控与搅拌工艺：主控手动精炼单批周期每级缩短 ⟦4%⟧（AI 核心驱动不受此技能影响）。',
+    description: '精炼炉温控与搅拌工艺：精炼炉单批周期每级缩短 ⟦4%⟧（手动与 AI 核心驱动同享）。',
   },
   {
     id: 'furnace-expansion',
