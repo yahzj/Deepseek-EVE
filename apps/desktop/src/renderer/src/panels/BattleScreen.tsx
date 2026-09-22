@@ -185,10 +185,35 @@ export function BattleScreen({
   engine,
   onToast,
   onClose,
+  visible = true,
+  onReport,
+  onDone,
 }: {
   engine: GameEngine
   onToast: ToastFn
+  /**
+   * **隐藏观战屏**（2026-09-22）：只把屏收起来，**不动宿主对本组件的挂载** ——
+   * 战斗照常在后台推进，浮动入口「⚔ 战斗中」随时点回来（洞内也允许，船长 2026-09-20 改判）。
+   */
   onClose: () => void
+  /**
+   * **上屏开关**（2026-09-22 · 回归修复）：全屏形态下"挂载 ≠ 上屏" ——
+   * 宿主必须在"战斗已结算、战报还没播"的那段窗口期继续**挂载**本组件（否则战报永远弹不出来），
+   * 但玩家点「← 退出战场」时要能真的**关屏**。`visible=false` ⇒ 本组件什么都不渲染，
+   * 状态机与 33ms 循环照常跑。
+   */
+  visible?: boolean
+  /**
+   * **战报到达时问宿主"要不要上屏"**（2026-09-22）：返回 `true` = 宿主已把屏叫回来（正常显示战报）；
+   * 返回 `false` = 宿主不要这一屏（例如优化清剿那种玩家没看过的自动战斗）⇒ 本组件当自己没有战报可播、
+   * 直接走收尾（`onDone`），免得留下一块**看不见却一直挂着**的屏。
+   */
+  onReport?: () => boolean
+  /**
+   * **收尾完成**（2026-09-22）：战报关掉了（玩家点关闭 / 20 秒自动关）或压根没有战报可播 ⇒
+   * 通知宿主**可以卸载**本组件（宿主据此撤销挂载）。不传就回落到 `onClose`（老调用方行为不变）。
+   */
+  onDone?: () => void
 }) {
   const state = engine.state
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
@@ -379,6 +404,12 @@ const meSpeedRef = useRef(200)
   const battleRef = useRef<BattleHandle | null>(null)
   /** 最近一次"战斗换了"的标记（`startedAtGameMs`）：33ms 循环据此重置尸骸/血量/速度等视觉账本 */
   const battleStartRef = useRef(0)
+  /**
+   * **阶段机的换场标记**（2026-09-22）：与 `battleStartRef` 同源但**用途不同** ——
+   * 它管的是 React 状态 `stage` 的复位（见下方那个 `useEffect`），视觉账本那套照旧走 `battleStartRef`。
+   * 分开是因为两者复位时机不同：阶段机只在"新战斗出现"时复位，视觉账本每换场都要清。
+   */
+  const prevBattleIdRef = useRef<number | null>(null)
   const mapRef = useRef<{ farM: number; nearM: number }>({ farM: 1, nearM: 200 })
 
   // 滑条两端距（卸载冲刷也要用）
@@ -387,6 +418,14 @@ const meSpeedRef = useRef(200)
   }
 
   // ── 阶段推进：live →（分出胜负）→ outro →（引擎结算完成）→ report ──
+  /**
+   * **这一屏的使命结束**（2026-09-22）：战报关掉了、或压根没有战报可播 ⇒ 通知宿主撤销挂载
+   * （不传 `onDone` 的老调用方回落到"只关屏"，行为与改造前一致）。
+   */
+  const finish = (): void => {
+    if (onDone) onDone()
+    else onClose()
+  }
   useEffect(() => {
     const ended = battle?.ended ?? null
     if (stage === 'live') {
@@ -412,7 +451,7 @@ const meSpeedRef = useRef(200)
         setStage('outro')
       } else if (!combatView) {
         // 未见到分出胜负战斗就结束了（离线恢复等）：直接关屏，战报看日志
-        onClose()
+        finish()
       }
     } else if (stage === 'outro' && !combatView) {
       /**
@@ -423,7 +462,7 @@ const meSpeedRef = useRef(200)
        * ⚠ 2026-09-15 撤离战退役 ⇒ 这一档如今**只有老档**里正在打的撤离战会命中（新趟不再有撤离战）。
        */
       if (outroRef.current?.wormholeKind === 'extract') {
-        onClose()
+        finish()
         return
       }
       // 引擎已结算（killcam 走完）→ 战报文本（resolve 日志已写入）
@@ -447,16 +486,46 @@ const meSpeedRef = useRef(200)
           : battleReportRef.current?.summary) ??
         (snap?.kind === 'me' ? tr("ui.BattleScreen.005") : tr("ui.BattleScreen.006"))
       setStage('report')
+      /**
+       * **问宿主"这一屏要不要上"**（2026-09-22）：玩家看过这一场 ⇒ 宿主把屏叫回来（战斗中退出过的
+       * 玩家不漏战报）；宿主不要（没看过的自动战斗）⇒ 本屏没有播战报的余地，直接收尾卸载，
+       * 免得留下一块**看不见却一直挂着**的屏（33ms 循环会空转到下一次开战）。
+       */
+      if (!(onReport?.() ?? true)) finish()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, battle?.ended, combatView === null])
+
+  /**
+   * **换了一场战斗 ⇒ 阶段机复位**（2026-09-22 · 加固）。
+   *
+   * 治的是什么：`stage` 原先只在 live→outro、outro→report 两处被 set、**从不回到 `live`**。
+   * 而本组件是"按需挂载、跨战斗存活"的（宿主 `App.tsx` 的挂载条件 `battleMounted` 要一直挂到
+   * 战报播完为止）。于是只要**旧战报还挂着时又开一场**（优化清剿的自动远征、AI 副船、
+   * 以后任何自动开战），屏幕会一直显示**上一场**的战报，新战斗在幕后台跑、玩家只能干等它结束
+   * —— 与 2026-09-22 玩家报障「进入战斗后直接出现结算画面，战斗却在后台跑」同一类现象。
+   *
+   * ⚠ **只在"新战斗的身份出现"时复位**：战报期宿主的 `battle` 会变成 `undefined`
+   * （引擎已清 `run.battle` / `expedition.battle`），若把 `undefined` 也当"换场"，
+   * 刚进 report 就会被立刻打回 live ⇒ **战报又丢了**（这道 `=== undefined` 守卫是必须的）。
+   * 身份口径 = `startedAtGameMs`，与本文件其它几处（33ms 循环、预登记）同一把尺。
+   */
+  useEffect(() => {
+    const id = battle?.startedAtGameMs
+    if (id === undefined) return
+    if (prevBattleIdRef.current === id) return
+    prevBattleIdRef.current = id
+    outroRef.current = null
+    setStage('live')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battle?.startedAtGameMs])
 
   // 战报自动关闭：report 展示 20 秒后自动返回（按钮可随时提前关闭）
   // 2026-09-11 船长：「战斗报告持续时间延长」6 秒 → 12 秒；
   // 2026-09-14（战报改造）：内容又多了三行（我方损失 / 双方残余 / 弹药消耗）⇒ 12 秒 → **20 秒**
   useEffect(() => {
     if (stage !== 'report') return
-    const t = window.setTimeout(() => onClose(), 20_000)
+    const t = window.setTimeout(() => finish(), 20_000)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
@@ -658,6 +727,19 @@ const meSpeedRef = useRef(200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /**
+   * **上屏开关**（2026-09-22 · 回归修复）：玩家点「← 退出战场」⇒ `visible=false` ⇒ **本组件什么都不渲染**
+   * （战斗照常在后台推进、浮动入口点得回来）。
+   *
+   * ⚠ 放在这里（而不是战报分支之后）：**战报也要受同一把开关管**，否则玩家在战报里点「关闭」
+   * 会关不掉（分支照样渲染）。战报"自动上屏"由另一条路保证 —— 进 report 阶段时回调 `onReport()`
+   * 通知宿主把 `visible` 置真（见上面的阶段机），所以正常路径下战报一定看得见。
+   *
+   * ⚠ 位置必须在**所有 hook 之后**（本行之上只有 hook 与计算，没有早退分支）：hook 数量两次渲染不一致
+   * 会让 React 卸载整棵树（2026-09-13 黑屏事故的老坑）。
+   */
+  if (visible === false) return null
+
   /* ═══════════ 战报弹层（stage = report：引擎已结算返航，战场数据已清空） ═══════════ */
   if (stage === 'report') {
     const snap = outroRef.current
@@ -770,7 +852,7 @@ const meSpeedRef = useRef(200)
               </div>
             ) : null}
             <div className="app-bts-report-note">{tr("ui.BattleScreen.028")}</div>
-            <button className="app-btn" onClick={onClose}>
+            <button className="app-btn" onClick={() => finish()}>
               {tr("ui.BattleScreen.029")}
             </button>
           </div>

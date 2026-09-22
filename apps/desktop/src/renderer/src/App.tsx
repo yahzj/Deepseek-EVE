@@ -731,14 +731,34 @@ export function App({ engine }: { engine: GameEngine }) {
   const inBattle =
     (state.expedition.active && state.expedition.phase === 'battle') || !!state.wormhole.run?.battle
 
-  // V12.3：出发远征到港开战（phase 进入 battle 的上升沿）→ 自动切入全屏战场；
-  // 玩家手动退出战场后（battleOpen=false 而 inBattle 仍 true）不会再被自动弹回
+  /**
+   * ── 观战屏：**挂载**与**上屏**是两件事（2026-09-22 回归修复）──
+   *
+   * - **挂载** `battleMounted`：这一场的观战屏**还欠一个收尾**（击杀慢镜 / 战后战报，二者都在引擎结算
+   *   **之后**才渲染）⇒ 由**开战上升沿**置真、由**子组件说"我完成了"**（`onDone`）置假。
+   *   ⚠ **不能**写成 `inBattle || battleOpen`：引擎结算与 `inBattle` 变假发生在**同一拍**，
+   *   那一拍就会把子组件卸载 ⇒ 战报**根本没机会渲染**（2026-09-22 无头读数实测踩到：
+   *   战斗中点过「← 退出战场」的玩家整场战报都收不到）。挂载条件必须**先于**结算成立、
+   *   且只由子组件的收尾回调撤销。
+   * - **上屏** `battleOpen`：玩家自己的开关 —— 开战自动开一次、点「← 退出战场」关上（战斗照常在后台
+   *   推进）、浮动入口「⚔ 战斗中」再打开。子组件按 `visible` 决定渲不渲染（见 `BattleScreen`）。
+   * - **战报保护** `battleWatchedRef`：这一场玩家**看过**（自动弹过或自己进过战场）⇒ 战报到达时
+   *   把屏叫回来（战斗中退出过也不会漏战报）；**优化清剿那种"默认不弹"的自动战斗不打扰玩家**。
+   */
+  const [battleMounted, setBattleMounted] = useState(false)
   const prevInBattleRef = useRef(false)
+  const battleWatchedRef = useRef(false)
   useEffect(() => {
-    // 优化：重复清剿自动发起的远征默认最小化战斗界面（仍可用右上角「⚔ 战斗中」主动进入）
-    if (inBattle && !prevInBattleRef.current && !engine.autoSortieNow()) setBattleOpen(true)
+    if (inBattle && !prevInBattleRef.current) {
+      setBattleMounted(true)
+      battleWatchedRef.current = false
+      // 优化：重复清剿自动发起的远征默认最小化战斗界面（仍可用「⚔ 战斗中」主动进入）
+      if (!engine.autoSortieNow()) setBattleOpen(true)
+    }
     prevInBattleRef.current = inBattle
   }, [inBattle])
+  /** 玩家这一场看过屏（自动弹出的那一次也算）——战报到达时据此决定要不要把屏叫回来 */
+  if (inBattle && battleOpen) battleWatchedRef.current = true
 
   /**
    * ── 主控活动窗口（2026-09-20 船长令）──
@@ -1524,20 +1544,31 @@ export function App({ engine }: { engine: GameEngine }) {
         </button>
       ) : null}
       {/**
-       * 战斗屏：**挂载条件 = 在打 或 窗口开着**（`inBattle || battleOpen`）。
-       * 为什么不是 `inBattle`：慢镜（outro）与**战后战报**是在引擎结算**之后**才渲染的，
-       * 那一刻 `inBattle` 已变 false ⇒ 按 `inBattle` 卸载会把战报丢掉（2026-09-21 踩过这个坑）。
-       * 本组件恢复全屏覆盖层后，`open` 这个参数已不存在（要么整块上屏、要么不挂载）。
+       * 战斗屏：**挂载看 `battleMounted`、上屏看 `battleOpen`**（两者的分工与理由见上方那段注释）。
+       * - 挂载条件不能写 `inBattle`：结算与 `inBattle` 变假同拍 ⇒ 那一拍卸载就把战报丢了。
+       * - 上屏由 `visible` 管：玩家点「← 退出战场」真的关屏（战斗后台照打），浮动入口随时点回来。
+       * - 战报到达时 `onReport` 把屏叫回来（只对"玩家看过这一场"的情况），看完由 `onDone` 收尾卸载。
        */}
-      {inBattle || battleOpen ? (
+      {battleMounted ? (
         <BattleScreen
           engine={engine}
           onToast={showToast}
+          visible={battleOpen}
+          onReport={() => {
+            if (!battleWatchedRef.current) return false
+            setBattleOpen(true)
+            return true
+          }}
           onClose={() => {
             // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
             // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
             // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
             setBattleOpen(false)
+          }}
+          onDone={() => {
+            // 子组件收尾完了（战报关掉了 / 没有战报可播）⇒ 可以卸载，别再挂着空跑 33ms 循环
+            setBattleOpen(false)
+            setBattleMounted(false)
           }}
         />
       ) : null}
