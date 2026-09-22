@@ -7,6 +7,8 @@
  * ③ **挂得住 ＋ 不回头**（船长 2026-09-22：「前置技能优先摆左上角，上级技能优先摆在前置的下方」）：
  *    每个有子的节点**至少有一个子落在它正下方**（一族同层兄弟不可能都挤在正下方 ⇒ 只要求"挂得住"）·
  *    子不许跑到父的左边；同 rank 的层内连线不在此列。
+ *    ⚠ **多前置合流豁免**（船长 2026-09-22 选「乙」）：同一节点有 ≥2 个同书前置时，它只能承**一个**父列，
+ *    "两个父都挂得住"结构上不可能 ⇒ 子全是共享子的父跳过这两条，但**整族必须有一条向下生长的边**。
  *
  * 口径来源：`apps/desktop/src/renderer/src/ui/skillTreeLayout.ts`（**排布算法只有那一份**，
  * 本工具只读它算出来的坐标，不重写一遍）。这是**读数**，不是观感结论（观感审查权在船长）。
@@ -62,28 +64,62 @@ for (const br of SKILL_BRANCHES) {
    *    - **3a 每个有子的节点，至少有一个子落在它正下方**（一族同层兄弟不可能都挤在正下方 ⇒ 只要求"挂得住"）；
    *    - **3b 子不许跑到父的左边**（列单调不回头）。
    *    同 rank 的层内连线不参与这两条（它本来就画在同一行上）。
+   *
+   * **多前置合流豁免（2026-09-22 船长选「乙」）**：同一个节点若有 **≥2 个同书前置**（第一批 =
+   * 战斗书「护卫舰/驱逐舰/巡洋舰/战列操作」，两条前置都要 Lv1），它只能承**一个**父列 ⇒ 要求两个父都
+   * "挂得住"是**结构上不可能**的事（一列只能承一个父：设父列 pA < pB，子要挂在 pA 下就得 x=pA，
+   * 而 3b 要求每个子 x ≥ pB ⇒ pA ≥ pB，矛盾）。口径：
+   *    - **一个父的子若全是"共享子"（该子在本图内还有别的更浅前置）⇒ 不判它 3a、也不判这些边的 3b**
+   *      （此刻这些边是"汇流线"，子承的是另一个父的列）；
+   *    - 但**整族不能都不落地**：若这一族的共享子没有一条边是"向下生长"的（存在某父与某共享子同列），
+   *      仍报"没挂住"；
+   *    - **独占子**（本图内只有一个父）照旧严格判 —— 单前置的书与改动前完全一致。
    */
   const kidsInBook = new Map<string, typeof lay.nodes>()
+  /** 子 id → 本图内更浅的前置 id（≥2 个 = 共享子） */
+  const shallowParents = new Map<string, string[]>()
   for (const n of lay.nodes) {
-    for (const pid of n.def.prereq ?? []) {
-      if (!at.has(pid) || at.get(pid)!.def.rank === n.def.rank) continue
+    const ps = (n.def.prereq ?? []).filter((pid) => at.has(pid) && at.get(pid)!.def.rank !== n.def.rank)
+    shallowParents.set(n.def.id, ps)
+    for (const pid of ps) {
       const arr = kidsInBook.get(pid) ?? []
       arr.push(n)
       kidsInBook.set(pid, arr)
     }
   }
+  const isShared = (id: string): boolean => (shallowParents.get(id)?.length ?? 0) >= 2
   for (const [pid, kids] of kidsInBook) {
     const parent = at.get(pid)!
-    if (!kids.some((k) => Math.abs(k.x - parent.x) <= 0.01)) {
+    const own = kids.filter((k) => !isShared(k.def.id))
+    const shared = kids.filter((k) => isShared(k.def.id))
+    if (own.length > 0) {
+      if (!own.some((k) => Math.abs(k.x - parent.x) <= 0.01)) {
+        fail(
+          `${br.id} 没挂住：${parent.def.name} 的子（${own.map((k) => k.def.name).join('、')}）没有一个在它正下方`,
+        )
+      }
+      for (const k of own) {
+        if (k.x < parent.x - 0.01) {
+          fail(`${br.id} 往回长：${k.def.name}（x=${k.x}）跑到了前置 ${parent.def.name}（x=${parent.x}）左边`)
+        }
+      }
+      continue
+    }
+    // 全是共享子：整族只要有一条"向下生长"的边就算挂住（被承父列的那个父自己会照常判）
+    if (shared.length > 0 && !familyHangs(shared)) {
       fail(
-        `${br.id} 没挂住：${parent.def.name} 的子（${kids.map((k) => k.def.name).join('、')}）没有一个在它正下方`,
+        `${br.id} 没挂住：${parent.def.name} 的子全是共享子（${shared.map((k) => k.def.name).join('、')}），且整族没有一条边向下生长`,
       )
     }
-    for (const k of kids) {
-      if (k.x < parent.x - 0.01) {
-        fail(`${br.id} 往回长：${k.def.name}（x=${k.x}）跑到了前置 ${parent.def.name}（x=${parent.x}）左边`)
-      }
-    }
+  }
+  /** 这一族共享子里，是否有一个子正落在它的某个（本图内更浅的）前置下方且不往左回头 */
+  function familyHangs(shared: typeof lay.nodes): boolean {
+    return shared.some((k) =>
+      (shallowParents.get(k.def.id) ?? []).some((pid) => {
+        const p = at.get(pid)
+        return !!p && Math.abs(k.x - p.x) <= 0.01
+      }),
+    )
   }
 
   console.log(
