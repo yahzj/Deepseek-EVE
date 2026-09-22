@@ -25,6 +25,7 @@
     "skilltree:diff": "tsx tools/skilltree-diff.ts",
     "flow:newgame": "tsx tools/flow-newgame.ts",
     "save:migrate": "tsx tools/save-migrate-check.ts",
+    "save:roundtrip-audit": "tsx tools/save-roundtrip-audit.ts",
     "faction:audit": "tsx tools/faction-audit.ts",
     "content:export": "tsx tools/content-export.ts",
     "tasks:export": "tsx tools/tasks-export.ts",

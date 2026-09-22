@@ -2480,6 +2480,13 @@ function normalizeState(raw: unknown): GameState {
       ...(r.allExplored === true ? { allExplored: true } : {}),
       // 起手道具已发放（2026-09-21：任务开始时给道具的去重键；只在 true 时写，零迁移）
       ...(r.started === true ? { started: true } : {}),
+      /**
+       * 打捞器兜底补发已给过（2026-09-22 · 临时补丁的去重键；只在 true 时写，零迁移）。
+       * ⚠ **必须在这里带上**（**2026-09-22 船长报障**：「**玩家刷新可以重复领取补发的打捞器**」）——
+       * 本函数是**手工白名单重建** `importantTasks`，漏一个键＝读档即丢，下一拍 `backfillSalvagerIfMissing`
+       * 就又补一台（刷新一次 +1 台）。同款前车之鉴：`wormhole.run` 漏 `turnsBase/turnsTechBonus`。
+       */
+      ...(r.salvagerGift === true ? { salvagerGift: true } : {}),
     }
   }
 
