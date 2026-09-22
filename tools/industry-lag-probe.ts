@@ -62,7 +62,12 @@ class Cdp {
   private readonly waiting = new Map<number, { res: (v: CdpResult) => void; rej: (e: Error) => void }>()
   private constructor(private readonly ws: WebSocket) {
     ws.addEventListener('message', (ev: MessageEvent) => {
-      const msg = JSON.parse(String(ev.data)) as { id?: number; error?: unknown; result?: CdpResult }
+      const msg = JSON.parse(String(ev.data)) as { id?: number; error?: unknown; result?: CdpResult; method?: string }
+      if (msg.method !== undefined) {
+        this.events.push(msg as unknown as Record<string, unknown>)
+        this.onEvent?.(msg as unknown as Record<string, unknown>)
+        return
+      }
       const w = msg.id !== undefined ? this.waiting.get(msg.id) : undefined
       if (!w || msg.id === undefined) return
       this.waiting.delete(msg.id)
@@ -86,6 +91,9 @@ class Cdp {
     this.ws.send(JSON.stringify({ id, method, params }))
     return new Promise<CdpResult>((res, rej) => this.waiting.set(id, { res, rej }))
   }
+  /** 页面事件（`Runtime.exceptionThrown` / 控制台）——`--diag` 用来抓"界面白屏"的现场 */
+  readonly events: Array<Record<string, unknown>> = []
+  onEvent?: (msg: Record<string, unknown>) => void
   async evalJS<T>(expr: string): Promise<T> {
     const r = (await this.send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })) as {
       exceptionDetails?: { text?: string; exception?: { description?: string } }
@@ -257,6 +265,44 @@ const TAB_CENTER = (i: number): string => `(() => {
   return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), label: (b.textContent || '').trim() }
 })()`
 
+/**
+ * **几何快照**：取前 N 张卡及其后代（截断到 80 个/卡）的矩形 + 文本。
+ * 用途：注入候选 CSS 前后各取一次 ⇒ 文本相同却位置/尺寸变了 = **CSS 挪了东西**（读数，不是观感结论）。
+ */
+const SNAP_RECTS = (n: number): string => `(() => {
+  const out = []
+  for (const c of [...document.querySelectorAll('.app-belt-card.is-assembler')].slice(0, ${n})) {
+    for (const [i, e] of [c, ...c.querySelectorAll('*')].entries()) {
+      if (i > 80) break
+      const r = e.getBoundingClientRect()
+      out.push([Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height), (e.textContent || '').slice(0, 60)])
+    }
+  }
+  return out
+})()`
+
+/** **滚动落点**：把窗口体滚到几个位置，记"顶上第一张可见卡是谁" ⇒ 注入前后一致才说明滚动映射没变 */
+const SNAP_SCROLL = `(() => {
+  const b = document.querySelector('.win-fixed-body .app-win-body') || document.querySelector('.app-win-body')
+  if (!b) return null
+  const kept = b.scrollTop
+  const out = []
+  for (const st of [0, 1500, 4000, 8000, 14000, 19000]) {
+    b.scrollTop = st
+    const bTop = b.getBoundingClientRect().top
+    const cards = [...document.querySelectorAll('.app-belt-card.is-assembler')]
+    const first = cards.find((c) => c.getBoundingClientRect().bottom > bTop + 1)
+    out.push({
+      目标: st,
+      实际: Math.round(b.scrollTop),
+      总高: b.scrollHeight,
+      首张可见: first ? (first.querySelector('.app-belt-name')?.textContent || '').trim().slice(0, 24) : null,
+    })
+  }
+  b.scrollTop = kept
+  return out
+})()`
+
 const METRIC_KEYS = [
   'TaskDuration',
   'ScriptDuration',
@@ -414,6 +460,12 @@ async function main(): Promise<void> {
   if (argv.includes('--cv')) {
     const page = argOf('page', '工业') as string
     const intrinsic = argOf('cv-size', 'auto 300px') as string
+    /** 候选规则：默认 content-visibility 那条；`--css` 可换任意规则（规则里写 `%SEL%` ⇒ 替换成卡片选择器） */
+    const SEL = '.app-belt-card.is-assembler'
+    const cssRule =
+      argOf('css') !== undefined
+        ? (argOf('css') as string).replace(/%SEL%/g, SEL)
+        : `${SEL}{content-visibility:auto;contain-intrinsic-size:${intrinsic}}`
     await cdp.evalJS(
       `(() => { const n = [...document.querySelectorAll('.app-nav-item')].find((b) => (b.textContent||'').includes(${JSON.stringify(page)})); n && n.click(); return !!n })()`,
     )
@@ -467,7 +519,8 @@ async function main(): Promise<void> {
       return { rows, 端到端中位: med, 端到端最大: max }
     }
 
-    console.log(`\n══ 候选 CSS 试跑（${page} · content-visibility: auto / contain-intrinsic-size: ${intrinsic}）══`)
+    console.log(`\n══ 候选 CSS 试跑（${page}）══`)
+    console.log(`   规则：${cssRule}`)
     /** 滚动几何读数：注入后必须与注入前一致，否则"不卡了但滚动条变了"（观感仍归船长，这里只给数） */
     const SCROLL_GEOM = `(() => {
       const g = document.querySelector('.app-belt-grid')
@@ -491,27 +544,194 @@ async function main(): Promise<void> {
     }
     await gotoAssembler()
     const geomBefore = await cdp.evalJS<unknown>(SCROLL_GEOM)
+    const rectsBefore = await cdp.evalJS<Array<[number, number, number, number, string]>>(SNAP_RECTS(8))
+    const scrollBefore = await cdp.evalJS<unknown>(SNAP_SCROLL)
     const plain = await series('未注入（现状）')
     await cdp.evalJS(
-      `(() => { const old = document.getElementById('__cv-probe'); if (old) old.remove(); const s = document.createElement('style'); s.id = '__cv-probe'; s.textContent = '.app-belt-card.is-assembler{content-visibility:auto;contain-intrinsic-size:${intrinsic}}'; document.head.appendChild(s); return s.textContent })()`,
+      `(() => { const old = document.getElementById('__cv-probe'); if (old) old.remove(); const s = document.createElement('style'); s.id = '__cv-probe'; s.textContent = ${JSON.stringify(cssRule)}; document.head.appendChild(s); return s.textContent })()`,
     )
     await sleep(400)
     await gotoAssembler()
     const geomCold = await cdp.evalJS<unknown>(SCROLL_GEOM)
+    const rectsAfter = await cdp.evalJS<Array<[number, number, number, number, string]>>(SNAP_RECTS(8))
+    const scrollAfter = await cdp.evalJS<unknown>(SNAP_SCROLL)
+    /** 逐元素比矩形：文本一致却矩形不同 ⇒ CSS 挪了东西（>=1px 才算） */
+    const drift: Array<{ i: number; 前: number[]; 后: number[]; 文本: string }> = []
+    const n = Math.min(rectsBefore.length, rectsAfter.length)
+    for (let i = 0; i < n; i++) {
+      const a = rectsBefore[i]!, b2 = rectsAfter[i]!
+      if (a[4] !== b2[4]) continue // 文本变了（实时数在动）⇒ 尺寸变化属正常，不计
+      if (a[0] !== b2[0] || a[1] !== b2[1] || a[2] !== b2[2] || a[3] !== b2[3]) {
+        if (drift.length < 10) drift.push({ i, 前: a.slice(0, 4), 后: b2.slice(0, 4), 文本: a[4] })
+      }
+    }
     const withCv = await series('已注入 content-visibility')
     await gotoAssembler()
     const geomAfter = await cdp.evalJS<unknown>(SCROLL_GEOM)
+    /**
+     * **收敛核对**：`contain-intrinsic-size` 的占位高度与真实卡高不一致时，卡片一旦被渲染就会改用真实高度
+     * ⇒ 总高会变。这里先取一遍落点（A），再整表滚一遍（逼所有卡片渲染一次），再取一遍（B）：
+     * **A ≠ B 就是"滚着滚着内容自己挪"**——这正是船长"防跳动"那条规矩要防的东西。
+     */
+    const scrollA = await cdp.evalJS<unknown>(SNAP_SCROLL)
+    await cdp.evalJS(`(() => {
+      const b = document.querySelector('.win-fixed-body .app-win-body') || document.querySelector('.app-win-body')
+      if (!b) return null
+      for (let y = 0; y <= b.scrollHeight; y += 300) b.scrollTop = y
+      b.scrollTop = 0
+      return b.scrollHeight
+    })()`)
+    await sleep(600)
+    const scrollB = await cdp.evalJS<unknown>(SNAP_SCROLL)
+    const geomConverged = await cdp.evalJS<unknown>(SCROLL_GEOM)
     await cdp.evalJS(`(() => { const s = document.getElementById('__cv-probe'); if (s) s.remove(); return true })()`)
     console.log('  滚动几何：')
     console.log(`      注入前 ${JSON.stringify(geomBefore)}`)
     console.log(`      刚注入 ${JSON.stringify(geomCold)}`)
     console.log(`      跑完序 ${JSON.stringify(geomAfter)}`)
+    console.log('  几何漂移（文本相同、矩形却变了的元素）：' + (drift.length === 0 ? '**0 处**' : `${drift.length} 处（列前 10）`))
+    for (const d of drift) console.log(`      #${d.i} ${JSON.stringify(d.前)} → ${JSON.stringify(d.后)}  「${d.文本.slice(0, 30)}」`)
+    console.log('  滚动落点：')
+    console.log(`      注入前 ${JSON.stringify(scrollBefore)}`)
+    console.log(`      注入后 ${JSON.stringify(scrollAfter)}`)
+    console.log(`      滚一遍后(A) ${JSON.stringify(scrollA)}`)
+    console.log(`      再取一次(B) ${JSON.stringify(scrollB)}`)
+    console.log(`      收敛后几何 ${JSON.stringify(geomConverged)}`)
     report.候选CSS试跑 = {
-      CSS: `.app-belt-card.is-assembler{content-visibility:auto;contain-intrinsic-size:${intrinsic}}`,
+      CSS: cssRule,
       未注入: plain,
       已注入: withCv,
-      滚动几何: { 注入前: geomBefore, 刚注入: geomCold, 跑完序列: geomAfter },
+      滚动几何: { 注入前: geomBefore, 刚注入: geomCold, 跑完序列: geomAfter, 整表滚一遍后: geomConverged },
+      几何漂移: { 处数: drift.length, 例: drift },
+      滚动落点: { 注入前: scrollBefore, 注入后: scrollAfter, 滚一遍后A: scrollA, 再取一次B: scrollB },
     }
+    const out = join(OUT_DIR, `${label}.json`)
+    writeFileSync(out, JSON.stringify(report, null, 2), 'utf8')
+    console.log(`\n读数已写入：${out}`)
+    cdp.close()
+    return
+  }
+
+  /**
+   * `--diag` 模式：只做"装档 → 重载 → 报现场"——界面白屏 / 面板不出现时，用它抓页面异常与控制台报错。
+   */
+  if (argv.includes('--diag')) {
+    const errs: string[] = []
+    cdp.onEvent = (msg) => {
+      if (msg.method === 'Runtime.exceptionThrown') {
+        const p = msg.params as { exceptionDetails?: { text?: string; exception?: { description?: string }; url?: string; lineNumber?: number } }
+        const d = p.exceptionDetails
+        errs.push(`异常：${d?.text ?? ''} ${d?.exception?.description ?? ''} @${d?.url ?? ''}:${(d?.lineNumber ?? 0) + 1}`)
+      } else if (msg.method === 'Runtime.consoleAPICalled') {
+        const p = msg.params as { type?: string; args?: Array<{ value?: unknown; description?: string }> }
+        if (p.type === 'error' || p.type === 'warning') {
+          errs.push(`控制台[${p.type}]：${(p.args ?? []).map((a) => String(a.value ?? a.description ?? '')).join(' ').slice(0, 300)}`)
+        }
+      }
+    }
+    await cdp.send('Page.navigate', { url: APP })
+    await waitFor(cdp, `document.readyState === 'complete' && !!window.localStorage`, '首次加载')
+    await cdp.evalJS(`localStorage.setItem('whale:idle:save', ${JSON.stringify(saveText)}); 'ok'`)
+    await cdp.send('Page.reload')
+    await waitFor(cdp, `document.readyState === 'complete'`, '重载完成')
+    await sleep(2500)
+    const site = await cdp.evalJS<Record<string, unknown>>(`(() => ({
+      导航项: [...document.querySelectorAll('.app-nav-item')].map((b) => (b.textContent||'').trim()),
+      有侧栏: !!document.querySelector('.app-nav-side'),
+      有内容区: !!document.querySelector('.app-page-content'),
+      正文开头: (document.body.innerText || '').slice(0, 300),
+      root子节点数: (document.getElementById('root')?.children.length ?? -1),
+    }))()`)
+    console.log('══ 现场 ══')
+    console.log(JSON.stringify(site, null, 1))
+    // 逐个子页点一遍：哪一栏把界面打崩，一眼可见
+    await cdp.evalJS(`(() => { const n = [...document.querySelectorAll('.app-nav-item')].find((b) => (b.textContent||'').includes('工业')); n && n.click(); return !!n })()`)
+    await sleep(1500)
+    for (let i = 0; i < 4; i++) {
+      const label = await cdp.evalJS<string>(`(document.querySelectorAll('.app-subtabs .app-subtab')[${i}]?.textContent||'—').trim()`)
+      const before = errs.length
+      await cdp.evalJS(`(() => { const b = document.querySelectorAll('.app-subtabs .app-subtab')[${i}]; b && b.click(); return true })()`)
+      await sleep(1200)
+      const st = await cdp.evalJS<Record<string, unknown>>(`(() => {
+        const root = document.querySelector('.page-stack')
+        const p = root ? root.children[root.children.length - 1] : null
+        return { 面板: p ? String(p.className).slice(0, 40) : '（无）', 节点: p ? p.querySelectorAll('*').length : -1,
+                 卡片: document.querySelectorAll('.app-belt-card').length,
+                 正文开头: (document.body.innerText || '').slice(0, 120) }
+      })()`)
+      console.log(`  ${label} → ${JSON.stringify(st)}  新增报错 ${errs.length - before} 条`)
+    }
+    console.log(`异常/报错 ${errs.length} 条：`)
+    for (const e of errs.slice(0, 12)) console.log(`  ${e}`)
+    cdp.close()
+    return
+  }
+
+  /**
+   * `--act` 模式：**交互回归**——点一张卡的「制造」，看这张卡自己是否随之变化、剩余时间是否持续在走。
+   * 用途：给卡片加 `memo`/`liveKey` 之后，"点下去界面不动"是最危险的失败模式，这一条专门盯它。
+   */
+  if (argv.includes('--act')) {
+    await cdp.evalJS(`(() => { const n = [...document.querySelectorAll('.app-nav-item')].find((b) => (b.textContent||'').includes('工业')); n && n.click(); return !!n })()`)
+    await sleep(1500)
+    await cdp.evalJS(`(() => { const b = document.querySelectorAll('.app-subtabs .app-subtab')[1]; b && b.click(); return true })()`)
+    await sleep(1500)
+    const picked = await cdp.evalJS<Record<string, unknown>>(`(() => {
+      const cards = [...document.querySelectorAll('.app-belt-card.is-assembler')]
+      /** 优先点「AI 制造」：主控可能在扫描虫洞/远征（被引擎拒），AI 工位才是稳的开工入口 */
+      const ai = (c) => c.querySelector('.app-belt-ai button:not([disabled])')
+      const pilot = (c) => c.querySelector('.app-belt-actions button.is-primary:not([disabled])')
+      const target = cards.find((c) => ai(c)) || cards.find((c) => pilot(c))
+      if (!target) return { ok: false, 可点卡片数: cards.filter((c) => ai(c) || pilot(c)).length }
+      const name = (target.querySelector('.app-belt-name')?.textContent || '').trim().slice(0, 24)
+      target.setAttribute('data-probe-card', '1')
+      const b = ai(target) || pilot(target)
+      const r = b.getBoundingClientRect()
+      return { ok: true, 卡片: name, 按钮: (b.textContent || '').trim(), x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), 卡片文本: (target.innerText || '').slice(0, 200) }
+    })()`)
+    console.log(`\n══ 交互回归（组装机：点「制造」）══`)
+    console.log(`  选中卡片：${JSON.stringify(picked)}`)
+    if (picked['ok'] === true) {
+      await realClick(cdp, Number(picked['x']), Number(picked['y']))
+      await sleep(1200)
+      const after = await cdp.evalJS<Record<string, unknown>>(`(() => {
+        const c = document.querySelector('[data-probe-card="1"]')
+        if (!c) return { 卡片还在: false }
+        const worker = c.querySelector('.app-belt-worker')
+        return {
+          卡片还在: true,
+          有进行标记: !!c.querySelector('.app-belt-flag.is-run'),
+          有制造线: !!worker,
+          制造线文字: worker ? (worker.innerText || '').replace(/\\n/g, ' | ').slice(0, 90) : null,
+          卡片文本: (c.innerText || '').slice(0, 260),
+        }
+      })()`)
+      console.log(`  点击后 1.2 s：${JSON.stringify(after)}`)
+      const toast = await cdp.evalJS<string | null>(`document.querySelector('.app-toast')?.textContent ?? null`)
+      console.log(`  操作提示：${toast ?? '（无）'}`)
+      const t1 = await cdp.evalJS<string | null>(`(() => { const w = document.querySelector('[data-probe-card="1"] .app-belt-worker'); return w ? (w.innerText||'').replace(/\\n/g,' | ') : null })()`)
+      await sleep(4000)
+      const t2 = await cdp.evalJS<string | null>(`(() => { const w = document.querySelector('[data-probe-card="1"] .app-belt-worker'); return w ? (w.innerText||'').replace(/\\n/g,' | ') : null })()`)
+      console.log(`  4 秒后制造线：${t1} → ${t2}`)
+      console.log(`  倒计时在走：${t1 !== null && t2 !== null && t1 !== t2 ? '是' : '否（⚠ 可能是 memo 冻住了）'}`)
+      /**
+       * **重挂载对照**（判"是 memo 冻住了"还是"根本没开工"）：换到别的子页再切回来 = 整块面板重建，
+       * 重建后若显示"正在制造"，说明状态早就变了、只是卡片没跟着刷 —— 那就是 memo 漏项的实锤。
+       */
+      await cdp.evalJS(`(() => { const b = document.querySelectorAll('.app-subtabs .app-subtab')[3]; b && b.click(); return true })()`)
+      await sleep(900)
+      await cdp.evalJS(`(() => { const b = document.querySelectorAll('.app-subtabs .app-subtab')[1]; b && b.click(); return true })()`)
+      await sleep(1500)
+      const remount = await cdp.evalJS<Record<string, unknown>>(`(() => {
+        const c = document.querySelector('[data-probe-card="1"]')
+        if (!c) return { 卡片还在: false }
+        const worker = c.querySelector('.app-belt-worker')
+        return { 卡片还在: true, 有进行标记: !!c.querySelector('.app-belt-flag.is-run'), 有制造线: !!worker, 制造线文字: worker ? (worker.innerText||'').replace(/\\n/g,' | ').slice(0,90) : null }
+      })()`)
+      console.log(`  重挂载对照：${JSON.stringify(remount)}`)
+      report.交互回归 = { 选中: picked, 点击后: after, 操作提示: toast, 制造线: { t1, t2, 在走: t1 !== t2 }, 重挂载对照: remount }
+    }
+    await cdp.evalJS(`(() => { const c = document.querySelector('[data-probe-card="1"]'); if (c) c.removeAttribute('data-probe-card'); return true })()`)
     const out = join(OUT_DIR, `${label}.json`)
     writeFileSync(out, JSON.stringify(report, null, 2), 'utf8')
     console.log(`\n读数已写入：${out}`)

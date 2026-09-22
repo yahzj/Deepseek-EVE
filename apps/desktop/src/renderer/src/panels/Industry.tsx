@@ -18,6 +18,8 @@ import {
   matNeedCount,
   missingMaterials,
   ownsBlueprint,
+  // 2026-09-22 第 3 步：收藏星标进"实时指纹"（星标子组件自己也读 state，漏了会停在旧值）
+  isMarked,
   recipeCapability,
   canStartBlueprint,
   // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」）——口径单点在 core 纯函数
@@ -32,7 +34,7 @@ import {
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import { Panel } from '@whale/ui'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -471,7 +473,49 @@ function manualBuildNote(state: GameState): string | null {
 
 /** 一张可制造蓝图的展示卡（与精炼炉卡同款结构：运转名册逐线 = 劳动者 + 进度 + 取消；
  * 开工按钮 = 手动制造（主控亲自）/ AI 核心下拉 + AI 制造；已学会 + 材料够即可随时加开（制造费已于 2026-09-08 取消）） */
-export function BlueprintCard({
+/**
+ * **卡片的"实时指纹"**（2026-09-22 工业页卡顿修复第 3 步）。
+ *
+ * 为什么需要它：面板每秒被引擎心跳强刷 1~2 次，整棵卡片列表跟着重算/重提交（组装机 151 张 = 8298 节点，
+ * 实测挂机就吃掉 35% 主线程、弱机直接吃满）。有了这张指纹 + 卡片上的 `memo`，
+ * 心跳只让**自己这几个数真的变了**的那几张卡重渲染。
+ *
+ * ⚠ **改卡片时若新增了"随心跳变"的读数，必须同步加进这里**，否则那张卡会停在旧值上（界面不刷新）。
+ * 下面的分节注释逐条对应卡面上的显示位置，方便对照：
+ * - `mats`  ：材料行的「（仓库 N）」与 `is-short` 红标、以及按钮的可用性（`short`）；
+ * - `needs` ：材料学折扣后的需求量与净收益估算（随科技变）；
+ * - `runs`  ：制造线名册（条数 / 剩余 / 进度条 / 劳动者）；
+ * - `loop`  ：循环制造的开关、已产批数、停因；
+ * - `own`   ：产物「（×× N）」那一格；
+ * - `bp`    ：已学会 / 蓝图书存量 / 一次性名额（`cap.kind`）——决定卡头徽标与底部按钮是哪一支；
+ * - `mark`  ：收藏星标（子组件 `MarkStar` 自己也读 `engine.state`，不能漏）。
+ */
+export function cardLiveKeyOf(
+  engine: GameEngine,
+  blueprintId: string,
+  materials: readonly MaterialNeed[],
+  /** 该蓝图制造线的指纹（`制造线id.剩余秒.进度%.劳动者` 串起来）——由面板一次归并好传进来，
+   *  免得 151 张卡各自把全部制造线算一遍（O(卡×线)） */
+  runSig: string,
+  /** 产物持有量（各卡不同，取自模型里的 `countOwned` 闭包） */
+  ownedCount: number,
+): string {
+  const state = engine.state
+  const mats = materials.map((m) => countWare(state, m.itemId)).join(',')
+  const needs = materials.map((m) => matNeedCount(state, m.count)).join(',')
+  const loop = manufacturingLoopOf(state, blueprintId)
+  const singleUse =
+    engine.ctx.blueprints.get(blueprintId)?.singleUse === true || engine.ctx.shipBlueprints.get(blueprintId)?.singleUse === true
+  const bp = `${ownsBlueprint(state, blueprintId) ? 1 : 0}.${state.blueprintStock[blueprintId] ?? 0}.${recipeCapability(state, blueprintId, singleUse).kind}`
+  const mark = isMarked(state, 'blueprints', blueprintId) ? 1 : 0
+  return `${mats}#${needs}#${runSig}#${loop.on ? 1 : 0}.${loop.produced}.${loop.stopWhy}#${bp}#${mark}#${ownedCount}`
+}
+
+/**
+ * 组装机 / 造船厂生产卡。**`memo` + `liveKey`**：父级每次心跳都会重渲染并算出新的 `liveKey`，
+ * 只有指纹变了的那几张卡才真正重渲染（其余直接跳过 ⇒ 不重建 DOM、不触发布局）。
+ */
+export const BlueprintCard = memo(function BlueprintCard({
   engine,
   onToast,
   blueprintId,
@@ -485,13 +529,14 @@ export function BlueprintCard({
   productGlyph,
   productTone,
   productBase,
-  ownedCount,
+  countOwned,
   ownedWhere,
   onNeedMineral,
   onGotoMarket,
   onGotoWormhole,
   highlighted,
   learnless,
+  liveKey,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -512,8 +557,9 @@ export function BlueprintCard({
   productTone?: string
   /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
   productBase: number
-  /** 自己已有多少产物（2026-09-10 船长：卡面产物行尾要显示"我拥有多少个成品"） */
-  ownedCount: number
+  /** 产物"自己有多少"的取数闭包（2026-09-10 船长：卡面产物行尾要显示"我拥有多少个成品"）
+   *  ⚠ 收闭包而不是收数值：数值随心跳变，收进来会让上面那张 memo 每拍失效（见 `cardLiveKeyOf`） */
+  countOwned: () => number
   /** 上面这个数字从哪儿数来的（仓库 / 装备库 / 机库），写进产物行括注 */
   ownedWhere: string
   /** 点需求材料：有精炼源 → 跳到精炼炉对应源矿石卡；无源 → 跳市场（2026-09-08 船长定） */
@@ -528,6 +574,8 @@ export function BlueprintCard({
   highlighted?: boolean
   /** 2026-09-20 零件体系：隐式蓝图（基础零件）——无需学习即视为已学会，卡面显示「无需图纸」 */
   learnless?: boolean
+  /** **实时指纹**（`cardLiveKeyOf`）：父级每拍算一次，只有它变了这张卡才重渲染（第 3 步卡顿修复） */
+  liveKey?: string
 }) {
   const state = engine.state
   // 该蓝图的全部制造线（同蓝图可多条；与精炼炉同资源多台运转同构）
@@ -563,6 +611,8 @@ export function BlueprintCard({
           ? tr("ui.Industry.030")
           : null
   const short = missingMaterials(state, engine.ctx, spec)
+  /** 产物持有量：本卡渲染时现取（父级每拍算 `liveKey` 时也会取一次，同源口径） */
+  const ownedCount = countOwned()
   const goodKey = bpGoodKey(engine, blueprintId)
   /**
    * **市场购买门槛**（只作"卡头状态"提示用）。⚠ **2026-09-14 船长：「组装机里，需要声望的才能启动组装机的
@@ -1015,6 +1065,43 @@ export function BlueprintCard({
       </div>
     </div>
   )
+})
+
+/**
+ * **组装机目录条目**（2026-09-22 第 3 步）。
+ * ⚠ 这里**只放"目录级"的字段**（蓝图/产物/价格/排序键），**不许放随引擎心跳变的字段**——
+ * 一旦放进来，`useMemo` 出来的模型每拍都会换新引用，卡片上的 `memo` 就永远击穿。
+ * 实时数（材料库存、制造线、循环、持有量、徽标）统一走 `cardLiveKeyOf` 的指纹 + 卡片自己现取。
+ */
+interface ManuItem {
+  id: string
+  kindLabel: string
+  /** 二级子筛选键（装备 = 产物功能分组 / 舰船 = t<级别> / 消耗品 = 产物大类；与 itemSubs 单点同键） */
+  subKey: string
+  productGlyph: string
+  /** 图标色覆盖（零件两档分色；缺省 = toneOf(glyph)） */
+  productTone?: string
+  name: string
+  description: string
+  materials: readonly MaterialNeed[]
+  buildSeconds: number
+  productLabel: string
+  productNode: ReactNode
+  productBase: number
+  /** 产物"自己有多少"的**取数闭包**（装备库 / 物品仓库 / 舰船仓库口径由模型定，数值每次现取） */
+  countOwned: () => number
+  /** 产物来处（仓库 / 装备库 / 机库名）——卡面「（×× N）」用 */
+  ownedWhere: string
+  bookPrice: number
+  /** 排序用：**产物唯一键**（`ship:`/`module:`/`item:` + 产物 id）——2026-09-14 船长：
+   *  「一次性图纸应该和原图纸放在一起」⇒ 同产物成组，组内原图纸在前 */
+  productKey: string
+  /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
+  singleUse: boolean
+  /** 2026-09-20 零件体系：隐式蓝图（基础零件无需学习） */
+  learnless: boolean
+  /** 2026-09-20 零件体系：零件档位（排序用：基础零件默认在前） */
+  partTier?: 'basic' | 'advanced'
 }
 
 export function ManufacturingPanel({
@@ -1066,38 +1153,18 @@ export function ManufacturingPanel({
     setUseKind(SUB_ALL)
   }, [focusBlueprintId])
 
-  /** 目录数据（舰船 + 装备统一成条目；制造中冒泡在前，再按名称） */
-  const items: Array<{
-    id: string
-    kindLabel: string
-    /** 二级子筛选键（装备 = 产物功能分组 / 舰船 = t<级别> / 消耗品 = 产物大类；与 itemSubs 单点同键） */
-    subKey: string
-    productGlyph: string
-    /** 图标色覆盖（零件两档分色；缺省 = toneOf(glyph)） */
-    productTone?: string
-    name: string
-    description: string
-    materials: readonly MaterialNeed[]
-    buildSeconds: number
-    productLabel: string
-    productNode: ReactNode
-    running: boolean
-    canStart: boolean
-    productBase: number
-    /** 自己已有多少产物（产物行尾显示）与它的来处（仓库/装备库/机库） */
-    ownedCount: number
-    ownedWhere: string
-    bookPrice: number
-    /** 排序用：**产物唯一键**（`ship:`/`module:`/`item:` + 产物 id）——2026-09-14 船长：
-     *  「一次性图纸应该和原图纸放在一起」⇒ 同产物成组，组内原图纸在前 */
-    productKey: string
-    /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
-    singleUse: boolean
-    /** 2026-09-20 零件体系：隐式蓝图（基础零件无需学习） */
-    learnless: boolean
-    /** 2026-09-20 零件体系：零件档位（排序用：基础零件默认在前） */
-    partTier?: 'basic' | 'advanced'
-  }> = []
+  /**
+   * **目录模型只在"目录本身"变化时重建**（2026-09-22 工业页卡顿修复第 3 步 · 单点在 `cardLiveKeyOf`）。
+   *
+   * 原先每次渲染（= 每秒 1~2 次引擎心跳）都把 151 条重建一遍、并**当场造 `productNode` ReactNode**
+   * ⇒ 每张卡的 props 每次都是新引用 ⇒ 卡片上的 `memo` 必被击穿（等于白加）。
+   * 依赖只有目录上下文与蓝图表：`engine.ts` 里这两个字段**只在换语言时一起重建**
+   * （`buildSimContext(locale)` + `overlayList(...)`）⇒ 语言相关的卡面字也跟着一起更新。
+   *
+   * ⚠ **模型里不许放"随心跳变"的字段**（见 `ManuItem` 的说明）：放进来这张 memo 就每拍失效。
+   */
+  const items = useMemo<ManuItem[]>(() => {
+    const out: ManuItem[] = []
   /** 该船型的**总持有**（2026-09-14 舰船仓库批：组装机产出先进仓库 ⇒ 读口径改走 core 单点
    *  `shipOwnedCount` = 舰船仓库 ＋ 在役舰队；原先只数机库，会让"仓里堆着 3 艘"显示成 0）
    *  ⚠ 2026-09-20 零件体系：舰船蓝图已迁入**造船厂**子页（`panels/Shipyard.tsx`），本面板不再渲染舰船。 */
@@ -1108,7 +1175,8 @@ export function ManufacturingPanel({
       const prodLabel = moduleDef?.name ?? bp.moduleId!
       // 产物名金色（按类型分色作废，2026-09-13 船长）
       const prodText = <span className="app-gold">{prodLabel}</span>
-      items.push({
+      const moduleId = bp.moduleId!
+      out.push({
         id: bp.id,
         kindLabel: tr("ui.MarketPage.003"),
         // 装备蓝图按**产物功能**分组（2026-09-11 船长：「根据产物的类型进行二次分类」；键与 MODULE_SUBS 同源）
@@ -1120,13 +1188,11 @@ export function ManufacturingPanel({
         buildSeconds: bp.buildSeconds,
         productLabel: prodLabel,
         productNode: moduleDef ? <ModuleHover mod={moduleDef}>{prodText}</ModuleHover> : prodText,
-        running: runViews.some((v) => v.blueprintId === bp.id),
-        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
-        productBase: moduleDef ? productBaseOf(engine, 'module', bp.moduleId!) : 0,
-        ownedCount: moduleDef ? countModule(state, bp.moduleId!) : 0, // 装备产物 → 装备库件数
+        productBase: moduleDef ? productBaseOf(engine, 'module', moduleId) : 0,
+        countOwned: () => countModule(engine.state, moduleId), // 装备产物 → 装备库件数
         ownedWhere: tr("ui.Industry.004"),
         bookPrice: bookPriceOf(engine, bp.id, 0),
-        productKey: `module:${bp.moduleId}`,
+        productKey: `module:${moduleId}`,
         singleUse: bp.singleUse === true,
         learnless: false,
       })
@@ -1150,7 +1216,8 @@ export function ManufacturingPanel({
           {` ×${units} 发`}
         </>
       )
-      items.push({
+      const itemId = bp.itemId
+      out.push({
         id: bp.id,
         kindLabel: tr("ui.MarketPage.007"),
         subKey: itemDef?.kind ?? '',
@@ -1167,13 +1234,11 @@ export function ManufacturingPanel({
         ) : (
           prodText
         ),
-        running: runViews.some((v) => v.blueprintId === bp.id),
-        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
-        productBase: itemDef ? productBaseOf(engine, 'item', bp.itemId, units) : 0,
-        ownedCount: itemDef ? countWare(state, bp.itemId) : 0, // 弹药/物品产物 → 物品仓库单位数
+        productBase: itemDef ? productBaseOf(engine, 'item', itemId, units) : 0,
+        countOwned: () => countWare(engine.state, itemId), // 弹药/物品产物 → 物品仓库单位数
         ownedWhere: tr("ui.ItemsPage.001"),
         bookPrice: bookPriceOf(engine, bp.id, 0),
-        productKey: `item:${bp.itemId}`,
+        productKey: `item:${itemId}`,
         singleUse: bp.singleUse === true,
         learnless: false,
       })
@@ -1201,7 +1266,8 @@ export function ManufacturingPanel({
           {tr('ui.Industry.153', { units: units })}
         </>
       )
-      items.push({
+      const partItemId = bp.itemId
+      out.push({
         id: bp.id,
         kindLabel: '零件',
         // 2026-09-20 零件体系：二级子筛选 = 基础/高级（键 `part-<档>`，单点 `itemSubs.partTierOf`）
@@ -1220,13 +1286,11 @@ export function ManufacturingPanel({
         ) : (
           prodText
         ),
-        running: runViews.some((v) => v.blueprintId === bp.id),
-        canStart: canStartNow(bp.id, bp.materials, bp.buildSeconds),
-        productBase: itemDef ? productBaseOf(engine, 'item', bp.itemId, bp.outputUnits ?? 1) : 0,
-        ownedCount: itemDef ? countWare(state, bp.itemId) : 0,
+        productBase: itemDef ? productBaseOf(engine, 'item', partItemId, bp.outputUnits ?? 1) : 0,
+        countOwned: () => countWare(engine.state, partItemId),
         ownedWhere: '仓库',
         bookPrice: bookPriceOf(engine, bp.id, 0),
-        productKey: `item:${bp.itemId}`,
+        productKey: `item:${partItemId}`,
         singleUse: bp.singleUse === true,
         learnless: bp.learnless === true,
         partTier: bp.partTier,
@@ -1236,6 +1300,8 @@ export function ManufacturingPanel({
   pushEquip()
   pushPart()
   pushSupply()
+    return out
+  }, [engine.ctx, engine.blueprints])
 
   /** 本门类判定（一级门类 → 该卡是否在档内）——二级/三级现算与最终过滤共用一把尺 */
   const inTab = (kindLabel: string): boolean =>
@@ -1296,6 +1362,17 @@ export function ManufacturingPanel({
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
   // （标签本身是筛选、不是排序键，故各处标签都按同一口径置顶）；组内保持类型→价格顺序。
   const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
+  /**
+   * **每张卡的实时指纹**（2026-09-22 第 3 步）：心跳只让指纹变了的卡重渲染。
+   * 制造线先按蓝图归并一遍（O(线)），再逐卡拼材料/需求/持有量（O(卡×材料)≈1000 次仓库查询，实测很便宜）。
+   */
+  const runSigByBp = new Map<string, string>()
+  for (const v of runViews) {
+    if (v.blueprintId === null) continue // 精炼线的 blueprintId 为空（本表只服务组装机卡）
+    runSigByBp.set(v.blueprintId, `${runSigByBp.get(v.blueprintId) ?? ''}${v.id}.${Math.round(v.remainingMs / 1000)}.${Math.round(v.percent)}.${v.worker ?? '-'}|`)
+  }
+  const liveKeyOf = (it: (typeof items)[number]): string =>
+    cardLiveKeyOf(engine, it.id, it.materials, runSigByBp.get(it.id) ?? '', it.countOwned())
   // l10n-keep-start：以下 kindLabel 过滤用的都是**内容层联合 key**（不是文案）
   const equipN = items.filter((i) => i.kindLabel === '装备').length
   const partN = items.filter((i) => i.kindLabel === '零件').length
@@ -1454,13 +1531,15 @@ export function ManufacturingPanel({
               productGlyph={it.productGlyph}
               productTone={it.productTone}
               productBase={it.productBase}
-              ownedCount={it.ownedCount}
+              countOwned={it.countOwned}
               ownedWhere={it.ownedWhere}
               onNeedMineral={onNeedMineral}
               onGotoMarket={onGotoMarket}
               onGotoWormhole={onGotoWormhole}
               highlighted={focusBlueprintId === it.id}
               learnless={it.learnless}
+              /** 实时指纹：只有它变了的卡才会真正重渲染（详见 `cardLiveKeyOf` 的说明） */
+              liveKey={liveKeyOf(it)}
             />
           ))}
         </div>

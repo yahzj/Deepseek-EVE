@@ -6,7 +6,7 @@
  * - 筛选：舰船级别（T1~T5）二级 + 一次性/永久三级 + 「学会」维度 + 搜索栏（与组装机同款口径）；
  * - 引擎零改动（`manufacturingRuns` 本就支持舰船蓝图）。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Panel } from '@whale/ui'
 import type { GameState, MaterialNeed } from '@whale/core'
@@ -35,8 +35,13 @@ import {
   type BlueprintLearnKey,
   type BlueprintUseKey,
 } from '../ui/itemSubs'
-import { BlueprintCard, bookPriceOf, productBaseOf } from './Industry'
+import { BlueprintCard, bookPriceOf, cardLiveKeyOf, productBaseOf } from './Industry'
 
+/**
+ * 造船厂目录条目（2026-09-22 工业页卡顿修复第 3 步）。
+ * ⚠ 与组装机同规矩：**只放"目录级"字段**，随心跳变的实时数一律不进模型（否则 `useMemo` 每拍失效、
+ * 卡片 `memo` 击穿）；实时数走 `cardLiveKeyOf` 指纹 + 卡片自己现取。
+ */
 interface ShipItem {
   id: string
   kindLabel: string
@@ -48,10 +53,9 @@ interface ShipItem {
   buildSeconds: number
   productLabel: string
   productNode: ReactNode
-  running: boolean
-  canStart: boolean
   productBase: number
-  ownedCount: number
+  /** 舰船"自己有多少"的取数闭包（仓库 ＋ 在役舰队；数值每次现取） */
+  countOwned: () => number
   ownedWhere: string
   bookPrice: number
   productKey: string
@@ -99,50 +103,52 @@ export function ShipyardPanel({
     return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
   }
 
-  const items: ShipItem[] = []
-  for (const sbp of engine.shipBlueprints) {
-    const shipDef = engine.ctx.ships.get(sbp.shipId)
-    const prodName = shipDef?.name ?? sbp.shipId
-    /** 产物名后的参数（货舱/循环）：不上色（2026-09-13 船长口径） */
-    const prodParams = shipDef
-      ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
-      : ''
-    const prodLabel = prodName + prodParams
-    // 产物名一律金色（2026-09-13 船长）
-    const prodText = <span className="app-gold">{prodName}</span>
-    items.push({
-      id: sbp.id,
-      kindLabel: '舰船',
-      // 舰船蓝图按舰船级别分档（键与 itemSubs.SHIP_TIER_SUBS 同源）
-      subKey: shipDef ? `t${shipDef.tier}` : '',
-      productGlyph: shipDef?.role ?? 'blueprint',
-      name: sbp.name,
-      description: sbp.description,
-      materials: sbp.materials,
-      buildSeconds: sbp.buildSeconds,
-      productLabel: prodLabel,
-      productNode: shipDef ? (
-        <ShipHover ship={shipDef} note={shipDef.description}>
-          {prodText}
-          {prodParams}
-        </ShipHover>
-      ) : (
-        <>
-          {prodText}
-          {prodParams}
-        </>
-      ),
-      running: runViews.some((v) => v.blueprintId === sbp.id),
-      canStart: canStartNow(sbp.id, sbp.materials, sbp.buildSeconds),
-      productBase: shipDef ? (productBaseOf(engine, 'ship', sbp.shipId) || shipDef.priceIsk || 0) : 0,
-      ownedCount: shipStockOf(sbp.shipId),
-      ownedWhere: '仓库＋机库',
-      bookPrice: bookPriceOf(engine, sbp.id, 0),
-      productKey: `ship:${sbp.shipId}`,
-      singleUse: sbp.singleUse === true,
-      learnless: false,
-    })
-  }
+  const items = useMemo<ShipItem[]>(() => {
+    const out: ShipItem[] = []
+    for (const sbp of engine.shipBlueprints) {
+      const shipDef = engine.ctx.ships.get(sbp.shipId)
+      const prodName = shipDef?.name ?? sbp.shipId
+      /** 产物名后的参数（货舱/循环）：不上色（2026-09-13 船长口径） */
+      const prodParams = shipDef
+        ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
+        : ''
+      const prodLabel = prodName + prodParams
+      // 产物名一律金色（2026-09-13 船长）
+      const prodText = <span className="app-gold">{prodName}</span>
+      const shipId = sbp.shipId
+      out.push({
+        id: sbp.id,
+        kindLabel: '舰船',
+        // 舰船蓝图按舰船级别分档（键与 itemSubs.SHIP_TIER_SUBS 同源）
+        subKey: shipDef ? `t${shipDef.tier}` : '',
+        productGlyph: shipDef?.role ?? 'blueprint',
+        name: sbp.name,
+        description: sbp.description,
+        materials: sbp.materials,
+        buildSeconds: sbp.buildSeconds,
+        productLabel: prodLabel,
+        productNode: shipDef ? (
+          <ShipHover ship={shipDef} note={shipDef.description}>
+            {prodText}
+            {prodParams}
+          </ShipHover>
+        ) : (
+          <>
+            {prodText}
+            {prodParams}
+          </>
+        ),
+        productBase: shipDef ? (productBaseOf(engine, 'ship', shipId) || shipDef.priceIsk || 0) : 0,
+        countOwned: () => shipOwnedCount(engine.state, shipId),
+        ownedWhere: '仓库＋机库',
+        bookPrice: bookPriceOf(engine, sbp.id, 0),
+        productKey: `ship:${shipId}`,
+        singleUse: sbp.singleUse === true,
+        learnless: false,
+      })
+    }
+    return out
+  }, [engine.ctx, engine.shipBlueprints])
 
   /** 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：只列真有内容的档 —— 与组装机同一套 `presentSubs` 口径 */
   const tierShown = presentSubs(SHIP_TIER_SUBS, (key) => items.some((it) => it.subKey === key))
@@ -166,6 +172,14 @@ export function ShipyardPanel({
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
     .filter((it) => useKind === SUB_ALL || (useKind === 'single' ? it.singleUse : !it.singleUse))
   const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
+  /** 每张卡的实时指纹（心跳只让指纹变了的卡重渲染；制造线先按蓝图归并一遍，O(线)） */
+  const runSigByBp = new Map<string, string>()
+  for (const v of runViews) {
+    if (v.blueprintId === null) continue
+    runSigByBp.set(v.blueprintId, `${runSigByBp.get(v.blueprintId) ?? ''}${v.id}.${Math.round(v.remainingMs / 1000)}.${Math.round(v.percent)}.${v.worker ?? '-'}|`)
+  }
+  const liveKeyOf = (it: ShipItem): string =>
+    cardLiveKeyOf(engine, it.id, it.materials, runSigByBp.get(it.id) ?? '', it.countOwned())
   const learnedN = items.filter((i) => ownsBlueprint(state, i.id)).length
 
   return (
@@ -285,12 +299,13 @@ export function ShipyardPanel({
               kindLabel="舰船"
               productGlyph={it.productGlyph}
               productBase={it.productBase}
-              ownedCount={it.ownedCount}
+              countOwned={it.countOwned}
               ownedWhere={it.ownedWhere}
               onNeedMineral={onNeedMineral}
               onGotoMarket={onGotoMarket}
               onGotoWormhole={onGotoWormhole}
               highlighted={focusBlueprintId === it.id}
+              liveKey={liveKeyOf(it)}
             />
           ))}
         </div>
