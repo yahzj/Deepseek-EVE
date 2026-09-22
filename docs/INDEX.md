@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **290** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5593** KB · **40258** 行
-- 状态分布：**未标注** 158 · **已确认/已实现** 109 · **进行中** 21 · **待裁定** 1 · **历史留档** 1
-- 孤儿文档（0 引用）**29** 份 · 状态未标注 **158** 份
+- 文档总数 **292** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5606** KB · **40416** 行
+- 状态分布：**未标注** 158 · **已确认/已实现** 109 · **进行中** 23 · **待裁定** 1 · **历史留档** 1
+- 孤儿文档（0 引用）**31** 份 · 状态未标注 **158** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**181** 份
+- 三、现行设计稿（design）：**183** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**19** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -34,9 +34,9 @@
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 23 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 194 KB / 244 行 | 13 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 686 行 | 70 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 686 行 | 71 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 432 KB / 942 行 | 200 / 13 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 97 KB / 421 行 | 270 / 15 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 97 KB / 421 行 | 271 / 14 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,10 +53,12 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 181 份
+## 三、现行设计稿（design） —— 183 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/first-tasks-captain-edit-20260922.md` | 「第一次」任务：船长 Excel 改稿回写（2026-09-22） | 进行中（进行中） | 2026-09-22 | 9 KB / 107 行 | 0 / 0 |
+| `docs/design/toast-warn-center-20260922.md` | 浮动提示分档：警告居中 · 普通回屏幕下方（2026-09-22 船长令） | 进行中（进行中） | 2026-09-22 | 4 KB / 51 行 | 0 / 0 |
 | `docs/design/activity-switch-unify-20260921.md` | 主控活动切换：现状统计 ＋ 统一方案（2026-09-21 船长令） | 进行中（进行中） | 2026-09-21 | 18 KB / 197 行 | 0 / 0 |
 | `docs/design/first-task-manual-claim-20260921.md` | 「第一次」任务改为「玩家点完成才推进」＋ 任务起手道具（2026-09-21） | 进行中（进行中） | 2026-09-21 | 8 KB / 85 行 | 0 / 0 |
 | `docs/design/market-narrow-popup-fix-20260921.md` | 修「手机模式下点订单不弹详情」＋ 记录手机市场的断点错位（2026-09-21） | 进行中（进行中） | 2026-09-21 | 5 KB / 85 行 | 0 / 0 |
@@ -360,10 +362,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 53 / 9 |
 
-## 附：孤儿文档（0 引用，29 份）
+## 附：孤儿文档（0 引用，31 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/first-tasks-captain-edit-20260922.md`（2026-09-22 · 9 KB）—— 「第一次」任务：船长 Excel 改稿回写（2026-09-22）
+- `docs/design/toast-warn-center-20260922.md`（2026-09-22 · 4 KB）—— 浮动提示分档：警告居中 · 普通回屏幕下方（2026-09-22 船长令）
 - `docs/design/activity-switch-unify-20260921.md`（2026-09-21 · 18 KB）—— 主控活动切换：现状统计 ＋ 统一方案（2026-09-21 船长令）
 - `docs/design/first-task-manual-claim-20260921.md`（2026-09-21 · 8 KB）—— 「第一次」任务改为「玩家点完成才推进」＋ 任务起手道具（2026-09-21）
 - `docs/design/market-narrow-popup-fix-20260921.md`（2026-09-21 · 5 KB）—— 修「手机模式下点订单不弹详情」＋ 记录手机市场的断点错位（2026-09-21）

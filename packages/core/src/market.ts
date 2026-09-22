@@ -1294,6 +1294,24 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
  * ⇒ 现在**先查目录**：`ctx.marketGoods` 里没有这个 key 就不挂单（返回 null，与其它入参非法同款）。
  * 这条只挡"不存在的商品"，不影响既有调用方（它们传的都是目录里真实存在的 key）。
  */
+/**
+ * **「第一次挂单销售」的判据落点**（**2026-09-22 船长令**：「**第一次挂单允许玩家挂买单或者直接市价购买
+ * 卖出都算完成**」）。
+ *
+ * 四种"真做成了一笔交易"的路各记一笔（**互不嵌套 ⇒ 不会重复计数**，调用点见下面每处的注释）：
+ * ① **挂卖单**：`placeSellOrder`（core API）· 界面 `listSellHolding`（物品 / 整船两条分支）·
+ *    `placeShipSellOrder`（整船挂单；`sellShipAtMarket` 也走它）· `placeStoredShipSellOrder`（舰船仓库挂单）
+ * ② **挂买单**：`placeBuyOrder`
+ * ③ **市价卖出**：`sellAtMarket`（物品页「市价卖出」也走它）· `sellStoredShipAtMarket`（整船市价卖出）
+ * ④ **市价买入**：`buyAtMarket`
+ *
+ * ⚠ 计数键仍是 `firstStats.orders`（**存档兼容**：老档已有的数字照旧算数，键名与存档形状都不动——
+ * 它现在的语义是"做过几笔市场交易"，不只"挂过几张单"）。
+ */
+function bumpFirstMarketTrade(state: GameState): void {
+  bumpFirst(state, 'orders')
+}
+
 export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   if (qty <= 0 || price <= 0) return null
   if (typeof goodKey !== 'string' || !ctx.marketGoods.has(goodKey)) return null
@@ -1301,8 +1319,8 @@ export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: strin
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
   const r = crossOnPlacement(state, ctx, order)
-  // 「第一次挂单销售」的判据（2026-09-18 起**只作判据**：市场链已改数交易收入，见下面几处卖出入账的 marketIncome）
-  bumpFirst(state, 'orders')
+  // 「第一次挂单销售」的判据（**2026-09-22 船长令**：挂卖单也算——见 `bumpFirstMarketTrade`）
+  bumpFirstMarketTrade(state)
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, qty, r))
   return order
 }
@@ -1378,6 +1396,8 @@ export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string
   }
   state.orders.push(order)
   const r = crossOnPlacement(state, ctx, order)
+  // 「第一次挂单销售」的判据（**2026-09-22 船长令**：挂买单也算——见 `bumpFirstMarketTrade`）
+  bumpFirstMarketTrade(state)
   addLog(state, 'trade', placeOrderLogText(ctx, 'buy', goodKey, order.price, want, r) + `（预扣 ${escrow.toLocaleString('zh-CN')} 信用点，撤单退回）`)
   return order
 }
@@ -1517,6 +1537,11 @@ export function sellAtMarket(
     if (npc.qty <= 0) buyList.splice(idx, 1)
   }
   const sold = qty - remaining
+  /**
+   * 「第一次挂单销售」的判据（**2026-09-22 船长令**：**直接市价卖出也算完成**）——
+   * 只在真的卖掉了才记（`sold > 0`）；下面那条"余量转挂单"走的是私有 `pushSellOrder`，不重复计。
+   */
+  if (sold > 0) bumpFirstMarketTrade(state)
   const mult = sellStandingMult(state, def) * marketSellSkillMult(state, def.kind) // 声望加成 × 卖出技能加成
   const gross = Math.round(total * mult) // 毛额
   const net = netAfterTax(state, ctx, gross) // 税后净入账
@@ -1635,6 +1660,8 @@ export function buyAtMarket(
     if (npc.qty <= 0) sellList.splice(idx, 1)
   }
   const bought = qty - remaining
+  // 「第一次挂单销售」的判据（**2026-09-22 船长令**：**直接市价买入也算完成**）——真买到才记
+  if (bought > 0) bumpFirstMarketTrade(state)
   const pool = mk.pools[goodKey]
   if (pool) {
     pool.netVol += bought
@@ -1759,6 +1786,8 @@ export function placeShipSellOrder(
   state.escrowShips[order.id] = hold
   // 二手舰船同样先吃簿（2026-09-10 船长定：买卖两侧对称）
   const r = crossOnPlacement(state, ctx, order)
+  // 「第一次挂单销售」的判据（2026-09-22 船长令：整船挂卖单也算；`sellShipAtMarket` 也走本函数 ⇒ 只记一次）
+  bumpFirstMarketTrade(state)
   addLog(
     state,
     'trade',
@@ -1809,6 +1838,8 @@ export function placeStoredShipSellOrder(
   const display = ctx.ships.get(defId)?.name ?? defId
   const order = pushStoredShipSellOrder(state, ctx, defId, price)
   if (!order) return null
+  // 「第一次挂单销售」的判据（2026-09-22 船长令：舰船仓库挂卖单也算）
+  bumpFirstMarketTrade(state)
   const r = crossOnPlacement(state, ctx, order)
   addLog(
     state,
@@ -1854,6 +1885,8 @@ export function sellStoredShipAtMarket(
       resting += order.qty
     }
   }
+  // 「第一次挂单销售」的判据（2026-09-22 船长令：整船市价卖出也算）——卖出或挂上了才算一笔
+  if (filled + resting > 0) bumpFirstMarketTrade(state)
   if (resting > 0) {
     addLog(
       state,
@@ -2099,9 +2132,9 @@ export function listSellHolding(
         ? `已挂卖单：舰船「${goodName(ctx, goodKey)}」×${resting.toLocaleString('zh-CN')} @ ${Math.round(price).toLocaleString('zh-CN')} 信用点（撤销卖单可把船退回舰船仓库）。`
         : `卖单已即时成交：舰船「${goodName(ctx, goodKey)}」×${filled.toLocaleString('zh-CN')} @ ${Math.round(price).toLocaleString('zh-CN')} 信用点。`,
     )
-    // 见「goods 分支」末尾那条注释：「第一次挂单销售」的判据落点——整船挂单也是一次"挂出卖单"，
-    // 且界面路径不经过 `placeSellOrder` ⇒ 必须在这里记一笔（否则该任务只能靠 core API 才完得成）。
-    bumpFirst(state, 'orders')
+    // 「第一次挂单销售」的判据落点——整船挂单也是一次"挂出卖单"，且界面路径不经过 `placeSellOrder`
+    // ⇒ 在这里记一笔（2026-09-22 船长令后：挂买单 / 市价买卖同样算，见 `bumpFirstMarketTrade`）。
+    bumpFirstMarketTrade(state)
     return { ok: true, orderId: lastId, price: Math.round(price), filled, resting }
   }
   if (!lockNaturalStock(state, def, n)) return { ok: false, error: '取货失败。', errorId: 'core.market.009' }
@@ -2114,9 +2147,9 @@ export function listSellHolding(
    * 而它走的是 `pushSellOrder` 这条路、**不经过 `placeSellOrder`** ⇒ 原先只有 `placeSellOrder` 里那记
    * `bumpFirst(state,'orders')`，界面挂单**永远不计数**（工具与用例都直接调 `placeSellOrder`，所以一直没被发现）。
    * 两条路各自记账、互不重复：`placeSellOrder`（core API / 工具）＋ 本函数（界面）；
-   * 舰船那条分支同上（整船挂单也是一次"挂出卖单"）。
+   * 舰船那条分支同上。**2026-09-22 船长令**后统一走 `bumpFirstMarketTrade`（挂买单 / 市价买卖也算）。
    */
-  bumpFirst(state, 'orders')
+  bumpFirstMarketTrade(state)
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, n, r))
   return { ok: true, orderId: order.id, price: order.price, filled: r.filled, resting: r.resting }
 }

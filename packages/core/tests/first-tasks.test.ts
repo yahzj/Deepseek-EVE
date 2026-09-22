@@ -32,8 +32,8 @@ import {
   sequentialPrefixDone,
   visibleFirstTasks,
 } from '../src/firstTasks'
-import { claimFirstTask } from '../src/firstRewards'
-import { sellAtMarket, learnBlueprint, listSellHolding, placeSellOrder } from '../src/market'
+import { claimFirstTask, grantStartRewardsForCurrent } from '../src/firstRewards'
+import { sellAtMarket, buyAtMarket, placeBuyOrder, learnBlueprint, listSellHolding, placeSellOrder } from '../src/market'
 import { startMining, getMiningParams } from '../src/mining'
 import { fitModule } from '../src/equipment'
 import { startRecycleRun, startRefineRun } from '../src/industry'
@@ -104,32 +104,46 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     expect(state.importantTasks['first-mine']?.done).toBe(true)
   })
 
-  it('奖励前移（船长 2026-09-20：「采集器是扫描星系给，打捞器应该是挖矿任务给」）：两件工具都赶在用到它的那条之前', () => {
-    const mods = (id: string): string[] =>
-      (FIRST_TASKS.find((d) => d.id === id)?.reward?.modules ?? []).map((m) => m.moduleId)
-    expect(mods('first-scan')).toEqual(['mod-miner-1']) // 采集器 MK1
-    expect(mods('first-mine')).toEqual(['mod-salvager-1']) // 打捞器 MK1
-    expect(mods('first-salvage')).toEqual([]) // 打捞那条不再有实物奖励（只发情报信）
-    // 顺序解锁下：扫描 → 采矿 → 打捞 ⇒ 走到「第一次打捞残骸」时打捞器已经在手上
+  it('奖励与起手道具（船长 2026-09-22 Excel）：四件东西都挂在"用到它的那一条"上', () => {
+    const def = (id: string) => FIRST_TASKS.find((d) => d.id === id)!
+    const rewardMods = (id: string): string[] => (def(id).reward?.modules ?? []).map((m) => m.moduleId)
+    const startMods = (id: string): string[] => (def(id).startReward?.modules ?? []).map((m) => m.moduleId)
+    const wares = (id: string): string[] => (def(id).reward?.ware ?? []).map((w) => `${w.itemId}×${w.units}`)
+    // 扫描：改为 10,000 信用点（原先发的采集器 ⇒ 挪到采矿的起手）
+    expect(def('first-scan').reward).toEqual({ isk: 10_000 })
+    expect(rewardMods('first-scan')).toEqual([])
+    // 采集器 MK1 = 「第一次采集原矿」的起手道具；打捞器 MK1 = 「第一次打捞残骸」的起手道具
+    expect(startMods('first-mine')).toEqual(['mod-miner-1'])
+    expect(startMods('first-salvage')).toEqual(['mod-salvager-1'])
+    expect(rewardMods('first-mine')).toEqual([])
+    expect(rewardMods('first-salvage')).toEqual([])
+    // 采矿完成奖励 = 1,000 单位橄榄岩（精炼每批 100 ⇒ 够开十炉）；打捞完成奖励 = 1,000 m³ 高安海盗残骸
+    expect(wares('first-mine')).toEqual(['ore-veldspar×1000'])
+    expect(wares('first-salvage')).toEqual(['wreck-a-hi×1000'])
+    // 基础 AI 核心 = 「第一次指派 AI 副船」的起手；沙猫级蓝图 = 「第一条船」的起手
+    expect(def('first-ai').startReward).toEqual({ aiCores: [{ type: 'basic', units: 1 }] })
+    expect(def('first-skill').reward).toEqual({ isk: 10_000 })
+    expect(def('first-ship').startReward).toEqual({ blueprints: [{ blueprintId: 'sbp-sandcat', units: 1 }] })
+    expect(def('first-produce').reward).toEqual({ isk: 10_000 })
+    // 顺序解锁下：起手道具在**它自己那一条**轮到时发 ⇒ 用的时候一定在手上
     const order = FIRST_TASKS.map((d) => d.id)
-    expect(order.indexOf('first-mine')).toBeLessThan(order.indexOf('first-salvage'))
-    /**
-     * **同日第二条令**：「任务完成后额外给玩家 100 橄榄岩用于下一阶段任务」——
-     * 下一阶段是「第一次操作精炼炉」，精炼每批 100 单位 ⇒ 这批料正好凑够第一炉。
-     */
-    const wares = (id: string) => (FIRST_TASKS.find((d) => d.id === id)?.reward?.ware ?? []).map((w) => `${w.itemId}×${w.units}`)
-    expect(wares('first-mine')).toEqual(['ore-veldspar×100'])
+    expect(order.indexOf('first-mine')).toBeLessThan(order.indexOf('first-refine'))
+    expect(order.indexOf('first-salvage')).toBeLessThan(order.indexOf('first-produce'))
   })
 
-  it('奖励真的按新口径发：扫描给采集器 MK1、挖矿给打捞器 MK1 ＋ 100 橄榄岩（各只发一次）', () => {
+  it('奖励真的按新口径发：扫描给 10,000 信用点（并带出采集器）、挖矿给 1,000 橄榄岩（各只发一次）', () => {
     // ① 扫描（非序章档：母港已点亮 ⇒ 首拍即判过）
     const s1 = testState()
+    const iskBefore = s1.wallet.isk
     advanceGame(s1, 1000, ctx)
     expect(s1.importantTasks['first-scan']?.done).toBe(true)
+    expect(s1.wallet.isk - iskBefore, '扫描完成奖励 = 10,000 信用点').toBe(10_000)
+    // 结算完这一条 ⇒ 「第一次采集原矿」轮到时发它的起手道具（采集器 MK1）
     expect(s1.moduleBay['mod-miner-1']).toBe(1)
     expect(s1.moduleBay['mod-salvager-1']).toBeUndefined()
     for (let i = 0; i < 5; i++) advanceGame(s1, 1000, ctx)
-    expect(s1.moduleBay['mod-miner-1']).toBe(1) // 不双发
+    expect(s1.wallet.isk - iskBefore).toBe(10_000) // 不双发
+    expect(s1.moduleBay['mod-miner-1']).toBe(1)
     // ② 采矿（计数置位 ⇒ 下一拍判过）
     const s2 = testState()
     s2.importantTasks['first-scan'] = { done: true }
@@ -137,12 +151,10 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     const oreBefore = s2.warehouse.items['ore-veldspar'] ?? 0
     advanceGame(s2, 1000, ctx)
     expect(s2.importantTasks['first-mine']?.done).toBe(true)
-    expect(s2.moduleBay['mod-salvager-1']).toBe(1)
-    expect(s2.moduleBay['mod-miner-1']).toBeUndefined() // 采集器不再挂这条
-    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore, '额外给 100 橄榄岩').toBe(100)
+    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore, '给 1,000 橄榄岩').toBe(1_000)
     // 再推几拍：不双发
     for (let i = 0; i < 5; i++) advanceGame(s2, 1000, ctx)
-    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore).toBe(100)
+    expect((s2.warehouse.items['ore-veldspar'] ?? 0) - oreBefore).toBe(1_000)
   })
 
   it('母港扫描窗口 = 10 秒（船长 2026-09-18）；其余星系照旧 10 分钟基准', () => {
@@ -165,22 +177,30 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
 })
 
 describe('「第一次」任务：奖励（一次性）与计数落点回归', () => {
-  it('「第一次学习技能」发基础 AI 核心 ×1（船长 2026-09-17：AI 核心放这条里给），且只发一次', () => {
+  it('「第一次学习技能」发 10,000 信用点；**基础 AI 核心随「第一次指派 AI 副船」的起手到手**（船长 2026-09-22 Excel）', () => {
     const state = testState()
     /**
      * ⚠ **顺序解锁下"轮到它"才判过**（2026-09-20 船长报障：未显示的任务不该提前完成）⇒
      * 本用例钉的是"这一条完成时发什么"，故先把排在它前面的任务标记完成（= 队列走到它了）。
      */
     reachQueue(state, 'first-skill')
+    const iskBefore = state.wallet.isk
     expect(state.aiCores.basic ?? 0).toBe(0)
     // 判据 = AI 核心操作学 Lv1（训练过程由 training 侧用例覆盖）⇒ 这里直接置位再走一拍引擎
     state.skills.trained['ai-expert'] = 1
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-skill']?.done).toBe(true)
-    expect(state.aiCores.basic).toBe(1)
+    /**
+     * 两条断言一起钉住"改了挂法"：
+     * ① 本条完成奖励 = 10,000 信用点；② 结算时下一条（AI 副船）轮到 ⇒ **基础 AI 核心在起手就到了**
+     * （原先这枚核心是本条的完成奖励）。
+     */
+    expect(state.wallet.isk - iskBefore, '技能条 = 10,000 信用点').toBe(10_000)
+    expect(state.aiCores.basic, '下一条的起手道具 = 基础 AI 核心').toBe(1)
     // 再推进一段：不双发
     for (let i = 0; i < 5; i++) advanceGame(state, 1000, ctx)
     expect(state.aiCores.basic).toBe(1)
+    expect(state.wallet.isk - iskBefore).toBe(10_000)
   })
 
   it('精炼炉出料记一批；**残骸回收炉不计入**（任务文案 = 「让精炼炉出一批料」）', () => {
@@ -199,7 +219,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstStatOf(state, 'refineBatches')).toBe(before)
   })
 
-  it('港内付费维修记一次（任务：「用修理组件或港内维修修一次船」）＋ 奖励民用修理组件 ×20', () => {
+  it('港内付费维修记一次（任务：「用修理组件或港内维修修一次船」）＋ 奖励维修装置 ×1 ＋ 修理组件 ×20', () => {
     const state = testState()
     reachQueue(state, 'first-repair') // 顺序解锁：先推到它前面
     state.wallet.isk = 500_000
@@ -211,8 +231,12 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(firstStatOf(state, 'repairs')).toBe(1)
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-repair']?.done).toBe(true)
-    // 奖励（船长 2026-09-18）：民用修理组件 ×20 进仓库（老档迁移不发奖励，故这里只查新完成的这一档）
+    /**
+     * 奖励（**2026-09-22 船长 Excel**）：民用船体维修装置 ×1（原先挂在「第一条船」上）＋ 民用修理组件 ×20。
+     * ⚠ 起手道具已由船长在 Excel 里清空（原为 5 枚组件）⇒ 这里不再断言"开局就有组件"。
+     */
     expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(20)
+    expect(state.moduleBay['mod-hullrep-civ'] ?? 0).toBe(1)
   })
 
   it('「第一次操作精炼炉」发动能弹药生产线蓝图（从②移到本条，船长 2026-09-18）', () => {
@@ -262,15 +286,29 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(b.ok, b.ok ? '' : b.error).toBe(true)
   })
 
-  it('「第一次生产」发沙猫级舰船蓝图（2026-09-18 新建，不进市场、只靠本条发放）', () => {
+  it('「第一次生产」发 10,000 信用点；**沙猫级蓝图随「第一条船」的起手到手**（船长 2026-09-22 Excel）', () => {
     const state = testState()
     reachQueue(state, 'first-produce') // 顺序解锁：先推到它前面
     expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(0)
+    const iskBefore = state.wallet.isk
     // 判据 = 组装机产出 ≥ 1 件；直接置位计数再走一拍引擎（制造链路由制造侧用例覆盖）
     state.firstStats = { ...(state.firstStats ?? {}), produceUnits: 1 }
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-produce']?.done).toBe(true)
-    expect(state.blueprintStock['sbp-sandcat']).toBe(1)
+    expect(state.wallet.isk - iskBefore, '生产条 = 10,000 信用点').toBe(10_000)
+    expect(state.blueprintStock['sbp-sandcat'] ?? 0, '蓝图不再挂这条').toBe(0)
+  })
+
+  it('沙猫级舰船蓝图由「第一条船」的起手发放（船长 2026-09-22 Excel：造自造船先得有蓝图）', () => {
+    const state = testState()
+    reachQueue(state, 'first-ship')
+    // 轮到「第一条船」那一刻（上一条被点「完成」）发它的起手道具 ⇒ 这里直接调发放单点
+    expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(0)
+    grantStartRewardsForCurrent(state, ctx)
+    expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(1)
+    // 幂等：再发一次不叠加
+    grantStartRewardsForCurrent(state, ctx)
+    expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(1)
   })
 
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
@@ -398,22 +436,41 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
   })
 })
 
-describe('「第一次」顺序（2026-09-20 船长第三道令：「将第一次完成悬赏和第一次打捞残骸交换位置」）', () => {
-  it('数组序：… 精炼 → **悬赏** → 维修 → **打捞** → 生产 …（悬赏前移，打捞挪到维修之后）', () => {
+describe('「第一次」顺序（2026-09-20 第三道令换悬赏/打捞；**2026-09-22 船长 Excel 再改序**）', () => {
+  it('数组序：… 打捞 → **技能 → AI 副船** → 生产 → 挂单 → 造船 →（末段）运输/虫洞（技能与 AI 前移到生产之前）', () => {
     const ids = FIRST_TASKS.map((d) => d.id)
     expect(ids.indexOf('first-refine')).toBeLessThan(ids.indexOf('first-bounty'))
     expect(ids.indexOf('first-bounty')).toBeLessThan(ids.indexOf('first-repair'))
     expect(ids.indexOf('first-repair')).toBeLessThan(ids.indexOf('first-salvage'))
-    expect(ids.indexOf('first-salvage')).toBeLessThan(ids.indexOf('first-produce'))
+    // 新序：技能 / AI 副船 插到生产之前
+    expect(ids.indexOf('first-salvage')).toBeLessThan(ids.indexOf('first-skill'))
+    expect(ids.indexOf('first-skill')).toBeLessThan(ids.indexOf('first-ai'))
+    expect(ids.indexOf('first-ai')).toBeLessThan(ids.indexOf('first-produce'))
+    expect(ids.indexOf('first-produce')).toBeLessThan(ids.indexOf('first-order'))
+    expect(ids.indexOf('first-order')).toBeLessThan(ids.indexOf('first-ship'))
+    expect(ids.indexOf('first-ship')).toBeLessThan(ids.indexOf('first-haul'))
+    // 末段并列批仍是最后两条，且顺序段仍是 11 条
+    expect(ids.slice(-2)).toEqual(['first-haul', 'first-wormhole'])
+    expect(ids).toHaveLength(13)
   })
 
-  it('三条原先没有奖励的条目各补 10,000 信用点（打捞 / 挂单 / 指派 AI 副船），其余条目不变', () => {
-    for (const id of ['first-salvage', 'first-order', 'first-ai']) {
-      expect(FIRST_TASKS.find((d) => d.id === id)?.reward, id).toEqual({ isk: 10_000 })
+  it('奖励表（**2026-09-22 船长 Excel**）：10,000 信用点五条 · 实物奖励五条（对得上 Excel 的「奖励行」）', () => {
+    const rewardOf = (id: string) => FIRST_TASKS.find((d) => d.id === id)?.reward
+    // 10,000 信用点：扫描 / 技能 / 生产 / 挂单 / 造船
+    for (const id of ['first-scan', 'first-skill', 'first-produce', 'first-order', 'first-ship']) {
+      expect(rewardOf(id), id).toEqual({ isk: 10_000 })
     }
-    // 有实物奖励的条目照旧（发奖路径不变）
-    expect(FIRST_TASKS.find((d) => d.id === 'first-scan')?.reward).toEqual({ modules: [{ moduleId: 'mod-miner-1', units: 1 }] })
-    expect(FIRST_TASKS.find((d) => d.id === 'first-bounty')?.reward).toEqual({ ships: [{ defId: 'sh-falconet', units: 1 }] })
+    // 实物：精炼（弹药蓝图）· 悬赏（鲣鱼级）· 维修（装置＋组件）· 采矿（橄榄岩）· 打捞（残骸）· 运输（飞鱼级）· 虫洞（2 处坐标）
+    expect(rewardOf('first-refine')).toEqual({ blueprints: [{ blueprintId: 'bp-ammo-kinetic', units: 1 }] })
+    expect(rewardOf('first-bounty')).toEqual({ ships: [{ defId: 'sh-falconet', units: 1 }] })
+    expect(rewardOf('first-repair')).toEqual({
+      modules: [{ moduleId: 'mod-hullrep-civ', units: 1 }],
+      ware: [{ itemId: 'repairkit-civ', units: 20 }],
+    })
+    expect(rewardOf('first-mine')).toEqual({ ware: [{ itemId: 'ore-veldspar', units: 1_000 }] })
+    expect(rewardOf('first-salvage')).toEqual({ ware: [{ itemId: 'wreck-a-hi', units: 1_000 }] })
+    expect(rewardOf('first-haul')).toEqual({ ships: [{ defId: 'sh-flyingfish', units: 1 }] })
+    expect(rewardOf('first-wormhole')).toEqual({ wormholeStock: 2 })
   })
 
   it('「第一次挂单销售」的判据走**界面那条路**也记上（2026-09-20 船长报障「第一次挂单销售任务无法完成」）', () => {
@@ -468,16 +525,16 @@ describe('「第一次」顺序（2026-09-20 船长第三道令：「将第一�
     expect(state.importantTasks['first-order']?.done).toBe(true)
   })
 
-  it('「第一次打捞残骸」的 10,000 信用点真的到手（走 `grantFirstReward` 同一路径，只发一次）', () => {
+  it('「第一次打捞残骸」的 1,000 m³ 高安海盗残骸真的到手（走 `grantFirstReward` 同一路径，只发一次）', () => {
     const s = testState()
     reachQueue(s, 'first-salvage') // 顺序解锁：先推到它前面
     s.firstStats = { ...(s.firstStats ?? {}), salvageRuns: 1 }
-    const before = s.wallet.isk
+    const before = s.warehouse.items['wreck-a-hi'] ?? 0
     advanceGame(s, 1000, ctx)
     expect(s.importantTasks['first-salvage']?.done).toBe(true)
-    expect(s.wallet.isk).toBe(before + 10_000)
+    expect((s.warehouse.items['wreck-a-hi'] ?? 0) - before).toBe(1_000)
     for (let i = 0; i < 3; i++) advanceGame(s, 1000, ctx)
-    expect(s.wallet.isk).toBe(before + 10_000) // 不双发
+    expect((s.warehouse.items['wreck-a-hi'] ?? 0) - before).toBe(1_000) // 不双发
   })
 })
 
@@ -491,7 +548,7 @@ describe('末段并列批（2026-09-20 船长第三道令：完成第 11 条后�
 
   it('顺序段走完 ⇒ 一次显示两条「第一次」（长途运输 ＋ 虫洞）；顺序段里仍是"一次只出一条"', () => {
     const s = prefixDone()
-    expect(FIRST_TASKS[10]!.id).toBe('first-ai') // 第 11 条 = 指派 AI 副船（顺序段到此为止）
+    expect(FIRST_TASKS[10]!.id).toBe('first-ship') // 第 11 条 = 第一条船（2026-09-22 改序后的顺序段收尾）
     expect(visibleFirstTasks(s).map((d) => d.id)).toEqual(['first-haul', 'first-wormhole'])
     expect(firstTaskBoard(s).map((r) => r.def.id)).toEqual(['first-haul', 'first-wormhole'])
     expect(visibleFirstTasks(testState()).map((d) => d.id)).toEqual(['first-scan'])
@@ -523,8 +580,8 @@ describe('末段并列批（2026-09-20 船长第三道令：完成第 11 条后�
     const s = testState()
     for (const d of FIRST_TASKS.slice(0, 10)) s.importantTasks[d.id] = { done: true }
     expect(firstTasksMarkSeen(s)).toBe(true) // 看过当前那一条（第 11 条）
-    expect(s.firstTaskSeenId).toBe('first-ai')
-    s.importantTasks['first-ai'] = { done: true }
+    expect(s.firstTaskSeenId).toBe('first-ship') // 2026-09-22 改序后：顺序段第 11 条 = 第一条船
+    s.importantTasks['first-ship'] = { done: true }
     expect(firstTaskNotice(s)).toEqual({ taskId: 'first-haul', title: '第一次长途运输、第一次虫洞', ready: false })
     expect(firstTasksMarkSeen(s)).toBe(true)
     expect(s.firstTaskSeenId).toBe('first-haul|first-wormhole')
@@ -548,7 +605,7 @@ describe('「寻找人类」发布闸门（2026-09-20 船长第三道令：「�
     return s
   }
 
-  it('序章结束 ⇒ 不发布；前 10 条做完也不发布；第 11 条（指派 AI 副船）完成的那一拍才发布', () => {
+  it('序章结束 ⇒ 不发布；前 10 条做完也不发布；第 11 条（**第一条船**，2026-09-22 改序后）完成的那一拍才发布', () => {
     const s = prologueDone()
     advanceGame(s, 1000, ctx)
     expect(s.importantTasks[TASK]).toBeUndefined()
@@ -558,9 +615,9 @@ describe('「寻找人类」发布闸门（2026-09-20 船长第三道令：「�
       expect(s.importantTasks[TASK], `${def.id} 完成后就发布了`).toBeUndefined()
     }
     expect(firstTaskProgress(s)).toEqual({ done: 10, total: 13 })
-    // 第 11 条 = 顺序段最后一条 = 「第一次指派 AI 副船」
+    // 第 11 条 = 顺序段最后一条 = 「第一条船」（改序前是「第一次指派 AI 副船」）
     const eleventh = FIRST_TASKS[10]!
-    expect(eleventh.id).toBe('first-ai')
+    expect(eleventh.id).toBe('first-ship')
     s.importantTasks[eleventh.id] = { done: true }
     advanceGame(s, 1000, ctx)
     expect(s.importantTasks[TASK]).toBeDefined()
@@ -751,7 +808,7 @@ describe('链阈值（2026-09-18 船长第二轮标定）', () => {
 })
 
 describe('市场链：交易收入（税后）＋ 老档一次性折算', () => {
-  it('卖货入账 ⇒ 累计 marketIncome（税后净额）；链判据走 income 而不是挂单张数', () => {
+  it('卖货入账 ⇒ 累计 marketIncome（税后净额）；**直卖也计入「第一次挂单销售」**（船长 2026-09-22 放宽）', () => {
     const state = testState()
     const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
     expect(chain.stat).toBe('marketIncome')
@@ -765,7 +822,11 @@ describe('市场链：交易收入（税后）＋ 老档一次性折算', () => 
     expect(gained).toBeGreaterThan(0)
     // 累计值 = 税后净入账（与钱包增量逐字一致——税后口径）
     expect(firstStatOf(state, 'marketIncome')).toBe(gained)
-    expect(firstStatOf(state, 'orders')).toBe(0) // 直卖不算挂单
+    /**
+     * ⚠ **2026-09-22 船长令**：「第一次挂单允许玩家挂买单或者直接市价购买卖出都算完成」
+     * ⇒ 这一笔**直接市价卖出**也记账（旧断言「直卖不算挂单」已作废）。
+     */
+    expect(firstStatOf(state, 'orders'), '市价卖出算一笔交易').toBe(1)
   })
 
   it('挂单成交也计入（挂单张数只作「第一次挂单销售」的判据）', () => {
@@ -778,6 +839,49 @@ describe('市场链：交易收入（税后）＋ 老档一次性折算', () => 
     // 收入链进度随之推进（100 ISK 起 = 第一档）
     const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
     expect(chainProgressOf(state, chain).count).toBe(income)
+  })
+
+  /**
+   * **2026-09-22 船长令**：「第一次挂单允许玩家**挂买单**或者**直接市价购买卖出**都算完成」。
+   * 四条路各记一笔、互不嵌套（落点单点 = `market.bumpFirstMarketTrade`）——本用例逐条走真命令钉死。
+   */
+  it('四条市场路都算「第一次挂单销售」：挂卖单 · 挂买单 · 市价卖出 · 市价买入', () => {
+    const goodKey = 'min-tritanium'
+    // ① 挂卖单（core API）
+    {
+      const s = testState()
+      s.warehouse.items[goodKey] = 200
+      expect(placeSellOrder(s, ctx, goodKey, 8, 10)).not.toBeNull()
+      expect(firstStatOf(s, 'orders'), '挂卖单算一笔').toBe(1)
+    }
+    // ② 挂买单（船长本轮点名的第一条）
+    {
+      const s = testState()
+      s.wallet.isk = 1_000_000
+      expect(placeBuyOrder(s, ctx, goodKey, 8, 10)).not.toBeNull()
+      expect(firstStatOf(s, 'orders'), '挂买单算一笔').toBe(1)
+    }
+    // ③ 市价卖出（物品页「市价卖出」也走这条）
+    {
+      const s = testState()
+      s.warehouse.items[goodKey] = 200
+      expect(sellAtMarket(s, ctx, goodKey, 50).sold).toBeGreaterThan(0)
+      expect(firstStatOf(s, 'orders'), '市价卖出算一笔').toBe(1)
+    }
+    // ④ 市价买入
+    {
+      const s = testState()
+      s.wallet.isk = 1_000_000
+      expect(buyAtMarket(s, ctx, goodKey, 10).bought).toBeGreaterThan(0)
+      expect(firstStatOf(s, 'orders'), '市价买入算一笔').toBe(1)
+    }
+    // 边界：**没挂上 / 没成交 ⇒ 不记**（挂买单钱不够 ⇒ 返回 null，不算"做成一笔买卖"）
+    {
+      const s = testState()
+      s.wallet.isk = 0
+      expect(placeBuyOrder(s, ctx, goodKey, 8, 10)).toBeNull()
+      expect(firstStatOf(s, 'orders')).toBe(0)
+    }
   })
 
   it('老档一次性折算：按级别对齐（旧表级数 ⇒ 新表同级门槛），已达级数不倒退', () => {

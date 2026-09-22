@@ -57,6 +57,9 @@ export function publishFindHumans(state: GameState): void {
  *
  * 为什么是"每拍现算"而不是"挂在第 11 条完成那一刻"：判据全在 `state` 上（`importantTasks[id].done`），
  * 现算 ⇒ 老档、异常中断、将来新增条目都能自愈（与 `achievements` 的现算补发同一套路）。
+ *
+ * ⚠ **2026-09-22 船长 Excel 改序**：顺序段仍是 11 条，但**收尾那条从「第一次指派 AI 副船」变成
+ * 「第一条船」**（技能 / AI 副船前移到生产之前）⇒ 判据与代码不变，揭示时点顺延三步。
  */
 export function publishFindHumansWhenReady(state: GameState): boolean {
   if (state.importantTasks[TASK_FIND_HUMANS]) return false
