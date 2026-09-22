@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **293** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5627** KB · **40616** 行
+- 文档总数 **293** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5627** KB · **40618** 行
 - 状态分布：**未标注** 158 · **已确认/已实现** 110 · **进行中** 23 · **待裁定** 1 · **历史留档** 1
-- 孤儿文档（0 引用）**30** 份 · 状态未标注 **158** 份
+- 孤儿文档（0 引用）**28** 份 · 状态未标注 **158** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**184** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 194 KB / 244 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 686 行 | 71 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 432 KB / 942 行 | 200 / 13 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 102 KB / 442 行 | 271 / 14 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 100 KB / 429 行 | 271 / 14 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -263,8 +263,8 @@
 | `docs/archive/roadmap-2026-09-15.md` | 封存卷 · roadmap 批次条目 2026-09-15 | 未标注 | — | 132 KB / 84 行 | 3 / 0 |
 | `docs/archive/roadmap-2026-09-16.md` | 封存卷 · roadmap 批次条目 2026-09-16 | 未标注 | — | 107 KB / 89 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-17.md` | 封存卷 · roadmap 批次条目 2026-09-17 | 未标注 | — | 36 KB / 77 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-18.md` | 封存卷 · roadmap 批次条目 2026-09-18 | 未标注 | — | 9 KB / 14 行 | 0 / 0 |
-| `docs/archive/roadmap-2026-09-20.md` | 封存卷 · roadmap 批次条目 2026-09-20 | 未标注 | — | 34 KB / 132 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-18.md` | 封存卷 · roadmap 批次条目 2026-09-18 | 未标注 | — | 11 KB / 29 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-20.md` | 封存卷 · roadmap 批次条目 2026-09-20 | 未标注 | — | 34 KB / 132 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
@@ -363,7 +363,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 53 / 9 |
 
-## 附：孤儿文档（0 引用，30 份）
+## 附：孤儿文档（0 引用，28 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -391,8 +391,6 @@
 - `docs/design/player-marks-20260910.md`（2026-09-10 · 5 KB）—— 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现）
 - `docs/review/enemy-roster-20260910.md`（2026-09-10 · 11 KB）—— 敌情名册（2026-09-10 · 待船长审核与调整）
 - `docs/design/salvage-autoloop-20260909.md`（2026-09-09 · 3 KB）—— 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现)
-- `docs/archive/roadmap-2026-09-18.md`（无日期 · 9 KB）—— 封存卷 · roadmap 批次条目 2026-09-18
-- `docs/archive/roadmap-2026-09-20.md`（无日期 · 34 KB）—— 封存卷 · roadmap 批次条目 2026-09-20
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
