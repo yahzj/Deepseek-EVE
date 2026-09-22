@@ -39,8 +39,8 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     subject: '档案补全 · 采矿与精炼',
     body: [
       '矿带产出原矿；精炼炉把原矿炼成原材料，原材料才是绝大多数蓝图的用料。',
-      '随信附一台打捞器 MK1——装上即可用于打捞作业。',
-      '另附 100 单位橄榄岩：精炼炉每批要 100 单位，这批料够开第一炉。',
+      '随信附 1,000 单位橄榄岩——精炼炉每批吃 100 单位，这批料够开十炉。',
+      '精炼炉就在「工业」页：起炉炼出第一批料，就算走完下一步。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-mine' },
     hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
@@ -54,7 +54,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '残骸堆拆解出的保底原材料可直接入炉；带稀有标记的残骸价值更高。',
       '回收炉能把残骸里的旧件重新解体成整件装备，值得留一批专门拆。',
-      '随信附 10,000 信用点——打捞作业的现结报酬。',
+      '随信附 1,000 m³ 高安海盗残骸——送进回收炉就是材料与旧件。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-salvage' },
     hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
@@ -68,7 +68,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '护盾脱战后自行回满；装甲与结构的损伤会跨场保留，需要修理组件或港内工位处理。',
       '航行前把装甲与结构修到六成以上，能少吃很多亏。',
-      '随信附民用修理组件 ×20——野外应急够用一阵。',
+      '随信附民用船体维修装置 ×1 与民用修理组件 ×20——装上装置就能自己修船。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-repair' },
     hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
@@ -110,7 +110,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '组装机要三样：一张蓝图、够用的材料、以及时间——装上 AI 核心就能无人值守开线。',
       '弹药与修理组件这类消耗品最适合常驻开线，装备与舰船则按需排产。',
-      '随信附一张沙猫级舰船蓝图——照着它就能再造几艘矿船。',
+      '随信附 10,000 信用点——产线的周转金与补料钱。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-produce' },
     hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
@@ -124,7 +124,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '市场吃三路单子：协会挂出的常驻买卖单、自留的挂单、以及贴着价线的巡游抢单。',
       '挂价越贴近收购价线，成交越快；挂得高就是在赌巡游采购的运气。',
-      '随信附 10,000 信用点——挂单成交前的周转金。',
+      '随信附 10,000 信用点，另附一张沙猫级舰船蓝图——照着它就能自造矿船。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-order' },
     hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
@@ -138,7 +138,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       '第一艘自造船已经下线：舰船蓝图 + 材料 + 机库工位，和造装备是同一条链路。',
       '新船入机库待命；装配页配好槽位与弹档，就能编入出港编队。',
-      '随信附一台民用船体维修装置——结构层能自己回一点。',
+      '随信附 10,000 信用点——下一艘船的启动资金。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ship' },
     hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },

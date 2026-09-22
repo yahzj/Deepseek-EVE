@@ -227,8 +227,9 @@ ok('扫描完成、母港点亮', until(s, () => isExplored(s, HOME), 10 * 60_00
 ok('「第一次扫描」判定完成', s.importantTasks['first-scan']?.done === true)
 advanceGame(s, 1000, ctx); claimAll(s)
 ok('情报信「档案补全 · 星图扫描」送达', s.commsDelivered?.['first-scan'] !== undefined)
-// **2026-09-20 船长令**：采集器 MK1 从「第一次采集原矿」前移到本条（扫描星系就给）
-ok('奖励：采集器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
+// 扫描判定完成 ⇒ 结算时下一条（第一次采集原矿）的**起手道具**到手（船长 2026-09-22 Excel：
+//   扫描的完成奖励改成 10,000 信用点，采集器 MK1 挪到采矿的起手）
+ok('下一条的起手道具：采集器 MK1 进装备库', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
 ok('星图四项一起解锁', unlocked(s, 'mapMine') && unlocked(s, 'mapBounty') && unlocked(s, 'mapSalvage') && unlocked(s, 'mapHaul'))
 ok('工业页仍锁（它跟「第一次操作精炼炉」一起开）', !unlocked(s, 'industry'))
 mark('① → ③ 演出结束 + 扫描母港', s.gameMs)
@@ -242,20 +243,21 @@ ok('装上采集器 MK1（③ 的奖励：拿到就用）', fitMiner.ok, fitMine
 ok('派出采矿被接受', startMining(s, BELT, ctx).ok)
 ok('采到原矿', until(s, () => firstStatOf(s, 'mineUnits') > 0, 20 * 60_000, '采矿'), `mineUnits=${firstStatOf(s, 'mineUnits')}`)
 ok('「第一次采集原矿」判定完成', s.importantTasks['first-mine']?.done === true)
-// **2026-09-20 船长令**：打捞器 MK1 从「第一次打捞残骸」前移到本条（挖矿任务就给）⇒ 走到打捞时已在手上
-ok('奖励：打捞器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-salvager-1'] ?? 0) === 1)
-// 同日第二条令：任务完成后额外给 100 橄榄岩（正好凑够第一炉 100 单位）
-ok('奖励：橄榄岩 ×100 进了仓库', (s.warehouse.items[ORE] ?? 0) >= 100, `${ORE} ×${s.warehouse.items[ORE] ?? 0}`)
+// **2026-09-22 船长 Excel**：采矿完成奖励 = **1,000 单位橄榄岩**（原 100 ⇒ 精炼每批 100，够开十炉）
+ok('奖励：橄榄岩 ×1,000 进了仓库', (s.warehouse.items[ORE] ?? 0) >= 1_000, `${ORE} ×${s.warehouse.items[ORE] ?? 0}`)
 // 工业页跟「第一次操作精炼炉」一起开（2026-09-20 船长令 ＋ 三选②：精炼前移到采矿之后 = 第 3 条）
 ok('工业页解锁（与「第一次操作精炼炉」一起开）', unlocked(s, 'industry'))
 /**
  * 多采几趟：后面要炼 **3 批**（第 3 条自己 1 批 ＋ 造船料 2 批：200 三钛 / 50 类晶体胶矿），
  * 采一批（精炼每批 100 单位、沙猫一趟约 70）⇒ 目标仓库 ≥ 320。这就是真实的新手节奏。
+ * ⚠ 2026-09-22 起采矿完成奖励就是 1,000 橄榄岩 ⇒ 通常**一轮都不用再采**（循环会直接跳过）。
  */
 const ORE_TARGET = 320
 for (let tripNo = 1; tripNo <= 6 && (s.warehouse.items[ORE] ?? 0) < ORE_TARGET; tripNo++) {
   mineTrip(s, tripNo)
 }
+// 奖励到账后目标可能已达成 ⇒ 采矿还开着的话手动收工（否则下一步起炉会被"开采中"挡住）
+if (s.mining.active) stopMining(s, ctx)
 ok('收工返港', !s.mining.active)
 okAtQueue(s, 'first-refine', '采矿做完')
 mark('④ 采矿数趟 + 卸货（"每批 100、一趟约 70"的实际耗时）', s.gameMs)
@@ -314,8 +316,10 @@ mark('⑥⑦ 悬赏一场 + 港内维修', s.gameMs)
 step('⑧ 第一次打捞残骸（星图 · 母港残骸点）')
 okAtQueue(s, 'first-salvage', '维修判过')
 ok('换回沙猫驾驶（打捞要装在人开的那条船上）', changeShip(s, 'sandcat', ctx).ok)
+// **2026-09-22 船长 Excel**：打捞器 MK1 是**本条的起手道具**（轮到它就到手；原先挂在采矿的完成奖励上）
+ok('起手道具：打捞器 MK1 进装备库', (s.moduleBay['mod-salvager-1'] ?? 0) === 1)
 const fitSalv = fitModule(s, 'mod-salvager-1', ctx)
-ok('装上打捞器 MK1（② 的奖励）', fitSalv.ok, fitSalv.ok ? '' : fitSalv.error)
+ok('装上打捞器 MK1', fitSalv.ok, fitSalv.ok ? '' : fitSalv.error)
 const density = wreckDensityOf(s, HOME, ctx)
 ok('母港有残骸可捞（基础密度 ＋ ⑥ 那一场的注入）', density > 0, `密度 ${Math.round(density)}`)
 const salv = startSalvageOp(s, HOME, ctx)
@@ -327,33 +331,86 @@ ok(
 )
 advanceGame(s, 1000, ctx); claimAll(s)
 ok('「第一次打捞残骸」判定完成', s.importantTasks['first-salvage']?.done === true)
-// 奖励（**船长 2026-09-20 第三道令**：「没有给予奖励的任务，安排 1 万信用点的奖励填充」）
-ok('奖励：10,000 信用点（第三道令的奖励填充）', s.wallet.isk > 0, `钱包 ${s.wallet.isk.toLocaleString('zh-CN')} 信用点`)
+// 奖励（**2026-09-22 船长 Excel**）：1,000 m³ 高安海盗残骸（原为 10,000 信用点）——打捞完直接有料可拆
+ok(
+  '奖励：高安海盗残骸 ×1,000 进仓库',
+  (s.warehouse.items['wreck-a-hi'] ?? 0) >= 1_000,
+  `wreck-a-hi ×${s.warehouse.items['wreck-a-hi'] ?? 0}`,
+)
+// 下一条（第一次学习技能）无起手道具，只给 10,000 信用点
 ok('收工回港', stopSalvageOp(s, ctx) && !s.salvaging.active)
 // 打捞收工 ⇒ 换回鲣鱼（副船那一步要靠沙猫闲置：主控船不能派 AI）
 const back = changeShip(s, 'sh-falconet', ctx)
 ok('换回鲣鱼驾驶（把沙猫空出来给 AI 副船）', back.ok, back.ok ? '' : back.error)
 mark('⑧ 打捞一批', s.gameMs)
 
-step('⑨ 第一次生产（组装机）')
-okAtQueue(s, 'first-produce', '打捞判过')
+/**
+ * ⚠ **2026-09-22 船长 Excel 改序**：原来的顺序是 生产 → 挂单 → 造船 → 技能 → AI，
+ * 现在**技能与 AI 副船前移到生产之前**（先练出 AI 核心操作学、派上副船替你干活，再谈产线与市场）。
+ * 本守护脚本的段落编号随之重排：⑨ 技能 · ⑩ AI 副船 · ⑪ 生产 · ⑫ 挂单 · ⑬ 造船 · ⑭ 末段并列批。
+ */
+step('⑨ 第一次学习技能（2026-09-22 改序：技能 / AI 副船前移到生产之前）')
+okAtQueue(s, 'first-skill', '打捞判过')
+// 先把已达成档位的链奖金领掉（造船备料与后面零星开销都要钱）
+advanceFirstChains(s)
+let claimed = 0
+for (const def of FIRST_TASKS) {
+  if (!def.chain) continue
+  claimed += claimChainReward(s, def.chain.id)
+}
+console.log(`   先把已达成档位的奖金领掉：+${claimed.toLocaleString('zh-CN')} 信用点 → 钱包 ${s.wallet.isk.toLocaleString('zh-CN')}`)
+const train = enqueueSkill(s, 'ai-expert', 1, ctx.skills)
+ok('开始训练 AI 核心操作学', train.ok, train.ok ? '' : train.error)
+// ⚠ 钱包读数要在 `until` **之前**取：`until` 内部每拍都会跑 `claimAll`（判定一到手就会被点掉）
+const iskBeforeSkill = s.wallet.isk
+ok('练到 Lv1', until(s, () => (s.skills.trained['ai-expert'] ?? 0) >= 1, 60 * 60_000, '训练'))
+advanceGame(s, 1000, ctx); claimAll(s) // 奖励在**点「完成」那一刻**发（2026-09-21 船长令）
+ok('「第一次学习技能」判定完成', s.importantTasks['first-skill']?.done === true)
+ok('奖励：10,000 信用点（船长 2026-09-22 Excel）', s.wallet.isk - iskBeforeSkill >= 10_000, `+${(s.wallet.isk - iskBeforeSkill).toLocaleString('zh-CN')}`)
+// ⚠ 基础 AI 核心**不再挂本条**：它是下一条（第一次指派 AI 副船）的**起手道具** ⇒ 轮到它时就到手了
+ok('下一条的起手道具：基础 AI 核心 ×1（免去市场价 ~25k）', (s.aiCores.basic ?? 0) === 1, `aiCores.basic=${s.aiCores.basic ?? 0}`)
+mark('⑨ 领奖 + 学技能', s.gameMs)
+
+step('⑩ 第一次指派 AI 副船')
+okAtQueue(s, 'first-ai', '技能判过')
+// 副船 = 闲置的沙猫（此刻驾驶的是鲣鱼）＋ ⑨ 结算时到手的基础 AI 核心
+const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
+ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
+const iskBeforeAi = s.wallet.isk
+advanceGame(s, 1000, ctx); claimAll(s) // 判定在引擎每拍，完成靠玩家点一次
+ok('「第一次指派 AI 副船」判定完成', s.importantTasks['first-ai']?.done === true, `aiAssigns=${firstStatOf(s, 'aiAssigns')}`)
+ok('奖励：10,000 信用点（船长 2026-09-22 Excel）', s.wallet.isk - iskBeforeAi >= 10_000, `+${(s.wallet.isk - iskBeforeAi).toLocaleString('zh-CN')}`)
+// 下一条（第一次生产）的起手道具 = 钛钢合金 ×150 ＋ 银纹超金属 ×50（组装机要料）
+ok(
+  '下一条的起手道具：钛钢合金 ×150 ＋ 银纹超金属 ×50',
+  (s.warehouse.items['min-tritanium'] ?? 0) >= 150 && (s.warehouse.items['min-pyerite'] ?? 0) >= 50,
+  matsLine(s),
+)
+mark('⑩ 指派副船', s.gameMs)
+// 买一枚是**可选**的（第二艘副船才需要）：只核一下价格读数，不作断言
+const coreBuy = buyBasicAiCore(s, ctx)
+console.log(`   市场上再买一枚基础 AI 核心：${coreBuy.ok ? '成功' : `未买（${coreBuy.error}）`}`)
+
+step('⑪ 第一次生产（组装机）')
+okAtQueue(s, 'first-produce', 'AI 副船判过')
 const bpLearn = learnBlueprint(s, ctx, 'bp-ammo-kinetic')
 ok('学会蓝图（库存那张）', bpLearn.ok, bpLearn.ok ? '' : bpLearn.error)
 console.log(`   材料：${matsLine(s)}`)
 const prod = startManufacturing(s, 'bp-ammo-kinetic', 'pilot', ctx)
 ok('起制造线被接受', prod.ok, prod.ok ? '' : prod.error)
+const iskBeforeProduce = s.wallet.isk // 同上：读数要在 `until` 之前取（它内部会 claimAll）
 ok('产出成品', until(s, () => firstStatOf(s, 'produceUnits') > 0, 30 * 60_000, '生产'), `units=${firstStatOf(s, 'produceUnits')}`)
 ok('「第一次生产」判定完成', s.importantTasks['first-produce']?.done === true)
-ok('奖励：沙猫级舰船蓝图 ×1（2026-09-18 新建，不进市场）', (s.blueprintStock['sbp-sandcat'] ?? 0) === 1)
+ok('奖励：10,000 信用点（船长 2026-09-22 Excel）', s.wallet.isk - iskBeforeProduce >= 10_000, `+${(s.wallet.isk - iskBeforeProduce).toLocaleString('zh-CN')}`)
 ok('市场页解锁', unlocked(s, 'market'))
 // 等这条线跑完：造船要用同一台组装机
 ok(
   '生产线跑完（造船工位空出来）',
   until(s, () => !s.manufacturingRuns.some((r) => r.active), 30 * 60_000, '生产线'),
 )
-mark('⑨ 生产一批', s.gameMs)
+mark('⑪ 生产一批', s.gameMs)
 
-step('⑩ 第一次挂单销售（市场）')
+step('⑫ 第一次挂单销售（市场）')
 // 找一条"我手上有的、可上市"的商品行（市场行 key = goodKey）
 const good = [...ctx.marketGoods.values()].find(
   (g) => g.playerSellable !== false && (s.warehouse.items[g.refId] ?? 0) > 0,
@@ -370,6 +427,8 @@ if (good) {
   ok('挂出卖单', order !== null, order ? `${good.key} ×${qty}` : '（挂单被拒）')
   advanceGame(s, 1000, ctx); claimAll(s)
   ok('「第一次挂单销售」判定完成', s.importantTasks['first-order']?.done === true)
+  // 下一条（第一条船）的起手道具 = 沙猫级舰船蓝图（船长 2026-09-22 Excel：造自造船先得有蓝图）
+  ok('下一条的起手道具：沙猫级舰船蓝图 ×1', (s.blueprintStock['sbp-sandcat'] ?? 0) === 1, `sbp-sandcat=${s.blueprintStock['sbp-sandcat'] ?? 0}`)
 } else {
   ok('找到可上市的物品', false, '仓库里没有可上市的物品')
 }
@@ -380,10 +439,10 @@ console.log(
   `   市价卖出多余原矿 ${spareOre} 单位：+${gained.toLocaleString('zh-CN')} 信用点 → 钱包 ${s.wallet.isk.toLocaleString('zh-CN')}`,
 )
 
-step('⑪ 第一条船（造船：舰船蓝图 ＋ 材料 ＋ 机库工位）')
+step('⑬ 第一条船（造船：舰船蓝图 ＋ 材料 ＋ 机库工位）')
 okAtQueue(s, 'first-ship', '挂单判过')
 const sbpLearn = learnBlueprint(s, ctx, 'sbp-sandcat')
-ok('学会沙猫级舰船蓝图（⑨ 的奖励）', sbpLearn.ok, sbpLearn.ok ? '' : sbpLearn.error)
+ok('学会沙猫级舰船蓝图（⑫ 挂单结算时的起手道具）', sbpLearn.ok, sbpLearn.ok ? '' : sbpLearn.error)
 // 备料（200 三钛 / 50 类晶体胶矿）：不够就"再跑矿 → 再炼"，最多补 3 轮
 const needMats = (): boolean => (s.warehouse.items['min-tritanium'] ?? 0) >= 200 && (s.warehouse.items['min-pyerite'] ?? 0) >= 50
 for (let extra = 1; extra <= 4 && !needMats(); extra++) {
@@ -396,49 +455,24 @@ for (let extra = 1; extra <= 4 && !needMats(); extra++) {
 ok('材料备齐（200 三钛 / 50 类晶体胶矿）', needMats(), matsLine(s))
 const build = startManufacturing(s, 'sbp-sandcat', 'pilot', ctx)
 ok('起造船线被接受', build.ok, build.ok ? '' : build.error)
+const iskBeforeShip = s.wallet.isk // 同上：读数要在 `until` 之前取（它内部会 claimAll）
 ok('造出第一条船（交付）', until(s, () => firstStatOf(s, 'ships') > 0, 40 * 60_000, '造船'), `ships=${firstStatOf(s, 'ships')}`)
 ok('「第一条船」判定完成', s.importantTasks['first-ship']?.done === true)
-ok('奖励：民用船体维修装置 ×1（船长 2026-09-18）', (s.moduleBay['mod-hullrep-civ'] ?? 0) === 1)
-mark('⑪ 造船（含补料）', s.gameMs)
+ok('奖励：10,000 信用点（船长 2026-09-22 Excel）', s.wallet.isk - iskBeforeShip >= 10_000, `+${(s.wallet.isk - iskBeforeShip).toLocaleString('zh-CN')}`)
+mark('⑬ 造船（含补料）', s.gameMs)
 
-step('⑫ 第一次学习技能（领基础 AI 核心）')
-okAtQueue(s, 'first-skill', '造船判过')
-// 先把已达成档位的链奖金领掉（市场/维修/后面买核心都要钱）
-advanceFirstChains(s)
-let claimed = 0
-for (const def of FIRST_TASKS) {
-  if (!def.chain) continue
-  claimed += claimChainReward(s, def.chain.id)
-}
-console.log(`   先把已达成档位的奖金领掉：+${claimed.toLocaleString('zh-CN')} 信用点 → 钱包 ${s.wallet.isk.toLocaleString('zh-CN')}`)
-// 核心不再靠攒钱买：船长 2026-09-17「AI 核心放在'第一次技能'里给」——练成 AI 核心操作学 Lv1 即领一枚
-const train = enqueueSkill(s, 'ai-expert', 1, ctx.skills)
-ok('开始训练 AI 核心操作学', train.ok, train.ok ? '' : train.error)
-ok('练到 Lv1', until(s, () => (s.skills.trained['ai-expert'] ?? 0) >= 1, 60 * 60_000, '训练'))
-advanceGame(s, 1000, ctx); claimAll(s) // 奖励在**点「完成」那一刻**发（2026-09-21 船长令）
-ok('「第一次学习技能」判定完成', s.importantTasks['first-skill']?.done === true)
-ok('奖励：基础 AI 核心 ×1（免去市场价 ~25k）', (s.aiCores.basic ?? 0) === 1, `aiCores.basic=${s.aiCores.basic ?? 0}`)
-mark('⑫ 领奖 + 学技能', s.gameMs)
-
-step('⑬ 第一次指派 AI 副船（顺序段最后一条）')
-okAtQueue(s, 'first-ai', '技能判过')
-// 副船 = 闲置的沙猫（此刻驾驶的是鲣鱼）＋ ⑫ 领到的基础 AI 核心
-const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
-ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
-advanceGame(s, 1000, ctx); claimAll(s) // 判定在引擎每拍，完成靠玩家点一次
-ok('「第一次指派 AI 副船」判定完成', s.importantTasks['first-ai']?.done === true, `aiAssigns=${firstStatOf(s, 'aiAssigns')}`)
-mark('⑬ 指派副船', s.gameMs)
-// 买一枚是**可选**的（第二艘副船才需要）：只核一下价格读数，不作断言
-const coreBuy = buyBasicAiCore(s, ctx)
-console.log(`   市场上再买一枚基础 AI 核心：${coreBuy.ok ? '成功' : `未买（${coreBuy.error}）`}`)
-
-step('⑭ 末段并列批（第三道令：完成第 11 条 ⇒ 三条一起显示，寻找人类置顶）')
+step('⑭ 末段并列批（第三道令：完成第 11 条 —— 2026-09-22 改序后 =「第一条船」—— 三条一起显示，寻找人类置顶）')
 /**
  * **2026-09-20 船长第三道令**：「完成 11 · 第一次指派 AI 副船后，就可以将寻找人类和第一次长途运输
  * 以及 第一次虫洞同时显示给玩家。寻找人类位于顶部。」
  * ⇒ 顺序段到此为止：这一刻起「第一次长途运输」「第一次虫洞」**一起显示**（不再逐个解锁），
  * 贯穿任务「寻找人类」**同一拍发布**（`publishFindHumansWhenReady` 的闸门从"13 条全完成"提前到"前 11 条"），
  * 由 `ImportantTasks.tsx` 画在列表**顶部**。
+ *
+ * ⚠ **2026-09-22 船长 Excel 改序**：顺序段的**收尾条目从「第一次指派 AI 副船」变成「第一条船」**
+ * （技能 / AI 副船前移到生产之前）⇒ 揭示时点比船长原话**晚了三步**（生产 / 挂单 / 造船）。
+ * 判据本身是"顺序段全完成"、与条目 id 无关，故代码未改；若要恢复"AI 副船一完成就揭示"，需连
+ * `visibleFirstTasks` 一起改（末段并列批会与顺序段剩余三条同时出现），已提请船长确认。
  */
 /**
  * **并列期间"先干哪条都行"**：本流程**不**去打这两条（长途运输要备货与航线；虫洞要协会声望 40，
