@@ -40,7 +40,7 @@ import { startSalvageOp, stopSalvageOp } from '../packages/core/src/salvaging'
 import { wreckDensityOf } from '../packages/core/src/salvage'
 import { fitModule } from '../packages/core/src/equipment'
 import { startManufacturing } from '../packages/core/src/manufacturing'
-import { learnBlueprint, placeSellOrder } from '../packages/core/src/market'
+import { buyAtMarket, learnBlueprint, placeSellOrder } from '../packages/core/src/market'
 import { startExpedition } from '../packages/core/src/expedition'
 import { enqueueSkill } from '../packages/core/src/engine'
 import { assignAiMining, buyBasicAiCore } from '../packages/core/src/ai'
@@ -434,10 +434,35 @@ if (good) {
 }
 // 卖一批多余原矿换现金（物品页「市价卖出」路径）——造船/后面买核心都要钱（预留 100 单位给补料那批）
 const spareOre = Math.max(0, (s.warehouse.items[ORE] ?? 0) - 100)
+const tradesBeforeSell = s.firstStats?.orders ?? 0
 const gained = sellSpareOre(s, 100)
 console.log(
   `   市价卖出多余原矿 ${spareOre} 单位：+${gained.toLocaleString('zh-CN')} 信用点 → 钱包 ${s.wallet.isk.toLocaleString('zh-CN')}`,
 )
+/**
+ * **2026-09-22 船长令**：「第一次挂单允许玩家挂买单或者**直接市价购买卖出**都算完成」——
+ * 上面那次"市价卖出"（有余料时）与下面这次"市价买入"各记一笔，本守护流程两种都走一遍。
+ */
+if (spareOre > 0) {
+  ok(
+    '市价卖出同样计入「第一次挂单销售」的判据',
+    (s.firstStats?.orders ?? 0) === tradesBeforeSell + 1,
+    `orders ${tradesBeforeSell} → ${s.firstStats?.orders ?? 0}`,
+  )
+}
+const oreBuyGood = [...ctx.marketGoods.values()].find((g) => g.refId === ORE && g.playerBuyable !== false)
+if (oreBuyGood) {
+  const tradesBeforeBuy = s.firstStats?.orders ?? 0
+  const bought = buyAtMarket(s, ctx, oreBuyGood.key, 1)
+  ok(
+    '市价买入同样计入「第一次挂单销售」的判据',
+    bought.bought > 0 && (s.firstStats?.orders ?? 0) === tradesBeforeBuy + 1,
+    `${oreBuyGood.key} ×${bought.bought} · orders ${tradesBeforeBuy} → ${s.firstStats?.orders ?? 0}`,
+  )
+} else {
+  ok('找到可市价买入的原矿行', false, '市场里没有可买且买得起的原矿行')
+}
+mark('⑫ 挂单 + 市价买卖', s.gameMs)
 
 step('⑬ 第一条船（造船：舰船蓝图 ＋ 材料 ＋ 机库工位）')
 okAtQueue(s, 'first-ship', '挂单判过')

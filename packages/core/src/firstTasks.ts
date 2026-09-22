@@ -315,7 +315,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次操作精炼炉',
     brief: '让精炼炉出一批料',
     detail:
-      '精炼炉按批运转：原料足够就能一直运转，直到原料全部用光。生产装备和舰船需要大量的材料都是通过精炼炉来生产。可以通过学习技能果大幅提高精炼效率。',
+      '精炼炉按批运转：原料足够就能一直运转，直到原料全部用光。生产装备和舰船需要大量的材料都是通过精炼炉来生产。可以通过学习技能来大幅提高精炼效率。',
     judge: (state) => (state.firstStats?.refineBatches ?? 0),
     commsId: 'first-refine',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：动能弹药生产线蓝图
@@ -373,7 +373,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次打捞残骸',
     brief: '到残骸地点打捞一批',
     detail:
-      '星系里的残骸点可以派船打捞，打捞到的残骸可以送入精炼炉进行回收除了回收出各种材料外，偶尔还能发现完好的装备和图纸碎片。图纸碎片集齐后可以在蓝图书架处拼接成完整蓝图。带稀有标记的残骸更值钱，也有概率出现更好的装备。',
+      '星系里的残骸点可以派船打捞，打捞到的残骸可以送入精炼炉进行回收。除了回收出各种材料外，偶尔还能发现完好的装备和图纸碎片。图纸碎片集齐后可以在蓝图书架处拼接成完整蓝图。带稀有标记的残骸更值钱，也有概率出现更好的装备。',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
     reward: { ware: [{ itemId: 'wreck-a-hi', units: 1_000 }] },
@@ -389,7 +389,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次学习技能',
     brief: '把 AI 核心操作学练到 Lv1',
     detail:
-      '鉴于数据库的遗失，我们需要重新收集各种数据进行技能学习。越高级的技能需要学习的时间越长。初期建议优先将 AI 核心操作学升到Lv3,这样就能驱动AI副手帮我们完成工作。',
+      '鉴于数据库的遗失，我们需要重新收集各种数据进行技能学习。越高级的技能需要学习的时间越长。初期建议优先将 AI 核心操作学升到 Lv3，这样就能驱动 AI 副手帮我们完成工作。',
     judge: (state) => state.skills.trained['ai-expert'] ?? 0,
     commsId: 'first-skill',
     /**
@@ -405,7 +405,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次指派 AI 副船',
     brief: '给一艘闲置舰船派个 AI 任务',
     detail:
-      '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。初期建议让AI副手驾驶采矿艇（沙猫级）进行挖矿作业。因为战斗、运输。扫描虫洞较为复杂，所以无法通过AI副手完成。',
+      '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。初期建议让 AI 副手驾驶采矿艇（沙猫级）进行挖矿作业。因为战斗、运输、扫描虫洞较为复杂，所以无法通过 AI 副手完成。',
     // 船长 2026-09-17：「将安排 AI 核心的任务设置为需要玩家完成学习技能才出现」
     judge: (state) => (state.firstStats?.aiAssigns ?? 0),
     commsId: 'first-ai',
@@ -423,7 +423,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-produce',
     title: '第一次生产',
     brief: '让组装机造出一件东西',
-    detail: '组装机要三样：蓝图、材料、时间。一般会安排其他AI副手进行自动生产加工，加工生产弹药是一个不错的初始资金来源。',
+    detail: '组装机要三样：蓝图、材料、时间。一般会安排其他 AI 副手进行自动生产加工，加工生产弹药是一个不错的初始资金来源。',
     judge: (state) => (state.firstStats?.produceUnits ?? 0),
     commsId: 'first-produce',
     /**
@@ -440,9 +440,18 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-order',
     title: '第一次挂单销售',
-    brief: '在市场挂出一张卖单',
+    /**
+     * ⚠ **2026-09-22 船长令**：「第一次挂单允许玩家挂买单或者直接市价购买卖出都算完成」——
+     * 卡面的一句话随之从「在市场挂出一张卖单」放宽成"做成一笔买卖"（**标题照旧**，是他定的名字）。
+     */
+    brief: '在市场做成一笔买卖（挂单或市价都算）',
     detail:
       '在市场上进行交易物资是很重要的一个补充资源缺口和获取信用点来源的好办法。你可以直接按市价快速买入卖出，或者挂定一个期望价格等待有人收购或者卖出。对于一些稀有东西，你可以挂出数倍的价格进行求购，说不定什么时候就有人会心动于你的价格将东西买给你。',
+    /**
+     * 判据 = `firstStats.orders`（**2026-09-22 船长令**后语义 = "做过几笔市场交易"）：
+     * 挂卖单 / **挂买单** / **市价买入** / **市价卖出**（含整船）四条路各记一笔
+     * ——落点单点见 `market.bumpFirstMarketTrade`（那四条路互不嵌套、不会重复计数）。
+     */
     judge: (state) => (state.firstStats?.orders ?? 0),
     commsId: 'first-order',
     // 奖励（**2026-09-20 船长第三道令**填充 1 万；**2026-09-22 Excel 复核不变**）：10,000 信用点
@@ -454,7 +463,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-ship',
     title: '第一条船',
     brief: '造出第一艘自造船',
-    detail: '造船厂是的任何人来说都十分重要的地方。除去市场外，这里是我们获取舰船的主要来源。制造一艘船并不便宜，但是回报绝对值得这个价格。',
+    detail: '造船厂对任何人来说都是十分重要的地方。除去市场外，这里是我们获取舰船的主要来源。制造一艘船并不便宜，但是回报绝对值得这个价格。',
     judge: (state) => (state.firstStats?.ships ?? 0),
     commsId: 'first-ship',
     /**
@@ -472,7 +481,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次长途运输',
     brief: '完成一趟长途运输',
     detail:
-      '长途运输是一笔十分稳定的收入，各个空间站之间一直有着常驻的货运需求，不过前提是需要有2个以上空间站，红环航带一直有一个空间站的建设计划，完成后就能够开始长途运输。',
+      '长途运输是一笔十分稳定的收入，各个空间站之间一直有着常驻的货运需求，不过前提是需要有 2 个以上空间站，红环航带一直有一个空间站的建设计划，完成后就能够开始长途运输。',
     judge: (state) => (state.firstStats?.haulTrips ?? 0),
     commsId: 'first-haul',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：飞鱼级快运舰（直接进机库）

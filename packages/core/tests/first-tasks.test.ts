@@ -33,7 +33,7 @@ import {
   visibleFirstTasks,
 } from '../src/firstTasks'
 import { claimFirstTask, grantStartRewardsForCurrent } from '../src/firstRewards'
-import { sellAtMarket, learnBlueprint, listSellHolding, placeSellOrder } from '../src/market'
+import { sellAtMarket, buyAtMarket, placeBuyOrder, learnBlueprint, listSellHolding, placeSellOrder } from '../src/market'
 import { startMining, getMiningParams } from '../src/mining'
 import { fitModule } from '../src/equipment'
 import { startRecycleRun, startRefineRun } from '../src/industry'
@@ -808,7 +808,7 @@ describe('链阈值（2026-09-18 船长第二轮标定）', () => {
 })
 
 describe('市场链：交易收入（税后）＋ 老档一次性折算', () => {
-  it('卖货入账 ⇒ 累计 marketIncome（税后净额）；链判据走 income 而不是挂单张数', () => {
+  it('卖货入账 ⇒ 累计 marketIncome（税后净额）；**直卖也计入「第一次挂单销售」**（船长 2026-09-22 放宽）', () => {
     const state = testState()
     const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
     expect(chain.stat).toBe('marketIncome')
@@ -822,7 +822,11 @@ describe('市场链：交易收入（税后）＋ 老档一次性折算', () => 
     expect(gained).toBeGreaterThan(0)
     // 累计值 = 税后净入账（与钱包增量逐字一致——税后口径）
     expect(firstStatOf(state, 'marketIncome')).toBe(gained)
-    expect(firstStatOf(state, 'orders')).toBe(0) // 直卖不算挂单
+    /**
+     * ⚠ **2026-09-22 船长令**：「第一次挂单允许玩家挂买单或者直接市价购买卖出都算完成」
+     * ⇒ 这一笔**直接市价卖出**也记账（旧断言「直卖不算挂单」已作废）。
+     */
+    expect(firstStatOf(state, 'orders'), '市价卖出算一笔交易').toBe(1)
   })
 
   it('挂单成交也计入（挂单张数只作「第一次挂单销售」的判据）', () => {
@@ -835,6 +839,49 @@ describe('市场链：交易收入（税后）＋ 老档一次性折算', () => 
     // 收入链进度随之推进（100 ISK 起 = 第一档）
     const chain = FIRST_TASKS.find((d) => d.id === 'first-order')!.chain!
     expect(chainProgressOf(state, chain).count).toBe(income)
+  })
+
+  /**
+   * **2026-09-22 船长令**：「第一次挂单允许玩家**挂买单**或者**直接市价购买卖出**都算完成」。
+   * 四条路各记一笔、互不嵌套（落点单点 = `market.bumpFirstMarketTrade`）——本用例逐条走真命令钉死。
+   */
+  it('四条市场路都算「第一次挂单销售」：挂卖单 · 挂买单 · 市价卖出 · 市价买入', () => {
+    const goodKey = 'min-tritanium'
+    // ① 挂卖单（core API）
+    {
+      const s = testState()
+      s.warehouse.items[goodKey] = 200
+      expect(placeSellOrder(s, ctx, goodKey, 8, 10)).not.toBeNull()
+      expect(firstStatOf(s, 'orders'), '挂卖单算一笔').toBe(1)
+    }
+    // ② 挂买单（船长本轮点名的第一条）
+    {
+      const s = testState()
+      s.wallet.isk = 1_000_000
+      expect(placeBuyOrder(s, ctx, goodKey, 8, 10)).not.toBeNull()
+      expect(firstStatOf(s, 'orders'), '挂买单算一笔').toBe(1)
+    }
+    // ③ 市价卖出（物品页「市价卖出」也走这条）
+    {
+      const s = testState()
+      s.warehouse.items[goodKey] = 200
+      expect(sellAtMarket(s, ctx, goodKey, 50).sold).toBeGreaterThan(0)
+      expect(firstStatOf(s, 'orders'), '市价卖出算一笔').toBe(1)
+    }
+    // ④ 市价买入
+    {
+      const s = testState()
+      s.wallet.isk = 1_000_000
+      expect(buyAtMarket(s, ctx, goodKey, 10).bought).toBeGreaterThan(0)
+      expect(firstStatOf(s, 'orders'), '市价买入算一笔').toBe(1)
+    }
+    // 边界：**没挂上 / 没成交 ⇒ 不记**（挂买单钱不够 ⇒ 返回 null，不算"做成一笔买卖"）
+    {
+      const s = testState()
+      s.wallet.isk = 0
+      expect(placeBuyOrder(s, ctx, goodKey, 8, 10)).toBeNull()
+      expect(firstStatOf(s, 'orders')).toBe(0)
+    }
   })
 
   it('老档一次性折算：按级别对齐（旧表级数 ⇒ 新表同级门槛），已达级数不倒退', () => {
