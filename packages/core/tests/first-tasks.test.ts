@@ -394,6 +394,24 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
       engineTick(state, 1000, ctx)
       expect(state.moduleBay['mod-salvager-1'] ?? 0, '新档也发一台').toBe(1)
     }
+    /**
+     * ④ **刷新（存档往返）不能再领一台**（**2026-09-22 船长报障**：「**玩家刷新可以重复领取补发的
+     * 打捞器**」）。根因 = `save.ts` 的 `normalizeState` 手工白名单重建 `importantTasks` 时**漏了
+     * `salvagerGift`** ⇒ 读档即丢去重键 ⇒ 下一拍又补一台（刷新一次 +1 台）。
+     */
+    {
+      const state = testState()
+      engineTick(state, 1000, ctx)
+      expect(state.moduleBay['mod-salvager-1'] ?? 0, '首拍补 1 台').toBe(1)
+      const back = loadSaveFile(serializeSaveFile(state, 2000)).state
+      expect(back.importantTasks['first-salvage']?.salvagerGift, '去重键必须随档落盘').toBe(true)
+      engineTick(back, 3000, ctx)
+      expect(back.moduleBay['mod-salvager-1'] ?? 0, '刷新后不再补第二台').toBe(1)
+      // 反复刷新：每次都还是那一台
+      const back2 = loadSaveFile(serializeSaveFile(back, 4000)).state
+      engineTick(back2, 5000, ctx)
+      expect(back2.moduleBay['mod-salvager-1'] ?? 0, '反复刷新都只有 1 台').toBe(1)
+    }
   })
 
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {

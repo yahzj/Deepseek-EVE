@@ -4,11 +4,21 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { addLog, createInitialState, CURRENT_STATE_VERSION } from '../src/state'
+import type { ImportantTaskState } from '../src/state'
 import { loadSaveFile, MIN_MIGRATABLE_VERSION, SaveError, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { addShipToFleet } from '../src/shipyard'
 import { wormholeEnter } from '../src/wormhole'
 import { wormholeMakeGrid } from '../src/wormholeGrid'
 import { fittedOf } from './helpers'
+import { advanceGame } from '../src/engine'
+import { startMining } from '../src/mining'
+import { startRefineRun } from '../src/industry'
+import { startManufacturing } from '../src/manufacturing'
+import { placeBuyOrder, learnBlueprint } from '../src/market'
+
+/** 母港唯一矿带（丰饶之环）＋它产的矿（与 `first-tasks.test.ts` 同一组真 id） */
+const BELT = 'belt-fortune'
+const BELT_ORE = 'ore-veldspar'
 
 /** 真上下文（进洞要看船体准入与扫描件，`makeTestCtx` 的裁剪版不够用） */
 const simCtx = buildSimContext()
@@ -172,6 +182,124 @@ describe('虫洞网格读档回归（玩家报障 2026-09-20：「深入下一�
       expect(back!.grid!.cells.length, `层 ${String(depth)}`).toBe(grid.cells.length)
       expect(back!.grid!.pos, `层 ${String(depth)}`).toEqual(grid.pos)
     }
+  })
+})
+
+/**
+ * **`importantTasks` 白名单不许漏键**（**2026-09-22 船长报障**：「**玩家刷新可以重复领取补发的打捞器**」）。
+ *
+ * 根因：`save.ts` 的 `normalizeState` 是**手工白名单重建** `importantTasks`——每加一个字段就得在两处都写一遍；
+ * 打捞器全员补发（临时补丁）新加的 `salvagerGift` 只写了引擎侧 ⇒ **读档即丢去重键** ⇒ 刷新一次多领一台。
+ *
+ * 这条用例是**这一类 bug 的护栏**：下面那份 `Record<keyof ImportantTaskState, true>` 会被 TS 强制**穷尽**——
+ * 将来给 `ImportantTaskState` 加字段而没在这里补一行，`npm run typecheck` 直接红；补了行但漏进白名单，
+ * 这条用例红。同款前车之鉴：`wormhole.run` 漏 `turnsBase` / `turnsTechBonus`。
+ */
+describe('importantTasks 存档往返：白名单不许漏键（船长报障 2026-09-22）', () => {
+  /** 类型改了这里必须跟着改（漏了 = typecheck 报缺少属性） */
+  const ALL_KEYS: Record<keyof ImportantTaskState, true> = {
+    done: true,
+    delivered: true,
+    allExplored: true,
+    started: true,
+    salvagerGift: true,
+  }
+
+  it('每个字段都随档往返（一个不落）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 44 })
+    state.importantTasks['first-salvage'] = {
+      done: true,
+      delivered: 3,
+      allExplored: true,
+      started: true,
+      salvagerGift: true,
+    }
+    const back = loadSaveFile(serializeSaveFile(state, 0)).state.importantTasks['first-salvage']
+    expect(back, '这条任务本身要还在').toBeDefined()
+    for (const key of Object.keys(ALL_KEYS) as (keyof ImportantTaskState)[]) {
+      expect(back?.[key], `字段 ${key} 读档后丢了（白名单漏键）`).toBe(state.importantTasks['first-salvage']![key])
+    }
+    // 全键都在（反过来也钉一下：别只保留了一部分）
+    expect(Object.keys(back!).sort()).toEqual(Object.keys(ALL_KEYS).sort())
+  })
+})
+
+/**
+ * **自动护栏：引擎跑过的档，往返不许丢键**（2026-09-22 加）。
+ *
+ * 为什么要有它：`normalizeState` 里几十处都是**手工白名单**（读档时逐字段重建对象），**每加一个随档字段
+ * 就得在两处都写一遍**——漏了不会报错，只会在"刷新/重进"时表现为**重复发奖 / 状态回退**（船长报障的
+ * 打捞器重复领取就是这么来的：`importantTasks.salvagerGift` 没进白名单）。
+ *
+ * 与上一条 `importantTasks` 用例的分工：那条靠 TS **穷尽一个类型**；这条**不依赖任何清单**——它把真引擎
+ * 跑过的档整体落盘再读回，**递归比对键集合**，凡是"引擎写过、读回来没了"的键一律报出来。
+ * 覆盖面 = 本场景真的跑到的那些子系统（想扩面就往场景里多加一步）。
+ */
+describe('存档往返：引擎跑过的档不许丢键（自动护栏）', () => {
+  /**
+   * 递归收集**"有内容的"**键路径。口径两条：
+   * - 跳过 `undefined`（JSON 本来就不带它）与**空值**（`false`/`0`/`''`/空表/空对象）——
+   *   `normalizeState` 一律"只在有值时落键"（如 `exitKnown?: boolean`、`...(x === true ? {x:true} : {})`），
+   *   读回来缺省 = 同一个结果 ⇒ 不算丢；
+   * - 数组只看**第一条还活着的**元素：内存里 `active === false` 的作业条是残留（玩家切活动时上一条会被
+   *   `haltActivityForSwitch` 置停），读档**按设计**丢弃（`sanitizeRefineRun` 等只收 `active === true`）。
+   */
+  function keysDeep(v: unknown, path: string, out: Set<string>): void {
+    if (v === null || typeof v !== 'object') return
+    if (Array.isArray(v)) {
+      const live = v.filter(isLive)
+      if (live.length > 0) keysDeep(live[0], `${path}[]`, out)
+      return
+    }
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (val === undefined) continue
+      const p = path ? `${path}.${k}` : k
+      if (meaningful(val)) out.add(p)
+      keysDeep(val, p, out)
+    }
+  }
+
+  /** 已停工的残留作业条（内存里 `active === false`）：读档按设计丢弃，不算内容 */
+  const isLive = (x: unknown): boolean => !(x !== null && typeof x === 'object' && (x as { active?: unknown }).active === false)
+
+  /** "有内容" = 丢了会读出不同结果的值（空值不算：缺省与空值同义；数组里只剩停工的残留也算空） */
+  function meaningful(v: unknown): boolean {
+    if (v === null || v === false) return false
+    if (typeof v === 'number') return v !== 0
+    if (typeof v === 'string') return v.length > 0
+    if (Array.isArray(v)) return v.some(isLive)
+    if (typeof v === 'object') return Object.keys(v).length > 0
+    return true // true 等
+  }
+
+  it('跑过采矿/精炼/市场/工业/进洞之后：键一个不少', () => {
+    const state = createInitialState({ name: '护栏', nowWallMs: 0, seed: 77 })
+    // ① 让引擎自己跑一段（首个心跳会走：补发打捞器、任务收口、成就/通讯、事件……）
+    for (let i = 0; i < 30; i += 1) advanceGame(state, 10_000, simCtx)
+    // ② 手动把几条常用子系统的状态摆出来（覆盖面越宽，这条护栏越值钱）
+    const uid = addShipToFleet(state, 'sh-falconet')
+    state.shipId = uid
+    expect(startMining(state, BELT, simCtx).ok).toBe(true)
+    state.warehouse.items[BELT_ORE] = 500
+    expect(startRefineRun(state, BELT_ORE, 'pilot', simCtx).ok).toBe(true)
+    state.blueprintStock['sbp-sandcat'] = 1
+    expect(learnBlueprint(state, simCtx, 'sbp-sandcat').ok).toBe(true)
+    state.warehouse.items['min-tritanium'] = 400
+    state.warehouse.items['min-pyerite'] = 100
+    expect(startManufacturing(state, 'sbp-sandcat', 'pilot', simCtx).ok).toBe(true)
+    const good = [...simCtx.marketGoods.values()].find((g) => g.key === BELT_ORE)
+    expect(placeBuyOrder(state, simCtx, good!.key, Math.max(1, Math.round(good!.basePrice ?? 1)), 10)).not.toBeNull()
+    expect(wormholeEnter(state, simCtx, [uid], 4242).ok).toBe(true)
+
+    const back = loadSaveFile(serializeSaveFile(state, 0)).state
+    const before = new Set<string>()
+    const after = new Set<string>()
+    keysDeep(state, '', before)
+    keysDeep(back, '', after)
+    const lost = [...before].filter((k) => !after.has(k))
+    expect(lost, `这些键引擎写过、读回来没了（白名单漏键）`).toEqual([])
+    // 顺手钉住"护栏真的在看东西"：键集合不该是空的
+    expect(before.size).toBeGreaterThan(200)
   })
 })
 
