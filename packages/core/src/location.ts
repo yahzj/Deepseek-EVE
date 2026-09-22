@@ -11,7 +11,8 @@
  *   建设工地星系（to-site）→ 到点野外停留自动交付建材 → 自动返航最近空间站（to-station）；
  *   行程随时可取消（无惩罚，取消即立即返航停靠最近已建成站）。
  */
-import { addLog, HOME_GALAXY_ID, wormholePilotHoldReason } from './state'
+import { addLog, HOME_GALAXY_ID } from './state'
+import { applyActivityGate } from './activityGate'
 import { pilotUnavailableReason } from './shipyard'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
@@ -603,25 +604,11 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
 export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const target = ctx.galaxies.get(galaxyId)
   if (!target) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.location.033' }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
+  /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再转场。', errorId: 'core.location.023' }
   const s = state.standby
   if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。', errorId: 'core.location.024' }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：暂不能转场掩护巡逻——到站自动结算后再安排。', errorId: 'core.location.025' }
-  if (state.transit.active) return { ok: false, error: '返航空间站途中：到站后再安排。', errorId: 'core.location.026' }
-  if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。', errorId: 'core.location.015' }
-  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船自动返航）。', errorId: 'core.location.027' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。', errorId: 'core.location.008' }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。', errorId: 'core.location.016' }
-  }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港（想自动制造可改用 AI 核心驱动）。', errorId: 'core.location.017' }
-  }
   if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。`, errorId: 'core.location.028' }
   const from = originGalaxyOf(state, ctx)
   if (from === galaxyId && state.awayGalaxy === null) {
@@ -632,6 +619,13 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   }
   const mins = shortestTravelMinutes(ctx, from, galaxyId)
   if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。`, errorId: 'core.location.031' }
+  /**
+   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
+   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 7 条硬拒，现已收进
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/已探索/航路/同点）。
+   */
+  const gateSkip = applyActivityGate(state, 'standby')
+  if (gateSkip) return gateSkip
   // 去程取消（定稿）：即时就位——到达时刻 = 当前，无去程等待；船即刻转场目标星系留守
   s.active = false
   s.galaxyId = null

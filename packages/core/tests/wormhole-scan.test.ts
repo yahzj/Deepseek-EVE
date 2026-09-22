@@ -8,7 +8,8 @@
  * 锁住六条口径：
  * ① 窗口 = **12 小时** × 三技能乘算 × **星际奇遇学**（不练 = 12 小时；奇遇学**每级 −4%、满级恰 −20%**
  *    —— **2026-09-17 船长改判**：「将一些只有满级后才有效果的技能，拆分成每个等级效果」⇒ 由阶跃改线性）；
- * ② 主控活动互斥（采矿/打捞/扫描/远征/航行/待命/在洞内 都不许开扫）；
+ * ② 主控活动互斥（**2026-09-21 改口径**：跨活动互斥统一归 `activityGate`——可自动停的"停掉它再开扫"、
+ *    远征/快递/战斗中/洞里/返航途中才拒；`wormholeScanBlockReason` 只留本入口自己的前置）；
  * ③ 推进：满一个窗口发现一处进库存，**连续跨窗可连出**（离线大步长）；
  * ④ **库存上限 5**：满则**扫描停机**并写一条提示（不静默白跑）；
  * ⑤ 随档往返 + 坏值清洗（非法条目丢弃、超出上限截断）；
@@ -117,25 +118,41 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     expect(byId('galactic-happenings').group).toBe('探索')
   })
 
-  it('**主控活动互斥**：采矿/打捞/远征/航行/待命/在洞内 都不许开扫；**星系扫描已退出这张表**', () => {
+  /**
+   * ⚠ **2026-09-21 船长令改判**（「统一为能够直接切换（自动取消当前活动）」）：`wormholeScanBlockReason`
+   * **不再**列"主控正在采矿/打捞/远征/航行/待命"那九条（整段撤掉）——开扫前只有**自己的前置**留在这把尺上
+   * （解锁门槛 / 洞里 / 遭遇战未决 / 库存满），跨活动互斥改由 `activityGate` 统一裁决：
+   * **可自动停的 ⇒ 停掉它再开扫** · 远征/快递/战斗中/洞里/返航途中 ⇒ 拒。
+   */
+  it('**扫描虫洞只拦自己的前置**（解锁/洞里/遭遇战/库存满）；跨活动互斥改走 `activityGate`', () => {
     const a = fresh()
     expect(wormholeScanStart(a, ctx).ok).toBe(true)
     expect(wormholeScanStart(a, ctx).ok).toBe(false) // 已经在扫
-    a.mining.active = true
+    // 采矿中 ⇒ **不再由 block reason 拦**，开扫时自动停采（统一日志）
     const b = fresh()
     b.mining.active = true
-    expect(wormholeScanBlockReason(b) ?? '').toContain('采矿')
+    expect(wormholeScanBlockReason(b)).toBeNull()
+    expect(wormholeScanStart(b, ctx).ok).toBe(true)
+    expect(b.mining.active).toBe(false)
+    expect(b.logs.some((l) => l.text.includes('已自动停止「开采」'))).toBe(true)
+    // 打捞中 ⇒ 同款（自动停打捞）
     const c = fresh()
     c.salvaging.active = true
-    expect(wormholeScanBlockReason(c) ?? '').toContain('打捞')
-    // 2026-09-15 船长：星系扫描 = 无人扫描艇（不占主控）⇒ 扫描中照样能开扫虫洞（修前报"主控正在扫描星系"）
+    expect(wormholeScanBlockReason(c)).toBeNull()
+    expect(wormholeScanStart(c, ctx).ok).toBe(true)
+    expect(c.salvaging.active).toBe(false)
+    // 2026-09-15 船长：星系扫描 = 无人扫描艇（不占主控）⇒ 扫描中照样能开扫虫洞
     const d = fresh()
     d.scanning = { active: true, galaxyId: 'galaxy-hub', finishAtGameMs: 600_000, startedAtGameMs: 0, originGalaxy: null }
     expect(wormholeScanBlockReason(d)).toBeNull()
     expect(wormholeScanStart(d, ctx).ok).toBe(true)
+    // 远征在飞 ⇒ **照旧拒**（不可中断那一档，措辞统一为 activityGate 那句）
     const e = fresh()
     e.expedition.active = true
-    expect(wormholeScanBlockReason(e) ?? '').toContain('远征')
+    const ev = wormholeScanStart(e, ctx)
+    expect(ev.ok).toBe(false)
+    expect(ev.error ?? '').toContain('不能中断')
+    // 人在洞里 ⇒ 拒（本入口自己的前置）
     const f = fresh()
     const uid = addShipToFleet(f, T3)
     f.shipId = uid

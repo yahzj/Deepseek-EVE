@@ -143,12 +143,19 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     expect(s2.refineRuns).toHaveLength(0)
   })
 
-  it('主控手动制造中反向封锁出海作业（与精炼炉同款）：采矿被拒', () => {
+  /**
+   * ⚠ **2026-09-21 船长令改判**：「统一为能够直接切换（自动取消当前活动）」——原先"亲自开线中 ⇒
+   * 采矿硬拒"，现在反过来：**开始采矿会把亲自开线自动停掉**（停线 = 当前那批进度丢弃，见
+   * `activityGate.HALT_COST` 与 `haltActivityForSwitch`），并写一条统一日志。
+   */
+  it('主控手动制造中反向封锁：**开始采矿 ⇒ 自动停线（当前那批丢弃）+ 统一日志**', () => {
     state.warehouse.items['min-a'] = 10
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
     const m = startMining(state, 'belt-a', ctx)
-    expect(m.ok).toBe(false)
-    expect(m.error).toContain('制造作业正由你亲自开线')
+    expect(m.ok).toBe(true)
+    expect(state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')).toBe(false)
+    expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开线」'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('进度丢弃'))).toBe(true)
   })
 
   it('AI 核心驱动：库存不足拒；出库占用、耗时 ÷效率（基础 0.4 → 1500 秒）、完成自动归还', () => {

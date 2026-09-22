@@ -21,6 +21,7 @@ import { activePromoGifts, promoScanMul, tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
 import { matterTechScanCut } from './matterTech'
 import { addLog, wormholeScanHalt } from './state'
+import { applyActivityGate } from './activityGate'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { scanSkillFactor } from './explore'
@@ -165,8 +166,14 @@ export function wormholeStockFull(state: GameState): boolean {
   return wormholeStockOf(state).length >= wormholeStockMaxOf(state)
 }
 
-/** 能不能开扫（主控活动互斥：与采矿/打捞/远征/待命/过境/虫洞探索同一把尺。
- *  ⚠ **不含"扫描星系"**——船长 2026-09-15：无人扫描艇不占主控 ⇒ 扫描进行中照样能开扫） */
+/**
+ * 能不能开扫（**只看本入口自己的前置**：解锁门槛 / 洞里 / 遭遇战未决 / 库存满）。
+ *
+ * ⚠ **2026-09-21 统一批**：原先这里还硬拒"主控正在采矿/打捞/远征/航行/待命/长途运输/快递/亲自开炉/
+ * 亲自开线"九条——现已**整段撤掉**，改由 `activityGate` 那条统一判据接管（能直接切就自动停掉当前活动、
+ * 只有长途运输先警告、远征/快递/战斗中/洞里/返航途中才拒）。理由（船长令）：「统一为能够直接切换
+ * （自动取消当前活动）」——两个方向必须成对，反方向由同一把尺兜住。
+ */
 export function wormholeScanBlockReason(state: GameState): string | null {
   // 解锁门槛（船长 2026-09-14）：协会声望 ≥ 40 才开放扫描虫洞 —— 放在最前面，理由最有用
   if (!wormholeScanUnlocked(state)) {
@@ -174,26 +181,6 @@ export function wormholeScanBlockReason(state: GameState): string | null {
   }
   if (state.wormhole.run) return '已经在虫洞里了：先完成或撤离这一趟。'
   if (state.encounter.active) return '遭遇战未决：先处理完当前遭遇。'
-  if (state.mining.active) return '主控正在采矿：一台主控同时只能干一件事。'
-  if (state.salvaging.active) return '主控正在打捞：一台主控同时只能干一件事。'
-  if (state.expedition.active) return '主控正在远征：一台主控同时只能干一件事。'
-  if (state.transit.active) return '主控正在航行：到港后再开始扫描。'
-  if (state.standby.active) return '主控正在待命：先取消待命。'
-  /**
-   * **补齐剩下四项主控活动**（船长 2026-09-14 玩家反馈「虫洞扫描不占用主控活动」的同一批）：
-   * 修前这里只列到"待命"，于是**长途运输 / 快递在途 / 亲自开炉 / 亲自开线**期间还能开扫——
-   * 反方向（扫描时不让你开这些）由 `wormholePilotHoldReason` 兜住，两个方向必须成对。
-   * 判据与通知一律与 `mining.ts` / `industry.ts` / `manufacturing.ts` 的既有措辞对齐
-   * （"想自动××可改用 AI 核心驱动"）。
-   */
-  if (state.hauling.active) return '主控正在长途运输：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」再开始扫描。'
-  if (state.sideTasks.deliver !== null) return '快递投送在途：到站自动结算后再开始扫描。'
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return '精炼炉正由你亲自运转：先停炉才能展开扫描阵列（想自动精炼可改用 AI 核心驱动）。'
-  }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return '制造作业正由你亲自开线：先取消它才能展开扫描阵列（想自动制造可改用 AI 核心驱动）。'
-  }
   if (wormholeStockFull(state)) {
     return `已囤积 ${wormholeStockMaxOf(state)} 处未探索的虫洞：先去探索掉一处再扫。`
   }
@@ -207,6 +194,9 @@ export function wormholeScanStart(state: GameState, _ctx: SimContext): CommandRe
   if ((state.wormholeScan ?? { active: false, progressMs: 0 }).active) {
     return { ok: false, error: '扫描已经在跑。', errorId: 'core.wormholeScan.001' }
   }
+  /** 其余主控活动 ⇒ 统一判据（2026-09-21 船长令；见 `wormholeScanBlockReason` 的说明） */
+  const gateSkip = applyActivityGate(state, 'wormholeScan')
+  if (gateSkip) return gateSkip
   /**
    * ⚠ **续扫不清零**（船长：「停扫保留进度」）：只置回 active，`progressMs` 原样接着累计。
    */

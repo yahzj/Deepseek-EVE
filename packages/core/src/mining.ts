@@ -17,7 +17,8 @@
  * - 日志克制：只在 开始/停止/满舱转返航/卸货完成/富矿脉/换驾驶善后 时写。
  */
 import { tuningMul } from './tuning'
-import { addLog, miningHalt, wormholePilotHoldReason } from './state'
+import { addLog, miningHalt } from './state'
+import { applyActivityGate } from './activityGate'
 import { bumpFirst } from './firstTasks'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
@@ -205,18 +206,12 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
       }
     }
   }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
+  /**
+   * ⚠ **`wormholePilotHoldReason` 已从这里撤掉**（2026-09-21 统一批）：它挡的两件事（扫描虫洞在跑 / 人在洞里）
+   * 现在都由 `activityGate` 一条判据接管——扫描虫洞 = **可自动停**（统一日志），人在洞里 = 拒（统一文案）。
+   */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) {
-    return {
-      ok: false,
-      error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再开采。',
-      errorId: 'core.state.001',
-    }
-  }
   /**
    * V13 探索封锁：**采集点所在星系未点亮 ⇒ 拒绝开工**。
    * ⚠ **2026-09-17 船长改口径**：「初始将母港星系设置为和其他星系一样的未知状态，需要扫描才有悬赏和挖矿」
@@ -245,30 +240,13 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   if (!pre.ok) return pre
   const belt = ctx.belts.get(beltId)!
   if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。', errorId: 'core.mining.006' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。', errorId: 'core.mining.007' }
-  if (state.expedition.active) {
-    return { ok: false, error: '远征进行中：舰船不在空间站，无法采矿。', errorId: 'core.mining.008' }
-  }
-  if (state.standby.active) {
-    return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消（顶部活动栏）。', errorId: 'core.mining.009' }
-  }
-  if (state.sideTasks.deliver !== null) {
-    return { ok: false, error: '快递投送途中：暂不能开采——到站自动结算后再安排。', errorId: 'core.mining.010' }
-  }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return {
-      ok: false,
-      error: '精炼炉正由你亲自运转：先停炉才能出海（想自动精炼可改用 AI 核心驱动）。',
-      errorId: 'core.mining.011',
-    }
-  }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return {
-      ok: false,
-      error: '制造作业正由你亲自开线：先取消它才能出海（想自动制造可改用 AI 核心驱动）。',
-      errorId: 'core.mining.012',
-    }
-  }
+  /**
+   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
+   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 7 条硬拒，现已收进
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**：免得"先停了玩家的活、再说开不了"。
+   */
+  const gateSkip = applyActivityGate(state, 'mining')
+  if (gateSkip) return gateSkip
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
   const fromField = state.awayGalaxy !== null ? state.awayGalaxy : null

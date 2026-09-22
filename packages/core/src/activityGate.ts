@@ -22,6 +22,7 @@
  * `stopRefineRun` / `cancelManufacturing`）——这样语义只有一份、也不制造模块环。
  */
 import type { GameState } from './state'
+import { addLog, haltActivityForSwitch } from './state'
 
 /** 主控活动（9 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
 export type MainActivityKind =
@@ -90,17 +91,21 @@ export const KIND_LABEL: Readonly<Record<MainActivityKind, string>> = {
   deliver: '快递投送',
 }
 
-/** 现在占着主控的是哪一项（没有 ⇒ null）。判据与活动栏同源（`state` 上的那几个 active 位） */
+/**
+ * 现在占着主控的是哪一项（没有 ⇒ null）。判据与活动栏同源（`state` 上的那几个 active 位）。
+ * ⚠ **顺序刻意与 `activity.shipBusyLabel` 的主控分支逐项对齐**（同一把尺、同一优先级）——
+ * 以后加档两处必须一起加（用例 `activity-gate.test.ts` 的矩阵会钉住）。
+ */
 export function mainActivityOf(state: GameState): MainActivityKind | null {
   if (state.mining.active) return 'mining'
   if (state.salvaging.active) return 'salvaging'
   if (state.hauling.active) return 'hauling'
+  if (state.sideTasks.deliver !== null) return 'deliver'
   if (state.standby.active) return 'standby'
   if (state.wormholeScan?.active === true) return 'wormholeScan'
+  if (state.expedition.active) return 'expedition'
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return 'refine'
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return 'manufacturing'
-  if (state.expedition.active) return 'expedition'
-  if (state.sideTasks.deliver !== null) return 'deliver'
   return null
 }
 
@@ -119,8 +124,14 @@ export function cannotInterruptReason(state: GameState): string | null {
     return '战斗中：这一场打完才能切换主控活动。'
   }
   if (state.wormhole.run?.battle != null) return '战斗中：这一场打完才能切换主控活动。'
-  // ② 人在虫洞里（进洞 = 主控的一个活动；别的活动开不了）
-  if (state.wormhole.run != null) return '人在虫洞里：先撤离（或打完本层）才能切换主控活动。'
+  /**
+   * ② 人在虫洞里（进洞 = 主控的一个活动；别的活动开不了）。
+   * ⚠ **判据含 `attending`**（与 `state.wormholePilotHoldReason` 同一把尺）：**临时离开虫洞界面
+   * ⇒ 活动停止、主控立刻释放**（船长 2026-09-13 批准）——这时 `run` 还在、但可以去做别的。
+   */
+  if (state.wormhole.run != null && state.wormhole.run.attending === true) {
+    return '人在虫洞里：先撤离（或打完本层）才能切换主控活动。'
+  }
   // ③ 换港返航途中（瞬时到站，等一拍就好）
   if (state.transit.active) return '换港返航途中：抵达后就能切换主控活动。'
   return null
@@ -139,8 +150,30 @@ export interface GateVerdict {
   current?: MainActivityKind
   /** `confirm`/`reject` 时：给玩家看的一句话（已含代价） */
   message?: string
+  /** 上面那句话的 id 与参数（界面走 `cmdText` 取当前语言；`p1/p2` 是活动名与代价） */
+  messageId?: string
+  messageParams?: Readonly<Record<string, string>>
   /** `confirm` 时：确认后是否真能中断（false ⇒ 界面上按 reject 呈现：置灰 + 理由） */
   interruptible?: boolean
+}
+
+/** `gateMainActivity` 的 `action: 'confirm'` 那句话用了这个 id ⇒ 界面据此"首击警告、二击执行" */
+export const ACTIVITY_CONFIRM_ID = 'core.activityGate.002'
+
+/**
+ * **统一日志：已自动停止「X」：代价。**（`halt` 落地时由入口调用一次；文案与 id 都在这里，免得各写一份）
+ *
+ * `detail`（可选）= 那一趟的具体读数/去向（「本趟 12 单位钛，货物留在船上」「已扫 7 分钟」这类）——
+ * 只在进洞那条路径上传（它原先的日志自带这些读数，改用统一日志后不能把这些信息丢掉）。
+ */
+export function logAutoHalt(state: GameState, kind: MainActivityKind, detail?: string): void {
+  const p1 = KIND_LABEL[kind]
+  const p2 = HALT_COST[kind]
+  if (detail !== undefined && detail.length > 0) {
+    addLog(state, 'warn', `已自动停止「${p1}」：${p2}。（${detail}）`, 'core.activityGate.007', { p1, p2, p3: detail })
+    return
+  }
+  addLog(state, 'warn', `已自动停止「${p1}」：${p2}。`, 'core.activityGate.001', { p1, p2 })
 }
 
 /**
@@ -150,16 +183,116 @@ export interface GateVerdict {
  * 再告诉他这活开不了"（现行几条链里已有这条纪律，见 `hauling.startHauling` 的注释）。
  */
 export function gateMainActivity(state: GameState, next: MainActivityKind): GateVerdict {
+  return verdictOf(state, next)
+}
+
+/**
+ * 判据本体：`next = null` 表示**这次的切入点没有"新活动"可命名**（换驾驶 / 进洞——它们不是九项之一，
+ * 但同样要"先把手上的活收掉"）⇒ 不适用"同项直接放行"那一条。
+ */
+function verdictOf(state: GameState, next: MainActivityKind | null): GateVerdict {
   const locked = cannotInterruptReason(state)
-  if (locked !== null) return { action: 'reject', message: locked }
+  if (locked !== null) {
+    /** 三种锁定态各有自己的 id（界面按当前语言渲染；`error` 那份中文原串只作兜底） */
+    const id = locked.includes('战斗中')
+      ? 'core.activityGate.004'
+      : locked.includes('虫洞')
+        ? 'core.activityGate.005'
+        : 'core.activityGate.006'
+    return { action: 'reject', message: locked, messageId: id }
+  }
   const current = mainActivityOf(state)
-  if (current === null || current === next) return { action: 'ok' }
+  if (current === null) return { action: 'ok' }
+  if (next !== null && current === next) return { action: 'ok' }
   const cost = HALT_COST[current]
   const label = KIND_LABEL[current]
   if (AUTO_HALT_KINDS.includes(current)) return { action: 'halt', current }
   const interruptible = INTERRUPTIBLE[current] === true
+  const messageId = interruptible ? ACTIVITY_CONFIRM_ID : 'core.activityGate.003'
   const message = interruptible
-    ? `${label}进行中：切换会中断它——${cost}。确认后自动停止并开始新活动。`
+    ? `${label}进行中：切换会中断它——${cost}。再点一次即确认：自动停止并开始新活动。`
     : `${label}进行中：${cost}——这一趟不能中断，等它结束再切换。`
-  return { action: interruptible ? 'confirm' : 'reject', current, message, interruptible }
+  return { action: interruptible ? 'confirm' : 'reject', current, message, messageId, messageParams: { p1: label, p2: cost }, interruptible }
+}
+
+/**
+ * **换驾驶 / 进洞**这类"没有新活动名"的切入点：照同一条判据裁决"能不能动手"。
+ *
+ * `warnConfirmed = true` = 界面**已经做过两段确认**（换驾驶的 `switchAskId` · 进洞的 `enterHaulAsk`，
+ * 都在动手指令之前弹过「会中断长途运输」的警告）⇒ 长途运输那一档直接落成 `halt`；false ⇒ 返回 `confirm`
+ * 交界面去问（不新造交互，沿用 2026-09-20 那套）。
+ */
+export function gateMainActivityHandoff(state: GameState, warnConfirmed = true): GateVerdict {
+  const v = verdictOf(state, null)
+  if (v.action === 'confirm' && warnConfirmed && v.current !== undefined) {
+    return { action: 'halt', current: v.current }
+  }
+  return v
+}
+
+/** 入口把它原样返回给界面时的形状（与 `engine.CommandResult` 的前三个字段同构） */
+export interface ActivityGateSkip {
+  ok: false
+  error: string
+  errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
+}
+
+function skipOf(v: GateVerdict): ActivityGateSkip {
+  return {
+    ok: false,
+    error: v.message ?? '',
+    ...(v.messageId !== undefined ? { errorId: v.messageId } : {}),
+    ...(v.messageParams !== undefined ? { errorParams: v.messageParams } : {}),
+  }
+}
+
+/**
+ * **九项 `start*` 入口的唯一落地口**：判据 → 该停的停掉（＋统一日志）→ 告诉入口能不能开工。
+ *
+ * 返回值：`null` = 可以照常开工（需要自动停机的，这里已经停好并记了日志）；
+ * 非 null = **原样返回给界面**（`confirm` 与 `reject` 都按"没开工"处理——`confirm` 那句 warning 由界面
+ * 两段确认消化，见 `ACTIVITY_CONFIRM_ID`）。
+ */
+export function applyActivityGate(state: GameState, next: MainActivityKind): ActivityGateSkip | null {
+  const v = gateMainActivity(state, next)
+  if (v.action === 'ok') return null
+  if (v.action === 'halt') {
+    if (v.current !== undefined) haltAndLog(state, v.current)
+    return null
+  }
+  return skipOf(v)
+}
+
+/**
+ * **换驾驶 / 进洞的唯一落地口**：判据 → 该停的停掉（＋统一日志）。`null` = 可以动手。
+ * ⚠ 采矿/打捞在"换驾驶"那条路上有**自己的善后**（旧船按阶段自动返航卸货，见 `shipyard.changeShip`）
+ * ⇒ 那条路只用本函数**判据**（`gateMainActivityHandoff`），不要用它替你停机。
+ */
+export function applyActivityHandoff(state: GameState, warnConfirmed = true): ActivityGateSkip | null {
+  const v = gateMainActivityHandoff(state, warnConfirmed)
+  if (v.action === 'ok') return null
+  if (v.action === 'halt') {
+    if (v.current !== undefined) haltAndLog(state, v.current)
+    return null
+  }
+  return skipOf(v)
+}
+
+/**
+ * **玩家确认"中断当前活动"**（两段确认的第二下 / 界面通用收尾）：停掉它并按统一口径记一条日志。
+ * 返回被停掉的那一项（没得停 ⇒ null）。不碰"本就不可中断"的远征/快递（那两项永远走拒绝）。
+ */
+export function haltCurrentActivity(state: GameState): MainActivityKind | null {
+  const current = mainActivityOf(state)
+  if (current === null) return null
+  if (!AUTO_HALT_KINDS.includes(current) && INTERRUPTIBLE[current] !== true) return null
+  haltAndLog(state, current)
+  return current
+}
+
+/** 停机 + 统一日志（两件事永远成对 ⇒ 收成一处，免得哪条路径漏写日志） */
+function haltAndLog(state: GameState, kind: MainActivityKind): void {
+  haltActivityForSwitch(state, kind)
+  logAutoHalt(state, kind)
 }

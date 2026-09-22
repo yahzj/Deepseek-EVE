@@ -3988,5 +3988,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FirstTasks.038": { zh: "达成这条任务的条件后即可点「完成」。", en: "Click Complete once this task's requirement is met." },
   "ui.FirstTasks.039": { zh: "开始即给 ◆", en: "Given at start ◆" },
   "ui.FirstTasks.040": { zh: "完成奖励 ◆", en: "On completion ◆" },
-  "ui.App.122": { zh: "（已达成，回任务中心点「完成」）", en: " (reached — click Complete in the Task Center)" }
+  "ui.App.122": { zh: "（已达成，回任务中心点「完成」）", en: " (reached — click Complete in the Task Center)" },
+  "core.activityGate.001": { zh: "已自动停止「{p1}」：{p2}。", en: "Stopped “{p1}” automatically: {p2}." },
+  "core.activityGate.002": { zh: "{p1}进行中：切换会中断它——{p2}。再点一次即确认：自动停止并开始新活动。", en: "{p1} is running: switching interrupts it — {p2}. Click again to confirm: it stops automatically and the new job starts." },
+  "core.activityGate.003": { zh: "{p1}进行中：{p2}——这一趟不能中断，等它结束再切换。", en: "{p1} is running: {p2} — this run cannot be interrupted, switch once it ends." },
+  "core.activityGate.004": { zh: "战斗中：这一场打完才能切换主控活动。", en: "In combat: finish this fight before switching the command-ship activity." },
+  "core.activityGate.005": { zh: "人在虫洞里：先撤离（或打完本层）才能切换主控活动。", en: "Inside a wormhole: extract (or finish this layer) before switching the command-ship activity." },
+  "core.activityGate.006": { zh: "换港返航途中：抵达后就能切换主控活动。", en: "Relocating to another port: switching becomes available on arrival." },
+  "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p3}）", en: "Stopped “{p1}” automatically: {p2}. ({p3})" }
 }

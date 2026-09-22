@@ -1,6 +1,7 @@
 # 主控活动切换：现状统计 ＋ 统一方案（2026-09-21 船长令）
 
-> **状态：进行中**（口径已定 · **第 1 步「判据单点」已落码**；第 2 步「9 个入口接线 ＋ 统一文案 ＋ 9×9 矩阵用例」待做）
+> **状态：进行中**（口径已定 · **第 1 步「判据单点」＋ 第 2 步「九入口接线 ＋ 换驾驶/进洞纳入 ＋
+> 统一文案 ＋ 矩阵用例」已落码并自测全绿**；待船长验收）
 >
 > **船长原话（照抄）**：「**关于主控切换不同活动，现在依旧很混乱。有的需要玩家先取消当前活动才能切换，
 > 有的又可以直接切换，有的还需要警告后切换。你帮我统计下。我希望统一为能够直接切换（自动取消当前活动），
@@ -102,21 +103,71 @@
 - ⚠ **只出判据、不执行停机**（停机仍由各入口用既有取消函数落地 ⇒ 语义一份、不造模块环）；
 - 用例 `tests/activity-gate.test.ts` **6 例全绿**（三档分类 · 副船遇袭不拦 · 三处战斗槽 · 洞里/返航）。
 
-**第 2 步 · 待做（下一步就干）**：
-1. **9 个入口接线**（`mining` / `salvaging` / `hauling` / `wormholeScan` / `standby`(goStandbyAt) / `refine` /
-   `manufacturing` / `expedition` / `deliver`）：把各自的 busy 检查块换成 `gateMainActivity(...)`：
-   `halt` ⇒ 调既有取消函数（`miningHalt`/`salvageHalt`/`haulingHalt`/`wormholeScanHalt`/`cancelStandby`/
-   `stopRefineRun`/`cancelManufacturing`）＋写一条统一日志；`confirm` ⇒ 由界面两段确认；`reject` ⇒ 统一理由。
-   ⚠ 顺序纪律：**先过完"新活动自己的前置校验"再调 gate**（免得"先停了玩家的活、再说开不了"）。
-2. **换驾驶 / 进洞**（现已自动停）改走同一条 gate（进洞准备页那行琥珀警告保留）。
-3. **统一文案**：日志 1 条 ＋ 警告头 1 条 ＋ 拒绝 3 条（战斗/洞里/返航）≈ 8~10 条新 id（中英）。
-4. **9×9 矩阵用例**：把"可自动停的必须切成功且日志正确 · 不可中断的必须被拒且理由统一"钉死。
+**第 2 步 · 已落码（2026-09-21，自测全绿 · 待验收）**：
+
+1. **九项入口接线完成**——各入口的 busy 检查块整段替换为 `activityGate.applyActivityGate(state, '<kind>')`：
+   | 入口 | 文件 | 备注 |
+   |---|---|---|
+   | 开始开采 | `mining.startMining` | 入口自带的前置（矿带/声望/探索/航路）仍在 gate 之前 |
+   | 开始打捞 | `salvaging.startSalvageOp` | 打捞器 / 探索 / 航路 / 残骸池 → 之后才 gate |
+   | 开始长途运输 | `hauling.startHauling` | 端点/航路/货仓 → 之后才 gate（原有顺序纪律注释保留） |
+   | 开始扫描虫洞 | `wormholeScan.wormholeScanStart` | `wormholeScanBlockReason` **只留本入口前置**（解锁/洞里/遭遇战/库存满），九条跨活动硬拒整段删除 |
+   | 掩护巡逻 | `location.goStandbyAt` | 目标/已探索/航路/同点 → 之后才 gate |
+   | 亲自开炉·回收·拆箱 | `industry.startRefineRun` / `startRecycleRun` / `startUnboxRun` | 同族炉/线互斥保留（同一项不算切换）；gate 放在"够不够一批"之后 |
+   | 亲自开线 | `manufacturing.startManufacturing` | gate 放在材料校验之后 |
+   | 出发远征 | `expedition.startExpedition` | `expeditionPreflight` 里的 hauling/deliver/roaming 检查删除；**顺带修**：`awayGalaxy` 复位移到全部校验之后（原先校验失败也照清标记） |
+   | 出发投送 | `sideTasks.startCourierDelivery` | 任务/到期/目标站/货舱/跃迁/航路 → 之后才 gate |
+   | 换驾驶 | `shipyard.changeShip` | **只取判据**（战斗中/洞里/返航途中 = 统一拒）；采矿/打捞仍走它自己的"旧船善后"语义，不套自动停机 |
+   | 进洞 | `wormhole.wormholeEnter` | 门槛 + 自动停机都改走 gate；**名单从 4 项扩到 7 项**（+掩护巡逻/亲自开炉/亲自开线）；准备页那行琥珀警告保留 |
+2. **统一文案**：日志 `core.activityGate.001`（＋带读数版 `.007`，进洞路径补"已扫 N 分钟 / 本趟 N 单位 / 停靠站"）
+   · 警告头 `core.activityGate.002`（`ACTIVITY_CONFIRM_ID`）· 拒绝 `core.activityGate.003`（不可中断）·
+   锁定 `core.activityGate.004/005/006`（战斗中 / 洞里 / 返航途中）· 活动名与代价两张词表 `KIND_LABEL` / `HALT_COST`。
+3. **界面两段确认**（`apps/desktop/.../game/engine.ts` 的 `withActivitySwitch`）：core 回 `.002` 的那一条
+   = 首击只警告（照旧 toast 出那句代价），**同一颗按钮 6 秒内再点一次**即确认 → `haltCurrentActivity`
+   停掉当前活动（＋统一日志）→ 原指令重跑。九颗按钮（开采/打捞/扫描虫洞/掩护巡逻/亲自开炉·回收·拆箱/
+   亲自开线/远征/窝点出击/投送）统一走这一个包装，**没给每颗按钮各写一套确认态**。
+4. **用例**：`tests/activity-gate.test.ts` 新增 **9×9 矩阵**（可自动停的六项 × 八项目标 ⇒ 必成功且只写一条日志 ·
+   长途运输 ⇒ 必回 `.002` 且一格不动 · 远征/快递 ⇒ 必回 `.003` 且不许被停 · 同一项 ⇒ 放行 · 三种锁定态 ⇒ 九项一律拒）；
+   另有真命令层面的交叉用例改写到新口径（`wormhole-activity-lock` 10 例 · `wormhole-scan` / `wormhole-run` /
+   `manufacturing` / `industry` / `expedition`）。
+5. **顺带**（同一批发现即修）：`tools/save-migrate-check.ts` 的"13 条必须全判过"改为**按版本分岔**——
+   v≤25 老档仍硬要求全过；v26+ 的"教程链进行中的档"只钉**不倒退 / 不凭空完成 / 资产不变**，完成度与页面锁
+   如实打印成 ⚠ 读数（原先会把**船长本人的真档**误判成失败，见下）。
+
+### 与旧裁定的关系（都在本件内改判，未另开文档）
+
+| 旧口径 | 出处 | 现在 |
+|---|---|---|
+| 采矿/打捞/远征/掩护巡逻/开炉/开线 期间**硬拒**别的活动（30+ 处 errorId） | 各模块 2026-09-04~09-18 | 六项**自动停**；远征/快递**拒**（统一 `.003`） |
+| `wormholePilotHoldReason` 是八个入口的互斥兜底 | `state.ts` 2026-09-13/14 | 九入口**不再调它**（扫描虫洞=自动停、洞里=gate 拒）；函数本身保留给别处读 |
+| 扫描虫洞期间别的活动一律拒 | `wormholeScanBlockReason` 2026-09-14 | 反过来：别的活动开起来时**自动停扫**（进度保留） |
+| 掩护巡逻/亲自开炉/亲自开线 ⇒ 拦住进洞 | `wormholeEntryBlockReason` | 三项并入"进洞自动停"名单（共七项） |
+| 换驾驶只在"目标船在洞里"时拦 | `shipyard.changeShip` | 加统一锁定判据（战斗中/洞里/返航途中），并在**所有停机副作用之前** |
+
 
 ## 六、待你定
 
 > 已全部定完（警告名单含远征/快递 · 开炉开线丢弃进度 · 换驾驶与进洞纳入单点）。**无待定项**。
 
+## 七、本批自测读数（2026-09-21）
+
+- `npm run typecheck` 四包 0 错；`npm run test -w @whale/core` **182 文件 / 2070 例全绿**；
+- `content:check` ✅ · `l10n:check` ✅（新增 id 中英齐全）· `ui:rot-check` ✅ · `build` ✅ · `flow:newgame` ✅（11/13 条 + 末段两条）；
+- `save:migrate` **77/77**（含船长今日真档 `save-20260921-201652.json`：v30→v31 · 不倒退 · 资产不变；
+  ⚠ 读数：教程链还有 7 条没走到、市场页前置未达 ⇒ 该档的**市场页仍是锁的**——这是现行"页面按任务解锁"的
+  应有结果，不是迁移造成的，但**如果这不是你要的**（老档/在玩的档应该照旧全开），请给一句口径，我改 `firstTasks.unlocked`）。
+
+## 八、本批之外的两处观察（未动，供你判断）
+
+1. **`activity.ts` 的活动栏行**（远征/投送那两行的 `stopReason`）仍写着自己的旧措辞
+   （「投送不可取消：到站自动结算酬金」等）——与 `.003` 的统一文案不同源，但**读者是同一批玩家**。
+   要不要把活动栏那几行也接到 `activityGate` 的两个词表上？（不在本批范围，故未动。）
+2. **`state.wormhole.run` 存在但 `attending = false`（临时离开）时**：`wormholeScanBlockReason` 仍按
+   「已经在虫洞里了」拒开扫，而统一判据按 2026-09-13 的口径认"主控已释放"。这处不对称是既有行为
+   （本批原样保留），要收拢的话说一声。
+
+
 ---
 
-_维护：本件是方案（未动码）。你点头后：先落 `activity.ts` 单点 → 9 个入口改调用 → 统一文案 → 矩阵用例 →
-四闸门；随后按 §8 归档。_
+_维护：本件是方案 ＋ 落地记录（第 1、2 步均已落码，待船长验收）。验收后按 §8 三步归档：
+关键结论并入 `docs/roadmap.md`（本项目批次一条）＋ 必要时登记词典词条 → 删本件 → `npm run docs:index`。_

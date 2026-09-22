@@ -8,12 +8,16 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import {
+  ACTIVITY_CONFIRM_ID,
+  applyActivityGate,
   AUTO_HALT_KINDS,
+  KIND_LABEL,
   WARN_KINDS,
   cannotInterruptReason,
   gateMainActivity,
   mainActivityOf,
 } from '../src/activityGate'
+import type { MainActivityKind } from '../src/activityGate'
 
 function state(): GameState {
   return createInitialState({ nowWallMs: 0, seed: 3 })
@@ -49,7 +53,7 @@ describe('主控活动切换：三档分类（船长 2026-09-21）', () => {
     for (const kind of WARN_KINDS.filter((k) => k !== 'hauling')) {
       const s = state()
       if (kind === 'expedition') s.expedition.active = true
-      else s.sideTasks.deliver = { taskId: 'x', toSiteId: null } as GameState['sideTasks']['deliver']
+      else s.sideTasks.deliver = { taskId: 'x' } as unknown as GameState['sideTasks']['deliver']
       const v = gateMainActivity(s, 'mining')
       expect(v.action, `${kind} 应拒`).toBe('reject')
       expect(v.interruptible).toBe(false)
@@ -92,11 +96,140 @@ describe('不可被打断的状态（船长：「处在战斗中的时候也设�
 
   it('人在洞里 / 换港返航途中 ⇒ 拒（各有自己的理由）', () => {
     const wh = state()
-    wh.wormhole.run = {} as NonNullable<GameState['wormhole']['run']>
+    wh.wormhole.run = { attending: true } as unknown as NonNullable<GameState['wormhole']['run']>
     expect(cannotInterruptReason(wh)).toContain('虫洞')
 
     const tr = state()
     tr.transit.active = true
     expect(cannotInterruptReason(tr)).toContain('返航')
+  })
+
+  /**
+   * **临时离开虫洞 ⇒ 主控立刻释放**（船长 2026-09-13 批准的口径，`state.wormholePilotHoldReason` 同一把尺）：
+   * `run` 还在、只是 `attending = false` ⇒ 判据必须**不拦**（否则"离开虫洞去做别的"这条路会被堵死）。
+   */
+  it('临时离开虫洞（attending=false）⇒ 主控已释放，不算锁', () => {
+    const s = state()
+    s.wormhole.run = { attending: false } as unknown as NonNullable<GameState['wormhole']['run']>
+    expect(cannotInterruptReason(s)).toBeNull()
+    s.mining.active = true
+    expect(gateMainActivity(s, 'mining').action).toBe('ok')
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * **9×9 矩阵**（**2026-09-21 船长令**的统一口径：能直接切就自动取消当前活动 · 长途运输先警告 ·
+ * 远征/快递不可中断）——行 = 现在占着主控的那一项，列 = 想开始的那一项。
+ *
+ * ⚠ 这一层测的是**九个 `start*` 入口共用的那一个落地口**（`applyActivityGate`：判据 → 该停的停掉
+ * ＋统一日志 → 告诉入口能不能开工）⇒ 一张表就能把三档钉死，不必给九条真命令各搭一套前置现场；
+ * 真命令层面的关键交叉另有专测（`wormhole-activity-lock` / `wormhole-scan` / `manufacturing` /
+ * `industry` / `expedition` / `wormhole-run`）。
+ * ══════════════════════════════════════════════════════════════════════════════════════════════ */
+describe('9×9 矩阵：三档分类逐格钉死（船长 2026-09-21）', () => {
+  /** 九项现场（真命令之外的纯状态构造；每一项对应 `mainActivityOf` 的一个分支） */
+  const SETUP: Record<MainActivityKind, (s: GameState) => void> = {
+    mining: (s) => void (s.mining.active = true),
+    salvaging: (s) => void (s.salvaging.active = true),
+    hauling: (s) => {
+      s.hauling.active = true
+      s.hauling.routeB = 'site-x'
+      s.hauling.toSiteId = 'site-x'
+    },
+    deliver: (s) => void (s.sideTasks.deliver = { taskId: 1, arriveAtGameMs: 600_000 } as never),
+    standby: (s) => void (s.standby.active = true),
+    wormholeScan: (s) => void (s.wormholeScan = { active: true, progressMs: 60_000 } as GameState['wormholeScan']),
+    expedition: (s) => {
+      s.expedition.active = true
+      s.expedition.phase = 'back'
+      s.expedition.battle = null
+    },
+    refine: (s) => void s.refineRuns.push({ id: 1, active: true, worker: 'pilot' } as never),
+    manufacturing: (s) => void s.manufacturingRuns.push({ id: 1, active: true, worker: 'pilot' } as never),
+  }
+  const ALL_KINDS = Object.keys(SETUP) as MainActivityKind[]
+
+  /** 这一项停掉之后，状态里该看到的"已经不在跑" */
+  const STOPPED: Record<MainActivityKind, (s: GameState) => boolean> = {
+    mining: (s) => !s.mining.active,
+    salvaging: (s) => !s.salvaging.active,
+    hauling: (s) => !s.hauling.active,
+    deliver: (s) => s.sideTasks.deliver === null,
+    standby: (s) => !s.standby.active,
+    wormholeScan: (s) => s.wormholeScan?.active !== true,
+    expedition: (s) => !s.expedition.active,
+    refine: (s) => !s.refineRuns.some((r) => r.active && r.worker === 'pilot'),
+    manufacturing: (s) => !s.manufacturingRuns.some((r) => r.active && r.worker === 'pilot'),
+  }
+
+  it('**可自动停的六项**：任意一项在跑时，其余八项都能直接开工（停掉它 + 一条统一日志）', () => {
+    for (const current of AUTO_HALT_KINDS) {
+      for (const next of ALL_KINDS) {
+        if (next === current) continue
+        const s = state()
+        SETUP[current](s)
+        const skip = applyActivityGate(s, next)
+        expect(skip, `当前=${current} → 开始=${next} 应当直接切`).toBeNull()
+        expect(STOPPED[current](s), `当前=${current} 没被停掉`).toBe(true)
+        expect(
+          s.logs.some((l) => l.textId === 'core.activityGate.001' && l.text.includes(KIND_LABEL[current])),
+          `当前=${current} 的自动停机日志不对`,
+        ).toBe(true)
+        expect(s.logs.filter((l) => l.textId === 'core.activityGate.001')).toHaveLength(1) // 一次切换只写一条
+      }
+    }
+  })
+
+  it('**长途运输**：任意一项想开始时都只给警告（`core.activityGate.002`），且**一格都不动**', () => {
+    for (const next of ALL_KINDS) {
+      if (next === 'hauling') continue
+      const s = state()
+      SETUP.hauling(s)
+      const skip = applyActivityGate(s, next)
+      expect(skip?.errorId, `长途运输在跑 → 开始=${next} 应当先警告`).toBe(ACTIVITY_CONFIRM_ID)
+      expect(skip?.error ?? '').toContain('本段报酬拿不到') // 代价写清楚
+      expect(skip?.error ?? '').toContain('再点一次即确认')
+      expect(s.hauling.active, `${next}：首击只警告，不许先把运输停掉`).toBe(true)
+      expect(s.logs.some((l) => l.textId === 'core.activityGate.001')).toBe(false)
+    }
+  })
+
+  it('**远征 / 快递投送**：任意一项想开始时都**拒**（`core.activityGate.003`，在途不可中断）', () => {
+    for (const current of ['expedition', 'deliver'] as MainActivityKind[]) {
+      for (const next of ALL_KINDS) {
+        if (next === current) continue
+        const s = state()
+        SETUP[current](s)
+        const skip = applyActivityGate(s, next)
+        expect(skip?.errorId, `当前=${current} → 开始=${next} 应当拒`).toBe('core.activityGate.003')
+        expect(skip?.error ?? '').toContain('不能中断')
+        expect(STOPPED[current](s), `当前=${current} 不许被停掉`).toBe(false)
+      }
+    }
+  })
+
+  it('**同一项**在跑 ⇒ 放行（幂等；同项的新参数由各入口自己裁决，不由切换判据拦）', () => {
+    for (const kind of ALL_KINDS) {
+      const s = state()
+      SETUP[kind](s)
+      expect(applyActivityGate(s, kind), `${kind} 不该自己拦自己`).toBeNull()
+      expect(s.logs.some((l) => l.textId === 'core.activityGate.001')).toBe(false) // 没有"停机"这回事
+    }
+  })
+
+  it('**三种锁定态**：战斗中 / 洞里 / 返航途中 ⇒ 九项一律拒（`core.activityGate.004~006`）', () => {
+    const locks: Array<[string, string, (s: GameState) => void]> = [
+      ['战斗中', 'core.activityGate.004', (s) => void (s.expedition.battle = {} as never)],
+      ['洞里', 'core.activityGate.005', (s) => void (s.wormhole.run = { attending: true } as never)],
+      ['返航途中', 'core.activityGate.006', (s) => void (s.transit.active = true)],
+    ]
+    for (const [name, id, lock] of locks) {
+      for (const next of ALL_KINDS) {
+        const s = state()
+        lock(s)
+        const skip = applyActivityGate(s, next)
+        expect(skip?.errorId, `${name} 时开始=${next} 应当拒`).toBe(id)
+      }
+    }
   })
 })

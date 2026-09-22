@@ -10,20 +10,29 @@
  * - **v<24（过旧）**：按 2026-09-19 船长裁定**应被拒载入**（`SaveError('VERSION')`）——
  *   能读进来反而是 ❌（说明老迁移没删干净）。仓里留一份最老的档（v17）专门盯这一路。
  *
+ * ⚠ **2026-09-21 补：老档的 13 条「第一次」不再在迁移层直接判过**（船长令「老档直接完成」＋同日
+ * 「第一次任务不要自动完成，要让玩家回到任务中心点击完成」的合流口径）：v30→v31 只打一个收口标记
+ * `firstTaskAutoClaim`，**真正判过发生在读档后的第一拍**（`engine.advanceGame` 里那段一次性收口）。
+ * ⇒ 本工具对"带这个标记的档"**先跑一拍**再核对 ③（与玩家真实路径同构；仍然是纯内存、绝不写档）。
+ *
  * 为什么要它（§3「结构改动后跑构建 ＋ 必要时真档迁移检查」）：存档结构每升一次版就多一段迁移代码，
  * 而"老档读进来会怎样"看代码看不出来——本工具把仓里 80 份各代真档一次性过一遍，**只读、绝不写档**。
  * 退出码：0 = 全部通过；1 = 有存档读不进或有核对项不达标（逐份 ❌ 点名）。
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v28** · 最后核对 2026-09-19 · 最后跑过 2026-09-19
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-09-21 · 最后跑过 2026-09-21
  */
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadSaveFile, MIN_MIGRATABLE_VERSION, SaveError } from '../packages/core/src/save'
 import { CURRENT_STATE_VERSION } from '../packages/core/src/state'
 import { FIRST_TASKS, unlocked } from '../packages/core/src/firstTasks'
+import { advanceGame } from '../packages/core/src/engine'
+import { buildSimContext } from '../packages/data/src/index'
 
 const DIR = join(process.cwd(), 'docs', 'test-saves')
 const files = readdirSync(DIR).filter((f) => f.endsWith('.json'))
+/** 老档收口那一拍要用的内容表（只跑一拍，不落档） */
+const ctx = buildSimContext()
 
 let bad = 0
 let okN = 0
@@ -62,12 +71,30 @@ for (const f of files) {
   }
   try {
     const { state } = loadSaveFile(text)
+    /**
+     * **两条口径分岔**（2026-09-21 补，见头注）：
+     * - **v25 及更早的"老档"**：v25→v26 迁移会把 13 条「第一次」一次性判过 ⇒ 硬要求"13 条全过 + 页面全开"。
+     * - **v26 起的"教程链进行中的档"**：13 条由玩家自己走（2026-09-21 起还要**点「完成」**才推进）⇒
+     *   一律硬要求"13 条全过"会把**玩家的真实存档**误判成失败（他还没玩到那儿）。这一档改钉三件不变量：
+     *   ① 迁移**不倒退**（读档前已判过的照旧判过）；② **不凭空完成**（没走到的任务不许被标 done）；
+     *   ③ 资产三项不变、版本正确、step 合法。完成度与页面锁**如实打印成 ⚠ 读数**（不是失败）。
+     */
+    const legacyAllDone = (raw.version ?? 0) <= 25
+    if (state.firstTaskAutoClaim === true) advanceGame(state, 1000, ctx)
     const problems: string[] = []
+    const notes: string[] = []
     if (state.version !== CURRENT_STATE_VERSION) problems.push(`版本 ${state.version} ≠ ${CURRENT_STATE_VERSION}`)
     const stepOk = state.onboarding.step === 99 || state.onboarding.step === 0
     if (!stepOk) problems.push(`step=${state.onboarding.step}`)
     const missing = FIRST_TASKS.filter((d) => state.importantTasks[d.id]?.done !== true).map((d) => d.id)
-    if (missing.length > 0) problems.push(`未判过 ${missing.length} 条：${missing.slice(0, 3).join(',')}…`)
+    if (legacyAllDone) {
+      if (missing.length > 0) problems.push(`未判过 ${missing.length} 条：${missing.slice(0, 3).join(',')}…`)
+    } else {
+      const rawTasks = (rawState.importantTasks ?? {}) as Record<string, { done?: boolean } | undefined>
+      const lost = FIRST_TASKS.filter((d) => rawTasks[d.id]?.done === true && state.importantTasks[d.id]?.done !== true)
+      if (lost.length > 0) problems.push(`判过又被抹掉 ${lost.length} 条：${lost.map((d) => d.id).slice(0, 3).join(',')}…`)
+      if (missing.length > 0) notes.push(`教程链进行中：还有 ${missing.length} 条待玩家自己做`)
+    }
     // 资产不变（老档判定不发奖励）
     const coreBefore = rawState.aiCores?.basic ?? 0
     const coreAfter = state.aiCores.basic ?? 0
@@ -77,15 +104,22 @@ for (const f of files) {
     if (bpBefore !== bpAfter) problems.push(`蓝图 ${bpBefore}→${bpAfter}`)
     const iskBefore = rawState.wallet?.isk ?? 0
     if (iskBefore !== state.wallet.isk) problems.push(`钱包 ${iskBefore}→${state.wallet.isk}`)
-    // 页面解锁不倒退
+    // 页面解锁不倒退（老档硬要求全开；教程链档如实打印——他还没走到那一步就该是锁的）
     const locked = ['industry', 'market', 'mapMine', 'mapBounty', 'mapSalvage', 'mapHaul'].filter((k) => !unlocked(state, k))
-    if (locked.length > 0) problems.push(`仍锁：${locked.join(',')}`)
+    if (locked.length > 0) {
+      if (legacyAllDone) problems.push(`仍锁：${locked.join(',')}`)
+      else notes.push(`页面仍锁（未解锁的前置未完成）：${locked.join(',')}`)
+    }
     if (problems.length > 0) {
       rows.push(`❌ ${f}（原 v${raw.version ?? '?'}）：${problems.join(' · ')}`)
       bad += 1
     } else {
       okN += 1
-      rows.push(`✅ ${f}（原 v${raw.version ?? '?'} → v${state.version}）step=${state.onboarding.step} · 13 条判过 · 资产不变 · 页面全开`)
+      const okNote = legacyAllDone ? '13 条判过 · 资产不变 · 页面全开' : '不倒退 · 不凭空完成 · 资产不变'
+      rows.push(
+        `✅ ${f}（原 v${raw.version ?? '?'} → v${state.version}）step=${state.onboarding.step} · ${okNote}` +
+          (notes.length > 0 ? ` · ⚠ ${notes.join(' · ')}` : ''),
+      )
     }
   } catch (e) {
     rows.push(`❌ ${f}（原 v${raw.version ?? '?'}）：读取失败 ${(e as Error).message}`)

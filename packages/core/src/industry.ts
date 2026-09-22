@@ -20,7 +20,8 @@
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
 import { matterTechUnboxCut, matterTechVoidYield, matterTechWreckYield } from './matterTech'
-import { addLog, shipLockedReason, wormholePilotHoldReason } from './state'
+import { addLog, shipLockedReason } from './state'
+import { applyActivityGate } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
 import { bumpFirst } from './firstTasks'
@@ -210,25 +211,14 @@ export function startRefineRun(
   if (available <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
   if (worker === 'pilot') {
-    const hold = wormholePilotHoldReason(state)
-    if (hold) return { ok: false, error: hold }
-  }
-  if (worker === 'pilot') {
-    // 主控亲自运转 = 全局限 1 台 + 占主控工作位：与其它主控作业互斥；与主控手动制造共用手动工作位
+    // 主控亲自运转 = 全局限 1 台 + 占主控工作位：与**同族**的炉/线互斥（跨活动互斥已收进 `activityGate`）
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.011' }
     }
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。', errorId: 'core.state.012' }
     }
-    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。', errorId: 'core.state.013' }
-    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。', errorId: 'core.state.014' }
-    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
-    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
-    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
-    if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自开炉。', errorId: 'core.state.036' }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
@@ -260,6 +250,16 @@ export function startRefineRun(
       errorId: 'core.industry.006',
       errorParams: { p1: batchEff, p2: available },
     }
+  }
+  /**
+   * **主控亲自运转 ⇒ 其余主控活动走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，
+   * 只有长途运输那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）。
+   * ⚠ 放在**本入口自己的前置校验之后**（基地网络/物品/配方/余量/够不够一批），
+   * 免得"先停了玩家的活、再说开不了炉"。同族的炉/线互斥仍在上面那个分支里（同一项不算切换）。
+   */
+  if (worker === 'pilot') {
+    const gateSkip = applyActivityGate(state, 'refine')
+    if (gateSkip) return gateSkip
   }
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
@@ -317,14 +317,15 @@ export function startUnboxRun(
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   if (worker === 'pilot') {
-    const hold = wormholePilotHoldReason(state)
-    if (hold) return { ok: false, error: hold }
+    // 同族互斥（跨活动互斥已收进 `activityGate`；本入口自己的前置校验在上面已全部过完）
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
     }
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开工（AI 核心不受此限）。', errorId: 'core.state.035' }
     }
+    const gateSkip = applyActivityGate(state, 'refine')
+    if (gateSkip) return gateSkip
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
@@ -391,25 +392,19 @@ export function startRecycleRun(
       errorParams: { p1: RECYCLE_BATCH_M3, p2: Math.round(available * 100) / 100 },
     }
   }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
+  /**
+   * 主控亲自回收：全局限 1 台 + 与**同族**的炉/线互斥（跨活动互斥已收进 `activityGate`）；
+   * ⚠ 本入口自己的前置校验（基地网络/物品/来源记录/余量/够不够一批）都在上面已过完。
+   */
   if (worker === 'pilot') {
-    const hold = wormholePilotHoldReason(state)
-    if (hold) return { ok: false, error: hold }
-  }
-  if (worker === 'pilot') {
-    // 主控亲自回收：全局限 1 台 + 占主控工作位；与主控手动制造共用手动工作位
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
     }
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。', errorId: 'core.state.012' }
     }
-    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。', errorId: 'core.state.013' }
-    if (state.salvaging.active) return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。', errorId: 'core.state.014' }
-    if (state.expedition.active) return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
-    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
-    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
-    if (state.hauling.active) return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自开炉。', errorId: 'core.state.036' }
+    const gateSkip = applyActivityGate(state, 'refine')
+    if (gateSkip) return gateSkip
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }

@@ -226,13 +226,21 @@ describe('精炼与市场（M1 经济）', () => {
       expect(state.logs.some((l) => l.text.includes('余料保留'))).toBe(true)
     })
 
-    it('无核心/主控忙/不在母港均拒绝启动', () => {
+    it('无核心/不在母港拒绝启动；**采矿中 ⇒ 自动停采后照常开工**（2026-09-21 统一批）', () => {
       state.warehouse.items['ore-a'] = 50
       expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(false) // 无 AI 核心
-      // 采矿中（主控忙）不能亲自运转
+      /**
+       * ⚠ **2026-09-21 船长令改判**：原先"主控忙 ⇒ 硬拒"，现在统一为**能直接切就自动取消当前活动**
+       * （采矿那一档 = 自动停 + 一条统一日志）⇒ 亲自开炉照常开工，矿留在船上。
+       */
       state.mining.active = true
-      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
-      state.mining.active = false
+      state.mining.beltId = [...ctx.belts.keys()][0]!
+      state.mining.phase = 'mining'
+      state.mining.tripUnits = 7
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      expect(state.mining.active).toBe(false)
+      expect(state.logs.some((l) => l.text.includes('已自动停止「开采」'))).toBe(true)
+      expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
       // 不在母港
       state.awayGalaxy = 'galaxy-x'
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)

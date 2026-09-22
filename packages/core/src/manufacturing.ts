@@ -24,7 +24,8 @@
  *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
  *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
-import { addLog, wormholePilotHoldReason } from './state'
+import { addLog } from './state'
+import { applyActivityGate } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, ManufacturingRunState } from './state'
 import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
@@ -315,13 +316,11 @@ export function startManufacturing(
       }
     }
   }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时不能再占主控的工作位
+  /**
+   * 主控亲自制造 = 全局限 1 条 + 与**同族**的手动炉/线互斥（跨活动互斥已收进 `activityGate`，
+   * 见下面材料校验之后那一处——本入口自己的前置校验要先过完）。
+   */
   if (worker === 'pilot') {
-    const hold = wormholePilotHoldReason(state)
-    if (hold) return { ok: false, error: hold }
-  }
-  if (worker === 'pilot') {
-    // 主控亲自制造 = 全局限 1 条 + 与手动精炼/回收共用一个手动工作位 + 占主控工作位
     if (manufacturingManualActive(state)) {
       return {
         ok: false,
@@ -334,22 +333,6 @@ export function startManufacturing(
         ok: false,
         error: '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。',
         errorId: 'core.state.032',
-      }
-    }
-    if (state.mining.active) return { ok: false, error: '采矿作业中：先停止开采。', errorId: 'core.state.013' }
-    if (state.salvaging.active) {
-      return { ok: false, error: '打捞作业中：先停止打捞（或等满仓自动返航）。', errorId: 'core.state.014' }
-    }
-    if (state.expedition.active) {
-      return { ok: false, error: '远征作业中：先召回或等待结束。', errorId: 'core.state.015' }
-    }
-    if (state.standby.active) return { ok: false, error: '掩护巡逻进行中：先召回。', errorId: 'core.state.016' }
-    if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.state.017' }
-    if (state.hauling.active) {
-      return {
-        ok: false,
-        error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再亲自制造。',
-        errorId: 'core.state.033',
       }
     }
   } else {
@@ -377,6 +360,15 @@ export function startManufacturing(
   }
   // 耗时链：calcBuildDurationMs（工业理论 × 批量生产学）为共同基准；AI 先 ÷核心效率；
   // 产线节拍学 −5%/级（2026-09-08 船长定：手动与 AI 核心驱动同享）最后统一再乘一区（无下限护栏）
+  /**
+   * **主控亲自制造 ⇒ 其余主控活动走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，
+   * 只有长途运输那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）。
+   * ⚠ 放在**本入口自己的前置校验之后**（基地网络/蓝图/配方/材料），免得"先停了玩家的活、再说开不了线"。
+   */
+  if (worker === 'pilot') {
+    const gateSkip = applyActivityGate(state, 'manufacturing')
+    if (gateSkip) return gateSkip
+  }
   let durationMs = calcBuildDurationMs(state, ctx, buildable.spec)
   if (worker !== 'pilot') {
     const eff = aiEfficiency(state, ctx, worker)

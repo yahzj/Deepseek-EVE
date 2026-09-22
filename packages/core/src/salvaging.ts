@@ -15,7 +15,8 @@
  * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
  */
 import { tuningMul } from './tuning'
-import { addLog, salvageHalt, wormholePilotHoldReason } from './state'
+import { addLog, salvageHalt } from './state'
+import { applyActivityGate } from './activityGate'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
@@ -90,46 +91,12 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
   const galaxy = ctx.galaxies.get(galaxyId)
   if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.salvaging.001', errorParams: { p1: galaxyId } }
   if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。', errorId: 'core.salvaging.002' }
-  // **进洞 = 主控的一个活动**（船长 2026-09-13 批准）：人在洞里时别的活动开不了
-  const hold = wormholePilotHoldReason(state)
-  if (hold) return { ok: false, error: hold }
+  /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
-  if (state.hauling.active) {
-    return {
-      ok: false,
-      error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再打捞。',
-      errorId: 'core.state.005',
-    }
-  }
   if (salvagerCyclesOf(state, ctx, state.shipId).length === 0) {
     // 2026-09-20 船长令：提示里要**指明去处**（「添加让玩家去装配的提示」）⇒ 文案点到「装配」页
     return { ok: false, error: '打捞需要打捞器：先到「装配」页给驾驶船的高槽装一台（MK1/2/3）再出发。', errorId: 'core.salvaging.003' }
-  }
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止开采。', errorId: 'core.mining.006' }
-  if (state.expedition.active) {
-    return { ok: false, error: '远征进行中：舰船不在空间站，无法出发打捞。', errorId: 'core.salvaging.004' }
-  }
-  if (state.standby.active) {
-    return { ok: false, error: '舰船正前往掩护巡逻星系途中——请先取消。', errorId: 'core.salvaging.005' }
-  }
-  if (state.transit.active) return { ok: false, error: '返航行程中：先等抵达。', errorId: 'core.salvaging.006' }
-  if (state.sideTasks.deliver !== null) {
-    return { ok: false, error: '快递投送途中：暂不能出发打捞——到站自动结算后再安排。', errorId: 'core.salvaging.007' }
-  }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return {
-      ok: false,
-      error: '精炼炉正由你亲自运转：先停炉才能出海（可改用 AI 核心驱动）。',
-      errorId: 'core.salvaging.008',
-    }
-  }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return {
-      ok: false,
-      error: '制造作业正由你亲自开线：先取消它才能出海（可改用 AI 核心驱动）。',
-      errorId: 'core.salvaging.009',
-    }
   }
   /**
    * V13 探索封锁：**目标星系未点亮 ⇒ 拒绝开工**。
@@ -158,6 +125,13 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
       errorParams: { p1: galaxy.name },
     }
   }
+  /**
+   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
+   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 8 条硬拒，现已收进
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（打捞器/探索/航路/残骸池）。
+   */
+  const gateSkip = applyActivityGate(state, 'salvaging')
+  if (gateSkip) return gateSkip
   const s = state.salvaging
   s.active = true
   s.galaxyId = galaxyId

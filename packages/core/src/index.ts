@@ -623,6 +623,27 @@ export {
 export { cancelManufacturing } from './manufacturing'
 export { activityOverview, shipBusyLabel } from './activity'
 export type { ActivityKind, ActivityStopKind, ActivityView } from './activity'
+/**
+ * **主控活动切换的单点判据**（**2026-09-21 船长令**：「统一为能够直接切换（自动取消当前活动），
+ * 像长途运输这种高收益高周期的才加一个警告」）。
+ * 界面用到的是：`ACTIVITY_CONFIRM_ID`（首击警告那句 → 两段确认）与 `haltCurrentActivity`（二击执行）。
+ */
+export {
+  ACTIVITY_CONFIRM_ID,
+  applyActivityHandoff,
+  applyActivityGate,
+  AUTO_HALT_KINDS,
+  cannotInterruptReason,
+  gateMainActivity,
+  gateMainActivityHandoff,
+  haltCurrentActivity,
+  HALT_COST,
+  KIND_LABEL,
+  logAutoHalt,
+  mainActivityOf,
+  WARN_KINDS,
+} from './activityGate'
+export type { ActivityGateSkip, GateVerdict, MainActivityKind } from './activityGate'
 export {
   stationGalaxyIds,
   nearestStationGalaxyId,

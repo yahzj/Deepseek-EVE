@@ -38,6 +38,7 @@
  */
 import { tuningMul } from './tuning'
 import { addLog, HOME_GALAXY_ID } from './state'
+import { applyActivityGate } from './activityGate'
 import type { CourierDeliveryState, GameState, SideTask, SideTasksState } from './state'
 import type { CommandResult } from './engine'
 import type { BeltDef, MarketGoodDef, SimContext, StationSiteDef } from './types'
@@ -1192,26 +1193,6 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
       errorId: 'core.sideTasks.004',
     }
   }
-  // 舰船空闲互斥（快递出发 = 主控携货真实航行；与其余出航作业互为前置）
-  if (state.mining.active) {
-    return { ok: false, error: '采矿作业进行中：请先停止开采，舰船才能出发投送。', errorId: 'core.sideTasks.010' }
-  }
-  if (state.salvaging.active) {
-    return { ok: false, error: '打捞作业进行中：请先停止打捞，舰船才能出发投送。', errorId: 'core.sideTasks.011' }
-  }
-  if (state.expedition.active) {
-    return { ok: false, error: '远征作业中：请先处理远征，舰船才能出发投送。', errorId: 'core.sideTasks.012' }
-  }
-  if (state.standby.active) {
-    return {
-      ok: false,
-      error: '掩护巡逻进行中：请先取消（顶部活动栏），舰船才能出发投送。',
-      errorId: 'core.sideTasks.013',
-    }
-  }
-  if (state.transit.active) {
-    return { ok: false, error: '返航行程中：到站后再出发投送。', errorId: 'core.sideTasks.014' }
-  }
   /**
    * **出发地 = 母港：不在母港就"自动返航"过去**（**2026-09-20 船长**：「**出发不用加守卫，
    * 点击出发后自动返回母港**」）。
@@ -1274,6 +1255,14 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
       errorParams: { p1: targetName },
     }
   }
+  /**
+   * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
+   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 5 条硬拒，现已收进
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（任务存在/到期/目标站/货舱/
+   * 跃迁门槛/航路），免得"先停了玩家的活、再说这单发不了"。
+   */
+  const gateSkip = applyActivityGate(state, 'deliver')
+  if (gateSkip) return gateSkip
   // 虚拟货物：真实货物卸进仓库（不消耗任何物品；货舱被虚拟货物按体积占用）
   const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
   /**
