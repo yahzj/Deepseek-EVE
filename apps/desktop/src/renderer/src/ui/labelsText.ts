@@ -110,3 +110,38 @@ export function skillGroupText(group: string): string {
   const id = SKILL_GROUP_ID[group]
   return id !== undefined ? tr(id) : group
 }
+
+/**
+ * **技能书名**（技能树页的分支，**2026-09-22 船长令**「将现有的技能再进行细分」＝ 23 本）——
+ * 与 `skillGroupText` 同款：数据侧只存 id（`SkillDef.branch`），名字在这里查表（中英齐）。
+ * 查不到就原样返回（漏登记时**看得见**，不静默变空）。
+ */
+const SKILL_BRANCH_ID: Record<string, string> = {
+  'b-fly': 'ui.labelsText.026',
+  'b-mine': 'ui.labelsText.027',
+  'b-refine': 'ui.labelsText.028',
+  'b-craft': 'ui.labelsText.029',
+  'b-salvage': 'ui.labelsText.030',
+  'b-auto': 'ui.labelsText.031',
+  'b-build': 'ui.labelsText.032',
+  'b-indship': 'ui.labelsText.033',
+  'b-weapon': 'ui.labelsText.034',
+  'b-aim': 'ui.labelsText.035',
+  'b-ammo': 'ui.labelsText.036',
+  'b-drone': 'ui.labelsText.037',
+  'b-warship': 'ui.labelsText.038',
+  'b-protect': 'ui.labelsText.039',
+  'b-repair': 'ui.labelsText.040',
+  'b-shipfit': 'ui.labelsText.041',
+  'b-ai': 'ui.labelsText.042',
+  'b-learn': 'ui.labelsText.043',
+  'b-scan': 'ui.labelsText.044',
+  'b-survive': 'ui.labelsText.045',
+  'b-market': 'ui.labelsText.046',
+  'b-bounty': 'ui.labelsText.047',
+  'b-logistics': 'ui.labelsText.048',
+}
+export function skillBranchText(branch: string): string {
+  const id = SKILL_BRANCH_ID[branch]
+  return id !== undefined ? tr(id) : branch
+}

@@ -2,7 +2,7 @@
  * @whale/data 对外出口：技能表 + 内容表 + 引擎运行上下文。
  */
 
-export { SKILLS, SKILL_GROUPS, buildSkillCatalog } from './skills'
+export { SKILLS, SKILL_GROUPS, SKILL_BRANCHES, buildSkillCatalog } from './skills'
 export { ORES, MINERALS, ITEMS, DRONES, buildItemCatalog } from './items'
 export { BELTS, buildBeltCatalog } from './belts'
 export { SHIPS, buildShipCatalog } from './ships'

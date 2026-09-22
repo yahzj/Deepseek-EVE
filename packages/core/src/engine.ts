@@ -17,7 +17,7 @@ import { tuningMul } from './tuning'
 import { composeLog } from './logParts'
 import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { CmdText, GameState, TrainingItem } from './state'
-import type { SimContext, SkillCatalog } from './types'
+import type { SimContext, SkillCatalog, SkillDef } from './types'
 import { skillLevelTimeMs, trainingTimeFactor } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
 import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
@@ -401,6 +401,33 @@ function queuedSameCount(state: GameState, skillId: string): number {
 }
 
 /** 玩家指令：把某技能"排入队列训练到第几级"（T2 连锁：必须逐级 +1 递增） */
+/**
+ * **前置技能的最低等级**（**2026-09-22 船长裁定：「甲，lv1」**）——"学过就能往下走"，
+ * 不拖开局节奏。要更硬（如 Lv3）改这一个常数即可（`content:check` 与界面都读它）。
+ */
+export const PREREQ_MIN_LEVEL = 1
+
+/**
+ * **该技能还差哪些前置**（**真前置的唯一判据**，界面置灰与 `enqueueSkill` 共用这把尺）：
+ * 返回**未达 `PREREQ_MIN_LEVEL` 的前置技能定义**（都达标 ⇒ 空数组）。表里查不到的 id 一律忽略
+ * （`content:check` 会把悬空前置点红，运行期不因此卡住玩家）。
+ */
+export function skillLockMissing(
+  state: GameState,
+  def: SkillDef,
+  catalog: SkillCatalog,
+): readonly SkillDef[] {
+  const pre = def.prereq
+  if (pre === undefined || pre.length === 0) return []
+  const out: SkillDef[] = []
+  for (const pid of pre) {
+    const pdef = catalog.get(pid)
+    if (!pdef) continue
+    if ((state.skills.trained[pid] ?? 0) < PREREQ_MIN_LEVEL) out.push(pdef)
+  }
+  return out
+}
+
 export function enqueueSkill(
   state: GameState,
   skillId: string,
@@ -411,6 +438,22 @@ export function enqueueSkill(
   if (!def) return { ok: false, error: `未知技能：${skillId}（数据表里没有）。`, errorId: 'core.engine.005', errorParams: { p1: skillId } }
   if (HIDDEN_SKILL_IDS.includes(skillId)) {
     return { ok: false, error: `「${def.name}」尚在研发中，暂不可训练。`, errorId: 'core.engine.006', errorParams: { p1: def.name } }
+  }
+  /**
+   * **真前置校验**（**2026-09-22 船长令**：「**将同类效果的技能做成上下级关系**」＋门槛 **Lv1**）：
+   * 前置**全部**达到 `PREREQ_MIN_LEVEL` 才放行；缺哪条就把名字摆出来（界面置灰走同一把尺，见
+   * `skillLockMissing`）。**老档零迁移**：判据只看 `skills.trained` 的已练等级 ⇒ 已经练过前置的档
+   * 天然满足，不需要任何迁移键、也不回收已练技能。
+   */
+  const locked = skillLockMissing(state, def, catalog)
+  if (locked.length > 0) {
+    const names = locked.map((d) => `${d.name} Lv${PREREQ_MIN_LEVEL}`).join('、')
+    return {
+      ok: false,
+      error: `「${def.name}」需要先练：${names}。`,
+      errorId: 'core.engine.019',
+      errorParams: { p1: def.name, p2: names },
+    }
   }
   if (!Number.isInteger(targetLevel) || targetLevel < 1 || targetLevel > MAX_SKILL_LEVEL) {
     return {
