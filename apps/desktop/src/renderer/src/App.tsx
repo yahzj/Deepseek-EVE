@@ -43,7 +43,7 @@ import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
-import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
+import { ActivityScreen, activityKindOf, activityWinEnabled } from './ui/ActivityScreen'
 import { MoneyFit } from './ui/MoneyFit'
 import { cmdText, logText, tr } from './i18n/locale'
 
@@ -753,10 +753,52 @@ export function App({ engine }: { engine: GameEngine }) {
   const [activityOpen, setActivityOpen] = useState(false)
   const prevActivityRef = useRef<string | null>(null)
   useEffect(() => {
-    // 交火时不抢战斗窗口（战斗优先）：只记录，不弹出
-    if (activityKind !== null && prevActivityRef.current === null && !inBattle) setActivityOpen(true)
+    const prev = prevActivityRef.current
     prevActivityRef.current = activityKind
+    // **活动结束 ⇒ 自动收起**（2026-09-21 船长令：「切换导航栏**之类**的时候就隐藏并最小化」的那一类）：
+    // 顺手把状态归零，免得留下"窗口开着但没活动"的幽灵态（下次活动开始的上升沿照样会自动弹出）。
+    if (activityKind === null) {
+      setActivityOpen(false)
+      return
+    }
+    // 交火时不抢战斗窗口（战斗优先）：只记录，不弹出
+    if (prev === null && !inBattle) setActivityOpen(true)
   }, [activityKind, inBattle])
+
+  /**
+   * ── **收起两个窗口**（2026-09-21 船长令）──
+   *
+   * 船长原话：「玩家如果点击**最小化**或者**切换导航栏之类**的时候就隐藏并最小化。」
+   * ⇒ 四个触发点全部走这一个函数：
+   * ① 点窗口顶栏「← 最小化」（窗口自己调 `onMinimize`）；
+   * ② **切页**（`changePage`：导航项 / 活动栏跳转 / 星图里的跳转都算——虫洞面板也在这条链上）；
+   * ③ **打开弹层**（手册 / 设置 / 公告：弹层一上来，主区那块就该还给页面）；
+   * ④ **活动结束**（见上面那个 effect）。
+   */
+  const hideWindows = (): void => {
+    setBattleOpen(false)
+    setActivityOpen(false)
+  }
+
+  /**
+   * ── **挂载 ≠ 上屏**（2026-09-21 定，别把这两件事混起来）──
+   *
+   * - **战斗屏**：只要"在打"或"窗口开着"就**保持挂载** —— 它的慢镜（outro）与**战后战报**是在引擎
+   *   结算**之后**才渲染的，而那一刻 `inBattle` 已经变 false；若按 `inBattle` 卸载，
+   *   **战报就永远弹不出来**（2026-09-21 自查发现：这正是本批之前那次改动留下的漏洞——原写法是
+   *   `battleOpen ? <BattleScreen/> : null`，被我改成了 `inBattle ? …`）。
+   * - **上屏**（占主区、顶掉页面）只看 `battleOpen` / `activityOpen`；`open=false` 的战斗屏挂在场上但什么都不渲染。
+   * - **战斗优先**：两边同时开着时只上屏战斗窗口（那是正在打的一仗）。
+   */
+  const battleOnStage = battleOpen
+  /**
+   * ⚠ 活动窗口还有一道**可见开关**（调试模式，`activityWinEnabled()`）。它必须算进"上屏"判定里：
+   * 嵌入形态下窗口上屏 = 页面让位，若 App 不知道这把开关，关掉调试时就会变成
+   * **窗口不渲染、页面却已经被让位 ⇒ 主区一片空白**（2026-09-21 自查抓到）。
+   */
+  const activityWinOn = activityWinEnabled() && activityKind !== null
+  const activityOnStage = !battleOnStage && activityWinOn && activityOpen
+  const winOnStage = battleOnStage || activityOnStage
 
   /**
    * ── **最小化后的还原入口**（2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮合并」）──
@@ -769,7 +811,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const windowRestore: { title: string; onRestore: () => void } | null =
     inBattle && !battleOpen
       ? { title: tr('ui.App.083'), onRestore: () => setBattleOpen(true) }
-      : activityKind !== null && !activityOpen
+      : activityWinOn && !activityOpen
         ? { title: tr('ui.ActivityWin.008'), onRestore: () => setActivityOpen(true) }
         : null
 
@@ -919,6 +961,12 @@ export function App({ engine }: { engine: GameEngine }) {
      */
     if (p === page) pulseNav(p)
     else setNavBeat(null)
+    /**
+     * **切页 ⇒ 收起嵌入的窗口**（2026-09-21 船长令：「切换导航栏之类的时候就隐藏并最小化」）。
+     * 放在这里而不是导航按钮上：导航项、活动栏跳转、星图里的跳转、虫洞面板入口全都走 `changePage`
+     * ⇒ 一处覆盖全部"换页"路径（漏一处就是"某个入口切了页窗口还杵着"的隐性 bug）。
+     */
+    hideWindows()
     setPage(p)
   }
   const changeMapTab = (t: MapTab): void => {
@@ -1007,7 +1055,8 @@ export function App({ engine }: { engine: GameEngine }) {
            * ⇒ 顶栏这里不再显示余额，只留在线时长与公告/按钮。落点在 `app-nav-side` 首项上方。
            */}
           <span className="app-clock">{tr("ui.App.059")} {formatDurationMs(state.gameMs)}</span>
-          <AnnouncementHub engine={engine} />
+          {/* 公告弹层一开就收起嵌入的窗口（2026-09-21 船长令：打开弹层即隐藏并最小化） */}
+          <AnnouncementHub engine={engine} onOpen={hideWindows} />
           <button
             className="app-btn"
             onClick={copyQqGroup}
@@ -1015,10 +1064,24 @@ export function App({ engine }: { engine: GameEngine }) {
           >
             {qqCopied ? tr("ui.App.060") : tr("ui.App.112", { QQ_GROUP: QQ_GROUP })}
           </button>
-          <button className="app-btn" onClick={() => setShowHandbook(true)} title={tr("ui.App.061")}>
+          <button
+            className="app-btn"
+            onClick={() => {
+              setShowHandbook(true)
+              hideWindows() // 打开弹层即收起（同上）
+            }}
+            title={tr("ui.App.061")}
+          >
             {t('ui.App.028')}
           </button>
-          <button className="app-btn" onClick={() => setShowSettings(true)} title={tr("ui.App.062")}>
+          <button
+            className="app-btn"
+            onClick={() => {
+              setShowSettings(true)
+              hideWindows() // 打开弹层即收起（同上）
+            }}
+            title={tr("ui.App.062")}
+          >
             {t('ui.App.010')}
           </button>
           <button className="app-btn" onClick={() => void handleSave()}>
@@ -1106,10 +1169,47 @@ export function App({ engine }: { engine: GameEngine }) {
             }}
             onOpenWormhole={openWormhole}
           />
+          {/**
+           * ───── **两个持续性窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
+           *
+           * 船长原话：「我的意思是**取消悬浮，直接嵌入主窗口**，玩家如果点击最小化或者切换导航栏
+           * 之类的时候就隐藏并最小化。」
+           * ⇒ 与上一版（浮层覆盖主内容区）彻底不同：这里**没有浮层**，窗口就是主区里的一个正常块，
+           * 上屏时**页面整块让位**（`.app-page-content.is-win-hidden { display:none }`，
+           * ⚠ **只是不上屏、不是卸载**：页里的检索词 / 滚动位置 / 弹层状态都留住，回来时原样）。
+           *
+           * **挂载 vs 上屏**（关键区别，见上方 `battleOnStage` 那段注释）：
+           * 战斗屏在"打完了但战报还没弹"的窗口期必须继续挂着，所以这里的条件不是 `battleOnStage`。
+           * `.app-win-host` 用 `display: contents` ⇒ 本身不产生盒子，窗口直接参与主区的 flex 排布，
+           * 因此"挂着但不上屏"时它不会白占地方。
+           */}
+          <div className="app-win-host">
+            {inBattle || battleOpen ? (
+              <BattleScreen
+                engine={engine}
+                onToast={showToast}
+                open={battleOnStage}
+                onClose={() => {
+                  // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
+                  // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
+                  // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
+                  setBattleOpen(false)
+                }}
+              />
+            ) : null}
+            {activityOnStage ? (
+              <ActivityScreen
+                state={state}
+                ctx={engine.ctx}
+                open
+                onMinimize={() => setActivityOpen(false)}
+              />
+            ) : null}
+          </div>
           {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗）。
               `key={page}` ⇒ 换页即重挂载 = 入场淡入（切页反馈）；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
           <div
-            className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}`}
+            className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}${winOnStage ? ' is-win-hidden' : ''}`}
             key={page}
           >
             {page === 'ship' ? (
@@ -1219,36 +1319,6 @@ export function App({ engine }: { engine: GameEngine }) {
               />
             ) : null}
           </div>
-          {/**
-           * ───── **两个持续性窗口挂在主内容区里**（2026-09-21 船长令）─────
-           *
-           * 船长原话：「弹出的悬浮窗口形式有些太遮挡了，能否改为覆盖在当前的主窗口上？」
-           * ⇒ 两个窗口壳由"整屏 fixed 层"改为**挂进 `.app-page-main`**（`ui/WinBox.tsx` 的层用
-           * `position: absolute; inset: 0` 吃这块容器）——**不盖左导航与顶栏**、去掉深色遮罩、
-           * 窗外可点穿（非模态）⇒ 打开窗口时底下照样能操作游戏。
-           * ⚠ 因此它们必须留在 `<main>` 内部：挪出去就退回"整屏遮挡"（几何由 `npm run ui:actwin` 核实）。
-           */}
-          {inBattle ? (
-            <BattleScreen
-              engine={engine}
-              onToast={showToast}
-              open={battleOpen}
-              onClose={() => {
-                // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
-                // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
-                // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
-                setBattleOpen(false)
-              }}
-            />
-          ) : null}
-          {activityKind !== null ? (
-            <ActivityScreen
-              state={state}
-              ctx={engine.ctx}
-              open={activityOpen}
-              onMinimize={() => setActivityOpen(false)}
-            />
-          ) : null}
         </main>
         <div className="app-log-dock">
           <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>

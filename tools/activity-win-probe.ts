@@ -244,15 +244,19 @@ interface Reading {  sel: string
   area: number[] | null
   nav: number[] | null
   header: number[] | null
+  /** 活动栏（窗口该占的是它**下面**那块） */
+  barRect: number[] | null
   /** 最小化后的还原入口（合并进左上角小窗）：小窗是不是还原按钮 + 角标文字 */
   restore: { isButton: boolean; badge: string; title: string }
+  /** 主区那一页是否已让位（`display: none`）——嵌入形态的判据之一 */
+  pageHidden: boolean
   /**
-   * **等比缩放读数**（2026-09-21 船长令「窄屏窗口偏小采用等比缩放」）：
-   * `layout` = 窗口的**布局尺寸**（= CSS 设计尺寸，装不下也不重排）、`scale` = 实际生效的缩放系数、
-   * `aspect` = 渲染宽高比（应与布局一致 ⇒ "等比"而不是"被压扁"）。
-   * ⚠ 三个视口下 `layout` 必须**完全一样**——那是"版式不重排"的判据。
+   * **嵌入形态读数**（2026-09-21 船长令「取消悬浮，直接嵌入主窗口」）：
+   * `inline` = 窗口是不是文档流里的普通块（不是 fixed/absolute 浮层）；
+   * `zIndex` = 计算值（浮层时代是 110；嵌入后应为 auto）。
+   * ⚠ "浮层 vs 嵌入"看这两个就够：浮层的 `position` 一定是 fixed/absolute、且带 z-index。
    */
-  zoom: { layout: number[]; scale: number; aspect: number }
+  embed: { position: string; zIndex: string }
 }
 
 /** 元素 → 屏幕矩形 `[left, top, w, h]`（取不到返回 null） */
@@ -273,6 +277,12 @@ const RESTORE_OF = `(() => {
     badge: b ? (b.textContent || '') : '',
     title: w.getAttribute('title') || '',
   }
+})()`
+
+/** 主区那一页是否已让位（嵌入形态下窗口上屏时它应该是 `display: none`） */
+const PAGE_HIDDEN = `(() => {
+  const p = document.querySelector('.app-page-content')
+  return !!p && getComputedStyle(p).display === 'none'
 })()`
 
 /**
@@ -298,7 +308,7 @@ async function read(cdp: Cdp, sel: string): Promise<Reading> {
   return cdp.evalJS<Reading>(`(() => {
     const el = document.querySelector(${JSON.stringify(sel)})
     const de = document.documentElement
-    const empty = { sel: ${JSON.stringify(sel)}, found: false, w:0,h:0,left:0,top:0,position:'',docScrollW:de.scrollWidth,docScrollH:de.scrollHeight,overflowW:false,overflowH:false,title:'',fx:{svg:false,nodes:0,animated:[],dead:[],staticN:0},bar:null,lines:[],beat:{cycle:'',delay:'',tickDur:''},art:{ship:0,stars:0,drift:0,tick:0},bbox:{ship:null,beam:null,work:null},area:${RECT_OF('.app-page-main')},nav:${RECT_OF('.app-nav-side')},header:${RECT_OF('.app-header')},restore:${RESTORE_OF},zoom:{layout:[0,0],scale:1,aspect:0} }
+    const empty = { sel: ${JSON.stringify(sel)}, found: false, w:0,h:0,left:0,top:0,position:'',docScrollW:de.scrollWidth,docScrollH:de.scrollHeight,overflowW:false,overflowH:false,title:'',fx:{svg:false,nodes:0,animated:[],dead:[],staticN:0},bar:null,lines:[],beat:{cycle:'',delay:'',tickDur:''},art:{ship:0,stars:0,drift:0,tick:0},bbox:{ship:null,beam:null,work:null},area:${RECT_OF('.app-page-main')},nav:${RECT_OF('.app-nav-side')},header:${RECT_OF('.app-header')},barRect:${RECT_OF('.app-activitybar')},restore:${RESTORE_OF},pageHidden:${PAGE_HIDDEN},embed:{position:'',zIndex:''} }
     if (!el) return empty
     const r = el.getBoundingClientRect()
     const cs = getComputedStyle(el)
@@ -357,38 +367,47 @@ async function read(cdp: Cdp, sel: string): Promise<Reading> {
       area: ${RECT_OF('.app-page-main')},
       nav: ${RECT_OF('.app-nav-side')},
       header: ${RECT_OF('.app-header')},
+      barRect: ${RECT_OF('.app-activitybar')},
       restore: ${RESTORE_OF},
-      zoom: {
-        layout: [el.offsetWidth, el.offsetHeight],
-        scale: Number((getComputedStyle(el).getPropertyValue('--win-scale') || '1').trim()) || 1,
-        aspect: r.height > 0 ? Math.round((r.width / r.height) * 100) / 100 : 0,
-      },
+      pageHidden: ${PAGE_HIDDEN},
+      embed: { position: cs.position, zIndex: cs.zIndex },
     }
   })()`)
 }
 
 /**
- * 一行几何读数。**口径以"主内容区"为基准**（不是视口）——2026-09-21 船长令后窗口只盖主内容区：
- * `居中` = 在主内容区里居中；`非全屏` = 没铺满那块；`不盖导航/顶栏` = 窗口矩形完全落在两块的右/下方。
+ * 一行几何读数。**嵌入形态的口径**（2026-09-21 船长令「取消悬浮，直接嵌入主窗口」）：
+ * - `嵌入=是`：窗口是文档流里的普通块（`position: static` 且无 z-index）——浮层时代这里是 `absolute` + `z-index 110`；
+ * - `填满=是`：正好占住"**活动栏之下那块**"（不叠、不留缝、也不越界）；
+ * - `页面让位=是`：主区那一页 `display: none`（嵌入形态靠"同一时刻只有一边上屏"实现，页面仍挂载）。
  */
 function line(tag: string, r: Reading): string {
   if (!r.found) return `  ${tag.padEnd(12)} ✗ 没找到 ${r.sel}`
-  const a = r.area
-  const centered = a ? Math.abs(r.left - (a[0]! + (a[2]! - r.w) / 2)) <= 2 && Math.abs(r.top - (a[1]! + (a[3]! - r.h) / 2)) <= 2 : false
-  const notFull = a ? r.w <= a[2]! - 4 && r.h <= a[3]! - 4 : false
-  // 不盖左导航与顶栏 = 窗口的左边 ≥ 导航右边、上边 ≥ 顶栏下边（留 1px 取整余量）
-  const navR = r.nav ? r.nav[0]! + r.nav[2]! : null
-  const headB = r.header ? r.header[1]! + r.header[3]! : null
-  const clearNav = navR === null || r.left >= navR - 1
-  const clearHead = headB === null || r.top >= headB - 1
+  const m = r.area
+  const b = r.barRect
+  const inline = r.embed.position === 'static' && (r.embed.zIndex === 'auto' || r.embed.zIndex === '0')
+  let fillTxt = '(缺主区/活动栏读数)'
+  if (m && b) {
+    const barBottom = b[1]! + b[3]!
+    const mainBottom = m[1]! + m[3]!
+    /**
+     * 「填满活动栏之下那块」的判据（不按"活动栏底边"硬算高度：活动栏自带 6px 下边距，硬算会误报）：
+     * 左边与主区同列、宽 = 主区宽 − 4px（主区自带 4px 右内边距）、上边落在活动栏底边之下 10px 内、
+     * 下边贴到主区底边 6px 内。
+     */
+    const leftOk = Math.abs(r.left - m[0]!) <= 2
+    const widthOk = Math.abs(r.w - (m[2]! - 4)) <= 6
+    const topOk = r.top >= barBottom - 1 && r.top <= barBottom + 10
+    const bottomOk = Math.abs(r.top + r.h - mainBottom) <= 6
+    fillTxt = leftOk && widthOk && topOk && bottomOk
+      ? '是'
+      : `否（左${leftOk ? 'ok' : '✗'} 宽${widthOk ? 'ok' : '✗'} 上${topOk ? 'ok' : `✗(活动栏底 ${Math.round(barBottom)} → 窗口 ${r.top})`} 下${bottomOk ? 'ok' : '✗'}）`
+  }
   return (
-    `  ${tag.padEnd(12)} ${r.w}×${r.h} @(${r.left},${r.top})  position=${r.position}` +
-    `  设计=${r.zoom.layout[0]}×${r.zoom.layout[1]}  缩放=${r.zoom.scale}` +
-    `  区内容器=${a ? `${a[2]}×${a[3]}@(${a[0]},${a[1]})` : '(无)'}` +
-    `  区内居中=${centered ? '是' : '否'}  非全屏=${notFull ? '是' : '否'}` +
-    `  不盖导航/顶栏=${clearNav && clearHead ? '是' : `否(导航${clearNav ? 'ok' : '✗'}/顶栏${clearHead ? 'ok' : '✗'})`}` +
-    `  文档溢出=${r.overflowW || r.overflowH ? `宽${r.overflowW}/高${r.overflowH}` : '无'}` +
-    (r.title ? `  标题="${r.title}"` : '')
+    `  ${tag.padEnd(12)} ${r.w}×${r.h} @(${r.left},${r.top})  position=${r.embed.position} z=${r.embed.zIndex}` +
+    `  嵌入=${inline ? '是' : '否 ⚠（还是浮层）'}  填满活动栏下那块=${fillTxt}` +
+    `  页面让位=${r.pageHidden ? '是' : '否'}  标题="${r.title}"` +
+    `  文档溢出=${r.overflowW || r.overflowH ? `宽${r.overflowW}/高${r.overflowH}` : '无'}`
   )
 }
 
@@ -588,64 +607,71 @@ async function main(): Promise<void> {
       say(`  ${''.padEnd(12)} 战斗窗口存在=${battle.found ? '是' : '否'}  展开态还原入口=${act.restore.isButton ? '在（不该：窗口开着）' : '无（对）'}`)
     }
     /**
-     * C. **两个窗口壳的几何**：活动壳已由上面真档实测；战斗壳仓里没有 `phase==='battle'` 的档、
-     *    也伪造不出 `combatView`（引擎只在真交火时给）⇒ 量**同构元素**（生产类名 + 壳内两层）。
+     * C. **战斗壳的几何**：活动壳已由上面真档实测；战斗壳仓里没有 `phase === 'battle'` 的档、
+     *    也伪造不出 `combatView`（引擎只在真交火时给）⇒ 量**同构元素**（生产类名 + 壳内两层），
+     *    并按生产的做法把页面让位（`.app-page-content.is-win-hidden`）再量。
      *    量的是真 CSS，但**不是实弹交火**——读数表里标注。
-     *    ⚠ 同构元素要挂进 `.app-page-main`（生产位置），挂到 `document.body` 量出来的是另一套数；
-     *    等比缩放由 JS 算（`ui/WinBox.tsx`）⇒ 这里**照抄同一个公式**把 `--win-scale` 补上再量，
-     *    否则量到的是"没缩放的溢出态"。
+     *    ⚠ 同构元素要挂进生产位置（`.app-win-host` 里、紧接活动栏之后），挂到 `document.body` 量的是另一套数。
      */
-    const shells = await cdp.evalJS<Record<string, number[] | null>>(`(() => {
-      const host = document.querySelector('.app-page-main')
-      if (!host) return {}
-      const mk = (cls) => {
-        const layer = document.createElement('div'); layer.className = 'app-winbox-layer'
-        const box = document.createElement('div'); box.className = cls
-        const head = document.createElement('div'); head.className = 'app-winbox-head'
-        const body = document.createElement('div'); body.className = 'app-winbox-body'
-        box.append(head, body); layer.append(box); host.append(layer)
-        const cs = getComputedStyle(layer)
-        const aw = layer.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
-        const ah = layer.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
-        const s = Math.min(1, aw / box.offsetWidth, ah / box.offsetHeight)
-        box.style.setProperty('--win-scale', s)
-        const r = box.getBoundingClientRect()
-        const out = [r.left, r.top, r.width, r.height, s, box.offsetWidth, box.offsetHeight].map((v) => Math.round(v * 1000) / 1000)
-        layer.remove()
-        return out
-      }
-      return { battle: mk('app-winbox is-battle'), activity: mk('app-winbox is-activity') }
+    const shell = await cdp.evalJS<number[] | null>(`(() => {
+      const host = document.createElement('div'); host.className = 'app-win-host'
+      const box = document.createElement('div'); box.className = 'app-winbox is-battle'
+      const head = document.createElement('div'); head.className = 'app-winbox-head'
+      const body = document.createElement('div'); body.className = 'app-winbox-body'
+      box.append(head, body); host.append(box)
+      const bar = document.querySelector('.app-activitybar')
+      if (!bar || !bar.parentElement) return null
+      bar.after(host)
+      /**
+       * 量之前要把**另外两个 flex:1 的兄弟**让开，否则它们平分高度、量到的是"一半"：
+       * ① 页面（.app-page-content）：用**内联 display**——加类名会被 React 每 tick 刷回去（首测踩过）；
+       * ② **真活动窗口**（此刻 scan-wh 那份正上屏）：不隐藏它，量到的就是 690/2 ≈ 342。
+       * ⚠ 本段注释里**不许出现反引号**：它整段是外层模板字符串（首测就被反引号提前截断，报一串怪错）。
+       */
+      const page = document.querySelector('.app-page-content')
+      const live = document.querySelector('.app-winbox.is-activity')
+      // ⚠ 注入脚本是**外层模板字符串**，这里不能写 ES 模板串（反引号会提前结束外层）⇒ 用数组存旧值
+      const savedPage = page ? page.style.display : ''
+      const savedLive = live ? live.style.display : ''
+      if (page) page.style.display = 'none'
+      if (live) live.style.display = 'none'
+      const r = box.getBoundingClientRect()
+      const out = [r.left, r.top, r.width, r.height].map((v) => Math.round(v))
+      if (page) page.style.display = savedPage
+      if (live) live.style.display = savedLive
+      host.remove()
+      return out
     })()`)
     const area = await cdp.evalJS<number[] | null>(RECT_OF('.app-page-main'))
-    const navR = await cdp.evalJS<number[] | null>(RECT_OF('.app-nav-side'))
-    const headB = await cdp.evalJS<number[] | null>(RECT_OF('.app-header'))
-    for (const [k, label] of [['battle', '战斗壳(同构)'], ['activity', '活动壳(同构)']] as const) {
-      const o = shells[k]
-      if (!o || !area) continue
-      const centered = Math.abs(o[0]! - (area[0]! + (area[2]! - o[2]!) / 2)) <= 2 && Math.abs(o[1]! - (area[1]! + (area[3]! - o[3]!) / 2)) <= 2
-      const notFull = o[2]! <= area[2]! - 4 && o[3]! <= area[3]! - 4
-      const clear = o[0]! >= (navR ? navR[0]! + navR[2]! : 0) - 1 && o[1]! >= (headB ? headB[1]! + headB[3]! : 0) - 1
-      const aspect = o[5]! > 0 ? Math.round((o[5]! / o[6]!) * 100) / 100 : 0
-      const aspectR = o[3]! > 0 ? Math.round((o[2]! / o[3]!) * 100) / 100 : 0
+    const barR = await cdp.evalJS<number[] | null>(RECT_OF('.app-activitybar'))
+    if (shell && area && barR) {
+      const barBottom = barR[1]! + barR[3]!
+      const mainBottom = area[1]! + area[3]!
+      const ok =
+        Math.abs(shell[0]! - area[0]!) <= 2 &&
+        Math.abs(shell[2]! - (area[2]! - 4)) <= 6 &&
+        shell[1]! >= barBottom - 1 &&
+        shell[1]! <= barBottom + 10 &&
+        Math.abs(shell[1]! + shell[3]! - mainBottom) <= 6
       say(
-        `  ${label.padEnd(12)} ${o[2]}×${o[3]} @(${o[0]},${o[1]})  设计=${o[5]}×${o[6]}  缩放=${o[4]}` +
-          `  等比=${Math.abs(aspect - aspectR) < 0.02 ? '是' : `否(${aspect} vs ${aspectR})`}` +
-          `  区内居中=${centered ? '是' : '否'}  非全屏=${notFull ? '是' : '否'}  不盖导航/顶栏=${clear ? '是' : '否'}`,
+        `  ${'战斗壳(同构)'.padEnd(12)} ${shell[2]}×${shell[3]} @(${shell[0]},${shell[1]})` +
+          `  填满活动栏下那块=${ok ? '是' : '否 ⚠'}（活动栏底 ${Math.round(barBottom)} · 主区底 ${Math.round(mainBottom)}）`,
       )
     }
 
     /**
-     * D. **最小化 / 还原链**（2026-09-21 船长令后新链路，必须真点按钮核实）：
-     *    点窗口顶栏「← 最小化」→ 窗口消失 + 左上角小窗变成还原按钮 → 点小窗 → 窗口回来。
+     * D. **收起链**（2026-09-21 船长令：「点击最小化或者切换导航栏之类的时候就隐藏并最小化」）：
+     *    四个触发点全部**真点**核实——点最小化 / 切导航 / 开弹层 / 活动结束。
      *    用某一份活动夹具走一遍即可（窗口壳两个消费方共用 ⇒ 机制同源）。
      */
-    if (vp.w === 1440) await testMinimizeRestore(cdp)
+    if (vp.w === 1440) await testCollapse(cdp)
   }
   say('\n（以上均为读数；观感结论由船长判）')
 }
 
 /** D 节：最小化 → 小窗变还原按钮 → 点小窗还原（CDP 真点，不看 DOM 里"有没有元素"就算完） */
-async function testMinimizeRestore(cdp: Cdp): Promise<void> {
+/** 载入活动夹具（采掘）并等窗口上屏 */
+async function loadMiningCase(cdp: Cdp, what: string): Promise<boolean> {
   const c = CASES.find((x) => x.name === 'mining')!
   let text = readFileSync(join(SAVE_DIR, c.file), 'utf8')
   const obj = JSON.parse(text) as Record<string, unknown>
@@ -653,37 +679,124 @@ async function testMinimizeRestore(cdp: Cdp): Promise<void> {
   text = JSON.stringify(obj).replace(/\\/g, '\\\\').replace(/`/g, '\\`')
   await cdp.evalJS(`localStorage.setItem(${JSON.stringify(SAVE_KEY)}, \`${text}\`); 1`)
   await cdp.send('Page.navigate', { url: APP })
-  await waitFor(cdp, `document.querySelector('.app-nav-side')`, '最小化链：主界面')
-  if (!(await waitFor(cdp, `document.querySelector('.app-winbox.is-activity')`, '最小化链：活动窗口'))) return
-  say('\n═══ 最小化 / 还原链（真点按钮）═══')
+  await waitFor(cdp, `document.querySelector('.app-nav-side')`, `${what}：主界面`)
+  return waitFor(cdp, `document.querySelector('.app-winbox.is-activity')`, `${what}：活动窗口`)
+}
+
+/**
+ * D 节：**收起链**四个触发点（CDP 真点，不看"DOM 里有没有元素"就算完）：
+ * ① 点「← 最小化」→ 窗口消失 + 小窗变还原按钮；② 点小窗 → 窗口回来；
+ * ③ 切导航页 → 窗口自动收起且页面回来；④ 开弹层（手册）→ 同样收起；
+ * ⑤ 活动结束（用调试「⇧ 快进」把采掘这趟跑完）→ 窗口自动收起。
+ */
+async function testCollapse(cdp: Cdp): Promise<void> {
+  if (!(await loadMiningCase(cdp, '收起链'))) return
+  say('\n═══ 收起链（真点按钮 / 真切页 / 真开弹层）═══')
+  const click = async (sel: string): Promise<boolean> =>
+    cdp.evalJS<boolean>(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return false; el.click(); return true })()`)
+  const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
   const before = await read(cdp, '.app-winbox.is-activity')
-  say(`  ${'初始'.padEnd(12)} 窗口=${before.found ? '在' : '不在'} · ${restoreLine(before)}`)
-  // 点顶栏那枚最小化按钮（活动窗口用壳自带的）
-  const clicked = await cdp.evalJS<boolean>(`(() => {
-    const b = document.querySelector('.app-winbox.is-activity .app-winbox-head button')
-    if (!b) return false
-    b.click(); return true
-  })()`)
-  if (!clicked) {
+  say(`  ${'①初始'.padEnd(14)} 窗口=${before.found ? '在' : '不在'} · 页面让位=${before.pageHidden ? '是' : '否'} · ${restoreLine(before)}`)
+
+  // ① 点顶栏那枚最小化按钮（活动窗口用壳自带的）
+  if (!(await click('.app-winbox.is-activity .app-winbox-head button'))) {
     say('  ✗ 找不到最小化按钮')
     return
   }
-  await new Promise((r) => setTimeout(r, 400))
+  await wait(400)
   const min = await read(cdp, '.app-winbox.is-activity')
-  say(`  ${'点最小化后'.padEnd(12)} 窗口=${min.found ? '在（不该）' : '不在（对）'} · ${restoreLine(min)}`)
-  // 点小窗（整块即还原按钮）
-  const back = await cdp.evalJS<boolean>(`(() => {
-    const w = document.querySelector('.app-shipwin-wrap.is-restore')
-    if (!w) return false
-    w.click(); return true
-  })()`)
-  if (!back) {
+  say(`  ${'②点最小化后'.padEnd(14)} 窗口=${min.found ? '在（不该）' : '不在（对）'} · 页面让位=${min.pageHidden ? '是（不该）' : '否（对，页面回来了）'} · ${restoreLine(min)}`)
+
+  // ② 点小窗（整块即还原按钮）
+  if (!(await click('.app-shipwin-wrap.is-restore'))) {
     say('  ✗ 小窗不是还原按钮（点不到）')
     return
   }
-  await new Promise((r) => setTimeout(r, 400))
-  const restored = await read(cdp, '.app-winbox.is-activity')
-  say(`  ${'点小窗后'.padEnd(12)} 窗口=${restored.found ? '回来了（对）' : '没回来（✗）'} · ${restoreLine(restored)}`)
+  await wait(400)
+  const back = await read(cdp, '.app-winbox.is-activity')
+  say(`  ${'③点小窗后'.padEnd(14)} 窗口=${back.found ? '回来了（对）' : '没回来（✗）'} · ${restoreLine(back)}`)
+
+  // ③ 切导航页（点第 2 个导航项：第 1 项是当前页的概率高，取不同的一项更稳）
+  const navClicked = await cdp.evalJS<string>(`(() => {
+    const items = [...document.querySelectorAll('.app-nav-side .app-nav-item')]
+    const i = items.find((b) => !b.classList.contains('is-active')) || items[0]
+    if (!i) return ''
+    const label = (i.textContent || '').trim()
+    i.click(); return label
+  })()`)
+  await wait(500)
+  const afterNav = await read(cdp, '.app-winbox.is-activity')
+  say(
+    `  ${'④切导航后'.padEnd(14)} 点了「${navClicked || '(没找到导航项)'}」` +
+      ` · 窗口=${afterNav.found ? '还在（✗ 该自动收起）' : '已自动收起（对）'}` +
+      ` · 页面让位=${afterNav.pageHidden ? '是（✗）' : '否（对）'} · ${restoreLine(afterNav)}`,
+  )
+
+  // ④ 开弹层（手册）：先把窗口叫回来，再点顶栏那枚（文案「手册」/ 悬停「玩法说明与图鉴」）
+  if (await click('.app-shipwin-wrap.is-restore')) await wait(400)
+  const beforeModal = await read(cdp, '.app-winbox.is-activity')
+  const hbClicked = await cdp.evalJS<boolean>(`(() => {
+    const btns = [...document.querySelectorAll('.app-header .app-btn')]
+    const b = btns.find((x) => {
+      const t = (x.getAttribute('title') || '') + (x.textContent || '')
+      return t.includes('手册') || t.includes('玩法说明与图鉴')
+    })
+    if (!b) return false
+    b.click(); return true
+  })()`)
+  await wait(500)
+  const afterModal = await read(cdp, '.app-winbox.is-activity')
+  const modalOn = await cdp.evalJS<boolean>(`!!document.querySelector('.app-modal, .app-modal-mask')`)
+  say(
+    `  ${'⑤开弹层后'.padEnd(14)} 窗口开=${beforeModal.found ? '在' : '不在（前置不成立）'} · 点手册=${hbClicked ? '成' : '没找到按钮'}` +
+      `（弹层出现=${modalOn ? '是' : '否'}） · 窗口=${afterModal.found ? '还在（✗ 该自动收起）' : '已自动收起（对）'}` +
+      ` · 页面让位=${afterModal.pageHidden ? '是（✗）' : '否（对）'}`,
+  )
+  // 关掉手册，回到干净状态
+  await cdp.evalJS(`(() => { const m = document.querySelector('.app-modal-mask'); if (m) m.click(); return 1 })()`)
+  await wait(400)
+
+  /**
+   * ⑥ 主控活动结束 ⇒ 自动收起（船长令的第四个触发点）。
+   *
+   * 触发条件自己造出来：点**活动栏那一行右侧的「停止」**（`.app-activitybar .app-btn.is-warn`，
+   * 采掘那行就是「停止采掘」）——这是玩家的真实操作，不是改内存。
+   * ⚠ 用 MutationObserver **计数**"窗口不在 DOM 里的次数"：若该档开着循环作业，结束与重新拉起可能只隔一帧，
+   * 800ms 轮询会漏掉（首测报成"没收起"）。
+   */
+  if (await click('.app-shipwin-wrap.is-restore')) await wait(400)
+  await cdp.evalJS(`(() => {
+    window.__actGone = 0
+    window.__actWas = !!document.querySelector('.app-winbox.is-activity')
+    // ⚠ 数**跃迁**（在 → 不在）而不是"每次不在的变动"：重渲染会让 observer 反复触发，
+    // 按变动计数会得出"消失了 5 次"这种假读数（首测就是这么写的）。
+    const ob = new MutationObserver(() => {
+      const now = !!document.querySelector('.app-winbox.is-activity')
+      if (window.__actWas && !now) window.__actGone++
+      window.__actWas = now
+    })
+    ob.observe(document.body, { childList: true, subtree: true })
+    return 1
+  })()`)
+  const stopClicked = await cdp.evalJS<string>(`(() => {
+    const b = document.querySelector('.app-activitybar .app-btn.is-warn')
+    if (!b) return ''
+    const t = (b.textContent || '').trim()
+    b.click(); return t || '(无文案)'
+  })()`)
+  let blink = 0
+  for (let i = 0; i < 8; i++) {
+    await wait(600)
+    blink = await cdp.evalJS<number>(`window.__actGone || 0`)
+    if (blink > 0) break
+  }
+  const afterEnd = await read(cdp, '.app-winbox.is-activity')
+  say(
+    `  ${'⑥活动结束后'.padEnd(14)} 点活动栏「${stopClicked || '没找到停止按钮'}」` +
+      ` · 窗口曾消失=${blink > 0 ? `是（${blink} 次跃迁 ⇒ 活动结束即自动收起，对）` : '否（✗ 5s 内没等到）'}` +
+      ` · 此刻窗口=${afterEnd.found ? '在（✗ 若活动确已结束）' : '不在（对）'} · 页面让位=${afterEnd.pageHidden ? '是（✗）' : '否（对）'}`,
+  )
 }
 
 void main()

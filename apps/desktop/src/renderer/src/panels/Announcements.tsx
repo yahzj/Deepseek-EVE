@@ -28,7 +28,18 @@ function writeSeen(id: string): void {
   }
 }
 
-export function AnnouncementHub({ engine }: { engine: GameEngine }) {
+export function AnnouncementHub({
+  engine,
+  onOpen,
+}: {
+  engine: GameEngine
+  /**
+   * 弹层**打开**时的通知（2026-09-21 船长令：打开详情窗/手册/设置等弹层时要收起嵌入主区的窗口）。
+   * 本组件自己管开关，App 无从知晓 ⇒ 由这里回调一次；不传则什么都不做（行为与从前完全一致）。
+   * ⚠ 两条打开路径都要叫：启动自动弹一次、点顶栏「公告」。
+   */
+  onOpen?: () => void
+}) {
   const [open, setOpen] = useState(false)
   const [seen, setSeen] = useState<string>(() => readSeen())
   const latest = ANNOUNCEMENTS.length > 0 ? ANNOUNCEMENTS[0]! : null
@@ -47,6 +58,7 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
     if (s.expedition.battle || s.wormhole.run?.battle) return
     autoShownRef.current = true
     setOpen(true)
+    onOpen?.()
     writeSeen(latest.id)
     setSeen(latest.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,6 +70,7 @@ export function AnnouncementHub({ engine }: { engine: GameEngine }) {
       setSeen(latest.id)
     }
     setOpen(true)
+    onOpen?.()
   }
 
   return (

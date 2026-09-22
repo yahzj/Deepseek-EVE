@@ -41,10 +41,14 @@ import { WinBox } from './WinBox'
  * 复用既有调试入口 `panels/DebugPanel.tsx` 的 `debugEnabled()`（`localStorage['whale-idle:debug'] === '1'`，
  * 与顶栏「⇄ 调试」按钮、性能 Hub 采集同一个开关）——**不另造开关机制**。
  *
- * 关掉时本窗口**完全不存在**：既不弹窗、也不出浮动还原标；状态窗（左侧那个保留的小窗）不受影响，
+ * 关掉时本窗口**完全不存在**：既不弹窗、也不出还原入口；状态窗（左侧那个保留的小窗）不受影响，
  * 仍照常按活动换场景。⇒ 玩家侧零变化，船长开调试即可验收。
+ *
+ * ⚠ **必须导出**（2026-09-21 嵌入改版）：窗口现在是"顶掉那一页"的嵌入块，由 `App.tsx` 决定
+ * 页面让不让位；若 App 不知道这把开关，关掉调试时会出现"窗口不渲染、页面却已经被让位"的**空白主区**。
+ * ⇒ 判定只有这一个入口，`App.tsx` 与本文件都用它。
  */
-function activityWinEnabled(): boolean {
+export function activityWinEnabled(): boolean {
   return debugEnabled()
 }
 
