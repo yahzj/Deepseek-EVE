@@ -246,6 +246,13 @@ interface Reading {  sel: string
   header: number[] | null
   /** 最小化后的还原入口（合并进左上角小窗）：小窗是不是还原按钮 + 角标文字 */
   restore: { isButton: boolean; badge: string; title: string }
+  /**
+   * **等比缩放读数**（2026-09-21 船长令「窄屏窗口偏小采用等比缩放」）：
+   * `layout` = 窗口的**布局尺寸**（= CSS 设计尺寸，装不下也不重排）、`scale` = 实际生效的缩放系数、
+   * `aspect` = 渲染宽高比（应与布局一致 ⇒ "等比"而不是"被压扁"）。
+   * ⚠ 三个视口下 `layout` 必须**完全一样**——那是"版式不重排"的判据。
+   */
+  zoom: { layout: number[]; scale: number; aspect: number }
 }
 
 /** 元素 → 屏幕矩形 `[left, top, w, h]`（取不到返回 null） */
@@ -291,7 +298,7 @@ async function read(cdp: Cdp, sel: string): Promise<Reading> {
   return cdp.evalJS<Reading>(`(() => {
     const el = document.querySelector(${JSON.stringify(sel)})
     const de = document.documentElement
-    const empty = { sel: ${JSON.stringify(sel)}, found: false, w:0,h:0,left:0,top:0,position:'',docScrollW:de.scrollWidth,docScrollH:de.scrollHeight,overflowW:false,overflowH:false,title:'',fx:{svg:false,nodes:0,animated:[],dead:[],staticN:0},bar:null,lines:[],beat:{cycle:'',delay:'',tickDur:''},art:{ship:0,stars:0,drift:0,tick:0},bbox:{ship:null,beam:null,work:null},area:${RECT_OF('.app-page-main')},nav:${RECT_OF('.app-nav-side')},header:${RECT_OF('.app-header')},restore:${RESTORE_OF} }
+    const empty = { sel: ${JSON.stringify(sel)}, found: false, w:0,h:0,left:0,top:0,position:'',docScrollW:de.scrollWidth,docScrollH:de.scrollHeight,overflowW:false,overflowH:false,title:'',fx:{svg:false,nodes:0,animated:[],dead:[],staticN:0},bar:null,lines:[],beat:{cycle:'',delay:'',tickDur:''},art:{ship:0,stars:0,drift:0,tick:0},bbox:{ship:null,beam:null,work:null},area:${RECT_OF('.app-page-main')},nav:${RECT_OF('.app-nav-side')},header:${RECT_OF('.app-header')},restore:${RESTORE_OF},zoom:{layout:[0,0],scale:1,aspect:0} }
     if (!el) return empty
     const r = el.getBoundingClientRect()
     const cs = getComputedStyle(el)
@@ -351,6 +358,11 @@ async function read(cdp: Cdp, sel: string): Promise<Reading> {
       nav: ${RECT_OF('.app-nav-side')},
       header: ${RECT_OF('.app-header')},
       restore: ${RESTORE_OF},
+      zoom: {
+        layout: [el.offsetWidth, el.offsetHeight],
+        scale: Number((getComputedStyle(el).getPropertyValue('--win-scale') || '1').trim()) || 1,
+        aspect: r.height > 0 ? Math.round((r.width / r.height) * 100) / 100 : 0,
+      },
     }
   })()`)
 }
@@ -371,6 +383,7 @@ function line(tag: string, r: Reading): string {
   const clearHead = headB === null || r.top >= headB - 1
   return (
     `  ${tag.padEnd(12)} ${r.w}×${r.h} @(${r.left},${r.top})  position=${r.position}` +
+    `  设计=${r.zoom.layout[0]}×${r.zoom.layout[1]}  缩放=${r.zoom.scale}` +
     `  区内容器=${a ? `${a[2]}×${a[3]}@(${a[0]},${a[1]})` : '(无)'}` +
     `  区内居中=${centered ? '是' : '否'}  非全屏=${notFull ? '是' : '否'}` +
     `  不盖导航/顶栏=${clearNav && clearHead ? '是' : `否(导航${clearNav ? 'ok' : '✗'}/顶栏${clearHead ? 'ok' : '✗'})`}` +
@@ -578,7 +591,9 @@ async function main(): Promise<void> {
      * C. **两个窗口壳的几何**：活动壳已由上面真档实测；战斗壳仓里没有 `phase==='battle'` 的档、
      *    也伪造不出 `combatView`（引擎只在真交火时给）⇒ 量**同构元素**（生产类名 + 壳内两层）。
      *    量的是真 CSS，但**不是实弹交火**——读数表里标注。
-     *    ⚠ 同构元素要挂进 `.app-page-main`（生产位置），挂到 `document.body` 量出来的是另一套数。
+     *    ⚠ 同构元素要挂进 `.app-page-main`（生产位置），挂到 `document.body` 量出来的是另一套数；
+     *    等比缩放由 JS 算（`ui/WinBox.tsx`）⇒ 这里**照抄同一个公式**把 `--win-scale` 补上再量，
+     *    否则量到的是"没缩放的溢出态"。
      */
     const shells = await cdp.evalJS<Record<string, number[] | null>>(`(() => {
       const host = document.querySelector('.app-page-main')
@@ -589,8 +604,15 @@ async function main(): Promise<void> {
         const head = document.createElement('div'); head.className = 'app-winbox-head'
         const body = document.createElement('div'); body.className = 'app-winbox-body'
         box.append(head, body); layer.append(box); host.append(layer)
-        const r = box.getBoundingClientRect(); layer.remove()
-        return [r.left, r.top, r.width, r.height].map((v) => Math.round(v))
+        const cs = getComputedStyle(layer)
+        const aw = layer.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+        const ah = layer.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+        const s = Math.min(1, aw / box.offsetWidth, ah / box.offsetHeight)
+        box.style.setProperty('--win-scale', s)
+        const r = box.getBoundingClientRect()
+        const out = [r.left, r.top, r.width, r.height, s, box.offsetWidth, box.offsetHeight].map((v) => Math.round(v * 1000) / 1000)
+        layer.remove()
+        return out
       }
       return { battle: mk('app-winbox is-battle'), activity: mk('app-winbox is-activity') }
     })()`)
@@ -603,9 +625,12 @@ async function main(): Promise<void> {
       const centered = Math.abs(o[0]! - (area[0]! + (area[2]! - o[2]!) / 2)) <= 2 && Math.abs(o[1]! - (area[1]! + (area[3]! - o[3]!) / 2)) <= 2
       const notFull = o[2]! <= area[2]! - 4 && o[3]! <= area[3]! - 4
       const clear = o[0]! >= (navR ? navR[0]! + navR[2]! : 0) - 1 && o[1]! >= (headB ? headB[1]! + headB[3]! : 0) - 1
+      const aspect = o[5]! > 0 ? Math.round((o[5]! / o[6]!) * 100) / 100 : 0
+      const aspectR = o[3]! > 0 ? Math.round((o[2]! / o[3]!) * 100) / 100 : 0
       say(
-        `  ${label.padEnd(12)} ${o[2]}×${o[3]} @(${o[0]},${o[1]})  区内居中=${centered ? '是' : '否'}` +
-          `  非全屏=${notFull ? '是' : '否'}  不盖导航/顶栏=${clear ? '是' : '否'}`,
+        `  ${label.padEnd(12)} ${o[2]}×${o[3]} @(${o[0]},${o[1]})  设计=${o[5]}×${o[6]}  缩放=${o[4]}` +
+          `  等比=${Math.abs(aspect - aspectR) < 0.02 ? '是' : `否(${aspect} vs ${aspectR})`}` +
+          `  区内居中=${centered ? '是' : '否'}  非全屏=${notFull ? '是' : '否'}  不盖导航/顶栏=${clear ? '是' : '否'}`,
       )
     }
 
