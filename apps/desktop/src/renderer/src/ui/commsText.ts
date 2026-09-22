@@ -101,3 +101,52 @@ export function commsClockText(gameMs: number): string {
   const mm = String(Math.floor((rest % 3_600_000) / 60_000)).padStart(2, '0')
   return tr('ui.comms.044', { p1: day, p2: `${hh}:${mm}` })
 }
+
+// l10n-keep-start：下面三张表的**中文是键**（数据侧取值：立场 `CommsFactionAlignment`、内容类型 `CommsKind`、
+// 跳转说明 `hint.text` 逐句独立）——渲染前一律过本文件的 `comms*Text()` 取当前语言，故不是漏译。
+/** 立场片（数据侧 `CommsFactionAlignment`：官方 / 民间 / 系统） */
+const COMMS_ALIGN_ID: Record<string, string> = {
+  官方: 'ui.comms.045',
+  民间: 'ui.comms.046',
+  系统: 'ui.comms.047',
+}
+/** 内容类型片（数据侧 `CommsKind`：剧情 / 提示 / 委托） */
+const COMMS_KIND_ID: Record<string, string> = {
+  剧情: 'ui.comms.048',
+  提示: 'ui.comms.049',
+  委托: 'ui.comms.050',
+}
+/** 跳转栏那句说明（数据侧 `hint.text`，逐句独立） */
+const COMMS_HINT_ID: Record<string, string> = {
+  '回任务中心，点「完成」继续下一步': 'ui.comms.051',
+  待办清单在任务中心: 'ui.comms.052',
+  '星图 · 点选未知信号开始扫描': 'ui.comms.053',
+  '星图 · 出发前看清目标星系的安全等级。': 'ui.comms.054',
+  '星图 · 残骸打捞页有各星系的残骸存量。': 'ui.comms.055',
+  '星图 · 出港 · 「扫描虫洞」标签开始扫描': 'ui.comms.056',
+  '星图 · 选「红环航道」查看建站交付。': 'ui.comms.057',
+  '舰船页 · 「舰船仓库」可转入舰队或出售': 'ui.comms.058',
+  '工业页 · 造一批修理组件，给船装上维修装置': 'ui.comms.059',
+  '工业页可以同时开多台炉子。': 'ui.comms.060',
+  '技能页可以先把精炼学排进队列。': 'ui.comms.061',
+  '副站建成后泊位、维修、补给与换船全部开放。': 'ui.comms.062',
+  '出发前先去装配页检查一遍武器与防护。': 'ui.comms.063',
+  '出发前在装配页把对空火力与装甲补齐。': 'ui.comms.064',
+  '打之前先去装配页，把对空火力带上。': 'ui.comms.065',
+  '想先看看这片星域长什么样？去星图认认路。': 'ui.comms.066',
+}
+// l10n-keep-end
+
+/** 立场 / 内容类型 / 跳转说明的本地化取词（查不到原样回落） */
+export function commsAlignText(alignment: string): string {
+  const id = COMMS_ALIGN_ID[alignment]
+  return id !== undefined ? tr(id) : alignment
+}
+export function commsKindText(kind: string): string {
+  const id = COMMS_KIND_ID[kind]
+  return id !== undefined ? tr(id) : kind
+}
+export function commsHintText(text: string): string {
+  const id = COMMS_HINT_ID[text]
+  return id !== undefined ? tr(id) : text
+}

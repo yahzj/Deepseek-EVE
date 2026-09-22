@@ -20,7 +20,7 @@ import { COMMS_REPLIES_ENABLED } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { tr } from '../i18n/locale'
-import { commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { commsAlignText, commsClockText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
 
 /**
  * 通讯器机身：**大圆角机身外框** + 左侧两颗实体键（SVG 线稿，恒定细描边）。
@@ -71,7 +71,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
                 style={entry.tone ? { color: entry.tone, borderColor: entry.tone } : undefined}
                 title={entry.fromBrief}
               >
-                {entry.alignment}
+                {commsAlignText(entry.alignment)}
               </span>
             ) : null}
             <span className="app-comms-head-time">{commsClockText(entry.deliveredAtGameMs)} {tr("ui.CommsReader.002")}</span>
@@ -83,7 +83,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
             style={entry.tone ? { color: entry.tone, borderColor: entry.tone } : undefined}
             title={tr("ui.CommsReader.003")}
           >
-            {entry.kind}
+            {commsKindText(entry.kind)}
           </span>
         ) : null}
       </div>
@@ -134,10 +134,10 @@ export function CommsEave({
       {entry.hint ? (
         <button
           className="app-btn is-primary app-comms-goto"
-          title={entry.hint.text}
+          title={commsHintText(entry.hint.text)}
           onClick={() => onGoto(entry.hint!.page, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab)}
         >
-          <span className="app-comms-goto-text">{entry.hint.text}</span>
+          <span className="app-comms-goto-text">{commsHintText(entry.hint.text)}</span>
           <span className="app-comms-goto-label">{tr("ui.CommsReader.004")}</span>
         </button>
       ) : null}

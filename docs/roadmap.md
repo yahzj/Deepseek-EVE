@@ -252,11 +252,11 @@
 
 > 越窗即封存（`npm run docs:seal`）；窗口大小 = 20 条，需要临时调大用 `--window=N`。
 
-- 2026-09-22：**通讯本地化 第一批：发件人 / 主题行 / 送达时间（三号 · verify-activity-win → main · 船长令「你继续本地化」）**——
-**①读数**（`npm run l10n:scan` · 英文语境真档）：通讯页 **49 → 6 处**（31 封的主题行、13 个势力/部门名、每行的「第 N 天 HH:MM」全部转英文）。
+- 2026-09-22：**通讯本地化（三号 · verify-activity-win → main · 船长令「你继续本地化」）**——
+**①读数**（`npm run l10n:scan` · 英文语境真档）：通讯页 **49 → 3 处**（只剩下一批要做的正文段落）。
 **②病根**：通讯文案在**数据侧**——`CommsMessageDef.subject`（`firstTaskMessages.ts` 13 封 + `messages.ts` 17 封）与 `commsFactions.ts` 的势力/部门 `name` 都是中文，core 还把发件人拼成「势力名 · 部门名」（`comms.ts` 的 `resolveCommsSender`）再交给界面。
 **③做法（data/core 一个字节没动）**：新增**渲染层单点** `ui/commsText.ts`——`commsSenderText()`（按**部门中文名**映射，13 条）、`commsSubjectText()`（按**消息稳定 id** 映射，30 条）、`commsClockText()`（用 core 导出的 `COMMS_DAY_MS` 自己算"第几天 + 时:分"，句子走 `ui.comms.044`）；查不到一律原样回落（新剧本漏登记看得见）。词条 **44 条**落 `ui.comms.001~044`，专名以游戏既有英文为准（Cinder Sector / Redring Corridor / Auro Waste Ring / Deadarmy / Low-sec，均取自 `packages/data/src/l10n.ts` 既译）。接线两处：`panels/CommsReader.tsx`（右栏 + 送达弹窗同源）与 `pages/CommsPage.tsx`（左栏列表）。
-**④剩下 6 处（下一批）**：三行**正文段落**（`body`，全库约 90 行 —— 与部门简介 `brief` 一起做）＋ 三处同类小块：立场片「系统」、内容类型片「提示/剧情/委托」（数据侧 `CommsKind`）、跳转文案「回任务中心，点「完成」继续下一步」。
+**④剩下 3 处（下一批）**：**正文段落**（`body`，全库约 90 行 —— 与部门简介 `brief` 一起做）。**本批同批做掉的**：立场片「官方/民间/系统」、内容类型片「剧情/提示/委托」、跳转栏说明 16 句（`hint.text`）——三张映射表都在 `ui/commsText.ts`（中文即键，已按惯例声明 `l10n-keep`，词条 `ui.comms.045~066`），读数随之 **49 → 3**。
 **⑤闸门**：typecheck 四包 0 错 · `l10n:check` 未译读数仍 **0** · core 184 文件 / 2093 例全绿 · `content:check` ✅ · `ui:rot-check` ✅ · `build` ✅ · `docs:index` ✅。
 
 - 2026-09-22：**手册本地化（三号 · verify-activity-win → main · 船长令「先进行手册的本地化」）**——
