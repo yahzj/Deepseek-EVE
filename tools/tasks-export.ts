@@ -65,11 +65,29 @@ function rewardText(def: (typeof FIRST_TASKS)[number]): string {
   return parts.join('、') || '（无实物奖励）'
 }
 
+/** **起手道具**一行（任务开始时给的东西；与奖励行分开写——2026-09-21 船长令新增的功能） */
+function startText(def: (typeof FIRST_TASKS)[number]): string {
+  const r = def.startReward
+  if (!r) return '（无）'
+  const parts: string[] = []
+  for (const m of r.modules ?? []) parts.push(`${ctx.modules.get(m.moduleId)?.name ?? m.moduleId} ×${m.units}`)
+  for (const w of r.ware ?? []) parts.push(`${ctx.items.get(w.itemId)?.name ?? w.itemId} ×${w.units}`)
+  for (const b of r.blueprints ?? []) {
+    const nm = ctx.blueprints.get(b.blueprintId)?.name ?? ctx.shipBlueprints.get(b.blueprintId)?.name
+    parts.push(`${nm ?? b.blueprintId} ×${b.units}`)
+  }
+  for (const s of r.ships ?? []) parts.push(`${ctx.ships.get(s.defId)?.name ?? s.defId} ×${s.units}`)
+  for (const c of r.aiCores ?? []) parts.push(`基础 AI 核心 ×${c.units}`)
+  if (r.wormholeStock) parts.push(`未探索虫洞 ×${r.wormholeStock}`)
+  if (r.isk) parts.push(`${r.isk.toLocaleString('zh-CN')} 信用点`)
+  return parts.join('、') || '（无）'
+}
+
 type Sheet = { name: string; head: string[]; rows: Array<Array<string | number>>; wide: number[] }
 
 const taskSheet: Sheet = {
   name: '第一次任务',
-  head: ['序号', 'id（只读）', '标题', '一句话（brief）', '正文（detail）', '奖励行', '链名', '计数口径'],
+  head: ['序号', 'id（只读）', '标题', '一句话（brief）', '正文（detail）', '奖励行', '开始即给', '链名', '计数口径'],
   rows: FIRST_TASKS.map((d, i) => [
     i + 1,
     d.id,
@@ -77,10 +95,11 @@ const taskSheet: Sheet = {
     d.brief,
     d.detail,
     rewardText(d),
+    startText(d),
     d.chain?.name ?? '—',
     d.chain ? (CHAIN_UNITS[d.chain.stat] ?? d.chain.stat) : '—',
   ]),
-  wide: [0, 0, 18, 24, 90, 30, 14, 10],
+  wide: [0, 0, 18, 24, 90, 30, 26, 14, 10],
 }
 
 const mailSheet: Sheet = {
@@ -133,6 +152,8 @@ function esc(v: unknown): string {
  */
 async function main(): Promise<void> {
   const wb = new ExcelJS.Workbook()
+  /** 被占用而没写成的 CSV（末尾一起报） */
+  const skipped: string[] = []
   for (const sh of SHEETS) {
     const ws = wb.addWorksheet(sh.name)
     ws.columns = sh.head.map((h, i) => ({ width: sh.wide[i] || Math.max(10, h.length * 1.8 + 4) }))
@@ -148,11 +169,19 @@ async function main(): Promise<void> {
       })
     }
     ws.views = [{ state: 'frozen', ySplit: 1 }]
-    writeFileSync(
-      join(outDir, `tasks-${sh.name}.csv`),
-      '\uFEFF' + [sh.head, ...sh.rows].map((r) => r.map(esc).join(',')).join('\r\n') + '\r\n',
-      'utf8',
-    )
+    /**
+     * CSV 是**附带格式**：船长正在 Excel/WPS 里开着某张 CSV 时会锁文件（`EBUSY`）——
+     * 那种情况**不该把整次导出弄挂**（xlsx 才是主交付）⇒ 逐张 best-effort，失败的记下来最后一起报。
+     */
+    try {
+      writeFileSync(
+        join(outDir, `tasks-${sh.name}.csv`),
+        '\uFEFF' + [sh.head, ...sh.rows].map((r) => r.map(esc).join(',')).join('\r\n') + '\r\n',
+        'utf8',
+      )
+    } catch {
+      skipped.push(`tasks-${sh.name}.csv`)
+    }
   }
   const xlsxPath = join(outDir, 'tasks-workbench.xlsx')
   await wb.xlsx.writeFile(xlsxPath)
@@ -161,7 +190,12 @@ async function main(): Promise<void> {
   await back.xlsx.readFile(xlsxPath)
   console.log(`✅ 已写 ${xlsxPath}`)
   for (const ws of back.worksheets) console.log(`   · 表「${ws.name}」：${Math.max(0, ws.rowCount - 1)} 行 × ${ws.columnCount} 列`)
-  console.log(`✅ 同时写了 CSV（UTF-8 + BOM，Excel/WPS 可直接开）：${SHEETS.map((s) => `tasks-${s.name}.csv`).join(' · ')}`)
+  if (skipped.length === 0) {
+    console.log(`✅ 同时写了 CSV（UTF-8 + BOM，Excel/WPS 可直接开）：${SHEETS.map((s) => `tasks-${s.name}.csv`).join(' · ')}`)
+  } else {
+    console.log(`⚠ 这几张 CSV 没写成（多半是正被 Excel/WPS 打开 ⇒ 关掉再跑一次即可）：${skipped.join(' · ')}`)
+    console.log('   （xlsx 已更新 ✓，不受影响）')
+  }
   console.log(`\n改完把 ${xlsxPath} 发回来即可（id 列只读；空单元格 = 不改）。`)
 }
 

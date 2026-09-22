@@ -3976,5 +3976,17 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillTree.012": { zh: "已练 {p1}/{p2}", en: "{p1}/{p2} learned" },
   "ui.SkillTree.013": { zh: "等级", en: "Level" },
   "ui.SkillTree.014": { zh: "状态", en: "Status" },
-  "ui.SkillTree.015": { zh: "下一级需", en: "Next level takes" }
+  "ui.SkillTree.015": { zh: "下一级需", en: "Next level takes" },
+  "core.firstTasks.001": { zh: "◆ 任务已达成：「{p1}」——回「任务中心」点「完成」继续下一步。", en: "◆ Task reached: “{p1}” — open the Task Center and click Complete to move on." },
+  "core.firstRewards.002": { zh: "未知任务：{p1}。", en: "Unknown task: {p1}." },
+  "core.firstRewards.003": { zh: "这条任务已经完成过了。", en: "That task is already complete." },
+  "core.firstRewards.004": { zh: "这条任务还没轮到：先完成当前那一条。", en: "That task is not up yet: finish the current one first." },
+  "core.firstRewards.005": { zh: "这条任务的条件还没达成。", en: "That task's requirement is not met yet." },
+  "core.firstRewards.006": { zh: "◆ 任务完成：「{p1}」。", en: "◆ Task complete: “{p1}”." },
+  "core.firstRewards.007": { zh: "◆ 任务起手道具已发放：{p1}。", en: "◆ Starting kit granted: {p1}." },
+  "ui.FirstTasks.037": { zh: "完成", en: "Complete" },
+  "ui.FirstTasks.038": { zh: "达成这条任务的条件后即可点「完成」。", en: "Click Complete once this task's requirement is met." },
+  "ui.FirstTasks.039": { zh: "开始即给 ◆", en: "Given at start ◆" },
+  "ui.FirstTasks.040": { zh: "完成奖励 ◆", en: "On completion ◆" },
+  "ui.App.122": { zh: "（已达成，回任务中心点「完成」）", en: " (reached — click Complete in the Task Center)" }
 }

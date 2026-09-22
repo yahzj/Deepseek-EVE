@@ -22,7 +22,8 @@ import {
   achievementReached,
   advanceAchievements,
 } from '../src/achievements'
-import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, peakFirst, firstStatOf, advanceFirstChains, advanceFirstTasks } from '../src/firstTasks'
+import { CHAIN_TIERS, FIRST_TASKS, bumpFirst, peakFirst, firstStatOf, advanceFirstChains, claimableFirstTasks } from '../src/firstTasks'
+import { claimFirstTask } from '../src/firstRewards'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { advanceGame } from '../src/engine'
 import { assignAiMining, assignAiSalvage, gainAiCore } from '../src/ai'
@@ -401,7 +402,15 @@ describe('终身计数：AI 副船的产量也计入（船长 2026-09-20 令）'
       if (!state.aiAssignments['sandcat2']) break
     }
     expect(firstStatOf(state, 'mineUnits')).toBeGreaterThanOrEqual(need)
-    advanceFirstTasks(state, ctx)
+    /**
+     * ⚠ **2026-09-21 起要"点完成"**（船长令：任务不再自动完成）⇒ 连点几下，直到当前那条不再可完成
+     * （本档队列可能还停在「第一次扫描」⇒ 先点掉它，再点「第一次采集原矿」）。
+     */
+    for (let i = 0; i < 4; i += 1) {
+      const ready = claimableFirstTasks(state, ctx)[0]
+      if (!ready) break
+      expect(claimFirstTask(state, ctx, ready.id).ok).toBe(true)
+    }
     expect(state.importantTasks['first-mine']?.done).toBe(true)
     advanceFirstChains(state)
     expect(chainProgress(state, 'digger')).toBeGreaterThanOrEqual(1)
@@ -451,7 +460,8 @@ describe('成就徽章：与引擎挂点同拍（任务达成即到手）', () =
     // 攒够"维修 1 次"（first-repair 的判据）——直接走计数 + 任务判定 + 链记账，再判徽章
     reachQueue(state, 'first-repair') // 顺序解锁：队列得先走到它（否则判定不认未显示的条目）
     bumpFirst(state, 'repairs', 1)
-    advanceFirstTasks(state, ctx)
+    // 2026-09-21：任务改成"点完成"推进 ⇒ 这里显式点一次（与界面同一入口），再看徽章同拍到手
+    expect(claimFirstTask(state, ctx, 'first-repair').ok).toBe(true)
     advanceFirstChains(state)
     const newly = advanceAchievements(state, ACHIEVEMENTS)
     const ids = newly.map((a) => a.id)

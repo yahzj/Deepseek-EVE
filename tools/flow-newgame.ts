@@ -44,11 +44,13 @@ import { learnBlueprint, placeSellOrder } from '../packages/core/src/market'
 import { startExpedition } from '../packages/core/src/expedition'
 import { enqueueSkill } from '../packages/core/src/engine'
 import { assignAiMining, buyBasicAiCore } from '../packages/core/src/ai'
+import { claimFirstTask } from '../packages/core/src/firstRewards'
 import {
   FIRST_TASKS,
   advanceFirstChains,
   chainProgressOf,
   claimChainReward,
+  claimableFirstTasks,
   dsiStanding,
   firstStatOf,
   firstTaskProgress,
@@ -67,21 +69,33 @@ function ok(label: string, cond: boolean, extra = ''): void {
   console.log(`${cond ? '✅' : '❌'} ${label}${extra ? ` — ${extra}` : ''}`)
 }
 
-/** 推进游戏时间直到条件成立（或超预算）；步长 30 秒 */
+/** 推进游戏时间直到条件成立（或超预算）；步长 30 秒。
+ *  ⚠ **2026-09-21 起任务不再自动完成**（船长令：玩家回任务中心点「完成」才推进）⇒ 每走一拍都模拟
+ *  "玩家顺手点一下完成"（`claimAll`），否则队列永远停在第一条、后面每一步的读数全是死的。 */
 function until(state: GameState, cond: () => boolean, budgetMs = 30 * 60_000, label = ''): boolean {
   let spent = 0
   while (!cond() && spent < budgetMs) {
     advanceGame(state, 30_000, ctx)
+    claimAll(state)
     spent += 30_000
   }
   if (!cond() && label) console.log(`   ⏱ ${label}：预算 ${Math.round(budgetMs / 1000)}s 用尽仍未达成`)
   return cond()
 }
 
-/**
- * **队列当前那条**（`FIRST_TASKS` 里第一条还没完成的）——顺序解锁下"轮到谁"的唯一读法，
- * 与 core 的 `advanceFirstTasks` 同一口径（就是它内部那个 `current`）。
- */
+/** **点「完成」**（模拟玩家在任务中心连点）：把当前可完成的那些逐条走完（末段并列批会连着两条） */
+function claimAll(state: GameState): string[] {
+  const done: string[] = []
+  for (let i = 0; i < 4; i += 1) {
+    const next = claimableFirstTasks(state, ctx)[0]
+    if (!next) break
+    if (!claimFirstTask(state, ctx, next.id).ok) break
+    done.push(next.id)
+  }
+  return done
+}
+
+/** 队列当前那条（`FIRST_TASKS` 里第一条还没完成的）——顺序解锁下"轮到谁"的唯一读法 */
 function currentTaskId(state: GameState): string | null {
   return FIRST_TASKS.find((d) => state.importantTasks[d.id]?.done !== true)?.id ?? null
 }
@@ -189,7 +203,7 @@ ok(
 
 step('② 序章演出结束 → 开场信（贯穿任务「寻找人类」此时**还不发布**）')
 ok('演出结束调用成功', beginAfterAwaken(s).ok)
-for (let i = 0; i < 3; i++) advanceGame(s, 1000, ctx)
+for (let i = 0; i < 3; i++) advanceGame(s, 1000, ctx); claimAll(s)
 ok('序章 = 已完成', s.onboarding.step === 99)
 ok('开场信送达', s.commsDelivered?.['msg-briefing'] !== undefined)
 // 开局那一拍同时满足"开场信 + msg-welcome"两条 start 触发 ⇒ 按"同一拍只弹第一封"的口径，
@@ -211,7 +225,7 @@ step('③ 第一次扫描（星图）')
 ok('扫描母港被接受', startScan(s, HOME, ctx).ok)
 ok('扫描完成、母港点亮', until(s, () => isExplored(s, HOME), 10 * 60_000, '扫描'), '')
 ok('「第一次扫描」判定完成', s.importantTasks['first-scan']?.done === true)
-advanceGame(s, 1000, ctx)
+advanceGame(s, 1000, ctx); claimAll(s)
 ok('情报信「档案补全 · 星图扫描」送达', s.commsDelivered?.['first-scan'] !== undefined)
 // **2026-09-20 船长令**：采集器 MK1 从「第一次采集原矿」前移到本条（扫描星系就给）
 ok('奖励：采集器 MK1 进装备库（前移到本条）', (s.moduleBay['mod-miner-1'] ?? 0) === 1)
@@ -269,7 +283,7 @@ step('⑥ 第一次完成悬赏（先打一场：挣钱 + 在该星系留下残�
  */
 const exp = runBounty(s)
 ok('战斗结束并取胜', exp, `悬赏胜场=${firstStatOf(s, 'bountyWins')}`)
-advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
+advanceGame(s, 1000, ctx); claimAll(s) // 判定在引擎每拍，完成靠玩家点一次
 ok('「第一次完成悬赏」判定完成', s.importantTasks['first-bounty']?.done === true)
 ok(
   '奖励：一艘鲣鱼级进机库（船长 2026-09-18）',
@@ -287,7 +301,7 @@ const cost = repairCostIsk(s, 'sh-falconet', ctx)
 console.log(`   维修费 ${cost.toLocaleString('zh-CN')} 信用点 · 钱包 ${s.wallet.isk.toLocaleString('zh-CN')} 信用点`)
 const repair = repairShip(s, 'sh-falconet', ctx)
 ok('港内维修鲣鱼', repair.ok, repair.ok ? '' : repair.error)
-advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
+advanceGame(s, 1000, ctx); claimAll(s) // 判定在引擎每拍，完成靠玩家点一次
 ok('「第一次维修舰船」判定完成', s.importantTasks['first-repair']?.done === true, `repairs=${firstStatOf(s, 'repairs')}`)
 ok('奖励：民用修理组件 ×20（船长 2026-09-18）', (s.warehouse.items['repairkit-civ'] ?? 0) >= 20, `现有 ${s.warehouse.items['repairkit-civ'] ?? 0}`)
 ok(
@@ -311,7 +325,7 @@ ok(
   until(s, () => firstStatOf(s, 'salvageRuns') > 0, 30 * 60_000, '打捞'),
   `salvageRuns=${firstStatOf(s, 'salvageRuns')}`,
 )
-advanceGame(s, 1000, ctx)
+advanceGame(s, 1000, ctx); claimAll(s)
 ok('「第一次打捞残骸」判定完成', s.importantTasks['first-salvage']?.done === true)
 // 奖励（**船长 2026-09-20 第三道令**：「没有给予奖励的任务，安排 1 万信用点的奖励填充」）
 ok('奖励：10,000 信用点（第三道令的奖励填充）', s.wallet.isk > 0, `钱包 ${s.wallet.isk.toLocaleString('zh-CN')} 信用点`)
@@ -354,7 +368,7 @@ if (good) {
    */
   const order = placeSellOrder(s, ctx, good.key, Math.max(1, Math.round(good.basePrice ?? 1)), qty)
   ok('挂出卖单', order !== null, order ? `${good.key} ×${qty}` : '（挂单被拒）')
-  advanceGame(s, 1000, ctx)
+  advanceGame(s, 1000, ctx); claimAll(s)
   ok('「第一次挂单销售」判定完成', s.importantTasks['first-order']?.done === true)
 } else {
   ok('找到可上市的物品', false, '仓库里没有可上市的物品')
@@ -401,7 +415,7 @@ console.log(`   先把已达成档位的奖金领掉：+${claimed.toLocaleString
 const train = enqueueSkill(s, 'ai-expert', 1, ctx.skills)
 ok('开始训练 AI 核心操作学', train.ok, train.ok ? '' : train.error)
 ok('练到 Lv1', until(s, () => (s.skills.trained['ai-expert'] ?? 0) >= 1, 60 * 60_000, '训练'))
-advanceGame(s, 1000, ctx) // 奖励在引擎每拍（advanceFirstTasks → grantFirstReward）
+advanceGame(s, 1000, ctx); claimAll(s) // 奖励在**点「完成」那一刻**发（2026-09-21 船长令）
 ok('「第一次学习技能」判定完成', s.importantTasks['first-skill']?.done === true)
 ok('奖励：基础 AI 核心 ×1（免去市场价 ~25k）', (s.aiCores.basic ?? 0) === 1, `aiCores.basic=${s.aiCores.basic ?? 0}`)
 mark('⑫ 领奖 + 学技能', s.gameMs)
@@ -411,7 +425,7 @@ okAtQueue(s, 'first-ai', '技能判过')
 // 副船 = 闲置的沙猫（此刻驾驶的是鲣鱼）＋ ⑫ 领到的基础 AI 核心
 const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
 ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
-advanceGame(s, 1000, ctx) // 判定在引擎每拍（advanceFirstTasks）
+advanceGame(s, 1000, ctx); claimAll(s) // 判定在引擎每拍，完成靠玩家点一次
 ok('「第一次指派 AI 副船」判定完成', s.importantTasks['first-ai']?.done === true, `aiAssigns=${firstStatOf(s, 'aiAssigns')}`)
 mark('⑬ 指派副船', s.gameMs)
 // 买一枚是**可选**的（第二艘副船才需要）：只核一下价格读数，不作断言
@@ -432,7 +446,7 @@ step('⑭ 末段并列批（第三道令：完成第 11 条 ⇒ 三条一起显�
  * 这里只核"两条一起显示、都还没判过"，并列期的判定语义由 core 用例覆盖
  * （`first-tasks.test.ts` 的「末段并列批」组：两条同拍都判过 / 只满足一条就只判过那条）。
  */
-advanceGame(s, 1000, ctx) // 发布闸门在引擎每拍
+advanceGame(s, 1000, ctx); claimAll(s) // 发布闸门在引擎每拍
 const tail = visibleFirstTasks(s).map((d) => d.id)
 ok('末段两条「第一次」一起显示（不再逐个解锁）', tail.join() === 'first-haul,first-wormhole', tail.join(' / '))
 ok('贯穿任务「寻找人类」同一拍发布（不再等 13 条全完成）', s.importantTasks['find-humans']?.done === false, `find-humans=${s.importantTasks['find-humans'] ? '已发布' : '未发布'}`)

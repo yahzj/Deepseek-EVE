@@ -14,7 +14,7 @@
  * - **2026-09-18 第三轮**：链条目奖金行改写**"完成本级能拿多少"的具体数额**（`nextRewardIsk`）——
  *   该行**自 2026-09-20 起只画在「里程碑任务」页**（见 `MilestoneTasks.tsx`）。
  */
-import { firstTaskBoard, firstTaskProgress } from '@whale/core'
+import { claimableFirstTasks, firstTaskBoard, firstTaskProgress } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { tr } from '../i18n/locale'
@@ -77,46 +77,75 @@ export function FirstTasks({
       </div>
       {ordered.map(({ def }) => {
         const jump = FIRST_JUMPS[def.id]
-        // **奖励一行**（船长 2026-09-18：奖励单独起一行、金色）——名字从内容表查
-        const r = def.reward
-        const parts: string[] = []
-        for (const m of r?.modules ?? []) parts.push(`${engine.ctx.modules.get(m.moduleId)?.name ?? m.moduleId} ×${m.units}`)
-        for (const w of r?.ware ?? []) parts.push(`${engine.ctx.items.get(w.itemId)?.name ?? w.itemId} ×${w.units}`)
-        for (const b of r?.blueprints ?? []) {
-          const nm = engine.ctx.blueprints.get(b.blueprintId)?.name ?? engine.ctx.shipBlueprints.get(b.blueprintId)?.name
-          parts.push(`${nm ?? b.blueprintId} ×${b.units}`)
+        /**
+         * **完成推进**（**2026-09-21 船长令**：「第一次任务不要自动完成。要让玩家回到任务中心点击完成
+         * 才开始下一步，这样给予任务开始前道具的时间点就很明确」）：
+         * 可点判据 = core 的 `claimableFirstTasks`（**正轮到 ＋ 判据已满足**，与引擎同一把尺）；
+         * 末段并列批时那一批各自判断、都能点。
+         */
+        const claimable = claimableFirstTasks(state, engine.ctx).some((d) => d.id === def.id)
+        /** 奖励口袋 → 一行文案（完成奖励与起手道具共用这段拼法） */
+        const pocketText = (r: typeof def.reward): string => {
+          const parts: string[] = []
+          for (const m of r?.modules ?? []) parts.push(`${engine.ctx.modules.get(m.moduleId)?.name ?? m.moduleId} ×${m.units}`)
+          for (const w of r?.ware ?? []) parts.push(`${engine.ctx.items.get(w.itemId)?.name ?? w.itemId} ×${w.units}`)
+          for (const b of r?.blueprints ?? []) {
+            const nm = engine.ctx.blueprints.get(b.blueprintId)?.name ?? engine.ctx.shipBlueprints.get(b.blueprintId)?.name
+            parts.push(`${nm ?? b.blueprintId} ×${b.units}`)
+          }
+          for (const s of r?.ships ?? []) parts.push(`${engine.ctx.ships.get(s.defId)?.name ?? s.defId} ×${s.units}`)
+          for (const c of r?.aiCores ?? []) parts.push(tr("ui.FirstTasks.027", { p1: c.units }))
+          if (r?.wormholeStock) parts.push(tr("ui.FirstTasks.028", { p1: r.wormholeStock }))
+          if (r?.isk) parts.push(tr("ui.ItemsPage.039", { p1: r.isk.toLocaleString('zh-CN') }))
+          return parts.join(tr("ui.MatterTechTab.017"))
         }
-        for (const s of r?.ships ?? []) parts.push(`${engine.ctx.ships.get(s.defId)?.name ?? s.defId} ×${s.units}`)
-        for (const c of r?.aiCores ?? []) parts.push(tr("ui.FirstTasks.027", { p1: c.units }))
-        if (r?.wormholeStock) parts.push(tr("ui.FirstTasks.028", { p1: r.wormholeStock }))
-        if (r?.isk) parts.push(tr("ui.ItemsPage.039", { p1: r.isk.toLocaleString('zh-CN') }))
-        const rewardTxt = parts.length > 0 ? parts.join(tr("ui.MatterTechTab.017")) : tr("ui.FirstTasks.014")
+        const rewardTxt = pocketText(def.reward) || tr("ui.FirstTasks.014")
+        const startTxt = pocketText(def.startReward)
         return (
           <div key={def.id} className="app-station-card">
             <div className="app-station-head">
               <span className="app-station-name">
                 {'◆'} {def.title}
               </span>
-              {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」） */}
-              {jump && onJump ? (
+              <span className="app-station-actions">
+                {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」）
+                    ＋「完成」按钮（2026-09-21 船长令）：判据已达成才可点，否则置灰并给一句说明 */}
+                {jump && onJump ? (
+                  <button
+                    className="app-btn is-small"
+                    title={tr("ui.FirstTasks.029", { p1: jump.label })}
+                    onClick={() => onJump({ page: jump.page, mapTab: jump.mapTab, shipTab: jump.shipTab, industrySec: jump.industrySec })}
+                  >
+                    {tr("ui.CommsReader.004")}{jump.label} ›
+                  </button>
+                ) : null}
                 <button
-                  className="app-btn is-small"
-                  title={tr("ui.FirstTasks.029", { p1: jump.label })}
-                  onClick={() => onJump({ page: jump.page, mapTab: jump.mapTab, shipTab: jump.shipTab, industrySec: jump.industrySec })}
+                  className="app-btn is-primary is-small"
+                  title={claimable ? tr('ui.FirstTasks.037') : tr('ui.FirstTasks.038')}
+                  disabled={!claimable}
+                  onClick={() => {
+                    const r = engine.claimFirstTaskAt(def.id)
+                    if (!r.ok && r.error) onToast(r.error, true)
+                  }}
                 >
-                  {tr("ui.CommsReader.004")}{jump.label} ›
+                  {tr('ui.FirstTasks.037')}
                 </button>
-              ) : null}
+              </span>
             </div>
             {/* 正文：一段话讲清怎么做 / 做成什么样 / 有什么奖励 */}
             <div className="app-station-mats">{def.detail}</div>
             {/**
-             * **奖励独立成行 + 金色**（船长 2026-09-18：「奖励不明显，建议将奖励单独起一行，
-             * 并采用金色字体（奖励 ◆这几个字可以不用金色）」）——**这张卡上只有这条任务自己那份
-             * 一次性奖励**；里程碑链的奖金行只在「里程碑任务」页（见 `MilestoneTasks.tsx`）。
+             * **奖励两段**（船长 2026-09-21：起手道具与完成奖励分开写；沿用 2026-09-18「独立成行 + 金色」口径）：
+             * 「开始即给」只在有 `startReward` 时出现；里程碑链的奖金行仍只在「里程碑任务」页。
              */}
+            {startTxt ? (
+              <div className="app-task-reward">
+                <span className="app-dim">{tr('ui.FirstTasks.039')} </span>
+                {startTxt}
+              </div>
+            ) : null}
             <div className="app-task-reward">
-              <span className="app-dim">{tr("ui.Expedition.004")} </span>
+              <span className="app-dim">{tr('ui.FirstTasks.040')} </span>
               {rewardTxt}
             </div>
             <div className="app-station-deliver">

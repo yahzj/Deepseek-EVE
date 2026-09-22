@@ -28,6 +28,8 @@ import {
   cancelAiTask,
   cancelManufacturing,
   cancelOrder,
+  /** 「第一次」任务：点「完成」推进（2026-09-21 船长令改成手动完成） */
+  claimFirstTask,
   cancelStandby,
   changeShip,
   clearSkillQueue,
@@ -1403,6 +1405,22 @@ export class GameEngine {
     qty: number,
   ): { ok: boolean; error?: string; orderId?: number; price?: number; filled?: number; resting?: number } {
     const res = listSellHolding(this.state, this.ctx, goodKey, price, qty)
+    if (res.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return res
+  }
+
+  /**
+   * **「第一次」任务：点「完成」**（**2026-09-21 船长令**：「第一次任务不要自动完成。要让玩家回到任务中心
+   * 点击完成才开始下一步，这样给予任务开始前道具的时间点就很明确」）。
+   *
+   * 一次点击做完：写 `done` → 发完成奖励 → 发**下一条的起手道具**（全部在 core 的 `claimFirstTask` 里）；
+   * 情报信在下一拍由 `advanceComms` 送达（触发器照旧读 `done`）。返回失败原因时界面直接 toast。
+   */
+  claimFirstTaskAt(id: string): { ok: boolean; error?: string } {
+    const res = claimFirstTask(this.state, this.ctx, id)
     if (res.ok) {
       void this.persist()
       this.notify()

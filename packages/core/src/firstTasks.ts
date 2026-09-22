@@ -87,6 +87,28 @@ export type FirstStatKey =
   | 'aiCoreKinds'
   | 'sitesBuilt'
 
+/**
+ * **奖励口袋**（**完成奖励** `reward` 与**起手道具** `startReward` 共用同一形状）：
+ * - `isk` 信用点 · `blueprints` 蓝图书（进 `blueprintStock`）· `ware` 仓库物品（进 `warehouse.items`）
+ * - `modules` 装备（进 `moduleBay`）· `ships` 舰船（直接进机库）· `aiCores` AI 核心（进核心账本）
+ * - `wormholeStock` 未探索虫洞处数（进 `wormholeStock`）
+ */
+export interface FirstReward {
+  isk?: number
+  /** 蓝图书（`bp-*` / `sbp-*`）——制造时按"已学会或手上有书"判定 */
+  blueprints?: ReadonlyArray<{ blueprintId: string; units: number }>
+  /** 仓库物品（`state.warehouse.items`） */
+  ware?: ReadonlyArray<{ itemId: string; units: number }>
+  /** 装备（`state.moduleBay`，装配页可见） */
+  modules?: ReadonlyArray<{ moduleId: string; units: number }>
+  /** 舰船（直接进机库；同型会自动编号 #2、#3…） */
+  ships?: ReadonlyArray<{ defId: string; units: number }>
+  /** AI 核心（**不进仓库**，直接进 `state.aiCores` 账本） */
+  aiCores?: ReadonlyArray<{ type: string; units: number }>
+  /** 未探索虫洞处数（进 `wormholeStock`；一次性奖励允许超库存上限） */
+  wormholeStock?: number
+}
+
 /** 一条「第一次」任务 */
 export interface FirstTaskDef {
   id: string
@@ -104,26 +126,24 @@ export interface FirstTaskDef {
   /** 完成时发的通讯 id（`messages.ts` 里的 `first-*`） */
   commsId: string
   /**
-   * 奖励（2026-09-18 船长逐条裁定；`items` 字段名沿用旧稿但语义已拆清）：
-   * - `isk` 信用点 · `blueprints` 蓝图书（进 `blueprintStock`）· `ware` 仓库物品（进 `warehouse.items`）
-   * - `modules` 装备（进 `moduleBay`）· `ships` 舰船（直接进机库）· `aiCores` AI 核心（进核心账本）
-   * - `wormholeStock` 未探索虫洞处数（进 `wormholeStock`）
+   * **完成奖励**（2026-09-18 船长逐条裁定）——**发放时机 = 玩家在任务中心点「完成」那一刻**
+   * （**2026-09-21 船长令**：「第一次任务不要自动完成。要让玩家回到任务中心点击完成才开始下一步」）。
+   * 口袋形状见 `FirstReward`。
    */
-  reward?: {
-    isk?: number
-    /** 蓝图书（`bp-*` / `sbp-*`）——制造时按"已学会或手上有书"判定 */
-    blueprints?: ReadonlyArray<{ blueprintId: string; units: number }>
-    /** 仓库物品（`state.warehouse.items`） */
-    ware?: ReadonlyArray<{ itemId: string; units: number }>
-    /** 装备（`state.moduleBay`，装配页可见） */
-    modules?: ReadonlyArray<{ moduleId: string; units: number }>
-    /** 舰船（直接进机库；同型会自动编号 #2、#3…） */
-    ships?: ReadonlyArray<{ defId: string; units: number }>
-    /** AI 核心（**不进仓库**，直接进 `state.aiCores` 账本） */
-    aiCores?: ReadonlyArray<{ type: string; units: number }>
-    /** 未探索虫洞处数（进 `state.wormholeStock`；一次性奖励允许超库存上限） */
-    wormholeStock?: number
-  }
+  reward?: FirstReward
+  /**
+   * **起手道具**（**2026-09-21 船长令**：「**能否加一个任务开始时给予道具的功能？（比如开始第一次打捞，
+   * 给予一个打捞器）**」；同日口径：「…这样**给予任务开始前道具的时间点就很明确**」）。
+   *
+   * 发放时机 = **这条任务"轮到"的那一刻**，三处、**不做每拍扫描**：
+   * ① 第一条（「第一次扫描」）在**序章收尾**（`onboarding.finishPrologue`）；
+   * ② 其余条在**上一条被点「完成」的那一次点击里**（`firstRewards.claimFirstTask`）；
+   * ③ 末段并列批（长途运输 / 虫洞）在它俩一起显示的那一次点击里（同上）。
+   *
+   * 去重键 = `state.importantTasks[id].started === true`（**只在发放时写这个键** ⇒ 老档零迁移）；
+   * **不回收**（给了就是给了，任务没做完也留着——与完成奖励"发出不收回"同口径）。
+   */
+  startReward?: FirstReward
   /** 后续"次数"链（阈值表见 `CHAIN_TIERS`） */
   chain?: { id: string; name: string; stat: FirstStatKey | 'scan' | 'skills'; tierKey: string }
 }
@@ -300,6 +320,11 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     commsId: 'first-repair',
     // 奖励（船长 2026-09-18）：民用修理组件 ×20（船长原话写「民工维修组件」⇒ 按现行物品名 `repairkit-civ` 落地）
     reward: { ware: [{ itemId: 'repairkit-civ', units: 20 }] },
+    /**
+     * **起手道具**（2026-09-21 船长令）：「这条任务要求的东西，玩家可能没有」——维修要花 ISK 或修理组件，
+     * 而组件原本要到**完成**才给 ⇒ 一开始先发 5 枚，正好覆盖"修一次"的开销。
+     */
+    startReward: { ware: [{ itemId: 'repairkit-civ', units: 5 }] },
     chain: { id: 'mechanic', name: '维修技师', stat: 'repairs', tierKey: 'repairs' },
   },
   {
@@ -328,6 +353,11 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     // 奖励（船长 2026-09-18）：「新建一张沙猫级的蓝图，按照沙猫级价值 1W 来设定」（`sbp-sandcat`，
     // 不进市场、只靠这条任务发放；数值推导见 `data/src/shipBlueprints.ts` 该条目注释）。
     reward: { blueprints: [{ blueprintId: 'sbp-sandcat', units: 1 }] },
+    /**
+     * **起手道具**（2026-09-21 船长令）：组装机要"蓝图 ＋ 材料 ＋ 时间"，材料来自精炼
+     * ⇒ 一开始先给一批原材料，免得卡在"还得再跑一趟矿"。
+     */
+    startReward: { ware: [{ itemId: 'min-tritanium', units: 150 }, { itemId: 'min-pyerite', units: 50 }] },
     chain: { id: 'lineboss', name: '产线主管', stat: 'produceUnits', tierKey: 'produceUnits' },
   },
   {
@@ -403,6 +433,11 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     commsId: 'first-wormhole',
     // 奖励（船长 2026-09-18）：两次虫洞探索（＝标记 2 处未探索虫洞进库存；允许超库存上限）
     reward: { wormholeStock: 2 },
+    /**
+     * **起手道具**（2026-09-21 船长令）：洞内是"搜、打、撤"，采集器与打捞器是进洞的必备工具
+     * （扫描阵列那句提示本来就在说"进洞前记得带采集器与打捞器"）⇒ 轮到这条时各发一台。
+     */
+    startReward: { modules: [{ moduleId: 'mod-miner-1', units: 1 }, { moduleId: 'mod-salvager-1', units: 1 }] },
     chain: { id: 'abyss', name: '深渊探索者', stat: 'wormholeRuns', tierKey: 'wormholeRuns' },
   },
 ]
@@ -464,36 +499,40 @@ export function chainProgressOf(
  * 谁要发徽章，就在拿到 `id` 的地方加一次发放（与 `firstRewards.grantFirstReward` 同一个调用点，
  * 见 `engine.ts` 的那段循环）；判定/去重/老档语义全都不用改。**成就系统本身本批不做**。
  */
-export function advanceFirstTasks(state: GameState, ctx: SimContext): string[] {
-  /**
-   * ⚠ **顺序解锁 = 显示与判定同一把尺**（**2026-09-20 船长报障**：「**未显示的第一次任务可以提前完成**」）。
-   *
-   * 旧实现每拍把 13 条**全部**判一遍 ⇒ 只要"先把某件活干了"（或老档/工具/直接调 core），那条**还没轮到**的
-   * 任务就会被判过：拿奖励、发情报信、进成就 —— 顺序解锁只剩"显示"这一半。
-   * 现在**只判当前那一条**（`FIRST_TASKS` 里第一条还没完成的）：后面的任务即便条件已满足也**不提前判过**；
-   * 等它轮到那一拍自然补齐（判据是 `state` 现状 ⇒ 自愈、进度不丢）；**一拍最多判过一条**。
-   * ⚠ 老档迁移（`save.ts` MIGRATIONS[25]）是把 13 条**一次性**判完成，不经过这里 ⇒ 不受影响。
-   */
+/**
+ * **可完成的「第一次」任务（读数 · 只判不写）**（引擎每拍调用）。
+ *
+ * ⚠ **2026-09-21 船长令：任务不再自动完成** ——
+ * 「**第一次任务不要自动完成。要让玩家回到任务中心点击完成才开始下一步，这样给予任务开始前道具的时间点
+ * 就很明确**」⇒ 本函数**只回答"现在能不能完成"**，一个字节都不写；真正的完成动作在
+ * `firstRewards.claimFirstTask`（玩家在任务中心点「完成」触发：发奖 → 发信 → 进下一条 → 发下一条的起手道具）。
+ *
+ * 判据仍是**只认当前那一条**（2026-09-20 报障「未显示的第一次任务可以提前完成」的收口）：
+ * - 顺序段：数组序里第一条 `done !== true` 的；它的 `judge ≥ 1` ⇒ 可完成（否则返回空）；
+ * - 末段并列批：那两条各自独立判 ⇒ **可能同时返回两条**（船长同日第三道令）。
+ *
+ * 调用方（引擎）用它做两件事：① 写一条「已达成，回任务中心点完成」的日志（用 `state.firstTaskReadyId`
+ * 去重）② 老档一次性收口（`state.firstTaskAutoClaim`，见 `save.ts` v30→v31 迁移）。
+ */
+export function claimableFirstTasks(state: GameState, ctx: SimContext): FirstTaskDef[] {
   const current = FIRST_TASKS.find((d) => !isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
-  if (current) {
-    if (current.judge(state, ctx) < 1) return []
-    state.importantTasks[current.id] = { done: true }
-    return [current.id]
+  if (current) return current.judge(state, ctx) >= 1 ? [current] : []
+  return FIRST_TASKS.filter(
+    (d) => isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true && d.judge(state, ctx) >= 1,
+  )
+}
+
+/**
+ * **该条是否"正轮到"**（显示与判定的同一把尺；`firstRewards.claimFirstTask` 的准入判据之一）：
+ * 顺序段 = 数组序里第一条没完成的；末段并列批 = 那两条里还没完成的那条。
+ */
+export function isFirstTaskCurrent(state: GameState, id: string): boolean {
+  if (isParallelTail(id)) {
+    const prefixNext = FIRST_TASKS.find((d) => !isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
+    return prefixNext === undefined && state.importantTasks[id]?.done !== true
   }
-  /**
-   * **末段并列批**（船长 2026-09-20 第三道令）：前 11 条走完 ⇒ 「第一次长途运输」「第一次虫洞」
-   * **一起显示**（「寻找人类」另由 `ImportantTasks.tsx` 画在顶部）⇒ 判定**不再互相阻塞**：
-   * 条目各自独立判过（同拍可能判过多条，返回值就是那一批）。
-   */
-  const out: string[] = []
-  for (const def of FIRST_TASKS) {
-    if (!isParallelTail(def.id)) continue
-    if (state.importantTasks[def.id]?.done === true) continue
-    if (def.judge(state, ctx) < 1) continue
-    state.importantTasks[def.id] = { done: true }
-    out.push(def.id)
-  }
-  return out
+  const current = FIRST_TASKS.find((d) => !isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
+  return current?.id === id
 }
 
 /**
@@ -675,21 +714,24 @@ export function firstTaskProgress(state: GameState): { done: number; total: numb
  * - **13 条全做完**（没有显示组）⇒ 不亮。
  *
  * ⚠ 老档没有 `firstTaskSeenId` ⇒ 首帧亮一次（与赏金那条「老档默认亮起提示」同一处置）。
- * 返回值带标题：徽标的悬停文案要写清"新的是哪一条"（并列批时用「、」把两条串起来）。
+ * 返回值带标题与 `ready`：徽标的悬停文案要写清"新的是哪一条"；`ready = true` 表示**这条已达成、
+ * 正等玩家回任务中心点「完成」**（2026-09-21 船长令改手动完成后的新语义 ⇒ 达成那一刻也要亮一次）。
  */
-export function firstTaskNotice(state: GameState): { taskId: string; title: string } | null {
+export function firstTaskNotice(state: GameState): { taskId: string; title: string; ready: boolean } | null {
   const shown = visibleFirstTasks(state)
   if (shown.length === 0) return null
-  const sig = shown.map((d) => d.id).join('|')
+  const ready = shown.some((d) => d.id === state.firstTaskReadyId)
+  const sig = shown.map((d) => d.id).join('|') + (ready ? '|ready' : '')
   if (state.firstTaskSeenId === sig) return null
-  return { taskId: shown[0]!.id, title: shown.map((d) => d.title).join('、') }
+  return { taskId: shown[0]!.id, title: shown.map((d) => d.title).join('、'), ready }
 }
 
 /** **记一笔"这一组看过了"**（进「任务中心」页时调用；幂等：同一组不写第二次）。返回是否真的记了。 */
 export function firstTasksMarkSeen(state: GameState): boolean {
   const shown = visibleFirstTasks(state)
   if (shown.length === 0) return false
-  const sig = shown.map((d) => d.id).join('|')
+  const ready = shown.some((d) => d.id === state.firstTaskReadyId)
+  const sig = shown.map((d) => d.id).join('|') + (ready ? '|ready' : '')
   if (state.firstTaskSeenId === sig) return false
   state.firstTaskSeenId = sig
   return true

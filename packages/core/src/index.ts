@@ -963,7 +963,10 @@ export {
   bumpFirst,
   firstStatOf,
   chainProgressOf,
-  advanceFirstTasks,
+  /* 「第一次」任务：**只判不写**（2026-09-21 船长令改成"玩家点「完成」才推进"）——
+     完成动作见下面的 `claimFirstTask`；末段并列批的判定同样走这一个读数函数 */
+  claimableFirstTasks,
+  isFirstTaskCurrent,
   advanceFirstChains,
   claimChainReward,
   visibleFirstTasks,
@@ -985,7 +988,10 @@ export {
   firstTasksMarkSeen,
 } from './firstTasks'
 /* 奖励发放（六个口袋：蓝图书/仓库/装备库/机库/核心账本/虫洞库存）——单独一件以避开反向依赖成环 */
-export { grantFirstReward } from './firstRewards'
+export { grantFirstReward, grantFirstPocket, grantStartRewardsForCurrent, claimFirstTask } from './firstRewards'
+export type { ClaimFirstTaskResult } from './firstRewards'
+/* 「第一次」任务的奖励口袋形状（完成奖励与起手道具共用） */
+export type { FirstReward } from './firstTasks'
 /* 成就徽章（2026-09-20 船长批「继续之前的成就系统」）——**两批都已完成并合入 main**：
  * 第一批 = 徽章框架 63 枚 · 第二批 = 里程碑成就 18 枚（判据 = 终身计数达阈值，六个计数键由
  * `engine.reconcileMilestoneStats` 每拍现算兜底）。本处**不挂未完成记号**（§十一之二）。 */

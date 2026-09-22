@@ -17,7 +17,7 @@ import type { WormholeState } from './wormhole'
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
-export const CURRENT_STATE_VERSION = 30
+export const CURRENT_STATE_VERSION = 31
 /** 母港星系 id（内容层约定；探索系统以它为初始点亮点） */
 export const HOME_GALAXY_ID = 'galaxy-hub'
 /** 技能最高等级（EVE 惯例 5 级） */
@@ -1983,8 +1983,7 @@ export type GameStateV29 = Omit<GameStateV28, 'version'> & {
  * 老档迁移补 `{ earned: {} }` **并补发**已达成者的徽章（见 `save.ts` 的 `MIGRATIONS[29]`）。
  */
 export type GameStateV30 = Omit<GameStateV29, 'version'> & {
-  version: 30
-  /**
+  version: 30  /**
    * **成就徽章**（2026-09-20 船长批；第一批 = 任务与次数链共 63 枚，已完成）。
    * ⚠ 账本结构对两批通用：第二批（里程碑成就）只是往徽章**表**里加条目，**本字段不用改**。
    *
@@ -1993,8 +1992,35 @@ export type GameStateV30 = Omit<GameStateV29, 'version'> & {
    */
   achievements?: AchievementState
 }
-/** 对外统一称呼：当前版本状态（v30 = v29 + 成就徽章） */
-export type GameState = GameStateV30
+/**
+ * 第三十一版存档结构：**v31 = v30 + 「第一次」任务改成"玩家点「完成」才推进"**（2026-09-21 船长令）。
+ *
+ * 结构上只多两个**可选**字段（都没写 ⇒ 与 v30 快照逐字一致）：
+ * - `firstTaskReadyId?`：已经播报过"这条已达成"的那一条（播报去重，免得每拍刷屏）；
+ * - `firstTaskAutoClaim?`：**老档一次性收口标记**（`save.ts` 的 v30→v31 迁移给老档写上）——读档后第一拍把
+ *   "判据已满足却没点过"的积压任务按点击同款走完（发奖/发信/进下一条），随后删键；**新档不带它**。
+ */
+export type GameStateV31 = Omit<GameStateV30, 'version'> & {
+  version: 31
+  /**
+   * **已经播报过"这条已达成"的那一条**（**2026-09-21 船长令**：任务不再自动完成，玩家回任务中心点「完成」）。
+   *
+   * 干什么用：达成那一刻要写**一条**日志（「◆ 任务已达成：…回「任务中心」点「完成」」），
+   * 这个键就是"播报过没有"的记忆（只在播报时写；换一条 ⇒ 与上次不同 ⇒ 再播一次）。
+   * 可选字段、**零迁移**（老档没有它 ⇒ 下一拍按现状播报一次）；**没播报过就不写这个键**。
+   */
+  firstTaskReadyId?: string
+  /**
+   * **老档一次性收口标记**（**2026-09-21 船长令**「老档直接完成」；由 `save.ts` 的 v30→v31 迁移写上）。
+   *
+   * 语义：**读档后的第一拍**把"判据已满足、但玩家还没点完成"的积压任务**按点击同款一次走完**
+   * （发奖、发信、进下一条，直到当前那条不再满足为止，最多 13 条），随后**删掉这个键**。
+   * 新档不带它 ⇒ 一律走"玩家点「完成」"的手动流程。可选字段 ⇒ 新档快照不含它（零迁移）。
+   */
+  firstTaskAutoClaim?: boolean
+}
+/** 对外统一称呼：当前版本状态（v31 = v30 + 任务改手动完成） */
+export type GameState = GameStateV31
 
 /** **成就徽章的存档面**：只存"哪几枚到手了 ＋ 到手时刻"——图案/名称/说明一律现算 */
 export interface AchievementState {
@@ -2078,6 +2104,11 @@ export interface ImportantTaskState {
   delivered?: number
   /** 「寻找人类」阶段目标：已探索全部星系（里程碑只记一次；2026-09-10 船长定） */
   allExplored?: boolean
+  /**
+   * **起手道具已发放**（**2026-09-21 船长令**：任务开始时给道具 ⇒ 去重键 = 这条）。
+   * 只在真的发放那一刻写 `true`（没发过就不写这个键 ⇒ 老档/新档快照零迁移）；**不回收**。
+   */
+  started?: boolean
 }
 
 /**
@@ -2440,8 +2471,9 @@ export function createInitialState(opts?: {
 }): GameState {
   const prologue = opts?.prologue === true
   const nowWall = opts?.nowWallMs ?? Date.now()
-  const state: GameStateV30 = {
-    version: 30,
+  const state: GameStateV31 = {
+    // 新档一律按**当前版本**落盘（改版时不必再记得回来改这一行）
+    version: CURRENT_STATE_VERSION,
     gameMs: 0,
     savedAtWallMs: nowWall,
     logCap: DEFAULT_LOG_CAP,

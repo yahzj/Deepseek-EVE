@@ -844,9 +844,9 @@ describe('虫洞 · v25 存档（纯新增字段 + 零迁移）', () => {
   // v28 = 残骸合并（旧"每卡一种"残骸 id → 「族 × 地区」13 组的同组累加折算，2026-09-19）；
   // v29 = 谜质科技树（2026-09-19）；v30 = 成就徽章（2026-09-20）
   it('新档带空虫洞状态；当前存档版本 = 30（v30 = 成就徽章，v29 = 谜质科技树）', () => {
-    expect(CURRENT_STATE_VERSION).toBe(30)
+    expect(CURRENT_STATE_VERSION).toBe(31)
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
-    expect(s.version).toBe(30)
+    expect(s.version).toBe(31)
     expect(s.wormhole).toEqual({ run: null, lastFleetLost: 0 })
   })
 
