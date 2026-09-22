@@ -83,11 +83,15 @@ function Stars(): JSX.Element {
 /**
  * 漂浮物落位与动画**分层**（2026-09-21 自查修正）：
  * 落位要靠 `transform="translate(…)"`、漂移动画也要动 `transform`——同一个元素上两处抢一个属性，
- * 结果就是"动画把落位覆盖掉、所有漂浮物全挤在画布左上角"。故：**外层 `<g transform>` 落位、
- * 内层 `.app-act-drift` 动画**，各管一处。
+ * 结果就是"动画把落位覆盖掉、所有漂浮物全挤在画布左上角"。故：**外层 `<g transform>` 只落纵向、
+ * 内层 `.app-act-drift` 负责横向扫掠**，各管一处。
+ *
+ * ⚠ **横向行程必须"整条右缘外 → 左缘外"**（2026-09-21 船长报障：「漂浮物在飞到窗口一半的位置就消失了」）：
+ * 首版把"落位 x"与"短行程（290 单位）"混用，落位又在 x≈404~530 ⇒ 出场在右缘、**消失点落在 x≈274~400**，
+ * 也就是画面右半到正中；小窗那套是从右缘一路飞出左缘，所以看不到"半路消失"。
+ * 现在落位只管 y，横向行程写死在 keyframes 里（620 → −80，两端都在画框外）⇒ 消失点回到画框外。
  */
 function DriftItem({
-  x,
   y,
   kind,
   small,
@@ -95,7 +99,6 @@ function DriftItem({
   delay,
   children,
 }: {
-  x: number
   y: number
   kind: 'rock' | 'debris' | 'gate' | 'probe'
   small?: boolean
@@ -104,7 +107,7 @@ function DriftItem({
   children: ReactNode
 }): JSX.Element {
   return (
-    <g transform={`translate(${x} ${y})`}>
+    <g transform={`translate(0 ${y})`}>
       <g
         className={`app-act-drift is-${kind}${small ? ' is-small' : ''}`}
         style={{ animationDuration: dur, animationDelay: delay }}
@@ -119,14 +122,14 @@ function DriftItem({
 function DriftRocks(): JSX.Element {
   return (
     <>
-      <DriftItem x={470} y={42} kind="rock" dur="11s" delay="0s">
+      <DriftItem y={42} kind="rock" dur="9.5s" delay="0s">
         <path d="M2 12 L10 3 L22 5 L26 15 L19 25 L5 22 Z" />
         <path d="M10 7 l9 2 M8 17 l7 -2 M18 19 l5 -2" strokeOpacity="0.45" />
       </DriftItem>
-      <DriftItem x={404} y={188} kind="rock" small dur="13.5s" delay="3.6s">
+      <DriftItem y={188} kind="rock" small dur="12s" delay="3.6s">
         <path d="M2 9 L13 2 L20 6 L17 13 L6 15 Z" />
       </DriftItem>
-      <DriftItem x={530} y={150} kind="rock" small dur="16s" delay="7.2s">
+      <DriftItem y={150} kind="rock" small dur="14s" delay="7.2s">
         <path d="M3 8 L12 3 L18 8 L14 14 L5 13 Z" />
       </DriftItem>
     </>
@@ -137,14 +140,14 @@ function DriftRocks(): JSX.Element {
 function DriftDebris(): JSX.Element {
   return (
     <>
-      <DriftItem x={452} y={30} kind="debris" dur="10s" delay="0.6s">
+      <DriftItem y={30} kind="debris" dur="9s" delay="0.6s">
         <path d="M2 9 L13 1 L24 5 L20 14 L7 16 Z" />
         <path d="M13 3 l2 6 M7 12 l6 0" strokeOpacity="0.45" />
       </DriftItem>
-      <DriftItem x={392} y={196} kind="debris" small dur="13s" delay="4s">
+      <DriftItem y={196} kind="debris" small dur="12.5s" delay="4s">
         <path d="M1 7 L11 2 L16 9 L9 14 Z" />
       </DriftItem>
-      <DriftItem x={524} y={176} kind="debris" small dur="15s" delay="8.4s">
+      <DriftItem y={176} kind="debris" small dur="14.5s" delay="8.4s">
         <path d="M2 6 L10 2 L15 7 L11 13 L3 12 Z" />
       </DriftItem>
     </>
@@ -155,11 +158,11 @@ function DriftDebris(): JSX.Element {
 function DriftGates(): JSX.Element {
   return (
     <>
-      <DriftItem x={480} y={46} kind="gate" dur="12s" delay="0s">
+      <DriftItem y={46} kind="gate" dur="11s" delay="0s">
         <path d="M2 10 L14 3 L24 10 L14 17 Z" />
         <path d="M14 3 V17" strokeOpacity="0.4" />
       </DriftItem>
-      <DriftItem x={430} y={192} kind="gate" small dur="15s" delay="5.5s">
+      <DriftItem y={192} kind="gate" small dur="14s" delay="5.5s">
         <path d="M2 7 L11 2 L17 7 L11 12 Z" />
       </DriftItem>
     </>
@@ -170,15 +173,15 @@ function DriftGates(): JSX.Element {
 function DriftSignals(): JSX.Element {
   return (
     <>
-      <DriftItem x={470} y={40} kind="probe" dur="10.5s" delay="0s">
+      <DriftItem y={40} kind="probe" dur="10s" delay="0s">
         <circle cx="9" cy="9" r="6" />
         <circle cx="9" cy="9" r="1.8" stroke="none" />
       </DriftItem>
-      <DriftItem x={510} y={186} kind="probe" small dur="13s" delay="3.5s">
+      <DriftItem y={186} kind="probe" small dur="12.5s" delay="3.5s">
         <circle cx="7" cy="7" r="4" />
         <circle cx="7" cy="7" r="1.3" stroke="none" />
       </DriftItem>
-      <DriftItem x={418} y={166} kind="probe" small dur="16s" delay="7s">
+      <DriftItem y={166} kind="probe" small dur="15s" delay="7s">
         <circle cx="6" cy="6" r="3" />
         <circle cx="6" cy="6" r="1" stroke="none" />
       </DriftItem>

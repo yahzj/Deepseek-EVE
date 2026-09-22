@@ -187,19 +187,17 @@ export function BattleScreen({
   onToast,
   onClose,
   open = true,
-  onRestore,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onClose: () => void
   /**
    * 窗口是否展开（**2026-09-20 船长令：观战窗口改非全屏、可最小化**）。
-   * `false` ⇒ 本组件只渲染右下角浮动还原标（"⚔ 战斗中"），战斗在后台照常推进。
+   * `false` ⇒ 本组件什么都不渲染，战斗在后台照常推进（**还原入口 = 左上角舰船小窗**；
+   * 2026-09-21 船长令：与小窗合并，原先的 `onRestore` 浮动标与这个参数一起作废）。
    * 判定与"何时自动弹出"留在 `App.tsx`（同既有 `battleOpen` 机制），本组件不做业务判断。
    */
   open?: boolean
-  /** 点浮动还原标（把窗口弹回来）；缺省时浮动标不可点——调用方必须给 */
-  onRestore?: () => void
 }) {
   const state = engine.state
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
@@ -720,9 +718,7 @@ const meSpeedRef = useRef(200)
         open={open}
         onMinimize={onClose}
         minimizeText={tr('ui.App.086')}
-        chipText={titleOf[verdict]}
-        chipTitle={tr('ui.App.083')}
-        onRestore={onRestore ?? onClose}
+        minimizeTitle={tr('ui.BattleScreen.107')}
       >
       <div className="app-battle-screen is-report">
         <div className="app-bts-report">
@@ -1993,9 +1989,6 @@ const meSpeedRef = useRef(200)
       onMinimize={onClose}
       minimizeText={tr('ui.BattleScreen.037')}
       showMinimizeButton={false} // 战斗屏自己顶栏已有一枚（船长实测报障：出现两个"退出/最小化"按钮）
-      chipText={tr('ui.App.084')}
-      chipTitle={tr('ui.App.083')}
-      onRestore={onRestore ?? onClose}
     >
       <div className="app-battle-screen">
       <div className="app-battle-screen-top">

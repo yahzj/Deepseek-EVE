@@ -115,7 +115,19 @@ const STAR_COUNT: Record<ShipwinScene, number> = {
   combat: 8,
 }
 
-export function ShipStatusWin({ engine }: { engine: GameEngine }) {
+export function ShipStatusWin({
+  engine,
+  restore,
+}: {
+  engine: GameEngine
+  /**
+   * **有窗口被最小化时的还原入口**（2026-09-21 船长令：与小窗合并）。
+   * `null` = 没有待还原的窗口 ⇒ 小窗保持只读、点击不做事。
+   * 文案（`title`）由 `App.tsx` 按"是哪个窗口"给（本组件只管把它挂上去）。
+   * ⚠ 战斗与活动**同时**最小化时由 `App.tsx` 定优先级（当前：战斗优先——那是正在打的一仗）。
+   */
+  restore?: { title: string; onRestore: () => void } | null
+}) {
   const state = engine.state
   const def = fleetDefOf(state, engine.ctx, state.shipId)
   const cls = sceneOfShipwin(state)
@@ -229,29 +241,46 @@ export function ShipStatusWin({ engine }: { engine: GameEngine }) {
   }
 
   return (
-    <div className={`app-shipwin is-${cls}`} aria-hidden="true">
-      {/* 背景氛围层（换场景交叉过渡） */}
-      {bgPrev !== null ? <div className={`app-shipwin-bg is-prev bg-${bgPrev}`} /> : null}
-      <div className={`app-shipwin-bg is-cur bg-${cls}`} />
-      {/* 星空/机库/远景物件（舰后） */}
-      <svg className="app-shipwin-sky" viewBox={`0 0 ${FX_W} ${FX_H}`} preserveAspectRatio="none">
-        {sky}
-      </svg>
-      {/* 舰船双层 */}
-      <div className="app-shipwin-stack">
-        {leaving !== null ? (
-          <div className="app-shipwin-layer is-leave">
-            <ShipSprite shipId={leaving.id} role={leaving.role} size={112} engine={false} accent={toneOf(leaving.role)} />
+    /**
+     * **小窗 = 还原按钮**（2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮合并」）。
+     *
+     * 有窗口被最小化时（`restore` 非空）：整块小窗包一层 `<button>`，右上角出一枚「⤢」角标（脉冲提示），
+     * 点它即把那个窗口展开回来；**平时 button 被禁用 ⇒ 点它不做事**（小窗本体是展示件，不该有别的行为）。
+     * 用真 `<button>` 而不是"div + onClick"：键盘可聚焦、语义正确（样式已在 `.app-shipwin-wrap` 里归零）。
+     */
+    <button
+      type="button"
+      className={`app-shipwin-wrap${restore ? ' is-restore' : ''}`}
+      onClick={restore ? restore.onRestore : undefined}
+      disabled={!restore}
+      title={restore?.title}
+      aria-label={restore?.title}
+    >
+      <div className={`app-shipwin is-${cls}`} aria-hidden="true">
+        {/* 背景氛围层（换场景交叉过渡） */}
+        {bgPrev !== null ? <div className={`app-shipwin-bg is-prev bg-${bgPrev}`} /> : null}
+        <div className={`app-shipwin-bg is-cur bg-${cls}`} />
+        {/* 星空/机库/远景物件（舰后） */}
+        <svg className="app-shipwin-sky" viewBox={`0 0 ${FX_W} ${FX_H}`} preserveAspectRatio="none">
+          {sky}
+        </svg>
+        {/* 舰船双层 */}
+        <div className="app-shipwin-stack">
+          {leaving !== null ? (
+            <div className="app-shipwin-layer is-leave">
+              <ShipSprite shipId={leaving.id} role={leaving.role} size={112} engine={false} accent={toneOf(leaving.role)} />
+            </div>
+          ) : null}
+          <div className="app-shipwin-layer is-enter">
+            <ShipSprite shipId={def.id} role={def.role} size={112} engine={engineOn} accent={accent} />
           </div>
-        ) : null}
-        <div className="app-shipwin-layer is-enter">
-          <ShipSprite shipId={def.id} role={def.role} size={112} engine={engineOn} accent={accent} />
+          {/* 交火炮口火光（2026-09-10 船长批：按驾驶舰真实炮口挂载，与舰形同画布坐标系；
+              无原生炮（货/矿舰等）回退舰艏前缘单点） */}
+          {cls === 'combat' ? <MuzzleFlash defId={def.id} /> : null}
         </div>
-        {/* 交火炮口火光（2026-09-10 船长批：按驾驶舰真实炮口挂载，与舰形同画布坐标系；
-            无原生炮（货/矿舰等）回退舰艏前缘单点） */}
-        {cls === 'combat' ? <MuzzleFlash defId={def.id} /> : null}
       </div>
-    </div>
+      {restore ? <span className="app-shipwin-badge">⤢</span> : null}
+    </button>
   )
 }
 

@@ -243,15 +243,13 @@ export function ActivityScreen({
   ctx,
   open,
   onMinimize,
-  onRestore,
 }: {
   state: GameState
   ctx: SimContext
   open: boolean
   onMinimize: () => void
-  onRestore: () => void
 }): ReactNode {
-  // 调试模式未开 ⇒ 本窗口完全不存在（不弹窗、也不出浮动还原标）
+  // 调试模式未开 ⇒ 本窗口完全不存在（不弹窗、也不出还原入口）
   if (!activityWinEnabled()) return null
   const kind = activityKindOf(state)
   if (kind === null) return null
@@ -266,9 +264,7 @@ export function ActivityScreen({
       open={open}
       onMinimize={onMinimize}
       minimizeText={tr('ui.ActivityWin.006')}
-      chipText={`${tr('ui.ActivityWin.007')}${r.title}`}
-      chipTitle={tr('ui.ActivityWin.008')}
-      onRestore={onRestore}
+      minimizeTitle={tr('ui.ActivityWin.032')}
     >
       <div className={`app-act-stage bg-${SCENE_CLASS[kind]}`} style={beatStyle(r.cycleMs, r.progress)}>
         <svg

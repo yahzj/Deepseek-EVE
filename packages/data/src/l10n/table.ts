@@ -908,8 +908,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ActivityWin.004": { zh: "母港", en: "Home port" },
   "ui.ActivityWin.005": { zh: "扫描虫洞中", en: "Scanning for wormholes" },
   "ui.ActivityWin.006": { zh: "← 最小化", en: "← Minimize" },
-  "ui.ActivityWin.007": { zh: "▶ ", en: "▶ " },
-  "ui.ActivityWin.008": { zh: "展开主控活动窗口：看主控正在做什么", en: "Open the command activity window: see what your ship is doing" },
+  /**
+   * 2026-09-21 船长令「将左上角的小窗动画和右下角的最小化相关的按钮合并」：
+   * 活动窗口最小化后不再有右下角浮动标 ⇒ `.007`（那枚标上的「▶ 」前缀）已无引用，按纪律删死键。
+   * `.008` 改口径：它现在是**左上角舰船小窗上的悬停说明**（点整块小窗即展开）。
+   */
+  "ui.ActivityWin.008": { zh: "点此展开主控活动窗口：看主控正在做什么", en: "Click to open the command activity window: see what your ship is doing" },
+  "ui.ActivityWin.032": { zh: "最小化活动窗口：主控照常作业，可随时点左侧舰船小窗展开", en: "Minimize the activity window: your ship keeps working; click the ship mini-window on the left to bring it back" },
   "ui.ActivityWin.010": { zh: "矿带：", en: "Belt: " },
   "ui.ActivityWin.011": { zh: "本趟采得：", en: "Mined this trip: " },
   "ui.ActivityWin.012": { zh: "每循环：", en: "Per cycle: " },
@@ -1011,8 +1016,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.080": { zh: "迎战", en: "Engage" },
   "ui.App.081": { zh: "立即脱离：按文字结算（可能击退缴获 / 受损 / 被抢小部分货）", en: "Disengage now: resolved as text (you may drive them off and take prizes, take damage, or lose a little cargo)" },
   "ui.App.082": { zh: "快速脱离", en: "Quick disengage" },
-  "ui.App.083": { zh: "打开战斗窗口：观察实时战斗，可拖动距离条指挥", en: "Open the battle window: watch the fight live and drag the range bar to command it" },
-  "ui.App.084": { zh: "战斗中 · 进入战场", en: "In combat · entering battle" },
+  /** 2026-09-21：它现在是**左上角舰船小窗上的悬停说明**（合并了原先右下角那枚浮动标的功能） */
+  "ui.App.083": { zh: "点此展开战斗窗口：观察实时战斗，可拖动距离条指挥", en: "Click to open the battle window: watch the fight live and drag the range bar to command it" },
+  /** `.084`（原浮动还原标上的「战斗中 · 进入战场」）随浮动标一起删除，按纪律不留死键 */
   "ui.App.085": { zh: "离线简报", en: "Offline report" },
   "ui.App.086": { zh: "✕ 关闭", en: "✕ Close" },
   "ui.App.087": { zh: "离开", en: "Leave" },
@@ -1168,9 +1174,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /**
    * 「← 最小化」的悬停说明（2026-09-20 船长：「**虫洞内的战斗，允许玩家将战斗窗口最小化。**」）。
    * 洞内与洞外**同一句话**：都只是关掉观看界面，战斗在后台继续推进。
+   * 2026-09-21 改口径：还原入口由"右下角「战斗中」浮动标"改为**左上角舰船小窗**（船长令：两处合并）。
    */
-  "ui.BattleScreen.105": { zh: "最小化战斗窗口：不中止战斗，它照常在后台推进；可随时点右下角「战斗中」回来", en: "Minimize the battle window: the fight is not stopped — it keeps running in the background; click “In battle” at the bottom right to reopen it" },
+  "ui.BattleScreen.105": { zh: "最小化战斗窗口：不中止战斗，它照常在后台推进；可随时点左侧舰船小窗展开", en: "Minimize the battle window: the fight is not stopped — it keeps running in the background; click the ship mini-window on the left to bring it back" },
   "ui.BattleScreen.106": { zh: "战斗窗口", en: "Battle window" },
+  /** 战报窗口那枚「✕ 关闭」的悬停说明（2026-09-21 补：此前它借用的是"打开战斗窗口"那句，说的不是同一件事） */
+  "ui.BattleScreen.107": { zh: "关闭战报窗口：战果与损失已入账", en: "Close the battle report: results and losses are already recorded" },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },

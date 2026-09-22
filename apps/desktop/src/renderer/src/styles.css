@@ -2876,6 +2876,11 @@ html[data-locale='en'] body {
 
 .app-page-main {
 
+  /* 2026-09-21 船长令：窗口壳（战斗 / 主控活动）改成**覆盖主内容区**（不盖左导航与顶栏）
+     ⇒ 本容器要当那层的定位祖先（`position: relative`），窗口层才能用 `inset: 0` 吃它这一块。 */
+
+  position: relative;
+
   flex: 1;
 
   min-width: 0;
@@ -3143,13 +3148,48 @@ html[data-locale='en'] body {
 
 }
 
-/* 左侧导航「出港」上方的驾驶舰船状态窗（2026-09-10 船长：无文字、按活动给轻动效；与导航同级观感） */
+/* 左侧导航「出港」上方的驾驶舰船状态窗（2026-09-10 船长：无文字、按活动给轻动效；与导航同级观感）
+   ── 2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮**合并**」⇒ 右下角那枚浮动还原标
+   已撤（`.app-float-chip` 删除），改为**整个小窗就是还原按钮**：有窗口被最小化时，小窗包一层 `<button>`
+   并出「⤢」角标（脉冲提示可展开）；平时 `<button>` 禁用 ⇒ **点它不做事**（防误触）。
+   包装层只管"可点 + 角标"，窗口本体 `.app-shipwin` 的观感一字未动（底边距也移到包装层，避免外边距塌陷）。 */
+.app-shipwin-wrap {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  position: relative;
+}
+.app-shipwin-wrap.is-restore { cursor: pointer; }
+.app-shipwin-wrap.is-restore:hover .app-shipwin { border-color: rgba(255, 224, 138, 0.6); }
+.app-shipwin-wrap.is-restore:focus-visible { outline: 1px solid var(--wui-gold); outline-offset: 2px; }
+/* 角标：脉冲语汇沿用撤掉那枚浮动标的 `app-float-pulse`（同族观感，不另造） */
+.app-shipwin-badge {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  z-index: 3;
+  padding: 1px 5px;
+  border-radius: 5px;
+  border: 1px solid var(--wui-gold);
+  background: rgba(60, 42, 10, 0.92);
+  color: #ffe08a;
+  font-size: 11px;
+  line-height: 1.3;
+  pointer-events: none;
+  animation: app-float-pulse 1.6s ease-in-out infinite;
+}
 .app-shipwin {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  margin: 0 0 8px;
+  margin: 0;
   padding: 6px 10px 6px 6px;
   border: 1px solid rgba(85, 112, 140, 0.35);
   border-radius: 12px;
@@ -3257,17 +3297,23 @@ html[data-locale='en'] body {
 
 /* ═══════════ 游戏内窗口壳（2026-09-20 船长令：战斗窗口改非全屏 · 新活动窗口照它做）═══════════
    一处实现两处消费：`ui/WinBox.tsx`（组件）—— `panels/BattleScreen.tsx` 与 `ui/ActivityScreen.tsx`。
-   外观语汇全部复用 `.app-modal` 族（同款描边 / 圆角 / 阴影 / 深蓝渐变），**不另造一套窗口观感**。 */
+   外观语汇全部复用 `.app-modal` 族（同款描边 / 圆角 / 阴影 / 深蓝渐变），**不另造一套窗口观感**。
+
+   **2026-09-21 船长令（「悬浮窗口形式有些太遮挡了，改为覆盖在当前的主窗口上」）**：
+   覆盖范围由**整屏**收进**主内容区**（`.app-page-main`）——两个窗口组件在 `App.tsx` 里就挂在该容器内，
+   本层用 `position: absolute; inset: 0` 吃它的**内边距盒**（绝对定位的百分比/inset 都相对它），
+   ⇒ 左导航（含那个状态小窗）与顶栏**永不遮挡**、也不用去量导航宽/顶栏高（量与猜都是坑）。
+   同时**去掉深色遮罩**、本层 `pointer-events: none`（只有窗口自己吃点击）⇒ **窗外可点穿**，
+   打开窗口时底下照样能操作游戏（非模态）。 */
 .app-winbox-layer {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 110; /* < 详情窗 120/140 与悬浮说明 1000；> 浮动还原标 90 与公告 88 */
+  z-index: 110; /* 在本容器的层叠上下文里比页面内容高（本容器不新建层叠上下文 ⇒ 仍与详情窗 120/140 同级比较） */
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  /* 遮罩只挡交互、只铺很淡一层 ⇒ 关窗前也看得见游戏在跑（不是全屏黑幕） */
-  background: rgba(3, 7, 12, 0.42);
+  padding: 10px;
+  pointer-events: none;
 }
 .app-winbox {
   display: flex;
@@ -3278,6 +3324,7 @@ html[data-locale='en'] body {
   min-height: 0;
   /* 本窗自己当**容器查询**的容器：窄窗口径按窗口宽生效（不是视口宽——窗口宽与视口无关） */
   container-type: inline-size;
+  pointer-events: auto; /* 只有窗口本体吃点击；本层其余部分是"可点穿"的（见 .app-winbox-layer） */
   background: linear-gradient(180deg, #0c1a2c, #081120);
   border: 1px solid rgba(79, 216, 196, 0.35);
   border-radius: 10px;
@@ -3296,22 +3343,6 @@ html[data-locale='en'] body {
 .app-winbox-title { font-size: 13.5px; font-weight: 700; color: var(--wui-text); white-space: nowrap; }
 .app-winbox-spacer { flex: 1; min-width: 8px; }
 .app-winbox-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-/* 浮动还原标（最小化后右下角常驻；与既有 `.app-battle-float` 同款脉冲语汇） */
-.app-float-chip {
-  position: fixed;
-  right: 18px;
-  bottom: 74px;
-  z-index: 90;
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--wui-gold);
-  background: rgba(60, 42, 10, 0.92);
-  color: #ffe08a;
-  font-size: 13px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  cursor: pointer;
-  animation: app-float-pulse 1.6s ease-in-out infinite;
-}
 /* 窗口内的战斗屏：外壳已给尺寸与边框 ⇒ 自身只管排布，不再全屏定位 */
 .app-winbox .app-battle-screen,
 .app-winbox .app-battle-screen.is-report { position: static; inset: auto; z-index: auto; flex: 1; min-height: 0; background: transparent; }
@@ -3374,8 +3405,8 @@ html[data-locale='en'] body {
 .app-winbox.is-activity .app-act-stage.bg-work-mine .app-act-drift.is-rock.is-small { color: #8fb44a; }
 .app-winbox.is-activity .app-act-stage.bg-work-salvage .app-act-drift.is-debris { color: #6fe3f0; }
 .app-winbox.is-activity .app-act-stage.bg-work-salvage .app-act-drift.is-debris.is-small { color: #57b8c4; }
-@keyframes app-act-drift { 0% { transform: translateX(160px); opacity: 0; } 8% { opacity: 0.9; } 88% { opacity: 0.65; } 100% { transform: translateX(-130px); opacity: 0; } }
-@keyframes app-act-drift-spin { 0% { transform: translateX(160px) rotate(0deg); opacity: 0; } 8% { opacity: 0.9; } 88% { opacity: 0.65; } 100% { transform: translateX(-130px) rotate(240deg); opacity: 0; } }
+@keyframes app-act-drift { 0% { transform: translateX(620px); opacity: 0; } 5% { opacity: 0.85; } 90% { opacity: 0.85; } 100% { transform: translateX(-80px); opacity: 0; } }
+@keyframes app-act-drift-spin { 0% { transform: translateX(620px) rotate(0deg); opacity: 0; } 5% { opacity: 0.85; } 90% { opacity: 0.85; } 100% { transform: translateX(-80px) rotate(240deg); opacity: 0; } }
 /* ── 舰体层：真实舰形 + 随舰作业件（同一 float 组 ⇒ 一起轻浮，光带不脱靶）── */
 .app-act-float { animation: app-act-float 2.6s ease-in-out infinite; }
 @keyframes app-act-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }

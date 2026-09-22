@@ -746,7 +746,7 @@ export function App({ engine }: { engine: GameEngine }) {
   /**
    * ── 主控活动窗口（2026-09-20 船长令）──
    * 与战斗窗口同一套机制：**活动开始的上升沿自动弹出一次**；玩家手动最小化后不再自动弹回
-   * （仍可从右下角浮动还原标点回来）。互斥关系由 core 的场景推导统一给出（`activityKindOf`，
+   * （还原入口见下方 `windowRestore`）。互斥关系由 core 的场景推导统一给出（`activityKindOf`，
    * 单一事实源 = `sceneOfShipwin`），本层不各自重写判定。
    */
   const activityKind = activityKindOf(state)
@@ -757,6 +757,21 @@ export function App({ engine }: { engine: GameEngine }) {
     if (activityKind !== null && prevActivityRef.current === null && !inBattle) setActivityOpen(true)
     prevActivityRef.current = activityKind
   }, [activityKind, inBattle])
+
+  /**
+   * ── **最小化后的还原入口**（2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮合并」）──
+   *
+   * 右下角那枚浮动还原标已撤（`.app-float-chip` 连样式一起删掉），改为**左上角舰船小窗本身即还原按钮**：
+   * 有窗口被最小化时，小窗包一层 `<button>` 并出「⤢」角标，点它把那个窗口展开回来。
+   *
+   * 两个窗口**同时**最小化时取战斗优先——那是正在打的一仗（活动窗口反正在左侧小窗里也看得见）。
+   */
+  const windowRestore: { title: string; onRestore: () => void } | null =
+    inBattle && !battleOpen
+      ? { title: tr('ui.App.083'), onRestore: () => setBattleOpen(true) }
+      : activityKind !== null && !activityOpen
+        ? { title: tr('ui.ActivityWin.008'), onRestore: () => setActivityOpen(true) }
+        : null
 
   // ── 日志偏好：折叠状态 + 六类开关（本地持久化） ──
   const [logCollapsed, setLogCollapsed] = useState<boolean>(() => readLogPrefs().collapsed)
@@ -1021,7 +1036,8 @@ export function App({ engine }: { engine: GameEngine }) {
       {/* ───── 工作区：左导航栏 + 主窗口（活动窗口置于主列顶部，宽度与主窗口一致）+ 事件日志 ───── */}
       <div className="app-workspace">
         <nav className="app-nav-side">
-          <ShipStatusWin engine={engine} />
+          {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
+          <ShipStatusWin engine={engine} restore={windowRestore} />
           {/**
            * **金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」＋
            * 「更换金钱单位为**信用点**」）：位置 = 舰船状态窗之下、**第一个导航项（出港）之上**。
@@ -1197,6 +1213,36 @@ export function App({ engine }: { engine: GameEngine }) {
               />
             ) : null}
           </div>
+          {/**
+           * ───── **两个持续性窗口挂在主内容区里**（2026-09-21 船长令）─────
+           *
+           * 船长原话：「弹出的悬浮窗口形式有些太遮挡了，能否改为覆盖在当前的主窗口上？」
+           * ⇒ 两个窗口壳由"整屏 fixed 层"改为**挂进 `.app-page-main`**（`ui/WinBox.tsx` 的层用
+           * `position: absolute; inset: 0` 吃这块容器）——**不盖左导航与顶栏**、去掉深色遮罩、
+           * 窗外可点穿（非模态）⇒ 打开窗口时底下照样能操作游戏。
+           * ⚠ 因此它们必须留在 `<main>` 内部：挪出去就退回"整屏遮挡"（几何由 `npm run ui:actwin` 核实）。
+           */}
+          {inBattle ? (
+            <BattleScreen
+              engine={engine}
+              onToast={showToast}
+              open={battleOpen}
+              onClose={() => {
+                // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
+                // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
+                // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
+                setBattleOpen(false)
+              }}
+            />
+          ) : null}
+          {activityKind !== null ? (
+            <ActivityScreen
+              state={state}
+              ctx={engine.ctx}
+              open={activityOpen}
+              onMinimize={() => setActivityOpen(false)}
+            />
+          ) : null}
         </main>
         <div className="app-log-dock">
           <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>
@@ -1433,36 +1479,13 @@ export function App({ engine }: { engine: GameEngine }) {
       ) : null}
       {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} /> : null}
       {/**
-       * ⚠ **2026-09-20**：这里原先那枚独立的「⚔ 战斗中」浮动按钮**已撤**——
-       * 观战窗口改非全屏后，最小化与浮动还原标统一由 `ui/WinBox.tsx` 这个窗口壳渲染
-       * （一处实现两处消费：战斗窗口 + 主控活动窗口）⇒ 本层只负责"何时开、开哪个"。
+       * ⚠ **这一层为什么没有窗口**（两次改动叠加的结果，别再把窗口挪回来）：
+       * - 2026-09-20：原先那枚独立的「⚔ 战斗中」浮动按钮撤掉，最小化与还原统一走 `ui/WinBox.tsx`；
+       * - 2026-09-21（船长令「改为覆盖在当前的主窗口上」）：战斗窗口与主控活动窗口**都挂进 `<main>`**
+       *   （见上方 `</main>` 之前那段）——本层是 `.app-root` 直下、整屏坐标系，
+       *   窗口若留在这里就会重新变成"盖住左导航与顶栏的整屏悬浮层"。
+       * 本层现在只剩"何时开、开哪个"的状态与其它弹层。
        */}
-      {inBattle ? (
-        <BattleScreen
-          engine={engine}
-          onToast={showToast}
-          open={battleOpen}
-          onRestore={() => setBattleOpen(true)}
-          onClose={() => {
-            // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
-            // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
-            // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
-            setBattleOpen(false)
-          }}
-        />
-      ) : null}
-
-      {/* ───── 主控活动窗口（采掘 / 打捞 / 长途运输·承运 / 扫描虫洞；2026-09-20 船长令）───── */}
-      {activityKind !== null ? (
-        <ActivityScreen
-          state={state}
-          ctx={engine.ctx}
-          open={activityOpen}
-          onMinimize={() => setActivityOpen(false)}
-          onRestore={() => setActivityOpen(true)}
-        />
-      ) : null}
-
 
       {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
       {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}
