@@ -2911,6 +2911,23 @@ function normalizeState(raw: unknown): GameState {
             ...(Math.floor(num(rRaw.bossCleared)) > 0
               ? { bossCleared: Math.floor(num(rRaw.bossCleared)) }
               : {}),
+            /**
+             * **回合账本的两个锚**（2026-09-22 · 玩家报障「虫洞内玩家将谜质时序来回拖动会重复加回合」）。
+             *
+             * ⚠ 本清洗器是**逐字段重建**的，没登记在这里的字段**每读一次档就被丢一次**——
+             * 与下面 `attending` 那条同一类事故（那个害得洞内战斗永久冻结）。
+             * `turnsBase`（09-13 进格式）与 `turnsTechBonus`（09-19 进格式）都漏登记过：
+             * 丢掉 `turnsBase` 之后，`wormholeSyncMatterTurns` 只能在**第一次同步的那一刻**现推基础预算，
+             * 而那一刻玩家可能正好把「时序核心」拖到了临时空间（不在货仓）⇒ 推出来的基础预算凭空多 10 回合、
+             * 且此后再拖回来又按"上限变大"再给一次 ⇒ **来回拖 = 白刷回合**。
+             * 两个字段都按"是不是有限数"判（**0 也合法**：0 回合的趟存在），不用"大于 0"判。
+             */
+            ...(typeof rRaw.turnsBase === 'number' && Number.isFinite(rRaw.turnsBase)
+              ? { turnsBase: Math.max(0, Math.round(rRaw.turnsBase)) }
+              : {}),
+            ...(typeof rRaw.turnsTechBonus === 'number' && Number.isFinite(rRaw.turnsTechBonus)
+              ? { turnsTechBonus: Math.max(0, Math.round(rRaw.turnsTechBonus)) }
+              : {}),
           }
         : null
     /**

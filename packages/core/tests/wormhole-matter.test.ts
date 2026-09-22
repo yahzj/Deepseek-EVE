@@ -17,7 +17,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeEnter, wormholeExtract } from '../src/wormhole'
+import { wormholeEnter, wormholeExtract, WORMHOLE_TEMP_CELLS } from '../src/wormhole'
 import {
   WORMHOLE_MATTER_DEVICES,
   WORMHOLE_MATTER_DEVICE_IDS,
@@ -31,13 +31,14 @@ import {
   wormholeMatterDiscardHint,
   wormholeMatterThreatMul,
 } from '../src/wormholeMatter'
-import { WORMHOLE_HOLD_SHAPES, wormholeShapeOf } from '../src/wormholeHold'
+import { WORMHOLE_HOLD_SHAPES, holdTransferTo, wormholeShapeOf } from '../src/wormholeHold'
 import { WORMHOLE_MATTER_FLOOR, gridScanTargets, wormholeMakeGrid } from '../src/wormholeGrid'
 import {
   wormholeHoldCapacityOf,
   wormholeHoldDiscard,
   wormholeStowOrTemp,
   wormholeSyncMatterTurns,
+  wormholeTempBoard,
 } from '../src/wormholeSalvage'
 import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import { applyMatterPlayerBuffs, carryVolleyOverflow, droneRecoveryRateWithBonus, rawDamageToKill, wormholeMatterBattleModsOf } from '../src/combat'
@@ -47,6 +48,7 @@ import type { UnitSpec } from '../src/combat'
 import { wormholeCardIdForRun } from '../src/wormholeFoes'
 import { createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
 import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -191,8 +193,73 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
     expect(run.turnsLeft).toBe(snap.left)
   })
 
-  it('⑥ 老档零迁移：没有 `turnsBase` 时按"当前上限 − 当前加成"反推', () => {
+  /**
+   * **【2026-09-22 玩家报障】把「时序核心」在货仓 ↔ 临时空间之间来回拖，回合会被白刷。**
+   *
+   * 现象（船长原话）：「虫洞内玩家将谜质时序来回拖动会重复加回合。」
+   *
+   * 根因：`wormholeSyncMatterTurns` 的"夹紧"是**单边**的 ——
+   * 上限变小时只在"剩余 > 新上限"时才夹（`turnsLeft` 常常原样不动），
+   * 上限变大时却一律 `turnsLeft += delta` ⇒ **一趟来回净赚 +10**，来回拖就能把花掉的回合全刷回来。
+   * 也就是说：那个"上限变小不追缴"的写法**不幂等**（同样的一趟局面，取决于历史怎么走到这儿的）。
+   *
+   * 本条钉住"来回拖 = 净零"：上限与剩余都必须回到拖动前那一对值。
+   */
+  it('⑤b 来回拖「时序核心」不许白刷回合（货仓 ↔ 临时空间各一个来回 ×3）', () => {
     const state = enterRun()
+    const run = state.wormhole.run!
+    expect(wormholeStowOrTemp(state, ctx, 'mat-chrono', 1).ok).toBe(true)
+    expect(wormholeMatterBuffs(run.hold).turnBonus).toBe(10)
+    // 花掉 5 回合（模拟在洞里走了几步）
+    run.turnsLeft -= 5
+    const before = { total: run.turnsTotal, left: run.turnsLeft }
+    expect(before.left).toBeLessThan(before.total)
+
+    for (let i = 0; i < 3; i++) {
+      // 出仓：货仓 → 临时空间（界面里就是把它拖到右边那块板上）
+      const inHold = run.hold!.placements.find((p) => p.itemId === 'mat-chrono')!
+      const out = holdTransferTo(run.hold!, wormholeTempBoard(run), inHold.id, WORMHOLE_TEMP_CELLS)
+      expect(out.ok, out.error).toBe(true)
+      wormholeSyncMatterTurns(state, ctx)
+      expect(run.turnsTotal).toBe(before.total - 10) // 装置不在货仓 ⇒ 上限掉回基础
+      // 回仓：临时空间 → 货仓
+      const inTemp = wormholeTempBoard(run).placements.find((p) => p.itemId === 'mat-chrono')!
+      const back = holdTransferTo(wormholeTempBoard(run), run.hold!, inTemp.id, wormholeHoldCapacityOf(state, ctx))
+      expect(back.ok, back.error).toBe(true)
+      wormholeSyncMatterTurns(state, ctx)
+      expect(run.turnsTotal).toBe(before.total) // 上限回到原样
+      expect(run.turnsLeft).toBe(before.left) // ⚠ 剩余也必须回到原样，不许一趟 +10
+    }
+  })
+
+  /**
+   * **回合账本的锚必须随档往返**（2026-09-22 玩家报障修复的另一半）。
+   *
+   * `save.ts` 的"洞内一趟"是**逐字段重建**的：没登记进那份重建表的字段，**每读一次档就丢一次**
+   * （与同文件 `attending` 那条注释记的是同一类事故）。`turnsBase`（09-13 进格式）与
+   * `turnsTechBonus`（09-19 进格式）都曾漏登记 ⇒ 丢掉之后 `wormholeSyncMatterTurns` 只能在
+   * **第一次同步的那一刻**反推基础预算；那一刻玩家若正好把「时序核心」拖在临时空间（不在货仓），
+   * 反推出来的基础预算就凭空多 10 回合 ⇒ **来回拖 = 白刷回合**（船长报的就是这条）。
+   * 本条钉住"存一遍、读回来，两个锚还在、值不漂、再同步也不动"。
+   */
+  it('⑤c `turnsBase` / `turnsTechBonus` 随档往返（读档不许把回合账本丢了）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    expect(wormholeStowOrTemp(state, ctx, 'mat-chrono', 1).ok).toBe(true) // 触发一次同步 ⇒ 账本落地
+    const base = run.turnsBase
+    const tech = run.turnsTechBonus
+    expect(typeof base).toBe('number')
+    const loaded = loadSaveFile(serializeSaveFile(state)).state
+    const back = loaded.wormhole.run!
+    expect(back.turnsBase).toBe(base)
+    expect(back.turnsTechBonus).toBe(tech)
+    const snap = { t: back.turnsTotal, l: back.turnsLeft }
+    wormholeSyncMatterTurns(loaded, ctx)
+    expect(back.turnsTotal).toBe(snap.t)
+    expect(back.turnsLeft).toBe(snap.l)
+  })
+
+  it('⑥ 老档零迁移：没有 `turnsBase` 时按"当前上限 − 当前加成"反推', () => {    const state = enterRun()
     const run = state.wormhole.run!
     delete run.turnsBase
     const total = run.turnsTotal
