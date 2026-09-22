@@ -387,11 +387,6 @@
 **④顺序红线（注释 ＋ 用例钉住）**：`settleDroneLosses` 内**先记 `survivors`（补货前存活架数）、再补货**——`droneBattleOutcome` 读的是它，否则"战损过半停环"安全阀会**静默失效**。连带：再开门槛文案写清"补到几架才行"（全灭时不再写"现 0 架"那种自相矛盾的话）· 装配页无人机舱新增一行读数「再开重复清剿还差 N 架」（判据走 core 单点，界面不自算）· 无人机说明与手册「机群战损」条目从"回港后请补充"改为"战斗结束自动补足（货仓 → 仓库），都没货才需自购"。**机群门槛保留，语义由"你有没有手动补过货"变成"货源够不够"**。
 **⑤已知取舍（船长知情）**：**棘轮效应**（货源不足只补到 3 架 ⇒ 下一场目标就是 3 架；要"永远补回编制"需落档"配置目标"字段，本批不做）· **野外补给线**（野外打完就从物品仓库取货 ⇒ 相当于自带补给线；要收紧改成"只从货仓取"即可，一处开关）· 弃船 ⇒ 随船损失、补足为空操作。**不动**：2026-09-08「只放飞已装入」（清单仍是玩家显式装配的结果）· 2026-09-18「装甲或结构 <50% ⇒ 拒」。
 **⑥落点与验证**：`core/equipment.ts` 新增 **`refillDroneLoadTo(state, ctx, shipId, target)`**（补足单点：货仓 → 物品仓库、双校验、按基准价降序、不自动购买，返回 `{ added, fromHold, fromWare, short }`）· `core/combat.ts` `settleDroneLosses` 扣账后调用 · `core/expedition.ts` 新增 `droneBattleOutcome` / `autoLoopDroneShortfall` · `core/state.ts` `DroneLossReport.survivors?`（不落档、零迁移）· `renderer` FitPage／itemView／Handbook。**验证**：`npm run test -w @whale/core` **176 文件 / 1,951 用例全绿**（新增 6 例）· typecheck 四包 0 错 · `ui:rot-check` · `l10n:check` · `content:check`；改动既有用例两处（"清单只减不增"／"仓库原封不动"按新口径翻面为"清单当场复位 ＋ 净损失由仓库垫付"）。**未做（记录在案）**：重复清剿按钮的"卡面内联原因"（自动补足后门槛只在"货源为空"时触发，此时已有三处提示 ＋ 装配页缺额读数）。（工作件 `drone-refill-20260920.md` 已按 §8 归档删除。）
-- 2026-09-20：**上位技能「无人值守调度学」：离线结算时长每级 +40%（rank4 · 工程组）（一号 · main · 已合入）**——
-**①船长原话（照抄）**：「**新增离线作业管理学的上位技能：效果为离线结算时长每级 +40%.技能rank4**」
-**②五问五答（船长裁定）**：技能名「**无人值守调度学**」（"离线作业管理学"已占名 ⇒ 上位技能另起名）· 与旧技能**并存叠加**· +40% **加算**（满级 L5 = +200%）· **无前置**（技能系统本无前置机制）· **两个技能都移到「工程」组**（离线作业管理学原在工业组，一并改；其名字／rank3／+20%／描述不动）。
-**③数值**：离线上限 `capEff = capMs × (1 + 0.2×offline-ops级 + 0.4×unattended-dispatch级)`（两技能各自封顶 5 级）⇒ 双 0 = **8h** · 旧满 = 16h · 新满 = 24h · **双满 = 32h**。只管**离线结算上限**（读档补进度段），在线心跳／调试快进／工具模拟不受影响。
-**④落点与验证**：`data/skills.ts`（新条目 ＋ `offline-ops` 改组）· `core/simulation.ts`（加算）· `tools/content-check.ts`（技能说明契约登记 `unattended-dispatch` per 0.4）· `core/tests/skills-effects.test.ts` 新增 3 例（新满 24h · 双满 32h · L2 = 14.4h 加算钉死）。typecheck 四包 0 错 · core 全绿 · `content:check` · `l10n:check` · `docs:index`。**不做**：UI（SkillsPage 数据驱动，自动生效）· 存档迁移（`trained` 缺省 0）· 公告（小修改口径）。（工作件 `unattended-dispatch-20260920.md` 已按 §8 归档删除。）
 
 ## 封存卷索引（更早批次已移入 `docs/archive/`，点开即读）
 
@@ -412,6 +407,6 @@
 | `docs/archive/roadmap-2026-09-17.md` | 2026-09-17 | 16 条 | 36 KB |
 | `docs/archive/roadmap-2026-09-18.md` | 2026-09-18 | 4 条 | 11 KB |
 | `docs/archive/roadmap-2026-09-19.md` | 2026-09-19 | 1 条 | 2 KB |
-| `docs/archive/roadmap-2026-09-20.md` | 2026-09-20 | 20 条 | 34 KB |
+| `docs/archive/roadmap-2026-09-20.md` | 2026-09-20 | 22 条 | 39 KB |
 
 > 上面每卷都是**原文冻结件**：不重写、不摘要、不追加。`docs/archive/README.md` 另有"已办结待办单"卷。
