@@ -24,7 +24,7 @@
 import type { GameState } from './state'
 import { addLog, haltActivityForSwitch } from './state'
 
-/** 主控活动（9 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
+/** 主控活动（10 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
 export type MainActivityKind =
   | 'mining'
   | 'salvaging'
@@ -35,6 +35,8 @@ export type MainActivityKind =
   | 'manufacturing'
   | 'expedition'
   | 'deliver'
+  /** **建站交付**（一键「前往工地交付」＝交付循环；**2026-09-22 船长令**纳入切换单点） */
+  | 'siteDeliver'
 
 /** 直接切（自动停掉；船长 2026-09-21：「统一为能够直接切换（自动取消当前活动）」） */
 export const AUTO_HALT_KINDS: readonly MainActivityKind[] = [
@@ -44,6 +46,12 @@ export const AUTO_HALT_KINDS: readonly MainActivityKind[] = [
   'standby',
   'refine',
   'manufacturing',
+  /**
+   * **建站交付**（**2026-09-22 船长令**：「建设空间站的运输也加入可以打断其他行为的切换里，
+   * 不需要先暂停其他活动」）：它自己也能被别的活动直接切掉——停机口径与开采/打捞同款
+   * （舰船返港、**本趟建材留在船上**，可随时再发起交付），见 `state.haltActivityForSwitch`。
+   */
+  'siteDeliver',
 ]
 
 /** 先警告再执行（船长：「像长途运输这种高收益高周期的才加一个警告」＋「1 写进警告」＝远征/快递同档） */
@@ -63,6 +71,7 @@ export const INTERRUPTIBLE: Readonly<Record<MainActivityKind, boolean>> = {
   manufacturing: true,
   expedition: false,
   deliver: false,
+  siteDeliver: true,
 }
 
 /** 每项的取消代价（写进统一日志与警告；措辞按现行游戏语义，不写原因解释） */
@@ -76,6 +85,7 @@ export const HALT_COST: Readonly<Record<MainActivityKind, string>> = {
   manufacturing: '停线——当前那一批的进度丢弃',
   expedition: '远征无法中断',
   deliver: '投送不可取消',
+  siteDeliver: '交付循环停止、舰船返港，本趟建材留在船上',
 }
 
 /** 活动名（统一文案里用；与活动栏的写法一致） */
@@ -89,6 +99,7 @@ export const KIND_LABEL: Readonly<Record<MainActivityKind, string>> = {
   manufacturing: '亲自开线',
   expedition: '远征',
   deliver: '快递投送',
+  siteDeliver: '建站交付',
 }
 
 /**
@@ -101,6 +112,12 @@ export function mainActivityOf(state: GameState): MainActivityKind | null {
   if (state.salvaging.active) return 'salvaging'
   if (state.hauling.active) return 'hauling'
   if (state.sideTasks.deliver !== null) return 'deliver'
+  /**
+   * **建站交付**（交付循环）：判据 = `transit` 在跑**且带着交付批次**——
+   * 它与"换港返航/旧档在途行程"共用 `transit` 这一个槽，靠 `transit.delivery` 区分
+   * （见 `cannotInterruptReason` 第③条：不带交付的 transit 才算"锁定态"）。
+   */
+  if (state.transit.active && state.transit.delivery !== null) return 'siteDeliver'
   if (state.standby.active) return 'standby'
   if (state.wormholeScan?.active === true) return 'wormholeScan'
   if (state.expedition.active) return 'expedition'
@@ -132,8 +149,12 @@ export function cannotInterruptReason(state: GameState): string | null {
   if (state.wormhole.run != null && state.wormhole.run.attending === true) {
     return '人在虫洞里：先撤离（或打完本层）才能切换主控活动。'
   }
-  // ③ 换港返航途中（瞬时到站，等一拍就好）
-  if (state.transit.active) return '换港返航途中：抵达后就能切换主控活动。'
+  /**
+   * ③ **换港返航途中**（瞬时到站，等一拍就好）——⚠ **只认"不带交付批次"的 transit**：
+   * **建站交付**（`transit.delivery !== null`）是主控活动之一（见 `mainActivityOf`），
+   * 走三档分类（可自动停），不再算锁定态（**2026-09-22 船长令**）。
+   */
+  if (state.transit.active && state.transit.delivery === null) return '换港返航途中：抵达后就能切换主控活动。'
   return null
 }
 

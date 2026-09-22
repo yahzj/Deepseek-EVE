@@ -54,6 +54,8 @@ import {
   billNeedOf,
   stationBillView,
   transitStatus,
+  /** 主控活动判据（2026-09-22：建站交付的按钮门槛与 core 同源——见 `tripReadyDock` 那段注释） */
+  mainActivityOf,
   RARE_WRECK_VOLUME_M3,
   RETURN_LEG_MUL,
 } from '@whale/core'
@@ -3137,22 +3139,25 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
         const avail = itemId ? availOf(itemId) : 0
         // 2026-09-08 一键「前往工地交付」＝交付循环（物理载货：装仓库建材→到点清仓→自动续趟→建成或仓库耗尽终止）
         const tripOn = state.transit.active && state.transit.delivery?.siteId === site.id
-        const tripReadyDock = state.awayGalaxy === null
-        const tripBusy =
-          state.mining.active ||
-          state.expedition.active ||
-          state.salvaging.active ||
-          state.standby.active ||
-          state.transit.active ||
-          state.refineRuns.some((r) => r.active && r.worker === 'pilot') ||
-          state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
+        /**
+         * ⚠ **2026-09-22 船长令**：「建设空间站的运输也加入可以打断其他行为的切换里，不需要先暂停其他活动」
+         * ⇒ 原先的 `tripBusy`（开采/远征/打捞/掩护巡逻/在途/亲自开炉/亲自开线 任一项在跑就置灰）**整段删掉**：
+         * 那些活动由 core 的统一判据裁决（能自动停的先停掉 ＋ 一条统一日志；远征/快递直接拒）。
+         *
+         * 位置门槛只保留两种"点了也白点"的情形：
+         * ① 舰船在野外**且手上没有可停的活动**（纯野外留守）⇒ 得先自己返航；
+         * ② `transit` 槽被占着（换港返航 / 另外一条在建的交付航线）⇒ 同一个槽，等它跑完。
+         * 其余一律交给 core 判（`mainActivityOf` 与 activityGate 同源）。
+         */
+        const tripAway = state.awayGalaxy !== null
+        const tripReadyDock = !tripAway || mainActivityOf(state) !== null
+        const tripBusy = state.transit.active && !tripOn
         const wareStock = billRows.reduce((s, r) => s + (state.warehouse.items[r.itemId] ?? 0), 0)
         const tripFreeM3 = Math.max(
           0,
           Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)),
         )
-        const tripBlocked =
-          tripOn || !tripReadyDock || tripBusy || wareStock <= 0 || tripFreeM3 <= 0
+        const tripBlocked = tripOn || !tripReadyDock || tripBusy || wareStock <= 0 || tripFreeM3 <= 0
         const want = Math.min(Math.max(0, Math.floor(qty)), selRow ? selRow.remaining : 0, avail)
         const intro = site.introDialogueId ? engine.dialogues.find((d) => d.id === site.introDialogueId) : undefined
         return (

@@ -291,6 +291,20 @@ function loadDeliverCargo(state: GameState, ctx: SimContext, site: StationSiteDe
 }
 
 /**
+ * **仓库里有没有"这一趟装得上的"建材**（只读判据，给 `startSiteDeliverTrip` 的早期拒绝用）：
+ * 未完成档位的用料清单里，只要仓库里**还有任意一种** ⇒ true（真正能装多少由 `loadDeliverCargo` 现算）。
+ */
+function hasLoadableDeliverWare(state: GameState, ctx: SimContext, site: StationSiteDef): boolean {
+  const prog = siteProgress(state, site.id)
+  for (let k = prog.stage; k < site.tiers.length; k += 1) {
+    for (const item of site.tiers[k]!.bill) {
+      if ((state.warehouse.items[item.itemId] ?? 0) > 0) return true
+    }
+  }
+  return false
+}
+
+/**
  * 玩家指令：一键「前往工地交付」＝**交付循环**（2026-09-08 船长定）——
  * 出发时装满货仓 → 真实航程 → 到点只清空本趟装载 → 自动返航 → 仓库还有建材就自动续趟，
  * 直到①全部档位建成（就地停靠新站）或②仓库建材耗尽（终止并提示）。
@@ -302,21 +316,43 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   if (!site) return { ok: false, error: `未知建站点：${siteId}。`, errorId: 'core.location.010' }
   const prog = siteProgress(state, siteId)
   if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成并网，无需再交付建材。`, errorId: 'core.location.011' }
+  /**
+   * **本入口自己的两道"点了也白点"的前置**——放在统一判据**之前**（顺序纪律：绝不"先停了玩家的活、
+   * 再说开不了"）。两道都与"停不停别的活动"无关：
+   * ① **货仓有没有空位**（`cargoUsedM3Of` 只读、不停机也变不出空位；停机把矿留在船上只会更满）；
+   * ② **仓库里有没有可装载的建材**（停机不动仓库/货仓里的存货）。
+   */
+  const capV = cargoCapacityM3Of(state, ctx, state.shipId)
+  const usedV = cargoUsedM3Of(state, ctx, state.shipId)
+  const freeV = Math.max(0, Math.floor(capV - usedV))
+  if (freeV <= 0) {
+    return { ok: false, error: '货仓没有空闲空间：先卸货入仓库腾出位置（物品页「全部卸入仓库」），再安排交付循环。', errorId: 'core.location.020' }
+  }
+  const billNow = stationBillText(state, ctx, site)
+  if (!hasLoadableDeliverWare(state, ctx, site)) {
+    return {
+      ok: false,
+      error: `仓库没有可装载的建材（当前档需要：${billNow}）——备料后再一键出发。`,
+      errorId: 'core.location.021',
+      errorParams: { p1: billNow },
+    }
+  }
+  /**
+   * **其余主控活动 ⇒ 走统一判据**（**2026-09-22 船长令**：「**建设空间站的运输也加入可以打断其他行为的切换里，
+   * 不需要先暂停其他活动**」）——开采 / 打捞 / 掩护巡逻 / 扫描虫洞 / 亲自开炉·开线会被**自动停掉**（写一条统一
+   * 日志），长途运输先警告，远征 / 快递投送 / 战斗中 / 洞里 / 返航途中一律拒。原先这里散着 7 条硬拒。
+   *
+   * ⚠ **判据排在"位置门槛"之前**：上面的自动停机本身就把舰船即时带回母港/空间站
+   * （`miningHalt` / `salvageHalt` / 掩护巡逻召回 / 建站交付停机全是即时归位）⇒ 下面那条
+   * `awayGalaxy !== null`（"舰船在野外"）正是被这次停机**满足**的（与站内工业、长途运输同款处置）。
+   */
+  const gateSkip = applyActivityGate(state, 'siteDeliver')
+  if (gateSkip) return gateSkip
   if (state.awayGalaxy !== null) {
     return { ok: false, error: '舰船在野外：请先「返航空间站」（母港或已建成副站），再从空间站下达「前往工地交付」。', errorId: 'core.location.012' }
   }
-  if (state.sideTasks.deliver !== null) return { ok: false, error: '快递投送途中：舰船正在执行投送航行，到站后再安排交付航线。', errorId: 'core.location.013' }
-  if (state.standby.active) return { ok: false, error: '掩护巡逻进行中——请先取消（顶部活动栏）。', errorId: 'core.location.004' }
+  /** 已有进行中的行程（换港返航/旧档在途）：不是"别的活动"，是同一个槽被占着 ⇒ 照旧拒 */
   if (state.transit.active) return { ok: false, error: '已有进行中的行程（返航/交付航线）。', errorId: 'core.location.014' }
-  if (state.expedition.active) return { ok: false, error: '远征作业中：请先召回远征。', errorId: 'core.location.015' }
-  if (state.mining.active) return { ok: false, error: '采矿作业中：请先停止开采，或直接换船（旧船会自动返航）。', errorId: 'core.location.007' }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业中：请先停止打捞，或让作业自然结束（满仓自动返航）。', errorId: 'core.location.008' }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '精炼炉正由你亲自运转：先停炉才能离港。', errorId: 'core.location.016' }
-  }
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return { ok: false, error: '制造作业正由你亲自开线：先取消它才能离港（想自动制造可改用 AI 核心驱动）。', errorId: 'core.location.017' }
-  }
   if (!state.exploredGalaxies.includes(site.galaxyId)) {
     const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
     return { ok: false, error: `「${g}」尚未探明——先对其执行扫描探索，才能规划交付航线。`, errorId: 'core.location.018' }
@@ -324,21 +360,15 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   const from = originGalaxyOf(state, ctx)
   const mins = shortestTravelMinutes(ctx, from, site.galaxyId)
   if (!Number.isFinite(mins)) return { ok: false, error: `「${site.galaxyId}」不在已知航路内，无法规划航线。`, errorId: 'core.location.019' }
-  // 出发装载（物理载货模型）：货仓没空位 / 仓库没建材 = 无法启程（点按侧弹窗提示原因）
-  const capV = cargoCapacityM3Of(state, ctx, state.shipId)
-  const usedV = cargoUsedM3Of(state, ctx, state.shipId)
-  const freeV = Math.max(0, Math.floor(capV - usedV))
-  if (freeV <= 0) {
-    return { ok: false, error: '货仓没有空闲空间：先卸货入仓库腾出位置，再安排交付循环。', errorId: 'core.location.020' }
-  }
+  // 出发装载（物理载货模型）：这里真装一次（上面已确认"货仓有位、仓库有料"）
   const loaded = loadDeliverCargo(state, ctx, site)
   const loadedTotal = Object.values(loaded).reduce((s, n) => s + n, 0)
   if (loadedTotal <= 0) {
     return {
       ok: false,
-      error: `仓库没有可装载的建材（当前档需要：${stationBillText(state, ctx, site)}）——备料后再一键出发。`,
+      error: `仓库没有可装载的建材（当前档需要：${billNow}）——备料后再一键出发。`,
       errorId: 'core.location.021',
-      errorParams: { p1: stationBillText(state, ctx, site) },
+      errorParams: { p1: billNow },
     }
   }
   const fromName = ctx.galaxies.get(from)?.name ?? '空间站'
