@@ -2432,13 +2432,14 @@ export function haulingHalt(state: GameState): { fromSiteId: string | null } | n
 /**
  * **切活动时的自动停机单点**（**2026-09-21 船长令**：「统一为能够直接切换（自动取消当前活动）」）。
  *
- * 覆盖**六种可自动取消**的活动（`activityGate.AUTO_HALT_KINDS`）；**纯状态改动、不写日志**
+ * 覆盖**七种可自动取消**的活动（`activityGate.AUTO_HALT_KINDS`）；**纯状态改动、不写日志**
  * （统一日志由 `activityGate.logAutoHalt` 写，两条路径各司其职）：
  * - 采矿 / 打捞 / 扫描虫洞 / 长途运输：直接用本文件既有的四个 `*Halt`（与玩家手点「停止」同一把尺）；
  * - 掩护巡逻：清掉 standby 并把人放回母港（货物留在船上——与采矿/打捞的停机口径一致；
  *   玩家手点「召回」那条路仍会额外整仓卸货并写日志，见 `location.cancelStandby`）；
  * - 亲自开炉 / 亲自开线：把主控（`worker === 'pilot'`）那一条账本标成 inactive ⇒ **当前那批进度丢弃**
- *   （**船长 2026-09-21 答 2：「丢弃」**）；核心驱动的产线（`worker = 核心类型`）**不受影响**。
+ *   （**船长 2026-09-21 答 2：「丢弃」**）；核心驱动的产线（`worker = 核心类型`）**不受影响**；
+ * - **建站交付**（2026-09-22 船长令纳入）：清掉 `transit` 的交付批次、回母港、**本趟建材留在船上**。
  *
  * ⚠ 本函数放在 `state.ts`（活动位与四把 `*Halt` 都在这儿）⇒ **谁都能调、也不制造模块环**。
  */
@@ -2475,6 +2476,28 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
       for (const r of state.manufacturingRuns) {
         if (r.active && r.worker === 'pilot') r.active = false
       }
+      return
+    }
+    /**
+     * **建站交付（交付循环）**——**2026-09-22 船长令**：「建设空间站的运输也加入可以打断其他行为的切换里」。
+     *
+     * 口径与**开采 / 打捞**同款（同一把尺）：**舰船返港、本趟建材留在船上**（不吞货、不清仓），
+     * 玩家回到站里可以随时再发起一次交付（`startSiteDeliverTrip` 会保留船上已有的货、再从仓库补装）。
+     *
+     * ⚠ 与玩家**手点「取消交付」**那条路的差别（`location.cancelSiteDeliverTrip`）：那条会**返航停靠最近
+     * 已建成空间站**并把货仓整仓卸入物品仓库（它自带一条日志）。自动切换停机走这里——只做状态收口
+     * （回母港、货留船上），统一日志由 `activityGate.logAutoHalt` 写；两条路的**代价都是无损**的。
+     */
+    case 'siteDeliver': {
+      const t = state.transit
+      t.active = false
+      t.fromGalaxy = null
+      t.toGalaxy = null
+      t.finishAtGameMs = 0
+      t.legMs = 0
+      t.delivery = null
+      state.awayGalaxy = null
+      state.dockedSite = null // 回母港（与掩护巡逻召回、远征召回同口径）
       return
     }
     default:

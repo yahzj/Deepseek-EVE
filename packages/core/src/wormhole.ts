@@ -1491,6 +1491,11 @@ export function shipActivityBusy(state: GameState, shipId: string): string | nul
   if (state.expedition.active) return '远征中'
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉精炼中'
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开线制造中'
+  /**
+   * **建站交付**（2026-09-22 船长令纳入主控活动表）：占的是 `transit` 槽，靠 `delivery` 批次区分于
+   * "换港返航"；用词与 `activity.shipBusyLabel` 对齐（两处必须成对，见 `activity-gate` / 本函数注释）。
+   */
+  if (state.transit.active && state.transit.delivery !== null) return '建站交付中'
   return null
 }
 
@@ -1559,7 +1564,7 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
  */
 export interface WormholeEntryAutoStop {
   /** 判据键（界面/日志用；与 `shipActivityBusy` 的忙态文案一一对应） */
-  kind: 'whscan' | 'mining' | 'salvage' | 'hauling' | 'standby' | 'refine' | 'manufacture'
+  kind: 'whscan' | 'mining' | 'salvage' | 'hauling' | 'standby' | 'refine' | 'manufacture' | 'siteDeliver'
   /** 统一单点里的活动名（`activityGate.MainActivityKind`）——停机与统一日志都按它走 */
   mainKind: MainActivityKind
   /** 忙态文案（`shipActivityBusy` 报的就是它） */
@@ -1581,6 +1586,8 @@ const ENTRY_STOP_META: Partial<
   standby: { kind: 'standby', label: '掩护巡逻中', warn: false },
   refine: { kind: 'refine', label: '亲自开炉中', warn: false },
   manufacturing: { kind: 'manufacture', label: '亲自开线中', warn: false },
+  /** 建站交付（2026-09-22 船长令纳入）：停机无损（返港、本趟建材留在船上）⇒ 不发警告 */
+  siteDeliver: { kind: 'siteDeliver', label: '建站交付中', warn: false },
 }
 
 /**

@@ -21,6 +21,7 @@ import { FRAGMENT_RECIPES, wreckItemIdOf } from '../src/salvage'
 import { startManufacturing } from '../src/manufacturing'
 import { learnBlueprint } from '../src/market'
 import { changeShip, repairShip } from '../src/shipyard'
+import { startMining } from '../src/mining'
 import { advanceGame } from '../src/engine'
 import { makeTestCtx } from './helpers'
 
@@ -366,7 +367,7 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
 
   const cargo = (state: GameState): Record<string, number> => state.fleet[state.shipId]!.cargo
 
-  it('前置校验：野外/作业/未探明/仓库无料/货仓满载均拒发；出发即把仓库建材装入货仓', () => {
+  it('前置校验：野外/未探明/仓库无料/货仓满载均拒发；出发即把仓库建材装入货仓', () => {
     const { state, ctx } = tripWorld(0, 60)
     state.awayGalaxy = 'galaxy-far' // 野外
     expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(false)
@@ -460,6 +461,45 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
   it('取消前置：无在途交付航线时拒绝', () => {
     const { state, ctx } = tripWorld(200)
     expect(cancelSiteDeliverTrip(state, ctx).ok).toBe(false)
+  })
+
+  /**
+   * **2026-09-22 船长令**：「**建设空间站的运输也加入可以打断其他行为的切换里，不需要先暂停其他活动**」
+   * ⇒ 两个方向都走统一判据（`activityGate`）：① 建站交付能打断别的活动；② 反过来别的活动也能直接
+   * 切掉它（停机 = 返港、**本趟建材留在船上**，与开采/打捞同款、无损）。
+   */
+  it('建站交付 = 可打断其他活动（开采中直接发车，停采 + 统一日志）', () => {
+    const { state, ctx } = tripWorld(200)
+    state.mining.active = true
+    state.mining.beltId = [...ctx.belts.keys()][0]!
+    state.mining.phase = 'mining'
+    state.mining.tripUnits = 7
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok, '开采中应当能直接发车').toBe(true)
+    expect(state.mining.active).toBe(false)
+    expect(state.logs.some((l) => l.textId === 'core.activityGate.001' && l.text.includes('开采'))).toBe(true)
+    expect(state.transit.delivery?.siteId).toBe('site-test')
+  })
+
+  it('反过来：交付循环在跑 ⇒ 直接开始别的活动会把它停掉（货留船上、无惩罚）', () => {
+    const { state, ctx } = tripWorld(200)
+    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok).toBe(true)
+    advanceGame(state, 300, ctx) // 仍在途
+    const aboard = { ...cargo(state) }
+    expect(Object.keys(aboard).length).toBeGreaterThan(0)
+    const beltId = [...ctx.belts.keys()][0]!
+    expect(startMining(state, beltId, ctx).ok, '交付循环在跑时也能直接开采').toBe(true)
+    expect(state.transit.active).toBe(false)
+    expect(state.transit.delivery).toBeNull()
+    expect(state.awayGalaxy).toBeNull() // 舰船返港
+    expect(cargo(state), '本趟建材留在船上').toEqual(aboard)
+    expect(state.logs.some((l) => l.textId === 'core.activityGate.001' && l.text.includes('建站交付'))).toBe(true)
+    // 停机后可再从空间站发起交付：此刻建材都随船/货仓满 ⇒ 报的是真实前置（仓库没料或货仓没空位），
+    // 而**不是**"有别的活动在跑"那类互斥文案（那一条已经在 core 侧消失了）
+    const again = startSiteDeliverTrip(state, ctx, 'site-test')
+    expect(again.ok).toBe(false)
+    expect(again.error ?? '', '真实前置（仓库无料 / 货仓满），不是活动互斥').toMatch(
+      /仓库没有可装载的建材|货仓没有空闲空间/,
+    )
   })
 })
 

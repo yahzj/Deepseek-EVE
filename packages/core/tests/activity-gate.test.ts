@@ -24,7 +24,7 @@ function state(): GameState {
 }
 
 describe('主控活动切换：三档分类（船长 2026-09-21）', () => {
-  it('主控空着 ⇒ ok；六项可直接切 ⇒ halt', () => {
+  it('主控空着 ⇒ ok；**七项可自动停** ⇒ halt（含 2026-09-22 并入的建站交付）', () => {
     const s = state()
     expect(mainActivityOf(s)).toBeNull()
     expect(gateMainActivity(s, 'mining').action).toBe('ok')
@@ -36,6 +36,10 @@ describe('主控活动切换：三档分类（船长 2026-09-21）', () => {
       else if (kind === 'standby') st.standby.active = true
       else if (kind === 'refine') st.refineRuns = [{ id: 1, active: true, worker: 'pilot' } as GameState['refineRuns'][number]]
       else if (kind === 'manufacturing') st.manufacturingRuns = [{ id: 1, active: true, worker: 'pilot' } as GameState['manufacturingRuns'][number]]
+      else if (kind === 'siteDeliver') {
+        st.transit.active = true
+        st.transit.delivery = { siteId: 'site-x', phase: 'to-site', loaded: {} } as never
+      }
       const v = gateMainActivity(st, 'hauling')
       expect(v.action, `${kind} 应可直接切`).toBe('halt')
       expect(v.current).toBe(kind)
@@ -118,16 +122,17 @@ describe('不可被打断的状态（船长：「处在战斗中的时候也设�
 })
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════
- * **9×9 矩阵**（**2026-09-21 船长令**的统一口径：能直接切就自动取消当前活动 · 长途运输先警告 ·
- * 远征/快递不可中断）——行 = 现在占着主控的那一项，列 = 想开始的那一项。
+ * **10×10 矩阵**（**2026-09-21 船长令**的统一口径：能直接切就自动取消当前活动 · 长途运输先警告 ·
+ * 远征/快递不可中断；**2026-09-22 追加**：建站交付并入同一张表）——行 = 现在占着主控的那一项，
+ * 列 = 想开始的那一项。
  *
- * ⚠ 这一层测的是**九个 `start*` 入口共用的那一个落地口**（`applyActivityGate`：判据 → 该停的停掉
- * ＋统一日志 → 告诉入口能不能开工）⇒ 一张表就能把三档钉死，不必给九条真命令各搭一套前置现场；
+ * ⚠ 这一层测的是**十个 `start*` 入口共用的那一个落地口**（`applyActivityGate`：判据 → 该停的停掉
+ * ＋统一日志 → 告诉入口能不能开工）⇒ 一张表就能把三档钉死，不必给十条真命令各搭一套前置现场；
  * 真命令层面的关键交叉另有专测（`wormhole-activity-lock` / `wormhole-scan` / `manufacturing` /
- * `industry` / `expedition` / `wormhole-run`）。
+ * `industry` / `expedition` / `wormhole-run` / `t9`（建站交付））。
  * ══════════════════════════════════════════════════════════════════════════════════════════════ */
-describe('9×9 矩阵：三档分类逐格钉死（船长 2026-09-21）', () => {
-  /** 九项现场（真命令之外的纯状态构造；每一项对应 `mainActivityOf` 的一个分支） */
+describe('10×10 矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-09-22 建站交付）', () => {
+  /** 十项现场（真命令之外的纯状态构造；每一项对应 `mainActivityOf` 的一个分支） */
   const SETUP: Record<MainActivityKind, (s: GameState) => void> = {
     mining: (s) => void (s.mining.active = true),
     salvaging: (s) => void (s.salvaging.active = true),
@@ -146,6 +151,13 @@ describe('9×9 矩阵：三档分类逐格钉死（船长 2026-09-21）', () => 
     },
     refine: (s) => void s.refineRuns.push({ id: 1, active: true, worker: 'pilot' } as never),
     manufacturing: (s) => void s.manufacturingRuns.push({ id: 1, active: true, worker: 'pilot' } as never),
+    /** 建站交付：占的是 `transit` 槽，靠 `delivery` 批次与"换港返航"区分（2026-09-22 船长令） */
+    siteDeliver: (s) => {
+      s.transit.active = true
+      s.transit.fromGalaxy = 'galaxy-hub'
+      s.transit.toGalaxy = 'galaxy-far'
+      s.transit.delivery = { siteId: 'site-x', phase: 'to-site', loaded: { 'ore-a': 10 } } as never
+    },
   }
   const ALL_KINDS = Object.keys(SETUP) as MainActivityKind[]
 
@@ -160,9 +172,10 @@ describe('9×9 矩阵：三档分类逐格钉死（船长 2026-09-21）', () => 
     expedition: (s) => !s.expedition.active,
     refine: (s) => !s.refineRuns.some((r) => r.active && r.worker === 'pilot'),
     manufacturing: (s) => !s.manufacturingRuns.some((r) => r.active && r.worker === 'pilot'),
+    siteDeliver: (s) => !s.transit.active && s.transit.delivery === null,
   }
 
-  it('**可自动停的六项**：任意一项在跑时，其余八项都能直接开工（停掉它 + 一条统一日志）', () => {
+  it('**可自动停的七项**：任意一项在跑时，其余九项都能直接开工（停掉它 + 一条统一日志）', () => {
     for (const current of AUTO_HALT_KINDS) {
       for (const next of ALL_KINDS) {
         if (next === current) continue
@@ -178,6 +191,19 @@ describe('9×9 矩阵：三档分类逐格钉死（船长 2026-09-21）', () => 
         expect(s.logs.filter((l) => l.textId === 'core.activityGate.001')).toHaveLength(1) // 一次切换只写一条
       }
     }
+  })
+
+  it('**建站交付的停机口径**：舰船返港、**本趟建材留在船上**（与开采/打捞同款，无损）', () => {
+    const s = state()
+    SETUP.siteDeliver(s)
+    s.fleet[s.shipId]!.cargo['ore-a'] = 10
+    s.awayGalaxy = 'galaxy-hub'
+    expect(applyActivityGate(s, 'mining')).toBeNull()
+    expect(s.transit.active).toBe(false)
+    expect(s.transit.delivery).toBeNull()
+    expect(s.awayGalaxy).toBeNull() // 回母港（dockedSite = null）
+    expect(s.fleet[s.shipId]!.cargo['ore-a'], '本趟建材留在船上').toBe(10)
+    expect(s.logs.some((l) => l.textId === 'core.activityGate.001' && l.text.includes('建站交付'))).toBe(true)
   })
 
   it('**长途运输**：任意一项想开始时都只给警告（`core.activityGate.002`），且**一格都不动**', () => {
@@ -217,10 +243,11 @@ describe('9×9 矩阵：三档分类逐格钉死（船长 2026-09-21）', () => 
     }
   })
 
-  it('**三种锁定态**：战斗中 / 洞里 / 返航途中 ⇒ 九项一律拒（`core.activityGate.004~006`）', () => {
+  it('**三种锁定态**：战斗中 / 洞里 / 返航途中 ⇒ 十项一律拒（`core.activityGate.004~006`）', () => {
     const locks: Array<[string, string, (s: GameState) => void]> = [
       ['战斗中', 'core.activityGate.004', (s) => void (s.expedition.battle = {} as never)],
       ['洞里', 'core.activityGate.005', (s) => void (s.wormhole.run = { attending: true } as never)],
+      /** ⚠ 「换港返航」只认**不带交付批次**的 transit（带 delivery 的是建站交付＝主控活动，走三档分类） */
       ['返航途中', 'core.activityGate.006', (s) => void (s.transit.active = true)],
     ]
     for (const [name, id, lock] of locks) {

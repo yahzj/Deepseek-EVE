@@ -576,6 +576,11 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
     }
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉精炼中'
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开线制造中'
+    /**
+     * **建站交付**（2026-09-22 船长令纳入主控活动表）：与 `wormhole.shipActivityBusy`、`activityGate.mainActivityOf`
+     * **三处同源**（进洞门槛/货仓徽标/切换判据都读这一档）——判据含 `delivery` 批次，用来区分"换港返航"。
+     */
+    if (state.transit.active && state.transit.delivery !== null) return '建站交付中'
     return null
   }
   // T4 换船善后：自动返航中的船（优先于 AI 判定；两者互斥，仅顺序防御）

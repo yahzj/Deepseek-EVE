@@ -260,6 +260,35 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(logs.some((t) => t.includes('已自动停止「长途运输」') && t.includes('母港'))).toBe(true)
   })
 
+  /**
+   * **建站交付：不拦，进洞那一刻自动停交付**（**2026-09-22 船长令**：「建设空间站的运输也加入可以打断
+   * 其他行为的切换里，不需要先暂停其他活动」）——它占的是 `transit` 槽、靠 `delivery` 批次区分于
+   * "换港返航"；停机口径与开采/打捞同款（**船回母港、本趟建材留在船上**、无损）⇒ 照旧不拦进洞。
+   */
+  it('**①⁗ 建站交付 ⇒ 不拦，进洞那一刻自动停交付（船回母港 + 建材留船上 + 统一日志）**', () => {
+    const { state, pilot } = fresh()
+    state.transit.active = true
+    state.transit.fromGalaxy = 'galaxy-hub'
+    state.transit.toGalaxy = 'galaxy-frontier'
+    state.transit.finishAtGameMs = 600_000
+    state.transit.legMs = 600_000
+    state.transit.delivery = { siteId: 'site-x', phase: 'to-site', loaded: { 'item-titanium': 3 } }
+    state.awayGalaxy = null
+    expect(shipActivityBusy(state, pilot)).toBe('建站交付中')
+    expect(shipBusyLabel(state, ctx, pilot)).toBe('建站交付中') // 两边忙态口径一致（与 ① 同一把尺）
+    const stops = wormholeEntryAutoStops(state)
+    expect(stops.map((a) => a.label)).toEqual(['建站交付中'])
+    expect(stops[0]!.warn, '交付停机无损 ⇒ 不发警告').toBe(false)
+    expect(wormholeEntryBlockReason(state, ctx, [pilot]), '交付循环在跑应当能进洞').toBeNull()
+    expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
+    // 自动停交付：清空 transit 全部字段 + 返母港；**货仓一字不动**（建材留船上）
+    expect(state.transit.active).toBe(false)
+    expect(state.transit.delivery).toBeNull()
+    expect(state.transit.finishAtGameMs).toBe(0)
+    expect(state.awayGalaxy).toBeNull()
+    expect(state.logs.some((l) => l.textId === 'core.activityGate.001' && l.text.includes('建站交付'))).toBe(true)
+  })
+
   it('② **洞内锁定**：人在洞里 ⇒ 别的活动开不了（真命令复核）', () => {
     const { state, pilot } = fresh()
     const beltId = [...ctx.belts.keys()][0]!
