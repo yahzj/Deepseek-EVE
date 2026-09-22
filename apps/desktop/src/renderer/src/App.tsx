@@ -24,7 +24,6 @@ import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
-import { SkillsPage } from './pages/SkillsPage'
 import { SkillsTreePage } from './pages/SkillsTreePage'
 import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
@@ -71,13 +70,12 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
  * **调试专用导航项**（**2026-09-20 船长令**：「**现有页面先保留，新的页面暂时只有调试模式可见
  * （导航栏多出一个技能测试入口）**」）。
  *
- * - 只在 `localStorage['whale-idle:debug'] === '1'`（刷新后）出现，与既有调试入口
- *   `panels/DebugPanel.debugEnabled()` **同一把开关**；正式页「技能」`SkillsPage` **一字未动**。
- * - 指向 `pages/SkillsTreePage.tsx`（技能科技树试作：7 组 × 5 层 ＋ 点节点开详情窗）。
+ * ✅ **2026-09-22 船长令：「没问题了，可以将技能科技树替换掉原先的技能目录。」** ⇒ 技能科技树
+ * （`pages/SkillsTreePage.tsx`）**升为正式「技能」页**，本调试入口随之下线（`ui.App.121` 已删）；
+ * 旧技能目录 `pages/SkillsPage.tsx` 退役删除（它的训练队列面板与说明高亮搬进 `pages/skillShared.tsx`）。
+ * 本数组保留为空壳，给以后"临时调试页"用（现在没有任何项 ⇒ 调试模式下导航与正式完全一致）。
  */
-const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
-  { key: 'skilltest', label: 'ui.App.121', icon: 'nav-skills' },
-]
+const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = []
 
 type PageKey =
   | 'ship'
@@ -86,14 +84,13 @@ type PageKey =
   | 'market'
   | 'industry'
   | 'skills'
-  | 'skilltest'
   | 'map'
   | 'task'
   | 'achieve'
   | 'comms'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'skilltest', 'items', 'task', 'achieve', 'comms'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'task', 'achieve', 'comms'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -1265,9 +1262,7 @@ export function App({ engine }: { engine: GameEngine }) {
                 }}
               />
             ) : null}
-            {page === 'skills' ? <SkillsPage {...pageProps} /> : null}
-            {/* 技能科技树试作（仅调试模式可见；正式页在上面一行） */}
-            {page === 'skilltest' ? <SkillsTreePage {...pageProps} /> : null}
+            {page === 'skills' ? <SkillsTreePage {...pageProps} /> : null}
             {page === 'map' ? (
               <MapPage
                 {...pageProps}

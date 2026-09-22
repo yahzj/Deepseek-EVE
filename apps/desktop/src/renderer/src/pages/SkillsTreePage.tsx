@@ -1,13 +1,17 @@
 /**
- * **技能科技树（测试页 · 2026-09-20 船长令；2026-09-22 第二版改「六边形蜂窝」）**：
- * 「**现有页面先保留，新的页面暂时只有调试模式可见（导航栏多出一个技能测试入口）**」。
+ * **技能页（科技树 · 正式页 · 2026-09-22 船长令）**：
+ * 「**没问题了，可以将技能科技树替换掉原先的技能目录。**」⇒ 本页从"调试可见的试作页"升为
+ * 导航「技能」的正式页；旧版技能目录（`pages/SkillsPage.tsx`）退役删除，其中「训练队列」面板与
+ * `SkillDescText` 搬进 `pages/skillShared.tsx` 继续用。
+ *
+ * **2026-09-20 船长令（试作页起点）**：「**现有页面先保留，新的页面暂时只有调试模式可见（导航栏多出一个技能测试入口）**」。
  *
  * ---
  *
  * **第二版（2026-09-22 船长令 · 参考图 `QQ图片20260922133622.png` 的样式语言）**：
  * - 「**1乙**：将同类效果的技能做成上下级关系」⇒ **真前置**（`SkillDef.prereq`，≥Lv1，`enqueueSkill` 校验）；
  * - 「**2**：将现有的技能再进行细分」＋「**做一个导航用于切换不同类型的技能书**」⇒ **技能书导航**
- *   （7 大类 → 该大类内的技能书，另有「全部」档）；每本书一张小图；
+ *   （7 大类 → 该大类内的技能书，另有「全部」档；**按技能条数多的靠前**）；每本书一张小图；
  * - 「**3乙**」节点 = 图标 ＋ **全名（换行、最多两行）** ＋ `Lv x/5`（**短名先不采用**，船长令）；
  * - 「**4甲**」沿用仓内既有 **5 态色**（满级金 / 在练亮蓝 / 已排队淡蓝 / 已练淡绿 / 未学暗灰）＋ 在练加小角标；
  * - 「**5乙**」未解锁的节点**仍显示真图标、只压暗**（不画参考图那种 ▽ 占位）；
@@ -16,10 +20,7 @@
  *   一个线头都不画**；父与子同 rank 时画一条**层内横向短连线**。
  *
  * ⚠ 视觉红线：**六边形与连线一律 SVG 线稿**（`viewBox` ＋ 细描边 ＋ `currentColor`），**不用 CSS 拼形状**；
- * 界面只读规则（唯一一处写入是详情窗的「训练」按钮，与正式技能页同一条命令）。正式页 `pages/SkillsPage.tsx`
- * 仍未被本页改动。
- *
- * 入口：导航「技能测试」——**只在调试模式可见**（`localStorage['whale-idle:debug'] === '1'` 后刷新）。
+ * 筛选控件走既有家族（一级大类 `.app-tasktab` / 二级技能书 `.app-subtab`）。
  */
 import { useMemo, useState } from 'react'
 import {
@@ -33,7 +34,7 @@ import {
 } from '@whale/core'
 import type { SkillDef } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { SkillDescText } from './SkillsPage'
+import { QueueBlock, SkillDescText } from './skillShared'
 import { plainSkillDesc } from '../ui/skillText'
 import { GAP_Y, HEX_H, HEX_W, PAD, TAG_W, hexPath, layoutBook, nameLines } from '../ui/skillTreeLayout'
 import { Glyph, toneOf } from '../ui/Glyphs'
@@ -132,6 +133,10 @@ export function SkillsTreePage({ engine }: PageProps) {
 
   return (
     <div className="page-stack page-wide page-fill">
+      {/* 训练队列（"正在发生的事"）固定在上——沿用旧技能目录那条面板（2026-09-10 船长定：它不塞进树里） */}
+      <Panel title={tr('ui.SkillsPage.001')} right={<span className="app-dim">{tr('ui.SkillsPage.002')}</span>}>
+        <QueueBlock engine={engine} />
+      </Panel>
       <Panel
         className="is-fill"
         title={tr('ui.SkillTree.001')}
