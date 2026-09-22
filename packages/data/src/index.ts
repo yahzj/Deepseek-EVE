@@ -2,7 +2,7 @@
  * @whale/data 对外出口：技能表 + 内容表 + 引擎运行上下文。
  */
 
-export { SKILLS, SKILL_GROUPS, buildSkillCatalog } from './skills'
+export { SKILLS, SKILL_GROUPS, SKILL_BRANCHES, buildSkillCatalog } from './skills'
 export { ORES, MINERALS, ITEMS, DRONES, buildItemCatalog } from './items'
 export { BELTS, buildBeltCatalog } from './belts'
 export { SHIPS, buildShipCatalog } from './ships'
@@ -85,6 +85,8 @@ export {
   buildCommsDeptCatalog,
 } from './commsFactions'
 export { FIRST_TASK_MESSAGES } from './firstTaskMessages'
+/** 技能树坐标覆盖表（2026-09-22 船长手调工作流：`npm run skilltree:export` → 改 Excel → 回写本表） */
+export { SKILL_TREE_POSITIONS } from './skillTreePositions'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 // 2026-09-19 谜质科技树：23 节点数据表（体检「谜质科技契约」逐条校验 id/费用/前置）

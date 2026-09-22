@@ -17,7 +17,7 @@ import { tuningMul } from './tuning'
 import { composeLog } from './logParts'
 import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { CmdText, GameState, TrainingItem } from './state'
-import type { SimContext, SkillCatalog } from './types'
+import type { SimContext, SkillCatalog, SkillDef } from './types'
 import { skillLevelTimeMs, trainingTimeFactor } from './training'
 import { advanceMining, advanceShipReturns } from './mining'
 import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
@@ -42,7 +42,7 @@ import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
 import { matterTechNodes } from './matterTech'
-import { claimFirstTask } from './firstRewards'
+import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -133,6 +133,12 @@ export function advanceGame(
      *  **只有前台心跳传**（在线心跳那一个调用点）；离线结算 / 后台 / 工具 / 用例一律不传 ⇒ 1×。
      *  实际生效值由 `combat.advanceBattleFor` 夹到"洞内 + 科技已解锁档位"内。 */
     battleSpeedX?: number
+    /** **离线结算的静默模式**（船长 2026-09-21 裁定「乙案」）：
+     *  只由 `simulateOffline` 传 `true` ⇒ 随机事件**只推进到点节奏、不产生任何副作用**
+     *  （不写日志、不发钱、不建买卖单、不动行情池）。
+     *  起因：离线大推进会把整段离线里到点的事件一次补发（上限 200）⇒ 上线瞬间日志刷屏、
+     *  一批订单同生同灭、行情池被线性叠加。详见 `events.advanceEvents` 头注。 */
+    offline?: boolean
   },
 ): void {
   const d = Math.floor(deltaMs)
@@ -179,7 +185,7 @@ export function advanceGame(
   // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
   advanceEncounterWatch(state, ctx, d, opts?.freezeBattle)
   // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）
-  advanceEvents(state, d, ctx)
+  advanceEvents(state, d, ctx, opts?.offline === true)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
   // 任务中心·时效任务（v24）：资源/快递 = 与市场「补给刷新」周期（orderLifeMs.common，20 分钟）
@@ -209,6 +215,19 @@ export function advanceGame(
     }
   }
   if (state.firstTaskAutoClaim === true) {
+    /**
+     * **先补发"当前那条的起手道具"**（**2026-09-22 船长裁决「甲」**）：
+     * 起手道具只在"某一条**轮到**时"发（`claimFirstTask` 收尾那一次点击），而**收口只补"已满足却没点过"
+     * 的那几条**——若老档正卡在**带起手道具的那六条**之一、且它自己的判据还没满足（收口循环一条都不走），
+     * 那一条的起手道具就**永远拿不到**了：采集原矿→强化采集器 MK1 · 打捞残骸→打捞器 MK1 ·
+     * 指派 AI 副船→基础 AI 核心 · 生产→150 三钛＋50 类铁 · 第一条船→沙猫级蓝图 · 虫洞→采集器＋打捞器各一台。
+     *
+     * ⇒ 在读档收口这一段**先补发一次当前那条的**（`grantStartRewardsForCurrent` 自带 `started` 去重，
+     * 重复调用不叠加），再跑下面的"已满足 ⇒ 照点击走完"循环。**零新增存档字段、零版本变更**
+     * （复用 v30→v31 打的那一次性标记；已经在旧代码下升过 v31 的档救不回来——那批档的起手道具
+     * 只能自购：采集器市场有售、`bp-miner-1` 可造，船长已知情并选定此口径）。
+     */
+    grantStartRewardsForCurrent(state, ctx)
     // 上限 20 只是护栏（13 条一轮足够）；每轮都重新取"当前可完成"，天然按顺序推进
     for (let guard = 0; guard < 20; guard += 1) {
       const c = claimableFirstTasks(state, ctx)[0]
@@ -388,6 +407,33 @@ function queuedSameCount(state: GameState, skillId: string): number {
 }
 
 /** 玩家指令：把某技能"排入队列训练到第几级"（T2 连锁：必须逐级 +1 递增） */
+/**
+ * **前置技能的最低等级**（**2026-09-22 船长裁定：「甲，lv1」**）——"学过就能往下走"，
+ * 不拖开局节奏。要更硬（如 Lv3）改这一个常数即可（`content:check` 与界面都读它）。
+ */
+export const PREREQ_MIN_LEVEL = 1
+
+/**
+ * **该技能还差哪些前置**（**真前置的唯一判据**，界面置灰与 `enqueueSkill` 共用这把尺）：
+ * 返回**未达 `PREREQ_MIN_LEVEL` 的前置技能定义**（都达标 ⇒ 空数组）。表里查不到的 id 一律忽略
+ * （`content:check` 会把悬空前置点红，运行期不因此卡住玩家）。
+ */
+export function skillLockMissing(
+  state: GameState,
+  def: SkillDef,
+  catalog: SkillCatalog,
+): readonly SkillDef[] {
+  const pre = def.prereq
+  if (pre === undefined || pre.length === 0) return []
+  const out: SkillDef[] = []
+  for (const pid of pre) {
+    const pdef = catalog.get(pid)
+    if (!pdef) continue
+    if ((state.skills.trained[pid] ?? 0) < PREREQ_MIN_LEVEL) out.push(pdef)
+  }
+  return out
+}
+
 export function enqueueSkill(
   state: GameState,
   skillId: string,
@@ -398,6 +444,22 @@ export function enqueueSkill(
   if (!def) return { ok: false, error: `未知技能：${skillId}（数据表里没有）。`, errorId: 'core.engine.005', errorParams: { p1: skillId } }
   if (HIDDEN_SKILL_IDS.includes(skillId)) {
     return { ok: false, error: `「${def.name}」尚在研发中，暂不可训练。`, errorId: 'core.engine.006', errorParams: { p1: def.name } }
+  }
+  /**
+   * **真前置校验**（**2026-09-22 船长令**：「**将同类效果的技能做成上下级关系**」＋门槛 **Lv1**）：
+   * 前置**全部**达到 `PREREQ_MIN_LEVEL` 才放行；缺哪条就把名字摆出来（界面置灰走同一把尺，见
+   * `skillLockMissing`）。**老档零迁移**：判据只看 `skills.trained` 的已练等级 ⇒ 已经练过前置的档
+   * 天然满足，不需要任何迁移键、也不回收已练技能。
+   */
+  const locked = skillLockMissing(state, def, catalog)
+  if (locked.length > 0) {
+    const names = locked.map((d) => `${d.name} Lv${PREREQ_MIN_LEVEL}`).join('、')
+    return {
+      ok: false,
+      error: `「${def.name}」需要先练：${names}。`,
+      errorId: 'core.engine.019',
+      errorParams: { p1: def.name, p2: names },
+    }
   }
   if (!Number.isInteger(targetLevel) || targetLevel < 1 || targetLevel > MAX_SKILL_LEVEL) {
     return {

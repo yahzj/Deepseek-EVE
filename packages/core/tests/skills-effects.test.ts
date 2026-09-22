@@ -419,18 +419,54 @@ describe('技能补全：事件玄学（event-dividend）', () => {
  */
 describe('技能改名与 rank 调整（船长 2026-09-16）', () => {
   const byId = (id: string) => SKILLS.find((s) => s.id === id)
-  it('采矿护卫舰操作 → 采集器入门学：改名不改 id，效果说明仍是每级 −3% 循环', () => {
+  it('采矿护卫舰操作 → 采集器入门学 → 采矿舰入门学：改名不改 id，效果说明仍是每级 −3% 循环', () => {
     const def = byId('mining-frigate')
     expect(def).toBeDefined()
-    expect(def!.name).toBe('采集器入门学')
+    // 2026-09-22 船长（技能树批 · Excel 坐标工作台回稿）在 09-16 的名字上**再改一次** ⇒ 以最新为准
+    expect(def!.name).toBe('采矿舰入门学')
     expect(def!.description).toContain('3%')
-    // id 是存档键（`skills.trained`）⇒ 不能动；旧名不许在技能目录里复活
+    // id 是存档键（`skills.trained`）⇒ 不能动；两个旧名都不许在技能目录里复活
     expect(SKILLS.some((s) => s.name === '采矿护卫舰操作')).toBe(false)
+    expect(SKILLS.some((s) => s.name === '采集器入门学')).toBe(false)
   })
 
   it('矢量机动操作 / 规避机动学 / 索敌统合 三条 rank = 3', () => {
     for (const id of ['vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
       expect(byId(id)?.rank, `${id} 的 rank`).toBe(3)
+    }
+  })
+})
+
+/**
+ * **2026-09-22 第二轮回稿**（船长在坐标工作台 `content-csv/skilltree-workbench.xlsx` 里直接改的）：
+ * - **改名两条**：`mining-frigate` 采集器入门学 → **采矿舰入门学** · `station-protocol` 空间站协议学 → **空间站维修协议**；
+ * - **rank 三条**：动能炮术 1 → 2 · 导弹发射学 1 → 2 · 空间站维修协议 1 → 4；
+ * - ⚠ `station-protocol` 升到 r4 后比维修工程学（r3）更深 ⇒ 那一对的**上下级方向翻转**
+ *   （前置挂到维修工程学之下），否则违反树契约「父 rank ≤ 子 rank」（`content:check` 会拦）。
+ */
+describe('技能改名与 rank 调整（船长 2026-09-22 坐标工作台回稿）', () => {
+  const byId = (id: string) => SKILLS.find((s) => s.id === id)
+  it('两条改名：以最新名字为准，旧名不许复活', () => {
+    expect(byId('mining-frigate')?.name).toBe('采矿舰入门学')
+    expect(byId('station-protocol')?.name).toBe('空间站维修协议')
+    expect(SKILLS.some((s) => s.name === '空间站协议学')).toBe(false)
+  })
+
+  it('三条 rank：动能炮术 / 导弹发射学 = 2 · 空间站维修协议 = 4', () => {
+    expect(byId('kinetic-gunnery')?.rank).toBe(2)
+    expect(byId('missile-launching')?.rank).toBe(2)
+    expect(byId('station-protocol')?.rank).toBe(4)
+  })
+
+  it('rank 翻转后前置方向跟着翻：维修工程学 → 空间站维修协议（父不比子深）', () => {
+    expect(byId('repair-engineering')?.prereq).toEqual(['hull-quick-repair'])
+    expect(byId('station-protocol')?.prereq).toEqual(['repair-engineering'])
+    for (const s of SKILLS) {
+      for (const p of s.prereq ?? []) {
+        const parent = byId(p)
+        expect(parent, `${s.id} 的前置 ${p} 必须存在`).toBeDefined()
+        expect(parent!.rank <= s.rank, `${s.id} 的前置 ${p} 不许更深`).toBe(true)
+      }
     }
   })
 })

@@ -40,7 +40,7 @@ export const TASK_FIND_HUMANS = 'find-humans'
 export function publishFindHumans(state: GameState): void {
   if (state.importantTasks[TASK_FIND_HUMANS]) return
   state.importantTasks[TASK_FIND_HUMANS] = { done: false }
-  addLog(state, 'info', '◆ 重要任务发布「寻找人类」：完成方法未知——先在这座城市活下去，再慢慢打听。', 'core.onboarding.001')
+  addLog(state, 'info', '◆ 重要任务发布「寻找人类」：完成方法未知——立足已稳，该往更深处打听了。', 'core.onboarding.001')
 }
 
 /**

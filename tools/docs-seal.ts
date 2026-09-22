@@ -106,7 +106,14 @@ interface Volume {
 }
 
 function volumePath(date: string): string {
-  return join(ARCHIVE, `roadmap-${date}.md`)
+  /**
+   * ⚠ **卷名必须做文件名净化**（**2026-09-22 修**）：条目的日期字段允许写**区间/并列**形式
+   * （本仓既有 `2026-09-19/20` 这种写法），而 `/` 在 Windows 上会被当成路径分隔符
+   * ⇒ 原样拼名会写出 `docs/archive/roadmap-2026-09-19/20.md` 这种"不存在的目录"，工具直接 ENOENT 崩掉。
+   * 这里把 Windows 文件名非法字符统一换成 `-`（`2026-09-19/20` ⇒ `roadmap-2026-09-19-20.md`）。
+   */
+  const safe = date.replace(/[\\/:*?"<>|]/g, '-')
+  return join(ARCHIVE, `roadmap-${safe}.md`)
 }
 
 /** 读已存在的卷，返回"已有条目的首行"集合与既有行数（用于幂等与守恒） */

@@ -39,6 +39,7 @@ import {
   FOE_DRONES,
   RARITY_TIER,
   SKILLS,
+  SKILL_BRANCHES,
   DRONE_ROLE_SPECS,
   DRONE_ROLE_ANCHORS,
   droneRoleIssues,
@@ -1152,6 +1153,76 @@ for (const sbp of SHIP_BLUEPRINTS) {
   console.log(
     `· 技能说明契约：${registered.size} 个技能登记来源（平衡表 ${pairs.length} 条 + 引擎参数对象 6 条 + 内联表 ${INLINE.length} 条），核对 ${checked} 个技能的每级值、其中 ${srcChecked} 条做了引擎现场复核；未接线 ${unwired.length} 个`,
   )
+
+  /**
+   * **技能书与真前置契约**（**2026-09-22 船长令**：「将现有的技能再进行细分」＋「将同类效果的技能做成上下级关系」
+   * ＋「有前置的技能效果是否相关？如果不相关最好单开一条线。」）——四条：
+   * ① **技能书必须登记**：每条技能都要有 `branch`，且在 `SKILL_BRANCHES` 里，且**所属大类与技能自己的 `group` 一致**
+   *   （否则树页会把它画进"别的大类的书里"）；
+   * ② **前置必须指向真实技能**（悬空 id 会让玩家永远练不了，且树上那条线画不出来）；
+   * ③ **不得成环**（成环 ⇒ 这组技能永远无法入队）；
+   * ④ **前置不许比本技能更深**（父 rank ≤ 子 rank）：树的垂直位置由 rank 决定，父比子深会画成"向上长"。
+   * 另出一行读数：根技能数 / 有前置的技能数（船长要的"相关才连线"的可核对凭据）。
+   */
+  {
+    const branchGroup = new Map(SKILL_BRANCHES.map((b) => [b.id, b.group]))
+    let withPre = 0
+    let edges = 0
+    for (const s of SKILLS) {
+      if (s.branch === undefined || s.branch.length === 0) {
+        check(false, `技能书契约：技能「${s.name}」(${s.id}) 没有登记 branch（树页会落到"未分类"兜底本）`)
+        continue
+      }
+      const bg = branchGroup.get(s.branch)
+      if (bg === undefined) {
+        check(false, `技能书契约：技能「${s.name}」(${s.id}) 的 branch「${s.branch}」不在 SKILL_BRANCHES 里`)
+      } else if (bg !== s.group) {
+        check(
+          false,
+          `技能书契约：技能「${s.name}」(${s.id}) 的大类是「${s.group}」，但技能书「${s.branch}」登记在「${bg}」下（两边必须一致）`,
+        )
+      }
+      for (const pid of s.prereq ?? []) {
+        edges += 1
+        const p = skillById.get(pid)
+        if (!p) {
+          check(false, `前置契约：技能「${s.name}」(${s.id}) 的前置「${pid}」在技能表里不存在（悬空前置）`)
+          continue
+        }
+        if (p.rank > s.rank) {
+          check(
+            false,
+            `前置契约：技能「${s.name}」(${s.id}, rank ${s.rank}) 的前置「${p.name}」rank ${p.rank} 更深——父不许比子深（树按 rank 分层）`,
+          )
+        }
+      }
+      if ((s.prereq ?? []).length > 0) withPre += 1
+    }
+    /** 成环检测（沿 prereq 走，深度上限 = 技能条数） */
+    for (const s of SKILLS) {
+      const seen = new Set<string>([s.id])
+      let frontier = [...(s.prereq ?? [])]
+      let guard = 0
+      while (frontier.length > 0 && guard++ <= SKILLS.length) {
+        const next: string[] = []
+        for (const id of frontier) {
+          if (id === s.id) {
+            check(false, `前置契约：技能「${s.name}」(${s.id}) 的前置链成环（这组技能将永远无法入队）`)
+            frontier = []
+            break
+          }
+          if (seen.has(id)) continue
+          seen.add(id)
+          const d = skillById.get(id)
+          if (d) next.push(...(d.prereq ?? []))
+        }
+        frontier = next
+      }
+    }
+    console.log(
+      `· 技能书与前置契约：${SKILL_BRANCHES.length} 本技能书 · ${SKILLS.length} 条技能（有前置 ${withPre} 条 / 连线 ${edges} 条 · 根 ${SKILLS.length - withPre} 条）`,
+    )
+  }
 }
 
 // ── 装备卡片说明契约（2026-09-14 船长报障「护盾充能装置，在装配时候的卡片上没有说明」）──

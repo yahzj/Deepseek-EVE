@@ -22,6 +22,24 @@ export interface SkillDef {
   readonly baseMs?: number
   /** 一句话说明这个技能以后有什么用 */
   readonly description: string
+  /**
+   * **技能书**（技能树页的分支归属）——**2026-09-22 船长令**「**将现有的技能再进行细分**」。
+   * 取值见 `packages/data/src/skills.ts` 的 `SKILL_BRANCHES`（23 本）；缺省 ⇒ 树页落到兜底本
+   * （`content:check` 会点名，属漏登记）。
+   */
+  readonly branch?: string
+  /**
+   * **前置技能**（**真前置**）——**2026-09-22 船长令**：「**将同类效果的技能做成上下级关系**」
+   * ＋「**有前置的技能效果是否相关？如果不相关最好单开一条线。**」
+   *
+   * 口径：**数组**（保留"汇合"能力——多条线可以交汇在同一个节点上；2026-09-22 的那批连线里
+   * 暂时没有汇合点：`repair-engineering` 与 `station-protocol` 那一对因 rank 调整已翻成单线）；
+   * **全部前置都达到 `PREREQ_MIN_LEVEL` 才可入队**。空/缺省 = 根技能。
+   *
+   * ⚠ 只填**效果同族**的：判据 = 二者的说明里互相点名「与 X 乘算叠加 / 同效果 / 同享」＝**同一乘区**；
+   * 效果不同轴的**一律不填**（树上就是并列的独立点，不画连线）。
+   */
+  readonly prereq?: readonly string[]
 }
 
 /** 引擎在运行期使用的技能目录（id 快速查表用），由调用方把数据包灌进来 */
@@ -671,7 +689,7 @@ export interface BalanceConfig {
     yieldSkillId: string
     /** 该技能每级产量加成（如 0.06 = 6%） */
     yieldPerLevel: number
-    /** 循环时间缩减技能 id（技能表里是「采集器入门学」，2026-09-16 由「采矿护卫舰操作」改名） */
+    /** 循环时间缩减技能 id（技能表里是「采矿舰入门学」；2026-09-22 由「采集器入门学」再改名） */
     timeSkillId: string
     /** 该技能每级循环时间缩减比例（如 0.03 = 3%） */
     timePerLevel: number

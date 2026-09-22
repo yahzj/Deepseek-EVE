@@ -435,7 +435,7 @@ export function assignAiSalvage(
   if (salvagerCyclesOf(state, ctx, shipId).length === 0) {
     return {
       ok: false,
-      error: '该副船没有打捞器：先在其高槽装上打捞器（MK1/2/3）再派打捞任务。',
+      error: '该副船没有打捞器：先到「装配」页给它装一台（MK1/2/3）再派打捞任务。',
       errorId: 'core.ai.008',
     }
   }

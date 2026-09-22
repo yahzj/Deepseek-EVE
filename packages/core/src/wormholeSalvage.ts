@@ -2121,11 +2121,23 @@ export function wormholeSyncMatterTurns(state: GameState, ctx: SimContext): void
   run.turnsBase = base
   run.turnsTechBonus = techNow // 保留字段（老档兼容 + 读数）：语义 = 入场时已折算的那一份
   const want = Math.max(0, Math.round(base + bonus + techNow))
-  const delta = want - run.turnsTotal
+  /**
+   * **已花费的回合跨同步保持不变**（2026-09-22 玩家报障修复 · 本函数真正幂等的关键）。
+   *
+   * 船长原话：「**虫洞内玩家将谜质时序来回拖动会重复加回合。**」
+   * 旧写法是**单边夹紧**：上限变大时一律 `turnsLeft += delta`，上限变小时却只在"剩余 > 新上限"时才夹
+   * ⇒ 一趟"出仓再回仓"净赚 +10，来回拖就能把花掉的回合整段刷回来（弱化成无限回合）。
+   * 也就是说：同样的一趟局面，结果取决于**历史怎么走到这儿的** ⇒ 与本节注释自称的"幂等"不符。
+   *
+   * 现在一律按「**已花费 = 上限 − 剩余**」反推新的剩余，于是：
+   * - 上限**变大**（捡到装置 / 入洞后又点锚定器）⇒ 剩余同样多给这么多（口径不变，捡到就真能多走几步）；
+   * - 上限**变小**（挪出 / 丢弃装置）⇒ 剩余跟着减，**永不为负**、**不欠账**；撤离不看回合 ⇒ 不会软锁。
+   * ⚠ 这一条把 2026-09-13 那版注释里"变小只夹紧、剩余原样不动"的写法**收严**了：
+   *   不这样收，"来回拖不刷回合"与"变小不追缴"**二者不可兼得**（已报船长）。
+   */
+  const spent = Math.max(0, run.turnsTotal - run.turnsLeft)
   run.turnsTotal = want
-  if (delta > 0) run.turnsLeft = Math.min(want, run.turnsLeft + delta)
-  else if (run.turnsLeft > want) run.turnsLeft = want
-  if (run.turnsLeft < 0) run.turnsLeft = 0
+  run.turnsLeft = Math.min(want, Math.max(0, Math.round(want - spent)))
 }
 
 /** 矿脉堆的具体生成（`wormholeNodePiles` 的薄包装：序号按格坐标散列，保证同格同结果） */

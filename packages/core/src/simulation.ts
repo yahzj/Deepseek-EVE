@@ -93,6 +93,13 @@ export function simulateOffline(
     freezeBattle: opts?.freezeBattle,
     settleStats: opts?.stats,
     nowWallMs: lastSavedWallMs + deltaMs,
+    /**
+     * **离线静默模式**（船长 2026-09-21 裁定「乙案」）：
+     * 离线是**一次性大推进**，随机事件循环会把整段离线里到点的全部补发
+     * ⇒ 上线瞬间日志刷屏 + 一批订单同生同灭 + 行情池被线性叠加。
+     * 传 `true` ⇒ 事件只推进到点节奏、不产生任何副作用；上线只留下面那条汇总。
+     */
+    offline: true,
   }
   // 重复清剿（重复清剿）开着时：在线由心跳驱动自动再出发，离线大推进不会触发——
   // 改分片推进，每片边界按在线同款条件尝试再出发（最后一片结束后不触发，避免开出不完整单）。
