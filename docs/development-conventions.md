@@ -82,6 +82,13 @@
   可只跑一段：`npm run balance:chains -- chain`；
 - 临时调试文件（`tools/_*.ts`、`tests/_dbg.test.ts` 之类）**不一律"用后即删"**：按工具纪律
   （第十章）收尾二选一——有复用价值转正式入库，确属一次性才删除。
+- **`npm run save:roundtrip-audit`**（**存档往返体检 · 2026-09-22 立**，`tools/save-roundtrip-audit.ts`）：
+  把 `docs/test-saves/*.json` 逐份跑"读档 → 落盘 → 再读档"，报出**第二轮丢掉的键 / 类型变了的键**。
+  **起因**＝船长报障「**玩家刷新可以重复领取补发的打捞器**」——根因是 `save.ts` 的 `normalizeState` 里
+  **手工白名单重建**对象时漏了新字段（`importantTasks.salvagerGift`）⇒ 读档即丢去重键 ⇒ 刷新一次多领一台。
+  **配套护栏（改随档字段时必看）**：`packages/core/tests/save.test.ts` 里两条用例——① `Record<keyof T, true>`
+  的**类型穷尽**核对（给类型加字段而没进白名单 ⇒ typecheck/用例直接红）② **引擎跑过的档往返不许丢键**的自动护栏。
+  ⇒ **规则：新加"随档字段"必须同时在「写入点」与 `normalizeState` 白名单两处落笔**（这条已写进该文件注释）。
 
 ### 汇报与文档纪律
 - 每完成一段功能：中文汇报——**改了哪些文件 + 行为变化 + 验证结果 + 已知取舍**；
