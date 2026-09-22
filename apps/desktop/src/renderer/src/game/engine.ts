@@ -2696,7 +2696,7 @@ export class GameEngine {
    * 进行提醒」）：当前那一条 ≠ 玩家看过的这一条 ⇒ 返回 `{ taskId, title }`（徽标 +1、悬停写标题）；
    * 看过 / 13 条全做完 ⇒ null。判定单点在 core（`firstTaskNotice`）。
    */
-  firstTaskNotice(): { taskId: string; title: string } | null {
+  firstTaskNotice(): { taskId: string; title: string; ready: boolean } | null {
     return firstTaskNotice(this.state)
   }
 
