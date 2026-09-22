@@ -76,13 +76,17 @@ const ORE_KIND_LABEL: Record<string, string> = { ore: tr("ui.IndustryPage.005"),
  * 手册物品图鉴 / 市场 三处读的是同一张表 ⇒ 本文件不再自带该表（标签仍走唯一表 id）。 */
 
 
-/** 主控此刻不能"亲自运转一台新炉"的原因（null = 主控空闲可开；AI 核心驱动不受此限） */
+/**
+ * 主控此刻不能"亲自运转一台新炉"的原因（null = 可开；AI 核心驱动不受此限）。
+ *
+ * ⚠ **2026-09-21 船长令改口径**（「统一为能够直接切换（自动取消当前活动）」）：这里**不再**列
+ * 「开采 / 打捞 / 远征 / 掩护巡逻」——它们要么**可自动停**（点下去会先停掉它再开炉，写一条统一日志），
+ * 要么由 core 的统一判据直接拒（远征）。界面只管**位置**与**锁定态**这两类"点了也白点"的：
+ * 野外/航行途中点不了炉子（`awayGalaxy` 非空），换港返航途中是统一判据里的锁定态。
+ * 真正的把关单点在 core（`activityGate`）⇒ 这里置灰与否不再决定能否开工，只是少给玩家一次无效点击。
+ */
 function manualBusyNote(state: GameState): string | null {
   if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
-  if (state.mining.active) return tr("ui.IndustryPage.011")
-  if (state.salvaging.active) return tr("ui.IndustryPage.012")
-  if (state.expedition.active) return tr("ui.IndustryPage.013")
-  if (state.standby.active) return tr("ui.IndustryPage.014")
   if (state.transit.active) return tr("ui.IndustryPage.015")
   return null
 }

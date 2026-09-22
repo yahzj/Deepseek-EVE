@@ -451,8 +451,14 @@ function isWormholeBlueprint(bpId: string): boolean {
   return /^(bp|sbp)-wh-/.test(bpId)
 }
 
-/** 主控此刻不能"亲自再开一条制造线"的原因（null = 主控空闲可开；AI 核心驱动不受此限；
- * 与精炼炉卡的手动判定同口径：手动工作位全局限 1 条（精炼炉/回收炉/制造线共用）） */
+/** 主控此刻不能"亲自再开一条制造线"的原因（null = 可开；AI 核心驱动不受此限；
+ * 与精炼炉卡的手动判定同口径：手动工作位全局限 1 条（精炼炉/回收炉/制造线共用））。
+ *
+ * ⚠ **2026-09-21 船长令改口径**（「统一为能够直接切换（自动取消当前活动）」）：这里**不再**列
+ * 「开采 / 打捞 / 远征 / 掩护巡逻 / 返航途中」——前两类**可自动停**（点下去先停掉它再开线 + 统一日志），
+ * 远征由 core 的统一判据直接拒，返航途中是锁定态里的一条（但在 core 侧判）。界面只保留"同一个手动
+ * 工作位"那两条：它们**不算切换活动**，停掉会丢掉手上那一批 ⇒ 照旧硬拒、由玩家自己决定。
+ * 真正的把关单点在 core（`activityGate`）。 */
 function manualBuildNote(state: GameState): string | null {
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
     return tr("ui.Industry.025")
@@ -461,11 +467,6 @@ function manualBuildNote(state: GameState): string | null {
     return tr("ui.Industry.026")
   }
   if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
-  if (state.mining.active) return tr("ui.IndustryPage.011")
-  if (state.salvaging.active) return tr("ui.IndustryPage.012")
-  if (state.expedition.active) return tr("ui.IndustryPage.013")
-  if (state.standby.active) return tr("ui.IndustryPage.014")
-  if (state.transit.active) return tr("ui.Industry.027")
   return null
 }
 

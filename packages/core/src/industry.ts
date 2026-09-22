@@ -196,10 +196,6 @@ export function startRefineRun(
   worker: 'pilot' | AiCoreType,
   ctx: SimContext,
 ): CommandResult {
-  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
-  if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
-  }
   const def = ctx.items.get(itemId)
   if (!def) {
     return { ok: false, error: `未知物品：${itemId}。`, errorId: 'core.industry.002', errorParams: { p1: itemId } }
@@ -211,20 +207,39 @@ export function startRefineRun(
   if (available <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
+  /**
+   * **主控亲自运转 ⇒ 两道闸，顺序有讲究**（**2026-09-21 船长令**＋2026-09-08 的"手动工作位"旧裁定）：
+   * ① **同族/手动工作位互斥**（精炼炉·回收炉·拆解·制造线共用**一个**手动工位）——**照旧硬拒**
+   *    （「你已亲自运转着一台炉子：先停掉它…」）：它不算"切换活动"，而是**同一个工位换机器**，
+   *    停掉会**丢掉手上那一批**（稀有残骸一炉一箱，丢了就是真损失）⇒ 不替玩家做决定；
+   * ② **跨活动统一判据**（开采/打捞/扫描/掩护巡逻/长途运输/远征/快递）：能直接切就自动取消当前活动，
+   *    长途运输先警告，远征/快递/战斗中/洞里/返航途中一律拒（`activityGate.applyActivityGate`）。
+   *
+   * ⚠ **判据排在"位置门槛"之前**（玩家 2026-09-21 报障「采矿时无法直接切换精炼炉手动运转」）——
+   * 自动停机**本身就把舰船即时带回母港/空间站**（`miningHalt`/`salvageHalt`/`haulingHalt`/掩护巡逻
+   * 召回全是即时归位），位置门槛正是被这次停机**满足**的；若排在它后面，玩家会先看到
+   * 「需停靠空间站」，而其实一键就能回来。
+   */
   if (worker === 'pilot') {
-    // 主控亲自运转 = 全局限 1 台 + 占主控工作位：与**同族**的炉/线互斥（跨活动互斥已收进 `activityGate`）
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.011' }
     }
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。', errorId: 'core.state.012' }
     }
+    const gateSkip = applyActivityGate(state, 'refine')
+    if (gateSkip) return gateSkip
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。`, errorId: 'core.industry.005', errorParams: { p1: aiCoreName(worker) } }
     }
+  }
+  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
+  // ⚠ 这一道放在**统一判据之后**：停机已把舰船即时带回空间站（见上面的顺序说明）。
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return { ok: false, error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const { batchUnits, cycleMs } = refineParamsOf(def)
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
@@ -241,8 +256,10 @@ export function startRefineRun(
   // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
   if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
-  // 2026-09-06（船长反馈：数量不足仍能开工）：起炉需 ≥ 本台单批量；运行中余量不足的"尾批"处理不受影响。
-  // 放在占用核心之前（不足即拒绝，不占核不记数）
+  /**
+   * ⚠ 这里的 batch 门槛（够不够一批）与上面那个 gate 谁先谁后都行：**停机不改余量**
+   * （采矿/打捞停下来的货留在船上，`oreAvailable` 读的就是"货仓 + 仓库"）⇒ 不构成"先停活再报开不了"。
+   */
   if (available < batchEff) {
     return {
       ok: false,
@@ -250,16 +267,6 @@ export function startRefineRun(
       errorId: 'core.industry.006',
       errorParams: { p1: batchEff, p2: available },
     }
-  }
-  /**
-   * **主控亲自运转 ⇒ 其余主控活动走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，
-   * 只有长途运输那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）。
-   * ⚠ 放在**本入口自己的前置校验之后**（基地网络/物品/配方/余量/够不够一批），
-   * 免得"先停了玩家的活、再说开不了炉"。同族的炉/线互斥仍在上面那个分支里（同一项不算切换）。
-   */
-  if (worker === 'pilot') {
-    const gateSkip = applyActivityGate(state, 'refine')
-    if (gateSkip) return gateSkip
   }
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
@@ -304,10 +311,6 @@ export function startUnboxRun(
   boxItemId: string,
   worker: 'pilot' | AiCoreType,
 ): CommandResult {
-  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
-  if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
-  }
   const def = ctx.items.get(boxItemId)
   if (!def) return { ok: false, error: `未知物品：${boxItemId}。`, errorId: 'core.industry.002', errorParams: { p1: boxItemId } }
   if (def.kind !== 'container') {
@@ -317,7 +320,7 @@ export function startUnboxRun(
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   if (worker === 'pilot') {
-    // 同族互斥（跨活动互斥已收进 `activityGate`；本入口自己的前置校验在上面已全部过完）
+    /** 顺序同 `startRefineRun`：**手动工作位互斥（硬拒）→ 跨活动统一判据 → 位置门槛** */
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
     }
@@ -332,6 +335,9 @@ export function startUnboxRun(
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入「货柜拆解」。`, errorId: 'core.industry.007', errorParams: { p1: aiCoreName(worker) } }
     }
+  }
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return { ok: false, error: '精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   // 谜质科技「货柜拆解技术」：每级 −25%（加法口径 ⇒ 满级 −75%；船长 2026-09-19）
@@ -366,10 +372,6 @@ export function startRecycleRun(
   // 稀有残骸已开放（船长 2026-09-10：二号五族专属装备齐备后解禁）——它与普通残骸同一条链路，
   // 区别只在"首批触发一次高级箱"（`profile.rare === true`，见下方结算处）：
   // 一炉一箱（船长定：按炉结算，不按件累积），其余保底/彩头/碎片照常。
-  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
-  if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
-  }
   const def = ctx.items.get(wreckItemId)
   if (!def) return { ok: false, error: `未知物品：${wreckItemId}。`, errorId: 'core.industry.002', errorParams: { p1: wreckItemId } }
   if (def.kind !== 'wreck') {
@@ -393,10 +395,12 @@ export function startRecycleRun(
     }
   }
   /**
-   * 主控亲自回收：全局限 1 台 + 与**同族**的炉/线互斥（跨活动互斥已收进 `activityGate`）；
-   * ⚠ 本入口自己的前置校验（基地网络/物品/来源记录/余量/够不够一批）都在上面已过完。
+   * 主控亲自回收：全局限 1 台 + 与**同族**的炉/线互斥 + 统一判据（跨活动互斥已收进 `activityGate`）。
+   * ⚠ 判据排在**位置门槛之前**（见 `startRefineRun` 的说明：停机即把舰船带回空间站）；
+   * 上面的"够不够一批"与停机无关（`oreAvailable` = 货仓 + 仓库，停下来的货留在船上）⇒ 谁先谁后都行。
    */
   if (worker === 'pilot') {
+    /** 顺序同 `startRefineRun`：**手动工作位互斥（硬拒）→ 跨活动统一判据 → 位置门槛** */
     if (state.refineRuns.some((r) => r.worker === 'pilot')) {
       return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
     }
@@ -411,6 +415,10 @@ export function startRecycleRun(
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入回收炉。`, errorId: 'core.industry.012', errorParams: { p1: aiCoreName(worker) } }
     }
+  }
+  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
+  if (stationIndustryBlocked(worker, state, ctx)) {
+    return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(RECYCLE_CYCLE_MS / eff))

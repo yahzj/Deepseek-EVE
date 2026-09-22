@@ -17,8 +17,9 @@ import {
 } from '../src/station'
 import { nearestStationGalaxyId, stationGalaxyIds, isAtHomeLike, startSiteDeliverTrip, cancelSiteDeliverTrip } from '../src/location'
 import { startRefineRun, startRecycleRun, startUnboxRun, redeemFragments } from '../src/industry'
-import { FRAGMENT_RECIPES } from '../src/salvage'
+import { FRAGMENT_RECIPES, wreckItemIdOf } from '../src/salvage'
 import { startManufacturing } from '../src/manufacturing'
+import { learnBlueprint } from '../src/market'
 import { changeShip, repairShip } from '../src/shipyard'
 import { advanceGame } from '../src/engine'
 import { makeTestCtx } from './helpers'
@@ -41,7 +42,17 @@ function siteDef(): StationSiteDef {
 }
 
 function world() {
-  const ctx: SimContext = makeTestCtx({ stations: [siteDef()], quietEvents: true })
+  const ctx: SimContext = makeTestCtx({
+    stations: [siteDef()],
+    quietEvents: true,
+    /**
+     * 「货柜拆解」的探针货柜（2026-09-21）：位置门排在统一判据之后 ⇒ 要走到那道门必须用**真实存在的
+     * 货柜物品**（合成 ctx 默认不含 container；残骸那一路由 `wreckItemIdOf('ano-a')` 现成提供）。
+     */
+    items: [
+      { id: 'box-a', name: '测试货柜', kind: 'container', unitM3: 1, baseSellPriceIsk: 1000, description: '测试货柜' },
+    ],
+  } as Parameters<typeof makeTestCtx>[0])
   const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
   return { state, ctx }
 }
@@ -198,6 +209,9 @@ describe('T9 建成副站 = 母港镜像（2026-09-08 船长定：母港功能�
   function builtWorld() {
     const { state, ctx } = world()
     state.warehouse.items['ore-a'] = 1000
+    state.warehouse.items['min-a'] = 10 // 亲自开线探针用（bp-a 的料 + 学会配方）
+    state.blueprintStock['bp-a'] = 1
+    learnBlueprint(state, ctx, 'bp-a')
     state.dockedSite = 'site-test'
     state.awayGalaxy = null
     deliverStationResources(state, ctx, 'site-test', 'ore-a', 100)
@@ -222,31 +236,37 @@ describe('T9 建成副站 = 母港镜像（2026-09-08 船长定：母港功能�
 
   it('已建成副站可开精炼炉/残骸回收/组装机/逆向研究（越过母港门，其余校验照常）', () => {
     const { state, ctx } = builtWorld()
-    // 各入口先过"基地网络"门：停靠已建成副站时不再报位置错，而是继续后续校验
-    const r1 = startRefineRun(state, 'nope-ore', 'pilot', ctx)
-    expect(r1.error).not.toContain(GATE_HINT)
-    expect(r1.error).toContain('未知物品')
-    const r2 = startRecycleRun(state, 'nope-wreck', 'pilot', ctx)
-    expect(r2.error).not.toContain(GATE_HINT)
-    expect(r2.error).toContain('未知物品')
-    const r3 = startManufacturing(state, 'nope-bp', 'pilot', ctx)
-    expect(r3.error).not.toContain(GATE_HINT)
-    expect(r3.error).toContain('未知蓝图')
+    /**
+     * ⚠ **2026-09-21 统一批**：位置门现在排在**统一判据（`activityGate`）之后**（停机本身就把舰船带回
+     * 空间站 ⇒ 位置门正是被停机满足的），所以"越过母港门"这条要用**真实存在的 id** 才走得到后面
+     * （与下面 `redeemFragments` 那条同款处置；探针式假 id 会先撞上"未知物品/未知蓝图"）。
+     */
+    const r3 = startManufacturing(state, 'bp-a', 'pilot', ctx)
+    expect(r3.ok, '已建成副站 + 材料齐 ⇒ 亲自开线应当能开工（位置门确实越过了）').toBe(true)
     const r4 = redeemFragments(state, ctx, 'nope-mod')
-    expect(r4.error).not.toContain(GATE_HINT)
+    expect(r4.error ?? '').not.toContain(GATE_HINT)
+    expect(r4.error).toContain('逆向研究蓝图') // 走到后续校验（没有对应的配方）
   })
 
   it('修建中工地/野外仍被基地网络门拦截', () => {
     const { state, ctx } = world()
     state.warehouse.items['ore-a'] = 200
+    state.warehouse.items['min-a'] = 10 // bp-a 的料 ＋ 学配方（材料/配方校验都排在位置门之前）
+    state.blueprintStock['bp-a'] = 1
+    learnBlueprint(state, ctx, 'bp-a')
+    state.warehouse.items[wreckItemIdOf('ano-a')] = 100 // 残骸（≥ 一批 10 m³）
+    state.warehouse.items['box-a'] = 5 // 货柜（拆解探针）
     state.dockedSite = 'site-test'
     state.awayGalaxy = null
     deliverStationResources(state, ctx, 'site-test', 'ore-a', 100) // stage 1（修建中）
-    expect(startManufacturing(state, 'nope-bp', 'pilot', ctx).error).toContain(GATE_HINT)
-    expect(startRefineRun(state, 'nope-ore', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRecycleRun(state, wreckItemIdOf('ano-a'), 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startUnboxRun(state, ctx, 'box-a', 'pilot').error).toContain(GATE_HINT)
     state.awayGalaxy = 'galaxy-far' // 野外
     state.dockedSite = null
-    expect(startRecycleRun(state, 'nope-wreck', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRecycleRun(state, wreckItemIdOf('ano-a'), 'pilot', ctx).error).toContain(GATE_HINT)
   })
 
   /**
@@ -261,28 +281,37 @@ describe('T9 建成副站 = 母港镜像（2026-09-08 船长定：母港功能�
    */
   it('**AI 核心驱动的站内工业不看玩家位置**（跑长途运输/远征时照常能开炉开线）· 亲自操作照旧要求停靠', () => {
     const { state, ctx } = world()
+    /**
+     * ⚠ **2026-09-21 统一批**：位置门排在统一判据之后，所以这里一律用**真实 id + 备好料**
+     * （假 id 会先撞"未知物品/未知蓝图"，验不出位置门）。
+     */
+    state.warehouse.items['ore-a'] = 200
+    state.warehouse.items['min-a'] = 10
+    state.warehouse.items[wreckItemIdOf('ano-a')] = 100
+    state.warehouse.items['box-a'] = 5
+    state.blueprintStock['bp-a'] = 1
+    learnBlueprint(state, ctx, 'bp-a') // 亲自开线那条：配方校验排在位置门之前，得先学会
     // 现场 = 航行中：`hauling.setLeg` 写下的字段（dockedSite=null + awayGalaxy=出发星系）
     state.dockedSite = null
     state.awayGalaxy = 'galaxy-far'
-    // ① AI 核心驱动：越过位置门 ⇒ 继续走后续校验（报的是"未知物品/蓝图"，不是位置错）
-    expect(startRefineRun(state, 'nope-ore', 'basic', ctx).error).not.toContain(GATE_HINT)
-    expect(startRecycleRun(state, 'nope-wreck', 'basic', ctx).error).not.toContain(GATE_HINT)
-    expect(startManufacturing(state, 'nope-bp', 'basic', ctx).error).not.toContain(GATE_HINT)
-    expect(startUnboxRun(state, ctx, 'nope-box', 'basic').error).not.toContain(GATE_HINT)
+    // ① AI 核心驱动：越过位置门 ⇒ 报的是"核心上限/库存不足"这类后续原因，不是位置错
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).error ?? '').not.toContain(GATE_HINT)
+    expect(startRecycleRun(state, wreckItemIdOf('ano-a'), 'basic', ctx).error ?? '').not.toContain(GATE_HINT)
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).error ?? '').not.toContain(GATE_HINT)
+    expect(startUnboxRun(state, ctx, 'box-a', 'basic').error ?? '').not.toContain(GATE_HINT)
     // ② 玩家亲自（worker = 'pilot'）：照旧要求在基地网络内（这条**不能**被上面的放宽带走）
-    expect(startRefineRun(state, 'nope-ore', 'pilot', ctx).error).toContain(GATE_HINT)
-    expect(startRecycleRun(state, 'nope-wreck', 'pilot', ctx).error).toContain(GATE_HINT)
-    expect(startManufacturing(state, 'nope-bp', 'pilot', ctx).error).toContain(GATE_HINT)
-    expect(startUnboxRun(state, ctx, 'nope-box', 'pilot').error).toContain(GATE_HINT)
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRecycleRun(state, wreckItemIdOf('ano-a'), 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startUnboxRun(state, ctx, 'box-a', 'pilot').error).toContain(GATE_HINT)
     // ③ 无 worker 参数的玩家动作（逆向研究）：照旧要求在基地网络内
-    //    （要用**真实存在的模块 id** 才走得到那道门：该命令先查配方表、再查位置）
     expect(redeemFragments(state, ctx, Object.keys(FRAGMENT_RECIPES)[0]).error).toContain(GATE_HINT)
     // ④ 修建中工地同理：AI 放行、亲自仍拦（"未建成不视为任何站点"只约束玩家自己那一档）
     state.awayGalaxy = null
     state.dockedSite = 'site-test'
     state.stationSites['site-test'] = { stage: 1, delivered: {} }
-    expect(startRefineRun(state, 'nope-ore', 'basic', ctx).error).not.toContain(GATE_HINT)
-    expect(startRefineRun(state, 'nope-ore', 'pilot', ctx).error).toContain(GATE_HINT)
+    expect(startRefineRun(state, 'ore-a', 'basic', ctx).error ?? '').not.toContain(GATE_HINT)
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).error).toContain(GATE_HINT)
   })
 })
 

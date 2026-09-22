@@ -113,8 +113,8 @@
    | 开始长途运输 | `hauling.startHauling` | 端点/航路/货仓 → 之后才 gate（原有顺序纪律注释保留） |
    | 开始扫描虫洞 | `wormholeScan.wormholeScanStart` | `wormholeScanBlockReason` **只留本入口前置**（解锁/洞里/遭遇战/库存满），九条跨活动硬拒整段删除 |
    | 掩护巡逻 | `location.goStandbyAt` | 目标/已探索/航路/同点 → 之后才 gate |
-   | 亲自开炉·回收·拆箱 | `industry.startRefineRun` / `startRecycleRun` / `startUnboxRun` | 同族炉/线互斥保留（同一项不算切换）；gate 放在"够不够一批"之后 |
-   | 亲自开线 | `manufacturing.startManufacturing` | gate 放在材料校验之后 |
+   | 亲自开炉·回收·拆箱 | `industry.startRefineRun` / `startRecycleRun` / `startUnboxRun` | 手动工作位互斥（硬拒，不算切换）→ gate → 位置门；见 §九 |
+   | 亲自开线 | `manufacturing.startManufacturing` | 材料校验 → 手动工作位互斥 → gate → 位置门；见 §九 |
    | 出发远征 | `expedition.startExpedition` | `expeditionPreflight` 里的 hauling/deliver/roaming 检查删除；**顺带修**：`awayGalaxy` 复位移到全部校验之后（原先校验失败也照清标记） |
    | 出发投送 | `sideTasks.startCourierDelivery` | 任务/到期/目标站/货舱/跃迁/航路 → 之后才 gate |
    | 换驾驶 | `shipyard.changeShip` | **只取判据**（战斗中/洞里/返航途中 = 统一拒）；采矿/打捞仍走它自己的"旧船善后"语义，不套自动停机 |
@@ -133,6 +133,29 @@
 5. **顺带**（同一批发现即修）：`tools/save-migrate-check.ts` 的"13 条必须全判过"改为**按版本分岔**——
    v≤25 老档仍硬要求全过；v26+ 的"教程链进行中的档"只钉**不倒退 / 不凭空完成 / 资产不变**，完成度与页面锁
    如实打印成 ⚠ 读数（原先会把**船长本人的真档**误判成失败，见下）。
+6. **位置门与判据的相对顺序**（玩家报障后当晚修）：见 §九。
+
+### 九、玩家报障：「为什么我在采矿时无法直接切换精炼炉手动运转？」（2026-09-21 当晚修）
+
+**根因两层，都不是判据写错，而是"顺序"和"界面留了一份旧名单"**：
+
+1. **core 侧顺序**：`stationIndustryBlocked`（站内工业要求停靠空间站）原先排在统一判据**之前**；
+   而**打捞 / 掩护巡逻 / 长途运输**在跑时会把舰船记成"不在站内"（`awayGalaxy` 非空）⇒ 玩家先撞上
+   「需停靠空间站」，可实际上**一停机舰船就即时归位了**。现改：**统一判据在前、位置门在后**
+   —— 四处站内工业（`startRefineRun` / `startRecycleRun` / `startUnboxRun` / `startManufacturing`）
+   ＋ 长途运输的"野外不能接单" ＋ 远征的"出发地航路"都按这条重排（位置门正是被停机**满足**的那一条）。
+   与停机**无关**的前置（物品/配方/材料/够不够一批/货仓）留原位（在判据之前）。
+2. **界面侧**：`IndustryPage.manualBusyNote` · `Industry.manualBuildNote` · `Hauling.busy` ·
+   `Expedition.pilotBusy` 各自还写着"采矿/打捞/远征/掩护巡逻在跑 ⇒ 按钮置灰"⇒ **core 通了、按钮还是灰的**。
+   现改：界面只留"点了也白点"的两类（**位置** · **锁定态**）＋**同一个手动工作位**那两条；
+   跨活动一律交 core 判（可自动停的照点，远征那类由 core 给统一拒因）。
+3. **口径边界（本次未改，提请确认）**：
+   - **同一个手动工作位**（精炼炉·回收炉·拆解·制造线）之间仍是**硬拒**——它不算"切换活动"，而是同一工位
+     换机器，停掉会**丢掉手上那一批**（稀有残骸一炉一箱，丢了是真损失）⇒ 不替玩家做决定。
+   - **换矿带**（开采 → 同一活动的另一个矿带）仍是"先停再开"（`startMining` 的同项自检），界面也照旧置灰。
+4. 新用例：`industry.test.ts`「**位置门排在统一判据之后**」（掩护巡逻中直接开炉 ⇒ 停巡逻 + 开工；
+   运输中 ⇒ 回两段确认那句警告且不停；纯野外 ⇒ 仍旧位置门拒）；`t9.test.ts` 的位置门三例改用**真实 id**
+   （假 id 会先撞"未知物品"，验不到位置门）。
 
 ### 与旧裁定的关系（都在本件内改判，未另开文档）
 

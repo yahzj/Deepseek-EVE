@@ -233,10 +233,6 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     return { ok: false, error: '长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到顶部活动栏点「停止运输」再换线。', errorId: 'core.hauling.001' }
   }
   /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
-  // 前置：停靠在空间站（母港或已建成副站）
-  if (state.awayGalaxy !== null) {
-    return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
-  }
   const endpoints = haulEndpoints(state, ctx)
   const a = endpoints.find((e) => e.siteId === aSiteId)
   const b = endpoints.find((e) => e.siteId === bSiteId)
@@ -260,7 +256,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   /**
    * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 8 条硬拒，现已收进
-   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（停靠/端点/航路/货仓），
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（端点/航路/货仓），
    * 这条顺序纪律原先就写在本函数里（免得"先停了玩家的活、再说开不了"）。
    */
   const cap = cargoCapacityM3Of(state, ctx, state.shipId)
@@ -269,6 +265,15 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   }
   const gateSkip = applyActivityGate(state, 'hauling')
   if (gateSkip) return gateSkip
+  /**
+   * **位置门槛：停靠在空间站（母港或已建成副站）才能接单**——放在判据**之后**：
+   * 掩护巡逻（野外留守）属"可自动停"那一档，停下时 `haltActivityForSwitch` 会把人即时召回母港
+   * ⇒ 位置门槛正是被这次停机满足的（与 `industry.startRefineRun` 同款处置）。
+   * 船在野外**且没有可停的活动**（纯野外留守）时，仍旧是这一条拒。
+   */
+  if (state.awayGalaxy !== null) {
+    return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
+  }
   // 自动清仓：真实货物卸入仓库（虚拟货物占满货仓，语义干净）
   const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
   const dockHere = dockedHaulEndpoint(state) // 接单时的停靠端点（可能是航线端点，也可能不是）

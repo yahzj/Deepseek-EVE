@@ -1666,11 +1666,12 @@ function GalaxyActions({
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
     state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
-  const pilotBusy =
-    state.mining.active ||
-    state.expedition.active ||
-    state.transit.active ||
-    (state.standby.active && !inFlight)
+  /**
+   * ⚠ **2026-09-21 船长令改口径**：`state.mining.active` **从这条里删掉**（原先采矿中 ⇒ 巡逻按钮直接置灰）——
+   * 采矿属"可自动停"那一档，点下去会先停采（统一日志）再转场；留着它就把统一口径又堵回去了。
+   * 仍留在里面的：远征（统一判据拒）、换港返航（锁定态）、别处的掩护巡逻（同一项，由 core 自己判）。
+   */
+  const pilotBusy = state.expedition.active || state.transit.active || (state.standby.active && !inFlight)
   const standbyDisabled = inFlight || alreadyHere || pilotBusy || state.awayGalaxy === galaxy.id
   const standbyTitle = inFlight
     ? tr("ui.Expedition.205")

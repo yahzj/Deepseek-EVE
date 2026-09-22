@@ -328,18 +328,22 @@ export function startExpedition(
   if (shipLockedInWormhole(state, state.shipId)) {
     return { ok: false, error: '主控在虫洞里（已锁定）：先暂停并召回整队，才能出击。', errorId: 'core.expedition.013' }
   }
-  // T8：出发地 = 当前位置（野外停留点或空间站）——⚠ 下面这处 `awayGalaxy` 复位放在**全部校验之后**
-  // （2026-09-21 统一批顺手修正：原先它在航路校验之前清标记，校验失败也照清）
-  const from = originGalaxyOf(state, ctx)
-  const outMinutes = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
-  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.expedition.024' }
   /**
    * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 6 条硬拒，现已收进
-   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/声望/探索/冷却/航路）。
+   * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/声望/探索/冷却）。
    */
   const gateSkip = applyActivityGate(state, 'expedition')
   if (gateSkip) return gateSkip
+  /**
+   * T8：出发地 = 当前位置（野外停留点或空间站）——⚠ **算在判据之后**：掩护巡逻那类可自动停的活动
+   * 停下时舰船已即时归位（`awayGalaxy` 归零）⇒ 出发地要按"停机之后"的位置算，免得出现
+   * "按巡逻星系的航路校验、却从母港出发"的错位。`awayGalaxy` 复位同样放在**全部校验之后**
+   * （2026-09-21 统一批顺手修正：原先它在航路校验之前清标记，校验失败也照清）。
+   */
+  const from = originGalaxyOf(state, ctx)
+  const outMinutes = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
+  if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.expedition.024' }
   const fromName = ctx.galaxies.get(from)?.name ?? from
   state.awayGalaxy = null
   // V12.1：按出发时的船跃迁与航行技能锁定单程耗时（途中升级不影响本次）；用于失利返航腿并入
