@@ -355,6 +355,55 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(state.firstTaskAutoClaim).toBeUndefined()
   })
 
+  /**
+   * **打捞器兜底补发**（**2026-09-22 船长报障**：「**玩家依旧出现被打捞器卡进度的情况，给所有玩家发一个
+   * 打捞器 MK1 吧。**」）——治的是"起手道具上线之前就已经走过「第一次打捞残骸」的老档"：
+   * 那种档永远拿不到打捞器，于是卡在"打捞要打捞器"这道门上。
+   */
+  it('兜底补发打捞器 MK1：手上没有 ＋ 打捞那条已轮到过 ⇒ 走一拍就补，且一辈子只补一次', () => {
+    const state = testState()
+    state.importantTasks['first-salvage'] = { done: true } // 老档：那条早就走过了
+    expect(state.moduleBay['mod-salvager-1'] ?? 0, '补发前手上没有打捞器').toBe(0)
+
+    engineTick(state, 1000, ctx)
+
+    expect(state.moduleBay['mod-salvager-1'] ?? 0, '补发 1 台').toBe(1)
+    expect(state.importantTasks['first-salvage']?.salvagerGift).toBe(true)
+    expect(state.logs.some((l) => l.textId === 'core.firstRewards.008')).toBe(true)
+
+    // 卖掉/丢掉也不会再补第二次（去重键写死了）
+    state.moduleBay['mod-salvager-1'] = 0
+    engineTick(state, 1000, ctx)
+    expect(state.moduleBay['mod-salvager-1'] ?? 0, '一台档只补一次').toBe(0)
+  })
+
+  it('兜底补发不误伤三种档：手上已有 · 那条还没轮到 · 已装配在船上', () => {
+    // ① 手上已有（装备库）⇒ 不补
+    {
+      const state = testState()
+      state.importantTasks['first-salvage'] = { done: true }
+      state.moduleBay['mod-salvager-1'] = 1
+      engineTick(state, 1000, ctx)
+      expect(state.moduleBay['mod-salvager-1'], '已有就不补').toBe(1)
+    }
+    // ② 新档：那条还没轮到 ⇒ 不补（它的打捞器按正常节奏在"轮到那一刻"发起手道具）
+    {
+      const state = testState()
+      engineTick(state, 1000, ctx)
+      expect(state.moduleBay['mod-salvager-1'] ?? 0, '新档不补').toBe(0)
+      expect(state.importantTasks['first-salvage']?.salvagerGift).toBeUndefined()
+    }
+    // ③ 已经装在某艘船的高槽上 ⇒ 也算"有"，不补
+    {
+      const state = testState()
+      state.importantTasks['first-salvage'] = { done: true }
+      const ship = state.fleet[state.shipId]!
+      ship.fitted.high[0] = 'mod-salvager-1'
+      engineTick(state, 1000, ctx)
+      expect(state.moduleBay['mod-salvager-1'] ?? 0, '装在船上也算有').toBe(0)
+    }
+  })
+
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
     const state = testState()
     reachQueue(state, 'first-ship') // 顺序解锁：先推到它前面
