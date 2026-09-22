@@ -11136,7 +11136,10 @@ html[data-locale='en'] body {
    尺寸一律用逻辑单位（px/百分比），不写死视口高度 ⇒ 旋转口径与窄窗都不受影响。 */
 .app-skilltree-top { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; margin-bottom: 4px; }
 .app-skilltree-nav { display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px; }
-.app-skilltree-books { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 11.5px; }
+.app-skilltree-books { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; }
+/* 二级标签在这一行做小一号：层级 = 一级「大类」用 `.app-tasktab`、二级「技能书」用 `.app-subtab`；
+   只调尺寸，不改家族语言（2026-09-22 船长报障「部分筛选的样式不统一 / 白底」后统一） */
+.app-skilltree-books .app-subtab { padding: 2px 10px; font-size: 11.5px; }
 .app-skilltree-legend { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 11.5px; margin-bottom: 6px; }
 .app-skilltree-key { border: 1px solid var(--wui-border); border-radius: 3px; padding: 1px 6px; font-size: 11px; }
 .app-skilltree-key.is-max { border-color: rgba(255, 202, 88, 0.7); color: #ffca58; }

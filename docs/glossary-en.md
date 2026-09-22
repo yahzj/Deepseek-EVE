@@ -313,7 +313,7 @@
 | navigation | 导航学 | `Navigation` |
 | warp-drive-operation | 跃迁引擎操控 | `Warp Drive Operation` |
 | acceleration-control | 加速控制理论 | `Acceleration Control` |
-| mining-frigate | 采集器入门学 | `Mining Frigate` |
+| mining-frigate | 采矿舰入门学 | `Mining Ship Basics` |
 | industrial-ops | 采矿舰操作 | `Industrial Ship Operations` |
 | armed-ops | 武装舰操作 | `Armed Ship Operations` |
 | armored-ops | 装甲舰操作 | `Armored Ship Operations` |
@@ -364,7 +364,7 @@
 | armor-tuning | 装甲调谐学 | `Armor Tuning` |
 | repair-engineering | 维修工程学 | `Repair Engineering` |
 | hull-quick-repair | 舰体快修学 | `Quick Hull Repair` |
-| station-protocol | 空间站协议学 | `Station Protocol` |
+| station-protocol | 空间站维修协议 | `Station Repair Protocol` |
 | ai-expert | AI 核心操作学 | `AI Core Operation` |
 | ai-core-dispatch | AI 核心调度学 | `AI Core Dispatch` |
 | accelerated-learning | 高效学习法 | `Accelerated Learning` |

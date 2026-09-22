@@ -2178,7 +2178,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.192": { zh: "槽类", en: "Slot types" },
   "ui.Handbook.193": { zh: "类别", en: "Category" },
   "ui.Handbook.194": { zh: "生产循环", en: "Production cycle" },
-  "ui.Handbook.195": { zh: "练「采矿技术 / 采集器入门学」提产量、缩循环；「自动循环」与 AI 副船让矿机不停转。", en: "Train Mining and Mining Laser Basics to raise yield and shorten cycles; Auto loop and AI auxiliary ships keep the miners running without pause." },
+  "ui.Handbook.195": { zh: "练「采矿技术 / 采矿舰入门学」提产量、缩循环；「自动循环」与 AI 副船让矿机不停转。", en: "Train Mining and Mining Ship Basics to raise yield and shorten cycles; Auto loop and AI auxiliary ships keep the miners running without pause." },
   "ui.Handbook.196": { zh: "自动卸货", en: "Automatic unloading" },
   "ui.Handbook.197": { zh: "精炼", en: "Refining" },
   "ui.Handbook.198": { zh: "用途", en: "Purpose" },

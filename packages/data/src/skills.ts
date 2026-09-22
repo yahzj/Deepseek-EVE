@@ -21,8 +21,14 @@
  *    ⇒ 新增 `prereq`（**真前置**，`enqueueSkill` 校验，全部达到 `PREREQ_MIN_LEVEL` = **Lv1** 才可入队）。
  *    **连线判据 = 效果同族**（二者的 description 里互相点名「与 X 乘算叠加 / 同效果 / 同享」＝同一乘区）；
  *    **效果不同轴的一律不填**（82 条里只有 27 条有前置、共 28 条边 ⇒ 其余 55 条都是根，树上就是并列的独立点）。
- * ③ 「**采矿属于工业舰，武装舰操作 · 装甲舰操作是战斗**」⇒ **采集器入门学 / 采矿舰操作 归「工业」**、
+ * ③ 「**采矿属于工业舰，武装舰操作 · 装甲舰操作是战斗**」⇒ **采矿舰入门学 / 采矿舰操作 归「工业」**、
  *    **武装舰操作 / 装甲舰操作 归「战斗」**（`group` 字段随之调整；舰船大类只留通用操纵）。
+ * ④ **同一批的第二轮回稿**（船长在坐标工作台 `skilltree-workbench.xlsx` 里直接改的）：
+ *    - **改名**：`mining-frigate` 采集器入门学 → **采矿舰入门学** · `station-protocol` 空间站协议学 → **空间站维修协议**；
+ *    - **rank 调整**：`kinetic-gunnery` 动能炮术 1 → **2** · `missile-launching` 导弹发射学 1 → **2** ·
+ *      `station-protocol` 空间站维修协议 **1 → 4**；
+ *    - ⚠ `station-protocol` 升到 rank 4 后比 `repair-engineering`（维修工程学，rank 3）更深 ⇒ 那一对
+ *      **上下级方向随之翻转**（前置挂在维修工程学之下），否则违反「父 rank ≤ 子 rank」的树契约。
  */
 
 import type { SkillDef } from '@whale/core'
@@ -98,7 +104,8 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'mining-frigate', // id 保持不动（存档键 = skills.trained；改名零迁移）
     // 2026-09-16 船长：「采矿护卫舰操作改名为采集器入门学。」
-    name: '采集器入门学',
+    // 2026-09-22 船长（技能树批，Excel 工作台回稿）：「采集器入门学」⇒ **采矿舰入门学**
+    name: '采矿舰入门学',
     group: '工业',
     rank: 2,
     branch: 'b-indship',
@@ -398,7 +405,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'kinetic-gunnery',
     name: '动能炮术',
     group: '战斗',
-    rank: 1,
+    rank: 2,
     branch: 'b-weapon',
     prereq: ['gunnery'],
     description: '动能武器（炮台）专精：单发伤害每级 +⟦5%⟧（与炮术学乘算叠加）。',
@@ -407,7 +414,7 @@ export const SKILLS: readonly SkillDef[] = [
     id: 'missile-launching',
     name: '导弹发射学',
     group: '战斗',
-    rank: 1,
+    rank: 2,
     branch: 'b-weapon',
     prereq: ['gunnery'],
     description: '导弹架专精：爆破弹药单发伤害每级 +⟦5%⟧（与炮术学乘算叠加；追踪命中与近盲安全射距不受影响）。',
@@ -556,8 +563,8 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工程',
     rank: 3,
     branch: 'b-repair',
-    prereq: ['hull-quick-repair', 'station-protocol'],
-    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（与空间站协议学乘算叠加）；并让修理组件恢复量每级 +⟦5%⟧（与舰体快修学同效果、按级相加；船体维修装置每跳同样计入）。',
+    prereq: ['hull-quick-repair'],
+    description: '舰船维修工艺：停站维修费每级降低 ⟦10%⟧（与空间站维修协议乘算叠加）；并让修理组件恢复量每级 +⟦5%⟧（与舰体快修学同效果、按级相加；船体维修装置每跳同样计入）。',
   },
   {
     id: 'hull-quick-repair',
@@ -569,10 +576,14 @@ export const SKILLS: readonly SkillDef[] = [
   },
   {
     id: 'station-protocol',
-    name: '空间站协议学',
+    // 2026-09-22 船长（Excel 工作台回稿）：「空间站协议学」⇒ **空间站维修协议**，且 **rank 1 → 4**；
+    //   rank 一动，它与「维修工程学」（rank 3）的上下级方向就反了 ⇒ 前置改为挂在维修工程学之下
+    //   （两者仍是同一乘区：停站维修费，双方说明里互相点名 ⇒ 符合船长「同类效果做上下级」的口径）
+    name: '空间站维修协议',
     group: '工程',
-    rank: 1,
+    rank: 4,
     branch: 'b-repair',
+    prereq: ['repair-engineering'],
     description: '空间站服务谈判：停站维修费每级降低 ⟦5%⟧（与维修工程学乘算叠加）。',
   },
   {

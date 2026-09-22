@@ -165,25 +165,34 @@ export function SkillsTreePage({ engine }: PageProps) {
               </button>
             ))}
           </div>
-          {/* 导航二：该大类下的技能书（`全部` = 一次看全） */}
+          {/* 导航二：该大类下的技能书（`全部` = 一次看全）——用**二级标签家族** `.app-subtabs/.app-subtab`
+              （星图页/市场页/工业页的页内二级切换就是它）。⚠ 2026-09-22 船长报障「部分筛选的样式不统一？
+              为什么是白底的」：原先这里误用了 `.app-chip`——那是**标签/徽标**家族（只设颜色与描边、**没有背景**），
+              套在 `<button>` 上就露出浏览器默认的浅色底 ⇒ 现在统一回标签家族。 */}
           <div className="app-skilltree-books">
             <span className="app-dim">{tr('ui.SkillTree.016')}</span>
-            <button
-              className={`app-chip${branchTab === '' ? ' is-active' : ''}`}
-              onClick={() => setBranchTab('')}
-            >
-              {tr('ui.SkillTree.022')}
-            </button>
-            {books.map((b) => (
+            <div className="app-subtabs" role="tablist">
               <button
-                key={b.branch}
-                className={`app-chip${branchTab === b.branch ? ' is-active' : ''}`}
-                title={tr('ui.SkillTree.019', bookProgress(b.defs))}
-                onClick={() => setBranchTab(b.branch)}
+                role="tab"
+                aria-selected={branchTab === ''}
+                className={`app-subtab${branchTab === '' ? ' is-active' : ''}`}
+                onClick={() => setBranchTab('')}
               >
-                {skillBranchText(b.branch)}
+                {tr('ui.SkillTree.022')}
               </button>
-            ))}
+              {books.map((b) => (
+                <button
+                  key={b.branch}
+                  role="tab"
+                  aria-selected={branchTab === b.branch}
+                  className={`app-subtab${branchTab === b.branch ? ' is-active' : ''}`}
+                  title={tr('ui.SkillTree.019', bookProgress(b.defs))}
+                  onClick={() => setBranchTab(b.branch)}
+                >
+                  {skillBranchText(b.branch)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
