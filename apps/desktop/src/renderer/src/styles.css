@@ -10580,6 +10580,23 @@ html[data-locale='en'] body {
 /* ── 探索页版式（船长 2026-09-13 晚）──
    **窗口高度固定**：地图框定高 300px（不再随圈数长高）、信息窗的卡片列表自己滚 ⇒ 外层永不出滚动条。 */
 .app-wh-run { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+/* ═══════════ 洞内战斗内嵌在虫洞探索界面里（2026-09-22 船长令）═══════════
+   船长原话：「虫洞内的战斗因为舰船比较多，能否改为内嵌在虫洞探索界面内？」
+   ⇒ 战斗中本块的**主体整块让给战场**，只保留上面那条读数（`.app-wh-head`：深度/已探/回合/货舱/谜质）。
+   为什么用 CSS 隐而不是删 JSX：这块 500 行结构牵一发动全身，隐掉最省事，战斗结束也原样回来。
+   ⚠ 选择器要精确到"直接子元素里除了读数条与战场以外的全部"，将来加新区块也自动被让位。 */
+.app-wh-run.is-battle > :not(.app-wh-head):not(.app-wh-battle) { display: none; }
+.app-wh-battle { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* 战场本体：基础规则是"整屏 fixed"（`.app-battle-screen { position: fixed; inset: 0 }`），
+   嵌进面板就得改回**普通块**并填满宿主（与 `.app-winbox` 那份覆盖同款，只是作用域换成面板）。
+   `vw` 口径同批换掉：面板宽与视口宽无关。 */
+.app-wh-battle .app-battle-screen,
+.app-wh-battle .app-battle-screen.is-report { position: static; inset: auto; z-index: auto; flex: 1; min-height: 0; background: transparent; }
+.app-wh-battle .app-battle-field { padding: 6px 8px; }
+.app-wh-battle .app-bts-ruler,
+.app-wh-battle .app-bts-dock { width: min(100%, 780px); }
+.app-wh-battle .app-bts-hpWrap { max-width: 100%; }
+.app-wh-battle .app-bts-report-card { width: min(600px, 100%); }
 .app-wh-maprow { display: flex; gap: 8px; align-items: stretch; }
 /* 缩放控件（在地图左侧，纵向一列）：＋ / 百分比 / － / 适应 */
 .app-wh-zoom {

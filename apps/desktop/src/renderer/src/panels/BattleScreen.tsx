@@ -187,6 +187,7 @@ export function BattleScreen({
   onToast,
   onClose,
   open = true,
+  bare = false,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -198,6 +199,12 @@ export function BattleScreen({
    * 判定与"何时自动弹出"留在 `App.tsx`（同既有 `battleOpen` 机制），本组件不做业务判断。
    */
   open?: boolean
+  /**
+   * **不带窗口壳**（2026-09-22 船长令「虫洞内的战斗…改为内嵌在虫洞探索界面内」）：
+   * 宿主是虫洞探索面板本身 ⇒ 只出战场本体，不再套一层 `.app-winbox` 顶栏/边框。
+   * 尺寸与背景由宿主的 `.app-wh-battle` 容器负责（见 styles.css）。
+   */
+  bare?: boolean
 }) {
   const state = engine.state
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
@@ -715,10 +722,12 @@ const meSpeedRef = useRef(200)
       <WinBox
         variant="app-winbox is-battle-report"
         title={titleOf[verdict]}
-        open={open}
+        open={!!open}
         onMinimize={onClose}
         minimizeText={tr('ui.App.086')}
         minimizeTitle={tr('ui.BattleScreen.107')}
+        /* bare：不带窗口壳（嵌在虫洞面板里时用，见 `bare` 参数） */
+        shell={!bare}
       >
       <div className="app-battle-screen is-report">
         <div className="app-bts-report">
@@ -1989,6 +1998,7 @@ const meSpeedRef = useRef(200)
       onMinimize={onClose}
       minimizeText={tr('ui.BattleScreen.037')}
       showMinimizeButton={false} // 战斗屏自己顶栏已有一枚（船长实测报障：出现两个"退出/最小化"按钮）
+      shell={!bare} // bare = 嵌在虫洞探索面板里（宿主自己有面板外观，不再套壳）
     >
       <div className="app-battle-screen">
       <div className="app-battle-screen-top">

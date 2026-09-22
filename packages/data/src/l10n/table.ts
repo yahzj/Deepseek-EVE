@@ -3532,13 +3532,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.006": { zh: "⚠ 货仓可能装不下：这一格约 {incomingCells} 格、货仓只剩 {holdFreeCells} 格——装不下的会留在原地。", en: "⚠ The hold may not fit it: this tile holds about {incomingCells} slots and only {holdFreeCells} are free — whatever does not fit stays where it is." },
   "ui.Wormhole.007": { zh: "下一层入口", en: "Next-layer entrance" },
   "ui.Wormhole.008": { zh: "」：", en: "”:" },
-  "ui.Wormhole.009": { zh: "交火中不能离开虫洞：打完这一场。", en: "Cannot leave the wormhole during an engagement: finish this fight." },
+  /**
+   * `.009`（「交火中不能离开虫洞：打完这一场。」）与 `.014`（同义的悬停版）**已删**：
+   * 2026-09-22 船长令「能关，关了就挪回主区」——交火中关闭面板不再被拦，那两句话不再成立。
+   */
   "ui.Wormhole.010": { zh: "人在洞里 · 离开即暂停（进度保存）", en: "Inside the wormhole · leaving pauses it (progress saved)" },
   "ui.Wormhole.011": { zh: "从「扫描虫洞」页选一处进洞 · 关掉面板即暂停（进度保存）", en: "Pick one under Scan wormhole to go in · closing the panel pauses it (progress saved)" },
   "ui.Wormhole.012": { zh: "交火中不能撤离：打完这一场", en: "Cannot withdraw during an engagement: finish this fight " },
   "ui.Wormhole.013": { zh: "再点一次确认撤离", en: "Click again to confirm withdrawal" },
-  "ui.Wormhole.014": { zh: "交火中不能离开虫洞：打完这一场", en: "Cannot leave the wormhole during an engagement: finish this fight " },
   "ui.Wormhole.015": { zh: "✕ 关闭（离开虫洞）", en: "✕ Close (leave the wormhole)" },
+  /** 交火中那枚「✕ 关闭」的悬停说明（2026-09-22）：关闭只收界面、不离洞、战斗照常推进 */
+  "ui.Wormhole.378": { zh: "关掉面板：战斗挪到主界面继续打，这一趟照常推进", en: "Close the panel: the fight moves to the main area and keeps running, and this run goes on" },
+  /** 交火中那枚「✕ 关闭」的按钮文字（此时它并**不**离开虫洞，故不能沿用 `.015` 的「（离开虫洞）」） */
+  "ui.Wormhole.379": { zh: "✕ 关闭面板", en: "✕ Close panel" },
   "ui.Wormhole.016": { zh: "不建副本、不打战斗", en: "No instance, no fighting" },
   "ui.Wormhole.017": { zh: "1 枚 AI 核心", en: "1 AI core" },
   "ui.Wormhole.018": { zh: "主控船也能派", en: "The command ship can be sent too" },

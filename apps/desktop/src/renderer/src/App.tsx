@@ -44,6 +44,7 @@ import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { ActivityScreen, activityKindOf, activityWinEnabled } from './ui/ActivityScreen'
+import { wormholeHostsBattle } from './panels/Wormhole'
 import { MoneyFit } from './ui/MoneyFit'
 import { cmdText, logText, tr } from './i18n/locale'
 
@@ -739,9 +740,37 @@ export function App({ engine }: { engine: GameEngine }) {
   const prevInBattleRef = useRef(false)
   useEffect(() => {
     // 优化：重复清剿自动发起的远征默认最小化战斗界面（仍可用右上角「⚔ 战斗中」主动进入）
-    if (inBattle && !prevInBattleRef.current && !engine.autoSortieNow()) setBattleOpen(true)
+    if (inBattle && !prevInBattleRef.current && !engine.autoSortieNow()) {
+      /**
+       * **战斗窗口"要看"这个意图置真**。洞内那一场由下面**电平判据**额外负责"把虫洞面板叫起来"
+       * （战场内嵌在面板里）；这里同时置真 ⇒ 玩家一关面板，战场立刻出现在主区（船长选的"关了挪回主区"），
+       * 不会出现"面板关了、战场也没了"的空档。
+       */
+      setBattleOpen(true)
+    }
     prevInBattleRef.current = inBattle
   }, [inBattle])
+
+  /**
+   * ── **洞内战斗 ⇒ 虫洞面板上台**（2026-09-22 船长令「自动打开面板」）──
+   *
+   * ⚠ 用**电平判据**而不是"开战上升沿"。无头实测教训：上升沿那条在"载入时战斗已经在打"的情形下
+   * 不可靠 —— 探针能看到边沿确实触发、两个 state 也都置了真，但页面里面板仍是关的
+   * （谁把它按回去的，从外面看不出来，只有结果可见）。电平判据直接表达意图
+   * 「战斗在 ⇒ 面板就该在台上」，与载入顺序、树重挂载、边沿丢没丢都无关。
+   *
+   * 玩家主动关掉面板 ⇒ `whDismissed` 置位，**本场**不再自动弹回（战场转由主区承打，见 `whHostsBattle`）；
+   * 战斗结束 ⇒ 复位，下一场照常自动弹面板。
+   */
+  const whBattleLive = !!state.wormhole.run?.battle && state.wormhole.run?.attending === true
+  const [whDismissed, setWhDismissed] = useState(false)
+  useEffect(() => {
+    if (!whBattleLive) {
+      setWhDismissed(false)
+      return
+    }
+    if (!whDismissed) setWhOpen(true)
+  }, [whBattleLive, whDismissed])
 
   /**
    * ── 主控活动窗口（2026-09-20 船长令）──
@@ -798,7 +827,17 @@ export function App({ engine }: { engine: GameEngine }) {
    */
   const activityWinOn = activityWinEnabled() && activityKind !== null
   const activityOnStage = !battleOnStage && activityWinOn && activityOpen
-  const winOnStage = battleOnStage || activityOnStage
+
+  /**
+   * ── **洞内战斗由虫洞探索界面内嵌承载**（2026-09-22 船长令）──
+   *
+   * 「虫洞内的战斗因为舰船比较多，能否改为内嵌在虫洞探索界面内？」⇒ 判据与面板共用同一个函数
+   * `wormholeHostsBattle`（**不在这里另写一份**，两处条件不一致就会出现"两边都显示/都不显示"）。
+   * 面板挟持战场时：主区**不上屏**战场（页面照常显示），战场由 `battleSlot` 传进面板；
+   * 玩家关掉面板 ⇒ 本判据变假 ⇒ 战场立刻回到主区（这就是船长选的"关了挪回主区"）。
+   */
+  const whHostsBattle = wormholeHostsBattle(state, { open: whOpen, auto: whAutoPick !== null })
+  const winOnStage = (battleOnStage && !whHostsBattle) || activityOnStage
 
   /**
    * ── **最小化后的还原入口**（2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮合并」）──
@@ -809,7 +848,8 @@ export function App({ engine }: { engine: GameEngine }) {
    * 两个窗口**同时**最小化时取战斗优先——那是正在打的一仗（活动窗口反正在左侧小窗里也看得见）。
    */
   const windowRestore: { title: string; onRestore: () => void } | null =
-    inBattle && !battleOpen
+    /* ⚠ 面板正在内嵌战场时**不算"被最小化"**（战场就在玩家眼前，再亮一枚角标只会误导） */
+    inBattle && !battleOpen && !whHostsBattle
       ? { title: tr('ui.App.083'), onRestore: () => setBattleOpen(true) }
       : activityWinOn && !activityOpen
         ? { title: tr('ui.ActivityWin.008'), onRestore: () => setActivityOpen(true) }
@@ -1184,7 +1224,16 @@ export function App({ engine }: { engine: GameEngine }) {
            * 因此"挂着但不上屏"时它不会白占地方。
            */}
           <div className="app-win-host">
-            {inBattle || battleOpen ? (
+            {/**
+             * **战斗屏只有一个实例、两个宿主**（2026-09-22）：
+             * - 洞内战斗 → 由虫洞面板内嵌（节点经 `battleSlot` 传进去，`bare` 不带窗口壳）；
+             * - 其余（远征战 / 面板关着） → 留在主区这块。
+             * ⚠ 全仓**同时只允许一个实例**：它内部有阶段机（live→outro→report）与慢镜快照，
+             * 两个实例会各跑一套。这里的条件保证"哪边渲染，另一边就不渲染"。
+             * `onClose` 也跟着换语义：面板挟持战场时，"最小化"要**连面板一起收起**（否则面板还开着、
+             * 战场却不见了）；面板没挟持时就是原来的"收起主区战场"。
+             */}
+            {!whHostsBattle && (inBattle || battleOpen) ? (
               <BattleScreen
                 engine={engine}
                 onToast={showToast}
@@ -1533,10 +1582,33 @@ export function App({ engine }: { engine: GameEngine }) {
             onToast={showToast}
             stockId={whStockPick}
             autoStockId={whAutoPick}
+            /* 洞内战斗内嵌进本面板（见 `whHostsBattle`）：节点由这里传进去，全仓仍只有一个战斗实例 */
+            battleSlot={
+              whHostsBattle ? (
+                <BattleScreen
+                  engine={engine}
+                  onToast={showToast}
+                  open
+                  bare
+                  /* 面板内那枚「← 最小化」= 连面板一起收起（收起后入口 = 左上角小窗角标，与全局一致） */
+                  onClose={() => {
+                    setWhOpen(false)
+                    setBattleOpen(false)
+                    setWhDismissed(true) // 本场不再自动弹回面板（见 `whDismissed`）
+                  }}
+                />
+              ) : null
+            }
             onClose={() => {
               setWhOpen(false)
               setWhStockPick(null)
               setWhAutoPick(null)
+              /**
+               * **交火中关面板 = 本场不再自动弹回**（2026-09-22 船长令「能关，关了就挪回主区」）：
+               * 置位 `whDismissed` ⇒ 上面那条电平判据不再把面板叫起来 ⇒ 战场由主区承打。
+               * 战斗结束会自动复位，下一场照常自动弹面板。
+               */
+              if (whBattleLive) setWhDismissed(true)
             }}
           />
         ) : null}

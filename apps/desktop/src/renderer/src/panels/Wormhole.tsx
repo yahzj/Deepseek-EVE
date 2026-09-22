@@ -12,6 +12,7 @@
  * 未扫描的格子在图上用**蓝灰虚线边框**区分，且不按信号上色（免得漏真相）。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 // 洞内底图固定（船长 2026-09-13）：进洞时把当前那张无缝星云图钉住，本趟不随全站换图而变
 import { currentSpaceBg, spaceBgUrlAt } from '../ui/spaceBg'
 import { HintIcon } from '../ui/Hint'
@@ -103,7 +104,7 @@ import {
   wormholeCargoSlotsOf,
   placementCellsCount,
 } from '@whale/core'
-import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
+import type { GameState, WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
@@ -196,12 +197,30 @@ function useCountUp(value: number, ms = 320): number {
   return shown
 }
 
+/**
+ * **洞内战斗是否由本面板内嵌承载**（2026-09-22 船长令）。
+ *
+ * 判据 = 「面板开着」＋「不是自动探索模式」＋「人在洞里（`attending === true`）＋有在途战斗」。
+ * ⚠ **`App.tsx` 与 `WormholePanel` 必须共用这一个函数**：两边条件一旦不一致，就会出现
+ * "面板里一份、主区又一份"（两个战斗组件实例各跑一套阶段机）或者"两边都不显示"。
+ * ⚠ `auto` 排除在外：自动探索面板是一张准备页，不承载洞内那一趟（见 panel 内 `run` 的说明）。
+ */
+export function wormholeHostsBattle(
+  state: GameState,
+  opts: { open: boolean; auto: boolean },
+): boolean {
+  if (!opts.open || opts.auto) return false
+  const run = state.wormhole.run
+  return !!run?.battle && run.attending === true
+}
+
 export function WormholePanel({
   engine,
   onToast,
   onClose,
   stockId = null,
   autoStockId = null,
+  battleSlot = null,
 }: {
   engine: GameEngine
   onToast: ToastFn
@@ -215,6 +234,15 @@ export function WormholePanel({
    * 主按钮写「派队自动探索」；选了主控船 ⇒ 先弹确认（主控换到自动挑出的那条空闲船上）。
    */
   autoStockId?: string | null
+  /**
+   * **洞内战斗的战场**（2026-09-22 船长令「内嵌在虫洞探索界面内」）：由 `App.tsx` 传进来的
+   * `panels/BattleScreen` 节点（不带窗口壳）。
+   *
+   * ⚠ **必须由外部传进来、不能在本组件里 `import` 出来渲染**：全仓同时只允许**一个**战斗组件实例
+   * ——它内部有阶段机（live→outro→report）、慢镜快照与计时器，两份实例会各跑一套、
+   * 战报与慢镜会重复或丢失。传进来的节点在"面板宿主 ↔ 主区宿主"之间搬家时才会重挂载（见 App 注释）。
+   */
+  battleSlot?: ReactNode
 }) {
   const state = engine.state
   const ctx = engine.ctx
@@ -1161,14 +1189,21 @@ export function WormholePanel({
   /**
    * **临时离开 = 活动停止**（船长 2026-09-13 批准 · 议案 A 第 2 条）：关掉面板就 `wormholeLeave()`
    * ⇒ 主控立刻释放（可以去做别的），**虫洞进度原样保存**、洞内一切冻结（含战斗）。
-   * ⚠ **交火中不许离开**（船长 2026-09-13：「虫洞中的战斗画面不可以退出」）：按钮禁用，这里再兜一道。
    *
    * ⚠ **2026-09-20 船长改判**：「**虫洞的货仓背包界面，临时空间内有东西时，允许玩家关闭虫洞界面**」
    * ⇒ **关闭不再被临时空间拦下**（原先会切到背包页并弹「丢掉这些 / 放回货仓」二选一）。
    * **不会丢东西**：`wormholeLeave()` 只把洞内一切**冻结**（`tempGrid` 与进度原样留在档里），
    * 下次「返回虫洞」临时空间里的件还在 ⇒ 关面板没有数据风险。
-   * 仍保留的两道闸：**交火中不许离开**（上面那条）· **切页签与撤离**仍走 `leaveBagPage` 的二选一
+   * 仍保留的两道闸：**切页签与撤离**仍走 `leaveBagPage` 的二选一
    * （船长 2026-09-14 的口径在那两条路径上继续有效）。
+   *
+   * ⚠ **2026-09-22 改判（船长：「能关，关了就挪回主区」）——交火中关闭不再被拦下**：
+   * 从前这里是 `if (run.battle) { toast; return }`（**不许关**）。原因是当时的语义里
+   * "关面板 = `wormholeLeave()` = `attending` 变 false = 洞内一切冻结（含战斗）"⇒ 关了就等于把战斗冻住
+   * （2026-09-21 那个「双方不开火」的死锁就是这么来的），所以宁可不给关。
+   * 现在**关面板不再等于离洞**：交火中关闭只收界面、`attending` 保持 true（洞内照常推进），
+   * 战场由主区接管（`App.tsx` 的 `whHostsBattle` 判据一变假，战场立刻出现在主区）。
+   * 非交火中关闭仍是老语义（`wormholeLeave()` 冻住这一趟，可从「返回虫洞」原样回来）✓ 一字未动。
    */
   function handleClose(): void {
     /** **自动探索模式**：本面板只是"准备页"，关掉它**不碰洞内那一趟**（不 leave、不切页签） */
@@ -1177,7 +1212,8 @@ export function WormholePanel({
       return
     }
     if (state.wormhole.run?.battle) {
-      onToast(tr("ui.Wormhole.009"), true)
+      // 交火中：只关界面，**不离洞**（见上面 2026-09-22 那段）
+      onClose()
       return
     }
     if (state.wormhole.run) engine.wormholeLeave()
@@ -1208,25 +1244,25 @@ export function WormholePanel({
   }, [state.wormhole.run, tab, auto])
 
   /**
-   * **战斗中不渲染本面板**（船长 2026-09-13：「打捞遗迹触发战斗时，**虫洞界面处于最前端遮住了战斗**」）：
-   * 全屏战场 `.app-battle-screen` 的层级低于弹层遮罩（100 vs 120）⇒ 只要面板还开着就**必然压住战斗**。
-   * 这里直接在战斗中不渲染（`whOpen` 仍为真 ⇒ 战斗结束、收口完成后**面板自动回来**，玩家不用再点一次）。
-   * ⚠ 这条是"几何层级的硬保证"，与"迎战前先确认再跳转"那道流程互为兜底。
+   * **洞内战斗 ⇒ 内嵌在本面板里**（**2026-09-22 船长令**：「虫洞内的战斗因为舰船比较多，
+   * 能否改为内嵌在虫洞探索界面内？」）。选择题回话：**能关面板，关了战场挪回主区**；
+   * **战斗开始时若面板没开，自动把面板叫起来**（两条都在 `App.tsx` 接线）。
    *
-   * ⚠⚠ **例外：人不在洞里（`attending !== true`）时必须照常渲染**（**2026-09-21 修船长报障
-   * 「进入虫洞战斗后双方不开火、也不移动改变距离」**）。为什么不渲染会把玩家**锁死**：
-   * 恢复入口（「返回虫洞」⇒ `wormholeResume`）**只在本面板的 effect 里**（见下面那个 `useEffect`）
-   * ⇒ 本行 `return null` 一执行，恢复入口就**根本不渲染**，而洞内一切（含战斗）在 `attending !== true`
-   * 时是**冻结**的（`advanceWormhole` 第一道门）⇒ 战斗永远不会结束 ⇒ 面板永远不回来 ⇒
-   * **玩家点不回虫洞、这一趟连同战斗永久卡住**（旧档缺 `attending` 字段即落进这个死锁，真档实测）。
+   * 沿革（**旧裁定已被本条取代**）：2026-09-13 船长报障「打捞遗迹触发战斗时，虫洞界面处于最前端
+   * 遮住了战斗」⇒ 当时的做法是**战斗中整块不渲染本面板**（战场独占屏幕）。
+   * 现在的做法换了个方向：**不再藏面板，而是把战场嵌进面板主体**——面板壳（标题/读数/关闭/撤离）
+   * 与战场同屏，层级冲突从根上不存在，而且面板比主区那块更宽（1060 vs 887，1024 宽屏时 942 vs 471），
+   * 正合"舰船比较多"。
    *
-   * 所以判据收紧成"**人在洞里 + 战斗中**"：正常路径（`attending === true`）逐字不变——照样不渲染、
-   * 战场照样独占；只有异常态才放行渲染，让玩家**够得着**恢复入口把 `attending` 拉回 `true`
-   * （`wormholeResume` 会按离开时长前移战斗时钟 ⇒ 战斗从原处续打，不补算、不白掉血）。
-   * 渲染上去也不会压住战场读数：同一趟在途战斗在 `attending` 变 `true` 的下一拍就回到不渲染。
+   * ⚠ **两个必须保留的点**：
+   * ① 判据仍是"**人在洞里 + 战斗中**"（`hostBattle`），人不在洞里（`attending !== true`）时**照常渲染
+   *    普通界面** —— 恢复入口「返回虫洞」只在本面板的 effect 里，藏了面板玩家就再也点不回来
+   *    （2026-09-21 修「进入虫洞战斗后双方不开火」那个死锁，真档实测）；
+   * ② 战场**不是**在本组件里另起一个实例，而是由 `App.tsx` 作为 `battleSlot` 传进来
+   *    （全仓同时只有一个战斗组件实例）。
    */
-  if (!auto && run?.battle && run.attending === true) return null
-
+  // 用**共用判据**（`open: true` —— 本组件挂着就说明面板是开的；App 那边用真实 `whOpen`）
+  const hostBattle = wormholeHostsBattle(state, { open: true, auto })
   return (
     <div className="app-modal-mask" onClick={handleClose}>
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
@@ -1278,11 +1314,12 @@ export function WormholePanel({
           ) : null}
           <button
             className="app-btn is-small"
-            disabled={!!run?.battle}
             onClick={handleClose}
-            title={run?.battle ? tr("ui.Wormhole.014") : undefined}
+            /* 交火中**不再禁用**（2026-09-22 船长令「能关，关了就挪回主区」）：
+               此时关闭只收界面、不离洞，战场挪回主区照常打 ⇒ 文字与悬停说明都换成如实的口径。 */
+            title={hostBattle ? tr('ui.Wormhole.378') : undefined}
           >
-            {tr("ui.Wormhole.015")}
+            {tr(hostBattle ? 'ui.Wormhole.379' : 'ui.Wormhole.015')}
           </button>
         </div>
         {/**
@@ -1708,7 +1745,13 @@ export function WormholePanel({
           ) : null}
 
           {!settle && tab === 'map' && run ? (
-            <div className="app-wh-run">
+            /**
+             * `is-battle`：洞内战斗中本块**主体整块让给战场**（船长 2026-09-22）。
+             * 只保留上面那条读数（`.app-wh-head`：深度/已探/回合/货舱/谜质），地图行、工作区、
+             * 动作区全部由 CSS 隐掉（`.app-wh-run.is-battle > :not(.app-wh-head):not(.app-wh-battle)`）
+             * —— 不删 JSX 是为了少动这块 500 行的结构，也让战斗结束后原样回来。
+             */
+            <div className={`app-wh-run${hostBattle ? ' is-battle' : ''}`}>
               <div className="app-wh-head">
                 <span className="app-wh-cell">{tr('ui.Wormhole.349', { p1: run.depth })}</span>
                 <span className="app-wh-cell">
@@ -1823,8 +1866,8 @@ export function WormholePanel({
                    *   面板一旦关掉就再也回不来 ⇒ 打完战报一关，人落在星图上（= 退出了虫洞界面）。
                    *   "有时"正是因为**只有这一条路**关面板：另外两条开战路径（`doActivate` 的舰船信号 /
                    *   层末守卫）不关 ⇒ 那两条打完都能回到面板。
-                   *   现改为**不关面板**：战斗中本组件 `return null`（层级硬保证，见文件末那条注释），
-                   *   战斗收口后自动回来，与另两条路径一致。
+                   *   现改为**不关面板**：一路打到收口（2026-09-22 起战斗中面板**照常渲染**、
+                   *   战场内嵌在它里面 —— 见文件末 `hostBattle` 那段），与另两条路径一致。
                    */}
                   {run.pendingRuinsBattle === true ? (
                     <div className="app-wh-extract-ask">
@@ -1881,6 +1924,8 @@ export function WormholePanel({
                    * 让玩家能够调节探索地图的大小」）：地图框**定高** 300px（不再随圈数长高），
                    * 缩放只放大图内内容（以玩家所在格为中心），超出部分由地图框裁掉 ⇒ 外层永不因此滚动。
                    */}
+                  {/* 洞内战斗：战场嵌在这里（读数条之下、地图行之上；战斗中本行以下由 CSS 隐掉） */}
+                  {hostBattle ? <div className="app-wh-battle">{battleSlot}</div> : null}
                   <div className="app-wh-maprow">
                     <div className="app-wh-zoom" role="group" aria-label={tr('ui.Wormhole.373')}>
                       <button

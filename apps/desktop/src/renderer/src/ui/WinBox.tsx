@@ -41,6 +41,13 @@ export interface WinBoxProps {
    * 否则会出现两个"退出/最小化"按钮——2026-09-20 船长实测报障：「退出战斗的按钮有 2 个」。
    */
   showMinimizeButton?: boolean
+  /**
+   * 是否**套窗口壳**（缺省 true）：取 `false` 时只渲染内容本体（顶栏/边框/背景全不要）。
+   * 用途：宿主自己**就是一块面板**——虫洞探索界面内嵌战场（2026-09-22 船长令），
+   * 再套一层壳会平白多出一圈标题栏与边距。
+   * ⚠ 取 `false` 时宿主必须自己给尺寸与背景（本壳只保证 `open=false` 时不渲染）。
+   */
+  shell?: boolean
   /** 顶栏左侧额外内容（可选；插在标题之前） */
   headLeft?: ReactNode
   /** 顶栏右侧额外内容（可选；插在最小化按钮之前） */
@@ -60,12 +67,15 @@ export function WinBox({
   minimizeText,
   minimizeTitle,
   showMinimizeButton = true,
+  shell = true,
   headLeft,
   headRight,
   children,
 }: WinBoxProps): ReactNode {
   // 最小化 = 本块不上屏（页面回来）；还原入口在左侧舰船小窗（船长 2026-09-21 令：两处合并）
   if (!open) return null
+  // 不带壳：宿主（虫洞探索界面）自己就是面板 ⇒ 只出内容本体
+  if (!shell) return <>{children}</>
   return (
     <div className={variant} role="region" aria-label={title}>
       <div className="app-winbox-head">
