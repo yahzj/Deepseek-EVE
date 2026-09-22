@@ -1,11 +1,16 @@
 /**
  * **窗口几何读数核实 · 无头直驱**（正式入库；原临时探针 `tools/_activity-win-probe.ts` 用完转正）。
  *
- * 背景（2026-09-20 船长令）：战斗窗口由全屏覆盖层改成**非全屏可最小化窗口**，并照它新增
- * **主控活动窗口**（`ui/WinBox.tsx` 一处实现两处消费）。改完必须回答的是**事实类问题**——
- * "到底是不是非全屏、有没有居中、有没有把页面挤出可视区"——**看代码判不了**，
+ * 背景（2026-09-20 船长令）：新增**主控活动窗口**——挖矿 / 打捞 / 长途运输 / 扫描虫洞时
+ * 在活动栏之下那块主内容区里播放主控正在做的活动（`ui/WinBox.tsx` 出窗口壳、`ui/ActivityScreen.tsx`
+ * 出活动画面），可最小化到左上角小窗、点小窗还原。改完必须回答的是**事实类问题**——
+ * "到底是不是嵌在主内容区里、有没有居中、有没有把页面挤出可视区、收得起还原得回吗"——**看代码判不了**，
  * 属约定第九章允许的两类例外之一（读数型问题）。本工具**只出读数**，**不是观感结论**：
  * 好不好看归船长判。
+ *
+ * ⚠ **本工具已不含战斗窗口**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）：
+ * 战斗窗口曾与活动窗口共用这套窗口壳，回滚后战斗恢复全屏覆盖层 ⇒ 战斗壳几何那节与洞内战斗宿主那节
+ * 一并删除。整体归档（回到嵌入形态的命令、当时读数）见 `docs/design/archived-window-embed-20260922.md`。
  *
  * 前置（外部先起好，本工具不启动也不关闭任何进程）：
  *   1) `npm --prefix web run build` 后由本地服务托管 `web/dist`；
@@ -21,9 +26,9 @@
  * 用法：`npx tsx tools/activity-win-probe.ts`（等价 `npm run ui:actwin`）
  *   可用 `UI_APP_URL` / `UI_CDP_URL` 覆盖两个地址。
  *
- * 输出：stdout —— 逐视口打印①四个活动态的真档实测（窗口尺寸 / 位置 / **是否只在主内容区内** /
- * 文档溢出）与②两个窗口壳的几何（战斗壳用**同构元素**量，见下方"取证边界"），
- * 末尾再跑一节③**最小化 / 还原链**（CDP 真点按钮）。不写任何文件。
+ * 输出：stdout —— 逐视口打印①各活动态的真档实测（窗口尺寸 / 位置 / **是否只在主内容区内** /
+ * 文档溢出 / 演出层与画布几何读数），
+ * 末尾再跑一节②**最小化 / 还原链**（CDP 真点按钮）。不写任何文件。
  *
  * ⚠ **覆盖范围读数（2026-09-21 船长令「改为覆盖在当前的主窗口上」）**：几何一律以
  * **主内容区 `.app-page-main`** 为基准（不是视口）——打印"区内居中 / 非全屏 / **不盖导航与顶栏**"。
@@ -45,19 +50,16 @@
  *   根本不可比——首测把舰报成 `x20~238`，看着像跑到画布左上角，其实是未缩放的原始路径坐标。
  *   本工具改用 `getScreenCTM()` 逆变换回画布用户单位，且与**实际渲染**（含浮动位移）一致。
  *
- * ⚠ **取证边界（如实标注，别把它读成"实弹交火也验过了"）**：
- *   - **战斗壳量的是同构元素**（生产类名 `app-winbox is-battle` + 壳内两层）：仓里没有
- *     `phase === 'battle'` 的档，且 `combatView` 由引擎在真交火时给出、伪造不出来。
- *     量的确是真 CSS 的尺寸与居中，但**"真交火时窗口里的内容是否正常"未取证**。
+ * ⚠ **取证边界（如实标注，别把它读成"所有活动都验过了"）**：
  *   - **采掘夹具是现场改档造的**（点开一份可载入的 v30 真档的采矿作业）：仓里的采掘档是 v1x 老档，
  *     `loadSaveFile` 判失败会回落全新档，测不到"采掘中"。
  *   - **老档载入会先跑一大段离线结算**：窗口要等渲染完才出现 ⇒ 等窗口上限设 8s，
  *     并在失败时打印游戏时钟，用来区分"窗口有问题"与"夹具没载进去"（时钟 0 秒 = 后者）。
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
- *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v30**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-21**（当日核对：活动窗口四态演出细节 + 画布几何 + 节拍挂钩，三种视口）
- *   - 本工具最后跑过：**2026-09-21**
+ *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v31**（`CURRENT_STATE_VERSION`）
+ *   - 本工具最后核对：**2026-09-22**（当日核对：战斗侧回滚后只剩活动窗口，删战斗壳 / 洞内宿主两节）
+ *   - 本工具最后跑过：**2026-09-22**
  *   - 判据：`CURRENT_STATE_VERSION − v30 ≥ 2` ⇒ **必须重跑核对**；此外
  *     `ui/WinBox.tsx` 或 `styles.css` 的 `.app-winbox*` / `.app-float-chip` 一旦改动 ⇒ **必须重跑**；
  *     `ui/activityArt.tsx` 的道具位 / 舰体尺寸一旦改动 ⇒ 也须重跑（画布几何那几行是量它的）。
@@ -100,56 +102,15 @@ function say(line: string): void {
  * ⚠ **两份要现场改档**（`patch`）——不是为了省事，是因为**老测试档载不进当前版本**：
  * `test-save-b1-*` 是 v1x 的老档，`loadSaveFile` 会判失败、回落全新档（实测时钟"在线 0 秒"），
  * 于是测不到"采掘中"。故用**能载入的 v30 真档**（王富贵那份）现场点开采矿作业。
- * 交火同理：仓里没有 `phase==='battle'` 的档，用一份带虫洞运行的 v30 真档直接改 phase。
  */
 interface Case {
   name: string
   file: string
   expect: string
   note?: string
-  /** 等窗口出现的上限（默认 8s）。离线结算量大的档渲染晚；交火档要等引擎推进到 battle */
+  /** 等窗口出现的上限（默认 8s）。离线结算量大的档渲染晚，窗口出现得慢 */
   waitMs?: number
   patch?: (s: Record<string, unknown>) => void
-  /**
-   * 改**文件外层**（`{format, version, savedAtWallMs, state}`）——只有需要它时才加。
-   * 典型用途：**把存档时间戳改成"刚刚"**，让离线结算量归零。
-   * 为什么需要：夹具是几天前存的 ⇒ 载入即跑一大段离线结算，**瞬时态会被当场跑掉**
-   * （实测：注入的一场战斗被离线结算打完，页面里什么都看不到；采掘那种连续态才扛得住）。
-   * ⚠ 改的是探针内存里的副本，不落盘、不动原档。（当前各格都没用它——`wh-battle` 已改走真档，
-   * 由 `npm run save:whbattle` 现场产出；这个钩子留给下次要注入瞬时态的人。）
-   */
-  patchFile?: (obj: Record<string, unknown>) => void
-  /** 本格不是主控活动窗口（洞内战斗格）：跳过活动窗口那几行读数 */
-  skipActivityReads?: boolean
-}
-
-/**
- * **洞内战斗夹具**（2026-09-22 加）：船长导出过一份**真交火档** `save-20260921-201652.json`
- * （远征战斗进行中、双方单位俱全），把它那个 `battle` 对象**原样搬进**一份带虫洞运行的真档的
- * `wormhole.run.battle` ⇒ 得到一局**真结构的洞内战斗**。
- *
- * ⚠ 只有"宿主"是造的（哪一档承载它、时间轴对齐到本档的 `gameMs`）；战斗对象本身是引擎自己写的，
- * 不是手捏的假数据 —— 这比同构元素强得多（能真跑开火/移动/血条）。
- */
-function patchWormholeBattle(s: Record<string, unknown>): void {
-  const src = JSON.parse(readFileSync(join(SAVE_DIR, 'save-20260921-201652.json'), 'utf8')) as Record<string, unknown>
-  const srcState = (src.state ?? src) as Record<string, unknown>
-  const srcExp = srcState.expedition as Record<string, unknown>
-  const battle = JSON.parse(JSON.stringify(srcExp.battle)) as Record<string, unknown>
-  /** 时间轴对齐到**本档的此刻**：不然战斗时钟落在过去/未来（settle 判据会立刻触发或永不推进） */
-  const now = typeof s.gameMs === 'number' ? s.gameMs : 0
-  battle.startedAtGameMs = now
-  battle.lastTickGameMs = now
-  battle.ended = null
-  delete battle.speedAxis
-  // 目标档的远征清干净（免得同时命中"远征战斗"那条路 ⇒ 两处都想上屏）
-  const exp = s.expedition as Record<string, unknown>
-  exp.battle = null
-  if (exp.phase === 'battle') exp.phase = 'back'
-  // 战斗搬进虫洞那一趟（人在洞里 = attending true，否则洞内一切冻结）
-  const run = (s.wormhole as Record<string, unknown>).run as Record<string, unknown>
-  run.battle = battle
-  run.attending = true
 }
 
 const CASES: Case[] = [
@@ -194,31 +155,6 @@ const CASES: Case[] = [
     note: '就位段（修前落 travel ⇒ 不弹窗，本批已改）',
   },
   { name: 'scan-wh', file: 'save-20260920-164822.json.json', expect: '.app-winbox.is-activity', note: '扫描虫洞（真档）' },
-  {
-    name: 'wh-battle',
-    /**
-     * **真档**（由 `npm run save:whbattle` 现场产出）：网格层虫洞、玩家站在"舰船信号"格上、
-     * 已按引擎正规路径开打（`wormholeStartBattle`）⇒ 双方各 2 艘、总计 4 个单位。
-     * ⚠ 早先想"把远征战斗对象搬进 run.battle"是**行不通的**：`wormholeBattleViewOf` 要按这一趟的
-     * 编队/威胁重建视图，搬来的单位对不上 ⇒ 战斗组件一渲染就抛错、整块面板被 React 收回（实测）。
-     * 真档是唯一能验的路。
-     */
-    file: 'test-save-wh-battle-202609220658.json',
-    expect: '.app-wh-modal .app-wh-battle .app-battle-screen',
-    note: '洞内战斗（真档）：双方各 2 艘 ⇒ 面板内嵌战场',
-    waitMs: 12_000,
-    /**
-     * ⚠ **必须把存档时间戳改成"刚刚"**：夹具一旦放旧，载入时的离线结算会把这一局**当场打完**
-     * （实测：行上从「交火中」变成「第 3 层 · 节点」，面板里自然没有战场）。
-     * 战斗本身是真档（引擎自己开的），只有时间戳这一处是探针补的。
-     */
-    patchFile: (obj) => {
-      obj.savedAtWallMs = Date.now()
-      const inner = obj.state as Record<string, unknown> | undefined
-      if (inner) inner.wallMs = Date.now()
-    },
-    skipActivityReads: true,
-  },
 ]
 
 type CdpResult = Record<string, unknown>
@@ -226,32 +162,14 @@ type CdpResult = Record<string, unknown>
 class Cdp {
   private seq = 0
   private readonly waiting = new Map<number, { res: (v: CdpResult) => void; rej: (e: Error) => void }>()
-  /**
-   * **页面报错/日志收集**（2026-09-22 加）：只靠 DOM 读数判"为什么没渲染"会卡住——
-   * 页面里 React 报错 / 抛异常时 DOM 只会"什么都没有"，看不出原因。这里把 CDP 事件攒起来，
-   * 由调用方在失败路径上打印。
-   */
-  readonly events: string[] = []
   private constructor(private readonly ws: WebSocket) {
     ws.addEventListener('message', (ev) => {
       const msg = JSON.parse(String((ev as MessageEvent).data)) as {
         id?: number
         error?: unknown
         result?: CdpResult
-        method?: string
-        params?: Record<string, unknown>
       }
-      if (msg.id === undefined) {
-        if (msg.method === 'Runtime.exceptionThrown') {
-          const d = msg.params?.exceptionDetails as { text?: string; exception?: { description?: string } } | undefined
-          this.events.push(`[异常] ${d?.exception?.description ?? d?.text ?? ''}`.slice(0, 400))
-        } else if (msg.method === 'Runtime.consoleAPICalled') {
-          const args = (msg.params?.args as Array<{ value?: unknown; description?: string }> | undefined) ?? []
-          const text = args.map((a) => (a.value !== undefined ? String(a.value) : (a.description ?? ''))).join(' ')
-          if (text.trim()) this.events.push(`[console.${String(msg.params?.type)}] ${text}`.slice(0, 400))
-        }
-        return
-      }
+      if (msg.id === undefined) return
       const w = this.waiting.get(msg.id)
       if (!w) return
       this.waiting.delete(msg.id)
@@ -567,7 +485,6 @@ function translateXOf(frame: string | undefined): number | null {
 async function main(): Promise<void> {
   const cdp = await Cdp.connect(CDP)
   await cdp.send('Page.enable')
-  await cdp.send('Runtime.enable')
   // 先落到目标源一次：about:blank 是不透明源，localStorage 会抛 SecurityError
   await cdp.send('Page.navigate', { url: APP })
   await waitFor(cdp, `document.querySelector('.app-nav-side')`, '首次进入应用的源', 30000)
@@ -609,14 +526,12 @@ async function main(): Promise<void> {
     const idle = await read(cdp, '.app-winbox.is-activity')
     say(`  ${'空档'.padEnd(12)} 活动窗口存在=${idle.found ? '是（不该）' : '否（对）'}`)
 
-    // B. 逐份夹具：注入存档 → 重载 → 读活动窗口 + 战斗窗口 + 浮动标
+    // B. 逐份夹具：注入存档 → 重载 → 读活动窗口 + 浮动标
     for (const c of CASES) {
       let text = readFileSync(join(SAVE_DIR, c.file), 'utf8')
-      if (c.patch || c.patchFile) {
+      if (c.patch) {
         const obj = JSON.parse(text) as Record<string, unknown>
-        c.patchFile?.(obj) // 外层（时间戳等）先改：内层 patch 可能要看刚改过的字段
-        const inner = (obj.state ?? obj) as Record<string, unknown>
-        c.patch?.(inner)
+        c.patch((obj.state ?? obj) as Record<string, unknown>)
         text = JSON.stringify(obj)
       }
       text = text.replace(/\\/g, '\\\\').replace(/`/g, '\\`')
@@ -629,64 +544,9 @@ async function main(): Promise<void> {
         // 诊断：区分"窗口有问题"与"夹具没载进去"——游戏时钟（新档 = 0 天；老档 = 第 N 天）
         const clock = await cdp.evalJS<string>(`(document.querySelector('.app-clock')||{}).textContent || ''`)
         say(`  ${c.name.padEnd(12)} ✗ 期望 ${c.expect}；.app-winbox found=${anyWin.found}  时钟="${clock}"（新档=夹具没载进去）`)
-        if (c.skipActivityReads) {
-          // 洞内战斗格：把"战斗到底在哪儿"逐项摊开（面板在不在 / 战场渲染了没 / 主区有没有）
-          const diag = await cdp.evalJS<string>(`(() => {
-            const q = (s) => document.querySelectorAll(s).length
-            return [
-              '面板=' + q('.app-wh-modal'),
-              '面板战场容器=' + q('.app-wh-battle'),
-              '面板内战场=' + q('.app-wh-modal .app-wh-battle .app-battle-screen'),
-              '主区战场=' + q('.app-win-host .app-battle-screen'),
-              '全局战场=' + q('.app-battle-screen'),
-              '活动窗口=' + q('.app-winbox.is-activity'),
-            ].join(' · ')
-          })()`)
-          say(`  ${''.padEnd(12)} 诊断：${diag}`)
-          const dbg = await cdp.evalJS<string>(`(document.querySelector('.app-root')||{}).getAttribute?.('data-dbg') || '(无)'`)
-          say(`  ${''.padEnd(12)} 判据：${dbg}`)
-          /**
-           * 再读一眼**应用自己那份档**（游戏会周期性自动存回 localStorage）：
-           * 战斗到底被引擎结算掉了，还是压根没进状态——这是最快的区分法。
-           */
-          const live = await cdp.evalJS<string>(`(() => {
-            try {
-              const raw = localStorage.getItem(${JSON.stringify(SAVE_KEY)}) || ''
-              const o = JSON.parse(raw || '{}')
-              const st = o.state || o
-              const run = st.wormhole && st.wormhole.run
-              return [
-                '应用档 run=' + (run ? run.phase : '(无)'),
-                '战斗=' + (run && run.battle ? '在' : '无'),
-                'attending=' + (run ? String(run.attending) : '-'),
-                '结算单=' + (run && run.lastSettle ? String(run.lastSettle.kind) : '无'),
-                'gameMs=' + String(st.gameMs),
-              ].join(' · ')
-            } catch (e) { return '读取失败：' + String(e) }
-          })()`)
-          say(`  ${''.padEnd(12)} 应用档：${live}`)
-        }
         continue
       }
       const act = await read(cdp, c.expect)
-      const battle = await read(cdp, '.app-winbox.is-battle')
-      if (c.skipActivityReads) {
-        /**
-         * 洞内战斗格：**不能用主区那套口径**（`line()` 判的是"填满活动栏之下那块"，那是主区窗口的事）。
-         * 这里报的是宿主体内的情况：战场在面板里多大、主区有没有第二份。
-         */
-        const geom = await cdp.evalJS<Record<string, number[] | null>>(`(() => {
-          const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map((v) => Math.round(v)) }
-          return { panel: r('.app-wh-modal'), run: r('.app-wh-modal .app-wh-run'), head: r('.app-wh-modal .app-wh-run .app-wh-head'), battle: r('.app-wh-modal .app-wh-battle .app-battle-screen') }
-        })()`)
-        const desc = (g: number[] | null): string => (g ? `${g[2]}×${g[3]}@(${g[0]},${g[1]})` : '(无)')
-        const inMain = await cdp.evalJS<boolean>(`!!document.querySelector('.app-win-host .app-battle-screen')`)
-        say(
-          `  ${c.name.padEnd(12)} 面板内战场 ${desc(geom.battle)} · 面板 ${desc(geom.panel)}（探索区 ${desc(geom.run)}）` +
-            ` · 读数条 ${desc(geom.head)} · 主区内还有战场=${inMain ? '是（✗ 双实例）' : '否（对）'}`,
-        )
-        continue
-      }
       say(line(c.name, act))
       // 演出诊断：SVG 在不在、动画元件数、哪些类真的跑着动画、哪些类没接上 CSS、进度条宽度
       say(
@@ -746,69 +606,15 @@ async function main(): Promise<void> {
           (anchored === null ? '' : ` · 光带起于舰内=${anchored <= 0 ? '是' : `否(离舰 ${anchored})`}`),
       )
       say(`  ${''.padEnd(12)} 读数 [${act.lines.join(' | ')}]`)
-      say(`  ${''.padEnd(12)} 战斗窗口存在=${battle.found ? '是' : '否'}  展开态还原入口=${act.restore.isButton ? '在（不该：窗口开着）' : '无（对）'}`)
+      say(`  ${''.padEnd(12)} 展开态还原入口=${act.restore.isButton ? '在（不该：窗口开着）' : '无（对）'}`)
     }
     /**
-     * C. **战斗壳的几何**：活动壳已由上面真档实测；战斗壳仓里没有 `phase === 'battle'` 的档、
-     *    也伪造不出 `combatView`（引擎只在真交火时给）⇒ 量**同构元素**（生产类名 + 壳内两层），
-     *    并按生产的做法把页面让位（`.app-page-content.is-win-hidden`）再量。
-     *    量的是真 CSS，但**不是实弹交火**——读数表里标注。
-     *    ⚠ 同构元素要挂进生产位置（`.app-win-host` 里、紧接活动栏之后），挂到 `document.body` 量的是另一套数。
-     */
-    const shell = await cdp.evalJS<number[] | null>(`(() => {
-      const host = document.createElement('div'); host.className = 'app-win-host'
-      const box = document.createElement('div'); box.className = 'app-winbox is-battle'
-      const head = document.createElement('div'); head.className = 'app-winbox-head'
-      const body = document.createElement('div'); body.className = 'app-winbox-body'
-      box.append(head, body); host.append(box)
-      const bar = document.querySelector('.app-activitybar')
-      if (!bar || !bar.parentElement) return null
-      bar.after(host)
-      /**
-       * 量之前要把**另外两个 flex:1 的兄弟**让开，否则它们平分高度、量到的是"一半"：
-       * ① 页面（.app-page-content）：用**内联 display**——加类名会被 React 每 tick 刷回去（首测踩过）；
-       * ② **真活动窗口**（此刻 scan-wh 那份正上屏）：不隐藏它，量到的就是 690/2 ≈ 342。
-       * ⚠ 本段注释里**不许出现反引号**：它整段是外层模板字符串（首测就被反引号提前截断，报一串怪错）。
-       */
-      const page = document.querySelector('.app-page-content')
-      const live = document.querySelector('.app-winbox.is-activity')
-      // ⚠ 注入脚本是**外层模板字符串**，这里不能写 ES 模板串（反引号会提前结束外层）⇒ 用数组存旧值
-      const savedPage = page ? page.style.display : ''
-      const savedLive = live ? live.style.display : ''
-      if (page) page.style.display = 'none'
-      if (live) live.style.display = 'none'
-      const r = box.getBoundingClientRect()
-      const out = [r.left, r.top, r.width, r.height].map((v) => Math.round(v))
-      if (page) page.style.display = savedPage
-      if (live) live.style.display = savedLive
-      host.remove()
-      return out
-    })()`)
-    const area = await cdp.evalJS<number[] | null>(RECT_OF('.app-page-main'))
-    const barR = await cdp.evalJS<number[] | null>(RECT_OF('.app-activitybar'))
-    if (shell && area && barR) {
-      const barBottom = barR[1]! + barR[3]!
-      const mainBottom = area[1]! + area[3]!
-      const ok =
-        Math.abs(shell[0]! - area[0]!) <= 2 &&
-        Math.abs(shell[2]! - (area[2]! - 4)) <= 6 &&
-        shell[1]! >= barBottom - 1 &&
-        shell[1]! <= barBottom + 10 &&
-        Math.abs(shell[1]! + shell[3]! - mainBottom) <= 6
-      say(
-        `  ${'战斗壳(同构)'.padEnd(12)} ${shell[2]}×${shell[3]} @(${shell[0]},${shell[1]})` +
-          `  填满活动栏下那块=${ok ? '是' : '否 ⚠'}（活动栏底 ${Math.round(barBottom)} · 主区底 ${Math.round(mainBottom)}）`,
-      )
-    }
-
-    /**
-     * D. **收起链**（2026-09-21 船长令：「点击最小化或者切换导航栏之类的时候就隐藏并最小化」）：
+     * C. **收起链**（2026-09-21 船长令：「点击最小化或者切换导航栏之类的时候就隐藏并最小化」）：
      *    四个触发点全部**真点**核实——点最小化 / 切导航 / 开弹层 / 活动结束。
-     *    用某一份活动夹具走一遍即可（窗口壳两个消费方共用 ⇒ 机制同源）。
+     *    ⚠ 全屏战斗时代两个窗口壳共用这套机制，回滚后只剩活动窗口一个消费方（机制同源，走一遍即可）。
      */
     if (vp.w === 1440) {
       await testCollapse(cdp)
-      await testWormholeBattleHost(cdp)
     }
   }
   say('\n（以上均为读数；观感结论由船长判）')
@@ -941,129 +747,6 @@ async function testCollapse(cdp: Cdp): Promise<void> {
     `  ${'⑥活动结束后'.padEnd(14)} 点活动栏「${stopClicked || '没找到停止按钮'}」` +
       ` · 窗口曾消失=${blink > 0 ? `是（${blink} 次跃迁 ⇒ 活动结束即自动收起，对）` : '否（✗ 5s 内没等到）'}` +
       ` · 此刻窗口=${afterEnd.found ? '在（✗ 若活动确已结束）' : '不在（对）'} · 页面让位=${afterEnd.pageHidden ? '是（✗）' : '否（对）'}`,
-  )
-}
-
-/**
- * E 节：**洞内战斗的宿主归属**（2026-09-22 船长令「内嵌在虫洞探索界面内」＋「能关，关了就挪回主区」）。
- *
- * 验三件事（全部真档真点）：
- * ① 面板开着 ⇒ 战场**在面板里**（`.app-wh-battle` 内有 `.app-battle-screen` 且填满读数条之下那块）；
- * ② 此时主区**没有**第二份战场（全仓只许一个战斗实例）；
- * ③ 点面板「✕ 关闭」⇒ 面板收掉、战场**挪回主区**，且**没有离洞**（这一趟照常推进）。
- */
-async function testWormholeBattleHost(cdp: Cdp): Promise<void> {
-  const c = CASES.find((x) => x.name === 'wh-battle')!
-  let text = readFileSync(join(SAVE_DIR, c.file), 'utf8')
-  const obj = JSON.parse(text) as Record<string, unknown>
-  c.patchFile?.(obj) // 与主循环同一套：先改外层时间戳（离线结算归零），再改内层
-  c.patch?.((obj.state ?? obj) as Record<string, unknown>)
-  text = JSON.stringify(obj).replace(/\\/g, '\\\\').replace(/`/g, '\\`')
-  await cdp.evalJS(`localStorage.setItem(${JSON.stringify(SAVE_KEY)}, \`${text}\`); 1`)
-  await cdp.send('Page.navigate', { url: APP })
-  await waitFor(cdp, `document.querySelector('.app-nav-side')`, '洞内战斗：主界面')
-  say('\n═══ 洞内战斗宿主（真档 + 真战斗对象）═══')
-  /**
-   * 第 0 步：**自动开面板**有没有生效（船长令「战斗开始时若面板没开，自动把面板叫起来」）。
-   * 没生效就自己点活动栏那行把面板开起来——宿主归属那三条照测（它们才是本批的主体）。
-   */
-  const autoOpened = await waitFor(cdp, `document.querySelector('.app-wh-modal')`, '洞内战斗：面板自动打开', 4000)
-  say(`  ${'⓪自动开面板'.padEnd(13)} ${autoOpened ? '是（对）' : '否 —— 改为手动点活动栏虫洞入口，继续测宿主归属'}`)
-  if (!autoOpened) {
-    const clicked = await cdp.evalJS<string>(`(() => {
-      const items = [...document.querySelectorAll('.app-activitybar-item')]
-      const it = items.find((x) => (x.textContent || '').includes('虫洞')) || items.find((x) => x.classList.contains('is-wormhole'))
-      if (!it) return ''
-      it.click()
-      return (it.textContent || '').slice(0, 24)
-    })()`)
-    say(`  ${''.padEnd(13)} 点活动栏「${clicked || '没找到虫洞入口'}」`)
-    /**
-     * **采样而不是只看一眼**：面板可能是"开了一下就关"（闪一下就没了）——单点检查会误判成"从没渲染"。
-     * 每 200ms 采一次，记录 `.app-wh-modal` 出现过的最大数量、以及"出现过又消失"的痕迹。
-     */
-    let seen = 0
-    for (let i = 0; i < 12; i++) {
-      await new Promise((r) => setTimeout(r, 200))
-      const n = await cdp.evalJS<number>(`document.querySelectorAll('.app-wh-modal').length`)
-      if (n > 0) {
-        seen++
-        break
-      }
-    }
-    const after = await cdp.evalJS<string>(`(() => {
-      const anyWh = document.querySelectorAll('[class*="app-wh"]').length
-      const masks = document.querySelectorAll('.app-modal-mask, .app-ann-mask').length
-      const last = document.body.lastElementChild
-      return 'app-wh* 元素=' + anyWh + ' · 弹层遮罩=' + masks + ' · body 末子=' + (last ? String(last.className).slice(0, 40) : '(无)')
-    })()`)
-    say(`  ${''.padEnd(13)} 面板出现过=${seen > 0 ? '是' : '否（从没渲染）'} · ${after}`)
-  }
-  if (!(await waitFor(cdp, `document.querySelector('.app-wh-modal .app-wh-battle .app-battle-screen')`, '洞内战斗：面板内战场', 10_000))) {
-    say('  ✗ 面板里没等到战场（战斗没起来 / 夹具没载入）')
-    const errs = cdp.events.filter((e) => e.startsWith('[异常]') || e.includes('Error') || e.includes('error'))
-    if (errs.length > 0) {
-      say('  页面报错（最多 6 条）：')
-      for (const e of errs.slice(-6)) say(`    ${e}`)
-    }
-    const logs = cdp.events.filter((e) => !errs.includes(e))
-    if (logs.length > 0) {
-      say('  页面日志（末 4 条）：')
-      for (const e of logs.slice(-4)) say(`    ${e}`)
-    }
-    return
-  }
-  const geom = await cdp.evalJS<Record<string, number[] | null>>(`(() => {
-    const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map((v) => Math.round(v)) }
-    return {
-      panel: r('.app-wh-modal'), run: r('.app-wh-modal .app-wh-run'), head: r('.app-wh-modal .app-wh-run .app-wh-head'),
-      battle: r('.app-wh-modal .app-wh-battle .app-battle-screen'), mainWin: r('.app-win-host .app-battle-screen'),
-    }
-  })()`)
-  const pageHidden = await cdp.evalJS<boolean>(PAGE_HIDDEN)
-  const g = geom
-  let fill = '无法判定'
-  if (g.battle && g.head && g.run) {
-    /**
-     * **填满的判据按"面板内的探索区"算**（不是主区）：战场应当左对齐探索区、上接读数条下沿、
-     * 下抵探索区底边（页签行与内边距都在探索区之外）。容差放到 16px：面板自己有 padding/border。
-     */
-    const top = g.head[1]! + g.head[3]!
-    const bottom = g.run[1]! + g.run[3]!
-    const okLeft = Math.abs(g.battle[0]! - g.run[0]!) <= 16
-    const okTop = g.battle[1]! >= top - 2 && g.battle[1]! <= top + 16
-    const okBottom = Math.abs(g.battle[1]! + g.battle[3]! - bottom) <= 16
-    fill = okLeft && okTop && okBottom
-      ? `是（${g.battle[2]}×${g.battle[3]}，探索区 ${g.run[2]}×${g.run[3]}）`
-      : `否 ⚠（左${okLeft ? 'ok' : '✗'} 上${okTop ? 'ok' : `✗(读数条底 ${top} → 战场 ${g.battle[1]})`} 下${okBottom ? 'ok' : '✗'}）`
-  }
-  say(
-    `  ${'①面板开着'.padEnd(12)} 战场在面板内=是（${g.battle ? `${g.battle[2]}×${g.battle[3]}@(${g.battle[0]},${g.battle[1]})` : '?'}）` +
-      ` · 填满读数条之下那块=${fill}`,
-  )
-  say(
-    `  ${'②单实例'.padEnd(12)} 主区内还有战场=${g.mainWin ? '是（✗ 双实例）' : '否（对）'}` +
-      ` · 主区页面让位=${pageHidden ? '是（✗ 不该：战场在面板里）' : '否（对）'}`,
-  )
-  // ③ 关面板 ⇒ 战场挪回主区
-  const closed = await cdp.evalJS<boolean>(`(() => {
-    const btns = [...document.querySelectorAll('.app-wh-modal .app-modal-head .app-btn')]
-    const b = btns[btns.length - 1]
-    if (!b) return false
-    b.click(); return true
-  })()`)
-  await new Promise((r) => setTimeout(r, 600))
-  const after = await cdp.evalJS<Record<string, boolean>>(`(() => ({
-    panel: !!document.querySelector('.app-wh-modal'),
-    inPanel: !!document.querySelector('.app-wh-modal .app-wh-battle .app-battle-screen'),
-    inMain: !!document.querySelector('.app-win-host .app-battle-screen'),
-    attending: !!(document.querySelector('.app-activitybar') && true),
-  }))()`)
-  const runInfo = await cdp.evalJS<string>(`(document.querySelector('.app-clock')||{}).textContent || ''`)
-  say(
-    `  ${'③关面板后'.padEnd(12)} 点「✕ 关闭」=${closed ? '成' : '没找到'} · 面板=${after.panel ? '还在（✗）' : '收掉了（对）'}` +
-      ` · 战场在面板内=${after.inPanel ? '是（✗）' : '否（对）'} · 战场在主区=${after.inMain ? '是（对：挪回主区了）' : '否（✗）'}` +
-      ` · 时钟="${runInfo}"`,
   )
 }
 

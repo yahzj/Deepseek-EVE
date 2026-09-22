@@ -43,7 +43,6 @@ import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { ActivityScreen, activityKindOf, activityWinEnabled } from './ui/ActivityScreen'
-import { wormholeHostsBattle } from './panels/Wormhole'
 import { MoneyFit } from './ui/MoneyFit'
 import { cmdText, logText, tr } from './i18n/locale'
 
@@ -737,37 +736,9 @@ export function App({ engine }: { engine: GameEngine }) {
   const prevInBattleRef = useRef(false)
   useEffect(() => {
     // 优化：重复清剿自动发起的远征默认最小化战斗界面（仍可用右上角「⚔ 战斗中」主动进入）
-    if (inBattle && !prevInBattleRef.current && !engine.autoSortieNow()) {
-      /**
-       * **战斗窗口"要看"这个意图置真**。洞内那一场由下面**电平判据**额外负责"把虫洞面板叫起来"
-       * （战场内嵌在面板里）；这里同时置真 ⇒ 玩家一关面板，战场立刻出现在主区（船长选的"关了挪回主区"），
-       * 不会出现"面板关了、战场也没了"的空档。
-       */
-      setBattleOpen(true)
-    }
+    if (inBattle && !prevInBattleRef.current && !engine.autoSortieNow()) setBattleOpen(true)
     prevInBattleRef.current = inBattle
   }, [inBattle])
-
-  /**
-   * ── **洞内战斗 ⇒ 虫洞面板上台**（2026-09-22 船长令「自动打开面板」）──
-   *
-   * ⚠ 用**电平判据**而不是"开战上升沿"。无头实测教训：上升沿那条在"载入时战斗已经在打"的情形下
-   * 不可靠 —— 探针能看到边沿确实触发、两个 state 也都置了真，但页面里面板仍是关的
-   * （谁把它按回去的，从外面看不出来，只有结果可见）。电平判据直接表达意图
-   * 「战斗在 ⇒ 面板就该在台上」，与载入顺序、树重挂载、边沿丢没丢都无关。
-   *
-   * 玩家主动关掉面板 ⇒ `whDismissed` 置位，**本场**不再自动弹回（战场转由主区承打，见 `whHostsBattle`）；
-   * 战斗结束 ⇒ 复位，下一场照常自动弹面板。
-   */
-  const whBattleLive = !!state.wormhole.run?.battle && state.wormhole.run?.attending === true
-  const [whDismissed, setWhDismissed] = useState(false)
-  useEffect(() => {
-    if (!whBattleLive) {
-      setWhDismissed(false)
-      return
-    }
-    if (!whDismissed) setWhOpen(true)
-  }, [whBattleLive, whDismissed])
 
   /**
    * ── 主控活动窗口（2026-09-20 船长令）──
@@ -795,46 +766,37 @@ export function App({ engine }: { engine: GameEngine }) {
    * ── **收起两个窗口**（2026-09-21 船长令）──
    *
    * 船长原话：「玩家如果点击**最小化**或者**切换导航栏之类**的时候就隐藏并最小化。」
-   * ⇒ 四个触发点全部走这一个函数：
+   * ⇒ 触发点全部走这一个函数：
    * ① 点窗口顶栏「← 最小化」（窗口自己调 `onMinimize`）；
-   * ② **切页**（`changePage`：导航项 / 活动栏跳转 / 星图里的跳转都算——虫洞面板也在这条链上）；
-   * ③ **打开弹层**（手册 / 设置 / 公告：弹层一上来，主区那块就该还给页面）；
+   * ② **切页**（`changePage`：导航项 / 活动栏跳转 / 星图里的跳转都算）；
+   * ③ **打开弹层**（手册 / 设置 / 公告）；
    * ④ **活动结束**（见上面那个 effect）。
+   *
+   * ⚠ **只管活动窗口**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）：战斗屏已回到自己的
+   * 全屏覆盖层，它的开关只由「⚔ 战斗中」浮动入口与战场内那枚按钮决定 —— 切导航、开弹层都不该把它收掉
+   * （全屏战场本来就盖着主区，玩家够不着导航）。
    */
-  const hideWindows = (): void => {
-    setBattleOpen(false)
+  const hideActivityWin = (): void => {
     setActivityOpen(false)
   }
 
   /**
-   * ── **挂载 ≠ 上屏**（2026-09-21 定，别把这两件事混起来）──
+   * ── **挂载 ≠ 上屏**（2026-09-21 定；2026-09-22 战斗回滚后只剩活动窗口用）──
    *
-   * - **战斗屏**：只要"在打"或"窗口开着"就**保持挂载** —— 它的慢镜（outro）与**战后战报**是在引擎
-   *   结算**之后**才渲染的，而那一刻 `inBattle` 已经变 false；若按 `inBattle` 卸载，
-   *   **战报就永远弹不出来**（2026-09-21 自查发现：这正是本批之前那次改动留下的漏洞——原写法是
-   *   `battleOpen ? <BattleScreen/> : null`，被我改成了 `inBattle ? …`）。
-   * - **上屏**（占主区、顶掉页面）只看 `battleOpen` / `activityOpen`；`open=false` 的战斗屏挂在场上但什么都不渲染。
-   * - **战斗优先**：两边同时开着时只上屏战斗窗口（那是正在打的一仗）。
+   * - **战斗屏**：挂载条件仍是"**在打 或 窗口开着**" —— 它的慢镜（outro）与**战后战报**是在引擎结算
+   *   **之后**才渲染的，而那一刻 `inBattle` 已经变 false；若按 `inBattle` 卸载，
+   *   **战报就永远弹不出来**（2026-09-21 自查发现：原写法 `battleOpen ? …` 改成 `inBattle ? …` 就是这个坑，
+   *   现按 `inBattle || battleOpen` 把两边都保住）。
+   * - **活动窗口**：`activityOnStage` 为真才上屏（嵌入主区、顶掉那一页）。
    */
-  const battleOnStage = battleOpen
   /**
    * ⚠ 活动窗口还有一道**可见开关**（调试模式，`activityWinEnabled()`）。它必须算进"上屏"判定里：
    * 嵌入形态下窗口上屏 = 页面让位，若 App 不知道这把开关，关掉调试时就会变成
    * **窗口不渲染、页面却已经被让位 ⇒ 主区一片空白**（2026-09-21 自查抓到）。
    */
   const activityWinOn = activityWinEnabled() && activityKind !== null
-  const activityOnStage = !battleOnStage && activityWinOn && activityOpen
-
-  /**
-   * ── **洞内战斗由虫洞探索界面内嵌承载**（2026-09-22 船长令）──
-   *
-   * 「虫洞内的战斗因为舰船比较多，能否改为内嵌在虫洞探索界面内？」⇒ 判据与面板共用同一个函数
-   * `wormholeHostsBattle`（**不在这里另写一份**，两处条件不一致就会出现"两边都显示/都不显示"）。
-   * 面板挟持战场时：主区**不上屏**战场（页面照常显示），战场由 `battleSlot` 传进面板；
-   * 玩家关掉面板 ⇒ 本判据变假 ⇒ 战场立刻回到主区（这就是船长选的"关了挪回主区"）。
-   */
-  const whHostsBattle = wormholeHostsBattle(state, { open: whOpen, auto: whAutoPick !== null })
-  const winOnStage = (battleOnStage && !whHostsBattle) || activityOnStage
+  const activityOnStage = activityWinOn && activityOpen
+  const winOnStage = activityOnStage
 
   /**
    * ── **最小化后的还原入口**（2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮合并」）──
@@ -842,15 +804,13 @@ export function App({ engine }: { engine: GameEngine }) {
    * 右下角那枚浮动还原标已撤（`.app-float-chip` 连样式一起删掉），改为**左上角舰船小窗本身即还原按钮**：
    * 有窗口被最小化时，小窗包一层 `<button>` 并出「⤢」角标，点它把那个窗口展开回来。
    *
-   * 两个窗口**同时**最小化时取战斗优先——那是正在打的一仗（活动窗口反正在左侧小窗里也看得见）。
+   * ⚠ 战斗屏已回滚成全屏覆盖层（2026-09-22）⇒ 它有自己的「⚔ 战斗中」浮动入口、**不走这枚角标**
+   * （否则"收起战场"会变成两套入口）。
    */
   const windowRestore: { title: string; onRestore: () => void } | null =
-    /* ⚠ 面板正在内嵌战场时**不算"被最小化"**（战场就在玩家眼前，再亮一枚角标只会误导） */
-    inBattle && !battleOpen && !whHostsBattle
-      ? { title: tr('ui.App.083'), onRestore: () => setBattleOpen(true) }
-      : activityWinOn && !activityOpen
-        ? { title: tr('ui.ActivityWin.008'), onRestore: () => setActivityOpen(true) }
-        : null
+    activityWinOn && !activityOpen
+      ? { title: tr('ui.ActivityWin.008'), onRestore: () => setActivityOpen(true) }
+      : null
 
   // ── 日志偏好：折叠状态 + 六类开关（本地持久化） ──
   const [logCollapsed, setLogCollapsed] = useState<boolean>(() => readLogPrefs().collapsed)
@@ -999,11 +959,12 @@ export function App({ engine }: { engine: GameEngine }) {
     if (p === page) pulseNav(p)
     else setNavBeat(null)
     /**
-     * **切页 ⇒ 收起嵌入的窗口**（2026-09-21 船长令：「切换导航栏之类的时候就隐藏并最小化」）。
-     * 放在这里而不是导航按钮上：导航项、活动栏跳转、星图里的跳转、虫洞面板入口全都走 `changePage`
+     * **切页 ⇒ 收起嵌入的「主控活动窗口」**（2026-09-21 船长令：「切换导航栏之类的时候就隐藏并最小化」）。
+     * 放在这里而不是导航按钮上：导航项、活动栏跳转、星图里的跳转全都走 `changePage`
      * ⇒ 一处覆盖全部"换页"路径（漏一处就是"某个入口切了页窗口还杵着"的隐性 bug）。
+     * ⚠ 战斗屏不在其列（它已回全屏覆盖层，开关只由「⚔ 战斗中」浮动入口与战场内那枚按钮决定）。
      */
-    hideWindows()
+    hideActivityWin()
     setPage(p)
   }
   const changeMapTab = (t: MapTab): void => {
@@ -1092,8 +1053,8 @@ export function App({ engine }: { engine: GameEngine }) {
            * ⇒ 顶栏这里不再显示余额，只留在线时长与公告/按钮。落点在 `app-nav-side` 首项上方。
            */}
           <span className="app-clock">{tr("ui.App.059")} {formatDurationMs(state.gameMs)}</span>
-          {/* 公告弹层一开就收起嵌入的窗口（2026-09-21 船长令：打开弹层即隐藏并最小化） */}
-          <AnnouncementHub engine={engine} onOpen={hideWindows} />
+          {/* 公告弹层一开就收起嵌入的活动窗口（2026-09-21 船长令：打开弹层即隐藏并最小化） */}
+          <AnnouncementHub engine={engine} onOpen={hideActivityWin} />
           <button
             className="app-btn"
             onClick={copyQqGroup}
@@ -1105,7 +1066,7 @@ export function App({ engine }: { engine: GameEngine }) {
             className="app-btn"
             onClick={() => {
               setShowHandbook(true)
-              hideWindows() // 打开弹层即收起（同上）
+              hideActivityWin() // 打开弹层即收起（同上）
             }}
             title={tr("ui.App.061")}
           >
@@ -1115,7 +1076,7 @@ export function App({ engine }: { engine: GameEngine }) {
             className="app-btn"
             onClick={() => {
               setShowSettings(true)
-              hideWindows() // 打开弹层即收起（同上）
+              hideActivityWin() // 打开弹层即收起（同上）
             }}
             title={tr("ui.App.062")}
           >
@@ -1207,42 +1168,22 @@ export function App({ engine }: { engine: GameEngine }) {
             onOpenWormhole={openWormhole}
           />
           {/**
-           * ───── **两个持续性窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
+           * ───── **主控活动窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
            *
            * 船长原话：「我的意思是**取消悬浮，直接嵌入主窗口**，玩家如果点击最小化或者切换导航栏
            * 之类的时候就隐藏并最小化。」
-           * ⇒ 与上一版（浮层覆盖主内容区）彻底不同：这里**没有浮层**，窗口就是主区里的一个正常块，
-           * 上屏时**页面整块让位**（`.app-page-content.is-win-hidden { display:none }`，
+           * ⇒ 窗口就是主区里的一个正常块，上屏时**页面整块让位**
+           * （`.app-page-content.is-win-hidden { display:none }`，
            * ⚠ **只是不上屏、不是卸载**：页里的检索词 / 滚动位置 / 弹层状态都留住，回来时原样）。
+           * ⚠ 战斗屏**不在**这套机制里（2026-09-22 船长令已把它回滚成全屏覆盖层）。
            *
-           * **挂载 vs 上屏**（关键区别，见上方 `battleOnStage` 那段注释）：
-           * 战斗屏在"打完了但战报还没弹"的窗口期必须继续挂着，所以这里的条件不是 `battleOnStage`。
-           * `.app-win-host` 用 `display: contents` ⇒ 本身不产生盒子，窗口直接参与主区的 flex 排布，
-           * 因此"挂着但不上屏"时它不会白占地方。
+           * **挂载 vs 上屏**：活动窗口"上屏"= 顶掉那一页；战斗屏是**自己的全屏覆盖层**（2026-09-22 回滚），
+           * 不在这套"嵌入"机制里 —— 它的挂载条件单独写在文件末弹层那段（`inBattle || battleOpen`，
+           * 为的是保住战后战报）。`.app-win-host` 用 `display: contents` ⇒ 本身不产生盒子，
+           * 窗口直接参与主区的 flex 排布，因此"挂着但不上屏"时它不会白占地方。
            */}
           <div className="app-win-host">
-            {/**
-             * **战斗屏只有一个实例、两个宿主**（2026-09-22）：
-             * - 洞内战斗 → 由虫洞面板内嵌（节点经 `battleSlot` 传进去，`bare` 不带窗口壳）；
-             * - 其余（远征战 / 面板关着） → 留在主区这块。
-             * ⚠ 全仓**同时只允许一个实例**：它内部有阶段机（live→outro→report）与慢镜快照，
-             * 两个实例会各跑一套。这里的条件保证"哪边渲染，另一边就不渲染"。
-             * `onClose` 也跟着换语义：面板挟持战场时，"最小化"要**连面板一起收起**（否则面板还开着、
-             * 战场却不见了）；面板没挟持时就是原来的"收起主区战场"。
-             */}
-            {!whHostsBattle && (inBattle || battleOpen) ? (
-              <BattleScreen
-                engine={engine}
-                onToast={showToast}
-                open={battleOnStage}
-                onClose={() => {
-                  // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
-                  // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
-                  // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
-                  setBattleOpen(false)
-                }}
-              />
-            ) : null}
+            {/* 主控活动窗口：嵌入主区、顶掉那一页（船长 2026-09-21 令；战斗屏不在这条链上，见文件末弹层那段） */}
             {activityOnStage ? (
               <ActivityScreen
                 state={state}
@@ -1570,6 +1511,36 @@ export function App({ engine }: { engine: GameEngine }) {
       ) : null}
 
       {/* ───── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ───── */}
+      {/**
+       * **交火中：右上角悬浮入口**（主动进入战斗页，不自动切换页面）。
+       *
+       * ⚠ **2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」**：战斗屏回到自己的全屏覆盖层
+       * （`.app-battle-screen { position: fixed; inset: 0 }`），入口也就回到这枚浮动按钮上 ——
+       * 窗口化那阵子改用的"左上角小窗「⤢」角标"只管**主控活动窗口**，不再管战斗。
+       */}
+      {inBattle && !battleOpen ? (
+        <button className="app-battle-float" onClick={() => setBattleOpen(true)} title={tr('ui.App.083')}>
+          {tr('ui.App.084')}
+        </button>
+      ) : null}
+      {/**
+       * 战斗屏：**挂载条件 = 在打 或 窗口开着**（`inBattle || battleOpen`）。
+       * 为什么不是 `inBattle`：慢镜（outro）与**战后战报**是在引擎结算**之后**才渲染的，
+       * 那一刻 `inBattle` 已变 false ⇒ 按 `inBattle` 卸载会把战报丢掉（2026-09-21 踩过这个坑）。
+       * 本组件恢复全屏覆盖层后，`open` 这个参数已不存在（要么整块上屏、要么不挂载）。
+       */}
+      {inBattle || battleOpen ? (
+        <BattleScreen
+          engine={engine}
+          onToast={showToast}
+          onClose={() => {
+            // 2026-09-10 修复（船长定位）：退出战场 = 仅关闭观看界面——战斗后台照常推进、
+            // 重复清剿照常继续（原实现在连击自动发起的战斗中退出会顺手停环，属 bug）；
+            // 若要中止战斗请用战场内「⚑ 撤退」（撤退才停环）。
+            setBattleOpen(false)
+          }}
+        />
+      ) : null}
       {/* 虫洞面板（终局玩法 · 已上线）：挂在这一层 ⇒ 不依赖星图选中星系 */}
       {whOpen ? (
           <WormholePanel
@@ -1577,33 +1548,10 @@ export function App({ engine }: { engine: GameEngine }) {
             onToast={showToast}
             stockId={whStockPick}
             autoStockId={whAutoPick}
-            /* 洞内战斗内嵌进本面板（见 `whHostsBattle`）：节点由这里传进去，全仓仍只有一个战斗实例 */
-            battleSlot={
-              whHostsBattle ? (
-                <BattleScreen
-                  engine={engine}
-                  onToast={showToast}
-                  open
-                  bare
-                  /* 面板内那枚「← 最小化」= 连面板一起收起（收起后入口 = 左上角小窗角标，与全局一致） */
-                  onClose={() => {
-                    setWhOpen(false)
-                    setBattleOpen(false)
-                    setWhDismissed(true) // 本场不再自动弹回面板（见 `whDismissed`）
-                  }}
-                />
-              ) : null
-            }
             onClose={() => {
               setWhOpen(false)
               setWhStockPick(null)
               setWhAutoPick(null)
-              /**
-               * **交火中关面板 = 本场不再自动弹回**（2026-09-22 船长令「能关，关了就挪回主区」）：
-               * 置位 `whDismissed` ⇒ 上面那条电平判据不再把面板叫起来 ⇒ 战场由主区承打。
-               * 战斗结束会自动复位，下一场照常自动弹面板。
-               */
-              if (whBattleLive) setWhDismissed(true)
             }}
           />
         ) : null}

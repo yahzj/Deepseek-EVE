@@ -1,9 +1,11 @@
 # 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22）
 
-状态：**已封存 · 备用**（代码已回滚，改动完整保存在归档分支里，随时可复活）
+状态：**已封存 · 备用**（战斗侧的窗口化改动已回滚至全屏；改动完整保存在归档分支里，随时可复活）
 
 > 船长令（2026-09-22，照抄）：
 > 「**界面回滚，战斗界面回滚到全屏显示。但是现有改动进行归档备用。**」
+> 回滚范围（船长答问，照抄）：**「只回滚战斗相关，保留主控活动窗口」**
+> ⇒ 战斗走第 1~2 环后回全屏；**主控活动窗口（第 1~5 环）留在 main 里继续用**，只有第 6 环（洞内战斗内嵌）随战斗侧一并封存。
 
 ## 一、它是什么（被封存的这套设计）
 
@@ -43,23 +45,26 @@ git checkout archive/window-embed-20260922 -- \
 
 ## 三、这套改动的文件清单（封存内容一览）
 
+⚠ 下表是**归档分支里的全貌**；标「**已在 main**」的几项按船长口径**没有回滚**，仍在现行代码里工作。
+
 **新增**
-- `apps/desktop/src/renderer/src/ui/WinBox.tsx` —— 公共窗口壳（顶栏/最小化/`bare` 不带壳模式）
-- `apps/desktop/src/renderer/src/ui/ActivityScreen.tsx` —— 主控活动窗口（采掘/打捞/运输/扫描）
-- `apps/desktop/src/renderer/src/ui/activityArt.tsx` —— 活动窗口演出层（真实舰形 + 星野 + 漂浮物 + 两层动画）
-- `tools/activity-win-probe.ts`（`npm run ui:actwin`）—— 窗口几何/演出/收起链 无头读数工具
-- `tools/make-whbattle-save.ts`（`npm run save:whbattle`）—— 造"洞内战斗进行中"的可载入真档
-- `docs/test-saves/test-save-wh-battle-202609220658.json` —— 上一条产出的验收档（双方各 2 艘）
+- `apps/desktop/src/renderer/src/ui/WinBox.tsx` —— 公共窗口壳（顶栏/最小化/`bare` 不带壳模式）· **已在 main**（现只由活动窗口消费）
+- `apps/desktop/src/renderer/src/ui/ActivityScreen.tsx` —— 主控活动窗口（采掘/打捞/运输/扫描）· **已在 main**
+- `apps/desktop/src/renderer/src/ui/activityArt.tsx` —— 活动窗口演出层（真实舰形 + 星野 + 漂浮物 + 两层动画）· **已在 main**
+- `tools/activity-win-probe.ts`（`npm run ui:actwin`）—— 窗口几何/演出/收起链 无头读数工具 · **已在 main**（战斗相关两节已删）
+- `tools/make-whbattle-save.ts`（`npm run save:whbattle`）—— 造"洞内战斗进行中"的可载入真档 · **仅归档分支**
+- `docs/test-saves/test-save-wh-battle-202609220658.json` —— 上一条产出的验收档（双方各 2 艘）· **仅归档分支**
+  （这两项随战斗回滚从 main 删除：`save:whbattle` 脚本、夹具文件、探针里的洞内战斗宿主一节；要用就按第二节从归档分支取回。）
 
 **改动**
-- `App.tsx`：窗口宿主（`.app-win-host`）、页面让位、四类自动收起、还原入口接线、洞内战斗自动叫起面板（电平判据）
-- `panels/BattleScreen.tsx`：套窗口壳、`bare` 模式、最小化口径与文案
-- `panels/Wormhole.tsx`：`battleSlot` 内嵌战场 + `wormholeHostsBattle` 判据 + 交火中关闭面板不再等于离洞
-- `panels/Announcements.tsx`：新增 `onOpen`（开公告即收起窗口）
-- `ui/ShipStatusWin.tsx`：小窗变还原按钮（`is-restore` +「⤢」角标）
-- `styles.css`：`.app-winbox*` / `.app-win-host` / `.app-page-content.is-win-hidden` / `.app-wh-battle` / `.app-act-*` / `.app-shipwin-wrap`
-- `packages/data/src/l10n/table.ts`：`ui.ActivityWin.*`、`ui.Wormhole.378/.379`、`ui.App.083`、`ui.BattleScreen.105/.107` 等
-- `package.json`：`ui:actwin` / `save:whbattle` 两个脚本
+- `App.tsx`：窗口宿主（`.app-win-host`）、页面让位、四类自动收起、还原入口接线 · 活动窗口那半**已在 main**；洞内战斗自动叫起面板（电平判据）已回滚
+- `panels/BattleScreen.tsx`：套窗口壳、`bare` 模式、最小化口径与文案 —— **已回滚**（战斗恢复全屏覆盖层）
+- `panels/Wormhole.tsx`：`battleSlot` 内嵌战场 + `wormholeHostsBattle` 判据 + 交火中关闭面板不再等于离洞 —— **已回滚**
+- `panels/Announcements.tsx`：新增 `onOpen`（开公告即收起窗口）· **已在 main**
+- `ui/ShipStatusWin.tsx`：小窗变还原按钮（`is-restore` +「⤢」角标）· **已在 main**
+- `styles.css`：`.app-winbox*` / `.app-win-host` / `.app-page-content.is-win-hidden` / `.app-act-*` / `.app-shipwin-wrap` **已在 main**；`.app-winbox .app-battle-*` / `.app-wh-battle` 等战斗侧覆盖已删
+- `packages/data/src/l10n/table.ts`：`ui.ActivityWin.*` **已在 main**；`ui.Wormhole.378/.379`、`ui.BattleScreen.107` 等随战斗回滚删除
+- `package.json`：`ui:actwin` **已在 main**；`save:whbattle` 已删
 
 ## 四、⚠ 同批**顺带修好、不随本次回滚走**的东西（别一起删掉）
 
@@ -74,6 +79,9 @@ git checkout archive/window-embed-20260922 -- \
 
 ## 五、封存时的验证记录（当时全绿，供复活时对照）
 
+⚠ 其中「洞内战斗宿主」那一行读的是**已回滚的形态**（探针里对应的一节已随战斗回滚删除）；「嵌入形态」「收起链」两行
+读的就是**现在仍在用的活动窗口**，可直接拿现行探针复核。
+
 - 闸门：typecheck 四包 0 错 · core **2089** 例全绿 · `l10n:check` ✅ · `content:check` ✅ · `ui:rot-check` ✅ · `build` ✅ · `docs:index` ✅
 - 探针 `npm run ui:actwin`（三种视口）：
   - **嵌入形态**：五场景 `position=static z=auto`（嵌入=是）· 填满活动栏下那块=是 · 页面让位=是 · 无文档溢出
@@ -81,8 +89,12 @@ git checkout archive/window-embed-20260922 -- \
   - **洞内战斗宿主**：⓪自动开面板=是 · ①战场在面板内 1036×521 且填满读数条之下那块=是 · ②主区无第二份战场、页面不让位 · ③点「✕ 关闭」⇒ 面板收掉、战场挪回主区、这一趟照常推进
 - 过程中踩过的两个"夹具"坑（复活时别再踩）：① 手造洞内战斗（把远征战斗对象搬进 `run.battle`）是**无效夹具**，`wormholeBattleViewOf` 按这一趟编队/威胁重建视图，单位对不上就抛错、整块面板被 React 收回 ⇒ 要用引擎自己的 `wormholeStartBattle` 开真战斗；② 夹具放旧会被**离线结算**把瞬时态（战斗）当场跑掉 ⇒ 加载时把存档时间戳改成"刚刚"。
 
-## 六、回滚之后
+## 六、回滚之后（现行形态）
 
-战斗界面回到**全屏显示**（本轮之前的形态）；本文件与归档分支/标签是这套设计的唯一入口。
-若日后要复活，建议**按需取用**（见第二节），不要整分支合并——第 5、6 环依赖"嵌入主区"这一整套宿主机制，
-单独取一环会缺依赖。
+- **战斗界面回到全屏显示**（本轮之前的形态）：全屏覆盖层 + 右下角「战斗中 · 进入战场」浮动标；窗口壳、`bare` 模式、
+  内嵌虫洞面板三处一并撤掉（第 1、2、6 环对战斗的部分）。
+- **主控活动窗口没有回滚**（船长口径「保留主控活动窗口」）：仍是第 1~5 环的形态——嵌在活动栏之下那块主内容区里、
+  页面让位、点最小化 / 切导航 / 开弹层 / 活动结束四类自动收起、点左上角小窗（「⤢」）还原；
+  **只在调试开关打开时可见**（`localStorage['whale-idle:debug'] === '1'`，玩家侧默认看不到）。
+- 本文件与归档分支 / 标签是**战斗侧那套窗口化设计**的唯一入口。若日后要复活，建议**按需取用**（见第二节），
+  不要整分支合并——第 5、6 环依赖"嵌入主区"这一整套宿主机制，单独取一环会缺依赖。

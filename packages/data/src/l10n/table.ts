@@ -1041,9 +1041,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.080": { zh: "迎战", en: "Engage" },
   "ui.App.081": { zh: "立即脱离：按文字结算（可能击退缴获 / 受损 / 被抢小部分货）", en: "Disengage now: resolved as text (you may drive them off and take prizes, take damage, or lose a little cargo)" },
   "ui.App.082": { zh: "快速脱离", en: "Quick disengage" },
-  /** 2026-09-21：它现在是**左上角舰船小窗上的悬停说明**（合并了原先右下角那枚浮动标的功能） */
-  "ui.App.083": { zh: "点此展开战斗窗口：观察实时战斗，可拖动距离条指挥", en: "Click to open the battle window: watch the fight live and drag the range bar to command it" },
-  /** `.084`（原浮动还原标上的「战斗中 · 进入战场」）随浮动标一起删除，按纪律不留死键 */
+  /**
+   * 2026-09-22 回滚（船长令「界面回滚，战斗界面回滚到全屏显示」）：这两条回到**战斗浮动入口**的口径——
+   * `.083` 是那枚按钮的悬停说明、`.084` 是按钮文字（窗口化期间它们曾改为"小窗「⤢」角标"的说法，现已退回）。
+   */
+  "ui.App.083": { zh: "进入全屏战场：观察实时战斗，可拖动距离条指挥", en: "Open the full-screen battle: watch the fight live and drag the range bar to command it" },
+  "ui.App.084": { zh: "战斗中 · 进入战场", en: "In combat · entering battle" },
   "ui.App.085": { zh: "离线简报", en: "Offline report" },
   "ui.App.086": { zh: "✕ 关闭", en: "✕ Close" },
   "ui.App.087": { zh: "离开", en: "Leave" },
@@ -1123,11 +1126,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 最小化**」⇒ 洞内那枚按钮不再禁用，该键随之无引用（按纪律删死键，不留悬空文案）。
    */
   /**
-   * 战斗窗口左上角那枚按钮（2026-09-20 船长报障改文案：「**说是退出战斗其实不准确，应该是最小化
-   * 战斗窗口**」）。它**只关观看窗口**，战斗在后台照常推进 ⇒ 中文与英文都改回"最小化"口径，
-   * 不再用"退出/Leave"（那会让人以为会中止战斗）。
+   * 战斗屏左上角那枚按钮。它**只关观看界面**，战斗在后台照常推进（悬停说明 `.105` 把这一点写清楚）。
+   *
+   * ⚠ **2026-09-22 回滚**：窗口化那阵子它写「← 最小化」（船长当时报障「说是退出战斗其实不准确，
+   * 应该是最小化战斗窗口」——那是**窗口形态下**的判断）；船长当日令「界面回滚，战斗界面回滚到
+   * 全屏显示」⇒ 战场回到全屏覆盖层，"最小化"不再成立，**退回原文案「← 退出战场」**。
+   * 若要再改口径（例如「← 关闭战场」），改这一条即可。
    */
-  "ui.BattleScreen.037": { zh: "← 最小化", en: "← Minimize" },
+  "ui.BattleScreen.037": { zh: "← 退出战场", en: "← Leave battle" },
   "ui.BattleScreen.038": { zh: "副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离", en: "Cannot retreat while the battle is unfinished: clear this node, and withdrawal is offered at the end of the layer" },
   /** 洞内"本场必须打完"的提示——**2026-09-20 改文案**：去掉了"（战场也不能退出）" */
   "ui.BattleScreen.039": { zh: "洞内：本场必须打完（不能撤退）", en: "In the wormhole this fight has to be finished (no retreat)" },
@@ -1197,14 +1203,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.103": { zh: "（回收率 {p1}% · 优先回收高价值）·", en: "(recovery rate {p1}% · high-value drones first) ·" },
   "ui.BattleScreen.104": { zh: "净损失 {p1} 架", en: "net loss: {p1} airframes" },
   /**
-   * 「← 最小化」的悬停说明（2026-09-20 船长：「**虫洞内的战斗，允许玩家将战斗窗口最小化。**」）。
-   * 洞内与洞外**同一句话**：都只是关掉观看界面，战斗在后台继续推进。
-   * 2026-09-21 改口径：还原入口由"右下角「战斗中」浮动标"改为**左上角舰船小窗**（船长令：两处合并）。
+   * 「← 退出战场」的悬停说明。洞内与洞外**同一句话**：都只是关掉观看界面，战斗在后台继续推进。
+   * 2026-09-22 回滚（船长令「界面回滚，战斗界面回滚到全屏显示」）：还原入口回到**右下角那枚
+   * 「战斗中」浮动入口**（窗口化期间曾改成"左侧舰船小窗"，现已退回）。
    */
-  "ui.BattleScreen.105": { zh: "最小化战斗窗口：不中止战斗，它照常在后台推进；可随时点左侧舰船小窗展开", en: "Minimize the battle window: the fight is not stopped — it keeps running in the background; click the ship mini-window on the left to bring it back" },
+  "ui.BattleScreen.105": { zh: "退出战场界面：战斗在后台照常推进，可随时点右下角「战斗中」回来", en: "Leave the battle view: the fight keeps running in the background; click “In battle” at the bottom right to come back" },
   "ui.BattleScreen.106": { zh: "战斗窗口", en: "Battle window" },
-  /** 战报窗口那枚「✕ 关闭」的悬停说明（2026-09-21 补：此前它借用的是"打开战斗窗口"那句，说的不是同一件事） */
-  "ui.BattleScreen.107": { zh: "关闭战报窗口：战果与损失已入账", en: "Close the battle report: results and losses are already recorded" },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
@@ -3538,19 +3542,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.006": { zh: "⚠ 货仓可能装不下：这一格约 {incomingCells} 格、货仓只剩 {holdFreeCells} 格——装不下的会留在原地。", en: "⚠ The hold may not fit it: this tile holds about {incomingCells} slots and only {holdFreeCells} are free — whatever does not fit stays where it is." },
   "ui.Wormhole.007": { zh: "下一层入口", en: "Next-layer entrance" },
   "ui.Wormhole.008": { zh: "」：", en: "”:" },
-  /**
-   * `.009`（「交火中不能离开虫洞：打完这一场。」）与 `.014`（同义的悬停版）**已删**：
-   * 2026-09-22 船长令「能关，关了就挪回主区」——交火中关闭面板不再被拦，那两句话不再成立。
-   */
+  /** 交火中点「✕ 关闭」时的提示（**交火中不许离开虫洞**：打完这一场）——2026-09-22 随界面回滚恢复引用 */
+  "ui.Wormhole.009": { zh: "交火中不能离开虫洞：打完这一场。", en: "Cannot leave the wormhole during an engagement: finish this fight." },
   "ui.Wormhole.010": { zh: "人在洞里 · 离开即暂停（进度保存）", en: "Inside the wormhole · leaving pauses it (progress saved)" },
   "ui.Wormhole.011": { zh: "从「扫描虫洞」页选一处进洞 · 关掉面板即暂停（进度保存）", en: "Pick one under Scan wormhole to go in · closing the panel pauses it (progress saved)" },
   "ui.Wormhole.012": { zh: "交火中不能撤离：打完这一场", en: "Cannot withdraw during an engagement: finish this fight " },
   "ui.Wormhole.013": { zh: "再点一次确认撤离", en: "Click again to confirm withdrawal" },
+  /** 交火中「✕ 关闭」被禁用时的悬停说明（同 `.009` 口径）——2026-09-22 随界面回滚恢复引用 */
+  "ui.Wormhole.014": { zh: "交火中不能离开虫洞：打完这一场", en: "Cannot leave the wormhole during an engagement: finish this fight" },
   "ui.Wormhole.015": { zh: "✕ 关闭（离开虫洞）", en: "✕ Close (leave the wormhole)" },
-  /** 交火中那枚「✕ 关闭」的悬停说明（2026-09-22）：关闭只收界面、不离洞、战斗照常推进 */
-  "ui.Wormhole.378": { zh: "关掉面板：战斗挪到主界面继续打，这一趟照常推进", en: "Close the panel: the fight moves to the main area and keeps running, and this run goes on" },
-  /** 交火中那枚「✕ 关闭」的按钮文字（此时它并**不**离开虫洞，故不能沿用 `.015` 的「（离开虫洞）」） */
-  "ui.Wormhole.379": { zh: "✕ 关闭面板", en: "✕ Close panel" },
   "ui.Wormhole.016": { zh: "不建副本、不打战斗", en: "No instance, no fighting" },
   "ui.Wormhole.017": { zh: "1 枚 AI 核心", en: "1 AI core" },
   "ui.Wormhole.018": { zh: "主控船也能派", en: "The command ship can be sent too" },

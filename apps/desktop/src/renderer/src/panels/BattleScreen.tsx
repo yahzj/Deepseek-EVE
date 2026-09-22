@@ -18,7 +18,6 @@ import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { mountsOf } from '../ui/shipMounts'
-import { WinBox } from '../ui/WinBox'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import {
   DRONE_DWELL_MS,
@@ -186,25 +185,10 @@ export function BattleScreen({
   engine,
   onToast,
   onClose,
-  open = true,
-  bare = false,
 }: {
   engine: GameEngine
   onToast: ToastFn
   onClose: () => void
-  /**
-   * 窗口是否展开（**2026-09-20 船长令：观战窗口改非全屏、可最小化**）。
-   * `false` ⇒ 本组件什么都不渲染，战斗在后台照常推进（**还原入口 = 左上角舰船小窗**；
-   * 2026-09-21 船长令：与小窗合并，原先的 `onRestore` 浮动标与这个参数一起作废）。
-   * 判定与"何时自动弹出"留在 `App.tsx`（同既有 `battleOpen` 机制），本组件不做业务判断。
-   */
-  open?: boolean
-  /**
-   * **不带窗口壳**（2026-09-22 船长令「虫洞内的战斗…改为内嵌在虫洞探索界面内」）：
-   * 宿主是虫洞探索面板本身 ⇒ 只出战场本体，不再套一层 `.app-winbox` 顶栏/边框。
-   * 尺寸与背景由宿主的 `.app-wh-battle` 容器负责（见 styles.css）。
-   */
-  bare?: boolean
 }) {
   const state = engine.state
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
@@ -719,16 +703,11 @@ const meSpeedRef = useRef(200)
           .join(' · ')
       : ''
     return (
-      <WinBox
-        variant="app-winbox is-battle-report"
-        title={titleOf[verdict]}
-        open={!!open}
-        onMinimize={onClose}
-        minimizeText={tr('ui.App.086')}
-        minimizeTitle={tr('ui.BattleScreen.107')}
-        /* bare：不带窗口壳（嵌在虫洞面板里时用，见 `bare` 参数） */
-        shell={!bare}
-      >
+      /**
+       * **战报 = 自己的全屏覆盖层**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）：
+       * 本批之前它是这个形态（`.app-battle-screen.is-report`，z-index 130），窗口化那套已封存到
+       * `archive/window-embed-20260922`（见 `docs/design/archived-window-embed-20260922.md`）。
+       */
       <div className="app-battle-screen is-report">
         <div className="app-bts-report">
           <div className={`app-bts-report-card${isWinSide ? " is-win" : " is-lose"}`}>
@@ -797,7 +776,6 @@ const meSpeedRef = useRef(200)
           </div>
         </div>
       </div>
-      </WinBox>
     )
   }
 
@@ -1991,16 +1969,16 @@ const meSpeedRef = useRef(200)
   })
 
   return (
-    <WinBox
-      variant="app-winbox is-battle"
-      title={tr('ui.BattleScreen.106')}
-      open={open}
-      onMinimize={onClose}
-      minimizeText={tr('ui.BattleScreen.037')}
-      showMinimizeButton={false} // 战斗屏自己顶栏已有一枚（船长实测报障：出现两个"退出/最小化"按钮）
-      shell={!bare} // bare = 嵌在虫洞探索面板里（宿主自己有面板外观，不再套壳）
-    >
-      <div className="app-battle-screen">
+    /**
+     * **战场 = 自己的全屏覆盖层**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）。
+     *
+     * 本批之前就是这一版：`.app-battle-screen { position: fixed; inset: 0; z-index: 100 }`，
+     * 关掉它只是收起"观看界面"（战斗在后台照常推进，右上角那枚「⚔ 战斗中」浮动入口可随时点回来）。
+     * 窗口化/嵌入主区那一整套（`ui/WinBox.tsx` 的 `is-battle` 用法、`bare` 模式、虫洞面板内嵌）
+     * 已封存到分支 `archive/window-embed-20260922`，说明见 `docs/design/archived-window-embed-20260922.md`。
+     * ⚠ 保留：慢镜/战报的挂载语义（`App.tsx` 里"打完但战报还没弹"的窗口期必须继续挂着）。
+     */
+    <div className="app-battle-screen">
       <div className="app-battle-screen-top">
         {stage === 'live' ? (
           <>
@@ -2693,8 +2671,7 @@ const meSpeedRef = useRef(200)
           </div>
         </div>
       </div>
-      </div>
-    </WinBox>
+    </div>
   )
 }
 

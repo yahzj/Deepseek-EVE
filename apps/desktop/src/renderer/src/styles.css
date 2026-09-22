@@ -3391,18 +3391,11 @@ html[data-locale='en'] body {
 .app-winbox-title { font-size: 13.5px; font-weight: 700; color: var(--wui-text); white-space: nowrap; }
 .app-winbox-spacer { flex: 1; min-width: 8px; }
 .app-winbox-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-/* 窗口内的战斗屏：外壳已给尺寸与边框 ⇒ 自身只管排布，不再全屏定位 */
-.app-winbox .app-battle-screen,
-.app-winbox .app-battle-screen.is-report { position: static; inset: auto; z-index: auto; flex: 1; min-height: 0; background: transparent; }
-/* 窗口内 `vw` 口径改按窗口算（全屏时 vw 即窗口宽；窗口化后必须换）——
-   只覆盖这四处，不动全局规则。
-   ⚠ 2026-09-21：那套窄窗横滑兜底（`@container (max-width: 820px)`）已删除——窗口改成"嵌入主区、
-   填满可用块"后，宽度本来就等于主区宽，再叠一层横滑只会把内容推出去；窄屏由"填满 + 内部自适应"处理。 */
-.app-winbox .app-battle-field { padding: 6px 8px; }
-.app-winbox .app-bts-ruler,
-.app-winbox .app-bts-dock { width: min(100%, 780px); }
-.app-winbox .app-bts-hpWrap { max-width: 100%; }
-.app-winbox .app-bts-report-card { width: min(600px, 100%); }
+/* ⚠ **战斗屏不在窗口壳里**（2026-09-22 船长令「界面回滚，战斗界面回滚到全屏显示」）：
+   它回到自己的全屏覆盖层（`.app-battle-screen { position: fixed; inset: 0 }`，见战场那一段），
+   所以原先"把战场塞进窗口"的那几处覆盖（`.app-winbox .app-battle-screen` / `.app-bts-*` 的 vw 换算）
+   已随回滚删除；封存版在分支 `archive/window-embed-20260922`。
+   本壳现在只服务**主控活动窗口**（`ui/ActivityScreen.tsx`）。 */
 
 /* ═══════════ 主控活动窗口（2026-09-20 船长令：主控执行采掘/打捞/长途运输/扫描虫洞时的动效窗口）═══
    演出全部 SVG 线稿（约定第九章）；动画**只动 transform / opacity**（约定第十四章）；
@@ -10616,23 +10609,9 @@ html[data-locale='en'] body {
 /* ── 探索页版式（船长 2026-09-13 晚）──
    **窗口高度固定**：地图框定高 300px（不再随圈数长高）、信息窗的卡片列表自己滚 ⇒ 外层永不出滚动条。 */
 .app-wh-run { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-/* ═══════════ 洞内战斗内嵌在虫洞探索界面里（2026-09-22 船长令）═══════════
-   船长原话：「虫洞内的战斗因为舰船比较多，能否改为内嵌在虫洞探索界面内？」
-   ⇒ 战斗中本块的**主体整块让给战场**，只保留上面那条读数（`.app-wh-head`：深度/已探/回合/货舱/谜质）。
-   为什么用 CSS 隐而不是删 JSX：这块 500 行结构牵一发动全身，隐掉最省事，战斗结束也原样回来。
-   ⚠ 选择器要精确到"直接子元素里除了读数条与战场以外的全部"，将来加新区块也自动被让位。 */
-.app-wh-run.is-battle > :not(.app-wh-head):not(.app-wh-battle) { display: none; }
-.app-wh-battle { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* 战场本体：基础规则是"整屏 fixed"（`.app-battle-screen { position: fixed; inset: 0 }`），
-   嵌进面板就得改回**普通块**并填满宿主（与 `.app-winbox` 那份覆盖同款，只是作用域换成面板）。
-   `vw` 口径同批换掉：面板宽与视口宽无关。 */
-.app-wh-battle .app-battle-screen,
-.app-wh-battle .app-battle-screen.is-report { position: static; inset: auto; z-index: auto; flex: 1; min-height: 0; background: transparent; }
-.app-wh-battle .app-battle-field { padding: 6px 8px; }
-.app-wh-battle .app-bts-ruler,
-.app-wh-battle .app-bts-dock { width: min(100%, 780px); }
-.app-wh-battle .app-bts-hpWrap { max-width: 100%; }
-.app-wh-battle .app-bts-report-card { width: min(600px, 100%); }
+/* ⚠ 2026-09-22：`.app-wh-run.is-battle` / `.app-wh-battle` 那一套（洞内战斗内嵌进本面板）已随
+   「界面回滚」删除 —— 现行做法回到本批之前：**战斗中本面板整块不渲染**，战场全屏独占。
+   封存版见分支 `archive/window-embed-20260922`（`docs/design/archived-window-embed-20260922.md`）。 */
 .app-wh-maprow { display: flex; gap: 8px; align-items: stretch; }
 /* 缩放控件（在地图左侧，纵向一列）：＋ / 百分比 / － / 适应 */
 .app-wh-zoom {
