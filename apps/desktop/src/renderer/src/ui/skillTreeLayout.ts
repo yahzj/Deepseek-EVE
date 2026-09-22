@@ -59,7 +59,26 @@ export type BookLayout = {
   edges: Array<{ x1: number; y1: number; x2: number; y2: number; sameRank: boolean }>
 }
 
-export function layoutBook(branch: string, defs: readonly SkillDef[]): BookLayout {
+/** **坐标覆盖表**（船长在 Excel 里手调后回写的那张表：`技能 id → 节点中心点像素坐标`，本书局部坐标） */
+export type SkillTreePositions = Readonly<Record<string, { readonly x: number; readonly y: number }>>
+
+/** 一格 = 116 × 102 像素（`HEX_W+GAP_X` × `HEX_H+GAP_Y`）；列/行反推读数用得到 */
+export const CELL_W = HEX_W + GAP_X
+export const CELL_H = HEX_H + GAP_Y
+/** 第 0 列 / 第 0 行的中心点（由 `PAD/TAG_W/HEX_*` 推出，导出工具与 Excel 说明都引用它） */
+export const ORIGIN_X = PAD + TAG_W + HEX_W / 2
+export const ORIGIN_Y = PAD + HEX_H / 2
+
+/**
+ * @param override **坐标覆盖表**（**2026-09-22 船长令**：「**将其位置转换成坐标。我来手动调整图标位置？**」）——
+ *   按技能 id 覆盖算法算出来的中心点；缺省/空表 ⇒ 完全按算法走。**画布宽高按覆盖后的实际坐标现算**，
+ *   所以往右下挪也不会被裁掉。
+ */
+export function layoutBook(
+  branch: string,
+  defs: readonly SkillDef[],
+  override?: SkillTreePositions,
+): BookLayout {
   const inBook = new Set(defs.map((d) => d.id))
   const hasParentInBook = (d: SkillDef): boolean => (d.prereq ?? []).some((p) => inBook.has(p))
   const kidsOf = new Map<string, SkillDef[]>()
@@ -116,8 +135,10 @@ export function layoutBook(branch: string, defs: readonly SkillDef[]): BookLayou
       nextCol = Math.max(nextCol, cursor)
     }
   }
-  /** ④ 坐标 */
+  /** ④ 坐标（坐标覆盖表优先——船长手调过的那几个按手调的落位） */
   const nodes: BookLayout['nodes'] = defs.map((d) => {
+    const ov = override?.[d.id]
+    if (ov && Number.isFinite(ov.x) && Number.isFinite(ov.y)) return { def: d, x: ov.x, y: ov.y }
     const col = colOf.get(d.id) ?? 0
     const extra = col >= isoBase && isoBase > 0 ? ISO_GAP : 0
     return {
@@ -143,10 +164,13 @@ export function layoutBook(branch: string, defs: readonly SkillDef[]): BookLayou
     }
   }
   const cols = nodes.reduce((m, n) => Math.max(m, colOf.get(n.def.id) ?? 0), 0) + 1
+  /** 画布宽高按**覆盖后的真实坐标**现算（手调往右下挪也不会画到框外） */
+  const maxRight = nodes.reduce((m, n) => Math.max(m, n.x + HEX_W / 2), 0)
+  const maxBottom = nodes.reduce((m, n) => Math.max(m, n.y + HEX_H / 2), 0)
   return {
     branch,
-    w: PAD * 2 + TAG_W + cols * HEX_W + (cols - 1) * GAP_X + (isoBase > 0 ? ISO_GAP : 0),
-    h: PAD * 2 + ranks.length * HEX_H + (ranks.length - 1) * GAP_Y,
+    w: Math.max(PAD * 2 + TAG_W + cols * HEX_W + (cols - 1) * GAP_X + (isoBase > 0 ? ISO_GAP : 0), maxRight + PAD),
+    h: Math.max(PAD * 2 + ranks.length * HEX_H + (ranks.length - 1) * GAP_Y, maxBottom + PAD),
     tiers: ranks,
     nodes,
     edges,

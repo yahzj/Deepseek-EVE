@@ -37,6 +37,7 @@ import { SkillDescText } from './SkillsPage'
 import { plainSkillDesc } from '../ui/skillText'
 import { GAP_Y, HEX_H, HEX_W, PAD, TAG_W, hexPath, layoutBook, nameLines } from '../ui/skillTreeLayout'
 import { Glyph, toneOf } from '../ui/Glyphs'
+import { SKILL_TREE_POSITIONS } from '@whale/data'
 import { skillBranchText, skillGroupText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr } from '../i18n/locale'
@@ -110,7 +111,10 @@ export function SkillsTreePage({ engine }: PageProps) {
 
   const books = useMemo(() => booksOf(groupTab), [skills, groupTab])
   const shown = branchTab === '' ? books : books.filter((b) => b.branch === branchTab)
-  const layouts = useMemo(() => shown.map((b) => layoutBook(b.branch, b.defs)), [shown])
+  const layouts = useMemo(
+    () => shown.map((b) => layoutBook(b.branch, b.defs, SKILL_TREE_POSITIONS)),
+    [shown],
+  )
   const bookProgress = (defs: readonly SkillDef[]): { p1: number; p2: number } => ({
     p1: defs.reduce((n, s) => n + Math.min(MAX_SKILL_LEVEL, lvOf(s.id)), 0),
     p2: defs.length * MAX_SKILL_LEVEL,

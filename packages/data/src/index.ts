@@ -85,6 +85,8 @@ export {
   buildCommsDeptCatalog,
 } from './commsFactions'
 export { FIRST_TASK_MESSAGES } from './firstTaskMessages'
+/** 技能树坐标覆盖表（2026-09-22 船长手调工作流：`npm run skilltree:export` → 改 Excel → 回写本表） */
+export { SKILL_TREE_POSITIONS } from './skillTreePositions'
 export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from './announcements'
 export { buildSimContext } from './context'
 // 2026-09-19 谜质科技树：23 节点数据表（体检「谜质科技契约」逐条校验 id/费用/前置）
