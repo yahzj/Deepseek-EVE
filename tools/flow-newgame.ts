@@ -317,7 +317,13 @@ step('⑧ 第一次打捞残骸（星图 · 母港残骸点）')
 okAtQueue(s, 'first-salvage', '维修判过')
 ok('换回沙猫驾驶（打捞要装在人开的那条船上）', changeShip(s, 'sandcat', ctx).ok)
 // **2026-09-22 船长 Excel**：打捞器 MK1 是**本条的起手道具**（轮到它就到手；原先挂在采矿的完成奖励上）
-ok('起手道具：打捞器 MK1 进装备库', (s.moduleBay['mod-salvager-1'] ?? 0) === 1)
+/**
+ * ⚠ **2026-09-22 全员补发（临时补丁 · 下次更新删除）**：引擎首拍会**无条件**给每个档发一台打捞器
+ * ⇒ 走到这一步时装备库里本来就已经有 1 台，`=== 1` 的老断言不再成立。这里按**增量**判：轮到本条时
+ * **再多一台**（起手道具照发），补发的口径由 `first-tasks.test.ts` 的专例负责。
+ */
+const salvBefore = s.moduleBay['mod-salvager-1'] ?? 0
+ok('起手道具：打捞器 MK1 进装备库', salvBefore >= 2, `装备库 ${salvBefore} 台（含全员补发 1 台 ＋ 起手道具 1 台）`)
 const fitSalv = fitModule(s, 'mod-salvager-1', ctx)
 ok('装上打捞器 MK1', fitSalv.ok, fitSalv.ok ? '' : fitSalv.error)
 const density = wreckDensityOf(s, HOME, ctx)

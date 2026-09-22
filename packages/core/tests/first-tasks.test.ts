@@ -140,10 +140,16 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     expect(s1.wallet.isk - iskBefore, '扫描完成奖励 = 10,000 信用点').toBe(10_000)
     // 结算完这一条 ⇒ 「第一次采集原矿」轮到时发它的起手道具（采集器 MK1）
     expect(s1.moduleBay['mod-miner-1']).toBe(1)
-    expect(s1.moduleBay['mod-salvager-1']).toBeUndefined()
+    /**
+     * ⚠ 打捞器**不在这条任务的奖励链上**（它是「第一次打捞残骸」的起手道具）——但 **2026-09-22 的
+     * 全员补发**（临时补丁，船长令）会给每个档无条件发一台 ⇒ 这里断言"打捞器恰好 1 台，且只发这一次"，
+     * 用它把"补发不会随拍刷屏"钉住（补发本身的口径另有用例）。
+     */
+    expect(s1.moduleBay['mod-salvager-1'], '全员补发的那一台').toBe(1)
     for (let i = 0; i < 5; i++) advanceGame(s1, 1000, ctx)
     expect(s1.wallet.isk - iskBefore).toBe(10_000) // 不双发
     expect(s1.moduleBay['mod-miner-1']).toBe(1)
+    expect(s1.moduleBay['mod-salvager-1'], '补发不随拍刷屏').toBe(1)
     // ② 采矿（计数置位 ⇒ 下一拍判过）
     const s2 = testState()
     s2.importantTasks['first-scan'] = { done: true }
@@ -356,51 +362,37 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
   })
 
   /**
-   * **打捞器兜底补发**（**2026-09-22 船长报障**：「**玩家依旧出现被打捞器卡进度的情况，给所有玩家发一个
-   * 打捞器 MK1 吧。**」）——治的是"起手道具上线之前就已经走过「第一次打捞残骸」的老档"：
-   * 那种档永远拿不到打捞器，于是卡在"打捞要打捞器"这道门上。
+   * **打捞器全员补发（⚠ 临时补丁 · 下次更新删除）**（**2026-09-22 船长令**：「**玩家依旧出现被打捞器卡进度的
+   * 情况，给所有玩家发一个打捞器 MK1 吧。**」→ 追问后定：「**这次补发直接所有人无条件发，发放完成后下次
+   * 更新删除补发。**」）——治的是"起手道具上线之前就已经走过「第一次打捞残骸」的老档"永远拿不到打捞器。
+   * 口径 = **无条件**（已有也发 · 新档也发）＋ **每档只发一次**。
    */
-  it('兜底补发打捞器 MK1：手上没有 ＋ 打捞那条已轮到过 ⇒ 走一拍就补，且一辈子只补一次', () => {
-    const state = testState()
-    state.importantTasks['first-salvage'] = { done: true } // 老档：那条早就走过了
-    expect(state.moduleBay['mod-salvager-1'] ?? 0, '补发前手上没有打捞器').toBe(0)
-
-    engineTick(state, 1000, ctx)
-
-    expect(state.moduleBay['mod-salvager-1'] ?? 0, '补发 1 台').toBe(1)
-    expect(state.importantTasks['first-salvage']?.salvagerGift).toBe(true)
-    expect(state.logs.some((l) => l.textId === 'core.firstRewards.008')).toBe(true)
-
-    // 卖掉/丢掉也不会再补第二次（去重键写死了）
-    state.moduleBay['mod-salvager-1'] = 0
-    engineTick(state, 1000, ctx)
-    expect(state.moduleBay['mod-salvager-1'] ?? 0, '一台档只补一次').toBe(0)
-  })
-
-  it('兜底补发不误伤三种档：手上已有 · 那条还没轮到 · 已装配在船上', () => {
-    // ① 手上已有（装备库）⇒ 不补
+  it('全员补发打捞器 MK1：无条件（已有也发 · 新档也发），且每个档只发一次', () => {
+    // ① 老档：那条早已完成、手上本来没有 ⇒ 走一拍补一台
     {
       const state = testState()
       state.importantTasks['first-salvage'] = { done: true }
+      engineTick(state, 1000, ctx)
+      expect(state.moduleBay['mod-salvager-1'] ?? 0, '补 1 台').toBe(1)
+      expect(state.importantTasks['first-salvage']?.salvagerGift).toBe(true)
+      expect(state.logs.some((l) => l.textId === 'core.firstRewards.008')).toBe(true)
+      // 只发一次：卖掉也不会再补
+      state.moduleBay['mod-salvager-1'] = 0
+      engineTick(state, 1000, ctx)
+      expect(state.moduleBay['mod-salvager-1'] ?? 0, '每档只发一次').toBe(0)
+    }
+    // ② **已有也发**（无条件口径）：装备库里本来就有一台，仍照发一台 ⇒ 2 台
+    {
+      const state = testState()
       state.moduleBay['mod-salvager-1'] = 1
       engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'], '已有就不补').toBe(1)
+      expect(state.moduleBay['mod-salvager-1'], '已有也发一台').toBe(2)
     }
-    // ② 新档：那条还没轮到 ⇒ 不补（它的打捞器按正常节奏在"轮到那一刻"发起手道具）
+    // ③ **新档也发**（不看任务走到哪一步）
     {
       const state = testState()
       engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'] ?? 0, '新档不补').toBe(0)
-      expect(state.importantTasks['first-salvage']?.salvagerGift).toBeUndefined()
-    }
-    // ③ 已经装在某艘船的高槽上 ⇒ 也算"有"，不补
-    {
-      const state = testState()
-      state.importantTasks['first-salvage'] = { done: true }
-      const ship = state.fleet[state.shipId]!
-      ship.fitted.high[0] = 'mod-salvager-1'
-      engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'] ?? 0, '装在船上也算有').toBe(0)
+      expect(state.moduleBay['mod-salvager-1'] ?? 0, '新档也发一台').toBe(1)
     }
   })
 
