@@ -42,7 +42,7 @@ import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
-import { ActivityScreen, activityKindOf, activityWinEnabled } from './ui/ActivityScreen'
+import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
 import { MoneyFit } from './ui/MoneyFit'
 import { cmdText, logText, tr } from './i18n/locale'
 
@@ -801,20 +801,22 @@ export function App({ engine }: { engine: GameEngine }) {
   }
 
   /**
-   * ── **挂载 ≠ 上屏**（2026-09-21 定；2026-09-22 战斗回滚后只剩活动窗口用）──
+   * ── **挂载 ≠ 上屏**（2026-09-21 定；2026-09-22 起只剩活动窗口用）──
    *
-   * - **战斗屏**：挂载条件仍是"**在打 或 窗口开着**" —— 它的慢镜（outro）与**战后战报**是在引擎结算
-   *   **之后**才渲染的，而那一刻 `inBattle` 已经变 false；若按 `inBattle` 卸载，
-   *   **战报就永远弹不出来**（2026-09-21 自查发现：原写法 `battleOpen ? …` 改成 `inBattle ? …` 就是这个坑，
-   *   现按 `inBattle || battleOpen` 把两边都保住）。
+   * - **战斗屏**：挂载看 `battleMounted`、上屏看 `battleOpen`（两个状态的分工与理由见上面那段注释）
+   *   —— 慢镜与战后战报都在引擎结算**之后**才渲染，挂载必须活过结算那一拍。
    * - **活动窗口**：`activityOnStage` 为真才上屏（嵌入主区、顶掉那一页）。
    */
   /**
-   * ⚠ 活动窗口还有一道**可见开关**（调试模式，`activityWinEnabled()`）。它必须算进"上屏"判定里：
-   * 嵌入形态下窗口上屏 = 页面让位，若 App 不知道这把开关，关掉调试时就会变成
-   * **窗口不渲染、页面却已经被让位 ⇒ 主区一片空白**（2026-09-21 自查抓到）。
+   * ⚠ **判定只有"主控在不在做活动"这一条**（2026-09-22 船长令「可以对玩家开放了」）：
+   * 原先那把"只有开调试模式才可见"的开关（`activityWinEnabled()`，2026-09-20 立）已**整条撤掉**，
+   * 所有玩家都看得到本窗口。
+   *
+   * 页面让位仍必须与之一致（`is-win-hidden`）：窗口上屏 = 页面让位，判据不同源就会出现
+   * **窗口不渲染、页面却已经被让位 ⇒ 主区一片空白**（2026-09-21 自查抓到过）——所以这里仍用
+   * `activityKindOf` 同一个函数，不另写一份"有没有活动"的判定。
    */
-  const activityWinOn = activityWinEnabled() && activityKind !== null
+  const activityWinOn = activityKind !== null
   const activityOnStage = activityWinOn && activityOpen
   const winOnStage = activityOnStage
 

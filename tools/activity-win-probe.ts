@@ -18,10 +18,11 @@
  *      （`http://127.0.0.1:端口/` 连不上，别据此判断"服务没起"）；
  *   2) 无头 Chrome 带远程调试（默认 `http://127.0.0.1:9333`）。
  *
- * ⚠ **主控活动窗口有可见开关**（2026-09-20 船长令「只有开启调试模式才能看到」）：
- * `localStorage['whale-idle:debug'] === '1'`（与顶栏「⇄ 调试」同一个开关）。本工具**自动**处理：
- * 先测一节"**开关关掉时窗口与还原入口都不存在**"（那才是玩家侧形态），随后各节打开开关再测。
- * 手工验收同理——DevTools 里 `localStorage.setItem('whale-idle:debug','1')` 后刷新即可看到本窗口。
+ * ⚠ **本窗口已对玩家开放**（2026-09-22 船长令：「不用设缩放下限，**可以对玩家开放了**」）：
+ * 原先那把"只有开启调试模式才可见"的开关（`localStorage['whale-idle:debug'] === '1'`，2026-09-20 立）
+ * 已**整条撤掉** ⇒ 本工具不再动任何开关，**读的就是玩家侧的真实形态**；判据只剩"主控在不在做活动"。
+ * （窄屏口径：船长明示**不设缩放下限**，窗口按 `--win-scale` 等比缩放。）
+ * 手工验收同理——直接开游戏、让主控开采/打捞/运输/扫描即可看到本窗口，无需 DevTools。
  *
  * 用法：`npx tsx tools/activity-win-probe.ts`（等价 `npm run ui:actwin`）
  *   可用 `UI_APP_URL` / `UI_CDP_URL` 覆盖两个地址。
@@ -58,9 +59,9 @@
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v31**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-22**（当日核对：战斗侧回滚后只剩活动窗口，删战斗壳 / 洞内宿主两节）
+ *   - 本工具最后核对：**2026-09-22**（当日核对：活动窗口对玩家开放、撤掉调试开关后改测玩家侧形态）
  *   - 本工具最后跑过：**2026-09-22**
- *   - 判据：`CURRENT_STATE_VERSION − v30 ≥ 2` ⇒ **必须重跑核对**；此外
+ *   - 判据：`CURRENT_STATE_VERSION − v31 ≥ 2` ⇒ **必须重跑核对**；此外
  *     `ui/WinBox.tsx` 或 `styles.css` 的 `.app-winbox*` / `.app-float-chip` 一旦改动 ⇒ **必须重跑**；
  *     `ui/activityArt.tsx` 的道具位 / 舰体尺寸一旦改动 ⇒ 也须重跑（画布几何那几行是量它的）。
  */
@@ -72,12 +73,6 @@ const CDP = process.env.UI_CDP_URL ?? 'http://127.0.0.1:9333'
 const SAVE_DIR = join(process.cwd(), 'docs', 'test-saves')
 const LOCALE_KEY = 'whale-idle:locale'
 const SAVE_KEY = 'whale:idle:save'
-/**
- * 主控活动窗口的**可见开关**：`localStorage['whale-idle:debug'] === '1'`（与顶栏「⇄ 调试」同一个
- * 开关，见 `ui/ActivityScreen.tsx` 的 `activityWinEnabled()`）。探针要测这个窗口，必须先打开它；
- * 同时探针**专测一节"关掉时不可见"**——那才是玩家侧的真实形态。
- */
-const DEBUG_KEY = 'whale-idle:debug'
 
 /**
  * **该动的类**（2026-09-21 补）：探针只对这些类报"没有动画"。
@@ -489,8 +484,8 @@ async function main(): Promise<void> {
   await cdp.send('Page.navigate', { url: APP })
   await waitFor(cdp, `document.querySelector('.app-nav-side')`, '首次进入应用的源', 30000)
 
-  // A0. **调试开关关掉时**（= 玩家侧的真实形态）：活动窗口与还原入口都**不该存在**
-  await cdp.evalJS(`localStorage.removeItem(${JSON.stringify(DEBUG_KEY)}); 1`)
+  // A0. **玩家侧形态**（2026-09-22 起本窗口对玩家开放、判据只剩"主控在不在做活动"）：
+  //     不动任何开关，活动一起来窗口就该在、还原入口按最小化状态出。
   for (const c of CASES.filter((x) => x.name === 'mining')) {
     let t = readFileSync(join(SAVE_DIR, c.file), 'utf8')
     if (c.patch) {
@@ -501,17 +496,15 @@ async function main(): Promise<void> {
     t = t.replace(/\\/g, '\\\\').replace(/`/g, '\\`')
     await cdp.evalJS(`localStorage.setItem(${JSON.stringify(SAVE_KEY)}, \`${t}\`); 1`)
     await cdp.send('Page.navigate', { url: APP })
-    await waitFor(cdp, `document.querySelector('.app-nav-side')`, '主界面（调试关）')
-    // 主控确实在采矿（状态窗应显示 is-work-mine）——用来证明"不是没活动，而是窗口被开关挡住了"
+    await waitFor(cdp, `document.querySelector('.app-nav-side')`, '主界面（玩家侧）')
+    // 状态窗应显示 is-work-mine（证明主控确实在作业 ⇒ 窗口该出现）
     const shipCls = await cdp.evalJS<string>(`((document.querySelector('.app-shipwin')||{}).className) || ''`)
     const win = await read(cdp, '.app-winbox.is-activity')
     say(
-      `  ${'调试关'.padEnd(12)} 状态窗="${shipCls}"（应含 is-work-mine ⇒ 主控确实在作业）` +
-        ` · 活动窗口存在=${win.found ? '是（不该）' : '否（对）'} · 还原入口=${win.restore.isButton ? '在（不该）' : '无（对）'}`,
+      `  ${'玩家侧'.padEnd(12)} 状态窗="${shipCls}"（应含 is-work-mine ⇒ 主控确实在作业）` +
+        ` · 活动窗口存在=${win.found ? '是（对）' : '否（✗ 该出现）'} · 展开态还原入口=${win.restore.isButton ? '在（不该）' : '无（对）'}`,
     )
   }
-  // 之后各节一律**打开**调试开关（本窗口的可见前提）
-  await cdp.evalJS(`localStorage.setItem(${JSON.stringify(DEBUG_KEY)}, '1'); 1`)
 
   for (const vp of [{ w: 1440, h: 900 }, { w: 1280, h: 800 }, { w: 1024, h: 768 }]) {
     await cdp.send('Emulation.setDeviceMetricsOverride', {

@@ -27,7 +27,6 @@ import type { CSSProperties, ReactNode } from 'react'
 import { fleetDefOf, getMiningParams, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
 import type { GameState, ShipRole, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
-import { debugEnabled } from '../panels/DebugPanel'
 import { toneOf } from './Glyphs'
 import { sceneOfShipwin, WORK_ACCENT } from './ShipStatusWin'
 import type { ShipwinScene } from './ShipStatusWin'
@@ -36,21 +35,17 @@ import type { ActSceneId } from './activityArt'
 import { WinBox } from './WinBox'
 
 /**
- * **本窗口的可见开关 = 调试模式**（2026-09-20 船长令：「建议先做一个开关，只有开启调试模式才能看到」）。
+ * ⚠ **本窗口已对玩家开放**（船长 2026-09-22 令：「**不用设缩放下限，可以对玩家开放了**」）。
  *
- * 复用既有调试入口 `panels/DebugPanel.tsx` 的 `debugEnabled()`（`localStorage['whale-idle:debug'] === '1'`，
- * 与顶栏「⇄ 调试」按钮、性能 Hub 采集同一个开关）——**不另造开关机制**。
- *
- * 关掉时本窗口**完全不存在**：既不弹窗、也不出还原入口；状态窗（左侧那个保留的小窗）不受影响，
- * 仍照常按活动换场景。⇒ 玩家侧零变化，船长开调试即可验收。
- *
- * ⚠ **必须导出**（2026-09-21 嵌入改版）：窗口现在是"顶掉那一页"的嵌入块，由 `App.tsx` 决定
- * 页面让不让位；若 App 不知道这把开关，关掉调试时会出现"窗口不渲染、页面却已经被让位"的**空白主区**。
- * ⇒ 判定只有这一个入口，`App.tsx` 与本文件都用它。
+ * 沿革（照抄，别把已作废的口径写回来）：
+ * - 2026-09-20 船长：「建议先做一个开关，**只有开启调试模式才能看到**」⇒ 当时复用调试入口
+ *   `panels/DebugPanel.tsx` 的 `debugEnabled()`（`localStorage['whale-idle:debug'] === '1'`）把关，
+ *   玩家侧零变化、船长开调试即可验收。
+ * - **2026-09-22 解闸**（本条）：那道开关**整条撤掉**——判定只剩"主控在不在做本窗口认得的活动"
+ *   （`activityKindOf`），所有玩家都看得到；船长另定**窄屏不设缩放下限**（窗口照现状等比缩放）。
+ * - 因此不再有 `activityWinEnabled()`：`App.tsx` 与本文件都以 `activityKindOf` 为唯一判据
+ *   （窗口"顶掉那一页"的让位判定也必须同源，见 `App.tsx` 的 `activityWinOn`）。
  */
-export function activityWinEnabled(): boolean {
-  return debugEnabled()
-}
 
 /** 本窗口认得的活动（= `sceneOfShipwin` 的作业态子集；其余场景窗口不弹） */
 export type ActivityKind = 'mine' | 'salvage' | 'haul' | 'scan'
@@ -253,8 +248,7 @@ export function ActivityScreen({
   open: boolean
   onMinimize: () => void
 }): ReactNode {
-  // 调试模式未开 ⇒ 本窗口完全不存在（不弹窗、也不出还原入口）
-  if (!activityWinEnabled()) return null
+  // 主控没在做本窗口认得的活动 ⇒ 本窗口不存在（不弹窗、也不出还原入口）
   const kind = activityKindOf(state)
   if (kind === null) return null
   const r = readoutOf(kind, state, ctx)
