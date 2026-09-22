@@ -517,7 +517,7 @@ export const EN_SKILLS: EnTable = {
   'deep-hole-blasting': { name: 'Deep-hole Blasting', description: 'Blasting optimization in shallow belts: +⟦6%⟧ yield for low-grade ore (Peridotite / Gabbro / Redring Ore) per level.' },
   'rich-vein-prospecting': { name: 'Rich Vein Prospecting', description: 'Vein assessment and enrichment tracking: the chance to find a rich vein while mining is ×⟦1.2⟧ per level (base ⟦3%⟧ per minute; a find multiplies yield by ⟦3⟧ for the next 2 cycles).' },
   'core-smelting': { name: 'Core Smelting', description: 'Refinery temperature control and stirring: each level shortens a refining batch cycle by ⟦4%⟧ (applies to manual and AI-core operation alike).' },
-  'furnace-expansion': { name: 'Furnace Expansion', description: 'Refinery chamber rework: +⟦6%⟧ manual refining batch size per level (AI-core operation is unaffected).' },
+  'furnace-expansion': { name: 'Furnace Expansion', description: 'Refinery chamber rework: +⟦6%⟧ refining batch size per level (applies to manual and AI-core operation alike).' },
   'batch-production': { name: 'Batch Production', description: 'Multi-slot assembly scheduling: blueprint build time drops a further ⟦3%⟧ per level (multiplies with Industry).' },
   'component-standardization': { name: 'Component Standardization', description: 'Standardized common components: blueprint material cost drops a further ⟦0.8%⟧ per level (multiplies with Materials).' },
   'ai-servicing': { name: 'Auxiliary Ship Servicing', description: 'Mining equipment servicing on AI auxiliaries: each level shortens the auxiliary mining cycle by ⟦3%⟧ (multiplies on top of AI core efficiency).' },

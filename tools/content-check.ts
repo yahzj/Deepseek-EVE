@@ -999,7 +999,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'deep-space-harvesting', per: 0.05, call: 'mining.ts（气/冰）' },
     { skill: 'rich-vein-prospecting', per: 0.2, call: 'mining.ts richVeinFactor' },
     { skill: 'core-smelting', per: 0.04, call: 'industry.ts（精炼炉周期；2026-09-22 起手动与 AI 核心驱动同享）' },
-    { skill: 'furnace-expansion', per: 0.06, call: 'industry.ts（主控手动炉批容）' },
+    { skill: 'furnace-expansion', per: 0.06, call: 'industry.ts（精炼炉批容；2026-09-22 起手动与 AI 核心驱动同享）' },
     { skill: 'batch-production', per: 0.03, call: 'manufacturing.ts calcBuildDurationMs' },
     { skill: 'materials', per: 0.015, call: 'manufacturing.ts materialFactor' },
     { skill: 'industrial-automation', per: 0.05, call: 'industry.ts / manufacturing.ts（炉线与制造线周期）' },

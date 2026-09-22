@@ -304,7 +304,7 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 2,
     branch: 'b-refine',
     prereq: ['core-smelting'],
-    description: '精炼炉膛容积改造：主控手动精炼的单批处理量每级 +⟦6%⟧（AI 核心驱动不受此技能影响）。',
+    description: '精炼炉膛容积改造：精炼单批处理量每级 +⟦6%⟧（手动与 AI 核心驱动同享）。',
   },
   {
     id: 'batch-production',
