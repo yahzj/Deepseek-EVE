@@ -133,6 +133,13 @@ describe('离线结算：采矿产出与摘要', () => {
      */
     for (const def of FIRST_TASKS) state.importantTasks[def.id] = { done: true }
     state.importantTasks[TASK_FIND_HUMANS] = { done: false }
+    /**
+     * ⚠ **2026-09-22 追加的同款噪声**：上面把 13 条都标成"已完成"之后，"打捞器兜底补发"
+     * （`firstRewards.backfillSalvagerIfMissing`：手上没有打捞器 ＋ 打捞那条已轮到过 ⇒ 补 1 台）
+     * 也会在这个离线段里发一台并写一条日志 ⇒ 事件计数又变成 1。本用例只钉"无事件时计数为 0"这条回归，
+     * 故先把那台打捞器放进装备库（补发的去重与口径由 `first-tasks.test.ts` 的专例负责）。
+     */
+    state.moduleBay['mod-salvager-1'] = 1
     simulateOffline(state, 1_000, 1_000 + 600_000, ctx)
     const summary = state.logs.find((l) => l.text.includes('离线结算完成'))
     expect(summary!.text).not.toContain('离线采集')

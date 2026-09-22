@@ -131,6 +131,47 @@ export interface ClaimFirstTaskResult {
   started?: string[]
 }
 
+/** 打捞器 MK1（`mod-salvager-1`）——「第一次打捞残骸」的起手道具，也是本函数兜底补发的那一件 */
+const SALVAGER_MODULE_ID = 'mod-salvager-1'
+
+/** 手上到底有没有一台打捞器（**三处都算**：装备库 / 任一舰船已装配 / 任一船货仓） */
+function hasAnySalvager(state: GameState): boolean {
+  if ((state.moduleBay[SALVAGER_MODULE_ID] ?? 0) > 0) return true
+  for (const ship of Object.values(state.fleet)) {
+    if ((ship.fitted.high ?? []).includes(SALVAGER_MODULE_ID)) return true
+    if ((ship.cargo?.[SALVAGER_MODULE_ID] ?? 0) > 0) return true
+  }
+  return false
+}
+
+/**
+ * **打捞器兜底补发**（**2026-09-22 船长报障**：「**玩家依旧出现被打捞器卡进度的情况，给所有玩家发一个打捞器
+ * MK1 吧。**」）。
+ *
+ * 治的是什么：`mod-salvager-1` 是「第一次打捞残骸」的**起手道具**（轮到那条时发），而**在"起手道具"上线之前
+ * 就已经走过那条任务的老档**永远拿不到它 —— 于是卡在"打捞要打捞器"这道门上（上一个补丁只救了"迁移时
+ * 正好轮到那条"的档，覆盖不全）。这里做**一次性兜底**：只要是**手上完全没有打捞器**、且
+ * **「第一次打捞残骸」已经轮到过**（正在轮到 / 已经完成）的档，就补发 1 台。
+ *
+ * 去重键 = `importantTasks['first-salvage'].salvagerGift`（**只在发放时写** ⇒ 老档零迁移、不回收；
+ * 也堵住"卖掉再领一台"的循环：**一台档一辈子只补一次**）。**新档不受影响**——它按正常节奏在
+ * 轮到「第一次打捞残骸」时领取手道具，此函数只在"手上没有"时才动。
+ *
+ * 返回本次是否真的发了（引擎把它写进日志）。
+ */
+export function backfillSalvagerIfMissing(state: GameState, ctx: SimContext): boolean {
+  const rec = state.importantTasks['first-salvage']
+  const reached = rec?.done === true || isFirstTaskCurrent(state, 'first-salvage')
+  if (!reached) return false
+  if (rec?.salvagerGift === true) return false
+  if (hasAnySalvager(state)) return false
+  state.moduleBay[SALVAGER_MODULE_ID] = (state.moduleBay[SALVAGER_MODULE_ID] ?? 0) + 1
+  state.importantTasks['first-salvage'] = { ...(rec ?? {}), salvagerGift: true }
+  const name = ctx.modules.get(SALVAGER_MODULE_ID)?.name ?? '打捞器 MK1'
+  addLog(state, 'trade', `已补发 ${name} ×1（装到驾驶船的高槽就能开始打捞）。`, 'core.firstRewards.008', { p1: name })
+  return true
+}
+
 /**
  * **玩家点「完成」**（**2026-09-21 船长令**：「第一次任务不要自动完成。要让玩家回到任务中心点击完成
  * 才开始下一步」）——任务链上**唯一的推进口**，校验 → 写 `done` → 发完成奖励 → 发下一条的起手道具。
