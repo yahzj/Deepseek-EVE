@@ -248,13 +248,23 @@ export function startRefineRun(
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(cycleMs / eff))
   let batchEff = batchUnits
-  if (worker === 'pilot') {
-    // 主控手动精炼：炉心熔炼学 −4% 周期/级、炉膛扩容学 +6% 批容/级（AI 核心驱动不受这两个技能影响）
-    const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
-    if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
-    const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
-    if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
-  }
+  /**
+   * **手动精炼双技都改成"手动与 AI 核心驱动同享"**（2026-09-22 船长令）。
+   *
+   * 船长先点炉心熔炼学：「炉心熔炼学好像只对主控生效？现在希望改成对所有都生效。并修改文案」；
+   * 同日追问炉膛扩容学要不要一起放开，船长裁定「**一起开放**」。
+   *
+   * 原先这两条**整段写在 `worker === 'pilot'` 分支里** ⇒ AI 核心驱动的精炼炉一点不吃这两个技能。
+   * 现在都挪出分支、对**所有劳动者**生效（与 2026-09-08 产线节拍学「手动与 AI 核心驱动同享」同一改法）；
+   * 乘算顺序不变：先 ÷核心效率、再吃技能、最后乘产线节拍学。
+   *
+   * ⚠ **已知副作用（船长已知情并接受）**：批容变大 ⇒ 下面那道「可炼量不足一批」的开工门对 AI 线也更严
+   * （炉膛扩容学满级 10 → 13 单位，囤货不足 13 就开不了工）。要放宽这道门是另一件事，本函数不做。
+   */
+  const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
+  if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
+  const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
+  if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
   // 产线节拍学（原"工业自动化"，id industrial-automation；2026-09-08 船长定：手动与 AI 核心驱动同享）：
   // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)

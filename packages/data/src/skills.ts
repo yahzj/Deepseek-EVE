@@ -117,6 +117,14 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工业',
     rank: 3,
     branch: 'b-indship',
+    /**
+     * **前置 = 采矿舰入门学**（**2026-09-22 船长在坐标工作台 Excel 里改的**）：
+     * 船长那句「不同类型的舰船不应该是上下级关系」指的是**不同族之间**（采矿舰 / 武装舰 / 装甲舰互不隶属），
+     * 而**同一族内的"入门 → 操作"要有上下级** ⇒ 本条挂在「采矿舰入门学」之下（rank 2 ≤ 3，树契约合法）。
+     * ⚠ 上一轮我漏采用了这一处（比对脚本只看了名称/rank/坐标四列）——现已补上，并新增
+     * `npm run skilltree:diff` 逐列比对工具防再漏。
+     */
+    prereq: ['mining-frigate'],
     description: '采矿舰族专精驾驶：驾驶采矿舰族舰船时采集产量每级 +⟦4%⟧。',
   },
   {
@@ -287,7 +295,7 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工业',
     rank: 2,
     branch: 'b-refine',
-    description: '精炼炉温控与搅拌工艺：主控手动精炼单批周期每级缩短 ⟦4%⟧（AI 核心驱动不受此技能影响）。',
+    description: '精炼炉温控与搅拌工艺：精炼炉单批周期每级缩短 ⟦4%⟧（手动与 AI 核心驱动同享）。',
   },
   {
     id: 'furnace-expansion',
@@ -296,7 +304,7 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 2,
     branch: 'b-refine',
     prereq: ['core-smelting'],
-    description: '精炼炉膛容积改造：主控手动精炼的单批处理量每级 +⟦6%⟧（AI 核心驱动不受此技能影响）。',
+    description: '精炼炉膛容积改造：精炼单批处理量每级 +⟦6%⟧（手动与 AI 核心驱动同享）。',
   },
   {
     id: 'batch-production',
