@@ -2944,8 +2944,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MarketPage.111": { zh: "点击左侧商品的「 详情」查看行情", en: "Click a good's Details on the left to see its market" },
   "ui.MarketPage.112": { zh: "从左侧列表选择一件商品，即可查看价格曲线、买卖盘深度与交易面板。", en: "Pick a good from the list on the left to see its price curve, book depth and trading panel." },
   "ui.MarketPage.113": { zh: "我的挂单", en: "My orders" },
-  "ui.MarketPage.114": { zh: "余额", en: "Balance" },
-  "ui.MarketPage.115": { zh: "信用点 · 托管在售/在途", en: "credits · escrowed in listings / in transit" },
+  // ⚠ `ui.MarketPage.114`（余额）与 `ui.MarketPage.115`（信用点 · 托管在售/在途）随 2026-09-22 船长令
+  //   「钱包删除，托管挪到子标签页内的标题里」一并删除：钱包额顶栏本来就常显，页内不再重复一份；
+  //   托管改用下面这条独立文案（不再与钱包共用一句）。
   "ui.MarketPage.116": { zh: "艘", en: "ships" },
   "ui.MarketPage.117": { zh: "件", en: "items" },
   "ui.MarketPage.118": { zh: " · 平", en: " · flat" },
@@ -3008,6 +3009,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MarketPage.176": { zh: "挂卖单失败。", en: "Could not place the sell order." },
   "ui.MarketPage.177": { zh: "当前没有限定奇货到货——每 10 分钟一轮，稍后再看。", en: "No limited exotic stock has arrived — a new round comes every 10 minutes, so check back later." },
   "ui.MarketPage.178": { zh: "装备", en: "Equipment" },
+  // 「我的挂单」子页面标题行右侧的**托管**读数（2026-09-22 船长：「钱包删除，托管挪到子标签页内的标题里」）；
+  // 尾巴上的「 件」沿用 `ui.MarketPage.135`。
+  "ui.MarketPage.179": { zh: "托管在售/在途", en: "escrowed in listings / in transit" },
   "ui.marks.001": { zh: "取消标记", en: "Unmark" },
   "ui.marks.002": { zh: "标记", en: "Mark" },
   "ui.marks.003": { zh: "已标记：默认排序下置顶显示（点击取消）", en: "Marked: floats to the top of the default sort (click to unmark)" },

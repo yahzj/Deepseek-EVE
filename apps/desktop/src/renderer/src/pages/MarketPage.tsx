@@ -1117,10 +1117,14 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
   const wrapRef = useRef<HTMLDivElement | null>(null)
   /**
    * 「我的挂单」的可见高度**对齐到整行**（船长 2026-09-14：「当我全屏时，订单的第七条会被遮住一半」）。
-   * 面板高度上限来自 CSS（右栏 40%），超出的挂单在面板体内滚动 —— 但容器底边原先落在行的中间，
-   * 于是最下面那行永远只露一半。这里量出"再放一行就超出"的位置，把面板体收到**整行**高度：
-   * 底部不再出现半行（要更多就滚动，滚动条照旧）。滚动条在滚动途中经过的行仍可能是半行，那是滚动本身的常态。
+   * 面板高度来自 CSS（所在栏的 `flex: 1 1 auto` 吃满剩余高度），超出的挂单在面板体内滚动 ——
+   * 但容器底边原先落在行的中间，于是最下面那行永远只露一半。这里量出"再放一行就超出"的位置，
+   * 把面板体收到**整行**高度：底部不再出现半行（要更多就滚动，滚动条照旧）。
+   * 滚动条在滚动途中经过的行仍可能是半行，那是滚动本身的常态。
    * 逐行累加（不假定每行等高 —— 商品名/说明折行会让某行更高）。
+   *
+   * ⚠ **2026-09-22**：这一页从右栏搬进了左栏标签页（船长令），故订阅的容器跟着从 `.app-mkt-right`
+   * 改成 `.app-mkt-left` —— 不改的话栏宽/栏高变化时量不出来（两边尺寸本来就不一样）。
    */
   useLayoutEffect(() => {
     const wrap = wrapRef.current
@@ -1152,7 +1156,7 @@ function MyOrders({ engine, onToast, onJump }: PageProps & { onJump: (goodKey: s
       body.style.maxHeight = `${Math.round(acc)}px`
     }
     measure()
-    const column = wrap.closest('.app-mkt-right')
+    const column = wrap.closest('.app-mkt-left')
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
     if (column) ro?.observe(column)
     window.addEventListener('resize', measure)
@@ -1234,7 +1238,13 @@ export function MarketPage({
   // 2026-09-14 船长：奇货从稀有订单里独立成第三个标签（「限定奇货」· 图标 ◈ · 常态显示）
   const rareCol = goods.filter((g) => g.rarity === 'rare')
   const exoticCol = goods.filter((g) => g.rarity === 'exotic')
-  const [mktTab, setMktTab] = useState<'common' | 'rare' | 'exotic'>('common')
+  /**
+   * **子标签**（船长 2026-09-22：「**市场内，将我的挂单放入和常驻订单同级的子页面内，位置排在第一位，
+   * 但是玩家进入市场时，默认还是打开常驻订单。**」）：
+   * ⇒ 「我的挂单」成了同级子页面、排第一位；**初值仍是 `'common'`**（位置变了、默认没变）。
+   * 它原先挂在右栏详情卡下方（2026-09-08 那次改判），本轮搬进左栏标签页（挂单列表因此独占一页）。
+   */
+  const [mktTab, setMktTab] = useState<'mine' | 'common' | 'rare' | 'exotic'>('common')
   // 外部聚焦（如舰船页"去市场"）：focusSeq 递增时把搜索词设为指定商品 key（像玩家自己搜的一样）
   const [kw, setKw] = useState('')
   // 行情详情选中商品（船长 2026-09-05：行内「 详情」/外部聚焦展开）
@@ -1412,10 +1422,20 @@ export function MarketPage({
             />
           ) : (
             <>
-              {/* 常驻订单 / 稀有订单 / 限定奇货（与星图页同款 app-subtabs 标签规范；后两者时效短，
+              {/* 我的挂单 / 常驻订单 / 稀有订单 / 限定奇货（与星图页同款 app-subtabs 标签规范；后两者时效短，
                   切回本页记得看一眼）—— 2026-09-14 船长：「将市场页面的奇货从稀有订单里独立出现…
-                  可以新增一个标签页切换」＋三答：标签名取「限定奇货」· 图标取 `◈` · **常态显示** */}
+                  可以新增一个标签页切换」＋三答：标签名取「限定奇货」· 图标取 `◈` · **常态显示**；
+                  「我的挂单」为 2026-09-22 船长令新增，**排第一位**（进页面默认仍是常驻订单） */}
               <div className="app-subtabs" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={mktTab === 'mine'}
+                  className={`app-subtab${mktTab === 'mine' ? ' is-active' : ''}`}
+                  onClick={() => setMktTab('mine')}
+                >
+                  <span>▤</span>
+                  <span>{tr("ui.MarketPage.113")}</span>
+                </button>
                 <button
                   role="tab"
                   aria-selected={mktTab === 'common'}
@@ -1447,7 +1467,28 @@ export function MarketPage({
                 </button>
               </div>
 
-              {mktTab === 'common' ? (
+              {mktTab === 'mine' ? (
+                /**
+                 * **「我的挂单」子页面**（船长 2026-09-22：与常驻订单同级、排第一位）。
+                 * 面板头右侧放**托管**读数——船长同日原话：「**钱包删除，托管挪到子标签页内的标题里**」
+                 * （钱包额顶栏本来就常显，页内不再重复一份；托管数原先只在右栏那行里，宽窄屏都看不见了
+                 * ⇒ 现在跟着这一页走）。
+                 * ⚠ 面板体高度由 CSS 的 `flex: 1 1 auto` 吃满左栏，超出部分在面板体内滚动；
+                 * 可见行数由 `MyOrders` 量成「整行」（船长 2026-09-14 报障「第七条被遮住一半」）。
+                 */
+                <Panel
+                  className="is-fill"
+                  title={tr("ui.MarketPage.113")}
+                  right={
+                    <span className="app-dim">
+                      {tr("ui.MarketPage.179")} {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))}
+                      {tr('ui.MarketPage.135')}
+                    </span>
+                  }
+                >
+                  <MyOrders engine={engine} onToast={onToast} onJump={jumpToOrder} />
+                </Panel>
+              ) : mktTab === 'common' ? (
                 <MarketColumn
                   engine={engine}
                   title={tr("ui.MarketPage.105")}
@@ -1491,8 +1532,10 @@ export function MarketPage({
           {/**
            * **窄屏（单栏）⇒ 不渲染"市场详情"**（船长 2026-09-21）：单栏时它会被压到订单列表**下方**，
            * 玩家要翻很久才够得着 ⇒ 改为点订单**弹浮窗**（见本文件末尾那一段）。
-           * ⚠ **「我的挂单」照旧留在栏内**（它不是"详情"，宽窄都要能一眼看到钱包与托管额）。
-           * ⚠ 宽屏路径**一字不动**：仍是"详情卡 + 我的挂单"纵向堆叠、仍默认选中第一个常驻商品。
+           * ⚠ **2026-09-22 起右栏只有这一块**：船长令「我的挂单」搬进左栏子标签页 ⇒ 详情卡**吃满右栏**
+           * （CSS `.app-mkt-right > .wui-panel:only-child`）；原先"详情卡 + 我的挂单"的纵向堆叠不复存在。
+           * 09-21 那条「我的挂单留在栏内、宽窄都要一眼看到钱包与托管额」的做法被同日的新令取代
+           * （钱包不再在页内重复、托管跟着「我的挂单」页走）。
            */}
           {!narrow ? (
             activeGood ? (
@@ -1509,18 +1552,6 @@ export function MarketPage({
               </Panel>
             )
           ) : null}
-          {/* 2026-09-08 船长：我的挂单并入右栏详情页下方（右栏弹性补齐到与左侧同高） */}
-          <Panel
-            title={tr("ui.MarketPage.113")}
-            right={
-              <span className="app-dim">
-                {tr("ui.MarketPage.114")} {isk(state.wallet.isk)} {tr("ui.MarketPage.115")}{' '}
-                {isk(Object.values(state.escrowItems).reduce((a, b) => a + b, 0))}{tr('ui.MarketPage.135')}
-              </span>
-            }
-          >
-            <MyOrders engine={engine} onToast={onToast} onJump={jumpToOrder} />
-          </Panel>
         </div>
       </div>
       {/**
