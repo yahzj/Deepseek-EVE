@@ -35,3 +35,10 @@ tools/_ui-artifacts/
 # 提交消息暂存文件（三号收尾时用，别入库）
 _cm.txt
 _commitmsg.txt
+
+# 🚫 **船长的真档**（2026-09-22 加：`docs/test-saves/` 里除仓库自带的门槛档 `test-save-*.json` 外，
+#   还有船长从游戏里导出的真档 —— 文件名是 `save-<时间戳>.json`（迁移检查跑过会多一层 `.json`），
+#   **一律不进库**：真档只读、只在本机用于 save:migrate 取证。此前一次 `git add -A docs` 误把它们
+#   带进过提交（已在同一提交里撤回），加这条规则兜底）
+docs/test-saves/save-*.json
+docs/test-saves/save-*.json.json

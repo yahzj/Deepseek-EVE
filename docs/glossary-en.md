@@ -389,6 +389,41 @@
 | compression | 压缩技术 | `Compression` |
 | hold-management | 货舱管理学 | `Hold Management` |
 
+### 九之二、专名表 · 技能页术语与技能书（**2026-09-22 船长令 · 技能科技树**）
+
+| id | 中文 | English |
+|---|---|---|
+| （界面） | 技能科技树 | `Skill tech tree` |
+| （界面） | 技能书 | `Skill book` |
+| （机制） | 真前置 | `Prerequisite` |
+| （机制） | 未解锁 | `Locked` |
+| b-fly | 航行与机动 | `Flight & Maneuvering` |
+| b-mine | 采矿 | `Mining` |
+| b-refine | 精炼 | `Refining` |
+| b-craft | 制造 | `Manufacturing` |
+| b-salvage | 回收 | `Salvage & Recycling` |
+| b-auto | 自动化 | `Automation` |
+| b-build | 基建 | `Construction` |
+| b-indship | 采矿舰操作 | `Mining Ship Handling` |
+| b-weapon | 武器专精 | `Weapon Specialization` |
+| b-aim | 命中与装填 | `Accuracy & Reloading` |
+| b-ammo | 弹药 | `Ammunition` |
+| b-drone | 无人机 | `Drones` |
+| b-warship | 战舰操作 | `Warship Handling` |
+| b-protect | 防护与能源 | `Shielding & Power` |
+| b-repair | 维修 | `Repair` |
+| b-shipfit | 舰船系统 | `Ship Systems` |
+| b-ai | AI 与离线 | `AI & Offline` |
+| b-learn | 学习 | `Learning` |
+| b-scan | 扫描与信号 | `Scanning & Signals` |
+| b-survive | 深空生存与奇遇 | `Deep-space Survival & Oddities` |
+| b-market | 市场 | `Market` |
+| b-bounty | 悬赏 | `Bounties` |
+| b-logistics | 物流与货舱 | `Logistics & Cargo` |
+
+> ⚠ 这 23 本技能书的名字在实现里走 l10n 表 `ui.labelsText.026~048`（中英齐）；本表是**译名口径留档**，
+> 与 `skillBranchText()` 同源。技能名本身见上一节（`mining-frigate` 采矿舰入门学 · `station-protocol` 空间站维修协议）。
+
 ## 十、专名表 · 异常点（27）
 
 | id | 中文 | English |
