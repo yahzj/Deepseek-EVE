@@ -1,11 +1,13 @@
 /**
  * **新手任务文案工作台 · 导出**（2026-09-21 船长令：「**将任务文本输出到excel表，我打算进行修改**」）。
  *
- * 干什么：把「第一次」任务链路上**玩家可见的全部文案**导出成一份原生 Excel（一张工作簿三张表）
+ * 干什么：把「第一次」任务链路上**玩家可见的全部文案**导出成一份原生 Excel（一张工作簿五张表）
  * ＋ 每表一份 UTF-8(BOM) CSV：
  *   - `第一次任务`：13 条的 **标题 / 一句话（brief）/ 正文（detail）/ 奖励行 / 链名 / 计数口径**；
  *   - `第一次情报信`：13 封通讯的 **主题 / 正文各行 / 前往提示 / 前往页签**；
- *   - `里程碑链`：13 条链的 **链名 / 计数口径 / 各档阈值**。
+ *   - `里程碑链`：13 条链的 **链名 / 计数口径 / 各档阈值**；
+ *   - `本轮新文案`：**上一次导出之后新增/改写的玩家可见文案**（日志 / 提示 / 报错 / 按钮门槛这类不在上面
+ *     三张表里的字；**值直接读 `L10N` 与 core 常量 ⇒ 永远与代码一致**，只有"落点/备注"两列是手写的）；
  *   - `说明`：编辑约定（照抄内容工作台那套：**首列 id 只读 · 空单元格 = 不改 · 可选字段填 `-` = 删除**）。
  *
  * 用法：`npm run tasks:export [输出目录]`（默认 `content-csv/`，**已 gitignore** ⇒ 它是给你改的工作件，
@@ -22,8 +24,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import ExcelJS from 'exceljs'
-import { buildSimContext } from '@whale/data'
+import { buildSimContext, L10N } from '@whale/data'
 import { CHAIN_TIERS, FIRST_TASKS } from '../packages/core/src/firstTasks'
+import { HALT_COST, KIND_LABEL } from '../packages/core/src/activityGate'
 import { FIRST_TASK_MESSAGES } from '../packages/data/src/firstTaskMessages'
 
 const outDir = process.argv[2] ?? 'content-csv'
@@ -124,6 +127,79 @@ const chainSheet: Sheet = {
   wide: [0, 0, 14, 10, ...Array.from({ length: 10 }, () => 12)],
 }
 
+/**
+ * **本轮新文案**（2026-09-22 船长令：「**新建的任务文本同步到 excel 我再看看**」）——
+ * 上面三张表只管「第一次」任务链本身；**建站交付、活动切换、报错与日志这类不在表里的新字**没地方过目
+ * ⇒ 单开一张：**中文 / English 两列直接读码**（`L10N` 词条或 core 常量，绝不手抄 ⇒ 不会与代码漂移），
+ * 只有「落点」「备注」是手写的。
+ *
+ * ⚠ **维护约定**：每次导出前，把"自上次导出以来新写/改写的玩家可见文案"补进下面这张清单（一行一条）；
+ * 清单会一直累积展示，方便你回头比对——看完觉得哪条要改，按 id 说一声即可（大多是一句话改一处）。
+ */
+const RECENT_TEXTS: Array<{ id: string; kind: string; where: string; note: string }> = [
+  {
+    id: 'core.onboarding.001',
+    kind: '改写',
+    where: 'core/src/onboarding.ts（「寻找人类」发布日志）',
+    note: '2026-09-22 船长裁定 1甲：发布点在前 11 条之后，旧文案是"刚落地"口吻',
+  },
+  {
+    id: 'core.ai.008',
+    kind: '改写',
+    where: 'core/src/ai.ts（给副船派打捞被拒）',
+    note: '2026-09-22 船长裁定 5甲：补「装配」页指路（主控那条早有）',
+  },
+  {
+    id: 'ui.Expedition.345',
+    kind: '改写',
+    where: 'renderer panels/Expedition.tsx（建站交付按钮置灰的理由）',
+    note: '2026-09-22 建站交付批：旧文案列的是已删掉的忙态名单',
+  },
+  {
+    id: 'core.location.020',
+    kind: '改写',
+    where: 'core/src/location.ts（货仓没空位，发不了交付）',
+    note: '2026-09-22 建站交付批：补「物品页『全部卸入仓库』」指路',
+  },
+  {
+    id: 'activityGate.KIND_LABEL.siteDeliver',
+    kind: '新增（core 常量）',
+    where: 'core/src/activityGate.ts（统一自动停机日志的活动名）',
+    note: '2026-09-22 建站交付批：写进「已自动停止「…」」那条日志',
+  },
+  {
+    id: 'activityGate.HALT_COST.siteDeliver',
+    kind: '新增（core 常量）',
+    where: 'core/src/activityGate.ts（同上，停机代价那半句）',
+    note: '⚠ 这两条是 core 中文字面量（未接 id）⇒ 英文界面下这半句仍显示中文',
+  },
+]
+
+const recentSheet: Sheet = {
+  name: '本轮新文案',
+  head: ['序号', 'id / 常量（只读）', '类型', '中文', 'English', '落点', '备注'],
+  rows: RECENT_TEXTS.map((r, i) => {
+    const entry = (L10N as Record<string, { zh: string; en: string } | undefined>)[r.id]
+    /** core 常量那两条不在 `L10N` 里 ⇒ 直接读常量（值与代码同源） */
+    const constZh =
+      r.id === 'activityGate.KIND_LABEL.siteDeliver'
+        ? KIND_LABEL.siteDeliver
+        : r.id === 'activityGate.HALT_COST.siteDeliver'
+          ? HALT_COST.siteDeliver
+          : undefined
+    return [
+      i + 1,
+      r.id,
+      r.kind,
+      entry?.zh ?? constZh ?? '（未找到：id 是否写错？）',
+      entry?.en ?? (constZh !== undefined ? '（未接 id：英文界面下仍显示中文）' : '（未找到）'),
+      r.where,
+      r.note,
+    ]
+  }),
+  wide: [0, 32, 16, 70, 70, 40, 46],
+}
+
 const helpSheet: Sheet = {
   name: '说明',
   head: ['项', '内容'],
@@ -135,11 +211,15 @@ const helpSheet: Sheet = {
     ['正文行数', '情报信的正文现在最多 3 行：**留空一行 = 该行不要**；要加第 4 行请单独说一声（要改代码结构）。'],
     ['奖励行 / 计数口径', '这两列是**读数**（由奖励表与链阈值表算出来），改它不会生效——要改奖励/阈值请单独提。'],
     ['重新生成', 'npm run tasks:export —— 会覆盖本文件；你手上的改动请先发我。'],
+    [
+      '「本轮新文案」表',
+      '上面三张表只管"第一次"任务链；这张表列的是**上一次导出之后新写/改写的玩家可见文案**（建站交付、活动切换、报错与日志这类）。中英两列直读代码，落点与备注是手写的；要改哪条按 id 说一声即可。',
+    ],
   ],
   wide: [16, 120],
 }
 
-const SHEETS: Sheet[] = [taskSheet, mailSheet, chainSheet, helpSheet]
+const SHEETS: Sheet[] = [taskSheet, mailSheet, chainSheet, recentSheet, helpSheet]
 
 function esc(v: unknown): string {
   const s = String(v ?? '')
