@@ -804,6 +804,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 新悬停三行的样式是纯 CSS（`.app-ach-tip-note` / `.app-ach-tip-time`），不需要词条。
    */
   "ui.Shipyard.001": { zh: "搜索蓝图、产物或材料…", en: "Search blueprints, products or materials…" },
+  /**
+   * 造船厂筛选行与读数（**2026-09-22 补**：船长报障「筛选选项的文案和标签页的文案还有遗漏」）——
+   * 这三行原先写死中文（英文界面下整行漏中文）；「全部」档与读数后缀复用既有条目
+   * （`ui.IndustryPage.001` / `ui.IndustryPage.108` / `ui.Industry.127`），不另造同串条目。
+   */
+  "ui.Shipyard.002": { zh: "仓库＋机库", en: "Warehouse + Hangar" },
+  "ui.Shipyard.003": { zh: "学会：", en: "Learned:" },
+  "ui.Shipyard.004": { zh: "图纸：", en: "Blueprint:" },
+  "ui.Shipyard.005": { zh: "制造线 {p1} 条 · 舰船 {p2} · 已学会 {p3}", en: "{p1} production lines · {p2} ships · {p3} learned" },
+  "ui.Shipyard.006": {
+    zh: "该筛选下暂无舰船蓝图——换个分类、或把「全部子类 / 全部图纸」点回来看看。",
+    en: "No ship blueprints match this filter — try another category, or switch the subtype / blueprint filters back to All.",
+  },
   "ui.ActivityBar.004": { zh: "取消", en: "Cancel" },
   "ui.ActivityBar.005": { zh: "停止", en: "Stop" },
   "ui.ActivityBar.006": { zh: "星图", en: "Star Map" },
@@ -1981,6 +1994,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.172": { zh: "设置失败", en: "Could not change the setting" },
   "ui.FitPage.173": { zh: "所选档", en: "selected tier" },
   "ui.FitPage.174": { zh: "（敌方点防会击落机群，被击落后自清单永久损失；战斗结束会自动从本船货仓、其次物品仓库补足）", en: "(enemy point defense shoots drones down — a downed drone is lost from the list for good; when the fight ends it is topped up automatically, from this ship's hold first and then the item warehouse)" },
+  /** **2026-09-22 补**（船长报障「筛选选项的文案和标签页的文案还有遗漏」）：机群"再开还差几架"整句与它的悬停说明原先写死中文。 */
+  "ui.FitPage.175": {
+    zh: "重复清剿停环时记下了当时的机群架数，再开要求装载严格超过它。战斗结束时已自动从本船货仓、其次物品仓库补足；还缺 = 两处都没有存货。",
+    en: "When repeat sweeps stopped, the drone count at that moment was recorded, and restarting requires loading strictly more than that. Drones are topped up automatically when a fight ends, from this ship's hold first and then the item warehouse; still short means neither has stock.",
+  },
+  "ui.FitPage.176": {
+    zh: "「重复清剿」再开还差 {p1} 架（停环时 {p2} 架 · 现 {p3} 架）——货仓与仓库都没有存货，购买或制造后在此装入",
+    en: "Repeat sweeps need {p1} more drones to restart ({p2} when stopped · {p3} now) — neither the hold nor the warehouse has stock; buy or build them and load them here",
+  },
   "ui.fragmentRedeem.001": { zh: "「{p1}」已掌握：配方永久生效，这一路的碎片不再需要（也不会再掉落）。", en: "“{p1}” is already learned: the recipe is permanent, so fragments for this line are no longer needed (and no longer drop)." },
   "ui.fragmentRedeem.002": { zh: "已解锁配方", en: "Recipe unlocked" },
   "ui.fragmentRedeem.003": { zh: "还差 {p1} 片（现有 {p2}/{p3}）——碎片来自残骸回收的高威胁彩头；集齐后点这里换成「{p4}」永久蓝图。", en: "{p1} fragments short ({p2}/{p3} on hand) — fragments come from high-threat signature drops in salvage recycling; once complete, click here for the permanent “{p4}” blueprint." },
@@ -2507,6 +2529,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      其余 ⇒ 「去市场」（048）。110 的原句「无法经精炼炉产出」属原因解释（§十三.5 不许）⇒ 一并改写。 */
   "ui.Industry.154": { zh: "🏭 去组装机", en: "🏭 To the assembly machine" },
   "ui.Industry.155": { zh: "「{matName}」由组装机造出（图纸：{p2}）——点击跳到那张零件卡", en: "“{matName}” is made on the assembly machine (blueprint: {p2}) — click to jump to that card" },
+  /** **2026-09-22 补**（船长报障「筛选选项的文案和标签页的文案还有遗漏」）：组装机顶栏读数与取消提示原先写死中文。 */
+  "ui.Industry.156": {
+    zh: "制造线 {p1} 条 · 装备 {p2} · 零件 {p3} · 消耗品 {p4} · 已学会 {p5}",
+    en: "{p1} production lines · {p2} equipment · {p3} parts · {p4} consumables · {p5} learned",
+  },
+  "ui.Industry.157": {
+    zh: "已取消该条制造线：材料全额退回物品仓库（AI 核心已归还）；一次性图纸连同制造名额一起退回蓝图书架。其余线不受影响。",
+    en: "Production line cancelled: all materials were returned to item storage (AI cores included); a one-use blueprint goes back to the blueprint shelf together with its manufacturing allowance. Other lines are unaffected.",
+  },
   "ui.IndustryPage.001": { zh: "全部", en: "All" },
   "ui.IndustryPage.002": { zh: "可精炼资源", en: "Refinable resources" },
   "ui.IndustryPage.003": { zh: "残骸回收", en: "Wreck salvage" },

@@ -396,7 +396,7 @@ export function BlueprintShelfPanel({
                     }
                     onClick={() => onGotoCraft(id)}
                   >
-                    {isShipBook ? tr('ui.Industry.141') : '去组装机'}
+                    {isShipBook ? tr('ui.Industry.141') : tr('ui.Industry.015')}
                   </button>
                 ) : null}
                 {!learned && !su ? (
@@ -512,6 +512,30 @@ export function cardLiveKeyOf(
   const bp = `${ownsBlueprint(state, blueprintId) ? 1 : 0}.${state.blueprintStock[blueprintId] ?? 0}.${recipeCapability(state, blueprintId, singleUse).kind}`
   const mark = isMarked(state, 'blueprints', blueprintId) ? 1 : 0
   return `${mats}#${needs}#${runSig}#${loop.on ? 1 : 0}.${loop.produced}.${loop.stopWhy}#${bp}#${mark}#${ownedCount}`
+}
+
+/**
+ * **内容层联合 key → 界面文案**（2026-09-22 补：船长报障「筛选选项/标签页文案还有遗漏」）。
+ *
+ * `kindLabel` / `ownedWhere` 两张字段的**键**是内容层联合 key（'舰船' / '装备' / '零件' / '消耗品'、
+ * '仓库' / '仓库＋机库'，判定用，见本文件 `inTab` 那几处 `l10n-keep`），但**有些卡片直接把 key 当文案渲染**
+ * ⇒ 英文界面下会漏中文。这里做一次映射：**认得出的 key 走 `tr(id)`；认不出的一律原样返回**
+ * （另有一批卡片的这两个字段本来就已经是 `tr(...)` 的产物 —— 例如市场/物品那两张，原样返回即可，别二次翻译）。
+ * ⚠ 新增 key 时**同步在两张表里加一行**，否则又退回"英文露中文"。
+ */
+function kindLabelText(key: string): string {
+  // l10n-keep：下面比较的是**内容层联合 key**（不是文案；译文由各分支的 tr(id) 给）
+  if (key === '舰船') return tr('ui.labelsText.019')
+  if (key === '装备') return tr('ui.MarketPage.178')
+  if (key === '零件') return tr('ui.labelsText.001')
+  if (key === '消耗品') return tr('ui.itemSubs.037')
+  return key
+}
+function ownedWhereText(where: string): string {
+  // l10n-keep：同上（key 比较，非文案）
+  if (where === '仓库') return tr('ui.ItemsPage.001')
+  if (where === '仓库＋机库') return tr('ui.Shipyard.002')
+  return where
 }
 
 /**
@@ -702,7 +726,7 @@ export const BlueprintCard = memo(function BlueprintCard({
     else
       onToast(
         // 2026-09-20 船长：「一次性蓝图的制造取消后返还玩家蓝图」⇒ 本条提示把{tr('ui.Industry.143')}说清（一次性图纸才有）
-        '已取消该条制造线：材料全额退回物品仓库（AI 核心已归还）；一次性图纸连同制造名额一起退回蓝图书架。其余线不受影响。',
+        tr('ui.Industry.157'),
       )
   }
 
@@ -781,10 +805,10 @@ export const BlueprintCard = memo(function BlueprintCard({
           <MarkStar engine={engine} kind="blueprints" id={blueprintId} />
           {learnless ? (
             <span className="app-chip" title={tr('ui.Industry.144')}>
-              无需图纸
+              {tr('ui.Industry.145')}
             </span>
           ) : owned ? (
-            <span className="app-chip">已学会</span>
+            <span className="app-chip">{tr('ui.Industry.039')}</span>
           ) : singleUse && bookCount > 0 ? (
             <span className="app-chip is-stock" title={tr("ui.Industry.040")}>
               {tr("ui.Industry.041")}{bookCount}
@@ -796,7 +820,7 @@ export const BlueprintCard = memo(function BlueprintCard({
               ✕ {lock}
             </span>
           ) : (
-            <span className="app-chip">{kindLabel}</span>
+            <span className="app-chip">{kindLabelText(kindLabel)}</span>
           )}
         </span>
       </div>
@@ -804,8 +828,8 @@ export const BlueprintCard = memo(function BlueprintCard({
 
       <div className="app-belt-ore">
         {tr("ui.Handbook.013")}{productNode ?? productLabel}
-        <span className="app-dim" title={tr("ui.Industry.108", { ownedWhere: ownedWhere })}>
-          （{ownedWhere} {ownedCount.toLocaleString('zh-CN')}）
+        <span className="app-dim" title={tr("ui.Industry.108", { ownedWhere: ownedWhereText(ownedWhere) })}>
+          （{ownedWhereText(ownedWhere)} {ownedCount.toLocaleString('zh-CN')}）
         </span>
         {running ? (
           <>
@@ -1284,7 +1308,7 @@ export function ManufacturingPanel({
       const partItemId = bp.itemId
       out.push({
         id: bp.id,
-        kindLabel: '零件',
+        kindLabel: '零件', // l10n-keep：内容层联合 key（渲染走 kindLabelText）
         // 2026-09-20 零件体系：二级子筛选 = 基础/高级（键 `part-<档>`，单点 `itemSubs.partTierOf`）
         subKey: bp.partTier ? `part-${bp.partTier}` : '',
         productGlyph: 'part',
@@ -1303,7 +1327,7 @@ export function ManufacturingPanel({
         ),
         productBase: itemDef ? productBaseOf(engine, 'item', partItemId, bp.outputUnits ?? 1) : 0,
         countOwned: () => countWare(engine.state, partItemId),
-        ownedWhere: '仓库',
+        ownedWhere: '仓库', // l10n-keep：内容层联合 key（渲染走 ownedWhereText）
         bookPrice: bookPriceOf(engine, bp.id, 0),
         productKey: `item:${partItemId}`,
         singleUse: bp.singleUse === true,
@@ -1320,6 +1344,7 @@ export function ManufacturingPanel({
 
   /** 本门类判定（一级门类 → 该卡是否在档内）——二级/三级现算与最终过滤共用一把尺 */
   const inTab = (kindLabel: string): boolean =>
+    // l10n-keep：比较用的 '装备'/'零件'/'消耗品' 是**内容层联合 key**（不是文案；渲染走 kindLabelText）
     tab === 'all' || (tab === 'equip' ? kindLabel === '装备' : tab === 'part' ? kindLabel === '零件' : kindLabel === '消耗品')
   /**
    * **二级子类候选：只列本门类下真有卡片的档**（2026-09-20 船长「明显不存在的子类筛选隐藏」）——
@@ -1416,7 +1441,13 @@ export function ManufacturingPanel({
             />
           </span>
           <span className="app-dim">
-            制造线 {runViews.length} 条 · 装备 {equipN} · 零件 {partN} · 消耗品 {supplyN} · 已学会 {learnedN}
+            {tr('ui.Industry.156', {
+              p1: runViews.length,
+              p2: equipN,
+              p3: partN,
+              p4: supplyN,
+              p5: learnedN,
+            })}
             {/* 任一一维筛选/搜索生效时补读数，避免玩家对着收窄后的网格数不清 */}
             {kq.length > 0
               ? tr('ui.IndustryPage.108', { n: sorted.length })
