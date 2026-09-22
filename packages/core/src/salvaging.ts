@@ -90,7 +90,23 @@ function wreckPoolOf(ctx: SimContext, galaxyId: string): Array<{ anomalyId: stri
 export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const galaxy = ctx.galaxies.get(galaxyId)
   if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.salvaging.001', errorParams: { p1: galaxyId } }
-  if (state.salvaging.active) return { ok: false, error: '打捞作业进行中：请先停止当前打捞。', errorId: 'core.salvaging.002' }
+  /**
+   * **换星系打捞 = 允许直接切**（与「换矿带」同款；船长 2026-09-21 答 2「**允许切换**」的同一把尺）：
+   * 先把本趟停掉（`salvageHalt` 单点——本趟残骸留在船上），再按新星系开工。
+   * ⚠ 原先这里是硬拒（「打捞作业进行中：请先停止当前打捞」）。
+   */
+  if (state.salvaging.active) {
+    const prevGalaxy = state.salvaging.galaxyId ? ctx.galaxies.get(state.salvaging.galaxyId) : undefined
+    const prevName = prevGalaxy?.name ?? '原星系'
+    const info = salvageHalt(state)
+    addLog(
+      state,
+      'warn',
+      `已切换打捞点：停掉「${prevName}」的打捞（本趟约 ${Math.round((info?.tripM3 ?? 0) * 100) / 100} m³ 当量留在船上），改去「${galaxy.name}」。`,
+      'core.salvaging.020',
+      { p1: prevName, p2: galaxy.name, p3: Math.round((info?.tripM3 ?? 0) * 100) / 100 },
+    )
+  }
   /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }

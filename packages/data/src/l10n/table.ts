@@ -3995,5 +3995,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activityGate.004": { zh: "战斗中：这一场打完才能切换主控活动。", en: "In combat: finish this fight before switching the command-ship activity." },
   "core.activityGate.005": { zh: "人在虫洞里：先撤离（或打完本层）才能切换主控活动。", en: "Inside a wormhole: extract (or finish this layer) before switching the command-ship activity." },
   "core.activityGate.006": { zh: "换港返航途中：抵达后就能切换主控活动。", en: "Relocating to another port: switching becomes available on arrival." },
-  "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p3}）", en: "Stopped “{p1}” automatically: {p2}. ({p3})" }
+  "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p3}）", en: "Stopped “{p1}” automatically: {p2}. ({p3})" },
+  "core.mining.037": { zh: "已切换矿带：停掉「{p1}」的开采（本趟 {p3} 单位留在船上），改采「{p2}」。", en: "Switched belts: stopped mining “{p1}” ({p3} units stay aboard this run) and started on “{p2}”." },
+  "core.salvaging.028": { zh: "已切换打捞点：停掉「{p1}」的打捞（本趟约 {p3} m³ 当量留在船上），改去「{p2}」。", en: "Switched salvage sites: stopped salvaging “{p1}” (about {p3} m³ aboard this run) and moved to “{p2}”." }
 }

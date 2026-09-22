@@ -239,11 +239,30 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const pre = miningPreflight(state, beltId, ctx)
   if (!pre.ok) return pre
   const belt = ctx.belts.get(beltId)!
-  if (state.mining.active) return { ok: false, error: '采矿作业进行中：请先停止当前开采。', errorId: 'core.mining.006' }
+  /**
+   * **换矿带 = 允许直接切**（**2026-09-21 船长答 2**：「**允许切换**」）。
+   *
+   * 与"切到别的活动"同一把尺：先把手上这一趟停掉（`miningHalt` 单点——即时返港、**本趟货留在船上**、
+   * 红利窗口清零），再按新矿带开工；日志写明"从哪条带换到哪条带、本趟多少单位留在船上"。
+   * ⚠ 原先这里是硬拒（「采矿作业进行中：请先停止当前开采」）——玩家得先点停止、再点开始。
+   */
+  if (state.mining.active) {
+    const prevBelt = state.mining.beltId ? ctx.belts.get(state.mining.beltId) : undefined
+    const prevName = prevBelt?.name ?? '原矿带'
+    const info = miningHalt(state)
+    addLog(
+      state,
+      'warn',
+      `已切换矿带：停掉「${prevName}」的开采（本趟 ${info?.tripUnits ?? 0} 单位留在船上），改采「${belt.name}」。`,
+      'core.mining.037',
+      { p1: prevName, p2: belt.name, p3: info?.tripUnits ?? 0 },
+    )
+  }
   /**
    * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 7 条硬拒，现已收进
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**：免得"先停了玩家的活、再说开不了"。
+   * （同一项在跑 = 上面的换矿带分支已处理；gate 见 `current === next` 一律放行，不会重复停机。）
    */
   const gateSkip = applyActivityGate(state, 'mining')
   if (gateSkip) return gateSkip

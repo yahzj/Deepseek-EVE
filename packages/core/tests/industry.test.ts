@@ -135,23 +135,28 @@ describe('精炼与市场（M1 经济）', () => {
       state.aiCores['basic'] = 2
       state.warehouse.items['ore-a'] = 100
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-      // 主控第二台仍被拒（pilot 限 1）
-      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
+      /**
+       * ⚠ **2026-09-21 船长答 1「允许切换」**：再点一次「亲自运转」不再被硬拒——它是**换炉**
+       * （停掉原来那台＝当前那批进度丢弃 ＋ 统一日志），**"pilot 至多 1 台"这条不变量照旧成立**。
+       */
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      expect(state.refineRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
+      expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开炉」'))).toBe(true)
       // 两枚核心开同资源第二、三台（原料不锁定共享扣取）
       expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
       expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
-      expect(state.refineRuns).toHaveLength(3)
-      expect(state.refineRuns.filter((x) => x.worker === 'pilot')).toHaveLength(1)
-      expect(state.refineRuns.every((x) => x.itemId === 'ore-a')).toBe(true)
+      expect(state.refineRuns.filter((x) => x.active)).toHaveLength(3)
+      expect(state.refineRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
+      expect(state.refineRuns.filter((x) => x.active).every((x) => x.itemId === 'ore-a')).toBe(true)
       // 三台各自独立周期（pilot 6s；核心 15s），到点顺次实时扣料
       advanceGame(state, 16_000, ctx)
       // pilot：批 1（6s）、批 2（12s）→ 扣 20；核心两台各批 1（15s）→ 扣 20
       expect(countWare(state, 'ore-a')).toBe(60)
       expect(countWare(state, 'min-a')).toBe(96) // 每批 20 × 4 批 × (2×1.2) → floor 各批 24×4
-      expect(state.refineRuns).toHaveLength(3)
+      expect(state.refineRuns.filter((x) => x.active)).toHaveLength(3)
       // 全部继续推进直到库存耗尽（各自尾批自然收尾）
       advanceGame(state, 200_000, ctx)
-      expect(state.refineRuns).toHaveLength(0)
+      expect(state.refineRuns.filter((x) => x.active)).toHaveLength(0)
       expect(countWare(state, 'ore-a')).toBe(0)
       expect(countAiCore(state, 'basic')).toBe(2) // 双核心归还
     })
@@ -312,12 +317,15 @@ describe('精炼与市场（M1 经济）', () => {
       expect(stopRefineRun(state, ctx, views[0]!.id).ok).toBe(true)
     })
 
-    it('手动运转期间禁止再亲自开炉（pilot 限 1 台）', () => {
+    it('换炉允许直接切（**pilot 仍至多 1 台**：再点一次 = 停原炉 + 开新炉）', () => {
       state.warehouse.items['ore-a'] = 20
       expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
       // 2026-09-06：开工不再写日志（卡片/活动栏实时可见，避免刷屏）
       expect(state.logs.some((l) => l.text.includes('开工'))).toBe(false)
-      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(false)
+      /** 2026-09-21 船长答 1「允许切换」：换炉不再硬拒——停掉原炉（那批进度丢弃）+ 统一日志 + 开新炉 */
+      expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+      expect(state.refineRuns.filter((r) => r.active && r.worker === 'pilot')).toHaveLength(1)
+      expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开炉」') && l.text.includes('进度丢弃'))).toBe(true)
       expect(stopRefineRun(state, ctx, runIdOf('ore-a')).ok).toBe(true)
       expect(state.logs.some((l) => l.text.includes('精炼炉已停'))).toBe(true)
     })

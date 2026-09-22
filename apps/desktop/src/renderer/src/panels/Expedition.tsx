@@ -1711,10 +1711,11 @@ function GalaxyActions({
   const expOn = state.expedition.active
   const [mineAskBelt, setMineAskBelt] = useState<string | null>(null)
   function handleMineStart(beltId: string): void {
-    if (state.mining.active) {
-      onToast(tr("ui.Expedition.306"), true)
-      return
-    }
+    /**
+     * ⚠ **2026-09-21 船长答 2「允许切换」**：原先"正在开采 ⇒ 直接 toast 拦住"那条已删——
+     * 换矿带现在**直接切**（core 先停旧带那一趟、货留在船上、写「已切换矿带」日志）。
+     * 远征在飞时那条"转战"两段确认照旧（`startMiningFromExpeditionAt`）。
+     */
     if (expOn && !mineAskBelt) {
       setMineAskBelt(beltId)
       onToast(
@@ -1862,12 +1863,11 @@ function GalaxyActions({
               </span>
               <button
                 className={`app-btn is-small${isMiningThis || mineAskBelt === b.id ? ' is-warn' : ' is-primary'}`}
-                disabled={isMiningThis || state.mining.active}
+                /** **换矿带允许直接切**（船长 2026-09-21 答 2「允许切换」）：别处正在开采也照点（core 先停旧带） */
+                disabled={isMiningThis}
                 title={
-                  state.mining.active
-                    ? isMiningThis
-                      ? tr("ui.Expedition.310")
-                      : tr("ui.Expedition.311")
+                  isMiningThis
+                    ? tr("ui.Expedition.310")
                     : expOn
                       ? mineAskBelt === b.id
                         ? tr("ui.Expedition.025")

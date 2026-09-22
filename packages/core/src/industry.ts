@@ -20,8 +20,8 @@
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
 import { matterTechUnboxCut, matterTechVoidYield, matterTechWreckYield } from './matterTech'
-import { addLog, shipLockedReason } from './state'
-import { applyActivityGate } from './activityGate'
+import { addLog, haltActivityForSwitch, shipLockedReason } from './state'
+import { applyActivityGate, logAutoHalt } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
 import { bumpFirst } from './firstTasks'
@@ -208,12 +208,12 @@ export function startRefineRun(
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   /**
-   * **主控亲自运转 ⇒ 两道闸，顺序有讲究**（**2026-09-21 船长令**＋2026-09-08 的"手动工作位"旧裁定）：
-   * ① **同族/手动工作位互斥**（精炼炉·回收炉·拆解·制造线共用**一个**手动工位）——**照旧硬拒**
-   *    （「你已亲自运转着一台炉子：先停掉它…」）：它不算"切换活动"，而是**同一个工位换机器**，
-   *    停掉会**丢掉手上那一批**（稀有残骸一炉一箱，丢了就是真损失）⇒ 不替玩家做决定；
-   * ② **跨活动统一判据**（开采/打捞/扫描/掩护巡逻/长途运输/远征/快递）：能直接切就自动取消当前活动，
-   *    长途运输先警告，远征/快递/战斗中/洞里/返航途中一律拒（`activityGate.applyActivityGate`）。
+   * **主控亲自运转 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
+   * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）。
+   *
+   * ⚠ **手动工作位（精炼炉·回收炉·拆解·制造线）之间也允许直接切**（**船长当日答 1/2「允许切换」**）：
+   * 它由统一判据**顺带**完成——当前那一台是 `refine` 这一档 ⇒ gate 判 `halt` ⇒ 停炉（**当前那批进度
+   * 丢弃**，代价写在统一日志里）＋照常开工新机器。原先这里另有一条"手动位互斥"硬拒，本轮删除。
    *
    * ⚠ **判据排在"位置门槛"之前**（玩家 2026-09-21 报障「采矿时无法直接切换精炼炉手动运转」）——
    * 自动停机**本身就把舰船即时带回母港/空间站**（`miningHalt`/`salvageHalt`/`haulingHalt`/掩护巡逻
@@ -221,14 +221,17 @@ export function startRefineRun(
    * 「需停靠空间站」，而其实一键就能回来。
    */
   if (worker === 'pilot') {
-    if (state.refineRuns.some((r) => r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自运转着一台精炼炉：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.011' }
-    }
-    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。', errorId: 'core.state.012' }
-    }
     const gateSkip = applyActivityGate(state, 'refine')
     if (gateSkip) return gateSkip
+    /**
+     * **同一档再开一台 = 换炉**（**2026-09-21 船长答 1「允许切换」**）：判据见到"同一项"一律放行
+     * （`current === next`），所以这一档要自己收口——停掉手上那台（当前那批进度丢弃）＋统一日志，
+     * 保证 **pilot 至多 1 台**这条不变量。
+     */
+    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+      haltActivityForSwitch(state, 'refine')
+      logAutoHalt(state, 'refine')
+    }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
@@ -320,15 +323,13 @@ export function startUnboxRun(
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   if (worker === 'pilot') {
-    /** 顺序同 `startRefineRun`：**手动工作位互斥（硬拒）→ 跨活动统一判据 → 位置门槛** */
-    if (state.refineRuns.some((r) => r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
-    }
-    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开工（AI 核心不受此限）。', errorId: 'core.state.035' }
-    }
+    /** 顺序同 `startRefineRun`：判据 → **同档换机器收口（停手上那台 + 统一日志）** → 位置门槛 */
     const gateSkip = applyActivityGate(state, 'refine')
     if (gateSkip) return gateSkip
+    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+      haltActivityForSwitch(state, 'refine')
+      logAutoHalt(state, 'refine')
+    }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }
@@ -395,20 +396,18 @@ export function startRecycleRun(
     }
   }
   /**
-   * 主控亲自回收：全局限 1 台 + 与**同族**的炉/线互斥 + 统一判据（跨活动互斥已收进 `activityGate`）。
-   * ⚠ 判据排在**位置门槛之前**（见 `startRefineRun` 的说明：停机即把舰船带回空间站）；
-   * 上面的"够不够一批"与停机无关（`oreAvailable` = 货仓 + 仓库，停下来的货留在船上）⇒ 谁先谁后都行。
+   * 主控亲自回收：**跨活动统一判据**（含"手动工作位换机器"——见 `startRefineRun` 的说明）。
+   * ⚠ 判据排在**位置门槛之前**（停机即把舰船带回空间站）；上面的"够不够一批"与停机无关
+   * （`oreAvailable` = 货仓 + 仓库，停下来的货留在船上）⇒ 谁先谁后都行。
    */
   if (worker === 'pilot') {
-    /** 顺序同 `startRefineRun`：**手动工作位互斥（硬拒）→ 跨活动统一判据 → 位置门槛** */
-    if (state.refineRuns.some((r) => r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自运转着一台炉子：先停掉它才能再亲自开一台（AI 核心不受此限）。', errorId: 'core.state.034' }
-    }
-    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return { ok: false, error: '你已亲自开着一条制造线：先取消或等它完成才能亲自开炉（AI 核心不受此限）。', errorId: 'core.state.012' }
-    }
     const gateSkip = applyActivityGate(state, 'refine')
     if (gateSkip) return gateSkip
+    /** 同档换机器（见 `startRefineRun`）：停掉手上那台 + 统一日志 */
+    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+      haltActivityForSwitch(state, 'refine')
+      logAutoHalt(state, 'refine')
+    }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }

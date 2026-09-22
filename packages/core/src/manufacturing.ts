@@ -24,8 +24,8 @@
  *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
  *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
-import { addLog } from './state'
-import { applyActivityGate } from './activityGate'
+import { addLog, haltActivityForSwitch } from './state'
+import { applyActivityGate, logAutoHalt } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, ManufacturingRunState } from './state'
 import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './types'
@@ -321,31 +321,27 @@ export function startManufacturing(
     }
   }
   /**
-   * 主控亲自制造 ⇒ **两道闸，顺序与 `industry.startRefineRun` 同款**：
-   * ① **手动工作位互斥**（精炼炉·回收炉·拆解·制造线共用一个手动工位）——**照旧硬拒**（不算"切换活动"，
-   *    停掉会丢掉手上那一批）；
-   * ② **跨活动统一判据**（开采/打捞/扫描/掩护巡逻/长途运输/远征/快递）：能直接切就自动取消当前活动，
-   *    长途运输先警告，远征/快递/战斗中/洞里/返航途中一律拒。
+   * 主控亲自制造 ⇒ **跨活动统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，长途运输
+   * 先警告，远征/快递/战斗中/洞里/返航途中一律拒）。
+   *
+   * ⚠ **手动工作位（精炼炉·回收炉·拆解·制造线）之间也允许直接切**（船长当日答 1「允许切换」）：
+   * 由统一判据顺带完成——在跑的手动炉是 `refine` 档 ⇒ gate 判 `halt` ⇒ 停炉（当前那批进度丢弃，
+   * 代价写在统一日志里）＋照常开线。原先那条"手动位互斥"硬拒本轮删除。
+   *
    * ⚠ 判据排在**位置门槛之前**：停机本身就把舰船即时带回母港/空间站（玩家 2026-09-21 报障
    * 「采矿时无法直接切换…手动运转」的同一处坑）。
    */
   if (worker === 'pilot') {
-    if (manufacturingManualActive(state)) {
-      return {
-        ok: false,
-        error: '你已亲自开着一条制造线：先取消或等它完成才能再亲自开一条（AI 核心不受此限）。',
-        errorId: 'core.state.031',
-      }
-    }
-    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-      return {
-        ok: false,
-        error: '你已亲自运转着一台精炼炉/回收炉：先停掉它才能亲自开制造线（AI 核心不受此限）。',
-        errorId: 'core.state.032',
-      }
-    }
     const gateSkip = applyActivityGate(state, 'manufacturing')
     if (gateSkip) return gateSkip
+    /**
+     * **同档再开一条 = 换线**（**2026-09-21 船长答 1「允许切换」**）：判据见"同一项"一律放行
+     * （`current === next`），所以这里自己收口——停掉手上那条（当前那批进度丢弃）＋统一日志。
+     */
+    if (manufacturingManualActive(state)) {
+      haltActivityForSwitch(state, 'manufacturing')
+      logAutoHalt(state, 'manufacturing')
+    }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock }

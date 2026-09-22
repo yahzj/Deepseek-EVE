@@ -28,10 +28,26 @@ describe('采矿作业', () => {
     expect(state.logs.some((l) => l.text.includes('开始开采'))).toBe(true)
   })
 
-  it('非法指令：未知矿带拒绝；开采中重复开始拒绝', () => {
+  it('非法指令：未知矿带拒绝；**同一矿带重复开始 = 重开一趟**；换矿带直接切（船长 2026-09-21 答 2）', () => {
     expect(startMining(state, '不存在的带', ctx).ok).toBe(false)
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
-    expect(startMining(state, 'belt-a', ctx).ok).toBe(false)
+    // 采集进度：换带前先攒一点，验"本趟留在船上"
+    advanceGame(state, 12_000, ctx)
+    expect(state.mining.tripUnits).toBe(10)
+    /**
+     * ⚠ **2026-09-21 船长答 2「允许切换」**：开采中再下一道开采令不再硬拒——
+     * ① 同一条带 = 重开一趟（本趟读数清零，货留在船上）；
+     * ② 换到另一条带 = 停旧带 + 新带开工，并写一条"已切换矿带"日志（写明本趟多少单位留在船上）。
+     */
+    expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
+    expect(state.mining.beltId).toBe('belt-a')
+    expect(state.mining.tripUnits).toBe(0)
+    const other = [...ctx.belts.keys()].find((b) => b !== 'belt-a')
+    if (other !== undefined) {
+      expect(startMining(state, other, ctx).ok, '换矿带应当直接切').toBe(true)
+      expect(state.mining.beltId).toBe(other)
+      expect(state.logs.some((l) => l.text.includes('已切换矿带'))).toBe(true)
+    }
   })
 
   it('去程取消：指令即开始采掘，每 12 秒完成一个循环：10 单位矿石入舱', () => {

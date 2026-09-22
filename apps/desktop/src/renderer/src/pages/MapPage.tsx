@@ -360,7 +360,6 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
             onToast={onToast}
             isActiveBelt={belt.id === activeBeltId}
             focus={focusIds.includes(belt.id)}
-            canStart={!view.active}
             onStart={handleStart}
             onStop={handleStop}
             onAiAssign={handleAiAssign}
@@ -378,7 +377,6 @@ function BeltCard({
   onToast,
   isActiveBelt,
   focus = false,
-  canStart,
   onStart,
   onStop,
   onAiAssign,
@@ -388,7 +386,6 @@ function BeltCard({
   onToast: ToastFn
   isActiveBelt: boolean
   focus?: boolean
-  canStart: boolean
   onStart: (beltId: string) => void
   onStop: () => void
   onAiAssign: (beltId: string, shipId: string, coreType: AiCoreType) => void
@@ -557,7 +554,11 @@ function BeltCard({
         ) : null}
         <button
           className={`app-btn is-small${isActiveBelt ? ' is-warn' : expeditionOn && !mineAsk ? ' is-warn' : ' is-primary'}`}
-          disabled={locked || (!isActiveBelt && !canStart) || mineAsk}
+          /**
+           * **换矿带允许直接切**（**2026-09-21 船长答 2「允许切换」**）：别处正在开采也**照点**——
+           * core 先停旧带那一趟（货留在船上）＋写「已切换矿带」日志，再开新带。这里只剩锁定与两段确认。
+           */
+          disabled={locked || mineAsk}
           title={
             locked
               ? unexplored
@@ -565,13 +566,11 @@ function BeltCard({
                 : tr("ui.MapPage.093", { p1: belt.standingReq ?? 0, standing: standing })
               : isActiveBelt
                 ? tr("ui.MapPage.029")
-                : !canStart
-                  ? tr("ui.MapPage.030")
-                  : mineAsk
-                    ? tr("ui.MapPage.031")
-                    : expeditionOn
-                      ? tr("ui.MapPage.032")
-                      : undefined
+                : mineAsk
+                  ? tr("ui.MapPage.031")
+                  : expeditionOn
+                    ? tr("ui.MapPage.032")
+                    : undefined
           }
           onClick={mineStartClick}
         >
@@ -1034,8 +1033,11 @@ function WreckCard({
         ) : (
           <button
             className="app-btn is-small is-primary"
-            disabled={activeAnywhere}
-            title={activeAnywhere ? tr("ui.MapPage.069") : tr("ui.MapPage.070")}
+            /**
+             * **换打捞点允许直接切**（**2026-09-21 船长答 2「允许切换」**的同一把尺）：别处正在打捞时
+             * 这里照点——core 先停旧点那一趟（残骸留在船上）＋写「已切换打捞点」日志，再开新点。
+             */
+            title={tr("ui.MapPage.070")}
             onClick={onStart}
           >
             <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.071")}
