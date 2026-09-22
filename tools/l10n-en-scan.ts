@@ -99,12 +99,13 @@ async function waitFor(cdp: Cdp, expr: string, what: string, timeoutMs = 20_000)
 }
 
 /**
- * 扫当前内容区里含中日韩字符的**可见**文本节点（跳过 display:none / 零尺寸 / 纯空白）。
+ * 扫某个根节点里含中日韩字符的**可见**文本节点（跳过 display:none / 零尺寸 / 纯空白）。
  * 每处给「最近的有类名祖先 :: 文本」，按 `类名 + 文本` 去重。
+ * ⚠ 默认根 = `.app-page-content`（导航页）；**手册一类弹层不在这个根里**，要显式传选择器。
  */
-const SCAN = `(() => {
+const scanExpr = (rootSel: string): string => `(() => {
   const CJK = /[\\u3400-\\u9fff\\u3040-\\u30ff]/
-  const root = document.querySelector('.app-page-content') || document.body
+  const root = document.querySelector(${JSON.stringify(rootSel)}) || document.body
   const out = []
   const seen = new Set()
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
@@ -136,14 +137,25 @@ interface Hit {
   text: string
 }
 
-async function scan(cdp: Cdp, label: string): Promise<number> {
-  const hits = await cdp.evalJS<Hit[]>(SCAN)
+async function scan(cdp: Cdp, label: string, rootSel = '.app-page-content'): Promise<number> {
+  const hits = await cdp.evalJS<Hit[]>(scanExpr(rootSel))
   if (hits.length === 0) return 0
   say(`\n─── ${label}：残留中文 ${hits.length} 处 ───`)
   for (const h of hits.slice(0, MAX_PER_PAGE)) say(`   [${h.cls}] <${h.tag}> ${h.text}`)
   if (hits.length > MAX_PER_PAGE) say(`   …（另有 ${hits.length - MAX_PER_PAGE} 处，未逐条列出）`)
   return hits.length
 }
+
+/** 点一个页签（两族类名：任务/筛选行 `.app-tasktab`、页面级功能标签页 `.app-subtab`） */
+async function clickTab(cdp: Cdp, index: number): Promise<string> {
+  return cdp.evalJS<string>(`(() => {
+    const b = document.querySelectorAll('.app-tasktab, .app-subtab')[${index}]
+    if (!b) return ''
+    b.click(); return (b.textContent || '').trim()
+  })()`)
+}
+const tabCount = (cdp: Cdp): Promise<number> =>
+  cdp.evalJS<number>(`document.querySelectorAll('.app-tasktab, .app-subtab').length`)
 
 async function main(): Promise<void> {
   const cdp = await Cdp.connect(CDP)
@@ -182,16 +194,59 @@ async function main(): Promise<void> {
      * ⚠ 选择器含**两族**页签类名：`.app-tasktab`（任务/筛选行）与 `.app-subtab`（页面级功能标签页）；
      * 仓库/工业页的页面级切换正是后者（2026-09-22 首版只认前者 ⇒ 造船厂整页漏扫，实测踩到）。
      */
-    const tabN = await cdp.evalJS<number>(`document.querySelectorAll('.app-tasktab, .app-subtab').length`)
+    const tabN = await tabCount(cdp)
     for (let k = 0; k < tabN; k++) {
-      const tabText = await cdp.evalJS<string>(`(() => {
-        const b = document.querySelectorAll('.app-tasktab, .app-subtab')[${k}]
-        if (!b) return ''
-        b.click(); return (b.textContent || '').trim()
-      })()`)
+      const tabText = await clickTab(cdp, k)
       if (!tabText) continue
       await wait(700)
       total += await scan(cdp, `  ↳ ${PAGES[i]} 页签「${tabText}」`)
+    }
+  }
+  /**
+   * **手册（弹层）专项**（2026-09-22 船长令：「先进行手册的本地化」）。
+   *
+   * 手册不在 `.app-page-content` 里（它是弹层，挂在 `.app-root` 下），**逐页扫描永远扫不到它** ⇒
+   * 这里单独开一遍：点顶栏那颗入口 → 逐页签（一级「玩法说明 / 图鉴」，二级类型与子类）扫一遍。
+   */
+  const opened = await cdp.evalJS<boolean>(`(() => {
+    const b = [...document.querySelectorAll('.app-header .app-btn')].find((x) => {
+      const t = (x.getAttribute('title') || '') + (x.textContent || '')
+      return t.includes('手册') || t.includes('玩法说明') || /handbook|manual|guide/i.test(t)
+    })
+    if (!b) return false
+    b.click(); return true
+  })()`)
+  say(`\n═══ 手册面板（入口点开=${opened ? '成' : '没找到'}）═══`)
+  if (opened) {
+    await wait(900)
+    /**
+     * ⚠ 根选择器用**手册自己的模态** `.app-hand-modal`：`.app-modal` 在文档里可能先命中别的弹层；
+     * 页签也要**限定在手册内**（`.app-hand-nav` / `.app-hand-subnav`）——手册打开时页面在它后面，
+     * 全局点 `.app-tasktab` 会点到后面那些页签上，手册反而一页没扫（首版就是这么误报 0 的）。
+     */
+    const HAND = '.app-hand-modal'
+    total += await scan(cdp, '手册 · 默认页', HAND)
+    const mainN = await cdp.evalJS<number>(`document.querySelectorAll('.app-hand-nav .app-hand-navitem').length`)
+    for (let k = 0; k < mainN; k++) {
+      const t = await cdp.evalJS<string>(`(() => {
+        const b = document.querySelectorAll('.app-hand-nav .app-hand-navitem')[${k}]
+        if (!b) return ''
+        b.click(); return (b.textContent || '').trim()
+      })()`)
+      if (!t) continue
+      await wait(700)
+      total += await scan(cdp, `  手册一级页「${t}」`, HAND)
+      const subN = await cdp.evalJS<number>(`document.querySelectorAll('.app-hand-subnav .app-hand-subitem').length`)
+      for (let j = 0; j < subN; j++) {
+        const s = await cdp.evalJS<string>(`(() => {
+          const b = document.querySelectorAll('.app-hand-subnav .app-hand-subitem')[${j}]
+          if (!b) return ''
+          b.click(); return (b.textContent || '').trim()
+        })()`)
+        if (!s) continue
+        await wait(600)
+        total += await scan(cdp, `    手册二级「${t} › ${s}」`, HAND)
+      }
     }
   }
   say(`\n═══ 合计残留中文 ${total} 处 ═══`)
