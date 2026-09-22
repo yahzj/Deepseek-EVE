@@ -182,16 +182,11 @@ export const FOE_ART: Record<string, ReactNode> = {
 
 /** 敌族轮廓浊色（敌我区分用；继承 currentColor 的元素 = 主轮廓 / .shipart-acc / .shipart-accf；
  *  发光件 .shipart-volt-g/-i/.fill-g/-i 为资产内固定族色不随此表；主舰与僚机同族同色，
- *  靠体量(LAY.MAIN/ESC)与名称后缀区分） */
-export const FOE_ACCENT: Record<string, string> = {
-  A: '#ff6b52', // 海盗舰系：锈红（README §二 已定）
-  B: '#e0c864', // 武装拾荒者：废料黄（拼装壳体的警示漆）
-  C: '#9fe6a4', // 异形生物：磷光绿（同 volt-g）
-  D: '#9fd0f2', // 守墓古舰：磷光冰蓝（同 volt-i）
-  E: '#d9b98c', // 泰坦巨构：残铁棕
-  F: '#ffab5e', // 制式巡逻【已废弃·留档：2026-09-11 并入 A 族，字母位空置】：琥珀灯条
-  G: '#cd9fdd', // 鱿烬亡军：聚落紫
-}
+ *  靠体量(LAY.MAIN/ESC)与名称后缀区分）
+ *  ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`var(--wui-tone-*)`）⇒ 随主题切换；改动去那张表。 */
+import { FOE_ACCENT } from './tones'
+
+export { FOE_ACCENT }
 
 /**
  * 敌族形状/配色一律按**数据侧** `AnomalyDef.foeFamily` 推导（2026-09-11 船长定案）。

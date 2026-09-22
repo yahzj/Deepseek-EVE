@@ -16,6 +16,7 @@ import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
+import { THEME_CHOICES, THEME_LABEL_ID, themeUsesSpacePhoto, useTheme, useThemeBootstrap } from './ui/theme'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
 import { AnnouncementHub } from './panels/Announcements'
@@ -124,15 +125,15 @@ const KIND_DESC: Record<LogKind, string> = {
   event: tr("ui.App.041"),
 }
 
-/** 开关色点（图例）：色值须与 ui index.css 的 wui-log-* 一致 */
+/** 开关色点（图例）：与 `ui/index.css` 的 `--wui-log-*` 同一批 token（2026-09-22 起不再各写一份色值） */
 const KIND_DOT: Record<LogKind, string> = {
-  system: 'var(--wui-purple)',
-  levelup: '#ecc264',
-  warn: '#ff8278',
-  queue: '#54d4de',
-  info: '#8fa3c2',
-  trade: '#6fdc8f',
-  event: '#ffb35c',
+  system: 'rgb(var(--wui-purple))',
+  levelup: 'rgb(var(--wui-log-levelup))',
+  warn: 'rgb(var(--wui-log-warn))',
+  queue: 'rgb(var(--wui-log-queue))',
+  info: 'rgb(var(--wui-log-info))',
+  trade: 'rgb(var(--wui-log-trade))',
+  event: 'rgb(var(--wui-log-event))',
 }
 
 const PREFS_KEY = 'whale-idle:log-prefs'
@@ -175,13 +176,19 @@ function readNum(key: string, def: number, min: number, max: number): number {
 
 const ZOOM_KEY = 'whale-idle:ui-zoom'
 const FS_KEY = 'whale-idle:ui-fs'
+/** 字号上限（2026-09-22 船长令「按推荐来」：读数显示 82% 的文字 ≤12px，先把上限从 125% 放到 150%，
+ *  **不动默认字号** ⇒ 排版与"一级页不滚"零风险） */
+const ZOOM_MAX_FS = 1.5
 
 /** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs；
- *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张 */
+ *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张；
+ *  界面配色（2026-09-22 船长令）：深空/亮白/跟随系统，存本机、即时生效 */
 function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onClose: () => void }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
-  const [fs, setFs] = useState(() => readNum(FS_KEY, 1, 0.85, 1.25))
+  const [fs, setFs] = useState(() => readNum(FS_KEY, 1, 0.85, ZOOM_MAX_FS))
+  /* 界面配色（2026-09-22 船长令「添加几套配色供玩家切换」）：存本机、即时生效、支持跟随系统 */
+  const [theme, setTheme, effectiveTheme] = useTheme()
   /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
   const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
   useEffect(() => {
@@ -241,8 +248,27 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
               <span className="app-settings-label">{t('ui.App.014')}</span>
               <span className="app-settings-val">{Math.round(fs * 100)}%</span>
             </div>
-            <input className="app-settings-slider" type="range" min={0.85} max={1.25} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
+            <input className="app-settings-slider" type="range" min={0.85} max={ZOOM_MAX_FS} step={0.05} value={fs} onChange={(e) => setFs(Number(e.target.value))} />
             <div className="app-settings-desc">{t('ui.App.015')}</div>
+          </div>
+          {/* 界面配色（2026-09-22 船长令）：与上一行「语言」同款按钮组；三套主题见 ui/theme.ts */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.127')}</span>
+              <span className="app-settings-val">{t(THEME_LABEL_ID[theme])}</span>
+            </div>
+            <div className="app-settings-btns">
+              {THEME_CHOICES.map((c) => (
+                <button
+                  key={c}
+                  className={`app-btn is-small${theme === c ? ' is-primary' : ''}`}
+                  onClick={() => setTheme(c)}
+                >
+                  {t(THEME_LABEL_ID[c])}
+                </button>
+              ))}
+            </div>
+            <div className="app-settings-desc">{t('ui.App.132')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
@@ -253,16 +279,18 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
               <button
                 className="app-btn is-small"
                 onClick={() => setBg(rerollSpaceBg())}
-                disabled={!bg}
+                disabled={!bg || !themeUsesSpacePhoto(effectiveTheme)}
                 title={t('ui.App.019')}
               >
                 {t('ui.App.018')}
               </button>
             </div>
             <div className="app-settings-desc">
-              {bg
-                ? t('ui.App.020', { n: bg.total })
-                : t('ui.App.021')}
+              {!themeUsesSpacePhoto(effectiveTheme)
+                ? t('ui.App.133')
+                : bg
+                  ? t('ui.App.020', { n: bg.total })
+                  : t('ui.App.021')}
             </div>
           </div>
         </div>
@@ -399,6 +427,9 @@ const MOB_SEL_MIN_OPEN_MS = 200
 const MOB_SEL_MOVE_TOLERANCE_PX = 24
 
 export function App({ engine }: { engine: GameEngine }) {
+  // 兜底套用界面配色（任何入口都经过 App；桌面/网页版入口另在首帧前各调一次）
+  useThemeBootstrap()
+
   const [, force] = useReducer((n: number) => n + 1, 0)
   /** 语言（2026-09-19 船长令「英语本地化」）：界面文案走 `t(中文源串)`；缺词条回退中文 */
   const { locale, t } = useL10n()

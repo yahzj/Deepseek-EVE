@@ -55,6 +55,8 @@
     "ui:overflow": "tsx tools/ui-overflow.ts",
     "ui:geom": "tsx tools/ui-geom.ts",
     "ui:rot-check": "tsx tools/ui-rot-check.ts",
+    "ui:contrast": "tsx tools/ui-contrast.ts",
+    "ui:theme-check": "tsx tools/ui-theme-check.ts",
     "industry:perf": "tsx tools/industry-perf-probe.ts",
     "industry:lag": "tsx tools/industry-lag-probe.ts",
     "wh:turn": "tsx tools/wormhole-turn-probe.ts",

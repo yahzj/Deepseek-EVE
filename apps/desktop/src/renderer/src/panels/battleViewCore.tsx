@@ -6,17 +6,11 @@
 import type { ReactNode } from 'react'
 import type { DamageType } from '@whale/core'
 import { tr } from '../i18n/locale'
-/** 伤害类型 → 颜色（动能金 / 高爆橙 / 能量青；弹道、命中与射程弧共用） */
-const DMG_COLOR: Record<DamageType, string> = { kinetic: '#ffd54f', explosive: '#ffa04d', plasma: '#5fd0ff' }
+/** 伤害类型 → 颜色（动能金 / 高爆橙 / 能量青；弹道、命中与射程弧共用）
+ *  ⚠ 2026-09-22 起走 `ui/tones.ts`（`var(--wui-tone-*)`）⇒ 随主题切换 */
+import { DMG_COLOR, ROLE_ACCENT, UI_TONES } from '../ui/tones'
 const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
 const DMG_ORDER: DamageType[] = ['kinetic', 'explosive', 'plasma']
-
-const ROLE_ACCENT: Record<string, string> = {
-  industrial: '#5ee6c8',
-  armed: '#ff8373',
-  armored: '#cdd6e0',
-  hauler: '#ffd166',
-}
 
 /* 画面几何常量（px）
    2026-09-10 船长：整体下移（TOP 26→54）——无人机上凸出击弧会在顶部被裁掉，给上方留出弧线空间。
@@ -487,8 +481,9 @@ function ringPath(r: number): string {
 }
 
 /** 三层垂直血量条：自上而下 护盾(蓝) / 装甲(红) / 结构(黄)，各层按自身满值比例独立显示。
- *  布局与配色全部内联（不依赖样式表加载顺序），确保任何环境下条均可见。 */
-const HP_LAYER_COLOR = { s: '#3f9fd8', a: '#d34a4a', h: '#e0b83f' } as const
+ *  布局与配色全部内联（不依赖样式表加载顺序），确保任何环境下条均可见。
+ *  ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`var(--wui-tone-hp-*)`）⇒ 随主题切换 */
+const HP_LAYER_COLOR = { s: UI_TONES.hpShield, a: UI_TONES.hpArmor, h: UI_TONES.hpHull } as const
 function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; max: { s: number; a: number; h: number }; label?: ReactNode }) {
   const layers = [
     { k: 's' as const, zh: tr("ui.FitPage.001") },
@@ -497,7 +492,7 @@ function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; ma
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
-      {label ? <span style={{ fontSize: 10, color: '#99a5b5', lineHeight: 1.2 }}>{label}</span> : null}
+      {label ? <span style={{ fontSize: 10, color: 'rgb(var(--wui-dim))', lineHeight: 1.2 }}>{label}</span> : null}
       {layers.map((ly) => {
         const cur = Math.max(0, Math.round(hp[ly.k]))
         const full = max?.[ly.k] ?? 0
@@ -505,11 +500,11 @@ function HpTri({ hp, max, label }: { hp: { s: number; a: number; h: number }; ma
         const color = HP_LAYER_COLOR[ly.k]
         return (
           <div key={ly.k} title={`${ly.zh} ${cur}/${Math.round(full)}`} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 10 }}>
-            <span style={{ flex: '0 0 24px', fontSize: 9.5, color: '#99a5b5', textAlign: 'right' }}>{ly.zh}</span>
-            <span style={{ flex: 1, height: '100%', background: 'rgba(0,0,0,.45)', borderRadius: 2, overflow: 'hidden' }}>
+            <span style={{ flex: '0 0 24px', fontSize: 9.5, color: 'rgb(var(--wui-dim))', textAlign: 'right' }}>{ly.zh}</span>
+            <span style={{ flex: 1, height: '100%', background: 'rgb(var(--wui-well) / 0.45)', borderRadius: 2, overflow: 'hidden' }}>
               <i style={{ display: 'block', height: '100%', width: `${ratio}%`, background: color, boxShadow: `0 0 4px ${color}`, transition: 'width .4s' }} />
             </span>
-            <span style={{ flex: '0 0 26px', fontSize: 9, fontFamily: 'var(--wui-mono)', color: '#99a5b5', textAlign: 'right' }}>{cur}</span>
+            <span style={{ flex: '0 0 26px', fontSize: 9, fontFamily: 'var(--wui-mono)', color: 'rgb(var(--wui-dim))', textAlign: 'right' }}>{cur}</span>
           </div>
         )
       })}
