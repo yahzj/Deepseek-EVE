@@ -21,7 +21,7 @@
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
 import { tuningMul } from './tuning'
-import type { GameState } from './state'
+import type { GameState, RngState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { salvagerCyclesOf } from './salvaging'
@@ -1917,13 +1917,28 @@ export function wormholeUnboxRoll(
   ctx: SimContext,
   boxItemId: string,
 ): WormholeUnboxDraw | null {
+  /**
+   * **开箱的独立随机子流**（2026-09-22 船长令：「所有货柜的开启，能否采用随机数种子固定？」
+   * ＋「**允许玩家通过改变开箱顺序来微调**」）：
+   * - 种子 = `hash(存档种子, 第 N 次货柜拆解)`（`N` = 全局货柜拆解计数，四种货柜混算，存存档、老档缺省 0）；
+   * - **不消费 `state.rng`** ⇒ 开箱前去跑商/打架/触发事件都**不影响**本箱结果（防刷成立），
+   *   读档重开 ⇒ `N` 回到同一值 ⇒ 同一箱结果相同（**刷不了**）；
+   * - 但**先开哪一箱由玩家决定** ⇒ 同一箱落在不同的 `N` 上会开出不同东西 ⇒ **顺序可微调**（船长要的）。
+   * - 一箱多件（军用 1~3 件 / 贵重品 10~20 件）全由这一条子流派生 ⇒ **整箱固定**。
+   * ⚠ 与仓内既有教训一致：**不能借用全局活种子**（`state.rng.count` 会随游戏漂移，同箱会开出两次不同结果）。
+   */
+  const rng: RngState = {
+    seed: (state.rng.seed ^ Math.imul((state.rng.box ?? 0) + 1, 0x9e3779b9)) >>> 0,
+    count: 0,
+  }
+  state.rng.box = (state.rng.box ?? 0) + 1 // 每次拆解一件 ⇒ N 前进一格（本箱的"序位"就此定下）
   // ① 图纸货柜：按层档过滤的两个池（先掷永久 / 一次性）
   const bpDepth = wormholeBpBoxDepthOf(boxItemId)
   if (bpDepth !== null) {
-    const permanent = nextRandom(state.rng) < WORMHOLE_BPBOX_PERMANENT_CHANCE
+    const permanent = nextRandom(rng) < WORMHOLE_BPBOX_PERMANENT_CHANCE
     const pool = permanent ? wormholePermanentPoolOf(ctx, bpDepth) : wormholeDilutionPoolOf(ctx, bpDepth)
     if (pool.length === 0) return null
-    const id = pool[nextInt(state.rng, pool.length)]!
+    const id = pool[nextInt(rng, pool.length)]!
     return { itemId: id, units: wormholePoolGrantUnitsOf(id), source: permanent ? 'permanent' : 'once' }
   }
   // ② 安全货柜：100% 族专属池
@@ -1935,9 +1950,9 @@ export function wormholeUnboxRoll(
   if (boxItemId === WORMHOLE_VALUABLES_BOX_ID) {
     const pool = WORMHOLE_LUXURY_ITEM_IDS.filter((id) => ctx.items.has(id))
     if (pool.length === 0) return null
-    const id = pool[nextInt(state.rng, pool.length)]!
+    const id = pool[nextInt(rng, pool.length)]!
     const span = WORMHOLE_VALUABLES_UNITS_MAX - WORMHOLE_VALUABLES_UNITS_MIN + 1
-    const units = WORMHOLE_VALUABLES_UNITS_MIN + nextInt(state.rng, span)
+    const units = WORMHOLE_VALUABLES_UNITS_MIN + nextInt(rng, span)
     return { itemId: id, units, source: 'valuables' }
   }
   /**
@@ -1949,8 +1964,8 @@ export function wormholeUnboxRoll(
     const pool = wormholeMk3PoolOf(ctx)
     if (pool.length === 0) return null
     const span = WORMHOLE_MILITARY_PIECES_MAX - WORMHOLE_MILITARY_PIECES_MIN + 1
-    const pieces = WORMHOLE_MILITARY_PIECES_MIN + nextInt(state.rng, span)
-    const picks = Array.from({ length: pieces }, () => pool[nextInt(state.rng, pool.length)]!)
+    const pieces = WORMHOLE_MILITARY_PIECES_MIN + nextInt(rng, span)
+    const picks = Array.from({ length: pieces }, () => pool[nextInt(rng, pool.length)]!)
     const [first, ...rest] = picks
     return {
       itemId: first!,
@@ -1971,7 +1986,7 @@ export function wormholeUnboxRoll(
   ].filter((b) => b.ids.length > 0 && b.weight > 0)
   if (buckets.length === 0) return null
   const total = buckets.reduce((s, b) => s + b.weight, 0)
-  let roll = nextRandom(state.rng) * total
+  let roll = nextRandom(rng) * total
   let hit = buckets[buckets.length - 1]!
   for (const b of buckets) {
     roll -= b.weight
@@ -1980,7 +1995,7 @@ export function wormholeUnboxRoll(
       break
     }
   }
-  const id = hit.ids[nextInt(state.rng, hit.ids.length)]!
+  const id = hit.ids[nextInt(rng, hit.ids.length)]!
   return { itemId: id, units: wormholePoolGrantUnitsOf(id), source: 'family' }
 }
 
