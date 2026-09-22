@@ -480,6 +480,16 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const rate = refineRate(state, engine.ctx)
 
   const [sec, setSec] = useState<'refine' | 'shelf' | 'craft' | 'shipyard'>(focusSec ?? 'refine')
+  /**
+   * **已经进过的子页**（2026-09-22 第 2 步）：进过一次就常驻，切换只切显示（详见下面渲染处的说明）。
+   * 初值 = 当前那一栏（含 `focusSec` 程序化跳转进来的落点），保证首屏只挂一个面板、不做无谓冷启动。
+   */
+  const [seenSec, setSeenSec] = useState<ReadonlySet<'refine' | 'shelf' | 'craft' | 'shipyard'>>(
+    () => new Set(['refine', 'shelf', 'craft', 'shipyard'].filter((k) => k === (focusSec ?? 'refine')) as Array<'refine' | 'shelf' | 'craft' | 'shipyard'>),
+  )
+  useEffect(() => {
+    setSeenSec((s) => (s.has(sec) ? s : new Set(s).add(sec)))
+  }, [sec])
   const { t } = useL10n()
   /**
    * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：
@@ -507,7 +517,9 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const [craftFocus, setCraftFocus] = useState<string | null>(null)
   useEffect(() => {
     if (!focusOreId && !craftFocus) return
-    document.querySelector('.app-belt-card.is-goto')?.scrollIntoView({ block: 'center' })
+    // ⚠ 只找**当前显示**那一栏里的高亮卡：第 2 步保活之后，`page-stack` 下同时挂着多个 `.ind-pane`，
+    //   隐藏栏里若还留着上一次的高亮（3.5 秒自清之前），全页 querySelector 可能先命中它 ⇒ 滚了个看不见的卡。
+    document.querySelector('.ind-pane:not(.is-off) .app-belt-card.is-goto')?.scrollIntoView({ block: 'center' })
     const t = window.setTimeout(() => {
       setFocusOreId(null)
       setCraftFocus(null)
@@ -682,35 +694,53 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
         </button>
       </div>
 
-      {sec === 'craft' ? (
-        <ManufacturingPanel
-          engine={engine}
-          onToast={onToast}
-          onNeedMineral={handleNeedMineral}
-          onGotoMarket={onGotoMarket}
-          onGotoWormhole={onGotoWormhole}
-          focusBlueprintId={craftFocus}
-        />
-      ) : sec === 'shipyard' ? (
-        <ShipyardPanel
-          engine={engine}
-          onToast={onToast}
-          onNeedMineral={handleNeedMineral}
-          onGotoMarket={onGotoMarket}
-          onGotoWormhole={onGotoWormhole}
-          focusBlueprintId={craftFocus}
-        />
-      ) : sec === 'shelf' ? (
-        <BlueprintShelfPanel
-          engine={engine}
-          onToast={onToast}
-          onGotoCraft={(bpId) => {
-            // 2026-09-20 零件体系：舰船书跳造船厂、其余书跳组装机；切栏 + 定位高亮那张卡
-            setSec(engine.ctx.shipBlueprints.has(bpId) ? 'shipyard' : 'craft')
-            setCraftFocus(bpId)
-          }}
-        />
-      ) : (
+      {/* ═══ 四个子页**保活**（2026-09-22 工业页卡顿修复第 2 步）═══
+          原先这里是 `sec === 'craft' ? … : sec === 'shipyard' ? …` 的三元链：同一时刻只挂载一个子页，
+          ⇒ 每次切换 = 旧面板整棵卸载 + 新面板从零重建（实测组装机 151 张卡 8298 节点：1× 花 75 ms、
+          弱机档 700 ms，"数秒的卡顿"正是它）。现在改成**首次进入才挂载、之后常驻**，切换只切显示：
+          `.ind-pane` 用 `display: contents`（面板照旧直接参与 `.page-stack` 的 flex 布局，不引入多余盒子），
+          隐藏时 `display: none`（不占位、不参与布局与绘制）。
+          ⚠ 与第 3 步配套：面板常驻后每次心跳仍会重渲染 ⇒ 靠卡片的实时指纹 `memo` 兜住，否则代价 ×4。
+          ⚠ 行为变化（已报船长）：面板内部的筛选/搜索/滚动位置**不再因切换而复位**。 */}
+      {seenSec.has('craft') ? (
+        <div className={`ind-pane${sec === 'craft' ? '' : ' is-off'}`}>
+          <ManufacturingPanel
+            engine={engine}
+            onToast={onToast}
+            onNeedMineral={handleNeedMineral}
+            onGotoMarket={onGotoMarket}
+            onGotoWormhole={onGotoWormhole}
+            focusBlueprintId={craftFocus}
+          />
+        </div>
+      ) : null}
+      {seenSec.has('shipyard') ? (
+        <div className={`ind-pane${sec === 'shipyard' ? '' : ' is-off'}`}>
+          <ShipyardPanel
+            engine={engine}
+            onToast={onToast}
+            onNeedMineral={handleNeedMineral}
+            onGotoMarket={onGotoMarket}
+            onGotoWormhole={onGotoWormhole}
+            focusBlueprintId={craftFocus}
+          />
+        </div>
+      ) : null}
+      {seenSec.has('shelf') ? (
+        <div className={`ind-pane${sec === 'shelf' ? '' : ' is-off'}`}>
+          <BlueprintShelfPanel
+            engine={engine}
+            onToast={onToast}
+            onGotoCraft={(bpId) => {
+              // 2026-09-20 零件体系：舰船书跳造船厂、其余书跳组装机；切栏 + 定位高亮那张卡
+              setSec(engine.ctx.shipBlueprints.has(bpId) ? 'shipyard' : 'craft')
+              setCraftFocus(bpId)
+            }}
+          />
+        </div>
+      ) : null}
+      {seenSec.has('refine') ? (
+      <div className={`ind-pane${sec === 'refine' ? '' : ' is-off'}`}>
         <Panel
           className="is-fill win-fixed-body"
           title={tr("ui.ShipPage.097")}
@@ -832,7 +862,8 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           ) : null}
           </div>
         </Panel>
-      )}
+      </div>
+      ) : null}
     </div>
   )
 }

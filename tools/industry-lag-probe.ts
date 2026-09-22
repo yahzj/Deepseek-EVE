@@ -187,12 +187,29 @@ const INSTALL = `(() => {
         }
       },
     },
-    /** 面板快照：page-stack 的**最后一个元素子节点** = 当前子页面板 */
+    /** 当前可见子页的**面板元素**（保活后 page-stack 下挂着多个 ind-pane，只有一个是显示的） */
+    panelEl() {
+      const root = document.querySelector('.page-stack')
+      if (!root) return null
+      const panes = [...root.querySelectorAll(':scope > .ind-pane')]
+      const visible = panes.find((p) => !p.classList.contains('is-off'))
+      return visible ? (visible.firstElementChild ?? visible) : root.children[root.children.length - 1]
+    },
+    /** 面板快照：**当前可见**的子页（工业页第 2 步之后四个子页保活，靠 ind-pane.is-off 切显示） */
     panel() {
       const root = document.querySelector('.page-stack')
       if (!root) return null
-      const p = root.children[root.children.length - 1]
-      return p ? { nodes: p.querySelectorAll('*').length, text: (p.textContent || '').length, cls: String(p.className) } : null
+      const panes = [...root.querySelectorAll(':scope > .ind-pane')]
+      const p = this.panelEl()
+      return p
+        ? {
+            nodes: p.querySelectorAll('*').length,
+            text: (p.textContent || '').length,
+            cls: String(p.className),
+            面板块数: panes.length,
+            面板总节点: panes.reduce((n, x) => n + x.querySelectorAll('*').length, 0),
+          }
+        : null
     },
     activeTab() {
       return [...document.querySelectorAll('.app-subtabs .app-subtab')].findIndex((b) => b.classList.contains('is-active'))
@@ -203,7 +220,19 @@ const INSTALL = `(() => {
      */
     armSwitch(wantIdx) {
       const p = this.panel()
-      this.sw = { wantIdx, prevNodes: p ? p.nodes : -1, prevText: p ? p.text : -1, t0: null, tRaw: null, t1: null, done: false, nodes: p ? p.nodes : -1, text: p ? p.text : -1 }
+      this.sw = {
+        wantIdx,
+        prevNodes: p ? p.nodes : -1,
+        prevText: p ? p.text : -1,
+        prevPanes: p ? p.面板块数 : 0,
+        t0: null,
+        tRaw: null,
+        t1: null,
+        done: false,
+        nodes: p ? p.nodes : -1,
+        text: p ? p.text : -1,
+        panes: p ? p.面板块数 : 0,
+      }
       if (!this.clickHooked) {
         this.clickHooked = true
         document.addEventListener('click', (e) => {
@@ -220,7 +249,12 @@ const INSTALL = `(() => {
         const nodes = now ? now.nodes : -1
         const text = now ? now.text : -1
         if (self.activeTab() === s.wantIdx && (nodes !== s.prevNodes || text !== s.prevText)) {
-          s.t1 = performance.now(); s.nodes = nodes; s.text = text; s.done = true; return
+          s.t1 = performance.now()
+          s.nodes = nodes
+          s.text = text
+          s.panes = now ? now.面板块数 : 0
+          s.done = true
+          return
         }
         requestAnimationFrame(poll)
       }
@@ -232,10 +266,10 @@ const INSTALL = `(() => {
       if (!s) return null
       return { ...s, active: this.activeTab() }
     },
-    /** 面板全文快照（按行）：用来判"这块界面还活着吗"——两次快照比行差即可 */
+    /** 面板全文快照（按行）：用来判"这块界面还活着吗"——两次快照比行差即可。
+     *  ⚠ 必须取**当前可见**的那一栏（第 2 步保活后 page-stack 下挂着多个 ind-pane）。 */
     textLines() {
-      const root = document.querySelector('.page-stack')
-      const p = root ? root.children[root.children.length - 1] : null
+      const p = this.panelEl()
       return p ? (p.innerText || '').split('\\n') : []
     },
     /** 两次快照的差异：返回变化行数 + 前几例（**冻结检测**：签名 gate 写漏了 ⇒ 这里会变成 0） */
@@ -355,6 +389,8 @@ interface SwitchReading {
   节点数: number
   文本量: number
   完成: boolean
+  /** 首次进入该子页（要付一次冷启动重建）；`false` = 保活命中，切换只切显示 */
+  首次进入: boolean
   /** 这一次切换窗口内的主线程任务增量（说明这 100~2000 ms 花在哪儿：脚本 / 布局 / 样式 / 其它） */
   切换耗能?: Record<string, number>
 }
@@ -869,6 +905,7 @@ async function main(): Promise<void> {
           节点数: sw.节点数,
           文本量: sw.文本量,
           完成: sw.完成,
+          首次进入: sw.首次进入,
           切换耗能: diffMetrics(ms0, ms1, Math.max(0.001, sw.端到端ms / 1000)),
         })
       }
@@ -892,6 +929,19 @@ async function main(): Promise<void> {
       输入排队: stat('输入排队ms'),
       提交: stat('提交ms'),
     }
+    /** 首次进入（要付冷启动重建）与再次切换（保活命中，只切显示）分开统计 —— 这是第 2 步的核心读数 */
+    const statOf = (arr: SwitchReading[], key: '端到端ms' | '提交ms'): { 次数: number; 中位: number; 最大: number } => {
+      const v = arr.map((s) => Number(s[key])).sort((a, b) => a - b)
+      return {
+        次数: v.length,
+        中位: v.length ? +v[Math.floor(v.length / 2)].toFixed(1) : 0,
+        最大: v.length ? +v[v.length - 1].toFixed(1) : 0,
+      }
+    }
+    const 首次 = statOf(switches.filter((s) => s.首次进入), '端到端ms')
+    const 再次 = statOf(switches.filter((s) => !s.首次进入), '端到端ms')
+    ;(summary as Record<string, unknown>)['首次进入'] = 首次
+    ;(summary as Record<string, unknown>)['再次切换'] = 再次
     const worst = [...switches].sort((a, b) => b.端到端ms - a.端到端ms)[0]
     console.log(
       `  ── 切换序列（${switches.length} 次）：端到端 中位 ${summary.端到端.中位} / 最大 ${summary.端到端.最大} ms · ` +
@@ -907,6 +957,10 @@ async function main(): Promise<void> {
           `样式 ${e['RecalcStyleDurationms']} ms（${e['RecalcStyleCount']} 次）· 主线程合计 ${e['TaskDurationms']} ms`,
       )
     }
+    console.log(
+      `     首次进入 ${首次.次数} 次：中位 ${首次.中位} / 最大 ${首次.最大} ms；` +
+        `再次切换 ${再次.次数} 次：中位 ${再次.中位} / 最大 ${再次.最大} ms`,
+    )
     ;(report.页面 as Record<string, unknown>)[page] = { 子页: perSub, 切换明细: switches, 切换汇总: summary, 切换序列观测窗: seriesPerf }
   }
 
@@ -931,12 +985,14 @@ interface RawSwitch {
   wantIdx: number
   prevNodes: number
   prevText: number
+  prevPanes: number
   t0: number | null
   tRaw: number | null
   t1: number | null
   done: boolean
   nodes: number
   text: number
+  panes: number
   active: number
 }
 interface SwitchTiming {
@@ -946,6 +1002,10 @@ interface SwitchTiming {
   节点数: number
   文本量: number
   完成: boolean
+  /** 这一下是不是**首次进入**该子页（= 面板块数变多了）⇒ 保活机制下只有首次才付重建代价 */
+  首次进入: boolean
+  面板块数: number
+  面板总节点: number
 }
 
 /** 等这一次切换落地（页面内 rAF 轮询已在跑），并拆出三段耗时 */
@@ -964,6 +1024,9 @@ async function pollSwitch(cdp: Cdp, timeoutMs = 30_000): Promise<SwitchTiming | 
         节点数: s.nodes,
         文本量: s.text,
         完成: s.done,
+        首次进入: s.panes > s.prevPanes,
+        面板块数: s.panes,
+        面板总节点: 0,
       }
     }
     await sleep(60)
