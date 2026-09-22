@@ -253,10 +253,10 @@
 > 越窗即封存（`npm run docs:seal`）；窗口大小 = 20 条，需要临时调大用 `--window=N`。
 
 - 2026-09-22：**通讯本地化（三号 · verify-activity-win → main · 船长令「你继续本地化」）**——
-**①读数**（`npm run l10n:scan` · 英文语境真档）：通讯页 **49 → 3 处**（只剩下一批要做的正文段落）。
+**①读数**（`npm run l10n:scan` · 英文语境真档）：通讯页 **49 → 0 处**（三批做完：发件人/主题行/送达时间 → 立场片/类型片/跳转说明 → 正文）。
 **②病根**：通讯文案在**数据侧**——`CommsMessageDef.subject`（`firstTaskMessages.ts` 13 封 + `messages.ts` 17 封）与 `commsFactions.ts` 的势力/部门 `name` 都是中文，core 还把发件人拼成「势力名 · 部门名」（`comms.ts` 的 `resolveCommsSender`）再交给界面。
 **③做法（data/core 一个字节没动）**：新增**渲染层单点** `ui/commsText.ts`——`commsSenderText()`（按**部门中文名**映射，13 条）、`commsSubjectText()`（按**消息稳定 id** 映射，30 条）、`commsClockText()`（用 core 导出的 `COMMS_DAY_MS` 自己算"第几天 + 时:分"，句子走 `ui.comms.044`）；查不到一律原样回落（新剧本漏登记看得见）。词条 **44 条**落 `ui.comms.001~044`，专名以游戏既有英文为准（Cinder Sector / Redring Corridor / Auro Waste Ring / Deadarmy / Low-sec，均取自 `packages/data/src/l10n.ts` 既译）。接线两处：`panels/CommsReader.tsx`（右栏 + 送达弹窗同源）与 `pages/CommsPage.tsx`（左栏列表）。
-**④剩下 3 处（下一批）**：**正文段落**（`body`，全库约 90 行 —— 与部门简介 `brief` 一起做）。**本批同批做掉的**：立场片「官方/民间/系统」、内容类型片「剧情/提示/委托」、跳转栏说明 16 句（`hint.text`）——三张映射表都在 `ui/commsText.ts`（中文即键，已按惯例声明 `l10n-keep`，词条 `ui.comms.045~066`），读数随之 **49 → 3**。
+**④正文（第三批）**：「第一次」13 封任务信的 **39 行正文**英译（`ui/commsText.ts` 的 `COMMS_BODY_EN`，按 `isEn()` 取用；**行数与中文逐行对齐**，不符则整段回落中文、绝不错行）；**物品/技能/舰船名一律用游戏既有官方英文**——用临时脚本从「内容 id → `packages/data/src/l10n.ts` 英文表」导出对照后逐条核对（Peridotite / Tritanium Alloy / Silvervein Supermetal / Reinforced Mining Laser MK1 / Basic AI core / Skipjack-class Frigate / Flyingfish-class Courier / Sandcat-class Mining Corvette / Civilian Hull Repair Unit / Civilian Repair Kit / Accelerated Learning / AI Core Operation / Reprocessing / Refining）；强调段落的高亮判定改为**比对中文原文**（英译整段替换后不能拿译文比对，否则高亮丢）。**未覆盖**：协会侧 17 封的 58 行正文与部门简介 `brief`（下一批）。
 **⑤闸门**：typecheck 四包 0 错 · `l10n:check` 未译读数仍 **0** · core 184 文件 / 2093 例全绿 · `content:check` ✅ · `ui:rot-check` ✅ · `build` ✅ · `docs:index` ✅。
 
 - 2026-09-22：**手册本地化（三号 · verify-activity-win → main · 船长令「先进行手册的本地化」）**——

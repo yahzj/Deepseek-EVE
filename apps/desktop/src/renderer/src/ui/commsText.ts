@@ -16,7 +16,7 @@
  * 本批未覆盖：正文段落（`body`，约 90 行）与部门简介（`brief`，悬停说明）——正文另开一遍。
  */
 import { COMMS_DAY_MS } from '@whale/core'
-import { tr } from '../i18n/locale'
+import { isEn, tr } from '../i18n/locale'
 
 /** 势力 / 部门 / 小队名 → l10n id（键 = 数据侧中文名，`ui.comms.001~013`） */
 const COMMS_NAME_ID: Record<string, string> = {
@@ -149,4 +149,91 @@ export function commsKindText(kind: string): string {
 export function commsHintText(text: string): string {
   const id = COMMS_HINT_ID[text]
   return id !== undefined ? tr(id) : text
+}
+
+/**
+ * **通讯正文的英文**（本批：「第一次」13 封任务信 = 39 行；协会侧 17 封的 58 行与部门简介 `brief` 下一批）。
+ *
+ * 为什么英文正文放在渲染层：正文里嵌着**玩家可见的物品/技能/舰船名与数值**，要与中文原文**逐行对齐**
+ * 整段替换；data / core 继续给中文兜底不动。
+ * ⚠ **物品与技能名一律用游戏既有官方英文**（2026-09-22 用临时脚本从"内容 id → `packages/data/src/l10n.ts`
+ * 英文表"导出对照后逐条核对）：Peridotite / Tritanium Alloy / Silvervein Supermetal /
+ * Reinforced Mining Laser MK1 / Basic AI core / Skipjack-class Frigate / Flyingfish-class Courier /
+ * Sandcat-class Mining Corvette / Civilian Hull Repair Unit / Civilian Repair Kit /
+ * Accelerated Learning / AI Core Operation / Reprocessing / Refining。
+ * ⚠ **行数必须与中文逐行对齐**：`commsBodyText()` 在行数不符时**回落到中文**（宁可整段中文，也不许错行串位）。
+ */
+const COMMS_BODY_EN: Record<string, readonly string[]> = {
+  'first-scan': [
+    'On the star map, those silhouettes are unknown signals nobody has read yet. Send a deep-space scanning craft over and one lights up.',
+    'Only once a system is lit do its routes, belts, bounties and wreck sites enter your work list. The more dangerous the system, the longer the scan.',
+    'Enclosed: one Reinforced Mining Laser MK1. A belt is next on the list, so fit it now.',
+  ],
+  'first-mine': [
+    'Belts yield raw ore, the refinery turns raw ore into materials, and most blueprints ask for materials.',
+    'Selling raw ore at market price does pay, but running it through the refinery first usually pays better.',
+    'Enclosed: 1,000 units of Peridotite. The refinery takes 100 units a batch, so this is ten batches.',
+  ],
+  'first-refine': [
+    'The refinery works in batches: it burns while the feed lasts and stops on its own when it runs out. Working a furnace by hand occupies one unit.',
+    'Refining adds 6% output per level and Reprocessing adds 3%; both maxed comes to 165%.',
+    'Enclosed: a Kinetic Ammo blueprint. Its material is Tritanium Alloy, which raw ore refines into.',
+  ],
+  'first-bounty': [
+    'Every system keeps standing bounties. The higher the tier, the thicker the hulls and the heavier the guns, and the better the pay and Association standing.',
+    'Standing is your pass on Association channels: market thresholds and wormhole scanning both read it, so banking some early never hurts.',
+    'Enclosed: one Skipjack-class Frigate. Add it to the fleet or repurpose it as a support ship.',
+  ],
+  'first-repair': [
+    'Shields refill on their own after a fight, but armor and hull damage carries across engagements, and only repair kits and station berths can fix it.',
+    'Before undocking, bring armor and hull above sixty percent; the trip gets a lot cheaper that way.',
+    'Enclosed: 1 Civilian Hull Repair Unit and 20 Civilian Repair Kits. Fit the unit and the ship can patch itself.',
+  ],
+  'first-salvage': [
+    'Wreck sites in a system can be salvaged by sending a ship over, and the wreckage you bring back refines into all kinds of materials.',
+    'The recycling unit can strip old modules out of wreckage as whole items. Wrecks marked rare are worth more and can hold better gear.',
+    'Enclosed: 1,000 m³ of high-sec pirate wreckage. Through the recycling unit it becomes materials and old modules.',
+  ],
+  'first-skill': [
+    'Skills train in real time and the queue keeps them going. Accelerated Learning compresses all training time.',
+    'AI Core Operation is the prerequisite for dispatching support ships and running automated lines, so training it early saves trouble.',
+    'Enclosed: one Basic AI core. You will want it for the support ship assignment next.',
+  ],
+  'first-ai': [
+    'An idle ship with an AI core can put to space on its own: mining, salvaging and standing by are all on offer, and each assignment takes one core.',
+    'Combat, hauling and wormhole scanning are too involved for now, so we still fly those ourselves.',
+    'Enclosed: 150 units of Tritanium Alloy and 50 of Silvervein Supermetal. The next production line can use exactly this batch.',
+  ],
+  'first-produce': [
+    'The assembler needs three things: a blueprint, materials and time. Fit an AI core and the line runs unattended.',
+    'Consumables like ammo and repair kits are the best candidates for a standing line; modules and ships are built to order.',
+    'Enclosed: 10,000 credits, working capital for the line and its resupply.',
+  ],
+  'first-order': [
+    'The market carries three kinds of orders: the standing buy and sell books, our own listings, and roaming buyers who snap up anything near the price line.',
+    'The closer your ask sits to the buy line, the faster it fills. Pricing high is a bet on a roaming buyer turning up.',
+    'Enclosed: 10,000 credits, plus a Sandcat-class ship blueprint. Follow it and you can build your own mining ship.',
+  ],
+  'first-ship': [
+    'Your first home-built ship has rolled out. Shipbuilding and module building are one chain: blueprint, materials, hangar berth.',
+    'A new hull lands in ship storage first. Move it into the fleet on the Ships page, then fit slots and ammo on the Fitting page before undocking.',
+    'Enclosed: 10,000 credits, seed money for the next hull.',
+  ],
+  'first-haul': [
+    'Station-to-station hauling settles per trip and the pay floats with the market. Cargo already aboard is unaffected.',
+    'Low-sec legs get ambushed. Leave margin in armor and hull before departure, and do not stake everything on one run.',
+    'Enclosed: one Flyingfish-class Courier. It suits the long routes better.',
+  ],
+  'first-wormhole': [
+    'With enough Association standing the wormhole scanning array can deploy: the passages it finds start at layer 1, and the deeper you go the deadlier and the richer it gets.',
+    'Inside, the work splits three ways: search, fight, withdraw. Anything you cannot carry out does not count, and whatever sits in temporary space is left behind on withdrawal.',
+    'Two unexplored wormhole coordinates are marked for you. Decide when to go in from the “Scan for wormholes” tab on the star map.',
+  ],
+}
+
+/** 正文段落（英文；查不到或行数不符 ⇒ 原样返回中文，绝不错行） */
+export function commsBodyText(id: string, paragraphs: readonly string[]): readonly string[] {
+  if (!isEn()) return paragraphs
+  const en = COMMS_BODY_EN[id]
+  return en !== undefined && en.length === paragraphs.length ? en : paragraphs
 }

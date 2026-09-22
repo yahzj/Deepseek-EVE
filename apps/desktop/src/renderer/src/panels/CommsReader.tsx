@@ -20,7 +20,7 @@ import { COMMS_REPLIES_ENABLED } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { tr } from '../i18n/locale'
-import { commsAlignText, commsClockText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { commsAlignText, commsBodyText, commsClockText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
 
 /**
  * 通讯器机身：**大圆角机身外框** + 左侧两颗实体键（SVG 线稿，恒定细描边）。
@@ -87,10 +87,12 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
           </span>
         ) : null}
       </div>
-      {/* 正文；`highlight` 里的段落加**既有强调样式**（`.app-report-highlight`：暗底 + 左侧强调竖条） */}
+      {/* 正文；`highlight` 里的段落加**既有强调样式**（`.app-report-highlight`：暗底 + 左侧强调竖条）。
+          ⚠ 强调判定**比对中文原文**（`entry.paragraphs[i]`）——英译整段替换后不能拿译文去比对，
+          否则高亮丢（`highlight` 存的是数据侧中文段落）。 */}
       <div className="app-comms-lines">
-        {entry.paragraphs.map((p, i) => (
-          <p key={i} className={`app-comms-text${entry.highlight?.includes(p) ? ' app-report-highlight' : ''}`}>
+        {commsBodyText(entry.id, entry.paragraphs).map((p, i) => (
+          <p key={i} className={`app-comms-text${entry.highlight?.includes(entry.paragraphs[i] ?? '') ? ' app-report-highlight' : ''}`}>
             {p}
           </p>
         ))}
