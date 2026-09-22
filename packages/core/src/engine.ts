@@ -42,7 +42,7 @@ import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
 import { matterTechNodes } from './matterTech'
-import { claimFirstTask } from './firstRewards'
+import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -209,6 +209,19 @@ export function advanceGame(
     }
   }
   if (state.firstTaskAutoClaim === true) {
+    /**
+     * **先补发"当前那条的起手道具"**（**2026-09-22 船长裁决「甲」**）：
+     * 起手道具只在"某一条**轮到**时"发（`claimFirstTask` 收尾那一次点击），而**收口只补"已满足却没点过"
+     * 的那几条**——若老档正卡在**带起手道具的那六条**之一、且它自己的判据还没满足（收口循环一条都不走），
+     * 那一条的起手道具就**永远拿不到**了：采集原矿→强化采集器 MK1 · 打捞残骸→打捞器 MK1 ·
+     * 指派 AI 副船→基础 AI 核心 · 生产→150 三钛＋50 类铁 · 第一条船→沙猫级蓝图 · 虫洞→采集器＋打捞器各一台。
+     *
+     * ⇒ 在读档收口这一段**先补发一次当前那条的**（`grantStartRewardsForCurrent` 自带 `started` 去重，
+     * 重复调用不叠加），再跑下面的"已满足 ⇒ 照点击走完"循环。**零新增存档字段、零版本变更**
+     * （复用 v30→v31 打的那一次性标记；已经在旧代码下升过 v31 的档救不回来——那批档的起手道具
+     * 只能自购：采集器市场有售、`bp-miner-1` 可造，船长已知情并选定此口径）。
+     */
+    grantStartRewardsForCurrent(state, ctx)
     // 上限 20 只是护栏（13 条一轮足够）；每轮都重新取"当前可完成"，天然按顺序推进
     for (let guard = 0; guard < 20; guard += 1) {
       const c = claimableFirstTasks(state, ctx)[0]

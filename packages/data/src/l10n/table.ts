@@ -137,7 +137,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.ai.005": { zh: "这艘船已有 AI 任务。", en: "That ship already has an AI task." },
   "core.ai.006": { zh: "这艘船正在自动探索中（已锁定）：等它返航，或先在「扫描虫洞」页召回那一趟。", en: "That ship is on an automated exploration run (locked): wait for it to come home, or recall that run from the Wormhole Scan page first." },
   "core.ai.007": { zh: "该船耐久低于 50%，先维修再出任务。", en: "That ship is below 50% durability — repair it before assigning a task." },
-  "core.ai.008": { zh: "该副船没有打捞器：先在其高槽装上打捞器（MK1/2/3）再派打捞任务。", en: "That support ship has no salvager: fit one (MK1/2/3) into a high slot before assigning salvage." },
+  "core.ai.008": { zh: "该副船没有打捞器：先到「装配」页给它装一台（MK1/2/3）再派打捞任务。", en: "That support ship has no salvager: fit one (MK1/2/3) to it on the Fitting page before assigning salvage." },
   "core.ai.009": { zh: "已购入 基础 AI 核心（市场价 {p1} 信用点）。AI 核心 = 你的分身，可指派给闲置舰船。", en: "Bought a Basic AI core ({p1} credits at market price). An AI core is your stand-in and can be assigned to idle ships." },
   "core.ai.010": { zh: "基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ {p1} 信用点，到货自动入核心库（可随时撤销）。", en: "The Basic AI core supply book ran dry — a buy order was placed automatically @ {p1} credits, and stock lands in core storage on arrival (cancel it at any time)." },
   "core.ai.011": { zh: "[AI] {p1} 开始自动采集 {p2}（{p3}，效率 {p4}%，满舱自动回港卸货）。", en: "[AI] {p1} starts automated mining at {p2} ({p3}, efficiency {p4}%, returning to unload when full)." },
@@ -267,7 +267,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.firstRewards.001": { zh: "◆ 任务奖励已发放：{p1}。", en: "◆ Task rewards granted: {p1}." },
   /* ── 第六批：onboarding / matterTech / explore（`未知星系` 两文件复用 ⇒ 归 state 命名空间）── */
   "core.state.024": { zh: "未知星系：{p1}。", en: "Unknown system: {p1}." },
-  "core.onboarding.001": { zh: "◆ 重要任务发布「寻找人类」：完成方法未知——先在这座城市活下去，再慢慢打听。", en: "◆ Important task posted, “Find humanity”: how to complete it is unknown — survive in this city first, then start asking around." },
+  "core.onboarding.001": { zh: "◆ 重要任务发布「寻找人类」：完成方法未知——立足已稳，该往更深处打听了。", en: "◆ Important task posted, “Find humanity”: how to complete it is unknown — now that you are established, it is time to search further out." },
   "core.onboarding.002": { zh: "当前不在序章演出阶段。", en: "The prologue is not at that stage right now." },
   "core.onboarding.003": { zh: "自检完成——信息库重启，第一份简报已落在导航「通讯」里。", en: "Self-check complete — the archive rebooted and the first briefing is waiting in Comms." },
   "core.onboarding.004": { zh: "序章演出已结束。", en: "The prologue has already finished." },

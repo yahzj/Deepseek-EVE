@@ -311,6 +311,50 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(1)
   })
 
+  /**
+   * **老档一次性收口时，当前那条的起手道具也要补发**（**2026-09-22 船长裁决「甲」**）。
+   *
+   * 现场 = 老档正卡在「第一次采集原矿」且**判据还没满足**（`mineUnits = 0`）⇒ 收口循环里
+   * `claimableFirstTasks` 一条都不返回 ⇒ 若不补发，这条自己的起手道具（强化采集器 MK1）
+   * 就永远拿不到（起手道具只在"轮到那一刻"由 `claimFirstTask` 发）。
+   */
+  it('老档收口：**卡在「第一次采集原矿」的老档也拿得到采集器 MK1**（船长 2026-09-22 裁决「甲」）', () => {
+    const state = testState()
+    state.importantTasks['first-scan'] = { done: true } // 老档：扫描早已完成
+    state.firstTaskAutoClaim = true // v30→v31 迁移打的一次性收口标记
+    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-mine'])
+    expect(state.moduleBay['mod-miner-1'] ?? 0, '补发前手上没有采集器').toBe(0)
+
+    engineTick(state, 1000, ctx)
+
+    expect(state.moduleBay['mod-miner-1'] ?? 0, '补发当前那条（第一次采集原矿）的起手道具').toBe(1)
+    expect(state.importantTasks['first-mine']?.started).toBe(true)
+    expect(state.firstTaskAutoClaim, '收口跑完即删键（一次性）').toBeUndefined()
+
+    // 幂等：再走几拍不叠加
+    engineTick(state, 1000, ctx)
+    engineTick(state, 1000, ctx)
+    expect(state.moduleBay['mod-miner-1'] ?? 0).toBe(1)
+  })
+
+  it('老档收口：**当前那条已满足** ⇒ 照点击走完 ＋ 下一条的起手道具一并到手（同一条单点）', () => {
+    const state = testState()
+    state.importantTasks['first-scan'] = { done: true }
+    state.firstStats = { ...(state.firstStats ?? {}), mineUnits: 5 } // 判据已满足（已采过 5 单位）
+    state.firstTaskAutoClaim = true
+
+    engineTick(state, 1000, ctx)
+
+    // ① 当前那条（采矿）自己的起手道具：采集器 MK1
+    expect(state.moduleBay['mod-miner-1'] ?? 0).toBe(1)
+    // ② 收口循环按点击同款推进：写 done ＋ 发完成奖励（1,000 单位橄榄岩）
+    expect(state.importantTasks['first-mine']?.done).toBe(true)
+    expect(state.warehouse.items[BELT_ORE] ?? 0).toBeGreaterThanOrEqual(1_000)
+    // ③ 推进后轮到「第一次操作精炼炉」⇒ 它的起手道具也照常发（本表该条无起手道具 ⇒ 只验轮到）
+    expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-refine'])
+    expect(state.firstTaskAutoClaim).toBeUndefined()
+  })
+
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
     const state = testState()
     reachQueue(state, 'first-ship') // 顺序解锁：先推到它前面
