@@ -2295,6 +2295,10 @@ export type AchievementSource =
   | { kind: 'task'; taskId: string }
   | { kind: 'chain'; chainId: string; level: number }
   | { kind: 'milestone'; stat: string; target: number }
+  /** **铁人档徽章**（2026-09-23 船长令）：进入铁人模式即得；**普通档玩家不可见** */
+  | { kind: 'ironman' }
+  /** **关闭铁人徽章**：关闭那一刻才可见/可得（隐藏徽章） */
+  | { kind: 'ironmanClosed' }
 
 /**
  * 徽章分类（界面分组用）：
@@ -2303,7 +2307,7 @@ export type AchievementSource =
  * - `milestone`：**里程碑成就**（第二批，2026-09-20 落码 —— 内容与阈值见
  *   `data/src/achievements.ts`，展示改版见工作文档 `docs/design/achievement-display-20260920.md`）。
  */
-export type AchievementCategory = 'first-task' | 'chain' | 'milestone'
+export type AchievementCategory = 'first-task' | 'chain' | 'milestone' | 'ironman'
 
 /**
  * **徽章定义**（数据表条目；发放判定在 `core/achievements.ts`）。
@@ -2319,6 +2323,8 @@ export interface AchievementDef {
   pattern: string
   /** 图案颜色（十六进制；取本仓既有"同造型按档分色"语汇，不新造颜色） */
   tone: string
+  /** **隐藏徽章**（船长 2026-09-23）：未达成前**不出现在成就页**（铁人两枚专用） */
+  hidden?: boolean
   source: AchievementSource
 }
 

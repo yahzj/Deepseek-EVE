@@ -30,6 +30,7 @@
  */
 import type { GameState } from './state'
 import type { AchievementDef, AchievementSource } from './types'
+import { ironmanClosed, ironmanEver } from './ironman'
 import { firstStatOf } from './firstTasks'
 import type { FirstStatKey } from './firstTasks'
 
@@ -48,6 +49,9 @@ function tableOf(defs: readonly AchievementDef[] | undefined): readonly Achievem
 export function achievementReached(state: GameState, source: AchievementSource): boolean {
   if (source.kind === 'task') return state.importantTasks[source.taskId]?.done === true
   if (source.kind === 'milestone') return firstStatOf(state, source.stat as FirstStatKey) >= source.target
+  // **铁人两枚**（2026-09-23 船长令）：现算 ⇒ 老档/漏发/读档统统自愈、幂等
+  if (source.kind === 'ironman') return ironmanEver(state)
+  if (source.kind === 'ironmanClosed') return ironmanClosed(state)
   return chainProgress(state, source.chainId) >= source.level
 }
 
@@ -113,7 +117,13 @@ export function achievementOverview(
   defs: readonly AchievementDef[] | undefined,
 ): Array<{ def: AchievementDef; earnedAt: number | null; earnedWallMs: number; legacy: boolean; reached: boolean }> {
   const earned = state.achievements?.earned ?? {}
-  return tableOf(defs).map((def) => {
+  /**
+   * **隐藏徽章过滤**（**2026-09-23 船长令**：「只有关闭后才出现。否则玩家不可见，铁人模式的徽章同理」）：
+   * hidden 且**未到手** ⇒ 不进总览（玩家眼里它不存在）；到手之后照常显示（含它的到手时刻）。
+   */
+  return tableOf(defs)
+    .filter((def) => def.hidden !== true || earned[def.id] !== undefined)
+    .map((def) => {
     const rec = earned[def.id]
     return {
       def,

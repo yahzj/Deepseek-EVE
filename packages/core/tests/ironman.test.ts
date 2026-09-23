@@ -11,6 +11,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { ensureMarket, slowSupplyDraw } from '../src/market'
+import { achievementOf } from '@whale/data'
+import { achievementReached } from '../src/achievements'
 import { makeTestCtx, moduleDef } from './helpers'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
@@ -266,5 +268,28 @@ describe('铁人模式 · 存档往返（新字段必须随档）', () => {
     delete raw.state.ironman
     const back = loadSaveFile(JSON.stringify(raw)).state
     expect(ironmanOf(back)).toEqual({ on: false, seq: 0 })
+  })
+})
+
+describe('铁人模式 · 两枚隐藏徽章（船长 2026-09-23）', () => {
+  it('登记：两枚都在徽章表里、都带 hidden、判定来源是两个新模式；进入铁人即得"铁人"', () => {
+    const iron = achievementOf('ach-ironman')
+    const closed = achievementOf('ach-ironman-closed')
+    expect(iron?.hidden, '「铁人」是隐藏徽章').toBe(true)
+    expect(closed?.hidden, '「关闭铁人」是隐藏徽章').toBe(true)
+    expect(iron?.category).toBe('ironman')
+    expect(closed?.category).toBe('ironman')
+    // 普通档：两枚都未达成（⇒ 界面按 hidden 过滤后看不见）
+    const normal = createInitialState({ nowWallMs: 0, seed: 21 })
+    expect(achievementReached(normal, iron!.source)).toBe(false)
+    expect(achievementReached(normal, closed!.source)).toBe(false)
+    // 进入铁人：铁人这枚现算即得；关闭那枚仍未达成
+    enterIronman(normal, 1_000)
+    expect(achievementReached(normal, iron!.source)).toBe(true)
+    expect(achievementReached(normal, closed!.source)).toBe(false)
+    // 关闭后：两枚都达成（代次冻结、关闭那一刻才出现）
+    closeIronman(normal, 2_000)
+    expect(achievementReached(normal, iron!.source), '曾经是铁人 ⇒ 这枚保留').toBe(true)
+    expect(achievementReached(normal, closed!.source)).toBe(true)
   })
 })
