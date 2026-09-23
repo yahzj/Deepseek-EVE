@@ -18,5 +18,13 @@
  * 拿不准就以 `npm run skilltree:export` 导出的表里那一行的 `x`/`y` 为基准加减）。
  */
 export const SKILL_TREE_POSITIONS: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {
-  // 例：'mining': { x: 152, y: 154 },
+  /**
+   * **武装舰操作 → 与「战列舰操作」同列**（**2026-09-23 船长令**：「将技能武装舰操作移动到和战列舰操作同列。」）。
+   *
+   * 依据 = `npm run skilltree:export` 当次读数（`b-warship` 技能书 · 网格 116×102、第 n 列中心 `84+116n`）：
+   * 战列舰操作在 **列 3**（`x=432`，行 2）、武装舰操作原在 **列 0**（`x=84`，行 0）⇒ 把它的 `x` 改成 **432**、
+   * `y` 保持 52（列 3 的第 0 行本来空着）——于是它正落在战列舰操作**正上方**，四条舰种操作（护卫/驱逐/巡洋/
+   * 战列）照旧排在下面。
+   */
+  'armed-ops': { x: 432, y: 52 },
 }
