@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { advanceRefining, fragmentRedeemRowsOf, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
+import { advanceRefining, fragmentRedeemRowsOf, RARE_UNIT_M3, redeemFragments, startRecycleRun, stopRefineRun } from '../src/industry'
 import { RECYCLE_BATCH_M3, RECYCLE_CYCLE_MS, RECYCLE_POOL_AVG_ISK, RECYCLE_POOLS, RARE_WRECK_VOLUME_M3 } from '../src/salvage'
 import { addItem, addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -205,11 +205,11 @@ describe('残骸回收批（精炼炉运转）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 31 })
     const ctx = ctxOf()
     const wreckId = wreckItemIdOf('ano-grave')
-    addWare(state, wreckId, 10) // 正好一批
+    addWare(state, wreckId, RECYCLE_BATCH_M3) // 正好一批（普通残骸 = 100 m³）
     const r0 = startRecycleRun(state, wreckId, 'pilot', ctx)
     expect(r0.ok).toBe(true)
     expect(state.refineRuns[0]!.recipe).toBe('recycle')
-    expect(state.refineRuns[0]!.batchUnits).toBe(10)
+    expect(state.refineRuns[0]!.batchUnits).toBe(RECYCLE_BATCH_M3)
     expect(countMinerals(state, ctx)).toBe(0)
     state.gameMs = 25_000 // 一批到点
     advanceRefining(state, ctx)
@@ -232,13 +232,13 @@ describe('残骸回收批（精炼炉运转）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 34 })
     const ctx = ctxOf()
     const wreckId = wreckItemIdOf('ano-grave')
-    addWare(state, wreckId, 30) // 3 批
+    addWare(state, wreckId, RECYCLE_BATCH_M3 * 3) // 3 批
     expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
     state.gameMs = 25_000
     advanceRefining(state, ctx) // 批 1 → 余 20
     state.gameMs = 50_000
     advanceRefining(state, ctx) // 批 2 → 余 10
-    removeWare(state, wreckId, 6) // 卖掉/他用掉 6 → 余 4，不足一批
+    removeWare(state, wreckId, RECYCLE_BATCH_M3 - 4) // 卖掉/他用掉一批只差 4 → 余 4，不足一批
     state.gameMs = 75_000
     advanceRefining(state, ctx) // 下一批到点：不足一批 → 停工，余料保留
     expect(state.refineRuns).toHaveLength(0)
@@ -251,7 +251,7 @@ describe('残骸回收批（精炼炉运转）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 32 })
     const ctx = ctxOf()
     const wreckId = wreckItemIdOf('ano-grave')
-    addWare(state, wreckId, 40) // 4 批
+    addWare(state, wreckId, RECYCLE_BATCH_M3 * 4) // 4 批
     expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
     state.gameMs = 25_000
     advanceRefining(state, ctx) // 第 1 批
@@ -287,7 +287,7 @@ describe('残骸回收批（精炼炉运转）', () => {
       const ctx = ctxOf()
       if (lv > 0) state.skills.trained['salvage-recycling'] = lv
       const wreckId = wreckItemIdOf('ano-grave')
-      addWare(state, wreckId, 40)
+      addWare(state, wreckId, RECYCLE_BATCH_M3 * 4)
       expect(startRecycleRun(state, wreckId, 'pilot', ctx).ok).toBe(true)
       return state.refineRuns[0]!.cycleMs
     }
@@ -503,7 +503,7 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
       const ctx = rareCtx()
       addWare(state, RARE_ID, m3)
       expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
-      state.gameMs = RECYCLE_CYCLE_MS * (m3 / RECYCLE_BATCH_M3) + RECYCLE_CYCLE_MS
+      state.gameMs = RECYCLE_CYCLE_MS * (m3 / RARE_UNIT_M3) + RECYCLE_CYCLE_MS
       advanceRefining(state, ctx)
       expect(boxes(state), `${m3} m³ 应给 ${want} 次彩头`).toBe(want)
       expect(state.refineRuns).toHaveLength(0) // 料尽自动停炉（普通机制）
@@ -511,40 +511,44 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
     }
   })
 
-  it('不足 30 m³ 不给彩头（普通回收照常出矿物）；凑够 30 m³ 时补上一次', () => {
+  it('起炉门槛 = 30 m³（乙案）：不足直接拒绝起炉；一炉一件 ⇒ 必给一次彩头', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const ctx = rareCtx()
+    /**
+     * **2026-09-23 船长令（乙：稀有批 = 起炉门槛 = 30 m³）后的语义**：旧的「不足 30 m³ 也能起炉、
+     * 只是不给彩头」在本案下**不可能发生**（起炉就要求 ≥30，而一批正好烧 30）⇒ 这里改钉新语义：
+     * ① 低于 30 m³ **拒绝起炉**；② 凑够 30 m³ 一炉烧完 ⇒ **必给一次**彩头、料烧光。
+     */
     addWare(state, RARE_ID, 20)
+    const short = startRecycleRun(state, RARE_ID, 'pilot', ctx)
+    expect(short.ok).toBe(false)
+    expect(short.error ?? '').toContain('不足一批')
+    expect(state.rareBurnUnits[RARE_ID] ?? 0).toBe(0) // 没开炉 ⇒ 累计账本不动
+    addWare(state, RARE_ID, 10) // 凑够 30
     expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
-    state.gameMs = RECYCLE_CYCLE_MS * 5
-    advanceRefining(state, ctx)
-    expect(boxes(state)).toBe(0) // 累计只到 20 m³
-    expect(state.rareBurnUnits[RARE_ID]).toBe(20) // 账本记着，下次接着累计
-    // 再补 10 m³ → 累计跨过 30 → 必给一次
-    addWare(state, RARE_ID, 10)
-    expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
-    state.gameMs = RECYCLE_CYCLE_MS * 12
+    state.gameMs = RECYCLE_CYCLE_MS * 2
     advanceRefining(state, ctx)
     expect(boxes(state)).toBe(1)
-    expect(state.rareBurnUnits[RARE_ID]).toBe(30)
+    expect(state.rareBurnUnits[RARE_ID]).toBe(RARE_UNIT_M3)
   })
 
   it('累计账本随存档往返保留：读档不会重置累计（否则"存档→重开"能反复白拿彩头）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const ctx = rareCtx()
-    addWare(state, RARE_ID, 20)
+    // **2026-09-23（乙案）**：稀有批 = 起炉门槛 = 30 m³ ⇒ 这里改成"烧完一批（30）再存档"，
+    // 旧写法用 20 m³ 起炉在新门槛下会被直接拒绝（不足一批）。
+    addWare(state, RARE_ID, RARE_UNIT_M3 * 2)
     expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
-    state.gameMs = RECYCLE_CYCLE_MS * 3
-    advanceRefining(state, ctx)
-    expect(boxes(state)).toBe(0)
+    state.gameMs = RECYCLE_CYCLE_MS * 2
+    advanceRefining(state, ctx) // 批 1：烧掉 30 → 必给一次彩头，还剩 30
+    expect(boxes(state)).toBe(1)
     const loaded = loadSaveFile(serializeSaveFile(state, 1)).state
-    expect(loaded.rareBurnUnits[RARE_ID]).toBe(20) // 修前：账本没落盘 ⇒ 读档后从 0 重新累计
-    // 读档后补 10 m³：累计应从 20 接着走到 30，只给一次彩头
-    addWare(loaded, RARE_ID, 10)
-    expect(startRecycleRun(loaded, RARE_ID, 'pilot', ctx).ok).toBe(true)
-    loaded.gameMs += RECYCLE_CYCLE_MS * 6
+    expect(loaded.rareBurnUnits[RARE_ID]).toBe(RARE_UNIT_M3) // 修前：账本没落盘 ⇒ 读档后从 0 重新累计
+    // 读档后继续烧剩下那一批：累计从 30 走到 60，再给一次彩头（不会因读档重复给）
+    loaded.gameMs += RECYCLE_CYCLE_MS * 2
     advanceRefining(loaded, ctx)
-    expect(loaded.logs.filter((l) => l.text.includes('额外战利品')).length).toBe(1)
+    expect(loaded.logs.filter((l) => l.text.includes('额外战利品')).length).toBe(2)
+    expect(loaded.rareBurnUnits[RARE_ID]).toBe(RARE_UNIT_M3 * 2)
   })
 })
 

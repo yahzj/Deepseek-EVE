@@ -400,15 +400,17 @@ export function startRecycleRun(
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   // 2026-09-06（船长反馈：数量不足仍能开工）：起炉需 ≥ 一批；运行中余量不足的"尾批"处理不受影响
-  // ⚠ **2026-09-23 核出的既有设计**：稀有残骸与普通残骸**共用同一个批大小**（见本函数下方 2026-09-11
-  // 的最终口径注释「批大小仍与普通残骸一致（`RECYCLE_BATCH_M3`）」；`RARE_UNIT_M3` 只是**彩头节奏**
-  // （每烧满 30 m³ 必给一次），**不是批大小**）⇒ 这里**不按残骸类型分支**，改常量即两边同步。
-  if (available < RECYCLE_BATCH_M3) {
+  // **2026-09-23 船长令**：「稀有残骸就是 30 起炉。普通残骸 100 起炉」＋问「批大小为什么要公用」⇒ 裁定**乙**：
+  // **普通残骸 = 批 100 m³ / 起炉 100**、**稀有残骸 = 批 30 m³ / 起炉 30**（`RARE_UNIT_M3` = 一件的体积）。
+  // 于是稀有一炉 = 一件 = **必给一次彩头**（节奏 1:1，"一炉一件"名副其实）；09-11 定下的"不预占、不分件、
+  // 彩头按体积必给"三条全部保留，只是批大小不再与普通共用。
+  const batchM3 = isRareWreck(wreckItemId) ? RARE_UNIT_M3 : RECYCLE_BATCH_M3
+  if (available < batchM3) {
     return {
       ok: false,
-      error: `残骸不足一批（每批 ${RECYCLE_BATCH_M3} m³，现有 ${Math.round(available * 100) / 100} m³）——先凑够同型号残骸再拆解。`,
+      error: `残骸不足一批（每批 ${batchM3} m³，现有 ${Math.round(available * 100) / 100} m³）——先凑够同型号残骸再拆解。`,
       errorId: 'core.industry.011',
-      errorParams: { p1: RECYCLE_BATCH_M3, p2: Math.round(available * 100) / 100 },
+      errorParams: { p1: batchM3, p2: Math.round(available * 100) / 100 },
     }
   }
   /**
@@ -464,7 +466,7 @@ export function startRecycleRun(
     worker,
     recipe: 'recycle',
     itemId: wreckItemId,
-    batchUnits: RECYCLE_BATCH_M3,
+    batchUnits: batchM3,
     cycleMs: cycleEff,
     finishAtGameMs: state.gameMs + cycleEff,
     batchesDone: 0,
