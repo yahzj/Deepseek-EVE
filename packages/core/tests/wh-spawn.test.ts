@@ -29,11 +29,12 @@ import {
   wormholeMakeGrid,
 } from '../src/wormholeGrid'
 import { wormholeSpawnAfterTurns } from '../src/wormholeSpawn'
-import { wormholeStartBattle } from '../src/wormholeBattle'
+import { advanceWormhole, wormholeStartBattle } from '../src/wormholeBattle'
 import { wormholeGrantShipSpoils } from '../src/wormholeSalvage'
 import { advanceComms, commsInbox, commsTriggerMet } from '../src/comms'
 import { RARE_WRECK_VOLUME_M3 } from '../src/salvage'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { advanceBattleFor } from '../src/combat'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -181,6 +182,53 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     expect(commsTriggerMet(state, ctx, { kind: 'wormholeSiege' })).toBe(true)
     advanceComms(state, ctx)
     expect(commsInbox(state, ctx).map((m) => m.id)).toContain('msg-wh-siege')
+  })
+
+  /**
+   * **端到端：真开一场围剿**（船长 2026-09-23：「**你可以作弊带 4 艘战列舰，目前只是测试这个敌人
+   * 是否正常生成以及战斗是否正常**」）。
+   *
+   * 本用例钉的就是那两件事：**围剿者有没有真的进场**（编成/敌卡/我方 4 舰）＋ **战斗有没有真的跑起来**
+   * （时钟前进、我方与敌方都在结算）。⚠ **"打赢之后"那一段没能自动化**：层 7 威胁（89）之下，
+   * 试过 4 艘玄武（T4）＋ 每拍给敌我双方改血条，引擎的收口判据仍判负（它不看这两处）——
+   * 该分支（清 `foe.cleared` ＋ spawn 形状战果）眼下由"战果形状"用例（⑦）与实现里那两行覆盖，
+   * **留待船长实机打赢一场来验**。
+   */
+  it('⑩ 端到端：真开一场围剿——围剿者正常进场、战斗正常推进、收口不留半截状态', () => {
+    const state = enterAt(7)
+    // 作弊：洞内入场有质量上限（16,000），4 艘 T4（4×7,000）进不来 ⇒ 先照常入场再换 `run.fleet`
+    const bb = [0, 1, 2, 3].map(() => addShipToFleet(state, 'sh-xuanwu'))
+    state.wormhole.run!.fleet = bb
+    state.shipId = bb[0]!
+    const grid = smallGrid(state)
+    grid.cells[0]!.place = 'vein' // 原内容 = 矿脉（打掉后才该回来）
+    const cell = grid.cells[0]!
+    const r = wormholeSpawnAfterTurns(state, 1)
+    expect(r.ambush, '唯一候选格就是玩家脚下 ⇒ 必触发袭击').toBe(true)
+    expect(revealOf(grid, { q: 0, r: 0 }), '未扫描也看得到围剿者').toEqual({ kind: 'foe' })
+    const s = wormholeStartBattle(state, ctx, 'node')
+    expect(s.ok, s.error ?? '').toBe(true)
+    const battle = state.wormhole.run!.battle!
+    expect(battle.wormhole!.kind, "界面调 'node' 也会按 'spawn' 打").toBe('spawn')
+    expect(state.wormhole.run!.pendingNodeBattle, '开战即清"待迎战"标记').toBe(false)
+    // ① 围剿者**真的进场了**（有敌舰单位），且我方 4 舰都在场
+    const foeTags = Object.keys(battle.units).filter((t) => t.startsWith('foe'))
+    expect(foeTags.length, '围剿者要真的进场').toBeGreaterThan(0)
+    expect(battle.myFleet?.length ?? 0, '作弊编队 4 舰都在场').toBe(4)
+    // ② 战斗**真的在跑**：推进 30 拍，战斗时钟前进（收口走 `advanceWormhole`，第一道门是 `attending`）
+    state.wormhole.run!.attending = true
+    const t0 = battle.lastTickGameMs
+    for (let i = 0; i < 30 && state.wormhole.run?.battle; i += 1) {
+      state.gameMs += 1_000
+      advanceBattleFor(state, ctx, state.wormhole.run.battle, state.shipId, battle.wormhole!.cardId)
+      advanceWormhole(state, ctx)
+    }
+    expect(battle.lastTickGameMs, '战斗时钟应当前进').toBeGreaterThan(t0)
+    // ③ 收口不留半截状态：要么还在打（battle 在、run 在），要么已经打完结清（battle 空）
+    const after = state.wormhole.run
+    if (after !== null) expect(after.battle === undefined || after.battle === null || after.battle === battle).toBe(true)
+    // ④ 覆盖语义与围剿者同一把尺：没打掉 ⇒ 还压着（`hasLiveFoe` / 揭示档一致）
+    expect(hasLiveFoe(cell)).toBe(revealOf(grid, { q: 0, r: 0 }).kind === 'foe')
   })
 
   it('⑨ 存档往返：围剿者（格上 foe）与序号一起过档；老档缺字段照旧能用', () => {
