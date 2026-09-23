@@ -196,10 +196,13 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   } else if (isBox) {
     dataLine = tr("ui.IndustryPage.079", { p1: total.toLocaleString('zh-CN'), boxSeconds: boxSeconds })
   } else if (isWreck) {
-    // 稀有残骸：每炉锁死 1 件（30 m³）——数据行写清"一次起炉 = 开一箱"，免得玩家以为能把多件丢进一炉
+    // 稀有残骸：**2026-09-23 船长令（乙案）= 每批 30 m³（= 一件）、30 m³ 起炉** ⇒ 一炉一件 = 开一箱。
+    // ⚠ 这行文案的模板来自 **2026-09-10 的旧口径**（「每炉锁 30 m³ = 1 件」＋「每批 {RECYCLE_BATCH_M3}」），
+    // 两半分别绑不同的量；今天普通批改成 100 后，若还传 `RECYCLE_BATCH_M3` 就会出现
+    // 「锁 30 = 1 件 · 每批 100」这种自相矛盾（船长实测报障）⇒ 这里改传**稀有批 = `RARE_WRECK_VOLUME_M3`**。
     const qty = Math.round(total * 10) / 10
     dataLine = isRareBox
-      ? tr("ui.IndustryPage.080", { qty: qty, p2: Math.floor(total / RARE_WRECK_VOLUME_M3), RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3, RECYCLE_BATCH_M3: RECYCLE_BATCH_M3, p5: Math.round(RECYCLE_CYCLE_MS / 1000) })
+      ? tr("ui.IndustryPage.080", { qty: qty, p2: Math.floor(total / RARE_WRECK_VOLUME_M3), RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3, RECYCLE_BATCH_M3: RARE_WRECK_VOLUME_M3, p5: Math.round(RECYCLE_CYCLE_MS / 1000) })
       : tr("ui.IndustryPage.081", { qty: qty, RECYCLE_BATCH_M3: RECYCLE_BATCH_M3, p3: Math.round(RECYCLE_CYCLE_MS / 1000), p4: Math.ceil(total / RECYCLE_BATCH_M3) })
   } else {
     const batch = def.refineBatchUnits && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : 10
