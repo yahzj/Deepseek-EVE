@@ -867,6 +867,7 @@ export type { AiTaskView } from './ai'
 
 export {
   DEFAULT_OFFLINE_CAP_MS,
+  offlineCapMsOf,
   offlineSplit,
   formatDurationMs,
   simulateOffline,

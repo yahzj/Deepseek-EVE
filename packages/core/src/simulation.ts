@@ -45,6 +45,25 @@ export function offlineSplit(
 }
 
 /**
+ * **当前存档的离线结算上限**（含技能加成）——**结算与"超出上限"读数共用这一处**。
+ *
+ * 口径（加算叠加）：
+ * - 离线作业管理学 `offline-ops`（2026-09-08 船长定：+8% → **+20%/级**）：每级 +0.2（基础 8 小时，满级 16 小时）；
+ * - 无人值守调度学 `unattended-dispatch`（2026-09-20 船长定：上位技能 **+40%/级** · rank4）：每级 +0.4（满级 24 小时）；
+ *   两技能并存叠加：双满级 = 8h × (1 + 1.0 + 2.0) = **32 小时**。
+ *
+ * ⚠ **为什么要单点**（2026-09-22 船长报障「技能的离线时间上限不生效」）：原先只有 `simulateOffline`
+ * 内部算加成，而**引擎侧四处**（启动离线 / 读档 / 导入档 / 调试快进）各自用 `offlineSplit(…, 默认 8h)`
+ * 算"超出上限的未结算时长" ⇒ **结算按 16~32h 走、报告却按 8h 报**，玩家看到的是"技能没用"。
+ * 现在两处都读本函数，读数与结算必然一致。
+ */
+export function offlineCapMsOf(state: GameState, baseMs: number = DEFAULT_OFFLINE_CAP_MS): number {
+  const opsLv = Math.min(5, state.skills.trained['offline-ops'] ?? 0)
+  const dispatchLv = Math.min(5, state.skills.trained['unattended-dispatch'] ?? 0)
+  return Math.round(baseMs * (1 + 0.2 * opsLv + 0.4 * dispatchLv))
+}
+
+/**
  * 读档后的离线结算入口：
  * 1. 真实时钟没往前走（含回拨）→ 不做任何事；
  * 2. 推进游戏（技能升级/采矿产出/满舱事件的日志自然出现）；
@@ -60,13 +79,8 @@ export function simulateOffline(
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
-  // 离线结算上限双技能（加算叠加）：
-  // - 离线作业管理学 offline-ops（2026-09-08 船长定：+8% → +20%/级）：每级 +0.2（基础 8 小时，满级 16 小时）；
-  // - 无人值守调度学 unattended-dispatch（2026-09-20 船长定：上位技能 +40%/级 · rank4）：每级 +0.4（满级 24 小时）；
-  //   两技能并存叠加：双满级 = 8h × (1 + 1.0 + 2.0) = 32 小时。
-  const opsLv = Math.min(5, state.skills.trained['offline-ops'] ?? 0)
-  const dispatchLv = Math.min(5, state.skills.trained['unattended-dispatch'] ?? 0)
-  const capEff = Math.round(capMs * (1 + 0.2 * opsLv + 0.4 * dispatchLv))
+  // 离线结算上限（双技能加算）——与"超出上限"读数同源，见 `offlineCapMsOf`
+  const capEff = offlineCapMsOf(state, capMs)
   const { deltaMs, overflowMs } = offlineSplit(rawGap, capEff)
   if (deltaMs <= 0) return
 
