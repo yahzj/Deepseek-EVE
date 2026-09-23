@@ -1139,8 +1139,21 @@ export class GameEngine {
     text: string,
     incomingSavedAtWallMs: number,
   ): Promise<{ ok: true; rescue: boolean } | { ok: false; error: string }> {
+    /**
+     * ⚠ **账本拿不到 ⇒ 只少一层高度，判据照走**（**2026-09-23 船长实测报障**：「实机测试，铁人模式
+     * 并没有拦截备份存档和导入存档」）。原实现把"读账本"与"判闸门"写在同一个 try 里 ⇒ 旧主进程
+     * 没有 `ironman:ledger` 这个 IPC 时 `invoke` reject，被下面的 catch 当成"闸门自身出错"**静默放行**，
+     * 于是**整个闸门失效**（档内代次那层明明能判，却一起被跳过了）。
+     * 现口径：**账本单独 try**，拿不到就 `ledgerSeq = 0` 继续判；只有"待装载档解析不了"才放行。
+     */
+    let ledgerSeq = 0
     try {
       const ledger = await saveBridge.ironmanLedger()
+      if (ledger.ok) ledgerSeq = ledger.seq
+    } catch (err) {
+      console.warn('ironman ledger unavailable, gate degrades to in-save generations', err)
+    }
+    try {
       const incoming = loadSaveFile(text).state
       const now = Date.now()
       const verdict = ironmanLoadVerdict({
@@ -1152,7 +1165,7 @@ export class GameEngine {
         ironman: ironmanOn(this.state) || ironmanOn(incoming),
         incomingSeq: ironmanSeq(incoming),
         currentSeq: ironmanSeq(this.state),
-        ledgerSeq: ledger.ok ? ledger.seq : 0,
+        ledgerSeq,
         incomingSavedAtWallMs,
         nowWallMs: now,
       })
@@ -1162,8 +1175,8 @@ export class GameEngine {
       if (verdict.rescue) void saveBridge.ironmanNoteRescue()
       return { ok: true, rescue: verdict.rescue }
     } catch (err) {
-      // 闸门自身出错**不拦人**（宁可放行，也不要把玩家锁在自己的档外面）
-      console.warn('ironman gate failed', err)
+      // 待装载档解析不了 ⇒ **不拦人**（宁可放行，也不要把玩家锁在自己的档外面；真正的解析错误后面会照常报）
+      console.warn('ironman gate skipped (incoming save unreadable)', err)
       return { ok: true, rescue: false }
     }
   }
