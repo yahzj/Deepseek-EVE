@@ -1072,6 +1072,15 @@ export function advanceWormhole(
   // **临时离开 = 活动停止 ⇒ 洞内一切冻结**（船长 2026-09-13 批准 · 议案 A 第 4 条）：战斗不推进
   // （不掉血）、撤离不落地、收口不落地——回来接着打，进度原样在。
   if (run.attending !== true) return
+  /**
+   * **围剿者直接攻击**（**2026-09-23 船长公告定稿**：「围剿者正好落在玩家所在格时，**会直接攻击玩家的舰队**」）：
+   * 站在压着围剿者的格上、又没有在途战斗 ⇒ 本拍**自动开一场 `'spawn'` 战**（不弹确认条、不等玩家点）。
+   * 与"伏击/未扫描踩怪"那条确认链（`pendingNodeBattle`）有意分开：那两处仍按船长 2026-09-16 的口径先提示。
+   */
+  if (!run.battle && run.grid && run.pendingRuinsBattle !== true) {
+    const hereSpawn = gridCellAt(run.grid, run.grid.pos)
+    if (hereSpawn !== undefined && hasLiveFoe(hereSpawn)) wormholeStartBattle(state, ctx, 'spawn')
+  }
   if (run.battle) {
     /**
      * **冻结窗口（`freezeBattle`）⇒ 把战斗时钟整体前移，不是"留着以后补算"**

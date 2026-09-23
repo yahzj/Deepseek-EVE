@@ -134,7 +134,8 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     expect(r.spawned).toBe(1)
     expect(r.ambush).toBe(true)
     expect(hasLiveFoe(grid.cells[0]!)).toBe(true)
-    expect(state.wormhole.run!.pendingNodeBattle).toBe(true)
+    // **公告口径：直接攻击**（2026-09-23 船长定稿）⇒ **不置"待迎战"标记**，交火由引擎每拍自动开
+    expect(state.wormhole.run!.pendingNodeBattle ?? false, '不再走确认链').toBe(false)
     expect(state.logs.some((l) => l.text.includes('围剿者扑到你所在的位置'))).toBe(true)
     // 优先级：围剿者盖住该格的"未知/信号"显示（未扫描也看得见）
     expect(revealOf(grid, { q: 0, r: 0 })).toEqual({ kind: 'foe' })
@@ -210,7 +211,7 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     expect(s.ok, s.error ?? '').toBe(true)
     const battle = state.wormhole.run!.battle!
     expect(battle.wormhole!.kind, "界面调 'node' 也会按 'spawn' 打").toBe('spawn')
-    expect(state.wormhole.run!.pendingNodeBattle, '开战即清"待迎战"标记').toBe(false)
+    expect(state.wormhole.run!.pendingNodeBattle ?? false, '直接攻击口径：压根不置"待迎战"标记').toBe(false)
     // ① 围剿者**真的进场了**（有敌舰单位），且我方 4 舰都在场
     const foeTags = Object.keys(battle.units).filter((t) => t.startsWith('foe'))
     expect(foeTags.length, '围剿者要真的进场').toBeGreaterThan(0)

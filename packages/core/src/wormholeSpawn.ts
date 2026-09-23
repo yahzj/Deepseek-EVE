@@ -91,9 +91,13 @@ export function wormholeSpawnAfterTurns(state: GameState, turns: number): Wormho
    * 复用"踩中埋伏"那条确认链（`run.pendingNodeBattle`）⇒ 标记没清之前别的动作一律被拦
    * （`gridActionBlocked`），界面弹确认条、玩家点「迎战」即调 `wormholeStartBattle`。
    */
-  if (ambush && run.pendingNodeBattle !== true) {
-    run.pendingNodeBattle = true
-    addLog(state, 'warn', '🕳 围剿者扑到你所在的位置：先确认，再迎战。', 'core.wormholeSpawn.001')
+  if (ambush) {
+    /**
+     * **直接攻击**（**2026-09-23 船长公告定稿**：「围剿者正好落在玩家所在格时，**会直接攻击玩家的舰队**」）：
+     * 不再置"待迎战"标记、也不弹确认条——交火由引擎每拍自动开（见 `wormholeBattle.advanceWormhole`
+     * 里的 `hasLiveFoe(脚下格) ⇒ wormholeStartBattle('spawn')`）。
+     */
+    addLog(state, 'warn', '🕳 围剿者扑到你所在的位置：交火开始。', 'core.wormholeSpawn.001')
   }
   return { spawned, ambush, ...(lastKey !== undefined ? { lastKey } : {}) }
 }
