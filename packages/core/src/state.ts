@@ -10,6 +10,7 @@
  */
 
 import type { AiCoreType, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
+import type { WeekendEventState } from './weekendEvent'
 import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
@@ -2040,6 +2041,12 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
    * ⚠ 代次**必须与"存档之外的账本"配合**才有意义（账本在 `%APPDATA%` 下，重置档案不清空）。
    */
   ironman?: IronmanState
+  /**
+   * **周末入侵活动**（2026-09-23 船长令；设计见 `docs/design/weekend-invasion-20260923.md`）。
+   * ⚠ **老档没有这个键** ⇒ 一律读作"当前没有入侵"（零迁移；活动只在新窗口开启时写入）。
+   * 进度**不落盘逐格 tick**：`进度 = NPC 铺底(时间函数) + 玩家投入(台账)` ⇒ 离线一样能算。
+   */
+  weekendEvent?: WeekendEventState
 }
 /** 对外统一称呼：当前版本状态（v31 = v30 + 任务改手动完成） */
 /**
