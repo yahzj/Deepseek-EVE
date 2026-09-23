@@ -2504,7 +2504,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Hauling.025": { zh: "开始运输", en: "Start hauling" },
   "ui.Hauling.026": { zh: "运输中 · 本段驶往「{p1}」", en: "Hauling · this leg heads to “{p1}”" },
   "ui.Hauling.027": { zh: "本段驶往「{p1}」· 剩余约 {p2}", en: "This leg heads to “{p1}” · about {p2} left" },
-  "ui.Hauling.029": { zh: "（行情每趟一价 ×5~10）· 往返一趟约 {a} 信用点 · 时薪约 {b} ", en: "(the rate is rolled per trip, ×5–10) · a round trip pays about {a} credits · hourly about {b} " },
+  "ui.Hauling.029": { zh: "（行情每趟一价 ×5~10）· 往返一趟约 {a} 信用点", en: "(the rate is rolled per trip, ×5–10) · a round trip pays about {a} credits" },
+  /* 时薪单独一行（2026-09-23 船长令）：统一格式 `XXX~XXX 信用点/h`，金色 */
+  "ui.Hauling.036": { zh: "信用点/h", en: "credits/h" },
   "ui.Hauling.030": { zh: "无法开始运输。", en: "Cannot start the haul." },
   "ui.Hauling.031": { zh: "停止失败。", en: "Could not stop it." },
   "ui.Hauling.032": { zh: "空间站", en: "Station" },

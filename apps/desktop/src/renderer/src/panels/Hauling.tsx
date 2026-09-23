@@ -187,8 +187,14 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                   </div>
                   <div className="app-haul-line app-dim">
                     {shipName}{tr("ui.Hauling.018")} {cap.toLocaleString('zh-CN')} {tr("ui.Hauling.019")} {isk(range.min)} ~ {isk(range.max)} {tr('ui.FirstTasks.003')}
-                    {tr('ui.Hauling.029', { a: `${isk(range.min * 2)} ~ ${isk(range.max * 2)}`, b: `${isk(hourlyMin)} ~ ${isk(hourlyMax)}` })}{" "}
+                    {tr('ui.Hauling.029', { a: `${isk(range.min * 2)} ~ ${isk(range.max * 2)}` })}{" "}
                     {tr("ui.Hauling.020")}
+                  </div>
+                  {/* **时薪单独一行 + 金色 + 统一格式 `XXX~XXX 信用点/h`**（**2026-09-23 船长令**：
+                      「长途运输，将时薪单独列一行，并染成金色字体，改为统一格式 XXX~XXX 信用点/h」）——
+                      报酬每趟按行情浮动，故给区间；金色用独立类名，不走物品色调那套。 */}
+                  <div className="app-haul-line app-haul-hourly">
+                    {isk(hourlyMin)}~{isk(hourlyMax)} {tr('ui.Hauling.036')}
                   </div>
                   {isActive ? (
                     <div className="app-haul-line">

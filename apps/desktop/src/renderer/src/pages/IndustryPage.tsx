@@ -51,6 +51,8 @@ import { useL10n, cmdText } from '../i18n/locale'
 import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
+/** 活动卡「产出」读数（2026-09-23 船长令：残骸卡的信用点估价移除 ⇒ 改显示市场当前行情价） */
+import { marketPriceOf } from '../ui/yieldView'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3, wreckSourceGalaxyIdsOf } from './common'
 import { tr } from '../i18n/locale'
@@ -243,19 +245,18 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
               {mineralRows.map((r) => (
                 <div key={r.id} className="app-belt-out" title={mineralTip}>
                   {r.name} {tr("ui.IndustryPage.022")} {r.units}
+                  {/* **残骸的信用点收入估价已移除**（**2026-09-23 船长令**：「残骸的信用点收入估价可以移除」）：
+                      只留"仓库已拥有 + 市场当前行情价"，与其它卡同一套语言（取数见 `ui/yieldView.tsx`）。 */}
                   <span className="app-dim">
-                    {' '}≈{Math.round(r.isk).toLocaleString('zh-CN')} {tr("ui.IndustryPage.023")} {countWare(state, r.id).toLocaleString('zh-CN')}）
+                    {' '}
+                    （{tr('ui.Yield.002')} {countWare(state, r.id).toLocaleString('zh-CN')} · {tr('ui.Yield.003')}{' '}
+                    {marketPriceOf(state, engine.ctx, r.id)?.toLocaleString('zh-CN') ?? '—'}）
                   </span>
                 </div>
               ))}
             </>
           ) : null}
-          <div
-            className="app-belt-econ-val"
-            title={tr("ui.IndustryPage.024")}
-          >
-            {MONEY_GLYPH} {tr("ui.IndustryPage.025")}{evH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}
-          </div>
+          {/* 「保底 ≈N 信用点/h」整行已删（2026-09-23 船长令：残骸的信用点收入估价可以移除） */}
         </div>
       )
     }
