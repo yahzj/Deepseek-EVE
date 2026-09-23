@@ -2723,25 +2723,21 @@ export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, to
 }
 
 /** 装载指定弹 id（货仓优先、仓库兜底，单型一次抽足）；返回实装数 */
-function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {  if (total <= 0) return 0
-  const stock = Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id))
-  if (stock <= 0) return 0
-  let want = Math.min(stock, total)
-  let got = 0
-  const fromCargo = Math.min(want, Math.floor(cargoItemsOf(state)[id] ?? 0))
-  if (fromCargo > 0) {
-    removeItem(state, id, fromCargo)
-    want -= fromCargo
-    got += fromCargo
+function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {
+  void ctx
+  if (total <= 0) return 0
+  /**
+   * **取用来源二选一**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件直接从仓库
+   * 取用。关闭后只从舰队内舰船的货仓取用。」）——旧口径「货舱优先 → 仓库兜底」**退役**。
+   * 缺省（老档没有该字段）= **开**（只仓库）。
+   */
+  if (state.resupplyFromWarehouse !== false) {
+    const got = Math.min(Math.floor(countWare(state, id)), Math.floor(total))
+    if (got > 0) removeWare(state, id, got)
+    return got
   }
-  if (want > 0) {
-    const fromWare = Math.min(want, countWare(state, id))
-    if (fromWare > 0) {
-      removeWare(state, id, fromWare)
-      want -= fromWare
-      got += fromWare
-    }
-  }
+  const got = Math.min(Math.floor(cargoItemsOf(state)[id] ?? 0), Math.floor(total))
+  if (got > 0) removeItem(state, id, got)
   return got
 }
 
@@ -2995,32 +2991,19 @@ export function preloadRepairFor(
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
   }
-  // 装载（与 loadAmmo 同序：**本舰货舱**优先、仓库兜底）
-  // ⚠ 2026-09-16（船长裁定「甲：逐舰维修」）：旧口径读的是**驾驶船**货舱（`cargoItemsOf`）——
-  //   多舰编队里僚舰的组件来源被记到主控头上。现改为「**谁装装置、用谁的货舱**」；
-  //   主控那一份与旧口径**逐字相同**（主控 = `state.shipId` 时 `cargoOfShip` ≡ `cargoItemsOf`）。
-  const kits: Record<string, number> = {}
-  for (const [kitId, wantTotal] of need) {
-    let want = wantTotal
-    const fromCargo = removeCargoOfShip(state, shipId, kitId, want)
-    if (fromCargo > 0) want -= fromCargo
-    if (want > 0) {
-      const fromWare = Math.min(want, countWare(state, kitId))
-      if (fromWare > 0) {
-        removeWare(state, kitId, fromWare)
-        want -= fromWare
-      }
-    }
-    const got = wantTotal - want
-    if (got > 0) kits[kitId] = got
-  }
-  // 一枚组件都没装到的装置 → 开战即停机（脉冲逻辑跳过；缺料提示由 startBattleFor 日志给出）
-  // 无消耗自愈件不参与组件检查（永不因缺料停机）
-  for (const u of units) {
-    if (u.free) continue
-    if ((kits[u.kitId] ?? 0) <= 0) u.stopped = true
-  }
-  return { units, kits, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
+  /**
+   * **不再预载**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件直接从仓库取用。
+   * 关闭后只从舰队内舰船的货仓取用。」）——旧口径在开战时把"**整场窗口的用量**"从共享池**预留**到
+   * 各舰账本上（`perUnit = ⌈最长战斗时长 ÷ 5 秒⌉ + 1`），四舰按编队顺序取 ⇒ **排在最后的船一枚都拿不到、
+   * 开战即永久停机**（玩家报障根因；只读探针实测 121 + 242 + 80 + 0 = 443 把仓库清零）。
+   * 现改为**每跳按需取用**（见 `pulseRepairsFor`），账本只留"本场消耗了几枚"的报账口径
+   * ⇒ 共享池不再被顺序吃干。
+   * ⚠ **老档在途战斗零迁移**：账本里已预载的 `kits` 非空 ⇒ `pulseRepairsFor` 走旧口径（用光即停机）、
+   * 战后 `refundRepairKits` 也只对那份账本生效（新账本 `kits` 为空 ⇒ 退还循环自然空转）。
+   */
+  void need
+  void perUnit
+  return { units, kits: {}, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
 }
 
 /** 退还维修装置预载的未用组件（回仓库；与弹药退还同哲学）——战斗结束/撤退收场调用；幂等 */
@@ -3496,11 +3479,18 @@ function pulseRepairsFor(
       hp.h += hg0
       continue
     }
-    const kitNow = r.kits[u.kitId] ?? 0
-    if (kitNow <= 0) {
-      // 组件耗尽（预载余额用光）：本台停机。
-      // 2026-09-11 船长「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
-      // ⇒ **不再写日志**（战斗界面底部已有"运转中/已停机"状态与悬停说明，玩家仍看得见）
+    /**
+     * **组件从哪来**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件直接从仓库
+     * 取用。关闭后只从舰队内舰船的货仓取用。」）：
+     * - **旧账本**（在途战斗：`kits` 非空 = 开战预载留下的）⇒ 照旧扣预载余额、用光即停机（**零迁移**）；
+     * - **新账本**（`kits` 为空）⇒ **每跳现取 1 枚**：开 = 母港仓库；关 = **该舰自己的**货仓；
+     *   取不到 ⇒ **本跳跳过**（不永久停机——下一跳料来了就继续修）。
+     *   这条同时修掉"四舰按编队顺序把共享仓库预留吃干、最后一艘 0 枚开战即停机"那个报障。
+     */
+    const legacyLedger = Object.keys(r.kits).length > 0
+    const preloadLeft = r.kits[u.kitId] ?? 0
+    if (legacyLedger && preloadLeft <= 0) {
+      // 旧口径：预载余额用光 ⇒ 本台停机（老档在途战斗逐字保持改前行为）
       u.stopped = true
       u.nextPulseAtMs = undefined
       continue
@@ -3513,9 +3503,19 @@ function pulseRepairsFor(
     if (ag < u.armorPerPulse && hg < dh) hg += Math.min(u.armorPerPulse - ag, dh - hg) // 甲通道剩余 → 结构
     if (hg < u.hullPerPulse && ag < da) ag += Math.min(u.hullPerPulse - hg, da - ag) // 结构通道剩余 → 甲
     if (ag <= 0 && hg <= 0) continue // 痊愈空转：不耗组件
+    if (!legacyLedger) {
+      // **按需取用**：这一跳真要修 ⇒ 现取 1 枚；取不到就跳过本跳（不是永久停机）
+      // ⚠ 单船战斗路径没有 `myFleet` 条目 ⇒ 回落到驾驶船（与弹药口径 `cargoItemsOf` 同源）
+      const shipUid = b.myFleet?.find((en) => en.tag === spec.tag)?.shipId ?? state.shipId
+      const ok =
+        state.resupplyFromWarehouse !== false
+          ? countWare(state, u.kitId) > 0 && (removeWare(state, u.kitId, 1), true)
+          : shipUid !== undefined && removeCargoOfShip(state, shipUid, u.kitId, 1) > 0
+      if (!ok) continue
+    }
     hp.a += ag
     hp.h += hg
-    r.kits[u.kitId] = kitNow - 1
+    if (legacyLedger) r.kits[u.kitId] = preloadLeft - 1
     r.kitsUsed += 1
     // 逐型记账（战报文案用：2026-09-11 船长「只将消耗组件数量显示到战后总结」）
     r.kitsUsedByType = { ...(r.kitsUsedByType ?? {}) }

@@ -86,7 +86,7 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     for (const u of repair.units) expect(u.nextPulseAtMs).toBeUndefined() // 预载阶段还没排首跳
   })
 
-  it('消耗件与自愈件并存：组件照旧预载、自愈件不占组件；**折减按全族位次**（MK1 第 1 / 甲壳板第 2）', () => {
+  it('消耗件与自愈件并存：耗组件件**按需取用**（不再预载）、自愈件不占组件；**折减按全族位次**（MK1 第 1 / 甲壳板 第 2）', () => {
     const state = makeState([], ['mod-hullrep-1'], ['mod-lair-armor-c'])
     state.warehouse.items['repairkit-mil'] = 50
     const repair = preloadRepairFor(state, ctx, state.shipId, ctx.balance.battle.maxBattleMs)!
@@ -101,7 +101,12 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     expect(free.armorPerPulse).toBe(Math.round(6 * stackWeight(2)))
     expect(kit.armorPerPulse).toBe(Math.round(10 * stackWeight(1)))
     expect(kit.kitId).toBe('repairkit-mil')
-    expect((repair.kits['repairkit-mil'] ?? 0)).toBeGreaterThan(0)
+    /**
+     * **不再预载**（**2026-09-23 船长令**：弹药与修理组件改"按需取用"，来源由开关二选一）：
+     * 账本 `kits` 为空、仓库一枚不动；自愈件照旧不占组件（它本就不带 `kitId`）。
+     */
+    expect(Object.keys(repair.kits)).toHaveLength(0)
+    expect(state.warehouse.items['repairkit-mil']).toBe(50)
   })
 
   /**

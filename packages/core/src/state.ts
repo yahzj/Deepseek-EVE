@@ -2027,7 +2027,18 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
   firstTaskAutoClaim?: boolean
 }
 /** 对外统一称呼：当前版本状态（v31 = v30 + 任务改手动完成） */
-export type GameState = GameStateV31
+/**
+ * **弹药与修理组件的取用来源开关**（**2026-09-23 船长令**：「**做一个开关，开启时，所有船的弹药和修理
+ * 组件直接从仓库取用。关闭后只从舰队内舰船的货仓取用。**」）。
+ *
+ * - **开（true）/ 缺省（老档没有该字段）** = 只从**母港仓库**取用；
+ * - **关（false）** = 只从**舰队各舰货仓**取用（哪艘没料 ⇒ 那艘打不了 / 修不了）。
+ * - ⚠ 旧口径「**货舱优先 → 仓库兜底**」**退役**（本开关取代"两路并用"）。
+ * - ⚠ 为免动 `GameStateV31` 的定义体，本字段以**交叉类型**挂在别名上；日后要并入 V31 随手搬进去即可。
+ */
+export type GameState = GameStateV31 & {
+  resupplyFromWarehouse?: boolean
+}
 
 /** **成就徽章的存档面**：只存"哪几枚到手了 ＋ 到手时刻"——图案/名称/说明一律现算 */
 export interface AchievementState {

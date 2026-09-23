@@ -43,6 +43,12 @@ function fresh(seed = 21): GameState {
 /** 起一趟 2×T3 编队（主控 = 第一艘；僚舰 = 第二艘） */
 function enterRun(seed = 21): { state: GameState; run: WormholeRunState; leader: string; wing: string } {
   const state = fresh(seed)
+  /**
+   * **本文件全程用「关」模式**（**2026-09-23 船长令**：开关关 = 只从**舰队各舰货仓**取用）——
+   * 本文件全部夹具都把组件放在**各舰自己的货仓**里（正是"逐舰各扣各的"那条口径要测的东西）；
+   * 缺省（开）会只读母港仓库 ⇒ 夹具里的料看不见。
+   */
+  state.resupplyFromWarehouse = false
   const a = addShipToFleet(state, T3)
   const b = addShipToFleet(state, T3)
   state.shipId = a
@@ -86,6 +92,68 @@ function pacifyFoes(battle: NonNullable<WormholeRunState['battle']>): void {
   }
 }
 
+describe('虫洞 · 弹药/修理组件「取用来源开关」（2026-09-23 船长令）', () => {
+  it('开（缺省）= 只从母港仓库取用：货仓里有料也不动', () => {
+    const { state, run, leader } = enterRun()
+    state.resupplyFromWarehouse = true
+    state.fleet[leader]!.fitted = { high: [], mid: [REP_CIV], low: [] }
+    state.fleet[leader]!.cargo = { 'repairkit-civ': 30 }
+    state.warehouse.items['repairkit-civ'] = 30
+    const battle = startBattle(state, run)
+    pacifyFoes(battle)
+    const rt = battle.units['player']!
+    rt.hp.a = Math.max(1, rt.hp.a - 60)
+    rt.hp.h = Math.max(1, rt.hp.h - 60)
+    tickSeconds(state, 30)
+    const used = battle.repairBy?.['player']?.kitsUsed ?? 0
+    expect(used).toBeGreaterThan(0)
+    expect(state.fleet[leader]!.cargo['repairkit-civ'], '开 = 只仓库 ⇒ 货仓一枚不动').toBe(30)
+    expect(state.warehouse.items['repairkit-civ']).toBe(30 - used)
+  })
+
+  it('关 = 只从舰队各舰货仓取用：仓库堆满也不用', () => {
+    const { state, run, leader } = enterRun() // `enterRun` 已把开关设为「关」
+    state.fleet[leader]!.fitted = { high: [], mid: [REP_CIV], low: [] }
+    state.fleet[leader]!.cargo = { 'repairkit-civ': 30 }
+    state.warehouse.items['repairkit-civ'] = 999
+    const battle = startBattle(state, run)
+    pacifyFoes(battle)
+    const rt = battle.units['player']!
+    rt.hp.a = Math.max(1, rt.hp.a - 60)
+    rt.hp.h = Math.max(1, rt.hp.h - 60)
+    tickSeconds(state, 30)
+    const used = battle.repairBy?.['player']?.kitsUsed ?? 0
+    expect(used).toBeGreaterThan(0)
+    expect(state.warehouse.items['repairkit-civ'], '关 = 只货仓 ⇒ 仓库堆满也不许动').toBe(999)
+    expect(state.fleet[leader]!.cargo['repairkit-civ']).toBe(30 - used)
+  })
+
+  it('**共享池不够分**（玩家报障回归）：不再"谁先预载谁吃干、排在最后的船 0 枚开战即停机"', () => {
+    const { state, run, leader, wing } = enterRun()
+    state.resupplyFromWarehouse = true
+    state.fleet[leader]!.fitted = { high: [], mid: [REP_CIV], low: [] }
+    state.fleet[wing]!.fitted = { high: [], mid: [REP_CIV], low: [] }
+    // 全队只有 3 枚：旧口径下第一艘会按"整场窗口 121 枚/台"预留 ⇒ 第二艘 0 枚、开战即永久停机
+    state.warehouse.items['repairkit-civ'] = 3
+    const battle = startBattle(state, run)
+    for (const tag of ['player', 'ally-1'] as const) {
+      expect(battle.repairBy?.[tag]?.units[0]?.stopped, `${tag} 不该开战即停机`).toBe(false)
+    }
+    pacifyFoes(battle)
+    for (const tag of ['player', 'ally-1'] as const) {
+      const rt = battle.units[tag]!
+      rt.hp.a = Math.max(1, rt.hp.a - 60)
+      rt.hp.h = Math.max(1, rt.hp.h - 60)
+    }
+    tickSeconds(state, 11) // 5s / 10s 两跳
+    const playerUsed = battle.repairBy?.['player']?.kitsUsed ?? 0
+    const allyUsed = battle.repairBy?.['ally-1']?.kitsUsed ?? 0
+    expect(allyUsed, '排在后面的船也必须拿得到料（本次报障的正题）').toBeGreaterThan(0)
+    expect(playerUsed + allyUsed).toBe(3) // 只花掉真实库存这三枚
+    expect(state.warehouse.items['repairkit-civ'] ?? 0).toBe(0)
+  })
+})
+
 describe('虫洞 · 逐舰维修（船长 2026-09-16 裁定「甲」）', () => {
   it('① 僚舰装装置 ⇒ 真参战：有账本、30 秒内被修（对比甲：血量高于不装那组）', () => {
     const run = (fitted: boolean) => {
@@ -123,34 +191,48 @@ describe('虫洞 · 逐舰维修（船长 2026-09-16 裁定「甲」）', () => 
     const ally = battle.repairBy?.['ally-1']
     expect(player?.units[0]?.kitId).toBe('repairkit-civ')
     expect(ally?.units[0]?.kitId).toBe('repairkit-mil')
-    // 各自的货舱被扣到 0（预载一次抽足整场需要量）
-    expect(state.fleet[leader]!.cargo['repairkit-civ'] ?? 0).toBe(0)
-    expect(state.fleet[wing]!.cargo['repairkit-mil'] ?? 0).toBe(0)
-    // 逐型账本各记各的
-    expect(Object.keys(player!.kits)).toEqual(['repairkit-civ'])
-    expect(Object.keys(ally!.kits)).toEqual(['repairkit-mil'])
-    // ⚠ 关键：僚舰的组件**不是**从主控货舱/仓库扣的（旧口径把僚舰用量记到主控头上）
+    /**
+     * **按需取用**（**2026-09-23 船长令**：取用改"按需" + 开关）：开战**不预扣**，料各留在自己货仓；
+     * 逐舰语义改由"**谁跳谁扣谁自己的**"体现（旧口径是"预载一次抽足、记在各舰账本上"）。
+     */
+    expect(state.fleet[leader]!.cargo['repairkit-civ'] ?? 0).toBe(40)
+    expect(state.fleet[wing]!.cargo['repairkit-mil'] ?? 0).toBe(30)
+    pacifyFoes(battle)
+    for (const tag of ['player', 'ally-1'] as const) {
+      const rt = battle.units[tag]!
+      rt.hp.a = Math.max(1, rt.hp.a - 60)
+      rt.hp.h = Math.max(1, rt.hp.h - 60)
+    }
+    tickSeconds(state, 30)
+    const civUsed = player!.kitsUsed
+    const milUsed = ally!.kitsUsed
+    expect(civUsed, '主控跳了就扣自己的民用件').toBeGreaterThan(0)
+    expect(milUsed, '僚舰跳了就扣自己的军用件').toBeGreaterThan(0)
+    expect(state.fleet[leader]!.cargo['repairkit-civ']).toBe(40 - civUsed)
+    expect(state.fleet[wing]!.cargo['repairkit-mil']).toBe(30 - milUsed)
+    // ⚠ 关键：僚舰的组件**不是**从主控货仓/仓库扣的（旧口径把僚舰用量记到主控头上）
     expect(state.fleet[leader]!.cargo['repairkit-mil'] ?? 0).toBe(0)
     expect(countWare(state, 'repairkit-civ') + countWare(state, 'repairkit-mil')).toBe(0)
   })
 
-  it('③ 退款逐舰：未用组件各回仓库、账本清零；幂等', () => {
+  it('③ 退款逐舰（新口径）：不预载 ⇒ 无料可退；池子只按实际跳掉的枚数减少', () => {
     const { state, run, leader, wing } = enterRun()
     state.fleet[leader]!.fitted = { high: [], mid: [REP_CIV], low: [] }
     state.fleet[wing]!.fitted = { high: [], mid: [REP_MIL], low: [] }
     state.fleet[leader]!.cargo = { 'repairkit-civ': 40 }
     state.fleet[wing]!.cargo = { 'repairkit-mil': 30 }
     const battle = startBattle(state, run)
-    const civLoaded = battle.repairBy?.['player']?.kits['repairkit-civ'] ?? 0
-    const milLoaded = battle.repairBy?.['ally-1']?.kits['repairkit-mil'] ?? 0
-    expect(civLoaded).toBeGreaterThan(0)
-    expect(milLoaded).toBeGreaterThan(0)
+    // 新账本 `kits` 为空（不再预留）⇒ 没有"未用组件"这回事
+    expect(Object.keys(battle.repairBy?.['player']?.kits ?? {})).toHaveLength(0)
+    expect(Object.keys(battle.repairBy?.['ally-1']?.kits ?? {})).toHaveLength(0)
     refundRepairKitsAll(state, battle)
-    expect(countWare(state, 'repairkit-civ')).toBe(civLoaded)
-    expect(countWare(state, 'repairkit-mil')).toBe(milLoaded)
+    expect(state.fleet[leader]!.cargo['repairkit-civ'] ?? 0).toBe(40)
+    expect(state.fleet[wing]!.cargo['repairkit-mil'] ?? 0).toBe(30)
+    expect(countWare(state, 'repairkit-civ')).toBe(0)
+    expect(countWare(state, 'repairkit-mil')).toBe(0)
     refundRepairKitsAll(state, battle) // 幂等
-    expect(countWare(state, 'repairkit-civ')).toBe(civLoaded)
-    expect(countWare(state, 'repairkit-mil')).toBe(milLoaded)
+    expect(state.fleet[leader]!.cargo['repairkit-civ'] ?? 0).toBe(40)
+    expect(countWare(state, 'repairkit-civ')).toBe(0)
   })
 
   it('④ 老档在途战斗兼容：只有 `repair` 单份 ⇒ 只有主控修（旧行为，零迁移）', () => {

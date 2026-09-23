@@ -275,7 +275,7 @@ describe('敌方换算与距离战术', () => {
 })
 
 describe('弹药', () => {
-  it('V17.2 单型装载：只装炮台固定弹种（货仓优先、仓库兜底）；退回仓库', () => {
+  it('V17.2 单型装载：只装炮台固定弹种（开关：关=只货仓 / 开=只仓库）；退回仓库', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
     // 基线：60 仓动能 / 40 货仓高爆 / 100 仓等离子
     delete state.warehouse.items['ammo-kinetic-l']
@@ -285,14 +285,20 @@ describe('弹药', () => {
     state.fleet[state.shipId].cargo['ammo-explosive-l'] = 40
     state.warehouse.items['ammo-plasma-l'] = 100
     const ctx = makeTestCtx()
-    // 高爆炮 → 只装高爆：需求 100、库存 40 → 40（货仓 40 全扣，仓/货归零，不碰其它型）
+    /**
+     * **2026-09-23 船长令**：取用来源由开关二选一（开=只仓库 / 关=只舰队货仓），
+     * 旧的"货仓优先 → 仓库兜底"**退役** ⇒ 本用例分两段各测一种模式。
+     */
+    // 关（只货仓）：高爆只装货仓那 40（需求 100 ⇒ 40），仓库其它型一字不动
+    state.resupplyFromWarehouse = false
     const loadedExp = loadAmmo(state, ctx, 'explosive', 100)
     expect(loadedExp.exp).toBe(40)
     expect(loadedExp.kin).toBe(0)
     expect(loadedExp.pla).toBe(0)
     expect(state.fleet[state.shipId].cargo['ammo-explosive-l'] ?? 0).toBe(0)
     expect(state.warehouse.items['ammo-kinetic-l']).toBe(60)
-    // 动能炮 → 需求 40：仓库扣 40（货仓无动能）
+    // 开（只仓库）：动能炮需求 40 ⇒ 从仓库扣 40
+    state.resupplyFromWarehouse = true
     const loadedKin = loadAmmo(state, ctx, 'kinetic', 40)
     expect(loadedKin.kin).toBe(40)
     expect(state.warehouse.items['ammo-kinetic-l']).toBe(20)
@@ -968,26 +974,27 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
     expect(load).not.toBeNull()
     expect(load!.units).toHaveLength(1)
     expect(load!.units[0]).toMatchObject({ moduleId: 'mod-rep', kitId: 'kit-civ', armorPerPulse: 5, hullPerPulse: 5, stopped: false })
-    // 单台预载上限 = ⌈整场最长战斗 / 5s⌉ + 1 → 3+5 全被抽走（want ≫ 库存）
-    expect(load!.kits['kit-civ']).toBe(8)
-    expect(state.fleet['sandcat'].cargo['kit-civ'] ?? 0).toBe(0)
-    expect(state.warehouse.items['kit-civ'] ?? 0).toBe(0)
-    // 退还：未用组件全部回仓库；幂等（第二次调用不重复入账）
+    /**
+     * **不再预载**（**2026-09-23 船长令**：取用改"按需"）⇒ 开战时**一枚都不预扣**，料留在原池；
+     * 账本只记"本场消耗了几枚"（`kitsUsed`）。退还因此无事可做（幂等）。
+     */
+    expect(Object.keys(load!.kits)).toHaveLength(0)
+    const kitTotal = (): number =>
+      (state.fleet['sandcat'].cargo['kit-civ'] ?? 0) + (state.warehouse.items['kit-civ'] ?? 0)
+    expect(kitTotal()).toBe(8) // 3 货仓 + 5 仓库：开战不预扣，一枚不动
     refundRepairKits(state, load!)
-    expect(state.warehouse.items['kit-civ']).toBe(8)
-    expect(load!.kits['kit-civ'] ?? 0).toBe(0)
-    refundRepairKits(state, load!)
-    expect(state.warehouse.items['kit-civ']).toBe(8)
+    expect(kitTotal()).toBe(8)
+    expect(Object.keys(load!.kits)).toHaveLength(0)
   })
 
-  it('组件一枚没有：装置开战即停机（stopped），预载结构仍在但无账本', () => {
+  it('组件一枚没有：**开战不再判停机**（按需取用 ⇒ 只有该跳取不到才跳过）', () => {
     const { state, ctx } = repWorld()
     addModule(state, 'mod-rep', 1)
     expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
     const load = preloadRepairFor(state, ctx, 'sandcat', ctx.balance.battle.maxBattleMs)
     expect(load).not.toBeNull()
-    expect(load!.units[0]!.stopped).toBe(true)
-    expect(load!.kits['kit-civ'] ?? 0).toBe(0)
+    expect(load!.units[0]!.stopped, '开战不再因缺料判永久停机').toBe(false)
+    expect(Object.keys(load!.kits)).toHaveLength(0)
     expect(load!.nextPulseAtMs).toBeUndefined()
     expect(load!.pulses).toBe(0)
   })
@@ -997,6 +1004,7 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
      *  最终血差 = 9 跳 × 10 修复量（缺口恒大、每跳修满额度），可精确断言。 */
     const run = (fitted: boolean) => {
       const { state, ctx } = repWorld({ cargoKits: 300 })
+      state.resupplyFromWarehouse = false // 关 = 只从舰队货仓取用（本夹具把料放在货仓）
       if (fitted) {
         addModule(state, 'mod-rep', 1)
         expect(fitModule(state, 'mod-rep', ctx).ok).toBe(true)
@@ -1007,13 +1015,14 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
       state.gameMs = 45_000
       advanceBattleFor(state, ctx, battle, 'sandcat', 'ano-rep')
       const r = battle.repair
+      const left = (state.fleet['sandcat'].cargo['kit-civ'] ?? 0) + (state.warehouse.items['kit-civ'] ?? 0)
       return {
         ended: battle.ended,
         a: meRt.hp.a,
         h: meRt.hp.h,
         pulses: r?.pulses ?? 0,
         kitsUsed: r?.kitsUsed ?? 0,
-        kitsLeft: r?.kits['kit-civ'] ?? 0,
+        left,
       }
     }
     const withRep = run(true)
@@ -1022,7 +1031,9 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
     expect(withRep.ended).toBeNull() // 巨型血条 vs 40 威胁 × 45 秒：双方都打不死对方
     expect(withRep.pulses).toBe(9) // 5s/10s/…/45s 共 9 跳
     expect(withRep.kitsUsed).toBe(9) // 缺口恒大 → 每跳都实际修复、都扣 1 枚
-    expect(withRep.kitsLeft).toBe(121 - 9) // 单台预载上限 = ⌈10 分钟 / 5s⌉ + 1 = 121 枚
+    // **按需取用**（2026-09-23）：这一场正好从池里扣 9 枚（300 → 291）；不再有"预载余额"这回事
+    expect(without.left).toBe(300)
+    expect(withRep.left).toBe(291)
     // 修复真实回血：有装置组比无装置组多回 9×10 点（敌方输出两跑相同）
     expect(withRep.a + withRep.h).toBe(without.a + without.h + 90)
     expect(withRep.a).toBeGreaterThan(without.a)

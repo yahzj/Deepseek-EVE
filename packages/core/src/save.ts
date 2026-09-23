@@ -2444,6 +2444,12 @@ function normalizeState(raw: unknown): GameState {
   const firstShipBuilt =
     src.firstShipBuilt === true ? true : src.firstShipBuilt === false ? false : undefined
   /**
+   * **弹药 / 修理组件取用来源开关**（2026-09-23 船长令）：三态读法（缺省 = 未设过 = 走默认"只仓库"）。
+   * ⚠ 本清洗器逐字段重建 ⇒ 漏登记 = 每读一次档开关就被重置（与 `foe`/`turnsSpent` 同一类事故）。
+   */
+  const resupplyFromWarehouse =
+    src.resupplyFromWarehouse === true ? true : src.resupplyFromWarehouse === false ? false : undefined
+  /**
    * 见过的敌方舰级（2026-09-16）：只收 `true` 的键（值域 = `FoeShipDef.id` 字符串）。
    * **空表也落键**（与 `commsDelivered` 同口径）：新档出生即带 `{}`，若这里把空表折成"缺失"，
    * 存档往返会少一个键 ⇒ `save.test.ts` 的"内容完全一致"用例失败。
@@ -3158,6 +3164,7 @@ function normalizeState(raw: unknown): GameState {
     ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
+    ...(resupplyFromWarehouse !== undefined ? { resupplyFromWarehouse } : {}),
     // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径
     foeShipSeen,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
