@@ -120,15 +120,23 @@ export function enterIronman(
   state: { ironman?: IronmanLike },
   atWallMs: number,
   ledgerSeq = 0,
-): void {
+): boolean {
   const it = ironmanOf(state)
+  /**
+   * **单向门**（**2026-09-23 船长**：「玩家**只能关闭**铁人模式，**无法再次打开**」）：
+   * 关闭过的档（`closedWallMs` 已写）**拒绝再入**——本函数是唯一入口，判据就放在这里。
+   * ⚠ 「重置档案」是**另一份全新状态**（没有 `closedWallMs`）⇒ 新档照旧可选铁人，不受此限。
+   * ⚠ 已经开着的档再调一次是**空操作**（`on` 已真 ⇒ 不再动 `sinceWallMs`），只有从未开过的档才真正入模。
+   */
+  if (it.closedWallMs !== undefined) return false
+  if (it.on) return true
   const base = Math.max(it.seq, Math.max(0, Math.floor(ledgerSeq || 0)))
   state.ironman = {
     on: true,
     seq: base,
     sinceWallMs: it.sinceWallMs ?? Math.max(0, Math.floor(atWallMs)),
-    ...(it.closedWallMs !== undefined ? { closedWallMs: it.closedWallMs } : {}),
   }
+  return true
 }
 
 /**
@@ -155,7 +163,11 @@ export function closeIronman(state: { ironman?: IronmanLike }, atWallMs: number)
  * @param ledgerSeq    账本最高代次（存档之外）
  * @param incomingSavedAtWallMs 待装载存档的上次保存墙钟（算年龄用；缺失 ⇒ 不给救援）
  * @param nowWallMs    现在（现实墙钟）
- * @param ironman      当前档是否铁人档（**普通档一律放行**）
+ * @param ironman      **本次装载是否受铁人纪律约束**：当前档是铁人档，**或者待装载的那份档是铁人档**
+ *                    （`ironmanOn(current) || ironmanOn(incoming)`）。
+ *                    ⚠ 后者是 2026-09-23 补的一道闸：**关闭铁人之后再导入一份"当年开着铁人"的旧档**，
+ *                    若不判 incoming，就等于用回滚把铁人模式**偷偷开回来**（且绕开代次纪律）。
+ *                    普通档载入普通档 ⇒ 传 false，一切照旧放行。
  */
 export function ironmanLoadVerdict(args: {
   ironman: boolean

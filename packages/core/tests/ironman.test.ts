@@ -93,6 +93,22 @@ describe('铁人模式 · 代次与开关', () => {
     expect(ironmanOf(s).closedWallMs).toBe(9_000)
   })
 
+  it('单向门：关闭过的档拒绝再入铁人（`enterIronman` 返回 false 且一个字都不改）', () => {
+    const s = ironState(10)
+    expect(closeIronman(s, 9_000)).toBe(true)
+    const before = { ...ironmanOf(s) }
+    expect(enterIronman(s, 20_000, 99)).toBe(false)
+    expect(ironmanOn(s)).toBe(false)
+    expect(ironmanOf(s)).toEqual(before) // 代次/关闭时刻/入模时刻全不动
+    // 重置档案 = 全新状态（没有 closedWallMs）⇒ 新档照旧可选铁人
+    const fresh = createInitialState({ nowWallMs: 0, seed: 3 })
+    expect(enterIronman(fresh, 30_000, 12)).toBe(true)
+    expect(ironmanSeq(fresh)).toBe(12)
+    // 已经开着的档再调一次：空操作（入模时刻不被改写）
+    expect(enterIronman(fresh, 40_000, 0)).toBe(true)
+    expect(ironmanOf(fresh).sinceWallMs).toBe(30_000)
+  })
+
   it('转换时把代次顶到账本高度（防"曾经铁人 → 关闭 → 重置"后误伤自己那份档）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 2 })
     expect(ironmanSeq(s)).toBe(0)
@@ -144,6 +160,25 @@ describe('铁人模式 · 装载闸门（导入 / 恢复共用的唯一判据）
     // 缺"上次保存时刻"（老档形态）⇒ 不给救援
     const noStamp = ironmanLoadVerdict({ ...base, ironman: true, incomingSeq: 10, incomingSavedAtWallMs: 0 })
     expect(noStamp.ok).toBe(false)
+  })
+
+  it('关闭铁人后再导入"当年的铁人旧档" ⇒ 仍按铁人档判（不然等于用回滚偷偷开回来）', () => {
+    /**
+     * 判据由调用方给：`ironmanOn(当前) || ironmanOn(待装载)`（引擎 `ironmanLoadCheck`）。
+     * 本用例固定"当前档已关闭（on=false）+ 待装载档是铁人档且代次更早"这一格。
+     */
+    const v = ironmanLoadVerdict({ ...base, ironman: true, incomingSeq: 900 })
+    expect(v.ok).toBe(false)
+    // 同一份档若是"关铁人之前手动备份的两天前旧档" ⇒ 走救援，仍放行（船长给的救援通道不受影响）
+    const rescue = ironmanLoadVerdict({
+      ...base,
+      ironman: true,
+      incomingSeq: 900,
+      incomingSavedAtWallMs: now - IRONMAN_RESCUE_MIN_AGE_MS - 1,
+    })
+    expect(rescue).toEqual({ ok: true, rescue: true })
+    // 而"当前普通 + 载入普通档"这一格永远是放行（老玩家完全不受影响）
+    expect(ironmanLoadVerdict({ ...base, ironman: false, incomingSeq: 0 })).toEqual({ ok: true, rescue: false })
   })
 })
 

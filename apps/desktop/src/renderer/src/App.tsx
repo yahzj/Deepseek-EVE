@@ -41,6 +41,7 @@ import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPan
 import { ActivityBar } from './panels/ActivityBar'
 import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
+import { HintIcon } from './ui/Hint'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
@@ -743,6 +744,8 @@ export function App({ engine }: { engine: GameEngine }) {
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [battleOpen, setBattleOpen] = useState(false)
+  /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
+  const [newGameAsk, setNewGameAsk] = useState(false)
 
   // 顶栏「讨论 QQ 群」：点击复制群号（2026-09-08 船长指示）
   const [qqCopied, setQqCopied] = useState(false)
@@ -947,10 +950,20 @@ export function App({ engine }: { engine: GameEngine }) {
     showToast(ok ? tr("ui.App.054") : tr("ui.App.055"), !ok)
   }
 
+  /**
+   * 重置档案（开新档）：**先问模式**（2026-09-23 铁人模式 S4b）——船长「新档可选」。
+   * 旧档（现有存档）走存档页的「开启铁人模式」一次性转换；这里只管新档。
+   */
   function handleReset(): void {
     if (!window.confirm(tr("ui.App.108"))) return
-    engine.resetGame()
-    showToast(tr("ui.App.109"))
+    setNewGameAsk(true)
+  }
+
+  /** 真正开新档：`ironman = true` ⇒ 新档即为铁人档（代次接着账本往前走） */
+  function startNewGame(ironman: boolean): void {
+    setNewGameAsk(false)
+    void engine.resetGame(ironman)
+    showToast(ironman ? tr("ui.Ironman.025") : tr("ui.App.109"))
   }
 
   const pageProps = { engine, onToast: showToast }
@@ -1620,6 +1633,36 @@ export function App({ engine }: { engine: GameEngine }) {
           />
         ) : null}
       {showSaveManager ? <SaveManager engine={engine} onToast={showToast} onClose={() => setShowSaveManager(false)} /> : null}
+      {/* 新档模式（铁人 S4b）：普通 / 铁人 二选一 */}
+      {newGameAsk ? (
+        <div className="app-modal-mask" onClick={() => setNewGameAsk(false)}>
+          <div className="app-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-report-title">
+                {tr('ui.Ironman.011')}
+                <HintIcon tip={tr('ui.Ironman.009')} />
+              </span>
+              <button className="app-btn is-small" onClick={() => setNewGameAsk(false)}>
+                {tr('ui.App.086')}
+              </button>
+            </div>
+            <div className="app-modal-body">
+              <div className="app-save-actions">
+                <button className="app-btn is-small" onClick={() => startNewGame(false)}>
+                  {tr('ui.Ironman.012')}
+                </button>
+                <button
+                  className="app-btn is-primary is-small"
+                  onClick={() => startNewGame(true)}
+                  title={tr('ui.Ironman.006')}
+                >
+                  {tr('ui.Ironman.013')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {showHandbook ? (
         <Handbook
           engine={engine}
