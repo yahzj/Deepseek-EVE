@@ -2523,16 +2523,28 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
  *
  * ⚠ 上限只由"双方射程"决定，**与谁快谁慢无关**：能不能真的站到那么远，仍看每拍那场
  * 速度拔河（`steerStep` 双方各拽一把）——所以"有地方可退" ≠ "一定退得掉"。
+ *
+ * ⚠ **2026-09-22 船长令（本次修正）**：「**虫洞内交战距离上限不应该只看玩家操作的舰船和敌人，
+ * 应该将队伍里所有舰船都考虑到。**」⇒ 新增可选入参 `ours`（我队**全队**规格）；
+ * **"远端"（`top`）遍历全队的最远武器射程**，而 **`open`（开战距离）仍只按主控**（船长明确：
+ * 要改的是距离上限，不是初始距离/期望距离）。不传 `ours` ⇒ **逐字等于旧行为**（老调用零改动）。
  */
 export function battleMaxDistanceM(
   b: import('./state').BattleState,
   me: UnitSpec,
   foes: readonly UnitSpec[],
   bal: BattleBalance,
+  /**
+   * 我队**全队**（含 `me` 本身也无妨，取 max 幂等）——2026-09-22 船长令：
+   * 战场距离上限要把僚舰的射程一并算进去（原先只看主控 ⇒ 僚机装远射武器也拉不开战场）。
+   */
+  ours?: readonly UnitSpec[],
 ): number {
   const open = battleOpenM(me, foes as UnitSpec[], bal)
   let top = 0
   for (const w of me.weapons) top = Math.max(top, w.maxRangeM)
+  /** 全队（船长令）：任一僚舰射程更远 ⇒ 战场远端随之抬高 */
+  for (const u of ours ?? []) for (const w of u.weapons) top = Math.max(top, w.maxRangeM)
   for (const f of foes) {
     // 机群武器也在这张表里（`src === 'drone'`）⇒ 按**各自的增程/削减口径**取有效射程，别混用炮台那条
     for (const w of f.weapons) {
@@ -6487,7 +6499,8 @@ function stepBattle(
     steerStep(b.distanceM, foeDesireClamped, foeV, dtSec)
   // **距离上限 = 战场远端**（2026-09-19 船长裁定「甲」）：按**当前**双方有效射程现算（含我方技能/科技
   // 增程与敌方受击增程），只增不减、无增程时逐字等于 `openM` ⇒ 见 `battleMaxDistanceM` 的头注。
-  b.distanceM = clamp(bal.minDistanceM, battleMaxDistanceM(b, me, foes, bal), b.distanceM + rate)
+  // **2026-09-22 船长令**：我队**全队**（`myUnits`）的最远射程一并计入 ⇒ 僚舰装远射武器也能拉开战场。
+  b.distanceM = clamp(bal.minDistanceM, battleMaxDistanceM(b, me, foes, bal, myUnits), b.distanceM + rate)
 
   // ── 我方开火（主炮 + 无人机条目）——**逐舰结算**（单船路径 = 只循环一次，逐字等价）──
   // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
