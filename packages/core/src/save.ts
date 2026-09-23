@@ -415,7 +415,7 @@ const BATTLE_FIELDS = {
   /* ── 2026-09-12 船长裁定（A3 盘点后「六项全修」）：以下七项由 runtime **改为随档** ──
    * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
   repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
-  shieldCharge: { kind: 'persist' }, // 护盾充能装置快照 + 30 秒脉冲计时（丢了 ⇒ 重载后计时重置 = 白赚一跳）
+  shieldCharge: { kind: 'persist' }, // 护盾充能装置快照 + 15 秒脉冲计时（丢了 ⇒ 重载后计时重置 = 白赚一跳）
   // 2026-09-16 船长裁定「甲：逐舰维修」：逐舰账本（键 = 舰 tag）——同 `repair`/`shieldCharge` 的理由，
   // 且**必须随档**：漏了会让僚舰的预载组件与计时在战中重载后凭空消失（与 `myFleet` 漏登记的后果同类）。
   repairBy: { kind: 'persist' },
@@ -937,7 +937,7 @@ function cleanPulseStreams(raw: unknown): BattleShieldFieldStream[] | undefined 
  * `combat.SHIELD_PULSE_MS` 是**同一个数**；`save.ts` 不能 import `combat.ts`（会成环），
  * 故在此**显式写明同源**，并由用例 `pulse-stream-save.test.ts` 钉住两处相等。
  */
-const SHIELD_PULSE_MS_FOR_OLD_SAVE = 30_000
+const SHIELD_PULSE_MS_FOR_OLD_SAVE = 15_000
 
 function cleanShieldCharge(raw: unknown): BattleState['shieldCharge'] | undefined {
   const r = asRaw(raw)

@@ -72,13 +72,13 @@ describe('逐型号独立回转：装配读数', () => {
     expect(s[1]!.pct).toBeCloseTo(0.1 * stackWeight(2), 10)
   })
 
-  it('① 护盾充能两档 ⇒ **两路**（间隔同为 30 秒，各带各的比例）', () => {
+  it('① 护盾充能两档 ⇒ **两路**（间隔同为 15 秒，各带各的比例）', () => {
     const { state, uid } = world([], ['mod-shieldchg-1', 'mod-shieldchg-3'])
     const s = shieldChargeStreamsOf(state, ctx, uid)
     expect(s.map((x) => x.modelId)).toEqual(['mod-shieldchg-1', 'mod-shieldchg-3'])
     expect(s.map((x) => x.ms)).toEqual([SHIELD_PULSE_MS, SHIELD_PULSE_MS])
-    expect(s[0]!.pct).toBeCloseTo(0.24, 10)
-    expect(s[1]!.pct).toBeCloseTo(0.64 * stackWeight(2), 10)
+    expect(s[0]!.pct).toBeCloseTo(0.12, 10)
+    expect(s[1]!.pct).toBeCloseTo(0.32 * stackWeight(2), 10)
   })
 
   it('① 维修三档 ⇒ **三路**（逐台一线），第 n 台按全族曲线折减', () => {

@@ -181,7 +181,7 @@ describe('护盾回充的**速度下限**（2026-09-20 船长追加）', () => {
   })
 })
 
-describe('护盾充能装置（中槽 · 每 30 秒脉冲 · 满盾的一个比例）', () => {
+describe('护盾充能装置（中槽 · 每 15 秒脉冲 · 满盾的一个比例）', () => {
   it('**每 30 秒一跳**：把打空的护盾按"满盾 × 比例"点回来（MK1 = 12%）', () => {
     const { state, ctx, uid } = world({ mods: [{ id: 'mod-chg-1', pct: 0.12 }], mid: ['mod-chg-1'] })
     expect(shieldPulsePctOf(state, ctx, uid)).toBeCloseTo(0.12, 10)
