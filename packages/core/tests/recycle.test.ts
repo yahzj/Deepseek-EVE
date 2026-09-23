@@ -539,7 +539,7 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
     // 旧写法用 20 m³ 起炉在新门槛下会被直接拒绝（不足一批）。
     addWare(state, RARE_ID, RARE_UNIT_M3 * 2)
     expect(startRecycleRun(state, RARE_ID, 'pilot', ctx).ok).toBe(true)
-    state.gameMs = RECYCLE_CYCLE_MS * 2
+    state.gameMs = RECYCLE_CYCLE_MS
     advanceRefining(state, ctx) // 批 1：烧掉 30 → 必给一次彩头，还剩 30
     expect(boxes(state)).toBe(1)
     const loaded = loadSaveFile(serializeSaveFile(state, 1)).state

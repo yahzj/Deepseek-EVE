@@ -739,9 +739,9 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
         advanceRefining(state, ctx)
       }
     }
-    tick(3) // 累计烧掉 30 m³ → 必给 1 次彩头
+    tick(1) // 累计烧掉 30 m³（**稀有批 = 30 m³**，2026-09-23 乙案）→ 必给 1 次彩头
     expect(boxes()).toBe(1)
-    tick(15) // 一路烧完 18 批（180 m³）
+    tick(5) // 一路烧完 6 批（180 m³）
     expect(state.refineRuns.some((x) => x.itemId === rareId)).toBe(false) // 料尽自动停炉
     expect(oreAvailable(state, rareId)).toBe(0) // 库存烧光
     expect(boxes()).toBe(6) // ⌊180 ÷ 30⌋ = 6 次彩头
@@ -753,23 +753,23 @@ describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
     const boxes = (): number => state.logs.filter((l) => l.text.includes('✦ 额外战利品')).length
     addWare(state, rareId, RARE_WRECK_VOLUME_M3 * 2) // 先有 2 个单元
     expect(startRecycleRun(state, rareId, 'pilot', ctx).ok).toBe(true)
-    for (let i = 0; i < 7; i += 1) {
+    for (let i = 0; i < 2; i += 1) {
       state.gameMs += 30_000
       advanceRefining(state, ctx)
     }
-    expect(boxes()).toBe(2) // 2 个单元 = 2 箱，一炉烧完
+    expect(boxes()).toBe(2) // 2 个单元 = 2 箱（每单元一批），一炉烧完
     expect(oreAvailable(state, rareId)).toBe(0)
     // 再捡 1 个单元 → 起炉继续，累计账本接着往上走 → 第 3 箱
     addWare(state, rareId, RARE_WRECK_VOLUME_M3)
     expect(startRecycleRun(state, rareId, 'pilot', ctx).ok).toBe(true)
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 1; i += 1) {
       state.gameMs += 30_000
       advanceRefining(state, ctx)
     }
     expect(boxes()).toBe(3)
     expect(oreAvailable(state, rareId)).toBe(0)
-    // 普通残骸照旧"整批直到料尽"：起炉后不会写锁量
-    addWare(state, 'wreck-ano-lair-hub', 60)
+    // 普通残骸照旧"整批直到料尽"：起炉后不会写锁量（**普通批 = 100 m³**，2026-09-23 甲案）
+    addWare(state, 'wreck-ano-lair-hub', 100)
     const normalRun = startRecycleRun(state, 'wreck-ano-lair-hub', 'pilot', ctx)
     expect(normalRun.ok).toBe(true)
     const nr = state.refineRuns.find((x) => x.itemId === 'wreck-ano-lair-hub')!
