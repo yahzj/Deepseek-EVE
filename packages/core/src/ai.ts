@@ -73,6 +73,23 @@ export function countAiCore(state: GameState, type: AiCoreType): number {
   return state.aiCores[type] ?? 0
 }
 
+/**
+ * **当前拥有的最高级 AI 核心**（**2026-09-23 船长令**：「**使用AI核心时，默认选择当前拥有的最高级核心**」）。
+ *
+ * 口径 = `AI_CORE_ORDER`（`basic → gamma → beta → alpha`，越靠后越高级）里**最靠后且数量 > 0** 的那一档；
+ * 一个都没有 ⇒ `null`（调用方回落 `'basic'`，与改前逐字一致）。
+ *
+ * 为什么放在 core：星图 / 舰船页 / 远征 / 工业**四处**选择入口的默认值必须是同一把尺
+ * （各写各的很容易一处漏改 ⇒ 玩家看到的默认核心各处不同）。
+ */
+export function bestAiCoreOf(state: GameState): AiCoreType | null {
+  for (let i = AI_CORE_ORDER.length - 1; i >= 0; i -= 1) {
+    const t = AI_CORE_ORDER[i]!
+    if (countAiCore(state, t) > 0) return t
+  }
+  return null
+}
+
 /** 入库 */
 export function gainAiCore(state: GameState, type: AiCoreType, count = 1): void {
   state.aiCores[type] = (state.aiCores[type] ?? 0) + count

@@ -846,6 +846,8 @@ export type { BountyWinMC } from './winEstimate'
 
 export {
   AI_CORE_ORDER,
+  // 2026-09-23 船长令「使用AI核心时，默认选择当前拥有的最高级核心」——四处选择入口共用这一把尺
+  bestAiCoreOf,
   aiCoreName,
   aiEfficiency,
   countAiCore,

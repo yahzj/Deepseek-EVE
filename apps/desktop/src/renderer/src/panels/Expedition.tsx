@@ -5,6 +5,8 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTask, SideTaskBoardView } from '@whale/core'
+// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
+import { bestAiCoreOf } from '@whale/core'
 import {
   AI_CORE_ORDER,
   DSI_FACTION_ID,
@@ -1692,10 +1694,10 @@ function GalaxyActions({
   // —— 副船掩护巡逻 ——
   const idleShips = idleAiShipIds(state)
   const [aiShip, setAiShip] = useState('')
-  const [aiCore, setAiCore] = useState<AiCoreType>('basic')
+  const [aiCore, setAiCore] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
-  const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[0] ?? 'basic')
+  const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[usableCores.length - 1] ?? 'basic')
   const aiCoreAvailable = usableCores.length > 0
   function handleAiStandby(): void {
     if (!aiShip) {

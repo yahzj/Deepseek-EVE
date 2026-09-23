@@ -33,6 +33,8 @@ import {
   // 2026-09-14 船长：虫洞专属图纸改「去虫洞」跳转，门槛与扫描虫洞页同一本账
   WORMHOLE_SCAN_UNLOCK_STANDING,
 } from '@whale/core'
+// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
+import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import { Panel } from '@whale/ui'
@@ -663,7 +665,7 @@ export const BlueprintCard = memo(function BlueprintCard({
   const whStanding = state.standings.dsi ?? 0
   const whUnlocked = whStanding >= WORMHOLE_SCAN_UNLOCK_STANDING
   // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
-  const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
+  const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualNote = manualBuildNote(state)

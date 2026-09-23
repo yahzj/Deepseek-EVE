@@ -30,6 +30,8 @@ import {
   RARE_WRECK_VOLUME_M3,
   wreckGroupOfAnomaly,
 } from '@whale/core'
+// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
+import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
@@ -429,11 +431,11 @@ function BeltCard({
   ) as Array<[string, { coreType: AiCoreType; task: { kind: 'mining'; beltId: string } }]>
   const aiCount = aiWorkers.length
   const [aiShipId, setAiShipId] = useState('')
-  const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
+  const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：basic 用光只剩伽马时，
   // 下拉显示与提交类型脱节 → 归一为当前有库存的类型（同工业页炉卡写法）
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
-  const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[0] ?? 'basic')
+  const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[usableCores.length - 1] ?? 'basic')
   // T4 延后项：远征中可「转开采」（两步确认）
   const [mineAsk, setMineAsk] = useState(false)
   const expeditionOn = state.expedition.active
@@ -915,10 +917,10 @@ function WreckCard({
   const est = salvageEstimate(state, engine, g.id, density)
   const prog = isActive ? salvageProgressOf(engine) : null
   const [aiShipId, setAiShipId] = useState('')
-  const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>('basic')
+  const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
-  const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[0] ?? 'basic')
+  const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[usableCores.length - 1] ?? 'basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
   // B3.1：星系卡「回收产出倾向 / 特色掉落」汇总（= 该星系各悬赏敌群**所属的残骸组**；回收卡同款行，去重合并）。
   // 2026-09-10 船长定"说明精简"：特色掉落只讲特色（主题件具名 + 系列泛化），星图卡不加保底矿物块。
