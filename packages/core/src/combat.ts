@@ -3006,6 +3006,20 @@ export function preloadRepairFor(
   return { units, kits: {}, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
 }
 
+/**
+ * **这套装置此刻能用到的组件数**（只读 · 界面读数用）——与 `pulseRepairsFor` 的取用口径**同源**：
+ * 开（缺省）= **母港仓库**；关 = **该舰自己的货仓**（与"按需取用"那一跳实际会扣的池一致）。
+ *
+ * ⚠ **2026-09-24 玩家报障**（船长转述：「进入战斗后维修组件显示为 0，仓库已经确认还有 400 多个
+ * 军用维修组件」）：改按需取用后账本 `kits` **不再预载** ⇒ 战斗页徽标读 `ledger.kits` 恒得 0。
+ * 读数改走本函数 ⇒ 显示的是"还能用多少"，与实际消耗同源。
+ */
+export function repairKitAvailableOf(state: GameState, shipId: string, kitId: string): number {
+  return state.resupplyFromWarehouse !== false
+    ? countWare(state, kitId)
+    : Math.floor(cargoOfShip(state, shipId)[kitId] ?? 0)
+}
+
 /** 退还维修装置预载的未用组件（回仓库；与弹药退还同哲学）——战斗结束/撤退收场调用；幂等 */
 export function refundRepairKits(
   state: GameState,

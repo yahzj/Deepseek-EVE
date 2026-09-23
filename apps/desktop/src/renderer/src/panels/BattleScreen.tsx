@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairLedgersOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairKitAvailableOf, repairLedgersOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -1587,14 +1587,34 @@ const meSpeedRef = useRef(200)
   /* 船体维修装置状态（2026-09-09；**2026-09-16 逐舰**）：运转中（绿点呼吸）/ 组件耗尽停机（暗红）；徽标在弹药旁。
      逐舰化后徽标是**全队合计**（任何一艘在跑 ⇒ 亮"运转中"），悬停列出逐舰明细（谁在跑、各剩多少组件）。 */
   const repairLedgers = repairLedgersOf(battle)
-  const repairTotal = repairLedgers.reduce(
-    (n, e) => n + Object.values(e.ledger.kits).reduce((a, b) => a + b, 0),
-    0,
-  )
+  /**
+   * ⚠ **2026-09-24 玩家报障**（船长转述：「进入战斗后维修组件显示为 0，仓库已经确认还有 400 多个
+   * 军用维修组件」）：改"按需取用"之后账本 `kits` **不再预载** ⇒ 原先累加 `ledger.kits` 恒得 0。
+   * 现改读**可用池**（`repairKitAvailableOf`，与那一跳实际会扣的池同源：**开 = 母港仓库 · 关 = 本舰货仓**）。
+   * ⚠ 一舰多台装置**共享同一池** ⇒ 每舰按 `kitId` **去重**后再求和；开（仓库）模式下全队共用一份，
+   * 故全队合计只按"全队用到的 kitId"各记一次（不按舰重复计）。
+   */
+  type KitLedger = { units: { kitId: string; free?: boolean }[] }
+  const kitIdsOf = (ledger: KitLedger): string[] => [
+    ...new Set(ledger.units.filter((u) => u.free !== true).map((u) => u.kitId)),
+  ]
+  const kitsLeftOf = (tag: string, ledger: KitLedger): number => {
+    const shipId = battle.myFleet?.find((m) => m.tag === tag)?.shipId ?? engine.state.shipId
+    return kitIdsOf(ledger).reduce((n, kitId) => n + repairKitAvailableOf(engine.state, shipId, kitId), 0)
+  }
+  const repairTotal =
+    engine.state.resupplyFromWarehouse !== false
+      ? // 开：全队共用母港仓库 ⇒ 按"全队用到的 kitId"各记一次
+        [...new Set(repairLedgers.flatMap((e) => kitIdsOf(e.ledger)))].reduce(
+          (n, kitId) => n + repairKitAvailableOf(engine.state, engine.state.shipId, kitId),
+          0,
+        )
+      : // 关：各舰各吃自己货仓 ⇒ 逐舰相加（不重叠）
+        repairLedgers.reduce((n, e) => n + kitsLeftOf(e.tag, e.ledger), 0)
   const repairRunning = repairLedgers.some((e) => e.ledger.units.some((u) => !u.stopped))
   const repairDetail = repairLedgers
     .map((e) => {
-      const kits = Object.values(e.ledger.kits).reduce((a, b) => a + b, 0)
+      const kits = kitsLeftOf(e.tag, e.ledger)
       const running = e.ledger.units.some((u) => !u.stopped)
       const who = e.tag === 'player' ? tr("ui.BattleScreen.031") : tr("ui.BattleScreen.083", { p1: e.tag.replace('ally-', '') })
       return tr("ui.BattleScreen.084", { who: who, p2: running ? tr("ui.BattleScreen.032") : tr("ui.BattleScreen.033"), p3: kits.toLocaleString('zh-CN') })
