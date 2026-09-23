@@ -81,16 +81,36 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     return () => window.clearTimeout(t)
   }, [phase, shown])
 
-  const skip = (): void => {
+  /**
+   * **跳过演出照出模式卡**（**2026-09-23 船长令**：「跳过也弹出模式选择」）。
+   * `skipFlow = true` ⇒ 选完模式不再走「睁眼」动画与起名，直接按 `prologueSkip()` 收尾
+   * （与旧「跳过」同一收尾路径；跳过者不结算演出奖励的口径不变）。
+   */
+  const [skipFlow, setSkipFlow] = useState(false)
+
+  /** 跳过收尾：直接结束序章（core `skipPrologue`） */
+  const finishSkip = (): void => {
     const r = engine.prologueSkip()
     if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.041'))
   }
 
-  /** 选铁人：入模（代次接账本高度）→ 再去起名；即便入模失败也不拦人，按普通档继续并把原因写在界面上 */
+  const skip = (): void => {
+    setSkipFlow(true)
+    goto('mode')
+  }
+
+  /** 选普通：跳过流 ⇒ 直接收尾；正常流 ⇒ 去起名 */
+  const chooseStandard = (): void => {
+    if (skipFlow) finishSkip()
+    else goto('name')
+  }
+
+  /** 选铁人：入模（代次接账本高度）→ 跳过流收尾 / 正常流去起名；即便入模失败也不拦人 */
   const chooseIronman = async (): Promise<void> => {
     const r = await engine.enterIronmanNow()
     if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.042'))
-    goto('name')
+    if (skipFlow) finishSkip()
+    else goto('name')
   }
 
   const confirm = (): void => {
@@ -175,7 +195,7 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
               <div className="app-pro-name" onClick={(e) => e.stopPropagation()}>
                 <div className="app-pro-diag-title">{tr('ui.Ironman.011')}</div>
                 <div className="app-pro-mode">
-                  <button className="app-pro-mode-card" onClick={() => goto('name')}>
+                  <button className="app-pro-mode-card" onClick={() => chooseStandard()}>
                     <span className="app-pro-mode-title">{tr('ui.Ironman.026')}</span>
                     <span className="app-pro-mode-li">{tr('ui.Ironman.027')}</span>
                     <span className="app-pro-mode-li">{tr('ui.Ironman.028')}</span>
