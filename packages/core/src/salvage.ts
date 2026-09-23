@@ -592,7 +592,7 @@ export function rollRareBoxExtra(
         : (() => {
             const groups = (weightedFallback ?? []).filter((g) => g.ids.length > 0 && g.weight > 0)
             if (groups.length === 0) return undefined
-            const chosen = pickWeighted(state.rng, groups, (g) => g.weight, { bound: 'lte' })?.[0]
+            const chosen = pickWeighted(state.rng, groups, (g) => g.weight, { bound: 'lte' })
             const ids = chosen?.ids ?? groups[0]!.ids
             return pickOne(state.rng, ids)
           })()
