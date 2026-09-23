@@ -1170,9 +1170,22 @@ export class GameEngine {
 
   /** 装载成功后把代次顶到"账本高度"（保持当前档永远处在账本头部） */
   private async syncIronmanHead(s: GameState): Promise<void> {
-    const ledger = await saveBridge.ironmanLedger()
-    const head = Math.max(ironmanSeq(s), ironmanSeq(this.state), ledger.ok ? ledger.seq : 0)
-    s.ironman = { ...(s.ironman ?? { on: false, seq: 0 }), seq: head }
+    /**
+     * ⚠ **账本读不到不许拦人，也不许把原始英文报错抛给玩家**——2026-09-23 船长实测报障：
+     * 旧主进程没有 `ironman:ledger` 这个 IPC ⇒ `invoke` 直接 reject，异常从这里冒到
+     * `restoreBackup` 的错误分支，玩家看到一串
+     * 「Error: Error invoking remote method 'ironman:ledger': No handler registered…」。
+     * 口径：**退化为"只看两侧档内代次"**——闸门仍然生效，只是少了账本这一层高度。
+     */
+    try {
+      const ledger = await saveBridge.ironmanLedger()
+      const head = Math.max(ironmanSeq(s), ironmanSeq(this.state), ledger.ok ? ledger.seq : 0)
+      s.ironman = { ...(s.ironman ?? { on: false, seq: 0 }), seq: head }
+    } catch (err) {
+      console.warn('ironman ledger unavailable, sync degraded', err)
+      const head = Math.max(ironmanSeq(s), ironmanSeq(this.state))
+      s.ironman = { ...(s.ironman ?? { on: false, seq: 0 }), seq: head }
+    }
   }
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     try {
