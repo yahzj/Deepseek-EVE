@@ -400,6 +400,9 @@ export function startRecycleRun(
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   // 2026-09-06（船长反馈：数量不足仍能开工）：起炉需 ≥ 一批；运行中余量不足的"尾批"处理不受影响
+  // ⚠ **2026-09-23 核出的既有设计**：稀有残骸与普通残骸**共用同一个批大小**（见本函数下方 2026-09-11
+  // 的最终口径注释「批大小仍与普通残骸一致（`RECYCLE_BATCH_M3`）」；`RARE_UNIT_M3` 只是**彩头节奏**
+  // （每烧满 30 m³ 必给一次），**不是批大小**）⇒ 这里**不按残骸类型分支**，改常量即两边同步。
   if (available < RECYCLE_BATCH_M3) {
     return {
       ok: false,
