@@ -1315,6 +1315,8 @@ export interface ModuleDef {
   reloadMs?: number
   /** 单发伤害倍率（实际单发伤害 = 弹 dmg × dmgMult × (1+5%/级炮术) × (1+船 powerBonus)） */
   dmgMult?: number
+  /** **单轮发数**（缺省 1）：单轮总伤 = `dmgMult × shots`。⟪2026-09-22 船长令⟫ 陵卫连装炮 = 4.6 × 2 */
+  shots?: number
   /** 装配占用 CPU（V17 起装配校验生效：模块合计不得超过船体 cpu；与无人机放飞共用） */
   cpuUse?: number;
   /**
