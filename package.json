@@ -77,6 +77,7 @@
     "commit:msg": "tsx tools/commit-msg.ts",
     "ui:actwin": "tsx tools/activity-win-probe.ts",
     "ui:whhold": "tsx tools/wh-hold-geom.ts",
+    "filters:export": "tsx tools/filters-export.ts",
     "l10n:scan": "tsx tools/l10n-en-scan.ts"
   },
   "devDependencies": {
