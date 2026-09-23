@@ -237,7 +237,8 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         (id) => engine.ctx.items.get(id)?.name ?? id,
       )
       const mineralTip =
-        tr("ui.IndustryPage.083", { RECYCLE_BATCH_M3: RECYCLE_BATCH_M3 }) +
+        // 稀有残骸卡：批大小是**稀有批 30 m³**（2026-09-23 乙案），不是普通那 100 ⇒ 这里传稀有批
+        tr("ui.IndustryPage.083", { RECYCLE_BATCH_M3: RARE_WRECK_VOLUME_M3 }) +
         tr('ui.IndustryPage.113') +
         (profile.note ? tr("ui.IndustryPage.084", { p1: profile.note }) : '')
       econ = (
@@ -399,7 +400,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
                   ? tr("ui.IndustryPage.095", { p1: Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000)) })
                   : isWreck
                     ? isRareBox
-                      ? tr("ui.IndustryPage.096", { RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3, RECYCLE_BATCH_M3: RECYCLE_BATCH_M3 })
+                      ? tr("ui.IndustryPage.096", { RARE_WRECK_VOLUME_M3: RARE_WRECK_VOLUME_M3, RECYCLE_BATCH_M3: RARE_WRECK_VOLUME_M3 })
                       : tr("ui.IndustryPage.046")
                     : tr("ui.IndustryPage.047"))
           }

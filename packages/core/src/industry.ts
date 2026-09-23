@@ -446,12 +446,14 @@ export function startRecycleRun(
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
   }
-  // 2026-09-11 船长定（第二次修订，最终口径）：
-  // **稀有残骸照普通残骸回收的机制走**（不预占、不分"件/单元"、不解锁额外状态），只改两件事：
+  // 2026-09-11 船长定（第二次修订）：**稀有残骸照普通残骸回收的机制走**（不预占、不分"件/单元"、
+  // 不解锁额外状态），只改两件事：
   //   ① 高级箱不再按概率抽 —— **每烧掉 `RARE_UNIT_M3`（= 30 m³）就必给**一次彩头；
   //   ② 抽奖池里加入该敌族的**专属装备**（`rollRareBoxExtra` 内已含 poolOnly 的专属件）。
-  // 于是"3 批"这类中间概念彻底消失：批大小仍与普通残骸一致（`RECYCLE_BATCH_M3`），
   // 彩头按**累计已烧体积**每满 30 m³ 结算一次（同一批料无论怎么起停都只结算一次）。
+  // ⚠ 原句「批大小仍与普通残骸一致（`RECYCLE_BATCH_M3`）」**已按 2026-09-23 船长令（乙案）删除**：
+  //   现在是「普通批 100 m³ / 稀有批 30 m³（`RARE_UNIT_M3`）」——留着那句旧话会再次把人带偏
+  //   （卡面文案曾因此出现"锁 30 = 1 件 · 每批 100"的自相矛盾）。
   // 老档兼容：历史档里 `claimedUnits`（起炉预占的炉内料账）**一律退回仓库**——新语义下料不再进炉内账。
   const legacyClaim = Math.max(0, state.refineRuns.reduce((s, x) => s + (x.claimedUnits ?? 0), 0))
   if (legacyClaim > 0) {
