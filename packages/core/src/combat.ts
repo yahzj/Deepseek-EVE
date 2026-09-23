@@ -1102,14 +1102,27 @@ export function createPlayerSpec(
   // 与甲容同口径；技能（船体加固理论/装甲舰操作）再乘于其上
   let hullHpMult = 1
   for (const m of allFittedModules(fitted, ctx)) hullHpMult += m.hullHpBonus ?? 0
+  /**
+   * **舰种操作四技能**（2026-09-22 船长令）：判据 = **舰种 `ship.tier`**（T1 护卫舰 / T2 驱逐舰 / T3 巡洋舰 /
+   * T4 战列舰，见 `SHIP_SIZE_CLASS`），**只对主控正在驾驶的这一艘**生效（与武装舰/装甲舰操作同口径；
+   * 那两条按"类别"判、本组按"舰种"判 ⇒ 互不冲突、可叠加）。口径（船长同日逐条裁定）：**闪避/命中加百分点**；
+   * **单发伤害与容量相对乘算**；**抗性只对已有条目相对乘算**（没有抗性的层不动，上限 90%）。
+   * ⚠ 每级值（0.02/0.05/0.03）在下方**各使用点**出现，`content:check` 的现场复核按 `srcNear:false` 登记。
+   */
+  const tierOpsLv = (tier: number, id: string): number => (ship.tier === tier ? Math.min(5, state.skills.trained[id] ?? 0) : 0)
+  const frigateOpsLv = tierOpsLv(1, 'frigate-ops')
+  const destroyerOpsLv = tierOpsLv(2, 'destroyer-ops')
+  const cruiserOpsLv = tierOpsLv(3, 'cruiser-ops')
+  const battleshipOpsLv = tierOpsLv(4, 'battleship-ops')
   // 批次三技能（2026-09-05）：护盾操作学（盾容量 +4%/级）/ 船体加固理论（甲+结构 +4%/级）——乘于装备件之上
   const shOpLv = Math.min(5, state.skills.trained['shield-operation'] ?? 0)
   const hullLv = Math.min(5, state.skills.trained['hull-upgrades'] ?? 0)
   // 批次五：装甲舰操作（判据 = 类别 `shipCategoryKeyOf`；船长 2026-09-16「两个舰操作各自只影响自身分类」）
   const armoredOpsLv = shipCategoryKeyOf(ship) === 'armored' ? Math.min(5, state.skills.trained['armored-ops'] ?? 0) : 0
-  const hullSkillMult = (1 + 0.04 * hullLv) * (1 + 0.04 * armoredOpsLv)
+  const hullSkillMult =
+    (1 + 0.04 * hullLv) * (1 + 0.04 * armoredOpsLv) * (1 + 0.03 * battleshipOpsLv) // 末项 = 战列操作（三容量同乘）
   const hp: Hp3 = {
-    s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv),
+    s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv),
     a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult) * hullSkillMult,
     h: (ship.hullHp ?? 0) * Math.max(1, hullHpMult) * hullSkillMult,
   }
@@ -1131,6 +1144,20 @@ export function createPlayerSpec(
   // 结构层抗性（2026-09-10 船长：模块首次可加壳抗——hullResistAdd，按系缺口复合，上限 0.9）
   const hullRes = mergeResist(ship.hullResist, undefined)
   for (const m of allFittedModules(fitted, ctx)) if (m.hullResistAdd) applyAdds(hullRes, m.hullResistAdd)
+  /**
+   * 巡洋舰操作 / 战列操作：**已有抗性条目**相对 +2%/级（满级 ×1.1，上限 90%）。
+   * 一艘船只有一个舰种 ⇒ 两条至多一条非零，取 max 即可；**没有抗性的层不动**（武装舰多数三层全空）。
+   */
+  const tierResistLv = Math.max(cruiserOpsLv, battleshipOpsLv)
+  if (tierResistLv > 0) {
+    const f = 1 + 0.02 * tierResistLv
+    for (const layer of [shieldRes, armorRes, hullRes]) {
+      for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+        const v = layer[t]
+        if (v !== undefined) layer[t] = Math.min(0.9, Math.max(0, v * f))
+      }
+    }
+  }
   const resists = { shield: shieldRes, armor: armorRes, hull: hullRes }
 
   // V18.1 支援件合成：
@@ -1159,7 +1186,7 @@ export function createPlayerSpec(
   // 2026-09-05 一号按盘点补：规避机动学——舰船被命中缺口每级收窄 5%（与姿态陀螺缺口复合）
   const evLv = Math.min(5, state.skills.trained[bal.evasionSkillId] ?? 0)
   if (evLv > 0) evadeGaps.push(bal.evasionPerLevel * evLv)
-  const evasion = gapCombine(evadeGaps, ship.evasion ?? 0.12)
+  const evasion = gapCombine(evadeGaps, Math.min(0.9, (ship.evasion ?? 0.12) + 0.02 * frigateOpsLv))
   const reloadDiv = 1 + Math.min(0.9, rofCut)
   /* ═══ 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；设计稿 §3.6/§3.8）═══
    * 全部走"全件扫描"口径；四项缺省 0 ⇒ 既有装备零行为变化。 */
@@ -1232,7 +1259,13 @@ export function createPlayerSpec(
   // 2026-09-16 船长：「装甲舰操作和武装舰操作各自只影响自身分类的舰船。」⇒ 判据由 `role` 改为**类别**
   // （`shipCategoryKeyOf`）⇒ 归入装甲线的牛鲨 + E 族三艘**不再吃**这一条（它们改吃装甲舰操作）
   const arOpsLv = shipCategoryKeyOf(ship) === 'armed' ? Math.min(5, state.skills.trained['armed-ops'] ?? 0) : 0
-  const dmgScale = (1 + bal.gunneryDmgPerLevel * gunneryLv) * (1 + (ship.powerBonus ?? 0)) * (1 + 0.03 * arOpsLv)
+  // 舰种操作（2026-09-22 船长令）：驱逐舰操作 +5%/级、巡洋舰操作 +3%/级——单发伤害进同一乘链
+  const dmgScale =
+    (1 + bal.gunneryDmgPerLevel * gunneryLv) *
+    (1 + (ship.powerBonus ?? 0)) *
+    (1 + 0.03 * arOpsLv) *
+    (1 + 0.05 * destroyerOpsLv) *
+    (1 + 0.03 * cruiserOpsLv)
 
   // 兜底武器：基础舰炮恒在（弱；无炮/无弹仍可还击）
   weapons.push({
@@ -1463,7 +1496,8 @@ export function createPlayerSpec(
     evasion,
     // ⚠ 2026-09-14 船长改判：**索敌统合不再放大舰船命中加成**（改去乘炮台基础命中，见上 `targetMult`）
     // ⇒ 这里恢复成**纯静态舰船值**（装配台那一行「命中加成 +N%」自此与实际完全一致）。
-    hitBonus: ship.hitBonus ?? 0,
+    // 2026-09-22 舰种操作：驱逐舰操作加**百分点**（+2pp/级）——与敌方闪避同处那条减法式（船长裁定「加百分点」）
+    hitBonus: (ship.hitBonus ?? 0) + 0.02 * destroyerOpsLv,
     // V17.1 失稳（多件只取最重一件；V18.1 索敌命中乘子走炮台条目 eqHitMul，不在此）
     // 2026-09-10 船长：本值 = **点火期**的命中乘子；冷却期不开火失稳（stepBattle 用 meAtk 置 1）
     hitMul: 1 - worstPen,

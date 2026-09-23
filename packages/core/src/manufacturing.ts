@@ -243,6 +243,15 @@ export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: Bui
     const lv = Math.min(5, state.skills.trained['precision-assembly'] ?? 0)
     ratio *= 1 - 0.08 * lv
   }
+  /**
+   * 零件流水线（2026-09-22 船长令 · 制造系 T5「缩短所有零件生产周期每级 4%」）：
+   * **零件类蓝图**（`spec.partTier` 有值 = 基础/高级零件那一族，含隐式蓝图）再 ×(1−4%/级)；
+   * 与上面的工业理论、批量生产学**乘算叠加**，其余蓝图（装备/舰船/弹药……）不受影响。
+   */
+  if (spec.partTier !== undefined) {
+    const lineLv = Math.min(5, state.skills.trained['parts-line'] ?? 0)
+    if (lineLv > 0) ratio *= Math.max(0, 1 - 0.04 * lineLv)
+  }
   // 调试模式 debugQuick：制造固定 1 秒
   return state.debugQuick ? 1000 : Math.max(1, Math.round(spec.buildSeconds * 1000 * ratio))
 }

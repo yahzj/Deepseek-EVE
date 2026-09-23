@@ -334,7 +334,13 @@
 | rich-vein-prospecting | 富矿勘探学 | `Rich Vein Prospecting` |
 | core-smelting | 炉心熔炼学 | `Core Smelting` |
 | furnace-expansion | 炉膛扩容学 | `Furnace Expansion` |
+| furnace-precision | 炉温精调学 | `Furnace Precision` |
 | batch-production | 批量生产学 | `Batch Production` |
+| parts-line | 零件流水线 | `Parts Line` |
+| frigate-ops | 护卫舰操作 | `Frigate Operation` |
+| destroyer-ops | 驱逐舰操作 | `Destroyer Operation` |
+| cruiser-ops | 巡洋舰操作 | `Cruiser Operation` |
+| battleship-ops | 战列操作 | `Battleship Operation` |
 | component-standardization | 组件标准化 | `Component Standardization` |
 | ai-servicing | 副船整备学 | `Auxiliary Ship Servicing` |
 | offline-ops | 离线作业管理学 | `Offline Operations` |

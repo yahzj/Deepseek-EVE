@@ -244,6 +244,7 @@ import {
   matterTechCostAt,
   matterTechBattleSpeedTiers,
   matterTechScanCut,
+  offlineCapMsOf,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -883,7 +884,7 @@ export class GameEngine {
       // B4：离线结算前后对比，生成启动简报（离线 ≥1 分钟才展示）；stats 收集 AI 核心作业
       const before = snapshotBasics(this.state)
       const stats = newSettleStats()
-      const { overflowMs } = offlineSplit(now - lastSavedWall)
+      const { overflowMs } = offlineSplit(now - lastSavedWall, offlineCapMsOf(this.state))
       simulateOffline(this.state, lastSavedWall, now, this.ctx, undefined, { stats })
       this.drainSystemNotice()
       this.offlineReport = buildOfflineReport(before, this.state, this.ctx, now - lastSavedWall, overflowMs, stats)
@@ -1061,7 +1062,7 @@ export class GameEngine {
       if (wallFrom > 0 && now > wallFrom) {
         const before = snapshotBasics(parsed.state)
         const stats = newSettleStats()
-        const { overflowMs } = offlineSplit(now - wallFrom)
+        const { overflowMs } = offlineSplit(now - wallFrom, offlineCapMsOf(parsed.state))
         simulateOffline(parsed.state, wallFrom, now, this.ctx, undefined, { stats })
         this.offlineReport = buildOfflineReport(before, parsed.state, this.ctx, now - wallFrom, overflowMs, stats)
         if (this.offlineReport !== null) {
@@ -1149,7 +1150,7 @@ export class GameEngine {
       if (wallFrom > 0 && now > wallFrom) {
         const before = snapshotBasics(imported)
         const stats = newSettleStats()
-        const { overflowMs } = offlineSplit(now - wallFrom)
+        const { overflowMs } = offlineSplit(now - wallFrom, offlineCapMsOf(imported))
         simulateOffline(imported, wallFrom, now, this.ctx, undefined, { stats })
         this.offlineReport = buildOfflineReport(before, imported, this.ctx, now - wallFrom, overflowMs, stats)
         if (this.offlineReport !== null) {
@@ -2478,7 +2479,7 @@ export class GameEngine {
     if (!Number.isFinite(ms) || ms <= 0) return
     const wallBase = this.state.savedAtWallMs > 0 ? this.state.savedAtWallMs : Date.now()
     const before = snapshotBasics(this.state)
-    const { overflowMs } = offlineSplit(ms)
+    const { overflowMs } = offlineSplit(ms, offlineCapMsOf(this.state))
     // 调试快进：冻结进行中的战斗（低安遭遇战 + 主控远征），不随快进时间跳变而瞬结（船长 2026-09-05）
     const stats = newSettleStats()
     simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats })

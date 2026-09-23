@@ -263,6 +263,9 @@ export function startRefineRun(
    */
   const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
   if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
+  // 炉温精调学（2026-09-22 船长令 · 精炼系 T4「每级 4%」）：与炉心熔炼学**同一乘区**，手动与 AI 核心驱动同享
+  const fineLv = Math.min(5, state.skills.trained['furnace-precision'] ?? 0)
+  if (fineLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.04 * fineLv)))
   const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
   if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
   // 产线节拍学（原"工业自动化"，id industrial-automation；2026-09-08 船长定：手动与 AI 核心驱动同享）：

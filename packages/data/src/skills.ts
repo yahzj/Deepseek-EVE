@@ -144,6 +144,51 @@ export const SKILLS: readonly SkillDef[] = [
     branch: 'b-warship',
     description: '装甲舰专精驾驶：驾驶装甲舰时装甲与结构容量每级 +⟦4%⟧（满级 +⟦20%⟧；与船体加固理论、装甲增厚板乘算叠加，护盾不受影响）。容量变厚的同时，修理组件与船体维修装置的修复量按同一比例提高。',
   },
+  /**
+   * **舰种操作四技能**（2026-09-22 船长令）：「添加战舰操作系T4技能，护卫舰操作…驱逐舰操作…」＋
+   * 「添加战舰操作系T5技能，巡洋舰操作…战列操作…」。
+   *
+   * 判据 = **舰种**（`ShipDef.tier`：T1 护卫舰 / T2 驱逐舰 / T3 巡洋舰 / T4 战列舰，见 core `SHIP_SIZE_CLASS`），
+   * 与既有的「武装舰操作 / 装甲舰操作」按**类别**判定**互不冲突、可叠加**（长尾鲨级 = 武装舰 且 T3 ⇒ 两条都吃）。
+   * 前置 = 武装舰操作 ＋ 装甲舰操作（船长指定，两条都要 Lv1）。口径（船长同日逐条裁定）：
+   * 闪避/命中加**百分点**；单发伤害与容量**相对乘算**；抗性只对**已有条目**相对乘算（上限 90%）。
+   */
+  {
+    id: 'frigate-ops',
+    name: '护卫舰操作',
+    group: '战斗',
+    rank: 4,
+    branch: 'b-warship',
+    prereq: ['armed-ops', 'armored-ops'],
+    description: '护卫舰专精驾驶：驾驶护卫舰时闪避每级 +⟦2⟧ 个百分点（满级 +⟦10⟧ 个百分点；与规避机动学、姿态陀螺乘算叠加）。',
+  },
+  {
+    id: 'destroyer-ops',
+    name: '驱逐舰操作',
+    group: '战斗',
+    rank: 4,
+    branch: 'b-warship',
+    prereq: ['armed-ops', 'armored-ops'],
+    description: '驱逐舰专精驾驶：驾驶驱逐舰时单发伤害每级 +⟦5%⟧（满级 +⟦25%⟧）、命中每级 +⟦2⟧ 个百分点（满级 +⟦10⟧ 个百分点；与炮术学、武器族专精乘算叠加）。',
+  },
+  {
+    id: 'cruiser-ops',
+    name: '巡洋舰操作',
+    group: '战斗',
+    rank: 5,
+    branch: 'b-warship',
+    prereq: ['armed-ops', 'armored-ops'],
+    description: '巡洋舰专精驾驶：驾驶巡洋舰时单发伤害每级 +⟦3%⟧（满级 +⟦15%⟧）、已有抗性每级再 +⟦2%⟧（满级 ×⟦1.1⟧，如 25%→27.5%；没有抗性的层不受影响，上限 90%）。',
+  },
+  {
+    id: 'battleship-ops',
+    name: '战列操作',
+    group: '战斗',
+    rank: 5,
+    branch: 'b-warship',
+    prereq: ['armed-ops', 'armored-ops'],
+    description: '战列舰专精驾驶：驾驶战列舰时护盾、装甲与结构容量每级 +⟦3%⟧（满级 +⟦15%⟧）、已有抗性每级再 +⟦2%⟧（满级 ×⟦1.1⟧；没有抗性的层不受影响，上限 90%）。',
+  },
   {
     id: 'vector-maneuvering',
     name: '矢量机动操作',
@@ -307,6 +352,17 @@ export const SKILLS: readonly SkillDef[] = [
     description: '精炼炉膛容积改造：精炼单批处理量每级 +⟦6%⟧（手动与 AI 核心驱动同享）。',
   },
   {
+    id: 'furnace-precision',
+    name: '炉温精调学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-refine',
+    // 2026-09-22 船长令（精炼系 T4）：「添加一个精炼系T4的精炼炉周期缩短技能，每级4%」——
+    // 与炉心熔炼学同乘区（都是精炼炉周期），故挂它为前置。
+    prereq: ['core-smelting'],
+    description: '炉温精调与热工控制：精炼炉单批周期每级再缩短 ⟦4%⟧（满级 −⟦20%⟧；手动与 AI 核心驱动同享，与炉心熔炼学、产线节拍学乘算叠加）。',
+  },
+  {
     id: 'batch-production',
     name: '批量生产学',
     group: '工业',
@@ -314,6 +370,17 @@ export const SKILLS: readonly SkillDef[] = [
     branch: 'b-craft',
     // 2026-09-08 技能加成下调约 20%：−4% → −3%
     description: '多工位装配线排程：蓝图制造时间每级再 −⟦3%⟧（与工业理论乘算叠加）。',
+  },
+  {
+    id: 'parts-line',
+    name: '零件流水线',
+    group: '工业',
+    rank: 5,
+    branch: 'b-craft',
+    // 2026-09-22 船长令（制造系 T5）：「添加一个制造系T5技能，缩短所有零件生产周期每级4%」——
+    // 与批量生产学同乘区（都是蓝图制造周期），故挂它为前置。
+    prereq: ['batch-production'],
+    description: '零件专线排程：零件类蓝图的生产周期每级再缩短 ⟦4%⟧（满级 −⟦20%⟧；与工业理论、批量生产学乘算叠加，其余蓝图不受影响）。',
   },
   {
     id: 'component-standardization',
