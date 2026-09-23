@@ -24,7 +24,7 @@
  */
 import { memo } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { fleetDefOf, getMiningParams, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
+import { fleetDefOf, getMiningParams, matterTechScanCut, salvagerCyclesOf, wormholeScanWindowMs } from '@whale/core'
 import type { GameState, ShipRole, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { toneOf } from './Glyphs'
@@ -49,6 +49,9 @@ import { WinBox } from './WinBox'
 
 /** 本窗口认得的活动（= `sceneOfShipwin` 的作业态子集；其余场景窗口不弹） */
 export type ActivityKind = 'mine' | 'salvage' | 'haul' | 'scan'
+
+/** 一小时的毫秒数（扫描档的读数按小时给，见 `readoutOf` 的 scan 分支） */
+const HOUR = 3_600_000
 
 /** 场景 → 本窗口的活动种类；不属于本窗口的场景返回 null */
 function activityOf(scene: ShipwinScene): ActivityKind | null {
@@ -208,17 +211,22 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
     }
   }
   const sc = state.wormholeScan ?? { active: false, progressMs: 0 }
-  const win = wormholeScanWindowMs(state)
   /**
-   * 扫描进度条**按"小时带"走**（2026-09-20 自查修正）：
-   *
-   * 直接拿整窗口当分母是**看不出来的**——窗口基准 12 小时（还要吃技能与谜质科技的削减），而 tick 是
-   * 10Hz ⇒ 每帧进度只涨 0.0002%，条子实际上是死的。故进度条改为**当前这一小时的完成度**
-   * （每小时扫满一次、条子扫过一遍），整窗的绝对进度由**读数**如实给出（`x.x h / y.y h（z%）`）。
-   * 这样"条子在动"与"数值可信"两件事都有：条子负责动感，数字负责真相。
+   * ⚠ **窗口必须与引擎同一把尺**（2026-09-22 船长报障：「活动窗口是 3.6 小时，扫描虫洞界面是 2 小时 57 分」）：
+   * `wormholeScanWindowMs(state)` **漏了谜质科技「谐振信号滤波阵列」的削减**，而扫描虫洞页走的是
+   * `engine.wormholeScanWindow()` = `wormholeScanWindowMs(state, matterTechScanCut(state, ctx))`
+   * ⇒ 活动窗口显示偏长（引擎侧注释记载：2026-09-19 修过同类"显示偏长"）。
    */
-  const HOUR = 3_600_000
-  const inHour = sc.progressMs % HOUR
+  const win = wormholeScanWindowMs(state, matterTechScanCut(state, ctx))
+  /**
+   * 扫描进度条（**2026-09-22 与扫描虫洞页统一**）：
+   *
+   * 原先这里按"当前这一小时"走（`progressMs % 1h ÷ 1h`），2026-09-20 的自查理由是要让条子看得见在动；
+   * 但船长报障「两个进度条不一致」——扫描虫洞页的条子是**整窗进度**（`progressMs ÷ win`），
+   * 而两处的**数字**（`x.x h / y.y h（z%）`）本来就是同一把尺。⇒ 条子改回**整窗进度**，两处一致。
+   * 画面本身的动感不受影响：窗口里的演出由节拍（`--act-cycle` / `--act-delay`）驱动，不靠条子。
+   * 代价：12 小时窗口下条子走得很慢（约 7 分钟 1%）——数字那两行如实给出绝对进度与剩余。
+   */
   const totalH = win / HOUR
   const doneH = sc.progressMs / HOUR
   const pct = win > 0 ? Math.min(100, Math.floor((sc.progressMs / win) * 100)) : 0
@@ -228,9 +236,9 @@ function readoutOf(kind: ActivityKind, state: GameState, ctx: SimContext): Reado
       `${tr('ui.ActivityWin.017')}${doneH.toFixed(1)} h / ${totalH.toFixed(1)} h（${pct}%）`,
       tr('ui.ActivityWin.024', { p1: win > 0 ? Math.max(0, (win - sc.progressMs) / HOUR).toFixed(1) : '—' }),
     ],
-    progress: win > 0 ? Math.min(1, inHour / HOUR) : null,
+    progress: win > 0 ? Math.min(1, sc.progressMs / win) : null,
     progressLabel: tr('ui.ActivityWin.022'),
-    // 节拍挂钩点＝整窗时长（相位峰值落在"这一小时带扫满"那刻；节拍再长也只夹快慢，见 beatStyle）
+    // 节拍挂钩点＝整窗时长（相位峰值落在"扫满一窗"那刻；节拍再长也只夹快慢，见 beatStyle）
     cycleMs: win > 0 ? win : null,
   }
 }
