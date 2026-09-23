@@ -278,6 +278,17 @@ export {
   weekendSettlePlanOf,
 } from './weekendBattle'
 export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan } from './weekendBattle'
+
+/* 2026-09-23 周末入侵 · 悬赏替换与遇袭判定（M1-b 第三片） */
+export {
+  WEEKEND_BOUNTY_REWARD_MUL,
+  WEEKEND_CARD_PREFIX,
+  weekendBountyCardsOf,
+  weekendDerivedCardOf,
+  weekendEncounterAllowedIn,
+  weekendEncounterRollOf,
+  weekendOccupiedLiveAt,
+} from './weekendBounty'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
 export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'
