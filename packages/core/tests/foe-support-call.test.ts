@@ -144,11 +144,11 @@ describe('支援呼叫装置 · 数据口径', () => {
 describe('支援呼叫装置 · 派生（实际威胁 ×1.1 与互斥分支记账）', () => {
   const base = ctx.anomalies.get(CARD)!
 
-  it('实际威胁 = round(层威胁 × 1.1)：层 1 = 50 · 层 4 = 66（显示与预算同源）', () => {
+  it('实际威胁 = round(层威胁 × 1.1)：层 1 = 50 · 层 4 = 69（显示与预算同源）', () => {
     expect(wormholeCardThreatOf(base, 1, 'node')).toBe(50) // 45 × 1.1 = 49.5 → 50
-    expect(wormholeCardThreatOf(base, 4, 'node')).toBe(66) // 60 × 1.1
+    expect(wormholeCardThreatOf(base, 4, 'node')).toBe(69) // 63 × 1.1（层 4 威胁 60 → 63：2026-09-23 增幅上调）
     const d4 = wormholeDerivedAnomaly(ctx, base, { depth: 4, kind: 'node', waves: 1 })
-    expect(d4.threat, '派生卡上的威胁就是那个数').toBe(66)
+    expect(d4.threat, '派生卡上的威胁就是那个数').toBe(69)
   })
 
   it('互斥分支只记较重的一支 ⇒ 到场总量与改动前的单舰卡同量（红线：改名不改难度）', () => {
@@ -164,7 +164,7 @@ describe('支援呼叫装置 · 派生（实际威胁 ×1.1 与互斥分支记�
     expect(wormholeNaturalHp(bare) / wormholeNaturalHp(base)).toBeCloseTo(1.0007, 3)
   })
 
-  it('到场总量 = 未补偿口径 × foeHpOfThreat(66)/foeHpOfThreat(60) ≈ 1.16（血与火力同比例）', () => {
+  it('到场总量 = 未补偿口径 × foeHpOfThreat(69)/foeHpOfThreat(63) ≈ 1.15（血与火力同比例）', () => {
     /** 到场编成 = 开战即在 + 指定的一支（另一支按设计永不到场） */
     const pick = (d: AnomalyDef, br: 'inside' | 'outside') =>
       createFoeSpecs(d, bal).filter(
@@ -181,10 +181,10 @@ describe('支援呼叫装置 · 派生（实际威胁 ×1.1 与互斥分支记�
     const dTest = wormholeDerivedAnomaly(ctx, base, { depth: 4, kind: 'node', waves: 1 })
     /**
      * 对照 = **同一张卡退回"未补偿"的预算**：用校准覆写 `strengthMul`（`tools/wormhole-econ.ts` 同一入口）
-     * 把 66 那档的预算乘回 `foeHpOfThreat(60)/foeHpOfThreat(66)` ⇒ 血/火力比 `r` 与档位修正完全一致，
+     * 把 69 那档的预算乘回 `foeHpOfThreat(63)/foeHpOfThreat(69)` ⇒ 血/火力比 `r` 与档位修正完全一致，
      * 唯一差别就是那份 ×1.1（比造一张"拆掉装置"的对照卡更干净：不必跟派生记忆/档位查表打交道）。
      */
-    const back = foeHpOfThreat(60, bal) / foeHpOfThreat(66, bal)
+    const back = foeHpOfThreat(63, bal) / foeHpOfThreat(69, bal)
     const dCtrl = wormholeDerivedAnomaly(ctx, base, {
       depth: 4,
       kind: 'node',
@@ -193,7 +193,7 @@ describe('支援呼叫装置 · 派生（实际威胁 ×1.1 与互斥分支记�
     })
     const ctrlHp = hpOf(pick(dCtrl, 'inside'))
     const ctrlDps = dpsOf(pick(dCtrl, 'inside'))
-    expect(dCtrl.threat, '对照卡读的还是同一个威胁（威胁是标尺、不是强度）').toBe(66)
+    expect(dCtrl.threat, '对照卡读的还是同一个威胁（威胁是标尺、不是强度）').toBe(69)
     for (const br of ['inside', 'outside'] as const) {
       const us = pick(dTest, br)
       const hpRatio = hpOf(us) / ctrlHp
