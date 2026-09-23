@@ -56,6 +56,17 @@
 | 视图切换 | `pages/SkillsTreePage.tsx`（`useItemView` / `ItemViewBar`，与手册·物品页同款） | `图标 = 科技树（默认）`、`列表 = 旧目录`；**切换按钮在页头搜索框右边**，搜索栏留在标题上 |
 | 列表视图 | 同页 `app-skilltree-catalog` 分支 | ⚠ **取舍**：没有照搬旧页 469 行，而是按同一套单点（`statusOf` / `skillLevelTimeMs` / `trainNextLevel` / `prereqTextOf`）**重写为精简目录行**（分组 + 名称/Lv/说明高亮/状态/时长 + 训练或"一并加入前置"）；样式沿用仍在仓里的 `.app-skill-group(-tag)` 家族 |
 
+## 船长追加两条（2026-09-23 当日）
+
+- 「**「一并加入前置」要练目标一起排**」⇒ `planPrereqChain(..., { includeTarget: true })`：末尾排上**目标本级**
+  （等级 = 已练 + 队列已排 + 1，与 `trainNextLevel` 同尺；满级/隐藏技能不排）。配套把入队校验从
+  「前置**已练成**」放宽为「前置**轮到这一项之前**到位」（新增 `skillLockMissingAtQueue`：已练 + 队列已排条数）
+  —— 否则目标本级排不进去；**空队时与老判据完全一致**。为守住队列顺序语义，`moveQueueItem` 加**顺序契约**
+  （传 `catalog` 时校验"没有哪一项排在它要的前置之前"，破了**整单回滚**并返回 false）。
+- 「**正在训练的首位技能也要加入训练队列内（排第一）**」⇒ `skillShared.tsx` 的队列面板改为
+  **队首 + pending 一起列**（编号 1..N 天然接上）；队首只给 ↓ / ×（它已在第一位），并给 `is-head` 强调色；
+  空队列才显示空闲文案。
+
 ## 验证口径
 
 - 闸门（本轮实跑）：typecheck 四包 0 错 · `npm run test -w @whale/core` **2123/2123**（新增 7 例：补齐链拓扑/逐级/复用、取消 Lv1 级联含前置项、**取消 Lv2 不动 Lv1 依赖项**、无 catalog 走老语义）· `content:check` · `ui:rot-check` · `l10n:check` · `npm run build`。
