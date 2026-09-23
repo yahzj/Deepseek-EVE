@@ -262,6 +262,22 @@ export {
   weekendWindowOpen,
 } from './weekendEvent'
 export type { WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
+
+/* 2026-09-23 周末入侵 · 战斗与结算（M1-b） */
+export {
+  WEEKEND_ALL_CLEAR_ISK,
+  WEEKEND_ASSAULT_REWARD_MUL,
+  WEEKEND_FLAGSHIP_REWARD_MUL,
+  WEEKEND_FLAGSHIP_WRECK,
+  WEEKEND_RECLAIM_ISK,
+  WEEKEND_RECLAIM_WRECK,
+  weekendAmbushSpecOf,
+  weekendAssaultSpecOf,
+  weekendFlagshipSpecOf,
+  weekendResolveBattle,
+  weekendSettlePlanOf,
+} from './weekendBattle'
+export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan } from './weekendBattle'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
 export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'
