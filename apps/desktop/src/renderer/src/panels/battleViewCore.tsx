@@ -642,7 +642,7 @@ interface OutroSnap {
    * 必须在"分出胜负那一刻"快照：结算后 `battle` 会被清空，事后取不到 `wormhole.kind`。
    * ⚠ 2026-09-15 撤离战退役 ⇒ `'extract'` 只剩**老档**里正在打的撤离战会取到。
    */
-  wormholeKind?: 'node' | 'boss' | 'extract' | 'ruins'
+  wormholeKind?: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
 }
 
 export {

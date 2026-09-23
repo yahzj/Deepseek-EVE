@@ -19,6 +19,9 @@ import { pinMarked } from '../ui/marks'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
 import { Glyph, itemIconOf, itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
+// 围剿者（2026-09-23）：族徽取色与族→卡表（按格上那张围剿卡反查族，不新增 props）
+import { FOE_ACCENT } from '../ui/tones'
+import { WORMHOLE_FAMILY_CARDS } from '@whale/core'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_MAX_SHIPS,
@@ -2622,7 +2625,18 @@ function WhGridMap({
          * 现在四档同源：`unknown` / `signal`（含"无信号 = 空地点"）/ **`nebula`** / `known`。
          */
         const rev = revealOf(grid, { q: c.q, r: c.r })
-        const known = rev.kind === 'known' || rev.kind === 'signal' || rev.kind === 'nebula'
+        const known = rev.kind === 'known' || rev.kind === 'signal' || rev.kind === 'nebula' || rev.kind === 'foe'
+        /**
+         * **围剿者**（2026-09-23 船长新机制：「用敌族族徽做图标覆盖该格子」＋「未扫描也看得到」）：
+         * `revealOf` 已把它提到最高优先（盖过星云与「没扫过」）；这里按**格上那张卡**反查族 ⇒
+         * 徽与色都取该族（一处虫洞锁一族，全盘同徽；`FOE_ACCENT` 与星图族标签/战场敌舰同源）。
+         */
+        const foeKey =
+          rev.kind === 'foe' && c.foe
+            ? (Object.keys(WORMHOLE_FAMILY_CARDS).find((f) =>
+                Object.values(WORMHOLE_FAMILY_CARDS[f as keyof typeof WORMHOLE_FAMILY_CARDS]).includes(c.foe!.card),
+              ) ?? 'A')
+            : null
         const nebula = rev.kind === 'nebula'
         const signal = rev.kind === 'signal' ? rev.signal : rev.kind === 'known' ? rev.signal : null
         // 入口：**到达过**或**被漂浮信标标出来**（船长 2026-09-13 新增信标）⇒ 地图上一直标着
@@ -2701,7 +2715,13 @@ function WhGridMap({
             <polygon points={corners.map((p) => `${(x + p.dx).toFixed(2)},${(y + p.dy).toFixed(2)}`).join(' ')} />
             {known && !iconGone ? (
               <g className="app-wh-hex-glyph" transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`}>
-                {nebula ? <WhNebulaGlyph /> : <WhGlyph signal={signal} exit={isExit} />}
+                {foeKey !== null ? (
+                  <Glyph name={`fam-${foeKey.toLowerCase()}`} size={16} color={FOE_ACCENT[foeKey] ?? FOE_ACCENT.A} />
+                ) : nebula ? (
+                  <WhNebulaGlyph />
+                ) : (
+                  <WhGlyph signal={signal} exit={isExit} />
+                )}
               </g>
             ) : null}
             {/**

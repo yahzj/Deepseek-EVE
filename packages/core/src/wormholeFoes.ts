@@ -86,7 +86,7 @@ export function wormholeNodesPerLayer(depth: number): number {
 /** 洞内敌卡的用途：普通节点 / 层末 BOSS / **遗迹收尾战**（威胁倍率与选靶模式按此分流）。
  * ⚠ **`'extract'`（撤离战）已于 2026-09-15 退役**（船长「虫洞的撤离战取消吧」）——
  * 枚举值与下面两条常量**保留只为读得懂老档**（旧战斗的 `kind` 存在存档里），新趟不再产生。 */
-export type WormholeFoeKind = 'node' | 'boss' | 'extract' | 'ruins'
+export type WormholeFoeKind = 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
 
 /** 层末 **BOSS** 的威胁倍率（设计稿 §3 表：本层 ×1.2） */
 export const WORMHOLE_BOSS_THREAT_MUL = 1.2

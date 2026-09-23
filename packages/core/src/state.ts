@@ -755,7 +755,7 @@ export interface BattleState {
     /** 洞内敌卡 id（`wh-*`，见 `packages/data/src/wormholeFoes.ts`） */
     cardId: string
     depth: number
-    kind: 'node' | 'boss' | 'extract' | 'ruins'
+    kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     /** 本节点打几波（同一编成分波进场；撤离战恒 1 波） */
     waves: number
     /* ── F3c B1：谜质装置在**开战那一刻**的快照（逐拍重建读同一份，不各算各的）── */

@@ -2715,6 +2715,18 @@ function normalizeState(raw: unknown): GameState {
   }
 
   /**
+   * **围剿者清洗**（2026-09-23 新机制）：`{ card: string; seq: number; cleared?: true }`。
+   * 坏值（缺 card / card 为空 / seq 不是有限数）⇒ 整条丢弃；`cleared` 只在为真时写。
+   */
+  const cleanWormholeFoe = (raw: unknown): { card: string; seq: number; cleared?: true } | undefined => {
+    const row = asRaw(raw)
+    const card = typeof row.card === 'string' ? row.card : ''
+    const seq = Math.floor(num(row.seq))
+    if (card.length === 0 || !Number.isFinite(seq) || seq < 0) return undefined
+    return { card, seq, ...(row.cleared === true ? { cleared: true as const } : {}) }
+  }
+
+  /**
    * **货仓格清洗**（F4 · 船长 2026-09-13：类似背包英雄的格管理）。
    * - 形状件逐个走 `cleanHoldPlacement`（坐标/尺寸越界或坏值 ⇒ 丢这一件）；
    * - **重叠的件丢弃**（后到的让位）——重叠是坏档，留着会让放置逻辑错乱；
@@ -2799,6 +2811,11 @@ function normalizeState(raw: unknown): GameState {
         ...(cellPiles ? { piles: cellPiles } : {}),
         // 星云标记（船长 2026-09-13 星云机制）：只在为真时写（老档/非星云格 ⇒ 不写 = 零迁移）
         ...(row.nebula === true ? { nebula: true } : {}),
+        /**
+         * **围剿者**（2026-09-23 新机制 · 玩家报障级教训同款：本清洗器逐字段重建，漏登记 = 每读一次档丢一次）：
+         * 坏值整条丢弃（宁可少一个围剿者，也不要读出半个坏对象）；`cleared` 只在为真时写。
+         */
+        ...(cleanWormholeFoe(row.foe) !== undefined ? { foe: cleanWormholeFoe(row.foe)! } : {}),
       })
     }
     if (cells.length === 0) return undefined
@@ -2828,6 +2845,11 @@ function normalizeState(raw: unknown): GameState {
       ...(keys(g.dispersed).length > 0 ? { dispersed: keys(g.dispersed) } : {}),
       // 「下一层入口已被漂浮信标标出」（F3a-3）：只在为真时写（老档/未标出 ⇒ 不写 = 零迁移）
       ...(g.exitKnown === true ? { exitKnown: true } : {}),
+      /**
+       * **本层已刷出的围剿者个数**（2026-09-23 新机制）：坏值/缺省 ⇒ 不写（老档 = 从第一个开始刷）。
+       * ⚠ 与格上的 `foe` 是一对：漏登记任何一个，读档后不是"围剿者消失"就是"序号归零 ⇒ 随机流重来"。
+       */
+      ...(Math.floor(num(g.spawnSeq)) > 0 ? { spawnSeq: Math.floor(num(g.spawnSeq)) } : {}),
       cells,
     }
   }
@@ -3013,6 +3035,8 @@ function normalizeState(raw: unknown): GameState {
       ...(lastSettle !== undefined ? { lastSettle } : {}),
       // 星云提示只提示一次（船长 2026-09-13）：只在为真时写（老档 ⇒ 不写 = 零迁移）
       ...(wRaw.nebulaHintShown === true ? { nebulaHintShown: true } : {}),
+      // 围剿机制的一次性标记（2026-09-23 船长令：首次下到第 7 层发一封通讯）——漏登记 = 每读档补送一次
+      ...(wRaw.siegeHintShown === true ? { siegeHintShown: true } : {}),
     }
   }
   const wormhole = cleanWormhole()

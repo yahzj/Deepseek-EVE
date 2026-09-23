@@ -29,7 +29,7 @@ import {
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
 import { wormholeAnomalyOf, wormholeCardIdForRun } from './wormholeFoes'
-import { gridCellAt, gridContentIndex, isExitCell } from './wormholeGrid'
+import { gridCellAt, gridContentIndex, hasLiveFoe, isExitCell } from './wormholeGrid'
 // 「欠着一场战斗」的拒因单点（2026-09-20：打捞这一口也要过它，见 `wormholeActivateAt` 头注）
 import { wormholePendingBattleReason } from './wormhole'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
@@ -83,10 +83,15 @@ export function wormholeStartBattle(
   if (run.battle) return { ok: false, error: '战斗还没结束。', errorId: 'core.wormholeBattle.002' }
   const grid = run.grid
   const here = grid ? gridCellAt(grid, grid.pos) : undefined
+  /**
+   * **这一格压着围剿者吗**（2026-09-23 新机制）：压着 ⇒ 本场按 `'spawn'` 用途打
+   * （强度 = 该层普通节点、战果走折减形状、打赢后解除覆盖）。界面照旧调 `'node'`（袭击确认链同一条）。
+   */
+  const spawnHere = grid !== undefined && here !== undefined && hasLiveFoe(here)
   if (kind === 'node') {
     if (grid) {
-      // 网格层：战斗由**地点**触发（舰船信号 / 遗迹收尾，后者 F3b 接）
-      if (here?.place !== 'ship') {
+      // 网格层：战斗由**地点**触发（舰船信号 / 遗迹收尾，后者 F3b 接）；围剿者盖在任何格上都算
+      if (here?.place !== 'ship' && !spawnHere) {
         return { ok: false, error: '这里没有可交火的信号。', errorId: 'core.wormholeBattle.003' }
       }
     } else {
@@ -133,6 +138,14 @@ export function wormholeStartBattle(
     if (run.pendingRuinsBattle !== true) {
       return { ok: false, error: '遗迹深处的守备还没被惊动：先在遗迹格上打捞一次。', errorId: 'core.wormholeBattle.011' }
     }
+  } else if (kind === 'spawn') {
+    /**
+     * **围剿战**（2026-09-23 新机制）：只在网格层成立，且**当前格必须压着围剿者**。
+     * 界面一般不必显式传它——袭击确认链照旧调 `'node'`，本函数按 `spawnHere` 自动改道；
+     * 这条留给工具/用例（要一场"就是围剿者"的战斗时点名）。
+     */
+    if (!grid) return { ok: false, error: '围剿战只在网格层成立。', errorId: 'core.wormholeBattle.032' }
+    if (!spawnHere) return { ok: false, error: '这里没有围剿者。', errorId: 'core.wormholeBattle.033' }
   }
   const waves = kind === 'node' && !grid ? Math.max(1, run.pendingNode?.waves ?? 1) : 1
   /**
@@ -143,17 +156,22 @@ export function wormholeStartBattle(
    * 节点序号：网格层取**该格的内容序号**（`gridContentIndex` ⇒ 同格恒同卡、不同格有变化），
    * 线性老档取 `run.nodeIndex`；`run.family` 缺省（老档 / 调试入口）按 `run.seed` 现算 ⇒ 零迁移。
    */
-  const cardId = wormholeCardIdForRun({
-    family: run.family,
-    seed: run.seed,
-    depth: run.depth,
-    kind,
-    nodeIndex: grid ? gridContentIndex(grid, grid.pos) : run.nodeIndex,
-  })
+  /** 本场用途：**压着围剿者 ⇒ `'spawn'`**（威胁照该层普通节点算、战果走折减形状、打赢解除覆盖） */
+  const battleKind: WormholeFoeKind = spawnHere ? 'spawn' : kind
+  const cardId =
+    battleKind === 'spawn' && here?.foe
+      ? here.foe.card // 刷出那一刻抽定的卡（随档）⇒ 读档后再打仍是同一张
+      : wormholeCardIdForRun({
+          family: run.family,
+          seed: run.seed,
+          depth: run.depth,
+          kind: battleKind,
+          nodeIndex: grid ? gridContentIndex(grid, grid.pos) : run.nodeIndex,
+        })
   // **本趟期望交距沿用**（玩家在上一场洞内战里拖过距离条；没拖过 = null ⇒ 走默认口径）
   const battle = startFleetBattleFor(state, ctx, run.fleet, cardId, atGameMs, run.desireM ?? null, {
     depth: run.depth,
-    kind,
+    kind: battleKind,
     waves,
     ...(opts?.strengthMul !== undefined ? { strengthMul: opts.strengthMul } : {}),
   })
@@ -702,13 +720,25 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       'core.wormholeBattle.018',
       { p1: run.depth },
     )
+    /**
+     * **层末守卫的战果**（**2026-09-23 船长令**：「**上调洞内战斗的价值，包括层末守卫**」）：
+     * 守卫此前一分不给，现按 `'boss'` 形状发（3 堆普通残骸 ＋ 3 件稀有残骸 ＋ 一次货柜掷骰）。
+     */
+    if (run.grid) wormholeGrantShipSpoils(state, ctx, 'boss')
     return
   }
   // 网格层的地点战：回合已在"激活地点"那一步扣掉、地点也已记进 `activated` ⇒ 这里只报账
   // （地点收益——墓场/遗迹的打捞、矿脉的母矿、谜质的增强——在 F3b/F3c 接）
   if (run.grid) {
-    // 舰船信号的战果：打赢**固定**给残骸 2 堆 + 稀有残骸 1 堆（船长口径；放不下的留在格上）
-    if (kind === 'node') wormholeGrantShipSpoils(state, ctx)
+    // 舰船信号的战果：形状由用途决定（2026-09-23 船长令：普通节点 2 堆 + 2 件稀有；遗迹 2+2；围剿 1+0）
+    if (kind === 'node') wormholeGrantShipSpoils(state, ctx, 'node')
+    else if (kind === 'ruins') wormholeGrantShipSpoils(state, ctx, 'ruins')
+    else if (kind === 'spawn') {
+      /** 打掉围剿者 ⇒ **覆盖解除、原格内容照旧**（船长：「打掉后进入原内容」）：只清 `foe`，不碰 `place`/`piles` */
+      const cell = gridCellAt(run.grid, run.grid.pos)
+      if (cell?.foe) cell.foe = { ...cell.foe, cleared: true }
+      wormholeGrantShipSpoils(state, ctx, 'spawn')
+    }
     if (run.turnsLeft <= 0) addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
     return
   }

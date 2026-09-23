@@ -84,6 +84,7 @@ const COMMS_SUBJECT_ID: Record<string, string> = {
   'msg-ambush-retreat': 'ui.comms.041',
   'msg-first-ship': 'ui.comms.042',
   'msg-pirate-capture-web': 'ui.comms.043',
+  'msg-wh-siege': 'ui.comms.067', // 围剿通报（2026-09-23 船长令：首次下到第 7 层）
 }
 
 /** 主题行（有登记走当前语言；没登记回落数据侧原文） */
@@ -270,6 +271,12 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'The hull sits in Ship Storage on the Ships page; anything the assembler finishes lands there first and stacks by type. Click “Move into fleet” on that entry and it joins the hangar, ready for a pilot swap or an AI core assignment.',
     'Selling happens there too: ship storage sells directly, filling a standing buy order on the spot or listing the hull automatically if nobody is buying, and a listing can be pulled back to storage at any time.',
     'One storage rule: only ships with modules removed, structure and armor intact and an empty hold are accepted; a hull you are flying or one on an AI task has to be freed up first.',
+  ],
+  'msg-wh-siege': [
+    'You are down on layer seven. From here the garrisons stop waiting for you: every turn you spend puts another sweep ship onto the map.',
+    'A sweep ship wears its family crest, and it holds whatever tile it lands on — you can see it whether or not you have scanned that tile. It blocks the way: fight it or route around it.',
+    'It never leaves on its own and cannot be scanned away: only a fight clears it. Once it is gone, whatever that tile originally held is still there to salvage or mine.',
+    'The worst case is one landing on the tile you are standing on: you get a prompt first and the fight starts once you confirm. Each layer caps how many can be out at once, and killing one frees a slot; the count resets on the next layer.',
   ],
 }
 

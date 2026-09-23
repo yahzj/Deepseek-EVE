@@ -2490,6 +2490,14 @@ export type CommsTrigger =
    */
   | { kind: 'foeShipSeen'; shipId: string }
   /**
+   * **虫洞围剿（第 7 层起）**（2026-09-23 船长：「当玩家第一次进入七层是，给玩家发一则通讯讲清楚
+   * 敌人开始围剿玩家了，并介绍机制」）。
+   *
+   * 判定 = `state.wormhole.siegeHintShown === true`（**第一次下到第 7 层**时由 `wormholeDescend`
+   * 的 `maybeHintSiege` 置位）⇒ 跨趟/跨会话只送一次；老档首次下到 7 层补送。
+   */
+  | { kind: 'wormholeSiege' }
+  /**
    * **虫洞星云带**（2026-09-13 船长定：「**除了一次性事件，通讯内也发一条相关的讯息给玩家**」）。
    *
    * 判定 = `state.wormhole.nebulaHintShown === true`（玩家**第一次下到第 4 层**时由

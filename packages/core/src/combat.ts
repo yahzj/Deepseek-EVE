@@ -3787,7 +3787,7 @@ export function wormholeMatterBattleModsOf(
   state: GameState,
   ctx: SimContext,
   baseCard: AnomalyDef,
-  kind: 'node' | 'boss' | 'extract' | 'ruins',
+  kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn',
 ): { threatMul: number; foeMainType: DamageType; foeHitDown: number; blindReduce: number; volleyOverflow: boolean } | null {
   const buffs = wormholeMatterBuffs(state.wormhole.run?.hold, matterTechWhBuffs(state, ctx))
   const bucket: 'node' | 'boss' | 'extract' = kind === 'boss' ? 'boss' : kind === 'extract' ? 'extract' : 'node'
@@ -4127,7 +4127,7 @@ export function wormholeDerivedAnomaly(
   baseCard: AnomalyDef,
   spec: {
     depth: number
-    kind: 'node' | 'boss' | 'extract' | 'ruins'
+    kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     waves: number
     strengthMul?: number
     /** 谜质：威胁乘数（缺省 1）+ 敌方命中/近盲带削减（见 `battle.wormhole` 的字段说明） */
@@ -4228,7 +4228,7 @@ export function startFleetBattleFor(
    */
   wormhole?: {
     depth: number
-    kind: 'node' | 'boss' | 'extract' | 'ruins'
+    kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     waves: number
     strengthMul?: number
     /**
