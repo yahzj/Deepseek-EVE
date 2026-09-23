@@ -834,12 +834,12 @@ describe('虫洞 · 层内网格动作（F3a-2 · 扫描 / 前往 各 1 回合�
 })
 
 describe('虫洞 · 层曲线（收益涨得比威胁快 —— 船长 2026-09-13 定）', () => {
-  it('威胁每层 ×1.10（层 1 = 45）、收益每层 ×1.2 ⇒ 单位威胁收益逐层严格上升', () => {
+  it('威胁每层 ×1.12（层 1 = 45）、收益每层 ×1.2 ⇒ 单位威胁收益逐层严格上升', () => {
     expect(wormholeLayerThreat(1)).toBe(45)
-    expect(wormholeLayerThreat(2)).toBe(50) // round(45×1.10)（2026-09-15 由 ×1.16 降下来）
-    expect(wormholeLayerThreat(3)).toBe(54) // round(45×1.10²)
-    expect(wormholeLayerThreat(7)).toBe(80) // 深层读数：层 7/8 曾因 ×1.16 成"墙"
-    expect(wormholeLayerThreat(8)).toBe(88)
+    expect(wormholeLayerThreat(2)).toBe(50) // round(45×1.12)（2026-09-23 船长令：0.10 → 0.12）
+    expect(wormholeLayerThreat(3)).toBe(56) // round(45×1.12²)
+    expect(wormholeLayerThreat(7)).toBe(89) // 深层读数：层 7/8 曾因 ×1.16 成"墙"
+    expect(wormholeLayerThreat(8)).toBe(99)
     expect(wormholeLayerRewardMul(1)).toBeCloseTo(1, 9)
     expect(wormholeLayerRewardMul(2)).toBeCloseTo(1.2, 9)
     const perThreat = (d: number): number => wormholeLayerRewardMul(d) / wormholeLayerThreat(d)
