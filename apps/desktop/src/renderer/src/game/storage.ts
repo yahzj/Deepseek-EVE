@@ -155,11 +155,28 @@ const localStorageBridge: WhaleApi = {
         window.removeEventListener('focus', onFocusBack)
         resolve(r)
       }
+      /**
+       * 兼容兜底：部分浏览器不派发 `cancel` —— 对话框关闭后焦点回来、且仍没选到文件时视为取消。
+       *
+       * ⚠ **2026-09-22 船长报障修**（玩家 · Win10 · Edge 153：「**无法导入存档，导入后没反应**」）：
+       * 原实现是"focus 回来 → **硬等 300ms** → 仍没文件就 `finish(取消)`"，而 `finish` 一旦调用就**永久锁定**
+       * （`done = true`）。Edge/Win10 上系统文件对话框关掉后，`change` 事件可能**晚于 `focus` 几百毫秒**
+       * （文件被杀软/Defender 扫描时尤其明显）⇒ **玩家明明选了文件，却在 change 到达前被判成"取消"**，
+       * 之后真正的 change 被 `done` 挡掉 ⇒ 界面上就是"导入没反应/没动静"。
+       * 修法：① 改成**轮询**，宽限 ~2 秒；② 期间一旦有文件就交给 `change` 处理；③ 只有整段宽限都没文件才判取消。
+       */
       const onFocusBack = (): void => {
-        // 兼容兜底：部分浏览器不派发 cancel——对话框关闭后焦点回来仍未选文件 → 视为取消
-        setTimeout(() => {
-          if (!done && (input.files?.length ?? 0) === 0) finish({ ok: false, canceled: true })
-        }, 300)
+        let tries = 0
+        const poll = (): void => {
+          if (done) return
+          if ((input.files?.length ?? 0) > 0) return // 已经选到文件 ⇒ 等 change 接手
+          if (++tries >= 7) {
+            finish({ ok: false, canceled: true })
+            return
+          }
+          setTimeout(poll, 300)
+        }
+        setTimeout(poll, 300)
       }
       input.addEventListener('change', () => {
         const file = input.files?.[0]
@@ -172,7 +189,13 @@ const localStorageBridge: WhaleApi = {
           return
         }
         const reader = new FileReader()
-        reader.onload = (): void => finish({ ok: true, text: String(reader.result ?? '') })
+        reader.onload = (): void => {
+          /**
+           * ⚠ 去掉 UTF-8 BOM（2026-09-22 同批加固）：玩家常把存档用记事本另存一次
+           * （Windows 记事本会加 BOM）⇒ `JSON.parse('\uFEFF{…}')` 直接抛错。剥一层更稳。
+           */
+          finish({ ok: true, text: String(reader.result ?? '').replace(/^\uFEFF/, '') })
+        }
         reader.onerror = (): void => finish({ ok: false, error: tr("ui.storage.007") })
         reader.readAsText(file, 'utf-8')
       })
