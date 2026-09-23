@@ -460,6 +460,53 @@ export function skillLockMissing(
 }
 
 /**
+ * **入队判据**：前置"**轮到这一项之前**"能否到位（**2026-09-23 船长追加**：「「一并加入前置」要练目标一起排」）。
+ *
+ * 与 `skillLockMissing`（只看**已练**等级 ⇒ 界面置灰用）的区别：这里把**队列里已排的条数**也算进去——
+ * 新项一律追加到队尾 ⇒ 队列里已有的条目都在它前面，它们会把前置练到要求的等级。
+ * 于是"一键补齐（前置 + 目标本级）"能在**一次动作**里排完；**空队时两者完全一致**（老档/老手感不变）。
+ */
+export function skillLockMissingAtQueue(
+  state: GameState,
+  def: SkillDef,
+  catalog: SkillCatalog,
+): readonly SkillPrereqGap[] {
+  const pre = def.prereq
+  if (pre === undefined || pre.length === 0) return []
+  const out: SkillPrereqGap[] = []
+  for (const pid of pre) {
+    const pdef = catalog.get(pid)
+    if (!pdef) continue
+    const needLevel = prereqNeedLevel(def, pid)
+    if ((state.skills.trained[pid] ?? 0) + queuedSameCount(state, pid) < needLevel) {
+      out.push({ def: pdef, needLevel })
+    }
+  }
+  return out
+}
+
+/**
+ * **队列顺序是否成立**（逐项按"**排在它前面**的同技能条数"算可用等级）：
+ * 供 `moveQueueItem` 挡掉"把吃前置的项挪到前置之前"这种会卡住队首的排法（2026-09-23 起队列允许
+ * 排在后面的项依赖前面还没练的级，所以顺序本身成了一条要守的契约）。
+ */
+function queueOrderOk(state: GameState, catalog: SkillCatalog, queue: readonly TrainingItem[]): boolean {
+  const before = new Map<string, number>()
+  for (const it of queue) {
+    const def = catalog.get(it.skillId)
+    if (def) {
+      for (const pid of def.prereq ?? []) {
+        if (!catalog.get(pid)) continue
+        const avail = (state.skills.trained[pid] ?? 0) + (before.get(pid) ?? 0)
+        if (avail < prereqNeedLevel(def, pid)) return false
+      }
+    }
+    before.set(it.skillId, (before.get(it.skillId) ?? 0) + 1)
+  }
+  return true
+}
+
+/**
  * **一键补齐前置的计划**（**2026-09-23 船长**：「玩家选择某个技能后，如果该技能有前置技能，
  * 可以直接添加前置技能到训练队列。」）：
  *
@@ -469,9 +516,18 @@ export function skillLockMissing(
  * ③ **逐级**：只补到各自的要求等级（`prereqNeedLevel`），且不超过 `MAX_SKILL_LEVEL`。
  *
  * **纯函数**：只看 `state.skills.trained` 与 `state.skills.queue`，不改任何状态；返回的每一步都能直接
- * 交给 `enqueueSkill` 依次执行（顺序即是入队顺序）。**只补前置**、不含目标技能本身。
+ * 交给 `enqueueSkill` 依次执行（顺序即是入队顺序）。
+ *
+ * `opts.includeTarget`（**2026-09-23 船长追加**：「「一并加入前置」要练目标一起排」）⇒ 末尾再排上
+ * **目标技能自己的下一级**（等级 = 已练 + 队列里已排条数 + 1，与 `trainNextLevel` 同一把尺）；
+ * 缺省 `false` = 只出前置链（供其它调用点与单测用）。
  */
-export function planPrereqChain(state: GameState, def: SkillDef, catalog: SkillCatalog): TrainingItem[] {
+export function planPrereqChain(
+  state: GameState,
+  def: SkillDef,
+  catalog: SkillCatalog,
+  opts?: { includeTarget?: boolean },
+): TrainingItem[] {
   const steps: TrainingItem[] = []
   /** 计划中的等级 = 已练 + 队列里已排的条数 + 本计划里已补的条数 */
   const planned = (id: string): number =>
@@ -493,6 +549,11 @@ export function planPrereqChain(state: GameState, def: SkillDef, catalog: SkillC
     }
   }
   visit(def)
+  if (opts?.includeTarget === true && !HIDDEN_SKILL_IDS.includes(def.id)) {
+    const next = planned(def.id) + 1
+    // 满级/越限就不排目标（前置照旧排好）；其它非法情况由 `enqueueSkill` 兜底并把原因回给调用方
+    if (next <= MAX_SKILL_LEVEL) steps.push({ skillId: def.id, targetLevel: next, progressMs: 0 })
+  }
   return steps
 }
 
@@ -564,7 +625,7 @@ export function enqueueSkill(
    * `skillLockMissing`）。**老档零迁移**：判据只看 `skills.trained` 的已练等级 ⇒ 已经练过前置的档
    * 天然满足，不需要任何迁移键、也不回收已练技能。
    */
-  const locked = skillLockMissing(state, def, catalog)
+  const locked = skillLockMissingAtQueue(state, def, catalog)
   if (locked.length > 0) {
     const names = locked.map((g) => `${g.def.name} Lv${g.needLevel}`).join('、')
     return {
@@ -750,8 +811,16 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
  * 规则：在 0..len-1 之间移动任意条目（含队首）；移动后同技能条目按新出现次序
  * 重算目标等级（= 当前已学 + 第 N 条，保持连锁逐级与各级时长正确）；
  * 进度只跟随“该技能在队内的第一条”（目标 = 已学+1 者），其余条目进度清零。
+ *
+ * **2026-09-23 追加（顺序契约）**：传 `catalog` 时，挪完会校验「没有哪一项排在它要的前置之前」
+ * （队列允许排在后面的项依赖前面还没练的级 ⇒ 顺序本身成了契约）；破了就**整单回滚并返回 false**。
  */
-export function moveQueueItem(state: GameState, fromIndex: number, toIndex: number): boolean {
+export function moveQueueItem(
+  state: GameState,
+  fromIndex: number,
+  toIndex: number,
+  catalog?: SkillCatalog,
+): boolean {
   const queue = state.skills.queue
   if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return false
   if (fromIndex === toIndex) return true
@@ -764,6 +833,11 @@ export function moveQueueItem(state: GameState, fromIndex: number, toIndex: numb
     seen.add(it.skillId)
     if (it.progressMs > 0) progOf.set(it.skillId, { progressMs: it.progressMs, targetLevel: it.targetLevel })
   }
+  /** 整单快照（破契约时原样还原：含目标等级与进度） */
+  const backup = queue.map((it) => ({ ...it }))
+  const restore = (): void => {
+    queue.splice(0, queue.length, ...backup)
+  }
   const [moved] = queue.splice(fromIndex, 1)
   queue.splice(toIndex, 0, moved)
   // 重算目标等级 + 进度归属
@@ -775,6 +849,11 @@ export function moveQueueItem(state: GameState, fromIndex: number, toIndex: numb
     it.targetLevel = Math.min(MAX_SKILL_LEVEL, (state.skills.trained[it.skillId] ?? 0) + r)
     const saved = progOf.get(it.skillId)
     it.progressMs = saved !== undefined && r === 1 && it.targetLevel === saved.targetLevel ? saved.progressMs : 0
+  }
+  // 顺序契约（只在传了 catalog 时校验；破了整单回滚 ⇒ 队列永远保持"前置在前"）
+  if (catalog && !queueOrderOk(state, catalog, queue)) {
+    restore()
+    return false
   }
   return true
 }

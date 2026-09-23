@@ -3693,7 +3693,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillsPage.044": { zh: " · 难度 {r} · ", en: " · difficulty {r} · " },
   /* ── 技能页合并（2026-09-23 船长令）：一并加入前置 / 取消级联确认条 ── */
   "ui.SkillsPage.046": { zh: "一并加入前置", en: "Add prerequisites" },
-  "ui.SkillsPage.047": { zh: "已把 {p1} 项前置排入训练队列。", en: "Queued {p1} prerequisite level(s)." },
+  "ui.SkillsPage.047": { zh: "已把 {p1} 项排入训练队列（前置练完即接目标本级）。", en: "Queued {p1} item(s): prerequisites first, then the skill's next level." },
   "ui.SkillsPage.048": { zh: "取消这一项会连带取消 {p1} 项依赖它的训练：", en: "Cancelling this also cancels {p1} dependent item(s):" },
   "ui.SkillsPage.049": { zh: "确认取消", en: "Confirm cancel" },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },

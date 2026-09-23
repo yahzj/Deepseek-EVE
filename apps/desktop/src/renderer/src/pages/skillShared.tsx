@@ -50,8 +50,42 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
           {tr('ui.SkillsPage.011')}
         </div>
       ) : null}
-      {view.pending.length > 0 ? (
+      {view.head !== null || view.pending.length > 0 ? (
         <div className="app-train-pending">
+          {/**
+           * **队首也列进队列、排第一**（**2026-09-23 船长追加**：「正在训练的的首位技能也要加入训练队列内
+           * （排第一）」）：队首本来就是 `state.skills.queue[0]`，只是原先这一步面板只画 `pending`
+           * ⇒ 玩家看不到"第一位是谁"。现在按 `1..N` 编号一起列（下面 pending 的 `p.queueIndex + 1`
+           * 天然接上 2、3…）。**只能往下挪、不能往上**（它已经在第一位）⇒ 只给 ↓ 与 ×。
+           */}
+          {view.head !== null ? (
+            <span className="app-chip app-train-chip is-head">
+              <span className="app-dim">{tr('ui.SkillsPage.027')}</span>
+              <span>
+                {tr('ui.SkillsPage.040', { n: 1, name: view.head.skillName, lv: view.head.intoLevel })}
+              </span>
+              <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(view.head.remainingMs) })}</span>
+              <button
+                className="app-train-arrow"
+                title={tr('ui.SkillsPage.015')}
+                disabled={lastIndex < 1}
+                onClick={() => engine.moveQueueAt(0, 1)}
+              >
+                ↓
+              </button>
+              <button
+                className="app-train-x"
+                title={tr('ui.SkillsPage.017')}
+                onClick={() => {
+                  const impact = engine.skillCancelImpactAt(0)
+                  if (impact && impact.also.length > 0) setAskCancel(0)
+                  else engine.dequeueAt(0)
+                }}
+              >
+                ×
+              </button>
+            </span>
+          ) : null}
           {view.pending.map((p) => (
             <span key={`${p.skillId}-${p.queueIndex}`} className="app-chip app-train-chip">
               <button className="app-train-arrow" title={tr('ui.SkillsPage.012')} onClick={() => engine.moveQueueAt(p.queueIndex, 0)}>

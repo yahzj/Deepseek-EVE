@@ -1217,14 +1217,15 @@ export class GameEngine {
   }
 
   /**
-   * **一键补齐前置**（**2026-09-23 船长令**：「玩家选择某个技能后，如果该技能有前置技能，可以直接添加
-   * 前置技能到训练队列。」）：按 core `planPrereqChain` 的计划**逐条入队**（拓扑序、逐级、已在队列里的
-   * 前置复用不重复）。返回补了几项，供界面回话。
+   * **一键补齐前置（含目标本级）**（**2026-09-23 船长令**：「玩家选择某个技能后，如果该技能有前置技能，
+   * 可以直接添加前置技能到训练队列。」＋同日追加「**「一并加入前置」要练目标一起排**」）：
+   * 按 core `planPrereqChain(..., { includeTarget: true })` 的计划**逐条入队**（拓扑序、逐级、
+   * 已在队列里的前置复用不重复，**末尾排上目标技能自己的下一级**）。返回排了几项，供界面回话。
    */
   enqueuePrereqChain(skillId: string): { ok: boolean; added: number; error?: string } {
     const def = this.ctx.skills.get(skillId)
     if (!def) return { ok: false, added: 0, error: tr('core.engine.005', { p1: skillId }) }
-    const steps = planPrereqChain(this.state, def, this.ctx.skills)
+    const steps = planPrereqChain(this.state, def, this.ctx.skills, { includeTarget: true })
     let added = 0
     for (const step of steps) {
       const r = enqueueSkill(this.state, step.skillId, step.targetLevel, this.ctx.skills)
@@ -1240,7 +1241,8 @@ export class GameEngine {
 
   /** 2026-09-08（船长）：调整训练队列顺序（前移到顶 = 交换式顶替当前训练，原训练退位保留进度） */
   moveQueueAt(fromIndex: number, toIndex: number): boolean {
-    const ok = moveQueueItem(this.state, fromIndex, toIndex)
+    // 2026-09-23：带 catalog ⇒ 挪完校验"没有哪一项排在它要的前置之前"（破了整单回滚）
+    const ok = moveQueueItem(this.state, fromIndex, toIndex, this.ctx.skills)
     if (ok) {
       void this.persist()
       this.notify()

@@ -15,6 +15,7 @@ import {
   enqueueSkill,
   planPrereqChain,
   removeQueueAt,
+  moveQueueItem,
   skillCancelImpact,
   skillLockMissing,
 } from '../src/engine'
@@ -100,6 +101,17 @@ describe('前置按等级：补齐计划与取消级联', () => {
     expect(steps.map((s) => `${s.skillId}${s.targetLevel}`)).toEqual(['a1', 'b1'])
   })
 
+  it('**includeTarget：前置之后排上目标本级**（船长 2026-09-23 追加「一并加入前置要练目标一起排」）', () => {
+    const { state, ctx } = world()
+    const steps = planPrereqChain(state, data[2]!, ctx.skills, { includeTarget: true }) // c 吃 a、b
+    expect(steps.map((s) => `${s.skillId}${s.targetLevel}`)).toEqual(['a1', 'b1', 'c1'])
+    for (const s of steps) expect(enqueueSkill(state, s.skillId, s.targetLevel, ctx.skills).ok).toBe(true)
+    // 再点一次：前置都在队列里 ⇒ 只追加目标本级 c2（已排到哪就接哪）
+    expect(
+      planPrereqChain(state, data[2]!, ctx.skills, { includeTarget: true }).map((s) => `${s.skillId}${s.targetLevel}`),
+    ).toEqual(['c2'])
+  })
+
   it('补齐计划：**已在队列里的前置复用、不重复入队**', () => {
     const { state, ctx } = world()
     expect(enqueueSkill(state, 'a', 1, ctx.skills).ok).toBe(true) // a 已排 Lv1
@@ -139,6 +151,20 @@ describe('前置按等级：补齐计划与取消级联', () => {
     expect(skillCancelImpact(state, ctx.skills, 0)?.also).toEqual([]) // 取消 a2 谁也带不走
     expect(removeQueueAt(state, 0, ctx.skills)).toBe(true)
     expect(state.skills.queue.map((it) => `${it.skillId}${it.targetLevel}`)).toEqual(['b1'])
+  })
+
+  it('顺序契约：不许把吃前置的项挪到前置之前（整单回滚）', () => {
+    const { state, ctx } = world()
+    state.skills.queue = [
+      { skillId: 'a', targetLevel: 1, progressMs: 0 },
+      { skillId: 'b', targetLevel: 1, progressMs: 0 }, // b 吃 a
+    ]
+    expect(moveQueueItem(state, 1, 0, ctx.skills)).toBe(false)
+    expect(state.skills.queue.map((it) => it.skillId)).toEqual(['a', 'b']) // 原样还原
+    // 无关技能（`free` 无前置）挪到最前 ⇒ 放行（a 仍在 b 前面，契约不破）
+    state.skills.queue.push({ skillId: 'free', targetLevel: 1, progressMs: 0 })
+    expect(moveQueueItem(state, 2, 0, ctx.skills)).toBe(true)
+    expect(state.skills.queue.map((it) => it.skillId)).toEqual(['free', 'a', 'b'])
   })
 
   it('不传 catalog ⇒ 保持老语义（不级联）；传了才级联', () => {

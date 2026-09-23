@@ -2614,6 +2614,10 @@ html[data-locale='en'] body {
 
 .app-train-ask-title { font-size: 11.5px; }
 
+/* **队首那条**（2026-09-23 船长：正在训练的首位技能也要列进队列、排第一）：加一点强调色与描边，
+   与排队中的条目区分开（它已经在练，只能往下挪）。 */
+.app-train-chip.is-head { border-color: rgb(var(--wui-accent) / 0.55); background: rgb(var(--wui-accent) / 0.1); }
+
 .app-train-ask-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* 技能目录 · 图标模式（2026-09-09 船长：技能卡自适应网格——宽度足够同行更多；样式对齐 app-hand 族） */
