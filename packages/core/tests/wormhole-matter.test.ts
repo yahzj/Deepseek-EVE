@@ -233,6 +233,65 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
   })
 
   /**
+   * **【2026-09-23 玩家报障】0 回合时把「时序核心」拖出再拖回，回合被白刷。**
+   *
+   * 现象（船长转述玩家）：「**0 回合拖动谜质时序还是能够刷回合数。**」
+   *
+   * 根因：`wormholeSyncMatterTurns` 的"已花费"按 `上限 − 剩余` **现推** —— 卸下装置让上限 90 → 80 时，
+   * 真花掉的 90 被 `max(0, …)` 抹成 80；把装置装回货仓后"已花费"只读到 80 ⇒ **白送 10 回合**，
+   * 而且**每来回一次就送一次**（等于无限回合）。上面 ⑤b 只覆盖了"剩余 > 10"的形状，故当时没抓到这个角。
+   *
+   * 现行口径 = **只增不减的账本** `run.turnsSpent`（随档）：0 回合的趟来回拖任意次都还是 0。
+   */
+  it('⑤d 0 回合时来回拖「时序核心」不许白刷回合（账本只增不减）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    expect(wormholeStowOrTemp(state, ctx, 'mat-chrono', 1).ok).toBe(true)
+    expect(wormholeMatterBuffs(run.hold).turnBonus).toBe(10)
+    // 把回合花到 0（真花掉 = 上限）
+    run.turnsLeft = 0
+    wormholeSyncMatterTurns(state, ctx)
+    const total = run.turnsTotal
+    expect(run.turnsSpent).toBe(total)
+    for (let i = 0; i < 3; i++) {
+      const inHold = run.hold!.placements.find((p) => p.itemId === 'mat-chrono')!
+      expect(holdTransferTo(run.hold!, wormholeTempBoard(run), inHold.id, WORMHOLE_TEMP_CELLS).ok).toBe(true)
+      wormholeSyncMatterTurns(state, ctx)
+      expect(run.turnsTotal).toBe(total - 10) // 装置不在货仓 ⇒ 上限掉回基础
+      expect(run.turnsLeft, '卸下不给回合').toBe(0)
+      const inTemp = wormholeTempBoard(run).placements.find((p) => p.itemId === 'mat-chrono')!
+      expect(holdTransferTo(wormholeTempBoard(run), run.hold!, inTemp.id, wormholeHoldCapacityOf(state, ctx)).ok).toBe(true)
+      wormholeSyncMatterTurns(state, ctx)
+      expect(run.turnsTotal).toBe(total)
+      expect(run.turnsLeft, `第 ${i + 1} 次来回后仍须是 0`).toBe(0)
+    }
+  })
+
+  /** 同一条的**存档面**：账本漏登记 = 每读一次档就丢一次超支 ⇒ 读档后再拖一次装置又白刷。 */
+  it('⑤e `turnsSpent` 随档往返：读档后把装置装回也不许白刷', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    expect(wormholeStowOrTemp(state, ctx, 'mat-chrono', 1).ok).toBe(true)
+    run.turnsLeft = 0
+    wormholeSyncMatterTurns(state, ctx)
+    // 装置挪进临时空间（上限掉 10，账本记着超支），再存档 → 读档
+    const inHold = run.hold!.placements.find((p) => p.itemId === 'mat-chrono')!
+    expect(holdTransferTo(run.hold!, wormholeTempBoard(run), inHold.id, WORMHOLE_TEMP_CELLS).ok).toBe(true)
+    wormholeSyncMatterTurns(state, ctx)
+    expect(run.turnsLeft).toBe(0)
+    const back = loadSaveFile(serializeSaveFile(state, 1)).state
+    const backRun = back.wormhole.run!
+    expect(backRun.turnsSpent, '账本必须随档').toBe(run.turnsSpent)
+    // 读档后把装置装回货仓：仍不许白送 10 回合
+    const inTemp = wormholeTempBoard(backRun).placements.find((p) => p.itemId === 'mat-chrono')!
+    expect(
+      holdTransferTo(wormholeTempBoard(backRun), backRun.hold!, inTemp.id, wormholeHoldCapacityOf(back, ctx)).ok,
+    ).toBe(true)
+    wormholeSyncMatterTurns(back, ctx)
+    expect(backRun.turnsLeft, '读档后装回也不许白刷').toBe(0)
+  })
+
+  /**
    * **回合账本的锚必须随档往返**（2026-09-22 玩家报障修复的另一半）。
    *
    * `save.ts` 的"洞内一趟"是**逐字段重建**的：没登记进那份重建表的字段，**每读一次档就丢一次**

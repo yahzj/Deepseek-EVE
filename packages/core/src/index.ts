@@ -178,7 +178,35 @@ export {
   totalTimeToLevel,
   totalQueueTimeMs,
 } from './training'
-
+export {
+  IRONMAN_COMMON_FLOW_MUL,
+  IRONMAN_EXOTIC_CAP_BONUS,
+  IRONMAN_EXOTIC_WEIGHT_MUL,
+  IRONMAN_OFFLINE_CAP_BONUS_MS,
+  IRONMAN_RARE_DROP_MUL,
+  IRONMAN_RARE_WEIGHT_MUL,
+  IRONMAN_RESCUE_MIN_AGE_MS,
+  IRONMAN_REWARD_MUL,
+  IRONMAN_TRAINING_MUL,
+  bumpIronmanSeq,
+  closeIronman,
+  enterIronman,
+  ironmanClosed,
+  ironmanCommonFlowMul,
+  ironmanEver,
+  ironmanExoticCapBonus,
+  ironmanExoticWeightMul,
+  ironmanLoadVerdict,
+  ironmanOf,
+  ironmanOfflineCapBonusMs,
+  ironmanOn,
+  ironmanRareDropMul,
+  ironmanRareWeightMul,
+  ironmanRewardMul,
+  ironmanSeq,
+  ironmanTrainingMul,
+} from './ironman'
+export type { IronmanLike, IronmanState } from './ironman'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
 export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'
@@ -846,6 +874,8 @@ export type { BountyWinMC } from './winEstimate'
 
 export {
   AI_CORE_ORDER,
+  // 2026-09-23 船长令「使用AI核心时，默认选择当前拥有的最高级核心」——四处选择入口共用这一把尺
+  bestAiCoreOf,
   aiCoreName,
   aiEfficiency,
   countAiCore,
@@ -1398,6 +1428,7 @@ export {
   WORMHOLE_VALUABLES_UNITS_MAX,
   WORMHOLE_MILITARY_PIECES_MIN,
   WORMHOLE_MILITARY_PIECES_MAX,
+  WORMHOLE_LOOT_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_MAX,
   wormholeMk3PoolOf,

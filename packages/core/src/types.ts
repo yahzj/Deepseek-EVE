@@ -1390,11 +1390,11 @@ export interface ModuleDef {
    * ⚠ 再有新件要不要开例外，等船长点名，别自行补齐。
    */
   repairIgnoresCapacityAmp?: boolean
-  /* ═══ 2026-09-14 护盾充能装置（船长：「和船体修理装置类似。每 30 秒恢复自身护盾最大值一定比例
+  /* ═══ 2026-09-14 护盾充能装置（船长：「和船体修理装置类似。每 15 秒恢复自身护盾最大值一定比例
      的护盾量。CPU消耗较多」）——中槽；与维修装置**独立计时**，不吃组件 ═══ */
   /**
    * **每脉冲充能比例**（占**自身护盾最大值**的几分之几，如 0.12 = 12%）。
-   * 脉冲间隔固定 = `SHIELD_PULSE_MS`（30 秒）；脉冲量按**满盾**的该比例算（不是当前盾）。
+   * 脉冲间隔固定 = `SHIELD_PULSE_MS`（15 秒）；脉冲量按**满盾**的该比例算（不是当前盾）。
    * ⚠ 它是**破盾后唯一的回头路**：被动回充按当前盾比例（盾归零 ⇒ 回充 0），只有本装置能从 0
    * 把盾点起来（点着之后被动回充立刻接管）。只作用于**主控**（与维修装置同边界）。
    * 无消耗件 ⇒ **同族多件**按 EVE 曲线收敛（见 `combat.shieldPulsePctOf`；收敛池键 =
@@ -1403,7 +1403,7 @@ export interface ModuleDef {
   shieldPulsePct?: number
   /* ═══ 2026-09-20 护盾充能力场装置（船长：「新增高槽装备，护盾充能力场装置 MK2……为所有我方舰船
      恢复 10% 护盾，冷却时间 10 秒，MK3 的冷却时间缩短至 8 秒。有叠加惩罚」）——**高槽 · 护盾族**
-     ⚠ 与上面的 `shieldPulsePct`（中槽 · 只作用于**本舰** · 固定 30 秒）是**两套独立机制**：
+     ⚠ 与上面的 `shieldPulsePct`（中槽 · 只作用于**本舰** · 固定 15 秒）是**两套独立机制**：
      力场是**全队**补盾、且冷却**按件自带**；两者可同装、各按各的节奏跳。 ═══ */
   /**
    * **力场每跳的补盾比例**（占**每艘被治疗舰自己**的满盾的几分之几，如 0.1 = 10%）。
@@ -2309,6 +2309,10 @@ export type AchievementSource =
   | { kind: 'task'; taskId: string }
   | { kind: 'chain'; chainId: string; level: number }
   | { kind: 'milestone'; stat: string; target: number }
+  /** **铁人档徽章**（2026-09-23 船长令）：进入铁人模式即得；**普通档玩家不可见** */
+  | { kind: 'ironman' }
+  /** **关闭铁人徽章**：关闭那一刻才可见/可得（隐藏徽章） */
+  | { kind: 'ironmanClosed' }
 
 /**
  * 徽章分类（界面分组用）：
@@ -2317,7 +2321,7 @@ export type AchievementSource =
  * - `milestone`：**里程碑成就**（第二批，2026-09-20 落码 —— 内容与阈值见
  *   `data/src/achievements.ts`，展示改版见工作文档 `docs/design/achievement-display-20260920.md`）。
  */
-export type AchievementCategory = 'first-task' | 'chain' | 'milestone'
+export type AchievementCategory = 'first-task' | 'chain' | 'milestone' | 'ironman'
 
 /**
  * **徽章定义**（数据表条目；发放判定在 `core/achievements.ts`）。
@@ -2333,6 +2337,8 @@ export interface AchievementDef {
   pattern: string
   /** 图案颜色（十六进制；取本仓既有"同造型按档分色"语汇，不新造颜色） */
   tone: string
+  /** **隐藏徽章**（船长 2026-09-23）：未达成前**不出现在成就页**（铁人两枚专用） */
+  hidden?: boolean
   source: AchievementSource
 }
 
@@ -2489,6 +2495,14 @@ export type CommsTrigger =
    * ⚠ 若想让通讯"等玩家出了洞/回到主界面再送"，配合消息级 `holdWhenBusy`。
    */
   | { kind: 'foeShipSeen'; shipId: string }
+  /**
+   * **虫洞围剿（第 7 层起）**（2026-09-23 船长：「当玩家第一次进入七层是，给玩家发一则通讯讲清楚
+   * 敌人开始围剿玩家了，并介绍机制」）。
+   *
+   * 判定 = `state.wormhole.siegeHintShown === true`（**第一次下到第 7 层**时由 `wormholeDescend`
+   * 的 `maybeHintSiege` 置位）⇒ 跨趟/跨会话只送一次；老档首次下到 7 层补送。
+   */
+  | { kind: 'wormholeSiege' }
   /**
    * **虫洞星云带**（2026-09-13 船长定：「**除了一次性事件，通讯内也发一条相关的讯息给玩家**」）。
    *

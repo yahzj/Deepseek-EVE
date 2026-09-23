@@ -21,8 +21,30 @@ import type { AnomalyDef, SimContext } from './types'
 import { addShipToFleet } from './shipyard'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from './combat'
 
-/** 蒙特卡洛局数（2026-09-09 船长确认 N=21：临界 ±11pp、预热 ~0.5s 分帧完成） */
-export const BOUNTY_MC_RUNS = 21
+/**
+ * 蒙特卡洛局数（2026-09-09 船长确认 N=21：临界 ±11pp、预热 ~0.5s 分帧完成）。
+ *
+ * ⚠ **2026-09-23 船长报障后上调 21 → 63**（玩家：「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
+ * 21 局的分辨率只有 **4.8pp**（20/21 = 95%、21/21 = 100%），在"三波 + 精锐首领"那种长盘上
+ * 尾部运气完全刻画不出来；63 局把分辨率压到约 **1.6pp**，且预热仍走分帧泵（约 3 倍预算）。
+ */
+export const BOUNTY_MC_RUNS = 63
+
+/**
+ * **评估用补给补足**（2026-09-23 开关配套）：把"弹药 + 修理组件足量"放进**开关真正会读的那个池**——
+ * 开（缺省）= 母港仓库；关 = 该舰货仓。评估本身仍是"不计补给耗尽"（只算火力/承伤/修复的边际战力），
+ * 只是**不再把料放进一个不会被读的池**（那正是预估与实战脱节的成因）。
+ */
+function provisionEvalSupplies(ev: GameState, f: { cargo?: Record<string, number> } | undefined): void {
+  const ids = [...AMMO_ITEM_IDS, 'repairkit-civ', 'repairkit-mil']
+  if (ev.resupplyFromWarehouse !== false) {
+    for (const id of ids) ev.warehouse.items[id] = 1_000_000
+    return
+  }
+  if (!f) return
+  f.cargo = f.cargo ?? {}
+  for (const id of ids) f.cargo[id] = 1_000_000
+}
 
 const AMMO_ITEM_IDS = ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l'] as const
 
@@ -55,10 +77,16 @@ export function buildEvalState(state: GameState, shipId: string): { ev: GameStat
   f.durability = real.durability ?? 1
   f.customName = real.customName
   f.cargo = {}
-  for (const id of AMMO_ITEM_IDS) f.cargo[id] = 1_000_000
-  // 船体维修装置（2026-09-09）：评估按"组件充足"计（同弹药哲学——评估不计补给耗尽，
-  // 只算火力/承伤/修复的边际战力；真实战斗组件耗尽会停机，见 combat.preloadRepairFor）
-  for (const id of ['repairkit-civ', 'repairkit-mil']) f.cargo[id] = 1_000_000
+  /**
+   * **补给补足跟着开关走**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件
+   * 直接从仓库取用。关闭后只从舰队内舰船的货仓取用。」）：
+   * 旧口径一律塞进**本舰货仓**（`f.cargo`）⇒ 开关默认"只从仓库"之下，评估里的船**根本没料**
+   * （不修甲、打不出弹）⇒ 预估与实战脱节（玩家报障「98% 却连续失败」的成因之一；
+   * 本批两条 `winEstimate` 用例当场转红，正是这条脱节的证据）。
+   * 现行：镜像真实存档的开关，并把评估补给放进**开关真正会读的那个池**。
+   */
+  ev.resupplyFromWarehouse = state.resupplyFromWarehouse !== false
+  provisionEvalSupplies(ev, f)
   ev.skills.trained = { ...state.skills.trained }
   ev.skills.queue = []
   // 每星系目标距离（2026-09-11 船长）：预估的每局战斗必须按**该星系**的设定打，故原样带进快照；
@@ -95,9 +123,8 @@ export function estimateBountyWinOn(
     if (f) {
       const ap = f.armorPct ?? 1 // 战斗不改耐久（防御钳制无副作用）
       f.armorPct = Math.min(1, Math.max(0, ap))
-      for (const id of AMMO_ITEM_IDS) f.cargo[id] = 1_000_000
-      // 每局补足修理组件（维修装置评估不计组件耗尽）
-      for (const id of ['repairkit-civ', 'repairkit-mil']) f.cargo[id] = 1_000_000
+      // 每局补足补给（弹药 / 修理组件）：**放进开关真正会读的那个池**（2026-09-23 开关）
+      provisionEvalSupplies(ev, f)
     }
     ev.gameMs = 0
     const battle = startBattleFor(ev, ctx, uid, anomalyId, 0)

@@ -661,21 +661,31 @@ export function wormholeMatterTurnDeltaOf(itemId: string): number {
 
 /**
  * **实时派生 + 夹紧**（船长 2026-09-13 裁定）：把一台回合类装置装上 / 卸下时改本趟回合预算。
- * - 装上（`sign = 1`）：上限与剩余**各 +N**；
- * - 卸下（`sign = -1`）：上限 **−N**，剩余**夹到新上限**（`min(剩余, 新上限)`）、且**永不为负**；
- *   ⚠ 剩余不会"倒扣"——丢掉装置只是上限变小，已经花掉的回合不追缴。
- * 非回合类装置 ⇒ 原样返回（调用方可无脑调）。
+ *
+ * ⚠ **2026-09-23 玩家报障后改口径**（船长转述玩家：「**0 回合拖动谜质时序还是能够刷回合数。**」）：
+ * 旧写法"装上：上限与剩余**各 +N**；卸下：上限 **−N**、剩余`min(剩余, 新上限)`"**把超支抹掉** ——
+ * 0 回合时（上限 90、真花掉 90）卸下后记成"花掉 80"，再装上就白送 10 回合，可无限重复。
+ *
+ * 现行口径 = 与 `wormholeSyncMatterTurns` **同一本只增不减的账本** `turnsSpent`：
+ * `剩余 = 上限 − 已花费`（夹在 `[0, 上限]`）⇒
+ * - 装上（`sign = 1`）：上限 +N、剩余**跟着 +N**（真多走几步，口径不变）；
+ * - 卸下（`sign = −1`）：上限 −N、剩余跟着减，**永不为负**、**不追缴**，但**不退还**；
+ * - 来回拖 = **净零**（0 回合的趟拖一万次也还是 0）。
+ *
+ * ⚠ **本函数目前只有用例在调**（界面侧的拖动走 `wormholeSyncMatterTurns`）——两处口径必须一致，
+ * 故一并收严，免得日后接线时把同一个洞再开一次。非回合类装置 ⇒ 原样返回（调用方可无脑调）。
  */
 export function wormholeMatterApplyTurnDelta(
-  run: { turnsLeft: number; turnsTotal: number },
+  run: { turnsLeft: number; turnsTotal: number; turnsSpent?: number },
   itemId: string,
   sign: 1 | -1,
 ): void {
   const delta = wormholeMatterTurnDeltaOf(itemId)
   if (delta === 0) return
+  const spent = Math.max(run.turnsSpent ?? 0, run.turnsTotal - run.turnsLeft)
+  run.turnsSpent = spent
   run.turnsTotal = Math.max(0, run.turnsTotal + sign * delta)
-  run.turnsLeft = Math.max(0, run.turnsLeft + sign * delta)
-  if (run.turnsLeft > run.turnsTotal) run.turnsLeft = run.turnsTotal
+  run.turnsLeft = Math.min(run.turnsTotal, Math.max(0, run.turnsTotal - spent))
 }
 
 /**

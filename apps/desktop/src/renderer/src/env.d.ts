@@ -11,6 +11,8 @@ declare global {
     size: number
     /** 备份创建时间（毫秒时间戳） */
     wallMs: number
+    /** **档内保存时刻**（savedAtWallMs；救援判龄用——比文件 mtime 更抗复制/搬动） */
+    savedAtWallMs?: number
   }
 
   interface WhaleApi {
@@ -26,6 +28,10 @@ declare global {
     readBackup(name: string): Promise<{ ok: boolean; text?: string; error?: string }>
     /** 恢复备份（⚠ 2026-09-17 船长：**不再**为当前档自动备份，直接覆盖） */
     restore(name: string): Promise<{ ok: boolean; error?: string }>
+  /** 铁人账本（存档之外的代次账本；只读） */
+  ironmanLedger(): Promise<{ ok: boolean; seq: number; rescues: number; error?: string }>
+  /** 救援装载记账（只累加计数） */
+  ironmanNoteRescue(): Promise<{ ok: boolean; error?: string }>
     /** 删除某份备份（只删备份文件，不影响当前档） */
     deleteBackup(name: string): Promise<{ ok: boolean; error?: string }>
     /** 弹文件选择框读取外部 .json 存档文本（桌面 = 系统对话框；网页版 = 文件选择器；取消 → canceled） */

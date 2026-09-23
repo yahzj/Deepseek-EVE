@@ -163,6 +163,16 @@ import {
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
   // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；✅ 2026-09-14 已上线，入口常驻）
+  bumpIronmanSeq,
+  ironmanLoadVerdict,
+  ironmanOn,
+  ironmanSeq,
+  // 2026-09-23 铁人模式（S4b 界面口径：开关 / 转换 / 关闭 / 救援档龄）
+  IRONMAN_RESCUE_MIN_AGE_MS,
+  closeIronman,
+  enterIronman,
+  ironmanClosed,
+  ironmanEver,
   wormholeEnter,
   wormholeTakePileAt,
   wormholeHoldUsage,
@@ -1011,6 +1021,7 @@ export class GameEngine {
    * 每次开启游戏日志空白；logs 仅作本局内存滚动展示） */
   async persist(): Promise<boolean> {
     try {
+      bumpIronmanSeq(this.state) // 铁人档：每次落盘代次 +1（普通档/已关闭 ⇒ 冻结）
       const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
       return await saveBridge.save(serializeSaveFile(out))
     } catch (err) {
@@ -1042,11 +1053,153 @@ export class GameEngine {
   }
 
   /**
+   * **铁人模式状态读数**（S4b 界面用）：模式开关 / 代次 / 是否开过 / 是否已关闭 / 救援档龄门槛。
+   * 代次取「存档内」的那一份（`state.ironman.seq`）；账本高度另给一份供界面核对（正常 = 与存档同步）。
+   */
+  async ironmanStatus(): Promise<{
+    on: boolean
+    seq: number
+    ever: boolean
+    closed: boolean
+    sinceWallMs?: number
+    ledgerSeq: number
+    rescueMinAgeMs: number
+  }> {
+    let ledgerSeq = 0
+    try {
+      const ledger = await saveBridge.ironmanLedger()
+      if (ledger.ok) ledgerSeq = ledger.seq
+    } catch {
+      ledgerSeq = 0
+    }
+    return {
+      on: ironmanOn(this.state),
+      seq: ironmanSeq(this.state),
+      ever: ironmanEver(this.state),
+      closed: ironmanClosed(this.state),
+      sinceWallMs: this.state.ironman?.sinceWallMs,
+      ledgerSeq,
+      rescueMinAgeMs: IRONMAN_RESCUE_MIN_AGE_MS,
+    }
+  }
+
+  /**
+   * **开启（或把现有旧档一次性转换为）铁人模式**（2026-09-23 船长：「新档可选，现有旧档允许进行一次转换」）。
+   *
+   * 代次起点 = `max(当前档代次, 账本高度)`——账本在存档之外，所以「重置档案」后再开铁人也不会从 0 重新起算。
+   * 落盘一次即把账本顶到同一高度（`save:save` 顺带推代次），此后每次落盘 +1。
+   */
+  async enterIronmanNow(): Promise<CommandResult> {
+    if (ironmanOn(this.state)) return { ok: false, error: tr('ui.Ironman.016') }
+    // 单向门：关闭过就不能再开（core `enterIronman` 也会拒，这里先给一句人话）
+    if (ironmanClosed(this.state)) return { ok: false, error: tr('ui.Ironman.018') }
+    let ledgerSeq = 0
+    try {
+      const ledger = await saveBridge.ironmanLedger()
+      if (ledger.ok) ledgerSeq = ledger.seq
+    } catch {
+      ledgerSeq = 0
+    }
+    if (!enterIronman(this.state, Date.now(), ledgerSeq)) return { ok: false, error: tr('ui.Ironman.018') }
+    await this.persist()
+    this.notify()
+    return { ok: true }
+  }
+
+  /**
+   * **关闭铁人模式**（单向门：关了不能再开，代次就此冻结）。
+   * 福利同时失效、两枚隐藏徽章里的「铁人 · 已关闭」到此才可见。
+   */
+  async closeIronmanNow(): Promise<CommandResult> {
+    if (!ironmanOn(this.state)) return { ok: false, error: tr('ui.Ironman.017') }
+    closeIronman(this.state, Date.now())
+    await this.persist()
+    this.notify()
+    return { ok: true }
+  }
+
+  /**
    * 恢复某份备份：先校验可解析 → 主进程覆盖 → 热替换内存状态。
    *
    * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 覆盖前**不再**自动备份当前档
    * （桌面主进程与网页分支两处一起删）。要留退路请先用「备份当前档」手动备一份。
    */
+  /**
+   * **铁人档装载闸门**（**2026-09-23 船长令**：「如果导入一个铁人存档的版本号比当前存档的版本号更靠前
+   * 则会导入失败」＋「允许玩家读取至少两天前的存档作为救援」）。
+   *
+   * 判据收口在 core 的 `ironmanLoadVerdict`（唯一实现）；本方法只负责取三样东西：
+   * 待装载档的 `ironman` 面、**当前档**的代次、以及主进程里那份**存档之外的账本**最高代次。
+   * - 普通档：一律放行（含"当前普通 + 载入普通"）；
+   * - 铁人档（当前档是铁人，**或待装载档本身是铁人**）：`档.代次 < max(当前, 账本)` ⇒ 拒绝；
+   *   但**存档年龄 ≥48 小时** ⇒ 救援放行（记一次账）。
+   * 放行后会把内存档的代次**顶到账本高度**（否则"救援回来的旧档"下次导出再导入会被自己拦）。
+   */
+  private async ironmanLoadCheck(
+    text: string,
+    incomingSavedAtWallMs: number,
+  ): Promise<{ ok: true; rescue: boolean } | { ok: false; error: string }> {
+    /**
+     * ⚠ **账本拿不到 ⇒ 只少一层高度，判据照走**（**2026-09-23 船长实测报障**：「实机测试，铁人模式
+     * 并没有拦截备份存档和导入存档」）。原实现把"读账本"与"判闸门"写在同一个 try 里 ⇒ 旧主进程
+     * 没有 `ironman:ledger` 这个 IPC 时 `invoke` reject，被下面的 catch 当成"闸门自身出错"**静默放行**，
+     * 于是**整个闸门失效**（档内代次那层明明能判，却一起被跳过了）。
+     * 现口径：**账本单独 try**，拿不到就 `ledgerSeq = 0` 继续判；只有"待装载档解析不了"才放行。
+     */
+    let ledgerSeq = 0
+    try {
+      const ledger = await saveBridge.ironmanLedger()
+      if (ledger.ok) ledgerSeq = ledger.seq
+    } catch (err) {
+      console.warn('ironman ledger unavailable, gate degrades to in-save generations', err)
+    }
+    try {
+      const incoming = loadSaveFile(text).state
+      const now = Date.now()
+      const verdict = ironmanLoadVerdict({
+        /**
+         * **两侧都判**：当前档是铁人档 **或** 待装载的那份档本身是铁人档。
+         * 只看当前档的话，「关掉铁人 → 导入关闭前的旧铁人档」= 用回滚把铁人偷偷开回来（还绕开代次纪律）。
+         * 普通档 ⇄ 普通档 ⇒ 两边都 false，一切照旧放行。
+         */
+        ironman: ironmanOn(this.state) || ironmanOn(incoming),
+        incomingSeq: ironmanSeq(incoming),
+        currentSeq: ironmanSeq(this.state),
+        ledgerSeq,
+        incomingSavedAtWallMs,
+        nowWallMs: now,
+      })
+      if (!verdict.ok) {
+        return { ok: false, error: tr('ui.engine.051', { p1: String(verdict.threshold) }) }
+      }
+      if (verdict.rescue) void saveBridge.ironmanNoteRescue()
+      return { ok: true, rescue: verdict.rescue }
+    } catch (err) {
+      // 待装载档解析不了 ⇒ **不拦人**（宁可放行，也不要把玩家锁在自己的档外面；真正的解析错误后面会照常报）
+      console.warn('ironman gate skipped (incoming save unreadable)', err)
+      return { ok: true, rescue: false }
+    }
+  }
+
+  /** 装载成功后把代次顶到"账本高度"（保持当前档永远处在账本头部） */
+  private async syncIronmanHead(s: GameState): Promise<void> {
+    /**
+     * ⚠ **账本读不到不许拦人，也不许把原始英文报错抛给玩家**——2026-09-23 船长实测报障：
+     * 旧主进程没有 `ironman:ledger` 这个 IPC ⇒ `invoke` 直接 reject，异常从这里冒到
+     * `restoreBackup` 的错误分支，玩家看到一串
+     * 「Error: Error invoking remote method 'ironman:ledger': No handler registered…」。
+     * 口径：**退化为"只看两侧档内代次"**——闸门仍然生效，只是少了账本这一层高度。
+     */
+    try {
+      const ledger = await saveBridge.ironmanLedger()
+      const head = Math.max(ironmanSeq(s), ironmanSeq(this.state), ledger.ok ? ledger.seq : 0)
+      s.ironman = { ...(s.ironman ?? { on: false, seq: 0 }), seq: head }
+    } catch (err) {
+      console.warn('ironman ledger unavailable, sync degraded', err)
+      const head = Math.max(ironmanSeq(s), ironmanSeq(this.state))
+      s.ironman = { ...(s.ironman ?? { on: false, seq: 0 }), seq: head }
+    }
+  }
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const read = await saveBridge.readBackup(name)
@@ -1057,6 +1210,9 @@ export class GameEngine {
       } catch (err) {
         return { ok: false, error: tr("ui.engine.026", { p1: err instanceof Error ? err.message : String(err) }) }
       }
+      const gate = await this.ironmanLoadCheck(read.text, parsed.savedAtWallMs)
+      if (!gate.ok) return { ok: false, error: gate.error }
+      await this.syncIronmanHead(parsed.state)
       const restore = await saveBridge.restore(name)
       if (!restore.ok) return { ok: false, error: restore.error ?? tr('ui.engine.050') }
       // 2026-09-09（船长定）：恢复备份与导入/启动同口径——按"档内保存墙钟 → 现在"补算离线进度
@@ -1148,6 +1304,10 @@ export class GameEngine {
        * 与本地化也相关：那些旧日志只有中文正文、没有文案 id ⇒ 英文界面下会半中半英。
        */
       imported.logs = []
+      // 铁人档：装载闸门（见 `ironmanLoadCheck`）
+      const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs)
+      if (!gate.ok) return { ok: false, error: gate.error }
+      await this.syncIronmanHead(imported)
       // 按时间差补齐离线进度：档内墙钟 → 现在（上限与正常离线一致；墙钟在未来则跳过）
       const now = Date.now()
       const wallFrom = parsed.savedAtWallMs
@@ -3066,9 +3226,25 @@ export class GameEngine {
     return ok
   }
 
-  /** 重置档案（开新档） */
-  resetGame(): void {
+  /**
+   * 重置档案（开新档）。
+   *
+   * **S4b**：新档可选铁人（2026-09-23 船长：「新档可选」）——`ironman = true` 时开局即入铁人模式；
+   * 代次起点取 `max(0, 账本高度)`，因此**重置档案不清账本**、新铁人档接着账本往前走。
+   * ⚠ 关闭铁人后不能再开：`on` 已为真时 `enterIronman` 是空操作（新档是全新状态，不受此限）。
+   */
+  async resetGame(ironman = false): Promise<void> {
     this.state = createInitialState({ prologue: true })
+    if (ironman) {
+      let ledgerSeq = 0
+      try {
+        const ledger = await saveBridge.ironmanLedger()
+        if (ledger.ok) ledgerSeq = ledger.seq
+      } catch {
+        ledgerSeq = 0
+      }
+      enterIronman(this.state, Date.now(), ledgerSeq)
+    }
     this.offlineReport = null
     void this.persist()
     this.notify()

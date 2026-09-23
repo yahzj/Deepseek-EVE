@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import { tr, cmdText } from '../i18n/locale'
 
-type Phase = 'wake' | 'boot' | 'diag' | 'name' | 'open'
+type Phase = 'wake' | 'boot' | 'diag' | 'mode' | 'name' | 'open'
 
 type LineKind = 'ok' | 'warn' | 'fail'
 
@@ -81,9 +81,36 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     return () => window.clearTimeout(t)
   }, [phase, shown])
 
-  const skip = (): void => {
+  /**
+   * **跳过演出照出模式卡**（**2026-09-23 船长令**：「跳过也弹出模式选择」）。
+   * `skipFlow = true` ⇒ 选完模式不再走「睁眼」动画与起名，直接按 `prologueSkip()` 收尾
+   * （与旧「跳过」同一收尾路径；跳过者不结算演出奖励的口径不变）。
+   */
+  const [skipFlow, setSkipFlow] = useState(false)
+
+  /** 跳过收尾：直接结束序章（core `skipPrologue`） */
+  const finishSkip = (): void => {
     const r = engine.prologueSkip()
     if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.041'))
+  }
+
+  const skip = (): void => {
+    setSkipFlow(true)
+    goto('mode')
+  }
+
+  /** 选普通：跳过流 ⇒ 直接收尾；正常流 ⇒ 去起名 */
+  const chooseStandard = (): void => {
+    if (skipFlow) finishSkip()
+    else goto('name')
+  }
+
+  /** 选铁人：入模（代次接账本高度）→ 跳过流收尾 / 正常流去起名；即便入模失败也不拦人 */
+  const chooseIronman = async (): Promise<void> => {
+    const r = await engine.enterIronmanNow()
+    if (!r.ok) setErr(cmdText(r) || tr('ui.PrologueScreen.042'))
+    if (skipFlow) finishSkip()
+    else goto('name')
   }
 
   const confirm = (): void => {
@@ -151,9 +178,41 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
                   </div>
                 ))}
                 <div className="app-pro-frag">{tr("ui.PrologueScreen.033")}</div>
-                <button className="app-btn is-primary" onClick={() => goto('name')}>
+                <button className="app-btn is-primary" onClick={() => goto('mode')}>
                   {tr("ui.PrologueScreen.034")}
                 </button>
+              </div>
+            ) : null}
+
+            {/**
+             * **模式选择**（**2026-09-23 船长定**：「玩家选择普通模式还是铁人模式的时机应该在
+             * 过完初始动画后，且应该使用 2 张和出港按钮差不多大小的卡牌。分别写普通模式和铁人模式的特点。
+             * 铁人模式不需要太过清楚的讲解市场相关改动，只需要一句市场规模扩大」）。
+             * ⚠ 因此「重置档案」不再弹模式框：**新档与重置共用这一处**（重置也走序章）。
+             * ⚠ 右上角「跳过」直接结束序章 ⇒ 跳过者即普通档；想转铁人可走存档页的「开启铁人模式」。
+             */}
+            {phase === 'mode' ? (
+              <div className="app-pro-name" onClick={(e) => e.stopPropagation()}>
+                <div className="app-pro-diag-title">{tr('ui.Ironman.011')}</div>
+                <div className="app-pro-mode">
+                  <button className="app-pro-mode-card" onClick={() => chooseStandard()}>
+                    <span className="app-pro-mode-title">{tr('ui.Ironman.026')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.027')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.028')}</span>
+                  </button>
+                  <button className="app-pro-mode-card is-iron" onClick={() => void chooseIronman()}>
+                    <span className="app-pro-mode-title">{tr('ui.Ironman.029')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.030')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.031')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.032')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.033')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.034')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.035')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.036')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.037')}</span>
+                    <span className="app-pro-mode-li">{tr('ui.Ironman.038')}</span>
+                  </button>
+                </div>
               </div>
             ) : null}
 

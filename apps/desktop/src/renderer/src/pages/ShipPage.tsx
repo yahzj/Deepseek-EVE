@@ -29,6 +29,8 @@ import {
   shipStoredCount,
   shipStorable,
 } from '@whale/core'
+// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
+import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, FleetShipState, ShipRole } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -943,7 +945,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   const totalCap = cap + industryBonus
 
   const [shipId, setShipId] = useState('')
-  const [coreType, setCoreType] = useState<AiCoreType>('basic')
+  const [coreType, setCoreType] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 任务类型（2026-09-10 船长：AI 指挥中心统一指派「AI 现在能执行的全部活动」）——
   // 副船三类（采矿/打捞/掩护巡逻）+ 站内工业两类（精炼炉与回收炉/组装机制造）。
   // 远征保持隐藏（引擎软下线，一律拒绝受理）。
@@ -958,7 +960,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   // 引擎仍按旧类型(basic)指派被拒。归一为"当前有库存的类型"再用于显示与提交
   // （与工业页炉卡 usableCores 同款写法）。
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
-  const effCore = usableCores.includes(coreType) ? coreType : (usableCores[0] ?? 'basic')
+  const effCore = usableCores.includes(coreType) ? coreType : (usableCores[usableCores.length - 1] ?? 'basic')
   /** 副船任务须有共用上限（「AI 核心操作学」）；站内工业另可用「工业自动化」扩容工位——
    *  共用上限为 0 而工业扩容 > 0 时，只允许指派站内工业任务（回落显示制造）。 */
   const shipTasksOk = cap > 0

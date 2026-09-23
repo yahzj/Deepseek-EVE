@@ -5092,7 +5092,9 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         ['奢侈品件数上限 WORMHOLE_VALUABLES_UNITS_MAX', WORMHOLE_VALUABLES_UNITS_MAX, 30],
         ['军用件数下限 WORMHOLE_MILITARY_PIECES_MIN', WORMHOLE_MILITARY_PIECES_MIN, 1],
         ['军用件数上限 WORMHOLE_MILITARY_PIECES_MAX', WORMHOLE_MILITARY_PIECES_MAX, 3],
-        ['残骸堆出货率 WORMHOLE_SALVAGE_BOX_CHANCE', WORMHOLE_SALVAGE_BOX_CHANCE, 0.0075],
+        // ⚠ **2026-09-23 对齐**：船长追加令「一起改成5%」（提交 `623424b1`：残骸堆与战斗战果**两条路**
+        // 都提到 5%）改了常量与统计用例，但漏改本契约 ⇒ 主树这道闸门当场转红。期望值 0.0075 → 0.05。
+        ['残骸堆出货率 WORMHOLE_SALVAGE_BOX_CHANCE', WORMHOLE_SALVAGE_BOX_CHANCE, 0.05],
         ['单次打捞上限 WORMHOLE_SALVAGE_BOX_MAX', WORMHOLE_SALVAGE_BOX_MAX, 1],
       ]
       const bad = want.filter(([, got, exp]) => got !== exp).map(([name, got, exp]) => `${name} = ${got}（应为 ${exp}）`)
@@ -6658,6 +6660,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
   'foeShipSeen', 'firstTask',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
+    // 2026-09-23 围剿机制（船长：首次下到第 7 层发一封通讯讲清"敌人开始围剿"）
+    'wormholeSiege',
     // 2026-09-14 虫洞扫描解锁（船长：「扫码虫洞需要玩家35声望才会解锁。解锁时发送通讯给玩家」）
     'standing',
     // 2026-09-14 被袭后的自动撤离（船长：「当玩家第一次因为低安袭击导致舰船自动撤离时触发」）

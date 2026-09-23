@@ -80,7 +80,7 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
     const snap = buildEvalState(state, state.shipId)!
     expect(snap.ev.expedition.desirePrefByGalaxy?.[A.galaxyId]).toBe(1_200)
     expect(startBattleFor(snap.ev, ctx, snap.uid, A.id, 0)!.myDesireM).toBe(1_200)
-    expect(BOUNTY_MC_RUNS).toBe(21)
+    expect(BOUNTY_MC_RUNS).toBe(63) // 2026-09-23 船长报障后由 21 上调（分辨率 4.8pp → ~1.6pp）
     // 同一张卡、同一装配：只有"该星系设定"不同 ⇒ 预估里的开战距离不同
     const other = fresh()
     expect(evalDesire(other, A.id)).not.toBe(1_200)

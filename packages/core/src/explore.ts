@@ -37,14 +37,24 @@ export const SCAN_WINDOW_MS = 10 * 60_000
 export const HOME_SCAN_WINDOW_MS = 10_000
 /** 低安扫描时长惩罚系数（船长 2026-09-05 定：目标星系 sec < 0.5 时，窗口 ×[1 + 0.8×(0.5−sec)]；
  *  sec=0 时 ×1.4，线性；高安(≥0.5)不延长） */
-export const SCAN_LOWSEC_PENALTY = 0.8
+/**
+ * **低安扫描惩罚系数**（`lowPen = 1 + 本值 × (0.5 − 安全)`，安全 < 0.5 起生效）。
+ *
+ * ⚠ **2026-09-23 船长令**：「**将各星系（排除大鲸鱼Ⅳ）扫描需要时间提高到 10 分钟 ~ 24 小时**」
+ * ⇒ 选**甲（线性，沿用现形状只放大系数）**：取 `143 / 1.5 = 95.333…` ⇒ 最深星系（安全 −1.0）
+ * `lowPen = 1 + 95.333 × 1.5 = 144` ⇒ **10 分钟 × 144 = 24 小时**（上一版系数 0.8 ⇒ 最长 22 分钟）。
+ * 母港（大鲸鱼Ⅳ）仍**固定 10 秒**、不吃本系数（船长同日排除）。
+ * 技能照旧乘算（信号分析学／信号过滤学／星图测绘学，各封顶 5 级，满级 ×0.294）⇒
+ * 满技能下最深星系约 **7 时 03 分**；本区间说的是**无技能基准**。
+ */
+export const SCAN_LOWSEC_PENALTY = 143 / 1.5
 /** 全游戏安全等级下限（`data/universe.ts` 最危险的星系 = −1.0）——用于算扫描窗口的**合法上限** */
 export const SEC_FLOOR = -1
 
 /**
- * 扫描窗口的**合法上限**（毫秒；无技能 + 最危险星系）＝ `SCAN_WINDOW_MS` ×(1 + 0.8×(0.5−(−1))) = **×2.2**。
+ * 扫描窗口的**合法上限**（毫秒；无技能 + 最危险星系）＝ `SCAN_WINDOW_MS` ×(1 + 95.333×(0.5−(−1))) = **×144 = 24 小时**。
  * 用途：**读档兜底**——`save.normalizeState` 没有 ctx、拿不到目标星系的安全等级，只能按"全游戏可能出现的
- * 最大有效窗口"钳制；**不能**拿基准 `SCAN_WINDOW_MS` 去钳，否则低安星系（窗口最长 22 分钟）的续扫进度
+ * 最大有效窗口"钳制；**不能**拿基准 `SCAN_WINDOW_MS` 去钳，否则低安星系（窗口最长 24 小时）的续扫进度
  * 会在读档时被截断（2026-09-11 修复）。技能只缩短窗口，故上限与技能无关。
  */
 export function maxScanWindowMs(): number {
@@ -68,7 +78,7 @@ export function scanWindowMsOf(state: GameState): number {
   return Math.round(SCAN_WINDOW_MS * scanSkillFactor(state))
 }
 
-/** 目标星系的实际扫描窗口（毫秒）：技能缩短 × 低安安全度惩罚（船长 2026-09-05）；
+/** 目标星系的实际扫描窗口（毫秒）：技能缩短 × 低安安全度惩罚（船长 2026-09-05；**深度 2026-09-23 船长令上调到 10 分钟~24 小时**）；
  *  **母港例外 = 固定 10 秒**（船长 2026-09-18：「扫描母港的时间缩短至10秒」） */
 export function scanWindowMsFor(state: GameState, ctx: SimContext, galaxyId: string): number {
   if (galaxyId === HOME_GALAXY_ID) return HOME_SCAN_WINDOW_MS

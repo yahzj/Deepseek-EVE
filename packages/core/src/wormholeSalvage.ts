@@ -20,7 +20,7 @@
  * salvaging, equipment }`；**`wormhole.ts` 不许 import 本文件**（它被 `state.ts` 顶层引用，
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
-import { tuningMul } from './tuning'
+import { rareDropRateMulOf, tuningMul } from './tuning'
 import type { GameState, RngState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
@@ -62,6 +62,8 @@ import {
 import type { WormholeHoldPlacement, WormholeHoldState } from './wormholeHold'
 // F3c 谜质装置：效果一律从货仓现算（本文件用到容量 / 打捞·采集堆数 / 母矿产量 / 回合同步）
 import { wormholeMatterBuffs, wormholeMatterDiscardHint } from './wormholeMatter'
+// 围剿者（2026-09-23 新机制）：采集/打捞各扣 1 回合 ⇒ 各掷一次刷怪
+import { wormholeSpawnAfterTurns } from './wormholeSpawn'
 import { matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import {
   WORMHOLE_TURN_PER_WORK,
@@ -519,13 +521,22 @@ export function wormholeRollCore(state: GameState, cell: WormholeGridCell): stri
  * **残骸打捞点的货柜掉落**（船长 2026-09-15 定「虫洞战利品与经济扩充」③：
  * 「然后在残骸打捞点，设定有极低概率出各种货柜」＋「残骸打捞是指虫洞内的。不分层随机出。」）。
  *
- * 口径：**每收走一堆残骸掷一次 0.75%**；**一次打捞最多出 1 个**（`WORMHOLE_SALVAGE_BOX_MAX`）；
+ * 口径：**每收走一堆残骸掷一次 5%**（**2026-09-23 船长追加令「一起改成5%」**；原 0.75% 的「极低概率」表述自此作废）；
+ * **一次打捞最多出 1 个**（`WORMHOLE_SALVAGE_BOX_MAX`）；
  * **四类货柜类等权**（各 1/4）：遗迹安全货柜（按本趟族）· 图纸货柜（**本层有资格的档**，类内等权）· 贵重品货柜 · 军用备货柜；
  * ⚠ **2026-09-19 船长令**：图纸货柜档位**按层过滤**（中 ≥层 5 · 深 ≥层 7，见 `WORMHOLE_BP_BOX_MIN_DEPTH`）
  * ——该日之前「三档同权、深档浅层也能翻出来」的「不分层」只对**其余三类**仍然成立。
  * 只在 `graveyard`（残骸地点）生效；遗迹另有自己的专属掉落，不叠加。
  */
-export const WORMHOLE_SALVAGE_BOX_CHANCE = 0.0075
+export const WORMHOLE_SALVAGE_BOX_CHANCE = 0.05
+/**
+ * **战果（虫洞敌人掉落）出货柜的概率**（**船长 2026-09-23 令**：「**将虫洞敌人掉落货柜的概率提高到 5%**」）。
+ *
+ * ⚠ 与上面那条**残骸打捞点**的概率是**两把尺**：残骸格仍是 0.75%（船长 2026-09-15 定的「极低概率」没动），
+ * 本常量只作用于**打完一场虫洞战斗后的战果结算**（`wormholeResolveFoeLoot` 里的"战果里的货柜"那一次掷骰）。
+ * 若船长本意是"两条路一起提到 5%"，只需把 `WORMHOLE_SALVAGE_BOX_CHANCE` 也改成 0.05（一行）。
+ */
+export const WORMHOLE_LOOT_BOX_CHANCE = 0.05
 /** 一次打捞最多出几个货柜（船长 2026-09-15 定：「每次最多 1 个」） */
 export const WORMHOLE_SALVAGE_BOX_MAX = 1
 
@@ -678,7 +689,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
     const rolls = Math.floor(commons / WORMHOLE_RARE_JUDGE_PER_COMMONS)
     for (let i = 0; i < rolls; i++) {
       // 限时倍率（2026-09-15）：`rareWreckRate` 乘判定概率、`rareWreckVolume` 乘每件单位数
-      if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * tuningMul(state, 'rareWreckRate'))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
+      if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * rareDropRateMulOf(state))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
     }
     for (let i = 0; i < commons; i++) {
       piles.push({ itemId: common, units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
@@ -1567,6 +1578,8 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   if (piles.length === 0) return { ok: false, error: '这条矿脉已经采空了。', errorId: 'core.wormholeSalvage.021' }
   if (run.turnsLeft < WORMHOLE_TURN_PER_WORK) return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   run.turnsLeft -= WORMHOLE_TURN_PER_WORK
+  // 围剿者（2026-09-23 新机制）：作业的 1 回合也掷一次（采集 / 打捞两个入口共用这一句）
+  wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_WORK)
   const taken: WormholeCellPile[] = []
   let full = false
   for (let i = 0; i < minersWant && piles.length > 0; i++) {
@@ -1681,6 +1694,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
   run.turnsLeft -= WORMHOLE_TURN_PER_WORK
+  // 围剿者（2026-09-23 新机制）：作业的 1 回合也掷一次（采集 / 打捞两个入口共用这一句）
+  wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_WORK)
   const taken: WormholeCellPile[] = []
   let full = false
   let boxLeft = 0
@@ -1708,7 +1723,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     taken.push(pile)
     /**
      * **残骸堆里的货柜**（船长 2026-09-15 定 ③：「在残骸打捞点，设定有极低概率出各种货柜」）：
-     * 每收走一堆掷一次 0.75%、一次打捞最多 1 个；落格走**与遗迹货柜同一套「收货阶梯」**
+     * 每收走一堆掷一次 5%（2026-09-23 起）、一次打捞最多 1 个；落格走**与遗迹货柜同一套「收货阶梯」**
      * （货仓 → 临时空间 → 散落该格）。掷骰走独立盐值的流 ⇒ 旧读数逐字不变（见 `wormholeRollSalvageBox`）。
      */
     if (boxFound < WORMHOLE_SALVAGE_BOX_MAX) {
@@ -2050,26 +2065,54 @@ export function wormholeDeliverRelics(
 /* ═══════════ 五、舰船信号战果（打赢固定给） ═══════════ */
 
 /**
- * **舰船信号地点的战果**（船长：「战斗结束后固定获得一定量残骸和稀有残骸」）：
- * 残骸 2 堆 + 稀有残骸 1 堆，**直接进包**（这是打出来的，不是打捞作业，不需要打捞器）；
- * 背包放不下的部分**留在该格成堆**（不静默丢，之后可以照打捞规则回收）。
+ * **战果形状**（**2026-09-23 船长令**：「**上调洞内战斗的价值，包括层末守卫**」⇒ 十六问后选**甲案**：
+ * 「普通节点 2 堆 + 2 件稀有 · 守卫 3 堆 + 3 件 · 遗迹收尾战 2 堆 + 2 件」，并追加
+ * 「**和残骸格一样**（0.75%）**概率出货柜**」）。
+ *
+ * - `node`  ：舰船信号战（原为 2 堆 + **1** 件稀有 ⇒ 稀有件翻倍）
+ * - `boss`  ：**层末守卫**（此前**一分不给**）
+ * - `ruins` ：遗迹收尾战（此前**一分不给**）
+ * - `spawn` ：**围剿战**（2026-09-23 新机制；按裁定取折减形状 = **1 堆普通、不给稀有件**——
+ *   层 7 一趟最多 45 场，全额会变成"刷高级箱"的入口）
  */
-export function wormholeGrantShipSpoils(state: GameState, ctx: SimContext): { bagged: number; leftOnCell: number } {
+export type WormholeSpoilsShape = 'node' | 'boss' | 'ruins' | 'spawn'
+
+/** 形状表（堆数 / 件数；每堆体积仍 = `WORMHOLE_WRECK_PILE_M3_BASE × 层收益系数`，稀有件 = 30 m³） */
+export const WORMHOLE_SPOILS_TABLE: Readonly<Record<WormholeSpoilsShape, { commons: number; rares: number }>> = {
+  node: { commons: WORMHOLE_SHIP_SPOIL_COMMONS, rares: 2 },
+  boss: { commons: 3, rares: 3 },
+  ruins: { commons: 2, rares: 2 },
+  spawn: { commons: 1, rares: 0 },
+}
+
+/**
+ * **舰船信号地点的战果**（船长：「战斗结束后固定获得一定量残骸和稀有残骸」）：
+ * 形状见 `WORMHOLE_SPOILS_TABLE`（2026-09-23 起按用途分档），**直接进包**（打出来的，不需要打捞器）；
+ * 背包放不下的部分**留在该格成堆**（不静默丢，之后可以照打捞规则回收）。
+ * 每场**另掷一次货柜**（0.75% · 四类等权 · 每场最多 1 个，口径与"残骸格"同一把尺）。
+ */
+export function wormholeGrantShipSpoils(
+  state: GameState,
+  ctx: SimContext,
+  shape: WormholeSpoilsShape,
+): { bagged: number; leftOnCell: number; box?: string } {
   const run = state.wormhole.run
   const grid = run?.grid
   if (!run || !grid) return { bagged: 0, leftOnCell: 0 }
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { bagged: 0, leftOnCell: 0 }
-  const cardId = wormholeCellCardIdOf(run, cell)
+  // 围剿战的卡是"刷出那一刻抽定"的那张（族锁不变 ⇒ 残骸组与普通节点一致）
+  const cardId = cell.foe?.card ?? wormholeCellCardIdOf(run, cell)
   const group = wreckGroupOfCard(cardId, ctx)
   if (!group) return { bagged: 0, leftOnCell: 0 }
   const mul = wormholeLayerRewardMul(run.depth)
   const rng = wormholeStream(runSeedOf(state) * 7 + run.depth * 331 + (cell.q * 61 + cell.r * 67) * 3 + 11)
+  const row = WORMHOLE_SPOILS_TABLE[shape]
   const spoils: WormholeCellPile[] = []
-  for (let i = 0; i < WORMHOLE_SHIP_SPOIL_COMMONS; i++) {
+  for (let i = 0; i < row.commons; i++) {
     spoils.push({ itemId: wreckItemIdOf(group.key), units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
   }
-  for (let i = 0; i < WORMHOLE_SHIP_SPOIL_RARES; i++) spoils.push({ itemId: rareWreckItemIdOf(group.key), units: RARE_WRECK_VOLUME_M3 })
+  for (let i = 0; i < row.rares; i++) spoils.push({ itemId: rareWreckItemIdOf(group.key), units: RARE_WRECK_VOLUME_M3 })
   let bagged = 0
   const leftovers: WormholeCellPile[] = []
   for (const s of spoils) {
@@ -2081,7 +2124,32 @@ export function wormholeGrantShipSpoils(state: GameState, ctx: SimContext): { ba
     addLog(state, 'warn', `🕳 战果里有 ${leftovers.length} 堆装不下：先散落在该地点，可以照打捞规则回收。`, 'core.wormholeSalvage.036', { p1: leftovers.length })
   }
   if (bagged > 0) addLog(state, 'info', `🕳 战果入库：${bagged} 堆残骸（含稀有）。`, 'core.wormholeSalvage.037', { p1: bagged })
-  return { bagged, leftOnCell: leftovers.length }
+  /**
+   * **战果里的货柜**（船长 2026-09-23 先定「在甲的基础上，和残骸格一样，（0.75%）概率出货柜」；
+   * **同日再令「将虫洞敌人掉落货柜的概率提高到 5%」⇒ 本路径改用 `WORMHOLE_LOOT_BOX_CHANCE` = 5%**）：
+   * 每场掷一次、上限沿用 `WORMHOLE_SALVAGE_BOX_MAX`（1 个/场）、四类等权（`wormholeSalvageBoxClassesOf`：
+   * 族安全货柜 / 图纸货柜按层过滤 / 贵重品货柜 / 军用备货柜）；落点走与遗迹货柜**同一套收货阶梯**
+   * （货仓 → 临时空间 → 散落该格）。掷骰用**独立盐值**（含围剿者序号 ⇒ 同格二次围剿不重样）。
+   */
+  let box: string | undefined
+  const boxRng = wormholeStream(runSeedOf(state) * 53 + run.depth * 613 + (cell.q * 41 + cell.r * 59) * 23 + (cell.foe?.seq ?? 0) * 17 + 29)
+  if (boxRng() < WORMHOLE_LOOT_BOX_CHANCE) {
+    const classes = wormholeSalvageBoxClassesOf(familyOfCard(ctx, cardId), run.depth)
+    const pool = classes[Math.min(classes.length - 1, Math.floor(boxRng() * classes.length))]!
+    const boxId = pool[Math.min(pool.length - 1, Math.floor(boxRng() * pool.length))]!
+    const name = ctx.items.get(boxId)?.name ?? boxId
+    const landed = wormholeStowOrTemp(state, ctx, boxId, 1)
+    box = boxId
+    if (landed.where === 'hold') {
+      addLog(state, 'info', `🕳 战果里翻出${name}：已装进货仓。`, 'core.wormholeSalvage.041', { p1: name })
+    } else if (landed.where === 'temp') {
+      addLog(state, 'info', `🕳 战果里翻出${name}：货仓腾不出地方 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`, 'core.wormholeSalvage.042', { p1: name })
+    } else {
+      cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
+      addLog(state, 'warn', `🕳 战果里翻出${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`, 'core.wormholeSalvage.043', { p1: name })
+    }
+  }
+  return { bagged, leftOnCell: leftovers.length, ...(box !== undefined ? { box } : {}) }
 }
 
 /* ═══════════ 六、矿脉（虚空母矿 1~3 堆；走到就铺、按采集器台数成批回收） ═══════════ */
@@ -2170,7 +2238,16 @@ export function wormholeSyncMatterTurns(state: GameState, ctx: SimContext): void
    * ⚠ 这一条把 2026-09-13 那版注释里"变小只夹紧、剩余原样不动"的写法**收严**了：
    *   不这样收，"来回拖不刷回合"与"变小不追缴"**二者不可兼得**（已报船长）。
    */
-  const spent = Math.max(0, run.turnsTotal - run.turnsLeft)
+  const spent = Math.max(run.turnsSpent ?? 0, run.turnsTotal - run.turnsLeft)
+  /**
+   * ⚠ **2026-09-23 玩家报障修复**（船长转述玩家：「**0 回合拖动谜质时序还是能够刷回合数。**」）：
+   * 上面那版用 `spent = 上限 − 剩余` **现推**，上限因卸下装置掉到 80、而玩家真花掉 90 时，
+   * 那 10 点超支被 `max(0, …)` **抹掉**；把装置拖回货仓后"已花费"只读到 80 ⇒ 白送 10 回合，
+   * **来回拖可无限重复**。现改为**只增不减的账本** `run.turnsSpent`（随档）：
+   * 花回合会让 `上限 − 剩余` 变大 ⇒ 刷新时自然跟上；上限变小则**不再抹掉超支**。
+   * "不追缴"依旧成立（剩余不为负、撤离不看回合），但**不再"退还"**。
+   */
+  run.turnsSpent = spent
   run.turnsTotal = want
   run.turnsLeft = Math.min(want, Math.max(0, Math.round(want - spent)))
 }

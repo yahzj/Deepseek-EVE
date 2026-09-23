@@ -475,6 +475,22 @@ export interface WormholeGridCell {
    * 要再花一次扫描动作驱散（见 `WormholeGridState.dispersed`）。可选字段 ⇒ 老档零迁移。
    */
   nebula?: boolean
+  /**
+   * **围剿者**（**2026-09-23 船长新机制**：「7 层开始，玩家每经过一回合，就在地图随机格子刷出一个敌人，
+   * 采用类似星云的方式覆盖在原格子之上……敌人不会刷在下一层入口格，敌人有概率刷到玩家当前格，
+   * 如果刷到玩家当前格就触发袭击事件」）。
+   *
+   * - `card`：开打用的敌卡（**刷出那一刻**从该层档位池抽定，存下来 ⇒ 读档后仍是同一张）；
+   * - `seq`：本层第几个围剿者（随机流的序号，便于复现与读数）；
+   * - `cleared`：已打掉 ⇒ **覆盖解除、原格内容照旧**（船长：「打掉后进入原内容」）。
+   *
+   * ⚠ **不写 `activated`**：`activated` 另有一条语义（采空/打完 ⇒ 该格的事做完了，矿脉/墓场的"只铺一次"
+   * 闸门读它）——围剿者盖在**任何**格上（含未铺过堆的资源格），若打掉就写 `activated`，
+   * 那一格的产出会被永久封死。故围剿者的存废只看本字段。
+   * ⚠ **顶掉星云**（船长：「这个敌人会直接覆盖星云的效果」）：落在星云格上时把该格记进 `dispersed`
+   * ⇒ 打掉后直接看到原内容，不用再扫一次。
+   */
+  foe?: { card: string; seq: number; cleared?: boolean }
 }
 
 export interface WormholeGridState {
@@ -524,6 +540,12 @@ export interface WormholeGridState {
    * 可选字段（老档没有 = 没有星云可驱散 ⇒ 零迁移）。
    */
   dispersed?: string[]
+  /**
+   * **本层已刷出的围剿者个数**（2026-09-23 新机制 · 随机流序号，**随档**）。
+   * 每次刷怪用它算盐值（`hash(本趟种子, 层, 序号)`）⇒ 同一趟同一序号必得同一格、同一张卡（可复现、可测）。
+   * 可选字段 ⇒ 老档零迁移（缺失 = 0 ⇒ 从第一个围剿者开始刷）。
+   */
+  spawnSeq?: number
   /** 全部格（真相在这里；对外按 `scanned`/`visited` 决定展示到什么程度） */
   cells: WormholeGridCell[]
 }
@@ -538,6 +560,11 @@ export type WormholeCellReveal =
    * ⇒ **信号与地点都不给**（"遮挡该地点的信号"），要再花一次扫描动作驱散。
    */
   | { kind: 'nebula' }
+  /**
+   * **围剿者压在这一格上**（2026-09-23 新机制）：**优先级最高**——不管这格有没有扫描过、有没有星云，
+   * 只要压着没打掉的围剿者就显示它（船长：「敌人看得到这个标记」＋「这个敌人会直接覆盖星云的效果」）。
+   */
+  | { kind: 'foe' }
   | { kind: 'known'; signal: WormholeSignal | null; place: WormholePlace }
 
 /** 查格（坏键 ⇒ undefined） */
@@ -602,7 +629,53 @@ export function revealNearestMatterCell(
   return { cell: best, nebulaDispersed }
 }
 
-/* ═══════════ 三之一、路径拦截（2026-09-16 船长新增） ═══════════ */
+/* ═══════════ 三之二之二、围剿者（2026-09-23 船长新机制：7 层起逐回合刷怪） ═══════════ */
+
+/**
+ * **围剿机制的适用层**（船长：「7层开始」⇒ **层 ≥ 7 永久生效**，层 7、8、9… 都刷）。
+ */
+export const WORMHOLE_SPAWN_MIN_DEPTH = 7
+
+/**
+ * **每层围剿者上限**（船长：「每层上限**50%**」）= 本层格数 × 50%（向下取整）：
+ * 层 7/8（R=5 · 91 格）= **45** · 层 9/10（R=6 · 127 格）= **63**。
+ * 计数 = **本层尚未打掉的围剿者**（打掉即腾名额）· **跨层重置**。
+ */
+export const WORMHOLE_SPAWN_CAP_SHARE = 0.5
+
+/** 该格此刻**是否压着一个没打掉的围剿者**（唯一判据：拦截 / 揭示 / 界面 / 结算都读它） */
+export function hasLiveFoe(cell: WormholeGridCell): boolean {
+  return cell.foe !== undefined && cell.foe.cleared !== true
+}
+
+/** 本层还没打掉的围剿者个数 */
+export function spawnAliveCount(grid: WormholeGridState): number {
+  return grid.cells.reduce((n, c) => n + (hasLiveFoe(c) ? 1 : 0), 0)
+}
+
+/** 本层围剿者上限（格数 × 50%） */
+export function spawnCapOf(grid: WormholeGridState): number {
+  return Math.floor(grid.cells.length * WORMHOLE_SPAWN_CAP_SHARE)
+}
+
+/**
+ * **候选格**（船长口径）：
+ * ① 排除**下一层入口格**（「敌人不会刷在下一层入口格」）；
+ * ② 排除**已经有敌人的格**（「敌人不会刷在已经有敌人的节点上」）= 压着围剿者，或原舰船信号格**还没清掉**；
+ * ③ 其余一律可刷：未扫描/已扫描、空格、星云格、**已清掉的旧敌人格**、**玩家当前格**（刷到就触发袭击）。
+ * ⚠ 顺序 = `grid.cells` 原序（盘面生成序，稳定）⇒ 同序号必得同格。
+ */
+export function spawnTargetsOf(grid: WormholeGridState): WormholeGridCell[] {
+  const exitKey = hexKey(grid.exit.q, grid.exit.r)
+  return grid.cells.filter((c) => {
+    if (c.key === exitKey) return false
+    if (hasLiveFoe(c)) return false
+    if (c.place === 'ship' && !grid.activated.includes(c.key)) return false
+    return true
+  })
+}
+
+/* ═══════════ 三之三、路径拦截（2026-09-16 船长新增） ═══════════ */
 
 /**
  * **路径拦截判定**（船长 2026-09-16）：从玩家当前格前往 `target`，这条**直线路径**上
@@ -629,8 +702,10 @@ export function wormholePathInterceptAt(
   for (let i = 1; i < line.length - 1; i++) {
     const cell = gridCellAt(grid, line[i]!)
     if (!cell) continue
-    if (cell.place !== 'ship') continue
-    if (grid.activated.includes(cell.key)) continue
+    const liveFoe = hasLiveFoe(cell)
+    // 围剿者也挡路（船长 2026-09-23：「挡路」）——与舰船信号格同一条尺
+    if (cell.place !== 'ship' && !liveFoe) continue
+    if (cell.place === 'ship' && !liveFoe && grid.activated.includes(cell.key)) continue
     return cell
   }
   return undefined
@@ -646,6 +721,8 @@ export function wormholePathInterceptAt(
 export function revealOf(grid: WormholeGridState, cell: HexCell): WormholeCellReveal {
   const c = gridCellAt(grid, cell)
   if (!c) return { kind: 'unknown' }
+  // **围剿者优先于一切**（含星云与"没扫过"）：它是压在这一格上的、玩家看得见的敌人
+  if (hasLiveFoe(c)) return { kind: 'foe' }
   if (grid.visited.includes(c.key)) return { kind: 'known', signal: signalOfPlace(c.place), place: c.place }
   if (grid.scanned.includes(c.key)) {
     // **星云遮蔽**（层 4 起）：扫开了也先只看到星云，再扫一次才驱散（船长 2026-09-13）

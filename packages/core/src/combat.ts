@@ -2723,25 +2723,21 @@ export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, to
 }
 
 /** 装载指定弹 id（货仓优先、仓库兜底，单型一次抽足）；返回实装数 */
-function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {  if (total <= 0) return 0
-  const stock = Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id))
-  if (stock <= 0) return 0
-  let want = Math.min(stock, total)
-  let got = 0
-  const fromCargo = Math.min(want, Math.floor(cargoItemsOf(state)[id] ?? 0))
-  if (fromCargo > 0) {
-    removeItem(state, id, fromCargo)
-    want -= fromCargo
-    got += fromCargo
+function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {
+  void ctx
+  if (total <= 0) return 0
+  /**
+   * **取用来源二选一**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件直接从仓库
+   * 取用。关闭后只从舰队内舰船的货仓取用。」）——旧口径「货舱优先 → 仓库兜底」**退役**。
+   * 缺省（老档没有该字段）= **开**（只仓库）。
+   */
+  if (state.resupplyFromWarehouse !== false) {
+    const got = Math.min(Math.floor(countWare(state, id)), Math.floor(total))
+    if (got > 0) removeWare(state, id, got)
+    return got
   }
-  if (want > 0) {
-    const fromWare = Math.min(want, countWare(state, id))
-    if (fromWare > 0) {
-      removeWare(state, id, fromWare)
-      want -= fromWare
-      got += fromWare
-    }
-  }
+  const got = Math.min(Math.floor(cargoItemsOf(state)[id] ?? 0), Math.floor(total))
+  if (got > 0) removeItem(state, id, got)
   return got
 }
 
@@ -2995,32 +2991,19 @@ export function preloadRepairFor(
     })
     need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
   }
-  // 装载（与 loadAmmo 同序：**本舰货舱**优先、仓库兜底）
-  // ⚠ 2026-09-16（船长裁定「甲：逐舰维修」）：旧口径读的是**驾驶船**货舱（`cargoItemsOf`）——
-  //   多舰编队里僚舰的组件来源被记到主控头上。现改为「**谁装装置、用谁的货舱**」；
-  //   主控那一份与旧口径**逐字相同**（主控 = `state.shipId` 时 `cargoOfShip` ≡ `cargoItemsOf`）。
-  const kits: Record<string, number> = {}
-  for (const [kitId, wantTotal] of need) {
-    let want = wantTotal
-    const fromCargo = removeCargoOfShip(state, shipId, kitId, want)
-    if (fromCargo > 0) want -= fromCargo
-    if (want > 0) {
-      const fromWare = Math.min(want, countWare(state, kitId))
-      if (fromWare > 0) {
-        removeWare(state, kitId, fromWare)
-        want -= fromWare
-      }
-    }
-    const got = wantTotal - want
-    if (got > 0) kits[kitId] = got
-  }
-  // 一枚组件都没装到的装置 → 开战即停机（脉冲逻辑跳过；缺料提示由 startBattleFor 日志给出）
-  // 无消耗自愈件不参与组件检查（永不因缺料停机）
-  for (const u of units) {
-    if (u.free) continue
-    if ((kits[u.kitId] ?? 0) <= 0) u.stopped = true
-  }
-  return { units, kits, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
+  /**
+   * **不再预载**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件直接从仓库取用。
+   * 关闭后只从舰队内舰船的货仓取用。」）——旧口径在开战时把"**整场窗口的用量**"从共享池**预留**到
+   * 各舰账本上（`perUnit = ⌈最长战斗时长 ÷ 5 秒⌉ + 1`），四舰按编队顺序取 ⇒ **排在最后的船一枚都拿不到、
+   * 开战即永久停机**（玩家报障根因；只读探针实测 121 + 242 + 80 + 0 = 443 把仓库清零）。
+   * 现改为**每跳按需取用**（见 `pulseRepairsFor`），账本只留"本场消耗了几枚"的报账口径
+   * ⇒ 共享池不再被顺序吃干。
+   * ⚠ **老档在途战斗零迁移**：账本里已预载的 `kits` 非空 ⇒ `pulseRepairsFor` 走旧口径（用光即停机）、
+   * 战后 `refundRepairKits` 也只对那份账本生效（新账本 `kits` 为空 ⇒ 退还循环自然空转）。
+   */
+  void need
+  void perUnit
+  return { units, kits: {}, nextPulseAtMs: undefined, pulses: 0, kitsUsed: 0 }
 }
 
 /** 退还维修装置预载的未用组件（回仓库；与弹药退还同哲学）——战斗结束/撤退收场调用；幂等 */
@@ -3117,7 +3100,7 @@ export function repairUsageText(
  * 与 `REPAIR_PULSE_MS`（维修装置 5 秒）是**两套独立计时**：两者可以同装、各按各的节奏跳。
  * ⚠ 界面/说明里的「每 30 秒」与它同源（`content:check` 的「产物说明契约」按语境常量核）。
  */
-export const SHIELD_PULSE_MS = 30_000
+export const SHIELD_PULSE_MS = 15_000
 
 /**
  * **护盾被动回充的速率下限**（2026-09-20 船长：「**舰船护盾的恢复速度下限改为1%。但是当护盾被击穿时，依旧是0%**」；
@@ -3457,8 +3440,23 @@ function pulseRepairsFor(
       return true // 全场都修不动（都满血）⇒ 空转：不耗组件、不动计时器之外任何账（本舰也没死）
     }
   }
-  const capA = Math.max(0, targetSpec.hp.a)
-  const capH = Math.max(0, targetSpec.hp.h)
+  /**
+   * **维修上限 = 容量（不是入场残值）** —— **2026-09-23 玩家报障修复**。
+   *
+   * 报障形状（船长转述 + 存档实测 `save-20260923-214317`）：鹦鹉螺级**进战斗时装甲为 0**
+   * （`armorPct = 0`，装着 `mod-hullrep-2`、仓库 `repairkit-mil ×443` 充足），可它就是**不回甲**。
+   *
+   * 根因：上限原先取 `targetSpec.hp`——洞内编队那份 spec 带的是**存档里的残值**（甲 0），
+   * 于是 `da = capA - hp.a = 0` ⇒ **甲层被当成"已满"** ⇒ 装置只可能补结构，甲永远停在 0；
+   * 若结构也满则整台**空转**（`ag <= 0 && hg <= 0 ⇒ continue`，连组件都不烧）——
+   * 玩家看到的正是"不消耗组件、也不回血"。
+   *
+   * 设计原话（2026-09-09 船体维修装置首版）是「**上限 = 出场满值（入场残值可修回）**」⇒
+   * 上限必须取**容量**：运行时单位上的 `hpMax` 优先，缺它才回落 `spec.hp`
+   * （无 `hpMax` 的老调用方/单元测试 ⇒ **零行为变化**）。
+   */
+  const capA = Math.max(0, targetRt.hpMax?.a ?? targetSpec.hp.a)
+  const capH = Math.max(0, targetRt.hpMax?.h ?? targetSpec.hp.h)
   const hp = targetRt.hp
   /**
    * **本跳结算哪一台**（2026-09-21 逐型号独立回转）：
@@ -3481,11 +3479,18 @@ function pulseRepairsFor(
       hp.h += hg0
       continue
     }
-    const kitNow = r.kits[u.kitId] ?? 0
-    if (kitNow <= 0) {
-      // 组件耗尽（预载余额用光）：本台停机。
-      // 2026-09-11 船长「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
-      // ⇒ **不再写日志**（战斗界面底部已有"运转中/已停机"状态与悬停说明，玩家仍看得见）
+    /**
+     * **组件从哪来**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件直接从仓库
+     * 取用。关闭后只从舰队内舰船的货仓取用。」）：
+     * - **旧账本**（在途战斗：`kits` 非空 = 开战预载留下的）⇒ 照旧扣预载余额、用光即停机（**零迁移**）；
+     * - **新账本**（`kits` 为空）⇒ **每跳现取 1 枚**：开 = 母港仓库；关 = **该舰自己的**货仓；
+     *   取不到 ⇒ **本跳跳过**（不永久停机——下一跳料来了就继续修）。
+     *   这条同时修掉"四舰按编队顺序把共享仓库预留吃干、最后一艘 0 枚开战即停机"那个报障。
+     */
+    const legacyLedger = Object.keys(r.kits).length > 0
+    const preloadLeft = r.kits[u.kitId] ?? 0
+    if (legacyLedger && preloadLeft <= 0) {
+      // 旧口径：预载余额用光 ⇒ 本台停机（老档在途战斗逐字保持改前行为）
       u.stopped = true
       u.nextPulseAtMs = undefined
       continue
@@ -3498,9 +3503,19 @@ function pulseRepairsFor(
     if (ag < u.armorPerPulse && hg < dh) hg += Math.min(u.armorPerPulse - ag, dh - hg) // 甲通道剩余 → 结构
     if (hg < u.hullPerPulse && ag < da) ag += Math.min(u.hullPerPulse - hg, da - ag) // 结构通道剩余 → 甲
     if (ag <= 0 && hg <= 0) continue // 痊愈空转：不耗组件
+    if (!legacyLedger) {
+      // **按需取用**：这一跳真要修 ⇒ 现取 1 枚；取不到就跳过本跳（不是永久停机）
+      // ⚠ 单船战斗路径没有 `myFleet` 条目 ⇒ 回落到驾驶船（与弹药口径 `cargoItemsOf` 同源）
+      const shipUid = b.myFleet?.find((en) => en.tag === spec.tag)?.shipId ?? state.shipId
+      const ok =
+        state.resupplyFromWarehouse !== false
+          ? countWare(state, u.kitId) > 0 && (removeWare(state, u.kitId, 1), true)
+          : shipUid !== undefined && removeCargoOfShip(state, shipUid, u.kitId, 1) > 0
+      if (!ok) continue
+    }
     hp.a += ag
     hp.h += hg
-    r.kits[u.kitId] = kitNow - 1
+    if (legacyLedger) r.kits[u.kitId] = preloadLeft - 1
     r.kitsUsed += 1
     // 逐型记账（战报文案用：2026-09-11 船长「只将消耗组件数量显示到战后总结」）
     r.kitsUsedByType = { ...(r.kitsUsedByType ?? {}) }
@@ -3787,7 +3802,7 @@ export function wormholeMatterBattleModsOf(
   state: GameState,
   ctx: SimContext,
   baseCard: AnomalyDef,
-  kind: 'node' | 'boss' | 'extract' | 'ruins',
+  kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn',
 ): { threatMul: number; foeMainType: DamageType; foeHitDown: number; blindReduce: number; volleyOverflow: boolean } | null {
   const buffs = wormholeMatterBuffs(state.wormhole.run?.hold, matterTechWhBuffs(state, ctx))
   const bucket: 'node' | 'boss' | 'extract' = kind === 'boss' ? 'boss' : kind === 'extract' ? 'extract' : 'node'
@@ -4089,7 +4104,7 @@ export function startBattleFor(
     if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
     battle.repair = repair
   }
-  // 护盾充能装置（2026-09-14）：**独立 30 秒计时**（与维修装置的 5 秒互不干扰），开战 30 秒后第一跳；
+  // 护盾充能装置（2026-09-14）：**独立 15 秒计时**（与维修装置的 5 秒互不干扰），开战 15 秒后第一跳；
   // **逐型号一路**（2026-09-21）：每路各排各的首跳
   const shieldCharge = preloadShieldChargeFor(state, ctx, shipId)
   if (shieldCharge) {
@@ -4127,7 +4142,7 @@ export function wormholeDerivedAnomaly(
   baseCard: AnomalyDef,
   spec: {
     depth: number
-    kind: 'node' | 'boss' | 'extract' | 'ruins'
+    kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     waves: number
     strengthMul?: number
     /** 谜质：威胁乘数（缺省 1）+ 敌方命中/近盲带削减（见 `battle.wormhole` 的字段说明） */
@@ -4228,7 +4243,7 @@ export function startFleetBattleFor(
    */
   wormhole?: {
     depth: number
-    kind: 'node' | 'boss' | 'extract' | 'ruins'
+    kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     waves: number
     strengthMul?: number
     /**
@@ -7359,7 +7374,7 @@ function steadyPreview(
   // 回充按**当前盾**比例（引擎：`urt.hp.s × 费率`）⇒ 盾动力学 `ds/dt = k·s − D`（k = 费率、D = 净敌火）
   //   · 盾被打穿时刻 `tBreak = ln(D/(D − k·s₀)) ÷ k`（**仅当 D > k·s₀**；否则回充永远顶得住、盾不破）
   //   · **破盾后回充归 0**（船长「不留，破盾后 0 回复」）⇒ 之后 D 全打在甲+结构上
-  //   · 装了「护盾充能装置」时：把 30 秒脉冲折成**恒定附加回充** `c = 满盾 × 每跳比例 ÷ 30 秒`，
+  //   · 装了「护盾充能装置」时：把 15 秒脉冲折成**恒定附加回充** `c = 满盾 × 每跳比例 ÷ 15 秒`，
   //     **只在破盾后计入**（盾没破时被动回充远大于它）——这样估算不会对带装置的人过分悲观。
   // ⚠ **2026-09-20 船长加「恢复速度下限」后本模型必须同改**（原话见 `SHIELD_REGEN_FLOOR_PCT`）：
   //   引擎的回充已是 `max(当前盾 × k, 满盾 × 1%)` ⇒ **盾低于 50% 后回充不再随盾量缩水**
@@ -7460,6 +7475,12 @@ export function bountyDamageForecast(
  * ①缓存预热完成前的临时回退显示；②活动远征视图/测试兼容。结算与 AI/工具口径 battleWinPreview 不变。
  * = 原显示胜率（满耐久基准 + logit 扩散）− 预计装甲损耗×winPenaltyArmorPerFull
  * − 预计结构损耗×winPenaltyHullPerFull（结构伤扣更重），下限 2%。
+ *
+ * ⚠ **2026-09-23 船长报障后去掉 98% 上限**（玩家：「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
+ * 旧写法 `Math.min(0.98, …)` 把"稳赢"也显示成 **98%**，玩家读成"几乎必胜"；而**派系/窝点卡**
+ * 这条回退口径是**唯一的显示来源**（蒙特卡洛只管未加成卡，见 `Expedition` 的 `factionHit`）
+ * ⇒ 那条路径上"98%"就是天花板值，与实际胜率无关。**下限 2% 保留**（"仍有希望"语义），
+ * 上限改为不截断（真正稳赢就显示 99%/100%，由显示端按整数呈现）。
  */
 export function bountyWinPercentGuarded(
   state: GameState,
@@ -7472,7 +7493,7 @@ export function bountyWinPercentGuarded(
   const shown = spreadWinChance(f.rawWin, ctx.balance.battle.winSpread)
   const bal = ctx.balance.battle
   const penalty = f.armorLoss * bal.winPenaltyArmorPerFull + f.hullLoss * bal.winPenaltyHullPerFull
-  return Math.max(0.02, Math.min(0.98, shown - penalty))
+  return Math.max(0.02, Math.min(1, shown - penalty))
 }
 
 /** 玩家口径预估胜率：无 favor 模型 + logit 扩散（悬赏卡/玩家手动战斗展示用；实际结算与之对应） */

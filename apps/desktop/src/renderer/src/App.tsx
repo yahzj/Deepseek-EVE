@@ -183,12 +183,31 @@ const ZOOM_MAX_FS = 1.5
 /** 设置面板（船长 2026-09-05）：界面缩放 = 整窗 zoom；字体大小 = 字号族 CSS 系数 --ui-fs；
  *  宇宙背景（2026-09-10 船长）：铺在界面最底层的无缝星图，可在此换一张；
  *  界面配色（2026-09-22 船长令）：深空/亮白/跟随系统，存本机、即时生效 */
-function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onClose: () => void }) {
+function SettingsPanel({
+  root,
+  onClose,
+  engine,
+}: {
+  root: RefObject<HTMLDivElement>
+  onClose: () => void
+  engine: GameEngine
+}) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
   const [fs, setFs] = useState(() => readNum(FS_KEY, 1, 0.85, ZOOM_MAX_FS))
   /* 界面配色（2026-09-22 船长令「添加几套配色供玩家切换」）：存本机、即时生效、支持跟随系统 */
   const [theme, setTheme, effectiveTheme] = useTheme()
+  /**
+   * **弹药 / 修理组件取用来源**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件
+   * 直接从仓库取用。关闭后只从舰队内舰船的货仓取用。」）。
+   * ⚠ 这是**随档**开关（写进 `state` 并落档），不是本机偏好——洞内取料要用它。
+   */
+  const [resupply, setResupply] = useState(() => engine.state.resupplyFromWarehouse !== false)
+  function toggleResupply(next: boolean): void {
+    setResupply(next)
+    engine.state.resupplyFromWarehouse = next
+    void engine.persist()
+  }
   /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
   const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
   useEffect(() => {
@@ -234,6 +253,28 @@ function SettingsPanel({ root, onClose }: { root: RefObject<HTMLDivElement>; onC
               </button>
             </div>
             <div className="app-settings-desc">{t('ui.App.026')}</div>
+          </div>
+          {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.137')}</span>
+              <span className="app-settings-val">{resupply ? tr('ui.App.138') : tr('ui.App.139')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(true)}
+              >
+                {tr('ui.App.138')}
+              </button>
+              <button
+                className={`app-btn is-small${!resupply ? ' is-primary' : ''}`}
+                onClick={() => toggleResupply(false)}
+              >
+                {tr('ui.App.139')}
+              </button>
+            </div>
+            <div className="app-settings-desc">{t('ui.App.140')}</div>
           </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
@@ -743,6 +784,7 @@ export function App({ engine }: { engine: GameEngine }) {
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [battleOpen, setBattleOpen] = useState(false)
+  /** 新档模式选择（铁人 S4b）：重置档案确认后弹一次，选普通/铁人再开局 */
 
   // 顶栏「讨论 QQ 群」：点击复制群号（2026-09-08 船长指示）
   const [qqCopied, setQqCopied] = useState(false)
@@ -947,9 +989,15 @@ export function App({ engine }: { engine: GameEngine }) {
     showToast(ok ? tr("ui.App.054") : tr("ui.App.055"), !ok)
   }
 
+  /**
+   * 重置档案（开新档）：**模式选择挪到序章演出结束后出两张卡**（**2026-09-23 船长定**：
+   * 「玩家选择普通模式还是铁人模式的时机应该在过完初始动画后」）⇒ 这里只管重置；
+   * 新档与重置共用序章那一处选择，不再另弹窗。
+   * 旧档（现有存档）仍走存档页的「开启铁人模式」一次性转换。
+   */
   function handleReset(): void {
     if (!window.confirm(tr("ui.App.108"))) return
-    engine.resetGame()
+    void engine.resetGame()
     showToast(tr("ui.App.109"))
   }
 
@@ -1632,7 +1680,7 @@ export function App({ engine }: { engine: GameEngine }) {
           }}
         />
       ) : null}
-      {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} /> : null}
+      {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} engine={engine} /> : null}
       {/**
        * ⚠ **这一层为什么没有窗口**（两次改动叠加的结果，别再把窗口挪回来）：
        * - 2026-09-20：原先那枚独立的「⚔ 战斗中」浮动按钮撤掉，最小化与还原统一走 `ui/WinBox.tsx`；

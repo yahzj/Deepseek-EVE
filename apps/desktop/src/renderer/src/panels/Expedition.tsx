@@ -5,6 +5,8 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTask, SideTaskBoardView } from '@whale/core'
+// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
+import { bestAiCoreOf } from '@whale/core'
 import {
   AI_CORE_ORDER,
   DSI_FACTION_ID,
@@ -1692,10 +1694,10 @@ function GalaxyActions({
   // —— 副船掩护巡逻 ——
   const idleShips = idleAiShipIds(state)
   const [aiShip, setAiShip] = useState('')
-  const [aiCore, setAiCore] = useState<AiCoreType>('basic')
+  const [aiCore, setAiCore] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
   const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
-  const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[0] ?? 'basic')
+  const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[usableCores.length - 1] ?? 'basic')
   const aiCoreAvailable = usableCores.length > 0
   function handleAiStandby(): void {
     if (!aiShip) {
@@ -2068,7 +2070,16 @@ function AnomalyCard({
   const armorLoss = mc ? mc.armorLoss : fc.armorLoss
   const hullLoss = mc ? mc.hullLoss : fc.hullLoss
   const pWin = mc ? mc.winRate * 100 : bountyWinPercentGuarded(state, engine.ctx, shownCard) * 100
-  const chance = Math.min(98, Math.max(2, Math.round(pWin))) // 下限 2%：保留"仍有希望"语义
+  /**
+   * **不再夹到 98%**（**2026-09-23 船长报障**：「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
+   * 旧写法 `Math.min(98, …)` 把"全胜"也显示成 **98%** ⇒ 玩家读成"几乎必胜"，而实战仍会输
+   * （21 局的分辨率只有 4.8pp，三波 + 精锐首领那种长盘的尾部运气根本刻画不出来）。
+   * 现行：算出来多少就显示多少（上限自然 100%），**下限 2% 的"仍有希望"语义保留**；
+   * 局数已由 21 上调到 63（`BOUNTY_MC_RUNS`）。
+   * ⚠ 仍需下一步：**缓存没算完时**这里回退的旧解析口径自己也夹 98%（`combat.bountyWinPercentGuarded`）
+   * ⇒ 那一瞬间显示的数依然不可信，宜改成"计算中"。
+   */
+  const chance = Math.max(2, Math.round(pWin))
   const chanceTone = chance >= 70 ? tr("ui.Expedition.318") : chance >= 40 ? tr("ui.Expedition.035") : tr("ui.Expedition.036")
   const combatMs = anomaly.combatSeconds * 1000
   // 奖励/小时（2026-09-08：胜利自动返航——基准 = 目标星系最近已建成站；本地悬赏（目标=基准）

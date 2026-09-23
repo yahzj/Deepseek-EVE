@@ -30,7 +30,7 @@ import {
   wormholeFamilyOfSeed,
 } from './wormholeFoes'
 import type { WormholeFoeKind } from './wormholeFoes'
-import { wormholeArchetypeOf } from './wormholeGrid'
+import { WORMHOLE_SPAWN_MIN_DEPTH, wormholeArchetypeOf } from './wormholeGrid'
 import {
   WORMHOLE_NEBULA_MIN_DEPTH,
   WORMHOLE_TURN_PER_WORK,
@@ -55,6 +55,8 @@ import {
 import type { HexCell, WormholeGridCell, WormholeGridState, WormholePlace, WormholeSignal } from './wormholeGrid'
 // F3c 谜质：装置效果一律从货仓**现算**（扫描半径 / 额外驱散星云走这里；回合类走 `wormholeSyncMatterTurns`）
 import { wormholeMatterBuffs } from './wormholeMatter'
+// 围剿者（2026-09-23 新机制）：扣回合后掷刷怪——`wormholeSpawn` 只吃 state，不反向依赖本文件
+import { wormholeSpawnAfterTurns } from './wormholeSpawn'
 // 谜质科技树（2026-09-19 船长批）：「最大回合数」永久加成在**入场裁定**时并入回合预算
 import { matterTechWhBuffs } from './matterTech'
 
@@ -387,6 +389,22 @@ export interface WormholeRunState {
    */
   turnsTechBonus?: number
   /**
+   * **本趟已花掉的回合（只增不减的账本 · 2026-09-23 玩家报障修复）**。
+   *
+   * 报障原话（船长转述玩家）：「**0 回合拖动谜质时序还是能够刷回合数。**」
+   *
+   * 病根：`wormholeSyncMatterTurns` 的"已花费"是按 `上限 − 剩余` **现推**的 —— 上限因为卸下装置
+   * 掉到 80、而玩家真花掉的是 90 时，那 10 点超支被 `max(0, …)` **抹掉**；再把装置拖回货仓
+   * ⇒ `已花费` 只读到 80 ⇒ 白送 10 回合。0 回合的趟正好卡在这个形状上，**来回拖可无限重复**。
+   *
+   * 现行口径：本字段只增不减（每次同步/装卸先按 `max(本字段, 上限 − 剩余)` 刷新，于是正常花回合
+   * 会让它自然跟上），剩余一律按 `上限 − 本字段` 反推 ⇒ **上限变小不再抹掉超支**
+   * （"不追缴"仍然成立：剩余不为负、撤离永远可用；但**不再"退还"**）。
+   *
+   * 可选字段 ⇒ 老档零迁移（缺失 = 0，首次刷新即按当时的上限−剩余推出来）。
+   */
+  turnsSpent?: number
+  /**
    * **遗迹守备已被惊动、等玩家确认迎战**（F3c 界面批 · 船长 2026-09-13：战斗不该毫无提示地突然发生，
    * 要先提示玩家惊扰了守卫、玩家确认后再跳转）。为真时**别的动作一律被拦**（见 gridActionBlocked），
    * 直到玩家点「迎战」（wormholeStartBattle('ruins') 成功即清）。可选字段 ⇒ 老档零迁移。
@@ -587,6 +605,12 @@ export interface WormholeState {
    * 可选字段（老档没有 = 还没提示过；若他此刻正停在层 4+，下一次深入会补上一次性事件，不影响存档）。
    */
   nebulaHintShown?: boolean
+  /**
+   * **首次下到第 7 层已提示过围剿**（**2026-09-23 船长令**：「**当玩家第一次进入七层是，给玩家发一则
+   * 通讯讲清楚敌人开始围剿玩家了，并介绍机制**」）。随档一次性标记 ⇒ 跨趟/跨会话只送一次那封通讯
+   * （触发器 `{ kind: 'wormholeSiege' }` 读它）。可选字段 ⇒ 老档零迁移（老档首次下到 7 层时补送）。
+   */
+  siegeHintShown?: boolean
 }
 
 /** ⚠ **已删除（2026-09-15）**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`——撤离战整条退役，不再有"第几层起要打"。 */
@@ -829,6 +853,7 @@ export function wormholeDescend(
   // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
   run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus, blankShareFactorOf(state))
   maybeHintNebula(state, run.depth)
+  maybeHintSiege(state, run.depth)
   return { ok: true, spent: 0, atLayerEnd: false }
 }
 
@@ -863,6 +888,20 @@ function maybeHintNebula(state: GameState, depth: number): void {
     '🕳 前方出现星云带：星云会遮蔽地点的信号——第一次扫描只看到云，' +
       '再扫描一次（同一圈内）即可驱散并读出信号。',
   )
+}
+
+/**
+ * **围剿机制的一次性提示**（**2026-09-23 船长令**：「**当玩家第一次进入七层是，给玩家发一则通讯
+ * 讲清楚敌人开始围剿玩家了，并介绍机制**」）。
+ *
+ * 口径：只置**随档**的一次性标记 `state.wormhole.siegeHintShown = true`；那封通讯由 `wormholeSiege`
+ * 触发器按本标记送达（照星云那封的先例）——**不另发画面提示**（船长要的是通讯）。
+ * 层 1~6 一个字都不写；老档首次下到 7 层时照常补送。
+ */
+function maybeHintSiege(state: GameState, depth: number): void {
+  if (depth < WORMHOLE_SPAWN_MIN_DEPTH) return
+  if (state.wormhole.siegeHintShown === true) return
+  state.wormhole.siegeHintShown = true
 }
 
 /**
@@ -1075,6 +1114,8 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
     return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
   run.turnsLeft -= WORMHOLE_TURN_PER_SCAN
+  // 围剿者（2026-09-23 新机制）：层 ≥7 时"每消耗 1 回合"掷一次刷怪（本次是扫描的 1 回合）
+  wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_SCAN)
   const revealed: { key: string; signal: WormholeSignal | null }[] = []
   /**
    * **这一扫有没有扫到"下一层入口"那一格**（船长 2026-09-16 裁定**甲案**：「玩家扫描无法直接扫出
@@ -1191,6 +1232,8 @@ export function wormholeGridTravel(
     ? grid.scanned.includes(intercept.key) || grid.visited.includes(intercept.key)
     : false
   run.turnsLeft -= WORMHOLE_TURN_PER_MOVE
+  // 围剿者（2026-09-23 新机制）：移动的 1 回合也掷一次（可能在**新落点**触发袭击 ⇒ 置 pendingNodeBattle）
+  wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_MOVE)
   grid.pos = { q: dest.q, r: dest.r }
   // 到达 ⇒ 真相揭开（`revealOf` 里 visited 优先于 scanned）；同时并入 scanned，避免后续扫描重复"揭开"它
   if (!grid.visited.includes(dest.key)) grid.visited.push(dest.key)

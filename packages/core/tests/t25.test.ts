@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState, scanWindowMsFor, SCAN_WINDOW_MS } from '../src/index'
+import { createInitialState, scanWindowMsFor, SCAN_LOWSEC_PENALTY, SCAN_WINDOW_MS } from '../src/index'
 import { rollLowSecAmbush } from '../src/encounters'
 
 describe('低安扫描规则（2026-09-05）', () => {
@@ -25,8 +25,9 @@ describe('低安扫描规则（2026-09-05）', () => {
     const highWin = scanWindowMsFor(state, ctx, high.id)
     // 无技能时高安窗口 = 基准 10 分钟
     expect(highWin).toBe(SCAN_WINDOW_MS)
-    // 低安按公式延长（1 + 0.8×(0.5 − sec)）
-    const expectLow = Math.round(SCAN_WINDOW_MS * (1 + 0.8 * Math.max(0, 0.5 - low.sec)))
+    // 低安按公式延长（1 + SCAN_LOWSEC_PENALTY×(0.5 − sec)）——**读常量**，别写死系数
+    // （2026-09-23 船长令：系数 0.8 → 95.333，最深星系 10 分钟 → 24 小时）
+    const expectLow = Math.round(SCAN_WINDOW_MS * (1 + SCAN_LOWSEC_PENALTY * Math.max(0, 0.5 - low.sec)))
     expect(lowWin).toBe(expectLow)
     expect(lowWin).toBeGreaterThan(highWin)
   })

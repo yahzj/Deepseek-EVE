@@ -96,13 +96,16 @@ describe('winEstimate 蒙特卡洛预估（2026-09-09）', () => {
     expect(ef.customName).toBe('测试船甲')
     expect(snap.ev.skills.trained['kinetic-gunnery']).toBe(3)
     expect(snap.ev.importantTasks['first-bounty']?.done).toBe(true)
-    expect(ef.cargo['ammo-kinetic-l']).toBe(1_000_000) // 评估弹药给足
+    // 评估弹药给足：**放进开关真正会读的那个池**（2026-09-23 开关默认 = 只从仓库取用）
+    expect(snap.ev.resupplyFromWarehouse).toBe(true)
+    expect(snap.ev.warehouse.items['ammo-kinetic-l']).toBe(1_000_000)
+    expect(snap.ev.warehouse.items['repairkit-mil']).toBe(1_000_000)
     // 快照上评估也不改原档
     expect(state.fleet[uid]!.durability).toBe(0.42)
   })
 
   it('BOUNTY_MC_RUNS 默认 = 21；estimateBountyWinOn 在快照上可跑', () => {
-    expect(BOUNTY_MC_RUNS).toBe(21)
+    expect(BOUNTY_MC_RUNS).toBe(63) // 2026-09-23 船长报障后由 21 上调（分辨率 4.8pp → ~1.6pp）
     const { state, uid } = warriorState()
     const snap = buildEvalState(state, uid)!
     const r = estimateBountyWinOn(snap.ev, ctx, easy, snap.uid, 5)

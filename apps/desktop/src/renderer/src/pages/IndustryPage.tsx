@@ -35,6 +35,8 @@ import {
   /** 2026-09-22 船长令：缺料"零件"要指去组装机 ⇒ 用产物→蓝图反查（核心单点，含缓存） */
   blueprintProducingItem,
 } from '@whale/core'
+// 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
+import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -130,7 +132,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   // 否则玩家只看到"残骸 0 m³ + 炉子还在转"。普通残骸/精炼炉的料账恒为 0（照旧走公共库存）。
   const claimHeld = runs.reduce((s, v) => s + (v.claimedUnits ?? 0), 0)
   // 每卡独立的 AI 核心选择（一枚核心驱动一台；核心库存被占用后自动回落可用类型）
-  const [coreSel, setCoreSel] = useState<AiCoreType>('basic')
+  const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   // 手动再开一台被拒的原因：主控已亲自开着一台炉 / 开着一条制造线 / 其它主控作业占用（三者共享手动工作位）

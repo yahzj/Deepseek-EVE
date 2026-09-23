@@ -415,7 +415,7 @@ const BATTLE_FIELDS = {
   /* ── 2026-09-12 船长裁定（A3 盘点后「六项全修」）：以下七项由 runtime **改为随档** ──
    * 判据仍是"战中重载后引擎要不要续算"，只是这些原来漏了，而漏掉的后果是真缺陷： */
   repair: { kind: 'persist' }, // 维修装置快照 + **预载组件账本**（丢了 ⇒ 组件凭空消失、战后无从退回）
-  shieldCharge: { kind: 'persist' }, // 护盾充能装置快照 + 30 秒脉冲计时（丢了 ⇒ 重载后计时重置 = 白赚一跳）
+  shieldCharge: { kind: 'persist' }, // 护盾充能装置快照 + 15 秒脉冲计时（丢了 ⇒ 重载后计时重置 = 白赚一跳）
   // 2026-09-16 船长裁定「甲：逐舰维修」：逐舰账本（键 = 舰 tag）——同 `repair`/`shieldCharge` 的理由，
   // 且**必须随档**：漏了会让僚舰的预载组件与计时在战中重载后凭空消失（与 `myFleet` 漏登记的后果同类）。
   repairBy: { kind: 'persist' },
@@ -937,7 +937,7 @@ function cleanPulseStreams(raw: unknown): BattleShieldFieldStream[] | undefined 
  * `combat.SHIELD_PULSE_MS` 是**同一个数**；`save.ts` 不能 import `combat.ts`（会成环），
  * 故在此**显式写明同源**，并由用例 `pulse-stream-save.test.ts` 钉住两处相等。
  */
-const SHIELD_PULSE_MS_FOR_OLD_SAVE = 30_000
+const SHIELD_PULSE_MS_FOR_OLD_SAVE = 15_000
 
 function cleanShieldCharge(raw: unknown): BattleState['shieldCharge'] | undefined {
   const r = asRaw(raw)
@@ -2243,8 +2243,8 @@ function normalizeState(raw: unknown): GameState {
   }
 
   // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒 ---
-  // 上限 = **扫描窗口的合法上限**（`maxScanWindowMs()` = 基准窗口 × 低安最深惩罚 ×2.2 = 22 分钟）——
-  // 2026-09-11 修复：原按基准 `SCAN_WINDOW_MS`（10 分钟）钳，而低安星系的有效窗口最长 22 分钟，
+  // 上限 = **扫描窗口的合法上限**（`maxScanWindowMs()` = 基准窗口 × 低安最深惩罚 ×144 = 24 小时，2026-09-23 船长令）——
+  // 2026-09-11 修复：原按基准 `SCAN_WINDOW_MS`（10 分钟）钳，而低安星系的有效窗口最长 24 小时，
   // 于是"在低安扫了 10 分钟以上 → 终止 → 重开存档"会把进度截回 10 分钟（白扫一段）。
   // 本函数没有 ctx（拿不到目标星系安全等级），故只能按全游戏最大可能窗口兜底；
   // 消费侧（`scanWindowMsFor` 起步/续扫）仍按**该星系实际窗口**再钳一次。
@@ -2444,6 +2444,12 @@ function normalizeState(raw: unknown): GameState {
   const firstShipBuilt =
     src.firstShipBuilt === true ? true : src.firstShipBuilt === false ? false : undefined
   /**
+   * **弹药 / 修理组件取用来源开关**（2026-09-23 船长令）：三态读法（缺省 = 未设过 = 走默认"只仓库"）。
+   * ⚠ 本清洗器逐字段重建 ⇒ 漏登记 = 每读一次档开关就被重置（与 `foe`/`turnsSpent` 同一类事故）。
+   */
+  const resupplyFromWarehouse =
+    src.resupplyFromWarehouse === true ? true : src.resupplyFromWarehouse === false ? false : undefined
+  /**
    * 见过的敌方舰级（2026-09-16）：只收 `true` 的键（值域 = `FoeShipDef.id` 字符串）。
    * **空表也落键**（与 `commsDelivered` 同口径）：新档出生即带 `{}`，若这里把空表折成"缺失"，
    * 存档往返会少一个键 ⇒ `save.test.ts` 的"内容完全一致"用例失败。
@@ -2520,6 +2526,29 @@ function normalizeState(raw: unknown): GameState {
   const firstTaskReadyIdRaw = src.firstTaskReadyId
   const firstTaskReadyId = typeof firstTaskReadyIdRaw === 'string' && firstTaskReadyIdRaw.length > 0 ? firstTaskReadyIdRaw : undefined
   const firstTaskAutoClaim = src.firstTaskAutoClaim === true ? true : undefined
+  /**
+   * **铁人模式**（**2026-09-23 船长令**：「**和玩家讨论了下，发现好像搞一个铁人模式更受欢迎**」）。
+   *
+   * 白名单重建（**新加随档字段必须在这里落一笔**——漏了就是"刷新即丢"那一类缺陷，见本文件
+   * `importantTasks.salvagerGift` 与 `wormhole.run.turnsBase` 两次前车之鉴）：
+   * - `on`：只认 `true`（缺省/其它值 ⇒ false = 普通档）；
+   * - `seq`：**存档代次**（非负有限整数；缺省 ⇒ 0）——**必须随档**，它是"铁人档装载闸门"的一半
+   *   （另一半是存档之外的账本，主进程读写）；
+   * - `sinceWallMs` / `closedWallMs`：只在有值时写（徽章判据与界面展示用）。
+   * ⚠ **老档没有这个键** ⇒ 一律读作"普通档、代次 0"（零迁移；闸门只对铁人档生效 ⇒ 老档行为不变）。
+   */
+  const ironmanRaw = asRaw(src.ironman)
+  const ironmanSeqRaw = num(ironmanRaw.seq)
+  const ironman: GameState['ironman'] = {
+    on: ironmanRaw.on === true,
+    seq: Number.isFinite(ironmanSeqRaw) && ironmanSeqRaw > 0 ? Math.floor(ironmanSeqRaw) : 0,
+    ...(Number.isFinite(num(ironmanRaw.sinceWallMs)) && num(ironmanRaw.sinceWallMs) > 0
+      ? { sinceWallMs: Math.floor(num(ironmanRaw.sinceWallMs)) }
+      : {}),
+    ...(Number.isFinite(num(ironmanRaw.closedWallMs)) && num(ironmanRaw.closedWallMs) > 0
+      ? { closedWallMs: Math.floor(num(ironmanRaw.closedWallMs)) }
+      : {}),
+  }
 
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
@@ -2715,6 +2744,18 @@ function normalizeState(raw: unknown): GameState {
   }
 
   /**
+   * **围剿者清洗**（2026-09-23 新机制）：`{ card: string; seq: number; cleared?: true }`。
+   * 坏值（缺 card / card 为空 / seq 不是有限数）⇒ 整条丢弃；`cleared` 只在为真时写。
+   */
+  const cleanWormholeFoe = (raw: unknown): { card: string; seq: number; cleared?: true } | undefined => {
+    const row = asRaw(raw)
+    const card = typeof row.card === 'string' ? row.card : ''
+    const seq = Math.floor(num(row.seq))
+    if (card.length === 0 || !Number.isFinite(seq) || seq < 0) return undefined
+    return { card, seq, ...(row.cleared === true ? { cleared: true as const } : {}) }
+  }
+
+  /**
    * **货仓格清洗**（F4 · 船长 2026-09-13：类似背包英雄的格管理）。
    * - 形状件逐个走 `cleanHoldPlacement`（坐标/尺寸越界或坏值 ⇒ 丢这一件）；
    * - **重叠的件丢弃**（后到的让位）——重叠是坏档，留着会让放置逻辑错乱；
@@ -2799,6 +2840,11 @@ function normalizeState(raw: unknown): GameState {
         ...(cellPiles ? { piles: cellPiles } : {}),
         // 星云标记（船长 2026-09-13 星云机制）：只在为真时写（老档/非星云格 ⇒ 不写 = 零迁移）
         ...(row.nebula === true ? { nebula: true } : {}),
+        /**
+         * **围剿者**（2026-09-23 新机制 · 玩家报障级教训同款：本清洗器逐字段重建，漏登记 = 每读一次档丢一次）：
+         * 坏值整条丢弃（宁可少一个围剿者，也不要读出半个坏对象）；`cleared` 只在为真时写。
+         */
+        ...(cleanWormholeFoe(row.foe) !== undefined ? { foe: cleanWormholeFoe(row.foe)! } : {}),
       })
     }
     if (cells.length === 0) return undefined
@@ -2828,6 +2874,11 @@ function normalizeState(raw: unknown): GameState {
       ...(keys(g.dispersed).length > 0 ? { dispersed: keys(g.dispersed) } : {}),
       // 「下一层入口已被漂浮信标标出」（F3a-3）：只在为真时写（老档/未标出 ⇒ 不写 = 零迁移）
       ...(g.exitKnown === true ? { exitKnown: true } : {}),
+      /**
+       * **本层已刷出的围剿者个数**（2026-09-23 新机制）：坏值/缺省 ⇒ 不写（老档 = 从第一个开始刷）。
+       * ⚠ 与格上的 `foe` 是一对：漏登记任何一个，读档后不是"围剿者消失"就是"序号归零 ⇒ 随机流重来"。
+       */
+      ...(Math.floor(num(g.spawnSeq)) > 0 ? { spawnSeq: Math.floor(num(g.spawnSeq)) } : {}),
       cells,
     }
   }
@@ -2973,6 +3024,14 @@ function normalizeState(raw: unknown): GameState {
             ...(typeof rRaw.turnsTechBonus === 'number' && Number.isFinite(rRaw.turnsTechBonus)
               ? { turnsTechBonus: Math.max(0, Math.round(rRaw.turnsTechBonus)) }
               : {}),
+            /**
+             * **已花掉的回合账本**（2026-09-23 进格式 · 玩家报障「0 回合拖动谜质时序还是能够刷回合数」）：
+             * 漏登记 = 每读一次档就把"超支"信息丢一次 ⇒ 读档后再拖一次装置又能白刷回合
+             * （与上面 `turnsBase/turnsTechBonus` 同一类事故，故按同一口径登记；0 也合法）。
+             */
+            ...(typeof rRaw.turnsSpent === 'number' && Number.isFinite(rRaw.turnsSpent)
+              ? { turnsSpent: Math.max(0, Math.round(rRaw.turnsSpent)) }
+              : {}),
           }
         : null
     /**
@@ -3005,6 +3064,8 @@ function normalizeState(raw: unknown): GameState {
       ...(lastSettle !== undefined ? { lastSettle } : {}),
       // 星云提示只提示一次（船长 2026-09-13）：只在为真时写（老档 ⇒ 不写 = 零迁移）
       ...(wRaw.nebulaHintShown === true ? { nebulaHintShown: true } : {}),
+      // 围剿机制的一次性标记（2026-09-23 船长令：首次下到第 7 层发一封通讯）——漏登记 = 每读档补送一次
+      ...(wRaw.siegeHintShown === true ? { siegeHintShown: true } : {}),
     }
   }
   const wormhole = cleanWormhole()
@@ -3126,6 +3187,7 @@ function normalizeState(raw: unknown): GameState {
     ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
+    ...(resupplyFromWarehouse !== undefined ? { resupplyFromWarehouse } : {}),
     // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径
     foeShipSeen,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
@@ -3141,6 +3203,7 @@ function normalizeState(raw: unknown): GameState {
     // 「已达成」播报记账 ＋ 老档一次性收口标记：同样只在有值时写键
     ...(firstTaskReadyId !== undefined ? { firstTaskReadyId } : {}),
     ...(firstTaskAutoClaim !== undefined ? { firstTaskAutoClaim } : {}),
+    ironman,
     sideTasks,
     wormhole,
     research,

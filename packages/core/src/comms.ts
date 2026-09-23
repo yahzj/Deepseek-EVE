@@ -199,6 +199,10 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       // 2026-09-13 船长定（星云机制）：**第一次下到第 4 层**时送达一封星云说明。
       // 判定读的是同一个随档标记（`wormholeDescend` 置位）⇒ 与那一条一次性提示同源、不会错位。
       return state.wormhole.nebulaHintShown === true
+    case 'wormholeSiege':
+      // 2026-09-23 船长定（围剿机制）：**第一次下到第 7 层**时送达一封"敌人开始围剿"的说明。
+      // 判定同样读随档标记（`wormholeDescend` 的 maybeHintSiege 置位）⇒ 跨趟只送一次。
+      return state.wormhole.siegeHintShown === true
     case 'ambushRetreat': {
       // 2026-09-14 船长定（新通讯）：**第一次因为低安袭击导致舰船自动撤离**时送达一封"为什么船自己回家了"，
       // 并提示自造修理组件（`msg-ambush-retreat`）。置位点两处（船长裁定「也算自动脱离交火」）：
