@@ -841,18 +841,18 @@ describe('「第一次」次数链：记账与领奖分开', () => {
     expect(state.importantTasks['chain-explorer']?.delivered).toBe(1)
     // 记账不发钱：钱包没动
     expect(state.wallet.isk).toBe(createInitialState({ nowWallMs: 0, seed: 11 }).wallet.isk)
-    // 领奖：第 1 级 = 基准 × 1⁵ = 2,500；再点一次为 0（幂等）
+    // 领奖：第 1 级 = 基准 × 1⁴ = 2,500（⟪2026-09-23 船长令⟫ 由 N⁵ 改 N⁴）；再点一次为 0（幂等）
     expect(claimChainReward(state, 'explorer')).toBe(chainLevelRewardIsk(1))
     expect(claimChainReward(state, 'explorer')).toBe(0)
-    // 再点亮到第 2 档（8 个）⇒ 又记一级；这次领第 2 级（基准 × 2⁵ = 80,000）
+    // 再点亮到第 2 档（8 个）⇒ 又记一级；这次领第 2 级（基准 × 2⁴ = 40,000）
     state.exploredGalaxies = [...ctx.galaxies.keys()].slice(0, 8)
     advanceFirstChains(state)
     expect(state.importantTasks['chain-explorer']?.delivered).toBe(2)
     expect(claimChainReward(state, 'explorer')).toBe(chainLevelRewardIsk(2))
-    expect(chainLevelRewardIsk(2)).toBe(CHAIN_REWARD_ISK_BASE * 32)
+    expect(chainLevelRewardIsk(2)).toBe(CHAIN_REWARD_ISK_BASE * 16)
   })
 
-  it('一次跨越两档：领奖按"已达成 − 已领"逐级求和（2⁵ + 3⁵ 那一档）', () => {
+  it('一次跨越两档：领奖按"已达成 − 已领"逐级求和（2⁴ + 3⁴ 那一档）', () => {
     const state = testState()
     // 直接点亮 12 个星系 = 第 3 档（5/8/12）
     state.exploredGalaxies = [...ctx.galaxies.keys()].slice(0, 12)
@@ -862,8 +862,8 @@ describe('「第一次」次数链：记账与领奖分开', () => {
     expect(chainPendingRewardIsk(state, 'explorer')).toBe(expectSum)
     expect(claimChainReward(state, 'explorer')).toBe(expectSum)
     expect(claimChainReward(state, 'explorer')).toBe(0)
-    // 基准 2,500、五次方 ⇒ 三级合计 2,500 × (1 + 32 + 243) = 690,000
-    expect(expectSum).toBe(690_000)
+    // 基准 2,500、四次方 ⇒ 三级合计 2,500 × (1 + 16 + 81) = 245,000
+    expect(expectSum).toBe(245_000)
   })
 
   it('未知链 id 领奖返回 0（界面误点不炸）', () => {
@@ -872,25 +872,25 @@ describe('「第一次」次数链：记账与领奖分开', () => {
   })
 })
 
-describe('链阈值（2026-09-18 船长第二轮标定）', () => {
-  it('9 条新顶档：船长逐条指定的 L10 落地', () => {
+describe('链阈值（⟪2026-09-23 船长令⟫ 第三轮：L1 不变 + 满级 ×10 + 中间级等比平滑）', () => {
+  it('12 条链新顶档 = 旧顶档 ×10（船长令）', () => {
     const top = (k: string): number => CHAIN_TIERS[k]!.at(-1)!
-    expect(top('mineUnits')).toBe(10_000_000)
-    expect(top('refineBatches')).toBe(1_000_000)
-    expect(top('produceUnits')).toBe(1_000_000)
-    expect(top('bountyWins')).toBe(10_000)
-    expect(top('salvageRuns')).toBe(50_000)
-    expect(top('wormholeRuns')).toBe(500)
-    expect(top('ships')).toBe(1_000)
-    expect(top('skills')).toBe(500) // 当前技能表满级 395 ⇒ 顶档留待新增技能
-    expect(top('marketIncome')).toBe(100_000_000_000) // 交易收入 1,000 亿（税后）
+    expect(top('mineUnits')).toBe(100_000_000)
+    expect(top('refineBatches')).toBe(10_000_000)
+    expect(top('produceUnits')).toBe(10_000_000)
+    expect(top('bountyWins')).toBe(100_000)
+    expect(top('salvageRuns')).toBe(500_000)
+    expect(top('wormholeRuns')).toBe(5_000)
+    expect(top('ships')).toBe(10_000)
+    expect(top('skills')).toBe(5_000) // 当前技能表满级 395 ⇒ 顶档留待新增技能
+    expect(top('marketIncome')).toBe(1_000_000_000_000) // 旧 1,000 亿 → ⟪2026-09-23⟫ 1 万亿（税后）
   })
 
-  it('未提到的三条与长途运输保持原值（船长：「没提到的保持原样」）', () => {
+  it('扫描链保持原值（5 档封顶）；⟪2026-09-23 船长令⟫ 维修/AI 指派/长途运输随令 ×10', () => {
     expect(CHAIN_TIERS.scan).toEqual([5, 8, 12, 16, 20])
-    expect(CHAIN_TIERS.repairs).toEqual([1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000])
-    expect(CHAIN_TIERS.aiAssigns).toEqual([1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000])
-    expect(CHAIN_TIERS.haulTrips).toEqual([1, 3, 8, 20, 50, 120, 300, 700, 1500, 3000])
+    expect(CHAIN_TIERS.repairs).toEqual([1, 3, 8, 20, 50, 180, 650, 2_320, 8_350, 30_000])
+    expect(CHAIN_TIERS.aiAssigns).toEqual([1, 3, 8, 20, 50, 180, 650, 2_320, 8_350, 30_000])
+    expect(CHAIN_TIERS.haulTrips).toEqual([1, 3, 8, 20, 50, 180, 650, 2_320, 8_350, 30_000])
   })
 
   it('每条链严格递增（虫洞 L9 曾高于新 L10 的那个矛盾不再有）；扫描按内容上限 5 档、其余 10 档', () => {
@@ -1027,7 +1027,7 @@ describe('链条目奖金上卡（船长：写清楚当前这级的具体数额�
     expect(row.unlocked).toBe(true) // 对应「第一次采集原矿」已完成
     expect(row.level).toBe(2)
     expect(row.nextRewardIsk).toBe(chainLevelRewardIsk(3))
-    expect(row.nextRewardIsk).toBe(607_500) // 具体数额（不是公式）
+    expect(row.nextRewardIsk).toBe(202_500) // 具体数额（不是公式）；⟪2026-09-23 船长令⟫ N⁵→N⁴ 后 3⁴×2,500
 
     // 满档：没有"下一级" ⇒ 0
     const s2 = testState()
