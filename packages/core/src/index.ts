@@ -243,6 +243,10 @@ export {
   weekendEncounterChanceAt,
   weekendFlagshipView,
   weekendFoeCardOf,
+  weekendNoteFlagshipKilled,
+  weekendNotePlayerWin,
+  weekendNoteRepel,
+  weekendTick,
   weekendNoteContribution,
   weekendNpcTimelineMs,
   weekendOccupiedIds,
@@ -257,7 +261,7 @@ export {
   weekendWindowMsOf,
   weekendWindowOpen,
 } from './weekendEvent'
-export type { WeekendEventState, WeekendFlagshipView } from './weekendEvent'
+export type { WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
 export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'

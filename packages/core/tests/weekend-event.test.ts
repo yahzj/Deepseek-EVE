@@ -22,6 +22,10 @@ import {
   WEEKEND_PERIPHERY_THREAT,
   WEEKEND_WINDOW_MS,
   endWeekendEvent,
+  weekendNoteFlagshipKilled,
+  weekendNotePlayerWin,
+  weekendNoteRepel,
+  weekendTick,
   ensureWeekendEvent,
   weekendAmbushThreatOf,
   weekendAssaultThreatOf,
@@ -294,5 +298,66 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
     const clean = fresh()
     const back2 = loadSaveFile(serializeSaveFile(clean, 0)).state
     expect(back2.weekendEvent).toBeUndefined()
+  })
+})
+
+describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
+  it('调试模式：tick 开局面，并交出该掷遇袭骰的星系与概率（未夺回者才有）', () => {
+    const s = fresh(true)
+    const T = 5_000_000
+    const r = weekendTick(s, ctx, T, T)
+    expect(r.started, '首次 tick ⇒ 开局').toBe(true)
+    expect(s.weekendEvent).toBeTruthy()
+    expect(r.encounterRolls.length, '核心加外围都要掷').toBe(1 + s.weekendEvent!.peripheryIds.length)
+    for (const x of r.encounterRolls) expect(x.chance).toBeCloseTo(0.6, 6)
+    expect(r.flagshipShown, '刚开局核心不满 ⇒ 旗舰未现身').toBe(false)
+    expect(weekendTick(s, ctx, T + 60_000, T + 60_000).started, '同场再 tick ⇒ 不重开').toBe(false)
+  })
+
+  it('旗舰 anchor 只在首次满分且在线那一拍落盘，之后不漂移；过期 ⇒ 章鱼人得手并结束', () => {
+    const s = fresh(true)
+    const T = 5_000_000
+    weekendTick(s, ctx, T, T)
+    const ev = s.weekendEvent!
+    for (const id of ev.peripheryIds) ev.contributed[id] = 1 // 先清外围解门禁
+    ev.contributed[ev.coreId] = 1
+    expect(ev.flagshipAtWallMs, '还没 tick ⇒ 未落盘').toBeUndefined()
+    const t1 = T + 60_000
+    const r1 = weekendTick(s, ctx, t1, t1)
+    expect(r1.flagshipShown).toBe(true)
+    expect(ev.flagshipAtWallMs, '落盘等于此刻').toBe(t1)
+    const t2 = t1 + 30_000
+    weekendTick(s, ctx, t2, t2)
+    expect(ev.flagshipAtWallMs, 'anchor 不漂移').toBe(t1)
+    const t3 = t1 + 2 * 60_000 + 1
+    const r3 = weekendTick(s, ctx, t3, t3)
+    expect(r3.flagshipDown, '超时 ⇒ 章鱼人摧毁').toBe('octopus')
+    expect(r3.ended).toBe(true)
+    expect(ev.flagshipDown).toBe('octopus')
+    expect(ev.endedAtWallMs, '本场已结束').toBe(t3)
+  })
+
+  it('记账：主动胜利 外围加 10 / 核心加 5 个百分点 · 击退加 3（离线 1）· 击毁旗舰要核心先满', () => {
+    const s = fresh(true)
+    const T = 5_000_000
+    weekendTick(s, ctx, T, T)
+    const ev = s.weekendEvent!
+    const per = ev.peripheryIds[0]!
+    weekendNotePlayerWin(s, per)
+    expect(ev.contributed[per], '外围主动胜利 +10%').toBeCloseTo(0.1, 6)
+    weekendNoteRepel(s, per)
+    expect(ev.contributed[per], '击退再 +3%').toBeCloseTo(0.13, 6)
+    weekendNoteRepel(s, per, true)
+    expect(ev.contributed[per], '离线击退 +1%').toBeCloseTo(0.14, 6)
+    weekendNotePlayerWin(s, ev.coreId)
+    expect(ev.contributed[ev.coreId], '核心主动胜利 +5%').toBeCloseTo(0.05, 6)
+    expect(weekendNoteFlagshipKilled(s, T), '核心没满 ⇒ 击毁无效').toBe(false)
+    for (const id of ev.peripheryIds) ev.contributed[id] = 1 // 清外围解门禁
+    ev.contributed[ev.coreId] = 1
+    expect(weekendNoteFlagshipKilled(s, T)).toBe(true)
+    expect(ev.flagshipDown).toBe('player')
+    expect(ev.endedAtWallMs).toBe(T)
+    weekendNotePlayerWin(s, per)
+    expect(ev.contributed[per], '结束后不再记账（投入冻结，仍停在清门禁时的 1）').toBeCloseTo(1, 6)
   })
 })

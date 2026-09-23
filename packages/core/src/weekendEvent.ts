@@ -429,6 +429,96 @@ export function endWeekendEvent(state: GameState, nowWallMs: number): WeekendEve
   return ev
 }
 
+/* ─────────────── 引擎 tick（M1-b：只做必须落盘的事） ─────────────── */
+
+/** tick 结果：引擎据它记日志/弹卡/掷遇袭骰 */
+export interface WeekendTickResult {
+  /** 本次 tick 是否新开了一场 */
+  started: boolean
+  /** 旗舰是否已现身 */
+  flagshipShown: boolean
+  /** 旗舰结局（本 tick 新发生） */
+  flagshipDown?: 'player' | 'octopus'
+  /** 本 tick 是否结束（旗舰被摧毁 / 章鱼人得手 / 窗口到点） */
+  ended: boolean
+  /** 该掷遇袭骰的星系（未夺回）与各自概率 —— **掷骰在引擎**（随机源在那边） */
+  encounterRolls: Array<{ galaxyId: string; chance: number }>
+}
+
+/**
+ * **引擎每拍调用一次**（M1-b）：
+ * 1. `ensureWeekendEvent` 开局面（**仅调试模式**，见 `WEEKEND_DEBUG_ONLY`）；
+ * 2. 旗舰 anchor **落盘**（首次满分且在线那一拍 ⇒ 倒计时从此稳定，不再随 tick 漂移）；
+ * 3. 章鱼人得手（`view.down === octopus`）⇒ 写 `flagshipDown` 并结束本场；
+ * 4. 正常模式的窗口到点（T0+74h）⇒ 结束本场；
+ * 5. 交出"该掷遇袭骰的星系与概率"（**不在本函数里掷**：随机源归引擎）。
+ *
+ * ⚠ 纯函数（除改 `state.weekendEvent` 的落盘字段外不碰别处）⇒ 用例可对任意时刻断言。
+ */
+export function weekendTick(
+  state: GameState,
+  ctx: SimContext,
+  nowWallMs: number,
+  lastSeenWallMs: number,
+): WeekendTickResult {
+  const started = ensureWeekendEvent(state, ctx, nowWallMs)
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return { started, flagshipShown: false, ended: false, encounterRolls: [] }
+
+  // ② 旗舰 anchor 落盘（只在"未落盘 + 未过期"时写）
+  const view = weekendFlagshipView(state, ev, nowWallMs, lastSeenWallMs)
+  if (view.shown && ev.flagshipAtWallMs === undefined && view.down === undefined) ev.flagshipAtWallMs = view.atWallMs ?? nowWallMs
+
+  // ③ 章鱼人得手 ⇒ 结束本场（黑匣归零，贡献奖照给——结算由调用方做）
+  let ended = false
+  let flagshipDown: WeekendTickResult['flagshipDown']
+  if (view.down === 'octopus' && ev.flagshipDown === undefined) {
+    ev.flagshipDown = 'octopus'
+    flagshipDown = 'octopus'
+    endWeekendEvent(state, nowWallMs)
+    ended = true
+  }
+
+  // ④ 正常模式窗口到点（调试模式不定长，不按窗口收）
+  if (!ended && !weekendDebugOn(state) && nowWallMs >= ev.startedAtWallMs + WEEKEND_WINDOW_MS) {
+    endWeekendEvent(state, nowWallMs)
+    ended = true
+  }
+
+  // ⑤ 交出遇袭候选（未夺回的占领区）
+  const encounterRolls = weekendOccupiedIds(ev)
+    .map((id) => ({ galaxyId: id, chance: weekendEncounterChanceAt(state, ev, id, nowWallMs) }))
+    .filter((x) => x.chance > 0)
+
+  return { started, flagshipShown: view.shown, ...(flagshipDown !== undefined ? { flagshipDown } : {}), ended, encounterRolls }
+}
+
+/** 主动打赢一场：外围 +10% · 核心 +5%（第 6 条；核心同样受门禁约束，门禁在读数侧生效） */
+export function weekendNotePlayerWin(state: GameState, galaxyId: string): void {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return
+  const gain = galaxyId === ev.coreId ? WEEKEND_GAIN_CORE_WIN : WEEKEND_GAIN_PERIPHERY_WIN
+  if (galaxyId === ev.coreId || ev.peripheryIds.includes(galaxyId)) weekendNoteContribution(ev, galaxyId, gain)
+}
+
+/** 击退一次遇袭：+3%（离线自动结算的 +1% 由调用方传 `offline = true`） */
+export function weekendNoteRepel(state: GameState, galaxyId: string, offline = false): void {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return
+  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return
+  weekendNoteContribution(ev, galaxyId, offline ? WEEKEND_GAIN_OFFLINE_REPEL : WEEKEND_GAIN_REPEL)
+}
+
+/** 玩家击毁旗舰：记结局并结束本场（黑匣与贡献奖由调用方结算） */
+export function weekendNoteFlagshipKilled(state: GameState, nowWallMs: number): boolean {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return false
+  if (weekendCoreProgressAt(state, ev, nowWallMs) < 1) return false
+  ev.flagshipDown = 'player'
+  endWeekendEvent(state, nowWallMs)
+  return true
+}
+
 /** 活动总时长（正常 = 74h；调试模式按 NPC 压缩口径无固定上限，取 74h÷60 供测试参考） */
 export function weekendWindowMsOf(state: Pick<GameState, 'debugQuick'>): number {
   return weekendDebugOn(state) ? Math.round(WEEKEND_WINDOW_MS / WEEKEND_DEBUG_TIME_DIVISOR) : WEEKEND_WINDOW_MS
