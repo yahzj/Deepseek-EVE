@@ -27,6 +27,7 @@
     "flow:newgame": "tsx tools/flow-newgame.ts",
     "save:migrate": "tsx tools/save-migrate-check.ts",
     "save:roundtrip-audit": "tsx tools/save-roundtrip-audit.ts",
+    "save:whfullhold": "tsx tools/make-wh-fullhold-save.ts",
     "faction:audit": "tsx tools/faction-audit.ts",
     "content:export": "tsx tools/content-export.ts",
     "tasks:export": "tsx tools/tasks-export.ts",
@@ -75,6 +76,7 @@
     "tools:audit": "tsx tools/tools-audit.ts",
     "commit:msg": "tsx tools/commit-msg.ts",
     "ui:actwin": "tsx tools/activity-win-probe.ts",
+    "ui:whhold": "tsx tools/wh-hold-geom.ts",
     "l10n:scan": "tsx tools/l10n-en-scan.ts"
   },
   "devDependencies": {
