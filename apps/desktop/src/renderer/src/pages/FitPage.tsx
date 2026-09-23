@@ -1201,7 +1201,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           <DmgChip t={weaponDamageTypeOf(m)} label={layerShortOf(weaponDamageTypeOf(m))} />
                           <span className="app-fit-pick-subtext">
                             ×{countModule(state, m.id)}
-                            {m.dmgMult !== undefined ? tr("ui.FitPage.153", { p1: mulText(m.dmgMult) }) : ''}{tr('ui.FitPage.162', { r: rangeShort(m) })}
+                            {m.dmgMult !== undefined ? tr("ui.FitPage.153", { p1: mulText(m.dmgMult) }) : ''}
+  {/* ⟪2026-09-22 船长令⟫ 单轮发数（陵卫连装炮 = 4.6 × 2）：只在 >1 时显示后缀 */}
+  {(m.shots ?? 1) > 1 ? tr('ui.FitPage.163', { p1: m.shots ?? 1 }) : ''}{tr('ui.FitPage.162', { r: rangeShort(m) })}
                           </span>
                         </>
                       ) : (

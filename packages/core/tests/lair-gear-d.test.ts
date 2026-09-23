@@ -67,21 +67,21 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     expect(ctx.modules.get('mod-shield-ext-3')!.cpuUse).toBeLessThan(42)
   })
 
-  it('D2 守墓者长炮：射速 −60%、单发 2.02 倍、总输出 ≈ 攻坚炮台 MK3 的八成', () => {
+  it('D2 守墓者长炮：射速 −60%、单发 2.60 倍、总输出 ≈ 攻坚炮台 MK3 的 1.04 倍', () => {
     const d2 = ctx.modules.get('mod-lair-turret-d')!
     const mk3 = ctx.modules.get('mod-turret-kin-3')!
-    // 定稿值钉死：单发 10.35（2026-09-10 船长定削，原 11.5）
-    expect(d2.dmgMult).toBe(10.35)
+    // 定稿值钉死：⟪2026-09-22 船长令⟫ 单发 13.35（原 10.35；更早 11.5）
+    expect(d2.dmgMult).toBe(13.35)
     // 射速：装填 ×2.5 → 每秒发数只有四成（即 −60%）
     expect(d2.reloadMs! / mk3.reloadMs!).toBeCloseTo(2.5, 6)
     expect(mk3.reloadMs! / d2.reloadMs!).toBeCloseTo(0.4, 6)
-    // 单发：两倍（2.02 倍）
-    expect(d2.dmgMult! / mk3.dmgMult!).toBeCloseTo(2.018, 2)
-    // 总输出 = −19.3%（船长原定「保证 DPS −10%」，2026-09-10 追加再降一成）
+    // 单发：两倍半（2.60 倍）
+    expect(d2.dmgMult! / mk3.dmgMult!).toBeCloseTo(2.602, 2) // ⟪2026-09-22 船长令⟫ 10.35 → 13.35 ⇒ 与基准比 2.018 → 2.602
+    // ⟪2026-09-22 船长令⟫ 总输出 = +4.1%（单发倍率上调后，由原「−19.3%」转为略高于基准）
     const ratio = dps(d2) / dps(mk3)
-    expect(ratio).toBeGreaterThan(0.8)
-    expect(ratio).toBeLessThan(0.82)
-    expect(ratio - 1).toBeCloseTo(-0.193, 3)
+    expect(ratio).toBeGreaterThan(1.0)
+    expect(ratio).toBeLessThan(1.08)
+    expect(ratio - 1).toBeCloseTo(0.041, 2)
   })
 
   it('D2 基础命中 100%、12 km 超远程、远端衰减更轻（0.6 > MK3 的 0.5）', () => {
