@@ -109,11 +109,16 @@ export function ShipyardPanel({
     for (const sbp of engine.shipBlueprints) {
       const shipDef = engine.ctx.ships.get(sbp.shipId)
       const prodName = shipDef?.name ?? sbp.shipId
-      /** 产物名后的参数（货舱/循环）：不上色（2026-09-13 船长口径） */
+      /**
+       * **2026-09-23 船长令**：「造船厂那，**不要显示舰船的括号内属性**，应该在行情价格后面显示（利润率%）」
+       * ⇒ 产物标签只留船名（旧的「（货舱 N m³ · M 秒 × K 单位/循环）」**不再进产物行**；
+       * 那些参数仍在产物名的悬停卡（`ShipHover`）里可查，信息没丢，只是不占卡面）。
+       */
+      const prodLabel = prodName
+      /** 产物名后的参数（货舱/循环）——**只进悬停卡**（2026-09-23 船长令：卡面上的括号属性去掉） */
       const prodParams = shipDef
         ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
         : ''
-      const prodLabel = prodName + prodParams
       // 产物名一律金色（2026-09-13 船长）
       const prodText = <span className="app-gold">{prodName}</span>
       const shipId = sbp.shipId

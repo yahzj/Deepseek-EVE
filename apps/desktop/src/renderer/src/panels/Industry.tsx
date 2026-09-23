@@ -48,7 +48,7 @@ import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
-import { marketPriceOf } from '../ui/yieldView'
+import { GoodsLine, marginPctOf, marketPriceOf } from '../ui/yieldView'
 import { partToneKeyOf, toneOf } from '../ui/Glyphs'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
@@ -905,11 +905,15 @@ export const BlueprintCard = memo(function BlueprintCard({
         {productRef !== undefined
           ? (() => {
               const price = marketPriceOf(state, engine.ctx, productRef.refId)
-              return (
-                <div className="app-belt-econ-val">
-                  {productLabel} · {tr('ui.Yield.003')} {price !== null ? price.toLocaleString('zh-CN') : '—'}
-                </div>
+              /** 材料成本按**当前行情价**（取不到行情的材料回落物品基准价），与产物行情同一把尺 */
+              const matCost = materials.reduce(
+                (sum, m) =>
+                  sum +
+                  matNeedCount(state, m.count) *
+                    (marketPriceOf(state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
+                0,
               )
+              return <GoodsLine name={productLabel} price={price} marginPct={marginPctOf(price, matCost)} />
             })()
           : null}
       </div>

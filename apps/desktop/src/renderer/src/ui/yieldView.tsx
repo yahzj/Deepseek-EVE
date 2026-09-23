@@ -85,6 +85,37 @@ export function yieldLinesOf(
 
 const num = (v: number): string => v.toLocaleString('zh-CN')
 
+/**
+ * **利润率**（**2026-09-23 船长令**：「造船厂那…应该在行情价格后面显示（利润率%），组装机处也显示（利润率%）」）：
+ * `P = (产物行情价 − 材料成本) ÷ 材料成本 × 100%`，四舍五入到整数；**材料成本也按当前行情价**算
+ * （取不到行情的材料用物品基准价兜底，与卡面显示的行情价同一把尺）。成本 ≤ 0 或产物无行情 ⇒ `null`（不显示）。
+ */
+export function marginPctOf(price: number | null, costIsk: number): number | null {
+  if (price === null || costIsk <= 0) return null
+  return Math.round(((price - costIsk) / costIsk) * 100)
+}
+
+/**
+ * **装备 / 舰船产物的读数行**（造船厂卡与组装机卡共用）：
+ * `名称 · 行情 P（利润率 M%）`——利润率可能为负（材料比产物贵），照实显示负号。
+ */
+export function GoodsLine({
+  name,
+  price,
+  marginPct,
+}: {
+  name: string
+  price: number | null
+  marginPct: number | null
+}) {
+  return (
+    <div className="app-belt-econ-val">
+      {name} · {tr('ui.Yield.003')} {price !== null ? num(price) : '—'}
+      {marginPct !== null ? `（${tr('ui.Yield.005', { p1: marginPct })}）` : ''}
+    </div>
+  )
+}
+
 /** 一行产出：`名称 ×179/h（仓库 9,440,375 · 行情 12,345）`；装备/舰船 ⇒ `名称（行情 12,000,000）` */
 export function YieldLines({ lines }: { lines: readonly YieldLine[] }) {
   if (lines.length === 0) return null
