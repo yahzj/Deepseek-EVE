@@ -31,6 +31,7 @@ import {
   WEEKEND_GAIN_REPEL,
 } from './weekendEvent'
 import type { WeekendEventState } from './weekendEvent'
+import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
 
 /* ─────────────── 战斗规格 ─────────────── */
 
@@ -252,4 +253,67 @@ export function weekendGrantRewards(
   if (isk > 0) state.wallet.isk += isk
   if (wreck > 0) addItem(state, WEEKEND_RARE_WRECK_ID, wreck)
   return { isk, wreck, blackBox: reward.blackBox ? 1 : 0 }
+}
+
+/* ─────────────── 战斗结束 → 入侵结算（M1-b 第六片） ─────────────── */
+
+/**
+ * **这一场战斗属于入侵吗**（引擎战后调一次即可，不用自己判断占领区）：
+ * - 卡 id 带 `wk-` 前缀（界面/悬赏侧拿到的派生卡）⇒ 还原成原卡再看星系；
+ * - 否则按原卡的 `galaxyId` 看是不是**活的占领区**；
+ * - 都没有 ⇒ 再看 `state.encounter`（遇袭遭遇的星系）。
+ * 返回 `{ galaxyId, kind }`：`assault` = 主动出击（悬赏/旗舰）· `ambush` = 遇袭。
+ */
+export function weekendBattleInvolvedOf(
+  state: GameState,
+  ctx: SimContext,
+  anomalyId: string | null | undefined,
+  nowWallMs: number,
+): { galaxyId: string; kind: WeekendBattleKind } | undefined {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return undefined
+  const rawId = typeof anomalyId === 'string' && anomalyId.length > 0 ? anomalyId : undefined
+  if (rawId !== undefined) {
+    const baseId = rawId.startsWith(WEEKEND_CARD_PREFIX) ? rawId.slice(WEEKEND_CARD_PREFIX.length) : rawId
+    const card = ctx.anomalies.get(baseId)
+    const galaxyId = card?.galaxyId
+    if (galaxyId !== undefined && weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) {
+      const flagship = galaxyId === ev.coreId && weekendCoreProgressAt(state, ev, nowWallMs) >= 1
+      return { galaxyId, kind: flagship ? 'flagship' : 'assault' }
+    }
+  }
+  const enc = state.encounter
+  if (enc.active && enc.galaxyId && weekendOccupiedLiveAt(state, enc.galaxyId, nowWallMs)) {
+    return { galaxyId: enc.galaxyId, kind: 'ambush' }
+  }
+  return undefined
+}
+
+/**
+ * **战后一口气结算**（引擎在"这一场打完了"那一拍调用）：
+ * 判归属 → 取 spec → `weekendResolveBattle` → **奖励真正入账**（ISK 进钱包、稀有残骸进仓库）。
+ * 返回 null = 这一场与入侵无关（引擎什么都不用做）。
+ */
+export function weekendApplyBattleOutcome(
+  state: GameState,
+  ctx: SimContext,
+  anomalyId: string | null | undefined,
+  victory: boolean,
+  nowWallMs: number,
+): { galaxyId: string; kind: WeekendBattleKind; gain: number; isk: number; wreck: number; note: string } | null {
+  const involved = weekendBattleInvolvedOf(state, ctx, anomalyId, nowWallMs)
+  if (!involved) return null
+  const spec =
+    involved.kind === 'flagship'
+      ? weekendFlagshipSpecOf(state, ctx, nowWallMs)
+      : involved.kind === 'ambush'
+        ? weekendAmbushSpecOf(state, ctx, involved.galaxyId)
+        : weekendAssaultSpecOf(state, ctx, involved.galaxyId)
+  if (!spec) return null
+  const outcome: WeekendOutcome = victory ? 'win' : involved.kind === 'ambush' ? 'repel' : 'loss'
+  const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs)
+  const isk = (r.reclaimed?.isk ?? 0)
+  const wreck = (r.reclaimed?.wreck ?? 0) + (r.flagshipKilled?.wreck ?? 0)
+  const granted = weekendGrantRewards(state, { isk, wreck, blackBox: r.flagshipKilled !== undefined })
+  return { galaxyId: involved.galaxyId, kind: involved.kind, gain: r.progressGain, isk: granted.isk, wreck: granted.wreck, note: r.note }
 }
