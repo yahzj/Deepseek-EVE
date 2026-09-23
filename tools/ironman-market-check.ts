@@ -27,6 +27,10 @@ const HOURS = argVal('--hours', 24)
 /** 声望（暗市闸 `bmStanding` 之判据）：0 = 新档口径，13 = 绝大多数稀有/奇货已解锁 */
 const REP = argVal('--rep', 13)
 const SEED = argVal('--seed', 20260923)
+/** 价格样本上限（只看中位价 ⇒ 采样即可，避免几十万条撑爆栈/内存） */
+const PRICE_SAMPLE_CAP = 20000
+/** 复跑种子数：单 seed 的奇货命中太少（每窗 ~1 张）⇒ 默认 5 个种子取合计，比例才稳 */
+const SEEDS = argVal('--seeds', 5)
 const TICK_MS = 60_000
 
 interface Row {
@@ -49,12 +53,18 @@ function countMultiset(list: readonly NpcMarketOrder[]): Map<string, number> {
   return m
 }
 
-function run(ironman: boolean): { rare: Row; exotic: Row; common: Row; state: GameState } {
+function run(ironman: boolean, seed: number): { rare: Row; exotic: Row; common: Row; state: GameState } {
   const ctx: SimContext = buildSimContext()
-  const state = createInitialState({ nowWallMs: 0, seed: SEED })
+  const state = createInitialState({ nowWallMs: 0, seed })
   state.standings[DSI_FACTION_ID] = REP
   if (ironman) enterIronman(state, 0, 0)
-  advanceMarket(state, 0, ctx) // 开盘（ensureMarket）
+  /**
+   * ⚠ **必须自己先推 `state.gameMs`**：`advanceMarket` 的窗口循环判据是 `lastTick + tick <= state.gameMs`
+   * （market.ts 原注：「state.gameMs 由调用方（advanceGame）先行增加」）——首版探针漏了这一步，
+   * 一个窗口都没推进，读数只剩"开盘铺簿"那几笔（**已作废，见工作文档 §七**）。
+   */
+  state.gameMs += TICK_MS
+  advanceMarket(state, TICK_MS, ctx)
 
   const rows = { rare: newRow(), exotic: newRow(), common: newRow() }
   const keysOf = (r: 'rare' | 'exotic' | 'common'): string[] =>
@@ -67,7 +77,8 @@ function run(ironman: boolean): { rare: Row; exotic: Row; common: Row; state: Ga
     for (const k of keysOf(r)) prev.set(k, countMultiset(state.market.npcSell[k] ?? []))
   }
 
-  for (let t = 0; t < HOURS * 60; t++) {
+  for (let t = 1; t < HOURS * 60; t++) {
+    state.gameMs += TICK_MS
     advanceMarket(state, TICK_MS, ctx)
     for (const r of ['rare', 'exotic', 'common'] as const) {
       for (const k of keysOf(r)) {
@@ -81,7 +92,7 @@ function run(ironman: boolean): { rare: Row; exotic: Row; common: Row; state: Ga
           for (let i = 0; i < delta; i++) {
             rows[r].arrivals++
             rows[r].units += Number(sig.split('|')[1] ?? 0)
-            rows[r].prices.push(Number(sig.split('|')[0] ?? 0))
+            if (rows[r].prices.length < PRICE_SAMPLE_CAP) rows[r].prices.push(Number(sig.split('|')[0] ?? 0))
           }
         }
         rows[r].onBoardSum += list.length
@@ -106,8 +117,32 @@ function line(label: string, a: Row, b: Row): string {
   return `· ${label}\n    普通：${fmt(a)}\n    铁人：${fmt(b)}`
 }
 
-const normal = run(false)
-const iron = run(true)
+/** 多 seed 合计（奇货每窗命中 ~1 张 ⇒ 单 seed 比例抖得厉害，取合计才稳） */
+function sumRows(parts: Row[]): Row {
+  const out = newRow()
+  for (const r of parts) {
+    out.arrivals += r.arrivals
+    out.units += r.units
+    for (const pr of r.prices) if (out.prices.length < PRICE_SAMPLE_CAP) out.prices.push(pr)
+    out.onBoardSum += r.onBoardSum
+    out.onBoardMax = Math.max(out.onBoardMax, r.onBoardMax)
+    out.samples += r.samples
+  }
+  return out
+}
+
+const normal = { rare: [] as Row[], exotic: [] as Row[], common: [] as Row[] }
+const iron = { rare: [] as Row[], exotic: [] as Row[], common: [] as Row[] }
+for (let i = 0; i < SEEDS; i++) {
+  const a = run(false, SEED + i * 977)
+  const b = run(true, SEED + i * 977)
+  normal.rare.push(a.rare)
+  normal.exotic.push(a.exotic)
+  normal.common.push(a.common)
+  iron.rare.push(b.rare)
+  iron.exotic.push(b.exotic)
+  iron.common.push(b.common)
+}
 /** 目录侧诊断：稀有/奇货商品在册多少、其中可买（playerBuyable !== false）多少 —— 读数为 0 时先看这里 */
 {
   const ctx = buildSimContext()
@@ -117,13 +152,28 @@ const iron = run(true)
     `■ 目录：rare ${cnt('rare', false)} 件（可买 ${cnt('rare', true)}） · exotic ${cnt('exotic', false)} 件（可买 ${cnt('exotic', true)}）`,
   )
 }
-console.log(`■ 铁人市场对照（seed ${SEED} · 声望 ${REP} · ${HOURS} 游戏小时 · 唯一差别＝是否铁人档）`)
-console.log(line('稀有（rare）供给单', normal.rare, iron.rare))
-console.log(line('奇货（exotic）供给单', normal.exotic, iron.exotic))
-console.log(line('常驻（common）现货', normal.common, iron.common))
+const NR = sumRows(normal.rare)
+const IR = sumRows(iron.rare)
+const NE = sumRows(normal.exotic)
+const IE = sumRows(iron.exotic)
+const NC = sumRows(normal.common)
+const IC = sumRows(iron.common)
+console.log(`■ 铁人市场对照（seed ${SEED} 起 ${SEEDS} 个 · 声望 ${REP} · ${HOURS} 游戏小时 · 唯一差别＝是否铁人档）`)
+console.log(line('稀有（rare）供给单', NR, IR))
+console.log(line('奇货（exotic）供给单', NE, IE))
+console.log(line('常驻（common）现货', NC, IC))
 const ratio = (a: number, b: number): string => (a === 0 ? '—' : `×${(b / a).toFixed(2)}`)
 console.log(
-  `\n■ 差异：稀有出单 ${ratio(normal.rare.arrivals, iron.rare.arrivals)} · 奇货出单 ${ratio(normal.exotic.arrivals, iron.exotic.arrivals)}` +
-    ` · 奇货在架峰值 ${normal.exotic.onBoardMax} → ${iron.exotic.onBoardMax} · 常驻出单 ${ratio(normal.common.arrivals, iron.common.arrivals)}`,
+  `\n■ 差异：稀有出单 ${ratio(NR.arrivals, IR.arrivals)}（件数 ${ratio(NR.units, IR.units)}）` +
+    ` · 奇货出单 ${ratio(NE.arrivals, IE.arrivals)} · 奇货在架峰值 ${NE.onBoardMax} → ${IE.onBoardMax}` +
+    ` · 常驻**出单张数** ${ratio(NC.arrivals, IC.arrivals)} / **件数** ${ratio(NC.units, IC.units)}`,
 )
-console.log('注：价格两列应同带（福利不动价格）；奇货在架峰值受"每窗保留上限 2 → 4"直接约束。')
+console.log(
+  '注：①「每窗刷单量 +200%」体现为**件数 ×3**（每窗仍铺同样几张阶梯单，只是每张更厚）；' +
+    '②奇货受"每窗保留上限 2 → 4"约束，命中少时比例不到 ×2；③福利不动价格 ⇒ 两列中位价只是抽样抖动。',
+)
+// 价格口径核对：同商品两侧中位价之比（应在 1 附近；差异只来自 RNG 抖动与行情噪声）
+{
+  const med = (m: Row): number => median(m.prices)
+  console.log(`· 中位价：rare ${med(NR).toLocaleString('zh-CN')} → ${med(IR).toLocaleString('zh-CN')} · exotic ${med(NE).toLocaleString('zh-CN')} → ${med(IE).toLocaleString('zh-CN')}`)
+}
