@@ -357,6 +357,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.engine.017": { zh: "已练进度由顺延项承接。", en: "The entry that moved up carries over the progress already trained." },
   "core.engine.018": { zh: "本级已练进度已保留，重新训练同一级时自动续接。", en: "The progress trained for this level was kept and resumes automatically when you train it again." },
   "core.engine.019": { zh: "「{p1}」需要先练：{p2}。", en: "“{p1}” requires {p2} first." },
+  "core.engine.020": { zh: "连带取消 {p1} 项依赖训练：{p2}。", en: "Also cancelled {p1} dependent training item(s): {p2}." },
   /* ── 第十一批：fitPresets.ts（装配方案：保存 / 覆盖 / 改名 / 删除 / 一键卸下）── */
   "core.fitPresets.001": { zh: "舰队里找不到该舰船，无法保存装配方案。", en: "That ship is not in the fleet, so the fitting preset cannot be saved." },
   "core.fitPresets.002": { zh: "舰队里找不到该舰船，无法替换装配方案。", en: "That ship is not in the fleet, so the fitting preset cannot be replaced." },
@@ -3690,6 +3691,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillsPage.040": { zh: "第{n}位 {name}→Lv{lv}", en: "#{n} {name} → Lv{lv}" },
   "ui.SkillsPage.041": { zh: "剩 {d}", en: "{d} left" },
   "ui.SkillsPage.044": { zh: " · 难度 {r} · ", en: " · difficulty {r} · " },
+  /* ── 技能页合并（2026-09-23 船长令）：一并加入前置 / 取消级联确认条 ── */
+  "ui.SkillsPage.046": { zh: "一并加入前置", en: "Add prerequisites" },
+  "ui.SkillsPage.047": { zh: "已把 {p1} 项前置排入训练队列。", en: "Queued {p1} prerequisite level(s)." },
+  "ui.SkillsPage.048": { zh: "取消这一项会连带取消 {p1} 项依赖它的训练：", en: "Cancelling this also cancels {p1} dependent item(s):" },
+  "ui.SkillsPage.049": { zh: "确认取消", en: "Confirm cancel" },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },
   "ui.spaceBg.002": { zh: "绿星云", en: "Green nebula" },
   "ui.spaceBg.003": { zh: "紫星云", en: "Purple nebula" },

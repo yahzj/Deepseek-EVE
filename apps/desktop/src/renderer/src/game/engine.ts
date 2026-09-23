@@ -245,6 +245,9 @@ import {
   matterTechBattleSpeedTiers,
   matterTechScanCut,
   offlineCapMsOf,
+  /** 技能前置按等级（2026-09-23 船长令）：一键补齐计划 ＋ 取消级联计划 */
+  planPrereqChain,
+  skillCancelImpact,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -272,12 +275,13 @@ import type {
   WormholeAutoReport,
   WormholeAutoRun,
   WormholeHoldPlacement,
+  TrainingItem,
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, EN_GALAXIES, EN_BELTS, EN_STATIONS, EN_COMMS_FACTIONS, overlayCardFoes, overlayCardFoesList, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 
 type Listener = () => void
 
@@ -1193,14 +1197,45 @@ export class GameEngine {
     return result
   }
 
-  /** 从训练队列移除第 index 项（0 = 队首） */
+  /** 从训练队列移除第 index 项（0 = 队首）——2026-09-23 起带**依赖级联**（core 侧按 catalog 判） */
   dequeueAt(index: number): boolean {
-    const ok = removeQueueAt(this.state, index)
+    const ok = removeQueueAt(this.state, index, this.ctx.skills)
     if (ok) {
       void this.persist()
       this.notify()
     }
     return ok
+  }
+
+  /**
+   * **取消这一项会连带取消哪些**（**2026-09-23 船长令**：「训练队列内取消一个技能的同时会取消所有依赖其
+   * 前置的后续技能的训练」＋裁定甲「会连带取消时先弹确认条列出」）：纯计划，界面拿它渲染确认条；
+   * 真正的取消仍走 `dequeueAt`（core 用同一把尺执行）。
+   */
+  skillCancelImpactAt(index: number): { target: TrainingItem; also: TrainingItem[] } | null {
+    return skillCancelImpact(this.state, this.ctx.skills, index)
+  }
+
+  /**
+   * **一键补齐前置**（**2026-09-23 船长令**：「玩家选择某个技能后，如果该技能有前置技能，可以直接添加
+   * 前置技能到训练队列。」）：按 core `planPrereqChain` 的计划**逐条入队**（拓扑序、逐级、已在队列里的
+   * 前置复用不重复）。返回补了几项，供界面回话。
+   */
+  enqueuePrereqChain(skillId: string): { ok: boolean; added: number; error?: string } {
+    const def = this.ctx.skills.get(skillId)
+    if (!def) return { ok: false, added: 0, error: tr('core.engine.005', { p1: skillId }) }
+    const steps = planPrereqChain(this.state, def, this.ctx.skills)
+    let added = 0
+    for (const step of steps) {
+      const r = enqueueSkill(this.state, step.skillId, step.targetLevel, this.ctx.skills)
+      if (!r.ok) return { ok: false, added, error: cmdText(r) }
+      added += 1
+    }
+    if (added > 0) {
+      void this.persist()
+      this.notify()
+    }
+    return { ok: true, added }
   }
 
   /** 2026-09-08（船长）：调整训练队列顺序（前移到顶 = 交换式顶替当前训练，原训练退位保留进度） */

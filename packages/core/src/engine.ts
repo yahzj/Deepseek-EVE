@@ -420,24 +420,131 @@ function queuedSameCount(state: GameState, skillId: string): number {
 export const PREREQ_MIN_LEVEL = 1
 
 /**
- * **该技能还差哪些前置**（**真前置的唯一判据**，界面置灰与 `enqueueSkill` 共用这把尺）：
- * 返回**未达 `PREREQ_MIN_LEVEL` 的前置技能定义**（都达标 ⇒ 空数组）。表里查不到的 id 一律忽略
+ * **一条前置缺口**：缺哪个前置、它要求多少级（**2026-09-23 起判据按等级**，见 `SkillDef.prereqLevel`）。
+ * 界面文案（置灰提示 / 入队拒绝）+ 一键补齐计划都读它，免得三处各写一套"要几级"。
+ */
+export interface SkillPrereqGap {
+  def: SkillDef
+  needLevel: number
+}
+
+/** 某前置要求的最低等级（`prereqLevel` 缺省 / 非法值一律回落 `PREREQ_MIN_LEVEL`） */
+export function prereqNeedLevel(def: SkillDef, prereqId: string): number {
+  const n = def.prereqLevel?.[prereqId]
+  return typeof n === 'number' && Number.isFinite(n) && n >= 1 ? Math.floor(n) : PREREQ_MIN_LEVEL
+}
+
+/**
+ * **该技能还差哪些前置**（**真前置的唯一判据**，界面置灰、入队校验、一键补齐共用这把尺）：
+ * 返回**未达"各自要求等级"的前置**（都达标 ⇒ 空数组）。表里查不到的 id 一律忽略
  * （`content:check` 会把悬空前置点红，运行期不因此卡住玩家）。
+ *
+ * ⚠ 2026-09-23 形状变更：原返回 `SkillDef[]` ⇒ 现返回 `{ def, needLevel }[]`（前置可以有**不同**的
+ * 等级门槛，界面要写"要几级"）；调用点四处已同步（入队校验 / 树页 / 测试）。
  */
 export function skillLockMissing(
   state: GameState,
   def: SkillDef,
   catalog: SkillCatalog,
-): readonly SkillDef[] {
+): readonly SkillPrereqGap[] {
   const pre = def.prereq
   if (pre === undefined || pre.length === 0) return []
-  const out: SkillDef[] = []
+  const out: SkillPrereqGap[] = []
   for (const pid of pre) {
     const pdef = catalog.get(pid)
     if (!pdef) continue
-    if ((state.skills.trained[pid] ?? 0) < PREREQ_MIN_LEVEL) out.push(pdef)
+    const needLevel = prereqNeedLevel(def, pid)
+    if ((state.skills.trained[pid] ?? 0) < needLevel) out.push({ def: pdef, needLevel })
   }
   return out
+}
+
+/**
+ * **一键补齐前置的计划**（**2026-09-23 船长**：「玩家选择某个技能后，如果该技能有前置技能，
+ * 可以直接添加前置技能到训练队列。」）：
+ *
+ * 算出"把 `def` 变成可训练"要往队列里补哪些级，规则三条 ——
+ * ① **拓扑序**：更深的前置排在前面（前置的前置先补完，才轮到它的上级）；
+ * ② **复用不重复**：已练等级 + **队列里已排的条数**都算作"将会有"的等级 ⇒ 已排过的级不会重复入队；
+ * ③ **逐级**：只补到各自的要求等级（`prereqNeedLevel`），且不超过 `MAX_SKILL_LEVEL`。
+ *
+ * **纯函数**：只看 `state.skills.trained` 与 `state.skills.queue`，不改任何状态；返回的每一步都能直接
+ * 交给 `enqueueSkill` 依次执行（顺序即是入队顺序）。**只补前置**、不含目标技能本身。
+ */
+export function planPrereqChain(state: GameState, def: SkillDef, catalog: SkillCatalog): TrainingItem[] {
+  const steps: TrainingItem[] = []
+  /** 计划中的等级 = 已练 + 队列里已排的条数 + 本计划里已补的条数 */
+  const planned = (id: string): number =>
+    (state.skills.trained[id] ?? 0) +
+    queuedSameCount(state, id) +
+    steps.reduce((n, s) => (s.skillId === id ? n + 1 : n), 0)
+  const seen = new Set<string>()
+  const visit = (d: SkillDef): void => {
+    if (seen.has(d.id)) return
+    seen.add(d.id)
+    for (const pid of d.prereq ?? []) {
+      const pdef = catalog.get(pid)
+      if (!pdef) continue
+      visit(pdef) // 更深的前置先补
+      const need = prereqNeedLevel(d, pid)
+      while (planned(pid) < need && planned(pid) < MAX_SKILL_LEVEL) {
+        steps.push({ skillId: pid, targetLevel: planned(pid) + 1, progressMs: 0 })
+      }
+    }
+  }
+  visit(def)
+  return steps
+}
+
+/**
+ * **队列跑完后各技能的最终等级**（= 已练 + 队列里该技能的条数）——取消级联的判据。
+ * 为什么用"最终等级"而不是"当下等级"：队列是一条会跑完的链，判"这项到队首时前置够不够"
+ * 等价于判"整条队列跑完后那个前置会到几级"（等级只升不降、且 `enqueueSkill` 已保证逐级）。
+ */
+function finalSkillLevels(state: GameState, queue: readonly TrainingItem[]): Map<string, number> {
+  const lv = new Map<string, number>()
+  for (const [id, n] of Object.entries(state.skills.trained)) lv.set(id, n)
+  for (const it of queue) lv.set(it.skillId, (lv.get(it.skillId) ?? 0) + 1)
+  return lv
+}
+
+/** 该项的前置（按最终等级判）是否已经不可能满足 */
+function unmetPrereq(it: TrainingItem, lv: Map<string, number>, catalog: SkillCatalog): boolean {
+  const def = catalog.get(it.skillId)
+  if (!def) return false
+  for (const pid of def.prereq ?? []) {
+    if (!catalog.get(pid)) continue
+    if ((lv.get(pid) ?? 0) < prereqNeedLevel(def, pid)) return true
+  }
+  return false
+}
+
+/**
+ * **取消一项会连带取消哪些**（纯计划，给界面"先列清单再确认"用；2026-09-23 船长裁定**甲**：
+ * 「清整个队列里所有不满足的依赖项（**含排在它前面的**）」）。
+ *
+ * 判据：把目标项拿掉后算 `finalSkillLevels` ⇒ 凡"前置的最终等级 < 其要求等级"的项都要取消；
+ * 取消会让该技能的最终等级变小 ⇒ **迭代到不动点**（级联链）。
+ * 返回 `also` 一律按**它们在队列里的先后**排列（含排在被取消项前面的）。
+ */
+export function skillCancelImpact(
+  state: GameState,
+  catalog: SkillCatalog,
+  index: number,
+): { target: TrainingItem; also: TrainingItem[] } | null {
+  const queue = state.skills.queue
+  if (!Number.isInteger(index) || index < 0 || index >= queue.length) return null
+  const target = queue[index]!
+  let rest = queue.filter((_, i) => i !== index)
+  const also: TrainingItem[] = []
+  for (;;) {
+    const lv = finalSkillLevels(state, rest)
+    const hit = rest.filter((it) => unmetPrereq(it, lv, catalog))
+    if (hit.length === 0) break
+    also.push(...hit)
+    rest = rest.filter((it) => !hit.includes(it))
+  }
+  return { target, also }
 }
 
 export function enqueueSkill(
@@ -459,7 +566,7 @@ export function enqueueSkill(
    */
   const locked = skillLockMissing(state, def, catalog)
   if (locked.length > 0) {
-    const names = locked.map((d) => `${d.name} Lv${PREREQ_MIN_LEVEL}`).join('、')
+    const names = locked.map((g) => `${g.def.name} Lv${g.needLevel}`).join('、')
     return {
       ok: false,
       error: `「${def.name}」需要先练：${names}。`,
@@ -538,8 +645,12 @@ export function enqueueSkill(
  * 玩家指令：移除队列中第 index 项（0 = 正在练的队首）。
  * T2 语义：排在后面的同技能条目自动顺延一级；队首练到一半的进度——
  * 有顺延项则转交（顺延项继续冲同一级），没有则存入 savedProgress 等下次续接。
+ *
+ * **2026-09-23 追加：依赖级联**（船长令＋裁定甲）——传入 `catalog` 时，取消一项会**一并取消**
+ * 队列里所有"前置最终等级不满足要求"的条目（**含排在被取消项前面的**），并迭代到不动点；
+ * 传 `catalog` 缺省 = 不级联（老调用点与单测行为不变）。界面先用 `skillCancelImpact` 列出清单。
  */
-export function removeQueueAt(state: GameState, index: number): boolean {
+export function removeQueueAt(state: GameState, index: number, catalog?: SkillCatalog): boolean {
   if (!Number.isInteger(index) || index < 0 || index >= state.skills.queue.length) return false
   const queue = state.skills.queue
   const [removed] = queue.splice(index, 1)
@@ -569,6 +680,39 @@ export function removeQueueAt(state: GameState, index: number): boolean {
       noteId = 'core.engine.018'
     }
   }
+  /**
+   * **依赖级联**（**2026-09-23 船长令**：「训练队列内取消一个技能的同时会取消所有依赖其前置的后续技能的
+   * 训练。（但是假设前置是 LV1，你取消的是 LV2 并不会移除后续的其他技能训练。）」；裁定**甲**：
+   * 「清整个队列里所有不满足的依赖项（**含排在它前面的**）」）。
+   *
+   * 判据 = `skillCancelImpact` 那一把尺（**同一份实现**：界面先用它列确认条、这里照它执行），
+   * 删一项会让相关技能的**最终等级**变小 ⇒ 迭代到不动点。
+   * `catalog` 缺省时不级联（老调用点/单测的行为不变 ⇒ 显式传入才启用新语义）。
+   */
+  const cascaded: TrainingItem[] = []
+  if (catalog) {
+    for (;;) {
+      const lv = finalSkillLevels(state, queue)
+      const hit = queue.filter((it) => unmetPrereq(it, lv, catalog))
+      if (hit.length === 0) break
+      for (const it of hit) {
+        const at = queue.indexOf(it)
+        if (at < 0) continue
+        queue.splice(at, 1)
+        // 同技能后续条目照旧顺延一级（与目标项同一套口径）
+        for (let i = at; i < queue.length; i++) {
+          const q = queue[i]!
+          if (q.skillId === it.skillId) q.targetLevel -= 1
+        }
+        // 已练进度不丢：存进 savedProgress，重新排这一级时自动续接
+        if (it.progressMs > 0) {
+          const prev = state.skills.savedProgress[it.skillId] ?? 0
+          state.skills.savedProgress[it.skillId] = Math.max(prev, it.progressMs)
+        }
+        cascaded.push(it)
+      }
+    }
+  }
   const where = index === 0 ? '取消队首' : `移除第 ${index + 1} 位`
   /**
    * 甲案（2026-09-20）：多段拼接——`where` + 技能 + 目标级 + note + 顺延句，其中 `note` 是三种之一、
@@ -589,6 +733,14 @@ export function removeQueueAt(state: GameState, index: number): boolean {
     p3: removed.targetLevel,
     ...composed.textParams,
   })
+  // 级联单独记一条（段链已占用 p4+，另起一条最省事，玩家在日志里也能一眼看到被连带取消了什么）
+  if (cascaded.length > 0) {
+    const names = cascaded.map((it) => `${catalog?.get(it.skillId)?.name ?? it.skillId} Lv${it.targetLevel}`).join('、')
+    addLog(state, 'queue', `连带取消 ${cascaded.length} 项依赖训练：${names}。`, 'core.engine.020', {
+      p1: cascaded.length,
+      p2: names,
+    })
+  }
   return true
 }
 

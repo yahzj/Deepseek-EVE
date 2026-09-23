@@ -9,6 +9,7 @@
 import { formatDurationMs, skillQueueStatus } from '@whale/core'
 import type { PageProps } from './common'
 import { tr } from '../i18n/locale'
+import { useState } from 'react'
 
 /** 把技能说明里的 ⟦效果数值⟧ 渲染成高亮段（符号本身不显示） */
 export function SkillDescText({ text }: { text: string }) {
@@ -36,6 +37,10 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
   // 2026-09-08（船长）：队列总时长 + 顺序调整——前移到顶 = 交换式顶替当前训练（原训练退位保留进度）
   const totalMs = (view.head !== null ? view.head.remainingMs : 0) + view.pending.reduce((s, p) => s + p.remainingMs, 0)
   const lastIndex = state.skills.queue.length - 1
+  /** 正在等确认的级联取消（null = 没弹确认条）；计划每次渲染现算（纯函数、无副作用） */
+  const [askCancel, setAskCancel] = useState<number | null>(null)
+  const cancelImpact = askCancel !== null ? engine.skillCancelImpactAt(askCancel) : null
+  const skillNameOf = (id: string): string => engine.ctx.skills.get(id)?.name ?? id
   return (
     <div>
       {totalMs > 0 ? (
@@ -73,7 +78,22 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
               >
                 ↓
               </button>
-              <button className="app-train-x" title={tr('ui.SkillsPage.017')} onClick={() => engine.dequeueAt(p.queueIndex)}>
+              <button
+                className="app-train-x"
+                title={tr('ui.SkillsPage.017')}
+                onClick={() => {
+                  /**
+                   * **取消 + 依赖级联的确认**（**2026-09-23 船长令**：「训练队列内取消一个技能的同时会取消
+                   * 所有依赖其前置的后续技能的训练。（但是假设前置是 LV1，你取消的是 LV2 并不会移除后续的
+                   * 其他技能训练。）」；裁定甲「**会连带取消时先弹确认条列出**」）：
+                   * 先问 core 的纯计划 `skillCancelImpactAt` —— 会连带取消别的项 ⇒ 弹确认条列出；
+                   * 不会 ⇒ 直接取消（与原来的手感一致，不多一次点击）。
+                   */
+                  const impact = engine.skillCancelImpactAt(p.queueIndex)
+                  if (impact && impact.also.length > 0) setAskCancel(p.queueIndex)
+                  else engine.dequeueAt(p.queueIndex)
+                }}
+              >
                 ×
               </button>
             </span>
@@ -82,6 +102,29 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
       ) : (
         <div className="app-dim app-train-idle">{tr('ui.SkillsPage.018')}</div>
       )}
+      {/* **级联取消确认条**（只在"会连带取消"时出现）：先把要一起取消的项列清楚，再让玩家点确认 */}
+      {askCancel !== null && cancelImpact !== null ? (
+        <div className="app-train-ask">
+          <span className="app-train-ask-title">
+            {tr('ui.SkillsPage.048', { p1: cancelImpact.also.length })}
+            {cancelImpact.also.map((it) => `${skillNameOf(it.skillId)} Lv${it.targetLevel}`).join('、')}
+          </span>
+          <span className="app-train-ask-actions">
+            <button
+              className="app-btn is-small is-danger"
+              onClick={() => {
+                engine.dequeueAt(askCancel)
+                setAskCancel(null)
+              }}
+            >
+              {tr('ui.SkillsPage.049')}
+            </button>
+            <button className="app-btn is-small" onClick={() => setAskCancel(null)}>
+              {tr('ui.ActivityBar.004')}
+            </button>
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }

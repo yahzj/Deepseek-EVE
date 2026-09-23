@@ -2543,6 +2543,79 @@ html[data-locale='en'] body {
 
 }
 
+/* **技能页·列表视图（旧技能目录）**（船长 2026-09-23：「切换列表显示旧目录…切换按钮就放搜索边上」）：
+   分组复用上面的 `.app-skill-group(-tag)`；行沿用物品清单那一族的字段排法（`.app-inv-main/-name/-btns`），
+   这里只补三件——行的排版、说明行、以及"名字可点开详情"的隐形按钮。 */
+
+.app-skilltree-catalog { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+
+.app-skill-row {
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 10px;
+
+  padding: 5px 2px;
+
+  border-bottom: 1px dashed rgb(var(--wui-border));
+
+}
+
+.app-skill-row.is-locked { opacity: 0.62; }
+
+.app-skill-row-desc { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 名字当作按钮（点开详情窗）：不描边、不着色，只保留可点的手感 */
+.app-linklike {
+
+  background: none;
+
+  border: none;
+
+  padding: 0;
+
+  font: inherit;
+
+  color: inherit;
+
+  cursor: pointer;
+
+  text-align: left;
+
+}
+
+.app-linklike:hover { color: rgb(var(--wui-accent)); }
+
+/* **级联取消确认条**（2026-09-23 船长裁定甲「会连带取消时先弹确认条列出」）：与页内其它确认条同族
+   （红档底 + 描边），逐项列出会被一起取消的训练。 */
+.app-train-ask {
+
+  border: 1px solid rgb(var(--wui-danger) / 0.55);
+
+  background: rgb(var(--wui-danger) / 0.1);
+
+  border-radius: 6px;
+
+  padding: 8px 10px;
+
+  margin-top: 6px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+
+}
+
+.app-train-ask-title { font-size: 11.5px; }
+
+.app-train-ask-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* 技能目录 · 图标模式（2026-09-09 船长：技能卡自适应网格——宽度足够同行更多；样式对齐 app-hand 族） */
 
 .app-skill-grid {

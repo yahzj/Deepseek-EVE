@@ -32,9 +32,11 @@ import {
   skillQueueStatus,
   trainingTimeFactor,
 } from '@whale/core'
-import type { SkillDef } from '@whale/core'
+import type { SkillDef, SkillPrereqGap } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { QueueBlock, SkillDescText } from './skillShared'
+/** 图标/列表切换：与手册·物品页·货仓页**同一实现**（`ui/itemView.tsx` 是全仓唯一那套） */
+import { ItemViewBar, useItemView } from '../ui/itemView'
 import { plainSkillDesc } from '../ui/skillText'
 import { GAP_Y, HEX_H, HEX_W, PAD, TAG_W, hexPath, layoutBook, nameLines } from '../ui/skillTreeLayout'
 import { Glyph, toneOf } from '../ui/Glyphs'
@@ -50,7 +52,8 @@ type Status = {
   isTraining: boolean
   queued: number
   maxed: boolean
-  locked: readonly SkillDef[]
+  /** 前置缺口（**按等级**：每条带 `needLevel`；2026-09-23 起形状由 `SkillDef[]` 改为缺口数组） */
+  locked: readonly SkillPrereqGap[]
   cls: string
 }
 
@@ -60,6 +63,15 @@ export function SkillsTreePage({ engine }: PageProps) {
   const skills = engine.skills
   const [openId, setOpenId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  /**
+   * **图标 / 列表**（**2026-09-23 船长令**：「旧版技能页面的技能目录，合并到现有的技能树页面内，加一个类似
+   * 其他页面图标/列表的切换按钮」＋口径「**玩家默认是技能树，切换列表显示旧目录**，但是搜索栏依旧在标题上，
+   * 不嵌入旧目录。切换按钮就放搜索边上。」）：`icon`＝科技树（默认）、`list`＝旧目录那种分组行；
+   * 两种形态共用页头搜索与页内「大类 / 技能书」导航、共用同一个详情窗与同一套训练动作。
+   */
+  const [skillView, setSkillView] = useItemView()
+  /** 「一并加入前置」的回话（补了几项）——就地显示，不另起 toast 机制 */
+  const [prereqNote, setPrereqNote] = useState('')
   /** 导航：先选大类，再选技能书（`''` = 该大类全部技能书） */
   const [groupTab, setGroupTab] = useState<string>(groups[0] ?? '')
   const [branchTab, setBranchTab] = useState<string>('')
@@ -118,6 +130,22 @@ export function SkillsTreePage({ engine }: PageProps) {
     return out.sort((a, b) => b.defs.length - a.defs.length || declared(a.branch) - declared(b.branch))
   }
 
+  /**
+   * 前置缺口文案（**按等级**：`X Lv2`）——详情窗与列表行共用一份，界面不自己拼判据。
+   * 2026-09-23 船长令「逻辑按等级实现」：等级取自 `SkillPrereqGap.needLevel`（缺省 Lv1）。
+   */
+  const prereqTextOf = (gaps: readonly SkillPrereqGap[]): string =>
+    tr('ui.SkillTree.018', { p1: gaps.map((g) => `${g.def.name} Lv${g.needLevel}`).join('、') })
+
+  /**
+   * **一并加入前置**（2026-09-23 船长令；裁定甲「详情窗给按钮，点一下补齐」）：
+   * 计划与入队都在 core / engine 侧（`planPrereqChain` → `enqueueSkill`），这里只负责回话。
+   */
+  const addPrereqs = (skillId: string): void => {
+    const r = engine.enqueuePrereqChain(skillId)
+    setPrereqNote(r.ok ? tr('ui.SkillsPage.047', { p1: r.added }) : (r.error ?? ''))
+  }
+
   const books = useMemo(() => booksOf(groupTab), [skills, groupTab])
   const shown = branchTab === '' ? books : books.filter((b) => b.branch === branchTab)
   const layouts = useMemo(
@@ -151,6 +179,8 @@ export function SkillsTreePage({ engine }: PageProps) {
               spellCheck={false}
             />
             <span className="app-dim">{tr('ui.SkillsPage.031', { p1: hitN })}</span>
+            {/* 图标/列表切换（船长 2026-09-23：**放搜索边上**） */}
+            <ItemViewBar mode={skillView} onChange={setSkillView} />
           </span>
         }
       >
@@ -209,6 +239,8 @@ export function SkillsTreePage({ engine }: PageProps) {
           </div>
         </div>
 
+        {skillView === 'grid' ? (
+          <>
         <div className="app-skilltree-legend">
           <span className="app-dim">{tr('ui.SkillTree.009')}</span>
           <span className="app-skilltree-key is-max">{tr('ui.SkillTree.004')}</span>
@@ -279,7 +311,7 @@ export function SkillsTreePage({ engine }: PageProps) {
                           data-tip={
                             st.locked.length > 0
                               ? `${n.def.name} · ${tr('ui.SkillTree.018', {
-                                  p1: st.locked.map((d) => `${d.name} Lv${PREREQ_MIN_LEVEL}`).join('、'),
+                                  p1: st.locked.map((g) => `${g.def.name} Lv${g.needLevel}`).join('、'),
                                 })}`
                               : `${n.def.name} · Lv${st.lv}/${MAX_SKILL_LEVEL}`
                           }
@@ -323,6 +355,82 @@ export function SkillsTreePage({ engine }: PageProps) {
             {layouts.length === 0 ? <div className="app-dim">{tr('ui.SkillTree.020')}</div> : null}
           </div>
         </div>
+          </>
+        ) : (
+          /* **列表视图＝旧技能目录**（船长 2026-09-23：「切换列表显示旧目录，但是搜索栏依旧在标题上，
+             不嵌入旧目录」）⇒ 用的是页头那个搜索框与页内既有「大类 / 技能书」导航，这里只换呈现形态：
+             按技能书分组、一行一个技能（名称 / Lv / 说明高亮 / 状态 / 下一级时长 / 训练或补前置按钮）。 */
+          <div className="app-skilltree-catalog">
+            {shown.map((b) => (
+              <div className="app-skill-group" key={b.branch}>
+                <div className="app-skill-group-tag">
+                  {skillBranchText(b.branch)}
+                  <span className="app-dim"> {b.defs.length}</span>
+                </div>
+                {b.defs.filter(isHit).map((s) => {
+                  const st = statusOf(s)
+                  const lastQ =
+                    st.queued > 0
+                      ? (state.skills.queue.filter((x) => x.skillId === s.id).pop()?.targetLevel ?? st.lv)
+                      : st.lv
+                  const nextLv = Math.min(MAX_SKILL_LEVEL, lastQ + 1)
+                  const eta = formatDurationMs(Math.max(1, Math.round(skillLevelTimeMs(s, nextLv) * tf)))
+                  return (
+                    <div className={`app-skill-row${st.cls === 'is-locked' ? ' is-locked' : ''}`} key={s.id}>
+                      <div className="app-inv-main">
+                        <span className="app-inv-name">
+                          <span className="app-wh-hold-row-ico" style={{ color: toneOf(`group-${s.group}`) }}>
+                            <Glyph name={`group-${s.group}`} size={15} color="currentColor" />
+                          </span>
+                          <button className="app-linklike" onClick={() => setOpenId(s.id)}>
+                            {s.name}
+                          </button>
+                          <span className="app-dim">
+                            {' '}
+                            {st.maxed ? 'MAX' : `Lv${st.lv}/${MAX_SKILL_LEVEL}`}
+                            {st.queued > 0 ? ` · ${tr('ui.SkillTree.011', { p1: st.queued })}` : ''}
+                          </span>
+                        </span>
+                        <span className="app-dim app-skill-row-desc">
+                          <SkillDescText text={s.description} />
+                        </span>
+                      </div>
+                      <div className="app-inv-btns">
+                        {st.maxed ? (
+                          <span className="app-dim">{tr('ui.SkillsPage.025')}</span>
+                        ) : st.locked.length > 0 ? (
+                          <>
+                            <span className="app-dim is-locked">{prereqTextOf(st.locked)}</span>
+                            <button className="app-btn is-small" onClick={() => addPrereqs(s.id)}>
+                              {tr('ui.SkillsPage.046')}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="app-dim">
+                              {st.isTraining ? tr('ui.SkillsPage.027') : ''}
+                              {tr('ui.SkillTree.015')} {eta}
+                            </span>
+                            <button
+                              className="app-btn is-primary is-small"
+                              title={tr('ui.SkillsPage.036', { p1: eta })}
+                              onClick={() => engine.trainNextLevel(s.id)}
+                            >
+                              {st.queued > 0 || st.isTraining
+                                ? tr('ui.SkillsPage.034', { p1: nextLv })
+                                : tr('ui.SkillsPage.035', { p1: nextLv })}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+            {prereqNote.length > 0 ? <div className="app-dim app-skilltree-empty">{prereqNote}</div> : null}
+          </div>
+        )}
         {q.length > 0 && hitN === 0 ? (
           <div className="app-dim app-skilltree-empty">
             {tr('ui.SkillsPage.006')}
@@ -367,11 +475,15 @@ export function SkillsTreePage({ engine }: PageProps) {
                       : st.lv > 0
                         ? tr('ui.SkillTree.007')
                         : tr('ui.SkillTree.008')
-                const prereqText = tr('ui.SkillTree.018', {
-                  p1: (open.prereq ?? [])
-                    .map((pid) => `${engine.ctx.skills.get(pid)?.name ?? pid} Lv${PREREQ_MIN_LEVEL}`)
-                    .join('、'),
-                })
+                const prereqText = prereqTextOf(
+                  // 缺口按"各自要求等级"写（缺啥写啥）；都满足时按定义列出全部前置（练过就能往下走）
+                  st.locked.length > 0
+                    ? st.locked
+                    : (open.prereq ?? [])
+                        .map((pid) => engine.ctx.skills.get(pid))
+                        .filter((d): d is SkillDef => d !== undefined)
+                        .map((d) => ({ def: d, needLevel: PREREQ_MIN_LEVEL })),
+                )
                 return (
                   <>
                     <div className="app-skilltree-row">
@@ -419,7 +531,14 @@ export function SkillsTreePage({ engine }: PageProps) {
                             : tr('ui.SkillsPage.035', { p1: targetLv })}
                         </button>
                       ) : st.locked.length > 0 ? (
-                        <span className="app-dim is-locked">{prereqText}</span>
+                        <>
+                          <span className="app-dim is-locked">{prereqText}</span>
+                          {/* **一并加入前置**（船长 2026-09-23：选中技能后前置可直接进队列） */}
+                          <button className="app-btn is-small" onClick={() => addPrereqs(open.id)}>
+                            {tr('ui.SkillsPage.046')}
+                          </button>
+                          {prereqNote.length > 0 ? <span className="app-dim">{prereqNote}</span> : null}
+                        </>
                       ) : (
                         <span className="app-dim">{tr('ui.SkillsPage.020')}</span>
                       )}
