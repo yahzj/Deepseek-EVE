@@ -2973,6 +2973,14 @@ function normalizeState(raw: unknown): GameState {
             ...(typeof rRaw.turnsTechBonus === 'number' && Number.isFinite(rRaw.turnsTechBonus)
               ? { turnsTechBonus: Math.max(0, Math.round(rRaw.turnsTechBonus)) }
               : {}),
+            /**
+             * **已花掉的回合账本**（2026-09-23 进格式 · 玩家报障「0 回合拖动谜质时序还是能够刷回合数」）：
+             * 漏登记 = 每读一次档就把"超支"信息丢一次 ⇒ 读档后再拖一次装置又能白刷回合
+             * （与上面 `turnsBase/turnsTechBonus` 同一类事故，故按同一口径登记；0 也合法）。
+             */
+            ...(typeof rRaw.turnsSpent === 'number' && Number.isFinite(rRaw.turnsSpent)
+              ? { turnsSpent: Math.max(0, Math.round(rRaw.turnsSpent)) }
+              : {}),
           }
         : null
     /**

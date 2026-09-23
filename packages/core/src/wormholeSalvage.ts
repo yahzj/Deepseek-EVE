@@ -2170,7 +2170,16 @@ export function wormholeSyncMatterTurns(state: GameState, ctx: SimContext): void
    * ⚠ 这一条把 2026-09-13 那版注释里"变小只夹紧、剩余原样不动"的写法**收严**了：
    *   不这样收，"来回拖不刷回合"与"变小不追缴"**二者不可兼得**（已报船长）。
    */
-  const spent = Math.max(0, run.turnsTotal - run.turnsLeft)
+  const spent = Math.max(run.turnsSpent ?? 0, run.turnsTotal - run.turnsLeft)
+  /**
+   * ⚠ **2026-09-23 玩家报障修复**（船长转述玩家：「**0 回合拖动谜质时序还是能够刷回合数。**」）：
+   * 上面那版用 `spent = 上限 − 剩余` **现推**，上限因卸下装置掉到 80、而玩家真花掉 90 时，
+   * 那 10 点超支被 `max(0, …)` **抹掉**；把装置拖回货仓后"已花费"只读到 80 ⇒ 白送 10 回合，
+   * **来回拖可无限重复**。现改为**只增不减的账本** `run.turnsSpent`（随档）：
+   * 花回合会让 `上限 − 剩余` 变大 ⇒ 刷新时自然跟上；上限变小则**不再抹掉超支**。
+   * "不追缴"依旧成立（剩余不为负、撤离不看回合），但**不再"退还"**。
+   */
+  run.turnsSpent = spent
   run.turnsTotal = want
   run.turnsLeft = Math.min(want, Math.max(0, Math.round(want - spent)))
 }
