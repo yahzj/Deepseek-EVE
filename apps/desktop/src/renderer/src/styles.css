@@ -10316,6 +10316,18 @@ html[data-locale='en'] body {
 
 /* 卡片头右侧按钮/徽标分组（精炼炉卡、组装机蓝图卡；与 .app-ship-top-right 同款布局） */
 .app-belt-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
+/**
+ * **声望门槛提示单独占一行**（2026-09-22 船长报障：「组装机『✕ 需「深空工业协会」声望 4（当前 1）』
+ * 的标签**不再是单独占一行**」）。
+ *
+ * 沿革（查实的根因）：2026-09-10「玩家标记（收藏）」批（`a838ea0b`）给卡头加了 `.app-belt-head-right`
+ * 这个**不换行的 inline-flex** 分组，把那枚提示从"卡头直接子元素"挪进了它里面 ⇒ 从此被挤在星标旁边，
+ * 长句还会溢出卡片。这里让它**整行独占、右对齐**（其余徽标照旧排在星标那一行）。
+ * ⚠ 只对 `.is-exotic`（声望门槛）生效：`is-stock` / `is-cost` 等短徽标不跟着换行。
+ */
+.app-belt-head { flex-wrap: wrap; }
+.app-belt-head-right { flex-wrap: wrap; justify-content: flex-end; flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.app-belt-head-right > .app-chip.is-exotic { flex-basis: 100%; max-width: 100%; text-align: right; white-space: normal; height: auto; }
 /* ---------- 星图页自适应（2026-09-10 船长定：全屏/宽屏下星图"过宽→过高"，把面板顶出滚动条） ---------- */
 /* 面板体纵向 flex：状态行等按自然高度，剩余高度全部交给星图容器 */
 .app-exp-panel > .wui-panel-body { display: flex; flex-direction: column; }
