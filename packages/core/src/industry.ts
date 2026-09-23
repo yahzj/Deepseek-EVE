@@ -26,7 +26,7 @@ import type { CommandResult } from './engine'
 import type { GameState, RefineRunState } from './state'
 import { bumpFirst } from './firstTasks'
 // F4d：拆解安全货柜（与随行战利品同一条入库路径；抽取池在 wormholeSalvage 里）
-import { wormholeDeliverRelics, wormholeRareBoxThemePoolOf, wormholeUnboxRoll } from './wormholeSalvage'
+import { wormholeDeliverRelics, wormholeRareBoxThemeGroupsOf, wormholeRareBoxThemePoolOf, wormholeUnboxRoll } from './wormholeSalvage'
 import type { AiCoreType, ItemDef, SimContext } from './types'
 import { addItem, addWare, countItem, countWare, removeItem, removeWare } from './inventory'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
@@ -867,8 +867,15 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
            */
           if (r.itemId) state.rareBoxesOpened[r.itemId] = (state.rareBoxesOpened[r.itemId] ?? 0) + 1
           bumpFirst(state, 'rareBoxes')
-          // 主题件回落池（2026-09-16 船长甲1案）：洞内组没有主题件 ⇒ 用"军用备货柜"同款 MK3 池兜住
-          const extra = rollRareBoxExtra(state, ctx, profile, wormholeRareBoxThemePoolOf(ctx, profile.region))
+          // 主题件回落池：**2026-09-24 船长令**（「洞内残骸未命中则从 MK2 和 MK3 里抽，MK3 权重降为 0.25」）
+          // ⇒ 洞内改走**带权重的两组池**（MK2 w=1 / MK3 w=0.25 ⇒ 出 MK3 实际 20%）；洞外两组皆空 ⇒ 走各族 theme。
+          const extra = rollRareBoxExtra(
+            state,
+            ctx,
+            profile,
+            wormholeRareBoxThemePoolOf(ctx, profile.region),
+            wormholeRareBoxThemeGroupsOf(ctx, profile.region),
+          )
           if (extra) {
             for (const modId of extra.modules) {
               state.moduleBay[modId] = (state.moduleBay[modId] ?? 0) + 1

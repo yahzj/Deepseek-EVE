@@ -532,6 +532,13 @@ export function rollRareBoxExtra(
   profile: RecycleProfile,
   /** 主题件**回落池**（洞内稀有残骸用；见 `rareBoxThemePoolOf` 的注释。缺省空 = 旧口径） */
   themeFallback: readonly string[] = [],
+  /**
+   * **带权重的回落池组**（**2026-09-24 船长令**：「洞内残骸如果未命中，则从 MK2 和 MK3 里抽，
+   * MK3 的权重降低为 0.25」＋同日确认「**MK2 的权重按 1**」）：卡面 `theme` 为空时**优先**用这里 ——
+   * 先按 `weight` 选组、再在组内均匀抽 1 件 ⇒ MK2 w=1 / MK3 w=0.25 ⇒ 出 MK3 的实际概率 = **20%**。
+   * 组为空 / 未传 ⇒ 退回 `themeFallback`（扁平池 = 旧口径，留给别的调用点）。
+   */
+  weightedFallback: ReadonlyArray<{ ids: readonly string[]; weight: number }> = [],
 ): {
   modules: string[]
   drones: Array<{ id: string; count: number }>
@@ -575,10 +582,18 @@ export function rollRareBoxExtra(
       notes.push(`专属装备「${itemDef?.name ?? pick}」×${RARE_BOX_DRONE_UNITS} 架`)
     }
   } else {
-    // ② 主题追加件（未出专属时保底一件主题件；卡面池为空时用**回落池**——洞内件靠它兜住"必有装备"）
+    // ② 主题追加件（未出专属时保底一件主题件；卡面池为空时用**回落池**）
+    // **2026-09-24 船长令**：洞内未命中 ⇒ 从 **MK2 + MK3** 里抽，**MK3 权重 0.25**（MK2 = 1 ⇒ MK3 实际 20%）。
+    // 实现：先把"哪一组池"按权重抽出来，再在组内均匀抽 1 件（`pickWeighted` 是 rng 里的既有单点）。
     const theme = rareBoxThemePoolOf(profile, themeFallback)
-    if (theme.length > 0) {
-      const pick = pickOne(state.rng, theme)!
+    const pick = ((): string | undefined => {
+      if (theme.length > 0) return pickOne(state.rng, theme)
+      const groups = weightedFallback.filter((g) => g.ids.length > 0 && g.weight > 0)
+      if (groups.length === 0) return undefined
+      const chosen = pickWeighted(state.rng, groups, (g) => g.weight, { bound: 'lte' }) ?? groups[0]!
+      return pickOne(state.rng, chosen.ids)
+    })()
+    if (pick !== undefined) {
       modules.push(pick)
       notes.push(`主题装备「${ctx.modules.get(pick)?.name ?? ctx.items.get(pick)?.name ?? pick}」`)
     }
