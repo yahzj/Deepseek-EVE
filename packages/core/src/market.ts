@@ -39,7 +39,7 @@ import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID } from './expedition'
-import { ironmanCommonFlowMul, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
+import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
 
 /* ═══════════ 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，协会收购网扩容，
  * 玩家"单件商品"卖出吞吐 ×1.5，乘法叠加无封顶——只作用于单件商品（装备/蓝图/船等件货的
@@ -80,7 +80,8 @@ const SWEEP_PER_LEVEL = 0.1
 const SECONDHAND_PER_LEVEL = 0.02
 /** rare NPC 订单存在时长倍率（9 分钟 → 36 分钟；供给/收购两侧同规则） */
 const RARE_LIFE_MUL = 4
-/** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量） */
+/** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量）
+ * ⚠ **铁人福利 B 在此之上 +2**（船长 2026-09-23：「奇货订单每窗最大数量+2」）⇒ 铁人档每窗至多 4 张。 */
 const EXOTIC_CAP_PER_DRAW = 2
 /** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
  * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
@@ -723,7 +724,7 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
     const chance = ctx.balance.market.exoticWindowChance * sweep * blueprintWeight(def, ctx) * ironmanExoticWeightMul(state)
     if (nextRandom(state.rng) < chance) winners.push(def)
   }
-  while (winners.length > EXOTIC_CAP_PER_DRAW) {
+  while (winners.length > EXOTIC_CAP_PER_DRAW + ironmanExoticCapBonus(state)) {
     winners.splice(nextInt(state.rng, winners.length), 1) // 随机抽选（每次删一张，结果均匀）
   }
   for (const def of winners) spawnExoticSupply(state, ctx, def, now)

@@ -10,6 +10,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
+import { ensureMarket, slowSupplyDraw } from '../src/market'
+import { makeTestCtx, moduleDef } from './helpers'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -18,6 +20,7 @@ import { trainingTimeFactor } from '../src/training'
 import { rareDropRateMulOf, rewardMulOf } from '../src/tuning'
 import {
   IRONMAN_COMMON_FLOW_MUL,
+  IRONMAN_EXOTIC_CAP_BONUS,
   IRONMAN_EXOTIC_WEIGHT_MUL,
   IRONMAN_OFFLINE_CAP_BONUS_MS,
   IRONMAN_RARE_DROP_MUL,
@@ -31,6 +34,7 @@ import {
   ironmanClosed,
   ironmanCommonFlowMul,
   ironmanEver,
+  ironmanExoticCapBonus,
   ironmanExoticWeightMul,
   ironmanLoadVerdict,
   ironmanOfflineCapBonusMs,
@@ -197,6 +201,49 @@ describe('铁人模式 · 福利乘区（非铁人一律 1×）', () => {
     const s = ironState(1)
     simulateOffline(s, 0, gap, ctx)
     expect(s.gameMs, '铁人档：结算满 12 小时（上限 16 小时）').toBe(12 * H)
+  })
+})
+
+describe('铁人模式 · 奇货订单每窗最大数量 +2（船长 2026-09-23 追加）', () => {
+  /** 造一个"奇货必中"的市场上下文：命中率拉满 ⇒ 本窗命中数只看上限 */
+  function exoticCtx(goods: number) {
+    const base = buildSimContext().balance
+    const keys = Array.from({ length: goods }, (_, i) => `mod-ex${i}`)
+    return makeTestCtx({
+      marketGoods: keys.map((k) => ({
+        key: k,
+        kind: 'module' as const,
+        refId: k,
+        rarity: 'exotic' as const,
+        basePrice: 10_000,
+        demandMultiplier: 1,
+      })),
+      modules: keys.map((k) => moduleDef(k, 'turret', 0)),
+      balance: { ...base, market: { ...base.market, exoticWindowChance: 1 } },
+    })
+  }
+
+  it('普通档：每窗仍是 2 张（既有口径不动）', () => {
+    const ctx = exoticCtx(5)
+    const s = createInitialState({ nowWallMs: 0, seed: 11 })
+    ensureMarket(s, ctx)
+    slowSupplyDraw(s, ctx, 600_000)
+    const n = Object.values(s.market.npcSell).reduce((sum, list) => sum + list.length, 0)
+    expect(n).toBe(2)
+  })
+
+  it('铁人档：每窗上限 2 → 4（+2）', () => {
+    const ctx = exoticCtx(5)
+    const s = ironState(1)
+    ensureMarket(s, ctx)
+    slowSupplyDraw(s, ctx, 600_000)
+    const n = Object.values(s.market.npcSell).reduce((sum, list) => sum + list.length, 0)
+    expect(n).toBe(4)
+    expect(ironmanExoticCapBonus(s)).toBe(IRONMAN_EXOTIC_CAP_BONUS)
+    expect(IRONMAN_EXOTIC_CAP_BONUS).toBe(2)
+    // 关闭铁人 ⇒ 回到 2
+    closeIronman(s, 1_000)
+    expect(ironmanExoticCapBonus(s)).toBe(0)
   })
 })
 

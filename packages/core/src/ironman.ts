@@ -30,6 +30,9 @@ export const IRONMAN_COMMON_FLOW_MUL = 3
 export const IRONMAN_RARE_WEIGHT_MUL = 2
 /** B · 奇货订单权重倍率（+100%） */
 export const IRONMAN_EXOTIC_WEIGHT_MUL = 2
+/** B · **奇货订单每窗最大数量 +2**（**船长 2026-09-23 追加**：「铁人福利的奇货订单每窗最大数量+2」）
+ *  —— 加在 `EXOTIC_CAP_PER_DRAW`（2）上 ⇒ 铁人档每窗至多 4 张。 */
+export const IRONMAN_EXOTIC_CAP_BONUS = 2
 
 /** C · 悬赏/任务奖励倍率（+10%） */
 export const IRONMAN_REWARD_MUL = 1.1
@@ -193,6 +196,11 @@ export function ironmanRareWeightMul(state: { ironman?: IronmanLike } | null | u
 /** B · 奇货订单权重倍率 */
 export function ironmanExoticWeightMul(state: { ironman?: IronmanLike } | null | undefined): number {
   return ironmanOn(state) ? IRONMAN_EXOTIC_WEIGHT_MUL : 1
+}
+
+/** B · 奇货订单每窗最大数量加成（**船长 2026-09-23 追加**；非铁人 ⇒ 0） */
+export function ironmanExoticCapBonus(state: { ironman?: IronmanLike } | null | undefined): number {
+  return ironmanOn(state) ? IRONMAN_EXOTIC_CAP_BONUS : 0
 }
 
 /** C · 悬赏/任务奖励倍率 */
