@@ -3749,6 +3749,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Yield.001": { zh: "产出", en: "Output" },
   "ui.Yield.002": { zh: "仓库", en: "in storage" },
   "ui.Yield.003": { zh: "行情", en: "market" },
+  /* 括注整段（产出行的行尾）：仓库已有 + 当前行情价 */
+  "ui.Yield.004": { zh: "（仓库 {p1} · 行情 {p2}）", en: "(in storage {p1} · market {p2})" },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },
   "ui.spaceBg.002": { zh: "绿星云", en: "Green nebula" },
   "ui.spaceBg.003": { zh: "紫星云", en: "Purple nebula" },

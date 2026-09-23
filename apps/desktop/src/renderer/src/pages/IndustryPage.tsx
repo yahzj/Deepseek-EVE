@@ -272,15 +272,16 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       })
       .filter((x): x is { def: ItemDef; units: number } => x !== null)
     const batchValue = outs.reduce((s, o) => s + o.units * (o.def.baseSellPriceIsk ?? 0), 0)
-    // 2026-09-08：净口径 = 每批产物收价 − 每批耗料（原料同样按站内收价；原料可卖，不扣即虚高）
-    const costPerBatch = batch * (def.baseSellPriceIsk ?? 0)
-    const netPerBatch = batchValue - costPerBatch
-    const grossH = Math.round(batchValue * (3_600_000 / cycleMs))
-    const netH = Math.round(netPerBatch * (3_600_000 / cycleMs))
+    /**
+     * **产出读数换口径**（**2026-09-23 船长令**：「各个有收益的卡牌上写着的收入预估…会严重误导玩家…
+     * 其他活动只显示每小时能收获多少资源以及产出的物资的市场当前价格」＋同日「行情采用市场详细中
+     * 折线图中显示的价格」）⇒ 每行 = `产物 ×N/h（仓库 M · 行情 P）`，原「≈N 信用点/h」净口径估值**整行删除**。
+     * 每小时产量 = 每批产物单位 × (3,600,000 ÷ 精炼周期)；行情取数走 `ui/yieldView.tsx` 的唯一实现。
+     */
+    const perHourOf = (units: number): number => Math.round(units * (3_600_000 / cycleMs))
     econ = (
       <div className="app-belt-econ">
-        {/* 2026-09-10 船长：产出做成「♨ 产出：」标题 + 每种产物缩进一行，行尾带自己拥有的数量
-            （站内物品仓库口径，与同卡材料行「（仓库 N）」同款写法；市场页「持有 N」亦同源） */}
+        {/* 2026-09-10 船长：产出做成「♨ 产出：」标题 + 每种产物缩进一行，行尾带自己拥有的数量 */}
         {outs.length === 0 ? (
           <div>{tr("ui.IndustryPage.027")}</div>
         ) : (
@@ -288,20 +289,18 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             <div>{tr("ui.IndustryPage.028")}</div>
             {outs.map((o) => (
               <div key={o.def.id} className="app-belt-out">
-                {o.def.name} ×{o.units.toLocaleString('zh-CN')}
-                <span className="app-dim">{tr("ui.IndustryPage.029")} {countWare(state, o.def.id).toLocaleString('zh-CN')}）</span>
+                {o.def.name} ×{perHourOf(o.units).toLocaleString('zh-CN')}/h
+                <span className="app-dim">
+                  {' '}
+                  {tr('ui.Yield.004', {
+                    p1: countWare(state, o.def.id).toLocaleString('zh-CN'),
+                    p2: marketPriceOf(state, engine.ctx, o.def.id)?.toLocaleString('zh-CN') ?? '—',
+                  })}
+                </span>
               </div>
             ))}
           </>
         )}
-        {batchValue > 0 ? (
-          <div
-            className={`app-belt-econ-val${netH < 0 ? ' is-neg' : ''}`}
-            title={tr("ui.IndustryPage.106", { p1: grossH.toLocaleString('zh-CN'), p2: netH < 0 ? tr("ui.IndustryPage.030") : tr("ui.IndustryPage.031") })}
-          >
-            {MONEY_GLYPH} ≈{netH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}{netH < 0 ? tr("ui.IndustryPage.032") : tr("ui.IndustryPage.033")}
-          </div>
-        ) : null}
       </div>
     )
   }
