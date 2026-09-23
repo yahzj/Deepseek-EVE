@@ -45,6 +45,8 @@ export const IRONMAN_TRAINING_MUL = 0.9
 export const IRONMAN_RESCUE_MIN_AGE_MS = 48 * 3_600_000
 
 /** 铁人档的存档面（`state.ironman`；缺省 = 老档 ⇒ 普通档、代次 0） */
+export type { IronmanState } from './state'
+
 export interface IronmanLike {
   on?: boolean
   seq?: number

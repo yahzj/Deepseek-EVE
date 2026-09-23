@@ -163,6 +163,10 @@ import {
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
   // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；✅ 2026-09-14 已上线，入口常驻）
+  bumpIronmanSeq,
+  ironmanLoadVerdict,
+  ironmanOn,
+  ironmanSeq,
   wormholeEnter,
   wormholeTakePileAt,
   wormholeHoldUsage,
@@ -1006,6 +1010,7 @@ export class GameEngine {
    * 每次开启游戏日志空白；logs 仅作本局内存滚动展示） */
   async persist(): Promise<boolean> {
     try {
+      bumpIronmanSeq(this.state) // 铁人档：每次落盘代次 +1（普通档/已关闭 ⇒ 冻结）
       const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
       return await saveBridge.save(serializeSaveFile(out))
     } catch (err) {
@@ -1042,6 +1047,50 @@ export class GameEngine {
    * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 覆盖前**不再**自动备份当前档
    * （桌面主进程与网页分支两处一起删）。要留退路请先用「备份当前档」手动备一份。
    */
+  /**
+   * **铁人档装载闸门**（**2026-09-23 船长令**：「如果导入一个铁人存档的版本号比当前存档的版本号更靠前
+   * 则会导入失败」＋「允许玩家读取至少两天前的存档作为救援」）。
+   *
+   * 判据收口在 core 的 `ironmanLoadVerdict`（唯一实现）；本方法只负责取三样东西：
+   * 待装载档的 `ironman` 面、**当前档**的代次、以及主进程里那份**存档之外的账本**最高代次。
+   * - 普通档：一律放行；
+   * - 铁人档：`档.代次 < max(当前, 账本)` ⇒ 拒绝；但**存档年龄 ≥48 小时** ⇒ 救援放行（记一次账）。
+   * 放行后会把内存档的代次**顶到账本高度**（否则"救援回来的旧档"下次导出再导入会被自己拦）。
+   */
+  private async ironmanLoadCheck(
+    text: string,
+    incomingSavedAtWallMs: number,
+  ): Promise<{ ok: true; rescue: boolean } | { ok: false; error: string }> {
+    try {
+      const ledger = await saveBridge.ironmanLedger()
+      const incoming = loadSaveFile(text).state
+      const now = Date.now()
+      const verdict = ironmanLoadVerdict({
+        ironman: ironmanOn(this.state),
+        incomingSeq: ironmanSeq(incoming),
+        currentSeq: ironmanSeq(this.state),
+        ledgerSeq: ledger.ok ? ledger.seq : 0,
+        incomingSavedAtWallMs,
+        nowWallMs: now,
+      })
+      if (!verdict.ok) {
+        return { ok: false, error: tr('ui.engine.051', { p1: String(verdict.threshold) }) }
+      }
+      if (verdict.rescue) void saveBridge.ironmanNoteRescue()
+      return { ok: true, rescue: verdict.rescue }
+    } catch (err) {
+      // 闸门自身出错**不拦人**（宁可放行，也不要把玩家锁在自己的档外面）
+      console.warn('ironman gate failed', err)
+      return { ok: true, rescue: false }
+    }
+  }
+
+  /** 装载成功后把代次顶到"账本高度"（保持当前档永远处在账本头部） */
+  private async syncIronmanHead(s: GameState): Promise<void> {
+    const ledger = await saveBridge.ironmanLedger()
+    const head = Math.max(ironmanSeq(s), ironmanSeq(this.state), ledger.ok ? ledger.seq : 0)
+    s.ironman = { ...(s.ironman ?? { on: false, seq: 0 }), seq: head }
+  }
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const read = await saveBridge.readBackup(name)
@@ -1052,6 +1101,9 @@ export class GameEngine {
       } catch (err) {
         return { ok: false, error: tr("ui.engine.026", { p1: err instanceof Error ? err.message : String(err) }) }
       }
+      const gate = await this.ironmanLoadCheck(read.text, parsed.savedAtWallMs)
+      if (!gate.ok) return { ok: false, error: gate.error }
+      await this.syncIronmanHead(parsed.state)
       const restore = await saveBridge.restore(name)
       if (!restore.ok) return { ok: false, error: restore.error ?? tr('ui.engine.050') }
       // 2026-09-09（船长定）：恢复备份与导入/启动同口径——按"档内保存墙钟 → 现在"补算离线进度
@@ -1143,6 +1195,10 @@ export class GameEngine {
        * 与本地化也相关：那些旧日志只有中文正文、没有文案 id ⇒ 英文界面下会半中半英。
        */
       imported.logs = []
+      // 铁人档：装载闸门（见 `ironmanLoadCheck`）
+      const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs)
+      if (!gate.ok) return { ok: false, error: gate.error }
+      await this.syncIronmanHead(imported)
       // 按时间差补齐离线进度：档内墙钟 → 现在（上限与正常离线一致；墙钟在未来则跳过）
       const now = Date.now()
       const wallFrom = parsed.savedAtWallMs

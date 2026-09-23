@@ -35,12 +35,16 @@ const electronBridge: WhaleApi = {
   pickImportSave: () => window.whale.pickImportSave(),
   exportSaveToFile: (text) => window.whale.exportSaveToFile(text),
   deleteBackup: (name) => window.whale.deleteBackup(name),
+  ironmanLedger: () => window.whale.ironmanLedger(),
+  ironmanNoteRescue: () => window.whale.ironmanNoteRescue(),
 }
 
 /* ───────── 浏览器分支：localStorage（键空间：1 主档 + N 备份） ───────── */
 
 const SAVE_KEY = 'whale:idle:save'
 const BP_PREFIX = 'whale:idle:backup:'
+/** 铁人账本键（**与存档分开**；重置档案不清它） */
+const LEDGER_KEY = 'whale:idle:ironman-ledger'
 const BP_CAP = 30 // 与桌面一致：最多保留 30 份备份（超出删最旧）
 
 function ls(): Storage {
@@ -89,12 +93,31 @@ function collectBackups(): Array<{ name: string; text: string; wall: number }> {
   return out
 }
 
+/** 网页分支：把存档文本里的代次推到账本（与桌面端 `save:save` 同口径：只增不减） */
+function webBumpLedgerFromSave(data: string): void {
+  try {
+    const raw = JSON.parse(data) as { state?: { ironman?: { seq?: unknown } } }
+    const seqRaw = raw.state?.ironman?.seq
+    const seq = typeof seqRaw === 'number' && Number.isFinite(seqRaw) ? Math.max(0, Math.floor(seqRaw)) : 0
+    if (seq <= 0) return
+    const cur = JSON.parse(ls().getItem(LEDGER_KEY) ?? '{"seq":0,"rescues":0}') as { seq?: unknown; rescues?: unknown }
+    const curSeq = typeof cur.seq === 'number' && Number.isFinite(cur.seq) ? Math.max(0, Math.floor(cur.seq)) : 0
+    if (seq <= curSeq) return
+    const curRescues = typeof cur.rescues === 'number' && Number.isFinite(cur.rescues) ? Math.max(0, Math.floor(cur.rescues)) : 0
+    ls().setItem(LEDGER_KEY, JSON.stringify({ seq, rescues: curRescues }))
+  } catch {
+    // 账本更新失败不阻断游戏（闸门退化为"只看当前档代次"）
+  }
+}
 const localStorageBridge: WhaleApi = {
   async load(): Promise<string | null> {
     return ls().getItem(SAVE_KEY)
   },
   async save(data: string): Promise<boolean> {
-    return setWithBudget(SAVE_KEY, data)
+    if (!setWithBudget(SAVE_KEY, data)) return false
+    // 与桌面端同口径：落盘后把这份档的代次推到账本（只增不减；普通档代次恒 0 ⇒ 不动）
+    webBumpLedgerFromSave(data)
+    return true
   },
   async backup(): Promise<{ ok: boolean; name?: string; error?: string }> {
     const text = ls().getItem(SAVE_KEY)
@@ -140,6 +163,32 @@ const localStorageBridge: WhaleApi = {
     if (ls().getItem(key) === null) return { ok: false, error: tr("ui.storage.003") }
     ls().removeItem(key)
     return { ok: true }
+  },
+  /**
+   * **铁人账本（网页分支）**：桌面端账本落在 `%APPDATA%` 的独立文件里；网页版没有文件系统，
+   * 用 localStorage 的一个独立键作等价物（口径一致：**与存档分开存**、只增不减、重置档案不清）。
+   */
+  async ironmanLedger(): Promise<{ ok: boolean; seq: number; rescues: number; error?: string }> {
+    try {
+      const raw = ls().getItem(LEDGER_KEY)
+      if (!raw) return { ok: true, seq: 0, rescues: 0 }
+      const o = JSON.parse(raw) as { seq?: unknown; rescues?: unknown }
+      const seq = typeof o.seq === 'number' && Number.isFinite(o.seq) ? Math.max(0, Math.floor(o.seq)) : 0
+      const rescues = typeof o.rescues === 'number' && Number.isFinite(o.rescues) ? Math.max(0, Math.floor(o.rescues)) : 0
+      return { ok: true, seq, rescues }
+    } catch (err) {
+      return { ok: false, seq: 0, rescues: 0, error: String(err) }
+    }
+  },
+  /** 救援装载记账（网页分支：只累加计数；**玩家侧不显示**） */
+  async ironmanNoteRescue(): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const cur = await localStorageBridge.ironmanLedger()
+      ls().setItem(LEDGER_KEY, JSON.stringify({ seq: cur.seq, rescues: cur.rescues + 1 }))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
   },
   /** 导入 = 系统文件选择器（桌面浏览器/手机网页都可用），读取 .json 文本返回 */
   async pickImportSave(): Promise<{ ok: boolean; text?: string; canceled?: boolean; error?: string }> {

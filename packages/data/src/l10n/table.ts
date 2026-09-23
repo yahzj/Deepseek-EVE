@@ -1497,6 +1497,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.engine.048": { zh: "{p1}核心：{p2}{p3}", en: "{p1} core: {p2}{p3}" },
   "ui.engine.049": { zh: "读取备份失败。", en: "Could not read the backup." },
   "ui.engine.050": { zh: "写回存档失败。", en: "Could not write the save back." },
+  "ui.engine.051": { zh: "这是铁人存档：它的版本号（第 {p1} 代）早于当前进度 —— 铁人档不能回退；若要救档，请选一份两天前或更早的备份。", en: "Iron Man save: its generation ({p1}) is older than your current progress — Iron Man saves cannot be rolled back. To rescue, load a backup from two days ago or earlier." },
   "ui.Expedition.003": { zh: "数量", en: "Qty" },
   "ui.Expedition.004": { zh: "奖励 ◆", en: "Reward ◆" },
   "ui.Expedition.005": { zh: "虫洞", en: "Wormhole" },

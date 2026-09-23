@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('whale', {
   readBackup: (name: string): Promise<{ ok: boolean; text?: string; error?: string }> => ipcRenderer.invoke('save:read-backup', name),
   /** 恢复备份（⚠ 2026-09-17 船长：**不再**为当前档自动备份，直接覆盖） */
   restore: (name: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('save:restore', name),
+  ironmanLedger: (): Promise<{ ok: boolean; seq: number; rescues: number; error?: string }> => ipcRenderer.invoke('ironman:ledger'),
+  ironmanNoteRescue: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('ironman:note-rescue'),
   /** 删除某份备份（只删备份文件，不影响当前档） */
   deleteBackup: (name: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('save:delete-backup', name),
   /** 弹出系统对话框选择外部 .json 存档并读取文本（导入用；取消 → { ok:false, canceled:true }） */
