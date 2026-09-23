@@ -10085,8 +10085,8 @@ html[data-locale='en'] body {
 
 .app-pro-wake-btn:hover { background: rgb(var(--wui-x64) / 0.4); box-shadow: 0 0 22px rgba(90,220,160,.35); }
 /* 序章「模式选择」两张卡（**2026-09-23 船长定**：时机＝初始动画之后；两张卡与「出港」按钮同一档尺寸/同一套语言） */
-.app-pro-mode { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: stretch; max-width: min(760px, 92vw); }
-.app-pro-mode-card { width: min(330px, 88vw); min-height: 220px; display: flex; flex-direction: column; gap: 8px; text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: 10px; padding: 16px 22px; cursor: pointer; }
+.app-pro-mode { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: stretch; }
+.app-pro-mode-card { width: 330px; max-width: 100%; min-height: 220px; display: flex; flex-direction: column; gap: 8px; text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: 10px; padding: 16px 22px; cursor: pointer; }
 .app-pro-mode-card:hover { background: rgb(var(--wui-x64) / 0.4); box-shadow: 0 0 22px rgba(90,220,160,.35); }
 .app-pro-mode-card.is-iron { border-color: rgb(var(--wui-fam-a)); }
 .app-pro-mode-title { font-size: 22px; font-weight: 800; }
