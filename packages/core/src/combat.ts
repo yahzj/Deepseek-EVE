@@ -3457,8 +3457,23 @@ function pulseRepairsFor(
       return true // 全场都修不动（都满血）⇒ 空转：不耗组件、不动计时器之外任何账（本舰也没死）
     }
   }
-  const capA = Math.max(0, targetSpec.hp.a)
-  const capH = Math.max(0, targetSpec.hp.h)
+  /**
+   * **维修上限 = 容量（不是入场残值）** —— **2026-09-23 玩家报障修复**。
+   *
+   * 报障形状（船长转述 + 存档实测 `save-20260923-214317`）：鹦鹉螺级**进战斗时装甲为 0**
+   * （`armorPct = 0`，装着 `mod-hullrep-2`、仓库 `repairkit-mil ×443` 充足），可它就是**不回甲**。
+   *
+   * 根因：上限原先取 `targetSpec.hp`——洞内编队那份 spec 带的是**存档里的残值**（甲 0），
+   * 于是 `da = capA - hp.a = 0` ⇒ **甲层被当成"已满"** ⇒ 装置只可能补结构，甲永远停在 0；
+   * 若结构也满则整台**空转**（`ag <= 0 && hg <= 0 ⇒ continue`，连组件都不烧）——
+   * 玩家看到的正是"不消耗组件、也不回血"。
+   *
+   * 设计原话（2026-09-09 船体维修装置首版）是「**上限 = 出场满值（入场残值可修回）**」⇒
+   * 上限必须取**容量**：运行时单位上的 `hpMax` 优先，缺它才回落 `spec.hp`
+   * （无 `hpMax` 的老调用方/单元测试 ⇒ **零行为变化**）。
+   */
+  const capA = Math.max(0, targetRt.hpMax?.a ?? targetSpec.hp.a)
+  const capH = Math.max(0, targetRt.hpMax?.h ?? targetSpec.hp.h)
   const hp = targetRt.hp
   /**
    * **本跳结算哪一台**（2026-09-21 逐型号独立回转）：
