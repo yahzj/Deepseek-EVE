@@ -21,8 +21,14 @@ import type { AnomalyDef, SimContext } from './types'
 import { addShipToFleet } from './shipyard'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from './combat'
 
-/** 蒙特卡洛局数（2026-09-09 船长确认 N=21：临界 ±11pp、预热 ~0.5s 分帧完成） */
-export const BOUNTY_MC_RUNS = 21
+/**
+ * 蒙特卡洛局数（2026-09-09 船长确认 N=21：临界 ±11pp、预热 ~0.5s 分帧完成）。
+ *
+ * ⚠ **2026-09-23 船长报障后上调 21 → 63**（玩家：「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
+ * 21 局的分辨率只有 **4.8pp**（20/21 = 95%、21/21 = 100%），在"三波 + 精锐首领"那种长盘上
+ * 尾部运气完全刻画不出来；63 局把分辨率压到约 **1.6pp**，且预热仍走分帧泵（约 3 倍预算）。
+ */
+export const BOUNTY_MC_RUNS = 63
 
 /**
  * **评估用补给补足**（2026-09-23 开关配套）：把"弹药 + 修理组件足量"放进**开关真正会读的那个池**——

@@ -105,7 +105,7 @@ describe('winEstimate 蒙特卡洛预估（2026-09-09）', () => {
   })
 
   it('BOUNTY_MC_RUNS 默认 = 21；estimateBountyWinOn 在快照上可跑', () => {
-    expect(BOUNTY_MC_RUNS).toBe(21)
+    expect(BOUNTY_MC_RUNS).toBe(63) // 2026-09-23 船长报障后由 21 上调（分辨率 4.8pp → ~1.6pp）
     const { state, uid } = warriorState()
     const snap = buildEvalState(state, uid)!
     const r = estimateBountyWinOn(snap.ev, ctx, easy, snap.uid, 5)

@@ -7475,6 +7475,12 @@ export function bountyDamageForecast(
  * ①缓存预热完成前的临时回退显示；②活动远征视图/测试兼容。结算与 AI/工具口径 battleWinPreview 不变。
  * = 原显示胜率（满耐久基准 + logit 扩散）− 预计装甲损耗×winPenaltyArmorPerFull
  * − 预计结构损耗×winPenaltyHullPerFull（结构伤扣更重），下限 2%。
+ *
+ * ⚠ **2026-09-23 船长报障后去掉 98% 上限**（玩家：「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
+ * 旧写法 `Math.min(0.98, …)` 把"稳赢"也显示成 **98%**，玩家读成"几乎必胜"；而**派系/窝点卡**
+ * 这条回退口径是**唯一的显示来源**（蒙特卡洛只管未加成卡，见 `Expedition` 的 `factionHit`）
+ * ⇒ 那条路径上"98%"就是天花板值，与实际胜率无关。**下限 2% 保留**（"仍有希望"语义），
+ * 上限改为不截断（真正稳赢就显示 99%/100%，由显示端按整数呈现）。
  */
 export function bountyWinPercentGuarded(
   state: GameState,
@@ -7487,7 +7493,7 @@ export function bountyWinPercentGuarded(
   const shown = spreadWinChance(f.rawWin, ctx.balance.battle.winSpread)
   const bal = ctx.balance.battle
   const penalty = f.armorLoss * bal.winPenaltyArmorPerFull + f.hullLoss * bal.winPenaltyHullPerFull
-  return Math.max(0.02, Math.min(0.98, shown - penalty))
+  return Math.max(0.02, Math.min(1, shown - penalty))
 }
 
 /** 玩家口径预估胜率：无 favor 模型 + logit 扩散（悬赏卡/玩家手动战斗展示用；实际结算与之对应） */
