@@ -3100,7 +3100,7 @@ export function repairUsageText(
  * 与 `REPAIR_PULSE_MS`（维修装置 5 秒）是**两套独立计时**：两者可以同装、各按各的节奏跳。
  * ⚠ 界面/说明里的「每 30 秒」与它同源（`content:check` 的「产物说明契约」按语境常量核）。
  */
-export const SHIELD_PULSE_MS = 30_000
+export const SHIELD_PULSE_MS = 15_000
 
 /**
  * **护盾被动回充的速率下限**（2026-09-20 船长：「**舰船护盾的恢复速度下限改为1%。但是当护盾被击穿时，依旧是0%**」；
@@ -4104,7 +4104,7 @@ export function startBattleFor(
     if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
     battle.repair = repair
   }
-  // 护盾充能装置（2026-09-14）：**独立 30 秒计时**（与维修装置的 5 秒互不干扰），开战 30 秒后第一跳；
+  // 护盾充能装置（2026-09-14）：**独立 15 秒计时**（与维修装置的 5 秒互不干扰），开战 15 秒后第一跳；
   // **逐型号一路**（2026-09-21）：每路各排各的首跳
   const shieldCharge = preloadShieldChargeFor(state, ctx, shipId)
   if (shieldCharge) {
@@ -7374,7 +7374,7 @@ function steadyPreview(
   // 回充按**当前盾**比例（引擎：`urt.hp.s × 费率`）⇒ 盾动力学 `ds/dt = k·s − D`（k = 费率、D = 净敌火）
   //   · 盾被打穿时刻 `tBreak = ln(D/(D − k·s₀)) ÷ k`（**仅当 D > k·s₀**；否则回充永远顶得住、盾不破）
   //   · **破盾后回充归 0**（船长「不留，破盾后 0 回复」）⇒ 之后 D 全打在甲+结构上
-  //   · 装了「护盾充能装置」时：把 30 秒脉冲折成**恒定附加回充** `c = 满盾 × 每跳比例 ÷ 30 秒`，
+  //   · 装了「护盾充能装置」时：把 15 秒脉冲折成**恒定附加回充** `c = 满盾 × 每跳比例 ÷ 15 秒`，
   //     **只在破盾后计入**（盾没破时被动回充远大于它）——这样估算不会对带装置的人过分悲观。
   // ⚠ **2026-09-20 船长加「恢复速度下限」后本模型必须同改**（原话见 `SHIELD_REGEN_FLOOR_PCT`）：
   //   引擎的回充已是 `max(当前盾 × k, 满盾 × 1%)` ⇒ **盾低于 50% 后回充不再随盾量缩水**

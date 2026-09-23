@@ -33,7 +33,7 @@ const T3 = 'sh-thresher'
 const REP_CIV = 'mod-hullrep-civ'
 /** 军用维修装置（吃军用组件） */
 const REP_MIL = 'mod-hullrep-1'
-/** 护盾充能装置（MK1，每 30 秒回满盾的一个比例） */
+/** 护盾充能装置（MK1，每 15 秒回满盾的一个比例） */
 const SHIELD_CHG = 'mod-shieldchg-1'
 
 function fresh(seed = 21): GameState {

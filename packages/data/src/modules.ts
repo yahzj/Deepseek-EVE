@@ -631,38 +631,38 @@ export const MODULES: readonly ModuleDef[] = [
   },
 
   /* ══════════ 护盾充能装置（2026-09-14 船长：「护盾充能装置，和船体修理装置类似。
-     每 30 秒恢复自身护盾最大值一定比例的护盾量。CPU消耗较多」）
+     每 15 秒恢复自身护盾最大值一定比例的护盾量。CPU消耗较多」）
      —— 中槽 · 护盾系；**破盾后唯一能把盾点起来的件**（被动回充按当前盾比例 ⇒ 盾归零 = 回充 0）；
-        每 30 秒一跳、每跳按**满盾**的一个比例恢复（12 / 20 / 32%）；CPU 比同槽件贵一档。 ══════════ */
+        每 15 秒一跳、每跳按**满盾**的一个比例恢复（12 / 20 / 32%）；CPU 比同槽件贵一档。 ══════════ */
   {
     id: 'mod-shieldchg-1',
     name: '护盾充能装置 MK1',
     slot: 'shield',
     rack: 'mid',
-    shieldPulsePct: 0.24,
+    shieldPulsePct: 0.12,
     cpuUse: 25,
     description:
-      '每 30 秒脉冲充能，恢复护盾上限的 24%。',
+      '每 15 秒脉冲充能，恢复护盾上限的 12%。',
   },
   {
     id: 'mod-shieldchg-2',
     name: '护盾充能装置 MK2',
     slot: 'shield',
     rack: 'mid',
-    shieldPulsePct: 0.4,
+    shieldPulsePct: 0.2,
     cpuUse: 45,
     description:
-      '每 30 秒脉冲充能，恢复护盾上限的 40%。',
+      '每 15 秒脉冲充能，恢复护盾上限的 20%。',
   },
   {
     id: 'mod-shieldchg-3',
     name: '护盾充能装置 MK3',
     slot: 'shield',
     rack: 'mid',
-    shieldPulsePct: 0.64,
+    shieldPulsePct: 0.32,
     cpuUse: 70,
     description:
-      '每 30 秒脉冲充能，恢复护盾上限的 64%。',
+      '每 15 秒脉冲充能，恢复护盾上限的 32%。',
   },
 
   /* ══════════ 护盾充能力场装置（2026-09-20 船长：「新增高槽装备，护盾充能力场装置 MK2，
