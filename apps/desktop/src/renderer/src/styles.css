@@ -10092,6 +10092,12 @@ html[data-locale='en'] body {
 .app-pro-wake-btn { font-size: 22px; font-weight: 800; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: 10px; padding: 16px 44px; cursor: pointer; animation: app-pro-breathe 2.4s ease-in-out infinite; }
 
 .app-pro-wake-btn:hover { background: rgb(var(--wui-x64) / 0.4); box-shadow: 0 0 22px rgba(90,220,160,.35); }
+/* 周末入侵横幅（M1-c · 2026-09-23）：固定右下角，不参与页面布局 ⇒ 一级页仍然不滚 */
+.app-weekend-banner { position: fixed; right: 14px; bottom: 14px; z-index: 60; display: flex; flex-direction: column; gap: 4px; width: 260px; max-width: calc(100% - 28px); padding: 10px 12px; border: 1px solid rgb(var(--wui-fam-a)); border-radius: 10px; background: rgb(var(--wui-black) / 0.72); font-size: 12px; line-height: 1.5; }
+.app-weekend-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.app-weekend-tag { color: rgb(var(--wui-fam-a)); font-weight: 800; }
+.app-weekend-dim { color: rgb(var(--wui-x76)); }
+.app-weekend-warn { color: rgb(var(--wui-x159)); font-weight: 700; }
 /* 序章「模式选择」两张卡（**2026-09-23 船长定**：时机＝初始动画之后；两张卡与「出港」按钮同一档尺寸/同一套语言） */
 .app-pro-mode { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: stretch; }
 .app-pro-mode-card { width: 330px; max-width: 100%; min-height: 220px; display: flex; flex-direction: column; gap: 8px; text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: 10px; padding: 16px 22px; cursor: pointer; }
