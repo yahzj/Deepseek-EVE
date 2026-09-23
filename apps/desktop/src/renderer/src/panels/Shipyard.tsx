@@ -53,6 +53,8 @@ interface ShipItem {
   productLabel: string
   productNode: ReactNode
   productBase: number
+  /** 产物引用（2026-09-23 船长令：舰船产物**只显示市场当前价格**） */
+  productRef: { kind: 'ship' | 'module' | 'item'; refId: string }
   /** 舰船"自己有多少"的取数闭包（仓库 ＋ 在役舰队；数值每次现取） */
   countOwned: () => number
   ownedWhere: string
@@ -138,6 +140,8 @@ export function ShipyardPanel({
           </>
         ),
         productBase: shipDef ? (productBaseOf(engine, 'ship', shipId) || shipDef.priceIsk || 0) : 0,
+        /** 造船厂卡的产物读数（2026-09-23 船长令）：舰船 ⇒ **只显示市场当前价格** */
+        productRef: { kind: 'ship' as const, refId: shipId },
         countOwned: () => shipOwnedCount(engine.state, shipId),
         ownedWhere: '仓库＋机库', // l10n-keep：内容层联合 key（渲染处走 Industry 的 ownedWhereText）
         bookPrice: bookPriceOf(engine, sbp.id, 0),
@@ -303,6 +307,7 @@ export function ShipyardPanel({
               kindLabel="舰船" /* l10n-keep：内容层联合 key（渲染处走 Industry 的 kindLabelText） */
               productGlyph={it.productGlyph}
               productBase={it.productBase}
+              productRef={it.productRef}
               countOwned={it.countOwned}
               ownedWhere={it.ownedWhere}
               onNeedMineral={onNeedMineral}

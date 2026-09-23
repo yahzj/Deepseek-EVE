@@ -47,6 +47,8 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
+/** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
+import { marketPriceOf } from '../ui/yieldView'
 import { partToneKeyOf, toneOf } from '../ui/Glyphs'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
@@ -558,6 +560,8 @@ export const BlueprintCard = memo(function BlueprintCard({
   productGlyph,
   productTone,
   productBase,
+  /** 产物引用（2026-09-23 船长令：装备/舰船改显示"市场当前价格" ⇒ 卡面要能按 id 取行情） */
+  productRef,
   countOwned,
   ownedWhere,
   onNeedMineral,
@@ -586,6 +590,9 @@ export const BlueprintCard = memo(function BlueprintCard({
   productTone?: string
   /** 产物市场现货基准价（×单次产出数量；0 = 市场无卡不显示估算） */
   productBase: number
+  /** 产物引用（kind + refId）——装备/舰船按船长 2026-09-23 口径改显示**市场当前价格**时按它取行情；
+   *  ⚠ 造船厂那张卡（`Shipyard.tsx`）暂时还没接上（缺产物 id）⇒ 该卡不渲染这一行，等接线 */
+  productRef?: { kind: 'module' | 'ship' | 'item'; refId: string }
   /** 产物"自己有多少"的取数闭包（2026-09-10 船长：卡面产物行尾要显示"我拥有多少个成品"）
    *  ⚠ 收闭包而不是收数值：数值随心跳变，收进来会让上面那张 memo 每拍失效（见 `cardLiveKeyOf`） */
   countOwned: () => number
@@ -767,14 +774,6 @@ export const BlueprintCard = memo(function BlueprintCard({
   }
 
   const feedTxt = short.length > 0 ? short.join('；') : ''
-  // 2026-09-08（二号·组装机收益体检 A 项）：卡面补「净 ≈信用点/h」——产物现货基准价 − 材料收价
-  // （材料学折扣后），按当前技能单件耗时折算每小时；未计销路与成交税（卖出按空间站收购档约
-  // 6~7 折，自用装配则按现货计）——与精炼/回收卡「净口径估算」同款视觉。
-  const matIsk = materials.reduce(
-    (s, m) => s + matNeedCount(state, m.count) * (engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
-    0,
-  )
-  const netPerH = productBase > 0 ? Math.round(((productBase - matIsk) / Math.max(1, buildMs)) * 3_600_000) : null
   const manualTitle =
     manualNote ??
     feedTxt ??
@@ -898,14 +897,21 @@ export const BlueprintCard = memo(function BlueprintCard({
           {tr("ui.Industry.049")}
           {running && feedTxt ? <span className="app-dim">{tr("ui.Industry.050")}</span> : null}
         </div>
-        {netPerH !== null ? (
-          <div
-            className={`app-belt-econ-val${netPerH < 0 ? ' is-neg' : ''}`}
-            title={tr("ui.Industry.111", { p1: netPerH < 0 ? tr("ui.Industry.051") : tr("ui.Industry.052") })}
-          >
-            {MONEY_GLYPH} ≈{netPerH.toLocaleString('zh-CN')} {tr("ui.IndustryPage.026")}{netPerH < 0 ? tr("ui.Industry.053") : tr("ui.Industry.054")}
-          </div>
-        ) : null}
+        {/**
+         * **产物读数换口径**（**2026-09-23 船长令**）：「各个有收益的卡牌上写着的收入预估…会严重误导玩家……
+         * **如果是装备和舰船的话，就单纯显示市场当前价格**」⇒ 原「净 ≈N 信用点/h」（产物基准价 − 材料收价
+         * 折算每小时）**整段删掉**，改为**产物当前行情价**一行（取数与市场页同源，见 `ui/yieldView.tsx`）。
+         */}
+        {productRef !== undefined
+          ? (() => {
+              const price = marketPriceOf(state, engine.ctx, productRef.refId)
+              return (
+                <div className="app-belt-econ-val">
+                  {productLabel} · {tr('ui.Yield.003')} {price !== null ? price.toLocaleString('zh-CN') : '—'}
+                </div>
+              )
+            })()
+          : null}
       </div>
 
       <div className="app-belt-actions">
@@ -1137,6 +1143,8 @@ interface ManuItem {
   /** 排序用：**产物唯一键**（`ship:`/`module:`/`item:` + 产物 id）——2026-09-14 船长：
    *  「一次性图纸应该和原图纸放在一起」⇒ 同产物成组，组内原图纸在前 */
   productKey: string
+  /** 产物引用（与 `productKey` 同义，拆成 kind + refId 供卡面取行情；见卡片 props 注释） */
+  productRef?: { kind: 'module' | 'ship' | 'item'; refId: string }
   /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
   singleUse: boolean
   /** 2026-09-20 零件体系：隐式蓝图（基础零件无需学习） */
@@ -1230,6 +1238,7 @@ export function ManufacturingPanel({
         productLabel: prodLabel,
         productNode: moduleDef ? <ModuleHover mod={moduleDef}>{prodText}</ModuleHover> : prodText,
         productBase: moduleDef ? productBaseOf(engine, 'module', moduleId) : 0,
+        productRef: { kind: 'module' as const, refId: moduleId },
         countOwned: () => countModule(engine.state, moduleId), // 装备产物 → 装备库件数
         ownedWhere: tr("ui.Industry.004"),
         bookPrice: bookPriceOf(engine, bp.id, 0),
@@ -1276,6 +1285,7 @@ export function ManufacturingPanel({
           prodText
         ),
         productBase: itemDef ? productBaseOf(engine, 'item', itemId, units) : 0,
+        productRef: { kind: 'item' as const, refId: itemId },
         countOwned: () => countWare(engine.state, itemId), // 弹药/物品产物 → 物品仓库单位数
         ownedWhere: tr("ui.ItemsPage.001"),
         bookPrice: bookPriceOf(engine, bp.id, 0),
@@ -1328,6 +1338,7 @@ export function ManufacturingPanel({
           prodText
         ),
         productBase: itemDef ? productBaseOf(engine, 'item', partItemId, bp.outputUnits ?? 1) : 0,
+        productRef: { kind: 'item' as const, refId: partItemId },
         countOwned: () => countWare(engine.state, partItemId),
         ownedWhere: '仓库', // l10n-keep：内容层联合 key（渲染走 ownedWhereText）
         bookPrice: bookPriceOf(engine, bp.id, 0),
@@ -1576,6 +1587,7 @@ export function ManufacturingPanel({
               productLabel={it.productLabel}
               productNode={it.productNode}
               kindLabel={it.kindLabel}
+              productRef={it.productRef}
               productGlyph={it.productGlyph}
               productTone={it.productTone}
               productBase={it.productBase}

@@ -30,8 +30,8 @@ export interface YieldLine {
   itemId: string
   name: string
   perHour: number | null
-  /** 仓库已拥有数量（船长口径：括号里那个数） */
-  owned: number
+  /** 仓库已拥有数量（船长口径：括号里那个数）；**装备/舰船类为 null ⇒ 不显示仓库**（船长：只显示行情价） */
+  owned: number | null
   /** 市场当前行情价（每单位；查不到 ⇒ null ⇒ 界面显示「—」） */
   price: number | null
 }
@@ -44,22 +44,36 @@ export function ownedInWarehouse(state: GameState, itemId: string): number {
 /**
  * **市场当前行情价**（每单位）——取市场页同一把尺：`marketGoodOf` 找商品条目 ⇒ `marketQuote` 读当前报价，
  * 优先卖方挂单（`sell`），没有则用买方挂单（`buy`）；都没有（未解锁 / 无人挂单）⇒ `null`（界面「—」）。
+ *
+ * 商品的"类"逐档试：物资/装备走 `item`/`module`，舰船走 `ship`（**2026-09-23**：组装机与造船厂的产物是
+ * 装备与舰船 ⇒ 按船长口径"单纯显示市场当前价格"，得先能找到它在市场上的条目）。
  */
 export function marketPriceOf(state: GameState, ctx: SimContext, itemId: string): number | null {
-  const good = marketGoodOf(ctx, 'item', itemId)
-  if (!good) return null
-  const quote = marketQuote(state, ctx, good.key)
-  const p = quote?.sell ?? quote?.buy
-  return typeof p === 'number' && p > 0 ? Math.round(p) : null
+  for (const kind of ['item', 'module', 'ship'] as const) {
+    const good = marketGoodOf(ctx, kind, itemId)
+    if (!good) continue
+    const quote = marketQuote(state, ctx, good.key)
+    const p = quote?.sell ?? quote?.buy
+    if (typeof p === 'number' && p > 0) return Math.round(p)
+  }
+  return null
 }
 
-/** 把各卡交来的产出条目补齐成可渲染的行 */
-export function yieldLinesOf(state: GameState, ctx: SimContext, rows: readonly YieldRow[]): YieldLine[] {
+/**
+ * 把各卡交来的产出条目补齐成可渲染的行。
+ * `opts.goods = true` ⇒ **装备 / 舰船**：按船长口径"**单纯显示市场当前价格**"（不折算每小时、不显示仓库）。
+ */
+export function yieldLinesOf(
+  state: GameState,
+  ctx: SimContext,
+  rows: readonly YieldRow[],
+  opts?: { goods?: boolean },
+): YieldLine[] {
   return rows.map((r) => ({
     itemId: r.itemId,
     name: ctx.items.get(r.itemId)?.name ?? r.itemId,
-    perHour: r.perHour,
-    owned: ownedInWarehouse(state, r.itemId),
+    perHour: opts?.goods === true ? null : r.perHour,
+    owned: opts?.goods === true ? null : ownedInWarehouse(state, r.itemId),
     price: marketPriceOf(state, ctx, r.itemId),
   }))
 }
@@ -77,8 +91,8 @@ export function YieldLines({ lines }: { lines: readonly YieldLine[] }) {
           <span className="app-yield-name">{l.name}</span>
           {l.perHour !== null ? <span className="app-yield-rate">×{num(l.perHour)}/h</span> : null}
           <span className="app-dim">
-            （{tr('ui.Yield.002')} {num(l.owned)}
-            {l.price !== null ? ` · ${tr('ui.Yield.003')} ${num(l.price)}` : ` · ${tr('ui.Yield.003')} —`}）
+            （{l.owned !== null ? `${tr('ui.Yield.002')} ${num(l.owned)} · ` : ''}
+            {tr('ui.Yield.003')} {l.price !== null ? num(l.price) : '—'}）
           </span>
         </div>
       ))}
