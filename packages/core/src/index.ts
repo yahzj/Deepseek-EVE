@@ -212,6 +212,7 @@ export type { IronmanLike, IronmanState } from './ironman'
 export {
   WEEKEND_AMBUSH_MUL,
   WEEKEND_CORE_THREAT,
+  WEEKEND_DEBUG_ONLY,
   WEEKEND_DEBUG_RESTART_MS,
   WEEKEND_DEBUG_TIME_DIVISOR,
   WEEKEND_ENCOUNTER_CAP,
@@ -241,6 +242,7 @@ export {
   weekendDebugOn,
   weekendEncounterChanceAt,
   weekendFlagshipView,
+  weekendFoeCardOf,
   weekendNoteContribution,
   weekendNpcTimelineMs,
   weekendOccupiedIds,

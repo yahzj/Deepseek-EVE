@@ -12,8 +12,9 @@
  * 3. **一切判据纯函数**（给 `nowWallMs` 就出结果）⇒ 用例可对任意时刻断言，不依赖 tick。
  */
 import type { SimContext } from './types'
-import type { GameState } from './state'
+import type { GameState, WormholeFamily } from './state'
 import { securityZoneOf } from './sideTasks'
+import { wormholeCardPoolAt } from './wormholeFoes'
 
 /* ─────────────── 常量（数值表 · 2026-09-23 Q1 定档后锁） ─────────────── */
 
@@ -42,6 +43,13 @@ export const WEEKEND_OFFLINE_SHIELD_MS = 24 * 3_600_000
 export const WEEKEND_START_WEEKDAY = 5 // 5 = 周五（JS getDay）
 export const WEEKEND_START_HOUR = 20
 export const WEEKEND_WINDOW_MS = 74 * 3_600_000
+/**
+ * **只有调试模式可见/可开**（**船长 2026-09-23 令**：「**目前入侵只有调试模式可见**」）。
+ * ⇒ 非调试模式**永不开局**（周五 20:00 那套排期代码留着，等船长解除限制即生效）；
+ * 引擎/界面/用例都读这一个开关，不做第二处判断。
+ */
+export const WEEKEND_DEBUG_ONLY = true
+
 /** 调试模式（`debugQuick`）：上一场结束 + 1 小时刷新（第 15 条）· NPC 时间轴 ÷60（Q6）· 关掉离线保护（Q7） */
 export const WEEKEND_DEBUG_RESTART_MS = 3_600_000
 export const WEEKEND_DEBUG_TIME_DIVISOR = 60
@@ -69,8 +77,28 @@ export interface WeekendEventState {
   flagshipDown?: 'player' | 'octopus'
 }
 
-/** 入侵族池（口径定稿：A 变种 / C / G / 新族×2；M1 先用现有族 id，M2/M3 补新族） */
-export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H1', 'H2']
+/**
+ * 入侵族池（口径定稿：**A 变种 / C / G / 新族×2**）。
+ * ⚠ **M1 只放"虫洞已有的族"**（A/C/G）——因为**敌卡暂用虫洞族卡**（船长 2026-09-23：
+ * 「入侵战斗采用独立设计的卡（之后设计），我们暂时先试用虫洞的」）；两个新族随 M3（独立卡/新族）一起进池。
+ */
+export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G']
+
+/* ─────────────── 敌卡：暂用虫洞族卡（独立卡后续批次再换） ─────────────── */
+
+/**
+ * **入侵舰队的敌卡**（**船长 2026-09-23**：「入侵战斗采用独立设计的卡（之后设计），**我们暂时先试用虫洞的**」）。
+ *
+ * 口径：① 数据全用**该族的虫洞卡**（`wormholeCardPoolAt`：外围取中层池、旗舰取最深池 ⇒ 与该族在虫洞里的编成一致）；
+ * ② **威胁 / 名字 / 奖励由入侵覆盖**（78 / 120，名「<族>舰队 · <卡名>」，奖励 ×1.4）；
+ * ③ 独立设计的入侵卡与各族 T5 旗舰留到 M2/M3 ⇒ 本函数是**唯一换卡点**（换卡只改这里）。
+ */
+export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): string {
+  const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
+  // 外围 ⇒ 中层池（层 5）· 旗舰 ⇒ 最深池（层 9）：两者都靠 `wormholeCardPoolAt` 的缺档兜底
+  const pool = wormholeCardPoolAt(fam, kind === 'flagship' ? 9 : 5)
+  return pool[0]!.id
+}
 
 /* ─────────────── 小工具：独立随机子流（不碰主 RNG） ─────────────── */
 
@@ -371,6 +399,8 @@ function clamp01(v: number): number {
  * - 返回是否发生了变化（供调用方决定是否落盘/记日志）。
  */
 export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs: number): boolean {
+  // 船长 2026-09-23：「目前入侵只有调试模式可见」⇒ 非调试模式不开局（也不结束、不推进）
+  if (WEEKEND_DEBUG_ONLY && !weekendDebugOn(state)) return false
   const ev = state.weekendEvent
   if (weekendDebugOn(state)) {
     if (ev && ev.endedAtWallMs === undefined) return false

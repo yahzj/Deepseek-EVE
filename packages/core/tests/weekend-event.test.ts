@@ -13,6 +13,8 @@ import { securityZoneOf } from '../src/sideTasks'
 import {
   WEEKEND_AMBUSH_MUL,
   WEEKEND_CORE_THREAT,
+  WEEKEND_DEBUG_ONLY,
+  WEEKEND_FAMILIES,
   WEEKEND_GAIN_REPEL,
   WEEKEND_NPC_CORE_MS,
   WEEKEND_NPC_PERIPHERY_MS,
@@ -29,6 +31,7 @@ import {
   weekendCoreProgressAt,
   weekendEncounterChanceAt,
   weekendFlagshipView,
+  weekendFoeCardOf,
   weekendNoteContribution,
   weekendPeripheryClearedAt,
   weekendPeripheryOf,
@@ -67,15 +70,16 @@ describe('周末入侵 · 时间轴', () => {
     expect(weekendWindowOpen(fri - H, weekendT0Of(fri - H))).toBe(false)
   })
 
-  it('正常模式：窗口内开一场，同周重复调用幂等；窗口外不开', () => {
-    const s = fresh()
+  it('仅调试模式可见（船长令）：正常模式不开局；调试模式可开且幂等', () => {
     const fri = new Date(2026, 8, 25, 20, 0, 0, 0).getTime()
-    expect(ensureWeekendEvent(s, ctx, fri + 1 * H), '窗口内 ⇒ 开').toBe(true)
-    expect(s.weekendEvent?.startedAtWallMs).toBe(fri)
-    expect(ensureWeekendEvent(s, ctx, fri + 2 * H), '同周再调 ⇒ 幂等').toBe(false)
-    const s2 = fresh()
-    expect(ensureWeekendEvent(s2, ctx, fri - 5 * H), '窗口外 ⇒ 不开').toBe(false)
-    expect(s2.weekendEvent).toBeUndefined()
+    const s = fresh()
+    expect(ensureWeekendEvent(s, ctx, fri + 1 * H), '正常模式 ⇒ 不开').toBe(false)
+    expect(s.weekendEvent).toBeUndefined()
+    expect(WEEKEND_DEBUG_ONLY).toBe(true)
+    const sd = fresh(true)
+    expect(ensureWeekendEvent(sd, ctx, fri + 1 * H), '调试模式 ⇒ 开').toBe(true)
+    expect(sd.weekendEvent?.startedAtWallMs, '调试模式 T0 = 调用时刻').toBe(fri + 1 * H)
+    expect(ensureWeekendEvent(sd, ctx, fri + 2 * H), '未结束 ⇒ 幂等').toBe(false)
   })
 
   it('调试模式：上一场结束后 1 小时刷新（首调即开）', () => {
@@ -88,6 +92,22 @@ describe('周末入侵 · 时间轴', () => {
     expect(ensureWeekendEvent(s, ctx, t + 40 * 60_000 + 30 * 60_000), '结束 +30 分钟 ⇒ 还不刷').toBe(false)
     expect(ensureWeekendEvent(s, ctx, t + 40 * 60_000 + 61 * 60_000), '结束 +61 分钟 ⇒ 刷').toBe(true)
     expect(s.weekendEvent?.seq, '编号 +1').toBe(2)
+  })
+})
+
+describe('周末入侵 · 敌卡（M1 暂用虫洞族卡）', () => {
+  it('族池只有虫洞已有的族 A/C/G；独立卡与新族留 M2/M3', () => {
+    expect([...WEEKEND_FAMILIES]).toEqual(['A', 'C', 'G'])
+  })
+
+  it('外围取中层池 · 旗舰取最深池，且都在敌卡表里；未知族兜底到池内第一族', () => {
+    for (const fam of WEEKEND_FAMILIES) {
+      const assault = weekendFoeCardOf(fam, 'assault')
+      const flagship = weekendFoeCardOf(fam, 'flagship')
+      expect(ctx.anomalies.get(assault), fam + ' 外围卡必须在敌卡表里').toBeTruthy()
+      expect(ctx.anomalies.get(flagship), fam + ' 旗舰卡必须在敌卡表里').toBeTruthy()
+    }
+    expect(weekendFoeCardOf('不存在的族', 'assault')).toBe(weekendFoeCardOf('A', 'assault'))
   })
 })
 
