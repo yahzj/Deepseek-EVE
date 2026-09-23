@@ -1293,7 +1293,8 @@ export function createPlayerSpec(
     if (turret.maxRangeM === undefined || turret.reloadMs === undefined) continue
     const count = group.length
     const type = turret.damageType ?? 'kinetic'
-    const mult = turret.dmgMult ?? 1
+    // ⟪2026-09-22 船长令⟫ 单轮发数 shots（缺省 1）：陵卫连装炮 = 4.6 × 2 ⇒ 单轮总伤与改前 9.2 逐字等价
+    const mult = (turret.dmgMult ?? 1) * (turret.shots ?? 1)
     const ammoDef = ctx.items.get(ammoIdFor(state, ctx, shipId, type, ammoIds))
     // V18B 武器族专精技能：按模块槽族取专精技能（turret→动能炮术 / missile→导弹发射学 /
     // laser→激光炮学），乘算于 dmgScale（炮术学）之上——族与族互不串乘

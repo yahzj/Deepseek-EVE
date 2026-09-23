@@ -149,11 +149,11 @@ describe('C 族异形件：无消耗自愈 + 结构抗性（2026-09-10 船长）
     const mk3 = ctx.modules.get('mod-laser-3')!
     expect(c3.dmgMult!).toBeGreaterThan(mk3.dmgMult!) // 单发更重
     expect(c3.reloadMs!).toBeLessThan(mk3.reloadMs!) // 射速比"原型"更快、但比裸件基线慢
-    // 总输出相当（±30% 以内）
+    // ⟪2026-09-22 船长令⟫ 酸液周期 3800 → 2800ms ⇒ 总输出由「相当」改为 **约 1.5×**（原窗口 ±30% 随之放宽）
     const dps = (m: { dmgMult?: number; reloadMs?: number }): number => (m.dmgMult ?? 0) / (m.reloadMs ?? 1)
     const ratio = dps(c3) / dps(mk3)
-    expect(ratio).toBeGreaterThan(0.9)
-    expect(ratio).toBeLessThan(1.3)
+    expect(ratio).toBeGreaterThan(1.3)
+    expect(ratio).toBeLessThan(1.7)
     // 代价：射程只有攻坚激光炮的三成以下
     expect(c3.maxRangeM!).toBeLessThan(mk3.maxRangeM! / 3)
     expect(w.maxRangeM).toBe(2800)

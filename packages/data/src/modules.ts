@@ -1261,7 +1261,8 @@ export const MODULES: readonly ModuleDef[] = [
     minRangeM: 180,
     hitRate: 0.84,
     falloff: 0.35, // 2026-09-11 船长定：本件**保持 0.35**（只把 D 族守墓者长炮单独上调到 0.6；普通 MK3 为 0.5）
-    reloadMs: 1200,
+    reloadMs: 500, // ⟪2026-09-22 船长令⟫ 1200 → 500（周期 0.5s：转管泼弹）
+  ammoPerShot: 0.5, // ⟪2026-09-22 船长令⟫ 每次开火消耗 0.5 发（与陵卫连装炮 ammoPerShot 同源字段）
     dmgMult: 1.8,
     cpuUse: 34,
     description:
@@ -1278,7 +1279,7 @@ export const MODULES: readonly ModuleDef[] = [
     minRangeM: 200,
     hitRate: 0.92,
     falloff: 1,
-    reloadMs: 2420, // 2026-09-15 船长「**提高所有导弹发射器10%的周期**」：2200 → **2420**（周期 +10%，其余字段一字未动）
+    reloadMs: 1720, // ⟪2026-09-22 船长令⟫ 2420 → 1720（周期 −0.7s） // 2026-09-15 船长「**提高所有导弹发射器10%的周期**」：2200 → **2420**（周期 +10%，其余字段一字未动）
     dmgMult: 2.6,
     cpuUse: 36,
     description:
@@ -1343,7 +1344,7 @@ export const MODULES: readonly ModuleDef[] = [
     minRangeM: 0,
     hitRate: 1,
     falloff: 0.35,
-    reloadMs: 3800,
+    reloadMs: 2800, // ⟪2026-09-22 船长令⟫ 3800 → 2800（周期 −1s）
     dmgMult: 4.4,
     cpuUse: 34,
     description:
@@ -1371,7 +1372,7 @@ export const MODULES: readonly ModuleDef[] = [
     hitRate: 1,
     falloff: 0.6, // 2026-09-11 船长定（自 main 同步 · 回调批 11e52e2）：守墓者长炮单件上调 0.45 → 0.6（射程尽头仍有六成命中，比 MK3 的 0.5 更准）
     reloadMs: 7350,
-    dmgMult: 10.35,
+    dmgMult: 13.35, // ⟪2026-09-22 船长令⟫ 10.35 → 13.35（单发倍率上调）
     cpuUse: 62,
     description:
       '命中 100%、12 km 超远程（射程尽头六成）；射速极慢、单发极重。',
@@ -1469,7 +1470,7 @@ export const MODULES: readonly ModuleDef[] = [
     hitRate: 0.8, // 船长审核：1 → 0.8
     falloff: 0.5,
     reloadMs: 5_600,
-    dmgMult: 7.04, // 船长审核：8.8 ×0.8（伤害降低 20%）
+    dmgMult: 8.54, // ⟪2026-09-22 船长令⟫ 7.04 → 8.54（单发倍率上调） // 船长审核：8.8 ×0.8（伤害降低 20%）
     cpuUse: 37, // 船长 2026-09-13：48 → 37（再降 11 点）
     secondaryDamagePct: 0.5, // 船长：附加伤害段 = 主段实收 ×50%，固定动能（与所耗爆炸弹无关）
     secondaryDamageType: 'kinetic',
@@ -1619,10 +1620,11 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerEngagement: 40,
     maxRangeM: 5_400, // 与本族窝点件（守墓者长炮 12 km 必中慢炮）拉开射程带与节奏：一门点名、一门清近
     minRangeM: 300,
-    hitRate: 0.86,
+    hitRate: 0.76, // ⟪2026-09-22 船长令⟫ 0.86 → 0.76（命中 −0.1）
     falloff: 0.4,
     reloadMs: 2_800, // 船长审核：1_600 → 2_800
-    dmgMult: 9.2, // 船长审核：4.6 → 9.2（单发翻倍）
+    dmgMult: 4.6, // ⟪2026-09-22 船长令⟫ 改回**双联装**写法：单发 4.6 × shots: 2（DPS 与 9.2 逐字等价，界面显示「4.6 × 2」）
+  shots: 2,
     ammoPerShot: 2, // 船长：每次攻击消耗 2 发弹药
     cpuUse: 46,
         description:
@@ -1660,7 +1662,7 @@ export const MODULES: readonly ModuleDef[] = [
     falloff: 0.1, // 激光件统一口径
     reloadMs: 6_800, // 代价：本套最慢
     dmgMult: 9.4,
-    cpuUse: 68,
+    cpuUse: 73, // ⟪2026-09-22 船长令⟫ 68 → 73（+5）
     description:
       '把陵墓顶端的棱镜拆下来当炮管：12.5 km 必中光束、单发极重。装填 6.8 秒——瞄准的时间，就是它全部的代价。',
   },
