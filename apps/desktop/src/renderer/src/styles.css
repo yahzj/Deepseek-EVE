@@ -2618,6 +2618,14 @@ html[data-locale='en'] body {
    与排队中的条目区分开（它已经在练，只能往下挪）。 */
 .app-train-chip.is-head { border-color: rgb(var(--wui-accent) / 0.55); background: rgb(var(--wui-accent) / 0.1); }
 
+/* **活动卡「产出」清单**（2026-09-23 船长令：卡面不再写「≈ ISK/h」折算值，改成
+   「物资 ×N/h（仓库 M · 行情 P）」逐项列）——`.app-yield*` 是该读数在**全仓唯一**的样式族。 */
+.app-yield { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+.app-yield-head { font-size: 10px; letter-spacing: 1px; }
+.app-yield-row { display: flex; align-items: baseline; gap: 6px; font-size: 11px; flex-wrap: wrap; }
+.app-yield-name { font-weight: 600; }
+.app-yield-rate { color: rgb(var(--wui-accent)); }
+
 .app-train-ask-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* 技能目录 · 图标模式（2026-09-09 船长：技能卡自适应网格——宽度足够同行更多；样式对齐 app-hand 族） */

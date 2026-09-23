@@ -32,6 +32,8 @@ import {
 } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
+/** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）——全仓唯一实现 */
+import { YieldLines, yieldLinesOf, type YieldRow } from '../ui/yieldView'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -398,23 +400,26 @@ function BeltCard({
   const galaxyName = galaxy?.name ?? tr('ui.Expedition.007')
   // 效率行（试点 2026-09-05）：每循环产量 × 循环时长 → 每小时产出与每小时估价。
   // 估价按物品本身 baseSellPriceIsk（不随市场浮动）；复合带按权重加权期望价值。
+  /**
+   * **产出读数换口径**（**2026-09-23 船长令**：「各个有收益的卡牌上写着的收入预估…会严重误导玩家…
+   * 其他活动只显示每小时能收获多少资源以及产出的物资的市场当前价格」）⇒
+   * 卡面不再出现「≈N ISK/h」这种折算值，改为逐项列「物资 ×N/h（仓库 M · 行情 P）」；
+   * 行文与取数全在 `ui/yieldView.tsx`（唯一实现），本页只交"每小时产什么、产多少"。
+   */
+  const yieldRows: YieldRow[] = []
   let effLine: string | null = null
-  let valLine: string | null = null
   const mp = getMiningParams(state, engine.ctx, { beltId: belt.id })
   if (mp) {
     const cyclesPerHour = 3_600_000 / mp.cycleMs
     const rows = belt.outputs?.length ? belt.outputs : [{ itemId: belt.oreId, weight: 1 }]
     const wsum = rows.reduce((s, r) => s + r.weight, 0)
-    let valuePerUnit = 0
+    // 复合矿带：按权重把"每小时总单位数"摊到各产出上（各行相加 = 总产量）
     for (const r of rows) {
-      const d = engine.ctx.items.get(r.itemId)
-      valuePerUnit += (r.weight / wsum) * (d?.baseSellPriceIsk ?? 0)
+      yieldRows.push({ itemId: r.itemId, perHour: Math.round((mp.unitsPerCycle * cyclesPerHour * r.weight) / wsum) })
     }
-    const perHourUnits = Math.round(mp.unitsPerCycle * cyclesPerHour)
-    const valuePerHour = Math.round(perHourUnits * valuePerUnit)
     const sec = Math.round(mp.cycleMs / 1000)
+    const perHourUnits = Math.round(mp.unitsPerCycle * cyclesPerHour)
     effLine = tr("ui.MapPage.085", { p1: mp.unitsPerCycle, sec: sec, p3: perHourUnits.toLocaleString('zh-CN') })
-    valLine = tr("ui.MapPage.086", { p1: valuePerHour.toLocaleString('zh-CN') })
   }
   // V13：所在星系未探索的矿带不可开采（卡片可见但锁定，提示先扫描）
   const unexplored = belt.galaxyId ? !isExplored(state, belt.galaxyId) : false
@@ -503,10 +508,11 @@ function BeltCard({
         {tr("ui.MapPage.025")} {galaxyName}{tr('ui.MapPage.112', { ore: oreDef?.name ?? belt.oreId })}{tr('ui.MapPage.113', { v: buy !== undefined ? isk(buy) : '—' })}
         {unexplored ? tr("ui.MapPage.026") : ''}
       </div>
-      {effLine || valLine ? (
+      {effLine || yieldRows.length > 0 ? (
         <div className="app-belt-econ" title={tr("ui.MapPage.027")}>
           {effLine ? <div><span className="app-ico"><Glyph name="nav-mine" size={12} color={NAV_TONES["nav-mine"]} /></span>{effLine}</div> : null}
-          {valLine ? <div className="app-belt-econ-val">{MONEY_GLYPH} {valLine}</div> : null}
+          {/* 产出逐项列（2026-09-23 船长令）：原来的「≈N ISK/h」折算值已彻底拿掉 */}
+          <YieldLines lines={yieldLinesOf(state, engine.ctx, yieldRows)} />
         </div>
       ) : null}
       {/* V16 复合矿带：本带可采出的全部产物与权重（每循环按权重抽取一种） */}

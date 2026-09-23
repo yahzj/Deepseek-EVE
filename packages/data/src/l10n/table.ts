@@ -3696,6 +3696,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillsPage.047": { zh: "已把 {p1} 项排入训练队列（前置练完即接目标本级）。", en: "Queued {p1} item(s): prerequisites first, then the skill's next level." },
   "ui.SkillsPage.048": { zh: "取消这一项会连带取消 {p1} 项依赖它的训练：", en: "Cancelling this also cancels {p1} dependent item(s):" },
   "ui.SkillsPage.049": { zh: "确认取消", en: "Confirm cancel" },
+  /* ── 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）── */
+  "ui.Yield.001": { zh: "产出", en: "Output" },
+  "ui.Yield.002": { zh: "仓库", en: "in storage" },
+  "ui.Yield.003": { zh: "行情", en: "market" },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },
   "ui.spaceBg.002": { zh: "绿星云", en: "Green nebula" },
   "ui.spaceBg.003": { zh: "紫星云", en: "Purple nebula" },
