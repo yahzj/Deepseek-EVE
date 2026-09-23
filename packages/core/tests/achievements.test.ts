@@ -58,7 +58,7 @@ const CHAIN_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'chain')
 const MILE_BADGES = ACHIEVEMENTS.filter((a) => a.source.kind === 'milestone')
 
 describe('成就徽章：表的口径（船长 2026-09-20 的两条裁定）', () => {
-  it('总数 = 13 任务 ＋ 50 链 ＋ 18 里程碑 = 81', () => {
+  it('总数 = 13 任务 ＋ 50 链 ＋ 18 里程碑 ＋ 2 铁人（隐藏）= 83', () => {
     // 13 条任务各 1 枚
     expect(TASK_BADGES.length).toBe(FIRST_TASKS.length)
     expect(FIRST_TASKS.length).toBe(13)
@@ -66,7 +66,7 @@ describe('成就徽章：表的口径（船长 2026-09-20 的两条裁定）', (
     expect(CHAIN_BADGES.length).toBe(50)
     // 第二批：六个家族 4+2+5+4+2+1 = 18
     expect(MILE_BADGES.length).toBe(18)
-    expect(ACHIEVEMENTS.length).toBe(81)
+    expect(ACHIEVEMENTS.length).toBe(83)
   })
 
   it('id 唯一（重复 id 会让账本互相覆盖）', () => {

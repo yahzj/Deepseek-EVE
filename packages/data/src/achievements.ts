@@ -256,11 +256,45 @@ function milestoneAchievements(): AchievementDef[] {
   }))
 }
 
-/** **全部徽章**（顺序 = 任务徽章 → 链徽章 → 里程碑；界面按此序铺同一张网格） */
+/**
+ * **铁人两枚隐藏徽章**（**2026-09-23 船长令**：「成就里添加一个关闭铁人的隐藏成就徽章。只有关闭后才出现。
+ * 否则玩家不可见，铁人模式的徽章同理」＋「进入铁人模式即得」）。
+ *
+ * - 「铁人」：**进入铁人模式即得**（身份标记）；未进入铁人前**不出现在成就页**（`hidden`）。
+ * - 「铁人 · 已关闭」：**关闭那一刻才出现/可得**；普通档玩家眼里它根本不存在。
+ * 判定（`core/achievements.ts` 的 `achievementReached`）读 `state.ironman` **现算** ⇒ 自愈、幂等。
+ */
+function ironmanAchievements(): AchievementDef[] {
+  return [
+    {
+      id: 'ach-ironman',
+      name: '铁人',
+      note: '以铁人模式开局或转换：存档代次只前进，装载更早的档会被拒绝。',
+      category: 'ironman',
+      pattern: 'ach-ironman',
+      tone: '#c9a227',
+      hidden: true,
+      source: { kind: 'ironman' },
+    },
+    {
+      id: 'ach-ironman-closed',
+      name: '铁人 · 已关闭',
+      note: '关闭过铁人模式：代次从此冻结，不再上升。',
+      category: 'ironman',
+      pattern: 'ach-ironman',
+      tone: '#8a8f98',
+      hidden: true,
+      source: { kind: 'ironmanClosed' },
+    },
+  ]
+}
+
+/** **全部徽章**（顺序 = 任务徽章 → 链徽章 → 里程碑 → 铁人两枚；界面按此序铺同一张网格） */
 export const ACHIEVEMENTS: readonly AchievementDef[] = [
   ...taskAchievements(),
   ...chainAchievements(),
   ...milestoneAchievements(),
+  ...ironmanAchievements(),
 ]
 
 /** 按 id 取一枚徽章 */

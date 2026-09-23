@@ -33,6 +33,13 @@ function savePath(): string {
   return join(app.getPath('userData'), SAVE_FILE_NAME)
 }
 
+/* ───────── 铁人模式：存档之外的代次账本与读写（2026-09-23 船长令） ───────── */
+import { ironmanLedgerStore, ironmanInfoOfSaveText as readIronmanInfoOfSaveText } from './ironmanLedger'
+
+/** 账本落在 userData 目录（与 save.json 同目录）；实现与回归在 ./ironmanLedger.ts + tools/ironman-ledger-check.ts */
+const ledger = ironmanLedgerStore(() => app.getPath('userData'))
+const ironmanInfoOfSaveText = readIronmanInfoOfSaveText
+
 /* ───────── 存档备份/恢复（B5） ───────── */
 
 /** 备份文件名时间戳：save-YYYYMMDD-HHmmss(.json)；同秒冲突自动加 -n */
@@ -86,7 +93,30 @@ function registerSaveHandlers(): void {
     const tmp = `${file}.tmp`
     await fs.writeFile(tmp, data, 'utf8')
     await fs.rename(tmp, file)
+    // 铁人模式：把这份档的代次推到**账本**（只增不减；普通档代次恒 0 ⇒ 账本不动）
+    const info = ironmanInfoOfSaveText(data)
+    if (info && info.seq > 0) void ledger.bumpLedger(info.seq)
     return true
+  })
+
+  // 铁人账本只读（渲染层装载前判闸门用；写一律由 save:save 顺带完成）
+  ipcMain.handle('ironman:ledger', async () => {
+    try {
+      const l = await ledger.readLedger()
+      return { ok: true, seq: l.seq, rescues: l.rescues }
+    } catch (err) {
+      return { ok: false, seq: 0, rescues: 0, error: String(err) }
+    }
+  })
+
+  // 救援记账：渲染层判定为"救援装载"后回报一次（只累加计数；**玩家侧不显示**——船长令）
+  ipcMain.handle('ironman:note-rescue', async () => {
+    try {
+      await ledger.bumpLedger(0, true)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: String(err) }
+    }
   })
 
   // 备份：把当前存档复制成带时间戳的文件
@@ -104,12 +134,12 @@ function registerSaveHandlers(): void {
     try {
       const dir = app.getPath('userData')
       const names = await fs.readdir(dir)
-      const backups: Array<{ name: string; size: number; wallMs: number }> = []
+      const backups: Array<{ name: string; size: number; wallMs: number; savedAtWallMs: number }> = []
       for (const f of names) {
         if (!BACKUP_FILE_RE.test(f)) continue
         try {
           const st = await fs.stat(join(dir, f))
-          backups.push({ name: f, size: st.size, wallMs: st.mtimeMs })
+          backups.push({ name: f, size: st.size, wallMs: st.mtimeMs, savedAtWallMs: await ledger.savedAtOfBackup(f) })
         } catch {
           // 个别文件不可读则跳过
         }

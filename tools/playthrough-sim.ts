@@ -84,6 +84,8 @@ import {
   repairDeprecatedModules,
   DSI_FACTION_ID,
   sellShipAtMarket,
+  // 2026-09-23 铁人模式：`--ironman` 开关（同一 seed 对照「普通 vs 铁人」的达成天数）
+  enterIronman,
 } from '@whale/core'
 import type { GameState, SimContext, AnomalyDef, ShipDef } from '@whale/core'
 import { buildSimContext } from '@whale/data'
@@ -168,6 +170,13 @@ const GOAL_NAMES: Record<'boss' | 'tril' | 'collect' | 'bounties' | 'whach' | 'i
 
 const ctx: SimContext = buildSimContext()
 const state: GameState = createInitialState({ nowWallMs: Date.now(), seed: SEED })
+/**
+ * **`--ironman`：以铁人档跑同一条时间线**（2026-09-23 铁人模式 S5 标定用）。
+ * 只在开局入模 ⇒ 与默认跑法**同一 seed、同一策略**，逐项差异都只来自铁人福利那八个乘区。
+ * 报告抬头会标出模式，便于把两张读数并排看（`docs/design/ironman-mode-20260923.md` §标定）。
+ */
+const IRONMAN = ARGS.includes('--ironman')
+if (IRONMAN) enterIronman(state, Date.now(), 0)
 state.debugQuick = !REAL_TRAINING
 const MAX_MS = MAX_DAYS * 86_400_000
 const STEP_MS = 60_000
@@ -3282,7 +3291,7 @@ const wallSec = ((Date.now() - wall0) / 1000).toFixed(1)
 /* ═══════════ 报告 ═══════════ */
 const lines: string[] = []
 lines.push('══════════ 全流程模拟报告 ═══════════')
-lines.push(`debugQuick=${!REAL_TRAINING} seed=${SEED} 上限 ${MAX_DAYS} 天 目标=${GOAL_RAW}`)
+lines.push(`debugQuick=${!REAL_TRAINING} seed=${SEED} 上限 ${MAX_DAYS} 天 目标=${GOAL_RAW} 模式=${IRONMAN ? '铁人' : '普通'}`)
 const resultTxt = allGoalsDone()
   ? '✅ 目标全部达成'
   : holeEarlyExit

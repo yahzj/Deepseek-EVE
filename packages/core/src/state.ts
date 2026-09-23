@@ -2025,6 +2025,21 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
    * 新档不带它 ⇒ 一律走"玩家点「完成」"的手动流程。可选字段 ⇒ 新档快照不含它（零迁移）。
    */
   firstTaskAutoClaim?: boolean
+  /**
+   * **铁人模式**（**2026-09-23 船长令**：「**和玩家讨论了下，发现好像搞一个铁人模式更受欢迎**」＋
+   * 「玩家的导出的存档会带版本号。如果导入一个铁人存档的版本号比当前存档的版本号更靠前则会导入失败。
+   * 玩家重置档案并不会清空这个版本号」）。
+   *
+   * 语义（细则见 `core/ironman.ts` 与工作文档 `docs/design/ironman-mode-20260923.md`）：
+   * - `on`：当前是否处于铁人模式（**只能关闭、不可再开启**）；
+   * - `seq`：**存档代次**——每次落盘 +1；**普通档也记**（只显示、不拦），铁人档用它做"装载闸门"：
+   *   装载（导入/恢复）一份 `seq` 小于 `max(当前档 seq, 账本最高 seq)` 的档 ⇒ **拒绝**；
+   * - `sinceWallMs` / `closedWallMs`：转为铁人 / 关闭铁人的墙钟（徽章判据与界面展示用）。
+   *
+   * 可选字段、**零迁移**：老档没有它 ⇒ 读作"普通档、代次 0"（`ironmanFrom` 现算兜底）。
+   * ⚠ 代次**必须与"存档之外的账本"配合**才有意义（账本在 `%APPDATA%` 下，重置档案不清空）。
+   */
+  ironman?: IronmanState
 }
 /** 对外统一称呼：当前版本状态（v31 = v30 + 任务改手动完成） */
 /**
@@ -2038,6 +2053,24 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
  */
 export type GameState = GameStateV31 & {
   resupplyFromWarehouse?: boolean
+}
+
+/**
+ * **铁人模式状态**（2026-09-23 船长令；`GameState.ironman` 的类型）。
+ *
+ * 为什么代次要**同时**放进存档与"存档之外的账本"：只放存档里 ⇒ 回滚会把代次一起带回（等于没记）；
+ * 账本（`%APPDATA%\whale-idle\ironman-ledger.json`，主 + 影子双写）才挡得住"换文件回滚"。
+ * 规则：装载一份 `seq < max(当前档, 账本)` 的档 ⇒ 铁人档拒绝；**存档年龄 ≥48 小时**的可走**救援**放行。
+ */
+export interface IronmanState {
+  /** 是否处于铁人模式（**只能关、不可再开**） */
+  on: boolean
+  /** **存档代次**：每次落盘 +1（普通档也记） */
+  seq: number
+  /** 转为铁人（或开启铁人新档）的墙钟毫秒 */
+  sinceWallMs?: number
+  /** 关闭铁人的墙钟毫秒（**「关闭铁人」隐藏徽章的判据**） */
+  closedWallMs?: number
 }
 
 /** **成就徽章的存档面**：只存"哪几枚到手了 ＋ 到手时刻"——图案/名称/说明一律现算 */
@@ -2751,6 +2784,8 @@ export function createInitialState(opts?: {
     commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},
     debugQuick: false,
+    // 2026-09-23 铁人模式：新档一律写上「普通档 · 代次 0」（老档缺字段 ⇒ 同一读法；见 IronmanState）
+    ironman: { on: false, seq: 0 },
     completedBounties: [],
     encounter: {
       active: false,

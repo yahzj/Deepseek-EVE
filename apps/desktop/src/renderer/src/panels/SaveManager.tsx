@@ -13,6 +13,9 @@ function fmtTime(wallMs: number): string {
   return new Date(wallMs).toLocaleString('zh-CN', { hour12: false })
 }
 
+/** 铁人模式读数（S4b）：代次/开关/救援门槛，全部由引擎现取 */
+type IronmanStatus = Awaited<ReturnType<GameEngine['ironmanStatus']>>
+
 export function SaveManager({
   engine,
   onToast,
@@ -26,13 +29,21 @@ export function SaveManager({
   const [busy, setBusy] = useState(false)
   /** 删除二次确认：记住正在等待确认的备份名（再点一次才真删） */
   const [armDelete, setArmDelete] = useState<string | null>(null)
+  /** 铁人开启/关闭的二次确认（同删除那一套：第一次点只进确认态） */
+  const [im, setIm] = useState<IronmanStatus | null>(null)
+  const [armIron, setArmIron] = useState<'on' | 'off' | null>(null)
 
   async function refresh(): Promise<void> {
     setBackups(await engine.listSaveBackups())
   }
 
+  async function refreshIronman(): Promise<void> {
+    setIm(await engine.ironmanStatus())
+  }
+
   useEffect(() => {
     void refresh()
+    void refreshIronman()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine])
 
@@ -110,6 +121,48 @@ export function SaveManager({
     }
   }
 
+  /** 开启（旧档一次性转换）/ 关闭铁人模式：两段确认，第二次点才真做 */
+  async function handleIronman(): Promise<void> {
+    if (im === null) return
+    if (im.on) {
+      if (armIron !== 'off') {
+        setArmIron('off')
+        return
+      }
+      setArmIron(null)
+      setBusy(true)
+      const r = await engine.closeIronmanNow()
+      setBusy(false)
+      if (!r.ok) onToast(cmdText(r) || tr('ui.Ironman.019'), true)
+      else {
+        onToast(tr('ui.Ironman.015'))
+        void refreshIronman()
+      }
+      return
+    }
+    if (im.ever) return // 单向门：关闭过就没有入口（引擎也会拒）
+    if (armIron !== 'on') {
+      setArmIron('on')
+      return
+    }
+    setArmIron(null)
+    setBusy(true)
+    const r = await engine.enterIronmanNow()
+    setBusy(false)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Ironman.019'), true)
+    else {
+      onToast(tr('ui.Ironman.014'))
+      void refreshIronman()
+    }
+  }
+
+  /** 该备份能不能当救援档：铁人档 ＋ 档龄 ≥ 两天（按档内保存时刻，缺则退回文件时间） */
+  function rescueReady(b: SaveBackupInfo): boolean {
+    if (im === null || !im.on) return false
+    const age = Date.now() - (b.savedAtWallMs ?? b.wallMs)
+    return age >= im.rescueMinAgeMs
+  }
+
   return (
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal" onClick={(e) => e.stopPropagation()}>
@@ -135,6 +188,42 @@ export function SaveManager({
             </button>
             {busy ? <span className="app-dim">{tr("ui.SaveManager.017")}</span> : null}
           </div>
+          {/* 铁人模式（S4b）：状态/代次 ＋ 转换或关闭（两段确认）；福利走悬停说明 */}
+          <div className="app-bay-title">{tr("ui.Ironman.020")}</div>
+          <div className="app-save-actions">
+            <span className="app-dim">
+              {im === null
+                ? '…'
+                : im.on
+                  ? tr('ui.Ironman.001', { p1: String(im.seq) })
+                  : im.ever
+                    ? tr('ui.Ironman.008', { p1: String(im.seq) })
+                    : tr('ui.Ironman.007')}
+            </span>
+            {im !== null && !im.on && !im.ever ? (
+              <>
+                <button
+                  className={`app-btn is-small${armIron === 'on' ? ' is-warn' : ' is-primary'}`}
+                  onClick={() => void handleIronman()}
+                  disabled={busy}
+                  title={armIron === 'on' ? tr('ui.Ironman.022') : tr('ui.Ironman.021')}
+                >
+                  {armIron === 'on' ? tr('ui.Ironman.003') : tr('ui.Ironman.002')}
+                </button>
+                <HintIcon tip={tr('ui.Ironman.006')} />
+              </>
+            ) : null}
+            {im !== null && im.on ? (
+              <button
+                className={`app-btn is-small${armIron === 'off' ? ' is-warn' : ''}`}
+                onClick={() => void handleIronman()}
+                disabled={busy}
+                title={armIron === 'off' ? tr('ui.Ironman.023') : tr('ui.Ironman.024')}
+              >
+                {armIron === 'off' ? tr('ui.Ironman.005') : tr('ui.Ironman.004')}
+              </button>
+            ) : null}
+          </div>
           <div className="app-bay-title">{tr("ui.SaveManager.018")}{backups === null ? '…' : backups.length}）</div>
           {backups === null ? (
             <div className="app-dim app-inv-empty">{tr("ui.SaveManager.019")}</div>
@@ -148,6 +237,7 @@ export function SaveManager({
                     <span className="app-inv-name">{b.name}</span>
                     <span className="app-inv-count">
                       {fmtTime(b.wallMs)} · {(b.size / 1024).toFixed(1)} KB
+                      {rescueReady(b) ? ` · ${tr('ui.Ironman.010')}` : ''}
                     </span>
                   </div>
                   <div className="app-inv-btns">

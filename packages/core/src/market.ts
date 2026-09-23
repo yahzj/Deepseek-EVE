@@ -39,6 +39,7 @@ import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID } from './expedition'
+import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
 
 /* ═══════════ 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，协会收购网扩容，
  * 玩家"单件商品"卖出吞吐 ×1.5，乘法叠加无封顶——只作用于单件商品（装备/蓝图/船等件货的
@@ -79,7 +80,8 @@ const SWEEP_PER_LEVEL = 0.1
 const SECONDHAND_PER_LEVEL = 0.02
 /** rare NPC 订单存在时长倍率（9 分钟 → 36 分钟；供给/收购两侧同规则） */
 const RARE_LIFE_MUL = 4
-/** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量） */
+/** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量）
+ * ⚠ **铁人福利 B 在此之上 +2**（船长 2026-09-23：「奇货订单每窗最大数量+2」）⇒ 铁人档每窗至多 4 张。 */
 const EXOTIC_CAP_PER_DRAW = 2
 /** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
  * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
@@ -556,11 +558,12 @@ function rarePoolStats(state: GameState, ctx: SimContext): { unlockedN: number; 
 }
 
 /** 本抽取窗 rare 供给张数 N：浮动百分比 × 已解锁件数（船长 2026-09-06 定：基数=已解锁件数、
- * 删除旧 4~9 张/批加成；加新商品自动按比例扩），现货抢购学放大；池内有货时至少抽 1 张。 */
+ * 删除旧 4~9 张/批加成；加新商品自动按比例扩），现货抢购学放大；池内有货时至少抽 1 张。
+ * **铁人福利 B**（2026-09-23 船长令「稀有订单出现权重 +100%」）⇒ 张数 ×2（非铁人 ×1，逐字不变）。 */
 function rareDrawCount(state: GameState, ctx: SimContext, stat: { unlockedN: number; lockedN: number }): number {
   if (stat.unlockedN + stat.lockedN <= 0) return 0
   const r = RARE_PCT_MIN + (RARE_PCT_MAX - RARE_PCT_MIN) * nextRandom(state.rng)
-  return Math.max(1, Math.round(r * stat.unlockedN * sweepMul(state)))
+  return Math.max(1, Math.round(r * stat.unlockedN * sweepMul(state) * ironmanRareWeightMul(state)))
 }
 
 /** 价格小史保留窗数（每窗 = balance.market.tickMs，默认 30 分钟）。
@@ -717,10 +720,11 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
   const winners: MarketGoodDef[] = []
   for (const def of ctx.marketGoods.values()) {
     if (def.rarity !== 'exotic' || def.playerBuyable === false) continue
-    const chance = ctx.balance.market.exoticWindowChance * sweep * blueprintWeight(def, ctx)
+    // **铁人福利 B**（2026-09-23 船长令「奇货订单权重 +100%」）⇒ 命中概率 ×2（封顶仍走 EXOTIC_CAP_PER_DRAW）
+    const chance = ctx.balance.market.exoticWindowChance * sweep * blueprintWeight(def, ctx) * ironmanExoticWeightMul(state)
     if (nextRandom(state.rng) < chance) winners.push(def)
   }
-  while (winners.length > EXOTIC_CAP_PER_DRAW) {
+  while (winners.length > EXOTIC_CAP_PER_DRAW + ironmanExoticCapBonus(state)) {
     winners.splice(nextInt(state.rng, winners.length), 1) // 随机抽选（每次删一张，结果均匀）
   }
   for (const def of winners) spawnExoticSupply(state, ctx, def, now)
@@ -820,7 +824,9 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
   if (def.rarity === 'common') {
     if (def.poolTarget && def.poolTarget > 0) {
       // 池商品：按价格档铺阶梯（船长 2026-09-05：不要全部挤在一个价——不同档位不同价/量，低价品取整后也差 ≥1 ISK）
-      const flow = def.supplyFlow ?? Math.max(1, Math.round(def.poolTarget / 120))
+      // **铁人福利 B**（2026-09-23 船长令「常驻行情每窗刷单量 +200%」）⇒ 流量 ×3（买卖两侧阶梯同时放大；
+      // 价格侧**不动** ⇒ 只影响"簿面有多厚"，不影响行情中枢）。非铁人 ×1 ⇒ 既有读数逐字不变。
+      const flow = (def.supplyFlow ?? Math.max(1, Math.round(def.poolTarget / 120))) * ironmanCommonFlowMul(state)
       const p = 1 - 0.5 * ((poolQ - def.poolTarget) / def.poolTarget)
       const pClamped = Math.max(0.4, Math.min(1.6, p))
       const avail = Math.max(0.05, Math.min(1.5, poolQ / def.poolTarget))

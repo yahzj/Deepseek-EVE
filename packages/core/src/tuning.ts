@@ -25,6 +25,7 @@
  * 促销与 `TUNING_RULES` **共用同一套日期判据**（`dayWindowActiveAt` / `dayWindowEndMs`）。
  */
 import type { GameState } from './state'
+import { ironmanRareDropMul, ironmanRewardMul } from './ironman'
 
 /**
  * **可调目标清单（白名单）**。新增一项 = 在这里登记一行 + 在读取点乘 `tuningMul` + 补一条用例。
@@ -238,6 +239,23 @@ export function tuningMulAt(key: TunableKey, nowMs: number | null | undefined): 
 /** **引擎/界面统一入口**：读 `state.wallMs`（未设 ⇒ 1×，工具与用例天然免疫） */
 export function tuningMul(state: Pick<GameState, 'wallMs'> | null | undefined, key: TunableKey): number {
   return tuningMulAt(key, state?.wallMs ?? null)
+}
+
+/**
+ * **奖励类读取点的唯一入口** ＝ 限时倍率 × **铁人福利 C**（悬赏/任务奖励 +10%，2026-09-23 船长令）。
+ *
+ * 为什么在这里收口：奖励倍率有两个来源（限时表 + 模式福利），散在 5 处各乘一次迟早会漏一处；
+ * 而 `tuningMul(state, 'rewardIsk')` 这句字面量留在本文件里 ⇒ `content:check` 的「限时倍率契约」
+ * 第 ④ 条（每个开关都必须被引擎真正消费）照旧成立。
+ * 非铁人档 ⇒ 铁人那一项恒 1× ⇒ 既有读数逐字不变。
+ */
+export function rewardMulOf(state: Pick<GameState, 'wallMs' | 'ironman'> | null | undefined): number {
+  return tuningMul(state, 'rewardIsk') * ironmanRewardMul(state)
+}
+
+/** **稀有残骸掉率读取点的唯一入口** ＝ 限时倍率 × **铁人福利 C**（掉率 30% → 36%） */
+export function rareDropRateMulOf(state: Pick<GameState, 'wallMs' | 'ironman'> | null | undefined): number {
+  return tuningMul(state, 'rareWreckRate') * ironmanRareDropMul(state)
 }
 
 /** 生效中的加成（界面读数用：按规则顺序，带剩余时间与倍率） */
