@@ -12,6 +12,7 @@
  */
 import type { SimContext } from './types'
 import type { GameState } from './state'
+import { addItem } from './inventory'
 import {
   WEEKEND_CORE_THREAT,
   WEEKEND_PERIPHERY_THREAT,
@@ -227,4 +228,28 @@ export function weekendSettlePlanOf(
     isk: tier.isk,
     blackBoxToPlayer: ev.flagshipDown === 'player',
   }
+}
+
+/* ─────────────── 奖励入账（M1-b 第五片） ─────────────── */
+
+/** 稀有残骸的**物品 id**（奖励口径：`wreck-rare`；与打捞/回收同一种货币化残骸） */
+export const WEEKEND_RARE_WRECK_ID = 'wreck-rare'
+
+/**
+ * **把结算结果真正发下去**（引擎在拿到 `weekendResolveBattle` / `weekendSettlePlanOf` 的结果后调用）：
+ * - ISK 直接进钱包；
+ * - 稀有残骸走 `addItem` 进物品仓库（与战利品同一条入库路径）；
+ * - **黑匣暂不发物品**（数据表里还没有这件，M4「黑匣入库与定价」一起做）⇒ 只在返回值里带回数量。
+ *
+ * ⚠ 幂等由调用方保证（`weekendResolveBattle` 的"夺回只发一次"已在那一层判过）。
+ */
+export function weekendGrantRewards(
+  state: GameState,
+  reward: { isk?: number; wreck?: number; blackBox?: boolean },
+): { isk: number; wreck: number; blackBox: number } {
+  const isk = Math.max(0, Math.round(reward.isk ?? 0))
+  const wreck = Math.max(0, Math.round(reward.wreck ?? 0))
+  if (isk > 0) state.wallet.isk += isk
+  if (wreck > 0) addItem(state, WEEKEND_RARE_WRECK_ID, wreck)
+  return { isk, wreck, blackBox: reward.blackBox ? 1 : 0 }
 }

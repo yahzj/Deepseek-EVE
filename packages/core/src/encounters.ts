@@ -72,6 +72,9 @@ import { startTransitHome } from './location'
 import { cancelAiTask } from './ai'
 import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
 import { repairWithKitsFor } from './shipyard'
+// 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
+import { weekendAmbushThreatOf, weekendEncounterChanceAt } from './weekendEvent'
+import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
 
 /** 一口遇袭伤害（HP）= 敌群火力代理 × 暴露系数（船长 2026-09-11 定：按敌人火力，不再用固定骰）。
  *  算法本体见 `hullDamage.ts`（与**战斗撤退**共用同一套：先扣装甲、吸完再进结构、结构 5% 底线）。 */
@@ -200,14 +203,21 @@ function tierIdOf(threat: number): string {
   return best.id
 }
 
-/** 事发星系可见悬赏敌群池（hidden 遭遇模板不算——2026-09-09 与打捞抽池/悬赏目录同口径） */
-function localBountyPoolOf(ctx: SimContext, galaxyId: string): AnomalyDef[] {
+/**
+ * 事发星系可见悬赏敌群池（hidden 遭遇模板不算——2026-09-09 与打捞抽池/悬赏目录同口径）。
+ *
+ * **2026-09-23 周末入侵**：被占星系**整池换成入侵舰队派生卡**（`weekendBountyCardsOf`：只覆盖
+ * id / 名字 / 威胁 / 奖励）⇒ **悬赏目录与遇袭同时看到入侵舰队**，无需第二处改动。
+ * ⚠ 未传 `state`/`nowWallMs` ⇒ 老口径（原卡池），旧调用方与既有用例行为一字不变。
+ */
+function localBountyPoolOf(ctx: SimContext, galaxyId: string, state?: GameState, nowWallMs?: number): AnomalyDef[] {
   const out: AnomalyDef[] = []
   for (const a of ctx.anomalies.values()) {
     if (a.hidden) continue
     if (a.galaxyId === galaxyId) out.push(a)
   }
-  return out
+  if (!state || nowWallMs === undefined) return out
+  return [...weekendBountyCardsOf(state, out, galaxyId, nowWallMs)]
 }
 
 /** 伏击敌群解析：优先 encounter.anomalyId；旧档遗留按事发星系可见敌群就近威胁兜底（仍无 → null） */
@@ -606,21 +616,32 @@ export function maintainPresence(state: GameState, ctx: SimContext): void {
  * （及区域冷却），按星系安全度概率遇袭；命中即产生遭遇并返回 true（本次事件时机被占用，
  * 本段不再出随机事件）；未中返回 false（随机事件照常）。
  */
-export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale = 1): boolean {
+export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale = 1, nowWallMs = Date.now()): boolean {
   if (state.encounter.active) return false // 已有未了结遭遇：不叠
   const bal = ctx.balance.encounter
+  /** **周末入侵**：被占星系（活的占领区）**破例**——不看安全等级、不受入场缓冲限制 */
+  const invadedOf = (galaxyId: string): boolean => weekendEncounterAllowedIn(state, galaxyId, nowWallMs)
   for (const exp of collectExposures(state, ctx)) {
+    const invaded = invadedOf(exp.galaxyId)
     const since = state.lowSecPresence[exp.galaxyId]
     // 扫描即暴露：不受入场缓冲限制（含无在场记录的情形；船长 2026-09-05 定）
     const isScan = exp.kind === '扫描'
-    if (!isScan && (since === undefined || state.gameMs - since < bal.entryBufferMs)) continue
+    if (!isScan && !invaded && (since === undefined || state.gameMs - since < bal.entryBufferMs)) continue
     const cd = state.encounterZoneCooldown[exp.galaxyId] ?? 0
     if (state.gameMs < cd) continue
     const sec = secOf(ctx, exp.galaxyId)
     // 概率曲线零点 = **低安上限**（`lowSecMax`，2026-09-12 船长定值 0）：
     // sec=0 → 5%（基线）、sec=−1 → 20%（0.05 + 0.15×1），与 balance 段注释的定义一致。
-    let p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.lowSecMax - sec)))
-    if (isScan) p = Math.min(0.9, p * (bal.scanAmbushMul ?? 1)) // 扫描低安：遇袭概率 ×scanAmbushMul
+    let p: number
+    if (invaded) {
+      // **周末入侵**：占领区一律高频遇袭（中安/高安破例）；`p = 60%×(1−进度)`（口径定稿 #4）
+      p = weekendEncounterChanceAt(state, state.weekendEvent!, exp.galaxyId, nowWallMs)
+    } else {
+      // 概率曲线零点 = **低安上限**（`lowSecMax`，2026-09-12 船长定值 0）：
+      // sec=0 → 5%（基线）、sec=−1 → 20%（0.05 + 0.15×1），与 balance 段注释的定义一致。
+      p = Math.min(0.9, bal.ambushChanceAtZero + bal.ambushChancePerSec * Math.min(1.5, Math.max(0, bal.lowSecMax - sec)))
+      if (isScan) p = Math.min(0.9, p * (bal.scanAmbushMul ?? 1)) // 扫描低安：遇袭概率 ×scanAmbushMul
+    }
     // 2026-09-08（星际奇遇学缩短事件间隔）：事件到点更密 → 单次遇袭率 ×cadenceScale，
     // 使"每小时遇袭期望"保持与无技能基线一致（船长定：按期望值不变进行修改）
     if (cadenceScale < 1) p = Math.min(0.9, p * Math.max(0, cadenceScale))
@@ -633,20 +654,34 @@ export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale
 
 /** 命中 → 产生一次遭遇（2026-09-09：伏击敌群 = 事发星系可见悬赏敌群随机抽一个；无池 = 不伏击）。
  * 返回是否真正产生（占用区域冷却与事件时机）。 */
-function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure): boolean {
+function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure, nowWallMs = Date.now()): boolean {
   const bal = ctx.balance.encounter
-  const pool = localBountyPoolOf(ctx, exp.galaxyId)
+  const pool = localBountyPoolOf(ctx, exp.galaxyId, state, nowWallMs)
   if (pool.length === 0) return false
-  const foe = pickOne(state.rng, pool)!
+  const ev = state.weekendEvent
+  const invaded = weekendEncounterAllowedIn(state, exp.galaxyId, nowWallMs)
+  /**
+   * 被占星系：**伏击强度按入侵口径**（外围 39 / 核心 60）⇒ 池里挑**威胁最接近**的那张，并把 id
+   * **还原成原卡**（派生 id 不在 `ctx.anomalies` 里，战斗开不起来）。
+   * ⚠ 战斗本身仍按原卡的编成/威胁走（`startBattleFor` 没有威胁覆写口）⇒ 这一层只做"就近选卡"，已登记待补。
+   */
+  const wantThreat = invaded && ev ? weekendAmbushThreatOf(ev, exp.galaxyId) : undefined
+  const foe =
+    wantThreat === undefined
+      ? pickOne(state.rng, pool)!
+      : [...pool].sort((a, b) => Math.abs(a.threat - wantThreat) - Math.abs(b.threat - wantThreat))[0]!
+  /** 遭遇里存**原卡 id**（去掉入侵派生前缀） */
+  const foeId = foe.id.startsWith(WEEKEND_CARD_PREFIX) ? foe.id.slice(WEEKEND_CARD_PREFIX.length) : foe.id
+  const foeName = foe.name
   state.encounterZoneCooldown[exp.galaxyId] = state.gameMs + bal.zoneCooldownMs
   const shipName = shipDisplayName(state, ctx, exp.shipId)
   state.encounter = {
     active: true,
     shipId: exp.shipId,
     galaxyId: exp.galaxyId,
-    name: foe.name,
-    threat: Math.max(1, foe.threat),
-    anomalyId: foe.id,
+    name: foeName,
+    threat: Math.max(1, wantThreat ?? foe.threat),
+    anomalyId: foeId,
     origin: `${shipName} · ${exp.kind}`,
     invitedAtGameMs: state.gameMs,
     deadlineGameMs: state.gameMs + bal.inviteWaitMs,

@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { countItem } from '../src/inventory'
 import {
   WEEKEND_ALL_CLEAR_ISK,
   WEEKEND_FLAGSHIP_REWARD_MUL,
@@ -20,6 +21,7 @@ import {
   weekendSettlePlanOf,
 } from '../src/weekendBattle'
 import { weekendFoeCardOf, weekendNoteContribution } from '../src/weekendEvent'
+import { WEEKEND_RARE_WRECK_ID, weekendGrantRewards } from '../src/weekendBattle'
 import type { WeekendEventState } from '../src/weekendEvent'
 
 const ctx = buildSimContext()
@@ -157,5 +159,28 @@ describe('周末入侵 · 结束结算（M1-b）', () => {
     expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer).toBe(true)
     ev.flagshipDown = 'octopus'
     expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '章鱼人得手 ⇒ 黑匣归零').toBe(false)
+  })
+})
+
+describe('周末入侵 · 奖励入账（M1-b 第五片）', () => {
+  it('ISK 进钱包 · 稀有残骸进物品仓库（走 addItem 同一条入库路径）', () => {
+    const { s } = setup()
+    const isk0 = s.wallet.isk
+    const wreck0 = countItem(s, WEEKEND_RARE_WRECK_ID)
+    const isk1 = s.wallet.isk + 2_000_000
+    const got = weekendGrantRewards(s, { isk: 2_000_000, wreck: 8, blackBox: true })
+    expect(got.isk).toBe(2_000_000)
+    expect(got.blackBox, '黑匣数量带回（物品 M4 才入库）').toBe(1)
+    expect(s.wallet.isk).toBe(isk0 + 2_000_000)
+    expect(s.wallet.isk).toBe(isk1)
+    expect(countItem(s, WEEKEND_RARE_WRECK_ID)).toBe(wreck0 + 8)
+  })
+
+  it('负数/缺省一律按 0 处理（不吞钱也不倒扣）', () => {
+    const { s } = setup()
+    const isk0 = s.wallet.isk
+    const got = weekendGrantRewards(s, { isk: -5, wreck: -3 })
+    expect(got).toEqual({ isk: 0, wreck: 0, blackBox: 0 })
+    expect(s.wallet.isk).toBe(isk0)
   })
 })
