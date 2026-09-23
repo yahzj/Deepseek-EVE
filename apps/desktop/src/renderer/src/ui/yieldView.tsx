@@ -14,7 +14,7 @@
  *
  * ⚠ **直接产信用点的活动不适用本模块**（悬赏奖金 / 运输报酬这类"到手就是 ISK"的读数照旧保留 ISK/h）。
  */
-import { marketGoodOf, marketQuote } from '@whale/core'
+import { marketGoodOf, marketHistory, marketQuote } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 
@@ -42,16 +42,21 @@ export function ownedInWarehouse(state: GameState, itemId: string): number {
 }
 
 /**
- * **市场当前行情价**（每单位）——取市场页同一把尺：`marketGoodOf` 找商品条目 ⇒ `marketQuote` 读当前报价，
- * 优先卖方挂单（`sell`），没有则用买方挂单（`buy`）；都没有（未解锁 / 无人挂单）⇒ `null`（界面「—」）。
+ * **市场当前行情价**（每单位）——**取"市场详情页折线图上显示的价格"**（**2026-09-23 船长令**：
+ * 「各个卡片中，产品的市场行情采用对应商品市场详细中折线图中显示的价格。」）：
+ * 折线图读的是 `marketHistory`（=`state.market.priceHistory[goodKey]`，30 分钟一个采样点）
+ * ⇒ 卡面与图上**右端那一点**同源，不再是挂单最优价（那是"能立刻成交的价"，与折线图不是一回事）。
+ * 价史还没攒起来（新解锁商品）时退回挂单价兜底，免得卡面一片「—」。
  *
- * 商品的"类"逐档试：物资/装备走 `item`/`module`，舰船走 `ship`（**2026-09-23**：组装机与造船厂的产物是
- * 装备与舰船 ⇒ 按船长口径"单纯显示市场当前价格"，得先能找到它在市场上的条目）。
+ * 商品的"类"逐档试：物资/装备走 `item`/`module`，舰船走 `ship`。
  */
 export function marketPriceOf(state: GameState, ctx: SimContext, itemId: string): number | null {
   for (const kind of ['item', 'module', 'ship'] as const) {
     const good = marketGoodOf(ctx, kind, itemId)
     if (!good) continue
+    const hist = marketHistory(state, good.key)
+    const last = hist.length > 0 ? hist[hist.length - 1] : undefined
+    if (typeof last === 'number' && last > 0) return Math.round(last)
     const quote = marketQuote(state, ctx, good.key)
     const p = quote?.sell ?? quote?.buy
     if (typeof p === 'number' && p > 0) return Math.round(p)
