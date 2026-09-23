@@ -249,6 +249,33 @@ async function main(): Promise<void> {
       }
     }
   }
+  /**
+   * **通讯逐封点开扫**（2026-09-22 补）：列表页只显示主题/发件人/时间，**正文要选中才渲染** ——
+   * 只扫默认那一封会漏掉其余信件（通讯正文共 97 行，分四批译）。这里逐条点开左栏、扫右栏正文。
+   */
+  const openedComms = await cdp.evalJS<boolean>(`(() => {
+    const items = [...document.querySelectorAll('.app-nav-side .app-nav-item')]
+    const b = items[${PAGES.indexOf('comms')}]
+    if (!b) return false
+    b.click(); return true
+  })()`)
+  if (openedComms) {
+    await wait(900)
+    const rows = await cdp.evalJS<number>(`document.querySelectorAll('.app-comms-item').length`)
+    say(`\n═══ 通讯逐封（共 ${rows} 封；扫右栏正文）═══`)
+    for (let k = 0; k < rows; k++) {
+      const subj = await cdp.evalJS<string>(`(() => {
+        const b = document.querySelectorAll('.app-comms-item')[${k}]
+        if (!b) return ''
+        b.click()
+        const s = b.querySelector('.app-comms-subject')
+        return s ? s.textContent || '' : ''
+      })()`)
+      if (!subj) continue
+      await wait(400)
+      total += await scan(cdp, `  ✉ ${subj.trim().slice(0, 42)}`)
+    }
+  }
   say(`\n═══ 合计残留中文 ${total} 处 ═══`)
   say('（读数不等于结论：船名/舰长名等玩家数据与刻意保留的中文不该译，逐条判由船长定）')
 }

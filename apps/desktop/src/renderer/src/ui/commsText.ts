@@ -229,7 +229,90 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'Inside, the work splits three ways: search, fight, withdraw. Anything you cannot carry out does not count, and whatever sits in temporary space is left behind on withdrawal.',
     'Two unexplored wormhole coordinates are marked for you. Decide when to go in from the “Scan for wormholes” tab on the star map.',
   ],
+  // ── 协会侧短札（2026-09-22 第四批；长设定的几封见文件末的挂账注释）──
+  'msg-welcome': [
+    'Pilot, the Association comms terminal is now wired into this ship. From here on, Association departments, partners and acquaintances along the routes will message you directly.',
+    'The “Comms” item in the nav flashes while anything is unread, and reading a letter clears it. We only send the important things once, and we will not chase you.',
+    'The standing rule: work you can do yourself is yours to do. To see what is on offer right now, check the board in the Task Center.',
+  ],
+  'msg-survey-memo': [
+    'You have mapped enough systems for the Survey Office to leave a memo here.',
+    'Those unlit “unknown signals” on the star map usually settle two things at once: the route and the supply. Plenty of belts and wreck fields sit in systems nobody has visited.',
+    'One reminder: the lower the security level, the longer an on-site scan takes, so do not park a scanner in low-sec and wait for it to finish on its own.',
+  ],
+  'msg-industry-shift': [
+    'Credits piling up? A word from the Industry Dept: an idle berth is money burned.',
+    'The refinery and the wreck recycling unit can run several units in parallel. Work one by hand and let AI cores handle the rest, one each. Materials settle per batch and a unit stops when the feed runs out, so nobody has to sit and watch it.',
+    'Short on AI cores? Buy more, or train AI Core Operation to raise the limit.',
+  ],
+  'msg-refinery-note': [
+    'People keep asking whether refining pays, so the Smelting Group will lay it out.',
+    'From the same batch of raw ore, Refining adds a tenth more output per level and Reprocessing stacks another step on top. The longer ore sits in your hold, the wider that gap gets.',
+    'One more note: a rare wreck goes into the recycling unit one item per run. Starting a run books that item into the unit, the card shows what is left inside, and anything unburned comes back to item storage when the unit stops.',
+  ],
+  'msg-salvage-crew': [
+    'A few of us old salvagers drift from system to system. Wreck fields never run short of things; what runs short is people willing to stop and pick them up.',
+    'Common wreckage breaks down into guaranteed raw materials, with a chance of modules and blueprint fragments. Rare wreckage from a lair is worth more, and the recycling unit can strip whole modules out of it.',
+    'One reminder: wreckage is booked by volume, and a full hold sends the ship home on its own. Want to carry more? Fit a bigger hold first.',
+  ],
+  'msg-site-thanks': [
+    'On the first shift of the Redring Outpost running on the grid, the whole Infrastructure Dept salutes you.',
+    'From today, the mining ships, repair ships and supply ships on this corridor all pass through a berth you built. The Association base network has one more node, and it carries your name.',
+    'If the next station is yours as well, the Association settles construction materials by tier as always, without taking an extra credit.',
+  ],
+  'msg-redring-outpost': [
+    'The Infrastructure Dept would like a word about the “Redring Corridor” you just lit on the star map: the corridor has no usable berth, and the Association plans to place an outpost there. The site is already surveyed.',
+    'The work is not contracted out whole. It comes as a materials list: deliver one tier of materials to advance one stage, and the final stage brings it onto the grid, opening berths, repairs, resupply and ship swaps together.',
+    'If you are interested, keep the materials in your hold and deliver them on site. The Association settles by tier and takes no extra credit.',
+  ],
+  'msg-first-ship': [
+    'The Industry Dept saw your assembler line hand over its first hull. From this ship on, your capacity is no longer limited to parts and ammo.',
+    'The hull sits in Ship Storage on the Ships page; anything the assembler finishes lands there first and stacks by type. Click “Move into fleet” on that entry and it joins the hangar, ready for a pilot swap or an AI core assignment.',
+    'Selling happens there too: ship storage sells directly, filling a standing buy order on the spot or listing the hull automatically if nobody is buying, and a listing can be pulled back to storage at any time.',
+    'One storage rule: only ships with modules removed, structure and armor intact and an empty hold are accepted; a hull you are flying or one on an AI task has to be freed up first.',
+  ],
 }
+
+// l10n-keep-start：下面这张表的**中文是键**（数据侧 `brief` 悬停说明原文，逐条独立）
+/**
+ * **部门/势力简介的英文**（本批：13 条 —— 悬停说明 `fromBrief`）。
+ * 键 = 数据侧中文简介原文（逐条独立），与名称映射同一套"中文即键"口径。
+ */
+const COMMS_BRIEF_EN: Record<string, string> = {
+  '协会的航道管理部门：登记呼号、发布航线与通行提示。':
+    'The Association department for shipping lanes: registers callsigns and issues route and transit notices.',
+  '协会的建站部门：负责前哨站立项、施工与并网。':
+    'The Association department for construction: handles outpost proposals, works and grid hookup.',
+  '协会的星域测绘部门：整理未知信号与已探明星系的资料。':
+    'The Association department for surveying: keeps the records on unknown signals and charted systems.',
+  '协会的产能管理部门：盯站内工位与生产线，专发产能提醒。':
+    'The Association department for output: watches station berths and production lines, and sends production reminders.',
+  '协会的精炼技术部门：给矿料与回收炉的产出算账。':
+    'The Association department for refining: runs the numbers on ore and recycling output.',
+  '协会的技能训练部门：主管技能队列与训练科目登记。':
+    'The Association department for training: runs the skill queue and registers training subjects.',
+  '协会的结算部门：管酬金、档位与建材结算。':
+    'The Association department for settlement: handles pay, tiers and construction material accounts.',
+  '协会的航线安全部门：发布危险星区与编队活动提示。':
+    'The Association department for route safety: issues notices on dangerous systems and fleet activity.',
+  '船自己的舰载信息库：自检后按条目回放记录，情报与建议都由它送达。':
+    'The ship’s own onboard archive: after a self-check it replays its records entry by entry, and it is the sender for both intelligence and advice.',
+  '信息库按条目重新载入记录的过程：把记下来的事一条条念给你听。':
+    'The archive reloading its records entry by entry: reading back what it noted, one item at a time.',
+  '章鱼人的官方行业组织，对外自称「协会」：管航道、建站点、定酬金，也训练新手飞行员。':
+    'The official octopus trade body, calling itself “the Association”: it runs the lanes, builds the outposts, sets the pay, and trains new pilots.',
+  '章鱼人的民间行会，与协会同族不同行：一帮在各星系转悠的老打捞，专捡没人要的残骸。':
+    'A civilian octopus guild, same people as the Association but a different trade: old salvagers drifting between systems, picking up wreckage nobody else wants.',
+  '常年在外圈转的打捞小队，残骸场里的门道比谁都熟。':
+    'A salvage crew that works the outer systems year round, and knows the wreck fields better than anyone.',
+}
+
+/** 简介（悬停说明）：英文；查不到原样返回中文 */
+export function commsBriefText(brief: string): string {
+  if (!isEn()) return brief
+  return COMMS_BRIEF_EN[brief] ?? brief
+}
+// l10n-keep-end
 
 /** 正文段落（英文；查不到或行数不符 ⇒ 原样返回中文，绝不错行） */
 export function commsBodyText(id: string, paragraphs: readonly string[]): readonly string[] {

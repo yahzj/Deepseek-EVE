@@ -20,7 +20,7 @@ import { COMMS_REPLIES_ENABLED } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { tr } from '../i18n/locale'
-import { commsAlignText, commsBodyText, commsClockText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { commsAlignText, commsBodyText, commsBriefText, commsClockText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
 
 /**
  * 通讯器机身：**大圆角机身外框** + 左侧两颗实体键（SVG 线稿，恒定细描边）。
@@ -51,7 +51,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
           <span
             className="app-comms-avatar"
             style={entry.tone ? { color: entry.tone, borderColor: entry.tone } : undefined}
-            title={entry.fromBrief ?? tr("ui.CommsReader.001")}
+            title={entry.fromBrief ? commsBriefText(entry.fromBrief) : tr("ui.CommsReader.001")}
           >
             <Glyph name={entry.glyph} size={50} />
           </span>
@@ -69,7 +69,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
               <span
                 className="app-chip app-comms-align"
                 style={entry.tone ? { color: entry.tone, borderColor: entry.tone } : undefined}
-                title={entry.fromBrief}
+                title={entry.fromBrief ? commsBriefText(entry.fromBrief) : undefined}
               >
                 {commsAlignText(entry.alignment)}
               </span>

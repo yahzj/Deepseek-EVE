@@ -27,7 +27,7 @@ import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
-import { commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { commsBriefText, commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -114,7 +114,7 @@ export function CommsPage({
                     role="listitem"
                     className={`app-comms-item${current && e.id === current.id ? ' is-sel' : ''}${e.read ? '' : ' is-unread'}`}
                     onClick={() => setSel(e.id)}
-                    title={e.fromBrief ? `${e.fromBrief}（${e.read ? tr("ui.CommsPage.010") : tr("ui.CommsPage.011")}）` : e.read ? tr("ui.CommsPage.010") : tr("ui.CommsPage.011")}
+                    title={e.fromBrief ? `${commsBriefText(e.fromBrief)}（${e.read ? tr("ui.CommsPage.010") : tr("ui.CommsPage.011")}）` : e.read ? tr("ui.CommsPage.010") : tr("ui.CommsPage.011")}
                   >
                     <span className="app-comms-item-top">
                       {e.read ? null : <i className="app-comms-dot" />}
