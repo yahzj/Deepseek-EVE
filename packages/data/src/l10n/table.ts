@@ -1149,6 +1149,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.134": { zh: "暖色护眼", en: "Warm" },
   "ui.App.135": { zh: "纯黑夜间", en: "Night black" },
   "ui.App.136": { zh: "色盲友好", en: "Color-blind friendly" },
+  "ui.App.137": { zh: "弹药与维修组件", en: "Ammo and repair kits" },
+  "ui.App.138": { zh: "从仓库取用", en: "From the warehouse" },
+  "ui.App.139": { zh: "从货仓取用", en: "From ship holds" },
+  "ui.App.140": { zh: "开启时，所有舰船的弹药与修理组件直接从母港仓库取用；关闭后只从舰队内各舰的货仓取用。", en: "On: every ship draws ammo and repair kits straight from the home-port warehouse. Off: only from the holds of the ships in the fleet." },
   /* 导航「任务中心」的**「第一次」推进提醒**（**2026-09-20 船长令**：「每推进一阶段第一次任务时，
      在导航栏的任务中心选项处进行提醒」）——悬停文案，与「赏金任务已更新」那条并列（两条都有时各占一行）。 */
   "ui.App.120": { zh: "有新的「第一次」任务：{p1}（进任务中心即清除）", en: "New First-time task available: {p1} (cleared once you open the Task Center)" },
