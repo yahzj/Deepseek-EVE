@@ -646,6 +646,21 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   const grid = run?.grid
   if (!run || !grid) return
   if ((cell.piles ?? []).length > 0) return
+  /**
+   * **"只铺一次"的硬闸门 = 该格已在 `activated` 里**（**2026-09-23 玩家报障修复**：
+   * 「虫洞内资源格重复进入会刷新资源」）。
+   *
+   * 病根：旧闸门只有上面那条 `length > 0`，而**采空后 `piles` 是空数组**（采集/打捞都原地
+   * `shift()`，见 `wormholeCollectOreAt` / `wormholeSalvageAt`）⇒ 再进这一格就按
+   * `(层, 格坐标)` 的确定性流**重铺满**（等于无限刷产出）；读档后更必然——
+   * `save.ts` 的**读档清洗**（`:2792`）把空数组整条丢掉 ⇒ 连"这格铺过"的痕迹都没了
+   * （写档侧照写 `piles: []`，故不读档只靠进出也能触发）。
+   *
+   * `activated` 在**采空那一刻**入册（两条收尾都写）且**随档**，老档同样被堵住；
+   * 而"激活"那条路对 graveyard/ruins **本就直接拒绝**（`wormholeGridActivate`）⇒
+   * 不存在"没铺过却已在 activated 里"的格。
+   */
+  if (grid.activated.includes(cell.key)) return
   if (cell.place !== 'graveyard' && cell.place !== 'ruins') return
   const cardId = wormholeCellCardIdOf(run, cell)
   // 2026-09-19 合并：堆里的物品 = 该卡**所属组**的残骸（洞内 5 组，皆常档 ⇒ 堆量与合并前逐字一致）
@@ -2080,6 +2095,11 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
   const grid = run?.grid
   if (!run || !grid) return
   if ((cell.piles ?? []).length > 0) return
+  /** ⚠ **"只铺一次"的硬闸门 = 该格已在 `activated` 里**（**2026-09-23 玩家报障**：
+   *  「虫洞内资源格重复进入会刷新资源」）——采空后 `piles` 是**空数组**（读档清洗还会把该字段
+   *  整条丢掉，`save.ts:2792`），只靠 `length > 0` 挡不住重进；口径与理由见
+   *  `wormholeEnsureSalvagePiles` 同名闸门。 */
+  if (grid.activated.includes(cell.key)) return
   if (cell.place !== 'vein') return
   const rng = wormholeStream(runSeedOf(state) * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
   const span = WORMHOLE_VEIN_PILES_MAX - WORMHOLE_VEIN_PILES_MIN + 1
