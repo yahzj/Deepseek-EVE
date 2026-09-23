@@ -2550,6 +2550,37 @@ function normalizeState(raw: unknown): GameState {
       : {}),
   }
 
+  // --- 周末入侵活动（老档/异常缺省 = 没有入侵；见 weekendEvent.ts 的零迁移口径） ---
+  const weekendRaw = asRaw(src.weekendEvent)
+  const weekendStr = (v: unknown): string => (typeof v === 'string' && v.length > 0 ? v : '')
+  const weekendNum = (v: unknown): number => (Number.isFinite(num(v)) && num(v) > 0 ? Math.floor(num(v)) : 0)
+  const weekendCoreId = weekendStr(weekendRaw.coreId)
+  const weekendStartedAt = weekendNum(weekendRaw.startedAtWallMs)
+  const contributedRaw = asRaw(weekendRaw.contributed)
+  const contributed: Record<string, number> = {}
+  for (const [k, v] of Object.entries(contributedRaw)) {
+    const n = num(v)
+    if (k.length > 0 && Number.isFinite(n) && n > 0) contributed[k] = Math.min(1, n)
+  }
+  const weekendEvent: GameState['weekendEvent'] =
+    weekendCoreId && weekendStartedAt > 0
+      ? {
+          seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
+          startedAtWallMs: weekendStartedAt,
+          coreId: weekendCoreId,
+          peripheryIds: (Array.isArray(weekendRaw.peripheryIds) ? weekendRaw.peripheryIds : [])
+            .map((x) => weekendStr(x))
+            .filter((x) => x.length > 0),
+          family: weekendStr(weekendRaw.family) || 'A',
+          contributed,
+          ...(weekendNum(weekendRaw.endedAtWallMs) > 0 ? { endedAtWallMs: weekendNum(weekendRaw.endedAtWallMs) } : {}),
+          ...(weekendNum(weekendRaw.flagshipAtWallMs) > 0 ? { flagshipAtWallMs: weekendNum(weekendRaw.flagshipAtWallMs) } : {}),
+          ...(weekendRaw.flagshipDown === 'player' || weekendRaw.flagshipDown === 'octopus'
+            ? { flagshipDown: weekendRaw.flagshipDown as 'player' | 'octopus' }
+            : {}),
+        }
+      : undefined
+
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
     rawList: unknown,
@@ -3204,6 +3235,8 @@ function normalizeState(raw: unknown): GameState {
     ...(firstTaskReadyId !== undefined ? { firstTaskReadyId } : {}),
     ...(firstTaskAutoClaim !== undefined ? { firstTaskAutoClaim } : {}),
     ironman,
+    // 周末入侵活动：**只在"有入侵"时写键**（老档 / 无入侵 ⇒ 键不出现，读回 undefined）
+    ...(weekendEvent !== undefined ? { weekendEvent } : {}),
     sideTasks,
     wormhole,
     research,

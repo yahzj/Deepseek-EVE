@@ -164,6 +164,8 @@ import {
   toggleMark,
   // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；✅ 2026-09-14 已上线，入口常驻）
   bumpIronmanSeq,
+  // 2026-09-23 周末入侵（M1-b：引擎每拍推进入侵时间轴）
+  weekendTick,
   ironmanLoadVerdict,
   ironmanOn,
   ironmanSeq,
@@ -944,6 +946,30 @@ export class GameEngine {
     if (this.state.onboarding.step === ONB_AWAKEN) {
       this.pendingMs = 0
       return
+    }
+    /**
+     * **周末入侵**（2026-09-23 船长令；设计见 `docs/design/weekend-invasion-20260923.md`）：
+     * 每拍调一次 core 的 `weekendTick`（纯函数 + 幂等）——开局面（**仅调试模式**）、旗舰倒计时 anchor 落盘、
+     * 章鱼人得手与窗口到点结束，并把"该掷遇袭骰的星系与概率"交回来。
+     * ⚠ 本刀**只接 tick**：遇袭掷骰与战斗入口（悬赏替换为入侵舰队 / 旗舰小队战）留待下一刀。
+     * ⚠ `lastSeenWallMs` 传"上一拍"（now − dt）⇒ 离线保护与 Q3 的">24h 自满 24h 起算"都有正确锚点。
+     */
+    const weekend = weekendTick(this.state, this.ctx, now, now - dt)
+    if (weekend.started) {
+      addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
+      void this.persist()
+    }
+    if (weekend.flagshipShown && this.state.weekendEvent?.flagshipAtWallMs !== undefined) {
+      const ev = this.state.weekendEvent
+      if (ev.endedAtWallMs === undefined && ev.flagshipDown === undefined) {
+        addLog(this.state, 'warn', tr('ui.weekend.002'), 'ui.weekend.002')
+        void this.persist()
+      }
+    }
+    if (weekend.ended) {
+      const octopus = weekend.flagshipDown === 'octopus'
+      addLog(this.state, 'warn', tr(octopus ? 'ui.weekend.003' : 'ui.weekend.004'), octopus ? 'ui.weekend.003' : 'ui.weekend.004')
+      void this.persist()
     }
     const exp = this.state.expedition
     /**

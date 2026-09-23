@@ -428,6 +428,37 @@ export function wormholeRareBoxThemePoolOf(ctx: SimContext, region: WreckRegion)
   return region === 'wh' ? wormholeMk3PoolOf(ctx) : []
 }
 
+/**
+ * **洞内稀有残骸「高级箱」主题件回落池（带权重版）**——**2026-09-24 船长令**：
+ * 「（我看歪了）不能纯给 MK3，**洞内残骸如果未命中，则从 MK2 和 MK3 里抽。MK3 的权重降低为 0.25**」
+ * （同日确认：**MK2 权重按 1**）。
+ *
+ * 口径：两个池各算"一组"，先按组权重选组、再在组内均匀抽 1 件 ⇒ 出 MK3 的实际概率
+ * = 0.25 ÷ 1.25 = **20%**（MK2 80%）。两组都用与 `wormholeMk3PoolOf` 同一把尺派生（id 后缀、
+ * 含武器、排除专属 `-wh-` / `mod-lair-`、排除未上线件），只是后缀换成 `-2` / `-3`。
+ * 洞外（`region !== 'wh'`）返回空 ⇒ 仍走各族自己的 `theme`，逐字不变。
+ */
+export function wormholeRareBoxThemeGroupsOf(
+  ctx: SimContext,
+  region: WreckRegion,
+): Array<{ ids: string[]; weight: number }> {
+  if (region !== 'wh') return []
+  const poolOf = (suffix: string): string[] => {
+    const out: string[] = []
+    for (const [id, def] of ctx.modules) {
+      if (!id.endsWith(suffix)) continue
+      if (id.includes('-wh-') || id.startsWith('mod-lair-')) continue
+      if (def.unreleased === true) continue
+      out.push(id)
+    }
+    return out.sort()
+  }
+  return [
+    { ids: poolOf('-2'), weight: 1 },
+    { ids: poolOf('-3'), weight: 0.25 },
+  ]
+}
+
 /** 图纸货柜开出**永久图纸**的概率（船长 2026-09-14：「有较低概率出 T3 或 T4 的永久图纸」⇒ 5%） */
 export const WORMHOLE_BPBOX_PERMANENT_CHANCE = 0.05
 /** 永久图纸池的**档位门槛**（与一次性同口径：T3 层 2 起 · T4 层 3 起；**不含 T5**——船长只点了 T3/T4） */
