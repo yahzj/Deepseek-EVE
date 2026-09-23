@@ -718,7 +718,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       lines.push({ k: tr("ui.shipInfo.042"), v: [hit, ff].filter(Boolean).join('　') })
     }
     if (mod.reloadMs !== undefined) lines.push({ k: tr("ui.shipInfo.043"), v: tr("ui.shipInfo.152", { p1: (mod.reloadMs / 1000).toFixed(1) }) })
-    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.153", { p1: mod.dmgMult }) })
+    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.153", { p1: String(mod.dmgMult) + ((mod.shots ?? 1) > 1 ? `×${mod.shots}` : ``) }) })
   } else if (mod.slot === 'missile') {
     // V18B-1 导弹架：武器卡（与炮台同参数字段，性格差异 = 无视近盲 + 追踪命中）
     lines.push({
@@ -735,7 +735,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: tr("ui.shipInfo.046"), v: tr("ui.shipInfo.047") })
     if (mod.hitRate !== undefined) lines.push({ k: tr("ui.shipInfo.048"), v: `${pct(mod.hitRate)}` })
     if (mod.reloadMs !== undefined) lines.push({ k: tr("ui.shipInfo.043"), v: tr("ui.shipInfo.152", { p1: (mod.reloadMs / 1000).toFixed(1) }) })
-    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.154", { p1: mod.dmgMult }) })
+    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.154", { p1: String(mod.dmgMult) + ((mod.shots ?? 1) > 1 ? `×${mod.shots}` : ``) }) })
   } else if (mod.slot === 'laser') {
     // V18B-2 激光炮：能量系武器形态（必中光束 + 威力随距离衰减）
     lines.push({
@@ -765,7 +765,7 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       })
     }
     if (mod.reloadMs !== undefined) lines.push({ k: tr("ui.shipInfo.043"), v: tr("ui.shipInfo.152", { p1: (mod.reloadMs / 1000).toFixed(1) }) })
-    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.156", { p1: mod.dmgMult }) })
+    if (mod.dmgMult !== undefined) lines.push({ k: tr("ui.shipInfo.044"), v: tr("ui.shipInfo.156", { p1: String(mod.dmgMult) + ((mod.shots ?? 1) > 1 ? `×${mod.shots}` : ``) }) })
   } else if (mod.slot === 'drone-rack') {
     if (mod.droneBayBonusM3 !== undefined) {
       lines.push({ k: tr("ui.shipInfo.028"), v: `+${fmt(mod.droneBayBonusM3)} m³` })

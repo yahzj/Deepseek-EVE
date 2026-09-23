@@ -526,7 +526,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     </span>
                     <span className="app-inv-count">
                       ×{units.toLocaleString('zh-CN')} · {SLOT_LABELS[def.slot] ?? def.slot} · CPU {def.cpuUse}
-                      {def.dmgMult !== undefined ? ` · 火力 ×${def.dmgMult}` : ''}
+                      {def.dmgMult !== undefined ? ` · 火力 ×${def.dmgMult}${(def.shots ?? 1) > 1 ? `×${def.shots}` : ''}` : ''}
                     </span>
                   </div>
                   <div className="app-inv-btns">
