@@ -528,6 +528,14 @@ export function wormholeRollCore(state: GameState, cell: WormholeGridCell): stri
  * 只在 `graveyard`（残骸地点）生效；遗迹另有自己的专属掉落，不叠加。
  */
 export const WORMHOLE_SALVAGE_BOX_CHANCE = 0.0075
+/**
+ * **战果（虫洞敌人掉落）出货柜的概率**（**船长 2026-09-23 令**：「**将虫洞敌人掉落货柜的概率提高到 5%**」）。
+ *
+ * ⚠ 与上面那条**残骸打捞点**的概率是**两把尺**：残骸格仍是 0.75%（船长 2026-09-15 定的「极低概率」没动），
+ * 本常量只作用于**打完一场虫洞战斗后的战果结算**（`wormholeResolveFoeLoot` 里的"战果里的货柜"那一次掷骰）。
+ * 若船长本意是"两条路一起提到 5%"，只需把 `WORMHOLE_SALVAGE_BOX_CHANCE` 也改成 0.05（一行）。
+ */
+export const WORMHOLE_LOOT_BOX_CHANCE = 0.05
 /** 一次打捞最多出几个货柜（船长 2026-09-15 定：「每次最多 1 个」） */
 export const WORMHOLE_SALVAGE_BOX_MAX = 1
 
@@ -2116,14 +2124,15 @@ export function wormholeGrantShipSpoils(
   }
   if (bagged > 0) addLog(state, 'info', `🕳 战果入库：${bagged} 堆残骸（含稀有）。`, 'core.wormholeSalvage.037', { p1: bagged })
   /**
-   * **战果里的货柜**（船长 2026-09-23：「**在甲的基础上，和残骸格一样，（0.75%）概率出货柜**」）：
+   * **战果里的货柜**（船长 2026-09-23 先定「在甲的基础上，和残骸格一样，（0.75%）概率出货柜」；
+   * **同日再令「将虫洞敌人掉落货柜的概率提高到 5%」⇒ 本路径改用 `WORMHOLE_LOOT_BOX_CHANCE` = 5%**）：
    * 每场掷一次、上限沿用 `WORMHOLE_SALVAGE_BOX_MAX`（1 个/场）、四类等权（`wormholeSalvageBoxClassesOf`：
    * 族安全货柜 / 图纸货柜按层过滤 / 贵重品货柜 / 军用备货柜）；落点走与遗迹货柜**同一套收货阶梯**
    * （货仓 → 临时空间 → 散落该格）。掷骰用**独立盐值**（含围剿者序号 ⇒ 同格二次围剿不重样）。
    */
   let box: string | undefined
   const boxRng = wormholeStream(runSeedOf(state) * 53 + run.depth * 613 + (cell.q * 41 + cell.r * 59) * 23 + (cell.foe?.seq ?? 0) * 17 + 29)
-  if (boxRng() < WORMHOLE_SALVAGE_BOX_CHANCE) {
+  if (boxRng() < WORMHOLE_LOOT_BOX_CHANCE) {
     const classes = wormholeSalvageBoxClassesOf(familyOfCard(ctx, cardId), run.depth)
     const pool = classes[Math.min(classes.length - 1, Math.floor(boxRng() * classes.length))]!
     const boxId = pool[Math.min(pool.length - 1, Math.floor(boxRng() * pool.length))]!

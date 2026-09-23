@@ -30,6 +30,7 @@ import {
   WORMHOLE_RUINS_RARES_MAX,
   WORMHOLE_RUINS_RARES_MIN,
   WORMHOLE_RARE_CHEST_NOMINAL_ISK,
+  WORMHOLE_LOOT_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_MAX,
   WORMHOLE_BP_BOX_IDS,
@@ -1104,6 +1105,8 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
     expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeGreaterThan(0.003)
     expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeLessThan(0.016)
     expect(WORMHOLE_SALVAGE_BOX_CHANCE).toBe(0.0075)
+    /** **两条尺分开**（船长 2026-09-23：敌人掉落提到 5%，残骸格那条不动） */
+    expect(WORMHOLE_LOOT_BOX_CHANCE).toBe(0.05)
   })
 
   it('**四类等权 · 其余三类不分层；图纸柜按层过滤**（层 1 只有浅档，池外零泄漏）', () => {
