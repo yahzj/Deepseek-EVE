@@ -95,7 +95,7 @@ const FOE_ART_MAIN_MIN = 560
 const FoeArt = memo(function FoeArt({ fam }: { fam: string }) {
   return (
     <div className="app-ship-art" title={tr("ui.Expedition.186", { p1: FOE_FAMILY_LABEL[fam] ?? fam })}>
-      <ShipSprite foeKey={fam} accent={FOE_ACCENT[fam] ?? '#ff8373'} size={FOE_ART_W} engine={false} />
+      <ShipSprite foeKey={fam} accent={FOE_ACCENT[fam] ?? 'rgb(var(--wui-tone-a))'} size={FOE_ART_W} engine={false} />
     </div>
   )
 })
@@ -1225,9 +1225,10 @@ function StarMap({
         <defs>
           {Object.entries(FOE_ACCENT).map(([fam, color]) => (
             <radialGradient key={fam} id={`app-famglow-${fam}`}>
-              <stop offset="0%" stopColor={color} stopOpacity="0.34" />
-              <stop offset="60%" stopColor={color} stopOpacity="0.14" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
+              {/* ⚠ 走 style（不是 `stopColor={…}` 属性）：色值是 `var(--wui-tone-*)`，呈现属性不认 var() */}
+              <stop offset="0%" style={{ stopColor: color }} stopOpacity="0.34" />
+              <stop offset="60%" style={{ stopColor: color }} stopOpacity="0.14" />
+              <stop offset="100%" style={{ stopColor: color }} stopOpacity="0" />
             </radialGradient>
           ))}
         </defs>

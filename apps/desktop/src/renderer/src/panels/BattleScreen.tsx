@@ -17,6 +17,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
+import { UI_TONES } from '../ui/tones'
 import { mountsOf } from '../ui/shipMounts'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import {
@@ -1554,7 +1555,7 @@ const meSpeedRef = useRef(200)
   // 界面不再自己 find(kind==='gun')——旧写法会把激光船/装近防炮的船的米数刻度画成 2,500m）
   const mainMeArc = arcs.me.find((w) => w.isMain) ?? arcs.me[0]
   const meArcEls = arcs.me.map((w, wi) => {
-    const color = w.type ? DMG_COLOR[w.type] : '#93a4b8'
+    const color = w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))'
     const hollow = w.kind === 'gun' && !w.type
     const inBand = realDist >= w.minM && realDist <= w.maxM // 已进入该武器射程带（按引擎真实距离，避免插值边界抖动）
     const dim = inBand ? 0.25 : 1
@@ -1564,9 +1565,10 @@ const meSpeedRef = useRef(200)
     const r0 = w.minM >= nearM ? Math.min(arcR(w.minM, 12), r1 - 4) : Math.min(12, r1 - 4)
     return (
       <g key={`me${wi}`} opacity={(hollow ? 0.55 : 1) * dim}>
-        <path d={fanPath(r0, r1)} fill={color} fillOpacity={hollow ? 0 : 0.12} />
-        <path d={ringPath(r1)} fill="none" stroke={color} strokeWidth={hollow ? 1.2 : 2} strokeDasharray={hollow ? '4 4' : undefined} strokeOpacity={0.85} />
-        {w.minM > 0 ? <path d={ringPath(r0)} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 5" strokeOpacity={0.5} /> : null}
+        {/* ⚠ fill/stroke 走 style：色值是 `var(--wui-tone-*)`，SVG 呈现属性不认 var() */}
+        <path d={fanPath(r0, r1)} style={{ fill: color }} fillOpacity={hollow ? 0 : 0.12} />
+        <path d={ringPath(r1)} fill="none" style={{ stroke: color }} strokeWidth={hollow ? 1.2 : 2} strokeDasharray={hollow ? '4 4' : undefined} strokeOpacity={0.85} />
+        {w.minM > 0 ? <path d={ringPath(r0)} fill="none" style={{ stroke: color }} strokeWidth={1} strokeDasharray="3 5" strokeOpacity={0.5} /> : null}
       </g>
     )
   })
@@ -2004,14 +2006,14 @@ const meSpeedRef = useRef(200)
           <ShipSprite
             foeKey={foeKey}
             flip={foeFlip}
-            accent={corpseOn ? '#6b7280' : FOE_ACCENT[foeKey] ?? '#ff8373'}
+            accent={corpseOn ? UI_TONES.corpse : FOE_ACCENT[foeKey] ?? '#ff8373'}
             size={size}
           />
         </span>
         {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载
             机库备用机（图标 ×N）跟在**各自的名字右边**（2026-09-12 船长） */}
         {!isRank2 ? (
-          <span className="app-bts-name" style={{ color: isMain ? '#ffb3a6' : '#d8a08f' }}>
+          <span className="app-bts-name" style={{ color: isMain ? UI_TONES.foeNameMain : UI_TONES.foeName }}>
             {locked ? `◈ ${foeNameOf(tag)}` : foeNameOf(tag)}
             {hangarBadgeOf(tag)}
           </span>
@@ -2217,9 +2219,9 @@ const meSpeedRef = useRef(200)
             {/* attribute transform（在无 viewBox/CSS-transform 兼容性问题上最可靠）；平滑由 33ms 视觉插值提供 */}
             <g transform={`translate(${meGunX} ${lay.me.y})`}>{meArcEls}</g>
             <g transform={`translate(${foeGunX} ${lay.foe[0]?.y ?? 0}) scale(-1 1)`} opacity={foeInBand ? 0.25 : 1}>
-              <path d={fanPath(foeR0, foeR1)} fill={foeColor} fillOpacity={0.16} />
-              <path d={ringPath(foeR1)} fill="none" stroke={foeColor} strokeWidth={2.4} strokeOpacity={0.9} />
-              {arcs.foe.minM > 0 ? <path d={ringPath(foeR0)} fill="none" stroke={foeColor} strokeWidth={1} strokeDasharray="3 5" strokeOpacity={0.5} /> : null}
+              <path d={fanPath(foeR0, foeR1)} style={{ fill: foeColor }} fillOpacity={0.16} />
+              <path d={ringPath(foeR1)} fill="none" style={{ stroke: foeColor }} strokeWidth={2.4} strokeOpacity={0.9} />
+              {arcs.foe.minM > 0 ? <path d={ringPath(foeR0)} fill="none" style={{ stroke: foeColor }} strokeWidth={1} strokeDasharray="3 5" strokeOpacity={0.5} /> : null}
             </g>
             {/* 弧端米数刻度：弧长与面板/图例数字一一对应（敌方标签置于组外避免镜像反转） */}
             {mainMeArc && meMainR1 > 0 ? (
@@ -2495,7 +2497,8 @@ const meSpeedRef = useRef(200)
                         cx="0"
                         cy="0"
                         r="5"
-                        stroke="#ffffff"
+                        /* ⚠ 走 style（属性不认 var()）：亮底下"白描边"看不见 ⇒ 用主题里最亮的文字色当高光 */
+                        style={{ stroke: 'rgb(var(--wui-text-hi))' }}
                         strokeWidth="2.4"
                       />
                       {/* 冲击环（向外扩散淡出） */}
@@ -2566,7 +2569,7 @@ const meSpeedRef = useRef(200)
           <div className="app-bts-legends">
             {arcs.me.map((w, wi) => (
               <span key={`lg${wi}`} className="app-bts-chip" title={w.kind === 'gun' && !w.type ? tr("ui.BattleScreen.057") : undefined}>
-                <i style={{ background: w.type ? DMG_COLOR[w.type] : '#93a4b8' }} />
+                <i style={{ background: w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))' }} />
                 {w.label} {w.minM.toLocaleString('zh-CN')}~{w.maxM.toLocaleString('zh-CN')}m
                 {w.kind === 'gun' ? (
                   w.type ? (
@@ -2647,7 +2650,7 @@ const meSpeedRef = useRef(200)
               const pct = ready
                 ? 100
                 : Math.min(100, Math.max(0, ((w.reloadMs - remain) / Math.max(1, w.reloadMs)) * 100))
-              const dotColor = w.type ? DMG_COLOR[w.type] : '#93a4b8'
+              const dotColor = w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))'
               return (
                 <span
                   key={`rl${wi}`}
@@ -2663,7 +2666,7 @@ const meSpeedRef = useRef(200)
                   <span className="app-bts-reload-track">
                     <i
                       className="app-bts-reload-fill"
-                      style={{ width: `${pct}%`, background: ready ? '#6fd98a' : dotColor }}
+                      style={{ width: `${pct}%`, background: ready ? 'rgb(var(--wui-tone-heal))' : dotColor }}
                     />
                   </span>
                   <span className="app-bts-reload-ms">
@@ -2683,7 +2686,7 @@ const meSpeedRef = useRef(200)
                     : tr("ui.BattleScreen.095", { p1: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) })
                 }
               >
-                <i className="app-bts-reload-dot" style={{ background: thruster.boosting ? '#6fd98a' : '#8aa0b8' }} />
+                <i className="app-bts-reload-dot" style={{ background: thruster.boosting ? 'rgb(var(--wui-tone-heal))' : 'rgb(var(--wui-dim))' }} />
                 <span className="app-bts-reload-name">{tr("ui.BattleScreen.004")}</span>
                 <span className="app-bts-reload-track">
                   <i
@@ -2694,7 +2697,7 @@ const meSpeedRef = useRef(200)
                           ? 100
                           : Math.min(100, Math.max(0, (1 - thruster.remainMs / Math.max(1, engine.ctx.balance.battle.thrusterCooldownMs)) * 100))
                       }%`,
-                      background: thruster.boosting ? '#6fd98a' : '#8aa0b8',
+                      background: thruster.boosting ? 'rgb(var(--wui-tone-heal))' : 'rgb(var(--wui-dim))',
                     }}
                   />
                 </span>

@@ -7,6 +7,8 @@
  * - 制造作业到点自动完成出装备；
  * - 重复清剿（重复清剿）开着时：按 30s 分片推进并在片边界以在线同款条件自动再出发——
  *   离线期间持续讨伐并有战果（2026-09-08 玩家反馈修复；关闭 freezeBattle 的调试快进不触发）；
+ *   **每片按它自己走到的那一刻传墙钟**（2026-09-22 船长选「甲」）⇒ 跨 0 点时，0 点前那段仍按
+ *   离线前那版「敌对派系活跃」判、0 点后才换到上线日那版（详见函数内长注释）；
  * - 结算完成后写摘要：离线多久、采集到哪些矿石、超出上限多少未结算。
  */
 
@@ -89,6 +91,7 @@ export function simulateOffline(
   )
   // nowWallMs = 离线末刻：赏金日板按**现实墙钟**对齐"每天本地 0 点"——离线跨过 0 点即整板换新
   // （跨多日只补最后一道界：中间那些天的板早已作废）。
+  // ⚠ 这一把墙钟只给**大推进那条路**用；分片那条路（重复清剿开着）改成"墙钟跟着片走"，见下面的长注释。
   const advOpts = {
     freezeBattle: opts?.freezeBattle,
     settleStats: opts?.stats,
@@ -107,10 +110,29 @@ export function simulateOffline(
   if (driveLoop) {
     let remaining = deltaMs
     let guard = 0
+    /**
+     * **墙钟跟着片走（2026-09-22 船长选「甲」）**——分片这一路上会**在离线期间不停地再出发**
+     * （`advanceAutoLoopBounty`），而"这一场吃不吃敌对派系活跃加成"是在**出发那一刻**按当时那张日板
+     * 判的（`isFactionBounty` → `exp.factionActive`）。
+     *
+     * 原先整段离线共用"离线末刻"这一把墙钟 ⇒ 日板在**第一片**就换成了**上线日**那版 ⇒ 0 点之前那几个
+     * 小时打的场次全按"上线日抽中的星系"判（实测：跨天时该星系稀有残骸存量为 0）。现在**每片传它自己
+     * 走到的那一刻** ⇒ 0 点前那些片仍按离线前那版日板判（昨天的活跃星系照吃 ×1.1 与稀有残骸掷骰），
+     * 0 点后的片才换到上线日那版；跨多日时每道日界各换一次。
+     *
+     * ⚠ **只改"传进去的墙钟"，不动分片本身**：片长/片数/每片一次 `advanceGame` 全都不变，末片的墙钟
+     * 仍等于"离线末刻"（`state.wallMs` 落值与改前一致）⇒ 除日板相位外零副作用。
+     * ⚠ **大推进那条路（没开重复清剿）故意不切**：那条路上离线期间不会再出发（`advanceAutoLoopBounty`
+     * 只有在线心跳与这里两个调用点），战果早在出发那一刻锁定 ⇒ 切段没有收益，反而会让"20 分钟
+     * 资源/快递板只按末窗刷一次"（船长 2026-09-05 定）从 1 次变成 2~3 次。
+     * 将来若那条路也能在离线中再出发，这里要一起改。
+     */
+    let wallMs = lastSavedWallMs
     while (remaining > 0) {
       if (++guard > 200_000) break // 防失控（30s 片 × 8h ≈ 960 片，余量充足）
       const step = Math.min(remaining, OFFLINE_LOOP_CHUNK_MS)
-      advanceGame(state, step, ctx, advOpts)
+      wallMs += step
+      advanceGame(state, step, ctx, { ...advOpts, nowWallMs: wallMs })
       remaining -= step
       if (remaining > 0) advanceAutoLoopBounty(state, ctx)
     }

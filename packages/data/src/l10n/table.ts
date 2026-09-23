@@ -1135,6 +1135,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.117": { zh: "无法应战", en: "Cannot engage" },
   "ui.App.118": { zh: "无法脱离", en: "Cannot disengage" },
   "ui.App.119": { zh: "成就", en: "Achievements" },
+  /* 界面配色（2026-09-22 船长令「添加几套配色，用于让玩家切换（至少有一个是白色皮肤）」）：
+     设置面板的一行 = 行标题 + 三选一按钮 + 说明；配色存本机（不进存档）。 */
+  "ui.App.127": { zh: "界面配色", en: "Color scheme" },
+  "ui.App.128": { zh: "深空", en: "Deep Space" },
+  "ui.App.129": { zh: "亮白", en: "Daylight" },
+  "ui.App.130": { zh: "高对比", en: "High contrast" },
+  "ui.App.131": { zh: "跟随系统", en: "Match system" },
+  /* ⟪文案调整 2026-09-22⟫ 船长令「继续做剩余的颜色」⇒ 第三套主题（高对比深色）上线，说明文案随之补上它 */
+  "ui.App.132": { zh: "深空为原来的深色界面，亮白为浅色界面，高对比为近黑底加亮字，暖色护眼偏暖、蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲友好把识别色换成色觉安全的色族；即时生效，不写入存档。", en: "Deep Space is the original dark interface; Daylight is the light one; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind friendly swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save." },
+  "ui.App.133": { zh: "亮白配色不铺星图底，故此项在亮白下不可用。", en: "The Daylight scheme does not use the starfield backdrop, so this option is unavailable there." },
+  "ui.App.134": { zh: "暖色护眼", en: "Warm" },
+  "ui.App.135": { zh: "纯黑夜间", en: "Night black" },
+  "ui.App.136": { zh: "色盲友好", en: "Color-blind friendly" },
   /* 导航「任务中心」的**「第一次」推进提醒**（**2026-09-20 船长令**：「每推进一阶段第一次任务时，
      在导航栏的任务中心选项处进行提醒」）——悬停文案，与「赏金任务已更新」那条并列（两条都有时各占一行）。 */
   "ui.App.120": { zh: "有新的「第一次」任务：{p1}（进任务中心即清除）", en: "New First-time task available: {p1} (cleared once you open the Task Center)" },

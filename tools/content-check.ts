@@ -4059,16 +4059,19 @@ for (const m of MODULES) {
  *（当天补齐的正是 wreck / fragment / kit / salvager / target-lock 五个键）——新增内容种类时在此拦住。 */
 {
   const glyphPath = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'ui', 'Glyphs.tsx')
-  if (!existsSync(glyphPath)) {
-    check(false, `图标契约：找不到渲染层图标库 ${glyphPath}（文件移位请同步本检查）`)
+  /** 色调表 2026-09-22 起在 `ui/tones.ts`（`Glyphs.tsx` 只转出）⇒ 形状读 Glyphs、色调读 tones */
+  const tonePath = join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'ui', 'tones.ts')
+  if (!existsSync(glyphPath) || !existsSync(tonePath)) {
+    check(false, `图标契约：找不到渲染层图标库 ${glyphPath} / 色调表 ${tonePath}（文件移位请同步本检查）`)
   } else {
     const glyphSrc = readFileSync(glyphPath, 'utf8')
-    const keysOf = (block: string): Set<string> => {
-      const m = glyphSrc.match(new RegExp(`${block}: Record<string, (?:string|ReactNode)> = \\{([\\s\\S]*?)\\n\\}`))
+    const toneSrc = readFileSync(tonePath, 'utf8')
+    const keysOf = (block: string, src = glyphSrc): Set<string> => {
+      const m = src.match(new RegExp(`${block}: Record<string, (?:string|ReactNode)> = \\{([\\s\\S]*?)\\n\\}`))
       return new Set([...(m?.[1] ?? '').matchAll(/^\s*'?([A-Za-z0-9-]+)'?:/gm)].map((x) => x[1]))
     }
     const shapes = keysOf('SHAPES')
-    const tones = keysOf('TONES')
+    const tones = keysOf('TONES', toneSrc)
     const needed = [...ITEM_KIND_ORDER, ...MODULE_SLOTS, ...Object.keys(SHIP_ROLE_LABELS), 'blueprint']
     for (const key of needed) {
       check(shapes.has(key), `图标契约：${key} 缺 Glyphs 图形（列表/卡片行首会落兜底圆环徽；请在 ui/Glyphs.tsx 补 SHAPES.${key}）`)
@@ -6196,13 +6199,18 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
      * 货仓格里落成兜底圆环、玩家分不清"。
      */
     const glyphSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/ui/Glyphs.tsx'), 'utf8')
-    const blockOf = (from: string, to: string): string => {
-      const a = glyphSrc.indexOf(from)
-      const b = glyphSrc.indexOf(to)
-      return a >= 0 && b > a ? glyphSrc.slice(a, b) : ''
+    /**
+     * ⚠ 2026-09-22 界面配色批：**色调表已移到 `ui/tones.ts` 单点**（值 = `var(--wui-tone-*)`，随主题切换），
+     * `Glyphs.tsx` 只做转出 ⇒ 本契约的两个块要各读各的文件（形状仍在 Glyphs、色调在 tones）。
+     */
+    const toneSrc = readFileSync(join(process.cwd(), 'apps', 'desktop', 'src', 'renderer', 'src', 'ui', 'tones.ts'), 'utf8')
+    const blockOf = (from: string, to: string, src = glyphSrc): string => {
+      const a = src.indexOf(from)
+      const b = src.indexOf(to)
+      return a >= 0 && b > a ? src.slice(a, b) : ''
     }
     const shapesBlock = blockOf('const SHAPES', 'export function Glyph')
-    const tonesBlock = blockOf('export const TONES', 'export function toneOf')
+    const tonesBlock = blockOf('export const TONES', 'export const NAV_TONES', toneSrc)
     const hasKey = (block: string, key: string): boolean =>
       block.includes(`'${key}':`) || new RegExp(`(^|\\s)${key}:`, 'm').test(block)
     for (const id of [...matterIds, 'box-relic', 'box-bp', 'ai-core']) {
@@ -6709,7 +6717,14 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
       isSystem ? `系统来源 ${f.id} 缺物种标注` : `势力 ${f.id} 的物种必须是章鱼人（世界观铁律），实际：${f.species}`,
     )
     check(ALIGNMENTS.has(f.alignment), `势力 ${f.id} 立场非法：${f.alignment}`)
-    check(/^#[0-9a-fA-F]{6}$/.test(f.tone), `势力 ${f.id} 色调不是六位十六进制：${f.tone}`)
+    /* 色调口径（2026-09-22 界面配色批改判）：势力色调改为**引用主题色阶 token**
+     *（`var(--wui-tone-*)`）——原来是写死的六位 hex，亮白皮肤下那几个浅色（`#ff8ab5` 等）
+     * 压在浅底上只有 1.7:1，玩家看不清发件人。色值表在 `packages/ui/src/index.css`，随主题切换。
+     * 形参仍要求严格：要么旧式六位 hex，要么 `var(--wui-tone-…)`（不许写别的形态）。 */
+    check(
+      /^#[0-9a-fA-F]{6}$/.test(f.tone) || /^var\(--wui-tone-[a-z0-9-]+\)$/.test(f.tone),
+      `势力 ${f.id} 色调既不是六位十六进制、也不是主题色阶 token：${f.tone}`,
+    )
     check(ICON_NAMES.has(f.glyph), `势力 ${f.id} 图标不在既有线稿图标表内：${f.glyph}`)
     // 头像口径（2026-09-11 船长：「头像换成类似核心的SVG」⇒ 按发件方分两种头像）：
     // 船内系统 → 核心形图标；NPC 势力 → 官方章鱼头。写别的图标会打破"一个符号代表一类发件方"的口径。

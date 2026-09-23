@@ -57,7 +57,7 @@ function BadgeCard({
     <div className={`app-ach-badge${got ? ' is-earned' : ''}`} {...hoverTipProps(tip)}>
       <span className="app-ach-badge-art">
         {/* 未达成 ⇒ 灰阶剪影（`color` 传灰，图案形状照旧 ⇒ 玩家看得出"还差哪一枚"） */}
-        <Glyph name={`ach-${def.pattern}`} size={30} color={got ? def.tone : '#5a6472'} />
+        <Glyph name={`ach-${def.pattern}`} size={30} color={got ? def.tone : 'rgb(var(--wui-dim))'} />
       </span>
       <span className="app-ach-name">{def.name}</span>
       {got ? <span className="app-ach-check">✓</span> : null}

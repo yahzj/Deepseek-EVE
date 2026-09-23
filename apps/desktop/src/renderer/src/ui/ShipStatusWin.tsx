@@ -31,13 +31,11 @@ import { toneOf } from './Glyphs'
  *
  * **导出给主控活动窗口**（`ui/ActivityScreen.tsx`，2026-09-21）：那个大窗口的舰体与作业件同取这张表
  * ⇒ 两个窗口的作业配色同一份事实源，不各写一份（船长口径："参考左上角的小窗"）。
+ * ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`var(--wui-tone-*)`）⇒ 随主题切换；改动去那张表。
  */
-export const WORK_ACCENT: Partial<Record<ShipwinScene, string>> = {
-  'work-mine': '#b5e35f',
-  'work-salvage': '#6fe3f0',
-  'work-scan': '#8fd0ff', // 扫描蓝：与 .bg-work-scan 的氛围光同族（2026-09-20 接回本场景）
-  'work-haul': '#7fb3ff', // 航运蓝：沿用角色色里的航运槽，与 .bg-work-haul 同族（2026-09-20 新增）
-}
+import { WORK_ACCENT as WORK_ACCENT_TABLE } from './tones'
+
+export const WORK_ACCENT = WORK_ACCENT_TABLE as Partial<Record<ShipwinScene, string>>
 
 const SWITCH_MS = 520 // 稍长于 CSS 过渡(450ms)，旧层完全结束后再卸载
 const BG_SWITCH_MS = 480 // 背景交叉淡入淡出时长余量
@@ -297,7 +295,7 @@ function MuzzleFlash({ defId }: { defId: string }) {
           style={{ animationDelay: `${(i % 2) * 0.55}s` }}
         >
           <path d={`M${p.x} ${p.y - 5.2} l8.2 5.2 -8.2 5.2 -8.2 -5.2 Z`} fill="rgba(255,220,140,.25)" stroke="none" />
-          <path d={`M${p.x} ${p.y - 3.2} l5 3.2 -5 3.2 -5 -3.2 Z`} fill="#ffe9a8" stroke="none" />
+          <path d={`M${p.x} ${p.y - 3.2} l5 3.2 -5 3.2 -5 -3.2 Z`} style={{ fill: 'rgb(var(--wui-flag))' }} stroke="none" />
         </g>
       ))}
     </svg>

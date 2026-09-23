@@ -27,12 +27,13 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { useL10n, cmdText } from '../i18n/locale'
 import { tr } from '../i18n/locale'
+import { UI_TONES } from '../ui/tones'
 
 /** 三条线（顺序 = 界面上从左到右；与数据表的 branch 值一一对应） */
 const BRANCHES: ReadonlyArray<{ key: MatterTechBranch; label: string; icon: string; tone: string }> = [
-  { key: 'explore', label: tr("ui.MatterTechTab.001"), icon: 'target-lock', tone: '#8fd0ff' },
-  { key: 'battle', label: tr("ui.MatterTechTab.002"), icon: 'turret', tone: '#e0a86a' },
-  { key: 'industry', label: tr("ui.MatterTechTab.003"), icon: 'industrial', tone: '#9fd8a0' },
+  { key: 'explore', label: tr("ui.MatterTechTab.001"), icon: 'target-lock', tone: UI_TONES.matExplore },
+  { key: 'battle', label: tr("ui.MatterTechTab.002"), icon: 'turret', tone: UI_TONES.matBattle },
+  { key: 'industry', label: tr("ui.MatterTechTab.003"), icon: 'industrial', tone: UI_TONES.matIndustry },
 ]
 
 export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
@@ -60,7 +61,7 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
     <div className="app-mt">
       <div className="app-mt-top">
         <span className="app-mt-essence" title={t("ui.MatterTechTab.004")}>
-          <Glyph name="essence" size={13} color="#c9a6ff" /> {t("ui.MatterTechTab.005")} <b>{essence.toLocaleString('zh-CN')}</b> {t("ui.MatterTechTab.006")}
+          <Glyph name="essence" size={13} color={UI_TONES.essenceViolet} /> {t("ui.MatterTechTab.005")} <b>{essence.toLocaleString('zh-CN')}</b> {t("ui.MatterTechTab.006")}
         </span>
         <span className="app-dim">
           {t("ui.MatterTechTab.007", { n: spent, total })} · {t("ui.MatterTechTab.008")}
@@ -162,7 +163,7 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
                       <span className="app-dim">{t("ui.MatterTechTab.014")}</span>
                       {cost ? (
                         <span className="app-mt-cost">
-                          <Glyph name="essence" size={12} color="#c9a6ff" /> {cost.essence} {t("ui.MatterTechTab.006")} ·{' '}
+                          <Glyph name="essence" size={12} color={UI_TONES.essenceViolet} /> {cost.essence} {t("ui.MatterTechTab.006")} ·{' '}
                           {cost.isk.toLocaleString('zh-CN')} {t("ui.FirstTasks.003")}
                         </span>
                       ) : (

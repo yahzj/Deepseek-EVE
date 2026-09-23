@@ -579,7 +579,7 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
           aria-label={tr('ui.MarketPage.172')}
           onMouseLeave={() => setHover(null)}
         >
-          <polyline points={pts} fill="none" stroke="var(--wui-gold)" strokeWidth="2" opacity="0.9" />
+          <polyline points={pts} fill="none" stroke="rgb(var(--wui-gold))" strokeWidth="2" opacity="0.9" />
           {slice.map((v, i) => {
             const x = xAt(i)
             const y = mapY(v)
@@ -588,8 +588,8 @@ function PriceChart({ hist }: { hist: readonly number[] }) {
             return (
               <g key={offset + i}>
                 {!isLast && !isHover ? <circle cx={x} cy={y} r={1.6} fill="rgba(255,224,138,0.55)" /> : null}
-                {isLast ? <circle cx={x} cy={y} r={3.5} fill="#ffe08a" /> : null}
-                {isHover ? <circle cx={x} cy={y} r={4.5} fill="none" stroke="#ffe08a" strokeWidth={1.2} /> : null}
+                {isLast ? <circle cx={x} cy={y} r={3.5} style={{ fill: 'rgb(var(--wui-flag))' }} /> : null}
+                {isHover ? <circle cx={x} cy={y} r={4.5} fill="none" style={{ stroke: 'rgb(var(--wui-flag))' }} strokeWidth={1.2} /> : null}
                 <circle cx={x} cy={y} r={7} fill="transparent" style={{ cursor: 'crosshair' }} onMouseEnter={() => setHover(i)} />
               </g>
             )
