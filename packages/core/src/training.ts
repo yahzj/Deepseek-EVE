@@ -25,11 +25,13 @@
 
 import type { SkillDef } from './types'
 import type { GameState } from './state'
+import { ironmanTrainingMul } from './ironman'
 
-/** 高效学习法（accelerated-learning）：训练时长 −4%/级（2026-09-08 船长定：移除 60% 保留下限）——推进/预估/界面显示同源乘算 */
+/** 高效学习法（accelerated-learning）：训练时长 −4%/级（2026-09-08 船长定：移除 60% 保留下限）——推进/预估/界面显示同源乘算
+ * **铁人福利 C**（2026-09-23 船长令「技能训练时长 −10%」）：非铁人档 ×1 ⇒ 既有读数逐字不变 */
 export function trainingTimeFactor(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['accelerated-learning'] ?? 0)
-  return 1 - 0.04 * lv
+  return (1 - 0.04 * lv) * ironmanTrainingMul(state)
 }
 
 /** 默认单级基础时长：60 秒（毫秒）——rank 1 档（低档快，保持上手节奏） */

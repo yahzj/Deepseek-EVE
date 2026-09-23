@@ -20,7 +20,7 @@
  * salvaging, equipment }`；**`wormhole.ts` 不许 import 本文件**（它被 `state.ts` 顶层引用，
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
-import { tuningMul } from './tuning'
+import { rareDropRateMulOf, tuningMul } from './tuning'
 import type { GameState, RngState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
@@ -663,7 +663,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
     const rolls = Math.floor(commons / WORMHOLE_RARE_JUDGE_PER_COMMONS)
     for (let i = 0; i < rolls; i++) {
       // 限时倍率（2026-09-15）：`rareWreckRate` 乘判定概率、`rareWreckVolume` 乘每件单位数
-      if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * tuningMul(state, 'rareWreckRate'))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
+      if (rng() < Math.min(1, WORMHOLE_RARE_JUDGE_CHANCE * rareDropRateMulOf(state))) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
     }
     for (let i = 0; i < commons; i++) {
       piles.push({ itemId: common, units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })

@@ -20,6 +20,7 @@ import { countItem } from './inventory'
 import { formatDurationMs } from './time'
 import type { SettleStats } from './settleStats'
 import { advanceAutoLoopBounty } from './expedition'
+import { ironmanOfflineCapBonusMs } from './ironman'
 
 // 兼容历史引用：formatDurationMs 现定义在 time.ts（避免模块循环依赖）
 export { formatDurationMs } from './time'
@@ -66,7 +67,12 @@ export function simulateOffline(
   //   两技能并存叠加：双满级 = 8h × (1 + 1.0 + 2.0) = 32 小时。
   const opsLv = Math.min(5, state.skills.trained['offline-ops'] ?? 0)
   const dispatchLv = Math.min(5, state.skills.trained['unattended-dispatch'] ?? 0)
-  const capEff = Math.round(capMs * (1 + 0.2 * opsLv + 0.4 * dispatchLv))
+  /**
+   * **铁人福利 A**（2026-09-23 船长令）：「**离线结算上限 +8 小时**」——加在**基准额度**上
+   * （不是加在最终值上）⇒ 未点技能 8h → **16h**；双满级技能 32h → **64h**（乘区不变：
+   * `(8h + 8h) × (1 + 1.0 + 2.0)`）。非铁人档加 0 ⇒ 既有读数逐字不变。
+   */
+  const capEff = Math.round((capMs + ironmanOfflineCapBonusMs(state)) * (1 + 0.2 * opsLv + 0.4 * dispatchLv))
   const { deltaMs, overflowMs } = offlineSplit(rawGap, capEff)
   if (deltaMs <= 0) return
 

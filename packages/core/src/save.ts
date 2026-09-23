@@ -2520,6 +2520,29 @@ function normalizeState(raw: unknown): GameState {
   const firstTaskReadyIdRaw = src.firstTaskReadyId
   const firstTaskReadyId = typeof firstTaskReadyIdRaw === 'string' && firstTaskReadyIdRaw.length > 0 ? firstTaskReadyIdRaw : undefined
   const firstTaskAutoClaim = src.firstTaskAutoClaim === true ? true : undefined
+  /**
+   * **铁人模式**（**2026-09-23 船长令**：「**和玩家讨论了下，发现好像搞一个铁人模式更受欢迎**」）。
+   *
+   * 白名单重建（**新加随档字段必须在这里落一笔**——漏了就是"刷新即丢"那一类缺陷，见本文件
+   * `importantTasks.salvagerGift` 与 `wormhole.run.turnsBase` 两次前车之鉴）：
+   * - `on`：只认 `true`（缺省/其它值 ⇒ false = 普通档）；
+   * - `seq`：**存档代次**（非负有限整数；缺省 ⇒ 0）——**必须随档**，它是"铁人档装载闸门"的一半
+   *   （另一半是存档之外的账本，主进程读写）；
+   * - `sinceWallMs` / `closedWallMs`：只在有值时写（徽章判据与界面展示用）。
+   * ⚠ **老档没有这个键** ⇒ 一律读作"普通档、代次 0"（零迁移；闸门只对铁人档生效 ⇒ 老档行为不变）。
+   */
+  const ironmanRaw = asRaw(src.ironman)
+  const ironmanSeqRaw = num(ironmanRaw.seq)
+  const ironman: GameState['ironman'] = {
+    on: ironmanRaw.on === true,
+    seq: Number.isFinite(ironmanSeqRaw) && ironmanSeqRaw > 0 ? Math.floor(ironmanSeqRaw) : 0,
+    ...(Number.isFinite(num(ironmanRaw.sinceWallMs)) && num(ironmanRaw.sinceWallMs) > 0
+      ? { sinceWallMs: Math.floor(num(ironmanRaw.sinceWallMs)) }
+      : {}),
+    ...(Number.isFinite(num(ironmanRaw.closedWallMs)) && num(ironmanRaw.closedWallMs) > 0
+      ? { closedWallMs: Math.floor(num(ironmanRaw.closedWallMs)) }
+      : {}),
+  }
 
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
@@ -3141,6 +3164,7 @@ function normalizeState(raw: unknown): GameState {
     // 「已达成」播报记账 ＋ 老档一次性收口标记：同样只在有值时写键
     ...(firstTaskReadyId !== undefined ? { firstTaskReadyId } : {}),
     ...(firstTaskAutoClaim !== undefined ? { firstTaskAutoClaim } : {}),
+    ironman,
     sideTasks,
     wormhole,
     research,
