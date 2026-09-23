@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **300** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5680** KB · **40914** 行
-- 状态分布：**未标注** 165 · **已确认/已实现** 110 · **进行中** 19 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**30** 份 · 状态未标注 **165** 份
+- 文档总数 **295** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5639** KB · **40198** 行
+- 状态分布：**未标注** 163 · **已确认/已实现** 110 · **进行中** 18 · **待裁定** 3 · **历史留档** 1
+- 孤儿文档（0 引用）**27** 份 · 状态未标注 **163** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**188** 份
+- 三、现行设计稿（design）：**183** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**22** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 196 KB / 245 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 64 KB / 693 行 | 72 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 438 KB / 945 行 | 200 / 13 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 98 KB / 415 行 | 281 / 14 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 442 KB / 948 行 | 200 / 13 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 359 行 | 282 / 14 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,7 +53,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 188 份
+## 三、现行设计稿（design） —— 183 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -62,13 +62,9 @@
 | `docs/design/industry-subpage-lag-20260922.md` | 工业页子页切换卡顿 · 定位与改法（2026-09-22 · 三稿：第 1、2、3 步已实施并复测） | 已确认/已实现（第 1、2、3 步已实现并复测通过 ） | 2026-09-22 | 13 KB / 190 行 | 0 / 0 |
 | `docs/design/market-book-rows-20260922.md` | 买卖盘档数上限：8 → 12（2026-09-22 · 船长令） | 待裁定（已实现并读数核对 · 待船长验收） | 2026-09-22 | 3 KB / 50 行 | 0 / 1 |
 | `docs/design/market-my-orders-tab-20260922.md` | 市场「我的挂单」提升为同级子页面（2026-09-22 · 船长令） | 待裁定（已实现并读数核对 · 待船长验收） | 2026-09-22 | 4 KB / 56 行 | 0 / 0 |
-| `docs/design/mine-refine-balance-20260922.md` | 采矿 vs 精炼 速度配平（2026-09-22 · 船长问题） | 待裁定（已算出读数 · 待船长选目标档） | 2026-09-22 | 6 KB / 89 行 | 0 / 0 |
-| `docs/design/new-skills-20260922.md` | 新增六条技能（精炼 T4 / 制造 T5 / 舰种操作 T4·T5）· 2026-09-22 | 进行中（进行中 · 全闸门绿 · 待船长验收） | 2026-09-22 | 9 KB / 113 行 | 0 / 0 |
 | `docs/design/parts-hint-20260922.md` | (无一级标题) | 未标注 | 2026-09-22 | 3 KB / 39 行 | 0 / 0 |
 | `docs/design/skilltree-prereq-adopt-20260922.md` | 技能树：补采用船长在 Excel 里改的「前置」关系（2026-09-22） | 进行中（进行中） | 2026-09-22 | 4 KB / 53 行 | 0 / 0 |
 | `docs/design/ui-theme-20260922.md` | 界面配色（皮肤切换）：深空 / 亮白 / 高对比（2026-09-22） | 进行中（进行中） | 2026-09-22 | 17 KB / 169 行 | 0 / 1 |
-| `docs/design/balance-bounty-vs-wormhole-20260921.md` | 配平问题上报：虫洞「完成所有悬赏」与「虫洞六枚里程碑」在当前编队规模下互斥 | 待裁定（待船长裁决） | 2026-09-21 | 4 KB / 67 行 | 3 / 0 |
-| `docs/design/playthrough-sim-20260921.md` | 全流程模拟工具 renovate（2026-09-21 · 船长令「更新下全流程工具，进行一次全量跑通测试」） | 未标注（三条目标 2/3 达成 · 第 3 ） | 2026-09-21 | 9 KB / 105 行 | 3 / 0 |
 | `docs/design/achievement-display-20260920.md` | 成就徽章 · 展示改版（2026-09-20）— 工作文档 | 进行中（进行中） | 2026-09-20 | 6 KB / 100 行 | 3 / 4 |
 | `docs/design/achievements-20260920.md` | 成就系统（两批均已完成）— 设计稿（2026-09-20） | 已确认/已实现（两批都已完成并合入 main） | 2026-09-20 | 11 KB / 144 行 | 3 / 2 |
 | `docs/design/handoff-20260920-to-new-pilot1.md` | 交接文档 · 大鲸鱼深空工业 · 2026-09-20 早（一号 → 下一任一号） | 未标注 | 2026-09-20 | 17 KB / 148 行 | 3 / 0 |
@@ -205,7 +201,6 @@
 | `docs/design/opt-task-center-round1.md` | 优化轮 1：任务中心分类 / 建站物资明示 / 连击战斗最小化（状态：已确认） | 已确认/已实现（已确认） | — | 2 KB / 34 行 | 1 / 0 |
 | `docs/design/page-scroll-layout.md` | 一级页不滚 · 布局改造设计（2026-09-08 船长定稿，实施中） | 已确认/已实现（已确认口径） | — | 8 KB / 80 行 | 1 / 2 |
 | `docs/design/perf-monitor.md` | 游戏内置性能监测与本地自动采集（2026-09-08 已确认） | 已确认/已实现（已交付并归档放置） | — | 5 KB / 77 行 | 0 / 0 |
-| `docs/design/playthrough-sim-resume.md` | 续接卡 · 全流程模拟工具（2026-09-21 · 目标轮 1/20） | 未标注 | — | 26 KB / 354 行 | 1 / 0 |
 | `docs/design/playthrough-validation.md` | 全流程模拟验证（playthrough-sim） | 未标注 | — | 15 KB / 155 行 | 0 / 0 |
 | `docs/design/power-ladder-rework.md` | 战力阶梯拉长：威胁曲线重标 + 装备解锁闸门（设计稿 · 2026-09-06 立稿） | 未标注 | — | 41 KB / 484 行 | 18 / 5 |
 | `docs/design/refine-balance-50.md` | 精炼配平：产出倍率 100% 基准 + 工业页净收益口径（设计定稿与实现记录） | 已确认/已实现（已确认并实现） | — | 7 KB / 89 行 | 9 / 0 |
@@ -270,14 +265,14 @@
 | `docs/archive/roadmap-2026-09-18.md` | 封存卷 · roadmap 批次条目 2026-09-18 | 未标注 | — | 11 KB / 29 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-19-20.md` | 封存卷 · roadmap 批次条目 2026-09-19/20 | 未标注 | — | 5 KB / 33 行 | 0 / 1 |
 | `docs/archive/roadmap-2026-09-19.md` | 封存卷 · roadmap 批次条目 2026-09-19 | 未标注 | — | 2 KB / 13 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-20.md` | 封存卷 · roadmap 批次条目 2026-09-20 | 未标注 | — | 60 KB / 194 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-21.md` | 封存卷 · roadmap 批次条目 2026-09-21 | 未标注 | — | 4 KB / 16 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-20.md` | 封存卷 · roadmap 批次条目 2026-09-20 | 未标注 | — | 73 KB / 231 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-21.md` | 封存卷 · roadmap 批次条目 2026-09-21 | 未标注 | — | 17 KB / 44 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 43 KB / 764 行 | 8 / 13 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 43 KB / 764 行 | 7 / 13 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -370,15 +365,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 53 / 9 |
 
-## 附：孤儿文档（0 引用，30 份）
+## 附：孤儿文档（0 引用，27 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/box-seed-20260922.md`（2026-09-22 · 3 KB）—— 货柜开箱：按「存档种子 + 第 N 次拆解」现算（2026-09-22）
 - `docs/design/industry-subpage-lag-20260922.md`（2026-09-22 · 13 KB）—— 工业页子页切换卡顿 · 定位与改法（2026-09-22 · 三稿：第 1、2、3 步已实施并复测）
 - `docs/design/market-my-orders-tab-20260922.md`（2026-09-22 · 4 KB）—— 市场「我的挂单」提升为同级子页面（2026-09-22 · 船长令）
-- `docs/design/mine-refine-balance-20260922.md`（2026-09-22 · 6 KB）—— 采矿 vs 精炼 速度配平（2026-09-22 · 船长问题）
-- `docs/design/new-skills-20260922.md`（2026-09-22 · 9 KB）—— 新增六条技能（精炼 T4 / 制造 T5 / 舰种操作 T4·T5）· 2026-09-22
 - `docs/design/parts-hint-20260922.md`（2026-09-22 · 3 KB）—— (无一级标题)
 - `docs/design/skilltree-prereq-adopt-20260922.md`（2026-09-22 · 4 KB）—— 技能树：补采用船长在 Excel 里改的「前置」关系（2026-09-22）
 - `docs/design/blueprint-shelf-filter-20260919.md`（2026-09-19 · 6 KB）—— 报障修复：蓝图书架「选舰船蓝图 / 消耗品蓝图 ⇒ 卡片列表变空」 · 2026-09-19
@@ -399,17 +392,15 @@
 - `docs/design/player-marks-20260910.md`（2026-09-10 · 5 KB）—— 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现）
 - `docs/review/enemy-roster-20260910.md`（2026-09-10 · 11 KB）—— 敌情名册（2026-09-10 · 待船长审核与调整）
 - `docs/design/salvage-autoloop-20260909.md`（2026-09-09 · 3 KB）—— 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现)
-- `docs/archive/roadmap-2026-09-21.md`（无日期 · 4 KB）—— 封存卷 · roadmap 批次条目 2026-09-21
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（165 份，待补一行 `状态：…`）
+## 附：状态未标注（163 份，待补一行 `状态：…`）
 
 - `docs/design/archived-window-embed-20260922.md`（2026-09-22）—— 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22）
 - `docs/design/parts-hint-20260922.md`（2026-09-22）—— (无一级标题)
-- `docs/design/playthrough-sim-20260921.md`（2026-09-21）—— 全流程模拟工具 renovate（2026-09-21 · 船长令「更新下全流程工具，进行一次全量跑通测试」）
 - `docs/design/archive/announcement-draft-20260920-parts-shipyard.md`（2026-09-20）—— 待审稿 · 2026-09-20 推送批（零件体系 / 造船厂 / 机群补足）
 - `docs/design/handoff-20260920-to-new-pilot1.md`（2026-09-20）—— 交接文档 · 大鲸鱼深空工业 · 2026-09-20 早（一号 → 下一任一号）
 - `docs/design/archive/announcement-draft-20260919-filters.md`（2026-09-19）—— 公告待审稿：2026-09-19 筛选整理批（一条 · 待船长审核）
@@ -554,7 +545,6 @@
 - `docs/design/m4-design.md`（无日期）—— M4 设计文档：战斗装备 / 内容扩充 / 数值体检工具
 - `docs/design/m5-design.md`（无日期）—— M5 设计文档：造船 / 途中随机事件 / 日志时间戳
 - `docs/design/market-detail-rework.md`（无日期）—— 市场页参考图改造（2026-09-05 船长提供参考图）
-- `docs/design/playthrough-sim-resume.md`（无日期）—— 续接卡 · 全流程模拟工具（2026-09-21 · 目标轮 1/20）
 - `docs/design/playthrough-validation.md`（无日期）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/power-ladder-rework.md`（无日期）—— 战力阶梯拉长：威胁曲线重标 + 装备解锁闸门（设计稿 · 2026-09-06 立稿）
 - `docs/design/ship-battle-art/README.md`（无日期）—— 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09)
