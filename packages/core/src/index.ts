@@ -207,6 +207,55 @@ export {
   ironmanTrainingMul,
 } from './ironman'
 export type { IronmanLike, IronmanState } from './ironman'
+
+/* 2026-09-23 周末入侵活动（M1 骨架：时间轴/占领/进度/遇袭/旗舰/贡献） */
+export {
+  WEEKEND_AMBUSH_MUL,
+  WEEKEND_CORE_THREAT,
+  WEEKEND_DEBUG_RESTART_MS,
+  WEEKEND_DEBUG_TIME_DIVISOR,
+  WEEKEND_ENCOUNTER_CAP,
+  WEEKEND_ENCOUNTER_P,
+  WEEKEND_FAMILIES,
+  WEEKEND_FLAGSHIP_DEADLINE_MS,
+  WEEKEND_GAIN_CORE_WIN,
+  WEEKEND_GAIN_OFFLINE_REPEL,
+  WEEKEND_GAIN_PERIPHERY_WIN,
+  WEEKEND_GAIN_REPEL,
+  WEEKEND_NPC_CORE_MS,
+  WEEKEND_NPC_PERIPHERY_MS,
+  WEEKEND_OFFLINE_SHIELD_MS,
+  WEEKEND_PERIPHERY_THREAT,
+  WEEKEND_START_HOUR,
+  WEEKEND_START_WEEKDAY,
+  WEEKEND_WINDOW_MS,
+  endWeekendEvent,
+  ensureWeekendEvent,
+  weekendAmbushThreatOf,
+  weekendAssaultThreatOf,
+  weekendContributionShareAt,
+  weekendContributionTier,
+  weekendCoreCandidates,
+  weekendCoreProgressAt,
+  weekendDeadlineMs,
+  weekendDebugOn,
+  weekendEncounterChanceAt,
+  weekendFlagshipView,
+  weekendNoteContribution,
+  weekendNpcTimelineMs,
+  weekendOccupiedIds,
+  weekendPeripheryClearedAt,
+  weekendPeripheryOf,
+  weekendPeripheryProgressAt,
+  weekendPlayerContribution,
+  weekendProgressAt,
+  weekendReclaimedAt,
+  weekendRollOccupation,
+  weekendT0Of,
+  weekendWindowMsOf,
+  weekendWindowOpen,
+} from './weekendEvent'
+export type { WeekendEventState, WeekendFlagshipView } from './weekendEvent'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
 export { FOE_MOUNTS, FOE_MOUNT_IDS, foeMountOf, resolveFoeMounts } from './foeMounts'
