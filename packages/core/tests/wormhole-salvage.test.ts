@@ -1075,7 +1075,7 @@ describe('虫洞 · 遗迹收尾战「先提示、确认后再打」（船长 20
  * **残骸打捞点的货柜掉落**（船长 2026-09-15 定「虫洞战利品与经济扩充」③：
  * 「然后在残骸打捞点，设定有极低概率出各种货柜」＋「残骸打捞是指虫洞内的。不分层随机出。」）。
  *
- * 三条口径：**每堆 0.75%** · **一次打捞最多 1 个** · **四类货柜类等权且不分层**。
+ * 三条口径：**每堆 5%**（2026-09-23 船长令由 0.75% 提到 5%）· **一次打捞最多 1 个** · **四类货柜类等权且不分层**。
  * ⚠ 掷骰键 = (本趟种子, 层, 格坐标 q/r, **收走这一堆之后还剩几堆**) ⇒ 用例可以"**先探后造**"：
  * 只要先算出哪个剩堆数命中，再把该格造成"正好剩这么多堆"的现场，就能确定性地验落点。
  */
@@ -1084,7 +1084,7 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
   const probe = (q: number, r = 0, place: WormholeGridCell['place'] = 'graveyard'): WormholeGridCell =>
     ({ key: `probe-${q}-${r}`, q, r, place, piles: [] }) as WormholeGridCell
 
-  it('**每堆 0.75%**：命中率落在口径带内 · 同一键同结果（可复现、不消费既有掷骰）', () => {
+  it('**每堆 5%**：命中率落在口径带内 · 同一键同结果（可复现、不消费既有掷骰）', () => {
     let hits = 0
     let rolls = 0
     for (let seed = 1; seed <= 40; seed++) {
@@ -1100,12 +1100,12 @@ describe('虫洞 · 残骸堆里的货柜（船长 2026-09-15 定 ③）', () =>
       }
     }
     const rate = hits / rolls
-    // 1 万个键 ⇒ 期望 ~75 次命中；带宽放到 0.3%~1.6%（约 ±45%）只卡"量级对不对"，不当精度用例
+    // 1 万个键 ⇒ 期望 ~500 次命中；带宽放到 2%~10%（约 ±60%）只卡"量级对不对"，不当精度用例
     expect(rolls).toBe(10_000)
-    expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeGreaterThan(0.003)
-    expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeLessThan(0.016)
-    expect(WORMHOLE_SALVAGE_BOX_CHANCE).toBe(0.0075)
-    /** **两条尺分开**（船长 2026-09-23：敌人掉落提到 5%，残骸格那条不动） */
+    expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeGreaterThan(0.02)
+    expect(rate, `实测命中率 ${(rate * 100).toFixed(3)}%`).toBeLessThan(0.1)
+    expect(WORMHOLE_SALVAGE_BOX_CHANCE).toBe(0.05)
+    /** **两条尺同为 5%**（船长 2026-09-23：先提敌人掉落，再令「一起改成5%」） */
     expect(WORMHOLE_LOOT_BOX_CHANCE).toBe(0.05)
   })
 

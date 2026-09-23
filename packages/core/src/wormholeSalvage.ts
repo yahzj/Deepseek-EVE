@@ -521,13 +521,14 @@ export function wormholeRollCore(state: GameState, cell: WormholeGridCell): stri
  * **残骸打捞点的货柜掉落**（船长 2026-09-15 定「虫洞战利品与经济扩充」③：
  * 「然后在残骸打捞点，设定有极低概率出各种货柜」＋「残骸打捞是指虫洞内的。不分层随机出。」）。
  *
- * 口径：**每收走一堆残骸掷一次 0.75%**；**一次打捞最多出 1 个**（`WORMHOLE_SALVAGE_BOX_MAX`）；
+ * 口径：**每收走一堆残骸掷一次 5%**（**2026-09-23 船长追加令「一起改成5%」**；原 0.75% 的「极低概率」表述自此作废）；
+ * **一次打捞最多出 1 个**（`WORMHOLE_SALVAGE_BOX_MAX`）；
  * **四类货柜类等权**（各 1/4）：遗迹安全货柜（按本趟族）· 图纸货柜（**本层有资格的档**，类内等权）· 贵重品货柜 · 军用备货柜；
  * ⚠ **2026-09-19 船长令**：图纸货柜档位**按层过滤**（中 ≥层 5 · 深 ≥层 7，见 `WORMHOLE_BP_BOX_MIN_DEPTH`）
  * ——该日之前「三档同权、深档浅层也能翻出来」的「不分层」只对**其余三类**仍然成立。
  * 只在 `graveyard`（残骸地点）生效；遗迹另有自己的专属掉落，不叠加。
  */
-export const WORMHOLE_SALVAGE_BOX_CHANCE = 0.0075
+export const WORMHOLE_SALVAGE_BOX_CHANCE = 0.05
 /**
  * **战果（虫洞敌人掉落）出货柜的概率**（**船长 2026-09-23 令**：「**将虫洞敌人掉落货柜的概率提高到 5%**」）。
  *
@@ -1722,7 +1723,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     taken.push(pile)
     /**
      * **残骸堆里的货柜**（船长 2026-09-15 定 ③：「在残骸打捞点，设定有极低概率出各种货柜」）：
-     * 每收走一堆掷一次 0.75%、一次打捞最多 1 个；落格走**与遗迹货柜同一套「收货阶梯」**
+     * 每收走一堆掷一次 5%（2026-09-23 起）、一次打捞最多 1 个；落格走**与遗迹货柜同一套「收货阶梯」**
      * （货仓 → 临时空间 → 散落该格）。掷骰走独立盐值的流 ⇒ 旧读数逐字不变（见 `wormholeRollSalvageBox`）。
      */
     if (boxFound < WORMHOLE_SALVAGE_BOX_MAX) {
