@@ -5092,7 +5092,9 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         ['奢侈品件数上限 WORMHOLE_VALUABLES_UNITS_MAX', WORMHOLE_VALUABLES_UNITS_MAX, 30],
         ['军用件数下限 WORMHOLE_MILITARY_PIECES_MIN', WORMHOLE_MILITARY_PIECES_MIN, 1],
         ['军用件数上限 WORMHOLE_MILITARY_PIECES_MAX', WORMHOLE_MILITARY_PIECES_MAX, 3],
-        ['残骸堆出货率 WORMHOLE_SALVAGE_BOX_CHANCE', WORMHOLE_SALVAGE_BOX_CHANCE, 0.0075],
+        // ⚠ **2026-09-23 对齐**：船长追加令「一起改成5%」（提交 `623424b1`：残骸堆与战斗战果**两条路**
+        // 都提到 5%）改了常量与统计用例，但漏改本契约 ⇒ 主树这道闸门当场转红。期望值 0.0075 → 0.05。
+        ['残骸堆出货率 WORMHOLE_SALVAGE_BOX_CHANCE', WORMHOLE_SALVAGE_BOX_CHANCE, 0.05],
         ['单次打捞上限 WORMHOLE_SALVAGE_BOX_MAX', WORMHOLE_SALVAGE_BOX_MAX, 1],
       ]
       const bad = want.filter(([, got, exp]) => got !== exp).map(([name, got, exp]) => `${name} = ${got}（应为 ${exp}）`)
