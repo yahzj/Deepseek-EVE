@@ -2986,7 +2986,15 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     return (
       <div
         className={`app-wh-hold-grid is-${kind}`}
-        style={{ gridTemplateColumns: `repeat(${boardCols}, 1fr)`, gridTemplateRows: `repeat(${boardRows}, 1fr)` }}
+        /**
+         * ⚠ **行高用 `minmax(28px, 1fr)`**（2026-09-22 船长令「格区独立滚动条」＋口径「固定最小格高 + 超出滚动」）：
+         * 原先写死 `1fr` ⇒ 行高完全跟着容器走，加上 `max-height` 只会把格子**压扁**、永远滚不出来。
+         * 给了最小格高之后，格子装不下才溢出 ⇒ 由 `.app-wh-hold-grid` 的 `overflow-y` 出滚动条（只滚格区）。
+         */
+        style={{
+          gridTemplateColumns: `repeat(${boardCols}, 1fr)`,
+          gridTemplateRows: `repeat(${boardRows}, minmax(28px, 1fr))`,
+        }}
       >
         {Array.from({ length: boardRows * boardCols }, (_, i) => {
           const x = i % boardCols

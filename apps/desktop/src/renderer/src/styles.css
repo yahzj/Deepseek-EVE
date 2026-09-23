@@ -11007,6 +11007,16 @@ html[data-locale='en'] body {
 .app-wh-hold-grid {
   display: grid; gap: 4px; margin-top: 6px;
   max-width: 560px; /* 8 列在宽面板里不至于拉成巨格 */
+  /**
+   * **格区独立滚动条**（2026-09-22 船长令：「当货舱背包过长时，给货舱背包窗口单独加一个滚动条」；
+   * 口径「**固定最小格高 + 超出滚动**」）：行高的最小值由 TSX 的 `gridTemplateRows: minmax(28px, 1fr)` 给，
+   * 这里只封顶并开滚 —— **只滚格区**，不再把整块面板撑高。
+   * ⚠ **只用 px 封顶、不用 `vh`**：`vh` 是物理竖屏高，旋转模式下会取错轴；rot-check 的「物理单位契约」
+   * 要求这类声明在旋转块里另有 height/max-height 覆盖 —— 与其加一处耦合，不如直接避开（本闸门实测抓到过）。
+   */
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 /* 临时空间（4 列 × 8 行）：跟货仓同一套格子，只是更窄 */
 .app-wh-hold-grid.is-temp { max-width: 300px; gap: 3px; }
