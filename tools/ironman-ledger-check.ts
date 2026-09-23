@@ -93,6 +93,14 @@ async function main(): Promise<void> {
     check('铁人档 · 一天前旧档 ⇒ 拒绝', !tooNew.ok)
     const normal = ironmanLoadVerdict({ ironman: false, incomingSeq: 3, currentSeq: 7, ledgerSeq: 7, incomingSavedAtWallMs: NOW, nowWallMs: NOW })
     check('普通档 ⇒ 一律放行', normal.ok && !normal.rescue)
+    /**
+     * **账本降级**（2026-09-23 船长实测报障后立的契约）：账本拿不到（旧主进程没 IPC / 文件坏）时
+     * 调用方传 `ledgerSeq: 0` **继续判**——档内代次那层必须照常拦人，不许静默放行。
+     */
+    const noLedger = ironmanLoadVerdict({ ironman: true, incomingSeq: 5, currentSeq: 7, ledgerSeq: 0, incomingSavedAtWallMs: NOW, nowWallMs: NOW })
+    check('账本缺失（ledgerSeq=0）⇒ 仍按档内代次拦下更早的档', !noLedger.ok && noLedger.threshold === 7, JSON.stringify(noLedger))
+    const noLedgerNormal = ironmanLoadVerdict({ ironman: false, incomingSeq: 0, currentSeq: 0, ledgerSeq: 0, incomingSavedAtWallMs: NOW, nowWallMs: NOW })
+    check('账本缺失 + 普通档 ⇄ 普通档 ⇒ 照旧放行', noLedgerNormal.ok && !noLedgerNormal.rescue)
 
     /* 6 · 备份档内保存时刻（只读头 4KB） */
     const bname = 'save-20260921-120000.json'
