@@ -220,7 +220,15 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
       { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate] }, // 同上：不给护卫舰压 speedMul
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      /**
+       * ⟪2026-09-24 船长令⟫「**你将这两张卡单独改为 orbit，其他不要调整**」——**条目级覆盖**（`tactic` 的层级
+       * 是「条目 > 舰级」，卡面不参与，见 `combat.foeTactic` 解析）：本卡的快艇按 **orbit** 打，
+       * **只动本卡**、不动快艇舰级（悬赏线照旧 brawl）、也不动其他卡。
+       * 效果：`anyBrawl` 不再成立 ⇒ 洞内开局回到"**敌人自己的期望距离**"（此前整卡走近战口径 ⇒
+       * 开局被绑到玩家的中距离，长射程配装下会落在海盗射程之外——船长 2026-09-24 报障现场）。
+       * ⚠ **冲锋挂载件保留**（`chargePirate`）⇒「进去就得挨打」的张力不丢。
+       */
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
     standingGain: 0,
@@ -244,14 +252,15 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // ⚠ 快艇舰级自带「爆炸 8 : 动能 2」⇒ 同前，条目覆写回本卡签名构成
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
-      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      // ⟪2026-09-24 船长令⟫ 本卡同样**条目级**改为 orbit（头目与快艇两条），只动本卡；见上层卡同款注释
+      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, tactic: 'orbit', mounts: [FOE_MOUNT_IDS.chargePirate] },
       // **新舰「劫掠电子舰」×1**（船长 2026-09-16）——改编成 头目×1 + 电子舰×1 + 快艇×2：
       // 单位数仍 4 ⇒ 本层本档的**总威胁预算不变**，只是把一条快艇换成电子战支援舰。
       // ⚠ **两件挂载件都写在本条目上**（2026-09-19 船长：「海盗电子舰的冲锋也移除，只在洞内单独挂载」）：
       // 有效挂载是 `条目 ?? 舰级`（**替换**不是叠加）⇒ 舰级已清空，冲锋与捕获网必须**两件都写**，
       // 只写冲锋会顶掉捕获网。
       { ship: FOE_SHIP_PIRATE_RAIDER, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb] },
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
     ],
     standingReq: 0,
     standingGain: 0,
