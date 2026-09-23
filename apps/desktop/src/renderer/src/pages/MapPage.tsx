@@ -420,8 +420,9 @@ function BeltCard({
       yieldRows.push({ itemId: r.itemId, perHour: Math.round((mp.unitsPerCycle * cyclesPerHour * r.weight) / wsum) })
     }
     const sec = Math.round(mp.cycleMs / 1000)
-    const perHourUnits = Math.round(mp.unitsPerCycle * cyclesPerHour)
-    effLine = tr("ui.MapPage.085", { p1: mp.unitsPerCycle, sec: sec, p3: perHourUnits.toLocaleString('zh-CN') })
+    // **尾部「≈N 单位/h」已删**（**2026-09-23 船长令**：「可以将后面的这个总数/h删除，和下面产出重复了」）：
+    // 每小时产量由下面的产出清单逐项列出 ⇒ 效率行只留"每循环多少 + 多少秒"。
+    effLine = tr("ui.MapPage.085", { p1: mp.unitsPerCycle, sec: sec })
   }
   // V13：所在星系未探索的矿带不可开采（卡片可见但锁定，提示先扫描）
   const unexplored = belt.galaxyId ? !isExplored(state, belt.galaxyId) : false

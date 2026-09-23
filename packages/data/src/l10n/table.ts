@@ -2971,7 +2971,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.082": { zh: "{p1} 前往矿带（{p2}）· 约 {p3} 后开始采掘", en: "{p1} heading to the belt ({p2}) · mining starts in about {p3}" },
   "ui.MapPage.083": { zh: "{p1} 返航卸货中 · 约 {p2} 后到港（本趟 {p3} 单位）", en: "{p1} heading home to unload · docks in about {p2} ({p3} units this trip)" },
   "ui.MapPage.084": { zh: "{p1} 采掘中（{p2}）· 本趟采得 {p3} 单位", en: "{p1} mining ({p2}) · {p3} units this trip" },
-  "ui.MapPage.085": { zh: "{p1} 单位/循环 · {sec}s · ≈{p3} 单位/h", en: "{p1} units/cycle · {sec}s · ≈{p3} units/h" },
+  "ui.MapPage.085": { zh: "{p1} 单位/循环 · {sec}s", en: "{p1} units/cycle · {sec}s" },
   "ui.MapPage.086": { zh: "估价 ≈{p1} 信用点/h", en: "Estimate ≈{p1} credits/h" },
   "ui.MapPage.087": { zh: "交火中无法抽身采矿——请先让战斗分出胜负，或撤退脱离。", en: "You cannot break off to mine during an engagement — let the fight resolve first, or retreat." },
   "ui.MapPage.088": { zh: "AI 开采任务已取消（核心已归还）。", en: "AI mining task cancelled (the core has been returned)." },
