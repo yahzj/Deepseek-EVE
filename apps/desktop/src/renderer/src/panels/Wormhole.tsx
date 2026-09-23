@@ -40,6 +40,8 @@ import {
   wormholeBagSlots,
   wormholeBagUsage,
   wormholeFleetCargoM3,
+  // 洞内**货仓容量**的单点（含谜质「舱段扩展器」+8 格/台）——背包页读数与页签行读数必须同源
+  wormholeHoldCapacityOf,
   wormholeFoeThreat,
   wormholeLayerThreat,
   /** 玩家可见威胁的显示口径（×2；船长 2026-09-15「面板威胁乘以2」）——**只乘给人看的数字** */
@@ -318,7 +320,14 @@ export function WormholePanel({
   })()
   const cargoM3 = wormholeFleetCargoM3(state, ctx, picked)
   const bagSlots = wormholeBagSlots(cargoM3)
-  const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeBagSlots(wormholeFleetCargoM3(state, ctx, run.fleet))) : null
+  /**
+   * 本趟**背包占用**（船长 2026-09-22 报障：「虫洞内玩家货舱占用/最大格子数在两处显示的数字对不上」）。
+   *
+   * ⚠ 容量必须走 **`wormholeHoldCapacityOf`**（= 编队背包格 ＋ 谜质「舱段扩展器」+8 格/台），
+   * 与页签行那处读数（`holdInfo` → `engine.wormholeHoldInfo()` → core `wormholeHoldUsage`）**同一个单点**；
+   * 此前这里直接用 `wormholeBagSlots(编队货仓)`（**漏了扩展器加成**）⇒ 同一个「货仓」出现两个数。
+   */
+  const usage = run ? wormholeBagUsage(ctx, run.bag, wormholeHoldCapacityOf(state, ctx)) : null
   /** 回合走不动了（耗尽 / 付不起当前节点）⇒ 只能撤离（逃生门；与 core `wormholeOutOfTurns` 同一把尺） */
   const outOfTurns = run ? wormholeOutOfTurns(run) : false
   /** 本层网格（F3a-2；老档该层没有网格 ⇒ 退回旧口径提示） */
