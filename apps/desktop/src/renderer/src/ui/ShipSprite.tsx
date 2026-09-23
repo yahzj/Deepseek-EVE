@@ -75,7 +75,7 @@ export function ShipSprite({
   foeKey,
   name,
   flip = false,
-  accent = '#8aa0b8',
+  accent = 'rgb(var(--wui-dim))',
   engine = true,
   size = 150,
 }: {

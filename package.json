@@ -57,6 +57,8 @@
     "ui:overflow": "tsx tools/ui-overflow.ts",
     "ui:geom": "tsx tools/ui-geom.ts",
     "ui:rot-check": "tsx tools/ui-rot-check.ts",
+    "ui:contrast": "tsx tools/ui-contrast.ts",
+    "ui:theme-check": "tsx tools/ui-theme-check.ts",
     "industry:perf": "tsx tools/industry-perf-probe.ts",
     "industry:lag": "tsx tools/industry-lag-probe.ts",
     "wh:turn": "tsx tools/wormhole-turn-probe.ts",
@@ -72,7 +74,8 @@
     "docs:seal": "tsx tools/docs-seal.ts",
     "tools:audit": "tsx tools/tools-audit.ts",
     "commit:msg": "tsx tools/commit-msg.ts",
-    "ui:actwin": "tsx tools/activity-win-probe.ts"
+    "ui:actwin": "tsx tools/activity-win-probe.ts",
+    "l10n:scan": "tsx tools/l10n-en-scan.ts"
   },
   "devDependencies": {
     "exceljs": "^4.4.0",

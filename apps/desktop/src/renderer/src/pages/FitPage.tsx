@@ -1457,8 +1457,12 @@ function DroneBaySection({
         </span>
       </div>
       {droneShort ? (
-        <div className="app-dim" title="重复清剿停环时记下了当时的机群架数，再开要求装载严格超过它。战斗结束时已自动从本船货仓、其次物品仓库补足；还缺 = 两处都没有存货。">
-          「重复清剿」再开还差 {droneShort.need - droneShort.now} 架（停环时 {droneShort.floor} 架 · 现 {droneShort.now} 架）——货仓与仓库都没有存货，购买或制造后在此装入
+        <div className="app-dim" title={tr('ui.FitPage.175')}>
+          {tr('ui.FitPage.176', {
+            p1: droneShort.need - droneShort.now,
+            p2: droneShort.floor,
+            p3: droneShort.now,
+          })}
         </div>
       ) : null}
       {/* 型卡流：一型一卡 ×N（+ / − 微调）；空态只有「装入」 */}

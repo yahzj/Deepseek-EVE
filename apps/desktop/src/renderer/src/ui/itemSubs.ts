@@ -75,6 +75,10 @@ export interface SubOption {
  * 并从「物品」里剔除，与当年「残骸」独立成类的口径一致）：
  * 弹药（打完就少）/ 修理组件（战斗中烧）/ 无人机（永久损失制，用一场少一批）。
  */
+// l10n-keep-start：**本文件自下方起的所有中文串都是数据/键**（`label` 只作可读常量与判定键，
+// 渲染一律走 `subText` 按 `id` 取当前语言，见文件头注释）。
+// ⚠ **2026-09-22 补上这个起点标记**：此前只有收尾标记（本文件最后一行）、区间没生效，
+// `l10n:check` 把下面已接线的 `label`（各有 `id`）误报成"未译中文串"。
 export const CONSUME_SUBS: SubOption[] = [
   { key: 'ammo', label: tr("ui.BattleScreen.003") },
   { key: 'kit', label: tr("ui.itemSubs.001") },

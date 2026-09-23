@@ -1832,6 +1832,13 @@ function normalizeState(raw: unknown): GameState {
       typeof rngRaw.count === 'number' && Number.isFinite(rngRaw.count)
         ? Math.max(0, Math.floor(rngRaw.count))
         : 0,
+    /**
+     * 货柜拆解计数（2026-09-22 船长令，见 `RngState.box`）：**可选字段 ⇒ 老档不带它就不写回**
+     * （保持"存档往返逐字节一致"这条老契约；消费侧一律 `?? 0`）。
+     */
+    ...(typeof rngRaw.box === 'number' && Number.isFinite(rngRaw.box)
+      ? { box: Math.max(0, Math.floor(rngRaw.box)) }
+      : {}),
   }
 
   // --- 随机事件（v11）：nextAt = 0 表示未播种（首次推进时引擎初始化） ---

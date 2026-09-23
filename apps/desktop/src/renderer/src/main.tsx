@@ -6,12 +6,15 @@ import { App } from './App'
 import { GameEngine } from './game/engine'
 import { runAutoPerf } from './game/autoPerf'
 import { applySpaceBg } from './ui/spaceBg'
+import { bootstrapTheme } from './ui/theme'
 import { L10nProvider, tr } from './i18n/locale'
 import './styles.css'
 
 // 宇宙背景（2026-09-10 船长）：启动时抽一张无缝贴图并写入 --space-bg；
 // 放在首帧渲染之前，避免先闪一下纯色底
 applySpaceBg()
+// 界面配色（2026-09-22 船长令）：同样在首帧前把 data-theme 写上 ⇒ 不会先闪一下另一套配色
+bootstrapTheme()
 
 const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)

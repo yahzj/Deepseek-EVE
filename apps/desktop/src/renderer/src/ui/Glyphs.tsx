@@ -1053,108 +1053,17 @@ export function partToneKeyOf(itemId: string): string {
 SHAPES['part-basic'] = SHAPES.part
 SHAPES['part-advanced'] = SHAPES.part
 
-/** 调色板：分类色调（科幻 UI 亮色系） */
-export const TONES: Record<string, string> = {
-  ore: '#5ee6c8',
-  mineral: '#6cb6ff',
-  gas: '#c792ea',
-  ice: '#9ce6f5',
-  ammo: '#ff8373',
-  drone: '#ffc46b',
-  wreck: '#b8a37a', // 残骸：旧黄铜/锈色（回收料的观感）
-  kit: '#8fd96b', // 修理组件：维修绿（与矿石青绿区分）
-  fragment: '#b48cff', // 蓝图碎片：比蓝图紫更沉一档
-  part: '#9fd0e8', // 零件大类兜底色（= 基础零件冷钢蓝）；两档分色见下两条
-  /* ── 零件两档（2026-09-20 船长：「将普通零件和高级零件用颜色区分」）——
-     与 `box-relic-*` 按族、`box-bp-*` 按层档、`ai-core-*` 按稀有度**同一套做法**：
-     共用 `part` 造型、色调按**档位键**取（`part-basic` / `part-advanced`；映射单点 = `partToneKeyOf`）。
-     基础零件 = 冷钢蓝（工业中间件）· 高级零件 = 暖金（更贵重的一档）。 */
-  'part-basic': '#9fd0e8',
-  'part-advanced': '#ffd479',
-  container: '#e0b060', // 货柜：黄铜箱体色（与残骸的旧黄铜区分一档，更亮）
-  matter: '#a6f0ff', // 谜质储存器：谜质冷辉青（与货柜黄铜、蓝图紫都不撞）
-  essence: '#69e2ff', // 虫洞谜质：比装置形更亮的冷辉青（同一族、亮一档）
-  luxury: '#f2d98a', // 奢侈品：浅金（与货柜黄铜 #e0b060 拉开一档）
-  aicore: '#8aa0b8', // AI 核心（大类级兜底色；具体三种按稀有度分色，见下面 `ai-core-*`）
-  /* ── 遗迹安全货柜（F3c）：造型共用 `box-relic`，**按族分色**（与"按族掉落"这条口径对齐）── */
-  'box-relic': '#e0b060',
-  'box-relic-a': '#ff8373', // A 海盗：红
-  'box-relic-c': '#c792ea', // C 异形：紫
-  'box-relic-d': '#cdd6e0', // D 守墓：灰白
-  'box-relic-e': '#5ee6c8', // E 巨构：青
-  'box-relic-g': '#ffca58', // G 亡军：黄
-  /* ── 图纸货柜（2026-09-14）：造型共用 `box-bp`，**按层档分色**（浅 → 中 → 深，越深越冷越艳）── */
-  'box-bp': '#e0b060',
-  'box-bp-shallow': '#9fe8ff', // 浅层：淡青（最浅那层）
-  'box-bp-mid': '#ffca58', // 中层：琥珀
-  'box-bp-deep': '#e07bff', // 深层：品红紫
-  /* ── 贵重品货柜 / 军用备货柜（2026-09-15）：各一枚专属造型，色调与"箱里装什么"对齐 ── */
-  'box-valuables': '#f2d98a', // 与奢侈品同族浅金（打开就是奢侈品）
-  'box-military': '#8fb0c8', // 钢青灰（制式军械）
-  /* ── AI 核心（2026-09-14）：造型共用 `ai-core`，**按稀有度分色**（伽马 → 贝塔 → 阿尔法，越稀有越暖越亮）── */
-  'ai-core': '#8aa0b8',
-  'ai-core-gamma': '#7fd4a8', // 伽马：青绿（最常见）
-  'ai-core-beta': '#ffca58', // 贝塔：琥珀
-  'ai-core-alpha': '#ff9d5c', // 阿尔法：炽橙（最稀有 · 与"1000 万"的量级对上）
-  /* ── 谜质装置 20 台：按**用途族**分色（探索青蓝 / 作业青绿 / 威胁琥珀红 / 抗性按层 / 其余各自一色）── */
-  'mat-surveyor': '#6fe3f0',
-  'mat-chrono': '#7fc7ff',
-  'mat-nebula': '#9ce6f5',
-  'mat-expander': '#a6f0ff',
-  'mat-crane': '#5ee6c8',
-  'mat-drill': '#7de3a8',
-  'mat-enricher': '#ffd166',
-  'mat-suppressor': '#ff8373',
-  'mat-boss-analyzer': '#ff9f6b',
-  'mat-extract-cover': '#ffb454',
-  'mat-shield-res': '#6cb6ff',
-  'mat-armor-res': '#cdd6e0',
-  'mat-hull-res': '#ffb454',
-  'mat-tracker': '#ffca58',
-  'mat-gyro': '#7fc7ff',
-  'mat-jammer': '#c792ea',
-  'mat-rangefinder': '#a6f0ff',
-  'mat-blindspot': '#8fd96b',
-  'mat-ammo-dmg': '#ff8373',
-  'mat-reload': '#ffc46b',
-  /* B2 批： */
-  'mat-volley': '#ffd166',
-  'mat-ammo-back': '#ffb454',
-  'mat-drone-net': '#7fc7ff',
-  'mat-field-repair': '#8fd96b',
-  miner: '#5ee6c8',
-  cargo: '#ffd166',
-  turret: '#ff8373',
-  missile: '#ff9a6b',
-  laser: '#c792ea',
-  shield: '#6cb6ff',
-  'shield-field': '#8fd0ff', // 2026-09-20 护盾力场（高槽）：淡一档的盾蓝（与中槽 shield 同族可辨）
-  armor: '#cdd6e0',
-  propulsion: '#ffb454',
-  'drone-rack': '#ffc46b',
-  'drone-tac': '#ffb454',
-  'drone-relay': '#7fc7ff', // 2026-09-10 中继天线：通讯青（与导控黄/甲板橙区分）
-  support: '#ff8ab5',
-  cpu: '#7de3a8', // 2026-09-11 协处理器：算力青绿（与装配页导航同色系，且不与既有槽位色撞）
-  salvager: '#6fe3f0', // 打捞器：与「打捞」同色
-  'target-lock': '#ffca58', // 锁定装置：准星亮黄
-  industrial: '#5ee6c8',
-  armed: '#ff8373',
-  armored: '#cdd6e0',
-  hauler: '#ffd166',
-  blueprint: '#d4a0ff',
-  // 同上的形状槽键（色表）：后缀跟内容层组名对齐，保持中文
-  'group-舰船': '#6cb6ff',
-  'group-工业': '#5ee6c8',
-  'group-战斗': '#ff8373',
-  'group-工程': '#ffd166',
-  'group-贸易': '#ffb454',
-  // l10n-keep-end
-}
+/** 调色板：分类色调 —— **2026-09-22 移到 `ui/tones.ts` 单点**（值 = `var(--wui-tone-*)`，随主题切换）。
+ *  本文件只做**转出**，不再自己留色值：改色去 `ui/tones.ts` + `packages/ui/src/index.css` 两块。 */
+import { ICO_TONES, NAV_TONES, SCALARS, TONES } from './tones'
+
+export { ICO_TONES, NAV_TONES, TONES }
+
+export const RARE_WRECK_TONE = SCALARS.RARE_WRECK_TONE
 
 /** 取色调（带兜底） */
 export function toneOf(key: string | undefined): string {
-  return (key && TONES[key]) || '#8aa0b8'
+  return (key && TONES[key]) || 'rgb(var(--wui-dim))'
 }
 
 /**
@@ -1191,11 +1100,11 @@ export function itemToneOf(itemId: string, iconKey: string): string {
  * **稀有残骸＝稀有金**（船长 2026-09-19：「将稀有残骸和普通残骸进行下区分，建议用颜色区分」；
  * 三答：只给**图标**上色 · 取既有「稀有」色阶 · 范围限**货仓页 ＋ 物品页仓库**）。
  *
- * 色值 `#f4c95d` 与 `.app-chip.is-rare`（残骸打捞卡 / 星图稀有残骸战果行 / 工业页「稀有」徽标）
- * **同一支色阶**——玩家一眼就是同一套语汇。普通残骸保持旧黄铜 `#b8a37a`（`TONES.wreck`），
+ * 色值与 `.app-chip.is-rare`（残骸打捞卡 / 星图稀有残骸战果行 / 工业页「稀有」徽标）
+ * **同一支色阶**——玩家一眼就是同一套语汇。普通残骸保持旧黄铜（`TONES.wreck`），
  * 两者继续共用同一枚 `wreck` 线稿（与 `box-bp-*` 按层档、`ai-core-*` 按稀有度分色同一套做法）。
+ * ⚠ 2026-09-22 起色值走 `ui/tones.ts`（`rgb(var(--wui-tone-rare-wreck-tone))`）。
  */
-export const RARE_WRECK_TONE = '#f4c95d'
 
 /**
  * 仓库 / 货仓两页的**物品图标色**：稀有残骸（`wreck-rare-*`）走稀有金，其余照旧按大类取色。
@@ -1208,52 +1117,6 @@ export function inventoryItemTone(itemId: string, kind: string): string {
   // 2026-09-20 零件两档：基础 = 冷钢蓝 / 高级 = 暖金（按物品 id 取色；其余物品照旧按大类）
   if (kind === 'part') return toneOf(partToneKeyOf(itemId))
   return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : toneOf(kind)
-}
-
-/** 导航/标签图标专属色调（2026-09-05 船长：每个图标各自纯色，未选中也着色；选中态由按钮高亮区分） */
-export const NAV_TONES: Record<string, string> = {
-  'nav-map': '#ffe08a',
-  'nav-ship': '#6cb6ff',
-  'nav-fit': '#7de3a8',
-  'nav-items': '#ffd166',
-  'nav-market': '#ffa45c',
-  'nav-industry': '#42d9b0',
-  'nav-skills': '#c792ea',
-  'nav-mail': '#9fd8ff',
-  /* 官方章鱼人代表头像（2026-09-11 船长定）：与协会同色调，便于"官方 = 青白蓝章鱼"一眼认出 */
-  'faction-octopus': '#9fd8ff',
-  'nav-mine': '#b5e35f',
-  'nav-bounty': '#ff8373',
-  'nav-salvage': '#6fe3f0',
-  'nav-haul': '#ffc46b',
-  'nav-task': '#8fa9d8',
-  'nav-ai': '#ff8ab5',
-  'nav-shop': '#f7c35c',
-  /* 虫洞（终局玩法）：**裂隙紫**（偏品红一档）——与「扫描」#b78bff、「技能」#c792ea 区分，
-     活动栏里可能与「训练（技能紫）」并排，故不沿用紫罗兰本体色 */
-  'nav-wormhole': '#b06bff',
-}
-
-/** 操作图标色调（与 NAV_TONES 同族语汇；默认跟随文本色） */
-export const ICO_TONES: Record<string, string> = {
-  // 虫洞敌族徽（丁 · 2026-09-14）：五族各一色，与族卡气质对齐
-  'fam-a': '#ff9d6a',
-  'fam-c': '#8ce07a',
-  'fam-d': '#9fb7d6',
-  'fam-e': '#c9a2ff',
-  'fam-g': '#6fe3f0',
-  'ico-home': '#ffd76a',
-  'ico-lock': '#ff8373',
-  'ico-clock': '#ffe08a',
-  'ico-loop': '#6fe3f0',
-  'ico-flag': '#ffca58',
-  'ico-star': '#ffca58',
-  'ico-scan': '#b78bff',
-  'ico-swap': '#7de3a8',
-  'ico-cross': '#ff8373',
-  'ico-crane': '#ffd166',
-  'ico-antenna': '#6fe3f0',
-  'ico-tact': '#ff9a6b',
 }
 
 /** 渲染一个科幻线性图标 */
@@ -1275,7 +1138,9 @@ export function Glyph({
       width={size}
       height={size}
       fill="none"
-      stroke={color ?? 'currentColor'}
+      /* ⚠ `stroke` 必须走 **style**（不能写呈现属性 `stroke={…}`）：色值现在是 `var(--wui-tone-*)`，
+         而 SVG 呈现属性**不认 var()** ⇒ 写属性会静默失效（渲染成默认黑，白底上直接看不见）。 */
+      style={{ stroke: color ?? 'currentColor' }}
       strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"

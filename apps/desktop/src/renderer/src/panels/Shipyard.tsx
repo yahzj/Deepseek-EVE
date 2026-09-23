@@ -117,7 +117,7 @@ export function ShipyardPanel({
       const shipId = sbp.shipId
       out.push({
         id: sbp.id,
-        kindLabel: '舰船',
+        kindLabel: '舰船', // l10n-keep：内容层联合 key（渲染处走 Industry 的 kindLabelText）
         // 舰船蓝图按舰船级别分档（键与 itemSubs.SHIP_TIER_SUBS 同源）
         subKey: shipDef ? `t${shipDef.tier}` : '',
         productGlyph: shipDef?.role ?? 'blueprint',
@@ -139,7 +139,7 @@ export function ShipyardPanel({
         ),
         productBase: shipDef ? (productBaseOf(engine, 'ship', shipId) || shipDef.priceIsk || 0) : 0,
         countOwned: () => shipOwnedCount(engine.state, shipId),
-        ownedWhere: '仓库＋机库',
+        ownedWhere: '仓库＋机库', // l10n-keep：内容层联合 key（渲染处走 Industry 的 ownedWhereText）
         bookPrice: bookPriceOf(engine, sbp.id, 0),
         productKey: `ship:${shipId}`,
         singleUse: sbp.singleUse === true,
@@ -201,11 +201,15 @@ export function ShipyardPanel({
             />
           </span>
           <span className="app-dim">
-            制造线 {runViews.filter((v) => items.some((i) => i.id === v.blueprintId)).length} 条 · 舰船 {items.length} · 已学会 {learnedN}
+            {t('ui.Shipyard.005', {
+              p1: runViews.filter((v) => items.some((i) => i.id === v.blueprintId)).length,
+              p2: items.length,
+              p3: learnedN,
+            })}
             {kq.length > 0
-              ? ` · 匹配 ${sorted.length} 张`
+              ? t('ui.IndustryPage.108', { n: sorted.length })
               : learn !== SUB_ALL || sub !== SUB_ALL || useKind !== SUB_ALL
-                ? ` · 当前 ${sorted.length} 张`
+                ? t('ui.Industry.127', { n: sorted.length })
                 : ''}
           </span>
           <AiSlotText state={state} ctx={engine.ctx} />
@@ -214,7 +218,7 @@ export function ShipyardPanel({
     >
       <div className="app-filter-block">
         <div className="app-fleet-row">
-          <span className="app-dim">学会：</span>
+          <span className="app-dim">{t('ui.Shipyard.003')}</span>
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
             {BLUEPRINT_LEARN_TABS.map((l) => (
               <button
@@ -224,14 +228,15 @@ export function ShipyardPanel({
                 className={`app-tasktab${learn === l.key ? ' is-active' : ''}`}
                 onClick={() => setLearn(l.key)}
               >
-                {l.label}
+                {/* ⚠ 筛选档一律走 `subText`（有 id 取当前语言）；直接写 `l.label` 会在英文界面漏中文 */}
+                {subText(l)}
               </button>
             ))}
           </div>
         </div>
         {/* 二级子筛选 = 舰船级别（与组装机旧「舰船蓝图」子筛选同一张单点表） */}
         <div className="app-fleet-row">
-          <span className="app-dim">子类：</span>
+          <span className="app-dim">{t('ui.Industry.129')}</span>
           <div className="app-task-tabs app-fleet-tabs" role="tablist">
             <button
               role="tab"
@@ -242,7 +247,7 @@ export function ShipyardPanel({
                 setUseKind(SUB_ALL)
               }}
             >
-              全部
+              {t('ui.IndustryPage.001')}
             </button>
             {tierShown.map((s) => (
               <button
@@ -264,7 +269,7 @@ export function ShipyardPanel({
         {/* 2026-09-20 筛选清理：只剩「全部」一项时整行隐藏 */}
         {sub !== SUB_ALL && usesShown.length > 1 ? (
           <div className="app-fleet-row">
-            <span className="app-dim">图纸：</span>
+            <span className="app-dim">{t('ui.Shipyard.004')}</span>
             <div className="app-task-tabs app-fleet-tabs" role="tablist">
               {usesShown.map((u) => (
                 <button
@@ -274,7 +279,7 @@ export function ShipyardPanel({
                   className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
                   onClick={() => setUseKind(u.key)}
                 >
-                  {u.label}
+                  {subText(u)}
                 </button>
               ))}
             </div>
@@ -295,7 +300,7 @@ export function ShipyardPanel({
               buildSeconds={it.buildSeconds}
               productLabel={it.productLabel}
               productNode={it.productNode}
-              kindLabel="舰船"
+              kindLabel="舰船" /* l10n-keep：内容层联合 key（渲染处走 Industry 的 kindLabelText） */
               productGlyph={it.productGlyph}
               productBase={it.productBase}
               countOwned={it.countOwned}
@@ -309,7 +314,7 @@ export function ShipyardPanel({
           ))}
         </div>
         {sorted.length === 0 ? (
-          <div className="app-dim app-exp-idle">该筛选下暂无舰船蓝图——换个分类、或把「全部子类 / 全部图纸」点回来看看。</div>
+          <div className="app-dim app-exp-idle">{t('ui.Shipyard.006')}</div>
         ) : null}
       </div>
     </Panel>
