@@ -636,13 +636,24 @@ function BeltCard({
 
 /* ═══════════════ 标签三：残骸打捞（矿带页同款卡片网格；B3 采矿式自动循环） ═══════════════ */
 
-/** 打捞速率与拆解估价（当前驾驶船装配/技能 × 当前密度现算；展示用近似；回收卡同口径共用 RECYCLE_POOL_AVG_ISK） */
-function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyId: string, density: number): { eff: string | null; val: string | null } {
+/**
+ * 打捞速率（当前驾驶船装配/技能 × 当前密度现算；展示用近似）。
+ *
+ * ⚠ **2026-09-23 船长令：拆解估价（信用点收入）已移除** —— 船长问「残骸打捞为什么还有信用点收入估价？」
+ * ⇒ 原 `val`（`≈N 信用点/h 拆解估价`，按来源危险度池粗估）与它背后的一整套粗估（回收炉时/产出率/
+ * 池均价/精炼技能）**一并删除**；卡面只留"每小时能捞多少 m³"这一条事实读数。
+ */
+function salvageEstimate(
+  state: GameEngine['state'],
+  engine: GameEngine,
+  galaxyId: string,
+  density: number,
+): { eff: string | null } {
   const ctx = engine.ctx
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)
   const anomalies = engine.anomalies.filter((a) => a.galaxyId === galaxyId)
   if (cycles.length === 0 || anomalies.length === 0) {
-    return { eff: cycles.length === 0 ? tr("ui.MapPage.049") : null, val: null }
+    return { eff: cycles.length === 0 ? tr("ui.MapPage.049") : null }
   }
   const roundsPerHour = cycles.reduce((s, c) => s + 3_600_000 / c, 0)
   const avgThreat = anomalies.reduce((s, a) => s + a.threat, 0) / anomalies.length
@@ -651,15 +662,8 @@ function salvageEstimate(state: GameEngine['state'], engine: GameEngine, galaxyI
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
   const assay = (state.skills.trained['wreck-assaying'] ?? 0) > 0 ? 0.01 * Math.pow(1.2, Math.min(5, state.skills.trained['wreck-assaying'] ?? 0)) : 0
   const volH = roundsPerHour * v0 * mul * (1 + 0.12 * diveLv) * (1 + assay)
-  const tier = recycleTierOf(wreckBaseDensity(galaxyId, ctx))
-  const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
-  const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
-  const capM3H = 1440 / Math.max(0.6, 1 - 0.04 * recLv) // 回收炉时（周期技能缩短后）
-  const effM3 = Math.min(volH, capM3H)
-  const evH = Math.round(effM3 * RECYCLE_YIELD_PER_M3[tier] * RECYCLE_POOL_AVG_ISK[tier] * (1 + 0.08 * refLv))
   return {
-    eff: tr("ui.MapPage.095", { p1: cycles.length, p2: Math.round(volH).toLocaleString('zh-CN'), p3: volH > capM3H ? tr("ui.MapPage.050") : '' }),
-    val: tr("ui.MapPage.096", { p1: isk(evH) }),
+    eff: tr("ui.MapPage.095", { p1: cycles.length, p2: Math.round(volH).toLocaleString('zh-CN'), p3: '' }),
   }
 }
 
@@ -1000,10 +1004,10 @@ function WreckCard({
           </>
         ) : null}
       </div>
-      {est.eff || est.val ? (
+      {est.eff ? (
         <div className="app-belt-econ" title={tr("ui.MapPage.067")}>
           {est.eff ? <div><span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{est.eff}</div> : null}
-          {est.val ? <div className="app-belt-econ-val">{MONEY_GLYPH} {est.val}</div> : null}
+          {/* 「≈N 信用点/h 拆解估价」已删（2026-09-23 船长令：残骸的信用点收入估价移除） */}
         </div>
       ) : null}
 
