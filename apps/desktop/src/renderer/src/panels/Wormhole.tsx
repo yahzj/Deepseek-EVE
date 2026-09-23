@@ -37,6 +37,8 @@ import {
   shipDisplayName,
   shipSizeLabel,
   wormholeAdmission,
+  // 货仓 → 临时空间的**自动找位**（Ctrl+点击快捷搬运用；与 core 的摆放规则同一把尺）
+  findFreeSpot,
   wormholeBagSlots,
   wormholeBagUsage,
   wormholeFleetCargoM3,
@@ -3111,7 +3113,30 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   e.preventDefault()
                   dropAt(kind, p.x, p.y)
                 }}
-                onClick={() => {
+                onClick={(e) => {
+                  /**
+                   * **Ctrl/⌘ + 点击 = 整件快捷搬运**（船长 2026-09-22；口径「①甲②甲③甲」）：
+                   * ① 甲 = **整件搬**（一整堆散货条 / 一个货柜）· ② 甲 = 放不下 ⇒ **拒绝并提示**（沿用现有校验与 toast）
+                   * · ③ 甲 = **形状货柜也支持**。
+                   * ⚠ **不新写搬运逻辑**：与拖拽走同一条 core 入口 ——
+                   * 临时空间 → 货仓：`engine.wormholeTempStow(id)`（core 自动找位）；
+                   * 货仓 → 临时空间：`engine.wormholeBoardTransfer(...)`（与拖拽同一个函数），落点用 core
+                   * `findFreeSpot(tempBoard, 形状, 临时空间容量)` **现算**（甲案）——形状/实占格原样带过去，失败口径同源。
+                   */
+                  if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault()
+                    setDragId(null)
+                    const r =
+                      kind === 'temp'
+                        ? engine.wormholeTempStow(p.id)
+                        : (() => {
+                            const spot = findFreeSpot(tempBoard, { w: p.w, h: p.h }, tempInfo.capacity)
+                            if (!spot) return { ok: false, error: undefined } as { ok: boolean; error?: string }
+                            return engine.wormholeBoardTransfer('hold', 'temp', p.id, spot.x, spot.y, { dx: 0, dy: 0 })
+                          })()
+                    if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.327'), true)
+                    return
+                  }
                   setDragFrom(kind)
                   setDragId((prev) => (prev === p.id ? null : p.id))
                 }}
