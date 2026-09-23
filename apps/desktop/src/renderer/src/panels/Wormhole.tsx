@@ -18,7 +18,7 @@ import { HintIcon } from '../ui/Hint'
 import { pinMarked } from '../ui/marks'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 // 物品图标（F3c · 船长：「货仓内物品采用图标而不是纯文字」）：安全货柜按族分色、谜质每台一枚专属线稿
-import { Glyph, itemIconOf, itemToneOf } from '../ui/Glyphs'
+import { Glyph, itemIconOf, itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
 import {
   WORMHOLE_ADMISSION_TEXT,
   WORMHOLE_MAX_SHIPS,
@@ -111,7 +111,7 @@ import type { GameState, WormholeGridState, WormholeHoldPlacement, WormholeHoldS
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
-import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText } from '../ui/itemSubs'
+import { SHIP_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText, wreckTierOf } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 
 /* 探索地图的几何口径（缩放档 / viewBox 尺寸 / 锚点 / 拖动夹取）抽到 `./wormholeMapGeom`：纯函数、无导入
@@ -131,6 +131,20 @@ import {
 } from './wormholeMapGeom'
 
 type WhTab = 'prep' | 'map' | 'bag'
+
+/**
+ * **洞内货仓取色**（船长 2026-09-22 ①：「**货舱内，残骸和稀有残骸按照手册内的颜色做出区分**」）。
+ *
+ * 在既有单点 `itemToneOf`（**物品 id 优先** ⇒ 安全货柜按族分色、谜质按台分色）之上，只叠一层
+ * **残骸档位**：稀有残骸走既有「稀有金」（`RARE_WRECK_TONE`，与手册图鉴的「稀有」徽标、
+ * `.app-chip.is-rare` 同一支色阶），普通残骸保持旧黄铜 —— **不新造色、不另立判据**
+ * （档位判据 = `wreckTierOf` = core `isRareWreck`，全仓唯一前缀判定）。
+ *
+ * 谁用它：格区里的物品块（块的描边/底色由 CSS 取 `currentColor` ⇒ 跟着这个色走）与下方的件清单行图标。
+ */
+function holdTone(itemId: string, iconKey: string): string {
+  return wreckTierOf(itemId) === 'rare' ? RARE_WRECK_TONE : itemToneOf(itemId, iconKey)
+}
 
 /** 两块格板：货仓（8 列）/ **临时空间**（4 列 × 8 行 = 32 格 · 船长 2026-09-14） */
 type BoardKind = 'hold' | 'temp'
@@ -1121,7 +1135,7 @@ export function WormholePanel({
                       {/* 与货仓格同一枚图标（安全货柜按族、谜质按台）⇒ 地上与仓里对得上号 */}
                       <span
                         className="app-wh-hold-row-ico"
-                        style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}
+                        style={{ color: holdTone(p.itemId, itemIconOf(p.itemId, def?.kind)) }}
                       >
                         <Glyph name={itemIconOf(p.itemId, def?.kind)} size={14} color="currentColor" />
                       </span>
@@ -3090,7 +3104,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 style={{
                   gridColumn: `${p.x + 1} / span ${p.w}`,
                   gridRow: `${p.y + 1} / span ${p.h}`,
-                  color: itemToneOf(p.itemId, iconKey),
+                  color: holdTone(p.itemId, iconKey),
                 }}
                 title={
                   (isCargo
@@ -3181,7 +3195,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               const hintText = wormholeMatterDiscardHint(p.itemId)
               return (
                 <li key={`ask-${p.id}`}>
-                  <span className="app-wh-hold-row-ico" style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
+                  <span className="app-wh-hold-row-ico" style={{ color: holdTone(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
                     <Glyph name={itemIconOf(p.itemId, def?.kind)} size={15} color="currentColor" />
                   </span>
                   {def?.name ?? p.itemId}
@@ -3311,7 +3325,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     <span
                       className="app-wh-hold-row-ico"
                       style={{
-                        color: itemToneOf(p.itemId, itemIconOf(p.itemId, ctx.items.get(p.itemId)?.kind)),
+                        color: holdTone(p.itemId, itemIconOf(p.itemId, ctx.items.get(p.itemId)?.kind)),
                       }}
                     >
                       <Glyph
@@ -3392,13 +3406,23 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             const units = Math.max(0, Math.floor(p.units ?? 0))
             const asking = discardAsk?.id === p.id
             const amount = asking ? Math.min(discardAsk.units, Math.max(1, units)) : units
+            /**
+             * **类型一变 = 一条分隔线**（船长 2026-09-22 ④：「物品和物品之间的分隔不明显，
+             * 建议**不同类型的物品之间加个分隔线**」）。
+             *
+             * 口径（不新造尺）：分组键 = **物品大类**（`ItemDef.kind`），与清单既有排序同一把尺
+             * （`cargoPieces` 按 `itemId` 排 ⇒ 同族天然连片）；只在"这一行的大类 ≠ 上一行"时给一个
+             * `is-group-start`，样式复用行自己那条边线家族（实线 + 上间距），**不加伪元素、不改行距**。
+             */
+            const kindOf = (id: string): string => ctx.items.get(id)?.kind ?? ''
+            const groupStart = i > 0 && kindOf(p.itemId) !== kindOf(cargoPieces[i - 1]!.itemId)
             return (
-              <li key={p.id} className="app-inv-row app-wh-piece">
+              <li key={p.id} className={`app-inv-row app-wh-piece${groupStart ? ' is-group-start' : ''}`}>
                 <div className="app-inv-main">
                   <span className="app-inv-name">
                     <span
                       className="app-wh-hold-row-ico"
-                      style={{ color: itemToneOf(p.itemId, itemIconOf(p.itemId, def?.kind)) }}
+                      style={{ color: holdTone(p.itemId, itemIconOf(p.itemId, def?.kind)) }}
                     >
                       <Glyph name={itemIconOf(p.itemId, def?.kind)} size={15} color="currentColor" />
                     </span>

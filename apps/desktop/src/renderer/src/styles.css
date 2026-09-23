@@ -11094,6 +11094,25 @@ html[data-locale='en'] body {
 .app-wh-hold-cell.is-cargo { border-color: transparent; background: transparent; }
 .app-wh-hold-cell.is-body,
 .app-wh-hold-cell.is-cargobody { border-color: transparent; background: transparent; }
+
+/* **散货块按物品色上色**（船长 2026-09-22 ①：「货舱内，残骸和稀有残骸按照手册内的颜色做出区分」）：
+   `color` 由 TSX 给成该物品的色调（`holdTone`：稀有残骸＝稀有金，普通残骸＝旧黄铜，货柜按族），
+   块的描边与底色**跟着 `currentColor` 走** ⇒ 一眼能分档，且色值仍出自 `ui/tones.ts` 那一支色阶
+   （与新造色无关）。形状件（货柜/装置）保持原来的强调色，不在本条范围内。 */
+.app-wh-hold-fig.is-cargo {
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* **件清单的类型分隔线**（船长 2026-09-22 ④：「物品和物品之间的分隔不明显，建议不同类型的
+   物品之间加个分隔线」）：每行本来只有一条虚线（`.app-inv-row`），同族内与跨族看不出差别
+   ⇒ **大类一变**的那一行（`is-group-start`，分组键 = `ItemDef.kind`，与清单排序同一把尺）
+   补一条**实线**上边线 + 上间距，把"同一类"与"换了一类"分开。 */
+.app-wh-piece.is-group-start {
+  border-top: 1px solid rgb(var(--wui-border));
+  margin-top: 5px;
+  padding-top: 5px;
+}
 .app-wh-hold-cargo-name { color: rgb(var(--wui-text-2)); font-size: 10px; }
 .app-wh-hold-box-size { opacity: 0.7; font-size: 9.5px; }
 .app-wh-hold-warn { color: rgb(var(--wui-danger)); }

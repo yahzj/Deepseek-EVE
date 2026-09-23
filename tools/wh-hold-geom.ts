@@ -125,7 +125,30 @@ const READ = `(() => {
       块数: figsArr.length, 块与格子最大错位px: +maxCellDelta.toFixed(1),
     }
   }
-  return { 货仓: board('hold'), 临时空间: board('temp') }
+  return {
+    货仓: board('hold'),
+    临时空间: board('temp'),
+    /** ① 残骸分色（船长 2026-09-22）：块描边色应随物品色调走 —— 稀有残骸 ≠ 普通残骸 */
+    残骸分色: (() => {
+      const figs = [...document.querySelectorAll('.app-wh-hold-grid.is-hold .app-wh-hold-fig.is-cargo')]
+      const t = (f) => getComputedStyle(f).borderTopColor
+      const titled = (f) => f.getAttribute('title') || ''
+      const rare = figs.filter((f) => /稀有/.test(titled(f))).map(t)
+      const common = figs.filter((f) => /残骸/.test(titled(f)) && !/稀有/.test(titled(f))).map(t)
+      return {
+        稀有块数: rare.length, 普通残骸块数: common.length,
+        稀有取色: rare[0] ?? null, 普通取色: common[0] ?? null,
+        两色不同: rare.length > 0 && common.length > 0 && rare[0] !== common[0],
+      }
+    })(),
+    /** ④ 清单类型分隔线（船长 2026-09-22）：大类一变的那一行应带 is-group-start */
+    清单分组: (() => {
+      const rows = [...document.querySelectorAll('.app-wh-piece')]
+      const starts = rows.filter((r) => r.classList.contains('is-group-start'))
+      const cs = starts[0] ? getComputedStyle(starts[0]) : null
+      return { 行数: rows.length, 分组起首行数: starts.length, 首条分隔线: cs ? cs.borderTopWidth + ' ' + cs.borderTopStyle : null }
+    })(),
+  }
 })()`
 
 async function main(): Promise<void> {
