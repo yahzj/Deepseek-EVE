@@ -11004,25 +11004,26 @@ html[data-locale='en'] body {
   flex: 0 1 300px; min-width: 236px;
   border-left: 1px solid rgb(var(--wui-border)); padding-left: 12px;
 }
+/* **格区滚动窗口**（2026-09-23 船长：「**还是压缩了高度**」）：
+   封顶与滚动**必须挂在这一层**，不能挂在 `.app-wh-hold-grid` 上 —— 格板里有一层
+   `position:absolute; inset:0` 的**物品块层**（`.app-wh-hold-figures`），它的包含块 =
+   **最近定位祖先的 padding box**；封顶写在格板上时块层被截成可视高（520px），
+   13 行物品块全被压进 520px、与下面的格子错位（船长实测报障）。
+   放外层 ⇒ 格板保持**自然高度**、块层跟着整块走，滚的只是这层窗口（还是"只滚格区"）。
+   ⚠ **只用 px 封顶、不用 `vh`**：`vh` 是物理竖屏高，旋转模式下会取错轴；rot-check 的「物理单位契约」
+   要求这类声明在旋转块里另有 height/max-height 覆盖 —— 与其加一处耦合，不如直接避开（本闸门实测抓到过）。 */
+.app-wh-hold-scroll { max-width: 560px; max-height: 520px; overflow-y: auto; overflow-x: hidden; }
+.app-wh-hold-scroll.is-temp { max-width: 300px; }
 .app-wh-hold-grid {
   display: grid; gap: 4px; margin-top: 6px;
   max-width: 560px; /* 8 列在宽面板里不至于拉成巨格 */
-  /**
-   * **格区独立滚动条**（2026-09-22 船长令：「当货舱背包过长时，给货舱背包窗口单独加一个滚动条」）。
-   * 行高由 TSX 给成 **`auto`**（2026-09-22 船长追答「**不应该压缩格子高度**」：先写过的
-   * `minmax(28px, 1fr)` 配封顶会把 `1fr` 压到接近下限、格子被挤扁）；这里只**封顶 + 开滚**
-   * —— 格子该多大就多大，装不下才滚，**只滚格区**、不再把整块面板撑高。
-   * ⚠ **只用 px 封顶、不用 `vh`**：`vh` 是物理竖屏高，旋转模式下会取错轴；rot-check 的「物理单位契约」
-   * 要求这类声明在旋转块里另有 height/max-height 覆盖 —— 与其加一处耦合，不如直接避开（本闸门实测抓到过）。
-   */
-  max-height: 520px;
-  overflow-y: auto;
-  overflow-x: hidden;
   /** 剩余空间**不去拉伸/分配行高**：格子既不压缩也不被拉大，多出的高度留在底部 */
   align-content: start;
 }
 /* 临时空间（4 列 × 8 行）：跟货仓同一套格子，只是更窄 */
 .app-wh-hold-grid.is-temp { max-width: 300px; gap: 3px; }
+/* ⚠ 块层的 gap 必须与格子的 gap 同值（否则块逐行偏移 1px 累积）*/
+.app-wh-hold-grid.is-temp .app-wh-hold-figures { gap: 3px; }
 .app-wh-hold-grid.is-temp .app-wh-hold-cell { font-size: 9.5px; }
 /* **临时空间待清空确认条**（船长 2026-09-14：「需要提醒玩家是否要丢弃物品并列出丢弃的物品列表」）：
    与页内的"超载红条"同族（红档底 + 描边），逐件列出后可「丢掉这些 / 放回货仓」。 */

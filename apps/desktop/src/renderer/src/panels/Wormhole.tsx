@@ -3238,7 +3238,16 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
       ) : null}
       <div className="app-wh-hold-boards">
         <div className="app-wh-hold-board-main">
-          {boardView('hold', holdBoard, info.capacity, cols, rows, tr("ui.Wormhole.274"))}
+          {/**
+           * **滚动挂在外层 `.app-wh-hold-scroll`，不挂在格板上**（2026-09-23 船长：「**还是压缩了高度**」）：
+           * 格板里有一层 `position:absolute; inset:0` 的"物品块层"（`.app-wh-hold-figures`），
+           * 它的包含块 = **最近定位祖先的 padding box** —— 把 `max-height` 写在格板上，
+           * 块层就被截成可视高（520px），13 行块全被压进这 520px、与下面的格子错位（船长实测）。
+           * 放外层 ⇒ 格板保持自然高度、块层跟着整块走，滚的只是外层窗口。
+           */}
+          <div className="app-wh-hold-scroll">
+            {boardView('hold', holdBoard, info.capacity, cols, rows, tr("ui.Wormhole.274"))}
+          </div>
           <div className="app-wh-actions">
             <button
               className="app-btn is-small"
@@ -3266,7 +3275,9 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             {tr("ui.Wormhole.059")} <b>{tempInfo.cells}</b> {tr("ui.Wormhole.376", { p1: tempInfo.capacity })}
             {tempInfo.full ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.283')}</span> : null}
           </div>
-          {boardView('temp', tempBoard, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, WORMHOLE_TEMP_ROWS, '')}
+          <div className="app-wh-hold-scroll is-temp">
+            {boardView('temp', tempBoard, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, WORMHOLE_TEMP_ROWS, '')}
+          </div>
           <div className="app-wh-actions">
             <button
               className="app-btn is-small"
