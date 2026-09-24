@@ -1,7 +1,10 @@
-# 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号）
+﻿# 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号）
 
-> **一句话**：船长要的两件敌方挂载件，**设计已定稿、定义层已落码、数据挂载与战斗消费端未做**。
-> 主树 `main`、工作区干净、`typecheck` 全绿；**本地领先 origin 3 个提交，一律未推送**（船长明令「不要立刻推送」）。
+> **一句话（2026-09-24 更新 · 二号补记）**：两件**已全链落码完成**——定义层、数据挂载、战斗消费端、
+> 内容体检契约、用例、l10n 显示闭环**全部做完**，四闸门全绿，**只差船长验收与推送**。
+> 变动历史：本卡原写于「定义层已落码、数据与消费端未做」（一号 `1d77eeb7`）；同日**二号在 d2 工作区
+> 做完了全链**，并与主树合并（`b7ddefcb`）。**下面 §三 的"没做完"已整段换成"已完成"与"还剩什么"**，
+> 一号原文的锚点与踩坑记录原样保留在 §二 末尾（不重写别人的话）。
 
 ## 一、船长原话（照抄，别再问）
 
@@ -16,46 +19,73 @@
 | 件 | 状态 |
 | --- | --- |
 | A 族敌舰闪避 +10pp（海盗快艇 / 劫掠护卫舰 / 劫掠狙击舰 / 海盗头目舰 0.12 → **0.22**；**劫掠电子舰保持 0.30**） | ✅ 已落码**并已推送**（`ce08b7bf`）；敌舰明细表与工作台已重出 |
-| 挂载件**定义层** | ✅ 本地提交 `9f270688`（**未推送**） |
+| 挂载件定义层（一号） | ✅ 本地提交 `9f270688`（**未推送**） |
 | 设计定稿 + 逐文件实现计划 | ✅ 已推送：`docs/design/foe-mounts-20260924.md`（`ba06c24f`）＋推送口径登记（`9ae9a38d`） |
+| **两件挂载件全链落地（二号）** | ✅ 本地提交 `8dd64912`（**未推送**）＋ 与主树合并 `b7ddefcb` |
 
-**定义层具体落了什么**（接手直接从这儿往上盖，不要重写）：
-- `packages/core/src/types.ts`：`FoeMountId` 加 `'foe-mount-gyro-stabilizer'` · `'foe-mount-hull-repair'`（约 263 行附近）；
-  `FoeMountDef` 加两个可选效果字段 `evasionBonus?: { add: number }` · `repairPulse?: { everyMs: number; armor: number; hull: number }`。
-- `packages/core/src/foeMounts.ts`：`FOE_MOUNT_IDS.gyroStabilizer` / `hullRepair` 已登记；`FOE_MOUNTS` 两条定义已写
-  （名 = 姿态陀螺仪 / 船体修理装置，`note` 里摘了船长原话）；`ResolvedFoeMounts` 加 `foeEvasionBonusAdd?: number` ·
-  `foeRepairPulse?: { everyMs; armor; hull }`，`resolveFoeMounts` 已聚合（闪避**累加**、修理**取最后一件**）。
-- ⚠ **踩坑记录**：加 `FOE_MOUNTS` 条目时我曾误拿 `supportCall`（支援呼叫装置）那条当锚点把它顶掉，已补回。
+**定义层具体落了什么**（一号原文，接手直接看这儿）：
+- `packages/core/src/types.ts`：`FoeMountId` 加 `'foe-mount-gyro-stabilizer'` · `'foe-mount-hull-repair'`；
+  `FoeMountDef` 加两个可选效果字段 `evasionBonus?: { add: number }` · `repairPulse?: { everyMs; armor; hull }`。
+- `packages/core/src/foeMounts.ts`：`FOE_MOUNT_IDS.gyroStabilizer` / `hullRepair` 已登记；`FOE_MOUNTS` 两条定义已写；
+  `ResolvedFoeMounts` 加 `foeEvasionBonusAdd?: number` · `foeRepairPulse?: { everyMs; armor; hull }`，`resolveFoeMounts` 已聚合。
+- ⚠ **踩坑记录（一号留）**：加 `FOE_MOUNTS` 条目时曾误拿 `supportCall` 那条当锚点把它顶掉，已补回。
   接手第一件事建议先核一遍挂载件清单应为 **12 件**：
   `劫掠冲锋推进器 · 虫群冲锋器 T1~T4 · 机巢增程阵列 · 劫掠捕获网 · 守墓远距观瞄 · 巨构齐射观瞄 · 支援呼叫装置 · 姿态陀螺仪 · 船体修理装置`。
+  （2026-09-24 复核：**12 件，齐全** —— `content:check` 的挂载件契约汇总行每次都实算这个数。）
 
-## 三、没做完（下一步就是这些）
+## 三、二号做完的全链（原「没做完」六条，逐条对账）
 
-1. **数据挂载**（`packages/data/src/wormholeFoes.ts`）：
-   - A 族卡 `wh-pirate-scout`（条目约 86 行）· `wh-pirate-hunt`（222 / 231 行）· `wh-pirate-warband`（256 / 262 / 263 行）
-     的**全部条目**加 `FOE_MOUNT_IDS.gyroStabilizer`（262 行那条是劫掠电子舰、已有 `mounts` 数组 ⇒ 直接追加；**电子舰也要挂**）；
-   - G 族卡 `wh-exile-blockade` · `wh-exile-swarm` · `wh-exile-line` 的**全部条目**加 `FOE_MOUNT_IDS.hullRepair`（无 `mounts` 属性的条目要新增）。
-   - 星图悬赏 / 低安遭遇**一律不动**（只改洞内卡）。
-2. **战斗消费端**（`packages/core/src/combat.ts`）：
-   - 闪避：敌舰建档处（`createFoeSpecsFromShips`，约 2082 行 `speedMps` 那一段）把 `foeEvasionBonusAdd` 加到 `evasion`，夹 `min(0.9, …)`；
-   - 回血：战斗步进里给挂了 `foeRepairPulse` 的敌舰按 `everyMs`（5000）回 `armor`/`hull`，实数 = 基数 × **k**，
-     `k = 该层威胁 ÷ 45`（层威胁走 `wormholeFoes.ts` 那条曲线口径），**夹 `hpMax`、满血不回超**；
-     计时用战斗时钟 `lastTickGameMs`；⚠ **运行态计时字段必须登记进 `save.ts` 清洗器**（逐字段重建 ⇒ 漏登记＝读档重置）。
-3. **契约**（`tools/content-check.ts`）：A 族洞内条目必有陀螺仪 · G 族必有修理装置 · 星图侧不得出现这两件。
-4. **文案**：两件挂载件的名与说明补中英双语 id（挂载件名会出现在敌舰悬停 / 战报里）。
-5. **用例**：闪避 +10pp 真进命中判定 · 每 5 秒回 5/5 **且层越深回得越多** · **满血不再回**。
-6. **收尾**：`npm run foe:export`（敌舰明细表加两列读数）· `npm run content:export` · 四闸门
-   （`typecheck` / core 用例 / `content:check` / `l10n:check` / `ui:rot-check` / `build`）· **本地提交** · 报告船长 · 再按船长的话决定推不推。
+| 原计划 | 落点 | 状态 |
+| --- | --- | --- |
+| 数据挂载（A 族三卡全条目陀螺仪 · G 族三卡全条目修理装置 · 星图侧不动） | `packages/data/src/wormholeFoes.ts`（**10 条编成**） | ✅ |
+| 闪避消费端（建档处加算、夹 0.9） | `core/combat.ts` `createFoeSpecsFromShips` | ✅ 洞内 A 族 0.22 → **0.32**、劫掠电子舰 0.30 → **0.40** |
+| 回血消费端（每 5 秒 × k、夹 `hpMax`） | `core/combat.ts` `pulseFoeMountRepair` / `initFoeRepairPulses`（开战与换波各调一次、**幂等**） | ✅ `k = 本层本次实际威胁 ÷ 45`（新常量 `FOE_REPAIR_THREAT_REF`；层 1 = 1.00 · 层 7 ≈ 1.97 · 层 10 ≈ 2.77） |
+| 运行态计时字段登记 | `core/save.ts`：`battle.foeRepairPulses` 登记为 **`persist`**（漏了＝战中重载白赚一跳） | ✅ |
+| 契约 | `tools/content-check.ts` 挂载件契约新增归属判据（洞内 A 必有陀螺仪 · 洞内 G 必有修理装置 · **一切舰级与洞外卡零这两件**；按卡 id 前缀 `wh-` 认"洞内"） | ✅ **已负向验证**：临时摘掉一个陀螺仪 ⇒ 当场判红并点出 `wh-pirate-scout 的 劫掠护卫舰`；还原即绿 |
+| 文案双语 | 两件在 core 目录带 `en`（`Attitude Gyro` / `Hull Repair Unit`）＋ **显示闭环**：`namePairs` → `UnitSpec.foeMountNamePairs` → 渲染快照（`battle.foeMounts` 那条线 ＋ `battleArcsFor`）→ 战报/悬停走 `mountNamesTextOf(names, pairs)` 按语言取 | ✅（⚠ **存量八件仍无英文名**，英文界面回落中文，待船长拍板译名） |
+| 用例 | `packages/core/tests/foe-mounts-20260924.test.ts`（**15 条**）＋ 既有 3 条同步（`foe-capture-web` / `wh-foe-mounts-battle` / `l10n-overlay`） | ✅ |
+| 收尾 | 四闸门 ＋ `content:check` / `l10n:check` / `ui:tip-check` / `save:roundtrip-audit` / `save:migrate` / `build` 全绿；**本地提交未推送** | ✅ |
 
-## 四、验收要盯的一处
+**两处"与计划不同"的处置（有意，已写进设计稿 §五）**：
+1. `foe-export` 的"敌舰明细加两列读数"**有意未加** —— 那张表是**舰级粒度**，而这两件挂在**卡条目**上，
+   加列会写出**误导性的空值**；要读"哪张卡哪条编成挂了什么"看 `wormholeFoes.ts` 的两处落点或体检契约行。
+2. `foeEvasionBonusAdd` 多件相撞取 **加和**（二号原为"后写覆盖"，合并时**采纳一号定义层的口径**）。
+
+**过程中两次自我纠错（留档，别重踩）**：
+- `FOE_REPAIR_THREAT_REF` 一开始写成从 `wormholeFoes` import 的 `WORMHOLE_THREAT_BASE`，而两者**互相依赖**
+  ⇒ `content:check`（CJS 转译）下顶层求值命中 TDZ 报 `Cannot access ... before initialization`（**typecheck 与
+  vitest 都发现不了**）。现为**字面量 45 ＋ 一行类型级一致性校验**。
+- l10n 第一版把双语名做在 `data/l10n.ts` 的卡条目覆盖上 —— 界面**根本不读卡内编成** ⇒ 那是死代码；
+  改成"运行时带名对、显示层按语言挑一列"才真的生效。
+
+## 四、验收要盯的一处（原样保留）
 
 A 族**洞内**难度 = 数据 +10pp（0.22）＋ 陀螺仪 +10pp = **0.32**（劫掠电子舰 0.30 → **0.40**，它只吃陀螺仪那 10pp）
 ⇒ 我方面向 A 族的命中率在洞内下降约 10pp，是这次最可能偏硬的一档，验收时请船长特意打一场 A 族卡看手感。
+G 族那边请看"打不打得动"（每 5 秒一跳 5×k 的装甲/结构自修）。
 
-## 五、本会话其他在途口径（一并交接）
+## 五、还剩什么（交接后要人做的）
+
+1. **推送**（阻塞在船长）：d2 领先主树 **7 条本地提交、一律未推送**（船长 2026-09-24：「不要立刻推送」）。
+   按 §4 推送闸门，等船长验收口径满足后，**代码与公告一起推一次**；本件要不要发公告由船长定。
+2. **船长实测手感**：洞内 A 族命中率（上文）+ G 族修理脉冲强度。
+3. **存量八件挂载件的英文名**：`FoeMountDef.en` 缺省 ⇒ 英文界面回落中文；译名待船长拍板后逐件补
+   （`resolveFoeMounts` 与显示层已经就位，补一个字段即可）。
+4. **敌族数值是否按"我方新基线"调整**（一号原留的待定项，仍在等船长给方向）：
+   对照表见对话记录；三条路 甲 对齐 / 乙 不动 / 丙 只加基线列。
+5. **工作台重导**（若船长要）：本批动了**敌卡编成**（不是舰级表），`content:export` 的表结构没变；
+   主树那份 `content-csv/*` 当时被 Excel 占用 ⇒ **未重导**，船长关掉 Excel 后可跑一次。
+
+## 六、本会话其他在途口径（一并交接）
 
 - **推送纪律**：开发期间只本地 commit；完成后与报告一起推（§4 推送闸门 · 船长 2026-09-24「不要立刻推送」）。
 - **内容工作台已扩到 8 张表**（`content-csv/content-workbench.xlsx`，新增 `foeShips` 敌舰可回写页 · 36 列裸值）；
   回写命令 `npm run content:import foeShips <xlsx或csv>`；**17 处字段只读**（C 族三艘抗性来自族常量 `C_FAMILY_RESISTS`、
   两艘速度倍率是分数表达式），改了不生效、工具会点名。
-- **仍待船长定**：敌族数值是否按"我方新基线"调整（对照表见对话记录；三条路 甲 对齐 / 乙 不动 / 丙 只加基线列）。
+- **文档口径**：本批的工作文档 = `docs/design/foe-mounts-20260924.md`（§五 落码实录 · §六 验证 · §七 与一号定义层的合并）；
+  一号原写的那两份工作文档（`one-time-blueprint-loss-*` / `side-tasks-courier-*`）已被主树按 §8 **归档删除**，
+  关键内容在 `docs/roadmap.md` 与 `docs/glossary.md`。
+
+---
+_维护：本卡是**交接件**，二号按实况更新了 §三/§五/§六（一号正文的锚点与踩坑记录原样保留）；
+后续谁发现状态过期，直接改本卡并在提交信息里写明，不要让它再次与实际不符。_
