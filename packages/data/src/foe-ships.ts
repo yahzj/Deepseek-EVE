@@ -1134,6 +1134,142 @@ export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
   // 挂载件（冲锋 + 捕获网）**一律写在深层「海盗战团」的条目上**——见上方注释与船长的 2026-09-19 裁定
 }
 
+/* ═══════════ H 族 · 墨潮帮（The Ink Tide）（2026-09-24 船长定 · 周末入侵第一族）═══════════
+ * 船长原话（照抄）：「**A族变种（其实也可以视作新种族）**」⇒ 追问后定名「**叫'墨潮帮'（The Ink Tide）**」；
+ * 族格三条（同日裁定）：字母 **H** · 速度带 **0.90~1.30×**（中速）· 配色「**依旧红色色系最好**」。
+ *
+ * **为什么另立族字母而不是复用 A**：`content-check`「舰级契约」钉住「卡面族 = 每个编成条目的舰级族」
+ * （tools/content-check.ts:3676），而 A 族又有「海盗只用护卫/驱逐/巡洋三档、**不配战列级**」
+ * （船长 2026-09-11「海盗应该是护卫驱逐巡洋构成」）⇒ 要给入侵族一条 **T5 旗舰**，
+ * 只能立新族字母。**A 族本身一字未动**（这是船长"视作新种族"的落点）。
+ *
+ * **定位**：A 族海盗的**变种/叛出分支**——沿用海盗系性格（快、贴脸、动能 8:2），
+ * 但整体**比 A 族稳一档**（不追极限速度），高档位（T4/T5）用"厚而重"兑现"帮派成了气候"。
+ * 数值口径：T1~T3 与 A 族同档**同量级**（156/28 · 364/51 · 480/60，方便与既有卡对锚）；
+ * T4 走档基线（2,800/420）· T5 走旗舰角色系数（档基线 2,800/420 × 1.40/1.30 = **3,920/546**）。
+ *
+ * ⚠ **族色仍是红色系**（船长令）：与 A 族同为红，靠**色值深浅**区分（H = 深墨红，
+ * 见 `tones.ts` 的 `FOE_ACCENT.H` 与 `--wui-tone-H`）；族短名「**墨潮**」。
+ */
+
+/** H 族 · T1「墨潮快艇」——brawl 贴脸杂鱼（与 A 族海盗快艇同量级：156 血 / 28 单发）。 */
+export const FOE_H_INK_SKIFF: FoeShipDef = {
+  id: 'foe-h-ink-skiff',
+  name: '墨潮快艇',
+  family: 'H',
+  evasion: 0.22, // 与 A 族同口径（2026-09-24 提档后的海盗系值）
+  hullClassTier: 1, // 护卫舰
+  speedRatio: 1.15, // 340 × 1.15 = 391 m/s（落在 H 族速带 0.90~1.30 内）
+  hp: 156,
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 28,
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 1,
+  rangeMaxM: 1883,
+  falloff: 0.3,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'brawl',
+}
+
+/** H 族 · T2「墨潮突击舰」——orbit 环绕主力（364 血 / 51 单发，与劫掠护卫舰同量级）。 */
+export const FOE_H_INK_CORVETTE: FoeShipDef = {
+  id: 'foe-h-ink-corvette',
+  name: '墨潮突击舰',
+  family: 'H',
+  evasion: 0.22,
+  hullClassTier: 1, // 护卫舰（与 A 族"护卫舰当主力"同口径）
+  speedRatio: 1.1, // 340 × 1.10 = 374 m/s
+  hp: 364,
+  split: { s: 0.34, a: 0.33, h: 0.33 },
+  shotDmg: 51,
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 1,
+  rangeMaxM: 4275,
+  falloff: 0.3,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'orbit',
+}
+
+/** H 族 · T3「墨潮狙击舰」——kite 拉距（480 血 / 60 单发，远程换单发）。 */
+export const FOE_H_INK_SNIPER: FoeShipDef = {
+  id: 'foe-h-ink-sniper',
+  name: '墨潮狙击舰',
+  family: 'H',
+  evasion: 0.22,
+  hullClassTier: 2, // 驱逐舰
+  speedRatio: 1.1, // 295 × 1.10 = 325 m/s
+  hp: 480,
+  split: { s: 0.5, a: 0.25, h: 0.25 },
+  shotDmg: 60,
+  hitRate: 0.85,
+  reloadMs: 4000,
+  rangeMinM: 1255,
+  rangeMaxM: 9619,
+  falloff: 0.3,
+  blindDmgMul: 0.3,
+  dmgMix: { explosive: 8, kinetic: 2 },
+  tactic: 'kite',
+}
+
+/**
+ * H 族 · T4「墨潮重炮舰」——**战列档**（A 族给不了的那一档；帮派成了气候的兑现）。
+ * 按档基线：T4 2,800 × 角色 1.00 = **2,800 血** · 420 × 1.00 = **420 单发**；
+ * 速度 = 205 × 1.00 = **205 m/s**（= 本档基准，落在 H 族速带内）。
+ */
+export const FOE_H_INK_BATTLESHIP: FoeShipDef = {
+  id: 'foe-h-ink-battleship',
+  name: '墨潮重炮舰',
+  family: 'H',
+  evasion: 0.12, // 大舰不闪（与既有 T4 同口径：缺省值）
+  hullClassTier: 4, // 战列舰
+  speedRatio: 1.0, // 205 × 1.00 = 205 m/s
+  hp: 2800,
+  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（重炮舰的"厚"）
+  shotDmg: 420,
+  hitRate: 0.85,
+  reloadMs: 5000,
+  rangeMinM: 1,
+  rangeMaxM: 4275,
+  falloff: 0.3,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'brawl',
+}
+
+/**
+ * H 族 · **T5「墨潮旗舰」**——周末入侵的族旗舰（4 波 · 4 艘小队战里的那条）。
+ *
+ * 数值（T5 档基线 2,800 / 420 × 旗舰角色 1.40 / 1.30）= **3,920 血 / 546 单发** ——
+ * 与 E 族「核心舱段」同量级（那是唯一既有 T5），靠**速度与近战性格**区分：
+ * 核心舱段是静物（E 族族格速度 ≈ 0），墨潮旗舰 **248 m/s**（155 × 1.6，船长 2026-09-24 准的
+ * "旗舰速度破例"）⇒ 一个站着轰、一个压上来打。
+ * ⚠ 血型/构成沿用海盗系签名（装甲型 · 动能 8 : 2），命中 0.85、贴脸近界 1。
+ */
+export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
+  id: 'foe-h-ink-flagship',
+  name: '墨潮旗舰',
+  family: 'H',
+  evasion: 0.1, // 旗舰体量大、难闪（低于杂鱼；不给 0 是为了保留"打得中但吃命中加成"的手感）
+  hullClassTier: 5, // 旗舰（本族唯一 T5，须登记在 H 族旗舰位）
+  speedRatio: 1.6, // 155 × 1.6 = 248 m/s（船长准"旗舰速度破例"；破 H 族速带 0.90~1.30）
+  hp: 3920,
+  split: { s: 0.2, a: 0.55, h: 0.25 },
+  shotDmg: 546,
+  hitRate: 0.85,
+  reloadMs: 5000,
+  rangeMinM: 1,
+  rangeMaxM: 5000,
+  falloff: 0.3,
+  blindDmgMul: 0.3,
+  dmgMix: { kinetic: 8, explosive: 2 },
+  tactic: 'brawl',
+  elite: true, // 显示名挂「精锐」前缀（头目档口径）
+}
+
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
 export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_PIRATE_SKIFF,
@@ -1161,4 +1297,10 @@ export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_G_NADIR_LOCK,
   FOE_G_EXILE_BATTLESHIP, // 四档战列舰（2026-09-15 已启用：洞内 G 族深层卡 ×1，挂蜂群机 ×3）
   FOE_G_REMNANT_TENDER, // 2026-09-16 船长：敌方后勤舰（T3 · 备用壳体，暂不进卡；带 repairPct 修理能力）
+  // ═══ H 族 · 墨潮帮（2026-09-24 船长定 · 周末入侵第一族）：五档壳体，T5 = 入侵族旗舰 ═══
+  FOE_H_INK_SKIFF,
+  FOE_H_INK_CORVETTE,
+  FOE_H_INK_SNIPER,
+  FOE_H_INK_BATTLESHIP,
+  FOE_H_INK_FLAGSHIP, // 本族唯一 T5（周末入侵旗舰战用）
 ]

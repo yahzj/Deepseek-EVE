@@ -134,6 +134,8 @@ export const FOE_LAIR_TIERS: Record<FoeFamily, readonly [string, string, string]
   E: ['警戒机群', '核心舱段', '深层机库'], // 泰坦巨构
   F: ['巡逻队长', '据点', '隐蔽据点'], // 制式巡逻【已废弃·留档：2026-09-11 船长「废弃F族，将F族融合进A族」，字母位保留为空位；本行不删，防旧内容表/旧导出带 'F' 时解析出错】
   G: ['残兵头目', '聚落营地', '藏匿地'], // 鱿烬亡军
+  // H 族（墨潮帮 · 2026-09-24 船长定名）：海盗变种/叛出分支 ⇒ 词表沿用海盗腔（窝点=藏货/船坞那一套）
+  H: ['堂口头目', '私货仓', '隐蔽坞'], // 墨潮帮
 }
 /** 未登记敌族时的兜底档位词 */
 const LAIR_TIER_FALLBACK: readonly [string, string, string] = ['头目', '据点', '秘密据点']
@@ -166,6 +168,10 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   // （一次掉 ×10 架；无人机是消耗品，打光后再刷可补），另两件为无人机导控 / 中继天线；
   // 2026-09-14 追加**鱿蜂无人机的一次性图纸**（`bp-lair-g-drone`：一次开工出 50 架）
   G: ['drone-exile-bee', 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g', 'bp-lair-g-drone'],
+  // H 族（墨潮帮 · 2026-09-24）：**暂空** —— 它目前只作为**周末入侵**的对手（入侵卡不走窝点链路），
+  // 星图侧还没有墨潮帮的悬赏/窝点卡 ⇒ 专属件池没有产出面。日后若给星图上卡（M4 或新批），
+  // 在这里补三件（建议沿用 A 族海盗腔的"抢来的改装件"设定）。
+  H: [],
 }
 
 /** 该卡的专属装备池（卡级优先，其次按敌族；都没有 = 空池） */
@@ -273,6 +279,9 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
   E: ['kinetic', 'explosive', 'plasma'], // 泰坦巨构：巨构能量核心 + 实弹残炮
   F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【已废弃·留档：2026-09-11 并入 A 族；与 A 表同序，故当年"缺族回落到 A"零差异】
   G: ['explosive', 'kinetic', 'plasma'], // 鱿烬亡军：拼装火药与土制弹头
+  // H 族（墨潮帮 · 2026-09-24）：与 A 族同序（缴获改装的实弹/破片弹头）——它是海盗的变种分支，
+  // 弹药来源同一条链；主系仍是动能 ⇒ 副系落到爆炸
+  H: ['kinetic', 'explosive', 'plasma'],
 }
 
 /**
