@@ -1435,6 +1435,16 @@ export function App({ engine }: { engine: GameEngine }) {
           <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>
             <Panel
               title={tr("ui.App.067")}
+              /* 周末入侵：**日志面板底部的活动框**（2026-09-24 船长按截图指定位置），点击跳星图 */
+              footer={
+                <WeekendInvasionLogRow
+                  engine={engine}
+                  onGoto={() => {
+                    changePage('map')
+                    changeMapTab('star')
+                  }}
+                />
+              }
               right={
                 <div className="app-log-head-right">
                   <span className="app-dim">{tr("ui.App.068")}</span>

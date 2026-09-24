@@ -3583,3 +3583,11 @@
   --wui-tone-plasma: 99 162 251;
   --wui-tone-rare-wreck-tone: 244 206 93;
 }
+
+
+/* 面板底部固定槽（2026-09-24 船长：周末入侵活动框放事件日志底部）——不参与 body 滚动 */
+.wui-panel-foot {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-top: 1px solid rgb(var(--wui-border));
+}

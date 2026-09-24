@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 /**
  * 日志流：游戏里滚动的文字事件（EVE 本地频道那种味道）。
  * 最新的在最上面；kind 决定颜色（T6 语义）：system=紫、levelup=金、warn=红（左竖条）、
@@ -17,15 +16,10 @@ interface LogListProps {
   logs: LogItem[]
   /** 最多显示多少条（从最新往旧取），默认 120 */
   limit?: number
-  /**
-   * **列表末尾附加的一行**（2026-09-24 船长：周末入侵活动行「放在事件日志的底部，和现有事件日志同级」）。
-   * 渲染在**同一个 `<ul>` 的最后一条** ⇒ 观感与普通日志完全同级（日志新的在上，故最后一条就是底部）。
-   */
-  footer?: ReactNode
 }
 
-export function LogList({ logs, limit = 120, footer }: LogListProps) {
-  if (logs.length === 0 && footer === undefined) return <div className="wui-log-empty">（暂无事件，航线静悄悄）</div>
+export function LogList({ logs, limit = 120 }: LogListProps) {
+  if (logs.length === 0) return <div className="wui-log-empty">（暂无事件，航线静悄悄）</div>
   const shown = logs.slice(-limit).reverse()
   return (
     <ul className="wui-log-list">

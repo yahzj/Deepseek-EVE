@@ -10093,9 +10093,13 @@ html[data-locale='en'] body {
 
 .app-pro-wake-btn:hover { background: rgb(var(--wui-x64) / 0.4); box-shadow: 0 0 22px rgba(90,220,160,.35); }
 /* 周末入侵 · 事件日志里的一行（2026-09-24 船长令：放日志底部、与日志同级、点击跳星图） */
-.app-weekend-logrow { cursor: pointer; }
-.app-weekend-logrow:hover { filter: brightness(1.18); }
-.app-weekend-logrow-tag { font-weight: 800; margin-right: 4px; }
+/* 周末入侵 · 事件日志面板底部的活动框（2026-09-24 船长按截图指定；点击跳星图） */
+.app-weekend-box { display: flex; flex-direction: column; gap: 3px; cursor: pointer; font-size: 12px; line-height: 1.5; }
+.app-weekend-box:hover { filter: brightness(1.18); }
+.app-weekend-box-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.app-weekend-box-tag { font-weight: 800; }
+.app-weekend-box-dim { color: rgb(var(--wui-x76)); }
+.app-weekend-box-warn { color: rgb(var(--wui-x159)); font-weight: 700; }
 
 /* 周末入侵：星图被占星系的红环 + 旗标（2026-09-23） */
 .app-map-invasion { pointer-events: none; }
