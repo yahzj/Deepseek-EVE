@@ -7,6 +7,10 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
+ *  - battleship **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档」）：
+ *         真战列 T4 巨齿鲨（6/5/3 · 动能抗 · 驾驶）＋ T4 均衡对照 ＋ T5 邓氏鱼旗舰 ＋ T3 锤头鲨巡洋对照，
+ *         **中低槽装满**、备件 31 种 ×3、弹药三型 ×8000、全星系点亮、声望 13
+ *         （起因：二号曾拿"鲸王级采矿艇"当 T3 战列测，结论全错 ⇒ 用真战列实机复核）。
  *  - b1   低安遭遇：+2000 万 ISK、协会声望 10、点亮全部低安星系、驾驶船配炮台+三型通用弹、
  *         AI 基础核心 +4 且 ai-expert Lv3（3 个副船名额）、全舰回满耐久、重置首次低安提示。
  *  - standby 星图待命：门槛同 b1 + 预置一艘副船已在低安驻留待命（看状态/取消/区域遭遇）；
@@ -2870,7 +2874,130 @@ function injectWormholeEwar(state: GameState): string[] {
   return notes
 }
 
+/**
+ * **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档，我打算实机测试」）。
+ *
+ * 起因：H 族（墨潮帮）重标过程中，二号拿 `whale-king`（**鲸王级采矿艇**，industrial）当"T3 战列"
+ * 测了一轮，结论全错 ⇒ 船长要求**用真正的战列舰在实机上验**。
+ *
+ * 档里给什么：
+ * - **两艘真战列/旗舰**：T4「巨齿鲨级战列舰」（6/5/3 · CPU 490）设为驾驶 · T5「邓氏鱼级旗舰」（7/7/4 · CPU 690）；
+ * - **两套对照装配**（同型不同件，可现场对比）：`动能抗` 与 `均衡`（H 族新构成是动能 6 : 爆炸 4）；
+ * - **T3 巡洋对照船**（锤头鲨，5/4/3）：验证"巡洋 vs 战列"的手感差；
+ * - **全套备件**（MK1/2/3 三族武器 ＋ 盾/甲/推进/支援/CPU/锁定 各 3 件）⇒ 可现场自由换装；
+ * - **弹药三型 ×8000**、全星系点亮、协会声望 13（可接全部悬赏）。
+ *
+ * 看什么（给船长的实测清单）：
+ * 1. **装配页**：两艘战列的槽位/CPU 是否够用、换件后战斗数值预览是否合理；
+ * 2. **打现役高段卡**（天底 66 / 噬口 80 / 坟场·虚海 88 / 穹顶 96）：掉血多少、打多久、弹药够不够
+ *    （⚠ 上一轮的"战列打不动"其实是**备弹 60 发打光**，这档会重现/排除它）；
+ * 3. **打 H 族入侵卡**（需调试模式开入侵：核心/外围）：骚扰 78 / 袭击 85 / 主力 93 / 旗舰 120。
+ */
+function injectBattleship(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  state.wallet.isk += 80_000_000
+  notes.push('钱包 +80,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13（可接全部悬赏，含穹顶守卫 96）')
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
+  }
+  notes.push(`点亮全部星系（${GALAXIES.length}）`)
+
+  /**
+   * 四艘船（[船型, 自定义名, high, mid, low]）——
+   * ⚠ 中低槽这次**装满**（上一轮的空中低槽是导致"战列很脆"假象的原因之一）。
+   * 抗性件按 H 族新构成选：**动能 6 : 爆炸 4** ⇒ 主堆动能抗、另一套走均衡。
+   */
+  const ships: Array<[string, string, string[], string[], string[]]> = [
+    [
+      'sh-megalodon',
+      '巨齿鲨·战列（动能抗 · 驾驶）',
+      Array(6).fill('mod-turret-kin-3'),
+      ['mod-shield-kin-3', 'mod-shield-kin-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-track-3'],
+      ['mod-armor-kin-3', 'mod-stab-kin-3', 'mod-cpu-3'],
+    ],
+    [
+      'sh-megalodon',
+      '巨齿鲨·战列（均衡 · 换装对照）',
+      Array(6).fill('mod-turret-kin-3'),
+      ['mod-shield-ext-3', 'mod-shield-ext-3', 'mod-mwd-3', 'mod-rof-3', 'mod-gyro-3'],
+      ['mod-armor-plate-3', 'mod-stab-kin-3', 'mod-hullrep-2'],
+    ],
+    [
+      'sh-dunkleosteus',
+      '邓氏鱼·旗舰（T5 · 7/7/4 满配）',
+      Array(7).fill('mod-turret-kin-3'),
+      ['mod-shield-kin-3', 'mod-shield-kin-3', 'mod-shield-ext-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-track-3', 'mod-rof-3'],
+      ['mod-armor-kin-3', 'mod-armor-plate-3', 'mod-stab-kin-3', 'mod-cpu-3'],
+    ],
+    [
+      'sh-hammerhead',
+      '锤头鲨·巡洋（T3 对照）',
+      Array(5).fill('mod-turret-kin-3'),
+      ['mod-shield-kin-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-rof-3'],
+      ['mod-armor-kin-3', 'mod-stab-kin-3', 'mod-cpu-3'],
+    ],
+  ]
+  const uids: string[] = []
+  ships.forEach(([shipId, name, high, mid, low], i) => {
+    const uid = addShipToFleet(state, shipId)
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...mid], low: [...low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  })
+  notes.push(
+    `新增 4 艘：${uids[0]}（**巨齿鲨·战列 · 动能抗 · 已设驾驶**）· ${uids[1]}（巨齿鲨·均衡对照）· ` +
+      `${uids[2]}（邓氏鱼·旗舰 T5）· ${uids[3]}（锤头鲨·巡洋 T3 对照）——舰船页切驾驶逐船对照`,
+  )
+
+  // 备件：三族武器 MK1~3 + 防护/推进/支援/CPU/锁定 各 3 件（现场自由换装）
+  const spares = [
+    'mod-turret-kin-1', 'mod-turret-kin-2', 'mod-turret-kin-3',
+    'mod-missile-1', 'mod-missile-2', 'mod-missile-3',
+    'mod-laser-1', 'mod-laser-2', 'mod-laser-3',
+    'mod-shield-kin-3', 'mod-shield-exp-3', 'mod-shield-pla-3', 'mod-shield-ext-3', 'mod-shieldchg-3',
+    'mod-armor-kin-3', 'mod-armor-exp-3', 'mod-armor-pla-3', 'mod-armor-plate-3',
+    'mod-prop-3', 'mod-mwd-3', 'mod-cpu-3', 'mod-lock-3',
+    'mod-stab-kin-3', 'mod-stab-exp-3', 'mod-stab-pla-3', 'mod-rof-3', 'mod-track-3', 'mod-gyro-3',
+    'mod-hullrep-2', 'mod-shieldfield-3', 'mod-warpcomp-3',
+  ]
+  for (const m of spares) state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 3
+  notes.push(`装备库备 ${spares.length} 种 ×3（三族武器 MK1~3 · 盾/甲六系 · 推进/CPU/锁定/支援/维修/力场 · 可现场换装）`)
+
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 8_000
+  }
+  notes.push('仓库弹药三型（基础/大）各 +8,000 —— **旗舰战打满 4 波也够**（上一轮"战列打不动"就是备弹 60 发打光）')
+
+  /**
+   * **打开调试档位**（`debugQuick`）：周末入侵只有调试模式可见/可开（`WEEKEND_DEBUG_ONLY`）
+   * ⇒ 不开这一格就**测不了 H 族那四张入侵卡**（骚扰 78 / 袭击 85 / 主力 93 / 旗舰 120）。
+   * 同时它会把入侵时间轴按 ÷60 压缩（2 小时倒计时 = 2 分钟）⇒ 磨血/章鱼人也能在实机上看到。
+   */
+  state.debugQuick = true
+  notes.push('**已打开调试模式（`debugQuick`）**：周末入侵开档即出现（时间轴 ÷60 —— 旗舰 2 小时倒计时 = 2 分钟）')
+
+  // 首页可见的四张验收卡（顺手把威胁排序写在清单里）
+  notes.push(
+    '验收路径（星图 · 逐威胁开战）：天底静区封锁 66 → 噬口猎杀令 80 → 坟场守墓者/虚海守望者 88 → **穹顶守卫 96**；' +
+      'H 族入侵卡需先在存档里开调试模式（`debugQuick`）触发入侵 ⇒ 骚扰 78 / 袭击 85 / 主力 93 / **旗舰 120（4 船编队战）**',
+  )
+  notes.push('看什么：① 装配页槽位/CPU 够不够、换件后数值预览 ② 每场**掉血% / 耗时 / 弹药消耗** ③ 战列 vs 巡洋的手感差（同卡切驾驶对照）')
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  /**
+   * **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档」）：
+   * 真战列（巨齿鲨 T4）+ 旗舰（邓氏鱼 T5）+ 巡洋对照，中低槽装满、备件与弹药齐全。
+   */
+  battleship: injectBattleship,
   /**
    * **虫洞 · 劫掠电子舰现场档**（2026-09-17 船长：「准备一个在虫洞内面对该敌人的存档」）：
    * 第 4 层 · A 族 · 站在舰船信号上 ⇒ 迎战即打「海盗战团」（内含劫掠电子舰，首轮开火放捕获网）。
