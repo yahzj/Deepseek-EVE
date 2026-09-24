@@ -11525,3 +11525,7 @@ html[data-locale='en'] body {
 .app-map-loop-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11.5px; }
 .app-map-loop-name { font-weight: 600; }
 .app-map-loop-ask { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。 */
+.app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: 13px; font-weight: 700; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }
+@keyframes bts-pop-rise { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.85); } 18% { opacity: 1; transform: translate(-50%, -70%) scale(1.08); } 100% { opacity: 0; transform: translate(-50%, -210%) scale(1); } }

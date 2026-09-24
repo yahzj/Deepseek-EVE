@@ -307,6 +307,18 @@ const meSpeedRef = useRef(200)
   const keyRef = useRef(1)
   const boltsRef = useRef<BoltV[]>([])
   const flashRef = useRef<FlashV[]>([])
+  /**
+   * **伤害飘字**（**2026-09-24 船长令**：「战斗界面，我希望添加战斗伤害的数值动画（包括 MISS）」＋四答甲）：
+   * 目标旁向上飘 · **同一拍对同一目标累加成一个数字** · 类型色数字 + 灰色 MISS · 只在战斗画面且随倍速/暂停。
+   * 生命期用**战斗时钟** `now`（与弹道同一把尺，见下方 filter），不用墙钟 ⇒ 倍速跟着快、暂停即冻结。
+   */
+  const popupsRef = useRef<
+    Array<{ key: number; x: number; y: number; born: number; amount: number; type: DamageType; miss: boolean }>
+  >([])
+  /** 同一拍内按目标聚合（key = 目标 tag）——每拍末尾一次性落成飘字（甲②：累加成一个数字） */
+  const popupAccRef = useRef<Map<string, { x: number; y: number; amount: number; type: DamageType; miss: boolean }>>(
+    new Map(),
+  )
   /** 2026-09-10 炮口轮换计数（key = 'me' 或敌方 tag；多炮口舰逐发轮换开火点） */
   const muzzleCountRef = useRef<Map<string, number>>(new Map())
   /** 2026-09-10 无人机机群：机型 → 当前一轮出击（放出时刻 + 本轮随机阵位；位置与弹道同源） */
@@ -1367,12 +1379,57 @@ const meSpeedRef = useRef(200)
         ...(dm ? { small: true } : {}),
         ...(droneDelay > 0 ? { delay: droneDelay } : {}),
       })
-    }
+      /**
+       * **伤害飘字累加**（甲①目标旁 · 甲②同拍同目标累加 · 甲③类型色 + 灰 MISS）：
+       * 落点 = 这一发的**目标点**（弹道终点，与弹道同一套几何）；命中取 `fx.hit`，
+       * 伤害取 `fx.dmg`（引擎逐发结算值；取不到就只记 MISS，不硬编数字）。
+       */
+      {
+        const tx = g.x1 + Math.cos((g.angDeg * Math.PI) / 180) * g.len
+        const ty = g.y1 + Math.sin((g.angDeg * Math.PI) / 180) * g.len
+        const tkey = fx.to ?? `${Math.round(tx)},${Math.round(ty)}`
+        /**
+         * ⚠ `BattleFx` 目前**不带每发伤害**（字段只有 seq/atMs/side/tag/to?/type/src?/artId?/web?/hit）⇒
+         * 这里按可选字段读：core 补上 `dmg?: number`（瞬态、零迁移）之后数字立刻生效；
+         * 补上之前**命中不显示数字、MISS 照常显示**（功能不静默、也不硬编假数字）。
+         */
+        const dmgRaw = (fx as unknown as { dmg?: unknown }).dmg
+        const dmg = typeof dmgRaw === 'number' ? dmgRaw : 0
+        const prev = popupAccRef.current.get(tkey)
+        popupAccRef.current.set(tkey, {
+          x: tx,
+          y: ty,
+          amount: (prev?.amount ?? 0) + Math.max(0, dmg),
+          type: fx.type,
+          miss: (prev?.miss ?? false) || fx.hit === false,
+        })
+      }    }
     if (flashRef.current.length > 6) flashRef.current.splice(0, flashRef.current.length - 6)
   }
   // 惰性清理过期元素（渲染输出不再包含它们即从 DOM 移除；延迟弹道按 delay 延长存活）
   boltsRef.current = boltsRef.current.filter((b) => now - b.born < BOLT_LIFE + (b.delay ?? 0))
   flashRef.current = flashRef.current.filter((f) => now - f.at < FLASH_LIFE + (f.delay ?? 0))
+  /**
+   * **伤害飘字：每拍把累加结果落成一条飘字**（甲②：同一拍对同一目标只出一个数字）。
+   * `popupAccRef` 在本拍的开火循环里累加（key = 目标 tag），这里一次性消费并清空 ⇒ 下一拍重新累计。
+   * 生命期同样用战斗时钟 `now`（`POPUP_LIFE`），倍速下跟着快、暂停即冻结（甲④）。
+   */
+  if (popupAccRef.current.size > 0) {
+    for (const [tkey, acc] of popupAccRef.current) {
+      popupsRef.current.push({
+        key: keyRef.current++,
+        x: acc.x,
+        y: acc.y,
+        born: now,
+        amount: Math.round(acc.amount),
+        type: acc.type,
+        miss: acc.miss && acc.amount <= 0,
+      })
+      void tkey
+    }
+    popupAccRef.current.clear()
+  }
+  popupsRef.current = popupsRef.current.filter((p) => now - p.born < POPUP_LIFE)
   // 击落坠落演出：CSS 演完即清（不留常驻 DOM，也不做逐帧 JS 动画）
   if (droneDownRef.current.length > 0) {
     droneDownRef.current = droneDownRef.current.filter(
@@ -1713,6 +1770,26 @@ const meSpeedRef = useRef(200)
     ]
   })
 
+  /** 伤害飘字存活（战斗时钟毫秒；与弹道同一把尺 ⇒ 倍速跟着快、暂停即冻结） */
+  const POPUP_LIFE = 900
+  const popupEls = popupsRef.current.map((p) => {
+    const miss = p.miss
+    return (
+      <span
+        key={`pop-${p.key}`}
+        className="app-bts-pop"
+        style={{
+          left: `${p.x}px`,
+          top: `${p.y}px`,
+          // 甲③：伤害数字用**伤害类型色**（与弹点同色），MISS 用灰色（--wui-dim，不新造色）
+          color: miss ? 'rgb(var(--wui-dim))' : DMG_COLOR[p.type],
+          animationDuration: `${POPUP_LIFE}ms`,
+        }}
+      >
+        {miss ? 'MISS' : `-${p.amount.toLocaleString('zh-CN')}`}
+      </span>
+    )
+  })
   const boltEls = boltsRef.current.map((bv) => {
     const look = BOLT_LOOK[bv.type] ?? BOLT_LOOK.kinetic
     const color = bv.color
@@ -2580,6 +2657,8 @@ const meSpeedRef = useRef(200)
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}
           {boltEls}
+          {/* 伤害飘字层（2026-09-24 船长令）：叠在弹道之上、不吃点击（CSS 里 pointer-events:none） */}
+          {popupEls}
         </div>
       </div>
 
