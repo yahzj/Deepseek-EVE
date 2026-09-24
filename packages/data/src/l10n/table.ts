@@ -3769,6 +3769,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Yield.004": { zh: "（仓库 {p1} · 行情 {p2}）", en: "(in storage {p1} · market {p2})" },
   /* 装备/舰船产物行的利润率（2026-09-23 船长令：行情价后面显示） */
   "ui.Yield.005": { zh: "利润率 {p1}%", en: "margin {p1}%" },
+  /* 星系详细悬浮窗 · 重复清剿（2026-09-24 船长令） */
+  "ui.Expedition.427": { zh: "重复清剿", en: "Repeat sweeps" },
+  "ui.Expedition.428": { zh: "开始重复清剿", en: "Start repeat sweeps" },
+  "ui.Expedition.429": { zh: "停止讨伐", en: "Stop the hunt" },
+  "ui.Expedition.430": { zh: "会停掉当前正在循环的目标，改循环这一张 —— 确认？", en: "This stops the current repeat target and loops this one instead — confirm?" },
+  "ui.Expedition.431": { zh: "该星系暂无可清剿目标。", en: "No repeatable targets in this system." },
+  "ui.Expedition.432": { zh: "威胁 {p1} · 胜率 {p2}%", en: "Threat {p1} · win {p2}%" },
+  "ui.Expedition.433": { zh: "循环中", en: "Looping" },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },
   "ui.spaceBg.002": { zh: "绿星云", en: "Green nebula" },
   "ui.spaceBg.003": { zh: "紫星云", en: "Purple nebula" },

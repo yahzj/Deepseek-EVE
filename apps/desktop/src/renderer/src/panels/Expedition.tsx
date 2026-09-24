@@ -1500,6 +1500,8 @@ function StarMap({
               <div className="app-map-detail-desc">{selected.description}</div>
               {/* B1.5 前往星系动作区：掩护巡逻（主控/副船）/ 矿带 / 悬赏，含简介 */}
               <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} onOpenWormhole={onOpenWormhole} />
+              {/* 重复清剿（2026-09-24 船长令）：该星系可循环的卡逐行列出，开/停都走 bountyLoopAt */}
+              <BountyLoopBlock engine={engine} galaxy={selected} onToast={onToast} />
               {/* 赏金任务（当日板）落在这个星系时的提示（2026-09-10 船长：星图上要能看出哪些星系有任务） */}
               {(tasksByGalaxy.get(selected.id)?.length ?? 0) > 0 ? (
                 <div className="app-map-taskline">
@@ -1649,6 +1651,77 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
 }
 
 /* ─────────── B1.5 星图「前往星系」动作区（掩护巡逻/矿带/悬赏 + 简介） ─────────── */
+
+/**
+ * **星系详细悬浮窗 · 重复清剿**（**2026-09-24 船长令**：「允许玩家在星图的星系详细悬浮窗里进行重复清剿。」
+ * ＋三答：①**乙** 列出候选卡让玩家挑 · ②**乙** 允许顶替但**先确认** · ③**甲** 开启条件照旧）。
+ *
+ * 走的就是 T8 那条**唯一开关** `engine.bountyLoopAt(anomalyId | null)`（null = 停止）：不新增状态、
+ * 不改存档结构；忙碌/再开门槛与卡面同一把尺（`busyOther` 与 `autoLoopReopenBlockReason`）。
+ */
+function BountyLoopBlock({
+  engine,
+  galaxy,
+  onToast,
+}: {
+  engine: GameEngine
+  galaxy: GalaxyDef
+  onToast: ToastFn
+}) {
+  const state = engine.state
+  /** 待确认顶替的目标（null = 没有待确认）——照抄同文件 `goAsk` 的"内联警示"写法，不新增弹窗机制 */
+  const [ask, setAsk] = useState<string | null>(null)
+  const loopId = state.autoLoopAnomalyId
+  const cands = engine.anomalies.filter((a) => a.galaxyId === galaxy.id)
+  if (cands.length === 0) return <div className="app-dim">{tr('ui.Expedition.431')}</div>
+  const run = (id: string | null): void => {
+    const r = engine.bountyLoopAt(id)
+    setAsk(null)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.389'), true)
+  }
+  return (
+    <div className="app-map-loop">
+      <div className="app-map-detail-name">{tr('ui.Expedition.427')}</div>
+      {cands.map((a) => {
+        const looping = loopId === a.id
+        const busyOther =
+          state.mining.active || state.transit.active || (state.expedition.active && state.expedition.anomalyId !== a.id)
+        const blocked = looping ? false : busyOther || autoLoopReopenBlockReason(state) !== null
+        const win = Math.max(2, Math.round(bountyWinPercentGuarded(state, engine.ctx, a) * 100))
+        const swapping = loopId !== null && !looping
+        return (
+          <div className="app-map-loop-row" key={a.id}>
+            <span className="app-map-loop-name">{a.name}</span>
+            <span className="app-dim">{tr('ui.Expedition.432', { p1: a.threat, p2: win })}</span>
+            {looping ? <span className="app-dim">{tr('ui.Expedition.433')}</span> : null}
+            <button
+              className={`app-btn is-small${looping ? '' : ' is-primary'}`}
+              disabled={blocked}
+              onClick={() => {
+                if (looping) run(null)
+                else if (swapping) setAsk(a.id)
+                else run(a.id)
+              }}
+            >
+              {looping ? tr('ui.Expedition.429') : tr('ui.Expedition.428')}
+            </button>
+            {ask === a.id ? (
+              <span className="app-map-loop-ask">
+                <span className="app-dim">{tr('ui.Expedition.430')}</span>
+                <button className="app-btn is-small is-danger" onClick={() => run(a.id)}>
+                  {tr('ui.App.086')}
+                </button>
+                <button className="app-btn is-small" onClick={() => setAsk(null)}>
+                  {tr('ui.ActivityBar.004')}
+                </button>
+              </span>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function GalaxyActions({
   engine,
