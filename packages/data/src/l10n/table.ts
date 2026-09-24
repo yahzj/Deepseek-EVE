@@ -1923,6 +1923,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.422": { zh: " m³ 按体积占用货舱（不消耗任何物品，出发时真实货物自动卸入仓库），到站自动结算运费。", en: " m³ takes up hold space by volume (nothing is consumed, and real cargo is unloaded into storage automatically on departure); the fare settles automatically on arrival." },
   "ui.Expedition.423": { zh: " 档 · 从物品仓库扣除交付，不接受货仓；不涨声望）。成交后协会撤走这批货、本单的抬价效应一并解除。", en: " tier · delivered by deducting from item storage, the hold is not accepted, and no reputation is gained). Once the deal goes through the Association takes the goods away and this order's price bump is lifted as well." },
   "ui.Expedition.424": { zh: "里程碑任务", en: "Milestone tasks" },
+  "ui.Expedition.425": { zh: "计算中", en: "Calculating" },
+  "ui.Expedition.426": { zh: "按当前船况实测推演（三点距离各取样）：预计损耗装甲 ≈{p1}%、结构 ≈{p2}%；最差距离胜率 {p3}%", en: "Simulated from the ship's current condition (sampled at three ranges): expected armor loss ≈{p1}%, structure ≈{p2}%; win rate at the worst range {p3}%" },
   /* ── 里程碑任务页（2026-09-20 船长：完成「第一次」后的里程碑链单开一页）── */
   "ui.MilestoneTasks.001": { zh: "◆ 里程碑 ·", en: "◆ Milestones ·" },
   "ui.MilestoneTasks.002": { zh: "条已解锁", en: "unlocked" },
@@ -4162,6 +4164,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "当前编队 {p1} 艘：增加舰船会提高总质量、减少本次可用回合，本趟会更危险。",
     en: "Formation is {p1} ships: adding more raises total mass and cuts the turns available for this run, making it more dangerous.",
   },
+  "ui.Wormhole.378": { zh: "围剿者 · {p1}：挡路，打掉才能通过；停在这一格即开战", en: "Sweeper · {p1}: blocks the route — destroy it to pass; stopping on this tile starts a fight" },
   "ui.Wormhole.363": { zh: "。", en: "." },
   "ui.Wormhole.364": { zh: "」", en: "”" },
   "ui.WormholeScan.001": { zh: "枚 · 研究不消耗时间", en: "cores · research takes no time" },

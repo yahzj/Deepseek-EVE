@@ -2450,6 +2450,21 @@ function normalizeState(raw: unknown): GameState {
   const resupplyFromWarehouse =
     src.resupplyFromWarehouse === true ? true : src.resupplyFromWarehouse === false ? false : undefined
   /**
+   * **实战胜利记录**（2026-09-24 船长令 · 兼容字段无版本号）：键 = 敌卡 id，值 = 那一次的距离与剩余比例。
+   * 只收合法行（`desireM` 为正有限数 · `remainPct` 落在 0~1）；**空表不写键** ⇒ 老档零迁移、往返逐字一致。
+   * ⚠ 与 `resupplyFromWarehouse` 同款：漏登记 = 每读一次档记录就被清空，胜率预估退回三点采样。
+   */
+  const winRecord: Record<string, { desireM: number; remainPct: number }> = {}
+  for (const [anomalyId, rec] of Object.entries(asRaw(src.winRecord))) {
+    if (anomalyId.length === 0 || typeof rec !== 'object' || rec === null) continue
+    const r = asRaw(rec)
+    const desireM = r.desireM
+    const remainPct = r.remainPct
+    if (typeof desireM !== 'number' || !Number.isFinite(desireM) || desireM <= 0) continue
+    if (typeof remainPct !== 'number' || !Number.isFinite(remainPct)) continue
+    winRecord[anomalyId] = { desireM, remainPct: Math.min(1, Math.max(0, remainPct)) }
+  }
+  /**
    * 见过的敌方舰级（2026-09-16）：只收 `true` 的键（值域 = `FoeShipDef.id` 字符串）。
    * **空表也落键**（与 `commsDelivered` 同口径）：新档出生即带 `{}`，若这里把空表折成"缺失"，
    * 存档往返会少一个键 ⇒ `save.test.ts` 的"内容完全一致"用例失败。
@@ -3219,6 +3234,8 @@ function normalizeState(raw: unknown): GameState {
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
     ...(resupplyFromWarehouse !== undefined ? { resupplyFromWarehouse } : {}),
+    // 实战胜利记录（2026-09-24 船长令）：**空表不写键**（老档/新档快照逐字一致 = 真零迁移）
+    ...(Object.keys(winRecord).length > 0 ? { winRecord } : {}),
     // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径
     foeShipSeen,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],

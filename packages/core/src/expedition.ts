@@ -530,6 +530,29 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const durTxt = formatDurationMs(battle.lastTickGameMs - battle.startedAtGameMs)
 
   if (won) {
+    /**
+     * **实战胜利记录**（2026-09-24 船长令：「**③按敌卡。记录残血最多的一次，如果都是满血则不覆盖。
+     * 夹回当前射程内。**」）——胜率预估"打过的卡按打过的距离算"那一支的**唯一写入点**：
+     * 只在**真打赢**这一支写（模拟评估是只读克隆、根本不进本函数 ⇒ 不会自证）；
+     * 键 = **本场目标卡 id**（窝点/派系是本卡的派生强化，按同一张卡记账，与星图卡片列表一致）；
+     * 距离 = **本场实际期望距离**（`battle.myDesireM`，开战处已夹进当次射程），消费时再按现射程夹一道；
+     * 剩余比例 = **（装甲 + 结构）÷ 满值**（护盾每场满值重建、不进分子；满值 = `hpMax`，即该舰未受损的值）。
+     * **只在更高时覆盖**：`>` 严格比较 ⇒ 等值（含"两次都满血"）不写 ⇒ 记录稳定、不会来回抖。
+     */
+    const recNow = ((): number => {
+      const u = battle.units['player']
+      if (!u) return 0
+      const cur = Math.max(0, u.hp.a) + Math.max(0, u.hp.h)
+      // 老档/异常缺 `hpMax` ⇒ 回落当前值（当次读作满血，与视图血条的兜底同口径）
+      const fullRef = u.hpMax ?? u.hp
+      const full = Math.max(1, fullRef.a + fullRef.h)
+      // 取到万分位：存档里不留浮点尾数（也让"两次几乎一样"的胜利稳定地判为等值、不来回改写）
+      return Math.round(Math.min(1, Math.max(0, cur / full)) * 10_000) / 10_000
+    })()
+    const recPrev = state.winRecord?.[anomaly.id]
+    if (battle.myDesireM > 0 && recNow > (recPrev?.remainPct ?? -1)) {
+      state.winRecord = { ...(state.winRecord ?? {}), [anomaly.id]: { desireM: battle.myDesireM, remainPct: recNow } }
+    }
     // ── 胜利：奖金（**无浮动 = 卡片展示值**，2026-09-10 船长）+ 情报彩蛋 + 战利品 + 声望 ──
     // rewardJitter 现为 0 → roll 恒为 1，展示口径（卡片 `rewardIsk × bountyRewardFactor`）即到账口径；
     // 保留本式以便将来需要时一行调回（唯一随机奖励 = 情报彩蛋 +10%，会在日志里说明）

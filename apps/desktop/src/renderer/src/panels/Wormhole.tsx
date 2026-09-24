@@ -21,6 +21,7 @@ import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 import { Glyph, itemIconOf, itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
 // 围剿者（2026-09-23）：族徽取色与族→卡表（按格上那张围剿卡反查族，不新增 props）
 import { FOE_ACCENT } from '../ui/tones'
+import { FOE_FAMILY_LABEL } from '../ui/shipArt'
 import { WORMHOLE_FAMILY_CARDS } from '@whale/core'
 import {
   WORMHOLE_ADMISSION_TEXT,
@@ -2684,18 +2685,26 @@ function WhGridMap({
         ]
           .filter((s) => s.length > 0)
           .join(' ')
-        const title = !known
-          ? tr("ui.Wormhole.162")
-          : isExit
-            ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
-            : visited
-              ? tr('ui.Wormhole.325', { p1: WORMHOLE_PLACE_TEXT[c.place], p2: cleared ? tr('ui.Wormhole.303') : '' }) +
-                `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
-              : nebula
-                ? tr("ui.Wormhole.163")
-                : signal
-                  ? tr("ui.Wormhole.046", { p1: SIGNAL_TEXT[signal] })
-                  : tr("ui.Wormhole.164")
+        /**
+         * **围剿者格优先**（2026-09-23 船长：「用敌族族徽做图标覆盖该格子」）：
+         * 地图上画的是族徽（盖过星云与"没扫过"），悬停说明必须说同一件事——
+         * 否则这一格会落到最后一档、读成「没有信号：空信息地点」。
+         */
+        const title =
+          foeKey !== null
+            ? tr('ui.Wormhole.378', { p1: FOE_FAMILY_LABEL[foeKey] ?? foeKey })
+            : !known
+              ? tr("ui.Wormhole.162")
+              : isExit
+                ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
+                : visited
+                  ? tr('ui.Wormhole.325', { p1: WORMHOLE_PLACE_TEXT[c.place], p2: cleared ? tr('ui.Wormhole.303') : '' }) +
+                    `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
+                  : nebula
+                    ? tr("ui.Wormhole.163")
+                    : signal
+                      ? tr("ui.Wormhole.046", { p1: SIGNAL_TEXT[signal] })
+                      : tr("ui.Wormhole.164")
         return (
           <g
             key={c.key}
