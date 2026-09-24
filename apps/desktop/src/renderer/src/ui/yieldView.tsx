@@ -106,20 +106,27 @@ export function marginPctOf(price: number | null, costIsk: number, unitsPerRun =
 
 /**
  * **装备 / 舰船产物的读数行**（造船厂卡与组装机卡共用）：
- * `名称 · 行情 P（利润率 M%）`——利润率可能为负（材料比产物贵），照实显示负号。
+ * `名称 · 行情 P · 整批 P×N（利润率 M%）`——利润率可能为负（材料比产物贵），照实显示负号。
+ * `unitsPerRun > 1`（组装机零件 10 件 / 消耗品 N 发）时**多显示一段「整批」**（船长 2026-09-24：
+ * 「也显示整批」）：行情那一段仍是**每单位**（与市场页折线图同尺），整批 = 单价 × 件数 = 这一炉到手多少。
  */
 export function GoodsLine({
   name,
   price,
   marginPct,
+  unitsPerRun = 1,
 }: {
   name: string
   price: number | null
   marginPct: number | null
+  /** 一次制造产出件数（缺省 1 ⇒ 不显示「整批」那一段，装备/舰船卡逐字不变） */
+  unitsPerRun?: number
 }) {
+  const units = Math.max(1, Math.floor(unitsPerRun))
   return (
     <div className="app-belt-econ-val">
       {name} · {tr('ui.Yield.003')} {price !== null ? num(price) : '—'}
+      {price !== null && units > 1 ? ` · ${tr('ui.Yield.006', { p1: num(price * units) })}` : ''}
       {marginPct !== null ? `（${tr('ui.Yield.005', { p1: marginPct })}）` : ''}
     </div>
   )

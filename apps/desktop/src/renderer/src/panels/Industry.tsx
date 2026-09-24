@@ -928,6 +928,7 @@ export const BlueprintCard = memo(function BlueprintCard({
                   name={productLabel}
                   price={price}
                   marginPct={marginPctOf(price, matCost, productUnits ?? 1)}
+                  unitsPerRun={productUnits ?? 1}
                 />
               )
             })()
