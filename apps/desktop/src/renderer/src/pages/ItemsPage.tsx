@@ -29,6 +29,8 @@ import {
   rackPasses, subText } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
 import { kindText } from '../ui/labelsText'
+/** 装备库展示顺序（单点）：攻击类别 → 档位从低到高（2026-09-24 船长报障后立） */
+import { sortModEntries } from '../ui/modOrder'
 import type { PageProps } from './common'
 import { isk, itemBuyQuote, m3 } from './common'
 import { CargoPage } from './CargoPage'
@@ -65,7 +67,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const showMods = wareKind === 'all' || wareKind === 'module'
   const wq = wareQuery.trim().toLowerCase()
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
-  const modRows = Object.entries(state.moduleBay).filter(([, n]) => n > 0)
+  /**
+   * 装备库条目——**按展示顺序排好再渲染**（2026-09-24 船长报障：「装备库排序混乱，希望按武器攻击类别、
+   * rank 从低到高」）。原先直接 `Object.entries(state.moduleBay)` ⇒ 顺序 = 获得/存盘顺序，故看着乱。
+   * 排序单点 = `ui/modOrder.ts`（攻击类别 → 档位；势力/专属件排各类末尾按名义火力；非武器件按槽位分组在后）。
+   */
+  const modRows = sortModEntries(
+    Object.entries(state.moduleBay).filter(([, n]) => n > 0),
+    engine.ctx,
+  )
   const hitItem = (id: string): boolean => {
     if (wq.length === 0) return true
     const def = engine.ctx.items.get(id)
