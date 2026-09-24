@@ -42,6 +42,10 @@ export const FOE_MOUNT_IDS = {
   captureWeb: 'foe-mount-capture-web',
   /** **支援呼叫装置**（船长 2026-09-19）：D 族守墓王座舰专属——开战 20 秒后按距离呼叫一支支援军 */
   supportCall: 'foe-mount-support-call',
+  /** **姿态陀螺仪**（**船长 2026-09-24**）：A 族（含劫掠电子舰）——闪避 +0.10 加算，只挂洞内 A 族卡条目 */
+  gyroStabilizer: 'foe-mount-gyro-stabilizer',
+  /** **船体修理装置**（**船长 2026-09-24**）：G 族——每 5 秒回 5 装甲 / 5 结构 × 该层威胁倍率 */
+  hullRepair: 'foe-mount-hull-repair',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -123,6 +127,24 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '（只服务洞内深层卡「陵墓王庭」）。两支由卡的条目声明（enterAt ＋ enterBranch），' +
       '体检守恒契约要求两支账面总量相等；补偿乘在派生威胁上（血与火力各约 ×1.16）。',
   },
+  [FOE_MOUNT_IDS.gyroStabilizer]: {
+    id: FOE_MOUNT_IDS.gyroStabilizer,
+    name: '姿态陀螺仪',
+    evasionBonus: { add: 0.1 },
+    note:
+      '船长 2026-09-24：「希望在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避」＋同日追问裁决' +
+      '「加算 +10 个百分点」与「电子舰也要挂」⇒ A 族洞内条目全挂（含劫掠电子舰：0.30 → 0.40；' +
+      '其余 0.22 → 0.32）。只写虫洞卡的条目，星图悬赏/低安遭遇不引用。',
+  },
+  [FOE_MOUNT_IDS.hullRepair]: {
+    id: FOE_MOUNT_IDS.hullRepair,
+    name: '船体修理装置',
+    repairPulse: { everyMs: 5000, armor: 5, hull: 5 },
+    note:
+      '船长 2026-09-24：「给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成」' +
+      '＋追问裁决「乘层威胁倍率」且归一基准「不改动」⇒ 实数 = 5 × k，k = 该层威胁 ÷ 45' +
+      '（层 1 = ×1.00 · 层 7 ≈ ×1.97 · 层 10 ≈ ×2.77）；夹到满值、不回超。只写虫洞卡的条目。',
+  },
 }
 
 /** 按 id 取件（未知 id ⇒ `undefined`；体检会把它判红） */
@@ -141,6 +163,10 @@ export interface ResolvedFoeMounts {
   foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /** **支援呼叫装置**参数（原样带给单位；判定/锁存/补偿口径见 `FoeMountDef.supportCall`） */
   foeSupportCall?: { delaySec: number; threatMul: number }
+  /** **姿态陀螺仪**：该舰闪避 +本值（加算；消费方夹上限 0.9）——见 `FoeMountDef.evasionBonus` */
+  foeEvasionBonusAdd?: number
+  /** **船体修理装置**基数（消费方乘该层威胁倍率 k；夹满值）——见 `FoeMountDef.repairPulse` */
+  foeRepairPulse?: { everyMs: number; armor: number; hull: number }
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /** 未知 id（体检用；引擎侧忽略） */
@@ -169,6 +195,8 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.gunRangeOnHit) out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul
     if (def.web) out.foeCaptureWeb = { ...def.web }
     if (def.supportCall) out.foeSupportCall = { ...def.supportCall }
+    if (def.evasionBonus) out.foeEvasionBonusAdd = (out.foeEvasionBonusAdd ?? 0) + def.evasionBonus.add
+    if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
   }
   return out
 }
