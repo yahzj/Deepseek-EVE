@@ -393,7 +393,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次学习技能',
     brief: '把 AI 核心操作学练到 Lv1',
     detail:
-      '鉴于数据库的遗失，我们需要重新收集各种数据进行技能学习。越高级的技能需要学习的时间越长。初期建议优先将 AI 核心操作学升到 Lv3，这样就能驱动 AI 副手帮我们完成工作。',
+      '鉴于数据库的遗失，我们需要重新收集各种数据进行技能学习。越高级的技能需要学习的时间越长。初期建议优先将 AI 核心操作学升到 Lv3，这样就能驱动 AI 副手帮我们完成工作。它在「技能」页的「工程」里，切过去就能看到。',
     judge: (state) => state.skills.trained['ai-expert'] ?? 0,
     commsId: 'first-skill',
     /**

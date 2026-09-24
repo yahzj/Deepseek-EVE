@@ -40,6 +40,7 @@ import {
   RARITY_TIER,
   SKILLS,
   SKILL_BRANCHES,
+  SKILL_GROUPS,
   DRONE_ROLE_SPECS,
   DRONE_ROLE_ANCHORS,
   droneRoleIssues,
@@ -6880,8 +6881,20 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
       check(JUMP_PAGES.has(m.hint.page), `通讯 ${m.id} 跳转目标页非法：${m.hint.page}`)
       check(m.hint.text.trim().length > 0, `通讯 ${m.id} 跳转提示为空`)
       if (m.hint.tab !== undefined) {
-        check(m.hint.page === 'map', `通讯 ${m.id} 只有星图页支持标签跳转，实际页：${m.hint.page}`)
-        check(MAP_TABS.has(m.hint.tab), `通讯 ${m.id} 星图标签非法：${m.hint.tab}`)
+        /**
+         * **2026-09-24 船长令**：「跳到技能页并自动选中工程」——技能页的**大类**（`SKILL_GROUPS`：
+         * 舰船/工业/战斗/工程/贸易/探索/物流）也进"标签跳转"这一档，与星图标签同款校验。
+         * （改前只有星图页认 `tab`；落点规则见 `App.gotoFromComms`。）
+         */
+        const skillsTab = m.hint.page === 'skills'
+        check(
+          m.hint.page === 'map' || skillsTab,
+          `通讯 ${m.id} 只有星图页/技能页支持标签跳转，实际页：${m.hint.page}`,
+        )
+        check(
+          skillsTab ? SKILL_GROUPS.includes(m.hint.tab) : MAP_TABS.has(m.hint.tab),
+          skillsTab ? `通讯 ${m.id} 技能大类非法：${m.hint.tab}` : `通讯 ${m.id} 星图标签非法：${m.hint.tab}`,
+        )
       }
       // 任务中心内层标签（2026-09-11 船长：步骤 2 跳转要切到「重要任务」）——只有"星图 · 任务中心"才有内层标签
       if (m.hint.taskTab !== undefined) {

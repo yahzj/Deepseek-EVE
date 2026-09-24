@@ -562,9 +562,14 @@ export type WormholeCellReveal =
   | { kind: 'nebula' }
   /**
    * **围剿者压在这一格上**（2026-09-23 新机制）：**优先级最高**——不管这格有没有扫描过、有没有星云，
-   * 只要压着没打掉的围剿者就显示它（船长：「敌人看得到这个标记」＋「这个敌人会直接覆盖星云的效果」）。
+   * 只要压着没打掉的围剿者，**右上角那枚族徽就一直看得见**（船长：「敌人看得到这个标记」）。
+   *
+   * ⚠ **2026-09-24 船长令改判显示形态**：「**改为照常显示下方地点信号，族徽位置移动到右上角探索过的小点处**」
+   * ⇒ 中心那一格**照旧按原遮蔽规则**画，`under` 带的就是"撇开围剿者、这一格本来会揭示成什么"
+   * （**永不取 `foe`**：未扫描 ⇒ `unknown` · 星云未驱散 ⇒ `nebula` · 扫开 ⇒ `signal` · 去过 ⇒ `known`）。
+   * 界面拿 `kind === 'foe'` 画右上角族徽、拿 `under` 画中心符号，两者互不顶替。
    */
-  | { kind: 'foe' }
+  | { kind: 'foe'; under: WormholeCellReveal }
   | { kind: 'known'; signal: WormholeSignal | null; place: WormholePlace }
 
 /** 查格（坏键 ⇒ undefined） */
@@ -721,8 +726,18 @@ export function wormholePathInterceptAt(
 export function revealOf(grid: WormholeGridState, cell: HexCell): WormholeCellReveal {
   const c = gridCellAt(grid, cell)
   if (!c) return { kind: 'unknown' }
-  // **围剿者优先于一切**（含星云与"没扫过"）：它是压在这一格上的、玩家看得见的敌人
-  if (hasLiveFoe(c)) return { kind: 'foe' }
+  const under = revealWithoutFoe(grid, c)
+  // **围剿者优先于一切**（含星云与"没扫过"）：它是压在这一格上的、玩家看得见的敌人 ——
+  // ⚠ 但"优先"只体现在**右上角族徽一定画**（2026-09-24 船长令）；中心那一格照旧走 `under`。
+  if (hasLiveFoe(c)) return { kind: 'foe', under }
+  return under
+}
+
+/**
+ * **撇开围剿者不谈，这一格本来会揭示成什么**（`revealOf` 的正文；`foe` 档的 `under` 与它同源）。
+ * 顺序就是既有口径：**去过 > 扫过 > 没扫过**；扫过的星云格在驱散前只给星云。
+ */
+function revealWithoutFoe(grid: WormholeGridState, c: WormholeGridCell): WormholeCellReveal {
   if (grid.visited.includes(c.key)) return { kind: 'known', signal: signalOfPlace(c.place), place: c.place }
   if (grid.scanned.includes(c.key)) {
     // **星云遮蔽**（层 4 起）：扫开了也先只看到星云，再扫一次才驱散（船长 2026-09-13）

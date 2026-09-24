@@ -694,6 +694,12 @@ export function App({ engine }: { engine: GameEngine }) {
   /** 通讯页定位：任务中心「第一次」卡片上的「看情报」→ 切到通讯页并选中那封情报信 */
   const [commsFocus, setCommsFocus] = useState<{ id: string; seq: number } | null>(null)
   /**
+   * **技能页大类定位请求**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：
+   * 「第一次学习技能」的跳转按钮与那封情报信的「前往」都落到「技能 · 工程」——
+   * 口径同 `taskFocus`：`seq` 变化即应用一次（人已经在技能页时再点一次也能重新落位）。
+   */
+  const [skillsFocus, setSkillsFocus] = useState<{ group: string; seq: number } | null>(null)
+  /**
    * **虫洞面板**（终局玩法 · ✅ 2026-09-14 已上线：入口常驻，玩家侧门槛 = 协会声望 ≥ 40）：
    * 面板挂在 App 这一层、**不依赖星图选中哪个星系**——原先只挂在星图行动区的入口行里，
    * 而行动区要先选中星系才渲染 ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）。
@@ -931,11 +937,14 @@ export function App({ engine }: { engine: GameEngine }) {
   /**
    * **通讯「前往」的统一跳转出口**（2026-09-14 抽单点）：通讯页右栏与送达弹窗共用同一套落点规则
    * ——可带星图标签、任务中心内层标签、舰船标签；老数据里 `{page:'map', tab:'task'}` 一并改道任务中心页。
+   * **2026-09-24 船长令**：再加一档 `{page:'skills', tab:'工程'}` ⇒ 技能页自动选中该大类
+   * （「第一次学习技能」那封信的「前往」直接落在「工程」）。
    */
   function gotoFromComms(p: string, tab?: string, shipTab?: string, taskTab?: string): void {
     if (p === 'map' && tab) changeMapTab(tab as MapTab)
     if ((p === 'task' || (p === 'map' && tab === 'task')) && taskTab) focusTaskTab(taskTab)
     if (p === 'ship' && shipTab) changeShipTab(shipTab as ShipTab)
+    if (p === 'skills' && tab) focusSkillGroup(tab)
     changePage(p as PageKey)
   }
 
@@ -1068,6 +1077,12 @@ export function App({ engine }: { engine: GameEngine }) {
      * ⚠ 战斗屏不在其列（它已回全屏覆盖层，开关只由「⚔ 战斗中」浮动入口与战场内那枚按钮决定）。
      */
     hideActivityWin()
+    /**
+     * **技能页的大类定位请求是一次性的**（2026-09-24）：技能页在切走时重挂载（`key={page}`）、
+     * 大类状态随之归零，若把请求留着，之后每次进技能页都会被它拽回「工程」。
+     * ⇒ 离开技能页就清掉，只有"跳转那一下"生效。
+     */
+    if (p !== 'skills') setSkillsFocus(null)
     setPage(p)
   }
   const changeMapTab = (t: MapTab): void => {
@@ -1102,6 +1117,13 @@ export function App({ engine }: { engine: GameEngine }) {
    */
   const focusTaskTab = (tab: string): void => {
     setTaskFocus((p) => ({ tab, seq: (p?.seq ?? 0) + 1 }))
+  }
+  /**
+   * **技能页大类定位**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：与 `focusTaskTab` 同款
+   * ——技能页的大类是页内状态（会记住玩家上次选的），跳转必须显式发一次请求，`seq` 变化才应用。
+   */
+  const focusSkillGroup = (group: string): void => {
+    setSkillsFocus((p) => ({ group, seq: (p?.seq ?? 0) + 1 }))
   }
   const changeShipTab = (t: ShipTab): void => {
     setShipTab(t)
@@ -1355,7 +1377,7 @@ export function App({ engine }: { engine: GameEngine }) {
                 }}
               />
             ) : null}
-            {page === 'skills' ? <SkillsTreePage {...pageProps} /> : null}
+            {page === 'skills' ? <SkillsTreePage {...pageProps} focusGroup={skillsFocus} /> : null}
             {page === 'map' ? (
               <MapPage
                 {...pageProps}
@@ -1389,6 +1411,7 @@ export function App({ engine }: { engine: GameEngine }) {
                  */
                 onJump={(t) => {
                   if (t.industrySec) setIndFocus(t.industrySec)
+                  if (t.skillGroup) focusSkillGroup(t.skillGroup)
                   changePage(t.page as PageKey)
                   if (t.mapTab) changeMapTab(t.mapTab as MapTab)
                   if (t.shipTab) changeShipTab(t.shipTab as ShipTab)

@@ -176,6 +176,14 @@ const WORMHOLE_PILE_OUT_MS = 300
  * 时长与 CSS `.app-wh-jobbar i` 的动画同值。
  */
 const WORMHOLE_FX_JOB_MS = 380
+/**
+ * **围剿者角标**（压着围剿者的格子，右上角那枚敌族族徽）：边长与锚点（都是 viewBox 单位）。
+ * **2026-09-24 船长令**：「族徽位置移动到右上角探索过的小点处」⇒ 从格心挪到右上角"去过小点"那一片角；
+ * 这两行就是要微调观感时唯一要动的地方（边长 12 ≈ 格径 30 的 40%，锚点 0.44 保证整枚徽留在六边形内侧）。
+ */
+const WORMHOLE_FOE_MARK_PX = 12
+/** 角标锚点 = 格心 × 这个倍率（右上角内侧那一点，与"去过小点"同一片角） */
+const WORMHOLE_FOE_MARK_AT = 0.44
 /** 扫描动画的序号（换一次 = 重播一次；只用于 React key/CSS 重挂，不进存档） */
 let scanFxSeqCounter = 0
 function scanFxSeq(): number {
@@ -2626,11 +2634,18 @@ function WhGridMap({
          * 现在四档同源：`unknown` / `signal`（含"无信号 = 空地点"）/ **`nebula`** / `known`。
          */
         const rev = revealOf(grid, { q: c.q, r: c.r })
-        const known = rev.kind === 'known' || rev.kind === 'signal' || rev.kind === 'nebula' || rev.kind === 'foe'
         /**
-         * **围剿者**（2026-09-23 船长新机制：「用敌族族徽做图标覆盖该格子」＋「未扫描也看得到」）：
-         * `revealOf` 已把它提到最高优先（盖过星云与「没扫过」）；这里按**格上那张卡**反查族 ⇒
-         * 徽与色都取该族（一处虫洞锁一族，全盘同徽；`FOE_ACCENT` 与星图族标签/战场敌舰同源）。
+         * **围剿者格**（**2026-09-24 船长令**：「**改为照常显示下方地点信号，族徽位置移动到右上角
+         * 探索过的小点处**」）：中心那一格**照常**按原遮蔽规则画——`rev.under` = 撇开围剿者本来会
+         * 揭示成什么（未扫描 ⇒ 什么都不画 · 星云未驱散 ⇒ 只画云 · 扫开/去过 ⇒ 画真实地点信号）；
+         * 族徽挪去**右上角**占"去过小点"的位置（`foeKey`；「未扫描也看得到」那条口径不变）。
+         */
+        const under = rev.kind === 'foe' ? rev.under : rev
+        const known = under.kind === 'known' || under.kind === 'signal' || under.kind === 'nebula'
+        /**
+         * **围剿者**（2026-09-23 船长新机制：「用敌族族徽做图标覆盖该格子」）：`revealOf` 已把它提到
+         * 最高优先（盖过星云与「没扫过」）；这里按**格上那张卡**反查族 ⇒ 徽与色都取该族
+         * （一处虫洞锁一族，全盘同徽；`FOE_ACCENT` 与星图族标签/战场敌舰同源）。
          */
         const foeKey =
           rev.kind === 'foe' && c.foe
@@ -2638,8 +2653,8 @@ function WhGridMap({
                 Object.values(WORMHOLE_FAMILY_CARDS[f as keyof typeof WORMHOLE_FAMILY_CARDS]).includes(c.foe!.card),
               ) ?? 'A')
             : null
-        const nebula = rev.kind === 'nebula'
-        const signal = rev.kind === 'signal' ? rev.signal : rev.kind === 'known' ? rev.signal : null
+        const nebula = under.kind === 'nebula'
+        const signal = under.kind === 'signal' ? under.signal : under.kind === 'known' ? under.signal : null
         // 入口：**到达过**或**被漂浮信标标出来**（船长 2026-09-13 新增信标）⇒ 地图上一直标着
         const isExit = c.key === exitKey && (visited || grid.exitKnown === true)
         /**
@@ -2724,13 +2739,7 @@ function WhGridMap({
             <polygon points={corners.map((p) => `${(x + p.dx).toFixed(2)},${(y + p.dy).toFixed(2)}`).join(' ')} />
             {known && !iconGone ? (
               <g className="app-wh-hex-glyph" transform={`translate(${x.toFixed(2)},${y.toFixed(2)})`}>
-                {foeKey !== null ? (
-                  <Glyph name={`fam-${foeKey.toLowerCase()}`} size={16} color={FOE_ACCENT[foeKey] ?? FOE_ACCENT.A} />
-                ) : nebula ? (
-                  <WhNebulaGlyph />
-                ) : (
-                  <WhGlyph signal={signal} exit={isExit} />
-                )}
+                {nebula ? <WhNebulaGlyph /> : <WhGlyph signal={signal} exit={isExit} />}
               </g>
             ) : null}
             {/**
@@ -2748,8 +2757,31 @@ function WhGridMap({
                 <WhNebulaGlyph />
               </g>
             ) : null}
-            {/* **去过标记**：右上角一个小实心点（SVG 线稿；与图例同源） */}
-            {visited ? <circle className="app-wh-hex-done" cx={x + size * 0.52} cy={y - size * 0.5} r={2.2} /> : null}
+            {/**
+             * **右上角角标**（同一处只画一个，**2026-09-24 船长令**）：
+             * - 压着围剿者 ⇒ **敌族族徽**（「族徽位置移动到右上角探索过的小点处」；锚点就是"去过小点"
+             *   那一片角，且一直看得见——不被星云或"没扫过"吃掉）；
+             * - 否则去过 ⇒ **小实心点**（2026-09-13 船长定的"去过"标记，位置与尺寸一寸不动）。
+             * ⚠ 族徽锚点要把 `Glyph` 那张 24×24 画布**居中**摆过去（各减半个边长）——`<svg>` 的原点在
+             *   左上角，不补这一下整枚徽会往右下偏半格。
+             */}
+            {foeKey !== null ? (
+              <g
+                transform={`translate(${(x + size * WORMHOLE_FOE_MARK_AT - WORMHOLE_FOE_MARK_PX / 2).toFixed(2)},${(
+                  y -
+                  size * WORMHOLE_FOE_MARK_AT -
+                  WORMHOLE_FOE_MARK_PX / 2
+                ).toFixed(2)})`}
+              >
+                <Glyph
+                  name={`fam-${foeKey.toLowerCase()}`}
+                  size={WORMHOLE_FOE_MARK_PX}
+                  color={FOE_ACCENT[foeKey] ?? FOE_ACCENT.A}
+                />
+              </g>
+            ) : visited ? (
+              <circle className="app-wh-hex-done" cx={x + size * 0.52} cy={y - size * 0.5} r={2.2} />
+            ) : null}
           </g>
         )
       })}

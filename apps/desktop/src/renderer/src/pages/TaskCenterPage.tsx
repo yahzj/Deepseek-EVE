@@ -25,8 +25,15 @@ export function TaskCenterPage({ engine, onToast, taskFocus = null, onOpenComms,
   taskFocus?: TaskFocusTarget | null
   /** 「第一次」卡片上的「看情报」：跳到通讯页并选中那封情报信（App 层的 `commsFocus` 定位） */
   onOpenComms?: (messageId: string) => void
-  /** 「第一次」卡片上的跳转按钮：去这件活所在的页面（App 层切页 + 页签，自带解锁闸门） */
-  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard' }) => void
+  /** 「第一次」卡片上的跳转按钮：去这件活所在的页面（App 层切页 + 页签，自带解锁闸门）；
+   *  技能页另带 `skillGroup`（要练的那门技能所属的大类；2026-09-24 船长令「跳到技能页并自动选中工程」） */
+  onJump?: (t: {
+    page: string
+    mapTab?: string
+    shipTab?: string
+    industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard'
+    skillGroup?: string
+  }) => void
 }) {
   return (
     /**

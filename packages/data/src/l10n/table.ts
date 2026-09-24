@@ -1430,6 +1430,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.065": { zh: "打之前先去装配页，把对空火力带上。", en: "Before the fight, bring anti-air firepower from the Fitting page." },
   "ui.comms.066": { zh: "想先看看这片星域长什么样？去星图认认路。", en: "Want a look at this stretch of space first? Get your bearings on the Star Map." },
   "ui.comms.067": { zh: "航线通报：第七层起的围剿", en: "Route bulletin: the sweep from layer seven on" },
+  "ui.comms.068": { zh: "到「技能」页的「工程」里训练 AI 核心操作学", en: "Train AI Core Operation under Engineering on the Skills page" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
@@ -3305,6 +3306,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.012": { zh: "外围已全部夺回：可进攻核心", en: "Periphery reclaimed: the core is open" },
   "ui.weekend.013": { zh: "周末入侵：被占星系的悬赏已换成入侵舰队，遇袭更频繁；夺回全部外围后核心开启", en: "Weekend invasion: bounties in occupied systems are invader fleets and ambushes are frequent; reclaim the whole periphery to open the core" },
   "ui.weekend.014": { zh: "已夺回 {p1}/{p2} 处占领区", en: "Reclaimed {p1}/{p2} occupied systems" },
+  "ui.weekend.015": { zh: "当前无法挑战旗舰：需先打通核心。", en: "The flagship cannot be challenged yet: the core must be broken through first." },
+  "ui.weekend.016": { zh: "入侵旗舰挑战", en: "Invasion flagship challenge" },
+  "ui.weekend.017": { zh: "挑战旗舰", en: "Challenge flagship" },
+  "ui.weekend.018": { zh: "被入侵舰队占领：悬赏已换成入侵舰队、遇袭更频繁；夺回后恢复", en: "Occupied by invader fleets: bounties are invader fleets and ambushes are frequent; reclaim to restore" },
   "ui.Ironman.001": { zh: "铁人 · 代次 #{p1}", en: "Iron Man · generation #{p1}" },
   "ui.Ironman.002": { zh: "开启铁人模式", en: "Enable Iron Man" },
   "ui.Ironman.003": { zh: "确认开启", en: "Confirm enable" },

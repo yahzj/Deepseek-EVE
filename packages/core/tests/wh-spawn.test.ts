@@ -23,6 +23,7 @@ import {
   WORMHOLE_SPAWN_CAP_SHARE,
   hasLiveFoe,
   revealOf,
+  signalOfPlace,
   spawnAliveCount,
   spawnCapOf,
   spawnTargetsOf,
@@ -138,7 +139,11 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     expect(state.wormhole.run!.pendingNodeBattle ?? false, '不再走确认链').toBe(false)
     expect(state.logs.some((l) => l.text.includes('围剿者扑到你所在的位置'))).toBe(true)
     // 优先级：围剿者盖住该格的"未知/信号"显示（未扫描也看得见）
-    expect(revealOf(grid, { q: 0, r: 0 })).toEqual({ kind: 'foe' })
+    // **2026-09-24 船长令**改判显示形态 ⇒ 中心那一格照旧按原遮蔽规则（`under`），族徽挪到右上角
+    expect(revealOf(grid, { q: 0, r: 0 })).toEqual({
+      kind: 'foe',
+      under: { kind: 'known', signal: null, place: 'empty' },
+    })
   })
 
   it('⑥ 开战自动改用围剿者的卡：界面照旧调 `node`，本场按 `spawn` 用途打', () => {
@@ -206,7 +211,10 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     const cell = grid.cells[0]!
     const r = wormholeSpawnAfterTurns(state, 1)
     expect(r.ambush, '唯一候选格就是玩家脚下 ⇒ 必触发袭击').toBe(true)
-    expect(revealOf(grid, { q: 0, r: 0 }), '未扫描也看得到围剿者').toEqual({ kind: 'foe' })
+    expect(revealOf(grid, { q: 0, r: 0 }), '压着围剿者的格：族徽照旧可见，中心照旧按原遮蔽规则').toEqual({
+      kind: 'foe',
+      under: { kind: 'known', signal: signalOfPlace('vein'), place: 'vein' },
+    })
     const s = wormholeStartBattle(state, ctx, 'node')
     expect(s.ok, s.error ?? '').toBe(true)
     const battle = state.wormhole.run!.battle!
@@ -247,5 +255,42 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     const legacy = loadSaveFile(JSON.stringify(raw)).state
     expect(legacy.wormhole.run!.grid!.spawnSeq).toBeUndefined()
     expect(wormholeSpawnAfterTurns(legacy, 1).spawned).toBe(1)
+  })
+
+  /**
+   * **⑪ 显示形态**（**2026-09-24 船长令**：「**改为照常显示下方地点信号，族徽位置移动到右上角
+   * 探索过的小点处**」）——`revealOf` 的 `foe` 档带上 `under`（撇开围剿者本来会揭示成什么）：
+   * 族徽照旧一直可见（`kind === 'foe'`），而**中心那一格照旧按原遮蔽规则**：
+   * 没扫过 ⇒ 什么都不给 · 星云未驱散 ⇒ 只给星云 · 扫开 / 去过 ⇒ 照常给地点信号。
+   */
+  it('⑪ 围剿者格的显示形态：族徽照旧可见，中心照旧按原遮蔽规则（未扫描/星云/扫开三档）', () => {
+    const state = enterAt(7)
+    const grid = state.wormhole.run!.grid!
+    // 挑一个"没扫过也没去过"的格，手工压一个围剿者上去（省掉随机落点的铺垫）
+    const key = `${grid.pos.q},${grid.pos.r}`
+    const cell = grid.cells.find((c) => c.key !== key && !grid.scanned.includes(c.key) && !grid.visited.includes(c.key))!
+    cell.place = 'vein'
+    cell.foe = { card: 'wh-pirate-hunt', seq: 1 }
+    // ① 没扫过 ⇒ 族徽在（`foe`），中心什么都不给
+    expect(revealOf(grid, { q: cell.q, r: cell.r })).toEqual({ kind: 'foe', under: { kind: 'unknown' } })
+    // ② 扫开 ⇒ 中心照常给地点信号
+    grid.scanned.push(cell.key)
+    expect(revealOf(grid, { q: cell.q, r: cell.r })).toEqual({
+      kind: 'foe',
+      under: { kind: 'signal', signal: signalOfPlace('vein') },
+    })
+    // ③ 星云未驱散 ⇒ 中心照旧只给星云（"照常"，不被敌人顶掉）
+    cell.nebula = true
+    expect(revealOf(grid, { q: cell.q, r: cell.r })).toEqual({ kind: 'foe', under: { kind: 'nebula' } })
+    // ④ 驱散后 + 去过 ⇒ 中心给真相（`known`）
+    grid.dispersed = [cell.key]
+    grid.visited.push(cell.key)
+    expect(revealOf(grid, { q: cell.q, r: cell.r })).toEqual({
+      kind: 'foe',
+      under: { kind: 'known', signal: signalOfPlace('vein'), place: 'vein' },
+    })
+    // ⑤ 打掉 ⇒ 覆盖解除、原格内容照旧（揭示档回到 `under` 那一档）
+    cell.foe = { ...cell.foe!, cleared: true }
+    expect(revealOf(grid, { q: cell.q, r: cell.r }).kind).toBe('known')
   })
 })
