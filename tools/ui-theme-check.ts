@@ -227,6 +227,34 @@ const ACCENT_FLOOR = 4.5
 /** 成对 token（徽标底色 + 其上文字）：单独核对 */
 const PAIRS: Array<[string, string, number]> = [['--wui-badge-ink', '--wui-badge-bg', 4.5]]
 
+/* ── **伤害类型徽标**（`app-a-*` / `app-d-*`）的实际底色与字色：从 `styles.css` 读 ──
+ * 为什么要读源码而不是写死：红档现在带一条 `color: rgb(var(--wui-chip-ink))` 覆写，
+ * 只按"默认徽标字色"算就会算错（2026-09-24 就是这么漏掉"字压红底看不清"的）。 */
+const DMG_CHIP_TYPES = ['kinetic', 'explosive', 'plasma'] as const
+const chipTokensCache: { css: string; map: Map<string, { bg: string; ink?: string }> } = {
+  css: '',
+  map: new Map(),
+}
+function chipTokensOf(stylesCss: string): Map<string, { bg: string; ink?: string }> {
+  if (chipTokensCache && chipTokensCache.css === stylesCss) return chipTokensCache.map
+  const bare = stylesCss.replace(/\/\*[\s\S]*?\*\//g, '')
+  const map = new Map<string, { bg: string; ink?: string }>()
+  for (const m of bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    for (const t of DMG_CHIP_TYPES) {
+      if (!new RegExp('(^|,)\\s*\\.app-[da]-' + t + '\\s*($|,)').test(m[1]!)) continue
+      const bg = /background\s*:\s*rgb\(var\((--wui-[\w-]+)\)\)/.exec(m[2]!)
+      const ink = /color\s*:\s*rgb\(var\((--wui-[\w-]+)\)\)/.exec(m[2]!)
+      const cur = map.get(t) ?? {}
+      if (bg) cur.bg = bg[1]!
+      if (ink) cur.ink = ink[1]!
+      map.set(t, cur)
+    }
+  }
+  chipTokensCache.css = stylesCss
+  chipTokensCache.map = map
+  return map
+}
+
 function triplet(v: string): [number, number, number] | null {
   const m = /^(\d{1,3}) (\d{1,3}) (\d{1,3})$/.exec(v.trim())
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null
@@ -282,6 +310,25 @@ function contrastReport(blocks: Block[], problems: string[]): void {
       if (r < floor) problems.push('⑤ ' + label + '：' + fgName + ' 压 ' + bgName + ' 只有 ' + r + ' : 1（要求 ≥ ' + floor + '）')
     }
     for (const x of bad) problems.push('⑤ ' + x)
+    /* **伤害类型徽标**：底色 `--wui-x211/x57/x77` × **该规则真正用的字色**。
+       字色要从 `styles.css` 那条规则里读——徽标默认字色（`.app-a-chip` / `.app-d-chip` 的 `--wui-x229`）是**深色**，
+       压亮黄/亮青没问题，但压在**红**底上只有 ~3.9:1（暖色主题更糟：深字压深底，最低 1.2:1 —— 2026-09-24 一并修）。
+       故红档在 `styles.css` 里显式改走 `--wui-chip-ink`；本段按"实际生效的那条规则"取色，免得又漏。
+       来源：2026-09-24 船长报障「标签中的字体颜色不对」。 */
+    const chipMap = chipTokensOf(readFileSync(STYLES, 'utf8'))
+    for (const t of DMG_CHIP_TYPES) {
+      const bgName = chipMap.get(t)?.bg
+      if (!bgName) continue
+      const bg = triplet(b.tokens.get(bgName) ?? '')
+      const inkName = chipMap.get(t)?.ink ?? '--wui-x229'
+      const ink = triplet(b.tokens.get(inkName) ?? '')
+      if (!ink || !bg) continue
+      const r = Math.round(ratio(ink, bg) * 100) / 100
+      console.log('    · ' + label + ' 伤害徽标：' + t + '（' + bgName.replace('--wui-', '') + ' × ' + inkName.replace('--wui-', '') + '）= ' + r + ' : 1')
+      if (r < 4.5) {
+        problems.push('⑤ ' + label + '：伤害徽标 ' + t + ' 的字只有 ' + r + ' : 1（要求 ≥ 4.5；红底记得走 --wui-chip-ink）')
+      }
+    }
   }
 }
 

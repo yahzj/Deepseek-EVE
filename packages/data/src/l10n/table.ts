@@ -1146,7 +1146,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.130": { zh: "高对比", en: "High contrast" },
   "ui.App.131": { zh: "跟随系统", en: "Match system" },
   /* ⟪文案调整 2026-09-22⟫ 船长令「继续做剩余的颜色」⇒ 第三套主题（高对比深色）上线，说明文案随之补上它 */
-  "ui.App.132": { zh: "深空为原来的深色界面，亮白为浅色界面，高对比为近黑底加亮字，暖色护眼偏暖、蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲友好把识别色换成色觉安全的色族；即时生效，不写入存档。", en: "Deep Space is the original dark interface; Daylight is the light one; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind friendly swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save." },
+  "ui.App.132": { zh: "深空为原来的深色界面，亮白为浅色界面，高对比为近黑底加亮字，暖色护眼偏暖、蓝光更少，纯黑夜间底为纯黑、字更柔和，色盲友好把识别色换成色觉安全的一组颜色；即时生效，不写入存档。", en: "Deep Space is the original dark interface; Daylight is the light one; High contrast uses a near-black background with brighter text; Warm shifts the palette warm to cut blue light; Night black uses a pure black background with softer text; Color-blind friendly swaps the identity colors for a color-vision-safe set. Applies instantly and is not stored in the save." },
   "ui.App.133": { zh: "亮白配色不铺星图底，故此项在亮白下不可用。", en: "The Daylight scheme does not use the starfield backdrop, so this option is unavailable there." },
   "ui.App.134": { zh: "暖色护眼", en: "Warm" },
   "ui.App.135": { zh: "纯黑夜间", en: "Night black" },
@@ -1707,9 +1707,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.190": { zh: "星系节点下方显示星系名称（默认）", en: "Show the system name under each node (default)" },
   "ui.Expedition.191": { zh: "星系节点下方显示安全等级数字（−1.0 高危 ~ +1.0 安全），颜色沿用安全色阶", en: "Show the security rating under each system node (−1.0 high risk to +1.0 safe), coloured on the safety scale" },
   "ui.Expedition.192": { zh: "敌对派系", en: "Hostile factions" },
-  // ⟪文案调整 2026-09-24⟫ 星图"敌对派系"模式的两条：中文口径不动（"敌对派系/敌族配色"是既有玩家口径），
-  //   仅把英文的 family 正字为 faction（family 在英文侧与"武器类型/舰船类别"混用，同样误导）
-  "ui.Expedition.193": { zh: "星系节点下方显示该星系的敌对派系标签（按敌族配色），星系后方给出该势力的范围光晕", en: "Show that system's hostile faction label under its node (coloured per faction) and an influence halo behind the system" },
+  // ⟪文案调整 2026-09-24⟫ 船长令「统一为势力」：原「（按敌族配色）」「等{p1}族」⇒「势力」；英文 family ⇒ faction
+  "ui.Expedition.193": { zh: "星系节点下方显示该星系的敌对势力标签（按势力配色），星系后方给出该势力的范围光晕", en: "Show that system's hostile faction label under its node (coloured per faction) and an influence halo behind the system" },
+  "ui.Expedition.251": { zh: "等{p1}势力", en: "and {p1} factions" },
   "ui.Expedition.194": { zh: "未知", en: "Unknown" },
   "ui.Expedition.195": { zh: "无敌情", en: "No hostiles" },
   "ui.Expedition.196": { zh: "星图显示：", en: "Star map shows:" },
@@ -1767,7 +1767,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.248": { zh: "距离最近", en: "Nearest" },
   "ui.Expedition.249": { zh: "资源任务", en: "Resource tasks" },
   "ui.Expedition.250": { zh: "赏金任务", en: "Bounty tasks" },
-  "ui.Expedition.251": { zh: "等{p1}族", en: "and {p1} factions" },
   "ui.Expedition.252": { zh: "约 {p1} 秒", en: "about {p1} seconds" },
   "ui.Expedition.253": { zh: "约 {p1} 分钟", en: "about {p1} minutes" },
   "ui.Expedition.254": { zh: "赏金任务战果：{p1}——打捞时必定捞到（每件 {RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体，保底原材料之外必给一件额外战利品（该敌群专属装备，未出则给特色装备）+ 一批高阶原材料", en: "Bounty result: {p1} — always salvaged ({RARE_WRECK_VOLUME_M3} m³ each); break it down in a recycler back at the station for guaranteed materials plus one extra piece of loot (a module dedicated to that hostile group, or a signature module if none rolls) and a batch of high-tier materials" },
@@ -2438,7 +2437,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.272": { zh: "舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高。", en: "Ships come in five classes by hull size: frigate, destroyer, cruiser, battleship and flagship — the higher the class the stronger the hull, and the price and Association reputation gate rise with it." },
   "ui.Handbook.273": { zh: "随机事件", en: "Random events" },
   "ui.Handbook.274": { zh: "节奏", en: "Pacing" },
-  "ui.Handbook.275": { zh: "进度满即发现一处虫洞存入库存，最多同时囤 5 处（「星图记录学」满级再 +10 ⇒ 15 处）；每处锁定一个敌族、从第 1 层开始探索，进入即消耗该处——", en: "Filling the bar finds one wormhole and stores it, up to 5 held at a time (Star Chart Records adds +10 at max ⇒ 15); each is locked to one hostile family and explored from layer 1, and entering consumes it —" },
+  // ⟪文案调整 2026-09-24⟫ 船长令「统一为势力」：原「每处锁定一个敌族」⇒「一个势力」
+  "ui.Handbook.275": { zh: "进度满即发现一处虫洞存入库存，最多同时囤 5 处（「星图记录学」满级再 +10 ⇒ 15 处）；每处锁定一个势力、从第 1 层开始探索，进入即消耗该处——", en: "Filling the bar finds one wormhole and stores it, up to 5 held at a time (Star Chart Records adds +10 at max ⇒ 15); each is locked to one faction and explored from layer 1, and entering consumes it —" },
   "ui.Handbook.276": { zh: "随时可以撤离，不消耗回合、不会触发战斗：货仓、货柜与随行战利品一起入港；交火中不能撤。", en: "You can withdraw at any time: it costs no turn and triggers no fight, and the hold, containers and loot come into port with you; withdrawal is not possible mid-engagement." },
   "ui.Handbook.277": { zh: "船被打沉，该船与它带回的货一起丢；整队失联则本趟一无所得。", en: "A sunk ship is lost together with the cargo it was carrying home; losing the whole fleet means the run yields nothing." },
   "ui.Handbook.278": { zh: "货仓与产出", en: "Hold and output" },
@@ -3304,7 +3304,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },
   "ui.weekend.003": { zh: "入侵结束：旗舰被章鱼人部队摧毁，黑匣归零。", en: "Invasion over: the flagship was destroyed by the Octopus forces; the black box is lost." },
   "ui.weekend.004": { zh: "入侵结束：占领区已恢复。", en: "Invasion over: the occupied systems have been restored." },
-  "ui.weekend.005": { zh: "{p1} 族入侵", en: "{p1} faction invasion" },
+  "ui.weekend.005": { zh: "{p1}入侵", en: "{p1} invasion" },
   "ui.weekend.006": { zh: "核心：{p1}", en: "Core: {p1}" },
   "ui.weekend.007": { zh: "外围夺回 {p1}/{p2}", en: "Periphery reclaimed {p1}/{p2}" },
   "ui.weekend.008": { zh: "核心 {p1}%", en: "Core {p1}%" },
@@ -3802,7 +3802,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.431": { zh: "该星系暂无可清剿目标。", en: "No repeatable targets in this system." },
   "ui.Expedition.432": { zh: "威胁 {p1} · 胜率 {p2}%", en: "Threat {p1} · win {p2}%" },
   "ui.Expedition.433": { zh: "循环中", en: "Looping" },
-  /* 快递板周期 = 120 分钟（2026-09-24 船长令）——原与资源共用「20 分钟」那套文案，船长报障后分族各写 */
+  /* 快递板周期 = 120 分钟（2026-09-24 船长令）——原与资源共用「20 分钟」那套文案，船长报障后两类板各写 */
   "ui.Expedition.434": { zh: "本批快递只存活一轮（{periodMin} 分钟）：到下一个两小时整点整板替换——已接单的不随刷新消失，在途投送不受影响、到站照常结算", en: "This batch of deliveries lasts one round ({periodMin} minutes): the board is replaced at the next two-hour mark — accepted orders survive the refresh, and deliveries under way are unaffected and settle as usual on arrival" },
   "ui.Expedition.435": { zh: "本批暂无待办投送订单——已完成或尚未刷出，下一批随 {periodMin} 分钟整板自动刷新（已接单的不随刷新消失；在途投送不受影响、到站照常结算）。", en: "No delivery orders pending — either finished or not yet rolled; the next batch arrives with the {periodMin}-minute board refresh (accepted orders survive the refresh; deliveries under way are unaffected and settle as usual on arrival)." },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },
@@ -4251,9 +4251,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.WormholeScan.046": { zh: "主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 {p1}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（每级 −4%，满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 {stockMax} 处（「星图记录学」每级 +2，满级 +10）。", en: "The ship deploys its scan array on the spot to find wormholes: filling the bar once lets you explore one. The window = base {p1}, shortened by Signal Analysis, Star Cartography and Signal Filtering (multiplied together), then by Deep Space Encounters (−4% per level, −20% at max). Random events during a scan follow the same odds as star-map scanning, and interruptions do not cost progress. Up to {stockMax} unexplored wormholes can be stored (Star Chart Records gives +2 per level, +10 at max)." },
   "ui.WormholeScan.047": { zh: "已停扫：进度保留，下次接着扫。", en: "Scan stopped: progress is kept and the next scan resumes." },
   "ui.WormholeScan.048": { zh: "开始扫描虫洞：主控就地展开扫描阵列。", en: "Wormhole scan started: the ship deploys its scan array on the spot." },
-  // ⟪文案调整 2026-09-24⟫ 原「族徽＝…（上面的敌情就是它）」——"族徽"保留（玩家已见的称呼），
-  //   "敌情"正字为"敌情"外的准确说法：这一处整趟属于该**敌方势力**
-  "ui.WormholeScan.049": { zh: "\n族徽＝这一处整趟都是「{famName}」这一族（上面的敌人就是它）。", en: "\nThe family crest means this whole wormhole belongs to the {famName} family (the hostiles shown above are them)." },
+  // ⟪文案调整 2026-09-24⟫ 船长令「统一为势力」——"族"在玩家侧只保留给**敌方势力**这个意思，
+  //   且统一正字为「势力」（原「族徽＝…这一族（上面的敌人就是它）」）
+  "ui.WormholeScan.049": { zh: "\n势力徽记＝这一处整趟都是「{famName}」（上面的敌人就是它）。", en: "\nThe faction crest means this whole wormhole belongs to the {famName} (the hostiles shown above are them)." },
   "ui.WormholeScan.050": { zh: "自动派最多 {WORMHOLE_AUTO_MAX_SHIPS} 条船去探（每条占 1 枚 AI 核心，约 {p2} 分钟）——打开与主控探索同一个准备页选编队", en: "Sends up to {WORMHOLE_AUTO_MAX_SHIPS} ships to explore automatically (each takes 1 AI core, about {p2} minutes) — it opens the same preparation page as a manual explore, where you pick the formation" },
   "ui.WormholeScan.051": { zh: "已放弃这一处虫洞。", en: "That wormhole was given up." },
   "ui.WormholeScan.052": { zh: "已召回自动探索队（无收益、无损伤；通道就此关闭）。", en: "Auto-explore team recalled (no gains, no damage; that passage closes for good)." },
