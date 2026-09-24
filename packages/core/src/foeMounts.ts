@@ -48,7 +48,7 @@ export const FOE_MOUNT_IDS = {
   supportCall: 'foe-mount-support-call',
   /** **姿态陀螺仪**（**船长 2026-09-24**）：A 族（含劫掠电子舰）——闪避 +0.10 加算，只挂洞内 A 族卡条目 */
   gyroStabilizer: 'foe-mount-gyro-stabilizer',
-  /** **船体修理装置**（**船长 2026-09-24**）：G 族——每 5 秒回 5 装甲 / 5 结构 × 该层威胁倍率 */
+  /** **船体修理装置**（2026-09-24 船长令，基础值上调至 15/15）：G 族——每 5 秒回 15 装甲 / 15 结构 × 该层威胁倍率 */
   hullRepair: 'foe-mount-hull-repair',
 } as const
 
@@ -148,12 +148,13 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.hullRepair,
     name: '船体修理装置',
     en: 'Hull Repair Unit',
-    repairPulse: { everyMs: 5_000, armor: 5, hull: 5 },
+    repairPulse: { everyMs: 5_000, armor: 15, hull: 15 },
     note:
       '船长 2026-09-24：「给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成。」；' +
-      '追问裁定 = 修理量乘层威胁倍率（甲；归一基准「不改动」= 层 1 的 k = 1.00）⇒ 实数 = 5 × k。' +
-      'k = 该层本次实际威胁 ÷ 45（combat.FOE_REPAIR_THREAT_REF）⇒ 层 1 = 1.00 · 层 7 ≈ 1.97 · ' +
-      '层 10 ≈ 2.77；夹到满值、不回超；层末守卫另吃 ×1.2 的威胁倍率（wormholeFoeThreat）⇒ k 随之更高。' +
+      '追问裁定 = 修理量乘层威胁倍率（甲；归一基准「不改动」= 层 1 的 k = 1.00）⇒ 实数 = 基数 × k。' +
+      '⚠ 同日再令：基础数值上调至 15 装甲 15 结构（船长：「船体修理装置（G 族）基础数值上调至15装甲15结构」）' +
+      '⇒ 层 1 = 15/15（合计 30）· 层 7 ≈ 30/30 · 层 10 ≈ 42/42；夹到满值、不回超，层末守卫另吃 ×1.2。' +
+      'k = 该层本次实际威胁 ÷ 45（combat.FOE_REPAIR_THREAT_REF）；' +
       '只挂 G 族洞内卡条目；与「敌方后勤舰」（FoeShipDef.repairPct：折自己 DPS 去修队友）不是一套。' +
       '设计稿 docs/design/foe-mounts-20260924.md。',
   },

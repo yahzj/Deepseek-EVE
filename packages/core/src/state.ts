@@ -897,9 +897,9 @@ export interface BattleState {
   foeRepair?: { nextPulseAtMs?: number; pulses: number; healed: number }
   /**
    * **挂载件「船体修理装置」的逐单位脉冲账本**（船长 2026-09-24：「**给G族添加挂载件：船体修理装置。
-   * 每5秒恢复5装甲和5结构**，会吃威胁的加成」）——键 = **战斗 tag**：
+   * 每5秒恢复5装甲和5结构**，会吃威胁的加成」；**同日二次令基数升为 15/15**）——键 = **战斗 tag**：
    * `{ nextPulseAtMs, pulses, healed }`，每 `everyMs`（5 秒）给**该单位自己**回
-   * `round(5 × k)` 装甲与结构（各层夹满值），`k` = 本层本次实际威胁 ÷ 45（见 `UnitSpec.foeRepairPulse`）。
+   * `round(15 × k)` 装甲与结构（各层夹满值），`k` = 本层本次实际威胁 ÷ 45（见 `UnitSpec.foeRepairPulse`）。
    *
    * **只在该单位真挂了这件时才建**（缺省不写 ⇒ tick 里那一块直接跳过 ⇒ 零开销、零行为变化）。
    * ⚠ **必须随档**（与 `foeRepair`/`repair`/`shieldCharge` 同款理由）：漏了会让战中重载后
