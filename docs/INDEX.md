@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **306** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5720** KB · **40874** 行
+- 文档总数 **306** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5743** KB · **40969** 行
 - 状态分布：**未标注** 170 · **已确认/已实现** 111 · **进行中** 21 · **待裁定** 3 · **历史留档** 1
-- 孤儿文档（0 引用）**36** 份 · 状态未标注 **170** 份
+- 孤儿文档（0 引用）**35** 份 · 状态未标注 **170** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**192** 份
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 196 KB / 245 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 64 KB / 693 行 | 72 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 450 KB / 955 行 | 199 / 13 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 335 行 | 288 / 14 |
+| `docs/glossary.md` | (无一级标题) | 未标注 | — | 457 KB / 983 行 | 201 / 13 |
+| `docs/roadmap.md` | (无一级标题) | 未标注 | — | 89 KB / 339 行 | 290 / 14 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -57,10 +57,10 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/foe-mounts-20260924.md` | 敌方挂载件：A 族「姿态陀螺仪」＋ G 族「船体修理装置」（2026-09-24） | 已确认/已实现（设计已确认 · 未动工） | 2026-09-24 | 3 KB / 33 行 | 0 / 0 |
-| `docs/design/one-time-blueprint-loss-20260924.md` | (无一级标题) | 未标注（已修并合入 main） | 2026-09-24 | 4 KB / 58 行 | 0 / 0 |
+| `docs/design/foe-mounts-20260924.md` | 敌方挂载件：A 族「姿态陀螺仪」＋ G 族「船体修理装置」（2026-09-24） | 已确认/已实现（设计已确认 · 未动工） | 2026-09-24 | 5 KB / 61 行 | 1 / 0 |
+| `docs/design/handoff-foe-mounts-20260924.md` | 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号） | 未标注 | 2026-09-24 | 6 KB / 62 行 | 0 / 0 |
+| `docs/design/handoff-verify-20260924.md` | (无一级标题) | 未标注 | 2026-09-24 | 9 KB / 92 行 | 0 / 0 |
 | `docs/design/ships-workbench-20260924.md` | 船长工作台回写：我方 8 艘虫洞舰船属性 ＋ 鱼雷舰豁免裁决（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 5 KB / 62 行 | 0 / 0 |
-| `docs/design/side-tasks-courier-and-damage-popup-20260924.md` | 任务板：快递任务周期（2026-09-24）＋ 战斗伤害飘字（已落码 · 待验收） | 未标注（已落码、四闸门全绿、已推送） | 2026-09-24 | 5 KB / 61 行 | 0 / 0 |
 | `docs/design/win-estimate-redesign-20260924.md` | 悬赏胜率预估重做：三点距离 + 去种子化 + 实战胜利记录（2026-09-24） | 进行中（进行中 —— 船长口径已逐条落码） | 2026-09-24 | 8 KB / 81 行 | 0 / 0 |
 | `docs/design/skills-merge-20260923.md` | 技能页合并（旧目录 → 科技树页）· 2026-09-23 | 未标注（已落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
 | `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
@@ -376,14 +376,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 54 / 10 |
 
-## 附：孤儿文档（0 引用，36 份）
+## 附：孤儿文档（0 引用，35 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/foe-mounts-20260924.md`（2026-09-24 · 3 KB）—— 敌方挂载件：A 族「姿态陀螺仪」＋ G 族「船体修理装置」（2026-09-24）
-- `docs/design/one-time-blueprint-loss-20260924.md`（2026-09-24 · 4 KB）—— (无一级标题)
+- `docs/design/handoff-foe-mounts-20260924.md`（2026-09-24 · 6 KB）—— 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号）
+- `docs/design/handoff-verify-20260924.md`（2026-09-24 · 9 KB）—— (无一级标题)
 - `docs/design/ships-workbench-20260924.md`（2026-09-24 · 5 KB）—— 船长工作台回写：我方 8 艘虫洞舰船属性 ＋ 鱼雷舰豁免裁决（2026-09-24）
-- `docs/design/side-tasks-courier-and-damage-popup-20260924.md`（2026-09-24 · 5 KB）—— 任务板：快递任务周期（2026-09-24）＋ 战斗伤害飘字（已落码 · 待验收）
 - `docs/design/win-estimate-redesign-20260924.md`（2026-09-24 · 8 KB）—— 悬赏胜率预估重做：三点距离 + 去种子化 + 实战胜利记录（2026-09-24）
 - `docs/design/skills-merge-20260923.md`（2026-09-23 · 8 KB）—— 技能页合并（旧目录 → 科技树页）· 2026-09-23
 - `docs/design/wh-spawn-layer7-20260923.md`（2026-09-23 · 8 KB）—— 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23）
@@ -419,8 +418,8 @@
 
 ## 附：状态未标注（170 份，待补一行 `状态：…`）
 
-- `docs/design/one-time-blueprint-loss-20260924.md`（2026-09-24）—— (无一级标题)
-- `docs/design/side-tasks-courier-and-damage-popup-20260924.md`（2026-09-24）—— 任务板：快递任务周期（2026-09-24）＋ 战斗伤害飘字（已落码 · 待验收）
+- `docs/design/handoff-foe-mounts-20260924.md`（2026-09-24）—— 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号）
+- `docs/design/handoff-verify-20260924.md`（2026-09-24）—— (无一级标题)
 - `docs/design/skills-merge-20260923.md`（2026-09-23）—— 技能页合并（旧目录 → 科技树页）· 2026-09-23
 - `docs/design/archived-window-embed-20260922.md`（2026-09-22）—— 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22）
 - `docs/design/hold-ux-20260922.md`（2026-09-22）—— 洞内货仓操作体验四条（2026-09-22）
@@ -584,9 +583,9 @@
 - `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/glossary-en.md`（无日期）—— 英文术语与专名译名表（English Glossary & Naming Table）
-- `docs/glossary.md`（无日期）—— 术语词典（Glossary）
+- `docs/glossary.md`（无日期）—— (无一级标题)
 - `docs/review/A1-bounty-review.md`（无日期）—— A1 · 悬赏通读走查表（22 张）
 - `docs/review/A2-density-review.md`（无日期）—— A2 · 界面信息密度走查（第 1 轮，待船长批注）
-- `docs/roadmap.md`（无日期）—— 后续工作流备忘（Roadmap / Backlog）
+- `docs/roadmap.md`（无日期）—— (无一级标题)
 - `docs/test-saves/README.md`（无日期）—— 测试门槛存档（Test Saves）
 
