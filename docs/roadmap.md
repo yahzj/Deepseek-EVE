@@ -220,16 +220,17 @@
 > 交接口径：**一号不再动本地化**；下面两条是 `npm run l10n:list` / `l10n:check` 实测出来的尾巴，
 > 处理时按约定 **§十一之三「实现 = id 映射制」**（先取 id、再写文案、中英都进唯一表），合入前跑 `l10n:check` + `l10n:list`。
 
-- [ ] **L1 谜质科技节点说明（`note`）英文缺失**：`EN_MATTER_TECH`（`packages/data/src/l10n.ts`）目前**只覆盖 `name`**，
+- [ ] **L1 谜质科技节点说明（`note`）英文缺失**（⬜ **仍未做，2026-09-24 复核**：`EN_MATTER_TECH` 仍只有 `name`，24 个节点的 `note` 在英文界面下显示中文）：`EN_MATTER_TECH`（`packages/data/src/l10n.ts`）目前**只覆盖 `name`**，
   24 个节点的 `note` 仍是中文 ⇒ 英文界面下说明显示中文（**既有缺口，非 2026-09-20 新增**；新增的 T4 节点
   `mt-industry-ai`「工业多核调度」同样只有中文说明）。要做成整树补齐，得先定口径：
   ① 数据侧补 `noteEn`（改 `MatterTechNodeDef`）；② 或改走 id 映射制（节点 id → 表里补 en，与 §十一之三 对齐，推荐）。
-- [ ] **L2 一号批次的界面字符串未接 id**（`npm run l10n:list` 实测条数）：
+- [x] **L2 一号批次的界面字符串未接 id · ✅ 2026-09-22 已清场（2026-09-24 复核）**：下列快照条数当时实测（`npm run l10n:list`）：
   `panels/Shipyard.tsx` **13** · `panels/Industry.tsx` **19** · `ui/itemSubs.ts` **28** · `ui/Glyphs.tsx` **10** ·
-  `pages/FitPage.tsx` **9**（Shipyard 目前只有搜索框接了 id）。`l10n:check` 是绿的（无中文源串调用点），
-  这些是**尚未接线的字面量** ⇒ 英文界面下会显示中文。
-- [ ] **L3 通讯消息整类没有英文**（**2026-09-22 一号查出 · 船长令「英文本地化依旧交给三号」**）：
-  `ctx.messages`（**30 条**：13 封「第一次」情报信 ＋ 开场简报 ＋ NPC 来信）的 **主题 / 正文 / 前往提示**
+  `pages/FitPage.tsx` **9**（Shipyard 目前只有搜索框接了 id）。**当批读数：`l10n:check` 未译 58 → 0**。
+  **2026-09-24 复核读数**：渲染层含中日韩字符串字面量 **0** 条 · 已声明不译 `l10n-keep` **113 条**（全部是数据联合 key／形状槽键／探针／i18n 实现自身，逐条见 `npm run l10n:list`）⇒ **L2 已清场**，
+  本行只作过程留档（详见「最近批次」2026-09-22 那条「筛选与标签页文案补齐」）。
+- [ ] **L3 通讯消息整类没有英文 · 2026-09-22/23 已做完前三批，剩 9 条长设定文未做**（**2026-09-24 复核读数见行尾**）：
+  `ctx.messages`（**31 条**：13 封「第一次」情报信 ＋ 开场简报 ＋ 协会侧短札）的 **主题 / 正文 / 前往提示**
   只有中文 ⇒ 英文界面下通讯页整封显示中文。判据：`packages/data/src/l10n.ts` 的 `localizeCtx` 覆盖了
   ships / modules / items / skills / blueprints / shipBlueprints / galaxies / belts / stations / commsFactions /
   matterTech / travelEvents，**没有 `messages`**。两条做法：**甲（推荐）**新增 `EN_COMMS_MESSAGES`
@@ -237,6 +238,14 @@
   加一行（改动集中数据层）；**乙**走 id 映射表（`msg.<id>.subject` / `msg.<id>.body.N`），更贴现行 id 制，
   但要改 `core/comms.ts` 与 `CommsPage` 的读取方式。⚠ 13 封情报信的**中文已于 2026-09-22 重写**
   （提交 `da8764ce`）⇒ 英文请照新版中文译，术语以 `docs/glossary-en.md` 为准。
+  - **✅ 已做（2026-09-22/23 · 三号）**：发件人 13 条 ＋ **主题 31 条全齐**（`ui/comms.001~044`）· **前往提示 18 条**（`COMMS_HINT_ID`）·
+    部门与势力简介 13 条（`COMMS_BRIEF_EN`）· **正文 22 条**（`COMMS_BODY_EN`）。做法走的是**渲染层单点** `ui/commsText.ts`
+    （数据层与 core 一字未动；查不到一律回落中文）——即原「乙」思路的渲染层变体，**已在役，不必再改数据层**。
+  - **⬜ 还剩 9 条长设定文 · 合计 45 行**（**2026-09-24 接手复核**，脚本比对 `COMMS_BODY_EN` 的 key 与中文数据）：
+    `msg-briefing`(12) · `msg-lowsec-rules`(5) · `msg-wormhole-unlock`(5) · `msg-auro-megastructure`(4) · `msg-exile-swarm`(4) ·
+    `msg-wormhole-nebula`(4) · `msg-ambush-retreat`(4) · `msg-pirate-capture-web`(4) · `msg-cinder-warning`(3)。
+    **口径**：仍按 `COMMS_BODY_EN` 补段（行数与中文逐行对齐，不符整段回落中文）；**这 9 条是"整类没有英文"的最后一截**，
+    做完通讯页即全英文。⚠ 另有一批**数据侧命名**未做（手册「××蓝图碎片」6 条碎片物品名，见下方 2026-09-22 手册条 ④）。
 
 ## 2026-09-16 二号交接开放项（虫洞战利品扩充批的尾巴 · 已推送 · 公告已裁定不发）
 
