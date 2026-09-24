@@ -1093,6 +1093,14 @@ export {
   abandonAcceptedCourierTask,
   courierOccupiedM3,
   BOUNTY_TASKS_PER_ROUND,
+  /**
+   * **快递板周期（120 分钟）与到期判据**（2026-09-24 船长令：「快递任务的周期和持续时间都为 120 分钟，
+   * 资源任务不变」）——界面按它算快递的倒计时与"每 N 分钟一轮"文案：**别再写死 20 分钟**
+   * （船长报障：「卡片上和快递任务页面写的还是 20 分钟」）。
+   */
+  COURIER_BOARD_PERIOD_MS,
+  courierDueAtWindow,
+  courierDeadlineMs,
   // 赏金新板提示（船长 2026-09-14：换板未看 ⇒ 导航徽标；进任务中心即记账）
   sideTasksMarkBountySeen,
 } from './sideTasks'

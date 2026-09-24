@@ -187,6 +187,20 @@ export function courierDueAtWindow(windowMs: number): boolean {
   return windowMs % COURIER_BOARD_PERIOD_MS === 0
 }
 
+/**
+ * **本批快递的到期时刻**（**2026-09-24 船长报障**「快递任务现在是 2 小时刷新周期，但是卡片上和快递任务页面
+ * 写的还是 20 分钟」的**根因那一半**）：下一个 120 分钟整点。
+ *
+ * 与重掷判据同源（`courierDueAtWindow`）：窗界本身就是 120 分钟整点 ⇒ 到期 = 窗界 + 120 分钟；
+ * 非整点窗（**首个批次**：建成副站后随下一个 20 分钟窗补种）⇒ 到期 = 其后第一个 120 分钟整点。
+ * 未开盘（窗界 ≤ 0）⇒ 返回一个完整周期（此时板上没有快递，这个值只作展示兜底）。
+ */
+export function courierDeadlineMs(windowMs: number): number {
+  const P = COURIER_BOARD_PERIOD_MS
+  if (!Number.isFinite(windowMs) || windowMs <= 0) return P
+  return courierDueAtWindow(windowMs) ? windowMs + P : Math.ceil(windowMs / P) * P
+}
+
 /** 任务商品基池：市场常驻（common）且带 poolTarget>0 的 item 类商品（未做星图门槛过滤） */
 function taskGoodBasePool(ctx: SimContext): MarketGoodDef[] {
   const out: MarketGoodDef[] = []
@@ -889,7 +903,7 @@ export interface SideTaskDeliveryView {
   deadlineRemainingMs: number | null
 }
 
-/** 任务板只读视图（UI 直接渲染用；remainingMs 随 gameMs 自然缩短，每秒刷新） */
+/** 任务板只读视图（UI 直接渲染用；倒计时随 gameMs 自然缩短，每秒刷新） */
 export interface SideTaskBoardView {
   /** 资源任务（当前轮；未到首个 20 分钟整点 = 空） */
   resource: readonly SideTask[]
@@ -907,8 +921,13 @@ export interface SideTaskBoardView {
   deliver: SideTaskDeliveryView | null
   /** 本板已开盘（首个 20 分钟整点已刷出过任务）；false = 等首个整点 */
   opened: boolean
-  /** 距下一个 20 分钟整点（本轮到点整板替换）的剩余毫秒；未开盘 = 距首个整点 */
+  /** 距下一个 20 分钟整点（**资源**本轮到点整板替换）的剩余毫秒；未开盘 = 距首个整点 */
   remainingMs: number
+  /**
+   * 距下一个 **120 分钟**整点（**快递**本批到点整板替换）的剩余毫秒——与 `remainingMs` 分族各报
+   * （2026-09-24 船长令：快递周期与存活都是 120 分钟，资源仍 20 分钟）。
+   */
+  courierRemainingMs: number
   /** 赏金日板已开板（至少刷出过一次）；false = 还没拿到有效墙钟（旧档首帧） */
   bountyOpened: boolean
   /** 距下一个本地 0 点（赏金整板替换）的剩余毫秒（墙钟；未开板 = 0） */
@@ -923,7 +942,8 @@ export interface SideTaskBoardView {
 }
 
 /** 只读查询：任务板 + 到期倒计时 + 快递在途投送（UI 展示资源/快递时效任务区用）。
- *  倒计时两套：`remainingMs` = 资源/快递的 20 分钟整点；`bountyRemainingMs` = 赏金每日 0 点。
+ *  倒计时三套：`remainingMs` = **资源**的 20 分钟整点 · `courierRemainingMs` = **快递**的下一个 120 分钟
+ *  整点（2026-09-24 船长令：快递周期/存活都是 120 分钟）· `bountyRemainingMs` = 赏金每日 0 点。
  *  nowWallMs = 当前墙钟（UI 心跳传入；缺省退 `state.savedAtWallMs`）。 */
 export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: number): SideTaskBoardView {
   const board = state.sideTasks
@@ -973,6 +993,11 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
       : null,
     opened,
     remainingMs,
+    /**
+     * **快递本批的剩余**（到下一个 120 分钟整点）——与 `remainingMs`（资源 20 分钟）**分开报**：
+     * 两族节奏不同（2026-09-24 船长令），界面各按各的倒计时显示，别再拿 20 分钟的数字套在快递头上。
+     */
+    courierRemainingMs: Math.max(0, courierDeadlineMs(board.window) - state.gameMs),
     bountyOpened,
     bountyRemainingMs: bountyOpened ? bountyBoardRemainingMs(now) : 0,
     bountyFresh,
@@ -1215,8 +1240,14 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
     return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。', errorId: 'core.sideTasks.002' }
   }
   const task = found.task
-  // 到期护栏：板上任务在整板刷新后作废；**已接单的不受此限**（接单的意义就在这里）
-  if (!found.accepted && state.gameMs >= board.window + boardPeriodMs(ctx)) {
+  /**
+   * 到期护栏：板上任务在**本批快递到点**（下一个 120 分钟整点）后作废；**已接单的不受此限**。
+   *
+   * ⚠ **2026-09-24 修（船长报障「卡片上和快递任务页面写的还是 20 分钟」的根因那一半）**：这里原先与资源
+   * 任务共用 `boardPeriodMs`（20 分钟）——快递批次实际存活 120 分钟，于是**抽到手超过 20 分钟的单子
+   * 会被判"已到期"拒发**（板上明明还挂着）。现按快递自己的到期时刻 `courierDeadlineMs` 判。
+   */
+  if (!found.accepted && state.gameMs >= courierDeadlineMs(board.window)) {
     return {
       ok: false,
       error: '该任务已到期——新一批任务即将刷新（可先「接单」保住它）。',

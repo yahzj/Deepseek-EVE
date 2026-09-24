@@ -3788,6 +3788,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.431": { zh: "该星系暂无可清剿目标。", en: "No repeatable targets in this system." },
   "ui.Expedition.432": { zh: "威胁 {p1} · 胜率 {p2}%", en: "Threat {p1} · win {p2}%" },
   "ui.Expedition.433": { zh: "循环中", en: "Looping" },
+  /* 快递板周期 = 120 分钟（2026-09-24 船长令）——原与资源共用「20 分钟」那套文案，船长报障后分族各写 */
+  "ui.Expedition.434": { zh: "本批快递只存活一轮（{periodMin} 分钟）：到下一个两小时整点整板替换——已接单的不随刷新消失，在途投送不受影响、到站照常结算", en: "This batch of deliveries lasts one round ({periodMin} minutes): the board is replaced at the next two-hour mark — accepted orders survive the refresh, and deliveries under way are unaffected and settle as usual on arrival" },
+  "ui.Expedition.435": { zh: "本批暂无待办投送订单——已完成或尚未刷出，下一批随 {periodMin} 分钟整板自动刷新（已接单的不随刷新消失；在途投送不受影响、到站照常结算）。", en: "No delivery orders pending — either finished or not yet rolled; the next batch arrives with the {periodMin}-minute board refresh (accepted orders survive the refresh; deliveries under way are unaffected and settle as usual on arrival)." },
   "ui.spaceBg.001": { zh: "蓝星云", en: "Blue nebula" },
   "ui.spaceBg.002": { zh: "绿星云", en: "Green nebula" },
   "ui.spaceBg.003": { zh: "紫星云", en: "Purple nebula" },

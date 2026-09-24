@@ -32,6 +32,8 @@ import {
   advanceSideTasks,
   builtStationCount,
   changeShip,
+  /** 快递板周期（120 分钟，2026-09-24 船长令）——倒计时/出发护栏的用例按它算 */
+  COURIER_BOARD_PERIOD_MS,
   completeSideTask,
   courierVolumeFor,
   createInitialState,
@@ -289,6 +291,49 @@ describe('时效任务板 · 快递 120 分钟周期（2026-09-24 船长令）',
     expect(cou1.map((t) => [t.id, t.stationId, t.rewardIsk, t.volumeM3, t.level])).toEqual(
       cou0.map((t) => [t.id, t.stationId, t.rewardIsk, t.volumeM3, t.level]),
     )
+  })
+
+  /**
+   * **倒计时与出发护栏也要按 120 分钟**（**2026-09-24 船长报障**：「快递任务现在是 2 小时刷新周期，
+   * 但是卡片上和快递任务页面写的还是 20 分钟」）。
+   *
+   * 根因不止文案：`startCourierDelivery` 的到期护栏原先与资源共用 `boardPeriodMs`（20 分钟）⇒
+   * **抽到手超过 20 分钟的单子会被判"已到期"拒发**（板上明明还挂着）；界面那套倒计时也读的
+   * 资源那 20 分钟的 `remainingMs`。现分族各报：`courierRemainingMs` = 到下一个 120 分钟整点。
+   */
+  it('倒计时分族：快递报"到下一个 120 分钟整点"；抽到手 25 分钟后仍可出发（不再按 20 分钟判到期）', () => {
+    const { state, ctx } = world()
+    marketQuote(state, ctx, 'it-ore-a')
+    advanceGame(state, FIRST_OPEN_MS, ctx) // 首板：窗界 = 20 分钟
+    const first = sideTaskBoard(state, ctx)
+    const t = first.courier.find((x) => x.timed !== true && (x.volumeM3 ?? 0) <= 1_000)!
+    expect(changeShip(state, 'sh-fast', ctx).ok).toBe(true)
+    // ① 倒计时分族：资源 = 到 20 分钟整点；快递 = 到 120 分钟整点（首板窗 = 20 分钟 ⇒ 到期 120 分钟）
+    expect(first.remainingMs).toBe(PERIOD - 1_000) // 窗界 20 分钟、此刻 20 分钟 +1 秒
+    expect(first.courierRemainingMs).toBe(COURIER_BOARD_PERIOD_MS - state.gameMs)
+    expect(first.courierRemainingMs).toBeGreaterThan(first.remainingMs)
+    // ② 走到 +25 分钟（> 资源一整个周期）：资源换了一轮，**快递原单仍在板上**
+    advanceGame(state, 25 * 60_000, ctx)
+    const later = sideTaskBoard(state, ctx)
+    expect(later.courier.some((x) => x.id === t.id), '快递不该随 20 分钟窗被换掉').toBe(true)
+    expect(later.courierRemainingMs).toBe(COURIER_BOARD_PERIOD_MS - state.gameMs)
+    // ③ 关键：这张"抽到手 25 分钟"的单子**仍能出发**（修前会被判"该任务已到期"）
+    const r = startCourierDelivery(state, ctx, t.id)
+    expect(r.ok, r.ok ? '' : r.error).toBe(true)
+  })
+
+  it('跨过 120 分钟整点：未接单的旧单被换下（在途/已接单不受影响）', () => {
+    const { state, ctx } = world()
+    marketQuote(state, ctx, 'it-ore-a')
+    advanceGame(state, FIRST_OPEN_MS, ctx)
+    const old = sideTaskBoard(state, ctx).courier.map((t) => t.id)
+    // 走到 120 分钟整点（首个整点窗）⇒ 快递重掷
+    advanceGame(state, COURIER_BOARD_PERIOD_MS - FIRST_OPEN_MS + 1_000, ctx)
+    const now = sideTaskBoard(state, ctx)
+    expect(now.courier.some((t) => old.includes(t.id)), '旧批应被换下').toBe(false)
+    expect(now.courierRemainingMs).toBe(COURIER_BOARD_PERIOD_MS - 1_000) // 刚换完 ⇒ 又是满一轮
+    // 旧单已不在板上、也没接单 ⇒ 出发被拒
+    expect(startCourierDelivery(state, ctx, old[0]!).ok).toBe(false)
   })
 })
 

@@ -60,6 +60,8 @@ import {
   mainActivityOf,
   RARE_WRECK_VOLUME_M3,
   RETURN_LEG_MUL,
+  /** 快递板周期（120 分钟，2026-09-24 船长令）——快递页的倒计时与"每 N 分钟一轮"都按它算 */
+  COURIER_BOARD_PERIOD_MS,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
@@ -2509,9 +2511,21 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
   const state = engine.state
   const { t } = useL10n()
   const view = engine.sideTasksView()
-  // 任务板与市场「补给刷新」同节奏：orderLifeMs.common = 20 分钟一轮（与常驻订单寿命一致）
-  const periodMin = Math.max(1, Math.round(engine.ctx.balance.market.orderLifeMs.common / 60_000))
   const isCourier = kind === 'courier'
+  /**
+   * **两族节奏不同，各自算各自的**（**2026-09-24 船长报障**：「快递任务现在是 2 小时刷新周期，但是卡片上和
+   * 快递任务页面写的还是 20 分钟」）：资源仍跟市场「补给刷新」（`orderLifeMs.common`，20 分钟）；
+   * 快递按 `COURIER_BOARD_PERIOD_MS`（120 分钟，2026-09-24 船长令）——**倒计时与"每 N 分钟一轮"文案
+   * 都取本族的常量**，别再拿资源那 20 分钟套在快递头上。
+   */
+  const periodMin = Math.max(
+    1,
+    Math.round((isCourier ? COURIER_BOARD_PERIOD_MS : engine.ctx.balance.market.orderLifeMs.common) / 60_000),
+  )
+  /** 本族本批的剩余（快递 = 到下一个 120 分钟整点；资源 = 到下一个 20 分钟整点） */
+  const remainMs = isCourier ? view.courierRemainingMs : view.remainingMs
+  /** 倒计时格式：快递一轮两小时 ⇒ 用 h:mm:ss（`mm:ss` 会写出「118:23」那种分钟数） */
+  const clock = isCourier ? fmtDayClock : fmtSideClock
   /**
    * **任务排序**（船长 2026-09-19：「添加个默认排序（从低到高）和价值排序（从高到低）」；
    * 追问三答：默认排序 = **按任务级别 L1→L5** · 价值排序 = **按奖励从高到低** ·
@@ -2569,8 +2583,11 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
         <span>{headText}</span>
         {!isCourier || view.courierUnlocked ? (
           view.opened || tasks.length > 0 ? (
-            <span className="app-st-time" title={tr("ui.Expedition.221", { periodMin: periodMin })}>
-              {tr("ui.Expedition.281")} {fmtSideClock(view.remainingMs)}{tr('ui.Expedition.420')}{periodMin} {tr("ui.Expedition.106")}
+            <span
+              className="app-st-time"
+              title={isCourier ? tr('ui.Expedition.434', { periodMin: periodMin }) : tr("ui.Expedition.221", { periodMin: periodMin })}
+            >
+              {tr("ui.Expedition.281")} {clock(remainMs)}{tr('ui.Expedition.420')}{periodMin} {tr("ui.Expedition.106")}
             </span>
           ) : (
             <span className="app-dim">{tr("ui.Expedition.326")} {periodMin} {tr("ui.Expedition.107")}</span>
@@ -2603,7 +2620,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
         ) : view.opened ? (
           <div className="app-dim app-exp-idle">
             {isCourier
-              ? tr("ui.Expedition.222")
+              ? tr("ui.Expedition.435", { periodMin: periodMin })
               : tr("ui.Expedition.223")}
           </div>
         ) : (
@@ -2627,7 +2644,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
               const galaxyName = t.galaxyId ? engine.ctx.galaxies.get(t.galaxyId)?.name ?? t.galaxyId : undefined
               const isThisInFlight = view.deliver !== null && view.deliver.taskId === t.id
               const otherInFlight = view.deliver !== null && !isThisInFlight
-              const expired = view.remainingMs <= 0
+              const expired = remainMs <= 0
               const vol = t.volumeM3 ?? 0
               const cap = engine.cargoCapacityM3()
               const warp = engine.warpSpeedOfCurrent()
@@ -2651,7 +2668,7 @@ function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast:
                       {tr("ui.Expedition.050")}{t.level ?? 1}：{vol.toLocaleString('zh-CN')} m³
                       <em className="app-chip">{t.timed === true ? tr("ui.Expedition.328", { p1: t.warpReqAus ?? 0 }) : tr("ui.Expedition.226")}</em>
                     </span>
-                    <span className="app-dim">{accepted ? tr("ui.Expedition.161") : tr("ui.Expedition.109", { p1: fmtSideClock(view.remainingMs) })}</span>
+                    <span className="app-dim">{accepted ? tr("ui.Expedition.161") : tr("ui.Expedition.109", { p1: clock(remainMs) })}</span>
                   </div>
                   <div className="app-station-mats">
                     {tr("ui.Expedition.283")}{siteName ?? tr("ui.Expedition.329")}」{galaxyName ? `（${galaxyName}）` : ''}{tr('ui.Expedition.421')}
