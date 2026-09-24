@@ -244,6 +244,9 @@ export {
   weekendDebugOn,
   weekendEncounterChanceAt,
   weekendFlagshipView,
+  // 2026-09-24 第二轮令：旗舰 BOSS 化（跨场累计伤害）——池子读数给界面、每拍推进给引擎
+  weekendBossPoolView,
+  weekendTickBoss,
   weekendFoeCardOf,
   weekendNoteFlagshipKilled,
   weekendNotePlayerWin,
@@ -263,7 +266,7 @@ export {
   weekendWindowMsOf,
   weekendWindowOpen,
 } from './weekendEvent'
-export type { WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
+export type { WeekendBossPoolView, WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 
 /* 2026-09-23 周末入侵 · 战斗与结算（M1-b） */
 export {

@@ -12,6 +12,7 @@ import {
   WEEKEND_DEBUG_ONLY,
   weekendCoreProgressAt,
   weekendDebugOn,
+  weekendBossPoolView,
   weekendFlagshipView,
   weekendOccupiedIds,
   weekendProgressAt,
@@ -46,6 +47,17 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
   const corePct = Math.round(weekendCoreProgressAt(state, ev, now) * 100)
   const coreName = engine.ctx.galaxies.get(ev.coreId)?.name ?? ev.coreId
   const flagship = weekendFlagshipView(state, ev, now, now)
+  /**
+   * **旗舰 BOSS 的池子读数**（2026-09-24 第二轮令）：非 BOSS 族 / 还没接战 ⇒ `null`（这一行不出现）。
+   * 显示两条独立进度：玩家磨掉多少、章鱼人削了多少。
+   */
+  const pool = weekendBossPoolView(state, ev)
+  const bossText =
+    pool === null
+      ? ''
+      : `${tr('ui.weekend.020', { p1: String(Math.round(pool.playerFrac * 100)) })} · ${tr('ui.weekend.021', {
+          p1: String(Math.round(pool.octopusFrac * 100)),
+        })}`
   const tail = flagship.down
     ? tr('ui.weekend.009')
     : flagship.shown
@@ -74,6 +86,11 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
       <div className="app-weekend-box-row">
         <span className={flagship.shown || flagship.down ? 'app-weekend-box-warn' : 'app-weekend-box-dim'}>{tail}</span>
       </div>
+      {bossText !== '' && (
+        <div className="app-weekend-box-row app-weekend-box-dim">
+          <span>{bossText}</span>
+        </div>
+      )}
     </div>
   )
 }

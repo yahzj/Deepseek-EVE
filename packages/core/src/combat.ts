@@ -336,6 +336,11 @@ export interface UnitSpec {
    */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number; k: number }
   foeTactic: FoeTactic | null
+  /**
+   * **舰级 id**（2026-09-24 加；只给"舰级路径"建的敌单位写）：旗舰 BOSS 的伤害台账靠它认出母舰
+   * （战斗态里此前没有"我是哪条舰级"的标记）。缺省 = 旧路径 ⇒ 零行为变化。
+   */
+  foeShipId?: string
 }
 
 function clamp(min: number, max: number, v: number): number {
@@ -2282,6 +2287,12 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(mount.foeCaptureWeb !== undefined ? { foeCaptureWeb: mount.foeCaptureWeb } : {}),
       // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）
       hullClassTier: ship.hullClassTier,
+      /**
+       * **舰级 id**（2026-09-24 加）：只服务**旗舰 BOSS 的伤害台账**（`flagshipBattleLedger`
+       * 要认出"哪几个单位是母舰"）——战斗态里此前没有任何"我是哪条舰级"的标记。
+       * 缺省不写（旧路径）= 台账认不出 ⇒ 等于零行为变化。
+       */
+      foeShipId: ship.id,
       // **敌方后勤舰**（船长 2026-09-16）：把自身 repairPct 比例的名义 DPS 转成修理值；缺省不写 ⇒ 零变化
       ...(ship.repairPct !== undefined ? { repairPct: ship.repairPct } : {}),
       foeTactic: tactic,
@@ -2515,6 +2526,40 @@ export function activeFoeSpecsOf(
   return createFoeSpecs(anomaly, bal, { units: w.units, hpShare: w.hpShare, tagPrefix: i === 0 ? '' : `w${i}-` })
 }
 
+/* ═══════════ 旗舰 BOSS：对母舰的伤害台账（船长 2026-09-24 第二轮令）═══════════
+ * 船长原话：「**墨潮入侵母舰我想改成类似BOSS的机制：血量极厚，但是玩家对其造成的伤害会累计…
+ * 需要玩家多次战斗后才能击沉。**」＋「**按对母舰造成的伤害决定，如果母舰没有受伤就是0输出。**」
+ *
+ * 口径：**在战斗状态上直接量**（不新增计数器）——
+ * - **满血** = `Σ(hpMax)`：开战那一刻的满值（权威读数，不靠卡面重算）；
+ * - **已收** = `Σ(hpMax) − Σ(hp)`：跨波跨场都在同一个 `battle.units` 账本里 ⇒ 逐波切档、逐场重开都不丢；
+ * - ⚠ **取原始值**（不做池子截断）；母舰一点没挨打 ⇒ `rawDmg = 0`。
+ *
+ * 认舰方式 = 单位上的 `foeShipId`（2026-09-24 新增的标记）对上**旗舰卡里登记的舰级 id**。
+ * @param cardIds 该族旗舰卡里"算母舰"的舰级 id（调用方从 `ctx.anomalies` 取 `ships[].ship.id`）
+ */
+export function flagshipBattleLedger(
+  battle: import('./state').BattleState,
+  cardIds: readonly string[],
+): { rawDmg: number; flagshipMaxHp: number; flagshipSeq: number } {
+  const ids = new Set(cardIds)
+  let rawDmg = 0
+  let maxHp = 0
+  let seq = 0
+  for (const tag of Object.keys(battle.units)) {
+    const u = battle.units[tag]!
+    if (u.side !== 'foe') continue
+    if (u.foeShipId === undefined || !ids.has(u.foeShipId)) continue
+    const max = u.hpMax
+    if (!max) continue
+    const maxSum = max.s + max.a + max.h
+    const curSum = u.hp.s + u.hp.a + u.hp.h
+    rawDmg += Math.max(0, maxSum - curSum)
+    maxHp += maxSum
+    seq++
+  }
+  return { rawDmg: Math.round(rawDmg), flagshipMaxHp: Math.round(maxHp), flagshipSeq: seq }
+}
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
   // 2026-09-11 舰级路径（船长定案「敌舰配置表」）：写了 ships 的卡按**舰级绝对值**建档；
   // 未写的卡走下面的旧"威胁推导"路径，行为逐字不变（试点只转 A 族 6 张）。
@@ -3752,6 +3797,8 @@ export function createBattleState(
       name: spec.name,
       hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
       hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+      // **舰级 id**（2026-09-24）：首波内联播种同样要带上（`flagshipBattleLedger` 认母舰靠它）
+      ...(spec.foeShipId !== undefined ? { foeShipId: spec.foeShipId } : {}),
       weapons: spec.weapons.map(() => 0),
       /**
        * **隐秘行动装置**（2026-09-15 船长）：开战那一刻起窗——`stealthMs` 由 `createPlayerSpec` 写
@@ -3890,6 +3937,7 @@ function seedUnit(
     name: spec.name,
     hp: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
     hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
+    ...(spec.foeShipId !== undefined ? { foeShipId: spec.foeShipId } : {}),
     weapons: opts.enterReload
       ? spec.weapons.map((w) => Math.max(1, w.reloadMs, windowMs) + phase)
       : spec.weapons.map(() => phase),

@@ -599,6 +599,11 @@ export interface BattleUnitRt {
   hp: { s: number; a: number; h: number }
   /** 三层满血量（血条分母；2026-09-09 多波起写——波次/读档单位 UI 血条以本字段为准，旧档缺省由 UI 兜底） */
   hpMax?: { s: number; a: number; h: number }
+  /**
+   * **舰级 id**（2026-09-24 加；只给"舰级路径"建的敌单位写）：旗舰 BOSS 的伤害台账
+   * （`combat.flagshipBattleLedger`）靠它认出"哪几个单位是母舰"。缺省 = 旧单位/旧档 ⇒ 零行为变化。
+   */
+  foeShipId?: string
   /** 每武器装填倒计时 ms（0 = 可开火；与静态武器卡顺序一一对应） */
   weapons: number[]
   /**

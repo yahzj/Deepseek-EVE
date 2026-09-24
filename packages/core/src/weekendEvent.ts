@@ -37,6 +37,47 @@ export const WEEKEND_NPC_PERIPHERY_MS = 48 * 3_600_000
 export const WEEKEND_NPC_CORE_MS = 24 * 3_600_000
 /** 旗舰倒计时（第 8 条）：核心条满后 2 小时内未击毁 ⇒ 章鱼人摧毁 */
 export const WEEKEND_FLAGSHIP_DEADLINE_MS = 2 * 3_600_000
+
+/* ═══════════ 旗舰 BOSS 化：跨场累计伤害（船长 2026-09-24 第二轮令）═══════════
+ * 船长原话：「**墨潮入侵母舰我想改成类似BOSS的机制：血量极厚，但是玩家对其造成的伤害会累计。
+ * （有点类似舰队collection的活动BOSS，你如果不理解就回应我一下）。需要玩家多次战斗后才能击沉。
+ * 之前设计的旗舰出现后2小时就会被章鱼人官方击败，也改成在2小时内削减旗舰的血量。**」
+ * ＋ 追问后裁决：「**2小时内按时间削掉100%母舰血量。当玩家正在战斗时，会暂停削血。等玩家战斗结束
+ * 才继续。防止抢走玩家的击杀。**」·「**按对母舰造成的伤害决定，如果母舰没有受伤就是0输出。**」·
+ * 离线「**挂起：离线时章鱼也停**」· 血量「**约 5 场**」。
+ *
+ * 口径（本段实现即照此）：
+ * - **池子总量** = `WEEKEND_FLAGSHIP_RUNS × 历次单场对母舰的最高原始伤害`（首次接战后锁定）；
+ * - **进度**只算**打进母舰的伤害**（未截断的原始值）；母舰一点没挨打 ⇒ 该场 0 进度；
+ * - **单场不死**：母舰血条 = 池子剩余，单场打到 0 才判"旗舰已击沉"；
+ * - **章鱼人** = 一条**独立进度**：`章鱼已削 = (2h 窗口内"在线且非战斗"的累计时长 / 2h) × 池子总量`
+ *   ——战斗中暂停（防抢击杀）、离线暂停（与倒计时同一条离线保护）；
+ * - **归属**：谁先把自己的进度打满 ⇒ 谁击沉（玩家 ⇒ 奖励；章鱼 ⇒ 摧毁）。
+ *   两条进度**各自累加、不互扣**（章鱼削血不影响玩家已造成的伤害）。
+ *
+ * ⚠ **上线开关**：本机制**按族启用**——只有登记在 `WEEKEND_BOSS_FAMILIES` 里的族才走池子口径，
+ * 其余族逐字走老口径（"核心满 + 打赢 ⇒ 直接击毁"＋ 2 小时到点直接被章鱼击败）。
+ * 2026-09-24 第二轮：**H 族先上**（船长令就是针对墨潮入侵母舰下的）。
+ */
+export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H']
+/** 池子总量 = 几场战斗的输出（船长选「约 5 场」） */
+export const WEEKEND_FLAGSHIP_RUNS = 5
+/**
+ * **池子下限**（防"只蹭一点就把池子做小"的退化）：总量不得低于按旗舰卡数值折算的基准值。
+ * 取值 = 由调用方传入的 `floorHp`（引擎按卡面母舰单位的满血 × 该倍数算），此处只给倍数。
+ * 5 场 × 单场可见血条 ⇒ 与"约 5 场"同一量级。
+ */
+export const WEEKEND_FLAGSHIP_HP_FLOOR_RUNS = 5
+
+/**
+ * **"这条舰级算不算'旗舰'（BOSS 本体）"**——按**族旗舰卡里 T5 那一档**认：
+ * H 族 = `foe-h-ink-flagship`（`hullClassTier === 5`）。用于伤害台账挑出母舰单位、以及算池子下限。
+ * ⚠ 只认"旗舰卡里 tier 5 的那一条" ⇒ 同卡的干扰舰/战巡/鱼雷舰不算。
+ */
+export function weekendIsFlagshipShipId(shipId: string): boolean {
+  return shipId === 'foe-h-ink-flagship'
+}
+
 /** 离线保护（第 10 条）：离线 ≤24h ⇒ 倒计时挂起，上线第一拍起算（Q3：离线满 24h 那一刻起算） */
 export const WEEKEND_OFFLINE_SHIELD_MS = 24 * 3_600_000
 /** 活动窗口（第 1/15 条）：T0 = 每周五 20:00（本地墙钟）→ 74h */
@@ -75,7 +116,29 @@ export interface WeekendEventState {
   flagshipAtWallMs?: number
   /** 旗舰结局：玩家击毁 / 章鱼人摧毁 */
   flagshipDown?: 'player' | 'octopus'
+  /* ─── 旗舰 BOSS 化（2026-09-24 第二轮令；**只有 `WEEKEND_BOSS_FAMILIES` 里的族会写这三格**）─── */
+  /** **池子总量**（首次接战后锁定；缺省 = 还没跟母舰交手过） */
+  flagshipHpMax?: number
+  /** **玩家已造成的伤害**（跨场累计；只算打进母舰的原始伤害） */
+  flagshipHpDone?: number
+  /** **章鱼人累计削血时长**（毫秒；只累计"在线且非战斗"的时长 ⇒ 战斗中/离线都暂停） */
+  octopusDrainedMs?: number
+  /** **已记进池子的伤害**（幂等用：同一场只记一次——引擎可能在同一场调两次结算） */
+  flagshipDmgLogged?: number
+  /** **上一场记账的战斗身份**（= `battle.startedAtGameMs`；同一场重复结算据此幂等） */
+  flagshipRunId?: number
+  /** **玩家单场对母舰的最高原始伤害**（池子总量的锚；0 = 还没打出过伤害） */
+  flagshipBestRunDmg?: number
+  /** **上一拍章鱼削血的心跳墙钟**（只用于算拍间增量；缺省 = 本拍只立基线、不累计） */
+  bossTickWallMs?: number
 }
+
+/**
+ * **一拍最多按多少毫秒推进章鱼削血**（`WEEKEND_BOSS_TICK_MAX_MS` = 一拍的合理上限）。
+ * 起因：在线心跳 ≈ 每帧/每秒一次，但**后台标签页、长卡顿、离线补算后的第一次心跳**可能一次跳几分钟～
+ * 几十分钟。章鱼削血是"在线陪着打"的机制 ⇒ 一次长跳只按一拍算（多出来的时间视为"玩家没在看着"）。
+ */
+export const WEEKEND_BOSS_TICK_MAX_MS = 5_000
 
 /**
  * 入侵族池（口径定稿：**A 变种 / C / G / 新族×2**）。
@@ -528,6 +591,183 @@ export function weekendNoteFlagshipKilled(state: GameState, nowWallMs: number): 
   ev.flagshipDown = 'player'
   endWeekendEvent(state, nowWallMs)
   return true
+}
+
+/* ─────────────── 旗舰 BOSS 池（跨场累计伤害 · 2026-09-24 第二轮令） ─────────────── */
+
+/** 本场入侵的族是否走 **BOSS 池子口径**（只有 `WEEKEND_BOSS_FAMILIES` 里的族） */
+export function weekendIsBossFamily(ev: WeekendEventState | undefined): boolean {
+  return ev !== undefined && WEEKEND_BOSS_FAMILIES.includes(ev.family)
+}
+
+/**
+ * **章鱼人每毫秒削掉池子的比例** = 100% ÷ 2 小时（船长：「2小时内按时间削掉100%母舰血量」）。
+ * 线性同比：`章鱼已削 = 削血时长 / 2h × 池子总量`（削血时长只计"在线且非战斗"）。
+ */
+export function weekendOctopusDrainPerMs(state: Pick<GameState, 'debugQuick'>, hpTotal: number): number {
+  return hpTotal / weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+}
+
+/** **池子总量**（缺省 = 还没跟母舰交手过 ⇒ `undefined`；`floorHp` = 由卡面折算的下限） */
+export function weekendFlagshipPoolTotal(ev: WeekendEventState | undefined): number | undefined {
+  if (!ev || !weekendIsBossFamily(ev)) return undefined
+  return ev.flagshipHpMax
+}
+
+/** **BOSS 池读数**（供界面血条：剩余 / 总量 / 玩家进度 / 章鱼进度；非 BOSS 族 ⇒ `null`） */
+export interface WeekendBossPoolView {
+  hpMax: number
+  /** 玩家已造成（跨场累计） */
+  hpDone: number
+  /** 池子剩余 = `hpMax − 章鱼已削`（**不扣**玩家已造成的伤害——玩家那一份就是"打掉"） */
+  hpLeft: number
+  /** 章鱼人已削掉的量 */
+  octopusDone: number
+  /** 玩家进度（0~1：`hpDone / hpMax`） */
+  playerFrac: number
+  /** 章鱼进度（0~1：`削血时长 / 2h`） */
+  octopusFrac: number
+  /** 还需要打掉多少（0 = 差最后一击） */
+  needDmg: number
+}
+
+/**
+ * **BOSS 池读数**（`undefined` = 尚未接战 ⇒ 界面显示"待接战"；`null` 之外不可能）。
+ * ⚠ 章鱼那一份**不走池子血量**，而是一条**独立进度**（各自累加、不互扣）：
+ * 玩家 `hpDone / hpMax`、章鱼 `削血时长 / 2h`，谁先到 1 谁击沉。
+ */
+export function weekendBossPoolView(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState | undefined,
+): WeekendBossPoolView | null {
+  if (!ev || !weekendIsBossFamily(ev)) return null
+  const hpMax = ev.flagshipHpMax
+  if (hpMax === undefined || hpMax <= 0) return null
+  const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
+  const drained = Math.max(0, ev.octopusDrainedMs ?? 0)
+  const windowMs = weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  const octopusDone = Math.min(hpMax, (drained / windowMs) * hpMax)
+  return {
+    hpMax,
+    hpDone,
+    hpLeft: Math.max(0, hpMax - octopusDone),
+    octopusDone,
+    playerFrac: Math.min(1, hpDone / hpMax),
+    octopusFrac: Math.min(1, drained / windowMs),
+    needDmg: Math.max(0, hpMax - hpDone),
+  }
+}
+
+/**
+ * **记一场对母舰的伤害**（船长：「按对母舰造成的伤害决定，如果母舰没有受伤就是0输出」）。
+ *
+ * @param rawDmg 该场**打进母舰的原始伤害**（未截断；`0` = 该场没打到它）
+ * @param floorHp 池子下限（引擎按卡面母舰满血 × `WEEKEND_FLAGSHIP_HP_FLOOR_RUNS` 传入；
+ *                防"只蹭一点就把池子做小"的退化）
+ * @returns 本次是否**把池子打空**（= 旗舰被玩家击沉）
+ */
+export function weekendNoteFlagshipDamage(
+  ev: WeekendEventState,
+  rawDmg: number,
+  floorHp: number,
+  /**
+   * **这一场的身份**（缺省 = 沿用上一场）：引擎传 `battle.startedAtGameMs`（同一场战斗恒同值）。
+   * 用途 = **幂等**：同一场可能被结算两次（战斗收尾 + 遇袭收尾）⇒ 只在"换了新的一场"时才累计，
+   * 同场重复调用一律忽略（否则同一场的伤害会被记两遍）。
+   */
+  runId?: number,
+): boolean {
+  if (!weekendIsBossFamily(ev) || ev.flagshipDown !== undefined) return false
+  const dmg = Math.max(0, Math.round(rawDmg))
+  const sameRun = runId !== undefined && ev.flagshipRunId === runId
+  if (sameRun) return weekendFlagshipDefeated(ev) // 同一场的重复结算 ⇒ 已记过，不再叠加
+  if (runId !== undefined) ev.flagshipRunId = runId
+  if (dmg > 0) {
+    ev.flagshipBestRunDmg = Math.max(ev.flagshipBestRunDmg ?? 0, dmg)
+    const want = Math.max(
+      Math.round(ev.flagshipBestRunDmg * WEEKEND_FLAGSHIP_RUNS),
+      Math.max(0, Math.round(floorHp)),
+    )
+    if (ev.flagshipHpMax === undefined || want > ev.flagshipHpMax) ev.flagshipHpMax = want
+    ev.flagshipHpDone = Math.max(0, (ev.flagshipHpDone ?? 0) + dmg)
+  }
+  return weekendFlagshipDefeated(ev)
+}
+
+/**
+ * **玩家是否已把池子打空**（= 旗舰被击沉）。
+ * ⚠ 池子未锁定时（还没接战）恒 `false`；已记满时恒 `true`（供"这一场打空了吗"的判定复用）。
+ */
+export function weekendFlagshipDefeated(ev: WeekendEventState | undefined): boolean {
+  if (!ev || !weekendIsBossFamily(ev) || ev.flagshipDown !== undefined) return false
+  const hpMax = ev.flagshipHpMax ?? 0
+  return hpMax > 0 && (ev.flagshipHpDone ?? 0) >= hpMax
+}
+
+/**
+ * **章鱼人推进一拍**（只累计"在线且非战斗"的时长；船长：「玩家正在战斗时，会暂停削血」＋
+ * 离线「挂起：离线时章鱼也停」）。
+ *
+ * @param dtMs 本拍墙钟增量（调用方按 `nowWallMs − lastSeenWallMs` 且**离线保护未失效**时传入；
+ *             离线/保护失效时传 0）
+ * @param inBattle 玩家此刻是否在战斗中（含普通入侵战斗 ⇒ 都暂停）
+ * @returns 本拍是否**章鱼人把旗舰削沉了**
+ */
+export function weekendOctopusTick(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState,
+  dtMs: number,
+  inBattle: boolean,
+): boolean {
+  if (!weekendIsBossFamily(ev) || ev.flagshipDown !== undefined) return false
+  if (inBattle || dtMs <= 0) return false
+  const hpMax = ev.flagshipHpMax
+  if (hpMax === undefined || hpMax <= 0) return false
+  // ⚠ 窗口按**本档的实际长度**取（`debugQuick` 下同样 ÷60，与 `weekendBossPoolView` 同一把尺）
+  const windowMs = weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  const d = Math.max(0, dtMs)
+  if (d <= 0) return false
+  ev.octopusDrainedMs = Math.min(windowMs, (ev.octopusDrainedMs ?? 0) + d)
+  return (ev.octopusDrainedMs >= windowMs)
+}
+
+/**
+ * **章鱼人每拍推进**（引擎心跳调一次；`nowWallMs` 缺省 = 离线结算 / 工具 ⇒ **整拍不推进**，
+ * 与船长"离线时章鱼也停"同口径）。
+ *
+ * 三件事：
+ * 1. 首次满分且在线那一拍把 `flagshipAtWallMs` 锚点落盘（与 M1 的 `weekendTick` 同一条判据，
+ *    只是这里**顺带**落 —— 让 Boss 池的 2 小时窗口有一个不漂移的起点）；
+ * 2. 章鱼削血（`inBattle` 或离线 ⇒ 暂停）；
+ * 3. 削到 100% ⇒ 写 `flagshipDown = 'octopus'` 并结束本场。
+ *
+ * @returns 本拍是否由章鱼人结束（引擎据此走 M1 的收尾：黑匣归零 + 贡献奖结算）
+ */
+export function weekendTickBoss(
+  state: GameState,
+  nowWallMs: number | undefined,
+  inBattle: boolean,
+): { down?: 'octopus' } {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return {}
+  if (!weekendIsBossFamily(ev)) return {}
+  if (ev.flagshipDown !== undefined) return {}
+  // 离线结算 / 工具调用（不传墙钟）⇒ 整拍不推进（与"离线时章鱼也停"同口径）
+  if (nowWallMs === undefined || !Number.isFinite(nowWallMs)) return {}
+  const last = ev.bossTickWallMs
+  const gap = Math.max(0, nowWallMs - (last ?? nowWallMs))
+  ev.bossTickWallMs = nowWallMs
+  if (last === undefined) return {} // 本拍只是立基线：没有"上一拍"就没有可累计的时长
+  // ⚠ 大步长（离线补算后的一次大跳 / 后台标签页）**只按一拍的合理上限累计**：
+  // 章鱼削血是"在线陪着打"的机制，不能因为一次长跳就整段削掉（离线那部分本来就该停）。
+  const dt = Math.min(gap, WEEKEND_BOSS_TICK_MAX_MS)
+  if (ev.flagshipHpMax === undefined) return {} // 还没跟母舰交手过 ⇒ 池子未锁定（章鱼人也没有可削的目标）
+  if (weekendOctopusTick(state, ev, dt, inBattle)) {
+    ev.flagshipDown = 'octopus'
+    endWeekendEvent(state, nowWallMs)
+    return { down: 'octopus' }
+  }
+  return {}
 }
 
 /** 活动总时长（正常 = 74h；调试模式按 NPC 压缩口径无固定上限，取 74h÷60 供测试参考） */

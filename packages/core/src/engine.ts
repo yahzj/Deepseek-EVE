@@ -44,6 +44,19 @@ import { advanceAchievements } from './achievements'
 import { matterTechNodes } from './matterTech'
 import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
+import { weekendTickBoss } from './weekendEvent'
+
+/**
+ * **我方此刻是否在战斗中**（周末入侵的章鱼人削血要按它暂停）：远征战斗 / 虫洞战斗 / 低安遭遇战
+ * ——**任一路径进行中** ⇒ 章鱼人停手（船长：「玩家正在战斗时，会暂停削血…防止抢走玩家的击杀」）。
+ */
+function isPlayerInBattle(state: GameState): boolean {
+  if (state.expedition.battle && !state.expedition.battle.ended) return true
+  if (state.wormhole.run?.battle && !state.wormhole.run.battle.ended) return true
+  const enc = state.encounter
+  if (enc?.active === true && enc.battle && !enc.battle.ended) return true
+  return false
+}
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
@@ -171,6 +184,14 @@ export function advanceGame(
   advanceExpedition(state, ctx, opts?.freezeBattle)
   // 终局玩法「虫洞」（F 批）：洞内战斗步进与收口 + 撤离战自动开打（不在洞里时零开销）
   advanceWormhole(state, ctx, opts?.freezeBattle, opts?.battleSpeedX)
+  /**
+   * **周末入侵 · 旗舰 BOSS 的章鱼人削血**（船长 2026-09-24 第二轮令：「**2小时内按时间削掉100%
+   * 母舰血量。当玩家正在战斗时，会暂停削血。等玩家战斗结束才继续。**」）：
+   * - **只有在线心跳传 `nowWallMs`** ⇒ 离线结算/工具/用例一律不推进（"离线时章鱼也停"）；
+   * - **战斗中暂停**（含普通入侵战斗）⇒ 这里判"我方是否有正在进行的战斗"（远征 / 虫洞 / 遭遇）；
+   * - 非 BOSS 族 / 池子未锁定 ⇒ 函数内部直接返回（零开销、零行为变化）。
+   */
+  weekendTickBoss(state, opts?.nowWallMs, isPlayerInBattle(state))
   advanceScanning(state, ctx)
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
   // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）

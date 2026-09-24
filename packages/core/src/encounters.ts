@@ -587,7 +587,7 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
       if (enc.battle.ended) {
       settleFight(state, ctx)
       /** **周末入侵**：占领区的伏击战打完 ⇒ 走入侵结算（胜 = 击退 +3%，败 = 只受损不动进度） */
-      weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, enc.battle.ended === 'me', Date.now())
+      weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, enc.battle.ended === 'me', Date.now(), enc.battle)
     }
       return
     }

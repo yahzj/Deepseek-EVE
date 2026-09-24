@@ -566,6 +566,9 @@ function cleanBattle(raw: unknown): BattleState | null {
         ...(typeof u.stealthUntilMs === 'number' && Number.isFinite(u.stealthUntilMs)
           ? { stealthUntilMs: numf(u.stealthUntilMs, 0) }
           : {}),
+        // **舰级 id**（2026-09-24 · 旗舰 BOSS 用）：**随档**——它决定"这个单位是不是母舰"，
+        // 若读档后丢掉，池子记账就会把这一场算成 0 输出。老档/旧路径缺本字段 ⇒ 不写（零迁移）。
+        ...(typeof u.foeShipId === 'string' && u.foeShipId.length > 0 ? { foeShipId: u.foeShipId } : {}),
       }
     }
   }

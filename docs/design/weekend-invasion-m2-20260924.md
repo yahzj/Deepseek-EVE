@@ -25,10 +25,10 @@
    **速度破例**「允许破例：突击舰与战巡都豁免」· **离线**「挂起：离线时章鱼也停」·
    **一场的界定**「**按对母舰造成的伤害决定，如果母舰没有受伤就是0输出。**」
 
-## 〇、第二轮改造（2026-09-24 · **数值部分已落码；BOSS 机制待一句显式确认**）
+## 〇、第二轮改造（2026-09-24 · **全部已落码**）
 
-> 数值五条（0.1）＋ 连带重标（0.3）**已落码并跑全闸门**；**0.2 的母舰 BOSS 机制（含章鱼人削血）
-> 是系统级改动，按四步闸门等船长一句显式确认后再动**（六问六答已答完，方案不再有开放问题）。
+> 数值五条（0.1）＋ 连带口径（0.3）＋ **母舰 BOSS 机制（0.2）** 均已落码并跑全闸门。
+> 落码提交：`8d023ace`（数值部分）· 本次（BOSS 部分）。
 
 ### 0.1 五条舰的新数（改动项加粗）
 
@@ -56,10 +56,26 @@
 | **波次** | 池子为 0 之前每场都从满血编制打（波次不跳过） |
 | **调试** | `debugQuick` 下 2 小时同样 ÷60 |
 
-**状态新增 3 格**（`WeekendEventState`，可选 ⇒ **零存档迁移**）：`flagshipHpMax?`（池子总量，首次接战后锁定）、
-`flagshipHpLeft?`（剩余）、`octopusDrainedMs?`（章鱼累计削血时长，用于暂停口径）。
-`flagshipAtWallMs` / `flagshipDown` / `WEEKEND_FLAGSHIP_DEADLINE_MS` 语义保留（倒计时改读池子）。
-伤害记账落点 = 战斗结束那一刻（`core/combat.ts` 侧记原始伤害 → `weekendEvent` 扣池子）。
+**状态新增 4 格**（`WeekendEventState`，可选 ⇒ **零存档迁移**）：`flagshipHpMax?`（池子总量，首次接战后锁定）、
+`flagshipHpDone?`（玩家累计）、`octopusDrainedMs?`（章鱼累计削血时长）、`flagshipRunId?`（幂等键 = `battle.startedAtGameMs`）。
+`flagshipAtWallMs` / `flagshipDown` / `WEEKEND_FLAGSHIP_DEADLINE_MS` 语义保留。
+
+**✅ 落码清单（本轮）**：
+| # | 落点 | 内容 |
+|---|---|---|
+| 1 | `core/weekendEvent.ts` | 池子 API：`weekendIsBossFamily` / `weekendFlagshipPoolTotal` / `weekendBossPoolView`（界面读数）/ `weekendNoteFlagshipDamage`（记账，**按 `flagshipRunId` 幂等**）/ `weekendFlagshipDefeated` / `weekendOctopusTick`（削血）/ `weekendTickBoss`（引擎每拍）。族开关 `WEEKEND_BOSS_FAMILIES = ['H']`、`WEEKEND_FLAGSHIP_RUNS = 5`、下限 `WEEKEND_FLAGSHIP_HP_FLOOR_RUNS = 5`、单拍上限 `WEEKEND_BOSS_TICK_MAX_MS = 5s` |
+| 2 | `core/combat.ts` | `UnitSpec.foeShipId` ＋ `flagshipBattleLedger(battle, cardIds)`（在战斗状态上量"母舰满血 − 当前"＝原始伤害；**首波内联播种与 `seedUnit` 两处都带标记**） |
+| 3 | `core/state.ts` · `core/save.ts` | `BattleUnitRt.foeShipId`（**随档**：读档后仍认得出母舰；已登记进 A3 审计表 ⇒ `save-battle-fields` 用例绿） |
+| 4 | `core/weekendBattle.ts` | `weekendResolveBattle` 加 `flagshipDmg`/`flagshipFloorHp`/`flagshipRunId`；**BOSS 口径下"打赢"不再等于击沉**（打空池子才算）；`weekendApplyBattleOutcome` 加 `battle` 入参算台账与下限 |
+| 5 | `core/engine.ts` | `weekendTickBoss(state, nowWallMs, isPlayerInBattle(state))` 接进每拍：**不传墙钟（离线/工具）⇒ 不推进**；**战斗中 ⇒ 暂停** |
+| 6 | `core/expedition.ts` · `core/encounters.ts` | 战斗收尾把 `battle` 传给 `weekendApplyBattleOutcome`（两处战场都覆盖） |
+| 7 | 界面（`WeekendInvasionLog.tsx` ＋ l10n `ui.weekend.020/021`） | 入侵面板多一行："旗舰已磨掉 N% · 章鱼人已削 M%"（沿用既有 `app-weekend-box-row` 样式；非 BOSS 族/未接战 ⇒ 这行不出现） |
+| 8 | 用例 | 新文件 `weekend-boss-20260924.test.ts` 12 例（池子 5 场 · 只算打进母舰的伤害 · 幂等 · 下限 · 2h 削 100% · 战斗中暂停 · 离线暂停 · 大步长不整段削 · 章鱼人得手收场 · 真打旗舰卡的台账） |
+
+**实测规则要点**（落码时定死的边界）：
+- `weekendOctopusTick` 的窗口取**本档实际长度**（`debugQuick` 下同样 ÷60，与界面读数同一把尺）；
+- `weekendTickBoss` **第一拍只立基线**（没有"上一拍"就没有可累计时长），之后按拍间增量累计，且**单拍上限 5 秒**
+  （后台标签页 / 离线补算后的第一次心跳不会一次削掉一大段）。
 
 ### 0.3 血型改 0.5：**卡片 `hpMul` 一律不动**（✅ 已落码，实测核对过）
 

@@ -18,7 +18,12 @@ import {
   WEEKEND_PERIPHERY_THREAT,
   weekendAmbushThreatOf,
   weekendCoreProgressAt,
+  weekendFlagshipDefeated,
+  weekendIsBossFamily,
+  weekendIsFlagshipShipId,
+  WEEKEND_FLAGSHIP_HP_FLOOR_RUNS,
   weekendNoteContribution,
+  weekendNoteFlagshipDamage,
   weekendNoteFlagshipKilled,
   weekendOccupiedIds,
   weekendProgressAt,
@@ -31,6 +36,7 @@ import {
   WEEKEND_GAIN_REPEL,
 } from './weekendEvent'
 import type { WeekendEventState } from './weekendEvent'
+import { flagshipBattleLedger } from './combat'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
 
 /* ─────────────── 战斗规格 ─────────────── */
@@ -153,11 +159,31 @@ export function weekendResolveBattle(
   spec: WeekendBattleSpec,
   outcome: WeekendOutcome,
   nowWallMs: number,
+  /**
+   * **BOSS 池：这一场对母舰造成的原始伤害**（2026-09-24 第二轮令；缺省 0 = 该场没打到母舰 ⇒ 0 进度）。
+   * 由引擎用 `combat.flagshipBattleLedger` 量出来（"按对母舰造成的伤害决定"）。
+   */
+  flagshipDmg = 0,
+  /** **BOSS 池下限**（母舰卡面满血 × `WEEKEND_FLAGSHIP_HP_FLOOR_RUNS`；防"只蹭一点就把池子做小"） */
+  flagshipFloorHp = 0,
+  /** **这一场战斗的身份**（`battle.startedAtGameMs`）——同一场被结算两次时保证幂等 */
+  flagshipRunId?: number,
 ): WeekendResolveResult {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return { progressGain: 0, note: '本场入侵已结束' }
 
-  if (outcome === 'loss') return { progressGain: 0, note: '战败：只受损，进度不动（第 5 条）' }
+  /**
+   * **旗舰 BOSS 池先记账**（跨场累计；撤退/战败**照样记**——船长口径："按对母舰造成的伤害决定"）。
+   * 归类不按胜负：`win` = 打赢（BOSS 口径下"打空池子"才算击沉），`repel`/`loss` = 没打赢但伤害照记。
+   */
+  if (spec.kind === 'flagship' && weekendIsBossFamily(ev)) {
+    // 幂等键 = 这一场战斗的身份（同一场被结算两次时不会记两遍）
+    weekendNoteFlagshipDamage(ev, flagshipDmg, flagshipFloorHp, flagshipRunId)
+  }
+  /** **BOSS 口径下的"成了"**：这一场把池子打空了（单场不死 ⇒ 不看战斗本身的胜负） */
+  const bossDown = spec.kind === 'flagship' && weekendIsBossFamily(ev) && weekendFlagshipDefeated(ev)
+
+  if (outcome === 'loss' && !bossDown) return { progressGain: 0, note: '战败：只受损，进度不动（第 5 条）' }
 
   const wasReclaimed = weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) >= 1
   let gain = 0
@@ -174,11 +200,11 @@ export function weekendResolveBattle(
 
   const res: WeekendResolveResult = { progressGain: gain, note: '' }
 
-  // 旗舰：核心已满 + 打赢 ⇒ 击毁（先判旗舰，因为核心满时"夺回"已是既成事实）
-  if (spec.kind === 'flagship' && outcome === 'win') {
+  // 旗舰：**BOSS 口径 ⇒ 池子打空才算击沉**（单场不死）；老口径 ⇒ 核心已满 + 打赢即击毁
+  if (spec.kind === 'flagship' && (bossDown || (outcome === 'win' && !weekendIsBossFamily(ev)))) {
     if (weekendNoteFlagshipKilled(state, nowWallMs)) {
       res.flagshipKilled = { blackBox: true, wreck: WEEKEND_FLAGSHIP_WRECK }
-      res.note = '旗舰被击毁：黑匣与战利品归玩家'
+      res.note = bossDown ? '旗舰血量归零：击沉（跨场累计）' : '旗舰被击毁：黑匣与战利品归玩家'
       return res
     }
   }
@@ -300,6 +326,11 @@ export function weekendApplyBattleOutcome(
   anomalyId: string | null | undefined,
   victory: boolean,
   nowWallMs: number,
+  /**
+   * **打出这一场胜负的 `BattleState`**（2026-09-24 加；缺省 = 老调用方 ⇒ 台账恒 0）：
+   * 旗舰 BOSS 要用它量"这一场对母舰造成了多少原始伤害"（`combat.flagshipBattleLedger`）。
+   */
+  battle?: import('./state').BattleState | null,
 ): { galaxyId: string; kind: WeekendBattleKind; gain: number; isk: number; wreck: number; note: string } | null {
   const involved = weekendBattleInvolvedOf(state, ctx, anomalyId, nowWallMs)
   if (!involved) return null
@@ -310,8 +341,32 @@ export function weekendApplyBattleOutcome(
         ? weekendAmbushSpecOf(state, ctx, involved.galaxyId)
         : weekendAssaultSpecOf(state, ctx, involved.galaxyId)
   if (!spec) return null
-  const outcome: WeekendOutcome = victory ? 'win' : involved.kind === 'ambush' ? 'repel' : 'loss'
-  const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs)
+  /**
+   * **旗舰 BOSS：这一场对母舰的原始伤害 ＋ 池子下限**（船长 2026-09-24 第二轮令）。
+   * - 伤害：从 `battle.units` 的 `hpMax − hp` 量（`flagshipBattleLedger`；认舰靠单位上的 `foeShipId`）；
+   * - 下限：母舰**卡面满血 × `WEEKEND_FLAGSHIP_HP_FLOOR_RUNS`**（防"只蹭一点就把池子做小"）。
+   */
+  let flagshipDmg = 0
+  let flagshipFloorHp = 0
+  if (involved.kind === 'flagship' && weekendIsBossFamily(state.weekendEvent)) {
+    const card = ctx.anomalies.get(spec.cardId)
+    const flagshipIds = (card?.ships ?? [])
+      .map((s) => s.ship.id)
+      .filter((id) => weekendIsFlagshipShipId(id))
+    if (battle) {
+      const led = flagshipBattleLedger(battle, flagshipIds)
+      flagshipDmg = led.rawDmg
+      flagshipFloorHp = led.flagshipMaxHp * WEEKEND_FLAGSHIP_HP_FLOOR_RUNS
+    }
+  }
+  /**
+   * ⚠ **BOSS 口径下"战斗打赢"不再等于"击沉旗舰"**（单场不死）：这一场把池子打空才算。
+   * 其余情形（没打空）照常按胜负记进度 —— 撤退/战败的伤害也已经记进池子了。
+   */
+  const bossDown =
+    involved.kind === 'flagship' && weekendIsBossFamily(state.weekendEvent) && weekendFlagshipDefeated(state.weekendEvent)
+  const outcome: WeekendOutcome = victory || bossDown ? 'win' : involved.kind === 'ambush' ? 'repel' : 'loss'
+  const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs, flagshipDmg, flagshipFloorHp, battle?.startedAtGameMs)
   const isk = (r.reclaimed?.isk ?? 0)
   const wreck = (r.reclaimed?.wreck ?? 0) + (r.flagshipKilled?.wreck ?? 0)
   const granted = weekendGrantRewards(state, { isk, wreck, blackBox: r.flagshipKilled !== undefined })
