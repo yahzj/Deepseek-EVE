@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **307** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5764** KB · **41180** 行
-- 状态分布：**未标注** 170 · **已确认/已实现** 110 · **进行中** 22 · **待裁定** 4 · **历史留档** 1
+- 文档总数 **308** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5774** KB · **41233** 行
+- 状态分布：**未标注** 170 · **已确认/已实现** 110 · **进行中** 23 · **待裁定** 4 · **历史留档** 1
 - 孤儿文档（0 引用）**33** 份 · 状态未标注 **170** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**193** 份
+- 三、现行设计稿（design）：**194** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**24** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 23 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 198 KB / 246 行 | 13 / 1 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 201 KB / 247 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 64 KB / 693 行 | 73 / 3 |
-| `docs/glossary.md` | (无一级标题) | 未标注 | — | 457 KB / 983 行 | 203 / 13 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 80 KB / 327 行 | 294 / 14 |
+| `docs/glossary.md` | (无一级标题) | 未标注 | — | 458 KB / 983 行 | 204 / 13 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 80 KB / 327 行 | 295 / 14 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,13 +53,14 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 193 份
+## 三、现行设计稿（design） —— 194 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/copy-jargon-20260924.md` | 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号） | 进行中（进行中） | 2026-09-24 | 6 KB / 52 行 | 2 / 0 |
 | `docs/design/foe-mounts-20260924.md` | (无一级标题) | 待裁定（已落码 · 四闸门全绿 · 待船长验） | 2026-09-24 | 13 KB / 140 行 | 1 / 3 |
 | `docs/design/handoff-foe-mounts-20260924.md` | 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号） | 未标注 | 2026-09-24 | 6 KB / 62 行 | 1 / 0 |
-| `docs/design/handoff-verify-20260924.md` | (无一级标题) | 未标注 | 2026-09-24 | 15 KB / 146 行 | 1 / 0 |
+| `docs/design/handoff-verify-20260924.md` | (无一级标题) | 未标注 | 2026-09-24 | 15 KB / 146 行 | 2 / 0 |
 | `docs/design/salvager-backfill-removal-20260924.md` | 打捞器全员补发（临时补丁）拆除（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 5 KB / 65 行 | 1 / 0 |
 | `docs/design/ships-workbench-20260924.md` | 船长工作台回写：我方 8 艘虫洞舰船属性 ＋ 鱼雷舰豁免裁决（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 5 KB / 62 行 | 0 / 0 |
 | `docs/design/win-estimate-redesign-20260924.md` | 悬赏胜率预估重做：三点距离 + 去种子化 + 实战胜利记录（2026-09-24） | 进行中（进行中 —— 船长口径已逐条落码） | 2026-09-24 | 8 KB / 81 行 | 0 / 0 |

@@ -442,7 +442,10 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     if (ship.powerBonus !== undefined && ship.powerBonus > 0) {
       lines.push({ k: tr("ui.shipInfo.007"), v: `+${Math.round(ship.powerBonus * 100)}%` })
     }
-    // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——本族武器单发加成、跨族可用无加成
+    // 船体武器类型加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——同伤害类型武器单发加成、别的类型可用无加成
+    // ⟪文案调整 2026-09-24⟫ 原「本族武器单发 +N%（装别族武器无加成）」是开发口径（"族"= 伤害类型键），
+    //   玩家侧「族」另指敌方势力 ⇒ 船长报障「类似'武器族'这样的开发字眼会给玩家造成误导」。
+    //   现正文走 `ui.shipInfo.008b`，写明"同类型 / 其它伤害类型"。
     if (ship.weaponFamilyBonus !== undefined) {
       for (const [t, v] of Object.entries(ship.weaponFamilyBonus)) {
         if ((v ?? 0) > 0) {
@@ -451,7 +454,7 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
             v: (
               <>
                 <DmgChip t={t as DamageType} label={tr("ui.shipInfo.131", { p1: DMG_LABEL[t as DamageType] })} />
-                <span className="app-dim">{` 本族武器单发 +${pct(v ?? 0)}（装别族武器无加成）`}</span>
+                <span className="app-dim">{` ${tr("ui.shipInfo.184", { p1: pct(v ?? 0) })}`}</span>
               </>
             ),
           })

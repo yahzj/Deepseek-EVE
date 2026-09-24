@@ -43,7 +43,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_520, // 鲸王级（2026-09-13 价位重排后按带内插值：12M ⇒ 4.9 时）
     buildCostIsk: 900_000,
     priceIsk: 48_000_000, // = 行价 12,000,000 × 4（2026-09-13 价位重排）
-    description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿族的产量顶点。',
+    description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿舰的产量顶点。',
   },
   {
     id: 'sbp-humpback',
@@ -58,7 +58,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920, // 座头鲸级（2026-09-13 价位重排后按带内插值：9M ⇒ 4.7 时）
     buildCostIsk: 420_000,
     priceIsk: 36_000_000, // = 行价 9,000,000 × 4（2026-09-13 价位重排）
-    description: '矿舰，货舱 19,000 m³、循环 30 秒产 140 单位，矿族的产量旗舰。', // 2026-09-09 数值随船校正（旧描述为早期稿）
+    description: '矿舰，货舱 19,000 m³、循环 30 秒产 140 单位，矿舰的产量旗舰。', // 2026-09-09 数值随船校正（旧描述为早期稿）
   },
   {
     id: 'sbp-colossal',
@@ -134,7 +134,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 4_800, // 鲸吞级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 3360）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 2250000,
-    description: '采矿艇，货舱 4,500 m³、循环 10 秒产 34 单位，矿族的量产主力。',
+    description: '采矿艇，货舱 4,500 m³、循环 10 秒产 34 单位，矿舰的量产主力。',
   },
   {
     id: 'sbp-bowhead',
@@ -220,7 +220,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 5_070, // 大白鲨级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 4140）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 3300000,
-    description: '炮舰，货舱 3,200 m³、循环 13 秒产 18 单位，武装舰族的量产主力。',
+    description: '炮舰，货舱 3,200 m³、循环 13 秒产 18 单位，武装舰的量产主力。',
   },
   {
     id: 'sbp-swarm',
@@ -884,7 +884,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920,
     buildCostIsk: 0,
     priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
-    description: '矿舰，货舱 19,000 m³、循环 30 秒产 140 单位，矿族的产量旗舰。',
+    description: '矿舰，货舱 19,000 m³、循环 30 秒产 140 单位，矿舰的产量旗舰。',
   },
   {
     id: 'sbp-once-thresher',
@@ -952,7 +952,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 17_520,
     buildCostIsk: 0,
     priceIsk: 6_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
-    description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿族的产量顶点。',
+    description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿舰的产量顶点。',
   },
   {
     id: 'sbp-once-bullshark',

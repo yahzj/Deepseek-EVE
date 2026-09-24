@@ -42,13 +42,14 @@ function primaryTextOf(it: {
   return tr('core.wormholeFoes.015', { p1: a, p2: tr(DAMAGE_TYPE_LABEL_IDS[it.primaryTypeB ?? 'kinetic']) })
 }
 
-/** 卡片上那一句：「**敌：劫掠支队（A 族 · 海盗）· 动能为主**」 */
+/** 卡片上那一句：「**敌：劫掠支队（海盗）· 动能为主**」 */
+// ⟪文案调整 2026-09-24⟫ 船长报障「'XX族'这类开发字眼」——原先 `{p2}` 印裸字母代号（"A 族"）、
+//   `{p3}` 再补势力名；现只印势力名（字母代号不进玩家可见范围）。
 export function wormholeIntelLine(engine: GameEngine, family: WormholeFamily): string {
   const it = engine.wormholeFamilyIntel(family)
   return tr('core.wormholeFoes.016', {
     p1: it.firstCardName,
-    p2: it.family,
-    p3: tr(WORMHOLE_FAMILY_ETHNIC_IDS[it.family]),
+    p2: tr(WORMHOLE_FAMILY_ETHNIC_IDS[it.family]),
     p4: primaryTextOf(it),
   })
 }
@@ -60,7 +61,8 @@ export function wormholeIntelLine(engine: GameEngine, family: WormholeFamily): s
 export function wormholeIntelTip(engine: GameEngine, family: WormholeFamily, archName?: string): string {
   const it = engine.wormholeFamilyIntel(family)
   const lines = [
-    tr('core.wormholeFoes.017', { p1: it.firstCardName, p2: it.family, p3: tr(WORMHOLE_FAMILY_ETHNIC_IDS[it.family]) }),
+    // ⟪文案调整 2026-09-24⟫ 同上：只印势力名，不印字母代号
+    tr('core.wormholeFoes.017', { p1: it.firstCardName, p2: tr(WORMHOLE_FAMILY_ETHNIC_IDS[it.family]) }),
     tr('core.wormholeFoes.018'),
     ...it.tiers.map((t) =>
       tr('core.wormholeFoes.019', { p1: tr(TIER_IDS[t.tier] ?? t.tier), p2: t.cardName, p3: partsText(t.parts) }),
