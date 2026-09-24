@@ -35,8 +35,10 @@ describe('货柜拆解 · 料尽自停（玩家报障回归）', () => {
     expect(pilot.ok, '主控：没货柜 ⇒ 拒').toBe(false)
     expect(state.refineRuns.length, '被拒时不许留下运转中的那一台').toBe(0)
     // 给一枚 AI 核心再试（AI 核心驱动的路径同样必须先有货柜）
-    state.aiCores = { ...(state.aiCores ?? {}), ai1: 1 } as GameState['aiCores']
-    const ai = startUnboxRun(state, ctx, boxId, 'ai1')
+    // ⚠ 2026-09-24 三号修正：原写 `ai1`（不是合法的 `AiCoreType`，且靠 `as` 压掉了类型错）⇒
+    //   那样调用会因"核心 id 不认识"而被拒，而不是因为"没有货柜"，用例就测偏了。改用真核心 `basic`。
+    state.aiCores = { ...(state.aiCores ?? {}), basic: 1 }
+    const ai = startUnboxRun(state, ctx, boxId, 'basic')
     expect(ai.ok, 'AI 核心：没货柜 ⇒ 拒').toBe(false)
     expect(state.refineRuns.length).toBe(0)
   })
