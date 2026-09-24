@@ -11,6 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
+import { weekendApplyBattleOutcome } from './weekendBattle'
 import { rareDropRateMulOf, rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
@@ -964,6 +965,8 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         // ⚠ 倍速批（2026-09-19）：判据改走**战斗时钟**并把窗口按倍速放大（洞外战斗 `speedX` 缺省 = 1 ⇒ 逐字等价）。
         const bal = ctx.balance.battle
         if (battleClockNowMs(state, exp.battle) - exp.battle.lastTickGameMs < battleShowWindowMs(exp.battle, bal.killcamMs)) return
+        /** **周末入侵**：被占星系的悬赏战打完 ⇒ 走入侵结算（主动胜利 +10%（外围）/ +5%（核心）· 夺回发奖 · 旗舰击毁） */
+        weekendApplyBattleOutcome(state, ctx, state.expedition.anomalyId ?? null, state.expedition.battle?.ended === 'me', Date.now())
         resolveBattleOutcome(state, ctx)
         continue // resolve 后转 back；若返航也已到点则同帧回家
       }

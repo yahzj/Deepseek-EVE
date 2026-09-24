@@ -166,6 +166,8 @@ import {
   bumpIronmanSeq,
   // 2026-09-23 周末入侵（M1-b：引擎每拍推进入侵时间轴）
   weekendTick,
+  weekendDerivedCardOf,
+  weekendOccupiedLiveAt,
   ironmanLoadVerdict,
   ironmanOn,
   ironmanSeq,
@@ -543,6 +545,30 @@ export class GameEngine {
   galaxies = GALAXIES
   readonly galaxyEdges = GALAXY_EDGES
   anomalies = ANOMALIES_FLAVORED.filter((a) => !a.hidden) // B1：遭遇战模板（hidden）不进悬赏目录；含 B3.1 回收特色
+
+  /**
+   * **周末入侵**（2026-09-23 船长令）：刷新界面用的悬赏列表——**被占星系整池换成入侵舰队派生卡**
+   * （只覆盖 id / 名字 / 威胁 / 奖励；夺回或活动结束即恢复原卡）。引擎每拍在 `weekendTick` 之后调一次。
+   */
+  private refreshAnomaliesView(): void {
+    const base = ANOMALIES_FLAVORED.filter((a) => !a.hidden)
+    const ev = this.state.weekendEvent
+    if (!ev || ev.endedAtWallMs !== undefined) {
+      this.anomalies = base
+      return
+    }
+    const now = Date.now()
+    /** 同一星系只判一次（列表里同星系多张卡） */
+    const live = new Map<string, boolean>()
+    this.anomalies = base.map((a) => {
+      let occupied = live.get(a.galaxyId)
+      if (occupied === undefined) {
+        occupied = weekendOccupiedLiveAt(this.state, a.galaxyId, now)
+        live.set(a.galaxyId, occupied)
+      }
+      return occupied ? weekendDerivedCardOf(a, ev.family, { isCore: a.galaxyId === ev.coreId }) : a
+    })
+  }
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
   allAnomalies = ANOMALIES_FLAVORED
   /**
@@ -955,6 +981,7 @@ export class GameEngine {
      * ⚠ `lastSeenWallMs` 传"上一拍"（now − dt）⇒ 离线保护与 Q3 的">24h 自满 24h 起算"都有正确锚点。
      */
     const weekend = weekendTick(this.state, this.ctx, now, now - dt)
+    this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
     if (weekend.started) {
       addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
       void this.persist()
