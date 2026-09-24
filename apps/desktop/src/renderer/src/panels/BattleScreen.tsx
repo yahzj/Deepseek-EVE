@@ -1382,28 +1382,25 @@ const meSpeedRef = useRef(200)
       /**
        * **伤害飘字累加**（甲①目标旁 · 甲②同拍同目标累加 · 甲③类型色 + 灰 MISS）：
        * 落点 = 这一发的**目标点**（弹道终点，与弹道同一套几何）；命中取 `fx.hit`，
-       * 伤害取 `fx.dmg`（引擎逐发结算值；取不到就只记 MISS，不硬编数字）。
+       * 数字取 `fx.dmg`（引擎逐发结算的**实收**伤害，见 `BattleFx.dmg`）。
+       * ⚠ **无伤事件不落飘字**（捕获网连线 / 机群被击落演出都是 `hit: true` 但不带 `dmg`）——
+       * 否则会飘出一个「-0」；只有**真未命中**才落灰色 MISS。
        */
       {
         const tx = g.x1 + Math.cos((g.angDeg * Math.PI) / 180) * g.len
         const ty = g.y1 + Math.sin((g.angDeg * Math.PI) / 180) * g.len
         const tkey = fx.to ?? `${Math.round(tx)},${Math.round(ty)}`
-        /**
-         * ⚠ `BattleFx` 目前**不带每发伤害**（字段只有 seq/atMs/side/tag/to?/type/src?/artId?/web?/hit）⇒
-         * 这里按可选字段读：core 补上 `dmg?: number`（瞬态、零迁移）之后数字立刻生效；
-         * 补上之前**命中不显示数字、MISS 照常显示**（功能不静默、也不硬编假数字）。
-         */
-        const dmgRaw = (fx as unknown as { dmg?: unknown }).dmg
-        const dmg = typeof dmgRaw === 'number' ? dmgRaw : 0
+        const dmg = typeof fx.dmg === 'number' && Number.isFinite(fx.dmg) ? Math.max(0, fx.dmg) : 0
         const prev = popupAccRef.current.get(tkey)
         popupAccRef.current.set(tkey, {
           x: tx,
           y: ty,
-          amount: (prev?.amount ?? 0) + Math.max(0, dmg),
+          amount: (prev?.amount ?? 0) + dmg,
           type: fx.type,
           miss: (prev?.miss ?? false) || fx.hit === false,
         })
-      }    }
+      }
+    }
     if (flashRef.current.length > 6) flashRef.current.splice(0, flashRef.current.length - 6)
   }
   // 惰性清理过期元素（渲染输出不再包含它们即从 DOM 移除；延迟弹道按 delay 延长存活）
@@ -1415,7 +1412,9 @@ const meSpeedRef = useRef(200)
    * 生命期同样用战斗时钟 `now`（`POPUP_LIFE`），倍速下跟着快、暂停即冻结（甲④）。
    */
   if (popupAccRef.current.size > 0) {
-    for (const [tkey, acc] of popupAccRef.current) {
+    for (const acc of popupAccRef.current.values()) {
+      // **零伤且非未命中 ⇒ 不落飘字**（无伤事件不出「-0」，见上面累加处的口径）
+      if (acc.amount <= 0 && !acc.miss) continue
       popupsRef.current.push({
         key: keyRef.current++,
         x: acc.x,
@@ -1423,9 +1422,8 @@ const meSpeedRef = useRef(200)
         born: now,
         amount: Math.round(acc.amount),
         type: acc.type,
-        miss: acc.miss && acc.amount <= 0,
+        miss: acc.amount <= 0,
       })
-      void tkey
     }
     popupAccRef.current.clear()
   }
@@ -1773,6 +1771,7 @@ const meSpeedRef = useRef(200)
   /** 伤害飘字存活（战斗时钟毫秒；与弹道同一把尺 ⇒ 倍速跟着快、暂停即冻结） */
   const POPUP_LIFE = 900
   const popupEls = popupsRef.current.map((p) => {
+    // `miss` = 本拍该目标**一点伤害都没有**（真未命中）；有伤害就出数字（同拍里夹杂未命中也不影响）
     const miss = p.miss
     return (
       <span
@@ -1786,7 +1785,7 @@ const meSpeedRef = useRef(200)
           animationDuration: `${POPUP_LIFE}ms`,
         }}
       >
-        {miss ? 'MISS' : `-${p.amount.toLocaleString('zh-CN')}`}
+        {miss ? tr('ui.BattleScreen.107') : `-${p.amount.toLocaleString('zh-CN')}`}
       </span>
     )
   })

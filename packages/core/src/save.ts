@@ -1018,6 +1018,10 @@ function cleanFx(raw: unknown, numf: (v: unknown, fallback: number) => number): 
       tag: typeof ev.tag === 'string' && ev.tag.length > 0 ? ev.tag : side === 'me' ? 'player' : 'foe-0',
       type,
       hit: ev.hit === true,
+      // 本发实收伤害（2026-09-24 船长令：飘字读数）——坏值/缺省一律不写（UI 只飘 MISS）
+      ...(typeof ev.dmg === 'number' && Number.isFinite(ev.dmg) && ev.dmg > 0
+        ? { dmg: Math.floor(ev.dmg) }
+        : {}),
     })
   }
   if (out.length > 48) out.splice(0, out.length - 48)

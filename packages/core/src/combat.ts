@@ -6682,6 +6682,13 @@ function stepBattle(
           ? clamp(0, 1, meHit * favor.meMul)
           : meHit
       const hit = dmg > 0 && (autoHit || nextRandom(state.rng) < meHitEff)
+      /**
+       * **本发对主目标的实收伤害**（2026-09-24 船长令「战斗伤害的数值动画」）——
+       * 逐段累加（主段 + 附伤段），仅供飘字读数：与 `stats.meDmg` 同源（同一批 `dealt`）。
+       * 未命中保持 0 ⇒ 下面**不写 `dmg`**（UI 就只飘 MISS，不硬编数字）。
+       * ⚠ 齐射协调仪的**溢火结转那一截不计在本发头上**（它落在另一艘敌舰身上，已有画面提示）。
+       */
+      let selfDealt = 0
       if (hit) {
         b.stats.meHits += 1
         if (droneHit) {
@@ -6698,6 +6705,7 @@ function stepBattle(
           pool.a = r.hp.a
           pool.h = r.hp.h
           b.stats.meDmg += r.dealt
+          selfDealt = r.dealt
           if (pool.s + pool.a + pool.h <= 0) {
             pool.alive = false
             // **备用机库补位排期**（2026-09-12 船长「损坏后补充敌机」）：前线战损 ⇒ 从机库放出一架，
@@ -6736,6 +6744,7 @@ function stepBattle(
           const r = applyDamage(rt.hp, foeTarget!.resists ?? {}, dmgLocked, type)
           rt.hp = r.hp
           b.stats.meDmg += r.dealt
+          selfDealt = r.dealt
           /**
            * **谜质「齐射协调仪」：溢出火力转移**（F3c B2 · 船长 2026-09-13：
            * 「齐射协调仪改为溢出火力会转移到其他敌舰」）——目标被这一发打空后，把超出
@@ -6759,6 +6768,7 @@ function stepBattle(
             const r2 = applyDamage(rt.hp, foeTarget!.resists ?? {}, secDmg, secType)
             rt.hp = r2.hp
             b.stats.meDmg += r2.dealt
+            selfDealt += r2.dealt
           }
           // **受击增程触发点（唯一）**——2026-09-11 船长：「受到攻击后，大幅提高无人机射程
           // （提高 400%）」：**母舰本体被命中** ⇒ 该舰全部机群射程 ×倍率（本场永久）。
@@ -6788,11 +6798,14 @@ function stepBattle(
             if (!ort || !isAlive(b, other.tag)) continue
             const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
             const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
+            /** 本发打**这一艘副目标**的实收（含附伤段）——飘字逐舰各出一个数字 */
+            let oDealt = 0
             if (oHit) {
               b.stats.meHits += 1
               const rAll = applyDamage(ort.hp, other.resists ?? {}, dmg, type)
               ort.hp = rAll.hp
               b.stats.meDmg += rAll.dealt
+              oDealt = rAll.dealt
               const secPctAll = w.secondaryDamagePct ?? 0
               if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
                 const secTypeAll = w.secondaryDamageType ?? 'kinetic'
@@ -6800,6 +6813,7 @@ function stepBattle(
                 const rAll2 = applyDamage(ort.hp, other.resists ?? {}, secDmgAll, secTypeAll)
                 ort.hp = rAll2.hp
                 b.stats.meDmg += rAll2.dealt
+                oDealt += rAll2.dealt
               }
               if (markFoeDroneRangeBuff(other, b)) {
                 pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
@@ -6817,6 +6831,7 @@ function stepBattle(
               src: w.src,
               artId: w.artId,
               hit: oHit,
+              ...(oDealt > 0 ? { dmg: oDealt } : {}),
             })
           }
         }
@@ -6830,6 +6845,8 @@ function stepBattle(
         src: w.src,
         artId: w.artId,
         hit,
+        // **本发实收**（2026-09-24 船长令）：命中才有，飘字用；未命中 ⇒ 缺省（UI 只飘 MISS）
+        ...(selfDealt > 0 ? { dmg: selfDealt } : {}),
         // **打的是机群**（船长 2026-09-11：「炮在攻击无人机时**不显示弹道**」）——UI 只出炮口闪光。
         ...(droneHit ? { pd: true } : {}),
       })
@@ -6918,8 +6935,11 @@ function stepBattle(
           ? clamp(0, 0.97, droneHit * favor.foeMul)
           : droneHit
         const dHit = nextRandom(state.rng) < droneHitEff
+        /** 本发对**被打的那艘我方舰**的实收伤害（2026-09-24 船长令：飘字读数；未命中保持 0） */
+        let dDealt = 0
         if (dHit) {
           b.stats.foeHits += 1
+          const dBefore = dtgt.rt.hp.s + dtgt.rt.hp.a + dtgt.rt.hp.h
           dtgt.rt.hp = applyFoeShot(
             dtgt.rt.hp,
             dtgt.spec.resists,
@@ -6927,6 +6947,7 @@ function stepBattle(
             cappedFoeDamage(b, dtgt.spec.tag, dtgt.spec, dw.shotDmg ?? 0),
             dType,
           )
+          dDealt = Math.max(0, dBefore - (dtgt.rt.hp.s + dtgt.rt.hp.a + dtgt.rt.hp.h))
         }
         pushBattleFx(b, {
           atMs: b.lastTickGameMs + dtMs,
@@ -6937,6 +6958,7 @@ function stepBattle(
           src: 'drone',
           artId: dw.artId,
           hit: dHit,
+          ...(dDealt > 0 ? { dmg: dDealt } : {}),
         })
       }
     }
@@ -6972,8 +6994,11 @@ function stepBattle(
       releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
+      const beamBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
       gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg), fType)
-      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true })
+      // 本发实收（2026-09-24 船长令：飘字读数；光束必中 ⇒ 恒有值）
+      const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
+      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
       continue
     }
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
@@ -6984,13 +7009,17 @@ function stepBattle(
     const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, w, b.distanceM))
     const foeHitEff = favor ? clamp(0, 0.97, foeHit * favor.foeMul) : foeHit
     const fHit = nextRandom(state.rng) < foeHitEff
+    /** 本发对**被打的那艘我方舰**的实收伤害（2026-09-24 船长令：飘字读数；未命中保持 0） */
+    let gunDealt = 0
     if (fHit) {
       b.stats.foeHits += 1
+      const gunBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
       gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg), fType)
+      gunDealt = Math.max(0, gunBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
       // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
       releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
     }
-    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit })
+    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit, ...(gunDealt > 0 ? { dmg: gunDealt } : {}) })
   }
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──

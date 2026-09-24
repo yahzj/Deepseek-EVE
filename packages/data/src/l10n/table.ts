@@ -1280,6 +1280,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "ui.BattleScreen.105": { zh: "退出战场界面：战斗在后台照常推进，可随时点右下角「战斗中」回来", en: "Leave the battle view: the fight keeps running in the background; click “In battle” at the bottom right to come back" },
   "ui.BattleScreen.106": { zh: "战斗窗口", en: "Battle window" },
+  // 伤害飘字里"没打中"的标记（2026-09-24 船长令：伤害数值动画「包括 MISS」——船长指定就显示 MISS，
+  // 中英同形，属**语言中立**的战斗术语；要改中文口径只需改这一条 zh）
+  "ui.BattleScreen.107": { zh: "MISS", en: "MISS" },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
