@@ -58,6 +58,7 @@ import {
   ALIEN_FLAGSHIP_SHIP_IDS,
   G_FLAGSHIP_SHIP_IDS,
   H_FLAGSHIP_SHIP_IDS,
+  INK_SPEED_EXEMPT_SHIP_IDS,
   ALIEN_CHARGE_MUL_BY_TIER,
   ALIEN_SLOW_SHIP_IDS,
   COMMS_MESSAGES,
@@ -2799,12 +2800,20 @@ for (const m of MODULES) {
                   `H 族族格复制自 A 族（船长 2026-09-24「新族复制一份A族族格」）⇒ 每档都必须高于基准`,
               )
             }
-            check(
-              ratio >= INK_SPEED_BAND[0] && ratio <= INK_SPEED_BAND[1],
-              `敌速口径契约：H 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族提速带** ` +
-                `${INK_SPEED_BAND[0]}~${INK_SPEED_BAND[1]}×（H 族族格复制自 A 族；日后单独改只动此带；` +
-                `基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
-            )
+            /**
+             * ⚠⚠ **速带破例白名单**（`INK_SPEED_EXEMPT_SHIP_IDS` · 船长 2026-09-24 第二轮令
+             *   「**突击舰速度过慢，按照1.6修正，其他敌方舰船按照1.3**」＋ 裁决「**允许破例：突击舰与
+             *   战巡都豁免**」）：突击舰 544 m/s（**1.86×**，越上限）与战巡 266 m/s（**0.91×**，低于下限）
+             *   两条豁免**族格速带**这一条；**"每档实速须高于本档基准"两条仍照常校验**（544 > 340 · 266 > 205）。
+             */
+            if (!INK_SPEED_EXEMPT_SHIP_IDS.includes(slot.ship.id)) {
+              check(
+                ratio >= INK_SPEED_BAND[0] && ratio <= INK_SPEED_BAND[1],
+                `敌速口径契约：H 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族提速带** ` +
+                  `${INK_SPEED_BAND[0]}~${INK_SPEED_BAND[1]}×（H 族族格复制自 A 族；日后单独改只动此带；` +
+                  `基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+              )
+            }
             continue
           }
           if (def.foeFamily === 'B') {

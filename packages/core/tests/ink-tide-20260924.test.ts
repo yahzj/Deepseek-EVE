@@ -10,7 +10,7 @@
  * 4. **战巡 1 架 / 母舰 2 架高属性重袭机**（船长：「拥有1架攻坚无人机…属性极高」/「拥有2架…」）。
  */
 import { describe, expect, it } from 'vitest'
-import { FOE_DRONES, FOE_SHIPS, buildSimContext } from '@whale/data'
+import { FOE_DRONES, FOE_SHIPS, INK_SPEED_EXEMPT_SHIP_IDS, buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { resolveFoeMounts } from '../src/index'
@@ -234,6 +234,55 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
     const drone = specsOf('foe-h-ink-battlecruiser')[0]!.weapons.find((w) => w.src === 'drone')!
     expect(drone.minRangeM).toBe(1)
     expect(drone.blindDmgMul).toBeUndefined()
+  })
+})
+
+describe('H 族 · 第二轮数值令（船长 2026-09-24 晚）', () => {
+  it('**速度**：突击舰 ×1.6 = 544 · 其余三条 ×1.3（干扰 335 / 鱼雷 384 / 战巡 267）· 母舰不动 310', () => {
+    expect(shipOf('foe-h-ink-corvette')!.speedRatio).toBe(1.6)
+    expect(shipOf('foe-h-ink-jammer')!.speedRatio).toBe(1.3)
+    expect(shipOf('foe-h-ink-torpedo')!.speedRatio).toBe(1.3)
+    expect(shipOf('foe-h-ink-battlecruiser')!.speedRatio).toBe(1.3)
+    expect(shipOf('foe-h-ink-flagship')!.speedRatio).toBe(2.0)
+    // 建档后的实速（舰种基准 × 倍率）——炮台与导弹的突击舰 544 / 干扰舰 335 / 鱼雷舰 384 / 战巡 267
+    const spd = (id: string) => specsOf(id)[0]!.speedMps
+    expect([spd('foe-h-ink-corvette'), spd('foe-h-ink-jammer'), spd('foe-h-ink-torpedo'), spd('foe-h-ink-battlecruiser'), spd('foe-h-ink-flagship')]).toEqual([544, 335, 384, 267, 310])
+  })
+
+  it('**鱼雷舰 = 高攻低血**：血 360（T2 基线 ×0.75）· 单发 90（×1.32）', () => {
+    const s = shipOf('foe-h-ink-torpedo')!
+    expect(s.hullClassTier).toBe(2)
+    expect(s.hp).toBe(360)
+    expect(s.shotDmg).toBe(90)
+    // 与同族 T1 突击舰（364 / 51）比：更脆一点点、单发高 76%
+    expect(s.hp).toBeLessThan(shipOf('foe-h-ink-corvette')!.hp)
+    expect(s.shotDmg).toBeGreaterThan(shipOf('foe-h-ink-corvette')!.shotDmg * 1.7)
+  })
+
+  it('**伤害构成**：突击舰与干扰舰 = 6 动能 : 4 爆炸（其余三条不动，仍是爆炸 8 : 动能 2）', () => {
+    expect(shipOf('foe-h-ink-corvette')!.dmgMix).toEqual({ kinetic: 6, explosive: 4 })
+    expect(shipOf('foe-h-ink-jammer')!.dmgMix).toEqual({ kinetic: 6, explosive: 4 })
+    expect(shipOf('foe-h-ink-torpedo')!.dmgMix).toEqual({ explosive: 8, kinetic: 2 })
+    expect(shipOf('foe-h-ink-battlecruiser')!.dmgMix).toEqual({ explosive: 8, kinetic: 2 })
+    expect(shipOf('foe-h-ink-flagship')!.dmgMix).toEqual({ explosive: 8, kinetic: 2 })
+    // 建档后混伤拆到逐系单发上（主力系带大头）
+    const jam = specsOf('foe-h-ink-jammer')[0]!.weapons[0]!
+    const kin = jam.shotsByType?.kinetic ?? 0
+    const exp = jam.shotsByType?.explosive ?? 0
+    expect(kin).toBeGreaterThan(exp)
+  })
+
+  it('**血型**：除旗舰外全族护盾占比 0.5（旗舰仍 0.2/0.55/0.25）', () => {
+    for (const id of ['foe-h-ink-corvette', 'foe-h-ink-jammer', 'foe-h-ink-torpedo', 'foe-h-ink-battlecruiser']) {
+      expect(shipOf(id)!.split, id).toEqual({ s: 0.5, a: 0.25, h: 0.25 })
+      expect(specsOf(id)[0]!.hp.s, id).toBeGreaterThan(specsOf(id)[0]!.hp.a)
+    }
+    expect(shipOf('foe-h-ink-flagship')!.split).toEqual({ s: 0.2, a: 0.55, h: 0.25 })
+  })
+
+  it('**速带破例白名单**：突击舰与战巡登记在册（1.86× 越上限 / 0.91× 低于下限），另三条不豁免', () => {
+    // 白名单是"防杂鱼照抄破例"的收口 ⇒ 逐条钉住成员
+    expect([...INK_SPEED_EXEMPT_SHIP_IDS].sort()).toEqual(['foe-h-ink-battlecruiser', 'foe-h-ink-corvette'])
   })
 })
 

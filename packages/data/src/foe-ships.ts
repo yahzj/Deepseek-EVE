@@ -322,6 +322,20 @@ export const G_FLAGSHIP_SHIP_IDS: readonly string[] = []
 export const H_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-h-ink-flagship']
 
 /**
+ * **H 族「速度族格破例」白名单**（船长 2026-09-24 第二轮令：「**突击舰速度过慢，按照1.6修正，
+ * 其他敌方舰船按照1.3**」＋ 本件提问的裁决「**允许破例：突击舰与战巡都豁免**」）。
+ *
+ * 实速与 `INK_SPEED_BAND`（1.00~1.60× 基准船）的关系（`content:check` 逐条读数）：
+ * - **突击舰** 340×1.6 = **544 m/s ⇒ 1.86×**（越上限）——船长要"突击舰快"，破例；
+ * - **战巡** 205×1.3 = **266 m/s ⇒ 0.91×**（低于下限）——同样是船长指定的 ×1.3，破例；
+ * - 干扰舰 335（1.14×）· 鱼雷舰 384（1.31×）· 母舰 310（1.06×）**都在带内** ⇒ 不豁免。
+ *
+ * ⚠ 只豁免**族格速带那一条**；"每档实速须高于本档舰种基准"两条仍成立（544 > 340 · 266 > 205）。
+ * 白名单式（与 `H_FLAGSHIP_SHIP_IDS` 同款）：防日后杂鱼照抄"破例"。
+ */
+export const INK_SPEED_EXEMPT_SHIP_IDS: readonly string[] = ['foe-h-ink-corvette', 'foe-h-ink-battlecruiser']
+
+/**
  * **C 族「允许慢」白名单**（船长 2026-09-16：「**孢群异虫速度削减到300**」）。
  *
  * 与上面那张「巨兽白名单」同款用途，但管的是**速度族格**：C 族口径 = 「**速度比 A 海盗还快**」
@@ -818,6 +832,15 @@ export const FOE_SHIP_MIX_AUTHORITY_IDS: readonly string[] = [
   'foe-titan-hulk',
   'foe-auro-hulk',
   'foe-core-section',
+  // H 族五条（2026-09-24 第二轮令：「**干扰舰和突击舰的伤害构成比例为6动能4爆炸**」）——
+  // 族内出现 **6:4（突击舰 / 干扰舰）与 8:2（鱼雷舰 / 战巡 / 母舰）两种口径** ⇒ 通用"卡须主 8 : 副 2"
+  // 对"全突击舰编成"的骚扰舰队不适用 ⇒ 按既有「撞到的契约开白名单」纪律整族登记。
+  // ⚠ 卡面仍须与**每一条主体**的有效构成逐键一致（族内换构成时要在**条目**上写 `dmgMix` 覆写）。
+  'foe-h-ink-corvette',
+  'foe-h-ink-jammer',
+  'foe-h-ink-torpedo',
+  'foe-h-ink-battlecruiser',
+  'foe-h-ink-flagship',
 ]
 
 /** E 族 · 一档「巨构残段」——**泰坦级巨构**的残段（服务：泰坦残骸勘探 60；**全族第一条舰级**）。
@@ -1175,9 +1198,9 @@ export const FOE_H_INK_JAMMER: FoeShipDef = {
   family: 'H',
   evasion: 0.18,
   hullClassTier: 3, // 巡洋舰（船长 2026-09-24：「档位改为T3巡洋舰」）
-  speedRatio: 1.45, // 258 × 1.45 = 374 m/s（对基准船 ≈1.43×，落 H 族带 1.0~1.6）
+  speedRatio: 1.3, // 258 × 1.3 = 335 m/s（船长 2026-09-24：「其他敌方舰船按照1.3」；1.14× 在族格带内）
   hp: 900, // T3 档基线 900 × 角色 1.00
-  split: { s: 0.34, a: 0.33, h: 0.33 },
+  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
   shotDmg: 105, // T3 档基线 124 × 角色 0.85（"干扰舰"把单发让给特性）
   hitRate: 0.85,
   reloadMs: 4000,
@@ -1185,7 +1208,7 @@ export const FOE_H_INK_JAMMER: FoeShipDef = {
   rangeMaxM: 4275,
   falloff: 0.3,
   blindDmgMul: 0.3,
-  dmgMix: { explosive: 8, kinetic: 2 }, // 导弹线（与鱼雷舰/战巡/母舰同构成 ⇒ 卡面才一致）
+  dmgMix: { kinetic: 6, explosive: 4 }, // 船长 2026-09-24：突击舰与干扰舰改「6 动能 : 4 爆炸」
   tactic: 'orbit',
   // **射程压制 50%**（船长 2026-09-24；与我方电子舰同款机制、方向相反，见 `FoeShipDef.foeRangeDebuffPct`）
   foeRangeDebuffPct: 0.5,
@@ -1204,9 +1227,9 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
   family: 'H',
   evasion: 0.22,
   hullClassTier: 1, // 护卫舰
-  speedRatio: 1.05, // 340 × 1.05 = 357 m/s
+  speedRatio: 1.6, // 340 × 1.6 = 544 m/s（船长 2026-09-24：「突击舰速度过慢，按照1.6修正」；1.86× 破族格带 ⇒ INK_SPEED_EXEMPT_SHIP_IDS）
   hp: 364,
-  split: { s: 0.34, a: 0.33, h: 0.33 },
+  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24：「除了旗舰外所有敌舰护盾血量占0.5」）
   shotDmg: 51,
   hitRate: 0.85,
   reloadMs: 4000,
@@ -1214,7 +1237,7 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
   rangeMaxM: 4275,
   falloff: 0.3,
   blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  dmgMix: { kinetic: 6, explosive: 4 }, // 船长 2026-09-24：突击舰与干扰舰改「6 动能 : 4 爆炸」
   tactic: 'orbit',
   // **网子 + 冲锋**（船长 2026-09-24「A族洞内电子舰同款」）：两件都写在舰级上 ⇒ 引用它的卡都带
   mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb],
@@ -1226,13 +1249,13 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
  * ⚠ **档位 = T2 驱逐舰**（= 原「墨潮狙击舰」的档位；船长 2026-09-24 追问「**墨潮鱼雷舰原先不是T2吗？
  * 怎么升到T3了**」）。本舰在「逐条细化」那一版被连带抬成 T3（900 / 124 / 374）——那是**二号多改的**：
  * 船长令里只有「墨潮**快艇**改为 T3 巡洋舰」（已由干扰舰兑现），鱼雷舰只要求"改用远程导弹"。
- * 2026-09-24 按船长质疑**回调 T2**（血/单发回 480 / 60 · 速度回 325→339 m/s；导弹口径原样保留），
- * 连带把四张入侵卡的 `hpMul`/`dmgMul` 按"卡片总血 / 总单发守恒"重标（只改乘数、卡片强度不变）。
+ * 2026-09-24 按船长质疑**回调 T2**，再按同日第二轮令改**高攻低血**：
+ * 「**鱼雷舰设定为攻击更高，但是血量偏低**」＋ 裁决「T2 躯：血 360 / 单发 90」。
  *
- * - **远程导弹口径**（与 E 族「导弹残段」同一套字段表达：`falloff: 1` + `blindDmgMul: 1`
- *   ⇒ 命中不随距离衰减、无视近盲带）；
- * - 数值 = T2 档基线 480 / 68 × 角色 1.00 / 0.90 = **480 / 60**（与原狙击舰逐字相同）；
- * - 射程 **1,000 ~ 12,000m**（远程压制）；速度 295 × 1.15 = **339 m/s**（比率 ≈1.19×，H 族带内）；`kite` 拉距打。
+ * - **远程导弹口径**（与 E 族「导弹残段」同一套字段表达：`falloff: 1` + `blindDmgMul: 0.3`
+ *   ⇒ 命中不随距离衰减、近盲带 ×0.3）；
+ * - 数值：血 **360**（T2 档基线 480 × 0.75）· 单发 **90**（T2 档基线 68 × 角色 1.32）——"狙一发就走"；
+ * - 射程 **1,000 ~ 12,000m**（远程压制）；速度 295 × **1.3** = **384 m/s**（1.31×，H 族带内）；`kite` 拉距打。
  */
 export const FOE_H_INK_TORPEDO: FoeShipDef = {
   id: 'foe-h-ink-torpedo',
@@ -1240,17 +1263,17 @@ export const FOE_H_INK_TORPEDO: FoeShipDef = {
   family: 'H',
   evasion: 0.18,
   hullClassTier: 2, // 驱逐舰（原「墨潮狙击舰」的档位；船长 2026-09-24 追问后回调）
-  speedRatio: 1.15, // 295 × 1.15 = 339 m/s（对基准船 ≈1.19×，落 H 族带 1.0~1.6）
-  hp: 480, // T2 档基线 480 × 角色 1.00
-  split: { s: 0.5, a: 0.25, h: 0.25 },
-  shotDmg: 60, // T2 档基线 68 × 角色 0.90（与原狙击舰逐字相同）
+  speedRatio: 1.3, // 295 × 1.3 = 384 m/s（船长第二轮令「其他敌方舰船按照1.3」；1.31× 在族格带内）
+  hp: 360, // 高攻低血（船长 2026-09-24）：T2 档基线 480 × 0.75
+  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
+  shotDmg: 90, // 高攻（船长 2026-09-24）：T2 档基线 68 × 角色 1.32
   hitRate: 0.85,
   reloadMs: 5600, // 导弹节奏（远而慢）
   rangeMinM: 1000,
   rangeMaxM: 12000,
   falloff: 1, // 导弹口径：命中不随距离衰减
   blindDmgMul: 0.3, // 近盲带 ×0.3（船长 2026-09-24 选「与 E 族口径统一」；E 族 2026-09-19「四条统一近盲 0.3」）
-  dmgMix: { explosive: 8, kinetic: 2 }, // 鱼雷 = 爆炸系（与 H 族导弹线同源）
+  dmgMix: { explosive: 8, kinetic: 2 }, // 鱼雷 = 爆炸系（与 H 族导弹线同源；船长第二轮只改突击舰与干扰舰）
   tactic: 'kite',
 }
 
@@ -1260,7 +1283,7 @@ export const FOE_H_INK_TORPEDO: FoeShipDef = {
  *
  * - **导弹远程**（同鱼雷舰口径：`falloff: 1` + `blindDmgMul: 0.3`）；
  * - 数值 = T4 档基线 2,800 / 420 × 角色 1.00 / 0.95 = **2,800 / 399**；
- *   射程 **1,000 ~ 11,000m**；速度 205 × 1.05 = **215**；`kite`；
+ *   射程 **1,000 ~ 11,000m**；速度 205 × **1.3** = **266 m/s**（0.91× 低于族格带下限 ⇒ `INK_SPEED_EXEMPT_SHIP_IDS`）；`kite`；
  * - **1 架 `墨潮重袭机`**（`FOE_DRONE_H_HEAVY`：三层血 180 · 单发 60 · 射程 7,000 · 命中 0.85）——
  *   "只有一个，但属性极高"的落点（详见机型表头注）。
  */
@@ -1270,9 +1293,9 @@ export const FOE_H_INK_BATTLECRUISER: FoeShipDef = {
   family: 'H',
   evasion: 0.12,
   hullClassTier: 4, // 战列巡洋舰（战列档）
-  speedRatio: 1.8, // 205 × 1.8 = 369 m/s（对基准船 ≈1.41×，落 H 族带内）
+  speedRatio: 1.3, // 205 × 1.3 = 266 m/s（船长第二轮令「其他敌方舰船按照1.3」；0.91× 低于族格带下限 ⇒ 白名单破例）
   hp: 2800, // T4 档基线 2,800 × 角色 1.00
-  split: { s: 0.2, a: 0.55, h: 0.25 },
+  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
   shotDmg: 399, // T4 档基线 420 × 角色 0.95（单发让一点给机群）
   hitRate: 0.85,
   reloadMs: 6000,

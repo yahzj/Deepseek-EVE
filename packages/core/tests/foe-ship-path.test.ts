@@ -367,10 +367,10 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // H 族（墨潮帮 · 2026-09-24 船长「新族复制一份A族族格」）——五档壳体的实速：
       // 340/295/205 × 倍率（族格带 1.0~1.6× 是对**基准船**的比率，见 content-check 的 INK_SPEED_BAND）
       // H 族（墨潮帮 · 2026-09-24 船长细化五档：干扰舰/突击舰/鱼雷舰/战列巡洋舰/入侵母舰）
-      { id: 'foe-h-ink-jammer', tier: 3, speed: 374 }, // 258 × 1.45
-      { id: 'foe-h-ink-corvette', tier: 1, speed: 357 }, // 340 × 1.05
-      { id: 'foe-h-ink-torpedo', tier: 2, speed: 339 }, // 295 × 1.15（船长 2026-09-24 追问「原先不是T2吗」⇒ 回调 T2）
-      { id: 'foe-h-ink-battlecruiser', tier: 4, speed: 369 }, // 205 × 1.8
+      { id: 'foe-h-ink-jammer', tier: 3, speed: 335 }, // 258 × 1.3（第二轮令「其他敌方舰船按照1.3」）
+      { id: 'foe-h-ink-corvette', tier: 1, speed: 544 }, // 340 × 1.6（「突击舰速度过慢，按照1.6修正」；1.86× 破例）
+      { id: 'foe-h-ink-torpedo', tier: 2, speed: 384 }, // 295 × 1.3（T2 躯：高攻低血）
+      { id: 'foe-h-ink-battlecruiser', tier: 4, speed: 267 }, // 205 × 1.3（0.91× 低于族格带下限 ⇒ 白名单破例）
       { id: 'foe-h-ink-flagship', tier: 5, speed: 310 }, // 155 × 2.0
     ])
     /**

@@ -546,7 +546,12 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
   region: 'wh',
   threat: ANCHOR_THREAT,
   foeTargeting: 'random',
-  dmgMix: { kinetic: 8, explosive: 2 },
+  dmgMix: { kinetic: 6, explosive: 4 }, // 全卡都是突击舰（船长 2026-09-24 第二轮令：突击舰改 6 动能 : 4 爆炸）
+  /**
+   * ⚠ **hpMul 不动**（守 2026-09-24 的 `0.061`）：血型改 0.5 护盾后**等效耐久已自动高 17.6%**
+   * （护盾每场满值重建），若再把 `hpMul` 也乘 1.176 就等于把卡片血量调回原样 ⇒ **难度白涨 17.6%**。
+   * 保持 `hpMul` 不变 ⇒ 本卡等效耐久 ≈ 旧值 104 点（新 89 点 ×1.176）。`dmgMul` 同样不动。
+   */
   ships: [{ ship: FOE_H_INK_CORVETTE, count: 4, hpMul: 0.061, dmgMul: 0.049 }],
   standingReq: 0,
   standingGain: 0,
@@ -575,9 +580,10 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
     { units: 3, hpShare: 0.5 },
   ],
   /**
-   * ⚠ **鱼雷舰回调 T2 的连带重标**（2026-09-24 船长追问「墨潮鱼雷舰原先不是T2吗」⇒ 见 `foe-ships.ts`
-   * 该舰头注）：舰级血 900→480、单发 124→60 ⇒ 本卡这两条按"该波总血/总单发守恒"重标
-   * （`hpMul`/`dmgMul` 各乘 900/480 ≈ 1.875 与 124/60 ≈ 2.067）。**卡片强度不变、只改乘数**。
+   * ⚠ **鱼雷舰回调 T2 ＋ 血型改 0.5 的连带重标**（2026-09-24 两轮船长令）：
+   * ① 舰级 900/124 → 480/60 ⇒ 鱼雷舰那条 `hpMul`/`dmgMul` ×1.875 / ×2.067；
+   * ② 血型改 0.5 ⇒ 全卡 `hpMul`再 ×1.176（旧总血守恒）。
+   * 合成后：鱼雷舰 `0.056/0.045 → 0.0953/0.093`、突击舰 `0.084 → 0.0988`。**卡片强度不变**。
    */
   ships: [
     { ship: FOE_H_INK_CORVETTE, count: 2, wave: 0, hpMul: 0.084, dmgMul: 0.067, dmgMix: { explosive: 8, kinetic: 2 } },
@@ -611,8 +617,8 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
     { units: 4, hpShare: 0.5 },
   ],
   /**
-   * ⚠ **鱼雷舰回调 T2 的连带重标**（同上：舰级 900/124 → 480/60）：鱼雷舰那两条的 `hpMul`/`dmgMul`
-   * ×1.875 / ×2.067 ⇒ `0.056/0.045 → 0.105/0.093`；**该波总血/总单发守恒**（61/12 → 202/39 不变）。
+   * ⚠ **两轮船长令的连带重标**（2026-09-24）：① 鱼雷舰回调 T2（900/124 → 480/60）⇒ 该条 ×1.875/×2.067；
+   * ② 血型改 0.5 护盾 ⇒ 突击舰/干扰舰/鱼雷舰 ×1.176、战巡 ×0.85（旧总血守恒，202/61 点不变）。
    */
   ships: [
     { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 0.056, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
@@ -652,14 +658,14 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
     { units: 4, hpShare: 0.3 }, // ⚠ 原写 3：与 `ships` 里第 3 波的 4 条条目不符（船长 2026-09-24 追问后改齐）
   ],
   /**
-   * ⚠ **鱼雷舰回调 T2 的连带重标**（同上）：鱼雷舰 ×1.875/×2.067（`0.047/0.032 → 0.088/0.066`）；
-   * 第 1 波另加**干扰舰按档重标**（T3 血 900 在同波里比 T2 鱼雷舰厚近一倍 ⇒ 按 2:2:1 权重
-   * 重分该波血量，`0.047 → 0.0357`），使该波总血仍 ≈151（回调前读数 169，差值来自逐单位取整）。
+   * ⚠ **两轮船长令的连带重标**（2026-09-24）：血型改 0.5 护盾 ⇒ 突击舰/鱼雷舰/干扰舰 ×1.176、
+   * 战巡 ×0.85（旧总血守恒：103/159/116/159 点不变）；母舰那条另见 BOSS 机制（0.2/0.55/0.25 血型不动，
+   * 但同波守恒 ×0.85 · 单场可达份额 `flagshipHpScale`，落码时定值）。
    */
   ships: [
     { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 0.071, dmgMul: 0.0475, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.088, dmgMul: 0.066 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.0357, dmgMul: 0.029 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.0357, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 0.0357, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 0.015, dmgMul: 0.0105 },
     { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 0.011, dmgMul: 0.008 },
