@@ -230,6 +230,68 @@ describe('时效任务板 · 条数与级别（2026-09-18 船长改版）', () =
   })
 })
 
+/**
+ * **快递 120 分钟周期**（2026-09-24 船长令：「快递任务的周期和持续时间都为 120 分钟，资源任务不变」＋
+ * 澄清「那只改快递任务」＋「2甲」= 每批条数不动）。
+ *
+ * 行为口径（本组锁住）：资源族照旧**每 20 分钟**整板换；快递族**原样保留**到下一个 **120 分钟整点**
+ * ⇒ 存活恰好 120 分钟、到点与下一批**同时**换（整齐一批）。120 = 20 × 6 ⇒ 每第 6 个窗换一次。
+ */
+describe('时效任务板 · 快递 120 分钟周期（2026-09-24 船长令）', () => {
+  /** 快递板周期 = 120 分钟 */
+  const COURIER_PERIOD = 120 * 60_000
+  /** 世界：一座已建成副站 ⇒ 快递才有目标站可刷（条数 = 基础 4 + 每站 2） */
+  const world = (): { state: GameState; ctx: SimContext } =>
+    makeWorld({ stations: [stationSite('site-1', 'galaxy-hub', '一号站')], built: ['site-1'] })
+
+  it('资源每 20 分钟换新；快递保留到 120 分钟整点才整批换新（条数不变）', () => {
+    const { state, ctx } = world()
+    marketQuote(state, ctx, 'it-ore-a')
+    advanceGame(state, FIRST_OPEN_MS, ctx)
+    const first = sideTaskBoard(state, ctx)
+    expect(state.sideTasks.window).toBe(PERIOD) // 首板窗 = 20 分钟整点
+    const count = SIDE_TASK_BASE_COUNT + SIDE_TASK_COUNT_PER_STATION
+    expect(first.resource).toHaveLength(count)
+    expect(first.courier).toHaveLength(count)
+    const res0 = first.resource.map((t) => t.id)
+    const cou0 = first.courier.map((t) => t.id)
+
+    // 第二个窗（40 分钟整点）：**资源换新、快递一字不动**
+    advanceGame(state, PERIOD, ctx)
+    const second = sideTaskBoard(state, ctx)
+    expect(state.sideTasks.window).toBe(2 * PERIOD)
+    expect(second.resource.map((t) => t.id)).not.toEqual(res0)
+    expect(second.courier.map((t) => t.id)).toEqual(cou0)
+
+    // 第三个窗（60 分钟整点）：快递仍旧（只在整 120 分钟点换）
+    advanceGame(state, PERIOD, ctx)
+    expect(state.sideTasks.window).toBe(3 * PERIOD)
+    expect(sideTaskBoard(state, ctx).courier.map((t) => t.id)).toEqual(cou0)
+
+    // 直达 120 分钟整点（第 6 个窗）：**快递整批换新**——旧 id 一条不剩，条数不动
+    advanceGame(state, 3 * PERIOD, ctx)
+    const sixth = sideTaskBoard(state, ctx)
+    expect(state.sideTasks.window).toBe(COURIER_PERIOD)
+    expect(sixth.courier).toHaveLength(count)
+    expect(sixth.courier.some((t) => cou0.includes(t.id))).toBe(false)
+    // 资源侧同拍照常换新（两族节奏互不影响），且仍是每族各自条数
+    expect(sixth.resource).toHaveLength(count)
+    expect(sixth.resource.some((t) => res0.includes(t.id))).toBe(false)
+  })
+
+  it('未到点的一窗不重掷快递：快递条目的 id / 目标站 / 运费逐字不变', () => {
+    const { state, ctx } = world()
+    marketQuote(state, ctx, 'it-ore-a')
+    advanceGame(state, FIRST_OPEN_MS, ctx)
+    const cou0 = sideTaskBoard(state, ctx).courier.map((t) => ({ ...t }))
+    advanceGame(state, PERIOD, ctx)
+    const cou1 = sideTaskBoard(state, ctx).courier
+    expect(cou1.map((t) => [t.id, t.stationId, t.rewardIsk, t.volumeM3, t.level])).toEqual(
+      cou0.map((t) => [t.id, t.stationId, t.rewardIsk, t.volumeM3, t.level]),
+    )
+  })
+})
+
 describe('时效任务板 · 完成与市场联动', () => {
   it('资源完成：扣货、入账、下板，并**回退涨价部分**（shock −0.05）', () => {
     const { state, ctx } = makeWorld()
