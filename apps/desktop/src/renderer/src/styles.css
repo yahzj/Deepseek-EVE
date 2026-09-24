@@ -9958,17 +9958,25 @@ html[data-locale='en'] body {
 
 /* v172 quick-identify chips: dmg type = hp layer colors (shield blue / armor red / hull yellow) */
 
-.app-d-chip{display:inline-block;padding:0 6px;border-radius:4px;font-size:12px;line-height:18px;color:rgb(var(--wui-x01));vertical-align:1px;white-space:nowrap;margin-left:2px}
-
-.app-d-kinetic{background:rgb(var(--wui-x14))}
-
-.app-d-explosive{background:rgb(var(--wui-x07))}
-
-.app-d-plasma{background:rgb(var(--wui-hull));color:rgb(var(--wui-x65))}
+/**
+ * **伤害类型徽标（`app-d-*`）改按"类型色"**（**2026-09-24 船长报障**：「伤害类型颜色…错位了，原先动能是
+ * 黄色，能量是蓝色的」＋玩家「他的动能武器和高爆打能量弹药」）。
+ *
+ * 这一套原先是 **按层位配色**（v172 注释：`dmg type = hp layer colors`：动能→盾蓝、爆破→甲红、能量→结构黄），
+ * 而全仓别处（**弹药徽标 `app-a-*`**、弹道、伤害飘字、射程弧的 `DMG_COLOR`）都是**按类型配色**
+ * （动能=金 / 爆破=橙 / 能量=青）⇒ 同一个「动能」在悬浮卡上是蓝的、在弹药徽标上是金的。
+ * 玩家读的是"类型"，于是把蓝色那枚读成能量、顺手选错弹药档 ⇒ 一并产生"动能武器打能量弹药"的观感。
+ *
+ * 现口径：**伤害类型徽标与弹药徽标共用同一套底色**（下面的合并规则 ⇒ 以后不可能再漂移）；
+ * **层位色**（盾蓝 / 甲红 / 结构黄）只留给 `.app-p-*` 与血条（那里才是"层"的语义）。
+ */
+.app-d-chip{display:inline-block;padding:0 6px;border-radius:4px;font-size:12px;line-height:18px;color:rgb(var(--wui-x229));vertical-align:1px;white-space:nowrap;margin-left:2px}
 
 /* v18.1 零抗灰字（三系恒显：0% 也列出，不做缺行省略——船长 2026-09-05） */
 
 .app-res-zero{display:inline-block;font-size:12px;line-height:18px;color:rgb(var(--wui-text-dim));opacity:.85;margin-left:6px;font-family:var(--wui-mono);white-space:nowrap;vertical-align:1px}
+
+/* 层位档（shield / armor / balanced）——**这里才是"层"的语义**，保持盾蓝 / 甲红 / 结构黄不动 */
 
 .app-p-shield{background:rgb(var(--wui-x14))}
 
@@ -9980,11 +9988,12 @@ html[data-locale='en'] body {
 
 .app-a-chip{display:inline-block;padding:0 5px;border-radius:4px;font-size:11px;line-height:16px;color:rgb(var(--wui-x229));vertical-align:1px;margin-left:3px;white-space:nowrap}
 
-.app-a-kinetic{background:rgb(var(--wui-x211))}
+/* **伤害类型 = 弹药类型 = 同一套底色**（合并规则：两族共用，防止再次各写一份而漂移） */
+.app-d-kinetic, .app-a-kinetic{background:rgb(var(--wui-x211))}
 
-.app-a-explosive{background:rgb(var(--wui-x57))}
+.app-d-explosive, .app-a-explosive{background:rgb(var(--wui-x57))}
 
-.app-a-plasma{background:rgb(var(--wui-x77))}
+.app-d-plasma, .app-a-plasma{background:rgb(var(--wui-x77))}
 
 .app-refine-progress { height: 4px; background: rgb(var(--wui-x01) / 0.08); border-radius: 2px; overflow: hidden; margin-top: 3px; max-width: 460px; }
 

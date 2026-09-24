@@ -146,3 +146,45 @@ describe('弹药齐射扣弹（2026-09-11 修复）', () => {
     expect(rArmed.foeHpLeft).toBe(rBare.foeHpLeft) // 该炮台零伤害 → 战果等同无炮
   })
 })
+
+/**
+ * **弹种归属：一门武器只用自己的那一型弹**（**2026-09-24 船长转述玩家反馈**：
+ * 「他的**动能武器和高爆打能量弹药**」）。
+ *
+ * 排查结论：**引擎侧没有错配**——该观感的真因是**界面伤害类型徽标配色错位**
+ * （`app-d-*` 那套按"层位"配色：动能→盾蓝、能量→结构黄，与弹药徽标的"类型色"正好相反，
+ * 玩家把蓝色那枚读成了能量弹；见 `tools/dmg-color-check.ts` 与 `styles.css` 的口径注释）。
+ *
+ * 本条把"引擎侧确实没错"钉死：**动能炮 → kin · 高爆导弹 → exp · 激光 → pla**，
+ * 预载只装本型、开火也只扣本型（其余两桶全程一动不动）。
+ */
+describe('弹种归属：动能 / 高爆 / 能量各进各的桶（玩家反馈的引擎侧对照）', () => {
+  const CASES = [
+    { id: 'w-kin', type: 'kinetic' as DamageType, slot: 'turret' as ModuleSlot, key: 'kin' as const, ammo: 'ammo-kinetic-l' },
+    { id: 'w-exp', type: 'explosive' as DamageType, slot: 'missile' as ModuleSlot, key: 'exp' as const, ammo: 'ammo-explosive-l' },
+    { id: 'w-pla', type: 'plasma' as DamageType, slot: 'laser' as ModuleSlot, key: 'pla' as const, ammo: 'ammo-plasma-l' },
+  ]
+  const KEYS = ['kin', 'exp', 'pla'] as const
+
+  for (const c of CASES) {
+    it(`${c.slot}（${c.type}）⇒ 只预载与只消耗 ${c.key}`, () => {
+      const { state, ctx } = bedWithGuns(1, gunDef(c.id, 2000, c.type, c.slot), c.ammo)
+      const ano = endlessFoe()
+      const c2 = { ...ctx, anomalies: new Map([...ctx.anomalies, [ano.id, ano]]) }
+      const battle = startBattleFor(state, c2, state.shipId, ano.id, 0)!
+      // ① 预载：只有本型的桶非零
+      for (const k of KEYS) {
+        if (k === c.key) expect(battle.ammo[k], `${c.id} 应预载 ${c.key}`).toBeGreaterThan(0)
+        else expect(battle.ammo[k], `${c.id} 不该有 ${k} 弹`).toBe(0)
+      }
+      // ② 开火：只扣本型，其余两桶一发不动
+      const before = { ...battle.ammo }
+      state.gameMs = 30_000
+      advanceBattleFor(state, c2, battle, state.shipId, ano.id)
+      expect(battle.ammo[c.key], `${c.id} 开火应扣 ${c.key}`).toBeLessThan(before[c.key])
+      for (const k of KEYS) {
+        if (k !== c.key) expect(battle.ammo[k], `${c.id} 不该动 ${k} 桶`).toBe(before[k])
+      }
+    })
+  }
+})
