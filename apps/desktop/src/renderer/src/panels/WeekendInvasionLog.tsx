@@ -57,17 +57,23 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
         : tr('ui.weekend.012')
 
   return (
-    <li
-      className="wui-log-item wui-log-warn app-weekend-logrow"
+    <div
+      className="app-weekend-box"
       title={`${tr('ui.weekend.013')} · ${tr('ui.weekend.019')}`}
       onClick={onGoto}
     >
-      <span className="app-weekend-logrow-tag">{tr('ui.weekend.005', { p1: ev.family })}</span>
-      <span>{tr('ui.weekend.006', { p1: coreName })}</span>
-      <span> · {tr('ui.weekend.007', { p1: String(perDone), p2: String(perTotal) })}</span>
-      <span> · {tr('ui.weekend.008', { p1: String(corePct) })}</span>
-      <span> · {tr('ui.weekend.014', { p1: String(reclaimed.length), p2: String(occupied.length) })}</span>
-      <span> · {tail}</span>
-    </li>
+      <div className="app-weekend-box-row">
+        <span className="app-weekend-box-tag">{tr('ui.weekend.005', { p1: ev.family })}</span>
+        <span className="app-weekend-box-dim">{tr('ui.weekend.006', { p1: coreName })}</span>
+      </div>
+      <div className="app-weekend-box-row app-weekend-box-dim">
+        <span>{tr('ui.weekend.007', { p1: String(perDone), p2: String(perTotal) })}</span>
+        <span>· {tr('ui.weekend.008', { p1: String(corePct) })}</span>
+        <span>· {tr('ui.weekend.014', { p1: String(reclaimed.length), p2: String(occupied.length) })}</span>
+      </div>
+      <div className="app-weekend-box-row">
+        <span className={flagship.shown || flagship.down ? 'app-weekend-box-warn' : 'app-weekend-box-dim'}>{tail}</span>
+      </div>
+    </div>
   )
 }
