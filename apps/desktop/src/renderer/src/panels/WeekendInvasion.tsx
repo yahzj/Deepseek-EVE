@@ -70,6 +70,11 @@ export function WeekendInvasionBanner({ engine }: { engine: GameEngine }): JSX.E
         ) : (
           <span className="app-weekend-dim">{perDone < perTotal ? tr('ui.weekend.011') : tr('ui.weekend.012')}</span>
         )}
+        {flagship.shown && !flagship.down ? (
+          <button className="app-btn is-small is-primary" onClick={() => engine.challengeWeekendFlagship()}>
+            {tr('ui.weekend.017')}
+          </button>
+        ) : null}
       </div>
       <div className="app-weekend-dim">{tr('ui.weekend.014', { p1: String(reclaimed.length), p2: String(occupied.length) })}</div>
       {/* 被占星系清单（含各自进度）：星图视觉标记交给船长审观感后再做，这里先给"去哪打"的可读读数 */}

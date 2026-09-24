@@ -3983,6 +3983,25 @@ export function battleAnomalyOf(
   const card = lairTier ? lairAnomalyOf(base, lairTier) : base
   return factionActive ? factionAnomalyOf(card) : card
 }
+/**
+ * **敌群强度覆写**（2026-09-23 周末入侵）：给"从卡派生敌群"的两条开战入口一个**可选覆写口**——
+ * 入侵的威胁/波数是**绝对值**（旗舰 120 威胁 · 4 波 · 每波 4 艘），而卡表里的卡自带自己的强度，
+ * 不覆写就只能打成"原卡强度"。**不传 = 一字不变**（既有调用方与读数不受影响）。
+ */
+export interface FoeOverride {
+  threat?: number
+  waves?: ReadonlyArray<{ units: number; hpShare: number }>
+}
+
+/** 把覆写应用到派生出来的敌卡上（纯函数；`override` 缺省或字段缺省 ⇒ 原样返回） */
+export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
+  if (!anomaly || !override) return anomaly
+  const next = { ...(anomaly as Record<string, unknown>) }
+  if (override.threat !== undefined && Number.isFinite(override.threat)) next.threat = Math.max(1, Math.round(override.threat))
+  if (override.waves !== undefined && override.waves.length > 0) next.waves = override.waves
+  return next as T
+}
+
 export function startBattleFor(
   state: GameState,
   ctx: SimContext,
@@ -3994,9 +4013,11 @@ export function startBattleFor(
    * （2026-09-11 船长「只有主控吃」⇒ AI 副船走这一档）；`undefined` = 用该星系设定、没设过则射程中段。
    */
   desireM?: number | null,
+  /** **敌群强度覆写**（2026-09-23 入侵用：伏击 39/60；缺省 = 原行为，一字不变） */
+  foeOverride?: FoeOverride,
 ): import('./state').BattleState | null {
   if (!anomalyId) return null
-  const anomaly = battleAnomalyOf(ctx, anomalyId, state.expedition.lairTier, state.expedition.factionActive)
+  const anomaly = applyFoeOverride(battleAnomalyOf(ctx, anomalyId, state.expedition.lairTier, state.expedition.factionActive), foeOverride)
   // **记下这一场的敌方舰级**（船长 2026-09-16：首次遭遇劫掠电子舰后发通讯）
   if (anomaly) noteFoeShipsSeen(state, anomaly)
   if (!anomaly) return null
@@ -4274,6 +4295,8 @@ export function startFleetBattleFor(
     foeHitDown?: number
     blindReduce?: number
   },
+  /** **敌群强度覆写**（2026-09-23 入侵旗舰用：120 威胁 · 4 波；缺省 = 原行为） */
+  foeOverride?: FoeOverride,
 ): import('./state').BattleState | null {
   if (!anomalyId || shipIds.length === 0) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
@@ -4288,8 +4311,13 @@ export function startFleetBattleFor(
    */
   const matterMods = wormhole ? wormholeMatterBattleModsOf(state, ctx, baseCard, wormhole.kind) : null
   // 洞内敌卡：按层派生（**与逐拍重建同源**，见 `wormholeDerivedAnomaly` 的注释）
-  const anomaly = wormhole
-    ? wormholeDerivedAnomaly(ctx, baseCard, {
+  /**
+   * **敌群强度覆写**（2026-09-23 入侵）：旗舰要打**120 威胁 · 4 波**（绝对值），而族卡自带自己的强度
+   * ⇒ 派生之后套一层覆写。**不传 ⇒ 一字不变**（虫洞与既有调用方都不传）。
+   */
+  const anomaly = applyFoeOverride(
+    wormhole
+      ? wormholeDerivedAnomaly(ctx, baseCard, {
         ...wormhole,
         ...(matterMods
           ? {
@@ -4299,7 +4327,9 @@ export function startFleetBattleFor(
             }
           : {}),
       })
-    : baseCard
+    : baseCard,
+    foeOverride,
+  )
   const bal = ctx.balance.battle
   // 编队顺序：**主控置首**（`state.shipId` 在编队里就提到第一位），其余保持传入顺序
   const ordered = [...shipIds]
