@@ -828,14 +828,22 @@ export const EN_ANOMALIES: EnTable = {
     name: 'Remnant Battle Line',
     description: "Wormhole encounter: the deadarmy's last battle line with its swarm escort (hidden card, spawned by the wormhole only).",
   },
-  // H 族（墨潮帮）· 周末入侵的独立敌卡（2026-09-24 新增两张）
-  'ink-flagship': {
-    name: 'Ink Tide Flagship',
-    description: 'Weekend incursion: the flagship of the Ink Tide (hidden card, spawned by the incursion event only).',
+  // H 族（墨潮帮）· 周末入侵的四张独立敌卡（2026-09-24 船长逐条给定编成）
+  'ink-harass': {
+    name: 'Ink Tide Harassment Fleet',
+    description: 'Weekend incursion: a harassment fleet of the Ink Tide (hidden card, spawned by the incursion event only).',
   },
-  'ink-assault': {
-    name: 'Ink Tide Fleet',
-    description: 'Weekend incursion: a raiding fleet of the Ink Tide (hidden card, spawned by the incursion event only).',
+  'ink-raid': {
+    name: 'Ink Tide Raid Fleet',
+    description: 'Weekend incursion: a raid fleet of the Ink Tide (hidden card, spawned by the incursion event only).',
+  },
+  'ink-main': {
+    name: 'Ink Tide Main Fleet',
+    description: 'Weekend incursion: the main fleet of the Ink Tide (hidden card, spawned by the incursion event only).',
+  },
+  'ink-flagship': {
+    name: 'Ink Tide Flagship Group',
+    description: 'Weekend incursion: the Ink Tide flagship group (hidden card, spawned by the incursion event only).',
   },
 }
 
@@ -1174,12 +1182,12 @@ export const EN_FOE_SHIPS: EnTable = {
   'foe-g-nadir-lock': { name: 'Nadir Blockade Ship' },
   'foe-g-exile-battleship': { name: 'Deadarmy Battleship' },
   'foe-g-remnant-tender': { name: 'Remnant Tender' },
-  // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：五档壳体
-  'foe-h-ink-skiff': { name: 'Ink Tide Skiff' },
+  // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：五档壳体 —— 船长当日细化后的现行名
+  'foe-h-ink-jammer': { name: 'Ink Tide Jammer' },
   'foe-h-ink-corvette': { name: 'Ink Tide Assault Ship' },
-  'foe-h-ink-sniper': { name: 'Ink Tide Sniper' },
-  'foe-h-ink-battleship': { name: 'Ink Tide Battlewagon' },
-  'foe-h-ink-flagship': { name: 'Ink Tide Flagship' },
+  'foe-h-ink-torpedo': { name: 'Ink Tide Torpedo Ship' },
+  'foe-h-ink-battlecruiser': { name: 'Ink Tide Battlecruiser' },
+  'foe-h-ink-flagship': { name: 'Ink Tide Invasion Carrier' },
 }
 
 /**

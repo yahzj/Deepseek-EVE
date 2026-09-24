@@ -23,7 +23,7 @@ import {
   foeDesiredRange,
   foeDroneRangeOf,
   foeGunMaxRangeOf,
-  foeRangeDebuffOf,
+  meFoeRangeDebuffOf,
 } from '../src/combat'
 import { addShipToFleet } from '../src/shipyard'
 import type { GameState } from '../src/state'
@@ -56,7 +56,7 @@ function battleWith(state: GameState, ctx: SimContext, ids: readonly string[]): 
   } as unknown as Parameters<typeof createBattleState>[0]
   const b = createBattleState(me, [], 0, 1000)
   // 建档路径会写运行态；这里直接调单点口径 —— 与引擎同源（`applyFoeRangeDebuff` 是私有帮手）
-  const r = foeRangeDebuffOf(state, ctx, ids)
+  const r = meFoeRangeDebuffOf(state, ctx, ids)
   if (r > 0) b.meFoeRangeDebuff = r
   return b
 }
@@ -148,15 +148,15 @@ describe('电子舰 · 压制敌舰武器射程（船长 2026-09-18）', () => {
 
   it('合成口径单点：`foeRangeDebuffOf` 按编队逐艘累计（1 艘 0.15 · 2 艘 0.2775 · 混编只数带字段的船）', () => {
     const one = world(1)
-    expect(foeRangeDebuffOf(one.state, one.ctx, one.ids)).toBeCloseTo(0.15, 10)
+    expect(meFoeRangeDebuffOf(one.state, one.ctx, one.ids)).toBeCloseTo(0.15, 10)
     const two = world(2)
-    expect(foeRangeDebuffOf(two.state, two.ctx, two.ids)).toBeCloseTo(0.2775, 10)
+    expect(meFoeRangeDebuffOf(two.state, two.ctx, two.ids)).toBeCloseTo(0.2775, 10)
     // 混编：电子舰 + 普通舰 ⇒ 只数带字段那艘
     const mixedIds = [...two.ids, addShipToFleet(two.state, NON_EW)]
-    expect(foeRangeDebuffOf(two.state, two.ctx, mixedIds)).toBeCloseTo(0.2775, 10)
+    expect(meFoeRangeDebuffOf(two.state, two.ctx, mixedIds)).toBeCloseTo(0.2775, 10)
     // 编队里没有电子舰 ⇒ 0（不写运行态）
     const none = world(0)
-    expect(foeRangeDebuffOf(none.state, none.ctx, none.ids)).toBe(0)
+    expect(meFoeRangeDebuffOf(none.state, none.ctx, none.ids)).toBe(0)
   })
 })
 

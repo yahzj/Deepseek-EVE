@@ -95,14 +95,16 @@ export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H']
  * **2026-09-24 船长令「设计每个种族的T5旗舰」⇒ M2 逐族换到独立卡**）。
  *
  * 口径：① **A/C/G 三族暂时仍用该族的虫洞卡**（`wormholeCardPoolAt`：外围取中层池、旗舰取最深池）；
- * ② **H 族（墨潮帮）没有虫洞卡** ⇒ 用**自家的独立入侵卡**（`ink-assault` / `ink-flagship`，
- *   定义在 `packages/data/src/wormholeFoes.ts` 末段、由 `ANOMALIES` 收进目录）；
+ * ② **H 族（墨潮帮）没有虫洞卡** ⇒ 用**自家的四张独立入侵卡**（2026-09-24 船长给定编成，
+ *   定义在 `packages/data/src/wormholeFoes.ts` 末段、由 `ANOMALIES` 收进目录）：
+ *   骚扰舰队 `ink-harass`（外围）· 袭击舰队 `ink-raid` · 主力舰队 `ink-main` · 旗舰部队 `ink-flagship`；
  * ③ **威胁 / 名字 / 奖励一律由入侵覆盖**（外围 78 / 核心 120，名「<族>族舰队 · <卡名>」，奖励 ×1.4）；
- * ④ 本函数仍是**唯一换卡点**：日后 A/C/G 各自的旗舰卡设计好，在这里逐族改指向即可。
+ * ④ 本函数仍是**唯一换卡点**：日后 A/C/G 各自的旗舰卡设计好，在这里逐族改指向即可；
+ *    H 族"中段强度"两种编成（袭击 / 主力）的接入方式（按进度或按遇袭档次轮换）随 M2 收尾再定。
  */
 export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): string {
-  // H 族（墨潮帮）：独立入侵卡（它不属虫洞族池）
-  if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : 'ink-assault'
+  // H 族（墨潮帮）：独立入侵卡（它不属虫洞族池）——旗舰战用旗舰部队卡，外围先用骚扰舰队
+  if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : 'ink-harass'
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
   // 外围 ⇒ 中层池（层 5）· 旗舰 ⇒ 最深池（层 9）：两者都靠 `wormholeCardPoolAt` 的缺档兜底
   const pool = wormholeCardPoolAt(fam, kind === 'flagship' ? 9 : 5)

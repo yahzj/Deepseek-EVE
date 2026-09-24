@@ -3333,7 +3333,9 @@ for (const m of MODULES) {
       for (const a of ANOMALIES_FLAVORED) {
         for (const sl of a.ships ?? []) {
           const hasWeb = resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeCaptureWeb !== undefined
-          if (hasWeb && sl.ship.id !== 'foe-pirate-raider') {
+          // ⚠ 2026-09-24 扩白名单（船长令「墨潮突击舰添加A族洞内电子舰同款网子和冲锋」）：
+          //   H 族突击舰与「劫掠电子舰」同款两件；其余舰级仍不许挂
+          if (hasWeb && sl.ship.id !== 'foe-pirate-raider' && sl.ship.id !== 'foe-h-ink-corvette') {
             bad.push(`${a.id} 的 ${sl.ship.name} 挂了劫掠捕获网——该件只允许挂在「劫掠电子舰」上`)
           }
           if (sl.ship.id === 'foe-pirate-raider' && !hasWeb) {
@@ -3351,7 +3353,9 @@ for (const m of MODULES) {
         if (whSet.has(a.id)) continue
         for (const sl of a.ships ?? []) {
           const charge = resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeChargeMul
-          if (charge !== undefined && sl.ship.family !== 'C') {
+          // ⚠ H 族（墨潮帮）同样豁免：2026-09-24 船长令「墨潮突击舰添加A族洞内电子舰同款…冲锋」
+          //   ⇒ 它的冲锋写在**舰级**上（引用它的四张入侵卡全带）；与 A 族"只挂条目"不同（入侵卡没有洞外身份）
+          if (charge !== undefined && sl.ship.family !== 'C' && sl.ship.family !== 'H') {
             bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了冲锋件——冲锋只允许 C 族舰级与洞内三张 A 族卡`)
           }
         }

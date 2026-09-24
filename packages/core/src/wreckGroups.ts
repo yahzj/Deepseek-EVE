@@ -271,7 +271,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     note: '',
     threat: 45,
     theme: {},
-    members: ['ink-flagship', 'ink-assault'],
+    members: ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship'],
   },
 ]
 

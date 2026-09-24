@@ -33,7 +33,7 @@ describe('残骸组表（14 组 · 族 × 地区）', () => {
   it('成员覆盖全表 42 张卡，一张不漏、一张不重；族/地区与卡的数据一致', () => {
     expect(WRECK_GROUPS.length).toBe(14) // ⚠ 2026-09-24：13 → 14（H 族墨潮帮组 h-hi）
     expect(WRECK_GROUP_OF_MEMBER.size).toBe(ctx.anomalies.size)
-    expect(ctx.anomalies.size).toBe(44) // ⚠ 2026-09-24：42 → 44（H 族两张入侵卡）
+    expect(ctx.anomalies.size).toBe(46) // ⚠ 2026-09-24：42 → 44（H 族两张入侵卡）
     let wh = 0
     let hi = 0
     let lo = 0

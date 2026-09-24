@@ -103,8 +103,8 @@ describe('周末入侵 · 敌卡（M1 暂用虫洞族卡）', () => {
   it('族池 = A/C/G ＋ **H 墨潮帮**（2026-09-24 M2 第一族：它有自家独立入侵卡）', () => {
     expect([...WEEKEND_FAMILIES]).toEqual(['A', 'C', 'G', 'H'])
     // H 族走**独立卡**（不属虫洞族池）⇒ 换卡点 weekendFoeCardOf 对它直接返回 ink-*：
-    expect(weekendFoeCardOf('H', 'flagship')).toBe('ink-flagship')
-    expect(weekendFoeCardOf('H', 'assault')).toBe('ink-assault')
+    expect(weekendFoeCardOf('H', 'flagship')).toBe('ink-flagship') // 旗舰部队卡（4 波自带波表）
+    expect(weekendFoeCardOf('H', 'assault')).toBe('ink-harass') // 外围：骚扰舰队（2026-09-24 四张卡细分后）
   })
 
   it('外围取中层池 · 旗舰取最深池，且都在敌卡表里；未知族兜底到池内第一族', () => {

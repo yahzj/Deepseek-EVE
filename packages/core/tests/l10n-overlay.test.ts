@@ -125,7 +125,7 @@ describe('英文覆盖层（P2）', () => {
   })
 
   it('异常点覆盖：42 张全覆盖（23 悬赏 + 4 遭遇模板 + 15 虫洞敌卡）+ 英文名生效', () => {
-    expect(zh.anomalies.size, '异常点/敌卡总数').toBe(44) // ⚠ 2026-09-24：42 → 44（H 族墨潮帮两张入侵卡）
+    expect(zh.anomalies.size, '异常点/敌卡总数').toBe(46) // ⚠ 2026-09-24：42 → 44（H 族墨潮帮两张入侵卡）
     const missing = [...zh.anomalies.keys()].filter((id) => !(id in EN_ANOMALIES))
     expect(missing, `这些异常点还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.anomalies.get('ano-maw-hunt')?.name).toBe('Maw Hunt Order')

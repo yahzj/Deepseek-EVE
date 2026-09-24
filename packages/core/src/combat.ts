@@ -317,6 +317,12 @@ export interface UnitSpec {
   /** **备用机库**（见 `FoeShipDef.droneReserve`；2026-09-12 船长「损坏后补充敌机」） */
   foeDroneReserve?: { count: number; respawnMs: number }
   /**
+   * **敌方「射程压制」**（H 族墨潮干扰舰 · 2026-09-24 船长；见 `FoeShipDef.foeRangeDebuffPct`）：
+   * 本舰压制**我方武器**的最远射程，多艘乘法合成、与我方电子舰的削减**做加法抵消**。
+   * 缺省不写 ⇒ 不压制（既有全部敌舰零行为变化）。
+   */
+  foeRangeDebuffPct?: number
+  /**
    * **姿态陀螺仪的闪避加数**（船长 2026-09-24；见 `FoeMountDef.evasionBonus`）——建档时**已经加进**
    * `evasion` 并夹到 0.9 上限；本字段只是把"这件件给了多少"留在单位上（战报/读数/用例用）。
    * 缺省不写 ⇒ 零行为变化。
@@ -2162,6 +2168,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         (ship.evasion ?? 0.12) + (mount.foeEvasionBonusAdd ?? 0),
       ),
       ...(mount.foeEvasionBonusAdd !== undefined ? { foeEvasionBonusAdd: mount.foeEvasionBonusAdd } : {}),
+      // **射程压制**（H 族墨潮干扰舰 · 2026-09-24 船长）：舰级级字段，原样带到单位（消费见 meRangeMulOf）
+      ...(ship.foeRangeDebuffPct !== undefined ? { foeRangeDebuffPct: ship.foeRangeDebuffPct } : {}),
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,
@@ -2210,7 +2218,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           fixedType: type,
           shotDmg,
           ...(multiShots ? { shotsByType: multiShots } : {}),
-          maxRangeM: rangeMax,
+          // ⚠ **干扰舰自己的武器射程已扣掉它压制的那一份**（船长 2026-09-24：「降低50%射程，可以和我方
+          // 电子舰的效果相互抵消」）：对方对我射程的削减会被我的压制抵掉一部分 ⇒ 我的最终射程 =
+          // 口径射程 × (1 − 我的压制率)；闸门/取整仍走 oeRangeWithDebuff（与其余敌舰同一把尺）。
+          maxRangeM: Math.max(2, Math.round(rangeMax * (1 - (ship.foeRangeDebuffPct ?? 0)))),
           minRangeM: rangeMin,
           blindDmgMul: ship.blindDmgMul ?? 0.3,
           // 必中光束不消费命中（恒 1）；掷命中（动能/爆炸 + 能量 spit）走命中率
@@ -4004,6 +4015,11 @@ function buildMyUnitSpecs(
   battle: import('./state').BattleState,
   shipId: string,
   anomalyId: string | null,
+  /**
+   * **本场敌阵的单位规格**（2026-09-24 加；缺省不传）——只用于算**敌方干扰舰的射程压制率**
+   * （`meRangeMulOf`：净削减率 = 我方电子舰 + 敌方干扰舰，相加抵消）。不传 = 无压制（老行为）。
+   */
+  foes?: readonly UnitSpec[],
 ): UnitSpec[] {
   const fleet = battle.myFleet
   /**
@@ -4020,6 +4036,8 @@ function buildMyUnitSpecs(
     // **捕获网**（船长 2026-09-16）：每拍重建后重新施加（否则下一拍就"复活"）
     const web0 = battle.meWebDebuffs?.[me.tag]
     if (web0) applyMeWebDebuff(me, web0)
+    // **敌干扰压制**（H 族墨潮干扰舰 · 2026-09-24）：与我方电子舰的削减相加抵消后缩小我方射程
+    applyMeJammerDebuff(me, meRangeMulOf(battle, foes ?? []))
     // 「第一次完成悬赏」的照会战加成（演习场 + 主控 + 任务未完成；每拍规格重建处注入）
     if (isFirstBountyBattle(state, anomalyId, shipId)) applyFirstBountyBuff(me)
     // **指挥舰全舰单发光环**（2026-09-17 修：原先只在开战那一刻乘 ⇒ 被每拍重建冲掉、从未生效）
@@ -4038,6 +4056,8 @@ function buildMyUnitSpecs(
     // **捕获网**（船长 2026-09-16）：同上，逐舰按账本施加
     const web = battle.meWebDebuffs?.[entry.tag]
     if (web) applyMeWebDebuff(spec, web)
+    // **敌干扰压制**：逐舰施加（同上——每拍重建后重新施加，否则下一拍就"恢复"）
+    applyMeJammerDebuff(spec, meRangeMulOf(battle, foes ?? []))
     out.push(spec)
   }
   // **指挥舰全舰单发光环**：全队取最高一份、不叠加（同批修：见 `applyFleetDamageAura` 的注释）
@@ -4133,6 +4153,12 @@ export function battleAnomalyOf(
 export interface FoeOverride {
   threat?: number
   waves?: ReadonlyArray<{ units: number; hpShare: number }>
+  /**
+   * **保留卡自带的波表**（2026-09-24 加；船长给定 H 族入侵卡"每波各自编成"时要用）：
+   * 置真 ⇒ `waves` **不覆盖**卡上的 `waves`（卡自己声明了 4 波各自的编成与波血）。
+   * 缺省假 = 老行为（覆写波表，如入侵原先固定的"4 波 × 4 艘"）。
+   */
+  keepCardWaves?: boolean
 }
 
 /** 把覆写应用到派生出来的敌卡上（纯函数；`override` 缺省或字段缺省 ⇒ 原样返回） */
@@ -4140,7 +4166,7 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
   if (!anomaly || !override) return anomaly
   const next = { ...(anomaly as Record<string, unknown>) }
   if (override.threat !== undefined && Number.isFinite(override.threat)) next.threat = Math.max(1, Math.round(override.threat))
-  if (override.waves !== undefined && override.waves.length > 0) next.waves = override.waves
+  if (override.keepCardWaves !== true && override.waves !== undefined && override.waves.length > 0) next.waves = override.waves
   return next as T
 }
 
@@ -4576,7 +4602,7 @@ export function startFleetBattleFor(
     const want = anyBrawl
       ? desiredRangeFor(me, 'mid', bal, bal.wormholeBrawlOpenBand)
       : // 电子舰削减之后，敌人也**在洞里**主动压近（船长 2026-09-18：「削减射程后，敌人的期望距离也要随之改变」）
-        foeDesiredRange(me, foes, bal, foeRangeDebuffOf(state, ctx, ordered))
+        foeDesiredRange(me, foes, bal, meFoeRangeDebuffOf(state, ctx, ordered))
     battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
   } else {
     battle.distanceM = openM
@@ -5606,7 +5632,13 @@ export function advanceBattleFor(
     ? wormholeDerivedAnomaly(ctx, baseAnomaly, battle.wormhole)
     : baseAnomaly
   const bal = ctx.balance.battle
-  const myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId)
+  /**
+   * **本场的敌阵规格**（2026-09-24 起提前到这里）：只用于算**敌方干扰舰的射程压制率**
+   * （`meRangeMulOf`，见 `buildMyUnitSpecs` 的入参说明）。⚠ `createFoeSpecs` 只吃 `anomaly` 与 `bal`，
+   * **不依赖我方规格** ⇒ 提前建不改变任何既有口径（下游仍用同一份、同一序）。
+   */
+  const foesForDebuff = createFoeSpecs(anomaly, bal)
+  const myUnits = buildMyUnitSpecs(state, ctx, battle, shipId, anomalyId, foesForDebuff)
   if (myUnits.length === 0) {
     battle.ended = 'foe'
     return
@@ -5615,7 +5647,7 @@ export function advanceBattleFor(
   // 编队口径 = `battle.myFleet`（单船路径取本条 `shipId`）。
   applyFoeRangeDebuff(state, ctx, battle, battle.myFleet?.map((e) => e.shipId) ?? [shipId])
   const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
-  const foes = createFoeSpecs(anomaly, bal)
+  const foes = foesForDebuff
   const foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
   const openM = battleOpenM(me, foes, bal)
   const favor =
@@ -6148,7 +6180,7 @@ export function foeDroneRangeOf(
 export const FOE_RANGE_DEBUFF_FLOOR_M = 3000
 
 /** 编队当前的**敌舰射程削减率** `r = 1 − Π(1 − vᵢ)`（无电子舰 = 0）。 */
-export function foeRangeDebuffOf(
+export function meFoeRangeDebuffOf(
   state: GameState,
   ctx: SimContext,
   shipIds: readonly string[],
@@ -6169,7 +6201,7 @@ function applyFoeRangeDebuff(
   battle: import('./state').BattleState,
   shipIds: readonly string[],
 ): void {
-  const r = foeRangeDebuffOf(state, ctx, shipIds)
+  const r = meFoeRangeDebuffOf(state, ctx, shipIds)
   if (r > 0) battle.meFoeRangeDebuff = r
   else delete battle.meFoeRangeDebuff
 }
@@ -6193,6 +6225,82 @@ function foeRangeWithDebuff(baseRangeM: number, buffMul: number, r: number): num
   if (baseRangeM < FOE_RANGE_DEBUFF_FLOOR_M) return buffMul > 1 ? Math.round(baseRangeM * buffMul) : baseRangeM
   const net = Math.max(0, buffMul - r)
   return Math.round(Math.max(FOE_RANGE_DEBUFF_FLOOR_M, baseRangeM * net))
+}
+
+/* ═══════════ 敌方「射程压制」（H 族墨潮干扰舰 · 2026-09-24 船长）═══════════
+ * 船长原话：「**拥有和我方电子舰同款降低敌人射程的效果，降低效果为降低50%射程，
+ * 可以和我方电子舰的效果相互抵消（假设为我方为1艘电子舰，对方1搜墨潮干扰舰，
+ * 那么最终效果是我方射程-35%）**」。
+ *
+ * 口径 = 我方那套（上面的电子舰）的**镜像**，方向相反：
+ * - **敌方多艘乘法合成**：`r_e = 1 − Π(1 − vᵢ)`（1 艘 50% · 2 艘 **75%**）；
+ * - **与我方削减敌舰射程做加法**（互相抵消）：净削减率 = `r_我方 + r_敌方`；
+ * - **只压制"我方武器的最远射程"**（近界不动），带**与我方那套同一道地板**（基础 <3000m 不削、
+ *   削后下限 3000m）——口径一致，玩家在两侧看到的是同一把尺。
+ *
+ * 验算（船长例）：我方 1 艘电子舰（15%）＋ 敌方 1 艘干扰舰（50%）⇒ 净 0.35 ⇒ 我方射程 **×0.65**。
+ *
+ * ⚠ **只由敌方干扰舰驱动**：我方没有同类"自削"来源（电子舰是削敌人），故净削减率里
+ * `r_我方` 那一项就是"我方的战果被抵消掉多少"——两者相加后各自的效果可能被完全抵掉。
+ * ⚠ 落点 = `battle.foeMeRangeDebuff`（运行态、不随档）+ 每拍重建我方规格时施加（与捕获网同款三处调用）。
+ */
+
+/** 本波敌阵里挂 `foeRangeDebuffPct` 的**编制数**（含未入场/已阵亡单位 ⇒ 与 hpShare 口径一致）。 */
+export function foeJammerCountOf(foes: readonly UnitSpec[]): number {
+  return foes.reduce((n, f) => n + ((f.foeRangeDebuffPct ?? 0) > 0 ? 1 : 0), 0)
+}
+
+/** 敌阵的合成削减率 `r_e = 1 − Π(1 − vᵢ)`（无干扰舰 ⇒ 0） */
+export function foeRangeDebuffOf(foes: readonly UnitSpec[]): number {
+  let remain = 1
+  let r = 0
+  for (const f of foes) {
+    const v = f.foeRangeDebuffPct ?? 0
+    if (v > 0 && v < 1) {
+      remain *= 1 - v
+      r = 1 - remain
+    }
+  }
+  return r
+}
+
+/**
+ * **我方武器的最终射程倍率**（净削减率 = 我方电子舰 + 敌方干扰舰，互相抵消）——
+ * 每拍写进 `battle.foeMeRangeDebuff`，由 `applyMeJammerDebuff` 施加到每份我方规格上。
+ */
+export function meRangeMulOf(battle: import('./state').BattleState, foes: readonly UnitSpec[]): number {
+  const enemy = foeRangeDebuffOf(foes)
+  if (enemy <= 0) return 1
+  // **只由敌方干扰舰决定**：攻击者的射程削减只作用于**被攻击方**，
+  // 我方的电子舰（`battle.meFoeRangeDebuff`）是"削敌人"，不会反过来削自己。
+  // "互相抵消"的正解 = 敌方净削减 = `enemy − 我方`（见 `foeRangeNetMulOf`），作用在**敌方那侧**。
+  return Math.max(0.1, 1 - Math.min(0.9, enemy))
+}
+
+/**
+ * **敌方射程的「互相抵消」净削减率**（船长 2026-09-24：「可以和我方电子舰的效果相互抵消」）：
+ * `净削减 = max(0, 敌方干扰合成率 − 我方电子舰合成率)` —— 船长的验算：
+ * 我方 1 艘电子舰（15%）＋ 敌方 1 艘干扰舰（50%）⇒ **敌方净削减 35%**（我方那 15% 被抵掉）。
+ * 消费方 = 敌方射程的那条链路（`foeRangeWithDebuff` 的 `r` 参数）。
+ */
+export function foeRangeNetDebuffOf(
+  playerDebuff: number,
+  foes: readonly UnitSpec[],
+): number {
+  return Math.max(0, foeRangeDebuffOf(foes) - Math.max(0, playerDebuff))
+}
+
+/**
+ * **把我方武器的射程按净压制率缩小**（只动最远射程；近界不动、下限 1m）。
+ * 与 `applyMeWebDebuff` 同款"只改这一份规格"的做法 ⇒ 三处调用（开战建档 / 每拍重建 / 视图）。
+ */
+export function applyMeJammerDebuff<T extends UnitSpec>(spec: T, rangeMul: number): T {
+  if (rangeMul >= 1 || !Number.isFinite(rangeMul)) return spec
+  spec.weapons = spec.weapons.map((w) => ({
+    ...w,
+    maxRangeM: Math.max(2, Math.round(w.maxRangeM * rangeMul)),
+  }))
+  return spec
 }
 
 /** **受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）。
@@ -7603,7 +7711,7 @@ function steadyPreview(
   const steady =
     steadyPref !== null
       ? clamp(bal.minDistanceM, battleOpenM(me, foes, bal), steadyPref)
-      : steadyDistance(me, foes, bal, bal.desireBandMid, foeRangeDebuffOf(state, ctx, [shipId]))
+      : steadyDistance(me, foes, bal, bal.desireBandMid, meFoeRangeDebuffOf(state, ctx, [shipId]))
 
   const meHpTotal = me.hp.s + me.hp.a + me.hp.h
 

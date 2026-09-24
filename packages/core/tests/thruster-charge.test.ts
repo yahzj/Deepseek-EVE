@@ -524,7 +524,8 @@ describe('敌冲锋（2026-09-10 定资格；2026-09-11 改"到达解除"；**20
     // 冲锋件只给 C 族**舰级**与洞内三张 A 族卡**条目**（2026-09-19：电子舰的舰级例外取消
     // ⇒ 除 C 族外，任何舰级带冲锋件都判红）
     for (const s of FOE_SHIPS) {
-      if (s.family === 'C') continue
+      // 2026-09-24 船长令「墨潮突击舰添加A族洞内电子舰同款网子和冲锋」⇒ H 族（墨潮帮）也是舰级级带件
+      if (s.family === 'C' || s.family === 'H') continue
       expect(resolveFoeMounts(s.mounts).foeCanCharge ?? false, `${s.id} 舰级不得带冲锋件`).toBe(false)
     }
     /**

@@ -160,6 +160,44 @@ export const FOE_DRONE_C_SPORE: FoeDroneDef = {
   reloadMs: 4400, // 照我方节奏（攻坚机档）
 };
 
+/**
+ * **H 族「墨潮重袭机」**（船长 2026-09-24：「**还拥有1架攻坚无人机，该船的特点是虽然只有一个无人机，
+ * 但是无人机属性极高**」＋「拥有2架…和墨潮战列巡洋舰一样，无人机属性极高」）。
+ *
+ * 定位 = **少而极强**（与 G 族"一架便宜、一群致命"正相反）：单架就顶得上一个小队的输出。
+ * 数值全按"极高"落在既有四型之上：
+ * - **三层血 180**（我方制式攻坚机 194 / C 族孢群机 88 / E 警戒机 55 / G 蜂群机 26）⇒ 只比我方
+ *   最厚的攻坚机略薄，但**抗性更高**（三层三系 0.25）＋ **闪避 0.12**；
+ * - **单发 60**（我方制式攻坚机 12 / E 警戒机 25）⇒ 一架当 5 架用，兑现船长的"属性极高"；
+ * - **命中 0.85 ＋ 不随距离衰减**、**射程 7,000m**（与 G 蜂群同档的远距压制）、装填 **3,600ms**
+ *   （比制式 4,400 快 ⇒ 少架数下仍持续输出）；
+ * - **伤害系 = 爆炸**（与 H 族"导弹远程攻击"的船体武器同源：鱼雷 / 导弹 / 重袭机一条线）。
+ *
+ * ⚠ 它是**敌方机群**：我方只有带防空属性的武器（近防炮）能打它 ⇒ 单架 180 血 + 0.12 闪避会让
+ * "打不打得掉"成为读数项；若实测偏硬，按 `content:check` 的机群契约调三层血或闪避（改一处即全族生效）。
+ */
+export const FOE_DRONE_H_HEAVY: FoeDroneDef = {
+  id: 'foe-drone-h-heavy',
+  name: '墨潮重袭机',
+  family: 'H',
+  role: 'assault', // 攻坚机档：厚甲重击、闪避最低（本机型在"最低"档里仍给了 0.12）
+  defense: {
+    shieldHp: 45,
+    armorHp: 65,
+    hullHp: 70, // 三层共 **180**
+    shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+    armorResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+    hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+    evasion: 0.12,
+  },
+  dmg: 60, // 「属性极高」的单发（我方制式攻坚机 12 的 5 倍）
+  damageType: 'explosive', // 与 H 族导弹线同源
+  hitRate: 0.85,
+  falloff: 1, // 攻坚机档：命中不随距离衰减
+  maxRangeM: 7000, // 远距压制（与 G 蜂群同档）
+  reloadMs: 3600, // 少架数下仍能持续输出
+}
+
 /** 敌机机型表（按 id 索引；`content:check` 校验舰级引用的机型必须在此） */
 export const FOE_DRONES: readonly FoeDroneDef[] = [
   FOE_DRONE_E_ALERT,
@@ -167,4 +205,5 @@ export const FOE_DRONES: readonly FoeDroneDef[] = [
   FOE_DRONE_G_BEE_EXP,
   FOE_DRONE_G_BEE_PLA,
   FOE_DRONE_C_SPORE,
+  FOE_DRONE_H_HEAVY, // 2026-09-24 船长：H 族「墨潮重袭机」（单架属性极高；战列巡洋舰 ×1 / 入侵母舰 ×2）
 ];

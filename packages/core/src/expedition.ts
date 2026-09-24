@@ -41,6 +41,7 @@ import {
   desiredRangeFor,
   foeDesiredRange,
   foeRangeDebuffOf,
+  meFoeRangeDebuffOf,
   persistFleetHullDamage,
   refundAmmo,
   refundRepairKitsAll,
@@ -799,7 +800,7 @@ function settleBattleRetreat(
   const foeTypicalRangeM =
     meSpec && foesNow.length > 0
       ? // 电子舰削减后敌人会主动压近（船长 2026-09-18）⇒ 战报这条读数与引擎同源
-        foeDesiredRange(meSpec, foesNow, ctx.balance.battle, foeRangeDebuffOf(state, ctx, [state.shipId]))
+        foeDesiredRange(meSpec, foesNow, ctx.balance.battle, meFoeRangeDebuffOf(state, ctx, [state.shipId]))
       : 0
 
   // 脱身那一口（2026-09-11 船长：「希望能将其应用到战斗中撤退」）：
