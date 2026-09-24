@@ -965,6 +965,17 @@ function StarMap({
   for (const a of engine.anomalies) {
     bountyByGalaxy.set(a.galaxyId, (bountyByGalaxy.get(a.galaxyId) ?? 0) + 1)
   }
+
+  /**
+   * **周末入侵的被占星系**（2026-09-23 船长令「继续补」）：星图上给被占星系加一圈红环 + 旗标。
+   * 只在活动存在时收集（**仅调试模式可见**由 core 的 `WEEKEND_DEBUG_ONLY` 保证：非调试模式压根不会有活动）。
+   */
+  const invasionIds: Set<string> = (() => {
+    const ev = state.weekendEvent
+    if (!ev || ev.endedAtWallMs !== undefined) return new Set<string>()
+    return new Set<string>([ev.coreId, ...ev.peripheryIds])
+  })()
+  const invasionCoreId = state.weekendEvent?.endedAtWallMs === undefined ? state.weekendEvent?.coreId : undefined
   /* 赏金任务（当日板）按星系归组（2026-09-10 船长：普通赏金任务也要在星图上显示——
      样式与"未探索剪影上的悬赏情报徽标"同款，并在对应星系上给出剩余时间）。
      任务自带 galaxyId（刷出时绑定窝点所在星系）；倒计时 = 当日板剩余（每天本地 0 点整板替换，
@@ -1363,6 +1374,15 @@ function StarMap({
               }}
               onPointerDown={(e) => onPointerDown(g.id, e)}
             >
+              {/* 周末入侵：被占星系**红环 + 旗标**（核心另有 ★）——画在节点最底层，不挡点击 */}
+              {invasionIds.has(g.id) ? (
+                <g className="app-map-invasion" data-tip={tr('ui.weekend.018')}>
+                  <circle cx={p.x} cy={p.y} r={15} className="app-map-invasion-ring" />
+                  <text x={p.x} y={p.y - 18} className="app-map-invasion-tag">
+                    {g.id === invasionCoreId ? '★' : '⚑'}
+                  </text>
+                </g>
+              ) : null}
               {/* 势力范围光晕（2026-09-11 船长：星系后方对应颜色的发光＝这块是这个势力的辐射范围）——
                   静态径向渐变、低透明度；画在圆点之前（压住航线但不压节点），只有敌族模式且该星系有敌情时渲染 */}
               {primaryFam ? (

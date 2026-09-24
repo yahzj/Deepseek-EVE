@@ -3308,6 +3308,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.015": { zh: "当前无法挑战旗舰：需先打通核心。", en: "The flagship cannot be challenged yet: the core must be broken through first." },
   "ui.weekend.016": { zh: "入侵旗舰挑战", en: "Invasion flagship challenge" },
   "ui.weekend.017": { zh: "挑战旗舰", en: "Challenge flagship" },
+  "ui.weekend.018": { zh: "被入侵舰队占领：悬赏已换成入侵舰队、遇袭更频繁；夺回后恢复", en: "Occupied by invader fleets: bounties are invader fleets and ambushes are frequent; reclaim to restore" },
   "ui.Ironman.001": { zh: "铁人 · 代次 #{p1}", en: "Iron Man · generation #{p1}" },
   "ui.Ironman.002": { zh: "开启铁人模式", en: "Enable Iron Man" },
   "ui.Ironman.003": { zh: "确认开启", en: "Confirm enable" },
