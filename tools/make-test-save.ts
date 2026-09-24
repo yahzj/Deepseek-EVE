@@ -2896,6 +2896,18 @@ function injectWormholeEwar(state: GameState): string[] {
 function injectBattleship(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
+  /**
+   * ⚠ **必须剥掉铁人标记**（2026-09-24 船长报障：「你存档搞的是铁人模式，我无法导入」）：
+   * 生成器是**基于真档复制注入**的，而船长的真档是**铁人档**（`ironman.on = true`）⇒ 造出来的档
+   * 也带铁人标记；导入时被铁人闸门拦下（`ironmanLoadVerdict`：**来档是铁人档 + 代次落后 ⇒ 拒绝**，
+   * 见 `engine.ironmanLoadCheck`）—— 船长根本导不进来。
+   * ⇒ 测试档一律**转成普通档**（`ironman` 缺省 = 普通档、代次 0、导入放行）。
+   * 代价：导入它会**离开铁人状态**（引擎既有语义：铁人标记以"来档"为准）——测完用游戏内备份恢复即可。
+   */
+  if (state.ironman !== undefined) {
+    delete state.ironman
+    notes.push('**已把本档转为普通档**（剥掉铁人标记 `ironman`）——否则铁人闸门会拒绝导入；导入它会离开铁人状态，测完用备份恢复')
+  }
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
   state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
