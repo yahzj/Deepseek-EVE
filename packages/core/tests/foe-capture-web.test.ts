@@ -56,19 +56,20 @@ describe('劫掠电子舰 · 舰级与挂载件', () => {
     expect(s.mounts, '劫掠电子舰舰级不得带挂载件').toBeUndefined()
   })
 
-  it('编成：头目×1 + 电子舰×1 + 快艇×2（单位数仍 4）· 两件挂载写在电子舰条目上', () => {
+  it('编成：头目×1 + 电子舰×1 + 快艇×2（单位数仍 4）· 三件挂载写在电子舰条目上', () => {
     const card = ctx.anomalies.get(CARD)!
     expect((card.ships ?? []).map((s) => [s.ship.id, s.count ?? 1])).toEqual([
       ['foe-pirate-warlord', 1],
       [EWAR, 1],
       ['foe-pirate-skiff', 2],
     ])
-    // 有效挂载是「条目 ?? 舰级」（替换不是叠加）⇒ 条目必须两件都写
+    // 有效挂载是「条目 ?? 舰级」（替换不是叠加）⇒ 条目必须逐件都写
+    // （2026-09-24 起为三件：姿态陀螺仪也挂在这一条上——船长「电子舰也要挂」）
     const ew = (card.ships ?? []).find((s) => s.ship.id === EWAR)!
-    expect(ew.mounts).toEqual(['foe-mount-charge-pirate', 'foe-mount-capture-web'])
+    expect(ew.mounts).toEqual(['foe-mount-charge-pirate', 'foe-mount-capture-web', 'foe-mount-gyro-stabilizer'])
   })
 
-  it('规格层：队伍里那一条带着捕获网参数与冲锋资格（闪避也走舰级覆写）', () => {
+  it('规格层：队伍里那一条带着捕获网参数与冲锋资格（闪避 = 舰级覆写 ＋ 姿态陀螺仪加算）', () => {
     const card = ctx.anomalies.get(CARD)!
     const derived = wormholeDerivedAnomaly(ctx, card, { depth: 4, kind: 'node', waves: 1 })
     const ew = createFoeSpecs(derived, bal).filter((f) => f.name === '劫掠电子舰')
@@ -76,8 +77,11 @@ describe('劫掠电子舰 · 舰级与挂载件', () => {
     expect(ew[0]!.foeCaptureWeb).toEqual({ slowMul: 0.1, noThruster: true, noEvasion: true, rangeDownM: 500 })
     expect(ew[0]!.foeCanCharge).toBe(true)
     expect(ew[0]!.foeChargeMul).toBe(1.6)
-    expect(ew[0]!.evasion).toBe(0.3)
-    expect(ew[0]!.foeMountNames).toEqual(['劫掠冲锋推进器', '劫掠捕获网'])
+    // 2026-09-24 船长：「A族添加一个挂载件：姿态陀螺仪：增加10%闪避」＋「电子舰也要挂」
+    // ⇒ 舰级覆写 0.30 加算 +0.10 = **0.40**
+    expect(ew[0]!.foeEvasionBonusAdd).toBe(0.1)
+    expect(ew[0]!.evasion).toBeCloseTo(0.4, 10)
+    expect(ew[0]!.foeMountNames).toEqual(['劫掠冲锋推进器', '劫掠捕获网', '姿态陀螺仪'])
   })
 })
 

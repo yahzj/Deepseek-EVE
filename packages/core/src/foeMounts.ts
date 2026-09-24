@@ -9,8 +9,12 @@
  * 放 core 就能让"解析挂载 → 写运行时字段"在**同一处**完成，数据侧只写 id（`FoeShipDef.mounts` /
  * `FoeShipSlot.mounts`）。同类先例：`core/lairs.ts` 的 `FOE_LAIR_GEAR`（敌族掉落池表）。
  *
- * **一件一类效果**（`charge` / `droneRangeOnHit` / `gunRangeOnHit` / `web` / `supportCall` 五选一）：
- * `content:check` 会拦混写。
+ * **一件一类效果**（`charge` / `droneRangeOnHit` / `gunRangeOnHit` / `web` / `supportCall` /
+ * `evasionBonus` / `repairPulse`）：⚠ **2026-09-24 更正** —— 这条**只约束我方支援件**
+ * （`ModuleDef`，`content-check` 的"恰好一类效果字段"），**敌方挂载件可以一件带多类**
+ * （实况：A 族深层战团那条「劫掠电子舰」同时挂 `chargePirate` ＋ `captureWeb`）。
+ * 多件同类相撞时按下方 `resolveFoeMounts` 的"**后写覆盖先写**"聚合。
+ * `content:check` 会拦"未知 id"与各件的归属面。
  * ⚠ **挂载位一律"条目级"**（2026-09-19 船长：「**海盗电子舰的冲锋也移除，只在洞内单独挂载**」）——
  * 冲锋件全部写在卡的编成条目上（三条 A 族舰级洞外也在用；电子舰也照此收口），舰级只留
  * D/E 的受击增程件。「洞外零冲锋」的守卫因此按**有效挂载**（`slot.mounts ?? ship.mounts`，
@@ -130,20 +134,28 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   [FOE_MOUNT_IDS.gyroStabilizer]: {
     id: FOE_MOUNT_IDS.gyroStabilizer,
     name: '姿态陀螺仪',
+    en: 'Attitude Gyro',
     evasionBonus: { add: 0.1 },
     note:
-      '船长 2026-09-24：「希望在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避」＋同日追问裁决' +
-      '「加算 +10 个百分点」与「电子舰也要挂」⇒ A 族洞内条目全挂（含劫掠电子舰：0.30 → 0.40；' +
-      '其余 0.22 → 0.32）。只写虫洞卡的条目，星图悬赏/低安遭遇不引用。',
+      '船长 2026-09-24：「我调整了A族的闪避，并且希望在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避」' +
+      '＋「我的改动是A给A族除电子舰外的其他敌人加10%闪避」＋「你先提高A族闪避，提高后再挂载，电子舰也要挂」；' +
+      '追问裁定 = 加算 +10 个百分点（甲）、作用面 = 虫洞内带（乙：只挂洞内卡条目）。' +
+      '⚠ 电子舰也要挂 ⇒ 洞内 A 族：劫掠电子舰 0.30 → 0.40、其余（2026-09-24 提档后 0.22）→ 0.32；' +
+      '洞外（低安遭遇 / 悬赏）同一批舰级不挂，因为条目级挂载只影响写了 mounts 的那条编成。' +
+      '设计稿 docs/design/foe-mounts-20260924.md。',
   },
   [FOE_MOUNT_IDS.hullRepair]: {
     id: FOE_MOUNT_IDS.hullRepair,
     name: '船体修理装置',
-    repairPulse: { everyMs: 5000, armor: 5, hull: 5 },
+    en: 'Hull Repair Unit',
+    repairPulse: { everyMs: 5_000, armor: 5, hull: 5 },
     note:
-      '船长 2026-09-24：「给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成」' +
-      '＋追问裁决「乘层威胁倍率」且归一基准「不改动」⇒ 实数 = 5 × k，k = 该层威胁 ÷ 45' +
-      '（层 1 = ×1.00 · 层 7 ≈ ×1.97 · 层 10 ≈ ×2.77）；夹到满值、不回超。只写虫洞卡的条目。',
+      '船长 2026-09-24：「给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成。」；' +
+      '追问裁定 = 修理量乘层威胁倍率（甲；归一基准「不改动」= 层 1 的 k = 1.00）⇒ 实数 = 5 × k。' +
+      'k = 该层本次实际威胁 ÷ 45（combat.FOE_REPAIR_THREAT_REF）⇒ 层 1 = 1.00 · 层 7 ≈ 1.97 · ' +
+      '层 10 ≈ 2.77；夹到满值、不回超；层末守卫另吃 ×1.2 的威胁倍率（wormholeFoeThreat）⇒ k 随之更高。' +
+      '只挂 G 族洞内卡条目；与「敌方后勤舰」（FoeShipDef.repairPct：折自己 DPS 去修队友）不是一套。' +
+      '设计稿 docs/design/foe-mounts-20260924.md。',
   },
 }
 
@@ -163,22 +175,33 @@ export interface ResolvedFoeMounts {
   foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /** **支援呼叫装置**参数（原样带给单位；判定/锁存/补偿口径见 `FoeMountDef.supportCall`） */
   foeSupportCall?: { delaySec: number; threatMul: number }
-  /** **姿态陀螺仪**：该舰闪避 +本值（加算；消费方夹上限 0.9）——见 `FoeMountDef.evasionBonus` */
+  /**
+   * **姿态陀螺仪的闪避加数**（原样带给单位；消费方在建档时加进 `evasion` 并夹 0.9）。
+   * ⚠ **多件相撞取「加和」**（2026-09-24 与一号的定义层合并时采用的口径：两件就是 +0.20）——
+   * 与其余单值效果（冲锋倍率 / 射程倍率）的"后写覆盖"不同，闪避是**可以叠加**的加数。
+   */
   foeEvasionBonusAdd?: number
-  /** **船体修理装置**基数（消费方乘该层威胁倍率 k；夹满值）——见 `FoeMountDef.repairPulse` */
+  /** **船体修理装置的脉冲参数**（原样带给单位；`k` 由建档侧按本层威胁现算，见 `FoeMountDef.repairPulse`） */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number }
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
+  /**
+   * **同序的展示名**（与 `names` 逐项对齐；每项 = `[中文名, 英文名]`）——
+   * 供数据层的 `overlayCardFoeMounts` 按语言挑一份（2026-09-24 加）。
+   * 没有 `en` 的件**两项都给中文名**（英文界面回退中文，与既有一致）。
+   */
+  namePairs: Array<readonly [string, string]>
   /** 未知 id（体检用；引擎侧忽略） */
   unknown: string[]
 }
 
 /**
  * **解析挂载件 → 运行时字段**（单点：建档与体检同源）。
- * 多件同类取**最后一件**（后写覆盖先写）；未知 id 不生效、只登记在 `unknown` 里。
+ * 多件同类相撞：**闪避加数取「加和」**（可叠加）、其余效果取**最后一件**（后写覆盖先写）；
+ * 未知 id 不生效、只登记在 `unknown` 里。`names` 与 `namePairs` 保持挂载顺序、逐项对齐。
  */
 export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFoeMounts {
-  const out: ResolvedFoeMounts = { names: [], unknown: [] }
+  const out: ResolvedFoeMounts = { names: [], namePairs: [], unknown: [] }
   for (const id of ids ?? []) {
     const def = foeMountOf(id)
     if (!def) {
@@ -186,6 +209,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
       continue
     }
     out.names.push(def.name)
+    out.namePairs.push([def.name, def.en ?? def.name])
     if (def.charge) {
       out.foeCanCharge = true
       out.foeChargeMul = def.charge.mul
@@ -195,6 +219,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.gunRangeOnHit) out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul
     if (def.web) out.foeCaptureWeb = { ...def.web }
     if (def.supportCall) out.foeSupportCall = { ...def.supportCall }
+    // **加和**（与一号定义层合并后的口径）：两件陀螺仪 = +0.20，上限由建档侧夹 0.9
     if (def.evasionBonus) out.foeEvasionBonusAdd = (out.foeEvasionBonusAdd ?? 0) + def.evasionBonus.add
     if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
   }

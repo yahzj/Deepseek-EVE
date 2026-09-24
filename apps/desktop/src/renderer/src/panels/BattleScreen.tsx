@@ -45,7 +45,7 @@ import {
   fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
-import { tr, cmdText } from '../i18n/locale'
+import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -825,9 +825,13 @@ const meSpeedRef = useRef(200)
             ) : null}
             {/* **双方残余**（新增三行之二）：逐舰 盾/甲/结构（当前/上限）+ 敌方残余 */}
             {myUnitsText ? <div className="app-bts-report-stats">{tr("ui.BattleScreen.018")} {myUnitsText} ｜ {foeText}</div> : null}
-            {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——没挂件就整行不显示 */}
+            {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——没挂件就整行不显示；
+                2026-09-24 起按当前语言取一列（`foeMountNamePairs` 与 `foeMounts` 同序；缺省回落中文） */}
             {br && br.foeMounts && br.foeMounts.length > 0 ? (
-              <div className="app-bts-report-stats">{tr("ui.BattleScreen.019")}{br.foeMounts.join(tr("ui.MatterTechTab.017"))}</div>
+              <div className="app-bts-report-stats">
+                {tr("ui.BattleScreen.019")}
+                {mountNamesTextOf(br.foeMounts, br.foeMountNamePairs).join(tr("ui.MatterTechTab.017"))}
+              </div>
             ) : null}
             {/* **弹药消耗**（新增三行之三）：按弹种；0 的弹种不列 */}
             {ammoSeg ? <div className="app-bts-report-stats">{tr("ui.BattleScreen.020")}{ammoSeg}</div> : null}
@@ -2712,10 +2716,17 @@ const meSpeedRef = useRef(200)
                 <i /> {tr("ui.BattleScreen.060")}{foeCharging > 1 ? ` ×${foeCharging}` : ''}
               </span>
             ) : null}
-            {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——有才占位，悬停看全名 */}
+            {/* **敌方挂载件**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——有才占位，悬停看全名；
+                2026-09-24 起按当前语言取一列（同 `foeMountNamePairs`；缺省回落中文名） */}
             {arcs.foeMounts && arcs.foeMounts.length > 0 ? (
-              <span className="app-bts-chip is-foe" title={tr("ui.BattleScreen.091", { p1: arcs.foeMounts.join(tr("ui.MatterTechTab.017")) })}>
-                <i /> {tr("ui.BattleScreen.061")}{arcs.foeMounts.join(tr("ui.MatterTechTab.017"))}
+              <span
+                className="app-bts-chip is-foe"
+                title={tr("ui.BattleScreen.091", {
+                  p1: mountNamesTextOf(arcs.foeMounts, arcs.foeMountNamePairs).join(tr("ui.MatterTechTab.017")),
+                })}
+              >
+                <i /> {tr("ui.BattleScreen.061")}
+                {mountNamesTextOf(arcs.foeMounts, arcs.foeMountNamePairs).join(tr("ui.MatterTechTab.017"))}
               </span>
             ) : null}
             {ammoChips.length > 0 ? (

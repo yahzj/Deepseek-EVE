@@ -53,17 +53,21 @@ describe('洞内 A 族挂载件（端到端）', () => {
   it('开战首波即登记敌方挂载件（战报/悬停同源）', () => {
     const { battle } = wormholeNode(['mod-turret-kin-2'])
     expect(battle.wormhole?.cardId).toBe('wh-pirate-scout')
-    expect(battle.foeMounts).toEqual(['劫掠冲锋推进器'])
+    // 2026-09-24 船长：「在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避」⇒ 首波名下多一件
+    expect(battle.foeMounts).toEqual(['劫掠冲锋推进器', '姿态陀螺仪'])
   })
 
-  it('规格层：A 族海盗 ×1.6 / 冷却 30 秒（挂载件解析到单位）', () => {
+  it('规格层：A 族海盗 ×1.6 / 冷却 30 秒（挂载件解析到单位）＋ 姿态陀螺仪 +10pp 闪避', () => {
     const base = ctx.anomalies.get('wh-pirate-scout')!
     const derived = wormholeDerivedAnomaly(ctx, base, { depth: 1, kind: 'node', waves: 1 })
     for (const f of createFoeSpecs(derived, bal)) {
       expect(f.foeCanCharge).toBe(true)
       expect(f.foeChargeMul).toBe(1.6)
       expect(f.foeChargeCooldownMs).toBe(30_000)
-      expect(f.foeMountNames).toEqual(['劫掠冲锋推进器'])
+      expect(f.foeMountNames).toEqual(['劫掠冲锋推进器', '姿态陀螺仪'])
+      // 船级缺省 0.12 → 2026-09-24 提档 0.22 → 陀螺仪加算 +0.10 = 0.32
+      expect(f.foeEvasionBonusAdd).toBe(0.1)
+      expect(f.evasion).toBeCloseTo(0.32, 10)
     }
   })
 

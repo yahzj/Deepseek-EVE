@@ -13,7 +13,8 @@
  * P2 后续批次追加（`localizeCtx` 里没登记的目录 ⇒ 原样中文）。
  * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
  */
-import type { SimContext } from '@whale/core'
+import type { FoeMountId, SimContext } from '@whale/core'
+import { resolveFoeMounts } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
 import { SHIP_BLUEPRINTS } from './shipBlueprints'
 
@@ -1182,8 +1183,41 @@ function cardFoesOf<T extends { ships?: readonly { ship: { id: string; name: str
   return changed ? { ...def, ships: mapped } : null
 }
 
+/**
+ * **卡片条目上的「敌方挂载件」名按语言覆盖**（2026-09-24 加 · 船长「给G族添加挂载件：船体修理装置」批）。
+ *
+ * 为什么要单开一层：挂载件的**目录表在 core**（`FOE_MOUNTS`，因为建档路径拿不到 `ctx`，见 `core/foeMounts.ts`
+ * 头注），拿不到 data 包的译名表；但 `Id` 与**双语名对**（`resolveFoeMounts(...).namePairs`）
+ * 都在 core 里现成 ⇒ 这里按 `slot.mounts ?? ship.mounts`（**与引擎同一条优先级**）把该条目的
+ * `mounts` **换成那一侧的名字数组**。
+ *
+ * ⚠ **只换"名字数组"、不动 `mounts` 的判据**：引擎侧读的是**卡定义本身**
+ * （`createFoeSpecsFromShips` 用 `u.slot.mounts ?? ship.mounts`），本层产出的是**界面用的副本**
+ * （`localizeCtx` 的 `anomalies` 覆盖）⇒ 改语言不会改战斗行为（与 `cardFoesOf` 同款）。
+ * ⚠ 没有英文名的件**回退中文名**（core 目录里 `en` 缺省 ⇒ 两项都是中文）——既有八件现状，待补。
+ */
+function cardFoeMountsOf<T extends { ships?: readonly { ship: { mounts?: readonly FoeMountId[] }; mounts?: readonly FoeMountId[] }[] }>(
+  def: T,
+  locale: Locale,
+): T | null {
+  if (locale === 'zh') return null
+  const slots = def.ships
+  if (!slots || slots.length === 0) return null
+  let changed = false
+  const mapped = slots.map((slot) => {
+    // **与引擎同一条优先级**：条目 `mounts` ?? 舰级 `ship.mounts`（条目**替换**舰级，不是叠加）
+    const ids = slot.mounts ?? slot.ship.mounts
+    if (!ids || ids.length === 0) return slot
+    // ⚠ **不改 `mounts`**：引擎在建档时读它（`createFoeSpecsFromShips`）且只认 id；
+    // 这里只**附一份双语名对**（与 `mounts` 下标对齐），显示层按语言挑一列 ⇒ 语言切换不动战斗行为。
+    changed = true
+    return { ...slot, foeMountNamePairs: resolveFoeMounts(ids).namePairs }
+  })
+  return changed ? { ...def, ships: mapped } : null
+}
+
 /** Map 版（`ctx.anomalies` 一类）：逐卡嵌套覆盖 */
-export function overlayCardFoes<T extends { ships?: readonly { ship: { id: string; name: string } }[] }>(
+export function overlayCardFoes<T extends { ships?: readonly { ship: { id: string; name: string; mounts?: readonly FoeMountId[] }; mounts?: readonly FoeMountId[] }[] }>(
   cards: ReadonlyMap<string, T>,
   en: EnTable,
   locale: Locale,
@@ -1191,7 +1225,9 @@ export function overlayCardFoes<T extends { ships?: readonly { ship: { id: strin
   if (locale === 'zh') return cards
   let out: Map<string, T> | null = null
   for (const [id, def] of cards) {
-    const next = cardFoesOf(def, en)
+    // 两层叠加：先换舰名（英文表），再换该条目上的**挂载件名**（core 目录的双语名对）
+    const named = cardFoesOf(def, en) ?? def
+    const next = cardFoeMountsOf(named, locale) ?? (named === def ? null : named)
     if (!next) continue
     out ??= new Map(cards)
     out.set(id, next)
@@ -1200,7 +1236,7 @@ export function overlayCardFoes<T extends { ships?: readonly { ship: { id: strin
 }
 
 /** 数组版（引擎目录 `ANOMALIES_FLAVORED` 一类）：逐卡嵌套覆盖 */
-export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: string; name: string } }[] }>(
+export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: string; name: string; mounts?: readonly FoeMountId[] }; mounts?: readonly FoeMountId[] }[] }>(
   list: readonly T[],
   en: EnTable,
   locale: Locale,
@@ -1208,7 +1244,9 @@ export function overlayCardFoesList<T extends { ships?: readonly { ship: { id: s
   if (locale === 'zh') return list
   let out: T[] | null = null
   for (let i = 0; i < list.length; i++) {
-    const next = cardFoesOf(list[i]!, en)
+    const def = list[i]!
+    const named = cardFoesOf(def, en) ?? def
+    const next = cardFoeMountsOf(named, locale) ?? (named === def ? null : named)
     if (!next) continue
     out ??= [...list]
     out[i] = next

@@ -3322,6 +3322,58 @@ for (const m of MODULES) {
         }
       }
       if (unknown.length > 0) bad.push(`未知挂载件 id：${unknown.join(' · ')}`)
+      /**
+       * ⑤ **2026-09-24 两件新挂载件的归属面**（船长：「**在虫洞内，A族添加一个挂载件：姿态陀螺仪：
+       *    增加10%闪避**」＋「**给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成**」
+       *    ＋「**电子舰也要挂**」）——三件事，全部按**有效挂载**（条目 `mounts` ?? 舰级 `ship.mounts`，
+       *    与引擎同一条优先级）判：
+       *    ① **洞内 A 族卡**（`wh-pirate-*`）**每条编成**都必须挂 `gyroStabilizer`（含劫掠电子舰那条）；
+       *    ② **洞内 G 族卡**（`wh-exile-*`）**每条编成**都必须挂 `hullRepair`；
+       *    ③ **洞外零这两件**——A 族那批舰级洞外（低安遭遇 / 悬赏）也在用，挂舰级就会连洞外一起加闪避；
+       *       G 族同理（残响残舰 / 亡军战列舰都上过星图侧卡）。
+       *    ⚠ 为什么按**卡 id 前缀**认"洞内卡"：洞内十五张卡的 id 一律 `wh-` 开头，且它们全是 hidden；
+       *       用前缀判比维护第二份清单更难漂移（清单漂了没人发现，前缀漂了立刻判红）。
+       */
+      {
+        const whCards = ANOMALIES_FLAVORED.filter((a) => a.id.startsWith('wh-'))
+        for (const a of whCards) {
+          const isA = a.foeFamily === 'A'
+          const isG = a.foeFamily === 'G'
+          if (!isA && !isG) continue
+          for (const sl of a.ships ?? []) {
+            const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
+            if (isA) {
+              if (eff.foeEvasionBonusAdd === undefined) {
+                bad.push(`洞内 A 族卡 ${a.id} 的 ${sl.ship.name} 没挂姿态陀螺仪（船长：「A族添加一个挂载件：姿态陀螺仪」＋「电子舰也要挂」）`)
+              }
+            }
+            if (isG && eff.foeRepairPulse === undefined) {
+              bad.push(`洞内 G 族卡 ${a.id} 的 ${sl.ship.name} 没挂船体修理装置（船长：「给G族添加挂载件：船体修理装置」）`)
+            }
+            if (!isA && eff.foeEvasionBonusAdd !== undefined) {
+              bad.push(`非 A 族洞内卡 ${a.id} 的条目 ${sl.ship.name} 挂了姿态陀螺仪——该件只允许 A 族洞内条目`)
+            }
+            if (!isG && eff.foeRepairPulse !== undefined) {
+              bad.push(`非 G 族洞内卡 ${a.id} 的条目 ${sl.ship.name} 挂了船体修理装置——该件只允许 G 族洞内条目`)
+            }
+          }
+        }
+        // ③ 洞外（星图侧一切卡 + 一切舰级）零这两件
+        const whIds = new Set(whCards.map((a) => a.id))
+        for (const s of FOE_SHIPS) {
+          const eff = resolveFoeMounts(s.mounts)
+          if (eff.foeEvasionBonusAdd !== undefined) bad.push(`舰级 ${s.name}（${s.id}）挂了姿态陀螺仪——该件只允许写在洞内 A 族卡的条目上`)
+          if (eff.foeRepairPulse !== undefined) bad.push(`舰级 ${s.name}（${s.id}）挂了船体修理装置——该件只允许写在洞内 G 族卡的条目上`)
+        }
+        for (const a of ANOMALIES_FLAVORED) {
+          if (whIds.has(a.id)) continue
+          for (const sl of a.ships ?? []) {
+            const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
+            if (eff.foeEvasionBonusAdd !== undefined) bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了姿态陀螺仪——洞外零该件`)
+            if (eff.foeRepairPulse !== undefined) bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了船体修理装置——洞外零该件`)
+          }
+        }
+      }
       check(bad.length === 0, `敌方挂载件契约：${bad.join(' · ')}`)
       // 汇总行**按目录实算**（血泪清单：硬编码"冲锋 5 · 增程 2"会在加件时说过期话）
       const allMounts = Object.values(FOE_MOUNTS)

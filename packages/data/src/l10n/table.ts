@@ -4286,7 +4286,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.firstRewards.005": { zh: "这条任务的条件还没达成。", en: "That task's requirement is not met yet." },
   "core.firstRewards.006": { zh: "◆ 任务完成：「{p1}」。", en: "◆ Task complete: “{p1}”." },
   "core.firstRewards.007": { zh: "◆ 任务起手道具已发放：{p1}。", en: "◆ Starting kit granted: {p1}." },
-  "core.firstRewards.008": { zh: "已补发 {p1} ×1（装到驾驶船的高槽就能开始打捞）。", en: "Granted {p1} ×1 (fit it into a high slot of the ship you fly to start salvaging)." },
   "ui.FirstTasks.037": { zh: "完成", en: "Complete" },
   "ui.FirstTasks.038": { zh: "达成这条任务的条件后即可点「完成」。", en: "Click Complete once this task's requirement is met." },
   "ui.FirstTasks.039": { zh: "开始即给 ◆", en: "Given at start ◆" },

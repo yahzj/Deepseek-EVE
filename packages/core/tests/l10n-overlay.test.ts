@@ -28,6 +28,31 @@ describe('英文覆盖层（P2）', () => {
     expect(en.ships.get('sh-wh-a-cruiser')?.name).toBe('Raider Heavy Assault Cruiser')
   })
 
+  /**
+   * **卡片条目上的「敌方挂载件」双语名对**（2026-09-24 船长两件新挂载件批）：
+   * 挂载件名的目录表在 core（拿不到 data 包的译名表）⇒ 由 `overlayCardFoeMounts` 往卡条目上
+   * 附一份 `foeMountNamePairs`（与 `mounts` 下标对齐），显示层按语言挑一列。
+   *
+   * 钉三件事：① en 卡上**有**这份名对、且英文列是真英文；② **`mounts`（引擎读的 id）一字不动**；
+   * ③ zh 卡上**没有**这个字段（缺省 = 老行为，显示层回落中文名数组）。
+   */
+  it('en：卡条目带「挂载件双语名对」，且 mounts 的 id 一个不动（zh 侧不写该字段）', () => {
+    const zhCard = zh.anomalies.get('wh-pirate-scout')!
+    const enCard = en.anomalies.get('wh-pirate-scout')!
+    const zhSlot = zhCard.ships![0]!
+    const enSlot = enCard.ships![0]!
+    // ① en 有名对、英文列 = 目录里的 en（本次两件都填了；旧八件缺 en ⇒ 退化成中文）
+    expect(zhSlot.foeMountNamePairs, 'zh 侧不写该派生字段').toBeUndefined()
+    const pairs = enSlot.foeMountNamePairs!
+    expect(pairs.map((p) => p[1]), '英文列').toContain('Attitude Gyro')
+    // ② 引擎读的 mounts 逐字不变（语言只影响显示）
+    expect(enSlot.mounts).toEqual(zhSlot.mounts)
+    expect(enSlot.mounts).toEqual(['foe-mount-charge-pirate', 'foe-mount-gyro-stabilizer'])
+    // ③ 下标对齐：名对第 i 项 = 该 id 的那一件
+    expect(pairs.length).toBe(enSlot.mounts!.length)
+    expect(pairs[1]![0], '第 2 件的中文名').toBe('姿态陀螺仪')
+  })
+
   it('en 只改文案：id 集合一致，且除 name/description 外**逐字段深比**一字不动', () => {
     expect([...en.ships.keys()].sort()).toEqual([...zh.ships.keys()].sort())
     /** 去掉 name / description 后整体序列化比对（比逐字段点名更严：新增字段也管） */
