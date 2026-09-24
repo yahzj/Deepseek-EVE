@@ -2845,7 +2845,14 @@ export function refundAmmo(
   }
 }
 
-/** 开火弹型 = 剩余最多（平局 kin→exp→pla）；全空 null */
+/**
+ * 开火弹型 = 剩余最多（平局 kin→exp→pla）；全空 null。
+ *
+ * ⚠ **2026-09-24 起生产路径不再用它推断"某件武器打什么弹"**（V18 起是**按武器各自的 `shotsByType`**：
+ * 见 `createPlayerSpec` 与 `stepBattle` 的取弹）。本函数只留作兼容导出（用例仍锁它的平局规则）——
+ * **别在界面/结算里拿它当"这门炮的弹种"**：战斗画面的武器弹种徽标曾因此把动能炮、导弹架统统写成
+ * 「能量弹药」（船长 2026-09-24 玩家截图报障；改法见 `battleArcsFor` 的 `meArcs`）。
+ */
 export function nextAmmoType(ammo: { kin: number; exp: number; pla: number }): DamageType | null {
   let best: DamageType | null = null
   let bestN = 0
