@@ -105,7 +105,7 @@ import {
   wormholeFamilyOfSeed,
 } from '@whale/core'
 import type { GameState } from '@whale/core'
-import { GALAXIES, ITEMS, MODULES, buildSimContext } from '@whale/data'
+import { GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
 // 虫洞·货仓装不下 / 超载 / 第 4 层星云现场（要用到的核心单点，走深路径，与 `wormhole-econ` 同一套做法）
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../packages/core/src/wormhole'
 import { hexDistance, hexLine, hexNeighbors, isExitCell, gridContentIndex, wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
@@ -2894,10 +2894,32 @@ function injectWormholeEwar(state: GameState): string[] {
  * 3. **打 H 族入侵卡**（需调试模式开入侵：核心/外围）：骚扰 78 / 袭击 85 / 主力 93 / 旗舰 120。
  */
 /**
- * **测试船标记**：注入的战列/旗舰/对照船名字都带这个前缀 ⇒ 重复生成时先把上一轮的清掉，
+ * **测试船标记**：注入的战列/对照船名字都带这个前缀 ⇒ 重复生成时先把上一轮的清掉，
  * 免得"真档里已经有上一版注入的船"导致**越注越多**（2026-09-24 实测踩到：第二次生成后船变成 8 艘）。
  */
 const BS_TEST_TAG = '[BStest]'
+
+/**
+ * ⚠ **只允许"已上线可获得"的舰型**（2026-09-24 船长报障：「**邓氏鱼级旗舰不是还没做出来？**」）：
+ * `sh-dunkleosteus`（T5 邓氏鱼级旗舰）在数据里是**壳体/模子**——`priceIsk: 0`、**无市场行**、
+ * **无一次性图纸**、**没有任何卡引用**（见 `ships.ts` 该条注释与守卫用例 `t4-battleship.test.ts`
+ * 「T5 邓氏鱼仍是壳体：不上市场、不接蓝图、本轮不越界」）。用 `addShipToFleet` 硬塞它 =
+ * 给玩家一艘正常游戏里得不到的船 ⇒ **测试档不许这么干**。
+ *
+ * 判据：`priceIsk > 0`（有渠道可买到）**或** 有舰船图纸 ⇒ 放行；否则**抛错**（宁可生成失败，
+ * 也不给一个越界的档）。
+ */
+function assertShipInjected(shipId: string): void {
+  const s = SHIPS.find((x) => x.id === shipId)
+  if (!s) throw new Error(`测试档注入：舰型 ${shipId} 不存在`)
+  const buyable = (s.priceIsk ?? 0) > 0
+  const hasBlueprint = SHIP_BLUEPRINTS.some((b) => (b as { shipId?: string }).shipId === shipId)
+  if (!buyable && !hasBlueprint) {
+    throw new Error(
+      `测试档注入：**${s.name}（${shipId}）是壳体/模子**（无价、无市场行、无图纸）⇒ 不许进测试档（船长已指出过）`,
+    )
+  }
+}
 
 /** 清掉上一轮注入的测试船（按名字前缀认）。⚠ **不动 `state.shipId`**——紧接着就会把新注入的第一艘设为驾驶 */
 function stripPreviousBattleshipTestShips(state: GameState): number {
@@ -2958,13 +2980,6 @@ function injectBattleship(state: GameState): string[] {
       ['mod-armor-plate-3', 'mod-stab-kin-3', 'mod-hullrep-2'],
     ],
     [
-      'sh-dunkleosteus',
-      `${BS_TEST_TAG} 邓氏鱼·旗舰（T5 · 7/7/4 满配）`,
-      Array(7).fill('mod-turret-kin-3'),
-      ['mod-shield-kin-3', 'mod-shield-kin-3', 'mod-shield-ext-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-track-3', 'mod-rof-3'],
-      ['mod-armor-kin-3', 'mod-armor-plate-3', 'mod-stab-kin-3', 'mod-cpu-3'],
-    ],
-    [
       'sh-hammerhead',
       `${BS_TEST_TAG} 锤头鲨·巡洋（T3 对照）`,
       Array(5).fill('mod-turret-kin-3'),
@@ -2974,6 +2989,7 @@ function injectBattleship(state: GameState): string[] {
   ]
   const uids: string[] = []
   ships.forEach(([shipId, name, high, mid, low], i) => {
+    assertShipInjected(shipId) // ⚠ 壳体/模子不许进测试档（船长 2026-09-24 报障）
     const uid = addShipToFleet(state, shipId)
     const s = state.fleet[uid]!
     s.customName = name
@@ -2984,8 +3000,9 @@ function injectBattleship(state: GameState): string[] {
     uids.push(uid)
   })
   notes.push(
-    `新增 4 艘：${uids[0]}（**巨齿鲨·战列 · 动能抗 · 已设驾驶**）· ${uids[1]}（巨齿鲨·均衡对照）· ` +
-      `${uids[2]}（邓氏鱼·旗舰 T5）· ${uids[3]}（锤头鲨·巡洋 T3 对照）——舰船页切驾驶逐船对照`,
+    `新增 ${uids.length} 艘：${uids[0]}（**巨齿鲨·战列 · 动能抗 · 已设驾驶**）· ${uids[1] ?? '-'}（巨齿鲨·均衡对照）· ` +
+      `${uids[2] ?? '-'}（锤头鲨·巡洋 T3 对照）——舰船页切驾驶逐船对照。` +
+      '⚠ **不含 T5 邓氏鱼级旗舰**：它是壳体/模子（无价、无市场行、无图纸），不进测试档',
   )
 
   // 备件：三族武器 MK1~3 + 防护/推进/支援/CPU/锁定 各 3 件（现场自由换装）
