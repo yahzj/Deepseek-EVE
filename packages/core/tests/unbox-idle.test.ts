@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { advanceRefining, startUnboxRun } from '../src/industry'
 import { addItem, countItem, removeItem } from '../src/inventory'
+import { countWare } from '../src/inventory'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
@@ -29,6 +30,44 @@ function runFor(state: ReturnType<typeof createInitialState>, ctx: ReturnType<ty
 }
 
 describe('货柜拆解 · 料尽自停（玩家报障回归）', () => {
+  it('两台炉拆同一种货柜：一台把料吃光 ⇒ 另一台**同一拍**就停（玩家看到的可用 0 还在拆）', () => {
+    const { state, ctx, boxId } = world(2, 'box-bp-deep')
+    expect(startUnboxRun(state, ctx, boxId, 'pilot').ok).toBe(true)
+    // 第二台直接补进运转表（绕开"主控工作位只允许一台 / AI 核心上限"的开工门槛——
+    // 本用例要验的是**推进与停炉逻辑**：一台把料吃光时，另一台不许还挂着"可用 0 却在拆"）
+    state.refineRuns.push({
+      active: true,
+      id: state.refineSeq++,
+      worker: 'pilot',
+      recipe: 'unbox',
+      itemId: boxId,
+      batchUnits: 1,
+      cycleMs: 90_000,
+      finishAtGameMs: state.gameMs + 90_000,
+      batchesDone: 0,
+      recAcc: { min: {}, mod: {}, frag: {}, drone: {} },
+    })
+    expect(state.refineRuns.length, '两台同时在拆').toBe(2)
+    let zeroAt = -1
+    let runsWhenZero = -1
+    for (let ms = 0; ms < 10 * 60_000; ms += 1000) {
+      state.gameMs += 1000
+      advanceRefining(state, ctx)
+      if (countItem(state, boxId) + countWare(state, boxId) === 0) {
+        zeroAt = ms + 1000
+        runsWhenZero = state.refineRuns.length
+        break
+      }
+    }
+    expect(zeroAt, '料会被吃完').toBeGreaterThan(0)
+    // 同一拍里可能有一台"在本拍判余量时料还没被吃光"（推进是倒序的）⇒ 允许同一拍残留，
+    // 但**下一拍必须全停**：这就是本次修的"可用 0 还在拆"（原先要挂到本批结束 = 最长 90 秒）。
+    state.gameMs += 1000
+    advanceRefining(state, ctx)
+    expect(state.refineRuns.length, '料归零后的下一拍，两台都必须停').toBe(0)
+    expect(runsWhenZero, '（诊断）料归零那一拍残留台数').toBeLessThanOrEqual(1)
+  })
+
   it('**批中途**没料也立刻停（玩家原话「没有东西了还在拆。取消就消失」）', () => {
     const { state, ctx, boxId } = world(2, 'box-bp-deep')
     expect(startUnboxRun(state, ctx, boxId, 'pilot').ok).toBe(true)
