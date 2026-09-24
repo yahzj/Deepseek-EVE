@@ -31,16 +31,17 @@
  *   **T1~T5 五档**、原「补给蓝图（弹药·修理组件）」改名「**消耗品蓝图（弹药·修理组件）**」；
  * - **手册「蓝图图鉴」**分组随同（同一张表）：舰船从 1 组变 5 个级别组。
  *
- * 检索入口：`grep MODULE_SUBS|SUBS_OF_KIND|moduleSubKeyOf|CONSUME_SUBS|SHIP_TIER_SUBS|BLUEPRINT_SUBS|RACK_SUBS`。
- * - 市场页 MarketPage：类型下拉的一级类型与二级子分类（筛选市场商品目录）；
+ * 检索入口：`grep MODULE_SUBS|SUBS_OF_KIND|moduleSubKeyOf|CONSUME_SUBS|SHIP_TIER_SUBS|BLUEPRINT_SUBS|MARKET_BLUEPRINT_SUBS|RACK_SUBS`。
+ * - 市场页 MarketPage：类型下拉的一级类型与二级子分类（筛选市场商品目录；蓝图那档走 `MARKET_BLUEPRINT_SUBS`）；
  * - 组装机 Industry.tsx：蓝图标签行 + 二级子筛选（按蓝图产物分类，不走市场商品目录）；
- * - 手册 Handbook：装备/舰船/蓝图的分组标题与分组判定（同一套键与中文名，避免两页口径漂移），
+ * - 手册 Handbook：装备/舰船/蓝图的分组标题与分组判定（**蓝图分组表 = `BLUEPRINT_SUBS`，不含"学没学会"两档**），
  *   以及 2026-09-13 起的**图鉴筛选行**（一级 `RACK_SUBS`/`SHIP_SUBS`/…，二级 `MODULE_SUBS`/`SHIP_TIER_SUBS`/`RACK_SUBS`）；
  * - 物品页 ItemsPage：仓库筛选的装备二级（`RACK_SUBS`）与槽类判定（core `rackOf`）。
  * 新增/调整分类只改本文件，各处同时生效。
  */
 import {
   isRareWreck,
+  ownsBlueprint,
   rackOf,
   shipCategoryKeyOf,
   shipSizeLabel,
@@ -48,7 +49,7 @@ import {
   WORMHOLE_MILITARY_BOX_ID,
   WORMHOLE_VALUABLES_BOX_ID,
 } from '@whale/core'
-import type { MarketGoodDef, SimContext } from '@whale/core'
+import type { GameState, MarketGoodDef, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
@@ -221,6 +222,12 @@ export const SHIP_TIER_SUBS: SubOption[] = SHIP_TIER_KEYS.map((t) => ({
  * ⚠ 组装机（Industry.tsx）用的**是另一套粒度**：它的「装备蓝图」标签下按**产物功能**分九组
  * （复用 `MODULE_SUBS`），因组装机已用标签行区分装备/舰船/消耗品三大类，槽类不足以收窄 81 张装备蓝图。
  */
+/** 蓝图「**学没学会**」两档（市场蓝图子筛选 ＋ 组装机那一行共用同一套键与文案 id） */
+export const BLUEPRINT_LEARN_SUBS: SubOption[] = [
+  { key: 'learned', label: '已学会', id: 'ui.itemSubs.031' },
+  { key: 'unlearned', label: '未学会', id: 'ui.itemSubs.032' },
+]
+
 export const BLUEPRINT_SUBS: SubOption[] = [
   { key: 'high', label: '高槽装备蓝图', id: 'ui.itemSubs.018' },
   { key: 'mid', label: '中槽装备蓝图', id: 'ui.itemSubs.019' },
@@ -241,6 +248,19 @@ export const BLUEPRINT_SUBS: SubOption[] = [
   // 2026-09-20 零件体系：高级零件蓝图（常驻市场）——基础零件为隐式蓝图无书，故只有高级一档
   { key: 'part-advanced', label: '零件蓝图', id: 'ui.itemSubs.035' },
 ]
+
+/**
+ * **市场「蓝图」类型的二级子筛选**（= 上面那张分组表 ＋ 末两档「**学没学会**」）。
+ *
+ * ⚠ 为什么另起一张、不直接往 `BLUEPRINT_SUBS` 里加：那张表**同时是手册「蓝图图鉴」的分组顺序表**
+ * （`Handbook.orderOf('blueprints')`），而 `groupCells` 对"顺序表里有、但没有卡片"的键**会原样留下一组**
+ * ⇒ 往它里面加 `learned`/`unlearned` 会让图鉴多出两个空组标题。故市场走本表，图鉴照旧读 `BLUEPRINT_SUBS`。
+ *
+ * 2026-09-24 船长：「市场蓝图筛选的子筛选里，加入一个未学习蓝图的子筛选」⇒ 补上「**未学会**」，
+ * 同时补对称的「**已学会**」（与组装机那一行 `BLUEPRINT_LEARN_TABS` **同一套键、同一套文案 id**）。
+ * 判定见 `subPasses`：**未学会 = 永久图纸且尚未学会**（一次性图纸按定义不能学，不计入）。
+ */
+export const MARKET_BLUEPRINT_SUBS: SubOption[] = [...BLUEPRINT_SUBS, ...BLUEPRINT_LEARN_SUBS]
 
 export const CORE_SUBS: SubOption[] = [
   { key: 'basic', label: tr("ui.MarketPage.020") },
@@ -282,7 +302,8 @@ export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   'module-mid': MODULE_SUBS,
   'module-low': MODULE_SUBS,
   ship: SHIP_SUBS,
-  blueprint: BLUEPRINT_SUBS,
+  // 市场「蓝图」用它（＝分组表 ＋ 末两档「学没学会」）；手册图鉴分组仍读 `BLUEPRINT_SUBS`（见上面注释）
+  blueprint: MARKET_BLUEPRINT_SUBS,
   aicore: CORE_SUBS,
   // 残骸：普通 / 稀有（2026-09-19 甲组补丁——原先市场「残骸」类型没有任何子筛选）
   wreck: WRECK_SUBS,
@@ -296,7 +317,7 @@ export const SUBS_OF_KIND: Record<string, SubOption[]> = {
  * 一整套分支，与物品页、手册各写一份。市场**特有**的舰船 / 蓝图 / AI 核心三条留着（各自的键空间不同，
  * 例：AI 核心市场商品的 `refId` 是类型键本身，而仓库物品是 `ai-core-<类型>`）。
  */
-export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, sub: string): boolean {
+export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, sub: string, state?: GameState): boolean {
   if (sub === SUB_ALL || kind === 'all') return true
   if (good.kind === 'item' || good.kind === 'module') return itemSubPasses(ctx, good.refId, kind, sub)
   // 只装物品/装备的桶：别的商品（舰船/蓝图/核心）**不属此桶**（收敛前各分支自带这条护栏，别丢）
@@ -307,6 +328,19 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
     return shipRolePasses(ctx.ships.get(good.refId), sub)
   }
   if (kind === 'blueprint') {
+    /**
+     * **「学没学会」两档**（2026-09-24 船长令）——与组装机同一口径：
+     * **未学会 = 永久图纸且尚未学会**。⚠ **一次性图纸不计入"未学会"**——它按定义
+     * 「不上市场、不能学、只能造一次」（`BlueprintDef.singleUse`），放进去就是一张永远学不会的清单。
+     * `ownsBlueprint` 是 core 单点（读 `state.learnedRecipes`）；**不传 state**（老调用方）⇒ 这两档恒不命中，
+     * 宁可不筛也不猜。
+     */
+    if (sub === 'learned' || sub === 'unlearned') {
+      if (!state) return false
+      const single = ctx.blueprints.get(good.refId)?.singleUse === true
+      const learned = ownsBlueprint(state, good.refId)
+      return sub === 'learned' ? learned : !learned && !single
+    }
     const eq = ctx.blueprints.get(good.refId)
     if (eq) {
       // 零件蓝图（2026-09-20 零件体系）：按基础/高级档；基础零件 = 隐式蓝图无市场行，市场只有高级一档
