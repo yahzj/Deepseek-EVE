@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { advanceBattleFor, ammoLoadTotals, createPlayerSpec, startBattleFor } from '../src/combat'
+import { advanceBattleFor, ammoLoadTotals, battleArcsFor, createPlayerSpec, startBattleFor } from '../src/combat'
 import { fitModule, repairDeprecatedModules } from '../src/equipment'
 import type { AnomalyDef, DamageType, ModuleSlot } from '../src/types'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
@@ -187,4 +187,57 @@ describe('弹种归属：动能 / 高爆 / 能量各进各的桶（玩家反馈�
       }
     })
   }
+})
+
+/**
+ * **武器弹种徽标 = 这件武器自己的那一型**（**2026-09-24 船长报障（玩家截图）**：
+ * 「攻坚炮台 MK3·动能型后面写着的是**能量弹药**，巡航导弹架 MK3 也写着」）。
+ *
+ * 根因：`battleArcsFor` 给**每一门炮**的 `type` 取了 `nextAmmoType(battle.ammo)`——即**全船剩余最多的
+ * 那一型**（旧单弹种时代的遗留口径）。于是只要船上能量弹占多数（装激光就会），**动能炮与导弹架的
+ * 弹种徽标、射程弧颜色全被写成"能量"**。现改为按武器自己的 `shotsByType` 判（与 `stepBattle` 取弹同源），
+ * 该型打光 ⇒ `null`（界面照既有口径显示"无弹/虚线弧"）。
+ */
+describe('武器弹种徽标按"自己那一型"报（船长 2026-09-24 玩家截图报障）', () => {
+  it('混装船：能量弹占多数时，动能炮仍报 kinetic、导弹架仍报 explosive', () => {
+    // 1 门动能炮（慢装填）+ 1 个导弹架 + 3 门激光（快装填）⇒ **能量弹预载必然占多数**（旧口径必错的条件）
+    const gun = gunDef('w-kin-slow', 6000, 'kinetic', 'turret')
+    const mis = gunDef('w-exp-slow', 6000, 'explosive', 'missile')
+    const laser = gunDef('w-pla-fast', 1000, 'plasma', 'laser')
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
+    const ctx = bedCtx([gun, mis, laser])
+    state.fleet[state.shipId]!.defId = 'bed'
+    repairDeprecatedModules(state, ctx)
+    state.moduleBay[gun.id] = 1
+    state.moduleBay[mis.id] = 1
+    state.moduleBay[laser.id] = 3
+    expect(fitModule(state, gun.id, ctx).ok).toBe(true)
+    expect(fitModule(state, mis.id, ctx).ok).toBe(true)
+    for (let i = 0; i < 3; i++) expect(fitModule(state, laser.id, ctx).ok).toBe(true)
+    state.warehouse.items['ammo-kinetic-l'] = 20_000
+    state.warehouse.items['ammo-explosive-l'] = 20_000
+    state.warehouse.items['ammo-plasma-l'] = 20_000
+
+    const ano = endlessFoe()
+    const c = { ...ctx, anomalies: new Map([...ctx.anomalies, [ano.id, ano]]) }
+    const battle = startBattleFor(state, c, state.shipId, ano.id, 0)!
+    // 前提：能量弹确实多于动能弹（旧口径下"主流弹种"= 能量 ⇒ 每门炮都会被写成能量）
+    expect(battle.ammo.pla).toBeGreaterThan(battle.ammo.kin)
+
+    const arcs = battleArcsFor(state, c, { battle, anomaly: ano, leaderShipId: state.shipId })!
+    const arcOf = (frag: string): (typeof arcs.me)[number] => {
+      const a = arcs.me.find((x) => x.label.includes(frag))
+      expect(a, `射程弧里应有 ${frag}`).toBeTruthy()
+      return a!
+    }
+    expect(arcOf('w-kin-slow').type, '动能炮必须报 kinetic（界面据此写「动能弹药」）').toBe('kinetic')
+    expect(arcOf('w-exp-slow').type, '导弹架必须报 explosive（界面据此写「爆破弹药」）').toBe('explosive')
+    expect(arcOf('w-pla-fast').type, '激光报 plasma').toBe('plasma')
+
+    // 该型打光 ⇒ 报 null（界面照既有口径显示"无弹/虚线弧"，不再借别型的弹假装有弹）
+    battle.ammo.kin = 0
+    const arcs2 = battleArcsFor(state, c, { battle, anomaly: ano, leaderShipId: state.shipId })!
+    expect(arcs2.me.find((x) => x.label.includes('w-kin-slow'))!.type, '动能弹打光 ⇒ 不再报任何弹种').toBeNull()
+    expect(arcs2.me.find((x) => x.label.includes('w-pla-fast'))!.type, '能量弹还有 ⇒ 激光照常报 plasma').toBe('plasma')
+  })
 })
