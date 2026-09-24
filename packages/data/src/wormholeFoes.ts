@@ -552,7 +552,7 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
    * （护盾每场满值重建），若再把 `hpMul` 也乘 1.176 就等于把卡片血量调回原样 ⇒ **难度白涨 17.6%**。
    * 保持 `hpMul` 不变 ⇒ 本卡等效耐久 ≈ 旧值 104 点（新 89 点 ×1.176）。`dmgMul` 同样不动。
    */
-  ships: [{ ship: FOE_H_INK_CORVETTE, count: 4, hpMul: 0.061, dmgMul: 0.049 }],
+  ships: [{ ship: FOE_H_INK_CORVETTE, count: 4, hpMul: 0.5666, dmgMul: 0.049 }],
   standingReq: 0,
   standingGain: 0,
   rewardIsk: 0,
@@ -586,8 +586,8 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
    * 合成后：鱼雷舰 `0.056/0.045 → 0.0953/0.093`、突击舰 `0.084 → 0.0988`。**卡片强度不变**。
    */
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 2, wave: 0, hpMul: 0.084, dmgMul: 0.067, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.081, dmgMul: 0.075 },
+    { ship: FOE_H_INK_CORVETTE, count: 2, wave: 0, hpMul: 0.5673, dmgMul: 0.067, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.3824, dmgMul: 0.075 },
   ],
   standingReq: 0,
   standingGain: 0,
@@ -621,10 +621,10 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
    * ② 血型改 0.5 护盾 ⇒ 突击舰/干扰舰/鱼雷舰 ×1.176、战巡 ×0.85（旧总血守恒，202/61 点不变）。
    */
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 0.056, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.056, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 1, hpMul: 0.018, dmgMul: 0.0145 },
-    { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 0.105, dmgMul: 0.093 },
+    { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 0.3782, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.0688, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 1, hpMul: 0.0295, dmgMul: 0.0145 },
+    { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 0.3728, dmgMul: 0.093 },
   ],
   standingReq: 0,
   standingGain: 0,
@@ -663,15 +663,15 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
    * 但同波守恒 ×0.85 · 单场可达份额 `flagshipHpScale`，落码时定值）。
    */
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 0.071, dmgMul: 0.0475, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.088, dmgMul: 0.066 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.0357, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 0.0357, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 0.015, dmgMul: 0.0105 },
-    { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 0.011, dmgMul: 0.008 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 0.0357, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 3, hpMul: 0.015, dmgMul: 0.0105 },
-    { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 0.088, dmgMul: 0.066 },
+    { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 0.2266, dmgMul: 0.0475, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.2677, dmgMul: 0.066 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.1377, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 0.1377, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 0.0516, dmgMul: 0.0105 },
+    { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 0.038, dmgMul: 0.008 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 0.1378, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 3, hpMul: 0.0354, dmgMul: 0.0105 },
+    { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 0.3444, dmgMul: 0.066 },
   ],
   standingReq: 0,
   standingGain: 0,
