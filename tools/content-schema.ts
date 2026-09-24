@@ -324,6 +324,62 @@ export const TABLES: readonly TableSpec[] = [
       col('声望要求standingReq', 'standingReq', 'num', { min: 0, int: true }),
     ],
   },
+  /**
+   * **敌舰级表**（**2026-09-24 船长令**：「**同步数据我，我直接修改 excel 表来调整敌人**」）——
+   * 让敌舰数值也进内容工作台的"导出 → 船长在 Excel 里改 → `content:import` 回写"回路，
+   * 口径与其余 7 张表完全一致（主键只读 · 逐列校验 · 空单元格 = 不改该字段 · 可选字段填 `-` = 删除）。
+   *
+   * 列 = **舰级裸值**（`FoeShipDef` 里可手调的字段）；**派生量与卡级覆写不在此表**：
+   * 三层血（= 总血 × 占比）、名义 DPS、实速（= 舰种基准 × 倍率）都是算出来的，
+   * 卡上条目级 `hpMul`/`dmgMul`/`rangeMul` 是每卡实算 ⇒ 看 `foe-csv/enemy-ships.xlsx`（56 列明细表）
+   * 与 `npm run bounty:stats`。
+   *
+   * ⚠ **v1 不含 `mounts`（挂载件 id 列表）与 `drones`（机群）**——它们是结构字段（字符串列表 / 对象列表），
+   * 要新增两种列类型才能回写；本批先交"数值可调"的部分，需要时再扩（在那之前挂载件仍走代码改动）。
+   */
+  {
+    name: 'foeShips',
+    files: ['packages/data/src/foe-ships.ts'],
+    idProp: 'id',
+    cols: [
+      col('id', 'id', 'id'),
+      col('名称', 'name', 'str'),
+      col('敌族family(A/B/C/D/E/F/G)', 'family', 'enum', { vals: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] }),
+      col('舰种档hullClassTier(1护卫/2驱逐/3巡洋/4战列/5旗舰)', 'hullClassTier', 'num', { min: 1, max: 5, int: true }),
+      col('精锐elite(是=显示名加「精锐」前缀)', 'elite', 'bool'),
+      col('战术tactic(brawl贴身/orbit环绕/kite风筝)', 'tactic', 'enum', { vals: ['brawl', 'orbit', 'kite'] }),
+      col('总血hp(绝对值)', 'hp', 'num', { min: 1 }),
+      col('结构占比split.s', 'split.s', 'obj', { min: 0, max: 1 }),
+      col('装甲占比split.a', 'split.a', 'obj', { min: 0, max: 1 }),
+      col('护盾占比split.h', 'split.h', 'obj', { min: 0, max: 1 }),
+      col('盾抗动能shieldResist.kinetic', 'shieldResist.kinetic', 'obj', { min: 0, max: 0.9 }),
+      col('盾抗高爆shieldResist.explosive', 'shieldResist.explosive', 'obj', { min: 0, max: 0.9 }),
+      col('盾抗能量shieldResist.plasma', 'shieldResist.plasma', 'obj', { min: 0, max: 0.9 }),
+      col('甲抗动能armorResist.kinetic', 'armorResist.kinetic', 'obj', { min: 0, max: 0.9 }),
+      col('甲抗高爆armorResist.explosive', 'armorResist.explosive', 'obj', { min: 0, max: 0.9 }),
+      col('甲抗能量armorResist.plasma', 'armorResist.plasma', 'obj', { min: 0, max: 0.9 }),
+      col('结构抗动能hullResist.kinetic', 'hullResist.kinetic', 'obj', { min: 0, max: 0.9 }),
+      col('结构抗高爆hullResist.explosive', 'hullResist.explosive', 'obj', { min: 0, max: 0.9 }),
+      col('结构抗能量hullResist.plasma', 'hullResist.plasma', 'obj', { min: 0, max: 0.9 }),
+      col('单发shotDmg(绝对值)', 'shotDmg', 'num', { min: 0 }),
+      col('装填毫秒reloadMs', 'reloadMs', 'num', { min: 1, int: true }),
+      col('命中率hitRate(0~1；光束必中时不消费)', 'hitRate', 'num', { min: 0, max: 1 }),
+      col('射程下限rangeMinM', 'rangeMinM', 'num', { min: 0 }),
+      col('射程上限rangeMaxM', 'rangeMaxM', 'num', { min: 0 }),
+      col('期望交距覆写desireRangeM(留空=按战术推导)', 'desireRangeM', 'num', { min: 0 }),
+      col('远端衰减falloff(光束=威力衰减；其余=命中衰减)', 'falloff', 'num', { min: 0, max: 1 }),
+      col('近盲倍率blindDmgMul(玩家进敌近盲带时敌伤害×本值)', 'blindDmgMul', 'num', { min: 0, max: 1 }),
+      col('伤害构成·动能dmgMix.kinetic(相对权重)', 'dmgMix.kinetic', 'obj', { min: 0, max: 10 }),
+      col('伤害构成·高爆dmgMix.explosive(相对权重)', 'dmgMix.explosive', 'obj', { min: 0, max: 10 }),
+      col('伤害构成·能量dmgMix.plasma(相对权重)', 'dmgMix.plasma', 'obj', { min: 0, max: 10 }),
+      col('能量形态energyForm(beam光束必中/spit掷命中)', 'energyForm', 'enum', { vals: ['beam', 'spit'] }),
+      col('后勤修理repairPct(留空=无)', 'repairPct', 'num', { min: 0, max: 1 }),
+      col('闪避evasion(0~0.9；留空=0.12)', 'evasion', 'num', { min: 0, max: 0.9 }),
+      col('速度倍率speedRatio(实速=舰种基准×本值后取整)', 'speedRatio', 'num', { min: 0, max: 3 }),
+      col('冲锋资格foeCanCharge(旧字段；新写法走挂载件)', 'foeCanCharge', 'bool'),
+      col('冲锋倍率foeChargeMul(旧字段)', 'foeChargeMul', 'num', { min: 0, max: 5 }),
+    ],
+  },
 ]
 
 export function tableOf(name: string): TableSpec | undefined {

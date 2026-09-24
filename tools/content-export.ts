@@ -18,7 +18,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import ExcelJS from 'exceljs'
-import { ANOMALIES, BELTS, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
+import { ANOMALIES, BELTS, FOE_SHIPS, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
 import { tableOf, type ColSpec } from './content-schema'
 
 const CATALOGS: Record<string, readonly unknown[]> = {
@@ -29,6 +29,12 @@ const CATALOGS: Record<string, readonly unknown[]> = {
   anomalies: ANOMALIES,
   belts: BELTS,
   market: MARKET_GOODS,
+  /**
+   * **敌舰级表**（**2026-09-24 船长令**：「**同步数据我，我直接修改 excel 表来调整敌人**」）——
+   * 第 8 张表，进同一条"导出 → 船长改 → `content:import foeShips` 回写"的回路。
+   * 列定义见 `content-schema.ts`（只收舰级裸值，派生量与卡级覆写不在此表）。
+   */
+  foeShips: FOE_SHIPS,
 }
 
 const outDir = process.argv[2] ?? 'content-csv'
@@ -74,12 +80,14 @@ function rowsToCsv(cols: readonly ColSpec[], rows: readonly unknown[]): string {
   return [heads, ...body].map((r) => r.join(',')).join('\r\n') + '\r\n'
 }
 
+const SHEET_NAMES = ['skills', 'items', 'modules', 'ships', 'anomalies', 'belts', 'market', 'foeShips'] as const
+
 async function writeXlsx(colsList: readonly (readonly ColSpec[])[], rowSets: readonly (readonly unknown[])[]): Promise<void> {
   const wb = new ExcelJS.Workbook()
   for (let t = 0; t < colsList.length; t++) {
     const cols = colsList[t]!
     const rows = rowSets[t]!
-    const ws = wb.addWorksheet(['skills', 'items', 'modules', 'ships', 'anomalies', 'belts', 'market'][t]!)
+    const ws = wb.addWorksheet(SHEET_NAMES[t]!)
     ws.columns = cols.map((c, i) => ({
       width: c.head.startsWith('描述') || c.head.includes('描述(') ? 80 : c.head.length > 30 ? 34 : Math.max(10, c.head.length * 1.6 + 4),
     }))
@@ -121,8 +129,8 @@ writeXlsx(
   Object.keys(CATALOGS).map((n) => tableOf(n)!.cols),
   rowSets,
 ).then(() => {
-  console.log(`✅ 已导出到 ${outDir}/（7 张表共 ${total} 条）`)
-  console.log('  · content-workbench.xlsx —— 主格式：一个文件 7 张 sheet（底部标签切换），Excel 保存零编码坑')
+  console.log(`✅ 已导出到 ${outDir}/（${Object.keys(CATALOGS).length} 张表共 ${total} 条）`)
+  console.log(`  · content-workbench.xlsx —— 主格式：一个文件 ${Object.keys(CATALOGS).length} 张 sheet（底部标签切换），Excel 保存零编码坑`)
   console.log('  · *.csv —— 兼容格式（UTF-8+BOM）')
   console.log('回写：npm run content:import <表名> <xlsx或csv>（见 docs/content-workbench.md）')
 })

@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import * as ts from 'typescript'
 import ExcelJS from 'exceljs'
-import { ANOMALIES, BELTS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
+import { ANOMALIES, BELTS, FOE_SHIPS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
 import { normalizeHead, tableOf, type ColSpec } from './content-schema'
 
 /* ═══════════ CSV 解析（标准：引号转义/BOM/编码与分隔符自动容错） ═══════════
@@ -136,6 +136,8 @@ const IDS = {
   anomalies: idSetOf(ANOMALIES, 'id'),
   belts: idSetOf(BELTS, 'id'),
   market: idSetOf(MARKET_GOODS, 'key'),
+  // **敌舰级表**（2026-09-24 船长令：敌舰数值也走工作台回写）——主键 = `FoeShipDef.id`
+  foeShips: idSetOf(FOE_SHIPS, 'id'),
   galaxies: idSetOf(GALAXIES, 'id'),
 }
 
@@ -386,6 +388,29 @@ function planRow(
         const key = col.p.split('.')[1]!
         const n = parseNum(csvRow[0]!, col.head, cell, col)
         if (n === undefined) continue
+        /**
+         * ⚠ **对象里含展开口 ⇒ 本列只读跳过**（2026-09-24 加）：源若写成
+         * `shieldResist: { ...C_FAMILY_RESISTS.shieldResist, kinetic: 0.1 }`，`objPairsOf` 只看得见
+         * **显式写的键**、看不见展开进来的键 ⇒ 照 CSV 回写会把整个对象换成字面量、**抹掉与族常量的联动**
+         * （以后改常量再也不影响这一艘）。与"表达式只读跳过"同一处置：要改这些字段请直接编辑源码。
+         */
+        /**
+         * ⚠ **行对象带展开口（`...C_FAMILY_RESISTS`）且本列没有自己的属性 ⇒ 只读跳过**（2026-09-24 加）：
+         * 源里这一列是从**族常量**展开进来的（C 族三层三系抗性就是这种写法），照 CSV 回写会**凭空长出一个
+         * 字面量对象**、把这一艘从族常量里摘出去（以后改常量再也不影响它）⇒ 与"表达式只读跳过"同一处置。
+         */
+        if (!prop && obj.properties.some((p) => ts.isSpreadAssignment(p))) {
+          readOnlySkips.push(`${csvRow[0]}·${col.head}（源为族常量展开 ⇒ 只读）`)
+          continue
+        }
+        if (
+          prop?.initializer &&
+          ts.isObjectLiteralExpression(prop.initializer) &&
+          prop.initializer.properties.some((p) => !ts.isPropertyAssignment(p))
+        ) {
+          readOnlySkips.push(`${csvRow[0]}·${col.head}（源对象含展开口 ⇒ 只读）`)
+          continue
+        }
         const pairs = objPairsOf(prop?.initializer, sf, consts)
         const cur = pairs.find(([k]) => k === key)
         if (cur && Math.abs(cur[1] - n) < 1e-9) continue
@@ -622,7 +647,7 @@ async function main(): Promise<void> {
   }
   if (readOnlySkips.length > 0) {
     console.log(
-      `ℹ️ ${readOnlySkips.length} 处列现值是表达式（同文件常量/计算式），表格**不改它**（要改请直接编辑源码）：` +
+      `ℹ️ ${readOnlySkips.length} 处列现值是表达式或**源对象含展开口**（同文件常量/计算式），表格**不改它**（要改请直接编辑源码）：` +
         `${readOnlySkips.slice(0, 6).join('、')}${readOnlySkips.length > 6 ? '…' : ''}`,
     )
   }

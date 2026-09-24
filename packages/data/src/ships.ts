@@ -947,7 +947,7 @@ export const SHIPS: readonly ShipDef[] = [
     oreUnitsPerCycle: 8,
     priceIsk: 0, // 定制船：无市场行
     agility: 0.675,
-    evasion: 0.216,
+    evasion: 0.316,
     hitBonus: 0.25,
     powerBonus: 0.15, // 2026-09-17 船长：武装舰按档位给单发加成（T1 = +15%）
     shieldHp: 130,
@@ -982,7 +982,7 @@ export const SHIPS: readonly ShipDef[] = [
     oreUnitsPerCycle: 14,
     priceIsk: 0,
     agility: 0.62,
-    evasion: 0.12,
+    evasion: 0.22,
     hitBonus: 0.2,
     powerBonus: 0.35, // 2026-09-17：档位 T2 +20% ＋ 子分类炮舰 +15% = +35%
     shieldHp: 175,
@@ -1023,7 +1023,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 255,
     cpu: 390,
     droneBayM3: 50,
-    maxSpeedMps: 225,
+    maxSpeedMps: 265,
     warpSpeedAus: 3.3,
     massKg: 8_500_000,
     lockRangeM: 40000,
@@ -1053,7 +1053,7 @@ export const SHIPS: readonly ShipDef[] = [
     oreUnitsPerCycle: 8,
     priceIsk: 0,
     agility: 0.837,
-    evasion: 0.1,
+    evasion: 0.38,
     hitBonus: 0.1,
     shieldHp: 35,
     armorHp: 90,
@@ -1084,7 +1084,7 @@ export const SHIPS: readonly ShipDef[] = [
     oreUnitsPerCycle: 16,
     priceIsk: 0,
     agility: 0.675,
-    evasion: 0.06,
+    evasion: 0.31,
     hitBonus: 0.09,
     shieldHp: 30,
     armorHp: 150,
@@ -1122,7 +1122,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 515,
     cpu: 280,
     droneBayM3: 50,
-    maxSpeedMps: 166,
+    maxSpeedMps: 206,
     warpSpeedAus: 2.9,
     massKg: 12_200_000,
     lockRangeM: 25000,
@@ -1249,7 +1249,9 @@ export const SHIPS: readonly ShipDef[] = [
     agility: 0.7,
     evasion: 0.105,
     hitBonus: 0.17,
-    powerBonus: 0.2, // 2026-09-17 船长：「鱼雷舰获得伤害倍率+0.2」⇒ 装甲舰例外：这笔是**子分类**给的（船长：「移除不会影响子类型给予的属性」）
+    powerBonus: 0.35, // 2026-09-17 船长：「鱼雷舰获得伤害倍率+0.2」⇒ 装甲舰例外：这笔是**子分类**给的（船长：「移除不会影响子类型给予的属性」）
+    // ⚠ 2026-09-24 船长裁决：「**鱼雷舰排除出装甲舰不得带档位单发加成的范围内。**」
+    // ⇒ 本舰＝档位 T1 +15% ＋ 鱼雷舰子分类 +20% = **+35%**（契约 `content:check` 里鱼雷舰按武装舰口径校验）
     // 2026-09-16 船长：E 族专属舰 盾/甲互换（115↔60，总血 255 不变）⇒ 装甲占比更高 ⇒ 归入「装甲舰」（role 仍 armed）
     // 2026-09-17 船长：抗性一并调整（「不用护盾了…只给装甲抗性」）⇒ 盾层清零、动能抗 0.5 移到甲层；
     // **壳等离子抗 0.25 保留**（船长选甲案：E 族「结构吃等离子轻」的族格与用不用盾无关）。
@@ -1267,7 +1269,7 @@ export const SHIPS: readonly ShipDef[] = [
     signatureM: 68,
     scanResMm: 640,
     hullResist: {"plasma":0.25},
-    weaponFamilyBonus: { explosive: 0.15 },
+    weaponFamilyBonus: { explosive: 0.2 },
     description: '巨构的鱼雷舰：爆破弹头拆甲，命中扎实；信号大、转身笨，得靠队友挡在前面。',
   },
   {
@@ -1439,14 +1441,14 @@ export const SHIPS: readonly ShipDef[] = [
     cpu: 410,
     droneDmgBonus: 0.14, // 比王鲭级（0.12）高一档：亡军的机群是练出来的
     droneBayM3: 60,
-    maxSpeedMps: 285,
+    maxSpeedMps: 275,
     warpSpeedAus: 3.5,
     massKg: 7_400_000,
     lockRangeM: 48000,
     signatureM: 101,
     scanResMm: 580,
     // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
-    weaponFamilyBonus: { explosive: 0.15 },
+    weaponFamilyBonus: { explosive: 0.2 },
     description: '亡军的鱼雷舰：爆破弹头配扎实命中，专挑大目标的装甲；信号大、转身慢，是明牌重锤。',
   },
 ]

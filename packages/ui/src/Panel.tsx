@@ -18,9 +18,14 @@ interface PanelProps {
   className?: string
   /** 面板主体内容 */
   children: ReactNode
+  /**
+   * **面板底部固定槽**（2026-09-24 船长按截图指定：周末入侵活动框「放在事件日志的底部」）——
+   * 渲染在 body **之后**、**不随 body 滚动** ⇒ 常驻面板底部；不传 ⇒ 与旧版逐像素一致。
+   */
+  footer?: ReactNode
 }
 
-export function Panel({ title, hint, right, children, className }: PanelProps) {
+export function Panel({ title, hint, right, children, className, footer }: PanelProps) {
   return (
     <section className={`wui-panel${className ? ` ${className}` : ''}`}>
       <header className="wui-panel-head">
@@ -31,6 +36,7 @@ export function Panel({ title, hint, right, children, className }: PanelProps) {
         {right != null ? <div className="wui-panel-right">{right}</div> : null}
       </header>
       <div className="wui-panel-body">{children}</div>
+      {footer != null ? <div className="wui-panel-foot">{footer}</div> : null}
     </section>
   )
 }
