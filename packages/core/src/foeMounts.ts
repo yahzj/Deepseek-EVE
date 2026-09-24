@@ -142,7 +142,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '追问裁定 = 加算 +10 个百分点（甲）、作用面 = 虫洞内带（乙：只挂洞内卡条目）。' +
       '⚠ 电子舰也要挂 ⇒ 洞内 A 族：劫掠电子舰 0.30 → 0.40、其余（2026-09-24 提档后 0.22）→ 0.32；' +
       '洞外（低安遭遇 / 悬赏）同一批舰级不挂，因为条目级挂载只影响写了 mounts 的那条编成。' +
-      '设计稿 docs/design/foe-mounts-20260924.md。',
+      '归档落点：docs/roadmap.md 2026-09-24 条 ＋ docs/glossary.md「敌方挂载件」词条（原设计稿已随归档删除）。',
   },
   [FOE_MOUNT_IDS.hullRepair]: {
     id: FOE_MOUNT_IDS.hullRepair,
@@ -155,7 +155,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       'k = 该层本次实际威胁 ÷ 45（combat.FOE_REPAIR_THREAT_REF）⇒ 层 1 = 1.00 · 层 7 ≈ 1.97 · ' +
       '层 10 ≈ 2.77；夹到满值、不回超；层末守卫另吃 ×1.2 的威胁倍率（wormholeFoeThreat）⇒ k 随之更高。' +
       '只挂 G 族洞内卡条目；与「敌方后勤舰」（FoeShipDef.repairPct：折自己 DPS 去修队友）不是一套。' +
-      '设计稿 docs/design/foe-mounts-20260924.md。',
+      '归档落点：docs/roadmap.md 2026-09-24 条 ＋ docs/glossary.md「敌方挂载件」词条（原设计稿已随归档删除）。',
   },
 }
 
