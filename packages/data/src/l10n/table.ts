@@ -3310,6 +3310,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.016": { zh: "入侵旗舰挑战", en: "Invasion flagship challenge" },
   "ui.weekend.017": { zh: "挑战旗舰", en: "Challenge flagship" },
   "ui.weekend.018": { zh: "被入侵舰队占领：悬赏已换成入侵舰队、遇袭更频繁；夺回后恢复", en: "Occupied by invader fleets: bounties are invader fleets and ambushes are frequent; reclaim to restore" },
+  "ui.weekend.019": { zh: "点击前往星图", en: "Click to open the star map" },
   "ui.Ironman.001": { zh: "铁人 · 代次 #{p1}", en: "Iron Man · generation #{p1}" },
   "ui.Ironman.002": { zh: "开启铁人模式", en: "Enable Iron Man" },
   "ui.Ironman.003": { zh: "确认开启", en: "Confirm enable" },

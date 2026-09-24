@@ -19,7 +19,7 @@ import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { THEME_CHOICES, THEME_LABEL_ID, themeUsesSpacePhoto, useTheme, useThemeBootstrap } from './ui/theme'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
-import { WeekendInvasionBanner } from './panels/WeekendInvasion'
+import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -1292,8 +1292,6 @@ export function App({ engine }: { engine: GameEngine }) {
             }}
             onOpenWormhole={openWormhole}
           />
-          {/* 周末入侵横幅（2026-09-23 船长令：放在活动窗口的右侧；绝对定位，不占布局流） */}
-          <WeekendInvasionBanner engine={engine} />
           {/**
            * ───── **主控活动窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
            *
