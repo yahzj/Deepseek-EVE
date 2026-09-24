@@ -562,6 +562,8 @@ export const BlueprintCard = memo(function BlueprintCard({
   productBase,
   /** 产物引用（2026-09-23 船长令：装备/舰船改显示"市场当前价格" ⇒ 卡面要能按 id 取行情） */
   productRef,
+  /** 一次制造产出件数（利润率按整批算；缺省 1） */
+  productUnits,
   countOwned,
   ownedWhere,
   onNeedMineral,
@@ -593,6 +595,9 @@ export const BlueprintCard = memo(function BlueprintCard({
   /** 产物引用（kind + refId）——装备/舰船按船长 2026-09-23 口径改显示**市场当前价格**时按它取行情；
    *  ⚠ 造船厂那张卡（`Shipyard.tsx`）暂时还没接上（缺产物 id）⇒ 该卡不渲染这一行，等接线 */
   productRef?: { kind: 'module' | 'ship' | 'item'; refId: string }
+  /** **一次制造产出件数**（缺省 1）——利润率按"整批收入 = 单价 × 本值"算（船长 2026-09-24 报障：
+   *  零件每批 10 件、消耗品每批 N 发，而 `materials` 是整批的料；只按一件算会算出大负数） */
+  productUnits?: number
   /** 产物"自己有多少"的取数闭包（2026-09-10 船长：卡面产物行尾要显示"我拥有多少个成品"）
    *  ⚠ 收闭包而不是收数值：数值随心跳变，收进来会让上面那张 memo 每拍失效（见 `cardLiveKeyOf`） */
   countOwned: () => number
@@ -913,7 +918,18 @@ export const BlueprintCard = memo(function BlueprintCard({
                     (marketPriceOf(state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
                 0,
               )
-              return <GoodsLine name={productLabel} price={price} marginPct={marginPctOf(price, matCost)} />
+              /**
+               * **利润率按"整批"算**（船长 2026-09-24 报障：「组装机是一次性生产 10 个的，现在的利润只计算
+               * 一个」）：`materials` 是整批的料 ⇒ 收入必须 `单价 × 一次产出件数`（零件 10 / 消耗品 N 发 /
+               * 装备与舰船 1）。卡面显示的行情价仍是**每单位**（与市场页折线图同尺）。
+               */
+              return (
+                <GoodsLine
+                  name={productLabel}
+                  price={price}
+                  marginPct={marginPctOf(price, matCost, productUnits ?? 1)}
+                />
+              )
             })()
           : null}
       </div>
@@ -1149,6 +1165,8 @@ interface ManuItem {
   productKey: string
   /** 产物引用（与 `productKey` 同义，拆成 kind + refId 供卡面取行情；见卡片 props 注释） */
   productRef?: { kind: 'module' | 'ship' | 'item'; refId: string }
+  /** **一次制造产出件数**（缺省 1；零件 = 10、消耗品 = N 发）——供卡面按整批算利润率（见卡片 props 注释） */
+  productUnits?: number
   /** 排序用：本卡是否为**一次性图纸**（`singleUse`） */
   singleUse: boolean
   /** 2026-09-20 零件体系：隐式蓝图（基础零件无需学习） */
@@ -1290,6 +1308,7 @@ export function ManufacturingPanel({
         ),
         productBase: itemDef ? productBaseOf(engine, 'item', itemId, units) : 0,
         productRef: { kind: 'item' as const, refId: itemId },
+        productUnits: units, // 一次产 N 发（利润率按整批算；船长 2026-09-24 报障）
         countOwned: () => countWare(engine.state, itemId), // 弹药/物品产物 → 物品仓库单位数
         ownedWhere: tr("ui.ItemsPage.001"),
         bookPrice: bookPriceOf(engine, bp.id, 0),
@@ -1343,6 +1362,7 @@ export function ManufacturingPanel({
         ),
         productBase: itemDef ? productBaseOf(engine, 'item', partItemId, bp.outputUnits ?? 1) : 0,
         productRef: { kind: 'item' as const, refId: partItemId },
+        productUnits: units, // 一次产 10 件（利润率按整批算；船长 2026-09-24 报障）
         countOwned: () => countWare(engine.state, partItemId),
         ownedWhere: '仓库', // l10n-keep：内容层联合 key（渲染走 ownedWhereText）
         bookPrice: bookPriceOf(engine, bp.id, 0),
@@ -1592,6 +1612,7 @@ export function ManufacturingPanel({
               productNode={it.productNode}
               kindLabel={it.kindLabel}
               productRef={it.productRef}
+              productUnits={it.productUnits}
               productGlyph={it.productGlyph}
               productTone={it.productTone}
               productBase={it.productBase}

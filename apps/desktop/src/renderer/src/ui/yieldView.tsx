@@ -87,12 +87,21 @@ const num = (v: number): string => v.toLocaleString('zh-CN')
 
 /**
  * **利润率**（**2026-09-23 船长令**：「造船厂那…应该在行情价格后面显示（利润率%），组装机处也显示（利润率%）」）：
- * `P = (产物行情价 − 材料成本) ÷ 材料成本 × 100%`，四舍五入到整数；**材料成本也按当前行情价**算
+ * `P = (每批产物行情值 − 材料成本) ÷ 材料成本 × 100%`，四舍五入到整数；**材料成本也按当前行情价**算
  * （取不到行情的材料用物品基准价兜底，与卡面显示的行情价同一把尺）。成本 ≤ 0 或产物无行情 ⇒ `null`（不显示）。
+ *
+ * ⚠ **产物要按"一次生产几件"计**（**2026-09-24 船长报障**：「组装机零件的利润率不对，组装机是一次性生产
+ * 10 个的，现在的利润只计算一个」）：组装机的零件 = 每批 **10 件**、消耗品 = 每批 **N 发**，
+ * 而 `materials` 是**整批**的料 ⇒ 收入必须 `单价 × 件数`，否则分子只剩一件的钱（零件会显示成 −85% 那种
+ * 大负数）。装备 / 舰船 = 每批 1 件（`unitsPerRun` 缺省 1 ⇒ 与旧口径逐值相同）。
+ * 口径与正式工具 `npm run manufacture:econ` 的「产物价值 = 现货价 × outputUnits」同源。
+ *
+ * 卡面**显示**的行情价仍是**每单位**（与市场页/折线图同尺，船长 2026-09-23 口径），只有利润率按整批算。
  */
-export function marginPctOf(price: number | null, costIsk: number): number | null {
+export function marginPctOf(price: number | null, costIsk: number, unitsPerRun = 1): number | null {
   if (price === null || costIsk <= 0) return null
-  return Math.round(((price - costIsk) / costIsk) * 100)
+  const revenue = price * Math.max(1, unitsPerRun)
+  return Math.round(((revenue - costIsk) / costIsk) * 100)
 }
 
 /**
