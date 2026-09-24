@@ -1430,6 +1430,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.065": { zh: "打之前先去装配页，把对空火力带上。", en: "Before the fight, bring anti-air firepower from the Fitting page." },
   "ui.comms.066": { zh: "想先看看这片星域长什么样？去星图认认路。", en: "Want a look at this stretch of space first? Get your bearings on the Star Map." },
   "ui.comms.067": { zh: "航线通报：第七层起的围剿", en: "Route bulletin: the sweep from layer seven on" },
+  "ui.comms.068": { zh: "到「技能」页的「工程」里训练 AI 核心操作学", en: "Train AI Core Operation under Engineering on the Skills page" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },

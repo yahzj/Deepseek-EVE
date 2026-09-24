@@ -26,6 +26,12 @@ interface TaskJump {
   shipTab?: string
   /** 工业页内层段（`refine` 精炼炉 / `craft` 组装机 / `shipyard` 造船厂） */
   industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard'
+  /**
+   * **要练的那门技能 id**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：
+   * 落点所属大类**由数据现查**（`ctx.skills.get(id).group`），界面不写死"工程"二字
+   * ——技能挪了分类，这里跟着走。
+   */
+  skillId?: string
   /** 按钮上写的去处（「前往××」） */
   label: string
 }
@@ -39,7 +45,7 @@ const FIRST_JUMPS: Record<string, TaskJump> = {
   'first-produce': { page: 'industry', industrySec: 'craft', label: tr("ui.IndustryPage.059") },
   'first-order': { page: 'market', label: tr("ui.App.005") },
   'first-ship': { page: 'industry', industrySec: 'craft', label: tr("ui.FirstTasks.012") },
-  'first-skill': { page: 'skills', label: tr("ui.App.007") },
+  'first-skill': { page: 'skills', skillId: 'ai-expert', label: tr("ui.App.007") },
   'first-ai': { page: 'ship', shipTab: 'ai', label: tr("ui.ShipPage.057") },
   'first-haul': { page: 'map', mapTab: 'haul', label: tr("ui.MapPage.006") },
   'first-wormhole': { page: 'map', mapTab: 'whscan', label: tr("ui.MapPage.007") },
@@ -56,7 +62,14 @@ export function FirstTasks({
   /** 「看情报」：跳到通讯页并选中这条任务的那封情报信 */
   onOpenComms?: (messageId: string) => void
   /** 跳转按钮：去这件活所在的页面（App 层切换页面/页签，并自带解锁闸门的提示） */
-  onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard' }) => void
+  onJump?: (t: {
+    page: string
+    mapTab?: string
+    shipTab?: string
+    industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard'
+    /** 技能页要落到的**大类**（由 `skillId` 现查得到；2026-09-24 船长令） */
+    skillGroup?: string
+  }) => void
 }) {
   const state = engine.state
   /** 卡片序列（顺序解锁下**恒为当前这一条**；判定都在 core 的 `firstTaskBoard`，面板只渲染） */
@@ -114,7 +127,16 @@ export function FirstTasks({
                   <button
                     className="app-btn is-small"
                     title={tr("ui.FirstTasks.029", { p1: jump.label })}
-                    onClick={() => onJump({ page: jump.page, mapTab: jump.mapTab, shipTab: jump.shipTab, industrySec: jump.industrySec })}
+                    onClick={() =>
+                      onJump({
+                        page: jump.page,
+                        mapTab: jump.mapTab,
+                        shipTab: jump.shipTab,
+                        industrySec: jump.industrySec,
+                        // 技能页：大类由数据现查（查不到就不带 ⇒ 只切页，不切分类）
+                        skillGroup: jump.skillId ? engine.ctx.skills.get(jump.skillId)?.group : undefined,
+                      })
+                    }
                   >
                     {tr("ui.CommsReader.004")}{jump.label} ›
                   </button>

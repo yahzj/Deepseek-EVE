@@ -131,7 +131,11 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
       '随信附一枚基础 AI 核心，下一步派副船正好用得上。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-skill' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    /**
+     * **2026-09-24 船长令**：「跳到技能页并自动选中工程」——这封信的「前往」不再只回任务中心，
+     * 而是直接落到「技能」页并选中「工程」那一档（`tab` = 大类键；落点规则见 App 的 `gotoFromComms`）。
+     */
+    hint: { text: '到「技能」页的「工程」里训练 AI 核心操作学', page: 'skills', tab: '工程' },
   },
   {
     id: 'first-ai',

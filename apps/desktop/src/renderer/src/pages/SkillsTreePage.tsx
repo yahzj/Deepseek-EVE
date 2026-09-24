@@ -22,7 +22,7 @@
  * ⚠ 视觉红线：**六边形与连线一律 SVG 线稿**（`viewBox` ＋ 细描边 ＋ `currentColor`），**不用 CSS 拼形状**；
  * 筛选控件走既有家族（一级大类 `.app-tasktab` / 二级技能书 `.app-subtab`）。
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   MAX_SKILL_LEVEL,
   PREREQ_MIN_LEVEL,
@@ -57,7 +57,18 @@ type Status = {
   cls: string
 }
 
-export function SkillsTreePage({ engine }: PageProps) {
+export function SkillsTreePage({
+  engine,
+  focusGroup,
+}: PageProps & {
+  /**
+   * **外部定位请求**（**2026-09-24 船长令**：「跳到技能页并自动选中工程」）：
+   * 「第一次学习技能」卡片的跳转按钮与那封情报信的「前往」都带 `{ group:'工程', seq }` 进来
+   * ⇒ 切到该大类并**清掉技能书筛选与搜索**（否则上回留下的筛选会把目标技能藏起来）。
+   * `seq` 每次请求 +1 ⇒ 人在技能页时再点一次也能重新落位（同 `taskFocus` / `mapGoto` 的套路）。
+   */
+  focusGroup?: { group: string; seq: number } | null
+}) {
   const state = engine.state
   const groups = engine.groups
   const skills = engine.skills
@@ -75,6 +86,17 @@ export function SkillsTreePage({ engine }: PageProps) {
   /** 导航：先选大类，再选技能书（`''` = 该大类全部技能书） */
   const [groupTab, setGroupTab] = useState<string>(groups[0] ?? '')
   const [branchTab, setBranchTab] = useState<string>('')
+  /**
+   * **外部定位落位**（见 `focusGroup` 的说明）：只认 `seq` 变化 ⇒ 同一次请求不重复覆盖玩家自己的选择；
+   * 组名不在本档技能表里（改名/老数据）时**什么都不做**，不把页面切成空白。
+   */
+  useEffect(() => {
+    if (!focusGroup) return
+    if (!groups.includes(focusGroup.group)) return
+    setGroupTab(focusGroup.group)
+    setBranchTab('')
+    setQuery('')
+  }, [focusGroup?.seq])
   const q = query.trim().toLowerCase()
   const view = skillQueueStatus(state, engine.ctx.skills)
   const tf = trainingTimeFactor(state)
