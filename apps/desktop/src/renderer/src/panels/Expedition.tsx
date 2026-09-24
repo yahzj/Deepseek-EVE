@@ -97,7 +97,10 @@ const FOE_ART_MAIN_MIN = 560
 const FoeArt = memo(function FoeArt({ fam }: { fam: string }) {
   return (
     <div className="app-ship-art" title={tr("ui.Expedition.186", { p1: FOE_FAMILY_LABEL[fam] ?? fam })}>
-      <ShipSprite foeKey={fam} accent={FOE_ACCENT[fam] ?? 'rgb(var(--wui-tone-a))'} size={FOE_ART_W} engine={false} />
+      {/* 未知敌族的兜底色：原来写的是一个色板里不存在的 token（wui-tone-a）⇒ 静默无色，
+          2026-09-24 由 token 契约抓出 ⇒ 换成既有的中性色 --wui-dim（注：注释里不写完整 var(...) 写法，
+          免得契约扫描把注释也当成引用） */}
+      <ShipSprite foeKey={fam} accent={FOE_ACCENT[fam] ?? 'rgb(var(--wui-dim))'} size={FOE_ART_W} engine={false} />
     </div>
   )
 })

@@ -133,7 +133,8 @@ const KIND_DOT: Record<LogKind, string> = {
   warn: 'rgb(var(--wui-log-warn))',
   queue: 'rgb(var(--wui-log-queue))',
   info: 'rgb(var(--wui-log-info))',
-  trade: 'rgb(var(--wui-log-trade))',
+  // 色板里没有 --wui-log-trade（其余六种 log 色都有）⇒ 用既有的「贸易」色调，2026-09-24 由 token 契约抓出
+  trade: 'rgb(var(--wui-tone-group-trade))',
   event: 'rgb(var(--wui-log-event))',
 }
 
