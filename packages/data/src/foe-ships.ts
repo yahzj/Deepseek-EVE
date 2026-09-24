@@ -92,6 +92,7 @@ export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
   id: 'foe-pirate-skiff',
   name: '海盗快艇',
   family: 'A',
+  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
   hullClassTier: 1, // 护卫舰
   speedRatio: 1.15, // = 391 / 340
   hp: 156, // 按档重排（甲案）：T1 档基线 260 × 角色 0.60（数量型小艇）= **156**；原 150（卡锚）
@@ -116,6 +117,7 @@ export const FOE_SHIP_PIRATE_CORVETTE: FoeShipDef = {
   id: 'foe-pirate-corvette',
   name: '劫掠护卫舰',
   family: 'A',
+  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
   hullClassTier: 1, // 护卫舰（2026-09-11 追加裁决：本舰级**下落一档**到护卫舰，名与档一致）
   speedRatio: 1.1, // = 374 / 340
   hp: 364, // 按档重排（甲案）：T1 260 × 角色 1.40（标准护卫）= **364**；原 365（卡锚）
@@ -138,6 +140,7 @@ export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
   id: 'foe-pirate-sniper',
   name: '劫掠狙击舰',
   family: 'A',
+  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
   hullClassTier: 2, // 驱逐舰（2026-09-11 追加裁决：本舰级**下落一档**到驱逐舰）
   speedRatio: 1.1, // = 325 / 295
   hp: 480, // 按档重排（甲案）：T2 档基线 480 × 角色 1.00（远程狙击）= **480**；原 268.75（卡锚）
@@ -166,6 +169,7 @@ export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
   id: 'foe-pirate-warlord',
   name: '海盗头目舰',
   family: 'A',
+  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
   hullClassTier: 3, // 巡洋舰（海盗族顶格）
   speedRatio: 1.45, // = 374 / 258
   hp: 900, // 按档重排（甲案）：T3 档基线 900 × 角色 1.00（精锐主力）= **900**；原 360（卡锚 ⇒ 与护卫舰同强）
