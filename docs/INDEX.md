@@ -12,13 +12,13 @@
 
 ## 统计
 
-- 文档总数 **304** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5716** KB · **40916** 行
-- 状态分布：**未标注** 166 · **已确认/已实现** 112 · **进行中** 21 · **待裁定** 4 · **历史留档** 1
-- 孤儿文档（0 引用）**34** 份 · 状态未标注 **166** 份
+- 文档总数 **304** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5712** KB · **40774** 行
+- 状态分布：**未标注** 168 · **已确认/已实现** 110 · **进行中** 22 · **待裁定** 3 · **历史留档** 1
+- 孤儿文档（0 引用）**34** 份 · 状态未标注 **168** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**191** 份
-- 九、封存卷（archive · 冻结件，只读不改）：**23** 份
+- 三、现行设计稿（design）：**190** 份
+- 九、封存卷（archive · 冻结件，只读不改）：**24** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 196 KB / 245 行 | 13 / 1 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 64 KB / 693 行 | 72 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 446 KB / 951 行 | 199 / 13 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 84 KB / 353 行 | 285 / 14 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 450 KB / 955 行 | 199 / 13 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 335 行 | 288 / 14 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,17 +53,15 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 191 份
+## 三、现行设计稿（design） —— 190 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/ships-workbench-20260924.md` | 船长工作台回写：我方 8 艘虫洞舰船属性 ＋ 鱼雷舰豁免裁决（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 5 KB / 62 行 | 0 / 0 |
+| `docs/design/side-tasks-courier-and-damage-popup-20260924.md` | 任务板：快递任务周期（2026-09-24）＋ 战斗伤害飘字（待落） | 进行中（进行中） | 2026-09-24 | 4 KB / 52 行 | 0 / 0 |
 | `docs/design/win-estimate-redesign-20260924.md` | 悬赏胜率预估重做：三点距离 + 去种子化 + 实战胜利记录（2026-09-24） | 进行中（进行中 —— 船长口径已逐条落码） | 2026-09-24 | 8 KB / 81 行 | 0 / 0 |
-| `docs/design/ironman-mode-20260923.md` | 铁人模式（Iron Man · 不可回退的存档纪律 ＋ 铁人福利）· 2026-09-23 | 进行中（进行中） | 2026-09-23 | 21 KB / 214 行 | 0 / 2 |
-| `docs/design/shield-charger-halved-20260923.md` | 护盾充能装置：冷却与效果值减半 · 2026-09-23 | 已确认/已实现（已完成） | 2026-09-23 | 3 KB / 36 行 | 0 / 0 |
 | `docs/design/skills-merge-20260923.md` | 技能页合并（旧目录 → 科技树页）· 2026-09-23 | 未标注（已落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
-| `docs/design/weekend-invasion-20260923.md` | 周末入侵活动（设计定稿 · 挂起待开工）· 2026-09-23 | 待裁定（挂起 · 待船长裁决 7 条） | 2026-09-23 | 20 KB / 198 行 | 0 / 3 |
 | `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
-| `docs/design/wormhole-loot-box-20260923.md` | 虫洞货柜掉落概率提到 5% · 2026-09-23 | 已确认/已实现（已完成） | 2026-09-23 | 2 KB / 29 行 | 0 / 0 |
 | `docs/design/archived-window-embed-20260922.md` | 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22） | 未标注（已封存 · 备用） | 2026-09-22 | 9 KB / 104 行 | 1 / 7 |
 | `docs/design/hold-ux-20260922.md` | 洞内货仓操作体验四条（2026-09-22） | 未标注（四条已全部落码） | 2026-09-22 | 9 KB / 98 行 | 0 / 1 |
 | `docs/design/import-save-edge-20260922.md` | 网页版导入存档"没反应"：取消判定竞态（2026-09-22） | 进行中（进行中） | 2026-09-22 | 3 KB / 39 行 | 0 / 0 |
@@ -247,9 +245,10 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注（已按用户确认的 V4/V5 方案实现） | — | 16 KB / 174 行 | 16 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · M1 已上线 · M2–M4 待开工） | 未标注（M1 机制骨架已上线） | — | 20 KB / 198 行 | 3 / 0 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 4 KB / 54 行 | 4 / 0 |
 
-## 九、封存卷（archive · 冻结件，只读不改） —— 23 份
+## 九、封存卷（archive · 冻结件，只读不改） —— 24 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -274,8 +273,9 @@
 | `docs/archive/roadmap-2026-09-19-20.md` | 封存卷 · roadmap 批次条目 2026-09-19/20 | 未标注 | — | 5 KB / 33 行 | 0 / 1 |
 | `docs/archive/roadmap-2026-09-19.md` | 封存卷 · roadmap 批次条目 2026-09-19 | 未标注 | — | 2 KB / 13 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-20.md` | 封存卷 · roadmap 批次条目 2026-09-20 | 未标注 | — | 73 KB / 231 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-21.md` | 封存卷 · roadmap 批次条目 2026-09-21 | 未标注 | — | 17 KB / 44 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-22.md` | 封存卷 · roadmap 批次条目 2026-09-22 | 未标注 | — | 4 KB / 18 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-21-22.md` | 封存卷 · roadmap 批次条目 2026-09-21/22 | 未标注 | — | 3 KB / 13 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-21.md` | 封存卷 · roadmap 批次条目 2026-09-21 | 未标注 | — | 19 KB / 49 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-22.md` | 封存卷 · roadmap 批次条目 2026-09-22 | 未标注 | — | 11 KB / 37 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
@@ -378,11 +378,11 @@
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/ships-workbench-20260924.md`（2026-09-24 · 5 KB）—— 船长工作台回写：我方 8 艘虫洞舰船属性 ＋ 鱼雷舰豁免裁决（2026-09-24）
+- `docs/design/side-tasks-courier-and-damage-popup-20260924.md`（2026-09-24 · 4 KB）—— 任务板：快递任务周期（2026-09-24）＋ 战斗伤害飘字（待落）
 - `docs/design/win-estimate-redesign-20260924.md`（2026-09-24 · 8 KB）—— 悬赏胜率预估重做：三点距离 + 去种子化 + 实战胜利记录（2026-09-24）
-- `docs/design/shield-charger-halved-20260923.md`（2026-09-23 · 3 KB）—— 护盾充能装置：冷却与效果值减半 · 2026-09-23
 - `docs/design/skills-merge-20260923.md`（2026-09-23 · 8 KB）—— 技能页合并（旧目录 → 科技树页）· 2026-09-23
 - `docs/design/wh-spawn-layer7-20260923.md`（2026-09-23 · 8 KB）—— 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23）
-- `docs/design/wormhole-loot-box-20260923.md`（2026-09-23 · 2 KB）—— 虫洞货柜掉落概率提到 5% · 2026-09-23
 - `docs/design/import-save-edge-20260922.md`（2026-09-22 · 3 KB）—— 网页版导入存档"没反应"：取消判定竞态（2026-09-22）
 - `docs/design/industry-subpage-lag-20260922.md`（2026-09-22 · 13 KB）—— 工业页子页切换卡顿 · 定位与改法（2026-09-22 · 三稿：第 1、2、3 步已实施并复测）
 - `docs/design/market-my-orders-tab-20260922.md`（2026-09-22 · 4 KB）—— 市场「我的挂单」提升为同级子页面（2026-09-22 · 船长令）
@@ -407,13 +407,13 @@
 - `docs/design/player-marks-20260910.md`（2026-09-10 · 5 KB）—— 玩家标记（收藏）· 默认排序置顶（状态：已确认，2026-09-10 船长拍板；一号实现）
 - `docs/review/enemy-roster-20260910.md`（2026-09-10 · 11 KB）—— 敌情名册（2026-09-10 · 待船长审核与调整）
 - `docs/design/salvage-autoloop-20260909.md`（2026-09-09 · 3 KB）—— 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现)
-- `docs/archive/roadmap-2026-09-22.md`（无日期 · 4 KB）—— 封存卷 · roadmap 批次条目 2026-09-22
+- `docs/archive/roadmap-2026-09-21-22.md`（无日期 · 3 KB）—— 封存卷 · roadmap 批次条目 2026-09-21/22
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（166 份，待补一行 `状态：…`）
+## 附：状态未标注（168 份，待补一行 `状态：…`）
 
 - `docs/design/skills-merge-20260923.md`（2026-09-23）—— 技能页合并（旧目录 → 科技树页）· 2026-09-23
 - `docs/design/archived-window-embed-20260922.md`（2026-09-22）—— 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22）
@@ -546,6 +546,7 @@
 - `docs/archive/roadmap-2026-09-19-20.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-19/20
 - `docs/archive/roadmap-2026-09-19.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-19
 - `docs/archive/roadmap-2026-09-20.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-20
+- `docs/archive/roadmap-2026-09-21-22.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-21/22
 - `docs/archive/roadmap-2026-09-21.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-21
 - `docs/archive/roadmap-2026-09-22.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-22
 - `docs/catalog.md`（无日期）—— 文档目录（指路 · 开工先读）
@@ -573,6 +574,7 @@
 - `docs/design/v7-design.md`（无日期）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 - `docs/design/v9-market.md`（无日期）—— V9 设计：市场系统（已实现）
 - `docs/design/weapon-skill-batch.md`（无日期）—— 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四）
+- `docs/design/weekend-invasion.md`（无日期）—— 周末入侵活动（设计定稿 · M1 已上线 · M2–M4 待开工）
 - `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/glossary-en.md`（无日期）—— 英文术语与专名译名表（English Glossary & Naming Table）
