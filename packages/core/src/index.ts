@@ -197,6 +197,7 @@ export {
   ironmanExoticCapBonus,
   ironmanExoticWeightMul,
   ironmanLoadVerdict,
+  ironmanModeChosen,
   ironmanOf,
   ironmanOfflineCapBonusMs,
   ironmanOn,
@@ -205,6 +206,7 @@ export {
   ironmanRewardMul,
   ironmanSeq,
   ironmanTrainingMul,
+  markModeChosenAsStandard,
 } from './ironman'
 export type { IronmanLike, IronmanState } from './ironman'
 

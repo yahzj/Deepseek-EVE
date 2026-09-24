@@ -2499,6 +2499,11 @@ function normalizeState(raw: unknown): GameState {
   const resupplyFromWarehouse =
     src.resupplyFromWarehouse === true ? true : src.resupplyFromWarehouse === false ? false : undefined
   /**
+   * **模式选择已完成**（2026-09-24 船长令）：只在 `true` 时落键（缺省 = 没选过 ⇒ 零迁移）。
+   * ⚠ 本清洗器逐字段重建 ⇒ 漏登记 = 每读一次档模式选择框就又弹一次（与 `salvagerGift` 那次同一类事故）。
+   */
+  const modeChosen = src.modeChosen === true ? true : undefined
+  /**
    * **实战胜利记录**（2026-09-24 船长令 · 兼容字段无版本号）：键 = 敌卡 id，值 = 那一次的距离与剩余比例。
    * 只收合法行（`desireM` 为正有限数 · `remainPct` 落在 0~1）；**空表不写键** ⇒ 老档零迁移、往返逐字一致。
    * ⚠ 与 `resupplyFromWarehouse` 同款：漏登记 = 每读一次档记录就被清空，胜率预估退回三点采样。
@@ -3277,6 +3282,8 @@ function normalizeState(raw: unknown): GameState {
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
     ...(resupplyFromWarehouse !== undefined ? { resupplyFromWarehouse } : {}),
+    // 模式选择已完成（2026-09-24 船长令）：只在 true 时落键；漏了这行 ⇒ 每次读档都重弹模式选择框
+    ...(modeChosen !== undefined ? { modeChosen } : {}),
     // 实战胜利记录（2026-09-24 船长令）：**空表不写键**（老档/新档快照逐字一致 = 真零迁移）
     ...(Object.keys(winRecord).length > 0 ? { winRecord } : {}),
     // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径

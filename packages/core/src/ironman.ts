@@ -83,6 +83,29 @@ export function ironmanClosed(state: { ironman?: IronmanLike } | null | undefine
   return ironmanOf(state).closedWallMs !== undefined
 }
 
+/**
+ * **玩家是否已就「普通 / 铁人」做过选择**（**模式选择框是否还要出现的唯一判据**）。
+ *
+ * **2026-09-24 船长令**：「对至今未选择的旧档进行模式选择弹窗」。
+ * 判据 = 曾经开过铁人（`sinceWallMs` 已写）**或**已明确选过普通（`state.modeChosen`）。
+ * ⇒ 序章点了「跳过」的档两条都不满足 ⇒ 进游戏后照样会被问一次（那是它唯一一次机会）。
+ */
+export function ironmanModeChosen(
+  state: ({ ironman?: IronmanLike } & { modeChosen?: boolean }) | null | undefined,
+): boolean {
+  if (ironmanEver(state)) return true
+  return state?.modeChosen === true
+}
+
+/**
+ * **记下「已选普通模式」**（单向：写下它，那一次选择机会就用掉了 —— 存档页不再提供"转铁人"入口）。
+ *
+ * ⚠ **只在"选普通"那一刻调用**；选铁人不必调（`enterIronman` 写的 `sinceWallMs` 本身就是记录）。
+ */
+export function markModeChosenAsStandard(state: { modeChosen?: boolean }): void {
+  state.modeChosen = true
+}
+
 /** 铁人档的当前代次（普通档也返回它的代次；闸门两侧都用它） */
 export function ironmanSeq(state: { ironman?: IronmanLike } | null | undefined): number {
   return ironmanOf(state).seq
