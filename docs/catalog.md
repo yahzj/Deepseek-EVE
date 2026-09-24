@@ -33,7 +33,7 @@
 | 准备更新公告 | §十二（公告与发布审核）＋ `docs/design/announcement-draft-*.md`（待审稿） |
 | 新建 / 收尾工具 | §十（工具纪律：正式入库 / `_` 临时探针收尾处置） |
 | 多 agent 并行 / 合入 / 推送 | §三（工作区与合入纪律、推送闸门） |
-| 交接 / 续接 / 被压缩后 | §六 ＋ `docs/roadmap.md`（最近批次与状态）＋ 本文件 §三 |
+| 交接 / 续接 / 被压缩后 | `docs/roadmap.md`（最近批次与状态）＋ 本文件 §三 |
 | 查历史决策与旧口径 | `docs/roadmap.md` 底部封存卷索引 → `docs/archive/roadmap-<日期>.md` → `git log -S "<关键词>"` |
 | 交付可测存档 | §八 ＋ `docs/test-saves/` ＋ `tools/make-test-save.ts` |
 

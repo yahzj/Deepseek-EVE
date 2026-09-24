@@ -99,8 +99,12 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
     goto('mode')
   }
 
-  /** 选普通：跳过流 ⇒ 直接收尾；正常流 ⇒ 去起名 */
-  const chooseStandard = (): void => {
+  /**
+   * 选普通：**先记账再走**（**2026-09-24 船长令**：模式选择＝一次机会 ⇒ 选过就不再弹那张框）
+   * ⇒ 跳过流直接收尾；正常流去起名。
+   */
+  const chooseStandard = async (): Promise<void> => {
+    await engine.chooseStandardMode()
     if (skipFlow) finishSkip()
     else goto('name')
   }
@@ -189,13 +193,15 @@ export function PrologueScreen({ engine }: { engine: GameEngine }) {
              * 过完初始动画后，且应该使用 2 张和出港按钮差不多大小的卡牌。分别写普通模式和铁人模式的特点。
              * 铁人模式不需要太过清楚的讲解市场相关改动，只需要一句市场规模扩大」）。
              * ⚠ 因此「重置档案」不再弹模式框：**新档与重置共用这一处**（重置也走序章）。
-             * ⚠ 右上角「跳过」直接结束序章 ⇒ 跳过者即普通档；想转铁人可走存档页的「开启铁人模式」。
+             * ⚠ 右上角「跳过」直接结束序章 ⇒ 跳过者**没有做过选择**（不写 `state.modeChosen`），
+             * 因此进游戏后会由渲染层的模式选择框补问一次（**2026-09-24 船长令**：那是它唯一一次机会，
+             * 存档页的"转铁人"入口已随该令撤除）。
              */}
             {phase === 'mode' ? (
               <div className="app-pro-name" onClick={(e) => e.stopPropagation()}>
                 <div className="app-pro-diag-title">{tr('ui.Ironman.011')}</div>
                 <div className="app-pro-mode">
-                  <button className="app-pro-mode-card" onClick={() => chooseStandard()}>
+                  <button className="app-pro-mode-card" onClick={() => void chooseStandard()}>
                     <span className="app-pro-mode-title">{tr('ui.Ironman.026')}</span>
                     <span className="app-pro-mode-li">{tr('ui.Ironman.027')}</span>
                     <span className="app-pro-mode-li">{tr('ui.Ironman.028')}</span>

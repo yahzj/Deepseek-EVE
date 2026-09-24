@@ -180,6 +180,9 @@ import {
   enterIronman,
   ironmanClosed,
   ironmanEver,
+  // 2026-09-24 模式选择（船长令：旧档未选择者弹一次、关闭铁人走警告弹窗）
+  ironmanModeChosen,
+  markModeChosenAsStandard,
   wormholeEnter,
   wormholeTakePileAt,
   wormholeHoldUsage,
@@ -1126,6 +1129,8 @@ export class GameEngine {
     sinceWallMs?: number
     ledgerSeq: number
     rescueMinAgeMs: number
+    /** **模式选择是否已做过**（2026-09-24 船长令）：false ⇒ 进游戏后要弹一次模式选择框 */
+    modeChosen: boolean
   }> {
     let ledgerSeq = 0
     try {
@@ -1142,7 +1147,32 @@ export class GameEngine {
       sinceWallMs: this.state.ironman?.sinceWallMs,
       ledgerSeq,
       rescueMinAgeMs: IRONMAN_RESCUE_MIN_AGE_MS,
+      modeChosen: ironmanModeChosen(this.state),
     }
+  }
+
+  /**
+   * **是否该弹模式选择框**（**2026-09-24 船长令**「对至今未选择的旧档进行模式选择弹窗」）。
+   *
+   * 同步读**内存档**（不查账本）⇒ 界面每帧直接问；引擎 `notify()` 后判据自动翻转、弹层自动卸载。
+   */
+  modeChoiceNeeded(): boolean {
+    return !ironmanModeChosen(this.state)
+  }
+
+  /**
+   * **选「普通模式」**（**2026-09-24 船长令**：模式选择弹窗＝一次机会）。
+   *
+   * 写下 `state.modeChosen` ⇒ 那条记录意味着：这次选择机会用掉了，存档页不再提供"转铁人"入口。
+   * ⚠ 与 `enterIronmanNow` 是**二选一的两条路**：选铁人走那边（`sinceWallMs` 本身就是记录），
+   * 只有选普通要调本方法。已经选过（铁人或普通）⇒ 空操作返回成功，不覆盖任何东西。
+   */
+  async chooseStandardMode(): Promise<CommandResult> {
+    if (ironmanModeChosen(this.state)) return { ok: true }
+    markModeChosenAsStandard(this.state)
+    await this.persist()
+    this.notify()
+    return { ok: true }
   }
 
   /**

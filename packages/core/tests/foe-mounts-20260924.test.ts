@@ -3,8 +3,9 @@
  * ①「**在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避**」＋「**电子舰也要挂**」；
  * ②「**给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成。**」。
  *
- * 设计稿 `docs/design/foe-mounts-20260924.md`（§二 定稿表 · §三 边界 · §四 实现计划）。
- * 本文件钉四件事（= 设计稿 §四 第 7 条的"三条用例"＋ 一条随档）：
+ * 归档落点：`docs/roadmap.md` 2026-09-24 条 ＋ `docs/glossary.md`「敌方挂载件」词条
+ * （原设计稿 `docs/design/foe-mounts-20260924.md` 已随归档删除，细节以 git 历史兜底）。
+ * 本文件钉四件事（= 原设计稿 §四 第 7 条的"三条用例"＋ 一条随档）：
  * 1. **闪避 +10pp 真进命中判定**：规格层 0.22 → 0.32（A 族）、0.30 → 0.40（劫掠电子舰），
  *    并在 `hitChance` 上**实测**同一发武器对它的命中率下降（不是只改了个字段数）；
  * 2. **层越深回得越多**：k = 本层本次实际威胁 ÷ 45 ⇒ 层 1 = 1.00、层 7 ≈ 1.97（逐值对账）；
@@ -140,8 +141,11 @@ describe('姿态陀螺仪（A 族洞内 · 船长 2026-09-24）', () => {
 })
 
 describe('船体修理装置（G 族洞内 · 船长 2026-09-24）', () => {
-  it('目录：每 5 秒 5 装甲 + 5 结构 · 英文名已填', () => {
-    expect(FOE_MOUNTS[FOE_MOUNT_IDS.hullRepair].repairPulse).toEqual({ everyMs: 5_000, armor: 5, hull: 5 })
+  /** 基数（船长 2026-09-24 二次令：**5/5 上调至 15/15**）——用例一律**从目录读**，改基数只需改这一处来源 */
+  const BASE = FOE_MOUNTS[FOE_MOUNT_IDS.hullRepair].repairPulse!
+
+  it('目录：每 5 秒 15 装甲 + 15 结构（船长二次令上调）· 英文名已填', () => {
+    expect(FOE_MOUNTS[FOE_MOUNT_IDS.hullRepair].repairPulse).toEqual({ everyMs: 5_000, armor: 15, hull: 15 })
     expect(FOE_MOUNTS[FOE_MOUNT_IDS.hullRepair].en).toBe('Hull Repair Unit')
   })
 
@@ -152,8 +156,8 @@ describe('船体修理装置（G 族洞内 · 船长 2026-09-24）', () => {
       for (const f of specs) {
         expect(f.foeRepairPulse, `${id}/${f.tag} 应挂船体修理装置`).toBeTruthy()
         expect(f.foeRepairPulse!.everyMs).toBe(5_000)
-        expect(f.foeRepairPulse!.armor).toBe(5)
-        expect(f.foeRepairPulse!.hull).toBe(5)
+        expect(f.foeRepairPulse!.armor).toBe(BASE.armor)
+        expect(f.foeRepairPulse!.hull).toBe(BASE.hull)
         expect(f.foeRepairPulse!.k, `${id} 层 1 的 k`).toBeCloseTo(derived.threat! / FOE_REPAIR_THREAT_REF, 10)
       }
       expect(derived.threat, `${id} 层 1 节点威胁 = 基准 45`).toBe(FOE_REPAIR_THREAT_REF)
@@ -180,7 +184,7 @@ describe('船体修理装置（G 族洞内 · 船长 2026-09-24）', () => {
     expect(boss.foeRepairPulse!.k).toBeGreaterThan(node.foeRepairPulse!.k)
   })
 
-  it('一跳实收 = `round(5 × k)` 装甲 ＋ 同额结构；**满血不再回**、不超满值', () => {
+  it('一跳实收 = `round(基数 × k)` 装甲 ＋ 同额结构；**满血不再回**、不超满值', () => {
     const fodder = specsAt('wh-exile-blockade', 1).specs[0]!
     const me = { ...fodder, tag: 'player', side: 'me' as const }
     const battle = createBattleState(me, [fodder], 0, 5_000)
@@ -190,15 +194,16 @@ describe('船体修理装置（G 族洞内 · 船长 2026-09-24）', () => {
     const before = { ...rt.hp }
     pulseFoeMountRepair(battle, fodder, ledger)
     expect(ledger.pulses).toBe(1)
-    expect(rt.hp.a - before.a, '装甲 +round(5×1.00)').toBe(5)
-    expect(rt.hp.h - before.h, '结构 +round(5×1.00)').toBe(5)
-    expect(ledger.healed).toBe(10)
+    expect(rt.hp.a - before.a, `装甲 +round(${BASE.armor}×1.00)`).toBe(BASE.armor)
+    expect(rt.hp.h - before.h, `结构 +round(${BASE.hull}×1.00)`).toBe(BASE.hull)
+    expect(ledger.healed).toBe(BASE.armor + BASE.hull)
     // 满血 ⇒ 一跳 0 点，且永不超过满值
     rt.hp = { ...fodder.hp }
+    const healedBefore = ledger.healed
     pulseFoeMountRepair(battle, fodder, ledger)
     expect(rt.hp.a).toBe(fodder.hp.a)
     expect(rt.hp.h).toBe(fodder.hp.h)
-    expect(ledger.healed, '满血那一跳不产生修理量').toBe(10)
+    expect(ledger.healed, '满血那一跳不产生修理量').toBe(healedBefore)
   })
 
   it('层越深一跳越多（战斗内实收）：层 7 一跳 > 层 1 一跳', () => {
@@ -216,8 +221,8 @@ describe('船体修理装置（G 族洞内 · 船长 2026-09-24）', () => {
     const l1 = healAt(1)
     const l7 = healAt(7)
     const k7 = specsAt('wh-exile-blockade', 7).specs[0]!.foeRepairPulse!.k
-    expect(l1).toBe(10)
-    expect(l7).toBe(Math.round(5 * k7) * 2)
+    expect(l1).toBe(BASE.armor + BASE.hull)
+    expect(l7).toBe(Math.round(BASE.armor * k7) + Math.round(BASE.hull * k7))
     expect(l7).toBeGreaterThan(l1)
   })
 
