@@ -10092,15 +10092,10 @@ html[data-locale='en'] body {
 .app-pro-wake-btn { font-size: 22px; font-weight: 800; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: 10px; padding: 16px 44px; cursor: pointer; animation: app-pro-breathe 2.4s ease-in-out infinite; }
 
 .app-pro-wake-btn:hover { background: rgb(var(--wui-x64) / 0.4); box-shadow: 0 0 22px rgba(90,220,160,.35); }
-/* 周末入侵横幅（M1-c · 2026-09-23）：固定右下角，不参与页面布局 ⇒ 一级页仍然不滚 */
-.app-weekend-banner { position: absolute; top: 10px; right: 12px; z-index: 60; display: flex; flex-direction: column; gap: 4px; width: 260px; max-width: calc(100% - 28px); padding: 10px 12px; border: 1px solid rgb(var(--wui-fam-a)); border-radius: 10px; background: rgb(var(--wui-black) / 0.72); font-size: 12px; line-height: 1.5; }
-.app-weekend-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.app-weekend-tag { color: rgb(var(--wui-fam-a)); font-weight: 800; }
-.app-weekend-dim { color: rgb(var(--wui-x76)); }
-.app-weekend-warn { color: rgb(var(--wui-x159)); font-weight: 700; }
-.app-weekend-list { display: flex; flex-wrap: wrap; gap: 4px; max-height: 86px; overflow: auto; }
-.app-weekend-chip { padding: 1px 6px; border: 1px solid rgb(var(--wui-border)); border-radius: 8px; color: rgb(var(--wui-x76)); font-size: 11px; }
-.app-weekend-chip.is-core { border-color: rgb(var(--wui-fam-a)); color: rgb(var(--wui-fam-a)); }
+/* 周末入侵 · 事件日志里的一行（2026-09-24 船长令：放日志底部、与日志同级、点击跳星图） */
+.app-weekend-logrow { cursor: pointer; }
+.app-weekend-logrow:hover { filter: brightness(1.18); }
+.app-weekend-logrow-tag { font-weight: 800; margin-right: 4px; }
 
 /* 周末入侵：星图被占星系的红环 + 旗标（2026-09-23） */
 .app-map-invasion { pointer-events: none; }
