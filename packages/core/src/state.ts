@@ -2607,7 +2607,23 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
     }
     case 'refine': {
       for (const r of state.refineRuns) {
-        if (r.active && r.worker === 'pilot') r.active = false
+        if (!r.active || r.worker !== 'pilot') continue
+        /**
+         * **材料全退**（**2026-09-24 船长令**：「材料全退」——问的是"精炼炉停机是不是也该把料退回来"）。
+         *
+         * 分两种情形，一条都不能少：
+         * ① **现代语义**（v20 起「原料不预锁定，每批到点实时扣取」）⇒ 停机**本来就不吃料**：当前那批还没到点，
+         *    它的料仍在货仓/仓库里，退无可退 ⇒ 代价只有**进度**（与 `HALT_COST.refine` 的原话一致）。
+         *    这一条由用例 `industry.test.ts`「中途停炉：已完成批保留，余料本来就在仓库无需退回」钉住。
+         * ② **老档的"炉内预占账"**（`claimedUnits`：起炉时把库存预占进炉内）⇒ 停机**必须退回仓库**：
+         *    原先只在"再起一台回收炉"时顺带退（见 `startRecycleRun` 的老档兼容段）——若这台直接被停机，
+         *    那份账会随"停掉的线在存档归一里被丢掉"而**凭空消失**（正是船长不许的那种"吃料"）。
+         */
+        if ((r.claimedUnits ?? 0) > 0 && r.itemId) {
+          refundMaterialsToWarehouse(state, [{ itemId: r.itemId, count: r.claimedUnits! }])
+          r.claimedUnits = 0
+        }
+        r.active = false
       }
       return
     }
