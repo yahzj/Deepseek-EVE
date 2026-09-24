@@ -1330,7 +1330,11 @@ export function MarketPage({
   const kindSubs: SubOption[] | undefined =
     kind !== 'all'
       ? presentSubs(SUBS_OF_KIND[kind] ?? [], (key) =>
-          goods.some((g) => kindPasses(engine.ctx, g, kind) && subPasses(engine.ctx, g, kind, key)),
+          // 「学没学会」两档**常显**（2026-09-24 船长令加了「未学会」）：它按玩家存档实时判定、不是内容分类，
+          // 若跟着"本档真没商品就隐藏"那把尺走，玩家在"一张都还没学会"时会看不到这两档。
+          key === 'learned' || key === 'unlearned'
+            ? true
+            : goods.some((g) => kindPasses(engine.ctx, g, kind) && subPasses(engine.ctx, g, kind, key, engine.state)),
         )
       : undefined
   /** 切换主类型时子分类回到"全部子类" */
@@ -1364,7 +1368,7 @@ export function MarketPage({
         engine,
         goods.filter((good) => {
           if (kind !== 'all' && !kindPasses(engine.ctx, good, kind)) return false
-          if (sub !== SUB_ALL && !subPasses(engine.ctx, good, kind, sub)) return false
+          if (sub !== SUB_ALL && !subPasses(engine.ctx, good, kind, sub, engine.state)) return false
           if (query.length > 0) {
             const name = goodName(engine.ctx, good.key).toLowerCase()
             if (!name.includes(query) && !good.key.toLowerCase().includes(query)) return false
@@ -1424,7 +1428,7 @@ export function MarketPage({
                 query.length > 0
                   ? tr("ui.MarketPage.170", { p1: kw.trim() })
                   : `全部 ${KIND_TEXT[kind] ?? kind}${
-                      sub !== SUB_ALL && kindSubs ? ` · ${kindSubs.find((s) => s.key === sub)?.label ?? ''}` : ''
+                      sub !== SUB_ALL && kindSubs ? ` · ${subText(kindSubs.find((s) => s.key === sub) ?? { key: sub, label: sub })}` : ''
                     }`
               }
               hint={<HintIcon tip={MKT_MECH_TIP} />}

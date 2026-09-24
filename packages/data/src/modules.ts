@@ -680,7 +680,8 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     shieldFieldPct: 0.1,
     shieldFieldMs: 10_000,
-    cpuUse: 55,
+    // ⟪2026-09-24 船长令⟫ CPU 占用 55 → 63（原话：「护盾充能力场装置 MK2和MK3的CPU占用提高到63/91」）
+    cpuUse: 63,
     description: '每 10 秒展开力场，为我方全队恢复各自护盾上限的 10%。',
   },
   {
@@ -690,7 +691,8 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     shieldFieldPct: 0.1,
     shieldFieldMs: 8_000,
-    cpuUse: 80,
+    // ⟪2026-09-24 船长令⟫ CPU 占用 80 → 91（同上一条令）
+    cpuUse: 91,
     description: '每 8 秒展开力场，为我方全队恢复各自护盾上限的 10%。',
   },
 

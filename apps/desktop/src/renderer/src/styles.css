@@ -9991,7 +9991,10 @@ html[data-locale='en'] body {
 /* **伤害类型 = 弹药类型 = 同一套底色**（合并规则：两族共用，防止再次各写一份而漂移） */
 .app-d-kinetic, .app-a-kinetic{background:rgb(var(--wui-x211))}
 
-.app-d-explosive, .app-a-explosive{background:rgb(var(--wui-x57))}
+/* ⟪配色调整 2026-09-24⟫ **爆炸徽标的字色单独一档**——徽标默认字色（`.app-d-chip`/`.app-a-chip` 的 `--wui-x229`）
+   是**深色**，压亮黄/亮青很清楚，压在**红**底上只有 ~3.9:1（船长本轮报障「标签中的字体颜色不对」）。
+   故红底改用配对亮字 `--wui-chip-ink`（逐主题 ≥5:1）。⚠ 必须写在上面那两条 `color` **之后**（同特异性，靠顺序生效）。 */
+.app-d-explosive, .app-a-explosive{background:rgb(var(--wui-x57));color:rgb(var(--wui-chip-ink))}
 
 .app-d-plasma, .app-a-plasma{background:rgb(var(--wui-x77))}
 

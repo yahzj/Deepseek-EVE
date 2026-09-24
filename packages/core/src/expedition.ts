@@ -13,7 +13,7 @@
  */
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
 import { weekendAssaultThreatOf } from './weekendEvent'
-import { rareDropRateMulOf, rewardMulOf } from './tuning'
+import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
 import { applyActivityGate } from './activityGate'
@@ -62,6 +62,8 @@ import {
   FACTION_RARE_DROP_PITY_ROLLS,
   factionAnomalyOf,
   factionBaseRewardIsk,
+  /** 2026-09-24：掷骰与**卡面/工具读数**共用这一处口径（含限时倍率与铁人 ×1.2） */
+  factionRareDropChanceOf,
   isLairCandidate,
   lairAnomalyOf,
   lairBaseRewardIsk,
@@ -632,8 +634,9 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // 掷骰恒消耗一次随机数（保底触发时也掷、只取 `||`）——保持 rng 时序与未保底时一致，避免别的系统读数漂移。
     if (factionActive) {
       const streak = Math.max(0, Math.floor(state.rareWreckDryStreak ?? 0)) + 1
-      // 限时倍率（2026-09-15）：`rareWreckRate` 乘在掉落概率上
-      const hit = nextRandom(state.rng) < Math.min(1, FACTION_RARE_DROP_CHANCE * rareDropRateMulOf(state))
+      // 限时倍率（2026-09-15）＋ 铁人 ×1.2（2026-09-23）：**两口乘区都走 `factionRareDropChanceOf`**
+      // —— 读数（卡面 / `faction:audit`）与这里**同一函数**（2026-09-24 收口，见 `lairs.ts` 该函数注释）
+      const hit = nextRandom(state.rng) < factionRareDropChanceOf(state)
       const pity = streak >= FACTION_RARE_DROP_PITY_ROLLS
       if (hit || pity) {
         injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT) // 内部清零空手计数

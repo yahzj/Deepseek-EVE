@@ -36,7 +36,8 @@ import {
   factionAnomalyOf,
   factionBaseRewardIsk,
   factionGalaxyId,
-  FACTION_RARE_DROP_CHANCE,
+  /** 2026-09-24：卡面掉落率**随档位现算**（含限时倍率与铁人 ×1.2）——不再印裸常量 */
+  factionRareDropChanceOf,
   FACTION_RARE_DROP_COUNT,
   lairAnomalyOf,
   lairBaseRewardIsk,
@@ -2976,7 +2977,11 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                   </div>
                   <div className="app-ano-reward">
                     <span className="app-lair-key">{tr("ui.IndustryPage.009")}</span>{' '}
-                    {Math.round(FACTION_RARE_DROP_CHANCE * 100)}{tr('ui.Expedition.406')}{FACTION_RARE_DROP_COUNT}
+                    {/* ⚠ **2026-09-24 修**（船长报障「铁人模式的残骸掉率加成似乎没应用到？」）：
+                        这里原先写死 `Math.round(FACTION_RARE_DROP_CHANCE * 100)` = 恒 30% ⇒
+                        **卡面把限时倍率与铁人 ×1.2 挡在读数之外**（机制本身一直生效）。
+                        现改走 `factionRareDropChanceOf(state)`——**与 `expedition.ts` 那条掷骰同一函数**。 */}
+                    {Math.round(factionRareDropChanceOf(state) * 100)}{tr('ui.Expedition.406')}{FACTION_RARE_DROP_COUNT}
                     <span className="app-dim" title={tr("ui.Expedition.117")}>
                       {tr("ui.Expedition.335")}
                     </span>

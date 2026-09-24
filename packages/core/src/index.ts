@@ -1198,6 +1198,9 @@ export {
   FACTION_RARE_DROP_COUNT,
   FACTION_RARE_DROP_PITY_ROLLS,
   factionRareDropEffectiveRate,
+  /** 2026-09-24：当前档位的自然概率（含限时倍率与铁人）／实际率读数 —— 卡面与工具共用 */
+  factionRareDropChanceOf,
+  factionRareDropRateOf,
   factionAnomalyOf,
   factionBaseRewardIsk,
   hasLairCore,

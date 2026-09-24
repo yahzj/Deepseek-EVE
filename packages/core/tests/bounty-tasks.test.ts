@@ -42,6 +42,12 @@ import {
   createInitialState,
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
+  /* 2026-09-24：读数与结算同源（卡面/工具不再写死裸常量） */
+  factionRareDropChanceOf,
+  factionRareDropEffectiveRate,
+  FACTION_RARE_DROP_PITY_ROLLS,
+  factionRareDropRateOf,
+  enterIronman,
   factionAnomalyOf,
   factionBaseRewardIsk,
   isFactionBounty,
@@ -977,6 +983,36 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     expect(rate).toBeGreaterThan(FACTION_RARE_DROP_CHANCE - 0.1)
     expect(rate).toBeLessThan(FACTION_RARE_DROP_CHANCE + 0.1)
     expect(hits).toBeGreaterThan(0)
+  })
+
+  /**
+   * **读数与结算同源**（**2026-09-24 船长报障**：「**敌对派系活跃的卡牌上，铁人模式的残骸掉率加成似乎没应用到？**」）。
+   *
+   * 查证结论：**机制一直是对的**（`expedition.ts` 那条掷骰乘了乘区 ⇒ 含铁人 ×1.2；真引擎 3000 趟实测
+   * 普通 29.70% → 铁人 35.10%），病在**读数写死裸常量** —— 卡面印
+   * `Math.round(FACTION_RARE_DROP_CHANCE * 100)` = 恒 30%、`faction:audit` 也只印裸常量折算的 30.9%
+   * ⇒ 铁人档在卡面上看上去"没加上"。现收口成一处：`factionRareDropChanceOf(state)`（自然概率、
+   * 含限时倍率与铁人）＋ `factionRareDropRateOf(state)`（再过保底折算），**掷骰与卡面/工具都调它们**。
+   */
+  it('掉落率读数随档位现算：普通 = 裸常量；铁人 = ×1.2（卡面与工具不再写死 30%）', () => {
+    const normal = createInitialState({ nowWallMs: 0, seed: 3 })
+    expect(factionRareDropChanceOf(normal)).toBeCloseTo(FACTION_RARE_DROP_CHANCE, 10)
+    expect(factionRareDropRateOf(normal)).toBeCloseTo(factionRareDropEffectiveRate(), 10)
+
+    const iron = createInitialState({ nowWallMs: 0, seed: 4 })
+    enterIronman(iron, 1_000)
+    expect(factionRareDropChanceOf(iron)).toBeCloseTo(FACTION_RARE_DROP_CHANCE * 1.2, 10)
+    expect(factionRareDropRateOf(iron)).toBeCloseTo(
+      factionRareDropEffectiveRate(FACTION_RARE_DROP_CHANCE * 1.2),
+      10,
+    )
+    // 铁人确实更高：读数是"看得出加成"的（差 5 个多百分点）
+    expect(factionRareDropRateOf(iron)).toBeGreaterThan(factionRareDropRateOf(normal) + 0.04)
+    // 解析式参数化后的单调性与边界
+    expect(factionRareDropEffectiveRate(0.3)).toBeGreaterThan(0.3)
+    expect(factionRareDropEffectiveRate(0.36)).toBeGreaterThan(factionRareDropEffectiveRate(0.3))
+    expect(factionRareDropEffectiveRate(0)).toBeCloseTo(1 / FACTION_RARE_DROP_PITY_ROLLS, 10)
+    expect(factionRareDropEffectiveRate(1)).toBeCloseTo(1, 10)
   })
 })
 
