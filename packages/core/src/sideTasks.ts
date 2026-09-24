@@ -165,6 +165,28 @@ function boardPeriodMs(ctx: SimContext): number {
   return ctx.balance.market.orderLifeMs.common
 }
 
+/**
+ * **快递任务板周期毫秒**（**2026-09-24 船长令**：「**快递任务的周期和持续时间都为 120 分钟，资源任务不变**」
+ * ＋「每批条数不动」）。
+ *
+ * 口径：**资源任务**继续跟市场「补给刷新」节奏（`boardPeriodMs`，20 分钟、按市场整点对齐）；
+ * **快递任务**每 **120 分钟**重掷一批、且**存活恰好 120 分钟**（到点即换下一批 ⇒ 整齐一批）。
+ * 因为 120 = 20 × 6 ⇒ "要不要在这一窗重掷快递"只需看**窗界是不是 120 分钟的整数倍**（`courierDueAtWindow`）。
+ */
+export const COURIER_BOARD_PERIOD_MS = 120 * 60_000
+
+/**
+ * 这一窗要不要**重掷快递任务**（纯函数：既给 `refreshBoard` 调用，也让单测直接把口径钉住）。
+ *
+ * 判据：窗界 `windowMs`（= 上一个市场整点）是 `COURIER_BOARD_PERIOD_MS` 的整数倍 ⇒ 到点。
+ * ⚠ 窗界 0（未开盘）不算到点 —— 首个快递批次由"开盘后的第一个 120 分钟整点"给出
+ * （开盘那一次是全板新建，快递自然一起生成）。
+ */
+export function courierDueAtWindow(windowMs: number): boolean {
+  if (!Number.isFinite(windowMs) || windowMs <= 0) return false
+  return windowMs % COURIER_BOARD_PERIOD_MS === 0
+}
+
 /** 任务商品基池：市场常驻（common）且带 poolTarget>0 的 item 类商品（未做星图门槛过滤） */
 function taskGoodBasePool(ctx: SimContext): MarketGoodDef[] {
   const out: MarketGoodDef[] = []
