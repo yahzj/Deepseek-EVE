@@ -832,8 +832,27 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
             ctx.shipBlueprints.get(id)?.name ??
             ctx.items.get(id)?.name ??
             id
-          const drawnName = grants.map((g) => nameOf(g.itemId)).join('、')
-          /** 来源后缀：让玩家一眼看出这一箱走的是哪条池（族专属 / 一次性 / 永久 / 奢侈品 / MK3） */
+          /**
+           * **产物清单要带数量**（**2026-09-24 船长令**：「拆解货柜的事件日志内，要显示获得的物品数量
+           * （比如奢侈品）」）。原先只报名字（「得到 奢侈品」）⇒ 玩家看不出这一箱拿了多少。
+           *
+           * 归并口径：按 id 合并（一箱可能同型多件——军用柜 1~3 件 MK3 可以重样），数量取 `units` 之和
+           * （物品类 = 实得件数：奢侈品一叠 5~30 件、族专属无人机 ×10；装备/图纸类 `units` 恒 1
+           * ⇒ 合计即"同型几件"）。**数量恒显示**（`×N`），不再出现"只报名字"的写法。
+           */
+          const agg: Array<{ itemId: string; n: number }> = []
+          for (const g of grants) {
+            const n = Math.max(1, Math.floor(g.units))
+            const hit = agg.find((x) => x.itemId === g.itemId)
+            if (hit) hit.n += n
+            else agg.push({ itemId: g.itemId, n })
+          }
+          const drawnName = agg.map((x) => `${nameOf(x.itemId)} ×${x.n}`).join('、')
+          /**
+           * 来源后缀：让玩家一眼看出这一箱走的是哪条池（族专属 / 一次性 / 永久 / 奢侈品 / MK3）。
+           * ⚠ **保留「（奢侈品）」那一条**：十款奢侈品的**名字各不相同**（星港陈酿 / 贵族香料 / 星图真迹…），
+           * 单看名字看不出它是"纯贸易品"，这个后缀有信息量（2026-09-24 一度想去掉，核对数据后保留）。
+           */
           const srcTag =
             drawn.source === 'permanent'
               ? '（永久图纸）'

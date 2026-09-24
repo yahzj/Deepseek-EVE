@@ -156,4 +156,43 @@ describe('虫洞 · 两个新货柜的拆解（2026-09-15 船长定 ②④）', 
     expect(gained.length).toBeLessThanOrEqual(WORMHOLE_MILITARY_PIECES_MAX)
     for (const id of gained) expect(wormholeMk3PoolOf(ctx)).toContain(id)
   })
+
+  /**
+   * **拆解日志要报数量**（**2026-09-24 船长令**：「拆解货柜的事件日志内，要显示获得的物品数量（比如奢侈品）」）。
+   *
+   * 归并口径：同型合并成一个 `名称 ×N`（军用柜 1~3 件 MK3 可以重样 ⇒ 日志里应当是 `×2`，不是同一个名字写两遍）；
+   * 数量取 `units` 之和（物品类 = 实得件数：奢侈品一叠 5~30 件、族专属无人机 ×10；装备/图纸类 `units` 恒 1）。
+   * ⚠ 来源后缀「（奢侈品）」**保留**：十款奢侈品名字各不相同（星港陈酿 / 星图真迹…），
+   * 单看名字看不出它是纯贸易品。
+   */
+  it('日志报数量：`×N` 之和 = 实得件数（同型合并）· 来源后缀照旧', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 8 })
+    /** 拆一箱，返回那条拆解日志（按货柜名定位，避免抓到别的日志） */
+    const unboxOnce = (boxId: string): string => {
+      addWare(state, boxId, 1)
+      expect(startUnboxRun(state, ctx, boxId, 'pilot').ok).toBe(true)
+      state.gameMs += UNBOX_CYCLE_MS
+      advanceRefining(state, ctx)
+      const boxName = ctx.items.get(boxId)?.name ?? boxId
+      const line = [...state.logs].reverse().find((l) => l.text.includes('📦 拆解') && l.text.includes(boxName))
+      expect(line, `${boxId} 应有拆解日志`).toBeTruthy()
+      return line!.text
+    }
+    // ① 贵重品货柜：×N 必须等于仓库实得件数；来源后缀仍在（名字看不出是奢侈品）
+    const luxLine = unboxOnce(WORMHOLE_VALUABLES_BOX_ID)
+    const luxTotal = WORMHOLE_LUXURY_ITEM_IDS.reduce((n, id) => n + countWare(state, id), 0)
+    expect(luxTotal).toBeGreaterThanOrEqual(WORMHOLE_VALUABLES_UNITS_MIN)
+    expect(luxLine, `日志应写明这一叠多少件：${luxLine}`).toContain(`×${luxTotal}`)
+    expect(luxLine, '「（奢侈品）」后缀要保留').toContain('（奢侈品）')
+    // ② 军用备货柜：日志里所有 ×N 之和 = 装备库实得件数（同型合并后仍逐值对得上）
+    const bayBefore = { ...state.moduleBay }
+    const milLine = unboxOnce(WORMHOLE_MILITARY_BOX_ID)
+    const gained = Object.entries(state.moduleBay).reduce((n, [id, k]) => n + Math.max(0, k - (bayBefore[id] ?? 0)), 0)
+    const counted = [...milLine.matchAll(/×(\d+)/g)].reduce((n, m) => n + Number(m[1]), 0)
+    expect(gained, '这一箱该开出 1~3 件 MK3').toBeGreaterThanOrEqual(WORMHOLE_MILITARY_PIECES_MIN)
+    expect(counted, `日志件数合计应等于实得件数：${milLine}`).toBe(gained)
+    // ③ 安全货柜（族专属池）：日志同样带数量（无人机类 ×10、其余 ×1）
+    const famLine = unboxOnce('box-relic-a')
+    expect(famLine, `安全货柜的日志也要带数量：${famLine}`).toMatch(/×\d+/)
+  })
 })
