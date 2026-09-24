@@ -23,9 +23,24 @@
   （未开盘/非法值不到点）；因为 120 = 20 × 6 ⇒ **每第 6 窗一次**。
 - `refreshBoard`：**每窗都重掷资源任务**；`courierDue = courierDueAtWindow(boundaryMs) || board.courier 为空`
   （空表补种，防"空窗挂 100 分钟"）⇒ 只有到点的窗才重掷快递任务。
-- 用例：`tests/courier-board-period.test.ts`（常量 = 120 分钟 · 每第 6 窗到点 · 窗 0/NaN 不到点）
-  ＋ `tests/sideTasks.test.ts` 两条**行为**断言（资源每 20 分钟换 · 快递保留到 120 分钟整点才整批换新 ·
-  未到点的窗里快递条目的 id/目标站/运费/体积/级别逐字不变）。
+- 用例：`tests/courier-board-period.test.ts`（常量 = 120 分钟 · 每第 6 窗到点 · 窗 0/NaN 不到点 ·
+  `courierDeadlineMs` 整点/非整点/未开盘三档）
+  ＋ `tests/sideTasks.test.ts` 四条**行为**断言（资源每 20 分钟换 · 快递保留到 120 分钟整点才整批换新 ·
+  未到点的窗里快递条目的 id/目标站/运费/体积/级别逐字不变 ·
+  **抽到手 25 分钟后仍可出发** · 跨 120 分钟整点旧单被换下）。
+
+**补记（2026-09-24 船长报障：「快递任务现在是 2 小时刷新周期，但是卡片上和快递任务页面写的还是 20 分钟」）**
+——**根因不止文案**，三处一起改：
+
+| 处 | 修前 | 修后 |
+|---|---|---|
+| 出发到期护栏（`startCourierDelivery`） | 与资源共用 `boardPeriodMs`（20 分钟）⇒ **抽到手超 20 分钟的单子被判"已到期"拒发**（板上还挂着） | 用 `courierDeadlineMs(window)`（下一个 120 分钟整点） |
+| 界面倒计时 / "每 N 分钟一轮" | 读资源的 `remainingMs` 与 `orderLifeMs.common`（20 分钟） | 新增 `SideTaskBoardView.courierRemainingMs`；周期取 `COURIER_BOARD_PERIOD_MS`；一轮两小时 ⇒ 倒计时改 `h:mm:ss` |
+| 快递页/空态文案 | "随 20 分钟补给周期刷新" | 新增快递专用 id `ui.Expedition.434`（页头悬停）/ `.435`（空态），周期走 `{periodMin}` 参数（改常量文案自动跟） |
+
+资源侧三条文案（`.221`/`.223`/`.224`）保持 20 分钟不动。读数样张（`tools/_courier-clock-sample.ts`）：
+「距下批刷新 **1:39:59 · 每 120 分钟一轮**」／资源对照「19:59 · 每 20 分钟一轮」；跨窗后快递整批换新、
+倒计时回到 1:59:59。
 
 ## 二、战斗伤害飘字（已落完）
 
