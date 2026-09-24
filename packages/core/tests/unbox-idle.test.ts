@@ -29,6 +29,40 @@ function runFor(state: ReturnType<typeof createInitialState>, ctx: ReturnType<ty
 }
 
 describe('货柜拆解 · 料尽自停（玩家报障回归）', () => {
+  it('**批中途**没料也立刻停（玩家原话「没有东西了还在拆。取消就消失」）', () => {
+    const { state, ctx, boxId } = world(2, 'box-bp-deep')
+    expect(startUnboxRun(state, ctx, boxId, 'pilot').ok).toBe(true)
+    // 只推进 30 秒（一个批周期 90 秒，此刻机器正"拆着"）
+    for (let i = 0; i < 30; i++) {
+      state.gameMs += 1000
+      advanceRefining(state, ctx)
+    }
+    expect(state.refineRuns.length, '此刻仍在运转').toBe(1)
+    // 把剩下的货柜全部拿走（等价于"没有东西了"）
+    removeItem(state, boxId, countItem(state, boxId))
+    state.gameMs += 1000
+    advanceRefining(state, ctx)
+    expect(state.refineRuns.length, '没料 ⇒ 下一拍就停，不许转到本批结束').toBe(0)
+  })
+
+  it('玩家报障原样：图纸货柜·深层 拆完之后必须自停（「没有东西了还在拆」不许出现）', () => {
+    const { state, ctx, boxId } = world(2, 'box-bp-deep')
+    expect(boxId).toBe('box-bp-deep')
+    const started = startUnboxRun(state, ctx, boxId, 'pilot')
+    expect(started.ok, JSON.stringify(started)).toBe(true)
+    let stoppedAt = -1
+    for (let t = 0; t < 10 * 60_000; t += 1000) {
+      state.gameMs += 1000
+      advanceRefining(state, ctx)
+      if (state.refineRuns.length === 0) {
+        stoppedAt = t + 1000
+        break
+      }
+    }
+    expect(countItem(state, boxId), '两件都拆完').toBe(0)
+    expect(stoppedAt, '拆完 ⇒ 必须自己停（不许留一台还在拆）').toBeGreaterThan(0)
+  })
+
   it('没有货柜 ⇒ 不许开工（主控与 AI 核心两条路都拒）', () => {
     const { state, ctx, boxId } = world(0)
     const pilot = startUnboxRun(state, ctx, boxId, 'pilot')
