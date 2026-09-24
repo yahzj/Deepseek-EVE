@@ -2893,9 +2893,29 @@ function injectWormholeEwar(state: GameState): string[] {
  *    （⚠ 上一轮的"战列打不动"其实是**备弹 60 发打光**，这档会重现/排除它）；
  * 3. **打 H 族入侵卡**（需调试模式开入侵：核心/外围）：骚扰 78 / 袭击 85 / 主力 93 / 旗舰 120。
  */
+/**
+ * **测试船标记**：注入的战列/旗舰/对照船名字都带这个前缀 ⇒ 重复生成时先把上一轮的清掉，
+ * 免得"真档里已经有上一版注入的船"导致**越注越多**（2026-09-24 实测踩到：第二次生成后船变成 8 艘）。
+ */
+const BS_TEST_TAG = '[BStest]'
+
+/** 清掉上一轮注入的测试船（按名字前缀认）。⚠ **不动 `state.shipId`**——紧接着就会把新注入的第一艘设为驾驶 */
+function stripPreviousBattleshipTestShips(state: GameState): number {
+  let removed = 0
+  for (const [uid, s] of Object.entries(state.fleet)) {
+    if (s && (s.customName ?? '').startsWith(BS_TEST_TAG)) {
+      delete state.fleet[uid]
+      removed++
+    }
+  }
+  return removed
+}
+
 function injectBattleship(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
+  /** ⚠ **先清上一轮的测试船**（在注入之前；否则会越注越多——2026-09-24 实测踩到） */
+  const stripped = stripPreviousBattleshipTestShips(state)
   /**
    * ⚠ **必须剥掉铁人标记**（2026-09-24 船长报障：「你存档搞的是铁人模式，我无法导入」）：
    * 生成器是**基于真档复制注入**的，而船长的真档是**铁人档**（`ironman.on = true`）⇒ 造出来的档
@@ -2925,28 +2945,28 @@ function injectBattleship(state: GameState): string[] {
   const ships: Array<[string, string, string[], string[], string[]]> = [
     [
       'sh-megalodon',
-      '巨齿鲨·战列（动能抗 · 驾驶）',
+      `${BS_TEST_TAG} 巨齿鲨·战列（动能抗 · 驾驶）`,
       Array(6).fill('mod-turret-kin-3'),
       ['mod-shield-kin-3', 'mod-shield-kin-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-track-3'],
       ['mod-armor-kin-3', 'mod-stab-kin-3', 'mod-cpu-3'],
     ],
     [
       'sh-megalodon',
-      '巨齿鲨·战列（均衡 · 换装对照）',
+      `${BS_TEST_TAG} 巨齿鲨·战列（均衡 · 换装对照）`,
       Array(6).fill('mod-turret-kin-3'),
       ['mod-shield-ext-3', 'mod-shield-ext-3', 'mod-mwd-3', 'mod-rof-3', 'mod-gyro-3'],
       ['mod-armor-plate-3', 'mod-stab-kin-3', 'mod-hullrep-2'],
     ],
     [
       'sh-dunkleosteus',
-      '邓氏鱼·旗舰（T5 · 7/7/4 满配）',
+      `${BS_TEST_TAG} 邓氏鱼·旗舰（T5 · 7/7/4 满配）`,
       Array(7).fill('mod-turret-kin-3'),
       ['mod-shield-kin-3', 'mod-shield-kin-3', 'mod-shield-ext-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-track-3', 'mod-rof-3'],
       ['mod-armor-kin-3', 'mod-armor-plate-3', 'mod-stab-kin-3', 'mod-cpu-3'],
     ],
     [
       'sh-hammerhead',
-      '锤头鲨·巡洋（T3 对照）',
+      `${BS_TEST_TAG} 锤头鲨·巡洋（T3 对照）`,
       Array(5).fill('mod-turret-kin-3'),
       ['mod-shield-kin-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-rof-3'],
       ['mod-armor-kin-3', 'mod-stab-kin-3', 'mod-cpu-3'],
@@ -2994,6 +3014,7 @@ function injectBattleship(state: GameState): string[] {
    */
   state.debugQuick = true
   notes.push('**已打开调试模式（`debugQuick`）**：周末入侵开档即出现（时间轴 ÷60 —— 旗舰 2 小时倒计时 = 2 分钟）')
+  if (stripped > 0) notes.push(`先清掉上一轮注入的测试船 ×${stripped}（带「${BS_TEST_TAG}」前缀）——避免越注越多`)
 
   // 首页可见的四张验收卡（顺手把威胁排序写在清单里）
   notes.push(

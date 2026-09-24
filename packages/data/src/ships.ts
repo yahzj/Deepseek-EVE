@@ -790,6 +790,13 @@ export const SHIPS: readonly ShipDef[] = [
     evasion: 0.06,
     hitBonus: 0.06,
     powerBonus: 0.35, // 2026-09-17 船长：武装舰按档位给单发加成（T4 = +35%）
+    /**
+     * **船体固有射程加成 +20%**（船长 2026-09-24：「**给战列舰添加一个+20%的射程加成**」）。
+     * 与模块的 `rangeTypeBonusPct` **同链加算**（`combat.createPlayerSpec` 的 `rangeOf`：
+     * 实际射程 = 基础 × (1 − 全局削减) × (1 + 本系加成)）⇒ 三系都给 20%，不偏科。
+     * 口径与船体固有加成一致（先例：炮艇「动能武器射程 +30%」）。
+     */
+    weaponRangeBonusPct: { kinetic: 0.2, explosive: 0.2, plasma: 0.2 },
     shieldHp: 675,
     // 2026-09-17 船长：本舰的 50 动能抗性已移除（船长 2026-09-17「移除每条船的 50 动能抗性」）
     armorHp: 280,
