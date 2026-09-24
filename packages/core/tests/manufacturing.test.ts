@@ -7,8 +7,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
+import { haltActivityForSwitch } from '../src/state'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { advanceGame } from '../src/engine'
-import { cargoCapacityM3, countItem, countWare } from '../src/inventory'
+import { addWare, cargoCapacityM3, countItem, countWare } from '../src/inventory'
 import { countModule, fitModule, unfitAt } from '../src/equipment'
 import { miningStatus, startMining } from '../src/mining'
 import { startRefineRun } from '../src/industry'
@@ -606,6 +608,89 @@ describe('循环制造（2026-09-10 船长定：开关与目标批数从逐条�
     expect(b.stopWhy).toBe('')
     expect(b.produced).toBeGreaterThan(0)
     expect(countModule(state, 'mod-b')).toBeGreaterThan(0) // 产物持续入库
+  })
+})
+
+/**
+ * **停机（切活动自动取消）要连材料一起退**（**2026-09-24 船长令**：「1 肯定要材料一起退」）。
+ *
+ * 背景：停机原先只把主控那条线标死——书与材料一起蒸发（同一批玩家报障：一次性锤头鲨蓝图在造，
+ * 重复清剿到点抢主控把线掐掉 ⇒ 船没了、图纸已消耗、23 万单位三钛也没了）。
+ * 口径 = **停机与手动「取消制造」同款善后**：材料全额退回物品仓库 + 一次性图纸退回书架，
+ * 唯一代价是**当前那批的进度**（`HALT_COST.manufacturing` 的原话）。
+ *
+ * 退料**按本线的账退**（`ManufacturingRunState.spentMaterials`：开工那刻实际扣了多少），
+ * 不是按蓝图 + 当前技能现算——后者在中途升了「材料学」之后会退**少于**当初扣的。
+ */
+describe('组装机 · 停机退料（2026-09-24 船长令「材料一起退」）', () => {
+  let state: GameState
+  let ctx: SimContext
+
+  beforeEach(() => {
+    state = createInitialState({ nowWallMs: 0, seed: 1 })
+    ctx = makeTestCtx()
+    state.learnedRecipes.push('bp-a') // bp-a：造 mod-a，材料 min-a ×10
+  })
+
+  it('停机 ⇒ 材料按"开工时扣的账"全额退回；AI 核心线不受影响、也不退料', () => {
+    addWare(state, 'min-a', 40)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    expect(countWare(state, 'min-a'), '开工先扣 10').toBe(30)
+    haltActivityForSwitch(state, 'manufacturing')
+    expect(countWare(state, 'min-a'), '停机必须把 10 件料退回来').toBe(40)
+    expect(state.manufacturingRuns, '停掉的线不留僵尸行').toHaveLength(0)
+
+    // 对照：AI 核心驱动的线**照跑**，停机不动它、自然也不退料
+    gainAiCore(state, 'basic', 1)
+    state.skills.trained['ai-expert'] = 1
+    expect(startManufacturing(state, 'bp-a', 'basic', ctx).ok).toBe(true)
+    expect(countWare(state, 'min-a')).toBe(30)
+    haltActivityForSwitch(state, 'manufacturing')
+    expect(state.manufacturingRuns.filter((r) => r.active), '核心线不受影响').toHaveLength(1)
+    expect(countWare(state, 'min-a'), '线还在跑 ⇒ 不退料').toBe(30)
+  })
+
+  it('退料按**扣款当时的账**：中途升「材料学」也退当初扣的那些（不缩水）', () => {
+    // 材料学 5 级 ⇒ 折扣 0.925；开工按当时的技能扣，之后技能再涨也不影响这本账
+    addWare(state, 'min-a', 40)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    const spent = state.manufacturingRuns[0]!.spentMaterials!
+    expect(spent).toEqual([{ itemId: 'min-a', count: 10 }])
+    const left = countWare(state, 'min-a')
+    // 中途升技能（会改 `matNeedCount` 的现算结果）
+    state.skills.trained['materials'] = 5
+    state.skills.trained['component-standardization'] = 5
+    haltActivityForSwitch(state, 'manufacturing')
+    expect(countWare(state, 'min-a'), '退的是账上那些（= 开工时扣的）').toBe(left + spent[0]!.count)
+    expect(countWare(state, 'min-a')).toBe(40)
+  })
+
+  it('`spentMaterials` 随档往返：读档后停机照样退料', () => {
+    addWare(state, 'min-a', 40)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    const back = loadSaveFile(serializeSaveFile(state, 0)).state
+    expect(back.manufacturingRuns[0]!.spentMaterials, '扣料账必须随档').toEqual([{ itemId: 'min-a', count: 10 }])
+    expect(countWare(back, 'min-a')).toBe(30)
+    haltActivityForSwitch(back, 'manufacturing')
+    expect(countWare(back, 'min-a'), '读档后停机也要退料').toBe(40)
+  })
+
+  it('手动取消退料用同一本账（与停机逐值一致）', () => {
+    addWare(state, 'min-a', 40)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    const runId = state.manufacturingRuns[0]!.id
+    expect(cancelManufacturing(state, ctx, runId).ok).toBe(true)
+    expect(countWare(state, 'min-a')).toBe(40)
+  })
+
+  it('老档在跑的线没有这本账 ⇒ 取消时按蓝图现算兜底（不倒退、也不报错）', () => {
+    addWare(state, 'min-a', 40)
+    expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    // 模拟老档：把线上那本账抹掉（老版本存档里没有这个字段）
+    delete state.manufacturingRuns[0]!.spentMaterials
+    const runId = state.manufacturingRuns[0]!.id
+    expect(cancelManufacturing(state, ctx, runId).ok).toBe(true)
+    expect(countWare(state, 'min-a')).toBe(40)
   })
 })
 

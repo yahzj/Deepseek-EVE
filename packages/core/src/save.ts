@@ -1678,6 +1678,18 @@ function normalizeState(raw: unknown): GameState {
        * **取消静默不退书**（玩家眼里就是"图纸白没了"）。老档缺这个字段 ⇒ 不写（与改动前一致）。
        */
       ...(r.bookSpent === true ? { bookSpent: true } : {}),
+      /**
+       * ⚠ **这一线实际扣掉的材料也要随档**（**2026-09-24 船长令**：自动停机材料一起退）：
+       * 停机那条路没有 ctx，退料只能靠这本账；丢掉它 ⇒ 存档往返后**停机退不了料**
+       * （与 `bookSpent` 同一类坑，同一批修）。老档缺 ⇒ 不写（与改动前一致，取消时按蓝图现算兜底）。
+       */
+      ...(Array.isArray(r.spentMaterials)
+        ? {
+            spentMaterials: (r.spentMaterials as unknown[])
+              .map((x) => ({ itemId: String(asRaw(x).itemId ?? ''), count: Math.max(0, Math.floor(num(asRaw(x).count))) }))
+              .filter((x) => x.itemId.length > 0 && x.count > 0),
+          }
+        : {}),
       // 逐线连续生产字段（autoRepeat/repeatGoal/produced）**不再写入**：2026-09-10 船长定，
       // 循环制造上移到卡片级；老档里这三位在下面统一归并进 manufacturingLoops（见 legacyLoops）
     }

@@ -369,6 +369,18 @@ export interface ManufacturingRunState {
    * ⚠ 缺省/false = 没吃书（普通图纸、已学会、旧档遗留线）⇒ 取消时**不动书架**（老档零行为变化）。
    */
   bookSpent?: boolean
+  /**
+   * **本线开工时实际扣掉的材料**（`itemId → 数量`，已含当时的材料学折扣）——**2026-09-24 船长令**：
+   * 「自动停机**材料一起退**」。
+   *
+   * 为什么要**在线上记账**而不是停机时按蓝图现算：
+   * ① 停机这条路（`haltActivityForSwitch`）**没有 ctx**（整条活动闸门链都是 ctx-free 的），现算拿不到配方；
+   * ② 现算会**用现在的技能**去乘旧需求——中途升了「材料学」，退料就会**少于**当初扣的（静默缩水）；
+   * ③ 这是历史事实，与 `bookSpent` 同一性质：**扣了多少就退多少**。
+   *
+   * 缺省（老档在跑的线）= 不写 ⇒ 取消/停机沿用"按蓝图 + 当前技能现算"的旧口径（零迁移、不倒退）。
+   */
+  spentMaterials?: { itemId: string; count: number }[]
   /** 【兼容只读·2026-09-10 起停用】旧逐线连续生产字段——循环制造已上移到卡片级
    *  （见 ManufacturingLoopState）；这几个字段只用于读老档时归并，引擎不再写入。 */
   autoRepeat?: boolean
@@ -2512,6 +2524,27 @@ export function haulingHalt(state: GameState): { fromSiteId: string | null } | n
   return info
 }
 /**
+ * **退还一条制造线扣过的材料**（仓库入库；`state.ts` 侧实现，故**不依赖 ctx**）。
+ *
+ * 为什么放在 `state.ts`：自动停机链（`haltActivityForSwitch`）没有 `ctx`，而"退料"只需要 state +
+ * 线上记的账（`ManufacturingRunState.spentMaterials`）。老档在跑的线没这本账 ⇒ 由调用方
+ * （`manufacturing.cancelManufacturing`，那里有 ctx）按蓝图现算兜底。
+ *
+ * 只做 `warehouse.items` 的加回（与 `inventory.addWare` 同口径：非有限值/非正数忽略、按整数计），
+ * **刻意不 import `inventory`**——`inventory → state`（取 `shipLockedReason`）已有依赖边，反向 import 成环。
+ */
+export function refundMaterialsToWarehouse(
+  state: GameState,
+  spent: readonly { itemId: string; count: number }[],
+): void {
+  for (const m of spent) {
+    const n = Math.floor(m.count)
+    if (!Number.isFinite(n) || n <= 0) continue
+    state.warehouse.items[m.itemId] = (state.warehouse.items[m.itemId] ?? 0) + n
+  }
+}
+
+/**
  * **退还一本一次性图纸**（书回蓝图书架 + 名额标记恢复）——`state.ts` 侧的唯一实现。
  *
  * 为什么放在 `state.ts`：**自动停机**（`haltActivityForSwitch`）没有 `ctx`（整条活动闸门链都是 ctx-free 的），
@@ -2595,6 +2628,13 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
       // 要不要摘名额标记；若此刻这条线自己还 `active`，标记会被它自己"接管"住 ⇒ 书回来了却仍判名额已用尽。
       for (const r of halted) r.active = false
       for (const r of halted) {
+        /**
+         * **材料一起退**（**2026-09-24 船长令**：「自动停机**材料一起退**」）——与手动「取消制造」
+         * （`cancelManufacturing` 全额退料）同款；停机与取消的唯一代价都只是**当前那批的进度**。
+         * 退的是这条线**开工时实际扣掉的账**（`spentMaterials`；老档没这本账 ⇒ 这里退不了，
+         * 由玩家手动取消那条路（有 ctx）按蓝图现算兜底）。
+         */
+        if (r.spentMaterials) refundMaterialsToWarehouse(state, r.spentMaterials)
         if (r.blueprintId !== null) refundOneTimeBookOf(state, r.blueprintId)
       }
       /**

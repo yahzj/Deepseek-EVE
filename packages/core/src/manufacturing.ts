@@ -24,7 +24,7 @@
  *   开关打开后新开的线自动继承（判定实时读卡片配置）；标记 = state.manufacturingLoops[blueprintId]。
  *   逐线旧字段（autoRepeat/repeatGoal/produced）停用，仅读老档时归并（见 save.ts）。
  */
-import { addLog, haltActivityForSwitch, refundOneTimeBookOf } from './state'
+import { addLog, haltActivityForSwitch, refundMaterialsToWarehouse, refundOneTimeBookOf } from './state'
 import { applyActivityGate, logAutoHalt } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, ManufacturingRunState } from './state'
@@ -408,8 +408,15 @@ export function startManufacturing(
     }
   }
   // 扣材料（物品仓库，按材料学折扣后数量）；制造费已于 2026-09-08 取消，不再扣款
+  /**
+   * **逐条记下这一线实际扣了多少料**（2026-09-24 船长令「自动停机材料一起退」）：
+   * 停机那条路没有 ctx ⇒ 退料只能靠这本账；顺带保证"扣多少退多少"（不受中途升技能影响）。
+   */
+  const spentMaterials: { itemId: string; count: number }[] = []
   for (const need of buildable.spec.materials) {
-    removeWare(state, need.itemId, matNeedCount(state, need.count))
+    const n = matNeedCount(state, need.count)
+    removeWare(state, need.itemId, n)
+    spentMaterials.push({ itemId: need.itemId, count: n })
   }
   // 一次性图纸：**开工那一刻吃掉这本书**（船长裁定「3甲」，与材料同源）；
   // ⚠ 2026-09-20 船长改判：「一次性蓝图的制造取消后返还玩家蓝图」
@@ -432,6 +439,8 @@ export function startManufacturing(
     durationMs,
     // 记下"这一线确实扣了一本一次性书" ⇒ 取消时据此只退这一本（显式记账，不靠事后推断）
     ...(cap.consumeBook ? { bookSpent: true } : {}),
+    // 记下这一线**实际扣掉的材料**（2026-09-24 船长令：自动停机材料一起退；见字段头注）
+    spentMaterials,
   })
   const productName = productNameOf(ctx, buildable, blueprintId)
   addLog(
@@ -467,9 +476,17 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
    */
   const bookBack = mf.bookSpent === true && mf.blueprintId !== null && refundOneTimeBook(state, mf.blueprintId)
   if (buildable) {
-    // 退回 = 开工时实际扣除的数量（含材料学折扣），不多退
-    for (const need of buildable.spec.materials) {
-      addWare(state, need.itemId, matNeedCount(state, need.count))
+    /**
+     * 退回 = 开工时实际扣除的数量：**优先用本线的账**（`spentMaterials`，扣多少退多少、
+     * 不受中途升技能影响，2026-09-24 加）；老档在跑的线没有这本账 ⇒ 按蓝图 + 当前技能现算兜底
+     * （与改动前逐值一致）。
+     */
+    if (mf.spentMaterials) {
+      refundMaterialsToWarehouse(state, mf.spentMaterials)
+    } else {
+      for (const need of buildable.spec.materials) {
+        addWare(state, need.itemId, matNeedCount(state, need.count))
+      }
     }
     addLog(
       state,
