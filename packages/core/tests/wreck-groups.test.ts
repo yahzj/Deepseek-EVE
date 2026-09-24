@@ -29,11 +29,11 @@ import { anomaly, galaxy, makeTestCtx } from './helpers'
 
 const ctx = buildSimContext()
 
-describe('残骸组表（13 组 · 族 × 地区）', () => {
+describe('残骸组表（14 组 · 族 × 地区）', () => {
   it('成员覆盖全表 42 张卡，一张不漏、一张不重；族/地区与卡的数据一致', () => {
-    expect(WRECK_GROUPS.length).toBe(13)
+    expect(WRECK_GROUPS.length).toBe(14) // ⚠ 2026-09-24：13 → 14（H 族墨潮帮组 h-hi）
     expect(WRECK_GROUP_OF_MEMBER.size).toBe(ctx.anomalies.size)
-    expect(ctx.anomalies.size).toBe(42)
+    expect(ctx.anomalies.size).toBe(44) // ⚠ 2026-09-24：42 → 44（H 族两张入侵卡）
     let wh = 0
     let hi = 0
     let lo = 0
@@ -46,11 +46,12 @@ describe('残骸组表（13 组 · 族 × 地区）', () => {
         expect(a, `${g.key} 的成员 ${m} 不在敌卡表里`).toBeTruthy()
         expect(a!.foeFamily).toBe(g.family)
         const sec = ctx.galaxies.get(a!.galaxyId)?.security ?? 1
-        const region = m.startsWith('wh-') ? 'wh' : sec <= 0 ? 'lo' : 'hi'
+        // 2026-09-24: 卡级 region 覆写优先（入侵卡 ink-* 不是 wh- 前缀但属洞内口径，与 content:check 同源）
+        const region = a!.region ?? (m.startsWith('wh-') ? 'wh' : sec <= 0 ? 'lo' : 'hi')
         expect(region, `${m} 的地区判定`).toBe(g.region)
       }
     }
-    expect([hi, lo, wh]).toEqual([3, 5, 5]) // 高安 3 组（A/B/D）· 低安 5 组（A/C/D/E/G）· 洞内 5 组
+    expect([hi, lo, wh]).toEqual([3, 5, 6]) // 高安 3 组（A/B/D）· 低安 5 组（A/C/D/E/G）· 洞内 **6** 组（+H 墨潮帮 h-wh · 2026-09-24）
     expect(Object.keys(WRECK_REGION_LABELS)).toEqual(['hi', 'lo', 'wh'])
   })
 

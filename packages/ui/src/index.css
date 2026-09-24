@@ -1008,6 +1008,8 @@
   --wui-tone-ico-antenna: 111 227 240;
   --wui-tone-ico-tact: 255 154 107;
   --wui-tone-A: 255 107 82;
+  /* H 族（墨潮帮 · 2026-09-24）：仍红色系（船长令），比 A 族**更深更沉**（暗红） */
+  --wui-tone-H: 176 46 54;
   --wui-tone-B: 224 200 100;
   --wui-tone-C: 159 230 164;
   --wui-tone-D: 159 208 242;
@@ -1143,6 +1145,7 @@
   --wui-tone-ico-antenna: 11 97 107;
   --wui-tone-ico-tact: 148 47 0;
   --wui-tone-A: 173 25 0;
+  --wui-tone-H: 122 20 28;
   --wui-tone-B: 121 102 24;
   --wui-tone-C: 25 96 30;
   --wui-tone-D: 13 64 99;

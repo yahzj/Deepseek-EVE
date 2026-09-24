@@ -14,7 +14,7 @@
 
 import type { AnomalyDef } from '@whale/core'
 import { foeLayerSplit } from '@whale/core'
-import { WORMHOLE_FOE_CARDS } from './wormholeFoes'
+import { WEEKEND_FOE_CARDS, WORMHOLE_FOE_CARDS } from './wormholeFoes'
 import {
   FOE_ALIEN_MAW,
   FOE_ALIEN_RIFT,
@@ -126,6 +126,9 @@ export const ANOMALIES: readonly AnomalyDef[] = [
   // 终局玩法「虫洞」的洞内敌卡（2026-09-13 F 批）：全部 `hidden: true`，
   // 不进悬赏目录、不被派发 —— 只由虫洞按层数派生取用（见 `packages/data/src/wormholeFoes.ts`）。
   ...WORMHOLE_FOE_CARDS,
+  // 周末入侵的独立敌卡（2026-09-24 · M2 逐族铺开）：同样 `hidden: true`，只由入侵活动取用
+  // （见 `wormholeFoes.ts` 末段的 `WEEKEND_FOE_CARDS` 与 core 的 `weekendFoeCardOf`）。
+  ...WEEKEND_FOE_CARDS,
   {
     id: 'ano-training',
     // 2026-09-11 族系单一真相源（船长定案）：本卡原先**美术侧登记为 B、数据侧 `foeFamily` 为空**

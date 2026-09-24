@@ -573,6 +573,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-d-wh': 2,
   'wreck-e-wh': 2,
   'wreck-g-wh': 2,
+  // H 族（墨潮帮）第 14 组（2026-09-24）：与其余洞内组同档（普通 2 / 稀有 3）
+  'wreck-h-wh': 2,
+  'wreck-rare-h-wh': 3,
   'frag-mod-miner-2': 2,
   'frag-mod-cargo-2': 2,
   'frag-mod-turret-kin-2': 2,

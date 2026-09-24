@@ -81,19 +81,28 @@ export interface WeekendEventState {
  * 入侵族池（口径定稿：**A 变种 / C / G / 新族×2**）。
  * ⚠ **M1 只放"虫洞已有的族"**（A/C/G）——因为**敌卡暂用虫洞族卡**（船长 2026-09-23：
  * 「入侵战斗采用独立设计的卡（之后设计），我们暂时先试用虫洞的」）；两个新族随 M3（独立卡/新族）一起进池。
+ *
+ * ⚠ **2026-09-24 M2 逐族落地**：第一族 = **H 墨潮帮**（船长定名「The Ink Tide」）——
+ * 它有**自家的独立入侵卡**（`ink-assault` / `ink-flagship`，见 `weekendFoeCardOf`），
+ * 故**在此进池**；A/C/G 三族仍按 M1 口径用虫洞卡，等各自的旗舰卡设计好再逐族迁移。
  */
-export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G']
+export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H']
 
 /* ─────────────── 敌卡：暂用虫洞族卡（独立卡后续批次再换） ─────────────── */
 
 /**
- * **入侵舰队的敌卡**（**船长 2026-09-23**：「入侵战斗采用独立设计的卡（之后设计），**我们暂时先试用虫洞的**」）。
+ * **入侵舰队的敌卡**（**船长 2026-09-23**：「入侵战斗采用独立设计的卡（之后设计），**我们暂时先试用虫洞的**」；
+ * **2026-09-24 船长令「设计每个种族的T5旗舰」⇒ M2 逐族换到独立卡**）。
  *
- * 口径：① 数据全用**该族的虫洞卡**（`wormholeCardPoolAt`：外围取中层池、旗舰取最深池 ⇒ 与该族在虫洞里的编成一致）；
- * ② **威胁 / 名字 / 奖励由入侵覆盖**（78 / 120，名「<族>舰队 · <卡名>」，奖励 ×1.4）；
- * ③ 独立设计的入侵卡与各族 T5 旗舰留到 M2/M3 ⇒ 本函数是**唯一换卡点**（换卡只改这里）。
+ * 口径：① **A/C/G 三族暂时仍用该族的虫洞卡**（`wormholeCardPoolAt`：外围取中层池、旗舰取最深池）；
+ * ② **H 族（墨潮帮）没有虫洞卡** ⇒ 用**自家的独立入侵卡**（`ink-assault` / `ink-flagship`，
+ *   定义在 `packages/data/src/wormholeFoes.ts` 末段、由 `ANOMALIES` 收进目录）；
+ * ③ **威胁 / 名字 / 奖励一律由入侵覆盖**（外围 78 / 核心 120，名「<族>族舰队 · <卡名>」，奖励 ×1.4）；
+ * ④ 本函数仍是**唯一换卡点**：日后 A/C/G 各自的旗舰卡设计好，在这里逐族改指向即可。
  */
 export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): string {
+  // H 族（墨潮帮）：独立入侵卡（它不属虫洞族池）
+  if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : 'ink-assault'
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
   // 外围 ⇒ 中层池（层 5）· 旗舰 ⇒ 最深池（层 9）：两者都靠 `wormholeCardPoolAt` 的缺档兜底
   const pool = wormholeCardPoolAt(fam, kind === 'flagship' ? 9 : 5)

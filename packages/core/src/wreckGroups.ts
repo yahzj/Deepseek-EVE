@@ -257,6 +257,22 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     theme: {},
     members: ['wh-exile-blockade', 'wh-exile-swarm', 'wh-exile-line'],
   },
+  /* ── H 族（墨潮帮 · 2026-09-24）：**周末入侵**的独立敌卡也必须有残骸组归属
+   *    （契约要求每张敌卡都登记进某一组；两张卡都 `hidden`，按 `wh` 地区计 ⇒ 与本组"会产出"判据相容，
+   *    实际产出仍由入侵的奖励结算走，不依赖这条链路）。族 = **新族 H**，回收画像取常档基础池。 ── */
+  {
+    key: 'h-wh',
+    family: 'H',
+    region: 'wh',
+    name: '墨潮帮残骸（虫洞）',
+    rareName: '墨潮帮稀有残骸（虫洞）',
+    tier: 'common',
+    pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
+    note: '',
+    threat: 45,
+    theme: {},
+    members: ['ink-flagship', 'ink-assault'],
+  },
 ]
 
 /** 卡 id → 组 key（由 `WRECK_GROUPS.members` 现算；旧档迁移与新产出共用一张索引） */

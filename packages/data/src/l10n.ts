@@ -603,12 +603,14 @@ const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
   d: 'Gravekeeper',
   e: 'Titan Megastructure',
   g: 'Deadarmy',
+  // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：A 族海盗的变种/叛出分支
+  h: 'Ink Tide',
 }
 const WRECK_AREA_EN: Readonly<Record<string, string>> = { hi: 'High-sec', lo: 'Low-sec', wh: 'Wormhole' }
 
 /** 残骸 id → { name, description }（组名/区分/稀有与否全从 id 解出，与中文表同构） */
 function wreckEnText(id: string): EnText {
-  const m = /^wreck-(rare-)?([a-g])-(hi|lo|wh)$/.exec(id)
+  const m = /^wreck-(rare-)?([a-h])-(hi|lo|wh)$/.exec(id)
   if (!m) throw new Error(`残骸 id 形态不符：${id}`)
   const rare = m[1] !== undefined
   const fam = WRECK_FAMILY_EN[m[2]!]!
@@ -648,6 +650,9 @@ const WRECK_IDS = [
   'wreck-rare-e-wh',
   'wreck-g-wh',
   'wreck-rare-g-wh',
+  // H 族（墨潮帮）第 14 组（2026-09-24）：'h-wh' —— 入侵卡的残骸归属组先登记英名
+  'wreck-h-wh',
+  'wreck-rare-h-wh',
 ] as const
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
@@ -822,6 +827,15 @@ export const EN_ANOMALIES: EnTable = {
   'wh-exile-line': {
     name: 'Remnant Battle Line',
     description: "Wormhole encounter: the deadarmy's last battle line with its swarm escort (hidden card, spawned by the wormhole only).",
+  },
+  // H 族（墨潮帮）· 周末入侵的独立敌卡（2026-09-24 新增两张）
+  'ink-flagship': {
+    name: 'Ink Tide Flagship',
+    description: 'Weekend incursion: the flagship of the Ink Tide (hidden card, spawned by the incursion event only).',
+  },
+  'ink-assault': {
+    name: 'Ink Tide Fleet',
+    description: 'Weekend incursion: a raiding fleet of the Ink Tide (hidden card, spawned by the incursion event only).',
   },
 }
 
@@ -1160,6 +1174,12 @@ export const EN_FOE_SHIPS: EnTable = {
   'foe-g-nadir-lock': { name: 'Nadir Blockade Ship' },
   'foe-g-exile-battleship': { name: 'Deadarmy Battleship' },
   'foe-g-remnant-tender': { name: 'Remnant Tender' },
+  // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：五档壳体
+  'foe-h-ink-skiff': { name: 'Ink Tide Skiff' },
+  'foe-h-ink-corvette': { name: 'Ink Tide Assault Ship' },
+  'foe-h-ink-sniper': { name: 'Ink Tide Sniper' },
+  'foe-h-ink-battleship': { name: 'Ink Tide Battlewagon' },
+  'foe-h-ink-flagship': { name: 'Ink Tide Flagship' },
 }
 
 /**

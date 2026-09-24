@@ -216,4 +216,6 @@ export const FOE_FAMILY_LABEL: Record<string, string> = {
   E: tr("ui.shipArt.005"),
   F: tr("ui.shipArt.006"), // 已废弃·留档（F 族并入 A 族；仅防旧数据带 'F' 时无标签可显示）
   G: tr("ui.shipArt.007"),
+  // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：A 族海盗的变种/叛出分支 —— 短名取两字「墨潮」
+  H: tr("ui.shipArt.008"),
 }

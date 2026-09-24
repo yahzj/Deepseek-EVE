@@ -54,6 +54,9 @@ import {
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_WARLORD,
   FOE_SHIP_PIRATE_RAIDER, // 2026-09-16 船长：A 族新舰（深层战团）
+  FOE_H_INK_FLAGSHIP, // 2026-09-24 船长：H 族（墨潮帮）旗舰（周末入侵旗舰战用）
+  FOE_H_INK_CORVETTE,
+  FOE_H_INK_SNIPER,
 } from './foe-ships'
 
 /** 洞内敌卡的缩放锚点威胁（= core `WORMHOLE_THREAT_BASE`，第 1 层基准） */
@@ -509,3 +512,81 @@ export const WORMHOLE_FOE_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARDS.map((
  * 现已按上线动作删字段 ⇒ 与窝点稀有残骸同款：**可回收、图鉴可见**。
  */
 export const WORMHOLE_RARE_WRECK_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARDS.map((c) => c.id)
+
+/* ═══════════ 周末入侵 · 独立敌卡（2026-09-24 起 · M2 逐族铺开）═══════════
+ * 口径来源：`docs/design/weekend-invasion.md` §三②（船长 2026-09-23：「**入侵战斗采用独立设计的卡
+ * （之后设计），我们暂时先试用虫洞的**」）＋ 本批船长令「**设计每个种族的T5旗舰**」。
+ *
+ * **为什么 H 族必须有独立卡**：`weekendFoeCardOf` 对 A/C/G 走"该族的虫洞卡"（暂用口径），
+ * 而 **H 族（墨潮帮）没有虫洞卡**（它不是虫洞族）⇒ 入侵必须给它一张**自家卡**。
+ * 三族（A/C/G）本轮仍走虫洞卡，等各自旗舰卡设计好再逐族迁到本段（M2 逐族落地）。
+ *
+ * ⚠ **本段的卡只服务周末入侵**：`hidden: true`（不进悬赏目录、不被派发）· 无窝点核心（`lairCore` 不写）
+ * ⇒ 不参与窝点/稀有残骸链路；威胁与波数由入侵侧覆盖（外围 78 / 核心 120 · 旗舰 4 波 4 艘），
+ * 卡上的 `threat` 只是**缩放锚点**。
+ */
+
+/**
+ * **墨潮帮 · 旗舰战卡**（H 族旗舰 = 墨潮旗舰 ×1）。
+ *
+ * 编成只写**旗舰本体**：它是**旗舰卡**（`weekendFlagshipSpecOf` 的 4 波 × 4 艘由入侵侧覆写波表），
+ * 外围的普通舰队用 `ink-assault`。两条都用 H 族壳体 ⇒ 玩家在入侵里打的每一个敌人都出自本族。
+ */
+export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
+  id: 'ink-flagship',
+  foeFamily: 'H',
+  name: '墨潮旗舰',
+  galaxyId: 'galaxy-hub', // 只作日志/展示归属；本卡不进任何星系目录（hidden）
+  region: 'wh', // 卡级地区覆写：入侵卡与洞内卡同口径（否则会被按高安卡核）
+  threat: ANCHOR_THREAT, // 缩放锚点（实际威胁由入侵覆盖 120）
+  foeTargeting: 'random', // 帮派乱战（不做选靶性格；旗舰是单舰，写了也无意义）
+  dmgMix: { kinetic: 8, explosive: 2 }, // 与 H 族壳体签名一致（契约要求卡面 = 编成主体）
+  ships: [{ ship: FOE_H_INK_FLAGSHIP, count: 1 }],
+  standingReq: 0,
+  standingGain: 0,
+  rewardIsk: 0,
+  loot: [], // 奖励由入侵侧发（黑匣 ＋ 稀有残骸；卡上不给）
+  combatSeconds: 90, // 旗舰战给足时间（4 波）
+  hidden: true,
+  description: '周末入侵：墨潮帮的旗舰（隐藏卡，只由入侵活动生成）。',
+}
+
+/**
+ * **墨潮帮 · 普通舰队卡**（H 族外围/遇袭用：突击舰 ×2 ＋ 狙击舰 ×1）。
+ *
+ * 编成取"帮派混编"（近战主力 ＋ 远程压制）——威胁由入侵覆盖（外围主动 78 / 遇袭 39）。
+ */
+export const WEEKEND_INK_ASSAULT_CARD: AnomalyDef = {
+  id: 'ink-assault',
+  foeFamily: 'H',
+  name: '墨潮帮舰队',
+  galaxyId: 'galaxy-hub',
+  region: 'wh', // 同上：卡级地区覆写（入侵卡）
+  threat: ANCHOR_THREAT,
+  foeTargeting: 'random',
+  dmgMix: { kinetic: 8, explosive: 2 },
+  ships: [
+    { ship: FOE_H_INK_CORVETTE, count: 2 },
+    // 狙击舰的舰级签名是爆炸 8:2，本卡按 H 族签名（动能 8:2）统一 ⇒ **条目级覆写**
+    // （与 A 族洞内卡同款做法：卡面 = 每条主体的有效构成，契约要求两侧一致）
+    { ship: FOE_H_INK_SNIPER, count: 1, dmgMix: { kinetic: 8, explosive: 2 } },
+  ],
+  standingReq: 0,
+  standingGain: 0,
+  rewardIsk: 0,
+  loot: [],
+  combatSeconds: 50,
+  hidden: true,
+  description: '周末入侵：墨潮帮的劫掠舰队（隐藏卡，只由入侵活动生成）。',
+}
+
+/** 周末入侵·独立卡的 id（core 的 `weekendFoeCardOf` 按族路由到它们；**本表是唯一登记处**） */
+export const WEEKEND_FOE_CARD_IDS = {
+  /** H 族（墨潮帮）：旗舰战卡 */
+  H_flagship: WEEKEND_INK_FLAGSHIP_CARD.id,
+  /** H 族（墨潮帮）：普通舰队卡 */
+  H_assault: WEEKEND_INK_ASSAULT_CARD.id,
+} as const
+
+/** 周末入侵·独立卡清单（`data/context.ts` 把它们并进 `ANOMALIES_FLAVORED` ⇒ 引擎 `ctx.anomalies` 能取到） */
+export const WEEKEND_FOE_CARDS: readonly AnomalyDef[] = [WEEKEND_INK_FLAGSHIP_CARD, WEEKEND_INK_ASSAULT_CARD]

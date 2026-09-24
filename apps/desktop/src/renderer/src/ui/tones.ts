@@ -150,7 +150,7 @@ export const ICO_TONES: Record<string, string> = {
   'ico-tact': toneVar('ico-tact'),
 }
 
-/** FOE_ACCENT（7 条） */
+/** FOE_ACCENT（8 条；H = 墨潮帮 · 2026-09-24 新增，**仍是红色系**（船长令）但比 A 族深/暗一档） */
 export const FOE_ACCENT: Record<string, string> = {
   A: toneVar('A'),
   B: toneVar('B'),
@@ -159,6 +159,8 @@ export const FOE_ACCENT: Record<string, string> = {
   E: toneVar('E'),
   F: toneVar('F'),
   G: toneVar('G'),
+  // H 族（墨潮帮）：与 A 同为红（船长「依旧红色色系最好」），靠**更深更沉**区分
+  H: toneVar('H'),
 }
 
 /** WORK_ACCENT（4 条） */

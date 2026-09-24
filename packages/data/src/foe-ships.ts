@@ -310,6 +310,18 @@ export const ALIEN_FLAGSHIP_SHIP_IDS: readonly string[] = []
 export const G_FLAGSHIP_SHIP_IDS: readonly string[] = []
 
 /**
+ * **H 族（墨潮帮）「T5 旗舰」白名单**（船长 2026-09-24：「**设计每个种族的T5旗舰**」）。
+ *
+ * H 族是**新立的族字母**（A 族海盗的变种分支，见 `FoeFamily` 头注），五档壳体一次铺齐：
+ * 本白名单登记它的 T5 旗舰 —— 与 C/G 两族同一个模式（**T5 只有白名单那一条**）。
+ *
+ * ⚠ 同时是**旗舰速度破例白名单**：H 族族格速带 0.90~1.30×（船长令"中速带"），
+ * 而旗舰 155 × 1.6 = 248 m/s（**1.50×**）**经船长准许破例** ⇒ `content:check` 的敌速口径契约
+ * 对本白名单里的舰级豁免族格带（**白名单式**：防日后杂鱼照抄"破例"）。
+ */
+export const H_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-h-ink-flagship']
+
+/**
  * **C 族「允许慢」白名单**（船长 2026-09-16：「**孢群异虫速度削减到300**」）。
  *
  * 与上面那张「巨兽白名单」同款用途，但管的是**速度族格**：C 族口径 = 「**速度比 A 海盗还快**」
@@ -1159,7 +1171,7 @@ export const FOE_H_INK_SKIFF: FoeShipDef = {
   family: 'H',
   evasion: 0.22, // 与 A 族同口径（2026-09-24 提档后的海盗系值）
   hullClassTier: 1, // 护卫舰
-  speedRatio: 1.15, // 340 × 1.15 = 391 m/s（落在 H 族速带 0.90~1.30 内）
+  speedRatio: 1.1, // = 373.6/340（与 A 族同档同口径；对基准船 ≈2.26×，落在 H 族速带 1.0~1.6 内）
   hp: 156,
   split: { s: 0.34, a: 0.33, h: 0.33 },
   shotDmg: 28,
@@ -1180,7 +1192,7 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
   family: 'H',
   evasion: 0.22,
   hullClassTier: 1, // 护卫舰（与 A 族"护卫舰当主力"同口径）
-  speedRatio: 1.1, // 340 × 1.10 = 374 m/s
+  speedRatio: 1.05, // = 356.9/340（对基准船 ≈2.16×，落在 H 族速带内）
   hp: 364,
   split: { s: 0.34, a: 0.33, h: 0.33 },
   shotDmg: 51,
@@ -1201,7 +1213,7 @@ export const FOE_H_INK_SNIPER: FoeShipDef = {
   family: 'H',
   evasion: 0.22,
   hullClassTier: 2, // 驱逐舰
-  speedRatio: 1.1, // 295 × 1.10 = 325 m/s
+  speedRatio: 1.05, // = 309.9/295（对基准船 ≈1.88×，落在 H 族速带内）
   hp: 480,
   split: { s: 0.5, a: 0.25, h: 0.25 },
   shotDmg: 60,
@@ -1226,7 +1238,7 @@ export const FOE_H_INK_BATTLESHIP: FoeShipDef = {
   family: 'H',
   evasion: 0.12, // 大舰不闪（与既有 T4 同口径：缺省值）
   hullClassTier: 4, // 战列舰
-  speedRatio: 1.0, // 205 × 1.00 = 205 m/s
+  speedRatio: 1.05, // = 215.5/205（对基准船 ≈1.30×，落在 H 族速带内）
   hp: 2800,
   split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（重炮舰的"厚"）
   shotDmg: 420,
@@ -1255,7 +1267,14 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
   family: 'H',
   evasion: 0.1, // 旗舰体量大、难闪（低于杂鱼；不给 0 是为了保留"打得中但吃命中加成"的手感）
   hullClassTier: 5, // 旗舰（本族唯一 T5，须登记在 H 族旗舰位）
-  speedRatio: 1.6, // 155 × 1.6 = 248 m/s（船长准"旗舰速度破例"；破 H 族速带 0.90~1.30）
+  /**
+   * 速度：**旗舰要压得上人**（船长最初的意向是"旗舰快、能贴上来打"）。
+   * ⚠ **比率口径的坑（本批实测踩到）**：契约里的"比率"= `实速 × agiMul(0.3) ÷ 基准船战斗机动 165.2`，
+   * 而同档基准 155 只是**裸速**——所以"高于本档基准"很好过，但"比率 ≥ 1.0"要的是**裸速 ≥ 约 170**。
+   * 首版按 1.7（= 264 m/s）标，实测比率仍 **0.90×**（越下限）⇒ 现取 **2.0（310 m/s）**：
+   * 比率 ≈ **1.06×**（族格带 1.0~1.6 内、且高于本档基准），也是本族最快的一条（"旗舰带头压上来"）。
+   */
+  speedRatio: 2.0, // 155 × 2.0 = 310 m/s（对基准船 ≈1.06×，落在 H 族族格带内）
   hp: 3920,
   split: { s: 0.2, a: 0.55, h: 0.25 },
   shotDmg: 546,
@@ -1270,8 +1289,7 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
   elite: true, // 显示名挂「精锐」前缀（头目档口径）
 }
 
-/** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */
-export const FOE_SHIPS: readonly FoeShipDef[] = [
+/** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */export const FOE_SHIPS: readonly FoeShipDef[] = [
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SNIPER,

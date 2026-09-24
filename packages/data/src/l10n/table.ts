@@ -3368,6 +3368,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipArt.005": { zh: "巨构", en: "Titan" },
   "ui.shipArt.006": { zh: "巡逻", en: "Patrol" },
   "ui.shipArt.007": { zh: "鱿烬", en: "Deadarmy" },
+  // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：短名取两字「墨潮」（星图标签位窄）
+  "ui.shipArt.008": { zh: "墨潮", en: "Ink Tide" },
   "ui.shipInfo.001": { zh: "（上限 90%）", en: " (cap 90%)" },
   "ui.shipInfo.002": { zh: "军用修理组件", en: "Military Repair Kit" },
   "ui.shipInfo.003": { zh: "民用修理组件", en: "Civilian Repair Kit" },

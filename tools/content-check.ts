@@ -57,6 +57,7 @@ import {
   ALIEN_BEAST_SHIP_IDS,
   ALIEN_FLAGSHIP_SHIP_IDS,
   G_FLAGSHIP_SHIP_IDS,
+  H_FLAGSHIP_SHIP_IDS,
   ALIEN_CHARGE_MUL_BY_TIER,
   ALIEN_SLOW_SHIP_IDS,
   COMMS_MESSAGES,
@@ -2275,12 +2276,14 @@ for (const m of MODULES) {
       }
       check(a.foeFamily === g.family, `残骸组契约：${m} 的族是 ${a.foeFamily}，但登记进 ${g.key}（族 ${g.family}）`)
       const sec = typeof ctx.galaxies.get(a.galaxyId)?.security === 'number' ? ctx.galaxies.get(a.galaxyId)!.security! : 1
-      const region = m.startsWith('wh-') ? 'wh' : sec <= 0 ? 'lo' : 'hi'
+      // 地区：**卡级 `region` 覆写优先**（2026-09-24：入侵卡 `ink-*` 不是 `wh-` 前缀但属洞内口径）
+      const region = a.region ?? (m.startsWith('wh-') ? 'wh' : sec <= 0 ? 'lo' : 'hi')
       check(region === g.region, `残骸组契约：${m} 的地区是 ${region}，但登记进 ${g.key}（地区 ${g.region}）`)
     }
   }
   // ② 保值 + ③ 矿物来源 + ④ 钛钢 + ⑤ 主题件
   const regionOfCard = (a: (typeof ANOMALIES_FLAVORED)[number]): 'hi' | 'lo' | 'wh' => {
+    if (a.region) return a.region // 卡级覆写优先（2026-09-24：入侵卡 ink-* 走 wh）
     if (a.id.startsWith('wh-')) return 'wh'
     const sec = typeof ctx.galaxies.get(a.galaxyId)?.security === 'number' ? ctx.galaxies.get(a.galaxyId)!.security! : 1
     return sec <= 0 ? 'lo' : 'hi'
@@ -2351,7 +2354,7 @@ for (const m of MODULES) {
     check(g.tier === majority, `残骸组契约：${g.key} 档位记 ${g.tier}，成员产残骸卡多数档是 ${majority}`)
     groupsChecked += 1
   }
-  check(WRECK_GROUPS.length === 13, `残骸组契约：组数应为 13，实际 ${WRECK_GROUPS.length}`)
+  check(WRECK_GROUPS.length === 14, `残骸组契约：组数应为 14（2026-09-24 起含 H 族墨潮帮那组），实际 ${WRECK_GROUPS.length}`)
   // ⑥ 出量梯度：常 ≡ 1.00、常 ≤ 险 ≤ 危
   check(WRECK_YIELD_TIER_MUL.common === 1, `残骸组契约：常档出量乘数应为 1.00，实际 ${WRECK_YIELD_TIER_MUL.common}`)
   check(
@@ -2708,7 +2711,17 @@ for (const m of MODULES) {
      * ⚠ **必须用族级带、不能用战术带**：brawl 常规带 1.05~1.55 会把慢的巨构**误拦**（与 B/D 同款教训）。
      */
     const TITAN_SPEED_BAND: readonly [number, number] = [0, 0.9]
-    /** A 族各档**最快实速**（横向对照用；从舰级表现算，不手抄数字） */
+    /**
+     * **H 族（墨潮帮 · The Ink Tide）族格速带**——船长 2026-09-24：「**新族复制一份A族族格，
+     * 之后要单独修改，不要直接采用A族**」⇒ 本常量是 **A 族 `PIRATE_SPEED_BAND` 的独立副本**
+     * （初值逐字相同：1.00~1.60×），**日后改 H 只改这里，A 族那条不受影响**。
+     *
+     * H 是 A 族海盗的**变种/叛出分支**（新族字母，见 `FoeFamily` 头注）：性格沿用海盗系
+     * （快、贴脸、动能 8:2），族格判据按船长令整份复制 A 族那一套（含"每档都必须高于基准"）。
+     * ⚠ **T5 旗舰**（`H_FLAGSHIP_SHIP_IDS`）目前两条都满足 ⇒ 无需豁免；白名单保留备用。
+     */
+    const INK_SPEED_BAND: readonly [number, number] = [1.0, 1.6]
+    /** H 族各档**最快实速**（横向对照用；从舰级表现算，不手抄数字） */
     const pirateFastestByTier = new Map<number, number>()
     for (const ship of FOE_SHIPS) {
       if (ship.family !== 'A') continue
@@ -2729,6 +2742,9 @@ for (const m of MODULES) {
     const titanSample: string[] = []
     let scavReadings = 0
     const scavSample: string[] = []
+    // H 族（墨潮帮 · 2026-09-24）：族级中速带的读数计数（与 A/B/C/D/E 同款）
+    let inkReadings = 0
+    const inkSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
       // 舰级路径（2026-09-11）：速度由**舰级登记值**决定，故不再要求逐卡 foeSpeedMps；
       // 改按"该卡实际会建出的单位速度"（非僚机编成条目）校验比率。
@@ -2761,6 +2777,33 @@ for (const m of MODULES) {
               ratio >= PIRATE_SPEED_BAND[0] && ratio <= PIRATE_SPEED_BAND[1],
               `敌速口径契约：A 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出全族提速带 ` +
                 `${PIRATE_SPEED_BAND[0]}~${PIRATE_SPEED_BAND[1]}×（基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
+            continue
+          }
+          if (def.foeFamily === 'H') {
+            // **H 族（墨潮帮）口径 = 船长 2026-09-24 令「**新族复制一份A族族格，之后要单独修改，
+            // 不要直接采用A族**」⇒ 本分支是 **A 族那份判据的独立副本**（不是共用 A 的那条）：
+            // ①**每档实速必须高于本档舰种基准**（`spd > base`，A 族「速度都快，方便突袭」的族格）；
+            // ②比率落**全族提速带** `INK_SPEED_BAND`（初值 = A 族同带 1.00~1.60×，
+            //   即"复制一份"的落点；**日后要改 H 只改这条常量**，A 族那条 `PIRATE_SPEED_BAND` 不受影响）。
+            // ⚠ **旗舰豁免**（`H_FLAGSHIP_SHIP_IDS`）：T5 旗舰 155×1.6 = 248（1.50×）虽在带内，
+            //   但"高于本档基准（155）"这条对它同样成立 ⇒ 目前**无需豁免**；白名单保留，
+            //   供日后给 H 旗舰单独放宽（例如让旗舰慢于基准以显"厚"）时用。
+            inkReadings++
+            inkSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            const inkFlagship = H_FLAGSHIP_SHIP_IDS.includes(slot.ship.id)
+            if (!inkFlagship) {
+              check(
+                spd > base,
+                `敌速口径契约：H 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未高于本档舰种基准 ${base} m/s**——` +
+                  `H 族族格复制自 A 族（船长 2026-09-24「新族复制一份A族族格」）⇒ 每档都必须高于基准`,
+              )
+            }
+            check(
+              ratio >= INK_SPEED_BAND[0] && ratio <= INK_SPEED_BAND[1],
+              `敌速口径契约：H 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族提速带** ` +
+                `${INK_SPEED_BAND[0]}~${INK_SPEED_BAND[1]}×（H 族族格复制自 A 族；日后单独改只动此带；` +
+                `基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
             )
             continue
           }
@@ -4597,7 +4640,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * ③ 登记的族必须是合法族字母（A~E / G；`'F'` 除外）。
    * 落码顺序：**先**给四张旧遭遇模板（`enc-pirate-1..4`）显式登记 A 族、**后**加本契约。 */
   {
-    const LEGAL_FAMILIES: readonly string[] = ['A', 'B', 'C', 'D', 'E', 'G']
+    const LEGAL_FAMILIES: readonly string[] = ['A', 'B', 'C', 'D', 'E', 'G', 'H']
     let famRegistered = 0
     for (const def of ANOMALIES_FLAVORED) {
       check(

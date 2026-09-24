@@ -364,6 +364,13 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // 2026-09-16 船长：敌方后勤舰「残军补给舰」（T3 · **备用壳体，暂不进卡**）——
       // 族定值 1.05 ⇒ 258 × 1.05 = 271（与同族 T3 同速；上场读数待进卡时再跑）
       { id: 'foe-g-remnant-tender', tier: 3, speed: 271 },
+      // H 族（墨潮帮 · 2026-09-24 船长「新族复制一份A族族格」）——五档壳体的实速：
+      // 340/295/205 × 倍率（族格带 1.0~1.6× 是对**基准船**的比率，见 content-check 的 INK_SPEED_BAND）
+      { id: 'foe-h-ink-skiff', tier: 1, speed: 374 }, // 340 × 1.10
+      { id: 'foe-h-ink-corvette', tier: 1, speed: 357 }, // 340 × 1.05
+      { id: 'foe-h-ink-sniper', tier: 2, speed: 310 }, // 295 × 1.05
+      { id: 'foe-h-ink-battleship', tier: 4, speed: 215 }, // 205 × 1.05
+      { id: 'foe-h-ink-flagship', tier: 5, speed: 310 }, // 155 × 2.0（本族最快；旗舰带头压上来）
     ])
   })
 
@@ -784,7 +791,8 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(42); // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张 + 批 2 的 C 族中/深 2 张**（2026-09-15）
+    expect(checked).toBe(44); // ⚠ 2026-09-24 起 42 → **44**（H 族墨潮帮两张入侵卡：ink-flagship / ink-assault）
+    // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张 + 批 2 的 C 族中/深 2 张**（2026-09-15）
     // ⚠ 2026-09-12（P-43 舰级补完）起**全表 27 张敌军卡都在舰级路径**：G 族三卡迁入 +「废弃 F 族」
     //   的四张隐藏遭遇模板（`enc-pirate-1..4`）也迁入 A 族舰级 ⇒ **旧威胁推导路径再无真实卡**。
   })
