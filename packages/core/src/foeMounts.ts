@@ -46,15 +46,9 @@ export const FOE_MOUNT_IDS = {
   captureWeb: 'foe-mount-capture-web',
   /** **支援呼叫装置**（船长 2026-09-19）：D 族守墓王座舰专属——开战 20 秒后按距离呼叫一支支援军 */
   supportCall: 'foe-mount-support-call',
-  /**
-   * **姿态陀螺仪**（船长 2026-09-24：「**在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避**」）
-   * ——A 族**洞内卡条目**专属（含劫掠电子舰）：本舰战斗闪避 **+0.10 加算**、上限 0.9。
-   */
+  /** **姿态陀螺仪**（**船长 2026-09-24**）：A 族（含劫掠电子舰）——闪避 +0.10 加算，只挂洞内 A 族卡条目 */
   gyroStabilizer: 'foe-mount-gyro-stabilizer',
-  /**
-   * **船体修理装置**（船长 2026-09-24：「**给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，
-   * 会吃威胁的加成。**」）——G 族**洞内卡条目**专属：每 5 秒自修 5 装甲 + 5 结构 × 层威胁倍率 k。
-   */
+  /** **船体修理装置**（**船长 2026-09-24**）：G 族——每 5 秒回 5 装甲 / 5 结构 × 该层威胁倍率 */
   hullRepair: 'foe-mount-hull-repair',
 } as const
 
@@ -157,9 +151,9 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     repairPulse: { everyMs: 5_000, armor: 5, hull: 5 },
     note:
       '船长 2026-09-24：「给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成。」；' +
-      '追问裁定 = 修理量乘层威胁倍率（甲；归一基准「不改动」= 层 1 的 k = 1.00）。' +
+      '追问裁定 = 修理量乘层威胁倍率（甲；归一基准「不改动」= 层 1 的 k = 1.00）⇒ 实数 = 5 × k。' +
       'k = 该层本次实际威胁 ÷ 45（combat.FOE_REPAIR_THREAT_REF）⇒ 层 1 = 1.00 · 层 7 ≈ 1.97 · ' +
-      '层 10 ≈ 2.77；层末守卫另吃 ×1.2 的威胁倍率（wormholeFoeThreat）⇒ k 随之更高。' +
+      '层 10 ≈ 2.77；夹到满值、不回超；层末守卫另吃 ×1.2 的威胁倍率（wormholeFoeThreat）⇒ k 随之更高。' +
       '只挂 G 族洞内卡条目；与「敌方后勤舰」（FoeShipDef.repairPct：折自己 DPS 去修队友）不是一套。' +
       '设计稿 docs/design/foe-mounts-20260924.md。',
   },
@@ -183,7 +177,8 @@ export interface ResolvedFoeMounts {
   foeSupportCall?: { delaySec: number; threatMul: number }
   /**
    * **姿态陀螺仪的闪避加数**（原样带给单位；消费方在建档时加进 `evasion` 并夹 0.9）。
-   * 多件相撞取**最后一件**（与其余效果同款"后写覆盖"）。
+   * ⚠ **多件相撞取「加和」**（2026-09-24 与一号的定义层合并时采用的口径：两件就是 +0.20）——
+   * 与其余单值效果（冲锋倍率 / 射程倍率）的"后写覆盖"不同，闪避是**可以叠加**的加数。
    */
   foeEvasionBonusAdd?: number
   /** **船体修理装置的脉冲参数**（原样带给单位；`k` 由建档侧按本层威胁现算，见 `FoeMountDef.repairPulse`） */
@@ -202,7 +197,8 @@ export interface ResolvedFoeMounts {
 
 /**
  * **解析挂载件 → 运行时字段**（单点：建档与体检同源）。
- * 多件同类取**最后一件**（后写覆盖先写）；未知 id 不生效、只登记在 `unknown` 里。
+ * 多件同类相撞：**闪避加数取「加和」**（可叠加）、其余效果取**最后一件**（后写覆盖先写）；
+ * 未知 id 不生效、只登记在 `unknown` 里。`names` 与 `namePairs` 保持挂载顺序、逐项对齐。
  */
 export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFoeMounts {
   const out: ResolvedFoeMounts = { names: [], namePairs: [], unknown: [] }
@@ -223,7 +219,8 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.gunRangeOnHit) out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul
     if (def.web) out.foeCaptureWeb = { ...def.web }
     if (def.supportCall) out.foeSupportCall = { ...def.supportCall }
-    if (def.evasionBonus) out.foeEvasionBonusAdd = def.evasionBonus.add
+    // **加和**（与一号定义层合并后的口径）：两件陀螺仪 = +0.20，上限由建档侧夹 0.9
+    if (def.evasionBonus) out.foeEvasionBonusAdd = (out.foeEvasionBonusAdd ?? 0) + def.evasionBonus.add
     if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
   }
   return out

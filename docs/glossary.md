@@ -1,4 +1,4 @@
-# 术语词典（Glossary）
+﻿ 术语词典（Glossary）
 
 > **仓库级术语权威**（约定见 `docs/development-conventions.md` 第十一章）。
 > 用途：跨会话沟通 / 写文档 / 写注释前查词，避免压缩上下文后名词漂移。
@@ -950,5 +950,33 @@
 | **渠道归属不动** | 一件货进哪个盘口（常驻/稀有/奇货）**仍由 `marketCatalog.ts` 的 `rarity` 字符串决定**，稀有度表**不参与**该判定 ——即"两个概念各归一处，但稀有度只有一份" | `packages/data/src/marketCatalog.ts` |
 | **图标小标签** | 图标模式**右上角**显示 `R{档}`；**查不到档就不显示**（不硬塞 R1）。配色同源市场页既有稀有度色：1 灰 · 2 淡青 · 3 琥珀 · **4 = `is-rare` 金 `#f4c95d`** · **5 = `is-exotic` 品红 `#ff8ad8`**；绝对定位 ⇒ **不占布局** | 共用网格 `ui/itemView.tsx` 的 `ItemGlyphGrid`（`rarity` 字段）＋ 物品页/货仓页/手册图鉴三处传档 |
 | **弹药 MK2 移入稀有订单** | 三系弹药 MK2 由 `common` 改 **`rare`**、档 **R1 → R2**（与 rare 允许带 2~4 相符）。⚠ 连带：它原先走 common 的"池商品阶梯"（`poolTarget`/`supplyFlow`），改档后**不再吃那条路**（池参数保留不删）⇒ 实质影响 = **供货渠道变更**，不是加权。⚠ **2026-09-20 船长令修好"买不到"**（原读数：24 游戏小时只能买到 **61~81 发**，而 4 舰编队单场预载 ≈**3,000 发** ⇒ 差 50~100 倍；且卡片池参数仍在 ⇒ **买不到却卖得掉**的两头不对称）⇒ **仍是 rare**，但加两个字段：**`rareQtyMul: 200`**（稀有单张件数 1~3 → **200~600 发**，供货与簿面收购两侧同乘）· **`rareWeightMul: 3`**（抽取/收购概率 ×3 ⇒ 每系每天约 **3 万发**供货）＋ **`absorbQtyPerWindow: 21_600`**（**收购额度 = 池口径 4,320 × 5**，船长「收购额度增加约 5 倍」）。新契约 = `content:check`「**稀有批量档契约**」：写了这两个乘子的卡必须是 rare 档、**必须同时写明 `absorbQtyPerWindow`**、乘子有下限（≥10 / ≥2） | `data/marketCatalog.ts` · `data/rarityTier.ts` · `core/market.ts` 稀有分支三处接线 · `tests/market.test.ts`（4 例） |
+
+## 十四、时效任务板周期 · 停机善后 · 重复清剿等待表（2026-09-24 船长批）
+
+> 船长原话（照抄）：「**快递任务和资源任务的刷新周期延长到 120 分钟。**」→「**那只改快递任务。**」→
+> 「**1 快递任务的周期和持续时间都为 120 分钟，资源任务不变。2甲。**」（2甲 = 每批条数不动）
+> 「**快递任务现在是 2 小时刷新周期，但是卡片上和快递任务页面写的还是 20 分钟。**」（报障）
+> 「**1 肯定要材料一起退。**」（答"停机要不要退料"）
+
+| 术语 | 含义 | 落点 |
+|---|---|---|
+| **快递板 = 120 分钟（周期与存活）** | 资源任务仍跟市场「补给刷新」（`orderLifeMs.common` = **20 分钟**、按市场整点对齐）；**快递任务**每 **120 分钟**重掷且**存活恰好 120 分钟**（到点即换下一批）。120 = 20 × 6 ⇒ 判据 = **窗界是不是 120 分钟整点**（`courierDueAtWindow`）；**首个批次**在"建成副站后的下一个 20 分钟窗"补种（空表补种，不然开局要空等两小时），它的到期 = 其后第一个 120 分钟整点（`courierDeadlineMs`）。**倒计时/出发护栏/文案三处必须同源**：`SideTaskBoardView.courierRemainingMs`（快递）与 `remainingMs`（资源）**分开报**；出发到期护栏按 `courierDeadlineMs` 判（**曾误用资源那 20 分钟 ⇒ 抽到手超 20 分钟的单子被判"已到期"拒发**）；界面周期取 `COURIER_BOARD_PERIOD_MS`，快递一轮两小时 ⇒ 倒计时用 `h:mm:ss` | `core/sideTasks.ts`（常量 / 两判据 / 视图字段）· `panels/Expedition.tsx` · `l10n` 的 `ui.Expedition.434/435` · `tests/courier-board-period.test.ts` · `tests/sideTasks.test.ts` |
+| **停机善后 = 材料全退 + 一次性图纸退书** | **切活动自动停机**（`state.haltActivityForSwitch`）与手动「取消」同款善后，**唯一代价是当前那批的进度**（`HALT_COST` 原话）。分产线记：**制造线**是"开工整批扣料" ⇒ 停机**整批退料 + 退书退名额**，并把停掉的线**从表里摘掉**（防同一线号再取消而二次退书）；**炉子**（精炼/回收/货柜拆解）是"每批到点实时扣" ⇒ 停机**本来就不吃料**（当前那批还没到点），只有**老档的炉内预占账**（`claimedUnits`）要退回仓库。退料一律**按线上记的账**（`ManufacturingRunState.spentMaterials`：开工那刻实际扣了多少）退，不按现在的技能现算 | `core/state.ts`（`haltActivityForSwitch` / `refundMaterialsToWarehouse` / `refundOneTimeBookOf`）· `core/manufacturing.ts`（`spentMaterials` / `bookSpent`）· `core/save.ts`（两者随档）· `tests/manufacturing.test.ts` · `tests/halt-material-refund.test.ts` · `tests/one-time-blueprint.test.ts` |
+| **重复清剿的"等主控"表** | 判据 = **这一项是否真的占着主控**。表内：本次出击 · 采矿 · 残骸打捞 · 航行 · **亲自开炉 · 亲自开线**（2026-09-24 补：与采矿/打捞同性质，原先漏项 ⇒ 清剿到点会把主控手上的**造船线**掐掉）。AI 核心驱动的炉/线**不占主控 ⇒ 不挡清剿** | `core/expedition.ts` 的 `autoLoopWaitLabel` · 活动栏「等待…结束，自动再出击」（`core/activity.ts`）· `tests/one-time-blueprint.test.ts` ⑤ |
+| **一次性图纸被吞的三条路** | 玩家报障（2026-09-24）：「刚在造的锤头鲨级一次性蓝图…离线后上线发现**船不见了、蓝图显示已消耗**」。存档实证 = 三张一次性舰船图全"已消耗"、舰船仓库一艘都没有、跑线表空、**重复清剿开着**。三条路一起修：① 清剿抢主控 ⇒ 造线被停机（现改为**等**）② 停机不退书（现**退书退名额**）③ `bookSpent` **不随档** ⇒ 读档后取消静默不退书（现随档） | `docs/roadmap.md` 2026-09-24 那条 · 回归 `tests/one-time-blueprint.test.ts`（6 例）· 读数工具 `npm run once:repro` |
+
+## 十五、战斗显示口径：伤害类型配色 · 武器弹种 · 伤害飘字（2026-09-24 船长批）
+
+> 船长原话（照抄）：「**战斗界面，我希望添加战斗伤害的数值动画（包括 MISS）**」＋四答甲（目标旁向上飘 ·
+> 同拍同目标累加成一个数字 · 类型色数字 + 灰色 MISS · 只在战斗画面且跟随倍速/暂停）；
+> 「**我发现新问题关于伤害类型颜色，不知道什么时候改错位了，原先动能是黄色，能量是蓝色的。**」＋
+> 玩家反馈「**他的动能武器和高爆打能量弹药**」；「**战斗画面，玩家的截图中的攻坚炮台 MK3 动能型后面
+> 写着的是能量弹药，还有巡航导弹架 MK3 也写着。**」
+
+| 术语 | 含义 | 落点 |
+|---|---|---|
+| **伤害类型配色 = 一套** | **伤害类型徽标（`app-d-*`）与弹药徽标（`app-a-*`）共用同一套底色**（动能=金 `x211` / 爆破=橙 `x57` / 能量=青 `x77`），且与弹道、伤害飘字、射程弧的 `DMG_COLOR`（`--wui-tone-kinetic/explosive/plasma`）同族。⚠ **旧口径已作废**：`app-d-*` 曾按**层位**配色（v172 注释 "dmg type = hp layer colors"：动能→盾蓝、能量→结构黄），与别处正好相反 ⇒ 玩家把「动能弹药」那枚蓝芯片读成能量弹。**层位色（盾蓝 / 甲红 / 结构黄）只留给 `.app-p-*` 与血条** | `styles.css`（两族**合并成同一条规则** ⇒ 结构上不可能再漂移）· 契约 `npm run ui:dmg-color`（挂在 `ui:theme-check` 链上：两族同 token + 逐主题三色可分 + **动能不比能量蓝**） |
+| **武器弹种 = 这件武器自己的那一型** | 战斗画面武器条/射程弧的弹种一律取**该武器自己的 `shotsByType`**（与 `stepBattle` 取弹同源：弹型 = `shotsByType` 的键、耗弹 = 门数 × 每发耗弹数）；该型打光 ⇒ `type = null`（界面照既有口径显示"无弹/虚线弧"）。⚠ **旧口径已作废**：曾取 `nextAmmoType(battle.ammo)`（**全船剩余最多的那一型**，V18 单弹种时代遗留）⇒ 装了激光就会把**每一门炮**（含动能炮、导弹架）都写成「能量弹药」。`nextAmmoType` 现仅作兼容导出，**不得再用于推断某门炮的弹种** | `core/combat.ts` 的 `battleArcsFor`（`meArcs`）· 回归 `tests/ammo-volley.test.ts`（动能/高爆/能量各进各桶 3 例 ＋ 混装船 1 例） |
+| **伤害飘字（含 MISS）** | 战斗画面里**目标旁**向上飘一个数字：同一拍对**同一目标按 tag 累加成一个数字**；数字取 `BattleFx.dmg` = **实收伤害**（`applyDamage().dealt`：盾→甲→结构真扣掉的血量，含附伤段，与 `stats.meDmg` 同源）；**未命中或无伤事件（捕获网连线、机群击落）不带 `dmg`** ⇒ 只飘灰色 MISS，不飘「-0」；生命期用**战斗时钟**（倍速跟着快、暂停即冻结）；只在战斗画面渲染 | `core/state.ts` 的 `BattleFx.dmg` · `core/combat.ts` 六个开火支 · `core/save.ts` 的 `cleanFx` · `panels/BattleScreen.tsx`（`.app-bts-pop`）· `tests/battle-fx-dmg.test.ts`（4 例） |
 
 

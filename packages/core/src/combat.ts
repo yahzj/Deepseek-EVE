@@ -2953,7 +2953,14 @@ export function refundAmmo(
   }
 }
 
-/** 开火弹型 = 剩余最多（平局 kin→exp→pla）；全空 null */
+/**
+ * 开火弹型 = 剩余最多（平局 kin→exp→pla）；全空 null。
+ *
+ * ⚠ **2026-09-24 起生产路径不再用它推断"某件武器打什么弹"**（V18 起是**按武器各自的 `shotsByType`**：
+ * 见 `createPlayerSpec` 与 `stepBattle` 的取弹）。本函数只留作兼容导出（用例仍锁它的平局规则）——
+ * **别在界面/结算里拿它当"这门炮的弹种"**：战斗画面的武器弹种徽标曾因此把动能炮、导弹架统统写成
+ * 「能量弹药」（船长 2026-09-24 玩家截图报障；改法见 `battleArcsFor` 的 `meArcs`）。
+ */
 export function nextAmmoType(ammo: { kin: number; exp: number; pla: number }): DamageType | null {
   let best: DamageType | null = null
   let bestN = 0
@@ -4875,8 +4882,6 @@ export function battleArcsFor(
     if (web) applyMeWebDebuff(me, web)
   }
   const foes = createFoeSpecs(anomaly, bal)
-  const ammoLeft = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
-  const dominant = nextAmmoType(battle.ammo)
   /** 我方各武器当前装填剩余（与 units['player'].weapons 同序；单位缺失 = 空） */
   const meRt = battle.units['player']?.weapons ?? []
   /**
@@ -4906,7 +4911,21 @@ export function battleArcsFor(
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
     else if (w.kind === 'beam') type = battle.ammo.pla >= Math.max(1, w.count ?? 1) ? 'plasma' : null // 激光吃能量弹药键（按门数）
-    else if (ammoLeft > 0) type = dominant // 炮台弹型动态（消耗中可能切换）
+    else {
+      /**
+       * **炮台 / 导弹架：报"这件武器自己打的那一型"**，不是全船主流弹种。
+       *
+       * ⚠ **2026-09-24 船长报障（玩家截图）**：「攻坚炮台 MK3·动能型背后写着**能量弹药**，巡航导弹架 MK3
+       * 也写着」——根因就是这里：旧口径取 `nextAmmoType(battle.ammo)`（**全船剩余最多的那一型**），
+       * 于是只要场上有激光/能量弹占多数，**每一门炮**（含动能炮、导弹架）的弹种徽标与射程弧颜色
+       * 都会被写成"能量"。现按**这件武器自己的弹种**判（与 `stepBattle` 的取弹口径逐字同源：
+       * 弹型 = `shotsByType` 的键、耗弹 = 门数 × 每发耗弹数），该型打光 ⇒ `null`（界面照既有口径
+       * 显示"无弹/虚线弧"，不再假装有弹）。
+       */
+      const own = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? w.fixedType ?? null
+      const need = Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
+      type = own !== null && battle.ammo[ammoKeyOf(own)] >= need ? own : null
+    }
     const rem = Math.max(0, Math.floor(meRt[i] ?? 0))
     if (w.src === 'drone') {
       const key = w.artId ?? 'drone'
