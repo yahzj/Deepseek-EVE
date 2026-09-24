@@ -488,8 +488,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeFoes.013": { zh: "{p1} {p2}%", en: "{p1} {p2}%" },
   "core.wormholeFoes.014": { zh: "{p1}为主", en: "mostly {p1}" },
   "core.wormholeFoes.015": { zh: "{p1} / {p2}并重", en: "{p1} and {p2} in equal measure" },
-  "core.wormholeFoes.016": { zh: "敌：{p1}（{p2} 族 · {p3}）· {p4}", en: "Enemy: {p1} ({p2} family · {p3}) · {p4}" },
-  "core.wormholeFoes.017": { zh: "敌：{p1}（{p2} 族 · {p3}）——整趟都是这一族：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一族。", en: "Enemy: {p1} ({p2} family · {p3}) — this family holds the whole run: its order of battle, rare wrecks, ruin safe containers and exclusive equipment/blueprints all come from it." },
+  // ⟪文案调整 2026-09-24⟫ 船长报障「类似'武器族''XX族'这样的开发字眼」——本条原先直接印**裸字母代号**
+  //   （"A 族 · 海盗"），那是数据侧 family 键；现只印敌方势力名，字母代号不再进玩家可见范围
+  "core.wormholeFoes.016": { zh: "敌：{p1}（{p2}）· {p4}", en: "Enemy: {p1} ({p2}) · {p4}" },
+  "core.wormholeFoes.017": { zh: "敌：{p1}（{p2}）——整趟都是这一势力：敌人编成、稀有残骸、遗迹安全货柜与专属装备/图纸都出自这一势力。", en: "Enemy: {p1} ({p2}) — this faction holds the whole run: its order of battle, rare wrecks, ruin safe containers and exclusive equipment/blueprints all come from it." },
   "core.wormholeFoes.018": { zh: "火力构成（会随层数变）：", en: "Firepower mix (changes with depth):" },
   "core.wormholeFoes.019": { zh: " · {p1} {p2}：{p3}", en: " · {p1} {p2}: {p3}" },
   "core.wormholeFoes.020": { zh: "内容原型「{p1}」＝这一处的地点配比口味（威胁与产出随所在层数上升：越深越险、产出越高）。", en: "Content archetype “{p1}” sets the mix of this site (threat and yield both rise with depth: deeper is deadlier and pays more)." },
@@ -1705,7 +1707,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.190": { zh: "星系节点下方显示星系名称（默认）", en: "Show the system name under each node (default)" },
   "ui.Expedition.191": { zh: "星系节点下方显示安全等级数字（−1.0 高危 ~ +1.0 安全），颜色沿用安全色阶", en: "Show the security rating under each system node (−1.0 high risk to +1.0 safe), coloured on the safety scale" },
   "ui.Expedition.192": { zh: "敌对派系", en: "Hostile factions" },
-  "ui.Expedition.193": { zh: "星系节点下方显示该星系的敌对派系标签（按敌族配色），星系后方给出该势力的范围光晕", en: "Show that system's hostile faction label under its node (coloured per family) and an influence halo behind the system" },
+  // ⟪文案调整 2026-09-24⟫ 星图"敌对派系"模式的两条：中文口径不动（"敌对派系/敌族配色"是既有玩家口径），
+  //   仅把英文的 family 正字为 faction（family 在英文侧与"武器类型/舰船类别"混用，同样误导）
+  "ui.Expedition.193": { zh: "星系节点下方显示该星系的敌对派系标签（按敌族配色），星系后方给出该势力的范围光晕", en: "Show that system's hostile faction label under its node (coloured per faction) and an influence halo behind the system" },
   "ui.Expedition.194": { zh: "未知", en: "Unknown" },
   "ui.Expedition.195": { zh: "无敌情", en: "No hostiles" },
   "ui.Expedition.196": { zh: "星图显示：", en: "Star map shows:" },
@@ -1763,7 +1767,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.248": { zh: "距离最近", en: "Nearest" },
   "ui.Expedition.249": { zh: "资源任务", en: "Resource tasks" },
   "ui.Expedition.250": { zh: "赏金任务", en: "Bounty tasks" },
-  "ui.Expedition.251": { zh: "等{p1}族", en: "and {p1} families" },
+  "ui.Expedition.251": { zh: "等{p1}族", en: "and {p1} factions" },
   "ui.Expedition.252": { zh: "约 {p1} 秒", en: "about {p1} seconds" },
   "ui.Expedition.253": { zh: "约 {p1} 分钟", en: "about {p1} minutes" },
   "ui.Expedition.254": { zh: "赏金任务战果：{p1}——打捞时必定捞到（每件 {RARE_WRECK_VOLUME_M3} m³）；回站用回收炉解体，保底原材料之外必给一件额外战利品（该敌群专属装备，未出则给特色装备）+ 一批高阶原材料", en: "Bounty result: {p1} — always salvaged ({RARE_WRECK_VOLUME_M3} m³ each); break it down in a recycler back at the station for guaranteed materials plus one extra piece of loot (a module dedicated to that hostile group, or a signature module if none rolls) and a batch of high-tier materials" },
@@ -2063,7 +2067,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.091": { zh: "基础弹", en: "Basic ammo" },
   "ui.FitPage.092": { zh: "不足，将自动改用", en: "is short, switching to" },
   "ui.FitPage.093": { zh: "弹药档位", en: "Ammo tier" },
-  "ui.FitPage.094": { zh: "（出发预载按档消耗；连打同源；同族取\"能装得最多\"的一档，装不满也照装）", en: "(preloaded per tier on departure; repeat fights draw on the same stock; the family tier that holds the most is chosen even if it cannot fill up)" },
+  "ui.FitPage.094": { zh: "（出发预载按档消耗；连打同源；同类型取\"能装得最多\"的一档，装不满也照装）", en: "(preloaded per tier on departure; repeat fights draw on the same stock; the tier of that damage type that holds the most is chosen even if it cannot fill up)" },
   "ui.FitPage.095": { zh: "（敌方点防会击落机群，被击落后自清单永久损失）", en: "(enemy point defense shoots drones down, and a downed drone is lost from the list for good)" },
   "ui.FitPage.096": { zh: "（清单占用 CPU", en: " (list uses CPU" },
   "ui.FitPage.097": { zh: "把舱内全部无人机退回仓库", en: "Return every drone in the bay to storage" },
@@ -2123,8 +2127,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.151": { zh: "匹配 {p1} 件", en: "{p1} match(es)" },
   "ui.FitPage.152": { zh: "{p1} 件 · 按稀有度排序", en: "{p1} items · sorted by rarity" },
   "ui.FitPage.153": { zh: " · 弹伤 {p1}", en: " · damage per shot {p1}" },
-  "ui.FitPage.154": { zh: "{baseName}：本船{baseName2}档（未设 = 基础弹；开战时同族取\"能装得最多\"的一档）", en: "{baseName}: this ship's {baseName2} tier (unset = basic ammo; in combat the tier of that family that holds the most is loaded)" },
-  "ui.FitPage.155": { zh: "{p1}：单发更高（{p2} vs {p3}）；开战按档预载——同族里\"能装得最多\"的那一档会被实际装填，装不满也照装。仓库 ×{haveMk2}", en: "{p1}: higher damage per shot ({p2} vs {p3}); preloaded by tier when the fight starts — the tier of that family that holds the most is what gets loaded, even if it cannot fill up. Storage ×{haveMk2}" },
+  // ⟪文案调整 2026-09-24⟫ 三条弹药说明原写「同族」——指的是**同伤害类型的弹药档**，不是敌方势力（船长报障）
+  "ui.FitPage.154": { zh: "{baseName}：本船{baseName2}档（未设 = 基础弹；开战时同类型取\"能装得最多\"的一档）", en: "{baseName}: this ship's {baseName2} tier (unset = basic ammo; in combat the tier of that damage type that holds the most is loaded)" },
+  "ui.FitPage.155": { zh: "{p1}：单发更高（{p2} vs {p3}）；开战按档预载——同类型里\"能装得最多\"的那一档会被实际装填，装不满也照装。仓库 ×{haveMk2}", en: "{p1}: higher damage per shot ({p2} vs {p3}); preloaded by tier when the fight starts — the tier of that damage type that holds the most is what gets loaded, even if it cannot fill up. Storage ×{haveMk2}" },
   "ui.FitPage.156": { zh: "无人机舱容量：已装 {p1} / {cap} m³（船体 + 甲板扩展）；清单 CPU 占用 {droneCpu}（计入预算）", en: "Drone bay capacity: {p1} / {cap} m³ loaded (hull + deck expansion); the list uses {droneCpu} CPU (counted against the budget)" },
   "ui.FitPage.157": { zh: "舱内清单：战斗只放飞已装入的；仓库中其余无人机不出战", en: "Bay list: only what is loaded launches in combat; the rest of your drones stay in storage" },
   "ui.FitPage.158": { zh: "{id}：无人机舱清单（战斗只放飞已装入的；仓库中其余无人机不出战）", en: "{id}: drone bay list (only what is loaded launches in combat; the rest stay in storage)" },
@@ -3299,7 +3304,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },
   "ui.weekend.003": { zh: "入侵结束：旗舰被章鱼人部队摧毁，黑匣归零。", en: "Invasion over: the flagship was destroyed by the Octopus forces; the black box is lost." },
   "ui.weekend.004": { zh: "入侵结束：占领区已恢复。", en: "Invasion over: the occupied systems have been restored." },
-  "ui.weekend.005": { zh: "{p1} 族入侵", en: "{p1}-family invasion" },
+  "ui.weekend.005": { zh: "{p1} 族入侵", en: "{p1} faction invasion" },
   "ui.weekend.006": { zh: "核心：{p1}", en: "Core: {p1}" },
   "ui.weekend.007": { zh: "外围夺回 {p1}/{p2}", en: "Periphery reclaimed {p1}/{p2}" },
   "ui.weekend.008": { zh: "核心 {p1}%", en: "Core {p1}%" },
@@ -3370,7 +3375,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.005": { zh: "（耗组件）", en: " (uses kits)" },
   "ui.shipInfo.006": { zh: "船体特性", en: "Hull traits" },
   "ui.shipInfo.007": { zh: "火力加成", en: "Firepower bonus" },
-  "ui.shipInfo.008": { zh: "武器族加成", en: "Weapon family bonus" },
+  // ⟪文案调整 2026-09-24⟫ 原「武器族加成」——船长：「文案存在不少类似'武器族''XX族'这样的开发字眼，会给玩家造成误导」
+  //   口径 = 「族」在玩家侧有另一个专属含义（敌方势力），此处指的其实是**伤害类型**（动能/爆破/能量）⇒ 正字「类型」
+  "ui.shipInfo.008": { zh: "武器类型加成", en: "Weapon type bonus" },
+  // ⟪文案调整 2026-09-24⟫ 原「本族武器单发 +N%（装别族武器无加成）」⇒ 去掉"族"字，写明是"同伤害类型"
+  "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.009": { zh: "最大速度", en: "Max speed" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },
@@ -4242,7 +4251,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.WormholeScan.046": { zh: "主控就地展开扫描阵列找虫洞：进度条走满一处即可开始探索。窗口 = 基准 {p1}，受「信号分析学 / 星图测绘学 / 信号过滤学」缩短（三项乘算），再受「星际奇遇学」缩短（每级 −4%，满级 −20%）。扫描期间遭遇随机事件的概率与星图扫描一致；被打断也不影响进度。未探索的虫洞最多囤 {stockMax} 处（「星图记录学」每级 +2，满级 +10）。", en: "The ship deploys its scan array on the spot to find wormholes: filling the bar once lets you explore one. The window = base {p1}, shortened by Signal Analysis, Star Cartography and Signal Filtering (multiplied together), then by Deep Space Encounters (−4% per level, −20% at max). Random events during a scan follow the same odds as star-map scanning, and interruptions do not cost progress. Up to {stockMax} unexplored wormholes can be stored (Star Chart Records gives +2 per level, +10 at max)." },
   "ui.WormholeScan.047": { zh: "已停扫：进度保留，下次接着扫。", en: "Scan stopped: progress is kept and the next scan resumes." },
   "ui.WormholeScan.048": { zh: "开始扫描虫洞：主控就地展开扫描阵列。", en: "Wormhole scan started: the ship deploys its scan array on the spot." },
-  "ui.WormholeScan.049": { zh: "\n族徽＝这一处整趟都是「{famName}」这一族（上面的敌情就是它）。", en: "\nThe family crest means this whole wormhole belongs to the {famName} family (the hostiles shown above are them)." },
+  // ⟪文案调整 2026-09-24⟫ 原「族徽＝…（上面的敌情就是它）」——"族徽"保留（玩家已见的称呼），
+  //   "敌情"正字为"敌情"外的准确说法：这一处整趟属于该**敌方势力**
+  "ui.WormholeScan.049": { zh: "\n族徽＝这一处整趟都是「{famName}」这一族（上面的敌人就是它）。", en: "\nThe family crest means this whole wormhole belongs to the {famName} family (the hostiles shown above are them)." },
   "ui.WormholeScan.050": { zh: "自动派最多 {WORMHOLE_AUTO_MAX_SHIPS} 条船去探（每条占 1 枚 AI 核心，约 {p2} 分钟）——打开与主控探索同一个准备页选编队", en: "Sends up to {WORMHOLE_AUTO_MAX_SHIPS} ships to explore automatically (each takes 1 AI core, about {p2} minutes) — it opens the same preparation page as a manual explore, where you pick the formation" },
   "ui.WormholeScan.051": { zh: "已放弃这一处虫洞。", en: "That wormhole was given up." },
   "ui.WormholeScan.052": { zh: "已召回自动探索队（无收益、无损伤；通道就此关闭）。", en: "Auto-explore team recalled (no gains, no damage; that passage closes for good)." },

@@ -125,7 +125,9 @@ export const SKILLS: readonly SkillDef[] = [
      * `npm run skilltree:diff` 逐列比对工具防再漏。
      */
     prereq: ['mining-frigate'],
-    description: '采矿舰族专精驾驶：驾驶采矿舰族舰船时采集产量每级 +⟦4%⟧。',
+    // ⟪文案调整 2026-09-24⟫ 原「采矿舰族专精驾驶：驾驶采矿舰族舰船时…」——"舰族"是开发口径（role 族），
+    //   玩家侧「族」另指敌方势力 ⇒ 按界面既有类别名（角色标签 = 采矿）正字
+    description: '采矿舰专精驾驶：驾驶采矿舰时采集产量每级 +⟦4%⟧。',
   },
   {
     id: 'armed-ops',
@@ -133,7 +135,7 @@ export const SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 3,
     branch: 'b-warship',
-    description: '武装舰专精驾驶：驾驶武装舰时所有武器（含基础舰炮）单发伤害每级 +⟦3%⟧（满级 +⟦15%⟧；与炮术学、武器族专精乘算叠加）。',
+    description: '武装舰专精驾驶：驾驶武装舰时所有武器（含基础舰炮）单发伤害每级 +⟦3%⟧（满级 +⟦15%⟧；与炮术学、武器类型加成乘算叠加）。',
   },
   {
     id: 'armored-ops',
@@ -169,7 +171,7 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 4,
     branch: 'b-warship',
     prereq: ['armed-ops', 'armored-ops'],
-    description: '驱逐舰专精驾驶：驾驶驱逐舰时单发伤害每级 +⟦5%⟧（满级 +⟦25%⟧）、命中每级 +⟦2⟧ 个百分点（满级 +⟦10⟧ 个百分点；与炮术学、武器族专精乘算叠加）。',
+    description: '驱逐舰专精驾驶：驾驶驱逐舰时单发伤害每级 +⟦5%⟧（满级 +⟦25%⟧）、命中每级 +⟦2⟧ 个百分点（满级 +⟦10⟧ 个百分点；与炮术学、武器类型加成乘算叠加）。',
   },
   {
     id: 'cruiser-ops',
@@ -474,7 +476,7 @@ export const SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 1,
     branch: 'b-weapon',
-    description: '舰载武器基础训练：每级提高实时战斗的单发伤害 ⟦5%⟧（三形态武器与基础舰炮通用，与族专精技能乘算）。',
+    description: '舰载武器基础训练：每级提高实时战斗的单发伤害 ⟦5%⟧（三形态武器与基础舰炮通用，与舰船类型加成乘算）。',
   },
   {
     id: 'kinetic-gunnery',
@@ -525,7 +527,7 @@ export const SKILLS: readonly SkillDef[] = [
     group: '战斗',
     rank: 1,
     branch: 'b-drone',
-    description: '无人机作战协同：无人机单发伤害每级 +⟦5%⟧（与战术导控装置乘算；无人机不吃炮术与武器族技能）。',
+    description: '无人机作战协同：无人机单发伤害每级 +⟦5%⟧（与战术导控装置乘算；无人机不吃炮术与武器类型加成）。',
   },
   {
     id: 'ammunition-condensing',
@@ -865,7 +867,8 @@ export const SKILLS: readonly SkillDef[] = [
     group: '物流',
     rank: 2,
     branch: 'b-logistics',
-    description: '航运舰族专精驾驶：驾驶航运族舰船时货仓容量每级 +⟦5%⟧。',
+    // ⟪文案调整 2026-09-24⟫ 同批：原「航运舰族专精驾驶：驾驶航运族舰船时…」⇒「航运舰」
+    description: '航运舰专精驾驶：驾驶航运舰时货仓容量每级 +⟦5%⟧。',
   },
   {
     id: 'compression',
