@@ -72,6 +72,19 @@ export function WeekendInvasionBanner({ engine }: { engine: GameEngine }): JSX.E
         )}
       </div>
       <div className="app-weekend-dim">{tr('ui.weekend.014', { p1: String(reclaimed.length), p2: String(occupied.length) })}</div>
+      {/* 被占星系清单（含各自进度）：星图视觉标记交给船长审观感后再做，这里先给"去哪打"的可读读数 */}
+      <div className="app-weekend-list">
+        {occupied.map((id) => {
+          const pct = Math.round(weekendProgressAt(state, ev, id, now) * 100)
+          const name = engine.ctx.galaxies.get(id)?.name ?? id
+          const isCore = id === ev.coreId
+          return (
+            <span key={id} className={isCore ? 'app-weekend-chip is-core' : 'app-weekend-chip'}>
+              {isCore ? `★ ${name}` : name} {pct}%
+            </span>
+          )
+        })}
+      </div>
     </div>
   )
 }
