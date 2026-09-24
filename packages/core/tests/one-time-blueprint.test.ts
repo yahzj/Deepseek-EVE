@@ -30,7 +30,10 @@ import {
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { addWare } from '../src/inventory'
 import { advanceManufacturing } from '../src/manufacturing'
-import { blueprint, makeTestCtx } from './helpers'
+import { haltActivityForSwitch } from '../src/state'
+import { simulateOffline } from '../src/simulation'
+import { advanceAutoLoopBounty, autoLoopWaitLabel } from '../src/expedition'
+import { blueprint, makeTestCtx, shipBlueprint } from './helpers'
 
 /** bp-one：一次性图纸（造 mod-a，10 单位矿粉甲，600 秒）；bp-a 为普通对照 */
 function world(): { state: GameState; ctx: SimContext } {
@@ -344,5 +347,100 @@ describe('一次性图纸 · 存档兼容', () => {
     const again = startManufacturing(loaded, 'bp-one', 'pilot', w.ctx)
     expect(again.ok).toBe(false)
     expect(again.error ?? '').toContain('一次性图纸')
+  })
+})
+
+/**
+ * **在跑的一次性图纸不能"书没了、产物也没有"**（**2026-09-24 玩家报障**，船长转述：
+ * 「刚刚在造的锤头鲨级一次性蓝图，还差 2 小时完成，离线后过了一段时间上线发现船不见了，蓝图显示已消耗」）。
+ *
+ * 本组锁三个"吞书"缺口：
+ *  ① **切活动自动停机**（`haltActivityForSwitch`）把主控那条线标 inactive ⇒ 必须**退书**——
+ *     船长 2026-09-20 已定「一次性蓝图的制造取消后返还玩家蓝图」，自动停机是同一种"取消"
+ *     （代价是**当前那批进度丢弃**，不是"这张图纸作废"）；
+ *  ② **`bookSpent` 要随档**：取消时的退书判据是 `mf.bookSpent === true`，读档丢掉它 ⇒ 存档往返后
+ *     取消**静默不退书**（玩家眼里就是"图纸白没了"）；
+ *  ③ **离线跨过完工时刻要照常交付**：一次性舰船蓝图在离线期间造完 ⇒ 船进舰船仓库（书已兑现，不退）。
+ */
+describe('一次性图纸 · 在跑/离线时不得吞书（2026-09-24 玩家报障）', () => {
+  it('① 切活动自动停机 ⇒ 书与名额一起退回（进度按既定口径丢弃）', () => {
+    const w = world()
+    w.state.blueprintStock['bp-one'] = 1
+    expect(startManufacturing(w.state, 'bp-one', 'pilot', w.ctx).ok).toBe(true)
+    expect(w.state.blueprintStock['bp-one'] ?? 0).toBe(0) // 开工吃掉
+    haltActivityForSwitch(w.state, 'manufacturing')
+    expect(w.state.manufacturingRuns.filter((r) => r.active)).toHaveLength(0) // 线停了
+    expect(w.state.blueprintStock['bp-one'], '自动停机也必须把这张一次性图纸退回来').toBe(1)
+    expect(w.state.spentOneTimeRecipes ?? []).not.toContain('bp-one') // 名额一并恢复（否则"有书却判已用尽"）
+  })
+
+  it('② `bookSpent` 随档往返保留：读档后取消，书照样退回来', () => {
+    const w = world()
+    w.state.blueprintStock['bp-one'] = 1
+    expect(startManufacturing(w.state, 'bp-one', 'pilot', w.ctx).ok).toBe(true)
+    const loaded = loadSaveFile(serializeSaveFile(w.state, 0)).state
+    const run = loaded.manufacturingRuns.find((r) => r.active)!
+    expect(run.bookSpent, '这一线扣过书的事实必须随档（取消退书就靠它）').toBe(true)
+    expect(cancelManufacturing(loaded, w.ctx, run.id).ok).toBe(true)
+    expect(loaded.blueprintStock['bp-one'], '读档后取消也要退书').toBe(1)
+  })
+
+  it('③ 一次性舰船蓝图：存档 → 读档 → 离线跨过完工时刻 ⇒ 船进舰船仓库、书不退（已兑现）', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    const ctx = makeTestCtx({
+      shipBlueprints: [
+        shipBlueprint('sbp-one-ship', 'sandcat2', [{ itemId: 'min-a', count: 10 }], {
+          buildSeconds: 7200, // 2 小时（与报障场景同量级）
+          singleUse: true,
+        }),
+      ],
+    })
+    addWare(state, 'min-a', 100)
+    state.blueprintStock['sbp-one-ship'] = 1
+    expect(startManufacturing(state, 'sbp-one-ship', 'pilot', ctx).ok).toBe(true)
+    // 真实的"关掉游戏再上线"通道：存档 → 读档 → 离线结算
+    const back = loadSaveFile(serializeSaveFile(state, 0)).state
+    expect(back.manufacturingRuns.filter((r) => r.active), '在跑的线必须还在').toHaveLength(1)
+    simulateOffline(back, 0, 3 * 3_600_000, ctx) // 离线 3 小时 ⇒ 跨过完工时刻
+    expect(back.shipStore?.['sandcat2'] ?? 0, '离线造完的船必须进舰船仓库').toBe(1)
+    expect(back.manufacturingRuns.filter((r) => r.active)).toHaveLength(0)
+    expect(back.spentOneTimeRecipes ?? [], '完工 ⇒ 书已兑现成船，不退').toContain('sbp-one-ship')
+    expect(back.blueprintStock['sbp-one-ship'] ?? 0).toBe(0)
+  })
+
+  it('④ 停机后不留僵尸线：同一条线不能再"取消"一次（防二次退书）', () => {
+    const w = world()
+    w.state.blueprintStock['bp-one'] = 1
+    expect(startManufacturing(w.state, 'bp-one', 'pilot', w.ctx).ok).toBe(true)
+    const id = w.state.manufacturingRuns.find((r) => r.active)!.id
+    haltActivityForSwitch(w.state, 'manufacturing')
+    expect(w.state.manufacturingRuns, '停掉的线应从表里摘掉').toHaveLength(0)
+    // 摘掉 ⇒ 同一条线号再"取消"必然找不到（否则会凭 bookSpent 再退一本 = 凭空多书）
+    expect(cancelManufacturing(w.state, w.ctx, id).ok).toBe(false)
+    expect(w.state.blueprintStock['bp-one'], '只退这一本').toBe(1)
+  })
+
+  it('⑤ 重复清剿不再抢主控：亲自开线期间它等（`autoLoopWaitLabel`），线不被掐、书不动', () => {
+    const w = world()
+    w.state.blueprintStock['bp-one'] = 1
+    expect(startManufacturing(w.state, 'bp-one', 'pilot', w.ctx).ok).toBe(true)
+    w.state.autoLoopAnomalyId = 'ano-a' // 玩家报障时正是开着重复清剿
+    expect(autoLoopWaitLabel(w.state), '清剿必须显示"等待：亲自开线"').toBe('亲自开线')
+    expect(advanceAutoLoopBounty(w.state, w.ctx)).toBeNull() // 不出发
+    expect(w.state.expedition.active).toBe(false)
+    expect(w.state.manufacturingRuns.filter((r) => r.active), '线必须还在跑').toHaveLength(1)
+    expect(w.state.blueprintStock['bp-one'] ?? 0, '书仍押在这条线上（未退）').toBe(0)
+    expect(w.state.spentOneTimeRecipes ?? []).toContain('bp-one')
+  })
+
+  it('⑥ 停机只停主控那条：AI 核心驱动的线照跑、书也不退', () => {
+    const w = world()
+    w.state.blueprintStock['bp-one'] = 1
+    w.state.aiCores['basic'] = 1
+    w.state.skills.trained['ai-expert'] = 1 // AI 核心上限（与既有 AI 线用例同款前置）
+    expect(startManufacturing(w.state, 'bp-one', 'basic', w.ctx).ok).toBe(true)
+    haltActivityForSwitch(w.state, 'manufacturing')
+    expect(w.state.manufacturingRuns.filter((r) => r.active), '核心线不受影响').toHaveLength(1)
+    expect(w.state.blueprintStock['bp-one'] ?? 0, '线还在跑 ⇒ 不退书').toBe(0)
   })
 })

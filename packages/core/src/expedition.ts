@@ -1239,6 +1239,21 @@ export function autoLoopWaitLabel(state: GameState): string | null {
   if (state.mining.active) return '采矿'
   if (state.salvaging.active) return '残骸打捞'
   if (state.transit.active) return '航行'
+  /**
+   * **亲自开炉 / 亲自开线也要等**（**2026-09-24 修 · 玩家报障**）。
+   *
+   * 判据用上面那条老尺：**这一项是否真的占着主控**——`refine` / `manufacturing` 的 `worker === 'pilot'`
+   * 两档都占（`activityGate.mainActivityOf` 里就是它们），与采矿/打捞同性质 ⇒ 本表原本漏了它们。
+   *
+   * 漏掉的后果（船长转述的玩家报障）：重复清剿在跑时，它到点就 `startExpedition` ⇒ 活动闸门
+   * 把主控手上的**造船线**当成"当前活动"掐掉（`haltActivityForSwitch`）⇒ 一条 4.8 小时的
+   * 一次性舰船蓝图连进度带材料一起没了；**存档实证**：三张一次性舰船图全"已消耗"、舰船仓库一艘都没有。
+   * 现在改为**等**（活动栏照既有口径显示"等待：亲自开炉 / 亲自开线"），手工作业跑完自然再出发。
+   *
+   * ⚠ 只管**主控亲自**那两档：AI 核心驱动的炉/线不占主控（`worker !== 'pilot'`）⇒ 不挡清剿。
+   */
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉'
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开线'
   return null
 }
 

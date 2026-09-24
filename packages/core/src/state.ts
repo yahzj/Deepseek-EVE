@@ -2512,6 +2512,30 @@ export function haulingHalt(state: GameState): { fromSiteId: string | null } | n
   return info
 }
 /**
+ * **退还一本一次性图纸**（书回蓝图书架 + 名额标记恢复）——`state.ts` 侧的唯一实现。
+ *
+ * 为什么放在 `state.ts`：**自动停机**（`haltActivityForSwitch`）没有 `ctx`（整条活动闸门链都是 ctx-free 的），
+ * 而退书只需要 `state`；`manufacturing.refundOneTimeBook`（取消制造那条路）**委托到本函数**，
+ * 保证两条路一份逻辑（`manufacturing → state` 本就存在，不新增模块环）。
+ *
+ * 判据 = **"名额已用尽"标记**（`spentOneTimeRecipes`）：它只在**真的吃掉一本一次性书**时置位
+ * （`spendOneTimeBook`），且退书时同步摘除 ⇒ 以它为权威不会多退（一次成功的单次开工必然对应一本书）。
+ * 幂等：不在标记表里就什么都不做。
+ *
+ * ⚠ **"还有同名线在跑"时不能摘标记**（与 `refundOneTimeBook` 同一条纪律，2026-09-20 查出的静默死结）：
+ * 标记的所有权归"最晚完工的那条线"——只要还有同名线在跑，就把标记留给它接管；等它也被取消/停机时
+ * 才轮到它摘掉。否则会出现"书在架上、却被判名额已用尽"而开不了工。
+ */
+export function refundOneTimeBookOf(state: GameState, blueprintId: string): boolean {
+  const spent = state.spentOneTimeRecipes ?? []
+  if (!spent.includes(blueprintId)) return false
+  state.blueprintStock[blueprintId] = (state.blueprintStock[blueprintId] ?? 0) + 1
+  const stillRunning = state.manufacturingRuns.some((r) => r.active && r.blueprintId === blueprintId)
+  if (!stillRunning) state.spentOneTimeRecipes = spent.filter((id) => id !== blueprintId)
+  return true
+}
+
+/**
  * **切活动时的自动停机单点**（**2026-09-21 船长令**：「统一为能够直接切换（自动取消当前活动）」）。
  *
  * 覆盖**七种可自动取消**的活动（`activityGate.AUTO_HALT_KINDS`）；**纯状态改动、不写日志**
@@ -2555,8 +2579,32 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
       return
     }
     case 'manufacturing': {
-      for (const r of state.manufacturingRuns) {
-        if (r.active && r.worker === 'pilot') r.active = false
+      /**
+       * **一次性图纸必须跟着退回**（**船长 2026-09-20**：「一次性蓝图的制造取消后返还玩家蓝图」）。
+       *
+       * 自动停机**就是一次取消**：按既定口径（`HALT_COST.manufacturing`）代价只有**当前那一批的进度**，
+       * 不是"这张图纸作废"。原先这里只把线标 `active = false` ⇒ 书与名额一起蒸发。
+       *
+       * ⚠ **2026-09-24 玩家报障的正是这条路**（船长转述：「刚刚在造的锤头鲨级一次性蓝图，还差 2 小时
+       * 完成，离线后过了一段时间上线发现船不见了，蓝图显示已消耗」）：玩家的**重复清剿**开着，
+       * 它再出发时经活动闸门把主控手上的造船线掐掉（`startExpedition → applyActivityGate`）——
+       * 存档实证：`spentOneTimeRecipes` 里三张一次性舰船图全在、`shipStore` 里一艘都没有、跑线表空。
+       */
+      const halted = state.manufacturingRuns.filter((r) => r.active && r.worker === 'pilot')
+      // ⚠ **顺序要紧**：先全部标停，再退书——`refundOneTimeBookOf` 按"还有没有同名线在跑"决定
+      // 要不要摘名额标记；若此刻这条线自己还 `active`，标记会被它自己"接管"住 ⇒ 书回来了却仍判名额已用尽。
+      for (const r of halted) r.active = false
+      for (const r of halted) {
+        if (r.blueprintId !== null) refundOneTimeBookOf(state, r.blueprintId)
+      }
+      /**
+       * 停掉的线**直接从表里摘掉**（不留 `active: false` 的僵尸行）：
+       * ① 留着它，玩家再点一次「取消」会**二次退书**（`cancelManufacturing` 只看 `bookSpent`）；
+       * ② 读档归一也会把它当结构坏条丢掉（两次的结果应当一致）。
+       * 核心驱动的线（`worker !== 'pilot'`）一律不动——与既有口径相同。
+       */
+      if (halted.length > 0) {
+        state.manufacturingRuns = state.manufacturingRuns.filter((r) => !halted.includes(r))
       }
       return
     }

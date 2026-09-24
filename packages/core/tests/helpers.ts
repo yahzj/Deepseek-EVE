@@ -445,7 +445,7 @@ export function shipBlueprint(
   id: string,
   shipId: string,
   materials: BlueprintDef['materials'],
-  opts?: { buildSeconds?: number; buildCost?: number; price?: number },
+  opts?: { buildSeconds?: number; buildCost?: number; price?: number; singleUse?: boolean },
 ): ShipBlueprintDef {
   return {
     id,
@@ -456,6 +456,8 @@ export function shipBlueprint(
     buildCostIsk: opts?.buildCost ?? 500,
     priceIsk: opts?.price ?? 1000,
     description: '测试用舰船蓝图',
+    // 一次性图纸（缺省不写 ⇒ 既有用例零变化）
+    ...(opts?.singleUse === true ? { singleUse: true } : {}),
   }
 }
 

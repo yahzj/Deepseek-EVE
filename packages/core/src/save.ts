@@ -1672,6 +1672,12 @@ function normalizeState(raw: unknown): GameState {
       worker,
       finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs))),
       durationMs: Math.max(0, Math.floor(num(r.durationMs))),
+      /**
+       * ⚠ **"这一线扣过一本一次性书"必须随档**（**2026-09-24 玩家报障**修复）：
+       * 取消/停机时的退书判据就是它（见 `manufacturing.cancelManufacturing`），丢掉 ⇒ 存档往返之后
+       * **取消静默不退书**（玩家眼里就是"图纸白没了"）。老档缺这个字段 ⇒ 不写（与改动前一致）。
+       */
+      ...(r.bookSpent === true ? { bookSpent: true } : {}),
       // 逐线连续生产字段（autoRepeat/repeatGoal/produced）**不再写入**：2026-09-10 船长定，
       // 循环制造上移到卡片级；老档里这三位在下面统一归并进 manufacturingLoops（见 legacyLoops）
     }
