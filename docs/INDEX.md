@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **308** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5768** KB · **41235** 行
-- 状态分布：**未标注** 171 · **已确认/已实现** 110 · **进行中** 23 · **待裁定** 3 · **历史留档** 1
-- 孤儿文档（0 引用）**36** 份 · 状态未标注 **171** 份
+- 文档总数 **304** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5746** KB · **40845** 行
+- 状态分布：**未标注** 169 · **已确认/已实现** 110 · **进行中** 21 · **待裁定** 3 · **历史留档** 1
+- 孤儿文档（0 引用）**33** 份 · 状态未标注 **169** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**194** 份
+- 三、现行设计稿（design）：**190** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**24** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -29,14 +29,14 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 14 KB / 97 行 | 165 / 5 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 14 KB / 97 行 | 163 / 5 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 30 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 24 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 198 KB / 246 行 | 14 / 1 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
-| `docs/glossary.md` | (无一级标题) | 未标注 | — | 457 KB / 983 行 | 204 / 13 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 79 KB / 318 行 | 293 / 14 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 73 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 460 KB / 983 行 | 206 / 16 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 83 KB / 312 行 | 290 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,15 +53,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 194 份
+## 三、现行设计稿（design） —— 190 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/foe-mounts-20260924.md` | 敌方挂载件：A 族「姿态陀螺仪」＋ G 族「船体修理装置」（2026-09-24） | 未标注（已落码 · 四闸门全绿 · 船长实测） | 2026-09-24 | 15 KB / 152 行 | 3 / 3 |
-| `docs/design/handoff-foe-mounts-20260924.md` | 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号） | 未标注 | 2026-09-24 | 10 KB / 100 行 | 1 / 0 |
-| `docs/design/handoff-verify-20260924.md` | (无一级标题) | 未标注 | 2026-09-24 | 9 KB / 92 行 | 0 / 0 |
-| `docs/design/ironman-mode-ux-20260924.md` | 铁人模式两件 UX：关闭警告弹窗 ＋ 未选择旧档的模式选择弹窗（2026-09-24） | 进行中（进行中 —— 改动已落码、四闸门自测） | 2026-09-24 | 6 KB / 81 行 | 0 / 0 |
-| `docs/design/salvager-backfill-removal-20260924.md` | 打捞器全员补发（临时补丁）拆除（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 5 KB / 65 行 | 0 / 0 |
+| `docs/design/handoff-verify-20260924.md` | 交接卡：三号本轮收尾（2026-09-24 · 战斗显示 / 任务板与工业 / 工具入库） | 未标注 | 2026-09-24 | 9 KB / 92 行 | 2 / 0 |
 | `docs/design/ships-workbench-20260924.md` | 船长工作台回写：我方 8 艘虫洞舰船属性 ＋ 鱼雷舰豁免裁决（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 5 KB / 62 行 | 0 / 0 |
 | `docs/design/win-estimate-redesign-20260924.md` | 悬赏胜率预估重做：三点距离 + 去种子化 + 实战胜利记录（2026-09-24） | 进行中（进行中 —— 船长口径已逐条落码） | 2026-09-24 | 8 KB / 81 行 | 0 / 0 |
 | `docs/design/skills-merge-20260923.md` | 技能页合并（旧目录 → 科技树页）· 2026-09-23 | 未标注（已落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
@@ -279,13 +275,13 @@
 | `docs/archive/roadmap-2026-09-20.md` | 封存卷 · roadmap 批次条目 2026-09-20 | 未标注 | — | 73 KB / 231 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-21-22.md` | 封存卷 · roadmap 批次条目 2026-09-21/22 | 未标注 | — | 3 KB / 13 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-21.md` | 封存卷 · roadmap 批次条目 2026-09-21 | 未标注 | — | 19 KB / 49 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-22.md` | 封存卷 · roadmap 批次条目 2026-09-22 | 未标注 | — | 20 KB / 61 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-22.md` | 封存卷 · roadmap 批次条目 2026-09-22 | 未标注 | — | 27 KB / 75 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 43 KB / 764 行 | 8 / 14 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 43 KB / 764 行 | 7 / 14 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -378,13 +374,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 54 / 10 |
 
-## 附：孤儿文档（0 引用，36 份）
+## 附：孤儿文档（0 引用，33 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/handoff-verify-20260924.md`（2026-09-24 · 9 KB）—— (无一级标题)
-- `docs/design/ironman-mode-ux-20260924.md`（2026-09-24 · 6 KB）—— 铁人模式两件 UX：关闭警告弹窗 ＋ 未选择旧档的模式选择弹窗（2026-09-24）
-- `docs/design/salvager-backfill-removal-20260924.md`（2026-09-24 · 5 KB）—— 打捞器全员补发（临时补丁）拆除（2026-09-24）
 - `docs/design/ships-workbench-20260924.md`（2026-09-24 · 5 KB）—— 船长工作台回写：我方 8 艘虫洞舰船属性 ＋ 鱼雷舰豁免裁决（2026-09-24）
 - `docs/design/win-estimate-redesign-20260924.md`（2026-09-24 · 8 KB）—— 悬赏胜率预估重做：三点距离 + 去种子化 + 实战胜利记录（2026-09-24）
 - `docs/design/skills-merge-20260923.md`（2026-09-23 · 8 KB）—— 技能页合并（旧目录 → 科技树页）· 2026-09-23
@@ -419,11 +412,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（171 份，待补一行 `状态：…`）
+## 附：状态未标注（169 份，待补一行 `状态：…`）
 
-- `docs/design/foe-mounts-20260924.md`（2026-09-24）—— 敌方挂载件：A 族「姿态陀螺仪」＋ G 族「船体修理装置」（2026-09-24）
-- `docs/design/handoff-foe-mounts-20260924.md`（2026-09-24）—— 交接卡：敌方挂载件「姿态陀螺仪 / 船体修理装置」（2026-09-24 · 交给新一号）
-- `docs/design/handoff-verify-20260924.md`（2026-09-24）—— (无一级标题)
+- `docs/design/handoff-verify-20260924.md`（2026-09-24）—— 交接卡：三号本轮收尾（2026-09-24 · 战斗显示 / 任务板与工业 / 工具入库）
 - `docs/design/skills-merge-20260923.md`（2026-09-23）—— 技能页合并（旧目录 → 科技树页）· 2026-09-23
 - `docs/design/archived-window-embed-20260922.md`（2026-09-22）—— 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22）
 - `docs/design/hold-ux-20260922.md`（2026-09-22）—— 洞内货仓操作体验四条（2026-09-22）
@@ -587,7 +578,7 @@
 - `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/glossary-en.md`（无日期）—— 英文术语与专名译名表（English Glossary & Naming Table）
-- `docs/glossary.md`（无日期）—— (无一级标题)
+- `docs/glossary.md`（无日期）—— 术语词典（Glossary）
 - `docs/review/A1-bounty-review.md`（无日期）—— A1 · 悬赏通读走查表（22 张）
 - `docs/review/A2-density-review.md`（无日期）—— A2 · 界面信息密度走查（第 1 轮，待船长批注）
 - `docs/roadmap.md`（无日期）—— 后续工作流备忘（Roadmap / Backlog）
