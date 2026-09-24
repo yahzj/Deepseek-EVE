@@ -42,7 +42,7 @@ import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
 import { matterTechNodes } from './matterTech'
-import { claimFirstTask, backfillSalvagerIfMissing, grantStartRewardsForCurrent } from './firstRewards'
+import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
@@ -236,12 +236,6 @@ export function advanceGame(
     }
     if (claimableFirstTasks(state, ctx).length === 0) delete state.firstTaskAutoClaim
   }
-  /**
-   * **打捞器兜底补发**（**2026-09-22 船长报障**：「**玩家依旧出现被打捞器卡进度的情况，给所有玩家发一个
-   * 打捞器 MK1 吧。**」）：手上完全没有打捞器、且「第一次打捞残骸」已经轮到过的档，补 1 台
-   * （去重键 = `importantTasks['first-salvage'].salvagerGift` ⇒ **一台档一辈子只补一次**；新档不受影响）。
-   */
-  backfillSalvagerIfMissing(state, ctx)
   // 后续次数链的升级记账（每拍）：只在 importantTasks 上记 level；**不在这里发 ISK** ——
   // 发奖改到任务中心领奖那一刻（claimChainReward），避免离线结算/用例里钱包被悄悄加钱。
   advanceFirstChains(state)

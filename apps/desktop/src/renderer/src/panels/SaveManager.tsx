@@ -29,9 +29,14 @@ export function SaveManager({
   const [busy, setBusy] = useState(false)
   /** 删除二次确认：记住正在等待确认的备份名（再点一次才真删） */
   const [armDelete, setArmDelete] = useState<string | null>(null)
-  /** 铁人开启/关闭的二次确认（同删除那一套：第一次点只进确认态） */
+  /** 铁人开启的二次确认（同删除那一套：第一次点只进确认态；关闭那条路改走警告弹窗） */
   const [im, setIm] = useState<IronmanStatus | null>(null)
-  const [armIron, setArmIron] = useState<'on' | 'off' | null>(null)
+  const [armIron, setArmIron] = useState<'on' | null>(null)
+  /**
+   * **关闭铁人模式的警告弹窗**（**2026-09-24 船长令**：「新增玩家关闭铁人模式时弹出的警告，
+   * 要告诉玩家关闭后无法再开启」）——取代原先"按钮变红再点一次"那套两段确认。
+   */
+  const [closeAsk, setCloseAsk] = useState(false)
 
   async function refresh(): Promise<void> {
     setBackups(await engine.listSaveBackups())
@@ -121,26 +126,16 @@ export function SaveManager({
     }
   }
 
-  /** 开启（旧档一次性转换）/ 关闭铁人模式：两段确认，第二次点才真做 */
+  /**
+   * 开启（旧档一次性转换）走两段确认；**关闭改走警告弹窗**（2026-09-24 船长令）。
+   */
   async function handleIronman(): Promise<void> {
     if (im === null) return
     if (im.on) {
-      if (armIron !== 'off') {
-        setArmIron('off')
-        return
-      }
-      setArmIron(null)
-      setBusy(true)
-      const r = await engine.closeIronmanNow()
-      setBusy(false)
-      if (!r.ok) onToast(cmdText(r) || tr('ui.Ironman.019'), true)
-      else {
-        onToast(tr('ui.Ironman.015'))
-        void refreshIronman()
-      }
+      setCloseAsk(true) // 真正的关闭在弹窗里点「确认关闭」之后
       return
     }
-    if (im.ever) return // 单向门：关闭过就没有入口（引擎也会拒）
+    if (im.modeChosen) return // 模式选择机会已用掉（新档序章选过 / 模式选择框选过）⇒ 没有入口
     if (armIron !== 'on') {
       setArmIron('on')
       return
@@ -152,6 +147,19 @@ export function SaveManager({
     if (!r.ok) onToast(cmdText(r) || tr('ui.Ironman.019'), true)
     else {
       onToast(tr('ui.Ironman.014'))
+      void refreshIronman()
+    }
+  }
+
+  /** 弹窗里点「确认关闭」：真关（单向门，此后无法再开启） */
+  async function confirmCloseIronman(): Promise<void> {
+    setCloseAsk(false)
+    setBusy(true)
+    const r = await engine.closeIronmanNow()
+    setBusy(false)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Ironman.019'), true)
+    else {
+      onToast(tr('ui.Ironman.015'))
       void refreshIronman()
     }
   }
@@ -200,7 +208,7 @@ export function SaveManager({
                     ? tr('ui.Ironman.008', { p1: String(im.seq) })
                     : tr('ui.Ironman.007')}
             </span>
-            {im !== null && !im.on && !im.ever ? (
+            {im !== null && !im.on && !im.modeChosen ? (
               <>
                 <button
                   className={`app-btn is-small${armIron === 'on' ? ' is-warn' : ' is-primary'}`}
@@ -213,14 +221,15 @@ export function SaveManager({
                 <HintIcon tip={tr('ui.Ironman.006')} />
               </>
             ) : null}
+            {/* 关闭：一次点击即弹警告弹窗（2026-09-24 船长令），真关在弹窗里确认 */}
             {im !== null && im.on ? (
               <button
-                className={`app-btn is-small${armIron === 'off' ? ' is-warn' : ''}`}
+                className="app-btn is-small"
                 onClick={() => void handleIronman()}
                 disabled={busy}
-                title={armIron === 'off' ? tr('ui.Ironman.023') : tr('ui.Ironman.024')}
+                title={tr('ui.Ironman.024')}
               >
-                {armIron === 'off' ? tr('ui.Ironman.005') : tr('ui.Ironman.004')}
+                {tr('ui.Ironman.004')}
               </button>
             ) : null}
           </div>
@@ -262,6 +271,47 @@ export function SaveManager({
           )}
         </div>
       </div>
+
+      {/**
+       * **关闭铁人模式的警告弹窗**（**2026-09-24 船长令**：「新增玩家关闭铁人模式时弹出的警告，
+       * 要告诉玩家关闭后无法再开启」）。
+       *
+       * 与站内其它确认弹窗同一套结构（`.app-modal-mask` / `.app-modal` / `.app-modal-head` /
+       * `.app-modal-body`，对齐 WormholeScan 的"放弃确认"那种写法）：点遮罩或「✕ 关闭」都等于放弃，
+       * 只有点红色的「确认关闭」才真关。
+       * ⚠ 它是外层存档弹窗的**兄弟层**（同样的 `position: fixed`、同 z-index，靠 DOM 顺序压在上面）⇒
+       * 内层遮罩必须 `stopPropagation`，否则点击会冒泡到外层 `onClick={onClose}` 把整个存档页关掉。
+       */}
+      {closeAsk ? (
+        <div
+          className="app-modal-mask"
+          onClick={(e) => {
+            e.stopPropagation()
+            setCloseAsk(false)
+          }}
+        >
+          <div className="app-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-report-title">{tr('ui.Ironman.039')}</span>
+              <button className="app-btn is-small" onClick={() => setCloseAsk(false)}>
+                {tr('ui.App.086')}
+              </button>
+            </div>
+            <div className="app-modal-body">
+              <div>{tr('ui.Ironman.040')}</div>
+              <div className="app-dim" style={{ marginTop: 6 }}>{tr('ui.Ironman.041')}</div>
+              <div className="app-save-actions" style={{ marginTop: 10 }}>
+                <button className="app-btn is-small is-warn" disabled={busy} onClick={() => void confirmCloseIronman()}>
+                  {tr('ui.Ironman.005')}
+                </button>
+                <button className="app-btn is-small" onClick={() => setCloseAsk(false)}>
+                  {tr('ui.ActivityBar.004')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

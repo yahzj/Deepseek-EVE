@@ -2499,6 +2499,11 @@ function normalizeState(raw: unknown): GameState {
   const resupplyFromWarehouse =
     src.resupplyFromWarehouse === true ? true : src.resupplyFromWarehouse === false ? false : undefined
   /**
+   * **模式选择已完成**（2026-09-24 船长令）：只在 `true` 时落键（缺省 = 没选过 ⇒ 零迁移）。
+   * ⚠ 本清洗器逐字段重建 ⇒ 漏登记 = 每读一次档模式选择框就又弹一次（与 `salvagerGift` 那次同一类事故）。
+   */
+  const modeChosen = src.modeChosen === true ? true : undefined
+  /**
    * **实战胜利记录**（2026-09-24 船长令 · 兼容字段无版本号）：键 = 敌卡 id，值 = 那一次的距离与剩余比例。
    * 只收合法行（`desireM` 为正有限数 · `remainPct` 落在 0~1）；**空表不写键** ⇒ 老档零迁移、往返逐字一致。
    * ⚠ 与 `resupplyFromWarehouse` 同款：漏登记 = 每读一次档记录就被清空，胜率预估退回三点采样。
@@ -2550,13 +2555,6 @@ function normalizeState(raw: unknown): GameState {
       ...(r.allExplored === true ? { allExplored: true } : {}),
       // 起手道具已发放（2026-09-21：任务开始时给道具的去重键；只在 true 时写，零迁移）
       ...(r.started === true ? { started: true } : {}),
-      /**
-       * 打捞器兜底补发已给过（2026-09-22 · 临时补丁的去重键；只在 true 时写，零迁移）。
-       * ⚠ **必须在这里带上**（**2026-09-22 船长报障**：「**玩家刷新可以重复领取补发的打捞器**」）——
-       * 本函数是**手工白名单重建** `importantTasks`，漏一个键＝读档即丢，下一拍 `backfillSalvagerIfMissing`
-       * 就又补一台（刷新一次 +1 台）。同款前车之鉴：`wormhole.run` 漏 `turnsBase/turnsTechBonus`。
-       */
-      ...(r.salvagerGift === true ? { salvagerGift: true } : {}),
     }
   }
 
@@ -2594,7 +2592,8 @@ function normalizeState(raw: unknown): GameState {
    * **铁人模式**（**2026-09-23 船长令**：「**和玩家讨论了下，发现好像搞一个铁人模式更受欢迎**」）。
    *
    * 白名单重建（**新加随档字段必须在这里落一笔**——漏了就是"刷新即丢"那一类缺陷，见本文件
-   * `importantTasks.salvagerGift` 与 `wormhole.run.turnsBase` 两次前车之鉴）：
+   * `importantTasks` 那次（2026-09-22 打捞器补发去重键，该临时补丁已于 2026-09-24 拆除）
+   * 与 `wormhole.run.turnsBase` 两次前车之鉴）：
    * - `on`：只认 `true`（缺省/其它值 ⇒ false = 普通档）；
    * - `seq`：**存档代次**（非负有限整数；缺省 ⇒ 0）——**必须随档**，它是"铁人档装载闸门"的一半
    *   （另一半是存档之外的账本，主进程读写）；
@@ -3283,6 +3282,8 @@ function normalizeState(raw: unknown): GameState {
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
     ...(resupplyFromWarehouse !== undefined ? { resupplyFromWarehouse } : {}),
+    // 模式选择已完成（2026-09-24 船长令）：只在 true 时落键；漏了这行 ⇒ 每次读档都重弹模式选择框
+    ...(modeChosen !== undefined ? { modeChosen } : {}),
     // 实战胜利记录（2026-09-24 船长令）：**空表不写键**（老档/新档快照逐字一致 = 真零迁移）
     ...(Object.keys(winRecord).length > 0 ? { winRecord } : {}),
     // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径

@@ -140,16 +140,12 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     expect(s1.wallet.isk - iskBefore, '扫描完成奖励 = 10,000 信用点').toBe(10_000)
     // 结算完这一条 ⇒ 「第一次采集原矿」轮到时发它的起手道具（采集器 MK1）
     expect(s1.moduleBay['mod-miner-1']).toBe(1)
-    /**
-     * ⚠ 打捞器**不在这条任务的奖励链上**（它是「第一次打捞残骸」的起手道具）——但 **2026-09-22 的
-     * 全员补发**（临时补丁，船长令）会给每个档无条件发一台 ⇒ 这里断言"打捞器恰好 1 台，且只发这一次"，
-     * 用它把"补发不会随拍刷屏"钉住（补发本身的口径另有用例）。
-     */
-    expect(s1.moduleBay['mod-salvager-1'], '全员补发的那一台').toBe(1)
+    // 打捞器**不在这条任务的奖励链上**（它是「第一次打捞残骸」的起手道具，轮到那条时才发）；
+    // 2026-09-22 那次「全员无条件补发」的临时补丁已于 2026-09-24 拆除 ⇒ 这里不再多发一台。
+    expect(s1.moduleBay['mod-salvager-1'] ?? 0, '补发已拆除 ⇒ 不再无条件发打捞器').toBe(0)
     for (let i = 0; i < 5; i++) advanceGame(s1, 1000, ctx)
     expect(s1.wallet.isk - iskBefore).toBe(10_000) // 不双发
     expect(s1.moduleBay['mod-miner-1']).toBe(1)
-    expect(s1.moduleBay['mod-salvager-1'], '补发不随拍刷屏').toBe(1)
     // ② 采矿（计数置位 ⇒ 下一拍判过）
     const s2 = testState()
     s2.importantTasks['first-scan'] = { done: true }
@@ -359,59 +355,6 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     // ③ 推进后轮到「第一次操作精炼炉」⇒ 它的起手道具也照常发（本表该条无起手道具 ⇒ 只验轮到）
     expect(visibleFirstTasks(state).map((d) => d.id)).toEqual(['first-refine'])
     expect(state.firstTaskAutoClaim).toBeUndefined()
-  })
-
-  /**
-   * **打捞器全员补发（⚠ 临时补丁 · 下次更新删除）**（**2026-09-22 船长令**：「**玩家依旧出现被打捞器卡进度的
-   * 情况，给所有玩家发一个打捞器 MK1 吧。**」→ 追问后定：「**这次补发直接所有人无条件发，发放完成后下次
-   * 更新删除补发。**」）——治的是"起手道具上线之前就已经走过「第一次打捞残骸」的老档"永远拿不到打捞器。
-   * 口径 = **无条件**（已有也发 · 新档也发）＋ **每档只发一次**。
-   */
-  it('全员补发打捞器 MK1：无条件（已有也发 · 新档也发），且每个档只发一次', () => {
-    // ① 老档：那条早已完成、手上本来没有 ⇒ 走一拍补一台
-    {
-      const state = testState()
-      state.importantTasks['first-salvage'] = { done: true }
-      engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'] ?? 0, '补 1 台').toBe(1)
-      expect(state.importantTasks['first-salvage']?.salvagerGift).toBe(true)
-      expect(state.logs.some((l) => l.textId === 'core.firstRewards.008')).toBe(true)
-      // 只发一次：卖掉也不会再补
-      state.moduleBay['mod-salvager-1'] = 0
-      engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'] ?? 0, '每档只发一次').toBe(0)
-    }
-    // ② **已有也发**（无条件口径）：装备库里本来就有一台，仍照发一台 ⇒ 2 台
-    {
-      const state = testState()
-      state.moduleBay['mod-salvager-1'] = 1
-      engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'], '已有也发一台').toBe(2)
-    }
-    // ③ **新档也发**（不看任务走到哪一步）
-    {
-      const state = testState()
-      engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'] ?? 0, '新档也发一台').toBe(1)
-    }
-    /**
-     * ④ **刷新（存档往返）不能再领一台**（**2026-09-22 船长报障**：「**玩家刷新可以重复领取补发的
-     * 打捞器**」）。根因 = `save.ts` 的 `normalizeState` 手工白名单重建 `importantTasks` 时**漏了
-     * `salvagerGift`** ⇒ 读档即丢去重键 ⇒ 下一拍又补一台（刷新一次 +1 台）。
-     */
-    {
-      const state = testState()
-      engineTick(state, 1000, ctx)
-      expect(state.moduleBay['mod-salvager-1'] ?? 0, '首拍补 1 台').toBe(1)
-      const back = loadSaveFile(serializeSaveFile(state, 2000)).state
-      expect(back.importantTasks['first-salvage']?.salvagerGift, '去重键必须随档落盘').toBe(true)
-      engineTick(back, 3000, ctx)
-      expect(back.moduleBay['mod-salvager-1'] ?? 0, '刷新后不再补第二台').toBe(1)
-      // 反复刷新：每次都还是那一台
-      const back2 = loadSaveFile(serializeSaveFile(back, 4000)).state
-      engineTick(back2, 5000, ctx)
-      expect(back2.moduleBay['mod-salvager-1'] ?? 0, '反复刷新都只有 1 台').toBe(1)
-    }
   })
 
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {

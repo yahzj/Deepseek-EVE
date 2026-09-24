@@ -19,6 +19,7 @@ import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { THEME_CHOICES, THEME_LABEL_ID, themeUsesSpacePhoto, useTheme, useThemeBootstrap } from './ui/theme'
 import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
+import { ModeChoice } from './panels/ModeChoice'
 import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
@@ -1727,6 +1728,16 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
       {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}
+
+      {/**
+       * **模式选择框**（**2026-09-24 船长令**「对至今未选择的旧档进行模式选择弹窗」＋「进游戏后要二选一」）。
+       * 判据 = `engine.modeChoiceNeeded()`（同步读内存档：没开过铁人、也没选过普通）。
+       * ⚠ 由 `onboarding.step !== 0` 守着 ⇒ **只在进游戏之后**弹（序章自己那张模式卡在前）；
+       * 选完那一刻引擎 `notify()` ⇒ 整树重渲染 ⇒ 本层自动卸载，此后不再出现。
+       */}
+      {engine.state.onboarding.step !== 0 && engine.modeChoiceNeeded() ? (
+        <ModeChoice engine={engine} onDone={force} />
+      ) : null}
 
       {/* 手机横屏：自绘下拉选项面板（值写回原生 select 并派发 change，保持各页 onChange 原样生效） */}
       {mobSel ? (

@@ -47,6 +47,9 @@ import {
   ironmanRewardMul,
   ironmanSeq,
   ironmanTrainingMul,
+  // 2026-09-24 船长令：模式选择弹窗（判据 ＋ 选普通的记账）
+  ironmanModeChosen,
+  markModeChosenAsStandard,
 } from '../src/ironman'
 
 const H = 3_600_000
@@ -326,5 +329,60 @@ describe('铁人模式 · 两枚隐藏徽章（船长 2026-09-23）', () => {
     closeIronman(normal, 2_000)
     expect(achievementReached(normal, iron!.source), '曾经是铁人 ⇒ 这枚保留').toBe(true)
     expect(achievementReached(normal, closed!.source)).toBe(true)
+  })
+})
+
+/**
+ * **模式选择已完成**（**2026-09-24 船长令**：「对至今未选择的旧档进行模式选择弹窗」）。
+ *
+ * 这是"模式选择框还要不要弹"的**唯一判据**，钉三件事：
+ * ① 新档/老档（没有 `modeChosen`、也没开过铁人）⇒ **没选过** ⇒ 要弹；
+ * ② 选了普通（`markModeChosenAsStandard`）⇒ 选过了 ⇒ 不再弹；
+ * ③ 开过铁人（含已关闭）⇒ 选过了 ⇒ 不再弹（`sinceWallMs` 本身就是记录，不必写 `modeChosen`）；
+ * ④ **随档往返不许丢** —— 漏了 `save.ts` 白名单那一行 ⇒ 每次读档都重弹（本仓栽过的同一类事故）。
+ */
+describe('铁人模式 · 模式选择已完成（船长 2026-09-24）', () => {
+  it('判据：没选过 ⇒ 要弹；选了普通 / 开过铁人 ⇒ 不再弹', () => {
+    // ① 新档（也是老档的形态：两个字段都没有）
+    const fresh = createInitialState({ nowWallMs: 0, seed: 5 })
+    expect(fresh.modeChosen, '新档不写这个键').toBeUndefined()
+    expect(ironmanModeChosen(fresh), '没选过 ⇒ 要弹').toBe(false)
+
+    // ② 选普通
+    markModeChosenAsStandard(fresh)
+    expect(fresh.modeChosen).toBe(true)
+    expect(ironmanModeChosen(fresh), '选过普通 ⇒ 不再弹').toBe(true)
+
+    // ③ 开过铁人（不写 modeChosen 也算选过）
+    const iron = createInitialState({ nowWallMs: 0, seed: 6 })
+    enterIronman(iron, 1_000)
+    expect(iron.modeChosen, '选铁人不写 modeChosen（sinceWallMs 已是记录）').toBeUndefined()
+    expect(ironmanModeChosen(iron), '开着铁人 ⇒ 不再弹').toBe(true)
+
+    // ④ 关闭之后仍然算选过（单向门：更不能再弹一次让它重开）
+    closeIronman(iron, 2_000)
+    expect(ironmanModeChosen(iron), '关闭过铁人 ⇒ 不再弹').toBe(true)
+
+    // ⑤ 老档形态：把字段摘掉 ⇒ 回到"没选过"
+    const old = createInitialState({ nowWallMs: 0, seed: 8 })
+    delete old.modeChosen
+    delete old.ironman
+    expect(ironmanModeChosen(old), '老档（两字段皆无）⇒ 要弹').toBe(false)
+  })
+
+  it('随档往返：`modeChosen` 读档后还在（漏白名单 ⇒ 每次读档都重弹）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 9 })
+    markModeChosenAsStandard(s)
+    const text = serializeSaveFile(s, 1_000)
+    expect(text.includes('"modeChosen"'), '选过普通 ⇒ 快照带这个键').toBe(true)
+    const back = loadSaveFile(text).state
+    expect(back.modeChosen, '读档后不许丢（丢了就会重弹模式选择框）').toBe(true)
+    expect(ironmanModeChosen(back)).toBe(true)
+
+    // 没选过的档：快照**不带**这个键（零迁移 —— 老档快照往返逐字不变）
+    const blank = createInitialState({ nowWallMs: 0, seed: 10 })
+    const blankText = serializeSaveFile(blank, 1_000)
+    expect(blankText.includes('"modeChosen"'), '没选过就不落键').toBe(false)
+    expect(loadSaveFile(blankText).state.modeChosen).toBeUndefined()
   })
 })

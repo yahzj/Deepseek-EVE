@@ -190,6 +190,7 @@ describe('虫洞网格读档回归（玩家报障 2026-09-20：「深入下一�
  *
  * 根因：`save.ts` 的 `normalizeState` 是**手工白名单重建** `importantTasks`——每加一个字段就得在两处都写一遍；
  * 打捞器全员补发（临时补丁）新加的 `salvagerGift` 只写了引擎侧 ⇒ **读档即丢去重键** ⇒ 刷新一次多领一台。
+ * （🔧 2026-09-24 补注：该临时补丁**已按船长令拆除**，字段随之删除；本条留作这道护栏的来历。）
  *
  * 这条用例是**这一类 bug 的护栏**：下面那份 `Record<keyof ImportantTaskState, true>` 会被 TS 强制**穷尽**——
  * 将来给 `ImportantTaskState` 加字段而没在这里补一行，`npm run typecheck` 直接红；补了行但漏进白名单，
@@ -202,7 +203,6 @@ describe('importantTasks 存档往返：白名单不许漏键（船长报障 202
     delivered: true,
     allExplored: true,
     started: true,
-    salvagerGift: true,
   }
 
   it('每个字段都随档往返（一个不落）', () => {
@@ -212,7 +212,6 @@ describe('importantTasks 存档往返：白名单不许漏键（船长报障 202
       delivered: 3,
       allExplored: true,
       started: true,
-      salvagerGift: true,
     }
     const back = loadSaveFile(serializeSaveFile(state, 0)).state.importantTasks['first-salvage']
     expect(back, '这条任务本身要还在').toBeDefined()
@@ -230,6 +229,7 @@ describe('importantTasks 存档往返：白名单不许漏键（船长报障 202
  * 为什么要有它：`normalizeState` 里几十处都是**手工白名单**（读档时逐字段重建对象），**每加一个随档字段
  * 就得在两处都写一遍**——漏了不会报错，只会在"刷新/重进"时表现为**重复发奖 / 状态回退**（船长报障的
  * 打捞器重复领取就是这么来的：`importantTasks.salvagerGift` 没进白名单）。
+ * （🔧 2026-09-24 补注：那次临时补丁已拆，字段已删；本条留作"刷新即丢"这类缺陷的实例。）
  *
  * 与上一条 `importantTasks` 用例的分工：那条靠 TS **穷尽一个类型**；这条**不依赖任何清单**——它把真引擎
  * 跑过的档整体落盘再读回，**递归比对键集合**，凡是"引擎写过、读回来没了"的键一律报出来。
