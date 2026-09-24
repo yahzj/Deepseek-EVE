@@ -168,6 +168,9 @@ import {
   weekendTick,
   weekendDerivedCardOf,
   weekendOccupiedLiveAt,
+  weekendFlagshipSpecOf,
+  weekendFlagshipSquadOf,
+  weekendStartFlagshipBattle,
   ironmanLoadVerdict,
   ironmanOn,
   ironmanSeq,
@@ -1263,6 +1266,36 @@ export class GameEngine {
       s.ironman = { ...(s.ironman ?? { on: false, seq: 0 }), seq: head }
     }
   }
+  /**
+   * **挑战入侵旗舰**（M1-b 收尾 · 2026-09-23）：核心条满才成立（`weekendStartFlagshipBattle` 内部判）。
+   *
+   * 复用**遭遇槽**承载这一场（`state.encounter`）：这样「应战 / 战报 / 收尾结算」全走既有路径，
+   * 战后由 `encounters.settleFight` 调 `weekendApplyBattleOutcome` ⇒ 击毁旗舰、黑匣、贡献结算自动闭环。
+   */
+  challengeWeekendFlagship(): CommandResult {
+    const now = Date.now()
+    const spec = weekendFlagshipSpecOf(this.state, this.ctx, now)
+    if (!spec) return { ok: false, error: tr('ui.weekend.015') }
+    const battle = weekendStartFlagshipBattle(this.state, this.ctx, now)
+    if (!battle) return { ok: false, error: tr('ui.weekend.015') }
+    const ev = this.state.weekendEvent!
+    this.state.encounter = {
+      active: true,
+      shipId: weekendFlagshipSquadOf(this.state)[0] ?? this.state.shipId,
+      galaxyId: ev.coreId,
+      name: spec.name,
+      threat: spec.threat,
+      anomalyId: spec.cardId,
+      origin: tr('ui.weekend.016'),
+      invitedAtGameMs: this.state.gameMs,
+      deadlineGameMs: this.state.gameMs + this.ctx.balance.encounter.inviteWaitMs,
+      battle,
+    }
+    this.notify()
+    void this.persist()
+    return { ok: true }
+  }
+
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const read = await saveBridge.readBackup(name)
