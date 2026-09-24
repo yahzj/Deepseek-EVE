@@ -37,6 +37,10 @@ export {
   FOE_SHIP_PIRATE_SNIPER,
   FOE_SHIP_PIRATE_WARLORD,
   ALIEN_BEAST_SHIP_IDS,
+  // 2026-09-24 船长「设计每个种族的T5旗舰」：两族的 **T5 旗舰白名单**（旧口径"不配 5 旗舰"随本轮令改写为
+  // "只允许白名单那一条"；C 族新成员落地时补进 ALIEN_FLAGSHIP_SHIP_IDS、G 族补进 G_FLAGSHIP_SHIP_IDS）
+  ALIEN_FLAGSHIP_SHIP_IDS,
+  G_FLAGSHIP_SHIP_IDS,
   // 2026-09-16 船长「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」：C 族冲锋倍率的**按档契约基准**
   // （T1 1.5 · T2 2 · T3 2.5 · T4 3 · T5 4；`content:check` 与用例都按它核对舰级实挂值）
   ALIEN_CHARGE_MUL_BY_TIER,
