@@ -676,6 +676,19 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       addLog(state, 'warn', '残骸回收运转异常：残骸来源记录缺失，该台已停（AI 核心已归还）。', 'core.industry.034')
       continue
     }
+    /**
+     * **无料即停**（2026-09-24 玩家报障「没有东西了还在拆。取消就消失」）：
+     * "料尽"原先只在**批到点**那一刻判 ⇒ 料若在**批中途**消失（卖掉/搬走/被另一台炉抢走），
+     * 那一台会继续转到本批结束（拆解线最长 90 秒）才停，玩家看到的就是"没料了还在拆"。
+     * ⇒ 每拍先算一次余量，**不足一批就把到点时间拨到"现在"**，交回既有的停炉分支处理
+     * （退私有料账 / 记「原料耗尽 / 货柜已拆完」/ 归还 AI 核心，口径一字不变）。
+     */
+    {
+      const nowUsesClaim = r.claimedUnits !== undefined
+      const nowStock = nowUsesClaim ? Math.max(0, r.claimedUnits ?? 0) : oreAvailable(state, r.itemId)
+      const nowAvail = r.lockUnits !== undefined ? Math.min(nowStock, r.lockUnits) : nowStock
+      if (nowAvail < r.batchUnits && r.finishAtGameMs > state.gameMs) r.finishAtGameMs = state.gameMs
+    }
     while (r.active && state.gameMs >= r.finishAtGameMs) {
       if (++guard > 100_000) break // 防失控循环
       // v20 实时扣料：仓库/货仓余量决定本批能炼多少；
