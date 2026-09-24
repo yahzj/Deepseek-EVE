@@ -84,6 +84,25 @@ export function tr(id: string, params?: Record<string, string | number>): string
   return interpolate(textOf(id, activeLocale), params)
 }
 
+/**
+ * **按当前语言给一组「双语名对」挑一列**（2026-09-24 加）——用于**敌方挂载件名**这类
+ * "文案在 core 目录里、语言在渲染层"的值（见 `core/foeMounts.ts` 的 `namePairs`）：
+ * 中/英各一列，`isEn()` ⇒ 取英文那列。
+ *
+ * 两处输入都在**同一份快照**里（`BattleState.foeMounts` / `BattleReportRecord.foeMounts`
+ * ＋ 同序的 `foeMountNamePairs`）⇒ 切换语言时这两处显示跟着变，**引擎一个字都不用改**。
+ * `pairs` 缺省（老档在途战斗 / 没走双语覆盖的路径）⇒ 回退 `names`（中文名数组，与改动前逐字一致）。
+ */
+export function mountNamesTextOf(
+  names: readonly string[] | undefined,
+  pairs: ReadonlyArray<readonly [string, string]> | undefined,
+): string[] {
+  if (!names || names.length === 0) return []
+  if (!pairs || pairs.length === 0) return [...names]
+  const en = isEn()
+  return names.map((n, i) => (en ? (pairs[i]?.[1] ?? n) : (pairs[i]?.[0] ?? n)))
+}
+
 /* ═══════════ core 侧文案（甲案 · 2026-09-20 船长定）═══════════
  * core 不碰语言：它只产出「文案 id + 参数」（`LogEntry.textId` / `CommandResult.error`）。
  * 渲染层用下面两个函数统一收口 ⇒ **切换语言时 core 文案跟着变**，而这层之外一个字都不用改。

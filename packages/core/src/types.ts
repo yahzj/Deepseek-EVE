@@ -261,6 +261,17 @@ export type FoeMountId =
   | 'foe-mount-capture-web'
   /** **支援呼叫装置**（船长 2026-09-19）：开战 20 秒后按距离呼叫一支支援军（延迟到场 ⇒ 实际威胁 ×1.1） */
   | 'foe-mount-support-call'
+  /**
+   * **姿态陀螺仪**（船长 2026-09-24：「**在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避**」
+   * ＋「**电子舰也要挂**」）：A 族洞内卡条目专属 —— 该舰战斗中**闪避 +10 个百分点（加算、上限 0.9）**。
+   */
+  | 'foe-mount-gyro-stabilizer'
+  /**
+   * **船体修理装置**（船长 2026-09-24：「**给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，
+   * 会吃威胁的加成。**」）：G 族洞内卡条目专属 —— 每 5 秒自修 5 装甲 + 5 结构 ×**层威胁倍率 k**
+   * （`k = 该层本次实际威胁 ÷ 45`；见 `FoeMountDef.repairPulse`）。
+   */
+  | 'foe-mount-hull-repair'
 
 /**
  * **敌方挂载件定义**（船长 2026-09-16 三句合一的落点）：
@@ -271,12 +282,21 @@ export type FoeMountId =
  * 语义 = 挂在敌舰（**舰级 `FoeShipDef.mounts`** 或**卡条目 `FoeShipSlot.mounts`**，条目优先）上的装置，
  * 由 `foeMounts.resolveFoeMounts` **单点**解析成运行时字段（`UnitSpec.foeCanCharge` / `foeChargeMul` /
  * `foeChargeCooldownMs` / `foeDroneRangeMulOnHit` / `foeGunRangeMulOnHit` / `foeMountNames`）。
- * 一件只能带**一类**效果（三类字段互斥，`content:check` 会拦）；`note` 写设计备注。
+ * 一件**可以同时带多类效果**（如 A 族洞内的「劫掠冲锋推进器 ＋ 劫掠捕获网」同挂一件条目上；
+ * 「一件一类效果」那条只约束**我方支援件** `ModuleDef`，见 §十四——此处 2026-09-24 更正旧注）。
+ * 多件同类效果相撞时按 `resolveFoeMounts` 的"后写覆盖先写"聚合；`note` 写设计备注。
  */
 export interface FoeMountDef {
   id: FoeMountId
   /** 玩家可见名（敌舰悬停 / 战报里逐件列出） */
   name: string
+  /**
+   * **英文名**（2026-09-24 加；`l10n-overlay` 的 `overlayCardFoeMounts` 用它做英文界面的覆盖）。
+   * 口径 = `docs/glossary-en.md`（术语与专名权威）：`姿态陀螺` = `Attitude Gyro`、
+   * `船体维修装置` = `Hull Repair Unit`（`mod-hullrep-*` 同词）、`挂载件` = `Mount`。
+   * ⚠ **缺省不写 ⇒ 英文界面回退中文名**（既有八件现状，待船长拍板译名后逐件补）。
+   */
+  en?: string
   /**
    * **冲锋装置**：触发后**本单位自己的机动 ×`mul`**（不外溢），解除后 `cooldownMs` 内不能再冲。
    * `triggerMarginM` 缺省 = 走全局 `BattleBalance.foeChargeTriggerMarginM`。
@@ -320,6 +340,31 @@ export interface FoeMountDef {
    *   同乘约 ×1.16），卡面 `threat`（缩放锚点）不动。
    */
   supportCall?: { delaySec: number; threatMul: number }
+  /**
+   * **姿态陀螺仪**（船长 2026-09-24：「**在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避**」
+   * ＋「**电子舰也要挂**」＋ 追问裁定：「**陀螺仪 = 加算 +10 个百分点**（甲）」）。
+   *
+   * 语义 = **本舰战斗闪避 +`add`（加算的百分点，不是乘子）**，命中判定处生效
+   * （我方武器对它的命中率 = `(武器命中 + 加成 − 闪避) × 距离折减`）⇒ 加了它就更难被打中。
+   * `0.10` 即 12% → 22%（A 族 2026-09-24 提档后的舰级值）→ **32%**；劫掠电子舰 30% → **40%**。
+   * **上限 0.9 由消费方夹紧**（与 `FoeShipDef.evasion` 同一把尺，字段只给加数）。
+   */
+  evasionBonus?: { add: number }
+  /**
+   * **船体修理装置**（船长 2026-09-24：「**给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，
+   * 会吃威胁的加成。**」＋追问裁定：「**修理量 = 乘层威胁倍率**（甲，归一基准"不改动"）」）。
+   *
+   * 语义 = **本舰自己**每 `everyMs`（5 秒）回 `armor` 装甲 ＋ `hull` 结构 **× k**，各层夹到自己的满值
+   * （满血不回超）。`k = 该层本次实际威胁 ÷ 45`（45 = 第 1 层基准威胁 `WORMHOLE_THREAT_BASE`）
+   * ⇒ 层 1 = ×1.00 · 层 7 ≈ ×1.97 · 层 10 ≈ ×2.77（层末守卫另吃 ×1.2 的威胁倍率）。
+   *
+   * ⚠ **字段只给基数与节拍**：k 由消费方按"本场是哪张卡、哪一层、什么用途"现算
+   * （`combat.createFoeSpecsFromShips` → `UnitSpec.foeRepairPulse.k`）——与「吃威胁加成」同源，
+   * 且**不写进存档**（每拍按本场同一份派生重算，读档不会算出别的层）。
+   * 与"敌方后勤舰"（`FoeShipDef.repairPct`：把自己的 DPS 折成修理值去修队友）是**两套机制**：
+   * 本件**只修自己、不折自己的火力**，同节拍（5 秒）但各按各的计时器。
+   */
+  repairPulse?: { everyMs: number; armor: number; hull: number }
   /** 设计备注（不进玩家视野） */
   note?: string
 }
@@ -1940,6 +1985,19 @@ export interface FoeShipSlot {
    * ② 日后"同一舰级在不同卡上装不同件"不必改舰级。
    */
   mounts?: readonly FoeMountId[]
+  /**
+   * **本条目挂载件的「双语名对」快照**（2026-09-24 加；与 `mounts` 同序、下标对齐）。
+   *
+   * 为什么要有它：挂载件名是**玩家可见文案**（战报与敌舰悬停里逐件列出），而目录表在 **core**
+   * （建档路径拿不到 data 包的译名表，见 `core/foeMounts.ts` 头注）⇒ 双语名随 `resolveFoeMounts`
+   * 的 `namePairs` 一起下发，**显示层按当前语言挑一列**（见 `BattleScreen` 的 `mountNamesTextOf`）。
+   *
+   * ⚠ **派生字段、不进存档**：只在本场真要展示时由**渲染快照**（`battle.foeMounts` /
+   * `battleArcsFor` 的 `foeMountNamePairs`）写；**缺省** ⇒ 显示层回退中文名数组
+   * （老档在途战斗与任何没走该覆盖的路径都与改动前逐字一致）。
+   * 由 `data/l10n.ts` 的 `overlayCardFoeMounts` 按语言生成。
+   */
+  foeMountNamePairs?: ReadonlyArray<readonly [string, string]>
   /**
    * **支援呼叫分支**（2026-09-19 船长批「支援呼叫装置」）：本条目属于哪一支援军——
    * `'inside'` = 判定时玩家在**呼叫者射程内**才到场；`'outside'` = 在射程外才到场。

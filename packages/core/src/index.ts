@@ -922,6 +922,11 @@ export {
   foeChargeCount,
   // 维修脉冲周期（2026-09-11：内容体检「产物说明契约」按它核对说明里的「每 N 秒」）
   REPAIR_PULSE_MS,
+  // 挂载件「船体修理装置」的威胁归一基准（2026-09-24 船长：k = 该层威胁 ÷ 45）——
+  // 工具/读数按它换算"某层一跳回多少"，引擎侧消费点只有 `createFoeSpecsFromShips`
+  FOE_REPAIR_THREAT_REF,
+  // 挂载件「船体修理装置」的脉冲结算入口（逐单位自修；用例与后续读数工具直接调它）
+  pulseFoeMountRepair,
   // 护盾充能脉冲周期（2026-09-14 船长新增件：同上，说明里的「每 30 秒」与它同源）
   SHIELD_PULSE_MS,
   shieldPulsePctOf,

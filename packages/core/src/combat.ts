@@ -35,7 +35,7 @@ import type {
 import { factionAnomalyOf, lairAnomalyOf } from './lairs'
 import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
-import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
+import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, WORMHOLE_THREAT_BASE, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
 import { wormholeCardThreatOf, wormholeSkippedBranch } from './wormholeFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
@@ -56,7 +56,26 @@ export const BATTLE_STEP_MS = 100
 export const BATTLE_MAX_STEPS = 40_000
 /** 船体维修装置脉冲间隔（毫秒；2026-09-09 三档统一 5 秒一跳，见 data/modules.ts mod-hullrep-*） */
 export const REPAIR_PULSE_MS = 5_000
-
+/**
+ * **挂载件「船体修理装置」的威胁归一基准**（船长 2026-09-24 追问裁定的原话口径「**k = 该层威胁 ÷ 45**」）
+ * ——45 = 第 1 层基准威胁（`wormholeFoes.WORMHOLE_THREAT_BASE`）⇒ **层 1 的 k = 1.00**，
+ * 正是船长定这条时说的"归一基准「不改动」"。消费点只有一处：`createFoeSpecsFromShips` 写
+ * `UnitSpec.foeRepairPulse.k`（详见 `FoeMountDef.repairPulse`）。
+ *
+ * ⚠ **这里是字面量、不从 `wormholeFoes` import**（2026-09-24 实测踩到的坑）：`wormholeFoes` 自己
+ * `import { foeDamageComposition } from './combat'` ⇒ 两个模块**互相依赖**，而本常量在 `combat` 的
+ * **顶层**求值 ⇒ 走 `content:check`（CJS 转译）时命中
+ * `ReferenceError: Cannot access 'WORMHOLE_THREAT_BASE' before initialization`。
+ * 一致性由下一行的**类型级校验**钉住（两处不等 ⇒ `typecheck` 当场红，不改数值就不会漂）。
+ */
+export const FOE_REPAIR_THREAT_REF = 45
+/** 编译期一致性校验：与 `wormholeFoes.WORMHOLE_THREAT_BASE` 必须逐字相等（不等则本行类型报错） */
+const _FOE_REPAIR_THREAT_REF_IN_SYNC: 45 extends typeof WORMHOLE_THREAT_BASE
+  ? typeof WORMHOLE_THREAT_BASE extends 45
+    ? true
+    : never
+  : never = true
+void _FOE_REPAIR_THREAT_REF_IN_SYNC
 /** 三层血量形状 */
 export interface Hp3 {
   s: number
@@ -241,6 +260,11 @@ export interface UnitSpec {
   /** **本单位的挂载件展示名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——建档时由 `mounts` 解析，
    *  视图与战报直接渲染；**不是 id**、也不参与任何判定。 */
   foeMountNames?: readonly string[]
+  /**
+   * **同序的「双语名对」**（2026-09-24 加；与 `foeMountNames` 逐项对齐）——
+   * 显示层按当前语言挑一列（`BattleScreen.mountNamesTextOf`）；缺省 ⇒ 回退中文名数组。
+   */
+  foeMountNamePairs?: ReadonlyArray<readonly [string, string]>
   /** **单波次内增援**（2026-09-11 船长裁决：机制实现、不启用）——本单位的入场触发条件；
    *  **建档时已按总开关过滤**：开关关闭时本字段一律不写（= 开战即在）。
    *  带本字段的单位**不进开战编队**，由 `advanceBattleFor` 每拍检查、条件命中才补入。 */
@@ -292,6 +316,19 @@ export interface UnitSpec {
   foeDroneLaunch?: { maxAloft: number; cycleMs?: number; keepDps?: boolean }
   /** **备用机库**（见 `FoeShipDef.droneReserve`；2026-09-12 船长「损坏后补充敌机」） */
   foeDroneReserve?: { count: number; respawnMs: number }
+  /**
+   * **姿态陀螺仪的闪避加数**（船长 2026-09-24；见 `FoeMountDef.evasionBonus`）——建档时**已经加进**
+   * `evasion` 并夹到 0.9 上限；本字段只是把"这件件给了多少"留在单位上（战报/读数/用例用）。
+   * 缺省不写 ⇒ 零行为变化。
+   */
+  foeEvasionBonusAdd?: number
+  /**
+   * **船体修理装置的逐单位脉冲参数**（船长 2026-09-24；见 `FoeMountDef.repairPulse`）——
+   * `k` = **本层本次实际威胁 ÷ 45**（建档时按本场是哪张卡/哪一层/什么用途现算），
+   * 每 `everyMs` 给**它自己**回 `round(armor × k)` 装甲与 `round(hull × k)` 结构（各层夹满值）。
+   * 缺省不写 ⇒ 该单位没有这个机制（零行为变化）。
+   */
+  foeRepairPulse?: { everyMs: number; armor: number; hull: number; k: number }
   foeTactic: FoeTactic | null
 }
 
@@ -586,6 +623,40 @@ export function pulseFoeRepair(
   rt.hp.a += healA
   left -= healA
   const healH = Math.min(left, Math.max(0, capH - rt.hp.h))
+  rt.hp.h += healH
+  ledger.healed += healA + healH
+}
+
+/* ═══════════ 敌方挂载件「船体修理装置」（船长 2026-09-24）═══════════ */
+
+/**
+ * **一记「船体修理装置」脉冲**（每 `UnitSpec.foeRepairPulse.everyMs` = 5 秒一跳，与维修装置同节拍）：
+ * **只修挂件的那艘自己**（不选靶、不外溢），装甲与结构各 `round(基数 × k)`、各层夹自己的满值。
+ *
+ * ⚠ 与 `pulseFoeRepair`（敌方后勤舰）**不是一套**，两条独立并存：
+ * - 后勤舰 = **把自己的 DPS 折成修理值去修队友**（有选靶、有"永不修后勤舰"约束、按账本一跳一选）；
+ * - 本装置 = **自修**、不折火力、逐单位各按各的计时（`battle.foeRepairPulses[tag]`）。
+ *
+ * 返回实际修好的点数（累加进该单位的账本，供战报/读数用）。
+ * 阵亡单位不修（与 2026-09-19「尸体不复活」同一把尺：尸体在 `battle.units` 里永不摘除）。
+ */
+export function pulseFoeMountRepair(
+  b: import('./state').BattleState,
+  spec: UnitSpec,
+  ledger: { nextPulseAtMs?: number; pulses: number; healed: number },
+): void {
+  const rp = spec.foeRepairPulse
+  if (rp === undefined) return
+  ledger.pulses += 1
+  if (!isAlive(b, spec.tag)) return
+  const rt = b.units[spec.tag]
+  if (!rt) return
+  const capA = Math.max(0, spec.hp.a)
+  const capH = Math.max(0, spec.hp.h)
+  const healA = Math.min(Math.max(0, Math.round(rp.armor * rp.k)), Math.max(0, capA - rt.hp.a))
+  const healH = Math.min(Math.max(0, Math.round(rp.hull * rp.k)), Math.max(0, capH - rt.hp.h))
+  if (healA <= 0 && healH <= 0) return
+  rt.hp.a += healA
   rt.hp.h += healH
   ledger.healed += healA + healH
 }
@@ -1951,6 +2022,13 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
   const waveIdx = shipWaveIndexOf(prefix)
   const comp = foeMultiShipCompMul(anomaly)
   const units = enumerateShipUnits(anomaly, waveIdx)
+  /**
+   * **本场的威胁读数**（挂载件「船体修理装置」的 k 用它算）：
+   * 洞内走派生卡时 `anomaly.threat` 已由 `wormholeAnomalyOf` 写成**本层本用途的实际威胁**
+   * （普通节点 = 层威胁、层末守卫 ×1.2、遗迹收尾 ×1.3、支援呼叫卡的延迟补偿 ×1.1）⇒ 与显示同源；
+   * 洞外卡（星图悬赏 / 低安遭遇）就是卡面威胁。见 `FOE_REPAIR_THREAT_REF`。
+   */
+  const threatNow = anomaly.threat ?? FOE_REPAIR_THREAT_REF
   // **机群/炮台火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个
   // 悬赏卡制定」）——**条目级**旋钮，守恒拆分：先按旧口径算出该条目的实收总单发 T（含多舰补偿、
   // 逐条取整），再拆成「机群 D = round(T×s)」与「炮台 G = T−D」（两侧各保底 1/架、1/单位）。
@@ -2071,8 +2149,19 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         ...(ship.armorResist ? { armor: ship.armorResist } : {}),
         ...(ship.hullResist ? { hull: ship.hullResist } : {}),
       },
-      // 舰级闪避（船长 2026-09-16 新舰「劫掠电子舰」：闪避提高）：缺省 0.12 = 既有全部敌舰原值
-      evasion: ship.evasion ?? 0.12,
+      /**
+       * 舰级闪避（船长 2026-09-16 新舰「劫掠电子舰」：闪避提高）：缺省 0.12 = 既有全部敌舰原值。
+       *
+       * ⚠ **姿态陀螺仪在此加算**（船长 2026-09-24：「在虫洞内，A族添加一个挂载件：姿态陀螺仪：
+       * 增加10%闪避」＋追问裁定「**加算 +10 个百分点**（甲）」）：`舰级值 + 挂载件加数`，
+       * 上限 **0.9**（与舰级值同一把尺）⇒ 洞内 A 族 0.22 → **0.32**、劫掠电子舰 0.30 → **0.40**。
+       * 没挂该件的单位**逐字不变**（`foeEvasionBonusAdd` 只在挂件时才写）。
+       */
+      evasion: Math.min(
+        0.9,
+        (ship.evasion ?? 0.12) + (mount.foeEvasionBonusAdd ?? 0),
+      ),
+      ...(mount.foeEvasionBonusAdd !== undefined ? { foeEvasionBonusAdd: mount.foeEvasionBonusAdd } : {}),
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,
@@ -2080,8 +2169,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       // 「劫掠护卫舰和劫掠狙击舰下落一档，只有头目是巡洋舰」；基准表在 BattleBalance
       // （core 不能 import data 包的 hullClass.ts，故基准随 bal 传入），零行为变化。
       speedMps: Math.round(bal.hullClassBaseSpeedMps[ship.hullClassTier] * ship.speedRatio * (u.slot.speedMul ?? 1)),
-      agility: 0.3,
-      // 敌突进（冲锋）资格，三条**互相独立**的来源：
+      agility: 0.3,      // 敌突进（冲锋）资格，三条**互相独立**的来源：
       //   ① **挂载件**（`FoeMountDef.charge`，2026-09-16 起的主路——"给敌人装配件"）；
       //   ② **舰级级 opt-in**（`ship.foeCanCharge`，兼容回退）——无条件放行，**不看**总开关与威胁门槛，
       //      用于"慢而硬、追不上"的重型单位（C 族噬口巨兽，实速 297）与 2026-09-14 起同样开启的三种小虫；
@@ -2103,6 +2191,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(mount.foeChargeCooldownMs !== undefined ? { foeChargeCooldownMs: mount.foeChargeCooldownMs } : {}),
       // **挂载件展示名**（船长同日「要：敌舰悬停/战报展示挂载件」）——视图/战报直接渲染
       ...(mount.names.length > 0 ? { foeMountNames: mount.names } : {}),
+      // **同序双语名对**（2026-09-24）：显示层按语言取一列（`mountPairsOf` 那条链）
+      ...(mount.namePairs.length > 0 ? { foeMountNamePairs: mount.namePairs } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       // **支援呼叫分支**（2026-09-19）：纯标签、一律带上（派生侧的"互斥分支记账"要用它）
@@ -2139,6 +2229,24 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(ship.droneReserve && droneWeapons.length > 0
         ? { foeDroneReserve: ship.droneReserve }
         : {}),
+      /**
+       * **船体修理装置的逐单位脉冲**（船长 2026-09-24：「给G族添加挂载件：船体修理装置。
+       * 每5秒恢复5装甲和5结构，**会吃威胁的加成**」＋裁定「修理量 = 乘层威胁倍率」甲）：
+       * `k` = **本层本次实际威胁 ÷ 45**（船长逐字口径「k = 层威胁 ÷ 45」；45 = 第 1 层基准威胁，
+       * 层 1 的 k 恰为 **1.00** = 追问时的归一基准「不改动」）。
+       *
+       * ⚠ **威胁取本场的实际值、与显示给玩家的同一把尺**：洞内战斗取派生卡的 `threat`
+       * （= `wormholeCardThreatOf(卡, 层, 用途)`：普通节点 = 层威胁、层末守卫 ×1.2、遗迹收尾 ×1.3、
+       * 挂了支援呼叫装置的卡 ×1.1）；洞外（星图侧契约本就禁止挂这件）不派生 ⇒ 取卡面 `threat`。
+       * ⇒ 层 1 = ×1.00 · 层 7 ≈ ×1.97 · 层 10 ≈ ×2.77，与设计稿 §二 的读数一致。
+       */
+      ...(() => {
+        const rp = mount.foeRepairPulse
+        if (rp === undefined) return {}
+        return {
+          foeRepairPulse: { ...rp, k: Math.max(1, threatNow / FOE_REPAIR_THREAT_REF) },
+        }
+      })(),
       // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化。
       // 2026-09-16 起走挂载件（`foe-mount-drone-range-x4`），旧字段 `ship.droneRangeMulOnHit` 兼容回退
       ...((mount.foeDroneRangeMulOnHit ?? ship.droneRangeMulOnHit) !== undefined && droneWeapons.length > 0
@@ -3571,12 +3679,24 @@ export function createBattleState(
    * **单波战斗的战报/悬停看不到敌方挂载件**（多波/增援才看得到）；这里补上首波这一份。
    */
   const foeMounts: string[] = []
+  /**
+   * **同序的「双语名对」**（2026-09-24）：与 `foeMounts` **下标对齐**、按**中文名**去重
+   * （与上一行的去重键同一把尺）——显示层按当前语言挑一列，见 `BattleScreen.mountNamesTextOf`。
+   */
+  const foeMountPairs: Array<readonly [string, string]> = []
   for (const spec of [me, ...myAllies, ...foes]) {
     // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发的单位不进开战编队**，
     // 由 `advanceBattleFor` 每拍按条件补入。开关关闭时建档期根本不写 `foeReinforceAt` → 本行永不命中。
     if (spec.foeReinforceAt) continue
     if (spec.side === 'foe') {
-      for (const m of spec.foeMountNames ?? []) if (!foeMounts.includes(m)) foeMounts.push(m)
+      const names = spec.foeMountNames ?? []
+      const pairs = spec.foeMountNamePairs ?? []
+      for (let i = 0; i < names.length; i++) {
+        const n = names[i]!
+        if (foeMounts.includes(n)) continue
+        foeMounts.push(n)
+        foeMountPairs.push(pairs[i] ?? [n, n])
+      }
     }
     units[spec.tag] = {
       tag: spec.tag,
@@ -3603,6 +3723,7 @@ export function createBattleState(
     units,
     // 开战首波登记下来的敌方挂载件（没挂 = 不写键 ⇒ 老档/无挂载场次零变化）
     ...(foeMounts.length > 0 ? { foeMounts } : {}),
+    ...(foeMountPairs.length > 0 ? { foeMountNamePairs: foeMountPairs } : {}),
     ammo: { kin: 0, exp: 0, pla: 0 },
     stats: { meShots: 0, meHits: 0, meDmg: 0, foeShots: 0, foeHits: 0 },
     fx: [],
@@ -3693,11 +3814,24 @@ function seedUnit(
 ): void {
   if (b.units[spec.tag]) return
   // **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）：所有单位都经这里入场
-  // （开战首波 / 波次转场 / 增援）⇒ 累积一份"本场出现过"的清单给战报用（运行期字段、不入档）
+  // （开战首波 / 波次转场 / 增援）⇒ 累积一份"本场出现过"的清单给战报用（运行期字段、不入档）。
+  // ⚠ **2026-09-24 起同一份清单带「双语名对」**（键同为中文名 ⇒ 两条数组**下标恒对齐**，
+  // 显示层按语言挑一列）；`foeMountNames` 与 `foeMountNamePairs` 缺一不可地一起维护。
   if (spec.side === 'foe' && spec.foeMountNames && spec.foeMountNames.length > 0) {
     const set = new Set(b.foeMounts ?? [])
-    for (const n of spec.foeMountNames) set.add(n)
-    b.foeMounts = [...set]
+    const pairs = new Map<string, readonly [string, string]>()
+    const oldNames = b.foeMounts ?? []
+    const oldPairs = b.foeMountNamePairs ?? []
+    for (let i = 0; i < oldNames.length; i++) pairs.set(oldNames[i]!, oldPairs[i] ?? [oldNames[i]!, oldNames[i]!])
+    const specPairs = spec.foeMountNamePairs ?? []
+    for (let i = 0; i < spec.foeMountNames.length; i++) {
+      const n = spec.foeMountNames[i]!
+      set.add(n)
+      if (!pairs.has(n)) pairs.set(n, specPairs[i] ?? [n, n])
+    }
+    const merged = [...set]
+    b.foeMounts = merged
+    b.foeMountNamePairs = merged.map((n) => pairs.get(n) ?? [n, n])
   }
   const windowMs = opts.arrivedAtMs !== undefined ? BATTLE_ARRIVAL_FLY_MS : 0
   /** 首轮相位错开（洞内专属；见 `WORMHOLE_FOE_VOLLEY_STAGGER_MS`）——洞外调用方一律不传 ⇒ 0 */
@@ -4119,6 +4253,8 @@ export function startBattleFor(
   }
   // 敌机机群生存池（2026-09-11 机群批）：与敌方编队同建；无 `foeDrones` 的敌舰不建池 ⇒ 零行为变化
   initFoeDronePools(battle, foes);
+  // **挂载件「船体修理装置」账本**（2026-09-24 船长）：只为挂了这件、且账本里还没有的单位建一条
+  initFoeRepairPulses(battle, foes);
   // 近防炮调度（威胁 ≥ pdThreatFloor 的敌舰各装一台；与敌编队同序、独立冷却）
   if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
     battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
@@ -4478,6 +4614,8 @@ export function startFleetBattleFor(
     battle.droneLoadAtStart = { ...(state.fleet[fleet[0]!.shipId]?.droneLoad ?? {}) }
   }
   initFoeDronePools(battle, foes);
+  // 挂载件「船体修理装置」账本（2026-09-24 船长）：与多舰编队路径同一处（幂等，缺省不建）
+  initFoeRepairPulses(battle, foes);
   if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
     battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
   }
@@ -4698,6 +4836,11 @@ export function battleArcsFor(
    * （去重展示名，如「劫掠冲锋推进器」）；**缺省 = 本场敌人没挂件**（既有战斗零变化）。
    */
   foeMounts?: string[]
+  /**
+   * **同序的「双语名对」**（2026-09-24 加；与 `foeMounts` 下标对齐）——界面按当前语言挑一列
+   * （`BattleScreen.mountNamesTextOf`）；**缺省**（老档在途战斗）⇒ 回退中文名数组。
+   */
+  foeMountNamePairs?: ReadonlyArray<readonly [string, string]>
   /**
    * **捕获网连线**（船长 2026-09-16）：每条形如 `{ from: 施放者 tag, to: 被钉舰 tag }`；
    * 渲染层画一条蓝色光束、**持续到解除**（击杀发动者即消失）。缺省 = 本场没有网。
@@ -4995,10 +5138,18 @@ export function battleArcsFor(
       ? { webLinks: Object.entries(battle.meWebDebuffs).map(([to, d]) => ({ from: d.byTag, to })) }
       : {}),
     // **敌方挂载件**（去重展示名）——界面/战报同源；空 = 本场敌人没挂件（老档同样缺省）
+    // ⚠ 2026-09-24 起**连同双语名对**一起下发（两条数组下标对齐，见 `foeMountNamePairs`）
     ...(() => {
-      const names = new Set<string>()
-      for (const f of foes) for (const m of f.foeMountNames ?? []) names.add(m)
-      return names.size > 0 ? { foeMounts: [...names] } : {}
+      const pairs = new Map<string, readonly [string, string]>()
+      for (const f of foes) {
+        const names = f.foeMountNames ?? []
+        const ps = f.foeMountNamePairs ?? []
+        for (let i = 0; i < names.length; i++) {
+          const n = names[i]!
+          if (!pairs.has(n)) pairs.set(n, ps[i] ?? [n, n])
+        }
+      }
+      return pairs.size > 0 ? { foeMounts: [...pairs.keys()], foeMountNamePairs: [...pairs.values()] } : {}
     })(),
     ...(foeDroneWings.length > 0 ? { foeDrones: foeDroneWings } : {}),
   }
@@ -5119,6 +5270,10 @@ export function captureBattleReport(
     foe: { alive: foeAlive, total: foeTotal, hpFrac: foeMax > 0 ? Math.max(0, Math.min(1, foeCur / foeMax)) : 0 },
     // **敌方挂载件名**（2026-09-16 船长：战报也要展示）——由 `seedUnit` 累积（含多波/增援）
     ...(battle.foeMounts && battle.foeMounts.length > 0 ? { foeMounts: [...battle.foeMounts] } : {}),
+    // 同序双语名对（2026-09-24）：战报按当前语言挑一列；缺省 ⇒ 回落中文名数组
+    ...(battle.foeMountNamePairs && battle.foeMountNamePairs.length > 0
+      ? { foeMountNamePairs: [...battle.foeMountNamePairs] }
+      : {}),
     ammoUsed,
     dronesGone,
     summary: opts.summary,
@@ -5540,6 +5695,8 @@ export function advanceBattleFor(
       }
       // 敌机机群随波重建（2026-09-11 机群批）：每波单位是新对象、tag 也不同 ⇒ 旧池自然作废
       initFoeDronePools(battle, curFoes);
+      // 挂载件「船体修理装置」账本（幂等）：新波里挂了这件的单位补账本，已在账上的**不重置计时**
+      initFoeRepairPulses(battle, curFoes);
       // 波次转场（2026-09-09 船长建议）：把战斗距离向开战距离回拉 waveReopenFrac 比例——
       // 增援从"更远的接战距离"进入，双方重新接近（重演接近期，kite/远程敌同样被拉回）；
       // 0 = 原地续战（旧行为），1 = 完整回到开战距离
@@ -5674,6 +5831,30 @@ export function advanceBattleFor(
         pulseFoeRepair(battle, foes, battle.foeRepair)
         battle.foeRepair.nextPulseAtMs += REPAIR_PULSE_MS
         guardF++
+      }
+    }
+    /**
+     * **挂载件「船体修理装置」脉冲**（船长 2026-09-24）：逐单位各按各的计时器（键 = 战斗 tag），
+     * 拍点与后勤脉冲同节拍（5 秒）、在受伤结算之后补跳（≤1 拍延迟）。
+     * 账本由开战/换波建档时按"真有单位挂了这件"建（缺省 ⇒ 本块直接跳过 ⇒ 零开销、零行为变化）。
+     */
+    if (!battle.ended && battle.foeRepairPulses) {
+      for (const f of foes) {
+        if (battle.ended) break
+        if (f.foeRepairPulse === undefined) continue
+        const ledger = battle.foeRepairPulses[f.tag]
+        if (!ledger) continue
+        let guardM = 0
+        while (
+          !battle.ended &&
+          ledger.nextPulseAtMs !== undefined &&
+          ledger.nextPulseAtMs <= battle.lastTickGameMs &&
+          guardM < BATTLE_MAX_STEPS
+        ) {
+          pulseFoeMountRepair(battle, f, ledger)
+          ledger.nextPulseAtMs += Math.max(1, Math.round(f.foeRepairPulse.everyMs))
+          guardM++
+        }
       }
     }
     /**
@@ -5855,6 +6036,33 @@ function initFoeDronePools(
     if (list.length > 0) pools[f.tag] = list
   }
   if (Object.keys(pools).length > 0) b.foeDronePools = pools
+}
+
+/**
+ * **建档「船体修理装置」逐单位账本**（船长 2026-09-24；挂件参数见 `FoeMountDef.repairPulse`）。
+ *
+ * 幂等：**只为"挂了这件、且账本里还没有"的单位补一条**（首跳 = 开战时刻 + `everyMs`）——
+ * 已存在的账本**原样保留**（战中的波次转场、增援入场、逐拍重建都不会把计时重置 ⇒ 不会白赚一跳）。
+ * 没有任何单位挂这件时**一个键都不建**（`battle.foeRepairPulses` 保持缺省 ⇒ tick 里那块直接跳过）。
+ */
+function initFoeRepairPulses(
+  b: import('./state').BattleState,
+  foes: readonly UnitSpec[],
+): void {
+  const need = foes.filter((f) => f.foeRepairPulse !== undefined)
+  if (need.length === 0) return
+  const ledgers = b.foeRepairPulses ?? {}
+  let added = false
+  for (const f of need) {
+    if (ledgers[f.tag]) continue
+    ledgers[f.tag] = {
+      nextPulseAtMs: b.startedAtGameMs + Math.max(1, Math.round(f.foeRepairPulse!.everyMs)),
+      pulses: 0,
+      healed: 0,
+    }
+    added = true
+  }
+  if (added) b.foeRepairPulses = ledgers
 }
 
 /** **单次出击（分批放飞）的"在空窗口"**（2026-09-12 船长「限制敌机单次出击数量」）——

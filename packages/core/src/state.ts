@@ -824,6 +824,11 @@ export interface BattleState {
    * **运行期字段、有意不入档**（战中重载即重建；见 `save.ts` 登记表）。
    */
   foeMounts?: string[];
+  /**
+   * **同序的「双语名对」**（2026-09-24 加；与 `foeMounts` 下标对齐 ⇒ 界面按当前语言挑一列）。
+   * 同样由 `seedUnit` 累积、**运行期字段、不入档**（缺省 ⇒ 显示层回退中文名数组）。
+   */
+  foeMountNamePairs?: ReadonlyArray<readonly [string, string]>;
   /** 逐单位冲锋运行态（键 = 战斗 tag：`foe-0` / `w0-foe-2` / `w1-foe-0-e1`，同一场内唯一） */
   foeCharges?: Record<string, { on?: boolean; cdUntilMs?: number }>;
   /**
@@ -890,6 +895,17 @@ export interface BattleState {
    * - `healed` = 累计实际修好的点数（供战报/读数用）。
    */
   foeRepair?: { nextPulseAtMs?: number; pulses: number; healed: number }
+  /**
+   * **挂载件「船体修理装置」的逐单位脉冲账本**（船长 2026-09-24：「**给G族添加挂载件：船体修理装置。
+   * 每5秒恢复5装甲和5结构**，会吃威胁的加成」）——键 = **战斗 tag**：
+   * `{ nextPulseAtMs, pulses, healed }`，每 `everyMs`（5 秒）给**该单位自己**回
+   * `round(5 × k)` 装甲与结构（各层夹满值），`k` = 本层本次实际威胁 ÷ 45（见 `UnitSpec.foeRepairPulse`）。
+   *
+   * **只在该单位真挂了这件时才建**（缺省不写 ⇒ tick 里那一块直接跳过 ⇒ 零开销、零行为变化）。
+   * ⚠ **必须随档**（与 `foeRepair`/`repair`/`shieldCharge` 同款理由）：漏了会让战中重载后
+   * 敌方修理计时重置 = **白赚一跳**（2026-09-20 护盾充能力场那次报障的同型坑）。
+   */
+  foeRepairPulses?: Record<string, { nextPulseAtMs?: number; pulses: number; healed: number }>
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = **`舰tag:武器条目下标`**（仅 src='drone' 的条目）；开战由 startBattleFor /
    *  startFleetBattleFor **逐舰**写入（2026-09-14 船长「逐舰机群」）。
@@ -1094,6 +1110,8 @@ export interface BattleReportRecord {
   /** **本场敌方挂载件名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——去重后的展示名列表；
    *  `undefined`/空 = 本场敌人没挂任何件（老档同样缺省 ⇒ 战报回落不显示这一行） */
   foeMounts?: readonly string[]
+  /** **同序的「双语名对」**（2026-09-24；与 `foeMounts` 下标对齐）——战报按当前语言挑一列 */
+  foeMountNamePairs?: ReadonlyArray<readonly [string, string]>
   /** **本场弹药消耗**（按弹种；= 开战预载 − 战后余额，四类战斗都算得出） */
   ammoUsed: { kin: number; exp: number; pla: number }
   /** **机群净损失架数**（判「惨胜」的第二个依据；0 = 无损或本场没有机群） */

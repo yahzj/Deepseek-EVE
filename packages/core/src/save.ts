@@ -426,6 +426,10 @@ const BATTLE_FIELDS = {
   // 2026-09-16 船长：敌方后勤账本（每 5 秒一跳的计时 + 累计修复量）——**必须随档**：
   // 漏了会让战中重载后敌方修理计时重置（= 白赚一跳），与 `repair`/`shieldCharge` 同理。
   foeRepair: { kind: 'persist' },
+  // 2026-09-24 船长：挂载件「船体修理装置」逐单位脉冲账本（键 = 战斗 tag）——**必须随档**：
+  // 漏了会让战中重载后敌方修理计时重置（= 白赚一跳），与 `repair`/`shieldCharge`/`foeRepair` 同理
+  // （2026-09-22「随档字段两处落笔」规则：写入点 = combat.initFoeRepairPulses，白名单 = cleanBattle）。
+  foeRepairPulses: { kind: 'persist' },
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
@@ -464,6 +468,10 @@ const BATTLE_FIELDS = {
   foeMounts: {
     kind: 'runtime',
     why: '敌方挂载件名清单（2026-09-16 加）：只给战报/悬停渲染；战中重载即由 seedUnit 重建 ⇒ 不入档',
+  },
+  foeMountNamePairs: {
+    kind: 'runtime',
+    why: '同上那份清单的「双语名对」（2026-09-24 加）：纯显示快照，随 foeMounts 一起由 seedUnit 重建 ⇒ 不入档',
   },
   meVolleyDmg: {
     kind: 'runtime',
@@ -576,18 +584,14 @@ function cleanBattle(raw: unknown): BattleState | null {
    * **敌方后勤账本**（2026-09-16 船长）：`{ nextPulseAtMs, pulses, healed }`——整块缺/坏 ⇒ undefined
    * （零迁移：老档在途战斗本来就没有敌方后勤舰）。`pulses`/`healed` 取有限非负整数，`nextPulseAtMs` 可缺省。
    */
-  const foeRepair = (() => {
-    const r = asRaw(b.foeRepair)
-    if (Object.keys(r).length === 0) return undefined
-    const next = numf(r.nextPulseAtMs, 0)
-    const out: NonNullable<import('./state').BattleState['foeRepair']> = {
-      pulses: Math.max(0, Math.floor(numf(r.pulses, 0))),
-      healed: Math.max(0, numf(r.healed, 0)),
-    }
-    if (next > 0) out.nextPulseAtMs = Math.floor(next)
-    return out
-  })()
+  const foeRepair = cleanFoeRepairLedger(b.foeRepair)
   const shieldChargeBy = cleanLedgerMap(b.shieldChargeBy, cleanShieldCharge)
+  /**
+   * **挂载件「船体修理装置」逐单位账本**（2026-09-24 船长）：键 = 战斗 tag
+   * （敌方 tag 形如 `foe-0` / `w1-foe-0`）。值与 `foeRepair` 同形 ⇒ **共用同一条清洗器**。
+   * ⚠ **必须随档**（登记表里也是 `persist`）：漏了会让战中重载**敌方修理计时重置 = 白赚一跳**。
+   */
+  const foeRepairPulses = cleanLedgerMap(b.foeRepairPulses, cleanFoeRepairLedger)
   /** 力场账本（2026-09-20 新增；与 `shieldChargeBy` 分开：冷却按件、受益方是全队） */
   const shieldFieldBy = cleanLedgerMap(b.shieldFieldBy, cleanShieldField)
   const dronePools = cleanDronePools(b.dronePools)
@@ -673,6 +677,7 @@ function cleanBattle(raw: unknown): BattleState | null {
     ...(shieldFieldBy !== undefined ? { shieldFieldBy } : {}),
     // 2026-09-16 敌方后勤账本（丢了 ⇒ 战中重载后敌方修理计时重置）
     ...(foeRepair !== undefined ? { foeRepair } : {}),
+    ...(foeRepairPulses !== undefined ? { foeRepairPulses } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
@@ -964,6 +969,28 @@ function cleanShieldField(raw: unknown): BattleShieldFieldLedger | undefined {
   const streams = cleanPulseStreams(r)
   if (!streams) return undefined
   return { streams, pulses: Math.floor(cleanPosNum(r.pulses) ?? 0) }
+}
+
+/**
+ * **单份「修理脉冲账本」清洗**（`{ nextPulseAtMs?, pulses, healed }`）：整块缺/坏 ⇒ `undefined`
+ * （零迁移）。`pulses`/`healed` 取有限非负整数（`healed` 允许小数，与累计量同精度），
+ * `nextPulseAtMs` 只在正数时写。
+ *
+ * 两个消费方**共用本函数**（口径不许各写一份）：
+ * ① `battle.foeRepair`（敌方后勤舰，2026-09-16）；
+ * ② `battle.foeRepairPulses[tag]`（挂载件「船体修理装置」逐单位，2026-09-24）。
+ */
+function cleanFoeRepairLedger(
+  v: unknown,
+): NonNullable<import('./state').BattleState['foeRepair']> | undefined {
+  const r = asRaw(v)
+  if (Object.keys(r).length === 0) return undefined
+  const next = typeof r.nextPulseAtMs === 'number' && Number.isFinite(r.nextPulseAtMs) ? r.nextPulseAtMs : 0
+  const pulses = typeof r.pulses === 'number' && Number.isFinite(r.pulses) ? Math.max(0, Math.floor(r.pulses)) : 0
+  const healed = typeof r.healed === 'number' && Number.isFinite(r.healed) ? Math.max(0, r.healed) : 0
+  const out: NonNullable<import('./state').BattleState['foeRepair']> = { pulses, healed }
+  if (next > 0) out.nextPulseAtMs = Math.floor(next)
+  return out
 }
 
 /**

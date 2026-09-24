@@ -83,7 +83,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // 本档基准之下（340 × 1.10 × 0.9 = 337 < 340）——违反船长 2026-09-11「A 族速度都快…每档都必须高于基准」。
     // 旧值 0.9 的来历：当年体检把 hidden 卡**整类**豁免，而洞内三张卡恰好都是 hidden ⇒ 一直没被查到；
     // 现契约收窄成只豁免迁移守恒反算的 `enc-pirate-*` 旧模板，本卡按 **374 m/s（1.28×）** 过线。
-    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate] }],
+    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -156,7 +156,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // 混伤 8:2（主动能 / 副爆炸 = G 族蜂群炮台构成）
     dmgMix: { kinetic: 8, explosive: 2 },
     // 编成 = **围攻残兵舰 ×3**（船长 2026-09-15：「**G浅层为围攻残兵舰*3**」，T1 蜂群压制）
-    ships: [{ ship: FOE_G_SWARM_SKIFF, count: 3 }],
+    ships: [{ ship: FOE_G_SWARM_SKIFF, count: 3, mounts: [FOE_MOUNT_IDS.hullRepair] }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -219,7 +219,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     //   （这正是「想配异质编成时写条目覆写、不让卡面失真」的既有正解）。
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
-      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate] }, // 同上：不给护卫舰压 speedMul
+      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] }, // 同上：不给护卫舰压 speedMul
       /**
        * ⟪2026-09-24 船长令⟫「**你将这两张卡单独改为 orbit，其他不要调整**」——**条目级覆盖**（`tactic` 的层级
        * 是「条目 > 舰级」，卡面不参与，见 `combat.foeTactic` 解析）：本卡的快艇按 **orbit** 打，
@@ -228,7 +228,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
        * 开局被绑到玩家的中距离，长射程配装下会落在海盗射程之外——船长 2026-09-24 报障现场）。
        * ⚠ **冲锋挂载件保留**（`chargePirate`）⇒「进去就得挨打」的张力不丢。
        */
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
     ],
     standingReq: 0,
     standingGain: 0,
@@ -253,14 +253,16 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
       // ⟪2026-09-24 船长令⟫ 本卡同样**条目级**改为 orbit（头目与快艇两条），只动本卡；见上层卡同款注释
-      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, tactic: 'orbit', mounts: [FOE_MOUNT_IDS.chargePirate] },
+      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, tactic: 'orbit', mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
       // **新舰「劫掠电子舰」×1**（船长 2026-09-16）——改编成 头目×1 + 电子舰×1 + 快艇×2：
       // 单位数仍 4 ⇒ 本层本档的**总威胁预算不变**，只是把一条快艇换成电子战支援舰。
       // ⚠ **两件挂载件都写在本条目上**（2026-09-19 船长：「海盗电子舰的冲锋也移除，只在洞内单独挂载」）：
       // 有效挂载是 `条目 ?? 舰级`（**替换**不是叠加）⇒ 舰级已清空，冲锋与捕获网必须**两件都写**，
       // 只写冲锋会顶掉捕获网。
-      { ship: FOE_SHIP_PIRATE_RAIDER, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb] },
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate] },
+      // ⚠ **三件都在这一条上**（2026-09-24 加姿态陀螺仪，船长「**电子舰也要挂**」）——同款理由：
+      // 漏写任一件就等于把那件从这条编成里删掉（条目**替换**舰级，不是叠加）。洞内该舰 ⇒ 闪避 0.30 → **0.40**。
+      { ship: FOE_SHIP_PIRATE_RAIDER, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb, FOE_MOUNT_IDS.gyroStabilizer] },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
     ],
     standingReq: 0,
     standingGain: 0,
@@ -458,7 +460,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     foeTargeting: 'random',
     dmgMix: { kinetic: 8, explosive: 2 },
     // 编成 = **残响残舰 ×2**（船长 2026-09-15：「**中层为残响残舰*2**」，T2 orbit 环绕）
-    ships: [{ ship: FOE_G_ECHO_REMNANT, count: 2 }],
+    ships: [{ ship: FOE_G_ECHO_REMNANT, count: 2, mounts: [FOE_MOUNT_IDS.hullRepair] }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
@@ -477,7 +479,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     dmgMix: { kinetic: 8, explosive: 2 },
     // 编成 = **亡军战列舰 ×1**（船长 2026-09-15：「**高层为亡军战列舰*1**」＋「G族战列可以添加机群」→「挂」）
     // 该舰级本批**由"空置壳体"转为启用**，并挂蜂群机 ×3（动能 + 等离子 + 爆炸，三系齐备、无后备）。
-    ships: [{ ship: FOE_G_EXILE_BATTLESHIP, count: 1 }],
+    ships: [{ ship: FOE_G_EXILE_BATTLESHIP, count: 1, mounts: [FOE_MOUNT_IDS.hullRepair] }],
     standingReq: 0,
     standingGain: 0,
     rewardIsk: 0,
