@@ -2550,13 +2550,6 @@ function normalizeState(raw: unknown): GameState {
       ...(r.allExplored === true ? { allExplored: true } : {}),
       // 起手道具已发放（2026-09-21：任务开始时给道具的去重键；只在 true 时写，零迁移）
       ...(r.started === true ? { started: true } : {}),
-      /**
-       * 打捞器兜底补发已给过（2026-09-22 · 临时补丁的去重键；只在 true 时写，零迁移）。
-       * ⚠ **必须在这里带上**（**2026-09-22 船长报障**：「**玩家刷新可以重复领取补发的打捞器**」）——
-       * 本函数是**手工白名单重建** `importantTasks`，漏一个键＝读档即丢，下一拍 `backfillSalvagerIfMissing`
-       * 就又补一台（刷新一次 +1 台）。同款前车之鉴：`wormhole.run` 漏 `turnsBase/turnsTechBonus`。
-       */
-      ...(r.salvagerGift === true ? { salvagerGift: true } : {}),
     }
   }
 
@@ -2594,7 +2587,8 @@ function normalizeState(raw: unknown): GameState {
    * **铁人模式**（**2026-09-23 船长令**：「**和玩家讨论了下，发现好像搞一个铁人模式更受欢迎**」）。
    *
    * 白名单重建（**新加随档字段必须在这里落一笔**——漏了就是"刷新即丢"那一类缺陷，见本文件
-   * `importantTasks.salvagerGift` 与 `wormhole.run.turnsBase` 两次前车之鉴）：
+   * `importantTasks` 那次（2026-09-22 打捞器补发去重键，该临时补丁已于 2026-09-24 拆除）
+   * 与 `wormhole.run.turnsBase` 两次前车之鉴）：
    * - `on`：只认 `true`（缺省/其它值 ⇒ false = 普通档）；
    * - `seq`：**存档代次**（非负有限整数；缺省 ⇒ 0）——**必须随档**，它是"铁人档装载闸门"的一半
    *   （另一半是存档之外的账本，主进程读写）；

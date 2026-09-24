@@ -131,40 +131,6 @@ export interface ClaimFirstTaskResult {
   started?: string[]
 }
 
-/** 打捞器 MK1（`mod-salvager-1`）——「第一次打捞残骸」的起手道具，也是本次全员补发的那一件 */
-const SALVAGER_MODULE_ID = 'mod-salvager-1'
-
-/**
- * **打捞器全员补发（⚠ 临时补丁）**（**2026-09-22 船长令**：「**玩家依旧出现被打捞器卡进度的情况，给所有玩家
- * 发一个打捞器 MK1 吧。**」→ 追问后定为：「**这次补发直接所有人无条件发，发放完成后下次更新删除补发。**」）。
- *
- * 治的是什么：`mod-salvager-1` 是「第一次打捞残骸」的**起手道具**（轮到那条时发），而**在"起手道具"上线之前
- * 就已经走过那条任务的老档**永远拿不到它 ⇒ 卡在"打捞要打捞器"这道门上。
- *
- * **口径（船长第二次口径：无条件）**：
- * - **不看手上有没有**（已经有打捞器的档**也照发一台**）· **不看任务走到哪一步**（新档也发）⇒ 真"所有人无条件"；
- * - **每个档只发一次**：去重键 = `importantTasks['first-salvage'].salvagerGift`（只在真发过那一刻写）；
- * - 发放去向 = **装备库**（与起手道具同一个口袋），写一条日志（`core.firstRewards.008`）。
- *
- * ⚠⚠ **下一次更新时删掉本函数**（船长明令）——拆除清单：
- * ① 删本函数 ② 删 `engine.ts` 里那一行调用 ③ 删 `ImportantTaskState.salvagerGift` 字段与注释
- * ④ 删 `first-tasks.test.ts` 里那两条用例 ⑤ 删 roadmap「未完成功能清单」里登记的那一行。
- * （已发出的装备**不回收**；老档里那个去重键留着无害——它只是个布尔标记。）
- *
- * 返回本次是否真的发了。
- */
-export function backfillSalvagerIfMissing(state: GameState, ctx: SimContext): boolean {
-  if (state.importantTasks['first-salvage']?.salvagerGift === true) return false
-  state.moduleBay[SALVAGER_MODULE_ID] = (state.moduleBay[SALVAGER_MODULE_ID] ?? 0) + 1
-  state.importantTasks['first-salvage'] = {
-    ...(state.importantTasks['first-salvage'] ?? {}),
-    salvagerGift: true,
-  }
-  const name = ctx.modules.get(SALVAGER_MODULE_ID)?.name ?? '打捞器 MK1'
-  addLog(state, 'trade', `已补发 ${name} ×1（装到驾驶船的高槽就能开始打捞）。`, 'core.firstRewards.008', { p1: name })
-  return true
-}
-
 /**
  * **玩家点「完成」**（**2026-09-21 船长令**：「第一次任务不要自动完成。要让玩家回到任务中心点击完成
  * 才开始下一步」）——任务链上**唯一的推进口**，校验 → 写 `done` → 发完成奖励 → 发下一条的起手道具。
