@@ -194,6 +194,12 @@ export const FOE_DRONE_H_HEAVY: FoeDroneDef = {
   damageType: 'explosive', // 与 H 族导弹线同源
   hitRate: 0.85,
   falloff: 1, // 攻坚机档：命中不随距离衰减
+  /**
+   * ⚠ **近盲带口径（不必在本表写字段）**：敌方机群的武器条目由引擎统一建为 `minRangeM: 1`
+   * （见 `combat.createFoeSpecsFromShips` 的 `droneWeapons`）+ **无 `blindDmgMul` ⇒ 走引擎缺省 0.3**
+   * ⇒ 贴到 1 m 也打，但只打三成。**本机型与全游其它机群（E 警戒机 / G 蜂群机 / C 孢群机）同口径**，
+   * 故 2026-09-24 船长选「与 E 族口径统一」时**机群侧零改动**（原报告把它算进"无视近盲"是读错了）。
+   */
   maxRangeM: 7000, // 远距压制（与 G 蜂群同档）
   reloadMs: 3600, // 少架数下仍能持续输出
 }

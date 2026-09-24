@@ -216,6 +216,25 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
     }
     expect(sawJammer, `干扰舰那一波没进到 ⇒ 这条用例白测（ended=${b.ended} waveIdx=${b.waveIdx}）`).toBe(true)
   })
+  it('H 族 · 导弹线的**近盲带口径**：三条船体（鱼雷舰 / 战巡 / 母舰）都是 ×0.3（船长 2026-09-24 选「与 E 族口径统一」）', () => {
+    /**
+     * 背景：H 族初版沿用 E 族 **2026-09-15** 那套「导弹 = `blindDmgMul: 1`（贴进近界也打满）」，
+     * 而 E 族在 **2026-09-19** 已被船长改成「四条统一近盲 **0.3**」（`foe-missile-hulk` 头注有记录）。
+     * 船长 2026-09-24 追问出处后选**与 E 族统一** ⇒ 三条船体从 1 改 0.3。
+     * ⚠ **机群（墨潮重袭机）不在本条内**：敌方机群武器由引擎统一建为 `minRangeM: 1` 且**不写**
+     * `blindDmgMul` ⇒ 一律走引擎缺省 **0.3**，与 E/G/C 三族机群同口径 ⇒ 机群侧零改动。
+     */
+    for (const id of ['foe-h-ink-torpedo', 'foe-h-ink-battlecruiser', 'foe-h-ink-flagship']) {
+      expect(shipOf(id)!.blindDmgMul, id).toBe(0.3)
+      expect(specsOf(id)[0]!.weapons[0]!.blindDmgMul, id).toBe(0.3)
+    }
+    // 对照：H 族**炮台线**两条本来就是 0.3（族内口径一致）
+    for (const id of ['foe-h-ink-jammer', 'foe-h-ink-corvette']) expect(shipOf(id)!.blindDmgMul, id).toBe(0.3)
+    // 机群侧：武器条目的近界 = 1（机群无"打不了"的近盲）+ 未写 blindDmgMul ⇒ 引擎缺省 0.3
+    const drone = specsOf('foe-h-ink-battlecruiser')[0]!.weapons.find((w) => w.src === 'drone')!
+    expect(drone.minRangeM).toBe(1)
+    expect(drone.blindDmgMul).toBeUndefined()
+  })
 })
 
 describe('H 族 · 墨潮突击舰（挂 A 族洞内电子舰同款两件）', () => {
@@ -260,10 +279,19 @@ describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
     ])
   })
 
-  it('4 旗舰部队：4 波（4 / 4 / 3 / 3）· 最后一波含入侵母舰', () => {
+  it('4 旗舰部队：4 波（4 / 4 / 3 / **4**）· 每波声明数 = 该波 `ships` 条目实际艘数 · 最后一波含入侵母舰', () => {
     const c = card('ink-flagship')
     expect(c.name).toBe('墨潮旗舰部队')
-    expect(c.waves!.map((w) => w.units)).toEqual([4, 4, 3, 3])
+    expect(c.waves!.map((w) => w.units)).toEqual([4, 4, 3, 4])
+    /**
+     * **波声明数必须与 `ships` 实际编成一致**（船长 2026-09-24 追问「5艘船哪来的？」时抓到 `waves[3].units`
+     * 写着 3、而该波实际 4 条条目 ⇒ 已改齐）。`waves[].units` 对"写了 `ships` 的卡"是**惰性**的
+     * （出场与波血全走 `ships`），但它是**预估胜率的"峰值波小队数"**来源 ⇒ 对不上会高估/低估胜率。
+     */
+    c.waves!.forEach((w, i) => {
+      const roster = (c.ships ?? []).filter((s) => (s.wave ?? 0) === i).reduce((n, s) => n + (s.count ?? 1), 0)
+      expect(w.units, `第 ${i + 1} 波声明 ${w.units} vs 实际编成 ${roster}`).toBe(roster)
+    })
     const w3 = c.ships!.filter((s) => s.wave === 3).map((s) => [s.ship.name, s.count])
     expect(w3).toContainEqual(['墨潮入侵母舰', 1])
     expect(w3).toContainEqual(['墨潮干扰舰', 1])
@@ -275,7 +303,7 @@ describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
     const c = card('ink-flagship')
     const kept = applyFoeOverride(c, { threat: 120, keepCardWaves: true, waves: [{ units: 4, hpShare: 0.25 }] })
     expect(kept.threat).toBe(120)
-    expect(kept.waves!.map((w) => w.units)).toEqual([4, 4, 3, 3]) // 卡自己的
+    expect(kept.waves!.map((w) => w.units)).toEqual([4, 4, 3, 4]) // 卡自己的
     const overwritten = applyFoeOverride(c, { threat: 120, waves: [{ units: 4, hpShare: 0.25 }] })
     expect(overwritten.waves!.map((w) => w.units)).toEqual([4]) // 老行为：被覆写
   })

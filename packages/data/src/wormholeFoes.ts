@@ -574,9 +574,14 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
     { units: 2, hpShare: 0.5 },
     { units: 3, hpShare: 0.5 },
   ],
+  /**
+   * ⚠ **鱼雷舰回调 T2 的连带重标**（2026-09-24 船长追问「墨潮鱼雷舰原先不是T2吗」⇒ 见 `foe-ships.ts`
+   * 该舰头注）：舰级血 900→480、单发 124→60 ⇒ 本卡这两条按"该波总血/总单发守恒"重标
+   * （`hpMul`/`dmgMul` 各乘 900/480 ≈ 1.875 与 124/60 ≈ 2.067）。**卡片强度不变、只改乘数**。
+   */
   ships: [
     { ship: FOE_H_INK_CORVETTE, count: 2, wave: 0, hpMul: 0.084, dmgMul: 0.067, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.056, dmgMul: 0.045 },
+    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.081, dmgMul: 0.075 },
   ],
   standingReq: 0,
   standingGain: 0,
@@ -605,11 +610,15 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
     { units: 3, hpShare: 0.5 },
     { units: 4, hpShare: 0.5 },
   ],
+  /**
+   * ⚠ **鱼雷舰回调 T2 的连带重标**（同上：舰级 900/124 → 480/60）：鱼雷舰那两条的 `hpMul`/`dmgMul`
+   * ×1.875 / ×2.067 ⇒ `0.056/0.045 → 0.105/0.093`；**该波总血/总单发守恒**（61/12 → 202/39 不变）。
+   */
   ships: [
     { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 0.056, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.056, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 1, hpMul: 0.018, dmgMul: 0.0145 },
-    { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 0.056, dmgMul: 0.045 },
+    { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 0.105, dmgMul: 0.093 },
   ],
   standingReq: 0,
   standingGain: 0,
@@ -640,18 +649,23 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
     { units: 4, hpShare: 0.2 },
     { units: 4, hpShare: 0.25 },
     { units: 3, hpShare: 0.25 },
-    { units: 3, hpShare: 0.3 },
+    { units: 4, hpShare: 0.3 }, // ⚠ 原写 3：与 `ships` 里第 3 波的 4 条条目不符（船长 2026-09-24 追问后改齐）
   ],
+  /**
+   * ⚠ **鱼雷舰回调 T2 的连带重标**（同上）：鱼雷舰 ×1.875/×2.067（`0.047/0.032 → 0.088/0.066`）；
+   * 第 1 波另加**干扰舰按档重标**（T3 血 900 在同波里比 T2 鱼雷舰厚近一倍 ⇒ 按 2:2:1 权重
+   * 重分该波血量，`0.047 → 0.0357`），使该波总血仍 ≈151（回调前读数 169，差值来自逐单位取整）。
+   */
   ships: [
     { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 0.071, dmgMul: 0.0475, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.047, dmgMul: 0.032 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.047, dmgMul: 0.032 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 0.047, dmgMul: 0.032, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.088, dmgMul: 0.066 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.0357, dmgMul: 0.029 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 0.0357, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 0.015, dmgMul: 0.0105 },
     { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 0.011, dmgMul: 0.008 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 0.047, dmgMul: 0.032, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 0.0357, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 3, hpMul: 0.015, dmgMul: 0.0105 },
-    { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 0.047, dmgMul: 0.032 },
+    { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 0.088, dmgMul: 0.066 },
   ],
   standingReq: 0,
   standingGain: 0,

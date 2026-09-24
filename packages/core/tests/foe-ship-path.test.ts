@@ -369,10 +369,19 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // H 族（墨潮帮 · 2026-09-24 船长细化五档：干扰舰/突击舰/鱼雷舰/战列巡洋舰/入侵母舰）
       { id: 'foe-h-ink-jammer', tier: 3, speed: 374 }, // 258 × 1.45
       { id: 'foe-h-ink-corvette', tier: 1, speed: 357 }, // 340 × 1.05
-      { id: 'foe-h-ink-torpedo', tier: 3, speed: 374 }, // 258 × 1.45
+      { id: 'foe-h-ink-torpedo', tier: 2, speed: 339 }, // 295 × 1.15（船长 2026-09-24 追问「原先不是T2吗」⇒ 回调 T2）
       { id: 'foe-h-ink-battlecruiser', tier: 4, speed: 369 }, // 205 × 1.8
       { id: 'foe-h-ink-flagship', tier: 5, speed: 310 }, // 155 × 2.0
     ])
+    /**
+     * **H 族五档必须齐备（T1~T5 一档不落）**——2026-09-24 船长追问「墨潮鱼雷舰原先不是T2吗？」抓到的洞：
+     * 「逐条细化」那一版把鱼雷舰连带抬成 T3 ⇒ H 族一度只有 T1/T3/T3/T4/T5（**缺 T2**）。
+     * 按"五档壳体"的设计意图（`docs/design/weekend-invasion-m2-20260924.md`）逐档钉死。
+     */
+    const inkTiers = FOE_SHIPS.filter((s) => s.family === 'H')
+      .map((s) => s.hullClassTier)
+      .sort()
+    expect(inkTiers).toEqual([1, 2, 3, 4, 5])
   })
 
   it('E 族「导弹残段」：基础射程 3,000~11,000m ＋ 挂**自己的**「巨构齐射观瞄」（从射程外挨打 ⇒ ×1.5）', () => {
