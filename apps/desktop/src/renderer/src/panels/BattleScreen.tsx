@@ -2686,7 +2686,7 @@ const meSpeedRef = useRef(200)
                   <span className="app-bts-reload-track">
                     <i
                       className="app-bts-reload-fill"
-                      style={{ width: `${pct}%`, background: ready ? 'rgb(var(--wui-tone-heal))' : dotColor }}
+                      style={{ width: `${pct}%`, background: ready ? 'rgb(var(--wui-heal))' : dotColor }}
                     />
                   </span>
                   <span className="app-bts-reload-ms">
@@ -2706,7 +2706,7 @@ const meSpeedRef = useRef(200)
                     : tr("ui.BattleScreen.095", { p1: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) })
                 }
               >
-                <i className="app-bts-reload-dot" style={{ background: thruster.boosting ? 'rgb(var(--wui-tone-heal))' : 'rgb(var(--wui-dim))' }} />
+                <i className="app-bts-reload-dot" style={{ background: thruster.boosting ? 'rgb(var(--wui-heal))' : 'rgb(var(--wui-dim))' }} />
                 <span className="app-bts-reload-name">{tr("ui.BattleScreen.004")}</span>
                 <span className="app-bts-reload-track">
                   <i
@@ -2717,7 +2717,7 @@ const meSpeedRef = useRef(200)
                           ? 100
                           : Math.min(100, Math.max(0, (1 - thruster.remainMs / Math.max(1, engine.ctx.balance.battle.thrusterCooldownMs)) * 100))
                       }%`,
-                      background: thruster.boosting ? 'rgb(var(--wui-tone-heal))' : 'rgb(var(--wui-dim))',
+                      background: thruster.boosting ? 'rgb(var(--wui-heal))' : 'rgb(var(--wui-dim))',
                     }}
                   />
                 </span>
