@@ -2060,6 +2060,16 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
  */
 export type GameState = GameStateV31 & {
   resupplyFromWarehouse?: boolean
+  /**
+   * **实战胜利记录**（**2026-09-24 船长令**：「记录残血最多的一次，如果都是满血则不覆盖。夹回当前射程内。」
+   * ＋「③按敌卡」）——键 = **敌卡 id**；值 = 那一次的期望距离与**剩余比例**（（装甲+结构）÷ 满值）。
+   *
+   * - **只由实战胜利写入**（悬赏结算那一处）；**评估里的模拟胜负绝不写入**（评估是只读克隆）；
+   * - **只在剩余比例更高时覆盖**（相等不写 ⇒ 幂等）；满血即上限（"都是满血则不覆盖"）；
+   * - 消费方 = 胜率预估：该卡有记录 ⇒ **取代三点采样**，只用这个距离（**夹回当前射程内**）。
+   * - 可选字段 ⇒ 老档零迁移。
+   */
+  winRecord?: Record<string, { desireM: number; remainPct: number }>
 }
 
 /**

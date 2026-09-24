@@ -649,7 +649,13 @@ export class GameEngine {
     return run() // 二击：当前活动已停 ⇒ 原指令重跑一次
   }
 
-  /** 战力指纹：驾驶船 + 装配 + 无人机清单 + 技能 + 当前耐久（任一变化 → 全板胜率失效重算） */
+  /**
+   * 战力指纹：驾驶船 + 装配 + 无人机清单 + 技能 + 当前耐久（任一变化 → 全板胜率失效重算）。
+   * **2026-09-24 补三项**（船长令重做预估口径后，这三样都会改变评估结果，漏掉就会吃到过期缓存）：
+   * ① **弹药档位**（`ammoPref`，「弹药采用玩家当前选择弹药」）· ② **取用开关**（`resupplyFromWarehouse`，
+   * 决定评估把补给料放进仓库还是货仓）· ③ **实战胜利记录**（`winRecord`：有记录的卡改用记录距离，
+   * 打完一场回来必须重算）· ④ 窝点档位/派系活跃（`buildEvalState` 会带进快照 ⇒ 同一把尺子）。
+   */
   private winFingerprint(): string {
     const st = this.state
     const uid = st.shipId
@@ -657,7 +663,7 @@ export class GameEngine {
     const tr = st.skills.trained
     let sk = ''
     for (const k of Object.keys(tr).sort()) sk += `${k}:${tr[k]};`
-    return `${uid}|${f?.defId}|${f?.armorPct ?? 1}|${f?.durability ?? 1}|${JSON.stringify(f?.fitted ?? {})}|${JSON.stringify(f?.droneLoad ?? null)}|${sk}`
+    return `${uid}|${f?.defId}|${f?.armorPct ?? 1}|${f?.durability ?? 1}|${JSON.stringify(f?.fitted ?? {})}|${JSON.stringify(f?.droneLoad ?? null)}|${JSON.stringify(f?.ammoPref ?? null)}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(st.winRecord ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
   }
 
   /**

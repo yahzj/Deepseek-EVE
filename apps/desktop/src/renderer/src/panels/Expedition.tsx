@@ -2066,21 +2066,30 @@ function AnomalyCard({
   const factionHit = isFactionBounty(state, anomaly)
   const shownCard = factionHit ? factionAnomalyOf(anomaly) : anomaly
   const mc = factionHit ? null : engine.winEstimateOf(anomaly.id)
-  const fc = bountyDamageForecast(state, engine.ctx, shownCard) // 仅缓存未就绪/派系卡用
-  const armorLoss = mc ? mc.armorLoss : fc.armorLoss
-  const hullLoss = mc ? mc.hullLoss : fc.hullLoss
-  const pWin = mc ? mc.winRate * 100 : bountyWinPercentGuarded(state, engine.ctx, shownCard) * 100
   /**
-   * **不再夹到 98%**（**2026-09-23 船长报障**：「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
-   * 旧写法 `Math.min(98, …)` 把"全胜"也显示成 **98%** ⇒ 玩家读成"几乎必胜"，而实战仍会输
-   * （21 局的分辨率只有 4.8pp，三波 + 精锐首领那种长盘的尾部运气根本刻画不出来）。
-   * 现行：算出来多少就显示多少（上限自然 100%），**下限 2% 的"仍有希望"语义保留**；
-   * 局数已由 21 上调到 63（`BOUNTY_MC_RUNS`）。
-   * ⚠ 仍需下一步：**缓存没算完时**这里回退的旧解析口径自己也夹 98%（`combat.bountyWinPercentGuarded`）
-   * ⇒ 那一瞬间显示的数依然不可信，宜改成"计算中"。
+   * 派系活跃卡（2026-09-10 船长：「展示必须与实战一致」）：威胁/奖金都按 +10% 后的卡算，
+   * 而 MC 缓存按**未加成卡**建键 ⇒ 这张卡走带伤预警解析口径（与赏金任务卡同源）。
    */
-  const chance = Math.max(2, Math.round(pWin))
-  const chanceTone = chance >= 70 ? tr("ui.Expedition.318") : chance >= 40 ? tr("ui.Expedition.035") : tr("ui.Expedition.036")
+  const fc = factionHit ? bountyDamageForecast(state, engine.ctx, shownCard) : null
+  /**
+   * **算出来多少就显示多少；缓存没算完就显示「计算中」**（**2026-09-23 船长报障**：
+   * 「**胜率过于极端，98 胜率打噬口猎杀令连续失败**」）：
+   * ① 旧写法 `Math.min(98, …)` 把"全胜"也显示成 **98%** ⇒ 玩家读成"几乎必胜"，而实战仍会输；
+   *    现上限自然 100%（下限 2% 的"仍有希望"语义保留）。三处胜率显示（常驻悬赏卡 / 派系置顶卡 /
+   *    赏金任务卡）**同一口径**，不再有的地方夹、有的地方不夹。
+   * ② 缓存未就绪时**不再回退另一套尺子**（解析口径自己也夹 98%）⇒ 显示「计算中」，
+   *    预热完成后随 notify 变成实测推演读数（`BOUNTY_MC_RUNS`：三点各 10 局）。
+   * ③ 有实战胜利记录的卡按记录距离算（`state.winRecord`）⇒ 悬停附带**最差距离胜率**。
+   */
+  const pending = !factionHit && mc === null
+  const armorLoss = mc ? mc.armorLoss : fc?.armorLoss ?? 0
+  const hullLoss = mc ? mc.hullLoss : fc?.hullLoss ?? 0
+  const chance = mc
+    ? Math.max(2, Math.round(mc.winRate * 100))
+    : pending
+      ? null
+      : Math.max(2, Math.round(bountyWinPercentGuarded(state, engine.ctx, shownCard) * 100))
+  const chanceTone = chance === null ? '' : chance >= 70 ? tr("ui.Expedition.318") : chance >= 40 ? tr("ui.Expedition.035") : tr("ui.Expedition.036")
   const combatMs = anomaly.combatSeconds * 1000
   // 奖励/小时（2026-09-08：胜利自动返航——基准 = 目标星系最近已建成站；本地悬赏（目标=基准）
   // = 固定返港 120s；异星系 = 单程 × RETURN_LEG_MUL，2026-09-14 起 1×）——每单耗时 = 交火 + 返航
@@ -2222,10 +2231,20 @@ function AnomalyCard({
       <div className="app-ano-win">
         {tr("ui.Expedition.217")} {power} {tr("ui.Expedition.038")}{' '}
         <b
-          className={`app-win-${chanceTone}`}
-          title={tr("ui.Expedition.153", { p1: Math.round(armorLoss * 100), p2: Math.round(hullLoss * 100) })}
+          className={chance === null ? `app-dim` : `app-win-${chanceTone}`}
+          title={
+            mc
+              ? tr("ui.Expedition.426", {
+                  p1: Math.round(mc.armorLoss * 100),
+                  p2: Math.round(mc.hullLoss * 100),
+                  p3: Math.round(mc.worstWinRate * 100),
+                })
+              : pending
+                ? tr("ui.Expedition.425")
+                : tr("ui.Expedition.153", { p1: Math.round(armorLoss * 100), p2: Math.round(hullLoss * 100) })
+          }
         >
-          {Math.round(chance)}%
+          {chance === null ? tr("ui.Expedition.425") : `${Math.round(chance)}%`}
         </b>
         {!reqMet ? <span className="app-dim">{tr("ui.Expedition.320")} {standing}/{anomaly.standingReq}）</span> : null}
         {/* V17：敌方主伤害类型色 chip——护盾/装甲增强器按系配抗的换装依据
@@ -2767,7 +2786,8 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               const sec = factionGalaxy.security
               const fc2 = bountyDamageForecast(state, engine.ctx, boostCard)
               const pWin2 = bountyWinPercentGuarded(state, engine.ctx, boostCard, state.shipId) * 100
-              const chance2 = Math.min(98, Math.max(2, Math.round(pWin2)))
+              // 2026-09-23 船长：「不再夹到 98%」——三处显示同一口径（算出来多少显示多少）
+              const chance2 = Math.max(2, Math.round(pWin2))
               const tone2 = chance2 >= 70 ? tr("ui.Expedition.318") : chance2 >= 40 ? tr("ui.Expedition.035") : tr("ui.Expedition.036")
               const reward2 = factionBaseRewardIsk(factionCard)
               const inFlightSelf2 = state.expedition.active && state.expedition.anomalyId === faction.anomalyId
@@ -2927,7 +2947,8 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           const power = calcPower(state, engine.ctx)
           const fc = card ? bountyDamageForecast(state, engine.ctx, card) : null
           const pWin = card ? bountyWinPercentGuarded(state, engine.ctx, card, state.shipId) * 100 : 0
-          const chance = Math.min(98, Math.max(2, Math.round(pWin)))
+          // 2026-09-23 船长：「不再夹到 98%」——三处显示同一口径（算出来多少显示多少）
+          const chance = Math.max(2, Math.round(pWin))
           const chanceTone = chance >= 70 ? tr("ui.Expedition.318") : chance >= 40 ? tr("ui.Expedition.035") : tr("ui.Expedition.036")
           // 赏金 = 窝点奖金 + 任务酬金（胜利时**一起到账**）：2026-09-10 船长定——两张卡别写两个数，
           // 合并成一条「赏金」。窝点奖金含赏金猎手学系数（展示=到账），任务酬金为刷出时锁定值。
