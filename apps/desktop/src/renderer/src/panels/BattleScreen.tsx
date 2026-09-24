@@ -40,7 +40,7 @@ import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom, foeHangarByTag, foeHangarTotal,
   ROW2_BAR_DROP,
-  FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE,
+  FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE, POPUP_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
 } from './battleViewCore'
@@ -1768,8 +1768,10 @@ const meSpeedRef = useRef(200)
     ]
   })
 
-  /** 伤害飘字存活（战斗时钟毫秒；与弹道同一把尺 ⇒ 倍速跟着快、暂停即冻结） */
-  const POPUP_LIFE = 900
+  /**
+   * 伤害飘字元素（存活 = 模块级 `POPUP_LIFE`，见 `battleViewCore`；战斗时钟口径 ⇒ 倍速跟着快、暂停冻结）。
+   * ⚠ 常量**不许**写成这里的组件内 `const`：函数前段的清理 `.filter(...)` 会先读到它而崩（详见常量处注释）。
+   */
   const popupEls = popupsRef.current.map((p) => {
     // `miss` = 本拍该目标**一点伤害都没有**（真未命中）；有伤害就出数字（同拍里夹杂未命中也不影响）
     const miss = p.miss
