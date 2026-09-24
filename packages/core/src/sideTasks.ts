@@ -489,8 +489,15 @@ export function refundSpawnShock(state: GameState, goodKey: string): void {
 function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): void {
   const board = state.sideTasks
   board.window = boundaryMs
+  /**
+   * **快递任务：只有到 120 分钟的整点窗才重掷**（**2026-09-24 船长令**：「快递任务的周期和持续时间都为
+   * 120 分钟，资源任务不变」）。于是：资源族每 20 分钟整板换；快递族**原样保留**到下一个 120 分钟整点
+   * （= 存活恰好 120 分钟，到点与下一批同时换 ⇒ 整齐一批）。
+   * ⚠ 板子还没开过（快递族为空）时即使未到点也要生成，否则玩家开局要等满两小时才见到第一张快递。
+   */
+  const courierDue = courierDueAtWindow(boundaryMs) || (board.courier ?? []).length === 0
   board.resource = []
-  board.courier = []
+  if (courierDue) board.courier = []
   const pool = sideTaskCandidateGoods(state, ctx)
   if (pool.length <= 0) return
 
@@ -510,8 +517,9 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
     board.resource.push({ id: board.seq, kind: 'resource', goodKey: def.key, refId: def.refId, need, rewardIsk, level })
   }
 
-  // ── 快递任务：虚拟货物（只有体积），每单独立掷「普通 / 限时」 ──
-  const courierTargets = builtStationTargets(state, ctx)
+  // ── 快递任务：虚拟货物（只有体积），每单独立掷「普通 / 限时」──
+  // ⚠ 只在**到 120 分钟整点**（或板子还没开过）时重掷：其余窗保留上一批（存活 120 分钟）
+  const courierTargets = courierDue ? builtStationTargets(state, ctx) : []
   if (courierTargets.length > 0) {
     for (let i = 0; i < counts.courier; i += 1) {
       const level = levels[i % levels.length]!
