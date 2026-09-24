@@ -127,7 +127,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     subject: '档案补全 · 技能训练',
     body: [
       '技能按现实时间训练，队列排好就能一直练；「高效学习法」能压缩全部训练时间。',
-      '「AI 核心操作学」是调度副船与自动产线的前置，越早练越省事。',
+      '「AI 核心操作学」在「技能」页的「工程」里，切过去就能看到；它是调度副船与自动产线的前置，越早练越省事。',
       '随信附一枚基础 AI 核心，下一步派副船正好用得上。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-skill' },
