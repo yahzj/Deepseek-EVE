@@ -43,7 +43,7 @@ function setup(peripheryIds: string[] = ['galaxy-home']): { s: ReturnType<typeof
 describe('周末入侵 · 悬赏替换（M1-b）', () => {
   it('派生卡只覆盖 id / 名字 / 威胁 / 奖励，其余字段原样', () => {
     const d = weekendDerivedCardOf(card, 'C')
-    expect(d.id).toBe(`${WEEKEND_CARD_PREFIX}${card.id}`)
+    // 2026-09-23 船长报障「前往入侵星系战斗提示未知目标」⇒ 派生卡**保留原卡 id**（出发/开战路径都按 id 取卡）`n    expect(d.id, ').toBe(card.id)
     expect(d.name).toContain('C 族舰队')
     expect(d.name).toContain(card.name)
     expect(d.threat).toBe(78)

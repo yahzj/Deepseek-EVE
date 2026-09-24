@@ -1292,6 +1292,8 @@ export function App({ engine }: { engine: GameEngine }) {
             }}
             onOpenWormhole={openWormhole}
           />
+          {/* 周末入侵横幅（2026-09-23 船长令：放在活动窗口的右侧；绝对定位，不占布局流） */}
+          <WeekendInvasionBanner engine={engine} />
           {/**
            * ───── **主控活动窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
            *
@@ -1717,8 +1719,6 @@ export function App({ engine }: { engine: GameEngine }) {
 
       {/* 序章·苏醒：新档演出覆盖层（step 0；演出期间引擎时间冻结） */}
       {engine.state.onboarding.step === 0 ? <PrologueScreen engine={engine} /> : null}
-      {/* 周末入侵横幅（M1-c；只有本场活动存在时自渲染，调试模式限定） */}
-      <WeekendInvasionBanner engine={engine} />
 
       {/* 手机横屏：自绘下拉选项面板（值写回原生 select 并派发 change，保持各页 onChange 原样生效） */}
       {mobSel ? (

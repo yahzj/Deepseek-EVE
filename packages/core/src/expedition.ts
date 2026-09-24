@@ -11,7 +11,8 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
-import { weekendApplyBattleOutcome } from './weekendBattle'
+import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
+import { weekendAssaultThreatOf } from './weekendEvent'
 import { rareDropRateMulOf, rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
@@ -444,7 +445,19 @@ export function startExpeditionFromMining(
 /** 到港开战（主控）：开战时刻 = 到港时刻；目标距离 = **该星系**的设定，没设过则射程中段
  *  （2026-09-11 船长：按星系独立保存；`startBattleFor` 内单点解析，此处不再传全局偏好） */
 export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: string, shipId: string, arrivalGameMs: number): boolean {
-  const battle = startBattleFor(state, ctx, shipId, anomalyId, arrivalGameMs)
+  /** **周末入侵**：被占星系的悬赏战要打**入侵强度**（外围 78 / 核心 120，都是绝对值）⇒ 用覆写口传进去 */
+  const weekendAssault = weekendBattleInvolvedOf(state, ctx, anomalyId, Date.now())
+  const weekendThreat =
+    weekendAssault && state.weekendEvent ? weekendAssaultThreatOf(state.weekendEvent, weekendAssault.galaxyId) : undefined
+  const battle = startBattleFor(
+    state,
+    ctx,
+    shipId,
+    anomalyId,
+    arrivalGameMs,
+    undefined,
+    weekendThreat !== undefined ? { threat: weekendThreat } : undefined,
+  )
   if (!battle) return false
   const exp = state.expedition
   exp.phase = 'battle'
