@@ -31,6 +31,7 @@ import {
   shortestTravelMinutes,
   travelLegMs,
   travelMinutesEff,
+  tuningMulAt,
 } from '@whale/core'
 
 const ctx = buildSimContext()
@@ -103,13 +104,32 @@ console.log(
 )
 console.log(`\n对照：当日 5 席常规赏金若全清 = 档位件数（外围 1 / 核心 2 / 深层 3 各按抽到的档位）→ 约 8~11 件/天`)
 console.log(
-  `当前值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（船长 2026-09-20 改定；旧值 5% 已作废）`,
+  `当前值 FACTION_RARE_DROP_CHANCE = ${Math.round(FACTION_RARE_DROP_CHANCE * 100)}%（船长 2026-09-20 改定；旧值 5% 已作废）` +
+    `　· 保底 = 连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出必掉`,
 )
+/**
+ * **三档读数**（**2026-09-24 加**；起因＝船长报障「**敌对派系活跃的卡牌上，铁人模式的残骸掉率加成似乎没应用到？**」）。
+ *
+ * 病根：本工具与**卡面**此前都只印"裸常量折算"的 30.9% ⇒ **限时倍率与铁人 ×1.2 被挡在读数之外**
+ * （结算侧 `expedition.ts` 一直乘了乘区，机制没问题）。现按同一解析式 `factionRareDropEffectiveRate(p)` 逐档打印。
+ */
+const promo = tuningMulAt('rareWreckRate', Date.now())
+const rateRows: Array<[string, number]> = [
+  ['无加成（标称）', FACTION_RARE_DROP_CHANCE],
+  ['铁人（×1.2）', Math.min(1, FACTION_RARE_DROP_CHANCE * 1.2)],
+  [`限时倍率（此刻 ×${promo.toFixed(2)}）`, Math.min(1, FACTION_RARE_DROP_CHANCE * promo)],
+]
+console.log('  档位                          自然概率   实际率（含保底）   4h 刷     8h 刷')
+for (const [label, p] of rateRows) {
+  const eff = factionRareDropEffectiveRate(p)
+  console.log(
+    `  ${label.padEnd(28)}${String(Math.round(p * 100)).padStart(3)}%      ` +
+      `${(eff * 100).toFixed(1)}%           ≈${(avg4h * eff).toFixed(1)} 件    ≈${(((avg4h / 4) * 8) * eff).toFixed(1)} 件`,
+  )
+}
 console.log(
-  `保底（船长 2026-09-20「每 10 次必出一个」）：连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出必掉 ⇒ ` +
-    `**实际 ≈${(factionRareDropEffectiveRate() * 100).toFixed(1)}%/趟**（空手尾巴封在 ${FACTION_RARE_DROP_PITY_ROLLS - 1} 趟）；` +
-    `4h 刷 ≈${(avg4h * factionRareDropEffectiveRate()).toFixed(1)} 件 · 8h 刷 ≈${(((avg4h / 4) * 8) * factionRareDropEffectiveRate()).toFixed(1)} 件` +
-    `　→ 与上面"5 席赏金全清 ≈8~11 件/天"同级：派系活跃已是稀有残骸的**主力供给**之一（旧口径"不与赏金争主供给"作废）`,
+  '  → **卡面显示的是"当前档"那一行**（`Expedition.tsx` 走 `factionRareDropChanceOf(state)`，与结算同一函数）；' +
+    '派系活跃已是稀有残骸的**主力供给**之一（旧口径"不与赏金争主供给"作废）',
 )
 for (const p of [0.05, 0.1, 0.15, 0.2, 0.3, 0.4]) {
   const mark = Math.abs(p - FACTION_RARE_DROP_CHANCE) < 1e-9 ? ' ← 当前' : ''

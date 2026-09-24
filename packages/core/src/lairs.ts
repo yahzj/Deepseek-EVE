@@ -18,6 +18,15 @@
  * 集中在文件顶部，等船长定数后改这里一处即可。
  */
 import type { AnomalyDef, DamageType, FoeFamily } from './types'
+import type { GameState } from './state'
+/**
+ * ⚠ **运行时 import**（2026-09-24 加）：为了把"当前实际掉落率"收成**同一个口径**。
+ * 依赖链 = `lairs` → `tuning` → `ironman`，**无环**（`tuning` 只 type-import `state`，
+ * `ironman` 不 import 任何运行时模块）⇒ 不会重蹈 2026-09-24 那次
+ * 「`combat` ↔ `wormholeFoes` 循环依赖、只在 CJS 转译下顶层求值炸 TDZ」的坑。
+ * 另：本文件的两个新函数都在**函数体内**调用它（不是模块顶层常量）⇒ 即便将来出现环也不会顶层求值。
+ */
+import { rareDropRateMulOf } from './tuning'
 
 /** 窝点档位：1 外围 / 2 核心 / 3 深层 */
 export type LairTier = 1 | 2 | 3
@@ -99,18 +108,45 @@ export const FACTION_RARE_DROP_COUNT = 1
 export const FACTION_RARE_DROP_PITY_ROLLS = 10
 
 /**
- * **保底生效后的实际单趟期望掉落率**（解析式，供工具/体检打印，避免各处自己算漂移）：
+ * **保底生效后的实际单趟期望掉落率**（解析式，供工具/体检/界面读数打印，避免各处自己算漂移）：
  * 一个循环 = 首次命中或第 N 次强制命中，故
  * `E[循环趟数] = Σ_{k=1..N−1} k·p·(1−p)^(k−1) + N·(1−p)^(N−1)`，实际率 = `1 / E[循环趟数]`。
  * 现值：p = 30% · N = 10 → E ≈ 3.24 趟 → **≈30.9%/趟**（旧值 5%/20 ⇒ ≈7.79%/趟，已作废）。
+ *
+ * @param rate **单趟自然命中概率**（默认 = 裸常量，即"无任何加成"的标称值）。
+ *   要读**当前档位**的实际值，请传 `factionRareDropChanceOf(state)`（含限时倍率与铁人）。
+ *   ⚠ **2026-09-24 起才有这个参数**（船长报障「铁人模式的残骸掉率加成似乎没应用到？」）——
+ *   此前它**写死裸常量**，于是工具与卡面都印 30%，**把乘区挡在读数之外**（机制本身一直是对的）。
  */
-export function factionRareDropEffectiveRate(): number {
-  const p = FACTION_RARE_DROP_CHANCE
+export function factionRareDropEffectiveRate(rate: number = FACTION_RARE_DROP_CHANCE): number {
+  const p = Math.min(1, Math.max(0, rate))
   const n = FACTION_RARE_DROP_PITY_ROLLS
   let expected = 0
   for (let k = 1; k < n; k += 1) expected += k * p * Math.pow(1 - p, k - 1)
   expected += n * Math.pow(1 - p, n - 1) // 第 n 趟必掉（含本就自然命中的那部分）
   return expected > 0 ? 1 / expected : 1
+}
+
+/**
+ * **当前档位下的单趟自然命中概率**（含**全部乘区**：限时倍率 `rareWreckRate` × 铁人 ×1.2），夹 0~1。
+ *
+ * **与结算是同一处口径** —— `expedition.ts` 那条派系活跃掷骰直接调它，界面读数也调它
+ * ⇒ 两边**不可能漂移**（这是本仓反复强调的"读数与结算同一函数"）。
+ */
+export function factionRareDropChanceOf(
+  state: Pick<GameState, 'wallMs' | 'ironman'> | null | undefined,
+): number {
+  return Math.min(1, FACTION_RARE_DROP_CHANCE * rareDropRateMulOf(state))
+}
+
+/**
+ * **界面/工具读数：当前档位下的「实际」掉落率** = 自然概率（含乘区）再过一遍保底折算。
+ * 普通档 ≈30.9% · 铁人档 ≈36.4%（差 +5.5pp）。
+ */
+export function factionRareDropRateOf(
+  state: Pick<GameState, 'wallMs' | 'ironman'> | null | undefined,
+): number {
+  return factionRareDropEffectiveRate(factionRareDropChanceOf(state))
 }
 
 /** 派系活跃派生卡：只改威胁（×1.1），其余继承——名字沿用原悬赏名，界面另挂「派系活跃」徽标 */
