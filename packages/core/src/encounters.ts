@@ -75,6 +75,7 @@ import { repairWithKitsFor } from './shipyard'
 // 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
 import { weekendAmbushThreatOf, weekendEncounterChanceAt } from './weekendEvent'
 import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
+import { weekendApplyBattleOutcome } from './weekendBattle'
 
 /** 一口遇袭伤害（HP）= 敌群火力代理 × 暴露系数（船长 2026-09-11 定：按敌人火力，不再用固定骰）。
  *  算法本体见 `hullDamage.ts`（与**战斗撤退**共用同一套：先扣装甲、吸完再进结构、结构 5% 底线）。 */
@@ -583,7 +584,11 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
         settleEscape(state, ctx)
         return
       }
-      if (enc.battle.ended) settleFight(state, ctx)
+      if (enc.battle.ended) {
+      settleFight(state, ctx)
+      /** **周末入侵**：占领区的伏击战打完 ⇒ 走入侵结算（胜 = 击退 +3%，败 = 只受损不动进度） */
+      weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, enc.battle.ended === 'me', Date.now())
+    }
       return
     }
     // 待决邀约：超时自动按文字结算（离线大步长会立刻超时 → 与"离线只文字"一致）
