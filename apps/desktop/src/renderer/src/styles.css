@@ -8856,6 +8856,71 @@ html[data-locale='en'] body {
    与左侧活动栏在横向 flex 的 .app-workspace 里并列 ⇒ 必须 lex: 1 + min-width/min-height: 0
    才能既吃满剩余宽、又被父级高度约束住（否则内容把整页撑出滚动条）。 */
 
+/* **顶栏里的限时活动 / 限时加成**（2026-09-25 船长令：「限时活动和限时加成，放到顶部钱包的右侧」）
+   —— 沿用原 .app-activitybar-tuning 的观感（虚线边 + 名称 + 剩余时间），换成顶栏的小尺寸。 */
+
+.app-header-tuning {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: var(--wui-sp-4);
+
+  flex: 0 0 auto;
+
+  padding: var(--wui-sp-1) var(--wui-sp-6);
+
+  font-family: inherit;
+
+  font-size: var(--wui-fs-2xse);
+
+  color: rgb(var(--wui-text-dim));
+
+  background: rgb(var(--wui-x02) / 0.07);
+
+  border: 1px dashed rgb(var(--wui-x02) / 0.35);
+
+  border-radius: var(--wui-sp-5);
+
+  cursor: pointer;
+
+}
+
+.app-header-tuning:hover { border-color: rgb(var(--wui-accent) / 0.6); color: rgb(var(--wui-text)); }
+
+.app-header-promo { border-color: rgb(var(--wui-gold) / 0.45); background: rgb(var(--wui-gold) / 0.08); }
+
+.app-header-tuning-name { white-space: nowrap; }
+
+.app-header-tuning-time { font-family: var(--wui-mono); white-space: nowrap; }
+
+/* **活动栏滚动条**（2026-09-25 船长令：「活动栏记得补一个滚动条，可以查看超出容器的副AI全部互动」）——
+   列内已有 overflow-y: auto，这里把滚动条**做成可见且不抢宽**（细条 + 悬停变亮），
+   让玩家看得出"下面还有内容"，能滚到全部 AI 活动。 */
+
+.app-activitybar {
+
+  scrollbar-width: thin;
+
+  scrollbar-color: rgb(var(--wui-accent) / 0.35) transparent;
+
+}
+
+.app-activitybar::-webkit-scrollbar { width: 8px; }
+
+.app-activitybar::-webkit-scrollbar-track { background: transparent; }
+
+.app-activitybar::-webkit-scrollbar-thumb {
+
+  background: rgb(var(--wui-accent) / 0.3);
+
+  border-radius: var(--wui-sp-4);
+
+}
+
+.app-activitybar::-webkit-scrollbar-thumb:hover { background: rgb(var(--wui-accent) / 0.55); }
+
 .app-workspace-body {
 
   flex: 1 1 auto;

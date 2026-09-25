@@ -887,6 +887,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ActivityBar.063": { zh: "AI 全部待机——去「舰船 · AI 指挥中心」或「工业」派活。", en: "All AI idle — assign jobs in Ship › AI Command or Industry." },
   /** 副AI活动 迷你条目的悬浮提示（2026-09-25：条目本身只留动画/在干什么/进度条，详情走悬浮） */
   "ui.ActivityBar.064": { zh: "{p1}\n{p2}\n点击前往「舰船 · AI 指挥中心」", en: "{p1}\n{p2}\nClick to open Ship › AI Command" },
+  "ui.ActivityBar.065": { zh: "计时中", en: "Timers" },
 
   "ui.aiProgress.001": { zh: " · 剩余约 {d}", en: " · about {d} left" },
   "ui.aiSlots.001": { zh: "{p1} {p2} 级 → +{p3}", en: "{p1} Lv{p2} → +{p3}" },

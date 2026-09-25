@@ -11,7 +11,17 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { useL10n } from './i18n/locale'
-import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN } from '@whale/core'
+import {
+  formatDurationMs,
+  formatDurationShort,
+  activePromos,
+  activeTunings,
+  moneyDelta,
+  shipDisplayName,
+  unlocked,
+  unlockNeedTitle,
+  ONB_AWAKEN,
+} from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -799,6 +809,19 @@ export function App({ engine }: { engine: GameEngine }) {
   })
   const [perfOpen, setPerfOpen] = useState(false)
 
+  /**
+   * **限时活动 / 加成的剩余时间**（2026-09-25 移入顶栏）：每分钟走一次，与活动栏原来那份同款。
+   * 数据同源：core 的 `activePromos` / `activeTunings`（按现实墙钟算，到期自动消失）。
+   */
+  const [tuningTick, setTuningTick] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setTuningTick(Date.now()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
+  const promosNow = activePromos(tuningTick)
+  // 被促销 `claims` 认领的倍率键不再单列（与活动栏原口径一致：同一件事不显示两遍）
+  const promoClaimedKeys = new Set<string>(promosNow.flatMap((p) => [...p.claims]))
+  const tuningsNow = activeTunings(tuningTick).filter((tn) => !promoClaimedKeys.has(tn.key))
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null)
   const toastTimer = useRef<number | null>(null)
   const showToast: ToastFn = (text, warn = false) => {
@@ -1203,6 +1226,57 @@ export function App({ engine }: { engine: GameEngine }) {
           {/* **钱包**（2026-09-25 船长令：「钱包显示移动到顶部玩家名字的右侧」）
               —— 原在左侧栏「出港上方」（2026-09-13 令），本轮随外壳重排移到顶栏。 */}
           <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
+          {/*
+           * **限时活动 + 限时加成**（2026-09-25 船长令：「限时活动和限时加成，放到顶部钱包的右侧」）
+           * —— 原来在活动栏的标题栏里；标题栏移除后归到顶栏、紧跟钱包。
+           * 类名与去向口径**沿用原样**（促销 `p.open` 决定去「扫描虫洞」还是「星图」），只是换了容器。
+           */}
+          {promosNow.map((p) => (
+            <button
+              key={`promo-${p.id}-${p.untilMs}`}
+              className="app-header-tuning app-header-promo"
+              title={
+                `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
+                tr("ui.ActivityBar.054", { p1: new Date(p.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, p.untilMs - tuningTick)) }) +
+                tr("ui.ActivityBar.059", { p1: p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006") })
+              }
+              onClick={() => {
+                if (p.open === 'wormhole-scan') {
+                  changePage('map')
+                  changeMapTab('whscan')
+                  return
+                }
+                changePage('map')
+                changeMapTab('star')
+              }}
+            >
+              <span className="app-ico">
+                <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
+              </span>
+              <span className="app-header-tuning-name">{p.label}</span>
+              <span className="app-header-tuning-time">{formatDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
+            </button>
+          ))}
+          {tuningsNow.map((tn) => (
+            <button
+              key={`${tn.key}-${tn.untilMs}`}
+              className="app-header-tuning"
+              title={
+                tr("ui.ActivityBar.060", { p1: tn.name, p2: tn.mul, p3: tn.note ? `\n${tn.note}` : '' }) +
+                tr("ui.ActivityBar.054", { p1: new Date(tn.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, tn.untilMs - tuningTick)) })
+              }
+              onClick={() => {
+                changePage('map')
+                changeMapTab('star')
+              }}
+            >
+              <span className="app-ico">
+                <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
+              </span>
+              <span className="app-header-tuning-name">{tn.name} ×{tn.mul}</span>
+              <span className="app-header-tuning-time">{formatDurationShort(Math.max(0, tn.untilMs - tuningTick))}</span>
+            </button>
+          ))}
         </div>
         <div className="app-header-right">
           {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}

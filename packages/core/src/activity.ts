@@ -17,6 +17,7 @@ import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
 import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoLoopWaitLabel } from './expedition'
 import { standbyStatus, transitStatus } from './location'
+import { aiTaskView } from './ai'
 import { shipDisplayName } from './instances'
 import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
 import { haulEndpointName } from './hauling'
@@ -391,35 +392,39 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
   for (const [shipId, assignment] of Object.entries(state.aiAssignments)) {
     const shipName = shipDisplayName(state, ctx, shipId)
     const task = assignment.task
+    /**
+     * **进度接上现成单点**（2026-09-25 船长令「副船 AI 进度条要在 core 里补算」）：
+     * `aiTaskView()` 就是引擎推进用的那套公式（采掘周期 / 行程腿长 / 打捞周期 / 巡逻倒计时），
+     * 且自带与主控同款的阶段文案 ⇒ **不在这里另写公式、也不另拼阶段中文**，避免两处口径漂移。
+     * 地点名（矿带 / 异常 / 星系）保留，拼成 `地点（阶段）`。
+     */
+    const v = aiTaskView(state, ctx, shipId)
     if (task.kind === 'mining') {
       const beltName = ctx.belts.get(task.beltId)?.name ?? task.beltId
-      const phase = task.phase === 'returning' ? '返航卸货' : task.phase === 'outbound' ? '前往矿带' : '采掘中'
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
         aiWorkKind: 'mining',
         label: `${shipName} · 采矿`,
-        sub: `${beltName}（${phase}）`,
-        percent: null,
-        remainingMs: null,
+        sub: `${beltName}（${v?.label ?? '作业中'}）`,
+        percent: v?.percent ?? null,
+        remainingMs: v?.remainingMs ?? null,
         stopable: true,
         stop: 'cancel-ai',
         stopParam: shipId,
       })
     } else if (task.kind === 'expedition') {
       const aName = ctx.anomalies.get(task.anomalyId)?.name ?? task.anomalyId
-      const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
-      const phase = task.phase === 'out' ? '去程' : task.phase === 'battle' ? '交火' : '返航'
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
         aiWorkKind: 'standby', // 远征复用「掩护巡逻」那类动画，不新造第七种
         label: `${shipName} · 远征`,
-        sub: `${aName}（${phase}）`,
-        percent: null,
-        remainingMs: task.phase === 'battle' ? null : remain,
+        sub: `${aName}（${v?.label ?? '作业中'}）`,
+        percent: v?.percent ?? null,
+        remainingMs: v?.remainingMs ?? null,
         stopable: true,
         stop: 'cancel-ai',
         stopParam: shipId,
@@ -427,16 +432,15 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     } else if (task.kind === 'salvage') {
       // B3 AI 打捞任务
       const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
-      const phase = task.phase === 'returning' ? '返航卸货' : task.phase === 'outbound' ? '出航' : '打捞中'
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
         aiWorkKind: 'salvage',
         label: `${shipName} · 打捞`,
-        sub: `${gName}（${phase}）`,
-        percent: null,
-        remainingMs: null,
+        sub: `${gName}（${v?.label ?? '作业中'}）`,
+        percent: v?.percent ?? null,
+        remainingMs: v?.remainingMs ?? null,
         stopable: true,
         stop: 'cancel-ai',
         stopParam: shipId,
@@ -444,16 +448,17 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     } else {
       // B1.5 AI 掩护巡逻（out 去程给倒计时；stand 驻留中）
       const gName = ctx.galaxies.get(task.galaxyId)?.name ?? task.galaxyId
-      const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
       out.push({
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
         aiWorkKind: 'standby',
         label: `${shipName} · 掩护巡逻`,
-        sub: task.phase === 'out' ? `前往 ${gName}（去程 · 剩约 ${Math.max(1, Math.round(remain / 1000))} 秒）` : `留守「${gName}」`,
-        percent: null,
-        remainingMs: task.phase === 'out' ? remain : null,
+        // 文案保持原样（"留守「星系」"）——测试 standby.test.ts:98 断言了这个词，
+        // 且它是船长既有口径的文案；本次只补算 percent/remainingMs，不动文案。
+        sub: task.phase === 'out' ? `前往 ${gName}（去程）` : `留守「${gName}」`,
+        percent: v?.percent ?? null,
+        remainingMs: v?.remainingMs ?? null,
         stopable: true,
         stop: 'cancel-ai',
         stopParam: shipId,

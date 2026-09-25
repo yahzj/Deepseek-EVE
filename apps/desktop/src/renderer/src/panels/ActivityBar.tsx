@@ -399,114 +399,6 @@ export function ActivityBar({
 
   return (
     <div className="app-activitybar">
-      <div className="app-activitybar-hd">
-        <span className="app-activitybar-title">{tr("ui.ActivityBar.025")}</span>
-        {/* AI 徽标（2026-09-10 船长：拆成两枚，图标 / 配色 / 去处各不相同）——
-            ① 副船：AI 核心图标（粉）+「副船 ×N」，点进「舰船」的 AI 指挥中心；
-            ② 工业：工业页图标（薄荷）+「工业 ×N」，点进「工业」页（AI 炉/线的停止在那儿）。
-            计数为 0 的那一枚不显示（无事可看时不占位）。 */}
-        {aiShips > 0 ? (
-          <button
-            className="app-activitybar-ai is-ship"
-            title={tr("ui.ActivityBar.056", { aiShips: aiShips, p2: aiLinesOf(aiShipItems), aiSlotsNote: aiSlotsNote })}
-            onClick={() => onAiCenter?.()}
-          >
-            <span className="app-ico">
-              <Glyph name="nav-ai" size={13} color={NAV_TONES['nav-ai']} />
-            </span>
-            {tr("ui.ActivityBar.026")}{aiShips}
-          </button>
-        ) : null}
-        {aiProd > 0 ? (
-          <button
-            className="app-activitybar-ai is-industry"
-            title={tr("ui.ActivityBar.057", { aiProd: aiProd, p2: aiLinesOf(aiProdItems), aiSlotsNote: aiSlotsNote })}
-            onClick={() => onGoPage?.('industry')}
-          >
-            <span className="app-ico">
-              <Glyph name="nav-industry" size={13} color={NAV_TONES['nav-industry']} />
-            </span>
-            {tr("ui.ActivityBar.027")}{aiProd}
-          </button>
-        ) : null}
-        {/* 星系扫描条（船长 2026-09-15）：摆在 AI 两枚徽标**右侧**；扫描不占主控 ⇒ 不列进「玩家活动」 */}
-        {scanBar ? (
-          <button
-            className={`app-activitybar-scan${scanBar.done ? ' is-done' : ''}`}
-            title={
-              scanBar.done
-                ? tr("ui.ActivityBar.055", { p1: scanName(scanBar.galaxyId) })
-                : tr("ui.ActivityBar.058", { p1: scanName(scanBar.galaxyId), p2: formatDurationMs(scanBar.remainingMs) })
-            }
-            onClick={() => {
-              // 完成态点一下 = 看过（收条）；进行中点一下 = 纯跳转（星图页有「终止扫描」）
-              if (scanBar.done && scanAck) engine.ackScanView()
-              onGoPage?.('map', 'star')
-            }}
-          >
-            <span className="app-ico">
-              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
-            </span>
-            <span className="app-activitybar-scan-name">{scanName(scanBar.galaxyId)}</span>
-            <span className="app-activitybar-track">
-              <span className="app-activitybar-fill" style={{ width: `${Math.min(100, Math.max(0, scanBar.percent))}%` }} />
-            </span>
-            <span className="app-activitybar-scan-time">
-              {scanBar.done ? tr("ui.ActivityBar.036") : `${Math.round(scanBar.percent)}%`}
-            </span>
-          </button>
-        ) : null}
-        {/* 限时活动（2026-09-16 促销）：与限时加成同一处、同一族样式 —— 游戏内说法 + 剩余时间；
-            被它认领的倍率键已在上面从 `tunings` 里滤掉，同一件事只显示这一枚。
-            点击去向由促销表的 `open` 决定（船长 2026-09-16：「点击后，不会跳转扫描虫洞界面」
-            ⇒ 「虫洞大量生成」写到「扫描虫洞」选项卡；不写则与限时加成同款走「星图」）。
-            时间列用**紧凑时长**（两级单位）：全量格式在 4 天档要 10 个汉字，会把标题挤成省略号。 */}
-        {promos.map((p) => (
-          <button
-            key={`promo-${p.id}-${p.untilMs}`}
-            className="app-activitybar-tuning app-activitybar-promo"
-            title={
-              `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
-              tr("ui.ActivityBar.054", { p1: new Date(p.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, p.untilMs - tuningTick)) }) +
-              tr("ui.ActivityBar.059", { p1: p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006") })
-            }
-            onClick={() => {
-              if (p.open === 'wormhole-scan') {
-                onGoPage?.('map', 'whscan')
-                return
-              }
-              onGoPage?.('map', 'star')
-            }}
-          >
-            <span className="app-ico">
-              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
-            </span>
-            <span className="app-activitybar-tuning-name">{p.label}</span>
-            <span className="app-activitybar-tuning-time">{formatDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
-          </button>
-        ))}
-        {/* 限时加成（2026-09-15 船长）：摆在**扫描条右侧** —— 生效中的加成项 + 剩余时间；无加成不渲染 */}
-        {tunings.map((t) => (
-          <button
-            key={`${t.key}-${t.untilMs}`}
-            className="app-activitybar-tuning"
-            title={
-              tr("ui.ActivityBar.060", { p1: t.name, p2: t.mul, p3: t.note ? `\n${t.note}` : '' }) +
-              tr("ui.ActivityBar.054", { p1: new Date(t.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, t.untilMs - tuningTick)) })
-            }
-            onClick={() => onGoPage?.('map', 'star')}
-          >
-            <span className="app-ico">
-              <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
-            </span>
-            <span className="app-activitybar-tuning-name">
-              {t.name} ×{t.mul}
-            </span>
-            {/* 时间列同样用紧凑时长：全量格式会把"名称 ×倍率"挤成省略号（见促销徽标同处注释） */}
-            <span className="app-activitybar-tuning-time">{formatDurationShort(Math.max(0, t.untilMs - tuningTick))}</span>
-          </button>
-        ))}
-      </div>
       <div className="app-activitybar-group">
         <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.028")}</div>
         {playerItems.length > 0 ? (
@@ -514,6 +406,37 @@ export function ActivityBar({
         ) : (
           <span className="app-activitybar-idle">{tr("ui.ActivityBar.029")}</span>
         )}
+      </div>
+      {/* **计时中**（2026-09-25 船长令「星系扫描条按甲做」）：扫描条独立成一组、紧接玩家活动之后。
+          原与「活动」标题栏同处一行，标题栏移除后归到这里。 */}
+      <div className="app-activitybar-group">
+        <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.065")}</div>
+          {scanBar ? (
+            <button
+              className={`app-activitybar-scan${scanBar.done ? ' is-done' : ''}`}
+              title={
+                scanBar.done
+                  ? tr("ui.ActivityBar.055", { p1: scanName(scanBar.galaxyId) })
+                  : tr("ui.ActivityBar.058", { p1: scanName(scanBar.galaxyId), p2: formatDurationMs(scanBar.remainingMs) })
+              }
+              onClick={() => {
+                // 完成态点一下 = 看过（收条）；进行中点一下 = 纯跳转（星图页有「终止扫描」）
+                if (scanBar.done && scanAck) engine.ackScanView()
+                onGoPage?.('map', 'star')
+              }}
+            >
+              <span className="app-ico">
+                <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
+              </span>
+              <span className="app-activitybar-scan-name">{scanName(scanBar.galaxyId)}</span>
+              <span className="app-activitybar-track">
+                <span className="app-activitybar-fill" style={{ width: `${Math.min(100, Math.max(0, scanBar.percent))}%` }} />
+              </span>
+              <span className="app-activitybar-scan-time">
+                {scanBar.done ? tr("ui.ActivityBar.036") : `${Math.round(scanBar.percent)}%`}
+              </span>
+            </button>
+          ) : null}
       </div>
       <div className="app-activitybar-group">
         <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.030")}</div>
