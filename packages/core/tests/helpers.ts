@@ -658,10 +658,16 @@ export function makeTestCtx(opts?: {
           shipBlueprints: shipBlueprintsMap,
           ships: shipsMap,
         })
-  const balance =
-    opts?.quietEvents === true
-      ? { ...(opts?.balance ?? DEFAULT_BALANCE), events: { ...(opts?.balance ?? DEFAULT_BALANCE).events, enabled: false } }
-      : (opts?.balance ?? DEFAULT_BALANCE)
+  /**
+   * ⚠ **必须深拷贝**（**2026-09-25 修隐患**）：`DEFAULT_BALANCE` 是**模块级共享常量**，
+   * 而用例普遍会就地改 `ctx.balance.market.rareTier3Weight = w`（档位权重那几条就是这么写的）
+   * ⇒ 若这里直接返回同一个对象，改的是**全局常量**、会**跨用例泄漏**。
+   * 实测（我写 `market-tier-weights` 时踩到）：同一文件里先前用例把 `rareTier3Weight`/`rareTier4Weight`
+   * 改成 1 之后，后一条用例读到的就是 1 —— 命中数 150 vs 162，与权重 0.5 > 0.2 相反，
+   * 查了一轮才定位到是这里。
+   */
+  const balance = clonePlain(opts?.balance ?? DEFAULT_BALANCE)
+  if (opts?.quietEvents === true) balance.events = { ...balance.events, enabled: false }
   return {
     skills: new Map(skills.map((s) => [s.id, s])),
     ships: shipsMap,
@@ -682,4 +688,21 @@ export function makeTestCtx(opts?: {
     balance,
     wreckGroups,
   }
+}
+
+/**
+ * **纯数据深拷贝**（只给 `balance` 用）：
+ * 递归复制**纯对象/数组**；遇到函数、类实例、Map/Set 等**非纯对象一律原样返回**（按引用），
+ * 避免把行为/身份也复制掉。`BalanceConfig` 是纯数值/字符串/嵌套对象 ⇒ 走前者。
+ */
+function clonePlain<T>(v: T): T {
+  if (Array.isArray(v)) return v.map((x) => clonePlain(x)) as unknown as T
+  if (v !== null && typeof v === 'object') {
+    const proto: unknown = Object.getPrototypeOf(v)
+    if (proto !== Object.prototype && proto !== null) return v // 非纯对象：原样（函数/类实例/Map…）
+    const out: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = clonePlain(val)
+    return out as T
+  }
+  return v
 }

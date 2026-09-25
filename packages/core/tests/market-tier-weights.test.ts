@@ -81,4 +81,13 @@ describe('稀有订单 · 数字稀有度四档权重（2026-09-25 船长令）'
     expect(hits[2]! / total).toBeLessThan(0.7)
     expect(hits[5]! / total, '档 5 占不到 1 成就对').toBeLessThan(0.1)
   })
+
+  it('（隐患回归）`makeTestCtx` 的 balance 是**副本**：就地改它不再污染 `DEFAULT_BALANCE`', () => {
+    const before = [DEFAULT_BALANCE.market.rareTier3Weight, DEFAULT_BALANCE.market.rareTier4Weight]
+    const ctx = makeTestCtx()
+    ctx.balance.market.rareTier3Weight = -1
+    ctx.balance.market.rareTier4Weight = -1
+    expect(ctx.balance.market).not.toBe(DEFAULT_BALANCE.market) // 不是同一个对象
+    expect([DEFAULT_BALANCE.market.rareTier3Weight, DEFAULT_BALANCE.market.rareTier4Weight]).toEqual(before)
+  })
 })

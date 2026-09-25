@@ -11583,8 +11583,11 @@ html[data-locale='en'] body {
    行本身是 `space-between`，两个按钮各自做 flex 项会被主内容的余量撑开 ⇒ 包成一组，组内 4px 紧挨。 */
 .app-ga-btns { display: flex; align-items: center; gap: var(--wui-sp-4); flex: 0 0 auto; }
 
-/* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。 */
-.app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: var(--wui-fs-base); font-weight: 700; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }
+/* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。
+   ⟪2026-09-25 船长令⟫「伤害数字的停留时间延长，使用粗体字」：停留 = `POPUP_LIFE` 900 → 1500（TSX 那侧）；
+   字重 700 → **900**。⚠ 字体面本身（`--wui-mono` = Cascadia Mono / Consolas）**最重只有 Bold(700)**
+   ⇒ 900 会回落到 Bold，**视觉上与 700 相同**；若要"看起来更粗"，得换带 Black 字重的字体面或加 text-stroke。 */
+.app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: var(--wui-fs-base); font-weight: 900; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }
 @keyframes bts-pop-rise { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.85); } 18% { opacity: 1; transform: translate(-50%, -70%) scale(1.08); } 100% { opacity: 0; transform: translate(-50%, -210%) scale(1); } }
 
 /* ══════════════════════════════════════════════════════════════════════════

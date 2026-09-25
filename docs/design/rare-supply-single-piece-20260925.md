@@ -100,12 +100,15 @@ const baseQty = def.kind === 'ship' ? 1 : 1 + nextInt(state.rng, 3)   // ← 1 /
 ⚠ 为什么 12 张只快 ~2.4 倍（权重明明 ×3.33）：**90 行档 3 同时从 0.15 抬到 0.5 ⇒ 稀有池总权重
 ×1.38**，把所有行的份额一起稀释（tier2 单行间隔 4.9 → 6.0 窗即此）。
 
-**④ 顺带发现（测试基建隐患，建议单独立项）**：`makeTestCtx` 的 `balance` 直接取
+**④ 顺带发现（测试基建隐患）→ ⟪同日船长令「修复隐患」⟫ 已修**：`makeTestCtx` 的 `balance` 原本直接取
 `opts?.balance ?? DEFAULT_BALANCE`——**共享对象、没有深拷贝** ⇒ 用例里写
-`ctx.balance.market.rareTier3Weight = w` 改的是**模块级常量**、会**跨用例泄漏**。
-我第一版把新用例写进 `market.test.ts`，读到的就是被上一个用例改成 1 的权重（命中数 150 vs 162，
-与 0.5 > 0.2 相反）。**处置**：新用例单开 `tests/market-tier-weights.test.ts`（vitest 按文件隔离），
-并在文件头写明这条陷阱；**根因（不深拷贝）未动**，留给船长决定是否立项收口。
+`ctx.balance.market.rareTier3Weight = w` 改的是**模块级常量**、会**跨用例泄漏**（我第一版把新用例写进
+`market.test.ts`，读到的就是被上一个用例改成 1 的权重：命中数 150 vs 162，与 0.5 > 0.2 相反）。
+**修法**：`tests/helpers.ts` 增加纯数据深拷贝 `clonePlain`（递归复制纯对象/数组；函数、类实例、
+Map/Set 等**非纯对象按引用原样返回**），`makeTestCtx` 的 `balance` 走它，`quietEvents` 的 events
+覆盖改在副本上做。**回归守卫**：`market-tier-weights.test.ts` 第三条用例钉
+「改 `ctx.balance` 不再污染 `DEFAULT_BALANCE`」。**修复后全量用例仍全绿**（2364 → 2365，多的那条就是守卫）
+⇒ 没有任何用例曾依赖那个泄漏（确认是纯隐患）。新用例另立文件的处置**保留**（隔离本身是好习惯）。
 
 ## 验证
 
