@@ -22,6 +22,7 @@ import type {
   DamageType,
   DefProfile,
   FoeDroneSlot,
+  FoeFamily,
   FoeReinforceTrigger,
   FoeShipDef,
   FoeShipSlot,
@@ -179,6 +180,11 @@ export interface UnitSpec {
   /** **舰种档**（1 护卫舰 … 5 旗舰；2026-09-12 加）：敌方单位 = 编成条目所引舰级的档位；
    *  旧威胁推导路径不写（缺省按 1 处理）。用途 = **敌舰近防炮的档系数**（`balance.pdTierMul`）。 */
   hullClassTier?: number
+  /**
+   * **敌族**（**2026-09-25 船长令**：H 族近防炮单独特化）：由 `createFoeSpecs` 按舰级写。
+   * 用途 = **按族的近防炮覆写**（`balance.pdFamilyOverride`）；缺省（旧路径/合成 spec）= 全局值。
+   */
+  family?: FoeFamily
   /**
    * **我方单位的舰种档**（虫洞 D 批 · 2026-09-13）：`createPlayerSpec` 恒按 `ShipDef.tier` 写入。
    * 用途 = 敌方选靶模式「**打最小的 / 打最大的**」（见 `pickMyUnitTarget`）。
@@ -2427,6 +2433,11 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(mount.foeCaptureWeb !== undefined ? { foeCaptureWeb: mount.foeCaptureWeb } : {}),
       // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）
       hullClassTier: ship.hullClassTier,
+      /**
+       * **敌族**（**2026-09-25 船长令**：「增强 H 族敌人的近防炮强度」）：只服务**按族的近防炮覆写**
+       * （`balance.pdFamilyOverride`）。缺省不写（旧路径/合成 spec）⇒ 走全局值，零行为变化。
+       */
+      family: ship.family,
       /**
        * **舰级 id**（2026-09-24 加）：只服务**旗舰 BOSS 的伤害台账**（`flagshipBattleLedger`
        * 要认出"哪几个单位是母舰"）——战斗态里此前没有任何"我是哪条舰级"的标记。
@@ -7115,6 +7126,27 @@ function pdPriorityOf(artId: string | undefined | null, role?: string): number {
 }
 
 /**
+ * **一发的近防炮读数**（命中率与伤害的**唯一取数口**）：全局值 ＋ **舰种档系数** ＋ **按族覆写**。
+ *
+ * - `acc` = `bal.pdAcc` ＋ 族覆写 `accAdd`（**百分点**）—— 调用方再与机型闪避相乘减、并走 `pdHitFloor` 下限；
+ * - `dmg` = `bal.pdDmg` × `pdTierMul[档]` × 族覆写 `dmgMul`。
+ *
+ * ⚠ 抽成函数只为**单一取数口 + 可测**（用例直接断言"H 族 = 0.75 / ×1.5"）；行为与内联逐字一致。
+ */
+export function pdShotOf(
+  bal: BattleBalance,
+  family: FoeFamily | undefined,
+  hullClassTier: number | undefined,
+): { acc: number; dmg: number } {
+  const ov = family !== undefined ? bal.pdFamilyOverride?.[family] : undefined
+  const tierMul = bal.pdTierMul?.[Math.min(4, Math.max(0, (hullClassTier ?? 1) - 1))] ?? 1
+  return {
+    acc: bal.pdAcc + (ov?.accAdd ?? 0),
+    dmg: bal.pdDmg * tierMul * (ov?.dmgMul ?? 1),
+  }
+}
+
+/**
  * 近防炮结算（每拍调用；2026-09-10 船长口径 · **2026-09-12 八条裁决改版**）：
  * - 每艘点防舰**独立**按 `pdJudgementMs`（0.5s）判定一次 ⇒ **判定频率 = 火力密度**（反击制只决定"能不能开火"）；
  * - **集火**（船长 2026-09-12）：锁定一架直到它被击落才换靶（旧口径 = 每拍随机换靶 ⇒ 伤害摊薄到整群、几乎打不掉）；
@@ -7194,16 +7226,20 @@ function resolvePointDefense(
       }
       focus[fi] = key
       const pool = pools[key]!
-      // 命中 = clamp(**下限 10%**, 1, pdAcc − 闪避)（船长 2026-09-12）
-      const pHit = clamp(bal.pdHitFloor ?? 0, 1, bal.pdAcc - pool.evasion)
+      /**
+       * **按族的近防炮覆写**（**船长 2026-09-25 令**：「增强 H 族敌人的近防炮强度：伤害 +50%、命中 +5%」
+       * ⇒ `balance.pdFamilyOverride.H = { dmgMul: 1.5, accAdd: 0.05 }`）。
+       * 取数收口在 `pdShotOf`（缺省族/旧路径 ⇒ 逐字走全局值，零行为变化）。
+       */
+      const shot = pdShotOf(bal, foes[fi]!.family, foes[fi]!.hullClassTier)
+      // 命中 = clamp(**下限 10%**, 1, pdAcc ＋ 族覆写 − 闪避)（船长 2026-09-12 定式；覆写为 2026-09-25 加）
+      const pHit = clamp(bal.pdHitFloor ?? 0, 1, shot.acc - pool.evasion)
       if (nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
-      // 伤害 = pdDmg × **舰种档系数**（越大的船防空越强；船长 2026-09-12）
-      const tierMul =
-        bal.pdTierMul?.[Math.min(4, Math.max(0, (foes[fi]!.hullClassTier ?? 1) - 1))] ?? 1
+      // 伤害 = pdDmg × **舰种档系数**（越大的船防空越强）× **族覆写**
       const res = applyDamage(
         { s: pool.s, a: pool.a, h: pool.h },
         pool.resists ?? {},
-        bal.pdDmg * tierMul,
+        shot.dmg,
         'kinetic',
       )
       pool.s = res.hp.s

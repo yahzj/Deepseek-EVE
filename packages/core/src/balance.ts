@@ -3,7 +3,7 @@
  * 说明：系数/概率集中在 balance.ts；"加成作用于哪个技能"通过技能 id 与数据表约定，
  * 若日后给技能改名，需同步 data 与这里。
  */
-import type { BalanceConfig } from './types'
+import type { BalanceConfig, FoeFamily } from './types'
 
 /**
  * **返航倍率**（船长 2026-09-14：「**修正倍率回1倍**」）：自动返航时长 = 出发点↔落点**单程 × 本值**。
@@ -492,6 +492,22 @@ export const DEFAULT_BALANCE: BalanceConfig = {
      *  索引 0 = T1 护卫舰 … 4 = T5 旗舰；伤害 = `pdDmg × 本系数`。 */
     pdTierMul: [1.0, 1.5, 2.0, 3.0, 4.0],
     pdDmg: 5, // 命中单发伤害（走该机型三层抗性；再乘上面的舰种档系数）
+    /**
+     * **按族的近防炮覆写**（**船长 2026-09-25 令**：「**我希望增强H族敌人的近防炮强度。其近防炮伤害增加50%，
+     * 命中提高5%**」）。
+     *
+     * 语义（只改**敌侧近防炮**，其余系统一字不动）：
+     * - `dmgMul`：命中单发伤害再乘本值（与 `pdTierMul` 连乘 ⇒ 队形/档位那套口径不变）；
+     * - `accAdd`：判定命中率**加**本值（**百分点**：0.7 → 0.75），仍走 `pdHitFloor` 下限与机型闪避那套
+     *   `clamp(pdHitFloor, 1, acc − 闪避)`；
+     * - 缺省（没写这族）= 全族共用的全局值 ⇒ **零行为变化**。
+     *
+     * ⚠ 只看**舰级所属族**（`UnitSpec.family`，由 `createFoeSpecs` 按 `FoeShipDef.family` 写）；
+     * 旧威胁推导路径与合成 spec 不带该字段 ⇒ 走全局值。
+     */
+    pdFamilyOverride: {
+      H: { dmgMul: 1.5, accAdd: 0.05 },
+    } as Partial<Record<FoeFamily, { dmgMul?: number; accAdd?: number }>>,
     // 2026-09-10 船长：**取消单场击落上限**——战斗内可 100% 损坏机群；
     // 战后按回收率找回一部分（基础 20%，无人机回收学满级 50%，见 combat.droneRecoveryRate）
   },

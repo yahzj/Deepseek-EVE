@@ -1240,6 +1240,13 @@ export interface BattleBalance {
   pdTierMul: readonly number[]
   /** 命中单发伤害（走该机型三层抗性） */
   pdDmg: number
+  /**
+   * **按族的近防炮覆写**（**船长 2026-09-25 令**：「增强 H 族敌人的近防炮强度：其近防炮伤害增加50%，
+   * 命中提高5%」）——`dmgMul` 与 `pdDmg × pdTierMul` **连乘**；`accAdd` 是**百分点**加在 `pdAcc` 上
+   * （仍走 `pdHitFloor` 下限与机型闪避那套 clamp）。
+   * 缺省/该族没登记 ⇒ 逐字走全局值（零行为变化）。族从 `UnitSpec.family` 取。
+   */
+  pdFamilyOverride?: Partial<Record<FoeFamily, { dmgMul?: number; accAdd?: number }>>
 }
 
 /**
