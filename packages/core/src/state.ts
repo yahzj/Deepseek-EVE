@@ -594,6 +594,12 @@ export interface ExpeditionState {
    * `weekendBattleInvolvedOf` 优先读它。缺省 / 非法 ⇒ 回落老口径（只看卡的 `galaxyId`）⇒ 零迁移、零行为变化。
    */
   foeGalaxyId?: string
+  /**
+   * **奖励基底覆写**（2026-09-25 加 · 周末入侵"主动出击每场重抽"配套）：入侵的敌舰每场重抽，
+   * 但奖励恒 = **该星系原卡 ×1.4** ⇒ 出发时算好写进来，结算时用它替代 `anomaly.rewardIsk`。
+   * 可选字段 ⇒ 零迁移（老路径不写它，逐字不变）。
+   */
+  rewardIskOverride?: number
 }
 
 /** V12 战斗单位运行状态（动态量：三层当前血量 + 每武器装填倒计时） */

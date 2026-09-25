@@ -23,6 +23,7 @@ import { activeFoeSpecsOf, createBattleState } from '../src/combat'
 import { commsInbox } from '../src/comms'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WEEKEND_COMMS_SETTLE_ID, WEEKEND_COMMS_WARN_ID, weekendSyncComms } from '../src/weekendComms'
+import { weekendAssaultDrawOf, weekendNoteAssaultDispatch } from '../src/weekendBounty'
 import {
   weekendBestFlagshipSquad,
   weekendFlagshipPrepView,
@@ -564,4 +565,36 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const issues = weekendPrepIssuesOf(s, ctx, s.shipId)
     expect(issues.includes('low-armor') || issues.includes('low-hull'), '满装甲满结构不该标低').toBe(false)
   })
+
+  it('⑯ 主动出击**每场重抽**：每出发一次换一支 · 价钱钉在该星系原卡 ×1.4 · 计数随档', () => {
+    const gid = GID
+    const s = invaded(gid)
+    const now = Date.now()
+    const base = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId === gid)!
+    const expectReward = Math.max(1, Math.round((base.rewardIsk ?? 0) * 1.4))
+    const draws: string[] = []
+    for (let i = 0; i < 6; i++) {
+      const d = weekendAssaultDrawOf(s, ctx, gid, now)
+      expect(d, '占领区里出击 ⇒ 有抽签').not.toBeNull()
+      expect(['ink-harass', 'ink-raid'], '外围池 = {骚扰, 袭击}').toContain(d!.cardId)
+      expect(d!.rewardIsk, '价钱 = 原卡 ×1.4（与抽到哪支无关）').toBe(expectReward)
+      draws.push(d!.cardId)
+      weekendNoteAssaultDispatch(s)
+    }
+    expect(new Set(draws).size, '六次出发里两种编成都出现过（盐在变）').toBe(2)
+    expect(s.weekendEvent!.assaultDraws, '计数随档').toBe(6)
+    expect(weekendAssaultDrawOf(s, ctx, 'galaxy-hub', now), '非占领区不抽').toBeNull()
+    endWeekendEvent(s, now)
+    expect(weekendAssaultDrawOf(s, ctx, gid, now), '活动已结束不抽').toBeNull()
+  })
+
+  it('⑰ 远征落盘：foeGalaxyId 与 rewardIskOverride 都要随档往返（补上原先漏的清洗器那行）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 21 })
+    s.expedition.foeGalaxyId = 'galaxy-echo'
+    s.expedition.rewardIskOverride = 123_456
+    const back = loadSaveFile(serializeSaveFile(s, 0)).state
+    expect(back.expedition.foeGalaxyId, '星系归属要活过读档（原先读档即丢 ⇒ 战后归属退回母港）').toBe('galaxy-echo')
+    expect(back.expedition.rewardIskOverride, '奖励基底覆写也要活过读档').toBe(123_456)
+  })
 })
+

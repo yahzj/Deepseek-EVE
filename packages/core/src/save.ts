@@ -1888,6 +1888,21 @@ function normalizeState(raw: unknown): GameState {
     })(),
     // 2026-09-06 兼容字段：胜利自动返航（不可召回）/失利/撤退；仅 back 相位有效，其余清空
     returnReason: expReturnReason,
+    /**
+     * **本场远征打的是哪个星系**（2026-09-25 周末入侵接线）：
+     * ⚠ 这一行原先**漏了**（只写了 `state.ts` 的类型与写入点）⇒ **读档即丢**，"战后归属/残骸注入不再落母港"
+     * 只在同一次会话里成立、一读档就退回老口径（本轮补上；同批还补了 `rewardIskOverride`）。
+     * 按约定 §二：随档字段必须**两处落笔**（写入点 ＋ 清洗器）。
+     */
+    ...(typeof expRaw.foeGalaxyId === 'string' && expRaw.foeGalaxyId.length > 0
+      ? { foeGalaxyId: expRaw.foeGalaxyId }
+      : {}),
+    /** **奖励基底覆写**（2026-09-25 · 主动出击每场重抽的价钱口径）：非负有限数才收，其余省略 */
+    ...(typeof expRaw.rewardIskOverride === 'number' &&
+    Number.isFinite(expRaw.rewardIskOverride) &&
+    expRaw.rewardIskOverride >= 0
+      ? { rewardIskOverride: Math.round(expRaw.rewardIskOverride) }
+      : {}),
   }
 
   // --- 日志（逐条容错，超上限截掉最旧的） ---
@@ -2756,6 +2771,7 @@ function normalizeState(raw: unknown): GameState {
           const bestRun = weekendKeep(weekendRaw.flagshipBestRunDmg)
           const bossTick = weekendKeep(weekendRaw.bossTickWallMs)
           const prizePaid = weekendKeep(weekendRaw.prizePaidAtWallMs)
+          const assaultDraws = weekendKeep(weekendRaw.assaultDraws)
           return {
             seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
             startedAtWallMs: weekendStartedAt,
@@ -2778,6 +2794,7 @@ function normalizeState(raw: unknown): GameState {
             ...(bestRun !== undefined ? { flagshipBestRunDmg: bestRun } : {}),
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
             ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
+            ...(assaultDraws !== undefined ? { assaultDraws } : {}),
           }
         })()
       : undefined

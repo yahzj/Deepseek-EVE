@@ -335,7 +335,10 @@ export { deliverCommsInstance } from './comms'
 export {
   WEEKEND_BOUNTY_REWARD_MUL,
   WEEKEND_CARD_PREFIX,
+  WEEKEND_ASSAULT_SALT_BASE,
+  weekendAssaultDrawOf,
   weekendBountyCardsOf,
+  weekendNoteAssaultDispatch,
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,
   weekendEncounterRollOf,

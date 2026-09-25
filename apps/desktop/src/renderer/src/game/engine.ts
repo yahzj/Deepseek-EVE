@@ -169,6 +169,8 @@ import {
   // 2026-09-25 修「快进不刷新入侵」：入侵时钟 = 真实墙钟与游戏模拟墙钟取大者（见周末模块的 weekendClockOf）
   weekendClockOf,
   weekendBountyCardsOf,
+  weekendAssaultDrawOf,
+  weekendNoteAssaultDispatch,
   weekendOccupiedLiveAt,
   weekendFlagshipSpecOf,
   weekendFlagshipSquadOf,
@@ -2130,11 +2132,32 @@ export class GameEngine {
     return this.anomalies.find((a) => a.id === anomalyId)?.galaxyId
   }
 
+  /**
+   * **出击被占星系时的"每场重抽"**（2026-09-25 船长令：「主动出击也要每场重抽」）：
+   * 出发那一刻从该区域池里重新抽一支（`weekendAssaultDrawOf`，盐 = 本场已出发次数），
+   * 并把**奖励基底**钉在"该星系原卡 ×1.4"（抽到哪支都一样价）。出击**成功**才记一次计数 ⇒ 下一场换一支。
+   * 非占领区 / 活动已结束 ⇒ 原样返回（老路径零变化）。
+   */
+  private weekendDispatchOf(anomalyId: string): { cardId: string; rewardIskOverride?: number } {
+    const galaxyId = this.foeGalaxyOf(anomalyId)
+    if (galaxyId === undefined) return { cardId: anomalyId }
+    const drawn = weekendAssaultDrawOf(this.state, this.ctx, galaxyId, Date.now())
+    if (drawn === null) return { cardId: anomalyId }
+    return { cardId: drawn.cardId, rewardIskOverride: drawn.rewardIsk }
+  }
+
   /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
   startExpeditionAt(anomalyId: string): CommandResult {
     return this.withActivitySwitch('expedition', () => {
-      const result = startExpedition(this.state, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId) })
+      const galaxyId = this.foeGalaxyOf(anomalyId)
+      const dispatch = this.weekendDispatchOf(anomalyId)
+      const result = startExpedition(this.state, dispatch.cardId, this.ctx, {
+        ...(galaxyId !== undefined ? { foeGalaxyId: galaxyId } : {}),
+        ...(dispatch.rewardIskOverride !== undefined ? { rewardIskOverride: dispatch.rewardIskOverride } : {}),
+      })
       if (result.ok) {
+        /** 抽过才计数（`weekendDispatchOf` 是纯的、不改计数）⇒ 下一次出击换一支 */
+        if (dispatch.cardId !== anomalyId) weekendNoteAssaultDispatch(this.state)
         void this.persist()
         this.notify()
       }

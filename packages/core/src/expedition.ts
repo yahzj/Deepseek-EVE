@@ -314,7 +314,7 @@ export function startExpedition(
   state: GameState,
   anomalyId: string,
   ctx: SimContext,
-  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string },
+  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number },
 ): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
@@ -364,6 +364,14 @@ export function startExpedition(
    */
   if (opts?.foeGalaxyId !== undefined && opts.foeGalaxyId.length > 0) exp.foeGalaxyId = opts.foeGalaxyId
   else delete exp.foeGalaxyId
+  /**
+   * **奖励基底覆写**（2026-09-25 船长令「主动出击也要每场重抽」配套）：周末入侵的**敌舰每场重抽**，
+   * 但**价钱不变**——奖励恒 = 该星系原卡 ×1.4（由 `weekendBounty.weekendAssaultDrawOf` 算好传进来）。
+   * 缺省清掉（老路径逐字不变）。
+   */
+  if (opts?.rewardIskOverride !== undefined && Number.isFinite(opts.rewardIskOverride)) {
+    exp.rewardIskOverride = Math.max(0, Math.round(opts.rewardIskOverride))
+  } else delete exp.rewardIskOverride
   exp.phase = 'out' // 占位：本函数内随即转入 battle（去程取消：开战时刻 = 现在）
   exp.battle = null
   exp.finishAtGameMs = now // 开战时刻 = 下达时刻（不再有去程等待）
@@ -413,7 +421,7 @@ export function startExpeditionFromMining(
   state: GameState,
   anomalyId: string,
   ctx: SimContext,
-  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string },
+  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number },
 ): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
@@ -529,7 +537,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     ? lairBaseRewardIsk(anomaly, lairTier)
     : factionActive
       ? factionBaseRewardIsk(anomaly)
-      : anomaly.rewardIsk
+      : /**
+         * **入侵"主动出击每场重抽"的价钱口径**（2026-09-25）：敌舰每场换，但奖励恒 = 该星系原卡 ×1.4
+         * ⇒ 出发时算好写进 `exp.rewardIskOverride`，这里优先用它；老路径（没写）逐字不变。
+         */
+        (exp.rewardIskOverride ?? anomaly.rewardIsk)
   // 限时倍率（2026-09-15）：`rewardIsk` 乘在悬赏结算基底上（窝点/派系/普通三支共用这一处）
   const baseRewardIsk = Math.max(0, Math.round(baseRewardIskRaw * rewardMulOf(state)))
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，

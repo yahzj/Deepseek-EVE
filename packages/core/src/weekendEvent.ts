@@ -206,6 +206,11 @@ export interface WeekendEventState {
    * ⚠ 与 `rewardLedger` 的分工：台账 = **总数**（面板/通讯显示用，含已发与待发）；这一格 = **还没发的那部分**。
    */
   reclaimPending?: { isk: number; wreck: number }
+  /**
+   * **本场"主动出击"已出发的次数**（2026-09-25 船长令「主动出击也要每场重抽」）：
+   * 抽签盐 = `WEEKEND_ASSAULT_SALT_BASE + 次数` ⇒ 每按一次出击换一支，且随档（读档后不重复同一支）。
+   */
+  assaultDraws?: number
 }
 
 /**

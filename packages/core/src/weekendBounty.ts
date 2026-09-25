@@ -20,7 +20,9 @@ import {
   WEEKEND_PERIPHERY_THREAT,
   weekendEncounterChanceAt,
   weekendFoeCardsSelfPriced,
+  weekendDrawFoeCardId,
   weekendGarrisonFoeCardId,
+  weekendOccupiedIds,
   weekendProgressAt,
 } from './weekendEvent'
 import { weekendAmbushSpecOf } from './weekendBattle'
@@ -120,6 +122,57 @@ export function weekendBountyCardsOf(
     }
   }
   return cards.map((c) => weekendDerivedCardOf(c, ev.family, { isCore }))
+}
+
+/**
+ * **主动出击"每场重抽"**（2026-09-25 船长令：「**主动出击也要每场重抽**」）：
+ * 出发那一刻从该区域池里**重新抽一支**（与"驻留卡/板面显示"解耦），并给出**奖励基底**。
+ *
+ * 三条口径：
+ * 1. **每场一支**：抽签盐 = `WEEKEND_ASSAULT_SALT_BASE + 本场已出发次数`（`ev.assaultDraws` 随档）——
+ *    每按一次出击就换一次盐 ⇒ 遇袭那样"每场重抽"，且**不消费主随机序列**；
+ * 2. **奖励不变**：奖励基底恒 = **该星系原卡 × `WEEKEND_BOUNTY_REWARD_MUL`（1.4）**，
+ *    与抽到哪一支无关（抽到骚扰还是袭击，价钱一样）——由调用方写进 `expedition.rewardIskOverride`；
+ * 3. **只对活的占领区**成立；非占领区 / 活动已结束 ⇒ `null`（调用方按原卡照旧走）。
+ */
+export interface WeekendAssaultDispatch {
+  /** 这一场遇到的入侵舰队卡（真实 id；H 族 = 独立卡，A/C/G = 该星系原卡派生 id） */
+  cardId: string
+  /** 奖励基底（该星系原卡 × 1.4；解析不到原卡时回落"抽到那张卡自己的 rewardIsk"） */
+  rewardIsk: number
+}
+
+/** 主动出击抽签盐的基数（与"驻留卡"的 0、遇袭的"时间档"错开，纯为可读性） */
+export const WEEKEND_ASSAULT_SALT_BASE = 10_000
+
+export function weekendAssaultDrawOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  nowWallMs: number,
+): WeekendAssaultDispatch | null {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return null
+  if (!weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return null
+  const isCore = galaxyId === ev.coreId
+  const idx = Math.max(0, weekendOccupiedIds(ev).indexOf(galaxyId))
+  const salt = WEEKEND_ASSAULT_SALT_BASE + Math.max(0, Math.floor(ev.assaultDraws ?? 0))
+  const cardId = weekendDrawFoeCardId(ev.family, isCore, ev.seq, idx, salt)
+  const drawn = ctx.anomalies.get(cardId)
+  /** 该星系**原卡**（用于钉住奖励；非 H 族时抽签结果就是它的 id ⇒ 奖励口径与老路径一致） */
+  const base = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId === galaxyId)
+  const rewardIsk =
+    base !== undefined
+      ? Math.max(1, Math.round((base.rewardIsk ?? 0) * WEEKEND_BOUNTY_REWARD_MUL))
+      : Math.max(1, Math.round(drawn?.rewardIsk ?? 1))
+  return { cardId, rewardIsk }
+}
+
+/** 记一次"已出发"（出击成功后才调）⇒ 下一场换一支 */
+export function weekendNoteAssaultDispatch(state: GameState): void {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return
+  ev.assaultDraws = Math.max(0, Math.floor(ev.assaultDraws ?? 0)) + 1
 }
 
 /**

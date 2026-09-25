@@ -199,3 +199,20 @@ typecheck ✓ · core **2,356 例全绿** · content:check ✓ · l10n:check ✓
 
 **验证**：`weekend-wiring` 新增 ⑮（真旗舰卡建战斗 → 打掉母舰三成 → 标 `autoEscaped` → 走 `advanceEncounterWatch`）：
 **伤害记进池子 ✓ · 进度不动 ✓ · 不算击沉 ✓ · 遭遇正常收场 ✓**；typecheck ✓ · core **2,360 例全绿**（209 文件）· content:check ✓ · l10n:check ✓ · build ✓ · docs:index ✓（321 份）。
+## 十六、主动出击改为「每场重抽」（2026-09-25 船长令）
+
+> 船长原话：「**主动出击也要每场重抽**」
+
+**口径**（三条，缺一不可）：
+
+| 项 | 落法 |
+|---|---|
+| **每场换一支** | 新 `weekendBounty.weekendAssaultDrawOf(state, ctx, galaxyId, now)`：出发那一刻从该区域池里**重新抽一支**（`weekendDrawFoeCardId` 的盐 = `WEEKEND_ASSAULT_SALT_BASE(10000) + 本场已出发次数`）⇒ 与"驻留卡/板面显示"**解耦**；本场次数落 `WeekendEventState.assaultDraws`（随档）。**出击成功才计数**（`weekendNoteAssaultDispatch`） |
+| **价钱不变** | 奖励基底恒 = **该星系原卡 × 1.4**（`rewardIsk` 随抽签结果一起返回）；由引擎写进 `ExpeditionState.rewardIskOverride`，结算处 `baseRewardIskRaw` 优先用它 ⇒ **抽到骚扰还是袭击，价钱一样**（老路径没写该字段 ⇒ 逐字不变） |
+| **入口** | 引擎 `startExpeditionAt`：被占星系 ⇒ 用抽到的那张卡出发 + 带上奖励覆盖；非占领区 / 活动已结束 ⇒ `null` ⇒ 原样走老路径 |
+
+**顺带修掉一个真 bug**：`ExpeditionState.foeGalaxyId`（上一批"星系归属"接线加的）**只写了类型与写入点、漏了 `save.ts` 清洗器** ⇒ **读档即丢**（"战后归属/残骸注入不再落母港"只在同一次会话里成立，一读档就退回老口径）。按约定 §二"随档字段两处落笔"补上；同批把 `rewardIskOverride` 也一起落进清洗器。
+
+**验证**：`weekend-wiring` 增 2 例（**17 例**）——⑯ 六次出发覆盖两种编成 · 价钱恒 = 原卡 ×1.4 · 计数随档 · 非占领区与已结束都不抽；⑰ `foeGalaxyId` 与 `rewardIskOverride` **随档往返**。
+typecheck ✓ · core **2,362 例全绿**（209 文件）· content:check ✓ · l10n:check ✓ · build ✓ · **`save:migrate` 84/84 真档** ✓ · docs:index ✓（321 份）。
+⚠ **板面口径**：星图/板面仍显示"驻留的那一支"（名字与威胁），实战可能是另一支 —— 但星系详细里那行（第十四节 ⑤）只写「击退入侵舰队 ＋ 威胁范围」⇒ 玩家看不到具体编成，**不一致不外露**。
