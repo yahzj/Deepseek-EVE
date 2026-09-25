@@ -1507,6 +1507,34 @@ for (const m of MODULES) {
     console.log('· 入侵标记悬停可达契约：读数在圆点上 · 条与 ★ 可悬停 · 光晕保持穿透')
   }
 
+  /* ── 入侵开放前必须发公告契约（2026-09-25 船长令：公告先备稿，等解除调试限定时一起发）──
+   *
+   * 公告定稿（船长手改稿逐字照抄）在 `docs/design/announcement-draft-20260925-weekend-invasion.md`，
+   * id = `ann-weekend-invasion-20260925`。船长同日裁定：**先备稿**——入侵当前仅调试模式可见，
+   * 现在发等于"玩家读到却玩不到"。
+   *
+   * 契约：**一旦 `WEEKEND_DEBUG_ONLY` 变成 false（= 入侵对所有玩家开放）**，`announcements.ts` 里
+   * 就必须已经有那一条（§7 硬要求：大系统开放必须带玩家公告）⇒ 忘了发就红。
+   * 现在还关着 ⇒ 只打印一行状态（不拦），提醒这份稿子还在等着。
+   */
+  {
+    const weSrc = readSrc('packages/core/src/weekendEvent.ts')
+    const invasionOpen = /export const WEEKEND_DEBUG_ONLY = false/.test(weSrc)
+    if (invasionOpen) {
+      const annSrc = readSrc('packages/data/src/announcements.ts')
+      check(
+        annSrc.includes("'ann-weekend-invasion-20260925'"),
+        '入侵开放前必须发公告契约：`WEEKEND_DEBUG_ONLY` 已置 false（入侵对所有玩家开放），' +
+          `但 \`announcements.ts\` 里还没有 \`ann-weekend-invasion-20260925\` 那一条 —— ` +
+          `请把 docs/design/announcement-draft-20260925-weekend-invasion.md 的定稿写进文件最上方`,
+      )
+    }
+    console.log(
+      `· 入侵开放前必须发公告契约：WEEKEND_DEBUG_ONLY = ${invasionOpen ? 'false（已开放）' : 'true（仅调试可见）'}` +
+        (invasionOpen ? '' : ' ⇒ 公告已定稿待发布（稿子见 docs/design/announcement-draft-20260925-weekend-invasion.md）'),
+    )
+  }
+
   /* ── 干扰压制取数契约（2026-09-25 船长报障「摧毁敌方干扰舰后，射程不会恢复」）──
    *
    * 病根两条，都在这一个机制的取数上：
