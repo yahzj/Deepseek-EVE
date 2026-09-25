@@ -86,18 +86,23 @@ const RARE_LIFE_MUL = 4
  * 同日另令「0.8% 的概率上调到 1%」见 `balance.market.exoticWindowChance`）。 */
 const EXOTIC_CAP_PER_DRAW = 4
 /** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
- * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
- * balance.market.rareTier3Weight；奇货渠道出率与数字不挂钩。**2026-09-10 船长定 0.25 → 0.15**，
- * 系数经 market-rarity-sim 复跑校准。
+ * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；奇货渠道出率与数字不挂钩）。
  *
- * ⚠ **2026-09-16 补 4 档**（船长问清「2/3/4 的权重分别是多少」＝ 1 / 0.15 / **1** 后，选**选项 B**）：
- * 当日的「甲＋乙」把 5 艘官方巡洋舰**保 4** 挪进稀有订单，而本函数原**只特判档 3** ⇒ 档 4 落 `else`
- * 拿 ×1（与大众档同频，实测 ≈32 分钟一件）；现给档 4 单独系数 **`rareTier4Weight` = 0.05**
- * ⇒ 实测 ≈**9.5 小时/件**（档 3 仍 0.15 ≈3.9h · 档 2 仍 1 ≈0.8h）。
- * ⚠ 档 **5** 仍无自己的系数（走 `else` ⇒ ×1）——将来启用档 5 时一并定。 */
+ * ⟪**2026-09-25 船长令（现行）**⟫：「**2~5稀有度的稀有订单，权重调整为 1/0.5/0.2/0.05**」
+ * ⇒ **档 2 ×1 · 档 3 ×0.5 · 档 4 ×0.2 · 档 5 ×0.05**（四个数一次给全）。
+ *
+ * 沿革（**别照旧文重开**）：
+ * - 2026-09-09 立表：只给档 3 系数 = 0.25（档 2 = 1；档 4/5 落 `else` ⇒ ×1）；
+ * - 2026-09-10：0.25 → **0.15**（「高阶稀有订单更难碰」，实测 tier3 占比 10% → 6%）；
+ * - 2026-09-16 选「选项 B」：补档 4 系数 **0.05**（此前档 4 也拿 ×1 ≈32 分钟一件）；
+ * - ⚠ **档 5 一直没有系数**（2026-09-20 记账"要系数另立条目"，但没立）⇒ 它按 ×1 与大众档同频，
+ *   实测 `bp-shieldfield-3`（档 5）**68 窗 ≈11.4h** 反而比 `bp-shieldfield-2`（档 4，214 窗 ≈35.7h）
+ *   常见 3 倍 —— **本次一并修好**。 */
 function rareTierWeight(def: MarketGoodDef, ctx: SimContext): number {
-  if (def.rarityTier === 4) return ctx.balance.market.rareTier4Weight ?? 0.05
-  return def.rarityTier === 3 ? (ctx.balance.market.rareTier3Weight ?? 0.15) : 1
+  const m = ctx.balance.market
+  if (def.rarityTier === 5) return m.rareTier5Weight ?? 0.05
+  if (def.rarityTier === 4) return m.rareTier4Weight ?? 0.2
+  return def.rarityTier === 3 ? (m.rareTier3Weight ?? 0.5) : 1
 }
 
 /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**）——稀有卖单抽取与奇货掷骰**两个渠道共用**；

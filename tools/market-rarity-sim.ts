@@ -31,6 +31,8 @@ const STANDING = argVal('--standing', 24)
 const TIER3_OVERRIDE = ARGS.indexOf('--tier3-weight') >= 0 ? Number(ARGS[ARGS.indexOf('--tier3-weight') + 1]) : null
 // --tier4-weight X：覆写引擎 balance 的 **4 档**权重（2026-09-16 船长选「选项 B」起 = 0.05；对照用）
 const TIER4_OVERRIDE = ARGS.indexOf('--tier4-weight') >= 0 ? Number(ARGS[ARGS.indexOf('--tier4-weight') + 1]) : null
+// --tier5-weight X：覆写引擎 balance 的 **5 档**权重（⟪2026-09-25 船长令⟫ 起首次有系数 = 0.05；对照用）
+const TIER5_OVERRIDE = ARGS.indexOf('--tier5-weight') >= 0 ? Number(ARGS[ARGS.indexOf('--tier5-weight') + 1]) : null
 // --bp-weight X：覆写蓝图书权重（2026-09-10 船长定 5%；对照旧值 0.5 用；缺省 = 当前配置）
 const BP_OVERRIDE = ARGS.indexOf('--bp-weight') >= 0 ? Number(ARGS[ARGS.indexOf('--bp-weight') + 1]) : null
 // --rows k1,k2：额外打印指定稀有行的单行出现间隔（默认 = 碎片路线对应的 6 张书）
@@ -47,11 +49,15 @@ if (TIER3_OVERRIDE !== null && Number.isFinite(TIER3_OVERRIDE)) {
 if (TIER4_OVERRIDE !== null && Number.isFinite(TIER4_OVERRIDE)) {
   ctx.balance.market.rareTier4Weight = TIER4_OVERRIDE
 }
+if (TIER5_OVERRIDE !== null && Number.isFinite(TIER5_OVERRIDE)) {
+  ctx.balance.market.rareTier5Weight = TIER5_OVERRIDE
+}
 if (BP_OVERRIDE !== null && Number.isFinite(BP_OVERRIDE)) {
   ctx.balance.market.blueprintWeight = BP_OVERRIDE
 }
 const tier3W = ctx.balance.market.rareTier3Weight
 const tier4W = ctx.balance.market.rareTier4Weight
+const tier5W = ctx.balance.market.rareTier5Weight
 const bpW = ctx.balance.market.blueprintWeight
 const rareDefs = [...ctx.marketGoods.values()].filter((g) => g.rarity === 'rare' && g.playerBuyable !== false)
 const bpDefs = rareDefs.filter((d) => d.kind === 'blueprint')
@@ -154,7 +160,7 @@ for (const seed of SEEDS) {
 const meanWin = mean(perWindowAll)
 console.log(
   `══ 稀有订单刷新模拟（rare 渠道卖单；窗 ${WINDOWS} × 种子 ${SEEDS.length}，声望 ${STANDING}，` +
-    `tier 权重 2=1 / 3=${tier3W} / 4=${tier4W}，蓝图权重 ${bpW}）══`,
+    `tier 权重 2=1 / 3=${tier3W} / 4=${tier4W} / 5=${tier5W}，蓝图权重 ${bpW}）══`,
 )
 console.log(
   `rare 供给行 ${rareDefs.length}：tier2（大众）= ${ROW_BY_TIER.get(2) ?? 0} 行 · tier3（高阶）= ${ROW_BY_TIER.get(3) ?? 0} 行` +
