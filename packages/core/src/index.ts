@@ -355,6 +355,8 @@ export {
   WEEKEND_ASSAULT_SALT_BASE,
   weekendAssaultDrawOf,
   weekendBountyCardsOf,
+  // 2026-09-25 船长裁决「甲」：同一被占星系只出一条入侵悬赏（板面/星图这一层去重）
+  weekendBoardRowsOf,
   weekendNoteAssaultDispatch,
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,

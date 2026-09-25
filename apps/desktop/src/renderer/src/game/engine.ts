@@ -174,6 +174,8 @@ import {
   // 2026-09-25 修「快进不刷新入侵」：入侵时钟 = 真实墙钟与游戏模拟墙钟取大者（见周末模块的 weekendClockOf）
   weekendClockOf,
   weekendBountyCardsOf,
+  // 2026-09-25 船长裁决「甲」：板面同星系只出一条入侵悬赏（去重单点在 core）
+  weekendBoardRowsOf,
   weekendAssaultDrawOf,
   weekendNoteAssaultDispatch,
   weekendOccupiedLiveAt,
@@ -601,7 +603,13 @@ export class GameEngine {
       cursor.set(a.galaxyId, i + 1)
       out.push(list[i] ?? a)
     }
-    this.anomalies = out
+    /**
+     * **同一被占星系只出一条**（**2026-09-25 船长裁决「甲」**）：H 族是"每星系抽一支驻留舰队"，
+     * 同星系的多个悬赏槽位会换出**同一张卡**（真档实测：红环航道 2 个槽位 = 两条一模一样的入侵悬赏）。
+     * 去重在 core 单点（`weekendBoardRowsOf`：只对被占星系生效、A/C/G 的派生卡不受影响）。
+     */
+    this.anomalies = weekendBoardRowsOf(out, (gid) => weekendOccupiedLiveAt(this.state, gid, now))
+    return
   }
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
   allAnomalies = ANOMALIES_FLAVORED

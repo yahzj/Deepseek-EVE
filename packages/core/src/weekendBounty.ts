@@ -151,6 +151,36 @@ export function weekendBountyCardsOf(
 }
 
 /**
+ * **板面行去重**（**2026-09-25 船长裁决「甲」**：「同一被占星系只出一条，不分族」）。
+ *
+ * 起因（船长真档实测 · 2026-09-25）：悬赏替换是**按槽位逐个**做的（`weekendBountyCardsOf` 就是
+ * `cards.map(...)`），而 H 族改判成"每星系抽一支驻留舰队"后，**同一星系的多个槽位换出来的是同一张卡**
+ * —— 红环航道（2 个槽位）在常驻悬赏页面上出现**两条一模一样**的「击退入侵舰队」，两条指向同一场战斗。
+ *
+ * 口径：**只给"板面 / 星图列表"这一层**去重（同一星系的多条**同一张**入侵卡只留第一条）；
+ * - **不动** `weekendBountyCardsOf` 的"同序整池"契约 —— 遇袭敌群池、残骸打捞池、冷却判据照旧读整池；
+ * - **只对被占（活的）星系生效**：非占领区的原卡一行都不动（同星系两张不同原卡照旧各列一行）；
+ * - A/C/G 三族的派生卡**保留各自原卡 id**（`weekendDerivedCardOf`）⇒ 天然各不相同，本函数不会误删。
+ */
+export function weekendBoardRowsOf<T extends { id: string; galaxyId: string }>(
+  rows: readonly T[],
+  /** 该星系此刻是否"活的占领区"（调用方传 `weekendOccupiedLiveAt` 绑定 now 的闭包） */
+  isOccupiedLive: (galaxyId: string) => boolean,
+): T[] {
+  const seen = new Set<string>()
+  const out: T[] = []
+  for (const row of rows) {
+    if (isOccupiedLive(row.galaxyId)) {
+      const key = `${row.galaxyId}|${row.id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+    }
+    out.push(row)
+  }
+  return out
+}
+
+/**
  * **主动出击"每场重抽"**（2026-09-25 船长令：「**主动出击也要每场重抽**」）：
  * 出发那一刻从该区域池里**重新抽一支**（与"驻留卡/板面显示"解耦），并给出**奖励基底**。
  *
