@@ -1068,6 +1068,36 @@ html[data-locale='en'] body {
 
 }
 
+/* ---------- 入侵残骸（独立残骸条，2026-09-25 船长令：需要独立的残骸条 · 打捞界面置顶） ----------
+ * 星图「残骸打捞」卡片与星系详细的打捞区块共用这一条：文字读数 + 细进度条
+ * （条复用同卡既有的 `.app-card-progress`，只换配色为入侵深红）；
+ * **只有入侵残骸 > 0 时才渲染**（记录衰减到 0 即消失 ⇒ 这一条也随之消失）。 */
+.app-belt-invwreck {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-4);
+
+  margin-bottom: var(--wui-sp-4);
+
+}
+
+.app-belt-invwreck-label {
+
+  font-size: var(--wui-fs-xs);
+
+  color: rgb(var(--wui-danger-map));
+
+}
+
+.app-card-progress.is-invasion i {
+
+  background: linear-gradient(90deg, rgb(var(--wui-danger-deep)), rgb(var(--wui-danger-strong)));
+
+}
+
 /* 效率行（试点 2026-09-05：每循环产量/时长/每小时产出 + 估价——估价按物品本身，不随市场） */
 
 .app-belt-econ {
@@ -10541,11 +10571,39 @@ html[data-locale='en'] body {
 .app-weekend-box-tag { color: rgb(var(--wui-danger)); font-weight: 800; }
 .app-weekend-box-dim { color: rgb(var(--wui-red) / 0.85); }
 .app-weekend-box-warn { color: rgb(var(--wui-danger)); font-weight: 700; }
+/* 入侵结算面板（2026-09-25 船长令：从结算通讯的跳转弹出）——
+   骨相与读数格全部复用 `.app-wh-settle-*`（虫洞撤离结算），这里只补"各星系贡献"那一列的排布，
+   不另造窗口观感（按约定第六章）。 */
+.app-weekend-sum .app-wh-settle-actions { margin-top: var(--wui-sp-10); }
+.app-weekend-sum .app-wh-settle-loss { border-color: rgb(var(--wui-border)); background: rgb(var(--wui-x01) / 0.02); }
+.app-weekend-sum-rows { display: flex; flex-direction: column; gap: var(--wui-sp-4); margin-top: var(--wui-sp-6); }
+.app-weekend-sum-row {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.6fr);
+  gap: var(--wui-sp-8); align-items: baseline; font-size: var(--wui-fs-sm);
+}
+.app-weekend-sum-name { color: rgb(var(--wui-x01)); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 周末入侵：星图被占星系的红环 + 旗标（2026-09-23） */
+/* 周末入侵：星图被占星系 = **身后红色发光** + 旗标（2026-09-23 立 · **2026-09-25 船长令去掉红圈改发光**） */
 .app-map-invasion { pointer-events: none; }
-.app-map-invasion-ring { fill: none; stroke: rgb(var(--wui-danger)); stroke-width: 1.6; stroke-dasharray: 4 3; opacity: 0.95; }
-.app-map-invasion-tag { fill: rgb(var(--wui-danger)); font-size: var(--wui-fs-xs); text-anchor: middle; }
+/* 红色发光（`#app-invglow` 静态径向渐变，画在圆点之前 ⇒ 落在星系后方）；不再用描边圈。
+   2026-09-25 船长：「范围太小、不够红、衰减有些高」⇒ 半径 30→46、色改固定深红 #E53935、
+   四段不透明度 0.62/0.34/0.16/0（偏移 0/45/75/100%）；同日「可以做一个脉动」⇒ 下面这条呼吸 */
+.app-map-invasion-glow {
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: app-map-invasion-pulse var(--wui-dur-map) ease-in-out infinite;
+}
+/* 呼吸：亮度 0.62 → 1 + 轻微缩放 0.92 → 1（与敌对派系标记的 `app-map-faction-pulse` 同一族语汇） */
+@keyframes app-map-invasion-pulse {
+  0%, 100% { opacity: 0.62; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1); }
+}
+.app-map-invasion-tag { fill: rgb(var(--wui-danger-strong)); font-size: var(--wui-fs-xs); text-anchor: middle; }
+/* 被占星系的**进度条**（2026-09-25 船长令：替换原先的旗子；画在节点上方 30×3.5，圆角）
+   —— 底槽用暗红、填充用与发光同一枚深红，读数 = 该星系的入侵进度（0~100%） */
+.app-map-invbar-bg { fill: rgb(var(--wui-danger-strong) / 0.22); }
+.app-map-invbar-fill { fill: rgb(var(--wui-danger-strong) / 0.95); }
 /* 序章「模式选择」两张卡（**2026-09-23 船长定**：时机＝初始动画之后；两张卡与「出港」按钮同一档尺寸/同一套语言） */
 .app-pro-mode { display: flex; flex-wrap: wrap; gap: var(--wui-sp-18); justify-content: center; align-items: stretch; }
 .app-pro-mode-card { width: 330px; max-width: 100%; min-height: 220px; display: flex; flex-direction: column; gap: var(--wui-sp-8); text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: var(--wui-sp-10); padding: var(--wui-sp-16) var(--wui-sp-22); cursor: pointer; }
@@ -11971,8 +12029,11 @@ html[data-locale='en'] body {
    行本身是 `space-between`，两个按钮各自做 flex 项会被主内容的余量撑开 ⇒ 包成一组，组内 4px 紧挨。 */
 .app-ga-btns { display: flex; align-items: center; gap: var(--wui-sp-4); flex: 0 0 auto; }
 
-/* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。 */
-.app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: var(--wui-fs-base); font-weight: 700; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }
+/* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。
+   ⟪2026-09-25 船长令⟫「伤害数字的停留时间延长，使用粗体字」：停留 = `POPUP_LIFE` 900 → 1500（TSX 那侧）；
+   字重 700 → **900**。⚠ 字体面本身（`--wui-mono` = Cascadia Mono / Consolas）**最重只有 Bold(700)**
+   ⇒ 900 会回落到 Bold，**视觉上与 700 相同**；若要"看起来更粗"，得换带 Black 字重的字体面或加 text-stroke。 */
+.app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: var(--wui-fs-base); font-weight: 900; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }
 @keyframes bts-pop-rise { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.85); } 18% { opacity: 1; transform: translate(-50%, -70%) scale(1.08); } 100% { opacity: 0; transform: translate(-50%, -210%) scale(1); } }
 
 /* ══════════════════════════════════════════════════════════════════════════

@@ -335,6 +335,12 @@ export interface UnitSpec {
    * 缺省不写 ⇒ 该单位没有这个机制（零行为变化）。
    */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number; k: number }
+  /**
+   * **支援舰船召唤装置的节拍**（船长 2026-09-25；见 `FoeMountDef.reviveEscort`）——
+   * 挂件单位（入侵母舰）每 `everyMs`（60 秒）把**当前波已阵亡的一艘敌舰**满血复活入场
+   * （新 tag `sup{n}-<原tag>`；上限 = 不超本波原编成）。缺省不写 ⇒ 该单位不会召唤（零行为变化）。
+   */
+  foeReviveEscort?: { everyMs: number }
   foeTactic: FoeTactic | null
   /**
    * **舰级 id**（2026-09-24 加；只给"舰级路径"建的敌单位写）：旗舰 BOSS 的伤害台账靠它认出母舰
@@ -891,8 +897,19 @@ export function applyMeWebDebuff<T extends UnitSpec>(spec: T, d: import('./state
 
 /**
  * **发动捕获网**（船长 2026-09-16：「**在自身第一次开火时发动**」——不看是否命中）：
- * 记"已发放"、给目标上账本、**当场**把效果打在本发目标的规格上、推一条**蓝色连线**特效与一条日志。
- * ⚠ 同一艘电子舰**整场只发一次**（`foeWebFired`）；**多艘不叠加**（同一目标已有账本 ⇒ 只留最早那条）。
+ * 给目标上账本、**当场**把效果打在本发目标的规格上、推一条**蓝色连线**特效与一条日志。
+ *
+ * 三条口径（第三条于 **⟪2026-09-25 船长报障⟫** 修）：
+ * 1. 同一艘舰**整场只发一次**（`foeWebFired`）；
+ * 2. **多艘不叠加**：目标已有账本 ⇒ **不再上账本、不推特效、不写日志**（只留最早那条）；
+ * 3. ⚠ **打空不算用掉**：第 2 条那种"目标已被别的网钉住"的情形下，**本舰的网保留**，
+ *    等它**真正钉住一个未被捕获的目标**时才记 `foeWebFired`。
+ *
+ * 为什么第 3 条必须这样（船长 2026-09-25 原话）：「**装备劫掠捕获网的船攻击时，如果命中已经被捕获的船时，
+ * 并不会触发，而是保留直到攻击了没有被捕获的船**」。修前：本函数**无条件**先记 `foeWebFired` 再判"已钉"，
+ * 于是第 2 艘起的网被**静默作废**（无蓝线、无日志、此后整场不再发放）。真引擎实测（真实入侵卡
+ * `ink-harass` = 墨潮突击舰 ×4 全带网 · 我方只 1 艘船）：**`foeWebFired` 记 4 艘、实际只钉住 1 个目标、
+ * 蓝线只出 1 条** ⇒ 3 张网白费。修后同上场景应记 **1** 艘、留着另外 3 张。
  */
 function fireFoeCaptureWeb(
   state: GameState,
@@ -902,8 +919,9 @@ function fireFoeCaptureWeb(
 ): void {
   const web = f.foeCaptureWeb
   if (!web) return
+  // ⚠ 目标已被别的网钉住 ⇒ **本次不算发放**（本舰的网保留到它钉住新目标为止）——见函数头注第 3 条
+  if (b.meWebDebuffs?.[target.tag]) return
   b.foeWebFired = { ...(b.foeWebFired ?? {}), [f.tag]: true }
-  if (b.meWebDebuffs?.[target.tag]) return // 同一目标已被别的网钉住 ⇒ 不叠加（只推特效不重复上账本）
   const debuff: import('./state').BattleWebDebuff = {
     byTag: f.tag,
     slowMul: web.slowMul,
@@ -1799,18 +1817,20 @@ export function foeClassName(tactic: string | undefined, profile: string | undef
 }
 
 /** 主/僚判定（按 tag 结构，2026-09-09 多波）：主舰 = foe-0 或 w{n}-foe-{k}；
- *  僚机 = legacy foe-N（N≥1，旧单波 escorts）或 *-e{i}（各小队 escort）。 */
+ *  僚机 = legacy foe-N（N≥1，旧单波 escorts）或 *-e{i}（各小队 escort）。
+ *  ⚠ 支援舰（`sup{n}-<原tag>`）先剥前缀再判——它继承原单位的位次。 */
 export function foeMainTagOf(tag: string): boolean {
-  if (tag === 'foe-0') return true
-  if (/^foe-\d+$/.test(tag)) return false
-  return tag.includes('-foe-') && !tag.includes('-e')
+  const base = baseFoeTag(tag)
+  if (base === 'foe-0') return true
+  if (/^foe-\d+$/.test(base)) return false
+  return base.includes('-foe-') && !base.includes('-e')
 }
 
-/** 单位所在波的血档（tag 前缀 w{n}- 反查波表；首波/无波表 = 1） */
+/** 单位所在波的血档（tag 前缀 w{n}- 反查波表；首波/无波表 = 1）——支援舰同样先剥前缀 */
 function waveHpShareOf(tag: string, anomaly: AnomalyDef): number {
   const waves = anomaly.waves
   if (!waves || waves.length === 0) return 1
-  const m = /^w(\d+)-/.exec(tag)
+  const m = /^w(\d+)-/.exec(baseFoeTag(tag))
   const idx = m ? Math.min(waves.length - 1, parseInt(m[1]!, 10)) : 0
   return Math.max(0.001, waves[idx]!.hpShare ?? 1)
 }
@@ -1864,13 +1884,27 @@ function enumerateShipUnits(
   return out
 }
 
+/**
+ * **支援舰的 tag 前缀**（船长 2026-09-25「支援舰船召唤装置」）：复活/入场的支援舰 tag = `sup{n}-<原tag>`
+ * ⇒ 界面上它是一艘**新单位**（新的舰影 + 入场动画），而美术/体积/名称仍按**原 tag** 解析。
+ * `baseFoeTag` 是那条解析的**唯一剥壳点**（下面三个查询函数都先过它）。
+ */
+export const FOE_SUPPORT_TAG_RE = /^sup\d+-/
+
+/** 剥掉支援舰前缀（非支援舰 tag 原样返回） */
+export function baseFoeTag(tag: string): string {
+  return tag.replace(FOE_SUPPORT_TAG_RE, '')
+}
+
 /** 舰级路径的 tag → 舰级反查（界面 `foeUnitNameOf` 沿用同一入口，读档/实时推导都不迁移） */
 function foeShipAtTag(anomaly: AnomalyDef, tag: string): { ship: FoeShipDef; escort: boolean } | null {
   if (!anomaly.ships || anomaly.ships.length === 0) return null
-  const m = /^w(\d+)-/.exec(tag)
+  /** ⚠ **先剥支援舰前缀**（`sup1-foe-0` → `foe-0`）：不剥的话它查不到舰级 ⇒ 舰影/体积/名称一起回落 */
+  const base = baseFoeTag(tag)
+  const m = /^w(\d+)-/.exec(base)
   const waveIdx = m ? parseInt(m[1]!, 10) : 0
   for (const u of enumerateShipUnits(anomaly, waveIdx)) {
-    if (u.tag === tag) return { ship: u.slot.ship, escort: u.escort }
+    if (u.tag === base) return { ship: u.slot.ship, escort: u.escort }
   }
   return null
 }
@@ -2333,6 +2367,12 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           foeRepairPulse: { ...rp, k: Math.max(1, threatNow / FOE_REPAIR_THREAT_REF) },
         }
       })(),
+      /**
+       * **支援舰船召唤装置**（船长 2026-09-25；见 `FoeMountDef.reviveEscort`）：参数原样带给单位
+       * （池子/上限/入场口径都在 `advanceBattleFor` 的"支援舰召唤"一段里判）。
+       * 缺省不写 ⇒ 该单位不召唤（零行为变化）。
+       */
+      ...(mount.foeReviveEscort !== undefined ? { foeReviveEscort: mount.foeReviveEscort } : {}),
       // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化。
       // 2026-09-16 起走挂载件（`foe-mount-drone-range-x4`），旧字段 `ship.droneRangeMulOnHit` 兼容回退
       ...((mount.foeDroneRangeMulOnHit ?? ship.droneRangeMulOnHit) !== undefined && droneWeapons.length > 0
@@ -2491,6 +2531,92 @@ function resolveSupportBranch(
   const delayMs = Math.max(0, Math.round(caller.foeSupportCall.delaySec * 1000))
   if (b.lastTickGameMs - b.startedAtGameMs < delayMs) return null
   return b.distanceM <= supportCallerReachM(b, caller) ? 'inside' : 'outside'
+}
+
+/**
+ * **每拍结算「支援舰船召唤」**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，
+ * 只不过改为**复活被摧毁的友军**（但是**表现形式上为敌方支援舰船入场**），**增援时间是60秒**，
+ * **每次随机复活一艘**」；见 `FoeMountDef.reviveEscort`）。
+ *
+ * 口径（全部由船长选定）：
+ * - **召唤者** = 挂了该件的单位（= 入侵母舰），且**必须在场**（它沉了就不再召唤；计时停在原地）；
+ * - **节拍** = 每 `everyMs`（60 秒）一次，**首次基准 = 召唤者入场那一刻**（母舰入场才开始有支援可言）；
+ * - **池子** = **当前这一波编成里已阵亡**的单位（**召唤者自己除外**）——只补当前波，跨波不补；
+ * - **上限** = **不超本波原编成**（活着的 + 已召唤的 ≥ 编成数 ⇒ 本拍不召唤）⇒ 死一个补一个，
+ *   玩家打掉得比补得快才能推进；
+ * - **满血入场** + 入场窗口（`enteredAtMs`：动画演完才可被选中、首发也推到窗口之后）——
+ *   与波次转场/单波增援**同一套演出与窗口口径**；
+ * - **表现 = 敌方支援舰船入场**：新 tag **`sup{n}-<原tag>`** ⇒ 界面上是一艘**新单位**（新舰影 +
+ *   入场动画），而美术/体积/名称仍按原 tag 解析（`baseFoeTag` 剥壳，见 `foeShipAtTag`）；
+ * - 随机走 `state.rng`，但**只在挂了本件的战斗里消费** ⇒ 没挂件的战斗随机序列逐字不变。
+ */
+function resolveFoeRevive(
+  state: GameState,
+  b: import('./state').BattleState,
+  curFoes: readonly UnitSpec[],
+  bal: BattleBalance,
+  nowMs: number,
+): void {
+  if (bal.foeReviveEnabled !== true) return
+  const summoner = curFoes.find((f) => f.foeReviveEscort !== undefined)
+  if (summoner === undefined || summoner.foeReviveEscort === undefined) return
+  const rt = b.units[summoner.tag]
+  if (!rt || (rt.hp.s <= 0 && rt.hp.a <= 0 && rt.hp.h <= 0)) return
+  const everyMs = Math.max(1_000, Math.round(summoner.foeReviveEscort.everyMs))
+  if (b.foeReviveAtMs === undefined) b.foeReviveAtMs = (rt.enteredAtMs ?? b.startedAtGameMs) + everyMs
+  if (nowMs < b.foeReviveAtMs) return
+  /** 到点 ⇒ 推进一格（大步长/离线补算一格一格来，不在一次推进里连刷） */
+  b.foeReviveAtMs = nowMs + everyMs
+  /**
+   * **本波"槽位"口径**：一个编成条目 = 一个槽位，槽位里站着的是**原单位或它的支援舰**（`sup{n}-`）。
+   * ⚠ 支援舰不是 `curFoes` 里的条目 ⇒ 数"在场数"必须把它们的**剥壳 tag** 一并算上，
+   * 否则上限形同虚设（每次到点都能再补一艘，战场无限膨胀）。
+   */
+  const specTags = new Set(curFoes.map((f) => f.tag))
+  const aliveSlots = new Set<string>()
+  for (const [tag, u] of Object.entries(b.units)) {
+    if (u.side !== 'foe') continue
+    if (u.hp.s <= 0 && u.hp.a <= 0 && u.hp.h <= 0) continue
+    const slot = baseFoeTag(tag)
+    if (specTags.has(slot)) aliveSlots.add(slot)
+  }
+  /** **编成已满 ⇒ 不召唤**（船长的"不超本波原编成"） */
+  if (aliveSlots.size >= curFoes.length) return
+  /**
+   * 池子 = **当前波编成里已阵亡、且槽位还空着**的条目（**召唤者自己除外**）——
+   * 已阵亡才叫"复活"（必须有尸体），槽位空着才补得进去（同一槽位的支援舰还活着就不重复补）。
+   */
+  const dead = curFoes.filter(
+    (f) =>
+      f.foeReviveEscort === undefined &&
+      b.units[f.tag] !== undefined &&
+      !aliveSlots.has(f.tag) &&
+      b.units[f.tag]!.hp.s <= 0 &&
+      b.units[f.tag]!.hp.a <= 0 &&
+      b.units[f.tag]!.hp.h <= 0,
+  )
+  if (dead.length === 0) return
+  const pick = dead[nextInt(state.rng, dead.length)]!
+  const n = (b.foeReviveCount ?? 0) + 1
+  b.foeReviveCount = n
+  const spec: UnitSpec = { ...pick, tag: `sup${n}-${pick.tag}` }
+  seedUnit(b, spec, {
+    enterReload: true,
+    // ⚠ 入场时刻取**全局时钟**（与转场/单波增援同一条理由：战斗时钟在演出窗口里是冻住的）
+    arrivedAtMs: state.gameMs,
+    ...(b.wormhole ? { foePhaseMs: WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
+  })
+  // 随新单位补建机群池与修理账本（与波次转场同款；没挂那两件的单位一个键都不建）
+  initFoeDronePools(b, [spec])
+  initFoeRepairPulses(b, [spec])
+  pushBattleNotice(b, `敌方支援舰船入场：${spec.name}`)
+  addLog(
+    state,
+    'warn',
+    `⚔ 敌方支援舰船入场：${spec.name}（第 ${n} 次支援）`,
+    'core.combat.001',
+    { p1: spec.name, p2: n },
+  )
 }
 
 /**
@@ -3534,7 +3660,9 @@ export function preloadShieldChargeFor(
    船长原话：「**新增高槽装备，护盾充能力场装置 MK2，为所有我方舰船恢复 10% 护盾，
    冷却时间 10 秒，MK3 的冷却时间缩短至 8 秒。有叠加惩罚**」＋ 追问三答：
    ① **叠加惩罚 = 同舰多件才算**（多艘船各带一件 ⇒ 各自独立、可叠加）
-   ② **10% 按携带者自己的满盾**（即每艘被治疗的船按**它自己**那本账算） */
+   ② **10% 的量按装件舰（施放者）的满盾算** —— ⚠ **本条 2026-09-25 由船长澄清**：
+      原记作「按携带者自己的满盾」，因"携带者"指装件舰还是受益舰有歧义，
+      曾被补注成"每艘被治疗的船按它自己那本账"并据此落码（见 `pulseShieldFieldFor` 头注的作废说明）。 */
 /**
  * **力场的每跳合计比例 ＋ 最短间隔**（读数入口；**逐型号怎么跳**看 `shieldFieldStreamsOf`）。
  *
@@ -3576,29 +3704,52 @@ export function preloadShieldFieldFor(
 }
 
 /**
- * **单次力场脉冲**（**一路**型号跳一次）：对**我方全队存活单位**各按其**自身满盾**补 `pct` 比例
- * （船长：「为**所有我方舰船**恢复 10% 护盾」＋「按携带者自己的满盾」⇒ 每艘被治疗的船按它自己那本账）。
+ * **单次力场脉冲**（**一路**型号跳一次）：给**我方全队存活单位**各补
+ * **「施放者（装件舰）满盾 × 本路比例」这个同一个绝对量**（各人再夹在自己的满盾内）。
+ *
+ * ⚠⚠ **2026-09-25 船长改判（现行口径）**：「**恢复量为本舰护盾量的 10%**」——
+ * 船长澄清「原本设想的就是」**按装件舰（使用船）的护盾量**、全队拿同一个数，
+ * 而不是"每艘受益舰各按自身满盾"。
+ *
+ * **旧口径（已作废）**：对每个受益单位各取其**自身** `hpMax.s × pct`。
+ * 由来 = 2026-09-20 那句追问答复「10% 按**携带者自己的满盾**」里"携带者"= 装件舰还是受益舰
+ * 没当场澄清，被补注成"每艘被治疗舰按它自己那本账"后落了码；
+ * ⚠ 它之所以长期没被发现：`tests/shield-field.test.ts` 的测试世界两艘船**同型同盾**
+ * ⇒ 新旧口径数值完全相同，**旧口径下没有任何用例能分辨**（本轮已补一条能分辨的判据）。
+ *
+ * 现口径的两个必然结果（船长 2026-09-25 均已裁定"不管"，即照此办）：
+ * - 装件舰是**大盾舰** ⇒ 小盾僚舰会被一跳直接顶满并溢出（超出部分丢弃）；
+ * - **多舰各带一件** ⇒ 各自按**自己**满盾各跳一路、全队叠加（沿用 2026-09-20
+ *   「多舰各带一件 ⇒ 各自独立、可叠加」那条，不加收敛）。
  *
  * ⚠ **2026-09-21 起本函数只管"一路"**（船长令：逐型号独立回转）——调用方按 `ledger.streams` 逐路传
- * `{ pct, ms }`；改前传整个账本（那时一台只有一路）。
+ * `{ pct, ms }` 与**本路的施放者**；改前传整个账本（那时一台只有一路）。
  *
- * ⚠ **施放者阵亡 ⇒ 本次不跳**（与维修/护盾充能装置同款：人没了装置就停）；但**受益方**是
- * 全队存活单位 ⇒ 与"只治自己"的 `pulseShieldChargeFor` 是两回事。
+ * ⚠ **施放者阵亡 ⇒ 本次不跳**（由调用方判：人没了装置就停，与维修/护盾充能装置同款）；
+ * 但**受益方**是全队存活单位 ⇒ 与"只治自己"的 `pulseShieldChargeFor` 是两回事。
  * 死亡单位跳过（`isAlive`）——护士不拉尸体，与全仓口径一致。
  */
 export function pulseShieldFieldFor(
   b: import('./state').BattleState,
   myUnits: readonly UnitSpec[],
   stream: { pct: number },
+  /** **本路的施放者**（装力场的那艘船）——本跳的绝对量 = 它的满盾 × `stream.pct` */
+  caster: UnitSpec,
 ): void {
   const gain = Math.max(0, stream.pct)
   if (gain <= 0) return
+  // 施放者满盾：容量优先、缺 `hpMax` 才回落规格（与全仓「满血/上限」读法同一把尺）
+  const casterRt = b.units[caster.tag]
+  const casterCapS = Math.max(0, casterRt?.hpMax?.s ?? caster.hp.s)
+  const amount = casterCapS * gain
+  if (amount <= 0) return
   for (const u of myUnits) {
     const rt = b.units[u.tag]
     if (!rt || !isAlive(b, u.tag)) continue
+    // 各人仍夹在**自己**的满盾内（超出部分丢弃）
     const capS = Math.max(0, rt.hpMax?.s ?? u.hp.s)
     if (capS <= 0) continue
-    rt.hp.s = Math.min(capS, rt.hp.s + capS * gain)
+    rt.hp.s = Math.min(capS, rt.hp.s + amount)
   }
 }
 
@@ -5870,8 +6021,25 @@ export function advanceBattleFor(
   }
   const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
   const foes = foesForDebuff
-  const foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
-  const openM = battleOpenM(me, foes, bal)
+  /**
+   * **本波敌方的期望距离与钳制上界**（`let`：**换波时按新一波重算**）。
+   *
+   * 船长 2026-09-25 报障：「**敌人切换波次后，敌人的期望距离不会刷新。**」
+   * 原先这两个值在进循环前按**首波**算一次就定死；多波卡里各波的战术 / 射程带 / 钉住距离可以完全不同
+   * （例：第 1 波近战压近、第 2 波远程拉开）⇒ 第二波起敌人仍按**上一波**的期望距离机动（该压近的不压、
+   * 该拉开的不拉），与界面读数也不一致——视图侧（`battleView`）本来就是**逐波**取
+   * `activeFoeSpecsOf(anomaly, bal, battle.waveIdx)` 现算 `foeDesireM` 的。
+   *
+   * 口径（与视图同一把尺）：
+   * - `foeDesire` = `foeDesiredRange(本波敌阵)`（含我方电子舰削减、含条目/舰级的 `desireRangeM` 钉值）；
+   * - `desireCapM` = `battleOpenM(me, 本波敌阵)` —— 即「**这一波若单独开战，开战距离在哪**」，
+   *   与视图 `Math.min(openM, foeDesiredRange(...))` 的钳制上界同源；
+   * - ⚠ **单波场次逐字等于旧行为**（同一份敌阵、同一算式，只算一次）；`openM`（**本场**开战距离）
+   *   仍按首波算，只服务转场回拉与增援补入，不受本改动影响。
+   */
+  let foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
+  let desireCapM = battleOpenM(me, foes, bal)
+  const openM = desireCapM
   const favor =
     favorAdv === null
       ? null
@@ -5933,6 +6101,12 @@ export function advanceBattleFor(
       waveIdx += 1
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)
+      /**
+       * **换波 ⇒ 期望距离与钳制上界随新一波刷新**（船长 2026-09-25 报障；口径详见上面 `foeDesire` 的注释）。
+       * 位置在 `curFoes` 换新之后、`seedUnit` 之前 —— 本拍之内新一波就已按自己的期望距离机动。
+       */
+      foeDesire = foeDesiredRange(me, curFoes, bal, battle.meFoeRangeDebuff ?? 0)
+      desireCapM = battleOpenM(me, curFoes, bal)
       // 增援入场装填（转场窗口）+ **入场窗口**（船长 2026-09-14「动画没结束不开火」）：
       // 逐舰错峰写进 `enteredAtMs`，与界面 `--arrive-delay` 同一算式 ⇒ 动画演完才可被选中。
       // ⚠⚠ **入场时刻取 `state.gameMs`（全局时钟 / 本帧结束时的推进目标），绝不能取 `battle.lastTickGameMs`**
@@ -5990,6 +6164,11 @@ export function advanceBattleFor(
     // 放在 `stepBattle` **之前**：上一拍刚打死的单位本拍即可触发援军，且判胜检查看到的是补入后的编队。
     // 总开关关闭时本函数第一步就返回（且建档期也没写过 `foeReinforceAt`）= 零行为变化。
     resolveReinforcements(state, ctx, battle, anomaly, curFoes, bal, openM)
+    /**
+     * **支援舰召唤**（船长 2026-09-25：「支援舰船召唤装置」）——与上面那条同位置（`stepBattle` 之前）：
+     * 上一拍刚打死的僚舰，本拍就能被"复活/支援"补回场；没挂该件的战斗第一步就返回（零行为变化）。
+     */
+    resolveFoeRevive(state, battle, curFoes, bal, nowMs())
     const dt = Math.min(BATTLE_STEP_MS, nowMs() - battle.lastTickGameMs)
     stepBattle(
       state,
@@ -5997,7 +6176,8 @@ export function advanceBattleFor(
       myUnits,
       curFoes,
       foeDesire,
-      openM,
+      // **钳制上界取"本波"的开战距离**（`desireCapM`；单波场次 = 上面的 `openM`，逐字不变）
+      desireCapM,
       bal,
       dt,
       favor,
@@ -6169,6 +6349,10 @@ export function advanceBattleFor(
      *
      * ⚠ **施放者必须存活**（人没了装置就停，与另两套同款）；但**受益方是全队存活单位**
      * ⇒ 跳一次给 `myUnits` 全体补盾，不是只补施放者。
+     *
+     * ⚠ **本跳的绝对回盾量按"本路施放者（装件舰）的满盾"算**（**2026-09-25 船长改判**：
+     * 「恢复量为本舰护盾量的 10%」）⇒ 逐路把**该路的施放者**传给 `pulseShieldFieldFor`；
+     * 多舰各带一件时，各路的施放者不同 ⇒ **各按自己满盾各跳一路**。
      */
     if (!battle.ended && Object.keys(battle.shieldFieldBy ?? {}).length > 0) {
       const specByTagF = new Map(myUnits.map((u) => [u.tag, u]))
@@ -6185,7 +6369,7 @@ export function advanceBattleFor(
             stream.nextPulseAtMs <= battle.lastTickGameMs &&
             guardF < BATTLE_MAX_STEPS
           ) {
-            pulseShieldFieldFor(battle, myUnits, stream)
+            pulseShieldFieldFor(battle, myUnits, stream, specByTagF.get(tag)!)
             ledger.pulses += 1
             stream.nextPulseAtMs += Math.max(1, stream.ms)
             guardF++
@@ -7047,6 +7231,10 @@ function stepBattle(
   myUnits: readonly UnitSpec[],
   foes: UnitSpec[],
   foeDesire: number,
+  /**
+   * **敌方期望距离的钳制上界**（米）。传的是**本波**的开战距离（`advanceBattleFor` 的 `desireCapM`，
+   * 换波即刷新）——原语义 = 本场开战距离；单波场次二者逐字同值。
+   */
   openM: number,
   bal: BattleBalance,
   dtMs: number,
@@ -7376,53 +7564,68 @@ function stepBattle(
             pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
           }
         }
-        // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
-        // 主目标已按上面的常规口径结算；这里把**同一轮齐射**逐个结算到其余存活敌舰：
-        // 逐目标独立掷命中（各用各自的命中条件）、各吃各自的层克制与抗性；受击增程等触发点照常逐舰触发。
-        // ⚠ 副目标**不吃锁定加深**（锁定锁的是主目标）⇒ 基数用 dmg，主目标仍用 dmgLocked。
-        if (w.allFoes === true && hit && !droneHit) {
-          for (const other of foes) {
-            if (other.tag === foeTarget!.tag) continue
-            const ort = b.units[other.tag]
-            if (!ort || !isAlive(b, other.tag)) continue
-            const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
-            const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
-            /** 本发打**这一艘副目标**的实收（含附伤段）——飘字逐舰各出一个数字 */
-            let oDealt = 0
-            if (oHit) {
-              b.stats.meHits += 1
-              const rAll = applyDamage(ort.hp, other.resists ?? {}, dmg, type)
-              ort.hp = rAll.hp
-              b.stats.meDmg += rAll.dealt
-              oDealt = rAll.dealt
-              const secPctAll = w.secondaryDamagePct ?? 0
-              if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
-                const secTypeAll = w.secondaryDamageType ?? 'kinetic'
-                const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
-                const rAll2 = applyDamage(ort.hp, other.resists ?? {}, secDmgAll, secTypeAll)
-                ort.hp = rAll2.hp
-                b.stats.meDmg += rAll2.dealt
-                oDealt += rAll2.dealt
-              }
-              if (markFoeDroneRangeBuff(other, b)) {
-                pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
-              }
-              if (markFoeGunRangeBuff(other, b)) {
-                pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
-              }
+      }
+      // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
+      // 主目标已按上面的常规口径结算；这里把**同一轮齐射**逐个结算到其余存活敌舰：
+      // 逐目标独立掷命中（各用各自的命中条件）、各吃各自的层克制与抗性；受击增程等触发点照常逐舰触发。
+      // ⚠ 副目标**不吃锁定加深**（锁定锁的是主目标）⇒ 基数用 dmg，主目标仍用 dmgLocked。
+      //
+      // ⚠⚠ **2026-09-25 船长报障修复**：「**装孢子导弹巢有时候会只有一发弹道**」。
+      // 根因 = **本段原先整块写在上面那个 `if (hit) { … }` 里面**（那一层的 `hit` 就是**主目标那一发的
+      // 命中判定**）⇒ 主目标没中时，"整轮是否铺开"跟着一起被跳过：副目标**连掷都不掷**，画面只剩主目标
+      // 那一条弹道（原条件里那个多余的 `&& hit` 只是同一件事的第二道锁，去掉它并不改变行为）。
+      // 现把本段**移出 `if (hit)`** ⇒ **主目标的命中只决定它自己**，副目标照常逐个独立结算。
+      // 真跑读数（3 敌 · 28 轮 · 主目标命中率 0.357）：修复前**单发轮 18 / 铺开轮 10 = 64%**
+      // （正好等于 `1 − 0.357`），每轮期望命中目标数 0.679；修复后 = 命中率 × 3 = 1.071 ⇒ **×1.58**。
+      // 为什么判定为缺陷（三份口径里两份都是"每目标独立"）：① 落码记录（2026-09-13）只写
+      // 「**逐目标独立掷命中** + 各吃各自层克制」，从没提过这道闸；② **胜率预估器**（`steadyPreview`
+      // 的 `allFoesMul = foes.length`）一直按"每轮打全部敌舰"算 ⇒ 与实战差 1.58×（预估偏高）；
+      // ③ 船长 2026-09-13 原话就是「对所有敌方同时攻击」。⇒ 船长 2026-09-25 裁「按甲」。
+      // 影响面：只此一件武器带 `allFoes`（`mod-wh-c-missile`）⇒ 只有装了它的场次读数变化；
+      // 单发/装填/射程/命中一字未动，**单体标称 DPS 锚（`wh-weapon-dps` 的 ×0.69）不受影响**
+      // （只有 1 艘敌舰时本就没有副目标，这一段本就不做事）。
+      if (w.allFoes === true && !droneHit) {
+        for (const other of foes) {
+          if (other.tag === foeTarget!.tag) continue
+          const ort = b.units[other.tag]
+          if (!ort || !isAlive(b, other.tag)) continue
+          const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
+          const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
+          /** 本发打**这一艘副目标**的实收（含附伤段）——飘字逐舰各出一个数字 */
+          let oDealt = 0
+          if (oHit) {
+            b.stats.meHits += 1
+            const rAll = applyDamage(ort.hp, other.resists ?? {}, dmg, type)
+            ort.hp = rAll.hp
+            b.stats.meDmg += rAll.dealt
+            oDealt = rAll.dealt
+            const secPctAll = w.secondaryDamagePct ?? 0
+            if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
+              const secTypeAll = w.secondaryDamageType ?? 'kinetic'
+              const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
+              const rAll2 = applyDamage(ort.hp, other.resists ?? {}, secDmgAll, secTypeAll)
+              ort.hp = rAll2.hp
+              b.stats.meDmg += rAll2.dealt
+              oDealt += rAll2.dealt
             }
-            pushBattleFx(b, {
-              atMs: b.lastTickGameMs + dtMs,
-              side: 'me',
-              tag: unit.tag,
-              to: other.tag,
-              type,
-              src: w.src,
-              artId: w.artId,
-              hit: oHit,
-              ...(oDealt > 0 ? { dmg: oDealt } : {}),
-            })
+            if (markFoeDroneRangeBuff(other, b)) {
+              pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
+            }
+            if (markFoeGunRangeBuff(other, b)) {
+              pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+            }
           }
+          pushBattleFx(b, {
+            atMs: b.lastTickGameMs + dtMs,
+            side: 'me',
+            tag: unit.tag,
+            to: other.tag,
+            type,
+            src: w.src,
+            artId: w.artId,
+            hit: oHit,
+            ...(oDealt > 0 ? { dmg: oDealt } : {}),
+          })
         }
       }
       pushBattleFx(b, {
@@ -7567,7 +7770,9 @@ function stepBattle(
     const gtgt = pickTarget()
     if (!gtgt) continue // 我方已全灭（正常由结束判定收场）
     // **劫掠捕获网**（船长 2026-09-16）：「在自身第一次开火时发动」——**不看命中**，
-    // 就在这一发之前钉住本发目标（于是这一发的命中判定也吃到"闪避归零"）
+    // 就在这一发之前钉住本发目标（于是这一发的命中判定也吃到"闪避归零"）。
+    // ⚠ ⟪2026-09-25 船长报障⟫：目标**已被别的网钉住**时本舰的网**不算用掉**（保留到它钉住新目标为止）
+    // —— 该判定在 `fireFoeCaptureWeb` 内部，这里只判"本舰还没发过"。
     if (f.foeCaptureWeb !== undefined && b.foeWebFired?.[f.tag] !== true) {
       fireFoeCaptureWeb(state, b, f, gtgt.spec)
     }

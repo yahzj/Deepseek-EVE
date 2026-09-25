@@ -5,22 +5,29 @@
  * 追问三答（本文件的判据来源）：
  * - 「有叠加惩罚」= **同舰多件**才算叠加（多艘船各带一件 ⇒ **各自独立、可叠加**）；
  * - 叠加强度 = **现有 EVE 曲线 `stackWeight`**；
- * - 「10%」= 按**每艘被治疗舰自己**的满盾算。
+ * - 「10%」= 按**装件舰（施放者）的满盾**算 ⇒ 全队拿**同一个绝对量**。
  *
- * 本文件钉六件事：
+ * ⚠ **上面第三条是 2026-09-25 船长改判后的口径**（原话：「**为队内所有舰船恢复护盾，
+ * 恢复量为本舰护盾量的 10%**」）。旧口径 = 每艘受益舰各按**自身**满盾算，已作废 ——
+ * 它当初是被 2026-09-20 那句「按携带者自己的满盾」的歧义带偏的。
+ * ⚠ 旧口径之所以长期没被发现：本文件原先两艘船**同型同盾**（护盾驳船 1000 对 1000）
+ * ⇒ 新旧口径数值完全相同、**没有任何用例能分辨**；下面的「满盾不同」那条就是补上的判据。
+ *
+ * 本文件钉七件事：
  * (a) **冷却按件自带**（MK2 = 10 秒 / MK3 = 8 秒）——与中槽「护盾充能装置」的固定 15 秒是两套；
  * (b) **受益方是全队**（不是只本舰）——与 `pulseShieldChargeFor` 的关键区别；
  * (c) **同舰多件按 EVE 曲线收敛**（"有叠加惩罚"）；
  * (d) **多艘船各带一件 ⇒ 各自独立、可叠加**（两条账本各跳各的）；
  * (e) **能从 0 盾把盾点起来**（与护盾充能装置同款：被动回充对 0 盾无效）；
- * (f) **随档往返**（`shieldFieldBy` 进 `BATTLE_FIELDS`，重载不白赚一跳）。
+ * (f) **随档往返**（`shieldFieldBy` 进 `BATTLE_FIELDS`，重载不白赚一跳）；
+ * (g) **回盾量 = 施放者满盾 × 比例**（2026-09-25 改判：两舰满盾不同 ⇒ 仍拿同一个绝对量）。
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import type { BattleState, GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { stackWeight } from '../src/equipment'
-import { advanceBattleFor, preloadShieldFieldFor, shieldFieldOf, shieldFieldStreamsOf, startFleetBattleFor } from '../src/combat'
+import { advanceBattleFor, createPlayerSpec, preloadShieldFieldFor, pulseShieldFieldFor, shieldFieldOf, shieldFieldStreamsOf, startFleetBattleFor } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
 import type { SimContext } from '../src/types'
@@ -29,7 +36,33 @@ import type { SimContext } from '../src/types'
 const field = (id: string, sec: number, pct = 0.1): ReturnType<typeof moduleDef> =>
   moduleDef(id, 'shield-field', 0, { shieldFieldPct: pct, shieldFieldMs: sec * 1000, cpuUse: 55 })
 
-/** 纯盾世界：两艘「护盾驳船」（护盾 1000 / 甲与结构极厚 ⇒ 战斗能跑满、只观察护盾层） */
+/** 「护盾驳船」底座（护盾 1000 / 甲与结构极厚 ⇒ 战斗能跑满、只观察护盾层）：
+ *  `world`（两艘同型）与 `worldMixed`（两艘只差盾量）共用 —— 改盾量只覆盖 `shieldHp`。 */
+const BARGE = {
+  id: 'hull-shieldbarge',
+  name: '护盾驳船',
+  tier: 1,
+  role: 'industrial',
+  slots: { high: 2, mid: 4, low: 2 },
+  cargoM3: 100,
+  cycleSeconds: 12,
+  oreUnitsPerCycle: 1,
+  priceIsk: 0,
+  agility: 0.4,
+  shieldHp: 1_000,
+  armorHp: 100_000,
+  hullHp: 100_000,
+  evasion: 0,
+  hitBonus: 0,
+  maxSpeedMps: 0,
+  signatureM: 80,
+  scanResMm: 500,
+  cpu: 300,
+  droneBayM3: 0,
+  description: '测试用护盾驳船',
+}
+
+/** 纯盾世界：两艘「护盾驳船」（同型同盾） */
 function world(opts: { mods: Array<{ id: string; sec: number }>; main: string[]; ally?: string[] }): {
   state: GameState
   ctx: SimContext
@@ -38,32 +71,9 @@ function world(opts: { mods: Array<{ id: string; sec: number }>; main: string[];
 } {
   const ids = new Set([...opts.main, ...(opts.ally ?? [])])
   const mods = opts.mods.filter((m) => ids.has(m.id)).map((m) => field(m.id, m.sec))
-  const hull = {
-    id: 'hull-shieldbarge',
-    name: '护盾驳船',
-    tier: 1,
-    role: 'industrial',
-    slots: { high: 2, mid: 4, low: 2 },
-    cargoM3: 100,
-    cycleSeconds: 12,
-    oreUnitsPerCycle: 1,
-    priceIsk: 0,
-    agility: 0.4,
-    shieldHp: 1_000,
-    armorHp: 100_000,
-    hullHp: 100_000,
-    evasion: 0,
-    hitBonus: 0,
-    maxSpeedMps: 0,
-    signatureM: 80,
-    scanResMm: 500,
-    cpu: 300,
-    droneBayM3: 0,
-    description: '测试用护盾驳船',
-  }
   const ctx = makeTestCtx({
     modules: mods,
-    ships: [hull as never],
+    ships: [BARGE as never],
     anomalies: [
       {
         ...anomaly('ano-field', 'galaxy-hub', { threat: 20, tactic: 'orbit' }),
@@ -78,6 +88,40 @@ function world(opts: { mods: Array<{ id: string; sec: number }>; main: string[];
   state.shipId = main
   state.fleet[main]!.fitted = { high: [...opts.main], mid: [], low: [] }
   state.fleet[ally]!.fitted = { high: [...(opts.ally ?? [])], mid: [], low: [] }
+  return { state, ctx, main, ally }
+}
+
+/**
+ * **两艘只差盾量的世界**（「回盾量按谁的满盾算」那条判据专用）：
+ * 主控 = `hull-big`（满盾 `mainShield`，装一件 10% / 10 秒的力场）、僚舰 = `hull-small`（满盾 `allyShield`，不装）。
+ * ⚠ 必须**盾量不同**才能分辨口径：同型同盾时"按施放者"与"按自身"数值相同。
+ */
+function worldMixed(mainShield: number, allyShield: number): {
+  state: GameState
+  ctx: SimContext
+  main: string
+  ally: string
+} {
+  const ctx = makeTestCtx({
+    modules: [field('f2', 10)],
+    ships: [
+      { ...BARGE, id: 'hull-big', name: '大盾驳船', shieldHp: mainShield } as never,
+      { ...BARGE, id: 'hull-small', name: '小盾驳船', shieldHp: allyShield } as never,
+    ],
+    anomalies: [
+      {
+        ...anomaly('ano-field', 'galaxy-hub', { threat: 20, tactic: 'orbit' }),
+        foeShotDmg: 1,
+        foeHpOverride: 100_000_000,
+      },
+    ],
+  })
+  const state = createInitialState({ nowWallMs: 0, seed: 5 })
+  const main = addShipToFleet(state, 'hull-big')
+  const ally = addShipToFleet(state, 'hull-small')
+  state.shipId = main
+  state.fleet[main]!.fitted = { high: ['f2'], mid: [], low: [] }
+  state.fleet[ally]!.fitted = { high: [], mid: [], low: [] }
   return { state, ctx, main, ally }
 }
 
@@ -192,6 +236,39 @@ describe('护盾充能力场装置：战斗行为', () => {
     // 僚舰**没装**该件，却也回了盾 ⇒ 全队受益（这是与中槽「护盾充能装置」的关键区别）
     expect(b.units[tm]!.hp.s).toBeGreaterThan(900)
     expect(b.units[ta]!.hp.s).toBeGreaterThan(900)
+  })
+
+  it('**回盾量按施放者（装件舰）的满盾算** ⇒ 全队拿同一个绝对量（2026-09-25 船长改判）', () => {
+    /**
+     * 三个方向各来一次（都**直接调** `pulseShieldFieldFor`，把被动回充的噪声排除在外）：
+     * ① 施放者盾**更大**（1000 vs 400）⇒ 僚舰拿 100（**不是**自己满盾的 10% = 40）；
+     * ② 施放者盾**更小**（100 vs 1000）⇒ 僚舰只拿 10（收益随施放者缩水，**不是** 100）；
+     * ③ 施放者盾**远大于**僚舰满盾（1000 vs 80）⇒ 僚舰被一跳顶满（80），超出部分丢弃。
+     * ⚠ 旧口径（每艘按自身满盾）在 ① 得 40、在 ② 得 100 ⇒ 三个方向都能分辨。
+     */
+    const cases: Array<{ main: number; ally: number; want: number; casterGain: number }> = [
+      { main: 1_000, ally: 400, want: 100, casterGain: 100 },
+      { main: 100, ally: 1_000, want: 10, casterGain: 10 },
+      { main: 1_000, ally: 80, want: 80, casterGain: 100 },
+    ]
+    for (const c of cases) {
+      const { state, ctx, main, ally } = worldMixed(c.main, c.ally)
+      const b = startFleetBattleFor(state, ctx, [main, ally], 'ano-field', 0)!
+      const tm = tagOf(b, main)
+      const ta = tagOf(b, ally)
+      const specs = [main, ally].map((id) => {
+        const s = createPlayerSpec(state, ctx, id)!
+        s.tag = tagOf(b, id)
+        return s
+      })
+      for (const s of specs) b.units[s.tag]!.hp.s = 0
+      pulseShieldFieldFor(b, specs, { pct: 0.1 }, specs[0]!)
+      const why = `（施放者满盾 ${c.main} · 僚舰满盾 ${c.ally}）`
+      expect(b.units[ta]!.hp.s, `僚舰${why}`).toBeCloseTo(c.want, 6)
+      expect(b.units[tm]!.hp.s, `施放者${why}`).toBeCloseTo(c.casterGain, 6)
+      // 两舰拿的是**同一个绝对量**（除非被自己满盾夹住）—— 这条就是"同一个数"的直接判据
+      if (c.want === c.casterGain) expect(b.units[ta]!.hp.s).toBeCloseTo(b.units[tm]!.hp.s, 6)
+    }
   })
 
   it('**能从 0 盾点起来**（被动回充对 0 盾恒为 0，只有脉冲件能救）', () => {

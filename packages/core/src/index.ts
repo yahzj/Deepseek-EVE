@@ -222,7 +222,10 @@ export {
   WEEKEND_FAMILIES,
   WEEKEND_FLAGSHIP_DEADLINE_MS,
   WEEKEND_GAIN_CORE_WIN,
+  WEEKEND_DEBUG_WIN_GAIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
+  WEEKEND_LOCKED_FAMILY,
+  weekendWinGainOf,
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
   WEEKEND_NPC_CORE_MS,
@@ -241,6 +244,9 @@ export {
   weekendCoreCandidates,
   weekendCoreProgressAt,
   weekendDeadlineMs,
+  /* 2026-09-25：章鱼人削血窗口（正常 2h / 调试 10min）——倒计时/削血速率/池子读数/收口四处同源 */
+  WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS,
+  weekendFlagshipWindowMs,
   weekendDebugOn,
   weekendDrawFoeCardId,
   weekendEncounterChanceAt,
@@ -252,6 +258,7 @@ export {
   // 2026-09-24 第二轮令：旗舰 BOSS 化（跨场累计伤害）——池子读数给界面、每拍推进给引擎
   weekendBossPoolView,
   weekendTickBoss,
+  weekendClockOf,
   weekendFoeCardOf,
   weekendNoteFlagshipKilled,
   weekendNotePlayerWin,
@@ -286,21 +293,58 @@ export {
   weekendFlagshipSpecOf,
   weekendResolveBattle,
   weekendSettlePlanOf,
+  weekendSettleAndGrant,
 } from './weekendBattle'
 
-/* 2026-09-23 周末入侵 · 开战入口（旗舰 4 波 120 威胁 · 4 艘小队战） */
+/* 2026-09-23 周末入侵 · 开战入口（旗舰 4 波小队战）；2026-09-25 加战前准备（编队参数化 + 准备视图） */
 export {
+  WEEKEND_FLAGSHIP_MAX_SHIPS,
+  WEEKEND_PREP_LOW_HULL_FRAC,
+  weekendBestFlagshipSquad,
+  weekendFlagshipPrepView,
   weekendFlagshipSquadOf,
+  weekendNoteFlagshipSquad,
+  weekendPrepIssuesOf,
+  weekendPrepSquadOf,
+  weekendSanitizeFlagshipSquad,
   weekendFlagshipWavesOf,
   weekendStartFlagshipBattle,
+  /* 2026-09-25：旗舰战的战斗宿主解析（界面"在不在打"的第三个宿主角） */
+  weekendFlagshipBattleActive,
+  weekendFlagshipBattleViewOf,
 } from './weekendLaunch'
-export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan } from './weekendBattle'
+export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan, WeekendSettleGrant } from './weekendBattle'
+/* 旗舰战战前准备（准备视图与缺口标记的类型）＋ 旗舰战战斗视图（战斗窗口第三个宿主） */
+export type { WeekendFlagshipPrepView, WeekendPrepCandidate, WeekendPrepIssue, WeekendFlagshipBattleView } from './weekendLaunch'
+
+/* 2026-09-25 周末入侵 · 两封通讯（实例通讯 · 每场覆盖）＋ 结算面板读的战果快照 */
+export {
+  WEEKEND_COMMS_DEPT_ID,
+  WEEKEND_COMMS_FACTION_ID,
+  WEEKEND_COMMS_SETTLE_ID,
+  WEEKEND_COMMS_WARN_ID,
+  weekendFamilyNameId,
+  weekendFamilyNameZh,
+  weekendRewardLinesOf,
+  weekendSettleCommsOf,
+  weekendSnapshotWreckItemId,
+  weekendSyncComms,
+  weekendWarnCommsOf,
+} from './weekendComms'
+export { weekendResultSnapshotOf } from './weekendBattle'
+export type { WeekendResultSnapshot } from './weekendEvent'
+/* 实例通讯的条目/奖励行（界面拼串与类型标注用） */
+export type { CommsInstanceEntry, CommsRewardLine } from './types'
+export { deliverCommsInstance } from './comms'
 
 /* 2026-09-23 周末入侵 · 悬赏替换与遇袭判定（M1-b 第三片） */
 export {
   WEEKEND_BOUNTY_REWARD_MUL,
   WEEKEND_CARD_PREFIX,
+  WEEKEND_ASSAULT_SALT_BASE,
+  weekendAssaultDrawOf,
   weekendBountyCardsOf,
+  weekendNoteAssaultDispatch,
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,
   weekendEncounterRollOf,
@@ -705,6 +749,12 @@ export {
   RECYCLE_TIER_DIRE,
   advanceWreckDrift,
   salvageRoundPull,
+  // 2026-09-25 入侵残骸 · 独立池（船长令）：按击败卡威胁注入 · 48h 线性衰减到 0 · 不算当地密度
+  WEEKEND_WRECK_DECAY_MS,
+  weekendWreckDensityOf,
+  weekendWreckInjectionOf,
+  injectWeekendWreck,
+  advanceWeekendWreckDecay,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_YIELD_PER_M3,
@@ -1068,7 +1118,7 @@ export {
 } from './onboarding'
 export type { OnboardingState, ImportantTaskState } from './state'
 
-export { advanceEncounterWatch, fightEncounter, fleeEncounter } from './encounters'
+export { advanceEncounterWatch, fightEncounter, fleeEncounter, retreatEncounterBattle } from './encounters'
 
 export {
   advanceSideTasks,
@@ -1084,6 +1134,7 @@ export {
   factionGalaxyId,
   isFactionBounty,
   factionPoolOf,
+  factionSuppressedByInvasion,
   BOUNTY_BOARD_PERIOD_MS,
   bountyDayStartWallMs,
   bountyBoardRemainingMs,

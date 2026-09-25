@@ -1306,7 +1306,7 @@ for (const m of MODULES) {
   const bsBattle = bsLines.filter((l) => l.includes('expedition.battle'))
   check(
     bsBattle.length === 1 && bsBattle[0]!.includes('whView'),
-    `战斗宿主双口径契约：${bsPath} 里 \`expedition.battle\` 应恰好 1 处且带 \`whView\` 兜底（双口径解析），` +
+    `战斗宿主双口径契约：${bsPath} 里 \`expedition.battle\` 应恰好 1 处且带 \`whView\` 兜底（三口径解析），` +
       `实际 ${bsBattle.length} 处${bsBattle.length > 0 ? `：${bsBattle.map((l) => l.trim().slice(0, 60)).join(' / ')}` : ''}`,
   )
   for (const [rel, needle] of [
@@ -1318,9 +1318,27 @@ for (const m of MODULES) {
       `战斗宿主双口径契约：${rel} 缺少洞内分支（应含 \`${needle}\`）——洞内战会被当成"没在打"`,
     )
   }
+  /**
+   * **第三宿主：入侵旗舰战**（2026-09-25 加；船长报障「旗舰战无法进入战斗画面」）——
+   * 它是编队战、承载在**遭遇槽**（`state.encounter.battle`）：既不占 `expedition` 也不进虫洞，
+   * 只认前两个宿主的判据一律把它当成"没在打"（战斗屏不挂载、心跳不切 100ms、公告照弹）。
+   * 本契约挡"日后被简化掉"：四处必须保留旗舰战分支（判据 = core `weekendFlagshipBattleActive`）。
+   */
+  for (const [rel, needle] of [
+    ['apps/desktop/src/renderer/src/panels/BattleScreen.tsx', 'weekendFlagshipBattleViewOf'],
+    ['apps/desktop/src/renderer/src/App.tsx', 'weekendFlagshipBattleActive'],
+    ['apps/desktop/src/renderer/src/game/engine.ts', 'weekendFlagshipBattleActive'],
+    ['apps/desktop/src/renderer/src/ui/ShipStatusWin.tsx', 'weekendFlagshipBattleActive'],
+    ['apps/desktop/src/renderer/src/panels/Announcements.tsx', 'weekendFlagshipBattleActive'],
+  ] as const) {
+    check(
+      readSrc(rel).includes(needle),
+      `战斗宿主双口径契约：${rel} 缺少入侵旗舰战分支（应含 \`${needle}\`）——旗舰战会被当成"没在打"`,
+    )
+  }
   console.log(
     `· 战斗宿主双口径契约：BattleScreen 非注释行 ${bsLines.length} 行 ⇒ \`expedition.anomalyId\` 0 处 · ` +
-      `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支`,
+      `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支 · 四处均带入侵旗舰战分支`,
   )
 
   /* ── 洞内威胁「显示口径」契约（船长 2026-09-15：「虫洞的面板威胁（显示给玩家看的）建议乘以2，
@@ -3446,6 +3464,30 @@ for (const m of MODULES) {
             const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
             if (eff.foeEvasionBonusAdd !== undefined) bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了姿态陀螺仪——洞外零该件`)
             if (eff.foeRepairPulse !== undefined) bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了船体修理装置——洞外零该件`)
+          }
+        }
+        /**
+         * ⑦ **支援舰船召唤装置归属**（2026-09-25 船长令「给入侵母舰添加类似D族挂载件的独立挂载件，
+         *    只不过改为复活被摧毁的友军……」）：这件是**通用件**，但**只允许**挂在
+         *    `ink-flagship`（H 族入侵旗舰卡）的那条**母舰条目**上——
+         *    ① 舰级一概不许挂（写舰级会波及同舰级的其它卡）；
+         *    ② 其余任何卡的条目也不许挂（免得普通悬赏莫名其妙开始复活）。
+         */
+        for (const s of FOE_SHIPS) {
+          if (resolveFoeMounts(s.mounts).foeReviveEscort !== undefined) {
+            bad.push(`舰级 ${s.name}（${s.id}）挂了支援舰船召唤装置——该件只允许写在 ink-flagship 的母舰条目上`)
+          }
+        }
+        for (const a of ANOMALIES_FLAVORED) {
+          for (const sl of a.ships ?? []) {
+            const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
+            if (eff.foeReviveEscort === undefined) continue
+            if (a.id !== 'ink-flagship' || sl.ship.id !== 'foe-h-ink-flagship') {
+              bad.push(
+                `卡 ${a.id} 的条目 ${sl.ship.name}（${sl.ship.id}）挂了支援舰船召唤装置——` +
+                  `该件只允许挂在入侵母舰（ink-flagship 的 foe-h-ink-flagship 条目）上`,
+              )
+            }
           }
         }
       }

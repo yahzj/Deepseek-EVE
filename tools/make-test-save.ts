@@ -103,8 +103,12 @@ import {
   WORMHOLE_LUXURY_ITEM_IDS,
   wormholeArchetypeOf,
   wormholeFamilyOfSeed,
+  // 2026-09-25 `weekend` / `weekendkill`（旗舰战准备档）：入侵现场的三个单点
+  weekendRollOccupation,
 } from '@whale/core'
 import type { GameState } from '@whale/core'
+// 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
+import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
 // 虫洞·货仓装不下 / 超载 / 第 4 层星云现场（要用到的核心单点，走深路径，与 `wormhole-econ` 同一套做法）
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../packages/core/src/wormhole'
@@ -2875,6 +2879,145 @@ function injectWormholeEwar(state: GameState): string[] {
 }
 
 /**
+ * **虫洞 · 孢子导弹巢「全体攻击」现场档**（2026-09-25 船长：「孢子导弹巢效果为攻击敌方全体，
+ * 战斗中动画是攻击敌方全体吗？你验证下顺便给我一个相关存档测试」）。
+ *
+ * 档里给什么（**全部走引擎真路径**，不手写战斗状态）：
+ * - **主控 = 巢群重型突击巡洋舰**（C 族 T3）装**孢子导弹巢**（`hitsAllFoes` ⇒ 引擎 `allFoes`）
+ *   ＋ 推进/双盾/装甲/稳像件；**僚舰 = 玳瑁级**（重装肉盾，**不装武器**）——
+ *   僚舰只有自带基础舰炮（2,500 m，短于开局交距）⇒ **画面上的远程弹道全部来自孢子导弹巢**，一眼看得清；
+ * - **爆炸弹药**（本件打爆炸弹）进仓库；2026-09-23 船长令后取用来源 = **仓库**（`resupplyFromWarehouse`）；
+ * - **入口 = 第 1 层「舰船信号」格**：层 1 的出场池**只有浅层档**（`wormholeTierWeightsAt(1)`）
+ *   ⇒ 敌卡**确定**是 C 族浅层「星髓游猎群」= **星髓成虫 ×3**
+ *   （脚本按 `wormholeCardIdForRun` 当场断言，不用搜种子碰运气）。
+ *
+ * 看什么：点脚下那格按「迎战」→ 3 艘星髓成虫；孢子导弹巢每 **8.36 秒**一轮，
+ * **一轮同时飞出 3 条弹道、各飞向一艘敌舰**（逐舰各掷命中、各飘一个伤害数字）。
+ * ⟪2026-09-25 船长报障「有时候会只有一发弹道」⇒ 裁「按甲」⟫ **已修**：那段"全体攻击"原先整块写在
+ * 主目标那一发的 `if (hit)` 里面 ⇒ 主目标没中时副目标连掷都不掷（真跑读数：单发轮占 64%）。
+ * 现改为**主目标的命中只决定它自己**，副目标照常逐个独立结算 ⇒ **每轮都是 N 条弹道**。
+ */
+function injectWormholeSpore(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（真档可能在采矿/远征等；`wormholeEnter` 会被"远征无法中断"挡下）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  state.wallet.isk += 30_000_000
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  for (const k of [
+    'gunnery',
+    'fire-control',
+    'reload-drills',
+    'shield-operation',
+    'armor-tuning',
+    'vector-maneuvering',
+    'evasion-maneuvering',
+    'targeting-integration',
+  ]) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  // 弹药：本件打**爆炸**弹 ⇒ 爆炸两档管够（另铺动能/能量各一档，便于换武器对照）
+  for (const key of ['ammo-explosive-2', 'ammo-explosive-l', 'ammo-kinetic-2', 'ammo-plasma-2']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 40
+  }
+  notes.push(
+    '钱包 +30,000,000 · 协会声望 13 · 战斗系技能 Lv3 · **爆炸弹药 MK2（＋MK1 兜底）各 ×5000**（孢子导弹巢打爆炸弹）· 修理组件各 ×40',
+  )
+
+  const ctx = buildSimContext()
+  /** ⚠ 清掉在途副本：本档要指定"第 1 层 · C 族 · 站在舰船信号上"的现场（其余 case 同款处置） */
+  state.wormhole = { run: null, lastFleetLost: 0 }
+  const uids: string[] = []
+  {
+    const uid = addShipToFleet(state, 'sh-wh-c-cruiser')
+    const s = state.fleet[uid]!
+    s.customName = '巢群巡洋·孢子导弹巢'
+    s.fitted = {
+      high: ['mod-wh-c-missile'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-ext-2'],
+      low: ['mod-armor-kin-2', 'mod-stab-kin-2'],
+    }
+    s.ammoPref = { explosive: 'ammo-explosive-2' }
+    s.durability = 1
+    s.armorPct = 1
+    state.shipId = uid
+    uids.push(uid)
+  }
+  {
+    const uid = addShipToFleet(state, 'sh-hawksbill')
+    const s = state.fleet[uid]!
+    s.customName = '玳瑁·肉盾（不装武器）'
+    s.fitted = {
+      high: [],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-ext-2'],
+      low: ['mod-armor-kin-2', 'mod-stab-kin-2'],
+    }
+    s.durability = 1
+    s.armorPct = 1
+    uids.push(uid)
+  }
+  notes.push(
+    '编队：**主控 = 巢群重型突击巡洋舰（C 族 T3）· 孢子导弹巢 ×1** ＋ 推进/双盾/装甲/稳像 ｜ ' +
+      '**僚舰 = 玳瑁级（不装武器）** ⇒ 远程弹道只有孢子导弹巢一条来源 · 全血满耐久',
+  )
+
+  /** 搜一个 **C 族**种子（层 1 的卡与格子无关 ⇒ 不用像 wh-ewar 那样搜"指定卡"） */
+  let seed = 20260925
+  for (; seed < 20260925 + 3000; seed++) if (wormholeFamilyOfSeed(seed) === 'C') break
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.turnsLeft = enter.run!.turnsTotal
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0
+  run.depth = 1
+  run.family = 'C' // 与种子一致；写死防两套口径
+  run.grid = wormholeMakeGrid(seed, 1, 0)
+  const grid = run.grid
+  const here = grid.cells[Math.floor(grid.cells.length / 2)]!
+  here.place = 'ship' // 舰船信号：站在原地即可按迎战（`wormholeStartBattle(..., 'node')` 要求脚下是它）
+  here.piles = []
+  grid.pos = { q: here.q, r: here.r }
+  grid.start = { q: here.q, r: here.r }
+  if (!grid.visited.includes(here.key)) grid.visited.push(here.key)
+  if (!grid.scanned.includes(here.key)) grid.scanned.push(here.key)
+  grid.activated = (grid.activated ?? []).filter((k) => k !== here.key) // 未清 ⇒ 迎战入口可用
+  grid.exitKnown = true
+  /** 现场断言：脚下这一格按**引擎同一函数**算出来必须是 C 族浅层卡（层 1 只出浅层） */
+  const cardNow = wormholeCardIdForRun({
+    family: run.family,
+    seed: run.seed,
+    depth: run.depth,
+    kind: 'node',
+    nodeIndex: gridContentIndex(grid, grid.pos),
+  })
+  if (cardNow !== 'wh-alien-swarm') throw new Error(`现场卡不对：期望 wh-alien-swarm，实得 ${cardNow}`)
+  const card = ctx.anomalies.get('wh-alien-swarm')
+  const make = (card?.ships ?? []).map((sl) => `${sl.ship.name}×${sl.count ?? 1}`).join(' ＋ ')
+  notes.push(
+    `第 1 层（${grid.cells.length} 格）· **站在舰船信号 (Q${here.q} R${here.r})** ⇒ 点脚下那格按「迎战」即对上 **${card?.name ?? '星髓游猎群'}**（${make}）`,
+  )
+  notes.push(`种子 ${seed} · 族 **C** · 敌卡 = \`wh-alien-swarm\`（脚本按 \`wormholeCardIdForRun\` 算出并当场断言）`)
+  notes.push(
+    '看什么：孢子导弹巢每 8.36 秒一轮 ⇒ **一轮同时飞出 3 条弹道、各飞向一艘敌舰**，逐舰各飘一个伤害数字（打机群那种"只出炮口闪光"不适用本件）',
+  )
+  notes.push('出口已知（可随时撤离）· 同层其余格未动，可自由探索')
+  return notes
+}
+
+/**
  * **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档，我打算实机测试」）。
  *
  * 起因：H 族（墨潮帮）重标过程中，二号拿 `whale-king`（**鲸王级采矿艇**，industrial）当"T3 战列"
@@ -3042,6 +3185,192 @@ function injectBattleship(state: GameState): string[] {
   return notes
 }
 
+const WK_TEST_TAG = '[WKtest]'
+
+/** 清掉上一轮注入的旗舰战测试船（按名字前缀认）。⚠ 不动 `state.shipId`（紧接着会把新注入的第一艘设为驾驶）。 */
+function stripPreviousWeekendTestShips(state: GameState): number {
+  let removed = 0
+  for (const [uid, s] of Object.entries(state.fleet)) {
+    if (s && (s.customName ?? '').startsWith(WK_TEST_TAG)) {
+      delete state.fleet[uid]
+      removed++
+    }
+  }
+  return removed
+}
+
+/**
+ * **周末入侵 · 旗舰战准备档**（**船长 2026-09-25：「帮我准备一个旗舰战之前的存档」**）。
+ *
+ * 现场 = **核心条已满 ⇒ 旗舰已现身、停在核心星系**，战役尚未开打 —— 玩家从
+ * ① 入侵活动框那行「旗舰现身」→「战前准备」或 ② 星图 · 核心星系详细 → 「战前准备」，进选船界面开打。
+ *
+ * 注入清单（只补"难达成的门槛"，可达成的操作不代做）：
+ * - `debugQuick = true`：**入侵只有调试模式可见**（`WEEKEND_DEBUG_ONLY`）；
+ * - 一支 **4 艘满配编队**（旗舰战编队上限 4）＋ `weekendPrepSquad` 落盘 ⇒ 准备界面默认就选中这 4 艘；
+ * - 钱包 / 协会声望 / 全星系点亮 / 弹药与修理组件备足（4 波编队战够打）；
+ * - 一场 **H 族入侵**：核心 + 外围**全部推进到 100%**（外围全清是核心门禁的前提）⇒ `weekendCoreProgressAt = 1`。
+ *
+ * ⚠ **一处刻意摆过的门槛**（不是游戏行为，纯为"这档一加载就能测"）：
+ * `flagshipHpMax` **预置为满池 150,000** —— 让血池读数与章鱼削血从加载起就有效（否则要等第一次接战才锁定）。
+ *
+ * 窗口口径（**2026-09-25 船长两条令**）：章鱼人削血是**真实削减**（打完一场放一会，母舰血量真减少），
+ * 攒满窗口（= 血条见底）才判"章鱼人得手"；**调试档窗口 = 10 分钟**（原"÷60 = 2 分钟"连点进准备界面都来不及）。
+ * ⇒ 本档**不再需要摆 anchor**：旗舰现身那一刻起算，你有 10 分钟的"在线且不在战斗"时间可支配
+ * （战斗中与离线都暂停，所以实际可测时长比 10 分钟更宽）。
+ *
+ * `opts.hurt = true`（case `weekendkill`）：血池**只差一点**（差 1,000）⇒ 一场就能打空 ⇒ 立刻验"击沉 + 黑匣"。
+ */
+function injectWeekend(state: GameState, opts: { hurt?: boolean } = {}): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  /** 主控回港待命：把在途作业（采矿/打捞/远征/扫描/待命/转场）全部停掉，起点干净（同 `injectFragments` 那一处） */
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.expedition.battle = null
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  /** 清掉上一场的战果快照：免得结算面板/结算通讯还挂着旧那一场（本档的入侵是全新一场） */
+  delete state.weekendLastResult
+  const stripped = stripPreviousWeekendTestShips(state)
+  /** ⚠ 必须剥掉铁人标记：否则铁人闸门拒绝导入（同 `injectBattleship` 那一处的长注释） */
+  if (state.ironman !== undefined) {
+    delete state.ironman
+    notes.push('**已把本档转为普通档**（剥掉铁人标记 `ironman`）——否则铁人闸门会拒绝导入')
+  }
+  state.wallet.isk += 80_000_000
+  notes.push('钱包 +80,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  notes.push('协会声望升至 13')
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
+  }
+  notes.push(`点亮全部星系（${GALAXIES.length}）——星图上能直接找到被占的核心星系`)
+
+  /**
+   * 4 艘满配船（旗舰战 = 编队战，编队上限 `WEEKEND_FLAGSHIP_MAX_SHIPS` = 4）：
+   * 2× 巨齿鲨（T4 战列：动能抗 / 均衡）＋ 2× 锤头鲨（T3 巡洋）——中低槽装满，主炮 MK3。
+   */
+  const ships: Array<[string, string, string[], string[], string[]]> = [
+    [
+      'sh-megalodon',
+      `${WK_TEST_TAG} 巨齿鲨·战列（动能抗 · 驾驶）`,
+      Array(6).fill('mod-turret-kin-3'),
+      ['mod-shield-kin-3', 'mod-shield-kin-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-track-3'],
+      ['mod-armor-kin-3', 'mod-stab-kin-3', 'mod-hullrep-2'],
+    ],
+    [
+      'sh-megalodon',
+      `${WK_TEST_TAG} 巨齿鲨·战列（均衡）`,
+      Array(6).fill('mod-turret-kin-3'),
+      ['mod-shield-ext-3', 'mod-shield-ext-3', 'mod-mwd-3', 'mod-rof-3', 'mod-gyro-3'],
+      ['mod-armor-plate-3', 'mod-stab-kin-3', 'mod-hullrep-2'],
+    ],
+    [
+      'sh-hammerhead',
+      `${WK_TEST_TAG} 锤头鲨·巡洋①`,
+      Array(5).fill('mod-turret-kin-3'),
+      ['mod-shield-kin-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-rof-3'],
+      ['mod-armor-kin-3', 'mod-stab-kin-3', 'mod-cpu-3'],
+    ],
+    [
+      'sh-hammerhead',
+      `${WK_TEST_TAG} 锤头鲨·巡洋②`,
+      Array(5).fill('mod-turret-kin-3'),
+      ['mod-shield-kin-3', 'mod-mwd-3', 'mod-gyro-3', 'mod-rof-3'],
+      ['mod-armor-kin-3', 'mod-stab-kin-3', 'mod-cpu-3'],
+    ],
+  ]
+  const uids: string[] = []
+  ships.forEach(([shipId, name, high, mid, low], i) => {
+    assertShipInjected(shipId) // 壳体/模子不许进测试档（船长 2026-09-24 报障）
+    const uid = addShipToFleet(state, shipId)
+    const s = state.fleet[uid]!
+    s.customName = name
+    s.fitted = { high: [...high], mid: [...mid], low: [...low] }
+    s.durability = 1
+    s.armorPct = 1
+    if (i === 0) state.shipId = uid
+    uids.push(uid)
+  })
+  /** 落盘编队 = 这 4 艘 ⇒ 准备界面打开即默认选中（`weekendPrepSquadOf` 优先读它） */
+  state.weekendPrepSquad = [...uids]
+  notes.push(
+    `新增 ${uids.length} 艘满配船（2× 巨齿鲨战列 + 2× 锤头鲨巡洋；第一艘已设驾驶）＋ **已把编队落盘** ` +
+      `⇒ 战前准备界面打开即默认选中这 4 艘（可自行改选）`,
+  )
+
+  const spares = [
+    'mod-turret-kin-3', 'mod-missile-3', 'mod-laser-3',
+    'mod-shield-kin-3', 'mod-shield-exp-3', 'mod-armor-kin-3', 'mod-armor-plate-3',
+    'mod-prop-3', 'mod-mwd-3', 'mod-cpu-3', 'mod-lock-3', 'mod-rof-3', 'mod-track-3', 'mod-gyro-3',
+    'mod-hullrep-2', 'mod-stab-kin-3',
+  ]
+  for (const m of spares) state.moduleBay[m] = (state.moduleBay[m] ?? 0) + 4
+  notes.push(`装备库备 ${spares.length} 种 ×4（现场换装/补维修装置）`)
+  for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 8_000
+  }
+  notes.push('仓库弹药三型（大）各 +8,000（4 波编队战够打）')
+  /** 修理组件（船体维修装置要吃）：战场续航的硬需求 */
+  for (const key of ['item-repair-kit-1', 'item-repair-kit-2']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 200
+  }
+  notes.push('仓库修理组件 MK1/MK2 各 +200（装配「船体维修装置」后战场自动修复）')
+
+  /** 入侵现场：新开一场（seq +1），核心 + 外围全部推进到 100% ⇒ 旗舰现身 */
+  const ctx = buildSimContext()
+  const seq = (state.weekendEvent?.seq ?? 0) + 1
+  const rolled = weekendRollOccupation(state, ctx, seq)
+  if (!rolled) throw new Error('测试档注入：侵入地点抽签为空（星系表异常）')
+  const occupied = [rolled.coreId, ...rolled.peripheryIds]
+  const contributed: Record<string, number> = {}
+  for (const gid of occupied) contributed[gid] = 1
+  state.weekendEvent = {
+    seq,
+    startedAtWallMs: Date.now(),
+    coreId: rolled.coreId,
+    peripheryIds: rolled.peripheryIds,
+    // 族锁定 H（`WEEKEND_LOCKED_FAMILY`）；抽签结果照旧消费随机数 ⇒ 直接用抽出来的族
+    family: rolled.family,
+    contributed,
+    // ⚠ 不摆 `flagshipAtWallMs`：让引擎在载入第一拍自己落 anchor（「旗舰现身」日志与一次性弹窗都会照常触发）；
+    //   调试档窗口 10 分钟（`weekendFlagshipWindowMs`），且战斗中/离线暂停削血 ⇒ 时间够测。
+    flagshipHpMax: WEEKEND_FLAGSHIP_POOL_HP,
+    flagshipHpDone: opts.hurt === true ? WEEKEND_FLAGSHIP_POOL_HP - 1_000 : 0,
+  }
+  const coreName = ctx.galaxies.get(rolled.coreId)?.name ?? rolled.coreId
+  notes.push(
+    `**入侵现场**：第 ${seq} 场 · ${rolled.family} 族 · 核心「${coreName}」· 外围 ${rolled.peripheryIds.length} 处 —— ` +
+      `核心与外围**全部 100%**（外围全清 ⇒ 核心门禁已开）⇒ **旗舰已现身**，停在核心星系`,
+  )
+  notes.push(
+    opts.hurt === true
+      ? `**血池只剩 1,000**（满池 ${WEEKEND_FLAGSHIP_POOL_HP.toLocaleString('zh-CN')}）⇒ 打掉就能验「击沉旗舰 ＋ 黑匣 ×1 ＋ 稀有残骸 ×3」`
+      : `血池满（${WEEKEND_FLAGSHIP_POOL_HP.toLocaleString('zh-CN')}）⇒ 验「4 波编队战 ＋ 跨场累计伤害」；想一场见击沉就改用 case \`weekendkill\``,
+  )
+  notes.push(
+    '**章鱼人削血是真实削减**（船长 2026-09-25）：打完一场放一会，母舰血条会**真的减少**（每拍按"在线且' +
+      '不在战斗"的时长削；战斗中与离线都暂停）；**削满窗口 = 血条见底 = 章鱼人得手**。' +
+      '调试档窗口 = **10 分钟**（`weekendFlagshipWindowMs`），锚点由引擎在载入第一拍自己落（「旗舰现身」弹窗会照常出现）',
+  )
+  state.debugQuick = true
+  notes.push('**已打开调试模式（`debugQuick`）**：入侵只有调试模式可见/可开（`WEEKEND_DEBUG_ONLY`）')
+  if (stripped > 0) notes.push(`先清掉上一轮注入的测试船 ×${stripped}（带「${WK_TEST_TAG}」前缀）`)
+  notes.push(
+    '验收路径：① 入侵活动框那一行「旗舰现身」→ 点「战前准备」；或 ② 星图 → 核心星系详细 → 「战前准备」' +
+      '（两条路都进同一个选船界面）⇒ 选 4 艘船 → 「出击旗舰」⇒ **战斗画面**（4 舰编队战 · 4 波）',
+  )
+  notes.push(
+    '看什么：① 准备界面的**收藏置顶**与缺口提示（没有武器/没有弹药/装甲结构低于六成）② 战斗画面是否正常上屏、' +
+      '敌方母舰血条 = 池子剩余 ③ 战场内「撤退」是否可用（撤退**照记**对母舰的伤害）④ 打完的战报与「击沉 → 黑匣」结算',
+  )
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   /**
    * **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档」）：
@@ -3049,10 +3378,24 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
    */
   battleship: injectBattleship,
   /**
+   * **周末入侵 · 旗舰战准备档**（2026-09-25 船长：「帮我准备一个旗舰战之前的存档」）：
+   * 核心 + 外围全部 100% ⇒ 旗舰现身、战役未开打；4 艘满配编队 + 弹药/修理组件备足、
+   * 调试模式已开（入侵仅调试可见）。开档点「战前准备」即进选船界面。
+   */
+  weekend: (state) => injectWeekend(state),
+  /** 同上，但**血池只剩 1,000** ⇒ 一场就能打空（验「击沉旗舰 + 黑匣」）。 */
+  weekendkill: (state) => injectWeekend(state, { hurt: true }),
+  /**
    * **虫洞 · 劫掠电子舰现场档**（2026-09-17 船长：「准备一个在虫洞内面对该敌人的存档」）：
    * 第 4 层 · A 族 · 站在舰船信号上 ⇒ 迎战即打「海盗战团」（内含劫掠电子舰，首轮开火放捕获网）。
    */
   'wh-ewar': injectWormholeEwar,
+  /**
+   * **虫洞 · 孢子导弹巢「全体攻击」现场档**（2026-09-25 船长：问"动画是不是打全体"并要一个相关存档）：
+   * 第 1 层 · C 族 · 站在舰船信号上 ⇒ 迎战即打「星髓游猎群」（星髓成虫 ×3），
+   * 主控装孢子导弹巢、僚舰不装武器 ⇒ 一眼看清"一轮 3 条弹道"。
+   */
+  'wh-spore': injectWormholeSpore,
   // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
   'wh-bag': (s) => injectWormholeBag(s, false),
   'wh-overload': (s) => injectWormholeBag(s, true),

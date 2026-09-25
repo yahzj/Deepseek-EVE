@@ -9,8 +9,8 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
-import type { WeekendEventState } from './weekendEvent'
+import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
+import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
@@ -587,6 +587,19 @@ export interface ExpeditionState {
   /** 敌对派系活跃（2026-09-10 兼容字段）：true = 本次远征打的是当日派系活跃星系的**常驻悬赏**
    *  （威胁 ×1.1、奖金 ×1.1、胜利有概率掉稀有残骸）；与 lairTier 互斥（派系只针对普通悬赏） */
   factionActive?: boolean
+  /**
+   * **这一场实际打的是哪个星系**（2026-09-25 加：周末入侵接线）：
+   * H 族入侵独立卡自带母港 `galaxyId` ⇒ 战后归属/残骸注入若只看卡就会算到母港（把残骸注错星系）。
+   * 引擎在出发那一刻把**界面上那张卡**的星系写进来（被占星系的入侵替换卡带的是**被占星系**），
+   * `weekendBattleInvolvedOf` 优先读它。缺省 / 非法 ⇒ 回落老口径（只看卡的 `galaxyId`）⇒ 零迁移、零行为变化。
+   */
+  foeGalaxyId?: string
+  /**
+   * **奖励基底覆写**（2026-09-25 加 · 周末入侵"主动出击每场重抽"配套）：入侵的敌舰每场重抽，
+   * 但奖励恒 = **该星系原卡 ×1.4** ⇒ 出发时算好写进来，结算时用它替代 `anomaly.rewardIsk`。
+   * 可选字段 ⇒ 零迁移（老路径不写它，逐字不变）。
+   */
+  rewardIskOverride?: number
 }
 
 /** V12 战斗单位运行状态（动态量：三层当前血量 + 每武器装填倒计时） */
@@ -824,7 +837,9 @@ export interface BattleState {
    * **运行期字段、有意不入档**（见 `save.ts` 登记表）。
    */
   meWebDebuffs?: Record<string, BattleWebDebuff>;
-  /** **捕获网"已发放"账本**（键 = 施放者 tag）：同一艘电子舰**整场只发一次**（船长：第一次开火时发动） */
+  /** **捕获网"已发放"账本**（键 = 施放者 tag）：同一艘舰**整场只发一次**（船长：第一次开火时发动）。
+   *  ⚠ **"打空不算用掉"**（⟪2026-09-25 船长报障⟫）：首发若打向**已被别的网钉住**的目标 ⇒ 本舰的网
+   *  **保留**、不记本账本，直到它真正钉住一个未被捕获的目标为止（详见 `combat.fireFoeCaptureWeb`）。 */
   foeWebFired?: Record<string, true>;
   /**
    * **双方当前速度（m/s）· 界面显示口径**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」
@@ -924,6 +939,20 @@ export interface BattleState {
    * 敌方修理计时重置 = **白赚一跳**（2026-09-20 护盾充能力场那次报障的同型坑）。
    */
   foeRepairPulses?: Record<string, { nextPulseAtMs?: number; pulses: number; healed: number }>
+  /**
+   * **挂载件「支援舰船召唤装置」的召唤计时**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的
+   * 独立挂载件，只不过改为**复活被摧毁的友军**（但是表现形式上为**敌方支援舰船入场**），
+   * **增援时间是60秒**，**每次随机复活一艘**」）：
+   * - `foeReviveAtMs` = **下一次该召唤的战斗时钟**（毫秒；首次基准 = 召唤者入场那一刻，
+   *   见 `UnitSpec.foeReviveEscort`）；到点即召唤一艘并推进一格；
+   * - `foeReviveCount` = 本场已召唤次数（支援舰 tag 序号 `sup{n}-<原tag>` 与日志"第 N 次支援"都用它）。
+   *
+   * **只在该单位真挂了这件时才写**（缺省不写 ⇒ 零行为变化、零随机数消费）。
+   * ⚠ 与 `foeRepairPulses` 同款理由**必须随档**：漏了会让战中重载后召唤计时重置 = 白赚一次支援。
+   */
+  foeReviveAtMs?: number
+  /** 本场已召唤的支援舰数（见 `foeReviveAtMs`） */
+  foeReviveCount?: number
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = **`舰tag:武器条目下标`**（仅 src='drone' 的条目）；开战由 startBattleFor /
    *  startFleetBattleFor **逐舰**写入（2026-09-14 船长「逐舰机群」）。
@@ -1697,6 +1726,26 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    */
   commsDelivered?: Record<string, number>
   /**
+   * **实例通讯**（2026-09-25 加 · 周末入侵两封）：静态表装不下的信——正文带**本场数字**、
+   * 且**每场重写同一个 id**（船长令：「每场都发，但是覆盖上一次的」）。
+   * 键 = 通讯 id（固定）· 值 = 一条完整条目（正文/文案 id/参数/结构化奖励清单都在里面）。
+   * 收件箱把它与表消息**合并渲染**；送达记账仍走 `commsDelivered`（同一套幂等与时间列）。
+   * 可选字段 ⇒ 零迁移。
+   */
+  commsInstance?: Record<string, CommsInstanceEntry>
+  /**
+   * **上一场周末入侵的战果快照**（2026-09-25 加）：结束时写一次、**每场覆盖**。
+   * 结算面板（点通讯里的跳转弹出）与结算通讯的正文都读它——下一场开局会把 `weekendEvent` 整条换掉。
+   * 可选字段 ⇒ 零迁移（老档 = 没打过入侵 ⇒ 没有面板可看）。
+   */
+  weekendLastResult?: WeekendResultSnapshot
+  /**
+   * **旗舰战的参战编队**（2026-09-25 加 · 船长令做「战前准备界面」）：玩家上一次在准备界面选的舰船列表
+   * （舰队实例 uid）。下次进准备界面默认勾选它；开战前一律过 `weekendSanitizeFlagshipSquad`
+   * （只认在编船只 · 去重 · 截 4 艘）⇒ 旧档残 id 不会把战斗打崩。可选字段、**空数组不落键** ⇒ 零迁移。
+   */
+  weekendPrepSquad?: string[]
+  /**
    * **需要直接弹窗的通讯 id 队列**（2026-09-14 船长：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）。
    * 送达标了 `popup: true` 的消息时入队；界面弹一次、点「知道了」调 `dismissCommsPopup` 清掉。
    * 兼容字段（可选）⇒ 零迁移；界面只弹队首那一封。
@@ -1889,6 +1938,20 @@ export interface WreckGalaxyRecord {
   rareBy?: Record<string, number>
 }
 
+/**
+ * **入侵残骸独立池的一条记录**（2026-09-25 船长令：「入侵残骸不算当地星系密度，因为是独立的。
+ * 48 小时线性衰减」；模型见 `salvage.ts`「入侵残骸 · 独立池」那一段）。
+ *
+ * - `density` = **锚点值**（最后一次注入/打捞扣减时的量）；
+ * - `decayAccMs` = 自锚点起**已漂移的时长**；
+ * - 当前有效量 = `density × max(0, 1 − decayAccMs / 48h)` ⇒ **48 小时线性衰减到 0**（与推进粒度无关），
+ *   到点或有效值见底即删记录（"残骸条"随之消失，不留底、不回升）。
+ */
+export interface WeekendWreckRecord {
+  density: number
+  decayAccMs: number
+}
+
 /** 第十八版存档结构（当前版本）：v18 = v17 + V18 槽位制（fitted 六槽 Record →
  * 高/中/低三类位数组，复数安装；装备 rack 归槽；存档迁移 17→18 原位映射后由
  * repair 链与船布局对齐）。v17 时代全部字段保留（fleet 实例化 defId/customName、
@@ -1940,6 +2003,19 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   salvaging: SalvageOpState
   /** B3 星系残骸密度（2026-09-05：兼容字段无版本号；星系 → 密度记录，无记录 = 基础密度） */
   galaxyWrecks: Record<string, WreckGalaxyRecord>
+  /**
+   * **入侵残骸（独立池）**（船长 2026-09-25：「**入侵残骸不算当地星系密度，因为是独立的。48 小时线性衰减**」
+   * ＋「按照击败卡的威胁注入」）。
+   *
+   * 与 `galaxyWrecks` **完全独立**的一本账：星系 id → `{ density, decayAccMs }`（口径与密度同尺）。
+   * 三条与星系池**不同**的规则（详见 `salvage.ts` 的 `WEEKEND_WRECK_DECAY_MS` 一段）：
+   * ① **没有基础密度（保底 = 0）**、只减不增 ⇒ **48 小时线性衰减到 0 即消失**（不留痕、不回升）；
+   * ② **不算进当地星系的残骸密度读数**（界面另起一行「入侵残骸」，见星图打捞列表/星系详细）；
+   * ③ 打捞时与星系池**合并计量**（体积当量按两池之和），扣减**先扣这一池**（会消失的先捞）。
+   *
+   * 兼容字段（可选，**零迁移**）：老档缺席 = 一张空表。
+   */
+  weekendWrecks?: Record<string, WeekendWreckRecord>
   /**
    * **已开过高级箱的稀有残骸存量**（2026-09-11 船长定「一件 = 一箱」的第二道锁；
    * 键 = 稀有残骸物品 id，值 = m³）——高级箱按**件**结算而不是按"炉"结算：
@@ -2011,8 +2087,8 @@ export type GameStateV25 = Omit<GameStateV24, 'version'> & {
 /**
  * 第二十六版存档结构：**v26 = v25 + 「第一次」任务系列上线时的一次性老档判定**（2026-09-17 教程重做）。
  *
- * 结构本身没动（irstStats 仍是可选字段）——**升版只为给"老档判定"一个只跑一次的落点**：
- * v25 及更早的档在读取时把 13 条「第一次」整体判为已完成（通讯由 irstTask 触发器自然补送、**不发奖励**），
+ * 结构本身没动（irstStats 仍是可选字段）——**升版只为给"老档判定"一个只跑一次的落点**：
+ * v25 及更早的档在读取时把 13 条「第一次」整体判为已完成（通讯由 irstTask 触发器自然补送、**不发奖励**），
  * 新档（v26 起）才从零走「第一次」流程（页面/页签前置锁定因此**只对新档生效**，老档不倒退）。
  */
 export type GameStateV26 = Omit<GameStateV25, 'version'> & {

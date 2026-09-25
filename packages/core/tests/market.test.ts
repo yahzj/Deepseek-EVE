@@ -49,7 +49,8 @@ const MIN_A = mineral('min-a') // basePrice 8
  * 消耗和交易出售」⇒ 船长选**乙案**：留在稀有订单渠道 + 给消耗品开批量档 + 收购额度 ×5）。
  *
  * 口径（写死在这组用例里，改数值先改这里）：
- * - `rareQtyMul: 200` ⇒ 稀有单件数 1~3 件 → **200~600 发/张**（供货与收购两侧同乘）；
+ * - `rareQtyMul: 200` ⇒ 稀有单张件数 **恒 1 件 × 200 = 200 发/张**（供货与收购两侧同乘）；
+ *   ⚠⟪2026-09-25 船长令⟫「**每次恒 1 件**」⇒ 旧口径「单件商品 1~3 件」作废（原为 200~600 发/张）；
  * - `rareWeightMul: 3` ⇒ 稀有抽取/收购概率 ×3；
  * - `absorbQtyPerWindow: 21_600` ⇒ 收购额度 = 池口径 4,320 × 5。
  */
@@ -67,7 +68,7 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
     }
   })
 
-  it('稀有抽取：弹药 MK2 出的是批量单（200~600 发/张），未标批量档的稀有货照旧 1~3 件', () => {
+  it('稀有抽取：弹药 MK2 出的是批量单（**200 发/张**），未标批量档的稀有货**恒 1 件**', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 11 })
     advanceGame(state, 1000, ctxReal) // 开盘
     /** 另挑一件"普通稀有货"（没写批量档）做对照 —— 用模块（rare 单件里 most 有供应单的那类） */
@@ -86,10 +87,10 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
     expect(ammoQty.size, '13 小时内应抽到过弹药 MK2 的供货单').toBeGreaterThan(0)
     // 2026-09-25 船长选甲：只约束**稀有通道**（<=600 的那些）；池通道供应单可达六位数、不在此列
     for (const q of [...ammoQty].filter((q2) => q2 <= 600)) {
-      expect(q, '批量档：单张 1~3 件 ×200').toBeGreaterThanOrEqual(200)
-      expect(q, '批量档：单张 1~3 件 ×200').toBeLessThanOrEqual(600)
+      // ⟪2026-09-25 船长令⟫「每次恒 1 件」⇒ 批量档 = 1 件 × 200（不再是 1~3 件 × 200）
+      expect(q, '批量档：单张恒 1 件 ×200').toBe(200)
     }
-    for (const q of plainQty) expect(q, '没写批量档的稀有货照旧').toBeLessThanOrEqual(3)
+    for (const q of plainQty) expect(q, '没写批量档的稀有货恒 1 件').toBe(1)
   })
 
   it('簿面收购单同步放大：弹药 MK2 的收购单 ≥200 件/张（对照货仍 2 件档）', () => {
@@ -605,7 +606,7 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行；收购�
   })
 })
 
-describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回抽取可重复 + 闸内 ×4 + 奇货上限 2/6h）', () => {
+describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回抽取可重复 + 闸内 ×4 + 奇货上限 4/6h）', () => {
   let state: GameState
   let ctx: SimContext
 
@@ -741,7 +742,7 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
     expect(top.expiresAtGameMs - state.market.lastTickGameMs).toBe(EXO_LIFE) // 订单 6 小时有效
   })
 
-  it('奇货单次上限 2：抽取窗命中 >2 件时随机抽选保留 2 张（测试档上调概率验证）', () => {
+  it('奇货单次上限 4：抽取窗命中 >4 件时随机抽选保留 4 张（测试档上调概率验证）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 17 })
     state.wallet.isk = 100_000_000
     const goods: MarketGoodDef[] = Array.from({ length: 6 }, (_, i) => ({
@@ -763,13 +764,13 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
       if (w % 10 !== 0) continue
       let winN = 0
       for (const g of goods) winN += freshOf(state.market.npcSell[g.key] ?? [], EXO_LIFE).length
-      expect(winN).toBeLessThanOrEqual(2) // 单次上限 2
+      expect(winN).toBeLessThanOrEqual(4) // 单次上限 4（⟪2026-09-25 船长令⟫「每窗上限再+2」）
       totalKept += winN
-      if (winN === 2) capWins++
+      if (winN === 4) capWins++
     }
-    // 6 件 × 0.5/窗 期望命中 ~3/窗：若无上限 30 窗应 ~90 张；上限后明显截断但仍持续到货
-    expect(totalKept).toBeLessThan(60)
-    expect(totalKept).toBeGreaterThan(20)
+    // 6 件 × 0.5/窗 期望命中 ~3/窗：若无上限 30 窗应 ~90 张；上限 4 后仍有截断、且持续到货
+    expect(totalKept).toBeLessThan(90)
+    expect(totalKept).toBeGreaterThan(60)
     expect(capWins).toBeGreaterThan(0)
   })
 
@@ -1349,14 +1350,15 @@ describe('数字稀有度分层（2026-09-09 船长拍板：稀有度入物品�
   })
 
   /**
-   * **档 4 的单独系数**（**2026-09-16 船长选「选项 B」**：`rareTier4Weight` = 0.05）。
+   * **档 4 的单独系数可被 `balance` 覆写**（**2026-09-16 船长选「选项 B」**时默认 0.05；
+   * ⟪2026-09-25 船长令⟫ 后**默认已改 0.2**，故本用例改为**显式覆写 0.05** 来钉"覆写通路"与两个极端）。
    *
    * 由来：当日「甲＋乙」把 5 艘官方巡洋舰**保 4** 挪进稀有订单，而 `rareTierWeight` 原**只特判档 3**
    * ⇒ 档 4 落 `else` 拿 ×1（与大众档同频）。船长问清 2/3/4 = 1 / 0.15 / 1 后，选了"给档 4 单独系数"。
    * 本用例按 2/3/4 三行同时抽取，钉住：**档 4 显著低于档 2**（系数 0.05 ⇒ 约 1/20），且系数可被
    * `balance` 覆写（0 ⇒ 永不命中；1 ⇒ 与档 2 同频）。
    */
-  it('档 4 单独系数：默认 0.05 ⇒ 命中远低于档 2；覆写 0 ⇒ 永不命中、覆写 1 ⇒ 与档 2 同频', () => {
+  it('档 4 系数可覆写：覆写 0.05 ⇒ 命中远低于档 2；覆写 0 ⇒ 永不命中、覆写 1 ⇒ 与档 2 同频', () => {
     const run = (w4: number): { t2: number; t3: number; t4: number } => {
       const state = createInitialState({ nowWallMs: 0, seed: 20260916 })
       const ctx = makeTestCtx({

@@ -271,7 +271,9 @@ export function strongestBountyInjection(galaxyId: string, ctx: SimContext): num
   return best
 }
 
-/** 当前残骸密度（无记录 = 基础密度） */
+/** 当前残骸密度（无记录 = 基础密度）。
+ *  ⚠ **不含入侵残骸**（船长 2026-09-25：「**入侵残骸不算当地星系密度，因为是独立的**」）——
+ *  入侵那一池走 `weekendWreckDensityOf` 单独读、界面单独一行；两池只在**打捞计量与扣减**时合并。 */
 export function wreckDensityOf(state: GameState, galaxyId: string, ctx: SimContext): number {
   const rec = state.galaxyWrecks[galaxyId]
   // 限时倍率（2026-09-15）：`wreckDensity` **只乘读取值**（不改已存密度 ⇒ 到期自动回落）
@@ -301,6 +303,9 @@ export function injectWreckDensity(state: GameState, ctx: SimContext, galaxyId: 
  * salvagingGalaxyId = 正在打捞的星系（P2 作业接入；漂移双向挂起）。
  * 收口 = 剩余间距 × dt/时长（单次推进 ≥ 时长恰好归位——离线大步长精确兑现
  * "48h 放完 / 4h 回满"；多段小步为渐近收敛，间距趋零进位清除记录）。
+ *
+ * **入侵残骸池同款在这里推进**（2026-09-25）：只是它的"归位点"是 **0**（无基础密度、不回升）
+ * ⇒ 同一根 48h 线性衰减，衰减到 0 即删记录（船长的「随时间消减到最后会消失」）。
  */
 export function advanceWreckDrift(
   state: GameState,
@@ -323,6 +328,106 @@ export function advanceWreckDrift(
       else delete state.galaxyWrecks[galaxyId]
     }
   }
+  advanceWeekendWreckDecay(state, dtMs, salvagingGalaxyId)
+}
+
+/* ═══════════ 入侵残骸 · 独立池（2026-09-25 船长令） ═══════════
+ *
+ * 船长原话：「**入侵舰队不应该有赏金，而且添加的残骸是原星系的残骸密度，需要独立的残骸条
+ * （入侵残骸没有星系的残骸保底，因为随时间消减到最后会消失）**」＋追问后两条口径：
+ * 「**按照击败卡的威胁注入**」「**入侵残骸不算当地星系密度，因为是独立的。48 小时线性衰减**」。
+ *
+ * 与星系池（`galaxyWrecks`）的三处差异——**只有这三处**，其余（单位、打捞产出、回收链路）完全同尺：
+ * 1. **无保底**：归位点 = 0（不是该星系的基础密度）⇒ 只减不增、**48h 线性衰减到 0 即消失**；
+ * 2. **不进当地残骸密度读数**：`wreckDensityOf` 一个字都不变（界面另起一行「入侵残骸」）；
+ * 3. **打捞时合并计量、先扣这一池**：体积当量 mul 按（星系密度 ＋ 入侵残骸）算，
+ *    扣减顺序 = 先把入侵池扣空（会消失的先捞），再按老口径扣星系池（保底线 10 不动）。
+ *
+ * ⚠ **为什么这里要存"锚点 + 已漂移时长"而不是只存一个数**（与星系池的差别）：
+ * 星系池的算式 `d − (d−base)·dt/时长` 是**逐次调用按比例收缩**（离线一次跨过 48h 恰好归位，
+ * 但逐拍小步只作渐近收敛、永远差一点）；船长对本池的要求是**"48 小时线性衰减、最后会消失"**
+ * ⇒ 这里改成**真线性**：注入那一刻记下 `density` 与 `decayAccMs = 0`，此后有效值 =
+ * `density × max(0, 1 − decayAccMs/48h)` —— **与推进粒度无关、48h 到点必为 0**（记录随即删除）。
+ * 再注入一笔 ⇒ 以"当前有效值 ＋ 新注入量"重新起算 48h（打了新的仗，残骸场重新变新鲜）。
+ *
+ * 存档：`state.weekendWrecks`（星系 id → `{ density, decayAccMs }`；兼容字段，无版本号）。
+ */
+
+/** 入侵残骸的闲置衰减时长（48h 线性到 0；与星系池同一把尺，单列常量便于日后单独调） */
+export const WEEKEND_WRECK_DECAY_MS = WRECK_DECAY_MS
+/** 衰减尾数收口（有效值小于此值直接清零 ⇒ 记录被删、"残骸条"消失） */
+const WEEKEND_WRECK_SNAP = 0.05
+
+/** 入侵残骸一条记录（类型本体在 `state.ts`，与 `WreckGalaxyRecord` 同处；此处转发便于同域引用） */
+export type { WeekendWreckRecord } from './state'
+import type { WeekendWreckRecord } from './state'
+
+/** 由记录算**当前有效残骸量**（线性衰减：锚点值 × max(0, 1 − 已漂移/48h)） */
+export function weekendWreckValueOf(rec: WeekendWreckRecord): number {
+  const left = 1 - Math.max(0, rec.decayAccMs) / WEEKEND_WRECK_DECAY_MS
+  return left <= 0 ? 0 : Math.max(0, rec.density) * left
+}
+
+/** 某星系的入侵残骸存量（无记录 / 已衰减到 0 = 0） */
+export function weekendWreckDensityOf(state: GameState, galaxyId: string): number {
+  const rec = state.weekendWrecks?.[galaxyId]
+  if (!rec) return 0
+  const v = weekendWreckValueOf(rec)
+  return Number.isFinite(v) && v > 0 ? v : 0
+}
+
+/**
+ * **击败入侵舰队的残骸注入量**（船长：「按照击败卡的威胁注入」）——沿用悬赏那条唯一公式
+ * （`bountyWreckInjection`：威胁 ×0.4 ×(1+0.2×敌人数)，体量走 `wreckInjectThreatOf`），
+ * 只是**记到独立池**。`frac`：主动出击 / 旗舰战 = 1；遇袭沿用既有"遇袭半量"口径（0.5）。
+ */
+export function weekendWreckInjectionOf(
+  card: Pick<AnomalyDef, 'threat' | 'wreckThreat' | 'waves'>,
+  frac = 1,
+): number {
+  return bountyWreckInjection(wreckInjectThreatOf(card), bountyEnemyCount(card)) * Math.max(0, frac)
+}
+
+/** 注入入侵残骸（只加不减；非法值/非正数一律忽略）。**注入即重新起算 48h**（残骸场重新变新鲜）。 */
+export function injectWeekendWreck(state: GameState, galaxyId: string, amount: number): void {
+  if (!(amount > 0) || galaxyId.length === 0) return
+  const map = (state.weekendWrecks ??= {})
+  const cur = weekendWreckDensityOf(state, galaxyId)
+  map[galaxyId] = { density: cur + amount, decayAccMs: 0 }
+}
+
+/** 直接写一条记录（打捞扣减用；`decayAccMs` 一并给定） */
+function writeWeekendWreck(state: GameState, galaxyId: string, density: number, decayAccMs: number): void {
+  const map = state.weekendWrecks
+  if (!map) return
+  if (!(density > WEEKEND_WRECK_SNAP) || decayAccMs >= WEEKEND_WRECK_DECAY_MS) {
+    delete map[galaxyId]
+    return
+  }
+  map[galaxyId] = { density, decayAccMs }
+}
+
+/**
+ * **入侵残骸的闲置衰减推进**（48h 线性；打捞进行中挂起，与星系池同规则）——
+ * 由 `advanceWreckDrift` 每拍带一遍（唯一调用点），到点/见底即删记录。
+ */
+export function advanceWeekendWreckDecay(
+  state: GameState,
+  dtMs: number,
+  salvagingGalaxyId: string | null = null,
+): void {
+  const map = state.weekendWrecks
+  if (!map) return
+  for (const [galaxyId, rec] of Object.entries(map)) {
+    if (galaxyId === salvagingGalaxyId) continue
+    const acc = Math.max(0, rec.decayAccMs) + dtMs
+    // 到点或有效值见底 ⇒ 删记录（残骸条消失）；否则只推进漂移时长，锚点值不动（真线性）
+    if (acc >= WEEKEND_WRECK_DECAY_MS || weekendWreckValueOf({ density: rec.density, decayAccMs: acc }) <= WEEKEND_WRECK_SNAP) {
+      delete map[galaxyId]
+      continue
+    }
+    map[galaxyId] = { density: rec.density, decayAccMs: acc }
+  }
 }
 
 /**
@@ -331,11 +436,24 @@ export function advanceWreckDrift(
  * 保底线抬到 10 后，稳态保底（密度 = 10）的实际系数 = 1.0），再执行放干扣减
  * （>保底线 10：扣当前超出量 2%；超出量趋零进位；≤保底线：不扣）。
  * 调用方按 mul 计入该轮捞取量（基础体积 × mul 的货仓占用）。
+ *
+ * **入侵残骸（独立池）参加本轮**（2026-09-25 船长令）：
+ * - **计量合并**：mul 按（星系密度 ＋ 入侵残骸）算 ⇒ 入侵留下的残骸场让每轮出量更大；
+ * - **扣减先扣入侵池**：先按同一 2% 放干扣入侵池（**无保底**，可以扣到 0），再照老口径扣星系池
+ *   （保底线 10 不动）——"会消失的先捞"这个顺序对玩家最有利，也让两条读数各自降得清楚。
  */
 export function salvageRoundPull(state: GameState, ctx: SimContext, galaxyId: string): number {
   const rec = recordOf(state, galaxyId, ctx)
+  const weekend = weekendWreckDensityOf(state, galaxyId)
   const d = rec.density
-  const mul = Math.max(0.5, d / 10)
+  const mul = Math.max(0.5, (d + weekend) / 10)
+  if (weekend > 0) {
+    /**
+     * 入侵池按同一 2% 放干（**无保底** ⇒ 可以扣到 0）：
+     * 扣减后**以当前有效值为新锚点重新起算 48h**（玩家正在这一片捞 ⇒ 与"打捞中挂起衰减"同一意图）。
+     */
+    writeWeekendWreck(state, galaxyId, weekend - weekend * WRECK_DRAIN_SHARE, 0)
+  }
   if (d > WRECK_FLOOR) {
     const excess = d - WRECK_FLOOR
     rec.density = Math.max(WRECK_FLOOR, d - excess * WRECK_DRAIN_SHARE)

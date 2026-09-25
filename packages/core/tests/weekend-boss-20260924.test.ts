@@ -21,15 +21,16 @@ import type { GameState } from '../src/state'
 import {
   WEEKEND_BOSS_FAMILIES,
   WEEKEND_BOSS_TICK_MAX_MS,
+  WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS,
   WEEKEND_FLAGSHIP_DEADLINE_MS,
   WEEKEND_FLAGSHIP_POOL_HP,
   weekendFlagshipHpRemaining,
+  weekendFlagshipWindowMs,
   weekendBossPoolView,
   weekendFlagshipDefeated,
   weekendIsBossFamily,
   weekendIsFlagshipShipId,
   weekendNoteFlagshipDamage,
-  weekendNpcTimelineMs,
   weekendOctopusTick,
   weekendTickBoss,
 } from '../src/weekendEvent'
@@ -123,11 +124,13 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     const ev = bossEvent(s)
     weekendNoteFlagshipDamage(ev, 1_000, 1) // 池 5000
     /**
-     * ⚠ `debugQuick` 下 2 小时窗口**同样 ÷60**（= 2 分钟）⇒ 要按**本档的实际窗口**折算，
-     * 不能拿 `WEEKEND_FLAGSHIP_DEADLINE_MS` 原值直接除（调试档下它会瞬间削满）。
+     * ⚠ 窗口按**本档的实际值**取（`weekendFlagshipWindowMs`：正常 2 小时 / **调试 10 分钟**）——
+     * 2026-09-25 船长把调试档从"÷60 = 2 分钟"改成 10 分钟（原值连点进准备界面都来不及）；
+     * 四处（倒计时 / 削血速率 / 池子读数 / 收口）必须同源，故这里也走同一个单点。
      */
-    const windowMs = weekendNpcTimelineMs(s, WEEKEND_FLAGSHIP_DEADLINE_MS)
-    expect(windowMs).toBe(WEEKEND_FLAGSHIP_DEADLINE_MS / 60)
+    const windowMs = weekendFlagshipWindowMs(s)
+    expect(windowMs).toBe(WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS)
+    expect(windowMs).toBe(10 * 60_000)
     expect(weekendOctopusTick(s, ev, windowMs / 2, false)).toBe(false)
     const v = weekendBossPoolView(s, ev)!
     expect(v.octopusFrac).toBeCloseTo(0.5, 10)
@@ -142,7 +145,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     const s = fresh()
     const ev = bossEvent(s)
     weekendNoteFlagshipDamage(ev, 1_000, 1)
-    const windowMs = weekendNpcTimelineMs(s, WEEKEND_FLAGSHIP_DEADLINE_MS) // 调试档 = 2 分钟
+    const windowMs = weekendFlagshipWindowMs(s) // 调试档 = 10 分钟
     expect(weekendOctopusTick(s, ev, windowMs, true)).toBe(false)
     expect(ev.octopusDrainedMs ?? 0).toBe(0) // 整整一个窗口一点没削
     expect(weekendOctopusTick(s, ev, windowMs / 2, false)).toBe(false)
@@ -178,9 +181,9 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     const ev = bossEvent(s)
     weekendNoteFlagshipDamage(ev, 1_000)
     weekendTickBoss(s, 0, false)
-    // 分多次推进到 2 小时
+    // 分多次推进到削血窗口（调试档 = 10 分钟；窗口走 `weekendFlagshipWindowMs` 单点）
     let down: { down?: 'octopus' } = {}
-    for (let t = 0; t <= WEEKEND_FLAGSHIP_DEADLINE_MS; t += WEEKEND_BOSS_TICK_MAX_MS) {
+    for (let t = 0; t <= weekendFlagshipWindowMs(s); t += WEEKEND_BOSS_TICK_MAX_MS) {
       down = weekendTickBoss(s, t, false)
       if (down.down) break
     }

@@ -13,7 +13,6 @@ import { flushSync } from 'react-dom'
 import { useL10n } from './i18n/locale'
 import {
   formatDurationMs,
-  formatDurationShort,
   activePromos,
   activeTunings,
   moneyDelta,
@@ -21,6 +20,9 @@ import {
   unlocked,
   unlockNeedTitle,
   ONB_AWAKEN,
+  // 旗舰战（main 侧新增）：战斗宿主判定与族名文案
+  weekendFamilyNameId,
+  weekendFlagshipBattleActive,
 } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
@@ -31,6 +33,7 @@ import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
 import { ModeChoice } from './panels/ModeChoice'
 import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
+import { WeekendFlagshipPrepModal } from './panels/WeekendFlagshipPrep'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -1025,8 +1028,17 @@ async function applyLayoutAndQuit(): Promise<void> {
 
   // 交火中（主动进入全屏战斗页；不自动切换页面）
   // 交火中 = 主控远征战斗 **或** 虫洞内的洞内战斗（F2：洞内战斗同样要能进战场观看）
+  /**
+   * ⚠ **2026-09-25 加第三个宿主：入侵旗舰战**（船长报障「旗舰战无法进入战斗画面」）——
+   * 它是**编队战**、承载在**遭遇槽**（`state.encounter.battle`），既不占 `expedition` 也不进虫洞
+   * ⇒ 上面那两口径都不认它：战斗屏不挂载、不自动上屏、也没有「⚔ 战斗中」浮动入口，
+   * 玩家只看到遭遇横幅的"交火中"（战斗在后台照常推完、战报照常出）。
+   * 判据走 core 单点 `weekendFlagshipBattleActive`（界面不许自己认宿主）。
+   */
   const inBattle =
-    (state.expedition.active && state.expedition.phase === 'battle') || !!state.wormhole.run?.battle
+    (state.expedition.active && state.expedition.phase === 'battle') ||
+    !!state.wormhole.run?.battle ||
+    weekendFlagshipBattleActive(state)
 
   /**
    * ── 观战屏：**挂载**与**上屏**是两件事（2026-09-22 回归修复）──
@@ -1172,6 +1184,8 @@ async function applyLayoutAndQuit(): Promise<void> {
    * 弹窗外形 = 通讯页右栏那块屏（同源公共件 `panels/CommsReader.tsx`）。
    */
   const popupId = engine.commsPopups()[0] ?? null
+  /** 战前准备弹层开合（2026-09-25：旗舰现身弹窗可直达） */
+  const [prepOpen, setPrepOpen] = useState(false)
   const popupMsg =
     popupId !== null && !showOfflineReport ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null) : null
 
@@ -1741,17 +1755,25 @@ async function applyLayoutAndQuit(): Promise<void> {
         </div>
       ) : null}
 
-      {/* ───── 送达弹窗（船长 2026-09-14：除新手教程外所有通讯都弹；外形 = 通讯页右栏那块屏） ───── */}
-      {popupMsg ? (
+      {/* ───── 送达弹窗（船长 2026-09-14：除新手教程外所有通讯都弹；外形 = 通讯页右栏那块屏） ───── */}      {popupMsg ? (
         <div className="app-ann-mask" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
           <div className="app-comm-pop" onClick={(e) => e.stopPropagation()}>
             <div className="app-comms-body-col">
-              <CommsScreen entry={popupMsg} />
+              <CommsScreen entry={popupMsg} itemNameOf={(id) => engine.ctx.items.get(id)?.name ?? id} />
               <CommsEave
                 entry={popupMsg}
                 onGoto={(p, tab, shipTab, taskTab) => {
                   engine.dismissCommsPopup(popupMsg.id)
                   gotoFromComms(p, tab, shipTab, taskTab)
+                }}
+                /**
+                 * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）：弹窗里不就地开面板，
+                 * 而是收掉弹窗、跳到通讯页同那一封上（面板在那儿，读完信顺手点开 —— 只留一处入口）。
+                 */
+                onAction={(a) => {
+                  if (a !== 'weekendSummary') return
+                  engine.dismissCommsPopup(popupMsg.id)
+                  gotoFromComms('comms')
                 }}
                 extra={
                   <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
@@ -1764,7 +1786,47 @@ async function applyLayoutAndQuit(): Promise<void> {
         </div>
       ) : null}
 
-      {/* ───── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ───── */}
+      {/**
+       * **"旗舰现身"一次性弹窗**（2026-09-25 船长令：「希望当核心星系收复敌人旗舰现身时，出现一次弹窗，
+       * 玩家可以通过弹窗直接前往准备」）：引擎在旗舰首次现身那一拍立待办（内存、不随档）⇒ 这里弹一次；
+       * 「战前准备」直开准备界面、「知道了」只关窗。弹层复用全仓既有的 `.app-modal-*` 族。
+       */}
+      {engine.flagshipPopupPending ? (
+        <div className="app-modal-mask" onClick={() => engine.dismissFlagshipPopup()}>
+          <div className="app-modal" style={{ width: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-report-title">{tr('ui.weekend.090')}</span>
+              <button className="app-btn is-small" onClick={() => engine.dismissFlagshipPopup()}>
+                {tr('ui.App.086')}
+              </button>
+            </div>
+            <div className="app-modal-body">
+              <div className="app-note">
+                {tr('ui.weekend.091', {
+                  p1: engine.ctx.galaxies.get(engine.state.weekendEvent?.coreId ?? '')?.name ?? '',
+                  p2: tr(weekendFamilyNameId(engine.state.weekendEvent?.family ?? 'H') ?? 'core.weekend.023'),
+                })}
+              </div>
+              <div className="app-wh-actions">
+                <button
+                  className="app-btn is-primary"
+                  onClick={() => {
+                    engine.dismissFlagshipPopup()
+                    setPrepOpen(true)
+                  }}
+                >
+                  {tr('ui.weekend.062')}
+                </button>
+                <button className="app-btn is-small" onClick={() => engine.dismissFlagshipPopup()}>
+                  {tr('ui.App.100')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {/* 战前准备弹层：从上面那枚弹窗直达（组件自包含；活动框与星系详细里各挂一份自己的） */}
+      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       {/**
        * **交火中：右上角悬浮入口**（主动进入战斗页，不自动切换页面）。
        *

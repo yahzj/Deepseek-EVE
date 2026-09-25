@@ -36,7 +36,7 @@ import {
   weekendGarrisonFoeCardId,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
-import { weekendRareWreckIdFor } from '../src/weekendBattle'
+import { weekendBattleInvolvedOf, weekendRareWreckIdFor } from '../src/weekendBattle'
 import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import { recycleProfileOf } from '../src/salvage'
 import { pullOneWreck } from '../src/salvaging'
@@ -279,7 +279,7 @@ describe('残骸侧：H 组**不冻结**（船长令）＋ 组改洞外高安（
 
   it('**被占星系的打捞池并入驻留的那支入侵舰队** ⇒ 那里能打捞出「墨潮帮残骸（高安）」', () => {
     /** 挑一个"本来就有可见悬赏"的星系当被占星系（池底 = 它的原卡） */
-    const home = [...ctx.anomalies.values()].find((a) => !a.hidden)!.galaxyId
+    const home = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId !== 'galaxy-hub')!.galaxyId
     /**
      * ⚠ 事件必须**以"此刻"为起点**：`pullOneWreck` 内部按**墙钟**（`Date.now()`）判占领——
      * 与入侵线同口径（事件时间轴本来就是墙钟）。若沿用夹具的 `startedAtWallMs: 0`，
@@ -309,5 +309,30 @@ describe('残骸侧：H 组**不冻结**（船长令）＋ 组改洞外高安（
     }
     expect(normal.has('wreck-h-hi'), `未占领时不该出 H 族残骸（出的是 ${[...normal].join(' / ')}）`).toBe(false)
     expect(normal.size, '未占领时仍应有原卡残骸可捞').toBeGreaterThan(0)
+  })
+})
+
+describe('引擎接线：H 独立卡当悬赏时的星系归属（2026-09-25）', () => {
+  it('`expedition.foeGalaxyId` 决定"这一场在哪个星系" ⇒ 认得出是入侵战斗、注入目标不再落母港', () => {
+    const home = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId !== 'galaxy-hub')!.galaxyId
+    const s = createInitialState({ nowWallMs: 0, seed: 13 })
+    s.weekendEvent = {
+      seq: 4,
+      startedAtWallMs: Date.now(), // 墙钟起点 = 此刻（占领判定按墙钟）
+      coreId: 'galaxy-kor',
+      peripheryIds: [home],
+      family: 'H',
+      contributed: {},
+    }
+    // ① 不写 foeGalaxyId ⇒ H 卡自带母港（galaxy-hub 未被占）⇒ **认不出**（这就是接线前的老口径）
+    expect(weekendBattleInvolvedOf(s, ctx, 'ink-harass', Date.now()), '接线前：认不出').toBeUndefined()
+    // ② 写进"这一场打的星系" ⇒ 认得出；且**归属 = 被占星系**（不是卡的母港）
+    s.expedition.foeGalaxyId = home
+    const involved = weekendBattleInvolvedOf(s, ctx, 'ink-harass', Date.now())
+    expect(involved).toEqual({ galaxyId: home, kind: 'assault' })
+    expect(involved!.galaxyId, '注入/归属目标是被占星系').not.toBe(card('ink-harass').galaxyId)
+    // ③ 非占领区 ⇒ 回落老口径（不认）
+    s.expedition.foeGalaxyId = 'galaxy-redring'
+    expect(weekendBattleInvolvedOf(s, ctx, 'ink-harass', Date.now())).toBeUndefined()
   })
 })

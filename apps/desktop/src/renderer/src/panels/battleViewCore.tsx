@@ -91,12 +91,15 @@ const DRONE_DOWN_LIFE = 1500 // 2026-09-11 船长：爆炸演出持续更久（�
 /**
  * **伤害飘字生命周期 ms**（2026-09-24 船长令「战斗伤害的数值动画」；与上列同族常量，故放这里）。
  *
+ * ⟪**2026-09-25 船长令**⟫「**战斗页面中，伤害数字的停留时间延长，使用粗体字**」⇒ **900 → 1500**
+ *（+67%；同时驱动"存活多久"与 CSS 动画时长两处，故飘得更慢、看得更久）。
+ *
  * ⚠ **必须是模块级常量**：`BattleScreen` 的渲染体里**读它的地方在写入之前**（累加/清理段在函数前段、
  * 渲染元素在函数后段），若写成组件内的 `const`，那句 `.filter((p) => now - p.born < POPUP_LIFE)`
  * 会在**初始化之前**执行 ⇒ `ReferenceError: Cannot access 'POPUP_LIFE' before initialization`
  * （闭包引用晚声明的 `const` 逃过 TS 检查，运行时却真的抛）⇒ 战斗页整棵树崩掉 = **进入战斗黑屏**。
  */
-const POPUP_LIFE = 900
+const POPUP_LIFE = 1500
 
 /** 战斗背景视差星层配置：far 慢 / mid 中 / near 快（追逐机动时差速最明显） */
 const STAR_LAYERS = [

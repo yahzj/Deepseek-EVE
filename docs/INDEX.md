@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **318** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5889** KB · **42286** 行
-- 状态分布：**未标注** 172 · **已确认/已实现** 111 · **进行中** 31 · **待裁定** 3 · **历史留档** 1
-- 孤儿文档（0 引用）**45** 份 · 状态未标注 **172** 份
+- 文档总数 **323** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5948** KB · **42821** 行
+- 状态分布：**未标注** 171 · **已确认/已实现** 111 · **进行中** 37 · **待裁定** 3 · **历史留档** 1
+- 孤儿文档（0 引用）**48** 份 · 状态未标注 **171** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**204** 份
+- 三、现行设计稿（design）：**209** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**24** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -29,14 +29,14 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 14 KB / 97 行 | 168 / 5 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 14 KB / 97 行 | 173 / 5 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 24 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 463 KB / 985 行 | 210 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 88 KB / 316 行 | 300 / 17 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 464 KB / 985 行 | 215 / 16 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 95 KB / 318 行 | 301 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,15 +53,20 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 204 份
+## 三、现行设计稿（design） —— 209 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/armored-line-speed-20260925.md` | 甲壳装甲线三艘降速（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 4 KB / 59 行 | 0 / 0 |
-| `docs/design/h-family-reprice-20260925.md` | H 族按新规调整（威胁重定价 · 入侵抽签 · 遇袭强度 ×0.75） | 未标注（落码完成 · 待验收） | 2026-09-25 | 15 KB / 131 行 | 0 / 0 |
+| `docs/design/battle-dmg-popup-20260925.md` | 战斗页伤害飘字：停留时间延长 + 字重 900（2026-09-25） | 进行中（进行中 —— 改动已落码、七道闸门全） | 2026-09-25 | 3 KB / 41 行 | 0 / 0 |
+| `docs/design/capture-web-retain-20260925.md` | 劫掠捕获网：没钉到人的网不算用掉（2026-09-25） | 进行中（进行中 —— 改动已落码、闸门待跑） | 2026-09-25 | 3 KB / 52 行 | 0 / 0 |
 | `docs/design/luxury-sell-readout-20260925.md` | 奢侈品"无法出售"误报：把「收购簿为空」误判成「不在市场目录」（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 6 KB / 92 行 | 0 / 0 |
+| `docs/design/rare-supply-single-piece-20260925.md` | 稀有供给单「每次恒 1 件」（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 8 KB / 122 行 | 1 / 0 |
+| `docs/design/shield-field-caster-20260925.md` | 护盾充能力场装置：回盾量改按「装件舰（施放者）满盾」（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 4 KB / 55 行 | 0 / 0 |
+| `docs/design/spore-allfoes-gate-20260925.md` | 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25） | 进行中（进行中 —— 改动已落码、六道闸门待） | 2026-09-25 | 4 KB / 67 行 | 0 / 0 |
 | `docs/design/starmap-scan-curve-20260925.md` | 星图扫描时长改幂次曲线（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 7 KB / 94 行 | 0 / 0 |
 | `docs/design/ui-refresh-20260925.md` | 工作文档 · UI 系统级优化重置（ui-refresh 隔离分支）（2026-09-25 · 三号） | 进行中（进行中） | 2026-09-25 | 13 KB / 181 行 | 0 / 0 |
+| `docs/design/weekend-flagship-prep-20260925.md` | 旗舰战入口 ＋ 战前准备界面（选船） | 进行中（进行中） | 2026-09-25 | 38 KB / 274 行 | 1 / 0 |
 | `docs/design/bounty-loop-inline-20260924.md` | 工作文档 · 重复清剿并入「④ 悬赏」每一行（删掉独立容器）（2026-09-24 · 三号） | 进行中（进行中） | 2026-09-24 | 5 KB / 60 行 | 0 / 0 |
 | `docs/design/copy-jargon-20260924.md` | 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号） | 未标注（两批全部落码并过闸门） | 2026-09-24 | 8 KB / 67 行 | 3 / 0 |
 | `docs/design/faction-rare-drop-readout-20260924.md` | 派系活跃掉落率读数：从"写死裸常量"收口到"随档位现算"（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 6 KB / 86 行 | 0 / 0 |
@@ -259,7 +264,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注（已按用户确认的 V4/V5 方案实现） | — | 16 KB / 174 行 | 16 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · M1 已上线 · M2–M4 待开工） | 未标注（M1 机制骨架已上线） | — | 20 KB / 198 行 | 5 / 1 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · M1 已上线 · M2–M4 待开工） | 未标注（M1 机制骨架已上线） | — | 20 KB / 198 行 | 5 / 2 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 4 KB / 54 行 | 4 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 24 份
@@ -269,7 +274,7 @@
 | `docs/archive/glossary-detail-03-econ-20260915.md` | 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 11 KB / 26 行 | 6 / 0 |
 | `docs/archive/glossary-retired-20260915.md` | 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 3 KB / 16 行 | 3 / 0 |
 | `docs/archive/roadmap-todo-done-20260915.md` | 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 92 KB / 75 行 | 3 / 0 |
-| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 54 / 10 |
+| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 55 / 10 |
 | `docs/archive/roadmap-2026-09-04.md` | 封存卷 · roadmap 批次条目 2026-09-04 | 未标注 | — | 13 KB / 68 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-05.md` | 封存卷 · roadmap 批次条目 2026-09-05 | 未标注 | — | 12 KB / 32 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-06.md` | 封存卷 · roadmap 批次条目 2026-09-06 | 未标注 | — | 2 KB / 10 行 | 1 / 0 |
@@ -307,7 +312,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 58 KB / 583 行 | 54 / 10 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 64 KB / 636 行 | 55 / 10 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -319,7 +324,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 8 / 0 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 2 / 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 / 0 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 54 / 10 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 55 / 10 |
 
 ## 四、已归档设计稿（design/archive） —— 62 份
 
@@ -386,15 +391,18 @@
 | `docs/design/archive/handoff-20260909-dsh-reinstall.md` | 二号会话续接卡(2026-09-09 DSH 重装;交给新继承人) | 未标注 | 2026-09-09 | 5 KB / 48 行 | 5 / 0 |
 | `docs/design/archive/handoff-b3-skills.md` | B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施） | 未标注（打捞对标技能组已实施 ✅） | — | 4 KB / 52 行 | 4 / 0 |
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
-| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 54 / 10 |
+| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 10 |
 
-## 附：孤儿文档（0 引用，45 份）
+## 附：孤儿文档（0 引用，48 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/armored-line-speed-20260925.md`（2026-09-25 · 4 KB）—— 甲壳装甲线三艘降速（2026-09-25）
-- `docs/design/h-family-reprice-20260925.md`（2026-09-25 · 15 KB）—— H 族按新规调整（威胁重定价 · 入侵抽签 · 遇袭强度 ×0.75）
+- `docs/design/battle-dmg-popup-20260925.md`（2026-09-25 · 3 KB）—— 战斗页伤害飘字：停留时间延长 + 字重 900（2026-09-25）
+- `docs/design/capture-web-retain-20260925.md`（2026-09-25 · 3 KB）—— 劫掠捕获网：没钉到人的网不算用掉（2026-09-25）
 - `docs/design/luxury-sell-readout-20260925.md`（2026-09-25 · 6 KB）—— 奢侈品"无法出售"误报：把「收购簿为空」误判成「不在市场目录」（2026-09-25）
+- `docs/design/shield-field-caster-20260925.md`（2026-09-25 · 4 KB）—— 护盾充能力场装置：回盾量改按「装件舰（施放者）满盾」（2026-09-25）
+- `docs/design/spore-allfoes-gate-20260925.md`（2026-09-25 · 4 KB）—— 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25）
 - `docs/design/starmap-scan-curve-20260925.md`（2026-09-25 · 7 KB）—— 星图扫描时长改幂次曲线（2026-09-25）
 - `docs/design/ui-refresh-20260925.md`（2026-09-25 · 13 KB）—— 工作文档 · UI 系统级优化重置（ui-refresh 隔离分支）（2026-09-25 · 三号）
 - `docs/design/bounty-loop-inline-20260924.md`（2026-09-24 · 5 KB）—— 工作文档 · 重复清剿并入「④ 悬赏」每一行（删掉独立容器）（2026-09-24 · 三号）
@@ -438,9 +446,8 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（172 份，待补一行 `状态：…`）
+## 附：状态未标注（171 份，待补一行 `状态：…`）
 
-- `docs/design/h-family-reprice-20260925.md`（2026-09-25）—— H 族按新规调整（威胁重定价 · 入侵抽签 · 遇袭强度 ×0.75）
 - `docs/design/copy-jargon-20260924.md`（2026-09-24）—— 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号）
 - `docs/design/handoff-foe-mounts-l10n-20260924.md`（2026-09-24）—— 交接卡 · 存量八件敌方挂载件的英文名（本地化 · 2026-09-24 · 二号 → 三号）
 - `docs/design/handoff-verify-20260924.md`（2026-09-24）—— 交接卡：三号本轮收尾（2026-09-24 · 战斗显示 / 任务板与工业 / 工具入库）

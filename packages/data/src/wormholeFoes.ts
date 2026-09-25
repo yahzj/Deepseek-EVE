@@ -698,7 +698,10 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
     { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 1.7753, dmgMul: 0.9468 },
-    { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },
+    // ⚠ **母舰挂「支援舰船召唤装置」**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，
+    //   只不过改为复活被摧毁的友军（但是表现形式上为敌方支援舰船入场），增援时间是60秒，每次随机复活一艘」）
+    //   ⇒ 每 60 秒把**本波（第 4 波）已阵亡**的一艘僚舰满血复活入场（上限 = 不超本波编成 4 艘）。
+    { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468, mounts: [FOE_MOUNT_IDS.reviveEscort] },
     { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },
     { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },

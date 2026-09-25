@@ -21,6 +21,10 @@ import {
   bountyCooldownRemainingMs,
   bountyRewardFactor,
   calcPower,
+  // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
+  weekendFamilyNameId,
+  weekendProgressAt,
+  weekendFoePoolOf,
   cargoCapacityM3Of,
   cargoUsedM3Of,
   countAiCore,
@@ -48,6 +52,8 @@ import {
   shipRoleLabel,
   autoLoopReopenBlockReason,
   wreckDensityOf,
+  weekendWreckDensityOf,
+  weekendOccupiedLiveAt,
   shortestTravelMinutes,
   standingOf,
   travelLegMs,
@@ -74,6 +80,7 @@ import { FirstTasks } from './FirstTasks'
 import { MilestoneTasks } from './MilestoneTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { ShipSprite } from '../ui/ShipSprite'
 import { debugEnabled } from './DebugPanel'
@@ -970,15 +977,31 @@ function StarMap({
   }
 
   /**
-   * **周末入侵的被占星系**（2026-09-23 船长令「继续补」）：星图上给被占星系加一圈红环 + 旗标。
+   * **周末入侵的占领区**（2026-09-23 船长令「继续补」；**2026-09-25 船长两次改版**：
+   * ① 红圈 → **身后红色发光**；② **已夺回的外围不再发光** ＋ 旗子换成**节点上方的进度条**）。
+   *
+   * 于是这里出两张表：
+   * - `invasionProgress`：**仍被占**（进度 < 1）的星系 → 进度 0~1 ⇒ 画发光与其上方的进度条；
+   * - `invasionReclaimed`：**已夺回**的星系 → 只记 id（不发光、不画进度条，避免"打下来了还红着"的误导）。
    * 只在活动存在时收集（**仅调试模式可见**由 core 的 `WEEKEND_DEBUG_ONLY` 保证：非调试模式压根不会有活动）。
    */
-  const invasionIds: Set<string> = (() => {
+  const invasionProgress: Map<string, number> = (() => {
     const ev = state.weekendEvent
-    if (!ev || ev.endedAtWallMs !== undefined) return new Set<string>()
-    return new Set<string>([ev.coreId, ...ev.peripheryIds])
+    if (!ev || ev.endedAtWallMs !== undefined) return new Map<string, number>()
+    const now = Date.now()
+    const out = new Map<string, number>()
+    for (const id of [ev.coreId, ...ev.peripheryIds]) {
+      const p = weekendProgressAt(state, ev, id, now)
+      if (p < 1) out.set(id, p)
+    }
+    return out
   })()
-  const invasionCoreId = state.weekendEvent?.endedAtWallMs === undefined ? state.weekendEvent?.coreId : undefined
+  /** 核心：仍在入侵中（未结束）**且仍被占**才算 —— 已夺回的核心不再点亮 ★ */
+  const invasionCoreId: string | undefined = (() => {
+    const ev = state.weekendEvent
+    if (!ev || ev.endedAtWallMs !== undefined) return undefined
+    return invasionProgress.has(ev.coreId) ? ev.coreId : undefined
+  })()
   /* 赏金任务（当日板）按星系归组（2026-09-10 船长：普通赏金任务也要在星图上显示——
      样式与"未探索剪影上的悬赏情报徽标"同款，并在对应星系上给出剩余时间）。
      任务自带 galaxyId（刷出时绑定窝点所在星系）；倒计时 = 当日板剩余（每天本地 0 点整板替换，
@@ -1250,6 +1273,27 @@ function StarMap({
               <stop offset="100%" style={{ stopColor: color }} stopOpacity="0" />
             </radialGradient>
           ))}
+          {/**
+           * **周末入侵：被占星系的红色发光**（2026-09-25 船长令：「被占领地区不应该用红圈提醒，
+           * 应该用一个**红色发光**放置于所有被入侵的星系**后方**」；同日二次裁定：「**范围太小、不够红、
+           * 衰减有些高**」＋「可以做一个脉动」）。
+           *
+           * 数值（船长 2026-09-25 认可的建议值）：
+           * - **半径 46**（原 30）；
+           * - **不透明度 0.62 / 0.34 / 0.16 / 0**，偏移 **0% / 45% / 75% / 100%**（原 0.38/0.16/0 与 0%/55%/100%）
+           *   ⇒ 更亮、而且**衰减更缓**（多一段 75%，中远处不再空）；
+           * - **颜色 = 固定深红**（新 token **`--wui-danger-strong`** = `229 57 53` / #E53935，六套主题同值、
+           *   不随主题走），不再吃 `--wui-danger`（默认主题那枚是偏亮的珊瑚橙红 `255 131 115`，"不够红"的来源）；
+           * - **脉动**：`app-map-invasion-pulse`（与敌对派系标记同族语汇：透明度呼吸 + 轻微缩放，
+           *   周期用同一枚 `--wui-dur-map`），见 styles.css。
+           * 做法仍与上面那族"势力范围光晕"同源：**静态径向渐变、不用 filter**（约定第十四章）。
+           */}
+          <radialGradient id="app-invglow">
+            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-danger-strong))' }} stopOpacity="0.62" />
+            <stop offset="45%" style={{ stopColor: 'rgb(var(--wui-danger-strong))' }} stopOpacity="0.34" />
+            <stop offset="75%" style={{ stopColor: 'rgb(var(--wui-danger-strong))' }} stopOpacity="0.16" />
+            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-danger-strong))' }} stopOpacity="0" />
+          </radialGradient>
         </defs>
         {/* 航线（V13 迷雾）：双亮实线带分钟；涉及剪影暗化无分钟；剪影连向更深处只画半段虚化提示 */}
         {mapEdges.map((e, idx) => {
@@ -1377,13 +1421,40 @@ function StarMap({
               }}
               onPointerDown={(e) => onPointerDown(g.id, e)}
             >
-              {/* 周末入侵：被占星系**红环 + 旗标**（核心另有 ★）——画在节点最底层，不挡点击 */}
-              {invasionIds.has(g.id) ? (
+              {/**
+               * 周末入侵：**仍被占**的星系 = 身后一团红色发光 ＋ 节点上方的**进度条**（2026-09-25 船长令：
+               * 「已经被夺回的外围星系不再发光」＋「每个被入侵的星系顶部显示一个进度条替换原先的旗子」）。
+               * 画在节点最底层、不挡点击；已夺回的星系整组不画（表里就没有它）。
+               */}
+              {invasionProgress.has(g.id) ? (
                 <g className="app-map-invasion" data-tip={tr('ui.weekend.018')}>
-                  <circle cx={p.x} cy={p.y} r={15} className="app-map-invasion-ring" />
-                  <text x={p.x} y={p.y - 18} className="app-map-invasion-tag">
-                    {g.id === invasionCoreId ? '★' : '⚑'}
-                  </text>
+                  <circle cx={p.x} cy={p.y} r={46} fill="url(#app-invglow)" className="app-map-invasion-glow" />
+                  {(() => {
+                    const pct = invasionProgress.get(g.id) ?? 0
+                    const w = 30
+                    const h = 3.5
+                    const x = p.x - w / 2
+                    const y = p.y - 26
+                    return (
+                      <g className="app-map-invbar">
+                        <rect x={x} y={y} width={w} height={h} rx={h / 2} className="app-map-invbar-bg" />
+                        <rect
+                          x={x}
+                          y={y}
+                          width={Math.max(0.5, w * Math.min(1, Math.max(0, pct)))}
+                          height={h}
+                          rx={h / 2}
+                          className="app-map-invbar-fill"
+                        />
+                      </g>
+                    )
+                  })()}
+                  {/* 核心另有 ★（旗子已撤 ⇒ 只留这一枚"这是核心"的记号） */}
+                  {g.id === invasionCoreId ? (
+                    <text x={p.x} y={p.y - 32} className="app-map-invasion-tag">
+                      ★
+                    </text>
+                  ) : null}
                 </g>
               ) : null}
               {/* 势力范围光晕（2026-09-11 船长：星系后方对应颜色的发光＝这块是这个势力的辐射范围）——
@@ -1695,7 +1766,23 @@ function GalaxyActions({
   //    面板本体挂在 App 那一层（`onOpenWormhole`）——原先挂在这里，而本组件要"星图选中星系"才渲染
   //    ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）；活动栏那行只在已有本趟时出现。──
   const whEntryVisible = debugEnabled()
-  // —— 主控掩护巡逻（原"待命"） ——
+  /**
+   * **入侵旗舰入口**（2026-09-25 船长令：「星图核心星系的**星系详细**里要添加入口」）：
+   * 判据全在 core（`weekendFlagshipPrep()` 非空 = 旗舰已现身、未落定局、本族是 BOSS 族），
+   * 这里再要求**选中的正是本场核心星系** —— 外围星系不摆这个按钮，免得玩家以为哪儿都能打。
+   */
+  const [prepOpen, setPrepOpen] = useState(false)
+  const flagshipPrep = state.weekendEvent?.coreId === galaxy.id ? engine.weekendFlagshipPrep() : null
+  /**
+   * **这一格是否正被入侵占领**（2026-09-25 船长令）：占领中 ⇒ 星系详细里的悬赏整行换成「击退入侵舰队」
+   * ＋威胁范围（不逐张列被替换的卡）。
+   */
+  const invadedHere = (() => {
+    const ev = state.weekendEvent
+    if (!ev || ev.endedAtWallMs !== undefined) return null
+    if (galaxy.id !== ev.coreId && !ev.peripheryIds.includes(galaxy.id)) return null
+    return weekendProgressAt(state, ev, galaxy.id, Date.now()) < 1 ? ev : null
+  })()  // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
     state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
@@ -1791,6 +1878,8 @@ function GalaxyActions({
 
   return (
     <div className="app-galaxy-actions">
+      {/* 旗舰战战前准备弹层（2026-09-25）：本地状态开合，弹层自包含 */}
+      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       <div className="app-bay-title">{tr("ui.Expedition.083")}</div>
       {/* ㊕ 虫洞（终局玩法 · **旧入口已于 2026-09-14 关闭**：本行只在调试模式下保留 ——
           它不消耗库存、直接开一趟，供验收用；玩家入口 = 星图「出港 · 扫描虫洞」页选一处库存虫洞） */}
@@ -1808,7 +1897,21 @@ function GalaxyActions({
           </button>
         </div>
       ) : null}
-      {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
+      {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面 */}
+      {flagshipPrep ? (
+        <div className="app-ga-row">
+          <span className="app-ga-main">
+            <span className="app-ico">
+              <Glyph name="ico-tact" size={13} color={ICO_TONES['ico-tact']} />
+            </span>
+            {tr('ui.weekend.060')}
+            <span className="app-dim app-ga-desc">{tr('ui.weekend.061', { p1: tr(weekendFamilyNameId(state.weekendEvent?.family ?? 'H') ?? 'core.weekend.023'), p2: galaxy.name })}</span>
+          </span>
+          <button className="app-btn is-small is-primary" onClick={() => setPrepOpen(true)}>
+            {tr('ui.weekend.062')}
+          </button>
+        </div>
+      ) : null}      {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
       ) : null}
@@ -1942,6 +2045,47 @@ function GalaxyActions({
           setLoopAskAno(null)
           if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.393'), true)
         }
+        /**
+         * **入侵期间：这一格整行换成一个入口**（2026-09-25 船长令：「建议入侵的时候，在星系详细内的悬赏显示的是
+         * **击退入侵舰队**，然后**告知威胁范围**就行了」）——
+         * 不再逐张列被替换的卡（名字/威胁是抽签产物、对外不必暴露），只给一行 + **威胁范围**（按该区域池里的
+         * 卡面威胁取 min~max：外围 {90,108} · 核心 {108,129}）。点「出击」照旧走既有出击链路，
+         * 实际打的是**该星系驻留的那一支**（core 抽签定，与板面同源）。
+         */
+        if (invadedHere !== null) {
+          const ev = invadedHere
+          const threats = weekendFoePoolOf(ev.family, galaxy.id === ev.coreId)
+            .map((id) => engine.ctx.anomalies.get(id)?.threat ?? 0)
+            .filter((t) => t > 0)
+          const lo = threats.length > 0 ? Math.min(...threats) : 0
+          const hi = threats.length > 0 ? Math.max(...threats) : 0
+          const card = list[0] ?? cands[0]
+          return (
+            <div className="app-ga-row">
+              <span className="app-ga-main">
+                <span className="app-ico">
+                  <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />
+                </span>
+                {tr('ui.weekend.092')}
+                <span className="app-dim app-ga-desc">
+                  {tr('ui.weekend.093', { p1: lo, p2: hi })}
+                  {' · '}
+                  {tr('ui.weekend.096')}
+                </span>
+              </span>
+              <span className="app-ga-btns">
+                <button
+                  className={`app-btn is-small${miningActive ? ' is-warn' : ' is-primary'}`}
+                  disabled={card === undefined || goBlocked}
+                  title={card === undefined ? tr('ui.Expedition.437') : miningActive ? tr('ui.Expedition.315') : tr('ui.Expedition.090')}
+                  onClick={() => card !== undefined && handleAnoGo(card)}
+                >
+                  {miningActive ? tr('ui.Expedition.265') : tr('ui.Expedition.091')}
+                </button>
+              </span>
+            </div>
+          )
+        }
         return list.map((a) => {
           const looping = loopId === a.id
           const inFlightSelf = state.expedition.active && state.expedition.anomalyId === a.id
@@ -2019,6 +2163,25 @@ function GalaxyActions({
             </div>
           )
         })
+      })()}
+      {/**
+       * **入侵残骸条（置顶）**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
+       * 放在「残骸打捞」标题**之前**；与星系密度分开读（船长：「入侵残骸不算当地星系密度」），
+       * 只有 >0 时才出这一条。
+       */}
+      {(() => {
+        const invWreck = weekendWreckDensityOf(state, galaxy.id)
+        if (invWreck <= 0) return null
+        const densityHere = wreckDensityOf(state, galaxy.id, engine.ctx)
+        const pct = Math.round((invWreck / (invWreck + densityHere)) * 100)
+        return (
+          <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(pct) })}>
+            <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
+            <div className="app-card-progress is-invasion">
+              <i style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        )
       })()}
       {/* ⑤ 残骸打捞（B3：采矿式自动循环作业；需高槽打捞器，满仓自动返航卸货后自动续捞） */}
       <div className="app-bay-title app-ga-sub">
@@ -2207,6 +2370,12 @@ function AnomalyCard({
   })()
   const inFlightSelf = state.expedition.active && state.expedition.anomalyId === anomaly.id
   const inFlightOther = state.expedition.active && !inFlightSelf
+  /**
+   * **这张卡现在是不是"入侵舰队"**（2026-09-25 船长令「**入侵舰队不应该有赏金**」）：
+   * 被占星系的悬赏位由 `weekendBountyCardsOf` 换成了入侵舰队（`rewardIsk` 已是 0）⇒
+   * 赏金那一栏改显「结算时按进度发放」，"估算奖励/小时"那一栏也整条不显示（没有即时收入可估）。
+   */
+  const invadedHere = weekendOccupiedLiveAt(state, anomaly.galaxyId, Date.now())
   // 声望仅首胜发放：已首胜过的目标重复完成不再涨声望
   const bountyCleared = state.completedBounties.includes(anomaly.id)
   // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/返航/非本目标的远征）中不可开启
@@ -2357,17 +2526,26 @@ function AnomalyCard({
         })()}
       </div>
       <div className="app-ano-reward">
-        {tr("ui.Expedition.099")} {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
-        {factionHit ? <span className="app-dim" title={tr("ui.Expedition.220", { p1: anomaly.rewardIsk.toLocaleString('zh-CN') })}>{tr("ui.Expedition.321")}</span> : null}
-        {anomaly.loot.length > 0 ? ` + ${lootText}` : ''}{tr('ui.Expedition.368')}{anomaly.standingGain}
+        {invadedHere ? (
+          <>{tr('ui.weekend.096')}</>
+        ) : (
+          <>
+            {tr("ui.Expedition.099")} {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
+            {factionHit ? <span className="app-dim" title={tr("ui.Expedition.220", { p1: anomaly.rewardIsk.toLocaleString('zh-CN') })}>{tr("ui.Expedition.321")}</span> : null}
+            {anomaly.loot.length > 0 ? ` + ${lootText}` : ''}{tr('ui.Expedition.368')}{anomaly.standingGain}
+          </>
+        )}
         {bountyCleared ? <span className="app-dim" title={tr("ui.Expedition.274")}>{tr("ui.Expedition.322")}</span> : null}
       </div>
-      <div
-        className="app-ano-econ"
-        title={tr("ui.Expedition.039", { p1: grossIsk.toLocaleString('zh-CN'), p2: formatDurationMs(roundTripMs) })}
-      >
-        {MONEY_GLYPH} {tr("ui.Expedition.040")}{iskPerHourTxt} {tr("ui.Expedition.041")}
-      </div>
+      {/* 入侵场次没有即时赏金 ⇒ "估算奖励/小时"整条不显示（免得拿 0 去估一个数出来） */}
+      {invadedHere ? null : (
+        <div
+          className="app-ano-econ"
+          title={tr("ui.Expedition.039", { p1: grossIsk.toLocaleString('zh-CN'), p2: formatDurationMs(roundTripMs) })}
+        >
+          {MONEY_GLYPH} {tr("ui.Expedition.040")}{iskPerHourTxt} {tr("ui.Expedition.041")}
+        </div>
+      )}
       <div className="app-ano-bottom">
         <span className="app-ano-desc">
           {unexplored ? tr("ui.Expedition.275") : anomaly.description}

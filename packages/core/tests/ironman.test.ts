@@ -263,25 +263,25 @@ describe('铁人模式 · 奇货订单每窗最大数量 +2（船长 2026-09-23 
     })
   }
 
-  it('普通档：每窗仍是 2 张（既有口径不动）', () => {
-    const ctx = exoticCtx(5)
+  it('普通档：每窗 4 张（⟪2026-09-25 船长令⟫「奇货订单每窗上限再+2」⇒ 2 → 4）', () => {
+    const ctx = exoticCtx(8) // 商品数 > 上限 ⇒ 本窗命中数只看上限
     const s = createInitialState({ nowWallMs: 0, seed: 11 })
     ensureMarket(s, ctx)
     slowSupplyDraw(s, ctx, 600_000)
     const n = Object.values(s.market.npcSell).reduce((sum, list) => sum + list.length, 0)
-    expect(n).toBe(2)
+    expect(n).toBe(4)
   })
 
-  it('铁人档：每窗上限 2 → 4（+2）', () => {
-    const ctx = exoticCtx(5)
+  it('铁人档：每窗上限 4 → 6（+2）', () => {
+    const ctx = exoticCtx(8)
     const s = ironState(1)
     ensureMarket(s, ctx)
     slowSupplyDraw(s, ctx, 600_000)
     const n = Object.values(s.market.npcSell).reduce((sum, list) => sum + list.length, 0)
-    expect(n).toBe(4)
+    expect(n).toBe(6)
     expect(ironmanExoticCapBonus(s)).toBe(IRONMAN_EXOTIC_CAP_BONUS)
     expect(IRONMAN_EXOTIC_CAP_BONUS).toBe(2)
-    // 关闭铁人 ⇒ 回到 2
+    // 关闭铁人 ⇒ 回到 4
     closeIronman(s, 1_000)
     expect(ironmanExoticCapBonus(s)).toBe(0)
   })

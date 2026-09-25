@@ -19,6 +19,7 @@ import {
   weekendReclaimedAt,
 } from '@whale/core'
 import { tr } from '../i18n/locale'
+import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 
 /** 倒计时（毫秒 → mm:ss） */
 function fmtCountdown(ms: number): string {
@@ -28,6 +29,8 @@ function fmtCountdown(ms: number): string {
 
 export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; onGoto: () => void }) {
   const [, force] = useState(0)
+  /** 战前准备弹层开合（2026-09-25 船长令：入侵窗口里点「发现敌方旗舰」进来） */
+  const [prepOpen, setPrepOpen] = useState(false)
   // 倒计时要每秒走：日志列表本身不会因为秒变化而重渲染 ⇒ 自己开一个 1 秒心跳（卸载即清）
   useEffect(() => {
     const t = window.setInterval(() => force((v) => v + 1), 1000)
@@ -91,6 +94,26 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
           <span>{bossText}</span>
         </div>
       )}
+      {/**
+       * **旗舰战入口**（2026-09-25 船长令：「玩家完成核心区域的收复后，在入侵窗口内显示发现敌方旗舰，
+       * 点击后进入战前准备界面」）。只在旗舰现身且未落定局时出现；按钮 `stopPropagation`
+       * ——整块活动行本身是"点击跳星图"的，别让点按钮顺带跳走。
+       */}
+      {flagship.shown && !flagship.down ? (
+        <div className="app-weekend-box-row">
+          <span className="app-weekend-box-warn">{tr('ui.weekend.060')}</span>
+          <button
+            className="app-btn is-small is-primary"
+            onClick={(e) => {
+              e.stopPropagation()
+              setPrepOpen(true)
+            }}
+          >
+            {tr('ui.weekend.062')}
+          </button>
+        </div>
+      ) : null}
+      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
     </div>
   )
 }

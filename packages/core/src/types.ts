@@ -272,6 +272,16 @@ export type FoeMountId =
    * （基数经船长同日二次令**由 5/5 上调至 15/15**；`k = 该层本次实际威胁 ÷ 45`；见 `FoeMountDef.repairPulse`）。
    */
   | 'foe-mount-hull-repair'
+  /**
+   * **支援舰船召唤装置**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，只不过改为
+   * **复活被摧毁的友军**（但是**表现形式上为敌方支援舰船入场**），**增援时间是60秒**，**每次随机复活一艘**」）。
+   *
+   * ⇒ **通用件**（将来别的卡/族也能挂），**先只装到 H 族入侵母舰**（`ink-flagship` 的母舰条目）：
+   * 每 `everyMs`（60 秒）从**当前这一波编成里已阵亡的敌舰**中随机抽一艘，以**支援舰**身份**满血入场**
+   * （新 tag `supN-<原tag>` ⇒ 界面 = 新的一艘支援舰飞进来，带入场动画与装填窗口）。
+   * 见 `FoeMountDef.reviveEscort`。
+   */
+  | 'foe-mount-revive-escort'
 
 /**
  * **敌方挂载件定义**（船长 2026-09-16 三句合一的落点）：
@@ -368,6 +378,22 @@ export interface FoeMountDef {
    * 本件**只修自己、不折自己的火力**，同节拍（5 秒）但各按各的计时器。只写**虫洞卡的条目**。
    */
   repairPulse?: { everyMs: number; armor: number; hull: number }
+  /**
+   * **支援舰船召唤装置**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，只不过改为
+   * **复活被摧毁的友军**（但是**表现形式上为敌方支援舰船入场**），**增援时间是60秒**，**每次随机复活一艘**」）。
+   *
+   * 语义 = 挂件单位（入侵母舰）**每 `everyMs` 拍一次召唤**，把**当前波编成里已阵亡**的一艘敌舰
+   * 以**支援舰**身份**满血**重新送进场：
+   * - **表现** = 敌方支援舰船入场（新 tag `supN-<原tag>` ＋ `enteredAtMs` 入场窗口：动画演完才开火），
+   *   与波次转场/单波增援**同一套演出与窗口口径**；
+   * - **池子 = 当前波**（船长选定「只复活当前波已死的」）⇒ 母舰在第 4 波时只补第 4 波的僚舰；
+   * - **上限 = 不超本波原编成**（死一个补一个；同型反复阵亡也照样能再入场 ⇒ 持续支援压力，
+   *   但不会把战场堆成一团）；
+   * - **母舰自己不在池内**（它死了这一场就结束）；
+   * - 随机走 `state.rng`，但**只在挂了本件的战斗里消费** ⇒ 没挂件的战斗随机序列逐字不变；
+   * - 受总开关 `BattleBalance.foeReviveEnabled` 约束（缺省关 ⇒ 零行为变化，与其余总开关同款形态）。
+   */
+  reviveEscort?: { everyMs: number }
   /** 设计备注（不进玩家视野） */
   note?: string
 }
@@ -634,8 +660,7 @@ export interface MarketGoodDef {
    * 1 常驻层（common 必 1）· **2/3/4 可走稀有订单**（2 大众 / 3 高阶；4 目前只有当日挪进
    * 稀有订单的 5 艘官方巡洋舰）· **3/4/5 可走奇货**（5 暂无商品，为将来更高档预留）。
    * 与 rarity 渠道分离：**只驱动稀有订单渠道的刷新权重**（卖单抽取 + NPC 收购窗；
-   * `rareTierWeight` = 档 2 ×1 · 档 3 ×`rareTier3Weight`(0.15) · **档 4 ×`rareTier4Weight`(0.05)**
-   * ——2026-09-16 船长选「选项 B」给档 4 单独系数；档 5 暂无系数 ⇒ ×1），
+   * `rareTierWeight` = ⟪**2026-09-25 船长令**⟫ **档 2 ×1 · 档 3 ×0.5 · 档 4 ×0.2 · 档 5 ×0.05**），
    * 奇货渠道出率与数字不挂钩 */
   rarityTier?: number
 }
@@ -653,17 +678,20 @@ export interface MarketBalance {
   /** 稀有商品每 60s 窗刷新供应单的概率（P2 节拍制 2026-09-06 起 unused——rare 改为百分比
    * 抽取，见 market.ts RARE_PCT_* 与 RARE_DRAW_PERIOD_MS；字段保留以兼容数据/档） */
   rareWindowChance: number
-  /** 限定商品每个抽取窗（10 分钟）独立掷骰的出单概率：0.8%×现货抢购学（约每件每 20.8 小时一轮） */
+  /** 限定商品每个抽取窗（10 分钟）独立掷骰的出单概率：**1%**×现货抢购学（约每件每 16.7 小时一轮；
+   *  ⟪2026-09-25 船长令⟫ 0.8% → 1%，旧值约 20.8 小时一轮） */
   exoticWindowChance: number
-  /** 数字稀有度 3 档权重（2026-09-09 船长拍板：稀有订单渠道按数字分层——3 档（高阶）刷新
-   * 权重乘子，2 档（大众）= 1；作用于 rare 卖单抽取与 NPC 收购窗。**2026-09-10 船长定 0.25 → 0.15**，
-   * 经 `market-rarity-sim` 复跑校准：tier3 占比 10% → 6%、单行间隔 5.7h → 8.3h） */
+  /** 数字稀有度 3 档权重（稀有订单渠道按数字分层的刷新权重乘子；2 档（大众）= 1；
+   *  作用于 rare 卖单抽取与 NPC 收购窗）。沿革：2026-09-09 立表 0.25 → 2026-09-10 定 0.15
+   *  → ⟪**2026-09-25 船长令**⟫ 现行四档阶梯 **1 / 0.5 / 0.2 / 0.05** ⇒ 本档 **0.5** */
   rareTier3Weight: number
-  /** **数字稀有度 4 档权重**（**2026-09-16 船长选「选项 B」**）：档 4 单独系数 **0.05**
-   * （档 2 = 1 · 档 3 = `rareTier3Weight` · 档 5 暂无系数 ⇒ ×1）。由来：当日的 5 艘官方巡洋舰
-   * 「保 4」进稀有订单后，原函数只特判档 3 ⇒ 档 4 拿 ×1（≈32 分钟/件）；给档 4 单独系数后
-   * 实测 ≈**9.5 小时/件**（档 3 ≈3.9h · 档 2 ≈0.8h） */
+  /** **数字稀有度 4 档权重**（2026-09-16 船长选「选项 B」补的单独系数 0.05
+   *  → ⟪**2026-09-25 船长令**⟫ 四档阶梯 `1 / 0.5 / 0.2 / 0.05` ⇒ 本档 **0.2**） */
   rareTier4Weight: number
+  /** **数字稀有度 5 档权重**（⟪**2026-09-25 船长令**⟫ 首次设立 = **0.05**）。
+   *  ⚠ 立此字段之前档 5 **没有系数**、走 `else` 拿 ×1（与大众档同频）⇒ 实测 `bp-shieldfield-3`（档 5）
+   *  反而比档 4 的 `bp-shieldfield-2` 常见 3 倍；本次一并修好（见 `balance.ts` 该组字段的沿革）。 */
+  rareTier5Weight: number
   /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**，稀有抽取与奇货掷骰**两个渠道都乘此值**） */
   blueprintWeight: number
   /** **一次性舰船蓝图**的权重乘子（2026-09-13 船长：「还是有惩罚吧，按50%算」）——
@@ -1173,6 +1201,16 @@ export interface BattleBalance {
   /** 增援入场时的**距离重开比例**（语义同 `waveReopenFrac`：向开战距离回拉这个比例；
    * 0 = 原地入场不重开 = 缺省口径） */
   foeReinforceReopenFrac: number
+  /**
+   * **「支援舰船召唤装置」总开关**（船长 2026-09-25：「给入侵母舰添加类似D族挂载件的独立挂载件，
+   * 只不过改为复活被摧毁的友军（但是表现形式上为敌方支援舰船入场），增援时间是60秒，每次随机复活一艘」）；
+   * 见 `FoeMountDef.reviveEscort`。
+   *
+   * `false`（缺省形态）= 建档期照旧写 `foeReviveEscort`（读数可见），但**战斗中一次都不召唤**
+   * ——与 `foeChargeEnabled` / `foeReinforceEnabled` 同款总开关形态；本批随船长令**置 true**
+   * （只有挂了该件的单位会召唤 ⇒ 其余战斗零行为变化）。
+   */
+  foeReviveEnabled: boolean
   /** 预估胜率扩散（logit 拉伸倍数，0.5 为不动点）：越高胜率加成越高、越低胜率惩罚越重——
    * 作用于悬赏展示与 AI 接单门槛（实际战斗结算不变） */
   winSpread: number
@@ -2747,8 +2785,64 @@ export interface CommsEntryView {
   deliveredAtGameMs: number
   /** 是否已读 */
   read: boolean
-  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签） */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
+  /**
+   * 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签）。
+   * ⚠ **实例通讯**可以只给 `action`（点开一个面板、不跳页）⇒ 那种条目 `page` 缺省。
+   */
+  hint?: { text: string; page?: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
   replies?: readonly CommsReplyDef[]
+  /* ─── 实例通讯专用（`state.commsInstance`；表消息恒缺省） ─── */
+  /**
+   * 主题 / 正文段落的**文案 id**（`l10n/table.ts`）。有它 ⇒ 界面按**当前语言**重新渲染
+   * （`tr(subjectId, textParams)` / 逐段 `tr(bodyIds[i], textParams)`），实现"中英各自成句"；
+   * 缺省 ⇒ 用上面的 `subject` / `paragraphs` 原文（表消息就是这条路径）。
+   */
+  subjectId?: string
+  bodyIds?: readonly string[]
+  /** 文案参数（喂给 `subjectId` / `bodyIds` 的 `{pN}`；`pNId` = 参数本身也是一条文案，界面走 `paramText`） */
+  textParams?: Readonly<Record<string, string | number>>
+  /** **点击跳转的动作名**（非空 ⇒ 弹面板而不是跳页；例：`'weekendSummary'`） */
+  action?: string
+  /** **结构化奖励清单**（界面按当前语言拼串 ⇒ 不在引擎里拼中文；见 `CommsRewardLine`） */
+  rewards?: readonly CommsRewardLine[]
+}
+
+/**
+ * **实例通讯条目**（2026-09-25 加 · 周末入侵两封）：静态表（`CommsMessageDef`）装不下的信——
+ * 正文里带**本场数字**，且**每场重写同一个 id**（船长令：「每场都发，但是覆盖上一次的」）。
+ * 存在 `state.commsInstance`（随档可选字段 · 零迁移）；收件箱把它与表消息合并渲染，其余机制
+ * （已读 / 未读计数 / 弹窗队列 / 送达记账）全部复用既有那一套。
+ */
+export interface CommsInstanceEntry {
+  /** 稳定 id：**同一 id 再次投递 = 整条覆盖**（旧的正文与清单一起换成新一场的） */
+  id: string
+  /** 发件势力 / 部门（与表消息同口径，界面拼 `势力名 · 部门名`） */
+  factionId: string
+  deptId?: string
+  kind?: CommsKind
+  /** 送达时刻（**游戏内毫秒**，与表消息同一时间列口径；投递时由 core 盖章） */
+  atGameMs: number
+  /** 主题：中文原文（core 侧兜底）＋ 文案 id（界面按语言渲染） */
+  subject: string
+  subjectId: string
+  /** 正文逐段：中文原文（core 侧兜底）＋ 文案 id 列表 */
+  paragraphs: readonly string[]
+  bodyIds: readonly string[]
+  /** 文案参数（`{pN}`；`pNId` 形式见 `CommsEntryView.textParams`） */
+  params?: Readonly<Record<string, string | number>>
+  /** 跳转按钮：`action` 非空 = 弹面板；否则按 `page` 跳页 */
+  hint?: { text: string; page?: CommsJumpPage; action?: string }
+  /** 结构化奖励清单（界面拼串用；与实发逐值一致） */
+  rewards?: readonly CommsRewardLine[]
+}
+
+/** 实例通讯里的一条奖励：**物品** 或 **信用点**（二选一；界面按当前语言拼成人话） */
+export interface CommsRewardLine {
+  /** 物品 id（与 `isk` 二选一） */
+  itemId?: string
+  /** 信用点数额（与 `itemId` 二选一） */
+  isk?: number
+  /** 数量（物品用；信用点行缺省） */
+  qty?: number
 }

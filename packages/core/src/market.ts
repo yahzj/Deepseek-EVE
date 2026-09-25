@@ -81,21 +81,28 @@ const SECONDHAND_PER_LEVEL = 0.02
 /** rare NPC 订单存在时长倍率（9 分钟 → 36 分钟；供给/收购两侧同规则） */
 const RARE_LIFE_MUL = 4
 /** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量）
- * ⚠ **铁人福利 B 在此之上 +2**（船长 2026-09-23：「奇货订单每窗最大数量+2」）⇒ 铁人档每窗至多 4 张。 */
-const EXOTIC_CAP_PER_DRAW = 2
+ * ⚠ **铁人福利 B 在此之上 +2**（船长 2026-09-23：「奇货订单每窗最大数量+2」）。
+ * ⟪**2026-09-25 船长令**⟫「**奇货订单每窗上限再+2**」⇒ **2 → 4**（铁人档随之为 4 + 2 = **6 张**；
+ * 同日另令「0.8% 的概率上调到 1%」见 `balance.market.exoticWindowChance`）。 */
+const EXOTIC_CAP_PER_DRAW = 4
 /** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
- * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
- * balance.market.rareTier3Weight；奇货渠道出率与数字不挂钩。**2026-09-10 船长定 0.25 → 0.15**，
- * 系数经 market-rarity-sim 复跑校准。
+ * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；奇货渠道出率与数字不挂钩）。
  *
- * ⚠ **2026-09-16 补 4 档**（船长问清「2/3/4 的权重分别是多少」＝ 1 / 0.15 / **1** 后，选**选项 B**）：
- * 当日的「甲＋乙」把 5 艘官方巡洋舰**保 4** 挪进稀有订单，而本函数原**只特判档 3** ⇒ 档 4 落 `else`
- * 拿 ×1（与大众档同频，实测 ≈32 分钟一件）；现给档 4 单独系数 **`rareTier4Weight` = 0.05**
- * ⇒ 实测 ≈**9.5 小时/件**（档 3 仍 0.15 ≈3.9h · 档 2 仍 1 ≈0.8h）。
- * ⚠ 档 **5** 仍无自己的系数（走 `else` ⇒ ×1）——将来启用档 5 时一并定。 */
+ * ⟪**2026-09-25 船长令（现行）**⟫：「**2~5稀有度的稀有订单，权重调整为 1/0.5/0.2/0.05**」
+ * ⇒ **档 2 ×1 · 档 3 ×0.5 · 档 4 ×0.2 · 档 5 ×0.05**（四个数一次给全）。
+ *
+ * 沿革（**别照旧文重开**）：
+ * - 2026-09-09 立表：只给档 3 系数 = 0.25（档 2 = 1；档 4/5 落 `else` ⇒ ×1）；
+ * - 2026-09-10：0.25 → **0.15**（「高阶稀有订单更难碰」，实测 tier3 占比 10% → 6%）；
+ * - 2026-09-16 选「选项 B」：补档 4 系数 **0.05**（此前档 4 也拿 ×1 ≈32 分钟一件）；
+ * - ⚠ **档 5 一直没有系数**（2026-09-20 记账"要系数另立条目"，但没立）⇒ 它按 ×1 与大众档同频，
+ *   实测 `bp-shieldfield-3`（档 5）**68 窗 ≈11.4h** 反而比 `bp-shieldfield-2`（档 4，214 窗 ≈35.7h）
+ *   常见 3 倍 —— **本次一并修好**。 */
 function rareTierWeight(def: MarketGoodDef, ctx: SimContext): number {
-  if (def.rarityTier === 4) return ctx.balance.market.rareTier4Weight ?? 0.05
-  return def.rarityTier === 3 ? (ctx.balance.market.rareTier3Weight ?? 0.15) : 1
+  const m = ctx.balance.market
+  if (def.rarityTier === 5) return m.rareTier5Weight ?? 0.05
+  if (def.rarityTier === 4) return m.rareTier4Weight ?? 0.2
+  return def.rarityTier === 3 ? (m.rareTier3Weight ?? 0.5) : 1
 }
 
 /** 蓝图书权重乘子（2026-09-10 船长定：**50% → 5%**）——稀有卖单抽取与奇货掷骰**两个渠道共用**；
@@ -621,7 +628,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
 
   // ── P2 稀有/奇货抽取节拍（2026-09-06 船长定：每 RARE_DRAW_PERIOD_MS 执行一次）──
   // rare：本窗抽 N 张（浮动百分比 × 已解锁件数，加权有放回 → 同窗可重复抽中同一类型）；
-  // 奇货：每件独立掷骰（0.8% × 技能），全窗命中 >EXOTIC_CAP_PER_DRAW 张时随机抽选保留。
+  // 奇货：每件独立掷骰（**1%** × 技能），全窗命中 >EXOTIC_CAP_PER_DRAW 张时随机抽选保留。
   // 无 rare/奇货的目录（如纯采矿测试档）不掷骰，避免扰动确定性 RNG 计数。
   if ((mk.slowDrawLastGameMs ?? 0) + RARE_DRAW_PERIOD_MS <= nextNow) {
     mk.slowDrawLastGameMs = nextNow
@@ -676,15 +683,24 @@ function orderLifeMsOf(def: MarketGoodDef, bal: MarketBalance): number {
 }
 
 /** 抽取命中一张 rare 供给单：解锁原价；闸内 = ×4 暗市单（标 bm，外观同普通稀有单，玩家向隐身）。
- * 数量：船 1 艘/次，其余 1~3 件（同窗可重复抽中同一类型 → 簿上允许同商品多张）；
- * **消耗品批量档**（`rareQtyMul`，2026-09-20 船长令）⇒ 单张件数 ×本值（弹药 MK2 = 200 ⇒ 200~600 发/张）。
+ * 数量：**每张恒 1 件**（船也是 1 艘）——⟪**2026-09-25 船长令**⟫「**每次恒 1 件**」。
+ * ⚠ **旧口径（已作废）**：单件商品 = `1 + nextInt(rng, 3)` ⇒ 一次抽中随机给 **1/2/3 件**；
+ * 玩家报障「**单件相同的商品，一次性刷出了 3 件**」即出自这里
+ * （读真档推进 3 小时实测：供给侧 `rare · module` 单张最大 **3 件**、`rare · blueprint` 最大 3 件；
+ *  奇货与船的供给单本来就是 1 件 ⇒ **只有稀有这一档会"一次 2~3 件"**）。
+ * **消耗品批量档**（`rareQtyMul`，2026-09-20 船长令）⇒ 单张件数 ×本值
+ * （弹药 MK2 = 200；⚠ 基数恒 1 之后它由「200~600 发/张」变为「**200 发/张**」——**倍率本身一字未动**）。
  * 价格：原价/×4 之上再乘 二手市场学折扣（卷B3⑪；见 secondhandMul）。 */
 function spawnRareSupply(state: GameState, ctx: SimContext, def: MarketGoodDef, now: number, locked: boolean): void {
   const poolQ = state.market.pools[def.key]?.q ?? 0
   const L = priceLevel(state, ctx, def, poolQ)
   const lifeMs = orderLifeMsOf(def, ctx.balance.market)
-  const baseQty = def.kind === 'ship' ? 1 : 1 + nextInt(state.rng, 3)
-  const qty = def.kind === 'ship' ? 1 : baseQty * Math.max(1, Math.round(def.rareQtyMul ?? 1))
+  // 船恒 1 艘；其余单件商品恒 1 件，只有消耗品的批量档倍率照旧乘入。
+  // ⚠ **仍掷一次骰但丢弃结果**：本函数原口径是 `1 + nextInt(rng, 3)`，少掷一枚会**整体推移 rng 序列**
+  // ⇒ 市场慢噪声/价线的轨迹跟着变（实测：`market.test.ts` 的"站内让利吸收"一条当场红）。
+  // 这与 2026-09-11 稀有残骸保底的「**恒掷一次随机数**（只取 `||`）」是同一款时序纪律。
+  if (def.kind !== 'ship') void nextInt(state.rng, 3)
+  const qty = def.kind === 'ship' ? 1 : Math.max(1, Math.round(def.rareQtyMul ?? 1))
   const price = Math.round(sellPrice(def, L) * priceJitter(state) * secondhandMul(state) * (locked ? 4 : 1))
   npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty, locked)
 }
@@ -727,7 +743,7 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
       if (picked) spawnRareSupply(state, ctx, picked, now, bmGateLocked(state, picked))
     }
   }
-  // ── 奇货：每件独立掷骰（0.8% × 现货抢购学；蓝图书再 ×blueprintWeight，同 5% 口径）；
+  // ── 奇货：每件独立掷骰（**1%** × 现货抢购学；蓝图书再 ×blueprintWeight，同 5% 口径）；
   //    命中 > EXOTIC_CAP_PER_DRAW 张 → 随机抽选保留 ──
   const sweep = sweepMul(state)
   const winners: MarketGoodDef[] = []

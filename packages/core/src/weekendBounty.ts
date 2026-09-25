@@ -20,7 +20,9 @@ import {
   WEEKEND_PERIPHERY_THREAT,
   weekendEncounterChanceAt,
   weekendFoeCardsSelfPriced,
+  weekendDrawFoeCardId,
   weekendGarrisonFoeCardId,
+  weekendOccupiedIds,
   weekendProgressAt,
 } from './weekendEvent'
 import { weekendAmbushSpecOf } from './weekendBattle'
@@ -51,15 +53,17 @@ export function weekendEncounterAllowedIn(state: GameState, galaxyId: string, no
  * 把一张**原卡**派生成入侵舰队卡（**只覆盖 id / 名字 / 威胁 / 奖励**；其余字段原样）——
  * ⚠ 这是 **A/C/G 三族的占位口径**（"暂用虫洞卡"）：它们还没有独立入侵卡，只能拿该星系原卡换名字/威胁。
  * H 族走 `weekendIndependentFoeOf`（换成自家独立卡）。
+ *
+ * ⚠ **2026-09-25 船长令「入侵舰队不应该有赏金」** ⇒ 派生卡的 `rewardIsk` 一律 **0**（原本是原卡 ×1.4）；
+ * 界面在赏金那一栏改显「赏金：结算时按进度发放」（`ui.weekend.096`）。
  */
 export function weekendDerivedCardOf(
   card: AnomalyDef,
   family: string,
-  opts?: { threat?: number; rewardMul?: number; isCore?: boolean },
+  opts?: { threat?: number; isCore?: boolean },
 ): AnomalyDef {
   // 核心用 120、外围 78（Q1 裁定后的绝对值；opts.threat 显式给值时优先）
   const threat = opts?.threat ?? (opts?.isCore ? WEEKEND_CORE_THREAT : WEEKEND_PERIPHERY_THREAT)
-  const mul = opts?.rewardMul ?? WEEKEND_BOUNTY_REWARD_MUL
   return {
     ...card,
     // ⚠ **保留原卡 id**（2026-09-23 船长报障后改）：出发/开战/情报各路径都按 `ctx.anomalies.get(id)` 取卡，
@@ -67,7 +71,7 @@ export function weekendDerivedCardOf(
     id: card.id,
     name: `${family} 族舰队 · ${card.name}`,
     threat,
-    rewardIsk: Math.max(1, Math.round((card.rewardIsk ?? 0) * mul)),
+    rewardIsk: 0,
   }
 }
 
@@ -77,29 +81,26 @@ export function weekendDerivedCardOf(
  *
  * - 卡 = 抽签结果（`weekendGarrisonFoeCardId`）**用真实 id** ⇒ 开战能按 id 解析到卡；
  * - **`galaxyId` 覆写成被占星系**：H 独立卡自带母港星系（`galaxy-hub`），不覆写会串残骸密度与归属；
- * - 奖励 = **该星系原卡 ×1.4**（沿用原卡经济）；威胁 = **卡面自身**（独立卡已按定价式落值）；
+ * - 奖励 = **0**（船长同日令「**入侵舰队不应该有赏金**」；收入改在活动结束时按进度结算）；
+ * - 威胁 = **卡面自身**（独立卡已按定价式落值）；
  * - 名字 = 「<族>舰队 · <卡名>」。
  */
-function weekendIndependentFoeOf(
-  base: AnomalyDef,
-  drawn: AnomalyDef,
-  family: string,
-  galaxyId: string,
-  rewardMul: number,
-): AnomalyDef {
+function weekendIndependentFoeOf(base: AnomalyDef, drawn: AnomalyDef, family: string, galaxyId: string): AnomalyDef {
+  void base // 原卡只作"这一槽原本是谁"的上下文（赏金取消后不再参与定价）
   return {
     ...drawn,
     galaxyId,
     name: `${family} 族舰队 · ${drawn.name}`,
-    rewardIsk: Math.max(1, Math.round((base.rewardIsk ?? 0) * rewardMul)),
+    rewardIsk: 0,
   }
 }
 
 /**
  * **某星系当前该显示的悬赏卡**（引擎/界面的唯一取数口）：
  * - 不在占领区（或已夺回 / 活动结束）⇒ **原卡原样**；
- * - 在占领区 ⇒ **换成入侵舰队**：H 族 = 抽到的那张**独立卡**（真实 id · 覆写星系/名字/奖励）；
- *   A/C/G 三族 = 该星系**原卡的派生版**（占位口径，只换族名/威胁 78·120/奖励 ×1.4）。
+ * - 在占领区 ⇒ **换成入侵舰队**：H 族 = 抽到的那张**独立卡**（真实 id · 覆写星系/名字）；
+ *   A/C/G 三族 = 该星系**原卡的派生版**（占位口径，只换族名/威胁 78·120）；
+ *   ⚠ 两条路的**赏金都是 0**（船长 2026-09-25「入侵舰队不应该有赏金」；界面改显「结算时按进度发放」）。
  * `cards` 传"该星系原本的可见悬赏"（可见性规则仍归调用方），返回同序的替换结果。
  */
 export function weekendBountyCardsOf(
@@ -116,10 +117,64 @@ export function weekendBountyCardsOf(
   if (weekendFoeCardsSelfPriced(ev.family)) {
     const drawn = ctx.anomalies.get(weekendGarrisonFoeCardId(state, ev, galaxyId))
     if (drawn) {
-      return cards.map((c) => weekendIndependentFoeOf(c, drawn, ev.family, galaxyId, WEEKEND_BOUNTY_REWARD_MUL))
+      return cards.map((c) => weekendIndependentFoeOf(c, drawn, ev.family, galaxyId))
     }
   }
   return cards.map((c) => weekendDerivedCardOf(c, ev.family, { isCore }))
+}
+
+/**
+ * **主动出击"每场重抽"**（2026-09-25 船长令：「**主动出击也要每场重抽**」）：
+ * 出发那一刻从该区域池里**重新抽一支**（与"驻留卡/板面显示"解耦），并给出**奖励基底**。
+ *
+ * 三条口径：
+ * 1. **每场一支**：抽签盐 = `WEEKEND_ASSAULT_SALT_BASE + 本场已出发次数`（`ev.assaultDraws` 随档）——
+ *    每按一次出击就换一次盐 ⇒ 遇袭那样"每场重抽"，且**不消费主随机序列**；
+ * 2. **价钱**（**2026-09-25 退役**）：原口径 = 该星系原卡 × `WEEKEND_BOUNTY_REWARD_MUL`（1.4），
+ *    写进 `expedition.rewardIskOverride`；船长同日令「**入侵舰队不应该有赏金**」后，**入侵场次一律不发**
+ *    （`expedition.resolveBattleOutcome` 里按 `weekendBattleInvolvedOf` 直接走 0 分支）。
+ *    本字段与那条覆写口**保留不删**（老档形态不变）；它如今的唯一用处 = "入侵刚结束、这一场已不算入侵"
+ *    的边角情形仍按原卡价钱结算；
+ * 3. **只对活的占领区**成立；非占领区 / 活动已结束 ⇒ `null`（调用方按原卡照旧走）。
+ */
+export interface WeekendAssaultDispatch {
+  /** 这一场遇到的入侵舰队卡（真实 id；H 族 = 独立卡，A/C/G = 该星系原卡派生 id） */
+  cardId: string
+  /** 奖励基底（该星系原卡 × 1.4；**已退役** —— 入侵场次不再发放，见上面的口径 2） */
+  rewardIsk: number
+}
+
+/** 主动出击抽签盐的基数（与"驻留卡"的 0、遇袭的"时间档"错开，纯为可读性） */
+export const WEEKEND_ASSAULT_SALT_BASE = 10_000
+
+export function weekendAssaultDrawOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  nowWallMs: number,
+): WeekendAssaultDispatch | null {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return null
+  if (!weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return null
+  const isCore = galaxyId === ev.coreId
+  const idx = Math.max(0, weekendOccupiedIds(ev).indexOf(galaxyId))
+  const salt = WEEKEND_ASSAULT_SALT_BASE + Math.max(0, Math.floor(ev.assaultDraws ?? 0))
+  const cardId = weekendDrawFoeCardId(ev.family, isCore, ev.seq, idx, salt)
+  const drawn = ctx.anomalies.get(cardId)
+  /** 该星系**原卡**（用于钉住奖励；非 H 族时抽签结果就是它的 id ⇒ 奖励口径与老路径一致） */
+  const base = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId === galaxyId)
+  const rewardIsk =
+    base !== undefined
+      ? Math.max(1, Math.round((base.rewardIsk ?? 0) * WEEKEND_BOUNTY_REWARD_MUL))
+      : Math.max(1, Math.round(drawn?.rewardIsk ?? 1))
+  return { cardId, rewardIsk }
+}
+
+/** 记一次"已出发"（出击成功后才调）⇒ 下一场换一支 */
+export function weekendNoteAssaultDispatch(state: GameState): void {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return
+  ev.assaultDraws = Math.max(0, Math.floor(ev.assaultDraws ?? 0)) + 1
 }
 
 /**

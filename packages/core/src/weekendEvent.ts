@@ -41,6 +41,33 @@ export const WEEKEND_GAIN_PERIPHERY_WIN = 0.1
 export const WEEKEND_GAIN_CORE_WIN = 0.05
 export const WEEKEND_GAIN_REPEL = 0.03
 export const WEEKEND_GAIN_OFFLINE_REPEL = 0.01
+
+/**
+ * **锁定的入侵族**（2026-09-25 船长令：「**目前只做了H族，所以先锁定H族**」）：
+ * A/C/G 三族仍是"占位口径"（派生卡只换名字/威胁/奖励、敌人编成还是原来那批）⇒ 抽到它们时玩家打不到真正的
+ * 入侵舰队。置 `'H'` ⇒ **开局面一律判为 H 族**（独立卡 · 170 旗舰 · 黑匣一整套）；M2/M3 把三族补齐后
+ * **置回 `null`** 即恢复"四族等概率随机"（`weekendRollOccupation` 里那一行就是唯一开关）。
+ */
+export const WEEKEND_LOCKED_FAMILY: string | null = 'H'
+
+/**
+ * **调试模式下的单场推进量**（2026-09-25 船长令：「**调试模式下，收复只需要玩家打 2 场**」）。
+ *
+ * 口径：`debugQuick` 时**主动胜利一律 +50%**（外围与核心同档）⇒ 任意一处占领区**两场夺回**；
+ * 核心条同理两场打满 ⇒ 旗舰现身（核心"先清外围"的门禁照旧）。
+ * 非调试模式**逐字不变**（外围 +10% / 核心 +5%）。
+ */
+export const WEEKEND_DEBUG_WIN_GAIN = 0.5
+
+/** 主动胜利的推进量：调试模式 = `WEEKEND_DEBUG_WIN_GAIN`；正常 = 外围 10% / 核心 5% */
+export function weekendWinGainOf(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState,
+  galaxyId: string,
+): number {
+  if (weekendDebugOn(state)) return WEEKEND_DEBUG_WIN_GAIN
+  return galaxyId === ev.coreId ? WEEKEND_GAIN_CORE_WIN : WEEKEND_GAIN_PERIPHERY_WIN
+}
 /** NPC 反攻保底推进（第 9 条）：外围 T0+48h 必满 · 核心 T0+72h 必满 */
 export const WEEKEND_NPC_PERIPHERY_MS = 48 * 3_600_000
 export const WEEKEND_NPC_CORE_MS = 24 * 3_600_000
@@ -155,6 +182,71 @@ export interface WeekendEventState {
   flagshipBestRunDmg?: number
   /** **上一拍章鱼削血的心跳墙钟**（只用于算拍间增量；缺省 = 本拍只立基线、不累计） */
   bossTickWallMs?: number
+  /* ─── 结束结算（2026-09-25 · M1-b 收尾）─── */
+  /**
+   * **贡献奖已发放的墙钟**（幂等标记；缺省 = 还没结过）。
+   * ⚠ 占比按 **`endedAtWallMs`** 评估后发放（NPC 铺底是时间函数，晚算会把占比算低 ⇒ 少发）。
+   */
+  prizePaidAtWallMs?: number
+  /**
+   * **本场到手台账**（2026-09-25 加 · 结算面板与通讯正文都读它）：三处入账时累加 ——
+   * 夺回奖励（逐星系）· 贡献奖 · 旗舰掉落。目的 = **"说的与发的逐值一致"**
+   * （面板/通讯里的奖励清单不许另算一遍），且下一场开局会把进度台账清掉、只有这里留得住数。
+   */
+  rewardLedger?: {
+    isk: number
+    wreck: number
+    blackBox: number
+    /** 逐星系的夺回奖励（面板"各星系贡献"那一列用） */
+    byGalaxy: Record<string, { isk: number; wreck: number }>
+  }
+  /**
+   * **待到账的夺回奖励**（2026-09-25 船长令：「**夺回星区的奖励不要即时发放，放入结束后结算发放**」）：
+   * 每夺回一处就往这里累加（含全清追加），活动结束时由 `weekendSettleAndGrant` 连贡献奖**一次性发**。
+   * ⚠ 与 `rewardLedger` 的分工：台账 = **总数**（面板/通讯显示用，含已发与待发）；这一格 = **还没发的那部分**。
+   */
+  reclaimPending?: { isk: number; wreck: number }
+  /**
+   * **本场"主动出击"已出发的次数**（2026-09-25 船长令「主动出击也要每场重抽」）：
+   * 抽签盐 = `WEEKEND_ASSAULT_SALT_BASE + 次数` ⇒ 每按一次出击换一支，且随档（读档后不重复同一支）。
+   */
+  assaultDraws?: number
+}
+
+/**
+ * **上一场入侵的战果快照**（结束时写一次；**每场覆盖**）：
+ * 结算面板与结算通讯都读它——因为下一场开局会把 `state.weekendEvent` 整条换成新的
+ * （进度台账、旗舰池、出场星系全清），旧场的读数只有快照里还留着。
+ */
+export interface WeekendResultSnapshot {
+  /** 场次编号（与通讯里的"第 N 场"同源） */
+  seq: number
+  family: string
+  /** 核心星系 id（面板显示名字时现查） */
+  coreId: string
+  /** 结束墙钟 */
+  endedAtWallMs: number
+  /** 旗舰结局：玩家击沉 / 章鱼人摧毁 / 集结到点（窗口关闭或没现身） */
+  flagshipOutcome: 'player' | 'octopus' | 'window'
+  /** 贡献占比与档位（结束时那一刻的读数） */
+  share: number
+  tier: 'A' | 'B' | 'C' | 'D' | 'none'
+  /** 逐处占领区：玩家投入 · 该处进度 · 是否夺回 · 该处拿到的夺回奖励 */
+  galaxies: Array<{ galaxyId: string; put: number; progress: number; reclaimed: boolean; isk: number; wreck: number }>
+  /** 旗舰战输出（没跟母舰交手过 = 缺省） */
+  flagship?: { hpMax: number; hpDone: number; defeated: boolean }
+  /**
+   * **进度收入**（2026-09-25 船长令「入侵舰队不应该有赏金……在结算时候直接按进度获取收入」）：
+   * 玩家投入进度合计（0~1 的百分比读数，如 1.35 = 135%）与该笔收入（ISK）。
+   * 缺省 = 老快照（本批之前结束的活动没有这一栏；界面按缺省不显示该行）。
+   */
+  progressPct?: number
+  progressIsk?: number
+  /** 到手合计（含旗舰掉落）与奖励物品 id（面板/通讯点物品名用） */
+  isk: number
+  wreck: number
+  blackBox: number
+  wreckItemId?: string
 }
 
 /**
@@ -316,14 +408,61 @@ export function weekendDebugOn(state: Pick<GameState, 'debugQuick'>): boolean {
   return state.debugQuick === true
 }
 
+/**
+ * **入侵用的"现在"＝游戏自己的墙钟账**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）。
+ *
+ * 病根：入侵的三条时间线（**开局面 / NPC 铺底 / 旗舰倒计时**）原先一律读 `Date.now()`（真实墙钟），
+ * 而"快进"推进的是**游戏自己的模拟墙钟** `state.savedAtWallMs`（`simulateOffline` 的 `wallBase + ms`）
+ * ⇒ 两者不同源，快进对入侵完全无效（既不开新场，铺底也不动）。
+ *
+ * 口径：**取两者较大的那个** ——
+ * - 正常在线：`savedAtWallMs` ≈ 上次落盘时刻 ≤ 现在 ⇒ 恒等于真实墙钟，**行为逐字不变**；
+ * - 快进/离线段：模拟墙钟已经走到未来 ⇒ 入侵跟着走到未来（而不倒回去）。
+ *
+ * ⚠ 只给入侵用；其它系统各自的口径不动（赏金日板等仍按各自既有来源）。
+ */
+export function weekendClockOf(
+  state: Pick<GameState, 'savedAtWallMs'>,
+  realNowMs: number = Date.now(),
+): number {
+  const ledger = Number.isFinite(state.savedAtWallMs) ? state.savedAtWallMs : 0
+  return Math.max(realNowMs, ledger > 0 ? ledger : 0)
+}
+
 /** NPC 时间轴的实际时长（调试模式 ÷60，Q6） */
 export function weekendNpcTimelineMs(state: Pick<GameState, 'debugQuick'>, baseMs: number): number {
   return weekendDebugOn(state) ? Math.max(1, Math.round(baseMs / WEEKEND_DEBUG_TIME_DIVISOR)) : baseMs
 }
 
-/** 倒计时的实际时长（调试模式同样 ÷60） */
+/**
+ * **倒计时的实际时长**（= `weekendFlagshipWindowMs`，保留旧名以免改散调用点；
+ * 2026-09-25 起调试档 = 10 分钟、正常 = 2 小时）。
+ * ⚠ 新代码请直接用 `weekendFlagshipWindowMs`（它才是"四处同源"的那个单点）。
+ */
 export function weekendDeadlineMs(state: Pick<GameState, 'debugQuick'>): number {
-  return weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  return weekendFlagshipWindowMs(state)
+}
+
+/**
+ * **章鱼人削血窗口**（= 母舰血池从满到被削空的"在线且非战斗"时长）——
+ * 正常模式 = `WEEKEND_FLAGSHIP_DEADLINE_MS`（2 小时）；**调试模式 = 10 分钟**。
+ *
+ * ⚠ **2026-09-25 船长两次口径合一**：
+ * 1. 船长原话（2026-09-24）：「**2小时内按时间削掉100%母舰血量。当玩家正在战斗时，会暂停削血。
+ *    等玩家战斗结束才继续。**」⇒ 削血是**真实削减**（船长 2026-09-25 复述：「**章鱼人削减母舰血条是
+ *    真实削减，玩家假设打完一场放一会，母舰血量是会真实减少。**」）⇒ **攒满窗口 = 血条见底 = 得手**，
+ *    战斗中与离线都暂停；
+ * 2. 船长 2026-09-25 对"窗口太短"的裁定：**保留"到点即判"这套机制、把调试窗口调长**（②）
+ *    ⇒ 本函数把调试档从"÷60 = 2 分钟"改成固定的 **10 分钟**（原 2 分钟连点进准备界面都来不及）。
+ *
+ * ⚠ 四处必须同源（改窗口即同时改这四处的口径）：`weekendFlagshipView` 的倒计时、
+ * `weekendOctopusDrainPerMs` 的削血速率、`weekendBossPoolView` 的章鱼进度、`weekendOctopusTick` 的收口。
+ */
+export const WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS = 10 * 60_000
+
+/** 本档的削血窗口（调试 = 10 分钟；正常 = 2 小时）——四处同源的单点 */
+export function weekendFlagshipWindowMs(state: Pick<GameState, 'debugQuick'>): number {
+  return weekendDebugOn(state) ? WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS : WEEKEND_FLAGSHIP_DEADLINE_MS
 }
 
 /** 某一时刻所在"周"的 T0（正常模式：该时刻之前最近的周五 20:00 本地墙钟） */
@@ -386,7 +525,14 @@ export function weekendRollOccupation(
   if (candidates.length === 0) return null
   const rng = streamOf(state.rng.seed, seq)
   const coreId = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]!
-  const family = WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(rng() * WEEKEND_FAMILIES.length))]!
+  /**
+   * 族：**照旧消费一次随机数**（保持子流形状不变），但若 `WEEKEND_LOCKED_FAMILY` 有值就判成它
+   * —— 船长 2026-09-25「目前只做了H族，所以先锁定H族」；M2/M3 补齐三族后把该常量置回 `null` 即恢复随机。
+   */
+  const familyRoll = rng()
+  const family =
+    WEEKEND_LOCKED_FAMILY ??
+    WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(familyRoll * WEEKEND_FAMILIES.length))]!
   return { coreId, peripheryIds: weekendPeripheryOf(ctx, coreId), family }
 }
 
@@ -494,10 +640,14 @@ export interface WeekendFlagshipView {
 
 /**
  * **旗舰视图（含离线保护）**（第 8/10 条 ＋ Q3/Q7）：
- * - 核心条满 ⇒ 现身，倒计时 `2h`（调试 ÷60）；
- * - **离线保护**：核心条满时玩家离线 ⇒ 倒计时**自上线那一刻起算**；离线**满 24h** 即视为保护失效
- *   （Q3：从离线满 24h 那一刻起算 ⇒ 上线时若已过期，旗舰已被章鱼人摧毁）；
- * - 调试模式**关掉离线保护**（Q7）。
+ *
+ * - **核心条满 ⇒ 现身**；
+ * - **得手判据 = 章鱼人削血攒满窗口**（**真实削减**：船长 2026-09-24「2小时内按时间削掉100%母舰血量。
+ *   当玩家正在战斗时，会暂停削血」＋ 2026-09-25「章鱼人削减母舰血条是真实削减，玩家假设打完一场放一会，
+ *   母舰血量是会真实减少」）⇒ 与 `weekendTickBoss` 的削血进度**同一把尺**，不再是"墙钟到点"；
+ * - **离线保护**（Q3）：离线 **满 24h** 即视为保护失效 ⇒ 自那一刻起算，窗口到点即视为已被摧毁
+ *   （离线期间削血是暂停的，这条是"人不在就别无限期挂着"的那道闸）；
+ * - 调试模式**关掉离线保护**（Q7）且窗口 = **10 分钟**（船长 2026-09-25：「保留到点即判，把调试窗口调长」）。
  */
 export function weekendFlagshipView(
   state: Pick<GameState, 'debugQuick'>,
@@ -508,7 +658,10 @@ export function weekendFlagshipView(
   if (ev.flagshipDown) return { shown: true, atWallMs: ev.flagshipAtWallMs, down: ev.flagshipDown }
   const full = weekendCoreProgressAt(state, ev, nowWallMs) >= 1
   if (!full) return { shown: false }
-  const deadline = weekendDeadlineMs(state)
+  const windowMs = weekendFlagshipWindowMs(state)
+  const drained = Math.min(windowMs, Math.max(0, ev.octopusDrainedMs ?? 0))
+  /** **真实削减见底**（= 血条被章鱼人削空）⇒ 得手（与 `weekendTickBoss` 同一判据） */
+  const drainDone = drained >= windowMs
   const offline = Math.max(0, nowWallMs - lastSeenWallMs)
   /**
    * **倒计时起算点 anchor**——**只在"首次满分且玩家在线"那一拍落盘**（`flagshipAtWallMs`），落盘后不再变：
@@ -523,8 +676,16 @@ export function weekendFlagshipView(
     if (weekendDebugOn(state) || offline <= 60_000 || offline <= WEEKEND_OFFLINE_SHIELD_MS) anchor = nowWallMs
     else anchor = lastSeenWallMs + WEEKEND_OFFLINE_SHIELD_MS
   }
-  const deadlineWallMs = anchor + deadline
-  const down = nowWallMs >= deadlineWallMs ? ('octopus' as const) : undefined
+  /** 离线 **超过** 24h 保护期：窗口按 anchor 起算（人不在的那段不削血，但也不能无限期挂着） */
+  const offlineLapsed = offline > WEEKEND_OFFLINE_SHIELD_MS
+  const down = drainDone || (offlineLapsed && nowWallMs >= anchor + windowMs) ? ('octopus' as const) : undefined
+  /**
+   * **倒计时（展示口径）**：
+   * - 在线 ⇒ 从**此刻**起算、扣掉已削掉的时长（`windowMs − drained`）——削血是真实削减，
+   *   所以"还能挂多久"就是"还差多少在线非战斗时间"；战斗/离线时它自然停住（读数不跳）；
+   * - 离线保护失效那一档 ⇒ 按 anchor 快照展示（Q3 的"自离线满 24h 起算"）。
+   */
+  const deadlineWallMs = offlineLapsed ? anchor + windowMs : nowWallMs + (windowMs - drained)
   return { shown: true, atWallMs: anchor, deadlineWallMs, ...(down !== undefined ? { down } : {}) }
 }
 
@@ -538,6 +699,26 @@ export function weekendNoteContribution(ev: WeekendEventState, galaxyId: string,
 /** 玩家累计投入的进度合计（贡献占比的分子） */
 export function weekendPlayerContribution(ev: WeekendEventState): number {
   return Object.values(ev.contributed).reduce((a, b) => a + b, 0)
+}
+
+/**
+ * **进度收入的单价**（ISK / 每 1% 进度）——
+ * 船长 2026-09-25 令：「**入侵舰队不应该有赏金**……因为击败入侵舰队就能获取进度，
+ * **在结算时候直接按进度获取收入**」，三选一裁定**③「每 1% 固定 20 万 ISK（与星系无关）」**。
+ *
+ * 于是入侵战斗**当场一分钱都不给**（悬赏那一栏整条退役），收入在**活动结束时**随夺回奖励与
+ * 贡献四档奖一次发（`weekendSettleAndGrant`）：
+ * - 换算到每一场（正常口径）：外围胜利 +10% = **200 万** · 核心胜利 +5% = **100 万** ·
+ *   主动击退遇袭 +3% = **60 万** · 离线自动击退 +1% = **20 万**；打满一处（100%）= **2,000 万**；
+ * - **只结玩家自己打出来的进度**（`ev.contributed` 台账；NPC 铺底那部分不算收入——
+ *   否则挂机也在赚钱）；
+ * - 进度本身按星系封顶 100%（`weekendNoteContribution` 已 clamp）⇒ 单星系收入上限 = 2,000 万。
+ */
+export const WEEKEND_PROGRESS_ISK_PER_PCT = 200_000
+
+/** 本场活动的进度收入合计（ISK） = 玩家投入进度（1 = 100%）× 100 × 单价 */
+export function weekendProgressIncomeIsk(ev: WeekendEventState): number {
+  return Math.round(weekendPlayerContribution(ev) * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
 }
 
 /**
@@ -587,6 +768,19 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
   if (WEEKEND_DEBUG_ONLY && !weekendDebugOn(state)) return false
   const ev = state.weekendEvent
   if (weekendDebugOn(state)) {
+    /**
+     * **锁定族的自愈**（2026-09-25 船长令「先锁定 H 族」）：手上那一场若是**锁定前开的历史场**
+     * （例如抽到 A/C/G 的旧场），就地**改判族**——进度台账、场次号、旗舰池全留着，只换族
+     * （板面卡与旗舰卡随之换成 H 族那一套）。⚠ 只在调试模式做：正常模式的老场不追改。
+     */
+    if (
+      ev !== undefined &&
+      ev.endedAtWallMs === undefined &&
+      WEEKEND_LOCKED_FAMILY !== null &&
+      ev.family !== WEEKEND_LOCKED_FAMILY
+    ) {
+      ev.family = WEEKEND_LOCKED_FAMILY
+    }
     if (ev && ev.endedAtWallMs === undefined) return false
     if (ev && nowWallMs - ev.endedAtWallMs! < WEEKEND_DEBUG_RESTART_MS) return false
     const seq = (ev?.seq ?? 0) + 1
@@ -621,6 +815,12 @@ export interface WeekendTickResult {
   started: boolean
   /** 旗舰是否已现身 */
   flagshipShown: boolean
+  /**
+   * **本拍正是"旗舰现身"的那一拍**（2026-09-25 加 · 修船长报障「事件日志会一直刷『入侵核心已被打通：旗舰现身。』」）：
+   * `flagshipShown` 只要现身就恒真（每拍都真）⇒ 引擎照着它记日志会**每拍刷一条**；
+   * 这一格只在**首次把 `flagshipAtWallMs` 落盘**的那一拍为真 ⇒ 记日志 / 弹一次窗都按它来。
+   */
+  flagshipAnchored: boolean
   /** 旗舰结局（本 tick 新发生） */
   flagshipDown?: 'player' | 'octopus'
   /** 本 tick 是否结束（旗舰被摧毁 / 章鱼人得手 / 窗口到点） */
@@ -647,11 +847,17 @@ export function weekendTick(
 ): WeekendTickResult {
   const started = ensureWeekendEvent(state, ctx, nowWallMs)
   const ev = state.weekendEvent
-  if (!ev || ev.endedAtWallMs !== undefined) return { started, flagshipShown: false, ended: false, encounterRolls: [] }
+  if (!ev || ev.endedAtWallMs !== undefined) {
+    return { started, flagshipShown: false, flagshipAnchored: false, ended: false, encounterRolls: [] }
+  }
 
   // ② 旗舰 anchor 落盘（只在"未落盘 + 未过期"时写）
   const view = weekendFlagshipView(state, ev, nowWallMs, lastSeenWallMs)
-  if (view.shown && ev.flagshipAtWallMs === undefined && view.down === undefined) ev.flagshipAtWallMs = view.atWallMs ?? nowWallMs
+  let flagshipAnchored = false
+  if (view.shown && ev.flagshipAtWallMs === undefined && view.down === undefined) {
+    ev.flagshipAtWallMs = view.atWallMs ?? nowWallMs
+    flagshipAnchored = true
+  }
 
   // ③ 章鱼人得手 ⇒ 结束本场（黑匣归零，贡献奖照给——结算由调用方做）
   let ended = false
@@ -674,7 +880,7 @@ export function weekendTick(
     .map((id) => ({ galaxyId: id, chance: weekendEncounterChanceAt(state, ev, id, nowWallMs) }))
     .filter((x) => x.chance > 0)
 
-  return { started, flagshipShown: view.shown, ...(flagshipDown !== undefined ? { flagshipDown } : {}), ended, encounterRolls }
+  return { started, flagshipShown: view.shown, flagshipAnchored, ...(flagshipDown !== undefined ? { flagshipDown } : {}), ended, encounterRolls }
 }
 
 /** 主动打赢一场：外围 +10% · 核心 +5%（第 6 条；核心同样受门禁约束，门禁在读数侧生效） */
@@ -711,11 +917,12 @@ export function weekendIsBossFamily(ev: WeekendEventState | undefined): boolean 
 }
 
 /**
- * **章鱼人每毫秒削掉池子的比例** = 100% ÷ 2 小时（船长：「2小时内按时间削掉100%母舰血量」）。
- * 线性同比：`章鱼已削 = 削血时长 / 2h × 池子总量`（削血时长只计"在线且非战斗"）。
+ * **章鱼人每毫秒削掉池子的比例** = 100% ÷ 削血窗口（船长：「2小时内按时间削掉100%母舰血量」）。
+ * 线性同比：`章鱼已削 = 削血时长 / 窗口 × 池子总量`（削血时长只计"在线且非战斗"）。
+ * ⚠ 窗口走 `weekendFlagshipWindowMs`（正常 2h / 调试 10min）——与倒计时、池子读数、收口四处同源。
  */
 export function weekendOctopusDrainPerMs(state: Pick<GameState, 'debugQuick'>, hpTotal: number): number {
-  return hpTotal / weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  return hpTotal / weekendFlagshipWindowMs(state)
 }
 
 /** **池子总量**（缺省 = 还没跟母舰交手过 ⇒ `undefined`；`floorHp` = 由卡面折算的下限） */
@@ -755,7 +962,7 @@ export function weekendBossPoolView(
   if (hpMax === undefined || hpMax <= 0) return null
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
   const drained = Math.max(0, ev.octopusDrainedMs ?? 0)
-  const windowMs = weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  const windowMs = weekendFlagshipWindowMs(state)
   const octopusDone = Math.min(hpMax, (drained / windowMs) * hpMax)
   return {
     hpMax,
@@ -830,8 +1037,9 @@ export function weekendOctopusTick(
   if (inBattle || dtMs <= 0) return false
   const hpMax = ev.flagshipHpMax
   if (hpMax === undefined || hpMax <= 0) return false
-  // ⚠ 窗口按**本档的实际长度**取（`debugQuick` 下同样 ÷60，与 `weekendBossPoolView` 同一把尺）
-  const windowMs = weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  // ⚠ 窗口按**本档的实际长度**取（`weekendFlagshipWindowMs`：正常 2h / 调试 10min，
+  //   与 `weekendBossPoolView`、倒计时、收口四处同一把尺）
+  const windowMs = weekendFlagshipWindowMs(state)
   const d = Math.max(0, dtMs)
   if (d <= 0) return false
   ev.octopusDrainedMs = Math.min(windowMs, (ev.octopusDrainedMs ?? 0) + d)

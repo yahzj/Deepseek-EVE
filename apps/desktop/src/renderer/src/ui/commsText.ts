@@ -16,7 +16,8 @@
  * 本批未覆盖：正文段落（`body`，约 90 行）与部门简介（`brief`，悬停说明）——正文另开一遍。
  */
 import { COMMS_DAY_MS } from '@whale/core'
-import { isEn, tr } from '../i18n/locale'
+import type { CommsEntryView, CommsRewardLine } from '@whale/core'
+import { isEn, paramText, tr } from '../i18n/locale'
 
 /** 势力 / 部门 / 小队名 → l10n id（键 = 数据侧中文名，`ui.comms.001~013`） */
 const COMMS_NAME_ID: Record<string, string> = {
@@ -137,6 +138,9 @@ const COMMS_HINT_ID: Record<string, string> = {
   '想先看看这片星域长什么样？去星图认认路。': 'ui.comms.066',
   // 2026-09-24 船长令「跳到技能页并自动选中工程」：「第一次学习技能」那封信的「前往」改落「技能 · 工程」
   '到「技能」页的「工程」里训练 AI 核心操作学': 'ui.comms.068',
+  // 2026-09-25 周末入侵两封（实例通讯）：预警跳星图 · 结算弹面板
+  '星图 · 被占星系有红色发光与旗标': 'ui.comms.069',
+  查看详细奖励: 'ui.comms.070',
 }
 // l10n-keep-end
 
@@ -328,4 +332,68 @@ export function commsBodyText(id: string, paragraphs: readonly string[]): readon
   if (!isEn()) return paragraphs
   const en = COMMS_BODY_EN[id]
   return en !== undefined && en.length === paragraphs.length ? en : paragraphs
+}
+
+/* ─────────────── 实例通讯（2026-09-25 · 周末入侵两封） ─────────────── */
+
+/**
+ * **实例通讯的参数解析**：`pNId`（参数本身也是一条文案）先渲染好再喂进外层句 ——
+ * 与日志 `logText` 的两步渲染同一口径（`i18n/locale.tsx`）。
+ */
+export function commsInstanceParams(
+  params?: Readonly<Record<string, string | number>>,
+): Record<string, string | number> {
+  const src = params ?? {}
+  const out: Record<string, string | number> = {}
+  for (const [k, v] of Object.entries(src)) {
+    if (k.endsWith('Id')) continue
+    const ref = src[`${k}Id`]
+    out[k] = typeof ref === 'string' ? paramText(ref) : v
+  }
+  return out
+}
+
+/**
+ * **奖励清单**（结构化 → 当前语言的一句人话）：物品名由调用方给（走游戏既有物品表 ⇒ 已有官方译名），
+ * 分隔符与信用点单位走 `ui.comms.071~073`。空清单 ⇒ `undefined`（调用方保留原文里的那一段）。
+ */
+export function commsRewardText(
+  rewards: readonly CommsRewardLine[] | undefined,
+  itemNameOf: (itemId: string) => string,
+): string | undefined {
+  if (rewards === undefined || rewards.length === 0) return undefined
+  return rewards
+    .map((r) =>
+      r.isk !== undefined
+        ? tr('ui.comms.071', { p1: r.isk.toLocaleString() })
+        : tr('ui.comms.072', { p1: itemNameOf(r.itemId ?? ''), p2: r.qty ?? 1 }),
+    )
+    .join(tr('ui.comms.073'))
+}
+
+/** 主题行（实例通讯按 `subjectId` 现渲染带参数；表消息走既有 id 映射） */
+export function commsEntrySubjectText(
+  entry: CommsEntryView,
+  itemNameOf: (itemId: string) => string = (id) => id,
+): string {
+  if (entry.subjectId === undefined) return commsSubjectText(entry.id, entry.subject)
+  const params = commsInstanceParams(entry.textParams)
+  const list = commsRewardText(entry.rewards, itemNameOf)
+  if (list !== undefined) params['p3'] = list
+  return tr(entry.subjectId, params)
+}
+
+/**
+ * 正文段落（实例通讯按 `bodyIds` 逐段现渲染；奖励清单填进 `{p3}` —— **清单由界面按语言拼**，
+ * 所以中英各自成句，而数据只有一份）。表消息仍走既有英译映射（行数不符回落中文）。
+ */
+export function commsEntryBodyText(
+  entry: CommsEntryView,
+  itemNameOf: (itemId: string) => string = (id) => id,
+): readonly string[] {
+  if (entry.bodyIds === undefined) return commsBodyText(entry.id, entry.paragraphs)
+  const params = commsInstanceParams(entry.textParams)
+  const list = commsRewardText(entry.rewards, itemNameOf)
+  if (list !== undefined) params['p3'] = list
+  return entry.bodyIds.map((id) => tr(id, params))
 }

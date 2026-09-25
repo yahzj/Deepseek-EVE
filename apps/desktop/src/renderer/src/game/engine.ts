@@ -68,6 +68,7 @@ import {
   repairShip,
   useOneRepairKit,
   retreatBattle,
+  retreatEncounterBattle,
   sellCargoItem,
   sellCargoItemQty,
   sellStoredShipAtMarket,
@@ -166,11 +167,22 @@ import {
   bumpIronmanSeq,
   // 2026-09-23 周末入侵（M1-b：引擎每拍推进入侵时间轴）
   weekendTick,
-  weekendDerivedCardOf,
+  // 2026-09-25 修「快进不刷新入侵」：入侵时钟 = 真实墙钟与游戏模拟墙钟取大者（见周末模块的 weekendClockOf）
+  weekendClockOf,
+  weekendBountyCardsOf,
+  weekendAssaultDrawOf,
+  weekendNoteAssaultDispatch,
   weekendOccupiedLiveAt,
   weekendFlagshipSpecOf,
   weekendFlagshipSquadOf,
   weekendStartFlagshipBattle,
+  weekendFlagshipPrepView,
+  /** 2026-09-25：旗舰战的战斗宿主（心跳变速 / 分桶 / 撤退分流 / 战斗屏都用它） */
+  weekendFlagshipBattleActive,
+  // 2026-09-25 入侵结束结算（贡献奖四档入账；幂等由 core 侧 `prizePaidAtWallMs` 落盘标记保证）
+  weekendSettleAndGrant,
+  // 2026-09-25 入侵两封通讯（预警 / 结算；每场覆盖同一 id，幂等在 core）
+  weekendSyncComms,
   ironmanLoadVerdict,
   ironmanOn,
   ironmanSeq,
@@ -564,16 +576,26 @@ export class GameEngine {
       return
     }
     const now = Date.now()
-    /** 同一星系只判一次（列表里同星系多张卡） */
-    const live = new Map<string, boolean>()
-    this.anomalies = base.map((a) => {
-      let occupied = live.get(a.galaxyId)
-      if (occupied === undefined) {
-        occupied = weekendOccupiedLiveAt(this.state, a.galaxyId, now)
-        live.set(a.galaxyId, occupied)
-      }
-      return occupied ? weekendDerivedCardOf(a, ev.family, { isCore: a.galaxyId === ev.coreId }) : a
-    })
+    /** 逐星系取一次（同星系多张卡共用同一份替换结果 ⇒ 与 `weekendBountyCardsOf` 的"同序"契约一致） */
+    const byGalaxy = new Map<string, (typeof base)[number][]>()
+    for (const a of base) {
+      const list = byGalaxy.get(a.galaxyId)
+      if (list) list.push(a)
+      else byGalaxy.set(a.galaxyId, [a])
+    }
+    const replaced = new Map<string, readonly (typeof base)[number][]>()
+    for (const [gid, list] of byGalaxy) {
+      replaced.set(gid, weekendBountyCardsOf(this.state, this.ctx, list, gid, now))
+    }
+    const cursor = new Map<string, number>()
+    const out: (typeof base)[number][] = []
+    for (const a of base) {
+      const list = replaced.get(a.galaxyId)!
+      const i = cursor.get(a.galaxyId) ?? 0
+      cursor.set(a.galaxyId, i + 1)
+      out.push(list[i] ?? a)
+    }
+    this.anomalies = out
   }
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
   allAnomalies = ANOMALIES_FLAVORED
@@ -683,9 +705,8 @@ export class GameEngine {
    * 现改：单批预算 8ms + 每批最多 2 条 → 同样工作量摊到十几拍（每拍 ≤10ms，肉眼无感）。
    */
   private pumpWinCache(now: number): void {
-    // 洞内交火同样跳过（2026-09-13）：实时推进优先，别让胜率预热抢帧
-    if (this.state.expedition.phase === 'battle' && !!this.state.expedition.battle) return
-    if (this.state.wormhole.run?.battle) return
+    // 洞内交火同样跳过（2026-09-13）：实时推进优先，别让胜率预热抢帧；旗舰战同款（2026-09-25）
+    if (this.inLiveBattle()) return
     if (now - this.winLastPumpAt < 400) return
     const fp = this.winFingerprint()
     if (fp !== this.winFpCur) {
@@ -731,9 +752,8 @@ export class GameEngine {
    */
   private wantsFastPump(): boolean {
     const exp = this.state.expedition
-    if (exp.phase === 'battle' && !!exp.battle) return true
-    // 虫洞战斗（F 批）同款：洞内战斗也按 100ms 实时推进（否则 500ms 心跳下战斗画面一顿一顿）
-    if (this.state.wormhole.run?.battle) return true
+    // 交火中一律 100ms 心跳（远征 / 虫洞 / 入侵旗舰战三个宿主，判据单点 `inLiveBattle`）
+    if (this.inLiveBattle()) return true
     if (exp.active && exp.phase === 'out') return true
     return false
   }
@@ -785,13 +805,27 @@ export class GameEngine {
     this.notify()
   }
 
+  /**
+   * **现在有没有"要在战场里看"的战斗**（2026-09-25 收口）：远征 / 虫洞 / **入侵旗舰战**三个宿主。
+   *
+   * 第三个宿主是船长报障「旗舰战无法进入战斗画面」时补的：旗舰战是**编队战**、承载在**遭遇槽**
+   * （`state.encounter.battle`）⇒ 原先只认前两个宿主的四处判据（心跳变速 / 性能分桶 / 胜率预热让路 /
+   * 100ms 实时切片）全都把它当成"没在打"：战场数据一秒才来一次、动画一跳一跳。
+   * 判据收在这里一处，宿主解析仍归 core（`weekendFlagshipBattleActive`）。
+   */
+  private inLiveBattle(): boolean {
+    const s = this.state
+    return (
+      (s.expedition.phase === 'battle' && !!s.expedition.battle) ||
+      !!s.wormhole.run?.battle ||
+      weekendFlagshipBattleActive(s)
+    )
+  }
+
   /** 当前心跳所属计量桶：交火中 = battle，其余 = idle（性能监测分桶用） */
   private currentBucket(): PerfBucket {
-    const exp = this.state.expedition
-    // 洞内交火同算 battle 桶（2026-09-13：心跳分支已认洞内，分桶同步）
-    return (exp.active && exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
-      ? 'battle'
-      : 'idle'
+    // 洞内交火同算 battle 桶（2026-09-13：心跳分支已认洞内，分桶同步）；旗舰战同款（2026-09-25）
+    return this.inLiveBattle() ? 'battle' : 'idle'
   }
 
   /** 推进一小片游戏时间（包装：激活性能监测时记录引擎侧耗时；未激活零开销）。
@@ -801,7 +835,7 @@ export class GameEngine {
     const t0 = rec ? performance.now() : 0
     const bucket = this.currentBucket()
     advanceGame(this.state, ms, this.ctx, {
-      nowWallMs: Date.now(),
+      nowWallMs: this.wallNowOf(),
       // 洞内倍速：**只有前台心跳传**（离线结算走 simulateOffline，不经这里 ⇒ 恒 1×）
       battleSpeedX: this.requestedWormholeSpeed(),
     })
@@ -976,6 +1010,53 @@ export class GameEngine {
    * ⚠ **2026-09-20**：交火分支的记账修过一次（本拍 dt 丢帧 ⇒ 进战斗时欠着的现实时间永不补回），
    * 详见下面那段的注释与 `docs/roadmap.md` 2026-09-20「外部审查报告逐条核对与处置」那条。
    */
+  /**
+   * **入侵时钟**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）：入侵原先读 `Date.now()`
+   * 真实墙钟，而"快进"推进的是游戏自己的模拟墙钟（`state.savedAtWallMs`）⇒ 快进对入侵完全无效。
+   * 现统一走 `weekendClockOf`（取两者较大者）：正常在线=真实墙钟（逐字不变），快进后=模拟墙钟（不倒回）。
+   */
+  private wallNowOf(): number {
+    return weekendClockOf(this.state)
+  }
+
+  /**
+   * **周末入侵：一拍的全部动作**（2026-09-25 抽出，供**心跳**与**调试快进**共用）：
+   * 补发贡献奖 → `weekendTick`（开局面/倒计时 anchor/结束）→ 三条日志 → 结束结算入账 → 两封通讯。
+   * `wallNow` = 这一拍该用的墙钟；`lastSeenWallMs` = 上一次"玩家在"的墙钟（离线保护与 Q3 的锚点）。
+   */
+  private pumpWeekendAt(wallNow: number, lastSeenWallMs: number): void {
+    /**
+     * **上一场"已结束但没结"的贡献奖补发**：必须**在 `weekendTick` 之前** —— 它内部会 `ensureWeekendEvent`
+     * 开新场、把旧场覆盖掉。core 侧按 `prizePaidAtWallMs` 落盘标记判重 ⇒ 每拍调也只会发一次。
+     */
+    this.settleWeekendPrize(wallNow)
+    const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs)
+    this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
+    if (weekend.started) {
+      addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
+      void this.persist()
+    }
+    /**
+     * **旗舰现身**：只记**一次**（2026-09-25 修船长报障「事件日志会一直刷『入侵核心已被打通：旗舰现身。』」）——
+     * 原先判据是 `flagshipShown`（现身之后**每拍都真**）⇒ 日志每拍刷一条；现按 `flagshipAnchored`
+     * （**首次落盘 anchor 的那一拍**）来；同时立起"一次性弹窗"待办（`flagshipPopupPending`，界面读它弹一次）。
+     */
+    if (weekend.flagshipAnchored) {
+      addLog(this.state, 'warn', tr('ui.weekend.002'), 'ui.weekend.002')
+      this.flagshipPopupPending = true
+      void this.persist()
+    }
+    if (weekend.ended) {
+      const octopus = weekend.flagshipDown === 'octopus'
+      addLog(this.state, 'warn', tr(octopus ? 'ui.weekend.003' : 'ui.weekend.004'), octopus ? 'ui.weekend.003' : 'ui.weekend.004')
+      void this.persist()
+    }
+    /** **结束结算入账**：本拍刚结束的那一场立刻结；上一拍结束而没结的由开头那句兜（同一幂等口） */
+    this.settleWeekendPrize(wallNow)
+    /** **两封通讯**：每场一封预警（开局）＋ 一封结算（入账后），固定 id 覆盖上一封；判据在 core */
+    weekendSyncComms(this.state, this.ctx, wallNow)
+  }
+
   private tick(): void {
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
@@ -987,29 +1068,11 @@ export class GameEngine {
     }
     /**
      * **周末入侵**（2026-09-23 船长令；设计见 `docs/design/weekend-invasion-20260923.md`）：
-     * 每拍调一次 core 的 `weekendTick`（纯函数 + 幂等）——开局面（**仅调试模式**）、旗舰倒计时 anchor 落盘、
-     * 章鱼人得手与窗口到点结束，并把"该掷遇袭骰的星系与概率"交回来。
-     * ⚠ 本刀**只接 tick**：遇袭掷骰与战斗入口（悬赏替换为入侵舰队 / 旗舰小队战）留待下一刀。
-     * ⚠ `lastSeenWallMs` 传"上一拍"（now − dt）⇒ 离线保护与 Q3 的">24h 自满 24h 起算"都有正确锚点。
+     * 每拍调一次（开局面 · 旗舰倒计时 anchor 落盘 · 章鱼人得手 / 窗口到点结束 · 结算入账 · 两封通讯）。
+     * ⚠ 墙钟走 `wallNowOf()`（= 真实墙钟与游戏模拟墙钟取大者）⇒ **调试快进之后不会倒回去**；
+     * `lastSeenWallMs` 传"上一拍"（now − dt）⇒ 离线保护与 Q3 的">24h 自满 24h 起算"都有正确锚点。
      */
-    const weekend = weekendTick(this.state, this.ctx, now, now - dt)
-    this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
-    if (weekend.started) {
-      addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
-      void this.persist()
-    }
-    if (weekend.flagshipShown && this.state.weekendEvent?.flagshipAtWallMs !== undefined) {
-      const ev = this.state.weekendEvent
-      if (ev.endedAtWallMs === undefined && ev.flagshipDown === undefined) {
-        addLog(this.state, 'warn', tr('ui.weekend.002'), 'ui.weekend.002')
-        void this.persist()
-      }
-    }
-    if (weekend.ended) {
-      const octopus = weekend.flagshipDown === 'octopus'
-      addLog(this.state, 'warn', tr(octopus ? 'ui.weekend.003' : 'ui.weekend.004'), octopus ? 'ui.weekend.003' : 'ui.weekend.004')
-      void this.persist()
-    }
+    this.pumpWeekendAt(this.wallNowOf(), this.wallNowOf() - dt)
     const exp = this.state.expedition
     /**
      * 含已分胜负的"击杀慢镜窗口"：窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定画面。
@@ -1019,8 +1082,10 @@ export class GameEngine {
      * 洞内交火掉进下面的**挂机分支**（`pendingMs >= 1000` 才推进并 `notify()` 一次）⇒
      * 战场每约 1 秒才收到一帧数据，船自然一秒跳一次（与帧率、与 33ms 插值都无关——插值再密，
      * 数据 1 秒才来一次也白搭）。
+     *
+     * ⚠ **2026-09-25 同款第三个宿主：入侵旗舰战**（承载在遭遇槽）——同上，判据收在 `inLiveBattle`。
      */
-    const inBattle = (exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
+    const inBattle = this.inLiveBattle()
     if (inBattle) {
       /**
        * ⚠ **2026-09-20 修（外部审计报告点名 + 探针复算证实）：本拍的现实时间必须先并进余额再切片。**
@@ -1297,16 +1362,44 @@ export class GameEngine {
     }
   }
   /**
+   * **战前准备视图**（2026-09-25 船长令做「旗舰战入口和准备界面」）：界面渲染准备面板读它。
+   * `null` = 现在不该出现入口（旗舰没现身 / 已落定局 / 不是 BOSS 族）。
+   */
+  weekendFlagshipPrep(): ReturnType<typeof weekendFlagshipPrepView> {
+    return weekendFlagshipPrepView(this.state, this.ctx, Date.now())
+  }
+
+  /**
+   * **"旗舰现身"一次性弹窗**（2026-09-25 船长令：「希望当核心星系收复敌人旗舰现身时，出现一次弹窗，
+   * 玩家可以通过弹窗直接前往准备」）：
+   * 引擎在**首次落盘 anchor 的那一拍**立起待办；界面读这里弹一次、玩家点「战前准备」或「知道了」即清。
+   * ⚠ 只在内存里（不随档）：读档时若旗舰已在场，就不必再弹一遍（该看的信息活动框与星系详细里都有）。
+   */
+  get flagshipPopupPending(): boolean {
+    return this.flagshipPopup
+  }
+  private set flagshipPopupPending(v: boolean) {
+    this.flagshipPopup = v
+  }
+  private flagshipPopup = false
+  /** 关掉那枚一次性弹窗（点「战前准备」或「知道了」都调它） */
+  dismissFlagshipPopup(): void {
+    if (!this.flagshipPopup) return
+    this.flagshipPopup = false
+    this.notify()
+  }
+  /**
    * **挑战入侵旗舰**（M1-b 收尾 · 2026-09-23）：核心条满才成立（`weekendStartFlagshipBattle` 内部判）。
    *
    * 复用**遭遇槽**承载这一场（`state.encounter`）：这样「应战 / 战报 / 收尾结算」全走既有路径，
    * 战后由 `encounters.settleFight` 调 `weekendApplyBattleOutcome` ⇒ 击毁旗舰、黑匣、贡献结算自动闭环。
    */
-  challengeWeekendFlagship(): CommandResult {
+  challengeWeekendFlagship(squad?: readonly string[]): CommandResult {
     const now = Date.now()
     const spec = weekendFlagshipSpecOf(this.state, this.ctx, now)
     if (!spec) return { ok: false, error: tr('ui.weekend.015') }
-    const battle = weekendStartFlagshipBattle(this.state, this.ctx, now)
+    /** squad = 战前准备界面选的编队（core 侧净化 + 落盘）；缺省 ⇒ 回落落盘编队或自动编队 */
+    const battle = weekendStartFlagshipBattle(this.state, this.ctx, now, squad)
     if (!battle) return { ok: false, error: tr('ui.weekend.015') }
     const ev = this.state.weekendEvent!
     this.state.encounter = {
@@ -1324,6 +1417,33 @@ export class GameEngine {
     this.notify()
     void this.persist()
     return { ok: true }
+  }
+
+  /**
+   * **周末入侵 · 结束后的贡献奖入账**（设计稿 ⑥「结束与结算」；2026-09-25 接上）。
+   *
+   * 设计原文：「结束时：① 统计贡献占比 → 发贡献奖（Q5 四档）② 玩家击毁 ⇒ 另发黑匣 ＋ 稀有残骸」。
+   * ② 的黑匣与旗舰残骸**在击沉那一刻**已由 `weekendApplyBattleOutcome` 发过 ⇒ 这里只发 ① 的贡献四档。
+   *
+   * - **幂等**：core 侧 `weekendSettleAndGrant` 用 `ev.prizePaidAtWallMs` 落盘标记判重 ⇒ 每拍调也只发一次；
+   * - **占比按结束时刻评估**（不是"这几拍"）：玩家离线几天后再上线补结，读数与结束时一致（不会少发）；
+   * - 三档文案：有 ISK / 只有残骸（参与档）/ 零贡献（无奖，标记照写）。
+   */
+  private settleWeekendPrize(now: number): void {
+    const r = weekendSettleAndGrant(this.state, this.ctx, now)
+    if (!r) return
+    const pct = (r.share * 100).toFixed(1)
+    if (r.isk > 0) {
+      const params = { p1: pct, p2: r.wreck, p3: r.isk.toLocaleString('zh-CN') }
+      addLog(this.state, 'trade', tr('ui.weekend.022', params), 'ui.weekend.022', params)
+    } else if (r.wreck > 0) {
+      const params = { p1: pct, p2: r.wreck }
+      addLog(this.state, 'trade', tr('ui.weekend.023', params), 'ui.weekend.023', params)
+    } else {
+      addLog(this.state, 'trade', tr('ui.weekend.024'), 'ui.weekend.024')
+    }
+    this.notify()
+    void this.persist()
   }
 
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
@@ -2024,11 +2144,37 @@ export class GameEngine {
     return result
   }
 
+  /** 界面上那张卡所在的星系（被占星系的入侵替换卡带的是被占星系）——随远征落盘，供战后归属/残骸注入用 */
+  private foeGalaxyOf(anomalyId: string): string | undefined {
+    return this.anomalies.find((a) => a.id === anomalyId)?.galaxyId
+  }
+
+  /**
+   * **出击被占星系时的"每场重抽"**（2026-09-25 船长令：「主动出击也要每场重抽」）：
+   * 出发那一刻从该区域池里重新抽一支（`weekendAssaultDrawOf`，盐 = 本场已出发次数），
+   * 并把**奖励基底**钉在"该星系原卡 ×1.4"（抽到哪支都一样价）。出击**成功**才记一次计数 ⇒ 下一场换一支。
+   * 非占领区 / 活动已结束 ⇒ 原样返回（老路径零变化）。
+   */
+  private weekendDispatchOf(anomalyId: string): { cardId: string; rewardIskOverride?: number } {
+    const galaxyId = this.foeGalaxyOf(anomalyId)
+    if (galaxyId === undefined) return { cardId: anomalyId }
+    const drawn = weekendAssaultDrawOf(this.state, this.ctx, galaxyId, Date.now())
+    if (drawn === null) return { cardId: anomalyId }
+    return { cardId: drawn.cardId, rewardIskOverride: drawn.rewardIsk }
+  }
+
   /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
   startExpeditionAt(anomalyId: string): CommandResult {
     return this.withActivitySwitch('expedition', () => {
-      const result = startExpedition(this.state, anomalyId, this.ctx)
+      const galaxyId = this.foeGalaxyOf(anomalyId)
+      const dispatch = this.weekendDispatchOf(anomalyId)
+      const result = startExpedition(this.state, dispatch.cardId, this.ctx, {
+        ...(galaxyId !== undefined ? { foeGalaxyId: galaxyId } : {}),
+        ...(dispatch.rewardIskOverride !== undefined ? { rewardIskOverride: dispatch.rewardIskOverride } : {}),
+      })
       if (result.ok) {
+        /** 抽过才计数（`weekendDispatchOf` 是纯的、不改计数）⇒ 下一次出击换一支 */
+        if (dispatch.cardId !== anomalyId) weekendNoteAssaultDispatch(this.state)
         void this.persist()
         this.notify()
       }
@@ -2038,7 +2184,7 @@ export class GameEngine {
 
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
   startExpeditionFromMiningAt(anomalyId: string): CommandResult {
-    const result = startExpeditionFromMining(this.state, anomalyId, this.ctx)
+    const result = startExpeditionFromMining(this.state, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId) })
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -2051,8 +2197,8 @@ export class GameEngine {
   startLairExpeditionAt(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
     return this.withActivitySwitch('expedition', () => {
       const result = fromMining
-        ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier })
-        : startExpedition(this.state, anomalyId, this.ctx, { lairTier })
+        ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
+        : startExpedition(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
       if (result.ok) {
         void this.persist()
         this.notify()
@@ -2807,6 +2953,21 @@ export class GameEngine {
     const stats = newSettleStats()
     simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats })
     this.state.savedAtWallMs = wallBase + ms
+    /**
+     * **把入侵一并推到快进后的时刻**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）：
+     * `simulateOffline` 只推游戏时间，而入侵那条时间线原先**完全没接进来** ⇒ 快进 8 小时也不开新场、铺底不动。
+     *
+     * 口径：**按 1 小时一步补跑入侵拍**（1h 正是调试模式的"上一场结束 + 1h 刷新"粒度）——
+     * 中途该结束的结束、该刷新的刷新，快进结束时手上就是**当下该有的那一场**；
+     * 若只在末尾补一拍，跨过结束点的那次快进会留下"没有活着的入侵"（要再等 1h）。
+     * `lastSeenWallMs` 传上一步 ⇒ 离线保护与 Q3 的锚点照常成立。
+     */
+    const stepMs = 3_600_000
+    const endAt = wallBase + ms
+    for (let at = Math.min(wallBase + stepMs, endAt); ; at = Math.min(at + stepMs, endAt)) {
+      this.pumpWeekendAt(at, at - stepMs)
+      if (at >= endAt) break
+    }
     this.offlineReport = buildOfflineReport(before, this.state, this.ctx, ms, overflowMs, stats)
     void this.persist()
     this.notify()
@@ -2948,9 +3109,17 @@ export class GameEngine {
     }
     return result
   }
-  /** 战斗中撤退：轻损脱离并即刻回港（同时停止重复清剿） */
+  /**
+   * 战斗中撤退：轻损脱离并即刻回港（同时停止重复清剿）。
+   *
+   * ⚠ **2026-09-25 分流**：旗舰战（编队战 · 承载在遭遇槽）不占 `expedition` 槽 ⇒
+   * `retreatBattle` 会以"当前不在交火中"拒绝；那一场走遭遇系统的主动脱离
+   * （`retreatEncounterBattle`：同样退弹药/修理组件、逐舰落盘承伤，且**照记对母舰的伤害**）。
+   */
   retreatNow(): CommandResult {
-    const result = retreatBattle(this.state, this.ctx)
+    const result = weekendFlagshipBattleActive(this.state)
+      ? retreatEncounterBattle(this.state, this.ctx)
+      : retreatBattle(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

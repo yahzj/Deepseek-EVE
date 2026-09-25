@@ -21,7 +21,7 @@ import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, Game
 import type { AchievementEarned } from './state'
 import type { BattleShieldFieldLedger, BattleShieldFieldStream } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
-import type { FittedModules, ModuleSlot, RackSlot } from './types'
+import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
@@ -430,6 +430,12 @@ const BATTLE_FIELDS = {
   // 漏了会让战中重载后敌方修理计时重置（= 白赚一跳），与 `repair`/`shieldCharge`/`foeRepair` 同理
   // （2026-09-22「随档字段两处落笔」规则：写入点 = combat.initFoeRepairPulses，白名单 = cleanBattle）。
   foeRepairPulses: { kind: 'persist' },
+  // 2026-09-25 船长令：挂载件「支援舰船召唤装置」（每 60 秒复活一艘当前波已阵亡的敌舰入场）——
+  // **必须随档**：漏了会让战中重载后召唤计时与"已召唤次数"一起重置（= 白赚一次支援 + 支援舰 tag
+  // 序号回退可能撞名），与 `foeRepairPulses`/`foeRepair`/`repair` 同理。
+  // （写入点 = combat.resolveFoeRevive，白名单 = cleanBattle。）
+  foeReviveAtMs: { kind: 'persist' },
+  foeReviveCount: { kind: 'persist' },
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
@@ -622,6 +628,15 @@ function cleanBattle(raw: unknown): BattleState | null {
    * ⚠ **必须随档**（登记表里也是 `persist`）：漏了会让战中重载**敌方修理计时重置 = 白赚一跳**。
    */
   const foeRepairPulses = cleanLedgerMap(b.foeRepairPulses, cleanFoeRepairLedger)
+  /** 支援舰召唤计时（2026-09-25）：只收有限正数（时刻）/ 非负整数（次数），坏值丢字段 */
+  const foeReviveAtMs =
+    typeof b.foeReviveAtMs === 'number' && Number.isFinite(b.foeReviveAtMs) && b.foeReviveAtMs > 0
+      ? b.foeReviveAtMs
+      : undefined
+  const foeReviveCount =
+    typeof b.foeReviveCount === 'number' && Number.isFinite(b.foeReviveCount) && b.foeReviveCount > 0
+      ? Math.floor(b.foeReviveCount)
+      : undefined
   /** 力场账本（2026-09-20 新增；与 `shieldChargeBy` 分开：冷却按件、受益方是全队） */
   const shieldFieldBy = cleanLedgerMap(b.shieldFieldBy, cleanShieldField)
   const dronePools = cleanDronePools(b.dronePools)
@@ -709,6 +724,9 @@ function cleanBattle(raw: unknown): BattleState | null {
     // 2026-09-16 敌方后勤账本（丢了 ⇒ 战中重载后敌方修理计时重置）
     ...(foeRepair !== undefined ? { foeRepair } : {}),
     ...(foeRepairPulses !== undefined ? { foeRepairPulses } : {}),
+    // 2026-09-25 支援舰召唤计时（丢了 ⇒ 战中重载后计时与序号重置）
+    ...(foeReviveAtMs !== undefined ? { foeReviveAtMs } : {}),
+    ...(foeReviveCount !== undefined ? { foeReviveCount } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
@@ -1591,7 +1609,7 @@ function normalizeState(raw: unknown): GameState {
        * 于是"引擎写过 `bm`、读回来没了"。**存在即原样保留**（数字取整；其余落 `null`）⇒ 往返逐字一致。
        */
       const hasBm = Object.prototype.hasOwnProperty.call(o, 'bm')
-      // 引擎写的是 m: true（BM 声望门槛标记 · 布尔）⇒ 必须原样保留（见上方注释：按数字处理会连丢两次）
+      // 引擎写的是 m: true（BM 声望门槛标记 · 布尔）⇒ 必须原样保留（见上方注释：按数字处理会连丢两次）
       const bmRaw = o.bm
       const bmVal = typeof bmRaw === 'boolean' ? bmRaw : typeof bmRaw === 'number' && Number.isFinite(bmRaw) ? Math.max(0, Math.floor(bmRaw)) : null
       out.push({
@@ -1888,6 +1906,21 @@ function normalizeState(raw: unknown): GameState {
     })(),
     // 2026-09-06 兼容字段：胜利自动返航（不可召回）/失利/撤退；仅 back 相位有效，其余清空
     returnReason: expReturnReason,
+    /**
+     * **本场远征打的是哪个星系**（2026-09-25 周末入侵接线）：
+     * ⚠ 这一行原先**漏了**（只写了 `state.ts` 的类型与写入点）⇒ **读档即丢**，"战后归属/残骸注入不再落母港"
+     * 只在同一次会话里成立、一读档就退回老口径（本轮补上；同批还补了 `rewardIskOverride`）。
+     * 按约定 §二：随档字段必须**两处落笔**（写入点 ＋ 清洗器）。
+     */
+    ...(typeof expRaw.foeGalaxyId === 'string' && expRaw.foeGalaxyId.length > 0
+      ? { foeGalaxyId: expRaw.foeGalaxyId }
+      : {}),
+    /** **奖励基底覆写**（2026-09-25 · 主动出击每场重抽的价钱口径）：非负有限数才收，其余省略 */
+    ...(typeof expRaw.rewardIskOverride === 'number' &&
+    Number.isFinite(expRaw.rewardIskOverride) &&
+    expRaw.rewardIskOverride >= 0
+      ? { rewardIskOverride: Math.round(expRaw.rewardIskOverride) }
+      : {}),
   }
 
   // --- 日志（逐条容错，超上限截掉最旧的） ---
@@ -2239,6 +2272,24 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
+  /**
+   * --- **入侵残骸（独立池）**（2026-09-25 兼容字段无版本号；船长「入侵残骸不算当地星系密度，
+   *     因为是独立的。48 小时线性衰减」）：星系 id → `{ density, decayAccMs }`
+   *     （锚点值 > 0、已漂移时长 ≥ 0 的有限数才收；两个字段缺一不可 ⇒ 脏档整条丢）。
+   *     与 `galaxyWrecks` 各自独立、互不影响；缺字段 = 空表（老档天然如此）。 ---
+   */
+  const weekendWrecks: Record<string, { density: number; decayAccMs: number }> = {}
+  for (const [galaxyId, w] of Object.entries(asRaw(src.weekendWrecks))) {
+    if (galaxyId.length === 0) continue
+    const r = asRaw(w)
+    const density = num(r.density)
+    const accRaw = r.decayAccMs
+    // 两栏缺一不可（`num(undefined)` 会给 0 ⇒ 这里显式判类型，脏档整条丢而不是被静默补 0）
+    if (typeof accRaw !== 'number' || !Number.isFinite(accRaw) || accRaw < 0) continue
+    if (!Number.isFinite(density) || density <= 0) continue
+    weekendWrecks[galaxyId] = { density, decayAccMs: accRaw }
+  }
+
   // --- 已开箱稀有残骸存量（2026-09-11 兼容字段无版本号）：键 = 残骸物品 id，值 = m³（只收正数） ---
   const rareOpenedUnits: Record<string, number> = {}
   for (const [itemId, n] of Object.entries(asRaw(src.rareOpenedUnits))) {
@@ -2339,6 +2390,58 @@ function normalizeState(raw: unknown): GameState {
   for (const [key, value] of Object.entries(asRaw(src.commsRead))) {
     if (key.length === 0) continue
     if (value === true) commsRead[key] = true
+  }
+  /**
+   * **实例通讯**（2026-09-25 · 周末入侵两封）：条目本身就是"要显示的东西"，故按"结构对得上就原样留"清洗——
+   * 缺 id / 缺主题或正文 / 段落不是字符串数组一律丢（宁可这封信没有，也不给界面喂半条）。
+   * 参数与奖励清单只做浅层校验（值必须是 string|number），坏项丢掉不影响其余。
+   */
+  const commsInstance: Record<string, CommsInstanceEntry> = {}
+  for (const [key, value] of Object.entries(asRaw(src.commsInstance))) {
+    if (key.length === 0) continue
+    const e = asRaw(value)
+    const subjectId = typeof e.subjectId === 'string' ? e.subjectId : ''
+    const bodyIds = (Array.isArray(e.bodyIds) ? e.bodyIds : []).filter((x): x is string => typeof x === 'string' && x.length > 0)
+    const paragraphs = (Array.isArray(e.paragraphs) ? e.paragraphs : []).filter(
+      (x): x is string => typeof x === 'string',
+    )
+    if (subjectId.length === 0 || bodyIds.length === 0 || paragraphs.length === 0) continue
+    const paramsRaw = asRaw(e.params)
+    const params: Record<string, string | number> = {}
+    for (const [pk, pv] of Object.entries(paramsRaw)) {
+      if (typeof pv === 'string' || (typeof pv === 'number' && Number.isFinite(pv))) params[pk] = pv
+    }
+    const rewards: CommsRewardLine[] = []
+    for (const item of Array.isArray(e.rewards) ? e.rewards : []) {
+      const r = asRaw(item)
+      if (typeof r.isk === 'number' && Number.isFinite(r.isk) && r.isk >= 0) {
+        rewards.push({ isk: Math.floor(r.isk) })
+        continue
+      }
+      if (typeof r.itemId !== 'string' || r.itemId.length === 0) continue
+      const qty = typeof r.qty === 'number' && Number.isFinite(r.qty) ? Math.max(1, Math.floor(r.qty)) : 1
+      rewards.push({ itemId: r.itemId, qty })
+    }
+    const hintRaw = asRaw(e.hint)
+    const hintText = typeof hintRaw.text === 'string' && hintRaw.text.length > 0 ? hintRaw.text : ''
+    const hintAction = typeof hintRaw.action === 'string' && hintRaw.action.length > 0 ? hintRaw.action : undefined
+    const hintPage = typeof hintRaw.page === 'string' && hintRaw.page.length > 0 ? (hintRaw.page as CommsJumpPage) : undefined
+    commsInstance[key] = {
+      id: key,
+      factionId: typeof e.factionId === 'string' ? e.factionId : '',
+      ...(typeof e.deptId === 'string' && e.deptId.length > 0 ? { deptId: e.deptId } : {}),
+      ...(typeof e.kind === 'string' && e.kind.length > 0 ? { kind: e.kind as CommsKind } : {}),
+      atGameMs: typeof e.atGameMs === 'number' && Number.isFinite(e.atGameMs) ? Math.max(0, Math.floor(e.atGameMs)) : 0,
+      subject: typeof e.subject === 'string' ? e.subject : '',
+      subjectId,
+      paragraphs,
+      bodyIds,
+      ...(Object.keys(params).length > 0 ? { params } : {}),
+      ...(hintText.length > 0
+        ? { hint: { text: hintText, ...(hintAction !== undefined ? { action: hintAction } : {}), ...(hintPage !== undefined ? { page: hintPage } : {}) } }
+        : {}),
+      ...(rewards.length > 0 ? { rewards } : {}),
+    }
   }
 
   // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒 ---
@@ -2668,6 +2771,18 @@ function normalizeState(raw: unknown): GameState {
   const weekendRaw = asRaw(src.weekendEvent)
   const weekendStr = (v: unknown): string => (typeof v === 'string' && v.length > 0 ? v : '')
   const weekendNum = (v: unknown): number => (Number.isFinite(num(v)) && num(v) > 0 ? Math.floor(num(v)) : 0)
+  /**
+   * **可选数值字段的"原样保留"口径**（2026-09-25 补）：有限且 **≥ 0** ⇒ floor，缺省/坏值 ⇒ 不写键。
+   * 与 `weekendNum` 的区别在 **0 是合法值**——下面这些字段是**状态读数 / 幂等标记**，不是"计数"：
+   * 母舰已伤 0、章鱼削血 0、削血心跳 0（墙钟起点）、结束标记 0、**贡献奖已发 0**、
+   * 同一场的身份 `flagshipRunId` 0（`battle.startedAtGameMs` 早期就是 0 一带）。
+   * ⚠ 起因（实测）：这些键原先**根本没过清洗器** ⇒ 读档后**旗舰血条回满、章鱼削血清零、
+   * 同场幂等键丢失（同一场可能被重复记账）** —— 见 `weekend-event.test.ts` 的"随档往返"用例。
+   */
+  const weekendKeep = (v: unknown): number | undefined => {
+    const n = num(v)
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined
+  }
   const weekendCoreId = weekendStr(weekendRaw.coreId)
   const weekendStartedAt = weekendNum(weekendRaw.startedAtWallMs)
   const contributedRaw = asRaw(weekendRaw.contributed)
@@ -2678,23 +2793,128 @@ function normalizeState(raw: unknown): GameState {
   }
   const weekendEvent: GameState['weekendEvent'] =
     weekendCoreId && weekendStartedAt > 0
-      ? {
-          seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
-          startedAtWallMs: weekendStartedAt,
-          coreId: weekendCoreId,
-          peripheryIds: (Array.isArray(weekendRaw.peripheryIds) ? weekendRaw.peripheryIds : [])
-            .map((x) => weekendStr(x))
-            .filter((x) => x.length > 0),
-          family: weekendStr(weekendRaw.family) || 'A',
-          contributed,
-          ...(weekendNum(weekendRaw.endedAtWallMs) > 0 ? { endedAtWallMs: weekendNum(weekendRaw.endedAtWallMs) } : {}),
-          ...(weekendNum(weekendRaw.flagshipAtWallMs) > 0 ? { flagshipAtWallMs: weekendNum(weekendRaw.flagshipAtWallMs) } : {}),
-          ...(weekendRaw.flagshipDown === 'player' || weekendRaw.flagshipDown === 'octopus'
-            ? { flagshipDown: weekendRaw.flagshipDown as 'player' | 'octopus' }
-            : {}),
-        }
+      ? (() => {
+          /**
+           * 旗舰 BOSS 与结束结算的随档字段（**逐个 `weekendKeep`**，缺省不写键 ⇒ 老档零迁移）。
+           * `flagshipHpMax` 走 `> 0`：0 会读成"1 点血条"（`weekendFlagshipHpRemaining` 有下限 1），
+           * 而它的唯一合法值就是池子常量 ⇒ 0/坏值一律当"还没锁池"。
+           */
+          const hpMax = weekendNum(weekendRaw.flagshipHpMax)
+          const hpDone = weekendKeep(weekendRaw.flagshipHpDone)
+          const drained = weekendKeep(weekendRaw.octopusDrainedMs)
+          const dmgLogged = weekendKeep(weekendRaw.flagshipDmgLogged)
+          const runId = weekendKeep(weekendRaw.flagshipRunId)
+          const bestRun = weekendKeep(weekendRaw.flagshipBestRunDmg)
+          const bossTick = weekendKeep(weekendRaw.bossTickWallMs)
+          const prizePaid = weekendKeep(weekendRaw.prizePaidAtWallMs)
+          const assaultDraws = weekendKeep(weekendRaw.assaultDraws)
+          return {
+            seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
+            startedAtWallMs: weekendStartedAt,
+            coreId: weekendCoreId,
+            peripheryIds: (Array.isArray(weekendRaw.peripheryIds) ? weekendRaw.peripheryIds : [])
+              .map((x) => weekendStr(x))
+              .filter((x) => x.length > 0),
+            family: weekendStr(weekendRaw.family) || 'A',
+            contributed,
+            ...(weekendNum(weekendRaw.endedAtWallMs) > 0 ? { endedAtWallMs: weekendNum(weekendRaw.endedAtWallMs) } : {}),
+            ...(weekendNum(weekendRaw.flagshipAtWallMs) > 0 ? { flagshipAtWallMs: weekendNum(weekendRaw.flagshipAtWallMs) } : {}),
+            ...(weekendRaw.flagshipDown === 'player' || weekendRaw.flagshipDown === 'octopus'
+              ? { flagshipDown: weekendRaw.flagshipDown as 'player' | 'octopus' }
+              : {}),
+            ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
+            ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
+            ...(drained !== undefined ? { octopusDrainedMs: drained } : {}),
+            ...(dmgLogged !== undefined ? { flagshipDmgLogged: dmgLogged } : {}),
+            ...(runId !== undefined ? { flagshipRunId: runId } : {}),
+            ...(bestRun !== undefined ? { flagshipBestRunDmg: bestRun } : {}),
+            ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
+            ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
+            ...(assaultDraws !== undefined ? { assaultDraws } : {}),
+          }
+        })()
       : undefined
 
+  /** **旗舰战参战编队**（2026-09-25 · 战前准备界面）：只留字符串、去重、截 4 艘；空 = 不写键 */
+  const weekendPrepSquad: string[] = []
+  for (const id of Array.isArray(src.weekendPrepSquad) ? src.weekendPrepSquad : []) {
+    if (typeof id !== 'string' || id.length === 0 || weekendPrepSquad.includes(id)) continue
+    weekendPrepSquad.push(id)
+    if (weekendPrepSquad.length >= 4) break
+  }
+
+  /**
+   * **上一场入侵的战果快照**（2026-09-25 · 结算面板读它）：**结构对不上就整条丢**——
+   * 宁可"没有面板可看"，也不给界面喂半条（缺 seq/族/核心/结束时刻即判无效）。
+   * 逐项数值一律钳到合法区间（占比 0~1、数量 ≥0）。
+   */
+  const weekendLastResult: GameState['weekendLastResult'] = (() => {
+    const w = asRaw(src.weekendLastResult)
+    const seq = weekendKeep(w.seq)
+    const family = typeof w.family === 'string' && w.family.length > 0 ? w.family : ''
+    const coreId = typeof w.coreId === 'string' && w.coreId.length > 0 ? w.coreId : ''
+    const endedAt = weekendKeep(w.endedAtWallMs)
+    if (seq === undefined || family === '' || coreId === '' || endedAt === undefined) return undefined
+    const clamp01 = (v: unknown): number => {
+      const n = num(v)
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0
+    }
+    const count = (v: unknown): number => {
+      const n = num(v)
+      return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0
+    }
+    const galaxies = (Array.isArray(w.galaxies) ? w.galaxies : []).flatMap((g0) => {
+      const g = asRaw(g0)
+      const galaxyId = typeof g.galaxyId === 'string' && g.galaxyId.length > 0 ? g.galaxyId : ''
+      if (galaxyId === '') return []
+      return [
+        {
+          galaxyId,
+          put: clamp01(g.put),
+          progress: clamp01(g.progress),
+          reclaimed: g.reclaimed === true,
+          isk: count(g.isk),
+          wreck: count(g.wreck),
+        },
+      ]
+    })
+    const fRaw = asRaw(w.flagship)
+    const hpMax = weekendKeep(fRaw.hpMax)
+    const flagship =
+      hpMax !== undefined && hpMax > 0
+        ? { hpMax, hpDone: count(fRaw.hpDone), defeated: fRaw.defeated === true }
+        : undefined
+    const outcome =
+      w.flagshipOutcome === 'player' || w.flagshipOutcome === 'octopus' ? w.flagshipOutcome : 'window'
+    const tierRaw = w.tier
+    const tier: 'A' | 'B' | 'C' | 'D' | 'none' =
+      tierRaw === 'A' || tierRaw === 'B' || tierRaw === 'C' || tierRaw === 'D' ? tierRaw : 'none'
+    const wreckItemId = typeof w.wreckItemId === 'string' && w.wreckItemId.length > 0 ? w.wreckItemId : undefined
+    /**
+     * **进度收入那一栏**（2026-09-25 船长令「按进度获取收入」）：
+     * `progressPct` = 玩家投入进度合计（可 >1，多星系求和 ⇒ 不 clamp01）；
+     * `progressIsk` = 该笔收入（≥0 的有限数）。两个都缺 = 老快照（本批之前结束的活动）⇒ 界面不显示该行。
+     */
+    const progressPct = num(w.progressPct)
+    const progressIsk = count(w.progressIsk)
+    return {
+      seq,
+      family,
+      coreId,
+      endedAtWallMs: endedAt,
+      flagshipOutcome: outcome,
+      share: clamp01(w.share),
+      tier,
+      galaxies,
+      ...(flagship !== undefined ? { flagship } : {}),
+      ...(Number.isFinite(progressPct) ? { progressPct: Math.max(0, progressPct) } : {}),
+      ...(progressIsk > 0 ? { progressIsk } : {}),
+      isk: count(w.isk),
+      wreck: count(w.wreck),
+      blackBox: count(w.blackBox),
+      ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+    }
+  })()
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
     rawList: unknown,
@@ -3328,6 +3548,12 @@ function normalizeState(raw: unknown): GameState {
     commsDelivered,
     commsPopups,
     commsRead,
+    // 实例通讯（2026-09-25）：空表不写键（老档/新档快照逐字一致）
+    ...(Object.keys(commsInstance).length > 0 ? { commsInstance } : {}),
+    // 旗舰战参战编队（2026-09-25）：空数组不写键
+    ...(weekendPrepSquad.length > 0 ? { weekendPrepSquad } : {}),
+    // 上一场入侵的战果快照（2026-09-25）：没有就不写键（老档零迁移）
+    ...(weekendLastResult !== undefined ? { weekendLastResult } : {}),
     // 因低安袭击自动撤离（true/false 都落键；缺失保持缺失 = 老档，交给触发器按痕迹判定）
     ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
@@ -3340,6 +3566,8 @@ function normalizeState(raw: unknown): GameState {
     // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径
     foeShipSeen,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
+    // 入侵残骸独立池（2026-09-25 兼容字段）：空表不落字段（老档与新档形态一致）
+    ...(Object.keys(weekendWrecks).length > 0 ? { weekendWrecks } : {}),
     rareOpenedUnits,
     rareBoxesOpened,
     rareBurnUnits,
@@ -3380,10 +3608,20 @@ function normalizeState(raw: unknown): GameState {
  * （实测 `docs/test-saves/user-backup-20260907-234825.json` 300 条）。
  * 单独修"导入外部档"那条：导入 = 换了一份档，已改为**不透传**旧日志（见引擎 `importSaveFromFile`）。 */
 export function serializeSaveFile(state: GameState, nowWallMs: number = Date.now()): string {
+  /**
+   * **墙钟账只许前进、不许回退**（2026-09-25 修 · 与"调试快进"配套）：
+   * `debugFastForward` 会把 `state.savedAtWallMs` 推到**未来**（它消费的正是那段未来时间），
+   * 而写盘时若一律盖成 `Date.now()`，下次读档就把账**拽回现在** ⇒ ① 快进刚推进的入侵时间线又得重来一遍；
+   * ② 再快进一次会把同一段未来时间**算两遍**（这一场瞬间被 NPC 铺底吞掉 ⇒ 板面恢复正常悬赏、遇袭不再触发）。
+   * 取两者的较大者：正常在线恒等于 `nowWallMs`（行为逐字不变）；快进后保留未来值，离线结算见到负间隔即不动
+   * （那段时间已经在快进里花掉了）。
+   */
+  const ledger = Number.isFinite(state.savedAtWallMs) ? state.savedAtWallMs : 0
+  const stamp = Math.max(nowWallMs, ledger > 0 ? ledger : 0)
   return JSON.stringify({
     format: SAVE_FORMAT,
     version: state.version,
-    savedAtWallMs: nowWallMs,
+    savedAtWallMs: stamp,
     state,
   })
 }
