@@ -521,3 +521,19 @@ ui:rot-check ✓ · ui:theme-check ✓ · build ✓ · docs:index ✓。
 旗舰 DPS · 残骸组口径）按新数更新 · typecheck ✓ · core **2,405 例全绿**（214 文件）· content:check ✓
 （残骸组契约按 `wreckThreat` 口径复核，绿）· l10n:check ✓ · build ✓ · docs:index ✓。
 主树 `foe-csv/` 已按新数据重新生成（他手改的那份 xlsx 被覆盖，数值已在代码里）。
+
+## 二十九、干扰舰加网 ＋ 悬赏区入侵行同款红框（2026-09-25）
+
+> 船长两条原话：「**给墨潮干扰舰添加一个网子**」「**星系详细「悬赏」区那行「击退入侵舰队」加同样的红框**」
+
+| # | 落法 |
+|---|---|
+| ① **干扰舰带网** | `foe-ships.ts` 的 `FOE_H_INK_JAMMER` 加 `mounts: [FOE_MOUNT_IDS.captureWeb]`（与 A 族洞内「劫掠电子舰」、H 族「墨潮突击舰」**同款那件**：减速 90% / 关推进器 / 闪避归零 / 射程 −500m；**首次开火钉住一个还没被钉住的目标**，击沉发动者才解除）。⚠ **只加网、不加冲锋**（它靠 50% 射程压制做事，船长只说"一个网子"）。写在**舰级**上 ⇒ 主力卡第 2 波与旗舰卡第 2/3/4 波的那一艘干扰舰全都会带 |
+| ② **白名单同步** | `content:check` 的捕获网归属白名单 `['foe-pirate-raider','foe-h-ink-corvette']` → 追加 **`foe-h-ink-jammer`**；汇总行文案同步（「仅『劫掠电子舰』＋ H 族突击舰/干扰舰」） |
+| ③ **悬赏区那行也红框** | `Expedition.tsx` 里「击退入侵舰队」那行挂上与旗舰入口**同一对类名** `app-ga-row app-ga-invasion`（观感照抄 `.app-weekend-box`，不新增样式、不用重跑 `ui:layout-css`） |
+| ④ **回归契约** | `content:check` 新增「**入侵行红框契约**」：星系详细里应有 **2 行**带 `app-ga-row app-ga-invasion`（旗舰入口 ＋ 击退入侵舰队），防日后重构把红框悄悄弄丢 |
+
+**验证**：`ink-tide` 增 1 例（干扰舰挂载 = 捕获网、**无冲锋**、建档单位带 `foeCaptureWeb`、50% 压制照旧）·
+typecheck ✓ · core **2,406 例全绿**（214 文件）· content:check ✓（白名单 ＋ 新契约在册）· l10n:check ✓ ·
+ui:rot-check ✓ · ui:theme-check ✓ · `ui:layout-css:check` ✓ · build ✓ · docs:index ✓。
+⚠ **观感审查权在船长**：红框本批没起无头浏览器截图，请过目。

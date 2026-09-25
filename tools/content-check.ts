@@ -1367,6 +1367,25 @@ for (const m of MODULES) {
     console.log('· 通讯弹窗让位契约：战场/离线简报在台上时不弹（排队等）· 遮罩点击要过上膛延时')
   }
 
+  /* ── 入侵行"红框"契约（2026-09-25 船长两次令：旗舰入口 ＋ 悬赏区那行都要红框）──
+   *
+   * 船长原话：「**找到了，是因为不明显的原因，建议给容器加一个红色圆边背景**」＋
+   * 「**星系详细「悬赏」区那行「击退入侵舰队」加同样的红框**」。
+   * 两行都挂 `app-ga-invasion`（观感照抄入侵框 `.app-weekend-box`）——契约只钉"这个类还在那两行上"，
+   * 免得日后重构把红框悄悄弄丢（样式本身在 `styles.css`，改了要跑 `ui:layout-css`）。
+   */
+  {
+    const expPath = 'apps/desktop/src/renderer/src/panels/Expedition.tsx'
+    const expSrc = readSrc(expPath)
+    const invasionRows = expSrc.split('\n').filter((l) => l.includes('app-ga-row app-ga-invasion')).length
+    check(
+      invasionRows >= 2,
+      `入侵行红框契约：${expPath} 里应有**两行**挂 \`app-ga-row app-ga-invasion\`` +
+        `（旗舰入口 ＋ 悬赏区「击退入侵舰队」），实际 ${invasionRows} 行`,
+    )
+    console.log(`· 入侵行红框契约：星系详细里 ${invasionRows} 行入侵相关行带红框（旗舰入口 ＋ 击退入侵舰队）`)
+  }
+
   /* ── 干扰压制取数契约（2026-09-25 船长报障「摧毁敌方干扰舰后，射程不会恢复」）──
    *
    * 病根两条，都在这一个机制的取数上：
@@ -3461,8 +3480,13 @@ for (const m of MODULES) {
           const hasWeb = resolveFoeMounts(sl.mounts ?? sl.ship.mounts).foeCaptureWeb !== undefined
           // ⚠ 2026-09-24 扩白名单（船长令「墨潮突击舰添加A族洞内电子舰同款网子和冲锋」）：
           //   H 族突击舰与「劫掠电子舰」同款两件；其余舰级仍不许挂
-          if (hasWeb && sl.ship.id !== 'foe-pirate-raider' && sl.ship.id !== 'foe-h-ink-corvette') {
-            bad.push(`${a.id} 的 ${sl.ship.name} 挂了劫掠捕获网——该件只允许挂在「劫掠电子舰」上`)
+          // ⚠ 2026-09-25 再扩（船长令「给墨潮干扰舰添加一个网子」）：H 族**干扰舰**也带网
+          //   （只带网、不带冲锋——它靠 50% 射程压制做事；两件都写在舰级上，H 族不外借到洞外）
+          const WEB_OK_SHIP_IDS = ['foe-pirate-raider', 'foe-h-ink-corvette', 'foe-h-ink-jammer'] as const
+          if (hasWeb && !(WEB_OK_SHIP_IDS as readonly string[]).includes(sl.ship.id)) {
+            bad.push(
+              `${a.id} 的 ${sl.ship.name} 挂了劫掠捕获网——该件只允许挂在「劫掠电子舰」/ H 族突击舰 / H 族干扰舰上`,
+            )
           }
           if (sl.ship.id === 'foe-pirate-raider' && !hasWeb) {
             bad.push(`${a.id} 的劫掠电子舰没挂捕获网件——该件须挂在条目上（舰级已不带件）`)
@@ -3584,7 +3608,7 @@ for (const m of MODULES) {
         `· 敌方挂载件契约：${allMounts.length} 件（冲锋 ${nCharge} · 机群增程 ${nDrone} · 炮台增程 ${nGun} · 捕获网 ${nWeb}）· ` +
           `C 族 ${aliens.length} 条按档挂件（${aliens.map((s) => `${s.name} T${s.hullClassTier}×${resolveFoeMounts(s.mounts).foeChargeMul}`).join('　')}）· ` +
           `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件` +
-          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m）` : ''}`,
+          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」＋ H 族突击舰/干扰舰（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m）` : ''}`,
       )
     }
     console.log(

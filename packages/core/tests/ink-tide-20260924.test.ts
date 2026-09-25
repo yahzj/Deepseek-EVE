@@ -300,6 +300,22 @@ describe('H 族 · 墨潮突击舰（挂 A 族洞内电子舰同款两件）', (
   })
 })
 
+/**
+ * **墨潮干扰舰也带网**（**船长 2026-09-25 令**：「**给墨潮干扰舰添加一个网子**」）——
+ * 与突击舰同款那件（只带网、不带冲锋：它靠 50% 射程压制做事）；写在**舰级**上 ⇒ 引用它的
+ * 主力卡（第 2 波 ×1）与旗舰卡（第 2/3/4 波各 ×1）全都会带。
+ */
+describe('H 族 · 墨潮干扰舰（射程压制 50% ＋ 劫掠捕获网）', () => {
+  it('舰级挂载 = 劫掠捕获网（无冲锋）；建档单位上带着，且压制字段不受影响', () => {
+    const r = resolveFoeMounts(shipOf('foe-h-ink-jammer')!.mounts)
+    expect(r.foeCaptureWeb).toEqual({ slowMul: 0.1, noThruster: true, noEvasion: true, rangeDownM: 500 })
+    expect(r.foeCanCharge, '干扰舰不冲锋（船长只让加网）').toBeUndefined()
+    const u = specsOf('foe-h-ink-jammer')[0]!
+    expect(u.foeCaptureWeb).toBeDefined()
+    expect(u.foeRangeDebuffPct, '50% 射程压制照旧').toBe(0.5)
+  })
+})
+
 describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
   it('1 骚扰舰队：突击舰 ×4（单波）', () => {
     const c = card('ink-harass')

@@ -2088,7 +2088,11 @@ function GalaxyActions({
           const hi = threats.length > 0 ? Math.max(...threats) : 0
           const card = list[0] ?? cands[0]
           return (
-            <div className="app-ga-row">
+            /**
+             * ⚠ **同一套红框**（船长 2026-09-25 第二条令：「星系详细『悬赏』区那行『击退入侵舰队』
+             * 加同样的红框」）：与上面的旗舰入口同一对类名 ⇒ 观感与 `.app-weekend-box` 逐字同款。
+             */
+            <div className="app-ga-row app-ga-invasion">
               <span className="app-ga-main">
                 <span className="app-ico">
                   <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />
