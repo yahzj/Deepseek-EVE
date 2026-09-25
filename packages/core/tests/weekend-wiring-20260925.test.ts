@@ -1,13 +1,18 @@
 /**
  * **周末入侵 · 引擎接线端到端**（2026-09-25 接线批的验收证据）：
- * 五件事都走**真实引擎路径**（不手工造 spec）：
+ * 十件事都走**真实引擎路径**（不手工造 spec）：
  * ① **被占星系的悬赏板**：`weekendBountyCardsOf` ⇒ H 族显示的是**抽到的那张独立卡**（真实 id · 威胁 = 卡面）；
  * ② **遇袭掷骰破例**：在**高安**被占星系采矿 ⇒ `rollLowSecAmbush` 命中 ⇒ 遭遇卡 ∈ H 池 · 强度 ×0.75 ·
  *    标签 = 缩放后实测价（76/91）· 日志说「入侵遭遇」；同条件**未占领**时高安一次都不掷（老口径不变）；
  * ③ **战后归属**：远征落盘 `foeGalaxyId` ⇒ `weekendBattleInvolvedOf` 认出 `assault` ⇒ 打赢记进度 +10%；
- * ④ **夺回奖励入账**：把一处外围打到满 ⇒ 钱包 ＋2M、稀有残骸 ×8 **真进仓库**（`weekendApplyBattleOutcome`）；
+ * ④ **夺回奖励入账**：把一处外围打到满 ⇒ 钱包 ＋2M、稀有残骸 ×8 **真到手**（`weekendApplyBattleOutcome`）；
  * ⑤ **结束结算入账**：活动结束 ⇒ 贡献奖四档真发（ISK 进钱包 / 残骸进仓库）· **只发一次**（随档幂等标记）·
- *    占比按**结束时刻**评估（离线几天后再上线补结，读数与结束时一致，不会少发）。
+ *    占比按**结束时刻**评估（离线几天后再上线补结，读数与结束时一致，不会少发）；
+ * ⑥ **遇袭进度档**：迎战打赢 = 击退 **+3%**（不是主动胜利的 +10%）· 打输 = 只受损不动进度 · 文字结算 +1%；
+ * ⑦ **文字结算走真实引擎路径**（`advanceEncounterWatch` ⇒ `resolveTextual`）：40 档跑下来进度只可能是 0 或 +1%；
+ * ⑧ **旗舰战的归属提示**：核心条满（进度 = 1）也照样认账（防"打完旗舰什么都不结算"复发）；
+ * ⑨ **核心区日常循环**：门禁未解 ⇒ 打核心不给进度；外围全清 ⇒ 每场 +5%；
+ * ⑩ **打空血池 ⇒ 击沉旗舰**：黑匣 `blackbox-h` 真入库 ＋ 稀有残骸 ×3 · 本场结束。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -15,6 +20,7 @@ import { addShipToFleet, createInitialState } from '../src/index'
 import { startMining } from '../src/mining'
 import { advanceEncounterWatch, maintainPresence, rollLowSecAmbush } from '../src/encounters'
 import {
+  WEEKEND_FLAGSHIP_WRECK,
   WEEKEND_RECLAIM_ISK,
   WEEKEND_RECLAIM_WRECK,
   weekendApplyBattleOutcome,
@@ -23,11 +29,13 @@ import {
 } from '../src/weekendBattle'
 import { weekendBountyCardsOf } from '../src/weekendBounty'
 import {
+  WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_GAIN_CORE_WIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_GAIN_REPEL,
   endWeekendEvent,
   weekendNoteContribution,
+  weekendNoteFlagshipDamage,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
 
@@ -302,5 +310,25 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     })
     expect(r1?.gain, '核心胜利 = +5%').toBeCloseTo(WEEKEND_GAIN_CORE_WIN, 6)
     expect(open.weekendEvent!.contributed[core] ?? 0).toBeCloseTo(0.05, 6)
+  })
+
+  it('⑩ 打空血池 ⇒ 击沉旗舰：黑匣 blackbox-h 真入库 ＋ 稀有残骸 ×3 · 本场结束', () => {
+    const gid = GID
+    const core = 'galaxy-kor'
+    const s = invaded(gid)
+    const now = Date.now()
+    weekendNoteContribution(s.weekendEvent!, gid, 1) // 外围夺回 ⇒ 门禁解开
+    weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
+    const box0 = heldOf(s, 'blackbox-h')
+    const wrecks0 = heldOf(s, 'wreck-rare-h-hi')
+    /** 单场不死 ⇒ 只有"池子被打空"才算击沉（这里把已累计伤害推到池子满） */
+    weekendNoteFlagshipDamage(s.weekendEvent!, WEEKEND_FLAGSHIP_POOL_HP, 1001)
+    const r = weekendApplyBattleOutcome(s, ctx, 'ink-flagship', true, now, null, { kind: 'flagship', galaxyId: core })
+    expect(r?.kind, '认得出这一场是旗舰战').toBe('flagship')
+    expect(r?.wreck, '击沉旗舰的稀有残骸').toBe(WEEKEND_FLAGSHIP_WRECK)
+    expect(heldOf(s, 'blackbox-h') - box0, '黑匣真入库（真物品 id）').toBe(1)
+    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '旗舰残骸真到手').toBe(WEEKEND_FLAGSHIP_WRECK)
+    expect(s.weekendEvent!.flagshipDown, '记玩家击毁').toBe('player')
+    expect(s.weekendEvent!.endedAtWallMs, '击沉即结束本场').toBeDefined()
   })
 })
