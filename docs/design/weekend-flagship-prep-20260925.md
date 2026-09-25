@@ -537,3 +537,19 @@ ui:rot-check ✓ · ui:theme-check ✓ · build ✓ · docs:index ✓。
 typecheck ✓ · core **2,406 例全绿**（214 文件）· content:check ✓（白名单 ＋ 新契约在册）· l10n:check ✓ ·
 ui:rot-check ✓ · ui:theme-check ✓ · `ui:layout-css:check` ✓ · build ✓ · docs:index ✓。
 ⚠ **观感审查权在船长**：红框本批没起无头浏览器截图，请过目。
+
+## 三十、`foe:export` 脏值自检（顺带修捕获网列读出 `undefined`/`NaN`）（2026-09-25）
+
+**怎么发现的**：给干扰舰加网后照例重出船长的表，`enemy-ships.csv` 的「捕获网」列印出
+**`是（机动 ×undefined · NaN 秒）`** —— 船长正拿这张表微调，脏值会被当成数据读走。
+
+| # | 落法 |
+|---|---|
+| ① **读错字段** | `tools/foe-export.ts` 两处按 A 族旧字段名读网：`web.mobilityMul` / `web.durationMs`。**实际字段**（`core/foeMounts.ts` 第 102 行定义、`resolveFoeMounts` 解析）是 `web.{ slowMul, noThruster, noEvasion, rangeDownM }`，且**没有时长**（本场永久、击沉发动者才解除）。⇒ 两处（敌舰明细的「捕获网」列 ＋「H 族 · 挂载件」表的数值列）改按真字段读，文案改成「机动 ×0.1 · 无推进器 · 闪避归零 · 射程 −500m · 击沉发动者才解除」 |
+| ② **列批注同步** | 敌舰明细「捕获网」列的表头批注旧写「命中后网住目标（机动×/时长）」⇒ 改成真实机制（**自身第一次开火时钉住本发目标、不看命中**；目标已被别张网钉住则本网留着不用；无时长、击沉发动者才解除） |
+| ③ **加一道自检（根因）** | `tools/` **不进 typecheck** ⇒ 字段名拼错永远静默变 `undefined`、算式变 `NaN`，只有船长的表会遭殃。⇒ 新增 `assertCleanCells`（xlsx 逐格）＋ `assertCleanCsv`（两份 csv），任何文本格命中 `NaN`/`undefined` **立刻抛出**并报**表名＋单元格＋列名＋原值**；脚本以非 0 退出，绝不落盘半本脏表。⚠ 自检必须在**落盘前**（xlsx 先写、csv 后写 ⇒ 只挡 csv 会先写完一本脏 xlsx），故敌舰明细表的自有写入循环也补了调用 |
+
+**验证（含反向）**：反向 —— 故意把 `slowMul` 写成 `slowMulX` 重跑，脚本**红并退出 1**：
+`foe:export 脏值自检：表「敌舰明细」AU27（列「捕获网」）出现「undefined」`（`writeRow` 之外的主表循环被同一道自检覆盖，报的是单元格而非行号）；改回后 `foe:export` 全绿，
+「捕获网」列两条（墨潮突击舰 / 墨潮干扰舰）读数正确、「H 族 · 挂载件」3 行数值正确。typecheck ✓。
+（本次只动 `tools/`，未改任何 typecheck 覆盖内的文件；无需重跑 core 测试。）

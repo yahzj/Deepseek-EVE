@@ -161,7 +161,7 @@ function rowOf(s: FoeShipDef): Row {
     charge ? '是' : '',
     charge && Number.isFinite(chargeMul) ? round2(chargeMul) : '',
     charge && Number.isFinite(chargeCoolMs) ? Math.round(chargeCoolMs / 1000) : '',
-    mount.foeCaptureWeb ? `是（机动 ×${mount.foeCaptureWeb.mobilityMul} · ${Math.round(mount.foeCaptureWeb.durationMs / 1000)} 秒）` : '',
+    mount.foeCaptureWeb ? `是（机动 ×${mount.foeCaptureWeb.slowMul} · 无推进器 · 闪避归零 · 射程 −${mount.foeCaptureWeb.rangeDownM}m · 击沉发动者才解除）` : '',
     droneRangeMul !== undefined ? round2(droneRangeMul) : '',
     gunRangeMul !== undefined ? round2(gunRangeMul) : '',
     s.repairPct !== undefined ? round2(s.repairPct) : '',
@@ -230,7 +230,7 @@ const COLS: Col[] = [
   { head: '冲锋', note: '挂载件或旧字段给的冲锋资格（不受全局开关与威胁门槛约束）', width: 8 },
   { head: '冲锋倍率', note: '触发后自身机动 ×本值；缺省 = 全局 foeChargeMul', width: 10, fmt: '0.00' },
   { head: '冲锋冷却(秒)', note: '命中我方后解除冲锋并进入本冷却', width: 12, fmt: '#,##0' },
-  { head: '捕获网', note: '挂载件「劫掠捕获网」：命中后网住目标（机动×/时长）', width: 30 },
+  { head: '捕获网', note: '挂载件「劫掠捕获网」：自身第一次开火时钉住本发目标（不看命中 · 目标已被别张网钉住则本网留着不用）· 效果 = 机动×/无推进器/闪避归零/射程− · 击沉发动者才解除', width: 30 },
   { head: '挨打后机群射程×', note: '母舰被命中一次 ⇒ 全部机群射程 ×本值（本场永久）；挂载件优先、旧字段兜底', width: 16, fmt: '0.00' },
   { head: '挨打后炮台射程×', note: '同上，作用面是炮台', width: 16, fmt: '0.00' },
   { head: '后勤修理', note: 'repairPct：开火伤害 ×(1−本值)，扣下的那半按秒转修理（详见 types.ts 注）', width: 10, fmt: '0%' },
@@ -485,7 +485,7 @@ const H_MOUNTS = ((): Array<{ id: string; name: string; note: string; nums: stri
     if (def?.charge !== undefined) nums.push(`冲锋：机动 ×${def.charge.mul} · 冷却 ${Math.round(def.charge.cooldownMs / 1000)} 秒`)
     if (def?.droneRangeOnHit !== undefined) nums.push(`挨打后机群射程 ×${def.droneRangeOnHit}`)
     if (def?.gunRangeOnHit !== undefined) nums.push(`挨打后炮台射程 ×${def.gunRangeOnHit}`)
-    if (def?.web !== undefined) nums.push(`捕获网：机动 ×${def.web.mobilityMul} · ${Math.round(def.web.durationMs / 1000)} 秒`)
+    if (def?.web !== undefined) nums.push(`捕获网：机动 ×${def.web.slowMul} · 无推进器 · 闪避归零 · 射程 −${def.web.rangeDownM}m · 击沉发动者才解除`)
     if (def?.repairPulse !== undefined) nums.push(`修理脉冲：每 ${Math.round(def.repairPulse.everyMs / 1000)} 秒 ＋${def.repairPulse.armor} 装甲 / ＋${def.repairPulse.hull} 结构`)
     if (def?.reviveEscort !== undefined) nums.push(`支援召唤：每 ${Math.round(def.reviveEscort.everyMs / 1000)} 秒复活一艘（满血 · 不超本波编成）`)
     if (def?.supportCall !== undefined) nums.push('支援呼叫：延迟入场（洞内专属）')
@@ -583,8 +583,29 @@ COLS.forEach((c, i) => {
   if (c.note.length > 0) cell.note = c.note
 })
 head.height = 30
+/**
+ * **写格前自检**（2026-09-25 二号加）：本工具是 **JS 工具、不进 typecheck**，
+ * 字段名写错（如把挂载件的 `web.slowMul` 写成 `web.mobilityMul`）不会报错，只会在船长的
+ * 工作簿里落成 `undefined` / `NaN` —— 那正是船长拿去微调的表，脏值会被当成数据读走。
+ * ⇒ 任何文本格一旦出现 `NaN` / `undefined` 立刻抛出，报出**表名 + 单元格 + 列名 + 原值**。
+ * ⚠ 必须在**落盘之前**跑（xlsx 写文件在前、csv 在后 ⇒ 只挡 csv 会先写完一本脏 xlsx）。
+ */
+const assertCleanCells = (sheetName: string, cols: Col[], cells: Array<string | number>, ri: number): void => {
+  cells.forEach((v, ci) => {
+    if (typeof v !== 'string') return
+    const bad = /NaN|undefined/.exec(v)
+    if (bad === null) return
+    const col = cols[ci]?.head ?? `第 ${ci + 1} 列`
+    throw new Error(
+      `foe:export 脏值自检：表「${sheetName}」${colLetter(ci)}${ri}（列「${col}」）出现「${bad[0]}」⇒ ${v}\n` +
+        '多半是读挂载件/条目字段时写错了字段名（本工具不受 typecheck 保护，字段名拼错只会静默变 undefined）。',
+    )
+  })
+}
+
 rows.forEach(({ row }, ri) => {
   const excelRow = ws.getRow(ri + 2)
+  assertCleanCells('敌舰明细', COLS, row.cells, ri + 2)
   row.cells.forEach((v, ci) => {
     const cell = excelRow.getCell(ci + 1)
     cell.value = v as ExcelJS.CellValue
@@ -619,8 +640,13 @@ const styleHead = (sheet: ExcelJS.Worksheet, cols: Col[]): void => {
   })
   head.height = 30
 }
+/**
+ * **逐行写格**（H 族三张 sheet 与无人机表走这里；敌舰明细表自带循环，见上方 `assertCleanCells` 调用）。
+ * 写格前统一过一遍脏值自检。
+ */
 const writeRow = (sheet: ExcelJS.Worksheet, cols: Col[], cells: Array<string | number>, ri: number): ExcelJS.Row => {
   const r = sheet.getRow(ri)
+  assertCleanCells(sheet.name, cols, cells, ri)
   cells.forEach((v, ci) => {
     const cell = r.getCell(ci + 1)
     cell.value = v as ExcelJS.CellValue
@@ -628,6 +654,21 @@ const writeRow = (sheet: ExcelJS.Worksheet, cols: Col[], cells: Array<string | n
     if (fmt !== undefined && typeof v === 'number') cell.numFmt = fmt
   })
   return r
+}
+
+/**
+ * **csv 侧的同一道自检**：csv 不走 `writeRow`，脏值会直接落成文本 ⇒ 单独扫一遍。
+ * 报出**文件 + 行 + 列名**，方便直接回到造这行的代码。
+ */
+const assertCleanCsv = (file: string, lines: readonly string[]): void => {
+  lines.forEach((line, li) => {
+    const bad = /NaN|undefined/.exec(line)
+    if (bad === null) return
+    const cellIdx = line.split(',').findIndex((c) => c.includes(bad[0]))
+    throw new Error(
+      `foe:export 脏值自检：${file} 第 ${li + 1} 行（第 ${cellIdx + 1} 格）出现「${bad[0]}」⇒ ${line.slice(0, 200)}`,
+    )
+  })
 }
 
 const wsE = wb.addWorksheet(SHEET_E, { views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }] })
@@ -780,6 +821,8 @@ for (const { row } of rows) {
   csvLines.push(vals.map(csvCell).join(','))
 }
 const csvPath = join(OUT_DIR, 'enemy-ships.csv')
+/** csv 与 xlsx 同源同列，但 csv 直接由 `row.cells` 拼串、不过 `writeRow` ⇒ 这里再挡一道脏值 */
+assertCleanCsv('enemy-ships.csv', csvLines)
 writeFileSync(csvPath, '\ufeff' + csvLines.join('\r\n') + '\r\n', 'utf8')
 
 /* ── ②b H 族条目表的 csv（同列同序；试算列在这里算成数值，保证 csv 自洽） ── */
@@ -809,11 +852,9 @@ const eBody: Array<Array<string | number>> = hEntries.map((e) => {
   ]
 })
 const eCsvPath = join(OUT_DIR, 'h-cards.csv')
-writeFileSync(
-  eCsvPath,
-  '\ufeff' + [E_COLS.map((c) => csvCell(c.head)).join(','), ...eBody.map((v) => v.map(csvCell).join(','))].join('\r\n') + '\r\n',
-  'utf8',
-)
+const eLines = [E_COLS.map((c) => csvCell(c.head)).join(','), ...eBody.map((v) => v.map(csvCell).join(','))]
+assertCleanCsv('h-cards.csv', eLines)
+writeFileSync(eCsvPath, '\ufeff' + eLines.join('\r\n') + '\r\n', 'utf8')
 
 /* ── ③ 自检读数（顺便给船长几条能一眼核对的数） ── */
 const byFamily = new Map<string, number>()
