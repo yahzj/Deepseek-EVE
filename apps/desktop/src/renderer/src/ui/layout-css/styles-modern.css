@@ -10343,6 +10343,33 @@ html[data-locale='en'] body {
 
 }
 
+/* 入侵占领星系的**收复进度**（2026-09-26 船长令：星系详细的「击退入侵舰队」卡片内显示进度 ＋ 进度条）
+   条本体复用既有的 `.app-card-progress.is-invasion`（与 MapPage 入侵框、入侵残骸条同款），
+   这里只管**它在卡片行里的排布**：读数一行 + 条一行，宽度收一点免得顶到右侧按钮。 */
+.app-ga-invprog {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-4);
+
+  margin-top: var(--wui-sp-4);
+
+  max-width: 320px;
+
+}
+
+.app-ga-invprog-line {
+
+  font-size: var(--wui-fs-xsb);
+
+  line-height: 1.4;
+
+  color: rgb(var(--wui-danger-strong));
+
+}
+
 .app-ga-empty {
 
   font-size: var(--wui-fs-xs);

@@ -374,6 +374,15 @@ export interface WeekendEventState {
    * 抽签盐 = `WEEKEND_ASSAULT_SALT_BASE + 次数` ⇒ 每按一次出击换一支，且随档（读档后不重复同一支）。
    */
   assaultDraws?: number
+  /**
+   * **入侵「重复出击」的循环目标 = 被占星系 id**（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启
+   * 自动重复，照常计算返回时间」）；缺省/空 = 没开。
+   *
+   * ⚠ 落在**周末活动对象**上（而不是新增顶层字段）有两个好处：① 与 `assaultDraws` 同款"可选字段"口径
+   * ⇒ **不必动存档结构版本、老档零迁移风险**；② 活动结束/换周时整个 `weekendEvent` 被换掉 ⇒ 循环
+   * **天然随之结束**（与"活动结束即停"的裁定同构）。
+   */
+  autoLoopGalaxyId?: string
 }
 
 /**

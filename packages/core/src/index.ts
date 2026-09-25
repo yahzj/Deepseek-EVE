@@ -815,6 +815,10 @@ export {
   advanceAutoLoopBounty,
   autoLoopWaitLabel,
   autoLoopReopenBlockReason,
+  /* 入侵「重复出击」（2026-09-25 船长令：入侵活动的悬赏允许开自动重复、照常算返回时间） */
+  autoLoopInvasionGalaxy,
+  setAutoLoopInvasion,
+  advanceAutoLoopInvasion,
   // 2026-09-20：战后自动补足机群 ⇒ 门槛只在"货源不够"时拦人；本函数给装配页显示"还差几架"
   autoLoopDroneShortfall,
   // 2026-09-20：本场机群战损读数（before/after/attrition）——**after 是补货前**的存活架数（安全阀单点）

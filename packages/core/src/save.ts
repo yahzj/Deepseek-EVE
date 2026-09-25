@@ -2873,6 +2873,8 @@ function normalizeState(raw: unknown): GameState {
           const bossTick = strictKeep(weekendRaw.bossTickWallMs)
           const prizePaid = strictKeep(weekendRaw.prizePaidAtWallMs)
           const assaultDraws = weekendKeep(weekendRaw.assaultDraws)
+          /** 入侵「重复出击」的循环目标（**可选字段**：缺键 = 没开；本批新增，不动结构版本） */
+          const autoLoopGalaxyId = weekendStr(weekendRaw.autoLoopGalaxyId)
           return {
             seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
             startedAtWallMs: weekendStartedAt,
@@ -2905,6 +2907,7 @@ function normalizeState(raw: unknown): GameState {
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
             ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
             ...(assaultDraws !== undefined ? { assaultDraws } : {}),
+            ...(autoLoopGalaxyId.length > 0 ? { autoLoopGalaxyId } : {}),
           }
         })()
       : undefined

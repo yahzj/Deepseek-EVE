@@ -14,6 +14,8 @@
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf, weekendFlagshipEncounterOf } from './weekendBattle'
 import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
+/** 入侵「重复出击」（2026-09-25 船长令）：每场重抽一支 ＋ 目标星系覆写（去程/返航照常算） */
+import { weekendAssaultDrawOf, weekendBountyCardsOf, weekendNoteAssaultDispatch, weekendOccupiedLiveAt } from './weekendBounty'
 import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
@@ -1415,33 +1417,15 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
     stopAutoLoopReason(state, '舰队里找不到当前舰船。')
     return '舰队里找不到当前舰船'
   }
-  // 装甲/结构门槛（2026-09-08 船长定：提前到装甲——装甲或结构 <50% 即自动修补到 60%，
-  // 为战斗内"结构损失过半自动撤退"保险留缓冲；组件不足则停环）
-  // ⚠ **2026-09-16 船长改判**：「洞外，原本的损伤严重自动消耗维修组件功能，需要修改。**改成需要玩家
-  //   携带对应的船体维修装置。消耗的维修组件类型也跟着装置走**」⇒ 停环理由分两种说法（没带装置 vs 组件耗尽）。
-  if ((fleetShip.armorPct ?? 1) < 0.5 || fleetShip.durability < 0.5) {
-    const rep = repairWithKits(state, ctx, 0.6)
-    const fs = state.fleet[state.shipId]
-    if (!fs || (fs.armorPct ?? 1) < 0.5 || fs.durability < 0.5) {
-      if (!rep.hasDevice) {
-        stopAutoLoopReason(
-          state,
-          '装甲或结构低于 50%：自动修补需要该船装着船体维修装置（中槽）——装上装置并带够对应组件，或先到空间站付费维修。',
-        )
-        return '耐久不足（装甲或结构低于 50%）且未装船体维修装置'
-      }
-      stopAutoLoopReason(state, '装甲或结构低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。')
-      return '耐久不足（装甲或结构低于 50%）且修理组件耗尽'
-    }
-  }
-  // 货仓：放不下本单预期缴获 → 停（B 甲：无远程入库，回港卸货是玩家的决定；体积按压缩技术折算）
+  // 装甲/结构 + 货仓两道门槛（**与入侵「重复出击」共用同一份**，见 `autoLoopPreflight`）
   const lootM3 = anomaly.loot.reduce((sum, row) => {
     const def = ctx.items.get(row.itemId)
     return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
-  if (freeCargoM3(state, ctx) < lootM3) {
-    stopAutoLoopReason(state, `货仓剩余空间不足以装载「${anomaly.name}」的缴获——舰船已在母港，请卸货后重新开启讨伐。`)
-    return '货仓空间不足'
+  const pre = autoLoopPreflight(state, ctx, anomaly.name, lootM3)
+  if (pre !== null) {
+    stopAutoLoopReason(state, pre.notice)
+    return pre.reason
   }
   // 出发（内部含声望/冷却/探索/位置全部校验）
   const r = startExpedition(state, id, ctx)
@@ -1449,6 +1433,168 @@ export function advanceAutoLoopBounty(state: GameState, ctx: SimContext): string
     stopAutoLoopReason(state, r.error ?? '无法再出发。')
     return r.error ?? '无法再出发'
   }
+  return null
+}
+
+/**
+ * **循环出发前的两道硬门槛**（装甲/结构 ＋ 货仓）——常驻悬赏的「重复清剿」与入侵的「重复出击」**共用这一份**。
+ * 返回 `null` = 通过；否则 **`notice`**（长文案，写日志与在线提示）＋ **`reason`**（短理由，作为函数返回值）。
+ * ⚠ 两个字段**都要保留原契约别合并**：既有用例与活动栏都按"返回值 = 短理由"断言
+ * （第一版合并成一条 ⇒ `expedition.test.ts` / `t8.test.ts` 三处当场转红）。
+ *
+ * 口径来源（勿改）：
+ * - 耐久（2026-09-08 船长定：装甲或结构 <50% 即自动修补到 60%，为战斗内"结构损失过半自动撤退"留缓冲；
+ *   **2026-09-16 船长改判**：改成需要玩家**携带船体维修装置**，消耗的组件类型跟着装置走）；
+ * - 货仓（B 甲：无远程入库，回港卸货是玩家的决定；体积按压缩技术折算）。
+ */
+function autoLoopPreflight(
+  state: GameState,
+  ctx: SimContext,
+  cardName: string,
+  lootM3: number,
+): { notice: string; reason: string } | null {
+  const fleetShip = state.fleet[state.shipId]
+  if (!fleetShip) return { notice: '舰队里找不到当前舰船。', reason: '舰队里找不到当前舰船' }
+  if ((fleetShip.armorPct ?? 1) < 0.5 || fleetShip.durability < 0.5) {
+    const rep = repairWithKits(state, ctx, 0.6)
+    const fs = state.fleet[state.shipId]
+    if (!fs || (fs.armorPct ?? 1) < 0.5 || fs.durability < 0.5) {
+      if (!rep.hasDevice) {
+        return {
+          notice:
+            '装甲或结构低于 50%：自动修补需要该船装着船体维修装置（中槽）——装上装置并带够对应组件，或先到空间站付费维修。',
+          reason: '耐久不足（装甲或结构低于 50%）且未装船体维修装置',
+        }
+      }
+      return {
+        notice: '装甲或结构低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。',
+        reason: '耐久不足（装甲或结构低于 50%）且修理组件耗尽',
+      }
+    }
+  }
+  if (freeCargoM3(state, ctx) < lootM3) {
+    return {
+      notice: `货仓剩余空间不足以装载「${cardName}」的缴获——舰船已在母港，请卸货后重新开启讨伐。`,
+      reason: '货仓空间不足',
+    }
+  }
+  return null
+}
+
+/* ─────────────── 入侵「重复出击」（2026-09-25 船长令） ───────────────
+ * 船长原话：「**入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间。**」
+ *
+ * 与常驻悬赏的「重复清剿」**同源但不同路**：
+ * - 同源：等待表（`autoLoopWaitLabel`）、两道门槛（`autoLoopPreflight`）、停环记账与在线提示
+ *   （`autoLoopStopNotice`）全部复用 ⇒ 不会出现"两套循环口径漂移"；
+ * - 不同路：**出发走手动出击那条路**（`weekendAssaultDrawOf` 每场重抽 ＋ 把被占星系当 `foeGalaxyId`
+ *   传给 `startExpedition`）⇒ **去程/返航时间照目标星系正常计算**（即船长那句"照常计算返回时间"），
+ *   赏金按入侵口径为 0。
+ *
+ * 落档：目标存在 `state.weekendEvent.autoLoopGalaxyId`（可选字段，**不动存档结构版本**）；
+ * 活动结束/换周时整个 `weekendEvent` 被换掉 ⇒ 循环天然结束。
+ */
+
+/** 入侵「重复出击」的循环目标（= 被占星系 id；null = 没开） */
+export function autoLoopInvasionGalaxy(state: GameState): string | null {
+  const gid = state.weekendEvent?.autoLoopGalaxyId
+  return typeof gid === 'string' && gid.length > 0 ? gid : null
+}
+
+/** 停环并记录原因（与 `stopAutoLoopReason` 同款：日志 ＋ 在线一次性提示） */
+function stopAutoLoopInvasion(state: GameState, reason: string): void {
+  if (state.weekendEvent) delete state.weekendEvent.autoLoopGalaxyId
+  const fs = state.fleet[state.shipId]
+  const armorPct = Math.round((fs?.armorPct ?? 1) * 100)
+  const structPct = Math.round((fs?.durability ?? 1) * 100)
+  const text = `重复出击已暂停：${reason}（当前 装甲 ${armorPct}% / 结构 ${structPct}%）`
+  addLog(state, 'warn', text)
+  state.autoLoopStopNotice = text
+}
+
+/**
+ * 开关：`galaxyId = null` ⇒ 停；否则要求该星系**当前仍被入侵**（活动未结束）。
+ * 开启时**清掉常驻悬赏那条环**——两者都要占主控，同一时间只跑一条。
+ */
+export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId: string | null): CommandResult {
+  const ev = state.weekendEvent
+  if (galaxyId === null) {
+    if (ev) delete ev.autoLoopGalaxyId
+    addLog(state, 'info', '重复出击已停止。', 'core.weekend.034')
+    return { ok: true }
+  }
+  if (!ev || ev.endedAtWallMs !== undefined) {
+    return { ok: false, error: '入侵活动已结束。', errorId: 'core.weekend.030' }
+  }
+  if (!weekendOccupiedLiveAt(state, galaxyId, Date.now())) {
+    return { ok: false, error: '该星系当前没有被入侵。', errorId: 'core.weekend.031' }
+  }
+  if (state.autoLoopAnomalyId !== null) {
+    state.autoLoopAnomalyId = null
+    state.autoLoopDroneFloor = null
+    addLog(state, 'info', '已停止常驻悬赏的重复清剿——改跑入侵重复出击。', 'core.weekend.032')
+  }
+  ev.autoLoopGalaxyId = galaxyId
+  const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+  addLog(
+    state,
+    'info',
+    `重复出击已开启：「${name}」的入侵舰队，每场重抽一支；该星系被夺回或活动结束时自动停止。`,
+    'core.weekend.033',
+    { p1: name },
+  )
+  return { ok: true }
+}
+
+/**
+ * 推进（在线心跳调用）。返回 `null` = 继续等待/已再出发；否则 = 停止原因。
+ * 顺序与常驻悬赏那条一致：活动/占领态 → 等待表 → 冷却 → 两道门槛 → 出发。
+ */
+export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext): string | null {
+  const galaxyId = autoLoopInvasionGalaxy(state)
+  if (galaxyId === null) return null
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) {
+    stopAutoLoopInvasion(state, '入侵活动已结束。')
+    return '入侵活动已结束'
+  }
+  if (!weekendOccupiedLiveAt(state, galaxyId, Date.now())) {
+    stopAutoLoopInvasion(state, '该星系已被夺回。')
+    return '该星系已被夺回'
+  }
+  // 别的作业占着主控 ⇒ 等（判据单点与常驻悬赏那条同源）
+  if (autoLoopWaitLabel(state) !== null) return null
+  /**
+   * 冷却与缴获体积都按**该星系板面上那张卡**（`weekendBountyCardsOf` 换出来的那张）判 ——
+   * 与手动「出击」按钮的禁用口径同源（手动能点 ⇔ 循环能出发）。
+   */
+  const visible = [...ctx.anomalies.values()].filter((a) => a.galaxyId === galaxyId && a.hidden !== true)
+  const displayed = weekendBountyCardsOf(state, ctx, visible, galaxyId, Date.now())[0]
+  if (displayed && bountyCooldownRemainingMs(state, displayed.id) > 0) return null
+  const lootM3 = (displayed?.loot ?? []).reduce((sum, row) => {
+    const def = ctx.items.get(row.itemId)
+    return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
+  }, 0)
+  const pre = autoLoopPreflight(state, ctx, displayed?.name ?? galaxyId, lootM3)
+  if (pre !== null) {
+    stopAutoLoopInvasion(state, pre.notice)
+    return pre.reason
+  }
+  // 出发：每场重抽一支 ＋ 星系覆写（与 `engine.startExpeditionAt` 同一条路）
+  const dispatch = weekendAssaultDrawOf(state, ctx, galaxyId, Date.now())
+  if (dispatch === null) {
+    stopAutoLoopInvasion(state, '该星系已被夺回。')
+    return '该星系已被夺回'
+  }
+  const r = startExpedition(state, dispatch.cardId, ctx, {
+    foeGalaxyId: galaxyId,
+    ...(dispatch.rewardIsk > 0 ? { rewardIskOverride: dispatch.rewardIsk } : {}),
+  })
+  if (!r.ok) {
+    stopAutoLoopInvasion(state, r.error ?? '无法再出发。')
+    return r.error ?? '无法再出发'
+  }
+  weekendNoteAssaultDispatch(state) // 抽过才计数 ⇒ 下一场换一支
   return null
 }
 

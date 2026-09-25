@@ -2522,12 +2522,33 @@ function AnomalyCard({
    * 赏金那一栏改显「结算时按进度发放」，"估算奖励/小时"那一栏也整条不显示（没有即时收入可估）。
    */
   const invadedHere = weekendOccupiedLiveAt(state, anomaly.galaxyId, Date.now())
+  /**
+   * **被占星系里这张卡 = 入侵舰队**（2026-09-25 船长令 · 乙案）：标题与威胁**向"星系详细"那一行对齐**——
+   * 标题统一写「击退入侵舰队」（`ui.weekend.092`，抽到的那支舰队名挪到悬停里）、威胁改写成该区域池的
+   * **区间**（`ui.weekend.093`，与星系详细逐字同源）、赏金继续走「结算时按进度发放」。
+   * 理由：同一场入侵在板面与星系详细两处长得不一样，玩家会以为是两件事。
+   */
+  const invadedThreats = invadedHere
+    ? weekendFoePoolOf(
+        state.weekendEvent?.family ?? 'A',
+        anomaly.galaxyId === state.weekendEvent?.coreId,
+      )
+        .map((id) => engine.ctx.anomalies.get(id)?.threat ?? 0)
+        .filter((t) => t > 0)
+    : []
+  const invadedLo = invadedThreats.length > 0 ? Math.min(...invadedThreats) : 0
+  const invadedHi = invadedThreats.length > 0 ? Math.max(...invadedThreats) : 0
+  /** 入侵「重复出击」的循环目标（2026-09-25 船长令）：与常驻悬赏那条环互斥 */
+  const invasionLoopOn = invadedHere && state.weekendEvent?.autoLoopGalaxyId === anomaly.galaxyId
   // 声望仅首胜发放：已首胜过的目标重复完成不再涨声望
   const bountyCleared = state.completedBounties.includes(anomaly.id)
   // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/返航/非本目标的远征）中不可开启
   // （2026-09-15：星系扫描不再算"别的作业"——无人扫描艇不占主控）
   const cdRemain = bountyCooldownRemainingMs(state, anomaly.id)
-  const looping = state.autoLoopAnomalyId === anomaly.id
+  /** 常驻悬赏那条环（入侵卡上不算：那条环有自己的目标语义，见 `invasionLoopOn`） */
+  const looping = !invadedHere && state.autoLoopAnomalyId === anomaly.id
+  /** 本卡按钮要显示"开/停"哪一态 */
+  const loopOn = invadedHere ? invasionLoopOn : looping
   /**
    * **"别的作业占着主控"⇒ 本卡开关禁用**（船长 2026-09-18 沿用现有忙碌判定）。
    *
@@ -2540,7 +2561,7 @@ function AnomalyCard({
     state.transit.active ||
     (state.expedition.active && state.expedition.anomalyId !== anomaly.id)
   /** 再开的前置未满足（战损未补 / 装甲或结构 <50%）：只在"要开"的方向挡，关闭一律放行 */
-  const reopenBlock = looping ? null : autoLoopReopenBlockReason(state)
+  const reopenBlock = loopOn ? null : autoLoopReopenBlockReason(state)
   // 出击可点条件：声望/探索/冷却/返港/远征在飞时禁；采矿中放行（转战）
   const goDisabled =
     !reqMet || unexplored || cdRemain > 0 || state.transit.active || inFlightSelf || inFlightOther
@@ -2564,7 +2585,10 @@ function AnomalyCard({
   }
 
   function toggleLoop(): void {
-    const r = engine.bountyLoopAt(looping ? null : anomaly.id)
+    // 入侵卡走「重复出击」（目标是**被占星系**：每场重抽一支）；常驻悬赏仍走「重复清剿」
+    const r = invadedHere
+      ? engine.invasionLoopAt(invasionLoopOn ? null : anomaly.galaxyId)
+      : engine.bountyLoopAt(looping ? null : anomaly.id)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.393'), true)
   }
 
@@ -2576,8 +2600,8 @@ function AnomalyCard({
       {showFoeArt ? <FoeArt fam={foeFamilyOf(anomaly)} shipId={foeCardShipIdOf(anomaly)} /> : null}
       <div className="app-foe-main">
       <div className="app-ano-top">
-        <span className="app-ano-name">
-          {anomaly.name}
+        <span className="app-ano-name" title={invadedHere ? anomaly.name : undefined}>
+          {invadedHere ? tr('ui.weekend.092') : anomaly.name}
           {factionHit ? (
             <em className="app-chip is-rare" title={tr("ui.Expedition.213")}>
               {tr("ui.Expedition.198")}
@@ -2585,7 +2609,7 @@ function AnomalyCard({
           ) : null}
         </span>
         <span className={`app-chip${locked ? ' is-dim' : ''}`}>
-          {unexplored ? (<><span className="app-ico"><Glyph name="ico-scan" size={12} color={ICO_TONES["ico-scan"]} /></span>{tr("ui.Expedition.214")}</>) : reqMet ? tr("ui.Expedition.095", { p1: shownCard.threat, p2: factionHit ? '（+10%）' : '' }) : (<><span className="app-ico"><Glyph name="ico-lock" size={12} color={ICO_TONES["ico-lock"]} /></span>{tr("ui.Expedition.319")}{anomaly.standingReq}</>)}
+          {unexplored ? (<><span className="app-ico"><Glyph name="ico-scan" size={12} color={ICO_TONES["ico-scan"]} /></span>{tr("ui.Expedition.214")}</>) : reqMet ? (invadedHere ? tr('ui.weekend.093', { p1: invadedLo, p2: invadedHi }) : tr("ui.Expedition.095", { p1: shownCard.threat, p2: factionHit ? '（+10%）' : '' })) : (<><span className="app-ico"><Glyph name="ico-lock" size={12} color={ICO_TONES["ico-lock"]} /></span>{tr("ui.Expedition.319")}{anomaly.standingReq}</>)}
         </span>
       </div>
       <div className="app-ano-meta">
@@ -2698,7 +2722,7 @@ function AnomalyCard({
         </span>
         <div className="app-ano-btns">
           <button
-            className={`app-btn is-small${looping ? ' is-warn' : ''}`}
+            className={`app-btn is-small${loopOn ? ' is-warn' : ''}`}
             disabled={!reqMet || unexplored || busyOther || reopenBlock !== null}
             title={
               !reqMet || unexplored
@@ -2707,13 +2731,22 @@ function AnomalyCard({
                   ? tr("ui.Expedition.154")
                   : reopenBlock !== null
                     ? reopenBlock
-                    : looping
+                    : loopOn
                       ? tr("ui.Expedition.043")
-                      : tr("ui.Expedition.155")
+                      : invadedHere
+                        ? tr('ui.weekend.107')
+                        : tr("ui.Expedition.155")
             }
             onClick={toggleLoop}
           >
-            {looping ? tr("ui.Expedition.044") : (<><span className="app-ico"><Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} /></span>{tr("ui.Handbook.294")}</>)}
+            {loopOn ? (
+              tr("ui.Expedition.044")
+            ) : (
+              <>
+                <span className="app-ico"><Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} /></span>
+                {invadedHere ? tr('ui.weekend.106') : tr("ui.Handbook.294")}
+              </>
+            )}
           </button>
           <button
             className={`app-btn is-small ${miningActive && !goAsk ? 'is-warn is-primary' : goAsk ? 'is-dim' : 'is-primary'}`}

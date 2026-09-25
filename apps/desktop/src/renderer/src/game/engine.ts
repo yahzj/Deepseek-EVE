@@ -127,6 +127,10 @@ import {
   stopSalvageOp,
   stopScan,
   setAutoLoopBounty,
+  /* 入侵「重复出击」（2026-09-25 船长令） */
+  autoLoopInvasionGalaxy,
+  setAutoLoopInvasion,
+  advanceAutoLoopInvasion,
   unfitSlot,
   unfitAt,
   // 2026-09-11 协处理器：CPU 预算总额（含扩容）/ 超载预演 / 原子换装
@@ -1200,6 +1204,13 @@ export class GameEngine {
       const wasActive = this.state.expedition.active
       const reason = advanceAutoLoopBounty(this.state, this.ctx)
       if (!wasActive && this.state.expedition.active) this.autoSortie = true // 本次由讨伐自动发起
+      if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
+    }
+    // 入侵「重复出击」（2026-09-25 船长令）：同一拍推进；出发走手动出击那条路（每场重抽 ＋ 星系覆写）
+    if (autoLoopInvasionGalaxy(this.state) !== null) {
+      const wasActive = this.state.expedition.active
+      const reason = advanceAutoLoopInvasion(this.state, this.ctx)
+      if (!wasActive && this.state.expedition.active) this.autoSortie = true
       if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
     }
     // 讨伐远征结束后复位标记（下一场手动出击照常自动弹战场）
@@ -3222,6 +3233,19 @@ export class GameEngine {
   /** T8：悬赏重复清剿开关（落档）；null = 停止 */
   bountyLoopAt(anomalyId: string | null): CommandResult {
     const result = setAutoLoopBounty(this.state, this.ctx, anomalyId)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /**
+   * **入侵「重复出击」开关**（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）：
+   * `galaxyId = null` ⇒ 停；否则 = 被占星系 id。与 `bountyLoopAt` **互斥**（开一边顶掉另一边）。
+   */
+  invasionLoopAt(galaxyId: string | null): CommandResult {
+    const result = setAutoLoopInvasion(this.state, this.ctx, galaxyId)
     if (result.ok) {
       void this.persist()
       this.notify()
