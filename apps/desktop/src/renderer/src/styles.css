@@ -379,9 +379,11 @@ html[data-locale='en'] body {
    ① **出港**是唯一可压缩项（`flex-shrink: 1`，正方形被压扁；图标与文字仍按原尺寸画）；
    ② 其余导航项在旋转模式下**先按紧凑款起步**——只收**上下内边距**（11 → 5px）与间距（5 → 4px），
       **字号 / 行高 / 图标尺寸一律不动**（"字正常显示"）；
-   ③ 收完仍不足才由侧栏出滚动条（`.app-nav-side` 自带 `overflow-y: auto`）。 */
-.app-root.is-mobile-rot .app-nav-side { padding-top: var(--wui-sp-8); padding-bottom: var(--wui-sp-8); gap: var(--wui-sp-4); }
-.app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured) {padding-top: var(--wui-sp-5); padding-bottom: var(--wui-sp-5); }
+   ③ 收完仍不足才由侧栏出滚动条（`.app-nav-side` 自带 `overflow-y: auto`）。
+   ⚠ **2026-09-25 起本套口径降级为"历史记录"**：导航已改为**底部横栏**（船长令），竖栏的"高度不足"
+   这个前提消失 ⇒ 下面两条只为兼容旋转模式保留，收的是**横向**内边距与**图标上下的**余量。 */
+.app-root.is-mobile-rot .app-nav-side { padding-left: var(--wui-sp-6); padding-right: var(--wui-sp-6); gap: var(--wui-sp-1); }
+.app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured) { padding-top: var(--wui-sp-3); padding-bottom: var(--wui-sp-3); }
 
 /* ── 虫洞弹层内部：旋转时按**桌面款**排（船长 2026-09-14 裁定「只还原虫洞弹层内部」）──
    弹层本身已按逻辑空间定尺寸（1060 × ≈520），但**物理竖屏宽仍是 ~390** ⇒ 上批给窄屏加的那条
@@ -3030,9 +3032,13 @@ html[data-locale='en'] body {
 .app-page-main {
 
   /* 2026-09-21 船长令：窗口壳（战斗 / 主控活动）改成**覆盖主内容区**（不盖左导航与顶栏）
-     ⇒ 本容器要当那层的定位祖先（`position: relative`），窗口层才能用 `inset: 0` 吃它这一块。 */
+     ⇒ 本容器要当那层的定位祖先（`position: relative`），窗口层才能用 `inset: 0` 吃它这一块。
+     2026-09-25 补：活动栏已搬出本容器、成了它的**兄弟节点**（见 App.tsx），本容器不再是纵向 flex 的
+     第一项 ⇒ 用 `order: 2` 把它排在「活动栏（1）」之后、「底栏（3）」之前。 */
 
   position: relative;
+
+  order: 2;
 
   flex: 1;
 
@@ -3279,27 +3285,65 @@ html[data-locale='en'] body {
 
 /* 左侧常驻导航栏（船长 2026-09-05：主菜单从顶栏移到此；复用 app-nav-item 覆盖为横排图标+文字） */
 
+/* ── **导航：左侧竖栏 → 底部横栏**（2026-09-25 船长令：「将导航栏放到底部，采用大图标+图标下方
+   配字的形式？出港放在正中间，搭配一个不一样的按钮边框」）──
+   三条口径：① 大图标（32px）+ 图标下方配字 ⇒ 正好是 `.app-nav-item` 的既有形态（本就
+   `flex-direction: column`），**不新造视觉语言**；② 出港居中 —— 靠 TSX 里的项序 + `.is-featured`
+   居中放大，不需绝对定位；③ 底栏在 `.app-page-main` **之后**（DOM 里 nav 在 main 前），
+   故用 flex `order` 把它排到最末（纵向 flex 的"最末" = 窗口底部）。 */
 .app-nav-side {
 
   flex-shrink: 0;
 
+  order: 3; /* 纵向 flex：排到最末 = 贴窗口底 */
+
   display: flex;
 
-  flex-direction: column;
+  flex-direction: row;
 
-  gap: var(--wui-sp-5);
+  align-items: stretch;
 
-  width: 168px;
+  justify-content: center; /* 出港居中：整条内容水平居中 */
 
-  padding: var(--wui-sp-12) var(--wui-sp-10);
+  gap: var(--wui-sp-2);
 
-  border-right: 1px solid rgb(var(--wui-border));
+  width: 100%;
+
+  padding: var(--wui-sp-6) var(--wui-sp-12) var(--wui-sp-7);
+
+  border-right: none;
+
+  border-top: 1px solid rgb(var(--wui-border));
 
   background: linear-gradient(180deg, rgb(var(--wui-x24)), rgb(var(--wui-x74)));
 
-  overflow-y: auto;
+  overflow: visible; /* 原竖栏靠 overflow-y 兜内容；横栏已够宽，改 visible 免得裁掉焦点环 */
 
 }
+
+/* ── **底栏的三段结构**（2026-09-25 船长令「出港放在正中间」）──
+   左右两组各 `flex: 1 1 0` + 两端对齐 ⇒ **出港恒在正中，与解锁了几项无关**
+   （市场/工业有解锁门槛，初期项数会变；平铺写法做不到这一点，见 App.tsx 注释）。 */
+
+.app-nav-side > .app-nav-group {
+
+  flex: 1 1 0;
+
+  display: flex;
+
+  align-items: stretch;
+
+  gap: var(--wui-sp-2);
+
+}
+
+.app-nav-side > .app-nav-group.is-left { justify-content: flex-end; } /* 靠向中间的出港 */
+
+.app-nav-side > .app-nav-group.is-right { justify-content: flex-start; }
+
+/* 组内一项都没有时的占位（纯占位、不吃点击） */
+
+.app-nav-ph { flex: 1 1 0; pointer-events: none; }
 
 /* 左侧导航「出港」上方的驾驶舰船状态窗（2026-09-10 船长：无文字、按活动给轻动效；与导航同级观感）
    ── 2026-09-21 船长令：「将左上角的小窗动画和右下角的最小化相关的按钮**合并**」⇒ 右下角那枚浮动还原标
@@ -3639,11 +3683,11 @@ html[data-locale='en'] body {
 
   flex-shrink: 0;
 
-  width: 24px;
+  width: 28px; /* 2026-09-25 底栏「大图标」：24 → 28px（船长令：大图标 + 图标下方配字） */
 
-  height: 24px;
+  height: 28px;
 
-  font-size: var(--wui-fs-4xl);
+  font-size: var(--wui-fs-5xl);
 
   line-height: 1;
 
@@ -3659,15 +3703,21 @@ html[data-locale='en'] body {
 
   justify-content: center;
 
-  gap: var(--wui-sp-6);
+  gap: var(--wui-sp-2);
 
-  width: 100%;
+  /* 2026-09-25 底栏化：出港**居正中间 + 略大**（船长令「出港放在正中间，搭配一个不一样的按钮边框」）。
+     原先为竖栏写的 `width: 100%` + `aspect-ratio: 1/1`（满宽正方大按钮）在横排底栏里会把整条撑歪 ⇒ 改掉。
+     两侧各留 14px 外边距，与其余 8 项拉开距离，形成"中间那枚不一样"的观感。 */
 
-  aspect-ratio: 1 / 1; /* 高 = 宽 */
+  width: auto;
 
-  margin: 0 0 var(--wui-sp-10);
+  aspect-ratio: auto;
 
-  padding: 0 var(--wui-sp-10);
+  min-width: 108px;
+
+  margin: 0 var(--wui-sp-14);
+
+  padding: var(--wui-sp-4) var(--wui-sp-10) var(--wui-sp-3);
 
   border: 2px solid rgb(var(--wui-accent) / 0.55);
 
@@ -3677,7 +3727,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-accent));
 
-  font-size: var(--wui-fs-lgb);
+  font-size: var(--wui-fs-sm);
 
   font-weight: 700;
 
@@ -8681,11 +8731,16 @@ html[data-locale='en'] body {
 
 /* 顶部活动窗口全宽容器（内容居中，实际使用宽度接近主窗口） */
 
-/* 活动窗口：置于主窗口列顶部，宽度与主窗口一致（不再全宽居中）——船长 2026-09-05 */
+/* 活动窗口：**左侧固定竖列**（2026-09-25 船长令：「将活动栏放到左侧，竖列显示。
+   这样 AI 作业也能同时显示多个」）——此前是"置于主窗口列顶部、宽度与主窗口一致 + max-height 230px"
+   （船长 2026-09-05 口径），230px 只装得下约 7 行作业 ⇒ 改为左列后可用高度 = 整个内容区（约 690px）
+   ⇒ 同时可见 20+ 行。⚠ 配套改动见 App.tsx：活动栏已搬出 `.app-page-main`、成为其兄弟节点。 */
 
 .app-activitybar {
 
   flex-shrink: 0;
+
+  order: 1; /* 纵向 flex：排在主区（2）与底栏（3）之前 = 最左 */
 
   display: flex;
 
@@ -8693,23 +8748,23 @@ html[data-locale='en'] body {
 
   gap: var(--wui-sp-6);
 
-  width: 100%;
+  width: 150px;
 
-  box-sizing: border-box; /* width 100% 含 padding/border——修复右边框被父容器 overflow:hidden 裁断 */
+  box-sizing: border-box;
 
-  max-height: 230px; /* 固定高度上限，内容多时内部滚动（垂直排布） */
+  height: auto; /* 不再限高：纵向由 .app-root 的 flex 拉伸到内容区全高 */
 
-  overflow-y: auto;
+  overflow-y: auto; /* 仍保留滚动兜底（作业多到装不下时只在列内滚） */
 
-  margin: 0 0 var(--wui-sp-6);
+  margin: 0; /* 原为贴顶块，现为整列，不需要下外边距 */
 
-  padding: var(--wui-sp-8) var(--wui-sp-12);
+  padding: var(--wui-sp-8) var(--wui-sp-6);
 
   background: rgb(var(--wui-x15) / 0.85);
 
-  border: 1px solid rgb(var(--wui-border));
+  border-right: 1px solid rgb(var(--wui-border));
 
-  border-radius: var(--wui-sp-6);
+  border-radius: 0;
 
 }
 
@@ -8888,11 +8943,11 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  align-items: center;
+  align-items: flex-start; /* 2026-09-25 窄列：图标与文字改为**纵向堆叠**（原横向一行在 150px 里放不下） */
 
-  gap: var(--wui-sp-8);
+  gap: var(--wui-sp-4);
 
-  padding: var(--wui-sp-3) var(--wui-sp-8);
+  padding: var(--wui-sp-4) var(--wui-sp-6);
 
   border: 1px solid rgb(var(--wui-map-minor) / 0.35);
 
@@ -8926,9 +8981,15 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: var(--wui-sp-8);
+  gap: var(--wui-sp-4);
 
-  font-size: var(--wui-fs-xsb);
+  flex: 1;
+
+  min-width: 0;
+
+  flex-wrap: wrap; /* 窄列：标签/进度/时间装不下就换行，不裁字 */
+
+  font-size: var(--wui-fs-2xsc);
 
 }
 
@@ -8940,7 +9001,9 @@ html[data-locale='en'] body {
 
   display: inline-block;
 
-  width: 90px;
+  flex: 1 1 auto;
+
+  min-width: 44px; /* 原 90px 固定宽，窄列改自适应 */
 
   height: 5px;
 
@@ -8984,13 +9047,13 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: var(--wui-sp-6);
+  gap: var(--wui-sp-4);
 
-  width: 200px;
+  width: 100%;
 
-  min-width: 120px;
+  min-width: 0; /* 原 200px 固定宽：左列 150px 会溢出 */
 
-  flex-shrink: 1;
+  flex-wrap: wrap;
 
   box-sizing: border-box;
 
@@ -9063,13 +9126,13 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: var(--wui-sp-6);
+  gap: var(--wui-sp-4);
 
-  width: max-content;
+  width: 100%;
 
-  min-width: 190px;
+  min-width: 0; /* 原 max-content + 190px 下限：左列 150px 会溢出 */
 
-  flex-shrink: 0;
+  flex-wrap: wrap;
 
   box-sizing: border-box;
 
@@ -9103,7 +9166,7 @@ html[data-locale='en'] body {
 /* 时间列：**紧凑时长**（两级单位，如「4天21小时」）＋ 固定最小宽
    ⇒ 剩余时间变化不再推挤标题（徽标宽度稳定 = 不引起头部跳动，见约定 §九） */
 
-.app-activitybar-tuning-time { flex-shrink: 0; min-width: 7em; text-align: right; font-size: var(--wui-fs-2xse); font-family: var(--wui-mono); }
+.app-activitybar-tuning-time { flex-shrink: 0; min-width: 0; text-align: right; font-size: var(--wui-fs-2xse); font-family: var(--wui-mono); }
 
 /* V16.2 vertical hp layers (shield blue / armor red / hull yellow, top-down) (ASCII-safe) */
 

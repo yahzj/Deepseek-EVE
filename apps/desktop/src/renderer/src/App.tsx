@@ -8,7 +8,7 @@
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
  */
 import { useEffect, useReducer, useRef, useState } from 'react'
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { useL10n } from './i18n/locale'
 import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN } from '@whale/core'
@@ -1234,65 +1234,97 @@ export function App({ engine }: { engine: GameEngine }) {
            * **精确值恒挂 `title`**。窄栏里优先保住的是**数字**，不是「信用点」三个字。
            */}
           <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
-          {[...NAV_ITEMS, ...(readDebugEnabled() ? DEBUG_NAV_ITEMS : [])].map((item) => {
+          {/**
+           * 2026-09-25 船长令：「将导航栏放到底部…出港放在正中间」
+           *
+           * ⚠ **为什么改成分两组渲染**（而不是只调 `NAV_ITEMS` 的数组顺序）：导航项有**解锁门槛**
+           * （`unlocked()`：市场 ← 第一次生产、工业 ← 第一次精炼），初期项数会变（8~10 项）
+           * ⇒ 平铺时"出港前面有几项"随之变化，**居中会被解锁进度破坏**。
+           * 拆成「左组 + 出港 + 右组」后由底栏的 `justify-content: space-between` 定位：
+           * 左组贴左、右组贴右、出港恒在正中——**与解锁几项无关**。
+           */}
+          {(() => {
+            const allItems = [...NAV_ITEMS, ...(readDebugEnabled() ? DEBUG_NAV_ITEMS : [])]
             // 「第一次」前置未达 ⇒ **该导航项不显示**（船长：未解锁页面与任务都隐藏）
-            if (!unlocked(state, item.key)) return null
-            // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
-            // ＋**2026-09-20**：「第一次」推进提醒（有新的一步可做时 +1）
-            const unreadN =
-              item.key === 'comms'
-                ? commsUnread
-                : item.key === 'task'
-                  ? bountyNew + (firstTaskNew !== null ? 1 : 0)
-                  : 0
+            const shown = allItems.filter((it) => unlocked(state, it.key))
+            const navBtn = (item: (typeof allItems)[number]): ReactNode => {
+              // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
+              // ＋**2026-09-20**：「第一次」推进提醒（有新的一步可做时 +1）
+              const unreadN =
+                item.key === 'comms'
+                  ? commsUnread
+                  : item.key === 'task'
+                    ? bountyNew + (firstTaskNew !== null ? 1 : 0)
+                    : 0
+              return (
+                <button
+                  key={item.key}
+                  className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}${navBeat?.key === item.key ? ' is-beat' : ''}`}
+                  title={
+                    unreadN > 0
+                      ? item.key === 'task'
+                        ? [
+                            /**
+                             * 「第一次」有新的一步 ⇒ 先说它（写清是哪一条），赏金新板另起一行。
+                             * ⚠ **2026-09-21**：任务改成"玩家点「完成」才推进" ⇒ **已达成**时补一句
+                             * 「（已达成，回任务中心点「完成」）」——否则玩家在别处干完活不知道要回去点。
+                             */
+                            firstTaskNew !== null
+                              ? tr('ui.App.120', { p1: firstTaskNew.title }) + (firstTaskNew.ready ? tr('ui.App.122') : '')
+                              : null,
+                            bountyNew > 0 ? tr('ui.App.113', { unreadN: bountyNew }) : null,
+                          ]
+                            .filter((s) => s !== null)
+                            .join('\n')
+                        : tr("ui.App.114", { unreadN: unreadN })
+                      : undefined
+                  }
+                  onClick={() => changePage(item.key)}
+                >
+                  <span className="app-nav-icon">
+                    <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
+                    {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
+                  </span>
+                  <span>{t(item.label)}</span>
+                </button>
+              )
+            }
+            const featIdx = shown.findIndex((it) => it.key === 'map')
+            const left = featIdx < 0 ? shown : shown.slice(0, featIdx)
+            const feat = featIdx < 0 ? null : shown[featIdx]!
+            const right = featIdx < 0 ? [] : shown.slice(featIdx + 1)
             return (
-              <button
-                key={item.key}
-                className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}${navBeat?.key === item.key ? ' is-beat' : ''}`}
-                title={
-                  unreadN > 0
-                    ? item.key === 'task'
-                      ? [
-                          /**
-                           * 「第一次」有新的一步 ⇒ 先说它（写清是哪一条），赏金新板另起一行。
-                           * ⚠ **2026-09-21**：任务改成"玩家点「完成」才推进" ⇒ **已达成**时补一句
-                           * 「（已达成，回任务中心点「完成」）」——否则玩家在别处干完活不知道要回去点。
-                           */
-                          firstTaskNew !== null
-                            ? tr('ui.App.120', { p1: firstTaskNew.title }) + (firstTaskNew.ready ? tr('ui.App.122') : '')
-                            : null,
-                          bountyNew > 0 ? tr('ui.App.113', { unreadN: bountyNew }) : null,
-                        ]
-                          .filter((s) => s !== null)
-                          .join('\n')
-                      : tr("ui.App.114", { unreadN: unreadN })
-                    : undefined
-                }
-                onClick={() => changePage(item.key)}
-              >
-                <span className="app-nav-icon">
-                  <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
-                  {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
-                </span>
-                <span>{t(item.label)}</span>
-              </button>
+              <>
+                {/* 两组各留一枚 `flex: 1` 的占位：组内一项都没有时（如初期「市场/工业」未解锁）也能把
+                    另一组与出港推到对称位置，不至于让出港被顶到边上 */}
+                <div className="app-nav-group is-left">
+                  {left.length > 0 ? left.map(navBtn) : <span className="app-nav-ph" />}
+                </div>
+                {feat ? navBtn(feat) : null}
+                <div className="app-nav-group is-right">
+                  {right.length > 0 ? right.map(navBtn) : <span className="app-nav-ph" />}
+                </div>
+              </>
             )
-          })}
+          })()}
         </nav>
+        {/* 2026-09-25 船长令：「将活动栏放到左侧，竖列显示。这样 AI 作业也能同时显示多个」
+            ⇒ 活动栏**搬出主区**、成为主区的兄弟节点，好让它在纵向外壳里参与 flex（`order: 1`）。
+            此前它挂 `.app-page-main` 里横跨整宽、`max-height: 230px` ⇒ 同时只看得见约 7 行作业。 */}
+        <ActivityBar
+          engine={engine}
+          onToast={showToast}
+          onAiCenter={() => {
+            changePage('ship')
+            changeShipTab('ai') // AI 徽标 → 舰船页「AI 指挥中心」标签
+          }}
+          onGoPage={(page, mapTab) => {
+            changePage(page as PageKey)
+            if (mapTab) changeMapTab(mapTab as MapTab)
+          }}
+          onOpenWormhole={openWormhole}
+        />
         <main className="app-page-main">
-          <ActivityBar
-            engine={engine}
-            onToast={showToast}
-            onAiCenter={() => {
-              changePage('ship')
-              changeShipTab('ai') // AI 徽标 → 舰船页「AI 指挥中心」标签
-            }}
-            onGoPage={(page, mapTab) => {
-              changePage(page as PageKey)
-              if (mapTab) changeMapTab(mapTab as MapTab)
-            }}
-            onOpenWormhole={openWormhole}
-          />
           {/**
            * ───── **主控活动窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
            *
