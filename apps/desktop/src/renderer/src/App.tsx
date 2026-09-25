@@ -27,6 +27,9 @@ import {
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
+/** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
+import { saveStorageProbe, subscribeSaveAlert } from './game/saveGuard'
+import type { SaveStorageProbe } from './game/saveGuard'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { THEME_CHOICES, THEME_LABEL_ID, themeUsesSpacePhoto, useTheme, useThemeBootstrap } from './ui/theme'
 import { Communicator } from './panels/Expedition'
@@ -215,6 +218,9 @@ function SettingsPanel({
   onApplyLayoutAndQuit,
   onCancelLayout,
   onDebugChange,
+  saveState,
+  storageProbe,
+  onAllowSave,
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
@@ -235,6 +241,11 @@ function SettingsPanel({
   onApplyLayoutAndQuit: () => void
   /** 取消重开：清掉待应用项 */
   onCancelLayout: () => void
+  /** 存档存储状态（2026-09-25 船长令 · 甲/丁）：`paused` = 旧档读不出来、写入已挂起 */
+  saveState: 'ok' | 'paused' | 'unavailable'
+  storageProbe: SaveStorageProbe | null
+  /** 丁：放行写入（会另起新档） */
+  onAllowSave: () => void
 }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
@@ -432,7 +443,33 @@ function SettingsPanel({
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。
+           *
+           * 2026-09-25 追加（船长令 · 甲/丁）：本组顶部加一行**存储状态**——网页版的存档在浏览器里，
+           * 浏览器不给写时必须让玩家看见（MacBook · Safari 报障那批）；旧档读不出来时在这里放行写入。
            */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{tr('ui.saveGuard.001')}</span>
+              <span className="app-settings-btns">
+                {saveState === 'paused' ? (
+                  <button className="app-btn is-small is-warn" onClick={onAllowSave}>
+                    {tr('ui.saveGuard.011')}
+                  </button>
+                ) : null}
+              </span>
+            </div>
+            <div className="app-settings-desc">
+              {storageProbe === null
+                ? tr('ui.saveGuard.003')
+                : `${storageProbe.kind === 'file' ? tr('ui.saveGuard.002') : tr('ui.saveGuard.003')} · ${
+                    storageProbe.ok ? tr('ui.saveGuard.004') : tr('ui.saveGuard.005')
+                  }${
+                    storageProbe.kind === 'browser' && storageProbe.ok && storageProbe.persisted !== null
+                      ? ` · ${storageProbe.persisted ? tr('ui.saveGuard.006') : tr('ui.saveGuard.007')}`
+                      : ''
+                  }${saveState === 'paused' ? ` · ${tr('ui.saveGuard.012')}` : ''}`}
+            </div>
+          </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{tr('ui.App.063')}</span>
@@ -1018,6 +1055,54 @@ async function applyLayoutAndQuit(): Promise<void> {
       engine.onSystemNotice = null
     }
   }, [engine])
+
+  /* ───────── 存档存储：状态显示 ＋ 告警 ＋ 关页补落盘（2026-09-25 船长令 · 甲/丙/丁） ───────── */
+
+  /** 设置里显示的状态（甲/丁）：`unavailable` = 这台机器写不了存储；`paused` = 旧档读不出来、写入已挂起 */
+  const [saveState, setSaveState] = useState<'ok' | 'paused' | 'unavailable'>(() => engine.saveWriteState())
+  /** 启动体检读数（main.tsx 在引擎启动前已量过 ⇒ 这里同步就有值） */
+  const [storageProbe] = useState<SaveStorageProbe | null>(() => saveStorageProbe())
+
+  /**
+   * **甲 · 启动两种状态各提示一次**：体检不通（浏览器不给写存储）／旧档读取失败（写入已挂起）。
+   * ⚠ 提示放在这里而**不是**引擎 `start()` 里：App 挂载晚于引擎启动，引擎那时发的事件没人听。
+   * 之后运行期的写入失败由 `subscribeSaveAlert` 送来（每类每局只来一次）。
+   */
+  useEffect(() => {
+    const st = engine.saveWriteState()
+    setSaveState(st)
+    if (st === 'unavailable') showToast(tr('ui.saveGuard.008'), true)
+    else if (st === 'paused') showToast(tr('ui.saveGuard.010'), true)
+    return subscribeSaveAlert((msg) => showToast(msg, true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine])
+
+  /**
+   * **丙 · 关页/切后台前补一次落盘**：自动落盘是 15 秒一拍，玩家关窗时最后这一段本来会丢。
+   * `pagehide` 覆盖关窗/刷新/前进后退；`visibilitychange → hidden` 覆盖切标签页与手机切后台。
+   */
+  useEffect(() => {
+    const flush = (): void => {
+      void engine.persist()
+    }
+    const onHide = (): void => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [engine])
+
+  /** **丁 · 放行写入**（设置 → 存储状态 →「允许写入存档」）：会另起新档，故按手动存档同款回报成败 */
+  const allowSaveNow = (): void => {
+    void engine.allowSaveAfterLoadError().then((ok) => {
+      setSaveState(engine.saveWriteState())
+      showToast(ok ? tr('ui.App.054') : tr('ui.App.055'), !ok)
+    })
+  }
 
   // ── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ──
   const [showSaveManager, setShowSaveManager] = useState(false)
@@ -1958,6 +2043,9 @@ async function applyLayoutAndQuit(): Promise<void> {
           onApplyLayoutAndQuit={() => void applyLayoutAndQuit()}
           onCancelLayout={() => setLayoutPending(null)}
           onLayoutChange={chooseLayout}
+          saveState={saveState}
+          storageProbe={storageProbe}
+          onAllowSave={allowSaveNow}
         />
       ) : null}
       {/**
