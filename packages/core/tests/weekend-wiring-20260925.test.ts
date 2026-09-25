@@ -19,7 +19,7 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState } from '../src/index'
 import { startMining } from '../src/mining'
 import { advanceEncounterWatch, maintainPresence, retreatEncounterBattle, rollLowSecAmbush } from '../src/encounters'
-import { activeFoeSpecsOf, advanceBattleFor, applyFoeOverride, battleArcsFor, battleOpenM, createBattleState, createPlayerSpec, flagshipBattleLedger, foeJammerCountOf, meJammerNetOf, meRangeMulOf } from '../src/combat'
+import { activeFoeSpecsOf, advanceBattleFor, applyFoeOverride, battleArcsFor, battleOpenM, createBattleState, createPlayerSpec, flagshipBattleLedger, foeDesiredRange, foeJammerCountOf, meJammerNetOf, meRangeMulOf } from '../src/combat'
 // 敌卡解析单点（洞内 / 旗舰战 / 远征三口径）在 `wormholeBattle` 里
 import { battleFoeAnomaly } from '../src/wormholeBattle'
 import { commsInbox } from '../src/comms'
@@ -948,6 +948,38 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       advanceBattleFor(s, ctx, battle, leader, 'ink-flagship')
     }
     expect(battle.distanceM, '敌方想拉开 ⇒ 距离朝 10,350 走（改前掉头往 2,352 收）').toBeGreaterThan(d0)
+  })
+
+  /**
+   * **敌人期望距离的取数 = 本波卡面顺序第 1 条**（`foeDesiredRange` 取 `foes[0]`）——
+   * 2026-09-25 船长令「**甲：改卡面条目顺序**」：旗舰卡第 3 波原写「干扰舰 ×1 ＋ 战列巡洋舰 ×2」，
+   * 干扰舰排第一 ⇒ 整波（含 2 艘 11 km 战巡）被拖到干扰舰的近战带 2,352 m 打，而战巡的**近盲带**
+   * （`blindDmgMul 0.3`）正在那个距离上。现改成战巡在前 ⇒ 本波期望 = 战巡的 9,500 m。
+   * 本条把**逐波的期望距离**钉住（这就是界面上那个「敌方期望距离」读数，也是引擎的机动目标）。
+   */
+  it('㉕ 旗舰卡逐波期望距离：2,352 / 10,350 / **9,500（战巡在前）** / 10,350', () => {
+    const card = ctx.anomalies.get('ink-flagship')!
+    const st = createInitialState({ nowWallMs: 0, seed: 5 })
+    const me = createPlayerSpec(st, ctx, st.shipId)!
+    const per = [0, 1, 2, 3].map((wi) => {
+      const foes = activeFoeSpecsOf(card, ctx.balance.battle, wi)
+      return { head: foes[0]!.foeShipId, desire: foeDesiredRange(me, foes, ctx.balance.battle, 0) }
+    })
+    expect(per.map((x) => x.head)).toEqual([
+      'foe-h-ink-corvette',
+      'foe-h-ink-torpedo',
+      'foe-h-ink-battlecruiser', // ⚠ 主体在前（船长令甲）
+      'foe-h-ink-flagship',
+    ])
+    expect(per.map((x) => x.desire)).toEqual([2_352, 10_350, 9_500, 10_350])
+    /** ⚠ 反证：干扰舰自己那条带是近战（2,352）——若它排第一，整波就会按这个距离打 */
+    const jamOnly = activeFoeSpecsOf(card, ctx.balance.battle, 2).filter((f) => f.foeShipId === 'foe-h-ink-jammer')
+    expect(foeDesiredRange(me, [...jamOnly], ctx.balance.battle, 0), '干扰舰单独算 = 近战 2,352').toBe(2_352)
+    /** 主力舰队卡（遇袭 · 2 波）同口径：第 2 波主体（战巡 11 km ＋ 鱼雷舰 ×2）排在前 ⇒ 9,500（船长令甲） */
+    const main = ctx.anomalies.get('ink-main')!
+    const mainFoes = activeFoeSpecsOf(main, ctx.balance.battle, 1)
+    expect(mainFoes[0]!.foeShipId, '主力卡第 2 波：主体在前').toBe('foe-h-ink-battlecruiser')
+    expect(foeDesiredRange(me, mainFoes, ctx.balance.battle, 0)).toBe(9_500)
   })
 })
 

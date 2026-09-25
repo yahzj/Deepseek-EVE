@@ -10307,6 +10307,20 @@ html[data-locale='en'] body {
 
 }
 
+/* 入侵旗舰入口那一行（**2026-09-25 船长令**：「找不到是因为不明显，给容器加一个红色圆边背景」）。
+   观感**照抄同族的入侵框 `.app-weekend-box`**（日志面板那个：红边 ＋ 圆角 ＋ 红底，见本表下方）——
+   只把排布留给 `.app-ga-row` 本来的 flex 骨相，不另造一套容器语言（约定第六章）。 */
+.app-ga-row.app-ga-invasion {
+  border: 1px solid rgb(var(--wui-danger) / 0.55);
+  border-left: 3px solid rgb(var(--wui-danger));
+  border-radius: var(--wui-sp-6);
+  background: rgb(var(--wui-danger) / 0.08);
+  padding: var(--wui-sp-6) var(--wui-sp-8);
+}
+.app-ga-row.app-ga-invasion:hover { background: rgb(var(--wui-danger) / 0.16); }
+.app-ga-row.app-ga-invasion .app-ga-main { color: rgb(var(--wui-danger)); font-weight: 700; }
+.app-ga-row.app-ga-invasion .app-ga-desc { color: rgb(var(--wui-red) / 0.85); }
+
 .app-ga-main {
 
   font-size: var(--wui-fs-base);
