@@ -213,12 +213,12 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             label={tr("ui.CargoPage.056", { targetName: targetName, p2: m3(used + haulOcc + courierOcc), p3: cap > 0 ? cap.toLocaleString('zh-CN') : '—' })}
           />
           {haulOcc > 0 ? (
-            <div className="app-dim" style={{ marginTop: 2 }}>
+            <div className="app-dim" style={{ marginTop: 'var(--wui-sp-2)' }}>
               {tr("ui.CargoPage.041")}
             </div>
           ) : null}
           {courierOcc > 0 ? (
-            <div className="app-dim" style={{ marginTop: 2 }}>
+            <div className="app-dim" style={{ marginTop: 'var(--wui-sp-2)' }}>
               {tr("ui.CargoPage.042")} {courierOcc.toLocaleString('zh-CN')} {tr("ui.CargoPage.043")}
             </div>
           ) : null}

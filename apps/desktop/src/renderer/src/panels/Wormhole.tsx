@@ -2341,7 +2341,7 @@ export function WormholePanel({
                 {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}{tr('ui.Wormhole.358')}
               </div>
               {autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
-              <div className="app-wh-scanbar-actions" style={{ marginTop: 10 }}>
+              <div className="app-wh-scanbar-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
                 <button className="app-btn is-primary is-small" onClick={startAuto} disabled={autoGate !== null}>
                   {tr("ui.Wormhole.214")}
                 </button>

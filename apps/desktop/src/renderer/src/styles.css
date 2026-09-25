@@ -10547,7 +10547,7 @@ html[data-locale='en'] body {
 /* 机身内工作区：上 15 / 侧 19 / 下 15。下檐口（动作按钮 + 通栏「前往」两行）改为**在流内**排布
    （2026-09-11 船长定「乙」），由两行的自然高度撑起、屏幕 flex:1 自动让位——不再用
    "绝对定位 + 预留下内边距"的老办法（那样两行会互相压，且长提示折行时会错位）。 */
-.app-comms-body-col { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--wui-sp-8); padding: var(--wui-sp-15) 19px var(--wui-sp-15); }
+.app-comms-body-col { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--wui-sp-8);padding: var(--wui-sp-15) var(--wui-sp-19) var(--wui-sp-15); }
 /* 内嵌屏幕：屏幕自身滚（二级窗口内滚动），机身不动；outline 画屏幕框（线段，不占布局） */
 .app-comms-screen {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; border-radius: var(--wui-sp-10);

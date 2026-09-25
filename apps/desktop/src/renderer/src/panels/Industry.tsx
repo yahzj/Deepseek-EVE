@@ -992,7 +992,7 @@ export const BlueprintCard = memo(function BlueprintCard({
         {/* 该蓝图逐条制造线名册（每行：劳动者 + 剩余 + 进度 + 取消）——精炼炉运转名册同款结构；
             2026-09-10 起循环开关已在卡片级，行内不再各带一份 */}
         {runs.length > 0 ? (
-          <div className="app-belt-workers" style={{ marginTop: 2 }}>
+          <div className="app-belt-workers" style={{ marginTop: 'var(--wui-sp-2)' }}>
             {runs.map((v) => (
               <span key={v.id} className="app-belt-worker">
                 <span

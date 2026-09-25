@@ -61,7 +61,7 @@ export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () 
           <span className="app-report-title">{tr('ui.Ironman.042')}</span>
         </div>
         <div className="app-modal-body">
-          <div className="app-dim" style={{ marginBottom: 10 }}>{tr('ui.Ironman.043')}</div>
+          <div className="app-dim" style={{ marginBottom: 'var(--wui-sp-10)' }}>{tr('ui.Ironman.043')}</div>
           <div className="app-pro-mode">
             <button className="app-pro-mode-card" disabled={busy} onClick={() => void chooseStandard()}>
               <span className="app-pro-mode-title">{tr('ui.Ironman.026')}</span>
@@ -82,7 +82,7 @@ export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () 
             </button>
           </div>
           {err ? (
-            <div className="app-dim" style={{ marginTop: 8 }}>{err}</div>
+            <div className="app-dim" style={{ marginTop: 'var(--wui-sp-8)' }}>{err}</div>
           ) : null}
         </div>
       </div>
