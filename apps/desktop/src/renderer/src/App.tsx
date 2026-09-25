@@ -32,6 +32,8 @@ import { perfHub, perfAutoEnabled } from './game/perf'
 /** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
 import { saveStorageProbe, subscribeSaveAlert } from './game/saveGuard'
 import type { SaveStorageProbe } from './game/saveGuard'
+/** 存档桥（网页版 = localStorage ＋ 可绑定的本地文件；桌面端 = 本机文件） */
+import { saveBridge } from './game/storage'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { THEME_CHOICES, THEME_LABEL_ID, themeUsesSpacePhoto, useTheme, useThemeBootstrap } from './ui/theme'
 import { Communicator } from './panels/Expedition'
@@ -226,6 +228,11 @@ function SettingsPanel({
   saveState,
   storageProbe,
   onAllowSave,
+  saveFileStatus,
+  onBindSaveFile,
+  onReconnectSaveFile,
+  onUnbindSaveFile,
+  onRefreshSaveFileStatus,
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
@@ -251,6 +258,13 @@ function SettingsPanel({
   storageProbe: SaveStorageProbe | null
   /** 丁：放行写入（会另起新档） */
   onAllowSave: () => void
+  /** 网页版「本地存档文件」绑定状态（桌面端 ⇒ null；2026-09-25 船长令） */
+  saveFileStatus: SaveFileStatus | null
+  onBindSaveFile: () => void
+  onReconnectSaveFile: () => void
+  onUnbindSaveFile: () => void
+  /** 打开设置时自报一次绑定状态（权限可能被浏览器收回） */
+  onRefreshSaveFileStatus: () => void
 }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
@@ -268,6 +282,12 @@ function SettingsPanel({
     engine.state.resupplyFromWarehouse = next
     void engine.persist()
   }
+
+  /** 打开设置时自报一次「本地存档文件」绑定状态（浏览器可能已收回权限 ⇒ 界面要如实显示） */
+  useEffect(() => {
+    onRefreshSaveFileStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
   const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
   useEffect(() => {
@@ -461,6 +481,30 @@ function SettingsPanel({
                     {tr('ui.saveGuard.011')}
                   </button>
                 ) : null}
+                {/* 网页版「本地存档文件」（2026-09-25 船长令）：绑定一次后每次落盘都写进那个文件；
+                    本浏览器不支持（Safari/Firefox 没有 File System Access）⇒ 按钮禁用、说明写在悬停里。 */}
+                {saveFileStatus !== null ? (
+                  !saveFileStatus.supported ? (
+                    <button className="app-btn is-small" disabled title={tr('ui.saveGuard.020')}>
+                      {tr('ui.saveGuard.015')}
+                    </button>
+                  ) : !saveFileStatus.bound ? (
+                    <button className="app-btn is-small" onClick={onBindSaveFile} title={tr('ui.saveGuard.027')}>
+                      {tr('ui.saveGuard.015')}
+                    </button>
+                  ) : (
+                    <>
+                      {!saveFileStatus.connected ? (
+                        <button className="app-btn is-small is-warn" onClick={onReconnectSaveFile}>
+                          {tr('ui.saveGuard.016')}
+                        </button>
+                      ) : null}
+                      <button className="app-btn is-small" onClick={onUnbindSaveFile}>
+                        {tr('ui.saveGuard.017')}
+                      </button>
+                    </>
+                  )
+                ) : null}
               </span>
             </div>
             <div className="app-settings-desc">
@@ -473,6 +517,17 @@ function SettingsPanel({
                       ? ` · ${storageProbe.persisted ? tr('ui.saveGuard.006') : tr('ui.saveGuard.007')}`
                       : ''
                   }${saveState === 'paused' ? ` · ${tr('ui.saveGuard.012')}` : ''}`}
+              {saveFileStatus !== null
+                ? ` · ${tr('ui.saveGuard.013')} ${
+                    !saveFileStatus.supported
+                      ? tr('ui.saveGuard.020')
+                      : !saveFileStatus.bound
+                        ? tr('ui.saveGuard.014')
+                        : `${saveFileStatus.name ?? ''} · ${
+                            saveFileStatus.connected ? tr('ui.saveGuard.018') : tr('ui.saveGuard.019')
+                          }`
+                  }`
+                : ''}
             </div>
           </div>
           <div className="app-settings-row">
@@ -1106,6 +1161,56 @@ async function applyLayoutAndQuit(): Promise<void> {
     void engine.allowSaveAfterLoadError().then((ok) => {
       setSaveState(engine.saveWriteState())
       showToast(ok ? tr('ui.App.054') : tr('ui.App.055'), !ok)
+    })
+  }
+
+  /* ───────── 网页版「本地存档文件」（2026-09-25 船长令：存档优先保存到本地文件） ───────── */
+
+  /** 绑定状态（桌面端 ⇒ null，界面走"本机文件"那支）。取 `saveBridge` 而不是 `window.whale`：
+   *  网页版根本没有 `window.whale`，桥就是 `storage.ts` 里选出来的那个。 */
+  const [saveFile, setSaveFile] = useState<SaveFileStatus | null>(null)
+  const refreshSaveFile = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) {
+      setSaveFile(null)
+      return
+    }
+    void api
+      .status()
+      .then(setSaveFile)
+      .catch(() => setSaveFile(null))
+  }
+  // ⚠ 不在 App 层按 `showSettings` 刷新（那会用到后面才声明的状态）：改成设置面板挂载时自报一次
+  // （`SettingsPanel` 是 `showSettings ? <…/> : null` ⇒ 每次打开都会重新挂载）。
+
+  /** 绑定（必须由玩家手势触发）：成功 ⇒ 立刻再落一次盘，把当前进度写进新文件 */
+  const bindSaveFileNow = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) return
+    void api.bind().then((r) => {
+      refreshSaveFile()
+      if (r.ok) {
+        showToast(tr('ui.saveGuard.021', { p1: r.name ?? '' }))
+        void engine.persist()
+      } else if (!r.canceled) {
+        showToast(tr('ui.saveGuard.023', { p1: r.error ?? '' }), true)
+      }
+    })
+  }
+  const reconnectSaveFileNow = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) return
+    void api.reconnect().then((r) => {
+      refreshSaveFile()
+      showToast(r.ok ? tr('ui.saveGuard.025', { p1: r.name ?? '' }) : tr('ui.saveGuard.023', { p1: r.error ?? '' }), !r.ok)
+    })
+  }
+  const unbindSaveFileNow = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) return
+    void api.unbind().then((r) => {
+      refreshSaveFile()
+      showToast(r.ok ? tr('ui.saveGuard.022') : tr('ui.saveGuard.023', { p1: r.error ?? '' }), !r.ok)
     })
   }
 
@@ -2121,6 +2226,11 @@ async function applyLayoutAndQuit(): Promise<void> {
           saveState={saveState}
           storageProbe={storageProbe}
           onAllowSave={allowSaveNow}
+          saveFileStatus={saveFile}
+          onBindSaveFile={bindSaveFileNow}
+          onReconnectSaveFile={reconnectSaveFileNow}
+          onUnbindSaveFile={unbindSaveFileNow}
+          onRefreshSaveFileStatus={refreshSaveFile}
         />
       ) : null}
       {/**

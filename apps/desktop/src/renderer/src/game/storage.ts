@@ -6,6 +6,8 @@
  * 引擎与界面一律经 saveBridge 访问，两端零分支差异。
  */
 import { tr } from '../i18n/locale'
+import { noteSaveWriteFailed } from './saveGuard'
+import { bindSaveFile, readFromBoundFile, reconnectSaveFile, saveFileStatus, unbindSaveFile, writeToBoundFile } from './saveFileHandle'
 
 /** 备份文件名（与桌面主进程同构：save-YYYYMMDD-HHmmss(.json)，可选 -n 去重后缀） */
 const BP_NAME_RE = /^save-\d{8}-\d{6}(-\d+)?\.json$/
@@ -21,6 +23,29 @@ function wallMsOf(name: string): number {
   if (!m) return 0
   const [, Y, Mo, D, H, Mi, S] = m.map(Number)
   return new Date(Y, Mo - 1, D, H, Mi, S).getTime()
+}
+
+/** 取存档文本里的**档内保存时刻**（`savedAtWallMs`）；读不出/没这个字段 ⇒ 0（视为最旧） */
+function savedAtOf(text: string | null): number {
+  if (text === null) return 0
+  try {
+    const raw = JSON.parse(text) as { savedAtWallMs?: unknown }
+    const v = raw.savedAtWallMs
+    return typeof v === 'number' && Number.isFinite(v) ? v : 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * **两份存档取较新**（2026-09-25 船长令裁定「甲案」）：本地文件 vs 浏览器存储。
+ * 判据 = 档内 `savedAtWallMs`（比文件 mtime 更抗复制/搬动）；读不出时刻的那份视为最旧；
+ * 两份都读不出 ⇒ 返回非 null 的那份（优先文件）。
+ */
+function newerSaveText(fileText: string | null, lsText: string | null): string | null {
+  if (fileText === null) return lsText
+  if (lsText === null) return fileText
+  return savedAtOf(fileText) >= savedAtOf(lsText) ? fileText : lsText
 }
 
 /* ───────── Electron 分支：直接转发主进程桥（行为与现状完全一致） ───────── */
@@ -110,10 +135,19 @@ function webBumpLedgerFromSave(data: string): void {
   }
 }
 const localStorageBridge: WhaleApi = {
+  /* ───────── 存档「本地文件」优先（2026-09-25 船长令：像本地运行一样） ─────────
+   * 只影响**网页分支**：桌面端本来就是文件（`window.whale` 走 IPC）。
+   * 取舍口径（船长裁定）：文件与浏览器存储都读，**按档内 `savedAtWallMs` 取较新**。 */
   async load(): Promise<string | null> {
-    return ls().getItem(SAVE_KEY)
+    const fileText = await readFromBoundFile().catch(() => null)
+    const lsText = ls().getItem(SAVE_KEY)
+    return newerSaveText(fileText, lsText)
   },
   async save(data: string): Promise<boolean> {
+    // ① 优先写绑定的本地文件（未绑定/权限被收回 ⇒ 返回 null，不算失败）
+    const fileRes = await writeToBoundFile(data).catch(() => false)
+    if (fileRes === false) noteSaveWriteFailed() // 已绑上却写不进去：让玩家看见（浏览器那份仍会写）
+    // ② 浏览器存储（保底）
     if (!setWithBudget(SAVE_KEY, data)) return false
     // 与桌面端同口径：落盘后把这份档的代次推到账本（只增不减；普通档代次恒 0 ⇒ 不动）
     webBumpLedgerFromSave(data)
@@ -292,6 +326,17 @@ const localStorageBridge: WhaleApi = {
     } catch (err) {
       return { ok: false, error: tr("ui.storage.008", { p1: String(err) }) }
     }
+  },
+  /**
+   * **网页版独有：绑定 / 重连 / 解绑「本地存档文件」**（2026-09-25 船长令）。
+   * 桌面端不实现这一组（它本来就是文件存档）⇒ 界面按 `window.whale.saveFile === undefined` 走"本机文件"那支。
+   */
+  saveFile: {
+    status: () => saveFileStatus(),
+    /** 绑定：选/建文件后**立刻把当前存档写进去**（否则玩家会以为绑了个空文件） */
+    bind: async () => await bindSaveFile(ls().getItem(SAVE_KEY)),
+    reconnect: () => reconnectSaveFile(),
+    unbind: () => unbindSaveFile(),
   },
 }
 
