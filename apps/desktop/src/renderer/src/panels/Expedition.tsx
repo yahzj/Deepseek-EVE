@@ -1521,10 +1521,10 @@ function StarMap({
                 ) : null}
               </div>
               <div className="app-map-detail-desc">{selected.description}</div>
-              {/* B1.5 前往星系动作区：掩护巡逻（主控/副船）/ 矿带 / 悬赏，含简介 */}
+              {/* B1.5 前往星系动作区：掩护巡逻（主控/副船）/ 矿带 / 悬赏，含简介。
+                  ⚠ 2026-09-24 船长：「重复清剿明明在现有的悬赏处加个按钮就行，为啥还要单开一个容器」⇒
+                  原独立容器 `BountyLoopBlock` 已删，环按钮并入下面 ④ 悬赏的每一行（同一个列表、同一套门槛）。 */}
               <GalaxyActions engine={engine} galaxy={selected} onToast={onToast} onOpenWormhole={onOpenWormhole} />
-              {/* 重复清剿（2026-09-24 船长令）：该星系可循环的卡逐行列出，开/停都走 bountyLoopAt */}
-              <BountyLoopBlock engine={engine} galaxy={selected} onToast={onToast} />
               {/* 赏金任务（当日板）落在这个星系时的提示（2026-09-10 船长：星图上要能看出哪些星系有任务） */}
               {(tasksByGalaxy.get(selected.id)?.length ?? 0) > 0 ? (
                 <div className="app-map-taskline">
@@ -1675,77 +1675,6 @@ function FieldKitRepair({ engine, onToast }: { engine: GameEngine; onToast: Toas
 
 /* ─────────── B1.5 星图「前往星系」动作区（掩护巡逻/矿带/悬赏 + 简介） ─────────── */
 
-/**
- * **星系详细悬浮窗 · 重复清剿**（**2026-09-24 船长令**：「允许玩家在星图的星系详细悬浮窗里进行重复清剿。」
- * ＋三答：①**乙** 列出候选卡让玩家挑 · ②**乙** 允许顶替但**先确认** · ③**甲** 开启条件照旧）。
- *
- * 走的就是 T8 那条**唯一开关** `engine.bountyLoopAt(anomalyId | null)`（null = 停止）：不新增状态、
- * 不改存档结构；忙碌/再开门槛与卡面同一把尺（`busyOther` 与 `autoLoopReopenBlockReason`）。
- */
-function BountyLoopBlock({
-  engine,
-  galaxy,
-  onToast,
-}: {
-  engine: GameEngine
-  galaxy: GalaxyDef
-  onToast: ToastFn
-}) {
-  const state = engine.state
-  /** 待确认顶替的目标（null = 没有待确认）——照抄同文件 `goAsk` 的"内联警示"写法，不新增弹窗机制 */
-  const [ask, setAsk] = useState<string | null>(null)
-  const loopId = state.autoLoopAnomalyId
-  const cands = engine.anomalies.filter((a) => a.galaxyId === galaxy.id)
-  if (cands.length === 0) return <div className="app-dim">{tr('ui.Expedition.431')}</div>
-  const run = (id: string | null): void => {
-    const r = engine.bountyLoopAt(id)
-    setAsk(null)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.389'), true)
-  }
-  return (
-    <div className="app-map-loop">
-      <div className="app-map-detail-name">{tr('ui.Expedition.427')}</div>
-      {cands.map((a) => {
-        const looping = loopId === a.id
-        const busyOther =
-          state.mining.active || state.transit.active || (state.expedition.active && state.expedition.anomalyId !== a.id)
-        const blocked = looping ? false : busyOther || autoLoopReopenBlockReason(state) !== null
-        const win = Math.max(2, Math.round(bountyWinPercentGuarded(state, engine.ctx, a) * 100))
-        const swapping = loopId !== null && !looping
-        return (
-          <div className="app-map-loop-row" key={a.id}>
-            <span className="app-map-loop-name">{a.name}</span>
-            <span className="app-dim">{tr('ui.Expedition.432', { p1: a.threat, p2: win })}</span>
-            {looping ? <span className="app-dim">{tr('ui.Expedition.433')}</span> : null}
-            <button
-              className={`app-btn is-small${looping ? '' : ' is-primary'}`}
-              disabled={blocked}
-              onClick={() => {
-                if (looping) run(null)
-                else if (swapping) setAsk(a.id)
-                else run(a.id)
-              }}
-            >
-              {looping ? tr('ui.Expedition.429') : tr('ui.Expedition.428')}
-            </button>
-            {ask === a.id ? (
-              <span className="app-map-loop-ask">
-                <span className="app-dim">{tr('ui.Expedition.430')}</span>
-                <button className="app-btn is-small is-danger" onClick={() => run(a.id)}>
-                  {tr('ui.App.086')}
-                </button>
-                <button className="app-btn is-small" onClick={() => setAsk(null)}>
-                  {tr('ui.ActivityBar.004')}
-                </button>
-              </span>
-            ) : null}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 function GalaxyActions({
   engine,
   galaxy,
@@ -1843,6 +1772,8 @@ function GalaxyActions({
   })()
   const miningActive = state.mining.active
   const [goAskAno, setGoAskAno] = useState<string | null>(null)
+  /** 待确认"顶替环目标"的那张卡（null = 没有待确认）——**内联警示**，照抄 `goAskAno` 的写法，不新增弹窗机制 */
+  const [loopAskAno, setLoopAskAno] = useState<string | null>(null)
   function handleAnoGo(ano: AnomalyDef): void {
     if (miningActive && goAskAno !== ano.id) {
       setGoAskAno(ano.id)
@@ -1986,52 +1917,103 @@ function GalaxyActions({
           )
         })
       )}
-      {/* ④ 悬赏 */}
-      <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.145")}{engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length}）</div>
+      {/* ④ 悬赏（2026-09-24 船长：**重复清剿的环按钮就挂在这一行**，不再单开容器） */}
+      <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.145")}{engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length}）
+      </div>
+      {/* ⚠ 本列表**列出该星系全部悬赏**（只按声望门槛过滤）：冷却中/进行中的卡原先被滤掉，
+          而"开环"恰恰最需要它们可见（`setAutoLoopBounty` 只受 autoLoopReopenBlockReason 管、与冷却无关，
+          见 core/expedition.ts）——否则打完之后那张卡会从列表消失、环还在跑却看不到也停不掉。
+          每行两个按钮：「出击」（沿用原有禁用规则）＋ 环图标（开/停该卡的重复清剿）。 */}
       {(() => {
-        const list = engine.anomalies
-          .filter((a) => a.galaxyId === galaxy.id)
-          .filter((a) => {
-            if (standingOf(state, DSI_FACTION_ID) < a.standingReq) return false
-            if (bountyCooldownRemainingMs(state, a.id) > 0) return false
-            if (state.expedition.active && state.expedition.anomalyId === a.id) return false
-            return true
-          })
+        const cands = engine.anomalies.filter((a) => a.galaxyId === galaxy.id)
+        const list = cands.filter((a) => standingOf(state, DSI_FACTION_ID) >= a.standingReq)
         if (list.length === 0) {
-          return <div className="app-dim app-ga-empty">{tr("ui.Expedition.264")}</div>
+          return <div className="app-dim app-ga-empty">{cands.length === 0 ? tr("ui.Expedition.437") : tr("ui.Expedition.264")}</div>
         }
         const transitOn = state.transit.active
         const otherExpOn = state.expedition.active && state.expedition.anomalyId !== null
         const goBlocked = transitOn || (otherExpOn && !miningActive)
-        return list.map((a) => (
-          <div key={a.id} className="app-ga-row">
-            <span className="app-ga-main">
-              <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
-              <span className="app-dim app-ga-desc">
-                {tr("ui.Expedition.089")} {a.threat}{tr('ui.Expedition.369')}{Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
-                {state.completedBounties.includes(a.id) ? tr("ui.Expedition.354") : ''}
+        const loopId = state.autoLoopAnomalyId
+        /** 「要开」方向的前置未满足（战损未补 / 装甲或结构 <50%）——关闭一律放行（与卡面同尺） */
+        const reopenBlock = autoLoopReopenBlockReason(state)
+        /** 开/停该卡的重复清剿（null = 停）；走 T8 那条唯一开关，忙碌/再开门槛与卡面同一把尺 */
+        const runLoop = (id: string | null): void => {
+          const r = engine.bountyLoopAt(id)
+          setLoopAskAno(null)
+          if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.393'), true)
+        }
+        return list.map((a) => {
+          const looping = loopId === a.id
+          const inFlightSelf = state.expedition.active && state.expedition.anomalyId === a.id
+          const cdRemain = bountyCooldownRemainingMs(state, a.id)
+          const busyOther =
+            state.mining.active || state.transit.active || (state.expedition.active && state.expedition.anomalyId !== a.id)
+          const loopBlocked = !looping && (busyOther || reopenBlock !== null)
+          return (
+            <div key={a.id} className="app-ga-row">
+              <span className="app-ga-main">
+                <span className="app-ico"><Glyph name="nav-bounty" size={13} color={NAV_TONES["nav-bounty"]} /></span>{a.name}
+                <span className="app-dim app-ga-desc">
+                  {tr("ui.Expedition.089")} {a.threat}{tr('ui.Expedition.369')}{Math.round(a.rewardIsk * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
+                  {state.completedBounties.includes(a.id) ? tr("ui.Expedition.354") : ''}
+                  {/* 行内状态字（原先这些卡被过滤掉了，现在补上状态让玩家看得懂为什么按钮灰着） */}
+                  {cdRemain > 0 ? ` · ${tr("ui.Expedition.037")} ${Math.max(1, Math.ceil(cdRemain / 1000))}${tr('ui.Expedition.418')}` : ''}
+                  {inFlightSelf ? ` · ${tr("ui.Expedition.436")}` : ''}
+                  {looping ? ` · ${tr("ui.Expedition.433")}` : ''}
+                </span>
               </span>
-            </span>
-            <button
-              className={`app-btn is-small${goAskAno === a.id ? ' is-warn' : ' is-primary'}`}
-              disabled={goBlocked}
-              title={
-                transitOn
-                  ? tr("ui.Expedition.313")
-                  : otherExpOn && !miningActive
-                    ? tr("ui.Expedition.314")
-                    : miningActive
-                      ? goAskAno === a.id
-                        ? tr("ui.Expedition.027")
-                        : tr("ui.Expedition.315")
-                      : tr("ui.Expedition.090")
-              }
-              onClick={() => handleAnoGo(a)}
-            >
-              {goAskAno === a.id ? tr("ui.Expedition.028") : miningActive ? tr("ui.Expedition.265") : tr("ui.Expedition.091")}
-            </button>
-          </div>
-        ))
+              {/* 环按钮：**纯图标**（船长 2026-09-24 选定），悬停说明走既有卡片文案 */}
+              <button
+                className={`app-btn is-small${looping ? ' is-warn' : ''}`}
+                disabled={loopBlocked || loopAskAno === a.id}
+                title={looping ? tr("ui.Expedition.043") : reopenBlock !== null ? reopenBlock : busyOther ? tr("ui.Expedition.154") : tr("ui.Expedition.155")}
+                onClick={() => {
+                  if (looping) runLoop(null)
+                  else if (loopId !== null) setLoopAskAno(a.id)
+                  else runLoop(a.id)
+                }}
+              >
+                <span className="app-ico">
+                  <Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} />
+                </span>
+              </button>
+              <button
+                className={`app-btn is-small${goAskAno === a.id ? ' is-warn' : ' is-primary'}`}
+                disabled={goBlocked || cdRemain > 0 || inFlightSelf}
+                title={
+                  cdRemain > 0
+                    ? tr("ui.Expedition.323", { p1: Math.max(1, Math.ceil(cdRemain / 1000)) })
+                    : inFlightSelf
+                      ? tr("ui.Expedition.277")
+                      : transitOn
+                        ? tr("ui.Expedition.313")
+                        : otherExpOn && !miningActive
+                          ? tr("ui.Expedition.314")
+                          : miningActive
+                            ? goAskAno === a.id
+                              ? tr("ui.Expedition.027")
+                              : tr("ui.Expedition.315")
+                            : tr("ui.Expedition.090")
+                }
+                onClick={() => handleAnoGo(a)}
+              >
+                {cdRemain > 0 ? tr("ui.Expedition.100") : goAskAno === a.id ? tr("ui.Expedition.028") : miningActive ? tr("ui.Expedition.265") : tr("ui.Expedition.091")}
+              </button>
+              {/* 顶替确认（船长选的「允许顶替但先确认」）：**内联在行内**，照抄同文件 goAsk 的写法，不新增弹窗机制 */}
+              {loopAskAno === a.id ? (
+                <span className="app-ga-switch-confirm">
+                  <span className="app-dim">{tr("ui.Expedition.430")}</span>
+                  <button className="app-btn is-small is-danger" onClick={() => runLoop(a.id)}>
+                    {tr("ui.App.086")}
+                  </button>
+                  <button className="app-btn is-small" onClick={() => setLoopAskAno(null)}>
+                    {tr("ui.ActivityBar.004")}
+                  </button>
+                </span>
+              ) : null}
+            </div>
+          )
+        })
       })()}
       {/* ⑤ 残骸打捞（B3：采矿式自动循环作业；需高槽打捞器，满仓自动返航卸货后自动续捞） */}
       <div className="app-bay-title app-ga-sub">

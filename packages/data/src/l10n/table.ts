@@ -3799,7 +3799,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Yield.005": { zh: "利润率 {p1}%", en: "margin {p1}%" },
   /* 一次产多件时的「整批」值（2026-09-24 船长：「也显示整批」）——行情那段仍是每单位 */
   "ui.Yield.006": { zh: "整批 {p1}", en: "batch {p1}" },
-  /* 星系详细悬浮窗 · 重复清剿（2026-09-24 船长令） */
+  /* 星系详细悬浮窗 · 重复清剿（2026-09-24 船长令）
+     ⚠ **427~433 已停用**：它们原先只喂"另开的那个重复清剿容器"（`BountyLoopBlock` + `.app-map-loop*` 样式），
+     船长 2026-09-24 指出「在现有悬赏处加个按钮就行，为啥还要单开一个容器」⇒ 容器整块删除、
+     环按钮并入 ④ 悬赏每一行，文案改用卡面既有那套（`ui.Expedition.043/044/154/155` 与 `ui.Handbook.294`）。
+     按 id 制「一经使用不复用、不改名」留档不删；以下两条为并入后**新增**的状态字。 */
+  "ui.Expedition.436": { zh: "征战中", en: "In combat" },
+  "ui.Expedition.437": { zh: "该星系没有悬赏卡。", en: "No bounty cards in this system." },
   "ui.Expedition.427": { zh: "重复清剿", en: "Repeat sweeps" },
   "ui.Expedition.428": { zh: "开始重复清剿", en: "Start repeat sweeps" },
   "ui.Expedition.429": { zh: "停止讨伐", en: "Stop the hunt" },
