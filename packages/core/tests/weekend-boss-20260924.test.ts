@@ -119,7 +119,7 @@ describe('旗舰 BOSS 池 · 累计伤害', () => {
 })
 
 describe('旗舰 BOSS 池 · 章鱼人削血', () => {
-  it('**2 小时削 100%**：削到一半时读数 = 50%，且这是**独立进度**（不扣玩家已造成的伤害）', () => {
+  it('**2 小时削 100%**：削到一半时读数 = 50%，与玩家那份**共享同一条血条**', () => {
     const s = fresh()
     const ev = bossEvent(s)
     weekendNoteFlagshipDamage(ev, 1_000, 1) // 池 5000
@@ -135,8 +135,10 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     const v = weekendBossPoolView(s, ev)!
     expect(v.octopusFrac).toBeCloseTo(0.5, 10)
     expect(v.octopusDone).toBeCloseTo(v.hpMax / 2, 6)
-    expect(v.hpDone).toBe(1_000) // 玩家那 1000 还在
+    expect(v.hpDone).toBe(1_000) // 玩家那份台账照记（不因章鱼削血而变）
     expect(v.playerFrac).toBeCloseTo(1_000 / WEEKEND_FLAGSHIP_POOL_HP, 10)
+    // ⚠ **共享血条**（2026-09-25 口径）：两边**加在同一条血上** ⇒ 剩余 = 总量 − 玩家 − 章鱼
+    expect(v.hpLeft, '剩余 = 总量 −（玩家 ＋ 章鱼）').toBeCloseTo(v.hpMax - 1_000 - v.hpMax / 2, 6)
     // 到点 ⇒ 章鱼人削满
     expect(weekendOctopusTick(s, ev, windowMs / 2, false)).toBe(true)
   })
@@ -147,9 +149,9 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     weekendNoteFlagshipDamage(ev, 1_000, 1)
     const windowMs = weekendFlagshipWindowMs(s) // 调试档 = 10 分钟
     expect(weekendOctopusTick(s, ev, windowMs, true)).toBe(false)
-    expect(ev.octopusDrainedMs ?? 0).toBe(0) // 整整一个窗口一点没削
+    expect(ev.octopusHpDone ?? 0).toBe(0) // 整整一个窗口一点没削
     expect(weekendOctopusTick(s, ev, windowMs / 2, false)).toBe(false)
-    expect(ev.octopusDrainedMs).toBe(windowMs / 2)
+    expect(ev.octopusHpDone, '半个窗口 ⇒ 削掉半个血条').toBe(ev.flagshipHpMax! / 2)
     expect(weekendOctopusTick(s, ev, windowMs / 2, false)).toBe(true) // 到点 ⇒ 削满
   })
 
@@ -158,13 +160,13 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     const ev = bossEvent(s)
     weekendNoteFlagshipDamage(ev, 1_000)
     expect(weekendTickBoss(s, undefined, false)).toEqual({})
-    expect(ev.octopusDrainedMs ?? 0).toBe(0)
+    expect(ev.octopusHpDone ?? 0).toBe(0)
     // 在线第一拍只立基线（没有"上一拍"就没有可累计的时长）
     expect(weekendTickBoss(s, 1_000, false)).toEqual({})
-    expect(ev.octopusDrainedMs ?? 0).toBe(0)
-    // 第二拍起按增量推进
+    expect(ev.octopusHpDone ?? 0).toBe(0)
+    // 第二拍起按增量推进：1 秒 ×（池子总量 ÷ 窗口）= 150000 ÷ 600 秒 = 250 点
     expect(weekendTickBoss(s, 2_000, false)).toEqual({})
-    expect(ev.octopusDrainedMs).toBe(1_000)
+    expect(ev.octopusHpDone).toBe(250)
   })
 
   it('**大步长只按一拍算**（后台标签页 / 离线补算后的第一次心跳不会整段削掉）', () => {
@@ -173,7 +175,8 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     weekendNoteFlagshipDamage(ev, 1_000)
     weekendTickBoss(s, 0, false) // 立基线
     weekendTickBoss(s, 10 * H_MS, false) // 一次跳 10 小时
-    expect(ev.octopusDrainedMs).toBe(WEEKEND_BOSS_TICK_MAX_MS)
+    expect(ev.octopusHpDone, '只按一拍上限 5 秒削：5000ms × 0.25 = 1250 点').toBe(1_250)
+    expect(WEEKEND_BOSS_TICK_MAX_MS).toBe(5_000)
   })
 
   it('**削满 ⇒ 章鱼人得手并结束本场**（`flagshipDown = octopus`）', () => {
@@ -197,7 +200,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     const ev = bossEvent(s)
     weekendTickBoss(s, 0, false)
     expect(weekendTickBoss(s, H_MS, false)).toEqual({})
-    expect(ev.octopusDrainedMs ?? 0).toBe(0)
+    expect(ev.octopusHpDone ?? 0).toBe(0)
   })
 })
 

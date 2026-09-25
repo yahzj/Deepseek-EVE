@@ -36,6 +36,9 @@ import { pruneMarks } from './marks'
 import { FIT_PRESET_MAX, FIT_PRESET_NAME_MAX } from './fitPresets'
 // v27→v28 残骸合并（2026-09-19）：旧"每卡一种"残骸 id → 新「族 × 地区」组 id
 import { migratedWreckItemId } from './wreckGroups'
+// 章鱼人削血的**旧字段迁移**（2026-09-25：`octopusDrainedMs` 时长 → `octopusHpDone` 血量）
+// ⚠ 窗口必须走**同一个单源** `weekendFlagshipWindowMs`（正常 2h / 调试 10min），不许在存档层再写一遍开关
+import { weekendFlagshipWindowMs } from './weekendEvent'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -600,6 +603,18 @@ function cleanBattle(raw: unknown): BattleState | null {
     const s = foeOverrideRaw.strengthMul
     if (typeof s === 'number' && Number.isFinite(s) && s > 0) out.strengthMul = s
     if (foeOverrideRaw.keepCardWaves === true) out.keepCardWaves = true
+    /**
+     * **BOSS 血条覆写**（2026-09-25）：`bossHp` = 本场满值（池子剩余）、`bossHpMax` = 血条分母
+     * （池子总量）、`bossShipId` = 哪条舰级算母舰。
+     * ⚠ 原先这三格**一个都没过清洗器** ⇒ 战中读档后母舰血条回落到卡面血（69,592），
+     * 池子剩余那份覆写凭空消失（"单场不死/跨场累计"当场失真）。三格都取正数/非空串。
+     */
+    const bh = foeOverrideRaw.bossHp
+    if (typeof bh === 'number' && Number.isFinite(bh) && bh > 0) out.bossHp = Math.round(bh)
+    const bhm = foeOverrideRaw.bossHpMax
+    if (typeof bhm === 'number' && Number.isFinite(bhm) && bhm > 0) out.bossHpMax = Math.round(bhm)
+    const bsid = foeOverrideRaw.bossShipId
+    if (typeof bsid === 'string' && bsid.length > 0) out.bossShipId = bsid
     const w = foeOverrideRaw.waves
     if (Array.isArray(w)) {
       const waves: Array<{ units: number; hpShare: number }> = []
@@ -2801,12 +2816,39 @@ function normalizeState(raw: unknown): GameState {
            */
           const hpMax = weekendNum(weekendRaw.flagshipHpMax)
           const hpDone = weekendKeep(weekendRaw.flagshipHpDone)
-          const drained = weekendKeep(weekendRaw.octopusDrainedMs)
+          /**
+           * ⚠ **幂等标记 / 身份键 / 心跳基准：缺键必须是 `undefined`，绝不能读成 0**
+           * （**2026-09-25 船长报障**：「**摧毁入侵母舰后，没有结算通讯发来**」——根因就在这一行）。
+           *
+           * 上面那个 `weekendKeep` 建在 `num(v, 0)` 上（"0 是合法值"的那批读数用它，例如已伤 0、
+           * 削血 0）：**键不存在时它会返回 0**，而 0 又是"合法的有限数"⇒ 读档后
+           * `prizePaidAtWallMs = 0` 被当成"这一场已经结过账" ⇒ `weekendSettleAndGrant` **永久早退**：
+           * 贡献奖不发 · 战果快照不写 · 结算通讯不发（实测：击沉母舰后日志只有"旗舰击沉"，其余什么都没有）。
+           * ⇒ 这三个字段改走"缺键 ⇒ undefined"的严格口径（**有键且 ≥0 仍然逐字保留**，含合法的 0）。
+           */
+          const strictKeep = (v: unknown): number | undefined =>
+            typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : undefined
+          /**
+           * **章鱼人那一份：旧字段就地迁移**（2026-09-25 改口径 ⇒ 共享血条）。
+           *
+           * 旧档存的是**时长** `octopusDrainedMs`（"在线且非战斗"累计毫秒），新档存的是**血量**
+           * `octopusHpDone`（速率 = `池子总量 ÷ 窗口`）。不迁移的后果（实测船长在玩的那份档）：
+           * 已削掉的 24% 会**凭空回血**——玩家会看到母舰血条跳回去。
+           * ⇒ 换算 `血量 = 池子总量 × 时长 ÷ 窗口`，窗口走**同一个单源** `weekendFlagshipWindowMs`
+           * （正常 2h / 调试 10min），与推进/读数/收口四处同一把尺。
+           * ⚠ 两个键都走 `strictKeep`（缺键 ⇒ undefined）——`weekendKeep` 会把缺键读成 0，
+           * 迁移分支就再也进不去了（同一个坑，见上）。
+           */
+          const drainedLegacy = strictKeep(weekendRaw.octopusDrainedMs)
+          const octopusHp =
+            strictKeep(weekendRaw.octopusHpDone) ??
+            (drainedLegacy !== undefined && drainedLegacy > 0 && hpMax > 0
+              ? Math.floor((hpMax * drainedLegacy) / weekendFlagshipWindowMs({ debugQuick }))
+              : undefined)
           const dmgLogged = weekendKeep(weekendRaw.flagshipDmgLogged)
-          const runId = weekendKeep(weekendRaw.flagshipRunId)
-          const bestRun = weekendKeep(weekendRaw.flagshipBestRunDmg)
-          const bossTick = weekendKeep(weekendRaw.bossTickWallMs)
-          const prizePaid = weekendKeep(weekendRaw.prizePaidAtWallMs)
+          const runId = strictKeep(weekendRaw.flagshipRunId)
+          const bossTick = strictKeep(weekendRaw.bossTickWallMs)
+          const prizePaid = strictKeep(weekendRaw.prizePaidAtWallMs)
           const assaultDraws = weekendKeep(weekendRaw.assaultDraws)
           return {
             seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
@@ -2824,10 +2866,12 @@ function normalizeState(raw: unknown): GameState {
               : {}),
             ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
             ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
-            ...(drained !== undefined ? { octopusDrainedMs: drained } : {}),
+            ...(octopusHp !== undefined ? { octopusHpDone: octopusHp } : {}),
             ...(dmgLogged !== undefined ? { flagshipDmgLogged: dmgLogged } : {}),
             ...(runId !== undefined ? { flagshipRunId: runId } : {}),
-            ...(bestRun !== undefined ? { flagshipBestRunDmg: bestRun } : {}),
+            ...(weekendKeep(weekendRaw.flagshipBestRunDmg) !== undefined
+              ? { flagshipBestRunDmg: weekendKeep(weekendRaw.flagshipBestRunDmg) }
+              : {}),
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
             ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
             ...(assaultDraws !== undefined ? { assaultDraws } : {}),

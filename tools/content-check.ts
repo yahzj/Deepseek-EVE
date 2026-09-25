@@ -1341,6 +1341,34 @@ for (const m of MODULES) {
       `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支 · 四处均带入侵旗舰战分支`,
   )
 
+  /* ── 干扰压制取数契约（2026-09-25 船长报障「摧毁敌方干扰舰后，射程不会恢复」）──
+   *
+   * 病根两条，都在这一个机制的取数上：
+   *   ① **编制口径**：`activeFoeSpecsOf` 含**已阵亡**单位 ⇒ 干扰舰被打死之后它的 50% 仍挂在
+   *      `meJammerNetOf` 里（界面射程弧与实际开火门两处都挂着）⇒ 射程永远不恢复；
+   *   ② **恒定第 0 波**：引擎那侧原写 `createFoeSpecs(anomaly, bal)`（= 第 0 波），而视图那侧走
+   *      `activeFoeSpecsOf(…, battle.waveIdx)`（当前波）⇒ 多波卡里"界面显示被压制、实际开火门没被压"。
+   *
+   * 契约（源码级扫描）：`combat.ts` 的引擎取数行必须是**当前波**，且净削减函数必须滤掉已阵亡者。
+   */
+  {
+    const combatPath = 'packages/core/src/combat.ts'
+    const combatSrc = readSrc(combatPath)
+    const debuffLines = combatSrc.split('\n').filter((l) => l.includes('const foesForDebuff ='))
+    check(
+      debuffLines.length === 1 && debuffLines[0]!.includes('activeFoeSpecsOf(anomaly, bal, battle.waveIdx)'),
+      `干扰压制取数契约：${combatPath} 的 \`foesForDebuff\` 必须取**当前波**` +
+        `（\`activeFoeSpecsOf(anomaly, bal, battle.waveIdx)\`，与视图 \`battleArcsFor\` 同一行取法），` +
+        `实际 ${debuffLines.length} 处${debuffLines.length > 0 ? `：${debuffLines.map((l) => l.trim().slice(0, 70)).join(' / ')}` : ''}`,
+    )
+    check(
+      combatSrc.includes('foes.filter((f) => !foeUnitDeadOf(battle, f.tag))'),
+      `干扰压制取数契约：${combatPath} 的 \`meJammerNetOf\` 必须**滤掉已阵亡的干扰舰**` +
+        `（\`!foeUnitDeadOf(battle, f.tag)\`）——不滤的话打死了也照压，射程永不恢复`,
+    )
+    console.log('· 干扰压制取数契约：引擎与视图同取**当前波**、且只算**活着的**干扰舰（打掉即恢复射程）')
+  }
+
   /* ── 洞内威胁「显示口径」契约（船长 2026-09-15：「虫洞的面板威胁（显示给玩家看的）建议乘以2，
    *    玩家目前会因为 1 层的 50 威胁出现误判」）──
    * 洞内面板的威胁读数一律走 `wormholeDisplayThreat()`（显示 = 引擎威胁 × 2）。

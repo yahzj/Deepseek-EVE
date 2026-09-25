@@ -21,17 +21,14 @@ import {
 import { tr } from '../i18n/locale'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 
-/** 倒计时（毫秒 → mm:ss） */
-function fmtCountdown(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000))
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
-}
-
 export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; onGoto: () => void }) {
   const [, force] = useState(0)
   /** 战前准备弹层开合（2026-09-25 船长令：入侵窗口里点「发现敌方旗舰」进来） */
   const [prepOpen, setPrepOpen] = useState(false)
-  // 倒计时要每秒走：日志列表本身不会因为秒变化而重渲染 ⇒ 自己开一个 1 秒心跳（卸载即清）
+  /**
+   * 血条/进度每秒都在动（章鱼人也在削）⇒ 自己开一个 1 秒心跳刷新读数（卸载即清）。
+   * ⚠ 原先这条心跳是给"旗舰倒计时"走的；倒计时撤了，但**入侵进度条**同样需要它。
+   */
   useEffect(() => {
     const t = window.setInterval(() => force((v) => v + 1), 1000)
     return () => window.clearInterval(t)
@@ -51,22 +48,23 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
   const coreName = engine.ctx.galaxies.get(ev.coreId)?.name ?? ev.coreId
   const flagship = weekendFlagshipView(state, ev, now, now)
   /**
-   * **旗舰 BOSS 的池子读数**（2026-09-24 第二轮令）：非 BOSS 族 / 还没接战 ⇒ `null`（这一行不出现）。
-   * 显示两条独立进度：玩家磨掉多少、章鱼人削了多少。
+   * **母舰血条读数**（2026-09-25 船长令：「**章鱼人 = 真实削减血量所以并不需要显示章鱼人削减进度和
+   * 倒计时。（因为削到 0% 就代表母舰被章鱼人摧毁。）**」）。
+   *
+   * ⇒ 玩家那份与章鱼那份**加在同一条血上**，界面只报"这条血还剩多少"：
+   * `pool.hpLeft / pool.hpMax`。**不再分两行报**（原先那行"旗舰已磨掉 N% · 章鱼人已削 M%"已撤）。
    */
   const pool = weekendBossPoolView(state, ev)
   const bossText =
-    pool === null
-      ? ''
-      : `${tr('ui.weekend.020', { p1: String(Math.round(pool.playerFrac * 100)) })} · ${tr('ui.weekend.021', {
-          p1: String(Math.round(pool.octopusFrac * 100)),
-        })}`
+    pool === null ? '' : tr('ui.weekend.020', { p1: String(Math.round((pool.hpLeft / pool.hpMax) * 100)) })
+  /**
+   * ⚠ **倒计时随章鱼进度一起撤**（同上一条船长令）：旗舰现身时只报状态，
+   * 不再显示"还剩多久被削空"（血条本身就是那个读数）。
+   */
   const tail = flagship.down
     ? tr('ui.weekend.009')
     : flagship.shown
-      ? flagship.deadlineWallMs !== undefined
-        ? `${tr('ui.weekend.010')} ${fmtCountdown(flagship.deadlineWallMs - now)}`
-        : tr('ui.weekend.010')
+      ? tr('ui.weekend.010')
       : perDone < perTotal
         ? tr('ui.weekend.011')
         : tr('ui.weekend.012')
