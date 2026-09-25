@@ -30,6 +30,7 @@ import {
   weekendBountyCardsOf,
   weekendCoreProgressAt,
   weekendGarrisonFoeCardId,
+  weekendLaunchGalaxyOf,
   weekendOccupiedLiveAt,
   weekendPeripheryAverageOf,
   weekendPeripheryClearedAt,
@@ -113,9 +114,13 @@ console.log('\n=== ④ 出发归属解析（引擎按卡 id 反查星系 ⇒ 同
     cursor.set(a.galaxyId, i + 1)
     out.push(list[i] ?? a)
   }
-  /** 引擎 `GameEngine.foeGalaxyOf` 逐字：`this.anomalies.find(a => a.id === anomalyId)?.galaxyId` */
+  /**
+   * **旧口径**（2026-09-25 修掉的那个）：引擎 `foeGalaxyOf` 原来只按卡 id 反查
+   * （`this.anomalies.find(a => a.id === anomalyId)?.galaxyId`）⇒ 同 id 多星系时永远命中列表第一个。
+   * 这里把两种口径并排打出来：**修后 = 采信界面那一行的星系**；旧口径若不同 ⇒ 说明那一行以前会串。
+   */
   const view = weekendBoardRowsOf(out, (gid) => weekendOccupiedLiveAt(state, gid, now))
-  const foeGalaxyOf = (id: string): string | undefined => view.find((a) => a.id === id)?.galaxyId
+  const legacyResolve = (id: string): string | undefined => view.find((a) => a.id === id)?.galaxyId
   for (const gid of systems) {
     const name = ctx.galaxies.get(gid)?.name ?? gid
     const row = weekendBoardRowsOf(
@@ -129,10 +134,11 @@ console.log('\n=== ④ 出发归属解析（引擎按卡 id 反查星系 ⇒ 同
       (g) => weekendOccupiedLiveAt(state, g, now),
     )[0]
     if (!row) continue
-    const resolved = foeGalaxyOf(row.id)
-    const ok = resolved === gid
+    const legacy = legacyResolve(row.id)
+    const fixed = weekendLaunchGalaxyOf(state, row.galaxyId, legacy, now) ?? '（查不到）'
     console.log(
-      `  ${name} 板面那一行 = ${row.id} ⇒ 引擎解析归属 = ${resolved ?? '（查不到）'}${ok ? ' ✅' : ' ❌ 串到了别的星系！'}`,
+      `  ${name} 板面那一行 = ${row.id} ⇒ 修后归属 = ${fixed}${fixed === gid ? ' ✅' : ' ❌'}` +
+        ` ｜ 旧口径按 id 反查 = ${legacy ?? '（查不到）'}${legacy === gid ? '' : ' ← 以前会串到这一处！'}`,
     )
   }
 }
