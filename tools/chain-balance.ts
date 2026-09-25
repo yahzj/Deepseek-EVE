@@ -485,7 +485,8 @@ const push = (stat: string, top: string, min: number, how: string): void => {
   }
   min += scan
   push('scan', `点亮全部 ${gids.length} 个星系`, min,
-    `逐星往返航程合计 ${h(min - scan)} ＋ 扫描窗口合计 ${h(scan)}（母港 10 秒、其余 10 分钟基准 × 低安惩罚）`)
+    `逐星往返航程合计 ${h(min - scan)} ＋ 扫描窗口合计 ${h(scan)}` +
+      `（母港 10 秒；其余 = 10 分钟基准 × **危险度曲线**（2026-09-25 船长令：高安恒 10 分、最深 12 时））`)
 }
 
 // ② 打捞（3,000 循环）
