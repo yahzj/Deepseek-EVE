@@ -117,7 +117,7 @@ export function weekendWarnCommsOf(
       p2: count,
       p3: coreName,
     },
-    hint: { text: '星图 · 被占星系有红环与旗标', page: 'map' },
+    hint: { text: '星图 · 被占星系有红色发光与旗标', page: 'map' },
   }
 }
 

@@ -1455,7 +1455,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.067": { zh: "航线通报：第七层起的围剿", en: "Route bulletin: the sweep from layer seven on" },
   "ui.comms.068": { zh: "到「技能」页的「工程」里训练 AI 核心操作学", en: "Train AI Core Operation under Engineering on the Skills page" },
   // 2026-09-25 周末入侵两封：跳转栏那两句（预警 → 星图；结算 → 弹结算面板）
-  "ui.comms.069": { zh: "星图 · 被占星系有红环与旗标", en: "Star map · occupied systems carry red rings and flags" },
+  "ui.comms.069": { zh: "星图 · 被占星系有红色发光与旗标", en: "Star map · occupied systems carry a red glow and a flag" },
   "ui.comms.070": { zh: "查看详细奖励", en: "View the detailed rewards" },
   // 2026-09-25 奖励清单的三个连接件（结构化清单 → 一句人话；界面拼串，引擎不拼中文）
   "ui.comms.071": { zh: "{p1} 信用点", en: "{p1} credits" },

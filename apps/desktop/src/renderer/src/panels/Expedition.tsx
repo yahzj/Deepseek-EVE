@@ -1253,6 +1253,17 @@ function StarMap({
               <stop offset="100%" style={{ stopColor: color }} stopOpacity="0" />
             </radialGradient>
           ))}
+          {/**
+           * **周末入侵：被占星系的红色发光**（2026-09-25 船长令：「被占领地区不应该用红圈提醒，
+           * 应该用一个**红色发光**放置于所有被入侵的星系**后方**」）。
+           * 做法与上面那族"势力范围光晕"同源：**静态径向渐变**（不用 filter —— 见约定第十四章），
+           * 画在圆点之前 ⇒ 天然落在星系后方；颜色走 `--wui-danger`（与红色活动框同一族色）。
+           */}
+          <radialGradient id="app-invglow">
+            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-danger))' }} stopOpacity="0.38" />
+            <stop offset="55%" style={{ stopColor: 'rgb(var(--wui-danger))' }} stopOpacity="0.16" />
+            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-danger))' }} stopOpacity="0" />
+          </radialGradient>
         </defs>
         {/* 航线（V13 迷雾）：双亮实线带分钟；涉及剪影暗化无分钟；剪影连向更深处只画半段虚化提示 */}
         {mapEdges.map((e, idx) => {
@@ -1380,10 +1391,11 @@ function StarMap({
               }}
               onPointerDown={(e) => onPointerDown(g.id, e)}
             >
-              {/* 周末入侵：被占星系**红环 + 旗标**（核心另有 ★）——画在节点最底层，不挡点击 */}
+              {/* 周末入侵：被占星系 = **身后一团红色发光** + 旗标（核心另有 ★）——画在节点最底层，不挡点击。
+                  2026-09-25 船长令：**去掉红圈**，改红色发光（与下面"势力范围光晕"同款静态径向渐变） */}
               {invasionIds.has(g.id) ? (
                 <g className="app-map-invasion" data-tip={tr('ui.weekend.018')}>
-                  <circle cx={p.x} cy={p.y} r={15} className="app-map-invasion-ring" />
+                  <circle cx={p.x} cy={p.y} r={30} fill="url(#app-invglow)" className="app-map-invasion-glow" />
                   <text x={p.x} y={p.y - 18} className="app-map-invasion-tag">
                     {g.id === invasionCoreId ? '★' : '⚑'}
                   </text>

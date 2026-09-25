@@ -104,3 +104,18 @@
 
 **验证**：`weekend-event` 新增 1 例（**25 例**）——「快进：入侵时钟取两者较大者 · 跨过"上一场结束 +1h"即开新场且 T0 = 快进后的墙钟」；全量闸门 typecheck ✓ · core **2,355 例全绿**（209 文件）· content:check ✓ · l10n:check ✓ · `ui:rot-check` ✓ · `ui:theme-check` ✓ · build ✓ · docs:index ✓。
 **请船长复验**：开调试模式 → 快进（8 小时档）→ 事件日志应出现「**有入侵舰队出现！**」（船长 2026-09-25 定文案，ui.weekend.001 已改）；被占星系的红环与悬赏替换随之刷新，进度/铺底也跟着走。
+## 十、星图标记改版：被占星系 = 身后红色发光（2026-09-25 船长令）
+
+> 船长原话：「被占领地区不应该用红圈提醒，应该用一个红色发光放置于所有被入侵的星系后方」
+
+| 件 | 改动 |
+|---|---|
+| `panels/Expedition.tsx` | ① **删掉红圈**（原 `<circle className="app-map-invasion-ring" r=15>` 虚线描边圈）；② 新增 **`<radialGradient id="app-invglow">`**（0% `--wui-danger` 38% → 55% 16% → 100% 0）+ 节点里换成 **`r=30` 的发光圆**、仍画在圆点之前 ⇒ **天体后方**。做法与既有的「势力范围光晕」（`app-famglow-*`）**同源**：静态径向渐变、不用 filter（约定第十四章），颜色走 `--wui-danger`（与红色活动框同族色） |
+| `styles.css` | `.app-map-invasion-ring`（描边圈）退役 ⇒ `.app-map-invasion-glow`（`pointer-events: none`）；旗标 `.app-map-invasion-tag` 不变 |
+| 文案 | 通讯跳转句「星图 · 被占星系有**红环**与旗标」→「…有**红色发光**与旗标」（core `weekendComms.ts` 的 hint 文本 ＋ 渲染层"中文即键"表 ＋ `ui.comms.069` 中英），三处同步改 |
+
+**保留**：旗标（外围 ⚑ / 核心 ★）与悬停说明 `ui.weekend.018` 不动 —— 船长只说红圈该换成发光，没提旗标。
+**未做**：发光**不加脉动**（船长只说"红色发光"；静态最保守）。要慢闪说一句，一行 CSS 的事。
+
+**验证**：typecheck ✓ · core **2,355 例全绿** · content:check ✓ · l10n:check ✓ · **`ui:rot-check` ✓**（UI 改动第五道闸门）· `ui:theme-check` ✓ · build ✓ · docs:index ✓。
+**观感归船长**（按规矩不拿无头截图当依据）：开调试模式 → 星图看被占星系是不是"身后一团红光"、旗标仍在、点选与悬停照常。
