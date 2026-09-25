@@ -1419,7 +1419,6 @@ async function applyLayoutAndQuit(): Promise<void> {
         qqGroup={QQ_GROUP}
         pageMain={(
           <>
-            <main className="app-page-main">
             {/**
             * ───── **主控活动窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
             *
@@ -1558,7 +1557,6 @@ async function applyLayoutAndQuit(): Promise<void> {
             />
             ) : null}
             </div>
-          </main>
           </>
         )}
         logDock={(

@@ -112,10 +112,18 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     debugNavItems,
     readDebugEnabled,
     qqGroup,
-    pageMain,
-    logDock,
+    // 两支插槽由 App 传入：`pageMainSlot` = `<main class="app-page-main">` 整块；`logDockSlot` = 右侧日志坞
+    pageMain: pageMainSlot,
+    logDock: logDockSlot,
   } = ctx
-  // 别名：外壳块里用的是这两个名字
+  /**
+   * ⚠ **两支插槽在两套布局里的落点不同**（2026-09-25 船长报障后修正）：
+   * · 新版：`.app-workspace` = 左列 + 右体；**主区在右体里**（`pageMainSlot`），日志坞是**右侧浮层**（`logDockSlot`）；
+   * · 旧版（main 原文）：`.app-workspace` 三个直接子块 = `nav` + **主列** + **日志坞（流内右栏）**，
+   *   且主列的首个子块是「活动窗口」那条。
+   * ⇒ 旧版里两支插槽**对调**：主列位置放日志坞的 DOM（`app-log-dock`），第三块放 `<main>` 整块。
+   *   React 同一次渲染只会挂其中一个位置，不会重复渲染同一份数据。
+   */
   const NAV_ITEMS = navItems
   const DEBUG_NAV_ITEMS = debugNavItems
   const QQ_GROUP = qqGroup
@@ -272,7 +280,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
   
           {/* 右侧纵向体：信息带（舰船窗 + 金钱栏）+ 主区 + 日志坞 */}
             <div className="app-workspace-body">
-            {pageMain}
+            {pageMainSlot}
           </div>
         </div>
         <nav className="app-nav-side">
@@ -357,7 +365,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
         )
         })()}
         </nav>
-        {logDock}
+        {logDockSlot}
       </>
     )
   }
@@ -484,10 +492,29 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               )
             })}
           </nav>
-          <div className="app-workspace-body">
-            {pageMain}
-          </div>
-          {logDock}
+          {/**
+           * **主列**（`<main class="app-page-main">` 由外壳自己组合，App 只传里面的内容）：
+           * 旧版的顺序与 main 原文一致 = **活动窗口条在最上**，然后才是页面内容。
+           * ⚠ 活动栏必须**在 `<main>` 内部**：它的 `width: 100%` 要相对主列的宽度算；
+           *   放到 `<main>` 外面就成了 `.app-workspace` 的同级项，会把整行吃掉（实测主区被压到 4px）。
+           */}
+          <main className="app-page-main">
+            <ActivityBar
+              engine={engine}
+              onToast={showToast}
+              onAiCenter={() => {
+                changePage('ship')
+                changeShipTab('ai')
+              }}
+              onGoPage={(p, mapTab) => {
+                changePage(p as PageKey)
+                if (mapTab) changeMapTab(mapTab as MapTab)
+              }}
+              onOpenWormhole={openWormhole}
+            />
+            {pageMainSlot}
+          </main>
+          {logDockSlot}
         </div>
       </>
     )

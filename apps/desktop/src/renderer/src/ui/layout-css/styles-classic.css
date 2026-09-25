@@ -12301,6 +12301,29 @@ html[data-locale='en'] body {
   flex-shrink: 1;
 
 }
+.app-root.is-layout-classic .app-nav-side .app-nav-item.is-featured .app-nav-icon {
+
+  width: 42px;
+
+  height: 42px;
+
+  font-size: var(--wui-fs-5xl);
+
+}
+.app-root.is-layout-classic .app-nav-side .app-nav-item.is-featured:hover {
+
+  border-color: rgb(var(--wui-accent) / 0.9);
+
+  box-shadow: 0 0 12px rgba(79, 216, 196, 0.22);
+
+}
+.app-root.is-layout-classic .app-nav-side .app-nav-item.is-featured.is-active {
+
+  border-color: rgb(var(--wui-accent));
+
+  background: rgb(var(--wui-accent) / 0.14);
+
+}
 .app-root.is-layout-classic .app-nav-side .app-nav-icon {
 
   display: inline-flex;
@@ -12318,6 +12341,19 @@ html[data-locale='en'] body {
   font-size: var(--wui-fs-4xl);
 
   line-height: 1;
+
+}
+.app-root.is-layout-classic /* ── 窗口高度不足时的**让位顺序**（船长 2026-09-14：「当玩家窗口高度不够时，会压缩左上角舰船的
+   SVG 图形，建议只压缩出港按钮」）──
+   为什么原来压的是舰船窗：`.app-shipwin` 带 `overflow: hidden` ⇒ 它的**自动最小高度 = 0**
+   （其余导航项是按钮、有内容撑着的下限），于是列向 flex 一缺高度就**只压它**；而窗内星空层是
+   `preserveAspectRatio="none"` 的 SVG ⇒ 一压就整幅变形（＝玩家看到的"压缩 SVG 图形"）。
+   现行口径：**舰船状态窗与普通导航项一律不压缩**，**只有「出港」大按钮让位**——它 `aspect-ratio: 1/1`
+   的高度先被压扁，压到内容高（图标 42 ＋ 间距 6 ＋ 文字行）为止；再不够才由左侧栏出滚动条
+   （`.app-nav-side` 本来就有 `overflow-y: auto`）——**宁可滚，也不压缩图形与文字按钮**。 */
+.app-nav-side .app-shipwin {
+
+  flex-shrink: 0;
 
 }
 .app-root.is-layout-classic .app-nav-item {
@@ -12360,6 +12396,102 @@ html[data-locale='en'] body {
   min-height: 0;
 
   flex-shrink: 0;
+
+}
+.app-root.is-layout-classic /* 右侧固定事件日志 */
+
+.app-log-side {
+
+  width: 320px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  min-height: 0;
+
+}
+.app-root.is-layout-classic .app-log-side {
+
+  width: 320px;
+
+  min-width: 0;
+
+  flex: 0 0 320px;
+
+  overflow: hidden;
+
+  transition: flex-basis 0.22s ease, width 0.22s ease;
+
+}
+.app-root.is-layout-classic .app-log-side .wui-panel {
+
+  flex: 1;
+
+  min-height: 0;
+
+}
+.app-root.is-layout-classic .app-log-side.is-collapsed {
+
+  flex-basis: 0;
+
+  width: 0;
+
+}
+.app-root.is-layout-classic .app-log-wrap {
+
+  flex: 1;
+
+  min-height: 120px;
+
+  display: flex;
+
+  flex-direction: column;
+
+}
+.app-root.is-layout-classic .app-log-wrap .wui-panel {
+
+  flex: 1;
+
+  min-height: 0;
+
+}
+.app-root.is-layout-classic .app-log-handle {
+
+  flex: 0 0 16px;
+
+  width: 16px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  align-self: stretch;
+
+  background: linear-gradient(180deg, rgb(var(--wui-bg-hover) / 0.85), rgb(var(--wui-x15) / 0.85));
+
+  border: 1px solid rgb(var(--wui-border));
+
+  border-left: none;
+
+  border-radius: 0 var(--wui-sp-6) var(--wui-sp-6) 0;
+
+  color: rgb(var(--wui-accent));
+
+  font-size: var(--wui-fs-base);
+
+  cursor: pointer;
+
+  transition: background 0.15s;
+
+}
+.app-root.is-layout-classic .app-log-handle:hover {
+
+  background: rgb(var(--wui-accent) / 0.12);
 
 }
 .app-root.is-layout-classic /* T1 顶部活动窗口（优化：置于左侧主列顶部；按钮紧贴条目左侧，不再横跨全屏） */
@@ -12523,3 +12655,31 @@ html[data-locale='en'] body {
    ⇒ 剩余时间变化不再推挤标题（徽标宽度稳定 = 不引起头部跳动，见约定 §九） */
 
 .app-activitybar-tuning-time { flex-shrink: 0; min-width: 7em; text-align: right; font-size: var(--wui-fs-2xse); font-family: var(--wui-mono); }
+.app-root.is-layout-classic .app-workspace-body { display: contents; }
+
+/* ══════════ 三、撤销新版加上去、而 main 原文没有的属性 ══════════ */
+
+/* 日志坞：新版是右侧浮层（fixed + inset + z-index + 不吃点击），旧版是**流内右栏** ⇒ 全部复位 */
+.app-root.is-layout-classic .app-log-dock {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  align-items: normal;
+  pointer-events: auto;
+}
+/* 左栏：新版的底栏规则带 border-box，会**继承**下去把子元素压窄 21px ⇒ 改回 main 的 content-box */
+.app-root.is-layout-classic .app-nav-side {
+  box-sizing: content-box;
+}
+/* 主区：新版写了 width:100%（配合"右体"那一层），在旧版的三块平铺结构里会让主区**不收缩**
+   ⇒ 日志坞被挤出视口（实测主区 1260、日志坞 x=1493）。改回 main 的 flex: 1。 */
+.app-root.is-layout-classic .app-page-main {
+  flex: 1;
+  width: auto;
+}
+/* 活动栏：新版是左列里的定宽竖列，旧版是主列顶部一条 ⇒ 清掉新版的宽高约束 */
+.app-root.is-layout-classic .app-activitybar {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin: 0 0 var(--wui-sp-6);
+}

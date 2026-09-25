@@ -38,18 +38,43 @@ const OUT_DIR = join(ROOT, 'apps/desktop/src/renderer/src/ui/layout-css')
 const BASELINE = join(OUT_DIR, '_baseline-main.css')
 const CHECK = process.argv.includes('--check')
 
-/** **外壳族**：这些选择器在第 1 份样式里被本轮改写，旧版必须改回 main 的值 */
+/**
+ * **外壳族**：这些选择器在本轮被改写（新版是"底栏 + 左列活动栏 + 右侧日志浮层"），
+ * 旧版必须**整族改回 main 的值**（新版是"左竖栏 + 主列顶部活动条 + 流内右栏日志"）。
+ *
+ * ⚠ **漏一族 = 旧版长得像新版**，本轮已被船长抓到三处：
+ *   · 活动栏（`.app-activitybar*`）：新版左列 150px，旧版是主列顶部一条（`width:100%` + `max-height:230px`）
+ *     ⇒「旧版顶部的活动窗口不见了」；
+ *   · 日志坞（`.app-log-*`）：新版 `position: fixed` 浮层，旧版是**流内右栏**
+ *     ⇒「事件日志也是采用新版的弹出覆盖的样式」；
+ *   · 导航族（`.app-nav-side*`）：新版是底栏（row/100%），旧版是 168px 左竖栏。
+ *   ⇒ **新增外壳取值时，务必回头把这几个族逐条核对一遍**（工具会回读自检，漏了会直接报错）。
+ */
 const SHELL_SELECTORS = [
   '.app-root.is-mobile-rot .app-nav-side',
   '.app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured)',
   '.app-workspace',
   '.app-page-main',
+  // 导航族（含舰船窗 / 矮窗紧凑款）
   '.app-nav-side',
   '.app-nav-side .app-nav-item',
   '.app-nav-side .app-nav-item.is-featured',
+  '.app-nav-side .app-nav-item.is-featured .app-nav-icon',
+  '.app-nav-side .app-nav-item.is-featured:hover',
+  '.app-nav-side .app-nav-item.is-featured.is-active',
   '.app-nav-side .app-nav-icon',
+  '.app-nav-side .app-shipwin',
   '.app-nav-item',
+  // 日志族（旧版是流内右栏，新版是右侧浮层）
   '.app-log-dock',
+  '.app-log-side',
+  '.app-log-side .wui-panel',
+  '.app-log-side.is-collapsed',
+  '.app-log-wrap',
+  '.app-log-wrap .wui-panel',
+  '.app-log-handle',
+  '.app-log-handle:hover',
+  // 活动栏族（旧版是主列顶部一条，新版是左侧竖列）
   '.app-activitybar',
   '.app-activitybar-item',
   '.app-activitybar-line',
@@ -58,6 +83,15 @@ const SHELL_SELECTORS = [
   '.app-activitybar-tuning',
   '.app-activitybar-tuning-time',
 ]
+
+/**
+ * **旧版需要"抹掉"的新构件**：本轮为横向布局新加的包裹层，main 原文里没有。
+ * `.app-workspace-body`（"右体"：信息带 + 主区 + 日志坞）在旧版里会让 `.app-workspace`
+ * 的第三个直接子块变成它 ⇒ 日志坞那支插槽落不进右栏。
+ * 用 `display: contents` 让这层**不产生盒子** ⇒ 子元素直接参与 `.app-workspace` 的 flex 排布，
+ * 效果等同 main 的"三个直接子块"结构。
+ */
+const CLASSIC_TRANSPARENT_LAYERS = ['.app-workspace-body']
 
 interface Rule {
   sel: string
@@ -101,6 +135,13 @@ function parseRules(text: string): Rule[] {
 const current = readFileSync(SRC, 'utf8')
 const baseline = readFileSync(BASELINE, 'utf8')
 const baseRules = parseRules(baseline)
+if (process.argv.includes('--debug')) {
+  console.log(`  [debug] 基准规则 ${baseRules.length} 条 · 当前规则 ${parseRules(current).length} 条`)
+  for (const sel of SHELL_SELECTORS) {
+    const hits = baseRules.filter((r) => r.sel === sel)
+    console.log(`  [debug] ${hits.length} × «${sel}»${hits.length === 0 ? '   ⚠ 基准里没有这条选择器' : ''}`)
+  }
+}
 
 // ── 旧版外壳覆盖：从冻结基准里取那一族的**全部**实例 ──
 const shellOverrides: string[] = []
@@ -109,6 +150,50 @@ for (const sel of SHELL_SELECTORS) {
   if (hits.length === 0) throw new Error(`外壳覆盖清单里的 «${sel}» 在 _baseline-main.css 里找不到`)
   for (const r of hits) shellOverrides.push(`.app-root.is-layout-classic ${r.raw}`)
 }
+
+// ── 旧版"透明化"新构件（本轮新增的包裹层，main 原文里没有）──
+for (const sel of CLASSIC_TRANSPARENT_LAYERS) {
+  shellOverrides.push(`.app-root.is-layout-classic ${sel} { display: contents; }`)
+}
+
+/**
+ * **撤销新版加上去、而 main 原文没有的属性**。
+ * ⚠ 这一块是必须的（船长报障两条的真因）：
+ *   ① `.app-log-dock`：基线规则只写了 `display/flex-shrink/min-height`，
+ *      **它不会取消新版那套 `position: fixed; right/top/bottom; z-index; pointer-events`**
+ *      ⇒ 日志坞仍是浮层（船长：「事件日志也是采用新版的弹出覆盖的样式」）；
+ *   ② `.app-nav-side` 的 `box-sizing`：新版底栏那条写了 `border-box`，而 **box-sizing 会继承**
+ *      ⇒ 左栏里每个子元素都被压窄 21px（实测 `.app-shipwin` 168→147、`.app-wallet` 150→129），
+ *      于是钱包的可用宽度从 150 掉到 129、"信用点"三个字放不下被 `MoneyFit` 降档去掉
+ *      （船长：「旧版的钱包只显示数字，信用点几个子不见了」）。
+ *      main 原文没写 `box-sizing` ⇒ 用默认的 `content-box`，这里显式写回去。
+ */
+const CLASSIC_RESETS = `
+/* 日志坞：新版是右侧浮层（fixed + inset + z-index + 不吃点击），旧版是**流内右栏** ⇒ 全部复位 */
+.app-root.is-layout-classic .app-log-dock {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  align-items: normal;
+  pointer-events: auto;
+}
+/* 左栏：新版的底栏规则带 border-box，会**继承**下去把子元素压窄 21px ⇒ 改回 main 的 content-box */
+.app-root.is-layout-classic .app-nav-side {
+  box-sizing: content-box;
+}
+/* 主区：新版写了 width:100%（配合"右体"那一层），在旧版的三块平铺结构里会让主区**不收缩**
+   ⇒ 日志坞被挤出视口（实测主区 1260、日志坞 x=1493）。改回 main 的 flex: 1。 */
+.app-root.is-layout-classic .app-page-main {
+  flex: 1;
+  width: auto;
+}
+/* 活动栏：新版是左列里的定宽竖列，旧版是主列顶部一条 ⇒ 清掉新版的宽高约束 */
+.app-root.is-layout-classic .app-activitybar {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin: 0 0 var(--wui-sp-6);
+}
+`
 
 // ── ① modern 份 = 本分支 styles.css 原样 ──
 const modernCss =
@@ -128,7 +213,8 @@ const classicCss =
   current +
   '\r\n\r\n/* ══════════ 二、旧版外壳覆盖（取合并前 main 原文 + 旧版限定）══════════ */\r\n\r\n' +
   shellOverrides.join('\r\n') +
-  '\r\n'
+  '\r\n\r\n/* ══════════ 三、撤销新版加上去、而 main 原文没有的属性 ══════════ */\r\n' +
+  CLASSIC_RESETS
 
 // ── 自检 ──
 const bal = (t: string): number => (t.match(/\{/g) ?? []).length - (t.match(/\}/g) ?? []).length
@@ -149,9 +235,17 @@ if (CHECK) {
   console.log('\n[check] 未写盘')
 } else {
   mkdirSync(OUT_DIR, { recursive: true })
-  const write = (name: string, text: string): void => writeFileSync(join(OUT_DIR, name), text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), 'utf8')
+  const write = (name: string, text: string): void =>
+    writeFileSync(join(OUT_DIR, name), text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), 'utf8')
   write('styles-modern.css', modernCss)
   write('styles-classic.css', classicCss)
-  console.log('\n  ✅ 已写 ui/layout-css/styles-modern.css 与 styles-classic.css')
+  // **写盘后回读自检**：用解析器按"选择器"核对，**别按字符串含空格**（基准里有压缩成一行的规则，
+  // 按字符串匹配会误报"没写进去"——本轮吃过这个亏）。
+  const backRules = parseRules(readFileSync(join(OUT_DIR, 'styles-classic.css'), 'utf8'))
+  const haveSel = new Set(backRules.map((r) => r.sel))
+  const missing = SHELL_SELECTORS.filter((sel) => !haveSel.has(`.app-root.is-layout-classic ${sel}`))
+  console.log(`\n  ✅ 已写 ui/layout-css/styles-modern.css 与 styles-classic.css`)
+  console.log(`  ${missing.length === 0 ? '✅' : '❌'} 回读自检：${SHELL_SELECTORS.length - missing.length} / ${SHELL_SELECTORS.length} 个外壳覆盖已在文件里`)
+  if (missing.length > 0) throw new Error('这些外壳覆盖没写进文件：' + missing.join(' | '))
 }
 void execFileSync
