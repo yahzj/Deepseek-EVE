@@ -81,8 +81,10 @@ const SECONDHAND_PER_LEVEL = 0.02
 /** rare NPC 订单存在时长倍率（9 分钟 → 36 分钟；供给/收购两侧同规则） */
 const RARE_LIFE_MUL = 4
 /** 奇货每次抽取窗全市场命中上限（超出部分随机抽选保留，防偶发/离线补单爆量）
- * ⚠ **铁人福利 B 在此之上 +2**（船长 2026-09-23：「奇货订单每窗最大数量+2」）⇒ 铁人档每窗至多 4 张。 */
-const EXOTIC_CAP_PER_DRAW = 2
+ * ⚠ **铁人福利 B 在此之上 +2**（船长 2026-09-23：「奇货订单每窗最大数量+2」）。
+ * ⟪**2026-09-25 船长令**⟫「**奇货订单每窗上限再+2**」⇒ **2 → 4**（铁人档随之为 4 + 2 = **6 张**；
+ * 同日另令「0.8% 的概率上调到 1%」见 `balance.market.exoticWindowChance`）。 */
+const EXOTIC_CAP_PER_DRAW = 4
 /** 行数字稀有度 → 稀有订单渠道权重乘子（2026-09-09 船长拍板：稀有度入物品本体 RARITY_TIER，
  * 只驱动稀有订单渠道——卖单抽取权重 + NPC 收购窗概率；2 档（大众）= 基准 1，3 档（高阶）=
  * balance.market.rareTier3Weight；奇货渠道出率与数字不挂钩。**2026-09-10 船长定 0.25 → 0.15**，
@@ -621,7 +623,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
 
   // ── P2 稀有/奇货抽取节拍（2026-09-06 船长定：每 RARE_DRAW_PERIOD_MS 执行一次）──
   // rare：本窗抽 N 张（浮动百分比 × 已解锁件数，加权有放回 → 同窗可重复抽中同一类型）；
-  // 奇货：每件独立掷骰（0.8% × 技能），全窗命中 >EXOTIC_CAP_PER_DRAW 张时随机抽选保留。
+  // 奇货：每件独立掷骰（**1%** × 技能），全窗命中 >EXOTIC_CAP_PER_DRAW 张时随机抽选保留。
   // 无 rare/奇货的目录（如纯采矿测试档）不掷骰，避免扰动确定性 RNG 计数。
   if ((mk.slowDrawLastGameMs ?? 0) + RARE_DRAW_PERIOD_MS <= nextNow) {
     mk.slowDrawLastGameMs = nextNow
@@ -736,7 +738,7 @@ export function slowSupplyDraw(state: GameState, ctx: SimContext, now: number): 
       if (picked) spawnRareSupply(state, ctx, picked, now, bmGateLocked(state, picked))
     }
   }
-  // ── 奇货：每件独立掷骰（0.8% × 现货抢购学；蓝图书再 ×blueprintWeight，同 5% 口径）；
+  // ── 奇货：每件独立掷骰（**1%** × 现货抢购学；蓝图书再 ×blueprintWeight，同 5% 口径）；
   //    命中 > EXOTIC_CAP_PER_DRAW 张 → 随机抽选保留 ──
   const sweep = sweepMul(state)
   const winners: MarketGoodDef[] = []

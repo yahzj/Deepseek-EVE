@@ -606,7 +606,7 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行；收购�
   })
 })
 
-describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回抽取可重复 + 闸内 ×4 + 奇货上限 2/6h）', () => {
+describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回抽取可重复 + 闸内 ×4 + 奇货上限 4/6h）', () => {
   let state: GameState
   let ctx: SimContext
 
@@ -742,7 +742,7 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
     expect(top.expiresAtGameMs - state.market.lastTickGameMs).toBe(EXO_LIFE) // 订单 6 小时有效
   })
 
-  it('奇货单次上限 2：抽取窗命中 >2 件时随机抽选保留 2 张（测试档上调概率验证）', () => {
+  it('奇货单次上限 4：抽取窗命中 >4 件时随机抽选保留 4 张（测试档上调概率验证）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 17 })
     state.wallet.isk = 100_000_000
     const goods: MarketGoodDef[] = Array.from({ length: 6 }, (_, i) => ({
@@ -764,13 +764,13 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
       if (w % 10 !== 0) continue
       let winN = 0
       for (const g of goods) winN += freshOf(state.market.npcSell[g.key] ?? [], EXO_LIFE).length
-      expect(winN).toBeLessThanOrEqual(2) // 单次上限 2
+      expect(winN).toBeLessThanOrEqual(4) // 单次上限 4（⟪2026-09-25 船长令⟫「每窗上限再+2」）
       totalKept += winN
-      if (winN === 2) capWins++
+      if (winN === 4) capWins++
     }
-    // 6 件 × 0.5/窗 期望命中 ~3/窗：若无上限 30 窗应 ~90 张；上限后明显截断但仍持续到货
-    expect(totalKept).toBeLessThan(60)
-    expect(totalKept).toBeGreaterThan(20)
+    // 6 件 × 0.5/窗 期望命中 ~3/窗：若无上限 30 窗应 ~90 张；上限 4 后仍有截断、且持续到货
+    expect(totalKept).toBeLessThan(90)
+    expect(totalKept).toBeGreaterThan(60)
     expect(capWins).toBeGreaterThan(0)
   })
 

@@ -31,7 +31,8 @@ export const IRONMAN_RARE_WEIGHT_MUL = 2
 /** B · 奇货订单权重倍率（+100%） */
 export const IRONMAN_EXOTIC_WEIGHT_MUL = 2
 /** B · **奇货订单每窗最大数量 +2**（**船长 2026-09-23 追加**：「铁人福利的奇货订单每窗最大数量+2」）
- *  —— 加在 `EXOTIC_CAP_PER_DRAW`（2）上 ⇒ 铁人档每窗至多 4 张。 */
+ *  —— 加在 `EXOTIC_CAP_PER_DRAW` 上。⚠ 该基数 **⟪2026-09-25 船长令⟫ 2 → 4**（「奇货订单每窗上限再+2」）
+ *  ⇒ 铁人档每窗至多 **4 + 2 = 6 张**（旧为 2 + 2 = 4 张）。 */
 export const IRONMAN_EXOTIC_CAP_BONUS = 2
 
 /** C · 悬赏/任务奖励倍率（+10%） */
