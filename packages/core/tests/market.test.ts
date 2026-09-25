@@ -49,7 +49,8 @@ const MIN_A = mineral('min-a') // basePrice 8
  * 消耗和交易出售」⇒ 船长选**乙案**：留在稀有订单渠道 + 给消耗品开批量档 + 收购额度 ×5）。
  *
  * 口径（写死在这组用例里，改数值先改这里）：
- * - `rareQtyMul: 200` ⇒ 稀有单件数 1~3 件 → **200~600 发/张**（供货与收购两侧同乘）；
+ * - `rareQtyMul: 200` ⇒ 稀有单张件数 **恒 1 件 × 200 = 200 发/张**（供货与收购两侧同乘）；
+ *   ⚠⟪2026-09-25 船长令⟫「**每次恒 1 件**」⇒ 旧口径「单件商品 1~3 件」作废（原为 200~600 发/张）；
  * - `rareWeightMul: 3` ⇒ 稀有抽取/收购概率 ×3；
  * - `absorbQtyPerWindow: 21_600` ⇒ 收购额度 = 池口径 4,320 × 5。
  */
@@ -67,7 +68,7 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
     }
   })
 
-  it('稀有抽取：弹药 MK2 出的是批量单（200~600 发/张），未标批量档的稀有货照旧 1~3 件', () => {
+  it('稀有抽取：弹药 MK2 出的是批量单（**200 发/张**），未标批量档的稀有货**恒 1 件**', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 11 })
     advanceGame(state, 1000, ctxReal) // 开盘
     /** 另挑一件"普通稀有货"（没写批量档）做对照 —— 用模块（rare 单件里 most 有供应单的那类） */
@@ -86,10 +87,10 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
     expect(ammoQty.size, '13 小时内应抽到过弹药 MK2 的供货单').toBeGreaterThan(0)
     // 2026-09-25 船长选甲：只约束**稀有通道**（<=600 的那些）；池通道供应单可达六位数、不在此列
     for (const q of [...ammoQty].filter((q2) => q2 <= 600)) {
-      expect(q, '批量档：单张 1~3 件 ×200').toBeGreaterThanOrEqual(200)
-      expect(q, '批量档：单张 1~3 件 ×200').toBeLessThanOrEqual(600)
+      // ⟪2026-09-25 船长令⟫「每次恒 1 件」⇒ 批量档 = 1 件 × 200（不再是 1~3 件 × 200）
+      expect(q, '批量档：单张恒 1 件 ×200').toBe(200)
     }
-    for (const q of plainQty) expect(q, '没写批量档的稀有货照旧').toBeLessThanOrEqual(3)
+    for (const q of plainQty) expect(q, '没写批量档的稀有货恒 1 件').toBe(1)
   })
 
   it('簿面收购单同步放大：弹药 MK2 的收购单 ≥200 件/张（对照货仍 2 件档）', () => {

@@ -676,15 +676,24 @@ function orderLifeMsOf(def: MarketGoodDef, bal: MarketBalance): number {
 }
 
 /** 抽取命中一张 rare 供给单：解锁原价；闸内 = ×4 暗市单（标 bm，外观同普通稀有单，玩家向隐身）。
- * 数量：船 1 艘/次，其余 1~3 件（同窗可重复抽中同一类型 → 簿上允许同商品多张）；
- * **消耗品批量档**（`rareQtyMul`，2026-09-20 船长令）⇒ 单张件数 ×本值（弹药 MK2 = 200 ⇒ 200~600 发/张）。
+ * 数量：**每张恒 1 件**（船也是 1 艘）——⟪**2026-09-25 船长令**⟫「**每次恒 1 件**」。
+ * ⚠ **旧口径（已作废）**：单件商品 = `1 + nextInt(rng, 3)` ⇒ 一次抽中随机给 **1/2/3 件**；
+ * 玩家报障「**单件相同的商品，一次性刷出了 3 件**」即出自这里
+ * （读真档推进 3 小时实测：供给侧 `rare · module` 单张最大 **3 件**、`rare · blueprint` 最大 3 件；
+ *  奇货与船的供给单本来就是 1 件 ⇒ **只有稀有这一档会"一次 2~3 件"**）。
+ * **消耗品批量档**（`rareQtyMul`，2026-09-20 船长令）⇒ 单张件数 ×本值
+ * （弹药 MK2 = 200；⚠ 基数恒 1 之后它由「200~600 发/张」变为「**200 发/张**」——**倍率本身一字未动**）。
  * 价格：原价/×4 之上再乘 二手市场学折扣（卷B3⑪；见 secondhandMul）。 */
 function spawnRareSupply(state: GameState, ctx: SimContext, def: MarketGoodDef, now: number, locked: boolean): void {
   const poolQ = state.market.pools[def.key]?.q ?? 0
   const L = priceLevel(state, ctx, def, poolQ)
   const lifeMs = orderLifeMsOf(def, ctx.balance.market)
-  const baseQty = def.kind === 'ship' ? 1 : 1 + nextInt(state.rng, 3)
-  const qty = def.kind === 'ship' ? 1 : baseQty * Math.max(1, Math.round(def.rareQtyMul ?? 1))
+  // 船恒 1 艘；其余单件商品恒 1 件，只有消耗品的批量档倍率照旧乘入。
+  // ⚠ **仍掷一次骰但丢弃结果**：本函数原口径是 `1 + nextInt(rng, 3)`，少掷一枚会**整体推移 rng 序列**
+  // ⇒ 市场慢噪声/价线的轨迹跟着变（实测：`market.test.ts` 的"站内让利吸收"一条当场红）。
+  // 这与 2026-09-11 稀有残骸保底的「**恒掷一次随机数**（只取 `||`）」是同一款时序纪律。
+  if (def.kind !== 'ship') void nextInt(state.rng, 3)
+  const qty = def.kind === 'ship' ? 1 : Math.max(1, Math.round(def.rareQtyMul ?? 1))
   const price = Math.round(sellPrice(def, L) * priceJitter(state) * secondhandMul(state) * (locked ? 4 : 1))
   npcPushSell(state, ctx, def, poolQ, now, lifeMs, price, qty, locked)
 }
