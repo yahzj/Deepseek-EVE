@@ -75,8 +75,54 @@ function mountEffectText(id: string): string | null {
   return nm
 }
 
-/** 取该卡编成里**每一种**舰（按 精英 > 档位 > 主舰 排序，去重；同型归一条） */
-export function briefShipsOf(anomaly: AnomalyDef | null | undefined): FoeShipDef[] {
+/** 一句话的**分段**（界面要染色就得拿结构，不能拿拼好的字符串） */
+export interface FoeBriefLine {
+  /** 舰级 id（去重/取色的键） */
+  id: string
+  /** 舰级名（玩家可见舰种名） */
+  name: string
+  /** 舰种（护卫舰/驱逐舰/…） */
+  hull: string
+  /** 本卡编成里的数量（0 = 只是"可能出现"，不在本卡编成里） */
+  count: number
+  /** 其余部分：战术 / 武器 / 主副伤 / 舰载机 / 特殊装置 / 精英档 */
+  bits: string[]
+}
+
+/** 组一句里的"其余部分"（与 `foeShipBriefOf` 同一套判据，避免两处漂移） */
+function bitsOf(ship: FoeShipDef): string[] {
+  const en = isEn()
+  const bits: string[] = []
+  if (ship.tactic === 'brawl') bits.push(tr('ui.foeIntro.010'))
+  else if (ship.tactic === 'orbit') bits.push(tr('ui.foeIntro.011'))
+  else if (ship.tactic === 'kite') bits.push(tr('ui.foeIntro.012'))
+  if (ship.energyForm !== undefined) bits.push(ship.energyForm === 'beam' ? tr('ui.foeIntro.020') : tr('ui.foeIntro.021'))
+  const mix = Object.entries(ship.dmgMix ?? {}).sort((a, b) => b[1] - a[1])
+  const total = mix.reduce((n, [, v]) => n + v, 0)
+  if (mix.length > 0 && total > 0) {
+    const [mt, mv] = mix[0]!
+    bits.push(tr('ui.foeIntro.030', { p1: dmgText(mt), p2: String(Math.round((mv / total) * 100)) }))
+    const sub = mix[1]
+    if (sub && sub[1] / total >= 0.15) bits.push(tr('ui.foeIntro.031', { p1: dmgText(sub[0]) }))
+  }
+  const drones = ship.drones ?? []
+  if (drones.length > 0) {
+    bits.push(tr('ui.foeIntro.040', { p1: String(drones.reduce((n, d) => n + (d.count ?? 1), 0)) }))
+  }
+  const mech: string[] = []
+  for (const id of ship.mounts ?? []) {
+    const nm = mountEffectText(id)
+    if (nm) mech.push(nm)
+  }
+  if ((ship.repairPct ?? 0) > 0) mech.push(tr('ui.foeIntro.050'))
+  if ((ship.foeRangeDebuffPct ?? 0) > 0) mech.push(tr('ui.foeIntro.051'))
+  if (mech.length > 0) bits.push(tr('ui.foeIntro.060', { p1: mech.join(en ? ', ' : '、') }))
+  if (ship.elite === true) bits.push(tr('ui.foeIntro.070'))
+  return bits
+}
+
+/** 取该卡编成里**每一种**舰（按 精英 > 档位 > 主舰 排序，去重；同型归一条并累计数量） */
+export function briefShipsOf(anomaly: AnomalyDef | null | undefined): FoeBriefLine[] {
   const slots = anomaly?.ships ?? []
   const seen = new Map<string, { ship: FoeShipDef; count: number; main: boolean }>()
   for (const s of slots) {
@@ -94,77 +140,73 @@ export function briefShipsOf(anomaly: AnomalyDef | null | undefined): FoeShipDef
   const score = (x: { ship: FoeShipDef; main: boolean }) =>
     (x.ship.elite === true ? 1000 : 0) + x.ship.hullClassTier * 10 + (x.main ? 5 : 0)
   list.sort((a, b) => score(b) - score(a))
-  return list.map((x) => x.ship)
+  return list.map((x) => toLine(x.ship, x.count))
 }
 
-/** 卡级：**逐种**给一句话（旗舰那种 5 种舰的编成 ⇒ 5 行，不是只报一种） */
-export function foeBriefsOfCard(anomaly: AnomalyDef | null | undefined): string[] {
-  return briefShipsOf(anomaly)
-    .map((s) => foeShipBriefOf(s))
-    .filter((s): s is string => s !== null)
-}
-
-/** 取该卡里"最该介绍的那条舰"（主舰优先，其次档位最高的）——单条用途（如卡面内嵌一行） */
-export function briefShipOf(anomaly: AnomalyDef | null | undefined): FoeShipDef | null {
-  return briefShipsOf(anomaly)[0] ?? null
+function toLine(ship: FoeShipDef, count: number): FoeBriefLine {
+  return {
+    id: ship.id,
+    name: ship.name,
+    hull: isEn() ? (HULL_EN[ship.hullClassTier] ?? '') : (HULL_CN[ship.hullClassTier] ?? ''),
+    count,
+    bits: bitsOf(ship),
+  }
 }
 
 /**
- * **一句话介绍**（纯函数：同一个 `FoeShipDef` ⇒ 同一句话）。
- * 组合 = `族名 + 舰种 + 舰级名：行为，武器，无人机，特殊机制，精英档。`
- * 其中"特殊机制"那一节是**逐件点名挂载件**（船长要的"说明特殊机制的效果"）。
+ * **本场入侵"可能抽到"的全部敌舰**（2026-09-26 船长令：「**因为入侵卡是随机抽取的，你应该显示所有
+ * 抽取的卡可能出现的敌人**」）。
+ *
+ * 口径：把该族该区域**整池**的卡都过一遍（`poolIds` = `weekendFoePoolOf(...)`，与抽取同源），
+ * 逐卡取编成 → 按舰级 id 去重汇总。本卡编成里已有的记 `count`（>0），只是"可能出现"的记 0。
+ */
+export function briefsOfPool(anomalies: ReadonlyMap<string, AnomalyDef>, poolIds: readonly string[], drawn: AnomalyDef | null | undefined): FoeBriefLine[] {
+  const acc = new Map<string, FoeBriefLine>()
+  for (const id of poolIds) {
+    const card = anomalies.get(id)
+    for (const line of briefShipsOf(card)) {
+      const hit = acc.get(line.id)
+      if (hit) hit.count += line.count
+      else acc.set(line.id, { ...line, count: line.count })
+    }
+  }
+  // 本卡编成（可能不在池里，例如派生卡）也并进来，保证"这一仗真会遇到的"一定在列
+  for (const line of briefShipsOf(drawn)) {
+    const hit = acc.get(line.id)
+    if (hit) hit.count = Math.max(hit.count, line.count)
+    else acc.set(line.id, line)
+  }
+  const list = [...acc.values()]
+  list.sort((a, b) => b.count - a.count || b.bits.length - a.bits.length || a.id.localeCompare(b.id))
+  return list
+}
+
+/** 卡级：**逐种**给一句话（旗舰那种 5 种舰的编成 ⇒ 5 行） */
+export function foeBriefsOfCard(anomaly: AnomalyDef | null | undefined): string[] {
+  return briefShipsOf(anomaly).map((l) => lineText(l))
+}
+
+/** 一行拼成字符串（非染色场景用；染色场景直接读 `FoeBriefLine` 的分段） */
+export function lineText(l: FoeBriefLine): string {
+  const en = isEn()
+  const head = en ? `${l.name} (${l.hull})` : `${l.name}（${l.hull}）`
+  return l.bits.length > 0 ? `${head}${en ? ': ' : '：'}${l.bits.join(en ? ', ' : '，')}${en ? '.' : '。'}` : `${head}${en ? '.' : '。'}`
+}
+
+/** 取该卡里"最该介绍的那条舰"——单条用途（如卡面内嵌一行） */
+export function briefShipOf(anomaly: AnomalyDef | null | undefined): FoeShipDef | null {
+  const slots = anomaly?.ships ?? []
+  return slots.find((s) => s?.ship)?.ship ?? null
+}
+
+/**
+ * **一句话介绍**（单条字符串版；纯函数：同一个 `FoeShipDef` ⇒ 同一句话）。
+ * ⚠ 判据走共用的 `bitsOf()` —— 分段版（`FoeBriefLine`，界面染色用）与这里**必须是同一套口径**，
+ * 否则"悬停染色版"和"字符串版"会各说各的。
  */
 export function foeShipBriefOf(ship: FoeShipDef | null | undefined): string | null {
   if (!ship) return null
-  const en = isEn()
-  const bits: string[] = []
-
-  // ① 行为（战术）
-  if (ship.tactic === 'brawl') bits.push(tr('ui.foeIntro.010'))
-  else if (ship.tactic === 'orbit') bits.push(tr('ui.foeIntro.011'))
-  else if (ship.tactic === 'kite') bits.push(tr('ui.foeIntro.012'))
-
-  // ② 武器形态：能量（光束必中 / 掷命中）
-  if (ship.energyForm !== undefined) bits.push(ship.energyForm === 'beam' ? tr('ui.foeIntro.020') : tr('ui.foeIntro.021'))
-
-  // ③ 主副伤构成（与战斗结算同源的 `dmgMix`）
-  const mix = Object.entries(ship.dmgMix ?? {}).sort((a, b) => b[1] - a[1])
-  const total = mix.reduce((n, [, v]) => n + v, 0)
-  if (mix.length > 0 && total > 0) {
-    const [mt, mv] = mix[0]!
-    bits.push(tr('ui.foeIntro.030', { p1: dmgText(mt), p2: String(Math.round((mv / total) * 100)) }))
-    const sub = mix[1]
-    if (sub && sub[1] / total >= 0.15) bits.push(tr('ui.foeIntro.031', { p1: dmgText(sub[0]) }))
-  }
-
-  // ④ 无人机编队
-  const drones = ship.drones ?? []
-  if (drones.length > 0) {
-    const totalN = drones.reduce((n, d) => n + (d.count ?? 1), 0)
-    bits.push(tr('ui.foeIntro.040', { p1: String(totalN) }))
-  }
-
-  // ⑤ **特殊机制**：逐件点名挂载件（＋后勤/干扰两条不进挂载件的字段）
-  const mech: string[] = []
-  for (const id of ship.mounts ?? []) {
-    const nm = mountEffectText(id)
-    if (nm) mech.push(nm)
-  }
-  if ((ship.repairPct ?? 0) > 0) mech.push(tr('ui.foeIntro.050'))
-  if ((ship.foeRangeDebuffPct ?? 0) > 0) mech.push(tr('ui.foeIntro.051'))
-  if (mech.length > 0) bits.push(tr('ui.foeIntro.060', { p1: mech.join(en ? ', ' : '、') }))
-
-  // ⑥ 精英档
-  if (ship.elite === true) bits.push(tr('ui.foeIntro.070'))
-
-  const hull = (en ? HULL_EN : HULL_CN)[ship.hullClassTier] ?? ''
-  /**
-   * ⚠ **句子开头不能"族+舰种+舰名"三连**：舰名本身已经带族与舰种
-   * （「墨潮突击舰」「海盗头目舰」「守墓王座舰」）⇒ 拼出来是「墨潮护卫舰墨潮突击舰」这种叠字。
-   * 改口径：**舰名打头 + 舰种放括号**（规格），`族+舰种` 那份信息交给卡片上已有的族徽/档位。
-   */
-  const head = en ? `${ship.name} (${hull})` : `${ship.name}（${hull}）`
-  return bits.length > 0 ? `${head}${en ? ': ' : '：'}${bits.join(en ? ', ' : '，')}${en ? '.' : '。'}` : `${head}${en ? '.' : '。'}`
+  return lineText(toLine(ship, 1))
 }
 
 /** 卡级便捷入口（单条）：取代表舰 + 组句 */

@@ -87,9 +87,11 @@ import { FirstTasks } from './FirstTasks'
 import { MilestoneTasks } from './MilestoneTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { UI_TONES } from '../ui/tones'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
-import { foeBriefsOfCard } from '../ui/foeBrief'
+import { briefsOfPool } from '../ui/foeBrief'
+import { hoverTipProps } from '../ui/Tooltip'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 
@@ -2171,18 +2173,41 @@ function GalaxyActions({
           const hi = threats.length > 0 ? Math.max(...threats) : 0
           const card = list[0] ?? cands[0]
           /**
-           * **敌舰介绍**（整卡悬停；一个编成里有几种舰就报几种）——先算好，别塞进 JSX 里拼三元。
-           * 旗舰卡的编成是 9 条 / **5 种**舰 ⇒ 悬停里逐种一行。
+           * **敌对舰船一览**（2026-09-26 船长令：「**敌人舰船的名称和特殊装置染色**」＋
+           * 「**因为入侵卡是随机抽取的，你应该显示所有抽取的卡可能出现的敌人**」）。
+           *
+           * · 范围 = 该族该区域**整池**（`weekendFoePoolOf` 与抽取同源）∪ 本卡编成 ⇒ 不再只报"这一仗抽到的那一种"；
+           * · 染色走**富内容悬停**（`hoverTipProps`）：舰名用战场同款 `UI_TONES.foeName`（主舰 `foeNameMain`）、
+           *   "特殊装置"那一节用 `UI_TONES.foeName` 同色系标出——与战斗画面的敌舰名同一套色，不自造颜色。
            */
-          const foeBriefLines = card ? foeBriefsOfCard(card) : []
-          const foeBriefTip = foeBriefLines.length > 0 ? foeBriefLines.join('\n') : undefined
+          const foeLines = briefsOfPool(engine.ctx.anomalies, weekendFoePoolOf(ev.family, galaxy.id === ev.coreId), card)
+          const foeTip =
+            foeLines.length === 0 ? null : (
+              <span className="app-ano-foebrief">
+                {foeLines.map((l) => (
+                  <span key={l.id} className="app-ano-foebrief-row">
+                    <b style={{ color: l.count > 0 ? UI_TONES.foeNameMain : UI_TONES.foeName }}>
+                      {l.name}（{l.hull}
+                      {l.count > 0 ? `×${l.count}` : ''}）
+                    </b>
+                    <span className="app-dim">{'：'}</span>
+                    {l.bits.map((b, i) => (
+                      <span key={i} style={b.startsWith(tr('ui.foeIntro.060', { p1: '' })) ? { color: UI_TONES.foeName } : undefined}>
+                        {b}
+                        {i < l.bits.length - 1 ? '，' : '。'}
+                      </span>
+                    ))}
+                  </span>
+                ))}
+              </span>
+            )
           return (
             /**
              * ⚠ **同一套红框**（船长 2026-09-25 第二条令：「星系详细『悬赏』区那行『击退入侵舰队』
              * 加同样的红框」）：与上面的旗舰入口同一对类名 ⇒ 观感与 `.app-weekend-box` 逐字同款。
              * 悬停（`title`）挂在**整张卡**上，见 `foeBriefTip` 的注释。
              */
-            <div className="app-ga-row app-ga-invasion" title={foeBriefTip}>
+            <div className="app-ga-row app-ga-invasion" {...(foeTip ? hoverTipProps(foeTip) : {})}>
               <span className="app-ga-main">
                 <span className="app-ico">
                   <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />

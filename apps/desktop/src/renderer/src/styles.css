@@ -10356,6 +10356,25 @@ html[data-locale='en'] body {
 
 }
 
+/* 入侵卡悬停里的**敌对舰船一览**（2026-09-26 船长令：舰名与特殊装置染色、并列出整池可能出现的敌人）
+   舰名/特殊装置的**颜色走内联的 UI_TONES**（与战场敌舰名同一套色），这里只管列表排布。 */
+.app-ano-foebrief {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-4);
+
+}
+
+.app-ano-foebrief-row {
+
+  display: block;
+
+  line-height: 1.45;
+
+}
 .app-ga-invprog-line {
 
   font-size: var(--wui-fs-xsb);
