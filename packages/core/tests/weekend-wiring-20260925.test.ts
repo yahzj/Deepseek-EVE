@@ -160,6 +160,10 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(r?.wreck, '夺回奖励残骸').toBe(WEEKEND_RECLAIM_WRECK)
     expect(s.wallet.isk - isk0, 'ISK 真进钱包').toBe(WEEKEND_RECLAIM_ISK)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '稀有残骸真到手（H 组稀有件）').toBe(WEEKEND_RECLAIM_WRECK)
+    /** 入账日志（id 制）：夺回是里程碑 ⇒ 必须留一条解释"钱从哪来" */
+    const reclaimLog = [...s.logs].reverse().find((l) => l.textId === 'core.weekend.001')
+    expect(reclaimLog?.text.includes('夺回'), '夺回要有入账日志').toBe(true)
+    expect(reclaimLog?.textParams?.p2, '日志里的残骸数与实发一致').toBe(WEEKEND_RECLAIM_WRECK)
   })
 
   it('⑤ 活动结束 ⇒ 贡献奖入账（四档）· 只发一次 · 占比按结束时刻算', () => {
@@ -331,6 +335,9 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '旗舰残骸真到手').toBe(WEEKEND_FLAGSHIP_WRECK)
     expect(s.weekendEvent!.flagshipDown, '记玩家击毁').toBe('player')
     expect(s.weekendEvent!.endedAtWallMs, '击沉即结束本场').toBeDefined()
+    /** 入账日志：旗舰击沉也要留一条（黑匣 + 残骸） */
+    const killLog = [...s.logs].reverse().find((l) => l.textId === 'core.weekend.003')
+    expect(killLog?.text.includes('旗舰击沉'), '击沉要有入账日志').toBe(true)
   })
 
   it('⑪ 贡献奖按"结束时刻"结算：离线五天后补结，档位与金额与结束时一模一样', () => {

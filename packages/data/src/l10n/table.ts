@@ -314,6 +314,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.encounters.006": { zh: "已应战：遭遇战打响（引擎自动推演，战报稍后）。", en: "Engaged: the encounter has begun (the engine resolves it automatically and the report follows)." },
   "core.encounters.007": { zh: "当前没有可脱离的遭遇。", en: "There is no encounter to break away from." },
   "core.encounters.008": { zh: "⚠ 入侵遭遇（{p1}·「{p2}」）：{p3} 遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。", en: "⚠ Invasion encounter ({p1} · “{p2}”): {p3} was ambushed by that formation — you can ⚔ Engage or Break away; in 60 seconds it disengages automatically." },
+  // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
+  "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励已入账 —— 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "✦ Reclaimed “{p1}”: the reclaim reward has been credited — rare wrecks ×{p2} + {p3} credits." },
+  "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励已入账（稀有残骸 ×{p2} ＋ {p3} 信用点）。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus have been credited (rare wrecks ×{p2} + {p3} credits)." },
+  "core.weekend.003": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1}）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils have been credited (flagship black box ×1 + rare wrecks ×{p1})." },
   "core.station.001": { zh: "未知建站点：{p1}。", en: "Unknown construction site: {p1}." },
   "core.station.002": { zh: "「{p1}」已建成，无需再提交。", en: "“{p1}” is already complete; there is nothing left to hand in." },
   "core.station.003": { zh: "「{p1}」当前档不收这种材料或已收齐——本档材料单：{p2}。", en: "“{p1}” does not take that material at this tier, or has already collected enough — this tier's bill: {p2}." },

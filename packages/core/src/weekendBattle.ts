@@ -13,6 +13,7 @@
 import type { SimContext } from './types'
 import type { GameState } from './state'
 import { addItem } from './inventory'
+import { addLog } from './state'
 import {
   WEEKEND_CORE_THREAT,
   WEEKEND_PERIPHERY_THREAT,
@@ -555,5 +556,40 @@ export function weekendApplyBattleOutcome(
     blackBox: r.flagshipKilled !== undefined,
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
   })
+  /**
+   * **入账日志**（2026-09-25 补 · id 制）：只记**里程碑** —— 夺回 / 全部夺回 / 旗舰击沉。
+   * 起因：这两笔钱原先**只入账不吭声**（`r.note` 有措辞，但两个调用点都把返回值丢了）⇒ 玩家看到钱包/货舱
+   * 突然多出东西却没有解释。**普通进度推进不记**（面板有进度条与百分比，免得每场刷一条）。
+   */
+  const gname = ctx.galaxies.get(involved.galaxyId)?.name ?? involved.galaxyId
+  if (r.reclaimed !== undefined) {
+    const iskText = granted.isk.toLocaleString('zh-CN')
+    if (r.reclaimed.allClear) {
+      addLog(
+        state,
+        'trade',
+        `✦ 全部占领区夺回：「${gname}」是最后一处 —— 夺回奖励与全清额外奖励已入账（稀有残骸 ×${r.reclaimed.wreck} ＋ ${iskText} 信用点）。`,
+        'core.weekend.002',
+        { p1: gname, p2: r.reclaimed.wreck, p3: iskText },
+      )
+    } else {
+      addLog(
+        state,
+        'trade',
+        `✦ 夺回「${gname}」：夺回奖励已入账 —— 稀有残骸 ×${r.reclaimed.wreck} ＋ ${iskText} 信用点。`,
+        'core.weekend.001',
+        { p1: gname, p2: r.reclaimed.wreck, p3: iskText },
+      )
+    }
+  }
+  if (r.flagshipKilled !== undefined) {
+    addLog(
+      state,
+      'trade',
+      `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×${r.flagshipKilled.wreck}）。`,
+      'core.weekend.003',
+      { p1: r.flagshipKilled.wreck },
+    )
+  }
   return { galaxyId: involved.galaxyId, kind: involved.kind, gain: r.progressGain, isk: granted.isk, wreck: granted.wreck, note: r.note }
 }
