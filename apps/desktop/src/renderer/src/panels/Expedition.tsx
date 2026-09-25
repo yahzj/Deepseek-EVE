@@ -1962,43 +1962,48 @@ function GalaxyActions({
                   {looping ? ` · ${tr("ui.Expedition.433")}` : ''}
                 </span>
               </span>
-              {/* 环按钮：**纯图标**（船长 2026-09-24 选定），悬停说明走既有卡片文案 */}
-              <button
-                className={`app-btn is-small${looping ? ' is-warn' : ''}`}
-                disabled={loopBlocked || loopAskAno === a.id}
-                title={looping ? tr("ui.Expedition.043") : reopenBlock !== null ? reopenBlock : busyOther ? tr("ui.Expedition.154") : tr("ui.Expedition.155")}
-                onClick={() => {
-                  if (looping) runLoop(null)
-                  else if (loopId !== null) setLoopAskAno(a.id)
-                  else runLoop(a.id)
-                }}
-              >
-                <span className="app-ico">
-                  <Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} />
-                </span>
-              </button>
-              <button
-                className={`app-btn is-small${goAskAno === a.id ? ' is-warn' : ' is-primary'}`}
-                disabled={goBlocked || cdRemain > 0 || inFlightSelf}
-                title={
-                  cdRemain > 0
-                    ? tr("ui.Expedition.323", { p1: Math.max(1, Math.ceil(cdRemain / 1000)) })
-                    : inFlightSelf
-                      ? tr("ui.Expedition.277")
-                      : transitOn
-                        ? tr("ui.Expedition.313")
-                        : otherExpOn && !miningActive
-                          ? tr("ui.Expedition.314")
-                          : miningActive
-                            ? goAskAno === a.id
-                              ? tr("ui.Expedition.027")
-                              : tr("ui.Expedition.315")
-                            : tr("ui.Expedition.090")
-                }
-                onClick={() => handleAnoGo(a)}
-              >
-                {cdRemain > 0 ? tr("ui.Expedition.100") : goAskAno === a.id ? tr("ui.Expedition.028") : miningActive ? tr("ui.Expedition.265") : tr("ui.Expedition.091")}
-              </button>
+              {/* 行尾按钮组：**环 + 出击必须相邻**（船长 2026-09-24：「按钮离出击有点太远了。要相邻」）
+                  —— `.app-ga-row` 是 `justify-content: space-between` + `gap: 10px`，两个按钮各自做 flex 项
+                  就会被主内容那段的余量撑开；包成一组后组内只剩 4px。 */}
+              <span className="app-ga-btns">
+                {/* 环按钮：**纯图标**（船长选定），悬停说明走既有卡片文案 */}
+                <button
+                  className={`app-btn is-small${looping ? ' is-warn' : ''}`}
+                  disabled={loopBlocked || loopAskAno === a.id}
+                  title={looping ? tr("ui.Expedition.043") : reopenBlock !== null ? reopenBlock : busyOther ? tr("ui.Expedition.154") : tr("ui.Expedition.155")}
+                  onClick={() => {
+                    if (looping) runLoop(null)
+                    else if (loopId !== null) setLoopAskAno(a.id)
+                    else runLoop(a.id)
+                  }}
+                >
+                  <span className="app-ico">
+                    <Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} />
+                  </span>
+                </button>
+                <button
+                  className={`app-btn is-small${goAskAno === a.id ? ' is-warn' : ' is-primary'}`}
+                  disabled={goBlocked || cdRemain > 0 || inFlightSelf}
+                  title={
+                    cdRemain > 0
+                      ? tr("ui.Expedition.323", { p1: Math.max(1, Math.ceil(cdRemain / 1000)) })
+                      : inFlightSelf
+                        ? tr("ui.Expedition.277")
+                        : transitOn
+                          ? tr("ui.Expedition.313")
+                          : otherExpOn && !miningActive
+                            ? tr("ui.Expedition.314")
+                            : miningActive
+                              ? goAskAno === a.id
+                                ? tr("ui.Expedition.027")
+                                : tr("ui.Expedition.315")
+                              : tr("ui.Expedition.090")
+                  }
+                  onClick={() => handleAnoGo(a)}
+                >
+                  {cdRemain > 0 ? tr("ui.Expedition.100") : goAskAno === a.id ? tr("ui.Expedition.028") : miningActive ? tr("ui.Expedition.265") : tr("ui.Expedition.091")}
+                </button>
+              </span>
               {/* 顶替确认（船长选的「允许顶替但先确认」）：**内联在行内**，照抄同文件 goAsk 的写法，不新增弹窗机制 */}
               {loopAskAno === a.id ? (
                 <span className="app-ga-switch-confirm">
