@@ -26,6 +26,7 @@ import {
   weekendApplyBattleOutcome,
   weekendBattleInvolvedOf,
   weekendSettleAndGrant,
+  weekendSettlePlanOf,
 } from '../src/weekendBattle'
 import { weekendBountyCardsOf } from '../src/weekendBounty'
 import {
@@ -330,5 +331,36 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '旗舰残骸真到手').toBe(WEEKEND_FLAGSHIP_WRECK)
     expect(s.weekendEvent!.flagshipDown, '记玩家击毁').toBe('player')
     expect(s.weekendEvent!.endedAtWallMs, '击沉即结束本场').toBeDefined()
+  })
+
+  it('⑪ 贡献奖按"结束时刻"结算：离线五天后补结，档位与金额与结束时一模一样', () => {
+    const gid = GID
+    const now = Date.now()
+    /** 真时间轴（关掉调试快进）：T0 = 54 小时前 ⇒ 外围铺底已满、核心铺底 25% */
+    const build = (): ReturnType<typeof createInitialState> => {
+      const s = invaded(gid)
+      s.debugQuick = false
+      s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
+      weekendNoteContribution(s.weekendEvent!, gid, 0.9) // 玩家推了 90% ⇒ 该处已夺回
+      endWeekendEvent(s, now)
+      return s
+    }
+    /** 结束时立刻结 */
+    const onTime = build()
+    const r1 = weekendSettleAndGrant(onTime, ctx, now)
+    expect(r1, '结束时结算').not.toBeNull()
+    expect(r1!.tier, '占比 ≈ 0.72 ⇒ B 档').toBe('B')
+    expect(r1!.isk).toBe(5_000_000)
+    expect(r1!.wreck).toBe(8)
+    /** 离线五天后再上线补结（引擎每拍补发那条路径的形状）：读数必须与结束时**逐值一致** */
+    const late = build()
+    const r2 = weekendSettleAndGrant(late, ctx, now + 5 * 24 * 3_600_000)
+    expect(r2, '补结也要发').not.toBeNull()
+    expect(r2!.tier, '按结束时刻算 ⇒ 仍是 B 档（若改用"现在"会被铺底算低成 C 档）').toBe(r1!.tier)
+    expect(r2!.isk).toBe(r1!.isk)
+    expect(r2!.wreck).toBe(r1!.wreck)
+    expect(late.weekendEvent!.prizePaidAtWallMs, '标记写的是"补结那一刻"').toBe(now + 5 * 24 * 3_600_000)
+    /** **反证**：若把"现在"当结算时刻，这一档会被铺底算低成 C 档 ⇒ 本用例确实在守"按结束时刻算" */
+    expect(weekendSettlePlanOf(late, late.weekendEvent!, now + 5 * 24 * 3_600_000).tier, '按"现在"算会降成 C 档').toBe('C')
   })
 })
