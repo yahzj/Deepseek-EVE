@@ -1550,9 +1550,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.096": { zh: "赏金：结算时按进度发放", en: "Bounty: paid at settlement based on progress" },
   "ui.weekend.097": { zh: "进度收入", en: "Progress income" },
   "ui.weekend.098": { zh: "推进 {p1}%", en: "{p1}% pushed" },
-  // 2026-09-25 船长令：章鱼人是**真实削减血量**（共享血条）⇒ 不再显示"章鱼人削减进度"与倒计时；
-  // 核心的"旗舰期红光"另给一条悬停说明（那条红光不再等于"被占领"）。
-  "ui.weekend.099": { zh: "敌方旗舰停驻于此：可从入侵窗口发起旗舰战", en: "The enemy flagship is holding here: start the flagship battle from the invasion window" },
+  // 2026-09-25 船长令：章鱼人是**真实削减血量**（共享血条）⇒ 不再显示"章鱼人削减进度"与倒计时。
+  // （原 `ui.weekend.099`「敌方旗舰停驻于此…」已并入下面的 `101`，那条随之删除。）
+  // 2026-09-25 船长令：①「母舰的血量也以进度条的形式显示在星系上方」⇒ 核心节点那根条的悬停读数
+  // （该组 `pointer-events: none` ⇒ 悬停落在条/★ 上时由本组承载）；
+  // ②「入侵期间，被占领星系的所有被收复的星系的常驻悬赏依旧处于隐藏状态，要等到入侵活动结束」
+  // ⇒ 已收复星系的悬赏区那一行状态占位（括号只放规格，不写原因解释）。
+  "ui.weekend.100": { zh: "已收复 · 常驻悬赏待入侵结束后恢复", en: "Reclaimed · standing bounties resume when the invasion ends" },
+  "ui.weekend.101": { zh: "母舰血量剩余 {p1}% · 可从入侵窗口发起旗舰战", en: "Mothership hull remaining: {p1}% · start the flagship battle from the invasion window" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },

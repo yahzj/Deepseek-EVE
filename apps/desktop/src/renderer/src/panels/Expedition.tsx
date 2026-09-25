@@ -27,6 +27,10 @@ import {
   /** 旗舰视图（2026-09-25：核心的"旗舰期红光"与旗舰准备入口读同一份判据，不许在本文件另判一遍） */
   weekendFlagshipView,
   weekendFoePoolOf,
+  /** 2026-09-25 船长令：核心节点上方那根**母舰血量条**（读数与事件日志那条同源） */
+  weekendBossPoolView,
+  /** 2026-09-25 船长令：已收复星系的常驻悬赏**押后到活动结束**（板面与星系详细都按它隐藏） */
+  weekendStandingBountyHeldAt,
   cargoCapacityM3Of,
   cargoUsedM3Of,
   countAiCore,
@@ -469,7 +473,11 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
   // 同日**作废** V13 旧口径「悬赏情报例外：列表照常可见」（见 docs/design/v13-exploration.md §四）；
   // 星图上的 ⚔N 悬赏情报徽标与剪影窗口的「悬赏情报 N 处」**照旧**（那是协会共享情报，不是卡面）。
   // 判定口径与卡内 `unexplored` 逐字同式：星系条目缺失（脏数据）不隐藏，按现状照常显示。
+  // ⚠ **2026-09-25 船长令**：「入侵期间，被占领星系的所有被收复的星系的常驻悬赏依旧处于隐藏状态，
+  // 要等到入侵活动结束」⇒ 再叠一条 core 判据（`weekendStandingBountyHeldAt`，只在板面这一层过滤；
+  // 遇袭敌群池与残骸打捞池读的是 `weekendBountyCardsOf`，不受影响）。
   const listed = engine.anomalies.filter((a) => {
+    if (weekendStandingBountyHeldAt(state, a.galaxyId, Date.now())) return false
     const g = engine.ctx.galaxies.get(a.galaxyId)
     return g ? isExplored(state, g.id) : true
   })
@@ -1020,6 +1028,20 @@ function StarMap({
     const v = weekendFlagshipView(state, ev, nowMs, nowMs)
     return v.shown && v.down === undefined ? ev.coreId : undefined
   })()
+  /**
+   * **母舰血量读数**（**船长 2026-09-25 令**：「**母舰的血量也以进度条的形式显示在星系上方吧。**」）——
+   * 供核心节点上方那根条用。与事件日志那条**同源**（`weekendBossPoolView`：剩余 = 池子总量 −
+   * （玩家已造成 ＋ 章鱼已削）；船长 2026-09-25 已定"章鱼人 = 真实削血"，故只报这一条血）。
+   *
+   * ⚠ 池子在**首次接战**才锁定（`flagshipHpMax` 那一刻才落盘）⇒ 未接战按**满血**画：
+   * 池子总量是**固定常量**（15 万），满血不是假数，也让这根条"旗舰一现身就在"而不是打一场才冒出来。
+   */
+  const mothershipFrac: number = (() => {
+    const ev = state.weekendEvent
+    if (!ev) return 1
+    const pool = weekendBossPoolView(state, ev)
+    return pool === null ? 1 : Math.max(0, Math.min(1, pool.hpLeft / pool.hpMax))
+  })()
   /* 赏金任务（当日板）按星系归组（2026-09-10 船长：普通赏金任务也要在星图上显示——
      样式与"未探索剪影上的悬赏情报徽标"同款，并在对应星系上给出剩余时间）。
      任务自带 galaxyId（刷出时绑定窝点所在星系）；倒计时 = 当日板剩余（每天本地 0 点整板替换，
@@ -1444,36 +1466,44 @@ function StarMap({
                * 「已经被夺回的外围星系不再发光」＋「每个被入侵的星系顶部显示一个进度条替换原先的旗子」）。
                * 画在节点最底层、不挡点击；已夺回的星系整组不画（表里就没有它）。
                * ⚠ **例外 = 核心的"旗舰期"**（2026-09-25 船长令：「入侵母舰没摧毁前，敌方核心星系需要
-               * 依旧有红光」）：核心已夺回但母舰还在 ⇒ 只画红光与 ★、**不画进度条**（见 `invasionCoreHeld`）。
+               * 依旧有红光」）：核心已夺回但母舰还在 ⇒ 画红光与 ★，条改画**母舰血量**（见下）。
                */}
               {invasionProgress.has(g.id) || g.id === invasionCoreHeld ? (
                 <g
                   className="app-map-invasion"
-                  data-tip={tr(invasionProgress.has(g.id) ? 'ui.weekend.018' : 'ui.weekend.099')}
+                  data-tip={
+                    invasionProgress.has(g.id)
+                      ? tr('ui.weekend.018')
+                      : tr('ui.weekend.101', { p1: String(Math.round(mothershipFrac * 100)) })
+                  }
                 >
                   <circle cx={p.x} cy={p.y} r={46} fill="url(#app-invglow)" className="app-map-invasion-glow" />
-                  {invasionProgress.has(g.id)
-                    ? (() => {
-                        const pct = invasionProgress.get(g.id) ?? 0
-                        const w = 30
-                        const h = 3.5
-                        const x = p.x - w / 2
-                        const y = p.y - 26
-                        return (
-                          <g className="app-map-invbar">
-                            <rect x={x} y={y} width={w} height={h} rx={h / 2} className="app-map-invbar-bg" />
-                            <rect
-                              x={x}
-                              y={y}
-                              width={Math.max(0.5, w * Math.min(1, Math.max(0, pct)))}
-                              height={h}
-                              rx={h / 2}
-                              className="app-map-invbar-fill"
-                            />
-                          </g>
-                        )
-                      })()
-                    : null}
+                  {/**
+                   * 节点上方那根条（30×3.5 圆角）：**仍被占** = 夺回进度；**核心旗舰期** = 母舰血量
+                   * （船长 2026-09-25：「母舰的血量也以进度条的形式显示在星系上方吧」）。
+                   * 两者同一套类名 ⇒ 观感与位置逐字同款（★ 仍在这根条上方）。
+                   */}
+                  {(() => {
+                    const frac = invasionProgress.has(g.id) ? (invasionProgress.get(g.id) ?? 0) : g.id === invasionCoreHeld ? mothershipFrac : null
+                    if (frac === null) return null
+                    const w = 30
+                    const h = 3.5
+                    const x = p.x - w / 2
+                    const y = p.y - 26
+                    return (
+                      <g className="app-map-invbar">
+                        <rect x={x} y={y} width={w} height={h} rx={h / 2} className="app-map-invbar-bg" />
+                        <rect
+                          x={x}
+                          y={y}
+                          width={Math.max(0.5, w * Math.min(1, Math.max(0, frac)))}
+                          height={h}
+                          rx={h / 2}
+                          className="app-map-invbar-fill"
+                        />
+                      </g>
+                    )
+                  })()}
                   {/* 核心另有 ★（旗子已撤 ⇒ 只留这一枚"这是核心"的记号）——夺回后进入旗舰期时同样保留 */}
                   {g.id === invasionCoreId || g.id === invasionCoreHeld ? (
                     <text x={p.x} y={p.y - 32} className="app-map-invasion-tag">
@@ -1807,7 +1837,16 @@ function GalaxyActions({
     if (!ev || ev.endedAtWallMs !== undefined) return null
     if (galaxy.id !== ev.coreId && !ev.peripheryIds.includes(galaxy.id)) return null
     return weekendProgressAt(state, ev, galaxy.id, Date.now()) < 1 ? ev : null
-  })()  // —— 主控掩护巡逻（原"待命"） ——
+  })()
+  /**
+   * **已收复 ⇒ 常驻悬赏押后到活动结束**（**船长 2026-09-25 令**：「入侵期间，被占领星系的所有被收复的
+   * 星系的常驻悬赏依旧处于隐藏状态，要等到入侵活动结束」）。
+   *
+   * 与 `invadedHere` 正好互补：仍被占 ⇒ 那一行是「击退入侵舰队」；已收复 ⇒ 常驻悬赏**不列出**、
+   * 只留一行状态占位（`ui.weekend.100`）——活动一结束，判据自然转假，悬赏照旧整批回来。
+   * 判据在 core 单点（`weekendStandingBountyHeldAt`），界面不另判一遍。
+   */
+  const bountyHeldHere = weekendStandingBountyHeldAt(state, galaxy.id, Date.now())  // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
     state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
@@ -2047,8 +2086,10 @@ function GalaxyActions({
           )
         })
       )}
-      {/* ④ 悬赏（2026-09-24 船长：**重复清剿的环按钮就挂在这一行**，不再单开容器） */}
-      <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.145")}{engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length}）
+      {/* ④ 悬赏（2026-09-24 船长：**重复清剿的环按钮就挂在这一行**，不再单开容器）
+          ⚠ 已收复且入侵未结束的星系：常驻悬赏**押后**（船长 2026-09-25 令）⇒ 计数按 0 报，
+          与下面那行状态占位同一口径（不能"写着 N 却一张都不列"）。 */}
+      <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.145")}{bountyHeldHere ? 0 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length}）
       </div>
       {/* ⚠ 本列表**列出该星系全部悬赏**（只按声望门槛过滤）：冷却中/进行中的卡原先被滤掉，
           而"开环"恰恰最需要它们可见（`setAutoLoopBounty` 只受 autoLoopReopenBlockReason 管、与冷却无关，
@@ -2057,6 +2098,13 @@ function GalaxyActions({
       {(() => {
         const cands = engine.anomalies.filter((a) => a.galaxyId === galaxy.id)
         const list = cands.filter((a) => standingOf(state, DSI_FACTION_ID) >= a.standingReq)
+        /**
+         * **已收复 ⇒ 整区押后**（船长 2026-09-25 令，见 `bountyHeldHere`）：不列常驻悬赏，
+         * 只留一行状态占位 —— 与 `invadedHere` 那一支互补（那边是"仍被占 ⇒ 击退入侵舰队"）。
+         */
+        if (bountyHeldHere) {
+          return <div className="app-dim app-ga-empty">{tr('ui.weekend.100')}</div>
+        }
         if (list.length === 0) {
           return <div className="app-dim app-ga-empty">{cands.length === 0 ? tr("ui.Expedition.437") : tr("ui.Expedition.264")}</div>
         }
