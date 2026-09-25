@@ -45,7 +45,7 @@ import {
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
-import { rareWreckItemIdOfCard } from './salvage'
+import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
 
 /* ─────────────── 战斗规格 ─────────────── */
@@ -83,6 +83,22 @@ export const WEEKEND_RECLAIM_ISK = 2_000_000
 export const WEEKEND_ALL_CLEAR_ISK = 5_000_000
 /** 旗舰奖励：必掉黑匣 ×1 ＋ 稀有残骸 ×3 · 赏金 ×3 */
 export const WEEKEND_FLAGSHIP_WRECK = 3
+/**
+ * **稀有残骸的「件 → 单位(m³)」换算**（**船长 2026-09-25 令**：周末奖励按**件**补足）。
+ *
+ * 全仓口径 = **1 件 = `RARE_WRECK_VOLUME_M3`(30) 单位 = 30 m³**（打捞侧同口径：捞到 1 件入库 30 单位，
+ * 回收炉稀有批也是 30 m³/批 ⇒ **一炉一件**）。
+ *
+ * ⚠ 病根（2026-09-25 船长问「H 族残骸现在有精炼炉回收吗」时查出来的）：本文件那几张表
+ * （旗舰掉落 ×3 · 夺回 ×8 · 贡献四档 ×12/×8/×4/×1）按**件**写（设计稿原文「×8 **件**」），
+ * 但落到 `addItem(…, n)` 时直接发了 **n 个单位 = n m³** ⇒ **少了 30 倍**，
+ * 玩家拿着「稀有残骸 ×8」连 30 m³ 的起炉线都够不到（拆不了）。
+ * ⇒ 现在在**换算点**一次换算成单位；台账 / 结算面板 / 通讯 / 日志**一律按 m³ 读数**
+ * （与仓库计数、回收炉批数同一个数）。
+ */
+export function weekendRareWreckUnits(pieces: number): number {
+  return Math.max(0, Math.round(pieces)) * RARE_WRECK_VOLUME_M3
+}
 export const WEEKEND_FLAGSHIP_REWARD_MUL = 3
 /** 主动出击的赏金倍率（外围） */
 export const WEEKEND_ASSAULT_REWARD_MUL = 1.4
@@ -252,7 +268,7 @@ export function weekendResolveBattle(
        * 保持老口径"击沉必掉"（`true`），免得把占位口径也改成掷骰。
        */
       const box = weekendIsBossFamily(ev) ? weekendRollBlackBox(state, ev, true) : true
-      res.flagshipKilled = { blackBox: box, wreck: WEEKEND_FLAGSHIP_WRECK }
+      res.flagshipKilled = { blackBox: box, wreck: weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK) }
       res.note = bossDown
         ? `旗舰血量归零：击沉（跨场累计）${box ? '· 黑匣入手' : '· 黑匣未爆'}`
         : `旗舰被击毁：战利品归玩家${box ? '（含黑匣）' : '（黑匣未爆）'}`
@@ -265,7 +281,7 @@ export function weekendResolveBattle(
     const allClear = weekendOccupiedIds(ev).every((id) => weekendProgressAt(state, ev, id, nowWallMs) >= 1)
     res.reclaimed = {
       galaxyId: spec.galaxyId,
-      wreck: WEEKEND_RECLAIM_WRECK,
+      wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
       isk: WEEKEND_RECLAIM_ISK + (allClear ? WEEKEND_ALL_CLEAR_ISK : 0),
       allClear,
     }
@@ -310,7 +326,7 @@ export function weekendSettlePlanOf(
   return {
     share,
     tier: tier.tier,
-    wreck: tier.wreck,
+    wreck: weekendRareWreckUnits(tier.wreck),
     isk: tier.isk,
     progressIsk: weekendProgressIncomeIsk(ev),
     progressPct: weekendPlayerContribution(ev),

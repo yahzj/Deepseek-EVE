@@ -19,6 +19,8 @@ import {
   weekendFlagshipSpecOf,
   weekendResolveBattle,
   weekendSettlePlanOf,
+  /** 2026-09-25 船长令：稀有残骸「件 → 单位(m³)」换算（1 件 = 30 单位） */
+  weekendRareWreckUnits,
 } from '../src/weekendBattle'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
@@ -139,7 +141,7 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
     const spec = weekendAssaultSpecOf(s, ctx, per)!
     weekendNoteContribution(ev, per, 0.95)
     const r1 = weekendResolveBattle(s, ctx, spec, 'win', 0)
-    expect(r1.reclaimed?.wreck).toBe(WEEKEND_RECLAIM_WRECK)
+    expect(r1.reclaimed?.wreck, '×8 件 = 240 m³').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
     expect(r1.reclaimed?.isk, '还有核心没夺回 ⇒ 不发全清奖').toBe(WEEKEND_RECLAIM_ISK)
     expect(r1.reclaimed?.allClear).toBe(false)
     const r2 = weekendResolveBattle(s, ctx, spec, 'win', 0)
@@ -160,7 +162,7 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
     const spec = weekendFlagshipSpecOf(s, ctx, T)!
     const r = weekendResolveBattle(s, ctx, spec, 'win', T)
     expect(r.flagshipKilled?.blackBox).toBe(true)
-    expect(r.flagshipKilled?.wreck).toBe(WEEKEND_FLAGSHIP_WRECK)
+    expect(r.flagshipKilled?.wreck, '×3 件 = 90 m³').toBe(weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK))
     expect(ev.flagshipDown).toBe('player')
     expect(ev.endedAtWallMs).toBe(T)
     const after = weekendResolveBattle(s, ctx, spec, 'win', T + 1000)
@@ -247,7 +249,7 @@ describe('周末入侵 · 结束结算（M1-b）', () => {
     ev.contributed[ev.coreId] = 0.9
     const plan = weekendSettlePlanOf(s, ev, 0)
     expect(plan.tier).toBe('A')
-    expect(plan.wreck).toBe(12)
+    expect(plan.wreck, '×12 件 = 360 m³').toBe(weekendRareWreckUnits(12))
     expect(plan.isk).toBe(8_000_000)
     expect(plan.blackBoxToPlayer, '还没掷 ⇒ 不归玩家').toBe(false)
     ev.flagshipBlackBox = true
