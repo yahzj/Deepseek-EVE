@@ -919,8 +919,15 @@ export function App({ engine }: { engine: GameEngine }) {
  * 正是船长要的默认。两个键都进 `localStorage`（本机偏好、不进存档）。
  * ⚠ 读写全包 try/catch：桌面端存储被禁时不能让整树崩掉（读失败 ⇒ 用默认）。
  */
+/**
+ * **送达弹窗的"上膛"延时**（2026-09-25 船长报障「战斗胜利后，结算通讯并不会弹出」的配套）：
+ * 弹窗刚挂上来的头这么多毫秒里，**遮罩点击不生效**——遮罩满屏（`inset: 0`，点哪都算"点外面"），
+ * 而这张卡挂上来的时机常常正好是"玩家刚点完战场 / 刚在别处点过一下"⇒ 不设防就会一挂上就被点掉。
+ */
+const POPUP_ARM_MS = 450
 const LAYOUT_KEY = 'whale-idle:layout'
 const LAYOUT_SET_KEY = 'whale-idle:layout-set'
+
 function readLayoutPref(): LayoutKind {
   try {
     if (localStorage.getItem(LAYOUT_SET_KEY) !== '1') return 'classic'
@@ -1188,12 +1195,40 @@ async function applyLayoutAndQuit(): Promise<void> {
    * （`popup ?? kind !== '教程'`），这里只负责渲染**队首那一封**：同一拍送达多封也只弹一张、
    * 点「知道了」换下一张（**不会叠出多窗口**）；离线简报优先，避免两张卡叠着。
    * 弹窗外形 = 通讯页右栏那块屏（同源公共件 `panels/CommsReader.tsx`）。
+   *
+   * ⚠⚠ **2026-09-25 船长报障「战斗胜利后，结算通讯并不会弹出」⇒ 加"战场让位"**：
+   * 战场是全屏覆盖层且 `z-index: 100`，而送达弹窗的遮罩是 `z-index: 88`
+   * ⇒ 结算信在**击杀那一拍**就送达并入了队（`deliverCommsInstance` 会 push `commsPopups`），
+   * 但弹窗是**在战场底下**挂起来的：玩家看不见；等战场收起来时，玩家随手一点（遮罩是满屏
+   * `inset: 0`，点哪都算"点外面"）就把它**静默点掉**了 —— 真档实证：`commsRead` 里
+   * `msg-weekend-settle` 已是 `true`、`commsPopups` 已空，而玩家从没看见过那张卡。
+   * ⇒ 与"离线简报优先"同一套**排队让位**：战场在台上（`battleMounted && battleOpen`）时这里不渲染，
+   * 队首那封仍在 `commsPopups` 里等着，战场一收起它才上台；再配下面的"上膛延时"防误点。
    */
   const popupId = engine.commsPopups()[0] ?? null
   /** 战前准备弹层开合（2026-09-25：旗舰现身弹窗可直达） */
   const [prepOpen, setPrepOpen] = useState(false)
+  /** 战场是否正盖在界面上（挂载 ≠ 上屏：`battleOpen` 为假时战场什么都不渲染，不算盖着） */
+  const battleOnStage = battleMounted && battleOpen
   const popupMsg =
-    popupId !== null && !showOfflineReport ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null) : null
+    popupId !== null && !showOfflineReport && !battleOnStage
+      ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null)
+      : null
+  /**
+   * **送达弹窗的"上膛"延时**（同上那条报障的配套）：刚挂上来的头 `POPUP_ARM_MS` 毫秒内**忽略遮罩点击**
+   * ——遮罩是满屏的（`inset: 0`，点哪都算点外面），而这张卡挂上来的时机恰好是"玩家刚点完战场/刚点过别处"
+   * ⇒ 不设防就会**一挂上就被下一次点击静默点掉**（玩家只看到一闪）。卡内按钮不受影响（点它是明确动作）。
+   */
+  const [popupArmed, setPopupArmed] = useState(false)
+  useEffect(() => {
+    if (popupMsg === null) {
+      setPopupArmed(false)
+      return
+    }
+    setPopupArmed(false)
+    const t = window.setTimeout(() => setPopupArmed(true), POPUP_ARM_MS)
+    return () => window.clearTimeout(t)
+  }, [popupMsg?.id])
 
   // ── 随机事件小弹卡（在线触发时展示 6 秒；离线触发的不弹，避免启动刷屏） ──
   const [eventToast, setEventToast] = useState<{ id: number; text: string } | null>(null)
@@ -1767,8 +1802,9 @@ async function applyLayoutAndQuit(): Promise<void> {
         </div>
       ) : null}
 
-      {/* ───── 送达弹窗（船长 2026-09-14：除新手教程外所有通讯都弹；外形 = 通讯页右栏那块屏） ───── */}      {popupMsg ? (
-        <div className="app-ann-mask" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
+      {/* ───── 送达弹窗（船长 2026-09-14：除新手教程外所有通讯都弹；外形 = 通讯页右栏那块屏） ───── */}
+      {popupMsg ? (
+        <div className="app-ann-mask" onClick={() => (popupArmed ? engine.dismissCommsPopup(popupMsg.id) : undefined)}>
           <div className="app-comm-pop" onClick={(e) => e.stopPropagation()}>
             <div className="app-comms-body-col">
               <CommsScreen entry={popupMsg} itemNameOf={(id) => engine.ctx.items.get(id)?.name ?? id} />

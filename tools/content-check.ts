@@ -1341,6 +1341,32 @@ for (const m of MODULES) {
       `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支 · 四处均带入侵旗舰战分支`,
   )
 
+  /* ── 通讯弹窗"让位与上膛"契约（2026-09-25 船长报障「战斗胜利后，结算通讯并不会弹出」）──
+   *
+   * 病根（真档实证）：战场是全屏覆盖层 `z-index: 100`，送达弹窗的遮罩是 `88` ⇒ 结算信在**击杀那一拍**
+   * 就入了队，但弹窗是**在战场底下**挂起来的；等战场收起，玩家随手一点（遮罩满屏、点哪都算"点外面"）
+   * 就把它静默点掉了 —— 存档里 `commsRead[msg-weekend-settle] = true` 而玩家从没看见过那张卡。
+   *
+   * 契约：`App.tsx` 里 ① 弹窗必须等**战场让位**（`!battleOnStage`）＋ 离线简报让位（`!showOfflineReport`）；
+   * ② 遮罩点击必须经过**上膛**（`popupArmed`），不许裸调 `dismissCommsPopup`。
+   */
+  {
+    const appPath = 'apps/desktop/src/renderer/src/App.tsx'
+    const appSrc = readSrc(appPath)
+    check(
+      appSrc.includes('!showOfflineReport && !battleOnStage'),
+      `通讯弹窗让位契约：${appPath} 的 \`popupMsg\` 必须同时让位给离线简报与**战场**` +
+        `（\`!showOfflineReport && !battleOnStage\`）——不然结算信会在战场底下挂起来，被随手一点就没了`,
+    )
+    const maskLines = appSrc.split('\n').filter((l) => l.includes('className="app-ann-mask"'))
+    check(
+      maskLines.length >= 1 && maskLines.every((l) => l.includes('popupArmed')),
+      `通讯弹窗让位契约：${appPath} 的遮罩点击必须经过"上膛"（\`popupArmed ? … : undefined\`）——` +
+        `裸调 \`dismissCommsPopup\` 会让刚挂上来的卡被上一次点击吃掉`,
+    )
+    console.log('· 通讯弹窗让位契约：战场/离线简报在台上时不弹（排队等）· 遮罩点击要过上膛延时')
+  }
+
   /* ── 干扰压制取数契约（2026-09-25 船长报障「摧毁敌方干扰舰后，射程不会恢复」）──
    *
    * 病根两条，都在这一个机制的取数上：

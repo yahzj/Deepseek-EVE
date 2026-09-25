@@ -469,3 +469,28 @@ typecheck ✓ · core **2,405 例全绿**（214 文件）· content:check ✓ ·
 **验证**：typecheck ✓ · core **2,405 例全绿**（214 文件）· content:check ✓ · l10n:check ✓ · build ✓ ·
 `tools:audit`（`foe-export.ts` 版本自检已更）✓ · docs:index ✓；主树 `foe-csv/` 已重新生成
 （他手改的那份 CSV 被新产物覆盖，数值已在代码里）。
+
+## 二十七、结算通讯"不弹出"：弹窗被战场盖住 ＋ 被随手一点静默点掉（2026-09-25）
+
+> 船长原话：「**现在还剩下的问题是战斗胜利后，结算通讯并不会弹出。**」
+
+**真档实证**（只读他的 `save.json`）：`commsRead` 里 `msg-weekend-warn` 与 `msg-weekend-settle` **都已是
+`true`**、而 `commssPopups` **已空** ⇒ 结算信**送到了、也确实入过队**，只是**玩家从没看见过那张卡**。
+
+**根因（两层，叠在一起）**：
+1. **弹窗在战场底下挂起来**：战场是全屏覆盖层 `.app-battle-screen { position: fixed; inset: 0; z-index: 100 }`，
+   而送达弹窗的遮罩 `.app-ann-mask { z-index: 88 }` ⇒ 结算信在**击杀那一拍**就送达并入队
+   （`weekendSyncComms` → `deliverCommsInstance` 会 push `commsPopups`），但那张卡是在 z-index 100 底下渲染的；
+2. **被随手一点静默点掉**：遮罩是满屏（`inset: 0`，点哪都算"点外面"）⇒ 等战场收起来、玩家回到主界面
+   随手点一下（走位/开页），那一下就把卡点掉了 —— 于是"没弹出"。
+
+| # | 落法（`App.tsx`） |
+|---|---|
+| ① **战场让位（排队，不是不发）** | 新增 `battleOnStage = battleMounted && battleOpen`，`popupMsg` 追加 `&& !battleOnStage` —— 与既有"离线简报优先"同一套让位写法；队首那封仍在 `commsPopups` 里等着，战场一收起（`onDone`）它才上台 |
+| ② **遮罩"上膛"延时** | 新增 `POPUP_ARM_MS = 450`：卡片刚挂上来的 450ms 内**忽略遮罩点击**（卡内按钮不受影响）⇒ 就算玩家正在连点，也不会把没看见的卡吃掉 |
+| ③ **回归契约** | `content:check` 新增「**通讯弹窗让位契约**」：`popupMsg` 必须同时让位给离线简报**与战场**、遮罩点击必须经过 `popupArmed`（源码级扫描，防日后被简化掉） |
+
+**验证**：typecheck ✓ · core **2,405 例全绿**（214 文件）· content:check ✓（新契约在册）· l10n:check ✓ ·
+ui:rot-check ✓ · ui:theme-check ✓ · build ✓ · docs:index ✓。
+⚠ **观感审查权在船长**：本批没起无头浏览器截图；请按这条路径复验 —— 击沉母舰 → 看完战报 →
+**关掉战场那一刻**那张结算信应当自己弹出来（450ms 内点什么都不会把它点掉）。
