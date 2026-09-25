@@ -2600,6 +2600,14 @@ function AnomalyCard({
    */
   const invadedHere = weekendOccupiedLiveAt(state, anomaly.galaxyId, Date.now())
   /**
+   * **核心门禁读数**（船长批「丙」）：只在"这一行就是核心星的入侵卡"时取。
+   * 与「星系详细」那张卡同一取数口（`weekendCoreGateView`）⇒ 两处不会各说各话。
+   */
+  const coreGate =
+    invadedHere && state.weekendEvent !== undefined && anomaly.galaxyId === state.weekendEvent.coreId
+      ? weekendCoreGateView(state, state.weekendEvent, Date.now())
+      : null
+  /**
    * **被占星系里这张卡 = 入侵舰队**（2026-09-25 船长令 · 乙案）：标题与威胁**向"星系详细"那一行对齐**——
    * 标题统一写「击退入侵舰队」（`ui.weekend.092`，抽到的那支舰队名挪到悬停里）、威胁改写成该区域池的
    * **区间**（`ui.weekend.093`，与星系详细逐字同源）、赏金继续走「结算时按进度发放」。
@@ -2784,6 +2792,19 @@ function AnomalyCard({
           </>
         )}
         {bountyCleared ? <span className="app-dim" title={tr("ui.Expedition.274")}>{tr("ui.Expedition.322")}</span> : null}
+        {/**
+         * **核心门禁提示**（**船长批「丙」** · 2026-09-25）：外围没清完时，打核心**一点夺回进度都不给**
+         * （`weekendResolveBattle` 的 gated 分支连台账都不记）⇒ 在**常驻悬赏这一行**就写明，
+         * 别让玩家白打一场威胁最高的舰队。文案与「星系详细」那张卡**同源**（`ui.weekend.104/105`），
+         * 读数也同源（`weekendCoreGateView` = `weekendCoreProgressAt` 那一条门禁）。
+         */}
+        {coreGate?.gated ? (
+          <span className="app-dim" title={tr('ui.weekend.104')}>
+            {coreGate.missing >= coreGate.total
+              ? tr('ui.weekend.104')
+              : tr('ui.weekend.105', { p1: String(coreGate.missing) })}
+          </span>
+        ) : null}
       </div>
       {/* 入侵场次没有即时赏金 ⇒ "估算奖励/小时"整条不显示（免得拿 0 去估一个数出来） */}
       {invadedHere ? null : (

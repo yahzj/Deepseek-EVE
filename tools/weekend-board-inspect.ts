@@ -23,14 +23,18 @@ import { join } from 'node:path'
 import { ANOMALIES_FLAVORED, buildSimContext } from '@whale/data'
 import {
   loadSaveFile,
+  WEEKEND_ASSAULT_SALT_BASE,
   WEEKEND_GAIN_CORE_WIN,
   WEEKEND_GAIN_PERIPHERY_WIN,
   weekendAssaultDrawOf,
   weekendBoardRowsOf,
   weekendBountyCardsOf,
   weekendCoreProgressAt,
+  weekendDrawFoeCardId,
+  weekendFoePoolOf,
   weekendGarrisonFoeCardId,
   weekendLaunchGalaxyOf,
+  weekendOccupiedIds,
   weekendOccupiedLiveAt,
   weekendPeripheryAverageOf,
   weekendPeripheryClearedAt,
@@ -140,6 +144,51 @@ console.log('\n=== ④ 出发归属解析（引擎按卡 id 反查星系 ⇒ 同
       `  ${name} 板面那一行 = ${row.id} ⇒ 修后归属 = ${fixed}${fixed === gid ? ' ✅' : ' ❌'}` +
         ` ｜ 旧口径按 id 反查 = ${legacy ?? '（查不到）'}${legacy === gid ? '' : ' ← 以前会串到这一处！'}`,
     )
+  }
+
+  /**
+   * **⑤ 区域池 × 每场重抽**（2026-09-25 船长怀疑「外围遇见主力舰队卡」与错位有关）——
+   * 把每个星系的**区域池**、**驻留卡**、以及"按本星系抽 / 按错位后的归属抽"前几场的结果并排打出来：
+   * 错位到核心 ⇒ 用的是**核心池 {袭击, 主力}** ⇒ 站在外围却抽到「主力舰队」（而进度还记在核心、被门禁吞掉）。
+   */
+  console.log('\n=== ⑤ 区域池 × 每场重抽（错位会用"别区域的池"抽签） ===')
+  const nm = (id: string): string => `${ctx.anomalies.get(id)?.name ?? id}（${id}）`
+  for (const gid of systems) {
+    const name = ctx.galaxies.get(gid)?.name ?? gid
+    const isCore = gid === ev.coreId
+    const idx = Math.max(0, weekendOccupiedIds(ev).indexOf(gid))
+    const pool = weekendFoePoolOf(ev.family, isCore)
+    const draws = Array.from({ length: 6 }, (_, d) =>
+      weekendDrawFoeCardId(ev.family, isCore, ev.seq, idx, WEEKEND_ASSAULT_SALT_BASE + d),
+    )
+    console.log(
+      `  ${name}（${isCore ? '核心' : '外围'}）区域池 = ${pool.map(nm).join(' / ')}\n` +
+        `     驻留卡 = ${nm(weekendGarrisonFoeCardId(state, ev, gid))}\n` +
+        `     本星系前 6 场重抽 = ${draws.map(nm).join(' → ')}`,
+    )
+    const row = weekendBoardRowsOf(
+      weekendBountyCardsOf(
+        state,
+        ctx,
+        [...ctx.anomalies.values()].filter((a) => !a.hidden && a.galaxyId === gid),
+        gid,
+        now,
+      ),
+      (g) => weekendOccupiedLiveAt(state, g, now),
+    )[0]
+    const legacy = row ? legacyResolve(row.id) : undefined
+    if (row && legacy !== undefined && legacy !== gid) {
+      const lIdx = Math.max(0, weekendOccupiedIds(ev).indexOf(legacy))
+      const lCore = legacy === ev.coreId
+      const lDraws = Array.from({ length: 6 }, (_, d) =>
+        weekendDrawFoeCardId(ev.family, lCore, ev.seq, lIdx, WEEKEND_ASSAULT_SALT_BASE + d),
+      )
+      console.log(
+        `     ⚠ 旧错位（归属 = ${ctx.galaxies.get(legacy)?.name ?? legacy}）⇒ 用的是它的池：` +
+          `${weekendFoePoolOf(ev.family, lCore).map(nm).join(' / ')}\n` +
+          `        于是点这一行会打到：${lDraws.map(nm).join(' → ')}`,
+      )
+    }
   }
 }
 console.log('\n=== ③ 进度账现状 ===')
