@@ -30,11 +30,49 @@ function dmgText(t: string): string {
   return t
 }
 
-/** 挂载件名按当前语言取（`FoeMountDef.en` 是英文列；与 `BattleScreen.mountNamesTextOf` 同一口径） */
-function mountText(id: string): string | null {
+/**
+ * **挂载件 → 明文效果**（2026-09-26 船长令：「**特殊装置的效果最好直接解释**。比如核心舱段：
+ * 携带大量无人机的泰坦核心残骸端，受到攻击后会启动反击模式，增加无人机射程。」）。
+ *
+ * ⚠ 口径：**不报装置名，报"什么情况下发生什么"**——触发条件 ＋ 效果，逐条对得上
+ * `core/foeMounts.ts` 里的效果字段（`droneRangeOnHit` / `web` / `gunRangeOnHit` / `supportCall` /
+ * `evasionBonus` / `repairPulse` / `reviveEscort` / `charge`）。
+ * 装置的中文名仍保留在括号里（玩家在战报/悬停里见过那个名字，留个对应关系）。
+ */
+function mountEffectText(id: string): string | null {
   const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
   if (!def) return null
-  return isEn() ? (def.en ?? def.name) : def.name
+  const nm = isEn() ? (def.en ?? def.name) : def.name
+  const pct = (v: number) => String(Math.round(v * 100))
+
+  if (def.droneRangeOnHit) {
+    return tr('ui.foeIntro.100', { p1: String(def.droneRangeOnHit.mul), p2: nm })
+  }
+  if (def.gunRangeOnHit) {
+    return tr('ui.foeIntro.101', { p1: String(def.gunRangeOnHit.mul), p2: nm })
+  }
+  if (def.web) {
+    return tr('ui.foeIntro.102', { p1: pct(1 - def.web.slowMul), p2: String(def.web.rangeDownM), p3: nm })
+  }
+  if (def.supportCall) {
+    return tr('ui.foeIntro.103', { p1: String(def.supportCall.delaySec), p2: nm })
+  }
+  if (def.reviveEscort) {
+    return tr('ui.foeIntro.104', { p1: String(Math.round(def.reviveEscort.everyMs / 1000)), p2: nm })
+  }
+  if (def.repairPulse) {
+    const sec = Math.round(def.repairPulse.everyMs / 1000)
+    const amt = `${def.repairPulse.armor}/${def.repairPulse.hull}`
+    return tr('ui.foeIntro.105', { p1: String(sec), p2: amt, p3: nm })
+  }
+  if (def.evasionBonus) {
+    return tr('ui.foeIntro.106', { p1: pct(def.evasionBonus.add), p2: nm })
+  }
+  if (def.charge) {
+    return tr('ui.foeIntro.107', { p1: String(def.charge.mul), p2: String(Math.round(def.charge.cooldownMs / 1000)), p3: nm })
+  }
+  if (def.droneRangeOnHit === undefined && def.gunRangeOnHit === undefined) return nm
+  return nm
 }
 
 /** 取该卡里"最该介绍的那条舰"：主舰优先，其次档位最高的（头目 > 护卫） */
@@ -92,7 +130,7 @@ export function foeShipBriefOf(ship: FoeShipDef | null | undefined): string | nu
   // ⑤ **特殊机制**：逐件点名挂载件（＋后勤/干扰两条不进挂载件的字段）
   const mech: string[] = []
   for (const id of ship.mounts ?? []) {
-    const nm = mountText(id)
+    const nm = mountEffectText(id)
     if (nm) mech.push(nm)
   }
   if ((ship.repairPct ?? 0) > 0) mech.push(tr('ui.foeIntro.050'))
