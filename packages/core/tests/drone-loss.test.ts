@@ -32,7 +32,7 @@ import type { SimContext } from '../src/types'
 const ctx = buildSimContext()
 const SHIP = 'sh-sentinel' // 王鲭 4 高槽 / 机巢 320
 const LOAD = { 'drone-heavy': 4, 'drone-sentry': 6 } // D3 口径
-const HIGH = 'ano-vault-sentinel' // 威胁 96（有点防）
+const HIGH = 'ano-vault-sentinel' // 威胁 110（有点防；2026-09-25 重定标 96 → 110，属性零改动）
 const LOW = 'ano-pirate-post' // 低威胁（无点防）
 /** 满战斗技能（与 tools/drone-vs-gun.ts 同口径：无技能档机群会被 CPU 裁剪、也不代表真实强度） */
 const FULL_SKILLS: Record<string, number> = Object.fromEntries(
@@ -89,7 +89,7 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
   it('高威胁（有点防）会击落：机群递减、清单被扣除（战斗内可 100% 损坏，无单场上限）', () => {
     const state = makeState(7);
     // 2026-09-11（自 main 同步远端衰减 0.3 → 0.5 后）：敌人远距离更准，穹顶守卫 96 会在机群被点防打光之前
-    // 打死王鲭；本用例测的是**点防打机群**这条链路（威胁 96 ≥ 门槛 60 ⇒ 点防照常生效）⇒ 把该卡伤害压到 0.2
+    // 打死王鲭；本用例测的是**点防打机群**这条链路（威胁 110 ≥ 门槛 60 ⇒ 点防照常生效）⇒ 把该卡伤害压到 0.2
     // 让战斗活到点防出结果（威胁/点防门槛/机群口径全不变）。
     // ⚠ d2 已退休 `foeDmgMul`（行为恒等）⇒ 用**基础单发直写** `foeShotDmg` 表达同一意图。
     // ⚠ **2026-09-11 D 族落码后本处手法要换**：穹顶守卫已迁入**舰级路径**，而舰级路径读的是

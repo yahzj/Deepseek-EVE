@@ -688,6 +688,8 @@ export {
   // 2026-09-10 残骸注入按敌人数加成 / 基础密度按各星系悬赏 20 次 / 遇袭按最强卡 0.5（船长拍板）
   bountyEnemyCount,
   bountyWreckInjection,
+  // 2026-09-25 船长令「冻结残骸经济」：注入口径体量（`wreckThreat` ?? 威胁）与威胁解耦
+  wreckInjectThreatOf,
   strongestBountyInjection,
   WRECK_INJECT_ENEMY_BONUS,
   WRECK_BASE_BOUNTY_RUNS,

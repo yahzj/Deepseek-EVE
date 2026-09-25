@@ -28,7 +28,7 @@ import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput,
 import { bumpFirst, peakFirst } from './firstTasks'
 import { matterTechSum } from './matterTech'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
-import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
+import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf, wreckInjectThreatOf } from './salvage'
 import { travelLegMs } from './travel'
 import { scaledReturnMs } from './trips'
 import { actionBlockReason, markExplored } from './explore'
@@ -1117,8 +1117,9 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
       Math.round(anomaly.rewardIsk * (1 - jitter + 2 * jitter * nextRandom(state.rng)) * bountyRewardFactor(state)),
     )
     state.wallet.isk += reward
-    // B3 击杀注入（2026-09-10 船长定）：AI 远征胜利与主控同源——威胁 ×0.4 × (1 + 0.2×敌人数)
-    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(anomaly.threat, bountyEnemyCount(anomaly)))
+    // B3 击杀注入（2026-09-10 船长定）：AI 远征胜利与主控同源——体量（`wreckThreat` ?? 威胁）
+    //   ×0.4 × (1 + 0.2×敌人数)；2026-09-25「冻结残骸经济」后与 `threat` 解耦
+    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(wreckInjectThreatOf(anomaly), bountyEnemyCount(anomaly)))
     const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
     // AI 结算不发放声望、不写入首胜清单：协会声望只属于"亲手完成"（悬赏卡与指派解锁均以主控首胜为准）
     const lootText: string[] = []

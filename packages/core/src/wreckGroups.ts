@@ -60,7 +60,14 @@ export interface WreckGroupDef {
   pool: ReadonlyArray<readonly [string, number]>
   /** 玩家可见"残骸产出倾向"（洞内 5 组无特色池 ⇒ 空） */
   note: string
-  /** 组代表威胁 = 组内产残骸卡威胁的算术平均（取整；驱动蓝图碎片门槛与完好舰体彩头层） */
+  /**
+   * **组代表威胁** = 组内产残骸卡**回收口径体量**（`AnomalyDef.wreckThreat` ?? `threat`，取整）的算术平均；
+   * 驱动**蓝图碎片门槛**（≥17 出 T2 / ≥41 出 T3）与**完好舰体彩头层**。
+   *
+   * ⚠ **2026-09-25 船长令「冻结残骸经济」**：本字段跟的是**回收口径**（`wreckThreat`），
+   * 与卡的 `threat`（战力标签）**已脱钩** ⇒ 威胁重定标不再牵动碎片门槛；
+   * 体检契约同步按 `wreckInjectThreatOf` 核对（见 `tools/content-check.ts`）。
+   */
   threat: number
   /** 主题追加件并集（`modules` = 直出基础池追加；`mk2` = 低安门槛池追加；洞内 5 组为空） */
   theme: { modules?: readonly string[]; mk2?: readonly string[] }
@@ -70,6 +77,7 @@ export interface WreckGroupDef {
 
 /**
  * 13 组定表。成员卡数 = 产残骸卡 / 全部隶属卡（隐藏模板永不产出，但旧档里可能有它们的残骸 ⇒ 仍列进 members）。
+ * ⚠ **组的 `threat` 是"回收口径"**（= 成员卡 `wreckThreat` 的平均，2026-09-25 起与战力标签 `threat` 脱钩）。
  * 池均价与「每 m³ 保底价值」的实测对照见 `docs/design/wreck-groups-20260919.md` §二。
  */
 export const WRECK_GROUPS: readonly WreckGroupDef[] = [

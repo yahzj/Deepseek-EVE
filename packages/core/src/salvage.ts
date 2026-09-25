@@ -5,8 +5,9 @@
  * - 基础密度 base（2026-09-10 船长拍板：**按各自星系算**）= 该星系全部可见悬赏卡「完成 20 次」
  *   的注入量之和（两卡求和；无可见卡回退旧安全等级曲线 10~40 兜底）；
  * - 保底线 WRECK_FLOOR=10（全图固定；2026-09-10 船长拍板 5 → 10）：≤ 此值打捞不扣密度；
- * - 击杀注入（2026-09-10 船长定）：Δ = 威胁 ×0.4 × (1 + 0.2×敌人数)，无上限（敌人数 = 主舰+
- *   僚机+多波全部单位）；低安遇袭 = 该星系**最强悬赏卡**注入量 ×0.5；
+ * - 击杀注入（2026-09-10 船长定）：Δ = **注入口径体量**（`wreckThreat` ?? 威胁，见 `wreckInjectThreatOf`）
+ *   ×0.4 × (1 + 0.2×敌人数)，无上限（敌人数 = 主舰+僚机+多波全部单位）；低安遇袭 = 该星系**最强悬赏卡**
+ *   注入量 ×0.5；
  * - 闲置漂移（星系无打捞进行中才结算）：>base 线性衰减回 base（48h 放完）、
  *   <base 线性回升回 base（**96h 回满**，2026-09-10 船长定：大幅下调恢复速度）；离线照算；
  *   回到 base 自动清记录；
@@ -223,6 +224,17 @@ export function bountyWreckInjection(threat: number, units: number): number {
   return threat * WRECK_INJECT_PER_THREAT * (1 + WRECK_INJECT_ENEMY_BONUS * units)
 }
 
+/**
+ * **残骸注入口径的"体量"**（`wreckThreat` ?? `threat`）——口径说明见 `AnomalyDef.wreckThreat`。
+ *
+ * 2026-09-25 船长令「冻结残骸经济」：威胁重定标**不得牵动回收线** ⇒ 注入量、星系基础密度、
+ * 最强卡注入（低安遇袭）**三处同源都走本函数**；卡上没写 `wreckThreat` 的（含新卡、洞内卡、
+ * 隐藏模板）一律回落 `threat` ⇒ 逐字零变化。
+ */
+export function wreckInjectThreatOf(anomaly: Pick<AnomalyDef, 'threat' | 'wreckThreat'>): number {
+  return anomaly.wreckThreat ?? anomaly.threat
+}
+
 /** 旧口径兜底：星系安全等级曲线（现仅"该星系无可见悬赏卡"时回退使用） */
 function wreckBaseDensityBySecurity(galaxyId: string, ctx: SimContext): number {
   const g = ctx.galaxies.get(galaxyId)
@@ -242,7 +254,7 @@ export function wreckBaseDensity(galaxyId: string, ctx: SimContext): number {
   for (const a of ctx.anomalies.values()) {
     if (a.hidden === true || a.galaxyId !== galaxyId) continue
     anyCard = true
-    sum += bountyWreckInjection(a.threat, bountyEnemyCount(a))
+    sum += bountyWreckInjection(wreckInjectThreatOf(a), bountyEnemyCount(a))
   }
   if (!anyCard) return wreckBaseDensityBySecurity(galaxyId, ctx)
   return Math.max(1, Math.round(sum * WRECK_BASE_BOUNTY_RUNS))
@@ -253,7 +265,7 @@ export function strongestBountyInjection(galaxyId: string, ctx: SimContext): num
   let best: number | null = null
   for (const a of ctx.anomalies.values()) {
     if (a.hidden === true || a.galaxyId !== galaxyId) continue
-    const v = bountyWreckInjection(a.threat, bountyEnemyCount(a))
+    const v = bountyWreckInjection(wreckInjectThreatOf(a), bountyEnemyCount(a))
     if (best === null || v > best) best = v
   }
   return best

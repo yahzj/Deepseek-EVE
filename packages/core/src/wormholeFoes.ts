@@ -119,7 +119,29 @@ export function wormholeExtractThreat(depth: number): number {
 export const WORMHOLE_RUINS_THREAT_MUL = 1.3
 
 /**
- * **洞内敌卡的基准强度系数**（F 批校准旋钮 · 2026-09-13）。
+ * **敌卡「预设作战口径」的强度系数**（船长 2026-09-25 裁定 ⇒ 定价规则，规则内写死）。
+ *
+ * 判据 = **这张卡预设给谁打**，与"玩家实际带几条船""敌人编成几艘船"**都无关**（船长原话：
+ * 「虫洞不是按照"我方参战舰数"分流，而是这张卡设计是给小队打的，不考虑玩家实际参战舰船数量」）；
+ * - `solo = 3`：**单舰**内容 —— 全部洞外常驻悬赏（规则上写死玩家单舰出击）；
+ * - `squad = 10`：**4 舰小队**内容 —— 洞内派生卡（= 下方的 `WORMHOLE_FOE_BASE_STRENGTH_MUL`）。
+ *
+ * 它与 `foeHpOfThreat` 一起构成**威胁 ↔ 属性**的定价式（引擎实测逐层/逐卡核对过）：
+ * ```
+ * X = √(全波总血 × 全波总火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数
+ * ⇒ 威胁 = foeHpOfThreat⁻¹( 5X ÷ 系数 )        （反解函数见 `combat.foeThreatRatingOf`）
+ * ```
+ * 洞内那一支天然满足：`combat.wormholeDerivedAnomaly` 传 `hpBudget = foeHpOfThreat(威胁) × 10`，
+ * `wormholeAnomalyOf` 再算 `budget² / 25` 后开方 ⇒ **X = 2 × foeHpOfThreat(引擎威胁)**
+ * （层 1 实测：X 697 = 2 × F(45) = 2 × 349 ✓）。
+ *
+ * ⚠ **改本表 = 改难度**（属性随系数等比例伸缩）：洞外 23 张常驻悬赏已按 `solo` 重定标威胁值
+ * （2026-09-25 重定标批，口径与逐卡对照见 `packages/data/src/anomalies.ts` 的 `ANOMALIES` 头注）。
+ */
+export const FOE_DESIGN_STRENGTH_MUL = { solo: 3, squad: 10 } as const
+
+/**
+ * **洞内敌卡的基准强度系数**（F 批校准旋钮 · 2026-09-13；= 上表的 `squad` 档 · 2026-09-24 起同源）。
  *
  * 含义 = 洞内敌卡的**总血预算**相对"单船威胁曲线"（`foeHpOfThreat(威胁)`）的放大倍数。
  * 为什么需要它：那条曲线是**单船**口径（一张悬赏卡对一艘玩家船），而洞内是 **4 舰对 4 舰**
@@ -128,7 +150,7 @@ export const WORMHOLE_RUINS_THREAT_MUL = 1.3
  * **参考编队 4×巡洋 MK2 —— 第 1 层轻松打过（允许战损）· 第 2 层战损加重 · 再深有概率损失船**；
  * 改动后必须重跑该工具并把读数写进设计稿。
  */
-export const WORMHOLE_FOE_BASE_STRENGTH_MUL = 10
+export const WORMHOLE_FOE_BASE_STRENGTH_MUL = FOE_DESIGN_STRENGTH_MUL.squad
 
 /**
  * **"1 点 DPS 折算多少血"的参考比**（甲案口径 · 船长 2026-09-16：

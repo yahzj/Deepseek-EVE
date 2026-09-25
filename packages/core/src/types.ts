@@ -2136,6 +2136,19 @@ export interface AnomalyDef {
   galaxyId: string
   /** 威胁等级（V11 起 = 敌方总战力标尺：血量与火力由 battle 常量换算） */
   threat: number
+  /**
+   * **回收口径的"体量"（冻结值 · 与 `threat` 解耦）** —— 船长 2026-09-25 令「**冻结残骸经济**」。
+   *
+   * 残骸链路的两处输入都读本值（见 `salvage.wreckInjectThreatOf`）：**逐场注入量**
+   * `bountyWreckInjection`（悬赏胜利 / AI 代打）与**星系基础密度** `wreckBaseDensity`
+   * （→ 回收档位 / 出量乘数 / 残骸组威胁 / 蓝图碎片门槛）。
+   *
+   * **缺省 = `threat`**（新卡不用写）；洞外 23 张常驻悬赏在 2026-09-25 威胁重定标时按船长令
+   * 保留**重定标前的旧标签** ⇒ 回收经济与重定标前**逐值不变**，且今后再改 `threat` 也不牵动回收线。
+   *
+   * ⚠ **只服务残骸经济**：战斗、威胁显示、速度/射程成长一律仍读 `threat`。
+   */
+  wreckThreat?: number
   /** 需要的势力声望 */
   standingReq: number
   /** 胜利声望增长 */

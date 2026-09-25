@@ -29,7 +29,7 @@ import { formatDurationMs } from './time'
 import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { RETURN_LEG_MUL } from './balance'
-import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf } from './salvage'
+import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf, wreckInjectThreatOf } from './salvage'
 import {
   advanceBattleFor,
   battleClockNowMs,
@@ -595,8 +595,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     }
     state.wallet.isk += reward
   bumpFirst(state, 'bountyWins') // 第一次任务/链：讨伐胜场
-    // B3 击杀注入（2026-09-10 船长定）：威胁 ×0.4 × (1 + 0.2×敌人数)，无上限（窝点按强化后威胁算）
-    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(battleCard.threat, bountyEnemyCount(battleCard)))
+    // B3 击杀注入（2026-09-10 船长定）：注入口径体量（`wreckThreat` ?? 威胁）×0.4 × (1 + 0.2×敌人数)，
+    //   无上限（窝点按强化后威胁算）；**体量走 `wreckInjectThreatOf`** ⇒ 2026-09-25「冻结残骸经济」后
+    //   改 `threat` 不再牵动回收线（见 `AnomalyDef.wreckThreat`）
+    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard)))
     const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
     // 声望仅首胜发放（防低威胁目标被无限重复白刷声望；重复完成只拿 ISK/战利品）
     const firstBlood = !state.completedBounties.includes(anomaly.id)

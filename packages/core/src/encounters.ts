@@ -64,6 +64,7 @@ import {
   WRECK_ENCOUNTER_INJECT_FRAC,
   WRECK_INJECT_PER_THREAT,
   wreckDensityOf,
+  wreckInjectThreatOf,
 } from './salvage'
 import { shipDisplayName } from './instances'
 import { stopMining } from './mining'
@@ -255,7 +256,8 @@ function dropWrecks(state: GameState, ctx: SimContext): void {
   const enc = state.encounter
   if (!enc.galaxyId) return
   const foe = foeOf(state, ctx)
-  const threat = foe ? Math.max(1, foe.threat) : Math.max(1, enc.threat)
+  // 注入口径体量走 `wreckInjectThreatOf`（`wreckThreat` ?? 威胁）⇒ 与悬赏线同源、且不受威胁重定标牵动
+  const threat = foe ? Math.max(1, wreckInjectThreatOf(foe)) : Math.max(1, enc.threat)
   const strongest = strongestBountyInjection(enc.galaxyId, ctx)
   const amount = strongest !== null ? strongest * WRECK_ENCOUNTER_INJECT_FRAC : threat * WRECK_INJECT_PER_THREAT
   injectWreckDensity(state, ctx, enc.galaxyId, amount)

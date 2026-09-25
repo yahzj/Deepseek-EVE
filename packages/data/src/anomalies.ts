@@ -86,7 +86,7 @@ const A_MULTI_SHIP_COMP = 1.6 // = 2N/(N+1)，N = 4
 const ALIEN_COMP = (n: number): number => (2 * n) / (n + 1)
 
 /**
- * **C 族噬口猎杀令（T80）的总盘锚**——「**总血 / 总火力先守恒**」（船长第二批口径⑤：
+ * **C 族噬口猎杀令（T87）的总盘锚**——「**总血 / 总火力先守恒**」（船长第二批口径⑤：
  * 「总血 / 总火力先守恒（`hpMul` 分配 + 单发按 `2N/(N+1)` 反算）⇒ 读数可与改造前逐格对照」）。
  *
  * ⚠ **守恒基准 = 现树实际值，不是卡面名义值**：本卡是 C 族唯一的多波卡，而旧多波路径的波血
@@ -122,6 +122,22 @@ const D_COMP = (n: number): number => (2 * n) / (n + 1)
  */
 const E_COMP = (n: number): number => (2 * n) / (n + 1)
 
+/**
+ * **2026-09-25 船长令：洞外常驻悬赏威胁按「单舰 ×3」定价式重定标（属性零改动）**。
+ *
+ * 定价式（引擎实测）：`X = √(全波总血 × 全波总火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`，
+ * 其中**系数 = 这张卡预设给谁打**（与玩家实际带几条船、敌人编成几艘船都无关）：
+ * 洞外常驻悬赏 = **单舰 ⇒ 3**（`FOE_DESIGN_STRENGTH_MUL.solo`）· 洞内派生卡 = **4 舰小队 ⇒ 10**
+ * ⇒ 单舰卡的威胁 = `F⁻¹(5X ÷ 3)`。本次只改 `threat` 字段，`ships[]`/`waves`/奖励/声望一律不动。
+ *
+ * ⚠ **旧标签登记**：本文件里 2026-09-25 之前的注释中出现的 `T6 / T80 / T84 / T88 / T96` 等编号是
+ * 重定标**之前**的标签，对应现值以各卡 `threat` 字段为准（依次 = 15 / 87 / 115 / 87·103 / 110）。
+ *
+ * ⚠ **`wreckThreat` = 回收口径的冻结值**（同日船长令「**冻结残骸经济**」）：残骸注入 / 星系密度 /
+ * 残骸组威胁 / 蓝图碎片门槛一律读它（`salvage.wreckInjectThreatOf`），值为**重定标前的旧标签**
+ * ⇒ 回收经济与重定标前**逐值不变**，且今后再改 `threat` 不再牵动回收线。没写本字段的卡（洞内卡、
+ * 隐藏模板、新卡）一律回落 `threat`。**它不参与战斗/显示/速度射程**（那些仍读 `threat`）。
+ */
 export const ANOMALIES: readonly AnomalyDef[] = [
   // 终局玩法「虫洞」的洞内敌卡（2026-09-13 F 批）：全部 `hidden: true`，
   // 不进悬赏目录、不被派发 —— 只由虫洞按层数派生取用（见 `packages/data/src/wormholeFoes.ts`）。
@@ -144,7 +160,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 卡片自己的目标值由倍率表达 ⇒ 本卡仍是 **血 22 / 单发 14**（船长「新手过渡族」的小艇）。
     ships: [{ ship: FOE_SCAV_SKIFF, hpMul: 22 / 156, dmgMul: 14 / 28 }],
     galaxyId: 'galaxy-hub',
-    threat: 6,
+    threat: 15,
+    wreckThreat: 6, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'balanced',
     standingReq: 0,
@@ -186,7 +203,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 2, hpShare: 2 / 3 },
     ],
     galaxyId: 'galaxy-kor',
-    threat: 12,
+    threat: 17,
+    wreckThreat: 12, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'armor',
     dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -220,7 +238,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-dust',
-    threat: 16,
+    threat: 24,
+    wreckThreat: 16, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（本卡原即 orbit）
     defProfile: 'balanced',
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -275,7 +294,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-redring',
-    threat: 34,
+    threat: 21,
+    wreckThreat: 34, // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -290,7 +310,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-gravekeeper',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '坟场守墓者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：暗星坟场（威胁 88、奖金 110 万）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：暗星坟场（威胁 87、奖金 110 万）
     name: '坟场守墓者', // 2026-09-11 船长批「卡名可以更换」：坟场守墓人 → **坟场守墓者**（与窝点词 lairCore 统一；P-30 收口）
     // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（守墓长舰 = T3 巡洋·中程）。
     // 船长三定：档位「1 驱逐 2 巡洋」· 战法「守墓长舰按中程」（沿用 orbit）· 速度「按正常算」= **258**。
@@ -316,7 +336,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     waves: [{ units: 2, hpShare: 1 }], // 单波；⚠ `units` 之和 3 → **2** ⇒ 该星系残骸注入量的
     //   敌人数因子 1.6 → 1.4（−12.5%）—— 这是"削减编成"的**必然连带**，已登记（回收池若需重标另议）
     galaxyId: 'galaxy-grave',
-    threat: 88,
+    threat: 87,
+    wreckThreat: 88, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 中程（2026-09-10 船长族系改判 brawl → orbit；本次沿用）
     defProfile: 'armor',
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
@@ -355,7 +376,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-redring',
-    threat: 46,
+    threat: 38,
+    wreckThreat: 46, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 中程（船长「幽灵舰为中程」；原 kite）
     defProfile: 'shield',
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
@@ -409,7 +431,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 3, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-abyss',
-    threat: 45,
+    threat: 41,
+    wreckThreat: 45, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 船长裁定①：**kite → brawl**（射程同时收进近战带）
     defProfile: 'shield',
     dmgMix: { plasma: 10 }, // **纯能量**（C 族唯一纯能量卡；收束旋钮 = 命中 0.90 + 远端命中衰减 0.5）
@@ -460,7 +483,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //（原在深渊之门；深渊之门恢复为纯 C 族异形星系——其 lore「古老跃迁门…守卫森严」不涉巨构，故无需改文案）。
     // ⚠ 连带：同星系日板"取级别最高（并列取奖金最高）"⇒ 见卡表 §11.6 的派发口径备注。
     galaxyId: 'galaxy-auro',
-    threat: 60,
+    threat: 64,
+    wreckThreat: 60, // 回收口径（冻结值，见本表头注）
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
     defProfile: 'armor',
@@ -520,7 +544,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-auro',
-    threat: 62,
+    threat: 59,
+    wreckThreat: 62, // 回收口径（冻结值，见本表头注）
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
     defProfile: 'armor',
@@ -564,13 +589,14 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-auro', // 奥罗荒环（2026-09-12 船长「将所有巨构移动到奥罗荒环」⇒ E 族三卡同域）
-    threat: 84,
+    threat: 115,
+    wreckThreat: 84, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 族规「中距为主」（舰级已解除期望距离钉住 ⇒ 交距 = 带内插值 0.55 × 10,000 ≈ 5,545m）
     defProfile: 'armor',
     dmgMix: { explosive: 6, kinetic: 4 }, // 爆炸 60% + 动能 40%（E 族族格；船长 2026-09-19 改判）
     standingReq: 11, // 与 噬口猎杀令（80）同档；低于 坟场守墓者 / 虚海守望者（88，12）
     standingGain: 4,
-    rewardIsk: 1_000_000, // T84 段：介于 噬口 850,000（80）与 坟场 1,100,000（88）之间
+    rewardIsk: 1_000_000, // 威胁 115 段：介于 噬口 850,000（87）与 坟场 1,100,000（87）之间
     loot: [],
     combatSeconds: 150,
     description:
@@ -624,7 +650,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 3, hpShare: 0.5625 }, // 成虫 ×3 = 860.625（末波重头）
     ],
     galaxyId: 'galaxy-starcore',
-    threat: 72,
+    threat: 57,
+    wreckThreat: 72, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'armor',
     dmgMix: { plasma: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -642,7 +669,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '烬火围攻军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：G 族最弱（烬火星区，威胁 42、奖金 15 万）
+    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：G 族最弱（烬火星区，威胁 44、奖金 15 万）
     name: '烬火围攻战',
     // ═══ 2026-09-12 迁入**舰级路径**（船长「G 组分 5 档…」＋「**烬火围攻战按 2 护卫舰**」）═══
     // 旧路径三字段随迁移撤下（原值留档）：`foeHpOverride: 1585` · `foeHitRate: 0.85` · `foeSpeedMps: 307`。
@@ -660,7 +687,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-cinder',
-    threat: 42,
+    threat: 44,
+    wreckThreat: 42, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
     standingReq: 6,
     standingGain: 2,
@@ -698,7 +726,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-echo',
-    threat: 52,
+    threat: 51,
+    wreckThreat: 52, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 6,
     standingGain: 2,
@@ -712,7 +741,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '天底封锁军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 66、奖金 35 万）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 55、奖金 35 万）
     name: '天底静区封锁',
     // ═══ 2026-09-12 迁入舰级路径（船长「**天底封锁舰按 1 巡洋 2 驱逐**」＋「**蜂群挂在巡洋舰上。2 架。无后备**」）═══
     // 旧路径三字段随迁移撤下（原值留档）：`foeHpOverride: 2040` · `foeHitRate: 0.95` · `foeSpeedMps: 327`。
@@ -748,7 +777,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-nadir',
-    threat: 66,
+    threat: 55,
+    wreckThreat: 66, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 9,
     standingGain: 3,
@@ -761,7 +791,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-maw-hunt',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '噬口猎食群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族最强（星噬之口，威胁 80、奖金 85 万）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族最强（星噬之口，威胁 87、奖金 85 万）
     name: '噬口猎杀令',
     // C 族第二批（2026-09-11 船长「虫群编成 + 稀有头目」）：编成改
     // **畸变幼虫 ×10（波 1 ×4、波 2 ×3、波 3 ×3）+ 噬口巨兽 ×1（第 3 波，精锐）**，共 11 单位 / 3 波。
@@ -833,7 +863,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //   `units` 与编成条目一一对应（4 + 3 + 3 + 1）仅作可读性，改它不会改血量。
     //   **小虫必须排在巨兽之前**：`foes[0]`（波 0 首个主体单位）= 期望交距 / 开战距离的来源。
     galaxyId: 'galaxy-maw',
-    threat: 80,
+    threat: 87,
+    wreckThreat: 80, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 2026-09-10 船长（族系改判）：**orbit（原缺省）→ brawl**（C 族＝螯颚/酸液喷吐的贴脸生物）
     dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（原动能主）
     standingReq: 11,
@@ -847,7 +878,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-vault-sentinel',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '穹顶守卫', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：D 族最强（穹顶墓园，威胁 96、奖金 150 万）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：D 族最强（穹顶墓园，威胁 110、奖金 150 万）
     name: '穹顶守卫',
     // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（静滞卫舰 = T3 巡洋·**远程**）。
     // 船长三定：档位「1 驱逐 2 巡洋」· 战法「**静滞卫舰改为远程**」（**orbit → kite**）· 速度「只有正常的 50%」= **129**
@@ -882,7 +913,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     ],
     waves: [{ units: 3, hpShare: 1 }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
     galaxyId: 'galaxy-vault',
-    threat: 96,
+    threat: 110,
+    wreckThreat: 96, // 回收口径（冻结值，见本表头注）
     tactic: 'kite', // 远程（船长「静滞卫舰改为远程」；原 orbit）
     defProfile: 'balanced', // 显式化（原缺省值生效）
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
@@ -916,10 +948,11 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     waves: [{ units: 3, hpShare: 1 }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '虚海守望者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 88、奖金 110 万）
+    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 103、奖金 110 万）
     name: '虚海守望者',
     galaxyId: 'galaxy-voidedge',
-    threat: 88,
+    threat: 103,
+    wreckThreat: 88, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 中程（族规全远程；本卡沿用）
     defProfile: 'balanced', // 显式化（原缺省值生效）
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
@@ -941,7 +974,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 让旧档里已获得的 `wreck-rare-ano-harbor-escort` 仍能被识别与开箱）。**不是漏标，勿加回来**（契约会拦）。
     name: '新港商路护航令',
     // B 族落码批（2026-09-11 船长七裁决）：迁入**舰级路径**（拾荒武装艇 ×1）。
-    // 基准卡 = 演习场驱逐令（T6），本卡按**精确倍率**复现原建档值：血 75（75/22）、单发 23（23/14）、
+    // 基准卡 = 演习场驱逐令（T15），本卡按**精确倍率**复现原建档值：血 75（75/22）、单发 23（23/14）、
     // 射程 1~2200 与舰级相同（无需覆写）；卡面**装甲型**、构成 **8:2** 均与舰级基准不同 → 条目上覆写。
     // 速度：旧绝对 337 → **306**（同舰级 0.90；船长「速度偏慢」——**有意改慢**，本卡不再比教学卡更快）。
     ships: [
@@ -954,7 +987,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-harbor',
-    threat: 10,
+    threat: 17,
+    wreckThreat: 10, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'armor',
     standingReq: 1,
@@ -1005,7 +1039,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 2, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-shard',
-    threat: 20,
+    threat: 26,
+    wreckThreat: 20, // 回收口径（冻结值，见本表头注）
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     tactic: 'brawl',
     defProfile: 'armor',
@@ -1054,7 +1089,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 2, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-lantern',
-    threat: 22,
+    threat: 30,
+    wreckThreat: 22, // 回收口径（冻结值，见本表头注）
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     tactic: 'orbit',
     defProfile: 'balanced',
@@ -1100,7 +1136,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-haze',
-    threat: 28,
+    threat: 34,
+    wreckThreat: 28, // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
     dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -1115,7 +1152,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     id: 'ano-mirage-hijackers',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '蜃影劫持团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族最强（蜃影星系，威胁 48、奖金 19 万）
+    lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族最强（蜃影星系，威胁 30、奖金 19 万）
     name: '蜃影导航劫持令',
     // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠狙击舰 ×3**（本卡是三档的"最强变体"，
     // 保留 `speedMul 235/201` 与 `rangeMul 13667/11316`；原 `escorts: 1` 僚机条目**取消**）。
@@ -1154,7 +1191,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-mirage',
-    threat: 48,
+    threat: 30,
+    wreckThreat: 48, // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
     dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
@@ -1199,7 +1237,8 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 4, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-chasm',
-    threat: 58,
+    threat: 49,
+    wreckThreat: 58, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'balanced',
     dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（原动能主；副系 = C 族签名 爆炸）

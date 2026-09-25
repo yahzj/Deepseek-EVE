@@ -571,16 +571,16 @@ describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算
     }, 0)
   const shots = (id: string): number[] => createFoeSpecs(realCard(id), bal).map((u) => u.weapons[0]!.shotDmg ?? 0)
 
-  it('赤潮劫掠舰队（T34）：重锚单发 头目 21 / 杂鱼 5，纸面火力 ≈ 旧实伤 7.25 × 1.2', () => {
+  it('赤潮劫掠舰队（T21）：重锚单发 头目 21 / 杂鱼 5，纸面火力 ≈ 旧实伤 7.25 × 1.2', () => {
     expect(shots('ano-redring-raiders')).toEqual([21, 5, 5, 5])
     const dps = paperDps('ano-redring-raiders')
     expect(dps).toBeCloseTo(9, 6) // Σ36 ÷ 4s
     expect(dps / 7.25).toBeGreaterThan(1.1) // ≈ ×1.24（目标 ×1.2，取整 +3.4%）
     expect(dps / 7.25).toBeLessThan(1.3)
-    expect(realCard('ano-redring-raiders').threat).toBe(34)
+    expect(realCard('ano-redring-raiders').threat).toBe(21) // 2026-09-25 重定标：34 → 21（属性零改动）
   })
 
-  it('蜃影导航劫持令（T48）：重锚单发 头目 33 / 杂鱼 7，纸面火力 ≈ 旧实伤 11.50 × 1.2', () => {
+  it('蜃影导航劫持令（T30）：重锚单发 头目 33 / 杂鱼 7，纸面火力 ≈ 旧实伤 11.50 × 1.2', () => {
     expect(shots('ano-mirage-hijackers')).toEqual([33, 7, 7, 7])
     const dps = paperDps('ano-mirage-hijackers')
     expect(dps).toBeCloseTo(13.5, 6) // Σ54 ÷ 4s
@@ -899,7 +899,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     ).toBeUndefined()
   })
 
-  it('深渊之门卫队（T45）：星髓幼虫 ×6 / 2 波（3+3）；总血 1,000 精确守恒', () => {
+  it('深渊之门卫队（T41）：星髓幼虫 ×6 / 2 波（3+3）；总血 1,000 精确守恒', () => {
     const def = card('ano-abyss-guard')
     const u = allWaves(def)
     expect(u).toHaveLength(6)
@@ -928,7 +928,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(h.h / tot).toBeCloseTo(0.25, 6)
   })
 
-  it('裂谷畸变体猎杀令（T58）：畸变幼虫 ×8 / 2 波（4+4）；总血 1,815 精确守恒', () => {
+  it('裂谷畸变体猎杀令（T49）：畸变幼虫 ×8 / 2 波（4+4）；总血 1,815 精确守恒', () => {
     const def = card('ano-chasm-aberrations')
     const u = allWaves(def)
     expect(u).toHaveLength(8)
@@ -951,7 +951,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u[0]!.foeTactic).toBe('brawl')
   })
 
-  it('星髓虫群（T72）：星髓幼虫 ×7 + 星髓成虫 ×3（末波），两条舰级共用一个血量倍率', () => {
+  it('星髓虫群（T57）：星髓幼虫 ×7 + 星髓成虫 ×3（末波），两条舰级共用一个血量倍率', () => {
     const def = card('ano-starcore-boss')
     const u = allWaves(def)
     expect(u).toHaveLength(10);
@@ -979,7 +979,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
   })
 
-  it('噬口猎杀令（T80）：畸变幼虫 ×10 + 稀有头目 ×1；首领占 80% 血与火力，总盘 2,766/501 精确守恒', () => {
+  it('噬口猎杀令（T87）：畸变幼虫 ×10 + 稀有头目 ×1；首领占 80% 血与火力，总盘 2,766/501 精确守恒', () => {
     const def = card('ano-maw-hunt')
     const u = allWaves(def)
     expect(u).toHaveLength(11);

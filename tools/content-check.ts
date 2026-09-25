@@ -138,6 +138,8 @@ securityZoneOf,
   recycleTierOf,
   rackOf,
   wreckBaseDensity,
+  // 2026-09-25 船长令「冻结残骸经济」：残骸线的威胁一律走"回收口径体量"（`wreckThreat` ?? 威胁）
+  wreckInjectThreatOf,
   foeLayerSplit,
   // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
   itemReleased,
@@ -2305,7 +2307,7 @@ for (const m of MODULES) {
     for (const a of producing) {
       const t = recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))
       const v = RECYCLE_YIELD_PER_M3[t] * recyclePoolMeanIsk(cardPoolOf(a), priceOf)
-      const w = Math.max(1, a.threat)
+      const w = Math.max(1, wreckInjectThreatOf(a)) // ⚠ 回收口径体量（2026-09-25 起与 `threat` 脱钩）
       acc += w * v
       wSum += w
     }
@@ -2341,8 +2343,8 @@ for (const m of MODULES) {
       const bad = [...union].filter((id) => !own.has(id)).concat([...own].filter((id) => !union.has(id)))
       check(bad.length === 0, `残骸组契约：${g.key} 的 theme.${key} 与成员卡并集不一致（差异：${bad.join(' / ')}）`)
     }
-    // 组威胁 = 组内产残骸卡威胁的算术平均（取整）
-    const avgThreat = Math.round(producing.reduce((s, a) => s + a.threat, 0) / producing.length)
+    // 组威胁 = 组内产残骸卡**回收口径体量**的算术平均（取整）——2026-09-25「冻结残骸经济」起与 `threat` 脱钩
+    const avgThreat = Math.round(producing.reduce((s, a) => s + wreckInjectThreatOf(a), 0) / producing.length)
     check(g.threat === avgThreat, `残骸组契约：${g.key} 的 threat 记 ${g.threat}，成员产残骸卡平均威胁是 ${avgThreat}`)
     // 组档位 = 组内产残骸卡的多数档
     const tally = new Map<RecycleTier, number>()

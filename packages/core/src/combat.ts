@@ -1682,9 +1682,11 @@ function foeSpeedBase(threat: number, bal: BattleBalance): number {
  * 2026-09-15 起为**「超出部分 15% 折扣」**而非硬封顶，见 `foeDpsCapScaleOf`）收敛；
  * **速度与射程成长的钳制保留**（`foeRefSpeedMps` / `growT`，避免敌人"又快又远又硬"）。
  *
- * **对现有内容的影响（实测）**：全表 27 张卡威胁 ≤ 96 ⇒ `t ≤ 1` ⇒ **逐字零变化**；
- * 受影响的是**窝点派生档**（`LAIR_THREAT_MUL` 1.3/1.6/2.0 会把高威胁卡的派生威胁推到 96 以上）
- * ——那正是本裁定要修的：派生档"威胁涨了、血量被钳住"的失配。
+ * **对现有内容的影响（实测）**：改写前全表 27 张卡威胁 ≤ 96 ⇒ `t ≤ 1` ⇒ **逐字零变化**；
+ * 受影响的是"威胁 > 96"的卡（旧口径下血量冻结在 1152）。
+ * ⚠ **2026-09-25 更新**：洞外 23 张常驻悬赏按「单舰 ×3」定价式重定标威胁（**属性零改动**，
+ * 见 `packages/data/src/anomalies.ts` 的 `ANOMALIES` 头注）⇒ 最大者 `巨构核心勘探令` = **115**，
+ * 该卡起 `t = (115−6)/90 = 1.21 > 1`、血量走出旧钳制区间（**有意**）；洞内 19 张锚点未动。
  */
 export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
   const floor = bal.foeHpCurveFloorThreat ?? 6
@@ -1701,6 +1703,29 @@ export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
     f = table[i]!.dps
   }
   return Math.max(1, Math.round(f * d))
+}
+
+/**
+ * **由属性反推敌卡威胁**（船长 2026-09-25 定价式的反解 · 规则的一部分）。
+ *
+ * 口径：`X = √(全波总血 × 全波总火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`
+ * ⇒ `威胁 = foeHpOfThreat⁻¹( 5X ÷ 系数 )`，其中**系数 = 这张卡预设给谁打**
+ * （`FOE_DESIGN_STRENGTH_MUL`：单舰 3 · 4 舰小队 10），与玩家实带舰数、敌人编成数都无关。
+ *
+ * 实现 = 在 `foeHpOfThreat` 上取"最小的使曲线值 ≥ 需求"的整数威胁（曲线带取整台阶，
+ * 故低威胁段是**平台**：威胁 1~5 的曲线值都是 11 ~ 14，反解会落平台起点）。
+ * 返回上界 1024（远高于现表最大威胁 115，只为防死循环；真触顶说明属性严重越界）。
+ */
+export function foeThreatRatingOf(x: number, designMul: number, bal: BattleBalance): number {
+  const need = (5 * Math.max(0, x)) / Math.max(1e-6, designMul)
+  let lo = 1
+  let hi = 1024
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (foeHpOfThreat(mid, bal) >= need) hi = mid
+    else lo = mid + 1
+  }
+  return lo
 }
 
 /** 展开敌方编队（threat 卡面 = 总战力；血/火力威胁线性，射程/速度走虚拟装配模板） */
@@ -7808,7 +7833,9 @@ function steadyDistance(
  * 2026-09-09 修正（real sim 终验暴露低估，docs/design/wave-battles-20260909.md）：
  * ① 多波卡：敌方总血 = 全波预算；敌方火力 = 峰值波（各波不同时在场，不吃全波火力加成）；
  * ② 护盾回充进承伤模型（引擎 shieldRegenPerSec 实回，长盘显著）——回充窗口 ≈ 直到装甲击穿，
- *    净敌火 = foeDps − 回充率，破甲时间 tA = (盾+甲)/(净敌火)，可承受总伤 = 总 EHP + 回充量。 */
+ *    净敌火 = foeDps − 回充率，破甲时间 tA = (盾+甲)/(净敌火)，可承受总伤 = 总 EHP + 回充量。
+ * ③ **2026-09-25（船长令「改」）**：敌血**按卡面属性建档取值**（舰级路径 = 逐波三层血之和），
+ *    不再一律读威胁曲线 ⇒ 与实战同源；见下方 `foeHpTotal` 的口径说明。 */
 function steadyPreview(
   state: GameState,
   ctx: SimContext,
@@ -7828,13 +7855,54 @@ function steadyPreview(
   const bal = ctx.balance.battle
   const me = createPlayerSpec(state, ctx, shipId)
   if (!me) return null
-  // 敌血总预算（多波 = 全波；foeHpOverride/曲线同 createFoeSpecs 口径）
-  const baseHp = anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)
-  const foeHpTotal = baseHp
-  // 敌方火力按"峰值波小队数"计（同族单位射程/单发相同；多波不吃全波同时在场加成）
+  // 敌方编制口径（两处**故意分开**）：
+  //   ① `foes` = **波 0** 编制 —— 实战的开战距离 / 期望交距就由波 0 首个主体单位决定（见波次注释）
+  //      ⇒ 距离口径必须与实战同源，不随"峰值波"改；
+  //   ② `firepowerFoes` = **各波里火力最大的那一波** —— 多波不同时在场，峰值波才是承伤口径（见下）。
   const waves = anomaly.waves && anomaly.waves.length > 0 ? anomaly.waves : null
   const peakUnits = waves ? Math.max(...waves.map((w) => w.units)) : 1
   const foes = peakUnits > 1 ? createFoeSpecs(anomaly, bal, { units: peakUnits }) : createFoeSpecs(anomaly, bal)
+
+  /**
+   * **舰级路径的逐波建档**（波号从 `slot.wave` 现算 ⇒ 不依赖 `waves[]` 是否写出；一次建好，血与火力共用）：
+   * - **血**：全波之和（多波 = 全波预算）；
+   * - **火力**：取 `dps` 最大的那一波（`firepowerFoes`）。
+   *
+   * ⚠ **2026-09-25 修正（船长令「改」）**：旧口径一律读曲线 `foeHpOfThreat(威胁)` 当敌血，而舰级路径
+   * 的真实血量是 `ship.hp × hpMul` 的绝对值 ⇒ 两把尺子可差数倍（穹顶守卫 真 **5,729** vs 曲线价
+   * F(110)=1,435），且**动威胁标签就会牵动这些显示读数**；火力侧同样有失配——
+   * `createFoeSpecsFromShips` **忽略 `units`**、按 `tagPrefix` 取波（缺省 = 波 0）⇒ 多波舰级卡
+   * 只按**波 0 的火力**算（噬口猎杀令：波 0 = 10.0 DPS vs 头目波 107.8 DPS，差 ×10.78）。
+   * 现改为与实战同源：**血 = 属性建档之和** · **火力 = 各波取最大**（船长「按'各波取最大'改」）。
+   * 旧路径（无 `ships[]`）两侧都保持原口径（曲线血 + `units` 峰值波）⇒ 逐字零变化；
+   * `foeHpOverride` 仍只对旧路径生效（舰级路径本就忽略它，与实战一致）。
+   */
+  const shipSlots = anomaly.ships ?? []
+  const shipWaveBuilds =
+    shipSlots.length > 0
+      ? ((): Array<{ specs: UnitSpec[]; hp: number; dps: number }> => {
+          const idxs = new Set<number>()
+          for (const s of shipSlots) idxs.add(Math.max(0, Math.floor(s.wave ?? 0)))
+          if (idxs.size === 0) idxs.add(0)
+          return [...idxs].map((i) => {
+            const specs = createFoeSpecs(anomaly, bal, { tagPrefix: i === 0 ? '' : `w${i}-` })
+            let hp = 0
+            let dps = 0
+            for (const f of specs) {
+              hp += f.hp.s + f.hp.a + f.hp.h
+              for (const w of f.weapons) dps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
+            }
+            return { specs, hp, dps }
+          })
+        })()
+      : null
+  const curveHp = anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)
+  /** 敌血总预算（多波 = 全波）：舰级路径 = 逐波三层血之和；旧路径 = 曲线（建档出 0 血时同兜底曲线） */
+  const foeHpTotal = shipWaveBuilds ? shipWaveBuilds.reduce((n, b) => n + b.hp, 0) || curveHp : curveHp
+  /** 火力侧编制：舰级路径 = 各波中 DPS 最大的一波；旧路径 = `foes`（`units` 口径本就是峰值波） */
+  const firepowerFoes = shipWaveBuilds
+    ? shipWaveBuilds.reduce((best, b) => (b.dps > best.dps ? b : best), shipWaveBuilds[0]!).specs
+    : foes
   // 距离口径（船长 2026-09-11：「预估胜率的战斗按照那个距离决定，如果没有，采用射程中段距离」）：
   // 该星系设过目标距离 → 用它（钳到本次开战距离内）；没设过 → 双方期望距离中点（旧口径）。
   const steadyPref = desirePrefOf(state, anomaly.galaxyId)
@@ -7893,7 +7961,9 @@ function steadyPreview(
       ? avgLayerMult(meHpTotal, me, type)
       : foeComp.reduce((s, c) => s + c.share * avgLayerMult(meHpTotal, me, c.type), 0)
   let foeDpsPeak = 0
-  for (const f of foes) {
+  // ⚠ 用 `firepowerFoes`（各波里火力最大的一波），**不是** `foes`（波 0，只服务距离口径）——
+  //   舰级路径多波卡的头目常在末波（噬口猎杀令：波 0 = 10.0 DPS vs 头目波 107.8 DPS）
+  for (const f of firepowerFoes) {
     const w = f.weapons[0]!
     const isBeam = w.kind === 'beam'
     const hit = isBeam ? 1 : hitChance(w, f, me, steady, bal)
@@ -7905,8 +7975,8 @@ function steadyPreview(
   }
   // 2026-09-09 减员修正（稳态把"敌人满员全程输出"当真相，多单位/多波严重高估承伤）：
   // 我方逐个击毁敌方单位 → 敌方在场火力近似线性衰减，全程平均 ≈ 峰值 × (N+1)/(2N)
-  // （N = 峰值波单位数；随机目标下各单位击杀时刻 ≈ 按血量比例均匀分布）
-  const foeUnitN = Math.max(1, foes.length)
+  // （N = **峰值火力那一波的单位数**；随机目标下各单位击杀时刻 ≈ 按血量比例均匀分布）
+  const foeUnitN = Math.max(1, firepowerFoes.length)
   const foeDps = foeDpsPeak * ((foeUnitN + 1) / (2 * foeUnitN))
 
   // 承伤窗口含护盾回充（2026-09-09 修正）——**2026-09-14 船长改判后为指数式**：
