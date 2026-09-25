@@ -324,11 +324,16 @@ export function ActivityBar({
             {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${formatDurationMs(v.remainingMs)}` : ''}
           </span>
         </div>
-      </div>
-      {v.stopable && v.stop ? (
-        <button
-          className="app-btn is-small is-warn"
-          title={
+        {/**
+         * **操作按钮移到卡片底部**（2026-09-25 船长令：「玩家活动的卡牌中，像停止清缴这类按钮
+         * **不应该放在右侧了，应该放卡牌底边附近**」）⇒ 从「与行并列、贴行尾」改为
+         * 「行下方、卡内右下」。这样按钮不再挤占标签/进度/时间的横向空间（窄列里尤其明显）。
+         */}
+        {v.stopable && v.stop ? (
+          <div className="app-activitybar-act">
+            <button
+              className="app-btn is-small is-warn"
+              title={
             v.stop === 'cancel-manufacture'
               ? tr("ui.ActivityBar.017")
               : v.stop === 'stop-refine'
@@ -383,8 +388,10 @@ export function ActivityBar({
             : v.stop === 'retreat-battle' && retreatAsk
               ? tr("ui.ActivityBar.024")
               : stopLabel(v)}
-        </button>
-      ) : null}
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
     )
   }

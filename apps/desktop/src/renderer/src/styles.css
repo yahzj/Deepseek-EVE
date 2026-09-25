@@ -2427,6 +2427,42 @@ html[data-locale='en'] body {
 
 }
 
+/* **技能队列芯片：操作按钮移到信息下方**（2026-09-25 船长令：「包括技能训练也是」）——
+   芯片由「一行横排」改为「上下两块」：上=信息（名称/时间），下=操作（排序箭头 + 取消）。
+   ⚠ 芯片自身由 `inline-flex` 改 `column`：否则两块仍会横排。 */
+
+.app-train-chip {
+
+  flex-direction: column;
+
+  align-items: stretch;
+
+  gap: var(--wui-sp-3);
+
+}
+
+.app-train-chip-main {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: var(--wui-sp-4);
+
+  flex-wrap: wrap;
+
+}
+
+.app-train-chip-act {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: var(--wui-sp-4);
+
+}
+
 .app-train-arrow {
 
   background: none;
@@ -9092,6 +9128,19 @@ html[data-locale='en'] body {
 .app-activitybar-item.is-mining { border-color: rgb(var(--wui-accent) / 0.35); }
 
 .app-activitybar-icon { font-size: var(--wui-fs-base); }
+
+/* **活动卡的操作按钮**（2026-09-25 船长令：「像停止清缴这类按钮不应该放在右侧了，
+   应该放卡牌底边附近」）⇒ 按钮不再与标签/进度同行，而是排在它们**下方、卡内右下**。 */
+
+.app-activitybar-act {
+
+  display: flex;
+
+  justify-content: flex-end;
+
+  margin-top: var(--wui-sp-3);
+
+}
 
 .app-activitybar-main { flex: 1; min-width: 0; }
 

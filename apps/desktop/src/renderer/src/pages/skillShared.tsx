@@ -60,62 +60,71 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
            */}
           {view.head !== null ? (
             <span className="app-chip app-train-chip is-head">
-              <span className="app-dim">{tr('ui.SkillsPage.027')}</span>
-              <span>
-                {tr('ui.SkillsPage.040', { n: 1, name: view.head.skillName, lv: view.head.intoLevel })}
+              <span className="app-train-chip-main">
+                <span className="app-dim">{tr('ui.SkillsPage.027')}</span>
+                <span>
+                  {tr('ui.SkillsPage.040', { n: 1, name: view.head.skillName, lv: view.head.intoLevel })}
+                </span>
+                <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(view.head.remainingMs) })}</span>
               </span>
-              <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(view.head.remainingMs) })}</span>
-              <button
-                className="app-train-arrow"
-                title={tr('ui.SkillsPage.015')}
-                disabled={lastIndex < 1}
-                onClick={() => engine.moveQueueAt(0, 1)}
-              >
-                ↓
-              </button>
-              <button
-                className="app-train-x"
-                title={tr('ui.SkillsPage.017')}
-                onClick={() => {
-                  const impact = engine.skillCancelImpactAt(0)
-                  if (impact && impact.also.length > 0) setAskCancel(0)
-                  else engine.dequeueAt(0)
-                }}
-              >
-                ×
-              </button>
+              {/* 操作按钮排在信息**下方**（2026-09-25 船长令：不该挤在右侧、应靠卡牌底边） */}
+              <span className="app-train-chip-act">
+                <button
+                  className="app-train-arrow"
+                  title={tr('ui.SkillsPage.015')}
+                  disabled={lastIndex < 1}
+                  onClick={() => engine.moveQueueAt(0, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  className="app-train-x"
+                  title={tr('ui.SkillsPage.017')}
+                  onClick={() => {
+                    const impact = engine.skillCancelImpactAt(0)
+                    if (impact && impact.also.length > 0) setAskCancel(0)
+                    else engine.dequeueAt(0)
+                  }}
+                >
+                  ×
+                </button>
+              </span>
             </span>
           ) : null}
           {view.pending.map((p) => (
             <span key={`${p.skillId}-${p.queueIndex}`} className="app-chip app-train-chip">
-              <button className="app-train-arrow" title={tr('ui.SkillsPage.012')} onClick={() => engine.moveQueueAt(p.queueIndex, 0)}>
-                ⇈
-              </button>
-              <button
-                className="app-train-arrow"
-                title={p.queueIndex === 1 ? tr('ui.SkillsPage.013') : tr('ui.SkillsPage.014')}
-                onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex - 1)}
-              >
-                ↑
-              </button>
-              <span>{tr('ui.SkillsPage.040', { n: p.queueIndex + 1, name: p.skillName, lv: p.targetLevel })}</span>
-              {p.progressMs > 0 ? (
-                <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(p.remainingMs) })}</span>
-              ) : p.levelMs > 0 ? (
-                <span className="app-dim">{formatDurationMs(p.levelMs)}</span>
-              ) : null}
-              <button
-                className="app-train-arrow"
-                title={p.queueIndex < lastIndex ? tr('ui.SkillsPage.015') : tr('ui.SkillsPage.016')}
-                disabled={p.queueIndex >= lastIndex}
-                onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex + 1)}
-              >
-                ↓
-              </button>
-              <button
-                className="app-train-x"
-                title={tr('ui.SkillsPage.017')}
-                onClick={() => {
+              <span className="app-train-chip-main">
+                <span>{tr('ui.SkillsPage.040', { n: p.queueIndex + 1, name: p.skillName, lv: p.targetLevel })}</span>
+                {p.progressMs > 0 ? (
+                  <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(p.remainingMs) })}</span>
+                ) : p.levelMs > 0 ? (
+                  <span className="app-dim">{formatDurationMs(p.levelMs)}</span>
+                ) : null}
+              </span>
+              {/* 操作按钮（排序箭头 + 取消）排在信息**下方**（2026-09-25 船长令：靠卡牌底边，不挤右侧） */}
+              <span className="app-train-chip-act">
+                <button className="app-train-arrow" title={tr('ui.SkillsPage.012')} onClick={() => engine.moveQueueAt(p.queueIndex, 0)}>
+                  ⇈
+                </button>
+                <button
+                  className="app-train-arrow"
+                  title={p.queueIndex === 1 ? tr('ui.SkillsPage.013') : tr('ui.SkillsPage.014')}
+                  onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex - 1)}
+                >
+                  ↑
+                </button>
+                <button
+                  className="app-train-arrow"
+                  title={p.queueIndex < lastIndex ? tr('ui.SkillsPage.015') : tr('ui.SkillsPage.016')}
+                  disabled={p.queueIndex >= lastIndex}
+                  onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex + 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  className="app-train-x"
+                  title={tr('ui.SkillsPage.017')}
+                  onClick={() => {
                   /**
                    * **取消 + 依赖级联的确认**（**2026-09-23 船长令**：「训练队列内取消一个技能的同时会取消
                    * 所有依赖其前置的后续技能的训练。（但是假设前置是 LV1，你取消的是 LV2 并不会移除后续的
@@ -129,7 +138,8 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
                 }}
               >
                 ×
-              </button>
+                </button>
+              </span>
             </span>
           ))}
         </div>
