@@ -1,34 +1,19 @@
 /**
- * V15 调试面板（开发工具，默认对玩家隐藏）。
- * 进入方式：DevTools 执行 localStorage.setItem('whale-idle:debug','1') 后刷新 → 顶栏出现 ⇄ 调试。
+ * V15 调试面板（开发工具，**只有本机可用**）。
+ * 进入方式：设置 →「调试模式」开关（`panels/DebugPanel` 的 `setDebugEnabled`），
+ * 或在 DevTools 里执行 `localStorage.setItem('whale-idle:debug','1')` 后刷新 → 顶栏出现 ⇄ 调试。
  * 功能：1 秒化总开关（所有作业按 1 秒完成，随存档 debugQuick 记录）；离线快进（复用离线结算，8 小时上限）。
+ *
+ * ⚠ **发布版一律关闭且隐藏**（2026-09-25 船长令：「只有本地开启，上传后的版本都是关闭隐藏的」）：
+ * 门禁实现在 `game/debugFlag.ts`（本机判定走 `@whale/core` 的 `isLocalDebugOrigin`）——
+ * 公网域名与桌面打包版的 `file:` 协议下，`debugEnabled()` 恒为 false（手动置标志也不生效），
+ * 设置里那一行也不渲染。本文件只做**转发**，方便既有调用点（`Expedition` 等）不改 import。
  */
 import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 
-const DEBUG_KEY = 'whale-idle:debug'
-
-/** 调试入口是否可用（隐藏开发工具标志） */
-export function debugEnabled(): boolean {
-  try {
-    // 2026-09-25：兼容 '1' 与 'true'（船长手输开关时大小写/词形不一，原先只认精确的 '1'）
-    const v = localStorage.getItem(DEBUG_KEY)
-    return v === '1' || v === 'true'
-  } catch {
-    return false
-  }
-}
-
-/** 设置面板里的「开发者」开关用：写/清调试标志（**不依赖 DevTools 与 origin 猜测**） */
-export function setDebugEnabled(on: boolean): void {
-  try {
-    if (on) localStorage.setItem(DEBUG_KEY, '1')
-    else localStorage.removeItem(DEBUG_KEY)
-  } catch {
-    /* 存储被禁：忽略 */
-  }
-}
+export { debugAllowed, debugEnabled, setDebugEnabled } from '../game/debugFlag'
 
 /** 顶栏调试按钮 + 面板 */
 export function DebugButton({

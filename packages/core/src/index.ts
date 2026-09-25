@@ -1769,3 +1769,6 @@ export type {
   WormholeAdvanceResult,
 } from './wormhole'
 
+/* 调试模式的「本机门禁」（2026-09-25 船长令：只有本地能用，上传后的版本关闭且隐藏） */
+export { isLocalDebugOrigin } from './debugGate'
+
