@@ -600,7 +600,20 @@ function processWindow(state: GameState, ctx: SimContext): void {
 
     // 内部消化（冲突大单随时间推进消化）
     const dig = mk.digest[key]!
-    if (dig.qty > 0) dig.qty = Math.max(0, dig.qty - dig.perWindow)
+    if (dig.qty > 0) {
+      dig.qty = Math.max(0, dig.qty - dig.perWindow)
+      /**
+       * **不变量：`qty === 0` ⇒ 价格与额度也归零**（2026-09-25 修）。
+       * 存档清洗（`save.ts` 的市场段）只保留 `qty > 0` 的消化条目、其余按零值补回
+       * ⇒ 若这里留着"排空后的残留价"，写出去会在读档时被丢成 0，**往返丢信息**
+       * （`save.test.ts` 的"引擎跑过的档不许丢键"护栏抓到：`market.digest.<键>.price`）。
+       * 归零后档面与引擎内存逐字一致（消化队列为空本就没有有效价格）。
+       */
+      if (dig.qty === 0) {
+        dig.price = 0
+        dig.perWindow = 0
+      }
+    }
 
     // 刷单（common 常驻阶梯每窗；rare/奇货仅收购侧——供给侧在 slowSupplyDraw）
     refreshGoodOrders(state, ctx, def, pool.q, nextNow)

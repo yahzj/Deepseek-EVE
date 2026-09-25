@@ -68,3 +68,31 @@
 1. `packages/core/tests/weekend-bounty.test.ts` 里有一行把断言整条吞进注释（字面 `` `n ``），等于那条"派生卡保留原卡 id"没在测 ⇒ 已复原；
 2. 开战覆写**只有第 0 波生效**（`advanceBattleFor` 每拍从 ctx 重建敌卡、不读覆写）⇒ 现在随档存下并每拍套用（对多波卡是硬需求）。
 
+## 七、第二批（同日 · 船长令「**修，②**」：入侵敌人的残骸）
+
+**起因**：船长问「入侵敌人的不产生残骸吗」⇒ 探针实测三条硬事实：
+① 打捞型号池只收该星系**非 `hidden`** 的卡 ⇒ 四张入侵卡永远进不了池（`wreck-h-wh` 是**死条目**）；
+② 胜利注入按"卡的 `galaxyId`"注入 ⇒ H 独立卡自带母港 ⇒ 会注进母港（主动出击接线后会踩，已登记）；
+③ 奖励物品 id 写死 `'wreck-rare'` —— **目录里不存在**（真形态 `wreck-rare-<组key>`）⇒ 夺回 ×8 / 旗舰 ×3 发的是**未知物品**（不可回收、不能卖）。
+
+**船长选 ②** ⇒ 给 H 族**新开一个洞外残骸组**，并把"产不出 / 发假物品"一起修掉：
+
+| 文件 | 改动 |
+|---|---|
+| `packages/core/src/wreckGroups.ts` | `h-wh`（墨潮帮残骸（虫洞））**退役** ⇒ 新组 **`h-hi`（墨潮帮残骸（高安）· 稀有同）**：族 H · 地区 hi · 档位 common · 池 = 常档基础池 · 威胁 93 · 成员仍是四张入侵卡（旧组此前无任何产出路径 ⇒ 无存档可持有 ⇒ 改名零迁移） |
+| `packages/data/src/wormholeFoes.ts` | 四张卡的 `region: 'wh'` → **`'hi'`**（卡级地区覆写随组走） |
+| `packages/data/src/l10n.ts` · `rarityTier.ts` | 英文名与稀有度表随 id 换（普通 1 / 稀有 4，与其余高安残骸同档；旧 `wreck-h-wh` 两条删除） |
+| `packages/data/src/marketCatalog.ts`（自动） | `WRECK_BUY_GOODS` 由 8 行 → **9 行**（洞外组自动获得站内收购行：常档收价 30 ISK·m³、只收不卖） |
+| `packages/core/src/salvaging.ts` | **打捞池并入驻留舰队**：`wreckPoolOf` 在被占星系把"抽到的那支独立卡"并进型号池（取法与遇袭同源 `weekendBountyCardsOf`）⇒ 在该星系打捞能出墨潮帮残骸；不传 state/now = 老口径逐字不变 |
+| `packages/core/src/weekendBattle.ts` | 新增 `weekendRareWreckIdFor(cardId, ctx)`（按"打的那张卡"的残骸组取稀有残骸 id）；`weekendGrantRewards` 改为**调用方给物品 id**，解析不到就不发（删掉假常量 `WEEKEND_RARE_WRECK_ID`） |
+| `packages/core/src/expedition.ts` | 注入目标改为 `weekendBattleInvolvedOf(...)?.galaxyId ?? 卡的星系`（非入侵战斗逐字不变；H 主动出击那半仍待 M1-b 带星系开战） |
+| `tools/content-check.ts` · `tools/salvage-econ.ts` | "会产出残骸"判据补上**入侵独立卡**（与"洞内卡按 wh 计"同理）；残骸收购卡行数契约 8 → 9 |
+| 测试 | `h-reprice` 增 3 例（组换代/威胁 93/真实物品 id/**被占星系打捞能出 H 残骸 + 未占领抽不到的反证**）；`salvage`/`wreck-groups`/`item-visibility`/`ink-tide` 的地区与组数断言同步 |
+
+**顺带修好的第三处旧账**：`market.ts` 的消化队列排空后残留 `price`（`qty=0` 仍带价）⇒ 存档清洗按"只留 qty>0"把它丢成 0 ⇒ **往返丢信息**（`save.test.ts` 的护栏抓到 `market.digest.<键>.price`）。现加不变量：`qty === 0 ⇒ price/perWindow 一并归零`。
+
+**已知副作用（如实登记）**：新增第 9 张市场收购行 ⇒ **开盘铺簿的随机相位整体平移**。实测同一机制下逐种子差异极大——旧基线 seed 1/2/3/4/5/6 = 1232 / 22832 / **50000** / 22001 / 400 / 401；新增后 = **50000** / 800 / 832 / 50000 / 50000 / 50000（`market.test.ts` 的"收购额度"用例因此改用 seed 1，注释里留了全表读数）。机制未变。
+
+**仍未做（登记）**：H 独立卡当悬赏时的"这一场在哪个星系"（M1-b 接线那批要把所在星系显式带进战斗，与"派生卡 id 归属"同一处）。
+
+

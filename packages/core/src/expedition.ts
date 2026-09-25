@@ -605,8 +605,16 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // B3 击杀注入（2026-09-10 船长定）：注入口径体量（`wreckThreat` ?? 威胁）×0.4 × (1 + 0.2×敌人数)，
     //   无上限（窝点按强化后威胁算）；**体量走 `wreckInjectThreatOf`** ⇒ 2026-09-25「冻结残骸经济」后
     //   改 `threat` 不再牵动回收线（见 `AnomalyDef.wreckThreat`）
-    injectWreckDensity(state, ctx, anomaly.galaxyId, bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard)))
-    const wreckNow = wreckDensityOf(state, anomaly.galaxyId, ctx)
+    /**
+     * **注入目标 = 这一场所在的星系**（2026-09-25 修）：入侵战斗的卡可能"不属于"它被打的那片星域
+     * （H 族独立卡自带母港 `galaxy-hub`）⇒ 先问入侵归属（`weekendBattleInvolvedOf`），问到就用它的星系；
+     * 非入侵战斗回落卡的星系（既有口径，逐字不变）。
+     * ⚠ 残余（已登记）：H 独立卡当悬赏时（M1-b 接线后）战斗按 id 回目录取原卡 ⇒ 归属仍认不出，
+     *    接线那批要把"所在星系"显式带进战斗（与"派生卡 id 归属"同一处修）。
+     */
+    const wreckGalaxyId = weekendBattleInvolvedOf(state, ctx, anomaly.id, Date.now())?.galaxyId ?? anomaly.galaxyId
+    injectWreckDensity(state, ctx, wreckGalaxyId, bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard)))
+    const wreckNow = wreckDensityOf(state, wreckGalaxyId, ctx)
     // 声望仅首胜发放（防低威胁目标被无限重复白刷声望；重复完成只拿 ISK/战利品）
     const firstBlood = !state.completedBounties.includes(anomaly.id)
     if (firstBlood) {

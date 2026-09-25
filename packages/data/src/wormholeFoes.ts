@@ -521,7 +521,8 @@ export const WORMHOLE_RARE_WRECK_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARD
  *
  * **H 族（墨潮帮）四张卡**（2026-09-24 船长逐条给定编成，原话见各卡头注）：
  * 骚扰舰队（1 波）· 袭击舰队（2 波）· 主力舰队（2 波）· 旗舰部队（4 波）。
- * 四张都 `hidden: true` ＋ `region: 'wh'`（不进悬赏目录；地区按入侵口径计，不参与星图侧派发）。
+ * 四张都 `hidden: true` ＋ `region: 'hi'`（不进悬赏目录；地区按**洞外高安口径**计——2026-09-25 船长裁定
+ * 「修，②」：入侵舰队在高安/中安/低安都会出现，残骸组因此从洞内 `h-wh` 改成洞外 `h-hi`）。
  *
  * **强度口径**（2026-09-25 重定价批 · 船长逐条裁定）：
  * - **威胁 = 战力标签 = 卡面属性的实测价**：`X = √(全波总血 × 峰值波火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`
@@ -557,7 +558,7 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮骚扰舰队',
   galaxyId: 'galaxy-hub',
-  region: 'wh',
+  region: 'hi',
   threat: 90,
   foeTargeting: 'random',
   dmgMix: { kinetic: 6, explosive: 4 }, // 全卡都是突击舰（船长 2026-09-24 第二轮令：突击舰改 6 动能 : 4 爆炸）
@@ -590,7 +591,7 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮袭击舰队',
   galaxyId: 'galaxy-hub',
-  region: 'wh',
+  region: 'hi',
   threat: 108,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 }, // 主体（鱼雷舰 ×3）是导弹/爆炸系
@@ -633,7 +634,7 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮主力舰队',
   galaxyId: 'galaxy-hub',
-  region: 'wh',
+  region: 'hi',
   threat: 129,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 },
@@ -674,7 +675,7 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮旗舰部队',
   galaxyId: 'galaxy-hub', // 只作日志/展示归属；本卡不进任何星系目录（hidden）
-  region: 'wh', // 卡级地区覆写：入侵卡与洞内卡同口径（否则会被按高安卡核）
+  region: 'hi', // 卡级地区覆写：入侵卡与洞内卡同口径（否则会被按高安卡核）
   threat: ANCHOR_THREAT, // 缩放锚点（实际威胁由入侵覆盖 120）
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 },

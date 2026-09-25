@@ -36,8 +36,10 @@ import {
   weekendGarrisonFoeCardId,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
+import { weekendRareWreckIdFor } from '../src/weekendBattle'
 import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import { recycleProfileOf } from '../src/salvage'
+import { pullOneWreck } from '../src/salvaging'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -241,24 +243,71 @@ describe('入侵敌卡随机抽取（船长 2026-09-25：外围 {骚扰, 袭击}
   })
 })
 
-describe('残骸侧：H 组**不冻结**（船长令）——声明值随成员走，行为零变化', () => {
-  it('`h-wh` 组代表威胁 = 成员回收口径体量的平均 = 93（45 → 93）', () => {
-    const g = WRECK_GROUP_BY_KEY.get('h-wh')!
+describe('残骸侧：H 组**不冻结**（船长令）＋ 组改洞外高安（「修，②」）', () => {
+  it('`h-hi` 组代表威胁 = 成员回收口径体量的平均 = 93（45 → 93）', () => {
+    const g = WRECK_GROUP_BY_KEY.get('h-hi')!
     const members = g.members.map((id) => card(id).threat)
     expect(members).toEqual([90, 108, 129, 45])
     expect(g.threat).toBe(Math.round(members.reduce((a, b) => a + b, 0) / members.length))
     expect(g.threat).toBe(93)
-    expect(recycleProfileOf(ctx, 'wreck-h-wh')!.threat, '回收画像读的就是组代表威胁').toBe(93)
+    expect(g.name).toBe('墨潮帮残骸（高安）')
+    expect(recycleProfileOf(ctx, 'wreck-h-hi')!.threat, '回收画像读的就是组代表威胁').toBe(93)
+    // 旧洞内组退役：**已无 h-wh 组**（它此前没有任何产出路径 ⇒ 无存档可持有其物品）
+    expect(WRECK_GROUP_BY_KEY.get('h-wh')).toBeUndefined()
+    expect(ctx.items.has('wreck-h-wh')).toBe(false)
   })
 
   it('碎片门槛只认两道闸（≥17 出 T2 / ≥41 出 T3）：45 与 93 都在闸上 ⇒ 判定不变', () => {
-    const g = WRECK_GROUP_BY_KEY.get('h-wh')!
+    const g = WRECK_GROUP_BY_KEY.get('h-hi')!
     expect(g.threat >= 17).toBe(true)
     expect(g.threat >= 41).toBe(true)
-    // 档位 / 池 / 低安判定都不看组威胁 ⇒ 逐字不变
-    const p = recycleProfileOf(ctx, 'wreck-h-wh')!
+    // 档位 / 池 不看组威胁；低安判定看**组地区**（高安 ⇒ false，与洞内组同为 false ⇒ 行为一致）
+    const p = recycleProfileOf(ctx, 'wreck-h-hi')!
     expect(p.tier).toBe('common')
     expect(p.lowSec).toBe(false)
-    expect(p.region).toBe('wh')
+    expect(p.region).toBe('hi')
+  })
+
+  it('**奖励残骸是真实物品**：夺回/旗舰发的稀有残骸 id 必须能在目录里解析（原 `wreck-rare` 不存在）', () => {
+    for (const id of ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship']) {
+      const itemId = weekendRareWreckIdFor(id, ctx)
+      expect(itemId, `${id} 解析不到稀有残骸物品 id`).toBe('wreck-rare-h-hi')
+      expect(ctx.items.has(itemId!), `${itemId} 不在物品目录里`).toBe(true)
+    }
+    expect(ctx.items.has('wreck-rare'), '旧写死的假 id 不该存在').toBe(false)
+  })
+
+  it('**被占星系的打捞池并入驻留的那支入侵舰队** ⇒ 那里能打捞出「墨潮帮残骸（高安）」', () => {
+    /** 挑一个"本来就有可见悬赏"的星系当被占星系（池底 = 它的原卡） */
+    const home = [...ctx.anomalies.values()].find((a) => !a.hidden)!.galaxyId
+    /**
+     * ⚠ 事件必须**以"此刻"为起点**：`pullOneWreck` 内部按**墙钟**（`Date.now()`）判占领——
+     * 与入侵线同口径（事件时间轴本来就是墙钟）。若沿用夹具的 `startedAtWallMs: 0`，
+     * NPC 铺底早就把进度推到 1（= 已夺回）⇒ 池子不会并入入侵舰队（第一次写这条用例就踩到了）。
+     */
+    const s = createInitialState({ nowWallMs: 0, seed: 9 })
+    s.weekendEvent = {
+      seq: 3,
+      startedAtWallMs: Date.now(),
+      coreId: 'galaxy-kor',
+      peripheryIds: [home],
+      family: 'H',
+      contributed: {},
+    }
+    const underInvasion = new Set<string>()
+    for (let i = 0; i < 40; i++) {
+      const got = pullOneWreck(s, ctx, home, 60_000)
+      if (got) underInvasion.add(got.itemId)
+    }
+    expect(underInvasion.has('wreck-h-hi'), `40 次打捞没出 H 族残骸（出的是 ${[...underInvasion].join(' / ')}）`).toBe(true)
+    // **反证**：同一星系不处于占领区时抽不到它（池底只有原卡 ⇒ 老口径逐字不变）
+    const s2 = createInitialState({ nowWallMs: 0, seed: 9 })
+    const normal = new Set<string>()
+    for (let i = 0; i < 40; i++) {
+      const got = pullOneWreck(s2, ctx, home, 60_000)
+      if (got) normal.add(got.itemId)
+    }
+    expect(normal.has('wreck-h-hi'), `未占领时不该出 H 族残骸（出的是 ${[...normal].join(' / ')}）`).toBe(false)
+    expect(normal.size, '未占领时仍应有原卡残骸可捞').toBeGreaterThan(0)
   })
 })

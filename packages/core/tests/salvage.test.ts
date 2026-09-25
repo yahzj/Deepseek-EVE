@@ -165,9 +165,9 @@ describe('残骸物品（按「族 × 地区」组注册；乙案：计数 = 体
     expect(wreckGroupKeyOfItemId('wreck-ano-training')).toBe('b-hi') // 旧 id：演习场驱逐令 → 武装拾荒者·高安
     expect(wreckGroupKeyOfItemId('wreck-rare-wh-pirate-scout')).toBe('a-wh')
     expect(wreckGroupKeyOfItemId('ore-a')).toBeNull()
-    // 14 组 × （普通 14 + 稀有 14）（2026-09-24：+H 族墨潮帮 h-wh）
-    expect(WRECK_GROUPS.length).toBe(14) // ⚠ 2026-09-24：13 → 14（H 族墨潮帮组 h-hi）
-    expect(WRECK_GROUPS.filter((g) => g.region === 'wh').length).toBe(6) // 2026-09-24：5 → 6（+H 墨潮帮 h-wh）
+    // 14 组 × （普通 14 + 稀有 14）（2026-09-24：+H 族墨潮帮；2026-09-25 该组由 h-wh 改 h-hi）
+    expect(WRECK_GROUPS.length).toBe(14) // ⚠ 2026-09-24：13 → 14（H 族墨潮帮组）
+    expect(WRECK_GROUPS.filter((g) => g.region === 'wh').length).toBe(5) // 2026-09-25：6 → **5**（H 族改洞外 h-hi）
   })
 
   it('存档迁移映射：旧 id → 组 id（普通与稀有）· 未知 id 原样不动', () => {

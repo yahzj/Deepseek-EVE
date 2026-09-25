@@ -248,6 +248,11 @@ securityZoneOf,
   // 2026-09-20 稀有度小标签批：残骸**物品 id** 由组键派生（`wreck-<键>` / `wreck-rare-<键>`）
   wreckItemIdOfKey,
   rareWreckItemIdOfKey,
+  // 2026-09-25：入侵独立卡 id 集（"会产出残骸"判据要用；⚠ 必须从 **core** 引入——
+  // `@whale/data` 只是类型面转出，运行时取不到这几个绑定）
+  WEEKEND_FAMILIES,
+  weekendFoeCardOf,
+  weekendFoePoolOf,
 } from '@whale/core'
 
 const errors: string[] = []
@@ -2286,19 +2291,29 @@ for (const m of MODULES) {
   }
   // ② 保值 + ③ 矿物来源 + ④ 钛钢 + ⑤ 主题件
   const regionOfCard = (a: (typeof ANOMALIES_FLAVORED)[number]): 'hi' | 'lo' | 'wh' => {
-    if (a.region) return a.region // 卡级覆写优先（2026-09-24：入侵卡 ink-* 走 wh）
+    if (a.region) return a.region // 卡级覆写优先（2026-09-24：入侵卡 ink-* 走卡级地区；2026-09-25 起为 'hi'）
     if (a.id.startsWith('wh-')) return 'wh'
     const sec = typeof ctx.galaxies.get(a.galaxyId)?.security === 'number' ? ctx.galaxies.get(a.galaxyId)!.security! : 1
     return sec <= 0 ? 'lo' : 'hi'
   }
+  /**
+   * **入侵独立卡 id 集**（被 `weekendFoePoolOf` / `weekendFoeCardOf` 引用的那些）：
+   * 它们 `hidden`（不进悬赏目录），但**2026-09-25 起被占星系的打捞池会把驻留的那支并进来**
+   * ⇒ 与"洞内卡按 wh 计"同理，它们也要算"会产出残骸"的成员（否则 `h-hi` 组会被判成没有产出成员）。
+   */
+  const invasionCardIds = new Set<string>(
+    WEEKEND_FAMILIES.flatMap((f) => [...weekendFoePoolOf(f, false), ...weekendFoePoolOf(f, true), weekendFoeCardOf(f, 'flagship')]),
+  )
   const meanOf = (pool: ReadonlyArray<readonly [string, number]>): number =>
     pool.reduce((s, [, w]) => s + w * (ctx.items.get('') ? 0 : 0), 0) // 占位（真算走 recyclePoolMeanIsk）
   void meanOf
   const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
   let groupsChecked = 0
   for (const g of WRECK_GROUPS) {
-    const producing = ANOMALIES_FLAVORED.filter((a) => g.members.includes(a.id) && (!a.hidden || regionOfCard(a) === 'wh'))
-    check(producing.length > 0, `残骸组契约：${g.key} 没有任何"会产出残骸"的成员卡（洞内卡按 wh 计）`)
+    const producing = ANOMALIES_FLAVORED.filter(
+      (a) => g.members.includes(a.id) && (!a.hidden || regionOfCard(a) === 'wh' || invasionCardIds.has(a.id)),
+    )
+    check(producing.length > 0, `残骸组契约：${g.key} 没有任何"会产出残骸"的成员卡（洞内卡与入侵独立卡按会产出计）`)
     // 卡池均价（原卡级表优先；缺省 = 该卡原档位基础池）
     const cardPoolOf = (a: (typeof ANOMALIES_FLAVORED)[number]): ReadonlyArray<readonly [string, number]> =>
       RECYCLE_FLAVOR[a.id]?.recyclePool ?? RECYCLE_POOLS[recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))]!
@@ -2413,10 +2428,10 @@ for (const m of MODULES) {
   }
   // 残骸收购卡价格锚（2026-09-08 船长定 + 当日修正 + 2026-09-19 并组）：
   // 收价 = **组档位**价（常 30 / 险 40 / 危 50），须**严格低于**无技能拆解保底（≈57/m³，三档齐平）；
-  // 行数 = 洞外 8 组（洞内 5 组维持无市场行 —— 合并前洞内 15 张隐藏卡本就没有收购行）
+  // 行数 = 洞外 9 组（洞内 5 组维持无市场行 —— 合并前洞内 15 张隐藏卡本就没有收购行）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }
   const noSkillPerM3 = 82_000 / 1_440
-  check(WRECK_BUY_GOODS.length === 8, `残骸收购卡应有 8 张（洞外 13−5 组），实际 ${WRECK_BUY_GOODS.length}`)
+  check(WRECK_BUY_GOODS.length === 9, `残骸收购卡应有 9 张（洞外 14−5 组；2026-09-25 新增 H 族洞外组 h-hi），实际 ${WRECK_BUY_GOODS.length}`)
   for (const g of WRECK_BUY_GOODS) {
     const key = g.refId.startsWith('wreck-') ? g.refId.slice('wreck-'.length) : ''
     const def = WRECK_GROUP_BY_KEY.get(key)
@@ -2427,7 +2442,7 @@ for (const m of MODULES) {
     check(g.basePrice < noSkillPerM3, `残骸卡 ${g.key} 收价 ${g.basePrice} 不低于无技能拆解保底 ${noSkillPerM3.toFixed(1)}/m³——会击穿回收线最低锚`)
     check(g.playerBuyable === false, `残骸卡 ${g.key} 必须只收不卖（playerBuyable=false）`)
   }
-  console.log(`· 残骸收购卡：${WRECK_BUY_GOODS.length} 张（= 洞外 8 组；收价 = 常 30 / 险 40 / 危 50 ISK·m³，须低于无技能拆解保底）`)
+  console.log(`· 残骸收购卡：${WRECK_BUY_GOODS.length} 张（= 洞外 9 组；收价 = 常 30 / 险 40 / 危 50 ISK·m³，须低于无技能拆解保底）`)
   // 2026-09-08 船长定稿：①主题彩头（recycleLoot 追加件）只允许 sec < 0.5 星系；
   // ②主题追加件不得含武器（炮/激光/导弹架），唯一例外 = 穹顶守卫门槛线追加三把 MK3 武器；
   // ③MK3 一律走碎片，穹顶守卫 × {三把 MK3 武器} 为唯一 MK3 直出白名单
