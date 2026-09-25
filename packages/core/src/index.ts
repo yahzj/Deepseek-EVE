@@ -734,6 +734,8 @@ export {
   rareWreckItemIdOfCard,
   rareWreckItemDefOf,
   isRareWreck,
+  /** 2026-09-25 船长令：H 族（墨潮帮）残骸暂不开放精炼炉回收（打捞与出售不受影响） */
+  wreckRecycleClosedOf,
   injectRareWreck,
   rareWreckCountOf,
   pullRareWreck,

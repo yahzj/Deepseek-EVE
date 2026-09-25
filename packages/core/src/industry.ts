@@ -47,6 +47,8 @@ import {
   rollRecycleGuarantee,
   rollRareBoxExtra,
   rollRecycleLoot,
+  /** 2026-09-25 船长令：H 族残骸暂不开放回收（等 H 势力装备） */
+  wreckRecycleClosedOf,
 } from './salvage'
 import { addAiIncome, addAiRefineBatch, type SettleStats } from './settleStats'
 
@@ -394,6 +396,19 @@ export function startRecycleRun(
   const profile = recycleProfileOf(ctx, wreckItemId)
   if (!profile) {
     return { ok: false, error: `「${def.name}」来源记录缺失，无法回收。`, errorId: 'core.industry.010', errorParams: { p1: def.name } }
+  }
+  /**
+   * **H 族残骸暂不开放回收**（**船长 2026-09-25 令**：「先关闭对应的精炼炉，等势力装备出来再说」＋
+   * 二答「H 族残骸整体暂不可回收」）：普通与稀有一起拦；**打捞与出售不受影响**。
+   * 判据在 `salvage.wreckRecycleClosedOf`（按**组族**取），界面那侧同样读它把卡片摘掉。
+   */
+  if (wreckRecycleClosedOf(wreckItemId, ctx)) {
+    return {
+      ok: false,
+      error: `「${def.name}」暂时无法回收。`,
+      errorId: 'core.industry.084',
+      errorParams: { p1: def.name },
+    }
   }
   const available = oreAvailable(state, wreckItemId)
   if (available <= 0) {

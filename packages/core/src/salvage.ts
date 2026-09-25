@@ -146,6 +146,23 @@ export function isRareWreck(itemId: string): boolean {
 }
 
 /**
+ * **这种残骸现在能不能进精炼炉**（**船长 2026-09-25 令**：「**先关闭对应的精炼炉，等势力装备出来再说**」
+ * ＋ 同日二答「**H 族残骸整体暂不可回收**」）。
+ *
+ * 口径：
+ * - **H 族（墨潮帮）残骸暂时不可回收**——普通与稀有都算。原因（开发侧记录）：H 族**没有专属装备池**
+ *   （`FOE_LAIR_GEAR.H = []`，星图侧还没有墨潮帮窝点卡），稀有残骸的高级箱只剩"一批高阶矿物"那一支；
+ *   船长裁定等**H 族势力装备**做出来再开放那口炉；
+ * - ⚠ **打捞与出售不受影响**（H 组仍是洞外组、有市场收购行）：只是**拆不了**；
+ * - 判据按**组族**取（不是按 id 前缀）⇒ 将来 H 组扩到别的地区/更多 id 也一起管住；
+ *   `null`（未知物品）不拦——那类会走 `recycleProfileOf` 的"来源记录缺失"那条路。
+ */
+export function wreckRecycleClosedOf(itemId: string, ctx?: SimContext): boolean {
+  const group = wreckGroupOfWreckItem(itemId, ctx)
+  return group?.family === 'H'
+}
+
+/**
  * 稀有残骸物品定义（**按组**）。**计数即体积**——与普通残骸同一台账口径（unitM3 = 1，数量就是 m³）：
  * 打捞到 1 件 = 入库 `RARE_WRECK_VOLUME_M3`（30）单位 = 30 m³ 货舱/回收批数。
  * **2026-09-10 船长定：已解禁**（二号五族专属装备齐备后开放）——与普通残骸同一条回收链路，

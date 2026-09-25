@@ -745,6 +745,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.industry.016": { zh: "{p1}里没有 {p2}。", en: "There is no {p2} in the {p1}." },
   "core.industry.017": { zh: "{p1} 不在市场流通目录中，无法出售。", en: "{p1} is not in the market catalog, so it cannot be sold." },
   "core.industry.018": { zh: "{p1} 暂不支持玩家出售。", en: "{p1} cannot be sold by players for now." },
+  // 2026-09-25 船长令：H 族（墨潮帮）残骸**暂不开放回收**（等 H 势力装备做出来再开）——
+  // 打捞与出售不受影响，只是拆不了；判据见 salvage.wreckRecycleClosedOf。
+  "core.industry.084": { zh: "「{p1}」暂时无法回收。", en: "“{p1}” cannot be recycled for now." },
   "core.industry.019": { zh: "未知舰船：{p1}。", en: "Unknown ship: {p1}." },
   "core.industry.020": { zh: "{p1} 不通过市场流通（仅可制造）。", en: "{p1} is not traded on the market (it can only be built)." },
   "core.industry.021": { zh: "{p1} 仅可制造：市场不售成品现货（可在市场买它的蓝图书自行总装，或留意他人二手挂售）。", en: "{p1} can only be built: the market does not stock finished hulls (buy its blueprint book and assemble it yourself, or watch for player listings)." },
