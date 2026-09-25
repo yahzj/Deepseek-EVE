@@ -54,6 +54,14 @@ const STEP_COST = WORMHOLE_TURN_PER_MOVE
 
 /** **浅层留手比例**：本层最多捡到 `货舱 × 本值` 就转去下潜（深层收益 ×1.2/层，早下潜更划算） */
 export const WORMHOLE_AUTO_DESCEND_HOLD_SHARE = 0.25
+/**
+ * **收成折扣 = 0.8**（2026-09-26 船长令：「收益按照80%折扣」）。
+ *
+ * 背景：改成"真进洞跑一趟"之后，满科技 + 扫描船的读数（残骸 4263 m³ / 稀有 13.9 件）约为旧口径的 7 倍；
+ * 船长按 8 折收口。**打折打在"带回来的东西"上**（模拟器的每一条产出线一起乘），
+ * 不是改走法、也不是改掉落规则 —— 走法/掉落仍与手动一致，只有"自动探索这一趟的收成"乘 0.8。
+ */
+export const WORMHOLE_AUTO_SIM_YIELD_MUL = 0.8
 /** 撤离前留的回合余量（不够就不下潜、就地收工） */
 const EXTRACT_RESERVE_TURNS = 2
 
@@ -326,7 +334,21 @@ export function wormholeAutoDescend(opts: {
     holdUsed += WORMHOLE_WRECK_PILE_M3_BASE
   }
 
-  return out
+  return {
+    depthReached: out.depthReached,
+    cellsExplored: out.cellsExplored,
+    fightsWon: out.fightsWon,
+    fightsAvoided: out.fightsAvoided,
+    /** 收成打 8 折（船长令）：走法与掉落不变，只把"带回来的东西"按折扣收口 */
+    wreckM3: Math.round(out.wreckM3 * WORMHOLE_AUTO_SIM_YIELD_MUL),
+    oreUnits: Math.round(out.oreUnits * WORMHOLE_AUTO_SIM_YIELD_MUL),
+    rareItems: out.rareItems * WORMHOLE_AUTO_SIM_YIELD_MUL,
+    relicBoxes: out.relicBoxes * WORMHOLE_AUTO_SIM_YIELD_MUL,
+    holdFull: out.holdFull,
+    outOfTurns: out.outOfTurns,
+    turnsOnScan: out.turnsOnScan,
+    turnsOnMove: out.turnsOnMove,
+  }
 }
 
 /** 普通残骸一堆的 m³（与旧口径同一个基准 + 层收益 + 0.8~1.2 抖动 + 残骸线科技） */

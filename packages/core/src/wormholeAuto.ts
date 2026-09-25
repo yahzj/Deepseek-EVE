@@ -722,16 +722,20 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const wreckKey = group?.key ?? cardId
   if (descend.wreckM3 > 0) gains.push({ itemId: wreckItemIdOf(wreckKey), units: descend.wreckM3 })
 
-  // ② 稀有残骸：模拟器在遗迹格命中几件就给几件（不是"按期望折算"）
-  if (descend.rareItems > 0) {
-    gains.push({ itemId: rareWreckItemIdOf(wreckKey), units: descend.rareItems * RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
+  // ② 稀有残骸：模拟器在遗迹格命中几件就给几件（**8 折后是小数 ⇒ 小数部分掷一次取整**，可复现）
+  const rareBase = Math.floor(descend.rareItems)
+  const rareN = rareBase + (rng() < descend.rareItems - rareBase ? 1 : 0)
+  if (rareN > 0) {
+    gains.push({ itemId: rareWreckItemIdOf(wreckKey), units: rareN * RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
   }
 
   // ③ 虚空母矿：模拟器在矿脉格真采到的单位数
   if (descend.oreUnits > 0) gains.push({ itemId: WORMHOLE_ORE_ITEM_ID, units: descend.oreUnits })
 
-  // ④ 遗迹安全货柜：模拟器在遗迹格命中几次就给几件
-  for (let i = 0; i < descend.relicBoxes; i++) gains.push({ itemId: wormholeRelicBoxIdOf(family), units: 1 })
+  // ④ 遗迹安全货柜：模拟器在遗迹格命中几次就给几件（同样按小数部分掷一次取整）
+  const boxBase = Math.floor(descend.relicBoxes)
+  const boxN = boxBase + (rng() < descend.relicBoxes - boxBase ? 1 : 0)
+  for (let i = 0; i < boxN; i++) gains.push({ itemId: wormholeRelicBoxIdOf(family), units: 1 })
 
   /**
    * ⑤ **AI 核心**：命中率随**真正下到的层**抬升（层 1 起，与手动"层 1 也给"一致）。

@@ -4093,7 +4093,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.137": { zh: "点一下编入", en: "Click to assign" },
   "ui.Wormhole.138": { zh: "时长 约", en: "Time about " },
   "ui.Wormhole.139": { zh: "收益 =", en: "the yield is " },
-  "ui.Wormhole.370": { zh: "真进洞跑一趟捡到的（逐格走 · 打 · 捡）", en: "what one real descent brings back (walk, fight, salvage)" },
+  "ui.Wormhole.370": { zh: "真进洞跑一趟捡到的 8 折（逐格走 · 打 · 捡）", en: "80% of what one real descent brings back (walk, fight, salvage)" },
   "ui.Wormhole.140": { zh: "损伤", en: "Damage" },
   "ui.Wormhole.141": { zh: "折算总质量", en: "Converted total mass" },
   "ui.Wormhole.142": { zh: "本层威胁", en: "Layer threat" },
