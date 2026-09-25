@@ -89,7 +89,7 @@ import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
-import { foeBriefOfCard } from '../ui/foeBrief'
+import { foeBriefsOfCard } from '../ui/foeBrief'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 
@@ -2170,26 +2170,24 @@ function GalaxyActions({
           const lo = threats.length > 0 ? Math.min(...threats) : 0
           const hi = threats.length > 0 ? Math.max(...threats) : 0
           const card = list[0] ?? cands[0]
+          /**
+           * **敌舰介绍**（整卡悬停；一个编成里有几种舰就报几种）——先算好，别塞进 JSX 里拼三元。
+           * 旗舰卡的编成是 9 条 / **5 种**舰 ⇒ 悬停里逐种一行。
+           */
+          const foeBriefLines = card ? foeBriefsOfCard(card) : []
+          const foeBriefTip = foeBriefLines.length > 0 ? foeBriefLines.join('\n') : undefined
           return (
             /**
              * ⚠ **同一套红框**（船长 2026-09-25 第二条令：「星系详细『悬赏』区那行『击退入侵舰队』
              * 加同样的红框」）：与上面的旗舰入口同一对类名 ⇒ 观感与 `.app-weekend-box` 逐字同款。
+             * 悬停（`title`）挂在**整张卡**上，见 `foeBriefTip` 的注释。
              */
-            <div className="app-ga-row app-ga-invasion">
+            <div className="app-ga-row app-ga-invasion" title={foeBriefTip}>
               <span className="app-ga-main">
                 <span className="app-ico">
                   <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />
                 </span>
-                {/**
-                 * 卡片标题带**敌舰一句话介绍**的悬停（2026-09-26 船长令：「如果是入侵活动的悬赏卡片，
-                 * 玩家鼠标悬停还能看见敌人舰船的大概介绍（一句话介绍敌人舰船的特点）」＋
-                 * 「介绍内要说明一些有特殊机制的敌方舰船的效果」）。
-                 *
-                 * 句子由 `ui/foeBrief.ts` **从数据推导**（挂载件名逐件点名 + 战术/武器/无人机/精英档），
-                 * 所以它描述的就是战斗里真正生效的那套机制；`card` 缺省（无签可抽）时不挂悬停。
-                 * 悬停走仓里统一的 `title` 口径（`ui/Tooltip` 自绘接管层），不另起机制。
-                 */}
-                <span title={card ? (foeBriefOfCard(card) ?? undefined) : undefined}>{tr('ui.weekend.092')}</span>
+                {tr('ui.weekend.092')}
                 <span className="app-dim app-ga-desc">
                   {tr('ui.weekend.093', { p1: lo, p2: hi })}
                   {' · '}

@@ -75,21 +75,38 @@ function mountEffectText(id: string): string | null {
   return nm
 }
 
-/** 取该卡里"最该介绍的那条舰"：主舰优先，其次档位最高的（头目 > 护卫） */
-export function briefShipOf(anomaly: AnomalyDef | null | undefined): FoeShipDef | null {
+/** 取该卡编成里**每一种**舰（按 精英 > 档位 > 主舰 排序，去重；同型归一条） */
+export function briefShipsOf(anomaly: AnomalyDef | null | undefined): FoeShipDef[] {
   const slots = anomaly?.ships ?? []
-  if (slots.length === 0) return null
-  let best: FoeShipDef | null = null
+  const seen = new Map<string, { ship: FoeShipDef; count: number; main: boolean }>()
   for (const s of slots) {
-    if (!s?.ship) continue
-    if (best === null) {
-      best = s.ship
-      continue
+    const ship = s?.ship
+    if (!ship) continue
+    const hit = seen.get(ship.id)
+    if (hit) {
+      hit.count += s.count ?? 1
+      hit.main = hit.main || s.escort !== true
+    } else {
+      seen.set(ship.id, { ship, count: s.count ?? 1, main: s.escort !== true })
     }
-    const score = (d: FoeShipDef) => (d.elite === true ? 100 : 0) + d.hullClassTier
-    if (score(s.ship) > score(best) || (score(s.ship) === score(best) && s.escort !== true)) best = s.ship
   }
-  return best
+  const list = [...seen.values()]
+  const score = (x: { ship: FoeShipDef; main: boolean }) =>
+    (x.ship.elite === true ? 1000 : 0) + x.ship.hullClassTier * 10 + (x.main ? 5 : 0)
+  list.sort((a, b) => score(b) - score(a))
+  return list.map((x) => x.ship)
+}
+
+/** 卡级：**逐种**给一句话（旗舰那种 5 种舰的编成 ⇒ 5 行，不是只报一种） */
+export function foeBriefsOfCard(anomaly: AnomalyDef | null | undefined): string[] {
+  return briefShipsOf(anomaly)
+    .map((s) => foeShipBriefOf(s))
+    .filter((s): s is string => s !== null)
+}
+
+/** 取该卡里"最该介绍的那条舰"（主舰优先，其次档位最高的）——单条用途（如卡面内嵌一行） */
+export function briefShipOf(anomaly: AnomalyDef | null | undefined): FoeShipDef | null {
+  return briefShipsOf(anomaly)[0] ?? null
 }
 
 /**
@@ -150,7 +167,7 @@ export function foeShipBriefOf(ship: FoeShipDef | null | undefined): string | nu
   return bits.length > 0 ? `${head}${en ? ': ' : '：'}${bits.join(en ? ', ' : '，')}${en ? '.' : '。'}` : `${head}${en ? '.' : '。'}`
 }
 
-/** 卡级便捷入口：取代表舰 + 组句（一处收口，界面不各拼一套） */
+/** 卡级便捷入口（单条）：取代表舰 + 组句 */
 export function foeBriefOfCard(anomaly: AnomalyDef | null | undefined): string | null {
   return foeShipBriefOf(briefShipOf(anomaly))
 }
