@@ -39,7 +39,7 @@ import type { DroneModel, DroneSortie } from '../ui/droneArt'
 import {
   BOLT_LOOK,
   DMG_COLOR, DMG_LABEL, DMG_ORDER, ROLE_ACCENT, LAY, sizeOfUnit, noseOf, foeBarGeom, foeHangarByTag, foeHangarTotal,
-  ROW2_BAR_DROP,
+  ROW2_BAR_DROP, foeRowBoxesOf,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE, POPUP_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
   fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
@@ -2105,22 +2105,25 @@ const meSpeedRef = useRef(200)
         key={tag}
         data-tag={tag}
         className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}`}
-        /* 列内居中微调（窄舰在本列里居中；等宽编成为 0）——纵向位置由**所在排**决定，不用 top 偏移。
-           入场期（is-arriving）另带三个变量：起点位移 / 时长 / 错峰——**只做动画**，不留任何布局改动 */
-        style={
-          arriving
+        /* 列盒内的水平居中 + **舰位与锚点同源**（2026-09-25 修船长报障「第二排右舰血条压住左舰
+           数字」）：本单位的宽度由外层**列盒**给定（= 本列列宽），舰在盒内居中 ⇒ 舰中心 ==
+           `foeColLeft(列) + 列宽/2`（= `layout()` 的锚点）。旧写法（`marginLeft = (列宽−舰宽)/2`
+           ＋ 平铺 flex 的 4px 缝）在同排内逐舰向左累积偏差（窄舰坐宽列时可达上百 px）⇒ 血条互压。
+           `flexShrink: 0`：盒宽即列宽，绝不许被压窄（压窄就等于又跟锚点错位）。 */
+        style={{
+          width: foeFormation.colW[slot.col] ?? size,
+          justifyContent: 'center',
+          flexShrink: 0,
+          ...(arriving
             ? ({
-                ...(slot.dx !== 0 ? { marginLeft: slot.dx } : {}),
                 '--arrive-dx': `${arriveDxFoe(rowIdx)}px`,
                 '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
                 // 逐舰错峰：首波仍按行序（`arrivalSide` 那档，与改造前一致）；此后**已烘进 `enteredAtMs`**
                 // （引擎写的就是"本条舰的入场时刻"）⇒ 界面不再重复叠一层延迟
                 '--arrive-delay': `${arrivalSide === 'foe' ? rowIdx * ARRIVAL_STAGGER_MS : 0}ms`,
               } as CSSProperties)
-            : slot.dx !== 0
-              ? { marginLeft: slot.dx }
-              : undefined
-        }
+            : {}),
+        }}
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
@@ -2174,6 +2177,23 @@ const meSpeedRef = useRef(200)
       </div>
     )
   })
+
+  /**
+   * **敌方某一排的 DOM**（2026-09-25 修船长报障「第二排右舰血条压住左舰数字」）：
+   * 逐列一个**定宽盒**（宽 = 本列列宽），盒里的单位由 `foeRowBoxesOf` 给的下标取。
+   * 于是"盒中心" = `foeColLeft(列) + 列宽/2`，与 `layout()` 算出的锚点**逐字同式** ⇒ 舰体、
+   * 血条（宽度按锚点算）、弹道/弹着/无人机锚点全部重新对齐。
+   * ⚠ 盒宽即列宽 ⇒ `flexShrink: 0`（不许被压窄）。
+   */
+  const foeRowBoxes = (row: 0 | 1): ReactNode[] =>
+    foeRowBoxesOf(foeFormation, row, foeRowTags.length).map((b) => (
+      <div
+        key={b.col}
+        style={{ width: b.width, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', flexShrink: 0 }}
+      >
+        {b.unit >= 0 ? foeUnitEls[b.unit] : null}
+      </div>
+    ))
 
   return (
     /**
@@ -2652,10 +2672,15 @@ const meSpeedRef = useRef(200)
             {/* 整行 `margin-top` = 下沉补偿（抬升超出上方留白时才非 0，现值 0）——与 layout 的基线同源 */}
             {/* **敌列阵形：斜向菱形**（2026-09-12 船长「2×2 菱形 → 斜向菱形、第二排向右偏移」选丙②）：
                 两排各若干舰，**第二排右移半格 + 下移一个舰高**（`layout` 的阵形几何是唯一出处）；
-                外层定宽块 = 编队总宽（由列宽推得），列高固定为单排行高 ⇒ DOM 与锚点逐像素对齐。 */}
+                外层定宽块 = 编队总宽（由列宽推得），列高固定为单排行高 ⇒ DOM 与锚点逐像素对齐。
+                ⚠ **2026-09-25 修船长报障「从上往下数第二排敌人的左右间距拉开一些，右边舰船的血条会
+                遮挡左边舰船的数字」**：每一排改成**列盒**铺法（`foeRowBoxesOf`：逐列定宽盒 ＋ 盒间距
+                `ROW_GAP`，舰在盒内居中）—— **列盒中心恒等于 `layout()` 的锚点**。旧写法是平铺 flex
+                （`gap: 4px`）＋ 逐舰 `marginLeft` 居中 ⇒ 同排内逐舰向左累积偏差（"窄舰坐宽列"时可达
+                上百 px），血条宽度却按锚点算 ⇒ 第二排右舰血条压住左舰血条的数字。 */}
             <div style={{ width: foeFormation.rowW }}>
-              <div className="app-bts-shipRow" style={{ minHeight: foeFormation.rowH }}>
-                {foeUnitEls.filter((_, i) => foeFormation.slots[i]?.row !== 1)}
+              <div className="app-bts-shipRow" style={{ minHeight: foeFormation.rowH, gap: LAY.ROW_GAP }}>
+                {foeRowBoxes(0)}
               </div>
               {foeFormation.rows === 2 ? (
                 <div
@@ -2663,9 +2688,14 @@ const meSpeedRef = useRef(200)
                   /* 2026-09-13 船长：「第二排下移，目前会挡住第一排血条（敌我都移动）」——
                      第二排容器再加 `ROW2_BAR_DROP`（一条血条高 + 6 缝隙，与 `layout` 的锚点同源同值），
                      让第二排舰体顶边落到第一排血条**之下**；第一排容器一律不动。 */
-                  style={{ minHeight: foeFormation.rowH, marginLeft: foeFormation.shift, marginTop: ROW2_BAR_DROP }}
+                  style={{
+                    minHeight: foeFormation.rowH,
+                    marginLeft: foeFormation.shift,
+                    marginTop: ROW2_BAR_DROP,
+                    gap: LAY.ROW_GAP,
+                  }}
                 >
-                  {foeUnitEls.filter((_, i) => foeFormation.slots[i]?.row === 1)}
+                  {foeRowBoxes(1)}
                 </div>
               ) : null}
             </div>

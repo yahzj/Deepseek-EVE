@@ -1,24 +1,19 @@
 /**
  * 启动入口：先显示"正在启动"，引擎就绪后再渲染主界面。
+ *
+ * ⚠ **启动序列与网页版共用**（`game/boot.ts` 的 `prebootRenderer` / `startGameEngine`）：
+ * 本仓有**两个入口**（这里 + `web/src/main.tsx`），任何"首帧前要做的动作"或"启动引擎前要做的事"
+ * 都必须加在那个共用模块里——2026-09-25 的存档体检就漏过一次网页版。
  */
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { GameEngine } from './game/engine'
+import { prebootRenderer, startGameEngine } from './game/boot'
 import { runAutoPerf } from './game/autoPerf'
-import { applySpaceBg } from './ui/spaceBg'
-import { bootstrapTheme } from './ui/theme'
 import { L10nProvider, tr } from './i18n/locale'
-import { installLayoutStyles } from './ui/layoutStyles'
 
-// **两套布局两套样式**（2026-09-25 船长令）：按玩家偏好只加载对应那一份。
-// ⚠ 必须在这里（首帧渲染之前）调用：两份样式的类名高度重叠，同时生效会互相串味。
-installLayoutStyles()
-
-// 宇宙背景（2026-09-10 船长）：启动时抽一张无缝贴图并写入 --space-bg；
-// 放在首帧渲染之前，避免先闪一下纯色底
-applySpaceBg()
-// 界面配色（2026-09-22 船长令）：同样在首帧前把 data-theme 写上 ⇒ 不会先闪一下另一套配色
-bootstrapTheme()
+// 首帧渲染之前的固定动作（布局样式 / 宇宙背景 / 配色）
+prebootRenderer()
 
 const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)
@@ -27,8 +22,8 @@ root.render(
   <div className="app-loading">{tr('ui.main.001')}</div>,
 )
 
-engine
-  .start()
+// 启动引擎（含存档存储体检）
+startGameEngine(engine)
   .then(() => {
     // 性能自动采集模式（仅 Electron 环境变量注入时运行；玩家路径无感）：
     // 必须在 App 首帧渲染前激活 Hub，让 Profiler/埋点从第一个 commit 就记录

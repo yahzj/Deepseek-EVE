@@ -14,6 +14,7 @@ import {
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,
   weekendEncounterRollOf,
+  weekendStandingBountyHeldAt,
 } from '../src/weekendBounty'
 import { weekendNoteContribution } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
@@ -135,5 +136,31 @@ describe('周末入侵 · 遇袭判定（M1-b）', () => {
     const per = ev.peripheryIds[0]!
     weekendNoteContribution(ev, per, 1)
     expect(weekendEncounterRollOf(s, ctx, per, 0.0001, 0)).toBeUndefined()
+  })
+
+  /**
+   * **船长 2026-09-25 令**：「**入侵期间，被占领星系的所有被收复的星系的常驻悬赏依旧处于隐藏状态，
+   * 要等到入侵活动结束。**」（与旧设计稿「夺回 ⇒ 悬赏恢复」冲突 ⇒ 船长裁决改口径，见
+   * `docs/design/weekend-invasion.md` 的改判行。）
+   *
+   * ⚠ 本判据只管**板面/详细页列不列**（界面侧）；取数口 `weekendBountyCardsOf` 照旧给"夺回 ⇒ 原卡"
+   * —— 遇袭敌群池与残骸打捞池都读它，不能一起清掉。本用例把这两层**分别钉住**。
+   */
+  it('已收复 ⇒ 常驻悬赏押后到活动结束（取数口不变，只"板面"藏）', () => {
+    const { s, ev } = setup()
+    const per = ev.peripheryIds[0]!
+    const perCard = { ...card, galaxyId: per }
+    // 未夺回：不押后（那一边由入侵舰队卡替换，既有口径不变）
+    expect(weekendStandingBountyHeldAt(s, per, T), '仍被占 ⇒ 不押后').toBe(false)
+    expect(weekendStandingBountyHeldAt(s, ev.coreId, T), '核心仍被占 ⇒ 不押后').toBe(false)
+    expect(weekendStandingBountyHeldAt(s, 'galaxy-redring', T), '不在占领区 ⇒ 不押后').toBe(false)
+    // 夺回 ⇒ 押后（这正是船长要的那一条）
+    weekendNoteContribution(ev, per, 1)
+    expect(weekendStandingBountyHeldAt(s, per, T), '已收复 ⇒ 押后').toBe(true)
+    // 取数口**不变**：仍是原卡（打捞/遇袭读它；只是板面不列）
+    expect(weekendBountyCardsOf(s, ctx, [perCard], per, T)[0], '取数口照旧给原卡').toBe(perCard)
+    // 活动结束 ⇒ 押后解除，悬赏整批回来
+    ev.endedAtWallMs = T
+    expect(weekendStandingBountyHeldAt(s, per, T), '活动结束 ⇒ 恢复').toBe(false)
   })
 })

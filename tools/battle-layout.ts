@@ -36,14 +36,36 @@
  * ⚠ 这是**读数型**核对（几何事实），**不是观感结论** —— 好不好看仍由船长看。
  * ⚠ 敌方那侧的"血条堆叠"另有 `foeBarGeom`（本工具只核我方这条 + 不重叠的硬约束）。
  *
+ * ── 2026-09-25 扩展（船长报障「第二排右舰血条压住左舰数字」）────────────────────
+ * 船长原话：「**战斗画面中，将从上往下数第二排敌人的左右间距拉开一些，右边舰船的血条会遮挡左边
+ * 舰船的数字。**」真因是 **DOM 与锚点两套算术**（本工具原先对敌排是**盲的**：只核"越没越界"，
+ * 没有核 DOM 落点）⇒ 新增第五节与第六节：**敌排 DOM 列盒 == 锚点** ＋ **同排血条互不遮挡**
+ * （对 6 种真实 H 族波次的体积真值，含僚机 ×0.53），并把"旧 DOM 会重叠多少"打进读数。
+ * 首跑即抓到两件事：① 旧 DOM 在**旗舰卡第 4 波（船长报障那一场）第二排重叠 81.5px**；
+ * ② `foeBarGeom` 的收窄分支用 `round` 会把净空吃到 5.5px（已改 `floor`，见 `battleViewCore`）。
+ *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v25**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-14**（当日核对：舰种阶梯**开**态 66 组全绿、收缩读数 1280 宽 ×0.92 / 1024 宽 ×0.62~0.65）
- *   - 本工具最后跑过：**2026-09-14**
- *   - 判据：`CURRENT_STATE_VERSION − v25 ≥ 2` ⇒ **必须重跑核对**；`LAY.ROW_GAP` / `TIER_SIZE` / 血条 CSS 宽度
- *     任一改动 ⇒ **必须重跑**（本工具量的就是这三者的算术关系）
+ *   - 本工具最后核对：**2026-09-25**（当日核对：舰种阶梯**开**态 66 组全绿、收缩读数 1280 宽 ×0.92 /
+ *     1024 宽 ×0.62~0.65；敌排 6 波 × 2 窗口共 46 机位"盒中心 == 锚点"全绿、血条零重叠）
+ *   - 本工具最后跑过：**2026-09-25**
+ *   - 判据：`CURRENT_STATE_VERSION − v25 ≥ 2` ⇒ **必须重跑核对**；`LAY.ROW_GAP` / `TIER_SIZE` / 血条 CSS
+ *     宽度 / **敌排 DOM 的铺法（`foeRowBoxesOf` 的列盒与间距）** / `foeBarGeom` 的宽度分支 任一改动
+ *     ⇒ **必须重跑**（本工具量的就是这几者的算术关系）
  */
-import { LAY, MY_BAR_W_MIN, TIER_SIZE, layout, sizeByTierEnabled } from '../apps/desktop/src/renderer/src/panels/battleViewCore'
+import {
+  LAY,
+  MY_BAR_W_MIN,
+  TIER_SIZE,
+  foeBarGeom,
+  foeColLeft,
+  foeRowBoxesOf,
+  HP_BAR_H,
+  layout,
+  sizeByTierEnabled,
+  sizeOfUnit,
+} from '../apps/desktop/src/renderer/src/panels/battleViewCore'
+import type { FoeFormation } from '../apps/desktop/src/renderer/src/panels/battleViewCore'
 
 /** 血条与邻舰船体之间要求的**最小净空隙**（px；与血条自带的那 6px 同源） */
 const CLEAR = 6
@@ -197,6 +219,155 @@ for (const win of [...WINDOWS_HARD, ...WINDOWS_WARN]) {
 const single = layout({ W: 1600, H: 900, meW: 170, foeW: 170 }, [170, 170], 500, 900, 200, 170)
 if (single.myBarW !== undefined) bad('单舰路径（不传 mySizes）不得返回 myBarW —— 那会改掉洞外逐像素口径')
 if (single.my.length !== 1) bad(`单舰路径应只有 1 个我方锚点，实际 ${single.my.length}`)
+
+/* ═══════════ 敌排：DOM 列盒 与 锚点 必须同位（2026-09-25 船长报障） ═══════════
+ * 船长原话：「**战斗画面中，将从上往下数第二排敌人的左右间距拉开一些，右边舰船的血条会遮挡左边
+ * 舰船的数字。**」
+ *
+ * 真因 = **DOM 与锚点两套算术**（血条宽度按锚点算、舰却画在别处）：
+ * - 锚点（`layout()`）＝ `foeColLeft(列) ＋ 列宽/2`，列间距 = 列宽 ＋ `ROW_GAP`(24)；
+ * - 旧 DOM ＝ 平铺 flex（`.app-bts-shipRow` 的 `gap: 4px`）＋ 逐舰 `marginLeft = (列宽 − 舰宽)/2`
+ *   ⇒ 同排第 i 条的落点比锚点少 `Σ_{j<i}[(列宽_j − 舰宽_j)/2 ＋ 20]` px。
+ * **为什么是"第二排"**：列宽取本列两舰的较大者，而**第二排多是僚机**（`sizeOfUnit(档, escort)`
+ * 还要再 ×0.53）⇒ "窄舰坐宽列"最极端。实测（旗舰卡第 4 波：母舰 T5 主 ＋ 干扰/战巡/鱼雷僚机）：
+ * 第二排两条的旧落点间距只有 **103.5px**，而血条宽度按锚点算 = **185px** ⇒ **右舰血条压住左舰血条
+ * 81.5px**（左舰的"护/甲/结"数字整片被盖）；第一排因为主舰自己占满本列 ⇒ 只差 20px ⇒ 看不出来。
+ *
+ * 本节对**真实 H 族波次的体积真值**（含僚机 ×0.53）核两件事：
+ * ⑤ **DOM 盒中心 == `layout()` 锚点**（相对编队左缘；盒 = `foeRowBoxesOf`，渲染用的就是它）；
+ * ⑥ **同排血条互不遮挡**（用 `foeBarGeom` 的真实宽度与堆叠位移；两个方向都压住才算遮挡）。
+ * 另打印"旧 DOM 会重叠多少"（把当年的算术留在读数里，不靠记忆）。
+ */
+const FLOW_GAP = 4 // `.app-bts-shipRow { gap: var(--wui-sp-4) }`（旧 DOM 的 flex 缝）
+/** 真实 H 族波次的**落画体积**（主舰 `escort=false`，僚机 `escort=true` ⇒ `sizeOfUnit` 现算） */
+const waveSizes = (tiers: Array<[tier: 1 | 2 | 3 | 4 | 5, escort: boolean]>): number[] =>
+  tiers.map(([t, e]) => sizeOfUnit(t, e))
+const FOE_WAVES: Array<{ label: string; sizes: number[] }> = [
+  { label: '旗舰卡 W1 突击舰×4', sizes: waveSizes([[1, false], [1, true], [1, true], [1, true]]) },
+  { label: '旗舰卡 W2 鱼雷舰×3＋干扰舰', sizes: waveSizes([[2, false], [2, true], [2, true], [3, true]]) },
+  { label: '旗舰卡 W3 战巡×2＋干扰舰', sizes: waveSizes([[4, false], [4, true], [3, true]]) },
+  {
+    // 船长 2026-09-25 报障的那一场（"0% 血进旗舰战"打的就是这一波）
+    label: '旗舰卡 W4 母舰＋干扰＋战巡＋鱼雷（报障场）',
+    sizes: waveSizes([[5, false], [3, true], [4, true], [2, true]]),
+  },
+  { label: '主力卡 W2 战巡＋鱼雷×2＋干扰舰', sizes: waveSizes([[4, false], [2, true], [2, true], [3, true]]) },
+  { label: '极端：主 T5 ＋ 3×僚 T1（列宽差最大）', sizes: waveSizes([[5, false], [1, true], [1, true], [1, true]]) },
+]
+/**
+ * **旧 DOM（已删除的那套写法）的舰中心**——只用于打印"这条报障当年的算术"：
+ * 平铺 flex ＋ 逐舰 `marginLeft = (列宽 − 舰宽)/2`；`perRow` = 本排已排到的右缘（含 4px 缝）。
+ */
+function oldDomCenters(fm: FoeFormation, sizes: readonly number[]): number[] {
+  const out: number[] = []
+  const perRow = [0, 0]
+  for (let i = 0; i < sizes.length; i++) {
+    const s = fm.slots[i]!
+    const size = sizes[i]!
+    const left = perRow[s.row]! + ((fm.colW[s.col] ?? size) - size) / 2
+    perRow[s.row] = left + size + FLOW_GAP
+    out.push(left + size / 2 + (s.row === 1 ? fm.shift : 0))
+  }
+  return out
+}
+
+console.log('\n════ 敌排：DOM 列盒 vs 锚点（2026-09-25 船长报障「第二排右舰血条压住左舰数字」）════')
+let domChecked = 0
+let oldWorst = 0
+let oldWorstAt = ''
+for (const win of WINDOWS_HARD) {
+  for (const wave of FOE_WAVES) {
+    const dims = { W: win.W, H: win.H, meW: 170, foeW: 170 }
+    const l = layout(dims, wave.sizes, (win.W * 0.6) / 2, win.W * 0.6, 200, 170)
+    const fm = l.formation
+    const n = l.sizes.length
+    const tag = `${wave.label} @ ${win.W}×${win.H}`
+    /** 舰底 y（＝所在排的排底；同排相等）——血条几何按它分排 */
+    const bottoms = l.foe.map((a, i) => a.y + ((l.sizes[i] ?? 0) * 0.46) / 2)
+    const bars = foeBarGeom(
+      l.foe.map((a) => a.x),
+      bottoms,
+      l.foeBottom,
+    )
+    /** 编队块的左缘（`layout()` 里 `rowLeft` 的同一式）——DOM 盒坐标的零点 */
+    const rowLeft = l.foeLeft + (dims.foeW - fm.rowW) / 2
+    /** 新版 DOM 的逐舰中心（相对编队左缘）＝ 盒左缘之和 ＋ 盒中心 */
+    const domX: number[] = []
+    for (let i = 0; i < n; i++) {
+      const s = fm.slots[i]!
+      const boxes = foeRowBoxesOf(fm, s.row, n)
+      const boxLeft = boxes.slice(0, s.col).reduce((acc, b) => acc + b.width + LAY.ROW_GAP, 0)
+      // 盒左缘必须与 `foeColLeft` 逐像素一致（两处公式不同源就等于没修）
+      if (Math.abs(boxLeft - foeColLeft(fm, s.col)) > 0.001) {
+        bad(`${tag}：第 ${i} 条所在列的盒左缘 ${boxLeft} ≠ foeColLeft ${foeColLeft(fm, s.col)}`)
+      }
+      const center = boxLeft + (boxes[s.col]?.width ?? 0) / 2 + (s.row === 1 ? fm.shift : 0)
+      domX.push(center)
+      /** ⑤ DOM 盒中心 == 锚点（相对编队左缘） */
+      const anchorRel = l.foe[i]!.x - rowLeft
+      domChecked += 1
+      if (Math.abs(center - anchorRel) > 0.001) {
+        bad(
+          `${tag}：第 ${i} 条（第 ${s.row + 1} 排第 ${s.col + 1} 列）DOM 中心 ${center.toFixed(1)} ≠ 锚点 ${anchorRel.toFixed(1)}` +
+            `（差 ${(center - anchorRel).toFixed(1)}px ⇒ 舰体与弹道/血条错位）`,
+        )
+      }
+    }
+    /** ⑥ 同排血条互不遮挡：两个方向（横向 ＋ 纵向）都压住才算遮挡 */
+    for (let i = 0; i < n; i++) {
+      for (let k = i + 1; k < n; k++) {
+        const bi = bars[i]!
+        const bk = bars[k]!
+        const xGap =
+          Math.abs(domX[i]! + bi.dx - (domX[k]! + bk.dx)) - (bi.width + bk.width) / 2
+        const yGap = Math.abs(bottoms[i]! + bi.dy - (bottoms[k]! + bk.dy)) - HP_BAR_H
+        if (xGap < CLEAR - 0.001 && yGap < -0.001) {
+          bad(
+            `${tag}：血条 ${i}/${k} 互相压住（横向净空 ${xGap.toFixed(1)}px < ${CLEAR} · 纵向重叠 ${(-yGap).toFixed(1)}px）` +
+              ` ⇒ 「护/甲/结」数字会被盖`,
+          )
+        }
+      }
+    }
+    /** 旧 DOM 的读数（留档：这条报障当年长什么样） */
+    const oldX = oldDomCenters(fm, l.sizes)
+    let waveOldWorst = 0
+    let waveOldAt = ''
+    for (let i = 0; i < n; i++) {
+      for (let k = i + 1; k < n; k++) {
+        if (fm.slots[i]!.row !== fm.slots[k]!.row) continue
+        const bi = bars[i]!
+        const bk = bars[k]!
+        if (bi.dy !== bk.dy) continue // 堆叠分支：当年也是纵向排开
+        const overlap = (bi.width + bk.width) / 2 - Math.abs(oldX[i]! + bi.dx - (oldX[k]! + bk.dx))
+        if (overlap > waveOldWorst) {
+          waveOldWorst = overlap
+          waveOldAt = `第 ${fm.slots[i]!.row + 1} 排 第 ${i}/${k} 条`
+        }
+      }
+    }
+    if (waveOldWorst > 0.05) {
+      console.log(
+        `  · 旧 DOM 会重叠 ${waveOldWorst.toFixed(1)}px（${waveOldAt}）：${wave.label} @ ${win.W}` +
+          ` —— 间距 ${oldX.map((v) => v.toFixed(0)).join('/')}（新版 ${domX.map((v) => v.toFixed(0)).join('/')}）`,
+      )
+    }
+    if (waveOldWorst > oldWorst) {
+      oldWorst = waveOldWorst
+      oldWorstAt = `${wave.label} ${waveOldAt}`
+    }
+  }
+}
+console.log(
+  `· 新版 DOM（列盒）：${domChecked} 个机位核过 —— 盒中心 == 锚点；同排血条不互压` +
+    `（${FOE_WAVES.length} 种真实波次 × ${WINDOWS_HARD.length} 种常规窗口）`,
+)
+if (oldWorst > 0) {
+  console.log(
+    `· 旧 DOM（平铺 flex ＋ marginLeft 居中，已删除）最坏一处：${oldWorst.toFixed(1)}px 重叠 —— ` +
+      `${oldWorstAt}（这就是船长看到的那一幕）`,
+  )
+}
 
 /* 推导式复核：ROW_GAP 必须够两艘 T3 各自贴满 185 的血条（船长这条报障的主场景） */
 const needGap = CSS_BAR_W / 2 + CLEAR + 170 / 2 - 170

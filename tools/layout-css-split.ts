@@ -135,8 +135,17 @@ function parseRules(text: string): Rule[] {
 const current = readFileSync(SRC, 'utf8')
 const baseline = readFileSync(BASELINE, 'utf8')
 const baseRules = parseRules(baseline)
+/**
+ * 当前 `styles.css` 的规则表（**一份**：下面「窗口模块族」筛选与 `--debug` 读数都用它）。
+ *
+ * ⚠ 2026-09-25 补：`807637f1`（窗口模块化）在 L223 用了 `curRules` 却没定义 ⇒
+ * `npm run ui:layout-css:check` 直接 ReferenceError（主树与 d2 都跑不起来）；
+ * 而且 `npm run typecheck` 只跑 4 个 workspace、**不覆盖 `tools/`** ⇒ 四道闸门都拦不住。
+ * 这里顺手把原先那句重复的 `parseRules(current)` 也收敛到同一份。
+ */
+const curRules = parseRules(current)
 if (process.argv.includes('--debug')) {
-  console.log(`  [debug] 基准规则 ${baseRules.length} 条 · 当前规则 ${parseRules(current).length} 条`)
+  console.log(`  [debug] 基准规则 ${baseRules.length} 条 · 当前规则 ${curRules.length} 条`)
   for (const sel of SHELL_SELECTORS) {
     const hits = baseRules.filter((r) => r.sel === sel)
     console.log(`  [debug] ${hits.length} × «${sel}»${hits.length === 0 ? '   ⚠ 基准里没有这条选择器' : ''}`)
@@ -220,7 +229,19 @@ const WINDOW_MODULE_PREFIXES = [
   '.app-log-dock',
 ]
 const isWindowModuleFamily = (sel: string): boolean => WINDOW_MODULE_PREFIXES.some((p) => sel.startsWith(p))
-const windowModuleRules = curRules.filter((r) => isWindowModuleFamily(r.sel))
+/**
+ * **§四 只搬"组件内部"的族；外壳族（`SHELL_SELECTORS` 里那些）一律不搬** ——
+ * 口径＝船长原话「**窗口的观感随组件走、位置随外壳走**」：内部件（筛选/列表/把手/读数）照搬新版，
+ * 而日志坞/侧栏的位置与尺寸归外壳，由 §二（基线原文）＋ §三（复位）说了算。
+ *
+ * ⚠ 2026-09-25 修（船长报障「**事件日志窗口不正确**」＋「按旧版修复事件日志的布局」）：
+ * 原先整族照搬，把新版日志坞那套 `position: fixed; right/top/bottom; align-items; pointer-events`
+ * 也带进了 classic；而 §四 排在 §三**之后**、两条特异度又相同（都是 `.app-root.is-layout-classic .app-log-dock`）
+ * ⇒ §四 直接盖掉 §三 的复位 ⇒ 旧版日志坞退回"新版右侧浮层"。
+ * 处理办法与活动栏同源（那族早就"不再搬给旧版，搬了反而会盖掉旧版样式"）。
+ */
+const SHELL_OWNED_SELECTORS = new Set(SHELL_SELECTORS)
+const windowModuleRules = curRules.filter((r) => isWindowModuleFamily(r.sel) && !SHELL_OWNED_SELECTORS.has(r.sel))
 if (windowModuleRules.length === 0) throw new Error('三块窗口模块在 styles.css 里一条都没找到')
 
 // ── ② classic 份 = 本分支 styles.css（= 设置弹层等新件与新版同步）+ 旧版外壳覆盖 ──
@@ -256,11 +277,57 @@ for (const [name, text] of [
 }
 console.log(
   `  · 外壳覆盖 ${SHELL_SELECTORS.length} 个选择器 / ${shellOverrides.length} 条规则` +
-    ` · 基准 _baseline-main.css ${Math.round(baseline.length / 1024)} KB`,
+    ` · 基准 _baseline-main.css ${Math.round(baseline.length / 1024)}KB`,
 )
 
+/**
+ * **追加自检：旧版日志坞必须是"流内"**（船长 2026-09-25 报障「事件日志窗口不正确」）。
+ * 判据＝在生成出来的 classic 文本里，`.app-root.is-layout-classic .app-log-dock` 的**最后一条**
+ * 覆盖必须把落位定成 `position: static`（＝§三 的复位说了算）。
+ * 这条专门防"§四 又把新版浮层搬回旧版"那类回归（实测读数：classic static/不重叠、modern fixed/覆盖）。
+ */
+{
+  const classicRules = parseRules(classicCss)
+  const dockRules = classicRules.filter((r) => r.sel === '.app-root.is-layout-classic .app-log-dock')
+  const lastBody = dockRules.length > 0 ? dockRules[dockRules.length - 1]!.body : ''
+  const inFlow = /position:\s*static/.test(lastBody) && !/position:\s*fixed/.test(lastBody)
+  console.log(
+    `  ${inFlow ? '✅' : '❌'} 旧版日志坞落位：最后一条覆盖 = ${inFlow ? '流内右栏（position: static）' : '非流内 —— 新版外壳取值漏进旧版了'}`,
+  )
+  if (!inFlow) throw new Error('旧版日志坞被新版外壳取值覆盖（事件日志布局回归）')
+}
+
 if (CHECK) {
-  console.log('\n[check] 未写盘')
+  /**
+   * **真比对**（2026-09-25 补）：把"刚生成的两份"与磁盘上的**入库产物**逐字节比（先统一行尾）。
+   *
+   * ⚠ 为什么补这一步：原先 `--check` 只做花括号配平与体积打印，**从不与磁盘产物比**
+   * ⇒ 是一道"永远绿"的假闸门。实证：`807637f1`（窗口模块化）改了本生成器却没重新生成产物，
+   * 这道闸门照样全绿，而**入库的 classic 产物缺了 §三 撤销属性 + §四 三块窗口模块样式族**（280 行）
+   * ——旧版（默认）外壳因此拿不到那批样式。补上比对后，这类"改了生成器忘了跑生成"当场变红。
+   */
+  const norm = (t: string): string => t.replace(/\r\n/g, '\n')
+  let diffCount = 0
+  for (const [name, text] of [
+    ['styles-modern.css', modernCss],
+    ['styles-classic.css', classicCss],
+  ] as const) {
+    let disk: string
+    try {
+      disk = readFileSync(join(OUT_DIR, name), 'utf8')
+    } catch {
+      console.log(`  ❌ ${name} 读不到（入库产物丢了？）`)
+      diffCount++
+      continue
+    }
+    if (norm(disk) === norm(text)) console.log(`  ✅ ${name} 与源码一致`)
+    else {
+      console.log(`  ❌ ${name} 与源码**不一致** —— 请跑「npm run ui:layout-css」重新生成并入库`)
+      diffCount++
+    }
+  }
+  console.log(diffCount === 0 ? '\n[check] 未写盘（两份都与源码一致）' : `\n[check] ${diffCount} 份有差异`)
+  if (diffCount > 0) process.exitCode = 1
 } else {
   mkdirSync(OUT_DIR, { recursive: true })
   const write = (name: string, text: string): void =>

@@ -23,10 +23,17 @@ import {
   // 旗舰战（main 侧新增）：战斗宿主判定与族名文案
   weekendFamilyNameId,
   weekendFlagshipBattleActive,
+  /** 结算信的固定 id（2026-09-25：庆祝烟火按它认"该放烟火的这一封"） */
+  WEEKEND_COMMS_SETTLE_ID,
 } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
+/** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
+import { saveStorageProbe, subscribeSaveAlert } from './game/saveGuard'
+import type { SaveStorageProbe } from './game/saveGuard'
+/** 存档桥（网页版 = localStorage ＋ 可绑定的本地文件；桌面端 = 本机文件） */
+import { saveBridge } from './game/storage'
 import { currentSpaceBg, rerollSpaceBg, type SpaceBgInfo } from './ui/spaceBg'
 import { THEME_CHOICES, THEME_LABEL_ID, themeUsesSpacePhoto, useTheme, useThemeBootstrap } from './ui/theme'
 import { Communicator } from './panels/Expedition'
@@ -34,6 +41,9 @@ import { PrologueScreen } from './panels/PrologueScreen'
 import { ModeChoice } from './panels/ModeChoice'
 import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
 import { WeekendFlagshipPrepModal } from './panels/WeekendFlagshipPrep'
+import { WeekendSummaryView } from './panels/WeekendSummary'
+import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
+import { playSfx } from './game/sfx'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -215,6 +225,14 @@ function SettingsPanel({
   onApplyLayoutAndQuit,
   onCancelLayout,
   onDebugChange,
+  saveState,
+  storageProbe,
+  onAllowSave,
+  saveFileStatus,
+  onBindSaveFile,
+  onReconnectSaveFile,
+  onUnbindSaveFile,
+  onRefreshSaveFileStatus,
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
@@ -235,6 +253,18 @@ function SettingsPanel({
   onApplyLayoutAndQuit: () => void
   /** 取消重开：清掉待应用项 */
   onCancelLayout: () => void
+  /** 存档存储状态（2026-09-25 船长令 · 甲/丁）：`paused` = 旧档读不出来、写入已挂起 */
+  saveState: 'ok' | 'paused' | 'unavailable'
+  storageProbe: SaveStorageProbe | null
+  /** 丁：放行写入（会另起新档） */
+  onAllowSave: () => void
+  /** 网页版「本地存档文件」绑定状态（桌面端 ⇒ null；2026-09-25 船长令） */
+  saveFileStatus: SaveFileStatus | null
+  onBindSaveFile: () => void
+  onReconnectSaveFile: () => void
+  onUnbindSaveFile: () => void
+  /** 打开设置时自报一次绑定状态（权限可能被浏览器收回） */
+  onRefreshSaveFileStatus: () => void
 }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
@@ -252,6 +282,12 @@ function SettingsPanel({
     engine.state.resupplyFromWarehouse = next
     void engine.persist()
   }
+
+  /** 打开设置时自报一次「本地存档文件」绑定状态（浏览器可能已收回权限 ⇒ 界面要如实显示） */
+  useEffect(() => {
+    onRefreshSaveFileStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
   const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
   useEffect(() => {
@@ -432,7 +468,68 @@ function SettingsPanel({
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。
+           *
+           * 2026-09-25 追加（船长令 · 甲/丁）：本组顶部加一行**存储状态**——网页版的存档在浏览器里，
+           * 浏览器不给写时必须让玩家看见（MacBook · Safari 报障那批）；旧档读不出来时在这里放行写入。
            */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{tr('ui.saveGuard.001')}</span>
+              <span className="app-settings-btns">
+                {saveState === 'paused' ? (
+                  <button className="app-btn is-small is-warn" onClick={onAllowSave}>
+                    {tr('ui.saveGuard.011')}
+                  </button>
+                ) : null}
+                {/* 网页版「本地存档文件」（2026-09-25 船长令）：绑定一次后每次落盘都写进那个文件；
+                    本浏览器不支持（Safari/Firefox 没有 File System Access）⇒ 按钮禁用、说明写在悬停里。 */}
+                {saveFileStatus !== null ? (
+                  !saveFileStatus.supported ? (
+                    <button className="app-btn is-small" disabled title={tr('ui.saveGuard.020')}>
+                      {tr('ui.saveGuard.015')}
+                    </button>
+                  ) : !saveFileStatus.bound ? (
+                    <button className="app-btn is-small" onClick={onBindSaveFile} title={tr('ui.saveGuard.027')}>
+                      {tr('ui.saveGuard.015')}
+                    </button>
+                  ) : (
+                    <>
+                      {!saveFileStatus.connected ? (
+                        <button className="app-btn is-small is-warn" onClick={onReconnectSaveFile}>
+                          {tr('ui.saveGuard.016')}
+                        </button>
+                      ) : null}
+                      <button className="app-btn is-small" onClick={onUnbindSaveFile}>
+                        {tr('ui.saveGuard.017')}
+                      </button>
+                    </>
+                  )
+                ) : null}
+              </span>
+            </div>
+            <div className="app-settings-desc">
+              {storageProbe === null
+                ? tr('ui.saveGuard.003')
+                : `${storageProbe.kind === 'file' ? tr('ui.saveGuard.002') : tr('ui.saveGuard.003')} · ${
+                    storageProbe.ok ? tr('ui.saveGuard.004') : tr('ui.saveGuard.005')
+                  }${
+                    storageProbe.kind === 'browser' && storageProbe.ok && storageProbe.persisted !== null
+                      ? ` · ${storageProbe.persisted ? tr('ui.saveGuard.006') : tr('ui.saveGuard.007')}`
+                      : ''
+                  }${saveState === 'paused' ? ` · ${tr('ui.saveGuard.012')}` : ''}`}
+              {saveFileStatus !== null
+                ? ` · ${tr('ui.saveGuard.013')} ${
+                    !saveFileStatus.supported
+                      ? tr('ui.saveGuard.020')
+                      : !saveFileStatus.bound
+                        ? tr('ui.saveGuard.014')
+                        : `${saveFileStatus.name ?? ''} · ${
+                            saveFileStatus.connected ? tr('ui.saveGuard.018') : tr('ui.saveGuard.019')
+                          }`
+                  }`
+                : ''}
+            </div>
+          </div>
           <div className="app-settings-row">
             <div className="app-settings-head">
               <span className="app-settings-label">{tr('ui.App.063')}</span>
@@ -1019,6 +1116,104 @@ async function applyLayoutAndQuit(): Promise<void> {
     }
   }, [engine])
 
+  /* ───────── 存档存储：状态显示 ＋ 告警 ＋ 关页补落盘（2026-09-25 船长令 · 甲/丙/丁） ───────── */
+
+  /** 设置里显示的状态（甲/丁）：`unavailable` = 这台机器写不了存储；`paused` = 旧档读不出来、写入已挂起 */
+  const [saveState, setSaveState] = useState<'ok' | 'paused' | 'unavailable'>(() => engine.saveWriteState())
+  /** 启动体检读数（main.tsx 在引擎启动前已量过 ⇒ 这里同步就有值） */
+  const [storageProbe] = useState<SaveStorageProbe | null>(() => saveStorageProbe())
+
+  /**
+   * **甲 · 启动两种状态各提示一次**：体检不通（浏览器不给写存储）／旧档读取失败（写入已挂起）。
+   * ⚠ 提示放在这里而**不是**引擎 `start()` 里：App 挂载晚于引擎启动，引擎那时发的事件没人听。
+   * 之后运行期的写入失败由 `subscribeSaveAlert` 送来（每类每局只来一次）。
+   */
+  useEffect(() => {
+    const st = engine.saveWriteState()
+    setSaveState(st)
+    if (st === 'unavailable') showToast(tr('ui.saveGuard.008'), true)
+    else if (st === 'paused') showToast(tr('ui.saveGuard.010'), true)
+    return subscribeSaveAlert((msg) => showToast(msg, true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine])
+
+  /**
+   * **丙 · 关页/切后台前补一次落盘**：自动落盘是 15 秒一拍，玩家关窗时最后这一段本来会丢。
+   * `pagehide` 覆盖关窗/刷新/前进后退；`visibilitychange → hidden` 覆盖切标签页与手机切后台。
+   */
+  useEffect(() => {
+    const flush = (): void => {
+      void engine.persist()
+    }
+    const onHide = (): void => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [engine])
+
+  /** **丁 · 放行写入**（设置 → 存储状态 →「允许写入存档」）：会另起新档，故按手动存档同款回报成败 */
+  const allowSaveNow = (): void => {
+    void engine.allowSaveAfterLoadError().then((ok) => {
+      setSaveState(engine.saveWriteState())
+      showToast(ok ? tr('ui.App.054') : tr('ui.App.055'), !ok)
+    })
+  }
+
+  /* ───────── 网页版「本地存档文件」（2026-09-25 船长令：存档优先保存到本地文件） ───────── */
+
+  /** 绑定状态（桌面端 ⇒ null，界面走"本机文件"那支）。取 `saveBridge` 而不是 `window.whale`：
+   *  网页版根本没有 `window.whale`，桥就是 `storage.ts` 里选出来的那个。 */
+  const [saveFile, setSaveFile] = useState<SaveFileStatus | null>(null)
+  const refreshSaveFile = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) {
+      setSaveFile(null)
+      return
+    }
+    void api
+      .status()
+      .then(setSaveFile)
+      .catch(() => setSaveFile(null))
+  }
+  // ⚠ 不在 App 层按 `showSettings` 刷新（那会用到后面才声明的状态）：改成设置面板挂载时自报一次
+  // （`SettingsPanel` 是 `showSettings ? <…/> : null` ⇒ 每次打开都会重新挂载）。
+
+  /** 绑定（必须由玩家手势触发）：成功 ⇒ 立刻再落一次盘，把当前进度写进新文件 */
+  const bindSaveFileNow = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) return
+    void api.bind().then((r) => {
+      refreshSaveFile()
+      if (r.ok) {
+        showToast(tr('ui.saveGuard.021', { p1: r.name ?? '' }))
+        void engine.persist()
+      } else if (!r.canceled) {
+        showToast(tr('ui.saveGuard.023', { p1: r.error ?? '' }), true)
+      }
+    })
+  }
+  const reconnectSaveFileNow = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) return
+    void api.reconnect().then((r) => {
+      refreshSaveFile()
+      showToast(r.ok ? tr('ui.saveGuard.025', { p1: r.name ?? '' }) : tr('ui.saveGuard.023', { p1: r.error ?? '' }), !r.ok)
+    })
+  }
+  const unbindSaveFileNow = (): void => {
+    const api = saveBridge.saveFile
+    if (!api) return
+    void api.unbind().then((r) => {
+      refreshSaveFile()
+      showToast(r.ok ? tr('ui.saveGuard.022') : tr('ui.saveGuard.023', { p1: r.error ?? '' }), !r.ok)
+    })
+  }
+
   // ── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ──
   const [showSaveManager, setShowSaveManager] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
@@ -1210,10 +1405,59 @@ async function applyLayoutAndQuit(): Promise<void> {
   const [prepOpen, setPrepOpen] = useState(false)
   /** 战场是否正盖在界面上（挂载 ≠ 上屏：`battleOpen` 为假时战场什么都不渲染，不算盖着） */
   const battleOnStage = battleMounted && battleOpen
+  /**
+   * **入侵警报演出**（**船长 2026-09-25 令**：「当入侵发生时，游戏屏幕的正上方和正下方出现警告式的红灯
+   * 闪烁……**警告灯闪烁数次后，再弹出通讯**」＋ 同日补定「**开局 ＋ 旗舰现身各闪一次**」）。
+   *
+   * 引擎在**那一拍**立一次性待办（`takeInvasionAlarm()`：`'start'` = 入侵开局 · `'flagship'` = 旗舰现身），
+   * 这里**读一次即消费** ⇒ 放红灯 ＋ 调声效接口（本批空实现）；`ALARM_TOTAL_MS` 后自熄。
+   * ⚠ 演出期间**压住通讯弹窗**（见 `popupMsg` 判据）：信照常进收件箱，只是弹窗等警报演完再上台
+   * —— 与"战场让位"同一套排队思路，不会漏信。
+   */
+  const [alarmKind, setAlarmKind] = useState<'start' | 'flagship' | null>(null)
+  /**
+   * ⚠ **消费与自熄拆成两个 effect**（写法上必须这样）：消费那个**没有依赖数组**（引擎每拍
+   * `notify()` ⇒ 每拍跑一次，靠 `takeInvasionAlarm()` 自己保证只消费一次）；自熄那个**只依赖
+   * `alarmKind`**。若把计时器写在消费那个里，它每拍都会被 cleanup 掉重来 ⇒ 警报永远不熄。
+   */
+  useEffect(() => {
+    const kind = engine.takeInvasionAlarm()
+    if (kind === null) return
+    setAlarmKind(kind)
+    playSfx('invasion-alarm')
+  })
+  useEffect(() => {
+    if (alarmKind === null) return
+    const t = window.setTimeout(() => setAlarmKind(null), ALARM_TOTAL_MS)
+    return () => window.clearTimeout(t)
+  }, [alarmKind])
+  /**
+   * **结算信的庆祝烟火**（船长同日令：「入侵结束后的通讯发送给玩家时，屏幕上出现类似庆祝的烟火动画」）：
+   * 触发点 = **结算弹窗上台那一刻**（战斗中/离线简报期间弹窗本来就延后 ⇒ 烟火跟着延后，保证看得见）。
+   * ⚠ **每场只放一次**：按该封信的 `seq` 记账（下一场换了 seq 才会再放）；
+   * ⚠ 同样拆成"认信放烟花"＋"自熄"两个 effect（理由同警报那处）。
+   */
   const popupMsg =
-    popupId !== null && !showOfflineReport && !battleOnStage
+    popupId !== null && !showOfflineReport && !battleOnStage && alarmKind === null
       ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null)
       : null
+  const settleSeq =
+    popupMsg !== null && popupMsg.id === WEEKEND_COMMS_SETTLE_ID ? Number(popupMsg.textParams?.['seq'] ?? -1) : null
+  const [fireworksOn, setFireworksOn] = useState(false)
+  const fireworksSeqRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (settleSeq === null || fireworksSeqRef.current === settleSeq) return
+    fireworksSeqRef.current = settleSeq
+    setFireworksOn(true)
+    playSfx('invasion-end')
+  }, [settleSeq])
+  useEffect(() => {
+    if (!fireworksOn) return
+    const t = window.setTimeout(() => setFireworksOn(false), FIREWORKS_MS)
+    return () => window.clearTimeout(t)
+  }, [fireworksOn])
+  /** 结算面板（弹窗里的「查看详细奖励」**直接弹它**；通讯页那一处入口照旧） */
+  const [sumOpen, setSumOpen] = useState(false)
   /**
    * **送达弹窗的"上膛"延时**（同上那条报障的配套）：刚挂上来的头 `POPUP_ARM_MS` 毫秒内**忽略遮罩点击**
    * ——遮罩是满屏的（`inset: 0`，点哪都算点外面），而这张卡挂上来的时机恰好是"玩家刚点完战场/刚点过别处"
@@ -1815,13 +2059,15 @@ async function applyLayoutAndQuit(): Promise<void> {
                   gotoFromComms(p, tab, shipTab, taskTab)
                 }}
                 /**
-                 * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）：弹窗里不就地开面板，
-                 * 而是收掉弹窗、跳到通讯页同那一封上（面板在那儿，读完信顺手点开 —— 只留一处入口）。
+                 * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）——
+                 * **船长 2026-09-25 令**：「**玩家点击下方的跳转时应该直接弹出结算公告。**」
+                 * ⇒ 收掉弹窗、**就地弹出结算面板**（复用通讯页那一处同源的 `WeekendSummaryView`
+                 * ＋ 全仓既有的 `.app-modal-*` 族；原先只是"跳到通讯页、还要再点一次"）。
                  */
                 onAction={(a) => {
                   if (a !== 'weekendSummary') return
                   engine.dismissCommsPopup(popupMsg.id)
-                  gotoFromComms('comms')
+                  setSumOpen(true)
                 }}
                 extra={
                   <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
@@ -1875,6 +2121,25 @@ async function applyLayoutAndQuit(): Promise<void> {
       ) : null}
       {/* 战前准备弹层：从上面那枚弹窗直达（组件自包含；活动框与星系详细里各挂一份自己的） */}
       {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
+      {/**
+       * **入侵结算面板**（船长 2026-09-25 令：「玩家点击下方的跳转时应该直接弹出结算公告」）：
+       * 从**通讯弹窗**的「查看详细奖励」直接开到这里（组件与通讯页那一处同源：`WeekendSummaryView`）；
+       * 弹层结构复用全仓既有的 `.app-modal-*` 族与通讯页那处的类名（不自造窗口观感）。
+       */}
+      {sumOpen && state.weekendLastResult !== undefined ? (
+        <div className="app-modal-mask" onClick={() => setSumOpen(false)}>
+          <div className="app-modal app-modal-wide app-weekend-sum" onClick={(e) => e.stopPropagation()}>
+            <WeekendSummaryView engine={engine} onClose={() => setSumOpen(false)} />
+          </div>
+        </div>
+      ) : null}
+      {/**
+       * **入侵演出**（船长 2026-09-25 令）：警报红灯（开局 ＋ 旗舰现身各一次）与结束庆祝烟火。
+       * 两者都 `pointer-events: none` ＋ `z-index 110`（压在战场之上）——见 `styles.css` 那一族与
+       * `panels/InvasionFx.tsx` 的口径。
+       */}
+      {alarmKind !== null ? <InvasionAlarm kind={alarmKind} /> : null}
+      {fireworksOn ? <InvasionFireworks /> : null}
       {/**
        * **交火中：右上角悬浮入口**（主动进入战斗页，不自动切换页面）。
        *
@@ -1958,6 +2223,14 @@ async function applyLayoutAndQuit(): Promise<void> {
           onApplyLayoutAndQuit={() => void applyLayoutAndQuit()}
           onCancelLayout={() => setLayoutPending(null)}
           onLayoutChange={chooseLayout}
+          saveState={saveState}
+          storageProbe={storageProbe}
+          onAllowSave={allowSaveNow}
+          saveFileStatus={saveFile}
+          onBindSaveFile={bindSaveFileNow}
+          onReconnectSaveFile={reconnectSaveFileNow}
+          onUnbindSaveFile={unbindSaveFileNow}
+          onRefreshSaveFileStatus={refreshSaveFile}
         />
       ) : null}
       {/**

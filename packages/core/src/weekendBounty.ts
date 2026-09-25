@@ -42,6 +42,31 @@ export function weekendOccupiedLiveAt(state: GameState, galaxyId: string, nowWal
 }
 
 /**
+ * **该星系的常驻悬赏是否"押后到活动结束"**（**船长 2026-09-25 令**：「**入侵期间，被占领星系的
+ * 所有被收复的星系的常驻悬赏依旧处于隐藏状态，要等到入侵活动结束。**」）。
+ *
+ * 判据 = 活动**未结束** ＋ 该星系 ∈ 占领集（核心或外围）＋ **已被夺回**（进度 ≥ 1）。
+ *
+ * ⚠ **只管"板面/详细页列不列"这一层**，**不动** `weekendBountyCardsOf` 那份取数：
+ * - `weekendBountyCardsOf` 仍按设计稿给"夺回 ⇒ 原卡"（遇袭敌群池、残骸打捞取卡池都读它）——
+ *   若在那一层清空，会把打捞池也一起清掉（收复后的星系就不能打捞了）；
+ * - 仍被占的星系**不归本判据管**：那一边照旧由入侵舰队卡替换（既有口径不变）。
+ *
+ * ⚠ **与旧设计稿的冲突已由船长裁决**（`docs/design/weekend-invasion.md` 2026-09-25 改判那两行）：
+ * 旧口径「夺回 ⇒ 悬赏恢复」作废一轮，改成"收复后仍隐藏到活动结束"。
+ */
+export function weekendStandingBountyHeldAt(
+  state: GameState,
+  galaxyId: string,
+  nowWallMs: number,
+): boolean {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return false
+  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return false
+  return weekendProgressAt(state, ev, galaxyId, nowWallMs) >= 1
+}
+
+/**
  * **遇袭是否允许**（设计稿口径定稿 #4：被占星系**一律高频遇袭**，**中安、高安都破例**）。
  * ⇒ 判据只有"是不是活的占领区"，**不看安全等级**（与常驻遭遇系统的"只低安"是两套）。
  */
@@ -98,6 +123,8 @@ function weekendIndependentFoeOf(base: AnomalyDef, drawn: AnomalyDef, family: st
 /**
  * **某星系当前该显示的悬赏卡**（引擎/界面的唯一取数口）：
  * - 不在占领区（或已夺回 / 活动结束）⇒ **原卡原样**；
+ *   ⚠ 已夺回的那些**在界面上仍被押后到活动结束**（`weekendStandingBountyHeldAt` 单点判据；本函数
+ *   只管"取哪张卡"，遇袭敌群池与残骸打捞池都读它 ⇒ 不在这里清空）；
  * - 在占领区 ⇒ **换成入侵舰队**：H 族 = 抽到的那张**独立卡**（真实 id · 覆写星系/名字）；
  *   A/C/G 三族 = 该星系**原卡的派生版**（占位口径，只换族名/威胁 78·120）；
  *   ⚠ 两条路的**赏金都是 0**（船长 2026-09-25「入侵舰队不应该有赏金」；界面改显「结算时按进度发放」）。

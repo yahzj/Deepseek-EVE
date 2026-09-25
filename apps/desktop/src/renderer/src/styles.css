@@ -10659,6 +10659,49 @@ html[data-locale='en'] body {
    —— 底槽用暗红、填充用与发光同一枚深红，读数 = 该星系的入侵进度（0~100%） */
 .app-map-invbar-bg { fill: rgb(var(--wui-danger-strong) / 0.22); }
 .app-map-invbar-fill { fill: rgb(var(--wui-danger-strong) / 0.95); }
+
+/* ══════════ 入侵演出（2026-09-25 船长令：警报红灯 ＋ 结束烟火）══════════
+   船长原话：「打算给入侵发生添加一个开场动画，当入侵发生时，游戏屏幕的正上方和正下方出现警告式的
+   红灯闪烁，然后这里预留一个声效的接口，用于之后接入警报声。警告灯闪烁数次后，再弹出通讯。且入侵
+   结束后的通讯发送给玩家时，屏幕上出现类似庆祝的烟火动画。」
+   两条铁律：① 一律 `pointer-events: none` —— 演出不挡任何点击；② **z-index 110（压在战场 100 之上）**
+   —— 警报就是要打断注意力，玩家正在打别的战斗时也该看见。
+   节奏（闪烁时长/次数、烟火时长）全在 `panels/InvasionFx.tsx` 的常量里，这里只管形状与时序曲线。 */
+.app-alarm { position: fixed; inset: 0; z-index: 110; pointer-events: none; }
+.app-alarm-band {
+  position: absolute; left: 0; right: 0; height: 110px;
+  animation-name: app-alarm-flash; animation-timing-function: ease-in-out;
+}
+.app-alarm-band.is-top {
+  top: 0;
+  background: linear-gradient(180deg, rgb(var(--wui-danger-strong) / 0.62), rgb(var(--wui-danger-strong) / 0));
+  border-top: 2px solid rgb(var(--wui-danger-strong) / 0.85);
+}
+.app-alarm-band.is-bottom {
+  bottom: 0;
+  background: linear-gradient(0deg, rgb(var(--wui-danger-strong) / 0.62), rgb(var(--wui-danger-strong) / 0));
+  border-bottom: 2px solid rgb(var(--wui-danger-strong) / 0.85);
+}
+@keyframes app-alarm-flash { 0%, 100% { opacity: 0.1; } 50% { opacity: 1; } }
+
+.app-fireworks { position: fixed; inset: 0; z-index: 110; pointer-events: none; }
+.app-fireworks svg { display: block; width: 100%; height: 100%; }
+/* 逐处爆散：错峰由内联 `animation-delay` 给（见 `InvasionFx.BURSTS`） */
+.app-fw-burst {
+  opacity: 0;
+  transform-box: fill-box; transform-origin: center;
+  animation-name: app-fw-bloom; animation-duration: 1.5s; animation-timing-function: ease-out; animation-fill-mode: both;
+}
+.app-fw-ring { fill: none; stroke: rgb(var(--wui-gold) / 0.85); stroke-width: 1.4; }
+.app-fw-rays { stroke: rgb(var(--wui-gold) / 0.9); stroke-width: 1.2; }
+.app-fw-core { fill: rgb(var(--wui-flag) / 0.95); }
+.app-fw-burst.is-cyan .app-fw-ring, .app-fw-burst.is-cyan .app-fw-rays { stroke: rgb(var(--wui-cyan) / 0.85); }
+.app-fw-burst.is-cyan .app-fw-core { fill: rgb(var(--wui-cyan) / 0.95); }
+@keyframes app-fw-bloom {
+  0% { opacity: 0; transform: scale(0.25); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25); }
+}
 /* 序章「模式选择」两张卡（**2026-09-23 船长定**：时机＝初始动画之后；两张卡与「出港」按钮同一档尺寸/同一套语言） */
 .app-pro-mode { display: flex; flex-wrap: wrap; gap: var(--wui-sp-18); justify-content: center; align-items: stretch; }
 .app-pro-mode-card { width: 330px; max-width: 100%; min-height: 220px; display: flex; flex-direction: column; gap: var(--wui-sp-8); text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: var(--wui-sp-10); padding: var(--wui-sp-16) var(--wui-sp-22); cursor: pointer; }

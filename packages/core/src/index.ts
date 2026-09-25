@@ -349,6 +349,7 @@ export {
   weekendEncounterAllowedIn,
   weekendEncounterRollOf,
   weekendOccupiedLiveAt,
+  weekendStandingBountyHeldAt,
 } from './weekendBounty'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）

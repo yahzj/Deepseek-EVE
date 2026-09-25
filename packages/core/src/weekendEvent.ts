@@ -288,7 +288,12 @@ export interface WeekendResultSnapshot {
   tier: 'A' | 'B' | 'C' | 'D' | 'none'
   /** 逐处占领区：玩家投入 · 该处进度 · 是否夺回 · 该处拿到的夺回奖励 */
   galaxies: Array<{ galaxyId: string; put: number; progress: number; reclaimed: boolean; isk: number; wreck: number }>
-  /** 旗舰战输出（没跟母舰交手过 = 缺省） */
+  /**
+   * 旗舰战输出（没跟母舰交手过 = 缺省）。
+   * ⚠ `defeated` = **玩家击沉**（与黑匣同一判据，＝`flagshipDown === 'player'`），
+   * **不是**"玩家那份伤害 ≥ 池子"——共享血条下血条由玩家 ＋ 章鱼人一起削（2026-09-25 船长报障修，见
+   * `weekendBattle.weekendResultSnapshotOf`）。
+   */
   flagship?: { hpMax: number; hpDone: number; defeated: boolean }
   /**
    * **进度收入**（2026-09-25 船长令「入侵舰队不应该有赏金……在结算时候直接按进度获取收入」）：

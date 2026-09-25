@@ -1550,9 +1550,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.096": { zh: "赏金：结算时按进度发放", en: "Bounty: paid at settlement based on progress" },
   "ui.weekend.097": { zh: "进度收入", en: "Progress income" },
   "ui.weekend.098": { zh: "推进 {p1}%", en: "{p1}% pushed" },
-  // 2026-09-25 船长令：章鱼人是**真实削减血量**（共享血条）⇒ 不再显示"章鱼人削减进度"与倒计时；
-  // 核心的"旗舰期红光"另给一条悬停说明（那条红光不再等于"被占领"）。
-  "ui.weekend.099": { zh: "敌方旗舰停驻于此：可从入侵窗口发起旗舰战", en: "The enemy flagship is holding here: start the flagship battle from the invasion window" },
+  // 2026-09-25 船长令：章鱼人是**真实削减血量**（共享血条）⇒ 不再显示"章鱼人削减进度"与倒计时。
+  // （原 `ui.weekend.099`「敌方旗舰停驻于此…」已并入下面的 `101`，那条随之删除。）
+  // 2026-09-25 船长令：①「母舰的血量也以进度条的形式显示在星系上方」⇒ 核心节点那根条的悬停读数
+  // （该组 `pointer-events: none` ⇒ 悬停落在条/★ 上时由本组承载）；
+  // ②「入侵期间，被占领星系的所有被收复的星系的常驻悬赏依旧处于隐藏状态，要等到入侵活动结束」
+  // ⇒ 已收复星系的悬赏区那一行状态占位（括号只放规格，不写原因解释）。
+  "ui.weekend.100": { zh: "已收复 · 常驻悬赏待入侵结束后恢复", en: "Reclaimed · standing bounties resume when the invasion ends" },
+  "ui.weekend.101": { zh: "母舰血量剩余 {p1}% · 可从入侵窗口发起旗舰战", en: "Mothership hull remaining: {p1}% · start the flagship battle from the invasion window" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
@@ -3401,6 +3406,36 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SaveManager.012": { zh: "备份当前档", en: "Back up current save" },
   "ui.SaveManager.013": { zh: "选择一个 .json 存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）", en: "Choose a .json save file to import (⚠ the old save is not backed up; offline progress is caught up from the time gap)" },
   "ui.SaveManager.014": { zh: "导入存档…", en: "Import save…" },
+  // 存档存储体检与告警（2026-09-25 船长令）：修「玩家 · MacBook · Safari 关掉游戏后存档丢失」——
+  // 网页版的存档在浏览器里，浏览器不给写时必须让玩家看见，不许静默丢档。
+  "ui.saveGuard.001": { zh: "存储状态", en: "Storage status" },
+  "ui.saveGuard.002": { zh: "存档在本机文件里", en: "Save is a local file" },
+  "ui.saveGuard.003": { zh: "存档在本浏览器里", en: "Save lives in this browser" },
+  "ui.saveGuard.004": { zh: "可写", en: "Writable" },
+  "ui.saveGuard.005": { zh: "不可写", en: "Not writable" },
+  "ui.saveGuard.006": { zh: "已获持久保存", en: "Persistent storage granted" },
+  "ui.saveGuard.007": { zh: "未获持久保存", en: "Persistent storage not granted" },
+  "ui.saveGuard.008": { zh: "本页当前无法保存进度。请换一个普通窗口重新打开本页；想留退路请定期「导出存档」。", en: "This page cannot save progress right now. Reopen it in a normal window, and export the save regularly as a fallback." },
+  "ui.saveGuard.009": { zh: "存档写入失败，进度不会保留。请换一个普通窗口重新打开本页，并定期「导出存档」。", en: "Writing the save failed, so progress will not be kept. Reopen this page in a normal window and export the save regularly." },
+  "ui.saveGuard.010": { zh: "旧存档读取失败，已暂停写入，避免覆盖旧档。可在「设置 → 存档」里允许写入，这会另起新档。", en: "The old save could not be read, so writing is paused to avoid overwriting it. Allow saving in Settings → Save to start a new profile." },
+  "ui.saveGuard.011": { zh: "允许写入存档", en: "Allow saving" },
+  "ui.saveGuard.012": { zh: "已暂停写入（旧档读取失败）", en: "Writing paused (old save unreadable)" },
+  // 网页版「绑定本地存档文件」（2026-09-25 船长令：存档优先保存到本地文件，像本地运行一样）
+  "ui.saveGuard.013": { zh: "本地文件", en: "Local file" },
+  "ui.saveGuard.014": { zh: "未绑定", en: "Not bound" },
+  "ui.saveGuard.015": { zh: "绑定本地存档文件", en: "Bind a local save file" },
+  "ui.saveGuard.016": { zh: "重新连接存档文件", en: "Reconnect save file" },
+  "ui.saveGuard.017": { zh: "解绑", en: "Unbind" },
+  "ui.saveGuard.018": { zh: "已连接", en: "Connected" },
+  "ui.saveGuard.019": { zh: "需点一次「重新连接」", en: "Click Reconnect once" },
+  "ui.saveGuard.020": { zh: "本浏览器不支持直接写本地文件。想让它像本地运行一样保存，请用 Chrome 或 Edge 打开本页；也可以把本页「添加到程序坞」，并定期「导出存档」。", en: "This browser cannot write a local file directly. To save the way the desktop build does, open this page in Chrome or Edge — or add it to your Dock and export the save regularly." },
+  "ui.saveGuard.021": { zh: "已绑定本地存档文件：{p1}", en: "Bound local save file: {p1}" },
+  "ui.saveGuard.022": { zh: "已解绑本地存档文件；进度仍保存在本浏览器里。", en: "Unbound the local save file; progress is still kept in this browser." },
+  "ui.saveGuard.023": { zh: "绑定失败：{p1}", en: "Binding failed: {p1}" },
+  "ui.saveGuard.024": { zh: "本地文件写入失败，进度仍保留在本浏览器里。", en: "Writing the local save file failed; progress is still kept in this browser." },
+  "ui.saveGuard.025": { zh: "已重新连接本地存档文件：{p1}", en: "Reconnected the local save file: {p1}" },
+  "ui.saveGuard.026": { zh: "存档文件", en: "Save file" },
+  "ui.saveGuard.027": { zh: "绑定后，每次落盘都会写进这个文件（浏览器里也留一份）。", en: "Once bound, every save is written into this file (a copy stays in the browser too)." },
   "ui.SaveManager.015": { zh: "把当前进度保存为你指定的文件", en: "Save the current progress to a file you choose" },
   "ui.SaveManager.016": { zh: "导出存档…", en: "Export save…" },
   "ui.SaveManager.017": { zh: "处理中……", en: "Working…" },

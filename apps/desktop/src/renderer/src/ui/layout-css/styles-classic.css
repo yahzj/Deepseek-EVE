@@ -1,7 +1,9 @@
 /* 旧版（classic）应用级样式 —— 由 `tools/layout-css-split.ts` 生成，**不要手改本文件**。
    一 = 本分支 `styles.css` 原样（⇒ 设置弹层等新件与新版**同步**，船长令「设置内采用新版的样式」）；
    二 = **旧版外壳覆盖**：合并前 main 的外壳族原文 + `.app-root.is-layout-classic` 限定
-        ⇒ 外壳（顶栏/左竖栏/主区/日志坞/活动栏）恢复成 main 的样子，其余跟随新版。
+        ⇒ 外壳（顶栏/左竖栏/主区）恢复成 main 的样子；
+   三 = **撤销新版新增、main 没有的属性**（定位/层级/box-sizing 这类，部分覆盖取消不掉）；
+   四 = **三块窗口模块的样式族**（活动栏 / 主控活动窗口 / 事件日志坞，船长令「把窗口模块化」）。
    基准冻结在 `_baseline-main.css`（**不要删**：删了就无法复现旧版外壳）。 */
 
 /* ══════════ 一、本分支 styles.css 原样 ══════════ */
@@ -10667,6 +10669,49 @@ html[data-locale='en'] body {
    —— 底槽用暗红、填充用与发光同一枚深红，读数 = 该星系的入侵进度（0~100%） */
 .app-map-invbar-bg { fill: rgb(var(--wui-danger-strong) / 0.22); }
 .app-map-invbar-fill { fill: rgb(var(--wui-danger-strong) / 0.95); }
+
+/* ══════════ 入侵演出（2026-09-25 船长令：警报红灯 ＋ 结束烟火）══════════
+   船长原话：「打算给入侵发生添加一个开场动画，当入侵发生时，游戏屏幕的正上方和正下方出现警告式的
+   红灯闪烁，然后这里预留一个声效的接口，用于之后接入警报声。警告灯闪烁数次后，再弹出通讯。且入侵
+   结束后的通讯发送给玩家时，屏幕上出现类似庆祝的烟火动画。」
+   两条铁律：① 一律 `pointer-events: none` —— 演出不挡任何点击；② **z-index 110（压在战场 100 之上）**
+   —— 警报就是要打断注意力，玩家正在打别的战斗时也该看见。
+   节奏（闪烁时长/次数、烟火时长）全在 `panels/InvasionFx.tsx` 的常量里，这里只管形状与时序曲线。 */
+.app-alarm { position: fixed; inset: 0; z-index: 110; pointer-events: none; }
+.app-alarm-band {
+  position: absolute; left: 0; right: 0; height: 110px;
+  animation-name: app-alarm-flash; animation-timing-function: ease-in-out;
+}
+.app-alarm-band.is-top {
+  top: 0;
+  background: linear-gradient(180deg, rgb(var(--wui-danger-strong) / 0.62), rgb(var(--wui-danger-strong) / 0));
+  border-top: 2px solid rgb(var(--wui-danger-strong) / 0.85);
+}
+.app-alarm-band.is-bottom {
+  bottom: 0;
+  background: linear-gradient(0deg, rgb(var(--wui-danger-strong) / 0.62), rgb(var(--wui-danger-strong) / 0));
+  border-bottom: 2px solid rgb(var(--wui-danger-strong) / 0.85);
+}
+@keyframes app-alarm-flash { 0%, 100% { opacity: 0.1; } 50% { opacity: 1; } }
+
+.app-fireworks { position: fixed; inset: 0; z-index: 110; pointer-events: none; }
+.app-fireworks svg { display: block; width: 100%; height: 100%; }
+/* 逐处爆散：错峰由内联 `animation-delay` 给（见 `InvasionFx.BURSTS`） */
+.app-fw-burst {
+  opacity: 0;
+  transform-box: fill-box; transform-origin: center;
+  animation-name: app-fw-bloom; animation-duration: 1.5s; animation-timing-function: ease-out; animation-fill-mode: both;
+}
+.app-fw-ring { fill: none; stroke: rgb(var(--wui-gold) / 0.85); stroke-width: 1.4; }
+.app-fw-rays { stroke: rgb(var(--wui-gold) / 0.9); stroke-width: 1.2; }
+.app-fw-core { fill: rgb(var(--wui-flag) / 0.95); }
+.app-fw-burst.is-cyan .app-fw-ring, .app-fw-burst.is-cyan .app-fw-rays { stroke: rgb(var(--wui-cyan) / 0.85); }
+.app-fw-burst.is-cyan .app-fw-core { fill: rgb(var(--wui-cyan) / 0.95); }
+@keyframes app-fw-bloom {
+  0% { opacity: 0; transform: scale(0.25); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25); }
+}
 /* 序章「模式选择」两张卡（**2026-09-23 船长定**：时机＝初始动画之后；两张卡与「出港」按钮同一档尺寸/同一套语言） */
 .app-pro-mode { display: flex; flex-wrap: wrap; gap: var(--wui-sp-18); justify-content: center; align-items: stretch; }
 .app-pro-mode-card { width: 330px; max-width: 100%; min-height: 220px; display: flex; flex-direction: column; gap: var(--wui-sp-8); text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: var(--wui-sp-10); padding: var(--wui-sp-16) var(--wui-sp-22); cursor: pointer; }
@@ -12737,4 +12782,156 @@ html[data-locale='en'] body {
   flex: 0 0 auto;
   min-height: 0;
   margin: 0 0 var(--wui-sp-6);
+}
+
+
+/* ══════════ 四、三块窗口模块（活动栏 / 主控活动窗口 / 事件日志坞）══════════
+   船长 2026-09-25 令：「不能将各个窗口模块化吗」⇒ 窗口的**观感**随组件走、**位置**随外壳走。
+   下面这三族整族从当前样式取来（带旧版限定便于阅读）；位置/尺寸由第二节的外壳覆盖接管。 */
+
+.app-root.is-layout-classic .app-act-svg { width: 100%; height: 100%; color: rgb(var(--wui-blue)); }
+.app-root.is-layout-classic /* ── 环境层：星野与漂浮物（与小窗 `.app-swin-star` / `.app-swin-drift` 同一套语言）──
+   星点是**整片星空**的底色，固定冷白不跟活动变色（活动色留给"在作业的东西"）；静态不动，省性能。 */
+.app-act-stars circle { fill: rgb(var(--wui-x47)); stroke: none; }
+.app-root.is-layout-classic /* 漂浮物：落位靠 JSX 外层 `<g transform>`，本层只管动画（两者都改 transform ⇒ 必须分层，见 activityArt 注释） */
+.app-act-drift { opacity: 0; animation-name: app-act-drift; animation-timing-function: linear; animation-iteration-count: infinite; transform-box: fill-box; transform-origin: center; }
+.app-root.is-layout-classic .app-act-drift path, .app-act-drift circle { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linejoin: round; }
+.app-root.is-layout-classic .app-act-drift.is-debris { animation-name: app-act-drift-spin; }
+.app-root.is-layout-classic .app-act-drift.is-rock { color: rgb(var(--wui-x35)); }
+.app-root.is-layout-classic .app-act-drift.is-rock.is-small { color: rgb(var(--wui-x25)); }
+.app-root.is-layout-classic .app-act-drift.is-debris { color: rgb(var(--wui-x32)); }
+.app-root.is-layout-classic .app-act-drift.is-debris.is-small { color: rgb(var(--wui-x17)); }
+.app-root.is-layout-classic .app-act-drift.is-gate { color: rgb(var(--wui-x131)); }
+.app-root.is-layout-classic .app-act-drift.is-gate.is-small { color: rgb(var(--wui-x113)); }
+.app-root.is-layout-classic .app-act-drift.is-probe { color: rgb(var(--wui-cyan-bright)); }
+.app-root.is-layout-classic .app-act-drift.is-probe.is-small { color: rgb(var(--wui-x45)); }
+.app-root.is-layout-classic .app-act-drift.is-probe circle:last-child { fill: currentColor; stroke: none; }
+.app-root.is-layout-classic /* ── 舰体层：真实舰形 + 随舰作业件（同一 float 组 ⇒ 一起轻浮，光带不脱靶）── */
+.app-act-float { animation: app-act-float calc(var(--wui-dur-act) * 1.0833) ease-in-out infinite; }
+.app-root.is-layout-classic /* 待捞残骸：缓慢起伏（位移 1/8 舰高 ⇒ 牵引锥看着不脱靶） */
+.app-act-bob { animation: app-act-bob calc(var(--wui-dur-act) * 1.8333) ease-in-out infinite; }
+.app-root.is-layout-classic /* 承运段的外挂货柜与吊索（画在舰形之下，被舰体轮廓压住 = 吊在腹下） */
+.app-act-pod rect { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.app-root.is-layout-classic .app-act-pod path { fill: none; stroke: currentColor; stroke-width: 1.1; }
+.app-root.is-layout-classic .app-act-sling { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.75; }
+.app-root.is-layout-classic /* ── 动感层（与进度无关，固定短周期：负责"在动"）── */
+.app-act-beam { animation: app-act-beam calc(var(--wui-dur-act) * 0.4583) ease-in-out infinite; }
+.app-root.is-layout-classic .app-act-chip { fill: currentColor; stroke: none; animation: app-act-chip calc(var(--wui-dur-act) * 0.75) linear infinite; }
+.app-root.is-layout-classic .app-act-chip.is-late { animation-delay: 0.6s; }
+.app-root.is-layout-classic .app-act-chip.is-late2 { animation-delay: 1.2s; }
+.app-root.is-layout-classic .app-act-cone { animation: app-act-cone calc(var(--wui-dur-act) * 0.5833) ease-in-out infinite; }
+.app-root.is-layout-classic .app-act-trail { animation: app-act-trail calc(var(--wui-dur-act) * 0.6667) linear infinite; }
+.app-root.is-layout-classic .app-act-trail.is-late { animation-delay: 0.5s; }
+.app-root.is-layout-classic .app-act-trail.is-late2 { animation-delay: 1s; }
+.app-root.is-layout-classic .app-act-array { animation: app-act-array calc(var(--wui-dur-act) * 0.8333) ease-in-out infinite; }
+.app-root.is-layout-classic .app-act-wave { animation: app-act-wave var(--wui-dur-act) ease-out infinite; }
+.app-root.is-layout-classic .app-act-wave.is-late { animation-delay: 0.8s; }
+.app-root.is-layout-classic .app-act-wave.is-late2 { animation-delay: 1.6s; }
+.app-root.is-layout-classic .app-act-echo { fill: currentColor; stroke: none; animation: app-act-echo var(--wui-dur-act) ease-in-out infinite; }
+.app-root.is-layout-classic .app-act-echo.is-late { animation-delay: 0.8s; }
+.app-root.is-layout-classic .app-act-echo.is-late2 { animation-delay: 1.6s; }
+.app-root.is-layout-classic /* 远方虫洞候选（未确认的暗环，慢呼吸） */
+.app-act-wh ellipse, .app-act-wh path { fill: none; stroke: currentColor; stroke-width: 1.3; opacity: 0.28; }
+.app-root.is-layout-classic .app-act-wh { animation: app-act-wh calc(var(--wui-dur-act) * 2.7083) ease-in-out infinite; }
+.app-root.is-layout-classic /* ── 进度层：相位锁真实作业进度（2026-09-21 船长「跟真实进度挂钩」）──
+   `--act-cycle` = 一个作业周期毫秒数、`--act-delay` = 已走毫秒取负（都由 ActivityScreen 按真实状态算）
+   ⇒ **周期完成那一刻正好是峰值**（出货 / 捞上一件 / 到站 / 扫完一遍的瞬间亮一下），进度归零相位也归零。
+   周期过短过长只夹节拍快慢（见 `beatStyle`），**相位与读数不受影响**。 */
+.app-act-tick { animation-duration: var(--act-cycle, 3s); animation-delay: var(--act-delay, 0s); animation-iteration-count: infinite; animation-timing-function: ease-out; }
+.app-root.is-layout-classic .app-act-vein { animation-name: app-act-vein; }
+.app-root.is-layout-classic .app-act-arc { animation-name: app-act-arc; transform-box: fill-box; transform-origin: center; }
+.app-root.is-layout-classic .app-act-legring { animation-name: app-act-legring; transform-box: fill-box; transform-origin: center; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.app-root.is-layout-classic .app-act-radar { animation-name: app-act-radar; transform-box: fill-box; transform-origin: center; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-dasharray: 7 6; }
+.app-root.is-layout-classic /* 底栏读数与进度条 */
+.app-act-dock { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-8) var(--wui-sp-18); padding: var(--wui-sp-10) var(--wui-sp-14) var(--wui-sp-12); border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
+.app-root.is-layout-classic .app-act-line { font-size: var(--wui-fs-sm); color: rgb(var(--wui-text-dim)); }
+.app-root.is-layout-classic .app-act-progress { position: relative; flex: 1 1 220px; height: 14px; min-width: 160px; border: 1px solid rgb(var(--wui-x01) / 0.14); border-radius: var(--wui-sp-7); background: rgb(var(--wui-bg-panel) / 0.7); overflow: hidden; }
+.app-root.is-layout-classic .app-act-bar { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgb(var(--wui-blue) / 0.55), rgb(var(--wui-blue) / 0.95)); }
+.app-root.is-layout-classic .app-act-pct { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: var(--wui-fs-2xse); font-family: var(--wui-mono); color: rgb(var(--wui-bg-scene-2)); }
+.app-root.is-layout-classic .app-log-dock > * {
+
+  pointer-events: auto;
+
+}
+.app-root.is-layout-classic .app-log-head-right {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: var(--wui-sp-8);
+
+}
+.app-root.is-layout-classic .app-log-filters {
+
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: var(--wui-sp-4);
+
+  padding: 0 0 var(--wui-sp-6);
+
+}
+.app-root.is-layout-classic .app-log-filter {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: var(--wui-sp-5);
+
+  padding: var(--wui-sp-1) var(--wui-sp-8);
+
+  font-size: var(--wui-fs-xs);
+
+  color: rgb(var(--wui-text-dim));
+
+  background: rgb(var(--wui-bg-hover) / 0.6);
+
+  border: 1px solid rgb(var(--wui-border));
+
+  border-radius: var(--wui-sp-10);
+
+  cursor: pointer;
+
+  font-family: inherit;
+
+  transition: all 0.15s;
+
+}
+.app-root.is-layout-classic .app-log-dot {
+
+  width: 8px;
+
+  height: 8px;
+
+  border-radius: 50%;
+
+  display: inline-block;
+
+  flex: none;
+
+}
+.app-root.is-layout-classic .app-log-filter:hover {
+
+  color: rgb(var(--wui-text));
+
+}
+.app-root.is-layout-classic .app-log-filter.is-off {
+
+  opacity: 0.45;
+
+  text-decoration: line-through;
+
+}
+.app-root.is-layout-classic .app-log-filter.is-off:hover {
+
+  opacity: 0.8;
+
+}
+.app-root.is-layout-classic .app-log-empty {
+
+  padding: var(--wui-sp-8) var(--wui-sp-2);
+
 }
