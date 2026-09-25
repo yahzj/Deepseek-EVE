@@ -16,6 +16,8 @@ import {
   weekendBossPoolView,
   weekendFlagshipView,
   weekendOccupiedIds,
+  weekendPeripheryAverageOf,
+  weekendPeripheryLeadOf,
   weekendProgressAt,
   weekendReclaimedAt,
 } from '@whale/core'
@@ -47,6 +49,13 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
   const perDone = ev.peripheryIds.filter((id) => weekendProgressAt(state, ev, id, now) >= 1).length
   const corePct = Math.round(weekendCoreProgressAt(state, ev, now) * 100)
   const coreName = engine.ctx.galaxies.get(ev.coreId)?.name ?? ev.coreId
+  /**
+   * **外围进度最高的一处**（**2026-09-25 船长批「乙」**）：上面那两块读数（外围夺回 X/Y · 核心 %）
+   * 都是"满 100% 才 +1"的计数、核心那格还被门禁锁死 ⇒ 玩家连清同一处时**一个会动的数都没有**
+   * （真档实测：暗星坟场 23% → 33% → 43% → 53%，这一行三块一动不动）⇒ 补上这条随单场胜利增长的读数。
+   */
+  const lead = weekendPeripheryLeadOf(state, ev, now)
+  const leadName = lead === null ? '' : engine.ctx.galaxies.get(lead.galaxyId)?.name ?? lead.galaxyId
   const flagship = weekendFlagshipView(state, ev, now, now)
   /**
    * **母舰血条读数**（2026-09-25 船长令：「**章鱼人 = 真实削减血量所以并不需要显示章鱼人削减进度和
@@ -85,6 +94,13 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
         <span>· {tr('ui.weekend.008', { p1: String(corePct) })}</span>
         <span>· {tr('ui.weekend.014', { p1: String(reclaimed.length), p2: String(occupied.length) })}</span>
       </div>
+      {/* 外围推进（船长批「乙」）：平均 = 任何一处前进都动；最高 = 打到哪了（清非领先处时"最高"不动，见 core 注释） */}
+      {lead !== null ? (
+        <div className="app-weekend-box-row app-weekend-box-dim">
+          <span>{tr('ui.weekend.109', { p1: String(Math.round(weekendPeripheryAverageOf(state, ev, now) * 100)) })}</span>
+          <span>· {tr('ui.weekend.108', { p1: String(Math.round(lead.progress * 100)), p2: leadName })}</span>
+        </div>
+      ) : null}
       <div className="app-weekend-box-row">
         <span className={flagship.shown || flagship.down ? 'app-weekend-box-warn' : 'app-weekend-box-dim'}>{tail}</span>
       </div>

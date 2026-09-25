@@ -810,6 +810,49 @@ export function weekendReclaimedAt(
   return weekendOccupiedIds(ev).filter((id) => weekendProgressAt(state, ev, id, nowWallMs) >= 1)
 }
 
+/**
+ * **外围推进领先的那一处**（**2026-09-25 船长批「乙」**）：外围里进度最高的一处 + 它的进度。
+ *
+ * 起因（船长真档实测 · 玩家报障「从常驻悬赏重复清缴不加进度条」）：活动栏那条只有
+ * 「外围夺回 X/Y · 核心 Z% · 已夺回 N/M 处」三块读数——**前两块都是"满 100% 才 +1"的计数**、
+ * 核心那格又被门禁锁死 ⇒ 玩家连清同一处时活动栏**一个会动的数都没有**
+ * （实测：暗星坟场 23% → 33% → 43% → 53%，活动栏三块一动不动）。
+ *
+ * ⇒ 补一条**随单场胜利增长**的读数：外围里最高的那一处 + 它的百分比（名称由界面按 id 查）。
+ * 全部夺回（每处都满）⇒ 返回 `null`（那时"外围夺回 X/Y"本身已经在报满了）。
+ */
+export function weekendPeripheryLeadOf(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState,
+  nowWallMs: number,
+): { galaxyId: string; progress: number } | null {
+  let best: { galaxyId: string; progress: number } | null = null
+  for (const id of ev.peripheryIds) {
+    const progress = weekendProgressAt(state, ev, id, nowWallMs)
+    if (progress >= 1) continue
+    if (best === null || progress > best.progress) best = { galaxyId: id, progress }
+  }
+  return best
+}
+
+/**
+ * **外围平均进度**（0~1；**2026-09-25 船长批「乙」的补正**）。
+ *
+ * 为什么还要一个"平均"：上面那条"最高"只在**清领先的那一处**时才会动 ——
+ * 实测（`npm run weekend:board`）：红环已 74% 时连清暗星坟场 3 场（23% → 53%），
+ * 活动栏那行"外围进度最高 74%（红环航道）"**一个数都没变**，玩家照样看不到反馈。
+ * 平均值对"任何一处的前进"都响应（3 处外围时每场 +3.3%），与"最高"互补：一个证明在动、一个指明打到哪了。
+ */
+export function weekendPeripheryAverageOf(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState,
+  nowWallMs: number,
+): number {
+  if (ev.peripheryIds.length === 0) return 0
+  const sum = ev.peripheryIds.reduce((acc, id) => acc + weekendProgressAt(state, ev, id, nowWallMs), 0)
+  return sum / ev.peripheryIds.length
+}
+
 /* ─────────────── 遇袭（高频 · 中安高安破例 · 失败只受损） ─────────────── */
 
 /** 遇袭概率：`60% × (1 − 进度)`，封顶 0.9（夺回后 = 0） */

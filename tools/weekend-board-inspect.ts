@@ -31,7 +31,9 @@ import {
   weekendCoreProgressAt,
   weekendGarrisonFoeCardId,
   weekendOccupiedLiveAt,
+  weekendPeripheryAverageOf,
   weekendPeripheryClearedAt,
+  weekendPeripheryLeadOf,
   weekendPlayerContribution,
   weekendProgressAt,
   weekendResolveBattle,
@@ -104,7 +106,14 @@ const banner = (): string => {
   const corePct = Math.round(weekendCoreProgressAt(state, ev, now) * 100)
   const occupied = [ev.coreId, ...ev.peripheryIds]
   const reclaimed = occupied.filter((id) => weekendProgressAt(state, ev, id, now) >= 1).length
-  return `外围夺回 ${perDone}/${perTotal} · 核心 ${corePct}% · 已夺回 ${reclaimed}/${occupied.length} 处`
+  /** 2026-09-25 船长批「乙」后活动栏多的一行（随单场胜利增长的两条读数） */
+  const lead = weekendPeripheryLeadOf(state, ev, now)
+  const avg = Math.round(weekendPeripheryAverageOf(state, ev, now) * 100)
+  const leadTxt =
+    lead === null
+      ? ''
+      : ` · 外围平均 ${avg}% · 最高 ${Math.round(lead.progress * 100)}%（${ctx.galaxies.get(lead.galaxyId)?.name ?? lead.galaxyId}）`
+  return `外围夺回 ${perDone}/${perTotal} · 核心 ${corePct}% · 已夺回 ${reclaimed}/${occupied.length} 处${leadTxt}`
 }
 console.log(`  活动栏读数：${banner()}`)
 

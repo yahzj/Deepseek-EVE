@@ -1604,11 +1604,17 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
+  /* 活动栏补的"外围进度"读数（2026-09-25 船长批「乙」：原来三块读数都只在满 100% 时才动，玩家看不到自己在推进） */
+  "ui.weekend.108": { zh: "外围进度最高 {p1}%（{p2}）", en: "Highest periphery progress {p1}% ({p2})" },
+  "ui.weekend.109": { zh: "外围平均 {p1}%", en: "Periphery average {p1}%" },
   "core.weekend.030": { zh: "入侵活动已结束。", en: "The invasion event has ended." },
   "core.weekend.031": { zh: "该星系当前没有被入侵。", en: "That system is not under invasion right now." },
   "core.weekend.032": { zh: "已停止常驻悬赏的重复清剿——改跑入侵重复出击。", en: "Repeat sweeps for standing bounties stopped — the invasion repeat assault takes over." },
   "core.weekend.033": { zh: "重复出击已开启：「{p1}」的入侵舰队，每场重抽一支；该星系被夺回或活动结束时自动停止。", en: "Repeat assault started: a fresh invader fleet in “{p1}” each run; it stops when the system is reclaimed or the event ends." },
   "core.weekend.034": { zh: "重复出击已停止。", en: "Repeat assault stopped." },
+  /* ── 每场入侵战斗的进度反馈（2026-09-25 船长批「甲」：原来主动出击胜利一句日志都没有，玩家报障「重复清缴不加进度条」）── */
+  "core.weekend.035": { zh: "✦ {p1}：夺回进度 {p2}% → {p3}%", en: "✦ {p1}: reclaim progress {p2}% → {p3}%" },
+  "core.weekend.036": { zh: "✦ {p1}：外围未清完，本次不计夺回进度", en: "✦ {p1}: the periphery is not fully reclaimed — no reclaim progress from this battle" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },

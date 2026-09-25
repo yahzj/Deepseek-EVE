@@ -283,6 +283,10 @@ export {
   weekendPlayerContribution,
   weekendProgressAt,
   weekendCoreGateView,
+  // 2026-09-25 船长批「乙」：活动栏补"外围进度最高的那一处"读数（随单场胜利增长）
+  weekendPeripheryLeadOf,
+  // 同日补正：清"非领先"的外围时最高值不动 ⇒ 再给一个"外围平均"（任何一处前进都响应）
+  weekendPeripheryAverageOf,
   weekendReclaimedAt,
   weekendRollOccupation,
   weekendT0Of,

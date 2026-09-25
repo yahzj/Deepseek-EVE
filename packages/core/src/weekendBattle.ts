@@ -242,12 +242,17 @@ export function weekendResolveBattle(
   if (outcome === 'loss' && !bossDown) return { progressGain: 0, note: '战败：只受损，进度不动（第 5 条）' }
 
   const wasReclaimed = weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) >= 1
+  /** 本场**开打前**该星系的进度读数（% —— 只给下面那条"夺回进度 a% → b%"反馈文案用；与 `weekendProgressAt` 同源） */
+  const beforePct = weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) * 100
+  /** 本场是否被**核心门禁**挡下（只有核心、且外围没清完、且核心读数还停在 0）——给反馈文案分流用 */
+  let gatedThisBattle = false
   let gain = 0
   if (outcome === 'win') {
     /** 主动胜利的推进量：**调试模式 = +50%（两场收复，船长令）**；正常 = 外围 10% / 核心 5% */
     gain = weekendWinGainOf(state, ev, spec.galaxyId)
     // 核心：门禁未解时**不给进度**（`weekendNoteContribution` 会记台账，但读数侧仍被门禁挡住 ⇒ 这里只在门禁已解时记）
     const gated = spec.galaxyId === ev.coreId && weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) <= 0 && !peripheryCleared(state, ev, nowWallMs)
+    gatedThisBattle = gated
     if (!gated) weekendNoteContribution(ev, spec.galaxyId, gain)
     else gain = 0
   } else {
@@ -288,6 +293,34 @@ export function weekendResolveBattle(
     res.note = allClear ? '全部占领区夺回：额外奖励入账' : '该星系夺回'
   } else if (res.note === '') {
     res.note = outcome === 'win' ? '推进进度' : '击退遇袭'
+  }
+  /**
+   * **每场入侵战斗的进度反馈**（**2026-09-25 船长批「甲」**）。
+   *
+   * 起因（船长真档实测）：主动出击胜利**原来一句日志都没有**（`expedition.ts` 丢弃本函数的返回值，
+   * 只有"夺回/旗舰"才写日志）⇒ 玩家连清同一处时，除了星图上该星系那条细进度条**没有任何反馈**，
+   * 而活动栏那三块读数（外围夺回 X/Y · 核心 % · 已夺回 N/M）都是"满 100% 才 +1"的计数 ⇒
+   * 观感就是「重复清缴不加进度条」（玩家报障原话）。
+   *
+   * 口径：
+   * - **夺回**那一场不写本行（上面已有 `✦ 夺回…` 那条，说了更重要的信息）；
+   * - **战败**（gain = 0 且非门禁）不写（进度本来就没动，避免噪声）；
+   * - **核心门禁**未解 ⇒ 写"本次不计进度"那一行（`core.weekend.036`），把白打讲明白；
+   * - 读数取**该星系自己的进度**（与星图/星系详细同源 `weekendProgressAt`，含 NPC 铺底）。
+   */
+  if (res.reclaimed === undefined) {
+    const gname0 = _ctx.galaxies.get(spec.galaxyId)?.name ?? spec.galaxyId
+    if (gain > 0) {
+      const pctBefore = Math.round(beforePct)
+      const pctAfter = Math.round(weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) * 100)
+      addLog(state, 'info', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
+        p1: gname0,
+        p2: pctBefore,
+        p3: pctAfter,
+      })
+    } else if (gatedThisBattle) {
+      addLog(state, 'info', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
+    }
   }
   return res
 }
