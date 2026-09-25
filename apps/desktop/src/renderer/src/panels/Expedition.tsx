@@ -2187,6 +2187,21 @@ function GalaxyActions({
            *   "特殊装置"那一节用 `UI_TONES.foeName` 同色系标出——与战斗画面的敌舰名同一套色，不自造颜色。
            */
           const foeLines = briefsOfPool(engine.ctx.anomalies, weekendFoePoolOf(ev.family, galaxy.id === ev.coreId), card)
+          /**
+           * **重复出击**（2026-09-26 船长报障：「**星系详细里的入侵悬赏重复清缴的按钮不见了**」）：
+           * 那枚环按钮原先只加在**板面**的入侵卡（`AnomalyCard`）上，而**星系详细的被占分支只有「出击」**
+           * —— 于是同一张卡换个地方看就少一枚按钮。这里按板面那一套补齐：
+           * · 开关走 `engine.invasionLoopAt(galaxyId | null)`（与 `bountyLoopAt` 互斥，同一把尺）；
+           * · 禁用规则沿用本组件已有的 `goBlocked` / `reopenBlock`（与列表里那条环同一套）；
+           * · 文案 `ui.weekend.106`（重复出击）/ `ui.weekend.107`（开启说明）/ `ui.Expedition.043`（关闭）。
+           */
+          const invasionLoopOn = state.weekendEvent?.autoLoopGalaxyId === galaxy.id
+          const loopBusy = state.mining.active || state.transit.active || (state.expedition.active && state.expedition.anomalyId !== null)
+          const invasionLoopBlocked = !invasionLoopOn && (loopBusy || reopenBlock !== null)
+          const toggleInvasionLoop = (): void => {
+            const r = engine.invasionLoopAt(invasionLoopOn ? null : galaxy.id)
+            if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.393'), true)
+          }
           const foeTip =
             foeLines.length === 0 ? null : (
               <span className="app-ano-foebrief">
@@ -2297,6 +2312,32 @@ function GalaxyActions({
                 })()}
               </span>
               <span className="app-ga-btns">
+                {/* 环按钮：**纯图标 ＋ 文字**（与板面入侵卡同款「重复出击」），悬停给开启说明 */}
+                <button
+                  className={`app-btn is-small${invasionLoopOn ? ' is-warn' : ''}`}
+                  disabled={invasionLoopBlocked}
+                  title={
+                    invasionLoopOn
+                      ? tr('ui.Expedition.043')
+                      : reopenBlock !== null
+                        ? reopenBlock
+                        : loopBusy
+                          ? tr('ui.Expedition.154')
+                          : tr('ui.weekend.107')
+                  }
+                  onClick={toggleInvasionLoop}
+                >
+                  {invasionLoopOn ? (
+                    tr('ui.Expedition.044')
+                  ) : (
+                    <>
+                      <span className="app-ico">
+                        <Glyph name="ico-loop" size={13} color={ICO_TONES['ico-loop']} />
+                      </span>
+                      {tr('ui.weekend.106')}
+                    </>
+                  )}
+                </button>
                 <button
                   className={`app-btn is-small${miningActive ? ' is-warn' : ' is-primary'}`}
                   disabled={card === undefined || goBlocked}
