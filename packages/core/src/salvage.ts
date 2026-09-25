@@ -447,12 +447,34 @@ export function advanceWeekendWreckDecay(
   }
 }
 
+/** 本轮的"体积当量系数"（纯算式；**不改任何状态**）：mul = max(0.5, (星系密度 ＋ 入侵残骸)/10)。
+ *  分母不变（2026-09-10 船长定）——保底线抬到 10 后，稳态保底（密度 = 10）的实际系数 = 1.0。
+ *  **扣减与取数分开**：`salvageRoundPull`（要扣）与 `salvageRoundMulOf`（只读）共用本算式。 */
+function roundMulOf(density: number, weekend: number): number {
+  return Math.max(0.5, (density + weekend) / 10)
+}
+
+/**
+ * **本轮密度系数（只读）**——与 `salvageRoundPull` 同一算式，但**一个字都不改**。
+ *
+ * 给"这一轮不产出普通残骸"的场合取读数用：**稀有残骸轮**（`pullOneWreck` 稀有分支）。
+ * 依据（2026-09-25 玩家报障修复）：放干扣减的契约是"**扣减 ↔ 本轮按 mul 出普通残骸**"，
+ * 稀有轮出的是固定 30 m³ 的稀有残骸、不吃 mul ⇒ 不许再扣普通池（也不扣入侵池）。
+ */
+export function salvageRoundMulOf(state: GameState, ctx: SimContext, galaxyId: string): number {
+  const rec = recordOf(state, galaxyId, ctx)
+  return roundMulOf(rec.density, weekendWreckDensityOf(state, galaxyId))
+}
+
 /**
  * 一轮打捞（每台每周期调用一次；引擎/作业层使用）：
  * 先按当前密度给出本轮"体积当量系数" mul = max(0.5, 密度/10)（分母不变——2026-09-10 船长定；
  * 保底线抬到 10 后，稳态保底（密度 = 10）的实际系数 = 1.0），再执行放干扣减
  * （>保底线 10：扣当前超出量 2%；超出量趋零进位；≤保底线：不扣）。
  * 调用方按 mul 计入该轮捞取量（基础体积 × mul 的货仓占用）。
+ *
+ * ⚠ **只有"确实按 mul 出普通残骸"的轮才调用本函数**——稀有残骸轮走 `salvageRoundMulOf`
+ * （只读。2026-09-25 玩家报障：稀有轮扣了普通池却不给普通残骸 ⇒ 已按甲案修掉）。
  *
  * **入侵残骸（独立池）参加本轮**（2026-09-25 船长令）：
  * - **计量合并**：mul 按（星系密度 ＋ 入侵残骸）算 ⇒ 入侵留下的残骸场让每轮出量更大；
@@ -463,7 +485,7 @@ export function salvageRoundPull(state: GameState, ctx: SimContext, galaxyId: st
   const rec = recordOf(state, galaxyId, ctx)
   const weekend = weekendWreckDensityOf(state, galaxyId)
   const d = rec.density
-  const mul = Math.max(0.5, (d + weekend) / 10)
+  const mul = roundMulOf(d, weekend)
   if (weekend > 0) {
     /**
      * 入侵池按同一 2% 放干（**无保底** ⇒ 可以扣到 0）：

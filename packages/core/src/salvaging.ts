@@ -33,6 +33,7 @@ import {
   pullRareWreck,
   RARE_WRECK_VOLUME_M3,
   recycleTierOf,
+  salvageRoundMulOf,
   salvageRoundPull,
   rollIntactHullLoot,
   wreckBaseDensity,
@@ -336,7 +337,18 @@ export function pullOneWreck(
   // 稀有残骸必捞（2026-09-10 船长定：赏金任务窝点战利品——数量随难度，打捞必定捞到、捞完为止）
   const rareId = pullRareWreck(state, galaxyId, ctx)
   if (rareId) {
-    const mulRare = salvageRoundPull(state, ctx, galaxyId)
+    /**
+     * **稀有轮不吃普通池放干**（**2026-09-25 玩家报障修复**）。
+     *
+     * 船长转述：「**当星系的残骸里有稀有残骸时，打捞稀有残骸会同时消耗普通残骸，
+     * 但是没有回收普通残骸**」——原实现这一支照样调了 `salvageRoundPull`：它按"本轮出普通残骸"
+     * 的口径扣了 2% 放干（并顺带扣了入侵池），可这一轮的产出被替换成稀有残骸（固定 30 m³ × 倍率，
+     * 不吃 mul）⇒ **扣了不给**，普通池白掉一截。
+     *
+     * 现按**甲案**修：稀有轮只取读数（`salvageRoundMulOf`，纯读），**两池一个都不扣**；
+     * 稀有捞完、回常规池的那一轮起，放干照旧（口径见 `salvage.salvageRoundPull`）。
+     */
+    const mulRare = salvageRoundMulOf(state, ctx, galaxyId)
     return { itemId: rareId, mul: mulRare, volumeM3: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') }
   }
   const pool = wreckPoolOf(ctx, galaxyId, state, Date.now()) // 同源池：hidden 遭遇模板不入池 + 被占星系并入驻留入侵舰队

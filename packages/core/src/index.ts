@@ -763,6 +763,8 @@ export {
   RECYCLE_TIER_DIRE,
   advanceWreckDrift,
   salvageRoundPull,
+  // 2026-09-25 玩家报障修复：本轮密度系数**只读**取数口（稀有残骸轮不吃普通池放干）
+  salvageRoundMulOf,
   // 2026-09-25 入侵残骸 · 独立池（船长令）：按击败卡威胁注入 · 48h 线性衰减到 0 · 不算当地密度
   WEEKEND_WRECK_DECAY_MS,
   weekendWreckDensityOf,
