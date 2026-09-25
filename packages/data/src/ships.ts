@@ -696,7 +696,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 180,
     cpu: 205,
     droneBayM3: 40,
-    maxSpeedMps: 240, // 2026-09-13 船长：旧重装舰对齐同级（200 → 240，仍慢于同级武装舰 285~300）
+    maxSpeedMps: 120, // ⟪2026-09-25 船长令⟫「陆龟级速度减半」：240 → **120**（原沿革：2026-09-13 旧重装舰对齐同级 200 → 240）
     warpSpeedAus: 3.0,
     massKg: 6_000_000,
     lockRangeM: 22_000,
@@ -725,7 +725,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 430,
     cpu: 330,
     droneBayM3: 50,
-    maxSpeedMps: 230, // 2026-09-13 船长：旧重装舰对齐同级（185 → 230，仍慢于同级武装舰 258~275）
+    maxSpeedMps: 80, // ⟪2026-09-25 船长令⟫「玳瑁级速度降低到80」：230 → **80**（原沿革：2026-09-13 旧重装舰对齐同级 185 → 230）
     warpSpeedAus: 2.9,
     massKg: 11_000_000,
     lockRangeM: 23_000,
@@ -754,7 +754,7 @@ export const SHIPS: readonly ShipDef[] = [
     hullHp: 614,
     cpu: 490,
     droneBayM3: 60,
-    maxSpeedMps: 170,
+    maxSpeedMps: 100, // ⟪2026-09-25 船长令⟫「玄武级速度降低到100」：170 → **100**
     warpSpeedAus: 2.8,
     massKg: 20_000_000,
     lockRangeM: 24_000,
