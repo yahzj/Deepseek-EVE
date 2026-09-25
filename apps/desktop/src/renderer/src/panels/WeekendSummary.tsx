@@ -49,6 +49,20 @@ export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; on
         ]
       : []),
     { label: tr('ui.weekend.038'), value: `×${n(snap.wreck)}`, sub: itemNameOf(snap.wreckItemId ?? '') },
+    /**
+     * **进度收入**（2026-09-25 船长令「在结算时候直接按进度获取收入」）：单列一格 ——
+     * 与下面的「信用点」合计并列，玩家能看清"入侵不给赏金，钱是按进度算出来的"。
+     * 老快照没有这一栏（缺省）⇒ 不显示该格。
+     */
+    ...(snap.progressIsk !== undefined && snap.progressIsk > 0
+      ? [
+          {
+            label: tr('ui.weekend.097'),
+            value: n(snap.progressIsk),
+            sub: tr('ui.weekend.098', { p1: ((snap.progressPct ?? 0) * 100).toFixed(0) }),
+          },
+        ]
+      : []),
     { label: tr('ui.weekend.039'), value: n(snap.isk), sub: '' },
     ...(snap.blackBox > 0
       ? [{ label: tr('ui.weekend.040'), value: `×${snap.blackBox}`, sub: '', wide: true }]

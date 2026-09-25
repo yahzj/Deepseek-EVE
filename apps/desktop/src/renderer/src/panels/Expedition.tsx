@@ -52,6 +52,8 @@ import {
   shipRoleLabel,
   autoLoopReopenBlockReason,
   wreckDensityOf,
+  weekendWreckDensityOf,
+  weekendOccupiedLiveAt,
   shortestTravelMinutes,
   standingOf,
   travelLegMs,
@@ -2065,7 +2067,11 @@ function GalaxyActions({
                   <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />
                 </span>
                 {tr('ui.weekend.092')}
-                <span className="app-dim app-ga-desc">{tr('ui.weekend.093', { p1: lo, p2: hi })}</span>
+                <span className="app-dim app-ga-desc">
+                  {tr('ui.weekend.093', { p1: lo, p2: hi })}
+                  {' · '}
+                  {tr('ui.weekend.096')}
+                </span>
               </span>
               <span className="app-ga-btns">
                 <button
@@ -2157,6 +2163,25 @@ function GalaxyActions({
             </div>
           )
         })
+      })()}
+      {/**
+       * **入侵残骸条（置顶）**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
+       * 放在「残骸打捞」标题**之前**；与星系密度分开读（船长：「入侵残骸不算当地星系密度」），
+       * 只有 >0 时才出这一条。
+       */}
+      {(() => {
+        const invWreck = weekendWreckDensityOf(state, galaxy.id)
+        if (invWreck <= 0) return null
+        const densityHere = wreckDensityOf(state, galaxy.id, engine.ctx)
+        const pct = Math.round((invWreck / (invWreck + densityHere)) * 100)
+        return (
+          <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(pct) })}>
+            <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
+            <div className="app-card-progress is-invasion">
+              <i style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        )
       })()}
       {/* ⑤ 残骸打捞（B3：采矿式自动循环作业；需高槽打捞器，满仓自动返航卸货后自动续捞） */}
       <div className="app-bay-title app-ga-sub">
@@ -2345,6 +2370,12 @@ function AnomalyCard({
   })()
   const inFlightSelf = state.expedition.active && state.expedition.anomalyId === anomaly.id
   const inFlightOther = state.expedition.active && !inFlightSelf
+  /**
+   * **这张卡现在是不是"入侵舰队"**（2026-09-25 船长令「**入侵舰队不应该有赏金**」）：
+   * 被占星系的悬赏位由 `weekendBountyCardsOf` 换成了入侵舰队（`rewardIsk` 已是 0）⇒
+   * 赏金那一栏改显「结算时按进度发放」，"估算奖励/小时"那一栏也整条不显示（没有即时收入可估）。
+   */
+  const invadedHere = weekendOccupiedLiveAt(state, anomaly.galaxyId, Date.now())
   // 声望仅首胜发放：已首胜过的目标重复完成不再涨声望
   const bountyCleared = state.completedBounties.includes(anomaly.id)
   // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/返航/非本目标的远征）中不可开启
@@ -2495,17 +2526,26 @@ function AnomalyCard({
         })()}
       </div>
       <div className="app-ano-reward">
-        {tr("ui.Expedition.099")} {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
-        {factionHit ? <span className="app-dim" title={tr("ui.Expedition.220", { p1: anomaly.rewardIsk.toLocaleString('zh-CN') })}>{tr("ui.Expedition.321")}</span> : null}
-        {anomaly.loot.length > 0 ? ` + ${lootText}` : ''}{tr('ui.Expedition.368')}{anomaly.standingGain}
+        {invadedHere ? (
+          <>{tr('ui.weekend.096')}</>
+        ) : (
+          <>
+            {tr("ui.Expedition.099")} {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}
+            {factionHit ? <span className="app-dim" title={tr("ui.Expedition.220", { p1: anomaly.rewardIsk.toLocaleString('zh-CN') })}>{tr("ui.Expedition.321")}</span> : null}
+            {anomaly.loot.length > 0 ? ` + ${lootText}` : ''}{tr('ui.Expedition.368')}{anomaly.standingGain}
+          </>
+        )}
         {bountyCleared ? <span className="app-dim" title={tr("ui.Expedition.274")}>{tr("ui.Expedition.322")}</span> : null}
       </div>
-      <div
-        className="app-ano-econ"
-        title={tr("ui.Expedition.039", { p1: grossIsk.toLocaleString('zh-CN'), p2: formatDurationMs(roundTripMs) })}
-      >
-        {MONEY_GLYPH} {tr("ui.Expedition.040")}{iskPerHourTxt} {tr("ui.Expedition.041")}
-      </div>
+      {/* 入侵场次没有即时赏金 ⇒ "估算奖励/小时"整条不显示（免得拿 0 去估一个数出来） */}
+      {invadedHere ? null : (
+        <div
+          className="app-ano-econ"
+          title={tr("ui.Expedition.039", { p1: grossIsk.toLocaleString('zh-CN'), p2: formatDurationMs(roundTripMs) })}
+        >
+          {MONEY_GLYPH} {tr("ui.Expedition.040")}{iskPerHourTxt} {tr("ui.Expedition.041")}
+        </div>
+      )}
       <div className="app-ano-bottom">
         <span className="app-ano-desc">
           {unexplored ? tr("ui.Expedition.275") : anomaly.description}

@@ -5895,8 +5895,25 @@ export function advanceBattleFor(
   }
   const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
   const foes = foesForDebuff
-  const foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
-  const openM = battleOpenM(me, foes, bal)
+  /**
+   * **本波敌方的期望距离与钳制上界**（`let`：**换波时按新一波重算**）。
+   *
+   * 船长 2026-09-25 报障：「**敌人切换波次后，敌人的期望距离不会刷新。**」
+   * 原先这两个值在进循环前按**首波**算一次就定死；多波卡里各波的战术 / 射程带 / 钉住距离可以完全不同
+   * （例：第 1 波近战压近、第 2 波远程拉开）⇒ 第二波起敌人仍按**上一波**的期望距离机动（该压近的不压、
+   * 该拉开的不拉），与界面读数也不一致——视图侧（`battleView`）本来就是**逐波**取
+   * `activeFoeSpecsOf(anomaly, bal, battle.waveIdx)` 现算 `foeDesireM` 的。
+   *
+   * 口径（与视图同一把尺）：
+   * - `foeDesire` = `foeDesiredRange(本波敌阵)`（含我方电子舰削减、含条目/舰级的 `desireRangeM` 钉值）；
+   * - `desireCapM` = `battleOpenM(me, 本波敌阵)` —— 即「**这一波若单独开战，开战距离在哪**」，
+   *   与视图 `Math.min(openM, foeDesiredRange(...))` 的钳制上界同源；
+   * - ⚠ **单波场次逐字等于旧行为**（同一份敌阵、同一算式，只算一次）；`openM`（**本场**开战距离）
+   *   仍按首波算，只服务转场回拉与增援补入，不受本改动影响。
+   */
+  let foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
+  let desireCapM = battleOpenM(me, foes, bal)
+  const openM = desireCapM
   const favor =
     favorAdv === null
       ? null
@@ -5958,6 +5975,12 @@ export function advanceBattleFor(
       waveIdx += 1
       battle.waveIdx = waveIdx
       curFoes = specsOf(waveIdx)
+      /**
+       * **换波 ⇒ 期望距离与钳制上界随新一波刷新**（船长 2026-09-25 报障；口径详见上面 `foeDesire` 的注释）。
+       * 位置在 `curFoes` 换新之后、`seedUnit` 之前 —— 本拍之内新一波就已按自己的期望距离机动。
+       */
+      foeDesire = foeDesiredRange(me, curFoes, bal, battle.meFoeRangeDebuff ?? 0)
+      desireCapM = battleOpenM(me, curFoes, bal)
       // 增援入场装填（转场窗口）+ **入场窗口**（船长 2026-09-14「动画没结束不开火」）：
       // 逐舰错峰写进 `enteredAtMs`，与界面 `--arrive-delay` 同一算式 ⇒ 动画演完才可被选中。
       // ⚠⚠ **入场时刻取 `state.gameMs`（全局时钟 / 本帧结束时的推进目标），绝不能取 `battle.lastTickGameMs`**
@@ -6022,7 +6045,8 @@ export function advanceBattleFor(
       myUnits,
       curFoes,
       foeDesire,
-      openM,
+      // **钳制上界取"本波"的开战距离**（`desireCapM`；单波场次 = 上面的 `openM`，逐字不变）
+      desireCapM,
       bal,
       dt,
       favor,
@@ -7076,6 +7100,10 @@ function stepBattle(
   myUnits: readonly UnitSpec[],
   foes: UnitSpec[],
   foeDesire: number,
+  /**
+   * **敌方期望距离的钳制上界**（米）。传的是**本波**的开战距离（`advanceBattleFor` 的 `desireCapM`，
+   * 换波即刷新）——原语义 = 本场开战距离；单波场次二者逐字同值。
+   */
   openM: number,
   bal: BattleBalance,
   dtMs: number,

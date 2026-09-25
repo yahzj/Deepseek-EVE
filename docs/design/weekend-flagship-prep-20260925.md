@@ -216,3 +216,37 @@ typecheck ✓ · core **2,356 例全绿** · content:check ✓ · l10n:check ✓
 **验证**：`weekend-wiring` 增 2 例（**17 例**）——⑯ 六次出发覆盖两种编成 · 价钱恒 = 原卡 ×1.4 · 计数随档 · 非占领区与已结束都不抽；⑰ `foeGalaxyId` 与 `rewardIskOverride` **随档往返**。
 typecheck ✓ · core **2,362 例全绿**（209 文件）· content:check ✓ · l10n:check ✓ · build ✓ · **`save:migrate` 84/84 真档** ✓ · docs:index ✓（321 份）。
 ⚠ **板面口径**：星图/板面仍显示"驻留的那一支"（名字与威胁），实战可能是另一支 —— 但星系详细里那行（第十四节 ⑤）只写「击退入侵舰队 ＋ 威胁范围」⇒ 玩家看不到具体编成，**不一致不外露**。
+## 十七、入侵经济改版：无赏金 · 独立残骸池 · 按进度结算（2026-09-25 船长令）
+
+> 船长原话：「**入侵舰队不应该有赏金**，而且**添加的残骸是原星系的残骸密度，需要独立的残骸条**
+> （**入侵残骸没有星系的残骸保底，因为随时间消减到最后会消失**），因为**击败入侵舰队就能获取进度，
+> 在结算时候直接按进度获取收入**。还发现一个BUG，**敌人切换波次后，敌人的期望距离不会刷新**。」
+> ＋四答：「**每 1% 固定 20 万 ISK（与星系无关）**」「**按照击败卡的威胁注入**」
+> 「**入侵残骸不算当地星系密度，因为是独立的。48 小时线性衰减**」「**打捞界面置顶**」
+> 「**赏金：结算时按进度发放**」。
+
+| # | 落法 |
+|---|---|
+| ① **BUG · 换波刷新期望距离** | `combat.advanceBattleFor` 原先在进循环**之前**按**首波**算一次 `foeDesiredRange`/`battleOpenM` 就定死（换波只换编队）⇒ 第 2 波起敌人仍按上一波的期望距离机动。现改为**按当前波重算**（`foeDesire` 与钳制上界 `desireCapM` 同刷；单波场次逐字不变）。**先确认无修复时新用例红**（距离被钉在 1,515m），修复后 `weekend-wiring`/`wave-battle` 均绿 |
+| ② **无赏金** | 远征结算 `baseRewardIskRaw`：入侵场次直接走 **0 分支**（判据 = `weekendBattleInvolvedOf`）；遭遇战 `lootOf` 对入侵遭遇恒 0；派生卡/独立卡的 `rewardIsk` 一律 **0**（原"原卡 ×1.4"退役，`rewardIskOverride` 落盘链保留不删）。卡面与星系详细改显「**赏金：结算时按进度发放**」（`ui.weekend.096`；入侵卡不再显示"估算奖励/小时"） |
+| ③ **进度收入** | 新常量 **`WEEKEND_PROGRESS_ISK_PER_PCT = 200_000`** ＋ `weekendProgressIncomeIsk(ev)` = **玩家投入进度 × 100 × 单价**（`ev.contributed` 台账；**NPC 铺底不计**）。⇒ 外围一场 +10% = **200 万** · 核心 +5% = **100 万** · 击退 +3% = **60 万** · 离线 +1% = **20 万** · 打满一处 = **2,000 万**。**与贡献四档奖、夺回奖励一起在活动结束时发**（`weekendSettleAndGrant`；幂等键不变），返回值新增 `progressIsk`，战果快照新增 `progressPct`/`progressIsk`（面板单列一格「进度收入」，随档清洗器同补） |
+| ④ **独立残骸池** | 新字段 **`state.weekendWrecks`（星系 → `{density, decayAccMs}`）**：注入量 = **击败卡的威胁公式**（`weekendWreckInjectionOf`，主动/旗舰 ×1、遇袭 ×`WRECK_ENCOUNTER_INJECT_FRAC`(0.5)）；**不进 `wreckDensityOf`**（两池互不相加）；**无保底、只减不增**，**48h *真线性*衰减到 0 即删记录**（锚点 + 已漂移时长 ⇒ 与推进粒度无关；再注入即重新起算 48h）；打捞进行中挂起；活动结束不清空（自然衰减） |
+| ⑤ **打捞合并计量、先扣入侵池** | `salvageRoundPull`：体积当量 mul 按（星系密度 ＋ 入侵残骸）算；扣减**先按 2% 放干入侵池**（可扣到 0），再按老口径扣星系池（保底线 10 不动）；`advanceWreckDrift` 每拍同带一遍入侵池衰减（唯一调用点） |
+| ⑥ **残骸条置顶** | 星图「残骸打捞」卡片与星系详细**各加一行「入侵残骸 N」＋细进度条**（复用 `.app-card-progress`，配色换深红 token `--wui-danger-deep/strong`），位置在「残骸密度」那一行**之前**、**仅 >0 时渲染**；条长 = 入侵残骸占（星系密度 ＋ 入侵残骸）的比例（悬停说明写清"独立残骸场：无保底，48 小时衰减到消失"） |
+
+## 十八、船长三条（2026-09-25 · 准备界面收藏 / 旗舰战进战场 / 入侵期间关派系活跃）
+
+> 船长原话：「**开战准备界面没有收藏舰船置顶**，**旗舰战无法进入战斗画面**（可能是调试模式的问题？）。
+> **建议当出现入侵时，关闭敌方势力活跃**。」
+
+| # | 落法 |
+|---|---|
+| ① **收藏舰船置顶** | `WeekendFlagshipPrep.tsx` 的候选列表过 `pinMarked(state, 'ships', …)`（与虫洞准备页/舰队页逐字同款：只把已标记的插到最前、组内保持机库序）⇒ 只管**显示顺序**，默认勾选与开战编队不动 |
+| ② **旗舰战进战斗画面** | 病根：旗舰战是**编队战**、承载在**遭遇槽**（`state.encounter.battle`）——**既不占 `expedition` 也不进虫洞**，而界面"在不在打"的判据只认那两个宿主 ⇒ 战斗屏不挂载、不自动上屏、心跳不切 100ms、公告照弹（战斗在后台照常打完）。修法：core 新增**第三宿主的唯一解析口**（`weekendLaunch.weekendFlagshipBattleActive` / `weekendFlagshipBattleViewOf`，形状对齐 `wormholeBattleViewOf`）＋ 判据单点 `weekendBattle.weekendFlagshipEncounterOf`；`battleFoeAnomaly` 补第三分支；`App.inBattle`、`BattleScreen`（三口径解析）、引擎四处（心跳变速/性能分桶/胜率预热让路/100ms 实时切片，收口为 `inLiveBattle`）、`ShipStatusWin.sceneOfShipwin`、`Announcements` 全部接上；`content:check`「战斗宿主双口径契约」扩成**三宿主**（防日后被简化掉） |
+| ③ **旗舰战能撤退** | 洞外遭遇此前只有"开打前快速脱离"与"结构过半自动脱离" ⇒ 战场那枚「⚴ 撤退」会报错。新增 `encounters.retreatEncounterBattle`（= 自动脱离那一套结算：退弹药/修理组件、逐舰落盘承伤、**照记对母舰的伤害**、无缴获无额外扣损；措辞为「主动脱离」且不记"因袭击自动撤离"那笔账），引擎 `retreatNow` 按宿主分流 |
+| ④ **顺带修：编队战收场只结算主控** | 遭遇结算原先 `settleDroneLosses`/`persistFleetHullDamage` 只处理 `enc.shipId` ⇒ 旗舰战里僚舰的承伤与机群战损全漏（洞内那条路是逐舰的）。现按 `battle.myFleet` **逐舰**结算（单船场次逐字不变） |
+| ⑤ **入侵期间关闭派系活跃** | 新判据 `sideTasks.factionSuppressedByInvasion(state)`（活动存在且未结束）= **整体停摆**：`factionGalaxyId` 恒 `null`（星图 ✦ 标记/方框、悬赏 ×1.1 加成、稀有残骸掷骰与保底计数一起静默）、任务中心置顶那条不上屏；**活动结束自动恢复**（板上条目一直在滚，不重抽）。另按设计稿补上「**被占星系从当日派系活跃候选里让位**」（`factionPoolOf` 排除占领名单） |
+
+**验证**：新增 `weekend-wreck-pool-20260925.test.ts`（10 例：注入量与半量 · 两池不相加 · 48h 真线性到 0 与再注入重算 · 打捞中挂起 · 先扣入侵池/见底删记录/星系池保底不动 · 随档往返与脏档清洗 · 入侵遭遇无赏金且残骸进独立池 · 普通遭遇老口径不变）·
+`wave-battle` 增 2 例（换波刷新期望距离，含"无修复即红"的反证）·
+`weekend-wiring` 增 3 例（⑱ 第三宿主判据/视图/敌卡解析 · ⑲ 旗舰战主动脱离 · ⑳ 入侵期间派系活跃停摆与结束恢复）并把 ④⑤⑪⑫ 的金额改成"贡献奖 ＋ 夺回 ＋ **进度收入**"两层口径；`weekend-bounty` 两处"原卡 ×1.4"改判为 0；`weekend-wiring`/`weekend-bounty`/`weekend-event` 全绿。

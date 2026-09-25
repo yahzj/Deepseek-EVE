@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { ANNOUNCEMENTS } from '@whale/data'
+import { weekendFlagshipBattleActive } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 
@@ -55,7 +56,8 @@ export function AnnouncementHub({
     if (s.onboarding.step === 0) return
     // ⚠ 2026-09-14 修：洞内战斗宿主在 `state.wormhole.run.battle`（不占 `expedition.battle`）——
     //   原先只挡远征 ⇒ 洞里鏖战时公告照样弹出来挡住战场。
-    if (s.expedition.battle || s.wormhole.run?.battle) return
+    // ⚠ 2026-09-25 同款补第三个宿主（入侵旗舰战 · 承载在遭遇槽）——判据走 core 单点。
+    if (s.expedition.battle || s.wormhole.run?.battle || weekendFlagshipBattleActive(s)) return
     autoShownRef.current = true
     setOpen(true)
     onOpen?.()

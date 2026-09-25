@@ -807,6 +807,31 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
 /* ── 敌对派系活跃（2026-09-10 船长定：每天一个中安/低安星系，只作用于该星系的常驻悬赏） ── */
 
 /**
+ * **入侵进行中 ⇒ 敌对派系活跃整体停摆**（**船长 2026-09-25 令：「建议当出现入侵时，关闭敌方势力活跃。」**）。
+ *
+ * 判据 = `state.weekendEvent` 存在且**尚未落定结束时刻**（`endedAtWallMs === undefined`）——
+ * 与"占领区还算不算被占"同一把尺（`weekendOccupiedLiveAt` 用的也是这一条）；活动结束（结算那一刻起）
+ * **自动恢复**：当天那条派系活跃照旧在板（板上条目一直在滚，只是这期间不生效）。
+ *
+ * 停摆面（`factionGalaxyId` / 任务中心视图两处收口 ⇒ 全部下游一起静默）：
+ * 星图 ✦ 标记与方框、任务中心置顶那条派系活跃卡、悬赏卡的 ×1.1 奖金/威胁、稀有残骸掷骰与保底计数。
+ *
+ * ⚠ 为什么读 `state.weekendEvent` 而不 import `weekendEvent`：那个模块 import 本模块的
+ * `securityZoneOf`（依赖方向既定）⇒ 反向 import 会成环；这里只读状态字段，零依赖。
+ */
+export function factionSuppressedByInvasion(state: GameState): boolean {
+  const ev = state.weekendEvent
+  return ev !== undefined && ev.endedAtWallMs === undefined
+}
+
+/** 该星系是不是**活的占领区**（入侵活动进行中且该星系在占领名单里）——派系活跃候选要给它让位 */
+function occupiedByInvasion(state: GameState, galaxyId: string): boolean {
+  const ev = state.weekendEvent
+  if (ev === undefined || ev.endedAtWallMs !== undefined) return false
+  return galaxyId === ev.coreId || ev.peripheryIds.includes(galaxyId)
+}
+
+/**
  * 派系活跃候选池（每星系一席 = 代表卡）：
  * - 条件 = **窝点候选**（`isLairCandidate`：有核心词 + 非隐藏 + 奖金 > 0 + **非 B 族**）+ **已探索** + **非高安**；
  * - **2026-09-11 船长追加裁决「B 族（武装拾荒者）没有窝点，排除出赏金范围」** ⇒ 本池由 `hasLairCore`
@@ -816,6 +841,8 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
  *   口径 = **已建成**（`isGalaxyStationBuilt`）才排除，在建/未开工的工地仍可当选；
  *   抽取只在日板刷新时发生 ⇒ **次日起生效**（当日已抽中的不动）；
  *   候选为空（例如候选星系全已建站）= 当日不发派系活跃（`spawnFactionActivity` 里 return）。
+ * - **2026-09-25 加：被入侵的星系让位**（设计稿 `weekend-invasion.md` 既有条目「被占星系从当日派系活跃
+ *   候选里让位（避免"既被入侵又是活跃星系"两套叠加）」）⇒ 入侵进行中，占领名单里的星系不进池。
  */
 export function factionPoolOf(state: GameState, ctx: SimContext): AnomalyDef[] {
   const byGalaxy = new Map<string, AnomalyDef[]>()
@@ -825,6 +852,7 @@ export function factionPoolOf(state: GameState, ctx: SimContext): AnomalyDef[] {
     if (!state.exploredGalaxies.includes(a.galaxyId)) continue
     if (securityZoneOf(ctx, a.galaxyId) === '高安') continue
     if (isGalaxyStationBuilt(state, ctx, a.galaxyId)) continue
+    if (occupiedByInvasion(state, a.galaxyId)) continue
     const arr = byGalaxy.get(a.galaxyId) ?? []
     arr.push(a)
     byGalaxy.set(a.galaxyId, arr)
@@ -867,8 +895,13 @@ function spawnFactionActivity(state: GameState, ctx: SimContext): void {
   }
 }
 
-/** 当日派系活跃目标星系（null = 今日无/未开板）——战斗与界面共用同一个判定口 */
+/**
+ * 当日派系活跃目标星系（null = 今日无/未开板）——战斗与界面共用同一个判定口。
+ * **2026-09-25**：入侵进行中恒返回 `null`（见 `factionSuppressedByInvasion`）⇒ 星图标记、行动窗行、
+ * 悬赏加成、稀有残骸掷骰一起停摆；活动结束自动恢复（板上那条一直在滚，不需重抽）。
+ */
 export function factionGalaxyId(state: GameState): string | null {
+  if (factionSuppressedByInvasion(state)) return null
   const f = state.sideTasks.faction
   return f && f.galaxyId ? f.galaxyId : null
 }
@@ -972,7 +1005,8 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
     courier: board.courier,
     accepted: board.accepted ?? [],
     bounty: board.bounty,
-    faction: board.faction ?? null,
+    // **入侵期间不显示**（船长 2026-09-25；判据与 `factionGalaxyId` 同源）——板上条目照旧在滚，只是不上屏
+    faction: factionSuppressedByInvasion(state) ? null : (board.faction ?? null),
     courierUnlocked: courierTaskUnlocked(state, ctx),
     deliver: d
       ? {

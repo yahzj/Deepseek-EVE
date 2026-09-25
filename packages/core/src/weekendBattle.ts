@@ -29,7 +29,9 @@ import {
   weekendNoteFlagshipDamage,
   weekendNoteFlagshipKilled,
   weekendOccupiedIds,
+  weekendPlayerContribution,
   weekendProgressAt,
+  weekendProgressIncomeIsk,
   weekendContributionShareAt,
   weekendContributionTier,
   weekendFoeCardOf,
@@ -273,11 +275,19 @@ export interface WeekendSettlePlan {
   tier: 'A' | 'B' | 'C' | 'D' | 'none'
   wreck: number
   isk: number
+  /**
+   * **进度收入**（2026-09-25 船长令「在结算时候直接按进度获取收入」；单价 20 万/1%，
+   * 只结玩家投入那一份 —— 见 `weekendEvent.WEEKEND_PROGRESS_ISK_PER_PCT`）。
+   * 与贡献四档奖**并列**、一起在结束那一刻发放。
+   */
+  progressIsk: number
+  /** 玩家参与度（玩家投入合计 ÷ 该场"打满一处"的进度量）*/
+  progressPct: number
   /** 玩家是否击毁了旗舰（⇒ 黑匣归玩家；章鱼人得手 ⇒ 黑匣归零） */
   blackBoxToPlayer: boolean
 }
 
-/** 结束结算：按贡献占比发奖（Q5 四档）；黑匣只在"玩家击毁"时给 */
+/** 结束结算：按贡献占比发奖（Q5 四档）＋ 进度收入；黑匣只在"玩家击毁"时给 */
 export function weekendSettlePlanOf(
   state: Pick<GameState, 'debugQuick'>,
   ev: WeekendEventState,
@@ -290,6 +300,8 @@ export function weekendSettlePlanOf(
     tier: tier.tier,
     wreck: tier.wreck,
     isk: tier.isk,
+    progressIsk: weekendProgressIncomeIsk(ev),
+    progressPct: weekendPlayerContribution(ev),
     blackBoxToPlayer: ev.flagshipDown === 'player',
   }
 }
@@ -302,6 +314,8 @@ export interface WeekendSettleGrant {
   /** 实发（已入账）数量 */
   isk: number
   wreck: number
+  /** 其中属于**进度收入**的那一部分（2026-09-25；面板/汇报要能分开说） */
+  progressIsk: number
 }
 
 /**
@@ -373,6 +387,9 @@ export function weekendResultSnapshotOf(
     tier: plan.tier,
     galaxies,
     ...(flagship !== undefined ? { flagship } : {}),
+    // **进度收入**（2026-09-25）：读数与实发同源（同一对纯函数）⇒ 面板上的数与到账的数一致
+    progressPct: weekendPlayerContribution(ev),
+    progressIsk: plan.progressIsk,
     isk: led.isk,
     wreck: led.wreck,
     blackBox: led.blackBox,
@@ -414,17 +431,21 @@ export function weekendSettleAndGrant(
    * 否则总数会被算两遍；`reclaimPending` 发完清零。
    */
   const pending = ev.reclaimPending ?? { isk: 0, wreck: 0 }
+  /**
+   * **这一笔发三样**：贡献四档奖（`plan`）＋ 待到账的夺回奖励（`pending`）＋ **进度收入**（`plan.progressIsk`，
+   * 船长 2026-09-25「按进度获取收入」）。
+   */
   const granted = weekendGrantRewards(state, {
-    isk: plan.isk + pending.isk,
+    isk: plan.isk + pending.isk + plan.progressIsk,
     wreck: plan.wreck + pending.wreck,
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
   })
   ev.prizePaidAtWallMs = nowWallMs
   ev.reclaimPending = { isk: 0, wreck: 0 }
-  /** 贡献奖入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它；下一场开局会把 ev 整条换掉） */
-  noteReward(ev, undefined, { isk: plan.isk, wreck: plan.wreck })
+  /** 贡献奖与进度收入入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它） */
+  noteReward(ev, undefined, { isk: plan.isk + plan.progressIsk, wreck: plan.wreck })
   state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)
-  return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck }
+  return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck, progressIsk: plan.progressIsk }
 }
 
 /* ─────────────── 奖励入账（M1-b 第五片） ─────────────── */
@@ -472,6 +493,27 @@ export function weekendGrantRewards(
 }
 
 /* ─────────────── 战斗结束 → 入侵结算（M1-b 第六片） ─────────────── */
+
+/**
+ * **这一场遭遇是不是"旗舰挑战"**（遭遇槽里挂的正是该族**旗舰卡**、且星系 = 本场核心）——
+ * **唯一判据点**：遭遇系统的归属提示（`weekendKindOfEncounter`）与战斗界面的宿主解析
+ * （`weekendLaunch.weekendFlagshipBattleViewOf`）都读它，免得两处各写一份判据。
+ *
+ * ⚠ 判据**不含**"活动是否已结束"：入侵结束那一刻若玩家正打得兴起，这一场照常打完
+ * （战斗界面也得继续认它，否则会变成一场"看不见的战斗"）。
+ */
+export function weekendFlagshipEncounterOf(
+  state: Pick<GameState, 'weekendEvent' | 'encounter'>,
+  enc: Pick<GameState['encounter'], 'galaxyId' | 'anomalyId'>,
+): boolean {
+  const ev = state.weekendEvent
+  if (!ev) return false
+  return (
+    enc.galaxyId === ev.coreId &&
+    enc.anomalyId !== null &&
+    enc.anomalyId === weekendFoeCardOf(ev.family, 'flagship')
+  )
+}
 
 /**
  * **这一场战斗属于入侵吗**（引擎战后调一次即可，不用自己判断占领区）：

@@ -49,7 +49,8 @@ describe('周末入侵 · 悬赏替换（M1-b）', () => {
     expect(d.name).toContain('C 族舰队')
     expect(d.name).toContain(card.name)
     expect(d.threat).toBe(78)
-    expect(d.rewardIsk).toBe(Math.round(card.rewardIsk * WEEKEND_BOUNTY_REWARD_MUL))
+    // **赏金 = 0**（船长 2026-09-25：「入侵舰队不应该有赏金」；原口径"原卡 ×1.4"已退役）
+    expect(d.rewardIsk).toBe(0)
     expect(d.galaxyId, '其余字段原样').toBe(card.galaxyId)
     expect(d.standingReq).toBe(card.standingReq)
   })
@@ -71,7 +72,7 @@ describe('周末入侵 · 悬赏替换（M1-b）', () => {
     expect(weekendBountyCardsOf(s, ctx, [perCard], perId, T)[0]).toBe(perCard)
   })
 
-  it('**H 族（独立卡）：悬赏位换成"抽到的那支舰队"**（真实 id · 覆写星系/名字/奖励 · 威胁 = 卡面自身）', () => {
+  it('**H 族（独立卡）：悬赏位换成"抽到的那支舰队"**（真实 id · 覆写星系/名字 · 威胁 = 卡面自身 · 无赏金）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 11 })
     s.debugQuick = true
     const ev: WeekendEventState = {
@@ -91,7 +92,7 @@ describe('周末入侵 · 悬赏替换（M1-b）', () => {
     expect(out[0]!.threat, '威胁 = 卡面自身（定价式落值）').toBe(drawn.threat)
     expect(out[0]!.galaxyId, 'galaxyId 覆写成被占星系（独立卡自带母港）').toBe('galaxy-home')
     expect(out[0]!.name).toContain('H 族舰队')
-    expect(out[0]!.rewardIsk, '奖励 = 该星系原卡 ×1.4').toBe(Math.round(card.rewardIsk * WEEKEND_BOUNTY_REWARD_MUL))
+    expect(out[0]!.rewardIsk, '无赏金（船长 2026-09-25；收入改在结算时按进度发）').toBe(0)
     // 同一场入侵内**稳定**（板面不会每次刷新换卡）
     expect(weekendBountyCardsOf(s, ctx, [perCard], 'galaxy-home', T)[0]!.id).toBe(out[0]!.id)
     // 核心池 = {袭击, 主力}

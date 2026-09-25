@@ -1066,6 +1066,36 @@ html[data-locale='en'] body {
 
 }
 
+/* ---------- 入侵残骸（独立残骸条，2026-09-25 船长令：需要独立的残骸条 · 打捞界面置顶） ----------
+ * 星图「残骸打捞」卡片与星系详细的打捞区块共用这一条：文字读数 + 细进度条
+ * （条复用同卡既有的 `.app-card-progress`，只换配色为入侵深红）；
+ * **只有入侵残骸 > 0 时才渲染**（记录衰减到 0 即消失 ⇒ 这一条也随之消失）。 */
+.app-belt-invwreck {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-4);
+
+  margin-bottom: var(--wui-sp-4);
+
+}
+
+.app-belt-invwreck-label {
+
+  font-size: var(--wui-fs-xs);
+
+  color: rgb(var(--wui-danger-map));
+
+}
+
+.app-card-progress.is-invasion i {
+
+  background: linear-gradient(90deg, rgb(var(--wui-danger-deep)), rgb(var(--wui-danger-strong)));
+
+}
+
 /* 效率行（试点 2026-09-05：每循环产量/时长/每小时产出 + 估价——估价按物品本身，不随市场） */
 
 .app-belt-econ {

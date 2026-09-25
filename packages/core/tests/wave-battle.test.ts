@@ -5,10 +5,10 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
-import type { SimContext } from '../src/types'
+import type { AnomalyDef, FoeShipDef, SimContext } from '../src/types'
 import { startBattleFor, advanceBattleFor, createFoeSpecs } from '../src/combat'
 import { DEFAULT_BALANCE } from '../src/balance'
-import { anomaly, makeTestCtx } from './helpers'
+import { anomaly, makeTestCtx, ship } from './helpers'
 
 function world(waves: { units: number; hpShare: number }[] | undefined) {
   // 2026-09-11 敌方远端衰减 0.3 → 0.5（敌人远距离更准）后，裸初始船（沙猫，无武器）扛不住威胁 10 的
@@ -123,6 +123,111 @@ describe('多波次战斗（2026-09-09）', () => {
     expect(battle.waveClearAt).toBeUndefined()
     expect(battle.units['w1-foe-0']).toBeDefined()
     expect(state.logs.some((l) => l.text.includes('第 2/2 波来袭'))).toBe(true)
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * **换波刷新敌方期望距离**（船长 2026-09-25 报障：「敌人切换波次后，敌人的期望距离不会刷新」）
+ *
+ * 病根：`advanceBattleFor` 原先在进循环**之前**按首波算一次 `foeDesiredRange` / `battleOpenM` 就定死，
+ * 换波只换了 `curFoes`（编队），期望距离没跟着换 ⇒ 第 2 波起敌人仍按**上一波**的期望距离机动
+ * （该压近的不压、该拉开的不拉），与界面 `battleView` 的逐波读数也不一致。
+ *
+ * 用例构造（两波编成截然相反，方向靠"距离往哪边走"直接读出来）：
+ * - 我方：**几乎不动**（速度 1 m/s）＋ 厚血 ⇒ 距离变化只由敌舰驱动（排除双方拔河的噪声）；
+ * - 第 1 波 = 近战舰（钉死期望 1,500m）；第 2 波 = 远程舰（钉死期望 11,000m）；
+ * - 白盒把第 1 波打成尸体 → 下一拍转场（`waveEnterGapMs = 0` 跳过演出窗口）→ 再推 60 秒。
+ *
+ * 断言：转场后距离**朝第 2 波自己的期望距离（11,000）走**（大涨）；若沿用旧值（1,500）则只会继续贴近。
+ * ══════════════════════════════════════════════════════════════════════════ */
+describe('换波刷新敌方期望距离（2026-09-25 船长报障）', () => {
+  const CARD = 'ano-wave-desire'
+
+  /** 近战舰：钉死 1,500m（第 1 波） */
+  const CLOSE_FOE: FoeShipDef = {
+    id: 't-wave-close',
+    name: '测试近战舰',
+    family: 'A',
+    hullClassTier: 2,
+    speedRatio: 1,
+    hp: 200,
+    split: { s: 0.2, a: 0.55, h: 0.25 },
+    shotDmg: 5,
+    hitRate: 0.9,
+    reloadMs: 4000,
+    rangeMinM: 1,
+    rangeMaxM: 2600,
+    falloff: 0.3,
+    dmgMix: { kinetic: 8, explosive: 2 },
+    tactic: 'brawl',
+    desireRangeM: 1500,
+  }
+
+  /** 远程舰：钉死 11,000m（第 2 波）——与第 1 波**方向相反**，沿用旧值就会一眼看出来 */
+  const FAR_FOE: FoeShipDef = {
+    ...CLOSE_FOE,
+    id: 't-wave-far',
+    name: '测试远程舰',
+    hullClassTier: 2,
+    speedRatio: 1.4,
+    tactic: 'kite',
+    rangeMinM: 1000,
+    rangeMaxM: 12_000,
+    desireRangeM: 11_000,
+  }
+
+  function world(): { state: GameState; ctx: SimContext; battle: NonNullable<ReturnType<typeof startBattleFor>> } {
+    const ctx: SimContext = makeTestCtx({
+      quietEvents: true,
+      // 我方：几乎不动（1 m/s）＋ 厚血 ⇒ 距离只由敌舰意图驱动
+      ships: [ship('wave-bed', { maxSpeedMps: 1, shieldHp: 60_000, armorHp: 60_000, hullHp: 60_000 })],
+      balance: {
+        ...DEFAULT_BALANCE,
+        battle: { ...DEFAULT_BALANCE.battle, waveEnterGapMs: 0 },
+      },
+      anomalies: [
+        {
+          ...anomaly(CARD, 'galaxy-hub', { threat: 20, tactic: 'brawl' }),
+          ships: [
+            { ship: CLOSE_FOE, wave: 0, count: 1 },
+            { ship: FAR_FOE, wave: 1, count: 1 },
+          ],
+          waves: [
+            { units: 1, hpShare: 1 },
+            { units: 1, hpShare: 1 },
+          ],
+        },
+      ],
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    // 我方期望 8,000m（速度 1 m/s ⇒ 基本不挪窝，只为把"我方意图"固定成常量）
+    const battle = startBattleFor(state, ctx, state.shipId, CARD, 0, 8000)!
+    battle.distanceM = 6000 // 白盒：起点摆在两波期望之间
+    return { state, ctx, battle }
+  }
+
+  it('第 2 波（远程 11 km）接战后期望距离换成它自己的：距离被拉开，而不是继续贴近', () => {
+    const { state, ctx, battle } = world()
+    battle.units['foe-0']!.hp = { s: 0, a: 0, h: 0 } // 第 1 波清空 → 下一拍转场
+    state.gameMs = 60_000
+    advanceBattleFor(state, ctx, battle, state.shipId, CARD)
+    expect(battle.waveIdx).toBe(1)
+    expect(battle.units['w1-foe-0']).toBeDefined()
+    // 第 2 波期望 11,000m ⇒ 60 秒足够走到位；沿用旧值（1,500）则只会掉到 6,000 以下
+    expect(battle.distanceM).toBeGreaterThan(9_000)
+  })
+
+  it('单波场次零变化：无 waves 的卡仍是"开战算一次"（距离朝该卡期望走）', () => {
+    const { state, ctx } = world()
+    const solo: AnomalyDef = { ...ctx.anomalies.get(CARD)!, id: 'ano-wave-desire-solo', waves: undefined }
+    const ctx2: SimContext = { ...ctx, anomalies: new Map([...ctx.anomalies, [solo.id, solo]]) }
+    const battle = startBattleFor(state, ctx2, state.shipId, solo.id, 0, 8000)!
+    battle.distanceM = 6000
+    state.gameMs = 60_000
+    advanceBattleFor(state, ctx2, battle, state.shipId, solo.id)
+    // 单波卡 = 只有第 1 波（近战期望 1,500m）⇒ 距离被压近
+    expect(battle.waveIdx ?? 0).toBe(0)
+    expect(battle.distanceM).toBeLessThan(4_000)
   })
 })
 

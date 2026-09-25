@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairKitAvailableOf, repairLedgersOf, thrusterPhase, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairKitAvailableOf, repairLedgersOf, thrusterPhase, weekendFlagshipBattleViewOf, wormholeBattleViewOf } from '@whale/core'
 import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -219,10 +219,17 @@ export function BattleScreen({
   const state = engine.state
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
   const whView = wormholeBattleViewOf(state, engine.ctx)
+  /**
+   * **旗舰战视图**（2026-09-25 加 · 船长报障「旗舰战无法进入战斗画面」）：
+   * 编队战承载在遭遇槽 ⇒ 与洞内同款的"第三个宿主"，形状对齐后一并走下面这套渲染。
+   * 三口径优先级：洞内（专有规则：不给撤退 / 有倍速）→ 旗舰战 → 远征。
+   */
+  const wkView = weekendFlagshipBattleViewOf(state, engine.ctx)
+  const host = whView ?? wkView
   const view = expeditionStatus(state, engine.ctx)
-  const combatView = view.combat ?? whView?.combat ?? null
-  const sceneName = view.combat ? view.anomalyName : (whView?.name ?? '')
-  /** 本场是不是洞内战斗（洞内**不能中途撤退**——船长第 8 条） */
+  const combatView = view.combat ?? host?.combat ?? null
+  const sceneName = view.combat ? view.anomalyName : (host?.name ?? '')
+  /** 本场是不是洞内战斗（洞内**不能中途撤退**——船长第 8 条）；旗舰战**可以**撤退（照记母舰伤害） */
   const inWormhole = !!whView && !!combatView
   /**
    * **洞内倍速控件**（2026-09-19 谜质科技「时间压缩矩阵」·解挂 `battle-speed-20260919.md`）：
@@ -235,9 +242,14 @@ export function BattleScreen({
   const arcs = battleArcsFor(
     state,
     engine.ctx,
-    whView ? { battle: whView.battle, anomaly: whView.anomaly, leaderShipId: whView.leaderShipId } : null,
+    // 三口径：洞内 / 旗舰战各带自己的宿主上下文；都没有 ⇒ 远征（`null` = 旧口径，逐字不变）
+    host ? { battle: host.battle, anomaly: host.anomaly, leaderShipId: host.leaderShipId } : null,
   )
-  const battle = whView ? whView.battle : state.expedition.battle
+  /**
+   * ⚠ `expedition.battle` 只此一处（content-check「战斗宿主双口径契约」会扫）：三口径解析写在同一行，
+   * 且**必须带 `whView`**（洞内优先）——旗舰战（`wkView`）与远征各自兜后。
+   */
+  const battle = whView ? whView.battle : wkView ? wkView.battle : state.expedition.battle
   /**
    * 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——与引擎同源。
    * **2026-09-14 起周期逐单位**（微型跃迁引擎 = 10 秒点火）：这一格显示**我方首舰（主控/读数锚）**的周期

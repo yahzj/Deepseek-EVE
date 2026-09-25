@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ShipRole } from '@whale/core'
-import { fleetDefOf } from '@whale/core'
+import { fleetDefOf, weekendFlagshipBattleActive } from '@whale/core'
 import type { GameState } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite } from './ShipSprite'
@@ -69,6 +69,12 @@ export type ShipwinScene =
 export function sceneOfShipwin(state: GameState): ShipwinScene {
   const b = state.expedition.battle
   if (state.wormhole.run?.battle) return 'combat'
+  /**
+   * ⚠ **2026-09-25 补第三个战斗宿主：入侵旗舰战**（编队战 · 承载在遭遇槽）——
+   * 原先只认远征与虫洞 ⇒ 旗舰战打起来时状态窗不切"交火"场景（背景/远景物件全是别的场景），
+   * 与洞内那次（2026-09-14）同一个病根。判据走 core 单点。
+   */
+  if (weekendFlagshipBattleActive(state)) return 'combat'
   if (state.expedition.active && b) return 'combat'
   if (state.hauling.active) return 'work-haul'
   if (state.mining.active) return state.mining.phase === 'returning' ? 'travel' : 'work-mine'

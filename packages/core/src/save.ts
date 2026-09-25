@@ -2254,6 +2254,24 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
+  /**
+   * --- **入侵残骸（独立池）**（2026-09-25 兼容字段无版本号；船长「入侵残骸不算当地星系密度，
+   *     因为是独立的。48 小时线性衰减」）：星系 id → `{ density, decayAccMs }`
+   *     （锚点值 > 0、已漂移时长 ≥ 0 的有限数才收；两个字段缺一不可 ⇒ 脏档整条丢）。
+   *     与 `galaxyWrecks` 各自独立、互不影响；缺字段 = 空表（老档天然如此）。 ---
+   */
+  const weekendWrecks: Record<string, { density: number; decayAccMs: number }> = {}
+  for (const [galaxyId, w] of Object.entries(asRaw(src.weekendWrecks))) {
+    if (galaxyId.length === 0) continue
+    const r = asRaw(w)
+    const density = num(r.density)
+    const accRaw = r.decayAccMs
+    // 两栏缺一不可（`num(undefined)` 会给 0 ⇒ 这里显式判类型，脏档整条丢而不是被静默补 0）
+    if (typeof accRaw !== 'number' || !Number.isFinite(accRaw) || accRaw < 0) continue
+    if (!Number.isFinite(density) || density <= 0) continue
+    weekendWrecks[galaxyId] = { density, decayAccMs: accRaw }
+  }
+
   // --- 已开箱稀有残骸存量（2026-09-11 兼容字段无版本号）：键 = 残骸物品 id，值 = m³（只收正数） ---
   const rareOpenedUnits: Record<string, number> = {}
   for (const [itemId, n] of Object.entries(asRaw(src.rareOpenedUnits))) {
@@ -2854,6 +2872,13 @@ function normalizeState(raw: unknown): GameState {
     const tier: 'A' | 'B' | 'C' | 'D' | 'none' =
       tierRaw === 'A' || tierRaw === 'B' || tierRaw === 'C' || tierRaw === 'D' ? tierRaw : 'none'
     const wreckItemId = typeof w.wreckItemId === 'string' && w.wreckItemId.length > 0 ? w.wreckItemId : undefined
+    /**
+     * **进度收入那一栏**（2026-09-25 船长令「按进度获取收入」）：
+     * `progressPct` = 玩家投入进度合计（可 >1，多星系求和 ⇒ 不 clamp01）；
+     * `progressIsk` = 该笔收入（≥0 的有限数）。两个都缺 = 老快照（本批之前结束的活动）⇒ 界面不显示该行。
+     */
+    const progressPct = num(w.progressPct)
+    const progressIsk = count(w.progressIsk)
     return {
       seq,
       family,
@@ -2864,6 +2889,8 @@ function normalizeState(raw: unknown): GameState {
       tier,
       galaxies,
       ...(flagship !== undefined ? { flagship } : {}),
+      ...(Number.isFinite(progressPct) ? { progressPct: Math.max(0, progressPct) } : {}),
+      ...(progressIsk > 0 ? { progressIsk } : {}),
       isk: count(w.isk),
       wreck: count(w.wreck),
       blackBox: count(w.blackBox),
@@ -3521,6 +3548,8 @@ function normalizeState(raw: unknown): GameState {
     // 见过的敌方舰级（2026-09-16）：空表也落键，与 `commsDelivered` 同口径
     foeShipSeen,
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
+    // 入侵残骸独立池（2026-09-25 兼容字段）：空表不落字段（老档与新档形态一致）
+    ...(Object.keys(weekendWrecks).length > 0 ? { weekendWrecks } : {}),
     rareOpenedUnits,
     rareBoxesOpened,
     rareBurnUnits,

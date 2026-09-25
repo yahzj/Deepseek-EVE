@@ -68,6 +68,7 @@ import {
   repairShip,
   useOneRepairKit,
   retreatBattle,
+  retreatEncounterBattle,
   sellCargoItem,
   sellCargoItemQty,
   sellStoredShipAtMarket,
@@ -176,6 +177,8 @@ import {
   weekendFlagshipSquadOf,
   weekendStartFlagshipBattle,
   weekendFlagshipPrepView,
+  /** 2026-09-25：旗舰战的战斗宿主（心跳变速 / 分桶 / 撤退分流 / 战斗屏都用它） */
+  weekendFlagshipBattleActive,
   // 2026-09-25 入侵结束结算（贡献奖四档入账；幂等由 core 侧 `prizePaidAtWallMs` 落盘标记保证）
   weekendSettleAndGrant,
   // 2026-09-25 入侵两封通讯（预警 / 结算；每场覆盖同一 id，幂等在 core）
@@ -702,9 +705,8 @@ export class GameEngine {
    * 现改：单批预算 8ms + 每批最多 2 条 → 同样工作量摊到十几拍（每拍 ≤10ms，肉眼无感）。
    */
   private pumpWinCache(now: number): void {
-    // 洞内交火同样跳过（2026-09-13）：实时推进优先，别让胜率预热抢帧
-    if (this.state.expedition.phase === 'battle' && !!this.state.expedition.battle) return
-    if (this.state.wormhole.run?.battle) return
+    // 洞内交火同样跳过（2026-09-13）：实时推进优先，别让胜率预热抢帧；旗舰战同款（2026-09-25）
+    if (this.inLiveBattle()) return
     if (now - this.winLastPumpAt < 400) return
     const fp = this.winFingerprint()
     if (fp !== this.winFpCur) {
@@ -750,9 +752,8 @@ export class GameEngine {
    */
   private wantsFastPump(): boolean {
     const exp = this.state.expedition
-    if (exp.phase === 'battle' && !!exp.battle) return true
-    // 虫洞战斗（F 批）同款：洞内战斗也按 100ms 实时推进（否则 500ms 心跳下战斗画面一顿一顿）
-    if (this.state.wormhole.run?.battle) return true
+    // 交火中一律 100ms 心跳（远征 / 虫洞 / 入侵旗舰战三个宿主，判据单点 `inLiveBattle`）
+    if (this.inLiveBattle()) return true
     if (exp.active && exp.phase === 'out') return true
     return false
   }
@@ -804,13 +805,27 @@ export class GameEngine {
     this.notify()
   }
 
+  /**
+   * **现在有没有"要在战场里看"的战斗**（2026-09-25 收口）：远征 / 虫洞 / **入侵旗舰战**三个宿主。
+   *
+   * 第三个宿主是船长报障「旗舰战无法进入战斗画面」时补的：旗舰战是**编队战**、承载在**遭遇槽**
+   * （`state.encounter.battle`）⇒ 原先只认前两个宿主的四处判据（心跳变速 / 性能分桶 / 胜率预热让路 /
+   * 100ms 实时切片）全都把它当成"没在打"：战场数据一秒才来一次、动画一跳一跳。
+   * 判据收在这里一处，宿主解析仍归 core（`weekendFlagshipBattleActive`）。
+   */
+  private inLiveBattle(): boolean {
+    const s = this.state
+    return (
+      (s.expedition.phase === 'battle' && !!s.expedition.battle) ||
+      !!s.wormhole.run?.battle ||
+      weekendFlagshipBattleActive(s)
+    )
+  }
+
   /** 当前心跳所属计量桶：交火中 = battle，其余 = idle（性能监测分桶用） */
   private currentBucket(): PerfBucket {
-    const exp = this.state.expedition
-    // 洞内交火同算 battle 桶（2026-09-13：心跳分支已认洞内，分桶同步）
-    return (exp.active && exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
-      ? 'battle'
-      : 'idle'
+    // 洞内交火同算 battle 桶（2026-09-13：心跳分支已认洞内，分桶同步）；旗舰战同款（2026-09-25）
+    return this.inLiveBattle() ? 'battle' : 'idle'
   }
 
   /** 推进一小片游戏时间（包装：激活性能监测时记录引擎侧耗时；未激活零开销）。
@@ -1067,8 +1082,10 @@ export class GameEngine {
      * 洞内交火掉进下面的**挂机分支**（`pendingMs >= 1000` 才推进并 `notify()` 一次）⇒
      * 战场每约 1 秒才收到一帧数据，船自然一秒跳一次（与帧率、与 33ms 插值都无关——插值再密，
      * 数据 1 秒才来一次也白搭）。
+     *
+     * ⚠ **2026-09-25 同款第三个宿主：入侵旗舰战**（承载在遭遇槽）——同上，判据收在 `inLiveBattle`。
      */
-    const inBattle = (exp.phase === 'battle' && !!exp.battle) || !!this.state.wormhole.run?.battle
+    const inBattle = this.inLiveBattle()
     if (inBattle) {
       /**
        * ⚠ **2026-09-20 修（外部审计报告点名 + 探针复算证实）：本拍的现实时间必须先并进余额再切片。**
@@ -3092,9 +3109,17 @@ export class GameEngine {
     }
     return result
   }
-  /** 战斗中撤退：轻损脱离并即刻回港（同时停止重复清剿） */
+  /**
+   * 战斗中撤退：轻损脱离并即刻回港（同时停止重复清剿）。
+   *
+   * ⚠ **2026-09-25 分流**：旗舰战（编队战 · 承载在遭遇槽）不占 `expedition` 槽 ⇒
+   * `retreatBattle` 会以"当前不在交火中"拒绝；那一场走遭遇系统的主动脱离
+   * （`retreatEncounterBattle`：同样退弹药/修理组件、逐舰落盘承伤，且**照记对母舰的伤害**）。
+   */
   retreatNow(): CommandResult {
-    const result = retreatBattle(this.state, this.ctx)
+    const result = weekendFlagshipBattleActive(this.state)
+      ? retreatEncounterBattle(this.state, this.ctx)
+      : retreatBattle(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
       this.notify()

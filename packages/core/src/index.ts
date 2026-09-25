@@ -306,10 +306,13 @@ export {
   weekendSanitizeFlagshipSquad,
   weekendFlagshipWavesOf,
   weekendStartFlagshipBattle,
+  /* 2026-09-25：旗舰战的战斗宿主解析（界面"在不在打"的第三个宿主角） */
+  weekendFlagshipBattleActive,
+  weekendFlagshipBattleViewOf,
 } from './weekendLaunch'
 export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan, WeekendSettleGrant } from './weekendBattle'
-/* 旗舰战战前准备（准备视图与缺口标记的类型） */
-export type { WeekendFlagshipPrepView, WeekendPrepCandidate, WeekendPrepIssue } from './weekendLaunch'
+/* 旗舰战战前准备（准备视图与缺口标记的类型）＋ 旗舰战战斗视图（战斗窗口第三个宿主） */
+export type { WeekendFlagshipPrepView, WeekendPrepCandidate, WeekendPrepIssue, WeekendFlagshipBattleView } from './weekendLaunch'
 
 /* 2026-09-25 周末入侵 · 两封通讯（实例通讯 · 每场覆盖）＋ 结算面板读的战果快照 */
 export {
@@ -743,6 +746,12 @@ export {
   RECYCLE_TIER_DIRE,
   advanceWreckDrift,
   salvageRoundPull,
+  // 2026-09-25 入侵残骸 · 独立池（船长令）：按击败卡威胁注入 · 48h 线性衰减到 0 · 不算当地密度
+  WEEKEND_WRECK_DECAY_MS,
+  weekendWreckDensityOf,
+  weekendWreckInjectionOf,
+  injectWeekendWreck,
+  advanceWeekendWreckDecay,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_YIELD_PER_M3,
@@ -1106,7 +1115,7 @@ export {
 } from './onboarding'
 export type { OnboardingState, ImportantTaskState } from './state'
 
-export { advanceEncounterWatch, fightEncounter, fleeEncounter } from './encounters'
+export { advanceEncounterWatch, fightEncounter, fleeEncounter, retreatEncounterBattle } from './encounters'
 
 export {
   advanceSideTasks,
@@ -1122,6 +1131,7 @@ export {
   factionGalaxyId,
   isFactionBounty,
   factionPoolOf,
+  factionSuppressedByInvasion,
   BOUNTY_BOARD_PERIOD_MS,
   bountyDayStartWallMs,
   bountyBoardRemainingMs,
