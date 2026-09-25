@@ -56,7 +56,7 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 2 * 3_600_000
  * 离线「**挂起：离线时章鱼也停**」· 血量「**约 5 场**」。
  *
  * 口径（本段实现即照此）：
- * - **池子总量** = `WEEKEND_FLAGSHIP_RUNS × 历次单场对母舰的最高原始伤害`（首次接战后锁定）；
+ * - **池子总量** = **固定常量 `WEEKEND_FLAGSHIP_POOL_HP`（150,000）**（2026-09-25 船长：「BOSS 血条 15 万来算」）；
  * - **进度**只算**打进母舰的伤害**（未截断的原始值）；母舰一点没挨打 ⇒ 该场 0 进度；
  * - **单场不死**：母舰血条 = 池子剩余，单场打到 0 才判"旗舰已击沉"；
  * - **章鱼人** = 一条**独立进度**：`章鱼已削 = (2h 窗口内"在线且非战斗"的累计时长 / 2h) × 池子总量`
@@ -69,22 +69,37 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 2 * 3_600_000
  * 2026-09-24 第二轮：**H 族先上**（船长令就是针对墨潮入侵母舰下的）。
  */
 export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H']
-/** 池子总量 = 几场战斗的输出（船长选「约 5 场」） */
-export const WEEKEND_FLAGSHIP_RUNS = 5
 /**
- * **池子下限**（防"只蹭一点就把池子做小"的退化）：总量不得低于按旗舰卡数值折算的基准值。
- * 取值 = 由调用方传入的 `floorHp`（引擎按卡面母舰单位的满血 × 该倍数算），此处只给倍数。
- * 5 场 × 单场可见血条 ⇒ 与"约 5 场"同一量级。
+ * **BOSS 池子总量 = 固定 150,000**（船长 2026-09-25：「**BOSS 血条 15 万（约 2.5 个母舰）来算**」）。
+ *
+ * 取代原先两条自适应公式（上限 = 5 × 首战最高原始伤害 · 下限 = 母舰卡面满血 × 5）：
+ * 母舰舰级血改成 39,200（当前卡面 69,592）后，"×5 下限"会飙到约 35 万（单场打 1 万要磨 35 场），
+ * 与"约 5 场"彻底脱节 ⇒ 改常量：**单场打约 3 万 ⇒ 5 场**。
+ * 战斗里的母舰血条 = **池子剩余**（船长同日选「甲」）= `weekendFlagshipHpRemaining`。
  */
-export const WEEKEND_FLAGSHIP_HP_FLOOR_RUNS = 5
+export const WEEKEND_FLAGSHIP_POOL_HP = 150_000
+/** H 族旗舰的**舰级 id**（挑母舰单位 / 血条覆写 / 伤害台账同源；`weekendIsFlagshipShipId` 是唯一判据） */
+export const WEEKEND_FLAGSHIP_SHIP_ID = 'foe-h-ink-flagship'
 
 /**
  * **"这条舰级算不算'旗舰'（BOSS 本体）"**——按**族旗舰卡里 T5 那一档**认：
- * H 族 = `foe-h-ink-flagship`（`hullClassTier === 5`）。用于伤害台账挑出母舰单位、以及算池子下限。
+ * H 族 = `foe-h-ink-flagship`（`hullClassTier === 5`）。用于伤害台账挑出母舰单位、以及**战斗内的血条覆写**。
  * ⚠ 只认"旗舰卡里 tier 5 的那一条" ⇒ 同卡的干扰舰/战巡/鱼雷舰不算。
  */
 export function weekendIsFlagshipShipId(shipId: string): boolean {
-  return shipId === 'foe-h-ink-flagship'
+  return shipId === WEEKEND_FLAGSHIP_SHIP_ID
+}
+
+/**
+ * **战斗里母舰的血条**（船长 2026-09-25 选「甲：母舰血条 = 池子剩余」）：
+ * `= (池子总量 ?? 常量) − 玩家已造成`，下限 1（= 0 表示已击沉，开战入口先拒）。
+ * 由 `weekendLaunch.weekendStartFlagshipBattle` 传进 `FoeOverride.bossHp` ⇒ 逐拍重建也吃同一份
+ * （覆写随档存进 `BattleState.foeOverride`）。
+ */
+export function weekendFlagshipHpRemaining(ev: WeekendEventState | undefined): number {
+  if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
+  const hpMax = ev.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
+  return Math.max(1, Math.round(hpMax - Math.max(0, ev.flagshipHpDone ?? 0)))
 }
 
 /** 离线保护（第 10 条）：离线 ≤24h ⇒ 倒计时挂起，上线第一拍起算（Q3：离线满 24h 那一刻起算） */
@@ -757,14 +772,15 @@ export function weekendBossPoolView(
  * **记一场对母舰的伤害**（船长：「按对母舰造成的伤害决定，如果母舰没有受伤就是0输出」）。
  *
  * @param rawDmg 该场**打进母舰的原始伤害**（未截断；`0` = 该场没打到它）
- * @param floorHp 池子下限（引擎按卡面母舰满血 × `WEEKEND_FLAGSHIP_HP_FLOOR_RUNS` 传入；
- *                防"只蹭一点就把池子做小"的退化）
  * @returns 本次是否**把池子打空**（= 旗舰被玩家击沉）
+ *
+ * ⚠ **2026-09-25 改口径**：池子 = **固定常量** `WEEKEND_FLAGSHIP_POOL_HP`（150,000），
+ * 首次接战即立起（原先按"5 × 首战最高伤害"与"母舰卡面血 ×5"自适应，母舰 ×10 后已脱节）。
+ * `flagshipBestRunDmg` 仍记（**只作读数/展示**，不再参与池子计算）。
  */
 export function weekendNoteFlagshipDamage(
   ev: WeekendEventState,
   rawDmg: number,
-  floorHp: number,
   /**
    * **这一场的身份**（缺省 = 沿用上一场）：引擎传 `battle.startedAtGameMs`（同一场战斗恒同值）。
    * 用途 = **幂等**：同一场可能被结算两次（战斗收尾 + 遇袭收尾）⇒ 只在"换了新的一场"时才累计，
@@ -777,13 +793,9 @@ export function weekendNoteFlagshipDamage(
   const sameRun = runId !== undefined && ev.flagshipRunId === runId
   if (sameRun) return weekendFlagshipDefeated(ev) // 同一场的重复结算 ⇒ 已记过，不再叠加
   if (runId !== undefined) ev.flagshipRunId = runId
+  if (ev.flagshipHpMax === undefined) ev.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
   if (dmg > 0) {
     ev.flagshipBestRunDmg = Math.max(ev.flagshipBestRunDmg ?? 0, dmg)
-    const want = Math.max(
-      Math.round(ev.flagshipBestRunDmg * WEEKEND_FLAGSHIP_RUNS),
-      Math.max(0, Math.round(floorHp)),
-    )
-    if (ev.flagshipHpMax === undefined || want > ev.flagshipHpMax) ev.flagshipHpMax = want
     ev.flagshipHpDone = Math.max(0, (ev.flagshipHpDone ?? 0) + dmg)
   }
   return weekendFlagshipDefeated(ev)

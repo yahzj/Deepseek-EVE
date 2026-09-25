@@ -1243,6 +1243,22 @@ export const PARTS: readonly ItemDef[] = [
   },
 ]
 
+/**
+ * **入侵旗舰黑匣**（船长 2026-09-25：「**黑匣先做壳**」）：周末入侵击毁旗舰必掉 ×1。
+ * 本批只做"壳"——**可存、可回收、可售予回收商**；**用途（开特殊装备/改装件）留待改装件那批**，
+ * 故描述里只写它是什么、不写"将来能开什么"（开发口径不进玩家可见文案）。
+ */
+export const WEEKEND_TROPHIES: readonly ItemDef[] = [
+  {
+    id: 'blackbox-h',
+    name: '墨潮旗舰黑匣',
+    kind: 'container',
+    unitM3: 5,
+    baseSellPriceIsk: 800_000,
+    description: '墨潮入侵母舰的核心记录匣：外壳是耐压墨晶，内里封着未破译的军用编码与航迹记录。可存入库房或售予回收商。',
+  },
+]
+
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */
 export const ITEMS: readonly ItemDef[] = [
   ...ORES,
@@ -1261,6 +1277,7 @@ export const ITEMS: readonly ItemDef[] = [
   ...VALUABLES_CONTAINERS,
   ...MILITARY_CONTAINERS,
   ...AI_CORE_ITEMS,
+  ...WEEKEND_TROPHIES,
 ]
 
 /** 构建"物品 id → 定义"目录 */

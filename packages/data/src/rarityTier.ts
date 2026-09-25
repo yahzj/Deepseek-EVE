@@ -562,6 +562,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-rare-d-hi': 4,
   // H 族（墨潮帮）· 入侵卡的洞外组（2026-09-25 船长令「修，②」）：与其余**高安**稀有残骸同档（4）
   'wreck-rare-h-hi': 4,
+  // 墨潮旗舰黑匣（周末入侵击毁旗舰的彩头；2026-09-25「先做壳」）——与专属内容同档（奇货层 4）
+  'blackbox-h': 4,
   'wreck-rare-a-lo': 3,
   'wreck-rare-c-lo': 3,
   'wreck-rare-d-lo': 3,

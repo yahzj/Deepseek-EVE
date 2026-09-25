@@ -4314,6 +4314,17 @@ export interface FoeOverride {
    * （旧路径卡的强度由威胁曲线表达，本倍率对它无意义）。
    */
   strengthMul?: number
+  /**
+   * **BOSS 血条覆写**（2026-09-25 船长令「甲：母舰血条 = 池子剩余」）：
+   * 把 `ships[]` 里 `ship.id === bossShipId` 的那条目 `hpMul` 覆写成 `bossHp ÷ 舰级血`
+   * ⇒ 该单位建档后的**满血 = `bossHp`**（三层按该条目的血型分摊）。缺省/非正/缺 `bossShipId` ⇒ 不动。
+   *
+   * ⚠ **在 `strengthMul` 之后施加且取绝对值**（BOSS 血条由池子说了算，不再吃强度倍率）；
+   * 覆写会随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰时血条恒等于池子剩余。
+   */
+  bossHp?: number
+  /** 哪一条舰级当 BOSS（配 `bossHp` 用；缺省 = 不覆写） */
+  bossShipId?: string
 }
 
 /** 把覆写应用到派生出来的敌卡上（纯函数；`override` 缺省或字段缺省 ⇒ 原样返回） */
@@ -4336,6 +4347,23 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
         // 总火力锚点（写了才有）：按同一倍率缩放——**不许按自然合计重算**（它是船长有意钉住的总量；例外只有取整平局）
         if (slot.firepowerAnchor !== undefined) out.firepowerAnchor = Math.max(1, Math.round(slot.firepowerAnchor * strengthMul))
         return out
+      })
+    }
+  }
+  /**
+   * **BOSS 血条覆写**（在强度倍率之后 · 取绝对值）：`hpMul = bossHp ÷ 舰级血` ⇒ 建档满血 = `bossHp`。
+   * 池子里"玩家已打掉的量"不在这里扣（那由 `weekendFlagshipHpRemaining` 在开战时算好传进来）。
+   */
+  const bossHp = override.bossHp
+  const bossShipId = override.bossShipId
+  if (bossHp !== undefined && Number.isFinite(bossHp) && bossHp > 0 && typeof bossShipId === 'string' && bossShipId.length > 0) {
+    const ships = next.ships
+    if (Array.isArray(ships)) {
+      next.ships = ships.map((raw) => {
+        const slot = raw as { ship?: { id?: string; hp?: number } }
+        if (slot.ship?.id !== bossShipId) return raw
+        const classHp = Math.max(1, slot.ship.hp ?? 1)
+        return { ...(raw as object), hpMul: bossHp / classHp }
       })
     }
   }
