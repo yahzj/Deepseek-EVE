@@ -12,6 +12,7 @@
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
+import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
 import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
@@ -812,6 +813,25 @@ function settleBattleRetreat(
   const threatCard = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier) : anomaly
   const battle = exp.battle
   if (!battle) return
+  /**
+   * **入侵结算也要走一遍**（2026-09-25 补 · 由船长「撤退会重抽吗」一问查出）：
+   * 母舰伤害是在**战斗收尾**那一步量进血池的，而**撤退 / 超时 / 无法交战走的是这条路径** ⇒
+   * 原先这一场对母舰打出的伤害白打；设计稿写的是「按对母舰造成的伤害决定」（撤退 / 战败照记）。
+   * 按"没打赢"结算：**只记伤害 · 不给进度 · 不判击沉**（`victory: false`；非入侵战斗内部直接 no-op）。
+   */
+  {
+    const ev = state.weekendEvent
+    const galaxyId = exp.foeGalaxyId
+    if (ev !== undefined && ev.endedAtWallMs === undefined && galaxyId !== undefined) {
+      const isFlagship =
+        exp.anomalyId !== null && exp.anomalyId === weekendFoeCardOf(ev.family, 'flagship') && galaxyId === ev.coreId
+      weekendApplyBattleOutcome(state, ctx, exp.anomalyId ?? null, false, Date.now(), battle, {
+        kind: isFlagship ? 'flagship' : 'assault',
+        galaxyId,
+        source: 'battle',
+      })
+    }
+  }
   // 机群战损（2026-09-10 船长「无人机可被击落」）：撤退也照扣——被打掉的飞机不会飞回来
   settleDroneLosses(state, ctx, state.shipId, battle)
   refundAmmo(state, battle.ammo, battle.ammoIds) // 弹药 MK2：按本场实装弹 id 退回

@@ -624,6 +624,18 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
       advanceBattleFor(state, ctx, enc.battle, enc.shipId ?? state.shipId, foeKeyOf(enc), null)
       // 自动脱离（2026-09-11 船长定：遭遇战挂同一个 50% 保险）→ 轻损脱离结算，随后撤退返港待命
       if (enc.battle.autoEscaped) {
+        /**
+         * **入侵结算也要走一遍**（2026-09-25 补 · 由船长「撤退会重抽吗」一问查出）：
+         * 母舰伤害是在**战斗收尾**那一步量进血池的（`weekendApplyBattleOutcome` → `flagshipBattleLedger`），
+         * 而**自动脱离 / 快速脱离走的是另一条收尾路径**（`settleEscape`）⇒ 原先**这一场对母舰打出的伤害
+         * 白打**；设计稿写的是「按对母舰造成的伤害决定」（撤退 / 战败的伤害照记）。
+         * 这里按"没打赢"结算：**只记伤害 · 不给进度 · 不判击沉**（`victory: false`）。
+         */
+        weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, false, Date.now(), enc.battle, {
+          kind: weekendKindOfEncounter(state, enc),
+          galaxyId: enc.galaxyId ?? '',
+          source: 'battle',
+        })
         settleEscape(state, ctx)
         return
       }
