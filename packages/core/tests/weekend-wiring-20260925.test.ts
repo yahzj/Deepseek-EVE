@@ -22,7 +22,13 @@ import {
   weekendSettleAndGrant,
 } from '../src/weekendBattle'
 import { weekendBountyCardsOf } from '../src/weekendBounty'
-import { WEEKEND_GAIN_OFFLINE_REPEL, WEEKEND_GAIN_REPEL, endWeekendEvent, weekendNoteContribution } from '../src/weekendEvent'
+import {
+  WEEKEND_GAIN_CORE_WIN,
+  WEEKEND_GAIN_OFFLINE_REPEL,
+  WEEKEND_GAIN_REPEL,
+  endWeekendEvent,
+  weekendNoteContribution,
+} from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
 
 const ctx = buildSimContext()
@@ -273,5 +279,28 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(r?.kind, '核心条满（weekendOccupiedLiveAt 已为假）仍认旗舰战').toBe('flagship')
     expect(r?.galaxyId).toBe('galaxy-kor')
     expect(s.weekendEvent!.flagshipHpMax, '这一场已在池子上立账').toBeDefined()
+  })
+
+  it('⑨ 核心区：门禁未解 ⇒ 打核心不给进度；外围全清 ⇒ 每场 +5%', () => {
+    const gid = GID
+    const core = 'galaxy-kor'
+    const now = Date.now()
+    /** 外围未清：核心条被门禁挡住（第 7 条） */
+    const gated = invaded(gid)
+    const rg = weekendApplyBattleOutcome(gated, ctx, 'ink-main', true, now, null, {
+      kind: 'assault',
+      galaxyId: core,
+    })
+    expect(rg?.gain, '门禁未解 ⇒ 核心胜利不给进度').toBe(0)
+    expect(gated.weekendEvent!.contributed[core] ?? 0).toBe(0)
+    /** 外围全清 ⇒ 门禁解除 ⇒ 每场 +5% */
+    const open = invaded(gid)
+    weekendNoteContribution(open.weekendEvent!, gid, 1)
+    const r1 = weekendApplyBattleOutcome(open, ctx, 'ink-main', true, now, null, {
+      kind: 'assault',
+      galaxyId: core,
+    })
+    expect(r1?.gain, '核心胜利 = +5%').toBeCloseTo(WEEKEND_GAIN_CORE_WIN, 6)
+    expect(open.weekendEvent!.contributed[core] ?? 0).toBeCloseTo(0.05, 6)
   })
 })
