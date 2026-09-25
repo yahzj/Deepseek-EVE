@@ -2034,10 +2034,15 @@ export class GameEngine {
     return result
   }
 
+  /** 界面上那张卡所在的星系（被占星系的入侵替换卡带的是被占星系）——随远征落盘，供战后归属/残骸注入用 */
+  private foeGalaxyOf(anomalyId: string): string | undefined {
+    return this.anomalies.find((a) => a.id === anomalyId)?.galaxyId
+  }
+
   /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
   startExpeditionAt(anomalyId: string): CommandResult {
     return this.withActivitySwitch('expedition', () => {
-      const result = startExpedition(this.state, anomalyId, this.ctx)
+      const result = startExpedition(this.state, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId) })
       if (result.ok) {
         void this.persist()
         this.notify()
@@ -2048,7 +2053,7 @@ export class GameEngine {
 
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
   startExpeditionFromMiningAt(anomalyId: string): CommandResult {
-    const result = startExpeditionFromMining(this.state, anomalyId, this.ctx)
+    const result = startExpeditionFromMining(this.state, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId) })
     if (result.ok) {
       void this.persist()
       this.notify()
@@ -2061,8 +2066,8 @@ export class GameEngine {
   startLairExpeditionAt(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
     return this.withActivitySwitch('expedition', () => {
       const result = fromMining
-        ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier })
-        : startExpedition(this.state, anomalyId, this.ctx, { lairTier })
+        ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
+        : startExpedition(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
       if (result.ok) {
         void this.persist()
         this.notify()

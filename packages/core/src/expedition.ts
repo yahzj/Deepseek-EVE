@@ -313,7 +313,7 @@ export function startExpedition(
   state: GameState,
   anomalyId: string,
   ctx: SimContext,
-  opts?: { desireM?: number; lairTier?: LairTier },
+  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string },
 ): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre
@@ -357,6 +357,12 @@ export function startExpedition(
   const exp = state.expedition
   exp.active = true
   exp.anomalyId = anomalyId
+  /**
+   * **本场远征实际打的是哪个星系**（2026-09-25：周末入侵接线）——只在调用方显式给出时写，
+   * 其余情形**清掉**（防上一场的残留把归属算错）。`weekendBattleInvolvedOf` 优先读它。
+   */
+  if (opts?.foeGalaxyId !== undefined && opts.foeGalaxyId.length > 0) exp.foeGalaxyId = opts.foeGalaxyId
+  else delete exp.foeGalaxyId
   exp.phase = 'out' // 占位：本函数内随即转入 battle（去程取消：开战时刻 = 现在）
   exp.battle = null
   exp.finishAtGameMs = now // 开战时刻 = 下达时刻（不再有去程等待）
@@ -406,7 +412,7 @@ export function startExpeditionFromMining(
   state: GameState,
   anomalyId: string,
   ctx: SimContext,
-  opts?: { desireM?: number; lairTier?: LairTier },
+  opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string },
 ): CommandResult {
   const pre = expeditionPreflight(state, ctx, anomalyId)
   if (!pre.ok) return pre

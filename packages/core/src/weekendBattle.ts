@@ -352,6 +352,17 @@ export function weekendBattleInvolvedOf(
 ): { galaxyId: string; kind: WeekendBattleKind } | undefined {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return undefined
+  /**
+   * **这一场远征记下的"打的哪个星系"**（2026-09-25 · 周末入侵接线）：
+   * H 族独立卡自带母港 `galaxyId` ⇒ 只看卡认不出被占区（会让战后归属与**残骸注入**算到母港）。
+   * 引擎出发时把界面上那张卡的星系写进 `expedition.foeGalaxyId` ⇒ 这里优先读它；
+   * 缺省/不合法（非活的占领区）⇒ 逐字回落老口径（卡的 `galaxyId` + 遭遇槽）。
+   */
+  const expGalaxy = state.expedition?.foeGalaxyId
+  if (expGalaxy !== undefined && weekendOccupiedLiveAt(state, expGalaxy, nowWallMs)) {
+    const flagship = expGalaxy === ev.coreId && weekendCoreProgressAt(state, ev, nowWallMs) >= 1
+    return { galaxyId: expGalaxy, kind: flagship ? 'flagship' : 'assault' }
+  }
   const rawId = typeof anomalyId === 'string' && anomalyId.length > 0 ? anomalyId : undefined
   if (rawId !== undefined) {
     const baseId = rawId.startsWith(WEEKEND_CARD_PREFIX) ? rawId.slice(WEEKEND_CARD_PREFIX.length) : rawId
