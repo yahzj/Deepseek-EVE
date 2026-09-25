@@ -46,6 +46,7 @@ import {
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
 import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
+import { useBattleFit } from '../ui/battleFit'
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -308,6 +309,10 @@ const meSpeedRef = useRef(200)
   )
 
   const laneRef = useRef<HTMLDivElement>(null)
+  /** 「装不下就整块等比缩放」用（2026-09-25 船长令 · 方案甲）：整屏覆盖层 与 新增的包裹层 */
+  const screenRef = useRef<HTMLDivElement>(null)
+  const fitRef = useRef<HTMLDivElement>(null)
+  useBattleFit({ screen: screenRef, fit: fitRef, lane: laneRef })
   const meColRef = useRef<HTMLDivElement>(null)
   const foeColRef = useRef<HTMLDivElement>(null)
   /** 舰首朝向：meFlip = 我方头朝左；foeFlip = 敌方头朝左（默认相向而行：我方朝右、敌方朝左） */
@@ -2176,7 +2181,14 @@ const meSpeedRef = useRef(200)
      * 已封存到分支 `archive/window-embed-20260922`，说明见 `docs/design/archived-window-embed-20260922.md`。
      * ⚠ 保留：慢镜/战报的挂载语义（`App.tsx` 里"打完但战报还没弹"的窗口期必须继续挂着）。
      */
-    <div className="app-battle-screen">
+    <div className="app-battle-screen" ref={screenRef}>
+      {/**
+       * **装不下就整块等比缩放**（2026-09-25 船长令 · 方案甲；量高与算 k 见 `ui/battleFit.ts`）：
+       * 顶栏／舞台／底栏三层包在这一层里；手机竖屏逻辑空间只有约 540~555px 高，
+       * 战斗界面内部按桌面版式要 ~700px ⇒ 只有整块缩才装得下（否则舞台 `overflow: hidden` 会裁掉血条）。
+       * 装得下时本层是 `height: 100%` 且无 `transform` ⇒ 与改造前逐像素一致。
+       */}
+      <div className="app-battle-fit" ref={fitRef}>
       <div className="app-battle-screen-top">
         {stage === 'live' ? (
           <>
@@ -2878,6 +2890,8 @@ const meSpeedRef = useRef(200)
             </span>
           </div>
         </div>
+      </div>
+      {/* /app-battle-fit —— 2026-09-25 新增的等比缩放包裹层收口（层内三层沿用原缩进，未整块重排） */}
       </div>
     </div>
   )
