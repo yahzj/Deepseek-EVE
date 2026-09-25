@@ -1454,6 +1454,19 @@ function StarMap({
           const cls = isHub ? ' is-hub' : isSel ? ' is-sel' : frontier ? ' is-frontier' : ''
           const bounty = bountyByGalaxy.get(g.id) ?? 0
           const isFactionNode = factionGalaxy === g.id
+          /**
+           * **入侵标记的悬停读数**（**船长 2026-09-25 令「② 修」**）——原来它只挂在
+           * `<g className="app-map-invasion" data-tip=…>` 上，而那一组是 `pointer-events: none`
+           * （2026-09-23 为"不挡点击"而设）⇒ **悬停事件落到下面的圆点上、`closest('[data-tip]')`
+           * 找不到那一组，提示永远弹不出来**（018 / 099 从上线起就是死的）。
+           * 修法 = 把这个读数**同时挂到节点圆点**（最自然的悬停目标）＋ 让进度条/★ 自己可悬停
+           * （见 `styles.css` 那两条 `pointer-events`）；点击照旧冒泡给节点 ⇒ 不影响选星系。
+           */
+          const invasionTip = invasionProgress.has(g.id)
+            ? tr('ui.weekend.018')
+            : g.id === invasionCoreHeld
+              ? tr('ui.weekend.101', { p1: String(Math.round(mothershipFrac * 100)) })
+              : null
           // 显示模式（2026-09-11）：名称 / 安全等级 / 敌对派系（母港恒显名称与金色徽标，不参与族色）
           const famChips = labelMode === 'faction' && !isHub ? familyChipsOf(g.id, explored) : []
           const famRowW = famChips.reduce((s, c) => s + famChipW(c.text), 0) + FAM_CHIP_GAP * Math.max(0, famChips.length - 1)
@@ -1485,16 +1498,11 @@ function StarMap({
                * 画在节点最底层、不挡点击；已夺回的星系整组不画（表里就没有它）。
                * ⚠ **例外 = 核心的"旗舰期"**（2026-09-25 船长令：「入侵母舰没摧毁前，敌方核心星系需要
                * 依旧有红光」）：核心已夺回但母舰还在 ⇒ 画红光与 ★，条改画**母舰血量**（见下）。
+               * ⚠ **本组 `pointer-events: none` ⇒ 这里的 `data-tip` 弹不出来**（船长 2026-09-25 令「② 修」）：
+               * 读数另挂一份在**节点圆点**上（见上 `invasionTip`），进度条与 ★ 由 `styles.css` 放行悬停。
                */}
               {invasionProgress.has(g.id) || g.id === invasionCoreHeld ? (
-                <g
-                  className="app-map-invasion"
-                  data-tip={
-                    invasionProgress.has(g.id)
-                      ? tr('ui.weekend.018')
-                      : tr('ui.weekend.101', { p1: String(Math.round(mothershipFrac * 100)) })
-                  }
-                >
+                <g className="app-map-invasion" data-tip={invasionTip ?? undefined}>
                   <circle cx={p.x} cy={p.y} r={46} fill="url(#app-invglow)" className="app-map-invasion-glow" />
                   {/**
                    * 节点上方那根条（30×3.5 圆角）：**仍被占** = 夺回进度；**核心旗舰期** = 母舰血量
@@ -1579,6 +1587,9 @@ function StarMap({
                 cy={p.y}
                 r={frontier ? 7 : isHub ? 11 : 8}
                 className={`app-map-dot${cls}${isFactionNode ? ' is-faction' : ''}`}
+                /* 入侵标记的读数挂在圆点上（见上面 `invasionTip` 的说明）：圆点是节点最自然的悬停目标，
+                   而那一组标记自己是 `pointer-events: none`（不挡点击）⇒ 只挂那边等于没挂 */
+                {...(invasionTip !== null ? { 'data-tip': invasionTip } : {})}
               />
               {/* 悬赏情报徽标（协会共享情报：剪影也显示数量，帮助判断是否值得扫描） */}
               {bounty > 0 && frontier ? (

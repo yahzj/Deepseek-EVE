@@ -701,3 +701,22 @@ ui:theme-check ✓ · build ✓ · docs:index ✓。
 **验证**：`weekend-event` 增 1 例（正常模式：声望 0 / 39 ⇒ 不开 · 40 ⇒ 开 · 缺键按 0 · **调试模式恒开**）·
 typecheck ✓ · core 全绿 · content:check ✓（新契约在册）· **反向**：临时把门槛挪到调试分支**之前** ⇒
 **红**（`debug=312 · gate=163（gate 必须更大）`），还原后绿 · build ✓ · docs:index ✓。
+
+## 三十六、星图入侵标记的悬停读数修好（船长令「② 修」）（2026-09-25）
+
+> 船长原话（对上一份汇报里的两问）：「**①不用。② 修。**」——① = 「旗舰现身」日志**不加场次号**（照旧每场一条）；
+> ② = **修**星图入侵标记的悬停说明弹不出来。
+
+| # | 落法 |
+|---|---|
+| **病根** | 读数只挂在 `<g className="app-map-invasion" data-tip=…>` 上，而那一组是 **`pointer-events: none`**（2026-09-23 为"不挡点击"而设）⇒ 悬停事件落到下面的**节点圆点**上，全局接管层 `ui/Tooltip.tsx` 的 `closest('[data-tip]')` 找不到那一组 ⇒ **提示永远弹不出来**（`ui.weekend.018` 从上线起就是死的；新加的「母舰血量剩余 N%」同理） |
+| ① **读数挂到圆点** | `Expedition.tsx` 把读数提成一句 `invasionTip`（占领中 = `ui.weekend.018` · 核心旗舰期 = `ui.weekend.101`），**同时挂到节点圆点**（最自然的悬停目标，一定可达）＋ 那一组上的 `data-tip` 也留一份 |
+| ② **标记自身放行悬停** | `styles.css`：`.app-map-invbar`（进度条/母舰血条那根条）与 `.app-map-invasion-tag`（★）各自 `pointer-events: auto` |
+| ③ **光晕照旧穿透** | `.app-map-invasion-glow`（r=46 的氛围光）**保持 `pointer-events: none`** —— 它若可命中，会把**邻近星系的点击/悬停一起吃掉**。三者都在节点 `<g>` 之内 ⇒ **点击照旧冒泡给节点，不影响选星系** |
+| ④ **回归契约** | `content:check` 新增「**入侵标记悬停可达契约**」：读数必须挂在圆点上 · 条必须 `pointer-events: auto` · ★ 必须 `auto` · **光晕必须 `none`**（谁改回去都红） |
+
+**验证**：typecheck ✓ · content:check ✓（契约在册）· **反向**：临时删掉 `.app-map-invbar { pointer-events: auto; }`
+⇒ **红**（「进度条/母舰血条那根条要能悬出读数」），还原后绿 · ui:layout-css（CSS 改了已重出两份产物）＋
+`ui:layout-css:check` ✓ · ui:theme-check ✓ · ui:rot-check ✓ · build ✓ · docs:index ✓。
+⚠ **证据边界**：悬停可达性是"事件目标 + `closest`"的静态推论（本轮**没起无头浏览器实测**）——
+实际弹没弹请船长把鼠标放到那根条与星系圆点上过目一眼。

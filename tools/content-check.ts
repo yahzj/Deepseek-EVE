@@ -1468,6 +1468,45 @@ for (const m of MODULES) {
     console.log('· 入侵声望前提契约：门槛 = 协会声望 ≥ 40、落在调试分支之后（调试不受限）、判据单独成口')
   }
 
+  /* ── 入侵标记悬停可达契约（2026-09-25 船长令「② 修」）──
+   *
+   * 病根（一号 2026-09-23 那批留下的）：入侵标记的 `data-tip` 只挂在 `<g className="app-map-invasion">`
+   * 上，而那一组是 **`pointer-events: none`**（为"不挡点击"而设）⇒ 悬停事件落到下面的节点圆点上、
+   * 全局接管层的 `closest('[data-tip]')` 找不到那一组 ⇒ **提示永远弹不出来**
+   * （`ui.weekend.018` 从上线起就是死的；新加的「母舰血量剩余 N%」同理）。
+   *
+   * 修法三条（本契约就钉这三条，谁被改回去都会红）：
+   * ① 读数**同时挂到节点圆点**（最自然的悬停目标，一定可达）；
+   * ② 标记自身的**条与 ★ 各自 `pointer-events: auto`**（放行悬停）；
+   * ③ **光晕（r=46）必须保持 `none`** —— 它可命中就会把邻近星系的点击/悬停一起吃掉。
+   */
+  {
+    const expPath = 'apps/desktop/src/renderer/src/panels/Expedition.tsx'
+    const expSrc = readSrc(expPath)
+    const cssSrc = readSrc('apps/desktop/src/renderer/src/styles.css')
+    check(
+      expSrc.includes('invasionTip') && expSrc.includes("'data-tip': invasionTip"),
+      `入侵标记悬停可达契约：${expPath} 必须把入侵读数挂到**节点圆点**上（\`'data-tip': invasionTip\`）` +
+        `——只挂在 \`pointer-events: none\` 的那一组上等于没挂`,
+    )
+    check(
+      /\.app-map-invbar \{ pointer-events: auto; \}/.test(cssSrc),
+      '入侵标记悬停可达契约：`.app-map-invbar` 必须 `pointer-events: auto`（进度条/母舰血条那根条要能悬出读数）',
+    )
+    const tagRule = cssSrc.split('\n').find((l) => l.startsWith('.app-map-invasion-tag {')) ?? ''
+    check(
+      tagRule.includes('pointer-events: auto'),
+      '入侵标记悬停可达契约：`.app-map-invasion-tag`（★）必须 `pointer-events: auto`',
+    )
+    const glowRule = cssSrc.slice(cssSrc.indexOf('.app-map-invasion-glow {'))
+    check(
+      glowRule.slice(0, 200).includes('pointer-events: none'),
+      '入侵标记悬停可达契约：`.app-map-invasion-glow` 必须保持 `pointer-events: none`' +
+        '（r=46 的氛围光若可命中，会吃掉邻近星系的点击/悬停）',
+    )
+    console.log('· 入侵标记悬停可达契约：读数在圆点上 · 条与 ★ 可悬停 · 光晕保持穿透')
+  }
+
   /* ── 干扰压制取数契约（2026-09-25 船长报障「摧毁敌方干扰舰后，射程不会恢复」）──
    *
    * 病根两条，都在这一个机制的取数上：

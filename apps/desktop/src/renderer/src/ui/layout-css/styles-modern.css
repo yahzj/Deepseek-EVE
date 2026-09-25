@@ -10658,9 +10658,16 @@ html[data-locale='en'] body {
   0%, 100% { opacity: 0.62; transform: scale(0.92); }
   50% { opacity: 1; transform: scale(1); }
 }
-.app-map-invasion-tag { fill: rgb(var(--wui-danger-strong)); font-size: var(--wui-fs-xs); text-anchor: middle; }
+.app-map-invasion-tag { fill: rgb(var(--wui-danger-strong)); font-size: var(--wui-fs-xs); text-anchor: middle; pointer-events: auto; }
 /* 被占星系的**进度条**（2026-09-25 船长令：替换原先的旗子；画在节点上方 30×3.5，圆角）
-   —— 底槽用暗红、填充用与发光同一枚深红，读数 = 该星系的入侵进度（0~100%） */
+   —— 底槽用暗红、填充用与发光同一枚深红，读数 = 该星系的入侵进度（0~100%）
+   ⚠ **悬停可达性（2026-09-25 船长令「② 修」）**：整组是 `pointer-events: none`（2026-09-23 为"不挡
+   点击"而设），而**悬停读数 `data-tip` 就挂在那一组上** ⇒ 不放行的话条与 ★ 都悬不出提示
+   （`ui.weekend.018` 从上线起就是死的、新加的「母舰血量剩余 N%」同理）。
+   这里只放行**标记自身**（条 ＋ ★）；**光晕（`.app-map-invasion-glow`，r=46）保持 `none`** ——
+   它是氛围光，若可命中会把邻近星系的点击/悬停一起吃掉。节点的读数另挂一份在**圆点**上
+   （`Expedition.tsx` 的 `invasionTip`），三者都在节点 `<g>` 内 ⇒ 点击照旧冒泡、不影响选星系。 */
+.app-map-invbar { pointer-events: auto; }
 .app-map-invbar-bg { fill: rgb(var(--wui-danger-strong) / 0.22); }
 .app-map-invbar-fill { fill: rgb(var(--wui-danger-strong) / 0.95); }
 
