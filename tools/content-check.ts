@@ -1386,6 +1386,52 @@ for (const m of MODULES) {
     console.log(`· 入侵行红框契约：星系详细里 ${invasionRows} 行入侵相关行带红框（旗舰入口 ＋ 击退入侵舰队）`)
   }
 
+  /* ── 入侵演出契约（2026-09-25 船长令：警报红灯 ＋ 结束烟火 ＋ 声效接口预留）──
+   *
+   * 船长原话：「**打算给入侵发生添加一个开场动画，当入侵发生时，游戏屏幕的正上方和正下方出现警告式的
+   * 红灯闪烁，然后这里预留一个声效的接口，用于之后接入警报声。警告灯闪烁数次后，再弹出通讯。且入侵
+   * 结束后的通讯发送给玩家时，屏幕上出现类似庆祝的烟火动画，玩家点击下方的跳转时应该直接弹出结算公告。**」
+   *
+   * 契约钉四件**会静默坏掉**的东西（扫描源码/样式，不跑浏览器）：
+   * ① 两个满屏演出层必须 `pointer-events: none` —— 若吃点击，整个界面会"点不动"（最凶的一种坏法）；
+   * ② 两层必须 `z-index: 110`（压在战场 100 之上）—— 警报就是要打断注意力，降下去就看不见了；
+   * ③ **声效接口的调用点必须在**（接口本批是空实现：调用点被删掉，将来接音频时两处演出就成了哑的）；
+   * ④ 结算信弹窗里的「查看详细奖励」必须**直接开结算面板**（`setSumOpen(true)`），
+   *    不许退回"只跳通讯页、还要玩家再点一次"。
+   */
+  {
+    const appPath = 'apps/desktop/src/renderer/src/App.tsx'
+    const appSrc = readSrc(appPath)
+    const cssSrc = readSrc('apps/desktop/src/renderer/src/styles.css')
+    for (const sel of ['.app-alarm {', '.app-fireworks {']) {
+      const line = cssSrc.split('\n').find((l) => l.startsWith(sel)) ?? ''
+      check(
+        line.includes('pointer-events: none'),
+        `入侵演出契约：styles.css 的 \`${sel}\` 必须 \`pointer-events: none\`——满屏演出层吃点击会让整个界面点不动`,
+      )
+      check(
+        line.includes('z-index: 110'),
+        `入侵演出契约：\`${sel}\` 必须 \`z-index: 110\`（压在战场 100 之上），实际那行是：${line.trim()}`,
+      )
+    }
+    check(
+      appSrc.includes('takeInvasionAlarm()') &&
+        appSrc.includes("playSfx('invasion-alarm')") &&
+        appSrc.includes("playSfx('invasion-end')"),
+      `入侵演出契约：${appPath} 必须保留"一次性待办消费 ＋ 两处声效调用点"` +
+        `（声效接口本批是空实现，调用点删了将来接音频就是哑的）`,
+    )
+    check(
+      appSrc.includes('<InvasionAlarm') && appSrc.includes('<InvasionFireworks'),
+      `入侵演出契约：${appPath} 必须挂上两个演出层（\`<InvasionAlarm\` / \`<InvasionFireworks\`）`,
+    )
+    check(
+      appSrc.includes('setSumOpen(true)'),
+      `入侵演出契约：结算信弹窗的「查看详细奖励」必须**直接开结算面板**（\`setSumOpen(true)\`）`,
+    )
+    console.log('· 入侵演出契约：警报/烟火两层不吃点击（z 110）· 声效两处调用点在 · 弹窗跳转直开结算面板')
+  }
+
   /* ── 干扰压制取数契约（2026-09-25 船长报障「摧毁敌方干扰舰后，射程不会恢复」）──
    *
    * 病根两条，都在这一个机制的取数上：

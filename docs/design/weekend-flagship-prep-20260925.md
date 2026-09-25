@@ -630,3 +630,29 @@ ui:rot-check · ui:theme-check · **ui:layout-css:check（三号修好后已能�
 活动结束 ⇒ 解除）· typecheck ✓ · core 全绿 · content:check ✓ · l10n:check ✓ · ui:rot-check ✓ ·
 ui:theme-check ✓ · build ✓ · docs:index ✓。
 ⚠ **观感审查权在船长**：星图那根条的位置/粗细与"收复后那一行占位"的观感请过目（本批未起无头浏览器截图）。
+
+## 三十三、入侵演出：警报红灯 ＋ 结束烟火 ＋ 声效接口（船长令）（2026-09-25）
+
+> 船长原话：「**打算给入侵发生添加一个开场动画，当入侵发生时，游戏屏幕的正上方和正下方出现警告式的
+> 红灯闪烁，然后这里预留一个声效的接口，用于之后接入警报声。警告灯闪烁数次后，再弹出通讯。且入侵
+> 结束后的通讯发送给玩家时，屏幕上出现类似庆祝的烟火动画，玩家点击下方的跳转时应该直接弹出结算公告。**」
+> 五问五答（船长已选）：**开局 ＋ 旗舰现身各闪一次** · **闪 3 次 × 0.8 秒** · 声效做"**可注册播放器**"骨架 ·
+> 烟火在**结算弹窗上台那一刻**放 · **按此开工**。
+
+| # | 落法 |
+|---|---|
+| ① **一次性待办** | `engine.ts`：`weekend.started` ⇒ 立 `'start'`；`weekend.flagshipAnchored` ⇒ 立 `'flagship'`（与既有 `flagshipPopupPending` 同拍同形，内存不随档）；界面 `takeInvasionAlarm()` **读一次即消费**。读档时入侵早在跑 ⇒ 不补演（该看的信息活动框/星图/星系详细里都有） |
+| ② **警报红灯** | `panels/InvasionFx.tsx` 的 `<InvasionAlarm>`：屏幕**正上方 ＋ 正下方**各一条红色灯带（`styles.css` 的 `.app-alarm-band`：渐变光带 ＋ 2px 亮边 ＋ `app-alarm-flash` 呼吸），闪 `ALARM_FLASH_COUNT`(3) 次 × `ALARM_FLASH_MS`(800ms) —— **节奏常量只在 TS 里一处**（CSS 迭代次数与时长由内联给 ⇒ 不会与界面计时漂开） |
+| ③ **演完再弹通讯** | App 的 `popupMsg` 判据叠一条 `alarmKind === null`（与"战场让位/离线简报让位"同一套排队）：**信照常进收件箱**，只是弹窗等警报演完再上台 —— 不会漏信；上膛延时（`POPUP_ARM_MS`）照旧 |
+| ④ **结束烟火** | `panels/InvasionFx.tsx` 的 `<InvasionFireworks>`：六处爆散（环 ＋ 八向射线 ＋ 芯点，**SVG 线稿**，金/青两色交替）错峰绽放后淡出，`FIREWORKS_MS`(4.2s) 自熄。触发点 = **结算信（`WEEKEND_COMMS_SETTLE_ID`）弹窗上台那一刻**（战斗中/离线简报期间弹窗本就延后 ⇒ 烟火跟着延后，保证看得见）；**按该封信的 `seq` 只放一次**（下场换 seq 才再放） |
+| ⑤ **跳转直开结算面板** | 通讯**弹窗**里的「查看详细奖励」由"收弹窗＋跳通讯页"改为**收弹窗 ＋ 就地弹出结算面板**（App 内 `sumOpen` ＋ 既有 `WeekendSummaryView`，弹层复用 `.app-modal-mask / .app-modal-wide / .app-weekend-sum`，与通讯页那一处同源）；通讯页里那一处入口照旧 |
+| ⑥ **声效接口** | 新增 `game/sfx.ts`：`SfxKind = 'invasion-alarm' \| 'invasion-end'` · `registerSfxPlayer(fn)` · `sfxReady()` · `playSfx(kind)`（**默认空操作、绝不抛错**——音频层出事不许影响演出与游戏）；两处调用点**本批就接好**，将来接音频模块只需注册一个播放器 |
+| ⑦ **两条铁律** | 两个演出层都是 `position: fixed; inset: 0; pointer-events: none;`（**不挡点击**）＋ **`z-index: 110`（压在战场 100 之上）**——警报就是要打断注意力，玩家在打别的战斗时也该看见 |
+| ⑧ **回归契约** | `content:check` 新增「**入侵演出契约**」：两层必须 `pointer-events: none` ＋ `z-index: 110` · 声效两处调用点与一次性待办消费必须在 · 弹窗跳转必须 `setSumOpen(true)`（四件都是"删了就静默坏掉"的东西） |
+
+**不做 / 边界**：本批**不放任何音频资源、不做音量设置**（等接音频那批）· 警报与烟火**不加文字**（零新增 l10n 文案）· 只加演出，**不动入侵的数值与时序** · 只在入侵真实发生/结束时触发（当前入侵仅调试模式可见）。
+
+**验证**：typecheck ✓ · core **2,408 例全绿**（本批无 core 改动）· content:check ✓（新契约在册）·
+反向 —— 临时去掉 `.app-alarm` 的 `pointer-events: none` ⇒ **红**（`满屏演出层吃点击会让整个界面点不动`），
+还原后绿 · l10n:check ✓ · ui:rot-check ✓ · ui:theme-check ✓ · **`ui:layout-css`（CSS 改了已重出两份产物）＋ `ui:layout-css:check` ✓** · build ✓ · docs:index ✓。
+⚠ **观感审查权在船长**：闪灯节奏/亮度、烟火的密度与位置请过目（本批未起无头浏览器截图）。

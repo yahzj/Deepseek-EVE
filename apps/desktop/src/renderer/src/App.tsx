@@ -23,6 +23,8 @@ import {
   // 旗舰战（main 侧新增）：战斗宿主判定与族名文案
   weekendFamilyNameId,
   weekendFlagshipBattleActive,
+  /** 结算信的固定 id（2026-09-25：庆祝烟火按它认"该放烟火的这一封"） */
+  WEEKEND_COMMS_SETTLE_ID,
 } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
@@ -37,6 +39,9 @@ import { PrologueScreen } from './panels/PrologueScreen'
 import { ModeChoice } from './panels/ModeChoice'
 import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
 import { WeekendFlagshipPrepModal } from './panels/WeekendFlagshipPrep'
+import { WeekendSummaryView } from './panels/WeekendSummary'
+import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
+import { playSfx } from './game/sfx'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -1295,10 +1300,59 @@ async function applyLayoutAndQuit(): Promise<void> {
   const [prepOpen, setPrepOpen] = useState(false)
   /** 战场是否正盖在界面上（挂载 ≠ 上屏：`battleOpen` 为假时战场什么都不渲染，不算盖着） */
   const battleOnStage = battleMounted && battleOpen
+  /**
+   * **入侵警报演出**（**船长 2026-09-25 令**：「当入侵发生时，游戏屏幕的正上方和正下方出现警告式的红灯
+   * 闪烁……**警告灯闪烁数次后，再弹出通讯**」＋ 同日补定「**开局 ＋ 旗舰现身各闪一次**」）。
+   *
+   * 引擎在**那一拍**立一次性待办（`takeInvasionAlarm()`：`'start'` = 入侵开局 · `'flagship'` = 旗舰现身），
+   * 这里**读一次即消费** ⇒ 放红灯 ＋ 调声效接口（本批空实现）；`ALARM_TOTAL_MS` 后自熄。
+   * ⚠ 演出期间**压住通讯弹窗**（见 `popupMsg` 判据）：信照常进收件箱，只是弹窗等警报演完再上台
+   * —— 与"战场让位"同一套排队思路，不会漏信。
+   */
+  const [alarmKind, setAlarmKind] = useState<'start' | 'flagship' | null>(null)
+  /**
+   * ⚠ **消费与自熄拆成两个 effect**（写法上必须这样）：消费那个**没有依赖数组**（引擎每拍
+   * `notify()` ⇒ 每拍跑一次，靠 `takeInvasionAlarm()` 自己保证只消费一次）；自熄那个**只依赖
+   * `alarmKind`**。若把计时器写在消费那个里，它每拍都会被 cleanup 掉重来 ⇒ 警报永远不熄。
+   */
+  useEffect(() => {
+    const kind = engine.takeInvasionAlarm()
+    if (kind === null) return
+    setAlarmKind(kind)
+    playSfx('invasion-alarm')
+  })
+  useEffect(() => {
+    if (alarmKind === null) return
+    const t = window.setTimeout(() => setAlarmKind(null), ALARM_TOTAL_MS)
+    return () => window.clearTimeout(t)
+  }, [alarmKind])
+  /**
+   * **结算信的庆祝烟火**（船长同日令：「入侵结束后的通讯发送给玩家时，屏幕上出现类似庆祝的烟火动画」）：
+   * 触发点 = **结算弹窗上台那一刻**（战斗中/离线简报期间弹窗本来就延后 ⇒ 烟火跟着延后，保证看得见）。
+   * ⚠ **每场只放一次**：按该封信的 `seq` 记账（下一场换了 seq 才会再放）；
+   * ⚠ 同样拆成"认信放烟花"＋"自熄"两个 effect（理由同警报那处）。
+   */
   const popupMsg =
-    popupId !== null && !showOfflineReport && !battleOnStage
+    popupId !== null && !showOfflineReport && !battleOnStage && alarmKind === null
       ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null)
       : null
+  const settleSeq =
+    popupMsg !== null && popupMsg.id === WEEKEND_COMMS_SETTLE_ID ? Number(popupMsg.textParams?.['seq'] ?? -1) : null
+  const [fireworksOn, setFireworksOn] = useState(false)
+  const fireworksSeqRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (settleSeq === null || fireworksSeqRef.current === settleSeq) return
+    fireworksSeqRef.current = settleSeq
+    setFireworksOn(true)
+    playSfx('invasion-end')
+  }, [settleSeq])
+  useEffect(() => {
+    if (!fireworksOn) return
+    const t = window.setTimeout(() => setFireworksOn(false), FIREWORKS_MS)
+    return () => window.clearTimeout(t)
+  }, [fireworksOn])
+  /** 结算面板（弹窗里的「查看详细奖励」**直接弹它**；通讯页那一处入口照旧） */
+  const [sumOpen, setSumOpen] = useState(false)
   /**
    * **送达弹窗的"上膛"延时**（同上那条报障的配套）：刚挂上来的头 `POPUP_ARM_MS` 毫秒内**忽略遮罩点击**
    * ——遮罩是满屏的（`inset: 0`，点哪都算点外面），而这张卡挂上来的时机恰好是"玩家刚点完战场/刚点过别处"
@@ -1900,13 +1954,15 @@ async function applyLayoutAndQuit(): Promise<void> {
                   gotoFromComms(p, tab, shipTab, taskTab)
                 }}
                 /**
-                 * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）：弹窗里不就地开面板，
-                 * 而是收掉弹窗、跳到通讯页同那一封上（面板在那儿，读完信顺手点开 —— 只留一处入口）。
+                 * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）——
+                 * **船长 2026-09-25 令**：「**玩家点击下方的跳转时应该直接弹出结算公告。**」
+                 * ⇒ 收掉弹窗、**就地弹出结算面板**（复用通讯页那一处同源的 `WeekendSummaryView`
+                 * ＋ 全仓既有的 `.app-modal-*` 族；原先只是"跳到通讯页、还要再点一次"）。
                  */
                 onAction={(a) => {
                   if (a !== 'weekendSummary') return
                   engine.dismissCommsPopup(popupMsg.id)
-                  gotoFromComms('comms')
+                  setSumOpen(true)
                 }}
                 extra={
                   <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
@@ -1960,6 +2016,25 @@ async function applyLayoutAndQuit(): Promise<void> {
       ) : null}
       {/* 战前准备弹层：从上面那枚弹窗直达（组件自包含；活动框与星系详细里各挂一份自己的） */}
       {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
+      {/**
+       * **入侵结算面板**（船长 2026-09-25 令：「玩家点击下方的跳转时应该直接弹出结算公告」）：
+       * 从**通讯弹窗**的「查看详细奖励」直接开到这里（组件与通讯页那一处同源：`WeekendSummaryView`）；
+       * 弹层结构复用全仓既有的 `.app-modal-*` 族与通讯页那处的类名（不自造窗口观感）。
+       */}
+      {sumOpen && state.weekendLastResult !== undefined ? (
+        <div className="app-modal-mask" onClick={() => setSumOpen(false)}>
+          <div className="app-modal app-modal-wide app-weekend-sum" onClick={(e) => e.stopPropagation()}>
+            <WeekendSummaryView engine={engine} onClose={() => setSumOpen(false)} />
+          </div>
+        </div>
+      ) : null}
+      {/**
+       * **入侵演出**（船长 2026-09-25 令）：警报红灯（开局 ＋ 旗舰现身各一次）与结束庆祝烟火。
+       * 两者都 `pointer-events: none` ＋ `z-index 110`（压在战场之上）——见 `styles.css` 那一族与
+       * `panels/InvasionFx.tsx` 的口径。
+       */}
+      {alarmKind !== null ? <InvasionAlarm kind={alarmKind} /> : null}
+      {fireworksOn ? <InvasionFireworks /> : null}
       {/**
        * **交火中：右上角悬浮入口**（主动进入战斗页，不自动切换页面）。
        *

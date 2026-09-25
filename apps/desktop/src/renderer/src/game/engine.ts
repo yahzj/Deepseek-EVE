@@ -1083,6 +1083,8 @@ export class GameEngine {
     this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
     if (weekend.started) {
       addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
+      /** **入侵警报演出**（船长 2026-09-25 令）：开局立一次性待办 ⇒ 界面放红灯闪烁，演完再弹通讯 */
+      this.invasionAlarmPending = 'start'
       void this.persist()
     }
     /**
@@ -1093,6 +1095,8 @@ export class GameEngine {
     if (weekend.flagshipAnchored) {
       addLog(this.state, 'warn', tr('ui.weekend.002'), 'ui.weekend.002')
       this.flagshipPopupPending = true
+      /** **旗舰现身也闪一次警报**（船长 2026-09-25 定「开局 ＋ 旗舰现身各闪一次」） */
+      this.invasionAlarmPending = 'flagship'
       void this.persist()
     }
     if (weekend.ended) {
@@ -1445,6 +1449,29 @@ export class GameEngine {
     this.flagshipPopup = false
     this.notify()
   }
+  /**
+   * **入侵警报演出的一次性待办**（**船长 2026-09-25 令**：「**当入侵发生时，游戏屏幕的正上方和正下方
+   * 出现警告式的红灯闪烁**……警告灯闪烁数次后，再弹出通讯」＋「**开局 ＋ 旗舰现身各闪一次**」）。
+   *
+   * 形态照 `flagshipPopupPending`：引擎在**那一拍**立起待办（内存、不随档），界面**读一次即消费**
+   * （`takeInvasionAlarm()`），拿到的就是该放哪一档演出：
+   * - `'start'` = 入侵开局（`weekend.started`）· `'flagship'` = 旗舰现身（`weekend.flagshipAnchored`）。
+   *
+   * ⚠ 只在内存里：读档时若入侵早已在跑，不再补演一遍（该看的信息在活动框/星图/星系详细里都有）。
+   */
+  takeInvasionAlarm(): 'start' | 'flagship' | null {
+    const v = this.invasionAlarm
+    if (v === null) return null
+    this.invasionAlarm = null
+    return v
+  }
+  private get invasionAlarmPending(): 'start' | 'flagship' | null {
+    return this.invasionAlarm
+  }
+  private set invasionAlarmPending(v: 'start' | 'flagship' | null) {
+    this.invasionAlarm = v
+  }
+  private invasionAlarm: 'start' | 'flagship' | null = null
   /**
    * **挑战入侵旗舰**（M1-b 收尾 · 2026-09-23）：核心条满才成立（`weekendStartFlagshipBattle` 内部判）。
    *
