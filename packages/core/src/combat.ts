@@ -7405,53 +7405,68 @@ function stepBattle(
             pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
           }
         }
-        // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
-        // 主目标已按上面的常规口径结算；这里把**同一轮齐射**逐个结算到其余存活敌舰：
-        // 逐目标独立掷命中（各用各自的命中条件）、各吃各自的层克制与抗性；受击增程等触发点照常逐舰触发。
-        // ⚠ 副目标**不吃锁定加深**（锁定锁的是主目标）⇒ 基数用 dmg，主目标仍用 dmgLocked。
-        if (w.allFoes === true && hit && !droneHit) {
-          for (const other of foes) {
-            if (other.tag === foeTarget!.tag) continue
-            const ort = b.units[other.tag]
-            if (!ort || !isAlive(b, other.tag)) continue
-            const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
-            const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
-            /** 本发打**这一艘副目标**的实收（含附伤段）——飘字逐舰各出一个数字 */
-            let oDealt = 0
-            if (oHit) {
-              b.stats.meHits += 1
-              const rAll = applyDamage(ort.hp, other.resists ?? {}, dmg, type)
-              ort.hp = rAll.hp
-              b.stats.meDmg += rAll.dealt
-              oDealt = rAll.dealt
-              const secPctAll = w.secondaryDamagePct ?? 0
-              if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
-                const secTypeAll = w.secondaryDamageType ?? 'kinetic'
-                const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
-                const rAll2 = applyDamage(ort.hp, other.resists ?? {}, secDmgAll, secTypeAll)
-                ort.hp = rAll2.hp
-                b.stats.meDmg += rAll2.dealt
-                oDealt += rAll2.dealt
-              }
-              if (markFoeDroneRangeBuff(other, b)) {
-                pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
-              }
-              if (markFoeGunRangeBuff(other, b)) {
-                pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
-              }
+      }
+      // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
+      // 主目标已按上面的常规口径结算；这里把**同一轮齐射**逐个结算到其余存活敌舰：
+      // 逐目标独立掷命中（各用各自的命中条件）、各吃各自的层克制与抗性；受击增程等触发点照常逐舰触发。
+      // ⚠ 副目标**不吃锁定加深**（锁定锁的是主目标）⇒ 基数用 dmg，主目标仍用 dmgLocked。
+      //
+      // ⚠⚠ **2026-09-25 船长报障修复**：「**装孢子导弹巢有时候会只有一发弹道**」。
+      // 根因 = **本段原先整块写在上面那个 `if (hit) { … }` 里面**（那一层的 `hit` 就是**主目标那一发的
+      // 命中判定**）⇒ 主目标没中时，"整轮是否铺开"跟着一起被跳过：副目标**连掷都不掷**，画面只剩主目标
+      // 那一条弹道（原条件里那个多余的 `&& hit` 只是同一件事的第二道锁，去掉它并不改变行为）。
+      // 现把本段**移出 `if (hit)`** ⇒ **主目标的命中只决定它自己**，副目标照常逐个独立结算。
+      // 真跑读数（3 敌 · 28 轮 · 主目标命中率 0.357）：修复前**单发轮 18 / 铺开轮 10 = 64%**
+      // （正好等于 `1 − 0.357`），每轮期望命中目标数 0.679；修复后 = 命中率 × 3 = 1.071 ⇒ **×1.58**。
+      // 为什么判定为缺陷（三份口径里两份都是"每目标独立"）：① 落码记录（2026-09-13）只写
+      // 「**逐目标独立掷命中** + 各吃各自层克制」，从没提过这道闸；② **胜率预估器**（`steadyPreview`
+      // 的 `allFoesMul = foes.length`）一直按"每轮打全部敌舰"算 ⇒ 与实战差 1.58×（预估偏高）；
+      // ③ 船长 2026-09-13 原话就是「对所有敌方同时攻击」。⇒ 船长 2026-09-25 裁「按甲」。
+      // 影响面：只此一件武器带 `allFoes`（`mod-wh-c-missile`）⇒ 只有装了它的场次读数变化；
+      // 单发/装填/射程/命中一字未动，**单体标称 DPS 锚（`wh-weapon-dps` 的 ×0.69）不受影响**
+      // （只有 1 艘敌舰时本就没有副目标，这一段本就不做事）。
+      if (w.allFoes === true && !droneHit) {
+        for (const other of foes) {
+          if (other.tag === foeTarget!.tag) continue
+          const ort = b.units[other.tag]
+          if (!ort || !isAlive(b, other.tag)) continue
+          const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
+          const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
+          /** 本发打**这一艘副目标**的实收（含附伤段）——飘字逐舰各出一个数字 */
+          let oDealt = 0
+          if (oHit) {
+            b.stats.meHits += 1
+            const rAll = applyDamage(ort.hp, other.resists ?? {}, dmg, type)
+            ort.hp = rAll.hp
+            b.stats.meDmg += rAll.dealt
+            oDealt = rAll.dealt
+            const secPctAll = w.secondaryDamagePct ?? 0
+            if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
+              const secTypeAll = w.secondaryDamageType ?? 'kinetic'
+              const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
+              const rAll2 = applyDamage(ort.hp, other.resists ?? {}, secDmgAll, secTypeAll)
+              ort.hp = rAll2.hp
+              b.stats.meDmg += rAll2.dealt
+              oDealt += rAll2.dealt
             }
-            pushBattleFx(b, {
-              atMs: b.lastTickGameMs + dtMs,
-              side: 'me',
-              tag: unit.tag,
-              to: other.tag,
-              type,
-              src: w.src,
-              artId: w.artId,
-              hit: oHit,
-              ...(oDealt > 0 ? { dmg: oDealt } : {}),
-            })
+            if (markFoeDroneRangeBuff(other, b)) {
+              pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
+            }
+            if (markFoeGunRangeBuff(other, b)) {
+              pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+            }
           }
+          pushBattleFx(b, {
+            atMs: b.lastTickGameMs + dtMs,
+            side: 'me',
+            tag: unit.tag,
+            to: other.tag,
+            type,
+            src: w.src,
+            artId: w.artId,
+            hit: oHit,
+            ...(oDealt > 0 ? { dmg: oDealt } : {}),
+          })
         }
       }
       pushBattleFx(b, {

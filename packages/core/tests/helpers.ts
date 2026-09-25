@@ -226,6 +226,8 @@ export function moduleDef(
     /** 推进器点火周期覆盖（2026-09-14 微型跃迁引擎：10 秒点火 / 60 秒冷却） */
     thrusterBoostMs?: number
     thrusterCooldownMs?: number
+    /** **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）⇒ `WeaponSpec.allFoes` */
+    hitsAllFoes?: boolean
   },
 ): ModuleDef {
   return {
@@ -252,6 +254,7 @@ export function moduleDef(
     ...(opts?.hitPenalty !== undefined ? { hitPenalty: opts.hitPenalty } : {}),
     ...(opts?.thrusterBoostMs !== undefined ? { thrusterBoostMs: opts.thrusterBoostMs } : {}),
     ...(opts?.thrusterCooldownMs !== undefined ? { thrusterCooldownMs: opts.thrusterCooldownMs } : {}),
+    ...(opts?.hitsAllFoes !== undefined ? { hitsAllFoes: opts.hitsAllFoes } : {}),
     ...(opts?.droneBayBonusM3 !== undefined ? { droneBayBonusM3: opts.droneBayBonusM3 } : {}),
     ...(opts?.droneDmgBonus !== undefined ? { droneDmgBonus: opts.droneDmgBonus } : {}),
     ...(opts?.rack !== undefined ? { rack: opts.rack } : {}),
