@@ -9900,7 +9900,7 @@ html[data-locale='en'] body {
 
 .app-ga-sub {
 
-  margin-top: 8px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -9912,9 +9912,9 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  gap: 10px;
+  gap: var(--wui-sp-2);
 
-  margin: 5px 0;
+  margin: var(--wui-sp-1) 0;
 
 }
 
@@ -9942,7 +9942,7 @@ html[data-locale='en'] body {
 
 .app-ga-desc {
 
-  font-size: 11px;
+  font-size: var(--wui-fs-xs);
 
   line-height: 1.4;
 
@@ -11535,11 +11535,11 @@ html[data-locale='en'] body {
 /* **星系详细悬浮窗 · 悬赏行的「改环」内联确认**（2026-09-24）：
    重复清剿已并入 ④ 悬赏的每一行（原先那个独立容器 `.app-map-loop*` 整块删除），
    确认条与同文件 `.app-ano-switch-confirm`（采矿中转战）同形：紧凑一行、可换行。 */
-.app-ga-switch-confirm { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; }
+.app-ga-switch-confirm { display: flex; align-items: center; gap: var(--wui-sp-1); flex-wrap: wrap; font-size: var(--wui-fs-xs); }
 
 /* **悬赏行的行尾按钮组**（2026-09-24 船长：「按钮离出击有点太远了。要相邻」）：
    行本身是 `space-between`，两个按钮各自做 flex 项会被主内容的余量撑开 ⇒ 包成一组，组内 4px 紧挨。 */
-.app-ga-btns { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.app-ga-btns { display: flex; align-items: center; gap: var(--wui-sp-1); flex: 0 0 auto; }
 
 /* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。 */
 .app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: 13px; font-weight: 700; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }
