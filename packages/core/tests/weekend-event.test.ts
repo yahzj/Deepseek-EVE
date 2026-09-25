@@ -14,6 +14,8 @@ import {
   WEEKEND_AMBUSH_STRENGTH_MUL,
   WEEKEND_CORE_THREAT,
   WEEKEND_DEBUG_ONLY,
+  /** 2026-09-25 船长令：首场一次性 T0 = 2026-09-25 22:00 */
+  WEEKEND_FIRST_T0_WALL_MS,
   WEEKEND_FAMILIES,
   WEEKEND_GAIN_REPEL,
   WEEKEND_NPC_CORE_MS,
@@ -84,16 +86,68 @@ describe('周末入侵 · 时间轴', () => {
     expect(weekendWindowOpen(fri - H, weekendT0Of(fri - H))).toBe(false)
   })
 
-  it('仅调试模式可见（船长令）：正常模式不开局；调试模式可开且幂等', () => {
-    const fri = new Date(2026, 8, 25, 20, 0, 0, 0).getTime()
+  /**
+   * **开放口径**（**船长 2026-09-25 令**：「**现在可以解除限制，并在一会 22 点开始第一次入侵活动。**」）：
+   * 原先「仅调试模式可见」的闸解除 ⇒ **正常模式照周排期开局**（还要过声望那道闸，见下一条用例）；
+   * 调试模式照旧"上一场结束 + 1h 刷新、无历史即开"。
+   */
+  it('解除限制后：正常模式按周排期开局；调试模式照旧可开且幂等', () => {
+    const fri = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()  // 2026-10-02（首场时段之外，走纯周排期）
+    expect(WEEKEND_DEBUG_ONLY, '船长已解除"仅调试模式可见"').toBe(false)
     const s = fresh()
-    expect(ensureWeekendEvent(s, ctx, fri + 1 * H), '正常模式 ⇒ 不开').toBe(false)
-    expect(s.weekendEvent).toBeUndefined()
-    expect(WEEKEND_DEBUG_ONLY).toBe(true)
+    s.exploredGalaxies = [...ctx.galaxies.keys()] // 声望与探索都达标 ⇒ 该开
+    s.standings['dsi'] = 60
+    expect(ensureWeekendEvent(s, ctx, fri + 1 * H), '正常模式 ⇒ 开（窗口内 ＋ 声望达标）').toBe(true)
+    expect(s.weekendEvent?.startedAtWallMs, '正常模式 T0 = 本周五 20:00（不是调用时刻）').toBe(fri)
+    expect(ensureWeekendEvent(s, ctx, fri + 2 * H), '同一窗口只开一场 ⇒ 幂等').toBe(false)
+    /** 窗口外（周三）⇒ 不开 */
+    const outside = fresh()
+    outside.exploredGalaxies = [...ctx.galaxies.keys()]
+    outside.standings['dsi'] = 60
+    expect(ensureWeekendEvent(outside, ctx, fri + 4 * 24 * H), '窗口外 ⇒ 不开').toBe(false)
     const sd = fresh(true)
     expect(ensureWeekendEvent(sd, ctx, fri + 1 * H), '调试模式 ⇒ 开').toBe(true)
     expect(sd.weekendEvent?.startedAtWallMs, '调试模式 T0 = 调用时刻').toBe(fri + 1 * H)
     expect(ensureWeekendEvent(sd, ctx, fri + 2 * H), '未结束 ⇒ 幂等').toBe(false)
+  })
+
+  /**
+   * **一个窗口只开一场**（2026-09-25 修）：原判据要求"未结束" ⇒ 旗舰被击沉、窗口还没到点时，
+   * 下一拍会**立刻又开一场**（与定稿「每周末一次」＋「只有调试模式才是结束后 1 小时刷新」冲突）。
+   * 现按窗口判：上一场开始至今不足 74h ⇒ 不再开新场。
+   */
+  it('同一窗口内：上一场已结束也不再开新场（下一个 T0 才开）', () => {
+    const fri = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()  // 2026-10-02（首场时段之外，走纯周排期）
+    const s = fresh()
+    s.exploredGalaxies = [...ctx.galaxies.keys()]
+    s.standings['dsi'] = 60
+    expect(ensureWeekendEvent(s, ctx, fri + 1 * H)).toBe(true)
+    const ev = s.weekendEvent!
+    ev.endedAtWallMs = fri + 3 * H // 打完了，但窗口还开着（到下周一 22:00）
+    expect(ensureWeekendEvent(s, ctx, fri + 4 * H), '同窗口内 ⇒ 不再开第二场').toBe(false)
+    expect(s.weekendEvent, '还是那场（没被换掉）').toBe(ev)
+    /** 跨过 74h（下周同一 T0 之后）⇒ 该开下一场 */
+    expect(ensureWeekendEvent(s, ctx, fri + 7 * 24 * H + 1 * H), '下一个 T0 ⇒ 开新场').toBe(true)
+    expect(s.weekendEvent!.seq, '场次号 +1').toBe(ev.seq + 1)
+  })
+
+  /**
+   * **首场一次性 T0**（船长 2026-09-25 令：「在一会 22 点开始第一次入侵活动」＋二答「只今晚这一次 22:00」）：
+   * 到点即开场（T0 = 22:00，不是本周排期的 20:00）；此后回落周排期 —— 且**不会在同一窗口里
+   * 按 20:00 补开一场**（靠"一个窗口只开一场"那条判据兜住）。
+   */
+  it('首场一次性 T0 = 2026-09-25 22:00；首场过后回落每周五 20:00', () => {
+    const first = WEEKEND_FIRST_T0_WALL_MS
+    expect(first, '首场常量在册').not.toBeNull()
+    expect(new Date(first!).getHours(), '本地 22 点').toBe(22)
+    const s = fresh()
+    s.exploredGalaxies = [...ctx.galaxies.keys()]
+    s.standings['dsi'] = 60
+    expect(ensureWeekendEvent(s, ctx, first! - 60_000), '到点前 ⇒ 不开').toBe(false)
+    expect(ensureWeekendEvent(s, ctx, first!), '到点 ⇒ 开首场').toBe(true)
+    expect(s.weekendEvent?.startedAtWallMs, 'T0 = 22:00（不是排期的 20:00）').toBe(first)
+    s.weekendEvent!.endedAtWallMs = first! + 5 * H
+    expect(ensureWeekendEvent(s, ctx, first! + 6 * H), '首场结束后同窗口内 ⇒ 不补开').toBe(false)
   })
 
   /**
@@ -608,7 +662,7 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
    */
   it('声望前提：协会声望 ≥ 40 才允许开新场；调试模式不受限', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 31 })
-    expect(WEEKEND_DEBUG_ONLY, '本用例的前提：入侵当前仅调试模式可见').toBe(true)
+    expect(WEEKEND_DEBUG_ONLY, '船长 2026-09-25 已解除"仅调试模式可见"').toBe(false)
     // 正常模式：声望 0 / 39 ⇒ 不开；40 及以上 ⇒ 开
     s.debugQuick = false
     s.standings['dsi'] = 0

@@ -1454,12 +1454,23 @@ for (const m of MODULES) {
       `入侵声望前提契约：\`ensureWeekendEvent\` 的正常模式那一段必须调 \`weekendInvasionAllowedFor(state)\`` +
         `（不达线 ⇒ 静静不开新场）`,
     )
+    /**
+     * ⚠ 判据在 `ensureWeekendEvent` 里**有两处调用**：
+     * ① **首场一次性 T0** 那一块（2026-09-25 船长令「22 点开始第一次入侵」；它落在调试分支**之前**，
+     *    因为那一场对"客户端是否开着调试模式"无关）——它也要过声望这道闸；
+     * ② **周排期那一段**（正常模式）——它必须落在**调试分支之后**（船长答"调试模式不受限"）。
+     * ⇒ 位置断言从②起找（从调试分支的下标往后搜），不要被①绊倒。
+     */
     const debugIdx = fn.indexOf('if (weekendDebugOn(state)) {')
-    const gateIdx = fn.indexOf('weekendInvasionAllowedFor(state)')
+    const gateIdx = fn.indexOf('weekendInvasionAllowedFor(state)', Math.max(0, debugIdx))
     check(
       debugIdx >= 0 && gateIdx > debugIdx,
-      `入侵声望前提契约：声望门槛必须在**调试分支之后**（船长答"调试模式不受限"）——` +
-        `现在 debug=${debugIdx} · gate=${gateIdx}（gate 必须更大）`,
+      `入侵声望前提契约：周排期那一段的声望门槛必须在**调试分支之后**（船长答"调试模式不受限"）——` +
+        `现在 debug=${debugIdx} · 其后第一个 gate=${gateIdx}（gate 必须更大）`,
+    )
+    check(
+      (fn.match(/weekendInvasionAllowedFor\(state\)/g) ?? []).length >= 2,
+      '入侵声望前提契约：首场 T0 那一块与周排期那一段**都要**过声望闸（两处调用）',
     )
     check(
       weSrc.includes('export function weekendInvasionAllowedFor('),

@@ -220,11 +220,23 @@ export const WEEKEND_START_WEEKDAY = 5 // 5 = 周五（JS getDay）
 export const WEEKEND_START_HOUR = 20
 export const WEEKEND_WINDOW_MS = 74 * 3_600_000
 /**
- * **只有调试模式可见/可开**（**船长 2026-09-23 令**：「**目前入侵只有调试模式可见**」）。
- * ⇒ 非调试模式**永不开局**（周五 20:00 那套排期代码留着，等船长解除限制即生效）；
+ * **只有调试模式可见/可开**（**船长 2026-09-23 令**：「**目前入侵只有调试模式可见**」）——
+ * ✅ **2026-09-25 船长解除**：「**现在可以解除限制，并在一会 22 点开始第一次入侵活动。**」
+ * ⇒ 置 `false`：正常模式（非调试档）**照周五 20:00 的周排期开局**，界面也不再要求调试模式。
  * 引擎/界面/用例都读这一个开关，不做第二处判断。
  */
-export const WEEKEND_DEBUG_ONLY = true
+export const WEEKEND_DEBUG_ONLY = false
+/**
+ * **首场一次性 T0**（**船长 2026-09-25 令**：「在一会 22 点开始第一次入侵活动」＋二答「**只今晚这一次
+ * 22:00**」）：`2026-09-25 22:00`（**本地墙钟**）起开场，**此后一律回到每周五 20:00 的周排期**。
+ *
+ * 只在"到点 ＋ 手上还没有从这一刻起开过的场"时生效（见 `ensureWeekendEvent`）；过完这一晚就永久失效
+ * （`nowWallMs >= 首场 + 74h`）。
+ * ⚠ 与"每周 20:00"的关系：首场结束后**不会**在同一窗口里按 20:00 补开一场 —— 靠
+ * `ensureWeekendEvent` 里"一个窗口只开一场"那条判据兜住（窗口 = 74h）。
+ * ⚠ 置 `null` = 没有首场特例（恢复纯周排期）。
+ */
+export const WEEKEND_FIRST_T0_WALL_MS: number | null = new Date(2026, 8, 25, 22, 0, 0, 0).getTime()
 
 /** 调试模式（`debugQuick`）：上一场结束 + 1 小时刷新（第 15 条）· NPC 时间轴 ÷60（Q6）· 关掉离线保护（Q7） */
 export const WEEKEND_DEBUG_RESTART_MS = 3_600_000
@@ -867,9 +879,40 @@ function clamp01(v: number): number {
  * - 返回是否发生了变化（供调用方决定是否落盘/记日志）。
  */
 export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs: number): boolean {
-  // 船长 2026-09-23：「目前入侵只有调试模式可见」⇒ 非调试模式不开局（也不结束、不推进）
-  if (WEEKEND_DEBUG_ONLY && !weekendDebugOn(state)) return false
   const ev = state.weekendEvent
+  /**
+   * **首场一次性 T0**（**船长 2026-09-25 令**：「**现在可以解除限制，并在一会 22 点开始第一次入侵
+   * 活动。**」＋ 二答「**只今晚这一次 22:00**」）——`WEEKEND_FIRST_T0_WALL_MS` 只在这一晚生效：
+   * 到点、且"手上还没有从这一刻起开过的场"⇒ 按它开首场；此后一律回落到**每周五 20:00** 的周排期。
+   *
+   * 位置刻意放在**调试分支之前**：船长要的是"22 点开始第一次入侵"，与他客户端是否还开着调试模式无关
+   * （开着调试也只是这一场按调试节奏跑；下一场起调试模式照旧走"结束后 1 小时刷新"）。
+   */
+  const firstT0 = WEEKEND_FIRST_T0_WALL_MS
+  if (
+    firstT0 !== null &&
+    nowWallMs >= firstT0 - 2 * 3_600_000 && // 从首场那天的周排期 T0（20:00）起进入"首场时段"
+    nowWallMs < firstT0 + WEEKEND_WINDOW_MS
+  ) {
+    /**
+     * ① **首场时刻之前**：这一场留给 22:00 ⇒ **周排期让位**（20:00~22:00 这段不开局，
+     * 否则会在 20:00 先开一场、22:00 又被首场覆盖一次）。
+     * ⚠ 调试档不放让位（船长令「调试模式不受限」的同一精神）：调试玩家这段照旧能开局。
+     */
+    if (nowWallMs < firstT0 && !weekendDebugOn(state)) return false
+    /** ② **到点 ＋ 手上还没有"从这一刻起"开过的场** ⇒ 开首场（T0 = 22:00，不是周排期的 20:00） */
+    if (nowWallMs >= firstT0 && (ev === undefined || ev.startedAtWallMs < firstT0) && weekendInvasionAllowedFor(state)) {
+      const seq = (ev?.seq ?? 0) + 1
+      const rolled = weekendRollOccupation(state, ctx, seq)
+      if (rolled) {
+        state.weekendEvent = { seq, startedAtWallMs: firstT0, ...rolled, contributed: {} }
+        return true
+      }
+    }
+    // ③ 到点但已经开过（或抽不出核心）⇒ 落回下面的正常 / 调试路径
+  }
+  // 船长 2026-09-23 起"仅调试模式可见"的闸；**2026-09-25 船长解除**（见 `WEEKEND_DEBUG_ONLY`）
+  if (WEEKEND_DEBUG_ONLY && !weekendDebugOn(state)) return false
   if (weekendDebugOn(state)) {
     /**
      * **锁定族的自愈**（2026-09-25 船长令「先锁定 H 族」）：手上那一场若是**锁定前开的历史场**
@@ -900,7 +943,14 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
    * 位置刻意留在**调试分支之后**：调试模式走上面那条路、压根到不了这里。
    */
   if (!weekendInvasionAllowedFor(state)) return false
-  if (ev && ev.startedAtWallMs === t0 && ev.endedAtWallMs === undefined) return false
+  /**
+   * **一个窗口只开一场**（**2026-09-25 修**）：原判据 `ev.startedAtWallMs === t0 && ev.endedAtWallMs === undefined`
+   * 要求"未结束" ⇒ 旗舰被击沉、窗口还没到点时，**下一拍就会立刻又开一场**（与定稿「每周末一次」
+   * ＋「只有调试模式才是结束后 1 小时刷新」两处都冲突）。
+   * 现按**窗口**判：上一场开始至今不足一个窗口（74h）⇒ 不再开新场 —— 这同时兜住"首场 T0 = 22:00"
+   * 那一次偏移（首场结束后的下一拍不会再按周排期的 20:00 补开一场）。
+   */
+  if (ev && nowWallMs - ev.startedAtWallMs < WEEKEND_WINDOW_MS) return false
   const seq = (ev?.seq ?? 0) + 1
   const rolled = weekendRollOccupation(state, ctx, seq)
   if (!rolled) return false
