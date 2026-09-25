@@ -1572,15 +1572,26 @@ function normalizeState(raw: unknown): GameState {
   // --- 市场（v9）：整表容错；缺失/损坏的簿与池留空，首次推进由引擎按目录补齐 ---
   const marketRaw = asRaw(src.market)
   const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback)
-  const orderList = (rawList: unknown): Array<{ price: number; qty: number; expiresAtGameMs: number }> => {
-    const out: Array<{ price: number; qty: number; expiresAtGameMs: number }> = []
+  /**
+   * 簿面订单清洗。⚠ **必须保住 `bm`**（BM 声望门槛单 · 2026-09-25 修）：`marketCatalog` 给 MK3 专属/图纸行
+   * 挂了 `bmStanding` ⇒ 引擎会把 `bm` 写进收购单，而原先这里只留 price/qty/expiresAtGameMs ⇒ **往返丢键**
+   * （`save.test.ts` 的「引擎跑过的档不许丢键」护栏抓到 `market.npcBuy.<键>[].bm`）。缺省/非正 ⇒ 不写（老档零迁移）。
+   */
+  const orderList = (rawList: unknown): Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number }> => {
+    const out: Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number }> = []
     if (!Array.isArray(rawList)) return out
     for (const item of rawList) {
       const o = asRaw(item)
       const qty = Math.floor(num(o.qty))
       const price = Math.floor(num(o.price))
       if (qty <= 0 || price <= 0) continue
-      out.push({ price, qty, expiresAtGameMs: Math.max(0, Math.floor(num(o.expiresAtGameMs))) })
+      const bm = Math.max(0, Math.floor(num(o.bm, 0)))
+      out.push({
+        price,
+        qty,
+        expiresAtGameMs: Math.max(0, Math.floor(num(o.expiresAtGameMs))),
+        ...(bm > 0 ? { bm } : {}),
+      })
     }
     return out
   }

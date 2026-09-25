@@ -273,7 +273,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
    * - **产出链路**（同批接线）：被占星系的**打捞型号池**在占领期间并入"驻留的那支入侵舰队"（与遇袭取池
    *   `localBountyPoolOf` 同款做法）⇒ 在该星系打捞就能出本组残骸；
    * - **高级箱**：H 族没有窝点专属件（`FOE_LAIR_GEAR.H = []`）⇒ 走"未中专属"的既有回落，与其余洞外组同款；
-   * - 组代表威胁 = 93（= 四张卡回收口径体量 (90+108+129+45)÷4，随 2026-09-25 重定价一起走）。 ── */
+   * - 组代表威胁 = **124**（= 四张卡回收口径体量 (90+108+129+170)÷4；旗舰卡同日按 170 重标后随动）。 ── */
   {
     key: 'h-hi',
     family: 'H',
@@ -283,7 +283,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     tier: 'common',
     pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
     note: '墨潮帮残骸（高安）：钛钢结构料为主，夹银纹与晶态胶体',
-    threat: 93,
+    threat: 124,
     theme: {},
     members: ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship'],
   },

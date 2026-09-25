@@ -133,7 +133,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     expect(v.octopusFrac).toBeCloseTo(0.5, 10)
     expect(v.octopusDone).toBeCloseTo(v.hpMax / 2, 6)
     expect(v.hpDone).toBe(1_000) // 玩家那 1000 还在
-    expect(v.playerFrac).toBeCloseTo(0.2, 10)
+    expect(v.playerFrac).toBeCloseTo(1_000 / WEEKEND_FLAGSHIP_POOL_HP, 10)
     // 到点 ⇒ 章鱼人削满
     expect(weekendOctopusTick(s, ev, windowMs / 2, false)).toBe(true)
   })

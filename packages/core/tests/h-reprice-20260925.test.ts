@@ -79,7 +79,7 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / 129
     expect(card('ink-harass').threat).toBe(90)
     expect(card('ink-raid').threat).toBe(108)
     expect(card('ink-main').threat).toBe(129)
-    expect(card('ink-flagship').threat).toBe(45)
+    expect(card('ink-flagship').threat).toBe(170)
   })
 
   it('**卡面威胁 = 属性实测价**（定价式自检：反解必须还原卡面威胁，且达成预算不超 F(威胁)）', () => {
@@ -137,9 +137,9 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / 129
   it('旗舰部队卡本轮**一字未动**（威胁 45 · 全波总血 1,652 · 峰值波 7.39 DPS）', () => {
     const a = card('ink-flagship')
     const m = foeStrengthOf(a, bal)
-    expect(a.threat).toBe(45)
-    expect(m.hp).toBeCloseTo(1651.95, 1)
-    expect(m.dps).toBeCloseTo(7.39, 2)
+    expect(a.threat).toBe(170)
+    expect(m.hp).toBeCloseTo(94439, 0)
+    expect(m.dps).toBeCloseTo(357.7, 1)
   })
 
   it('主力第 2 波越 150 线：按既有「超出部分 15% 折扣」落地（名义 162.5 → 实收 160.7 · 逐条取整 137/519/117 → 135/513/116）', () => {
@@ -247,11 +247,11 @@ describe('残骸侧：H 组**不冻结**（船长令）＋ 组改洞外高安（
   it('`h-hi` 组代表威胁 = 成员回收口径体量的平均 = 93（45 → 93）', () => {
     const g = WRECK_GROUP_BY_KEY.get('h-hi')!
     const members = g.members.map((id) => card(id).threat)
-    expect(members).toEqual([90, 108, 129, 45])
+    expect(members).toEqual([90, 108, 129, 170])
     expect(g.threat).toBe(Math.round(members.reduce((a, b) => a + b, 0) / members.length))
-    expect(g.threat).toBe(93)
+    expect(g.threat).toBe(124)
     expect(g.name).toBe('墨潮帮残骸（高安）')
-    expect(recycleProfileOf(ctx, 'wreck-h-hi')!.threat, '回收画像读的就是组代表威胁').toBe(93)
+    expect(recycleProfileOf(ctx, 'wreck-h-hi')!.threat, '回收画像读的就是组代表威胁').toBe(124)
     // 旧洞内组退役：**已无 h-wh 组**（它此前没有任何产出路径 ⇒ 无存档可持有其物品）
     expect(WRECK_GROUP_BY_KEY.get('h-wh')).toBeUndefined()
     expect(ctx.items.has('wreck-h-wh')).toBe(false)

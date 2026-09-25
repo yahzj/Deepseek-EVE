@@ -464,6 +464,8 @@ export const EN_ITEMS: EnTable = {
   'mat-drone-net': { name: 'Drone Recovery Net', description: 'A recovery net woven from Enigma: more drones shot down by point defense are hauled back to the hangar.' + T_WORM },
   'mat-field-repair': { name: 'Field Repair Unit', description: 'Automatically patches armor and structure after exchanges; inactive outside the wormhole (yields Wormhole Enigma on extraction).' },
   'mat-wh-essence': { name: 'Wormhole Enigma', description: 'A strange material found inside wormholes, spent as research material; can also be sold to recyclers per piece. Cold-glowing crystals in a sealed case.' },
+  // 入侵旗舰黑匣（2026-09-25 船长「先做壳」）：只做壳 ⇒ 可存/可回收/可售，用途留待改装件那批
+  'blackbox-h': { name: 'Ink Tide Flagship Black Box', description: 'The core recorder of an Ink Tide invasion carrier: a pressure-proof ink-crystal shell holding undeciphered military codes and flight logs. Can be stored or sold to recyclers.' },
   // 货柜
   'box-relic-a': { name: 'Ruins Safe Container (Pirate)', description: 'A whole container dragged out of the ruins: a locked shell with its markings ground off. Only unboxing back at the station reveals what is inside. Takes 2×2 cargo slots.' },
   'box-relic-c': { name: 'Ruins Safe Container (Alien)', description: 'A container dragged out of the ruins: dried biological film clings to its shell. Only unboxing back at the station reveals what is inside. Takes 2×2 cargo slots.' },
