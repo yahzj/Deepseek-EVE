@@ -300,6 +300,22 @@ describe('H 族 · 墨潮突击舰（挂 A 族洞内电子舰同款两件）', (
   })
 })
 
+/**
+ * **墨潮干扰舰也带网**（**船长 2026-09-25 令**：「**给墨潮干扰舰添加一个网子**」）——
+ * 与突击舰同款那件（只带网、不带冲锋：它靠 50% 射程压制做事）；写在**舰级**上 ⇒ 引用它的
+ * 主力卡（第 2 波 ×1）与旗舰卡（第 2/3/4 波各 ×1）全都会带。
+ */
+describe('H 族 · 墨潮干扰舰（射程压制 50% ＋ 劫掠捕获网）', () => {
+  it('舰级挂载 = 劫掠捕获网（无冲锋）；建档单位上带着，且压制字段不受影响', () => {
+    const r = resolveFoeMounts(shipOf('foe-h-ink-jammer')!.mounts)
+    expect(r.foeCaptureWeb).toEqual({ slowMul: 0.1, noThruster: true, noEvasion: true, rangeDownM: 500 })
+    expect(r.foeCanCharge, '干扰舰不冲锋（船长只让加网）').toBeUndefined()
+    const u = specsOf('foe-h-ink-jammer')[0]!
+    expect(u.foeCaptureWeb).toBeDefined()
+    expect(u.foeRangeDebuffPct, '50% 射程压制照旧').toBe(0.5)
+  })
+})
+
 describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
   it('1 骚扰舰队：突击舰 ×4（单波）', () => {
     const c = card('ink-harass')
@@ -373,14 +389,22 @@ describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
 })
 
 describe('H 族 · 高属性重袭机（战巡 1 架 / 母舰 2 架）', () => {
-  it('机型：三层血 180 · 单发 60 · 射程 7,000 · 命中 0.85（不随距离衰减）', () => {
+  it('机型：三层血 **600** · 单发 **120** · 射程 **12,000** · 命中 **1.3**（不随距离衰减）', () => {
     const d = droneOf('foe-drone-h-heavy')!
     expect(d.family).toBe('H')
-    expect(d.dmg).toBe(60)
-    expect(d.maxRangeM).toBe(7000)
-    expect(d.hitRate).toBe(0.85)
+    // 2026-09-25 船长 Excel 微调批：单发 60 → 120、三层血 180 → 600、命中 0.85 → 1.3
+    expect(d.dmg).toBe(120)
+    /**
+     * ⚠ **射程 7,000 → 12,000**（**船长 2026-09-25 令「机群交战距离是12000」**）：
+     * 7,000 落在搭载舰的期望交距之内（战巡 9,500 / 母舰 10,350）⇒ 机群**永不发火**，
+     * 而界面只在"出海那一轮"画机体 ⇒ 船长报障「旗舰战里看不到敌人的无人机」。
+     * 本用例把新射程钉住：**射程必须 ≥ 搭载舰的期望交距**，否则又回到"看不见"。
+     */
+    expect(d.maxRangeM, '机群交战距离 = 12,000（船长令）').toBe(12_000)
+    expect(d.maxRangeM, '必须够得着两艘搭载舰的期望交距').toBeGreaterThanOrEqual(10_350)
+    expect(d.hitRate).toBe(1.3)
     expect(d.falloff).toBe(1)
-    expect(d.defense.shieldHp + d.defense.armorHp + d.defense.hullHp).toBe(180)
+    expect(d.defense.shieldHp + d.defense.armorHp + d.defense.hullHp).toBe(600)
   })
 
   it('舰级登记：战列巡洋舰 ×1 · 入侵母舰 ×2，且建档后机群条目数对得上', () => {
@@ -390,7 +414,8 @@ describe('H 族 · 高属性重袭机（战巡 1 架 / 母舰 2 架）', () => {
     const fl = specsOf('foe-h-ink-flagship')[0]!
     expect(bc.weapons.filter((w) => w.src === 'drone')).toHaveLength(1)
     expect(fl.weapons.filter((w) => w.src === 'drone')).toHaveLength(2)
-    // 机群单发 = 机型 60 × 舰级 dmgMul（母舰把火力让给机群 ⇒ 本舰单发低于战巡口径的档位值）
-    expect(bc.weapons.filter((w) => w.src === 'drone')[0]!.shotDmg).toBe(60)
+    // 机群单发 = 机型单发 × 舰级 dmgMul（战巡这条没写 dmgMul ⇒ 逐字等于机型值）
+    // 2026-09-25 船长 Excel 微调：机型单发 60 → **120**
+    expect(bc.weapons.filter((w) => w.src === 'drone')[0]!.shotDmg).toBe(120)
   })
 })

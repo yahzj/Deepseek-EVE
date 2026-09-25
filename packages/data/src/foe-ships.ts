@@ -1202,7 +1202,9 @@ export const FOE_H_INK_JAMMER: FoeShipDef = {
   hp: 900, // T3 档基线 900 × 角色 1.00
   split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
   shotDmg: 105, // T3 档基线 124 × 角色 0.85（"干扰舰"把单发让给特性）
-  hitRate: 0.85,
+  // 命中 1.1（**船长 2026-09-25 Excel 微调 · 命中方面**）：>1 = 贴脸时按 `hitMax` 封顶必中，
+  // 只有目标闪避与距离衰减能把它压回来（有效命中 = clamp(0, 1, (命中 + 命中加成 − 目标闪避) × 衰减)）
+  hitRate: 1.1,
   reloadMs: 4000,
   rangeMinM: 1,
   rangeMaxM: 4275,
@@ -1212,6 +1214,14 @@ export const FOE_H_INK_JAMMER: FoeShipDef = {
   tactic: 'orbit',
   // **射程压制 50%**（船长 2026-09-24；与我方电子舰同款机制、方向相反，见 `FoeShipDef.foeRangeDebuffPct`）
   foeRangeDebuffPct: 0.5,
+  /**
+   * **劫掠捕获网**（**船长 2026-09-25 令**：「**给墨潮干扰舰添加一个网子**」）——
+   * 与 A 族洞内「劫掠电子舰」、H 族「墨潮突击舰」同款那件（减速 90% / 关推进器 / 闪避归零 / 射程 −500m；
+   * **首次开火钉住一个没被钉住的目标**，击沉发动者才解除，见 `combat.fireFoeCaptureWeb`）。
+   * ⚠ 写在**舰级**上（与突击舰同一条写法）：H 族只在这四张入侵卡里出场，不存在"外借到洞外"的问题；
+   * `content:check` 的捕获网归属白名单同步放行本舰级。
+   */
+  mounts: [FOE_MOUNT_IDS.captureWeb],
 }
 
 /**
@@ -1229,14 +1239,16 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
    * **闪避 0.22 → 0.47**（2026-09-25 船长令：「**墨潮突击舰闪避率+0.25**」）——
    * 它是全族跑得最快的一档（544 m/s）＋带冲锋与捕获网，闪避抬上去才配得上"贴脸突击"的角色。
    * ⚠ 破既有闪避带的话在 `content:check` 的族格白名单里按同款口径记一笔（见 `INK_SPEED_EXEMPT_SHIP_IDS` 那一族的写法）。
+   * **→ 0.59**（**同日 Excel 微调批**：与本文件的命中一起调，见下）。
    */
-  evasion: 0.47,
+  evasion: 0.59,
   hullClassTier: 1, // 护卫舰
   speedRatio: 1.6, // 340 × 1.6 = 544 m/s（船长 2026-09-24：「突击舰速度过慢，按照1.6修正」；1.86× 破族格带 ⇒ INK_SPEED_EXEMPT_SHIP_IDS）
   hp: 364,
   split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24：「除了旗舰外所有敌舰护盾血量占0.5」）
   shotDmg: 51,
-  hitRate: 0.85,
+  // 命中 1.25（**船长 2026-09-25 Excel 微调**）：>1 时按 `hitMax` 封顶 ⇒ 贴脸必中，靠闪避/衰减压制
+  hitRate: 1.25,
   reloadMs: 4000,
   rangeMinM: 1,
   rangeMaxM: 4275,
@@ -1272,7 +1284,8 @@ export const FOE_H_INK_TORPEDO: FoeShipDef = {
   hp: 360, // 高攻低血（船长 2026-09-24）：T2 档基线 480 × 0.75
   split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
   shotDmg: 90, // 高攻（船长 2026-09-24）：T2 档基线 68 × 角色 1.32
-  hitRate: 0.85,
+  // 命中 1（**船长 2026-09-25 Excel 微调**）：导弹线 `falloff: 1`（命中不随距离衰减）⇒ 1 即"必中"
+  hitRate: 1,
   reloadMs: 5600, // 导弹节奏（远而慢）
   rangeMinM: 1000,
   rangeMaxM: 12000,
@@ -1302,7 +1315,7 @@ export const FOE_H_INK_BATTLECRUISER: FoeShipDef = {
   hp: 2800, // T4 档基线 2,800 × 角色 1.00
   split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
   shotDmg: 399, // T4 档基线 420 × 角色 0.95（单发让一点给机群）
-  hitRate: 0.85,
+  hitRate: 0.9, // 命中 0.85 → **0.9**（船长 2026-09-25 Excel 微调）
   reloadMs: 6000,
   rangeMinM: 1000,
   rangeMaxM: 11000,
@@ -1339,7 +1352,7 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
   hp: 39_200,
   split: { s: 0.2, a: 0.55, h: 0.25 },
   shotDmg: 491, // T5 档基线 420 × 角色 1.30 × 0.90（机群让位）
-  hitRate: 0.85,
+  hitRate: 1, // 命中 0.85 → **1**（船长 2026-09-25 Excel 微调）：母舰导弹线 `falloff: 1` ⇒ 1 即"必中"
   reloadMs: 6000,
   rangeMinM: 1000,
   rangeMaxM: 12000,
