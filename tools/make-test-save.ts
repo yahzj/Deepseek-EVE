@@ -2875,6 +2875,144 @@ function injectWormholeEwar(state: GameState): string[] {
 }
 
 /**
+ * **虫洞 · 孢子导弹巢「全体攻击」现场档**（2026-09-25 船长：「孢子导弹巢效果为攻击敌方全体，
+ * 战斗中动画是攻击敌方全体吗？你验证下顺便给我一个相关存档测试」）。
+ *
+ * 档里给什么（**全部走引擎真路径**，不手写战斗状态）：
+ * - **主控 = 巢群重型突击巡洋舰**（C 族 T3）装**孢子导弹巢**（`hitsAllFoes` ⇒ 引擎 `allFoes`）
+ *   ＋ 推进/双盾/装甲/稳像件；**僚舰 = 玳瑁级**（重装肉盾，**不装武器**）——
+ *   僚舰只有自带基础舰炮（2,500 m，短于开局交距）⇒ **画面上的远程弹道全部来自孢子导弹巢**，一眼看得清；
+ * - **爆炸弹药**（本件打爆炸弹）进仓库；2026-09-23 船长令后取用来源 = **仓库**（`resupplyFromWarehouse`）；
+ * - **入口 = 第 1 层「舰船信号」格**：层 1 的出场池**只有浅层档**（`wormholeTierWeightsAt(1)`）
+ *   ⇒ 敌卡**确定**是 C 族浅层「星髓游猎群」= **星髓成虫 ×3**
+ *   （脚本按 `wormholeCardIdForRun` 当场断言，不用搜种子碰运气）。
+ *
+ * 看什么：点脚下那格按「迎战」→ 3 艘星髓成虫；孢子导弹巢每 **8.36 秒**一轮，
+ * **一轮同时飞出 3 条弹道、各飞向一艘敌舰**（逐舰各掷命中、各飘一个伤害数字）。
+ * ⚠ 已知口径（已回报船长待裁决）：**主目标那一发未命中 ⇒ 这一轮副目标一概不打**
+ *   （引擎那道的门是 `if (w.allFoes === true && hit)`）⇒ 届时画面只有 1 条弹道、另两艘不掉血。
+ */
+function injectWormholeSpore(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  // 清空进行中主控作业（真档可能在采矿/远征等；`wormholeEnter` 会被"远征无法中断"挡下）
+  state.mining.active = false
+  state.salvaging.active = false
+  state.expedition.active = false
+  state.scanning.active = false
+  state.standby.active = false
+  state.transit.active = false
+  state.autoLoopAnomalyId = null
+  state.awayGalaxy = null
+  state.dockedSite = null
+  state.wallet.isk += 30_000_000
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  for (const k of [
+    'gunnery',
+    'fire-control',
+    'reload-drills',
+    'shield-operation',
+    'armor-tuning',
+    'vector-maneuvering',
+    'evasion-maneuvering',
+    'targeting-integration',
+  ]) {
+    state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
+  }
+  // 弹药：本件打**爆炸**弹 ⇒ 爆炸两档管够（另铺动能/能量各一档，便于换武器对照）
+  for (const key of ['ammo-explosive-2', 'ammo-explosive-l', 'ammo-kinetic-2', 'ammo-plasma-2']) {
+    state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 5_000
+  }
+  for (const kit of ['repairkit-civ', 'repairkit-mil']) {
+    state.warehouse.items[kit] = (state.warehouse.items[kit] ?? 0) + 40
+  }
+  notes.push(
+    '钱包 +30,000,000 · 协会声望 13 · 战斗系技能 Lv3 · **爆炸弹药 MK2（＋MK1 兜底）各 ×5000**（孢子导弹巢打爆炸弹）· 修理组件各 ×40',
+  )
+
+  const ctx = buildSimContext()
+  /** ⚠ 清掉在途副本：本档要指定"第 1 层 · C 族 · 站在舰船信号上"的现场（其余 case 同款处置） */
+  state.wormhole = { run: null, lastFleetLost: 0 }
+  const uids: string[] = []
+  {
+    const uid = addShipToFleet(state, 'sh-wh-c-cruiser')
+    const s = state.fleet[uid]!
+    s.customName = '巢群巡洋·孢子导弹巢'
+    s.fitted = {
+      high: ['mod-wh-c-missile'],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-ext-2'],
+      low: ['mod-armor-kin-2', 'mod-stab-kin-2'],
+    }
+    s.ammoPref = { explosive: 'ammo-explosive-2' }
+    s.durability = 1
+    s.armorPct = 1
+    state.shipId = uid
+    uids.push(uid)
+  }
+  {
+    const uid = addShipToFleet(state, 'sh-hawksbill')
+    const s = state.fleet[uid]!
+    s.customName = '玳瑁·肉盾（不装武器）'
+    s.fitted = {
+      high: [],
+      mid: ['mod-prop-2', 'mod-shield-kin-2', 'mod-shield-ext-2'],
+      low: ['mod-armor-kin-2', 'mod-stab-kin-2'],
+    }
+    s.durability = 1
+    s.armorPct = 1
+    uids.push(uid)
+  }
+  notes.push(
+    '编队：**主控 = 巢群重型突击巡洋舰（C 族 T3）· 孢子导弹巢 ×1** ＋ 推进/双盾/装甲/稳像 ｜ ' +
+      '**僚舰 = 玳瑁级（不装武器）** ⇒ 远程弹道只有孢子导弹巢一条来源 · 全血满耐久',
+  )
+
+  /** 搜一个 **C 族**种子（层 1 的卡与格子无关 ⇒ 不用像 wh-ewar 那样搜"指定卡"） */
+  let seed = 20260925
+  for (; seed < 20260925 + 3000; seed++) if (wormholeFamilyOfSeed(seed) === 'C') break
+  const enter = wormholeEnter(state, ctx, uids, seed)
+  if (!enter.ok) throw new Error(`入洞失败：${enter.error ?? ''}`)
+  const run = state.wormhole.run!
+  run.attending = true
+  run.turnsLeft = enter.run!.turnsTotal
+  run.turnsTotal = enter.run!.turnsTotal
+  run.bossCleared = 0
+  run.depth = 1
+  run.family = 'C' // 与种子一致；写死防两套口径
+  run.grid = wormholeMakeGrid(seed, 1, 0)
+  const grid = run.grid
+  const here = grid.cells[Math.floor(grid.cells.length / 2)]!
+  here.place = 'ship' // 舰船信号：站在原地即可按迎战（`wormholeStartBattle(..., 'node')` 要求脚下是它）
+  here.piles = []
+  grid.pos = { q: here.q, r: here.r }
+  grid.start = { q: here.q, r: here.r }
+  if (!grid.visited.includes(here.key)) grid.visited.push(here.key)
+  if (!grid.scanned.includes(here.key)) grid.scanned.push(here.key)
+  grid.activated = (grid.activated ?? []).filter((k) => k !== here.key) // 未清 ⇒ 迎战入口可用
+  grid.exitKnown = true
+  /** 现场断言：脚下这一格按**引擎同一函数**算出来必须是 C 族浅层卡（层 1 只出浅层） */
+  const cardNow = wormholeCardIdForRun({
+    family: run.family,
+    seed: run.seed,
+    depth: run.depth,
+    kind: 'node',
+    nodeIndex: gridContentIndex(grid, grid.pos),
+  })
+  if (cardNow !== 'wh-alien-swarm') throw new Error(`现场卡不对：期望 wh-alien-swarm，实得 ${cardNow}`)
+  const card = ctx.anomalies.get('wh-alien-swarm')
+  const make = (card?.ships ?? []).map((sl) => `${sl.ship.name}×${sl.count ?? 1}`).join(' ＋ ')
+  notes.push(
+    `第 1 层（${grid.cells.length} 格）· **站在舰船信号 (Q${here.q} R${here.r})** ⇒ 点脚下那格按「迎战」即对上 **${card?.name ?? '星髓游猎群'}**（${make}）`,
+  )
+  notes.push(`种子 ${seed} · 族 **C** · 敌卡 = \`wh-alien-swarm\`（脚本按 \`wormholeCardIdForRun\` 算出并当场断言）`)
+  notes.push(
+    '看什么：孢子导弹巢每 8.36 秒一轮 ⇒ **一轮同时飞出 3 条弹道、各飞向一艘敌舰**，逐舰各飘一个伤害数字（打机群那种"只出炮口闪光"不适用本件）',
+  )
+  notes.push('出口已知（可随时撤离）· 同层其余格未动，可自由探索')
+  return notes
+}
+
+/**
  * **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档，我打算实机测试」）。
  *
  * 起因：H 族（墨潮帮）重标过程中，二号拿 `whale-king`（**鲸王级采矿艇**，industrial）当"T3 战列"
@@ -3053,6 +3191,12 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
    * 第 4 层 · A 族 · 站在舰船信号上 ⇒ 迎战即打「海盗战团」（内含劫掠电子舰，首轮开火放捕获网）。
    */
   'wh-ewar': injectWormholeEwar,
+  /**
+   * **虫洞 · 孢子导弹巢「全体攻击」现场档**（2026-09-25 船长：问"动画是不是打全体"并要一个相关存档）：
+   * 第 1 层 · C 族 · 站在舰船信号上 ⇒ 迎战即打「星髓游猎群」（星髓成虫 ×3），
+   * 主控装孢子导弹巢、僚舰不装武器 ⇒ 一眼看清"一轮 3 条弹道"。
+   */
+  'wh-spore': injectWormholeSpore,
   // 虫洞·货仓装不下 / 超载（2026-09-13 船长要的实机档）
   'wh-bag': (s) => injectWormholeBag(s, false),
   'wh-overload': (s) => injectWormholeBag(s, true),
