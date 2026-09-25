@@ -3021,7 +3021,14 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: var(--wui-sp-10);
+  /* 2026-09-25 船长令「将活动栏放到左侧，竖列显示」：pp-workspace 由**横向三栏**改为**纵向**
+     ⇒ 活动栏独占顶部一行（它内部再竖排作业卡），主区在其下。
+     ⚠ 本容器与 .app-header 共用一条 max-width:1760 居中规则 ⇒ 底栏必须**移出本容器**
+     才能横跨整窗（见 App.tsx：<nav> 已搬到 pp-root 直下）。 */
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-6);
 
   padding: var(--wui-sp-10) var(--wui-sp-10) var(--wui-sp-6);
 
@@ -3038,9 +3045,9 @@ html[data-locale='en'] body {
 
   position: relative;
 
-  order: 2;
+  width: 100%; /* 父级已是 workspace 的纵向 flex ⇒ 吃满宽、吃掉剩余高 */
 
-  flex: 1;
+  flex: 1 1 auto;
 
   min-width: 0;
 
@@ -3293,9 +3300,7 @@ html[data-locale='en'] body {
    故用 flex `order` 把它排到最末（纵向 flex 的"最末" = 窗口底部）。 */
 .app-nav-side {
 
-  flex-shrink: 0;
-
-  order: 3; /* 纵向 flex：排到最末 = 贴窗口底 */
+  flex-shrink: 0; /* 底栏不参与压缩 */
 
   display: flex;
 
@@ -3331,9 +3336,11 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  align-items: stretch;
+  align-items: flex-end; /* 组内项按下沿对齐（出港略高时不把邻项拉高） */
 
-  gap: var(--wui-sp-2);
+  gap: var(--wui-sp-1);
+
+  min-width: 0;
 
 }
 
@@ -3916,9 +3923,16 @@ html[data-locale='en'] body {
 
   gap: var(--wui-sp-2);
 
-  min-width: 86px;
+  /* 2026-09-25 底栏化：**必须定宽不拉伸** —— 导航项是 .app-nav-group（flex）的子项，
+     不给基准宽就会被撑满容器（实测被撑成 699px 一个、整条横向溢出窗口）。 */
 
-  padding: var(--wui-sp-6) var(--wui-sp-12) var(--wui-sp-5);
+  flex: 0 0 auto;
+
+  width: 78px;
+
+  min-width: 0;
+
+  padding: var(--wui-sp-5) var(--wui-sp-2) var(--wui-sp-4);
 
   background: transparent;
 
@@ -8731,6 +8745,29 @@ html[data-locale='en'] body {
 
 /* 顶部活动窗口全宽容器（内容居中，实际使用宽度接近主窗口） */
 
+/* **侧栏信息带**（2026-09-25）：舰船状态小窗 + 金钱栏。原先挂在左导航栏内（船长 2026-09-13 令
+   「将顶部的金钱栏移动到左侧的**出港上方**」）；导航改**底部横栏**后，这两块横在栏里会把导航挤没
+   （无头实测：ShipStatusWin 占 1096px ⇒ 导航项只剩 26px）⇒ 移到 workspace 顶部的独立信息带，
+   位置仍是「出港上方」。 */
+
+.app-side-info {
+
+  display: flex;
+
+  flex-direction: row;
+
+  align-items: center;
+
+  gap: var(--wui-sp-6);
+
+  flex-wrap: wrap;
+
+  width: 100%;
+
+  flex-shrink: 0;
+
+}
+
 /* 活动窗口：**左侧固定竖列**（2026-09-25 船长令：「将活动栏放到左侧，竖列显示。
    这样 AI 作业也能同时显示多个」）——此前是"置于主窗口列顶部、宽度与主窗口一致 + max-height 230px"
    （船长 2026-09-05 口径），230px 只装得下约 7 行作业 ⇒ 改为左列后可用高度 = 整个内容区（约 690px）
@@ -8740,15 +8777,13 @@ html[data-locale='en'] body {
 
   flex-shrink: 0;
 
-  order: 1; /* 纵向 flex：排在主区（2）与底栏（3）之前 = 最左 */
-
   display: flex;
 
   flex-direction: column;
 
   gap: var(--wui-sp-6);
 
-  width: 150px;
+  width: 100%; /* 顶部横条：吃满 workspace 宽；内部仍竖排（作业卡仍是竖列） */
 
   box-sizing: border-box;
 
@@ -8762,9 +8797,9 @@ html[data-locale='en'] body {
 
   background: rgb(var(--wui-x15) / 0.85);
 
-  border-right: 1px solid rgb(var(--wui-border));
+  border: 1px solid rgb(var(--wui-border));
 
-  border-radius: 0;
+  border-radius: var(--wui-sp-6);
 
 }
 
@@ -11690,3 +11725,42 @@ html[data-locale='en'] body {
   .app-nav-item.is-unread .app-nav-icon { animation: none; }
 }
 
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   **底部导航栏 · 导航项形态**（2026-09-25 船长令：「采用大图标+图标下方配字的形式？
+   出港放在正中间，搭配一个不一样的按钮边框」）
+
+   ⚠ 必须显式覆盖成**竖排**：竖栏时代有一条 `.app-nav-side .app-nav-item` 把导航项写成
+   **横排**（图标在左、文字在右、`width:100%`、`text-align:left`），且它的特异性(0,2,0)
+   高于基础规则 `.app-nav-item`(0,1,0) ⇒ 不覆盖就会得到"横向拉满的一条"，实测每项被撑到 562px。
+   本规则的特异性同为 (0,2,0)，靠**写在文件末尾**取胜。
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.app-nav-side .app-nav-item {
+
+  flex-direction: column; /* 图标在上、文字在下 */
+
+  align-items: center;
+
+  justify-content: flex-start;
+
+  text-align: center;
+
+  gap: var(--wui-sp-1);
+
+  flex: 0 0 auto;
+
+  width: 78px; /* 定宽：否则作为 flex 子项会被撑满组宽 */
+
+  min-width: 0;
+
+  padding: var(--wui-sp-4) var(--wui-sp-2) var(--wui-sp-3);
+
+  font-size: var(--wui-fs-2xsc);
+
+  line-height: 1.25;
+
+  white-space: nowrap;
+
+}
