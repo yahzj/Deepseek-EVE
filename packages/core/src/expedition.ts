@@ -11,7 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
-import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
+import { weekendApplyBattleOutcome, weekendBattleInvolvedOf, weekendFlagshipEncounterOf } from './weekendBattle'
 import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
 import { rewardMulOf } from './tuning'
@@ -193,15 +193,33 @@ export function battleTacticDesire(
  * 现在两条路都认：洞内用**编队首舰**当主视角、敌卡走引擎同源的 `wormholeDerivedAnomaly`
  * （开战距离上限与开战那一刻同一把尺），偏好**记在本趟 `run.desireM`**（后续节点沿用）——
  * **不写星系偏好**：虫洞不属于任何星系，写进去会污染那个星系的设定。
+ *
+ * ⚠ **入侵旗舰战（2026-09-25 修 · 船长报障「可以斩杀敌方母舰的战斗进入后，无法改变距离，
+ * 改变时显示'不在交火中'」）**：它是**第三个宿主**（编队战 · 承载在遭遇槽 `state.encounter.battle`），
+ * 前两版判据都不认它 ⇒ 距离条与战术按钮在这里被拒。现在一并认：
+ * - 主视角 / 敌卡 = 遭遇槽那条（`enc.anomalyId` = 该族旗舰卡，**不做派生**）；
+ * - 偏好写**该场战斗所在星系**（`enc.galaxyId` = 本场核心）——⚠ **不能**写 `anomaly.galaxyId`：
+ *   旗舰卡是隐藏卡、它自带的母港是 `galaxy-hub`，照抄会把偏好写到母港去。
  */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
   const whRun = state.wormhole.run
   const whBattle = whRun?.battle ?? null
-  const battle = state.expedition.battle ?? whBattle
+  /** 第三宿主（入侵旗舰战）：遭遇槽里挂着旗舰卡 + 那场还在（判据单点，与界面/引擎各处同源） */
+  const wb = state.encounter.active && state.encounter.battle !== null && weekendFlagshipEncounterOf(state, state.encounter)
+  const wkBattle = wb ? state.encounter.battle : null
+  const battle = state.expedition.battle ?? whBattle ?? wkBattle
   if (!battle) return { ok: false, error: '当前不在交火中。', errorId: 'core.expedition.001' }
-  const anchorShipId = whBattle ? (whRun?.fleet[0] ?? state.shipId) : state.shipId
+  const anchorShipId = whBattle
+    ? (whRun?.fleet[0] ?? state.shipId)
+    : wkBattle
+      ? (wkBattle.myFleet?.[0]?.shipId ?? state.encounter.shipId ?? state.shipId)
+      : state.shipId
   const me = createPlayerSpec(state, ctx, anchorShipId)
-  const cardId = whBattle ? whBattle.wormhole?.cardId : state.expedition.anomalyId
+  const cardId = whBattle
+    ? whBattle.wormhole?.cardId
+    : wkBattle
+      ? state.encounter.anomalyId
+      : state.expedition.anomalyId
   const baseCard = cardId ? ctx.anomalies.get(cardId) : undefined
   if (!me || !baseCard) return { ok: false, error: '战斗记录缺失。', errorId: 'core.expedition.002' }
   const anomaly =
@@ -211,9 +229,12 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped
-  // 记忆：远征收口写"该星系的目标距离"（跨会话沿用）；**洞内写在本趟上**（见函数头注释）
+  // 记忆：远征收口写"该星系的目标距离"（跨会话沿用）；**洞内写在本趟上**、**旗舰战写本场核心星系**（见函数头注释）
   if (whBattle) {
     if (whRun) whRun.desireM = clamped
+  } else if (wkBattle) {
+    const gid = state.encounter.galaxyId
+    if (gid !== null && gid.length > 0) setDesirePrefOf(state, gid, clamped)
   } else {
     setDesirePrefOf(state, anomaly.galaxyId, clamped)
   }

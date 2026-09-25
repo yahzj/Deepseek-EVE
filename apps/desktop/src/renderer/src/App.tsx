@@ -1637,8 +1637,16 @@ async function applyLayoutAndQuit(): Promise<void> {
             {eventToast.text}
           </div>
         ) : null}
-        {/* B1 低安遭遇横幅：待决（迎战/快速脱离，60s 超时自动脱离）与遭遇战进行中 */}
-        {state.encounter.active ? (
+        {/**
+         * B1 低安遭遇横幅：待决（迎战/快速脱离，60s 超时自动脱离）与遭遇战进行中。
+         *
+         * ⚠ **2026-09-25 船长报障**：「关闭战斗后，屏幕顶部显示『遭遇战中：[WKtest] 巨 vs H 族旗舰 ·
+         * 墨潮旗舰部队（引擎自动推演，战报稍后）』」——**入侵旗舰战**也承载在遭遇槽，但它是
+         * **玩家亲自观战的编队战**（全屏战斗屏 + 「⚔ 战斗中」浮动入口）⇒ 这条"引擎自动推演、战报稍后"
+         * 的横幅措辞与实际完全不符。现按宿主分流：**旗舰战进行中不挂这条横幅**（入口由战斗屏承担），
+         * 普通遭遇（待决 / 后台自动打完）照旧。
+         */}
+        {state.encounter.active && !weekendFlagshipBattleActive(state) ? (
           <div className={`app-enc-banner${state.encounter.battle ? ' is-fight' : ''}`}>
             {state.encounter.battle ? (
               <span className="app-enc-title">
