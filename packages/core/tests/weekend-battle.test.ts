@@ -28,6 +28,8 @@ import {
   weekendFoeCardOf,
   weekendNoteContribution,
   weekendRollBlackBox,
+  weekendCoreGateView,
+  weekendCoreProgressAt,
 } from '../src/weekendEvent'
 import { weekendGrantRewards, weekendRareWreckIdFor, weekendSettleAndGrant } from '../src/weekendBattle'
 import type { WeekendEventState } from '../src/weekendEvent'
@@ -133,6 +135,40 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
     s.weekendEvent = ev3
     const coreSpec3 = weekendAssaultSpecOf(s, ctx, ev3.coreId)!
     expect(weekendResolveBattle(s, ctx, coreSpec3, 'win', 0).progressGain, '正常：核心 +5%').toBeCloseTo(0.05, 6)
+  })
+
+  /**
+   * **界面读数 `weekendCoreGateView`**（2026-09-26 船长令：「星系详细的『击退入侵舰队』卡片显示该星系
+   * 的**收复进度**；核心无法收复时提示玩家」＋提示文案「**至少需要夺回一个外围星系**」）。
+   * 这条用例盯的是**读数与门禁同源**：界面不能出现"条在涨却写着打不动"或反过来的自相矛盾。
+   */
+  it('核心门禁读数：进度/是否被卡/还差几个 与门禁判据同源（外围清完即解除）', () => {
+    // ⚠ 用**两个外围**：只有一个外围时"夺回一个"就等于"全清"，第 ② 段的门禁断言无从成立
+    const { s, ev } = setup('galaxy-kor', ['galaxy-home', 'galaxy-mid'])
+    /**
+     * ⚠ 时间点要挑对：`setup()` 里 `startedAtWallMs = 0`，而**外围的 NPC 铺底 = `t/48h`**
+     * ⇒ `now` 取得太晚（如 96h）时**光靠铺底外围就自己收复了**、门禁根本不解都谈不上。
+     * 这里用 **T0 之前**（`now < startedAtWallMs`，铺底被 `max(0, …)` 钳住 = 0）来制造"外围一个都没夺回"。
+     */
+    const nowEarly = -H
+    const g0 = weekendCoreGateView(s, ev, nowEarly)
+    expect(g0.gated).toBe(true)
+    expect(g0.missing).toBe(g0.total)
+    expect(g0.progress).toBe(0)
+    // 夺回**其中**一个外围 ⇒ **仍被卡**（门禁要全部夺回），missing 少 1；核心条仍不涨（玩家投入也不计）
+    weekendNoteContribution(ev, ev.peripheryIds[0]!, 1)
+    const g1 = weekendCoreGateView(s, ev, nowEarly)
+    expect(g1.gated).toBe(true)
+    expect(g1.missing).toBe(g1.total - 1)
+    expect(g1.progress, '门禁期间核心条不涨（玩家投入也不计）').toBe(0)
+    // 全部夺回 ⇒ 解除；进度与 weekendCoreProgressAt 逐字一致（读数与门禁同一个真相源）
+    for (const id of ev.peripheryIds) weekendNoteContribution(ev, id, 1)
+    const nowLate = 96 * H
+    const g2 = weekendCoreGateView(s, ev, nowLate)
+    expect(g2.gated).toBe(false)
+    expect(g2.missing).toBe(0)
+    expect(g2.progress).toBe(weekendCoreProgressAt(s, ev, nowLate))
+    expect(g2.progress, '外围清完 + 已过 48h ⇒ 核心铺底已开动').toBeGreaterThan(0)
   })
 
   it('夺回奖励：越过 100% 那一次发 稀有残骸 ×8 ＋ 2M；**再打不重复发**；全清再 +5M', () => {

@@ -24,6 +24,7 @@ import {
   // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
   weekendFamilyNameId,
   weekendProgressAt,
+  weekendCoreGateView,
   /** 旗舰视图（2026-09-25：核心的"旗舰期红光"与旗舰准备入口读同一份判据，不许在本文件另判一遍） */
   weekendFlagshipView,
   weekendFoePoolOf,
@@ -2184,6 +2185,39 @@ function GalaxyActions({
                   {' · '}
                   {tr('ui.weekend.096')}
                 </span>
+                {/**
+                 * **收复进度（2026-09-26 船长令）**：「被入侵的星系的星系详细内，在'击退入侵舰队'卡片处
+                 * 显示该星系的**收复进度**。当核心星系无法收复时，在对应的击退入侵舰队卡片**提示玩家**」
+                 * ——提示文案（船长照抄）：「**至少需要夺回一个外围星系**」。
+                 *
+                 * 读数与门禁同源：核心那格取 `weekendCoreGateView`（内部就是 `weekendCoreProgressAt`
+                 * 与它用的那条 `weekendPeripheryClearedAt`）；外围那格取 `weekendProgressAt`。
+                 * 进度**即时读**（NPC 铺底随时间涨）⇒ 每次重渲染自然刷新。
+                 * 进度条复用既有 `.app-card-progress.is-invasion`（与 MapPage 入侵框、星系详细的入侵残骸条同款）。
+                 */}
+                {(() => {
+                  const isCore = galaxy.id === ev.coreId
+                  const gate = isCore ? weekendCoreGateView(state, ev, Date.now()) : null
+                  const p = gate ? gate.progress : weekendProgressAt(state, ev, galaxy.id, Date.now())
+                  const pct = Math.max(0, Math.min(100, Math.round(p * 100)))
+                  return (
+                    <span className="app-ga-invprog">
+                      <span className="app-ga-invprog-line">
+                        {tr('ui.weekend.103', { p1: String(pct) })}
+                        {gate?.gated
+                          ? ` · ${
+                              gate.missing >= gate.total
+                                ? tr('ui.weekend.104')
+                                : tr('ui.weekend.105', { p1: String(gate.missing) })
+                            }`
+                          : ''}
+                      </span>
+                      <span className="app-card-progress is-invasion">
+                        <i style={{ width: `${pct}%` }} />
+                      </span>
+                    </span>
+                  )
+                })()}
               </span>
               <span className="app-ga-btns">
                 <button

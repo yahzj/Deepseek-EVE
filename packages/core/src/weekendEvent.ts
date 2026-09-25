@@ -765,6 +765,33 @@ export function weekendProgressAt(
   return weekendPeripheryProgressAt(state, ev, galaxyId, nowWallMs)
 }
 
+/**
+ * **核心进度读数**（给界面：进度值 ＋ 是否正被门禁卡住 ＋ 还差几个外围）。
+ *
+ * 2026-09-26 船长令：「入侵活动中，被入侵的星系的星系详细内，在'击退入侵舰队'卡片处显示该星系的
+ * **收复进度**。当核心星系无法收复时，在对应的击退入侵舰队卡片**提示玩家**」＋ 提示文案
+ * 「**至少需要夺回一个外围星系**」。
+ *
+ * 为什么做成一个函数而不是让界面自己拼：**门禁的真相源只有一个**
+ * （`weekendCoreProgressAt` 里那句 `weekendPeripheryClearedAt`）——界面若自己判断"外围清完没"，
+ * 两处一旦漂移就会出现"条在涨却写着打不动"这种自相矛盾的读数。
+ * `missing` 供界面把提示写准：一个都没夺回时说"至少需要夺回一个"，已夺回几个时说"还需夺回 N 个"。
+ */
+export function weekendCoreGateView(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState,
+  nowWallMs: number,
+): { progress: number; gated: boolean; missing: number; total: number } {
+  const total = ev.peripheryIds.length
+  const missing = ev.peripheryIds.filter((id) => weekendPeripheryProgressAt(state, ev, id, nowWallMs) < 1).length
+  return {
+    progress: weekendCoreProgressAt(state, ev, nowWallMs),
+    gated: !weekendPeripheryClearedAt(state, ev, nowWallMs),
+    missing,
+    total,
+  }
+}
+
 /** 已夺回（进度满）的星系 */
 export function weekendReclaimedAt(
   state: Pick<GameState, 'debugQuick'>,

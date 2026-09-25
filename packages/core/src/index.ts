@@ -282,6 +282,7 @@ export {
   weekendPeripheryProgressAt,
   weekendPlayerContribution,
   weekendProgressAt,
+  weekendCoreGateView,
   weekendReclaimedAt,
   weekendRollOccupation,
   weekendT0Of,
