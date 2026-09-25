@@ -1585,12 +1585,12 @@ function normalizeState(raw: unknown): GameState {
       const qty = Math.floor(num(o.qty))
       const price = Math.floor(num(o.price))
       if (qty <= 0 || price <= 0) continue
-      const bm = Math.max(0, Math.floor(num(o.bm, 0)))
+      const hasBm = typeof o.bm === 'number' && Number.isFinite(o.bm)
       out.push({
         price,
         qty,
         expiresAtGameMs: Math.max(0, Math.floor(num(o.expiresAtGameMs))),
-        ...(bm > 0 ? { bm } : {}),
+        ...(hasBm ? { bm: Math.max(0, Math.floor(o.bm as number)) } : {}),
       })
     }
     return out
