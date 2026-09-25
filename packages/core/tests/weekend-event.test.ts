@@ -300,6 +300,42 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
     const back2 = loadSaveFile(serializeSaveFile(clean, 0)).state
     expect(back2.weekendEvent).toBeUndefined()
   })
+
+  /**
+   * **旗舰 BOSS 进度与结束结算标记一个都不能丢**（2026-09-25 补测）：
+   * 这些字段是**跨会话状态**——母舰"单场不死、跨场累计"全靠 `flagshipHpDone`；
+   * `octopusDrainedMs` 是章鱼人的削血进度；`flagshipRunId` 是"同一场只记一次"的幂等键；
+   * `prizePaidAtWallMs` 是贡献奖"只发一次"的落盘标记。丢任何一个都会在读档后**回退**：
+   * 血条回满 / 削血清零 / 同一场被重复记账 / 贡献奖重复发放。
+   */
+  it('旗舰 BOSS 进度与结算标记随档往返（血条 / 削血 / 幂等键 / 已发奖）', () => {
+    const s = fresh()
+    s.weekendEvent = {
+      ...evOf('galaxy-home', ['galaxy-kor'], 123),
+      endedAtWallMs: 1_700_000_500_000,
+      flagshipAtWallMs: 456,
+      flagshipDown: 'player',
+      flagshipHpMax: 150_000,
+      flagshipHpDone: 42_000,
+      octopusDrainedMs: 90_000,
+      flagshipDmgLogged: 12_345,
+      flagshipRunId: 777,
+      flagshipBestRunDmg: 12_345,
+      bossTickWallMs: 1_700_000_000_000,
+      prizePaidAtWallMs: 1_700_000_600_000,
+    }
+    const back = loadSaveFile(serializeSaveFile(s, 0)).state.weekendEvent
+    expect(back?.flagshipHpMax, '池子总量').toBe(150_000)
+    expect(back?.flagshipHpDone, '已伤（BOSS 血条随档）').toBe(42_000)
+    expect(back?.octopusDrainedMs, '章鱼人削血').toBe(90_000)
+    expect(back?.flagshipDmgLogged, '已记账伤害').toBe(12_345)
+    expect(back?.flagshipRunId, '同场幂等键').toBe(777)
+    expect(back?.flagshipBestRunDmg, '单场最高伤害（读数）').toBe(12_345)
+    expect(back?.bossTickWallMs, '削血心跳').toBe(1_700_000_000_000)
+    expect(back?.endedAtWallMs, '结束时刻').toBe(1_700_000_500_000)
+    expect(back?.flagshipDown, '旗舰结局').toBe('player')
+    expect(back?.prizePaidAtWallMs, '贡献奖已发标记').toBe(1_700_000_600_000)
+  })
 })
 
 describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {

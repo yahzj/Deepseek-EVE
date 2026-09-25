@@ -286,6 +286,7 @@ export {
   weekendFlagshipSpecOf,
   weekendResolveBattle,
   weekendSettlePlanOf,
+  weekendSettleAndGrant,
 } from './weekendBattle'
 
 /* 2026-09-23 周末入侵 · 开战入口（旗舰 4 波 120 威胁 · 4 艘小队战） */
@@ -294,7 +295,7 @@ export {
   weekendFlagshipWavesOf,
   weekendStartFlagshipBattle,
 } from './weekendLaunch'
-export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan } from './weekendBattle'
+export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan, WeekendSettleGrant } from './weekendBattle'
 
 /* 2026-09-23 周末入侵 · 悬赏替换与遇袭判定（M1-b 第三片） */
 export {

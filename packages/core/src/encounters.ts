@@ -74,7 +74,7 @@ import { cancelAiTask } from './ai'
 import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
 import { repairWithKitsFor } from './shipyard'
 // 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
-import { weekendAmbushPickOf, weekendEncounterChanceAt } from './weekendEvent'
+import { weekendAmbushPickOf, weekendEncounterChanceAt, weekendFoeCardOf } from './weekendEvent'
 import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
 
@@ -381,6 +381,24 @@ function noteLowSec(state: GameState, ctx: SimContext, galaxyId: string): void {
 }
 
 /**
+ * **这一场遭遇在入侵里算哪一类**（遭遇槽自己知道）：旗舰挑战挂的正是该族**旗舰卡**且在核心星系，
+ * 其余一律按**伏击**算。只作 `weekendApplyBattleOutcome` 的归属提示用——"算不算入侵"仍由 core 侧
+ * （伏击要求活的占领区）兜底，非占领区的普通遭遇照样什么都不做。
+ */
+function weekendKindOfEncounter(state: GameState, enc: GameState['encounter']): 'ambush' | 'flagship' {
+  const ev = state.weekendEvent
+  if (
+    ev &&
+    enc.galaxyId === ev.coreId &&
+    enc.anomalyId !== null &&
+    enc.anomalyId === weekendFoeCardOf(ev.family, 'flagship')
+  ) {
+    return 'flagship'
+  }
+  return 'ambush'
+}
+
+/**
  * 文字三档结算（Q2 甲）：击退（缴获 ISK）/ 受损（耐久 −5%~15%，clamp 5%）/ 被抢（至多 30% 货）。
  * ratio = 我方火力 / (我方火力 + 遭遇强度)；mode 仅影响日志措辞。
  */
@@ -413,6 +431,16 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
       'info',
       `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
     )
+    /**
+     * **周末入侵**：文字结算里的"击退"也算一次**击退遇袭**（设计稿：**离线自动结算击退 +1%**）。
+     * 走 `source: 'text'` —— 与"迎战打赢"的 +3% 分档；`victory: true` 在这里的含义 = "这一档判成了击退"。
+     * ⚠ 必须**赶在 `clearEncounter` 之前**：本函数末尾会把遭遇槽清空，而归属判定要读它。
+     */
+    weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, true, Date.now(), null, {
+      kind: weekendKindOfEncounter(state, enc),
+      galaxyId: enc.galaxyId ?? '',
+      source: 'text',
+    })
   } else if (r < wWin + wLose) {
     // 受损：一口 = 敌群火力 × hitFirepowerSec，**先扣装甲、吸完再进结构**（2026-09-11 船长定；
     // 2026-09-14 改判：5 秒 —— 见 `balance.encounter.hitFirepowerSec` 与文件头）
@@ -600,10 +628,20 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
         return
       }
       if (enc.battle.ended) {
-      settleFight(state, ctx)
-      /** **周末入侵**：占领区的伏击战打完 ⇒ 走入侵结算（胜 = 击退 +3%，败 = 只受损不动进度） */
-      weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, enc.battle.ended === 'me', Date.now(), enc.battle)
-    }
+        settleFight(state, ctx)
+        /**
+         * **周末入侵**：占领区的伏击战 / 旗舰挑战打完 ⇒ 走入侵结算
+         * （遇袭击退 **+3%**、战败只受损不动进度、旗舰按对母舰的伤害记池子）。
+         *
+         * ⚠ 2026-09-25 修：`settleFight` 内部**已经把遭遇槽清空**了 ⇒ 靠 `state.encounter` 反推归属
+         * 一律落空（原先"迎战打赢的遇袭一分进度都不给"就是这么来的）。现在把**归属显式传进去**。
+         */
+        weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, enc.battle.ended === 'me', Date.now(), enc.battle, {
+          kind: weekendKindOfEncounter(state, enc),
+          galaxyId: enc.galaxyId ?? '',
+          source: 'battle',
+        })
+      }
       return
     }
     // 待决邀约：超时自动按文字结算（离线大步长会立刻超时 → 与"离线只文字"一致）

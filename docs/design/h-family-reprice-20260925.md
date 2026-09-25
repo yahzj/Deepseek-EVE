@@ -1,6 +1,6 @@
 # H 族按新规调整（威胁重定价 · 入侵抽签 · 遇袭强度 ×0.75）
 
-- 状态：**落码完成 · 待验收**（2026-09-25 · 二号 · d2）——四闸门全绿（typecheck / test **2,340 例** / content:check / l10n:check / build + docs:index），**未推送**
+- 状态：**落码完成 · 待验收**（2026-09-25 · 二号 · d2）——四闸门全绿（typecheck / test **2,346 例** / content:check / l10n:check / build + docs:index），**未推送**
 - 本文件 = 本批**唯一**工作记录（工作期间不改进旧文档；归档时把结论并入 roadmap / 词典 / 设计稿，本文件删除）
 
 ## 一、船长原话（照抄，按时间序）
@@ -153,7 +153,22 @@
 2. **高安**被占星系采矿 ⇒ 掷 200 次必命中（破例）⇒ 卡 ∈ 外围池 · `foeStrengthMul = 0.75` · 标签 ∈ {76, 91} · 日志 `textId = core.encounters.008` 且写「入侵遭遇」· 占领区不记低安在场、不弹低安提示；**同一高安星系未占领 ⇒ 掷 200 次一次不中**（老口径不变）；
 3. 远征落盘 `foeGalaxyId` ⇒ `weekendBattleInvolvedOf` 认出 `assault` ⇒ 打赢记进度 +10%。
 
-**验证读数**：typecheck ✓ · `npm run test -w @whale/core` **2,340 例全绿**（208 个文件）· content:check ✓ · l10n:check ✓ · build ✓ · docs:index ✓。
+### 九之二 · 结算入账与三处旧账（同日续 · 船长令「那你将工作做完再汇报」）
+
+**做的是什么**：把设计稿 ⑥「结束与结算」的两笔钱真正接上，并修掉接线路上暴露的三处旧账。
+
+| 项 | 内容 |
+|---|---|
+| **贡献奖入账**（新） | 新 `weekendBattle.weekendSettleAndGrant(state, ctx, now)`：活动结束 ⇒ 按 Q5 四档发奖（≥80% ×12＋8M · 50~80% ×8＋5M · 20~50% ×4＋2M · <20% ×1 · **0% ⇒ 无**）⇒ ISK 进钱包、稀有残骸进仓（`wreck-rare-h-<组>`）。**幂等**靠新落盘字段 `WeekendEventState.prizePaidAtWallMs`；**占比按 `endedAtWallMs` 评估**（NPC 铺底是时间函数，晚算会把占比算低⇒少发） |
+| 引擎接线 | `engine.ts` 新增私有 `settleWeekendPrize`：**每拍在 `weekendTick` 之前补发上一场"已结束没结"的**（离线跨过结束点 / 老档；`ensureWeekendEvent` 会把旧场覆盖掉，所以必须在它之前），本拍刚结束的再结一次（同一个幂等口 ⇒ 不会重发）。三条日志走 id 制：`ui.weekend.022`（有 ISK）/ `023`（只有残骸）/ `024`（零贡献） |
+| 存档清洗器补齐 | `save.ts` 的 `weekendEvent` 清洗器**原先根本没写旗舰 BOSS 那 7 个字段**（`flagshipHpMax` / `flagshipHpDone` / `octopusDrainedMs` / `flagshipDmgLogged` / `flagshipRunId` / `flagshipBestRunDmg` / `bossTickWallMs`）⇒ **读档后母舰血条回满、章鱼人削血清零、同场幂等键丢失（同一场可能被重复记账）**。现按新 `weekendKeep`（有限且 ≥ 0 ⇒ 保留，0 是合法状态读数）逐个随档；`flagshipHpMax` 走 `> 0`（0 会读成"1 点血条"）。用例见 `weekend-event.test.ts` 的"随档往返" |
+| **遇袭进度两头都反了**（行为变更，按设计稿对齐） | 原式 `victory ? 'win' : (ambush ? 'repel' : 'loss')` ⇒ **遇袭打赢被记成"主动胜利"（+10% 而不是 +3%）· 遇袭打输却被记成"击退"（+3% 而不是 0）**。现按 `kind` 分流：伏击看胜负（赢 = 击退 +3% · 输 = 只受损），主动出击赢 = 胜利（外围 +10% / 核心 +5%），文字结算（`source: 'text'`）的击退走 **+1%** 那档 |
+| **迎战遇袭一分进度都不给**（原状 bug） | `advanceEncounterWatch` 里 `weekendApplyBattleOutcome` 排在 `settleFight` **之后**，而 `settleFight` 末尾已 `clearEncounter` ⇒ 归属反推一律落空（注释写着 +3%、实际 0）。现改为**显式传归属**（新 `WeekendOutcomeHint{kind, galaxyId, source}`）；旗舰那条不套"活的占领区"闸门（核心条满时该判据已为假 ⇒ 套上就会复发 2026-09-24 的"打完旗舰什么都不结算"） |
+| **文字结算路径没接**（原状缺口） | `resolveTextual`（60 秒无人应答 / 快速脱离 / 离线补算共用的三档结算）**从不调入侵结算** ⇒ 「离线自动结算击退 +1%」从来发不出去。现在"击退"那一档在 `clearEncounter` 之前显式入账 |
+
+**验证（端到端）**：`weekend-wiring-20260925.test.ts` 由 3 例扩到 **8 例**——新增 ④ 夺回奖励入账（钱包 +2M、稀有残骸 ×8 真到手）· ⑤ 结束结算入账（A 档 ×12＋8M · 再调/过一周再调都不重发 · 零贡献 ⇒ 无奖但落"已结"标记）· ⑥ 迎战遇袭 +3% / 打输 0 / 文字击退 +1% · ⑦ **真实引擎路径**跑 40 档文字结算：进度只可能是 0 或 +1%（绝不是 +3%/+10%）且两档都出现过 · ⑧ 核心条满时旗舰战仍认得出（防"打完旗舰不结算"复发）。
+
+**验证读数**：typecheck ✓ · `npm run test -w @whale/core` **2,346 例全绿**（208 个文件）· content:check ✓ · l10n:check ✓ · build ✓ · docs:index ✓。
 
 
 

@@ -155,6 +155,12 @@ export interface WeekendEventState {
   flagshipBestRunDmg?: number
   /** **上一拍章鱼削血的心跳墙钟**（只用于算拍间增量；缺省 = 本拍只立基线、不累计） */
   bossTickWallMs?: number
+  /* ─── 结束结算（2026-09-25 · M1-b 收尾）─── */
+  /**
+   * **贡献奖已发放的墙钟**（幂等标记；缺省 = 还没结过）。
+   * ⚠ 占比按 **`endedAtWallMs`** 评估后发放（NPC 铺底是时间函数，晚算会把占比算低 ⇒ 少发）。
+   */
+  prizePaidAtWallMs?: number
 }
 
 /**

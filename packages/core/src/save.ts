@@ -2668,6 +2668,18 @@ function normalizeState(raw: unknown): GameState {
   const weekendRaw = asRaw(src.weekendEvent)
   const weekendStr = (v: unknown): string => (typeof v === 'string' && v.length > 0 ? v : '')
   const weekendNum = (v: unknown): number => (Number.isFinite(num(v)) && num(v) > 0 ? Math.floor(num(v)) : 0)
+  /**
+   * **可选数值字段的"原样保留"口径**（2026-09-25 补）：有限且 **≥ 0** ⇒ floor，缺省/坏值 ⇒ 不写键。
+   * 与 `weekendNum` 的区别在 **0 是合法值**——下面这些字段是**状态读数 / 幂等标记**，不是"计数"：
+   * 母舰已伤 0、章鱼削血 0、削血心跳 0（墙钟起点）、结束标记 0、**贡献奖已发 0**、
+   * 同一场的身份 `flagshipRunId` 0（`battle.startedAtGameMs` 早期就是 0 一带）。
+   * ⚠ 起因（实测）：这些键原先**根本没过清洗器** ⇒ 读档后**旗舰血条回满、章鱼削血清零、
+   * 同场幂等键丢失（同一场可能被重复记账）** —— 见 `weekend-event.test.ts` 的"随档往返"用例。
+   */
+  const weekendKeep = (v: unknown): number | undefined => {
+    const n = num(v)
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined
+  }
   const weekendCoreId = weekendStr(weekendRaw.coreId)
   const weekendStartedAt = weekendNum(weekendRaw.startedAtWallMs)
   const contributedRaw = asRaw(weekendRaw.contributed)
@@ -2678,21 +2690,44 @@ function normalizeState(raw: unknown): GameState {
   }
   const weekendEvent: GameState['weekendEvent'] =
     weekendCoreId && weekendStartedAt > 0
-      ? {
-          seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
-          startedAtWallMs: weekendStartedAt,
-          coreId: weekendCoreId,
-          peripheryIds: (Array.isArray(weekendRaw.peripheryIds) ? weekendRaw.peripheryIds : [])
-            .map((x) => weekendStr(x))
-            .filter((x) => x.length > 0),
-          family: weekendStr(weekendRaw.family) || 'A',
-          contributed,
-          ...(weekendNum(weekendRaw.endedAtWallMs) > 0 ? { endedAtWallMs: weekendNum(weekendRaw.endedAtWallMs) } : {}),
-          ...(weekendNum(weekendRaw.flagshipAtWallMs) > 0 ? { flagshipAtWallMs: weekendNum(weekendRaw.flagshipAtWallMs) } : {}),
-          ...(weekendRaw.flagshipDown === 'player' || weekendRaw.flagshipDown === 'octopus'
-            ? { flagshipDown: weekendRaw.flagshipDown as 'player' | 'octopus' }
-            : {}),
-        }
+      ? (() => {
+          /**
+           * 旗舰 BOSS 与结束结算的随档字段（**逐个 `weekendKeep`**，缺省不写键 ⇒ 老档零迁移）。
+           * `flagshipHpMax` 走 `> 0`：0 会读成"1 点血条"（`weekendFlagshipHpRemaining` 有下限 1），
+           * 而它的唯一合法值就是池子常量 ⇒ 0/坏值一律当"还没锁池"。
+           */
+          const hpMax = weekendNum(weekendRaw.flagshipHpMax)
+          const hpDone = weekendKeep(weekendRaw.flagshipHpDone)
+          const drained = weekendKeep(weekendRaw.octopusDrainedMs)
+          const dmgLogged = weekendKeep(weekendRaw.flagshipDmgLogged)
+          const runId = weekendKeep(weekendRaw.flagshipRunId)
+          const bestRun = weekendKeep(weekendRaw.flagshipBestRunDmg)
+          const bossTick = weekendKeep(weekendRaw.bossTickWallMs)
+          const prizePaid = weekendKeep(weekendRaw.prizePaidAtWallMs)
+          return {
+            seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
+            startedAtWallMs: weekendStartedAt,
+            coreId: weekendCoreId,
+            peripheryIds: (Array.isArray(weekendRaw.peripheryIds) ? weekendRaw.peripheryIds : [])
+              .map((x) => weekendStr(x))
+              .filter((x) => x.length > 0),
+            family: weekendStr(weekendRaw.family) || 'A',
+            contributed,
+            ...(weekendNum(weekendRaw.endedAtWallMs) > 0 ? { endedAtWallMs: weekendNum(weekendRaw.endedAtWallMs) } : {}),
+            ...(weekendNum(weekendRaw.flagshipAtWallMs) > 0 ? { flagshipAtWallMs: weekendNum(weekendRaw.flagshipAtWallMs) } : {}),
+            ...(weekendRaw.flagshipDown === 'player' || weekendRaw.flagshipDown === 'octopus'
+              ? { flagshipDown: weekendRaw.flagshipDown as 'player' | 'octopus' }
+              : {}),
+            ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
+            ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
+            ...(drained !== undefined ? { octopusDrainedMs: drained } : {}),
+            ...(dmgLogged !== undefined ? { flagshipDmgLogged: dmgLogged } : {}),
+            ...(runId !== undefined ? { flagshipRunId: runId } : {}),
+            ...(bestRun !== undefined ? { flagshipBestRunDmg: bestRun } : {}),
+            ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
+            ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
+          }
+        })()
       : undefined
 
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---

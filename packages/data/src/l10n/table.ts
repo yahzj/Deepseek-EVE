@@ -3323,6 +3323,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-24 旗舰 BOSS 化（跨场累计伤害）：入侵面板那一条的进度读数
   "ui.weekend.020": { zh: "旗舰已磨掉 {p1}%", en: "Flagship worn down {p1}%" },
   "ui.weekend.021": { zh: "章鱼人已削 {p1}%", en: "Octopus fleet eroded {p1}%" },
+  // 2026-09-25 结束结算（贡献奖四档入账）：一条有 ISK 的、一条只有残骸的（参与档）、一条零贡献的
+  "ui.weekend.022": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2} + {p3} credits." },
+  "ui.weekend.023": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2}。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2}." },
+  "ui.weekend.024": { zh: "本次入侵没有贡献，无贡献奖。", en: "No contribution in this invasion, so there is no contribution reward." },
   "ui.Ironman.001": { zh: "铁人 · 代次 #{p1}", en: "Iron Man · generation #{p1}" },
   "ui.Ironman.002": { zh: "开启铁人模式", en: "Enable Iron Man" },
   "ui.Ironman.003": { zh: "确认开启", en: "Confirm enable" },

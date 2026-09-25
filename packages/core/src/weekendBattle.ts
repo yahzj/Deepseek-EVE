@@ -291,6 +291,53 @@ export function weekendSettlePlanOf(
   }
 }
 
+/** 贡献奖实发结果（`weekendSettleAndGrant` 的返回值） */
+export interface WeekendSettleGrant {
+  /** 贡献占比（0~1，按**结束时刻**评估） */
+  share: number
+  tier: 'A' | 'B' | 'C' | 'D' | 'none'
+  /** 实发（已入账）数量 */
+  isk: number
+  wreck: number
+}
+
+/**
+ * **活动结束 ⇒ 贡献奖结算 ＋ 真正入账**（设计稿 ⑥「结束与结算」· M1-b 收尾 · 2026-09-25）。
+ *
+ * 设计稿原文：「结束时：① 统计贡献占比 → 发贡献奖 ② 玩家击毁 ⇒ 另发黑匣 ＋ 稀有残骸 ③ 所有占领恢复」。
+ * 其中 ② 的**黑匣与旗舰残骸在"击沉那一刻"就发了**（`weekendApplyBattleOutcome` 的 `flagshipKilled`）
+ * ⇒ 这里**不重复发**，只发 ① 的贡献四档奖（Q5：≥80% ⇒ ×12＋8M · 50~80% ⇒ ×8＋5M ·
+ * 20~50% ⇒ ×4＋2M · <20% ⇒ ×1 · **0% ⇒ 无**）。
+ *
+ * 三条口径：
+ * - **按结束时刻评估**（`ev.endedAtWallMs`）：NPC 铺底是**时间函数**，玩家离线几天后再结算会把铺底算高
+ *   ⇒ 占比被算低、奖励少发；锁在结束那一刻则与"结束时统计"逐字一致，且**重复调用读数恒定**；
+ * - **幂等**：`ev.prizePaidAtWallMs` 随档落盘 ⇒ 引擎每拍调、离线跨过结束点后补调，都只会发一次
+ *   （0% 也算"已结"：标记照写，免得每拍重算）；
+ * - **残骸物品 id** 取本族**旗舰卡**所属残骸组（`wreck-rare-h-hi` 一类；与旗舰掉落同一件）——
+ *   解析不到就**不发**（绝不发不存在的 id，见 `weekendRareWreckIdFor` 的旧账）。
+ *
+ * 返回 `null` = 什么都不用做（没有入侵 / 还没结束 / 已经结过）。
+ */
+export function weekendSettleAndGrant(
+  state: GameState,
+  ctx: SimContext,
+  nowWallMs: number,
+): WeekendSettleGrant | null {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs === undefined) return null
+  if (ev.prizePaidAtWallMs !== undefined) return null
+  const plan = weekendSettlePlanOf(state, ev, ev.endedAtWallMs)
+  const wreckItemId = weekendRareWreckIdFor(weekendFoeCardOf(ev.family, 'flagship'), ctx)
+  const granted = weekendGrantRewards(state, {
+    isk: plan.isk,
+    wreck: plan.wreck,
+    ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+  })
+  ev.prizePaidAtWallMs = nowWallMs
+  return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck }
+}
+
 /* ─────────────── 奖励入账（M1-b 第五片） ─────────────── */
 
 /**
@@ -391,9 +438,31 @@ export function weekendBattleInvolvedOf(
 }
 
 /**
+ * **归属提示**（调用方"自己知道这一场是什么"时显式传入，免得靠状态反推）：
+ *
+ * 起因（2026-09-25 实测）：遭遇槽在收尾时**先被 `settleFight` 清掉**，`weekendBattleInvolvedOf`
+ * 再去读 `state.encounter` 就什么都读不到 ⇒ **迎战打赢的遇袭一分进度都不给**（注释却写着 +3%）。
+ * 而"主动出击"走远征（远征槽里可能残留上一趟的 `foeGalaxyId`）⇒ 只靠状态反推既漏又可能串。
+ */
+export interface WeekendOutcomeHint {
+  /** 这一场是哪一类（遭遇槽 = 伏击 / 旗舰挑战；远征 = 主动出击） */
+  kind: WeekendBattleKind
+  /** 这一场打的是哪个星系 */
+  galaxyId: string
+  /**
+   * 结算来源：`battle` = **迎战打完**（缺省）· `text` = **文字三档结算**（无人应答超时 / 快速脱离 / 离线自动）。
+   * 遇袭击退的进度按设计稿分两档：**主动击退 +3% · 离线自动结算击退 +1%**。
+   */
+  source?: 'battle' | 'text'
+}
+
+/**
  * **战后一口气结算**（引擎在"这一场打完了"那一拍调用）：
  * 判归属 → 取 spec → `weekendResolveBattle` → **奖励真正入账**（ISK 进钱包、稀有残骸进仓库）。
  * 返回 null = 这一场与入侵无关（引擎什么都不用做）。
+ *
+ * `hint` 给了 `kind` + `galaxyId` ⇒ **直接采信**（遭遇系统与远征系统都准确地知道自己在打什么）；
+ * 不给 ⇒ 按 `weekendBattleInvolvedOf` 从状态反推（老调用方逐字不变）。
  */
 export function weekendApplyBattleOutcome(
   state: GameState,
@@ -406,8 +475,25 @@ export function weekendApplyBattleOutcome(
    * 旗舰 BOSS 要用它量"这一场对母舰造成了多少原始伤害"（`combat.flagshipBattleLedger`）。
    */
   battle?: import('./state').BattleState | null,
+  hint?: WeekendOutcomeHint,
 ): { galaxyId: string; kind: WeekendBattleKind; gain: number; isk: number; wreck: number; note: string } | null {
-  const involved = weekendBattleInvolvedOf(state, ctx, anomalyId, nowWallMs)
+  const involved: { galaxyId: string; kind: WeekendBattleKind } | undefined = (() => {
+    const ev = state.weekendEvent
+    if (hint === undefined || ev === undefined || ev.endedAtWallMs !== undefined || hint.galaxyId.length === 0) {
+      return weekendBattleInvolvedOf(state, ctx, anomalyId, nowWallMs)
+    }
+    /**
+     * 提示的**有效性闸门**：伏击要求该星系是活的占领区；旗舰要求"星系 = 本场核心"。
+     * ⚠ 旗舰**不能**套"活的占领区"这条 —— 核心条满正是旗舰现身的前提，那一刻 `weekendOccupiedLiveAt`
+     * 已经为假（进度 = 1）⇒ 套上去会把旗舰战打回"什么都不结算"（2026-09-24 那个 bug 的翻版）。
+     */
+    if (hint.kind === 'flagship') {
+      return hint.galaxyId === ev.coreId ? { galaxyId: hint.galaxyId, kind: 'flagship' } : undefined
+    }
+    return weekendOccupiedLiveAt(state, hint.galaxyId, nowWallMs)
+      ? { galaxyId: hint.galaxyId, kind: hint.kind }
+      : undefined
+  })()
   if (!involved) return null
   const spec =
     involved.kind === 'flagship'
@@ -438,7 +524,26 @@ export function weekendApplyBattleOutcome(
    */
   const bossDown =
     involved.kind === 'flagship' && weekendIsBossFamily(state.weekendEvent) && weekendFlagshipDefeated(state.weekendEvent)
-  const outcome: WeekendOutcome = victory || bossDown ? 'win' : involved.kind === 'ambush' ? 'repel' : 'loss'
+  /**
+   * **胜负 → 进度档**（设计稿「玩家推进」：主动胜利 外围 +10% / 核心 +5% · **主动击退遇袭 +3%** ·
+   * **离线自动结算击退 +1%** · 战败只受损、进度不动）。
+   *
+   * ⚠ 2026-09-25 修（原式 `victory || bossDown ? 'win' : (ambush ? 'repel' : 'loss')` **两头都反了**）：
+   * 遇袭打赢被记成"主动胜利"（+10% 而不是 +3%），遇袭打输却被记成"击退"（+3% 而不是 0）。
+   * 现在按 `kind` 分流：**伏击**看 `victory`（赢 = 击退 · 输 = 战败），**主动出击**赢 = 胜利、输 = 战败；
+   * 文字结算（`hint.source === 'text'`）的击退走 **+1%** 那一档。
+   */
+  const outcome: WeekendOutcome = bossDown
+    ? 'win'
+    : involved.kind === 'ambush'
+      ? victory
+        ? hint?.source === 'text'
+          ? 'offlineRepel'
+          : 'repel'
+        : 'loss'
+      : victory
+        ? 'win'
+        : 'loss'
   const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs, flagshipDmg, battle?.startedAtGameMs)
   const isk = (r.reclaimed?.isk ?? 0)
   const wreck = (r.reclaimed?.wreck ?? 0) + (r.flagshipKilled?.wreck ?? 0)

@@ -171,6 +171,8 @@ import {
   weekendFlagshipSpecOf,
   weekendFlagshipSquadOf,
   weekendStartFlagshipBattle,
+  // 2026-09-25 入侵结束结算（贡献奖四档入账；幂等由 core 侧 `prizePaidAtWallMs` 落盘标记保证）
+  weekendSettleAndGrant,
   ironmanLoadVerdict,
   ironmanOn,
   ironmanSeq,
@@ -1002,6 +1004,12 @@ export class GameEngine {
      * ⚠ 本刀**只接 tick**：遇袭掷骰与战斗入口（悬赏替换为入侵舰队 / 旗舰小队战）留待下一刀。
      * ⚠ `lastSeenWallMs` 传"上一拍"（now − dt）⇒ 离线保护与 Q3 的">24h 自满 24h 起算"都有正确锚点。
      */
+    /**
+     * **上一场"已结束但没结"的贡献奖补发**（2026-09-25）：必须**在 `weekendTick` 之前** ——
+     * 它内部会 `ensureWeekendEvent` 开新场、把旧场覆盖掉（玩家离线跨过结束点再上线就是这条路径）；
+     * 老档同理。core 侧按 `prizePaidAtWallMs` 落盘标记判重 ⇒ 每拍调也只会发一次。
+     */
+    this.settleWeekendPrize(now)
     const weekend = weekendTick(this.state, this.ctx, now, now - dt)
     this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
     if (weekend.started) {
@@ -1020,6 +1028,9 @@ export class GameEngine {
       addLog(this.state, 'warn', tr(octopus ? 'ui.weekend.003' : 'ui.weekend.004'), octopus ? 'ui.weekend.003' : 'ui.weekend.004')
       void this.persist()
     }
+    /** **结束结算入账**（2026-09-25）：本拍刚结束的那一场立刻结；上一拍结束而没结的（离线跨过结束点、
+     *  老档）由本函数开头的补发那一句兜 —— 两处都调同一个幂等口，不会重复发。 */
+    this.settleWeekendPrize(now)
     const exp = this.state.expedition
     /**
      * 含已分胜负的"击杀慢镜窗口"：窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定画面。
@@ -1334,6 +1345,33 @@ export class GameEngine {
     this.notify()
     void this.persist()
     return { ok: true }
+  }
+
+  /**
+   * **周末入侵 · 结束后的贡献奖入账**（设计稿 ⑥「结束与结算」；2026-09-25 接上）。
+   *
+   * 设计原文：「结束时：① 统计贡献占比 → 发贡献奖（Q5 四档）② 玩家击毁 ⇒ 另发黑匣 ＋ 稀有残骸」。
+   * ② 的黑匣与旗舰残骸**在击沉那一刻**已由 `weekendApplyBattleOutcome` 发过 ⇒ 这里只发 ① 的贡献四档。
+   *
+   * - **幂等**：core 侧 `weekendSettleAndGrant` 用 `ev.prizePaidAtWallMs` 落盘标记判重 ⇒ 每拍调也只发一次；
+   * - **占比按结束时刻评估**（不是"这几拍"）：玩家离线几天后再上线补结，读数与结束时一致（不会少发）；
+   * - 三档文案：有 ISK / 只有残骸（参与档）/ 零贡献（无奖，标记照写）。
+   */
+  private settleWeekendPrize(now: number): void {
+    const r = weekendSettleAndGrant(this.state, this.ctx, now)
+    if (!r) return
+    const pct = (r.share * 100).toFixed(1)
+    if (r.isk > 0) {
+      const params = { p1: pct, p2: r.wreck, p3: r.isk.toLocaleString('zh-CN') }
+      addLog(this.state, 'trade', tr('ui.weekend.022', params), 'ui.weekend.022', params)
+    } else if (r.wreck > 0) {
+      const params = { p1: pct, p2: r.wreck }
+      addLog(this.state, 'trade', tr('ui.weekend.023', params), 'ui.weekend.023', params)
+    } else {
+      addLog(this.state, 'trade', tr('ui.weekend.024'), 'ui.weekend.024')
+    }
+    this.notify()
+    void this.persist()
   }
 
   async restoreBackup(name: string): Promise<{ ok: boolean; error?: string }> {
