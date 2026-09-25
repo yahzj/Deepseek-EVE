@@ -3354,7 +3354,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Ironman.020": { zh: "铁人模式", en: "Iron Man" },
   "ui.Ironman.021": { zh: "再点确认开启（不可回退）", en: "Click again to confirm enable (no rollback)" },
   "ui.Ironman.022": { zh: "开启后不可回退，代次只前进", en: "No rollback once enabled; the generation only moves forward" },
-  "ui.Ironman.023": { zh: "再点确认关闭（关闭后无法再次开启）", en: "Click again to confirm disable (cannot be re-enabled)" },
   "ui.Ironman.024": { zh: "关闭铁人模式：福利同时失效", en: "Disable Iron Man: the perks end as well" },
   "ui.Ironman.039": { zh: "关闭铁人模式？", en: "Disable Iron Man?" },
   "ui.Ironman.040": { zh: "关闭后无法再次开启铁人模式。", en: "Once disabled, Iron Man cannot be enabled again." },
