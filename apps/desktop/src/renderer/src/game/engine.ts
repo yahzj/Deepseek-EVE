@@ -311,6 +311,8 @@ import type {
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, EN_GALAXIES, EN_BELTS, EN_STATIONS, EN_COMMS_FACTIONS, overlayCardFoes, overlayCardFoesList, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
+/** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
+import { noteSaveWriteFailed, probeSaveStorage, requestPersistentStorage, saveStorageProbe } from './saveGuard'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText } from '../i18n/locale'
@@ -624,6 +626,10 @@ export class GameEngine {
   private lastRealMs = 0
   private intervalId: number | null = null
   private saveIntervalId: number | null = null
+  /** 甲：启动体检不通（存储不可写）⇒ 本局所有写入短路；界面在设置里显示状态 */
+  private saveUnavailable = false
+  /** 丁：旧档读取失败 ⇒ 挂起写入，等玩家放行；防"把读不出来的旧档盖掉" */
+  private savePaused = false
   /** 非战斗期推进余额（累计满 1s 才推进一次，保持旧节奏；战斗中改 100ms 切片实时推进） */
   private pendingMs = 0
   /** 心跳周期毫秒（2026-09-08 降频优化：挂机 500ms；战斗/教学加速/远征去程边界保持 100ms） */
@@ -934,6 +940,9 @@ export class GameEngine {
   /** 启动引擎：读档 → 离线结算 → 每秒推进 + 自动保存 */
   async start(): Promise<void> {
     let lastSavedWall: number | null = null
+    /** 甲：启动体检结果（`main.tsx` 在 start 之前 await 过一次）——不通 ⇒ 本局所有写入直接短路 */
+    const guard = saveStorageProbe()
+    this.saveUnavailable = guard !== null && !guard.ok
     try {
       const raw = await saveBridge.load()
       if (raw !== null) {
@@ -958,6 +967,13 @@ export class GameEngine {
               : tr("ui.engine.022")
           : tr("ui.engine.023")
       addLog(this.state, 'warn', tr("ui.engine.024", { why: why }))
+      /**
+       * **丁 · 读档抛错 ⇒ 挂起写入**（2026-09-25 船长令）：抛错 ≠"没有档"——旧档很可能还在、
+       * 只是这一次读不出来（权限/存储一时不可用/文件损坏）。挂起后 15 秒心跳与首次落盘都不写，
+       * 等玩家在「设置 → 存档」里点「允许写入存档」（`allowSaveAfterLoadError`）再写，
+       * 免得新档把旧档盖掉。存储本来就不可写（甲）时不挂起——挂起没意义，设置里会显示"不可写"。
+       */
+      if (!this.saveUnavailable) this.savePaused = true
     }
 
     // V17/V18 装备修复：下架型号迁移 + 每船位数组与船型布局对齐（须在离线结算前完成，
@@ -987,12 +1003,45 @@ export class GameEngine {
     this.pumpMs = 0
     // 心跳周期按当前局面启动：战斗/教学加速/远征去程 100ms，普通挂机 500ms（低负载；2026-09-08 降频优化）
     this.ensurePump()
-    this.saveIntervalId = window.setInterval(() => {
-      void this.persist()
-    }, 15_000)
+    /**
+     * **自动落盘心跳（15 秒）**——但**存储不可写**（甲：启动体检不通）或**写入已挂起**（丁：旧档读取失败）时
+     * 一律不启动：写进去也没用，更不该把读不出来的旧档盖掉。放行入口 = 设置 → 存档 →「允许写入存档」
+     * （`allowSaveAfterLoadError()`），或换一个能写存储的窗口重开。
+     */
+    if (this.saveWriteState() === 'ok') this.ensureSaveInterval()
 
     await this.persist()
     this.notify()
+  }
+
+  /** 启动自动落盘心跳（幂等） */
+  private ensureSaveInterval(): void {
+    if (this.saveIntervalId !== null) return
+    this.saveIntervalId = window.setInterval(() => {
+      void this.persist()
+    }, 15_000)
+  }
+
+  /**
+   * **存档写入状态**（界面与告警用；2026-09-25 船长令）：
+   * - `unavailable` = 启动体检就没通（浏览器不给写存储）⇒ 写也白写，不去动它；
+   * - `paused` = 旧档**读取失败**（丁）⇒ 挂起写入，等玩家在设置里放行，免得把旧档盖掉；
+   * - `ok` = 正常。
+   */
+  saveWriteState(): 'ok' | 'paused' | 'unavailable' {
+    if (this.saveUnavailable) return 'unavailable'
+    if (this.savePaused) return 'paused'
+    return 'ok'
+  }
+
+  /**
+   * **丁 · 玩家放行**（设置 → 存档 →「允许写入存档」）：解除挂起、恢复心跳并立刻落一次盘。
+   * 语义 = 玩家已知晓"读不出来的旧档会被新档取代"。
+   */
+  async allowSaveAfterLoadError(): Promise<boolean> {
+    this.savePaused = false
+    this.ensureSaveInterval()
+    return await this.persist()
   }
 
   /**
@@ -1148,14 +1197,22 @@ export class GameEngine {
   }
 
   /** 保存存档（2026-09-08 船长定：事件日志不落盘——写盘前剥离 logs，
-   * 每次开启游戏日志空白；logs 仅作本局内存滚动展示） */
+   * 每次开启游戏日志空白；logs 仅作本局内存滚动展示）
+   *
+   * 2026-09-25 加（船长令 · 甲/乙）：写失败**不再只是控制台一行** —— 交给 `game/saveGuard` 每局提醒一次；
+   * 落盘成功后顺手再申请一次持久化存储（乙）。挂起/不可写时直接返回 false（丁）。 */
   async persist(): Promise<boolean> {
+    if (this.saveWriteState() !== 'ok') return false
     try {
       bumpIronmanSeq(this.state) // 铁人档：每次落盘代次 +1（普通档/已关闭 ⇒ 冻结）
       const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
-      return await saveBridge.save(serializeSaveFile(out))
+      const ok = await saveBridge.save(serializeSaveFile(out))
+      if (ok) void requestPersistentStorage()
+      else noteSaveWriteFailed()
+      return ok
     } catch (err) {
       console.error(tr("ui.engine.025"), err)
+      noteSaveWriteFailed()
       return false
     }
   }

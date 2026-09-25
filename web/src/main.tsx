@@ -1,40 +1,33 @@
 /**
  * 网页版启动入口：与桌面 renderer 同一份代码（App / GameEngine / styles 源码直连）。
+ *
+ * ⚠ **启动序列必须与桌面入口共用**（`game/boot.ts`）：本仓有**两个入口**——
+ * 任何"首帧前要做的动作"（布局样式 / 宇宙背景 / 配色）或"启动引擎前要做的事"（存档存储体检）
+ * 都写在那个共用模块里，这里只负责调用。2026-09-25 就漏过一次：存档体检只加在桌面入口，
+ * 结果**网页版（Safari 玩家走的那条路）等于没体检**，存档丢了也看不到任何提示。
  */
 import { createRoot } from 'react-dom/client'
 import { App } from '../../apps/desktop/src/renderer/src/App'
 import { GameEngine } from '../../apps/desktop/src/renderer/src/game/engine'
-import { applySpaceBg } from '../../apps/desktop/src/renderer/src/ui/spaceBg'
-import { bootstrapTheme } from '../../apps/desktop/src/renderer/src/ui/theme'
+import { prebootRenderer, startGameEngine } from '../../apps/desktop/src/renderer/src/game/boot'
 import { L10nProvider, tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
-import { installLayoutStyles } from '../../apps/desktop/src/renderer/src/ui/layoutStyles'
 
-// **两套布局两套样式**（2026-09-25 船长令）：按玩家偏好只加载对应那一份。
-// ⚠ 与桌面入口同口径、同样必须在首帧渲染之前调；两份样式类名高度重叠，同时生效会互相串味。
-// ⚠ 网页版有**自己的入口**：桌面入口改了这里也必须改。
-installLayoutStyles()
-
-// 宇宙背景（2026-09-10 船长）：与桌面入口同口径——启动时抽一张无缝贴图并写入 `--space-bg`，
-// 放在首帧渲染之前，避免先闪一下纯色底。（此前只有桌面入口调，网页版一直只有 CSS 星点兜底；
-// 图源本就随 App 打进网页版包，这里只是补上"启动时写变量"这一步，不增加包体。）
-applySpaceBg()
-// 界面配色（2026-09-22 船长令）：与桌面入口同口径——首帧前把 `data-theme` 写上，避免先闪一下另一套配色。
-// ⚠ 网页版有**自己的入口**：桌面入口改了这里也必须改（本批就漏过一次：探针在网页版读到 data-theme=null）。
-bootstrapTheme()
+// 首帧渲染之前的固定动作（布局样式 / 宇宙背景 / 配色）
+prebootRenderer()
 
 const engine = new GameEngine()
 const root = createRoot(document.getElementById('root')!)
 
 root.render(<div className="app-loading">{tr('ui.main.001')}</div>)
 
-engine
-  .start()
+// 启动引擎（含存档存储体检）
+startGameEngine(engine)
   .then(() => {
     root.render(
-    <L10nProvider>
-      <App engine={engine} />
-    </L10nProvider>,
-  )
+      <L10nProvider>
+        <App engine={engine} />
+      </L10nProvider>,
+    )
   })
   .catch((err: unknown) => {
     console.error(tr('ui.main.004'), err)
