@@ -979,7 +979,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
   })
 
-  it('噬口猎杀令（T109）：畸变幼虫 ×10 + 稀有头目 ×1；首领占 80% 血与火力，总盘 4,002.6786/717 精确守恒', () => {
+  it('噬口猎杀令（T109）：畸变幼虫 ×10 + 稀有头目 ×1；首领占 65% 血与火力，总盘 3,994.104/720 精确守恒', () => {
     const def = card('ano-maw-hunt')
     const u = allWaves(def)
     expect(u).toHaveLength(11);
@@ -988,17 +988,17 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(boss).toBeTruthy()
     const minions = u.filter((x) => x !== boss)
     expect(minions).toHaveLength(10)
-    expectHpClose([hpOf(boss)], [4002.6786 * 0.8]); // 首领 3,202.1429（80%；2026-09-25 重定价 ×1.4471）
+    expectHpClose([hpOf(boss)], [3994.104 * 0.65]); // 首领 2,596.1676（65%；2026-09-25 船长令「将巨兽的占比下调到 65%」＋重定价 k=1.444）
     expectHpClose(
       minions.map(hpOf),
-      Array.from({ length: 10 }, () => 4002.6786 * 0.02),
-    ); // 每只小虫 80.0536（2%）
-    expect(sum(u.map(hpOf))).toBeCloseTo(4002.6786, 6); // 2026-09-25 重定价后总血（原 2,766）
-    expect(boss.weapons[0]!.shotDmg).toBe(577); // 717 × 80% = 573.6 → 577（重定价后）
+      Array.from({ length: 10 }, () => 3994.104 * 0.035),
+    ); // 每只小虫 139.7936（3.5%）
+    expect(sum(u.map(hpOf))).toBeCloseTo(3994.104, 6); // 2026-09-25 重定价后总血（原 2,766）
+    expect(boss.weapons[0]!.shotDmg).toBe(470); // 首领 65%（原 80% ⇒ 577；重定价后逐项取整）
     expect(minions.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 10 }, () => 14),
+      Array.from({ length: 10 }, () => 25),
     )
-    expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(717); // 总单发取整后仍精确 = 717（重定价后）
+    expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(720); // 总单发 = 470 + 25×10（重定价后）
     expect(boss.speedMps).toBe(297); // 205 × 297/205（船长「将首领速度**单独上调 20 点**」：277 → 297）
     expect(minions.every((x) => x.speedMps === 544)).toBe(true)
     expect(boss.weapons[0]!.maxRangeM).toBe(2713); // 沿革：曾令加到 4,000 → 回收回 2,713 → 2026-09-14「全族 +1000」（3,713）**同日已回滚**

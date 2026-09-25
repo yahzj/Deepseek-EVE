@@ -97,9 +97,14 @@ const ALIEN_COMP = (n: number): number => (2 * n) / (n + 1)
  */
 const MAW_TOTAL_HP = 2766; // = 922 × 3（改造前实际总血）
 const MAW_TOTAL_DMG = 501; // = 167 × 3（改造前实际总单发）
-/** 稀有头目的血/火力占比（船长：「**首领血量占比提高到 80%**」；火力同比例 ⇒ 每只小虫 2%） */
-const MAW_BOSS_SHARE = 0.8
-const MAW_MINION_SHARE = 0.02
+/**
+ * **稀有头目的血/火力占比**——船长 2026-09-11「**首领血量占比提高到 80%**」（火力同比例），
+ * **2026-09-25 船长令「将巨兽的占比下调到 65%」** ⇒ 现值 **0.65**（火力同比例）。
+ * 总量守恒不变：小兵合计 = `1 − 头目占比`，逐只均分（10 只 ⇒ 每只 3.5%）。
+ */
+const MAW_BOSS_SHARE = 0.65
+/** 每只小虫的占比（**由头目占比推导**，防两处手抄漂移：`(1 − 0.65) ÷ 10 = 3.5%`） */
+const MAW_MINION_SHARE = (1 - MAW_BOSS_SHARE) / 10
 
 /**
  * **D 族（守墓古舰）的多舰船补偿**（2026-09-11 船长「对悬赏进行敌人配置」批）：
@@ -804,12 +809,16 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     // **畸变幼虫 ×10（波 1 ×4、波 2 ×3、波 3 ×3）+ 噬口巨兽 ×1（第 3 波，精锐）**，共 11 单位 / 3 波。
     // 船长：「**只有噬口有头目出现**」「出现稀少…**因此也更加强大**」「**首领血量占比提高到 80%**」
     // +「**畸变幼虫给第二张和第四张**」+「巨兽提速降为 1.35，**给巨兽开启之前做过的冲锋能力**」
-    // +「巨兽射程增加但是**不变动目标距离**」。
-    // **总盘守恒**（口径⑤）：总血 **2,766** = 首领 **2,212.8**（80%）+ 每只小虫 **55.32**（2%）×10；
-    //   总单发 **501** = 首领 **401** + 每只小虫 **10** ×10（取整后仍精确 = 501）。
+    // +「巨兽射程增加但是**不动目标距离**」。
+    // **⚠ 2026-09-25 船长令「将巨兽的占比下调到 65%」** ⇒ 首领占比 80% → **65%**（火力同比例），
+    //   小兵合计 35% 逐只均分 ⇒ 每只小虫 **3.5%**（原 2%）；**总量守恒不变**（65% + 3.5%×10 = 100%）。
+    // **总盘守恒**（口径⑤）：总血 **2,766** = 首领 **1,797.9**（65%）+ 每只小虫 **96.81**（3.5%）×10；
+    //   总单发 **501** = 首领 **325.7** + 每只小虫 **17.5** ×10（引擎逐项取整后见下方用例的实测值）。
     //   ⚠ 守恒基准是**现树实际值**（922 × 3 单位），不是卡面名义值 1,844——本卡是 C 族唯一多波卡，
     //   旧路径"波血 = 卡总血 × hpShare、波内无僚机时每单位拿满波血" ⇒ 实际 = 1844 × 0.5 × 3
     //   （见 `MAW_TOTAL_HP` 注释）。船长 2026-09-11 确认取 **2,766**，兑现"先落虫群、血量随后"。
+    //   ⚠ 上列"总血/总单发"是**基准值**（重定价前的口径）；本卡 2026-09-25 起还吃
+    //   `RERATE_20260925`（k = 1.444）⇒ 实际总血 3,994.104、总单发 720。
     // **目标距离不动**（2026-09-11 首定）：
     //   期望交距与开战距离都只读**波 0 编制的首个单位**（`foeDesiredRange` / `battleOpenM`），
     //   故小虫**排在最前**并覆写射程带为 **1~2713** ⇒ 两个距离逐字不变
@@ -826,10 +835,10 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         ship: FOE_ALIEN_RIFT,
         count: 4,
         wave: 0,
-        hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp, // 每只小虫 55.32
+        hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp, // 每只小虫 96.81（3.5%）
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
-          (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)), // 每只 10
+          (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)), // 每只 17.5
         rangeMaxM: 2713, // 卡带（锚定期望交距 543 m 与开战距离；舰级缺省 2552）
       },
       {
@@ -855,10 +864,10 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
       {
         ship: FOE_ALIEN_MAW, // 稀有头目（**全族唯一** · 显示名「精锐噬口巨兽」）
         wave: 2,
-        hpMul: (MAW_TOTAL_HP * MAW_BOSS_SHARE) / FOE_ALIEN_MAW.hp, // 首领血 2,212.8（80%）
+        hpMul: (MAW_TOTAL_HP * MAW_BOSS_SHARE) / FOE_ALIEN_MAW.hp, // 首领血 1,797.9（65%）
         dmgMul:
           (MAW_TOTAL_DMG * MAW_BOSS_SHARE) /
-          (FOE_ALIEN_MAW.shotDmg * ALIEN_COMP(11)), // 首领单发 401
+          (FOE_ALIEN_MAW.shotDmg * ALIEN_COMP(11)), // 首领单发 325.7
       },
     ],
     waves: [
@@ -1466,7 +1475,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
  * | 星髓虫群 | 57 → 67 | 1.3173 | 1530 → 2016 | 57.5 → 75.0 |
  * | 裂谷畸变体猎杀令 | 49 → 77 | 2.0886 | 1815 → 3791 | 30.0 → 62.0 |
  * | 深渊之门卫队 | 41 → 81 | 3.1287 | 1000 → 3129 | 28.5 → 88.5 |
- * | 噬口猎杀令 | 87 → 109 | 1.4471 | 2766 → 4003 | 125.3 → 179.3 |
+ * | 噬口猎杀令 | 87 → 109 | 1.4440 | 2766 → 3994 | 125.3 → 180.0 |
  */
 const RERATE_20260925: Readonly<Record<string, number>> = {
   'ano-training': 0.735,
@@ -1480,7 +1489,7 @@ const RERATE_20260925: Readonly<Record<string, number>> = {
   'ano-starcore-boss': 1.3171,
   'ano-chasm-aberrations': 2.0883,
   'ano-abyss-guard': 3.1283,
-  'ano-maw-hunt': 1.4471,
+  'ano-maw-hunt': 1.444,
 }
 
 /** 按上表同乘血与火力（与 `lairAnomalyOf`/`wormholeAnomalyOf` 的 `scale` 同款做法） */
