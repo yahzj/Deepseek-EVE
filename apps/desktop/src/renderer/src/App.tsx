@@ -49,7 +49,7 @@ import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
 import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
-import { DebugButton, debugEnabled as readDebugEnabled } from './panels/DebugPanel'
+import { DebugButton, debugEnabled as readDebugEnabled, setDebugEnabled } from './panels/DebugPanel'
 import { ActivityBar } from './panels/ActivityBar'
 import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
@@ -203,6 +203,8 @@ function SettingsPanel({
   onSave,
   onReset,
   onOpenSaveManager,
+  debugOnState,
+  onDebugChange,
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
@@ -211,6 +213,9 @@ function SettingsPanel({
   onSave: () => void
   onReset: () => void
   onOpenSaveManager: () => void
+  /** 设置里的「开发者：调试模式」开关（2026-09-25） */
+  debugOnState: boolean
+  onDebugChange: (on: boolean) => void
 }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
@@ -353,6 +358,29 @@ function SettingsPanel({
                   ? t('ui.App.020', { n: bg.total })
                   : t('ui.App.021')}
             </div>
+          </div>
+          {/*
+           * **开发者：调试模式**（2026-09-25 加）：船长反馈「已开启调试模式，调试按钮依旧不可见」
+           * —— 根因是开关设在**另一个 origin**（DevTools 里那行 localStorage 落在浏览器侧，桌面端读不到）。
+           * 这里给一个**不依赖 DevTools** 的开关：改完立即生效（顶栏出现「⇄ 调试」「⏱ 性能」），无需重开。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{tr('ui.App.141')}</span>
+              <span className="app-settings-btns">
+                <button
+                  className={`app-btn is-small${debugOnState ? ' is-warn' : ''}`}
+                  onClick={() => {
+                    const next = !debugOnState
+                    setDebugEnabled(next)
+                    onDebugChange(next)
+                  }}
+                >
+                  {debugOnState ? tr('ui.App.143') : tr('ui.App.142')}
+                </button>
+              </span>
+            </div>
+            <div className="app-settings-desc">{tr('ui.App.144')}</div>
           </div>
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
@@ -801,7 +829,11 @@ export function App({ engine }: { engine: GameEngine }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.lowSecNotified])
   // V15 调试模式入口（开发工具：localStorage 标志启用后才显示）
-  const [debugOn] = useState<boolean>(readDebugEnabled)
+  /**
+   * 调试模式开关（2026-09-25 改为**可变**）：原先 `useState(readDebugEnabled)` 只在启动读一次 ⇒
+   * 在设置里打开后必须重开才生效（船长踩过：以为没生效）。现改为可变状态，点了立刻出按钮。
+   */
+  const [debugOn, setDebugOn] = useState<boolean>(readDebugEnabled)
   // 性能监测（2026-09-08 诊断工具）：debug 开关在首帧前激活隐形采集；自动采集模式由 main.tsx 预激活
   useState(() => {
     if (perfAutoEnabled()) perfHub.activate()
@@ -1896,6 +1928,8 @@ export function App({ engine }: { engine: GameEngine }) {
           onSave={() => void handleSave()}
           onReset={handleReset}
           onOpenSaveManager={() => setShowSaveManager(true)}
+          debugOnState={debugOn}
+          onDebugChange={setDebugOn}
         />
       ) : null}
       {/**

@@ -8947,8 +8947,6 @@ html[data-locale='en'] body {
 
 .app-activitybar {
 
-  flex-shrink: 0;
-
   display: flex;
 
   flex-direction: column;
@@ -8957,27 +8955,24 @@ html[data-locale='en'] body {
 
   width: 150px; /* **左侧竖列**：定宽 150px */
 
-  /* ⚠ **按内容高度显示，不拉伸占满**（2026-09-25 修）：
-     左列若被 lign-items: stretch 拉满（实测 710px / 最小窗口 547px），而作业只有 2 行时，
-     活动栏下方是一大片空白，主区被挤到只剩 218px（1280×860 下 381px）—— 看起来就像"主窗口不存在"。
-     改为按内容高度 + max-height 封顶（作业多时列内滚动），把空间优先让给主窗口。 */
+  /* ⚠ **2026-09-25 修（船长报「活动栏竖向滚动条并不存在，本地存档已经明确超出了窗口」）**：
+     这条规则里 `flex` 与 `overflow-y` 曾被多次叠加写上（历史遗留），后写的 `flex: 0 0 auto`
+     覆盖了前面的 `flex: 1 1 auto` ⇒ **既不伸也不缩** ⇒ 活动栏按内容长到 **1029px**、
+     从父列（595px）溢出 ⇒ 自身的 `overflow-y: auto` **永不触发**（自身高 = 内容高）⇒ 没滚动条，
+     多出的部分被 `.app-workspace` 的 hidden 直接裁掉。
+     正解：**可收缩**（`flex: 0 1 auto`）+ `max-height: 100%` 把高度约束在左列内 ⇒ 超出即列内滚动。 */
 
-  flex: 1 1 auto; /* 在 .app-left-col 里吃掉剩余高度（舰船窗占用的下方全部） */
+  flex: 0 1 auto;
 
   min-height: 0;
 
-
-  overflow-y: auto;
-
-  flex: 0 0 auto;
+  max-height: 100%;
 
   box-sizing: border-box;
 
-  height: auto; /* 不再限高：纵向由 .app-root 的 flex 拉伸到内容区全高 */
+  overflow-y: auto;
 
-  overflow-y: auto; /* 仍保留滚动兜底（作业多到装不下时只在列内滚） */
-
-  margin: 0; /* 原为贴顶块，现为整列，不需要下外边距 */
+  margin: 0;
 
   padding: var(--wui-sp-8) var(--wui-sp-6);
 

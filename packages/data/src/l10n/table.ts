@@ -889,6 +889,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ActivityBar.064": { zh: "{p1}\n{p2}\n点击前往「舰船 · AI 指挥中心」", en: "{p1}\n{p2}\nClick to open Ship › AI Command" },
   "ui.ActivityBar.065": { zh: "计时中", en: "Timers" },
 
+  /** 设置·开发者：调试模式开关（2026-09-25；船长报「已开启调试模式但按钮不可见」后加的免 DevTools 开关） */
+  "ui.App.141": { zh: "调试模式", en: "Debug mode" },
+  "ui.App.142": { zh: "开启", en: "Enable" },
+  "ui.App.143": { zh: "已开启", en: "Enabled" },
+  "ui.App.144": { zh: "开启后顶栏出现「调试」与「性能」两枚按钮。", en: "When enabled, Debug and Perf buttons appear in the top bar." },
+
   "ui.aiProgress.001": { zh: " · 剩余约 {d}", en: " · about {d} left" },
   "ui.aiSlots.001": { zh: "{p1} {p2} 级 → +{p3}", en: "{p1} Lv{p2} → +{p3}" },
   "ui.aiSlots.002": { zh: "暂无扩容技能", en: "No expansion skill yet" },

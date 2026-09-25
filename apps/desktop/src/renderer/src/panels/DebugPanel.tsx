@@ -12,9 +12,21 @@ const DEBUG_KEY = 'whale-idle:debug'
 /** 调试入口是否可用（隐藏开发工具标志） */
 export function debugEnabled(): boolean {
   try {
-    return localStorage.getItem(DEBUG_KEY) === '1'
+    // 2026-09-25：兼容 '1' 与 'true'（船长手输开关时大小写/词形不一，原先只认精确的 '1'）
+    const v = localStorage.getItem(DEBUG_KEY)
+    return v === '1' || v === 'true'
   } catch {
     return false
+  }
+}
+
+/** 设置面板里的「开发者」开关用：写/清调试标志（**不依赖 DevTools 与 origin 猜测**） */
+export function setDebugEnabled(on: boolean): void {
+  try {
+    if (on) localStorage.setItem(DEBUG_KEY, '1')
+    else localStorage.removeItem(DEBUG_KEY)
+  } catch {
+    /* 存储被禁：忽略 */
   }
 }
 
