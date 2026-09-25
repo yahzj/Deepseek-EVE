@@ -9,8 +9,8 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
-import type { WeekendEventState } from './weekendEvent'
+import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
+import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
@@ -1703,6 +1703,20 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 送达即记账 ⇒ 触发器重复判定不会重复送（幂等）；可选字段、零迁移。
    */
   commsDelivered?: Record<string, number>
+  /**
+   * **实例通讯**（2026-09-25 加 · 周末入侵两封）：静态表装不下的信——正文带**本场数字**、
+   * 且**每场重写同一个 id**（船长令：「每场都发，但是覆盖上一次的」）。
+   * 键 = 通讯 id（固定）· 值 = 一条完整条目（正文/文案 id/参数/结构化奖励清单都在里面）。
+   * 收件箱把它与表消息**合并渲染**；送达记账仍走 `commsDelivered`（同一套幂等与时间列）。
+   * 可选字段 ⇒ 零迁移。
+   */
+  commsInstance?: Record<string, CommsInstanceEntry>
+  /**
+   * **上一场周末入侵的战果快照**（2026-09-25 加）：结束时写一次、**每场覆盖**。
+   * 结算面板（点通讯里的跳转弹出）与结算通讯的正文都读它——下一场开局会把 `weekendEvent` 整条换掉。
+   * 可选字段 ⇒ 零迁移（老档 = 没打过入侵 ⇒ 没有面板可看）。
+   */
+  weekendLastResult?: WeekendResultSnapshot
   /**
    * **需要直接弹窗的通讯 id 队列**（2026-09-14 船长：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）。
    * 送达标了 `popup: true` 的消息时入队；界面弹一次、点「知道了」调 `dismissCommsPopup` 清掉。

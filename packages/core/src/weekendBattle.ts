@@ -38,7 +38,7 @@ import {
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
 } from './weekendEvent'
-import type { WeekendEventState } from './weekendEvent'
+import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
 import { rareWreckItemIdOfCard } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
@@ -303,6 +303,72 @@ export interface WeekendSettleGrant {
 }
 
 /**
+ * **记一笔到手台账**（2026-09-25 加）：三处入账（夺回 / 贡献奖 / 旗舰掉落）各调一次，全是**累加**。
+ * 用途 = 结算面板与结算通讯里的奖励清单**不再另算一遍**（说的与发的逐值一致）。
+ * `galaxyId` 给了才记逐星系那一栏（旗舰掉落与贡献奖是全局的）。
+ */
+function noteReward(
+  ev: WeekendEventState,
+  galaxyId: string | undefined,
+  add: { isk?: number; wreck?: number; blackBox?: number },
+): void {
+  const led = (ev.rewardLedger ??= { isk: 0, wreck: 0, blackBox: 0, byGalaxy: {} })
+  const isk = Math.max(0, Math.round(add.isk ?? 0))
+  const wreck = Math.max(0, Math.round(add.wreck ?? 0))
+  const blackBox = Math.max(0, Math.round(add.blackBox ?? 0))
+  led.isk += isk
+  led.wreck += wreck
+  led.blackBox += blackBox
+  if (galaxyId !== undefined && (isk > 0 || wreck > 0)) {
+    const g = (led.byGalaxy[galaxyId] ??= { isk: 0, wreck: 0 })
+    g.isk += isk
+    g.wreck += wreck
+  }
+}
+
+/**
+ * **战果快照**（结束时写一次 · 每场覆盖）：结算面板与结算通讯读它。
+ * 逐处占领区的读数**按结束时刻**取（与贡献占比同一把尺）⇒ 面板上的"贡献 x%"与档位算得对得上。
+ */
+export function weekendResultSnapshotOf(
+  state: GameState,
+  ctx: SimContext,
+  ev: WeekendEventState,
+  atWallMs: number,
+  plan: WeekendSettlePlan,
+  wreckItemId?: string,
+): WeekendResultSnapshot {
+  const led = ev.rewardLedger ?? { isk: 0, wreck: 0, blackBox: 0, byGalaxy: {} }
+  const galaxies = weekendOccupiedIds(ev).map((galaxyId) => {
+    const put = ev.contributed[galaxyId] ?? 0
+    const progress = weekendProgressAt(state, ev, galaxyId, atWallMs)
+    const g = led.byGalaxy[galaxyId] ?? { isk: 0, wreck: 0 }
+    return { galaxyId, put, progress, reclaimed: progress >= 1, isk: g.isk, wreck: g.wreck }
+  })
+  const hpMax = ev.flagshipHpMax
+  const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
+  const flagship = hpMax !== undefined ? { hpMax, hpDone, defeated: hpDone >= hpMax } : undefined
+  const flagshipOutcome: WeekendResultSnapshot['flagshipOutcome'] =
+    ev.flagshipDown === 'player' ? 'player' : ev.flagshipDown === 'octopus' ? 'octopus' : 'window'
+  void ctx // 目前不需要 ctx（星系名由界面现查）；保留参数位以免将来解析物品时改签名
+  return {
+    seq: ev.seq,
+    family: ev.family,
+    coreId: ev.coreId,
+    endedAtWallMs: atWallMs,
+    flagshipOutcome,
+    share: plan.share,
+    tier: plan.tier,
+    galaxies,
+    ...(flagship !== undefined ? { flagship } : {}),
+    isk: led.isk,
+    wreck: led.wreck,
+    blackBox: led.blackBox,
+    ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+  }
+}
+
+/**
  * **活动结束 ⇒ 贡献奖结算 ＋ 真正入账**（设计稿 ⑥「结束与结算」· M1-b 收尾 · 2026-09-25）。
  *
  * 设计稿原文：「结束时：① 统计贡献占比 → 发贡献奖 ② 玩家击毁 ⇒ 另发黑匣 ＋ 稀有残骸 ③ 所有占领恢复」。
@@ -336,6 +402,9 @@ export function weekendSettleAndGrant(
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
   })
   ev.prizePaidAtWallMs = nowWallMs
+  /** 贡献奖入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它；下一场开局会把 ev 整条换掉） */
+  noteReward(ev, undefined, { isk: granted.isk, wreck: granted.wreck })
+  state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)
   return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck }
 }
 
@@ -562,6 +631,14 @@ export function weekendApplyBattleOutcome(
    * 突然多出东西却没有解释。**普通进度推进不记**（面板有进度条与百分比，免得每场刷一条）。
    */
   const gname = ctx.galaxies.get(involved.galaxyId)?.name ?? involved.galaxyId
+  /** 到手台账（夺回按星系记、旗舰掉落记全局）——结算面板与结算通讯的奖励清单读它，不另算一遍 */
+  const evNow = state.weekendEvent
+  if (evNow !== undefined) {
+    if (r.reclaimed !== undefined) noteReward(evNow, involved.galaxyId, { isk: granted.isk, wreck: r.reclaimed.wreck })
+    if (r.flagshipKilled !== undefined) {
+      noteReward(evNow, undefined, { wreck: r.flagshipKilled.wreck, blackBox: r.flagshipKilled.blackBox ? 1 : 0 })
+    }
+  }
   if (r.reclaimed !== undefined) {
     const iskText = granted.isk.toLocaleString('zh-CN')
     if (r.reclaimed.allClear) {

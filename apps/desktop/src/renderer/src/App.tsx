@@ -1629,12 +1629,21 @@ export function App({ engine }: { engine: GameEngine }) {
         <div className="app-ann-mask" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
           <div className="app-comm-pop" onClick={(e) => e.stopPropagation()}>
             <div className="app-comms-body-col">
-              <CommsScreen entry={popupMsg} />
+              <CommsScreen entry={popupMsg} itemNameOf={(id) => engine.ctx.items.get(id)?.name ?? id} />
               <CommsEave
                 entry={popupMsg}
                 onGoto={(p, tab, shipTab, taskTab) => {
                   engine.dismissCommsPopup(popupMsg.id)
                   gotoFromComms(p, tab, shipTab, taskTab)
+                }}
+                /**
+                 * **弹面板的动作**（2026-09-25 · 入侵结算信「查看详细奖励」）：弹窗里不就地开面板，
+                 * 而是收掉弹窗、跳到通讯页同那一封上（面板在那儿，读完信顺手点开 —— 只留一处入口）。
+                 */
+                onAction={(a) => {
+                  if (a !== 'weekendSummary') return
+                  engine.dismissCommsPopup(popupMsg.id)
+                  gotoFromComms('comms')
                 }}
                 extra={
                   <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>

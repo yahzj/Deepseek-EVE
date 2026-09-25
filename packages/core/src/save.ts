@@ -21,7 +21,7 @@ import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, Game
 import type { AchievementEarned } from './state'
 import type { BattleShieldFieldLedger, BattleShieldFieldStream } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
-import type { FittedModules, ModuleSlot, RackSlot } from './types'
+import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules, ModuleSlot, RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
@@ -2340,6 +2340,58 @@ function normalizeState(raw: unknown): GameState {
     if (key.length === 0) continue
     if (value === true) commsRead[key] = true
   }
+  /**
+   * **实例通讯**（2026-09-25 · 周末入侵两封）：条目本身就是"要显示的东西"，故按"结构对得上就原样留"清洗——
+   * 缺 id / 缺主题或正文 / 段落不是字符串数组一律丢（宁可这封信没有，也不给界面喂半条）。
+   * 参数与奖励清单只做浅层校验（值必须是 string|number），坏项丢掉不影响其余。
+   */
+  const commsInstance: Record<string, CommsInstanceEntry> = {}
+  for (const [key, value] of Object.entries(asRaw(src.commsInstance))) {
+    if (key.length === 0) continue
+    const e = asRaw(value)
+    const subjectId = typeof e.subjectId === 'string' ? e.subjectId : ''
+    const bodyIds = (Array.isArray(e.bodyIds) ? e.bodyIds : []).filter((x): x is string => typeof x === 'string' && x.length > 0)
+    const paragraphs = (Array.isArray(e.paragraphs) ? e.paragraphs : []).filter(
+      (x): x is string => typeof x === 'string',
+    )
+    if (subjectId.length === 0 || bodyIds.length === 0 || paragraphs.length === 0) continue
+    const paramsRaw = asRaw(e.params)
+    const params: Record<string, string | number> = {}
+    for (const [pk, pv] of Object.entries(paramsRaw)) {
+      if (typeof pv === 'string' || (typeof pv === 'number' && Number.isFinite(pv))) params[pk] = pv
+    }
+    const rewards: CommsRewardLine[] = []
+    for (const item of Array.isArray(e.rewards) ? e.rewards : []) {
+      const r = asRaw(item)
+      if (typeof r.isk === 'number' && Number.isFinite(r.isk) && r.isk >= 0) {
+        rewards.push({ isk: Math.floor(r.isk) })
+        continue
+      }
+      if (typeof r.itemId !== 'string' || r.itemId.length === 0) continue
+      const qty = typeof r.qty === 'number' && Number.isFinite(r.qty) ? Math.max(1, Math.floor(r.qty)) : 1
+      rewards.push({ itemId: r.itemId, qty })
+    }
+    const hintRaw = asRaw(e.hint)
+    const hintText = typeof hintRaw.text === 'string' && hintRaw.text.length > 0 ? hintRaw.text : ''
+    const hintAction = typeof hintRaw.action === 'string' && hintRaw.action.length > 0 ? hintRaw.action : undefined
+    const hintPage = typeof hintRaw.page === 'string' && hintRaw.page.length > 0 ? (hintRaw.page as CommsJumpPage) : undefined
+    commsInstance[key] = {
+      id: key,
+      factionId: typeof e.factionId === 'string' ? e.factionId : '',
+      ...(typeof e.deptId === 'string' && e.deptId.length > 0 ? { deptId: e.deptId } : {}),
+      ...(typeof e.kind === 'string' && e.kind.length > 0 ? { kind: e.kind as CommsKind } : {}),
+      atGameMs: typeof e.atGameMs === 'number' && Number.isFinite(e.atGameMs) ? Math.max(0, Math.floor(e.atGameMs)) : 0,
+      subject: typeof e.subject === 'string' ? e.subject : '',
+      subjectId,
+      paragraphs,
+      bodyIds,
+      ...(Object.keys(params).length > 0 ? { params } : {}),
+      ...(hintText.length > 0
+        ? { hint: { text: hintText, ...(hintAction !== undefined ? { action: hintAction } : {}), ...(hintPage !== undefined ? { page: hintPage } : {}) } }
+        : {}),
+      ...(rewards.length > 0 ? { rewards } : {}),
+    }
+  }
 
   // --- 扫描续扫进度（v14）：星系 → 已完成的就地扫描窗口毫秒 ---
   // 上限 = **扫描窗口的合法上限**（`maxScanWindowMs()` = 基准窗口 × 最深危险度曲线 = **12 小时**，
@@ -2730,6 +2782,69 @@ function normalizeState(raw: unknown): GameState {
         })()
       : undefined
 
+  /**
+   * **上一场入侵的战果快照**（2026-09-25 · 结算面板读它）：**结构对不上就整条丢**——
+   * 宁可"没有面板可看"，也不给界面喂半条（缺 seq/族/核心/结束时刻即判无效）。
+   * 逐项数值一律钳到合法区间（占比 0~1、数量 ≥0）。
+   */
+  const weekendLastResult: GameState['weekendLastResult'] = (() => {
+    const w = asRaw(src.weekendLastResult)
+    const seq = weekendKeep(w.seq)
+    const family = typeof w.family === 'string' && w.family.length > 0 ? w.family : ''
+    const coreId = typeof w.coreId === 'string' && w.coreId.length > 0 ? w.coreId : ''
+    const endedAt = weekendKeep(w.endedAtWallMs)
+    if (seq === undefined || family === '' || coreId === '' || endedAt === undefined) return undefined
+    const clamp01 = (v: unknown): number => {
+      const n = num(v)
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0
+    }
+    const count = (v: unknown): number => {
+      const n = num(v)
+      return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0
+    }
+    const galaxies = (Array.isArray(w.galaxies) ? w.galaxies : []).flatMap((g0) => {
+      const g = asRaw(g0)
+      const galaxyId = typeof g.galaxyId === 'string' && g.galaxyId.length > 0 ? g.galaxyId : ''
+      if (galaxyId === '') return []
+      return [
+        {
+          galaxyId,
+          put: clamp01(g.put),
+          progress: clamp01(g.progress),
+          reclaimed: g.reclaimed === true,
+          isk: count(g.isk),
+          wreck: count(g.wreck),
+        },
+      ]
+    })
+    const fRaw = asRaw(w.flagship)
+    const hpMax = weekendKeep(fRaw.hpMax)
+    const flagship =
+      hpMax !== undefined && hpMax > 0
+        ? { hpMax, hpDone: count(fRaw.hpDone), defeated: fRaw.defeated === true }
+        : undefined
+    const outcome =
+      w.flagshipOutcome === 'player' || w.flagshipOutcome === 'octopus' ? w.flagshipOutcome : 'window'
+    const tierRaw = w.tier
+    const tier: 'A' | 'B' | 'C' | 'D' | 'none' =
+      tierRaw === 'A' || tierRaw === 'B' || tierRaw === 'C' || tierRaw === 'D' ? tierRaw : 'none'
+    const wreckItemId = typeof w.wreckItemId === 'string' && w.wreckItemId.length > 0 ? w.wreckItemId : undefined
+    return {
+      seq,
+      family,
+      coreId,
+      endedAtWallMs: endedAt,
+      flagshipOutcome: outcome,
+      share: clamp01(w.share),
+      tier,
+      galaxies,
+      ...(flagship !== undefined ? { flagship } : {}),
+      isk: count(w.isk),
+      wreck: count(w.wreck),
+      blackBox: count(w.blackBox),
+      ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+    }
+  })()
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---
   const cleanSideTaskList = (
     rawList: unknown,
@@ -3363,6 +3478,10 @@ function normalizeState(raw: unknown): GameState {
     commsDelivered,
     commsPopups,
     commsRead,
+    // 实例通讯（2026-09-25）：空表不写键（老档/新档快照逐字一致）
+    ...(Object.keys(commsInstance).length > 0 ? { commsInstance } : {}),
+    // 上一场入侵的战果快照（2026-09-25）：没有就不写键（老档零迁移）
+    ...(weekendLastResult !== undefined ? { weekendLastResult } : {}),
     // 因低安袭击自动撤离（true/false 都落键；缺失保持缺失 = 老档，交给触发器按痕迹判定）
     ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）

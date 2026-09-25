@@ -161,6 +161,47 @@ export interface WeekendEventState {
    * ⚠ 占比按 **`endedAtWallMs`** 评估后发放（NPC 铺底是时间函数，晚算会把占比算低 ⇒ 少发）。
    */
   prizePaidAtWallMs?: number
+  /**
+   * **本场到手台账**（2026-09-25 加 · 结算面板与通讯正文都读它）：三处入账时累加 ——
+   * 夺回奖励（逐星系）· 贡献奖 · 旗舰掉落。目的 = **"说的与发的逐值一致"**
+   * （面板/通讯里的奖励清单不许另算一遍），且下一场开局会把进度台账清掉、只有这里留得住数。
+   */
+  rewardLedger?: {
+    isk: number
+    wreck: number
+    blackBox: number
+    /** 逐星系的夺回奖励（面板"各星系贡献"那一列用） */
+    byGalaxy: Record<string, { isk: number; wreck: number }>
+  }
+}
+
+/**
+ * **上一场入侵的战果快照**（结束时写一次；**每场覆盖**）：
+ * 结算面板与结算通讯都读它——因为下一场开局会把 `state.weekendEvent` 整条换成新的
+ * （进度台账、旗舰池、出场星系全清），旧场的读数只有快照里还留着。
+ */
+export interface WeekendResultSnapshot {
+  /** 场次编号（与通讯里的"第 N 场"同源） */
+  seq: number
+  family: string
+  /** 核心星系 id（面板显示名字时现查） */
+  coreId: string
+  /** 结束墙钟 */
+  endedAtWallMs: number
+  /** 旗舰结局：玩家击沉 / 章鱼人摧毁 / 集结到点（窗口关闭或没现身） */
+  flagshipOutcome: 'player' | 'octopus' | 'window'
+  /** 贡献占比与档位（结束时那一刻的读数） */
+  share: number
+  tier: 'A' | 'B' | 'C' | 'D' | 'none'
+  /** 逐处占领区：玩家投入 · 该处进度 · 是否夺回 · 该处拿到的夺回奖励 */
+  galaxies: Array<{ galaxyId: string; put: number; progress: number; reclaimed: boolean; isk: number; wreck: number }>
+  /** 旗舰战输出（没跟母舰交手过 = 缺省） */
+  flagship?: { hpMax: number; hpDone: number; defeated: boolean }
+  /** 到手合计（含旗舰掉落）与奖励物品 id（面板/通讯点物品名用） */
+  isk: number
+  wreck: number
+  blackBox: number
+  wreckItemId?: string
 }
 
 /**

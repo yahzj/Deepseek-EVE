@@ -28,6 +28,7 @@ import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
 import { commsBriefText, commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { WeekendSummaryView } from '../panels/WeekendSummary'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -52,6 +53,8 @@ export function CommsPage({
 
   // 选中项：默认最新一封；列表变化（新消息到达）后若原先选中的还在就保持不变
   const [sel, setSel] = useState<string | null>(null)
+  /** 入侵结算面板开合（2026-09-25；由实例通讯的跳转按钮触发） */
+  const [showSummary, setShowSummary] = useState(false)
   // 外部定位请求（教程「看详情」）：seq 变化时覆盖当前选中项
   const focusSeq = focus?.seq ?? -1
   const lastFocusSeq = useRef(-1)
@@ -137,14 +140,46 @@ export function CommsPage({
               <div className="app-comms-device">
                 <CommsDeviceFrame />
                 <div className="app-comms-body-col">
-                  {current ? <CommsScreen entry={current} /> : <div className="app-comms-screen" />}
-                  {current ? <CommsEave entry={current} onGoto={onGoto} /> : null}
+                  {current ? (
+                    <CommsScreen entry={current} itemNameOf={(id) => engine.ctx.items.get(id)?.name ?? id} />
+                  ) : (
+                    <div className="app-comms-screen" />
+                  )}
+                  {current ? (
+                    <CommsEave
+                      entry={current}
+                      onGoto={onGoto}
+                      /** 实例通讯的"弹面板"出口（2026-09-25）：入侵结算信 → 本场战果面板 */
+                      onAction={(a) => {
+                        if (a === 'weekendSummary') setShowSummary(true)
+                      }}
+                    />
+                  ) : null}
                 </div>
               </div>
             </div>
           )}
         </div>
       </Panel>
+      {/**
+       * **入侵结算面板**（2026-09-25 船长令：结算通讯的跳转「点击后弹出类似虫洞撤离的结算界面」）。
+       * 弹层结构复用全仓既有的 `.app-modal-*` 族（不自造窗口观感）。
+       */}
+      {showSummary && state.weekendLastResult !== undefined ? (
+        <div className="app-modal-mask" onClick={() => setShowSummary(false)}>
+          <div className="app-modal app-modal-wide app-weekend-sum" onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-report-title">{tr('ui.weekend.030')}</span>
+              <button className="app-btn is-small" onClick={() => setShowSummary(false)}>
+                {tr('ui.App.086')}
+              </button>
+            </div>
+            <div className="app-modal-body">
+              <WeekendSummaryView engine={engine} onClose={() => setShowSummary(false)} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

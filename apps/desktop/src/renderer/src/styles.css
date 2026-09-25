@@ -10134,6 +10134,17 @@ html[data-locale='en'] body {
 .app-weekend-box-tag { color: rgb(var(--wui-danger)); font-weight: 800; }
 .app-weekend-box-dim { color: rgb(var(--wui-red) / 0.85); }
 .app-weekend-box-warn { color: rgb(var(--wui-danger)); font-weight: 700; }
+/* 入侵结算面板（2026-09-25 船长令：从结算通讯的跳转弹出）——
+   骨相与读数格全部复用 `.app-wh-settle-*`（虫洞撤离结算），这里只补"各星系贡献"那一列的排布，
+   不另造窗口观感（按约定第六章）。 */
+.app-weekend-sum .app-wh-settle-actions { margin-top: var(--wui-sp-10); }
+.app-weekend-sum .app-wh-settle-loss { border-color: rgb(var(--wui-border)); background: rgb(var(--wui-x01) / 0.02); }
+.app-weekend-sum-rows { display: flex; flex-direction: column; gap: var(--wui-sp-4); margin-top: var(--wui-sp-6); }
+.app-weekend-sum-row {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.6fr);
+  gap: var(--wui-sp-8); align-items: baseline; font-size: var(--wui-fs-sm);
+}
+.app-weekend-sum-name { color: rgb(var(--wui-x01)); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 周末入侵：星图被占星系的红环 + 旗标（2026-09-23） */
 .app-map-invasion { pointer-events: none; }

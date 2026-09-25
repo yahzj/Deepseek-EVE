@@ -20,7 +20,10 @@ import { COMMS_REPLIES_ENABLED } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { tr } from '../i18n/locale'
-import { commsAlignText, commsBodyText, commsBriefText, commsClockText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { commsAlignText, commsBodyText, commsBriefText, commsClockText, commsEntryBodyText, commsEntrySubjectText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
+
+/** 物品名回落（调用方给了物品表就按语言取名，没给就原样显示 id —— 不会静默变空） */
+const idAsName = (id: string): string => id
 
 /**
  * 通讯器机身：**大圆角机身外框** + 左侧两颗实体键（SVG 线稿，恒定细描边）。
@@ -42,7 +45,14 @@ export function CommsDeviceFrame(): ReactNode {
 }
 
 /** 内嵌屏幕（正文区，自身滚动）：头像 + 标题 + 内容类型小片 / 发件人 + 立场 + 送达时间 / 正文段落 */
-export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
+export function CommsScreen({
+  entry,
+  itemNameOf = idAsName,
+}: {
+  entry: CommsEntryView
+  /** 物品名取词（实例通讯的奖励清单要它按语言拼串；缺省 = 原样显示 id） */
+  itemNameOf?: (itemId: string) => string
+}): ReactNode {
   return (
     <div className="app-comms-screen">
       {/* 屏幕第一层：左上角**发件方头像**（官方章鱼人）+ 标题（右侧内容类型小片） */}
@@ -59,7 +69,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
         <div className="app-comms-title-col">
           {/* ⚠ 主题/发件人/时间都是**数据侧中文**（`CommsMessageDef.subject` 等）⇒ 一律过 `ui/commsText.ts`
               的单点映射取当前语言（2026-09-22 通讯本地化批）；查不到原样回落，不会变空 */}
-          <span className="app-comms-title">{commsSubjectText(entry.id, entry.subject)}</span>
+          <span className="app-comms-title">{commsEntrySubjectText(entry, itemNameOf)}</span>
           {/* 细分隔条：发件人 + 立场小片 + 送达时间（压在标题正下方） */}
           <div className="app-comms-head">
             <span className="app-comms-head-from" style={entry.tone ? { color: entry.tone } : undefined}>
@@ -91,7 +101,7 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
           ⚠ 强调判定**比对中文原文**（`entry.paragraphs[i]`）——英译整段替换后不能拿译文去比对，
           否则高亮丢（`highlight` 存的是数据侧中文段落）。 */}
       <div className="app-comms-lines">
-        {commsBodyText(entry.id, entry.paragraphs).map((p, i) => (
+        {commsEntryBodyText(entry, itemNameOf).map((p, i) => (
           <p key={i} className={`app-comms-text${entry.highlight?.includes(entry.paragraphs[i] ?? '') ? ' app-report-highlight' : ''}`}>
             {p}
           </p>
@@ -122,22 +132,33 @@ export function CommsScreen({ entry }: { entry: CommsEntryView }): ReactNode {
 export function CommsEave({
   entry,
   onGoto,
+  onAction,
   extra,
 }: {
   entry: CommsEntryView
   /** 跳转出口（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
   onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
+  /**
+   * **弹面板出口**（2026-09-25 加）：实例通讯可以只带 `action`（点开一个面板而不跳页）——
+   * 例：周末入侵的结算信「查看详细奖励」⇒ `action: 'weekendSummary'`。
+   * 没给这一项时，带 `action` 的信不渲染按钮（宁可少个按钮，也不做点了没反应的死键）。
+   */
+  onAction?: (action: string) => void
   /** 追加行（弹窗的「知道了」） */
   extra?: ReactNode
 }): ReactNode {
   if (!entry.hint && !extra) return null
+  const action = entry.action !== undefined && onAction !== undefined ? entry.action : undefined
+  const page = entry.hint?.page
   return (
     <div className="app-comms-eave">
-      {entry.hint ? (
+      {entry.hint && (action !== undefined || page !== undefined) ? (
         <button
           className="app-btn is-primary app-comms-goto"
           title={commsHintText(entry.hint.text)}
-          onClick={() => onGoto(entry.hint!.page, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab)}
+          onClick={() =>
+            action !== undefined ? onAction!(action) : onGoto(page!, entry.hint!.tab, entry.hint!.shipTab, entry.hint!.taskTab)
+          }
         >
           <span className="app-comms-goto-text">{commsHintText(entry.hint.text)}</span>
           <span className="app-comms-goto-label">{tr("ui.CommsReader.004")}</span>

@@ -2747,8 +2747,64 @@ export interface CommsEntryView {
   deliveredAtGameMs: number
   /** 是否已读 */
   read: boolean
-  /** 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签） */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
+  /**
+   * 顺带提示 + 跳转目标页（可选；`tab` = 星图页内标签、`taskTab` = 任务中心内层标签、`shipTab` = 舰船页内标签）。
+   * ⚠ **实例通讯**可以只给 `action`（点开一个面板、不跳页）⇒ 那种条目 `page` 缺省。
+   */
+  hint?: { text: string; page?: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
   /** 预留回复选项（`COMMS_REPLIES_ENABLED = false` 时界面不渲染） */
   replies?: readonly CommsReplyDef[]
+  /* ─── 实例通讯专用（`state.commsInstance`；表消息恒缺省） ─── */
+  /**
+   * 主题 / 正文段落的**文案 id**（`l10n/table.ts`）。有它 ⇒ 界面按**当前语言**重新渲染
+   * （`tr(subjectId, textParams)` / 逐段 `tr(bodyIds[i], textParams)`），实现"中英各自成句"；
+   * 缺省 ⇒ 用上面的 `subject` / `paragraphs` 原文（表消息就是这条路径）。
+   */
+  subjectId?: string
+  bodyIds?: readonly string[]
+  /** 文案参数（喂给 `subjectId` / `bodyIds` 的 `{pN}`；`pNId` = 参数本身也是一条文案，界面走 `paramText`） */
+  textParams?: Readonly<Record<string, string | number>>
+  /** **点击跳转的动作名**（非空 ⇒ 弹面板而不是跳页；例：`'weekendSummary'`） */
+  action?: string
+  /** **结构化奖励清单**（界面按当前语言拼串 ⇒ 不在引擎里拼中文；见 `CommsRewardLine`） */
+  rewards?: readonly CommsRewardLine[]
+}
+
+/**
+ * **实例通讯条目**（2026-09-25 加 · 周末入侵两封）：静态表（`CommsMessageDef`）装不下的信——
+ * 正文里带**本场数字**，且**每场重写同一个 id**（船长令：「每场都发，但是覆盖上一次的」）。
+ * 存在 `state.commsInstance`（随档可选字段 · 零迁移）；收件箱把它与表消息合并渲染，其余机制
+ * （已读 / 未读计数 / 弹窗队列 / 送达记账）全部复用既有那一套。
+ */
+export interface CommsInstanceEntry {
+  /** 稳定 id：**同一 id 再次投递 = 整条覆盖**（旧的正文与清单一起换成新一场的） */
+  id: string
+  /** 发件势力 / 部门（与表消息同口径，界面拼 `势力名 · 部门名`） */
+  factionId: string
+  deptId?: string
+  kind?: CommsKind
+  /** 送达时刻（**游戏内毫秒**，与表消息同一时间列口径；投递时由 core 盖章） */
+  atGameMs: number
+  /** 主题：中文原文（core 侧兜底）＋ 文案 id（界面按语言渲染） */
+  subject: string
+  subjectId: string
+  /** 正文逐段：中文原文（core 侧兜底）＋ 文案 id 列表 */
+  paragraphs: readonly string[]
+  bodyIds: readonly string[]
+  /** 文案参数（`{pN}`；`pNId` 形式见 `CommsEntryView.textParams`） */
+  params?: Readonly<Record<string, string | number>>
+  /** 跳转按钮：`action` 非空 = 弹面板；否则按 `page` 跳页 */
+  hint?: { text: string; page?: CommsJumpPage; action?: string }
+  /** 结构化奖励清单（界面拼串用；与实发逐值一致） */
+  rewards?: readonly CommsRewardLine[]
+}
+
+/** 实例通讯里的一条奖励：**物品** 或 **信用点**（二选一；界面按当前语言拼成人话） */
+export interface CommsRewardLine {
+  /** 物品 id（与 `isk` 二选一） */
+  itemId?: string
+  /** 信用点数额（与 `itemId` 二选一） */
+  isk?: number
+  /** 数量（物品用；信用点行缺省） */
+  qty?: number
 }

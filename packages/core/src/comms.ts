@@ -16,6 +16,7 @@ import type { GameState } from './state'
 import type {
   CommsEntryView,
   CommsFactionAlignment,
+  CommsInstanceEntry,
   CommsKind,
   CommsMessageDef,
   CommsTrigger,
@@ -382,9 +383,70 @@ export function commsInbox(state: GameState, ctx: SimContext): CommsEntryView[] 
       replies: msg.replies,
     })
   }
+  /**
+   * **实例通讯**（2026-09-25）：静态表查不到的"每场重写"的信（周末入侵两封）——
+   * 键是固定 id，正文与清单由 `state.commsInstance` 直接带着；这里只把它并进同一条列表。
+   * ⚠ 仍要求 `commsDelivered` 里有记账（与表消息同一道闸），免得"有内容但没送达时刻"的孤儿条目露头。
+   */
+  for (const [id, e] of Object.entries(state.commsInstance ?? {})) {
+    const at = delivered[id]
+    if (at === undefined) continue
+    const instSender = resolveCommsSender(ctx, e.factionId, e.deptId, e.kind)
+    out.push({
+      id,
+      source: 'message',
+      from: instSender.from,
+      factionName: instSender.factionName,
+      alignment: instSender.alignment,
+      kind: instSender.kind,
+      signer: instSender.signer,
+      fromBrief: instSender.fromBrief,
+      tone: instSender.tone,
+      glyph: instSender.glyph,
+      subject: e.subject,
+      paragraphs: e.paragraphs,
+      deliveredAtGameMs: Math.max(0, Math.floor(at)),
+      read: state.commsRead?.[id] === true,
+      ...(e.hint !== undefined
+        ? { hint: { text: e.hint.text, ...(e.hint.page !== undefined ? { page: e.hint.page } : {}) } }
+        : {}),
+      subjectId: e.subjectId,
+      bodyIds: e.bodyIds,
+      ...(e.params !== undefined ? { textParams: e.params } : {}),
+      ...(e.hint?.action !== undefined ? { action: e.hint.action } : {}),
+      ...(e.rewards !== undefined ? { rewards: e.rewards } : {}),
+    })
+  }
   // 送达时间倒序（同刻按 id 稳定排序，避免刷新顺序跳动）
   out.sort((a, b) => (b.deliveredAtGameMs - a.deliveredAtGameMs) || a.id.localeCompare(b.id))
   return out
+}
+
+/**
+ * **投递一封实例通讯**（2026-09-25 加 · 周末入侵两封）：
+ * - **幂等/覆盖**：同一 id 再次投递 ⇒ **整条替换**（正文与奖励清单换成新一场的），送达时刻刷新
+ *   ⇒ 收件箱里始终只有一封、排在最前（船长令：「每场都发，但是覆盖上一次的」）；
+ * - **覆盖 = 又是一封新信**：清掉已读、重新入弹窗队列（与表消息送达同一套观感）；
+ * - 返回 `true` = 这一封**覆盖了**旧的一条（首次投递返回 `false`）。
+ */
+export function deliverCommsInstance(state: GameState, ctx: SimContext, entry: CommsInstanceEntry): boolean {
+  const at = Math.max(0, Math.floor(state.gameMs))
+  const prev = state.commsInstance?.[entry.id]
+  state.commsInstance = { ...(state.commsInstance ?? {}), [entry.id]: { ...entry, atGameMs: at } }
+  state.commsDelivered = { ...(state.commsDelivered ?? {}), [entry.id]: at }
+  if (state.commsRead?.[entry.id] === true) {
+    const next = { ...state.commsRead }
+    delete next[entry.id]
+    state.commsRead = next
+  }
+  const list = state.commsPopups ?? []
+  if (!list.includes(entry.id)) state.commsPopups = [...list, entry.id]
+  const sender = resolveCommsSender(ctx, entry.factionId, entry.deptId, entry.kind)
+  addLog(state, 'info', `[通讯] 收到 ${sender.from} 的一条消息：《${entry.subject}》——导航「通讯」可查看。`, 'core.comms.001', {
+    p1: sender.from,
+    p2: entry.subject,
+  })
+  return prev !== undefined
 }
 
 /** 未读条数（导航徽标 / 闪烁判定） */

@@ -173,6 +173,8 @@ import {
   weekendStartFlagshipBattle,
   // 2026-09-25 入侵结束结算（贡献奖四档入账；幂等由 core 侧 `prizePaidAtWallMs` 落盘标记保证）
   weekendSettleAndGrant,
+  // 2026-09-25 入侵两封通讯（预警 / 结算；每场覆盖同一 id，幂等在 core）
+  weekendSyncComms,
   ironmanLoadVerdict,
   ironmanOn,
   ironmanSeq,
@@ -1031,6 +1033,12 @@ export class GameEngine {
     /** **结束结算入账**（2026-09-25）：本拍刚结束的那一场立刻结；上一拍结束而没结的（离线跨过结束点、
      *  老档）由本函数开头的补发那一句兜 —— 两处都调同一个幂等口，不会重复发。 */
     this.settleWeekendPrize(now)
+    /**
+     * **两封通讯**（2026-09-25）：每场一封预警（开局）＋ 一封结算（贡献奖入账后），**覆盖上一次的同一条**
+     * （固定 id ⇒ 收件箱里始终只有这两封）。幂等与"该不该发"的判据全在 core（`weekendSyncComms`按场次号比），
+     * 所以这里每拍无脑调一次即可 —— 离线跨过开局/结束点、老档首载都会自动补齐。
+     */
+    weekendSyncComms(this.state, this.ctx, now)
     const exp = this.state.expedition
     /**
      * 含已分胜负的"击杀慢镜窗口"：窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定画面。

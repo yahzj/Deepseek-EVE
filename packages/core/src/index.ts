@@ -297,6 +297,26 @@ export {
 } from './weekendLaunch'
 export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan, WeekendSettleGrant } from './weekendBattle'
 
+/* 2026-09-25 周末入侵 · 两封通讯（实例通讯 · 每场覆盖）＋ 结算面板读的战果快照 */
+export {
+  WEEKEND_COMMS_DEPT_ID,
+  WEEKEND_COMMS_FACTION_ID,
+  WEEKEND_COMMS_SETTLE_ID,
+  WEEKEND_COMMS_WARN_ID,
+  weekendFamilyNameId,
+  weekendFamilyNameZh,
+  weekendRewardLinesOf,
+  weekendSettleCommsOf,
+  weekendSnapshotWreckItemId,
+  weekendSyncComms,
+  weekendWarnCommsOf,
+} from './weekendComms'
+export { weekendResultSnapshotOf } from './weekendBattle'
+export type { WeekendResultSnapshot } from './weekendEvent'
+/* 实例通讯的条目/奖励行（界面拼串与类型标注用） */
+export type { CommsInstanceEntry, CommsRewardLine } from './types'
+export { deliverCommsInstance } from './comms'
+
 /* 2026-09-23 周末入侵 · 悬赏替换与遇袭判定（M1-b 第三片） */
 export {
   WEEKEND_BOUNTY_REWARD_MUL,

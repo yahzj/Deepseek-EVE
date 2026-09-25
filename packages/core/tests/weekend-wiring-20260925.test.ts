@@ -19,6 +19,9 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState } from '../src/index'
 import { startMining } from '../src/mining'
 import { advanceEncounterWatch, maintainPresence, rollLowSecAmbush } from '../src/encounters'
+import { commsInbox } from '../src/comms'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { WEEKEND_COMMS_SETTLE_ID, WEEKEND_COMMS_WARN_ID, weekendSyncComms } from '../src/weekendComms'
 import {
   WEEKEND_FLAGSHIP_WRECK,
   WEEKEND_RECLAIM_ISK,
@@ -369,5 +372,77 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(late.weekendEvent!.prizePaidAtWallMs, '标记写的是"补结那一刻"').toBe(now + 5 * 24 * 3_600_000)
     /** **反证**：若把"现在"当结算时刻，这一档会被铺底算低成 C 档 ⇒ 本用例确实在守"按结束时刻算" */
     expect(weekendSettlePlanOf(late, late.weekendEvent!, now + 5 * 24 * 3_600_000).tier, '按"现在"算会降成 C 档').toBe('C')
+  })
+
+  it('⑫ 两封通讯：预警开局送达 · 结算在贡献奖入账后送达 · 每场覆盖同一 id（只留一封）', () => {
+    const gid = GID
+    const core = 'galaxy-kor'
+    const now = Date.now()
+    const s = invaded(gid)
+    /** ① 预警：同步一次即送达（正文带本场处数与核心名，族名走 p1Id ⇒ 英文界面才有译名） */
+    expect(weekendSyncComms(s, ctx, now).warned, '开局那一拍要发预警').toBe(true)
+    const warn = commsInbox(s, ctx).find((e) => e.id === WEEKEND_COMMS_WARN_ID)
+    expect(warn, '预警要进收件箱').toBeDefined()
+    expect(warn!.subjectId).toBe('core.weekend.010')
+    expect(warn!.bodyIds).toEqual(['core.weekend.011', 'core.weekend.012'])
+    expect(warn!.textParams?.['p2'], '落点处数 = 核心 ＋ 外围').toBe(2)
+    expect(warn!.textParams?.['p3']).toBe(ctx.galaxies.get(core)!.name)
+    expect(warn!.textParams?.['p1Id'], '族名以 id 形式随信（界面按语言取译名）').toBe('core.weekend.023')
+    expect(warn!.hint?.page, '预警的跳转落星图').toBe('map')
+    expect(weekendSyncComms(s, ctx, now).warned, '同一场不重发').toBe(false)
+    expect(commsInbox(s, ctx).filter((e) => e.id === WEEKEND_COMMS_WARN_ID).length, '只该有一封').toBe(1)
+
+    /** ② 结算：结束 ＋ 贡献奖入账之后才发（正文里的奖励清单 = 实发） */
+    weekendNoteContribution(s.weekendEvent!, gid, 0.5)
+    endWeekendEvent(s, now)
+    expect(weekendSettleAndGrant(s, ctx, now), '贡献奖要真发').not.toBeNull()
+    expect(weekendSyncComms(s, ctx, now).settled, '入账后发结算信').toBe(true)
+    const settle = commsInbox(s, ctx).find((e) => e.id === WEEKEND_COMMS_SETTLE_ID)
+    expect(settle?.subjectId).toBe('core.weekend.013')
+    expect(settle?.bodyIds, '有奖那一版正文').toEqual(['core.weekend.014'])
+    expect(settle?.action, '结算信的跳转是"弹面板"').toBe('weekendSummary')
+    expect(settle?.rewards?.length, '奖励清单结构化随信（残骸 ＋ 信用点）').toBe(2)
+
+    /** ③ 战果快照（面板读它；数值与实发逐值一致） */
+    const snap = s.weekendLastResult!
+    expect(snap.seq).toBe(s.weekendEvent!.seq)
+    expect(snap.family).toBe('H')
+    expect(snap.coreId).toBe(core)
+    expect(snap.galaxies.length, '核心 ＋ 外围都列出来').toBe(2)
+    expect(snap.galaxies.find((g) => g.galaxyId === gid)?.put, '逐星系记玩家投入').toBeCloseTo(0.5, 6)
+    expect(snap.tier).toBe('A')
+    expect(snap.isk, '到手合计 = 实发').toBe(8_000_000)
+    expect(snap.wreck).toBe(12)
+
+    /** ④ 覆盖：下一场再同步 ⇒ 同 id 仍只有一封，内容换成新一场 */
+    s.weekendEvent = { ...s.weekendEvent!, seq: 99, startedAtWallMs: now, endedAtWallMs: undefined, contributed: {} }
+    expect(weekendSyncComms(s, ctx, now).warned, '新一场要覆盖重发').toBe(true)
+    const warns = commsInbox(s, ctx).filter((e) => e.id === WEEKEND_COMMS_WARN_ID)
+    expect(warns.length, '固定 id ⇒ 收件箱里始终只有一封').toBe(1)
+    expect(warns[0]!.textParams?.['seq'], '内容是新的那一场').toBe(99)
+  })
+
+  it('⑬ 零贡献的结算信走变体 · 两封信与快照都随档往返', () => {
+    const gid = GID
+    const now = Date.now()
+    const s = invaded(gid)
+    weekendSyncComms(s, ctx, now) // 开局那封先发出去（下面才结束本场）
+    endWeekendEvent(s, now)
+    weekendSettleAndGrant(s, ctx, now)
+    weekendSyncComms(s, ctx, now)
+    const settle = commsInbox(s, ctx).find((e) => e.id === WEEKEND_COMMS_SETTLE_ID)
+    expect(settle?.bodyIds, '零贡献 ⇒ 无奖那一版正文').toEqual(['core.weekend.015'])
+    expect(settle?.rewards ?? [], '零贡献不发东西').toEqual([])
+    /** 随档往返：实例通讯条目与战果快照都要原样回来（面板与信件都靠它们） */
+    const back = loadSaveFile(serializeSaveFile(s, 0)).state
+    const bw = back.commsInstance?.[WEEKEND_COMMS_WARN_ID]
+    expect(bw?.subjectId).toBe('core.weekend.010')
+    expect(bw?.params?.['p1Id']).toBe('core.weekend.023')
+    const bs = back.weekendLastResult
+    expect(bs?.seq).toBe(s.weekendLastResult!.seq)
+    expect(bs?.tier).toBe('none')
+    expect(bs?.galaxies.length).toBe(s.weekendLastResult!.galaxies.length)
+    /** 读档后再同步：不该重发（`seq` 相同） */
+    expect(weekendSyncComms(back, ctx, now).warned || weekendSyncComms(back, ctx, now).settled).toBe(false)
   })
 })
