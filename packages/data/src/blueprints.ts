@@ -2606,7 +2606,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 1_200,
     buildCostIsk: 0,
     priceIsk: 4_000_000, // 船长定平均价 400 万；**书价 = 产物价**（一次性图既有口径）
-    description: '护盾充能力场装置 MK2：每 10 秒为我方全队恢复护盾。',
+    description: '护盾充能力场装置 MK2：每 10 秒为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
   },
   {
     id: 'bp-shieldfield-3',
@@ -2629,7 +2629,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_000,
     buildCostIsk: 0,
     priceIsk: 20_000_000, // 船长定平均价 2000 万；**书价 = 产物价**
-    description: '护盾充能力场装置 MK3：每 8 秒为我方全队恢复护盾。',
+    description: '护盾充能力场装置 MK3：每 8 秒为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
   },
 ]
 
