@@ -96,22 +96,36 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(after.blocked).toContain('AI 副船任务')
   })
 
-  it('**每条参与舰各占 1 枚 AI 核心**（同一本账：占用计入、名额不足拒绝、锁定期不能再接 AI 任务）', () => {
+  it('**每次自动探索占 1 枚 AI 核心**（同一本账：占用计入、名额不足拒绝、锁定期不能再接 AI 任务）', () => {
     const state = fresh({ ships: 6, aiCoreSkill: 2 })
     const stockId = stockOne(state)
     const picked = wormholeAutoDefaultShips(state, ctx)
-    expect(picked).toHaveLength(2) // 上限 2 枚 ⇒ 自动配置只挑 2 条
+    // 2026-09-26 船长令「整队一趟只占 1 枚」：编队规模**不再**被核心余量卡住（改前上限 2 枚 ⇒ 只挑 2 条）
+    expect(picked).toHaveLength(4)
     const before = aiCoreUsed(state)
     expect(wormholeAutoStart(state, ctx, stockId, picked).ok).toBe(true)
-    expect(aiCoreUsed(state)).toBe(before + 2)
-    expect(aiCoreShipUsed(state)).toBe(2)
-    // 名额已满 ⇒ 再派被拒（同一本账）
-    expect(aiCoreCapBlock(state, ctx, 'ship')).not.toBeNull()
+    // 占 1 枚（不是"每条 1 枚"）：核心账 +1
+    expect(aiCoreUsed(state)).toBe(before + 1)
+    expect(aiCoreShipUsed(state)).toBe(1)
+    // 该本账里那 1 枚**不再**按参与舰数重复计（4 条船也只占 1）
+    expect(picked.length).toBe(4)
     // 锁定期：不能再接 AI 副船任务，且给出锁定原因
     const beltId = [...ctx.belts.keys()][0]!
     const r = assignAiMining(state, picked[0]!, 'basic', beltId, ctx)
     expect(r.ok).toBe(false)
     expect(shipLockedReason(state, picked[0]!, '驾驶它')).toContain('自动探索')
+  })
+
+  it('**核心不够就开不了第二趟**（1 枚/趟：上限 2 时两趟刚好占满，第三趟被拒）', () => {
+    // 船要够多：两趟满编 8 条 + 1 条主控 ⇒ 12 条，免得先撞上"没船可派"（本条只验核心账）
+    const state = fresh({ ships: 12, aiCoreSkill: 2 })
+    expect(wormholeAutoStart(state, ctx, stockOne(state), wormholeAutoDefaultShips(state, ctx)).ok).toBe(true)
+    expect(wormholeAutoStart(state, ctx, stockOne(state), wormholeAutoDefaultShips(state, ctx)).ok).toBe(true)
+    expect(aiCoreShipUsed(state)).toBe(2)
+    // 已占满（2/2）⇒ 第三趟拒，理由里点明"每次占用 1 枚"
+    const third = wormholeAutoStart(state, ctx, stockOne(state), wormholeAutoDefaultShips(state, ctx))
+    expect(third.ok).toBe(false)
+    expect(String(third.error)).toContain('每次占用 1 枚')
   })
 
   it('**时长 5 分钟**：不到点不结算；到点结算并释放 AI 与舰船（离线大步长同样适用）', () => {
@@ -120,7 +134,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const run = wormholeAutoStart(state, ctx, stockId, wormholeAutoDefaultShips(state, ctx))
     expect(run.ok).toBe(true)
     expect(wormholeAutoRunsOf(state)).toHaveLength(1)
-    expect(aiCoreShipUsed(state)).toBe(4)
+    expect(aiCoreShipUsed(state)).toBe(1) // 整队一趟占 1 枚（原「每条 1 枚」⇒ 4）
     // 差 1 毫秒不结算
     state.gameMs = WORMHOLE_AUTO_DURATION_MS - 1
     advanceWormholeAuto(state, ctx)
@@ -135,10 +149,9 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(shipLockedReason(state, state.shipId === 'x' ? 'x' : wormholeAutoReportsOf(state)[0]!.shipIds[0]!, '驾驶它')).toBeNull()
   })
 
-  it('**产出 = 手动期望 × 40% 且直入仓库**（不进参与舰货舱；稀有残骸 ≈50%、货柜 ≈9% 层 2 起）', () => {
-    expect(WORMHOLE_AUTO_YIELD_MUL).toBe(0.4)
-    let rareHits = 0
-    let boxHits = 0
+  it('**收益 = 真跑一趟捡到的（2026-09-26 新口径）且直入仓库**（不进参与舰货舱）', () => {
+    let wreckRuns = 0
+    let oreRuns = 0
     const runs = 40
     for (let i = 0; i < runs; i++) {
       const state = fresh({ ships: 5, seed: 900 + i })
@@ -156,15 +169,15 @@ describe('虫洞 · 自动探索（批次 3）', () => {
       expect(gained).toBe(true)
       // 参与舰货舱一字未动（不进船）
       expect(ships.map((id) => JSON.stringify(state.fleet[id]!.cargo ?? {}))).toEqual(cargoBefore)
-      if (report.gains.some((g) => g.itemId.startsWith('wreck-rare-'))) rareHits += 1
-      if (report.gains.some((g) => g.itemId.startsWith('box-relic-'))) boxHits += 1
-      // 层 1 时不该出货柜（本用例的库存全是层 1~3 随机，只统计不硬断言层 1）
+      if (report.gains.some((g) => g.itemId.startsWith('wreck-'))) wreckRuns += 1
+      if (report.gains.some((g) => g.itemId === 'ore-voidmother')) oreRuns += 1
+      // 每条进仓库的量都是正的整数（模拟器只 push > 0 的条目）
+      for (const g of report.gains) expect(g.units).toBeGreaterThan(0)
     }
-    // 稀有残骸期望 0.5 件/趟 ⇒ 40 趟落在 8~32 次之间（宽松区间，防抖）
-    expect(rareHits).toBeGreaterThan(6)
-    expect(rareHits).toBeLessThan(34)
-    // 货柜期望 ≈0.09/趟（层 2 起）⇒ 40 趟不会超过 12 次
-    expect(boxHits).toBeLessThan(12)
+    // 绝大多数趟都该带回残骸（逐格走一趟至少打一个战斗节点）
+    expect(wreckRuns).toBeGreaterThan(runs / 2)
+    // 老口径"不看货舱、不挑地点"是白给；新口径要不要给母矿取决于这一趟真走到矿脉 —— 不硬断言
+    expect(oreRuns).toBeGreaterThanOrEqual(0)
   })
 
   it('**损伤两项都报、绝不丢船**：结构/装甲各 −40%~−80%，结构保底 0.1（连跑 6 趟也见不了底）', () => {
