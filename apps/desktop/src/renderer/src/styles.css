@@ -10500,19 +10500,28 @@ html[data-locale='en'] body {
 .app-chip{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-xs))}
 .app-btn{font-size:calc(var(--ui-fs, 1) * var(--wui-fs-s))}
 
-/* settings panel (captain UI polish 2026-09-05) */
-.app-settings-modal{box-sizing:border-box;width:460px;max-width:calc(100vw - 48px);padding:var(--wui-sp-18) var(--wui-sp-20) var(--wui-sp-16)}
+/* settings panel (captain UI polish 2026-09-05)
+   ── **2026-09-25 船长反馈：「设置界面显示不全，底部的按钮而且太宽，浪费了很多位置」** ⇒ 三条修正：
+      ① **显示不全**：弹窗原先只有 `max-height`（640px）但 `overflow: visible`，而内容
+         `.app-settings-list` 实测 733px ⇒ 尾部「宇宙背景/存档」与底部按钮**溢出弹窗**、被底栏压住。
+         改为「弹窗 = 纵向 flex + max-height」、**只有列表滚动**（标题与底部按钮固定可见）。
+      ② **浪费位置**：每个设置行原先「标签在上、值/按钮在下」竖着堆两行，设置项一多就撑爆。
+         改为**标签与控件同行**（`head` 两端对齐），描述文字另起一行。
+      ③ **太宽**：弹窗 460px 装不下"标签+控件"同行 ⇒ 加宽到 620px（窄窗仍按 `100vw - 48px` 收）。 */
+.app-settings-modal{box-sizing:border-box;width:620px;max-width:calc(100vw - 48px);max-height:calc(100vh - 80px);display:flex;flex-direction:column;padding:var(--wui-sp-14) var(--wui-sp-16) var(--wui-sp-12)}
 .app-settings-title{font-size:var(--wui-fs-lg);font-weight:700;letter-spacing:2px;color:rgb(var(--wui-gold));margin-bottom:var(--wui-sp-2)}
-.app-settings-sub{font-size:var(--wui-fs-xs);color:rgb(var(--wui-text-dim));margin-bottom:var(--wui-sp-10)}
-.app-settings-list{display:flex;flex-direction:column;gap:var(--wui-sp-10)}
-.app-settings-row{display:flex;flex-direction:column;gap:var(--wui-sp-7);padding:var(--wui-sp-10) var(--wui-sp-12);border:1px solid rgb(var(--wui-map-minor) / 0.28);border-radius:var(--wui-sp-8);background:rgb(var(--wui-bg-field) / 0.55)}
-.app-settings-head{display:flex;align-items:center;justify-content:space-between;gap:var(--wui-sp-8)}
+.app-settings-sub{font-size:var(--wui-fs-xs);color:rgb(var(--wui-text-dim));margin-bottom:var(--wui-sp-8)}
+.app-settings-list{display:flex;flex-direction:column;gap:var(--wui-sp-6);overflow-y:auto;min-height:0;padding-right:var(--wui-sp-2)}
+.app-settings-row{display:flex;flex-direction:column;gap:var(--wui-sp-5);padding:var(--wui-sp-8) var(--wui-sp-10);border:1px solid rgb(var(--wui-map-minor) / 0.28);border-radius:var(--wui-sp-8);background:rgb(var(--wui-bg-field) / 0.55)}
+.app-settings-head{display:flex;align-items:center;justify-content:space-between;gap:var(--wui-sp-10);flex-wrap:wrap}
 .app-settings-label{font-size:var(--wui-fs-s);font-weight:600}
 .app-settings-val{font-family:var(--wui-mono);font-size:var(--wui-fs-s);color:rgb(var(--wui-flag));background:rgb(var(--wui-gold) / 0.08);border:1px solid rgb(var(--wui-gold) / 0.35);border-radius:var(--wui-sp-4);padding:var(--wui-sp-1) var(--wui-sp-8);min-width:52px;text-align:center}
 .app-settings-slider{width:100%;accent-color:rgb(var(--wui-accent));height:18px;cursor:pointer}
 .app-settings-desc{font-size:var(--wui-fs-2xsd);color:rgb(var(--wui-text-dim))}
-.app-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--wui-sp-8);margin-top:var(--wui-sp-14);padding-top:var(--wui-sp-10);border-top:1px dashed rgb(var(--wui-map-minor) / 0.3)}
-.app-settings-btns{display:flex;gap:var(--wui-sp-6)}
+.app-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--wui-sp-8);flex-shrink:0;margin-top:var(--wui-sp-8);padding-top:var(--wui-sp-8);border-top:1px dashed rgb(var(--wui-map-minor) / 0.3)}
+.app-settings-btns{display:flex;gap:var(--wui-sp-6);flex-wrap:wrap}
+/* 设置内的按钮不再被 flex 拉宽（船长：「底部的按钮而且太宽」） */
+.app-settings-modal .app-btn{flex:0 0 auto;width:auto}
 /* ── 市场「全部卖出」确认框（2026-09-05 船长：先预览实际成交与到账再确认） ── */
 .app-mkt-confirm-mask { position: fixed; inset: 0; z-index: 96; background: rgb(var(--wui-x11) / 0.62); display: flex; align-items: center; justify-content: center; }
 .app-mkt-confirm { width: min(460px, 90vw); background: linear-gradient(180deg, rgb(var(--wui-x190) / 0.99), rgb(var(--wui-x79) / 0.99)); border: 1px solid rgb(var(--wui-x40)); border-radius: var(--wui-sp-12); padding: var(--wui-sp-16) var(--wui-sp-18); box-shadow: 0 14px 44px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: var(--wui-sp-9); }
