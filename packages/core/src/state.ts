@@ -1718,6 +1718,12 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    */
   weekendLastResult?: WeekendResultSnapshot
   /**
+   * **旗舰战的参战编队**（2026-09-25 加 · 船长令做「战前准备界面」）：玩家上一次在准备界面选的舰船列表
+   * （舰队实例 uid）。下次进准备界面默认勾选它；开战前一律过 `weekendSanitizeFlagshipSquad`
+   * （只认在编船只 · 去重 · 截 4 艘）⇒ 旧档残 id 不会把战斗打崩。可选字段、**空数组不落键** ⇒ 零迁移。
+   */
+  weekendPrepSquad?: string[]
+  /**
    * **需要直接弹窗的通讯 id 队列**（2026-09-14 船长：「解锁时发送通讯给玩家（**同时也要直接弹窗**）」）。
    * 送达标了 `popup: true` 的消息时入队；界面弹一次、点「知道了」调 `dismissCommsPopup` 清掉。
    * 兼容字段（可选）⇒ 零迁移；界面只弹队首那一封。
@@ -2032,8 +2038,8 @@ export type GameStateV25 = Omit<GameStateV24, 'version'> & {
 /**
  * 第二十六版存档结构：**v26 = v25 + 「第一次」任务系列上线时的一次性老档判定**（2026-09-17 教程重做）。
  *
- * 结构本身没动（irstStats 仍是可选字段）——**升版只为给"老档判定"一个只跑一次的落点**：
- * v25 及更早的档在读取时把 13 条「第一次」整体判为已完成（通讯由 irstTask 触发器自然补送、**不发奖励**），
+ * 结构本身没动（irstStats 仍是可选字段）——**升版只为给"老档判定"一个只跑一次的落点**：
+ * v25 及更早的档在读取时把 13 条「第一次」整体判为已完成（通讯由 irstTask 触发器自然补送、**不发奖励**），
  * 新档（v26 起）才从零走「第一次」流程（页面/页签前置锁定因此**只对新档生效**，老档不倒退）。
  */
 export type GameStateV26 = Omit<GameStateV25, 'version'> & {

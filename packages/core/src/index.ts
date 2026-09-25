@@ -289,13 +289,23 @@ export {
   weekendSettleAndGrant,
 } from './weekendBattle'
 
-/* 2026-09-23 周末入侵 · 开战入口（旗舰 4 波 120 威胁 · 4 艘小队战） */
+/* 2026-09-23 周末入侵 · 开战入口（旗舰 4 波小队战）；2026-09-25 加战前准备（编队参数化 + 准备视图） */
 export {
+  WEEKEND_FLAGSHIP_MAX_SHIPS,
+  WEEKEND_PREP_LOW_HULL_FRAC,
+  weekendBestFlagshipSquad,
+  weekendFlagshipPrepView,
   weekendFlagshipSquadOf,
+  weekendNoteFlagshipSquad,
+  weekendPrepIssuesOf,
+  weekendPrepSquadOf,
+  weekendSanitizeFlagshipSquad,
   weekendFlagshipWavesOf,
   weekendStartFlagshipBattle,
 } from './weekendLaunch'
 export type { WeekendBattleKind, WeekendBattleSpec, WeekendOutcome, WeekendResolveResult, WeekendSettlePlan, WeekendSettleGrant } from './weekendBattle'
+/* 旗舰战战前准备（准备视图与缺口标记的类型） */
+export type { WeekendFlagshipPrepView, WeekendPrepCandidate, WeekendPrepIssue } from './weekendLaunch'
 
 /* 2026-09-25 周末入侵 · 两封通讯（实例通讯 · 每场覆盖）＋ 结算面板读的战果快照 */
 export {

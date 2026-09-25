@@ -171,6 +171,7 @@ import {
   weekendFlagshipSpecOf,
   weekendFlagshipSquadOf,
   weekendStartFlagshipBattle,
+  weekendFlagshipPrepView,
   // 2026-09-25 入侵结束结算（贡献奖四档入账；幂等由 core 侧 `prizePaidAtWallMs` 落盘标记保证）
   weekendSettleAndGrant,
   // 2026-09-25 入侵两封通讯（预警 / 结算；每场覆盖同一 id，幂等在 core）
@@ -1326,16 +1327,24 @@ export class GameEngine {
     }
   }
   /**
+   * **战前准备视图**（2026-09-25 船长令做「旗舰战入口和准备界面」）：界面渲染准备面板读它。
+   * `null` = 现在不该出现入口（旗舰没现身 / 已落定局 / 不是 BOSS 族）。
+   */
+  weekendFlagshipPrep(): ReturnType<typeof weekendFlagshipPrepView> {
+    return weekendFlagshipPrepView(this.state, this.ctx, Date.now())
+  }
+  /**
    * **挑战入侵旗舰**（M1-b 收尾 · 2026-09-23）：核心条满才成立（`weekendStartFlagshipBattle` 内部判）。
    *
    * 复用**遭遇槽**承载这一场（`state.encounter`）：这样「应战 / 战报 / 收尾结算」全走既有路径，
    * 战后由 `encounters.settleFight` 调 `weekendApplyBattleOutcome` ⇒ 击毁旗舰、黑匣、贡献结算自动闭环。
    */
-  challengeWeekendFlagship(): CommandResult {
+  challengeWeekendFlagship(squad?: readonly string[]): CommandResult {
     const now = Date.now()
     const spec = weekendFlagshipSpecOf(this.state, this.ctx, now)
     if (!spec) return { ok: false, error: tr('ui.weekend.015') }
-    const battle = weekendStartFlagshipBattle(this.state, this.ctx, now)
+    /** squad = 战前准备界面选的编队（core 侧净化 + 落盘）；缺省 ⇒ 回落落盘编队或自动编队 */
+    const battle = weekendStartFlagshipBattle(this.state, this.ctx, now, squad)
     if (!battle) return { ok: false, error: tr('ui.weekend.015') }
     const ev = this.state.weekendEvent!
     this.state.encounter = {

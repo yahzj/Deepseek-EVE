@@ -21,6 +21,8 @@ import {
   bountyCooldownRemainingMs,
   bountyRewardFactor,
   calcPower,
+  // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
+  weekendFamilyNameId,
   cargoCapacityM3Of,
   cargoUsedM3Of,
   countAiCore,
@@ -74,6 +76,7 @@ import { FirstTasks } from './FirstTasks'
 import { MilestoneTasks } from './MilestoneTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { ShipSprite } from '../ui/ShipSprite'
 import { debugEnabled } from './DebugPanel'
@@ -1695,7 +1698,13 @@ function GalaxyActions({
   //    面板本体挂在 App 那一层（`onOpenWormhole`）——原先挂在这里，而本组件要"星图选中星系"才渲染
   //    ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）；活动栏那行只在已有本趟时出现。──
   const whEntryVisible = debugEnabled()
-  // —— 主控掩护巡逻（原"待命"） ——
+  /**
+   * **入侵旗舰入口**（2026-09-25 船长令：「星图核心星系的**星系详细**里要添加入口」）：
+   * 判据全在 core（`weekendFlagshipPrep()` 非空 = 旗舰已现身、未落定局、本族是 BOSS 族），
+   * 这里再要求**选中的正是本场核心星系** —— 外围星系不摆这个按钮，免得玩家以为哪儿都能打。
+   */
+  const [prepOpen, setPrepOpen] = useState(false)
+  const flagshipPrep = state.weekendEvent?.coreId === galaxy.id ? engine.weekendFlagshipPrep() : null  // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
     state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
@@ -1791,6 +1800,8 @@ function GalaxyActions({
 
   return (
     <div className="app-galaxy-actions">
+      {/* 旗舰战战前准备弹层（2026-09-25）：本地状态开合，弹层自包含 */}
+      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       <div className="app-bay-title">{tr("ui.Expedition.083")}</div>
       {/* ㊕ 虫洞（终局玩法 · **旧入口已于 2026-09-14 关闭**：本行只在调试模式下保留 ——
           它不消耗库存、直接开一趟，供验收用；玩家入口 = 星图「出港 · 扫描虫洞」页选一处库存虫洞） */}
@@ -1808,7 +1819,21 @@ function GalaxyActions({
           </button>
         </div>
       ) : null}
-      {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
+      {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面 */}
+      {flagshipPrep ? (
+        <div className="app-ga-row">
+          <span className="app-ga-main">
+            <span className="app-ico">
+              <Glyph name="ico-tact" size={13} color={ICO_TONES['ico-tact']} />
+            </span>
+            {tr('ui.weekend.060')}
+            <span className="app-dim app-ga-desc">{tr('ui.weekend.061', { p1: tr(weekendFamilyNameId(state.weekendEvent?.family ?? 'H') ?? 'core.weekend.023'), p2: galaxy.name })}</span>
+          </span>
+          <button className="app-btn is-small is-primary" onClick={() => setPrepOpen(true)}>
+            {tr('ui.weekend.062')}
+          </button>
+        </div>
+      ) : null}      {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
       ) : null}

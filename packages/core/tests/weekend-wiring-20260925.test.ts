@@ -23,6 +23,14 @@ import { commsInbox } from '../src/comms'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WEEKEND_COMMS_SETTLE_ID, WEEKEND_COMMS_WARN_ID, weekendSyncComms } from '../src/weekendComms'
 import {
+  weekendBestFlagshipSquad,
+  weekendFlagshipPrepView,
+  weekendNoteFlagshipSquad,
+  weekendPrepIssuesOf,
+  weekendPrepSquadOf,
+  weekendSanitizeFlagshipSquad,
+} from '../src/weekendLaunch'
+import {
   WEEKEND_FLAGSHIP_WRECK,
   WEEKEND_RECLAIM_ISK,
   WEEKEND_RECLAIM_WRECK,
@@ -444,5 +452,61 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(bs?.galaxies.length).toBe(s.weekendLastResult!.galaxies.length)
     /** 读档后再同步：不该重发（`seq` 相同） */
     expect(weekendSyncComms(back, ctx, now).warned || weekendSyncComms(back, ctx, now).settled).toBe(false)
+  })
+
+  it('⑭ 旗舰战战前准备：视图/编队净化/落盘/按战力自动选（船长令"入口 ＋ 选船界面"）', () => {
+    const gid = GID
+    const core = 'galaxy-kor'
+    const now = Date.now()
+    /** 造一场"核心条满"的入侵 ⇒ 旗舰现身 ⇒ 准备视图应当出现 */
+    const ready = (): ReturnType<typeof createInitialState> => {
+      const s = invaded(gid)
+      for (const extra of ['sh-kestrel', 'sh-falconet']) {
+        try {
+          addShipToFleet(s, extra)
+        } catch {
+          /* 夹具里没有这条船型就跳过 —— 用例只关心"多几艘可选" */
+        }
+      }
+      weekendNoteContribution(s.weekendEvent!, gid, 1) // 外围夺回 ⇒ 门禁解开
+      weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
+      return s
+    }
+    const s = ready()
+    const view = weekendFlagshipPrepView(s, ctx, now)
+    expect(view, '核心条满 ⇒ 出准备视图').not.toBeNull()
+    expect(view!.maxShips, '上限 4（旗舰战 = 4 艘小队战）').toBe(4)
+    expect(view!.waves).toBeGreaterThan(0)
+    expect(view!.candidates.length, '候选 = 舰队在编的全部船').toBe(Object.keys(s.fleet).length)
+    expect(view!.pool.hpMax, '血池读数随视图给出').toBeGreaterThan(0)
+    expect(view!.defaultSquad.length, '默认编队（无落盘 ⇒ 走自动编队）').toBeGreaterThan(0)
+    /** 未现身（核心没满）⇒ 没有入口 */
+    const early = invaded(gid)
+    expect(weekendFlagshipPrepView(early, ctx, now), '核心没满 ⇒ 不出现').toBeNull()
+
+    /** 编队净化：不在编的 id 丢掉、去重、截 4 艘 */
+    const all = Object.keys(s.fleet)
+    const sanitized = weekendSanitizeFlagshipSquad(s, [all[0]!, all[0]!, 'ghost-ship', ...all, all[0]!])
+    expect(sanitized[0]).toBe(all[0])
+    expect(sanitized.filter((x) => x === all[0]).length, '去重').toBe(1)
+    expect(sanitized).not.toContain('ghost-ship')
+    expect(sanitized.length).toBeLessThanOrEqual(4)
+
+    /** 落盘：记住编队 ⇒ 下次默认就是它；落盘里的船退役后自动回落 */
+    weekendNoteFlagshipSquad(s, sanitized)
+    expect(s.weekendPrepSquad).toEqual(sanitized)
+    expect(weekendPrepSquadOf(s), '默认 = 落盘编队').toEqual(sanitized)
+    s.weekendPrepSquad = ['ghost-ship']
+    expect(weekendPrepSquadOf(s).length, '落盘全失效 ⇒ 回落自动编队').toBeGreaterThan(0)
+    expect(weekendPrepSquadOf(s)).not.toContain('ghost-ship')
+
+    /** 按战力自动选：候选里战力最高的至多 4 艘、只含在编船 */
+    const best = weekendBestFlagshipSquad(s, ctx)
+    expect(best.length).toBeLessThanOrEqual(4)
+    expect(best.every((id) => s.fleet[id] !== undefined)).toBe(true)
+
+    /** 缺口标记：新档自带的船没装武器 ⇒ 至少标一个缺口；装甲/结构满 ⇒ 不标那两条 */
+    const issues = weekendPrepIssuesOf(s, ctx, s.shipId)
+    expect(issues.includes('low-armor') || issues.includes('low-hull'), '满装甲满结构不该标低').toBe(false)
   })
 })

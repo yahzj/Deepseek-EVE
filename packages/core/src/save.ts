@@ -1591,7 +1591,7 @@ function normalizeState(raw: unknown): GameState {
        * 于是"引擎写过 `bm`、读回来没了"。**存在即原样保留**（数字取整；其余落 `null`）⇒ 往返逐字一致。
        */
       const hasBm = Object.prototype.hasOwnProperty.call(o, 'bm')
-      // 引擎写的是 m: true（BM 声望门槛标记 · 布尔）⇒ 必须原样保留（见上方注释：按数字处理会连丢两次）
+      // 引擎写的是 m: true（BM 声望门槛标记 · 布尔）⇒ 必须原样保留（见上方注释：按数字处理会连丢两次）
       const bmRaw = o.bm
       const bmVal = typeof bmRaw === 'boolean' ? bmRaw : typeof bmRaw === 'number' && Number.isFinite(bmRaw) ? Math.max(0, Math.floor(bmRaw)) : null
       out.push({
@@ -2782,6 +2782,14 @@ function normalizeState(raw: unknown): GameState {
         })()
       : undefined
 
+  /** **旗舰战参战编队**（2026-09-25 · 战前准备界面）：只留字符串、去重、截 4 艘；空 = 不写键 */
+  const weekendPrepSquad: string[] = []
+  for (const id of Array.isArray(src.weekendPrepSquad) ? src.weekendPrepSquad : []) {
+    if (typeof id !== 'string' || id.length === 0 || weekendPrepSquad.includes(id)) continue
+    weekendPrepSquad.push(id)
+    if (weekendPrepSquad.length >= 4) break
+  }
+
   /**
    * **上一场入侵的战果快照**（2026-09-25 · 结算面板读它）：**结构对不上就整条丢**——
    * 宁可"没有面板可看"，也不给界面喂半条（缺 seq/族/核心/结束时刻即判无效）。
@@ -3480,6 +3488,8 @@ function normalizeState(raw: unknown): GameState {
     commsRead,
     // 实例通讯（2026-09-25）：空表不写键（老档/新档快照逐字一致）
     ...(Object.keys(commsInstance).length > 0 ? { commsInstance } : {}),
+    // 旗舰战参战编队（2026-09-25）：空数组不写键
+    ...(weekendPrepSquad.length > 0 ? { weekendPrepSquad } : {}),
     // 上一场入侵的战果快照（2026-09-25）：没有就不写键（老档零迁移）
     ...(weekendLastResult !== undefined ? { weekendLastResult } : {}),
     // 因低安袭击自动撤离（true/false 都落键；缺失保持缺失 = 老档，交给触发器按痕迹判定）

@@ -11,8 +11,184 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import { startFleetBattleFor } from './combat'
 import { weekendFlagshipSpecOf } from './weekendBattle'
-import { WEEKEND_FLAGSHIP_SHIP_ID, weekendFlagshipHpRemaining } from './weekendEvent'
+import {
+  WEEKEND_FLAGSHIP_POOL_HP,
+  WEEKEND_FLAGSHIP_SHIP_ID,
+  weekendBossPoolView,
+  weekendFlagshipHpRemaining,
+  weekendFlagshipView,
+} from './weekendEvent'
+import type { WeekendBossPoolView } from './weekendEvent'
 import type { FoeOverride } from './combat'
+import { shipDisplayName } from './instances'
+import { calcPower } from './expedition'
+
+/** 参战舰船**上限**（旗舰战 = 4 艘小队战；语义是上限、不是"必须带满"——与虫洞 `WORMHOLE_MAX_SHIPS` 同款口径） */
+export const WEEKEND_FLAGSHIP_MAX_SHIPS = 4
+/** 装甲 / 结构"偏低"的告警线（与既有文案「出征前把装甲与结构补到六成」同口径） */
+export const WEEKEND_PREP_LOW_HULL_FRAC = 0.6
+
+/** 战前准备里的"缺口"标记（只说事实、不拦人） */
+export type WeekendPrepIssue = 'no-weapon' | 'no-ammo' | 'low-armor' | 'low-hull'
+
+/** 准备界面里的一条候选舰船 */
+export interface WeekendPrepCandidate {
+  /** 舰队实例 uid（`state.fleet` 的键） */
+  shipId: string
+  /** 船型 id */
+  defId: string
+  name: string
+  /** 骨架战力（技能 ＋ 船体；与站内既有展示同口径，**不是胜率**） */
+  power: number
+  armorPct: number
+  hullPct: number
+  issues: WeekendPrepIssue[]
+}
+
+/** 战前准备视图（界面只读它渲染；判定与读数都在 core） */
+export interface WeekendFlagshipPrepView {
+  /** 敌方卡 id（界面按它取**本地化**的编成与舰名：`ctx.anomalies.get(cardId).ships`） */
+  cardId: string
+  threat: number
+  waves: number
+  /** 母舰血池读数（玩家磨掉 / 章鱼人削 / 剩余 / 还需多少） */
+  pool: WeekendBossPoolView
+  /** 击毁时限（缺省 = 还没起算） */
+  deadlineWallMs?: number
+  maxShips: number
+  /** 可选舰船（**只有舰队在编的船**；主控船也在其中、不特殊） */
+  candidates: WeekendPrepCandidate[]
+  /** 默认勾选：落盘的编队优先（已不在编的自动剔掉）；没有落盘 ⇒ 现有自动编队口径 */
+  defaultSquad: string[]
+}
+
+/** 有武装的槽位（判断"未装武器"用） */
+const WEAPON_SLOTS: ReadonlySet<string> = new Set(['turret', 'missile', 'laser', 'drone-rack', 'drone-tac'])
+
+/**
+ * **一艘船的"缺口"**（准备界面照它出警告条；口径都是**既有的、看得见的事实**）：
+ * - `no-weapon`：高/中/低槽里**没有一件武器类模块**（炮台/导弹/激光/无人机舱）；
+ * - `no-ammo`：**有武器**但**货舱与仓库里一件弹药都没有**（粗判：只可能少报，不会误报"有弹"）；
+ * - `low-armor` / `low-hull`：当前装甲 / 结构低于 `WEEKEND_PREP_LOW_HULL_FRAC`（六成）。
+ */
+export function weekendPrepIssuesOf(state: GameState, ctx: SimContext, shipId: string): WeekendPrepIssue[] {
+  const ship = state.fleet[shipId]
+  if (!ship) return []
+  const out: WeekendPrepIssue[] = []
+  const armed = [...ship.fitted.high, ...ship.fitted.mid, ...ship.fitted.low].some((id) => {
+    if (id === null) return false
+    const slot = ctx.modules.get(id)?.slot
+    return slot !== undefined && WEAPON_SLOTS.has(slot)
+  })
+  if (!armed) out.push('no-weapon')
+  else {
+    const hasAmmo =
+      Object.keys(ship.cargo).some((id) => id.startsWith('ammo-')) ||
+      Object.keys(state.warehouse.items).some((id) => id.startsWith('ammo-'))
+    if (!hasAmmo) out.push('no-ammo')
+  }
+  if ((ship.armorPct ?? 1) < WEEKEND_PREP_LOW_HULL_FRAC) out.push('low-armor')
+  if (ship.durability < WEEKEND_PREP_LOW_HULL_FRAC) out.push('low-hull')
+  return out
+}
+
+/**
+ * **战前准备视图**（界面渲染用；`null` = 现在不该出现这个入口）。
+ *
+ * 出现条件 = **旗舰已现身且未落定局**（`weekendFlagshipView().shown && down === undefined`）⇒ 与活动框里
+ * 那行「旗舰现身」同一判据；候选 = **舰队在编的全部船**（含主控），默认勾选 = 落盘编队或现有自动编队。
+ */
+export function weekendFlagshipPrepView(
+  state: GameState,
+  ctx: SimContext,
+  nowWallMs: number,
+): WeekendFlagshipPrepView | null {
+  const ev = state.weekendEvent
+  if (!ev) return null
+  const view = weekendFlagshipView(state, ev, nowWallMs, nowWallMs)
+  if (!view.shown || view.down !== undefined) return null
+  const spec = weekendFlagshipSpecOf(state, ctx, nowWallMs)
+  if (!spec) return null
+  /**
+   * 血池读数：**还没跟母舰交手过**（`flagshipHpMax` 未锁定）时 `weekendBossPoolView` 返回 `null`
+   * ——准备界面是"第一次开打之前"就要看的东西 ⇒ 这里按**池子常量**兜一个满池读数
+   * （活动框那边仍按老口径"接战后才显示池子行"，两处语义各自成立）。
+   */
+  const pool: WeekendBossPoolView = weekendBossPoolView(state, ev) ?? {
+    hpMax: WEEKEND_FLAGSHIP_POOL_HP,
+    hpDone: 0,
+    hpLeft: WEEKEND_FLAGSHIP_POOL_HP,
+    octopusDone: 0,
+    playerFrac: 0,
+    octopusFrac: 0,
+    needDmg: WEEKEND_FLAGSHIP_POOL_HP,
+  }
+  const candidates: WeekendPrepCandidate[] = []
+  for (const shipId of Object.keys(state.fleet)) {
+    const defId = state.fleet[shipId]?.defId ?? shipId
+    const ship = state.fleet[shipId]!
+    candidates.push({
+      shipId,
+      defId,
+      name: shipDisplayName(state, ctx, shipId),
+      power: calcPower(state, ctx, shipId),
+      armorPct: ship.armorPct ?? 1,
+      hullPct: ship.durability,
+      issues: weekendPrepIssuesOf(state, ctx, shipId),
+    })
+  }
+  return {
+    cardId: spec.cardId,
+    threat: spec.threat,
+    waves: spec.waves,
+    pool,
+    ...(view.deadlineWallMs !== undefined ? { deadlineWallMs: view.deadlineWallMs } : {}),
+    maxShips: WEEKEND_FLAGSHIP_MAX_SHIPS,
+    candidates,
+    defaultSquad: weekendPrepSquadOf(state),
+  }
+}
+
+/**
+ * **落盘编队**（可选字段 `state.weekendPrepSquad`，零迁移）：命中"仍在编"的才要，
+ * 一个都不剩 ⇒ 回落到现有自动编队。**开战前与准备界面都调它**，界面显示什么、开战就用什么。
+ */
+export function weekendPrepSquadOf(state: GameState): string[] {
+  const saved = (state.weekendPrepSquad ?? []).filter((id) => state.fleet[id] !== undefined)
+  return saved.length > 0 ? saved.slice(0, WEEKEND_FLAGSHIP_MAX_SHIPS) : weekendFlagshipSquadOf(state)
+}
+
+/** 记住玩家选的编队（只留在编的船、去重、截到上限；空编队 = 不写） */
+export function weekendNoteFlagshipSquad(state: GameState, squad: readonly string[]): void {
+  const clean = weekendSanitizeFlagshipSquad(state, squad)
+  if (clean.length === 0) return
+  state.weekendPrepSquad = clean
+}
+
+/**
+ * **编队净化**（纯函数 · 开战与落盘共用）：只认**舰队在编**的船、去重、截到上限。
+ * 不在编的 id 一律丢掉（旧档残 id / 玩家手改存档都不至于把战斗打崩）。
+ */
+export function weekendSanitizeFlagshipSquad(state: GameState, squad: readonly string[]): string[] {
+  const out: string[] = []
+  for (const id of squad) {
+    if (typeof id !== 'string' || id.length === 0) continue
+    if (state.fleet[id] === undefined) continue
+    if (out.includes(id)) continue
+    out.push(id)
+    if (out.length >= WEEKEND_FLAGSHIP_MAX_SHIPS) break
+  }
+  return out
+}
+
+/** **按战力自动选**（准备界面那颗按钮）：候选里战力最高的至多 4 艘（并列按舰队顺序，稳定） */
+export function weekendBestFlagshipSquad(state: GameState, ctx: SimContext): string[] {
+  return Object.keys(state.fleet)
+    .map((shipId) => ({ shipId, power: calcPower(state, ctx, shipId) }))
+    .sort((a, b) => b.power - a.power)
+    .slice(0, WEEKEND_FLAGSHIP_MAX_SHIPS)
+    .map((c) => c.shipId)
+}
 
 /** 旗舰的 4 波（每波 4 艘、各占 1/4 总血） */
 export function weekendFlagshipWavesOf(): ReadonlyArray<{ units: number; hpShare: number }> {
@@ -29,18 +205,27 @@ export function weekendFlagshipSquadOf(state: GameState): string[] {
 }
 
 /**
- * **挑战旗舰**（界面按钮调它）：核心条满才成立；返回 battle 表示开打成功（`null` = 条件不满足/无法开战）。
+ * **挑战旗舰**（准备界面的「开战」调它）：核心条满才成立；返回 battle 表示开打成功
+ * （`null` = 条件不满足/无法开战）。
+ *
+ * `squad`（2026-09-25 加）：**玩家在战前准备界面选的编队** —— 会过 `weekendSanitizeFlagshipSquad`
+ * 净化（只认在编船只 · 去重 · 截 4 艘）并**落盘**（下次进来默认还是这几艘）；
+ * 缺省 / 净化后为空 ⇒ 回落 `weekendPrepSquadOf`（落盘编队或自动编队）⇒ 老调用方逐字不变。
+ *
  * ⚠ 只负责"开战"——结果结算走 `weekendApplyBattleOutcome`（引擎在战斗收尾时调）。
  */
 export function weekendStartFlagshipBattle(
   state: GameState,
   ctx: SimContext,
   nowWallMs: number,
+  squad?: readonly string[],
 ): ReturnType<typeof startFleetBattleFor> {
   const spec = weekendFlagshipSpecOf(state, ctx, nowWallMs)
   if (!spec) return null
-  const squad = weekendFlagshipSquadOf(state)
-  if (squad.length === 0) return null
+  const clean = squad !== undefined ? weekendSanitizeFlagshipSquad(state, squad) : []
+  if (clean.length > 0) weekendNoteFlagshipSquad(state, clean)
+  const use = clean.length > 0 ? clean : weekendPrepSquadOf(state)
+  if (use.length === 0) return null
   /**
    * **母舰血条 = 池子剩余**（船长 2026-09-25 选「甲」）：开战这一刻把 `weekendFlagshipHpRemaining(ev)`
    * 传进覆写口 ⇒ 战斗里母舰的满血就是池子剩余（单场不死名副其实；打空即击沉）。
@@ -53,5 +238,5 @@ export function weekendStartFlagshipBattle(
     bossHp,
     bossShipId: WEEKEND_FLAGSHIP_SHIP_ID,
   }
-  return startFleetBattleFor(state, ctx, squad, spec.cardId, state.gameMs, undefined, undefined, override)
+  return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, undefined, undefined, override)
 }
