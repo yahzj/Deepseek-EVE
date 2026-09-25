@@ -214,4 +214,8 @@ shipId ? SHIP_ART[shipId] : foeKey ? FOE_ART[foeKey] : undefined
   代价高于收益 ⇒ 本批只证到**同一 `FoeArt` 组件**（悬赏卡）已逐舰取形；
   战斗画面的取值路径另外走 `foeShipIdOfTag(本场敌卡, tag)`，由单测覆盖同源性（见 §四）。
 - ⚠ 逐舰挂点（尾焰/炮口位置）**只做了坐标与端点的一致性核对**，未做开火瞬间的真机读数。
+- ⚠ **合入状态：待验收**——本地已 commit（`857f1f15` ＋ 追平 main 的合并 `894a72c5`），
+  **未合回 main**：① 观感审查权在船长（形状尚未过目）② 合入当时主树有未提交改动
+  （`App.tsx` / `engine.ts` / `main.tsx` / `l10n/table.ts` ＋ 新增 `saveGuard.ts`，一号在途），
+  按 §4「确认主树干净才 merge」暂不动，等船长一句话。
 
