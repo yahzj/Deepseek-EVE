@@ -11,11 +11,15 @@
 import type { ReactNode } from 'react'
 import { FOE_ART_EXTRA, SHIP_ART_EXTRA } from './shipArtData'
 import { SHIP_ART_WH } from './shipArtWh'
+import { FOE_SHIP_ART } from './shipArtFoe'
 import { tr } from '../i18n/locale'
 
 export const SHIP_ART: Record<string, ReactNode> = {
   ...SHIP_ART_EXTRA,
   ...SHIP_ART_WH,
+  // 敌舰逐舰形（30 条）也并进这张总表：对外仍是「一张资产表、按 id 取形」，
+  // 且洞内/市场等按 defId 取形的地方无需知道"这是玩家舰还是敌舰"。
+  ...FOE_SHIP_ART,
   /* ── 鲣鱼级护卫舰（箭头机身 + 后掠双翼 + 机头炮） ── */
   'sh-falconet': (
     <g>
@@ -201,6 +205,26 @@ export { FOE_ACCENT }
  */
 export function foeFamilyOf(anomaly: { foeFamily?: string } | null | undefined): string {
   return anomaly?.foeFamily ?? 'A'
+}
+
+/**
+ * 敌舰**逐舰**形取形单点（2026-09-26 船长令「旧版敌人按敌舰不同做出些许区分」）。
+ *
+ * 三级回退，本函数负责第 ①、② 级，第 ③ 级（role 剪影）在 `ShipSprite` 里：
+ *   ① `FOE_SHIP_ART[shipId]` —— 逐舰形（30 条，`ui/shipArtFoe.tsx`）
+ *   ② `FOE_ART[族字母]`       —— 族形兜底（旧内容表 / 未录舰 / 异常档）
+ * 传入的是**舰级 id**（`FoeShipDef.id`，形如 `foe-pirate-skiff`），**不是编队 uid**（形如 `foe-0#2`）——
+ * 传错只会静默落进族形，故调用点一律用 core 的舰级反查取 id，不在界面层拼字符串。
+ */
+export function foeShipArtOf(
+  shipId: string | null | undefined,
+  foeKey: string | null | undefined,
+): ReactNode | undefined {
+  if (shipId) {
+    const own = FOE_SHIP_ART[shipId]
+    if (own) return own
+  }
+  return foeKey ? FOE_ART[foeKey] : undefined
 }
 
 /**

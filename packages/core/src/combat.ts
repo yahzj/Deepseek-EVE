@@ -1909,6 +1909,46 @@ function foeShipAtTag(anomaly: AnomalyDef, tag: string): { ship: FoeShipDef; esc
   return null
 }
 
+/**
+ * **单位 tag → 舰级 id**（界面逐舰取形用；2026-09-26 船长令「旧版敌人按敌舰不同做出些许区分」）。
+ *
+ * 与 `foeUnitNameOf` / `foeShipTierOf` / `foeShipEliteOf` **同一入口**（`foeShipAtTag`）——
+ * 界面要画的舰、要显示的名、要算的体积必须来自同一次反查，三处各推一套必然对不上。
+ *
+ * 返回值是**舰级 id**（`FoeShipDef.id`，形如 `foe-pirate-skiff`），不是 tag（形如 `w1-foe-0#2`）：
+ * 逐舰线稿按舰级 id 索引，tag 一带波次/序号/支援前缀就取不到形（静默落族形兜底）。
+ *
+ * 非舰级路径（旧卡无 `anomaly.ships`）→ `null`，界面自行回落族形。
+ */
+export function foeShipIdOfTag(anomaly: AnomalyDef | null | undefined, tag: string): string | null {
+  if (!anomaly) return null
+  return foeShipAtTag(anomaly, tag)?.ship.id ?? null
+}
+
+/**
+ * **卡片代表舰**（界面画"这张卡的敌舰影"用；与 `foeShipIdOfTag` 同批）。
+ *
+ * 口径 = **本卡第 1 波里最强的那一型**：档高者优先，同档优先头目档（`elite`）；
+ * 完全并列取编成表里靠前的那条。玩家在卡面/星图上一眼看到的应是本卡最危险的那型。
+ *
+ * ⚠ **不许在界面层拼 `foe-{k}` 反查**：tag 编号是按 `count` 展开并给支援舰跳号的
+ * （`enumerateShipUnits`：`foe-3` 也可能是某条 `count:3` 条目的第 4 个单位），
+ * 界面照编成表下标拼出来的 tag 会指向另一条舰。要 tag 就用 `foeShipIdOfTag`，
+ * 要"代表舰"就用本函数——两者都从同一份编成枚举里取。
+ *
+ * 非舰级路径（旧卡无 `anomaly.ships`）→ `null`，界面回落族形。
+ */
+export function foeCardShipIdOf(anomaly: AnomalyDef | null | undefined): string | null {
+  if (!anomaly?.ships || anomaly.ships.length === 0) return null
+  let pick: { id: string; tier: number; elite: boolean } | null = null
+  for (const u of enumerateShipUnits(anomaly, 0)) {
+    const t = u.slot.ship.hullClassTier
+    const e = u.slot.ship.elite === true
+    if (!pick || t > pick.tier || (t === pick.tier && e && !pick.elite)) pick = { id: u.slot.ship.id, tier: t, elite: e }
+  }
+  return pick?.id ?? null
+}
+
 /** 敌舰单位显示名（船长 2026-09-09 拍板：舰种名 + 规格词缀）：
  * - **舰级路径**（有 `anomaly.ships`）：舰级自带玩家可见舰种名；头目档 → 「精锐」前缀，
  *   僚机 → 「轻装」前缀（2026-09-11 船长裁决实装精锐档）。

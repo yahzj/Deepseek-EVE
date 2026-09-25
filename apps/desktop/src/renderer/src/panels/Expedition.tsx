@@ -88,6 +88,7 @@ import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
+import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 import { debugEnabled } from './DebugPanel'
 
@@ -105,21 +106,38 @@ const FOE_ART_GAP = 10
 const FOE_ART_MAIN_MIN = 560
 
 /**
- * 悬赏敌舰影（置卡片最左侧）。
- * memo：引擎每 tick 触发整树重渲染（App 层订阅 force），舰影 props（族字母）恒定即整棵 SVG 子树跳过 diff。
+ * **悬赏敌舰影（置卡片最左侧）**。
+ *
+ * 2026-09-26 船长令「旧版敌人按敌舰不同做出些许区分」——舰影由**族形**改为**逐舰形**：
+ * `shipId` = 该卡的代表舰级 id（30 条敌舰各画各的），未给/未录 → 按 `fam` 落族形兜底。
+ * 代表舰 = **本卡最高档那一条**（同档优先头目档）——玩家一眼看到的是本卡最危险的那型，
+ * 档位来自 core `foeShipTierOf`/`foeShipEliteOf`（与体积、舰名同一次反查，不另推一套）。
+ *
+ * memo：引擎每 tick 触发整树重渲染（App 层订阅 force），舰影 props（族字母 + 舰级 id）恒定即整棵 SVG 子树跳过 diff。
  * 不带尾焰（engine={false}）——列表里的静止展示件，与舰队卡同款；不翻转（船头朝右、面向右侧信息）。
  * 悬浮提示用词典既有族短名表（星图「敌对派系」模式同一张表），不新造称呼。
  */
-const FoeArt = memo(function FoeArt({ fam }: { fam: string }) {
+const FoeArt = memo(function FoeArt({ fam, shipId }: { fam: string; shipId?: string }) {
   return (
     <div className="app-ship-art" title={tr("ui.Expedition.186", { p1: FOE_FAMILY_LABEL[fam] ?? fam })}>
       {/* 未知敌族的兜底色：原来写的是一个色板里不存在的 token（wui-tone-a）⇒ 静默无色，
           2026-09-24 由 token 契约抓出 ⇒ 换成既有的中性色 --wui-dim（注：注释里不写完整 var(...) 写法，
           免得契约扫描把注释也当成引用） */}
-      <ShipSprite foeKey={fam} accent={FOE_ACCENT[fam] ?? 'rgb(var(--wui-dim))'} size={FOE_ART_W} engine={false} />
+      <ShipSprite
+        shipId={shipId}
+        foeKey={fam}
+        accent={FOE_ACCENT[fam] ?? 'rgb(var(--wui-dim))'}
+        size={FOE_ART_W}
+        engine={false}
+      />
     </div>
   )
 })
+
+/** 卡片代表舰（本卡最强那型；口径与编成枚举同在 core `foeCardShipIdOf`，界面不另推档位） */
+function foeCardShipIdOf(a: AnomalyDef): string | undefined {
+  return coreFoeCardShipIdOf(a) ?? undefined
+}
 
 /**
  * 舰影列自适应：容器实测宽 ≥ 舰影列 + 间距 + 信息列下限 ⇒ 显示舰影。
@@ -2519,7 +2537,7 @@ function AnomalyCard({
   return (
     <div className={`app-ano-card is-foe-art${locked ? ' is-locked' : ''}`}>
       {/* 舰影列：固定尺寸、置卡片最左侧；容器过窄时整列不渲染（样式 .app-ano-card.is-foe-art） */}
-      {showFoeArt ? <FoeArt fam={foeFamilyOf(anomaly)} /> : null}
+      {showFoeArt ? <FoeArt fam={foeFamilyOf(anomaly)} shipId={foeCardShipIdOf(anomaly)} /> : null}
       <div className="app-foe-main">
       <div className="app-ano-top">
         <span className="app-ano-name">
@@ -3189,7 +3207,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               return (
                 <div className="app-station-card is-foe-art is-faction">
                   {/* 舰影列（2026-09-13 船长）：族取**置顶那张代表悬赏卡**的族——与卡面标的出击目标同一张卡，不另算族 */}
-                  {showFoeArt ? <FoeArt fam={foeFamilyOf(factionCard)} /> : null}
+                  {showFoeArt ? <FoeArt fam={foeFamilyOf(factionCard)} shipId={foeCardShipIdOf(factionCard)} /> : null}
                   <div className="app-foe-main">
                   <div className="app-station-head">
                     <span className="app-station-name">
@@ -3356,7 +3374,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
           return (
             <div key={t.id} className={`app-station-card is-foe-art${standingMet ? '' : ' is-locked'}`}>
               {/* 舰影列（2026-09-13 船长）：族取该任务**主题悬赏卡**（档位强化卡与原卡同族，`lairAnomalyOf` 不改族） */}
-              {showFoeArt && base ? <FoeArt fam={foeFamilyOf(base)} /> : null}
+              {showFoeArt && base ? <FoeArt fam={foeFamilyOf(base)} shipId={foeCardShipIdOf(base)} /> : null}
               <div className="app-foe-main">
               <div className="app-station-head">
                 <span className="app-station-name">

@@ -2639,14 +2639,18 @@ function normalizeState(raw: unknown): GameState {
       if (typeof sid === 'string' && sid.length > 0 && !shipIds.includes(sid)) shipIds.push(sid)
     }
     const depth = Math.floor(num(o.depth))
-    const cores = Math.floor(num(o.coresReleased))
     wormholeAutoReports.push({
       id,
       stockId: typeof o.stockId === 'string' ? o.stockId : '',
       depth: Number.isFinite(depth) ? Math.min(9, Math.max(1, depth)) : 1,
       finishedAtGameMs: Number.isFinite(num(o.finishedAtGameMs)) ? Math.max(0, Math.floor(num(o.finishedAtGameMs))) : 0,
       shipIds,
-      coresReleased: Number.isFinite(cores) && cores > 0 ? Math.min(WORMHOLE_AUTO_MAX_SHIPS, cores) : shipIds.length,
+      /**
+       * 返航释放的核心数：**恒为 1**（2026-09-26 船长令「整队一趟只占 1 枚」）。
+       * 旧档该字段存的是"参与舰数"（旧口径每舰 1 枚）——读档**按新口径重算**，不做数值迁移
+       * （它只是报告里的一行读数，不参与占用计算；占用直接数在跑的趟数）。
+       */
+      coresReleased: 1,
       gains,
       damage,
       confirmed: o.confirmed === true,

@@ -9,6 +9,11 @@
  * 用法：`npm run art:ships`（或 `npx tsx tools/shipart-preview.ts`）
  * 产物：`tools/_ui-artifacts/shipart-preview.html`（gitignore 目录，浏览器直接打开）
  *
+ * **2026-09-26 扩展**：增补**敌舰**一节（30 条逐舰形）＋ `--check` 退出码。
+ * 敌舰形**不是内联 `<g>`**（走 `s()`/`poly()` 算路径），任何指望"从源码抽 JSX"的做法都抽不到，
+ * 所以敌舰按**键在不在**判定齐全性——键写错/漏画 ⇒ 运行时静默落族形（观感错、报错无），
+ * 正是需要闸门盯住的那类漏洞。`npm run art:ships -- --check` 有缺即退出码 1（给合入前用）。
+ *
  * 做法：**直接从源码文本抽**——船表读 `packages/data/src/ships.ts`，图形读
  * `apps/desktop/.../ui/shipArt*.tsx`（JSX 转 SVG：`className`→`class`、驼峰属性→连字符）。
  * 为什么不 import：UI 侧是无扩展名导入 + JSX，tools 里 require 解析不通；文本抽取还能保证
@@ -22,6 +27,7 @@ import { dirname, join } from 'node:path'
 
 const ROOT = process.cwd()
 const UI = join(ROOT, 'apps', 'desktop', 'src', 'renderer', 'src', 'ui')
+const CHECK_ONLY = process.argv.includes('--check')
 
 /** 舰种族色（与 `ui/shipArt` 的 ROLE_ACCENT 同值；预览页只用于上色，不参与游戏逻辑） */
 const ROLE_ACCENT: Record<string, string> = {
@@ -80,11 +86,13 @@ function readShips(): Row[] {
   return rows
 }
 
-const artSrc = ['shipArt.tsx', 'shipArtData.tsx', 'shipArtWh.tsx']
+const artSrc = ['shipArt.tsx', 'shipArtData.tsx', 'shipArtWh.tsx', 'shipArtFoe.tsx']
   .map((f) => (existsSync(join(UI, f)) ? readFileSync(join(UI, f), 'utf8') : ''))
   .join('\n')
 
-/** 抽一艘船的形（JSX → SVG 片段）；抽不到返回 null */
+/** 抽一艘船的形（JSX → SVG 片段）；抽不到返回 null。
+ *  ⚠ 敌舰形走 `s()`/`poly()` 算路径，不是内联 `<g>` ⇒ 本函数对敌舰**注定返回 null**，
+ *  敌舰一节只判"键在不在"（见 `FOE_SHIP_ART` 抽取），不渲染形。 */
 function artInner(id: string): string | null {
   const m = artSrc.match(new RegExp(`["']${id}["']\\s*:\\s*\\(\\s*<g>([\\s\\S]*?)</g>\\s*\\),`))
   if (!m) return null
@@ -100,7 +108,43 @@ function artInner(id: string): string | null {
     .join('')
 }
 
+/** 敌舰舰级表：`packages/data/src/foe-ships.ts` 里 `export const FOE_*: FoeShipDef = { … }` 逐条取 id/name/family/tier */
+function readFoes(): Array<{ id: string; name: string; fam: string; tier: number }> {
+  const src = readFileSync(join(ROOT, 'packages', 'data', 'src', 'foe-ships.ts'), 'utf8')
+  const out: Array<{ id: string; name: string; fam: string; tier: number }> = []
+  for (const m of src.matchAll(/export const \w+: FoeShipDef = \{([\s\S]*?)\n\}/g)) {
+    const b = m[1]!
+    const id = b.match(/id:\s*'([^']+)'/)?.[1]
+    const name = b.match(/name:\s*'([^']+)'/)?.[1]
+    const fam = b.match(/family:\s*'([A-Z])'/)?.[1]
+    const tier = Number(b.match(/hullClassTier:\s*(\d)/)?.[1] ?? 0)
+    if (id && name && fam) out.push({ id, name, fam, tier })
+  }
+  return out
+}
+
+/** `FOE_SHIP_ART` 汇总表的键（逐舰形的存在性判据 = 键在表里） */
+function foeArtKeys(): Set<string> {
+  const m = artSrc.match(/export const FOE_SHIP_ART: Record<string, ReactNode> = \{([\s\S]*?)\n\}/)
+  const keys = new Set<string>()
+  if (!m) return keys
+  for (const k of m[1]!.matchAll(/'([a-z0-9-]+)'\s*:/g)) keys.add(k[1]!)
+  return keys
+}
+
+const FAM_LABEL: Record<string, string> = {
+  A: '海盗',
+  B: '拾荒',
+  C: '异形',
+  D: '守墓古舰',
+  E: '泰坦巨构',
+  G: '鱿烬亡军',
+  H: '墨潮帮',
+}
+
 const ships = readShips()
+const foes = readFoes()
+const foeKeys = foeArtKeys()
 let missing = 0
 const byRole = new Map<string, Row[]>()
 for (const s of ships) {
@@ -142,6 +186,10 @@ const html = `<!doctype html><meta charset="utf-8"><title>舰船战斗图形总�
  .name{margin-top:2px;font-weight:700} .id{color:#7f93aa;font-weight:400;margin-left:6px;font-size:11px}
  .star{color:#ffd166;margin-right:4px}
  .miss{color:#ff7b6b;padding:36px}
+ table.foe{border-collapse:collapse;font-size:12px}
+ table.foe th,table.foe td{border:1px solid #1e2a3a;padding:3px 8px;text-align:left}
+ table.foe th{color:#9fb4cc;font-weight:400}
+ .ok{color:#6fd39a} .no{color:#ff7b6b;font-weight:700}
  /* 与 styles.css 的 .shipart-* 同款（本页自带一份，独立于应用样式） */
  .shipart-panel{stroke-width:1;opacity:.4;fill:none}
  .shipart-acc{stroke-width:1.6;fill:none}
@@ -154,9 +202,37 @@ const html = `<!doctype html><meta charset="utf-8"><title>舰船战斗图形总�
 </style>
 <h1>舰船战斗图形总览 · ${ships.length} 艘（240×110 本地坐标 · 舰首朝右）</h1>
 <p>★ = 2026-09-16 补图批。只画形，不含战斗布局、引擎尾焰与体量阶梯；族色件为固定色（C 巢群磷光绿 / D 陵墓冷青），主轮廓随舰种族色。</p>
-${sections.join('')}`
+${sections.join('')}
+<h1 style="margin-top:26px">敌舰逐舰形 · ${foes.length} 条（2026-09-26）</h1>
+<p>逐舰形走 <code>s()</code>/<code>poly()</code> 算路径，本页不渲染（形见 <code>ui/shipArtFoe.tsx</code> 与工作文档台账）；
+本表只管<b>键的齐全性</b>——键写错/漏画 ⇒ 运行时静默落族形（观感错、报错无）。</p>
+<table class="foe"><tr><th>族</th><th>档</th><th>舰级 id</th><th>名称</th><th>逐舰形</th></tr>
+${foes
+  .map(
+    (f) =>
+      `<tr><td>${f.fam} ${FAM_LABEL[f.fam] ?? ''}</td><td>T${f.tier}</td><td>${f.id}</td><td>${f.name}</td>` +
+      `<td class="${foeKeys.has(f.id) ? 'ok' : 'no'}">${foeKeys.has(f.id) ? '有' : '缺'}</td></tr>`,
+  )
+  .join('')}
+</table>`
 
 const out = join(ROOT, 'tools', '_ui-artifacts', 'shipart-preview.html')
+const foeMissing = foes.filter((f) => !foeKeys.has(f.id))
+if (CHECK_ONLY) {
+  const bad = missing + foeMissing.length
+  console.log(
+    `敌舰逐舰形：${foes.length - foeMissing.length}/${foes.length} 有条目；玩家舰缺形 ${missing} 艘` +
+      (foeMissing.length ? `；缺：${foeMissing.map((f) => `${f.name}(${f.id})`).join('、')}` : ''),
+  )
+  if (bad > 0) {
+    console.error(`❌ 图形契约不过：玩家舰缺形 ${missing} 艘 · 敌舰缺逐舰形 ${foeMissing.length} 条`)
+    process.exit(1)
+  }
+  console.log('✅ 图形契约通过：玩家舰与敌舰逐舰形均无缺漏。')
+  process.exit(0)
+}
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(out, html, 'utf8')
-console.log(`已写出舰船图形总览：${out}（${ships.length} 艘，缺形 ${missing} 艘）`)
+console.log(
+  `已写出舰船图形总览：${out}（${ships.length} 艘，缺形 ${missing} 艘；敌舰 ${foes.length} 条，缺逐舰形 ${foeMissing.length} 条）`,
+)

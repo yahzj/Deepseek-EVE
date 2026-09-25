@@ -1436,7 +1436,7 @@ export function WormholePanel({
                     {tr("ui.Wormhole.002")}<b>{tr("ui.Wormhole.016")}</b>{tr('ui.Wormhole.365', { p1: WORMHOLE_AUTO_MAX_SHIPS })}{' '}
                     <b>{tr("ui.Wormhole.017")}</b>{tr("ui.Wormhole.246")}{' '}
                     {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} {tr("ui.Wormhole.088")}{' '}
-                    {tr('ui.Wormhole.366', { p1: Math.round(WORMHOLE_AUTO_YIELD_MUL * 100) })}<b>{tr("ui.Wormhole.133")}</b>
+                    <b>{tr("ui.Wormhole.133")}</b>
                     {tr('ui.Wormhole.367', { p1: Math.round(WORMHOLE_AUTO_DAMAGE_MIN * 100), p2: Math.round(WORMHOLE_AUTO_DAMAGE_MAX * 100), p3: tr('ui.Wormhole.368') })}
                     <b>{tr("ui.Wormhole.198")}</b>{tr('ui.Wormhole.363')}<b>{tr("ui.Wormhole.018")}</b>{tr("ui.Wormhole.019")}
                   </>
@@ -1640,7 +1640,7 @@ export function WormholePanel({
                     {tr("ui.Wormhole.138")} <b>{Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)}</b> {tr("ui.DebugPanel.007")}
                   </span>
                   <span className="app-wh-cell">
-                    {tr("ui.Wormhole.139")} <b>{Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}%</b>{tr("ui.Wormhole.251")}
+                    {tr("ui.Wormhole.139")}<b>{tr("ui.Wormhole.370")}</b>{tr("ui.Wormhole.251")}
                   </span>
                   <span
                     className="app-wh-cell"
@@ -2338,7 +2338,7 @@ export function WormholePanel({
                 {tr("ui.Wormhole.265")}{shipDisplayName(state, ctx, state.shipId)}{tr("ui.Wormhole.039")}<b>{tr("ui.Wormhole.040")}
                 {autoHandover?.toName ?? tr("ui.Wormhole.114")}{tr('ui.Wormhole.364')}</b>{tr('ui.Wormhole.357')}{' '}
                 {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} {tr("ui.Wormhole.115")}{' '}
-                {Math.round(WORMHOLE_AUTO_YIELD_MUL * 100)}{tr('ui.Wormhole.358')}
+                {tr('ui.Wormhole.358')}
               </div>
               {autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
               <div className="app-wh-scanbar-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
