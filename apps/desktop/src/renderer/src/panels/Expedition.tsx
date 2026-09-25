@@ -178,7 +178,7 @@ export function ExpeditionPanel({
               {tr("ui.Expedition.127", { p1: formatDurationMs(scan.remainingMs) })}
               <button
                 className="app-btn is-small is-warn"
-                style={{ marginLeft: 6 }}
+                style={{ marginLeft: 'var(--wui-sp-6)' }}
                 title={tr("ui.Expedition.069")}
                 onClick={() => {
                   const r = engine.stopScanNow()

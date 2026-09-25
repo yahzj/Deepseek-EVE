@@ -739,7 +739,92 @@
 :root {
   /* 主题色板 */
   --wui-mono: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
-}
+
+  /* ── **动效单点**（2026-09-25 UI 重置批新增；此前全站 97 处动画的时长/缓动写死在各自规则里，
+        想整体调快调慢得改 97 处 —— 这是"动效没有单点"的缺口）。**只加不改**：现有规则仍用原值，
+        后续按页迁移时应改引这些 token。── */
+  --wui-dur-1: 120ms;   /* 悬停 / 按压反馈 */
+  --wui-dur-2: 200ms;   /* 状态切换 */
+  --wui-dur-3: 320ms;   /* 面板 / 弹窗进出 */
+  --wui-ease-out: cubic-bezier(.2, .7, .3, 1); /* 进场 */
+  --wui-ease-in-out: ease-in-out;              /* 循环 / 呼吸 */
+
+  /* ── **循环动画的"族基准周期"**（2026-09-25 同批）：51 条 `infinite` 动画按**宿主族**归口，
+        每条写成 `族基准 × 比例`（**比例经逐条换算，时长值与迁移前逐字相同**）⇒ 想整体调快/调慢，
+        改这里一个数即可。例：`.app-aifx-beam` = `calc(var(--wui-dur-aifx) * 0.6875)` = 1.1s（原值）。
+        ⚠ 未纳入的 5 处非 `animation:` 简写形态（单独的 `animation-duration` 等）仍用原值书写。── */
+  --wui-dur-aifx: 1.6s;     /* AI 作业特效（`.app-aifx-*`，12 条） */
+  --wui-dur-act: 2.4s;      /* 活动栏 / 作业卡（`.app-act-*`，10 条） */
+  --wui-dur-shipwin: 1.6s;     /* 舰船窗口（`.app-swin-*` / `.app-shipwin*`，11 条） */
+  --wui-dur-bts: 1.5s;      /* 战斗画面（`.app-bts-*`，6 条） */
+  --wui-dur-map: 1.6s;      /* 星图（`.app-map-*`，2 条） */
+  --wui-dur-work: 2.4s;     /* 背景作业光效（`.bg-work*`，2 条） */
+  --wui-dur-pro: 2.4s;      /* 序章（`.app-pro-*`，2 条） */
+  --wui-dur-nav: 1.6s;      /* 导航未读闪动（`.app-nav*`，1 条） */
+
+  /* ── **字阶**（2026-09-25 船长裁决「刻度贴着真实值改」后重定）：18 档，覆盖实测全部字号。
+        ⚠ 命名即值：`--wui-fs-xs` = 11px、`--wui-fs-base` = 13px（**不再出现名字与值对不上**）。
+        ⚠ 字体族**不动**（系统雅黑栈 + `--wui-mono`），不引入外部字体。
+        ⚠ **值必须与实测分毫相同**：`calc(var(--ui-fs, 1) * Npx)`（32 处）是「设置→字体大小」的
+          缩放基准，N 一变玩家设置就叠出偏差；`--app-head-fs` 是全站标题缩放常量，另见 styles.css。── */
+  --wui-fs-2xs: 8.5px;
+  --wui-fs-2xsb: 9px;
+  --wui-fs-2xsc: 9.5px;
+  --wui-fs-2xsd: 10px;
+  --wui-fs-2xse: 10.5px;
+  --wui-fs-xs: 11px;
+  --wui-fs-xsb: 11.5px;
+  --wui-fs-s: 12px;
+  --wui-fs-sm: 12.5px;
+  --wui-fs-base: 13px;
+  --wui-fs-baseb: 13.5px;
+  --wui-fs-md: 14px;
+  --wui-fs-mdb: 14.5px;
+  --wui-fs-lg: 15px;
+  --wui-fs-lgb: 16px;
+  --wui-fs-xl: 17px;
+  --wui-fs-2xl: 18px;
+  --wui-fs-3xl: 19px;
+  --wui-fs-4xl: 20px;
+  --wui-fs-4xlb: 21px;
+  --wui-fs-4xlc: 22px;
+  --wui-fs-5xl: 36px;
+
+  /* ── **间距节奏**（2026-09-25 船长裁决「刻度贴着真实值改」后重定）：12 档。
+        实测本仓真实间距是 **2px 基数的手工刻度**（8×149 · 6×144 · 10×76 · 2×69 · 4×54），
+        原定的 4px 基数（4/8/12/16/24）只命中 37% ⇒ 照它迁移要改 307 条 ≤2px、29 条 >2px。
+        ⚠ 命名即值：`--wui-sp-6` = 6px。── */
+  --wui-sp-1: 1px;
+  --wui-sp-2: 2px;
+  --wui-sp-3: 3px;
+  --wui-sp-4: 4px;
+  --wui-sp-5: 5px;
+  --wui-sp-6: 6px;
+  --wui-sp-7: 7px;
+  --wui-sp-8: 8px;
+  --wui-sp-9: 9px;
+  --wui-sp-10: 10px;
+  --wui-sp-11: 11px;
+  --wui-sp-12: 12px;
+  --wui-sp-13: 13px;
+  --wui-sp-14: 14px;
+  --wui-sp-15: 15px;
+  --wui-sp-16: 16px;
+  --wui-sp-18: 18px;
+  --wui-sp-19: 19px;
+  --wui-sp-20: 20px;
+  --wui-sp-22: 22px;
+  --wui-sp-24: 24px;
+  --wui-sp-26: 26px;
+  --wui-sp-28: 28px;
+  --wui-sp-32: 32px;
+  --wui-sp-34: 34px;
+  --wui-sp-44: 44px;
+  --wui-sp-999: 999px;   /* 胶囊（原写死 999px 的圆角） */
+
+  /* ── **负向偏移不入刻度**（2026-09-25 定）：margin: -13px 0 0 -13px 这类是**定位偏移**
+        （重叠 / 贴边让位），语义与"间距节奏"不同 —— 建负刻度会让人误当成间距档来用。
+        实测这类值只出现在少数定位处（-13×4 · -15/-9/-7/-23/-65 各 2 …），保持原值书写。── */}
 
 /* ---------- 面板 ---------- */
 /* 2026-09-10 船长：面板半透明——界面最底层是宇宙星图（见 renderer 的 .app-root），

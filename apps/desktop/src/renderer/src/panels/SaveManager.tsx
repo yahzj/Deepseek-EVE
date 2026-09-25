@@ -299,8 +299,8 @@ export function SaveManager({
             </div>
             <div className="app-modal-body">
               <div>{tr('ui.Ironman.040')}</div>
-              <div className="app-dim" style={{ marginTop: 6 }}>{tr('ui.Ironman.041')}</div>
-              <div className="app-save-actions" style={{ marginTop: 10 }}>
+              <div className="app-dim" style={{ marginTop: 'var(--wui-sp-6)' }}>{tr('ui.Ironman.041')}</div>
+              <div className="app-save-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
                 <button className="app-btn is-small is-warn" disabled={busy} onClick={() => void confirmCloseIronman()}>
                   {tr('ui.Ironman.005')}
                 </button>

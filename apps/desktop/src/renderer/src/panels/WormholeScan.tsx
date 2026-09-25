@@ -346,10 +346,10 @@ export function WormholeScanTab({
                         </span>
                         {line.text}
                       </div>
-                      <div className="app-dim" style={{ marginTop: 6 }}>
+                      <div className="app-dim" style={{ marginTop: 'var(--wui-sp-6)' }}>
                         {tr("ui.WormholeScan.023")}<b>{tr("ui.WormholeScan.024")}</b>{tr('ui.WormholeScan.058')}
                       </div>
-                      <div className="app-wh-scanbar-actions" style={{ marginTop: 10 }}>
+                      <div className="app-wh-scanbar-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
                         <button
                           className="app-btn is-small is-warn"
                           onClick={() => {
