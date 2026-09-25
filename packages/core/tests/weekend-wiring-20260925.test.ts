@@ -19,6 +19,7 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState } from '../src/index'
 import { startMining } from '../src/mining'
 import { advanceEncounterWatch, maintainPresence, rollLowSecAmbush } from '../src/encounters'
+import { activeFoeSpecsOf, createBattleState } from '../src/combat'
 import { commsInbox } from '../src/comms'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WEEKEND_COMMS_SETTLE_ID, WEEKEND_COMMS_WARN_ID, weekendSyncComms } from '../src/weekendComms'
@@ -470,6 +471,42 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(bs?.galaxies.length).toBe(s.weekendLastResult!.galaxies.length)
     /** 读档后再同步：不该重发（`seq` 相同） */
     expect(weekendSyncComms(back, ctx, now).warned || weekendSyncComms(back, ctx, now).settled).toBe(false)
+  })
+
+  it('⑮ 旗舰战**撤退**（自动脱离）⇒ 这一场对母舰的伤害照样记进池子（只不给进度、不判击沉）', () => {
+    const gid = GID
+    const core = 'galaxy-kor'
+    const s = invaded(gid)
+    const now = Date.now()
+    weekendNoteContribution(s.weekendEvent!, gid, 1) // 外围夺回 ⇒ 门禁解开
+    weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
+    const putBefore = s.weekendEvent!.contributed[core] ?? 0
+    /** 真旗舰卡建一场战斗，把母舰打掉三成，然后标成"自动脱离" */
+    const card = ctx.anomalies.get('ink-flagship')!
+    const specs = activeFoeSpecsOf(card, ctx.balance.battle, 3) // 第 4 波（母舰压轴）
+    const flag = specs.find((u) => u.foeShipId === 'foe-h-ink-flagship')!
+    const battle = createBattleState(flag, specs, 0, 5_000)
+    const rt = battle.units[flag.tag]!
+    const total = rt.hp.s + rt.hp.a + rt.hp.h
+    rt.hp = { ...rt.hp, h: Math.max(0, rt.hp.h - Math.round(total * 0.3)) }
+    battle.autoEscaped = true
+    s.encounter = {
+      active: true,
+      shipId: s.shipId,
+      galaxyId: core,
+      name: '墨潮旗舰部队',
+      threat: 170,
+      anomalyId: 'ink-flagship',
+      origin: '测试 · 挑战旗舰',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 0,
+      battle,
+    }
+    advanceEncounterWatch(s, ctx, 1000)
+    expect(s.weekendEvent!.flagshipHpDone ?? 0, '撤退也把这一场的伤害记进池子').toBeGreaterThan(0)
+    expect(s.weekendEvent!.contributed[core] ?? 0, '撤退不给进度（读数与开打前一致）').toBe(putBefore)
+    expect(s.weekendEvent!.flagshipDown, '池子没空 ⇒ 不算击沉').toBeUndefined()
+    expect(s.encounter.active, '遭遇已收场').toBe(false)
   })
 
   it('⑭ 旗舰战战前准备：视图/编队净化/落盘/按战力自动选（船长令"入口 ＋ 选船界面"）', () => {
