@@ -24,6 +24,8 @@ import type { ActivePromo, ActiveTuning, GameState } from '@whale/core'
 import { formatDurationMs, formatDurationShort } from '@whale/core'
 import type { ToastFn } from '../pages/common'
 import { ActivityBar } from '../panels/ActivityBar'
+// 旧版活动栏：从「昨天那版」原样拆出的冻结件（船长令「旧版建议你从昨天的版本中 git 下来进行拆解」）
+import { ActivityBarClassic } from '../panels/ActivityBarClassic'
 import { AnnouncementHub } from '../panels/Announcements'
 import { DebugButton } from '../panels/DebugPanel'
 import { Glyph } from './Glyphs'
@@ -499,7 +501,8 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
            *   放到 `<main>` 外面就成了 `.app-workspace` 的同级项，会把整行吃掉（实测主区被压到 4px）。
            */}
           <main className="app-page-main">
-            <ActivityBar
+            {/* 旧版活动栏 = **从昨天那版拆出的冻结件**（标题栏 + 两组 + 行内操作按钮，无副AI迷你卡） */}
+            <ActivityBarClassic
               engine={engine}
               onToast={showToast}
               onAiCenter={() => {

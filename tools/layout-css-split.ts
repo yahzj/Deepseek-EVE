@@ -202,19 +202,47 @@ const modernCss =
   '   `npm run ui:layout-css` 重新生成（两套布局不能同时加载，故必须分成两份）。 */\r\n\r\n' +
   current
 
+/**
+ * **三块"窗口模块"的样式族**（船长 2026-09-25 令：「不能将各个窗口模块化吗，新版的活动窗口
+ * 和旧版（昨天）的活动窗口」⇒ 裁定**甲：只把窗口模块化，两套外壳先保留**；
+ * 并指定「**旧版建议你从昨天的版本中 git 下来进行拆解**」）。
+ *
+ * 三块窗口 = ① 活动栏（`ActivityBar`）② 主控活动窗口（`ActivityScreen`）③ 事件日志坞。
+ * **活动栏已按船长指的路子拆开**：旧版用从昨天那版取来的 `ActivityBarClassic.tsx`（冻结件），
+ * 它的观感**整族走冻结基准**（`_baseline-main.css` 里的 `.app-activitybar*` / `.app-ai-*`），
+ * 所以这里**不再**把新版活动栏那一族搬给旧版（搬了反而会盖掉旧版样式）。
+ * 剩下两块组件共用、样式也共用，故把它们的族复制进 classic 份。
+ */
+const WINDOW_MODULE_PREFIXES = [
+  '.app-actwin', // ② 主控活动窗口（窗口壳 / 标题 / 读数 / 操作）
+  '.app-act-', // 活动窗口内部件（进度条 / 读数 / 按钮）
+  '.app-log-', // ③ 事件日志坞内部件（筛选 / 列表 / 收起把手）
+  '.app-log-dock',
+]
+const isWindowModuleFamily = (sel: string): boolean => WINDOW_MODULE_PREFIXES.some((p) => sel.startsWith(p))
+const windowModuleRules = curRules.filter((r) => isWindowModuleFamily(r.sel))
+if (windowModuleRules.length === 0) throw new Error('三块窗口模块在 styles.css 里一条都没找到')
+
 // ── ② classic 份 = 本分支 styles.css（= 设置弹层等新件与新版同步）+ 旧版外壳覆盖 ──
 const classicCss =
   '/* 旧版（classic）应用级样式 —— 由 `tools/layout-css-split.ts` 生成，**不要手改本文件**。\n' +
   '   一 = 本分支 `styles.css` 原样（⇒ 设置弹层等新件与新版**同步**，船长令「设置内采用新版的样式」）；\n' +
   '   二 = **旧版外壳覆盖**：合并前 main 的外壳族原文 + `.app-root.is-layout-classic` 限定\n' +
-  '        ⇒ 外壳（顶栏/左竖栏/主区/日志坞/活动栏）恢复成 main 的样子，其余跟随新版。\n' +
+  '        ⇒ 外壳（顶栏/左竖栏/主区）恢复成 main 的样子；\n' +
+  '   三 = **撤销新版新增、main 没有的属性**（定位/层级/box-sizing 这类，部分覆盖取消不掉）；\n' +
+  '   四 = **三块窗口模块的样式族**（活动栏 / 主控活动窗口 / 事件日志坞，船长令「把窗口模块化」）。\n' +
   '   基准冻结在 `_baseline-main.css`（**不要删**：删了就无法复现旧版外壳）。 */\r\n\r\n' +
   '/* ══════════ 一、本分支 styles.css 原样 ══════════ */\r\n\r\n' +
   current +
   '\r\n\r\n/* ══════════ 二、旧版外壳覆盖（取合并前 main 原文 + 旧版限定）══════════ */\r\n\r\n' +
   shellOverrides.join('\r\n') +
   '\r\n\r\n/* ══════════ 三、撤销新版加上去、而 main 原文没有的属性 ══════════ */\r\n' +
-  CLASSIC_RESETS
+  CLASSIC_RESETS +
+  '\r\n\r\n/* ══════════ 四、三块窗口模块（活动栏 / 主控活动窗口 / 事件日志坞）══════════\r\n' +
+  '   船长 2026-09-25 令：「不能将各个窗口模块化吗」⇒ 窗口的**观感**随组件走、**位置**随外壳走。\r\n' +
+  '   下面这三族整族从当前样式取来（带旧版限定便于阅读）；位置/尺寸由第二节的外壳覆盖接管。 */\r\n\r\n' +
+  windowModuleRules.map((r) => `.app-root.is-layout-classic ${r.raw}`).join('\r\n') +
+  '\r\n'
 
 // ── 自检 ──
 const bal = (t: string): number => (t.match(/\{/g) ?? []).length - (t.match(/\}/g) ?? []).length
