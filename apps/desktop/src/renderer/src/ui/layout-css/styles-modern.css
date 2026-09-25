@@ -10360,6 +10360,40 @@ html[data-locale='en'] body {
 
 }
 
+/* 入侵卡悬停里的**敌对舰船一览**（2026-09-26 船长令：舰名与特殊装置染色、并列出整池可能出现的敌人）
+   舰名/特殊装置的**颜色走内联的 UI_TONES**（与战场敌舰名同一套色），这里只管列表排布。 */
+/* 入侵卡悬停里的**敌对舰船一览**（2026-09-26 船长令：舰名与特殊装置染色 · 列出整池可能出现的敌人 ·
+   **每艘船各占一行**）。颜色走内联的 `UI_TONES`（与战场敌舰名同一套 token），这里只管排布。
+
+   ⚠ **块级关系必须显式写死**，不能靠默认 display：
+   · 提示框 `.app-tip` 自身是 flex 容器（`ui/Tooltip.tsx`）⇒ 它会把**inline 子元素块化**；
+     最外层这一层若只靠默认（`<span>` = inline），里面那些 `display: block` 的行会被摊平成
+     同级 flex 项，四五行挤成一段 —— 船长报的「不要全放一个段落内」就是这个毛病。
+   · 所以外层给 `display: block`（确立块级容器），行给 `display: block`（各自成行）。
+   · 宽度吃满父级、允许长效果说明换行：`max-width: 100%` + `overflow-wrap: anywhere`。 */
+.app-ano-foebrief {
+
+  display: block;
+
+  max-width: 100%;
+
+}
+
+.app-ano-foebrief-row {
+
+  display: block;
+
+  line-height: 1.45;
+
+  overflow-wrap: anywhere;
+
+}
+
+.app-ano-foebrief-row + .app-ano-foebrief-row {
+
+  margin-top: var(--wui-sp-4);
+
+}
 .app-ga-invprog-line {
 
   font-size: var(--wui-fs-xsb);
