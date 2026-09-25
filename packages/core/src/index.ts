@@ -226,6 +226,9 @@ export {
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_LOCKED_FAMILY,
   weekendWinGainOf,
+  /** 2026-09-25 船长令：入侵触发前提 = 协会声望 ≥ 40（调试模式不受限） */
+  WEEKEND_MIN_STANDING,
+  weekendInvasionAllowedFor,
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
   WEEKEND_NPC_CORE_MS,

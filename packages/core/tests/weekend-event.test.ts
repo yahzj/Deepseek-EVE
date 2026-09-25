@@ -18,6 +18,8 @@ import {
   WEEKEND_GAIN_REPEL,
   WEEKEND_NPC_CORE_MS,
   WEEKEND_NPC_PERIPHERY_MS,
+  WEEKEND_MIN_STANDING,
+  weekendInvasionAllowedFor,
   WEEKEND_OFFLINE_SHIELD_MS,
   WEEKEND_PERIPHERY_THREAT,
   WEEKEND_WINDOW_MS,
@@ -594,5 +596,36 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
     expect(ev.endedAtWallMs).toBe(T)
     weekendNotePlayerWin(s, per)
     expect(ev.contributed[per], '结束后不再记账（投入冻结，仍停在清门禁时的 1）').toBeCloseTo(1, 6)
+  })
+
+  /**
+   * **船长 2026-09-25 令**：「**给入侵触发加一个前提，需要拥有至少40声望，才会触发入侵。**」
+   * 四答：协会（DSI）声望 ≥ 40 · **只在开新场那一刻判** · 不足**静默不开** · **调试模式不受限**。
+   *
+   * ⚠ 本用例钉的是**判据本身**（`weekendInvasionAllowedFor`）：当前 `WEEKEND_DEBUG_ONLY = true`
+   * ⇒ 正常模式那一段还走不到（解除调试限定的那一刻起生效）；判据的**接线**由 `content:check` 的
+   * 「入侵声望前提契约」看着（源码级扫描：正常模式那一段必须调它）。
+   */
+  it('声望前提：协会声望 ≥ 40 才允许开新场；调试模式不受限', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 31 })
+    expect(WEEKEND_DEBUG_ONLY, '本用例的前提：入侵当前仅调试模式可见').toBe(true)
+    // 正常模式：声望 0 / 39 ⇒ 不开；40 及以上 ⇒ 开
+    s.debugQuick = false
+    s.standings['dsi'] = 0
+    expect(weekendInvasionAllowedFor(s), '声望 0 ⇒ 不开').toBe(false)
+    s.standings['dsi'] = WEEKEND_MIN_STANDING - 1
+    expect(weekendInvasionAllowedFor(s), '差 1 点也不开').toBe(false)
+    s.standings['dsi'] = WEEKEND_MIN_STANDING
+    expect(weekendInvasionAllowedFor(s), '到线即开').toBe(true)
+    s.standings['dsi'] = WEEKEND_MIN_STANDING + 30
+    expect(weekendInvasionAllowedFor(s), '超过更开').toBe(true)
+    // 声望远超也拦不住调试模式：调高声望不改变"调试恒真"这条
+    s.standings['dsi'] = 0
+    s.debugQuick = true
+    expect(weekendInvasionAllowedFor(s), '调试模式不受限（新建档也能测入侵）').toBe(true)
+    // 缺键（老档没有 standings.dsi）按 0 算 ⇒ 正常模式下不开
+    s.debugQuick = false
+    delete s.standings['dsi']
+    expect(weekendInvasionAllowedFor(s), '缺键 = 0 ⇒ 正常模式不开').toBe(false)
   })
 })

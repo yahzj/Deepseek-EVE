@@ -1432,6 +1432,42 @@ for (const m of MODULES) {
     console.log('· 入侵演出契约：警报/烟火两层不吃点击（z 110）· 声效两处调用点在 · 弹窗跳转直开结算面板')
   }
 
+  /* ── 入侵声望前提契约（2026-09-25 船长令：「给入侵触发加一个前提，需要拥有至少40声望」）──
+   *
+   * 四答：协会（DSI）声望 ≥ 40 · **只在开新场那一刻判** · 不足**静默不开** · **调试模式不受限**。
+   *
+   * ⚠ 为什么要有这条源码级契约：判据本身在 `weekend-event` 用例里测得动，但**接线**测不动 ——
+   * 当前 `WEEKEND_DEBUG_ONLY = true` ⇒ `ensureWeekendEvent` 的**正常模式那一段根本走不到**
+   * （第一行就把非调试情形挡掉了）⇒ 门槛有没有接上、接在调试分支的**前面还是后面**，
+   * 只有扫源码才看得见。等船长解除调试限定时，这条契约就是"门槛还在、还在正确位置"的保证。
+   */
+  {
+    const wePath = 'packages/core/src/weekendEvent.ts'
+    const weSrc = readSrc(wePath)
+    check(
+      /export const WEEKEND_MIN_STANDING = 40/.test(weSrc),
+      `入侵声望前提契约：${wePath} 必须定义 \`WEEKEND_MIN_STANDING = 40\`（船长令的"至少 40 声望"）`,
+    )
+    const fn = weSrc.slice(weSrc.indexOf('export function ensureWeekendEvent'))
+    check(
+      fn.includes('if (!weekendInvasionAllowedFor(state)) return false'),
+      `入侵声望前提契约：\`ensureWeekendEvent\` 的正常模式那一段必须调 \`weekendInvasionAllowedFor(state)\`` +
+        `（不达线 ⇒ 静静不开新场）`,
+    )
+    const debugIdx = fn.indexOf('if (weekendDebugOn(state)) {')
+    const gateIdx = fn.indexOf('weekendInvasionAllowedFor(state)')
+    check(
+      debugIdx >= 0 && gateIdx > debugIdx,
+      `入侵声望前提契约：声望门槛必须在**调试分支之后**（船长答"调试模式不受限"）——` +
+        `现在 debug=${debugIdx} · gate=${gateIdx}（gate 必须更大）`,
+    )
+    check(
+      weSrc.includes('export function weekendInvasionAllowedFor('),
+      `入侵声望前提契约：判据必须单独成口（\`weekendInvasionAllowedFor\`）——界面/工具与用例读同一份`,
+    )
+    console.log('· 入侵声望前提契约：门槛 = 协会声望 ≥ 40、落在调试分支之后（调试不受限）、判据单独成口')
+  }
+
   /* ── 干扰压制取数契约（2026-09-25 船长报障「摧毁敌方干扰舰后，射程不会恢复」）──
    *
    * 病根两条，都在这一个机制的取数上：

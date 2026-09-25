@@ -25,6 +25,36 @@ export const WEEKEND_PERIPHERY_THREAT = 78
 /** 核心 T5 旗舰威胁（口径定稿 #13：**核心 120**；4 波 · 4 艘小队战） */
 export const WEEKEND_CORE_THREAT = 120
 /**
+ * **入侵触发的声望前提**（**船长 2026-09-25 令**：「**给入侵触发加一个前提，需要拥有至少40声望，
+ * 才会触发入侵。**」）—— 判的是**协会（DSI）声望**（悬赏卡门槛用的同一条）。
+ * 40 与既有"虫洞解锁线"`WORMHOLE_SCAN_UNLOCK_STANDING` 同值，但那是另一件事的旋钮 ⇒ 各自独立成常量。
+ *
+ * 四条口径（船长同日四答）：
+ * - **只在"开新场"那一刻判**（进行中的那一场不受影响：声望只涨不跌，不存在"打到一半被掐掉"）；
+ * - 不达线 ⇒ **静默不开**（不记日志、不给提示——活动框/日志里本来就不会出现任何入侵信息）；
+ * - **调试模式不受限**（否则新档在调试模式下测不到入侵）；
+ * - ⚠ 当前 `WEEKEND_DEBUG_ONLY = true` ⇒ **正常模式这段还走不到**，本常量在"解除调试限定"那一刻起生效。
+ */
+export const WEEKEND_MIN_STANDING = 40
+/**
+ * 协会（DSI）声望取数。
+ *
+ * ⚠ **刻意不 import `expedition`**：`expedition` 反过来 import 本文件（`weekendFoeCardOf`）⇒
+ * 引进来会成环（同本文件头注那条"依赖方向"纪律）。id 与 `expedition.DSI_FACTION_ID` 同值；
+ * `firstTasks` 里也有一处同样的本地写法（既有做法）。
+ */
+function dsiStandingOf(state: GameState): number {
+  return state.standings['dsi'] ?? 0
+}
+/**
+ * **这一刻允许开新场吗**（声望前提的唯一判据；`ensureWeekendEvent` 正常模式那一段读它）。
+ * 调试模式恒真（船长四答之三）⇒ 调试不受门槛影响；其余情形 = 协会声望 ≥ `WEEKEND_MIN_STANDING`。
+ */
+export function weekendInvasionAllowedFor(state: Pick<GameState, 'debugQuick' | 'standings'>): boolean {
+  if (weekendDebugOn(state)) return true
+  return (state.standings['dsi'] ?? 0) >= WEEKEND_MIN_STANDING
+}
+/**
  * **遇袭（巡游小队）的真·强度倍率**（船长 2026-09-25：「**遇袭的时候遭遇的敌人按强度\*0.75算**」）。
  *
  * ⚠ 语义与已删除的旧常量 `WEEKEND_AMBUSH_MUL = 0.5` **不同**：旧的只乘**威胁标签**、战斗强度一字不变
@@ -864,6 +894,12 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
   }
   const t0 = weekendT0Of(nowWallMs)
   if (!weekendWindowOpen(nowWallMs, t0)) return false // 窗口外：入侵不存在
+  /**
+   * **声望前提**（**船长 2026-09-25 令**：「给入侵触发加一个前提，需要拥有至少40声望，才会触发入侵。」
+   * ＋ 四答：只在开新场那一刻判 · 不足静默不开 · 调试模式不受限）。
+   * 位置刻意留在**调试分支之后**：调试模式走上面那条路、压根到不了这里。
+   */
+  if (!weekendInvasionAllowedFor(state)) return false
   if (ev && ev.startedAtWallMs === t0 && ev.endedAtWallMs === undefined) return false
   const seq = (ev?.seq ?? 0) + 1
   const rolled = weekendRollOccupation(state, ctx, seq)
