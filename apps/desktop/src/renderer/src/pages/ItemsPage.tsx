@@ -248,6 +248,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const pickItemDef = pickItem ? engine.ctx.items.get(pickItem) : undefined
   const pickItemUnits = pickItem ? (state.warehouse.items[pickItem] ?? 0) : 0
   const pickItemBuy = pickItem ? itemBuyQuote(engine, pickItem) : undefined
+  /** 同上：判"能不能卖"看**在不在市场目录**（2026-09-25 修；空簿 ≠ 不在目录） */
+  const pickItemSellable = pickItem ? marketGoodOf(engine.ctx, 'item', pickItem) !== undefined : false
   const pickModDef = pickMod ? engine.ctx.modules.get(pickMod) : undefined
   const pickModUnits = pickMod ? (state.moduleBay[pickMod] ?? 0) : 0
 
@@ -442,6 +444,11 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   const def = engine.ctx.items.get(id)
                   if (!def) return null
                   const buy = itemBuyQuote(engine, id)
+                  /** ⚠ **2026-09-25 修**（船长报障「部分奢侈品…显示的是不在市场目录导致无法出售」）：
+                   *  判"能不能卖"看**在不在市场目录**，**不能**拿 `buy !== undefined` ——
+                   *  `itemBuyQuote` 对「**收购簿为空**」也返回 undefined ⇒ 会把"暂无人收购"误报成
+                   *  「不在市场目录」，挡掉"挂限价卖单等收购单浮现"那条路（与货仓页同一处口径）。 */
+                  const sellable = marketGoodOf(engine.ctx, 'item', id) !== undefined
                   return (
                     <ItemHover
                       key={id}
@@ -465,7 +472,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         <button className="app-btn is-small" onClick={() => handleLoad(id)} title={tr("ui.ItemsPage.024")}>
                           {tr("ui.ItemsPage.025")}
                         </button>
-                        {buy !== undefined ? (
+                        {sellable ? (
                           <button className="app-btn is-small is-primary" onClick={() => setSellItem(id)}>
                             {tr("ui.CargoPage.038")}
                           </button>
@@ -654,7 +661,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 <button className="app-btn is-small" onClick={() => handleLoad(pickItem)} title={tr("ui.ItemsPage.035")}>
                   {tr("ui.ItemsPage.025")}
                 </button>
-                {pickItemBuy !== undefined ? (
+                {pickItemSellable ? (
                   <button
                     className="app-btn is-primary is-small"
                     onClick={() => {
