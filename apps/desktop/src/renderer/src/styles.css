@@ -10256,6 +10256,121 @@ html[data-locale='en'] body {
 
 /* 通用小进度条（行内单位名册/矿带/打捞卡：⛏/🤖 单行内显示当前批进度；船长 2026-09-05） */
 
+/* **副AI活动：迷你条目**（2026-09-25 船长令：「类似AI指挥中心那样，显示一个小动画，正在干什么，
+   和进度条，只需要这三项就足够了，不用取消按钮，玩家点击后跳转到AI指挥中心」）。
+   每条 = ① `AiWorkFx` 动画（自带 `.app-inv-fx`，窄列里按 34px 宽缩放）
+        ② 正在干什么（标签 + 阶段说明）
+        ③ 进度条（`percent` 为空时不画）
+   整条是 `<button>` ⇒ 点击跳「舰船 · AI 指挥中心」（停作业在那儿）。 */
+
+.app-ai-act-list {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-4);
+
+}
+
+.app-ai-act {
+
+  display: grid;
+
+  grid-template-columns: 34px minmax(0, 1fr);
+
+  align-items: center;
+
+  gap: var(--wui-sp-4);
+
+  width: 100%;
+
+  padding: var(--wui-sp-4) var(--wui-sp-5);
+
+  font-family: inherit;
+
+  text-align: left;
+
+  color: rgb(var(--wui-text-dim));
+
+  background: rgb(var(--wui-bg-sunken) / 0.6);
+
+  border: 1px solid rgb(var(--wui-map-minor) / 0.35);
+
+  border-radius: var(--wui-sp-6);
+
+  cursor: pointer;
+
+  transition: border-color 0.15s, background 0.15s;
+
+}
+
+.app-ai-act:hover {
+
+  border-color: rgb(var(--wui-accent) / 0.5);
+
+  background: rgb(var(--wui-accent) / 0.08);
+
+}
+
+/* 动画缩到窄列尺寸（`.app-inv-fx` 默认 56×36 是给 AI 指挥中心那栏用的） */
+
+.app-ai-act .app-inv-fx {
+
+  width: 34px;
+
+  height: 22px;
+
+}
+
+.app-ai-act-main {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-1);
+
+  min-width: 0;
+
+}
+
+.app-ai-act-label {
+
+  font-size: var(--wui-fs-2xsc);
+
+  color: rgb(var(--wui-text));
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+}
+
+.app-ai-act-sub {
+
+  font-size: var(--wui-fs-2xse);
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+}
+
+/* 进度条独占一行（跨两列），不给动画/文字挤空间 */
+
+.app-ai-act > .app-progress-mini {
+
+  grid-column: 1 / -1;
+
+  width: 100%;
+
+}
+
 .app-progress-mini { display: inline-block; flex: 0 0 auto; width: 60px; height: 6px; border-radius: var(--wui-sp-3); background: rgb(var(--wui-well) / 0.45); overflow: hidden; }
 
 .app-progress-mini i { display: block; height: 100%; border-radius: var(--wui-sp-3); background: linear-gradient(90deg, rgb(var(--wui-accent-deep)), rgb(var(--wui-accent))); transition: width .35s ease; }

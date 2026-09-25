@@ -88,6 +88,15 @@ export interface ActivityView {
    * AI 作业（精炼炉/回收炉/制造线）。只对 `kind === 'ai'` 的条目有值 ⇒ 现成 UI 不用去猜 id 前缀。
    */
   aiGroup?: 'ship' | 'industry'
+  /**
+   * **该 AI 活动对应哪种工作动画**（2026-09-25 船长令：「类似AI指挥中心那样，显示一个小动画，
+   * 正在干什么，和进度条，只需要这三项就足够了，不用取消按钮，玩家点击后跳转到AI指挥中心」）。
+   *
+   * 口径：与 `ui/aiWorkFx.tsx` 的 6 类**同一套字面量**（core 不依赖渲染层 ⇒ 这里只写字符串联合，
+   * 不 import 那边的类型）。判据取自**引擎真值**（`task.kind` / 是否残骸 / 是否制造线），
+   * **不靠解析 label 的文本**（label 是本地化文案，解析它会在换语言时失效）。
+   */
+  aiWorkKind?: 'mining' | 'salvage' | 'standby' | 'refine' | 'reclaim' | 'craft'
   /** 终止动作（stopable=true 时非空） */
   stop: ActivityStopKind | null
   /** 终止动作参数（cancel-ai 时为副船 id） */
@@ -242,7 +251,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     out.push({
       id: aiProd ? `ai-prod-m:${mfv.id}` : `manufacture:${mfv.id}`,
       kind: aiProd ? 'ai' : 'manufacture',
-      ...(aiProd ? { aiGroup: 'industry' as const } : {}),
+      ...(aiProd ? { aiGroup: 'industry' as const, aiWorkKind: 'craft' as const } : {}),
       label: mfv.productName,
       sub: `${who} · ${mfv.kind === 'ship' ? '造船中' : '制造中'}`,
       percent: mfv.percent,
@@ -265,7 +274,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     out.push({
       id: aiProd ? `ai-prod-r:${rv.id}` : `refine:${rv.id}`,
       kind: aiProd ? 'ai' : 'refine',
-      ...(aiProd ? { aiGroup: 'industry' as const } : {}),
+      ...(aiProd ? { aiGroup: 'industry' as const, aiWorkKind: (isWreck ? 'reclaim' : 'refine') as 'reclaim' | 'refine' } : {}),
       label: `${isWreck ? '残骸回收' : '精炼炉'} · ${rv.itemName}`,
       sub: `${rv.workerLabel}驱动 · 已 ${rv.batchesDone} 批 / ${stockNote}（每批 ${rv.batchUnits} 单位）`,
       percent: rv.percent,
@@ -389,6 +398,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
+        aiWorkKind: 'mining',
         label: `${shipName} · 采矿`,
         sub: `${beltName}（${phase}）`,
         percent: null,
@@ -405,6 +415,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
+        aiWorkKind: 'standby', // 远征复用「掩护巡逻」那类动画，不新造第七种
         label: `${shipName} · 远征`,
         sub: `${aName}（${phase}）`,
         percent: null,
@@ -421,6 +432,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
+        aiWorkKind: 'salvage',
         label: `${shipName} · 打捞`,
         sub: `${gName}（${phase}）`,
         percent: null,
@@ -437,6 +449,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         id: `ai-${shipId}`,
         kind: 'ai',
         aiGroup: 'ship',
+        aiWorkKind: 'standby',
         label: `${shipName} · 掩护巡逻`,
         sub: task.phase === 'out' ? `前往 ${gName}（去程 · 剩约 ${Math.max(1, Math.round(remain / 1000))} 秒）` : `留守「${gName}」`,
         percent: null,

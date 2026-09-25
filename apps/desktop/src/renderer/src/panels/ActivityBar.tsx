@@ -16,6 +16,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
+import { AiWorkFx } from '../ui/aiWorkFx'
 import { tr, cmdText } from '../i18n/locale'
 
 const KIND_ICON: Record<string, string> = {
@@ -526,18 +527,36 @@ export function ActivityBar({
        * **副AI活动**（2026-09-25 船长令：「活动页面，可以试着在**玩家活动下方**新建一个副AI活动，
        * 将所有AI的进度条和活动类型挨个列出」）
        *
-       * 口径：把 `activityOverview()` 里 `kind === 'ai'` 的条目**逐条列出**（数据源与头部那两枚
-       * 「副船 ×N」「工业 ×N」徽标同一份：徽标只给**计数 + 悬浮详情**，本组给**逐条进度条 + 类型**）。
-       * 复用现成的 `renderItem` ⇒ 类型标签 / 进度条 / 剩余时间 / 停止按钮的写法与上面两组完全一致。
-       * 副船的排在前面（与头部徽标顺序一致：先副船、后工业）。
+       * 条目形态**照 AI 指挥中心那套精简**（船长同日追加令：「**类似AI指挥中心那样，显示一个小动画，
+       * 正在干什么，和进度条，只需要这三项就足够了，不用取消按钮，玩家点击后跳转到AI指挥中心**」）
+       * ⇒ 每条只有三样：① `AiWorkFx` 小动画（按 `aiWorkKind` 区分作业类型）② 正在干什么
+       * ③ 进度条（`percent` 为空时不画，与主控活动同口径）。**不放取消按钮**；
+       * **整条可点** ⇒ 跳到「舰船 · AI 指挥中心」（在那里才能停）。
        */}
       <div className="app-activitybar-group">
         <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.062")}</div>
         {aiShipItems.length + aiProdItems.length > 0 ? (
-          <>
-            {aiShipItems.map(renderItem)}
-            {aiProdItems.map(renderItem)}
-          </>
+          <div className="app-ai-act-list">
+            {[...aiShipItems, ...aiProdItems].map((v) => (
+              <button
+                key={v.id}
+                className="app-ai-act"
+                title={tr("ui.ActivityBar.064", { p1: v.label, p2: v.sub })}
+                onClick={() => onAiCenter?.()}
+              >
+                <AiWorkFx kind={v.aiWorkKind ?? 'standby'} />
+                <span className="app-ai-act-main">
+                  <span className="app-ai-act-label">{v.label}</span>
+                  <span className="app-dim app-ai-act-sub">{v.sub}</span>
+                </span>
+                {v.percent !== null ? (
+                  <span className="app-progress-mini" title={`${v.label} ${Math.round(v.percent)}%`}>
+                    <i style={{ width: `${Math.min(100, Math.max(0, v.percent))}%` }} />
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
         ) : (
           <span className="app-activitybar-idle">{tr("ui.ActivityBar.063")}</span>
         )}
