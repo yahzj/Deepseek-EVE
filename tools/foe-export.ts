@@ -43,7 +43,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import ExcelJS from 'exceljs'
-import { buildSimContext, FOE_SHIPS } from '@whale/data'
+import { buildSimContext, FOE_DRONES, FOE_SHIPS } from '@whale/data'
 import { FOE_MOUNTS, foeDesiredRange, resolveFoeMounts, type AnomalyDef, type DamageType, type FoeShipDef, type FoeShipSlot, type UnitSpec } from '@whale/core'
 // ⚠ H 族那 4 张入侵卡的**唯一清单**（`@whale/data` 的包入口没再导出它 ⇒ 走深路径，
 //   与 `bounty-stats.ts` 深引 core 的 `foeHpOfThreat` 同一处置：宁可深引，也不在这里写死 id）
@@ -159,8 +159,8 @@ function rowOf(s: FoeShipDef): Row {
     // ── E 挂载与特性 ──
     s.mounts && s.mounts.length > 0 ? `${s.mounts.join('、')}（${mount.names.join('、')}）` : '',
     charge ? '是' : '',
-    charge ? round2(chargeMul) : '',
-    charge ? Math.round(chargeCoolMs / 1000) : '',
+    charge && Number.isFinite(chargeMul) ? round2(chargeMul) : '',
+    charge && Number.isFinite(chargeCoolMs) ? Math.round(chargeCoolMs / 1000) : '',
     mount.foeCaptureWeb ? `是（机动 ×${mount.foeCaptureWeb.mobilityMul} · ${Math.round(mount.foeCaptureWeb.durationMs / 1000)} 秒）` : '',
     droneRangeMul !== undefined ? round2(droneRangeMul) : '',
     gunRangeMul !== undefined ? round2(gunRangeMul) : '',
@@ -493,6 +493,79 @@ const H_MOUNTS = ((): Array<{ id: string; name: string; note: string; nums: stri
   })
 })()
 
+/** 「无人机（敌用机型）」列定义——2026-09-25 船长：「**我还打算调整敌人无人机属性**」 */
+const D_COLS: Col[] = [
+  { head: '机型id', note: 'data/foe-drones.ts 的机型 id（同一机型只有这一处数值）', width: 22 },
+  { head: '名称', note: '', width: 14 },
+  { head: '敌族', note: '', width: 6 },
+  { head: '角色', note: 'scout 侦察 / combat 战斗 / assault 攻坚 / sentry 哨戒（决定阵位与演出骨架）', width: 10 },
+  { head: '护盾血', note: 'defense.shieldHp', width: 9, fmt: '#,##0' },
+  { head: '装甲血', note: 'defense.armorHp', width: 9, fmt: '#,##0' },
+  { head: '结构血', note: 'defense.hullHp', width: 9, fmt: '#,##0' },
+  { head: '合计血', note: '三层之和（一架的实战血）', width: 10, fmt: '#,##0' },
+  { head: '护盾抗·动能', note: 'defense.shieldResist（整层受到的该系伤害 ×(1 − 本值)；空 = 0）', width: 11, fmt: '0%' },
+  { head: '护盾抗·高爆', note: '', width: 11, fmt: '0%' },
+  { head: '护盾抗·能量', note: '', width: 11, fmt: '0%' },
+  { head: '装甲抗·动能', note: 'defense.armorResist', width: 11, fmt: '0%' },
+  { head: '装甲抗·高爆', note: '', width: 11, fmt: '0%' },
+  { head: '装甲抗·能量', note: '', width: 11, fmt: '0%' },
+  { head: '结构抗·动能', note: 'defense.hullResist', width: 11, fmt: '0%' },
+  { head: '结构抗·高爆', note: '', width: 11, fmt: '0%' },
+  { head: '结构抗·能量', note: '', width: 11, fmt: '0%' },
+  { head: '闪避', note: 'defense.evasion（我方武器命中要先减它）', width: 8, fmt: '0%' },
+  { head: '单发', note: 'dmg（绝对值）', width: 8, fmt: '#,##0' },
+  { head: '伤害系', note: 'damageType', width: 8 },
+  { head: '装填(毫秒)', note: 'reloadMs', width: 10, fmt: '#,##0' },
+  { head: '基础命中', note: 'hitRate（**>1 也合法**：有效命中 = clamp(0,1,(命中+攻方加成−目标闪避)×衰减)）', width: 9, fmt: '0.00' },
+  { head: '远端衰减', note: 'falloff：1 = 射程带内命中恒定；<1 = 越远越飘', width: 9, fmt: '0.00' },
+  { head: '射程上限', note: 'maxRangeM——⚠ **够不够得着另看右三列**（两舰间距 > 本值 ⇒ 这架**不开火**、界面也不出海）', width: 10, fmt: '#,##0' },
+  { head: '名义DPS', note: '= 单发 × 1000 ÷ 装填（不含命中与闪避）', width: 10, fmt: '#,##0.0' },
+  { head: '整群DPS(每架)', note: '', width: 12, fmt: '#,##0.0' },
+  { head: '搭载舰', note: '哪些敌舰挂着它 ×架数（`FoeShipDef.drones`）', width: 30 },
+  { head: '搭载舰期望交距', note: '该舰**自己**的期望交距（`desireRangeM` ?? 带内位置）；带"挨打后有效"= 该舰挂了机群增程件', width: 22 },
+  { head: '够得着吗', note: '**期望交距 ≤ 机群有效射程（含挨打增程）⇒ 够得着**（开火 + 机体出海可见）；否则这架在本族打法下**永不发火**（`combat.ts` 的射程门 ＋ 界面"只有出海才画机体"）', width: 16 },
+  { head: 'DPS(试算)', note: '**Excel 公式**：= 单发 × 1000 ÷ 装填(毫秒)', width: 10, fmt: '#,##0.0' },
+]
+
+/** 一架敌机的"搭载舰"读数（含"够不够得着"——船长报障「旗舰战里看不到敌人的无人机」的诊断列） */
+function droneRows(): Array<{
+  d: (typeof FOE_DRONES)[number]
+  carriers: Array<{ name: string; count: number; desire: number; effRange: number; mul: number }>
+  reach: boolean
+  boosted: boolean
+  carrierText: string
+  desireText: string
+}> {
+  return FOE_DRONES.map((d) => {
+    const carriers: Array<{ name: string; count: number; desire: number; effRange: number; mul: number }> = []
+    for (const s of FOE_SHIPS) {
+      for (const slot of s.drones ?? []) {
+        if (slot.drone.id !== d.id) continue
+        const pos = Math.min(0.95, Math.max(0.05, bal.tacticDesireFactor[s.tactic] ?? 0.5))
+        const desire = Number.isFinite(s.desireRangeM)
+          ? Math.round(s.desireRangeM as number)
+          : Math.max(bal.minDistanceM, Math.round(s.rangeMinM + pos * (s.rangeMaxM - s.rangeMinM)))
+        /** **挨打后机群增程**（挂载件优先、旧字段兜底，与 `createFoeSpecsFromShips` 同优先级） */
+        const mul = resolveFoeMounts(s.mounts).foeDroneRangeMulOnHit ?? s.droneRangeMulOnHit ?? 1
+        carriers.push({ name: s.name, count: slot.count, desire, effRange: d.maxRangeM * mul, mul })
+      }
+    }
+    const reach = carriers.length > 0 && carriers.every((c) => c.desire <= c.effRange)
+    const boosted = carriers.some((c) => c.mul > 1)
+    return {
+      d,
+      carriers,
+      reach,
+      boosted,
+      carrierText: carriers.map((c) => `${c.name}×${c.count}`).join('、'),
+      desireText:
+        carriers.length > 0
+          ? carriers.map((c) => `${c.desire}${c.mul > 1 ? `（挨打后有效 ${Math.round(c.effRange)} = ${d.maxRangeM}×${c.mul}）` : ''}`).join('、')
+          : '',
+    }
+  })
+}
+
 async function main(): Promise<void> {
 mkdirSync(OUT_DIR, { recursive: true })
 
@@ -644,6 +717,49 @@ const M_COLS: Col[] = [
 styleHead(wsM, M_COLS)
 H_MOUNTS.forEach((m, i) => writeRow(wsM, M_COLS, [m.id, m.name, m.nums, m.note], i + 2))
 
+/* ── ①d 无人机（敌用机型）——2026-09-25 船长：「我还打算调整敌人无人机属性」 ── */
+const drones = droneRows()
+const wsD = wb.addWorksheet('无人机（敌用机型）', { views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }] })
+styleHead(wsD, D_COLS)
+const D_IDX = (head: string): number => D_COLS.findIndex((c) => c.head === head)
+drones.forEach((r2, i) => {
+  const d = r2.d
+  const dps = (d.dmg * 1000) / Math.max(1, d.reloadMs)
+  const cells: Array<string | number> = [
+    d.id, d.name, d.family, d.role,
+    round1(d.defense.shieldHp), round1(d.defense.armorHp), round1(d.defense.hullHp),
+    round1(d.defense.shieldHp + d.defense.armorHp + d.defense.hullHp),
+    round2(pct(d.defense.shieldResist?.['kinetic'])),
+    round2(pct(d.defense.shieldResist?.['explosive'])),
+    round2(pct(d.defense.shieldResist?.['plasma'])),
+    round2(pct(d.defense.armorResist?.['kinetic'])),
+    round2(pct(d.defense.armorResist?.['explosive'])),
+    round2(pct(d.defense.armorResist?.['plasma'])),
+    round2(pct(d.defense.hullResist?.['kinetic'])),
+    round2(pct(d.defense.hullResist?.['explosive'])),
+    round2(pct(d.defense.hullResist?.['plasma'])),
+    round2(d.defense.evasion ?? 0),
+    d.dmg, DMG_TEXT[d.damageType], d.reloadMs, round2(d.hitRate), round2(d.falloff), d.maxRangeM,
+    round1(dps), round1(dps), r2.carrierText, r2.desireText,
+    r2.carriers.length === 0
+      ? '（没有舰级挂它）'
+      : r2.reach
+        ? r2.boosted
+          ? '够得着（挨打后增程）'
+          : '够得着'
+        : '**够不着**（不会开火、界面也看不到机体）',
+    0,
+  ]
+  const row = writeRow(wsD, D_COLS, cells, i + 2)
+  const rowNo = i + 2
+  const L = colLetter
+  row.getCell(D_IDX('DPS(试算)') + 1).value = {
+    formula: `${L(D_IDX('单发'))}${rowNo}*1000/${L(D_IDX('装填(毫秒)'))}${rowNo}`,
+  }
+  row.getCell(D_IDX('DPS(试算)') + 1).numFmt = D_COLS[D_IDX('DPS(试算)')]!.fmt!
+})
+wsD.autoFilter = { from: { row: 1, column: 1 }, to: { row: drones.length + 1, column: D_COLS.length } }
+
 await wb.xlsx.writeFile(xlsxPath)
 
 /* ── ② csv（同列同序；试算列在这里由本工具按引擎口径算成数值，保证 csv 自洽） ── */
@@ -717,6 +833,15 @@ console.log(`· 最高名义 DPS：${topDps.ship.name} ${((topDps.ship.shotDmg *
 console.log(`· 带机群 ${withDrones} 条 · 带挂载件 ${withMounts} 条`)
 console.log('· 试算列是 Excel 公式（引用本行），引擎口径的对应列在左侧；卡级实算值请看 npm run bounty:stats')
 console.log(`✅ 另附 H 族入侵卡两张 sheet（同一本工作簿）：「${SHEET_E}」${hEntries.length} 行 · 「${SHEET_W}」${hWaves.length} 行 · 「H 族 · 挂载件」${H_MOUNTS.length} 行`)
+console.log(`✅ 另附「无人机（敌用机型）」${drones.length} 行（含"搭载舰 / 期望交距 / 够不够得着"三列读数）`)
+for (const r2 of drones) {
+  const d = r2.d
+  if (r2.carriers.length === 0) continue
+  console.log(
+    `   · ${d.name}（${d.id}）：射程 ${d.maxRangeM} · 单发 ${d.dmg} · ${d.reloadMs / 1000} 秒 · 命中 ${d.hitRate} · ` +
+      `搭载 ${r2.carrierText} → 期望交距 ${r2.desireText} ⇒ ${r2.reach ? (r2.boosted ? '够得着（挨打后增程）' : '够得着') : '**够不着（不会开火、界面也看不到机体）**'}`,
+  )
+}
 console.log(`   csv ：${join(process.cwd(), eCsvPath)}（条目表同列同序；试算列已算成数值）`)
 for (const w of hWaves) {
   console.log(

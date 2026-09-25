@@ -373,11 +373,18 @@ describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
 })
 
 describe('H 族 · 高属性重袭机（战巡 1 架 / 母舰 2 架）', () => {
-  it('机型：三层血 180 · 单发 60 · 射程 7,000 · 命中 0.85（不随距离衰减）', () => {
+  it('机型：三层血 180 · 单发 60 · **射程 12,000** · 命中 0.85（不随距离衰减）', () => {
     const d = droneOf('foe-drone-h-heavy')!
     expect(d.family).toBe('H')
     expect(d.dmg).toBe(60)
-    expect(d.maxRangeM).toBe(7000)
+    /**
+     * ⚠ **射程 7,000 → 12,000**（**船长 2026-09-25 令「机群交战距离是12000」**）：
+     * 7,000 落在搭载舰的期望交距之内（战巡 9,500 / 母舰 10,350）⇒ 机群**永不发火**，
+     * 而界面只在"出海那一轮"画机体 ⇒ 船长报障「旗舰战里看不到敌人的无人机」。
+     * 本用例把新射程钉住：**射程必须 ≥ 搭载舰的期望交距**，否则又回到"看不见"。
+     */
+    expect(d.maxRangeM, '机群交战距离 = 12,000（船长令）').toBe(12_000)
+    expect(d.maxRangeM, '必须够得着两艘搭载舰的期望交距').toBeGreaterThanOrEqual(10_350)
     expect(d.hitRate).toBe(0.85)
     expect(d.falloff).toBe(1)
     expect(d.defense.shieldHp + d.defense.armorHp + d.defense.hullHp).toBe(180)
