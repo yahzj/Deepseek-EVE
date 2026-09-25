@@ -344,7 +344,7 @@ function SettingsPanel({
                 className={`app-btn is-small${layoutKind === 'modern' ? ' is-primary' : ''}`}
                 onClick={() => onLayoutChange('modern')}
               >
-                {tr('ui.App.147')}
+                {`${tr('ui.App.147')}${tr('ui.App.153')}`}
               </button>
               <button
                 className={`app-btn is-small${layoutKind === 'classic' ? ' is-primary' : ''}`}

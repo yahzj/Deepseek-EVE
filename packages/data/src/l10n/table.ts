@@ -924,6 +924,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.150": { zh: "切换界面", en: "Switch interface" },
   "ui.App.151": { zh: "界面将在重开游戏后更换。", en: "The interface changes after the game is reopened." },
   "ui.App.152": { zh: "现在重开", en: "Reopen now" },
+  /* 2026-09-26 船长令：「在设置界面切换新版界面出，给新版按钮加个文本'（测试中）'」——
+     **只加在按钮上**（设置行的当前值那处不加：那是"现在用哪套"的读数，不是按钮标签） */
+  "ui.App.153": { zh: "（测试中）", en: "(in testing)" },
   "ui.App.141": { zh: "调试模式", en: "Debug mode" },
   "ui.App.142": { zh: "开启", en: "Enable" },
   "ui.App.143": { zh: "已开启", en: "Enabled" },
