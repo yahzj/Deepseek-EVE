@@ -307,7 +307,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-15：+6（谜质精华 · 奢侈品 ×3 · 贵重品货柜 · 军用备货柜）→ 物品总数 73→**79**
 // 2026-09-16：奢侈品扩到十款（船长「添加更多奢侈品，让奢侈品有10个类型，分布在目前的3个奢侈品价格附近」）
 //   ⇒ +7（陈年雪茄 / 异域织物 / 香木雕刻 / 宫廷乐谱 / 古法香膏 / 星图真迹 / 王冠遗钻）→ 物品总数 79→**86**
-check(itemDefs.length === 100, `物品总数应为 100，实际 ${itemDefs.length}`)
+check(itemDefs.length === 101, `物品总数应为 101（2026-09-25 起：+入侵旗舰黑匣 blackbox-h），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)

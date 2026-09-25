@@ -1577,20 +1577,28 @@ function normalizeState(raw: unknown): GameState {
    * 挂了 `bmStanding` ⇒ 引擎会把 `bm` 写进收购单，而原先这里只留 price/qty/expiresAtGameMs ⇒ **往返丢键**
    * （`save.test.ts` 的「引擎跑过的档不许丢键」护栏抓到 `market.npcBuy.<键>[].bm`）。缺省/非正 ⇒ 不写（老档零迁移）。
    */
-  const orderList = (rawList: unknown): Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number }> => {
-    const out: Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number }> = []
+  const orderList = (rawList: unknown): Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number | boolean | null }> => {
+    const out: Array<{ price: number; qty: number; expiresAtGameMs: number; bm?: number | boolean | null }> = []
     if (!Array.isArray(rawList)) return out
     for (const item of rawList) {
       const o = asRaw(item)
       const qty = Math.floor(num(o.qty))
       const price = Math.floor(num(o.price))
       if (qty <= 0 || price <= 0) continue
-      const hasBm = typeof o.bm === 'number' && Number.isFinite(o.bm)
+      /**
+       * ⚠ **按"字段存在"保留，而不是"是数字才保留"**（2026-09-25 实测踩到）：引擎给非 BM 货写的是
+       * `bm: null`（`undefined` 会被 JSON 丢掉、`null` 不会）⇒ 只认数字会把 `null` 滤掉，
+       * 于是"引擎写过 `bm`、读回来没了"。**存在即原样保留**（数字取整；其余落 `null`）⇒ 往返逐字一致。
+       */
+      const hasBm = Object.prototype.hasOwnProperty.call(o, 'bm')
+      // 引擎写的是 m: true（BM 声望门槛标记 · 布尔）⇒ 必须原样保留（见上方注释：按数字处理会连丢两次）
+      const bmRaw = o.bm
+      const bmVal = typeof bmRaw === 'boolean' ? bmRaw : typeof bmRaw === 'number' && Number.isFinite(bmRaw) ? Math.max(0, Math.floor(bmRaw)) : null
       out.push({
         price,
         qty,
         expiresAtGameMs: Math.max(0, Math.floor(num(o.expiresAtGameMs))),
-        ...(hasBm ? { bm: Math.max(0, Math.floor(o.bm as number)) } : {}),
+        ...(hasBm ? { bm: bmVal } : {}),
       })
     }
     return out

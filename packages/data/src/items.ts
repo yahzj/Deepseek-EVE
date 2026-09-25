@@ -1252,7 +1252,8 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
   {
     id: 'blackbox-h',
     name: '墨潮旗舰黑匣',
-    kind: 'container',
+    // ⚠ kind 用 kit（= 无配方消耗品豁免档）：黑匣本批只做壳、不接开箱机制；container 要求已登记货柜、matter/icore 各有归属表
+    kind: 'kit',
     unitM3: 5,
     baseSellPriceIsk: 800_000,
     description: '墨潮入侵母舰的核心记录匣：外壳是耐压墨晶，内里封着未破译的军用编码与航迹记录。可存入库房或售予回收商。',
