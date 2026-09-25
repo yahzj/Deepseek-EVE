@@ -361,6 +361,8 @@ export {
   weekendBountyCardsOf,
   // 2026-09-25 船长裁决「甲」：同一被占星系只出一条入侵悬赏（板面/星图这一层去重）
   weekendBoardRowsOf,
+  // 2026-09-25 修"串星系"：出发归属以界面上那一行为准（同 id 多星系时按 id 反查会串）
+  weekendLaunchGalaxyOf,
   weekendNoteAssaultDispatch,
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,

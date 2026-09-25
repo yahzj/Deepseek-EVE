@@ -176,6 +176,8 @@ import {
   weekendBountyCardsOf,
   // 2026-09-25 船长裁决「甲」：板面同星系只出一条入侵悬赏（去重单点在 core）
   weekendBoardRowsOf,
+  // 2026-09-25 修"串星系"：出发归属以界面上那一行为准（同 id 多星系按 id 反查会串）
+  weekendLaunchGalaxyOf,
   weekendAssaultDrawOf,
   weekendNoteAssaultDispatch,
   weekendOccupiedLiveAt,
@@ -2255,9 +2257,21 @@ export class GameEngine {
     return result
   }
 
-  /** 界面上那张卡所在的星系（被占星系的入侵替换卡带的是被占星系）——随远征落盘，供战后归属/残骸注入用 */
-  private foeGalaxyOf(anomalyId: string): string | undefined {
-    return this.anomalies.find((a) => a.id === anomalyId)?.galaxyId
+  /**
+   * **这一场出征的"打的哪个星系"**——随远征落盘，供战后归属 / 残骸注入用。
+   *
+   * ⚠ **2026-09-25 修"串星系"**（玩家报障「打红环的常驻悬赏，不加红环的进度条」）：
+   * 原来只按卡 id 反查（`anomalies.find(a => a.id === id)`），而 H 族"每星系抽一支驻留舰队"只在
+   * 本族那几张独立卡里抽 ⇒ **多个被占星系会抽到同一张卡**（真档：深渊之门/暗星坟场/红环航道都是
+   * `ink-raid`）⇒ 反查**永远命中列表第一个**同 id 行：点核心或坟场的行，归属被写成红环（反之亦然，
+   * 玩家那边"第一个"若是核心，点红环就一分进度都不给）。
+   *
+   * 现在：**界面上被点的那一行的星系**（`hintGalaxyId`）优先 —— 它确实是活的占领区就采信；
+   * 没传 hint（老调用方 / 非入侵卡）⇒ 逐字回落老口径。
+   */
+  private foeGalaxyOf(anomalyId: string, hintGalaxyId?: string): string | undefined {
+    const cardGalaxyId = this.anomalies.find((a) => a.id === anomalyId)?.galaxyId
+    return weekendLaunchGalaxyOf(this.state, hintGalaxyId, cardGalaxyId, Date.now())
   }
 
   /**
@@ -2266,19 +2280,22 @@ export class GameEngine {
    * 并把**奖励基底**钉在"该星系原卡 ×1.4"（抽到哪支都一样价）。出击**成功**才记一次计数 ⇒ 下一场换一支。
    * 非占领区 / 活动已结束 ⇒ 原样返回（老路径零变化）。
    */
-  private weekendDispatchOf(anomalyId: string): { cardId: string; rewardIskOverride?: number } {
-    const galaxyId = this.foeGalaxyOf(anomalyId)
+  private weekendDispatchOf(anomalyId: string, hintGalaxyId?: string): { cardId: string; rewardIskOverride?: number } {
+    const galaxyId = this.foeGalaxyOf(anomalyId, hintGalaxyId)
     if (galaxyId === undefined) return { cardId: anomalyId }
     const drawn = weekendAssaultDrawOf(this.state, this.ctx, galaxyId, Date.now())
     if (drawn === null) return { cardId: anomalyId }
     return { cardId: drawn.cardId, rewardIskOverride: drawn.rewardIsk }
   }
 
-  /** 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行） */
-  startExpeditionAt(anomalyId: string): CommandResult {
+  /**
+   * 出发远征（去程取消：下达即进入实时交火 → 结算/返航自动执行）。
+   * `foeGalaxyId` = **界面上被点的那一行的星系**（常驻悬赏/星图列表都要传；不传 = 老口径按卡 id 反查）。
+   */
+  startExpeditionAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
     return this.withActivitySwitch('expedition', () => {
-      const galaxyId = this.foeGalaxyOf(anomalyId)
-      const dispatch = this.weekendDispatchOf(anomalyId)
+      const galaxyId = this.foeGalaxyOf(anomalyId, foeGalaxyId)
+      const dispatch = this.weekendDispatchOf(anomalyId, foeGalaxyId)
       const result = startExpedition(this.state, dispatch.cardId, this.ctx, {
         ...(galaxyId !== undefined ? { foeGalaxyId: galaxyId } : {}),
         ...(dispatch.rewardIskOverride !== undefined ? { rewardIskOverride: dispatch.rewardIskOverride } : {}),
@@ -2294,8 +2311,10 @@ export class GameEngine {
   }
 
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
-  startExpeditionFromMiningAt(anomalyId: string): CommandResult {
-    const result = startExpeditionFromMining(this.state, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId) })
+  startExpeditionFromMiningAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
+    const result = startExpeditionFromMining(this.state, anomalyId, this.ctx, {
+      foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId),
+    })
     if (result.ok) {
       void this.persist()
       this.notify()

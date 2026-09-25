@@ -181,6 +181,33 @@ export function weekendBoardRowsOf<T extends { id: string; galaxyId: string }>(
 }
 
 /**
+ * **出发那一场的归属星系**（**2026-09-25 修"串星系"**；船长真档实测）。
+ *
+ * 起因（玩家报障「打红环的常驻悬赏，不加红环的进度条」）：H 族是"每星系抽一支驻留舰队"，
+ * 而抽签只在**本族那几张独立卡**里抽 ⇒ **多个被占星系会抽到同一张卡**（真档：深渊之门/暗星坟场/
+ * 红环航道三处都是 `ink-raid`）。原来的出发路径是**按卡 id 反查星系**（`anomalies.find(a => a.id === id)`）
+ * ⇒ 永远命中**列表里第一个**同 id 行：真档读数 = 点深渊之门或暗星坟场的行，`foeGalaxyId` 都被写成
+ * **红环航道** ⇒ 威胁覆写/进度记账/残骸注入/结算星系名**全部串到那一处**（玩家那边若"第一个"恰是核心，
+ * 点红环就一分进度都不给 —— 正是报障原文）。
+ *
+ * 口径：**以"界面上那一行的星系"为准**（`hintGalaxyId`）——那一行确实是活的占领区就采信它；
+ * 否则逐字回落卡面自带星系（结算/打捞/遭遇这些**没有界面行**的老路径零变化）。
+ */
+export function weekendLaunchGalaxyOf(
+  state: GameState,
+  /** 界面上被点的那一行的星系（没有就传 undefined ⇒ 老路径） */
+  hintGalaxyId: string | undefined,
+  /** 卡面自带星系（= 老口径的反查结果） */
+  cardGalaxyId: string | undefined,
+  nowWallMs: number,
+): string | undefined {
+  if (hintGalaxyId !== undefined && hintGalaxyId.length > 0 && weekendOccupiedLiveAt(state, hintGalaxyId, nowWallMs)) {
+    return hintGalaxyId
+  }
+  return cardGalaxyId
+}
+
+/**
  * **主动出击"每场重抽"**（2026-09-25 船长令：「**主动出击也要每场重抽**」）：
  * 出发那一刻从该区域池里**重新抽一支**（与"驻留卡/板面显示"解耦），并给出**奖励基底**。
  *

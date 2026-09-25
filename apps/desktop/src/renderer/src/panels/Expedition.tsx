@@ -1989,7 +1989,13 @@ function GalaxyActions({
       return
     }
     setGoAskAno(null)
-    const r = miningActive ? engine.startExpeditionFromMiningAt(ano.id) : engine.startExpeditionAt(ano.id)
+    /**
+     * **出击要把"界面上这一行的星系"带上**（2026-09-25 修"串星系"）：H 族多个被占星系会抽到
+     * **同一张独立卡**（同 id）⇒ 引擎按 id 反查只能命中列表第一个 ⇒ 进度/威胁/残骸全串到别处。
+     */
+    const r = miningActive
+      ? engine.startExpeditionFromMiningAt(ano.id, ano.galaxyId)
+      : engine.startExpeditionAt(ano.id, ano.galaxyId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.389'), true)
   }
 
@@ -2643,14 +2649,15 @@ function AnomalyCard({
       return
     }
     if (!goAsk) {
-      const r = engine.startExpeditionAt(anomaly.id)
+      // 带上"界面上这一行的星系"（2026-09-25 修"串星系"：同 id 多星系按 id 反查会串，见 `foeGalaxyOf`）
+      const r = engine.startExpeditionAt(anomaly.id, anomaly.galaxyId)
       if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.389'), true)
       else onToast(tr("ui.Expedition.270"))
       return
     }
     // 面板「确认转战」
     setGoAsk(false)
-    const r = engine.startExpeditionFromMiningAt(anomaly.id)
+    const r = engine.startExpeditionFromMiningAt(anomaly.id, anomaly.galaxyId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.392'), true)
     else onToast(tr("ui.Expedition.151"))
   }

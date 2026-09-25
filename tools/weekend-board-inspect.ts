@@ -20,7 +20,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildSimContext } from '@whale/data'
+import { ANOMALIES_FLAVORED, buildSimContext } from '@whale/data'
 import {
   loadSaveFile,
   WEEKEND_GAIN_CORE_WIN,
@@ -93,7 +93,49 @@ for (const gid of systems) {
 }
 console.log(`  合计：板面 ${slots} 条 → ${kept} 条`)
 
-/* ── ③ 进度账与"清缴之后读数动没动" ── */
+/* ── ④ 出发归属解析（复刻引擎 `refreshAnomaliesView` ＋ `foeGalaxyOf` 的 find 语义） ── */
+console.log('\n=== ④ 出发归属解析（引擎按卡 id 反查星系 ⇒ 同 id 多星系会串） ===')
+{
+  const base = ANOMALIES_FLAVORED.filter((a) => !a.hidden)
+  const byGalaxy = new Map<string, (typeof base)[number][]>()
+  for (const a of base) {
+    const list = byGalaxy.get(a.galaxyId)
+    if (list) list.push(a)
+    else byGalaxy.set(a.galaxyId, [a])
+  }
+  const replaced = new Map<string, readonly (typeof base)[number][]>()
+  for (const [gid, list] of byGalaxy) replaced.set(gid, weekendBountyCardsOf(state, ctx, list, gid, now))
+  const cursor = new Map<string, number>()
+  const out: (typeof base)[number][] = []
+  for (const a of base) {
+    const list = replaced.get(a.galaxyId)!
+    const i = cursor.get(a.galaxyId) ?? 0
+    cursor.set(a.galaxyId, i + 1)
+    out.push(list[i] ?? a)
+  }
+  /** 引擎 `GameEngine.foeGalaxyOf` 逐字：`this.anomalies.find(a => a.id === anomalyId)?.galaxyId` */
+  const view = weekendBoardRowsOf(out, (gid) => weekendOccupiedLiveAt(state, gid, now))
+  const foeGalaxyOf = (id: string): string | undefined => view.find((a) => a.id === id)?.galaxyId
+  for (const gid of systems) {
+    const name = ctx.galaxies.get(gid)?.name ?? gid
+    const row = weekendBoardRowsOf(
+      weekendBountyCardsOf(
+        state,
+        ctx,
+        [...ctx.anomalies.values()].filter((a) => !a.hidden && a.galaxyId === gid),
+        gid,
+        now,
+      ),
+      (g) => weekendOccupiedLiveAt(state, g, now),
+    )[0]
+    if (!row) continue
+    const resolved = foeGalaxyOf(row.id)
+    const ok = resolved === gid
+    console.log(
+      `  ${name} 板面那一行 = ${row.id} ⇒ 引擎解析归属 = ${resolved ?? '（查不到）'}${ok ? ' ✅' : ' ❌ 串到了别的星系！'}`,
+    )
+  }
+}
 console.log('\n=== ③ 进度账现状 ===')
 console.log(`  台账 contributed = ${JSON.stringify(ev.contributed)}`)
 console.log(

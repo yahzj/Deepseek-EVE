@@ -58,7 +58,8 @@ async function tryStartBattle(engine: GameEngine): Promise<boolean> {
   for (const a of engine.allAnomalies) {
     if (a.galaxyId && !st.exploredGalaxies.includes(a.galaxyId)) st.exploredGalaxies.push(a.galaxyId)
     for (const k of Object.keys(st.standings)) st.standings[k] = Math.max(st.standings[k] ?? 0, 10)
-    const r = engine.startExpeditionAt(a.id)
+    // 归属星系按目录卡自带的那一个传（2026-09-25 修"串星系"后，出发归属不再按 card id 反查）
+    const r = engine.startExpeditionAt(a.id, a.galaxyId)
     if (!r.ok) continue
     const exp = st.expedition
     if (exp.active && exp.phase === 'out') {
