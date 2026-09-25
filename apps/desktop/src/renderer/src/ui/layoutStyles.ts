@@ -19,11 +19,10 @@
  *   import { installLayoutStyles } from './ui/layoutStyles'
  *   installLayoutStyles()
  */
-// ⚠ 两份生成件放在**源码树之外**（`tools/_ui-artifacts/layout-css/`，由 _split-layout-css.mjs 生成）
-//   ⇒ 不参与源码体检（classic 份是 main 原文，会引用本分支主题里还没有的 token ⇒ 会误报）。
-//   经别名 `@layout-css/*` 解析；别名的配置点见 web/vite.config.ts 与 apps/desktop/electron.vite.config.ts（**两处都要改**）。
-import classicUrl from '@layout-css/styles-classic.css?url'
-import modernUrl from '@layout-css/styles-modern.css?url'
+// 两份生成件与本文件同目录（`ui/layout-css/`），**已入库**；由 `tools/layout-css-split.ts` 生成，
+// 改样式请改 `styles.css` 后跑 `npm run ui:layout-css`（详见该工具头部注释）。
+import classicUrl from './layout-css/styles-classic.css?url'
+import modernUrl from './layout-css/styles-modern.css?url'
 
 export type LayoutKind = 'modern' | 'classic'
 
