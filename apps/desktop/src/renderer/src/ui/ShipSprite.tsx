@@ -1,9 +1,11 @@
 /**
  * 舰船战斗图形（2026-09-09 三号重构，补上此前缺失的资产接线）：
  * 双层取形——
- * ① 传 shipId（玩家舰 defId）/ foeKey（敌族 A~G）且命中 SHIP_ART / FOE_ART 资产表 →
+ * ① 传 shipId（玩家舰/敌舰**舰级 id**）或 foeKey（敌族 A~H）且命中资产表 →
  *    240×110 独立矢量形（舰首朝右；无类元素 = 主轮廓继承 currentColor 2.2 描边；
  *    面板线/族件/发光件类规则见 styles.css .shipart-*）；
+ *    ⚠ 2026-09-26 起**敌舰也是逐舰形**（键 = 舰级 id）——取形链：`SHIP_ART[shipId]`
+ *    （总表，含敌舰 30 条）→ `foeShipArtOf(shipId, foeKey)` 的逐舰 → 族形；详见 `foeShipArtOf` 注释。
  * ② 未命中（异常旧档/未录形）→ 回退 V12 role 线描剪影（140×64 放大适配，观感同旧版）。
  * 翻转 = 绕舰体中心 scaleX(-1)（CSS 过渡平滑转身，船头跟随运动方向）。
  * 引擎尾焰 2026-09-10 船长批：数量/位置对齐各舰引擎喷口——按 shipMounts.engines 逐口
@@ -13,7 +15,7 @@
 import type { ReactNode } from 'react'
 import type { ShipRole } from '@whale/core'
 import { SHIP_ROLE_LABELS } from '@whale/core'
-import { FOE_ART, SHIP_ART } from './shipArt'
+import { FOE_ART, SHIP_ART, foeShipArtOf } from './shipArt'
 import { mountsOf } from './shipMounts'
 
 /** role → 线描舰形路径（回退形；船头朝右，viewBox 0 0 140 64） */
@@ -92,7 +94,15 @@ export function ShipSprite({
   engine?: boolean
   size?: number
 }) {
-  const art: ReactNode | undefined = shipId ? SHIP_ART[shipId] : foeKey ? FOE_ART[foeKey] : undefined
+  const art: ReactNode | undefined = shipId
+    ? // ⚠ 这里原来是 `shipId ? SHIP_ART[shipId] : foeKey ? FOE_ART[foeKey] : …`——
+      // 三元表达式把两条路写成互斥，**敌舰一旦带回 shipId，族形分支就永远走不到**（2026-09-26 修）。
+      // 现在：先查总资产表（玩家舰 25 艘 + 敌舰逐舰 30 条都在这张表里），
+      // 查不到再按需回退——带回 shipId 的敌舰走 `foeShipArtOf` 的逐舰 → 族形链。
+      (SHIP_ART[shipId] ?? (foeKey ? foeShipArtOf(shipId, foeKey) : undefined))
+    : foeKey
+      ? FOE_ART[foeKey]
+      : undefined
   if (art) {
     return (
       <div className="app-sprite" style={{ width: size, height: Math.round(size * 0.46) }}>

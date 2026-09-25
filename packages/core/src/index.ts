@@ -951,6 +951,8 @@ export {
   foeUnitNameOf,
   foeShipTierOf,
   foeShipEliteOf,
+  foeShipIdOfTag,
+  foeCardShipIdOf,
   FOE_LIGHT_WORD,
   FOE_ELITE_WORD,
   createPlayerSpec,

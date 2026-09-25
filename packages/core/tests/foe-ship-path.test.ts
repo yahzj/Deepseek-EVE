@@ -29,7 +29,7 @@
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES, ALIEN_BEAST_SHIP_IDS, ALIEN_SLOW_SHIP_IDS, FOE_SHIPS, FOE_SHIP_MIX_AUTHORITY_IDS } from '@whale/data'
 import { resolveFoeMounts } from '../src/foeMounts'
-import { advanceBattleFor, createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipTierOf, foeUnitNameOf, startBattleFor } from '../src/combat'
+import { advanceBattleFor, createFoeSpecs, FOE_ELITE_WORD, FOE_LIGHT_WORD, foeCardShipIdOf, foeDesiredRange, foeLayerSplit, foeShipEliteOf, foeShipIdOfTag, foeShipTierOf, foeUnitNameOf, startBattleFor } from '../src/combat'
 import { createInitialState } from '../src/state'
 import type { AnomalyDef, FoeShipDef } from '../src/types'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
@@ -243,6 +243,83 @@ describe('头目档反查：foeShipEliteOf（阵形前排判据）', () => {
     const noBoss = ANOMALIES.find((a) => a.id === 'ano-pirate-post')!
     expect(foeShipEliteOf(noBoss, 'foe-0')).toBe(false)
     expect(foeShipTierOf(noBoss, 'foe-0')).toBe(1)
+  })
+})
+
+/**
+ * **舰级 id 反查**（2026-09-26 船长令「旧版敌人按敌舰不同做出些许区分」）：
+ * 界面逐舰线稿按**舰级 id** 索引（键 = `FoeShipDef.id`），所以舰影/舰名/体积三者必须来自
+ * **同一次编成反查**。本组盯住两件事：
+ * ① `foeShipIdOfTag` 与 `foeShipTierOf`/`foeUnitNameOf` 同源（同一 tag 反查回同一舰级）；
+ * ② `foeCardShipIdOf` 的"代表舰"= 本卡最强那型——**不许界面自己拼 `foe-{k}`**
+ *   （tag 编号按 `count` 展开并给支援舰跳号，界面照编成表下标拼出来的 tag 会指向另一条舰）。
+ */
+describe('舰级 id 反查：foeShipIdOfTag / foeCardShipIdOf（逐舰线稿取形）', () => {
+  it('按 tag 反查回同一舰级 id（主体 / 同波后续小队 / 僚机三处一致）', () => {
+    const def = mixedCard(40)
+    expect(foeShipIdOfTag(def, 'foe-0')).toBe(BOSS.id)
+    expect(foeShipIdOfTag(def, 'w0-foe-2')).toBe(SKIFF.id)
+    expect(foeShipIdOfTag(def, 'w0-foe-3-e1')).toBe(SKIFF.id) // 僚机跟最近主体
+    // 与档位/舰名三个查询同源：档位取到的舰，就是 id 与舰名取到的那条
+    expect(foeShipTierOf(def, 'foe-0')).toBe(3)
+    expect(foeUnitNameOf(def, 'foe-0')).toContain(BOSS.name)
+  })
+
+  it('未编入 tag / 旧路径卡 / 空卡 → null（界面回落族形，不崩）', () => {
+    const def = mixedCard(40)
+    expect(foeShipIdOfTag(def, 'foe-9')).toBeNull()
+    expect(foeShipIdOfTag(anomaly('ano-t-id-legacy', 'galaxy-hub', { threat: 30 }), 'foe-0')).toBeNull()
+    expect(foeShipIdOfTag(null, 'foe-0')).toBeNull()
+    expect(foeShipIdOfTag(undefined, 'foe-0')).toBeNull()
+  })
+
+  it('贴图键必须是**舰级 id**、不是 tag：反查结果里不含 `#`、`w{n}-`、`-e{n}` 这类编队后缀', () => {
+    for (const def of ANOMALIES.filter((d) => (d.ships?.length ?? 0) > 0)) {
+      for (const s of createFoeSpecs(def, bal)) {
+        const id = foeShipIdOfTag(def, s.tag)
+        expect(id, `${def.id} / ${s.tag}`).not.toBeNull()
+        expect(id!).not.toContain('#')
+        expect(id!).not.toMatch(/^(w\d+-|sup\d+-)/)
+        // 舰级表里确有这一条（不是界面拼出来的字符串）
+        expect(FOE_SHIPS.some((x) => x.id === id), `${def.id} → ${id}`).toBe(true)
+      }
+    }
+  })
+
+  it('代表舰 = 本卡第 1 波最强那型（档高者优先，同档优先头目档）', () => {
+    // 混合卡：头目 T3（elite）+ 快艇 T1 ⇒ 代表舰 = 头目
+    expect(foeCardShipIdOf(mixedCard(40))).toBe(BOSS.id)
+    // 反向对照：把"无首领"的卡拿出来应当取到它的杂鱼舰级（不是头目）
+    const noBoss = ANOMALIES.find((a) => a.id === 'ano-pirate-post')!
+    const picked = foeCardShipIdOf(noBoss)
+    expect(picked).not.toBeNull()
+    expect(FOE_SHIPS.find((x) => x.id === picked)!.elite ?? false).toBe(false)
+    expect(foeShipTierOf(noBoss, 'foe-0')).toBe(1)
+    expect(picked).toBe(foeShipIdOfTag(noBoss, 'foe-0'))
+  })
+
+  it('代表舰不越波：只从第 1 波里挑（第 2 波的强援不算本卡的门面）', () => {
+    const def: AnomalyDef = {
+      ...mixedCard(40),
+      id: 'ano-t-card-id-wave',
+      ships: [
+        { ship: SKIFF, count: 2, wave: 0 },
+        { ship: BOSS, count: 1, wave: 1 },
+      ],
+    }
+    expect(foeCardShipIdOf(def)).toBe(SKIFF.id)
+  })
+
+  it('内容契约：每张舰级路径的卡都能取到代表舰，且它确实编在这张卡里', () => {
+    const cards = ANOMALIES.filter((d) => (d.ships?.length ?? 0) > 0)
+    expect(cards.length).toBeGreaterThanOrEqual(13)
+    for (const def of cards) {
+      const id = foeCardShipIdOf(def)
+      expect(id, def.id).not.toBeNull()
+      const ids = createFoeSpecs(def, bal).map((s) => foeShipIdOfTag(def, s.tag))
+      expect(ids, def.id).toContain(id)
+    }
+    expect(foeCardShipIdOf(anomaly('ano-t-card-id-legacy', 'galaxy-hub', { threat: 30 }))).toBeNull()
   })
 })
 

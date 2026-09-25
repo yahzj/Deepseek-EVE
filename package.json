@@ -84,6 +84,7 @@
     "l10n:wrap": "tsx tools/l10n-wrap.ts",
     "l10n:render": "tsx tools/l10n-render-probe.ts",
     "art:ships": "tsx tools/shipart-preview.ts",
+    "art:ships:check": "tsx tools/shipart-preview.ts --check",
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",
     "docs:seal": "tsx tools/docs-seal.ts",

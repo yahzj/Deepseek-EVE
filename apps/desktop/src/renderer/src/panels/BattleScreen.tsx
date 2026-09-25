@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairKitAvailableOf, repairLedgersOf, thrusterPhase, weekendFlagshipBattleViewOf, wormholeBattleViewOf } from '@whale/core'
+import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairKitAvailableOf, repairLedgersOf, thrusterPhase, weekendFlagshipBattleViewOf, wormholeBattleViewOf, foeShipIdOfTag } from '@whale/core'
 import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -2089,6 +2089,9 @@ const meSpeedRef = useRef(200)
     const isRank2 = slot.row === 1
     /** 该舰血条几何（2026-09-11 船长③：血条跟着各舰走——贴各自舰下，拥挤时该排内竖排） */
     const bar = foeBarGeoms[rowIdx] ?? { width: 185, dx: 0, dy: 0 }
+    /** 该舰**舰级 id**（2026-09-26：逐舰线稿按舰级 id 取形——30 条敌舰各画各的，
+     *  同一场里"主舰/护卫/电子舰"不再共用一张族形。旧路径卡（无 `anomaly.ships`）→ null ⇒ 回落族形） */
+    const foeShipId = foeShipIdOfTag(foeAnomaly, tag)
     const ba = corpseAtRef.current.get(tag)
     const sinceBoom = ba === undefined ? -1 : now - ba
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
@@ -2123,6 +2126,7 @@ const meSpeedRef = useRef(200)
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
         <span className="app-bts-corpse" style={fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
           <ShipSprite
+            shipId={foeShipId ?? undefined}
             foeKey={foeKey}
             flip={foeFlip}
             accent={corpseOn ? UI_TONES.corpse : FOE_ACCENT[foeKey] ?? '#ff8373'}
