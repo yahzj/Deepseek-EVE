@@ -208,6 +208,9 @@ function SettingsPanel({
   debugOnState,
   layoutKind,
   onLayoutChange,
+  layoutPending,
+  onApplyLayoutAndQuit,
+  onCancelLayout,
   onDebugChange,
 }: {
   root: RefObject<HTMLDivElement>
@@ -223,6 +226,12 @@ function SettingsPanel({
   /** 设置里的「界面布局」开关（2026-09-25 船长令：两套外壳允许在设置内切换） */
   layoutKind: LayoutKind
   onLayoutChange: (k: LayoutKind) => void
+  /** 玩家已点选、但还没重启的布局（null = 没有待应用项）；设置里那个确认弹框据此显示 */
+  layoutPending: LayoutKind | null
+  /** 确认重开：写盘 + 存档 + 关游戏（实现在 App 层） */
+  onApplyLayoutAndQuit: () => void
+  /** 取消重开：清掉待应用项 */
+  onCancelLayout: () => void
 }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
@@ -305,6 +314,7 @@ function SettingsPanel({
                 {tr('ui.App.148')}
               </button>
             </div>
+            <div className="app-settings-desc">{t('ui.App.149')}</div>
           </div>
           </div>
           {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
@@ -444,6 +454,27 @@ function SettingsPanel({
             </div>
           </div>
         </div>
+        {/* **切换界面布局 ⇒ 提示重开**（2026-09-25 船长令）：确认后存档并关游戏；取消则什么都不做 */}
+        {layoutPending !== null ? (
+          <div className="app-modal-mask" onClick={onCancelLayout}>
+            <div className="app-modal" style={{ width: 460 }} onClick={(e) => e.stopPropagation()}>
+              <div className="app-modal-head">
+                <span className="app-report-title">{t('ui.App.150')}</span>
+              </div>
+              <div className="app-modal-body">
+                <div className="app-note">{t('ui.App.151')}</div>
+                <div className="app-wh-actions">
+                  <button className="app-btn is-primary" onClick={onApplyLayoutAndQuit}>
+                    {tr('ui.App.152')}
+                  </button>
+                  <button className="app-btn is-small" onClick={onCancelLayout}>
+                    {tr('ui.App.100')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className="app-settings-foot">
           <span className="app-dim">{t('ui.App.022')}</span>
           <span className="app-settings-btns">
@@ -866,7 +897,8 @@ export function App({ engine }: { engine: GameEngine }) {
 /**
  * **布局偏好**（2026-09-25 船长令）：「新旧界面能否允许玩家在设置内切换？」⇒ 裁定甲（两套 DOM 并存）；
  * 随后二次裁定：**「默认旧档采用旧界面，新界面需要去设置切换」**＋「**一律默认旧版**」
- * ＋「**一旦点过就永远按他点的来，换档也不变**」。
+ * ＋「**一旦点过就永远按他点的来，换档也不变**」；三次裁定：**「可以切换了，但是需要重启…
+ * 建议在玩家切换时，弹出警告，让玩家重启游戏，玩家确认后关闭游戏。」**
  *
  * 故用**两个键**（职责分开，才分得清"没选过"与"选过"）：
  *   · `whale-idle:layout`      = 选中的布局（`modern` | `classic`）——**仅作记录**；
@@ -889,14 +921,38 @@ function readLayoutPref(): LayoutKind {
   }
 }
 const [layoutKind, setLayoutKind] = useState<LayoutKind>(readLayoutPref)
+/** 玩家已点选、但**还没重启**的布局（null = 没有待应用项）—— 弹框问过之后才写盘并关游戏 */
+const [layoutPending, setLayoutPending] = useState<LayoutKind | null>(null)
+/**
+ * **切换界面布局**（2026-09-25 船长令：「弹出警告，让玩家重启游戏，玩家确认后关闭游戏」；
+ * 船长另有一句「**如果不重启，结构排版有问题**」）：
+ * ⚠ **不就地换**。两套外壳共用同一批类名，换布局要连样式表一起换，当场切会出现排版错乱
+ *   （船长实测）⇒ 这里只记下"待应用"，弹框让玩家自己决定什么时候重启。
+ */
 function chooseLayout(k: LayoutKind): void {
-  setLayoutKind(k)
+  if (k === layoutKind) return
+  setLayoutPending(k)
+}
+/**
+ * **确认重开**：先把偏好写盘（重启后才读得到），再存档，最后关游戏。
+ * ⚠ 存档失败**不关**：让玩家先把档处理好（自动保存是定时的，这里补一次更稳）。
+ */
+async function applyLayoutAndQuit(): Promise<void> {
+  const k = layoutPending
+  if (k === null) return
   try {
     localStorage.setItem(LAYOUT_KEY, k)
     localStorage.setItem(LAYOUT_SET_KEY, '1')
   } catch {
-    /* 存储被禁：忽略（本次会话内仍然生效） */
+    /* 存储被禁：忽略（下次启动会回落到默认） */
   }
+  const ok = await engine.persist()
+  if (!ok) {
+    showToast(tr('ui.App.055'), true)
+    return
+  }
+  // 关窗即退出（主进程 window-all-closed → app.quit()，同款写法见 game/autoPerf.ts）
+  window.close()
 }
   // 性能监测（2026-09-08 诊断工具）：debug 开关在首帧前激活隐形采集；自动采集模式由 main.tsx 预激活
   useState(() => {
@@ -1788,6 +1844,9 @@ function chooseLayout(k: LayoutKind): void {
           debugOnState={debugOn}
           onDebugChange={setDebugOn}
           layoutKind={layoutKind}
+          layoutPending={layoutPending}
+          onApplyLayoutAndQuit={() => void applyLayoutAndQuit()}
+          onCancelLayout={() => setLayoutPending(null)}
           onLayoutChange={chooseLayout}
         />
       ) : null}
