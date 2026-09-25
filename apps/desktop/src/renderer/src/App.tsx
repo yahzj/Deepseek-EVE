@@ -11,7 +11,7 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { useL10n } from './i18n/locale'
-import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN } from '@whale/core'
+import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN, weekendFamilyNameId } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -21,6 +21,7 @@ import { Communicator } from './panels/Expedition'
 import { PrologueScreen } from './panels/PrologueScreen'
 import { ModeChoice } from './panels/ModeChoice'
 import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
+import { WeekendFlagshipPrepModal } from './panels/WeekendFlagshipPrep'
 import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
@@ -957,6 +958,8 @@ export function App({ engine }: { engine: GameEngine }) {
    * 弹窗外形 = 通讯页右栏那块屏（同源公共件 `panels/CommsReader.tsx`）。
    */
   const popupId = engine.commsPopups()[0] ?? null
+  /** 战前准备弹层开合（2026-09-25：旗舰现身弹窗可直达） */
+  const [prepOpen, setPrepOpen] = useState(false)
   const popupMsg =
     popupId !== null && !showOfflineReport ? (engine.commsInboxView().find((e) => e.id === popupId) ?? null) : null
 
@@ -1624,8 +1627,7 @@ export function App({ engine }: { engine: GameEngine }) {
         </div>
       ) : null}
 
-      {/* ───── 送达弹窗（船长 2026-09-14：除新手教程外所有通讯都弹；外形 = 通讯页右栏那块屏） ───── */}
-      {popupMsg ? (
+      {/* ───── 送达弹窗（船长 2026-09-14：除新手教程外所有通讯都弹；外形 = 通讯页右栏那块屏） ───── */}      {popupMsg ? (
         <div className="app-ann-mask" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
           <div className="app-comm-pop" onClick={(e) => e.stopPropagation()}>
             <div className="app-comms-body-col">
@@ -1656,7 +1658,47 @@ export function App({ engine }: { engine: GameEngine }) {
         </div>
       ) : null}
 
-      {/* ───── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ───── */}
+      {/**
+       * **"旗舰现身"一次性弹窗**（2026-09-25 船长令：「希望当核心星系收复敌人旗舰现身时，出现一次弹窗，
+       * 玩家可以通过弹窗直接前往准备」）：引擎在旗舰首次现身那一拍立待办（内存、不随档）⇒ 这里弹一次；
+       * 「战前准备」直开准备界面、「知道了」只关窗。弹层复用全仓既有的 `.app-modal-*` 族。
+       */}
+      {engine.flagshipPopupPending ? (
+        <div className="app-modal-mask" onClick={() => engine.dismissFlagshipPopup()}>
+          <div className="app-modal" style={{ width: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div className="app-modal-head">
+              <span className="app-report-title">{tr('ui.weekend.090')}</span>
+              <button className="app-btn is-small" onClick={() => engine.dismissFlagshipPopup()}>
+                {tr('ui.App.086')}
+              </button>
+            </div>
+            <div className="app-modal-body">
+              <div className="app-note">
+                {tr('ui.weekend.091', {
+                  p1: engine.ctx.galaxies.get(engine.state.weekendEvent?.coreId ?? '')?.name ?? '',
+                  p2: tr(weekendFamilyNameId(engine.state.weekendEvent?.family ?? 'H') ?? 'core.weekend.023'),
+                })}
+              </div>
+              <div className="app-wh-actions">
+                <button
+                  className="app-btn is-primary"
+                  onClick={() => {
+                    engine.dismissFlagshipPopup()
+                    setPrepOpen(true)
+                  }}
+                >
+                  {tr('ui.weekend.062')}
+                </button>
+                <button className="app-btn is-small" onClick={() => engine.dismissFlagshipPopup()}>
+                  {tr('ui.App.100')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {/* 战前准备弹层：从上面那枚弹窗直达（组件自包含；活动框与星系详细里各挂一份自己的） */}
+      {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       {/**
        * **交火中：右上角悬浮入口**（主动进入战斗页，不自动切换页面）。
        *

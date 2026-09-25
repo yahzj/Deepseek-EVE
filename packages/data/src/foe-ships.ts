@@ -1225,7 +1225,12 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
   id: 'foe-h-ink-corvette',
   name: '墨潮突击舰',
   family: 'H',
-  evasion: 0.22,
+  /**
+   * **闪避 0.22 → 0.47**（2026-09-25 船长令：「**墨潮突击舰闪避率+0.25**」）——
+   * 它是全族跑得最快的一档（544 m/s）＋带冲锋与捕获网，闪避抬上去才配得上"贴脸突击"的角色。
+   * ⚠ 破既有闪避带的话在 `content:check` 的族格白名单里按同款口径记一笔（见 `INK_SPEED_EXEMPT_SHIP_IDS` 那一族的写法）。
+   */
+  evasion: 0.47,
   hullClassTier: 1, // 护卫舰
   speedRatio: 1.6, // 340 × 1.6 = 544 m/s（船长 2026-09-24：「突击舰速度过慢，按照1.6修正」；1.86× 破族格带 ⇒ INK_SPEED_EXEMPT_SHIP_IDS）
   hp: 364,

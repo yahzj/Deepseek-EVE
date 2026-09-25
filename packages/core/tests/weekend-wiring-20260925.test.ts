@@ -155,7 +155,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(s.weekendEvent!.contributed[gid] ?? 0, '打赢外围 ⇒ 调试模式一场 +50%（两场收复）').toBeCloseTo(0.5, 6)
   })
 
-  it('④ 夺回（进度打满）⇒ 夺回奖励入账：钱包 +2M · 稀有残骸 ×8 真进仓库', () => {
+  it('④ 夺回（进度打满）⇒ 夺回奖励**改到活动结束统一发**（船长 2026-09-25）', () => {
     const gid = GID
     const s = invaded(gid)
     s.expedition.foeGalaxyId = gid
@@ -167,14 +167,32 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const wrecks0 = heldOf(s, 'wreck-rare-h-hi')
     const r = weekendApplyBattleOutcome(s, ctx, 'ink-harass', true, now, null)
     expect(r?.note, '这一场越过 100% ⇒ 夺回').toContain('夺回')
-    expect(r?.isk, '夺回奖励 ISK').toBe(WEEKEND_RECLAIM_ISK)
-    expect(r?.wreck, '夺回奖励残骸').toBe(WEEKEND_RECLAIM_WRECK)
-    expect(s.wallet.isk - isk0, 'ISK 真进钱包').toBe(WEEKEND_RECLAIM_ISK)
-    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '稀有残骸真到手（H 组稀有件）').toBe(WEEKEND_RECLAIM_WRECK)
-    /** 入账日志（id 制）：夺回是里程碑 ⇒ 必须留一条解释"钱从哪来" */
+    /** 船长 2026-09-25：「夺回星区的奖励不要即时发放，放入结束后结算发放」⇒ 此刻**一分不发**，只记台账 */
+    expect(r?.isk, '即时不发 ISK').toBe(0)
+    expect(r?.wreck, '即时不发残骸').toBe(0)
+    expect(s.wallet.isk - isk0, '钱包不动').toBe(0)
+    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '货舱也不动').toBe(0)
+    expect(s.weekendEvent!.reclaimPending, '待到账那一格记着').toEqual({
+      isk: WEEKEND_RECLAIM_ISK,
+      wreck: WEEKEND_RECLAIM_WRECK,
+    })
+    expect(s.weekendEvent!.rewardLedger?.byGalaxy[gid], '台账按星系记着（面板那一列读它）').toEqual({
+      isk: WEEKEND_RECLAIM_ISK,
+      wreck: WEEKEND_RECLAIM_WRECK,
+    })
+    /** 结束 ⇒ 结算那一刻连贡献奖一起发（此处占比 100% ⇒ A 档 ×12 ＋ 8M） */
+    endWeekendEvent(s, now)
+    const settle = weekendSettleAndGrant(s, ctx, now)
+    expect(settle, '结束结算').not.toBeNull()
+    expect(settle!.isk, '结算 = 贡献奖 8M ＋ 夺回 2M').toBe(8_000_000 + WEEKEND_RECLAIM_ISK)
+    expect(settle!.wreck, '结算 = 贡献奖 ×12 ＋ 夺回 ×8').toBe(12 + WEEKEND_RECLAIM_WRECK)
+    expect(s.wallet.isk - isk0, 'ISK 这时才进钱包').toBe(8_000_000 + WEEKEND_RECLAIM_ISK)
+    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸这时才到手').toBe(12 + WEEKEND_RECLAIM_WRECK)
+    /** 日志（id 制）：夺回是里程碑 ⇒ 留一条，且措辞是"待活动结束时统一发放"（不再说"已入账"） */
     const reclaimLog = [...s.logs].reverse().find((l) => l.textId === 'core.weekend.001')
-    expect(reclaimLog?.text.includes('夺回'), '夺回要有入账日志').toBe(true)
-    expect(reclaimLog?.textParams?.p2, '日志里的残骸数与实发一致').toBe(WEEKEND_RECLAIM_WRECK)
+    expect(reclaimLog?.text.includes('夺回'), '夺回要有日志').toBe(true)
+    expect(reclaimLog?.text.includes('待活动结束时统一发放'), '措辞 = 待发放').toBe(true)
+    expect(reclaimLog?.textParams?.p2, '日志里的残骸数与台账一致').toBe(WEEKEND_RECLAIM_WRECK)
   })
 
   it('⑤ 活动结束 ⇒ 贡献奖入账（四档）· 只发一次 · 占比按结束时刻算', () => {

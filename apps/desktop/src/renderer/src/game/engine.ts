@@ -1019,12 +1019,15 @@ export class GameEngine {
       addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
       void this.persist()
     }
-    if (weekend.flagshipShown && this.state.weekendEvent?.flagshipAtWallMs !== undefined) {
-      const ev = this.state.weekendEvent
-      if (ev.endedAtWallMs === undefined && ev.flagshipDown === undefined) {
-        addLog(this.state, 'warn', tr('ui.weekend.002'), 'ui.weekend.002')
-        void this.persist()
-      }
+    /**
+     * **旗舰现身**：只记**一次**（2026-09-25 修船长报障「事件日志会一直刷『入侵核心已被打通：旗舰现身。』」）——
+     * 原先判据是 `flagshipShown`（现身之后**每拍都真**）⇒ 日志每拍刷一条；现按 `flagshipAnchored`
+     * （**首次落盘 anchor 的那一拍**）来；同时立起"一次性弹窗"待办（`flagshipPopupPending`，界面读它弹一次）。
+     */
+    if (weekend.flagshipAnchored) {
+      addLog(this.state, 'warn', tr('ui.weekend.002'), 'ui.weekend.002')
+      this.flagshipPopupPending = true
+      void this.persist()
     }
     if (weekend.ended) {
       const octopus = weekend.flagshipDown === 'octopus'
@@ -1345,6 +1348,26 @@ export class GameEngine {
    */
   weekendFlagshipPrep(): ReturnType<typeof weekendFlagshipPrepView> {
     return weekendFlagshipPrepView(this.state, this.ctx, Date.now())
+  }
+
+  /**
+   * **"旗舰现身"一次性弹窗**（2026-09-25 船长令：「希望当核心星系收复敌人旗舰现身时，出现一次弹窗，
+   * 玩家可以通过弹窗直接前往准备」）：
+   * 引擎在**首次落盘 anchor 的那一拍**立起待办；界面读这里弹一次、玩家点「战前准备」或「知道了」即清。
+   * ⚠ 只在内存里（不随档）：读档时若旗舰已在场，就不必再弹一遍（该看的信息活动框与星系详细里都有）。
+   */
+  get flagshipPopupPending(): boolean {
+    return this.flagshipPopup
+  }
+  private set flagshipPopupPending(v: boolean) {
+    this.flagshipPopup = v
+  }
+  private flagshipPopup = false
+  /** 关掉那枚一次性弹窗（点「战前准备」或「知道了」都调它） */
+  dismissFlagshipPopup(): void {
+    if (!this.flagshipPopup) return
+    this.flagshipPopup = false
+    this.notify()
   }
   /**
    * **挑战入侵旗舰**（M1-b 收尾 · 2026-09-23）：核心条满才成立（`weekendStartFlagshipBattle` 内部判）。
