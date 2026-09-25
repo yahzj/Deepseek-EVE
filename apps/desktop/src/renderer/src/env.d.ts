@@ -3,6 +3,11 @@
  */
 
 declare module '*.css'
+/** 样式表按 URL 取用（两套布局各一份，见 `ui/layoutStyles.ts`） */
+declare module '*.css?url' {
+  const url: string
+  export default url
+}
 
 declare global {
   /** 一份存档备份的元信息 */

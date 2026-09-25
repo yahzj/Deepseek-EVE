@@ -8,7 +8,11 @@ import { runAutoPerf } from './game/autoPerf'
 import { applySpaceBg } from './ui/spaceBg'
 import { bootstrapTheme } from './ui/theme'
 import { L10nProvider, tr } from './i18n/locale'
-import './styles.css'
+import { installLayoutStyles } from './ui/layoutStyles'
+
+// **两套布局两套样式**（2026-09-25 船长令）：按玩家偏好只加载对应那一份。
+// ⚠ 必须在这里（首帧渲染之前）调用：两份样式的类名高度重叠，同时生效会互相串味。
+installLayoutStyles()
 
 // 宇宙背景（2026-09-10 船长）：启动时抽一张无缝贴图并写入 --space-bg；
 // 放在首帧渲染之前，避免先闪一下纯色底

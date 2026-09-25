@@ -7,7 +7,12 @@ import { GameEngine } from '../../apps/desktop/src/renderer/src/game/engine'
 import { applySpaceBg } from '../../apps/desktop/src/renderer/src/ui/spaceBg'
 import { bootstrapTheme } from '../../apps/desktop/src/renderer/src/ui/theme'
 import { L10nProvider, tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
-import '../../apps/desktop/src/renderer/src/styles.css'
+import { installLayoutStyles } from '../../apps/desktop/src/renderer/src/ui/layoutStyles'
+
+// **两套布局两套样式**（2026-09-25 船长令）：按玩家偏好只加载对应那一份。
+// ⚠ 与桌面入口同口径、同样必须在首帧渲染之前调；两份样式类名高度重叠，同时生效会互相串味。
+// ⚠ 网页版有**自己的入口**：桌面入口改了这里也必须改。
+installLayoutStyles()
 
 // 宇宙背景（2026-09-10 船长）：与桌面入口同口径——启动时抽一张无缝贴图并写入 `--space-bg`，
 // 放在首帧渲染之前，避免先闪一下纯色底。（此前只有桌面入口调，网页版一直只有 CSS 星点兜底；

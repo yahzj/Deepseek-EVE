@@ -864,17 +864,36 @@ export function App({ engine }: { engine: GameEngine }) {
   const [debugOn, setDebugOn] = useState<boolean>(readDebugEnabled)
 
 /**
- * **布局偏好**（2026-09-25 船长令：「新旧界面能否允许玩家在设置内切换？」⇒ 裁定甲）：
- * whale-idle:layout = modern（默认，底部导航版）/ classic（旧版，左侧导航版）。
- * 两套外壳共用同一份状态（见 ui/AppShell.tsx）⇒ 切换不会丢进度或页面状态。
+ * **布局偏好**（2026-09-25 船长令）：「新旧界面能否允许玩家在设置内切换？」⇒ 裁定甲（两套 DOM 并存）；
+ * 随后二次裁定：**「默认旧档采用旧界面，新界面需要去设置切换」**＋「**一律默认旧版**」
+ * ＋「**一旦点过就永远按他点的来，换档也不变**」。
+ *
+ * 故用**两个键**（职责分开，才分得清"没选过"与"选过"）：
+ *   · `whale-idle:layout`      = 选中的布局（`modern` | `classic`）——**仅作记录**；
+ *   · `whale-idle:layout-set`  = 玩家是否**在设置里明确选过**（`1` = 选过）。
+ * 判据：**没选过 ⇒ 一律 classic（旧界面）**；选过 ⇒ 永远按他选的（与存档无关，换档/清档都不变）。
+ *
+ * ⚠ 迁移：本功能第一版缺省是 modern，只要跑过一次就会写下 `whale-idle:layout`，
+ * 而第二版又从没写过 `layout-set` ⇒ **凡是没有 `layout-set` 的机器一律回落到 classic**，
+ * 正是船长要的默认。两个键都进 `localStorage`（本机偏好、不进存档）。
+ * ⚠ 读写全包 try/catch：桌面端存储被禁时不能让整树崩掉（读失败 ⇒ 用默认）。
  */
-const [layoutKind, setLayoutKind] = useState<LayoutKind>(() =>
-  localStorage.getItem('whale-idle:layout') === 'classic' ? 'classic' : 'modern',
-)
+const LAYOUT_KEY = 'whale-idle:layout'
+const LAYOUT_SET_KEY = 'whale-idle:layout-set'
+function readLayoutPref(): LayoutKind {
+  try {
+    if (localStorage.getItem(LAYOUT_SET_KEY) !== '1') return 'classic'
+    return localStorage.getItem(LAYOUT_KEY) === 'modern' ? 'modern' : 'classic'
+  } catch {
+    return 'classic'
+  }
+}
+const [layoutKind, setLayoutKind] = useState<LayoutKind>(readLayoutPref)
 function chooseLayout(k: LayoutKind): void {
   setLayoutKind(k)
   try {
-    localStorage.setItem('whale-idle:layout', k)
+    localStorage.setItem(LAYOUT_KEY, k)
+    localStorage.setItem(LAYOUT_SET_KEY, '1')
   } catch {
     /* 存储被禁：忽略（本次会话内仍然生效） */
   }

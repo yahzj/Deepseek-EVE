@@ -50,31 +50,69 @@
     （舰船窗 + 钱包 + 导航项）+（右主区 + 日志坞）。
   - 两套**共用同一个 `ShellCtx`**（`state` / `engine` / 各回调 / `pageMain` / `logDock` 插槽）
     ⇒ 切换不丢进度、不丢页面状态；`pageMain` 与 `logDock` 仍归 App，不搬进外壳。
-- **偏好**：`localStorage['whale-idle:layout']` = `modern`（缺省）/ `classic`；根节点挂
-  `is-layout-modern` / `is-layout-classic` 类，便于 CSS 针对性微调。**本机偏好、不进存档**。
+- **偏好**（**2026-09-25 船长二次裁定**：「**默认旧档采用旧界面，新界面需要去设置切换**」＋「**一律默认旧版**」
+  ＋「**一旦点过就永远按他点的来，换档也不变**」）⇒ 用**两个键**：
+  - `whale-idle:layout` = 选中的布局（`modern` | `classic`），**仅作记录**；
+  - `whale-idle:layout-set` = 玩家是否**在设置里明确选过**（`1` = 选过）。
+  - 判据：**没选过 ⇒ 一律 classic**；选过 ⇒ 永远按他选的（与存档无关，换档/清档都不变）。
+  - 迁移：本功能第一版缺省是 modern，跑过一次就会写下 `whale-idle:layout` 却没写过 `layout-set`
+    ⇒ **凡是没有 `layout-set` 的机器一律回落到 classic**，正是船长要的默认。
+  - 根节点挂 `is-layout-modern` / `is-layout-classic` 类。**本机偏好、不进存档**。
 - **入口**：设置弹层新增「界面布局」一行（`ui.App.146/147/148`），与「语言」同款左右按钮组。
+- **样式也分两套**（见 §4.4）：`ui/layoutStyles.ts` 按布局**只加载一份样式表**。
 
-### 4.2 ⚠ 已知差异（船长此前已接受）
-`classic` 是**冻结的历史形态**：本轮及后续新增（副AI活动组、计时中组、AI 迷你卡、
-底栏图标放大、存档按钮移入设置…）**只在 modern 出现**。切到 classic 即回到 2026-09-25 之前的样子。
+### 4.2 ⚠ 已知差异（船长已接受）
+`classic` 是**冻结的历史形态**：本轮的"新件"（副AI活动组、计时中组、AI 迷你卡、底栏图标放大、
+存档按钮移入设置…）**只在 modern 出现**。切到 classic 即回到 main 的样子
+（**唯一例外**：旧版外壳仍挂了本轮的 `ActivityBar`——见 §4.4 的读数对照）。
 
 ### 4.3 验证（读数型，非观感结论）
-`_probe-layout2.mjs` / `_probe-layouttoggle.mjs`（1280×860，测试档 `save-20260920-164600`）：
+`_probe-computed.mjs`（三模式）· `_probe-old-ui-baseline.mjs`（**与 main 产物逐项对照**）·
+`_probe-modern-regression.mjs`（新版回归）· 1280×860，测试档 `save-20260920-164600`：
 
-| 项 | modern | classic |
-| --- | --- | --- |
-| 根类 | `is-layout-modern` | `is-layout-classic` |
-| 导航形态 | **底部横栏**（1280×87，子块 = 左组/出港/右组） | **左侧竖栏**（含舰船窗 + 钱包 + 10 项） |
-| 活动栏 | 左列 150×610，**可滚**（scrollH 1039 / clientH 608） | 无（旧版本就没有） |
-| 钱包落点 | `.app-header-left`（玩家名右侧，x 193 > 名 x 166） | `nav.app-nav-side`（原文位置） |
-| 顶栏按钮 | 7 枚、**无「保存」**（已入设置） | 10 枚、**含保存/存档管理/重置档案** |
-| 日志坞 | `position: fixed` 浮层 | `position: fixed` 浮层 |
-| 横向/纵向溢出 | 0 / 0 | 0 / 0 |
+| 模式 | 根类 | 导航 | 宽 | 纵向溢出 |
+| --- | --- | --- | --- | --- |
+| 无偏好（**默认**） | `is-layout-classic` | column 侧栏 | 189 | **0** |
+| 显式 classic | `is-layout-classic` | column 侧栏 | 189 | **0** |
+| 显式 modern | `is-layout-modern` | **row 底栏** | **1280** | **0** |
 
-切换链实测：默认 `modern` → 设置里点「旧版」⇒ `localStorage` 变 `classic`、根类变
-`is-layout-classic`、导航由底部变侧栏；**刷新后仍为 classic** ⇒ 偏好确实记住了。
+**与 main 产物逐项对照**（把 main 单独构建到 4180 作基准）：30 项里 **26 项完全相同**，
+剩 4 项为**预期差异**——根类多 `is-layout-classic`、主区首子块是活动栏（`mainChildren`/`actBox`/`actCS`）。
+**新版回归**：10 项全部与本次改动前实测一致（改样式**没有**动到 modern）。
 
-### 4.4 本轮踩坑（写下来避免再犯）
+### 4.4 ⚠ 样式怎么分的（本节是这轮最大的坑，务必先读再动 CSS）
+
+**根因**：两套外壳**共用同一批类名**（`.app-nav-side` / `.app-workspace` / `.app-page-main` /
+`.app-log-dock` …），而本分支为"底栏 + 左列活动栏"**改写了这些规则** ⇒ 无论怎么卡特异度，
+两套规则都会互相串味。**踩过的 5 种错法**（都写下来避免重犯）：
+
+1. classic 复用分支 `styles.css` ⇒ 竖栏被渲染成底栏、主区塌成 **4px 宽**（船长报障的直接原因）；
+2. 给 classic 补"main 版规则"时漏补被剔除的基础规则 ⇒ 导航变成空横栏、页面被撑到 **1.4 万像素**；
+3. modern 用 `.app-nav-side.app-root.is-layout-modern`（**元素上没有 `app-root`**）⇒ 永不匹配；
+4. modern 用 `:where(.app-root.is-layout-modern) .app-nav-item` ⇒ 特异度只剩 (0,1,0)，**被 classic 压住**；
+5. classic 基准块用 `:where(sel)` 包（期望 0 特异度）⇒ 反而被**更弱**的规则压住（`:where()` 内部的
+   类名也不计特异度，两边都成 0）。
+
+**定案做法（不会失败的那种）**：**两份样式表，按布局只加载一份**。
+
+- 生成器：`tools/_ui-artifacts/scripts/_split-layout-css.mjs`（改 `styles.css` 后**必须重跑**）
+  - `tools/_ui-artifacts/layout-css/styles-modern.css` = 本分支 `styles.css` **原样**；
+  - `tools/_ui-artifacts/layout-css/styles-classic.css` = **main 原文一条不删** ＋ 本轮**新增类名**的规则
+    （判据：选择器里的类名**全部**是 main 里没有的才搬——掺进一个旧类名就跳过，那往往正是被改写的那条）。
+  - ⚠ 生成件放**源码树之外**：放源码根会被 `ui:theme-check` 扫到，而 classic 份是 main 原文、
+    会引用本分支主题里**还没有的 token**（如 `--wui-danger-strong`）⇒ 误报。
+- 加载：`ui/layoutStyles.ts` 的 `installLayoutStyles()`，两个入口（`apps/desktop/.../main.tsx` 与
+  `web/src/main.tsx`）在**首屏渲染前**各调一次；同一个 `<link id="whale-layout-style">` 换 `href`
+  ⇒ 两份**永不同时生效**。
+- 别名 `@layout-css` 在 **两处**配置（`web/vite.config.ts` + `apps/desktop/electron.vite.config.ts`），
+  改一处必须改另一处。
+
+_维护：本件按 §8 归档；归档前不得合入 main（船长令：本工作区隔离）。_
+
+切换链实测：设置里点「旧版 / 新版」⇒ `localStorage` 两键同时写入、根类变更、导航形态切换；
+**刷新后仍为所选** ⇒ 偏好确实记住了。没选过时（清掉两键）⇒ 落到 `classic`。
+
+### 4.5 本轮踩坑（写下来避免再犯）
 - **取块一律按锚点/配平算，别手数行号**：`App.tsx` 与生成脚本之间曾差 1 行，
   加上"JSX 注释块内花括号自平衡会把花括号配平骗过去"，前后白改 6 轮。
 - **`<main>` 之后那段主区收口**：原文里 `app-page-content` → `</main>` → `app-workspace-body`
@@ -82,5 +120,8 @@
   TS 报"几百行之外"的位置。定稿判据 = 全文件 `<div` 74 / `</div>` 76（净差 −2 = root 那层）。
 - **两套 DOM 并存**必须让外壳**零改写**地复用原文：做法是"一个结构化 `ctx` 在组件顶部解构"，
   而不是"抽 34 个 props 再逐个加前缀"（后者改坏了 JSX 标签名/属性名/`=>` 三次）。
-
+- **自检代码本身也要自检**：`bal()` 里写成 `'\\{'` 字符串 ⇒ 匹配的是"反斜杠+大括号"，
+  自检形同虚设、白跑两轮；另有两次诊断脚本把 `const ev = ...` 写在**使用之后**（TDZ），
+  跑出来的读数全是假的 —— **诊断脚本先自己跑通再信它的结论**。
+- **CSS 特异度别硬拼**：见 §4.4 的五种错法。两套 DOM 共用类名时，**分开加载**才是稳的解法。
 _维护：本件按 §8 归档；归档前不得合入 main（船长令：本工作区隔离）。_
