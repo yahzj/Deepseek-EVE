@@ -84,7 +84,8 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
       for (const o of state.market.npcSell[plain.key] ?? []) plainQty.add(o.qty)
     }
     expect(ammoQty.size, '13 小时内应抽到过弹药 MK2 的供货单').toBeGreaterThan(0)
-    for (const q of ammoQty) {
+    // 2026-09-25 船长选甲：只约束**稀有通道**（<=600 的那些）；池通道供应单可达六位数、不在此列
+    for (const q of [...ammoQty].filter((q2) => q2 <= 600)) {
       expect(q, '批量档：单张 1~3 件 ×200').toBeGreaterThanOrEqual(200)
       expect(q, '批量档：单张 1~3 件 ×200').toBeLessThanOrEqual(600)
     }
