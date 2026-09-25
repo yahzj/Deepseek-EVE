@@ -166,7 +166,7 @@ import {
   bumpIronmanSeq,
   // 2026-09-23 周末入侵（M1-b：引擎每拍推进入侵时间轴）
   weekendTick,
-  weekendDerivedCardOf,
+  weekendBountyCardsOf,
   weekendOccupiedLiveAt,
   weekendFlagshipSpecOf,
   weekendFlagshipSquadOf,
@@ -564,16 +564,26 @@ export class GameEngine {
       return
     }
     const now = Date.now()
-    /** 同一星系只判一次（列表里同星系多张卡） */
-    const live = new Map<string, boolean>()
-    this.anomalies = base.map((a) => {
-      let occupied = live.get(a.galaxyId)
-      if (occupied === undefined) {
-        occupied = weekendOccupiedLiveAt(this.state, a.galaxyId, now)
-        live.set(a.galaxyId, occupied)
-      }
-      return occupied ? weekendDerivedCardOf(a, ev.family, { isCore: a.galaxyId === ev.coreId }) : a
-    })
+    /** 逐星系取一次（同星系多张卡共用同一份替换结果 ⇒ 与 `weekendBountyCardsOf` 的"同序"契约一致） */
+    const byGalaxy = new Map<string, (typeof base)[number][]>()
+    for (const a of base) {
+      const list = byGalaxy.get(a.galaxyId)
+      if (list) list.push(a)
+      else byGalaxy.set(a.galaxyId, [a])
+    }
+    const replaced = new Map<string, readonly (typeof base)[number][]>()
+    for (const [gid, list] of byGalaxy) {
+      replaced.set(gid, weekendBountyCardsOf(this.state, this.ctx, list, gid, now))
+    }
+    const cursor = new Map<string, number>()
+    const out: (typeof base)[number][] = []
+    for (const a of base) {
+      const list = replaced.get(a.galaxyId)!
+      const i = cursor.get(a.galaxyId) ?? 0
+      cursor.set(a.galaxyId, i + 1)
+      out.push(list[i] ?? a)
+    }
+    this.anomalies = out
   }
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */
   allAnomalies = ANOMALIES_FLAVORED
