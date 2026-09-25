@@ -135,8 +135,17 @@ function parseRules(text: string): Rule[] {
 const current = readFileSync(SRC, 'utf8')
 const baseline = readFileSync(BASELINE, 'utf8')
 const baseRules = parseRules(baseline)
+/**
+ * 当前 `styles.css` 的规则表（**一份**：下面「窗口模块族」筛选与 `--debug` 读数都用它）。
+ *
+ * ⚠ 2026-09-25 补：`807637f1`（窗口模块化）在 L223 用了 `curRules` 却没定义 ⇒
+ * `npm run ui:layout-css:check` 直接 ReferenceError（主树与 d2 都跑不起来）；
+ * 而且 `npm run typecheck` 只跑 4 个 workspace、**不覆盖 `tools/`** ⇒ 四道闸门都拦不住。
+ * 这里顺手把原先那句重复的 `parseRules(current)` 也收敛到同一份。
+ */
+const curRules = parseRules(current)
 if (process.argv.includes('--debug')) {
-  console.log(`  [debug] 基准规则 ${baseRules.length} 条 · 当前规则 ${parseRules(current).length} 条`)
+  console.log(`  [debug] 基准规则 ${baseRules.length} 条 · 当前规则 ${curRules.length} 条`)
   for (const sel of SHELL_SELECTORS) {
     const hits = baseRules.filter((r) => r.sel === sel)
     console.log(`  [debug] ${hits.length} × «${sel}»${hits.length === 0 ? '   ⚠ 基准里没有这条选择器' : ''}`)
@@ -260,7 +269,36 @@ console.log(
 )
 
 if (CHECK) {
-  console.log('\n[check] 未写盘')
+  /**
+   * **真比对**（2026-09-25 补）：把"刚生成的两份"与磁盘上的**入库产物**逐字节比（先统一行尾）。
+   *
+   * ⚠ 为什么补这一步：原先 `--check` 只做花括号配平与体积打印，**从不与磁盘产物比**
+   * ⇒ 是一道"永远绿"的假闸门。实证：`807637f1`（窗口模块化）改了本生成器却没重新生成产物，
+   * 这道闸门照样全绿，而**入库的 classic 产物缺了 §三 撤销属性 + §四 三块窗口模块样式族**（280 行）
+   * ——旧版（默认）外壳因此拿不到那批样式。补上比对后，这类"改了生成器忘了跑生成"当场变红。
+   */
+  const norm = (t: string): string => t.replace(/\r\n/g, '\n')
+  let diffCount = 0
+  for (const [name, text] of [
+    ['styles-modern.css', modernCss],
+    ['styles-classic.css', classicCss],
+  ] as const) {
+    let disk: string
+    try {
+      disk = readFileSync(join(OUT_DIR, name), 'utf8')
+    } catch {
+      console.log(`  ❌ ${name} 读不到（入库产物丢了？）`)
+      diffCount++
+      continue
+    }
+    if (norm(disk) === norm(text)) console.log(`  ✅ ${name} 与源码一致`)
+    else {
+      console.log(`  ❌ ${name} 与源码**不一致** —— 请跑「npm run ui:layout-css」重新生成并入库`)
+      diffCount++
+    }
+  }
+  console.log(diffCount === 0 ? '\n[check] 未写盘（两份都与源码一致）' : `\n[check] ${diffCount} 份有差异`)
+  if (diffCount > 0) process.exitCode = 1
 } else {
   mkdirSync(OUT_DIR, { recursive: true })
   const write = (name: string, text: string): void =>
