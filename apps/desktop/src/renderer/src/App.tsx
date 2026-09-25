@@ -11,7 +11,7 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { useL10n } from './i18n/locale'
-import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN, weekendFamilyNameId } from '@whale/core'
+import { formatDurationMs, moneyDelta, shipDisplayName, unlocked, unlockNeedTitle, ONB_AWAKEN, weekendFamilyNameId, weekendFlagshipBattleActive } from '@whale/core'
 import type { LogKind } from '@whale/core'
 import { LogList, Panel } from '@whale/ui'
 import { perfHub, perfAutoEnabled } from './game/perf'
@@ -811,8 +811,17 @@ export function App({ engine }: { engine: GameEngine }) {
 
   // 交火中（主动进入全屏战斗页；不自动切换页面）
   // 交火中 = 主控远征战斗 **或** 虫洞内的洞内战斗（F2：洞内战斗同样要能进战场观看）
+  /**
+   * ⚠ **2026-09-25 加第三个宿主：入侵旗舰战**（船长报障「旗舰战无法进入战斗画面」）——
+   * 它是**编队战**、承载在**遭遇槽**（`state.encounter.battle`），既不占 `expedition` 也不进虫洞
+   * ⇒ 上面那两口径都不认它：战斗屏不挂载、不自动上屏、也没有「⚔ 战斗中」浮动入口，
+   * 玩家只看到遭遇横幅的"交火中"（战斗在后台照常推完、战报照常出）。
+   * 判据走 core 单点 `weekendFlagshipBattleActive`（界面不许自己认宿主）。
+   */
   const inBattle =
-    (state.expedition.active && state.expedition.phase === 'battle') || !!state.wormhole.run?.battle
+    (state.expedition.active && state.expedition.phase === 'battle') ||
+    !!state.wormhole.run?.battle ||
+    weekendFlagshipBattleActive(state)
 
   /**
    * ── 观战屏：**挂载**与**上屏**是两件事（2026-09-22 回归修复）──

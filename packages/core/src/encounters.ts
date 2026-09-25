@@ -59,8 +59,11 @@ import {
 } from './combat'
 import { calcPower } from './expedition'
 import {
+  injectWeekendWreck,
   injectWreckDensity,
   strongestBountyInjection,
+  weekendWreckDensityOf,
+  weekendWreckInjectionOf,
   WRECK_ENCOUNTER_INJECT_FRAC,
   WRECK_INJECT_PER_THREAT,
   wreckDensityOf,
@@ -76,7 +79,7 @@ import { repairWithKitsFor } from './shipyard'
 // 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
 import { weekendAmbushPickOf, weekendEncounterChanceAt, weekendFoeCardOf } from './weekendEvent'
 import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
-import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
+import { weekendApplyBattleOutcome, weekendBattleInvolvedOf, weekendFlagshipEncounterOf } from './weekendBattle'
 
 /** 一口遇袭伤害（HP）= 敌群火力代理 × 暴露系数（船长 2026-09-11 定：按敌人火力，不再用固定骰）。
  *  算法本体见 `hullDamage.ts`（与**战斗撤退**共用同一套：先扣装甲、吸完再进结构、结构 5% 底线）。 */
@@ -242,20 +245,53 @@ function foeOf(state: GameState, ctx: SimContext): AnomalyDef | null {
   return best
 }
 
-/** 击退/全歼缴获（2026-09-09 船长定）：伏击敌群赏金 × lootFracOfBounty（缺敌群 = 旧档按威胁×1 兜底）；
- * 只给 ISK，不计首胜/声望 */
+/**
+ * **击退/全歼缴获**（2026-09-09 船长定）：伏击敌群赏金 × lootFracOfBounty（缺敌群 = 旧档按威胁×1 兜底）；
+ * 只给 ISK，不计首胜/声望。
+ *
+ * ⚠ **入侵遭遇（占领区的遇袭 / 旗舰挑战）一分钱不给**（船长 2026-09-25「**入侵舰队不应该有赏金**」）——
+ * 收入改在活动结束时按进度统一结算（`weekendEvent.WEEKEND_PROGRESS_ISK_PER_PCT`）。
+ */
 function lootOf(state: GameState, ctx: SimContext, seizeF: number): number {
+  if (weekendInvolvedAt(state, ctx)) return 0
   const foe = foeOf(state, ctx)
   const base = foe ? Math.max(0, foe.rewardIsk) : Math.max(1, Math.round(state.encounter.threat))
   return Math.max(1, Math.round(base * ctx.balance.encounter.lootFracOfBounty * seizeF))
 }
 
-/** 胜利（击退/全歼）→ 向事发星系注入残骸密度（2026-09-10 船长定：= 该星系**最强悬赏卡**
- *  的注入量 ×0.5，与悬赏口径同源；星系无可见悬赏卡时回退旧口径 威胁×0.4） */
+/** 这一场遭遇是不是"入侵相关"（占领区的伏击或旗舰挑战）——赏金与残骸归属的分流判据 */
+function weekendInvolvedAt(state: GameState, ctx: SimContext): boolean {
+  const enc = state.encounter
+  if (weekendFlagshipEncounterOf(state, enc)) return true
+  return weekendBattleInvolvedOf(state, ctx, enc.anomalyId ?? null, Date.now()) !== undefined
+}
+
+/**
+ * 胜利（击退/全歼）→ 向事发星系注入残骸（2026-09-10 船长定：= 该星系**最强悬赏卡**
+ *  的注入量 ×0.5，与悬赏口径同源；星系无可见悬赏卡时回退旧口径 威胁×0.4）。
+ *
+ * ⚠ **2026-09-25 分流**（船长：「入侵……需要独立的残骸条」＋「按照击败卡的威胁注入」）：
+ *  - **入侵遭遇**（占领区遇袭 / 旗舰挑战）⇒ 记进**独立池**（`weekendWrecks`，无保底、48h 衰减到 0），
+ *    注入量 = **击败卡**的威胁公式 × `WRECK_ENCOUNTER_INJECT_FRAC`（沿用"遇袭半量"口径）；
+ *  - 普通遭遇 ⇒ 逐字不变（最强卡 ×0.5 → 该星系残骸场）。
+ */
 function dropWrecks(state: GameState, ctx: SimContext): void {
   const enc = state.encounter
   if (!enc.galaxyId) return
   const foe = foeOf(state, ctx)
+  if (weekendInvolvedAt(state, ctx)) {
+    /**
+     * ⚠ **"击败卡"取遭遇槽自己记的那张**（`enc.anomalyId`），**不能**用 `foeOf` 的结果：
+     * 入侵舰队卡是 **hidden** 卡，而 `foeOf` 会跳过 hidden 卡、回落到"该星系最近的可见悬赏"
+     * ⇒ 拿原卡当代替会把注入量算错（H 族抽到的那支威胁 90~170，该星系原卡只有几十）。
+     */
+    const own = enc.anomalyId !== null ? ctx.anomalies.get(enc.anomalyId) : undefined
+    const card = own ?? foe
+    if (card) {
+      injectWeekendWreck(state, enc.galaxyId, weekendWreckInjectionOf(card, WRECK_ENCOUNTER_INJECT_FRAC))
+    }
+    return
+  }
   // 注入口径体量走 `wreckInjectThreatOf`（`wreckThreat` ?? 威胁）⇒ 与悬赏线同源、且不受威胁重定标牵动
   const threat = foe ? Math.max(1, wreckInjectThreatOf(foe)) : Math.max(1, enc.threat)
   const strongest = strongestBountyInjection(enc.galaxyId, ctx)
@@ -384,18 +420,10 @@ function noteLowSec(state: GameState, ctx: SimContext, galaxyId: string): void {
  * **这一场遭遇在入侵里算哪一类**（遭遇槽自己知道）：旗舰挑战挂的正是该族**旗舰卡**且在核心星系，
  * 其余一律按**伏击**算。只作 `weekendApplyBattleOutcome` 的归属提示用——"算不算入侵"仍由 core 侧
  * （伏击要求活的占领区）兜底，非占领区的普通遭遇照样什么都不做。
+ * ⚠ 判据本体已收口到 `weekendBattle.weekendFlagshipEncounterOf`（战斗界面的宿主解析读同一处）。
  */
 function weekendKindOfEncounter(state: GameState, enc: GameState['encounter']): 'ambush' | 'flagship' {
-  const ev = state.weekendEvent
-  if (
-    ev &&
-    enc.galaxyId === ev.coreId &&
-    enc.anomalyId !== null &&
-    enc.anomalyId === weekendFoeCardOf(ev.family, 'flagship')
-  ) {
-    return 'flagship'
-  }
-  return 'ambush'
+  return weekendFlagshipEncounterOf(state, enc) ? 'flagship' : 'ambush'
 }
 
 /**
@@ -491,33 +519,84 @@ function repairTail(battle: Parameters<typeof repairUsageText>[0], ctx: SimConte
 }
 
 /**
+ * **收场时的承伤写回**（2026-09-25 加 · 起因＝旗舰战上战场）：**逐舰**写。
+ * 多舰场次（旗舰战 = 编队战，`battle.myFleet` 非空）每艘在编船各写自己那一份 —— 与洞内收口
+ * （`wormholeBattle.settleWormholeBattle` 的 `for (const uid of run.fleet)`）同一口径；
+ * 单船场次（低安遭遇的绝大多数）仍只写锚舰那一条 ⇒ **逐字不变**。
+ */
+function persistBattleDamage(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  battle: GameState['encounter']['battle'],
+): void {
+  const fleet = battle?.myFleet
+  if (fleet && fleet.length > 0) {
+    for (const e of fleet) persistFleetHullDamage(state, ctx, e.shipId, battle)
+    return
+  }
+  persistFleetHullDamage(state, ctx, shipId, battle)
+}
+
+/** **收场时的机群战损**（同上一处口径）：多舰场次逐舰各扣各的机舱（`e.tag` 归属），单船场次一条。 */
+function settleBattleDroneLosses(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  battle: GameState['encounter']['battle'],
+): void {
+  const fleet = battle?.myFleet
+  if (fleet && fleet.length > 0) {
+    for (const e of fleet) settleDroneLosses(state, ctx, e.shipId, battle, 0, e.tag)
+    return
+  }
+  settleDroneLosses(state, ctx, shipId, battle)
+}
+
+/**
  * 遭遇战自动脱离结算（船长 2026-09-11 定：低安遭遇也挂"结构损失过半自动脱离"保险）：
  * 轻损脱离——退还弹药/修理组件、落盘承伤、**无缴获、无额外扣损**（战斗内实际承伤照留），
  * 随后同样走撤退判定（此时结构已 <50%，必然触发返港待命）。
+ *
+ * `mode`（2026-09-25 加）：`'hull'`（缺省）= 结构过半自动脱离（旧口径，**逐字不变**）；
+ * `'manual'` = **玩家主动脱离**（旗舰战战斗画面里的「撤退」按钮 → `retreatEncounterBattle`）——
+ * 只换措辞与"因袭击自动撤离"那笔标记，结算内容一模一样。
  */
-function settleEscape(state: GameState, ctx: SimContext): void {
+function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | 'manual' = 'hull'): void {
   const enc = state.encounter
   const shipId = enc.shipId ?? state.shipId
   const shipName = shipDisplayName(state, ctx, shipId)
   const galaxyName = ctx.galaxies.get(enc.galaxyId ?? '')?.name ?? ''
   const battle = enc.battle
   if (battle) {
-    settleDroneLosses(state, ctx, shipId, battle)
+    settleBattleDroneLosses(state, ctx, shipId, battle)
     refundAmmo(state, battle.ammo, battle.ammoIds)
     refundRepairKitsAll(state, battle)
-    persistFleetHullDamage(state, ctx, shipId, battle)
+    persistBattleDamage(state, ctx, shipId, battle)
   }
   const ship = state.fleet[shipId]
-  addLog(
-    state,
-    'warn',
-    `⚔ 遭遇战自动脱离（${galaxyName}·${enc.name}）：${shipName} 结构损失过半，及时退出交火（现 装甲 ${Math.round(
-      (ship?.armorPct ?? 1) * 100,
-    )}% / 结构 ${Math.round((ship?.durability ?? 1) * 100)}%）${repairTail(battle, ctx)}。`,
-  )
+  const armourPct = Math.round((ship?.armorPct ?? 1) * 100)
+  const hullPct = Math.round((ship?.durability ?? 1) * 100)
+  const tail = repairTail(battle, ctx)
+  if (mode === 'manual') {
+    addLog(
+      state,
+      'warn',
+      `⚔ 主动脱离（${galaxyName}·${enc.name}）：${shipName} 收手退出交火（现 装甲 ${armourPct}% / 结构 ${hullPct}%）${tail}。`,
+      'core.encounters.011',
+      { p1: galaxyName, p2: enc.name, p3: shipName, p4: armourPct, p5: hullPct, p6: tail },
+    )
+  } else {
+    addLog(
+      state,
+      'warn',
+      `⚔ 遭遇战自动脱离（${galaxyName}·${enc.name}）：${shipName} 结构损失过半，及时退出交火（现 装甲 ${armourPct}% / 结构 ${hullPct}%）${tail}。`,
+    )
+  }
   // 因袭击自动撤离（两处置位之一，见 `markAmbushRetreat`）：即便随后被修理组件修好、留下继续干活，
   // 这一次"被打到自动脱身"也算发生过（船长 2026-09-14 裁定「也算自动脱离交火」）
-  markAmbushRetreat(state)
+  // ⚠ 主动脱离**不算**"被打到自动脱身" ⇒ 不记这笔（那是伏击口径的账）。
+  if (mode === 'hull') markAmbushRetreat(state)
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判；自动脱离时结构已 <50%，修不动才返港）
   settleEncounterTail(state, ctx, shipId)
@@ -534,12 +613,13 @@ function settleFight(state: GameState, ctx: SimContext): void {
   const fleetShip = state.fleet[shipId]
   if (battle) {
     // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：遭遇战同样照扣
-    settleDroneLosses(state, ctx, shipId, battle)
+    // （2026-09-25：多舰场次逐舰结算，见 `settleBattleDroneLosses`）
+    settleBattleDroneLosses(state, ctx, shipId, battle)
     // 退还剩余弹药（与远征/撤退同一口径；弹药 MK2 按实装弹 id 退回）
     refundAmmo(state, battle.ammo, battle.ammoIds)
     refundRepairKitsAll(state, battle) // 船体维修装置（2026-09-09）：未用修理组件退回仓库
     // P0 承伤持久化：遭遇战同样保留装甲/结构残余（结构=耐久）；失利附加扣损在后
-    persistFleetHullDamage(state, ctx, shipId, battle)
+    persistBattleDamage(state, ctx, shipId, battle)
   }
   if (battle && battle.ended === 'me') {
     // 2026-09-09：全歼缴获 = 伏击敌群赏金 ×50%（与文字击退同额；缴获评估学照旧）；全歼留下敌舰残骸
@@ -547,8 +627,23 @@ function settleFight(state: GameState, ctx: SimContext): void {
     const loot = lootOf(state, ctx, seizeF)
     state.wallet.isk += loot
     dropWrecks(state, ctx)
-    const d = state.encounter.galaxyId ? wreckDensityOf(state, state.encounter.galaxyId, ctx) : null
-    const encWinText = `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}${repairTail(battle, ctx)}。`
+    /**
+     * **入侵遭遇另写一句**（2026-09-25）：缴获恒 0（船长「入侵舰队不应该有赏金」），
+     * 残骸读数改看**独立池**（`weekendWrecks`），并把钱的去向说清楚。
+     */
+    const invasion = weekendInvolvedAt(state, ctx)
+    const d = state.encounter.galaxyId
+      ? invasion
+        ? weekendWreckDensityOf(state, state.encounter.galaxyId)
+        : wreckDensityOf(state, state.encounter.galaxyId, ctx)
+      : null
+    const encWinText = invasion
+      ? `★ 击退入侵舰队（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——本场无赏金（进度收入在活动结束时按进度统一结算）${
+          d !== null ? `，入侵残骸沉积 ${d.toFixed(1)}` : ''
+        }${repairTail(battle, ctx)}。`
+      : `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} 信用点${
+          d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''
+        }${repairTail(battle, ctx)}。`
     addLog(state, 'info', encWinText)
     // **结构化战报**（2026-09-14 船长定）：这条日志原先不含「战报」二字 ⇒ 弹层取不到正文（现已修）
     captureBattleReport(state, battle, { source: 'encounter', outcome: 'win', summary: encWinText })
@@ -829,5 +924,33 @@ export function fleeEncounter(state: GameState, ctx: SimContext): CommandResult 
   const enc = state.encounter
   if (!enc.active || enc.battle) return { ok: false, error: '当前没有可脱离的遭遇。', errorId: 'core.encounters.007' }
   resolveTextual(state, ctx, true)
+  return { ok: true }
+}
+
+/**
+ * **玩家指令：主动脱离进行中的遭遇战**（2026-09-25 加 · 起因＝旗舰战要进战斗画面）。
+ *
+ * 为什么需要它：洞外遭遇战此前**没有"打到一半退出"这条路**——只有结构过半自动脱离
+ * （`settleEscape`）与开打前的「快速脱离」（`fleeEncounter`）。旗舰战是**编队战 + 要玩家观战**的场次
+ * （战斗画面里那枚「⚴ 撤退」因此必须是真能用的），且船长既定口径是「**撤退照记对母舰的伤害**」。
+ *
+ * 结算内容 = 自动脱离那一套（退弹药/修理组件、逐舰落盘承伤、无缴获、无额外扣损）：
+ * - 先按"没打赢"走一遍入侵结算（只记母舰伤害 · 不给进度 · 不判击沉）——与自动脱离那条路同一顺序；
+ * - 再 `settleEscape(mode='manual')` 收场（措辞为"主动脱离"，且**不**记"因袭击自动撤离"那笔账）。
+ */
+export function retreatEncounterBattle(state: GameState, ctx: SimContext): CommandResult {
+  const enc = state.encounter
+  if (!enc.active || !enc.battle) {
+    return { ok: false, error: '当前不在交火中，无法脱离。', errorId: 'core.encounters.009' }
+  }
+  if (enc.battle.ended !== null) {
+    return { ok: false, error: '战斗已分出胜负，正在结算——无法脱离。', errorId: 'core.encounters.010' }
+  }
+  weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, false, Date.now(), enc.battle, {
+    kind: weekendKindOfEncounter(state, enc),
+    galaxyId: enc.galaxyId ?? '',
+    source: 'battle',
+  })
+  settleEscape(state, ctx, 'manual')
   return { ok: true }
 }

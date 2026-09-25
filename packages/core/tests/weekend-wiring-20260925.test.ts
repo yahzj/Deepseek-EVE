@@ -18,19 +18,25 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState } from '../src/index'
 import { startMining } from '../src/mining'
-import { advanceEncounterWatch, maintainPresence, rollLowSecAmbush } from '../src/encounters'
+import { advanceEncounterWatch, maintainPresence, retreatEncounterBattle, rollLowSecAmbush } from '../src/encounters'
 import { activeFoeSpecsOf, createBattleState } from '../src/combat'
+// 敌卡解析单点（洞内 / 旗舰战 / 远征三口径）在 `wormholeBattle` 里
+import { battleFoeAnomaly } from '../src/wormholeBattle'
 import { commsInbox } from '../src/comms'
+import { factionGalaxyId, isFactionBounty, sideTaskBoard } from '../src/sideTasks'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { WEEKEND_COMMS_SETTLE_ID, WEEKEND_COMMS_WARN_ID, weekendSyncComms } from '../src/weekendComms'
 import { weekendAssaultDrawOf, weekendNoteAssaultDispatch } from '../src/weekendBounty'
 import {
   weekendBestFlagshipSquad,
+  weekendFlagshipBattleActive,
+  weekendFlagshipBattleViewOf,
   weekendFlagshipPrepView,
   weekendNoteFlagshipSquad,
   weekendPrepIssuesOf,
   weekendPrepSquadOf,
   weekendSanitizeFlagshipSquad,
+  weekendStartFlagshipBattle,
 } from '../src/weekendLaunch'
 import {
   WEEKEND_FLAGSHIP_WRECK,
@@ -47,6 +53,7 @@ import {
   WEEKEND_GAIN_CORE_WIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_GAIN_REPEL,
+  WEEKEND_PROGRESS_ISK_PER_PCT,
   endWeekendEvent,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
@@ -92,7 +99,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       expect(['ink-harass', 'ink-raid'], '外围池 = {骚扰, 袭击}').toContain(c.id)
       expect(c.threat, '威胁 = 卡面自身（不再是 78 覆写）').toBe(ctx.anomalies.get(c.id)!.threat)
       expect(c.galaxyId, '星系覆写成被占星系').toBe(gid)
-      expect(c.rewardIsk, '奖励 = 该星系原卡 ×1.4').toBe(Math.round((base[0]!.rewardIsk ?? 0) * 1.4))
+      expect(c.rewardIsk, '无赏金（船长 2026-09-25「入侵舰队不应该有赏金」）').toBe(0)
     }
     // 夺回后自动回落原卡（同一取数口）
     s.weekendEvent!.contributed[gid] = 1
@@ -182,13 +189,15 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       isk: WEEKEND_RECLAIM_ISK,
       wreck: WEEKEND_RECLAIM_WRECK,
     })
-    /** 结束 ⇒ 结算那一刻连贡献奖一起发（此处占比 100% ⇒ A 档 ×12 ＋ 8M） */
+    /** 结束 ⇒ 结算那一刻连贡献奖与**进度收入**一起发（此处占比 100% ⇒ A 档 ×12 ＋ 8M；进度 100% ⇒ 2,000 万） */
     endWeekendEvent(s, now)
     const settle = weekendSettleAndGrant(s, ctx, now)
     expect(settle, '结束结算').not.toBeNull()
-    expect(settle!.isk, '结算 = 贡献奖 8M ＋ 夺回 2M').toBe(8_000_000 + WEEKEND_RECLAIM_ISK)
+    const income = 100 * WEEKEND_PROGRESS_ISK_PER_PCT // 该处进度打满 100% × 20 万/1%
+    expect(settle!.progressIsk, '进度收入单列在返回值里').toBe(income)
+    expect(settle!.isk, '结算 = 贡献奖 8M ＋ 夺回 2M ＋ 进度收入 20M').toBe(8_000_000 + WEEKEND_RECLAIM_ISK + income)
     expect(settle!.wreck, '结算 = 贡献奖 ×12 ＋ 夺回 ×8').toBe(12 + WEEKEND_RECLAIM_WRECK)
-    expect(s.wallet.isk - isk0, 'ISK 这时才进钱包').toBe(8_000_000 + WEEKEND_RECLAIM_ISK)
+    expect(s.wallet.isk - isk0, 'ISK 这时才进钱包').toBe(8_000_000 + WEEKEND_RECLAIM_ISK + income)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸这时才到手').toBe(12 + WEEKEND_RECLAIM_WRECK)
     /** 日志（id 制）：夺回是里程碑 ⇒ 留一条，且措辞是"待活动结束时统一发放"（不再说"已入账"） */
     const reclaimLog = [...s.logs].reverse().find((l) => l.textId === 'core.weekend.001')
@@ -197,11 +206,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(reclaimLog?.textParams?.p2, '日志里的残骸数与台账一致').toBe(WEEKEND_RECLAIM_WRECK)
   })
 
-  it('⑤ 活动结束 ⇒ 贡献奖入账（四档）· 只发一次 · 占比按结束时刻算', () => {
+  it('⑤ 活动结束 ⇒ 贡献奖入账（四档）＋ 进度收入 · 只发一次 · 占比按结束时刻算', () => {
     const gid = GID
     const s = invaded(gid)
     const now = Date.now()
-    /** 玩家独自推了 50%（NPC 铺底此刻 ≈ 0）⇒ 占比 100% ⇒ A 档：稀有残骸 ×12 ＋ 8M */
+    /** 玩家独自推了 50%（NPC 铺底此刻 ≈ 0）⇒ 占比 100% ⇒ A 档：稀有残骸 ×12 ＋ 8M；进度收入 = 50% × 20 万 */
     weekendNoteContribution(s.weekendEvent!, gid, 0.5)
     endWeekendEvent(s, now)
     const isk0 = s.wallet.isk
@@ -209,22 +218,28 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const r = weekendSettleAndGrant(s, ctx, now)
     expect(r, '结束后的第一次调用要真发').not.toBeNull()
     expect(r!.tier, '占比 = 玩家 ÷（玩家＋NPC 铺底）= 100% ⇒ A 档').toBe('A')
-    expect(r!.isk).toBe(8_000_000)
+    /** **进度收入**（船长 2026-09-25「按进度获取收入」；单价 20 万/1%） */
+    const income = 0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT
+    expect(r!.progressIsk, '进度收入 = 玩家投入 50% × 100 × 20 万').toBe(income)
+    expect(r!.isk).toBe(8_000_000 + income)
     expect(r!.wreck).toBe(12)
-    expect(s.wallet.isk - isk0, 'ISK 真进钱包').toBe(8_000_000)
+    expect(s.wallet.isk - isk0, 'ISK 真进钱包（贡献奖 ＋ 进度收入）').toBe(8_000_000 + income)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '稀有残骸真到手').toBe(12)
+    expect(s.weekendLastResult?.progressIsk, '战果快照里也留一栏（面板/通讯读它）').toBe(income)
+    expect(s.weekendLastResult?.progressPct, '快照记玩家投入合计').toBeCloseTo(0.5, 6)
     expect(s.weekendEvent!.prizePaidAtWallMs, '随档幂等标记').toBe(now)
     /** 幂等：同一刻再调、以及**过一周再调**（离线补结的口径）都不再发 */
     expect(weekendSettleAndGrant(s, ctx, now)).toBeNull()
     expect(weekendSettleAndGrant(s, ctx, now + 7 * 24 * 3_600_000)).toBeNull()
-    expect(s.wallet.isk - isk0, '只发一次').toBe(8_000_000)
-    /** 零贡献 ⇒ 无奖（Q5「0% ⇒ 无」），但"已结"标记照写（免得每拍重算） */
+    expect(s.wallet.isk - isk0, '只发一次').toBe(8_000_000 + income)
+    /** 零贡献 ⇒ 无奖（Q5「0% ⇒ 无」）且**进度收入也是 0**，但"已结"标记照写（免得每拍重算） */
     const s2 = invaded(gid)
     endWeekendEvent(s2, now)
     const isk2 = s2.wallet.isk
     const r2 = weekendSettleAndGrant(s2, ctx, now)
     expect(r2).not.toBeNull()
     expect(r2!.tier, '零贡献 ⇒ none').toBe('none')
+    expect(r2!.progressIsk, '零贡献 ⇒ 进度收入 0').toBe(0)
     expect(r2!.isk + r2!.wreck, '零贡献不发东西').toBe(0)
     expect(s2.wallet.isk, '钱包不动').toBe(isk2)
     expect(s2.weekendEvent!.prizePaidAtWallMs, '零贡献也要落"已结"标记').toBe(now)
@@ -388,7 +403,9 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const r1 = weekendSettleAndGrant(onTime, ctx, now)
     expect(r1, '结束时结算').not.toBeNull()
     expect(r1!.tier, '占比 ≈ 0.72 ⇒ B 档').toBe('B')
-    expect(r1!.isk).toBe(5_000_000)
+    /** 进度收入与贡献档位**各自独立**：这一处玩家推了 90% ⇒ 1,800 万（档位是 B 也不影响） */
+    expect(r1!.progressIsk, '进度收入 = 90% × 20 万').toBe(90 * WEEKEND_PROGRESS_ISK_PER_PCT)
+    expect(r1!.isk).toBe(5_000_000 + 90 * WEEKEND_PROGRESS_ISK_PER_PCT)
     expect(r1!.wreck).toBe(8)
     /** 离线五天后再上线补结（引擎每拍补发那条路径的形状）：读数必须与结束时**逐值一致** */
     const late = build()
@@ -439,7 +456,9 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(snap.galaxies.length, '核心 ＋ 外围都列出来').toBe(2)
     expect(snap.galaxies.find((g) => g.galaxyId === gid)?.put, '逐星系记玩家投入').toBeCloseTo(0.5, 6)
     expect(snap.tier).toBe('A')
-    expect(snap.isk, '到手合计 = 实发').toBe(8_000_000)
+    expect(snap.progressPct, '快照记玩家投入合计').toBeCloseTo(0.5, 6)
+    expect(snap.progressIsk, '快照记进度收入（面板那一行读它）').toBe(0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
+    expect(snap.isk, '到手合计 = 实发（贡献四档 ＋ 进度收入）').toBe(8_000_000 + 0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
     expect(snap.wreck).toBe(12)
 
     /** ④ 覆盖：下一场再同步 ⇒ 同 id 仍只有一封，内容换成新一场 */
@@ -566,18 +585,20 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(issues.includes('low-armor') || issues.includes('low-hull'), '满装甲满结构不该标低').toBe(false)
   })
 
-  it('⑯ 主动出击**每场重抽**：每出发一次换一支 · 价钱钉在该星系原卡 ×1.4 · 计数随档', () => {
+  it('⑯ 主动出击**每场重抽**：每出发一次换一支 · 抽签与"驻留卡/板面"解耦 · 计数随档', () => {
     const gid = GID
     const s = invaded(gid)
     const now = Date.now()
     const base = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId === gid)!
+    /** ⚠ 这个"价钱基底"**已退役**（船长 2026-09-25「入侵舰队不应该有赏金」）：字段仍在
+     *  （`expedition.rewardIskOverride` 的落盘链未删），但入侵场次一分不发 —— 这里只锁定它的算式没漂。 */
     const expectReward = Math.max(1, Math.round((base.rewardIsk ?? 0) * 1.4))
     const draws: string[] = []
     for (let i = 0; i < 6; i++) {
       const d = weekendAssaultDrawOf(s, ctx, gid, now)
       expect(d, '占领区里出击 ⇒ 有抽签').not.toBeNull()
       expect(['ink-harass', 'ink-raid'], '外围池 = {骚扰, 袭击}').toContain(d!.cardId)
-      expect(d!.rewardIsk, '价钱 = 原卡 ×1.4（与抽到哪支无关）').toBe(expectReward)
+      expect(d!.rewardIsk, '退役字段：算式未漂（原卡 ×1.4，与抽到哪支无关）').toBe(expectReward)
       draws.push(d!.cardId)
       weekendNoteAssaultDispatch(s)
     }
@@ -595,6 +616,142 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const back = loadSaveFile(serializeSaveFile(s, 0)).state
     expect(back.expedition.foeGalaxyId, '星系归属要活过读档（原先读档即丢 ⇒ 战后归属退回母港）').toBe('galaxy-echo')
     expect(back.expedition.rewardIskOverride, '奖励基底覆写也要活过读档').toBe(123_456)
+  })
+
+  /* ── 2026-09-25 船长报障「旗舰战无法进入战斗画面」：第三个战斗宿主（遭遇槽 · 编队战） ── */
+
+  /** 造一场"核心条满 ⇒ 旗舰现身"的入侵，并真开一场旗舰战（走 core 的开战入口） */
+  function flagshipWorld(): {
+    s: ReturnType<typeof createInitialState>
+    battle: NonNullable<ReturnType<typeof weekendStartFlagshipBattle>>
+  } {
+    const core = 'galaxy-kor'
+    const s = invaded(GID)
+    const now = Date.now()
+    weekendNoteContribution(s.weekendEvent!, GID, 1) // 外围夺回 ⇒ 核心门禁解开
+    weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
+    const battle = weekendStartFlagshipBattle(s, ctx, now, [s.shipId])!
+    expect(battle, '核心条满 ⇒ 能开一场旗舰战').not.toBeNull()
+    s.encounter = {
+      active: true,
+      shipId: s.shipId,
+      galaxyId: core,
+      name: '墨潮旗舰部队',
+      threat: 170,
+      anomalyId: 'ink-flagship',
+      origin: '测试 · 挑战旗舰',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 0,
+      battle,
+    }
+    return { s, battle }
+  }
+
+  it('⑱ 旗舰战 = 第三个战斗宿主：判据/视图/敌卡解析一致（否则战斗屏永远不挂载）', () => {
+    const core = 'galaxy-kor'
+    /** 还没开打：判据为假、视图为 null（不许"没打也上屏"） */
+    const s0 = invaded(GID)
+    weekendNoteContribution(s0.weekendEvent!, GID, 1)
+    weekendNoteContribution(s0.weekendEvent!, core, 1)
+    expect(weekendFlagshipBattleActive(s0), '未开战').toBe(false)
+    expect(weekendFlagshipBattleViewOf(s0, ctx)).toBeNull()
+
+    const { s, battle } = flagshipWorld()
+    expect(weekendFlagshipBattleActive(s), '遭遇槽里挂着旗舰战 ⇒ 在打').toBe(true)
+    const view = weekendFlagshipBattleViewOf(s, ctx)!
+    expect(view.anomaly.id, '敌卡 = 该族旗舰卡').toBe('ink-flagship')
+    expect(view.battle, '战斗宿主 = 遭遇槽那场').toBe(battle)
+    expect(view.leaderShipId, '视图锚 = 编队首舰').toBe(s.shipId)
+    expect(Object.keys(view.combat?.foeHp ?? {}).length, '敌舰血量读数要给（血条/爆炸演出靠它）').toBeGreaterThan(0)
+    expect(view.combat?.distanceM, '距离读数与战斗态同源').toBe(battle.distanceM)
+    expect(battleFoeAnomaly(s, ctx)?.id, '敌卡解析单点（战斗屏不许自己猜宿主）').toBe('ink-flagship')
+
+    /** 收场（遭遇槽清空）⇒ 立刻回落：判据假、视图 null、敌卡解析退回远征口径 */
+    s.encounter.active = false
+    s.encounter.battle = null
+    expect(weekendFlagshipBattleActive(s)).toBe(false)
+    expect(weekendFlagshipBattleViewOf(s, ctx)).toBeNull()
+    expect(battleFoeAnomaly(s, ctx), '没有远征也没洞内 ⇒ undefined').toBeUndefined()
+  })
+
+  it('⑲ 旗舰战**主动脱离**（战斗画面那枚「撤退」）：伤害照记 · 遭遇收场 · 措辞为主动脱离', () => {
+    const core = 'galaxy-kor'
+    const s = invaded(GID)
+    weekendNoteContribution(s.weekendEvent!, GID, 1) // 外围夺回 ⇒ 门禁解开
+    weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
+    /** 白盒造一场"母舰压轴"的战斗（第 4 波；与用例⑮同一处建法）并把母舰打掉三成 */
+    const specs = activeFoeSpecsOf(ctx.anomalies.get('ink-flagship')!, ctx.balance.battle, 3)
+    const flagSpec = specs.find((u) => u.foeShipId === 'foe-h-ink-flagship')!
+    const battle = createBattleState(flagSpec, specs, 0, 5_000)
+    const rt = battle.units[flagSpec.tag]!
+    const total = rt.hp.s + rt.hp.a + rt.hp.h
+    rt.hp = { ...rt.hp, h: Math.max(0, rt.hp.h - Math.round(total * 0.3)) }
+    s.encounter = {
+      active: true,
+      shipId: s.shipId,
+      galaxyId: core,
+      name: '墨潮旗舰部队',
+      threat: 170,
+      anomalyId: 'ink-flagship',
+      origin: '测试 · 挑战旗舰',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 0,
+      battle,
+    }
+    const putBefore = s.weekendEvent!.contributed[core] ?? 0
+    expect(weekendFlagshipBattleActive(s), '开打 ⇒ 在打（战斗屏据此上屏）').toBe(true)
+    const r = retreatEncounterBattle(s, ctx)
+    expect(r.ok, '交火中 ⇒ 撤退成立').toBe(true)
+    expect(s.weekendEvent!.flagshipHpDone ?? 0, '撤退照记对母舰的伤害').toBeGreaterThan(0)
+    expect(s.weekendEvent!.contributed[core] ?? 0, '撤退不给进度').toBe(putBefore)
+    expect(s.weekendEvent!.flagshipDown, '池子没空 ⇒ 不判击沉').toBeUndefined()
+    expect(s.encounter.active, '遭遇已收场（战斗槽清空 ⇒ 战斗屏随之收起）').toBe(false)
+    expect(weekendFlagshipBattleActive(s), '收场后判据回落').toBe(false)
+    expect(
+      s.logs.some((l) => l.text.includes('主动脱离')),
+      '措辞 = 主动脱离（不是"结构损失过半自动脱离"）',
+    ).toBe(true)
+    /** 已经收场 ⇒ 再点一次撤退要被拒（战斗画面上的按钮不会赖着不生效） */
+    expect(retreatEncounterBattle(s, ctx).ok).toBe(false)
+  })
+
+  it('⑳ 入侵进行中 ⇒ 敌对派系活跃整体停摆；活动结束自动恢复（船长令"出现入侵时关闭敌方势力活跃"）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 44 })
+    /** 直接写板上那条（等价于日板抽签结果；判据只读这一个口） */
+    const card = [...ctx.anomalies.values()].find((a) => !a.hidden && a.rewardIsk > 0 && a.lairCore !== undefined)!
+    s.sideTasks.faction = {
+      id: 1,
+      kind: 'faction',
+      goodKey: '',
+      refId: '',
+      need: 0,
+      rewardIsk: card.rewardIsk,
+      anomalyId: card.id,
+      galaxyId: card.galaxyId,
+      factionAnomalyName: card.name,
+    }
+    expect(factionGalaxyId(s), '平时：当日派系活跃照常').toBe(card.galaxyId)
+    expect(isFactionBounty(s, card), '平时：该卡吃 +10% 加成').toBe(true)
+    expect(sideTaskBoard(s, ctx).faction, '平时：任务中心置顶卡在').not.toBeNull()
+
+    /** 入侵开始（活的占领区）⇒ 三处一起静默 */
+    const ev: WeekendEventState = {
+      seq: 1,
+      startedAtWallMs: Date.now(),
+      coreId: 'galaxy-kor',
+      peripheryIds: [GID],
+      family: 'H',
+      contributed: {},
+    }
+    s.weekendEvent = ev
+    expect(factionGalaxyId(s), '入侵中：星图标记与加成判据一起停').toBeNull()
+    expect(isFactionBounty(s, card), '入侵中：不再吃加成').toBe(false)
+    expect(sideTaskBoard(s, ctx).faction, '入侵中：置顶那条不上屏').toBeNull()
+
+    /** 活动结束（落定结束时刻）⇒ 当天那条照旧活着（板上条目一直在滚，不需重抽） */
+    endWeekendEvent(s, Date.now())
+    expect(factionGalaxyId(s), '结束后自动恢复').toBe(card.galaxyId)
+    expect(sideTaskBoard(s, ctx).faction?.galaxyId, '置顶卡也回来').toBe(card.galaxyId)
   })
 })
 

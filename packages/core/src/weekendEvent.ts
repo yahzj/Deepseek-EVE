@@ -235,6 +235,13 @@ export interface WeekendResultSnapshot {
   galaxies: Array<{ galaxyId: string; put: number; progress: number; reclaimed: boolean; isk: number; wreck: number }>
   /** 旗舰战输出（没跟母舰交手过 = 缺省） */
   flagship?: { hpMax: number; hpDone: number; defeated: boolean }
+  /**
+   * **进度收入**（2026-09-25 船长令「入侵舰队不应该有赏金……在结算时候直接按进度获取收入」）：
+   * 玩家投入进度合计（0~1 的百分比读数，如 1.35 = 135%）与该笔收入（ISK）。
+   * 缺省 = 老快照（本批之前结束的活动没有这一栏；界面按缺省不显示该行）。
+   */
+  progressPct?: number
+  progressIsk?: number
   /** 到手合计（含旗舰掉落）与奖励物品 id（面板/通讯点物品名用） */
   isk: number
   wreck: number
@@ -651,6 +658,26 @@ export function weekendNoteContribution(ev: WeekendEventState, galaxyId: string,
 /** 玩家累计投入的进度合计（贡献占比的分子） */
 export function weekendPlayerContribution(ev: WeekendEventState): number {
   return Object.values(ev.contributed).reduce((a, b) => a + b, 0)
+}
+
+/**
+ * **进度收入的单价**（ISK / 每 1% 进度）——
+ * 船长 2026-09-25 令：「**入侵舰队不应该有赏金**……因为击败入侵舰队就能获取进度，
+ * **在结算时候直接按进度获取收入**」，三选一裁定**③「每 1% 固定 20 万 ISK（与星系无关）」**。
+ *
+ * 于是入侵战斗**当场一分钱都不给**（悬赏那一栏整条退役），收入在**活动结束时**随夺回奖励与
+ * 贡献四档奖一次发（`weekendSettleAndGrant`）：
+ * - 换算到每一场（正常口径）：外围胜利 +10% = **200 万** · 核心胜利 +5% = **100 万** ·
+ *   主动击退遇袭 +3% = **60 万** · 离线自动击退 +1% = **20 万**；打满一处（100%）= **2,000 万**；
+ * - **只结玩家自己打出来的进度**（`ev.contributed` 台账；NPC 铺底那部分不算收入——
+ *   否则挂机也在赚钱）；
+ * - 进度本身按星系封顶 100%（`weekendNoteContribution` 已 clamp）⇒ 单星系收入上限 = 2,000 万。
+ */
+export const WEEKEND_PROGRESS_ISK_PER_PCT = 200_000
+
+/** 本场活动的进度收入合计（ISK） = 玩家投入进度（1 = 100%）× 100 × 单价 */
+export function weekendProgressIncomeIsk(ev: WeekendEventState): number {
+  return Math.round(weekendPlayerContribution(ev) * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
 }
 
 /**

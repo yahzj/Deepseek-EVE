@@ -30,7 +30,7 @@ import { formatDurationMs } from './time'
 import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { RETURN_LEG_MUL } from './balance'
-import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf, wreckInjectThreatOf } from './salvage'
+import { bountyEnemyCount, bountyWreckInjection, injectWeekendWreck, injectWreckDensity, weekendWreckDensityOf, weekendWreckInjectionOf, wreckDensityOf, wreckInjectThreatOf } from './salvage'
 import {
   advanceBattleFor,
   battleClockNowMs,
@@ -533,15 +533,27 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const card0 = lairTier ? lairAnomalyOf(anomaly, lairTier) : anomaly
   const battleCard = factionActive ? factionAnomalyOf(card0) : card0
   const displayName = battleCard.name
-  const baseRewardIskRaw = lairTier
-    ? lairBaseRewardIsk(anomaly, lairTier)
-    : factionActive
-      ? factionBaseRewardIsk(anomaly)
-      : /**
-         * **入侵"主动出击每场重抽"的价钱口径**（2026-09-25）：敌舰每场换，但奖励恒 = 该星系原卡 ×1.4
-         * ⇒ 出发时算好写进 `exp.rewardIskOverride`，这里优先用它；老路径（没写）逐字不变。
-         */
-        (exp.rewardIskOverride ?? anomaly.rewardIsk)
+  /**
+   * **这一场是不是入侵战斗**（2026-09-25 船长令「**入侵舰队不应该有赏金**」）——
+   * 判据走既有单点 `weekendBattleInvolvedOf`（远征落盘 `foeGalaxyId` 优先）；
+   * 入侵场次**当场一分钱都不给**：收入改在活动结束时按进度统一结算
+   * （`WEEKEND_PROGRESS_ISK_PER_PCT`），残骸也改记**独立池**（见下面的注入分支）。
+   */
+  const weekendInvolved = weekendBattleInvolvedOf(state, ctx, anomaly.id, Date.now())
+  const isInvasion = weekendInvolved !== undefined
+  const baseRewardIskRaw = isInvasion
+    ? 0
+    : lairTier
+      ? lairBaseRewardIsk(anomaly, lairTier)
+      : factionActive
+        ? factionBaseRewardIsk(anomaly)
+        : /**
+           * **入侵"主动出击每场重抽"的价钱口径**（2026-09-25）：敌舰每场换，但奖励恒 = 该星系原卡 ×1.4
+           * ⇒ 出发时算好写进 `exp.rewardIskOverride`，这里优先用它；老路径（没写）逐字不变。
+           * ⚠ 2026-09-25 当日晚些时候船长令「入侵舰队不应该有赏金」⇒ 入侵场次走上面的 `0` 分支，
+           * 本式只服务非入侵的普通悬赏（`rewardIskOverride` 于是不再有调用方，保留不删以免动到老档路径）。
+           */
+          (exp.rewardIskOverride ?? anomaly.rewardIsk)
   // 限时倍率（2026-09-15）：`rewardIsk` 乘在悬赏结算基底上（窝点/派系/普通三支共用这一处）
   const baseRewardIsk = Math.max(0, Math.round(baseRewardIskRaw * rewardMulOf(state)))
   // 机群战损（2026-09-10 船长「无人机可被击落」+ 永久损失制）：胜负/撤退一律照扣，
@@ -626,14 +638,24 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     //   改 `threat` 不再牵动回收线（见 `AnomalyDef.wreckThreat`）
     /**
      * **注入目标 = 这一场所在的星系**（2026-09-25 修）：入侵战斗的卡可能"不属于"它被打的那片星域
-     * （H 族独立卡自带母港 `galaxy-hub`）⇒ 先问入侵归属（`weekendBattleInvolvedOf`），问到就用它的星系；
+     * （H 族独立卡自带母港 `galaxy-hub`）⇒ 先问入侵归属（上面算好的 `weekendInvolved`），问到就用它的星系；
      * 非入侵战斗回落卡的星系（既有口径，逐字不变）。
-     * ⚠ 残余（已登记）：H 独立卡当悬赏时（M1-b 接线后）战斗按 id 回目录取原卡 ⇒ 归属仍认不出，
-     *    接线那批要把"所在星系"显式带进战斗（与"派生卡 id 归属"同一处修）。
      */
-    const wreckGalaxyId = weekendBattleInvolvedOf(state, ctx, anomaly.id, Date.now())?.galaxyId ?? anomaly.galaxyId
-    injectWreckDensity(state, ctx, wreckGalaxyId, bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard)))
-    const wreckNow = wreckDensityOf(state, wreckGalaxyId, ctx)
+    const wreckGalaxyId = weekendInvolved?.galaxyId ?? anomaly.galaxyId
+    /**
+     * **残骸注入：入侵走独立池，普通悬赏走星系池**（船长 2026-09-25）：
+     * 「入侵……添加的残骸是原星系的残骸密度，**需要独立的残骸条**（入侵残骸没有星系的残骸保底，
+     * 因为随时间消减到最后会消失）」＋「**按照击败卡的威胁注入**」⇒ 注入量公式一字不改
+     * （`weekendWreckInjectionOf` = 悬赏那条唯一公式），只是**记到另一个池子**里去。
+     */
+    const wreckInjected = isInvasion
+      ? weekendWreckInjectionOf(battleCard)
+      : bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard))
+    if (isInvasion) injectWeekendWreck(state, wreckGalaxyId, wreckInjected)
+    else injectWreckDensity(state, ctx, wreckGalaxyId, wreckInjected)
+    const wreckNow = isInvasion
+      ? weekendWreckDensityOf(state, wreckGalaxyId)
+      : wreckDensityOf(state, wreckGalaxyId, ctx)
     // 声望仅首胜发放（防低威胁目标被无限重复白刷声望；重复完成只拿 ISK/战利品）
     const firstBlood = !state.completedBounties.includes(anomaly.id)
     if (firstBlood) {
@@ -651,9 +673,17 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     })()
     // **结构化战报**（2026-09-14 船长定）：先把那句日志文案落到变量、再同时写日志与本记录
     // ⇒ 卡片正文与事件日志**逐字同源**（不再靠"找含『战报』二字的日志"那条脆弱做法）。
-    const winText =
-      `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootPart}${dronePart}${repairPart}，${standPart}` +
-      `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`
+    /**
+     * ⚠ **入侵场次另写一句**（2026-09-25 船长令「入侵舰队不应该有赏金……在结算时候直接按进度获取收入」）：
+     * 旧文案里「奖金 N 信用点」在入侵场次恒为 0，照写就是"打了半天没钱还写个 0" ⇒ 换口径说明；
+     * 残骸那一栏也改成**独立池**的读数（`入侵残骸沉积 X（本场 +Y）`），与星图上那条独立残骸条同源。
+     */
+    const winText = isInvasion
+      ? `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！击退入侵舰队。${stats}${lootPart}${dronePart}${repairPart}，` +
+        `本场无赏金：进度收入与夺回奖励在活动结束时统一发放。` +
+        `入侵残骸沉积 ${wreckNow.toFixed(1)}（本场 +${wreckInjected.toFixed(1)}）`
+      : `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootPart}${dronePart}${repairPart}，${standPart}` +
+        `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`
     addLog(state, 'trade', winText)
     captureBattleReport(state, battle, { source: 'expedition', outcome: 'win', summary: winText })
     // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场

@@ -32,6 +32,8 @@ import { wormholeAnomalyOf, wormholeCardIdForRun } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, hasLiveFoe, isExitCell } from './wormholeGrid'
 // 「欠着一场战斗」的拒因单点（2026-09-20：打捞这一口也要过它，见 `wormholeActivateAt` 头注）
 import { wormholePendingBattleReason } from './wormhole'
+// 2026-09-25：第三个战斗宿主（入侵旗舰战 · 编队战承载在遭遇槽）的判据单点
+import { weekendFlagshipEncounterOf } from './weekendBattle'
 // F3c：谜质格取回装置（哪一台按 (种子, 层, 格) 定死；落地走收货阶梯）
 import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { matterTechWhBuffs } from './matterTech'
@@ -777,6 +779,16 @@ export function battleFoeAnomaly(state: GameState, ctx: SimContext): AnomalyDef 
   if (whBattle?.wormhole) {
     const base = ctx.anomalies.get(whBattle.wormhole.cardId)
     if (base) return wormholeDerivedAnomaly(ctx, base, whBattle.wormhole)
+  }
+  /**
+   * **第三个宿主：入侵旗舰战**（2026-09-25 加；船长报障「旗舰战无法进入战斗画面」）——
+   * 它同样**不占** `expedition` 槽（承载在遭遇槽 `state.encounter.battle`，且是编队战）⇒
+   * 只认远征的读法在它眼里恒为 `undefined`（族形/舰种体积/机位一起错，与洞内那次的病根一模一样）。
+   * 敌卡 = 该族旗舰卡（遭遇槽里的 `anomalyId` 本就是它，直接取即可）。
+   */
+  if (weekendFlagshipEncounterOf(state, state.encounter) && state.encounter.battle) {
+    const card = state.encounter.anomalyId !== null ? ctx.anomalies.get(state.encounter.anomalyId) : undefined
+    if (card) return card
   }
   return state.expedition.anomalyId ? ctx.anomalies.get(state.expedition.anomalyId) : undefined
 }

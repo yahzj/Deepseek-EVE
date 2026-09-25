@@ -25,6 +25,7 @@ import {
   recycleTierOf,
   wreckBaseDensity,
   wreckDensityOf,
+  weekendWreckDensityOf,
   RECYCLE_YIELD_PER_M3,
   RECYCLE_POOL_AVG_ISK,
   RARE_WRECK_VOLUME_M3,
@@ -927,6 +928,13 @@ function WreckCard({
   const anomalies = engine.anomalies.filter((a) => a.galaxyId === g.id)
   const est = salvageEstimate(state, engine, g.id, density)
   const prog = isActive ? salvageProgressOf(engine) : null
+  /**
+   * **入侵残骸（独立池）**（2026-09-25 船长令：「添加的残骸……**需要独立的残骸条**」＋
+   * 「打捞界面置顶」）：读数与星系密度**分开**（船长：「入侵残骸不算当地星系密度，因为是独立的」），
+   * 只有 >0 时才出这一条；条长 = 入侵残骸占（星系密度 ＋ 入侵残骸）的比例。
+   */
+  const invWreck = weekendWreckDensityOf(state, g.id)
+  const invWreckPct = invWreck > 0 ? Math.round((invWreck / (invWreck + density)) * 100) : 0
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
@@ -990,6 +998,19 @@ function WreckCard({
           title={tr("ui.MapPage.109", { p1: prog.label, p2: prog.percent })}
         >
           <i style={{ width: `${prog.percent}%` }} />
+        </div>
+      ) : null}
+      {/**
+       * **入侵残骸条（置顶）**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
+       * 位置在「残骸密度」那一行**之前**；独立残骸场没有保底、48 小时衰减到消失 ⇒
+       * 先捞它最划算（打捞扣减也是先扣这一池，见 `salvage.salvageRoundPull`）。
+       */}
+      {invWreck > 0 ? (
+        <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(invWreckPct) })}>
+          <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
+          <div className="app-card-progress is-invasion">
+            <i style={{ width: `${invWreckPct}%` }} />
+          </div>
         </div>
       ) : null}
       <div className="app-belt-ore">

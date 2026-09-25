@@ -8,9 +8,9 @@
  * 覆写成 `[{units:4, hpShare:0.25}] × 4`（整场总血不变，分 4 批入场）；我方编队取「主控 + 其余自有舰」，上限 4 艘。
  */
 import type { GameState } from './state'
-import type { SimContext } from './types'
+import type { AnomalyDef, SimContext } from './types'
 import { startFleetBattleFor } from './combat'
-import { weekendFlagshipSpecOf } from './weekendBattle'
+import { weekendFlagshipEncounterOf, weekendFlagshipSpecOf } from './weekendBattle'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_FLAGSHIP_SHIP_ID,
@@ -239,4 +239,82 @@ export function weekendStartFlagshipBattle(
     bossShipId: WEEKEND_FLAGSHIP_SHIP_ID,
   }
   return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, undefined, undefined, override)
+}
+
+/* ═══════════════ 旗舰战的"战斗宿主"解析（界面侧） ═══════════════
+ *
+ * **船长 2026-09-25 报障：「旗舰战无法进入战斗画面」**。
+ *
+ * 病根（架构层）：旗舰战是**编队战**（`startFleetBattleFor`，与虫洞同款），但它**承载在遭遇槽**
+ * （`state.encounter.battle`，见引擎 `challengeWeekendFlagship`）——而界面那几处"在不在打"的判据
+ * 一直只认**远征**（`expedition.battle`）与**虫洞**（`wormhole.run.battle`）两个宿主 ⇒
+ * 旗舰战一开打，`inBattle` 为假：战斗屏不挂载、不自动上屏、心跳也不切到 100ms 战场节奏，
+ * 玩家只看到遭遇横幅上的"交火中"，没有战场可看（战斗本身在后台照常打完、战报照常出）。
+ *
+ * 这里给出**第三个宿主的唯一解析口**，与 `wormholeBattleViewOf` 同形（战斗窗口两套来源共用一套渲染）：
+ * 界面一律读本函数，**不许各自猜宿主**（与 `battleFoeAnomaly` 同一条纪律，见 content-check
+ * 「战斗宿主双口径契约」）。
+ */
+
+/** 旗舰战视图（形状与 `wormholeBattleViewOf` / `expeditionStatus().combat` 对齐：战斗窗口共用一套渲染） */
+export interface WeekendFlagshipBattleView {
+  battle: import('./state').BattleState
+  anomaly: AnomalyDef
+  /** 视图锚 = 编队首舰（准备界面选的主控；缺省退 `state.shipId`） */
+  leaderShipId: string
+  /** 战场标题 = **敌卡本地化名**（「墨潮旗舰部队」；与远征口径同源，不另造中文串） */
+  name: string
+  combat: {
+    distanceM: number
+    myDesireM: number
+    meHp: { s: number; a: number; h: number }
+    foeHp: Record<string, { s: number; a: number; h: number; name: string }>
+    shots: number
+    hits: number
+    lockTag: string | null
+  } | null
+}
+
+/**
+ * **旗舰战是否正在进行**（廉价判据，供每拍/每渲染的"在不在打"闸门用）。
+ * 判据 = 遭遇槽里挂着旗舰卡 + 那场战斗还在（`weekendFlagshipEncounterOf` + `enc.battle`）。
+ */
+export function weekendFlagshipBattleActive(state: GameState): boolean {
+  const enc = state.encounter
+  if (!enc.active || !enc.battle) return false
+  return weekendFlagshipEncounterOf(state, enc)
+}
+
+/** 旗舰战的战斗视图（无 / 还没开打 ⇒ `null`）。 */
+export function weekendFlagshipBattleViewOf(state: GameState, ctx: SimContext): WeekendFlagshipBattleView | null {
+  const enc = state.encounter
+  const battle = enc.battle
+  if (!battle || !enc.active) return null
+  if (!weekendFlagshipEncounterOf(state, enc)) return null
+  const anomaly = enc.anomalyId !== null ? ctx.anomalies.get(enc.anomalyId) : undefined
+  if (!anomaly) return null
+  const leaderShipId = battle.myFleet?.[0]?.shipId ?? enc.shipId ?? state.shipId
+  const leaderRt = battle.units[battle.myFleet?.[0]?.tag ?? 'player']
+  /** 敌舰逐艘血量（**阵亡的也留着**：界面靠"血量 >0 → 0"的落差播爆炸，与洞内/洞外同一处口径） */
+  const foeHp: Record<string, { s: number; a: number; h: number; name: string }> = {}
+  for (const [tag, u] of Object.entries(battle.units)) {
+    if (u.side !== 'foe') continue
+    foeHp[tag] = { s: u.hp.s, a: u.hp.a, h: u.hp.h, name: u.name }
+  }
+  return {
+    battle,
+    anomaly,
+    leaderShipId,
+    name: anomaly.name,
+    // ⚠ `ended` 之后仍要给 `combat`（与洞内/远征同款）：分胜负那一刻要留击杀慢镜与战报演出窗口
+    combat: {
+      distanceM: battle.distanceM,
+      myDesireM: battle.myDesireM,
+      meHp: leaderRt ? { ...leaderRt.hp } : { s: 0, a: 0, h: 0 },
+      foeHp,
+      shots: battle.stats.meShots,
+      hits: battle.stats.meHits,
+      lockTag: null,
+    },
+  }
 }

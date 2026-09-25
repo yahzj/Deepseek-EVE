@@ -1924,6 +1924,20 @@ export interface WreckGalaxyRecord {
   rareBy?: Record<string, number>
 }
 
+/**
+ * **入侵残骸独立池的一条记录**（2026-09-25 船长令：「入侵残骸不算当地星系密度，因为是独立的。
+ * 48 小时线性衰减」；模型见 `salvage.ts`「入侵残骸 · 独立池」那一段）。
+ *
+ * - `density` = **锚点值**（最后一次注入/打捞扣减时的量）；
+ * - `decayAccMs` = 自锚点起**已漂移的时长**；
+ * - 当前有效量 = `density × max(0, 1 − decayAccMs / 48h)` ⇒ **48 小时线性衰减到 0**（与推进粒度无关），
+ *   到点或有效值见底即删记录（"残骸条"随之消失，不留底、不回升）。
+ */
+export interface WeekendWreckRecord {
+  density: number
+  decayAccMs: number
+}
+
 /** 第十八版存档结构（当前版本）：v18 = v17 + V18 槽位制（fitted 六槽 Record →
  * 高/中/低三类位数组，复数安装；装备 rack 归槽；存档迁移 17→18 原位映射后由
  * repair 链与船布局对齐）。v17 时代全部字段保留（fleet 实例化 defId/customName、
@@ -1975,6 +1989,19 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
   salvaging: SalvageOpState
   /** B3 星系残骸密度（2026-09-05：兼容字段无版本号；星系 → 密度记录，无记录 = 基础密度） */
   galaxyWrecks: Record<string, WreckGalaxyRecord>
+  /**
+   * **入侵残骸（独立池）**（船长 2026-09-25：「**入侵残骸不算当地星系密度，因为是独立的。48 小时线性衰减**」
+   * ＋「按照击败卡的威胁注入」）。
+   *
+   * 与 `galaxyWrecks` **完全独立**的一本账：星系 id → `{ density, decayAccMs }`（口径与密度同尺）。
+   * 三条与星系池**不同**的规则（详见 `salvage.ts` 的 `WEEKEND_WRECK_DECAY_MS` 一段）：
+   * ① **没有基础密度（保底 = 0）**、只减不增 ⇒ **48 小时线性衰减到 0 即消失**（不留痕、不回升）；
+   * ② **不算进当地星系的残骸密度读数**（界面另起一行「入侵残骸」，见星图打捞列表/星系详细）；
+   * ③ 打捞时与星系池**合并计量**（体积当量按两池之和），扣减**先扣这一池**（会消失的先捞）。
+   *
+   * 兼容字段（可选，**零迁移**）：老档缺席 = 一张空表。
+   */
+  weekendWrecks?: Record<string, WeekendWreckRecord>
   /**
    * **已开过高级箱的稀有残骸存量**（2026-09-11 船长定「一件 = 一箱」的第二道锁；
    * 键 = 稀有残骸物品 id，值 = m³）——高级箱按**件**结算而不是按"炉"结算：

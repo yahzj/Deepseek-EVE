@@ -17,6 +17,7 @@ import { tr } from '../i18n/locale'
 import { ShipSprite } from '../ui/ShipSprite'
 import { Glyph } from '../ui/Glyphs'
 import { ICO_TONES } from '../ui/tones'
+import { pinMarked } from '../ui/marks'
 
 /** 缺口标记 → 文案 id（与准备面板同源；加新缺口时两处一起加） */
 const ISSUE_ID: Record<WeekendPrepIssue, string> = {
@@ -53,6 +54,16 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
     }
     return [...byId.entries()].map(([id, v]) => ({ id, ...v }))
   }, [engine, prep])
+  /**
+   * **已标记（收藏）的船置顶**（船长 2026-09-25：「**开战准备界面没有收藏舰船置顶**」）——
+   * 口径与虫洞准备页、舰队页逐字同款：`pinMarked` 只把标记项插到最前、**组内保持原顺序**（机库序），
+   * 其余项不重排；本弹层没有用户可选排序键 ⇒ 恒走「默认排序」这一条（置顶只在默认排序下生效）。
+   * ⚠ 只影响**显示顺序**：默认勾选（`prep.defaultSquad`）与开战编队一个字都不动。
+   */
+  const candidates = useMemo(
+    () => (prep ? pinMarked(engine.state, 'ships', prep.candidates, (c) => c.shipId) : []),
+    [engine, prep],
+  )
   if (!prep) return null
 
   function toggle(shipId: string): void {
@@ -123,7 +134,7 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
             </span>
           </div>
           <ul className="app-wh-cards">
-            {prep.candidates.map((c) => {
+            {candidates.map((c) => {
               const on = picked.includes(c.shipId)
               return (
                 <li key={c.shipId}>

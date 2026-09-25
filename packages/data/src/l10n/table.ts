@@ -314,6 +314,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.encounters.006": { zh: "已应战：遭遇战打响（引擎自动推演，战报稍后）。", en: "Engaged: the encounter has begun (the engine resolves it automatically and the report follows)." },
   "core.encounters.007": { zh: "当前没有可脱离的遭遇。", en: "There is no encounter to break away from." },
   "core.encounters.008": { zh: "⚠ 入侵遭遇（{p1}·「{p2}」）：{p3} 遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。", en: "⚠ Invasion encounter ({p1} · “{p2}”): {p3} was ambushed by that formation — you can ⚔ Engage or Break away; in 60 seconds it disengages automatically." },
+  // 2026-09-25：旗舰战的"主动脱离"（战斗画面里的撤退按钮）——三条新文案
+  "core.encounters.009": { zh: "当前不在交火中，无法脱离。", en: "You are not in a fight right now, so you cannot break away." },
+  "core.encounters.010": { zh: "战斗已分出胜负，正在结算——无法脱离。", en: "The fight is already decided and settling — you cannot break away." },
+  "core.encounters.011": { zh: "⚔ 主动脱离（{p1}·{p2}）：{p3} 收手退出交火（现 装甲 {p4}% / 结构 {p5}%）{p6}。", en: "⚔ Broke away voluntarily ({p1} · {p2}): {p3} disengaged from the fight (armour {p4}% / hull {p5}%){p6}." },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
@@ -1515,6 +1519,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-25 船长令：入侵期间星系详细里的悬赏只显示「击退入侵舰队」＋威胁范围（不暴露抽签结果）
   "ui.weekend.092": { zh: "击退入侵舰队", en: "Repel the invader fleet" },
   "ui.weekend.093": { zh: "威胁 {p1}~{p2}", en: "threat {p1}–{p2}" },
+  // 2026-09-25：入侵残骸独立池（打捞界面的独立残骸条）· 赏金去向 · 结算面板的进度收入那一格
+  "ui.weekend.094": { zh: "入侵残骸 {p1}", en: "Invasion wrecks {p1}" },
+  "ui.weekend.095": { zh: "入侵残骸占本星系残骸 {p1}%（独立残骸场：无保底，48 小时衰减到消失）", en: "Invasion wrecks are {p1}% of this system's wrecks (a separate field: no floor, it fades away over 48 hours)" },
+  "ui.weekend.096": { zh: "赏金：结算时按进度发放", en: "Bounty: paid at settlement based on progress" },
+  "ui.weekend.097": { zh: "进度收入", en: "Progress income" },
+  "ui.weekend.098": { zh: "推进 {p1}%", en: "{p1}% pushed" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
