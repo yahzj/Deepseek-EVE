@@ -168,7 +168,10 @@
 
 **验证（端到端）**：`weekend-wiring-20260925.test.ts` 由 3 例扩到 **11 例**——新增 ④ 夺回奖励入账（钱包 +2M、稀有残骸 ×8 真到手）· ⑤ 结束结算入账（A 档 ×12＋8M · 再调/过一周再调都不重发 · 零贡献 ⇒ 无奖但落"已结"标记）· ⑥ 迎战遇袭 +3% / 打输 0 / 文字击退 +1% · ⑦ **真实引擎路径**跑 40 档文字结算：进度只可能是 0 或 +1%（绝不是 +3%/+10%）且两档都出现过 · ⑧ 核心条满时旗舰战仍认得出（防"打完旗舰不结算"复发）· ⑨ 核心区日常循环：门禁未解打核心不给进度、外围全清后每场 +5% · ⑩ 打空血池 ⇒ 击沉旗舰：黑匣 `blackbox-h` 真入库 ＋ 稀有残骸 ×3 · 本场结束 · ⑪ **贡献奖锁在结束时刻**（离线五天补结与当场结算逐值一致，并附"若按现在算会降一档"的反证）。
 
-**验证读数**：typecheck ✓ · `npm run test -w @whale/core` **2,349 例全绿**（208 个文件）· content:check ✓ · l10n:check ✓ · build ✓ · docs:index ✓ · **真档体检**：`save:migrate` 84/84 通过 · `save:roundtrip-audit` 83 份往返、**丢键 0 · 类型变化 0**（本批动过 `weekendEvent` 清洗器，故补跑）。
+**验证读数**：typecheck ✓ · `npm run test -w @whale/core` **2,349 例全绿**（208 个文件）· content:check ✓ · l10n:check ✓ · `ui:rot-check` ✓ · `ui:theme-check` ✓ · build ✓ · docs:index ✓ · **真档体检**：`save:migrate` 84/84 通过 · `save:roundtrip-audit` 83 份往返、**丢键 0 · 类型变化 0**（本批动过 `weekendEvent` 清洗器，故补跑）。
+
+**旁证（普通玩法回归）**：`npx tsx tools/playthrough-sim.ts --goal bounties,isk1b --max-days 30` 跑通（本批动过 `encounters.collectExposures` / `resolveTextual` / `save` 清洗器）：30 天 · 星系 20/20 · 现金 16.8 亿（`isk1b` 达标）· **策略黑洞 0 次** · 异常只有 9 类"技能前置未满足"提示（各 1 次）。退出码 1 = `bounties` 目标未达成 —— 该目标 **2026-09-22 已被船长定性为配平问题并消档**，与本批无关。
+⚠ 边界要说清：该 sim 只跑 `packages/core`，**不含入侵**（`weekendTick` 归桌面引擎每拍调用，core 侧只有 `weekendTickBoss`）⇒ 这条证明的是"**普通玩法不受影响**"；入侵本身的证据是上面 11 条用例 ＋ 84 份真档 ＋ 桌面 `build`。
 
 ## 十、归档草案（**等船长一句「可以」**后照此并入；本文件随后删除）
 
@@ -197,6 +200,16 @@
 1. `docs/roadmap.md` 插入十之一那段（保持倒序）→ 删本工作文档 → 改 `docs/glossary.md` 那两处；
 2. `npm run docs:index`（生成件刷新）→ 六道闸门（typecheck / core 测试 / content:check / l10n:check / build / docs:index --check）；
 3. 提交并合入 main（不推送：推送闸门归一号）。
+
+### 十之四 遗留与欠账（**归档时挑要紧的抄进 roadmap 的 ⛔ 行**）
+
+| 项 | 说明 |
+|---|---|
+| A/C/G 三族占位口径 | 派生卡保留原卡 id ⇒ 板面标签 78/120 与真实属性不符（等 M2 换独立卡那批一起收；**船长早前已明确"不动"**） |
+| 通讯两封 | 设计稿只写"两封"、内容未定 ⇒ **等船长给方向**（已提供建议稿：入侵预警 / 入侵结算） |
+| M3 两个新族 | 未开工 |
+| 死门面两处（登记，不擅自删） | `weekendBounty.weekendEncounterRollOf` 与 `weekendTick().encounterRolls` **只有用例/读数在跑**，生产路径走 `rollLowSecAmbush`（内部同用 `weekendEncounterChanceAt` ＋ `weekendAmbushPickOf` 两个真单点）⇒ 判据没有第二份实现，但门面是多余的；要收口请船长一句话 |
+| 解除"仅调试可见" | `WEEKEND_DEBUG_ONLY = true` 由船长令保持不变；上线闸门与公告都不在本批范围 |
 
 
 
