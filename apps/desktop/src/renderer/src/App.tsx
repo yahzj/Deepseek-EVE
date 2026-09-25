@@ -52,7 +52,7 @@ import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
 import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
-import { DebugButton, debugEnabled as readDebugEnabled, setDebugEnabled } from './panels/DebugPanel'
+import { DebugButton, debugAllowed, debugEnabled as readDebugEnabled, setDebugEnabled } from './panels/DebugPanel'
 import { ActivityBar } from './panels/ActivityBar'
 import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
@@ -404,25 +404,31 @@ function SettingsPanel({
            * **开发者：调试模式**（2026-09-25 加）：船长反馈「已开启调试模式，调试按钮依旧不可见」
            * —— 根因是开关设在**另一个 origin**（DevTools 里那行 localStorage 落在浏览器侧，桌面端读不到）。
            * 这里给一个**不依赖 DevTools** 的开关：改完立即生效（顶栏出现「⇄ 调试」「⏱ 性能」），无需重开。
+           *
+           * ⚠ **只有本机才渲染这一行**（2026-09-25 船长令：「只有本地开启，上传后的版本都是关闭隐藏的」）：
+           * 门禁见 `game/debugFlag.ts` + `@whale/core` 的 `isLocalDebugOrigin`（公网域名与桌面打包版的
+           * `file:` 一律算发布版）⇒ 发布版里这一行根本不出现，顶栏那两枚按钮也不会出现。
            */}
-          <div className="app-settings-row">
-            <div className="app-settings-head">
-              <span className="app-settings-label">{tr('ui.App.141')}</span>
-              <span className="app-settings-btns">
-                <button
-                  className={`app-btn is-small${debugOnState ? ' is-warn' : ''}`}
-                  onClick={() => {
-                    const next = !debugOnState
-                    setDebugEnabled(next)
-                    onDebugChange(next)
-                  }}
-                >
-                  {debugOnState ? tr('ui.App.143') : tr('ui.App.142')}
-                </button>
-              </span>
+          {debugAllowed() ? (
+            <div className="app-settings-row">
+              <div className="app-settings-head">
+                <span className="app-settings-label">{tr('ui.App.141')}</span>
+                <span className="app-settings-btns">
+                  <button
+                    className={`app-btn is-small${debugOnState ? ' is-warn' : ''}`}
+                    onClick={() => {
+                      const next = !debugOnState
+                      setDebugEnabled(next)
+                      onDebugChange(next)
+                    }}
+                  >
+                    {debugOnState ? tr('ui.App.143') : tr('ui.App.142')}
+                  </button>
+                </span>
+              </div>
+              <div className="app-settings-desc">{tr('ui.App.144')}</div>
             </div>
-            <div className="app-settings-desc">{tr('ui.App.144')}</div>
-          </div>
+          ) : null}
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。

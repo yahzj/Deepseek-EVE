@@ -16,6 +16,8 @@ import {
   WEEKEND_FLAGSHIP_SHIP_ID,
   weekendBossPoolView,
   weekendFlagshipHpRemaining,
+  weekendFlagshipLayerCaps,
+  weekendFlagshipLayersOf,
   weekendFlagshipView,
 } from './weekendEvent'
 import type { WeekendBossPoolView } from './weekendEvent'
@@ -51,9 +53,12 @@ export interface WeekendFlagshipPrepView {
   cardId: string
   threat: number
   waves: number
-  /** 母舰血池读数（玩家磨掉 / 章鱼人削 / 剩余 / 还需多少） */
+  /** 母舰血池读数（**共享血条**：`hpLeft / hpMax` ＋ 各自份额，见 `WeekendBossPoolView`） */
   pool: WeekendBossPoolView
-  /** 击毁时限（缺省 = 还没起算） */
+  /**
+   * 击毁时限（缺省 = 还没起算）——**只作 core 侧读数**：2026-09-25 船长令「章鱼人 = 真实削减血量
+   * 所以并不需要显示章鱼人削减进度和倒计时」⇒ **界面不再显示这一格**（血条本身就是那个读数）。
+   */
   deadlineWallMs?: number
   maxShips: number
   /** 可选舰船（**只有舰队在编的船**；主控船也在其中、不特殊） */
@@ -230,12 +235,28 @@ export function weekendStartFlagshipBattle(
    * **母舰血条 = 池子剩余**（船长 2026-09-25 选「甲」）：开战这一刻把 `weekendFlagshipHpRemaining(ev)`
    * 传进覆写口 ⇒ 战斗里母舰的满血就是池子剩余（单场不死名副其实；打空即击沉）。
    * 覆写随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰、读档续战都吃同一份。
+   *
+   * ⚠ **另带 `bossHpMax` = 池子总量**（船长同日第二条：「**母舰哪怕残血，在战斗中血上限依旧保持不变**」）：
+   * 血条分母恒定用池子口径 ⇒ 残血就显示残血（否则最后一仗开打时血条又是满的）。
+   *
+   * ⚠⚠ **三层血按 护盾 → 装甲 → 结构 的顺序扣**（船长同日第三条：「**母舰当前血条不要按照三个等比扣除，
+   * 应该按照护盾-装甲-结构的顺序扣除**」）：
+   * - `bossMaxLayers` = 三层**容量**（池子总量 × 卡面 split：护盾 30,000 / 装甲 82,500 / 结构 37,500）
+   *   ⇒ 界面血条三行的**分母**（恒定，不随剩余缩水）；
+   * - `bossHpLayers` = 三层**当前值** = 把池子剩余**从最后一层往回灌**（结构先满 → 装甲 → 剩余才落护盾）
+   *   ⇒ "池子剩 50%" 的读数是 **护盾 0 / 装甲 37,500 / 结构 满**，而不是三层各半。
+   *   它同时决定**每发的实收伤害**（`applyDamage` 逐层乘"层克制 × (1−该层该系抗性)"）。
    */
+  const poolTotal = state.weekendEvent?.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
   const bossHp = weekendFlagshipHpRemaining(state.weekendEvent)
+  const cap = weekendFlagshipLayerCaps(poolTotal, ctx.anomalies.get(spec.cardId)?.ships?.find((s) => s.ship.id === WEEKEND_FLAGSHIP_SHIP_ID)?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
   const override: FoeOverride = {
     threat: spec.threat,
     waves: weekendFlagshipWavesOf(),
     bossHp,
+    bossHpMax: poolTotal,
+    bossHpLayers: weekendFlagshipLayersOf(bossHp, cap),
+    bossMaxLayers: cap,
     bossShipId: WEEKEND_FLAGSHIP_SHIP_ID,
   }
   return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, undefined, undefined, override)

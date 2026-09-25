@@ -6,7 +6,9 @@
  * - 弹层用全仓既有的 `.app-modal-*` 族（与存档管理/手册/结算面板同一套窗口观感）；
  * - 编队选取沿用**虫洞准备页**的语言：`app-wh-prep` / `app-wh-ship` 那一族类名 ＋ 同样的
  *   "上限 4 / 未满给软提醒 / 准入问题摆出来不拦人"的读法；
- * - 敌情与血池读数复用活动框那两行已有的 id（`ui.weekend.020/021`）＋ 本批新增的 `ui.weekend.060~079`。
+ * - 敌情与血池读数复用活动框那两行已有的 id（`ui.weekend.075` = **共享血条剩余**）＋ 本批新增的 `ui.weekend.060~079`。
+ *   ⚠ 2026-09-25 船长令「章鱼人 = 真实削减血量所以并不需要显示章鱼人削减进度和倒计时」⇒
+ *   「章鱼人已削 N%」（原 `ui.weekend.021`，已删）与「击毁时限」（原 `ui.weekend.078`，已删）两格**已撤**。
  *
  * 判定与读数全在 core（`weekendFlagshipPrepView` / `weekendPrepIssuesOf`）——本组件只做渲染与选择。
  */
@@ -101,19 +103,15 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
               p2: String(prep.threat),
               p3: String(prep.waves),
             })}
-            {prep.deadlineWallMs !== undefined ? (
-              <>
-                {' · '}
-                {tr('ui.weekend.078')} {fmtLeft(prep.deadlineWallMs - Date.now())}
-              </>
-            ) : null}
           </div>
-          {/* 血池读数（与活动框同两口 id） */}
+          {/**
+           * 血池读数（与活动框同两口 id）：**只报共享血条**——2026-09-25 船长令「章鱼人 = 真实削减血量
+           * 所以并不需要显示章鱼人削减进度和倒计时」⇒ 撤掉"章鱼人已削 N%"与"击毁时限"两格。
+           */}
           <div className="app-dim app-note">
             {tr('ui.weekend.075', {
-              p1: String(Math.round(prep.pool.playerFrac * 100)),
-              p2: String(Math.round(prep.pool.octopusFrac * 100)),
-              p3: n(prep.pool.needDmg),
+              p1: n(prep.pool.hpLeft),
+              p2: String(Math.round((prep.pool.hpLeft / prep.pool.hpMax) * 100)),
             })}
           </div>
           {/* 敌方编成（按舰种汇总；名字走卡内嵌敌舰的本地化名） */}
@@ -188,13 +186,4 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
     </div>
   )
 }
-
-/** 剩余时限（小时/分钟；与活动框同口径的粗读） */
-function fmtLeft(ms: number): string {
-  const t = Math.max(0, ms)
-  const h = Math.floor(t / 3_600_000)
-  const m = Math.floor((t % 3_600_000) / 60_000)
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
 

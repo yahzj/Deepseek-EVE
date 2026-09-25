@@ -4474,6 +4474,34 @@ export interface FoeOverride {
    * 覆写会随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰时血条恒等于池子剩余。
    */
   bossHp?: number
+  /**
+   * **BOSS 血条的"上限读数"**（船长 2026-09-25：「**母舰哪怕残血，在战斗中血上限依旧保持不变**」）：
+   * `bossHp` 是**这一场的满值**（= 开战那一刻的池子剩余），池子被打薄之后它就变小 ⇒ 若直接拿它当
+   * 血条分母，最后几仗会显示成"满血母舰"（读数与"母舰已经很残"矛盾）。
+   * ⇒ 本字段写**池子总量**（恒定），只用于**界面血条的分母**（`battleArcsFor` 的 `maxHp.foe`）：
+   * 战斗里那条血 = `当前 ÷ 池子总量`（残血就是残血）。
+   *
+   * ⚠ **只动显示**：单位自己的 `hpMax`（引擎满值）与伤害台账（`flagshipBattleLedger` =
+   * `ΣhpMax − Σhp`）一个字不改——否则跨场累计会重复计伤害。
+   * 缺省 / 非正 / 不大于本场满值 ⇒ 不缩放（零行为变化）。
+   */
+  bossHpMax?: number
+  /**
+   * **母舰"当前"三层血**（船长 2026-09-25 令：「**母舰当前血条不要按照三个等比扣除，应该按照
+   * 护盾-装甲-结构的顺序扣除**」）——由 `weekendEvent.weekendFlagshipLayersOf` 按"池子剩余从最后一层
+   * 往回灌"算好传进来（护盾先空、再装甲、最后结构）。
+   *
+   * 落法 = 把 `ships[]` 里 BOSS 那条目的 **`split` 覆写成 `bossHpLayers ÷ bossHp`**
+   * ⇒ 建档后三层血**逐个等于**本字段（`hp = 总量 × split`）。
+   * ⚠ 这**不只是显示**：`applyDamage` 逐层乘"层克制 × (1−该层该系抗性)"⇒ 分层血量决定每发实收伤害。
+   * 缺省 ⇒ 仍按卡面 `split` 等比分摊（老档/其它卡零变化）。
+   */
+  bossHpLayers?: { s: number; a: number; h: number }
+  /**
+   * **母舰三层血的容量**（= 池子总量 × 卡面 `split`）：**界面血条三行的分母**（恒为池子口径，
+   * 不随剩余缩水）——与"当前值"（`bossHpLayers`）分开给，界面**不许**拿当前值反推分母。
+   */
+  bossMaxLayers?: { s: number; a: number; h: number }
   /** 哪一条舰级当 BOSS（配 `bossHp` 用；缺省 = 不覆写） */
   bossShipId?: string
 }
@@ -4514,7 +4542,16 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
         const slot = raw as { ship?: { id?: string; hp?: number } }
         if (slot.ship?.id !== bossShipId) return raw
         const classHp = Math.max(1, slot.ship.hp ?? 1)
-        return { ...(raw as object), hpMul: bossHp / classHp }
+        /**
+         * ⚠ **三层血按 护盾 → 装甲 → 结构 的顺序扣**（船长 2026-09-25）：`bossHpLayers` 是"当前值"，
+         * 拆成 `split` 覆写 ⇒ 建档后 `hp = bossHp × split` 逐层等于它；没给 ⇒ 保持卡面 `split`（等比分摊）。
+         */
+        const layers = override.bossHpLayers
+        const layerSplit =
+          layers !== undefined
+            ? { s: Math.max(0, layers.s) / bossHp, a: Math.max(0, layers.a) / bossHp, h: Math.max(0, layers.h) / bossHp }
+            : undefined
+        return { ...(raw as object), hpMul: bossHp / classHp, ...(layerSplit !== undefined ? { split: layerSplit } : {}) }
       })
     }
   }
@@ -5430,9 +5467,49 @@ export function battleArcsFor(
   // 曾致后续波敌人血条为空（数值正常）；现优先 battle.units[tag].hpMax（引擎生成时写入），
   // 旧档缺省 hpMax 时以当前血兜底（读档中断局近似满值显示）。
   const foeMaxHp: Record<string, { s: number; a: number; h: number }> = {}
+  /**
+   * **母舰血条的分母 = 池子口径的三层容量**（船长 2026-09-25：「母舰哪怕残血，在战斗中血上限依旧保持不变」
+   * ＋「**当前血条按 护盾 → 装甲 → 结构 的顺序扣除**」）：
+   * 单位自己的 `hpMax` 是"本场开打那一刻的分层血量"（可能护盾已经是 0、装甲只半满）⇒ 直接当分母会让
+   * 血条越打越"满"。这里三行分母改用 `FoeOverride.bossMaxLayers`（= 池子总量 × 卡面 split，恒定）。
+   * ⚠ **只改这一份显示读数**：`battle.units[tag].hpMax` 与伤害台账（`flagshipBattleLedger`）都保持原值，
+   * 跨场累计不会重复计。
+   */
+  const bossShipId = battle.foeOverride?.bossShipId
+  const bossHpMax = battle.foeOverride?.bossHpMax
+  const bossMaxLayers = battle.foeOverride?.bossMaxLayers
   for (const [tag, u] of Object.entries(battle.units)) {
     if (u.side !== 'foe') continue
-    foeMaxHp[tag] = u.hpMax ?? { s: Math.max(0.001, u.hp.s), a: Math.max(0.001, u.hp.a), h: Math.max(0.001, u.hp.h) }
+    const max = u.hpMax ?? { s: Math.max(0.001, u.hp.s), a: Math.max(0.001, u.hp.a), h: Math.max(0.001, u.hp.h) }
+    const isBoss = bossShipId !== undefined && u.foeShipId === bossShipId
+    /** ① 首选：显式三层容量（池子口径；与"当前值"分开给的那份） */
+    const layered =
+      isBoss &&
+      bossMaxLayers !== undefined &&
+      Number.isFinite(bossMaxLayers.s) &&
+      Number.isFinite(bossMaxLayers.a) &&
+      Number.isFinite(bossMaxLayers.h) &&
+      bossMaxLayers.s + bossMaxLayers.a + bossMaxLayers.h > 0
+        ? { s: Math.max(0, bossMaxLayers.s), a: Math.max(0, bossMaxLayers.a), h: Math.max(0, bossMaxLayers.h) }
+        : null
+    /** ② 兜底（老档/只给了总量）：按 `bossHpMax ÷ 本场满值` 等比放大三层 */
+    const sum = max.s + max.a + max.h
+    const scale =
+      layered === null &&
+      isBoss &&
+      bossHpMax !== undefined &&
+      Number.isFinite(bossHpMax) &&
+      bossHpMax > 0 &&
+      sum > 0 &&
+      bossHpMax > sum
+        ? bossHpMax / sum
+        : 1
+    foeMaxHp[tag] =
+      layered !== null
+        ? layered
+        : scale === 1
+          ? max
+          : { s: max.s * scale, a: max.a * scale, h: max.h * scale }
   }
   // 弹药 MK2（2026-09-09）：本场实装弹名（仅当与基础弹不同时提供；UI 兜底用弹型名）
   const ammoNames: Partial<Record<'kin' | 'exp' | 'pla', string>> = {}
@@ -6003,8 +6080,15 @@ export function advanceBattleFor(
    * **本场的敌阵规格**（2026-09-24 起提前到这里）：只用于算**敌方干扰舰的射程压制率**
    * （`meRangeMulOf`，见 `buildMyUnitSpecs` 的入参说明）。⚠ `createFoeSpecs` 只吃 `anomaly` 与 `bal`，
    * **不依赖我方规格** ⇒ 提前建不改变任何既有口径（下游仍用同一份、同一序）。
+   *
+   * ⚠⚠ **2026-09-25 修：干扰压制必须取"当前波"**（`activeFoeSpecsOf(…, battle.waveIdx)`），
+   * 不能取第 0 波。原先写 `createFoeSpecs(anomaly, bal)`（= **恒定第 0 波**）⇒ 多波卡里干扰舰在
+   * 后续波出场时，**界面射程弧显示被压制、引擎实际开火门却是原射程**（两处各拿一份敌阵）。
+   * 与视图（`battleArcsFor` 同一行取法）统一 ⇒ 显示与实际同一把尺。
+   * ⚠ `foes`（下面 `foeDesire` / `openM` 用的那份）**照旧取第 0 波**：那是"开战距离"的既有口径，
+   * 本次只动干扰压制这一件事，不顺手改距离账。
    */
-  const foesForDebuff = createFoeSpecs(anomaly, bal)
+  const foesForDebuff = activeFoeSpecsOf(anomaly, bal, battle.waveIdx)
   /**
    * **电子舰 · 压制敌舰射程**（2026-09-18）：**每拍重算**（运行态、不随档 ⇒ 换编队/读档都不陈旧）。
    * 编队口径 = `battle.myFleet`（单船路径取本条 `shipId`）。
@@ -6020,26 +6104,13 @@ export function advanceBattleFor(
     return
   }
   const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
-  const foes = foesForDebuff
   /**
-   * **本波敌方的期望距离与钳制上界**（`let`：**换波时按新一波重算**）。
-   *
-   * 船长 2026-09-25 报障：「**敌人切换波次后，敌人的期望距离不会刷新。**」
-   * 原先这两个值在进循环前按**首波**算一次就定死；多波卡里各波的战术 / 射程带 / 钉住距离可以完全不同
-   * （例：第 1 波近战压近、第 2 波远程拉开）⇒ 第二波起敌人仍按**上一波**的期望距离机动（该压近的不压、
-   * 该拉开的不拉），与界面读数也不一致——视图侧（`battleView`）本来就是**逐波**取
-   * `activeFoeSpecsOf(anomaly, bal, battle.waveIdx)` 现算 `foeDesireM` 的。
-   *
-   * 口径（与视图同一把尺）：
-   * - `foeDesire` = `foeDesiredRange(本波敌阵)`（含我方电子舰削减、含条目/舰级的 `desireRangeM` 钉值）；
-   * - `desireCapM` = `battleOpenM(me, 本波敌阵)` —— 即「**这一波若单独开战，开战距离在哪**」，
-   *   与视图 `Math.min(openM, foeDesiredRange(...))` 的钳制上界同源；
-   * - ⚠ **单波场次逐字等于旧行为**（同一份敌阵、同一算式，只算一次）；`openM`（**本场**开战距离）
-   *   仍按首波算，只服务转场回拉与增援补入，不受本改动影响。
+   * **本场开战距离**（= 首波口径）：只服务**转场回拉**（`waveReopenFrac`）与**增援补入**
+   * （`resolveReinforcements`）。⚠ 敌方的"期望距离"与它的钳制上界**不用它**——那两个按**当前波**算，
+   * 见下面 `foeDesire` 的注释。
    */
-  let foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
-  let desireCapM = battleOpenM(me, foes, bal)
-  const openM = desireCapM
+  const foes = createFoeSpecs(anomaly, bal)
+  const openM = battleOpenM(me, foes, bal)
   const favor =
     favorAdv === null
       ? null
@@ -6051,6 +6122,27 @@ export function advanceBattleFor(
   const specsOf = (wi: number): UnitSpec[] => activeFoeSpecsOf(anomaly, bal, wi)
   let waveIdx = Math.min(battle.waveIdx ?? 0, lastIdx)
   let curFoes = specsOf(waveIdx)
+  /**
+   * **本波敌方的期望距离与钳制上界**（`let`：**换波时按新一波重算**）。
+   *
+   * 船长 2026-09-25 报障①：「**敌人期望距离似乎不会变化？**」——病根就在这两行的**初值**：
+   *
+   * - **必须取"当前波"**（`curFoes`）—— 2026-09-25 早前那版只加了"**换波时刷新**"，可那个分支
+   *   只在**同一次调用里**跑完整个转场（清空→等演出窗口→续刷下一波）时才会执行；而引擎是**逐拍调用**
+   *   `advanceBattleFor` 的：转场发生在第 N 拍，第 N+1 拍进来时 `battle.waveIdx` 已经是新波、
+   *   转场分支不再触发 ⇒ 初值又用**第 0 波**那份 `foes` 算了一遍。
+   *   实测（旗舰战 · 真实引擎）：第 2 波（墨潮鱼雷舰 ×3 ＋ 干扰舰，`kite` 带 1,000~12,000）
+   *   引擎里 `foeDesire` 恒为 **2,352**（第 1 波突击舰的值），而界面按当前波显示 **10,350**
+   *   ⇒ 敌人**实际往里收**、读数却写"想拉开"。
+   *
+   * 口径（与视图同一把尺）：
+   * - `foeDesire` = `foeDesiredRange(本波敌阵)`（含我方电子舰削减、含条目/舰级的 `desireRangeM` 钉值）；
+   * - `desireCapM` = `battleOpenM(me, 本波敌阵)` —— 即「**这一波若单独开战，开战距离在哪**」，
+   *   与视图 `Math.min(openM, foeDesiredRange(...))` 的钳制上界同源；
+   * - ⚠ **单波场次逐字等于旧行为**（同一份敌阵、同一算式，只算一次）。
+   */
+  let foeDesire = foeDesiredRange(me, curFoes, bal, battle.meFoeRangeDebuff ?? 0)
+  let desireCapM = battleOpenM(me, curFoes, bal)
   // 开战首波由 startBattleFor 生成（无装填延迟）；此处只兜读档中断补缺（视为增援入场）
   for (const f of curFoes) {
     // ⚠ 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发、条件未命中的单位
@@ -6657,6 +6749,17 @@ export function foeJammerCountOf(foes: readonly UnitSpec[]): number {
   return foes.reduce((n, f) => n + ((f.foeRangeDebuffPct ?? 0) > 0 ? 1 : 0), 0)
 }
 
+/**
+ * 该敌舰单位**是否已被摧毁**（`battle.units` 里的运行态：建档后**三系血全 ≤ 0** = 阵亡）。
+ *
+ * ⚠ **没有建档记录**（尚未入场 / 纯函数调用 / 老档补算）⇒ **视为未死**（返回 `false`）——
+ * 这样"编制口径"的旧行为一点不变，只有**明确打死的**那几艘才失去作用面。
+ */
+export function foeUnitDeadOf(b: import('./state').BattleState, tag: string): boolean {
+  const u = b.units[tag]
+  return u !== undefined && u.hp.s <= 0 && u.hp.a <= 0 && u.hp.h <= 0
+}
+
 /** 敌阵的合成削减率 `r_e = 1 − Π(1 − vᵢ)`（无干扰舰 ⇒ 0） */
 export function foeRangeDebuffOf(foes: readonly UnitSpec[]): number {
   let remain = 1
@@ -6675,9 +6778,14 @@ export function foeRangeDebuffOf(foes: readonly UnitSpec[]): number {
  * **干扰的净削减率** = `敌方干扰合成 − 我方电子舰合成`（夹 ≥0）——**"相互抵消"就是这一减**：
  * 我方的电子舰能把自己的电子战能力抵掉敌方的干扰（2 艘抵 27.75 个百分点），抵到 0 以下不再"加射程"。
  * 船长三例：① 0.50−0.15 = **0.35** · ② 0.50−0.2775 = **0.2225**（他口述"−0.2"）。
+ *
+ * ⚠⚠ **2026-09-25 船长报障**：「**摧毁敌方干扰舰后，射程不会恢复。**」根因 = 上面那个合成函数吃的是
+ * **编制口径**（`activeFoeSpecsOf` 含已阵亡单位）⇒ 干扰舰被打死之后它的 50% 仍然挂在净削减里
+ * （**界面射程弧与实际开火门两处都挂着**，因为两条路径都从这里取数）。
+ * ⇒ 这里**先滤掉已阵亡的干扰舰**（{@link foeUnitDeadOf}；未建档 = 视为未死 ⇒ 零行为变化）。
  */
 export function meJammerNetOf(battle: import('./state').BattleState, foes: readonly UnitSpec[]): number {
-  const enemy = foeRangeDebuffOf(foes)
+  const enemy = foeRangeDebuffOf(foes.filter((f) => !foeUnitDeadOf(battle, f.tag)))
   if (enemy <= 0) return 0
   // **净射程削减 = 敌方干扰合成 − 我方电子舰合成**（船长 2026-09-24 三例的口径）：
   // 我方的电子舰能**抵消**敌方的干扰（2 艘抵消 35 个百分点），抵消到 0 以下就不再"加射程"（夹 0）。

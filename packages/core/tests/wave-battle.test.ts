@@ -229,6 +229,43 @@ describe('换波刷新敌方期望距离（2026-09-25 船长报障）', () => {
     expect(battle.waveIdx ?? 0).toBe(0)
     expect(battle.distanceM).toBeLessThan(4_000)
   })
+
+  /**
+   * ⚠⚠ **2026-09-25 船长第二条报障（同一病根的第二半）**：「旗舰第二波鱼雷艇，**敌方试图远离
+   * （我方也在拉远距离），但是实际距离在缩短**」。
+   *
+   * 上面那条用例只覆盖"**在同一次调用里**跑完整个转场"的情形（`advanceBattleFor` 一次推进 60 秒）。
+   * 真实引擎是**逐拍调用**的：转场发生在第 N 拍，第 N+1 拍进来时 `battle.waveIdx` 已是新波，
+   * 那条"换波刷新"分支**再也不会触发** ⇒ `foeDesire` / `desireCapM` 的**初值**又按**第 0 波**算一遍
+   * （实测旗舰战第 2 波：引擎恒用第 1 波的 2,352，界面按当前波显示 10,350——敌人**实际往里收**、
+   * 读数却写"想拉开"）。
+   *
+   * 本用例按**真实节奏**逐拍推进：转场后**只走 1 秒/次**，距离必须继续朝第 2 波自己的 11,000 走
+   * （改前：第 N+1 拍就被第 1 波的 1,500 拽回去，距离掉头向下）。
+   */
+  it('逐拍调用（真实节奏）也不会退回第 1 波的期望距离：转场后每秒推一次，距离继续朝 11,000 走', () => {
+    const { state, ctx, battle } = world()
+    battle.units['foe-0']!.hp = { s: 0, a: 0, h: 0 } // 第 1 波清空
+    state.gameMs = 60_000
+    advanceBattleFor(state, ctx, battle, state.shipId, CARD) // 转场（gap = 0 ⇒ 本拍即续刷）
+    expect(battle.waveIdx).toBe(1)
+    expect(battle.units['w1-foe-0']).toBeDefined()
+    const afterTransition = battle.distanceM
+    /** 逐秒推 8 拍（**每拍一次调用**——这正是真实引擎的节奏） */
+    const series: number[] = []
+    for (let i = 0; i < 8; i++) {
+      state.gameMs += 1_000
+      advanceBattleFor(state, ctx, battle, state.shipId, CARD)
+      series.push(battle.distanceM)
+    }
+    // 朝 11,000 走：每一步都不许回退（改前第 1 步就掉头往 1,500 收）
+    for (let i = 0; i < series.length; i++) {
+      const prev = i === 0 ? afterTransition : series[i - 1]!
+      expect(series[i]!, `第 ${i + 1} 秒不许掉头（改前会退回第 1 波的 1,500）`).toBeGreaterThanOrEqual(prev - 1)
+    }
+    expect(series[series.length - 1]!, '8 秒后应停在 11,000 一带（第 2 波自己的钉值）').toBeGreaterThan(10_900)
+    expect(series[series.length - 1]!, '不许越过自己的期望距离（无过冲）').toBeLessThanOrEqual(11_000)
+  })
 })
 
 /* ══════════════════════════════════════════════════════════════════════════

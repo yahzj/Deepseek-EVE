@@ -316,25 +316,32 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
 
   /**
    * **章鱼人削血 = 真实削减**（船长 2026-09-25：「章鱼人削减母舰血条是**真实削减**，玩家假设打完一场
-   * 放一会，母舰血量是会**真实减少**」）⇒ 得手判据 = **削血攒满窗口（血条见底）**，不是"墙钟到点"：
-   * 倒计时读数按"还差的在线非战斗时长"展示，已削掉的那部分直接把它推后。
+   * 放一会，母舰血量是会**真实减少**」）⇒ 得手判据 = **共享血条被削空**，不是"墙钟到点"：
+   * 倒计时读数按"还差多少在线非战斗时间才能把**剩下的血**削空"展示；玩家打掉的与章鱼削掉的**同一条血**。
    */
-  it('得手 = 削血攒满窗口（真实削减）；已削掉的时长会把倒计时推后', () => {
+  it('得手 = 共享血条被削空（真实削减）；已掉的血把倒计时推短', () => {
     const s = fresh()
     const ev = fullCore()
+    ev.family = 'H' // 章鱼削血只服务 BOSS 池族（`WEEKEND_BOSS_FAMILIES`）
+    ev.flagshipHpMax = 150_000
     ev.flagshipAtWallMs = 10 * H
     // 一点没削（此刻 11h）⇒ 还差 2 小时在线非战斗时间（从此刻起算）
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 2 * H)
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down, '没削完 ⇒ 不得手').toBeUndefined()
-    // 已削掉 1 小时 ⇒ 只剩 1 小时（真实削减把窗口用掉了一半）
-    ev.octopusDrainedMs = 1 * H
+    // 章鱼人已削掉一半血 ⇒ 只剩一半 ⇒ 再有一小时就削空
+    ev.octopusHpDone = 75_000
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 1 * H)
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down).toBeUndefined()
-    // 削满窗口 ⇒ 血条见底 ⇒ 章鱼人得手（与 `weekendOctopusTick` 同一判据）
-    ev.octopusDrainedMs = 2 * H
+    // ⚠ 共享血条：玩家打掉的那份**也真实减少同一条血** ⇒ 章鱼人只需再花 1/4 窗口就能削空
+    ev.flagshipHpDone = 37_500
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs, '剩 1/4 血 ⇒ 1/4 窗口').toBe(
+      11 * H + 30 * 60_000,
+    )
+    // 削空 ⇒ 血条见底 ⇒ 章鱼人得手（与 `weekendOctopusTick` 同一判据）
+    ev.octopusHpDone = 150_000
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down).toBe('octopus')
-    // ⚠ 墙钟再过多久都一样：只要没削满就不得手（战斗/离线暂停削血 ⇒ 也不能被墙钟判死）
-    ev.octopusDrainedMs = 1 * H
+    // ⚠ 墙钟再过多久都一样：只要血条没空就不得手（战斗/离线暂停削血 ⇒ 也不能被墙钟判死）
+    ev.octopusHpDone = 75_000
     expect(weekendFlagshipView(s, ev, 40 * H, 40 * H).down, '战斗中挂机不削血 ⇒ 墙钟不该判死').toBeUndefined()
   })
 
@@ -366,6 +373,7 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
   /**
    * **真实削减（引擎路径）**：`weekendTickBoss` 每拍按"在线且非战斗"的时长推进削血，
    * 血池读数**真减少**；战斗/离线 ⇒ 暂停（不减少）。
+   * ⚠ 2026-09-25：章鱼那一份**记成血量**（`octopusHpDone`），速率 = `池子总量 ÷ 窗口`。
    */
   it('削血真实推进：打完放一会 ⇒ 母舰血量真的减少；战斗中与离线都不削', () => {
     const s = fresh(true) // 调试档：窗口 = 10 分钟
@@ -378,25 +386,25 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     expect(windowMs, '调试档窗口 = 10 分钟').toBe(10 * 60_000)
     // 第一拍只立基线（没有"上一拍"就没有可累计的时长）
     weekendTickBoss(s, 1_000, false)
-    expect(ev.octopusDrainedMs ?? 0).toBe(0)
-    // 在线且不在战斗：连推 30 拍（每拍 ≤5s 上限）⇒ 攒下 150 秒 ⇒ 池子真掉 25%
+    expect(ev.octopusHpDone ?? 0).toBe(0)
+    // 在线且不在战斗：连推 30 拍（每拍 ≤5s 上限）⇒ 攒下 150 秒 ⇒ 按"满血 ÷ 窗口"的速率真掉 25%
     for (let i = 1; i <= 30; i++) weekendTickBoss(s, 1_000 + i * 5_000, false)
-    expect(ev.octopusDrainedMs, '攒下 150 秒在线非战斗时长').toBe(150_000)
+    expect(ev.octopusHpDone, '150 秒 ×（150000 ÷ 600 秒）= 37500 点').toBe(37_500)
     const pool = weekendBossPoolView(s, ev)!
     expect(pool.octopusFrac).toBeCloseTo(0.25, 6)
     expect(pool.hpLeft, '血条真的少了 25%（真实削减）').toBe(150_000 - 37_500)
     // 战斗中：削血暂停（时钟继续走、读数不动）
     weekendTickBoss(s, 200_000, true)
-    expect(ev.octopusDrainedMs, '战斗中暂停').toBe(150_000)
+    expect(ev.octopusHpDone, '战斗中暂停').toBe(37_500)
     // 离线（不传墙钟 = 离线结算口径）⇒ 同样不动
     weekendTickBoss(s, undefined, false)
-    expect(ev.octopusDrainedMs, '离线也暂停').toBe(150_000)
-    // 削满窗口 ⇒ 得手（血条见底）
-    for (let i = 0; i < 200 && (ev.octopusDrainedMs ?? 0) < windowMs; i++) {
+    expect(ev.octopusHpDone, '离线也暂停').toBe(37_500)
+    // 削到血条见底 ⇒ 得手
+    for (let i = 0; i < 200 && (ev.octopusHpDone ?? 0) < 150_000; i++) {
       weekendTickBoss(s, 200_000 + i * 5_000, false)
     }
-    expect(ev.octopusDrainedMs).toBe(windowMs)
-    expect(weekendFlagshipView(s, ev, 200_000 + 201 * 5_000, 200_000 + 201 * 5_000).down, '削满 ⇒ 章鱼人得手').toBe(
+    expect(ev.octopusHpDone).toBe(150_000)
+    expect(weekendFlagshipView(s, ev, 200_000 + 201 * 5_000, 200_000 + 201 * 5_000).down, '削空 ⇒ 章鱼人得手').toBe(
       'octopus',
     )
   })
@@ -443,7 +451,7 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
   /**
    * **旗舰 BOSS 进度与结束结算标记一个都不能丢**（2026-09-25 补测）：
    * 这些字段是**跨会话状态**——母舰"单场不死、跨场累计"全靠 `flagshipHpDone`；
-   * `octopusDrainedMs` 是章鱼人的削血进度；`flagshipRunId` 是"同一场只记一次"的幂等键；
+   * `octopusHpDone` 是章鱼人削掉的那一份血量；`flagshipRunId` 是"同一场只记一次"的幂等键；
    * `prizePaidAtWallMs` 是贡献奖"只发一次"的落盘标记。丢任何一个都会在读档后**回退**：
    * 血条回满 / 削血清零 / 同一场被重复记账 / 贡献奖重复发放。
    */
@@ -456,7 +464,7 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
       flagshipDown: 'player',
       flagshipHpMax: 150_000,
       flagshipHpDone: 42_000,
-      octopusDrainedMs: 90_000,
+      octopusHpDone: 36_000,
       flagshipDmgLogged: 12_345,
       flagshipRunId: 777,
       flagshipBestRunDmg: 12_345,
@@ -466,7 +474,7 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
     const back = loadSaveFile(serializeSaveFile(s, 0)).state.weekendEvent
     expect(back?.flagshipHpMax, '池子总量').toBe(150_000)
     expect(back?.flagshipHpDone, '已伤（BOSS 血条随档）').toBe(42_000)
-    expect(back?.octopusDrainedMs, '章鱼人削血').toBe(90_000)
+    expect(back?.octopusHpDone, '章鱼人削掉的血量').toBe(36_000)
     expect(back?.flagshipDmgLogged, '已记账伤害').toBe(12_345)
     expect(back?.flagshipRunId, '同场幂等键').toBe(777)
     expect(back?.flagshipBestRunDmg, '单场最高伤害（读数）').toBe(12_345)
@@ -474,6 +482,48 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
     expect(back?.endedAtWallMs, '结束时刻').toBe(1_700_000_500_000)
     expect(back?.flagshipDown, '旗舰结局').toBe('player')
     expect(back?.prizePaidAtWallMs, '贡献奖已发标记').toBe(1_700_000_600_000)
+  })
+
+  /**
+   * **旧字段就地迁移**（2026-09-25 共享血条改口径）：旧档存的是**时长** `octopusDrainedMs`，
+   * 新档存**血量** `octopusHpDone`。不迁移的话，读档后已削掉的那部分会**凭空回血**
+   * （实测船长在玩的档：已削 24% ⇒ 血条会跳回去一截）。
+   * 换算 = `池子总量 × 时长 ÷ 窗口`，窗口走同一个单源（正常 2h / 调试 10min）。
+   */
+  it('旧档 `octopusDrainedMs`（时长）⇒ 读档即换算成 `octopusHpDone`（血量）', () => {
+    const s = fresh()
+    s.weekendEvent = {
+      ...evOf('galaxy-home', ['galaxy-kor'], 123),
+      family: 'H',
+      flagshipAtWallMs: 456,
+      flagshipHpMax: 150_000,
+      flagshipHpDone: 0,
+    }
+    const raw = JSON.parse(serializeSaveFile(s, 0)) as {
+      state: { weekendEvent: Record<string, unknown> }
+    }
+    // 伪造一份"旧档"：删掉新键、塞进旧键（正常档 = 2 小时窗口 ⇒ 半小时 = 25% 的血）
+    delete raw.state.weekendEvent.octopusHpDone
+    raw.state.weekendEvent.octopusDrainedMs = 30 * 60_000
+    const back = loadSaveFile(JSON.stringify(raw)).state.weekendEvent
+    expect(back?.octopusHpDone, '25% × 150000').toBe(37_500)
+    expect((back as Record<string, unknown> | undefined)?.octopusDrainedMs, '旧键不再写回').toBeUndefined()
+    // 调试档（10 分钟窗口）⇒ 同一个时长换算出来的血量是 12 倍（窗口短 12 倍）
+    const s2 = fresh(true)
+    s2.weekendEvent = {
+      ...evOf('galaxy-home', ['galaxy-kor'], 123),
+      family: 'H',
+      flagshipAtWallMs: 456,
+      flagshipHpMax: 150_000,
+    }
+    const raw2 = JSON.parse(serializeSaveFile(s2, 0)) as {
+      state: { weekendEvent: Record<string, unknown>; debugQuick: boolean }
+    }
+    delete raw2.state.weekendEvent.octopusHpDone
+    raw2.state.weekendEvent.octopusDrainedMs = 30_000
+    expect(raw2.state.debugQuick, '调试档').toBe(true)
+    const back2 = loadSaveFile(JSON.stringify(raw2)).state.weekendEvent
+    expect(back2?.octopusHpDone, '5% × 150000').toBe(7_500)
   })
 })
 
@@ -506,13 +556,14 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
     weekendTick(s, ctx, t2, t2)
     expect(ev.flagshipAtWallMs, 'anchor 不漂移').toBe(t1)
     /**
-     * ⚠ **2026-09-25 改判**：得手判据 = **章鱼人削血攒满窗口**（血条见底），不再是"墙钟到点"
-     * （船长：「章鱼人削减母舰血条是**真实削减**」＋「战斗中会暂停削血」）。
-     * 这里直接摆削血进度（引擎的累计由 `weekendTickBoss` 那一路覆盖，见上面的真实削减用例）。
+     * ⚠ **2026-09-25 改判**：得手判据 = **共享血条被削空**（`玩家已造成 ＋ 章鱼已削 ≥ 池子总量`），
+     * 不再是"墙钟到点"（船长：「章鱼人削减母舰血条是**真实削减**」＋「战斗中会暂停削血」）。
+     * 这里直接摆章鱼那一份的血量（引擎的累计由 `weekendTickBoss` 那一路覆盖，见上面的真实削减用例）。
      */
-    ev.octopusDrainedMs = weekendFlagshipWindowMs(s) - 1
+    ev.flagshipHpMax = 150_000
+    ev.octopusHpDone = 150_000 - 1
     expect(weekendTick(s, ctx, t1 + 5 * 60_000, t1 + 5 * 60_000).flagshipDown, '还差一点 ⇒ 不得手').toBeUndefined()
-    ev.octopusDrainedMs = weekendFlagshipWindowMs(s)
+    ev.octopusHpDone = 150_000
     const t3 = t1 + 6 * 60_000
     const r3 = weekendTick(s, ctx, t3, t3)
     expect(r3.flagshipDown, '削满 ⇒ 章鱼人摧毁').toBe('octopus')

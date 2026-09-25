@@ -32,8 +32,10 @@ import { shortestTravelMinutes, travelLegMs } from './travel'
 import { RETURN_LEG_MUL } from './balance'
 import { bountyEnemyCount, bountyWreckInjection, injectWeekendWreck, injectWreckDensity, weekendWreckDensityOf, weekendWreckInjectionOf, wreckDensityOf, wreckInjectThreatOf } from './salvage'
 import {
+  activeFoeSpecsOf,
   advanceBattleFor,
   battleClockNowMs,
+  battleMaxDistanceM,
   battleOpenM,
   battleShowWindowMs,
   bountyWinPercentGuarded,
@@ -224,8 +226,21 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   if (!me || !baseCard) return { ok: false, error: '战斗记录缺失。', errorId: 'core.expedition.002' }
   const anomaly =
     whBattle && whBattle.wormhole ? wormholeDerivedAnomaly(ctx, baseCard, whBattle.wormhole) : baseCard
-  const foes = createFoeSpecs(anomaly, ctx.balance.battle)
-  const maxD = battleOpenM(me, foes, ctx.balance.battle)
+  /**
+   * **钳制上界 = 界面滑条的那个"远端"**（`battleArcsFor` 的 `maxM` = `battleMaxDistanceM`：
+   * 按**当前波**双方有效射程现算、含技能/科技增程与敌方受击增程）⇒ **拖到最远就真的站到最远**，
+   * 界面与引擎同一把尺。
+   *
+   * ⚠⚠ **2026-09-25 修（船长报障「旗舰第二波鱼雷艇，敌方试图远离、我方也在拉远距离，
+   * 但是实际距离在缩短」）**：旧写法是
+   * `battleOpenM(me, createFoeSpecs(anomaly, bal))` —— **恒定第 0 波**的**开战距离**：
+   * 旗舰战第 2 波（墨潮鱼雷舰 · 射程 12 km）里滑条远端是 **13,200**，可引擎把玩家的期望距离
+   * 一律夹回**第 1 波**的 9,702 ⇒ 玩家把滑条拖到底也"拉不远"，而敌方那一侧按本波 10,350 往外走
+   * ⇒ 双方**看起来**都想拉开、距离反而一路缩（缩到玩家的被夹值附近）。
+   * 单波场次两者同值 ⇒ **常规战斗一字不变**（只有多波卡与带增程的场次会变）。
+   */
+  const waveFoes = activeFoeSpecsOf(anomaly, ctx.balance.battle, battle.waveIdx)
+  const maxD = battleMaxDistanceM(battle, me, waveFoes, ctx.balance.battle)
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped

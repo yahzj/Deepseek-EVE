@@ -24,6 +24,8 @@ import {
   // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
   weekendFamilyNameId,
   weekendProgressAt,
+  /** 旗舰视图（2026-09-25：核心的"旗舰期红光"与旗舰准备入口读同一份判据，不许在本文件另判一遍） */
+  weekendFlagshipView,
   weekendFoePoolOf,
   cargoCapacityM3Of,
   cargoUsedM3Of,
@@ -1002,6 +1004,22 @@ function StarMap({
     if (!ev || ev.endedAtWallMs !== undefined) return undefined
     return invasionProgress.has(ev.coreId) ? ev.coreId : undefined
   })()
+  /**
+   * **核心的"旗舰期红光"**（船长 2026-09-25：「**入侵母舰没摧毁前，敌方核心星系需要依旧有红光。**」）：
+   * 核心被夺回（进度 = 1）之后它就从 `invasionProgress`（= "仍被占"那张表）里掉出去了，
+   * 可母舰还停在那一片 ⇒ 核心**要继续发红光**，只是**不再画那根进度条**（那根条画的是"夺回进度"，
+   * 已经 100% 了）。
+   * 判据走 core 的 `weekendFlagshipView`（与「发现敌方旗舰 → 战前准备」入口同一份）：**现身着且未落定局**。
+   * 母舰被摧毁 ⇒ 活动收场（`endedAtWallMs`）⇒ 红光与 ★ 一起消失（上面两道判据都先查它）。
+   */
+  const invasionCoreHeld: string | undefined = (() => {
+    const ev = state.weekendEvent
+    if (!ev || ev.endedAtWallMs !== undefined) return undefined
+    if (invasionProgress.has(ev.coreId)) return undefined // 还没夺回 ⇒ 上面那张表已经画了
+    const nowMs = Date.now()
+    const v = weekendFlagshipView(state, ev, nowMs, nowMs)
+    return v.shown && v.down === undefined ? ev.coreId : undefined
+  })()
   /* 赏金任务（当日板）按星系归组（2026-09-10 船长：普通赏金任务也要在星图上显示——
      样式与"未探索剪影上的悬赏情报徽标"同款，并在对应星系上给出剩余时间）。
      任务自带 galaxyId（刷出时绑定窝点所在星系）；倒计时 = 当日板剩余（每天本地 0 点整板替换，
@@ -1425,32 +1443,39 @@ function StarMap({
                * 周末入侵：**仍被占**的星系 = 身后一团红色发光 ＋ 节点上方的**进度条**（2026-09-25 船长令：
                * 「已经被夺回的外围星系不再发光」＋「每个被入侵的星系顶部显示一个进度条替换原先的旗子」）。
                * 画在节点最底层、不挡点击；已夺回的星系整组不画（表里就没有它）。
+               * ⚠ **例外 = 核心的"旗舰期"**（2026-09-25 船长令：「入侵母舰没摧毁前，敌方核心星系需要
+               * 依旧有红光」）：核心已夺回但母舰还在 ⇒ 只画红光与 ★、**不画进度条**（见 `invasionCoreHeld`）。
                */}
-              {invasionProgress.has(g.id) ? (
-                <g className="app-map-invasion" data-tip={tr('ui.weekend.018')}>
+              {invasionProgress.has(g.id) || g.id === invasionCoreHeld ? (
+                <g
+                  className="app-map-invasion"
+                  data-tip={tr(invasionProgress.has(g.id) ? 'ui.weekend.018' : 'ui.weekend.099')}
+                >
                   <circle cx={p.x} cy={p.y} r={46} fill="url(#app-invglow)" className="app-map-invasion-glow" />
-                  {(() => {
-                    const pct = invasionProgress.get(g.id) ?? 0
-                    const w = 30
-                    const h = 3.5
-                    const x = p.x - w / 2
-                    const y = p.y - 26
-                    return (
-                      <g className="app-map-invbar">
-                        <rect x={x} y={y} width={w} height={h} rx={h / 2} className="app-map-invbar-bg" />
-                        <rect
-                          x={x}
-                          y={y}
-                          width={Math.max(0.5, w * Math.min(1, Math.max(0, pct)))}
-                          height={h}
-                          rx={h / 2}
-                          className="app-map-invbar-fill"
-                        />
-                      </g>
-                    )
-                  })()}
-                  {/* 核心另有 ★（旗子已撤 ⇒ 只留这一枚"这是核心"的记号） */}
-                  {g.id === invasionCoreId ? (
+                  {invasionProgress.has(g.id)
+                    ? (() => {
+                        const pct = invasionProgress.get(g.id) ?? 0
+                        const w = 30
+                        const h = 3.5
+                        const x = p.x - w / 2
+                        const y = p.y - 26
+                        return (
+                          <g className="app-map-invbar">
+                            <rect x={x} y={y} width={w} height={h} rx={h / 2} className="app-map-invbar-bg" />
+                            <rect
+                              x={x}
+                              y={y}
+                              width={Math.max(0.5, w * Math.min(1, Math.max(0, pct)))}
+                              height={h}
+                              rx={h / 2}
+                              className="app-map-invbar-fill"
+                            />
+                          </g>
+                        )
+                      })()
+                    : null}
+                  {/* 核心另有 ★（旗子已撤 ⇒ 只留这一枚"这是核心"的记号）——夺回后进入旗舰期时同样保留 */}
+                  {g.id === invasionCoreId || g.id === invasionCoreHeld ? (
                     <text x={p.x} y={p.y - 32} className="app-map-invasion-tag">
                       ★
                     </text>
@@ -1897,9 +1922,11 @@ function GalaxyActions({
           </button>
         </div>
       ) : null}
-      {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面 */}
+      {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面。
+          ⚠ 同日第二条：「找不到是因为**不明显**，给容器加一个**红色圆边背景**」⇒ 行容器挂
+          `app-ga-invasion`（观感照抄入侵框 `.app-weekend-box`：红边 ＋ 圆角 ＋ 红底）。 */}
       {flagshipPrep ? (
-        <div className="app-ga-row">
+        <div className="app-ga-row app-ga-invasion">
           <span className="app-ga-main">
             <span className="app-ico">
               <Glyph name="ico-tact" size={13} color={ICO_TONES['ico-tact']} />

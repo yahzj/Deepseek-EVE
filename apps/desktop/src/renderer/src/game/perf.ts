@@ -9,11 +9,12 @@
  * - 分场景（地图挂机/工业页/市场页/战斗）切片 + 最近 240 条通知时间线。
  *
  * 激活方式（未激活时全部为一次布尔判断，零定时器/观察器/额外开销）：
- * - localStorage 'whale-idle:debug' = '1'（与既有调试入口同开关；玩家可被引导开启后导出快照）；
+ * - 调试模式开关（`whale-idle:debug`，**仅本机生效** —— 2026-09-25 船长令：上传后的版本关闭且隐藏）；
  * - 或自动采集模式 window.__AUTOPERF__（Electron 环境变量 WHALE_AUTOPERF，本机跑分用）。
  */
 
 import { tr } from '../i18n/locale'
+import { debugEnabled } from './debugFlag'
 export type PerfBucket = 'idle' | 'battle'
 
 /** 一个计量段（全局总量或单个场景切片的形态一致） */
@@ -255,12 +256,13 @@ class PerfHub {
 /** 全局性能 Hub 单例 */
 export const perfHub = new PerfHub()
 
-/** 判断诊断开关是否应激活采集（localStorage whale-idle:debug=1；浏览器降级安全） */
+/**
+ * 判断诊断开关是否应激活采集 —— **与调试模式同一把门禁**（2026-09-25 船长令：
+ * 只有本地可用，上传后的版本关闭且隐藏）⇒ 走 `game/debugFlag` 的 `debugEnabled()`：
+ * 本机判定（`@whale/core` 的 `isLocalDebugOrigin`）∧ 标志位；**发布版恒 false**，
+ * 免得发布版里"有人手写一行 localStorage"就悄悄开始采集。
+ */
 export function perfAutoEnabled(): boolean {
-  try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem('whale-idle:debug') === '1'
-  } catch {
-    return false
-  }
+  return debugEnabled()
 }
 // l10n-keep-end

@@ -293,6 +293,38 @@ html[data-locale='en'] body {
 
 .app-root.is-mobile-rot .app-battle-screen-top .app-dim { font-size: var(--wui-fs-base); }
 
+/* 手机：底栏两个「随武器数越长越高」的块改**单行横滑** ＋ 各处留白收紧
+   （2026-09-25 船长令 · 方案乙；成因与读数见 `docs/design/mobile-battle-fit-20260925.md`）——
+   图例原来按武器数换行（4 舰满装配时 112px），单行化后省下的高度全部还给战场。
+   ⚠ 只压「留白」：按钮/滑条/字号那些 2026-09-06 放大的触控尺寸一条不动。
+   ⚠ 本批必须排在上面那批 2026-09-06 规则**之后**（同为 3 类选择器 ⇒ 靠顺序取胜）。 */
+.app-root.is-mobile-rot .app-bts-legends { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; padding-bottom: var(--wui-sp-2); }
+
+/* 单行化时不许把 chip 压扁（压扁 ⇒ chip 内部换行 ⇒ 反而更高）：横滑由容器负责 */
+.app-root.is-mobile-rot .app-bts-legends > * { flex: 0 0 auto; }
+
+/* 敌方射程 chip 恒在首屏：单行横滑会把排在后面的敌舰射程推到屏外，故把它排到最前（我自己的武器图例向右滑） */
+.app-root.is-mobile-rot .app-bts-legends .app-bts-chip.is-foe { order: -1; }
+
+.app-root.is-mobile-rot .app-bts-reloads { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; }
+
+.app-root.is-mobile-rot .app-bts-reloads > * { flex: 0 0 auto; }
+
+/* 留白收紧（覆盖上面 2026-09-06 那批的外边距，不动内部尺寸与触控区） */
+.app-root.is-mobile-rot .app-battle-controls { padding-top: var(--wui-sp-6); padding-bottom: var(--wui-sp-8); }
+
+.app-root.is-mobile-rot .app-bts-dock { gap: var(--wui-sp-6); }
+
+.app-root.is-mobile-rot .app-bts-ruler { margin-top: 0; padding-top: var(--wui-sp-2); }
+
+.app-root.is-mobile-rot .app-bts-ruler-speed { line-height: 1.2; }
+
+.app-root.is-mobile-rot .app-bts-scale { height: 8px; }
+
+.app-root.is-mobile-rot .app-bts-zone { top: 0; height: 8px; }
+
+.app-root.is-mobile-rot .app-battle-screen-top { padding-top: var(--wui-sp-6); padding-bottom: var(--wui-sp-6); row-gap: var(--wui-sp-6); }
+
 /* 手机：悬浮说明（Tooltip）在横屏局部空间渲染——坐标换算见 ui/Tooltip.tsx；上限改按局部空间、字号加大（2026-09-06 船长） */
 .app-root.is-mobile-rot .app-tip { font-size: var(--wui-fs-base); padding: var(--wui-sp-9) var(--wui-sp-13); max-width: min(340px, 92%); max-height: 62%; }
 
@@ -8197,6 +8229,15 @@ html[data-locale='en'] body {
 
 .app-battle-screen { position: fixed; inset: 0; z-index: 100; background: radial-gradient(ellipse at 50% 40%, rgb(var(--wui-x93)) 0%, rgb(var(--wui-x239)) 78%); display: flex; flex-direction: column; }
 
+/* 战场「装不下就整块等比缩放」的包裹层（2026-09-25 船长令 · 方案甲；量高与算 k 见 `ui/battleFit.ts`）。
+   顶栏／舞台／底栏三层都包在里面：手机竖屏逻辑空间只有约 540~555px 高，而战斗界面内部按桌面版式要 ~700px
+   （顶栏 ＋ 距离尺 ＋ 战场 353 ＋ 底栏），只有整块缩才装得下 —— 否则舞台 `overflow: hidden` 会裁掉两排血条。
+   装得下时本层是 `height: 100%` ＋ 无 transform（桌面宽窗口恒为这一支）⇒ 与改造前逐像素一致；
+   真缩了才由脚本挂上 `.is-bts-fit`（整屏不再需要滚动：内容已等比缩进可用高度）。 */
+.app-battle-fit { display: flex; flex-direction: column; width: 100%; height: 100%; transform-origin: top center; }
+
+.app-battle-screen.is-bts-fit { overflow: hidden; }
+
 /* 战报阶段（船长 2026-09-14）：**必须压在虫洞弹层之上** —— 虫洞面板走 `.app-modal-mask`（z-index 120），
    而战场只在 live/outro 时盖住面板；进 report 阶段后 `run.battle` 已清空、面板重新渲染 ⇒ 战报会被挡。
    这里给战报阶段抬到 130（仍低于 `.app-detail-mask` 140 与悬浮说明 1000）。 */
@@ -10261,6 +10302,20 @@ html[data-locale='en'] body {
   justify-content: flex-start;
 
 }
+
+/* 入侵旗舰入口那一行（**2026-09-25 船长令**：「找不到是因为不明显，给容器加一个红色圆边背景」）。
+   观感**照抄同族的入侵框 `.app-weekend-box`**（日志面板那个：红边 ＋ 圆角 ＋ 红底，见本表下方）——
+   只把排布留给 `.app-ga-row` 本来的 flex 骨相，不另造一套容器语言（约定第六章）。 */
+.app-ga-row.app-ga-invasion {
+  border: 1px solid rgb(var(--wui-danger) / 0.55);
+  border-left: 3px solid rgb(var(--wui-danger));
+  border-radius: var(--wui-sp-6);
+  background: rgb(var(--wui-danger) / 0.08);
+  padding: var(--wui-sp-6) var(--wui-sp-8);
+}
+.app-ga-row.app-ga-invasion:hover { background: rgb(var(--wui-danger) / 0.16); }
+.app-ga-row.app-ga-invasion .app-ga-main { color: rgb(var(--wui-danger)); font-weight: 700; }
+.app-ga-row.app-ga-invasion .app-ga-desc { color: rgb(var(--wui-red) / 0.85); }
 
 .app-ga-main {
 

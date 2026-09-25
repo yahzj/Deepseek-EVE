@@ -644,9 +644,15 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   ],
   ships: [
     { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 1.3004, dmgMul: 0.7431, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.3004, dmgMul: 0.7431, dmgMix: { explosive: 8, kinetic: 2 } },
+    /**
+     * ⚠ **条目顺序 = 本波"敌方期望距离"的取数依据**（`foeDesiredRange` 取 `foes[0]`）——
+     * 2026-09-25 船长令「甲：改卡面条目顺序」：本波主体（**战列巡洋舰 11 km ＋ 鱼雷舰 ×2 12 km**）
+     * 排在**干扰舰之前** ⇒ 本波期望距离 = 战巡的 **9,500 m**（改前干扰舰排第一 ⇒ 整波被拖到 2,352，
+     * 而战巡/鱼雷舰的近盲带 ×0.3 正在那个距离上）。
+     */
     { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 1, hpMul: 1.3004, dmgMul: 0.7431 },
     { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 1.3004, dmgMul: 0.7431 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.3004, dmgMul: 0.7431, dmgMix: { explosive: 8, kinetic: 2 } },
   ],
   standingReq: 0,
   standingGain: 0,
@@ -696,8 +702,17 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
     { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
     { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 1.7753, dmgMul: 0.9468 },
     { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
+    /**
+     * ⚠⚠ **条目顺序 = 本波"敌方期望距离"的取数依据**（`combat.foeDesiredRange` 取 `foes[0]` =
+     * 该波卡面顺序**第 1 条**）⇒ **本波主体必须排在前**（2026-09-25 船长令「甲：改卡面条目顺序」）。
+     * 第 3 波原先把干扰舰排第一 ⇒ 整波（含 2 艘 11 km 的**战列巡洋舰**）被拖到干扰舰的近战带
+     * **2,352 m** 打，而战巡的近盲带（`blindDmgMul 0.3`）正在那个距离上。
+     * ⇒ 现改为 **战巡 ×2 在前、干扰舰在后** ⇒ 本波期望距离 = 战巡的 **9,500 m**
+     * （`1,000 + 0.85 × (11,000 − 1,000)`）。同理：鱼雷舰那一波（第 2 波）与母舰那一波（第 4 波）
+     * 本来就是主体排第一，未动。
+     */
     { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 1.7753, dmgMul: 0.9468 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
     // ⚠ **母舰挂「支援舰船召唤装置」**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，
     //   只不过改为复活被摧毁的友军（但是表现形式上为敌方支援舰船入场），增援时间是60秒，每次随机复活一艘」）
     //   ⇒ 每 60 秒把**本波（第 4 波）已阵亡**的一艘僚舰满血复活入场（上限 = 不超本波编成 4 艘）。
