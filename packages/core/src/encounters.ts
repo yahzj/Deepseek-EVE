@@ -74,7 +74,7 @@ import { cancelAiTask } from './ai'
 import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
 import { repairWithKitsFor } from './shipyard'
 // 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
-import { weekendAmbushThreatOf, weekendEncounterChanceAt } from './weekendEvent'
+import { weekendAmbushPickOf, weekendEncounterChanceAt } from './weekendEvent'
 import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
 
@@ -219,7 +219,7 @@ function localBountyPoolOf(ctx: SimContext, galaxyId: string, state?: GameState,
     if (a.galaxyId === galaxyId) out.push(a)
   }
   if (!state || nowWallMs === undefined) return out
-  return [...weekendBountyCardsOf(state, out, galaxyId, nowWallMs)]
+  return [...weekendBountyCardsOf(state, ctx, out, galaxyId, nowWallMs)]
 }
 
 /** 伏击敌群解析：优先 encounter.anomalyId；旧档遗留按事发星系可见敌群就近威胁兜底（仍无 → null） */
@@ -668,16 +668,15 @@ function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure, nowWal
   const ev = state.weekendEvent
   const invaded = weekendEncounterAllowedIn(state, exp.galaxyId, nowWallMs)
   /**
-   * 被占星系：**伏击强度按入侵口径**（外围 39 / 核心 60）⇒ 池里挑**威胁最接近**的那张，并把 id
-   * **还原成原卡**（派生 id 不在 `ctx.anomalies` 里，战斗开不起来）。
-   * ⚠ 战斗本身仍按原卡的编成/威胁走（`startBattleFor` 没有威胁覆写口）⇒ 这一层只做"就近选卡"，已登记待补。
+   * 被占星系：**敌卡 = 每场从该区域池里重抽的那支入侵舰队**，强度 ×0.75（船长 2026-09-25：
+   * 「外围玩家主动出击和被动遇袭都是从骚扰和袭击舰队中抽取。核心区，则是抽取袭击和主力舰队。」
+   * ＋「遇袭的时候遭遇的敌人按强度\*0.75算」）——威胁标签由 `weekendAmbushPickOf` 按**缩放后实测价**给出。
+   * 非占领区：照旧"当地可见悬赏池里随机抽一个"（主随机序列消费量也不变）。
    */
-  const wantThreat = invaded && ev ? weekendAmbushThreatOf(ev, exp.galaxyId) : undefined
-  const foe =
-    wantThreat === undefined
-      ? pickOne(state.rng, pool)!
-      : [...pool].sort((a, b) => Math.abs(a.threat - wantThreat) - Math.abs(b.threat - wantThreat))[0]!
-  /** 遭遇里存**原卡 id**（去掉入侵派生前缀） */
+  const ambushPick = invaded && ev ? weekendAmbushPickOf(state, ctx, exp.galaxyId, nowWallMs) : null
+  const weekendFoe = ambushPick ? ctx.anomalies.get(ambushPick.cardId) : undefined
+  const foe = weekendFoe ?? pickOne(state.rng, pool)!
+  /** 遭遇里存**原卡 id**（去掉入侵派生前缀；H 独立卡本就无前缀、id 可直接解析） */
   const foeId = foe.id.startsWith(WEEKEND_CARD_PREFIX) ? foe.id.slice(WEEKEND_CARD_PREFIX.length) : foe.id
   const foeName = foe.name
   state.encounterZoneCooldown[exp.galaxyId] = state.gameMs + bal.zoneCooldownMs
@@ -687,12 +686,13 @@ function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure, nowWal
     shipId: exp.shipId,
     galaxyId: exp.galaxyId,
     name: foeName,
-    threat: Math.max(1, wantThreat ?? foe.threat),
+    threat: Math.max(1, ambushPick?.threat ?? foe.threat),
     anomalyId: foeId,
     origin: `${shipName} · ${exp.kind}`,
     invitedAtGameMs: state.gameMs,
     deadlineGameMs: state.gameMs + bal.inviteWaitMs,
     battle: null,
+    ...(ambushPick ? { foeStrengthMul: ambushPick.strengthMul } : {}),
   }
   addLog(
     state,
@@ -719,8 +719,9 @@ export function fightEncounter(state: GameState, ctx: SimContext): CommandResult
   // 目标距离（2026-09-11 船长：按星系独立保存）：遭遇所在星系设过就用它，没设过由 startBattleFor
   // 回落射程中段（遭遇模板自带的 galaxyId 是模板产地，不是玩家所在星系，故这里显式传入）
   /**
-   * **周末入侵**：占领区的伏击要打**入侵强度**（外围 39 / 核心 60），敌卡自带原强度 ⇒ 用覆写口把
-   * `enc.threat` 传给战斗层；非入侵遭遇不传 ⇒ 行为一字不变。
+   * **周末入侵**：占领区的遇袭要打**缩放后的入侵强度**（`enc.foeStrengthMul`，2026-09-25 起 ×0.75），
+   * 敌卡自带原强度 ⇒ 用覆写口把 `threat`（标签）与 `strengthMul`（真强度）一起传给战斗层；
+   * 非入侵遭遇不传 ⇒ 行为一字不变。
    */
   const weekendFoe = weekendBattleInvolvedOf(state, ctx, enc.anomalyId ?? null, Date.now())
   const battle = startBattleFor(
@@ -730,7 +731,9 @@ export function fightEncounter(state: GameState, ctx: SimContext): CommandResult
     foeKeyOf(enc),
     state.gameMs,
     desirePrefOf(state, enc.galaxyId) ?? undefined,
-    weekendFoe ? { threat: enc.threat } : undefined,
+    weekendFoe
+      ? { threat: enc.threat, ...(enc.foeStrengthMul !== undefined ? { strengthMul: enc.foeStrengthMul } : {}) }
+      : undefined,
   )
   if (!battle) return { ok: false, error: '遭遇异常，无法开战。', errorId: 'core.encounters.005' }
   // 连续作战保险（船长 2026-09-11 定：低安遭遇同样适用）——结构剩余低于撤退线（50%）即自动脱离，

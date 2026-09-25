@@ -523,20 +523,34 @@ export const WORMHOLE_RARE_WRECK_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARD
  * 骚扰舰队（1 波）· 袭击舰队（2 波）· 主力舰队（2 波）· 旗舰部队（4 波）。
  * 四张都 `hidden: true` ＋ `region: 'wh'`（不进悬赏目录；地区按入侵口径计，不参与星图侧派发）。
  *
- * **血量口径**（舰级路径 = 舰级绝对值 × 本条倍率，**不吃威胁份额**）：四张卡的强度按
- * 「威胁 = 血 × 火力」总预算反算 ⇒ 每条的 `hpMul`/`dmgMul` = 目标值 ÷（舰级值 × 多舰补偿 `2N/(N+1)`）。
- * 目标总血 = `foeHpOfThreat(威胁)` × **0.5**（"威胁预算"口径下血与火力各占一半，见 `combat` 的
- * `foeHpOfThreat` 与各卡注释里的算式）。
+ * **强度口径**（2026-09-25 重定价批 · 船长逐条裁定）：
+ * - **威胁 = 战力标签 = 卡面属性的实测价**：`X = √(全波总血 × 峰值波火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`
+ *   的反解（`combat.foeThreatRatingOf`）；**系数 = 这张卡预设给谁打**（这三张都是**单舰**内容 ⇒ `solo = 3`）。
+ *   船长定的目标威胁：**骚扰 90 · 袭击 108 · 主力 129**。
+ * - **属性落法 = 每艘船的血与单发同乘一个 K**（`血 = 舰级血 × K`、`单发 = 舰级单发 × K`
+ *   ⇒ **血÷DPS 恒等于舰级自身的比**，船长令「**按照敌舰设定的属性比例重定**」）；
+ *   K 取"最大且使 `达成预算 = 5X ÷ 3 ≤ foeHpOfThreat(威胁) − 0.05`"的值（单发取整 ⇒ 只能实测收敛）。
+ *   卡上 `dmgMul` 写的是 `K ÷ 多舰补偿 2N/(N+1)`——引擎建档时会再乘回补偿（`createFoeSpecsFromShips`）。
+ * - 三张 → 威胁 90 / 108 / 129（K = 2.2842 / 2.8281 / 1.3004），逐卡算式见各卡头注。
  *
- * ⚠ **两处与既有入侵口径的差异，已报船长**：
- * ① 旗舰部队卡**自带 4 波各自编成**（4 / 4 / 3 / 3 艘）——而入侵原先固定「4 波 × 4 艘」覆写；
- *    为此给覆写口加了 `keepCardWaves`（见 `combat.FoeOverride`），本卡置真 ⇒ 用卡自己的波表；
- * ② 因此旗舰战的**总血量按卡行**（≈ `foeHpOfThreat(120)` × 4 波），比原"4 艘"口径厚（已在汇报里说明）。
+ * ⚠ **旧口径一律作废**（原写"目标总血 = `foeHpOfThreat(威胁)` × 0.5、血与火力各占一半"）：
+ * 那条把血按旧曲线给了、火力却只做到应有量的 1/15（每点威胁 0.05 DPS vs 洞外卡的 0.46~1.65），
+ * 实测结果是"打得赢、打不痛"（中位单舰参考行 9/9 全胜、残血 93~100%）。
+ *
+ * ⚠ **旗舰部队卡（第四张）本轮一字未动**：它的威胁/属性/波表仍是旧口径（锚点 45 · 血 1,652 = `F(120)`），
+ * 待船长单开的"旗舰轮"重定（它是**4 舰小队**内容 ⇒ 系数 `squad = 10`，与这三张不同）。
+ *
+ * ⚠ **旗舰卡自带 4 波各自编成**（4 / 4 / 3 / 3 艘）——为此覆写口有 `keepCardWaves`（见 `combat.FoeOverride`）。
  */
 
 /**
  * **1. 墨潮帮骚扰舰队**（船长 2026-09-24：「**墨潮帮骚扰舰队：墨潮突击舰*4**」）——入侵外围的常驻编成。
- * 4 艘突击舰（3,640 级血 × 倍率）；主动出击威胁 **78**、遇袭 **39**（入侵侧覆写）。
+ *
+ * **2026-09-25 重定价**：威胁 **90**（船长令）· 4 艘突击舰（舰级 364 血 / 51 单发）。
+ * `K = 2.2842`（`hpMul` = K · `dmgMul` = K ÷ 补偿 1.6 = 1.4276）⇒ 每艘 **831.4 血 / 116 单发**
+ * （血÷DPS 28.67 vs 舰级 28.55）· 全波总血 **3,325.80** · 峰值波火力 **116.00 DPS** · X = **621.12**
+ * ⇒ 达成预算 `5X÷3` = **1,035.20 ≤ F(90) = 1,038** ✓。
+ * 遇袭（强度 ×0.75 · 入侵侧缩放）：血 2,494.27 · 峰值 87.00 DPS ⇒ 标签 **威胁 76**。
  */
 export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
   id: 'ink-harass',
@@ -544,15 +558,10 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
   name: '墨潮帮骚扰舰队',
   galaxyId: 'galaxy-hub',
   region: 'wh',
-  threat: ANCHOR_THREAT,
+  threat: 90,
   foeTargeting: 'random',
   dmgMix: { kinetic: 6, explosive: 4 }, // 全卡都是突击舰（船长 2026-09-24 第二轮令：突击舰改 6 动能 : 4 爆炸）
-  /**
-   * ⚠ **hpMul 不动**（守 2026-09-24 的 `0.061`）：血型改 0.5 护盾后**等效耐久已自动高 17.6%**
-   * （护盾每场满值重建），若再把 `hpMul` 也乘 1.176 就等于把卡片血量调回原样 ⇒ **难度白涨 17.6%**。
-   * 保持 `hpMul` 不变 ⇒ 本卡等效耐久 ≈ 旧值 104 点（新 89 点 ×1.176）。`dmgMul` 同样不动。
-   */
-  ships: [{ ship: FOE_H_INK_CORVETTE, count: 4, hpMul: 0.5666, dmgMul: 0.049 }],
+  ships: [{ ship: FOE_H_INK_CORVETTE, count: 4, hpMul: 2.2842, dmgMul: 1.4276 }],
   standingReq: 0,
   standingGain: 0,
   rewardIsk: 0,
@@ -564,7 +573,17 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
 
 /**
  * **2. 墨潮帮袭击舰队**（船长 2026-09-24：「**墨潮帮袭击舰队：分2波，墨潮突击舰*2；墨潮鱼雷舰*3**」）。
- * 第 1 波 = 突击舰 ×2 · 第 2 波 = 鱼雷舰 ×3；波血各半（`waves` 的 `hpShare` 0.5 / 0.5）。
+ * 第 1 波 = 突击舰 ×2 · 第 2 波 = 鱼雷舰 ×3。
+ *
+ * **2026-09-25 重定价**：威胁 **108**（船长令）· `K = 2.8281`（`hpMul` = K · `dmgMul` = K ÷ 补偿 1.6667 = 1.6969）
+ * ⇒ 突击舰 ×2：**1,029.4 血 / 144 单发**（血÷DPS 28.60 vs 舰级 28.55）· 鱼雷舰 ×3：**1,018.1 血 / 255 单发**
+ * （22.36 vs 22.40）· 全波总血 **5,113.20**（波 2,058.86 / 3,054.35）· 峰值波火力 **136.61 DPS** · X = **835.76**
+ * ⇒ 达成预算 = **1,392.94 ≤ F(108) = 1,393** ✓。
+ * 遇袭（强度 ×0.75）：血 3,834.95 · 峰值 102.32 DPS ⇒ 标签 **威胁 91**。
+ *
+ * ⚠ `waves[].hpShare` 现值 **0.5 / 0.5 保持不动**：舰级路径下**血量走 `slot.hpMul` 的绝对值**、
+ * 不由 `hpShare` 决定，该字段对本卡只影响**命名档（"轻装"前缀）与排波次** ⇒ 实测波血已是 40 / 60 也不改它
+ * （改它会平白给第 1 波主舰挂上"轻装"前缀）。
  */
 export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
   id: 'ink-raid',
@@ -572,22 +591,16 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
   name: '墨潮帮袭击舰队',
   galaxyId: 'galaxy-hub',
   region: 'wh',
-  threat: ANCHOR_THREAT,
+  threat: 108,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 }, // 主体（鱼雷舰 ×3）是导弹/爆炸系
   waves: [
     { units: 2, hpShare: 0.5 },
     { units: 3, hpShare: 0.5 },
   ],
-  /**
-   * ⚠ **鱼雷舰回调 T2 ＋ 血型改 0.5 的连带重标**（2026-09-24 两轮船长令）：
-   * ① 舰级 900/124 → 480/60 ⇒ 鱼雷舰那条 `hpMul`/`dmgMul` ×1.875 / ×2.067；
-   * ② 血型改 0.5 ⇒ 全卡 `hpMul`再 ×1.176（旧总血守恒）。
-   * 合成后：鱼雷舰 `0.056/0.045 → 0.0953/0.093`、突击舰 `0.084 → 0.0988`。**卡片强度不变**。
-   */
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 2, wave: 0, hpMul: 0.5673, dmgMul: 0.067, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.3824, dmgMul: 0.075 },
+    { ship: FOE_H_INK_CORVETTE, count: 2, wave: 0, hpMul: 2.8281, dmgMul: 1.6969, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 2.8281, dmgMul: 1.6969 },
   ],
   standingReq: 0,
   standingGain: 0,
@@ -602,6 +615,18 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
  * **3. 墨潮帮主力舰队**（船长 2026-09-24：「**墨潮帮主力舰队：分2波，墨潮突击舰*3；墨潮干扰舰+墨潮战列巡洋舰+墨潮鱼雷舰*2**」）。
  * 每波各自编成（第 2 波 4 艘：干扰舰 / 战列巡洋舰 / 鱼雷舰 ×2）⇒ 本卡**必须用自己的波表**
  * （引擎按 `waves` 的 `units` 逐波建档：同一舰级可出现在多波，`w1-` 前缀区分）。
+ *
+ * **2026-09-25 重定价**：威胁 **129**（船长令）· `K = 1.3004`（`hpMul` = K · `dmgMul` = K ÷ 补偿 1.75 = 0.7431）
+ * ⇒ 突击舰 ×3 **473.3 血 / 66 单发**（28.69 vs 舰级 28.55）· 干扰舰 **1,170.4 / 137**（34.17 vs 34.29）·
+ * 战列巡洋舰 **3,641.1 / 519**（42.09 vs 42.11）· 鱼雷舰 ×2 **468.1 / 117**（22.41 vs 22.40）·
+ * 全波总血 **7,167.80**（波 1,420.04 / 5,747.77）· 峰值波火力 **173.18 DPS** · X = **1,114.14**
+ * ⇒ 达成预算 = **1,856.90 ≤ F(129) = 1,857** ✓。遇袭（强度 ×0.75）：血 5,375.85 · 峰值 130.93 DPS ⇒ 标签 **威胁 109**。
+ *
+ * ⚠ **两处已报备的口径**：
+ * ① 第 2 波舰体 DPS 名义 **162.4 越 150 线** ⇒ 引擎按既有规则（超出部分 15% 折扣）实收 **160.55**，
+ *    K 是按**折扣后**的达成预算收敛的；
+ * ② 该波战巡那架机群**相对偏弱约 42%**（机群不吃多舰补偿、却与炮台共用同一条 `dmgMul`，占该波火力约 7%）——
+ *    要精确对齐需给该条目加 `droneFireShare`（守恒拆分），船长 2026-09-25 裁定本轮不做。
  */
 export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   id: 'ink-main',
@@ -609,22 +634,18 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   name: '墨潮帮主力舰队',
   galaxyId: 'galaxy-hub',
   region: 'wh',
-  threat: ANCHOR_THREAT,
+  threat: 129,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 },
   waves: [
     { units: 3, hpShare: 0.5 },
     { units: 4, hpShare: 0.5 },
   ],
-  /**
-   * ⚠ **两轮船长令的连带重标**（2026-09-24）：① 鱼雷舰回调 T2（900/124 → 480/60）⇒ 该条 ×1.875/×2.067；
-   * ② 血型改 0.5 护盾 ⇒ 突击舰/干扰舰/鱼雷舰 ×1.176、战巡 ×0.85（旧总血守恒，202/61 点不变）。
-   */
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 0.3782, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.0688, dmgMul: 0.045, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 1, hpMul: 0.0295, dmgMul: 0.0145 },
-    { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 0.3728, dmgMul: 0.093 },
+    { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 1.3004, dmgMul: 0.7431, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.3004, dmgMul: 0.7431, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 1, hpMul: 1.3004, dmgMul: 0.7431 },
+    { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 1.3004, dmgMul: 0.7431 },
   ],
   standingReq: 0,
   standingGain: 0,
@@ -640,7 +661,13 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
  * 墨潮干扰舰+墨潮战列巡洋舰*2；墨潮入侵母舰+墨潮干扰舰+墨潮战列巡洋舰+墨潮鱼雷舰**」）。
  *
  * 4 波各 4 / 4 / 3 / 3 艘（共 14 艘，旗舰在最后一波压轴）——**本卡必须自带波表**
- * （`combat.FoeOverride.keepCardWaves`，否则会被入侵的"4 波 × 4 艘"覆写盖掉）。
+ * （`combat.FoeOverride.keepCardWaves`）：入侵侧覆写的是 `waves[]` 字段（"跑几波、每波几艘"），
+ * 卡自己的编成在 `ships[]` 的 `wave` 上；舰级路径不吃覆写的 `units`/`hpShare` ⇒ 两者都 4 波时实战一致，
+ * 但**波声明数**（预估胜率的"峰值波小队数"与命名档都用它）必须写对。
+ *
+ * ⚠ **2026-09-25：本卡本轮一字未动**——威胁/属性/波表仍是旧口径（锚点 45 · 总血 1,652 = `F(120)`，
+ * 血÷DPS 224），按新定价式的实测价是「单舰 ×3 ⇒ 36 · 4 舰小队 ×10 ⇒ 17」，与它挂的 45 不符。
+ * 船长令「**旗舰因为是小队战，之后在讨论**」⇒ 留待单独的"旗舰轮"重定（届时系数取 `squad = 10`）。
  */
 export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
   id: 'ink-flagship',

@@ -51,14 +51,15 @@ describe('周末入侵 · 战斗规格（M1-b）', () => {
     expect(core.name).toContain('舰队')
   })
 
-  it('非占领区没有 spec；伏击 = 单舰 + 威胁 ×0.5', () => {
+  it('非占领区没有 spec；遇袭 = 单舰 + **真强度 ×0.75**（A 族占位口径：标签 59 / 90）', () => {
     const { s, ev } = setup()
     expect(weekendAssaultSpecOf(s, ctx, 'galaxy-redring')).toBeNull()
-    const amb = weekendAmbushSpecOf(s, ctx, ev.peripheryIds[0]!)!
+    const amb = weekendAmbushSpecOf(s, ctx, ev.peripheryIds[0]!, 0)!
     expect(amb.kind).toBe('ambush')
-    expect(amb.threat).toBe(39)
-    const ambCore = weekendAmbushSpecOf(s, ctx, ev.coreId)!
-    expect(ambCore.threat).toBe(60)
+    expect(amb.threat, 'round(78 × 0.75)').toBe(59)
+    expect(amb.foeStrengthMul, '真倍率（旧口径只改标签，已删）').toBe(0.75)
+    const ambCore = weekendAmbushSpecOf(s, ctx, ev.coreId, 0)!
+    expect(ambCore.threat, 'round(120 × 0.75)').toBe(90)
     expect(ambCore.squadSize).toBe(1)
   })
 
@@ -94,7 +95,7 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
   it('击退遇袭 +3% · 离线自动结算 +1%', () => {
     const { s, ev } = setup()
     const per = ev.peripheryIds[0]!
-    const amb = weekendAmbushSpecOf(s, ctx, per)!
+    const amb = weekendAmbushSpecOf(s, ctx, per, 0)!
     weekendResolveBattle(s, ctx, amb, 'repel', 0)
     expect(ev.contributed[per]).toBeCloseTo(0.03, 6)
     weekendResolveBattle(s, ctx, amb, 'offlineRepel', 0)

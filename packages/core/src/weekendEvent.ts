@@ -14,7 +14,9 @@
 import type { SimContext } from './types'
 import type { GameState, WormholeFamily } from './state'
 import { securityZoneOf } from './sideTasks'
-import { wormholeCardPoolAt } from './wormholeFoes'
+import { FOE_DESIGN_STRENGTH_MUL, wormholeCardPoolAt } from './wormholeFoes'
+// ⚠ 依赖方向：`combat` 不 import 入侵模块（那条由 `weekendLaunch` 走）⇒ 这里单向引 combat 是安全的
+import { applyFoeOverride, foeThreatOfAnomaly } from './combat'
 
 /* ─────────────── 常量（数值表 · 2026-09-23 Q1 定档后锁） ─────────────── */
 
@@ -22,8 +24,15 @@ import { wormholeCardPoolAt } from './wormholeFoes'
 export const WEEKEND_PERIPHERY_THREAT = 78
 /** 核心 T5 旗舰威胁（口径定稿 #13：**核心 120**；4 波 · 4 艘小队战） */
 export const WEEKEND_CORE_THREAT = 120
-/** 伏击（巡游小队）强度倍率：**主动出击才是 78 / 120**（Q2 裁定 ×0.5） */
-export const WEEKEND_AMBUSH_MUL = 0.5
+/**
+ * **遇袭（巡游小队）的真·强度倍率**（船长 2026-09-25：「**遇袭的时候遭遇的敌人按强度\*0.75算**」）。
+ *
+ * ⚠ 语义与已删除的旧常量 `WEEKEND_AMBUSH_MUL = 0.5` **不同**：旧的只乘**威胁标签**、战斗强度一字不变
+ * （舰级路径的敌属性是绝对值）⇒ 实测"78 / 120 / 39 三档打出来逐字相同"（假标签）。
+ * 现行 = 传进 `combat.FoeOverride.strengthMul` **真缩放敌属性**，标签另按**缩放后的实测价**反解
+ * （`combat.foeThreatOfAnomaly`；`foeHpOfThreat` 非线性 ⇒ "威胁减半" ≠ "强度减半"）。
+ */
+export const WEEKEND_AMBUSH_STRENGTH_MUL = 0.75
 /** 遇袭概率：`p = 60% × (1 − 进度)`，封顶 0.9（口径定稿 #4） */
 export const WEEKEND_ENCOUNTER_P = 0.6
 export const WEEKEND_ENCOUNTER_CAP = 0.9
@@ -151,25 +160,116 @@ export const WEEKEND_BOSS_TICK_MAX_MS = 5_000
  */
 export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H']
 
-/* ─────────────── 敌卡：暂用虫洞族卡（独立卡后续批次再换） ─────────────── */
+/* ─────────────── 敌卡：独立卡（H 族）· 虫洞池卡（A/C/G 占位）· 随机抽取 ─────────────── */
 
 /**
- * **入侵舰队的敌卡**（**船长 2026-09-23**：「入侵战斗采用独立设计的卡（之后设计），**我们暂时先试用虫洞的**」；
- * **2026-09-24 船长令「设计每个种族的T5旗舰」⇒ M2 逐族换到独立卡**）。
+ * **该族的入侵敌卡是否"自带定价"**（独立卡 ⇒ 威胁 = 卡面实测价，可被抽签换卡）。
+ * H 族 = 真（四张独立卡已按定价式落到 90 / 108 / 129 与"待定的旗舰"）；
+ * A/C/G 三族 = 假（仍用虫洞池卡 + 入侵覆写威胁 78/120，属 M1 占位口径，等各自旗舰卡设计好再迁）。
+ */
+export function weekendFoeCardsSelfPriced(family: string): boolean {
+  return family === 'H'
+}
+
+/**
+ * **H 族入侵敌卡池**（船长 2026-09-25：「**外围玩家主动出击和被动遇袭都是从骚扰和袭击舰队中抽取。
+ * 核心区，则是抽取袭击和主力舰队。**」）——id 的唯一登记处是 `data/wormholeFoes.ts` 的
+ * `WEEKEND_FOE_CARD_IDS`（core 不依赖 data，故此处按既有先例写字面量）。
+ */
+const H_FOE_POOL_PERIPHERY: readonly string[] = ['ink-harass', 'ink-raid']
+const H_FOE_POOL_CORE: readonly string[] = ['ink-raid', 'ink-main']
+
+/**
+ * **某族某区域的入侵敌卡池**：
+ * - H 族：外围 `{骚扰 90, 袭击 108}` · 核心 `{袭击 108, 主力 129}`（等概率）；
+ * - A/C/G 三族：仍取该族虫洞池（外围 = 层 5 池 · 核心 = 层 9 池）——**池长 1 ⇒ 抽签退化为取那一张**（逐字不变）。
+ */
+export function weekendFoePoolOf(family: string, isCore: boolean): readonly string[] {
+  if (family === 'H') return isCore ? H_FOE_POOL_CORE : H_FOE_POOL_PERIPHERY
+  const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
+  return [wormholeCardPoolAt(fam, isCore ? 9 : 5)[0]!.id]
+}
+
+/**
+ * **从池里抽一张**（纯函数 · 可复现）：`hash32(hash32(场次, 星系位序), 盐)`。
  *
- * 口径：① **A/C/G 三族暂时仍用该族的虫洞卡**（`wormholeCardPoolAt`：外围取中层池、旗舰取最深池）；
- * ② **H 族（墨潮帮）没有虫洞卡** ⇒ 用**自家的四张独立入侵卡**（2026-09-24 船长给定编成，
- *   定义在 `packages/data/src/wormholeFoes.ts` 末段、由 `ANOMALIES` 收进目录）：
- *   骚扰舰队 `ink-harass`（外围）· 袭击舰队 `ink-raid` · 主力舰队 `ink-main` · 旗舰部队 `ink-flagship`；
- * ③ **威胁 / 名字 / 奖励一律由入侵覆盖**（外围 78 / 核心 120，名「<族>族舰队 · <卡名>」，奖励 ×1.4）；
- * ④ 本函数仍是**唯一换卡点**：日后 A/C/G 各自的旗舰卡设计好，在这里逐族改指向即可；
- *    H 族"中段强度"两种编成（袭击 / 主力）的接入方式（按进度或按遇袭档次轮换）随 M2 收尾再定。
+ * 为什么这样就够：① 走**入侵自己的随机子流**（`hash32`）⇒ **不消费主随机序列**、老档读数一字不动；
+ * ② 输入只含"场次 / 星系 / 盐"、不含调用顺序 ⇒ **同一场入侵内稳定**（悬赏板不会每次刷新都换卡）。
+ * 池长 1（A/C/G 三族）⇒ 直接返回那一张。
+ */
+export function weekendDrawFoeCardId(
+  family: string,
+  isCore: boolean,
+  seq: number,
+  galaxyIdx: number,
+  salt: number,
+): string {
+  const pool = weekendFoePoolOf(family, isCore)
+  if (pool.length <= 1) return pool[0]!
+  const r = hash32(hash32(seq, galaxyIdx), salt) / 4294967296
+  return pool[Math.min(pool.length - 1, Math.floor(r * pool.length))]!
+}
+
+/**
+ * **该被占星系"驻留"的那支入侵舰队**（悬赏板 = 主动出击 = 这一支）：
+ * 按 `(存档种子, 本场入侵编号 seq, 星系在占领区里的位序)` 抽定 ⇒ **一场之内稳定**、读档/换窗口不变。
+ */
+export function weekendGarrisonFoeCardId(
+  state: Pick<GameState, 'rng'>,
+  ev: WeekendEventState,
+  galaxyId: string,
+): string {
+  const idx = Math.max(0, weekendOccupiedIds(ev).indexOf(galaxyId))
+  return weekendDrawFoeCardId(ev.family, galaxyId === ev.coreId, ev.seq, idx, 0)
+}
+
+/** 遇袭抽签结果：卡 + 强度倍率 + 玩家可见的威胁标签 */
+export interface WeekendAmbushPick {
+  cardId: string
+  strengthMul: number
+  /** 标签（H 族 = **缩放后实测价**反解；A/C/G = 主动威胁 × 倍率，与它们主动标签同一把尺） */
+  threat: number
+}
+
+/**
+ * **遇袭取卡**（船长 2026-09-25：遇袭**每场从池里重抽** ＋ 强度 ×`WEEKEND_AMBUSH_STRENGTH_MUL`）。
+ *
+ * - 抽签：与"驻留"同一套哈希，但**盐取时刻档**（粒度 = `balance.encounter.zoneCooldownMs`，
+ *   与区域冷却同粒度）⇒ 同一星系连续两次遇袭会抽到不同编成；
+ * - 标签：H 族按**缩放后的实测建档价**反解（`combat.foeThreatOfAnomaly`）——
+ *   敌属性是绝对值，只有这样才能保证"标签 = 战力"；A/C/G 三族仍按 78/120 × 倍率的占位口径。
+ */
+export function weekendAmbushPickOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  nowWallMs: number,
+): WeekendAmbushPick | null {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return null
+  // ⚠ 等价于 `weekendBounty.weekendOccupiedLiveAt`（那边 import 本文件 ⇒ 这里不能反向引，避免循环）
+  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return null
+  if (weekendProgressAt(state, ev, galaxyId, nowWallMs) >= 1) return null
+  const isCore = galaxyId === ev.coreId
+  const idx = Math.max(0, weekendOccupiedIds(ev).indexOf(galaxyId))
+  const bucketMs = Math.max(1, ctx.balance.encounter.zoneCooldownMs)
+  const cardId = weekendDrawFoeCardId(ev.family, isCore, ev.seq, idx, Math.floor(nowWallMs / bucketMs) + 1)
+  const mul = WEEKEND_AMBUSH_STRENGTH_MUL
+  const card = ctx.anomalies.get(cardId)
+  const threat =
+    card && weekendFoeCardsSelfPriced(ev.family)
+      ? foeThreatOfAnomaly(applyFoeOverride(card, { strengthMul: mul }), FOE_DESIGN_STRENGTH_MUL.solo, ctx.balance.battle)
+      : Math.max(1, Math.round(weekendAssaultThreatOf(ev, galaxyId) * mul))
+  return { cardId, strengthMul: mul, threat }
+}
+
+/**
+ * **入侵旗舰战的敌卡**（**唯一换卡点**）：H 族 = 自家旗舰部队卡；A/C/G = 该族最深池卡。
+ * ⚠ 旗舰卡**不参与抽签**（船长 2026-09-25：「**旗舰卡单独**」）。
  */
 export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): string {
-  // H 族（墨潮帮）：独立入侵卡（它不属虫洞族池）——旗舰战用旗舰部队卡，外围先用骚扰舰队
-  if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : 'ink-harass'
+  if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : H_FOE_POOL_PERIPHERY[0]!
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
-  // 外围 ⇒ 中层池（层 5）· 旗舰 ⇒ 最深池（层 9）：两者都靠 `wormholeCardPoolAt` 的缺档兜底
   const pool = wormholeCardPoolAt(fam, kind === 'flagship' ? 9 : 5)
   return pool[0]!.id
 }
@@ -359,14 +459,9 @@ export function weekendEncounterChanceAt(
   return Math.min(WEEKEND_ENCOUNTER_CAP, WEEKEND_ENCOUNTER_P * (1 - p))
 }
 
-/** 主动出击的威胁（被占星系的悬赏替换卡；外围 78 / 核心 120） */
+/** 主动出击的威胁（被占星系的悬赏替换卡；外围 78 / 核心 120）——**A/C/G 三族的占位口径**，H 族用卡面威胁 */
 export function weekendAssaultThreatOf(ev: WeekendEventState, galaxyId: string): number {
   return galaxyId === ev.coreId ? WEEKEND_CORE_THREAT : WEEKEND_PERIPHERY_THREAT
-}
-
-/** 伏击（遇袭）强度 = 主动 ×0.5（Q2） ⇒ 外围 39 · 核心 60 */
-export function weekendAmbushThreatOf(ev: WeekendEventState, galaxyId: string): number {
-  return Math.round(weekendAssaultThreatOf(ev, galaxyId) * WEEKEND_AMBUSH_MUL)
 }
 
 /* ─────────────── 旗舰与倒计时 ─────────────── */

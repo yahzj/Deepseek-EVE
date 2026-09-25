@@ -494,6 +494,9 @@ const BATTLE_FIELDS = {
   // 落档反而会"把离线前的倍速带到读档后" ⇒ 一律 runtime；老档缺省 = 1× / 老口径（零迁移）。
   speedX: { kind: 'runtime', why: '本场生效倍速：由前台心跳每拍传入并夹紧，不落档（离线结算恒 1×）' },
   speedAxis: { kind: 'runtime', why: '倍速时间轴锚点（全局时钟 ↔ 战斗时钟配对）：每拍收尾刷新，落档无意义' },
+  // 敌群覆写（2026-09-25 加）：**必须随档**——`advanceBattleFor` 每拍从 ctx 重建敌卡，覆写不存就会
+  // "只有第 0 波吃到"（多波卡的后续波弹回满强度：遇袭 ×0.75 的 2 波卡首当其冲）。老档缺省 = 无覆写（零迁移）。
+  foeOverride: { kind: 'persist' },
 } satisfies Record<keyof BattleState, BattleFieldSpec>
 
 /** **必须随档持久化**的战斗字段键（用例据此逐字段守"重载不丢"；顺序 = 登记表顺序） */
@@ -579,6 +582,30 @@ function cleanBattle(raw: unknown): BattleState | null {
   const fx = cleanFx(b.fx, numf)
   // 清洗后的候选值——**只有登记为 `persist` 的字段会被带出**（见 `BATTLE_FIELDS`）
   // 2026-09-12 船长裁定「六项全修」：下面七项**改为随档**，故先清洗成候选值
+  /**
+   * **敌群覆写**（2026-09-25 加 · 登记为 persist）：逐字段认，坏值一律丢（老档/旧路径缺 ⇒ 不写 ⇒ 零迁移）。
+   */
+  const foeOverrideRaw = asRaw(b.foeOverride)
+  const foeOverride = ((): BattleState['foeOverride'] => {
+    if (foeOverrideRaw === null || typeof foeOverrideRaw !== 'object') return undefined
+    const out: NonNullable<BattleState['foeOverride']> = {}
+    const t = foeOverrideRaw.threat
+    if (typeof t === 'number' && Number.isFinite(t)) out.threat = Math.max(1, Math.round(t))
+    const s = foeOverrideRaw.strengthMul
+    if (typeof s === 'number' && Number.isFinite(s) && s > 0) out.strengthMul = s
+    if (foeOverrideRaw.keepCardWaves === true) out.keepCardWaves = true
+    const w = foeOverrideRaw.waves
+    if (Array.isArray(w)) {
+      const waves: Array<{ units: number; hpShare: number }> = []
+      for (const x of w) {
+        const r = asRaw(x)
+        if (r === null || typeof r !== 'object') continue
+        waves.push({ units: Math.max(1, Math.floor(numf(r.units, 1))), hpShare: Math.max(0, numf(r.hpShare, 1)) })
+      }
+      if (waves.length > 0) out.waves = waves
+    }
+    return Object.keys(out).length > 0 ? out : undefined
+  })()
   const repair = cleanRepair(b.repair)
   const shieldCharge = cleanShieldCharge(b.shieldCharge)
   /** 逐舰账本（2026-09-16 逐舰维修）：键 = 舰 tag；坏项丢键、整表空 ⇒ undefined（零迁移） */
@@ -608,6 +635,7 @@ function cleanBattle(raw: unknown): BattleState | null {
   const foeGunRangeBuff = cleanPosNum(b.foeGunRangeBuff)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
+    ...(foeOverride !== undefined ? { foeOverride } : {}),
     lastTickGameMs: Math.max(0, Math.floor(numf(b.lastTickGameMs, 0))),
     distanceM: Math.max(0, distance),
     myDesireM: Math.max(0, numf(b.myDesireM, distance)),

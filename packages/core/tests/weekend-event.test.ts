@@ -11,7 +11,7 @@ import { createInitialState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { securityZoneOf } from '../src/sideTasks'
 import {
-  WEEKEND_AMBUSH_MUL,
+  WEEKEND_AMBUSH_STRENGTH_MUL,
   WEEKEND_CORE_THREAT,
   WEEKEND_DEBUG_ONLY,
   WEEKEND_FAMILIES,
@@ -27,7 +27,6 @@ import {
   weekendNoteRepel,
   weekendTick,
   ensureWeekendEvent,
-  weekendAmbushThreatOf,
   weekendAssaultThreatOf,
   weekendContributionShareAt,
   weekendContributionTier,
@@ -200,15 +199,14 @@ describe('周末入侵 · 遇袭与伏击（Q1 单舰 78 · Q2 ×0.5）', () => 
     expect(weekendEncounterChanceAt(s, ev, 'p1', WEEKEND_NPC_PERIPHERY_MS), '夺回 ⇒ 0').toBe(0)
   })
 
-  it('威胁：主动 外围 78 / 核心 120；伏击 = ×0.5 ⇒ 39 / 60', () => {
+  it('威胁：主动（A/C/G 占位口径）外围 78 / 核心 120；遇袭 = **真强度 ×0.75**（标签另算）', () => {
     const ev = evOf('core', ['p1'])
     expect(WEEKEND_PERIPHERY_THREAT).toBe(78)
     expect(WEEKEND_CORE_THREAT).toBe(120)
     expect(weekendAssaultThreatOf(ev, 'p1')).toBe(78)
     expect(weekendAssaultThreatOf(ev, 'core')).toBe(120)
-    expect(weekendAmbushThreatOf(ev, 'p1')).toBe(39)
-    expect(weekendAmbushThreatOf(ev, 'core')).toBe(60)
-    expect(WEEKEND_AMBUSH_MUL).toBe(0.5)
+    // 2026-09-25：旧的 `WEEKEND_AMBUSH_MUL = 0.5`（只改标签）已删 ⇒ 现行 = 真倍率 0.75
+    expect(WEEKEND_AMBUSH_STRENGTH_MUL).toBe(0.75)
   })
 })
 

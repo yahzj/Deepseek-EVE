@@ -265,9 +265,13 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     theme: {},
     members: ['wh-exile-blockade', 'wh-exile-swarm', 'wh-exile-line'],
   },
-  /* ── H 族（墨潮帮 · 2026-09-24）：**周末入侵**的独立敌卡也必须有残骸组归属
-   *    （契约要求每张敌卡都登记进某一组；两张卡都 `hidden`，按 `wh` 地区计 ⇒ 与本组"会产出"判据相容，
-   *    实际产出仍由入侵的奖励结算走，不依赖这条链路）。族 = **新族 H**，回收画像取常档基础池。 ── */
+    /* ── H 族（墨潮帮 · 2026-09-24）：**周末入侵**的独立敌卡也必须有残骸组归属
+   *    （契约要求每张敌卡都登记进某一组；四张卡都 `hidden`，按 `wh` 地区计 ⇒ 与本组"会产出"判据相容，
+   *    实际产出仍由入侵的奖励结算走，不依赖这条链路）。族 = **新族 H**，回收画像取常档基础池。
+   *    ⚠ **2026-09-25：本组不冻结**（船长令「**这边的残骸就不冻结了**」）⇒ 组代表威胁随三张卡的
+   *    重定价一起走：45 → **93**（= 成员回收口径体量 (90+108+129+45)÷4）。
+   *    行为零变化：四张卡都 `hidden` ⇒ 不进星系基础密度、不进"最强卡注入"；
+   *    组威胁只作**两道闸门**（≥17 出 T2 碎片 / ≥41 出 T3 碎片），45 与 93 都在闸门之上。 ── */
   {
     key: 'h-wh',
     family: 'H',
@@ -277,7 +281,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     tier: 'common',
     pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
     note: '',
-    threat: 45,
+    threat: 93,
     theme: {},
     members: ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship'],
   },

@@ -1728,6 +1728,41 @@ export function foeThreatRatingOf(x: number, designMul: number, bal: BattleBalan
   return lo
 }
 
+/**
+ * **敌卡战力实测**（定价式的左半边 · 2026-09-25）：`X = √(全波总血 × 峰值波火力DPS)`。
+ *
+ * 与 `steadyPreview` / 重定价批**逐字同源**：逐波建档（第 i 波前缀 `w${i}-`，第 0 波无前缀）、
+ * 血 = 各波三层血之和、火力 = **各波取最大**（多波不同时在场，峰值波才是承伤口径）、
+ * 单发含多舰补偿与逐条取整、火力**含机群**（`src:'drone'`）。
+ *
+ * 用途：给"派生过 / 缩放过的卡"重新定价 —— 例：入侵遇袭把敌卡强度 ×0.75 之后，标签必须按**本函数实测**反解，
+ * 否则写出来的就是假标签（`foeHpOfThreat` 非线性 ⇒ "威胁减半" ≠ "强度减半"）。
+ */
+export function foeStrengthOf(anomaly: AnomalyDef, bal: BattleBalance): { hp: number; dps: number; x: number } {
+  const idxs = new Set<number>()
+  for (const s of anomaly.ships ?? []) idxs.add(Math.max(0, Math.floor(s.wave ?? 0)))
+  if (idxs.size === 0) idxs.add(0)
+  let hp = 0
+  let peak = 0
+  for (const i of idxs) {
+    const specs = createFoeSpecs(anomaly, bal, { tagPrefix: i === 0 ? '' : `w${i}-` })
+    let whp = 0
+    let wdps = 0
+    for (const f of specs) {
+      whp += f.hp.s + f.hp.a + f.hp.h
+      for (const w of f.weapons) wdps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
+    }
+    hp += whp
+    peak = Math.max(peak, wdps)
+  }
+  return { hp, dps: peak, x: Math.sqrt(hp * peak) }
+}
+
+/** 由**卡面属性**反解威胁（= `foeStrengthOf` ＋ `foeThreatRatingOf`）——派生卡 / 缩放卡定价的唯一入口 */
+export function foeThreatOfAnomaly(anomaly: AnomalyDef, designMul: number, bal: BattleBalance): number {
+  return foeThreatRatingOf(foeStrengthOf(anomaly, bal).x, designMul, bal)
+}
+
 /** 展开敌方编队（threat 卡面 = 总战力；血/火力威胁线性，射程/速度走虚拟装配模板） */
 /** createFoeSpecs 波次参数（2026-09-09 多波；缺省 = 单波现状） */
 export interface FoeSpecOpts {
@@ -4268,6 +4303,17 @@ export interface FoeOverride {
    * 缺省假 = 老行为（覆写波表，如入侵原先固定的"4 波 × 4 艘"）。
    */
   keepCardWaves?: boolean
+  /**
+   * **真·强度倍率**（2026-09-25 船长令「**遇袭的时候遭遇的敌人按强度 ×0.75 算**」）：
+   * 把每条 `ships[]` 的 `hpMul`/`dmgMul` 同乘该倍率（血与火力同缩 ⇒ `X` 同缩），
+   * `firepowerAnchor` 一并按倍率缩放（同"重定价批"的落法）。
+   *
+   * ⚠ **它只改属性，不改标签**：调用方若要把标签写对，必须接着用 `foeThreatOfAnomaly(缩放后的卡, 系数, bal)`
+   * 反解（本函数不碰 `threat`，避免"标签 ≠ 实测价"）。
+   * 缺省 / 非正 / 等于 1 ⇒ 不缩放（零行为变化）；**只对舰级路径（写了 `ships[]`）生效**
+   * （旧路径卡的强度由威胁曲线表达，本倍率对它无意义）。
+   */
+  strengthMul?: number
 }
 
 /** 把覆写应用到派生出来的敌卡上（纯函数；`override` 缺省或字段缺省 ⇒ 原样返回） */
@@ -4276,6 +4322,23 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
   const next = { ...(anomaly as Record<string, unknown>) }
   if (override.threat !== undefined && Number.isFinite(override.threat)) next.threat = Math.max(1, Math.round(override.threat))
   if (override.keepCardWaves !== true && override.waves !== undefined && override.waves.length > 0) next.waves = override.waves
+  const strengthMul = override.strengthMul
+  if (strengthMul !== undefined && Number.isFinite(strengthMul) && strengthMul > 0 && strengthMul !== 1) {
+    const ships = next.ships
+    if (Array.isArray(ships)) {
+      next.ships = ships.map((raw) => {
+        const slot = raw as { hpMul?: number; dmgMul?: number; firepowerAnchor?: number }
+        const out: Record<string, unknown> = {
+          ...slot,
+          hpMul: (slot.hpMul ?? 1) * strengthMul,
+          dmgMul: (slot.dmgMul ?? 1) * strengthMul,
+        }
+        // 总火力锚点（写了才有）：按同一倍率缩放——**不许按自然合计重算**（它是船长有意钉住的总量；例外只有取整平局）
+        if (slot.firepowerAnchor !== undefined) out.firepowerAnchor = Math.max(1, Math.round(slot.firepowerAnchor * strengthMul))
+        return out
+      })
+    }
+  }
   return next as T
 }
 
@@ -4339,6 +4402,11 @@ export function startBattleFor(
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire)
+  /**
+   * **把本场的敌群覆写照原样存下**（2026-09-25 修）：`advanceBattleFor` 每拍从 `ctx` 重建敌卡，
+   * 不存就会**只有第 0 波吃到覆写**——多波卡的后续波会回到满强度（H 族遇袭 ×0.75 的 2 波卡首当其冲）。
+   */
+  if (foeOverride !== undefined) battle.foeOverride = foeOverride
   /**
    * **把血条分母修回满值**（2026-09-14 修船长报障「虫洞战斗中，我方舰船的血量上限显示不正确」）：
    * `createBattleState` 是按"传入规格"写 `hp`/`hpMax` 的，而上面已经把规格的装甲/结构按场间残余打过折
@@ -4682,6 +4750,8 @@ export function startFleetBattleFor(
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
+  // **敌群覆写照原样存下**（2026-09-25 修）：后续波由 `advanceBattleFor` 从 `ctx` 重建敌卡，不存就只有第 0 波吃到覆写
+  if (foeOverride !== undefined) battle.foeOverride = foeOverride
   /**
    * **逐船把血条分母修回满值**（2026-09-14 修船长报障「虫洞战斗中，我方舰船的血量上限显示不正确」）：
    * `createBattleState` 按"传入规格"写 `hp`/`hpMax`，而上面已按各舰的场间残余打过折 ⇒ 分母跟着缩水
@@ -5743,7 +5813,7 @@ export function advanceBattleFor(
   const rebaseAxis = (): void => {
     battle.speedAxis = { anchor: state.gameMs, clock: battle.lastTickGameMs }
   }
-  const baseAnomaly = battleAnomalyOf(ctx, anomalyId, lairTier, factionActive)
+  const baseAnomaly = applyFoeOverride(battleAnomalyOf(ctx, anomalyId, lairTier, factionActive), battle.foeOverride)
   if (!baseAnomaly) return
   // 虫洞战斗（F 批）：**每拍按层重建**派生敌卡（**与开战同源**——同一处 `wormholeDerivedAnomaly`）
   const anomaly = battle.wormhole

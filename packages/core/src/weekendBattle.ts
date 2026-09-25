@@ -16,7 +16,9 @@ import { addItem } from './inventory'
 import {
   WEEKEND_CORE_THREAT,
   WEEKEND_PERIPHERY_THREAT,
-  weekendAmbushThreatOf,
+  weekendAmbushPickOf,
+  weekendFoeCardsSelfPriced,
+  weekendGarrisonFoeCardId,
   weekendCoreProgressAt,
   weekendFlagshipDefeated,
   weekendIsBossFamily,
@@ -46,11 +48,14 @@ export type WeekendBattleKind = 'assault' | 'ambush' | 'flagship'
 export interface WeekendBattleSpec {
   kind: WeekendBattleKind
   galaxyId: string
-  /** 敌卡（**暂用该族虫洞卡**；换独立卡只改 `weekendFoeCardOf`） */
+  /** 敌卡（**抽签**取该区域池里的一支：外围 {骚扰, 袭击} · 核心 {袭击, 主力}；旗舰战 = 旗舰部队卡） */
   cardId: string
-  /** 威胁（主动：外围 78 / 核心 120；伏击：×0.5） */
+  /** 威胁（主动：H 族 = 卡面实测价；A/C/G = 占位口径 78 / 120。遇袭：按缩放后实测价反解） */
   threat: number
-  /** 波数：旗舰 4 波；其余 1 波 */
+  /**
+   * 波数：旗舰 = 4（口径定稿 #8）；其余 = **该卡自身的波数**（新池卡里有 2 波的：袭击 / 主力）。
+   * ⚠ 开战并不读本字段（舰级路径按卡的 `ships[].wave` 跑波），它只服务展示与记账。
+   */
   waves: number
   /** 编队规模：旗舰 4 艘小队战；其余 1（单舰） */
   squadSize: number
@@ -58,6 +63,11 @@ export interface WeekendBattleSpec {
   rewardMul: number
   /** 展示名（玩家可见；「<族>舰队 · <卡名>」/「<族>旗舰」） */
   name: string
+  /**
+   * **敌群真·强度倍率**（2026-09-25 船长令「遇袭的时候遭遇的敌人按强度\*0.75算」）：
+   * 只有遇袭非空 ⇒ 开战时传进 `FoeOverride.strengthMul`；主动出击 / 旗舰战不传（缺省 = 不缩放）。
+   */
+  foeStrengthMul?: number
 }
 
 /** 夺回奖励（每处）与全清追加（数值表） */
@@ -74,41 +84,63 @@ function cardNameOf(ctx: SimContext, cardId: string): string {
   return ctx.anomalies.get(cardId)?.name ?? cardId
 }
 
-/** 主动出击某被占星系（外围单舰 78 / 核心单舰 120）；非占领区 ⇒ null */
+/**
+ * 主动出击某被占星系（**敌卡 = 该星系"驻留"的那支**：按 (存档种子, 本场入侵 seq, 星系位序) 抽签）。
+ * 船长 2026-09-25：「**外围玩家主动出击和被动遇袭都是从骚扰和袭击舰队中抽取。核心区，则是抽取袭击和主力舰队。**」
+ * ＋「**旗舰卡单独**」⇒ 核心的主动出击**不再挂旗舰部队卡**。非占领区 ⇒ null。
+ */
 export function weekendAssaultSpecOf(state: GameState, ctx: SimContext, galaxyId: string): WeekendBattleSpec | null {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return null
   if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return null
   const isCore = galaxyId === ev.coreId
-  const cardId = weekendFoeCardOf(ev.family, isCore ? 'flagship' : 'assault')
-  const card = cardNameOf(ctx, cardId)
+  const cardId = weekendGarrisonFoeCardId(state, ev, galaxyId)
+  const card = ctx.anomalies.get(cardId)
   return {
     kind: 'assault',
     galaxyId,
     cardId,
-    threat: isCore ? WEEKEND_CORE_THREAT : WEEKEND_PERIPHERY_THREAT,
-    waves: 1,
+    // H 族（独立卡）：威胁 = **卡面自身**（已按定价式落值）；A/C/G：仍按入侵占位口径 78 / 120
+    threat: weekendFoeCardsSelfPriced(ev.family)
+      ? Math.max(1, Math.round(card?.threat ?? 1))
+      : isCore
+        ? WEEKEND_CORE_THREAT
+        : WEEKEND_PERIPHERY_THREAT,
+    waves: Math.max(1, card?.waves?.length ?? 1),
     squadSize: 1,
     rewardMul: WEEKEND_ASSAULT_REWARD_MUL,
-    name: `${ev.family} 族舰队 · ${card}`,
+    name: `${ev.family} 族舰队 · ${cardNameOf(ctx, cardId)}`,
   }
 }
 
-/** 遇袭（伏击）：单舰 + **威胁 ×0.5**（Q2）· 同样只在占领区 */
-export function weekendAmbushSpecOf(state: GameState, ctx: SimContext, galaxyId: string): WeekendBattleSpec | null {
+/**
+ * 遇袭（巡游小队）：单舰 ＋ **每场从池里重抽** ＋ **强度 ×`WEEKEND_AMBUSH_STRENGTH_MUL`（0.75）**
+ * （船长 2026-09-25；旧口径"威胁标签 ×0.5"已删除——它只改数字、改不了强度）。
+ * 威胁标签由 `weekendAmbushPickOf` 给出（H 族 = 缩放后**实测价**反解；A/C/G = 主动威胁 × 倍率）。
+ * 同样只在占领区成立。
+ */
+export function weekendAmbushSpecOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  nowWallMs: number,
+): WeekendBattleSpec | null {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return null
   if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return null
-  const cardId = weekendFoeCardOf(ev.family, galaxyId === ev.coreId ? 'flagship' : 'assault')
+  const pick = weekendAmbushPickOf(state, ctx, galaxyId, nowWallMs)
+  if (!pick) return null
+  const card = ctx.anomalies.get(pick.cardId)
   return {
     kind: 'ambush',
     galaxyId,
-    cardId,
-    threat: weekendAmbushThreatOf(ev, galaxyId),
-    waves: 1,
+    cardId: pick.cardId,
+    threat: pick.threat,
+    waves: Math.max(1, card?.waves?.length ?? 1),
     squadSize: 1,
     rewardMul: 1,
-    name: `巡游小队 · ${cardNameOf(ctx, cardId)}`,
+    name: `巡游小队 · ${cardNameOf(ctx, pick.cardId)}`,
+    foeStrengthMul: pick.strengthMul,
   }
 }
 
@@ -338,7 +370,7 @@ export function weekendApplyBattleOutcome(
     involved.kind === 'flagship'
       ? weekendFlagshipSpecOf(state, ctx, nowWallMs)
       : involved.kind === 'ambush'
-        ? weekendAmbushSpecOf(state, ctx, involved.galaxyId)
+        ? weekendAmbushSpecOf(state, ctx, involved.galaxyId, nowWallMs)
         : weekendAssaultSpecOf(state, ctx, involved.galaxyId)
   if (!spec) return null
   /**

@@ -43,7 +43,9 @@ function setup(peripheryIds: string[] = ['galaxy-home']): { s: ReturnType<typeof
 describe('周末入侵 · 悬赏替换（M1-b）', () => {
   it('派生卡只覆盖 id / 名字 / 威胁 / 奖励，其余字段原样', () => {
     const d = weekendDerivedCardOf(card, 'C')
-    // 2026-09-23 船长报障「前往入侵星系战斗提示未知目标」⇒ 派生卡**保留原卡 id**（出发/开战路径都按 id 取卡）`n    expect(d.id, ').toBe(card.id)
+    // 2026-09-23 船长报障「前往入侵星系战斗提示未知目标」⇒ 派生卡**保留原卡 id**（出发/开战路径都按 id 取卡）
+    // ⚠ 2026-09-25 修：这一行的换行曾被写成字面 `\`n`，把断言整条吞进注释里（等于没测）——已复原
+    expect(d.id).toBe(card.id)
     expect(d.name).toContain('C 族舰队')
     expect(d.name).toContain(card.name)
     expect(d.threat).toBe(78)
@@ -54,19 +56,47 @@ describe('周末入侵 · 悬赏替换（M1-b）', () => {
 
   it('核心的派生卡威胁 120；非占领区/夺回后原样返回原卡', () => {
     const { s, ev } = setup()
-    const core = weekendBountyCardsOf(s, [card], ev.coreId, T)
+    const core = weekendBountyCardsOf(s, ctx, [card], ev.coreId, T)
     expect(core[0]!.threat).toBe(120)
-    const other = weekendBountyCardsOf(s, [card], 'galaxy-redring', T)
+    const other = weekendBountyCardsOf(s, ctx, [card], 'galaxy-redring', T)
     expect(other[0], '不在占领区 ⇒ 原卡').toBe(card)
     // 夺回（推进到满）⇒ 恢复原卡（**用外围卡**：核心要等外围清完才可能满）
     const perId = ev.peripheryIds[0]!
     const perCard = { ...card, galaxyId: perId }
     weekendNoteContribution(ev, perId, 1)
-    expect(weekendBountyCardsOf(s, [perCard], perId, T)[0], '夺回后 ⇒ 原卡').toBe(perCard)
+    expect(weekendBountyCardsOf(s, ctx, [perCard], perId, T)[0], '夺回后 ⇒ 原卡').toBe(perCard)
     // 活动结束 ⇒ 原卡
     ev.contributed = {}
     ev.endedAtWallMs = T
-    expect(weekendBountyCardsOf(s, [perCard], perId, T)[0]).toBe(perCard)
+    expect(weekendBountyCardsOf(s, ctx, [perCard], perId, T)[0]).toBe(perCard)
+  })
+
+  it('**H 族（独立卡）：悬赏位换成"抽到的那支舰队"**（真实 id · 覆写星系/名字/奖励 · 威胁 = 卡面自身）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 11 })
+    s.debugQuick = true
+    const ev: WeekendEventState = {
+      seq: 1,
+      startedAtWallMs: 0,
+      coreId: 'galaxy-kor',
+      peripheryIds: ['galaxy-home'],
+      family: 'H',
+      contributed: {},
+    }
+    s.weekendEvent = ev
+    const perCard = { ...card, galaxyId: 'galaxy-home' }
+    const out = weekendBountyCardsOf(s, ctx, [perCard], 'galaxy-home', T)
+    // 抽到的必须是该区域池里的一张（外围 = 骚扰 / 袭击），且 **id 能在目录里解析**（否则开不了战）
+    expect(['ink-harass', 'ink-raid']).toContain(out[0]!.id)
+    const drawn = ctx.anomalies.get(out[0]!.id)!
+    expect(out[0]!.threat, '威胁 = 卡面自身（定价式落值）').toBe(drawn.threat)
+    expect(out[0]!.galaxyId, 'galaxyId 覆写成被占星系（独立卡自带母港）').toBe('galaxy-home')
+    expect(out[0]!.name).toContain('H 族舰队')
+    expect(out[0]!.rewardIsk, '奖励 = 该星系原卡 ×1.4').toBe(Math.round(card.rewardIsk * WEEKEND_BOUNTY_REWARD_MUL))
+    // 同一场入侵内**稳定**（板面不会每次刷新换卡）
+    expect(weekendBountyCardsOf(s, ctx, [perCard], 'galaxy-home', T)[0]!.id).toBe(out[0]!.id)
+    // 核心池 = {袭击, 主力}
+    const coreCard = { ...card, galaxyId: ev.coreId }
+    expect(['ink-raid', 'ink-main']).toContain(weekendBountyCardsOf(s, ctx, [coreCard], ev.coreId, T)[0]!.id)
   })
 })
 
@@ -83,17 +113,19 @@ describe('周末入侵 · 遇袭判定（M1-b）', () => {
     }
   })
 
-  it('掷骰：roll < 概率 ⇒ 出伏击 spec（单舰 · 威胁 ×0.5）；roll ≥ 概率 ⇒ 不出', () => {
+  it('掷骰：roll < 概率 ⇒ 出伏击 spec（单舰 · 强度 ×0.75）；roll ≥ 概率 ⇒ 不出', () => {
     const { s, ev } = setup()
     const per = ev.peripheryIds[0]!
     const hit = weekendEncounterRollOf(s, ctx, per, 0.1, 0)
     expect(hit, '进度 0 ⇒ 概率 60%，roll 0.1 命中').toBeTruthy()
     expect(hit!.kind).toBe('ambush')
     expect(hit!.squadSize).toBe(1)
-    expect(hit!.threat).toBe(39)
+    // C 族是占位口径（虫洞池卡 + 覆写威胁）⇒ 标签 = round(78 × 0.75) = 59；真强度由 `foeStrengthMul` 落
+    expect(hit!.threat).toBe(59)
+    expect(hit!.foeStrengthMul, '遇袭真倍率 0.75').toBe(0.75)
     expect(weekendEncounterRollOf(s, ctx, per, 0.9, 0), 'roll 0.9 ≥ 0.6 ⇒ 不出').toBeUndefined()
     const coreHit = weekendEncounterRollOf(s, ctx, ev.coreId, 0.1, 0)
-    expect(coreHit!.threat, '核心伏击 60').toBe(60)
+    expect(coreHit!.threat, '核心伏击 = round(120 × 0.75) = 90').toBe(90)
     expect(weekendEncounterRollOf(s, ctx, 'galaxy-redring', 0.1, 0), '非占领区 ⇒ 不出').toBeUndefined()
   })
 

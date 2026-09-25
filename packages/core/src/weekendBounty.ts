@@ -2,11 +2,13 @@
  * **周末入侵 · 悬赏替换与遇袭判定**（M1-b 第三片；2026-09-23/24 船长令「继续」）。
  *
  * 两件事收口在这里，引擎/界面只需换调用点：
- * 1. **被占星系的悬赏替换**：`weekendBountyCardsOf` —— 被占 ⇒ 返回**派生卡**（只覆盖
- *    id / 名字 / 威胁 / 奖励，**不改数据表**），夺回或活动结束 ⇒ 原样返回原卡；
+ * 1. **被占星系的悬赏替换**：`weekendBountyCardsOf` —— 被占 ⇒ 返回**入侵舰队卡**（H 族 = 抽签抽到的
+ *    **独立卡**（真实 id，覆写星系/名字/奖励）；A/C/G 三族 = **原卡派生**（只覆盖名字/威胁/奖励，**不改数据表**）；
+ *    夺回或活动结束 ⇒ 原样返回原卡；
  * 2. **遇袭判定**：`weekendEncounterRollOf` —— 传一个 [0,1) 的掷骰值，命中就返回**伏击 spec**
- *    （单舰 · 威胁 ×0.5 · 敌卡暂用虫洞族卡）；安全等级**破例**：占领区里**中安/高安一样会遇袭**
- *    （设计稿口径定稿 #4），这条判据由 `weekendEncounterAllowedIn` 单点给出。
+ *    （单舰 · 每场从该区域池里重抽 · **强度 ×0.75**，见 `weekendEvent.WEEKEND_AMBUSH_STRENGTH_MUL`）；
+ *    安全等级**破例**：占领区里**中安/高安一样会遇袭**（设计稿口径定稿 #4），这条判据由
+ *    `weekendEncounterAllowedIn` 单点给出。
  *
  * ⚠ 派生卡**不进** `completedBounties` 台账（首胜台账只认原卡 id）⇒ 派生的 id 统一加前缀
  * `wk-`，界面/引擎拿到的派生卡天然与原卡区分开。
@@ -17,6 +19,8 @@ import {
   WEEKEND_CORE_THREAT,
   WEEKEND_PERIPHERY_THREAT,
   weekendEncounterChanceAt,
+  weekendFoeCardsSelfPriced,
+  weekendGarrisonFoeCardId,
   weekendProgressAt,
 } from './weekendEvent'
 import { weekendAmbushSpecOf } from './weekendBattle'
@@ -43,7 +47,11 @@ export function weekendEncounterAllowedIn(state: GameState, galaxyId: string, no
   return weekendOccupiedLiveAt(state, galaxyId, nowWallMs)
 }
 
-/** 把一张原卡派生成入侵舰队卡（**只覆盖 id / 名字 / 威胁 / 奖励**；其余字段原样） */
+/**
+ * 把一张**原卡**派生成入侵舰队卡（**只覆盖 id / 名字 / 威胁 / 奖励**；其余字段原样）——
+ * ⚠ 这是 **A/C/G 三族的占位口径**（"暂用虫洞卡"）：它们还没有独立入侵卡，只能拿该星系原卡换名字/威胁。
+ * H 族走 `weekendIndependentFoeOf`（换成自家独立卡）。
+ */
 export function weekendDerivedCardOf(
   card: AnomalyDef,
   family: string,
@@ -64,13 +72,39 @@ export function weekendDerivedCardOf(
 }
 
 /**
+ * **H 族：把该星系的悬赏位换成"驻留"的那支独立入侵舰队**（船长 2026-09-25：
+ * 「外围玩家主动出击和被动遇袭都是**从骚扰和袭击舰队中抽取**。核心区，则是抽取袭击和主力舰队。」）。
+ *
+ * - 卡 = 抽签结果（`weekendGarrisonFoeCardId`）**用真实 id** ⇒ 开战能按 id 解析到卡；
+ * - **`galaxyId` 覆写成被占星系**：H 独立卡自带母港星系（`galaxy-hub`），不覆写会串残骸密度与归属；
+ * - 奖励 = **该星系原卡 ×1.4**（沿用原卡经济）；威胁 = **卡面自身**（独立卡已按定价式落值）；
+ * - 名字 = 「<族>舰队 · <卡名>」。
+ */
+function weekendIndependentFoeOf(
+  base: AnomalyDef,
+  drawn: AnomalyDef,
+  family: string,
+  galaxyId: string,
+  rewardMul: number,
+): AnomalyDef {
+  return {
+    ...drawn,
+    galaxyId,
+    name: `${family} 族舰队 · ${drawn.name}`,
+    rewardIsk: Math.max(1, Math.round((base.rewardIsk ?? 0) * rewardMul)),
+  }
+}
+
+/**
  * **某星系当前该显示的悬赏卡**（引擎/界面的唯一取数口）：
  * - 不在占领区（或已夺回 / 活动结束）⇒ **原卡原样**；
- * - 在占领区 ⇒ **派生卡**（该星系全部可见悬赏都替换成入侵舰队；核心的威胁用 120，外围 78）。
+ * - 在占领区 ⇒ **换成入侵舰队**：H 族 = 抽到的那张**独立卡**（真实 id · 覆写星系/名字/奖励）；
+ *   A/C/G 三族 = 该星系**原卡的派生版**（占位口径，只换族名/威胁 78·120/奖励 ×1.4）。
  * `cards` 传"该星系原本的可见悬赏"（可见性规则仍归调用方），返回同序的替换结果。
  */
 export function weekendBountyCardsOf(
   state: GameState,
+  ctx: SimContext,
   cards: readonly AnomalyDef[],
   galaxyId: string,
   nowWallMs: number,
@@ -79,6 +113,12 @@ export function weekendBountyCardsOf(
   if (!ev || ev.endedAtWallMs !== undefined) return cards
   if (!weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return cards
   const isCore = galaxyId === ev.coreId
+  if (weekendFoeCardsSelfPriced(ev.family)) {
+    const drawn = ctx.anomalies.get(weekendGarrisonFoeCardId(state, ev, galaxyId))
+    if (drawn) {
+      return cards.map((c) => weekendIndependentFoeOf(c, drawn, ev.family, galaxyId, WEEKEND_BOUNTY_REWARD_MUL))
+    }
+  }
   return cards.map((c) => weekendDerivedCardOf(c, ev.family, { isCore }))
 }
 
@@ -99,5 +139,5 @@ export function weekendEncounterRollOf(
   if (!weekendEncounterAllowedIn(state, galaxyId, nowWallMs)) return undefined
   const chance = weekendEncounterChanceAt(state, ev, galaxyId, nowWallMs)
   if (chance <= 0 || roll >= chance) return undefined
-  return weekendAmbushSpecOf(state, ctx, galaxyId) ?? undefined
+  return weekendAmbushSpecOf(state, ctx, galaxyId, nowWallMs) ?? undefined
 }

@@ -736,6 +736,19 @@ export interface BattleState {
   hullEscapeFrac?: number
   /** 多波次（2026-09-09）：当前波索引（0 基；AnomalyDef.waves 缺省/单波不写，读档零迁移） */
   waveIdx?: number
+  /**
+   * **本场的敌群覆写**（2026-09-25 加）：开战时传进 `startBattleFor`/`startFleetBattleFor` 的
+   * `combat.FoeOverride` **原样存一份**——`advanceBattleFor` 每拍从 `ctx` 重建敌卡，
+   * 不存的话**只有第 0 波吃到覆写**，多波卡的后续波会回到满强度（H 族遇袭 ×0.75 的 2 波卡首当其冲）。
+   * 类型与 `combat.FoeOverride` 同构（此处内联声明以避免 combat ↔ state 循环依赖）。
+   * 缺省 = 无覆写（旧档与既有战斗路径零迁移、零行为变化）。
+   */
+  foeOverride?: {
+    threat?: number
+    waves?: ReadonlyArray<{ units: number; hpShare: number }>
+    keepCardWaves?: boolean
+    strengthMul?: number
+  }
   /** 多波次演出间隔（2026-09-09 船长反馈）：当前波全灭时刻（lastTick 口径），配合 waveEnterGapMs
    * 等爆炸/残骸演出播完再刷下一波（零迁移可选字段） */
   waveClearAt?: number
@@ -1858,8 +1871,13 @@ export interface EncounterState {
   deadlineGameMs: number
   /** 玩家应战后的实时战斗（null = 未开打） */
   battle: BattleState | null
+  /**
+   * **敌群真·强度倍率**（2026-09-25 船长令：周末入侵的遇袭「**遭遇的敌人按强度\*0.75算**」）：
+   * 应战时传进 `combat.FoeOverride.strengthMul`（缩放 `hpMul`/`dmgMul`）。
+   * 普通低安遭遇 / 旧档 = 缺省 ⇒ 不缩放（**零行为变化**）。
+   */
+  foeStrengthMul?: number
 }
-
 /** B3 星系残骸记录（2026-09-05；密度模型见 docs/design/b3-salvage.md）：
  * density = 当前残骸密度（无记录 = 基础密度，由 security 推导不入档）；
  * rare = 稀有残骸计数（2026-09-10 启用：赏金任务窝点战利品，打捞必出 → 精炼炉开"高级箱"）。 */
