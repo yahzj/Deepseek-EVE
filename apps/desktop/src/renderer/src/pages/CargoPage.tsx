@@ -101,6 +101,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const pickDef = pickId ? engine.ctx.items.get(pickId) : undefined
   const pickUnits = pickId ? (cargo[pickId] ?? 0) : 0
   const pickBuy = pickId ? itemBuyQuote(engine, pickId) : undefined
+  /** 同上行：判"能不能卖"看**在不在市场目录**（2026-09-25 修；空簿 ≠ 不在目录） */
+  const pickSellable = pickId ? marketGoodOf(engine.ctx, 'item', pickId) !== undefined : false
   // 2026-09-09：船载装备（模块）点选（与物品点选分开——模块信息/卸回装备库）
   const [pickMod, setPickMod] = useState<string | null>(null)
   const pickModDef = pickMod ? engine.ctx.modules.get(pickMod) : undefined
@@ -267,6 +269,15 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   const def = engine.ctx.items.get(id)
                   if (!def) return null
                   const buy = itemBuyQuote(engine, id)
+                  /**
+                   * ⚠ **2026-09-25 修**（船长报障「**部分奢侈品…显示的是不在市场目录导致无法出售**」）：
+                   * 判"能不能卖"要看**在不在市场目录**（`marketGoodOf`），**不能**拿 `buy !== undefined` ——
+                   * `itemBuyQuote` 对「**收购簿为空**」也返回 `undefined`（它自己的注释就写着两种情形同值）
+                   * ⇒ 界面把"暂无人收购"误报成「不在市场目录（无法出售）」，**挡掉了一条本来能走通的路**
+                   * （空簿时仍可**挂限价卖单**等收购单浮现，见 `market.ts` 那句既有文案）。
+                   * 真档实测（`save-20260924-181852`）：10 款奢侈品全在目录，其中 3 款买簿为空 ⇒ 正是"部分"的来源。
+                   */
+                  const sellable = marketGoodOf(engine.ctx, 'item', id) !== undefined
                   return (
                     <ItemHover
                       key={id}
@@ -285,7 +296,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                         </span>
                       </div>
                       <div className="app-inv-btns">
-                        {isPiloted && buy !== undefined ? (
+                        {isPiloted && sellable ? (
                           <>
                             <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>
                               {tr("ui.CargoPage.038")}
@@ -449,7 +460,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               <div className="app-itempick-actions">
                 {!isPiloted ? (
                   <div className="app-dim">{tr("ui.CargoPage.050")}{targetName}{tr("ui.CargoPage.051")}</div>
-                ) : pickBuy !== undefined ? (
+                ) : pickSellable ? (
                   <button
                     className="app-btn is-primary is-small"
                     onClick={() => {
