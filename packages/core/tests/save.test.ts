@@ -405,8 +405,30 @@ describe('日志文案 id 的读写（甲案）', () => {
  * ① **下限那一版（v24）仍能升上来**；② **更早的档一律拒载入**（`SaveError('VERSION')`）——
  * 玩家侧由 `engine.start()` 开新档并写日志（本文件只管核心侧的错误码与文案）。
  */
-describe('存档迁移下限（v24 起）', () => {
-  const atVersion = (version: number): string => {
+/**
+ * **墙钟账只许前进不许回退**（2026-09-25 修 · 与"调试快进"配套）：
+ * 快进把 `state.savedAtWallMs` 推到未来（它消费的就是那段未来时间）；写盘若一律盖成 `Date.now()`，
+ * 下次读档就把账拽回来 ⇒ ① 快进推进过的入侵时间线要重来；② 再快进一次会把同一段未来算两遍
+ * （这一场被 NPC 铺底瞬间吞掉 ⇒ 板面恢复正常悬赏、遇袭不再触发）。
+ */
+describe('存档墙钟账：只许前进、不许回退', () => {
+  it('快进后写盘保留未来值；正常在线仍按 nowWallMs 盖戳', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 21 })
+    const real = 1_700_000_000_000
+    s.savedAtWallMs = real - 3_600_000
+    expect(JSON.parse(serializeSaveFile(s, real)).savedAtWallMs, '正常在线 ⇒ nowWallMs').toBe(real)
+    const future = real + 8 * 3_600_000
+    s.savedAtWallMs = future
+    const file = JSON.parse(serializeSaveFile(s, real)) as { savedAtWallMs: number }
+    expect(file.savedAtWallMs, '快进后 ⇒ 保留未来值（不被拽回）').toBe(future)
+    /** 读回来仍是这个值；且离线结算见到"负间隔"⇒ 不动（那段时间已经在快进里花掉了） */
+    const text = serializeSaveFile(s, real) // 这一份的 savedAtWallMs 就是 future
+    const back = loadSaveFile(text)
+    expect(back.state.savedAtWallMs).toBe(future)
+  })
+})
+
+describe('存档迁移下限（v24 起）', () => {  const atVersion = (version: number): string => {
     const state = createInitialState({ nowWallMs: 0, seed: 21 })
     const file = JSON.parse(serializeSaveFile(state, 0)) as { version: number }
     file.version = version

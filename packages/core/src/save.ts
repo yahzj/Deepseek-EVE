@@ -3544,10 +3544,20 @@ function normalizeState(raw: unknown): GameState {
  * （实测 `docs/test-saves/user-backup-20260907-234825.json` 300 条）。
  * 单独修"导入外部档"那条：导入 = 换了一份档，已改为**不透传**旧日志（见引擎 `importSaveFromFile`）。 */
 export function serializeSaveFile(state: GameState, nowWallMs: number = Date.now()): string {
+  /**
+   * **墙钟账只许前进、不许回退**（2026-09-25 修 · 与"调试快进"配套）：
+   * `debugFastForward` 会把 `state.savedAtWallMs` 推到**未来**（它消费的正是那段未来时间），
+   * 而写盘时若一律盖成 `Date.now()`，下次读档就把账**拽回现在** ⇒ ① 快进刚推进的入侵时间线又得重来一遍；
+   * ② 再快进一次会把同一段未来时间**算两遍**（这一场瞬间被 NPC 铺底吞掉 ⇒ 板面恢复正常悬赏、遇袭不再触发）。
+   * 取两者的较大者：正常在线恒等于 `nowWallMs`（行为逐字不变）；快进后保留未来值，离线结算见到负间隔即不动
+   * （那段时间已经在快进里花掉了）。
+   */
+  const ledger = Number.isFinite(state.savedAtWallMs) ? state.savedAtWallMs : 0
+  const stamp = Math.max(nowWallMs, ledger > 0 ? ledger : 0)
   return JSON.stringify({
     format: SAVE_FORMAT,
     version: state.version,
-    savedAtWallMs: nowWallMs,
+    savedAtWallMs: stamp,
     state,
   })
 }
