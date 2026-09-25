@@ -90,7 +90,6 @@ import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
-import { debugEnabled } from './DebugPanel'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
  * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
@@ -1843,13 +1842,20 @@ function GalaxyActions({
 }) {
   const state = engine.state
   const ctx = engine.ctx
-  // ── 虫洞入口（**旧入口已于 2026-09-14 关闭 · 船长「旧入口关闭」**）：
-  //    本行是施工期的**调试入口**——点开面板后走 `wormholeEnter(picked)`：**不消耗库存虫洞、直接用游戏种子开一趟**。
-  //    若它常显，玩家就能绕过「协会声望 ≥ 40」这道门槛、跳过"扫描发现"整条链 ⇒ 故退回调试门后。
-  //    **玩家入口唯一 = 星图「出港 · 扫描虫洞」页**：选一处库存虫洞 ⇒ 走 `wormholeEnterFromStock`（消耗该处）。
-  //    面板本体挂在 App 那一层（`onOpenWormhole`）——原先挂在这里，而本组件要"星图选中星系"才渲染
-  //    ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）；活动栏那行只在已有本趟时出现。──
-  const whEntryVisible = debugEnabled()
+  /**
+   * **旧版虫洞入口已于 2026-09-26 删除**（船长令：「将调试模式的旧版虫洞入口删除」）。
+   *
+   * 沿革：该行曾是施工期的**调试入口**（`debugEnabled()` 把关，点开面板后走 `wormholeEnter(picked)`
+   * ——**不消耗库存虫洞、直接用游戏种子开一趟**）；玩家侧在 2026-09-14 就关了这道门
+   * （它会绕过「协会声望 ≥ 40」门槛、跳过"扫描发现"整条链），只留调试可见。
+   *
+   * **玩家入口唯一 = 星图「出港 · 扫描虫洞」页**：选一处库存虫洞 ⇒ `wormholeEnterFromStock`（消耗该处）。
+   * 验收也不再需要这个后门：扫描页本身就能造库存、开趟。
+   *
+   * ⚠ 面板本体仍挂在 App 那一层（`onOpenWormhole`）——原先挂在这里，而本组件要"星图选中星系"才渲染
+   * ⇒ 人在洞里时可能回不到面板（船长 2026-09-13：「活动栏直接开面板」）；活动栏那行只在已有本趟时出现。
+   * 该回调**仍然需要**（活动栏的"进洞"跳转、星图「出港」里 → 扫描页的返回），故 prop 保留。
+   */
   /**
    * **入侵旗舰入口**（2026-09-25 船长令：「星图核心星系的**星系详细**里要添加入口」）：
    * 判据全在 core（`weekendFlagshipPrep()` 非空 = 旗舰已现身、未落定局、本族是 BOSS 族），
@@ -1987,22 +1993,6 @@ function GalaxyActions({
       {/* 旗舰战战前准备弹层（2026-09-25）：本地状态开合，弹层自包含 */}
       {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       <div className="app-bay-title">{tr("ui.Expedition.083")}</div>
-      {/* ㊕ 虫洞（终局玩法 · **旧入口已于 2026-09-14 关闭**：本行只在调试模式下保留 ——
-          它不消耗库存、直接开一趟，供验收用；玩家入口 = 星图「出港 · 扫描虫洞」页选一处库存虫洞） */}
-      {whEntryVisible ? (
-        <div className="app-ga-row">
-          <span className="app-ga-main">
-            <span className="app-ico">
-              <Glyph name="nav-wormhole" size={13} color={NAV_TONES['nav-wormhole']} />
-            </span>
-            {tr("ui.Expedition.005")}
-            <span className="app-dim app-ga-desc">{tr("ui.Expedition.259")}</span>
-          </span>
-          <button className="app-btn is-small" onClick={() => onOpenWormhole?.()} title={tr("ui.Expedition.260")}>
-            {tr("ui.Expedition.308")}
-          </button>
-        </div>
-      ) : null}
       {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面。
           ⚠ 同日第二条：「找不到是因为**不明显**，给容器加一个**红色圆边背景**」⇒ 行容器挂
           `app-ga-invasion`（观感照抄入侵框 `.app-weekend-box`：红边 ＋ 圆角 ＋ 红底）。 */}
