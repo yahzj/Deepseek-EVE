@@ -20,7 +20,7 @@ import { applyActivityGate } from './activityGate'
 import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
-import type { SimContext } from './types'
+import type { AnomalyDef, SimContext } from './types'
 import { addItem, freeCargoM3, unloadCargoToWarehouse } from './inventory'
 import { HOME_GALAXY_ID, shortestTravelMinutes } from './expedition'
 import { travelLegMs } from './travel'
@@ -42,6 +42,7 @@ import {
   wreckItemIdOf,
   wreckYieldMultiplierOf,
 } from './salvage'
+import { weekendBountyCardsOf } from './weekendBounty'
 import { scaledReturnMs } from './trips'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
@@ -73,15 +74,41 @@ export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: stri
   return cycles
 }
 
-/** 目标星系可打捞的敌群型号池（该星系悬赏群；2026-09-09 修复：按威胁加权抽型号）。
+/**
+ * 目标星系可打捞的敌群型号池（该星系悬赏群；2026-09-09 修复：按威胁加权抽型号）。
  * B1 低安遭遇模板（hidden: true，galaxyId 仅占位）**不入池**——遭遇群残骸只在击杀发生星系
  * 按注入路径成立；抽池与悬赏目录/打捞列表同口径（此前把 enc-pirate 模板算进母港池，
- * 导致在母港能捞出从未在母港出现的「狂徒巡逻编队/深空屠夫舰队」残骸）。 */
-function wreckPoolOf(ctx: SimContext, galaxyId: string): Array<{ anomalyId: string; threat: number }> {
+ * 导致在母港能捞出从未在母港出现的「狂徒巡逻编队/深空屠夫舰队」残骸）。
+ *
+ * ⚠ **2026-09-25 追加：被占星系要连"驻留的那支入侵舰队"一起入池**（船长令「修，②」）。
+ * 入侵独立卡（H 族四张）是 `hidden` ⇒ 只按静态表遍历永远进不了池，于是"入侵敌人不产自己的残骸"。
+ * 现按 `weekendBountyCardsOf`（= 悬赏替换的同一取法：外围 {骚扰, 袭击} · 核心 {袭击, 主力} 抽一支、
+ * 威胁 = 卡面自身）把它们并进来 ⇒ 在该星系打捞就能出「墨潮帮残骸（高安）」。
+ * 传 `state`/`nowWallMs` 才生效（缺省 = 老口径，纯函数区与既有用例逐字不变）；夺回/活动结束后自动回落。
+ */
+function wreckPoolOf(
+  ctx: SimContext,
+  galaxyId: string,
+  state?: GameState,
+  nowWallMs?: number,
+): Array<{ anomalyId: string; threat: number }> {
   const pool: Array<{ anomalyId: string; threat: number }> = []
+  const seen = new Set<string>()
   for (const a of ctx.anomalies.values()) {
     if (a.hidden) continue // B1 遭遇模板不进打捞池（悬赏目录同口径）
-    if (a.galaxyId === galaxyId) pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
+    if (a.galaxyId !== galaxyId) continue
+    pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
+    seen.add(a.id)
+  }
+  if (state && nowWallMs !== undefined && pool.length > 0) {
+    const base = pool.map((p) => ctx.anomalies.get(p.anomalyId)).filter((a): a is AnomalyDef => a !== undefined)
+    for (const c of weekendBountyCardsOf(state, ctx, base, galaxyId, nowWallMs)) {
+      if (seen.has(c.id)) continue
+      // 只并"独立入侵卡"（它们在静态表里是 hidden）；A/C/G 的占位派生卡 id 与原卡相同 ⇒ 上面已收
+      if (ctx.anomalies.get(c.id)?.hidden !== true) continue
+      seen.add(c.id)
+      pool.push({ anomalyId: c.id, threat: Math.max(1, c.threat) })
+    }
   }
   return pool
 }
@@ -133,7 +160,7 @@ export function startSalvageOp(state: GameState, galaxyId: string, ctx: SimConte
       }
     }
   }
-  if (wreckPoolOf(ctx, galaxyId).length === 0) {
+  if (wreckPoolOf(ctx, galaxyId, state, Date.now()).length === 0) {
     return {
       ok: false,
       error: `「${galaxy.name}」没有可打捞的敌群残骸（该星系无悬赏目标）。`,
@@ -312,7 +339,7 @@ export function pullOneWreck(
     const mulRare = salvageRoundPull(state, ctx, galaxyId)
     return { itemId: rareId, mul: mulRare, volumeM3: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') }
   }
-  const pool = wreckPoolOf(ctx, galaxyId) // 同源池：hidden 遭遇模板不入池
+  const pool = wreckPoolOf(ctx, galaxyId, state, Date.now()) // 同源池：hidden 遭遇模板不入池 + 被占星系并入驻留入侵舰队
   if (pool.length === 0) return null
   // 2026-09-12 审计 B3：改走单点 `pickWeighted`（按威胁加权；原累加循环 `roll <= acc` 即 `lte` 口径）；
   // 无中选兜底 = 池首（与改前 `chosen = pool[0]` 初值一致）
@@ -416,7 +443,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
     }
 
     // ── 打捞阶段：逐台打捞器按各自周期结算 ──
-    if (wreckPoolOf(ctx, galaxyId).length === 0) {
+    if (wreckPoolOf(ctx, galaxyId, state, Date.now()).length === 0) {
       resetOp(state)
       addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
     }

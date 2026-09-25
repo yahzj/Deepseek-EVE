@@ -437,6 +437,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-d-lo': 1,
   'wreck-e-lo': 1,
   'wreck-g-lo': 1,
+  // H 族（墨潮帮）· 入侵卡的洞外组（2026-09-25 船长令「修，②」）：与其余高安普通残骸同档（1）
+  'wreck-h-hi': 1,
   // 2026-09-14 新增（船长「允许玩家挂卖」批）：专属内容补市场行 ⇒ 全部奇货层（数字 4）
   // —— 舰船图纸 15 · 装备图纸 28 · 虫洞装备 28 · 虫洞舰船 15 · 窝点专属装备 14 · 专属无人机 3
   // —— 外加 3 张无人机一次性蓝图（bp-lair-g-drone / bp-wh-c-drone / bp-wh-e-drone）
@@ -558,6 +560,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-rare-a-hi': 4,
   'wreck-rare-b-hi': 4,
   'wreck-rare-d-hi': 4,
+  // H 族（墨潮帮）· 入侵卡的洞外组（2026-09-25 船长令「修，②」）：与其余**高安**稀有残骸同档（4）
+  'wreck-rare-h-hi': 4,
+  // 墨潮旗舰黑匣（周末入侵击毁旗舰的彩头；2026-09-25「先做壳」）——与专属内容同档（奇货层 4）
+  'blackbox-h': 4,
   'wreck-rare-a-lo': 3,
   'wreck-rare-c-lo': 3,
   'wreck-rare-d-lo': 3,
@@ -573,9 +579,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-d-wh': 2,
   'wreck-e-wh': 2,
   'wreck-g-wh': 2,
-  // H 族（墨潮帮）第 14 组（2026-09-24）：与其余洞内组同档（普通 2 / 稀有 3）
-  'wreck-h-wh': 2,
-  'wreck-rare-h-wh': 3,
+  // H 族（墨潮帮）第 14 组：并入洞外高安档（普通 = 1 见上段 · 稀有 = 4 见本段）
   'frag-mod-miner-2': 2,
   'frag-mod-cargo-2': 2,
   'frag-mod-turret-kin-2': 2,

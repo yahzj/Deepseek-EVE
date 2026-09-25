@@ -51,7 +51,7 @@ describe('残骸组表（14 组 · 族 × 地区）', () => {
         expect(region, `${m} 的地区判定`).toBe(g.region)
       }
     }
-    expect([hi, lo, wh]).toEqual([3, 5, 6]) // 高安 3 组（A/B/D）· 低安 5 组（A/C/D/E/G）· 洞内 **6** 组（+H 墨潮帮 h-wh · 2026-09-24）
+    expect([hi, lo, wh]).toEqual([4, 5, 5]) // 2026-09-25：H 族那组由 h-wh 改**洞外高安** `h-hi`（船长令「修，②」）⇒ 高安 4 · 低安 5 · 洞内 5
     expect(Object.keys(WRECK_REGION_LABELS)).toEqual(['hi', 'lo', 'wh'])
   })
 

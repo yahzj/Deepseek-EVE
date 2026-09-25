@@ -11,6 +11,7 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import { startFleetBattleFor } from './combat'
 import { weekendFlagshipSpecOf } from './weekendBattle'
+import { WEEKEND_FLAGSHIP_SHIP_ID, weekendFlagshipHpRemaining } from './weekendEvent'
 import type { FoeOverride } from './combat'
 
 /** 旗舰的 4 波（每波 4 艘、各占 1/4 总血） */
@@ -40,6 +41,17 @@ export function weekendStartFlagshipBattle(
   if (!spec) return null
   const squad = weekendFlagshipSquadOf(state)
   if (squad.length === 0) return null
-  const override: FoeOverride = { threat: spec.threat, waves: weekendFlagshipWavesOf() }
+  /**
+   * **母舰血条 = 池子剩余**（船长 2026-09-25 选「甲」）：开战这一刻把 `weekendFlagshipHpRemaining(ev)`
+   * 传进覆写口 ⇒ 战斗里母舰的满血就是池子剩余（单场不死名副其实；打空即击沉）。
+   * 覆写随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰、读档续战都吃同一份。
+   */
+  const bossHp = weekendFlagshipHpRemaining(state.weekendEvent)
+  const override: FoeOverride = {
+    threat: spec.threat,
+    waves: weekendFlagshipWavesOf(),
+    bossHp,
+    bossShipId: WEEKEND_FLAGSHIP_SHIP_ID,
+  }
   return startFleetBattleFor(state, ctx, squad, spec.cardId, state.gameMs, undefined, undefined, override)
 }

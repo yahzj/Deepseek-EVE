@@ -21,7 +21,7 @@ import {
   weekendSettlePlanOf,
 } from '../src/weekendBattle'
 import { weekendFoeCardOf, weekendNoteContribution } from '../src/weekendEvent'
-import { WEEKEND_RARE_WRECK_ID, weekendGrantRewards } from '../src/weekendBattle'
+import { weekendGrantRewards, weekendRareWreckIdFor } from '../src/weekendBattle'
 import type { WeekendEventState } from '../src/weekendEvent'
 
 const ctx = buildSimContext()
@@ -164,17 +164,26 @@ describe('周末入侵 · 结束结算（M1-b）', () => {
 })
 
 describe('周末入侵 · 奖励入账（M1-b 第五片）', () => {
-  it('ISK 进钱包 · 稀有残骸进物品仓库（走 addItem 同一条入库路径）', () => {
+  it('ISK 进钱包 · 稀有残骸进物品仓库（走 addItem 同一条入库路径；**物品 id 必须真实存在**）', () => {
     const { s } = setup()
     const isk0 = s.wallet.isk
-    const wreck0 = countItem(s, WEEKEND_RARE_WRECK_ID)
+    // 2026-09-25 修：原写死 `'wreck-rare'` —— 目录里**没有**这个 id（真形态 `wreck-rare-<组key>`），
+    //   发出去是一件「未知物品」⇒ 现按"打的那张卡所属组"解析（H 族独立卡 = `wreck-rare-h-hi`）。
+    const itemId = weekendRareWreckIdFor('ink-harass', ctx)!
+    expect(itemId).toBe('wreck-rare-h-hi')
+    expect(ctx.items.has(itemId), '奖励物品必须在目录里').toBe(true)
+    const wreck0 = countItem(s, itemId)
     const isk1 = s.wallet.isk + 2_000_000
-    const got = weekendGrantRewards(s, { isk: 2_000_000, wreck: 8, blackBox: true })
+    const got = weekendGrantRewards(s, { isk: 2_000_000, wreck: 8, blackBox: true, wreckItemId: itemId })
     expect(got.isk).toBe(2_000_000)
     expect(got.blackBox, '黑匣数量带回（物品 M4 才入库）').toBe(1)
     expect(s.wallet.isk).toBe(isk0 + 2_000_000)
     expect(s.wallet.isk).toBe(isk1)
-    expect(countItem(s, WEEKEND_RARE_WRECK_ID)).toBe(wreck0 + 8)
+    expect(countItem(s, itemId)).toBe(wreck0 + 8)
+    // 解析不到物品 id ⇒ **不发**（绝不发不存在的 id 给玩家）
+    const before = countItem(s, 'wreck-rare')
+    weekendGrantRewards(s, { wreck: 3 })
+    expect(countItem(s, 'wreck-rare')).toBe(before)
   })
 
   it('负数/缺省一律按 0 处理（不吞钱也不倒扣）', () => {

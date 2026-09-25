@@ -23,7 +23,7 @@ import {
   weekendFlagshipDefeated,
   weekendIsBossFamily,
   weekendIsFlagshipShipId,
-  WEEKEND_FLAGSHIP_HP_FLOOR_RUNS,
+  WEEKEND_FLAGSHIP_POOL_HP,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
   weekendNoteFlagshipKilled,
@@ -39,6 +39,7 @@ import {
 } from './weekendEvent'
 import type { WeekendEventState } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
+import { rareWreckItemIdOfCard } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
 
 /* ─────────────── 战斗规格 ─────────────── */
@@ -154,7 +155,10 @@ export function weekendFlagshipSpecOf(state: GameState, ctx: SimContext, nowWall
     kind: 'flagship',
     galaxyId: ev.coreId,
     cardId,
-    threat: WEEKEND_CORE_THREAT,
+    // H 族（独立卡）：威胁 = **卡面自身**（170，已按小队 ×10 定价）；A/C/G：仍按占位口径 120
+    threat: weekendFoeCardsSelfPriced(ev.family)
+      ? Math.max(1, Math.round(ctx.anomalies.get(cardId)?.threat ?? WEEKEND_CORE_THREAT))
+      : WEEKEND_CORE_THREAT,
     waves: 4,
     squadSize: 4,
     rewardMul: WEEKEND_FLAGSHIP_REWARD_MUL,
@@ -196,8 +200,6 @@ export function weekendResolveBattle(
    * 由引擎用 `combat.flagshipBattleLedger` 量出来（"按对母舰造成的伤害决定"）。
    */
   flagshipDmg = 0,
-  /** **BOSS 池下限**（母舰卡面满血 × `WEEKEND_FLAGSHIP_HP_FLOOR_RUNS`；防"只蹭一点就把池子做小"） */
-  flagshipFloorHp = 0,
   /** **这一场战斗的身份**（`battle.startedAtGameMs`）——同一场被结算两次时保证幂等 */
   flagshipRunId?: number,
 ): WeekendResolveResult {
@@ -210,7 +212,7 @@ export function weekendResolveBattle(
    */
   if (spec.kind === 'flagship' && weekendIsBossFamily(ev)) {
     // 幂等键 = 这一场战斗的身份（同一场被结算两次时不会记两遍）
-    weekendNoteFlagshipDamage(ev, flagshipDmg, flagshipFloorHp, flagshipRunId)
+    weekendNoteFlagshipDamage(ev, flagshipDmg, flagshipRunId)
   }
   /** **BOSS 口径下的"成了"**：这一场把池子打空了（单场不死 ⇒ 不看战斗本身的胜负） */
   const bossDown = spec.kind === 'flagship' && weekendIsBossFamily(ev) && weekendFlagshipDefeated(ev)
@@ -291,25 +293,45 @@ export function weekendSettlePlanOf(
 
 /* ─────────────── 奖励入账（M1-b 第五片） ─────────────── */
 
-/** 稀有残骸的**物品 id**（奖励口径：`wreck-rare`；与打捞/回收同一种货币化残骸） */
-export const WEEKEND_RARE_WRECK_ID = 'wreck-rare'
+/**
+ * **入侵旗舰黑匣的物品 id**（船长 2026-09-25：「**黑匣先做壳**」）——
+ * 先做成一件**真实物品**（可存、可回收、可售予回收商），**用途留待"改装/特殊装备"那批**。
+ * 定义在 `data/items.ts` 的 `WEEKEND_TROPHIES`（与残骸同一条注册链路）。
+ */
+export const WEEKEND_BLACKBOX_ITEM_ID = 'blackbox-h'
+
+/**
+ * **这一场该发的稀有残骸物品 id**（2026-09-25 修）：按**"打的那张卡"所属残骸组**取
+ * （H 族独立卡 ⇒ `wreck-rare-h-hi`；A/C/G 占位卡 ⇒ 它们那张虫洞卡所属组）。
+ *
+ * ⚠ 原实现写死 `WEEKEND_RARE_WRECK_ID = 'wreck-rare'` —— 那个 id **在物品目录里不存在**
+ * （真实形态是 `wreck-rare-<组key>`），实测 `ctx.items.has('wreck-rare') === false`，
+ * 发出去就是一件「未知物品」（回收画像 null ⇒ 不能回收、不能卖）。现已删除该常量。
+ * 契约保证"每张敌卡都登记进某一残骸组" ⇒ 正常路径必有值；解析不到就不发（不造假物品）。
+ */
+export function weekendRareWreckIdFor(cardId: string, ctx: SimContext): string | undefined {
+  return rareWreckItemIdOfCard(cardId, ctx) ?? undefined
+}
 
 /**
  * **把结算结果真正发下去**（引擎在拿到 `weekendResolveBattle` / `weekendSettlePlanOf` 的结果后调用）：
  * - ISK 直接进钱包；
- * - 稀有残骸走 `addItem` 进物品仓库（与战利品同一条入库路径）；
+ * - 稀有残骸走 `addItem` 进物品仓库（与战利品同一条入库路径），**物品 id 由调用方按卡解析**
+ *   （`weekendRareWreckIdFor`；缺省 = 不发，绝不发不存在的 id）；
  * - **黑匣暂不发物品**（数据表里还没有这件，M4「黑匣入库与定价」一起做）⇒ 只在返回值里带回数量。
  *
  * ⚠ 幂等由调用方保证（`weekendResolveBattle` 的"夺回只发一次"已在那一层判过）。
  */
 export function weekendGrantRewards(
   state: GameState,
-  reward: { isk?: number; wreck?: number; blackBox?: boolean },
+  reward: { isk?: number; wreck?: number; blackBox?: boolean; wreckItemId?: string },
 ): { isk: number; wreck: number; blackBox: number } {
   const isk = Math.max(0, Math.round(reward.isk ?? 0))
   const wreck = Math.max(0, Math.round(reward.wreck ?? 0))
   if (isk > 0) state.wallet.isk += isk
-  if (wreck > 0) addItem(state, WEEKEND_RARE_WRECK_ID, wreck)
+  if (wreck > 0 && reward.wreckItemId !== undefined) addItem(state, reward.wreckItemId, wreck)
+  // **黑匣**（2026-09-25「先做壳」）：真物品入库（船长 2026-09-24 口径 = 击毁旗舰必掉 ×1）
+  if (reward.blackBox) addItem(state, WEEKEND_BLACKBOX_ITEM_ID, 1)
   return { isk, wreck, blackBox: reward.blackBox ? 1 : 0 }
 }
 
@@ -341,8 +363,18 @@ export function weekendBattleInvolvedOf(
     }
   }
   const enc = state.encounter
-  if (enc.active && enc.galaxyId && weekendOccupiedLiveAt(state, enc.galaxyId, nowWallMs)) {
-    return { galaxyId: enc.galaxyId, kind: 'ambush' }
+  if (enc.active && enc.galaxyId) {
+    /**
+     * **旗舰战**（2026-09-25 修）：核心条满时核心星系**不再算"被占"**（`weekendOccupiedLiveAt` 要求进度 < 1）
+     * ⇒ 原先这条恒假、旗舰战打完全都不结算（探针实测：归属 undefined / 结算 null / 池子从未立起）。
+     * 判据改成"遭遇槽里挂的正是该族**旗舰卡** + 星系 = 本场核心"——旗舰战就是引擎「挑战旗舰」写进遭遇槽的那一场。
+     */
+    if (enc.anomalyId !== null && enc.anomalyId === weekendFoeCardOf(ev.family, 'flagship') && enc.galaxyId === ev.coreId) {
+      return { galaxyId: ev.coreId, kind: 'flagship' }
+    }
+    if (weekendOccupiedLiveAt(state, enc.galaxyId, nowWallMs)) {
+      return { galaxyId: enc.galaxyId, kind: 'ambush' }
+    }
   }
   return undefined
 }
@@ -374,12 +406,11 @@ export function weekendApplyBattleOutcome(
         : weekendAssaultSpecOf(state, ctx, involved.galaxyId)
   if (!spec) return null
   /**
-   * **旗舰 BOSS：这一场对母舰的原始伤害 ＋ 池子下限**（船长 2026-09-24 第二轮令）。
-   * - 伤害：从 `battle.units` 的 `hpMax − hp` 量（`flagshipBattleLedger`；认舰靠单位上的 `foeShipId`）；
-   * - 下限：母舰**卡面满血 × `WEEKEND_FLAGSHIP_HP_FLOOR_RUNS`**（防"只蹭一点就把池子做小"）。
+   * **旗舰 BOSS：这一场对母舰的原始伤害**（船长 2026-09-24 第二轮令）。
+   * 从 `battle.units` 的 `hpMax − hp` 量（`flagshipBattleLedger`；认舰靠单位上的 `foeShipId`）。
+   * ⚠ 2026-09-25：池子总量改成**固定常量**（船长「BOSS 血条 15 万来算」）⇒ 不再算"下限"。
    */
   let flagshipDmg = 0
-  let flagshipFloorHp = 0
   if (involved.kind === 'flagship' && weekendIsBossFamily(state.weekendEvent)) {
     const card = ctx.anomalies.get(spec.cardId)
     const flagshipIds = (card?.ships ?? [])
@@ -388,7 +419,6 @@ export function weekendApplyBattleOutcome(
     if (battle) {
       const led = flagshipBattleLedger(battle, flagshipIds)
       flagshipDmg = led.rawDmg
-      flagshipFloorHp = led.flagshipMaxHp * WEEKEND_FLAGSHIP_HP_FLOOR_RUNS
     }
   }
   /**
@@ -398,9 +428,16 @@ export function weekendApplyBattleOutcome(
   const bossDown =
     involved.kind === 'flagship' && weekendIsBossFamily(state.weekendEvent) && weekendFlagshipDefeated(state.weekendEvent)
   const outcome: WeekendOutcome = victory || bossDown ? 'win' : involved.kind === 'ambush' ? 'repel' : 'loss'
-  const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs, flagshipDmg, flagshipFloorHp, battle?.startedAtGameMs)
+  const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs, flagshipDmg, battle?.startedAtGameMs)
   const isk = (r.reclaimed?.isk ?? 0)
   const wreck = (r.reclaimed?.wreck ?? 0) + (r.flagshipKilled?.wreck ?? 0)
-  const granted = weekendGrantRewards(state, { isk, wreck, blackBox: r.flagshipKilled !== undefined })
+  // **稀有残骸的真实物品 id**：按这一场打的那张卡所属残骸组取（H 族 ⇒ `wreck-rare-h-hi`）
+  const wreckItemId = weekendRareWreckIdFor(spec.cardId, ctx)
+  const granted = weekendGrantRewards(state, {
+    isk,
+    wreck,
+    blackBox: r.flagshipKilled !== undefined,
+    ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+  })
   return { galaxyId: involved.galaxyId, kind: involved.kind, gain: r.progressGain, isk: granted.isk, wreck: granted.wreck, note: r.note }
 }

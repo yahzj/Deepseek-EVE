@@ -521,7 +521,8 @@ export const WORMHOLE_RARE_WRECK_CARD_IDS: readonly string[] = WORMHOLE_FOE_CARD
  *
  * **H 族（墨潮帮）四张卡**（2026-09-24 船长逐条给定编成，原话见各卡头注）：
  * 骚扰舰队（1 波）· 袭击舰队（2 波）· 主力舰队（2 波）· 旗舰部队（4 波）。
- * 四张都 `hidden: true` ＋ `region: 'wh'`（不进悬赏目录；地区按入侵口径计，不参与星图侧派发）。
+ * 四张都 `hidden: true` ＋ `region: 'hi'`（不进悬赏目录；地区按**洞外高安口径**计——2026-09-25 船长裁定
+ * 「修，②」：入侵舰队在高安/中安/低安都会出现，残骸组因此从洞内 `h-wh` 改成洞外 `h-hi`）。
  *
  * **强度口径**（2026-09-25 重定价批 · 船长逐条裁定）：
  * - **威胁 = 战力标签 = 卡面属性的实测价**：`X = √(全波总血 × 峰值波火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`
@@ -557,7 +558,7 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮骚扰舰队',
   galaxyId: 'galaxy-hub',
-  region: 'wh',
+  region: 'hi',
   threat: 90,
   foeTargeting: 'random',
   dmgMix: { kinetic: 6, explosive: 4 }, // 全卡都是突击舰（船长 2026-09-24 第二轮令：突击舰改 6 动能 : 4 爆炸）
@@ -590,7 +591,7 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮袭击舰队',
   galaxyId: 'galaxy-hub',
-  region: 'wh',
+  region: 'hi',
   threat: 108,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 }, // 主体（鱼雷舰 ×3）是导弹/爆炸系
@@ -633,7 +634,7 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮主力舰队',
   galaxyId: 'galaxy-hub',
-  region: 'wh',
+  region: 'hi',
   threat: 129,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 },
@@ -665,17 +666,24 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
  * 卡自己的编成在 `ships[]` 的 `wave` 上；舰级路径不吃覆写的 `units`/`hpShare` ⇒ 两者都 4 波时实战一致，
  * 但**波声明数**（预估胜率的"峰值波小队数"与命名档都用它）必须写对。
  *
- * ⚠ **2026-09-25：本卡本轮一字未动**——威胁/属性/波表仍是旧口径（锚点 45 · 总血 1,652 = `F(120)`，
- * 血÷DPS 224），按新定价式的实测价是「单舰 ×3 ⇒ 36 · 4 舰小队 ×10 ⇒ 17」，与它挂的 45 不符。
- * 船长令「**旗舰因为是小队战，之后在讨论**」⇒ 留待单独的"旗舰轮"重定（届时系数取 `squad = 10`）。
+ * ⚠ **2026-09-25 旗舰轮：本卡已按新定价式重标**——威胁 **170**（船长令）· 系数 **4 舰小队 ×10**
+ * （入侵的压轴小队战，与三张"单舰 ×3"的卡不同源）；母舰**舰级血 3,920 → 39,200**（船长令 ×10）。
+ * 属性落法与三张非旗舰卡同源 = **每艘船的血与单发同乘 K**（⇒ 血÷DPS = 舰级自然比），
+ * `K = 1.7753`（`hpMul` = K · `dmgMul` = K ÷ 补偿 1.875 = 0.9468）：
+ * - 母舰 **69,592 血 / 799 单发**（＋2 架重袭机）· 战巡 ×3 **4,971 / 658** · 干扰舰 ×3 **1,598 / 186** ·
+ *   突击舰 ×4 **646 / 91** · 鱼雷舰 ×4 **639 / 160**（共 15 艘）；
+ * - 全波总血 **94,439** · 峰值波 **357.7 DPS**（名义 ≈398，吃现行"150 越线 15% 折扣"后）· X = 5,812
+ *   ⇒ 达成预算 `5X÷10` = **2,906 ≤ F(170) = 2,906** ✓；**护航强度 = 旧 120 方案的 102%**；
+ * - **BOSS 口径**（船长 2026-09-25 选甲）：战斗里的血条 = **池子剩余**（`weekendLaunch` 传
+ *   `FoeOverride.bossHp`，池子 = 固定 **150,000**）⇒ 单场不死名副其实；母舰卡面 69,592 只作**基准**。
  */
 export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
   id: 'ink-flagship',
   foeFamily: 'H',
   name: '墨潮旗舰部队',
   galaxyId: 'galaxy-hub', // 只作日志/展示归属；本卡不进任何星系目录（hidden）
-  region: 'wh', // 卡级地区覆写：入侵卡与洞内卡同口径（否则会被按高安卡核）
-  threat: ANCHOR_THREAT, // 缩放锚点（实际威胁由入侵覆盖 120）
+  region: 'hi', // 卡级地区覆写：入侵卡与洞内卡同口径（否则会被按高安卡核）
+  threat: 170, // 2026-09-25 船长令：卡面威胁 = 实测价（旗舰战不再覆写 120）
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 },
   waves: [
@@ -684,21 +692,16 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
     { units: 3, hpShare: 0.25 },
     { units: 4, hpShare: 0.3 }, // ⚠ 原写 3：与 `ships` 里第 3 波的 4 条条目不符（船长 2026-09-24 追问后改齐）
   ],
-  /**
-   * ⚠ **两轮船长令的连带重标**（2026-09-24）：血型改 0.5 护盾 ⇒ 突击舰/鱼雷舰/干扰舰 ×1.176、
-   * 战巡 ×0.85（旧总血守恒：103/159/116/159 点不变）；母舰那条另见 BOSS 机制（0.2/0.55/0.25 血型不动，
-   * 但同波守恒 ×0.85 · 单场可达份额 `flagshipHpScale`，落码时定值）。
-   */
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 0.2266, dmgMul: 0.0475, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 0.2677, dmgMul: 0.066 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 0.1377, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 0.1377, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 0.0516, dmgMul: 0.0105 },
-    { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 0.038, dmgMul: 0.008 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 0.1378, dmgMul: 0.029, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 3, hpMul: 0.0354, dmgMul: 0.0105 },
-    { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 0.3444, dmgMul: 0.066 },
+    { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 1.7753, dmgMul: 0.9468 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 1.7753, dmgMul: 0.9468 },
+    { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },
+    { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },
+    { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },
   ],
   standingReq: 0,
   standingGain: 0,

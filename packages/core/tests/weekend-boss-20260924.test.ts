@@ -22,8 +22,8 @@ import {
   WEEKEND_BOSS_FAMILIES,
   WEEKEND_BOSS_TICK_MAX_MS,
   WEEKEND_FLAGSHIP_DEADLINE_MS,
-  WEEKEND_FLAGSHIP_HP_FLOOR_RUNS,
-  WEEKEND_FLAGSHIP_RUNS,
+  WEEKEND_FLAGSHIP_POOL_HP,
+  weekendFlagshipHpRemaining,
   weekendBossPoolView,
   weekendFlagshipDefeated,
   weekendIsBossFamily,
@@ -68,52 +68,52 @@ describe('旗舰 BOSS 池 · 累计伤害', () => {
     expect(weekendIsBossFamily(bossEvent(s, 'A'))).toBe(false)
     // 非 BOSS 族：任何记账都是空转（逐字走老口径）
     const evA = bossEvent(s, 'A')
-    expect(weekendNoteFlagshipDamage(evA, 9_999, 0)).toBe(false)
+    expect(weekendNoteFlagshipDamage(evA, 9_999)).toBe(false)
     expect(evA.flagshipHpMax).toBeUndefined()
     expect(weekendBossPoolView(s, evA)).toBeNull()
   })
 
-  it('**池子总量 = 5 场 × 单场最高伤害**：第一场 100 ⇒ 池 500；打到 400 还剩 100', () => {
+  it('**池子 = 固定 150,000**（船长 2026-09-25）：首次接战即立起，与"首战打多少"无关', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    expect(weekendNoteFlagshipDamage(ev, 100, 0, 1)).toBe(false) // 首场定池（runId 1）
-    expect(ev.flagshipHpMax).toBe(100 * WEEKEND_FLAGSHIP_RUNS)
+    expect(weekendNoteFlagshipDamage(ev, 100, 1)).toBe(false) // 首场（runId 1）
+    expect(ev.flagshipHpMax).toBe(WEEKEND_FLAGSHIP_POOL_HP) // ≠ 5 × 100（旧自适应口径已废）
     expect(ev.flagshipHpDone).toBe(100)
     // 同一场重复结算（引擎可能调两次）⇒ **幂等**，不再叠加
-    expect(weekendNoteFlagshipDamage(ev, 100, 0, 1)).toBe(false)
+    expect(weekendNoteFlagshipDamage(ev, 100, 1)).toBe(false)
     expect(ev.flagshipHpDone).toBe(100)
-    // 第二场打得更多（150）⇒ 池子抬到 750（始终"5 场"）
-    weekendNoteFlagshipDamage(ev, 150, 0, 2)
+    // 第二场打得更多（150）⇒ 池子**不变**（固定常量）、伤害照累计
+    weekendNoteFlagshipDamage(ev, 150, 2)
     expect(ev.flagshipHpDone).toBe(250)
-    expect(ev.flagshipHpMax).toBe(150 * WEEKEND_FLAGSHIP_RUNS)
-    // 继续打完（每场 150，2000ms 一场）⇒ 判定击沉
-    let down = false
-    for (let i = 0; i < 5 && !down; i++) down = weekendNoteFlagshipDamage(ev, 150, 0, 3 + i)
-    expect(down).toBe(true)
+    expect(ev.flagshipHpMax).toBe(WEEKEND_FLAGSHIP_POOL_HP)
+    // 之后每场 50,000 ⇒ 第 3 场把池子打空 ⇒ 判定击沉
+    expect(weekendNoteFlagshipDamage(ev, 50_000, 3)).toBe(false)
+    expect(weekendNoteFlagshipDamage(ev, 50_000, 4)).toBe(false)
+    expect(weekendNoteFlagshipDamage(ev, 49_750, 5)).toBe(true)
     expect(weekendFlagshipDefeated(ev)).toBe(true)
   })
 
-  it('**只算打进母舰的伤害**：一场 0 输出 ⇒ 0 进度、池子仍未锁定', () => {
+  it('**只算打进母舰的伤害**：一场 0 输出 ⇒ 0 进度（池子仍按常量立起，界面不再"待接战"）', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    expect(weekendNoteFlagshipDamage(ev, 0, 0)).toBe(false)
-    expect(ev.flagshipHpMax).toBeUndefined()
+    expect(weekendNoteFlagshipDamage(ev, 0)).toBe(false)
+    expect(ev.flagshipHpMax, '2026-09-25：池子固定 ⇒ 接战即立起').toBe(WEEKEND_FLAGSHIP_POOL_HP)
     expect(ev.flagshipHpDone ?? 0).toBe(0)
-    expect(weekendBossPoolView(s, ev)).toBeNull() // 界面照"待接战"显示
+    expect(weekendBossPoolView(s, ev)!.needDmg).toBe(WEEKEND_FLAGSHIP_POOL_HP)
   })
 
-  it('**池子下限**：只蹭了 3 点伤害时，池子仍按下限（防"把池子做小"）', () => {
+  it('母舰血条 = **池子剩余**（船长选甲）：`weekendFlagshipHpRemaining` 随累计伤害下降、下限 1', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    const floor = 4_000
-    weekendNoteFlagshipDamage(ev, 3, floor)
-    expect(ev.flagshipHpMax).toBe(floor) // max(3×5=15, 下限 4000)
-    expect(ev.flagshipHpDone).toBe(3)
-    expect(weekendBossPoolView(s, ev)!.needDmg).toBe(floor - 3)
+    expect(weekendFlagshipHpRemaining(ev), '未接战 ⇒ 满池').toBe(WEEKEND_FLAGSHIP_POOL_HP)
+    weekendNoteFlagshipDamage(ev, 60_000, 1)
+    expect(weekendFlagshipHpRemaining(ev)).toBe(WEEKEND_FLAGSHIP_POOL_HP - 60_000)
+    weekendNoteFlagshipDamage(ev, 90_000, 2)
+    expect(weekendFlagshipHpRemaining(ev), '打空后夹到 1（开战入口另判"已击沉"）').toBe(1)
   })
 
-  it('下限的来路：`WEEKEND_FLAGSHIP_HP_FLOOR_RUNS` = 5（母舰卡面满血 × 5）', () => {
-    expect(WEEKEND_FLAGSHIP_HP_FLOOR_RUNS).toBe(5)
+  it('池子常量：`WEEKEND_FLAGSHIP_POOL_HP` = 150,000（≈2.5 个母舰）· 旧的 ×5 下限常量已删', () => {
+    expect(WEEKEND_FLAGSHIP_POOL_HP).toBe(150_000)
   })
 })
 
@@ -121,7 +121,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
   it('**2 小时削 100%**：削到一半时读数 = 50%，且这是**独立进度**（不扣玩家已造成的伤害）', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    weekendNoteFlagshipDamage(ev, 1_000, 0, 1) // 池 5000
+    weekendNoteFlagshipDamage(ev, 1_000, 1) // 池 5000
     /**
      * ⚠ `debugQuick` 下 2 小时窗口**同样 ÷60**（= 2 分钟）⇒ 要按**本档的实际窗口**折算，
      * 不能拿 `WEEKEND_FLAGSHIP_DEADLINE_MS` 原值直接除（调试档下它会瞬间削满）。
@@ -133,7 +133,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     expect(v.octopusFrac).toBeCloseTo(0.5, 10)
     expect(v.octopusDone).toBeCloseTo(v.hpMax / 2, 6)
     expect(v.hpDone).toBe(1_000) // 玩家那 1000 还在
-    expect(v.playerFrac).toBeCloseTo(0.2, 10)
+    expect(v.playerFrac).toBeCloseTo(1_000 / WEEKEND_FLAGSHIP_POOL_HP, 10)
     // 到点 ⇒ 章鱼人削满
     expect(weekendOctopusTick(s, ev, windowMs / 2, false)).toBe(true)
   })
@@ -141,7 +141,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
   it('**战斗中暂停**（船长：「玩家正在战斗时，会暂停削血」）', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    weekendNoteFlagshipDamage(ev, 1_000, 0, 1)
+    weekendNoteFlagshipDamage(ev, 1_000, 1)
     const windowMs = weekendNpcTimelineMs(s, WEEKEND_FLAGSHIP_DEADLINE_MS) // 调试档 = 2 分钟
     expect(weekendOctopusTick(s, ev, windowMs, true)).toBe(false)
     expect(ev.octopusDrainedMs ?? 0).toBe(0) // 整整一个窗口一点没削
@@ -153,7 +153,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
   it('**离线暂停**（船长：「挂起：离线时章鱼也停」）：心跳不传墙钟 ⇒ 整拍不推进', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    weekendNoteFlagshipDamage(ev, 1_000, 0)
+    weekendNoteFlagshipDamage(ev, 1_000)
     expect(weekendTickBoss(s, undefined, false)).toEqual({})
     expect(ev.octopusDrainedMs ?? 0).toBe(0)
     // 在线第一拍只立基线（没有"上一拍"就没有可累计的时长）
@@ -167,7 +167,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
   it('**大步长只按一拍算**（后台标签页 / 离线补算后的第一次心跳不会整段削掉）', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    weekendNoteFlagshipDamage(ev, 1_000, 0)
+    weekendNoteFlagshipDamage(ev, 1_000)
     weekendTickBoss(s, 0, false) // 立基线
     weekendTickBoss(s, 10 * H_MS, false) // 一次跳 10 小时
     expect(ev.octopusDrainedMs).toBe(WEEKEND_BOSS_TICK_MAX_MS)
@@ -176,7 +176,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
   it('**削满 ⇒ 章鱼人得手并结束本场**（`flagshipDown = octopus`）', () => {
     const s = fresh()
     const ev = bossEvent(s)
-    weekendNoteFlagshipDamage(ev, 1_000, 0)
+    weekendNoteFlagshipDamage(ev, 1_000)
     weekendTickBoss(s, 0, false)
     // 分多次推进到 2 小时
     let down: { down?: 'octopus' } = {}

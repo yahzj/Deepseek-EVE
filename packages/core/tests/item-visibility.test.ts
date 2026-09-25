@@ -69,7 +69,7 @@ describe('物品目录级可见性（2026-09-13 立闸 · 2026-09-14 虫洞上�
    */
   it('洞内稀有残骸（`wreck-rare-*-wh`）：在玩家可见目录里，且是高级箱画像', () => {
     const whWrecks = [...ctx.items.values()].filter((d) => d.id.startsWith('wreck-rare-') && d.id.endsWith('-wh'))
-    expect(whWrecks.length, '一件洞内稀有残骸都没有（`context.ts` 的组注册断了？）').toBe(6) // 2026-09-24：5 → 6（+H 族墨潮帮 h-wh；H 族改四张入侵卡后仍是 6 组 wh）
+    expect(whWrecks.length, '一件洞内稀有残骸都没有（`context.ts` 的组注册断了？）').toBe(5) // 2026-09-25：6 → **5**（H 族那组改成洞外 `h-hi`，不再是 wh 组）
     const visibleIds = new Set(visibleItemDefs(ctx).map((d) => d.id))
     for (const def of whWrecks) {
       expect(itemReleased(def), `${def.id}（${def.name}）仍被闸门挡着`).toBe(true)

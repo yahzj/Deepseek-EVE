@@ -28,6 +28,10 @@ import {
   WRECK_GROUPS,
   RECYCLE_YIELD_PER_M3,
   recyclePoolMeanIsk,
+  // 2026-09-25：入侵独立卡也算"会产出残骸"的成员（被占星系的打捞池会并入它们）
+  WEEKEND_FAMILIES,
+  weekendFoeCardOf,
+  weekendFoePoolOf,
 } from '@whale/core'
 
 const ctx = buildSimContext()
@@ -95,11 +99,18 @@ function main(): void {
   console.log('══ B3.1 残骸组保值池对照（目标：组池均价 = 组目标均价 ±3%）══')
   let bad = 0
   let rows = 0
+  /**
+   * 入侵独立卡（`hidden`，但被占星系的打捞池会把"驻留的那支"并进来 · 2026-09-25）
+   * ⇒ 与洞内卡同理，算「会产出残骸」的成员（否则 `h-hi` 组这条会读成空集）。
+   */
+  const invasionCardIds = new Set<string>(
+    WEEKEND_FAMILIES.flatMap((f) => [...weekendFoePoolOf(f, false), ...weekendFoePoolOf(f, true), weekendFoeCardOf(f, 'flagship')]),
+  )
   const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
   for (const g of WRECK_GROUPS) {
     rows += 1
     const producing = [...ctx.anomalies.values()].filter(
-      (a) => g.members.includes(a.id) && (!a.hidden || g.region === 'wh'),
+      (a) => g.members.includes(a.id) && (!a.hidden || g.region === 'wh' || invasionCardIds.has(a.id)),
     )
     let wSum = 0
     let acc = 0
