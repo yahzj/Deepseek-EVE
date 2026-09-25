@@ -25,11 +25,11 @@ import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun,
 import { addLog, shipLockedInWormhole } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
-import { WORMHOLE_ORE_ITEM_ID, wormholeAdmission, wormholeBagSlotsOfFleet } from './wormhole'
+import { WORMHOLE_ORE_ITEM_ID, wormholeAdmission, wormholeBagSlotsOfFleet, wormholeScanBonusOf } from './wormhole'
 import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
 import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, WORMHOLE_CORE_WEIGHTS } from './wormholeSalvage'
-import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul } from './wormholeFoes'
+import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul, wormholeLayerThreat } from './wormholeFoes'
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreName, aiCoreShipUsed, gainAiCore, industryAiBonus } from './ai'
@@ -58,8 +58,11 @@ function countFittedBySlot(state: GameState, ctx: SimContext, shipIds: readonly 
 
 /**
  * 编队战力（**快速对判**用：只比"DPS × 有效血量"的期望，不逐帧跑战斗、不掷单发）。
- * 现有 `SimContext` 没有现成的编队战力接口 ⇒ 这里按"槽位武装数 × 船型档"给一个**可复现**的量级读数；
- * 它的唯一用途是"这一场打不打"的取舍（打不过就绕开），不参与任何结算数值 ⇒ 粗一点是安全的。
+ *
+ * ⚠ **量纲必须与对手同尺**：对手用游戏真值 `wormholeLayerThreat(depth)`（层 1 = 45，每层 ×1.10）。
+ * 本函数第一版写成 `20 + 14×层`（层 8 = 132，比真值 96 高一大截）⇒ 4×T1 的自动探索
+ * **连层 2 的守卫都过不去**，卡在层 2 一辈子（读数：层深恒 2.0、一次"回合尽"都没有）。
+ * 现在按"武装数 × 一个护卫档的威胁量级"给玩家侧读数，两边才算可比。
  */
 function fleetPowerOf(state: GameState, ctx: SimContext, shipIds: readonly string[]): WormholeAutoPower {
   let guns = 0
@@ -78,13 +81,18 @@ function fleetPowerOf(state: GameState, ctx: SimContext, shipIds: readonly strin
     guns += own
     ehp += tier * 10 * Math.max(0.1, ship.durability ?? 1)
   }
-  return { dps: Math.max(1, guns * 10), ehp: Math.max(1, ehp) }
+  // 一把武装 ≈ 8 点威胁量级（与 `wormholeLayerThreat` 的层 1 = 45 同一把尺：4×3 门 ≈ 96）
+  return { dps: Math.max(1, guns * 8), ehp: Math.max(1, ehp) }
 }
 
-/** 某层守卫的战力（快速对判的对手；层威胁越高越强，与 `wormholeLayerThreat` 同向） */
+/**
+ * 某层守卫的战力（快速对判的对手）：**直接用游戏真值** `wormholeLayerThreat(depth)`
+ * （层 1 = 45，每层 ×1.10 ⇒ 层 9 ≈ 96）。
+ */
 function guardPowerOf(ctx: SimContext, family: WormholeFamily, depth: number): WormholeAutoPower {
+  void ctx
   void family
-  const threat = 20 + depth * 14 // 与洞内敌卡威胁同量级的粗读数
+  const threat = wormholeLayerThreat(depth)
   return { dps: threat, ehp: threat * 6 }
 }
 
@@ -695,6 +703,13 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     miners: countFittedBySlot(state, ctx, run.shipIds, 'miner'),
     salvagers: countFittedBySlot(state, ctx, run.shipIds, 'salvager'),
     power: fleetPowerOf(state, ctx, run.shipIds),
+    /**
+     * **扫描半径 = 基础 1 + Σ 编队各船的 `wormholeScanRadiusBonus`**
+     * （鹦鹉螺 `sh-nautilus` / 鲸盟护卫 `sh-wh-{a,d,g}-frigate`，每条 +1 且**可叠加** ——
+     * 船长 2026-09-13「编入队伍就有效、且可以叠加」）。与手动进洞同一个求和口径
+     * （`wormholeScanBonusOf`）：一次扫描揭开的格数按半径**平方**放大 ⇒ 4×鹦鹉螺 半径 5、一次 91 格。
+     */
+    scanRadius: 1 + wormholeScanBonusOf(ctx, run.shipIds),
     guardPowerOf: (d) => guardPowerOf(ctx, meta.family, d),
     // 谜质科技：回合加成由 `tf` 反推（`baseTurns × turnMul − baseTurns`）
     techTurnBonus: Math.max(0, Math.round(tf.baseTurns * tf.turnMul) - tf.baseTurns),

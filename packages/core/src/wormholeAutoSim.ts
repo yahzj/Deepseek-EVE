@@ -44,11 +44,16 @@ import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicChanceOf } from './wormholeSa
 import { wormholeLayerRewardMul } from './wormholeFoes'
 import { WORMHOLE_TURN_BASE, WORMHOLE_TURN_MASS_COEF, wormholeStepCost, WORMHOLE_TOTAL_MASS_CAP } from './wormhole'
 
-/** 走一格 + 扫一格（船长表里的"边走边扫"）；层末入口/守卫的开销走 `wormholeStepCost` */
-const STEP_COST = WORMHOLE_TURN_PER_MOVE + WORMHOLE_TURN_PER_SCAN
+/**
+ * **一"步"的回合开销 = 移动 1 回合**。
+ * ⚠ **扫描要单独算，而且不能按"每格 1 回合"算**：`gridScanTargets` + `WORMHOLE_SCAN_RADIUS_BASE`(1)
+ * ⇒ **一次扫描揭示 7 格（自身 + 一圈六格）、只花 1 回合**。本模块第一版把它按"每格 1 回合"计，
+ * 把扫描成本放大了 7 倍，于是 4×T3（45 回合）连层 3 都上不去 —— 船长 2026-09-26 一问就露馅。
+ */
+const STEP_COST = WORMHOLE_TURN_PER_MOVE
 
 /** **浅层留手比例**：本层最多捡到 `货舱 × 本值` 就转去下潜（深层收益 ×1.2/层，早下潜更划算） */
-export const WORMHOLE_AUTO_DESCEND_HOLD_SHARE = 0.45
+export const WORMHOLE_AUTO_DESCEND_HOLD_SHARE = 0.25
 /** 撤离前留的回合余量（不够就不下潜、就地收工） */
 const EXTRACT_RESERVE_TURNS = 2
 
@@ -74,6 +79,10 @@ export interface WormholeAutoDescend {
   holdFull: boolean
   /** 是否因回合耗尽而收工 */
   outOfTurns: boolean
+  /** 这一趟扫描花了多少回合（含"未知格补扫"那几次）——用来量"扫描距离船"到底省了多少 */
+  turnsOnScan: number
+  /** 这一趟移动花了多少回合 */
+  turnsOnMove: number
 }
 
 /** 快速对判用的编队战力（DPS × 有效血量；只用于"打不打"的取舍，不参与结算数值） */
@@ -109,6 +118,13 @@ export function wormholeAutoDescend(opts: {
   salvagers: number
   /** 编队战力（快速对判） */
   power: WormholeAutoPower
+  /**
+   * **本趟的扫描半径** = `WORMHOLE_SCAN_RADIUS_BASE` + Σ 编队各船的 `wormholeScanRadiusBonus`。
+   * ⚠ 本模块第一版**恒按基础 1 算**（一次扫 7 格）——漏了鹦鹉螺 / 鲸盟护卫这类"扫描距离"船。
+   * 它们每条 **+1 且可叠加**（船长 2026-09-13「编入队伍就有效、且可以叠加」）⇒ 4×鹦鹉螺 的真实半径
+   * 是 **5（一次扫 91 格）**，与"半径 1"完全不是一个量级；漏掉会系统性高估回合成本、低估可下深度。
+   */
+  scanRadius: number
   /** 每层守卫的战力（快速对判；由调用方按层威胁换算） */
   guardPowerOf: (depth: number) => WormholeAutoPower
   /** 谜质科技给的**最大回合**加成（与手动的 `wormholeTurnBudget(mass, techTurnBonus)` 同一份） */
@@ -116,7 +132,7 @@ export function wormholeAutoDescend(opts: {
   /** 谜质科技系数（与旧口径同一套：残骸线 / 采集线） */
   tech: { wreck: number; ore: number }
 }): WormholeAutoDescend {
-  const { seed, startDepth, totalMass, holdM3, miners, salvagers, power, guardPowerOf, tech } = opts
+  const { seed, startDepth, totalMass, holdM3, miners, salvagers, power, guardPowerOf, tech, scanRadius } = opts
   const rng = mulberry(seed * 6364136223846793005 + 1442695040888963407)
   let turns = turnBudgetOf(totalMass, opts.techTurnBonus ?? 0)
 
@@ -131,6 +147,8 @@ export function wormholeAutoDescend(opts: {
     relicBoxes: 0,
     holdFull: false,
     outOfTurns: false,
+    turnsOnScan: 0,
+    turnsOnMove: 0,
   }
   let holdUsed = 0
   const archetype = wormholeArchetypeOf(seed)
@@ -165,6 +183,23 @@ export function wormholeAutoDescend(opts: {
     // 出发位置 = 入口（入口格本身不算产出格，与手动"到达即铺产出"的规则一致：只有产出地点才铺）
     let pos: HexCell = grid.start
 
+    /**
+     * **扫描账**（2026-09-26 船长追问补上）：一次扫描花 **1 回合**、揭开 `scanRadius` 半径的**整个盘**
+     * （`gridScanTargets` + `grid.scanRadius`）。半径 1 ⇒ 一次 7 格；**4×鹦鹉螺（每条 +1 可叠加）⇒ 半径 5、
+     * 一次 91 格**，一个半径 2~3 的盘**一屏就扫穿了**。
+     * 所以本层要花几次扫描，取决于"这一层的盘要几屏才能盖住"——这正是扫描距离船的价值所在。
+     */
+    const scanR = Math.max(1, Math.floor(scanRadius))
+    const cellsInLayer = hexDiskCells(radius).length
+    const scansNeeded = Math.max(1, Math.ceil(cellsInLayer / (3 * scanR * scanR + 3 * scanR + 1)))
+    const scanCost = scansNeeded * WORMHOLE_TURN_PER_SCAN
+    if (turns - scanCost < EXTRACT_RESERVE_TURNS) {
+      out.outOfTurns = true
+      break
+    }
+    turns -= scanCost
+    out.turnsOnScan += scanCost
+
     while (turns > EXTRACT_RESERVE_TURNS) {
       if (holdUsed >= holdCapThisLayer) break
       // ① 最近目标（贪心；**遗迹优先**——它出稀有残骸与安全货柜，是这趟最值钱的一条线；
@@ -187,6 +222,14 @@ export function wormholeAutoDescend(opts: {
       const need = bestD * STEP_COST
       if (turns - need < EXTRACT_RESERVE_TURNS) break
 
+      /**
+       * **未知格不可直达**（2026-09-26 补）：手动进洞时玩家只能走向**已扫出来**的格；
+       * 目标若还在探测圈外，就得在路上再扫一次（**1 回合**、揭开 `scanRadius` 一圈）才谈得上走过去。
+       * 这条才是"扫描距离船"真正的价值：半径 5 几乎一屏盖住整层，半径 1 时必须边走边扫。
+       */
+      if (bestD > scanR && turns - WORMHOLE_TURN_PER_SCAN < EXTRACT_RESERVE_TURNS) break
+      const revealCost = bestD > scanR ? WORMHOLE_TURN_PER_SCAN : 0
+
       // ② 战斗格：先对判（打不过就划掉，不再考虑）
       if (target.place === 'ship') {
         const gp = guardPowerOf(depth)
@@ -195,9 +238,9 @@ export function wormholeAutoDescend(opts: {
           worth.splice(bestIdx, 1)
           continue
         }
-        // 打一场：开销 = 节点基础 + 每多一波 1 回合（与手动同口径）
+        // 打一场：开销 = 节点基础 + 每多一波 1 回合（与手动同口径）+ 落点扫描 1 回合
         const cost = wormholeStepCost(2, 0)
-        if (turns - need - cost < EXTRACT_RESERVE_TURNS) break
+        if (turns - need - cost - revealCost < EXTRACT_RESERVE_TURNS) break
         turns -= need + cost
         out.fightsWon += 1
         out.wreckM3 += pileM3(mul, rng, tech.wreck)
@@ -208,7 +251,10 @@ export function wormholeAutoDescend(opts: {
         continue
       }
 
-      turns -= need
+      // 移动过去（+ 必要的补扫）
+      turns -= need + revealCost
+      out.turnsOnScan += revealCost
+      out.turnsOnMove += need
       pos = target.cell
       out.cellsExplored += 1
       worth.splice(bestIdx, 1)
