@@ -1258,12 +1258,17 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /**
    * 战斗屏左上角那枚按钮。它**只关观看界面**，战斗在后台照常推进（悬停说明 `.105` 把这一点写清楚）。
    *
-   * ⚠ **2026-09-22 回滚**：窗口化那阵子它写「← 最小化」（船长当时报障「说是退出战斗其实不准确，
-   * 应该是最小化战斗窗口」——那是**窗口形态下**的判断）；船长当日令「界面回滚，战斗界面回滚到
-   * 全屏显示」⇒ 战场回到全屏覆盖层，"最小化"不再成立，**退回原文案「← 退出战场」**。
+   * ⚠ **命名沿革（两改一读，别再反复）**：
+   * - **2026-09-20**：窗口化那阵子写「← 最小化」（船长报障「说是退出战斗其实不准确，应该是最小化
+   *   战斗窗口」）；
+   * - **2026-09-22 退回**：船长令「界面回滚，战斗界面回滚到全屏显示」⇒ 战场回全屏覆盖层，当时判定
+   *   "最小化"是**窗口形态专属**的说法，退回「← 退出战场」；
+   * - **2026-09-26 定回「← 最小化」**：船长令「**将战斗画面的退出战场按钮改为文字最小化**」。
+   *   据以改判的事实（本按钮**在两种形态下的动作完全相同**，全屏也一样成立）：只关**观看界面**，
+   *   战斗在后台照常推进，右下角「战斗中 · 进入战场」随时点回来 ⇒ 对玩家而言就是"把战场收起来"。
    * 若要再改口径（例如「← 关闭战场」），改这一条即可。
    */
-  "ui.BattleScreen.037": { zh: "← 退出战场", en: "← Leave battle" },
+  "ui.BattleScreen.037": { zh: "← 最小化", en: "← Minimize" },
   "ui.BattleScreen.038": { zh: "副本内战斗没结束无法撤退：打完本节点，层末才能选择撤离", en: "Cannot retreat while the battle is unfinished: clear this node, and withdrawal is offered at the end of the layer" },
   /** 洞内"本场必须打完"的提示——**2026-09-20 改文案**：去掉了"（战场也不能退出）" */
   "ui.BattleScreen.039": { zh: "洞内：本场必须打完（不能撤退）", en: "In the wormhole this fight has to be finished (no retreat)" },
@@ -1333,11 +1338,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.103": { zh: "（回收率 {p1}% · 优先回收高价值）·", en: "(recovery rate {p1}% · high-value drones first) ·" },
   "ui.BattleScreen.104": { zh: "净损失 {p1} 架", en: "net loss: {p1} airframes" },
   /**
-   * 「← 退出战场」的悬停说明。洞内与洞外**同一句话**：都只是关掉观看界面，战斗在后台继续推进。
-   * 2026-09-22 回滚（船长令「界面回滚，战斗界面回滚到全屏显示」）：还原入口回到**右下角那枚
-   * 「战斗中」浮动入口**（窗口化期间曾改成"左侧舰船小窗"，现已退回）。
+   * 「← 最小化」（原「← 退出战场」，2026-09-26 船长令改口径）的悬停说明。洞内与洞外**同一句话**：
+   * 都只是关掉观看界面，战斗在后台继续推进。2026-09-22 回滚（船长令「界面回滚，战斗界面回滚到
+   * 全屏显示」）：还原入口回到**右下角那枚「战斗中」浮动入口**（窗口化期间曾改成"左侧舰船小窗"，
+   * 现已退回）。
    */
-  "ui.BattleScreen.105": { zh: "退出战场界面：战斗在后台照常推进，可随时点右下角「战斗中」回来", en: "Leave the battle view: the fight keeps running in the background; click “In battle” at the bottom right to come back" },
+  "ui.BattleScreen.105": { zh: "最小化战斗界面：战斗在后台照常推进，可随时点右下角「战斗中」回来", en: "Minimize the battle view: the fight keeps running in the background; click “In battle” at the bottom right to come back" },
   "ui.BattleScreen.106": { zh: "战斗窗口", en: "Battle window" },
   // 伤害飘字里"没打中"的标记（2026-09-24 船长令：伤害数值动画「包括 MISS」——船长指定就显示 MISS，
   // 中英同形，属**语言中立**的战斗术语；要改中文口径只需改这一条 zh）
