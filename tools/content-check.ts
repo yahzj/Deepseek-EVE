@@ -1366,7 +1366,35 @@ for (const m of MODULES) {
       `干扰压制取数契约：${combatPath} 的 \`meJammerNetOf\` 必须**滤掉已阵亡的干扰舰**` +
         `（\`!foeUnitDeadOf(battle, f.tag)\`）——不滤的话打死了也照压，射程永不恢复`,
     )
-    console.log('· 干扰压制取数契约：引擎与视图同取**当前波**、且只算**活着的**干扰舰（打掉即恢复射程）')
+    /**
+     * **距离账也必须按"当前波"**（2026-09-25 船长第二条报障：「敌人期望距离似乎不会变化？」
+     * ＋「敌方试图远离、我方也在拉远距离，但实际距离在缩短」）。
+     *
+     * 同一类病根第三次出现：`foeDesire` / `desireCapM` 的**初值**取第 0 波（"换波刷新"只在同一次调用里
+     * 跑完转场时才生效，而引擎是逐拍调用的）；`setBattleDesire` 的钳制上界也取第 0 波的开战距离
+     * （而界面滑条的远端是**本波**的 `battleMaxDistanceM`）。
+     */
+    check(
+      combatSrc.includes('foeDesiredRange(me, curFoes, bal') && combatSrc.includes('battleOpenM(me, curFoes, bal)'),
+      `波次取数契约：${combatPath} 的 \`foeDesire\` / \`desireCapM\` 初值必须取**当前波**（\`curFoes\`）——` +
+        `取第 0 波会让第 2 波起敌人按上一波的期望距离机动（界面读数与实际行为对不上）`,
+    )
+    const expeditionPath = 'packages/core/src/expedition.ts'
+    const expeditionSrc = readSrc(expeditionPath)
+    check(
+      expeditionSrc.includes('activeFoeSpecsOf(anomaly, ctx.balance.battle, battle.waveIdx)') &&
+        expeditionSrc.includes('battleMaxDistanceM(battle, me, waveFoes, ctx.balance.battle)'),
+      `波次取数契约：${expeditionPath} 的 \`setBattleDesire\` 钳制上界必须 = 界面滑条远端` +
+        `（\`battleMaxDistanceM(battle, me, 当前波敌阵, bal)\`）——取第 0 波的开战距离会让玩家"拖到底也拉不远"`,
+    )
+    check(
+      !expeditionSrc.includes('const maxD = battleOpenM('),
+      `波次取数契约：${expeditionPath} 又用 \`battleOpenM\`（恒定第 0 波的开战距离）当玩家期望距离的上界了`,
+    )
+    console.log(
+      '· 波次取数契约：干扰压制与距离账（引擎 `foeDesire`/`desireCapM`、玩家 `setBattleDesire` 上界）' +
+        '**一律取当前波**；干扰压制只算**活着的**干扰舰（打掉即恢复射程）',
+    )
   }
 
   /* ── 洞内威胁「显示口径」契约（船长 2026-09-15：「虫洞的面板威胁（显示给玩家看的）建议乘以2，

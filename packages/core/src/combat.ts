@@ -6061,27 +6061,13 @@ export function advanceBattleFor(
     return
   }
   const me = myUnits[0]! // 主控：距离 / 期望交距 / favor 等既有口径的锚（单船路径 = 唯一那条）
-  /** 距离账（`foeDesire` / `openM`）用的敌阵：**照旧取第 0 波**（见 `foesForDebuff` 的注释） */
-  const foes = createFoeSpecs(anomaly, bal)
   /**
-   * **本波敌方的期望距离与钳制上界**（`let`：**换波时按新一波重算**）。
-   *
-   * 船长 2026-09-25 报障：「**敌人切换波次后，敌人的期望距离不会刷新。**」
-   * 原先这两个值在进循环前按**首波**算一次就定死；多波卡里各波的战术 / 射程带 / 钉住距离可以完全不同
-   * （例：第 1 波近战压近、第 2 波远程拉开）⇒ 第二波起敌人仍按**上一波**的期望距离机动（该压近的不压、
-   * 该拉开的不拉），与界面读数也不一致——视图侧（`battleView`）本来就是**逐波**取
-   * `activeFoeSpecsOf(anomaly, bal, battle.waveIdx)` 现算 `foeDesireM` 的。
-   *
-   * 口径（与视图同一把尺）：
-   * - `foeDesire` = `foeDesiredRange(本波敌阵)`（含我方电子舰削减、含条目/舰级的 `desireRangeM` 钉值）；
-   * - `desireCapM` = `battleOpenM(me, 本波敌阵)` —— 即「**这一波若单独开战，开战距离在哪**」，
-   *   与视图 `Math.min(openM, foeDesiredRange(...))` 的钳制上界同源；
-   * - ⚠ **单波场次逐字等于旧行为**（同一份敌阵、同一算式，只算一次）；`openM`（**本场**开战距离）
-   *   仍按首波算，只服务转场回拉与增援补入，不受本改动影响。
+   * **本场开战距离**（= 首波口径）：只服务**转场回拉**（`waveReopenFrac`）与**增援补入**
+   * （`resolveReinforcements`）。⚠ 敌方的"期望距离"与它的钳制上界**不用它**——那两个按**当前波**算，
+   * 见下面 `foeDesire` 的注释。
    */
-  let foeDesire = foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)
-  let desireCapM = battleOpenM(me, foes, bal)
-  const openM = desireCapM
+  const foes = createFoeSpecs(anomaly, bal)
+  const openM = battleOpenM(me, foes, bal)
   const favor =
     favorAdv === null
       ? null
@@ -6093,6 +6079,27 @@ export function advanceBattleFor(
   const specsOf = (wi: number): UnitSpec[] => activeFoeSpecsOf(anomaly, bal, wi)
   let waveIdx = Math.min(battle.waveIdx ?? 0, lastIdx)
   let curFoes = specsOf(waveIdx)
+  /**
+   * **本波敌方的期望距离与钳制上界**（`let`：**换波时按新一波重算**）。
+   *
+   * 船长 2026-09-25 报障①：「**敌人期望距离似乎不会变化？**」——病根就在这两行的**初值**：
+   *
+   * - **必须取"当前波"**（`curFoes`）—— 2026-09-25 早前那版只加了"**换波时刷新**"，可那个分支
+   *   只在**同一次调用里**跑完整个转场（清空→等演出窗口→续刷下一波）时才会执行；而引擎是**逐拍调用**
+   *   `advanceBattleFor` 的：转场发生在第 N 拍，第 N+1 拍进来时 `battle.waveIdx` 已经是新波、
+   *   转场分支不再触发 ⇒ 初值又用**第 0 波**那份 `foes` 算了一遍。
+   *   实测（旗舰战 · 真实引擎）：第 2 波（墨潮鱼雷舰 ×3 ＋ 干扰舰，`kite` 带 1,000~12,000）
+   *   引擎里 `foeDesire` 恒为 **2,352**（第 1 波突击舰的值），而界面按当前波显示 **10,350**
+   *   ⇒ 敌人**实际往里收**、读数却写"想拉开"。
+   *
+   * 口径（与视图同一把尺）：
+   * - `foeDesire` = `foeDesiredRange(本波敌阵)`（含我方电子舰削减、含条目/舰级的 `desireRangeM` 钉值）；
+   * - `desireCapM` = `battleOpenM(me, 本波敌阵)` —— 即「**这一波若单独开战，开战距离在哪**」，
+   *   与视图 `Math.min(openM, foeDesiredRange(...))` 的钳制上界同源；
+   * - ⚠ **单波场次逐字等于旧行为**（同一份敌阵、同一算式，只算一次）。
+   */
+  let foeDesire = foeDesiredRange(me, curFoes, bal, battle.meFoeRangeDebuff ?? 0)
+  let desireCapM = battleOpenM(me, curFoes, bal)
   // 开战首波由 startBattleFor 生成（无装填延迟）；此处只兜读档中断补缺（视为增援入场）
   for (const f of curFoes) {
     // ⚠ 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）：**带入场触发、条件未命中的单位

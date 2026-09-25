@@ -19,7 +19,7 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState } from '../src/index'
 import { startMining } from '../src/mining'
 import { advanceEncounterWatch, maintainPresence, retreatEncounterBattle, rollLowSecAmbush } from '../src/encounters'
-import { activeFoeSpecsOf, applyFoeOverride, battleArcsFor, createBattleState, createPlayerSpec, flagshipBattleLedger, foeJammerCountOf, meJammerNetOf, meRangeMulOf } from '../src/combat'
+import { activeFoeSpecsOf, advanceBattleFor, applyFoeOverride, battleArcsFor, battleOpenM, createBattleState, createPlayerSpec, flagshipBattleLedger, foeJammerCountOf, meJammerNetOf, meRangeMulOf } from '../src/combat'
 // 敌卡解析单点（洞内 / 旗舰战 / 远征三口径）在 `wormholeBattle` 里
 import { battleFoeAnomaly } from '../src/wormholeBattle'
 import { commsInbox } from '../src/comms'
@@ -882,6 +882,72 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     for (let i = 0; i < baseArcs.length; i++) expect(pressed[i]!).toBeLessThan(baseArcs[i]!)
     b1.units[jam.tag]!.hp = { s: 0, a: 0, h: 0 }
     expect(arcsOf(b1), '打掉干扰舰 ⇒ 界面弧回到基准（不再"永远被压"）').toEqual(baseArcs)
+  })
+
+  /**
+   * **船长 2026-09-25 第二条报障**：「**旗舰第二波鱼雷艇，敌方试图远离（我方也在拉远距离），
+   * 但是实际距离在缩短**」＋「**敌人期望距离似乎不会变化？**」
+   *
+   * 同一个病根的两半（都是"按第 0 波算"）：
+   * - 引擎：`foeDesire` / `desireCapM` 的**初值**取第 0 波（"换波刷新"只在同一次调用里跑完转场时生效，
+   *   而引擎是**逐拍调用**）⇒ 第 2 波起敌人恒按第 1 波的 2,352 **往里收**，界面却按当前波显示 10,350
+   *   （"想拉开"）——于是"双方都想拉开、距离却在缩"；
+   * - 玩家一侧：`setBattleDesire` 的钳制上界取第 0 波的开战距离 9,702，而滑条远端是**本波**的 13,200
+   *   ⇒ 拖到底也"拉不远"。
+   */
+  it('㉔ 旗舰战第 2 波：敌方按**本波**的期望距离往外走；滑条能拖到本波远端（不再夹回第 1 波）', () => {
+    const core = 'galaxy-kor'
+    const s = invaded(GID)
+    const now = Date.now()
+    weekendNoteContribution(s.weekendEvent!, GID, 1)
+    weekendNoteContribution(s.weekendEvent!, core, 1)
+    const battle = weekendStartFlagshipBattle(s, ctx, now, [s.shipId])!
+    const leader = battle.myFleet![0]!.shipId
+    s.encounter = {
+      active: true,
+      shipId: leader,
+      galaxyId: core,
+      name: '墨潮旗舰部队',
+      threat: 170,
+      anomalyId: 'ink-flagship',
+      origin: '测试 · 挑战旗舰',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 0,
+      battle,
+    }
+    const card = applyFoeOverride(ctx.anomalies.get('ink-flagship')!, battle.foeOverride!)
+    /** 第 1 波（突击舰 · 期望 2,352）⇒ 滑条远端 = 它的开战距离；先把玩家期望设成"最远" */
+    const far0 = battleOpenM(createPlayerSpec(s, ctx, leader)!, activeFoeSpecsOf(card, ctx.balance.battle, 0), ctx.balance.battle)
+    expect(setBattleDesire(s, 20_000, ctx).ok).toBe(true)
+    expect(battle.myDesireM, '第 1 波：夹到本波远端').toBe(far0)
+    /** 清第 1 波 ⇒ 转场第 2 波（鱼雷舰；体量小 ⇒ 只推 4 秒，保它活着） */
+    for (const f of activeFoeSpecsOf(card, ctx.balance.battle, 0)) {
+      const rt = battle.units[f.tag]
+      if (rt) rt.hp = { s: 0, a: 0, h: 0 }
+    }
+    s.gameMs += 4_000
+    advanceBattleFor(s, ctx, battle, leader, 'ink-flagship')
+    expect(battle.waveIdx, '已进第 2 波').toBe(1)
+    const view = battleArcsFor(s, ctx, { battle, anomaly: card, leaderShipId: leader })!
+    expect(view.foeDesireM, '本波敌方的期望距离 = 鱼雷舰的 10,350（界面读数）').toBe(10_350)
+    /**
+     * ① **滑条能拖到本波远端**：转场后重新拖到最远 ⇒ 期望距离 = 本波 `maxM`（改前被夹在 9,702）
+     */
+    expect(setBattleDesire(s, 20_000, ctx).ok).toBe(true)
+    expect(battle.myDesireM, '夹到**本波**远端（13,200），不再退回第 1 波的 9,702').toBe(view.maxM)
+    expect(battle.myDesireM).toBeGreaterThan(far0)
+    /**
+     * ② **敌方按本波期望往外走**：把玩家一侧钉在原地（期望 = 当前距离 ⇒ 步长 0），
+     * 只让敌人拉 ⇒ 距离必须**变大**（改前敌人的期望是第 1 波的 2,352 ⇒ 只会往里收）。
+     */
+    battle.myDesireM = Math.round(battle.distanceM)
+    const d0 = battle.distanceM
+    for (let i = 0; i < 6; i++) {
+      battle.myDesireM = Math.round(battle.distanceM) // 每拍重新钉住"玩家不动"
+      s.gameMs += 1_000
+      advanceBattleFor(s, ctx, battle, leader, 'ink-flagship')
+    }
+    expect(battle.distanceM, '敌方想拉开 ⇒ 距离朝 10,350 走（改前掉头往 2,352 收）').toBeGreaterThan(d0)
   })
 })
 
