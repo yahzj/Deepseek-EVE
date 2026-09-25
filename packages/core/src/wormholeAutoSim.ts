@@ -201,7 +201,14 @@ export function wormholeAutoDescend(opts: {
     out.turnsOnScan += scanCost
 
     while (turns > EXTRACT_RESERVE_TURNS) {
-      if (holdUsed >= holdCapThisLayer) break
+      /**
+       * ⚠ **留手额度只管"占货舱的东西"（矿脉 / 坟场）**：遗迹出的是稀有残骸与安全货柜，
+       * **不占货舱 m³**（`wormholeIsShapedItem` 那类走拾取装备格）⇒ 不该被额度挡住。
+       * 本模块第一版让"额度一满就整层收工"，于是**遗迹还没轮到就下潜/撤离了** ——
+       * 实测满科技档 200 颗种子下稀有/货柜**恒为 0**，而真实网格层 4 有 2.6 个、层 8 有 6.5 个遗迹格。
+       */
+      const ruinsLeft = worth.some((w) => w.place === 'ruins')
+      if (holdUsed >= holdCapThisLayer && !ruinsLeft) break
       // ① 最近目标（贪心；**遗迹优先**——它出稀有残骸与安全货柜，是这趟最值钱的一条线；
       //    实测"纯最近优先"会在回合用尽前根本轮不到遗迹 ⇒ 稀有/货柜两条线恒为 0）
       let bestIdx = -1
@@ -264,7 +271,8 @@ export function wormholeAutoDescend(opts: {
       const rigs = target.place === 'vein' ? Math.max(1, miners) : Math.max(1, salvagers)
       const trips = Math.max(1, Math.ceil(piles / rigs))
       for (let t = 0; t < trips; t++) {
-        if (turns < 1 || holdUsed >= holdCapThisLayer) break
+        // 遗迹不看留手额度（它不占货舱），只看回合
+        if (turns < 1 || (holdUsed >= holdCapThisLayer && target.place !== 'ruins')) break
         turns -= 1
         if (target.place === 'vein') {
           const units = Math.max(1, Math.round(WORMHOLE_PILE_UNITS_BASE * mul * (0.8 + rng() * 0.4) * tech.ore))
