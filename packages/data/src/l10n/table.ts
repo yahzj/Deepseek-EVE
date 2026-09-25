@@ -315,8 +315,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.encounters.007": { zh: "当前没有可脱离的遭遇。", en: "There is no encounter to break away from." },
   "core.encounters.008": { zh: "⚠ 入侵遭遇（{p1}·「{p2}」）：{p3} 遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。", en: "⚠ Invasion encounter ({p1} · “{p2}”): {p3} was ambushed by that formation — you can ⚔ Engage or Break away; in 60 seconds it disengages automatically." },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
-  "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励已入账 —— 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "✦ Reclaimed “{p1}”: the reclaim reward has been credited — rare wrecks ×{p2} + {p3} credits." },
-  "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励已入账（稀有残骸 ×{p2} ＋ {p3} 信用点）。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus have been credited (rare wrecks ×{p2} + {p3} credits)." },
+  "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
+  "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
   "core.weekend.003": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1}）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils have been credited (flagship black box ×1 + rare wrecks ×{p1})." },
   // 2026-09-25 入侵两封通讯（船长给稿 · 经办人按"不出现括号备注"润色；每场覆盖同一 id）
   // ⚠ 段内不留括号备注：奖励清单是**清单里的一项**（结构化存下、界面按语言拼串后填进 {p3}）
@@ -1509,6 +1509,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.078": { zh: "击毁时限", en: "Deadline" },
   "ui.weekend.079": { zh: "至少要选一艘船。", en: "Pick at least one ship." },
   "ui.weekend.080": { zh: "装甲 {p1}% · 结构 {p2}%", en: "armor {p1}% · hull {p2}%" },
+  // 2026-09-25 船长令：核心收复、旗舰现身时弹一次窗，可从弹窗直接去战前准备
+  "ui.weekend.090": { zh: "敌方旗舰现身", en: "The enemy flagship has appeared" },
+  "ui.weekend.091": { zh: "核心「{p1}」已收复，{p2}的旗舰停在那一带。派一支小队过去清剿。", en: "The core “{p1}” has been reclaimed, and the {p2} flagship is holding in that area. Send a squad to clear it out." },
+  // 2026-09-25 船长令：入侵期间星系详细里的悬赏只显示「击退入侵舰队」＋威胁范围（不暴露抽签结果）
+  "ui.weekend.092": { zh: "击退入侵舰队", en: "Repel the invader fleet" },
+  "ui.weekend.093": { zh: "威胁 {p1}~{p2}", en: "threat {p1}–{p2}" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },

@@ -58,6 +58,7 @@
   --wui-danger: 255 131 115;
   --wui-danger-deep: 224 82 74;
   --wui-danger-map: 255 106 94;
+  --wui-danger-strong: 229 57 53; /* 入侵标记固定深红（2026-09-25 船长选定：#E53935，六套主题同值、不随主题走） */
   --wui-dim: 160 172 188;
   --wui-exotic: 255 138 216;
   --wui-fam-a: 255 107 82;
@@ -423,6 +424,7 @@
   --wui-danger: 140 16 0;
   --wui-danger-deep: 172 37 30;
   --wui-danger-map: 161 12 0;
+  --wui-danger-strong: 229 57 53; /* 入侵标记固定深红（2026-09-25 船长选定：#E53935，六套主题同值、不随主题走） */
   --wui-dim: 67 79 95;
   --wui-exotic: 117 0 78;
   --wui-fam-a: 173 25 0;
@@ -1304,6 +1306,7 @@
   --wui-danger: 255 246 245;
   --wui-danger-deep: 255 245 245;
   --wui-danger-map: 255 246 245;
+  --wui-danger-strong: 229 57 53; /* 入侵标记固定深红（2026-09-25 船长选定：#E53935，六套主题同值、不随主题走） */
   --wui-dim: 249 250 251;
   --wui-exotic: 255 245 252;
   --wui-fam-a: 255 246 245;
@@ -1793,6 +1796,7 @@
   --wui-danger: 225 169 152;
   --wui-danger-deep: 218 143 127;
   --wui-danger-map: 220 152 136;
+  --wui-danger-strong: 229 57 53; /* 入侵标记固定深红（2026-09-25 船长选定：#E53935，六套主题同值、不随主题走） */
   --wui-dim: 164 172 191;
   --wui-exotic: 230 170 203;
   --wui-fam-a: 218 150 126;
@@ -2279,6 +2283,7 @@
   --wui-danger: 246 96 76;
   --wui-danger-deep: 220 103 96;
   --wui-danger-map: 245 84 71;
+  --wui-danger-strong: 229 57 53; /* 入侵标记固定深红（2026-09-25 船长选定：#E53935，六套主题同值、不随主题走） */
   --wui-dim: 143 156 173;
   --wui-exotic: 247 95 196;
   --wui-fam-a: 245 96 71;
@@ -2765,6 +2770,7 @@
   --wui-danger: 225 169 152;
   --wui-danger-deep: 218 143 127;
   --wui-danger-map: 220 152 136;
+  --wui-danger-strong: 229 57 53; /* 入侵标记固定深红（2026-09-25 船长选定：#E53935，六套主题同值、不随主题走） */
   --wui-dim: 164 172 191;
   --wui-exotic: 230 170 203;
   --wui-fam-a: 218 150 126;
@@ -3251,6 +3257,7 @@
   --wui-danger: 251 119 207;
   --wui-danger-deep: 230 109 190;
   --wui-danger-map: 251 98 200;
+  --wui-danger-strong: 229 57 53; /* 入侵标记固定深红（2026-09-25 船长选定：#E53935，六套主题同值、不随主题走） */
   --wui-dim: 160 172 188;
   --wui-exotic: 252 141 215;
   --wui-fam-a: 255 107 82;

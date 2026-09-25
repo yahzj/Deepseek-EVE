@@ -143,6 +143,30 @@ describe('周末入侵 · 时间轴', () => {
     expect(weekendWinGainOf(s2, ev, 'galaxy-home'), '正常：核心 +5%').toBeCloseTo(WEEKEND_GAIN_CORE_WIN, 6)
   })
 
+  /**
+   * **旗舰现身只报一次**（2026-09-25 修船长报障「事件日志会一直刷『入侵核心已被打通：旗舰现身。』」）：
+   * `flagshipShown` 现身之后**每拍都真**（拿它记日志 = 每拍一条）；`flagshipAnchored` 只在
+   * **首次把 anchor 落盘**的那一拍为真 ⇒ 引擎照它记日志 / 弹一次窗。
+   */
+  it('旗舰现身只报一次：flagshipAnchored 仅首拍为真（shown 仍每拍真）', () => {
+    const t0 = 1_700_000_000_000
+    const s = fresh(true)
+    s.weekendEvent = {
+      seq: 1,
+      startedAtWallMs: t0,
+      coreId: 'galaxy-home',
+      peripheryIds: ['galaxy-kor'],
+      family: 'H',
+      contributed: { 'galaxy-kor': 1, 'galaxy-home': 1 },
+    }
+    const a = weekendTick(s, ctx, t0 + 1000, t0)
+    expect(a.flagshipShown, '第一拍就现身').toBe(true)
+    expect(a.flagshipAnchored, '第一拍 = 落 anchor ⇒ 报一次').toBe(true)
+    const b = weekendTick(s, ctx, t0 + 2000, t0 + 1000)
+    expect(b.flagshipShown, '仍在场 ⇒ shown 照旧真').toBe(true)
+    expect(b.flagshipAnchored, '第二拍不再报（日志与弹窗都按它）').toBe(false)
+  })
+
   it('调试模式：上一场结束后 1 小时刷新（首调即开）', () => {
     const s = fresh(true)
     const t = 1_000_000_000

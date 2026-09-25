@@ -200,6 +200,12 @@ export interface WeekendEventState {
     /** 逐星系的夺回奖励（面板"各星系贡献"那一列用） */
     byGalaxy: Record<string, { isk: number; wreck: number }>
   }
+  /**
+   * **待到账的夺回奖励**（2026-09-25 船长令：「**夺回星区的奖励不要即时发放，放入结束后结算发放**」）：
+   * 每夺回一处就往这里累加（含全清追加），活动结束时由 `weekendSettleAndGrant` 连贡献奖**一次性发**。
+   * ⚠ 与 `rewardLedger` 的分工：台账 = **总数**（面板/通讯显示用，含已发与待发）；这一格 = **还没发的那部分**。
+   */
+  reclaimPending?: { isk: number; wreck: number }
 }
 
 /**
@@ -736,6 +742,12 @@ export interface WeekendTickResult {
   started: boolean
   /** 旗舰是否已现身 */
   flagshipShown: boolean
+  /**
+   * **本拍正是"旗舰现身"的那一拍**（2026-09-25 加 · 修船长报障「事件日志会一直刷『入侵核心已被打通：旗舰现身。』」）：
+   * `flagshipShown` 只要现身就恒真（每拍都真）⇒ 引擎照着它记日志会**每拍刷一条**；
+   * 这一格只在**首次把 `flagshipAtWallMs` 落盘**的那一拍为真 ⇒ 记日志 / 弹一次窗都按它来。
+   */
+  flagshipAnchored: boolean
   /** 旗舰结局（本 tick 新发生） */
   flagshipDown?: 'player' | 'octopus'
   /** 本 tick 是否结束（旗舰被摧毁 / 章鱼人得手 / 窗口到点） */
@@ -762,11 +774,17 @@ export function weekendTick(
 ): WeekendTickResult {
   const started = ensureWeekendEvent(state, ctx, nowWallMs)
   const ev = state.weekendEvent
-  if (!ev || ev.endedAtWallMs !== undefined) return { started, flagshipShown: false, ended: false, encounterRolls: [] }
+  if (!ev || ev.endedAtWallMs !== undefined) {
+    return { started, flagshipShown: false, flagshipAnchored: false, ended: false, encounterRolls: [] }
+  }
 
   // ② 旗舰 anchor 落盘（只在"未落盘 + 未过期"时写）
   const view = weekendFlagshipView(state, ev, nowWallMs, lastSeenWallMs)
-  if (view.shown && ev.flagshipAtWallMs === undefined && view.down === undefined) ev.flagshipAtWallMs = view.atWallMs ?? nowWallMs
+  let flagshipAnchored = false
+  if (view.shown && ev.flagshipAtWallMs === undefined && view.down === undefined) {
+    ev.flagshipAtWallMs = view.atWallMs ?? nowWallMs
+    flagshipAnchored = true
+  }
 
   // ③ 章鱼人得手 ⇒ 结束本场（黑匣归零，贡献奖照给——结算由调用方做）
   let ended = false
@@ -789,7 +807,7 @@ export function weekendTick(
     .map((id) => ({ galaxyId: id, chance: weekendEncounterChanceAt(state, ev, id, nowWallMs) }))
     .filter((x) => x.chance > 0)
 
-  return { started, flagshipShown: view.shown, ...(flagshipDown !== undefined ? { flagshipDown } : {}), ended, encounterRolls }
+  return { started, flagshipShown: view.shown, flagshipAnchored, ...(flagshipDown !== undefined ? { flagshipDown } : {}), ended, encounterRolls }
 }
 
 /** 主动打赢一场：外围 +10% · 核心 +5%（第 6 条；核心同样受门禁约束，门禁在读数侧生效） */

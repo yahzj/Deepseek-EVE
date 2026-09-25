@@ -329,6 +329,16 @@ function noteReward(
 }
 
 /**
+ * **记一笔"待到账的夺回奖励"**（2026-09-25 船长令：夺回奖励不即时发、改在活动结束结算时发）。
+ * 每夺回一处调一次（含全清追加那 5M），结束时由 `weekendSettleAndGrant` 一次发清。
+ */
+function noteReclaimPending(ev: WeekendEventState, add: { isk?: number; wreck?: number }): void {
+  const cur = (ev.reclaimPending ??= { isk: 0, wreck: 0 })
+  cur.isk += Math.max(0, Math.round(add.isk ?? 0))
+  cur.wreck += Math.max(0, Math.round(add.wreck ?? 0))
+}
+
+/**
  * **战果快照**（结束时写一次 · 每场覆盖）：结算面板与结算通讯读它。
  * 逐处占领区的读数**按结束时刻**取（与贡献占比同一把尺）⇒ 面板上的"贡献 x%"与档位算得对得上。
  */
@@ -398,14 +408,21 @@ export function weekendSettleAndGrant(
   if (ev.prizePaidAtWallMs !== undefined) return null
   const plan = weekendSettlePlanOf(state, ev, ev.endedAtWallMs)
   const wreckItemId = weekendRareWreckIdFor(weekendFoeCardOf(ev.family, 'flagship'), ctx)
+  /**
+   * **这一次把"贡献奖 ＋ 待到账的夺回奖励"一起发**（2026-09-25 船长令：夺回奖励不即时发、结束统一发）。
+   * ⚠ 台账 `rewardLedger` 在夺回那一刻**就已经记过**那几笔 ⇒ 这里只把 `plan`（贡献奖）记进台账，
+   * 否则总数会被算两遍；`reclaimPending` 发完清零。
+   */
+  const pending = ev.reclaimPending ?? { isk: 0, wreck: 0 }
   const granted = weekendGrantRewards(state, {
-    isk: plan.isk,
-    wreck: plan.wreck,
+    isk: plan.isk + pending.isk,
+    wreck: plan.wreck + pending.wreck,
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
   })
   ev.prizePaidAtWallMs = nowWallMs
+  ev.reclaimPending = { isk: 0, wreck: 0 }
   /** 贡献奖入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它；下一场开局会把 ev 整条换掉） */
-  noteReward(ev, undefined, { isk: granted.isk, wreck: granted.wreck })
+  noteReward(ev, undefined, { isk: plan.isk, wreck: plan.wreck })
   state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)
   return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck }
 }
@@ -617,8 +634,14 @@ export function weekendApplyBattleOutcome(
         ? 'win'
         : 'loss'
   const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs, flagshipDmg, battle?.startedAtGameMs)
-  const isk = (r.reclaimed?.isk ?? 0)
-  const wreck = (r.reclaimed?.wreck ?? 0) + (r.flagshipKilled?.wreck ?? 0)
+  /**
+   * **即时发放的只有"旗舰掉落"**（2026-09-25 船长令：「**夺回星区的奖励不要即时发放，放入结束后结算发放**」）：
+   * 夺回奖励（逐处 ×8 ＋ 2M · 全清追加 5M）**只记台账**，等 `weekendSettleAndGrant` 在活动结束时连贡献奖一起发
+   * （⇒ 玩家在结算通讯/结算面板里一次看清全部到手；见 `ev.reclaimPending`）。
+   * ⚠ 旗舰击沉发生在**活动结束那一刻**，它的掉落仍即时入账（那之后玩家已经没有"下一次"可言）。
+   */
+  const isk = 0
+  const wreck = r.flagshipKilled?.wreck ?? 0
   // **稀有残骸的真实物品 id**：按这一场打的那张卡所属残骸组取（H 族 ⇒ `wreck-rare-h-hi`）
   const wreckItemId = weekendRareWreckIdFor(spec.cardId, ctx)
   const granted = weekendGrantRewards(state, {
@@ -629,35 +652,46 @@ export function weekendApplyBattleOutcome(
   })
   /**
    * **入账日志**（2026-09-25 补 · id 制）：只记**里程碑** —— 夺回 / 全部夺回 / 旗舰击沉。
-   * 起因：这两笔钱原先**只入账不吭声**（`r.note` 有措辞，但两个调用点都把返回值丢了）⇒ 玩家看到钱包/货舱
-   * 突然多出东西却没有解释。**普通进度推进不记**（面板有进度条与百分比，免得每场刷一条）。
+   * ⚠ 2026-09-25 船长改口径后，夺回那两条日志**不再说"已入账"**（钱要到活动结束才发）——
+   * 它们改说「待结算时统一发放」，措辞见 `core.weekend.001/002`。
    */
   const gname = ctx.galaxies.get(involved.galaxyId)?.name ?? involved.galaxyId
-  /** 到手台账（夺回按星系记、旗舰掉落记全局）——结算面板与结算通讯的奖励清单读它，不另算一遍 */
+  /**
+   * 到手台账（夺回按星系记、旗舰掉落记全局）——结算面板与结算通讯的奖励清单读它，不另算一遍；
+   * **夺回那部分另记进 `reclaimPending`**，等 `weekendSettleAndGrant` 一次性发放（船长令：不即时发）。
+   */
   const evNow = state.weekendEvent
   if (evNow !== undefined) {
-    if (r.reclaimed !== undefined) noteReward(evNow, involved.galaxyId, { isk: granted.isk, wreck: r.reclaimed.wreck })
+    if (r.reclaimed !== undefined) {
+      noteReward(evNow, involved.galaxyId, { isk: WEEKEND_RECLAIM_ISK, wreck: r.reclaimed.wreck })
+      noteReclaimPending(evNow, { isk: WEEKEND_RECLAIM_ISK, wreck: r.reclaimed.wreck })
+      /** 全清那 5M 记进**全局**（不带星系）⇒ 面板的逐星系那一列不会被它撑歪 */
+      if (r.reclaimed.allClear) {
+        noteReward(evNow, undefined, { isk: WEEKEND_ALL_CLEAR_ISK })
+        noteReclaimPending(evNow, { isk: WEEKEND_ALL_CLEAR_ISK })
+      }
+    }
     if (r.flagshipKilled !== undefined) {
       noteReward(evNow, undefined, { wreck: r.flagshipKilled.wreck, blackBox: r.flagshipKilled.blackBox ? 1 : 0 })
     }
   }
   if (r.reclaimed !== undefined) {
-    const iskText = granted.isk.toLocaleString('zh-CN')
+    const allClearIsk = (WEEKEND_RECLAIM_ISK + (r.reclaimed.allClear ? WEEKEND_ALL_CLEAR_ISK : 0)).toLocaleString('zh-CN')
     if (r.reclaimed.allClear) {
       addLog(
         state,
         'trade',
-        `✦ 全部占领区夺回：「${gname}」是最后一处 —— 夺回奖励与全清额外奖励已入账（稀有残骸 ×${r.reclaimed.wreck} ＋ ${iskText} 信用点）。`,
+        `✦ 全部占领区夺回：「${gname}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×${r.reclaimed.wreck} ＋ ${allClearIsk} 信用点，待活动结束时统一发放。`,
         'core.weekend.002',
-        { p1: gname, p2: r.reclaimed.wreck, p3: iskText },
+        { p1: gname, p2: r.reclaimed.wreck, p3: allClearIsk },
       )
     } else {
       addLog(
         state,
         'trade',
-        `✦ 夺回「${gname}」：夺回奖励已入账 —— 稀有残骸 ×${r.reclaimed.wreck} ＋ ${iskText} 信用点。`,
+        `✦ 夺回「${gname}」：夺回奖励 稀有残骸 ×${r.reclaimed.wreck} ＋ ${WEEKEND_RECLAIM_ISK.toLocaleString('zh-CN')} 信用点，待活动结束时统一发放。`,
         'core.weekend.001',
-        { p1: gname, p2: r.reclaimed.wreck, p3: iskText },
+        { p1: gname, p2: r.reclaimed.wreck, p3: WEEKEND_RECLAIM_ISK.toLocaleString('zh-CN') },
       )
     }
   }
