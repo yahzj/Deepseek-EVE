@@ -1846,7 +1846,20 @@ function GalaxyActions({
    * 只留一行状态占位（`ui.weekend.100`）——活动一结束，判据自然转假，悬赏照旧整批回来。
    * 判据在 core 单点（`weekendStandingBountyHeldAt`），界面不另判一遍。
    */
-  const bountyHeldHere = weekendStandingBountyHeldAt(state, galaxy.id, Date.now())  // —— 主控掩护巡逻（原"待命"） ——
+  const bountyHeldHere = weekendStandingBountyHeldAt(state, galaxy.id, Date.now())
+  /**
+   * **「悬赏（N）」里的 N = 这一格实际列出的行数**（**船长 2026-09-25 报障**：「**被入侵的星系，
+   * 星系详细界面，悬赏的标题显示"悬赏（2）"而实际上这时候只显示了"击退入侵舰队"这一个**」）。
+   *
+   * - 仍被占（`invadedHere`）⇒ 整池换成**一行**「击退入侵舰队」⇒ **1**（原先报的是被替换掉的那 2 张卡）；
+   * - 已收复押后（`bountyHeldHere`）⇒ 一张不列、只留状态占位 ⇒ **0**；
+   * - 平常 ⇒ 该星系拥有的卡数（**声望不足时的空态照旧**：那时列出 0 张但"这里有几张悬赏"本身是
+   *   给玩家的信息，另有 `ui.Expedition.264` 明说原因，故这一档保持原口径）。
+   */
+  const bountyRowCount =
+    invadedHere !== null ? 1 : bountyHeldHere ? 0 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length
+
+  // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
   const alreadyHere =
     state.awayGalaxy === galaxy.id && !state.transit.active && !state.expedition.active && !state.mining.active
@@ -2086,10 +2099,10 @@ function GalaxyActions({
           )
         })
       )}
-      {/* ④ 悬赏（2026-09-24 船长：**重复清剿的环按钮就挂在这一行**，不再单开容器）
-          ⚠ 已收复且入侵未结束的星系：常驻悬赏**押后**（船长 2026-09-25 令）⇒ 计数按 0 报，
-          与下面那行状态占位同一口径（不能"写着 N 却一张都不列"）。 */}
-      <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.145")}{bountyHeldHere ? 0 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length}）
+      {/* ④ 悬赏（2026-09-24 船长：**重复清剿的环按钮就挂在这一行**，不再开容器）
+          ⚠ 括号里的数 = **这一格实际列出的行数**（`bountyRowCount`）——仍被占 ⇒ 1（只有「击退入侵舰队」
+          那一行）· 已收复押后 ⇒ 0（只有状态占位）· 平常 ⇒ 该星系卡数。 */}
+      <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.145")}{bountyRowCount}）
       </div>
       {/* ⚠ 本列表**列出该星系全部悬赏**（只按声望门槛过滤）：冷却中/进行中的卡原先被滤掉，
           而"开环"恰恰最需要它们可见（`setAutoLoopBounty` 只受 autoLoopReopenBlockReason 管、与冷却无关，
