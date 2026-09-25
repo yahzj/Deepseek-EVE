@@ -26,6 +26,20 @@ body {
 
 }
 
+/* **键盘焦点可见**（2026-09-25 船长裁决「甲」）：实测全仓 134 个 `<button>` 而 `:focus-visible`
+   仅 4 条规则覆盖特化元素 ⇒ 其余全依赖浏览器默认焦点环，各主题下粗细/颜色不一，与自绘 UI 不统一。
+   加这一条后由 `--wui-accent` 逐主题取色（六主题均有定义）。三点分寸：
+   ① 只写 `:focus-visible` ⇒ **鼠标点击不出现轮廓**，现有鼠标观感一字不变；
+   ② `outline` **不占布局** ⇒ 不会引起任何页面位移（对比 border/box-shadow 更安全）；
+   ③ 现有 4 条特化焦点规则（船窗还原 / 市场行 / 开关 / 标记按钮）**一条不动**，它们各自更贴近自身形态。 */
+:focus-visible {
+
+  outline: 2px solid rgb(var(--wui-accent));
+
+  outline-offset: 2px;
+
+}
+
 /* 英文界面换 Latin 优先字体栈（2026-09-19 船长令「英语本地化」）：中文栈的 Latin 字形偏窄且字重单薄，
    英文下改用系统 UI 字体；中文侧一字不动（`html[data-locale='en']` 由 i18n/locale.tsx 挂上）。 */
 html[data-locale='en'] body {
