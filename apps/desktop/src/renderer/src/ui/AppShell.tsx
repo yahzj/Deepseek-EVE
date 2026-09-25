@@ -421,15 +421,9 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             >
               {t('ui.App.010')}
             </button>
-            <button className="app-btn" onClick={() => void handleSave()}>
-              {tr("ui.App.063")}
-            </button>
-            <button className="app-btn" title={tr("ui.App.064")} onClick={() => setShowSaveManager(true)}>
-              {tr("ui.App.065")}
-            </button>
-            <button className="app-btn is-danger" onClick={handleReset}>
-              {tr("ui.App.066")}
-            </button>
+            {/* **存档三件套已移入设置**（2026-09-25 船长令：「旧版的顶部，可以将保存，存档管理，
+                重置档案按钮移除，设置内采用新版的样式」）——旧版顶栏与新版一致，只留
+                在线时长 / 公告 / QQ群 / 手册 / 设置；三个动作在设置弹层的「存档」一组里。 */}
           </div>
         </header>
         <div className="app-workspace">
