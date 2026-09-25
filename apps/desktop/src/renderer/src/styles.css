@@ -208,7 +208,7 @@ html[data-locale='en'] body {
 
 /* 手机：战斗距离滑条放大（2026-09-06 船长：横屏缩放后太小、难拖）——仅 is-mobile-rot 生效 */
 
-.app-root.is-mobile-rot .app-bts-sliderRow { gap: 12px; }
+.app-root.is-mobile-rot .app-bts-sliderRow { gap: var(--wui-sp-12); }
 
 .app-root.is-mobile-rot .app-bts-sliderWrap { height: 46px; }
 
@@ -228,9 +228,9 @@ html[data-locale='en'] body {
 
 /* 手机：战斗底部操作区整体放大（2026-09-06 船长：底栏高度低、内部偏小。
    dock/距离尺原用 clamp(420px,52vw,780px)——vw 在旋转局部空间取物理竖屏宽，被压到 420px 窄条，一并拉宽） */
-.app-root.is-mobile-rot .app-battle-controls { gap: 10px; padding: 12px 16px 16px; }
+.app-root.is-mobile-rot .app-battle-controls { gap: var(--wui-sp-10); padding: 12px 16px 16px; }
 
-.app-root.is-mobile-rot .app-bts-dock { width: min(96%, 1180px); gap: 10px; }
+.app-root.is-mobile-rot .app-bts-dock { width: min(96%, 1180px); gap: var(--wui-sp-10); }
 
 .app-root.is-mobile-rot .app-bts-ruler { width: min(96%, 1180px); }
 
@@ -248,13 +248,13 @@ html[data-locale='en'] body {
 
 .app-root.is-mobile-rot .app-bts-lane { min-height: 210px; }
 
-.app-root.is-mobile-rot .app-bts-dock .app-bts-legends { gap: 8px; font-size: 13.5px; }
+.app-root.is-mobile-rot .app-bts-dock .app-bts-legends { gap: var(--wui-sp-8); font-size: 13.5px; }
 
-.app-root.is-mobile-rot .app-bts-chip { gap: 6px; border-radius: 7px; padding: 6px 12px; }
+.app-root.is-mobile-rot .app-bts-chip { gap: var(--wui-sp-6); border-radius: 7px; padding: 6px 12px; }
 
 .app-root.is-mobile-rot .app-bts-chip i { width: 13px; height: 13px; }
 
-.app-root.is-mobile-rot .app-bts-reloads { gap: 8px 16px; padding: 2px 0 6px; min-height: 20px; }
+.app-root.is-mobile-rot .app-bts-reloads { gap: var(--wui-sp-8) var(--wui-sp-16); padding: 2px 0 6px; min-height: 20px; }
 
 .app-root.is-mobile-rot .app-bts-reload { gap: 7px; font-size: 13.5px; }
 
@@ -264,14 +264,14 @@ html[data-locale='en'] body {
 
 .app-root.is-mobile-rot .app-bts-reload-ms { min-width: 46px; font-size: 13px; }
 
-.app-root.is-mobile-rot .app-bts-ops { gap: 16px; }
+.app-root.is-mobile-rot .app-bts-ops { gap: var(--wui-sp-16); }
 
 .app-root.is-mobile-rot .app-bts-ops .app-btn { font-size: 15px; padding: 10px 26px; border-radius: 9px; }
 
 .app-root.is-mobile-rot .app-bts-note { font-size: 12.5px; }
 
 /* 手机：战斗顶部按钮区放大（2026-09-06 船长：方便退出/撤退——大字大触区，行可换行防挤） */
-.app-root.is-mobile-rot .app-battle-screen-top { gap: 14px; padding: 12px 16px; flex-wrap: wrap; row-gap: 10px; }
+.app-root.is-mobile-rot .app-battle-screen-top { gap: var(--wui-sp-14); padding: 12px 16px; flex-wrap: wrap; row-gap: var(--wui-sp-10); }
 
 .app-root.is-mobile-rot .app-battle-screen-top .app-btn { font-size: 15px; padding: 11px 22px; border-radius: 9px; }
 
@@ -366,7 +366,7 @@ html[data-locale='en'] body {
    ② 其余导航项在旋转模式下**先按紧凑款起步**——只收**上下内边距**（11 → 5px）与间距（5 → 4px），
       **字号 / 行高 / 图标尺寸一律不动**（"字正常显示"）；
    ③ 收完仍不足才由侧栏出滚动条（`.app-nav-side` 自带 `overflow-y: auto`）。 */
-.app-root.is-mobile-rot .app-nav-side { padding-top: 8px; padding-bottom: 8px; gap: 4px; }
+.app-root.is-mobile-rot .app-nav-side { padding-top: 8px; padding-bottom: 8px; gap: var(--wui-sp-4); }
 .app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured) { padding-top: 5px; padding-bottom: 5px; }
 
 /* ── 虫洞弹层内部：旋转时按**桌面款**排（船长 2026-09-14 裁定「只还原虫洞弹层内部」）──
@@ -386,7 +386,7 @@ html[data-locale='en'] body {
 
 .app-mob-sel-mask { position: fixed; inset: 0; z-index: 320; background: rgb(var(--wui-x12) / 0.55); display: flex; align-items: center; justify-content: center; }
 
-.app-mob-sel { width: min(460px, 90%); max-height: 78%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(180deg, rgb(var(--wui-x174) / 0.99), rgb(var(--wui-x260) / 0.99)); border: 1px solid rgb(var(--wui-accent) / 0.4); border-radius: 12px; padding: 14px; box-shadow: 0 14px 46px rgba(0,0,0,.7); }
+.app-mob-sel { width: min(460px, 90%); max-height: 78%; overflow-y: auto; display: flex; flex-direction: column; gap: var(--wui-sp-8); background: linear-gradient(180deg, rgb(var(--wui-x174) / 0.99), rgb(var(--wui-x260) / 0.99)); border: 1px solid rgb(var(--wui-accent) / 0.4); border-radius: 12px; padding: 14px; box-shadow: 0 14px 46px rgba(0,0,0,.7); }
 
 .app-mob-sel-opt { font-size: 16px; text-align: left; color: rgb(var(--wui-x06)); background: rgb(var(--wui-x01) / 0.045); border: 1px solid rgb(var(--wui-x01) / 0.12); border-radius: 8px; padding: 13px 16px; cursor: pointer; }
 
@@ -422,7 +422,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 14px;
+  gap: var(--wui-sp-14);
 
 }
 
@@ -470,7 +470,7 @@ html[data-locale='en'] body {
 
   grid-template-columns: 330px 1fr 390px;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   padding: 10px;
 
@@ -486,7 +486,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   padding-right: 2px;
 
@@ -502,7 +502,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
 }
 
@@ -514,7 +514,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
 }
 
@@ -564,7 +564,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -622,7 +622,7 @@ html[data-locale='en'] body {
 
   font-size: 11px;
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -634,13 +634,13 @@ html[data-locale='en'] body {
 
   line-height: 1.5;
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
 .app-skill-state {
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
@@ -742,7 +742,7 @@ html[data-locale='en'] body {
 
 .app-head-training {
 
-  margin-bottom: 8px;
+  margin-bottom: var(--wui-sp-8);
 
 }
 
@@ -750,7 +750,7 @@ html[data-locale='en'] body {
 
   font-size: 13px;
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -758,7 +758,7 @@ html[data-locale='en'] body {
 
   list-style: none;
 
-  margin: 6px 0 0;
+  margin: var(--wui-sp-6) 0 0;
 
   padding: 0;
 
@@ -790,7 +790,7 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
@@ -921,7 +921,7 @@ html[data-locale='en'] body {
   align-items: center;
   justify-content: center;
   min-height: 30px;
-  margin: 0 0 6px;
+  margin: 0 0 var(--wui-sp-6);
   padding: 4px 8px;
   border: 1px solid rgb(var(--wui-x145) / 0.38);
   border-radius: 12px;
@@ -942,7 +942,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -950,7 +950,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 6px 8px;
 
@@ -988,7 +988,7 @@ html[data-locale='en'] body {
 
 .app-belt input {
 
-  margin-top: 3px;
+  margin-top: var(--wui-sp-3);
 
   accent-color: rgb(var(--wui-accent));
 
@@ -1000,7 +1000,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 2px;
+  gap: var(--wui-sp-2);
 
   min-width: 0;
 
@@ -1028,7 +1028,7 @@ html[data-locale='en'] body {
 
   padding: 0 6px;
 
-  margin-left: 6px;
+  margin-left: var(--wui-sp-6);
 
 }
 
@@ -1060,7 +1060,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-gold));
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
   opacity: 0.92;
 
@@ -1090,7 +1090,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex: 0 0 auto;
 
@@ -1191,9 +1191,9 @@ html[data-locale='en'] body {
 
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
@@ -1205,9 +1205,9 @@ html[data-locale='en'] body {
 
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
@@ -1244,7 +1244,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   padding: 10px 12px;
 
@@ -1294,7 +1294,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -1334,7 +1334,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   /* 贴底对齐：信息区高度撑满卡片，操作容器始终吸附卡片底部 */
 
@@ -1352,7 +1352,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -1384,9 +1384,9 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -1396,7 +1396,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 3px 6px;
 
@@ -1432,9 +1432,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
-  margin: 8px 0 4px;
+  margin: var(--wui-sp-8) 0 var(--wui-sp-4);
 
 }
 
@@ -1446,7 +1446,7 @@ html[data-locale='en'] body {
 
 .app-mining-run {
 
-  margin: 8px 0 2px;
+  margin: var(--wui-sp-8) 0 var(--wui-sp-2);
 
 }
 
@@ -1466,7 +1466,7 @@ html[data-locale='en'] body {
 
   letter-spacing: 1px;
 
-  margin: 6px 0 2px;
+  margin: var(--wui-sp-6) 0 var(--wui-sp-2);
 
   border-bottom: 1px dashed rgb(var(--wui-border));
 
@@ -1500,7 +1500,7 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 5px 2px;
 
@@ -1514,7 +1514,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 1px;
+  gap: var(--wui-sp-1);
 
   min-width: 0;
 
@@ -1540,7 +1540,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-shrink: 0;
 
@@ -1550,8 +1550,8 @@ html[data-locale='en'] body {
    实现见 ui/aiWorkFx.tsx（唯一实现）；槽位固定 56×36 不跳动；配色沿用 NAV_TONES 同族语汇。
    性能口径（约定第十四章）：只动 transform/opacity 两个合成器属性，不碰 filter/box-shadow/宽高，
    不新建 rAF；`will-change` 不置（行数个位数，无必要、白吃显存）。 */
-.app-inv-main.is-aiwork { flex-direction: row; align-items: center; gap: 8px; }
-.app-inv-main.is-aiwork > .app-inv-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.app-inv-main.is-aiwork { flex-direction: row; align-items: center; gap: var(--wui-sp-8); }
+.app-inv-main.is-aiwork > .app-inv-text { display: flex; flex-direction: column; gap: var(--wui-sp-1); min-width: 0; }
 .app-inv-fx { flex: 0 0 auto; width: 56px; height: 36px; line-height: 0; color: rgb(var(--wui-text-dim)); }
 /* 工作内容配色（采矿/打捞/掩护巡逻/精炼炉/回收炉/组装制造） */
 .app-inv-fx.is-mining { color: rgb(var(--wui-work-mine)); }
@@ -1620,7 +1620,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -1704,7 +1704,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-accent));
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -1716,7 +1716,7 @@ html[data-locale='en'] body {
 
   line-height: 1.5;
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -1728,7 +1728,7 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
@@ -1750,7 +1750,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
 }
 
@@ -1784,7 +1784,7 @@ html[data-locale='en'] body {
 
   padding: 8px 10px;
 
-  margin-bottom: 6px;
+  margin-bottom: var(--wui-sp-6);
 
 }
 
@@ -1792,7 +1792,7 @@ html[data-locale='en'] body {
 
   font-size: 13px;
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -1953,7 +1953,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
   font-size: 11.5px;
 
@@ -2050,9 +2050,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -2167,7 +2167,7 @@ html[data-locale='en'] body {
 
 .app-map-side {
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   min-height: 46px;
 
@@ -2209,7 +2209,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -2239,7 +2239,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -2257,7 +2257,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-text-dim));
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -2265,7 +2265,7 @@ html[data-locale='en'] body {
 
   font-size: 12px;
 
-  margin-top: 3px;
+  margin-top: var(--wui-sp-3);
 
 }
 
@@ -2275,7 +2275,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-gold));
 
-  margin-top: 1px;
+  margin-top: var(--wui-sp-1);
 
 }
 
@@ -2287,7 +2287,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-gold));
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
   opacity: 0.92;
 
@@ -2307,9 +2307,9 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
@@ -2389,7 +2389,7 @@ html[data-locale='en'] body {
 
   padding-bottom: 8px;
 
-  margin-bottom: 6px;
+  margin-bottom: var(--wui-sp-6);
 
 }
 
@@ -2405,7 +2405,7 @@ html[data-locale='en'] body {
 
   font-size: 11px;
 
-  margin: 2px 0 0;
+  margin: var(--wui-sp-2) 0 0;
 
   opacity: 0.85;
 
@@ -2453,7 +2453,7 @@ html[data-locale='en'] body {
 
   font-size: 12px;
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -2463,9 +2463,9 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   /* 队列过长时窗内滚动（2026-09-09 船长：防挤占下方技能目录）——上限约 4 行 chip */
 
@@ -2483,7 +2483,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
 }
 
@@ -2539,7 +2539,7 @@ html[data-locale='en'] body {
 
   border-bottom: 1px dotted rgb(var(--wui-border));
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -2547,7 +2547,7 @@ html[data-locale='en'] body {
    分组复用上面的 `.app-skill-group(-tag)`；行沿用物品清单那一族的字段排法（`.app-inv-main/-name/-btns`），
    这里只补三件——行的排版、说明行、以及"名字可点开详情"的隐形按钮。 */
 
-.app-skilltree-catalog { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.app-skilltree-catalog { display: flex; flex-direction: column; gap: var(--wui-sp-10); margin-top: var(--wui-sp-6); }
 
 .app-skill-row {
 
@@ -2557,7 +2557,7 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   padding: 5px 2px;
 
@@ -2602,13 +2602,13 @@ html[data-locale='en'] body {
 
   padding: 8px 10px;
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   display: flex;
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -2620,13 +2620,13 @@ html[data-locale='en'] body {
 
 /* **活动卡「产出」清单**（2026-09-23 船长令：卡面不再写「≈ ISK/h」折算值，改成
    「物资 ×N/h（仓库 M · 行情 P）」逐项列）——`.app-yield*` 是该读数在**全仓唯一**的样式族。 */
-.app-yield { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+.app-yield { display: flex; flex-direction: column; gap: var(--wui-sp-1); margin-top: var(--wui-sp-2); }
 .app-yield-head { font-size: 10px; letter-spacing: 1px; }
-.app-yield-row { display: flex; align-items: baseline; gap: 6px; font-size: 11px; flex-wrap: wrap; }
+.app-yield-row { display: flex; align-items: baseline; gap: var(--wui-sp-6); font-size: 11px; flex-wrap: wrap; }
 .app-yield-name { font-weight: 600; }
 .app-yield-rate { color: rgb(var(--wui-accent)); }
 
-.app-train-ask-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.app-train-ask-actions { display: flex; gap: var(--wui-sp-6); flex-wrap: wrap; }
 
 /* 技能目录 · 图标模式（2026-09-09 船长：技能卡自适应网格——宽度足够同行更多；样式对齐 app-hand 族） */
 
@@ -2636,9 +2636,9 @@ html[data-locale='en'] body {
 
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
-  margin: 6px 0 2px;
+  margin: var(--wui-sp-6) 0 var(--wui-sp-2);
 
 }
 
@@ -2648,7 +2648,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
   border: 1px solid rgb(var(--wui-x01) / 0.08);
 
@@ -2676,7 +2676,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   min-width: 0;
 
@@ -2714,7 +2714,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
   font-size: 10.5px;
 
@@ -2756,7 +2756,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -2813,7 +2813,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 4px 6px;
 
@@ -2919,7 +2919,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 1px;
+  gap: var(--wui-sp-1);
 
 }
 
@@ -2953,7 +2953,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -3005,7 +3005,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   padding: 10px 10px 6px;
 
@@ -3105,13 +3105,13 @@ html[data-locale='en'] body {
 
   align-items: stretch;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding-bottom: 10px;
 
   border-bottom: 1px dashed rgb(var(--wui-border));
 
-  margin-bottom: 10px;
+  margin-bottom: var(--wui-sp-10);
 
   flex-shrink: 0;
 
@@ -3128,7 +3128,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -3168,7 +3168,7 @@ html[data-locale='en'] body {
 /* 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放对应卡片最左侧；屏幕宽度不足时隐藏图形）：
    只改舰队卡（.is-fleet）为横排——同页市场页卡片（.app-ship-card 不带 is-fleet）保持原纵向排布；
    舰影列宽固定（= ShipPage FLEET_ART_W，gap 同 FLEET_ART_GAP），显隐由列表容器实测宽驱动，不留空位 */
-.app-ship-card.is-fleet { display: flex; align-items: center; gap: 10px; }
+.app-ship-card.is-fleet { display: flex; align-items: center; gap: var(--wui-sp-10); }
 .app-ship-card.is-fleet .app-ship-art { flex: 0 0 auto; line-height: 0; }
 .app-ship-card.is-fleet .app-ship-main { flex: 1 1 auto; min-width: 0; }
 
@@ -3178,14 +3178,14 @@ html[data-locale='en'] body {
    显隐由容器实测宽驱动（过窄整列不渲染、不留空位）。只改带 .is-foe-art 的三处敌族卡；
    资源/快递/建站等同族 .app-station-card（不带 .is-foe-art）保持原纵向排布。 */
 .app-ano-card.is-foe-art,
-.app-station-card.is-foe-art { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+.app-station-card.is-foe-art { display: flex; flex-direction: row; align-items: center; gap: var(--wui-sp-10); }
 .app-ano-card.is-foe-art > .app-ship-art,
 .app-station-card.is-foe-art > .app-ship-art { flex: 0 0 auto; line-height: 0; }
 .app-ano-card.is-foe-art > .app-foe-main,
 .app-station-card.is-foe-art > .app-foe-main { flex: 1 1 auto; min-width: 0; }
 /* 站内卡家族原本靠 .app-station-card 的 column + gap 6px 排版 ⇒ 内容包进信息列后由本行接续同一节奏
    （常驻悬赏卡是块流 + 各行自带 margin，不需要 gap） */
-.app-station-card.is-foe-art > .app-foe-main { display: flex; flex-direction: column; gap: 6px; }
+.app-station-card.is-foe-art > .app-foe-main { display: flex; flex-direction: column; gap: var(--wui-sp-6); }
 
 .app-win-fill {
 
@@ -3207,7 +3207,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
 }
 
@@ -3253,7 +3253,7 @@ html[data-locale='en'] body {
 
   justify-content: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   padding: 6px 10px;
 
@@ -3273,7 +3273,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
   width: 168px;
 
@@ -3295,7 +3295,7 @@ html[data-locale='en'] body {
 .app-shipwin-wrap {
   display: block;
   width: 100%;
-  margin: 0 0 8px;
+  margin: 0 0 var(--wui-sp-8);
   padding: 0;
   border: 0;
   background: none;
@@ -3468,7 +3468,7 @@ html[data-locale='en'] body {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--wui-sp-10);
   padding: 8px 10px;
   border-bottom: 1px solid rgb(var(--wui-border));
   background: rgb(var(--wui-bg-winbox) / 0.92);
@@ -3577,7 +3577,7 @@ html[data-locale='en'] body {
 .app-act-radar { animation-name: app-act-radar; transform-box: fill-box; transform-origin: center; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-dasharray: 7 6; }
 @keyframes app-act-radar { 0% { opacity: 0.1; transform: scale(0.34); } 94% { opacity: 0.7; transform: scale(1.25); } 100% { opacity: 0.1; transform: scale(0.34); } }
 /* 底栏读数与进度条 */
-.app-act-dock { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 14px 12px; border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
+.app-act-dock { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-8) 18px; padding: 10px 14px 12px; border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
 .app-act-line { font-size: 12.5px; color: rgb(var(--wui-text-dim)); }
 .app-act-progress { position: relative; flex: 1 1 220px; height: 14px; min-width: 160px; border: 1px solid rgb(var(--wui-x01) / 0.14); border-radius: 7px; background: rgb(var(--wui-bg-panel) / 0.7); overflow: hidden; }
 .app-act-bar { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgb(var(--wui-blue) / 0.55), rgb(var(--wui-blue) / 0.95)); }
@@ -3645,13 +3645,13 @@ html[data-locale='en'] body {
 
   justify-content: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   width: 100%;
 
   aspect-ratio: 1 / 1; /* 高 = 宽 */
 
-  margin: 0 0 10px;
+  margin: 0 0 var(--wui-sp-10);
 
   padding: 0 10px;
 
@@ -3706,7 +3706,7 @@ html[data-locale='en'] body {
    （`flex-shrink: 1`），导航项只收上下内边距、**字号 / 行高 / 图标一律不动**，收完仍不足才出滚动条。
    ⚠ 旋转模式不走这条（旋转下物理高 ~844 不会命中），由上面的 `is-mobile-rot` 两条负责。 */
 @media (max-height: 730px) {
-  .app-nav-side { padding-top: 8px; padding-bottom: 8px; gap: 4px; }
+  .app-nav-side { padding-top: 8px; padding-bottom: 8px; gap: var(--wui-sp-4); }
   .app-nav-side .app-nav-item:not(.is-featured) { padding-top: 5px; padding-bottom: 5px; }
 }
 
@@ -3770,7 +3770,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 2px;
+  gap: var(--wui-sp-2);
 
   min-width: 168px;
 
@@ -3792,7 +3792,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 7px 12px;
 
@@ -3850,7 +3850,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 2px;
+  gap: var(--wui-sp-2);
 
   min-width: 86px;
 
@@ -3908,7 +3908,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -3920,7 +3920,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   padding: 6px 16px;
 
@@ -3987,7 +3987,7 @@ html[data-locale='en'] body {
 
   line-height: 1.7;
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -3995,7 +3995,7 @@ html[data-locale='en'] body {
 
   font-size: 11px;
 
-  margin-top: 3px;
+  margin-top: var(--wui-sp-3);
 
 }
 
@@ -4005,7 +4005,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 12px;
+  gap: var(--wui-sp-12);
 
   flex-wrap: wrap;
 
@@ -4031,9 +4031,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
-  margin-top: 4px;
+  margin-top: var(--wui-sp-4);
 
 }
 
@@ -4093,7 +4093,7 @@ html[data-locale='en'] body {
 
   gap: 18px;
 
-  margin: 8px 0 2px;
+  margin: var(--wui-sp-8) 0 var(--wui-sp-2);
 
   flex-wrap: wrap;
 
@@ -4109,9 +4109,9 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin-top: 4px;
+  margin-top: var(--wui-sp-4);
 
 }
 
@@ -4127,7 +4127,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   font-size: 12px;
 
@@ -4149,11 +4149,11 @@ html[data-locale='en'] body {
 
   align-items: flex-start;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   flex-wrap: wrap;
 
-  margin-top: 8px;
+  margin-top: var(--wui-sp-8);
 
 }
 
@@ -4161,7 +4161,7 @@ html[data-locale='en'] body {
 
   width: 100%;
 
-  margin-top: 4px;
+  margin-top: var(--wui-sp-4);
 
 }
 
@@ -4171,7 +4171,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 14px;
+  gap: var(--wui-sp-14);
 
 }
 
@@ -4189,9 +4189,9 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin-bottom: 8px;
+  margin-bottom: var(--wui-sp-8);
 
 }
 
@@ -4201,7 +4201,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   border: 1px solid rgb(var(--wui-border));
 
@@ -4279,7 +4279,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -4299,9 +4299,9 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin-bottom: 8px;
+  margin-bottom: var(--wui-sp-8);
 
 }
 
@@ -4313,7 +4313,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -4323,7 +4323,7 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   align-items: center;
 
@@ -4333,7 +4333,7 @@ html[data-locale='en'] body {
 
   border-radius: 4px;
 
-  margin-bottom: 8px;
+  margin-bottom: var(--wui-sp-8);
 
 }
 
@@ -4377,11 +4377,11 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   align-items: center;
 
-  margin: 6px 0 2px;
+  margin: var(--wui-sp-6) 0 var(--wui-sp-2);
 
   flex-wrap: wrap;
 
@@ -4421,7 +4421,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
   flex-shrink: 0;
 
@@ -4481,7 +4481,7 @@ html[data-locale='en'] body {
 
   padding: 8px 10px;
 
-  margin-bottom: 8px;
+  margin-bottom: var(--wui-sp-8);
 
   background: rgb(var(--wui-amber) / 0.05);
 
@@ -4491,7 +4491,7 @@ html[data-locale='en'] body {
 
   font-size: 12px;
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -4501,7 +4501,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -4547,7 +4547,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-text-dim));
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -4555,7 +4555,7 @@ html[data-locale='en'] body {
 
   list-style: none;
 
-  margin: 4px 0 0;
+  margin: var(--wui-sp-4) 0 0;
 
   padding: 0;
 
@@ -4586,7 +4586,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-accent) / 0.95);
 
-  margin-left: 6px;
+  margin-left: var(--wui-sp-6);
 
   white-space: nowrap;
 
@@ -4614,7 +4614,7 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
@@ -4624,7 +4624,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-text-dim));
 
-  margin-top: 4px;
+  margin-top: var(--wui-sp-4);
 
   line-height: 1.5;
 
@@ -4638,7 +4638,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -4664,7 +4664,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 14px;
+  gap: var(--wui-sp-14);
 
   align-items: flex-start;
 
@@ -4698,11 +4698,11 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px 10px;
+  gap: var(--wui-sp-6) var(--wui-sp-10);
 
   padding: 8px 10px;
 
-  margin-bottom: 10px;
+  margin-bottom: var(--wui-sp-10);
 
   border: 1px solid rgb(var(--wui-gold) / 0.4);
 
@@ -4724,7 +4724,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -4754,7 +4754,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -4774,9 +4774,9 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin: 6px 0 8px;
+  margin: var(--wui-sp-6) 0 var(--wui-sp-8);
 
   /* ⚠ 2026-09-17（上限 10 套 ＋ 行内明细）：**不在这里加 max-height/overflow**——
      祖先 `.app-fit-modal` 自带 `max-height: 80vh; overflow-y: auto`（旋转模式下另有 `--mob-h` 覆写），
@@ -4791,7 +4791,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
 }
 
@@ -4801,7 +4801,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 3px;
+  gap: var(--wui-sp-3);
 
   padding: 4px 8px 6px 10px;
 
@@ -4821,7 +4821,7 @@ html[data-locale='en'] body {
 
   align-items: baseline;
 
-  gap: 4px 10px;
+  gap: var(--wui-sp-4) var(--wui-sp-10);
 
 }
 
@@ -4837,7 +4837,7 @@ html[data-locale='en'] body {
 
   font-style: normal;
 
-  margin-right: 3px;
+  margin-right: var(--wui-sp-3);
 
   opacity: 0.7;
 
@@ -4869,7 +4869,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 6px 8px;
 
@@ -4913,7 +4913,7 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding-top: 8px;
 
@@ -4937,11 +4937,11 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 7px 10px;
 
-  margin-bottom: 10px;
+  margin-bottom: var(--wui-sp-10);
 
   border: 1px solid rgb(var(--wui-gold) / 0.45);
 
@@ -5053,7 +5053,7 @@ html[data-locale='en'] body {
 
   grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -5075,7 +5075,7 @@ html[data-locale='en'] body {
 
   justify-content: center;
 
-  gap: 2px;
+  gap: var(--wui-sp-2);
 
   padding: 5px;
 
@@ -5189,9 +5189,9 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
-  margin-top: 8px;
+  margin-top: var(--wui-sp-8);
 
   padding-top: 8px;
 
@@ -5207,9 +5207,9 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin-top: 8px;
+  margin-top: var(--wui-sp-8);
 
   padding-top: 8px;
 
@@ -5225,7 +5225,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   font-size: 11px;
 
@@ -5237,7 +5237,7 @@ html[data-locale='en'] body {
 
   display: inline-flex;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
 }
 
@@ -5295,7 +5295,7 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -5313,7 +5313,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   font-size: 11px;
 
@@ -5365,7 +5365,7 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
 }
 
@@ -5375,7 +5375,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 3px;
+  gap: var(--wui-sp-3);
 
   padding: 3px 5px;
 
@@ -5477,7 +5477,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
   max-height: 260px;
 
@@ -5493,7 +5493,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 5px 8px;
 
@@ -5541,9 +5541,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   font-size: 12px;
 
@@ -5551,7 +5551,7 @@ html[data-locale='en'] body {
 
 .app-fit-drone-empty {
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   font-size: 11px;
 
@@ -5611,9 +5611,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
-  margin: 4px 0 8px;
+  margin: var(--wui-sp-4) 0 var(--wui-sp-8);
 
 }
 
@@ -5663,7 +5663,7 @@ html[data-locale='en'] body {
 
   font-size: 11px;
 
-  margin: 4px 0 10px;
+  margin: var(--wui-sp-4) 0 var(--wui-sp-10);
 
 }
 
@@ -5676,7 +5676,7 @@ html[data-locale='en'] body {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: 8px;
+  gap: var(--wui-sp-8);
   padding-top: 8px;
   border-top: 1px dashed rgb(var(--wui-map-minor) / 0.25);
 }
@@ -5699,9 +5699,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
-  margin: 6px 0 2px;
+  margin: var(--wui-sp-6) 0 var(--wui-sp-2);
 
 }
 
@@ -5721,7 +5721,7 @@ html[data-locale='en'] body {
 
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr);
 
-  gap: 12px;
+  gap: var(--wui-sp-12);
 
   /* 2026-09-08：左右两栏等高（详情+我的挂单总高与左侧列表对齐） */
 
@@ -5735,7 +5735,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   min-width: 0;
 
@@ -5753,7 +5753,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   min-width: 0;
 
@@ -5865,7 +5865,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 12px;
+  gap: var(--wui-sp-12);
 
   /* 铺满面板体：**面板有确定高度时**（窗口矮、详情被挤到压缩区）子项才折算高度、折线图跟着缩；
      面板按内容高时（窗口够高，2026-09-15 起的常规态）这条 `height: 100%` 自然解析成 auto ⇒
@@ -6022,9 +6022,9 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 12px;
+  gap: var(--wui-sp-12);
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -6042,7 +6042,7 @@ html[data-locale='en'] body {
 
   grid-template-columns: 1fr 1fr;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   /* **不参与 flex 收缩**（`0 0 auto`）：高度不足时应当**折线图先让**（船长口径「压缩折线图高度、与面板挂钩」）。
      若写成 `0 1 auto`，折线图与买卖盘会按比例分摊收缩 ⇒ 买卖盘被抢掉几行、最下面一行被裁一半
@@ -6063,7 +6063,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-text-dim));
 
-  margin-bottom: 3px;
+  margin-bottom: var(--wui-sp-3);
 
 }
 
@@ -6073,7 +6073,7 @@ html[data-locale='en'] body {
 
   grid-template-columns: 58px 1fr 52px;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   align-items: center;
 
@@ -6131,7 +6131,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -6141,7 +6141,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -6165,9 +6165,9 @@ html[data-locale='en'] body {
 
 /* 交易面板布局（2026-09-09 船长布局：左列字段区 + 右侧按钮容器——挂单/市价/(卖出侧)全卖
    纵向整体，按钮等宽撑近容器宽；整组靠左排列，字段不拉伸撑满（按钮容器近贴字段）） */
-.app-mkt-trade-body { display: flex; align-items: stretch; gap: 12px; justify-content: flex-start; }
+.app-mkt-trade-body { display: flex; align-items: stretch; gap: var(--wui-sp-12); justify-content: flex-start; }
 .app-mkt-trade-fields { flex: 0 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-.app-mkt-actions { flex: 0 0 118px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.app-mkt-actions { flex: 0 0 118px; display: flex; flex-direction: column; justify-content: center; gap: var(--wui-sp-6); }
 .app-mkt-actions .app-btn { width: 100%; }
 
 .app-fit-modal-head {
@@ -6178,7 +6178,7 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  margin-bottom: 8px;
+  margin-bottom: var(--wui-sp-8);
 
   font-weight: 600;
 
@@ -6190,9 +6190,9 @@ html[data-locale='en'] body {
 
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
-  margin-top: 4px;
+  margin-top: var(--wui-sp-4);
 
   align-items: stretch;
 
@@ -6201,7 +6201,7 @@ html[data-locale='en'] body {
 /* 2026-09-11 船长定（装备选择浮层加筛选与搜索，参考市场页）：筛选栏沿用市场页那套表单类名
    （`.app-mkt-search` / `.app-mkt-search-input` / `.app-mkt-kind`，只做浮层内的排布与间距微调），
    不自造外观；空态行交给 grid 通栏（与 `app-exp-idle` 家族一致）。 */
-.app-fit-pick-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.app-fit-pick-filter { display: flex; align-items: center; gap: var(--wui-sp-8); flex-wrap: wrap; margin-top: var(--wui-sp-6); }
 .app-fit-pick-filter .app-mkt-search-input { flex: 1 1 200px; min-width: 160px; }
 .app-fit-pick-filter .app-exp-idle { grid-column: 1 / -1; }
 
@@ -6213,7 +6213,7 @@ html[data-locale='en'] body {
 
   align-items: stretch;
 
-  gap: 3px;
+  gap: var(--wui-sp-3);
 
   padding: 8px;
 
@@ -6271,7 +6271,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   width: 100%;
 
@@ -6315,7 +6315,7 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 2px 4px;
+  gap: var(--wui-sp-2) var(--wui-sp-4);
 
   font-size: 10.5px;
 
@@ -6339,13 +6339,13 @@ html[data-locale='en'] body {
 
   align-items: baseline;
 
-  row-gap: 2px;
+  row-gap: var(--wui-sp-2);
 
   column-gap: 7px;
 
   width: 100%;
 
-  margin-top: 1px;
+  margin-top: var(--wui-sp-1);
 
   padding-top: 4px;
 
@@ -6381,7 +6381,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 1px;
+  gap: var(--wui-sp-1);
 
 }
 
@@ -6409,7 +6409,7 @@ html[data-locale='en'] body {
 
   letter-spacing: 1px;
 
-  margin: 8px 0 2px;
+  margin: var(--wui-sp-8) 0 var(--wui-sp-2);
 
   border-bottom: 1px dashed rgb(var(--wui-border));
 
@@ -6477,7 +6477,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -6489,9 +6489,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 2px;
+  gap: var(--wui-sp-2);
 
-  margin-right: 10px;
+  margin-right: var(--wui-sp-10);
 
 }
 
@@ -6583,7 +6583,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   align-items: center;
 
@@ -6605,9 +6605,9 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin: 0 0 8px;
+  margin: 0 0 var(--wui-sp-8);
 
 }
 
@@ -6615,7 +6615,7 @@ html[data-locale='en'] body {
 .wui-panel-right .app-hand-viewbar { margin-bottom: 0; }
 
 /* 标题行内搜索栏（2026-09-09 船长：技能目录 / 仓库标题内搜索；观感同市场搜索框） */
-.app-head-search-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.app-head-search-wrap { display: inline-flex; align-items: center; gap: var(--wui-sp-8); }
 .app-head-search { width: 150px; padding: 3px 8px; border: 1px solid rgb(var(--wui-border)); border-radius: 5px; background: rgb(var(--wui-bg-field) / 0.8); color: rgb(var(--wui-text)); font-family: inherit; font-size: 12px; }
 .app-head-search:focus { outline: none; border-color: rgb(var(--wui-accent)); }
 .app-head-search::placeholder { color: rgb(var(--wui-text-dim)); opacity: 0.85; }
@@ -6713,11 +6713,11 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   width: 100%;
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   padding: 6px 8px;
 
@@ -6787,7 +6787,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -6797,7 +6797,7 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
   padding: 0 0 6px;
 
@@ -6809,7 +6809,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
   padding: 1px 8px;
 
@@ -6971,7 +6971,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
   font-size: 12px;
 
@@ -7005,7 +7005,7 @@ html[data-locale='en'] body {
 
 .app-report-tail {
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -7091,9 +7091,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
-  margin: 8px 0 4px;
+  margin: var(--wui-sp-8) 0 var(--wui-sp-4);
 
 }
 
@@ -7103,7 +7103,7 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
   padding: 8px 12px 0;
 
@@ -7149,17 +7149,17 @@ html[data-locale='en'] body {
 .app-hand-split { display: flex; flex: 1 1 auto; min-height: 0; }
 
 /* 左侧导航：与全站导航同族观感（24 行 高亮/悬停），窄窗下自身可滚 */
-.app-hand-nav { display: flex; flex-direction: column; gap: 2px; flex: 0 0 168px; padding: 10px 8px; border-right: 1px solid rgb(var(--wui-border)); overflow-y: auto; min-height: 0; }
-.app-hand-navitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: rgb(var(--wui-text-dim)); font-family: inherit; font-size: 12.5px; text-align: left; cursor: pointer; transition: all 0.15s; }
+.app-hand-nav { display: flex; flex-direction: column; gap: var(--wui-sp-2); flex: 0 0 168px; padding: 10px 8px; border-right: 1px solid rgb(var(--wui-border)); overflow-y: auto; min-height: 0; }
+.app-hand-navitem { display: flex; align-items: center; justify-content: space-between; gap: var(--wui-sp-8); padding: 7px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: rgb(var(--wui-text-dim)); font-family: inherit; font-size: 12.5px; text-align: left; cursor: pointer; transition: all 0.15s; }
 .app-hand-navitem:hover { color: rgb(var(--wui-text)); background: rgb(var(--wui-bg-hover) / 0.6); }
 .app-hand-navitem.is-active { color: rgb(var(--wui-accent)); border-color: rgb(var(--wui-border)); background: rgb(var(--wui-accent) / 0.08); }
 
 /* 右侧内容：固定顶栏（搜索 + 视图切换 + 计数）+ 可滚内容区 */
 .app-hand-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; min-height: 0; }
-.app-hand-topbar { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; padding: 8px 12px; border-bottom: 1px solid rgb(var(--wui-border)); }
+.app-hand-topbar { display: flex; align-items: center; gap: var(--wui-sp-10); flex: 0 0 auto; padding: 8px 12px; border-bottom: 1px solid rgb(var(--wui-border)); }
 .app-hand-topbar .app-head-search { width: 220px; }
 .app-hand-topbar .app-hand-viewbar { margin: 0; }
-.app-hand-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.app-hand-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; display: flex; flex-direction: column; gap: var(--wui-sp-10); }
 /* 图鉴筛选行（2026-09-13 船长：「对手册中的各个图鉴添加筛选」）：固定在小节列表上方不随滚动；
    左右内边距与 .app-hand-topbar / .app-hand-scroll 对齐；行内控件复用组装机那套胶囊（app-task-tabs + app-tasktab） */
 .app-hand-filters { padding: 8px 12px 0; margin-bottom: 0; }
@@ -7177,7 +7177,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 16px;
+  gap: var(--wui-sp-16);
 
   font-size: calc(var(--ui-fs, 1) * 12.5px);
 
@@ -7189,7 +7189,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -7209,7 +7209,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
   padding: 9px 11px;
 
@@ -7251,21 +7251,21 @@ html[data-locale='en'] body {
 .app-hand-subnav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--wui-sp-2);
   flex: 0 0 168px;
   padding: 10px 8px;
   border-right: 1px solid rgb(var(--wui-border));
   overflow-y: auto;
   min-height: 0;
 }
-.app-hand-subgroup { display: flex; flex-direction: column; gap: 2px; }
-.app-hand-subgroup + .app-hand-subgroup { margin-top: 6px; }
+.app-hand-subgroup { display: flex; flex-direction: column; gap: var(--wui-sp-2); }
+.app-hand-subgroup + .app-hand-subgroup { margin-top: var(--wui-sp-6); }
 .app-hand-subgroup-title { padding: 4px 10px 2px; font-size: 11.5px; color: rgb(var(--wui-text-dim)); letter-spacing: 0.5px; }
 .app-hand-subitem {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--wui-sp-8);
   padding: 6px 10px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -7283,13 +7283,13 @@ html[data-locale='en'] body {
 .app-hand-subitem.is-dim { opacity: 0.38; }
 .app-hand-subitem-hits { flex: 0 0 auto; font-family: var(--wui-mono); font-size: 10.5px; color: rgb(var(--wui-accent)); }
 /* 「小贴士」是单条子页（不属于任何一组）：与上面的组用一条分隔线隔开 */
-.app-hand-subsolo { margin-top: 8px; border-top: 1px solid rgb(var(--wui-border)); border-radius: 0 0 6px 6px; }
+.app-hand-subsolo { margin-top: var(--wui-sp-8); border-top: 1px solid rgb(var(--wui-border)); border-radius: 0 0 6px 6px; }
 /* 正文的段：一行短小标题 + 正文；段间 7px、段内 2px（比"一整段"好扫读） */
-.app-hand-para { display: flex; flex-direction: column; gap: 2px; }
+.app-hand-para { display: flex; flex-direction: column; gap: var(--wui-sp-2); }
 .app-hand-para + .app-hand-para { margin-top: 7px; }
 .app-hand-para-head { font-size: calc(var(--ui-fs, 1) * 11.5px); font-weight: 600; letter-spacing: 0.3px; color: rgb(var(--wui-blue-soft)); }
 /* 页底翻页条（船长 2026-09-14 追加「加「上一条 / 下一条」」）：两端对齐、单侧缺项时留空位（按钮位置不跳） */
-.app-hand-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.app-hand-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--wui-sp-8); margin-top: var(--wui-sp-2); }
 .app-hand-pager-btn { max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 窄窗口（≤1180px，与手册既有断点同阈值）：两列导航一起吃紧 ⇒ 子栏收窄，别把正文挤没 */
@@ -7312,7 +7312,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -7328,7 +7328,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
 }
 
@@ -7405,9 +7405,9 @@ html[data-locale='en'] body {
 
   justify-content: flex-end;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin-bottom: 8px;
+  margin-bottom: var(--wui-sp-8);
 
 }
 
@@ -7447,7 +7447,7 @@ html[data-locale='en'] body {
 
   grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -7461,7 +7461,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
   padding: 10px 6px 8px;
 
@@ -7577,7 +7577,7 @@ html[data-locale='en'] body {
 
   vertical-align: -2px;
 
-  margin-right: 3px;
+  margin-right: var(--wui-sp-3);
 
 }
 
@@ -7635,7 +7635,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 12px;
+  gap: var(--wui-sp-12);
 
   padding: 14px 16px 10px;
 
@@ -7681,7 +7681,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-text-dim));
 
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 
 }
 
@@ -7693,7 +7693,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   font-size: 12.5px;
 
@@ -7703,7 +7703,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   line-height: 1.6;
 
@@ -7731,13 +7731,13 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 2px;
+  gap: var(--wui-sp-2);
 
 }
 
 .app-detail-desc {
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   padding: 8px 10px;
 
@@ -7765,17 +7765,17 @@ html[data-locale='en'] body {
 
 /* ===== V10.5: shared ship stats UI (ASCII-safe) ===== */
 
-.app-info-table { display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.app-info-table { display: flex; flex-direction: column; gap: var(--wui-sp-3); font-size: 11px; }
 
-.app-info-row { display: flex; gap: 8px; line-height: 1.6; }
+.app-info-row { display: flex; gap: var(--wui-sp-8); line-height: 1.6; }
 
 .app-info-key { flex: 0 1 88px; min-width: 0; color: rgb(var(--wui-text-dim)); overflow-wrap: anywhere; }
 
 .app-info-val { color: rgb(var(--wui-text)); min-width: 0; overflow-wrap: anywhere; }
 
-.app-info-note { margin-top: 5px; padding-top: 4px; border-top: 1px dashed rgb(var(--wui-border)); color: rgb(var(--wui-text-dim)); font-size: 10.5px; line-height: 1.5; }
+.app-info-note { margin-top: var(--wui-sp-5); padding-top: 4px; border-top: 1px dashed rgb(var(--wui-border)); color: rgb(var(--wui-text-dim)); font-size: 10.5px; line-height: 1.5; }
 
-.app-combat-badges { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.app-combat-badges { display: inline-flex; gap: var(--wui-sp-6); flex-wrap: wrap; align-items: center; }
 
 .app-combat-badge { font-size: 11px; padding: 1px 7px; border-radius: 3px; border: 1px solid rgb(var(--wui-border)); font-family: var(--wui-mono); white-space: nowrap; }
 
@@ -7793,21 +7793,21 @@ html[data-locale='en'] body {
 
 /* 舰船悬停富内容（走全局 Tooltip 层）内的标题与徽章排布 */
 
-.app-tip .app-ship-hover-title { display: block; font-size: 12.5px; font-weight: 700; color: rgb(var(--wui-gold)); margin-bottom: 5px; }
+.app-tip .app-ship-hover-title { display: block; font-size: 12.5px; font-weight: 700; color: rgb(var(--wui-gold)); margin-bottom: var(--wui-sp-5); }
 
-.app-tip .app-combat-badges { margin-bottom: 5px; }
+.app-tip .app-combat-badges { margin-bottom: var(--wui-sp-5); }
 
 /* 舰船形象 + 间接属性展示区（装配台左栏顶部；船长 2026-09-09：形象左置、间接属性右侧纵列；
    自适应由 FitPage 容器实测驱动——窄窗优先缩小舰影（stageFit.art），图缩至下限仍不够时
    不再渲染间接列；总高守恒：原底部间接块整体上移占位） */
-.app-fit-stage { display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin-bottom: 10px; border: 1px dashed rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.4); }
+.app-fit-stage { display: flex; align-items: center; gap: var(--wui-sp-12); padding: 6px 10px; margin-bottom: var(--wui-sp-10); border: 1px dashed rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.4); }
 .app-fit-stage-art { flex: 0 0 auto; line-height: 0; }
 .app-fit-stage-art .app-sprite svg { filter: drop-shadow(0 0 8px rgba(120, 200, 255, 0.18)); }
-.app-fit-indirect { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; opacity: 0.78; }
+.app-fit-indirect { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--wui-sp-3); opacity: 0.78; }
 .app-fit-indirect .app-info-table { font-size: 10.5px; }
 .app-fit-indirect-note { margin-top: 0; }
 
-.app-fit-shipinfo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding: 8px 10px; border: 1px dashed rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.4); }
+.app-fit-shipinfo { display: flex; flex-direction: column; gap: var(--wui-sp-6); margin-bottom: var(--wui-sp-10); padding: 8px 10px; border: 1px dashed rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.4); }
 
 /* 标题后的提示标记（2026-09-13 船长：「隐藏起来，只在标题名字的后面显示一个圆形感叹号图标，
    当玩家悬停时才显示这些说明」）——圆形感叹号 glyph 走 currentColor，这里只给色与间距：
@@ -7817,7 +7817,7 @@ html[data-locale='en'] body {
 .app-hint-ico {
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
+  margin-left: var(--wui-sp-6);
   color: rgb(var(--wui-text-dim));
   cursor: help;
   vertical-align: -2px;
@@ -7904,9 +7904,9 @@ html[data-locale='en'] body {
 
 /* 富内容（舰船/装备说明表）在提示层内的视觉微调 */
 
-.app-tip .app-info-table { margin-top: 4px; }
+.app-tip .app-info-table { margin-top: var(--wui-sp-4); }
 
-.app-tip .app-info-note { font-size: 10.5px; opacity: 0.72; margin-top: 4px; padding-top: 3px; border-top: 1px dashed rgb(var(--wui-border)); }
+.app-tip .app-info-note { font-size: 10.5px; opacity: 0.72; margin-top: var(--wui-sp-4); padding-top: 3px; border-top: 1px dashed rgb(var(--wui-border)); }
 
 /* ---------- 星图：布局编辑器 / 名称下置微调 ---------- */
 
@@ -7934,7 +7934,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-amber));
 
-  margin-top: 4px;
+  margin-top: var(--wui-sp-4);
 
 }
 
@@ -7944,19 +7944,19 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   flex-wrap: wrap;
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
 }
 
 /* V12 battle theater (ASCII-safe) */
 
-.app-battle { display: flex; flex-direction: column; gap: 8px; padding: 6px 0 2px; }
+.app-battle { display: flex; flex-direction: column; gap: var(--wui-sp-8); padding: 6px 0 2px; }
 
-.app-battle-rangebar { display: flex; flex-direction: column; gap: 4px; }
+.app-battle-rangebar { display: flex; flex-direction: column; gap: var(--wui-sp-4); }
 
 .app-battle-bands { position: relative; height: 14px; background: rgb(var(--wui-bg-hover) / 0.6); border-radius: 3px; }
 
@@ -7970,17 +7970,17 @@ html[data-locale='en'] body {
 
 .app-battle-range { width: 100%; accent-color: rgb(var(--wui-gold)); }
 
-.app-battle-legend { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; flex-wrap: wrap; }
+.app-battle-legend { display: flex; justify-content: space-between; align-items: center; gap: var(--wui-sp-8); font-size: 11px; flex-wrap: wrap; }
 
-.app-battle-tacs { display: inline-flex; gap: 5px; }
+.app-battle-tacs { display: inline-flex; gap: var(--wui-sp-5); }
 
-.app-battle-sides { display: flex; flex-direction: column; gap: 6px; }
+.app-battle-sides { display: flex; flex-direction: column; gap: var(--wui-sp-6); }
 
-.app-battle-side { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border: 1px solid rgb(var(--wui-border)); border-radius: 5px; background: rgb(var(--wui-bg-panel) / 0.4); }
+.app-battle-side { display: flex; flex-direction: column; gap: var(--wui-sp-3); padding: 6px 8px; border: 1px solid rgb(var(--wui-border)); border-radius: 5px; background: rgb(var(--wui-bg-panel) / 0.4); }
 
 .app-battle-side-title { display: flex; justify-content: space-between; font-size: 11.5px; }
 
-.app-battle-hp { display: flex; align-items: center; gap: 6px; }
+.app-battle-hp { display: flex; align-items: center; gap: var(--wui-sp-6); }
 
 .app-battle-hp.is-big { flex-direction: column; align-items: stretch; }
 
@@ -8013,7 +8013,7 @@ html[data-locale='en'] body {
    这里给战报阶段抬到 130（仍低于 `.app-detail-mask` 140 与悬浮说明 1000）。 */
 .app-battle-screen.is-report { z-index: 130; }
 
-.app-battle-screen-top { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.85); }
+.app-battle-screen-top { display: flex; align-items: center; gap: var(--wui-sp-12); padding: 8px 12px; border-bottom: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.85); }
 
 .app-battle-screen-top > span:nth-child(2) { font-size: 14px; font-weight: 700; }
 
@@ -8034,15 +8034,15 @@ html[data-locale='en'] body {
 
 .app-battle-field-right { justify-content: flex-end; }
 
-.app-battle-me, .app-battle-foe { display: flex; flex-direction: column; gap: 6px; align-items: center; max-width: 320px; }
+.app-battle-me, .app-battle-foe { display: flex; flex-direction: column; gap: var(--wui-sp-6); align-items: center; max-width: 320px; }
 
 .app-battle-me .app-battle-hp { width: 100%; }
 
 .app-battle-foe { align-items: flex-end; }
 
-.app-battle-foe-ships { display: flex; align-items: flex-end; justify-content: flex-end; gap: 4px; flex-wrap: wrap; }
+.app-battle-foe-ships { display: flex; align-items: flex-end; justify-content: flex-end; gap: var(--wui-sp-4); flex-wrap: wrap; }
 
-.app-battle-gap { flex: 0 0 150px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.app-battle-gap { flex: 0 0 150px; display: flex; flex-direction: column; align-items: center; gap: var(--wui-sp-6); }
 
 .app-battle-dist-num { font-size: 15px; font-weight: 700; color: rgb(var(--wui-flag)); font-family: var(--wui-mono); }
 
@@ -8054,9 +8054,9 @@ html[data-locale='en'] body {
 
 .app-battle-dist-bar .is-foe { background: rgb(var(--wui-x05)); }
 
-.app-battle-controls { display: flex; flex-direction: column; gap: 6px; padding: 10px 16px 14px; border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
+.app-battle-controls { display: flex; flex-direction: column; gap: var(--wui-sp-6); padding: 10px 16px 14px; border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
 
-.app-battle-entry-hint { margin-top: 6px; font-size: 11px; }
+.app-battle-entry-hint { margin-top: var(--wui-sp-6); font-size: 11px; }
 
 .app-sprite { position: relative; display: inline-block; }
 
@@ -8105,7 +8105,7 @@ html[data-locale='en'] body {
 .app-bts-speed.is-foe { color: rgb(var(--wui-x180)); }
 .app-bts-ruler-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 0 2px 2px; }
 
-.app-bts-scale { position: relative; height: 10px; margin-top: 8px; background: linear-gradient(90deg, rgb(var(--wui-flag) / 0.14), rgb(var(--wui-flag) / 0.42)); border: 1px solid rgb(var(--wui-flag) / 0.25); border-radius: 5px; }
+.app-bts-scale { position: relative; height: 10px; margin-top: var(--wui-sp-8); background: linear-gradient(90deg, rgb(var(--wui-flag) / 0.14), rgb(var(--wui-flag) / 0.42)); border: 1px solid rgb(var(--wui-flag) / 0.25); border-radius: 5px; }
 
 .app-bts-zone { position: absolute; top: 1px; height: 8px; border-radius: 3px; opacity: .5; }
 
@@ -8121,7 +8121,7 @@ html[data-locale='en'] body {
 
 .app-bts-cur-chip { position: absolute; bottom: calc(100% + 6px); left: 0; transform: translateX(-50%); font-size: 11px; font-weight: 700; font-family: var(--wui-mono); color: rgb(var(--wui-flag)); background: rgb(var(--wui-x224) / 0.88); border: 1px solid rgb(var(--wui-flag) / 0.4); border-radius: 4px; padding: 1px 6px; white-space: nowrap; pointer-events: none; }
 
-.app-bts-lane { position: relative; flex: 1; min-height: 260px; overflow: hidden; margin: 2px 6px 6px; }
+.app-bts-lane { position: relative; flex: 1; min-height: 260px; overflow: hidden; margin: var(--wui-sp-2) var(--wui-sp-6) var(--wui-sp-6); }
 
 .app-bts-arcs { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 
@@ -8129,7 +8129,7 @@ html[data-locale='en'] body {
 
 .app-bts-col.is-foe { align-items: center; }
 
-.app-bts-shipRow { display: flex; align-items: flex-end; gap: 4px; }
+.app-bts-shipRow { display: flex; align-items: flex-end; gap: var(--wui-sp-4); }
 
 .app-bts-sub { font-size: 11px; margin-top: -2px; text-align: center; }
 
@@ -8163,9 +8163,9 @@ html[data-locale='en'] body {
 
 .app-bts-here { position: absolute; left: 0; top: 50%; width: 3px; height: 16px; margin: -8px 0 0 -1.5px; background: rgb(var(--wui-blue-4)); box-shadow: 0 0 6px rgba(127,212,255,.9); border-radius: 2px; pointer-events: none; z-index: 2; }
 
-.app-bts-legends { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; }
+.app-bts-legends { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-6); font-size: 11px; }
 
-.app-bts-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgb(var(--wui-x01) / 0.08); background: rgb(var(--wui-bg-panel) / 0.5); border-radius: 4px; padding: 2px 7px; color: rgb(var(--wui-text-dim)); }
+.app-bts-chip { display: inline-flex; align-items: center; gap: var(--wui-sp-5); border: 1px solid rgb(var(--wui-x01) / 0.08); background: rgb(var(--wui-bg-panel) / 0.5); border-radius: 4px; padding: 2px 7px; color: rgb(var(--wui-text-dim)); }
 
 .app-bts-chip i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
@@ -8176,18 +8176,18 @@ html[data-locale='en'] body {
 /* 机库备用机（2026-09-12 船长：「显示在名字边上，采用图标乘以数字的形式」）：
  * 跟在敌舰名字右边的小徽（`drone-rack` 图标 + ×N），沿用既有 `.app-ico` 内联图标盒，
  * 配色与字形登记色一致（`ICO_TONES['drone-rack']` = #ffc46b）；不再有"列底一行 chip"的旧形态。 */
-.app-bts-hangar { display: inline-flex; align-items: center; margin-left: 5px; color: rgb(var(--wui-x60)); }
-.app-bts-hangar .app-ico { margin-right: 1px; vertical-align: 0; }
+.app-bts-hangar { display: inline-flex; align-items: center; margin-left: var(--wui-sp-5); color: rgb(var(--wui-x60)); }
+.app-bts-hangar .app-ico { margin-right: var(--wui-sp-1); vertical-align: 0; }
 
-.app-bts-ammo { margin-left: auto; display: inline-flex; gap: 8px; font-family: var(--wui-mono); font-size: 11px; }
+.app-bts-ammo { margin-left: auto; display: inline-flex; gap: var(--wui-sp-8); font-family: var(--wui-mono); font-size: 11px; }
 
 /* 船体维修装置状态徽标（2026-09-09：运转 = 绿点呼吸；组件耗尽停机 = 暗红停跳） */
-.app-bts-repair { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgb(var(--wui-x01) / 0.08); background: rgb(var(--wui-bg-panel) / 0.5); border-radius: 4px; padding: 2px 7px; color: rgb(var(--wui-text-dim)); font-size: 11px; }
+.app-bts-repair { display: inline-flex; align-items: center; gap: var(--wui-sp-5); border: 1px solid rgb(var(--wui-x01) / 0.08); background: rgb(var(--wui-bg-panel) / 0.5); border-radius: 4px; padding: 2px 7px; color: rgb(var(--wui-text-dim)); font-size: 11px; }
 .app-bts-repair i { width: 9px; height: 9px; border-radius: 50%; flex: none; background: rgb(var(--wui-heal)); box-shadow: 0 0 6px rgba(111,217,138,.85); animation: app-bts-repair-pulse calc(var(--wui-dur-bts) * 1.0667) ease-in-out infinite; }
 .app-bts-repair.is-down i { background: rgb(var(--wui-x179)); box-shadow: none; animation: none; }
 @keyframes app-bts-repair-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 
-.app-bts-sliderRow { display: flex; align-items: center; gap: 10px; }
+.app-bts-sliderRow { display: flex; align-items: center; gap: var(--wui-sp-10); }
 
 .app-bts-sideLabel { font-size: 11px; flex: none; }
 
@@ -8363,7 +8363,7 @@ html[data-locale='en'] body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--wui-sp-4);
   pointer-events: none;
 }
 
@@ -8413,7 +8413,7 @@ html[data-locale='en'] body {
 
 .app-bts-report { position: absolute; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgb(var(--wui-x11) / 0.66); }
 
-.app-bts-report-card { width: min(600px, 90vw); border: 1px solid rgb(var(--wui-gold)); border-radius: 12px; background: linear-gradient(180deg, rgb(var(--wui-x175) / 0.97), rgb(var(--wui-x257) / 0.98)); padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 44px rgba(0,0,0,.65); animation: app-bts-rcard .3s ease-out; }
+.app-bts-report-card { width: min(600px, 90vw); border: 1px solid rgb(var(--wui-gold)); border-radius: 12px; background: linear-gradient(180deg, rgb(var(--wui-x175) / 0.97), rgb(var(--wui-x257) / 0.98)); padding: 24px 28px; display: flex; flex-direction: column; gap: var(--wui-sp-12); box-shadow: 0 12px 44px rgba(0,0,0,.65); animation: app-bts-rcard .3s ease-out; }
 
 .app-bts-report-card.is-win { border-color: rgb(var(--wui-gold-soft)); }
 
@@ -8436,7 +8436,7 @@ html[data-locale='en'] body {
 
 .app-bts-report-note { font-size: 11px; color: rgb(var(--wui-text-dim)); }
 
-.app-bts-report-card .app-btn { align-self: center; margin-top: 2px; padding: 6px 28px; }
+.app-bts-report-card .app-btn { align-self: center; margin-top: var(--wui-sp-2); padding: 6px 28px; }
 
 /* V12.5 narrow centered ruler & dock (ASCII-safe) */
 
@@ -8444,8 +8444,8 @@ html[data-locale='en'] body {
 
 /* 洞内倍速控件（2026-09-19 谜质科技「时间压缩矩阵」）：**顶部中间、距离条上方**，只显示已解锁档。
    选中态复刻 `.app-fit-ammotier-opt.is-active`（同语言：亮青底 + 深字 + 加粗），不另造样式。 */
-.app-bts-speedx { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px auto 0; }
-.app-bts-speedx .app-dim { font-size: 11px; margin-right: 2px; }
+.app-bts-speedx { display: flex; align-items: center; justify-content: center; gap: var(--wui-sp-6); margin: 2px auto 0; }
+.app-bts-speedx .app-dim { font-size: 11px; margin-right: var(--wui-sp-2); }
 .app-bts-speedx .app-btn.is-active { color: rgb(var(--wui-bg-scene-2)); background: rgb(var(--wui-blue)); border-color: rgb(var(--wui-blue)); font-weight: 600; }
 
 .app-bts-scale { margin-top: 34px; }
@@ -8463,7 +8463,7 @@ html[data-locale='en'] body {
    - 整屏允许**纵向滚动**，任何一段都不会被永久挤出视口。 */
 @media (max-width: 640px) {
   .app-battle-screen { overflow-y: auto; }
-  .app-battle-screen-top { padding: 6px 8px; gap: 8px; row-gap: 6px; flex-wrap: wrap; }
+  .app-battle-screen-top { padding: 6px 8px; gap: var(--wui-sp-8); row-gap: var(--wui-sp-6); flex-wrap: wrap; }
   .app-battle-screen-top > span { font-size: 12.5px; }
   .app-battle-screen-top .app-btn { font-size: 13px; padding: 8px 14px; }
   .app-bts-stage { overflow-x: auto; overflow-y: hidden; }
@@ -8487,13 +8487,13 @@ html[data-locale='en'] body {
   border-radius: 4px;
   pointer-events: none;
 }
-.app-bts-dock { width: clamp(420px, 52vw, 780px); margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.app-bts-dock { width: clamp(420px, 52vw, 780px); margin: 0 auto; display: flex; flex-direction: column; gap: var(--wui-sp-6); }
 
 .app-bts-dock .app-bts-legends { justify-content: center; }
 
 .app-bts-dock .app-bts-ammo { margin-left: 0; }
 
-.app-bts-ops { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.app-bts-ops { display: flex; align-items: center; justify-content: space-between; gap: var(--wui-sp-12); }
 
 /* V12.6 dynamic ship facing (ASCII-safe) */
 
@@ -8537,7 +8537,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   width: 320px;
 
@@ -8569,7 +8569,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -8597,7 +8597,7 @@ html[data-locale='en'] body {
 
   flex-wrap: wrap;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
 }
 
@@ -8635,7 +8635,7 @@ html[data-locale='en'] body {
 
   display: inline-block;
 
-  margin-left: 8px;
+  margin-left: var(--wui-sp-8);
 
   padding: 0 7px;
 
@@ -8677,7 +8677,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   width: 100%;
 
@@ -8687,7 +8687,7 @@ html[data-locale='en'] body {
 
   overflow-y: auto;
 
-  margin: 0 0 6px;
+  margin: 0 0 var(--wui-sp-6);
 
   padding: 8px 12px;
 
@@ -8711,9 +8711,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  row-gap: 6px;
+  row-gap: var(--wui-sp-6);
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   flex-shrink: 0;
 
@@ -8820,7 +8820,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 3px;
+  gap: var(--wui-sp-3);
 
 }
 
@@ -8850,7 +8850,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 3px 8px;
 
@@ -8876,7 +8876,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   padding: 3px 8px;
 
@@ -8912,7 +8912,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   font-size: 11.5px;
 
@@ -8970,7 +8970,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   width: 200px;
 
@@ -9049,7 +9049,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   width: max-content;
 
@@ -9093,11 +9093,11 @@ html[data-locale='en'] body {
 
 /* V16.2 vertical hp layers (shield blue / armor red / hull yellow, top-down) (ASCII-safe) */
 
-.app-battle-hp { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.app-battle-hp { display: flex; flex-direction: column; gap: var(--wui-sp-3); width: 100%; }
 
 .app-battle-hp-name { font-size: 10.5px; color: rgb(var(--wui-text-dim)); line-height: 1.3; }
 
-.app-battle-hp-layer { display: flex; align-items: center; gap: 6px; height: 12px; }
+.app-battle-hp-layer { display: flex; align-items: center; gap: var(--wui-sp-6); height: 12px; }
 
 .app-bts-hpWrap .app-battle-hp-layer { height: 15px; }
 
@@ -9191,7 +9191,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 5px;
+  gap: var(--wui-sp-5);
 
 }
 
@@ -9209,13 +9209,13 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
 .app-sell-confirm {
 
-  margin-top: 6px;
+  margin-top: var(--wui-sp-6);
 
   border: 1px solid rgb(var(--wui-gold) / 0.4);
 
@@ -9229,7 +9229,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -9271,7 +9271,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -9319,7 +9319,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   align-items: center;
 
@@ -9343,7 +9343,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-shrink: 0;
 
@@ -9367,9 +9367,9 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
-  margin: 2px 0 6px;
+  margin: var(--wui-sp-2) 0 var(--wui-sp-6);
 
 }
 
@@ -9385,12 +9385,12 @@ html[data-locale='en'] body {
 
 
 /* 2026-09-09 长途运输（任务中心新族）：航线行 + 进行中提示（先复刻任务卡同级样式） */
-.app-haul-list { display: flex; flex-direction: column; gap: 8px; }
-.app-haul-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed rgb(var(--wui-border)); border-radius: 8px; background: rgb(var(--wui-bg-panel) / 0.45); }
-.app-haul-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.app-haul-list { display: flex; flex-direction: column; gap: var(--wui-sp-8); }
+.app-haul-row { display: flex; flex-direction: column; gap: var(--wui-sp-6); padding: 8px 10px; border: 1px dashed rgb(var(--wui-border)); border-radius: 8px; background: rgb(var(--wui-bg-panel) / 0.45); }
+.app-haul-line { display: flex; justify-content: space-between; align-items: baseline; gap: var(--wui-sp-8); }
 .app-haul-route { font-weight: 700; color: rgb(var(--wui-text)); }
-.app-haul-actions { display: flex; align-items: center; gap: 8px; }
-.app-haul-active { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; padding: 8px 10px; border: 1px solid rgb(var(--wui-accent) / 0.35); border-radius: 8px; background: rgb(var(--wui-x158) / 0.25); }
+.app-haul-actions { display: flex; align-items: center; gap: var(--wui-sp-8); }
+.app-haul-active { display: flex; flex-direction: column; gap: var(--wui-sp-4); margin-bottom: var(--wui-sp-8); padding: 8px 10px; border: 1px solid rgb(var(--wui-accent) / 0.35); border-radius: 8px; background: rgb(var(--wui-x158) / 0.25); }
 .app-task-family {
 
   font-size: 11px;
@@ -9401,7 +9401,7 @@ html[data-locale='en'] body {
 
   border-bottom: 1px dotted rgb(var(--wui-border));
 
-  margin: 8px 0 6px;
+  margin: var(--wui-sp-8) 0 var(--wui-sp-6);
 
   padding-bottom: 2px;
 
@@ -9413,7 +9413,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -9431,7 +9431,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
 }
 
@@ -9466,7 +9466,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
   flex-wrap: wrap;
 
@@ -9494,7 +9494,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 2px;
+  gap: var(--wui-sp-2);
 
   font-size: 11px;
 
@@ -9530,7 +9530,7 @@ html[data-locale='en'] body {
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   flex-wrap: wrap;
 
@@ -9548,13 +9548,13 @@ html[data-locale='en'] body {
   line-height: 1.7;
 }
 .app-station-card .app-task-reward {
-  margin-top: 2px;
+  margin-top: var(--wui-sp-2);
 }
 /* 资源单「均价」（2026-09-19 船长：「在报酬后面用**普通颜色**的字体显示平均每单位资源的价格」）：
    外层 `.app-task-reward` 是金色（奖励专用）⇒ 这里显式改回**普通正文色**，与奖励从观感上分开；
    数字用等宽字形族（tabular-nums）让同列表的多行均价对齐，扫一眼就能比大小。 */
 .app-task-reward .app-unit-price {
-  margin-left: 8px;
+  margin-left: var(--wui-sp-8);
   color: rgb(var(--wui-text));
   font-variant-numeric: tabular-nums;
 }
@@ -9642,7 +9642,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: var(--wui-sp-8);
 
 }
 
@@ -9666,7 +9666,7 @@ html[data-locale='en'] body {
 
   color: rgb(var(--wui-gold));
 
-  margin-bottom: 2px;
+  margin-bottom: var(--wui-sp-2);
 
 }
 
@@ -9698,7 +9698,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 4px;
+  gap: var(--wui-sp-4);
 
   flex-wrap: wrap;
 
@@ -9706,7 +9706,7 @@ html[data-locale='en'] body {
 
   padding-bottom: 4px;
 
-  margin-bottom: 6px;
+  margin-bottom: var(--wui-sp-6);
 
 }
 
@@ -9798,7 +9798,7 @@ html[data-locale='en'] body {
 
   padding: 8px 10px;
 
-  margin-top: 8px;
+  margin-top: var(--wui-sp-8);
 
   width: 100%;
 
@@ -9814,7 +9814,7 @@ html[data-locale='en'] body {
 
 .app-ano-pilot-note {
 
-  margin: 6px 0;
+  margin: var(--wui-sp-6) 0;
 
   font-size: 12px;
 
@@ -9838,7 +9838,7 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  gap: 10px;
+  gap: var(--wui-sp-10);
 
   align-items: center;
 
@@ -9890,7 +9890,7 @@ html[data-locale='en'] body {
 
 .app-galaxy-actions {
 
-  margin-top: 10px;
+  margin-top: var(--wui-sp-10);
 
   padding-top: 6px;
 
@@ -9900,7 +9900,7 @@ html[data-locale='en'] body {
 
 .app-ga-sub {
 
-  margin-top: var(--wui-sp-2);
+  margin-top: var(--wui-sp-8);
 
 }
 
@@ -9912,15 +9912,15 @@ html[data-locale='en'] body {
 
   justify-content: space-between;
 
-  gap: var(--wui-sp-2);
+  gap: var(--wui-sp-8);
 
-  margin: var(--wui-sp-1) 0;
+  margin: var(--wui-sp-4) 0;
 
 }
 
 .app-ga-ai {
 
-  gap: 6px;
+  gap: var(--wui-sp-6);
 
   justify-content: flex-start;
 
@@ -9934,7 +9934,7 @@ html[data-locale='en'] body {
 
   flex-direction: column;
 
-  gap: 1px;
+  gap: var(--wui-sp-1);
 
   min-width: 0;
 
@@ -9942,7 +9942,7 @@ html[data-locale='en'] body {
 
 .app-ga-desc {
 
-  font-size: var(--wui-fs-xs);
+  font-size: var(--wui-fs-xsb);
 
   line-height: 1.4;
 
@@ -9952,7 +9952,7 @@ html[data-locale='en'] body {
 
   font-size: 11px;
 
-  margin: 2px 0 4px;
+  margin: var(--wui-sp-2) 0 var(--wui-sp-4);
 
 }
 
@@ -9974,7 +9974,7 @@ html[data-locale='en'] body {
 
 /* v18.1 零抗灰字（三系恒显：0% 也列出，不做缺行省略——船长 2026-09-05） */
 
-.app-res-zero{display:inline-block;font-size:12px;line-height:18px;color:rgb(var(--wui-text-dim));opacity:.85;margin-left:6px;font-family:var(--wui-mono);white-space:nowrap;vertical-align:1px}
+.app-res-zero{display:inline-block;font-size:12px;line-height:18px;color:rgb(var(--wui-text-dim));opacity:.85;margin-left:var(--wui-sp-6);font-family:var(--wui-mono);white-space:nowrap;vertical-align:1px}
 
 /* 层位档（shield / armor / balanced）——**这里才是"层"的语义**，保持盾蓝 / 甲红 / 结构黄不动 */
 
@@ -9986,7 +9986,7 @@ html[data-locale='en'] body {
 
 /* v172 ammo chips (battle semantics colors: kinetic gold / explosive orange / plasma cyan) */
 
-.app-a-chip{display:inline-block;padding:0 5px;border-radius:4px;font-size:11px;line-height:16px;color:rgb(var(--wui-x229));vertical-align:1px;margin-left:3px;white-space:nowrap}
+.app-a-chip{display:inline-block;padding:0 5px;border-radius:4px;font-size:11px;line-height:16px;color:rgb(var(--wui-x229));vertical-align:1px;margin-left:var(--wui-sp-3);white-space:nowrap}
 
 /* **伤害类型 = 弹药类型 = 同一套底色**（合并规则：两族共用，防止再次各写一份而漂移） */
 .app-d-kinetic, .app-a-kinetic{background:rgb(var(--wui-x211))}
@@ -9998,7 +9998,7 @@ html[data-locale='en'] body {
 
 .app-d-plasma, .app-a-plasma{background:rgb(var(--wui-x77))}
 
-.app-refine-progress { height: 4px; background: rgb(var(--wui-x01) / 0.08); border-radius: 2px; overflow: hidden; margin-top: 3px; max-width: 460px; }
+.app-refine-progress { height: 4px; background: rgb(var(--wui-x01) / 0.08); border-radius: 2px; overflow: hidden; margin-top: var(--wui-sp-3); max-width: 460px; }
 
 /* 精炼炉卡内运行进度（船长 2026-09-05：卡内要能看清当前批周期进度） */
 
@@ -10034,11 +10034,11 @@ html[data-locale='en'] body {
 
 .app-fit-rack-title{font-size:13px;color:rgb(var(--wui-x164))}
 
-.app-fit-baypick{margin-left:6px;max-width:320px}
+.app-fit-baypick{margin-left:var(--wui-sp-6);max-width:320px}
 
-.app-bts-reloads { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; justify-content: center; padding: 0 0 4px; min-height: 14px; }
+.app-bts-reloads { display: flex; flex-wrap: wrap; gap: var(--wui-sp-4) var(--wui-sp-10); align-items: center; justify-content: center; padding: 0 0 4px; min-height: 14px; }
 
-.app-bts-reload { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: rgb(var(--wui-x130)); line-height: 1; }
+.app-bts-reload { display: inline-flex; align-items: center; gap: var(--wui-sp-5); font-size: 11px; color: rgb(var(--wui-x130)); line-height: 1; }
 
 .app-bts-reload.is-ready { color: rgb(var(--wui-x148)); }
 
@@ -10058,7 +10058,7 @@ html[data-locale='en'] body {
 
 
 
-.app-items-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgb(var(--wui-border)); padding-bottom: 0; }
+.app-items-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--wui-sp-12); border-bottom: 1px solid rgb(var(--wui-border)); padding-bottom: 0; }
 
 .app-items-head .app-tab { flex: 0 1 150px; }
 
@@ -10107,7 +10107,7 @@ html[data-locale='en'] body {
 /* 周末入侵 · 事件日志里的一行（2026-09-24 船长令：放日志底部、与日志同级、点击跳星图） */
 /* 周末入侵 · 事件日志面板底部的活动框（2026-09-24 船长：位置按截图、**信息与窗口一律红色系**） */
 .app-weekend-box {
-  display: flex; flex-direction: column; gap: 3px; cursor: pointer; font-size: 12px; line-height: 1.5;
+  display: flex; flex-direction: column; gap: var(--wui-sp-3); cursor: pointer; font-size: 12px; line-height: 1.5;
   color: rgb(var(--wui-red));
   border: 1px solid rgb(var(--wui-danger) / 0.55);
   border-left: 3px solid rgb(var(--wui-danger));
@@ -10116,7 +10116,7 @@ html[data-locale='en'] body {
   padding: 6px 8px;
 }
 .app-weekend-box:hover { background: rgb(var(--wui-danger) / 0.16); }
-.app-weekend-box-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.app-weekend-box-row { display: flex; flex-wrap: wrap; gap: var(--wui-sp-6); align-items: baseline; }
 .app-weekend-box-tag { color: rgb(var(--wui-danger)); font-weight: 800; }
 .app-weekend-box-dim { color: rgb(var(--wui-red) / 0.85); }
 .app-weekend-box-warn { color: rgb(var(--wui-danger)); font-weight: 700; }
@@ -10127,7 +10127,7 @@ html[data-locale='en'] body {
 .app-map-invasion-tag { fill: rgb(var(--wui-danger)); font-size: 11px; text-anchor: middle; }
 /* 序章「模式选择」两张卡（**2026-09-23 船长定**：时机＝初始动画之后；两张卡与「出港」按钮同一档尺寸/同一套语言） */
 .app-pro-mode { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; align-items: stretch; }
-.app-pro-mode-card { width: 330px; max-width: 100%; min-height: 220px; display: flex; flex-direction: column; gap: 8px; text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: 10px; padding: 16px 22px; cursor: pointer; }
+.app-pro-mode-card { width: 330px; max-width: 100%; min-height: 220px; display: flex; flex-direction: column; gap: var(--wui-sp-8); text-align: left; font-family: var(--wui-mono); color: rgb(var(--wui-x49)); background: rgb(var(--wui-x159) / 0.25); border: 1px solid rgb(var(--wui-x249)); border-radius: 10px; padding: 16px 22px; cursor: pointer; }
 .app-pro-mode-card:hover { background: rgb(var(--wui-x64) / 0.4); box-shadow: 0 0 22px rgba(90,220,160,.35); }
 .app-pro-mode-card.is-iron { border-color: rgb(var(--wui-fam-a)); }
 .app-pro-mode-title { font-size: 22px; font-weight: 800; }
@@ -10137,9 +10137,9 @@ html[data-locale='en'] body {
 
 .app-pro-term { font-family: var(--wui-mono); font-size: 13px; line-height: 1.9; }
 
-.app-pro-term-title { color: rgb(var(--wui-x133)); margin-bottom: 10px; font-weight: 700; letter-spacing: 1px; }
+.app-pro-term-title { color: rgb(var(--wui-x133)); margin-bottom: var(--wui-sp-10); font-weight: 700; letter-spacing: 1px; }
 
-.app-pro-line { display: flex; gap: 8px; white-space: pre-wrap; }
+.app-pro-line { display: flex; gap: var(--wui-sp-8); white-space: pre-wrap; }
 
 .app-pro-line.is-ok .app-pro-mark { color: rgb(var(--wui-green-diff)); }
 
@@ -10157,7 +10157,7 @@ html[data-locale='en'] body {
 
 @keyframes app-pro-blink { 50% { opacity: 0; } }
 
-.app-pro-hint { color: rgb(var(--wui-x252)); font-size: 11px; margin-top: 12px; text-align: center; }
+.app-pro-hint { color: rgb(var(--wui-x252)); font-size: 11px; margin-top: var(--wui-sp-12); text-align: center; }
 
 /* 自检结论面板（2026-09-11 船长：「红色自检结论建议缩窄宽度，调整下一步按钮让其居中」→ 复看：「是否没居中」）：
    面板宽度 min(560px, 100%) 收窄；**align-self: center 让面板在开场容器里水平居中**
@@ -10165,20 +10165,20 @@ html[data-locale='en'] body {
    面板内为 flex 列，末尾那枚「下一步」按钮再靠 align-self: center 居中。 */
 .app-pro-diag { border: 1px solid rgb(var(--wui-x75)); background: rgb(var(--wui-x247) / 0.25); border-radius: 10px; padding: 18px 20px; width: min(560px, 100%); box-sizing: border-box; display: flex; flex-direction: column; align-self: center; }
 
-.app-pro-diag-title { color: rgb(var(--wui-x206)); font-weight: 800; font-size: 15px; margin-bottom: 12px; }
+.app-pro-diag-title { color: rgb(var(--wui-x206)); font-weight: 800; font-size: 15px; margin-bottom: var(--wui-sp-12); }
 
-.app-pro-diag-row { display: flex; gap: 10px; line-height: 1.8; font-size: 13px; }
+.app-pro-diag-row { display: flex; gap: var(--wui-sp-10); line-height: 1.8; font-size: 13px; }
 
 .app-pro-diag-k { color: rgb(var(--wui-x161)); min-width: 90px; }
 
 .app-pro-diag-v { color: rgb(var(--wui-x215)); }
 
-.app-pro-frag { color: rgb(var(--wui-x116)); font-size: 12px; border-top: 1px dashed rgb(var(--wui-x75)); margin: 12px 0; padding-top: 10px; font-style: italic; }
+.app-pro-frag { color: rgb(var(--wui-x116)); font-size: 12px; border-top: 1px dashed rgb(var(--wui-x75)); margin: var(--wui-sp-12) 0; padding-top: 10px; font-style: italic; }
 
 /* 「下一步：身份确认」居中（面板已是 flex 列，margin auto 即水平居中；不拉伸，保持按钮自然宽） */
-.app-pro-diag > .app-btn { align-self: center; margin-top: 2px; }
+.app-pro-diag > .app-btn { align-self: center; margin-top: var(--wui-sp-2); }
 
-.app-pro-name { display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+.app-pro-name { display: flex; flex-direction: column; gap: var(--wui-sp-12); align-items: center; text-align: center; }
 
 .app-pro-sub { color: rgb(var(--wui-pro-text)); font-size: 13px; }
 
@@ -10186,7 +10186,7 @@ html[data-locale='en'] body {
 
 .app-pro-name-default { color: rgb(var(--wui-x76)); font-size: 12px; }
 
-.app-pro-err { color: rgb(var(--wui-x09)); font-size: 13px; margin-top: 8px; }
+.app-pro-err { color: rgb(var(--wui-x09)); font-size: 13px; margin-top: var(--wui-sp-8); }
 
 .app-pro-skip { position: fixed; top: 12px; right: 14px; z-index: 91; font-size: 12px; color: rgb(var(--wui-pro-text)); background: rgb(var(--wui-x01) / 0.04); border: 1px solid rgb(var(--wui-x243)); border-radius: 5px; padding: 5px 12px; cursor: pointer; }
 
@@ -10201,7 +10201,7 @@ html[data-locale='en'] body {
 
 
 
-.app-ico { display: inline-flex; align-items: center; vertical-align: -2px; margin-right: 3px; }
+.app-ico { display: inline-flex; align-items: center; vertical-align: -2px; margin-right: var(--wui-sp-3); }
 
 
 
@@ -10238,29 +10238,29 @@ html[data-locale='en'] body {
 
 
 /* ── 任务中心 · 重要任务（序章）卡（阶段 5，2026-09-05） ── */
-.app-imp-quests { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.app-imp-quests { display: flex; flex-direction: column; gap: var(--wui-sp-8); margin-bottom: var(--wui-sp-12); }
 .app-imp-card { border: 1px solid rgb(var(--wui-x237)); background: linear-gradient(180deg, rgb(var(--wui-x137) / 0.9), rgb(var(--wui-x261) / 0.95)); border-radius: 8px; padding: 10px 12px; }
 .app-imp-card.is-done { border-color: rgb(var(--wui-x90)); background: rgb(var(--wui-x156) / 0.6); }
-.app-imp-card-title { color: rgb(var(--wui-x121)); font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.app-imp-card-title { color: rgb(var(--wui-x121)); font-weight: 800; font-size: 13px; margin-bottom: var(--wui-sp-6); }
 .app-imp-card.is-done .app-imp-card-title { color: rgb(var(--wui-pro-text)); }
-.app-imp-card-body { font-size: 12px; color: rgb(var(--wui-x147)); line-height: 1.7; margin-bottom: 8px; }
+.app-imp-card-body { font-size: 12px; color: rgb(var(--wui-x147)); line-height: 1.7; margin-bottom: var(--wui-sp-8); }
 .app-imp-card-body.is-done-txt { color: rgb(var(--wui-x108)); margin-bottom: 0; }
 .app-imp-card.is-perm { border-color: rgb(var(--wui-x40)); background: linear-gradient(180deg, rgb(var(--wui-x238) / 0.92), rgb(var(--wui-x220) / 0.96)); }
 .app-imp-card-state { font-size: 11.5px; color: rgb(var(--wui-gold-soft)); }
 /* 任务目标行（2026-09-10 船长定：寻找人类加"探索全部星系"目标）——关键字变色，与赏金卡同色系 */
-.app-imp-card-goal { font-size: 12px; color: rgb(var(--wui-x170)); line-height: 1.7; margin-bottom: 4px; }
+.app-imp-card-goal { font-size: 12px; color: rgb(var(--wui-x170)); line-height: 1.7; margin-bottom: var(--wui-sp-4); }
 .app-imp-goal-key { color: rgb(var(--wui-accent)); font-weight: 600; }
 
 /* ============ v24 任务中心·时效任务（资源 / 快递：随 20 分钟补给周期整板刷新、限时有效） ============ */
-.app-sidetasks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-.app-sidetasks-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12px; color: rgb(var(--wui-text-dim)); border-bottom: 1px dotted rgb(var(--wui-border)); padding-bottom: 4px; }
+.app-sidetasks { display: flex; flex-direction: column; gap: var(--wui-sp-8); margin-bottom: var(--wui-sp-12); }
+.app-sidetasks-head { display: flex; align-items: center; justify-content: space-between; gap: var(--wui-sp-10); flex-wrap: wrap; font-size: 12px; color: rgb(var(--wui-text-dim)); border-bottom: 1px dotted rgb(var(--wui-border)); padding-bottom: 4px; }
 .app-sidetasks-head .app-st-time { color: rgb(var(--wui-accent)); font-family: var(--wui-mono); white-space: nowrap; }
 
 /* ── 赏金任务卡（2026-09-10 船长定：重新排版）──
    ①关键字变色：威胁/守军/预估胜率/赏金/稀有残骸等"字段名"用主强调色，数值保持正文色、金额走金色；
    ②胜率行复用常驻悬赏卡的 .app-ano-win / .app-win-高|中|低 口径；
    ③赏金 = 窝点奖金 + 任务酬金合并一条（不再写两个数），行距与卡内其它行统一（6px 由 .app-station-card gap 给）。 */
-.app-lair-kv { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; font-size: 11.5px; color: rgb(var(--wui-text-dim)); }
+.app-lair-kv { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-3) var(--wui-sp-10); font-size: 11.5px; color: rgb(var(--wui-text-dim)); }
 .app-lair-kv > span { white-space: nowrap; }
 .app-lair-key { color: rgb(var(--wui-accent)); }
 .app-station-card .app-ano-win,
@@ -10268,18 +10268,18 @@ html[data-locale='en'] body {
 .app-station-card .app-ano-desc { margin-top: 0; }
 .app-station-card .app-ano-desc { font-size: 11px; color: rgb(var(--wui-text-dim)); }
 /* ── 更新公告（2026-09-05 船长定：大更新必须发公告） ── */
-.app-ann-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--wui-fam-a)); margin-left: 5px; vertical-align: 1px; box-shadow: 0 0 6px rgba(255,90,60,.9); }
+.app-ann-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--wui-fam-a)); margin-left: var(--wui-sp-5); vertical-align: 1px; box-shadow: 0 0 6px rgba(255,90,60,.9); }
 .app-ann-mask { position: fixed; inset: 0; z-index: 88; background: rgb(var(--wui-x11) / 0.6); display: flex; align-items: center; justify-content: center; }
 .app-ann { width: min(720px, 90vw); max-height: 82vh; display: flex; flex-direction: column; background: linear-gradient(180deg, rgb(var(--wui-x43) / 0.98), rgb(var(--wui-x69) / 0.99)); border: 1px solid rgb(var(--wui-gold)); border-radius: 12px; box-shadow: 0 14px 46px rgba(0,0,0,.7); overflow: hidden; }
 .app-ann-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; border-bottom: 1px dashed rgb(var(--wui-x01) / 0.14); flex: none; }
 .app-ann-title { font-size: 16px; font-weight: 800; color: rgb(var(--wui-flag)); }
-.app-ann-list { overflow: auto; padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; /* 修复：flex 子项默认 min-height:auto 不肯收缩 → 公告条数多时把卡片撑出游戏窗口 */ }
+.app-ann-list { overflow: auto; padding: 10px 18px 16px; display: flex; flex-direction: column; gap: var(--wui-sp-14); flex: 1 1 auto; min-height: 0; /* 修复：flex 子项默认 min-height:auto 不肯收缩 → 公告条数多时把卡片撑出游戏窗口 */ }
 .app-ann-item { border: 1px solid rgb(var(--wui-x01) / 0.1); border-radius: 8px; padding: 10px 12px; background: rgb(var(--wui-x01) / 0.02); }
 .app-ann-item.is-new { border-color: rgb(var(--wui-x10) / 0.45); background: rgb(var(--wui-x101) / 0.1); }
-.app-ann-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.app-ann-item-head { display: flex; align-items: center; gap: var(--wui-sp-8); flex-wrap: wrap; }
 .app-ann-tag { font-size: 11px; color: rgb(var(--wui-flag)); border: 1px solid rgb(var(--wui-x10) / 0.5); border-radius: 4px; padding: 0 6px; }
 .app-ann-item-title { font-weight: 800; font-size: 13.5px; color: rgb(var(--wui-x186)); }
-.app-ann-bullets { margin: 6px 0 0; padding-left: 18px; }
+.app-ann-bullets { margin: var(--wui-sp-6) 0 0; padding-left: 18px; }
 .app-ann-bullets li { font-size: 12px; color: rgb(var(--wui-x42)); line-height: 1.8; }
 /* ── 出港导航强调（2026-09-05 船长反馈；同批的教程步骤条/光圈高亮已随教程退场，2026-09-17 删） ── */
 .app-nav-item.is-featured { color: rgb(var(--wui-flag)); border: 1px solid rgb(var(--wui-x10) / 0.6); background: linear-gradient(180deg, rgb(var(--wui-x27) / 0.34), rgb(var(--wui-x251) / 0.24)); border-radius: 10px; }
@@ -10314,29 +10314,29 @@ html[data-locale='en'] body {
 .app-settings-val{font-family:var(--wui-mono);font-size:12px;color:rgb(var(--wui-flag));background:rgb(var(--wui-gold) / 0.08);border:1px solid rgb(var(--wui-gold) / 0.35);border-radius:4px;padding:1px 8px;min-width:52px;text-align:center}
 .app-settings-slider{width:100%;accent-color:rgb(var(--wui-accent));height:18px;cursor:pointer}
 .app-settings-desc{font-size:10px;color:rgb(var(--wui-text-dim))}
-.app-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:10px;border-top:1px dashed rgb(var(--wui-map-minor) / 0.3)}
+.app-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--wui-sp-8);margin-top:var(--wui-sp-14);padding-top:10px;border-top:1px dashed rgb(var(--wui-map-minor) / 0.3)}
 .app-settings-btns{display:flex;gap:6px}
 /* ── 市场「全部卖出」确认框（2026-09-05 船长：先预览实际成交与到账再确认） ── */
 .app-mkt-confirm-mask { position: fixed; inset: 0; z-index: 96; background: rgb(var(--wui-x11) / 0.62); display: flex; align-items: center; justify-content: center; }
 .app-mkt-confirm { width: min(460px, 90vw); background: linear-gradient(180deg, rgb(var(--wui-x190) / 0.99), rgb(var(--wui-x79) / 0.99)); border: 1px solid rgb(var(--wui-x40)); border-radius: 12px; padding: 16px 18px; box-shadow: 0 14px 44px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: 9px; }
 .app-mkt-confirm-title { font-size: 15px; font-weight: 800; color: rgb(var(--wui-flag)); }
-.app-mkt-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: rgb(var(--wui-x42)); }
+.app-mkt-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: var(--wui-sp-12); font-size: 13px; color: rgb(var(--wui-x42)); }
 .app-mkt-confirm-row.is-net { border-top: 1px dashed rgb(var(--wui-x01) / 0.16); padding-top: 8px; }
 .app-mkt-confirm-note { font-size: 12px; color: rgb(var(--wui-x208)); line-height: 1.7; border: 1px dashed rgb(var(--wui-x105)); background: rgb(var(--wui-x264) / 0.16); border-radius: 8px; padding: 7px 10px; }
-.app-mkt-confirm-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.app-mkt-confirm-btns { display: flex; gap: var(--wui-sp-10); justify-content: flex-end; margin-top: var(--wui-sp-4); }
 
 
 /* ---------- perf HUD (2026-09-08 diagnostic tool; debug flag only) ---------- */
 
-.app-perf-hud { position: fixed; right: 12px; bottom: 12px; z-index: 95; width: 350px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgb(var(--wui-cyan) / 0.35); background: rgb(var(--wui-bg-winbox) / 0.96); color: rgb(var(--wui-x163)); font-family: var(--wui-mono); font-size: 11.5px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: 4px; }
+.app-perf-hud { position: fixed; right: 12px; bottom: 12px; z-index: 95; width: 350px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgb(var(--wui-cyan) / 0.35); background: rgb(var(--wui-bg-winbox) / 0.96); color: rgb(var(--wui-x163)); font-family: var(--wui-mono); font-size: 11.5px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: var(--wui-sp-4); }
 
-.app-perf-hud-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: rgb(var(--wui-flag)); }
+.app-perf-hud-title { display: flex; align-items: center; gap: var(--wui-sp-6); font-size: 12px; font-weight: 700; color: rgb(var(--wui-flag)); }
 
 .app-perf-hud-title .app-btn { margin-left: auto; }
 
-.app-perf-hud-line { display: flex; justify-content: space-between; gap: 10px; }
+.app-perf-hud-line { display: flex; justify-content: space-between; gap: var(--wui-sp-10); }
 
-.app-perf-hud-tip { margin-top: 2px; font-size: 10.5px; }
+.app-perf-hud-tip { margin-top: var(--wui-sp-2); font-size: 10.5px; }
 
 /* ---------- market detail quick book click (2026-09-08) ---------- */
 
@@ -10378,17 +10378,17 @@ html[data-locale='en'] body {
 
 /* ---------- fixed-head + scroll-body inside panel (2026-09-08) ---------- */
 
-.wui-panel.win-fixed-body > .wui-panel-body { overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
+.wui-panel.win-fixed-body > .wui-panel-body { overflow: hidden; display: flex; flex-direction: column; gap: var(--wui-sp-8); }
 
 .wui-panel.win-fixed-body .app-win-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
 
 /* ---------- AI task progress like main-control (2026-09-08) ---------- */
 
-.app-ai-taskbar { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; }
+.app-ai-taskbar { display: inline-flex; align-items: center; gap: var(--wui-sp-8); font-size: 11px; }
 
-.app-belt-worker.is-ai { flex-direction: column; align-items: stretch; gap: 3px; }
+.app-belt-worker.is-ai { flex-direction: column; align-items: stretch; gap: var(--wui-sp-3); }
 
-.app-belt-worker.is-ai .app-belt-worker-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.app-belt-worker.is-ai .app-belt-worker-line { display: flex; align-items: center; gap: var(--wui-sp-8); min-width: 0; }
 
 /* ---------- fix: flex-shrink override so is-fill panels collapse into remaining height (2026-09-08) ---------- */
 
@@ -10411,12 +10411,12 @@ html[data-locale='en'] body {
 /* 组装机卡片级「循环制造」控制条（2026-09-10 船长定：开关与目标件数从逐行上移到整张生产卡）——
    与线行名册同族（同一描边/底色家族，压低一档饱和度以示"卡片级、非单线"）；
    固定 min-height：开关切换（目标输入框进出）不改变行高，避免卡面跳动 */
-.app-belt-loop { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-height: 24px; padding: 3px 6px; border: 1px dashed rgb(var(--wui-cyan) / 0.22); border-radius: 5px; background: rgb(var(--wui-cyan) / 0.035); font-size: 11px; color: rgb(var(--wui-text-hi) / 0.85); }
+.app-belt-loop { display: flex; align-items: center; flex-wrap: wrap; gap: var(--wui-sp-4) var(--wui-sp-8); min-height: 24px; padding: 3px 6px; border: 1px dashed rgb(var(--wui-cyan) / 0.22); border-radius: 5px; background: rgb(var(--wui-cyan) / 0.035); font-size: 11px; color: rgb(var(--wui-text-hi) / 0.85); }
 .app-mf-made { color: rgb(var(--wui-accent)); font-variant-numeric: tabular-nums; }
 .app-mf-why { color: rgb(var(--wui-amber)); }
 .app-mf-note { margin-left: auto; white-space: nowrap; }
 
-.app-toggle { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; font-size: 11px; color: rgb(var(--wui-text-hi) / 0.85); }
+.app-toggle { display: inline-flex; align-items: center; gap: var(--wui-sp-5); cursor: pointer; user-select: none; font-size: 11px; color: rgb(var(--wui-text-hi) / 0.85); }
 .app-toggle-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
 .app-toggle-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: rgb(var(--wui-x01) / 0.18); transition: background 0.15s ease; flex: none; }
 .app-toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: rgb(var(--wui-x171)); transition: left 0.15s ease, background 0.15s ease; }
@@ -10424,7 +10424,7 @@ html[data-locale='en'] body {
 .app-toggle-input:checked + .app-toggle-track::after { left: 16px; background: rgb(var(--wui-x01)); }
 .app-toggle-input:focus-visible + .app-toggle-track { outline: 1px solid rgb(var(--wui-accent) / 0.9); }
 
-.app-mf-goal { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: rgb(var(--wui-text-hi) / 0.7); white-space: nowrap; }
+.app-mf-goal { display: inline-flex; align-items: center; gap: var(--wui-sp-3); font-size: 11px; color: rgb(var(--wui-text-hi) / 0.7); white-space: nowrap; }
 .app-mf-goal-input { width: 46px; padding: 1px 4px; font-size: 11px; color: inherit; background: rgb(var(--wui-well) / 0.35); border: 1px solid rgb(var(--wui-cyan) / 0.25); border-radius: 4px; }
 .app-mf-goal-input:focus { outline: none; border-color: rgb(var(--wui-accent) / 0.8); }
 
@@ -10440,7 +10440,7 @@ html[data-locale='en'] body {
 .app-mark-btn:focus-visible { outline: none; border-color: rgb(var(--wui-accent)); }
 
 /* 卡片头右侧按钮/徽标分组（精炼炉卡、组装机蓝图卡；与 .app-ship-top-right 同款布局） */
-.app-belt-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.app-belt-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: var(--wui-sp-6); flex: none; }
 /**
  * **声望门槛提示单独占一行**（2026-09-22 船长报障：「组装机『✕ 需「深空工业协会」声望 4（当前 1）』
  * 的标签**不再是单独占一行**」）。
@@ -10518,19 +10518,19 @@ html[data-locale='en'] body {
    注意：win-fixed-body 的 .app-win-body 自带 overflow-y:auto（选择器特异性更高），这里用同级选择器
    把它改成"不滚的弹性列"，让滚动只发生在两列内部（一级页不滚）。 */
 .wui-panel.win-fixed-body .app-win-body.app-comms-body { overflow: hidden; display: flex; flex-direction: column; }
-.app-comms-grid { display: grid; grid-template-columns: minmax(210px, 290px) minmax(0, 1fr); gap: 12px; flex: 1 1 auto; min-height: 0; }
+.app-comms-grid { display: grid; grid-template-columns: minmax(210px, 290px) minmax(0, 1fr); gap: var(--wui-sp-12); flex: 1 1 auto; min-height: 0; }
 .app-comms-list {
-  display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--wui-sp-6); min-height: 0; overflow-y: auto;
   padding-right: 8px; border-right: 1px solid rgb(var(--wui-border));
 }
 .app-comms-item {
-  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: var(--wui-sp-3); text-align: left; cursor: pointer;
   padding: 7px 9px; border: 1px solid rgb(var(--wui-border)); border-radius: 6px;
   background: rgb(var(--wui-x157) / 0.5); color: rgb(var(--wui-text)); font: inherit; font-size: 12px;
 }
 .app-comms-item:hover { border-color: rgb(var(--wui-accent)); }
 .app-comms-item.is-sel { border-color: rgb(var(--wui-accent)); background: rgb(var(--wui-x235) / 0.6); }
-.app-comms-item-top { display: flex; align-items: center; gap: 5px; }
+.app-comms-item-top { display: flex; align-items: center; gap: var(--wui-sp-5); }
 .app-comms-dot { width: 6px; height: 6px; border-radius: 50%; background: rgb(var(--wui-fam-a)); box-shadow: 0 0 5px rgba(255, 90, 60, .9); flex: 0 0 auto; }
 .app-comms-from { color: rgb(var(--wui-text-dim)); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-comms-time { margin-left: auto; color: rgb(var(--wui-text-dim)); font-size: 10px; font-family: var(--wui-mono); white-space: nowrap; }
@@ -10547,35 +10547,35 @@ html[data-locale='en'] body {
 /* 机身内工作区：上 15 / 侧 19 / 下 15。下檐口（动作按钮 + 通栏「前往」两行）改为**在流内**排布
    （2026-09-11 船长定「乙」），由两行的自然高度撑起、屏幕 flex:1 自动让位——不再用
    "绝对定位 + 预留下内边距"的老办法（那样两行会互相压，且长提示折行时会错位）。 */
-.app-comms-body-col { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 15px 19px 15px; }
+.app-comms-body-col { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--wui-sp-8); padding: 15px 19px 15px; }
 /* 内嵌屏幕：屏幕自身滚（二级窗口内滚动），机身不动；outline 画屏幕框（线段，不占布局） */
 .app-comms-screen {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; border-radius: 10px;
   outline: 1px solid rgb(var(--wui-blue-soft) / 0.38); outline-offset: 0;
   background: rgb(var(--wui-x70) / 0.5);
-  padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 16px 14px; display: flex; flex-direction: column; gap: var(--wui-sp-8);
 }
 /* 屏幕第一层：左上角**发件方头像**（官方章鱼人 SVG 线稿）+ 标题/来源列 + 右侧内容类型小片。
    2026-09-11 船长：在标题与来源左侧绘制章鱼头代表官方；该头像之后都用于代表官方章鱼人。
    2026-09-11 船长复看后「有些过于小了」⇒ 头像盒 38 → 56px、图形 26 → 42px（图形占盒约 3/4，才像一枚势力徽记）。
    头像盒与标题行**顶对齐**（不随标题换行而漂移），尺寸三档固定，内容变化不引起界面跳动。 */
-.app-comms-title-row { display: flex; align-items: flex-start; gap: 12px; flex: 0 0 auto; }
+.app-comms-title-row { display: flex; align-items: flex-start; gap: var(--wui-sp-12); flex: 0 0 auto; }
 .app-comms-avatar {
   flex: 0 0 auto; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
   border: 1px solid rgb(var(--wui-blue-soft) / 0.35); border-radius: 11px; background: rgb(var(--wui-blue-soft) / 0.06);
   margin-top: -3px; /* 与标题首行视觉对齐（标题行高略高于头像上沿） */
 }
-.app-comms-title-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.app-comms-title-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--wui-sp-4); }
 .app-comms-title { color: rgb(var(--wui-flag)); font-size: 15px; font-weight: 600; letter-spacing: .5px; }
 .app-comms-kind { flex: 0 0 auto; }
 /* 屏幕第二层：细分隔条（发件人 + 立场小片 + 送达时间）——压在标题正下方，跟随标题列宽度。
    2026-09-11 船长：「屏幕缩小时『深空工业协会 · 航线安全』的容器过窄」⇒ 本条**允许换行**：
    一行放不下时，官方小片与送达时间整体**另起一行**（时间靠右），而不是把发件人挤成省略号。 */
-.app-comms-head { display: flex; align-items: baseline; gap: 6px 8px; flex-wrap: wrap; border-bottom: 1px dotted rgb(var(--wui-border)); padding-bottom: 5px; flex: 0 0 auto; }
+.app-comms-head { display: flex; align-items: baseline; gap: var(--wui-sp-6) var(--wui-sp-8); flex-wrap: wrap; border-bottom: 1px dotted rgb(var(--wui-border)); padding-bottom: 5px; flex: 0 0 auto; }
 .app-comms-head-from { flex: 0 1 auto; min-width: 0; color: rgb(var(--wui-blue-soft)); font-size: 12px; }
 .app-comms-align { flex: 0 0 auto; }
 .app-comms-head-time { margin-left: auto; flex: 0 0 auto; color: rgb(var(--wui-text-dim)); font-size: 11px; font-family: var(--wui-mono); white-space: nowrap; }
-.app-comms-lines { display: flex; flex-direction: column; gap: 8px; }
+.app-comms-lines { display: flex; flex-direction: column; gap: var(--wui-sp-8); }
 .app-comms-text { margin: 0; color: rgb(var(--wui-text)); font-size: 12.5px; line-height: 1.7; }
 /* 正文强调行（2026-09-11 船长：「将训前简报的任务链内的文字高亮」）：
    **直接复用**离线报告那套既有的强调样式 `.app-report-highlight`（暗底 + 左侧强调竖条），
@@ -10584,18 +10584,18 @@ html[data-locale='en'] body {
 /* 机身下檐口（2026-09-11 船长定「乙」）：**上面一行 = 消息自带动作**、**下面一行 = 通栏「前往」**，
    两行都常驻在滚动区外（原先动作按钮在屏幕滚动内容末尾，简报长文不往下翻就看不见）。
    纯在流内的弹性列：高度随内容自然长高（长提示折行不会互相压），屏幕（flex:1）自动让位。 */
-.app-comms-eave { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; }
+.app-comms-eave { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--wui-sp-8); }
 /* 下檐口下一行：通栏胶囊「前往」。提示文字在左、动作词在右；**文字允许折行**
    （2026-09-11 船长：「跳转的文本过长时，有部分文本不显示」——原先是 `white-space: nowrap` +
    省略号单行截断，长提示会被吃掉），胶囊随行数长高。 */
 .app-btn.app-comms-goto {
   width: 100%;
-  display: flex; align-items: center; gap: 10px; border-radius: 22px; padding: 7px 18px;
+  display: flex; align-items: center; gap: var(--wui-sp-10); border-radius: 22px; padding: 7px 18px;
   font-size: 13px;
 }
 .app-comms-goto-text { flex: 1 1 auto; min-width: 0; text-align: left; font-size: 12px; line-height: 1.45; }
 .app-comms-goto-label { flex: 0 0 auto; font-weight: 600; }
-.app-comms-replies { display: flex; gap: 6px; flex-wrap: wrap; }
+.app-comms-replies { display: flex; gap: var(--wui-sp-6); flex-wrap: wrap; }
 
 /* ═══════════ 通讯页 · 大窗口（全屏）放大（2026-09-11 船长：全屏下消息界面很空，"在丙的基础上让下方跳转更大"） ═══════════
    实测依据（2560×1440 全屏）：屏幕可视高 933px 而内容仅 167px（填充率 17.9%）、正文行长只占屏幕宽 31.4%
@@ -10606,15 +10606,15 @@ html[data-locale='en'] body {
    故此处不再需要"抬高下内边距"的旧补偿，只放大字号/内边距。
    （2026-09-17 教程重做：消息「自带动作」机制整体退场 ⇒ 动作按钮及其三条样式一并删除。） */
 @media (min-width: 1500px) {
-  .app-btn.app-comms-goto { padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); gap: 14px; }
+  .app-btn.app-comms-goto { padding: 11px 26px; font-size: calc(var(--ui-fs, 1) * 15px); gap: var(--wui-sp-14); }
   .app-comms-goto-text { font-size: calc(var(--ui-fs, 1) * 13.5px); }
-  .app-comms-screen { padding: 18px 24px 20px; gap: 10px; }
+  .app-comms-screen { padding: 18px 24px 20px; gap: var(--wui-sp-10); }
   .app-comms-avatar { width: 66px; height: 66px; }
   .app-comms-title { font-size: calc(var(--ui-fs, 1) * 18px); }
   .app-comms-head-from { font-size: calc(var(--ui-fs, 1) * 13.5px); }
   .app-comms-head-time { font-size: calc(var(--ui-fs, 1) * 12.5px); }
   .app-comms-text { font-size: calc(var(--ui-fs, 1) * 14.5px); }
-  .app-comms-lines { gap: 10px; }
+  .app-comms-lines { gap: var(--wui-sp-10); }
   .app-comms-item { padding: 9px 12px; }
   .app-comms-from { font-size: calc(var(--ui-fs, 1) * 12.5px); }
   .app-comms-subject { font-size: calc(var(--ui-fs, 1) * 13.5px); }
@@ -10654,37 +10654,37 @@ html[data-locale='en'] body {
    只补虫洞专属的：弹层尺寸 · 编队读数条 · 节点图 · 背包网格。
    容器固定尺寸，防内容变化引起跳动（约定 §六）。 */
 .app-wh-modal { width: min(1060px, 92vw); height: min(760px, calc(100vh - 72px)); max-width: calc(100vw - 40px); max-height: calc(100vh - 48px); }
-.app-wh-devnote { font-size: 11px; margin-left: 8px; margin-right: auto; }
-.app-wh-tabs { display: flex; gap: 6px; margin-right: 8px; }
-.app-wh-sub { margin-top: 10px; }
+.app-wh-devnote { font-size: 11px; margin-left: var(--wui-sp-8); margin-right: auto; }
+.app-wh-tabs { display: flex; gap: var(--wui-sp-6); margin-right: var(--wui-sp-8); }
+.app-wh-sub { margin-top: var(--wui-sp-10); }
 /* **作业进度条**（F2b 2026-09-13 · 船长裁定「只做表现层进度条」）：复用作业卡的全宽进度条
    `.app-card-progress`，只把填充改成"每次重播"的动画（React 侧 key 换一次 = 重播一次）。
    数据在点下那一刻就结算完了，这条纯表现：不锁按钮、不拦连点。 */
-.app-wh-jobrow { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; }
+.app-wh-jobrow { display: flex; align-items: center; gap: var(--wui-sp-8); margin: var(--wui-sp-4) 0 var(--wui-sp-6); }
 .app-wh-jobrow-text { flex: 0 0 auto; font-size: 11.5px; color: rgb(var(--wui-accent)); }
 .app-wh-jobbar { flex: 1 1 auto; }
 .app-card-progress.app-wh-jobbar i { width: 0; animation: app-wh-jobfill var(--wh-job-ms, 380ms) linear forwards; }
 @keyframes app-wh-jobfill { from { width: 0; } to { width: 100%; } }
-.app-wh-triad { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
+.app-wh-triad { display: flex; flex-wrap: wrap; gap: var(--wui-sp-8); margin: var(--wui-sp-4) 0 var(--wui-sp-6); }
 .app-wh-cell {
   font-size: 12px; padding: 3px 8px; border: 1px solid rgb(var(--wui-border));
   border-radius: 4px; background: rgb(var(--wui-x01) / 0.03); white-space: nowrap;
 }
 .app-wh-cell b { color: rgb(var(--wui-accent)); font-weight: 600; }
-.app-wh-gate { font-size: 12px; color: rgb(var(--wui-danger)); margin: 4px 0; }
-.app-wh-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.app-wh-gate { font-size: 12px; color: rgb(var(--wui-danger)); margin: var(--wui-sp-4) 0; }
+.app-wh-actions { display: flex; align-items: center; gap: var(--wui-sp-8); margin-top: var(--wui-sp-8); }
 .app-wh-ships { max-height: 240px; overflow-y: auto; }
 /* ── 虫洞 · 选舰卡片（船长 2026-09-13：「采用卡片形式…含舰船名称/级别/折算质量/货仓/SVG 外形，
    编入时卡片边框变色」）—— 与装配页候选卡 `.app-fit-pick-item` 同族：同底色/同描边/同 hover/同可点整卡；
    选中态用 `.is-picked`（边框+底色变 accent，与舰队卡 `.app-inv-row.is-picked` 同口径）。
    卡片定高（防内容变化引起跳动），舰影区定高（SVG 缩放在其中居中）。 */
-.app-wh-search { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
-.app-wh-filters { margin: 0 0 6px; }
+.app-wh-search { display: flex; align-items: center; gap: var(--wui-sp-8); margin: var(--wui-sp-4) 0 var(--wui-sp-2); }
+.app-wh-filters { margin: 0 0 var(--wui-sp-6); }
 .app-wh-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-  gap: 8px;
-  margin: 6px 0 0;
+  gap: var(--wui-sp-8);
+  margin: var(--wui-sp-6) 0 0;
   padding: 0;
   list-style: none;
   /* **吃剩余高度**（船长 2026-09-13：「舰船选择界面高度可以适当缩减，让上一层的虫洞界面不要有滚动条」）：
@@ -10699,7 +10699,7 @@ html[data-locale='en'] body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 3px;
+  gap: var(--wui-sp-3);
   width: 100%;
   height: 168px; /* 2026-09-13：标签行可能换行（编入 + 带伤），定高留一线余量防裁切；
                     同日按船长「选舰高度适当缩减」压到 168（舰影区同步 72→64），正好两行装满卡区 */
@@ -10724,7 +10724,7 @@ html[data-locale='en'] body {
 .app-wh-card-art { display: flex; align-items: center; justify-content: center; height: 64px; overflow: hidden; color: rgb(var(--wui-accent)); }
 .app-wh-card-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-wh-card-sub { font-size: 11px; color: rgb(var(--wui-dim)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.app-wh-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
+.app-wh-card-tags { display: flex; flex-wrap: wrap; gap: var(--wui-sp-4); margin-top: auto; }
 .app-wh-card-tag {
   margin-top: auto;
   align-self: flex-start;
@@ -10738,17 +10738,17 @@ html[data-locale='en'] body {
 /* 带伤提示（琥珀）：与「过重/占用中」同族的警示色，不与「已编入」的 accent 抢眼 */
 .app-wh-card-tag.is-warn { border-color: rgb(var(--wui-rare) / 0.55); color: rgb(var(--wui-rare)); }
 .app-inv-row.is-picked { border-color: rgb(var(--wui-accent) / 0.55); background: rgb(var(--wui-accent) / 0.06); }
-.app-wh-head { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.app-wh-head { display: flex; flex-wrap: wrap; gap: var(--wui-sp-8); margin-bottom: var(--wui-sp-6); }
 /* ── 探索页版式（船长 2026-09-13 晚）──
    **窗口高度固定**：地图框定高 300px（不再随圈数长高）、信息窗的卡片列表自己滚 ⇒ 外层永不出滚动条。 */
 .app-wh-run { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 /* ⚠ 2026-09-22：`.app-wh-run.is-battle` / `.app-wh-battle` 那一套（洞内战斗内嵌进本面板）已随
    「界面回滚」删除 —— 现行做法回到本批之前：**战斗中本面板整块不渲染**，战场全屏独占。
    封存版见分支 `archive/window-embed-20260922`（`docs/design/archived-window-embed-20260922.md`）。 */
-.app-wh-maprow { display: flex; gap: 8px; align-items: stretch; }
+.app-wh-maprow { display: flex; gap: var(--wui-sp-8); align-items: stretch; }
 /* 缩放控件（在地图左侧，纵向一列）：＋ / 百分比 / － / 适应 */
 .app-wh-zoom {
-  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: var(--wui-sp-4);
   padding: 6px 4px; border: 1px solid rgb(var(--wui-border)); border-radius: 6px;
   background: rgb(var(--wui-x01) / 0.02);
 }
@@ -10937,30 +10937,30 @@ html[data-locale='en'] body {
 /* ── 探索页版式（船长 2026-09-13）：**扫描按钮放大 + 与地点信息窗平级**（左扫描 / 右信息卡）──
    同日晚追加「**激活等按钮可以放在扫描下方**」＋「**继续深入按钮也可以整合到扫描 + 作业按钮处**」
    ⇒ 左列 = 扫描 + 作业按钮 + 继续深入（同宽对齐）；信息窗吃剩余高度、卡片列表内部滚动。 */
-.app-wh-workspace { display: flex; gap: 10px; align-items: stretch; margin-top: 8px; flex: 1 1 auto; min-height: 0; }
+.app-wh-workspace { display: flex; gap: var(--wui-sp-10); align-items: stretch; margin-top: var(--wui-sp-8); flex: 1 1 auto; min-height: 0; }
 .app-wh-workspace .app-wh-node { flex: 1 1 auto; margin-top: 0; min-height: 150px; }
-.app-wh-workspace-left { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; align-self: flex-start; }
+.app-wh-workspace-left { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--wui-sp-8); align-self: flex-start; }
 /* 扫描大按钮：与"进入虫洞"同档（主按钮 + 加高），副标题小字说明花费 */
 .app-wh-scan-big {
   flex: 0 0 auto; align-self: stretch;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--wui-sp-2);
   min-width: 128px; padding: 14px 16px; font-size: 15px; font-weight: 600;
 }
 /* 作业按钮（打捞/采集 · 激活/迎战）：与扫描按钮**同宽同族**，紧挨在它下面 */
 .app-wh-work {
   flex: 0 0 auto; align-self: stretch;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--wui-sp-2);
   padding: 10px 16px; font-size: 14px; font-weight: 600;
 }
 .app-wh-scan-sub { font-size: 10.5px; font-weight: 400; opacity: 0.78; }
 /* ── 探索 / 背包 页签（船长 2026-09-13：「切换按钮有些过于隐蔽」⇒ 标题行下方的分段大页签）──
    两枚等宽、带副读数（探索 = 层/回合，背包 = 占用格数），选中态 accent 实底；超载另挂红标。 */
 .app-wh-tabbar {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--wui-sp-8);
   padding: 8px 12px 0;
 }
 .app-wh-tab {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--wui-sp-2);
   padding: 7px 10px; font-family: inherit; font-size: 14px; font-weight: 600; color: rgb(var(--wui-text));
   background: rgb(var(--wui-bg-hover) / 0.6); border: 1px solid rgb(var(--wui-map-minor) / 0.35);
   border-radius: 8px; cursor: pointer; transition: border-color 120ms ease, background 120ms ease;
@@ -10974,10 +10974,10 @@ html[data-locale='en'] body {
 .app-wh-tab-sub { font-size: 10.5px; font-weight: 400; color: rgb(var(--wui-dim)); }
 .app-wh-tab-warn { font-size: 10.5px; font-weight: 600; color: rgb(var(--wui-danger)); }
 /* ── 准备页版式：检索区（搜索 + 两行筛选）与放大的「进入虫洞」平级，按钮在最右 ── */
-.app-wh-prephead { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
-.app-wh-prephead-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
+.app-wh-prephead { display: flex; gap: var(--wui-sp-12); align-items: flex-start; justify-content: space-between; }
+.app-wh-prephead-main { display: flex; flex-direction: column; gap: var(--wui-sp-6); min-width: 0; flex: 1 1 auto; }
 .app-wh-prephead-go {
-  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: var(--wui-sp-4);
   padding-top: 2px;
 }
 /* 「进入虫洞」放大（参考导航栏「出击」的主按钮观感）——**正方形**（船长 2026-09-13：
@@ -10997,18 +10997,18 @@ html[data-locale='en'] body {
    同日晚追加「**结算界面尽量居中显示**」＋「**收获信息挨个弹出显示（需要动效）**」）──
    定宽 640 + 整块居中（内容多少都不跳动）；`.is-pop` 逐条弹出（延迟由 TSX 用 `animation-delay` 给）。 */
 .app-wh-settle {
-  display: flex; flex-direction: column; justify-content: center; gap: 10px;
+  display: flex; flex-direction: column; justify-content: center; gap: var(--wui-sp-10);
   width: 640px; max-width: 100%; margin: 0 auto;
   /* 进度条式居中：页体是纵向弹性容器 ⇒ 用 `flex: 1` 吃掉剩余高度，整块在**纵向也居中** */
   flex: 1 1 auto;
 }
-.app-wh-settle-head { display: flex; align-items: baseline; justify-content: center; gap: 10px; }
+.app-wh-settle-head { display: flex; align-items: baseline; justify-content: center; gap: var(--wui-sp-10); }
 .app-wh-settle-kind { font-size: 16px; font-weight: 700; }
 .app-wh-settle-kind.is-good { color: rgb(var(--wui-accent)); }
 .app-wh-settle-kind.is-bad { color: rgb(var(--wui-danger)); }
-.app-wh-settle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.app-wh-settle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--wui-sp-8); }
 .app-wh-settle-cell {
-  display: flex; flex-direction: column; gap: 2px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: var(--wui-sp-2); padding: 8px 10px;
   border: 1px solid rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-x01) / 0.02);
 }
 .app-wh-settle-cell b { font-size: 15px; }
@@ -11025,7 +11025,7 @@ html[data-locale='en'] body {
   background: rgb(var(--wui-danger) / 0.07); color: rgb(var(--wui-danger)); font-size: 12px; line-height: 1.5;
 }
 /* 结算页底部按钮居中（它自己那一行也要居中，否则整块居中会看着偏） */
-.app-wh-settle-actions { justify-content: center; margin-top: 2px; }
+.app-wh-settle-actions { justify-content: center; margin-top: var(--wui-sp-2); }
 /* **逐条弹出**：从下方 6px 淡入上移（只动 opacity/transform）；`both` ⇒ 延迟期间保持"未出现"态 */
 .app-wh-settle .is-pop { animation: app-wh-pop 220ms ease-out both; }
 @keyframes app-wh-pop {
@@ -11033,21 +11033,21 @@ html[data-locale='en'] body {
   to { opacity: 1; transform: translateY(0); }
 }
 .app-wh-legend {
-  display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px;
+  display: flex; flex-wrap: wrap; gap: var(--wui-sp-4) var(--wui-sp-12); margin-top: var(--wui-sp-6);
   font-size: 11px; color: rgb(var(--wui-dim));
 }
-.app-wh-legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.app-wh-legend-item { display: inline-flex; align-items: center; gap: var(--wui-sp-4); }
 .app-wh-legend-glyph { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .app-wh-legend-glyph polygon { stroke-dasharray: 3 2; }
 /* 「前往未知地点」的警告块（船长：前往未扫描的地方需要警告）
    注：`.app-warn` 在全仓没有对应样式（历史遗留的组合名），故本块自带上色与边框，不靠它。 */
 .app-wh-ask {
-  display: flex; flex-direction: column; gap: 6px; margin-top: 8px;
+  display: flex; flex-direction: column; gap: var(--wui-sp-6); margin-top: var(--wui-sp-8);
   padding: 8px 10px; border: 1px solid rgb(var(--wui-rare) / 0.45); border-radius: 6px;
   background: rgb(var(--wui-rare) / 0.06); color: rgb(var(--wui-rare)); font-size: 12px; line-height: 1.5;
 }
 .app-wh-node {
-  margin-top: 8px; padding: 8px 10px; border: 1px solid rgb(var(--wui-border));
+  margin-top: var(--wui-sp-8); padding: 8px 10px; border: 1px solid rgb(var(--wui-border));
   border-radius: 6px; background: rgb(var(--wui-x01) / 0.02); min-height: 132px;
 }
 /* 信息窗在探索页里**吃满剩余高度**，内部的卡片列表自己滚（船长 2026-09-13 晚：
@@ -11057,18 +11057,18 @@ html[data-locale='en'] body {
 .app-wh-cardlist {
   flex: 1 1 auto; min-height: 60px; overflow-y: auto;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 8px; margin-top: 6px; padding-right: 2px; align-content: start;
+  gap: var(--wui-sp-8); margin-top: var(--wui-sp-6); padding-right: 2px; align-content: start;
 }
 .app-wh-pile {
-  display: flex; flex-direction: column; gap: 3px; padding: 7px 9px;
+  display: flex; flex-direction: column; gap: var(--wui-sp-3); padding: 7px 9px;
   border: 1px solid rgb(var(--wui-map-minor) / 0.35); border-radius: 8px; background: rgb(var(--wui-bg-hover) / 0.6);
 }
 .app-wh-pile.is-shaped { border-color: rgb(var(--wui-accent) / 0.5); background: rgb(var(--wui-accent) / 0.06); }
 .app-wh-pile-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-wh-pile-count { font-size: 12px; color: rgb(var(--wui-accent)); }
 .app-wh-pile-sub { font-size: 10.5px; color: rgb(var(--wui-dim)); }
-.app-wh-pile-btn { margin-top: 4px; align-self: flex-start; }
-.app-wh-pile-tag { margin-top: 4px; font-size: 11px; color: rgb(var(--wui-dim)); }
+.app-wh-pile-btn { margin-top: var(--wui-sp-4); align-self: flex-start; }
+.app-wh-pile-tag { margin-top: var(--wui-sp-4); font-size: 11px; color: rgb(var(--wui-dim)); }
 /* **被拿走的堆卡片：向下移出 + 淡出**（船长 2026-09-13 深夜）——300ms 只动 transform/opacity；
    幽灵卡不吃点击（`pointer-events:none`），生命周期由 TSX 的 `WORMHOLE_PILE_OUT_MS` 管（两处同值）。 */
 .app-wh-pile.is-leaving {
@@ -11086,8 +11086,8 @@ html[data-locale='en'] body {
    并允许输入数量」）：拖动条 + 数字框 + 一行读数 + 确认/取消；与同页 `app-inv-*` 一族同底色同描边。 */
 .app-wh-piece { flex-wrap: wrap; }
 .app-wh-discard {
-  flex: 1 0 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  margin-top: 6px; padding: 6px 8px; border: 1px solid rgb(var(--wui-red) / 0.35);
+  flex: 1 0 100%; display: flex; align-items: center; gap: var(--wui-sp-8); flex-wrap: wrap;
+  margin-top: var(--wui-sp-6); padding: 6px 8px; border: 1px solid rgb(var(--wui-red) / 0.35);
   border-radius: 6px; background: rgb(var(--wui-red) / 0.06); font-size: 11.5px;
 }
 .app-wh-discard-range { flex: 1 1 160px; min-width: 120px; accent-color: rgb(var(--wui-red)); }
@@ -11102,8 +11102,8 @@ html[data-locale='en'] body {
 .app-wh-extract.is-armed { color: rgb(var(--wui-x01)); background: rgb(var(--wui-red) / 0.85); border-color: rgb(var(--wui-red)); font-weight: 700; }
 /* 撤离警告条（待确认态，摆在页体顶部；与「前往未知地点」警告同族，走红档） */
 .app-wh-extract-ask {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
-  margin-bottom: 8px; padding: 8px 10px; border: 1px solid rgb(var(--wui-danger) / 0.45);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--wui-sp-6);
+  margin-bottom: var(--wui-sp-8); padding: 8px 10px; border: 1px solid rgb(var(--wui-danger) / 0.45);
   border-radius: 6px; background: rgb(var(--wui-danger) / 0.07); color: rgb(var(--wui-danger));
   font-size: 12px; line-height: 1.5;
 }
@@ -11113,17 +11113,17 @@ html[data-locale='en'] body {
    标题后面那颗 ⓘ（`.app-hint-ico`）跟着标题走 ⇒ 说明按 2026-09-13 口径挂在标题后，不再占版面。 */
 .app-wh-node-title {
   font-size: var(--app-head-fs, 13px); font-weight: 600; letter-spacing: 1px;
-  color: rgb(var(--wui-accent)); margin-bottom: 6px;
+  color: rgb(var(--wui-accent)); margin-bottom: var(--wui-sp-6);
 }
 /* 标题里尾随的"· 坐标 Q… R… · 已处理"仍是正文口径（别跟着标题变成强调字） */
 .app-wh-node-title .app-dim { font-weight: 400; letter-spacing: 0; }
 /* ── 货仓格（F4b · 2026-09-13 船长：「类似背包英雄那种需要管理的背包格」）──
    8 列固定网格：货柜 = 2×2 整块、散货 = 一种一条 1×N 横条（**F5 起散货也是真摆放件、可拖拽**）、
    超出容量的显示位 = 锁定格。格子统一 aspect-ratio:1 ⇒ 永远是正方形（拖拽落点与视觉一致，也不因内容变化跳动）。 */
-.app-wh-hold { display: flex; flex-direction: column; gap: 6px; }
+.app-wh-hold { display: flex; flex-direction: column; gap: var(--wui-sp-6); }
 /* **两块格板并排**（船长 2026-09-14：8 列货仓 + 右侧 4 列的**临时空间**）：
    左 = 货仓格（固定上限宽），右 = 临时空间（4 列 ⇒ 天然窄）；窄窗口自动换行，不挤成一条缝。 */
-.app-wh-hold-boards { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.app-wh-hold-boards { display: flex; flex-wrap: wrap; gap: var(--wui-sp-14); align-items: flex-start; }
 .app-wh-hold-board-main { flex: 1 1 420px; min-width: 320px; }
 .app-wh-hold-board-side {
   flex: 0 1 300px; min-width: 236px;
@@ -11140,26 +11140,26 @@ html[data-locale='en'] body {
 .app-wh-hold-scroll { max-width: 560px; max-height: 520px; overflow-y: auto; overflow-x: hidden; }
 .app-wh-hold-scroll.is-temp { max-width: 300px; }
 .app-wh-hold-grid {
-  display: grid; gap: 4px; margin-top: 6px;
+  display: grid; gap: var(--wui-sp-4); margin-top: var(--wui-sp-6);
   max-width: 560px; /* 8 列在宽面板里不至于拉成巨格 */
   /** 剩余空间**不去拉伸/分配行高**：格子既不压缩也不被拉大，多出的高度留在底部 */
   align-content: start;
 }
 /* 临时空间（4 列 × 8 行）：跟货仓同一套格子，只是更窄 */
-.app-wh-hold-grid.is-temp { max-width: 300px; gap: 3px; }
+.app-wh-hold-grid.is-temp { max-width: 300px; gap: var(--wui-sp-3); }
 /* ⚠ 块层的 gap 必须与格子的 gap 同值（否则块逐行偏移 1px 累积）*/
-.app-wh-hold-grid.is-temp .app-wh-hold-figures { gap: 3px; }
+.app-wh-hold-grid.is-temp .app-wh-hold-figures { gap: var(--wui-sp-3); }
 .app-wh-hold-grid.is-temp .app-wh-hold-cell { font-size: 9.5px; }
 /* **临时空间待清空确认条**（船长 2026-09-14：「需要提醒玩家是否要丢弃物品并列出丢弃的物品列表」）：
    与页内的"超载红条"同族（红档底 + 描边），逐件列出后可「丢掉这些 / 放回货仓」。 */
 .app-wh-tempask {
   border: 1px solid rgb(var(--wui-danger) / 0.55); background: rgb(var(--wui-danger) / 0.1);
-  border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;
+  border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: var(--wui-sp-6);
 }
 .app-wh-tempask-title { font-size: 11.5px; }
-.app-wh-tempask-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.app-wh-tempask-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: var(--wui-sp-2); font-size: 11px; }
 .app-wh-tempask-list li { line-height: 1.5; }
-.app-wh-tempask-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.app-wh-tempask-actions { display: flex; gap: var(--wui-sp-6); flex-wrap: wrap; }
 /* 临时空间里的谜质储存器 = **不生效**（船长 2026-09-14：「谜质储存器拖进小背包会失效」）⇒ 压暗提示 */
 .app-wh-hold-fig.is-inert { opacity: 0.55; border-style: dashed; }
 .app-wh-hold-cell {
@@ -11188,12 +11188,12 @@ html[data-locale='en'] body {
    （安全货柜按族、谜质按台），格内居中；行内清单里的图标与名字同排。 */
 .app-wh-hold-ico { display: flex; align-items: center; justify-content: center; line-height: 0; }
 .app-wh-hold-ico svg { display: block; }
-.app-wh-hold-row-ico { display: inline-flex; align-items: center; margin-right: 6px; vertical-align: -2px; line-height: 0; }
+.app-wh-hold-row-ico { display: inline-flex; align-items: center; margin-right: var(--wui-sp-6); vertical-align: -2px; line-height: 0; }
 /* **物品轮廓层**（船长 2026-09-13：占多格的物品要一个大轮廓、居中、随大小放大）：
    与格子网格同一套模板与 gap ⇒ 多格块的轮廓正好盖住整块；图标按 figure 的百分比取尺寸（单格也跟着变大）。 */
 .app-wh-hold-grid { position: relative; }
 .app-wh-hold-figures {
-  position: absolute; inset: 0; display: grid; gap: 4px;
+  position: absolute; inset: 0; display: grid; gap: var(--wui-sp-4);
   pointer-events: none; /* 不吃拖拽与点击（格子本体才处理交互） */
 }
 /* **物品块 = 一个大格子**（船长 2026-09-13：「占多格的物品显示依旧是4格 ⇒ 要将四格合并成一个大格子」）：
@@ -11235,7 +11235,7 @@ html[data-locale='en'] body {
    补一条**实线**上边线 + 上间距，把"同一类"与"换了一类"分开。 */
 .app-wh-piece.is-group-start {
   border-top: 1px solid rgb(var(--wui-border));
-  margin-top: 5px;
+  margin-top: var(--wui-sp-5);
   padding-top: 5px;
 }
 .app-wh-hold-cargo-name { color: rgb(var(--wui-text-2)); font-size: 10px; }
@@ -11244,34 +11244,34 @@ html[data-locale='en'] body {
 /* 超载条（探索页与货仓页共用）：与「前往未知地点」警告同族，但走红档 */
 /* **「扫描虫洞」页的进度条**（2026-09-14 船长：进度条满即发现一处虫洞）：
    与活动栏同族的"细轨 + 填充"观感，不自造新形状（纯色块，无渐变裁形）。 */
-.app-wh-scanbar { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.app-wh-scanbar { display: flex; flex-direction: column; gap: var(--wui-sp-6); margin: var(--wui-sp-4) 0 var(--wui-sp-10); }
 .app-wh-scanbar-label { font-size: 12px; }
 .app-wh-scanbar-track {
   height: 8px; border-radius: 4px; overflow: hidden;
   background: rgb(var(--wui-x01) / 0.08); border: 1px solid rgb(var(--wui-border));
 }
 .app-wh-scanbar-fill { height: 100%; background: rgb(var(--wui-accent)); transition: width 240ms linear; }
-.app-wh-scanbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.app-wh-scanbar-actions { display: flex; gap: var(--wui-sp-8); align-items: center; flex-wrap: wrap; }
 
 /* ═══════════ 「扫描虫洞」两个子页 + 谜质科技树（2026-09-19 船长：拆 2 个子页面）═══════════
    子页包装层只为"切换显示"——`.app-win-body` 是**块级**容器，故包装层不影响原页面布局；
    非当前子页 `display:none`。整页**固定尺寸不滚**：三列卡片紧凑排布，撑不满一屏也留白。 */
 .app-subpage.is-hidden { display: none; }
 
-.app-mt { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-.app-mt-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; }
-.app-mt-essence { display: inline-flex; align-items: center; gap: 5px; color: rgb(var(--wui-x169)); }
+.app-mt { display: flex; flex-direction: column; gap: var(--wui-sp-8); min-height: 0; }
+.app-mt-top { display: flex; align-items: center; gap: var(--wui-sp-10); flex-wrap: wrap; font-size: 12px; }
+.app-mt-essence { display: inline-flex; align-items: center; gap: var(--wui-sp-5); color: rgb(var(--wui-x169)); }
 .app-mt-essence b { color: rgb(var(--wui-x52)); font-variant-numeric: tabular-nums; }
 /* 三列 = 三条线；列内按层分组（层号在左，节点卡片在右） */
-.app-mt-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
-.app-mt-col { display: flex; flex-direction: column; gap: 6px; border: 1px solid rgb(var(--wui-border)); border-radius: 4px; padding: 8px; background: rgb(var(--wui-x01) / 0.02); }
-.app-mt-col-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; letter-spacing: .5px; }
-.app-mt-tier { display: flex; gap: 6px; align-items: flex-start; }
+.app-mt-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--wui-sp-10); align-items: start; }
+.app-mt-col { display: flex; flex-direction: column; gap: var(--wui-sp-6); border: 1px solid rgb(var(--wui-border)); border-radius: 4px; padding: 8px; background: rgb(var(--wui-x01) / 0.02); }
+.app-mt-col-head { display: flex; align-items: center; gap: var(--wui-sp-6); font-size: 12.5px; font-weight: 600; letter-spacing: .5px; }
+.app-mt-tier { display: flex; gap: var(--wui-sp-6); align-items: flex-start; }
 .app-mt-tier-tag { flex: 0 0 22px; font-size: 10.5px; color: rgb(var(--wui-text-dim)); font-family: var(--wui-mono); padding-top: 5px; }
-.app-mt-tier-nodes { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+.app-mt-tier-nodes { display: flex; flex-wrap: wrap; gap: var(--wui-sp-5); min-width: 0; }
 /* 节点卡片：名称 + 等级。状态色：可研究（亮框）/ 已满级（金）/ 前置或货币不足（暗灰） */
 .app-mt-node {
-  display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%;
+  display: inline-flex; align-items: baseline; gap: var(--wui-sp-6); max-width: 100%;
   padding: 4px 8px; font-size: 11.5px; color: var(--wui-text, rgb(var(--wui-text-bright)));
   background: rgb(var(--wui-x68) / 0.3); border: 1px solid rgb(var(--wui-x18) / 0.32);
   border-radius: 3px; cursor: pointer;
@@ -11287,22 +11287,22 @@ html[data-locale='en'] body {
 /* 二级详情窗：固定宽度（写法与基类 `.app-modal` 一致：px 定宽 + vw 只做上限 ⇒ 旋转口径体检合规） */
 .app-mt-modal { width: 560px; max-width: calc(100vw - 40px); }
 .app-mt-modal-note { font-size: 12.5px; line-height: 1.6; color: var(--wui-text, rgb(var(--wui-text-bright))); }
-.app-mt-modal-row { display: flex; gap: 10px; align-items: baseline; margin-top: 8px; font-size: 12px; }
+.app-mt-modal-row { display: flex; gap: var(--wui-sp-10); align-items: baseline; margin-top: var(--wui-sp-8); font-size: 12px; }
 .app-mt-modal-row-value { color: var(--wui-text, rgb(var(--wui-text-bright))); }
-.app-mt-cost { display: inline-flex; align-items: center; gap: 5px; color: rgb(var(--wui-x52)); font-variant-numeric: tabular-nums; }
+.app-mt-cost { display: inline-flex; align-items: center; gap: var(--wui-sp-5); color: rgb(var(--wui-x52)); font-variant-numeric: tabular-nums; }
 .app-mt-cost.is-max { color: rgb(var(--wui-amber-3)); }
-.app-mt-modal-why { margin-top: 8px; font-size: 12px; color: rgb(var(--wui-x59)); }
-.app-mt-modal-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.app-mt-modal-why { margin-top: var(--wui-sp-8); font-size: 12px; color: rgb(var(--wui-x59)); }
+.app-mt-modal-actions { display: flex; gap: var(--wui-sp-10); align-items: center; margin-top: var(--wui-sp-14); flex-wrap: wrap; }
 /* ───── 技能科技树（试作页 · 2026-09-20 船长令「新页面暂时只有调试模式可见」）─────
    视觉语言逐条复刻上面的 `.app-mt-*` 家族（列 × 层 ＋ 节点卡 ＋ 弹层），只换数据与文案；
    尺寸一律用逻辑单位（px/百分比），不写死视口高度 ⇒ 旋转口径与窄窗都不受影响。 */
-.app-skilltree-top { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; margin-bottom: 4px; }
-.app-skilltree-nav { display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px; }
-.app-skilltree-books { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; }
+.app-skilltree-top { display: flex; gap: var(--wui-sp-12); flex-wrap: wrap; font-size: 12px; margin-bottom: var(--wui-sp-4); }
+.app-skilltree-nav { display: flex; flex-direction: column; gap: var(--wui-sp-5); margin-bottom: var(--wui-sp-5); }
+.app-skilltree-books { display: flex; align-items: center; gap: var(--wui-sp-6); flex-wrap: wrap; font-size: 11.5px; }
 /* 二级标签在这一行做小一号：层级 = 一级「大类」用 `.app-tasktab`、二级「技能书」用 `.app-subtab`；
    只调尺寸，不改家族语言（2026-09-22 船长报障「部分筛选的样式不统一 / 白底」后统一） */
 .app-skilltree-books .app-subtab { padding: 2px 10px; font-size: 11.5px; }
-.app-skilltree-legend { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 11.5px; margin-bottom: 6px; }
+.app-skilltree-legend { display: flex; gap: var(--wui-sp-10); align-items: center; flex-wrap: wrap; font-size: 11.5px; margin-bottom: var(--wui-sp-6); }
 .app-skilltree-key { border: 1px solid rgb(var(--wui-border)); border-radius: 3px; padding: 1px 6px; font-size: 11px; }
 .app-skilltree-key.is-max { border-color: rgb(var(--wui-amber-3) / 0.7); color: rgb(var(--wui-amber-3)); }
 .app-skilltree-key.is-training { border-color: rgb(var(--wui-blue) / 0.85); color: rgb(var(--wui-blue)); }
@@ -11312,9 +11312,9 @@ html[data-locale='en'] body {
 .app-skilltree-key.is-locked { border-style: dashed; color: rgb(var(--wui-text-dim)); opacity: .75; }
 .app-skilltree-canvas { min-height: 0; overflow: auto; padding-right: 2px; }
 /* 每本技能书一张小图，横向排开（「全部」档就是该大类所有书并排） */
-.app-skilltree-bookrow { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.app-skilltree-bookrow { display: flex; align-items: flex-start; gap: var(--wui-sp-12); flex-wrap: wrap; }
 .app-skilltree-book { border: 1px solid rgb(var(--wui-border)); border-radius: 4px; padding: 6px 8px 2px; background: rgb(var(--wui-x01) / 0.02); }
-.app-skilltree-book-head { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; font-weight: 600; letter-spacing: .5px; margin-bottom: 2px; }
+.app-skilltree-book-head { display: flex; align-items: baseline; gap: var(--wui-sp-8); font-size: 12.5px; font-weight: 600; letter-spacing: .5px; margin-bottom: var(--wui-sp-2); }
 .app-skilltree-book-head .app-dim { font-size: 10.5px; font-weight: 400; font-variant-numeric: tabular-nums; }
 .app-skilltree-svg { display: block; }
 .app-skilltree-tier-tag { fill: rgb(var(--wui-text-dim)); font-size: 10px; font-family: var(--wui-mono); }
@@ -11344,20 +11344,20 @@ html[data-locale='en'] body {
 .app-skilltree-hex.is-dimmed { opacity: 0.22; }
 .app-skilltree-empty { padding: 6px 4px; }
 .app-skilltree-modal { width: 520px; max-width: calc(100vw - 40px); }
-.app-skilltree-row { display: flex; gap: 8px; align-items: baseline; margin-top: 8px; font-size: 12px; flex-wrap: wrap; }
+.app-skilltree-row { display: flex; gap: var(--wui-sp-8); align-items: baseline; margin-top: var(--wui-sp-8); font-size: 12px; flex-wrap: wrap; }
 .app-skilltree-row-value { color: var(--wui-text, rgb(var(--wui-text-bright))); font-variant-numeric: tabular-nums; }
-.app-skilltree-desc { margin-top: 8px; font-size: 12.5px; line-height: 1.6; color: var(--wui-text, rgb(var(--wui-text-bright))); }
-.app-skilltree-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.app-skilltree-desc { margin-top: var(--wui-sp-8); font-size: 12.5px; line-height: 1.6; color: var(--wui-text, rgb(var(--wui-text-bright))); }
+.app-skilltree-actions { display: flex; gap: var(--wui-sp-10); align-items: center; margin-top: var(--wui-sp-14); flex-wrap: wrap; }
 .app-wh-hold-overload {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
-  margin-top: 8px; padding: 8px 10px; border: 1px solid rgb(var(--wui-danger) / 0.45);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--wui-sp-6);
+  margin-top: var(--wui-sp-8); padding: 8px 10px; border: 1px solid rgb(var(--wui-danger) / 0.45);
   border-radius: 6px; background: rgb(var(--wui-danger) / 0.07); color: rgb(var(--wui-danger));
   font-size: 12px; line-height: 1.5;
 }
 /* **作业前"货仓可能装不下"预告**（船长 2026-09-13）：形状与超载条同族，
    但这是"提醒"不是"拦路" ⇒ 走琥珀档（与货柜卡的「带伤」标签同色）。 */
 .app-wh-hold-soon {
-  margin: 4px 0 2px; padding: 6px 10px; border: 1px solid rgb(var(--wui-rare) / 0.45);
+  margin: var(--wui-sp-4) 0 var(--wui-sp-2); padding: 6px 10px; border: 1px solid rgb(var(--wui-rare) / 0.45);
   border-radius: 6px; background: rgb(var(--wui-rare) / 0.07); color: rgb(var(--wui-rare));
   font-size: 12px; line-height: 1.5;
 }
@@ -11366,20 +11366,20 @@ html[data-locale='en'] body {
    口径：与战场同色系；容器固定高，舰沉只改透明度不改行高（防界面跳动）。
    单船路径不渲染本块（`myUnits` 只有一条）⇒ 既有战斗观感零变化。 */
 .app-bts-fleet {
-  display: flex; gap: 8px; padding: 4px 8px; border-bottom: 1px solid rgb(var(--wui-border));
+  display: flex; gap: var(--wui-sp-8); padding: 4px 8px; border-bottom: 1px solid rgb(var(--wui-border));
   background: rgb(var(--wui-x01) / 0.02);
 }
 .app-bts-fleet-cell {
-  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--wui-sp-2);
   padding: 3px 6px; border: 1px solid rgb(var(--wui-border)); border-radius: 5px;
 }
 .app-bts-fleet-cell.is-down { opacity: 0.45; }
-.app-bts-fleet-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.app-bts-fleet-head { display: flex; align-items: center; gap: var(--wui-sp-6); min-width: 0; }
 .app-bts-fleet-name {
   font-size: 11px; color: rgb(var(--wui-accent)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .app-bts-fleet-lead {
-  font-style: normal; font-size: 9.5px; margin-left: 5px; padding: 0 4px;
+  font-style: normal; font-size: 9.5px; margin-left: var(--wui-sp-5); padding: 0 4px;
   border: 1px solid rgb(var(--wui-accent) / 0.5); border-radius: 3px; opacity: 0.9;
 }
 .app-bts-fleet-down { font-size: 11px; color: rgb(var(--wui-danger)); }
@@ -11388,7 +11388,7 @@ html[data-locale='en'] body {
 .app-bts-col.is-me.is-down .app-bts-name { color: rgb(var(--wui-x129)); }
 /* 多舰时逐舰舰名的宽度与血条同宽，长名省略号（不撑破纵队间距） */
 .app-bts-col.is-me .app-bts-name { max-width: 185px; overflow: hidden; text-overflow: ellipsis; }
-.app-bts-noretreat { margin-left: 4px; }
+.app-bts-noretreat { margin-left: var(--wui-sp-4); }
 
 /* ═══════════ 战斗入场：舰船从屏幕外减速飞入（船长 2026-09-13 二次裁定 · **纯动画，不动任何位置**）═══════════
    船长原话：「舰船从屏幕外以减速的形式进场并落到舰船战斗位置。这里只影响动画。不影响舰船实际位置。」
@@ -11445,7 +11445,7 @@ html[data-locale='en'] body {
   .app-wh-settle { width: 100%; }
   .app-wh-settle-grid { grid-template-columns: minmax(0, 1fr); }
   .app-wh-tabs { flex-wrap: wrap; }
-  .app-modal-head { flex-wrap: wrap; row-gap: 6px; }
+  .app-modal-head { flex-wrap: wrap; row-gap: var(--wui-sp-6); }
 }
 
 /* ═══════════ 成就徽章（船长 2026-09-20「继续之前的成就系统」· 第一批 = 徽章框架）═══════════
@@ -11461,11 +11461,11 @@ html[data-locale='en'] body {
    名字行复用既有 `.app-tip .app-ship-hover-title`（金 · 加粗 · `display:block`，与舰船悬停同款），
    下面两行由本段新增。 */
 .app-ach-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--wui-sp-6);
 }
 .app-ach-badge {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-  gap: 3px; height: 74px; padding: 6px 4px; box-sizing: border-box; overflow: hidden;
+  gap: var(--wui-sp-3); height: 74px; padding: 6px 4px; box-sizing: border-box; overflow: hidden;
   border: 1px solid rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-hover) / 0.5);
 }
 /* 未达成：整体压暗（图案本身已转灰阶，这里再压一层底，与已获得拉开层次） */
@@ -11482,11 +11482,11 @@ html[data-locale='en'] body {
 }
 /* 悬停富卡：说明行（暗色，独占一行；写法与 `.app-info-note` 同族） */
 .app-tip .app-ach-tip-note {
-  display: block; margin-top: 5px; color: rgb(var(--wui-text-dim)); font-size: 11px; line-height: 1.5;
+  display: block; margin-top: var(--wui-sp-5); color: rgb(var(--wui-text-dim)); font-size: 11px; line-height: 1.5;
 }
 /* 悬停富卡：时间行（**单独一行**，虚线分隔 ⇒ 与说明拉开层次） */
 .app-tip .app-ach-tip-time {
-  display: block; margin-top: 5px; padding-top: 4px;
+  display: block; margin-top: var(--wui-sp-5); padding-top: 4px;
   border-top: 1px dashed rgb(var(--wui-border)); color: rgb(var(--wui-text-dim)); font-size: 10.5px; line-height: 1.5;
 }
 @media (max-width: 640px) {
@@ -11535,11 +11535,11 @@ html[data-locale='en'] body {
 /* **星系详细悬浮窗 · 悬赏行的「改环」内联确认**（2026-09-24）：
    重复清剿已并入 ④ 悬赏的每一行（原先那个独立容器 `.app-map-loop*` 整块删除），
    确认条与同文件 `.app-ano-switch-confirm`（采矿中转战）同形：紧凑一行、可换行。 */
-.app-ga-switch-confirm { display: flex; align-items: center; gap: var(--wui-sp-1); flex-wrap: wrap; font-size: var(--wui-fs-xs); }
+.app-ga-switch-confirm { display: flex; align-items: center; gap: var(--wui-sp-4); flex-wrap: wrap; font-size: var(--wui-fs-xsb); }
 
 /* **悬赏行的行尾按钮组**（2026-09-24 船长：「按钮离出击有点太远了。要相邻」）：
    行本身是 `space-between`，两个按钮各自做 flex 项会被主内容的余量撑开 ⇒ 包成一组，组内 4px 紧挨。 */
-.app-ga-btns { display: flex; align-items: center; gap: var(--wui-sp-1); flex: 0 0 auto; }
+.app-ga-btns { display: flex; align-items: center; gap: var(--wui-sp-4); flex: 0 0 auto; }
 
 /* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。 */
 .app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: 13px; font-weight: 700; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }

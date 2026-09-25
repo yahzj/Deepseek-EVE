@@ -762,21 +762,46 @@
   --wui-dur-pro: 2.4s;      /* 序章（`.app-pro-*`，2 条） */
   --wui-dur-nav: 1.6s;      /* 导航未读闪动（`.app-nav*`，1 条） */
 
-  /* ── **字阶**（2026-09-25 同批）：现状字号散在 11~21px 之间，收成 7 档便于统一。
-        ⚠ 字体族**不动**（系统雅黑栈 + `--wui-mono`），不引入外部字体。── */
-  --wui-fs-xs: 11.5px;
+  /* ── **字阶**（2026-09-25 船长裁决「刻度贴着真实值改」后重定）：18 档，覆盖实测全部字号。
+        ⚠ 命名即值：`--wui-fs-xs` = 11px、`--wui-fs-base` = 13px（**不再出现名字与值对不上**）。
+        ⚠ 字体族**不动**（系统雅黑栈 + `--wui-mono`），不引入外部字体。
+        ⚠ **值必须与实测分毫相同**：`calc(var(--ui-fs, 1) * Npx)`（32 处）是「设置→字体大小」的
+          缩放基准，N 一变玩家设置就叠出偏差；`--app-head-fs` 是全站标题缩放常量，另见 styles.css。── */
+  --wui-fs-2xs: 9px;
+  --wui-fs-2xsb: 10px;
+  --wui-fs-2xsc: 10.5px;
+  --wui-fs-xs: 11px;
+  --wui-fs-xsb: 11.5px;
+  --wui-fs-s: 12px;
   --wui-fs-sm: 12.5px;
-  --wui-fs-base: 13.5px;
-  --wui-fs-md: 14.5px;
-  --wui-fs-lg: 17px;
-  --wui-fs-xl: 19px;
+  --wui-fs-base: 13px;
+  --wui-fs-baseb: 13.5px;
+  --wui-fs-md: 14px;
+  --wui-fs-mdb: 14.5px;
+  --wui-fs-lg: 15px;
+  --wui-fs-lgb: 16px;
+  --wui-fs-xl: 17px;
+  --wui-fs-2xl: 18px;
+  --wui-fs-3xl: 19px;
+  --wui-fs-4xl: 20px;
+  --wui-fs-5xl: 36px;
 
-  /* ── **间距节奏**（4px 基准；2026-09-25 同批）：此前 1840 个类各写各的数值 ── */
-  --wui-sp-1: 4px;
-  --wui-sp-2: 8px;
-  --wui-sp-3: 12px;
-  --wui-sp-4: 16px;
-  --wui-sp-5: 24px;
+  /* ── **间距节奏**（2026-09-25 船长裁决「刻度贴着真实值改」后重定）：12 档。
+        实测本仓真实间距是 **2px 基数的手工刻度**（8×149 · 6×144 · 10×76 · 2×69 · 4×54），
+        原定的 4px 基数（4/8/12/16/24）只命中 37% ⇒ 照它迁移要改 307 条 ≤2px、29 条 >2px。
+        ⚠ 命名即值：`--wui-sp-6` = 6px。── */
+  --wui-sp-1: 1px;
+  --wui-sp-2: 2px;
+  --wui-sp-3: 3px;
+  --wui-sp-4: 4px;
+  --wui-sp-5: 5px;
+  --wui-sp-6: 6px;
+  --wui-sp-8: 8px;
+  --wui-sp-10: 10px;
+  --wui-sp-12: 12px;
+  --wui-sp-14: 14px;
+  --wui-sp-16: 16px;
+  --wui-sp-24: 24px;
 }
 
 /* ---------- 面板 ---------- */
