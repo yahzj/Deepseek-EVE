@@ -190,10 +190,17 @@ function SettingsPanel({
   root,
   onClose,
   engine,
+  onSave,
+  onReset,
+  onOpenSaveManager,
 }: {
   root: RefObject<HTMLDivElement>
   onClose: () => void
   engine: GameEngine
+  /** 2026-09-25 船长令：存档三按钮移入设置 ⇒ 由 App 传入这两个动作 */
+  onSave: () => void
+  onReset: () => void
+  onOpenSaveManager: () => void
 }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
@@ -335,6 +342,39 @@ function SettingsPanel({
                 : bg
                   ? t('ui.App.020', { n: bg.total })
                   : t('ui.App.021')}
+            </div>
+          </div>
+          {/**
+           * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
+           * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{tr('ui.App.063')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button className="app-btn is-small" onClick={onSave}>
+                {tr('ui.App.063')}
+              </button>
+              <button
+                className="app-btn is-small"
+                title={tr('ui.App.064')}
+                onClick={() => {
+                  onOpenSaveManager()
+                  onClose()
+                }}
+              >
+                {tr('ui.App.065')}
+              </button>
+              <button
+                className="app-btn is-small is-danger"
+                onClick={() => {
+                  onClose()
+                  onReset()
+                }}
+              >
+                {tr('ui.App.066')}
+              </button>
             </div>
           </div>
         </div>
@@ -1159,6 +1199,10 @@ export function App({ engine }: { engine: GameEngine }) {
               注意「深空工业协会」是**游戏内势力**、不随游戏名改） */}
           <span className="app-logo">{tr("ui.App.056")}</span>
           <span className="app-pilot">{state.character.name}</span>
+
+          {/* **钱包**（2026-09-25 船长令：「钱包显示移动到顶部玩家名字的右侧」）
+              —— 原在左侧栏「出港上方」（2026-09-13 令），本轮随外壳重排移到顶栏。 */}
+          <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
         </div>
         <div className="app-header-right">
           {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}
@@ -1174,10 +1218,9 @@ export function App({ engine }: { engine: GameEngine }) {
               </button>
             </>
           ) : null}
-          {/**
-           * ⚠ **金钱栏已移到左侧栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的出港上方」）
-           * ⇒ 顶栏这里不再显示余额，只留在线时长与公告/按钮。落点在 `app-nav-side` 首项上方。
-           */}
+          {/* 在线时长。⚠ 本条注释原写「金钱栏已移到左侧栏」（船长 2026-09-13 令）；
+               **2026-09-25 船长令「钱包显示移动到顶部玩家名字的右侧」** ⇒ 钱包已回到顶栏
+               （见上方 `app-pilot` 右侧的 `MoneyFit`），本注释随之更正。 */}
           <span className="app-clock">{tr("ui.App.059")} {formatDurationMs(state.gameMs)}</span>
           {/* 公告弹层一开就收起嵌入的活动窗口（2026-09-21 船长令：打开弹层即隐藏并最小化） */}
           <AnnouncementHub engine={engine} onOpen={hideActivityWin} />
@@ -1208,15 +1251,11 @@ export function App({ engine }: { engine: GameEngine }) {
           >
             {t('ui.App.010')}
           </button>
-          <button className="app-btn" onClick={() => void handleSave()}>
-            {tr("ui.App.063")}
-          </button>
-          <button className="app-btn" title={tr("ui.App.064")} onClick={() => setShowSaveManager(true)}>
-            {tr("ui.App.065")}
-          </button>
-          <button className="app-btn is-danger" onClick={handleReset}>
-            {tr("ui.App.066")}
-          </button>
+          {/**
+           * ⚠ **顶栏的「保存 / 存档管理 / 重置档案」三个按钮已移入设置弹窗**
+           * （2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
+           * ⇒ 见 `SettingsPanel` 里的「存档」一组。顶栏只留：在线时长 / 公告 / QQ群 / 手册 / 设置。
+           */}
         </div>
       </header>
 
@@ -1226,6 +1265,11 @@ export function App({ engine }: { engine: GameEngine }) {
             同时显示多个」）。宽 150px、高占满内容区 ⇒ 同时可见作业行数由约 7 提到约 18。
             ⚠ 与右侧 `.app-workspace-body` 在横向 flex 的 workspace 里**并列**；
             （早先误做成"顶部横条"1244×110，与船长批准的草图丁不符，此处已改回。） */}
+        {/* **左列**（2026-09-25 船长令：「SVG舰船动画小窗口依旧是在左上角，**活动页面的上方**」）
+            ⇒ 舰船窗在上、活动栏在下，同处左侧一列。
+            先前把舰船窗放进主区上方的信息带，与船长要求不符，此处改回。 */}
+        <div className="app-left-col">
+            <ShipStatusWin engine={engine} restore={windowRestore} />
         <ActivityBar
         engine={engine}
         onToast={showToast}
@@ -1239,11 +1283,11 @@ export function App({ engine }: { engine: GameEngine }) {
         }}
         onOpenWormhole={openWormhole}
         />
+        </div>
 
         {/* 右侧纵向体：信息带（舰船窗 + 金钱栏）+ 主区 + 日志坞 */}
         <div className="app-workspace-body">
           {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
-          <ShipStatusWin engine={engine} restore={windowRestore} />
           {/**
           * **金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」＋
           * 「更换金钱单位为**信用点**」）：位置 = 舰船状态窗之下、**第一个导航项（出港）之上**。
@@ -1252,7 +1296,6 @@ export function App({ engine }: { engine: GameEngine }) {
           * **逐候选实测宽度**，档序 = 全额（带单位 → 去掉单位）→ 缩写（带单位 → 去掉单位，长的在前），
           * **精确值恒挂 `title`**。窄栏里优先保住的是**数字**，不是「信用点」三个字。
           */}
-          <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
 
           <main className="app-page-main">
           {/**
@@ -1395,6 +1438,12 @@ export function App({ engine }: { engine: GameEngine }) {
           </div>
           </main>
 
+        </div>
+      </div>
+
+      {/* **事件日志：右侧浮层**（2026-09-25 船长令「事件还是在屏幕右侧，但是采用和现在一样的
+          弹出式（弹出后覆盖在主区上方）」）⇒ 挂到 `app-root` 直下（整屏坐标系）+ `position: fixed`，
+          **不占纵向流** ⇒ 主区吃满高度；沿用既有的 `logCollapsed` 做展开/收起。 */}
           <div className="app-log-dock">
           <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>
           <Panel
@@ -1450,8 +1499,6 @@ export function App({ engine }: { engine: GameEngine }) {
           </button>
           ) : null}
           </div>
-        </div>
-      </div>
 
       {/* 导航：**底部横栏**（2026-09-25 船长令「将导航栏放到底部，采用大图标+图标下方配字的形式？
           出港放在正中间，搭配一个不一样的按钮边框」）。**必须在 .app-workspace 之外**：
@@ -1765,7 +1812,16 @@ export function App({ engine }: { engine: GameEngine }) {
           }}
         />
       ) : null}
-      {showSettings ? <SettingsPanel root={rootRef} onClose={() => setShowSettings(false)} engine={engine} /> : null}
+      {showSettings ? (
+        <SettingsPanel
+          root={rootRef}
+          onClose={() => setShowSettings(false)}
+          engine={engine}
+          onSave={() => void handleSave()}
+          onReset={handleReset}
+          onOpenSaveManager={() => setShowSaveManager(true)}
+        />
+      ) : null}
       {/**
        * ⚠ **这一层为什么没有窗口**（两次改动叠加的结果，别再把窗口挪回来）：
        * - 2026-09-20：原先那枚独立的「⚔ 战斗中」浮动按钮撤掉，最小化与还原统一走 `ui/WinBox.tsx`；

@@ -3328,6 +3328,12 @@ html[data-locale='en'] body {
 
   width: 100%;
 
+  /* ⚠ **必须有 order-box**（2026-09-25 修）：漏了它时 width:100% 是**内容宽**，
+     再加左右 padding 24px ⇒ 底栏实测 1288px > 视口 1264px ⇒ **屏幕底部出现横向滚动条**
+     （船长报障）。.app-header/.app-workspace 早就写着同款注释，我加底栏时漏抄了。 */
+
+  box-sizing: border-box;
+
   padding: var(--wui-sp-6) var(--wui-sp-12) var(--wui-sp-7);
 
   border-right: none;
@@ -6841,22 +6847,40 @@ html[data-locale='en'] body {
 
 /* ═══════════════ 日志面板：右滑隐藏 + 类型过滤（2026-09） ═══════════════ */
 
+/* **事件日志：右侧浮层**（2026-09-25 船长令「事件还是在屏幕右侧，但是采用和现在一样的
+   弹出式（弹出后覆盖在主区上方）」）。
+   ⇒ 由"纵向流里的一块"改为**整屏坐标系里的固定浮层**：
+     · `position: fixed` + `right` ⇒ 贴屏幕右侧、**覆盖在主区上方**（不再占位、不再挤压主区）；
+     · 展开时 320px 宽、收起时只剩右侧细把手（沿用既有 `logCollapsed` 的 `.is-collapsed`）；
+     · 上下留出顶栏 67px 与底栏 90px，避免压住它们。
+   ⚠ 历史坑：它原先 `flex-shrink: 0` 且按内容取高 ⇒ 拒绝让位，把主窗口挤到 218~381px。 */
+
 .app-log-dock {
+
+  position: fixed;
+
+  right: 0;
+
+  top: 67px;
+
+  bottom: 90px;
+
+  z-index: 60; /* 在主区之上、弹层（96+）与悬浮说明（1000）之下 */
 
   display: flex;
 
-  /* ⚠ **2026-09-25 修：日志坞必须可收缩、且高度封顶**。
-     原先 `flex-shrink: 0` + 按内容取高（实测 192~255px）⇒ 在纵向 flex 里**拒绝让位**，
-     把主窗口挤到只剩 218~381px（最小窗口 1024×700 时几乎看不见主窗口，船长反馈"主窗口不存在"）。
-     现改为：可收缩、上限 190px、下限 68px（日志多时在坞内滚动，不再挤压主窗口）。 */
+  align-items: stretch;
 
-  min-height: 68px;
-
-  max-height: 190px;
-
-  flex: 0 1 auto;
+  pointer-events: none; /* 容器不吃点击，只有面板本体吃（收起时右侧留出可点的把手） */
 
 }
+
+.app-log-dock > * {
+
+  pointer-events: auto;
+
+}
+
 
 .app-log-side {
 
@@ -8766,6 +8790,27 @@ html[data-locale='en'] body {
 
 /* 顶部活动窗口全宽容器（内容居中，实际使用宽度接近主窗口） */
 
+/* **左列**（2026-09-25 船长令：「SVG舰船动画小窗口依旧是在左上角，**活动页面的上方**」）：
+   舰船窗在上、活动栏在下，纵向排布，宽 150px；与右侧 .app-workspace-body 在横向 flex 的
+   workspace 里并列。⚠ 活动栏 lex: 1 1 auto + min-height: 0 ⇒ 吃掉左列剩余高度、
+   作业多时**列内滚动**，不把主窗口挤小（这条踩过坑：早先给活动栏定高导致主窗口只剩 218px）。 */
+
+.app-left-col {
+
+  flex: 0 0 auto;
+
+  width: 150px;
+
+  min-height: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-6);
+
+}
+
 /* **侧栏信息带**（2026-09-25）：舰船状态小窗 + 金钱栏。原先挂在左导航栏内（船长 2026-09-13 令
    「将顶部的金钱栏移动到左侧的**出港上方**」）；导航改**底部横栏**后，这两块横在栏里会把导航挤没
    （无头实测：ShipStatusWin 占 1096px ⇒ 导航项只剩 26px）⇒ 移到 workspace 顶部的独立信息带，
@@ -8816,9 +8861,12 @@ html[data-locale='en'] body {
      活动栏下方是一大片空白，主区被挤到只剩 218px（1280×860 下 381px）—— 看起来就像"主窗口不存在"。
      改为按内容高度 + max-height 封顶（作业多时列内滚动），把空间优先让给主窗口。 */
 
-  align-self: flex-start;
+  flex: 1 1 auto; /* 在 .app-left-col 里吃掉剩余高度（舰船窗占用的下方全部） */
 
-  max-height: 100%;
+  min-height: 0;
+
+
+  overflow-y: auto;
 
   flex: 0 0 auto;
 
