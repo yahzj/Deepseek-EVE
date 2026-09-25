@@ -512,7 +512,8 @@ export {
   acknowledgeScanView,
   advanceScanning,
   SCAN_WINDOW_MS,
-  SCAN_LOWSEC_PENALTY,
+  /** 2026-09-25：危险度**曲线指数**取代旧的线性系数 `SCAN_LOWSEC_PENALTY`（已删） */
+  SCAN_CURVE_EXP,
   SEC_FLOOR,
   maxScanWindowMs,
   scanWindowMsOf,

@@ -11532,11 +11532,10 @@ html[data-locale='en'] body {
 /* **长途运输的时薪行**（2026-09-23 船长令：时薪单独一行 + 金色 + 统一格式 XXX~XXX 信用点/h） */
 .app-haul-hourly { color: rgb(var(--wui-gold)); font-weight: 600; }
 
-/* **星系详细悬浮窗 · 重复清剿**（2026-09-24 船长令）：每行 = 卡名 + 威胁/胜率 + 循环状态 + 开关按钮；样式复用悬浮窗既有的紧凑行距。 */
-.app-map-loop { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
-.app-map-loop-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11.5px; }
-.app-map-loop-name { font-weight: 600; }
-.app-map-loop-ask { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* **星系详细悬浮窗 · 悬赏行的「改环」内联确认**（2026-09-24）：
+   重复清剿已并入 ④ 悬赏的每一行（原先那个独立容器 `.app-map-loop*` 整块删除），
+   确认条与同文件 `.app-ano-switch-confirm`（采矿中转战）同形：紧凑一行、可换行。 */
+.app-ga-switch-confirm { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; }
 
 /* **战斗伤害飘字**（2026-09-24 船长令）：目标旁向上飘 + 淡出，生命期由 TSX 按战斗时钟给 animationDuration（倍速跟着快、暂停即冻结）。数字用伤害类型色、MISS 用灰（--wui-dim）；不吃点击。 */
 .app-bts-pop { position: absolute; transform: translate(-50%, -50%); pointer-events: none; font-family: var(--wui-mono); font-size: 13px; font-weight: 700; text-shadow: 0 0 4px rgb(var(--wui-scrim) / 0.85); animation-name: bts-pop-rise; animation-timing-function: cubic-bezier(.2,.7,.3,1); animation-fill-mode: forwards; white-space: nowrap; }

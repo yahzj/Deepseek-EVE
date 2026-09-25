@@ -381,11 +381,11 @@ describe('V14 扫描终止与续扫', () => {
     expect(state.scanProgress['galaxy-far']).toBeUndefined()
   })
 
-  it('normalize 兜底：进度记录被收敛在窗口合法上限内（= 24 小时，不是基准 10 分钟）', () => {
+  it('normalize 兜底：进度记录被收敛在窗口合法上限内（= 12 小时，不是基准 10 分钟）', () => {
     state.scanProgress['galaxy-far'] = 999_999_999
     const loaded = loadSaveFile(serializeSaveFile(state, 1))
     expect(loaded.state.scanProgress['galaxy-far']).toBe(maxScanWindowMs())
-    expect(maxScanWindowMs()).toBe(24 * 60 * 60_000) // 2026-09-23 船长令：最深星系 ×144 = 24 小时
+    expect(maxScanWindowMs()).toBe(12 * 60 * 60_000) // 2026-09-25 船长令：最深星系 = 12 小时（旧 24 小时作废）
   })
 
   it('低安续扫进度不被读档截断（2026-09-11 修复）：15 分钟进度存档后原样读回', () => {

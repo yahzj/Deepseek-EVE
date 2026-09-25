@@ -1,19 +1,22 @@
 /**
- * 低安扫描规则（2026-09-05 船长拍板；2026-09-15 扫描无人化后收窄）回归：
- * ① 目标星系安全度越低扫描窗口越长（×[1+0.8×(0.5−sec)]，高安不延长）；
+ * 低安扫描规则（2026-09-05 船长拍板；2026-09-15 扫描无人化后收窄；**2026-09-25 改幂次曲线**）回归：
+ * ① 目标星系安全度越低扫描窗口越长（**现行 = 上凸幂次曲线 `(1+u)^SCAN_CURVE_EXP`（u = 0.5−sec），
+ *    高安（sec ≥ 0.5）恒 1 ⇒ 10 分钟不动、最深（sec = −1）12 小时**；旧口径「×[1+0.8×(0.5−sec)] 线性」
+ *    与 2026-09-23 的「×[1+95.333×…] ⇒ 24 小时」**均已作废**）；
  * ② ~~低安扫描 = 在场暴露：无入场缓冲、遇袭概率 ×1.5~~ —— **2026-09-15 作废**（无人扫描艇 ⇒ 不暴露）。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState, scanWindowMsFor, SCAN_LOWSEC_PENALTY, SCAN_WINDOW_MS } from '../src/index'
+import { createInitialState, maxScanWindowMs, scanWindowMsFor, SCAN_CURVE_EXP, SCAN_WINDOW_MS } from '../src/index'
 import { rollLowSecAmbush } from '../src/encounters'
+import { galaxy, makeTestCtx } from './helpers'
 
 describe('低安扫描规则（2026-09-05）', () => {
   const ctx = buildSimContext()
   // GalaxyDef.security 为可选（v24 起），此处归一化为确定值
   const secs = [...ctx.galaxies.values()].map((g) => ({ id: g.id, sec: g.security ?? 1 }))
 
-  it('扫描窗口：目标星系越不安全越久（高安不延长）', () => {
+  it('扫描窗口：目标星系越不安全越久（高安恒 10 分钟；中低安走幂次曲线）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
     const lows = secs.filter((x) => x.sec < 0.5)
     const highs = secs.filter((x) => x.sec >= 0.5)
@@ -23,13 +26,47 @@ describe('低安扫描规则（2026-09-05）', () => {
     const high = highs.reduce((a, b) => (b.sec < a.sec ? b : a))
     const lowWin = scanWindowMsFor(state, ctx, low.id)
     const highWin = scanWindowMsFor(state, ctx, high.id)
-    // 无技能时高安窗口 = 基准 10 分钟
+    // 无技能时高安窗口 = 基准 10 分钟（2026-09-25 船长令 Q1 乙：高安一个数都不动）
     expect(highWin).toBe(SCAN_WINDOW_MS)
-    // 低安按公式延长（1 + SCAN_LOWSEC_PENALTY×(0.5 − sec)）——**读常量**，别写死系数
-    // （2026-09-23 船长令：系数 0.8 → 95.333，最深星系 10 分钟 → 24 小时）
-    const expectLow = Math.round(SCAN_WINDOW_MS * (1 + SCAN_LOWSEC_PENALTY * Math.max(0, 0.5 - low.sec)))
+    // 低安按曲线延长 —— **读常量**，别写死指数
+    const u = Math.max(0, 0.5 - low.sec)
+    const expectLow = Math.round(SCAN_WINDOW_MS * Math.pow(1 + u, SCAN_CURVE_EXP))
     expect(lowWin).toBe(expectLow)
     expect(lowWin).toBeGreaterThan(highWin)
+  })
+
+  /**
+   * **曲线端点与单调性**（**2026-09-25 船长令**：「原先最后一个星系是24小时，削减到12小时，并且采用曲线形式」）。
+   * 钉四件事：① 高安（≥0.5）**恒等**基准；② 最深（−1.0）= **12 小时**；③ 曲线在低安段**严格单调递增**；
+   * ④ **上凸**（幂指数 > 1）——同样一段安全差，越深涨得越快（这是"曲线"相对"线性"的可测特征）。
+   */
+  it('扫描曲线：高安恒 10 分钟 · 最深 12 小时 · 低安段严格单调且上凸', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 2 })
+    expect(maxScanWindowMs(), '上限 = 最深星系窗口').toBe(12 * 60 * 60_000)
+    // 造一条覆盖 1.0 ~ −1.0（步长 0.1）的探针星系带（`ctx.galaxies` 是只读表，故另起一个 ctx）
+    const grid: number[] = []
+    for (let i = 0; i <= 20; i += 1) grid.push(Math.round((1.0 - i * 0.1) * 10) / 10)
+    const probeCtx = makeTestCtx({
+      galaxies: grid.map((s) => galaxy(`probe-sec-${s.toFixed(1)}`, `P${s.toFixed(1)}`, { security: s })),
+    })
+    const winOf = (s: number): number => scanWindowMsFor(state, probeCtx, `probe-sec-${s.toFixed(1)}`)
+
+    // ① 高安（sec ≥ 0.5，含边界）恒等基准 10 分钟 —— 2026-09-25 船长令 Q1 乙
+    for (const s of grid.filter((x) => x >= 0.5)) {
+      expect(winOf(s), `sec ${s.toFixed(1)} 应恒为基准`).toBe(SCAN_WINDOW_MS)
+    }
+    // ② 端点：指数由 ln72/ln2.5 反解 ⇒ 最深（−1.0）= 12 小时 = 合法上限
+    expect(SCAN_CURVE_EXP).toBeCloseTo(Math.log(72) / Math.log(2.5), 12)
+    expect(Math.pow(2.5, SCAN_CURVE_EXP)).toBeCloseTo(72, 9)
+    expect(winOf(-1)).toBe(12 * 60 * 60_000)
+    expect(winOf(-1)).toBe(maxScanWindowMs())
+    // ③④ 中低安段（0.5 → −1.0）：严格单调递增 ＋ 上凸（二阶差分 > 0；线性时恒为 0）
+    const wins = grid.filter((x) => x <= 0.5).sort((a, b) => b - a).map(winOf)
+    expect(wins.length).toBe(16) // 0.5, 0.4, … , −1.0
+    for (let i = 1; i < wins.length; i += 1) expect(wins[i]!).toBeGreaterThan(wins[i - 1]!)
+    for (let i = 2; i < wins.length; i += 1) {
+      expect(wins[i]! - wins[i - 1]!).toBeGreaterThan(wins[i - 1]! - wins[i - 2]!)
+    }
   })
 
   /**
