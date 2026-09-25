@@ -1572,6 +1572,34 @@ for (const m of MODULES) {
         `（\`!foeUnitDeadOf(battle, f.tag)\`）——不滤的话打死了也照压，射程永不恢复`,
     )
     /**
+     * **干扰压制口径契约**（2026-09-26 修 · 起因＝船长问"干扰舰的射程削减对无人机生效吗"）。
+     *
+     * 查证时发现两处**静默退化**，都不报错、只让数值悄悄变样：
+     * - ① `applyMeJammerDebuff` 的第二参原先是"**射程系数**"（按 bonus = 0 算出的 `1 − 净`），
+     *   函数再按每件武器的加成"反解"——那个反解在数学上是**恒等变换** ⇒ 每件武器都被当成**无加成**压。
+     *   带 +22% 射程的攻坚炮台（8,967 m）在净 0.35 下被压到 5,829 m，而船长例③的加法口径应为 **6,395 m**。
+     *   ⇒ 第二参**必须是净削减率**（`meJammerNetOf(...)`）。
+     * - ② 基准账（`refs.weaponRanges`）原先只给炮台/激光/导弹入账，**基础舰炮与无人机不入账**
+     *   ⇒ 账与 `spec.weapons` **下标整体错位**（基础舰炮会吃掉炮台那条账）。
+     *   ⇒ 入账点必须与武器 push **逐条对齐**（4 处：基础舰炮 / 炮台·导弹 / 激光 / 每架无人机）。
+     */
+    check(
+      !/applyMeJammerDebuff\([^)]*meRangeMulOf\(/.test(combatSrc),
+      `干扰压制口径契约：${combatPath} 的 \`applyMeJammerDebuff\` 第二参必须是**净削减率**` +
+        `（\`meJammerNetOf(...)\`），不能传射程系数 \`meRangeMulOf(...)\`——传系数会退化成"整件无加成"地压，` +
+        `带射程加成的武器被多压（船长例③的加法口径失效）`,
+    )
+    {
+      const ledgerPushes = (combatSrc.match(/refs\?\.weaponRanges\?\.push\(/g) ?? []).length
+      const weaponPushes = (combatSrc.match(/^\s*weapons\.push\(\{/gm) ?? []).length
+      check(
+        ledgerPushes === weaponPushes && ledgerPushes >= 4,
+        `干扰压制口径契约：${combatPath} 的基准账入账点（\`refs.weaponRanges.push\`）必须与武器条目 push ` +
+          `**逐条对齐**（基础舰炮 / 炮台·导弹 / 激光 / 每架无人机）——` +
+          `实际 账 ${ledgerPushes} 处 · 武器 ${weaponPushes} 处（少一条 ⇒ 后面所有武器的加成反解整体错位）`,
+      )
+    }
+    /**
      * **距离账也必须按"当前波"**（2026-09-25 船长第二条报障：「敌人期望距离似乎不会变化？」
      * ＋「敌方试图远离、我方也在拉远距离，但实际距离在缩短」）。
      *

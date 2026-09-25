@@ -1382,6 +1382,10 @@ export function createPlayerSpec(
     (1 + 0.03 * cruiserOpsLv)
 
   // 兜底武器：基础舰炮恒在（弱；无炮/无弹仍可还击）
+  // **基准账**（`refs.weaponRanges`）：与武器条目**逐条一一对齐**（第 i 条 = 第 i 门武器的
+  // `{基准射程, 该件射程加成倍率}`）——基础舰炮无射程加成 ⇒ `bonusMul = 1`。
+  // ⚠ 少入一条账，后面所有武器的"逐件加成反解"就整体错位（2026-09-26 修）。
+  refs?.weaponRanges?.push({ baseM: 2500, bonusMul: 1 })
   weapons.push({
     label: '基础舰炮',
     kind: 'fixed',
@@ -1572,6 +1576,9 @@ export function createPlayerSpec(
           (1 + DRONE_SKILL.strikePerLevel * droneSkillLv(state, 'drone-strike')),
       )
       for (let i = 0; i < n; i++) {
+        // **基准账**：无人机每架也是一条武器条目 ⇒ 逐架入账（基准 = 机型射程、加成 = 中继天线那套
+        // `droneRangeMult`）——不入账就会被当成"无加成"压（2026-09-26 修）。
+        refs?.weaponRanges?.push({ baseM: def.maxRangeM ?? 2600, bonusMul: droneRangeMult })
         weapons.push({
           label: def.name,
           kind: 'fixed',
@@ -4382,7 +4389,8 @@ function buildMyUnitSpecs(
     const web0 = battle.meWebDebuffs?.[me.tag]
     if (web0) applyMeWebDebuff(me, web0)
     // **敌干扰压制**（H 族墨潮干扰舰 · 2026-09-24）：与我方电子舰的削减相加抵消后缩小我方射程
-    applyMeJammerDebuff(me, meRangeMulOf(battle, foes ?? []), jammerRefs.weaponRanges)
+    // ⚠ 传的是**净削减率**（0.35 = 压掉三成半），不是射程系数（2026-09-26 修正）
+    applyMeJammerDebuff(me, meJammerNetOf(battle, foes ?? []), jammerRefs.weaponRanges)
     // 「第一次完成悬赏」的照会战加成（演习场 + 主控 + 任务未完成；每拍规格重建处注入）
     if (isFirstBountyBattle(state, anomalyId, shipId)) applyFirstBountyBuff(me)
     // **指挥舰全舰单发光环**（2026-09-17 修：原先只在开战那一刻乘 ⇒ 被每拍重建冲掉、从未生效）
@@ -4402,8 +4410,8 @@ function buildMyUnitSpecs(
     // **捕获网**（船长 2026-09-16）：同上，逐舰按账本施加
     const web = battle.meWebDebuffs?.[entry.tag]
     if (web) applyMeWebDebuff(spec, web)
-    // **敌干扰压制**：逐舰施加（同上——每拍重建后重新施加，否则下一拍就"恢复"）
-    applyMeJammerDebuff(spec, meRangeMulOf(battle, foes ?? []), shipRefs.weaponRanges)
+    // **敌干扰压制**：逐舰施加（同上——每拍重建后重新施加，否则下一拍就"恢复"）；同样传**净削减**
+    applyMeJammerDebuff(spec, meJammerNetOf(battle, foes ?? []), shipRefs.weaponRanges)
     out.push(spec)
   }
   // **指挥舰全舰单发光环**：全队取最高一份、不叠加（同批修：见 `applyFleetDamageAura` 的注释）
@@ -5363,7 +5371,7 @@ export function battleArcsFor(
    * 某一波出场 ⇒ 取第 0 波会漏判。
    */
   const foes = activeFoeSpecsOf(anomaly, bal, battle.waveIdx)
-  applyMeJammerDebuff(me, meRangeMulOf(battle, foes), meRefs.weaponRanges)
+  applyMeJammerDebuff(me, meJammerNetOf(battle, foes), meRefs.weaponRanges)
   /** 我方各武器当前装填剩余（与 units['player'].weapons 同序；单位缺失 = 空） */
   const meRt = battle.units['player']?.weapons ?? []
   /**
@@ -6784,12 +6792,17 @@ function foeRangeWithDebuff(baseRangeM: number, buffMul: number, r: number): num
  *   （船长口述 0.2，取整说法）——**"相互抵消"就是这一减**；
  * - **我方倍率 = `1 + 我方射程加成 − 净削减`**（例③：1 + 0.6 − 0.35 = **1.25**）；
  *   ⚠ 加成的**加法口径**由船长明示（不是相乘）⇒ 引擎侧按"加成的乘法结果 ÷ (1+加成) × (1+加成−净)"等价实现
- *   （见 `applyMeJammerDebuff`：(1+bonus) 已先乘过，这里再乘 `(1+bonus−net)/(1+bonus)` 得同值）；
+ *   （见 `applyMeJammerDebuff`：`(1+bonus)` 已先乘过，这里再乘 `(1+bonus−净)/(1+bonus)` 得同值）；
+ *   🔴 **2026-09-26 修正**：这一步原先**没真做到** —— `applyMeJammerDebuff` 收的是"按 bonus = 0 算出的系数"，
+ *   再按每件加成"反解"，而那个反解是**恒等变换** ⇒ 每件武器都被当成**无加成**压（带 +22% 射程的攻坚炮台
+ *   8,967 → 4,484，加法口径应为 5,292）。现在**第二参改收净削减率**，逐件按自己的加成反解；
+ *   并且**基准账与武器条目逐条一一对齐**（基础舰炮与每架无人机也各入一条账 —— 原先不入账 ⇒ 下标整体错位）。
+ *   用例：`ink-tide-20260924.test.ts` 的「逐件加法口径」两条（带加成的舰炮 / 带中继的无人机）。
  * - **敌方射程不受影响**（三例都写「敌方不变」）⇒ 本机制**只压我方**，不动 `foeGunMaxRangeOf` 那条链。
  *
  * ⚠ **落点两处、口径一条**：① `buildMyUnitSpecs`（开战首拍建档 + 每拍重建都走它；单船/多舰两条路径、
  * 逐舰各带自己的基准账在函数里）② 视图 `battleArcsFor`（视图锚舰另建一份规格 ⇒ 不施加就会"画面射程
- * 与实际开火门不一致"）。两处都调同一组 `meRangeMulOf` / `applyMeJammerDebuff`，**不新增第三份射程算法**。
+ * 与实际开火门不一致"）。两处都调 `meJammerNetOf` / `applyMeJammerDebuff`，**不新增第三份射程算法**。
  * 敌阵取**当前波**（`activeFoeSpecsOf`）——多波卡里干扰舰可能只在某一波出场。
  * `meFoeRangeDebuff`（我方电子舰的合成率，运行态、不随档）由 `applyFoeRangeDebuff` 每拍**先**写，
  * `meJammerNetOf` 再拿它跟敌方干扰率相减取净。
@@ -6859,6 +6872,22 @@ export function meRangeMulOf(
 ): number {
   const net = meJammerNetOf(battle, foes)
   if (net <= 0) return 1
+  return meRangeMulForBonus(bonus, net)
+}
+
+/**
+ * **单件武器的干扰系数** = `(1 + 该件射程加成 − 净削减) ÷ (1 + 该件射程加成)`（下限 0.1）。
+ *
+ * ⚠ **这就是船长三例的加法口径**（例③：`1 + 0.6 − 0.35 = ×1.25`）——关键在于：
+ * 分母里的加成**必须先乘回武器射程**（`createPlayerSpec` 的 `rangeOf` 已乘过），
+ * 所以这里只能按**该件自己的加成**反解，**不能**拿"整份规格的系数"（那是按 bonus = 0 算的）逐件套用。
+ *
+ * 🔴 **2026-09-26 修正的真错**：`applyMeJammerDebuff` 原先收的是**系数**（`1 − 净`，按 bonus = 0 算），
+ * 再按每件加成"反解"——那个反解在数学上是**恒等变换**（`net' = bonusMul × (1 − 系数)` 代回去正好还原），
+ * 于是每件武器都被当成**无加成**压：带 +22% 射程加成的攻坚炮台（8,967 m）在净 0.50 下被压到 4,484 m，
+ * 而加法口径应为 `7,350 × 0.72 =` **5,292 m**（少 15%）。⇒ 现在`applyMeJammerDebuff` 改收**净削减**。
+ */
+export function meRangeMulForBonus(bonus: number, net: number): number {
   const bonusMul = Math.max(0, 1 + bonus)
   return Math.max(0.1, (bonusMul - net) / bonusMul)
 }
@@ -6866,37 +6895,28 @@ export function meRangeMulOf(
 /**
  * **把我方武器的射程按干扰净削减率缩小**（只动最远射程；近界不动、下限 2 m）。
  *
- * ⚠ **口径 = 船长三例的加法**（2026-09-24）：必须按**每件武器自己的射程加成**逐个反解
- * （`meRangeMulOf(…, bonus)`）——`ranges[i]` = `createPlayerSpec` 记下的
- * `{ 基准射程, 加成倍率 }`，顺序与 `spec.weapons` 严格一致。缺省不传（老调用点）⇒
- * 退化为"整份规格乘同一个系数"，只在武器不带射程加成时与加法口径同值。
+ * ⚠ **第二参是「净削减率」，不是「射程系数」**（2026-09-26 改；见 {@link meRangeMulForBonus} 的错因）：
+ * 传 `meJammerNetOf(...)`（0.5 = 压掉一半），**不要**传 `meRangeMulOf(...)`（0.5 在那边的含义是 1 − 净，
+ * 两者数值相同时语义正好相反 ⇒ 会被当成"压掉 0.5 中的一部分"用错）。
  *
- * 与 `applyMeWebDebuff` 同款"只改这一份规格"的做法 ⇒ 只此一处施加（单船/多舰两条路径）。
+ * 逐件按**该件自己的射程加成**反解（`ranges[i]` = `createPlayerSpec` 记下的
+ * `{ 基准射程, 加成倍率 }`，**与 `spec.weapons` 逐条一一对齐**：基础舰炮、炮台/导弹/激光、每架无人机
+ * 各一条）。**不传 `ranges`**（老调用点）⇒ 全部按 bonus = 0 处理（= 每件乘 `1 − 净`）。
  */
 export function applyMeJammerDebuff<T extends UnitSpec>(
   spec: T,
-  rangeMul: number,
+  net: number,
   ranges?: readonly { baseM: number; bonusMul: number }[],
 ): T {
-  if (rangeMul >= 1 || !Number.isFinite(rangeMul)) return spec
+  if (!(net > 0) || !Number.isFinite(net)) return spec
   spec.weapons = spec.weapons.map((w, i) => {
-    const ref = ranges?.[i]
-    // 每件武器单独算：有基准账 ⇒ 按它自己的加成反解；没有 ⇒ 用整份规格的系数（老行为）
-    const mul = ref
-      ? meRangeMulOfFromNet(rangeMul, Math.max(0, (ref.bonusMul ?? 1) - 1))
-      : rangeMul
+    // 该件自己的射程加成（缺账 = 无加成 ⇒ 老行为）
+    const bonus = Math.max(0, (ranges?.[i]?.bonusMul ?? 1) - 1)
+    const mul = meRangeMulForBonus(bonus, net)
     if (mul >= 1) return w
     return { ...w, maxRangeM: Math.max(2, Math.round(w.maxRangeM * mul)) }
   })
   return spec
-}
-
-/** `applyMeJammerDebuff` 的内联小工具：把"整份规格的净系数"换成"这一件武器的净系数"。
- *  `rangeMul = (1+bonus−净)/(1+bonus)` ⇒ 净 = `(1+bonus) × (1 − rangeMul)`；再按本件 bonus 反解。 */
-function meRangeMulOfFromNet(rangeMul: number, bonus: number): number {
-  const bonusMul = Math.max(0, 1 + bonus)
-  const net = bonusMul * (1 - rangeMul)
-  return Math.max(0.1, (bonusMul - net) / bonusMul)
 }
 
 /** **受击增程**触发器（只由"我方武器**命中敌舰本体**"调用——打机群 / 未命中都不算）。

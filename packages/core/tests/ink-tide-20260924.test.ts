@@ -149,10 +149,71 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
     const battle = createBattleState(me, foes, 0, 5_000)
     battle.meFoeRangeDebuff = 0.15
     const before = me.weapons.map((w) => w.maxRangeM)
-    applyMeJammerDebuff(me, meRangeMulOf(battle, foes, 0))
+    applyMeJammerDebuff(me, meJammerNetOf(battle, foes)) // 第二参 = **净削减**（0.35）
     me.weapons.forEach((w, i) => {
       expect(w.maxRangeM).toBe(Math.max(2, Math.round(before[i]! * 0.65)))
     })
+  })
+
+  /**
+   * **逐件加法口径**（**2026-09-26 修**：船长例③原先没真落地）。
+   *
+   * 病根两条，本组用例各钉一条：
+   * - ① `applyMeJammerDebuff` 收的是"按 bonus = 0 算出的系数"，再按每件加成反解 —— 那个反解是**恒等变换**
+   *   ⇒ 每件武器都被当成**无加成**压（带加成的武器被多压）；
+   * - ② 基准账只给炮台/激光/导弹入账（**基础舰炮与无人机不入账**）⇒ 账与武器条目**下标整体错位**。
+   *
+   * 口径 = 船长例③：`终值 = 基准射程 × (1 + 该件加成 − 净)`。
+   */
+  it('逐件加法①：带 **+22% 动能射程**（幽灵弹道校正器）的炮台 ⇒ 净 0.35 下按 `1+0.22−0.35` 压，不是整份相乘', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 77 })
+    const sid = addShipToFleet(s, 'sh-shrike')
+    s.shipId = sid
+    // 攻坚炮台 MK3（基准 7,350 m）＋ 幽灵弹道校正器（动能武器射程 +22%）
+    s.fleet[sid]!.fitted = { high: ['mod-turret-kin-3'], mid: [], low: ['mod-wh-g-ballistic'] } as never
+    const refs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
+    const me = createPlayerSpec(s, ctx, sid, undefined, refs)!
+    /** 基准账与武器条目**逐条对齐**（②的护栏）：条数相等、且基础舰炮那条 base 就是它自己的 2,500 */
+    expect(refs.weaponRanges!.length).toBe(me.weapons.length)
+    expect(refs.weaponRanges![0]).toEqual({ baseM: 2500, bonusMul: 1 }) // 第 0 条 = 基础舰炮（无加成）
+    const turretAt = me.weapons.findIndex((w) => w.src === 'turret')!
+    const before = me.weapons[turretAt]!.maxRangeM
+    expect(before).toBe(8967) // 7,350 × 1.22（基准 × (1+加成)）
+
+    const foes = specsOf('foe-h-ink-jammer')
+    const battle = createBattleState(me, foes, 0, 5_000)
+    battle.meFoeRangeDebuff = 0.15 // 我方 1 艘电子舰 ⇒ 净 = 0.35
+    const net = meJammerNetOf(battle, foes)
+    expect(net).toBeCloseTo(0.35, 10)
+    applyMeJammerDebuff(me, net, refs.weaponRanges)
+    /** 加法口径：`基准 × (1 + 0.22 − 0.35) = 7,350 × 0.87 =` **6,395**（整份相乘的老口径会给 5,829） */
+    const additive = Math.round(7350 * (1 + 0.22 - 0.35))
+    expect(Math.abs(me.weapons[turretAt]!.maxRangeM - additive)).toBeLessThanOrEqual(1)
+    expect(me.weapons[turretAt]!.maxRangeM).not.toBe(Math.round(before * (1 - 0.35))) // 不是整份相乘
+  })
+
+  it('逐件加法②：**无人机**同样逐架按自己的中继加成算（带中继天线 +20% ⇒ `1+0.2−0.50`）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 78 })
+    const sid = addShipToFleet(s, 'sh-shrike') // 无人机舱 10 m³
+    s.shipId = sid
+    s.fleet[sid]!.fitted = { high: ['mod-drone-relay-1'], mid: [], low: [] } as never
+    s.fleet[sid]!.droneLoad = { 'drone-scout': 2 } as never
+    const refs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
+    const me = createPlayerSpec(s, ctx, sid, undefined, refs)!
+    const droneAt = me.weapons.findIndex((w) => w.src === 'drone')!
+    expect(droneAt).toBeGreaterThanOrEqual(0)
+    expect(me.weapons[droneAt]!.maxRangeM).toBe(4800) // 蜂鸟 4,000 × 1.2
+    /** 基准账里无人机那条 = 机型射程 ＋ 中继倍率（②的护栏） */
+    expect(refs.weaponRanges![droneAt]).toEqual({ baseM: 4000, bonusMul: 1.2 })
+
+    const foes = specsOf('foe-h-ink-jammer') // 我方不带电子舰 ⇒ 净 = 0.50
+    const battle = createBattleState(me, foes, 0, 5_000)
+    const net = meJammerNetOf(battle, foes)
+    expect(net).toBeCloseTo(0.5, 10)
+    applyMeJammerDebuff(me, net, refs.weaponRanges)
+    /** **无人机吃压制**（它就是我方武器条目之一）＋ 加法口径：`4,000 × (1 + 0.2 − 0.5) =` **2,800** */
+    expect(me.weapons[droneAt]!.maxRangeM).toBe(2800)
+    expect(me.weapons[droneAt]!.maxRangeM).not.toBe(Math.round(4800 * 0.5)) // 老口径 = 2,400（多压 400 m）
   })
 
   /**
