@@ -522,6 +522,26 @@ export function ActivityBar({
           <span className="app-activitybar-idle">{tr("ui.ActivityBar.037")}</span>
         )}
       </div>
+      {/**
+       * **副AI活动**（2026-09-25 船长令：「活动页面，可以试着在**玩家活动下方**新建一个副AI活动，
+       * 将所有AI的进度条和活动类型挨个列出」）
+       *
+       * 口径：把 `activityOverview()` 里 `kind === 'ai'` 的条目**逐条列出**（数据源与头部那两枚
+       * 「副船 ×N」「工业 ×N」徽标同一份：徽标只给**计数 + 悬浮详情**，本组给**逐条进度条 + 类型**）。
+       * 复用现成的 `renderItem` ⇒ 类型标签 / 进度条 / 剩余时间 / 停止按钮的写法与上面两组完全一致。
+       * 副船的排在前面（与头部徽标顺序一致：先副船、后工业）。
+       */}
+      <div className="app-activitybar-group">
+        <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.062")}</div>
+        {aiShipItems.length + aiProdItems.length > 0 ? (
+          <>
+            {aiShipItems.map(renderItem)}
+            {aiProdItems.map(renderItem)}
+          </>
+        ) : (
+          <span className="app-activitybar-idle">{tr("ui.ActivityBar.063")}</span>
+        )}
+      </div>
     </div>
   )
 }

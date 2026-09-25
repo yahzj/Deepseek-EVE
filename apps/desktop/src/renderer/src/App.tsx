@@ -1553,7 +1553,9 @@ export function App({ engine }: { engine: GameEngine }) {
       onClick={() => changePage(item.key)}
       >
       <span className="app-nav-icon">
-      <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
+      {/* 2026-09-25 船长令：「导航栏图除了出港外的图标还是太小了，在宽度不变的前提下，高度要和导航栏匹配」
+                        ⇒ 普通项图标 19 → **34px**（出港 40 → 44px），并同步加大底栏与图标容器（见 styles.css）。 */}
+                    <Glyph name={item.icon} size={item.key === 'map' ? 44 : 34} color={NAV_TONES[item.icon]} />
       {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
       </span>
       <span>{t(item.label)}</span>

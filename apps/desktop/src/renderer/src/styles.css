@@ -3370,7 +3370,7 @@ html[data-locale='en'] body {
 
   box-sizing: border-box;
 
-  padding: var(--wui-sp-6) var(--wui-sp-12) var(--wui-sp-7);
+  padding: var(--wui-sp-8) var(--wui-sp-12) var(--wui-sp-7); /* 上下加大 ⇒ 底栏更高，容得下大图标 */
 
   border-right: none;
 
@@ -3746,9 +3746,9 @@ html[data-locale='en'] body {
 
   flex-shrink: 0;
 
-  width: 28px; /* 2026-09-25 底栏「大图标」：24 → 28px（船长令：大图标 + 图标下方配字） */
+  width: 34px; /* 2026-09-25 船长令：「图标还是太小了…高度要和导航栏匹配」⇒ 28 → 34px（宽度不变） */
 
-  height: 28px;
+  height: 34px;
 
   font-size: var(--wui-fs-5xl);
 

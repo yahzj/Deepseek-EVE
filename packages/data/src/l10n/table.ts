@@ -878,6 +878,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ActivityBar.059": { zh: "\n点击前往「{p1}」页", en: "\nClick to open {p1}" },
   "ui.ActivityBar.060": { zh: "{p1}：本期限时加成 ×{p2}{p3}\n", en: "{p1}: current limited-time bonus ×{p2}{p3}\n" },
   "ui.ActivityBar.061": { zh: "操作失败。", en: "The action failed." },
+
+  /**
+   * **副AI活动组**（2026-09-25 船长令：「活动页面，可以试着在玩家活动下方新建一个副AI活动，
+   * 将所有AI的进度条和活动类型挨个列出」）⇒ 组标题 + 空态各一条。
+   */
+  "ui.ActivityBar.062": { zh: "副AI活动", en: "AI Operations" },
+  "ui.ActivityBar.063": { zh: "AI 全部待机——去「舰船 · AI 指挥中心」或「工业」派活。", en: "All AI idle — assign jobs in Ship › AI Command or Industry." },
+
   "ui.aiProgress.001": { zh: " · 剩余约 {d}", en: " · about {d} left" },
   "ui.aiSlots.001": { zh: "{p1} {p2} 级 → +{p3}", en: "{p1} Lv{p2} → +{p3}" },
   "ui.aiSlots.002": { zh: "暂无扩容技能", en: "No expansion skill yet" },
