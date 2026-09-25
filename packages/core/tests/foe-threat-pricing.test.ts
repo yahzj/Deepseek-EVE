@@ -69,10 +69,17 @@ describe('敌卡威胁定价式（船长 2026-09-24「单舰 ×3 / 小队 ×10�
     const visible = ANOMALIES.filter((a) => a.hidden !== true && (a.ships ?? []).length > 0)
     expect(visible.length).toBe(23) // 常驻悬赏（洞外非隐藏）；隐藏模板 enc-* 不计
     const rated = visible.map((a) => ({ id: a.id, name: a.name, threat: a.threat, rating: foeThreatRatingOf(xOf(a), FOE_DESIGN_STRENGTH_MUL.solo, bal) }))
-    const bad = rated.filter((r) => r.rating !== r.threat)
+    /**
+     * ⚠ **低端平带例外**（2026-09-25 手动重定价批）：威胁 1~6 的曲线值**恒为 11**（`max(6,T)` 地板）
+     * ⇒ 反解永远返回平带起点（"威胁 5"的价 = "威胁 1"的价 ⇒ 反解给 1）。故判据取**同价带**：
+     * `F(反解) === F(卡面)` 视为一致；其余必须**逐字相等**，且例外只允许出现在 `threat ≤ 6`。
+     */
+    const bad = rated.filter((r) => r.rating !== r.threat && foeHpOfThreat(r.rating, bal) !== foeHpOfThreat(r.threat, bal))
     expect(
       bad.map((r) => `${r.name}：卡面 ${r.threat}，按属性反解 ${r.rating}`),
-      '这些卡的 threat 与属性不满足「单舰 ×3」定价式（改属性必须同步改威胁）',
+      '这些卡的 threat 与属性不满足「单舰 ×3」定价式（改属性必须同步改威胁，或反之）',
     ).toEqual([])
+    const exceptions = rated.filter((r) => r.rating !== r.threat)
+    expect(exceptions.every((r) => r.threat <= 6), '平带例外只允许出现在威胁 ≤ 6 这一段').toBe(true)
   })
 })

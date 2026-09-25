@@ -571,21 +571,21 @@ describe('赤潮 / 蜃影 火力重锚（船长 2026-09-11 裁决：按实际算
     }, 0)
   const shots = (id: string): number[] => createFoeSpecs(realCard(id), bal).map((u) => u.weapons[0]!.shotDmg ?? 0)
 
-  it('赤潮劫掠舰队（T21）：重锚单发 头目 21 / 杂鱼 5，纸面火力 ≈ 旧实伤 7.25 × 1.2', () => {
-    expect(shots('ano-redring-raiders')).toEqual([21, 5, 5, 5])
+  it('赤潮劫掠舰队（T26）：重锚单发 头目 27 / 杂鱼 7，纸面火力 ≈ 旧实伤 7.25 × 1.2 × 重定价 1.3095', () => {
+    expect(shots('ano-redring-raiders')).toEqual([27, 7, 7, 7])
     const dps = paperDps('ano-redring-raiders')
-    expect(dps).toBeCloseTo(9, 6) // Σ36 ÷ 4s
-    expect(dps / 7.25).toBeGreaterThan(1.1) // ≈ ×1.24（目标 ×1.2，取整 +3.4%）
-    expect(dps / 7.25).toBeLessThan(1.3)
-    expect(realCard('ano-redring-raiders').threat).toBe(21) // 2026-09-25 重定标：34 → 21（属性零改动）
+    expect(dps).toBeCloseTo(12, 6) // Σ48 ÷ 4s
+    expect(dps / 7.25).toBeGreaterThan(1.5) // ≈ ×1.66（原目标 ×1.2 × 2026-09-25 重定价 1.3095 ≈ 1.57，取整 +5.5%）
+    expect(dps / 7.25).toBeLessThan(1.8)
+    expect(realCard('ano-redring-raiders').threat).toBe(26) // 2026-09-25 两批：34 → 21（重定标）→ 26（手动重定价，属性 ×1.3095）
   })
 
-  it('蜃影导航劫持令（T30）：重锚单发 头目 33 / 杂鱼 7，纸面火力 ≈ 旧实伤 11.50 × 1.2', () => {
-    expect(shots('ano-mirage-hijackers')).toEqual([33, 7, 7, 7])
+  it('蜃影导航劫持令（T68）：重锚单发 头目 151 / 杂鱼 32，纸面火力 ≈ 旧实伤 11.50 × 1.2 × 重定价 4.5755', () => {
+    expect(shots('ano-mirage-hijackers')).toEqual([151, 32, 32, 32])
     const dps = paperDps('ano-mirage-hijackers')
-    expect(dps).toBeCloseTo(13.5, 6) // Σ54 ÷ 4s
-    expect(dps / 11.5).toBeGreaterThan(1.1) // ≈ ×1.17（目标 ×1.2，取整 −2.2%）
-    expect(dps / 11.5).toBeLessThan(1.3)
+    expect(dps).toBeCloseTo(61.75, 6) // Σ247 ÷ 4s
+    expect(dps / 11.5).toBeGreaterThan(5.2) // ≈ ×5.37（原目标 ×1.2 × 2026-09-25 重定价 4.5755 ≈ 5.49，取整 −2.2%）
+    expect(dps / 11.5).toBeLessThan(5.7)
   })
 
   it('重锚只动 dmgMul：血/编成/头目占比不受影响（`foeDmgMul` 字段保持退休）', () => {
@@ -899,18 +899,18 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     ).toBeUndefined()
   })
 
-  it('深渊之门卫队（T41）：星髓幼虫 ×6 / 2 波（3+3）；总血 1,000 精确守恒', () => {
+  it('深渊之门卫队（T81）：星髓幼虫 ×6 / 2 波（3+3）；总血 3,128.3 精确守恒', () => {
     const def = card('ano-abyss-guard')
     const u = allWaves(def)
     expect(u).toHaveLength(6)
     expectHpClose(
       u.map(hpOf),
-      Array.from({ length: 6 }, () => 1000 / 6),
-    ); // 原 2 单位 625 + 375
-    expect(sum(u.map(hpOf))).toBeCloseTo(1000, 6)
+      Array.from({ length: 6 }, () => 3128.3 / 6),
+    ); // 2026-09-25 重定价 ×3.1283（原总血 1,000）
+    expect(sum(u.map(hpOf))).toBeCloseTo(3128.3, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 6 }, () => 19),
-    ); // 112/6 → 19
+      Array.from({ length: 6 }, () => 59),
+    ); // 354/6 = 59（重定价后）
     const w = u[0]!.weapons[0]!
     expect(w.kind).toBe('fixed'); // 能量·掷命中（裁定⑤）
     expect(w.hitRate).toBe(0.9); // 卡上覆写（原光束必中）
@@ -928,18 +928,18 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(h.h / tot).toBeCloseTo(0.25, 6)
   })
 
-  it('裂谷畸变体猎杀令（T49）：畸变幼虫 ×8 / 2 波（4+4）；总血 1,815 精确守恒', () => {
+  it('裂谷畸变体猎杀令（T77）：畸变幼虫 ×8 / 2 波（4+4）；总血 3,790.2645 精确守恒', () => {
     const def = card('ano-chasm-aberrations')
     const u = allWaves(def)
     expect(u).toHaveLength(8)
     expectHpClose(
       u.map(hpOf),
-      Array.from({ length: 8 }, () => 1815 / 8),
-    ); // = 226.875
-    expect(sum(u.map(hpOf))).toBeCloseTo(1815, 6)
+      Array.from({ length: 8 }, () => 3790.2645 / 8),
+    ); // = 473.7831（2026-09-25 重定价 ×2.0883，原 226.875）
+    expect(sum(u.map(hpOf))).toBeCloseTo(3790.2645, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 8 }, () => 15),
-    ); // 121/8 = 15.125 → 15
+      Array.from({ length: 8 }, () => 31),
+    ); // 248/8 = 31（重定价后）
     expect(u.map((x) => x.speedMps)).toEqual(
       Array.from({ length: 8 }, () => 544),
     ); // 408 → 544
@@ -951,21 +951,21 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u[0]!.foeTactic).toBe('brawl')
   })
 
-  it('星髓虫群（T57）：星髓幼虫 ×7 + 星髓成虫 ×3（末波），两条舰级共用一个血量倍率', () => {
+  it('星髓虫群（T67）：星髓幼虫 ×7 + 星髓成虫 ×3（末波），两条舰级共用一个血量倍率', () => {
     const def = card('ano-starcore-boss')
     const u = allWaves(def)
     expect(u).toHaveLength(10);
-    // 幼虫 95.625（×7）+ 成虫 286.875（×3）= 1,530；成虫:幼虫 = 3:1 = 档基线比 624:208
+    // 幼虫 125.9476875（×7）+ 成虫 377.8430625（×3）= 2,015.163（2026-09-25 重定价 ×1.3171）；成虫:幼虫 = 3:1 = 档基线比 624:208
     expectHpClose(u.map(hpOf), [
-      ...Array.from({ length: 7 }, () => 95.625),
-      286.875,
-      286.875,
-      286.875,
+      ...Array.from({ length: 7 }, () => 125.9476875),
+      377.8430625,
+      377.8430625,
+      377.8430625,
     ])
-    expect(sum(u.map(hpOf))).toBeCloseTo(1530, 6)
+    expect(sum(u.map(hpOf))).toBeCloseTo(2015.163, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 10 }, () => 23),
-    ); // 231/10 → 23
+      Array.from({ length: 10 }, () => 30),
+    ); // 300/10 = 30（重定价后）
     // 末波（第 3 波）= 成虫 ×3：带 1~2655（舰级带）与速 398（T2 驱逐），tag 走 `w2-` 前缀
     const last = u.filter((x) => x.tag.startsWith('w2-'))
     expect(last).toHaveLength(3)
@@ -979,7 +979,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u[0]!.weapons[0]!.hitRate).toBe(0.95)
   })
 
-  it('噬口猎杀令（T87）：畸变幼虫 ×10 + 稀有头目 ×1；首领占 80% 血与火力，总盘 2,766/501 精确守恒', () => {
+  it('噬口猎杀令（T109）：畸变幼虫 ×10 + 稀有头目 ×1；首领占 80% 血与火力，总盘 4,002.6786/717 精确守恒', () => {
     const def = card('ano-maw-hunt')
     const u = allWaves(def)
     expect(u).toHaveLength(11);
@@ -988,17 +988,17 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(boss).toBeTruthy()
     const minions = u.filter((x) => x !== boss)
     expect(minions).toHaveLength(10)
-    expectHpClose([hpOf(boss)], [2766 * 0.8]); // 首领 2,212.8（80%）
+    expectHpClose([hpOf(boss)], [4002.6786 * 0.8]); // 首领 3,202.1429（80%；2026-09-25 重定价 ×1.4471）
     expectHpClose(
       minions.map(hpOf),
-      Array.from({ length: 10 }, () => 2766 * 0.02),
-    ); // 每只小虫 55.32（2%）
-    expect(sum(u.map(hpOf))).toBeCloseTo(2766, 6); // 改造前实际总血（922 × 3 单位）
-    expect(boss.weapons[0]!.shotDmg).toBe(401); // 501 × 80% = 400.8 → 401
+      Array.from({ length: 10 }, () => 4002.6786 * 0.02),
+    ); // 每只小虫 80.0536（2%）
+    expect(sum(u.map(hpOf))).toBeCloseTo(4002.6786, 6); // 2026-09-25 重定价后总血（原 2,766）
+    expect(boss.weapons[0]!.shotDmg).toBe(577); // 717 × 80% = 573.6 → 577（重定价后）
     expect(minions.map((x) => x.weapons[0]!.shotDmg)).toEqual(
-      Array.from({ length: 10 }, () => 10),
+      Array.from({ length: 10 }, () => 14),
     )
-    expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(501); // 总单发取整后仍精确 = 501
+    expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0))).toBe(717); // 总单发取整后仍精确 = 717（重定价后）
     expect(boss.speedMps).toBe(297); // 205 × 297/205（船长「将首领速度**单独上调 20 点**」：277 → 297）
     expect(minions.every((x) => x.speedMps === 544)).toBe(true)
     expect(boss.weapons[0]!.maxRangeM).toBe(2713); // 沿革：曾令加到 4,000 → 回收回 2,713 → 2026-09-14「全族 +1000」（3,713）**同日已回滚**

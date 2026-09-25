@@ -822,7 +822,7 @@ describe("G 族蜂群机挂载（P-20a 收口：等离子系上舰）", () => {
     ]);
     expect(drones.map((w) => w.fixedType)).toEqual(["kinetic", "plasma"]);
     // 本批**只换系**：机型的射程 / 装填 / 命中 / 逐架单发一律照旧
-    expect(drones.map((w) => w.shotDmg)).toEqual([12, 12]);
+    expect(drones.map((w) => w.shotDmg)).toEqual([26, 25]); // 2026-09-25 重定价 ×2.1562（原 12/12；dBase 25 + 余数补首架）
     expect(drones.every((w) => w.maxRangeM === 7_000)).toBe(true);
     expect(drones.every((w) => w.reloadMs === 2_200)).toBe(true);
     expect(drones.every((w) => w.hitRate === 0.75)).toBe(true);
@@ -830,7 +830,7 @@ describe("G 族蜂群机挂载（P-20a 收口：等离子系上舰）", () => {
     expect(units().every((u) => u.foeDroneReserve === undefined)).toBe(true);
   });
 
-  it("总火力与总血守恒：炮台 114 + 机群 24 = 138 · 总血 2,040（换系只改构成）", () => {
+  it("总火力与总血守恒：炮台 246 + 机群 51 = 297 · 总血 4,399（换系只改构成；2026-09-25 重定价 ×2.1562）", () => {
     let gun = 0;
     let drone = 0;
     let hp = 0;
@@ -842,9 +842,9 @@ describe("G 族蜂群机挂载（P-20a 收口：等离子系上舰）", () => {
         else gun += w.shotDmg ?? 0;
       }
     }
-    expect(gun).toBe(114);
-    expect(drone).toBe(24); // 2 架各 12（占比 0.30 的守恒拆分）
-    expect(gun + drone).toBe(138); // = 迁移前实测总单发，换系一字不动
-    expect(Math.round(hp)).toBe(2_040);
+    expect(gun).toBe(246); // 120 + 63 + 63
+    expect(drone).toBe(51); // 26 + 25（占比 0.30 的守恒拆分；T = 锚点 = 自然合计 171）
+    expect(gun + drone).toBe(297); // = 迁移前实测总单发 138 × 重定价 2.1562（取整后 297；换系本身不动）
+    expect(Math.round(hp)).toBe(4_399); // 2,040 × 2.1562
   });
 });

@@ -12,7 +12,7 @@
  * **保留不动**，方便日后给新卡挂附赠；现值一律为空数组。
  */
 
-import type { AnomalyDef } from '@whale/core'
+import type { AnomalyDef, FoeShipSlot } from '@whale/core'
 import { foeLayerSplit } from '@whale/core'
 import { WEEKEND_FOE_CARDS, WORMHOLE_FOE_CARDS } from './wormholeFoes'
 import {
@@ -123,22 +123,29 @@ const D_COMP = (n: number): number => (2 * n) / (n + 1)
 const E_COMP = (n: number): number => (2 * n) / (n + 1)
 
 /**
- * **2026-09-25 船长令：洞外常驻悬赏威胁按「单舰 ×3」定价式重定标（属性零改动）**。
+ * **2026-09-25 船长令（两批）**：
  *
- * 定价式（引擎实测）：`X = √(全波总血 × 全波总火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`，
+ * **批一 · 威胁重定标（属性零改动）**——定价式（引擎实测）：
+ * `X = √(全波总血 × 全波总火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`，
  * 其中**系数 = 这张卡预设给谁打**（与玩家实际带几条船、敌人编成几艘船都无关）：
  * 洞外常驻悬赏 = **单舰 ⇒ 3**（`FOE_DESIGN_STRENGTH_MUL.solo`）· 洞内派生卡 = **4 舰小队 ⇒ 10**
- * ⇒ 单舰卡的威胁 = `F⁻¹(5X ÷ 3)`。本次只改 `threat` 字段，`ships[]`/`waves`/奖励/声望一律不动。
+ * ⇒ 单舰卡的威胁 = `F⁻¹(5X ÷ 3)`。批一只改 `threat` 字段，`ships[]`/`waves`/奖励/声望不动。
+ *
+ * **批二 · 手动重定价（改威胁 ⇒ 改预算 ⇒ 改属性）**——船长：「**本次调整是会改变预算的（也就是变更属性）**」。
+ * 12 张卡按「新威胁的预算」重配属性：`k = 0.6·F(新威胁) ÷ X实测`（下调到"不超过该预算"的最大 k），
+ * 血与火力**同乘 k**。逐卡 k / 新旧属性见文件末的 `RERATE_20260925`（**由 `ANOMALIES` 出场时统一施加**）。
+ * ⚠ 本批**同时**改了 `threat` 与 `ships[]`；其余 11 张常驻悬赏与洞内/隐藏卡一律未动。
  *
  * ⚠ **旧标签登记**：本文件里 2026-09-25 之前的注释中出现的 `T6 / T80 / T84 / T88 / T96` 等编号是
- * 重定标**之前**的标签，对应现值以各卡 `threat` 字段为准（依次 = 15 / 87 / 115 / 87·103 / 110）。
+ * 重定标**之前**的标签，对应现值以各卡 `threat` 字段为准。
  *
  * ⚠ **`wreckThreat` = 回收口径的冻结值**（同日船长令「**冻结残骸经济**」）：残骸注入 / 星系密度 /
  * 残骸组威胁 / 蓝图碎片门槛一律读它（`salvage.wreckInjectThreatOf`），值为**重定标前的旧标签**
  * ⇒ 回收经济与重定标前**逐值不变**，且今后再改 `threat` 不再牵动回收线。没写本字段的卡（洞内卡、
  * 隐藏模板、新卡）一律回落 `threat`。**它不参与战斗/显示/速度射程**（那些仍读 `threat`）。
+ * ⚠ 批二**不动 `wreckThreat`** ⇒ 卡变强/变弱都不牵动回收经济。
  */
-export const ANOMALIES: readonly AnomalyDef[] = [
+const ANOMALIES_BASE: readonly AnomalyDef[] = [
   // 终局玩法「虫洞」的洞内敌卡（2026-09-13 F 批）：全部 `hidden: true`，
   // 不进悬赏目录、不被派发 —— 只由虫洞按层数派生取用（见 `packages/data/src/wormholeFoes.ts`）。
   ...WORMHOLE_FOE_CARDS,
@@ -160,7 +167,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     // 卡片自己的目标值由倍率表达 ⇒ 本卡仍是 **血 22 / 单发 14**（船长「新手过渡族」的小艇）。
     ships: [{ ship: FOE_SCAV_SKIFF, hpMul: 22 / 156, dmgMul: 14 / 28 }],
     galaxyId: 'galaxy-hub',
-    threat: 15,
+    threat: 5,
     wreckThreat: 6, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'balanced',
@@ -294,7 +301,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-redring',
-    threat: 21,
+    threat: 26,
     wreckThreat: 34, // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
@@ -431,7 +438,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 3, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-abyss',
-    threat: 41,
+    threat: 81,
     wreckThreat: 45, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 船长裁定①：**kite → brawl**（射程同时收进近战带）
     defProfile: 'shield',
@@ -483,7 +490,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //（原在深渊之门；深渊之门恢复为纯 C 族异形星系——其 lore「古老跃迁门…守卫森严」不涉巨构，故无需改文案）。
     // ⚠ 连带：同星系日板"取级别最高（并列取奖金最高）"⇒ 见卡表 §11.6 的派发口径备注。
     galaxyId: 'galaxy-auro',
-    threat: 64,
+    threat: 87,
     wreckThreat: 60, // 回收口径（冻结值，见本表头注）
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
@@ -650,7 +657,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 3, hpShare: 0.5625 }, // 成虫 ×3 = 860.625（末波重头）
     ],
     galaxyId: 'galaxy-starcore',
-    threat: 57,
+    threat: 67,
     wreckThreat: 72, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'armor',
@@ -687,7 +694,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-cinder',
-    threat: 44,
+    threat: 64,
     wreckThreat: 42, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
     standingReq: 6,
@@ -777,7 +784,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-nadir',
-    threat: 55,
+    threat: 89,
     wreckThreat: 66, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
     standingReq: 9,
@@ -863,7 +870,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     //   `units` 与编成条目一一对应（4 + 3 + 3 + 1）仅作可读性，改它不会改血量。
     //   **小虫必须排在巨兽之前**：`foes[0]`（波 0 首个主体单位）= 期望交距 / 开战距离的来源。
     galaxyId: 'galaxy-maw',
-    threat: 87,
+    threat: 109,
     wreckThreat: 80, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 2026-09-10 船长（族系改判）：**orbit（原缺省）→ brawl**（C 族＝螯颚/酸液喷吐的贴脸生物）
     dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（原动能主）
@@ -987,7 +994,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-harbor',
-    threat: 17,
+    threat: 10,
     wreckThreat: 10, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'armor',
@@ -1039,7 +1046,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 2, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-shard',
-    threat: 26,
+    threat: 36,
     wreckThreat: 20, // 回收口径（冻结值，见本表头注）
     dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     tactic: 'brawl',
@@ -1191,7 +1198,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-mirage',
-    threat: 30,
+    threat: 68,
     wreckThreat: 48, // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
@@ -1237,7 +1244,7 @@ export const ANOMALIES: readonly AnomalyDef[] = [
       { units: 4, hpShare: 0.5 },
     ],
     galaxyId: 'galaxy-chasm',
-    threat: 49,
+    threat: 77,
     wreckThreat: 58, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'balanced',
@@ -1433,6 +1440,84 @@ export const ANOMALIES: readonly AnomalyDef[] = [
     description: '低安遭遇模板：高危屠夫舰队（隐藏）。',
   },
 ]
+
+/* ═══════════ 2026-09-25 船长手动重定价批（12 张常驻悬赏） ═══════════
+ *
+ * 船长原话：「**本次调整是会改变预算的（也就是变更属性）**」——威胁是**预算拨盘**：
+ * 单舰定价式 `X = √(全波总血 × 全波总火力DPS) = 0.6 × foeHpOfThreat(威胁)`
+ * （`FOE_DESIGN_STRENGTH_MUL.solo = 3` ⇒ `0.6 = 2 × 3 ÷ 10`）。
+ *
+ * 因此改威胁 = 改预算 = **改属性**：`k = 0.6·F(新威胁) ÷ X实测`，再下调到
+ * **"达成预算不超过 F(新威胁)"的最大 k**（单发是整数、低端曲线有平带 ⇒ 只能实测收敛，k 由探针实测给出）。
+ * 落法 = 血与火力**同乘 k**（血/火力比 `r`、编成/波次/射程/血型/命中一律不动）；
+ * ⚠ `wreckThreat`（回收口径）**不随动**——船长令「冻结残骸经济」；
+ * ⚠ 噬口猎杀令的**巨兽占比**本次不动（船长「之后详细讨论」）。
+ *
+ * | 卡 | 威胁 | k | 总血 | 总火力 DPS |
+ * |---|---|---|---|---|
+ * | 演习场驱逐令 | 15 → 5 | 0.7500 | 22 → 17 | 3.5 → 2.5 |
+ * | 新港商路护航令 | 17 → 10 | 0.3456 | 75 → 26 | 5.8 → 2.0 |
+ * | 赤潮劫掠舰队 | 21 → 26 | 1.3095 | 340 → 445 | 9.0 → 12.0 |
+ * | 碎晶带劫匪通缉 | 26 → 36 | 1.5890 | 285 → 453 | 18.0 → 29.0 |
+ * | 蜃影导航劫持令 | 30 → 68 | 4.5762 | 560 → 2563 | 13.5 → 61.8 |
+ * | 烬火围攻战 | 44 → 64 | 1.8353 | 1585 → 2909 | 24.5 → 45.0 |
+ * | 泰坦残骸勘探 | 64 → 87 | 1.6584 | 1585 → 2629 | 79.7 → 132.3 |
+ * | 天底静区封锁 | 55 → 89 | 2.1562 | 2040 → 4399 | 39.4 → 85.1 |
+ * | 星髓虫群 | 57 → 67 | 1.3173 | 1530 → 2016 | 57.5 → 75.0 |
+ * | 裂谷畸变体猎杀令 | 49 → 77 | 2.0886 | 1815 → 3791 | 30.0 → 62.0 |
+ * | 深渊之门卫队 | 41 → 81 | 3.1287 | 1000 → 3129 | 28.5 → 88.5 |
+ * | 噬口猎杀令 | 87 → 109 | 1.4471 | 2766 → 4003 | 125.3 → 179.3 |
+ */
+const RERATE_20260925: Readonly<Record<string, number>> = {
+  'ano-training': 0.735,
+  'ano-harbor-escort': 0.3427,
+  'ano-redring-raiders': 1.3095,
+  'ano-shard-bandits': 1.5882,
+  'ano-mirage-hijackers': 4.5755,
+  'ano-cinder-siege': 1.8349,
+  'ano-titan-wreck': 1.6582,
+  'ano-nadir-static': 2.1562,
+  'ano-starcore-boss': 1.3171,
+  'ano-chasm-aberrations': 2.0883,
+  'ano-abyss-guard': 3.1283,
+  'ano-maw-hunt': 1.4471,
+}
+
+/** 按上表同乘血与火力（与 `lairAnomalyOf`/`wormholeAnomalyOf` 的 `scale` 同款做法） */
+function reratedCard(a: AnomalyDef): AnomalyDef {
+  const k = RERATE_20260925[a.id]
+  if (k === undefined || !a.ships || a.ships.length === 0) return a
+  /** 多舰补偿 `2N/(N+1)`（与 core `foeMultiShipCompMul` 同式；本文件既有多族 `*_COMP` 常量同款） */
+  const units = a.ships.reduce((n, s) => n + Math.max(1, Math.floor(s.count ?? 1)), 0)
+  const comp = (2 * units) / (units + 1)
+  const ships: readonly FoeShipSlot[] = a.ships.map((s) => {
+    const hpMul = (s.hpMul ?? 1) * k
+    const dmgMul = (s.dmgMul ?? 1) * k
+    if (s.firepowerAnchor === undefined) return { ...s, hpMul, dmgMul }
+    /**
+     * **总火力锚点**：按 k 缩放（`round(旧锚 × k)`）——锚点是船长 2026-09-12 定的"**本条目实收总单发**"
+     * 钉子（有意可低于自然合计：卡上挂机群时母舰单发让位），**不许按自然合计重算**
+     * （实测：那样会把 泰坦残骸勘探 从 358 抬到 519、火力 +45%）。
+     *
+     * ⚠ **唯一例外 = 取整平局**：锚点若与"逐项取整后的自然合计"只差 ≤1，说明它本就是同一个量的
+     * 另一种写法 ⇒ 取自然值。否则两者会互相打架，破 `content:check` 的
+     * 「写了机群火力占比 ⇒ 总单发守恒」契约（实测：天底静区封锁 `round(80×2.1562)=172` vs 自然 171）。
+     */
+    const count = Math.max(1, Math.floor(s.count ?? 1))
+    const gunPerUnit = Math.max(1, Math.round(s.ship.shotDmg * dmgMul * comp))
+    const dronePerUnit = (s.ship.drones ?? []).reduce(
+      (n, ds) => n + Math.max(0, Math.round(ds.count)) * Math.max(1, Math.round(ds.drone.dmg * dmgMul)),
+      0,
+    )
+    const natural = Math.max(1, Math.round((gunPerUnit + dronePerUnit) * count))
+    const scaled = Math.max(1, Math.round(s.firepowerAnchor * k))
+    return { ...s, hpMul, dmgMul, firepowerAnchor: Math.abs(scaled - natural) <= 1 ? natural : scaled }
+  })
+  return { ...a, ships }
+}
+
+/** 全量敌卡目录（**已套用 2026-09-25 重定价批**；`ANOMALIES_FLAVORED` 与 `buildAnomalyCatalog` 同源） */
+export const ANOMALIES: readonly AnomalyDef[] = ANOMALIES_BASE.map(reratedCard)
 /** 构建异常点目录（2026-09-19 残骸合并后：卡上不再挂回收特色，一律走 `core/wreckGroups.ts` 的组表） */
 export function buildAnomalyCatalog(): ReadonlyMap<string, AnomalyDef> {
   return new Map(ANOMALIES.map((a) => [a.id, a]))
