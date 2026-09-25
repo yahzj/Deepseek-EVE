@@ -316,15 +316,21 @@ describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
     expect(c.ships!.filter((s) => s.wave === 1).map((s) => [s.ship.name, s.count])).toEqual([['墨潮鱼雷舰', 3]])
   })
 
-  it('3 主力舰队：2 波 —— 突击舰 ×3；干扰舰 ＋ 战列巡洋舰 ＋ 鱼雷舰 ×2', () => {
+  it('3 主力舰队：2 波 —— 突击舰 ×3；**战列巡洋舰 ＋ 鱼雷舰 ×2 ＋ 干扰舰**（主体在前见下注）', () => {
     const c = card('ink-main')
     expect(c.name).toBe('墨潮帮主力舰队')
     expect(c.waves!.map((w) => w.units)).toEqual([3, 4])
     expect(c.ships!.filter((s) => s.wave === 0).map((s) => [s.ship.name, s.count])).toEqual([['墨潮突击舰', 3]])
+    /**
+     * ⚠ **2026-09-25 船长令「甲：改卡面条目顺序」**：`foeDesiredRange` 取**本波卡面顺序第 1 条**
+     * 当"敌方期望距离"⇒ 本波主体（11 km 战巡 ＋ 12 km 鱼雷舰）必须排在**干扰舰之前**；
+     * 否则整波被拖到干扰舰的近战带 2,352 m（战巡/鱼雷舰的近盲带 ×0.3 正在那里）。
+     * 编成**数量一个没变**，只换了顺序。
+     */
     expect(c.ships!.filter((s) => s.wave === 1).map((s) => [s.ship.name, s.count])).toEqual([
-      ['墨潮干扰舰', 1],
       ['墨潮战列巡洋舰', 1],
       ['墨潮鱼雷舰', 2],
+      ['墨潮干扰舰', 1],
     ])
   })
 
