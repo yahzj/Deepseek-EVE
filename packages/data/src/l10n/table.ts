@@ -1566,6 +1566,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.101": { zh: "母舰血量剩余 {p1}% · 可从入侵窗口发起旗舰战", en: "Mothership hull remaining: {p1}% · start the flagship battle from the invasion window" },
   // 2026-09-25 船长令改黑匣爆率：章鱼人得手也可能爆黑匣（25% × 输出占比）⇒ 结束语分两条
   "ui.weekend.102": { zh: "入侵结束：旗舰被章鱼人部队摧毁，残骸中寻获旗舰黑匣。", en: "Invasion over: the flagship was destroyed by the Octopus forces; a flagship black box was recovered from the wreck." },
+  /* ── 2026-09-26 船长令：星系详细的「击退入侵舰队」卡片显示收复进度 ＋ 核心门禁提示 ──
+     ③ 的文案为**船长照抄**（「核心提示写'至少需要夺回一个外围星系'」）；
+     ④ 是 ③ 的**变体**（已夺回部分外围时把话说准），船长可选 */
+  "ui.weekend.103": { zh: "收复进度 {p1}%", en: "Reclaim progress {p1}%" },
+  "ui.weekend.104": { zh: "核心进度暂不推进：至少需要夺回一个外围星系", en: "Core progress is on hold: at least one peripheral system must be reclaimed first" },
+  "ui.weekend.105": { zh: "核心进度暂不推进：还需夺回 {p1} 个外围星系", en: "Core progress is on hold: {p1} more peripheral systems must be reclaimed" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
