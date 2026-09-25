@@ -3026,11 +3026,20 @@ html[data-locale='en'] body {
      ⚠ 本容器与 .app-header 共用一条 max-width:1760 居中规则 ⇒ 底栏必须**移出本容器**
      才能横跨整窗（见 App.tsx：<nav> 已搬到 pp-root 直下）。 */
 
-  flex-direction: column;
+  /* 2026-09-25 船长令「将活动栏放到左侧，竖列显示」⇒ 本容器由**纵向**改**横向**：
+     左 = 活动栏（150px 定宽、占满高），右 = .app-workspace-body（信息带 + 主区 + 日志坞）。
+     ⚠ 横向 flex 里**必须**给子项 min-height: 0，否则内容会把整页撑出滚动条
+     （实测踩坑：改横向而漏了约束 ⇒ documentElement.scrollHeight 1207 > clientHeight 765）。 */
+
+  flex-direction: row;
+
+  align-items: stretch;
 
   gap: var(--wui-sp-6);
 
   padding: var(--wui-sp-10) var(--wui-sp-10) var(--wui-sp-6);
+
+  overflow: hidden;
 
 }
 
@@ -8750,23 +8759,28 @@ html[data-locale='en'] body {
    （无头实测：ShipStatusWin 占 1096px ⇒ 导航项只剩 26px）⇒ 移到 workspace 顶部的独立信息带，
    位置仍是「出港上方」。 */
 
-.app-side-info {
+/* **右侧纵向体**（2026-09-25）：信息带（舰船窗 + 金钱栏）+ 主区 + 日志坞。
+   与左侧活动栏在横向 flex 的 .app-workspace 里并列 ⇒ 必须 lex: 1 + min-width/min-height: 0
+   才能既吃满剩余宽、又被父级高度约束住（否则内容把整页撑出滚动条）。 */
+
+.app-workspace-body {
+
+  flex: 1 1 auto;
+
+  min-width: 0;
+
+  min-height: 0;
 
   display: flex;
 
-  flex-direction: row;
-
-  align-items: center;
+  flex-direction: column;
 
   gap: var(--wui-sp-6);
 
-  flex-wrap: wrap;
-
-  width: 100%;
-
-  flex-shrink: 0;
+  overflow: hidden;
 
 }
+
 
 /* 活动窗口：**左侧固定竖列**（2026-09-25 船长令：「将活动栏放到左侧，竖列显示。
    这样 AI 作业也能同时显示多个」）——此前是"置于主窗口列顶部、宽度与主窗口一致 + max-height 230px"
@@ -8783,7 +8797,9 @@ html[data-locale='en'] body {
 
   gap: var(--wui-sp-6);
 
-  width: 100%; /* 顶部横条：吃满 workspace 宽；内部仍竖排（作业卡仍是竖列） */
+  width: 150px; /* **左侧竖列**：定宽 150px、高由 flex 拉伸占满内容区（船长批准的草图丁形态） */
+
+  flex: 0 0 auto;
 
   box-sizing: border-box;
 
