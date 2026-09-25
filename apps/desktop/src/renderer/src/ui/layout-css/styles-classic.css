@@ -12746,46 +12746,6 @@ html[data-locale='en'] body {
    船长 2026-09-25 令：「不能将各个窗口模块化吗」⇒ 窗口的**观感**随组件走、**位置**随外壳走。
    下面这三族整族从当前样式取来（带旧版限定便于阅读）；位置/尺寸由第二节的外壳覆盖接管。 */
 
-.app-root.is-layout-classic .app-log-wrap {
-
-  flex: 1;
-
-  min-height: 120px;
-
-  display: flex;
-
-  flex-direction: column;
-
-}
-.app-root.is-layout-classic .app-log-wrap .wui-panel {
-
-  flex: 1;
-
-  min-height: 0;
-
-}
-.app-root.is-layout-classic /* 右侧固定事件日志 */
-
-.app-log-side {
-
-  width: 320px;
-
-  flex-shrink: 0;
-
-  display: flex;
-
-  flex-direction: column;
-
-  min-height: 0;
-
-}
-.app-root.is-layout-classic .app-log-side .wui-panel {
-
-  flex: 1;
-
-  min-height: 0;
-
-}
 .app-root.is-layout-classic .app-act-svg { width: 100%; height: 100%; color: rgb(var(--wui-blue)); }
 .app-root.is-layout-classic /* ── 环境层：星野与漂浮物（与小窗 `.app-swin-star` / `.app-swin-drift` 同一套语言）──
    星点是**整片星空**的底色，固定冷白不跟活动变色（活动色留给"在作业的东西"）；静态不动，省性能。 */
@@ -12845,58 +12805,9 @@ html[data-locale='en'] body {
 .app-root.is-layout-classic .app-act-progress { position: relative; flex: 1 1 220px; height: 14px; min-width: 160px; border: 1px solid rgb(var(--wui-x01) / 0.14); border-radius: var(--wui-sp-7); background: rgb(var(--wui-bg-panel) / 0.7); overflow: hidden; }
 .app-root.is-layout-classic .app-act-bar { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgb(var(--wui-blue) / 0.55), rgb(var(--wui-blue) / 0.95)); }
 .app-root.is-layout-classic .app-act-pct { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: var(--wui-fs-2xse); font-family: var(--wui-mono); color: rgb(var(--wui-bg-scene-2)); }
-.app-root.is-layout-classic /* ═══════════════ 日志面板：右滑隐藏 + 类型过滤（2026-09） ═══════════════ */
-
-/* **事件日志：右侧浮层**（2026-09-25 船长令「事件还是在屏幕右侧，但是采用和现在一样的
-   弹出式（弹出后覆盖在主区上方）」）。
-   ⇒ 由"纵向流里的一块"改为**整屏坐标系里的固定浮层**：
-     · `position: fixed` + `right` ⇒ 贴屏幕右侧、**覆盖在主区上方**（不再占位、不再挤压主区）；
-     · 展开时 320px 宽、收起时只剩右侧细把手（沿用既有 `logCollapsed` 的 `.is-collapsed`）；
-     · 上下留出顶栏 67px 与底栏 90px，避免压住它们。
-   ⚠ 历史坑：它原先 `flex-shrink: 0` 且按内容取高 ⇒ 拒绝让位，把主窗口挤到 218~381px。 */
-
-.app-log-dock {
-
-  position: fixed;
-
-  right: 0;
-
-  top: 67px;
-
-  bottom: 90px;
-
-  z-index: 60; /* 在主区之上、弹层（96+）与悬浮说明（1000）之下 */
-
-  display: flex;
-
-  align-items: stretch;
-
-  pointer-events: none; /* 容器不吃点击，只有面板本体吃（收起时右侧留出可点的把手） */
-
-}
 .app-root.is-layout-classic .app-log-dock > * {
 
   pointer-events: auto;
-
-}
-.app-root.is-layout-classic .app-log-side {
-
-  width: 320px;
-
-  min-width: 0;
-
-  flex: 0 0 320px;
-
-  overflow: hidden;
-
-  transition: flex-basis 0.22s ease, width 0.22s ease;
-
-}
-.app-root.is-layout-classic .app-log-side.is-collapsed {
-
-  flex-basis: 0;
-
-  width: 0;
 
 }
 .app-root.is-layout-classic .app-log-head-right {
@@ -12979,41 +12890,5 @@ html[data-locale='en'] body {
 .app-root.is-layout-classic .app-log-empty {
 
   padding: var(--wui-sp-8) var(--wui-sp-2);
-
-}
-.app-root.is-layout-classic .app-log-handle {
-
-  flex: 0 0 16px;
-
-  width: 16px;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  align-self: stretch;
-
-  background: linear-gradient(180deg, rgb(var(--wui-bg-hover) / 0.85), rgb(var(--wui-x15) / 0.85));
-
-  border: 1px solid rgb(var(--wui-border));
-
-  border-left: none;
-
-  border-radius: 0 var(--wui-sp-6) var(--wui-sp-6) 0;
-
-  color: rgb(var(--wui-accent));
-
-  font-size: var(--wui-fs-base);
-
-  cursor: pointer;
-
-  transition: background 0.15s;
-
-}
-.app-root.is-layout-classic .app-log-handle:hover {
-
-  background: rgb(var(--wui-accent) / 0.12);
 
 }

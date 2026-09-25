@@ -229,7 +229,19 @@ const WINDOW_MODULE_PREFIXES = [
   '.app-log-dock',
 ]
 const isWindowModuleFamily = (sel: string): boolean => WINDOW_MODULE_PREFIXES.some((p) => sel.startsWith(p))
-const windowModuleRules = curRules.filter((r) => isWindowModuleFamily(r.sel))
+/**
+ * **§四 只搬"组件内部"的族；外壳族（`SHELL_SELECTORS` 里那些）一律不搬** ——
+ * 口径＝船长原话「**窗口的观感随组件走、位置随外壳走**」：内部件（筛选/列表/把手/读数）照搬新版，
+ * 而日志坞/侧栏的位置与尺寸归外壳，由 §二（基线原文）＋ §三（复位）说了算。
+ *
+ * ⚠ 2026-09-25 修（船长报障「**事件日志窗口不正确**」＋「按旧版修复事件日志的布局」）：
+ * 原先整族照搬，把新版日志坞那套 `position: fixed; right/top/bottom; align-items; pointer-events`
+ * 也带进了 classic；而 §四 排在 §三**之后**、两条特异度又相同（都是 `.app-root.is-layout-classic .app-log-dock`）
+ * ⇒ §四 直接盖掉 §三 的复位 ⇒ 旧版日志坞退回"新版右侧浮层"。
+ * 处理办法与活动栏同源（那族早就"不再搬给旧版，搬了反而会盖掉旧版样式"）。
+ */
+const SHELL_OWNED_SELECTORS = new Set(SHELL_SELECTORS)
+const windowModuleRules = curRules.filter((r) => isWindowModuleFamily(r.sel) && !SHELL_OWNED_SELECTORS.has(r.sel))
 if (windowModuleRules.length === 0) throw new Error('三块窗口模块在 styles.css 里一条都没找到')
 
 // ── ② classic 份 = 本分支 styles.css（= 设置弹层等新件与新版同步）+ 旧版外壳覆盖 ──
@@ -265,8 +277,25 @@ for (const [name, text] of [
 }
 console.log(
   `  · 外壳覆盖 ${SHELL_SELECTORS.length} 个选择器 / ${shellOverrides.length} 条规则` +
-    ` · 基准 _baseline-main.css ${Math.round(baseline.length / 1024)} KB`,
+    ` · 基准 _baseline-main.css ${Math.round(baseline.length / 1024)}KB`,
 )
+
+/**
+ * **追加自检：旧版日志坞必须是"流内"**（船长 2026-09-25 报障「事件日志窗口不正确」）。
+ * 判据＝在生成出来的 classic 文本里，`.app-root.is-layout-classic .app-log-dock` 的**最后一条**
+ * 覆盖必须把落位定成 `position: static`（＝§三 的复位说了算）。
+ * 这条专门防"§四 又把新版浮层搬回旧版"那类回归（实测读数：classic static/不重叠、modern fixed/覆盖）。
+ */
+{
+  const classicRules = parseRules(classicCss)
+  const dockRules = classicRules.filter((r) => r.sel === '.app-root.is-layout-classic .app-log-dock')
+  const lastBody = dockRules.length > 0 ? dockRules[dockRules.length - 1]!.body : ''
+  const inFlow = /position:\s*static/.test(lastBody) && !/position:\s*fixed/.test(lastBody)
+  console.log(
+    `  ${inFlow ? '✅' : '❌'} 旧版日志坞落位：最后一条覆盖 = ${inFlow ? '流内右栏（position: static）' : '非流内 —— 新版外壳取值漏进旧版了'}`,
+  )
+  if (!inFlow) throw new Error('旧版日志坞被新版外壳取值覆盖（事件日志布局回归）')
+}
 
 if (CHECK) {
   /**
