@@ -434,9 +434,35 @@ export function weekendNpcTimelineMs(state: Pick<GameState, 'debugQuick'>, baseM
   return weekendDebugOn(state) ? Math.max(1, Math.round(baseMs / WEEKEND_DEBUG_TIME_DIVISOR)) : baseMs
 }
 
-/** 倒计时的实际时长（调试模式同样 ÷60） */
+/**
+ * **倒计时的实际时长**（= `weekendFlagshipWindowMs`，保留旧名以免改散调用点；
+ * 2026-09-25 起调试档 = 10 分钟、正常 = 2 小时）。
+ * ⚠ 新代码请直接用 `weekendFlagshipWindowMs`（它才是"四处同源"的那个单点）。
+ */
 export function weekendDeadlineMs(state: Pick<GameState, 'debugQuick'>): number {
-  return weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  return weekendFlagshipWindowMs(state)
+}
+
+/**
+ * **章鱼人削血窗口**（= 母舰血池从满到被削空的"在线且非战斗"时长）——
+ * 正常模式 = `WEEKEND_FLAGSHIP_DEADLINE_MS`（2 小时）；**调试模式 = 10 分钟**。
+ *
+ * ⚠ **2026-09-25 船长两次口径合一**：
+ * 1. 船长原话（2026-09-24）：「**2小时内按时间削掉100%母舰血量。当玩家正在战斗时，会暂停削血。
+ *    等玩家战斗结束才继续。**」⇒ 削血是**真实削减**（船长 2026-09-25 复述：「**章鱼人削减母舰血条是
+ *    真实削减，玩家假设打完一场放一会，母舰血量是会真实减少。**」）⇒ **攒满窗口 = 血条见底 = 得手**，
+ *    战斗中与离线都暂停；
+ * 2. 船长 2026-09-25 对"窗口太短"的裁定：**保留"到点即判"这套机制、把调试窗口调长**（②）
+ *    ⇒ 本函数把调试档从"÷60 = 2 分钟"改成固定的 **10 分钟**（原 2 分钟连点进准备界面都来不及）。
+ *
+ * ⚠ 四处必须同源（改窗口即同时改这四处的口径）：`weekendFlagshipView` 的倒计时、
+ * `weekendOctopusDrainPerMs` 的削血速率、`weekendBossPoolView` 的章鱼进度、`weekendOctopusTick` 的收口。
+ */
+export const WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS = 10 * 60_000
+
+/** 本档的削血窗口（调试 = 10 分钟；正常 = 2 小时）——四处同源的单点 */
+export function weekendFlagshipWindowMs(state: Pick<GameState, 'debugQuick'>): number {
+  return weekendDebugOn(state) ? WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS : WEEKEND_FLAGSHIP_DEADLINE_MS
 }
 
 /** 某一时刻所在"周"的 T0（正常模式：该时刻之前最近的周五 20:00 本地墙钟） */
@@ -614,10 +640,14 @@ export interface WeekendFlagshipView {
 
 /**
  * **旗舰视图（含离线保护）**（第 8/10 条 ＋ Q3/Q7）：
- * - 核心条满 ⇒ 现身，倒计时 `2h`（调试 ÷60）；
- * - **离线保护**：核心条满时玩家离线 ⇒ 倒计时**自上线那一刻起算**；离线**满 24h** 即视为保护失效
- *   （Q3：从离线满 24h 那一刻起算 ⇒ 上线时若已过期，旗舰已被章鱼人摧毁）；
- * - 调试模式**关掉离线保护**（Q7）。
+ *
+ * - **核心条满 ⇒ 现身**；
+ * - **得手判据 = 章鱼人削血攒满窗口**（**真实削减**：船长 2026-09-24「2小时内按时间削掉100%母舰血量。
+ *   当玩家正在战斗时，会暂停削血」＋ 2026-09-25「章鱼人削减母舰血条是真实削减，玩家假设打完一场放一会，
+ *   母舰血量是会真实减少」）⇒ 与 `weekendTickBoss` 的削血进度**同一把尺**，不再是"墙钟到点"；
+ * - **离线保护**（Q3）：离线 **满 24h** 即视为保护失效 ⇒ 自那一刻起算，窗口到点即视为已被摧毁
+ *   （离线期间削血是暂停的，这条是"人不在就别无限期挂着"的那道闸）；
+ * - 调试模式**关掉离线保护**（Q7）且窗口 = **10 分钟**（船长 2026-09-25：「保留到点即判，把调试窗口调长」）。
  */
 export function weekendFlagshipView(
   state: Pick<GameState, 'debugQuick'>,
@@ -628,7 +658,10 @@ export function weekendFlagshipView(
   if (ev.flagshipDown) return { shown: true, atWallMs: ev.flagshipAtWallMs, down: ev.flagshipDown }
   const full = weekendCoreProgressAt(state, ev, nowWallMs) >= 1
   if (!full) return { shown: false }
-  const deadline = weekendDeadlineMs(state)
+  const windowMs = weekendFlagshipWindowMs(state)
+  const drained = Math.min(windowMs, Math.max(0, ev.octopusDrainedMs ?? 0))
+  /** **真实削减见底**（= 血条被章鱼人削空）⇒ 得手（与 `weekendTickBoss` 同一判据） */
+  const drainDone = drained >= windowMs
   const offline = Math.max(0, nowWallMs - lastSeenWallMs)
   /**
    * **倒计时起算点 anchor**——**只在"首次满分且玩家在线"那一拍落盘**（`flagshipAtWallMs`），落盘后不再变：
@@ -643,8 +676,16 @@ export function weekendFlagshipView(
     if (weekendDebugOn(state) || offline <= 60_000 || offline <= WEEKEND_OFFLINE_SHIELD_MS) anchor = nowWallMs
     else anchor = lastSeenWallMs + WEEKEND_OFFLINE_SHIELD_MS
   }
-  const deadlineWallMs = anchor + deadline
-  const down = nowWallMs >= deadlineWallMs ? ('octopus' as const) : undefined
+  /** 离线 **超过** 24h 保护期：窗口按 anchor 起算（人不在的那段不削血，但也不能无限期挂着） */
+  const offlineLapsed = offline > WEEKEND_OFFLINE_SHIELD_MS
+  const down = drainDone || (offlineLapsed && nowWallMs >= anchor + windowMs) ? ('octopus' as const) : undefined
+  /**
+   * **倒计时（展示口径）**：
+   * - 在线 ⇒ 从**此刻**起算、扣掉已削掉的时长（`windowMs − drained`）——削血是真实削减，
+   *   所以"还能挂多久"就是"还差多少在线非战斗时间"；战斗/离线时它自然停住（读数不跳）；
+   * - 离线保护失效那一档 ⇒ 按 anchor 快照展示（Q3 的"自离线满 24h 起算"）。
+   */
+  const deadlineWallMs = offlineLapsed ? anchor + windowMs : nowWallMs + (windowMs - drained)
   return { shown: true, atWallMs: anchor, deadlineWallMs, ...(down !== undefined ? { down } : {}) }
 }
 
@@ -876,11 +917,12 @@ export function weekendIsBossFamily(ev: WeekendEventState | undefined): boolean 
 }
 
 /**
- * **章鱼人每毫秒削掉池子的比例** = 100% ÷ 2 小时（船长：「2小时内按时间削掉100%母舰血量」）。
- * 线性同比：`章鱼已削 = 削血时长 / 2h × 池子总量`（削血时长只计"在线且非战斗"）。
+ * **章鱼人每毫秒削掉池子的比例** = 100% ÷ 削血窗口（船长：「2小时内按时间削掉100%母舰血量」）。
+ * 线性同比：`章鱼已削 = 削血时长 / 窗口 × 池子总量`（削血时长只计"在线且非战斗"）。
+ * ⚠ 窗口走 `weekendFlagshipWindowMs`（正常 2h / 调试 10min）——与倒计时、池子读数、收口四处同源。
  */
 export function weekendOctopusDrainPerMs(state: Pick<GameState, 'debugQuick'>, hpTotal: number): number {
-  return hpTotal / weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  return hpTotal / weekendFlagshipWindowMs(state)
 }
 
 /** **池子总量**（缺省 = 还没跟母舰交手过 ⇒ `undefined`；`floorHp` = 由卡面折算的下限） */
@@ -920,7 +962,7 @@ export function weekendBossPoolView(
   if (hpMax === undefined || hpMax <= 0) return null
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
   const drained = Math.max(0, ev.octopusDrainedMs ?? 0)
-  const windowMs = weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  const windowMs = weekendFlagshipWindowMs(state)
   const octopusDone = Math.min(hpMax, (drained / windowMs) * hpMax)
   return {
     hpMax,
@@ -995,8 +1037,9 @@ export function weekendOctopusTick(
   if (inBattle || dtMs <= 0) return false
   const hpMax = ev.flagshipHpMax
   if (hpMax === undefined || hpMax <= 0) return false
-  // ⚠ 窗口按**本档的实际长度**取（`debugQuick` 下同样 ÷60，与 `weekendBossPoolView` 同一把尺）
-  const windowMs = weekendNpcTimelineMs(state, WEEKEND_FLAGSHIP_DEADLINE_MS)
+  // ⚠ 窗口按**本档的实际长度**取（`weekendFlagshipWindowMs`：正常 2h / 调试 10min，
+  //   与 `weekendBossPoolView`、倒计时、收口四处同一把尺）
+  const windowMs = weekendFlagshipWindowMs(state)
   const d = Math.max(0, dtMs)
   if (d <= 0) return false
   ev.octopusDrainedMs = Math.min(windowMs, (ev.octopusDrainedMs ?? 0) + d)

@@ -430,6 +430,12 @@ const BATTLE_FIELDS = {
   // 漏了会让战中重载后敌方修理计时重置（= 白赚一跳），与 `repair`/`shieldCharge`/`foeRepair` 同理
   // （2026-09-22「随档字段两处落笔」规则：写入点 = combat.initFoeRepairPulses，白名单 = cleanBattle）。
   foeRepairPulses: { kind: 'persist' },
+  // 2026-09-25 船长令：挂载件「支援舰船召唤装置」（每 60 秒复活一艘当前波已阵亡的敌舰入场）——
+  // **必须随档**：漏了会让战中重载后召唤计时与"已召唤次数"一起重置（= 白赚一次支援 + 支援舰 tag
+  // 序号回退可能撞名），与 `foeRepairPulses`/`foeRepair`/`repair` 同理。
+  // （写入点 = combat.resolveFoeRevive，白名单 = cleanBattle。）
+  foeReviveAtMs: { kind: 'persist' },
+  foeReviveCount: { kind: 'persist' },
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
@@ -622,6 +628,15 @@ function cleanBattle(raw: unknown): BattleState | null {
    * ⚠ **必须随档**（登记表里也是 `persist`）：漏了会让战中重载**敌方修理计时重置 = 白赚一跳**。
    */
   const foeRepairPulses = cleanLedgerMap(b.foeRepairPulses, cleanFoeRepairLedger)
+  /** 支援舰召唤计时（2026-09-25）：只收有限正数（时刻）/ 非负整数（次数），坏值丢字段 */
+  const foeReviveAtMs =
+    typeof b.foeReviveAtMs === 'number' && Number.isFinite(b.foeReviveAtMs) && b.foeReviveAtMs > 0
+      ? b.foeReviveAtMs
+      : undefined
+  const foeReviveCount =
+    typeof b.foeReviveCount === 'number' && Number.isFinite(b.foeReviveCount) && b.foeReviveCount > 0
+      ? Math.floor(b.foeReviveCount)
+      : undefined
   /** 力场账本（2026-09-20 新增；与 `shieldChargeBy` 分开：冷却按件、受益方是全队） */
   const shieldFieldBy = cleanLedgerMap(b.shieldFieldBy, cleanShieldField)
   const dronePools = cleanDronePools(b.dronePools)
@@ -709,6 +724,9 @@ function cleanBattle(raw: unknown): BattleState | null {
     // 2026-09-16 敌方后勤账本（丢了 ⇒ 战中重载后敌方修理计时重置）
     ...(foeRepair !== undefined ? { foeRepair } : {}),
     ...(foeRepairPulses !== undefined ? { foeRepairPulses } : {}),
+    // 2026-09-25 支援舰召唤计时（丢了 ⇒ 战中重载后计时与序号重置）
+    ...(foeReviveAtMs !== undefined ? { foeReviveAtMs } : {}),
+    ...(foeReviveCount !== undefined ? { foeReviveCount } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),

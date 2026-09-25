@@ -3466,6 +3466,30 @@ for (const m of MODULES) {
             if (eff.foeRepairPulse !== undefined) bad.push(`洞外卡 ${a.id} 的条目 ${sl.ship.name} 挂了船体修理装置——洞外零该件`)
           }
         }
+        /**
+         * ⑦ **支援舰船召唤装置归属**（2026-09-25 船长令「给入侵母舰添加类似D族挂载件的独立挂载件，
+         *    只不过改为复活被摧毁的友军……」）：这件是**通用件**，但**只允许**挂在
+         *    `ink-flagship`（H 族入侵旗舰卡）的那条**母舰条目**上——
+         *    ① 舰级一概不许挂（写舰级会波及同舰级的其它卡）；
+         *    ② 其余任何卡的条目也不许挂（免得普通悬赏莫名其妙开始复活）。
+         */
+        for (const s of FOE_SHIPS) {
+          if (resolveFoeMounts(s.mounts).foeReviveEscort !== undefined) {
+            bad.push(`舰级 ${s.name}（${s.id}）挂了支援舰船召唤装置——该件只允许写在 ink-flagship 的母舰条目上`)
+          }
+        }
+        for (const a of ANOMALIES_FLAVORED) {
+          for (const sl of a.ships ?? []) {
+            const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
+            if (eff.foeReviveEscort === undefined) continue
+            if (a.id !== 'ink-flagship' || sl.ship.id !== 'foe-h-ink-flagship') {
+              bad.push(
+                `卡 ${a.id} 的条目 ${sl.ship.name}（${sl.ship.id}）挂了支援舰船召唤装置——` +
+                  `该件只允许挂在入侵母舰（ink-flagship 的 foe-h-ink-flagship 条目）上`,
+              )
+            }
+          }
+        }
       }
       check(bad.length === 0, `敌方挂载件契约：${bad.join(' · ')}`)
       // 汇总行**按目录实算**（血泪清单：硬编码"冲锋 5 · 增程 2"会在加件时说过期话）

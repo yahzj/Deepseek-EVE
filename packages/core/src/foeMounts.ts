@@ -50,6 +50,8 @@ export const FOE_MOUNT_IDS = {
   gyroStabilizer: 'foe-mount-gyro-stabilizer',
   /** **船体修理装置**（2026-09-24 船长令，基础值上调至 15/15）：G 族——每 5 秒回 15 装甲 / 15 结构 × 该层威胁倍率 */
   hullRepair: 'foe-mount-hull-repair',
+  /** **支援舰船召唤装置**（**船长 2026-09-25**）：入侵母舰——每 60 秒把当前波已阵亡的一艘敌舰**满血复活入场** */
+  reviveEscort: 'foe-mount-revive-escort',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -158,6 +160,18 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '只挂 G 族洞内卡条目；与「敌方后勤舰」（FoeShipDef.repairPct：折自己 DPS 去修队友）不是一套。' +
       '归档落点：docs/roadmap.md 2026-09-24 条 ＋ docs/glossary.md「敌方挂载件」词条（原设计稿已随归档删除）。',
   },
+  [FOE_MOUNT_IDS.reviveEscort]: {
+    id: FOE_MOUNT_IDS.reviveEscort,
+    name: '支援舰船召唤装置',
+    en: 'Support Recall Beacon',
+    reviveEscort: { everyMs: 60_000 },
+    note:
+      '船长 2026-09-25：「给入侵母舰添加类似D族挂载件的独立挂载件，只不过改为复活被摧毁的友军' +
+      '（但是表现形式上为敌方支援舰船入场），增援时间是60秒，每次随机复活一艘。」' +
+      '追问四答：池子 = 只复活当前波已死的（丙）· 上限 = 不超本波原编成（甲）· 满血（甲）·' +
+      '通用件、先只装入侵母舰（甲）。实现见 `combat.advanceBattleFor` 的"支援舰召唤"一段：' +
+      '新 tag `supN-<原tag>` 入场（美术/体积/名称按原 tag 解析）⇒ 界面表现为「敌方支援舰船入场」。',
+  },
 }
 
 /** 按 id 取件（未知 id ⇒ `undefined`；体检会把它判红） */
@@ -184,6 +198,8 @@ export interface ResolvedFoeMounts {
   foeEvasionBonusAdd?: number
   /** **船体修理装置的脉冲参数**（原样带给单位；`k` 由建档侧按本层威胁现算，见 `FoeMountDef.repairPulse`） */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number }
+  /** **支援舰船召唤装置的节拍**（原样带给单位；池子/上限/入场口径见 `FoeMountDef.reviveEscort`） */
+  foeReviveEscort?: { everyMs: number }
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /**
@@ -223,6 +239,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     // **加和**（与一号定义层合并后的口径）：两件陀螺仪 = +0.20，上限由建档侧夹 0.9
     if (def.evasionBonus) out.foeEvasionBonusAdd = (out.foeEvasionBonusAdd ?? 0) + def.evasionBonus.add
     if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
+    if (def.reviveEscort) out.foeReviveEscort = { ...def.reviveEscort }
   }
   return out
 }

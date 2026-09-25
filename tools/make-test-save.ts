@@ -3211,11 +3211,13 @@ function stripPreviousWeekendTestShips(state: GameState): number {
  * - 钱包 / 协会声望 / 全星系点亮 / 弹药与修理组件备足（4 波编队战够打）；
  * - 一场 **H 族入侵**：核心 + 外围**全部推进到 100%**（外围全清是核心门禁的前提）⇒ `weekendCoreProgressAt = 1`。
  *
- * ⚠ **两处刻意摆过的门槛**（不是游戏行为，纯为"这档一加载就能测"）：
- * 1. `flagshipAtWallMs` 摆在**载入后 20 分钟**：调试模式把"旗舰窗口"按 ÷60 压成 **2 分钟**
- *    （`weekendDeadlineMs`），不摆的话从加载起算 2 分钟就到点（`weekendTick` 会判"章鱼人得手"并结束本场）
- *    —— 点进准备界面都来不及；摆在 20 分钟后 ⇒ 你有约 22 分钟从容测试。
- * 2. `flagshipHpMax` **预置为满池 150,000**：让血池读数与章鱼削血从加载起就有效（否则要等第一次接战才锁定）。
+ * ⚠ **一处刻意摆过的门槛**（不是游戏行为，纯为"这档一加载就能测"）：
+ * `flagshipHpMax` **预置为满池 150,000** —— 让血池读数与章鱼削血从加载起就有效（否则要等第一次接战才锁定）。
+ *
+ * 窗口口径（**2026-09-25 船长两条令**）：章鱼人削血是**真实削减**（打完一场放一会，母舰血量真减少），
+ * 攒满窗口（= 血条见底）才判"章鱼人得手"；**调试档窗口 = 10 分钟**（原"÷60 = 2 分钟"连点进准备界面都来不及）。
+ * ⇒ 本档**不再需要摆 anchor**：旗舰现身那一刻起算，你有 10 分钟的"在线且不在战斗"时间可支配
+ * （战斗中与离线都暂停，所以实际可测时长比 10 分钟更宽）。
  *
  * `opts.hurt = true`（case `weekendkill`）：血池**只差一点**（差 1,000）⇒ 一场就能打空 ⇒ 立刻验"击沉 + 黑匣"。
  */
@@ -3335,8 +3337,8 @@ function injectWeekend(state: GameState, opts: { hurt?: boolean } = {}): string[
     // 族锁定 H（`WEEKEND_LOCKED_FAMILY`）；抽签结果照旧消费随机数 ⇒ 直接用抽出来的族
     family: rolled.family,
     contributed,
-    // 旗舰窗口摆在"载入后 20 分钟"（见函数头注的刻意门槛说明）
-    flagshipAtWallMs: Date.now() + 20 * 60_000,
+    // ⚠ 不摆 `flagshipAtWallMs`：让引擎在载入第一拍自己落 anchor（「旗舰现身」日志与一次性弹窗都会照常触发）；
+    //   调试档窗口 10 分钟（`weekendFlagshipWindowMs`），且战斗中/离线暂停削血 ⇒ 时间够测。
     flagshipHpMax: WEEKEND_FLAGSHIP_POOL_HP,
     flagshipHpDone: opts.hurt === true ? WEEKEND_FLAGSHIP_POOL_HP - 1_000 : 0,
   }
@@ -3351,9 +3353,9 @@ function injectWeekend(state: GameState, opts: { hurt?: boolean } = {}): string[
       : `血池满（${WEEKEND_FLAGSHIP_POOL_HP.toLocaleString('zh-CN')}）⇒ 验「4 波编队战 ＋ 跨场累计伤害」；想一场见击沉就改用 case \`weekendkill\``,
   )
   notes.push(
-    '**旗舰窗口已刻意摆在载入后 20 分钟**：调试模式把窗口按 ÷60 压成 2 分钟（`weekendDeadlineMs`），不摆的话' +
-      '从加载起算 2 分钟就判"章鱼人得手"并结束本场（点进准备界面都来不及）。⚠ 档里 `flagshipAtWallMs` 已存在 ⇒ ' +
-      '**「旗舰现身」那条一次性弹窗/日志不会再触发**（属预期：它代表"现身那一刻"，本档已是现身之后）',
+    '**章鱼人削血是真实削减**（船长 2026-09-25）：打完一场放一会，母舰血条会**真的减少**（每拍按"在线且' +
+      '不在战斗"的时长削；战斗中与离线都暂停）；**削满窗口 = 血条见底 = 章鱼人得手**。' +
+      '调试档窗口 = **10 分钟**（`weekendFlagshipWindowMs`），锚点由引擎在载入第一拍自己落（「旗舰现身」弹窗会照常出现）',
   )
   state.debugQuick = true
   notes.push('**已打开调试模式（`debugQuick`）**：入侵只有调试模式可见/可开（`WEEKEND_DEBUG_ONLY`）')

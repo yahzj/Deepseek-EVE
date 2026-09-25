@@ -335,6 +335,12 @@ export interface UnitSpec {
    * 缺省不写 ⇒ 该单位没有这个机制（零行为变化）。
    */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number; k: number }
+  /**
+   * **支援舰船召唤装置的节拍**（船长 2026-09-25；见 `FoeMountDef.reviveEscort`）——
+   * 挂件单位（入侵母舰）每 `everyMs`（60 秒）把**当前波已阵亡的一艘敌舰**满血复活入场
+   * （新 tag `sup{n}-<原tag>`；上限 = 不超本波原编成）。缺省不写 ⇒ 该单位不会召唤（零行为变化）。
+   */
+  foeReviveEscort?: { everyMs: number }
   foeTactic: FoeTactic | null
   /**
    * **舰级 id**（2026-09-24 加；只给"舰级路径"建的敌单位写）：旗舰 BOSS 的伤害台账靠它认出母舰
@@ -1811,18 +1817,20 @@ export function foeClassName(tactic: string | undefined, profile: string | undef
 }
 
 /** 主/僚判定（按 tag 结构，2026-09-09 多波）：主舰 = foe-0 或 w{n}-foe-{k}；
- *  僚机 = legacy foe-N（N≥1，旧单波 escorts）或 *-e{i}（各小队 escort）。 */
+ *  僚机 = legacy foe-N（N≥1，旧单波 escorts）或 *-e{i}（各小队 escort）。
+ *  ⚠ 支援舰（`sup{n}-<原tag>`）先剥前缀再判——它继承原单位的位次。 */
 export function foeMainTagOf(tag: string): boolean {
-  if (tag === 'foe-0') return true
-  if (/^foe-\d+$/.test(tag)) return false
-  return tag.includes('-foe-') && !tag.includes('-e')
+  const base = baseFoeTag(tag)
+  if (base === 'foe-0') return true
+  if (/^foe-\d+$/.test(base)) return false
+  return base.includes('-foe-') && !base.includes('-e')
 }
 
-/** 单位所在波的血档（tag 前缀 w{n}- 反查波表；首波/无波表 = 1） */
+/** 单位所在波的血档（tag 前缀 w{n}- 反查波表；首波/无波表 = 1）——支援舰同样先剥前缀 */
 function waveHpShareOf(tag: string, anomaly: AnomalyDef): number {
   const waves = anomaly.waves
   if (!waves || waves.length === 0) return 1
-  const m = /^w(\d+)-/.exec(tag)
+  const m = /^w(\d+)-/.exec(baseFoeTag(tag))
   const idx = m ? Math.min(waves.length - 1, parseInt(m[1]!, 10)) : 0
   return Math.max(0.001, waves[idx]!.hpShare ?? 1)
 }
@@ -1876,13 +1884,27 @@ function enumerateShipUnits(
   return out
 }
 
+/**
+ * **支援舰的 tag 前缀**（船长 2026-09-25「支援舰船召唤装置」）：复活/入场的支援舰 tag = `sup{n}-<原tag>`
+ * ⇒ 界面上它是一艘**新单位**（新的舰影 + 入场动画），而美术/体积/名称仍按**原 tag** 解析。
+ * `baseFoeTag` 是那条解析的**唯一剥壳点**（下面三个查询函数都先过它）。
+ */
+export const FOE_SUPPORT_TAG_RE = /^sup\d+-/
+
+/** 剥掉支援舰前缀（非支援舰 tag 原样返回） */
+export function baseFoeTag(tag: string): string {
+  return tag.replace(FOE_SUPPORT_TAG_RE, '')
+}
+
 /** 舰级路径的 tag → 舰级反查（界面 `foeUnitNameOf` 沿用同一入口，读档/实时推导都不迁移） */
 function foeShipAtTag(anomaly: AnomalyDef, tag: string): { ship: FoeShipDef; escort: boolean } | null {
   if (!anomaly.ships || anomaly.ships.length === 0) return null
-  const m = /^w(\d+)-/.exec(tag)
+  /** ⚠ **先剥支援舰前缀**（`sup1-foe-0` → `foe-0`）：不剥的话它查不到舰级 ⇒ 舰影/体积/名称一起回落 */
+  const base = baseFoeTag(tag)
+  const m = /^w(\d+)-/.exec(base)
   const waveIdx = m ? parseInt(m[1]!, 10) : 0
   for (const u of enumerateShipUnits(anomaly, waveIdx)) {
-    if (u.tag === tag) return { ship: u.slot.ship, escort: u.escort }
+    if (u.tag === base) return { ship: u.slot.ship, escort: u.escort }
   }
   return null
 }
@@ -2345,6 +2367,12 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           foeRepairPulse: { ...rp, k: Math.max(1, threatNow / FOE_REPAIR_THREAT_REF) },
         }
       })(),
+      /**
+       * **支援舰船召唤装置**（船长 2026-09-25；见 `FoeMountDef.reviveEscort`）：参数原样带给单位
+       * （池子/上限/入场口径都在 `advanceBattleFor` 的"支援舰召唤"一段里判）。
+       * 缺省不写 ⇒ 该单位不召唤（零行为变化）。
+       */
+      ...(mount.foeReviveEscort !== undefined ? { foeReviveEscort: mount.foeReviveEscort } : {}),
       // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化。
       // 2026-09-16 起走挂载件（`foe-mount-drone-range-x4`），旧字段 `ship.droneRangeMulOnHit` 兼容回退
       ...((mount.foeDroneRangeMulOnHit ?? ship.droneRangeMulOnHit) !== undefined && droneWeapons.length > 0
@@ -2503,6 +2531,92 @@ function resolveSupportBranch(
   const delayMs = Math.max(0, Math.round(caller.foeSupportCall.delaySec * 1000))
   if (b.lastTickGameMs - b.startedAtGameMs < delayMs) return null
   return b.distanceM <= supportCallerReachM(b, caller) ? 'inside' : 'outside'
+}
+
+/**
+ * **每拍结算「支援舰船召唤」**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，
+ * 只不过改为**复活被摧毁的友军**（但是**表现形式上为敌方支援舰船入场**），**增援时间是60秒**，
+ * **每次随机复活一艘**」；见 `FoeMountDef.reviveEscort`）。
+ *
+ * 口径（全部由船长选定）：
+ * - **召唤者** = 挂了该件的单位（= 入侵母舰），且**必须在场**（它沉了就不再召唤；计时停在原地）；
+ * - **节拍** = 每 `everyMs`（60 秒）一次，**首次基准 = 召唤者入场那一刻**（母舰入场才开始有支援可言）；
+ * - **池子** = **当前这一波编成里已阵亡**的单位（**召唤者自己除外**）——只补当前波，跨波不补；
+ * - **上限** = **不超本波原编成**（活着的 + 已召唤的 ≥ 编成数 ⇒ 本拍不召唤）⇒ 死一个补一个，
+ *   玩家打掉得比补得快才能推进；
+ * - **满血入场** + 入场窗口（`enteredAtMs`：动画演完才可被选中、首发也推到窗口之后）——
+ *   与波次转场/单波增援**同一套演出与窗口口径**；
+ * - **表现 = 敌方支援舰船入场**：新 tag **`sup{n}-<原tag>`** ⇒ 界面上是一艘**新单位**（新舰影 +
+ *   入场动画），而美术/体积/名称仍按原 tag 解析（`baseFoeTag` 剥壳，见 `foeShipAtTag`）；
+ * - 随机走 `state.rng`，但**只在挂了本件的战斗里消费** ⇒ 没挂件的战斗随机序列逐字不变。
+ */
+function resolveFoeRevive(
+  state: GameState,
+  b: import('./state').BattleState,
+  curFoes: readonly UnitSpec[],
+  bal: BattleBalance,
+  nowMs: number,
+): void {
+  if (bal.foeReviveEnabled !== true) return
+  const summoner = curFoes.find((f) => f.foeReviveEscort !== undefined)
+  if (summoner === undefined || summoner.foeReviveEscort === undefined) return
+  const rt = b.units[summoner.tag]
+  if (!rt || (rt.hp.s <= 0 && rt.hp.a <= 0 && rt.hp.h <= 0)) return
+  const everyMs = Math.max(1_000, Math.round(summoner.foeReviveEscort.everyMs))
+  if (b.foeReviveAtMs === undefined) b.foeReviveAtMs = (rt.enteredAtMs ?? b.startedAtGameMs) + everyMs
+  if (nowMs < b.foeReviveAtMs) return
+  /** 到点 ⇒ 推进一格（大步长/离线补算一格一格来，不在一次推进里连刷） */
+  b.foeReviveAtMs = nowMs + everyMs
+  /**
+   * **本波"槽位"口径**：一个编成条目 = 一个槽位，槽位里站着的是**原单位或它的支援舰**（`sup{n}-`）。
+   * ⚠ 支援舰不是 `curFoes` 里的条目 ⇒ 数"在场数"必须把它们的**剥壳 tag** 一并算上，
+   * 否则上限形同虚设（每次到点都能再补一艘，战场无限膨胀）。
+   */
+  const specTags = new Set(curFoes.map((f) => f.tag))
+  const aliveSlots = new Set<string>()
+  for (const [tag, u] of Object.entries(b.units)) {
+    if (u.side !== 'foe') continue
+    if (u.hp.s <= 0 && u.hp.a <= 0 && u.hp.h <= 0) continue
+    const slot = baseFoeTag(tag)
+    if (specTags.has(slot)) aliveSlots.add(slot)
+  }
+  /** **编成已满 ⇒ 不召唤**（船长的"不超本波原编成"） */
+  if (aliveSlots.size >= curFoes.length) return
+  /**
+   * 池子 = **当前波编成里已阵亡、且槽位还空着**的条目（**召唤者自己除外**）——
+   * 已阵亡才叫"复活"（必须有尸体），槽位空着才补得进去（同一槽位的支援舰还活着就不重复补）。
+   */
+  const dead = curFoes.filter(
+    (f) =>
+      f.foeReviveEscort === undefined &&
+      b.units[f.tag] !== undefined &&
+      !aliveSlots.has(f.tag) &&
+      b.units[f.tag]!.hp.s <= 0 &&
+      b.units[f.tag]!.hp.a <= 0 &&
+      b.units[f.tag]!.hp.h <= 0,
+  )
+  if (dead.length === 0) return
+  const pick = dead[nextInt(state.rng, dead.length)]!
+  const n = (b.foeReviveCount ?? 0) + 1
+  b.foeReviveCount = n
+  const spec: UnitSpec = { ...pick, tag: `sup${n}-${pick.tag}` }
+  seedUnit(b, spec, {
+    enterReload: true,
+    // ⚠ 入场时刻取**全局时钟**（与转场/单波增援同一条理由：战斗时钟在演出窗口里是冻住的）
+    arrivedAtMs: state.gameMs,
+    ...(b.wormhole ? { foePhaseMs: WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
+  })
+  // 随新单位补建机群池与修理账本（与波次转场同款；没挂那两件的单位一个键都不建）
+  initFoeDronePools(b, [spec])
+  initFoeRepairPulses(b, [spec])
+  pushBattleNotice(b, `敌方支援舰船入场：${spec.name}`)
+  addLog(
+    state,
+    'warn',
+    `⚔ 敌方支援舰船入场：${spec.name}（第 ${n} 次支援）`,
+    'core.combat.001',
+    { p1: spec.name, p2: n },
+  )
 }
 
 /**
@@ -6050,6 +6164,11 @@ export function advanceBattleFor(
     // 放在 `stepBattle` **之前**：上一拍刚打死的单位本拍即可触发援军，且判胜检查看到的是补入后的编队。
     // 总开关关闭时本函数第一步就返回（且建档期也没写过 `foeReinforceAt`）= 零行为变化。
     resolveReinforcements(state, ctx, battle, anomaly, curFoes, bal, openM)
+    /**
+     * **支援舰召唤**（船长 2026-09-25：「支援舰船召唤装置」）——与上面那条同位置（`stepBattle` 之前）：
+     * 上一拍刚打死的僚舰，本拍就能被"复活/支援"补回场；没挂该件的战斗第一步就返回（零行为变化）。
+     */
+    resolveFoeRevive(state, battle, curFoes, bal, nowMs())
     const dt = Math.min(BATTLE_STEP_MS, nowMs() - battle.lastTickGameMs)
     stepBattle(
       state,

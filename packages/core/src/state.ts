@@ -939,6 +939,20 @@ export interface BattleState {
    * 敌方修理计时重置 = **白赚一跳**（2026-09-20 护盾充能力场那次报障的同型坑）。
    */
   foeRepairPulses?: Record<string, { nextPulseAtMs?: number; pulses: number; healed: number }>
+  /**
+   * **挂载件「支援舰船召唤装置」的召唤计时**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的
+   * 独立挂载件，只不过改为**复活被摧毁的友军**（但是表现形式上为**敌方支援舰船入场**），
+   * **增援时间是60秒**，**每次随机复活一艘**」）：
+   * - `foeReviveAtMs` = **下一次该召唤的战斗时钟**（毫秒；首次基准 = 召唤者入场那一刻，
+   *   见 `UnitSpec.foeReviveEscort`）；到点即召唤一艘并推进一格；
+   * - `foeReviveCount` = 本场已召唤次数（支援舰 tag 序号 `sup{n}-<原tag>` 与日志"第 N 次支援"都用它）。
+   *
+   * **只在该单位真挂了这件时才写**（缺省不写 ⇒ 零行为变化、零随机数消费）。
+   * ⚠ 与 `foeRepairPulses` 同款理由**必须随档**：漏了会让战中重载后召唤计时重置 = 白赚一次支援。
+   */
+  foeReviveAtMs?: number
+  /** 本场已召唤的支援舰数（见 `foeReviveAtMs`） */
+  foeReviveCount?: number
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = **`舰tag:武器条目下标`**（仅 src='drone' 的条目）；开战由 startBattleFor /
    *  startFleetBattleFor **逐舰**写入（2026-09-14 船长「逐舰机群」）。

@@ -40,6 +40,9 @@ import {
   weekendCoreProgressAt,
   weekendEncounterChanceAt,
   weekendFlagshipView,
+  weekendFlagshipWindowMs,
+  weekendBossPoolView,
+  weekendTickBoss,
   weekendFoeCardOf,
   weekendNoteContribution,
   weekendPeripheryClearedAt,
@@ -311,12 +314,28 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     expect(v.down).toBeUndefined()
   })
 
-  it('已落盘的起算点稳定；过期 ⇒ 章鱼人摧毁', () => {
+  /**
+   * **章鱼人削血 = 真实削减**（船长 2026-09-25：「章鱼人削减母舰血条是**真实削减**，玩家假设打完一场
+   * 放一会，母舰血量是会**真实减少**」）⇒ 得手判据 = **削血攒满窗口（血条见底）**，不是"墙钟到点"：
+   * 倒计时读数按"还差的在线非战斗时长"展示，已削掉的那部分直接把它推后。
+   */
+  it('得手 = 削血攒满窗口（真实削减）；已削掉的时长会把倒计时推后', () => {
     const s = fresh()
     const ev = fullCore()
     ev.flagshipAtWallMs = 10 * H
-    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(12 * H)
-    expect(weekendFlagshipView(s, ev, 12 * H + 1, 12 * H + 1).down).toBe('octopus')
+    // 一点没削（此刻 11h）⇒ 还差 2 小时在线非战斗时间（从此刻起算）
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 2 * H)
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down, '没削完 ⇒ 不得手').toBeUndefined()
+    // 已削掉 1 小时 ⇒ 只剩 1 小时（真实削减把窗口用掉了一半）
+    ev.octopusDrainedMs = 1 * H
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 1 * H)
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down).toBeUndefined()
+    // 削满窗口 ⇒ 血条见底 ⇒ 章鱼人得手（与 `weekendOctopusTick` 同一判据）
+    ev.octopusDrainedMs = 2 * H
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down).toBe('octopus')
+    // ⚠ 墙钟再过多久都一样：只要没削满就不得手（战斗/离线暂停削血 ⇒ 也不能被墙钟判死）
+    ev.octopusDrainedMs = 1 * H
+    expect(weekendFlagshipView(s, ev, 40 * H, 40 * H).down, '战斗中挂机不削血 ⇒ 墙钟不该判死').toBeUndefined()
   })
 
   it('离线保护：离线 ≤24h ⇒ 上线第一拍起算；离线 >24h ⇒ 自满 24h 起算（Q3）', () => {
@@ -342,6 +361,44 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     const v = weekendFlagshipView(s, ev, back, last)
     expect(v.atWallMs).toBe(back)
     expect(v.down).toBeUndefined()
+  })
+
+  /**
+   * **真实削减（引擎路径）**：`weekendTickBoss` 每拍按"在线且非战斗"的时长推进削血，
+   * 血池读数**真减少**；战斗/离线 ⇒ 暂停（不减少）。
+   */
+  it('削血真实推进：打完放一会 ⇒ 母舰血量真的减少；战斗中与离线都不削', () => {
+    const s = fresh(true) // 调试档：窗口 = 10 分钟
+    const ev = fullCore(true)
+    ev.family = 'H' // BOSS 池口径只服务 H 族（`WEEKEND_BOSS_FAMILIES`）
+    ev.flagshipHpMax = 150_000
+    ev.flagshipHpDone = 0
+    s.weekendEvent = ev // `weekendTickBoss` 读的是**状态里那一场**（`fullCore` 只造对象、不入档）
+    const windowMs = weekendFlagshipWindowMs(s)
+    expect(windowMs, '调试档窗口 = 10 分钟').toBe(10 * 60_000)
+    // 第一拍只立基线（没有"上一拍"就没有可累计的时长）
+    weekendTickBoss(s, 1_000, false)
+    expect(ev.octopusDrainedMs ?? 0).toBe(0)
+    // 在线且不在战斗：连推 30 拍（每拍 ≤5s 上限）⇒ 攒下 150 秒 ⇒ 池子真掉 25%
+    for (let i = 1; i <= 30; i++) weekendTickBoss(s, 1_000 + i * 5_000, false)
+    expect(ev.octopusDrainedMs, '攒下 150 秒在线非战斗时长').toBe(150_000)
+    const pool = weekendBossPoolView(s, ev)!
+    expect(pool.octopusFrac).toBeCloseTo(0.25, 6)
+    expect(pool.hpLeft, '血条真的少了 25%（真实削减）').toBe(150_000 - 37_500)
+    // 战斗中：削血暂停（时钟继续走、读数不动）
+    weekendTickBoss(s, 200_000, true)
+    expect(ev.octopusDrainedMs, '战斗中暂停').toBe(150_000)
+    // 离线（不传墙钟 = 离线结算口径）⇒ 同样不动
+    weekendTickBoss(s, undefined, false)
+    expect(ev.octopusDrainedMs, '离线也暂停').toBe(150_000)
+    // 削满窗口 ⇒ 得手（血条见底）
+    for (let i = 0; i < 200 && (ev.octopusDrainedMs ?? 0) < windowMs; i++) {
+      weekendTickBoss(s, 200_000 + i * 5_000, false)
+    }
+    expect(ev.octopusDrainedMs).toBe(windowMs)
+    expect(weekendFlagshipView(s, ev, 200_000 + 201 * 5_000, 200_000 + 201 * 5_000).down, '削满 ⇒ 章鱼人得手').toBe(
+      'octopus',
+    )
   })
 })
 
@@ -433,7 +490,7 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
     expect(weekendTick(s, ctx, T + 60_000, T + 60_000).started, '同场再 tick ⇒ 不重开').toBe(false)
   })
 
-  it('旗舰 anchor 只在首次满分且在线那一拍落盘，之后不漂移；过期 ⇒ 章鱼人得手并结束', () => {
+  it('旗舰 anchor 只在首次满分且在线那一拍落盘，之后不漂移；削满窗口 ⇒ 章鱼人得手并结束', () => {
     const s = fresh(true)
     const T = 5_000_000
     weekendTick(s, ctx, T, T)
@@ -448,9 +505,17 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
     const t2 = t1 + 30_000
     weekendTick(s, ctx, t2, t2)
     expect(ev.flagshipAtWallMs, 'anchor 不漂移').toBe(t1)
-    const t3 = t1 + 2 * 60_000 + 1
+    /**
+     * ⚠ **2026-09-25 改判**：得手判据 = **章鱼人削血攒满窗口**（血条见底），不再是"墙钟到点"
+     * （船长：「章鱼人削减母舰血条是**真实削减**」＋「战斗中会暂停削血」）。
+     * 这里直接摆削血进度（引擎的累计由 `weekendTickBoss` 那一路覆盖，见上面的真实削减用例）。
+     */
+    ev.octopusDrainedMs = weekendFlagshipWindowMs(s) - 1
+    expect(weekendTick(s, ctx, t1 + 5 * 60_000, t1 + 5 * 60_000).flagshipDown, '还差一点 ⇒ 不得手').toBeUndefined()
+    ev.octopusDrainedMs = weekendFlagshipWindowMs(s)
+    const t3 = t1 + 6 * 60_000
     const r3 = weekendTick(s, ctx, t3, t3)
-    expect(r3.flagshipDown, '超时 ⇒ 章鱼人摧毁').toBe('octopus')
+    expect(r3.flagshipDown, '削满 ⇒ 章鱼人摧毁').toBe('octopus')
     expect(r3.ended).toBe(true)
     expect(ev.flagshipDown).toBe('octopus')
     expect(ev.endedAtWallMs, '本场已结束').toBe(t3)

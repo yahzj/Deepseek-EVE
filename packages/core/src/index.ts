@@ -244,6 +244,9 @@ export {
   weekendCoreCandidates,
   weekendCoreProgressAt,
   weekendDeadlineMs,
+  /* 2026-09-25：章鱼人削血窗口（正常 2h / 调试 10min）——倒计时/削血速率/池子读数/收口四处同源 */
+  WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS,
+  weekendFlagshipWindowMs,
   weekendDebugOn,
   weekendDrawFoeCardId,
   weekendEncounterChanceAt,

@@ -318,6 +318,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.encounters.009": { zh: "当前不在交火中，无法脱离。", en: "You are not in a fight right now, so you cannot break away." },
   "core.encounters.010": { zh: "战斗已分出胜负，正在结算——无法脱离。", en: "The fight is already decided and settling — you cannot break away." },
   "core.encounters.011": { zh: "⚔ 主动脱离（{p1}·{p2}）：{p3} 收手退出交火（现 装甲 {p4}% / 结构 {p5}%）{p6}。", en: "⚔ Broke away voluntarily ({p1} · {p2}): {p3} disengaged from the fight (armour {p4}% / hull {p5}%){p6}." },
+  // 2026-09-25 船长令：入侵母舰的「支援舰船召唤装置」——每 60 秒把当前波已阵亡的一艘敌舰满血复活入场
+  "core.combat.001": { zh: "⚔ 敌方支援舰船入场：{p1}（第 {p2} 次支援）", en: "⚔ An enemy support ship has arrived: {p1} (support #{p2})" },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
