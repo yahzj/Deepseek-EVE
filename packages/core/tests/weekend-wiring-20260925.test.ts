@@ -19,7 +19,7 @@ import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState } from '../src/index'
 import { startMining } from '../src/mining'
 import { advanceEncounterWatch, maintainPresence, retreatEncounterBattle, rollLowSecAmbush } from '../src/encounters'
-import { activeFoeSpecsOf, createBattleState } from '../src/combat'
+import { activeFoeSpecsOf, applyFoeOverride, battleArcsFor, createBattleState, createPlayerSpec, flagshipBattleLedger, foeJammerCountOf, meJammerNetOf, meRangeMulOf } from '../src/combat'
 // 敌卡解析单点（洞内 / 旗舰战 / 远征三口径）在 `wormholeBattle` 里
 import { battleFoeAnomaly } from '../src/wormholeBattle'
 import { commsInbox } from '../src/comms'
@@ -58,6 +58,7 @@ import {
   WEEKEND_GAIN_REPEL,
   WEEKEND_PROGRESS_ISK_PER_PCT,
   endWeekendEvent,
+  weekendFlagshipHpRemaining,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
 } from '../src/weekendEvent'
@@ -776,6 +777,111 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     s.encounter.active = false
     s.encounter.battle = null
     expect(setBattleDesire(s, 3_000, ctx).ok, '不在交火中 ⇒ 拒绝').toBe(false)
+  })
+
+  /**
+   * **船长 2026-09-25 报障**：「**母舰哪怕残血，在战斗中血上限依旧保持不变。**」
+   *
+   * 口径：战斗里那条血 = **池子剩余**（`bossHp`），但血条的**分母恒为池子总量**（`bossHpMax` = 150,000）
+   * ⇒ 残血就显示残血（改前拿"本场满值"当分母，最后一仗开打时血条又是满的）。
+   * ⚠ **只动显示**：单位自己的 `hpMax`（= 本场满值）与伤害台账一个字不改，否则跨场累计会重复计伤害。
+   */
+  it('㉒ 母舰残血 ⇒ 战斗里血条上限仍是池子总量（150,000）；台账只算本场伤害 · 覆写随档往返', () => {
+    const core = 'galaxy-kor'
+    const s = invaded(GID)
+    const now = Date.now()
+    weekendNoteContribution(s.weekendEvent!, GID, 1) // 外围夺回 ⇒ 门禁解开
+    weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
+    /** 池子跨场已被打剩 1,000（这正是"最后几仗"的样子） */
+    s.weekendEvent!.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
+    s.weekendEvent!.flagshipHpDone = WEEKEND_FLAGSHIP_POOL_HP - 1_000
+    expect(weekendFlagshipHpRemaining(s.weekendEvent)).toBe(1_000)
+    const battle = weekendStartFlagshipBattle(s, ctx, now, [s.shipId])!
+    expect(battle, '核心条满 ⇒ 能开战').not.toBeNull()
+    expect(battle.foeOverride?.bossHp, '本场满值 = 池子剩余').toBe(1_000)
+    expect(battle.foeOverride?.bossHpMax, '血条分母 = 池子总量（恒定）').toBe(WEEKEND_FLAGSHIP_POOL_HP)
+    expect(battle.foeOverride?.bossShipId).toBe('foe-h-ink-flagship')
+    /** ⚠ 覆写要活过读档（原先这三格没过清洗器 ⇒ 读档后母舰血条回落到卡面血 69,592，"单场不死"当场失真） */
+    s.encounter = {
+      active: true,
+      shipId: s.shipId,
+      galaxyId: core,
+      name: '墨潮旗舰部队',
+      threat: 170,
+      anomalyId: 'ink-flagship',
+      origin: '测试 · 挑战旗舰',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 0,
+      battle,
+    }
+    const back = loadSaveFile(serializeSaveFile(s, 0)).state.encounter.battle
+    expect(back?.foeOverride?.bossHp, '读档后仍是池子剩余').toBe(1_000)
+    expect(back?.foeOverride?.bossHpMax, '读档后血条分母仍是池子总量').toBe(WEEKEND_FLAGSHIP_POOL_HP)
+    expect(back?.foeOverride?.bossShipId, '读档后仍认得出母舰那一条').toBe('foe-h-ink-flagship')
+
+    /** 母舰那一波（第 4 波）真建起来，走**真实视图**读血条上限 */
+    const override = battle.foeOverride!
+    const card = applyFoeOverride(ctx.anomalies.get('ink-flagship')!, override)
+    const specs = activeFoeSpecsOf(card, ctx.balance.battle, 3)
+    const flagSpec = specs.find((u) => u.foeShipId === 'foe-h-ink-flagship')!
+    const me = createPlayerSpec(s, ctx, s.shipId)!
+    const b3 = createBattleState(me, specs, 0, 5_000)
+    b3.foeOverride = override
+    const sum3 = (hp: { s: number; a: number; h: number }): number => hp.s + hp.a + hp.h
+    expect(sum3(b3.units[flagSpec.tag]!.hpMax!), '引擎侧满值 = 本场剩余').toBeCloseTo(1_000, 6)
+    const arcs = battleArcsFor(s, ctx, { battle: b3, anomaly: card, leaderShipId: s.shipId })!
+    expect(sum3(arcs.maxHp.foe[flagSpec.tag]!), '界面血条分母 = 池子总量').toBeCloseTo(WEEKEND_FLAGSHIP_POOL_HP, 6)
+    /** 打掉 100（结构层）⇒ 台账 = 满值 − 当前 = **只有本场那 100**（分母放大不参与台账） */
+    const rt = b3.units[flagSpec.tag]!
+    rt.hp = { ...rt.hp, h: Math.max(0, rt.hp.h - 100) }
+    expect(flagshipBattleLedger(b3, ['foe-h-ink-flagship']).rawDmg, '台账只算本场伤害').toBe(100)
+    /** 僚舰不受影响（分母只放大母舰那一格） */
+    const other = specs.find((u) => u.foeShipId !== 'foe-h-ink-flagship')!
+    expect(sum3(arcs.maxHp.foe[other.tag]!)).toBeCloseTo(sum3(b3.units[other.tag]!.hpMax!), 6)
+  })
+
+  /**
+   * **船长 2026-09-25 报障**：「**摧毁敌方干扰舰后，射程不会恢复。**」
+   *
+   * 病根 = 压制率吃的是**编制口径**（`activeFoeSpecsOf` 含**已阵亡**单位）⇒ 干扰舰被打死之后
+   * 它的 50% 仍挂在净削减里（界面射程弧与实际开火门两处都挂着）。
+   * 另修一处同族分歧：引擎原先恒取**第 0 波**（`createFoeSpecs`），视图取**当前波** ⇒
+   * 多波卡里"界面显示被压制、实际没被压"。两处现在同取当前波。
+   */
+  it('㉓ 打掉干扰舰 ⇒ 压制归零、射程恢复（引擎与视图同取当前波 · 只算活着的干扰舰）', () => {
+    const card = ctx.anomalies.get('ink-main')!
+    expect(foeJammerCountOf(activeFoeSpecsOf(card, ctx.balance.battle, 0)), '第 0 波没有干扰舰').toBe(0)
+    const wave1 = activeFoeSpecsOf(card, ctx.balance.battle, 1)
+    const jam = wave1.find((f) => (f.foeRangeDebuffPct ?? 0) > 0)!
+    expect(jam, '第 1 波有干扰舰').toBeTruthy()
+    /** 主控 = 电子舰（自身 15% 与敌方 50% 抵消）⇒ 净削减 0.35（船长例①） */
+    const s = createInitialState({ nowWallMs: 0, seed: 5 })
+    const ew = addShipToFleet(s, 'sh-wh-a-frigate')
+    s.shipId = ew
+    const me = createPlayerSpec(s, ctx, ew)!
+    const battle = createBattleState(me, wave1, 0, 5_000)
+    battle.meFoeRangeDebuff = 0.15
+    expect(meJammerNetOf(battle, wave1), '干扰舰活着 ⇒ 净 0.35').toBeCloseTo(0.35, 10)
+    expect(meRangeMulOf(battle, wave1), '射程被压到 65%').toBeCloseTo(0.65, 10)
+    /** 三系血清零 = 阵亡（引擎的存活判据） */
+    battle.units[jam.tag]!.hp = { s: 0, a: 0, h: 0 }
+    expect(meJammerNetOf(battle, wave1), '打掉 ⇒ 压制归零').toBe(0)
+    expect(meRangeMulOf(battle, wave1), '射程恢复 ×1').toBe(1)
+
+    /** 界面那一份（射程弧）：基准 = 第 0 波（无干扰舰）的弧；第 1 波被压；打掉 ⇒ 回到基准 */
+    const arcsOf = (b: ReturnType<typeof createBattleState>): number[] =>
+      battleArcsFor(s, ctx, { battle: b, anomaly: card, leaderShipId: ew })!.me.map((a) => a.maxM)
+    const b0 = createBattleState(me, activeFoeSpecsOf(card, ctx.balance.battle, 0), 0, 5_000)
+    const baseArcs = arcsOf(b0)
+    expect(baseArcs.length, '电子舰至少有基础舰炮那一条弧').toBeGreaterThanOrEqual(1)
+    const b1 = createBattleState(me, wave1, 0, 5_000)
+    b1.meFoeRangeDebuff = 0.15
+    b1.waveIdx = 1
+    const pressed = arcsOf(b1)
+    expect(pressed, '干扰舰在场 ⇒ 弧比基准短').not.toEqual(baseArcs)
+    for (let i = 0; i < baseArcs.length; i++) expect(pressed[i]!).toBeLessThan(baseArcs[i]!)
+    b1.units[jam.tag]!.hp = { s: 0, a: 0, h: 0 }
+    expect(arcsOf(b1), '打掉干扰舰 ⇒ 界面弧回到基准（不再"永远被压"）').toEqual(baseArcs)
   })
 })
 

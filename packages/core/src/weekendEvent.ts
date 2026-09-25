@@ -118,15 +118,34 @@ export function weekendIsFlagshipShipId(shipId: string): boolean {
 }
 
 /**
- * **战斗里母舰的血条**（船长 2026-09-25 选「甲：母舰血条 = 池子剩余」）：
- * `= (池子总量 ?? 常量) − 玩家已造成`，下限 1（= 0 表示已击沉，开战入口先拒）。
+ * **战斗里母舰的血条**（船长 2026-09-25 选「甲：母舰血条 = 池子剩余」，同日再改口径 ⇒ **共享血条**）。
+ *
+ * ⚠ **2026-09-25 船长两条口径**：
+ * 1.「**章鱼人削减母舰血条是真实削减，玩家假设打完一场放一会，母舰血量是会真实减少。**」
+ * 2.「**章鱼人 = 真实削减血量所以并不需要显示章鱼人削减进度和倒计时。（因为削到 0% 就代表母舰被章鱼人摧毁。）**」
+ *
+ * ⇒ **一条共享血条**：`剩余 = 池子总量 −（玩家已造成 ＋ 章鱼人已削）`，下限 1
+ * （= 0 表示已被摧毁，开战入口先拒）。玩家的实战伤害与章鱼人的侵蚀**都真实减少同一条血**——
+ * 于是"打完一场放一会，母舰血量真减少"成立，也不再需要单独的章鱼进度与倒计时读数。
  * 由 `weekendLaunch.weekendStartFlagshipBattle` 传进 `FoeOverride.bossHp` ⇒ 逐拍重建也吃同一份
  * （覆写随档存进 `BattleState.foeOverride`）。
  */
 export function weekendFlagshipHpRemaining(ev: WeekendEventState | undefined): number {
   if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
   const hpMax = ev.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
-  return Math.max(1, Math.round(hpMax - Math.max(0, ev.flagshipHpDone ?? 0)))
+  const done = Math.max(0, ev.flagshipHpDone ?? 0) + weekendOctopusDone(ev)
+  return Math.max(1, Math.round(hpMax - done))
+}
+
+/**
+ * **章鱼人已削掉的血量**（共享血条里的那一份，与玩家的 `flagshipHpDone` 相加即"血条已经掉了多少"）。
+ * 字段本身就是血量（`octopusHpDone`）⇒ 读侧**不需要知道窗口长度**（窗口只在推进时用一次）。
+ */
+export function weekendOctopusDone(ev: WeekendEventState | undefined): number {
+  if (!ev || !weekendIsBossFamily(ev)) return 0
+  const hpMax = ev.flagshipHpMax ?? 0
+  if (hpMax <= 0) return 0
+  return Math.min(hpMax, Math.max(0, ev.octopusHpDone ?? 0))
 }
 
 /** 离线保护（第 10 条）：离线 ≤24h ⇒ 倒计时挂起，上线第一拍起算（Q3：离线满 24h 那一刻起算） */
@@ -172,8 +191,9 @@ export interface WeekendEventState {
   flagshipHpMax?: number
   /** **玩家已造成的伤害**（跨场累计；只算打进母舰的原始伤害） */
   flagshipHpDone?: number
-  /** **章鱼人累计削血时长**（毫秒；只累计"在线且非战斗"的时长 ⇒ 战斗中/离线都暂停） */
-  octopusDrainedMs?: number
+  /** **章鱼人累计削掉的血量**（**2026-09-25 共享血条口径**：与玩家的 `flagshipHpDone` **加在同一条血**上；
+   *  只累计"在线且非战斗"的时长 —— 战斗中/离线都暂停，速率 = `池子总量 ÷ 窗口`） */
+  octopusHpDone?: number
   /** **已记进池子的伤害**（幂等用：同一场只记一次——引擎可能在同一场调两次结算） */
   flagshipDmgLogged?: number
   /** **上一场记账的战斗身份**（= `battle.startedAtGameMs`；同一场重复结算据此幂等） */
@@ -642,9 +662,10 @@ export interface WeekendFlagshipView {
  * **旗舰视图（含离线保护）**（第 8/10 条 ＋ Q3/Q7）：
  *
  * - **核心条满 ⇒ 现身**；
- * - **得手判据 = 章鱼人削血攒满窗口**（**真实削减**：船长 2026-09-24「2小时内按时间削掉100%母舰血量。
+ * - **得手判据 = 共享血条被削空**（**真实削减**：船长 2026-09-24「2小时内按时间削掉100%母舰血量。
  *   当玩家正在战斗时，会暂停削血」＋ 2026-09-25「章鱼人削减母舰血条是真实削减，玩家假设打完一场放一会，
- *   母舰血量是会真实减少」）⇒ 与 `weekendTickBoss` 的削血进度**同一把尺**，不再是"墙钟到点"；
+ *   母舰血量是会真实减少」）⇒ `血条 = 池子总量 −（玩家已造成 ＋ 章鱼已削）`，与 `weekendTickBoss`
+ *   的削血进度**同一把尺**，不再是"墙钟到点"；
  * - **离线保护**（Q3）：离线 **满 24h** 即视为保护失效 ⇒ 自那一刻起算，窗口到点即视为已被摧毁
  *   （离线期间削血是暂停的，这条是"人不在就别无限期挂着"的那道闸）；
  * - 调试模式**关掉离线保护**（Q7）且窗口 = **10 分钟**（船长 2026-09-25：「保留到点即判，把调试窗口调长」）。
@@ -659,9 +680,15 @@ export function weekendFlagshipView(
   const full = weekendCoreProgressAt(state, ev, nowWallMs) >= 1
   if (!full) return { shown: false }
   const windowMs = weekendFlagshipWindowMs(state)
-  const drained = Math.min(windowMs, Math.max(0, ev.octopusDrainedMs ?? 0))
-  /** **真实削减见底**（= 血条被章鱼人削空）⇒ 得手（与 `weekendTickBoss` 同一判据） */
-  const drainDone = drained >= windowMs
+  /**
+   * **共享血条**（2026-09-25 口径）：`已掉 = 玩家已造成 ＋ 章鱼已削`。
+   * 见底 ⇒ 母舰已被摧毁（玩家打完 ⇒ 玩家击沉；章鱼削空 ⇒ 章鱼人得手，仇敌归属由各自那条路径写）。
+   */
+  const hpMax = ev.flagshipHpMax ?? 0
+  const hpLeft =
+    hpMax > 0 ? Math.max(0, hpMax - Math.max(0, ev.flagshipHpDone ?? 0) - weekendOctopusDone(ev)) : 0
+  /** **血条见底** ⇒ 得手（与 `weekendTickBoss` 同一判据） */
+  const drainDone = weekendFlagshipDefeated(ev)
   const offline = Math.max(0, nowWallMs - lastSeenWallMs)
   /**
    * **倒计时起算点 anchor**——**只在"首次满分且玩家在线"那一拍落盘**（`flagshipAtWallMs`），落盘后不再变：
@@ -681,11 +708,17 @@ export function weekendFlagshipView(
   const down = drainDone || (offlineLapsed && nowWallMs >= anchor + windowMs) ? ('octopus' as const) : undefined
   /**
    * **倒计时（展示口径）**：
-   * - 在线 ⇒ 从**此刻**起算、扣掉已削掉的时长（`windowMs − drained`）——削血是真实削减，
-   *   所以"还能挂多久"就是"还差多少在线非战斗时间"；战斗/离线时它自然停住（读数不跳）；
-   * - 离线保护失效那一档 ⇒ 按 anchor 快照展示（Q3 的"自离线满 24h 起算"）。
+   * - 在线 ⇒ 从**此刻**起算、按"还差多少在线非战斗时间才能把**剩下的血**削空"算
+   *   （`剩余 × 窗口 ÷ 池子总量`）——削血是真实削减，所以玩家打掉的越多、剩下的越快被削空；
+   * - 离线保护失效那一档 ⇒ 按 anchor 快照展示（Q3 的"自离线满 24h 起算"）；
+   * - ⚠ **池子未锁定**（还没跟母舰交手过）⇒ 章鱼人没有可削的目标（与 `weekendTickBoss` 同口径），
+   *   读数就是"从现在起整整一个窗口"。
    */
-  const deadlineWallMs = offlineLapsed ? anchor + windowMs : nowWallMs + (windowMs - drained)
+  const deadlineWallMs = offlineLapsed
+    ? anchor + windowMs
+    : hpMax > 0
+      ? nowWallMs + Math.round((hpLeft * windowMs) / hpMax)
+      : nowWallMs + windowMs
   return { shown: true, atWallMs: anchor, deadlineWallMs, ...(down !== undefined ? { down } : {}) }
 }
 
@@ -931,27 +964,29 @@ export function weekendFlagshipPoolTotal(ev: WeekendEventState | undefined): num
   return ev.flagshipHpMax
 }
 
-/** **BOSS 池读数**（供界面血条：剩余 / 总量 / 玩家进度 / 章鱼进度；非 BOSS 族 ⇒ `null`） */
+/** **BOSS 池读数**（供界面血条：剩余 / 总量 / 玩家进度 / 章鱼进度；非 BOSS 族 ⇒ `null`）。
+ *  ⚠ **2026-09-25 共享血条**：`hpLeft = 总量 −（玩家 ＋ 章鱼）`（两者都真实减少同一条血）；
+ *  `playerFrac` / `octopusFrac` = 各自占**血条总量**的份额（`octopusFrac` 只留给内部读数，
+ *  界面上**不再单独显示**——船长：「不需要显示章鱼人削减进度和倒计时」）。 */
 export interface WeekendBossPoolView {
   hpMax: number
   /** 玩家已造成（跨场累计） */
   hpDone: number
-  /** 池子剩余 = `hpMax − 章鱼已削`（**不扣**玩家已造成的伤害——玩家那一份就是"打掉"） */
+  /** **血条剩余** = `总量 −（玩家已造成 ＋ 章鱼已削）` */
   hpLeft: number
-  /** 章鱼人已削掉的量 */
+  /** 章鱼人已削掉的量（折成血量；与玩家那份相加即已掉的血） */
   octopusDone: number
   /** 玩家进度（0~1：`hpDone / hpMax`） */
   playerFrac: number
-  /** 章鱼进度（0~1：`削血时长 / 2h`） */
+  /** 章鱼进度（0~1：`章鱼已削 / hpMax`）——**仅内部读数，界面不显示** */
   octopusFrac: number
-  /** 还需要打掉多少（0 = 差最后一击） */
+  /** 还需要打掉多少（= 剩余血条；0 = 差最后一击） */
   needDmg: number
 }
 
 /**
  * **BOSS 池读数**（`undefined` = 尚未接战 ⇒ 界面显示"待接战"；`null` 之外不可能）。
- * ⚠ 章鱼那一份**不走池子血量**，而是一条**独立进度**（各自累加、不互扣）：
- * 玩家 `hpDone / hpMax`、章鱼 `削血时长 / 2h`，谁先到 1 谁击沉。
+ * ⚠ 章鱼那一份**走同一条血条**（共享）：它削掉多少，血条就少多少——玩家接着打的是剩下的那截。
  */
 export function weekendBossPoolView(
   state: Pick<GameState, 'debugQuick'>,
@@ -961,17 +996,18 @@ export function weekendBossPoolView(
   const hpMax = ev.flagshipHpMax
   if (hpMax === undefined || hpMax <= 0) return null
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
-  const drained = Math.max(0, ev.octopusDrainedMs ?? 0)
-  const windowMs = weekendFlagshipWindowMs(state)
-  const octopusDone = Math.min(hpMax, (drained / windowMs) * hpMax)
+  // ⚠ 章鱼那一份折成血量走 `weekendOctopusDone`（窗口常量口径，与 `state.debugQuick` 无关）
+  const octopusDone = weekendOctopusDone(ev)
+  void state
   return {
     hpMax,
     hpDone,
-    hpLeft: Math.max(0, hpMax - octopusDone),
+    // **共享血条**：玩家那份与章鱼那份都真实减少它
+    hpLeft: Math.max(0, hpMax - hpDone - octopusDone),
     octopusDone,
     playerFrac: Math.min(1, hpDone / hpMax),
-    octopusFrac: Math.min(1, drained / windowMs),
-    needDmg: Math.max(0, hpMax - hpDone),
+    octopusFrac: Math.min(1, octopusDone / hpMax),
+    needDmg: Math.max(0, hpMax - hpDone - octopusDone),
   }
 }
 
@@ -1009,13 +1045,17 @@ export function weekendNoteFlagshipDamage(
 }
 
 /**
- * **玩家是否已把池子打空**（= 旗舰被击沉）。
- * ⚠ 池子未锁定时（还没接战）恒 `false`；已记满时恒 `true`（供"这一场打空了吗"的判定复用）。
+ * **玩家是否已把母舰血条打空**（= 击沉）。
+ *
+ * ⚠ **2026-09-25 共享血条口径**：血条 = `池子总量 −（玩家已造成 ＋ 章鱼人已削）` ⇒
+ * **玩家的这一击把血条打空**（哪怕前面已被章鱼削掉一半）就算**玩家击沉**（黑匣归玩家）。
+ * 池子未锁定时（还没接战）恒 `false`。
  */
 export function weekendFlagshipDefeated(ev: WeekendEventState | undefined): boolean {
   if (!ev || !weekendIsBossFamily(ev) || ev.flagshipDown !== undefined) return false
   const hpMax = ev.flagshipHpMax ?? 0
-  return hpMax > 0 && (ev.flagshipHpDone ?? 0) >= hpMax
+  if (hpMax <= 0) return false
+  return Math.max(0, ev.flagshipHpDone ?? 0) + weekendOctopusDone(ev) >= hpMax
 }
 
 /**
@@ -1042,8 +1082,17 @@ export function weekendOctopusTick(
   const windowMs = weekendFlagshipWindowMs(state)
   const d = Math.max(0, dtMs)
   if (d <= 0) return false
-  ev.octopusDrainedMs = Math.min(windowMs, (ev.octopusDrainedMs ?? 0) + d)
-  return (ev.octopusDrainedMs >= windowMs)
+  /**
+   * ⚠ **2026-09-25 共享血条**：章鱼那一份**直接记成血量**（`octopusHpDone`），
+   * 速率 = `池子总量 ÷ 窗口` ⇒ 整整一个窗口的在线非战斗时间能把**满血**削空。
+   * 玩家已经打掉的部分不重复算：血条见底 = `玩家 ＋ 章鱼 ≥ 总量`。
+   */
+  const playerDone = Math.max(0, ev.flagshipHpDone ?? 0)
+  const need = hpMax - playerDone
+  // 血条已被玩家打空 ⇒ 归属玩家（本拍不由章鱼人认领，避免仇敌记错）
+  if (need <= 0) return false
+  ev.octopusHpDone = Math.min(hpMax, weekendOctopusDone(ev) + d * weekendOctopusDrainPerMs(state, hpMax))
+  return (ev.octopusHpDone ?? 0) >= need
 }
 
 /**

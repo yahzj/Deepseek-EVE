@@ -51,9 +51,12 @@ export interface WeekendFlagshipPrepView {
   cardId: string
   threat: number
   waves: number
-  /** 母舰血池读数（玩家磨掉 / 章鱼人削 / 剩余 / 还需多少） */
+  /** 母舰血池读数（**共享血条**：`hpLeft / hpMax` ＋ 各自份额，见 `WeekendBossPoolView`） */
   pool: WeekendBossPoolView
-  /** 击毁时限（缺省 = 还没起算） */
+  /**
+   * 击毁时限（缺省 = 还没起算）——**只作 core 侧读数**：2026-09-25 船长令「章鱼人 = 真实削减血量
+   * 所以并不需要显示章鱼人削减进度和倒计时」⇒ **界面不再显示这一格**（血条本身就是那个读数）。
+   */
   deadlineWallMs?: number
   maxShips: number
   /** 可选舰船（**只有舰队在编的船**；主控船也在其中、不特殊） */
@@ -230,12 +233,17 @@ export function weekendStartFlagshipBattle(
    * **母舰血条 = 池子剩余**（船长 2026-09-25 选「甲」）：开战这一刻把 `weekendFlagshipHpRemaining(ev)`
    * 传进覆写口 ⇒ 战斗里母舰的满血就是池子剩余（单场不死名副其实；打空即击沉）。
    * 覆写随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰、读档续战都吃同一份。
+   *
+   * ⚠ **另带 `bossHpMax` = 池子总量**（船长同日第二条：「**母舰哪怕残血，在战斗中血上限依旧保持不变**」）：
+   * 血条分母恒定用池子总量 ⇒ 残血就显示残血（否则最后一仗开打时血条又是满的）。
+   * 它**只喂界面**（`battleArcsFor` 的 `maxHp.foe`），台账仍按本场满值算。
    */
   const bossHp = weekendFlagshipHpRemaining(state.weekendEvent)
   const override: FoeOverride = {
     threat: spec.threat,
     waves: weekendFlagshipWavesOf(),
     bossHp,
+    bossHpMax: state.weekendEvent?.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP,
     bossShipId: WEEKEND_FLAGSHIP_SHIP_ID,
   }
   return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, undefined, undefined, override)

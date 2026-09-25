@@ -1509,10 +1509,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.072": { zh: "编队未满 {p1} 艘：也能开战，但小队战人手越少越吃力。", en: "Fewer than {p1} ships: you can still engage, but a squad fight goes harder with fewer hulls." },
   "ui.weekend.073": { zh: "按战力自动选", en: "Auto-pick by power" },
   "ui.weekend.074": { zh: "开战", en: "Engage" },
-  "ui.weekend.075": { zh: "母舰血池：已磨掉 {p1}% · 章鱼人已削 {p2}% · 剩余 {p3}", en: "Mothership pool: {p1}% worn down · {p2}% eroded by the Octopus · {p3} left" },
+  "ui.weekend.075": { zh: "母舰血条：剩余 {p1} 点（{p2}%）", en: "Mothership bar: {p1} points left ({p2}%)" },
   "ui.weekend.076": { zh: "已选 {p1} / {p2}", en: "{p1} / {p2} picked" },
   "ui.weekend.077": { zh: "战力 {p1}", en: "power {p1}" },
-  "ui.weekend.078": { zh: "击毁时限", en: "Deadline" },
   "ui.weekend.079": { zh: "至少要选一艘船。", en: "Pick at least one ship." },
   "ui.weekend.080": { zh: "装甲 {p1}% · 结构 {p2}%", en: "armor {p1}% · hull {p2}%" },
   // 2026-09-25 船长令：核心收复、旗舰现身时弹一次窗，可从弹窗直接去战前准备
@@ -1527,6 +1526,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.096": { zh: "赏金：结算时按进度发放", en: "Bounty: paid at settlement based on progress" },
   "ui.weekend.097": { zh: "进度收入", en: "Progress income" },
   "ui.weekend.098": { zh: "推进 {p1}%", en: "{p1}% pushed" },
+  // 2026-09-25 船长令：章鱼人是**真实削减血量**（共享血条）⇒ 不再显示"章鱼人削减进度"与倒计时；
+  // 核心的"旗舰期红光"另给一条悬停说明（那条红光不再等于"被占领"）。
+  "ui.weekend.099": { zh: "敌方旗舰停驻于此：可从入侵窗口发起旗舰战", en: "The enemy flagship is holding here: start the flagship battle from the invasion window" },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
@@ -3401,7 +3403,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.007": { zh: "外围夺回 {p1}/{p2}", en: "Periphery reclaimed {p1}/{p2}" },
   "ui.weekend.008": { zh: "核心 {p1}%", en: "Core {p1}%" },
   "ui.weekend.009": { zh: "旗舰已被章鱼人部队摧毁", en: "The flagship was destroyed by the Octopus forces" },
-  "ui.weekend.010": { zh: "旗舰现身 · 倒计时", en: "Flagship present · countdown" },
+  "ui.weekend.010": { zh: "旗舰现身", en: "Flagship present" },
   "ui.weekend.011": { zh: "核心未打通：需先夺回全部外围", en: "Core locked: reclaim the whole periphery first" },
   "ui.weekend.012": { zh: "外围已全部夺回：可进攻核心", en: "Periphery reclaimed: the core is open" },
   "ui.weekend.013": { zh: "周末入侵：被占星系的悬赏已换成入侵舰队，遇袭更频繁；夺回全部外围后核心开启", en: "Weekend invasion: bounties in occupied systems are invader fleets and ambushes are frequent; reclaim the whole periphery to open the core" },
@@ -3412,8 +3414,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.018": { zh: "被入侵舰队占领：悬赏已换成入侵舰队、遇袭更频繁；夺回后恢复", en: "Occupied by invader fleets: bounties are invader fleets and ambushes are frequent; reclaim to restore" },
   "ui.weekend.019": { zh: "点击前往星图", en: "Click to open the star map" },
   // 2026-09-24 旗舰 BOSS 化（跨场累计伤害）：入侵面板那一条的进度读数
-  "ui.weekend.020": { zh: "旗舰已磨掉 {p1}%", en: "Flagship worn down {p1}%" },
-  "ui.weekend.021": { zh: "章鱼人已削 {p1}%", en: "Octopus fleet eroded {p1}%" },
+  "ui.weekend.020": { zh: "母舰血条剩余 {p1}%", en: "Mothership bar: {p1}% left" },
   // 2026-09-25 结束结算（贡献奖四档入账）：一条有 ISK 的、一条只有残骸的（参与档）、一条零贡献的
   "ui.weekend.022": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2} + {p3} credits." },
   "ui.weekend.023": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2}。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2}." },

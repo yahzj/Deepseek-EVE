@@ -761,6 +761,12 @@ export interface BattleState {
     waves?: ReadonlyArray<{ units: number; hpShare: number }>
     keepCardWaves?: boolean
     strengthMul?: number
+    /** BOSS 血条覆写（2026-09-25 · 旗舰战）：本场满值 = 开战那一刻的池子剩余（见 `combat.FoeOverride`） */
+    bossHp?: number
+    /** BOSS 血条的**分母**（池子总量，恒定；只喂界面血条，不改台账） */
+    bossHpMax?: number
+    /** 哪一条舰级算母舰（`foeShipId`） */
+    bossShipId?: string
   }
   /** 多波次演出间隔（2026-09-09 船长反馈）：当前波全灭时刻（lastTick 口径），配合 waveEnterGapMs
    * 等爆炸/残骸演出播完再刷下一波（零迁移可选字段） */
