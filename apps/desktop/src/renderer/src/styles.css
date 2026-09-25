@@ -3054,9 +3054,14 @@ html[data-locale='en'] body {
 
   position: relative;
 
-  width: 100%; /* 父级已是 workspace 的纵向 flex ⇒ 吃满宽、吃掉剩余高 */
+  width: 100%;
+
+  /* 主窗口优先：吃掉剩余高度，且**保底 260px**（2026-09-25 修）。
+     原先无下限 ⇒ 被日志坞（192px）+ 信息带 + 底栏挤到只剩 218px，看起来像"主窗口不存在"。 */
 
   flex: 1 1 auto;
+
+  min-height: 260px;
 
   min-width: 0;
 
@@ -6840,9 +6845,16 @@ html[data-locale='en'] body {
 
   display: flex;
 
-  min-height: 0;
+  /* ⚠ **2026-09-25 修：日志坞必须可收缩、且高度封顶**。
+     原先 `flex-shrink: 0` + 按内容取高（实测 192~255px）⇒ 在纵向 flex 里**拒绝让位**，
+     把主窗口挤到只剩 218~381px（最小窗口 1024×700 时几乎看不见主窗口，船长反馈"主窗口不存在"）。
+     现改为：可收缩、上限 190px、下限 68px（日志多时在坞内滚动，不再挤压主窗口）。 */
 
-  flex-shrink: 0;
+  min-height: 68px;
+
+  max-height: 190px;
+
+  flex: 0 1 auto;
 
 }
 
@@ -8797,7 +8809,16 @@ html[data-locale='en'] body {
 
   gap: var(--wui-sp-6);
 
-  width: 150px; /* **左侧竖列**：定宽 150px、高由 flex 拉伸占满内容区（船长批准的草图丁形态） */
+  width: 150px; /* **左侧竖列**：定宽 150px */
+
+  /* ⚠ **按内容高度显示，不拉伸占满**（2026-09-25 修）：
+     左列若被 lign-items: stretch 拉满（实测 710px / 最小窗口 547px），而作业只有 2 行时，
+     活动栏下方是一大片空白，主区被挤到只剩 218px（1280×860 下 381px）—— 看起来就像"主窗口不存在"。
+     改为按内容高度 + max-height 封顶（作业多时列内滚动），把空间优先让给主窗口。 */
+
+  align-self: flex-start;
+
+  max-height: 100%;
 
   flex: 0 0 auto;
 
