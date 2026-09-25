@@ -166,15 +166,26 @@ function approachOf(m: number, openM: number, nearM: number): number {
  *    第一排**血条**（血条挂舰底、高 ~48-50）⇒ 故第二排改为「一个舰高 + 血条带 + 6 缝隙」。
  *
  * 退化（船长确认）：1 舰 = 第一排（逐像素不变）· 2 舰 = 前一后右上 · 3 舰 = 前、后右上、前（锯齿）·
- * 4 舰 = 完整斜向菱形 · 5 舰起继续按"前/后交替 + 逐列右移"接下去。 */
-/** 敌列阵形里的一个机位（列/排 + 相对本列的横向微调 + 抬升量） */
+ * 4 舰 = 完整斜向菱形 · 5 舰起继续按"前/后交替 + 逐列右移"接下去。
+ *
+ * ⚠ **2026-09-25 船长报障修：「从上往下数第二排敌人的左右间距拉开一些，右边舰船的血条会遮挡左边
+ *   舰船的数字」** —— 真因不是"间距不够"，而是 **DOM 与锚点走的不是同一套算术**：
+ *   - 锚点（`layout()`）＝ `foeColLeft(列) + 列宽/2 (+ 第二排右移)` ⇒ 列间距 = **列宽 + `ROW_GAP`(24)**；
+ *   - 旧 DOM ＝ 平铺 flex（`gap: 4px`）＋ 逐舰 `marginLeft = (列宽 − 舰宽)/2` 居中
+ *     ⇒ 第 i 条舰实际落在 `Σ_{j<i}[(列宽_j + 舰宽_j)/2 + 4]` ⇒ **每条边界都比锚点少
+ *     `(列宽_j − 舰宽_j)/2 + 20` px**（同一排内逐舰累积）。
+ *   第一排的舰一般都填满本列（差 20px，仅压掉血条右端一两个数字）；**第二排正是"窄舰坐宽列"**
+ *   （列宽取本列两舰的较大者，第二排常是较小那条）⇒ 累积偏移可达上百像素 ⇒ 右舰血条（185 宽）
+ *   直接压住左舰血条的数字。**修法**：DOM 也按**列盒**排 —— `foeRowBoxesOf()` 给出逐列定宽盒
+ *   （宽 = `colW`）＋ 盒间 `ROW_GAP`，舰在盒内居中 ⇒ DOM 与锚点逐像素一致，血条宽度（`foeBarGeom`
+ *   本就按锚点算）自然不再互压。⚠ 顺带修好了**弹道/弹着/无人机锚点**与舰体的同一偏差。
+ */
+/** 敌列阵形里的一个机位（列/排） */
 interface FoeSlot {
   /** 列号（同排内从左到右） */
   col: number
   /** 排号：0 = 第一排（原位）；1 = 第二排（右移半格 + 下移一个舰高 + 一条血条带） */
   row: 0 | 1
-  /** 相对**本列中心**的水平微调（把窄舰在本列内居中） */
-  dx: number
   /** 抬升量（px；**负 = 下移**）——＝ 第二排下移量 `drop` 的反号（第一排 = 0） */
   raise: number
 }
@@ -212,11 +223,28 @@ function foeFormationOf(sizes: readonly number[]): FoeFormation {
   for (let i = 0; i < n; i++) {
     const col = Math.floor(i / 2)
     const row: 0 | 1 = i % 2 === 1 && rows === 2 ? 1 : 0
-    const cw = colW[col] ?? sizes[i]!
-    slots.push({ col, row, dx: (cw - (sizes[i] ?? 0)) / 2, raise: row === 1 ? -drop : 0 })
+    slots.push({ col, row, raise: row === 1 ? -drop : 0 })
   }
   const pitchSum = colW.reduce((s, w) => s + w + LAY.ROW_GAP, 0) - LAY.ROW_GAP
   return { slots, colW, shift, drop, rowH, rows, rowW: pitchSum + (rows === 2 ? shift : 0) }
+}
+/**
+ * **某一排的 DOM 列盒**（2026-09-25 修船长报障「第二排右舰血条压住左舰数字」）——
+ * **渲染与几何核对共用这一份**（`BattleScreen` 按它铺 DOM，`tools/battle-layout.ts` 按它核
+ * "DOM 列中心 == `layout()` 锚点"）。
+ *
+ * 语义：一排 = 若干**定宽列盒**（宽 = `colW[列]`，盒间距 `LAY.ROW_GAP`），舰在盒内水平居中；
+ * 于是"第 c 列的盒左缘" = `foeColLeft(fm, c)`，**盒中心 = `foeColLeft(fm, c) + colW[c]/2`** ——
+ * 与 `layout()` 里那条锚点公式**逐字相同**（第二排整体右移 `shift` 由排容器给）。
+ *
+ * @param row 取哪一排（0 = 第一排；1 = 第二排）
+ * @param n 本单位总数（`unit` = 落在该盒里的**单位下标**，`-1` = 本排这一列为空）
+ */
+function foeRowBoxesOf(fm: FoeFormation, row: 0 | 1, n: number): Array<{ col: number; width: number; unit: number }> {
+  return fm.colW.map((w, col) => {
+    const i = col * 2 + row
+    return { col, width: w, unit: i < n && fm.slots[i]?.row === row ? i : -1 }
+  })
 }
 /** 第 col 列左边缘相对编队左边缘的偏移（px） */
 function foeColLeft(f: FoeFormation, col: number): number {
@@ -282,7 +310,13 @@ function foeBarGeom(xs: readonly number[], bottoms: readonly number[], formation
     for (let k = 1; k < idxs.length; k++) minPitch = Math.min(minPitch, Math.abs(xs[idxs[k]!]! - xs[idxs[k - 1]!]!))
     if (minPitch >= HP_BAR_W_MAX + 6) continue // 各自贴舰（185）
     if (minPitch >= HP_BAR_W_MIN + 6) {
-      const w = Math.max(HP_BAR_W_MIN, Math.round(minPitch - 6))
+      /**
+       * ⚠ **取 `floor` 不取 `round`**（2026-09-25）：本式要保证的是"两条之间**净空 ≥ 6px**"，
+       * 而 `minPitch` 常带小数（列宽是 `round` 过的整数、但中心距含两个半宽）——`round` 向上取整时
+       * 会把净空吃到 5.5px（`tools/battle-layout.ts` 的敌排核对就是这么抓到的）。
+       * `floor` 只会让条更窄一点，净空恒 ≥ 6；下界由本分支的 `minPitch ≥ MIN + 6` 兜住。
+       */
+      const w = Math.max(HP_BAR_W_MIN, Math.floor(minPitch - 6))
       for (const i of idxs) out[i] = { width: w, dx: 0, dy: 0 }
       continue
     }
@@ -666,10 +700,12 @@ export {
   TIER_SIZE,
   ESCORT_MUL,
   HP_BAR_W_MAX,
+  HP_BAR_H,
   ROW2_BAR_DROP,
   // 我方血条宽度下限（`layout().myBarW` 用；几何核对工具 `npm run battle:layout` 也读它）
   MY_BAR_W_MIN,
   foeFormationOf,
+  foeRowBoxesOf,
   foeColLeft,
   foeBarGeom,
   foeHangarByTag,

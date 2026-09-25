@@ -373,9 +373,21 @@ export function weekendResultSnapshotOf(
   })
   const hpMax = ev.flagshipHpMax
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
-  const flagship = hpMax !== undefined ? { hpMax, hpDone, defeated: hpDone >= hpMax } : undefined
   const flagshipOutcome: WeekendResultSnapshot['flagshipOutcome'] =
     ev.flagshipDown === 'player' ? 'player' : ev.flagshipDown === 'octopus' ? 'octopus' : 'window'
+  /**
+   * `defeated` = **这面「已击沉 / 未击沉」的判据与黑匣同源**（＝`flagshipDown === 'player'`）。
+   *
+   * ⚠ **2026-09-25 船长报障修**：原判据写的是 `hpDone >= hpMax`（**玩家自己打的那份 ≥ 池子总量**）——
+   * 那是"共享血条"落地**之前**的口径。改共享血条后，血条 = `池子 −（玩家 ＋ 章鱼人）`，
+   * 船长的规则是「**玩家的这一击把血条打空**（哪怕前面已被章鱼削掉一半）就算**玩家击沉**」（见
+   * `weekendEvent.weekendFlagshipDefeated` 的注释）。船长实录：`hpDone = 149,385` ＋ 章鱼 `615.25`
+   * ⇒ 血条清零、`flagshipDown = 'player'`、**黑匣照发**，可面板照旧算 `149,385 < 150,000` ⇒
+   * 打出「**未击沉**」＋ 奖励里却有旗舰黑匣 —— 一句话自相矛盾（船长原话：
+   * 「入侵结算内，显示我未击沉，且给了我一个旗舰黑匣」）。
+   * ⇒ 判据改为**读结局**（与 `weekendSettlePlanOf.blackBoxToPlayer` 同一把尺），面板与实发从此一致。
+   */
+  const flagship = hpMax !== undefined ? { hpMax, hpDone, defeated: flagshipOutcome === 'player' } : undefined
   void ctx // 目前不需要 ctx（星系名由界面现查）；保留参数位以免将来解析物品时改签名
   return {
     seq: ev.seq,

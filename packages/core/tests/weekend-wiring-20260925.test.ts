@@ -1055,5 +1055,55 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(back?.bossHpLayers).toEqual({ s: 0, a: 37_500, h: 37_500 })
     expect(back?.bossMaxLayers).toEqual(cap)
   })
+
+  /**
+   * **船长 2026-09-25 报障**：「刚刚我试着在 0% 血的时候进入了旗舰战，成功击沉了入侵旗舰，
+   * 但是入侵结算内，**显示我未击沉**，且给了我一个旗舰黑匣。」
+   *
+   * 真档只读取证（`%APPDATA%/whale-idle/save.json`）：`flagshipHpDone = 149,385` ·
+   * `octopusHpDone = 615.25` ⇒ 共享血条 = `150,000 −（149,385 ＋ 615.25）≤ 0` ⇒ **血条清零** ·
+   * `flagshipDown = 'player'` · 黑匣照发（`rewardLedger.blackBox = 1`）。
+   * 结算面板却按 `hpDone ≥ hpMax`（**只算玩家那一份**）判 ⇒ 打出「未击沉」，与同一屏的奖励自相矛盾。
+   */
+  it('㉗ 共享血条被打空 ⇒ 结算面板必须说「已击沉」（与黑匣同判据，不再只比玩家那一份）', () => {
+    const core = 'galaxy-kor'
+    const now = Date.now()
+    const s = invaded(GID)
+    weekendNoteContribution(s.weekendEvent!, GID, 1)
+    weekendNoteContribution(s.weekendEvent!, core, 1)
+    const ev = s.weekendEvent!
+    ev.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
+    ev.flagshipHpDone = WEEKEND_FLAGSHIP_POOL_HP - 1_000 // 前几场累计打掉的
+    ev.octopusHpDone = 615.25 // 章鱼人削掉的那一点（船长真档读数）
+    const box0 = heldOf(s, 'blackbox-h')
+    /** 这一场补 385 ⇒ 149,385 ＋ 615.25 > 150,000 ⇒ **玩家这一击把血条打空**（船长真档的形状） */
+    weekendNoteFlagshipDamage(ev, 385, 7001)
+    const r = weekendApplyBattleOutcome(s, ctx, 'ink-flagship', true, now, null, { kind: 'flagship', galaxyId: core })
+    expect(ev.flagshipDown, '血条由玩家打空 ⇒ 归属玩家').toBe('player')
+    expect(heldOf(s, 'blackbox-h') - box0, '黑匣真入库').toBe(1)
+    expect(r?.wreck, '旗舰残骸照发').toBe(WEEKEND_FLAGSHIP_WRECK)
+    /** 引擎那一拍结算 ⇒ 写战果快照（面板与结算通讯都读它） */
+    weekendSettleAndGrant(s, ctx, now)
+    const snap = s.weekendLastResult!
+    expect(snap.flagshipOutcome, '快照的结局').toBe('player')
+    expect(snap.blackBox, '快照里的黑匣数 = 实发').toBe(1)
+    /** ⚠ **回归点**：玩家那一份确实**没到**池子总量（旧判据正是卡在这里说"未击沉"） */
+    expect(snap.flagship!.hpDone, '玩家那一份 < 池子总量').toBeLessThan(snap.flagship!.hpMax)
+    expect(snap.flagship!.hpDone + 615.25, '两份加起来才够打空').toBeGreaterThanOrEqual(snap.flagship!.hpMax)
+    expect(snap.flagship!.defeated, '面板那行必须说「已击沉」——与黑匣同一判据').toBe(true)
+
+    /** **反向**：章鱼人得手那一场，面板照样说「未击沉」、黑匣归零（不许滥发"已击沉"） */
+    const s2 = invaded(GID)
+    weekendNoteContribution(s2.weekendEvent!, GID, 1)
+    weekendNoteContribution(s2.weekendEvent!, core, 1)
+    s2.weekendEvent!.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
+    s2.weekendEvent!.flagshipHpDone = 40_000
+    endWeekendEvent(s2, now)
+    s2.weekendEvent!.flagshipDown = 'octopus'
+    weekendSettleAndGrant(s2, ctx, now)
+    expect(s2.weekendLastResult!.flagshipOutcome).toBe('octopus')
+    expect(s2.weekendLastResult!.flagship!.defeated, '章鱼人得手 ⇒ 未击沉').toBe(false)
+    expect(s2.weekendLastResult!.blackBox, '黑匣归零').toBe(0)
+  })
 })
 

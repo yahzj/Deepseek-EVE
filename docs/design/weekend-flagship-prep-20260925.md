@@ -553,3 +553,50 @@ ui:rot-check ✓ · ui:theme-check ✓ · `ui:layout-css:check` ✓ · build ✓
 `foe:export 脏值自检：表「敌舰明细」AU27（列「捕获网」）出现「undefined」`（`writeRow` 之外的主表循环被同一道自检覆盖，报的是单元格而非行号）；改回后 `foe:export` 全绿，
 「捕获网」列两条（墨潮突击舰 / 墨潮干扰舰）读数正确、「H 族 · 挂载件」3 行数值正确。typecheck ✓。
 （本次只动 `tools/`，未改任何 typecheck 覆盖内的文件；无需重跑 core 测试。）
+
+## 三十一、第二排敌舰「血条压住数字」＋ 旗舰结算「未击沉」（船长两报障）（2026-09-25）
+
+> 船长原话：①「**战斗画面中，将从上往下数第二排敌人的左右间距拉开一些，右边舰船的血条会遮挡左边舰船的数字。**」
+> ②「**刚刚我试着在 0% 血的时候进入了旗舰战，成功击沉了入侵旗舰，但是入侵结算内，显示我未击沉，且给了我一个旗舰黑匣。**」
+
+### ① 第二排间距：真因不是"间距不够"，是 **DOM 与锚点两套算术**
+
+| # | 落法 |
+|---|---|
+| **病灶** | 锚点（`layout()`）按**列**算：`foeColLeft(列) ＋ 列宽/2`，列间距 = 列宽 ＋ `ROW_GAP`(24)。而**旧 DOM** 是平铺 flex（`.app-bts-shipRow` 的 `gap: 4px`）＋ 逐舰 `marginLeft = (列宽 − 舰宽)/2` 居中 ⇒ 同排第 i 条比锚点少 `Σ_{j<i}[(列宽_j − 舰宽_j)/2 ＋ 20]` px。**血条宽度却是按锚点算的** ⇒ 宽度按宽间距给、舰却画在窄位置上 ⇒ 右舰血条压住左舰血条的数字 |
+| **为什么偏是"第二排"** | 列宽取本列两舰较大者，而**第二排基本是僚机**（`sizeOfUnit(档, escort)` 再 ×0.53）⇒ "窄舰坐宽列"最极端。实测报障场（旗舰卡第 4 波：母舰 T5 主 ＋ 干扰/战巡/鱼雷僚机）：第二排旧落点间距只 **103.5px**，血条宽 **185px** ⇒ **重叠 81.5px**；第一排因主舰自己占满本列只差 20px（看不出来） |
+| **修法** | 新增 `battleViewCore.foeRowBoxesOf()`（**渲染与几何核对共用**）：每一排按**列盒**铺 —— 逐列定宽盒（宽 = `colW`）＋ 盒间距 `ROW_GAP`，舰在盒内居中 ⇒ **盒中心 == 锚点**（逐像素）。`BattleScreen` 两排都改走它；顺带修好**弹道/弹着/无人机锚点**与舰体的同一偏差（那批锚点一直按"正确位置"画） |
+| **连带** | `FoeSlot.dx`（旧居中量）已删；`foeBarGeom` 的收窄分支 `round` → **`floor`**（`round` 向上取整会把"净空 ≥ 6px"吃到 5.5px，是本节新核对抓出来的） |
+| **回归护栏** | `tools/battle-layout.ts`（`npm run battle:layout`）新增两节：⑤ **敌排 DOM 盒中心 == 锚点**；⑥ **同排血条互不遮挡**（用 `foeBarGeom` 的真实宽度/堆叠位移，两个方向都压住才算遮挡）。喂的是**6 种真实 H 族波次的体积真值**（含僚机 ×0.53，主舰在前、奇偶分行与游戏一致），并把"**旧 DOM 会重叠多少**"打进读数留档 |
+
+**首跑读数**（`npm run battle:layout`，1600×900 与 1440×900 各一遍）：46 个机位核过"盒中心 == 锚点"、
+同排血条零重叠；旧 DOM 的留档 —— 报障场（旗舰卡 W4）**第 2 排重叠 81.5px**、主力卡 W2 第 2 排 79.0px、
+旗舰卡 W3 第 1 排 13.5px、极端（T5 主 ＋ 3×T1 僚）第 2 排 105.0px。
+
+### ② 结算面板「未击沉」：判据还停在"共享血条之前"
+
+| # | 落法 |
+|---|---|
+| **真档取证**（`%APPDATA%/whale-idle/save.json` 只读） | `flagshipHpDone = 149,385` · `octopusHpDone = 615.25` ⇒ 共享血条 = `150,000 −（149,385 ＋ 615.25） ≤ 0` ⇒ **血条清零** · `flagshipDown = 'player'` · `rewardLedger.blackBox = 1`（黑匣照发） |
+| **病灶** | 面板那行「对母舰造成原始伤害 X · 血池 Y · 已击沉/未击沉」的 `defeated` 写的是 **`hpDone >= hpMax`**（**只算玩家那一份**）—— 那是"共享血条"落地**之前**的口径。船长的规则是「**玩家的这一击把血条打空**（哪怕前面已被章鱼削掉一半）就算玩家击沉」⇒ 于是同一屏里"未击沉"和"旗舰黑匣 ×1"自相矛盾 |
+| **修法** | `weekendResultSnapshotOf`：先算 `flagshipOutcome`，`defeated = flagshipOutcome === 'player'` —— **与黑匣同一把尺**（`weekendSettlePlanOf.blackBoxToPlayer`）。类型注释同步（`WeekendResultSnapshot.flagship.defeated`） |
+| **回归用例** | `weekend-wiring-20260925.test.ts` 新增 **㉗**：照船长真档的形状（`hpDone = 池子 − 1,000`、章鱼 `615.25`、再补一记 `385`）走真实路径 ⇒ 断言黑匣入库 ＋ **面板 `defeated === true`**；并附**反向**（章鱼人得手那一场：面板恒"未击沉"、黑匣归零）。⚠ 用例里**显式断言** `hpDone < hpMax`（旧判据正是卡在这），保证它真在守这条 |
+
+**验证**：反向 —— 把判据改回 `hpDone >= hpMax` 单跑 ㉗ ⇒ **红**（`expected false to be true`），改回后绿。
+`npm run battle:layout` ✓（含新两节）· typecheck ✓ · core **2,407 例全绿**（214 文件，+1）·
+content:check ✓ · l10n:check ✓ · ui:rot-check ✓ · ui:theme-check ✓ · build ✓ · docs:index ✓。
+⚠ **观感审查权在船长**：第二排间距是**几何读数**（不是观感结论），实际观感请过目；本批未起无头浏览器截图。
+
+⚠ **另报（不是本批改的）**：`npm run ui:layout-css:check` 当前在**主树与 d2 都跑不起来** ——
+`tools/layout-css-split.ts:223` 用了**未定义变量 `curRules`**（`ReferenceError`），该行由一号
+`807637f1`（窗口模块化）引入且已进 main。`tools/` 不进 typecheck ⇒ 没被闸门挡住；生成件已入库
+⇒ `npm run build` 照常过。**判断**：与本批无关（本批零 CSS 改动，生成件与 HEAD 逐字节相同）。
+**建议**：在该行前补 `const curRules = parseRules(current)`（或把它内联）后重跑
+`npm run ui:layout-css:check`。**船长 2026-09-25 裁定**：「应该是三号的问题我和三号说一下」
+⇒ **本批不碰该文件**，账记在这里，交三号处置。
+
+⚠ **合入状态**：本批在 d2 全绿并已提交（`1adcffd5`），但**合入时主树正有一号的未提交改动**
+（`App.tsx` / `game/engine.ts` / `main.tsx` / `packages/data/src/l10n/table.ts` / `web/src/main.tsx`
+＋ 新增 `game/boot.ts` / `game/saveGuard.ts` / `tools/_saveguard-probe.ts`，最后一笔写于 20:27）
+⇒ 按约定 §四「**确认主树干净才 merge**」**先停手待命**，船长裁定**等一号落完再合**；
+主树一干净即快进合入 ＋ 重建 main。
