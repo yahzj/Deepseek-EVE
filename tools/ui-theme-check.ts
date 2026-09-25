@@ -162,7 +162,13 @@ function main(): void {
     ] as Array<[string, string]>) {
       const code = text.replace(/\/\*[\s\S]*?\*\//g, ' ')
       // 定义行（`--wui-x: …`）与函数式包装（`rgb(var(…))` / `rgba(var(…))`）之外的裸引用
-      const re = /(^|[^\w(])(var\(--wui-(?!mono)[a-z0-9-]+\))/g
+      /**
+       * ⚠ **非色值 token 整族豁免**（2026-09-25 UI 重置批）：本条判据的语义是"**三元组色值** token
+       * 必须包在 `rgb(...)` 里"，故 `--wui-mono`（字体族）、`--wui-dur-*`（动效时长）、
+       * `--wui-ease-*`（缓动）、`--wui-fs-*`（字号）、`--wui-sp-*`（间距）这些**本来就不是颜色**的
+       * token 不该被点名——此前只豁免了 `mono`，把新加的时长 token 全判成了"漏包 rgb()"（误报）。
+       */
+      const re = /(^|[^\w(])(var\(--wui-(?!(?:mono|dur-|ease-|fs-|sp-))[a-z0-9-]+\))/g
       let m: RegExpExecArray | null
       while ((m = re.exec(code))) {
         const lead = m[1]
@@ -187,7 +193,7 @@ function main(): void {
     for (const f of walkTs(join(ROOT, 'apps', 'desktop', 'src', 'renderer', 'src'))) {
       const code = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ')
       const rel = relative(ROOT, f).replace(/\\/g, '/')
-      const re2 = /(['"`])(var\(--wui-(?!mono)[a-z0-9-]+\))\1/g
+      const re2 = /(['"`])(var\(--wui-(?!(?:mono|dur-|ease-|fs-|sp-))[a-z0-9-]+\))\1/g
       let m: RegExpExecArray | null
       while ((m = re2.exec(code))) tsBad.push(rel + ':' + code.slice(0, m.index).split('\n').length + '  ' + m[2])
       if (/['"`]var\(--wui-tone-['"`]\s*\+/.test(code)) tsBad.push(rel + '  拼接式色值串缺少 rgb() 包装：`var(--wui-tone-` + …')

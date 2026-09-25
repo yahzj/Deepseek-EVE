@@ -739,6 +739,44 @@
 :root {
   /* 主题色板 */
   --wui-mono: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+
+  /* ── **动效单点**（2026-09-25 UI 重置批新增；此前全站 97 处动画的时长/缓动写死在各自规则里，
+        想整体调快调慢得改 97 处 —— 这是"动效没有单点"的缺口）。**只加不改**：现有规则仍用原值，
+        后续按页迁移时应改引这些 token。── */
+  --wui-dur-1: 120ms;   /* 悬停 / 按压反馈 */
+  --wui-dur-2: 200ms;   /* 状态切换 */
+  --wui-dur-3: 320ms;   /* 面板 / 弹窗进出 */
+  --wui-ease-out: cubic-bezier(.2, .7, .3, 1); /* 进场 */
+  --wui-ease-in-out: ease-in-out;              /* 循环 / 呼吸 */
+
+  /* ── **循环动画的"族基准周期"**（2026-09-25 同批）：51 条 `infinite` 动画按**宿主族**归口，
+        每条写成 `族基准 × 比例`（**比例经逐条换算，时长值与迁移前逐字相同**）⇒ 想整体调快/调慢，
+        改这里一个数即可。例：`.app-aifx-beam` = `calc(var(--wui-dur-aifx) * 0.6875)` = 1.1s（原值）。
+        ⚠ 未纳入的 5 处非 `animation:` 简写形态（单独的 `animation-duration` 等）仍用原值书写。── */
+  --wui-dur-aifx: 1.6s;     /* AI 作业特效（`.app-aifx-*`，12 条） */
+  --wui-dur-act: 2.4s;      /* 活动栏 / 作业卡（`.app-act-*`，10 条） */
+  --wui-dur-shipwin: 1.6s;     /* 舰船窗口（`.app-swin-*` / `.app-shipwin*`，11 条） */
+  --wui-dur-bts: 1.5s;      /* 战斗画面（`.app-bts-*`，6 条） */
+  --wui-dur-map: 1.6s;      /* 星图（`.app-map-*`，2 条） */
+  --wui-dur-work: 2.4s;     /* 背景作业光效（`.bg-work*`，2 条） */
+  --wui-dur-pro: 2.4s;      /* 序章（`.app-pro-*`，2 条） */
+  --wui-dur-nav: 1.6s;      /* 导航未读闪动（`.app-nav*`，1 条） */
+
+  /* ── **字阶**（2026-09-25 同批）：现状字号散在 11~21px 之间，收成 7 档便于统一。
+        ⚠ 字体族**不动**（系统雅黑栈 + `--wui-mono`），不引入外部字体。── */
+  --wui-fs-xs: 11.5px;
+  --wui-fs-sm: 12.5px;
+  --wui-fs-base: 13.5px;
+  --wui-fs-md: 14.5px;
+  --wui-fs-lg: 17px;
+  --wui-fs-xl: 19px;
+
+  /* ── **间距节奏**（4px 基准；2026-09-25 同批）：此前 1840 个类各写各的数值 ── */
+  --wui-sp-1: 4px;
+  --wui-sp-2: 8px;
+  --wui-sp-3: 12px;
+  --wui-sp-4: 16px;
+  --wui-sp-5: 24px;
 }
 
 /* ---------- 面板 ---------- */
