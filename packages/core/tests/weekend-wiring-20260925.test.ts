@@ -142,7 +142,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(miss.s.encounter.active).toBe(false)
   })
 
-  it('③ 远征打卡 ⇒ 认得出 assault（星系来自远征落盘）· 打赢记进度 +10%', () => {
+  it('③ 远征打卡 ⇒ 认得出 assault（星系来自远征落盘）· 打赢记进度（调试 +50%）', () => {
     const gid = GID
     const s = invaded(gid)
     s.expedition.foeGalaxyId = gid
@@ -152,7 +152,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const r = weekendApplyBattleOutcome(s, ctx, 'ink-harass', true, now, null)
     expect(r?.galaxyId).toBe(gid)
     expect(r?.kind).toBe('assault')
-    expect(s.weekendEvent!.contributed[gid] ?? 0, '打赢外围 ⇒ 进度 +10%').toBeCloseTo(0.1, 6)
+    expect(s.weekendEvent!.contributed[gid] ?? 0, '打赢外围 ⇒ 调试模式一场 +50%（两场收复）').toBeCloseTo(0.5, 6)
   })
 
   it('④ 夺回（进度打满）⇒ 夺回奖励入账：钱包 +2M · 稀有残骸 ×8 真进仓库', () => {
@@ -237,7 +237,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       source: 'battle',
     })
     expect(rw?.kind).toBe('ambush')
-    expect(rw?.gain, '迎战击退遇袭 = +3%（设计稿；不是主动胜利的 +10%）').toBeCloseTo(WEEKEND_GAIN_REPEL, 6)
+    expect(rw?.gain, '迎战击退遇袭 = +3%（设计稿；不是主动胜利那一档）').toBeCloseTo(WEEKEND_GAIN_REPEL, 6)
     const lose = withAmbush()
     const rl = weekendApplyBattleOutcome(lose, ctx, 'ink-harass', false, now, null, {
       kind: 'ambush',
@@ -305,7 +305,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(s.weekendEvent!.flagshipHpMax, '这一场已在池子上立账').toBeDefined()
   })
 
-  it('⑨ 核心区：门禁未解 ⇒ 打核心不给进度；外围全清 ⇒ 每场 +5%', () => {
+  it('⑨ 核心区：门禁未解 ⇒ 打核心不给进度；外围全清 ⇒ 调试模式每场 +50%', () => {
     const gid = GID
     const core = 'galaxy-kor'
     const now = Date.now()
@@ -324,8 +324,8 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       kind: 'assault',
       galaxyId: core,
     })
-    expect(r1?.gain, '核心胜利 = +5%').toBeCloseTo(WEEKEND_GAIN_CORE_WIN, 6)
-    expect(open.weekendEvent!.contributed[core] ?? 0).toBeCloseTo(0.05, 6)
+    expect(r1?.gain, '核心胜利 = 调试模式 +50%').toBeCloseTo(0.5, 6)
+    expect(open.weekendEvent!.contributed[core] ?? 0).toBeCloseTo(0.5, 6)
   })
 
   it('⑩ 打空血池 ⇒ 击沉旗舰：黑匣 blackbox-h 真入库 ＋ 稀有残骸 ×3 · 本场结束', () => {

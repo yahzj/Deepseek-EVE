@@ -27,6 +27,11 @@ import {
   weekendNoteRepel,
   weekendTick,
   weekendClockOf,
+  WEEKEND_DEBUG_WIN_GAIN,
+  WEEKEND_GAIN_CORE_WIN,
+  WEEKEND_GAIN_PERIPHERY_WIN,
+  WEEKEND_LOCKED_FAMILY,
+  weekendWinGainOf,
   ensureWeekendEvent,
   weekendAssaultThreatOf,
   weekendContributionShareAt,
@@ -107,7 +112,39 @@ describe('周末入侵 · 时间轴', () => {
     expect(s.weekendEvent?.startedAtWallMs, '新场 T0 = 快进后的墙钟').toBe(ahead)
   })
 
-  it('调试模式：上一场结束后 1 小时刷新（首调即开）', () => {    const s = fresh(true)
+  /**
+   * **锁定族**（2026-09-25 船长令：「**目前只做了H族，所以先锁定H族**」）：
+   * A/C/G 三族还是占位口径 ⇒ 开局面一律判成 H；调试模式下手上的**历史场**（别的族）**就地改判**，
+   * 进度台账与场次号都留着（只换族）。M2/M3 补齐后把 `WEEKEND_LOCKED_FAMILY` 置回 `null` 即恢复随机。
+   */
+  it('锁定族：开局面一律 H；调试模式把历史场就地改判为 H（进度台账不动）', () => {
+    expect(WEEKEND_LOCKED_FAMILY, '当前锁定 H（船长令）').toBe('H')
+    const t = 1_700_000_000_000
+    const s = fresh(true)
+    s.exploredGalaxies = [...ctx.galaxies.keys()]
+    expect(ensureWeekendEvent(s, ctx, t), '调试模式首调即开').toBe(true)
+    expect(s.weekendEvent?.family, '开出来的就是 H').toBe('H')
+    /** 历史场（抽到 A 的旧场）⇒ 调试模式下一次判定就地改判成 H，其余字段一个不动 */
+    const seq = s.weekendEvent!.seq
+    s.weekendEvent = { ...s.weekendEvent!, family: 'A', contributed: { 'galaxy-kor': 0.7 } }
+    expect(ensureWeekendEvent(s, ctx, t + 1000), '已有一场活着的 ⇒ 不新开').toBe(false)
+    expect(s.weekendEvent?.family, '就地改判为 H').toBe('H')
+    expect(s.weekendEvent?.seq, '场次号没换').toBe(seq)
+    expect(s.weekendEvent?.contributed['galaxy-kor'], '进度台账留着').toBeCloseTo(0.7, 6)
+  })
+
+  it('调试模式：主动胜利 +50% ⇒ 两场收复（正常模式仍 外围 10% / 核心 5%）', () => {
+    const s = fresh(true)
+    const ev = evOf('galaxy-home', ['galaxy-kor'], 0)
+    expect(weekendWinGainOf(s, ev, 'galaxy-kor'), '调试：外围 +50%').toBeCloseTo(WEEKEND_DEBUG_WIN_GAIN, 6)
+    expect(weekendWinGainOf(s, ev, 'galaxy-home'), '调试：核心也 +50%').toBeCloseTo(WEEKEND_DEBUG_WIN_GAIN, 6)
+    const s2 = fresh(false)
+    expect(weekendWinGainOf(s2, ev, 'galaxy-kor'), '正常：外围 +10%').toBeCloseTo(WEEKEND_GAIN_PERIPHERY_WIN, 6)
+    expect(weekendWinGainOf(s2, ev, 'galaxy-home'), '正常：核心 +5%').toBeCloseTo(WEEKEND_GAIN_CORE_WIN, 6)
+  })
+
+  it('调试模式：上一场结束后 1 小时刷新（首调即开）', () => {
+    const s = fresh(true)
     const t = 1_000_000_000
     expect(ensureWeekendEvent(s, ctx, t)).toBe(true)
     expect(s.weekendEvent?.startedAtWallMs).toBe(t)

@@ -37,6 +37,7 @@ import {
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
+  weekendWinGainOf,
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
@@ -223,7 +224,8 @@ export function weekendResolveBattle(
   const wasReclaimed = weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) >= 1
   let gain = 0
   if (outcome === 'win') {
-    gain = spec.galaxyId === ev.coreId ? WEEKEND_GAIN_CORE_WIN : WEEKEND_GAIN_PERIPHERY_WIN
+    /** 主动胜利的推进量：**调试模式 = +50%（两场收复，船长令）**；正常 = 外围 10% / 核心 5% */
+    gain = weekendWinGainOf(state, ev, spec.galaxyId)
     // 核心：门禁未解时**不给进度**（`weekendNoteContribution` 会记台账，但读数侧仍被门禁挡住 ⇒ 这里只在门禁已解时记）
     const gated = spec.galaxyId === ev.coreId && weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) <= 0 && !peripheryCleared(state, ev, nowWallMs)
     if (!gated) weekendNoteContribution(ev, spec.galaxyId, gain)

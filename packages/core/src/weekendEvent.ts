@@ -41,6 +41,33 @@ export const WEEKEND_GAIN_PERIPHERY_WIN = 0.1
 export const WEEKEND_GAIN_CORE_WIN = 0.05
 export const WEEKEND_GAIN_REPEL = 0.03
 export const WEEKEND_GAIN_OFFLINE_REPEL = 0.01
+
+/**
+ * **锁定的入侵族**（2026-09-25 船长令：「**目前只做了H族，所以先锁定H族**」）：
+ * A/C/G 三族仍是"占位口径"（派生卡只换名字/威胁/奖励、敌人编成还是原来那批）⇒ 抽到它们时玩家打不到真正的
+ * 入侵舰队。置 `'H'` ⇒ **开局面一律判为 H 族**（独立卡 · 170 旗舰 · 黑匣一整套）；M2/M3 把三族补齐后
+ * **置回 `null`** 即恢复"四族等概率随机"（`weekendRollOccupation` 里那一行就是唯一开关）。
+ */
+export const WEEKEND_LOCKED_FAMILY: string | null = 'H'
+
+/**
+ * **调试模式下的单场推进量**（2026-09-25 船长令：「**调试模式下，收复只需要玩家打 2 场**」）。
+ *
+ * 口径：`debugQuick` 时**主动胜利一律 +50%**（外围与核心同档）⇒ 任意一处占领区**两场夺回**；
+ * 核心条同理两场打满 ⇒ 旗舰现身（核心"先清外围"的门禁照旧）。
+ * 非调试模式**逐字不变**（外围 +10% / 核心 +5%）。
+ */
+export const WEEKEND_DEBUG_WIN_GAIN = 0.5
+
+/** 主动胜利的推进量：调试模式 = `WEEKEND_DEBUG_WIN_GAIN`；正常 = 外围 10% / 核心 5% */
+export function weekendWinGainOf(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState,
+  galaxyId: string,
+): number {
+  if (weekendDebugOn(state)) return WEEKEND_DEBUG_WIN_GAIN
+  return galaxyId === ev.coreId ? WEEKEND_GAIN_CORE_WIN : WEEKEND_GAIN_PERIPHERY_WIN
+}
 /** NPC 反攻保底推进（第 9 条）：外围 T0+48h 必满 · 核心 T0+72h 必满 */
 export const WEEKEND_NPC_PERIPHERY_MS = 48 * 3_600_000
 export const WEEKEND_NPC_CORE_MS = 24 * 3_600_000
@@ -454,7 +481,14 @@ export function weekendRollOccupation(
   if (candidates.length === 0) return null
   const rng = streamOf(state.rng.seed, seq)
   const coreId = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]!
-  const family = WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(rng() * WEEKEND_FAMILIES.length))]!
+  /**
+   * 族：**照旧消费一次随机数**（保持子流形状不变），但若 `WEEKEND_LOCKED_FAMILY` 有值就判成它
+   * —— 船长 2026-09-25「目前只做了H族，所以先锁定H族」；M2/M3 补齐三族后把该常量置回 `null` 即恢复随机。
+   */
+  const familyRoll = rng()
+  const family =
+    WEEKEND_LOCKED_FAMILY ??
+    WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(familyRoll * WEEKEND_FAMILIES.length))]!
   return { coreId, peripheryIds: weekendPeripheryOf(ctx, coreId), family }
 }
 
@@ -655,6 +689,19 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
   if (WEEKEND_DEBUG_ONLY && !weekendDebugOn(state)) return false
   const ev = state.weekendEvent
   if (weekendDebugOn(state)) {
+    /**
+     * **锁定族的自愈**（2026-09-25 船长令「先锁定 H 族」）：手上那一场若是**锁定前开的历史场**
+     * （例如抽到 A/C/G 的旧场），就地**改判族**——进度台账、场次号、旗舰池全留着，只换族
+     * （板面卡与旗舰卡随之换成 H 族那一套）。⚠ 只在调试模式做：正常模式的老场不追改。
+     */
+    if (
+      ev !== undefined &&
+      ev.endedAtWallMs === undefined &&
+      WEEKEND_LOCKED_FAMILY !== null &&
+      ev.family !== WEEKEND_LOCKED_FAMILY
+    ) {
+      ev.family = WEEKEND_LOCKED_FAMILY
+    }
     if (ev && ev.endedAtWallMs === undefined) return false
     if (ev && nowWallMs - ev.endedAtWallMs! < WEEKEND_DEBUG_RESTART_MS) return false
     const seq = (ev?.seq ?? 0) + 1

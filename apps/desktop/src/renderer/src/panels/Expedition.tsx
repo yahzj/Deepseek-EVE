@@ -1255,14 +1255,24 @@ function StarMap({
           ))}
           {/**
            * **周末入侵：被占星系的红色发光**（2026-09-25 船长令：「被占领地区不应该用红圈提醒，
-           * 应该用一个**红色发光**放置于所有被入侵的星系**后方**」）。
-           * 做法与上面那族"势力范围光晕"同源：**静态径向渐变**（不用 filter —— 见约定第十四章），
-           * 画在圆点之前 ⇒ 天然落在星系后方；颜色走 `--wui-danger`（与红色活动框同一族色）。
+           * 应该用一个**红色发光**放置于所有被入侵的星系**后方**」；同日二次裁定：「**范围太小、不够红、
+           * 衰减有些高**」＋「可以做一个脉动」）。
+           *
+           * 数值（船长 2026-09-25 认可的建议值）：
+           * - **半径 46**（原 30）；
+           * - **不透明度 0.62 / 0.34 / 0.16 / 0**，偏移 **0% / 45% / 75% / 100%**（原 0.38/0.16/0 与 0%/55%/100%）
+           *   ⇒ 更亮、而且**衰减更缓**（多一段 75%，中远处不再空）；
+           * - **颜色 = 固定深红 `rgb(229 57 53)`（#E53935）**，不再吃主题 token
+           *   （默认主题的 `--wui-danger` 是偏亮的珊瑚橙红 `255 131 115`，正是"不够红"的来源）；
+           * - **脉动**：`app-map-invasion-pulse`（与敌对派系标记同族语汇：透明度呼吸 + 轻微缩放，
+           *   周期用同一枚 `--wui-dur-map`），见 styles.css。
+           * 做法仍与上面那族"势力范围光晕"同源：**静态径向渐变、不用 filter**（约定第十四章）。
            */}
           <radialGradient id="app-invglow">
-            <stop offset="0%" style={{ stopColor: 'rgb(var(--wui-danger))' }} stopOpacity="0.38" />
-            <stop offset="55%" style={{ stopColor: 'rgb(var(--wui-danger))' }} stopOpacity="0.16" />
-            <stop offset="100%" style={{ stopColor: 'rgb(var(--wui-danger))' }} stopOpacity="0" />
+            <stop offset="0%" style={{ stopColor: 'rgb(229 57 53)' }} stopOpacity="0.62" />
+            <stop offset="45%" style={{ stopColor: 'rgb(229 57 53)' }} stopOpacity="0.34" />
+            <stop offset="75%" style={{ stopColor: 'rgb(229 57 53)' }} stopOpacity="0.16" />
+            <stop offset="100%" style={{ stopColor: 'rgb(229 57 53)' }} stopOpacity="0" />
           </radialGradient>
         </defs>
         {/* 航线（V13 迷雾）：双亮实线带分钟；涉及剪影暗化无分钟；剪影连向更深处只画半段虚化提示 */}
@@ -1395,7 +1405,7 @@ function StarMap({
                   2026-09-25 船长令：**去掉红圈**，改红色发光（与下面"势力范围光晕"同款静态径向渐变） */}
               {invasionIds.has(g.id) ? (
                 <g className="app-map-invasion" data-tip={tr('ui.weekend.018')}>
-                  <circle cx={p.x} cy={p.y} r={30} fill="url(#app-invglow)" className="app-map-invasion-glow" />
+                  <circle cx={p.x} cy={p.y} r={46} fill="url(#app-invglow)" className="app-map-invasion-glow" />
                   <text x={p.x} y={p.y - 18} className="app-map-invasion-tag">
                     {g.id === invasionCoreId ? '★' : '⚑'}
                   </text>

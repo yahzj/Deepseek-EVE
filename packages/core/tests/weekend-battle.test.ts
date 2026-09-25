@@ -79,13 +79,22 @@ describe('周末入侵 · 战斗规格（M1-b）', () => {
 })
 
 describe('周末入侵 · 结果结算（M1-b）', () => {
-  it('主动打赢外围推进 10% · 战败只受损不动进度', () => {
+  it('主动打赢外围：**调试 +50%（两场收复）** / 正常 +10% · 战败只受损不动进度', () => {
     const { s, ev } = setup()
     const per = ev.peripheryIds[0]!
     const spec = weekendAssaultSpecOf(s, ctx, per)!
+    /** 调试模式（setup 默认开）：船长 2026-09-25「收复只需要玩家打 2 场」⇒ 一场 +50% */
     const win = weekendResolveBattle(s, ctx, spec, 'win', 0)
-    expect(win.progressGain).toBeCloseTo(0.1, 6)
-    expect(ev.contributed[per]).toBeCloseTo(0.1, 6)
+    expect(win.progressGain, '调试：一场 +50%').toBeCloseTo(0.5, 6)
+    expect(ev.contributed[per], '一场之后 = 50%').toBeCloseTo(0.5, 6)
+    const win2 = weekendResolveBattle(s, ctx, spec, 'win', 0)
+    expect(win2.progressGain, '第二场同样 +50%').toBeCloseTo(0.5, 6)
+    expect(ev.contributed[per], '**两场累计 1.0 ⇒ 该处收复**（船长：只需打 2 场）').toBeCloseTo(1.0, 6)
+    /** 正常模式：外围 +10% 逐字不变 */
+    s.debugQuick = false
+    const ev2 = { ...ev, contributed: {} }
+    s.weekendEvent = ev2
+    expect(weekendResolveBattle(s, ctx, spec, 'win', 0).progressGain, '正常：外围 +10%').toBeCloseTo(0.1, 6)
     const before = ev.contributed[per]!
     const loss = weekendResolveBattle(s, ctx, spec, 'loss', 0)
     expect(loss.progressGain).toBe(0)
@@ -109,7 +118,13 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
     expect(blocked.progressGain, '门禁未解 ⇒ 0').toBe(0)
     for (const id of ev.peripheryIds) weekendNoteContribution(ev, id, 1)
     const ok = weekendResolveBattle(s, ctx, coreSpec, 'win', 0)
-    expect(ok.progressGain).toBeCloseTo(0.05, 6)
+    expect(ok.progressGain, '调试：核心也 +50%（两场打满 ⇒ 旗舰现身）').toBeCloseTo(0.5, 6)
+    /** 正常模式：核心 +5% 逐字不变 */
+    s.debugQuick = false
+    const ev3 = { ...ev, contributed: { ...ev.contributed } }
+    s.weekendEvent = ev3
+    const coreSpec3 = weekendAssaultSpecOf(s, ctx, ev3.coreId)!
+    expect(weekendResolveBattle(s, ctx, coreSpec3, 'win', 0).progressGain, '正常：核心 +5%').toBeCloseTo(0.05, 6)
   })
 
   it('夺回奖励：越过 100% 那一次发 稀有残骸 ×8 ＋ 2M；**再打不重复发**；全清再 +5M', () => {
