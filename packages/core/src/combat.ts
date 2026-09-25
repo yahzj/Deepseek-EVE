@@ -3534,7 +3534,9 @@ export function preloadShieldChargeFor(
    船长原话：「**新增高槽装备，护盾充能力场装置 MK2，为所有我方舰船恢复 10% 护盾，
    冷却时间 10 秒，MK3 的冷却时间缩短至 8 秒。有叠加惩罚**」＋ 追问三答：
    ① **叠加惩罚 = 同舰多件才算**（多艘船各带一件 ⇒ 各自独立、可叠加）
-   ② **10% 按携带者自己的满盾**（即每艘被治疗的船按**它自己**那本账算） */
+   ② **10% 的量按装件舰（施放者）的满盾算** —— ⚠ **本条 2026-09-25 由船长澄清**：
+      原记作「按携带者自己的满盾」，因"携带者"指装件舰还是受益舰有歧义，
+      曾被补注成"每艘被治疗的船按它自己那本账"并据此落码（见 `pulseShieldFieldFor` 头注的作废说明）。 */
 /**
  * **力场的每跳合计比例 ＋ 最短间隔**（读数入口；**逐型号怎么跳**看 `shieldFieldStreamsOf`）。
  *
@@ -3576,29 +3578,52 @@ export function preloadShieldFieldFor(
 }
 
 /**
- * **单次力场脉冲**（**一路**型号跳一次）：对**我方全队存活单位**各按其**自身满盾**补 `pct` 比例
- * （船长：「为**所有我方舰船**恢复 10% 护盾」＋「按携带者自己的满盾」⇒ 每艘被治疗的船按它自己那本账）。
+ * **单次力场脉冲**（**一路**型号跳一次）：给**我方全队存活单位**各补
+ * **「施放者（装件舰）满盾 × 本路比例」这个同一个绝对量**（各人再夹在自己的满盾内）。
+ *
+ * ⚠⚠ **2026-09-25 船长改判（现行口径）**：「**恢复量为本舰护盾量的 10%**」——
+ * 船长澄清「原本设想的就是」**按装件舰（使用船）的护盾量**、全队拿同一个数，
+ * 而不是"每艘受益舰各按自身满盾"。
+ *
+ * **旧口径（已作废）**：对每个受益单位各取其**自身** `hpMax.s × pct`。
+ * 由来 = 2026-09-20 那句追问答复「10% 按**携带者自己的满盾**」里"携带者"= 装件舰还是受益舰
+ * 没当场澄清，被补注成"每艘被治疗舰按它自己那本账"后落了码；
+ * ⚠ 它之所以长期没被发现：`tests/shield-field.test.ts` 的测试世界两艘船**同型同盾**
+ * ⇒ 新旧口径数值完全相同，**旧口径下没有任何用例能分辨**（本轮已补一条能分辨的判据）。
+ *
+ * 现口径的两个必然结果（船长 2026-09-25 均已裁定"不管"，即照此办）：
+ * - 装件舰是**大盾舰** ⇒ 小盾僚舰会被一跳直接顶满并溢出（超出部分丢弃）；
+ * - **多舰各带一件** ⇒ 各自按**自己**满盾各跳一路、全队叠加（沿用 2026-09-20
+ *   「多舰各带一件 ⇒ 各自独立、可叠加」那条，不加收敛）。
  *
  * ⚠ **2026-09-21 起本函数只管"一路"**（船长令：逐型号独立回转）——调用方按 `ledger.streams` 逐路传
- * `{ pct, ms }`；改前传整个账本（那时一台只有一路）。
+ * `{ pct, ms }` 与**本路的施放者**；改前传整个账本（那时一台只有一路）。
  *
- * ⚠ **施放者阵亡 ⇒ 本次不跳**（与维修/护盾充能装置同款：人没了装置就停）；但**受益方**是
- * 全队存活单位 ⇒ 与"只治自己"的 `pulseShieldChargeFor` 是两回事。
+ * ⚠ **施放者阵亡 ⇒ 本次不跳**（由调用方判：人没了装置就停，与维修/护盾充能装置同款）；
+ * 但**受益方**是全队存活单位 ⇒ 与"只治自己"的 `pulseShieldChargeFor` 是两回事。
  * 死亡单位跳过（`isAlive`）——护士不拉尸体，与全仓口径一致。
  */
 export function pulseShieldFieldFor(
   b: import('./state').BattleState,
   myUnits: readonly UnitSpec[],
   stream: { pct: number },
+  /** **本路的施放者**（装力场的那艘船）——本跳的绝对量 = 它的满盾 × `stream.pct` */
+  caster: UnitSpec,
 ): void {
   const gain = Math.max(0, stream.pct)
   if (gain <= 0) return
+  // 施放者满盾：容量优先、缺 `hpMax` 才回落规格（与全仓「满血/上限」读法同一把尺）
+  const casterRt = b.units[caster.tag]
+  const casterCapS = Math.max(0, casterRt?.hpMax?.s ?? caster.hp.s)
+  const amount = casterCapS * gain
+  if (amount <= 0) return
   for (const u of myUnits) {
     const rt = b.units[u.tag]
     if (!rt || !isAlive(b, u.tag)) continue
+    // 各人仍夹在**自己**的满盾内（超出部分丢弃）
     const capS = Math.max(0, rt.hpMax?.s ?? u.hp.s)
     if (capS <= 0) continue
-    rt.hp.s = Math.min(capS, rt.hp.s + capS * gain)
+    rt.hp.s = Math.min(capS, rt.hp.s + amount)
   }
 }
 
@@ -6169,6 +6194,10 @@ export function advanceBattleFor(
      *
      * ⚠ **施放者必须存活**（人没了装置就停，与另两套同款）；但**受益方是全队存活单位**
      * ⇒ 跳一次给 `myUnits` 全体补盾，不是只补施放者。
+     *
+     * ⚠ **本跳的绝对回盾量按"本路施放者（装件舰）的满盾"算**（**2026-09-25 船长改判**：
+     * 「恢复量为本舰护盾量的 10%」）⇒ 逐路把**该路的施放者**传给 `pulseShieldFieldFor`；
+     * 多舰各带一件时，各路的施放者不同 ⇒ **各按自己满盾各跳一路**。
      */
     if (!battle.ended && Object.keys(battle.shieldFieldBy ?? {}).length > 0) {
       const specByTagF = new Map(myUnits.map((u) => [u.tag, u]))
@@ -6185,7 +6214,7 @@ export function advanceBattleFor(
             stream.nextPulseAtMs <= battle.lastTickGameMs &&
             guardF < BATTLE_MAX_STEPS
           ) {
-            pulseShieldFieldFor(battle, myUnits, stream)
+            pulseShieldFieldFor(battle, myUnits, stream, specByTagF.get(tag)!)
             ledger.pulses += 1
             stream.nextPulseAtMs += Math.max(1, stream.ms)
             guardF++

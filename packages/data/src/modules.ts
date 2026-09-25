@@ -672,7 +672,10 @@ export const MODULES: readonly ModuleDef[] = [
      —— **高槽 · 护盾族（`slot: 'shield-field'`，`rackOf` 归 high）**：与上面的「护盾充能装置」
         （中槽 · 只治本舰 · 固定 30 秒）是**两套独立机制**——本件**治全队**、冷却**按件自带**。
      ⚠ 两件都**没有 MK1**（与「巨构近防炮」「隐秘行动装置」同款：直接 MK2 起步，MK2/MK3 成对）；
-        两件都**只有一次性蓝图**（`singleUse`），成品走奇货。 ══════════ */
+        两件都**只有一次性蓝图**（`singleUse`），成品走奇货。
+     ⟪2026-09-25 船长令⟫ **文案与口径改判**：恢复量按**装件舰（本舰）的护盾量**算、全队拿同一个数
+        —— 旧文案「为我方全队恢复各自护盾上限的 10%」与旧实现"每艘受益舰各按自身满盾"一起作废
+        （由来见 `combat.pulseShieldFieldFor` 头注）。 ══════════ */
   {
     id: 'mod-shieldfield-2',
     name: '护盾充能力场装置 MK2',
@@ -682,7 +685,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldFieldMs: 10_000,
     // ⟪2026-09-24 船长令⟫ CPU 占用 55 → 63（原话：「护盾充能力场装置 MK2和MK3的CPU占用提高到63/91」）
     cpuUse: 63,
-    description: '每 10 秒展开力场，为我方全队恢复各自护盾上限的 10%。',
+    description: '每 10 秒展开力场，为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
   },
   {
     id: 'mod-shieldfield-3',
@@ -693,7 +696,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldFieldMs: 8_000,
     // ⟪2026-09-24 船长令⟫ CPU 占用 80 → 91（同上一条令）
     cpuUse: 91,
-    description: '每 8 秒展开力场，为我方全队恢复各自护盾上限的 10%。',
+    description: '每 8 秒展开力场，为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
   },
 
   // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入）

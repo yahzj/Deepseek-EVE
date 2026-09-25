@@ -3556,8 +3556,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.178": { zh: "单件基础回复 {p1} HP（结构/装甲各按层容量增幅，层越厚回得越多）", en: "Base repair {p1} HP per kit (structure and armor each scale with that layer's capacity, so thicker layers restore more)" },
   "ui.shipInfo.179": { zh: " · 多装递减", en: " · stacks with diminishing returns" },
   "ui.shipInfo.180": { zh: "能打敌方机群", en: "Can engage enemy drone swarms" },
-  /** 护盾充能力场装置（2026-09-20 船长）的装配页短行：**全队**受益 + 冷却按件自带 */
-  "ui.shipInfo.181": { zh: "每 {p1} 秒为我方全队回盾 {p2}（按各舰满盾）", en: "Restores {p2} of each ship's max shield to the whole fleet every {p1} s" },
+  /** 护盾充能力场装置（2026-09-20 船长）的装配页短行：**全队**受益 + 冷却按件自带；
+   *  ⟪2026-09-25 船长令⟫ 恢复量改按**本舰（装件舰）的护盾量**算（旧「按各舰满盾」作废） */
+  "ui.shipInfo.181": { zh: "每 {p1} 秒为队内所有舰船恢复护盾，恢复量为本舰护盾量的 {p2}", en: "Every {p1} s, restores shield to every ship in the fleet — the amount is {p2} of this ship's shield capacity" },
   "ui.ShipPage.001": { zh: "我的舰队", en: "My Fleet" },
   "ui.ShipPage.002": { zh: "搜索舰船…", en: "Search ships…" },
   "ui.ShipPage.003": { zh: "状态：", en: "Status:" },
