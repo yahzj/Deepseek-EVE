@@ -1513,14 +1513,19 @@ export function App({ engine }: { engine: GameEngine }) {
       </button>
       )
       }
-      const featIdx = shown.findIndex((it) => it.key === 'map')
-      const left = featIdx < 0 ? shown : shown.slice(0, featIdx)
-      const feat = featIdx < 0 ? null : shown[featIdx]!
-      const right = featIdx < 0 ? [] : shown.slice(featIdx + 1)
+      /**
+       * ⚠ **左右分组不能按"出港在数组里的位置"切**（2026-09-25 修，此前就是这么错的）：
+       * `NAV_ITEMS` 里出港（星图）**排第一位** ⇒ `slice(0, featIdx)` 切出空数组、
+       * 其余 9 项全挤到右组（无头实测：左组 children=1 且是空占位、右组 children=7）。
+       * 现改为**把出港单独摘出、其余项按数量对半分成左右两组** ⇒ 与它在数组里的位置无关。
+       */
+      const feat = shown.find((it) => it.key === 'map') ?? null
+      const others = shown.filter((it) => it.key !== 'map')
+      const half = Math.ceil(others.length / 2)
+      const left = others.slice(0, half)
+      const right = others.slice(half)
       return (
       <>
-      {/* 两组各留一枚 `flex: 1` 的占位：组内一项都没有时（如初期「市场/工业」未解锁）也能把
-      另一组与出港推到对称位置，不至于让出港被顶到边上 */}
       <div className="app-nav-group is-left">
       {left.length > 0 ? left.map(navBtn) : <span className="app-nav-ph" />}
       </div>
