@@ -166,6 +166,8 @@ import {
   bumpIronmanSeq,
   // 2026-09-23 周末入侵（M1-b：引擎每拍推进入侵时间轴）
   weekendTick,
+  // 2026-09-25 修「快进不刷新入侵」：入侵时钟 = 真实墙钟与游戏模拟墙钟取大者（见周末模块的 weekendClockOf）
+  weekendClockOf,
   weekendBountyCardsOf,
   weekendOccupiedLiveAt,
   weekendFlagshipSpecOf,
@@ -816,7 +818,7 @@ export class GameEngine {
     const t0 = rec ? performance.now() : 0
     const bucket = this.currentBucket()
     advanceGame(this.state, ms, this.ctx, {
-      nowWallMs: Date.now(),
+      nowWallMs: this.wallNowOf(),
       // 洞内倍速：**只有前台心跳传**（离线结算走 simulateOffline，不经这里 ⇒ 恒 1×）
       battleSpeedX: this.requestedWormholeSpeed(),
     })
@@ -991,29 +993,27 @@ export class GameEngine {
    * ⚠ **2026-09-20**：交火分支的记账修过一次（本拍 dt 丢帧 ⇒ 进战斗时欠着的现实时间永不补回），
    * 详见下面那段的注释与 `docs/roadmap.md` 2026-09-20「外部审查报告逐条核对与处置」那条。
    */
-  private tick(): void {
-    const now = Date.now()
-    const dt = Math.max(1, now - this.lastRealMs)
-    this.lastRealMs = now
-    // 序章·苏醒：演出阶段（step 0）冻结游戏时间——不推进/不累计余额，界面由演出组件驱动
-    if (this.state.onboarding.step === ONB_AWAKEN) {
-      this.pendingMs = 0
-      return
-    }
+  /**
+   * **入侵时钟**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）：入侵原先读 `Date.now()`
+   * 真实墙钟，而"快进"推进的是游戏自己的模拟墙钟（`state.savedAtWallMs`）⇒ 快进对入侵完全无效。
+   * 现统一走 `weekendClockOf`（取两者较大者）：正常在线=真实墙钟（逐字不变），快进后=模拟墙钟（不倒回）。
+   */
+  private wallNowOf(): number {
+    return weekendClockOf(this.state)
+  }
+
+  /**
+   * **周末入侵：一拍的全部动作**（2026-09-25 抽出，供**心跳**与**调试快进**共用）：
+   * 补发贡献奖 → `weekendTick`（开局面/倒计时 anchor/结束）→ 三条日志 → 结束结算入账 → 两封通讯。
+   * `wallNow` = 这一拍该用的墙钟；`lastSeenWallMs` = 上一次"玩家在"的墙钟（离线保护与 Q3 的锚点）。
+   */
+  private pumpWeekendAt(wallNow: number, lastSeenWallMs: number): void {
     /**
-     * **周末入侵**（2026-09-23 船长令；设计见 `docs/design/weekend-invasion-20260923.md`）：
-     * 每拍调一次 core 的 `weekendTick`（纯函数 + 幂等）——开局面（**仅调试模式**）、旗舰倒计时 anchor 落盘、
-     * 章鱼人得手与窗口到点结束，并把"该掷遇袭骰的星系与概率"交回来。
-     * ⚠ 本刀**只接 tick**：遇袭掷骰与战斗入口（悬赏替换为入侵舰队 / 旗舰小队战）留待下一刀。
-     * ⚠ `lastSeenWallMs` 传"上一拍"（now − dt）⇒ 离线保护与 Q3 的">24h 自满 24h 起算"都有正确锚点。
+     * **上一场"已结束但没结"的贡献奖补发**：必须**在 `weekendTick` 之前** —— 它内部会 `ensureWeekendEvent`
+     * 开新场、把旧场覆盖掉。core 侧按 `prizePaidAtWallMs` 落盘标记判重 ⇒ 每拍调也只会发一次。
      */
-    /**
-     * **上一场"已结束但没结"的贡献奖补发**（2026-09-25）：必须**在 `weekendTick` 之前** ——
-     * 它内部会 `ensureWeekendEvent` 开新场、把旧场覆盖掉（玩家离线跨过结束点再上线就是这条路径）；
-     * 老档同理。core 侧按 `prizePaidAtWallMs` 落盘标记判重 ⇒ 每拍调也只会发一次。
-     */
-    this.settleWeekendPrize(now)
-    const weekend = weekendTick(this.state, this.ctx, now, now - dt)
+    this.settleWeekendPrize(wallNow)
+    const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs)
     this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
     if (weekend.started) {
       addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
@@ -1031,15 +1031,28 @@ export class GameEngine {
       addLog(this.state, 'warn', tr(octopus ? 'ui.weekend.003' : 'ui.weekend.004'), octopus ? 'ui.weekend.003' : 'ui.weekend.004')
       void this.persist()
     }
-    /** **结束结算入账**（2026-09-25）：本拍刚结束的那一场立刻结；上一拍结束而没结的（离线跨过结束点、
-     *  老档）由本函数开头的补发那一句兜 —— 两处都调同一个幂等口，不会重复发。 */
-    this.settleWeekendPrize(now)
+    /** **结束结算入账**：本拍刚结束的那一场立刻结；上一拍结束而没结的由开头那句兜（同一幂等口） */
+    this.settleWeekendPrize(wallNow)
+    /** **两封通讯**：每场一封预警（开局）＋ 一封结算（入账后），固定 id 覆盖上一封；判据在 core */
+    weekendSyncComms(this.state, this.ctx, wallNow)
+  }
+
+  private tick(): void {
+    const now = Date.now()
+    const dt = Math.max(1, now - this.lastRealMs)
+    this.lastRealMs = now
+    // 序章·苏醒：演出阶段（step 0）冻结游戏时间——不推进/不累计余额，界面由演出组件驱动
+    if (this.state.onboarding.step === ONB_AWAKEN) {
+      this.pendingMs = 0
+      return
+    }
     /**
-     * **两封通讯**（2026-09-25）：每场一封预警（开局）＋ 一封结算（贡献奖入账后），**覆盖上一次的同一条**
-     * （固定 id ⇒ 收件箱里始终只有这两封）。幂等与"该不该发"的判据全在 core（`weekendSyncComms`按场次号比），
-     * 所以这里每拍无脑调一次即可 —— 离线跨过开局/结束点、老档首载都会自动补齐。
+     * **周末入侵**（2026-09-23 船长令；设计见 `docs/design/weekend-invasion-20260923.md`）：
+     * 每拍调一次（开局面 · 旗舰倒计时 anchor 落盘 · 章鱼人得手 / 窗口到点结束 · 结算入账 · 两封通讯）。
+     * ⚠ 墙钟走 `wallNowOf()`（= 真实墙钟与游戏模拟墙钟取大者）⇒ **调试快进之后不会倒回去**；
+     * `lastSeenWallMs` 传"上一拍"（now − dt）⇒ 离线保护与 Q3 的">24h 自满 24h 起算"都有正确锚点。
      */
-    weekendSyncComms(this.state, this.ctx, now)
+    this.pumpWeekendAt(this.wallNowOf(), this.wallNowOf() - dt)
     const exp = this.state.expedition
     /**
      * 含已分胜负的"击杀慢镜窗口"：窗口内保持 100ms 切片推进 + 通知，让击杀动画/战报演出有稳定画面。
@@ -2877,6 +2890,21 @@ export class GameEngine {
     const stats = newSettleStats()
     simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats })
     this.state.savedAtWallMs = wallBase + ms
+    /**
+     * **把入侵一并推到快进后的时刻**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）：
+     * `simulateOffline` 只推游戏时间，而入侵那条时间线原先**完全没接进来** ⇒ 快进 8 小时也不开新场、铺底不动。
+     *
+     * 口径：**按 1 小时一步补跑入侵拍**（1h 正是调试模式的"上一场结束 + 1h 刷新"粒度）——
+     * 中途该结束的结束、该刷新的刷新，快进结束时手上就是**当下该有的那一场**；
+     * 若只在末尾补一拍，跨过结束点的那次快进会留下"没有活着的入侵"（要再等 1h）。
+     * `lastSeenWallMs` 传上一步 ⇒ 离线保护与 Q3 的锚点照常成立。
+     */
+    const stepMs = 3_600_000
+    const endAt = wallBase + ms
+    for (let at = Math.min(wallBase + stepMs, endAt); ; at = Math.min(at + stepMs, endAt)) {
+      this.pumpWeekendAt(at, at - stepMs)
+      if (at >= endAt) break
+    }
     this.offlineReport = buildOfflineReport(before, this.state, this.ctx, ms, overflowMs, stats)
     void this.persist()
     this.notify()

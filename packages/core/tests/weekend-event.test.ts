@@ -26,6 +26,7 @@ import {
   weekendNotePlayerWin,
   weekendNoteRepel,
   weekendTick,
+  weekendClockOf,
   ensureWeekendEvent,
   weekendAssaultThreatOf,
   weekendContributionShareAt,
@@ -85,8 +86,28 @@ describe('周末入侵 · 时间轴', () => {
     expect(ensureWeekendEvent(sd, ctx, fri + 2 * H), '未结束 ⇒ 幂等').toBe(false)
   })
 
-  it('调试模式：上一场结束后 1 小时刷新（首调即开）', () => {
+  /**
+   * **快进口径**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）：
+   * 入侵原先读 `Date.now()`，而"快进"推进的是**游戏自己的模拟墙钟** `savedAtWallMs`
+   * ⇒ 两者不同源，快进对入侵完全无效。现统一走 `weekendClockOf`（取两者较大者）：
+   * 正常在线恒等于真实墙钟（行为不变），快进后跟着模拟墙钟走、且**永不倒回**。
+   */
+  it('快进：入侵时钟取"真实墙钟与模拟墙钟的较大者"，跨过"结束 +1h"即开新场', () => {
+    const real = 1_700_000_000_000
     const s = fresh(true)
+    s.savedAtWallMs = real - 3_600_000
+    expect(weekendClockOf(s, real), '正常在线 ⇒ 真实墙钟（savedAtWallMs 更早）').toBe(real)
+    const ahead = real + 8 * 3_600_000
+    s.savedAtWallMs = ahead
+    expect(weekendClockOf(s, real), '快进 8 小时后 ⇒ 跟着模拟墙钟走').toBe(ahead)
+    /** 快进那一拍：上一场已在 `real − 61 分钟`结束 ⇒ 用快进后的墙钟跑一拍就该开新场 */
+    s.weekendEvent = { ...evOf('galaxy-home', ['galaxy-kor'], real - 2 * 3_600_000), endedAtWallMs: real - 61 * 60_000 }
+    const r = weekendTick(s, ctx, weekendClockOf(s, real), real)
+    expect(r.started, '快进跨过"上一场结束 + 1h" ⇒ 开新场').toBe(true)
+    expect(s.weekendEvent?.startedAtWallMs, '新场 T0 = 快进后的墙钟').toBe(ahead)
+  })
+
+  it('调试模式：上一场结束后 1 小时刷新（首调即开）', () => {    const s = fresh(true)
     const t = 1_000_000_000
     expect(ensureWeekendEvent(s, ctx, t)).toBe(true)
     expect(s.weekendEvent?.startedAtWallMs).toBe(t)

@@ -363,6 +363,27 @@ export function weekendDebugOn(state: Pick<GameState, 'debugQuick'>): boolean {
   return state.debugQuick === true
 }
 
+/**
+ * **入侵用的"现在"＝游戏自己的墙钟账**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）。
+ *
+ * 病根：入侵的三条时间线（**开局面 / NPC 铺底 / 旗舰倒计时**）原先一律读 `Date.now()`（真实墙钟），
+ * 而"快进"推进的是**游戏自己的模拟墙钟** `state.savedAtWallMs`（`simulateOffline` 的 `wallBase + ms`）
+ * ⇒ 两者不同源，快进对入侵完全无效（既不开新场，铺底也不动）。
+ *
+ * 口径：**取两者较大的那个** ——
+ * - 正常在线：`savedAtWallMs` ≈ 上次落盘时刻 ≤ 现在 ⇒ 恒等于真实墙钟，**行为逐字不变**；
+ * - 快进/离线段：模拟墙钟已经走到未来 ⇒ 入侵跟着走到未来（而不倒回去）。
+ *
+ * ⚠ 只给入侵用；其它系统各自的口径不动（赏金日板等仍按各自既有来源）。
+ */
+export function weekendClockOf(
+  state: Pick<GameState, 'savedAtWallMs'>,
+  realNowMs: number = Date.now(),
+): number {
+  const ledger = Number.isFinite(state.savedAtWallMs) ? state.savedAtWallMs : 0
+  return Math.max(realNowMs, ledger > 0 ? ledger : 0)
+}
+
 /** NPC 时间轴的实际时长（调试模式 ÷60，Q6） */
 export function weekendNpcTimelineMs(state: Pick<GameState, 'debugQuick'>, baseMs: number): number {
   return weekendDebugOn(state) ? Math.max(1, Math.round(baseMs / WEEKEND_DEBUG_TIME_DIVISOR)) : baseMs

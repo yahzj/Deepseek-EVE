@@ -252,6 +252,7 @@ export {
   // 2026-09-24 第二轮令：旗舰 BOSS 化（跨场累计伤害）——池子读数给界面、每拍推进给引擎
   weekendBossPoolView,
   weekendTickBoss,
+  weekendClockOf,
   weekendFoeCardOf,
   weekendNoteFlagshipKilled,
   weekendNotePlayerWin,
