@@ -148,6 +148,41 @@ export function weekendOctopusDone(ev: WeekendEventState | undefined): number {
   return Math.min(hpMax, Math.max(0, ev.octopusHpDone ?? 0))
 }
 
+/**
+ * **母舰三层血的容量**（护盾/装甲/结构）= 池子总量 × 卡面 `split`（母舰 = 0.2 / 0.55 / 0.25）。
+ * 这是血条三行的**分母**（恒为池子口径）——与"当前剩多少"分开算，见下。
+ */
+export function weekendFlagshipLayerCaps(
+  hpMax: number,
+  split: { s: number; a: number; h: number },
+): { s: number; a: number; h: number } {
+  const total = Math.max(0, hpMax)
+  return { s: total * split.s, a: total * split.a, h: total * split.h }
+}
+
+/**
+ * **母舰三层血的"当前值" = 按 护盾 → 装甲 → 结构 的顺序扣除**（**船长 2026-09-25 令**：
+ * 「**母舰当前血条不要按照三个等比扣除，应该按照护盾-装甲-结构的顺序扣除**」）。
+ *
+ * 口径：池子剩余 `remaining` **从最后一层往回灌**——先灌满**结构**，再灌**装甲**，剩下才落在**护盾**上。
+ * 等价说法：池子挨过的伤害**先打光护盾**（第一层），打光了才开始打装甲，最后打结构。
+ *
+ * 于是"池子剩 50%"不是说三层各半，而是：护盾 **0** · 装甲 `75000−37500=37500` · 结构 **满**——
+ * 血条三行一眼就能看出"盾已经没了、正在啃装甲"。
+ * ⚠ 这**不只是显示**：三层各自的抗性与层克制不同（`applyDamage` 逐层乘系数）⇒
+ * 母舰开打时的分层血量决定了每一发的实收伤害，"护盾先空"与"三层等比"打架手感不同。
+ */
+export function weekendFlagshipLayersOf(
+  remaining: number,
+  cap: { s: number; a: number; h: number },
+): { s: number; a: number; h: number } {
+  const rest = Math.max(0, Math.min(cap.s + cap.a + cap.h, remaining))
+  const h = Math.min(cap.h, rest)
+  const a = Math.min(cap.a, Math.max(0, rest - h))
+  const s = Math.min(cap.s, Math.max(0, rest - h - a))
+  return { s, a, h }
+}
+
 /** 离线保护（第 10 条）：离线 ≤24h ⇒ 倒计时挂起，上线第一拍起算（Q3：离线满 24h 那一刻起算） */
 export const WEEKEND_OFFLINE_SHIELD_MS = 24 * 3_600_000
 /** 活动窗口（第 1/15 条）：T0 = 每周五 20:00（本地墙钟）→ 74h */

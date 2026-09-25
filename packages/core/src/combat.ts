@@ -4486,6 +4486,22 @@ export interface FoeOverride {
    * 缺省 / 非正 / 不大于本场满值 ⇒ 不缩放（零行为变化）。
    */
   bossHpMax?: number
+  /**
+   * **母舰"当前"三层血**（船长 2026-09-25 令：「**母舰当前血条不要按照三个等比扣除，应该按照
+   * 护盾-装甲-结构的顺序扣除**」）——由 `weekendEvent.weekendFlagshipLayersOf` 按"池子剩余从最后一层
+   * 往回灌"算好传进来（护盾先空、再装甲、最后结构）。
+   *
+   * 落法 = 把 `ships[]` 里 BOSS 那条目的 **`split` 覆写成 `bossHpLayers ÷ bossHp`**
+   * ⇒ 建档后三层血**逐个等于**本字段（`hp = 总量 × split`）。
+   * ⚠ 这**不只是显示**：`applyDamage` 逐层乘"层克制 × (1−该层该系抗性)"⇒ 分层血量决定每发实收伤害。
+   * 缺省 ⇒ 仍按卡面 `split` 等比分摊（老档/其它卡零变化）。
+   */
+  bossHpLayers?: { s: number; a: number; h: number }
+  /**
+   * **母舰三层血的容量**（= 池子总量 × 卡面 `split`）：**界面血条三行的分母**（恒为池子口径，
+   * 不随剩余缩水）——与"当前值"（`bossHpLayers`）分开给，界面**不许**拿当前值反推分母。
+   */
+  bossMaxLayers?: { s: number; a: number; h: number }
   /** 哪一条舰级当 BOSS（配 `bossHp` 用；缺省 = 不覆写） */
   bossShipId?: string
 }
@@ -4526,7 +4542,16 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
         const slot = raw as { ship?: { id?: string; hp?: number } }
         if (slot.ship?.id !== bossShipId) return raw
         const classHp = Math.max(1, slot.ship.hp ?? 1)
-        return { ...(raw as object), hpMul: bossHp / classHp }
+        /**
+         * ⚠ **三层血按 护盾 → 装甲 → 结构 的顺序扣**（船长 2026-09-25）：`bossHpLayers` 是"当前值"，
+         * 拆成 `split` 覆写 ⇒ 建档后 `hp = bossHp × split` 逐层等于它；没给 ⇒ 保持卡面 `split`（等比分摊）。
+         */
+        const layers = override.bossHpLayers
+        const layerSplit =
+          layers !== undefined
+            ? { s: Math.max(0, layers.s) / bossHp, a: Math.max(0, layers.a) / bossHp, h: Math.max(0, layers.h) / bossHp }
+            : undefined
+        return { ...(raw as object), hpMul: bossHp / classHp, ...(layerSplit !== undefined ? { split: layerSplit } : {}) }
       })
     }
   }
@@ -5443,30 +5468,48 @@ export function battleArcsFor(
   // 旧档缺省 hpMax 时以当前血兜底（读档中断局近似满值显示）。
   const foeMaxHp: Record<string, { s: number; a: number; h: number }> = {}
   /**
-   * **母舰血条的分母 = 池子总量**（船长 2026-09-25：「母舰哪怕残血，在战斗中血上限依旧保持不变」）：
-   * 单位自己的 `hpMax` 是"本场满值"（开战那一刻的池子剩余）⇒ 池子被打薄后血条会越来越"满"。
-   * 这里把母舰那一格的满值**等比放大到 `FoeOverride.bossHpMax`**（三层比例不变）⇒ 显示的是
-   * "总共 15 万，现在还剩多少"。⚠ **只改这一份显示读数**：`battle.units[tag].hpMax` 与伤害台账
-   * （`flagshipBattleLedger`）都保持原值，跨场累计不会重复计。
+   * **母舰血条的分母 = 池子口径的三层容量**（船长 2026-09-25：「母舰哪怕残血，在战斗中血上限依旧保持不变」
+   * ＋「**当前血条按 护盾 → 装甲 → 结构 的顺序扣除**」）：
+   * 单位自己的 `hpMax` 是"本场开打那一刻的分层血量"（可能护盾已经是 0、装甲只半满）⇒ 直接当分母会让
+   * 血条越打越"满"。这里三行分母改用 `FoeOverride.bossMaxLayers`（= 池子总量 × 卡面 split，恒定）。
+   * ⚠ **只改这一份显示读数**：`battle.units[tag].hpMax` 与伤害台账（`flagshipBattleLedger`）都保持原值，
+   * 跨场累计不会重复计。
    */
   const bossShipId = battle.foeOverride?.bossShipId
   const bossHpMax = battle.foeOverride?.bossHpMax
+  const bossMaxLayers = battle.foeOverride?.bossMaxLayers
   for (const [tag, u] of Object.entries(battle.units)) {
     if (u.side !== 'foe') continue
     const max = u.hpMax ?? { s: Math.max(0.001, u.hp.s), a: Math.max(0.001, u.hp.a), h: Math.max(0.001, u.hp.h) }
+    const isBoss = bossShipId !== undefined && u.foeShipId === bossShipId
+    /** ① 首选：显式三层容量（池子口径；与"当前值"分开给的那份） */
+    const layered =
+      isBoss &&
+      bossMaxLayers !== undefined &&
+      Number.isFinite(bossMaxLayers.s) &&
+      Number.isFinite(bossMaxLayers.a) &&
+      Number.isFinite(bossMaxLayers.h) &&
+      bossMaxLayers.s + bossMaxLayers.a + bossMaxLayers.h > 0
+        ? { s: Math.max(0, bossMaxLayers.s), a: Math.max(0, bossMaxLayers.a), h: Math.max(0, bossMaxLayers.h) }
+        : null
+    /** ② 兜底（老档/只给了总量）：按 `bossHpMax ÷ 本场满值` 等比放大三层 */
     const sum = max.s + max.a + max.h
     const scale =
-      bossShipId !== undefined &&
+      layered === null &&
+      isBoss &&
       bossHpMax !== undefined &&
       Number.isFinite(bossHpMax) &&
       bossHpMax > 0 &&
-      u.foeShipId === bossShipId &&
       sum > 0 &&
       bossHpMax > sum
         ? bossHpMax / sum
         : 1
     foeMaxHp[tag] =
-      scale === 1 ? max : { s: max.s * scale, a: max.a * scale, h: max.h * scale }
+      layered !== null
+        ? layered
+        : scale === 1
+          ? max
+          : { s: max.s * scale, a: max.a * scale, h: max.h * scale }
   }
   // 弹药 MK2（2026-09-09）：本场实装弹名（仅当与基础弹不同时提供；UI 兜底用弹型名）
   const ammoNames: Partial<Record<'kin' | 'exp' | 'pla', string>> = {}

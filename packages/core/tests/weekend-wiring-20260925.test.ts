@@ -59,6 +59,8 @@ import {
   WEEKEND_PROGRESS_ISK_PER_PCT,
   endWeekendEvent,
   weekendFlagshipHpRemaining,
+  weekendFlagshipLayerCaps,
+  weekendFlagshipLayersOf,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
 } from '../src/weekendEvent'
@@ -980,6 +982,78 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const mainFoes = activeFoeSpecsOf(main, ctx.balance.battle, 1)
     expect(mainFoes[0]!.foeShipId, '主力卡第 2 波：主体在前').toBe('foe-h-ink-battlecruiser')
     expect(foeDesiredRange(me, mainFoes, ctx.balance.battle, 0)).toBe(9_500)
+  })
+
+  /**
+   * **船长 2026-09-25 令**：「**母舰当前血条不要按照三个等比扣除，应该按照护盾-装甲-结构的顺序扣除**」。
+   *
+   * 口径：池子剩余**从最后一层往回灌**（结构先满 → 装甲 → 剩的才落护盾），等价于"池子挨的伤害先打光护盾"。
+   * ⚠ 这**不只是显示**——`applyDamage` 逐层乘"层克制 × (1−该层该系抗性)" ⇒ 分层血量决定每发的实收伤害。
+   * 血条三行的**分母**另给（= 池子总量 × 卡面 split，恒定），不许拿当前值反推。
+   */
+  it('㉖ 母舰三层血按 护盾→装甲→结构 顺序扣：剩 50% ⇒ 盾 0 / 甲半满 / 结构满（血条分母恒为容量）', () => {
+    const cap = { s: 30_000, a: 82_500, h: 37_500 } // = 150,000 ×（0.2 / 0.55 / 0.25）
+    expect(weekendFlagshipLayerCaps(150_000, { s: 0.2, a: 0.55, h: 0.25 })).toEqual(cap)
+    /** 纯口径：从最后一层往回灌 */
+    expect(weekendFlagshipLayersOf(150_000, cap), '满池 ⇒ 三层满').toEqual(cap)
+    expect(weekendFlagshipLayersOf(120_000, cap), '刚打光护盾（= 总量 − 盾容量 30,000）').toEqual({
+      s: 0,
+      a: 82_500,
+      h: 37_500,
+    })
+    expect(weekendFlagshipLayersOf(75_000, cap), '剩 50% ⇒ 盾空、甲半满、结构满').toEqual({ s: 0, a: 37_500, h: 37_500 })
+    expect(weekendFlagshipLayersOf(37_500, cap), '刚打光装甲').toEqual({ s: 0, a: 0, h: 37_500 })
+    expect(weekendFlagshipLayersOf(1, cap), '剩 1 点 ⇒ 只在结构上').toEqual({ s: 0, a: 0, h: 1 })
+    /** 真实开战：池子被削到 50% ⇒ 覆写与建档三层血都按顺序 */
+    const core = 'galaxy-kor'
+    const s = invaded(GID)
+    const now = Date.now()
+    weekendNoteContribution(s.weekendEvent!, GID, 1)
+    weekendNoteContribution(s.weekendEvent!, core, 1)
+    s.weekendEvent!.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
+    s.weekendEvent!.flagshipHpDone = 75_000 // 正好打掉一半
+    expect(weekendFlagshipHpRemaining(s.weekendEvent)).toBe(75_000)
+    const battle = weekendStartFlagshipBattle(s, ctx, now, [s.shipId])!
+    expect(battle.foeOverride?.bossHp).toBe(75_000)
+    expect(battle.foeOverride?.bossHpLayers, '当前三层血：盾 0 · 甲 37,500 · 结构 37,500').toEqual({
+      s: 0,
+      a: 37_500,
+      h: 37_500,
+    })
+    expect(battle.foeOverride?.bossMaxLayers, '三层容量（界面分母）').toEqual(cap)
+    /** 建档出来的母舰：三层血**逐个等于**当前值（不是等比分摊） */
+    const card = applyFoeOverride(ctx.anomalies.get('ink-flagship')!, battle.foeOverride!)
+    const specs = activeFoeSpecsOf(card, ctx.balance.battle, 3)
+    const flagSpec = specs.find((u) => u.foeShipId === 'foe-h-ink-flagship')!
+    expect(flagSpec.hp.s, '护盾已空（等比口径下这里会是 9,000）').toBeCloseTo(0, 6)
+    expect(flagSpec.hp.a).toBeCloseTo(37_500, 6)
+    expect(flagSpec.hp.h).toBeCloseTo(37_500, 6)
+    /** 界面血条：三行分母 = 容量（不随剩余缩水），当前值来自单位自己 */
+    const me = createPlayerSpec(s, ctx, s.shipId)!
+    const b3 = createBattleState(me, specs, 0, 5_000)
+    b3.foeOverride = battle.foeOverride!
+    const arcs = battleArcsFor(s, ctx, { battle: b3, anomaly: card, leaderShipId: s.shipId })!
+    expect(arcs.maxHp.foe[flagSpec.tag], '血条分母 = 池子口径容量').toEqual(cap)
+    /** 台账仍只算本场伤害（满值 = 开战那一刻的分层值） */
+    const rt = b3.units[flagSpec.tag]!
+    rt.hp = { ...rt.hp, h: rt.hp.h - 100 }
+    expect(flagshipBattleLedger(b3, ['foe-h-ink-flagship']).rawDmg, '本场伤害照记').toBe(100)
+    /** 覆写随档往返（含两份三层读数） */
+    s.encounter = {
+      active: true,
+      shipId: s.shipId,
+      galaxyId: core,
+      name: '墨潮旗舰部队',
+      threat: 170,
+      anomalyId: 'ink-flagship',
+      origin: '测试 · 挑战旗舰',
+      invitedAtGameMs: 0,
+      deadlineGameMs: 0,
+      battle,
+    }
+    const back = loadSaveFile(serializeSaveFile(s, 0)).state.encounter.battle?.foeOverride
+    expect(back?.bossHpLayers).toEqual({ s: 0, a: 37_500, h: 37_500 })
+    expect(back?.bossMaxLayers).toEqual(cap)
   })
 })
 

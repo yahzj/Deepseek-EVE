@@ -16,6 +16,8 @@ import {
   WEEKEND_FLAGSHIP_SHIP_ID,
   weekendBossPoolView,
   weekendFlagshipHpRemaining,
+  weekendFlagshipLayerCaps,
+  weekendFlagshipLayersOf,
   weekendFlagshipView,
 } from './weekendEvent'
 import type { WeekendBossPoolView } from './weekendEvent'
@@ -235,15 +237,26 @@ export function weekendStartFlagshipBattle(
    * 覆写随档存进 `BattleState.foeOverride` ⇒ 逐拍重建母舰、读档续战都吃同一份。
    *
    * ⚠ **另带 `bossHpMax` = 池子总量**（船长同日第二条：「**母舰哪怕残血，在战斗中血上限依旧保持不变**」）：
-   * 血条分母恒定用池子总量 ⇒ 残血就显示残血（否则最后一仗开打时血条又是满的）。
-   * 它**只喂界面**（`battleArcsFor` 的 `maxHp.foe`），台账仍按本场满值算。
+   * 血条分母恒定用池子口径 ⇒ 残血就显示残血（否则最后一仗开打时血条又是满的）。
+   *
+   * ⚠⚠ **三层血按 护盾 → 装甲 → 结构 的顺序扣**（船长同日第三条：「**母舰当前血条不要按照三个等比扣除，
+   * 应该按照护盾-装甲-结构的顺序扣除**」）：
+   * - `bossMaxLayers` = 三层**容量**（池子总量 × 卡面 split：护盾 30,000 / 装甲 82,500 / 结构 37,500）
+   *   ⇒ 界面血条三行的**分母**（恒定，不随剩余缩水）；
+   * - `bossHpLayers` = 三层**当前值** = 把池子剩余**从最后一层往回灌**（结构先满 → 装甲 → 剩余才落护盾）
+   *   ⇒ "池子剩 50%" 的读数是 **护盾 0 / 装甲 37,500 / 结构 满**，而不是三层各半。
+   *   它同时决定**每发的实收伤害**（`applyDamage` 逐层乘"层克制 × (1−该层该系抗性)"）。
    */
+  const poolTotal = state.weekendEvent?.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
   const bossHp = weekendFlagshipHpRemaining(state.weekendEvent)
+  const cap = weekendFlagshipLayerCaps(poolTotal, ctx.anomalies.get(spec.cardId)?.ships?.find((s) => s.ship.id === WEEKEND_FLAGSHIP_SHIP_ID)?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
   const override: FoeOverride = {
     threat: spec.threat,
     waves: weekendFlagshipWavesOf(),
     bossHp,
-    bossHpMax: state.weekendEvent?.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP,
+    bossHpMax: poolTotal,
+    bossHpLayers: weekendFlagshipLayersOf(bossHp, cap),
+    bossMaxLayers: cap,
     bossShipId: WEEKEND_FLAGSHIP_SHIP_ID,
   }
   return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, undefined, undefined, override)

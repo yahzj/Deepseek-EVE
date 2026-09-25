@@ -613,6 +613,25 @@ function cleanBattle(raw: unknown): BattleState | null {
     if (typeof bh === 'number' && Number.isFinite(bh) && bh > 0) out.bossHp = Math.round(bh)
     const bhm = foeOverrideRaw.bossHpMax
     if (typeof bhm === 'number' && Number.isFinite(bhm) && bhm > 0) out.bossHpMax = Math.round(bhm)
+    /**
+     * **母舰三层血的两份读数**（2026-09-25 船长令：「当前血条按 护盾 → 装甲 → 结构 的顺序扣除」）：
+     * `bossHpLayers` = 当前值（可含 0 ⇒ 护盾已空）、`bossMaxLayers` = 三层容量（界面分母）。
+     * 两份都只收有限且 ≥0 的三个数（缺一不可 ⇒ 半份坏值整块丢掉，退回等比兜底）。
+     */
+    const layerOf = (raw: unknown): { s: number; a: number; h: number } | undefined => {
+      const o = asRaw(raw)
+      if (o === null || typeof o !== 'object') return undefined
+      const ok = (v: unknown): number | undefined =>
+        typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined
+      const s = ok(o.s)
+      const a = ok(o.a)
+      const h = ok(o.h)
+      return s !== undefined && a !== undefined && h !== undefined ? { s, a, h } : undefined
+    }
+    const bhl = layerOf(foeOverrideRaw.bossHpLayers)
+    if (bhl !== undefined) out.bossHpLayers = bhl
+    const bml = layerOf(foeOverrideRaw.bossMaxLayers)
+    if (bml !== undefined) out.bossMaxLayers = bml
     const bsid = foeOverrideRaw.bossShipId
     if (typeof bsid === 'string' && bsid.length > 0) out.bossShipId = bsid
     const w = foeOverrideRaw.waves
