@@ -1896,8 +1896,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.256": { zh: "自动把交叉处的星系向两侧推开，尽量消除红线（可点「撤销整理」回退）", en: "Pushes crossing systems apart to clear the red lines where it can (Undo arrange reverts it)" },
   "ui.Expedition.257": { zh: "自动整理", en: "Auto-arrange" },
   "ui.Expedition.258": { zh: "舰船已在「{p1}」掩护巡逻", en: "The ship is already escort-patrolling “{p1}”" },
-  "ui.Expedition.259": { zh: "调试入口 · 不消耗库存（玩家入口见「扫描虫洞」页）", en: "Debug entry · uses no storage stock (the normal entry is the Scan wormhole page)" },
-  "ui.Expedition.260": { zh: "终局玩法 · 虫洞（调试入口：免库存开一趟，供验收）", en: "Endgame · wormholes (debug entry: starts a run without using storage stock, for acceptance checks)" },
   "ui.Expedition.261": { zh: "空闲副船", en: "Idle auxiliary ships" },
   "ui.Expedition.262": { zh: "矿带（", en: "Belt (" },
   "ui.Expedition.263": { zh: "该星系没有可采矿区。", en: "There is no mining area in this system." },
