@@ -3373,7 +3373,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SaveManager.028": { zh: "恢复失败。", en: "Restore failed." },
   "ui.SaveManager.029": { zh: "导入失败。", en: "Import failed." },
   "ui.SaveManager.030": { zh: "导出失败。", en: "Export failed." },
-  "ui.weekend.001": { zh: "入侵开始：本周的入侵舰队已在目标星系出现。", en: "Invasion started: this week’s invader fleets have appeared in the target systems." },
+  // 2026-09-25 船长定文案：「事件日志应出现「有入侵舰队出现！」」⇒ 开局那条日志改短句（其余三条待船长定）
+  "ui.weekend.001": { zh: "有入侵舰队出现！", en: "Invader fleets have appeared!" },
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },
   "ui.weekend.003": { zh: "入侵结束：旗舰被章鱼人部队摧毁，黑匣归零。", en: "Invasion over: the flagship was destroyed by the Octopus forces; the black box is lost." },
   "ui.weekend.004": { zh: "入侵结束：占领区已恢复。", en: "Invasion over: the occupied systems have been restored." },
