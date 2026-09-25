@@ -40,6 +40,8 @@ import {
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
   weekendWinGainOf,
+  /** 2026-09-25 船长令：黑匣爆率按"输出占比 ＋ 抢没抢到最后一下"掷（结果写 `ev.flagshipBlackBox`） */
+  weekendRollBlackBox,
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
@@ -181,8 +183,8 @@ export interface WeekendResolveResult {
   note: string
   /** 这次是否**夺回了某处**（含奖励） */
   reclaimed?: { galaxyId: string; wreck: number; isk: number; allClear: boolean }
-  /** 击毁旗舰 ⇒ 黑匣 + 稀有残骸（黑匣物品 id 由引擎侧按数据表取） */
-  flagshipKilled?: { blackBox: true; wreck: number }
+  /** 击毁旗舰 ⇒ 黑匣（**按爆率表掷出来的结果**，可能不爆）＋ 稀有残骸（必给） */
+  flagshipKilled?: { blackBox: boolean; wreck: number }
 }
 
 /**
@@ -242,8 +244,18 @@ export function weekendResolveBattle(
   // 旗舰：**BOSS 口径 ⇒ 池子打空才算击沉**（单场不死）；老口径 ⇒ 核心已满 + 打赢即击毁
   if (spec.kind === 'flagship' && (bossDown || (outcome === 'win' && !weekendIsBossFamily(ev)))) {
     if (weekendNoteFlagshipKilled(state, nowWallMs)) {
-      res.flagshipKilled = { blackBox: true, wreck: WEEKEND_FLAGSHIP_WRECK }
-      res.note = bossDown ? '旗舰血量归零：击沉（跨场累计）' : '旗舰被击毁：黑匣与战利品归玩家'
+      /**
+       * **黑匣爆率**（船长 2026-09-25 令）：玩家**抢到最后一下** ⇒ 按输出占比掷（> 50% 必爆）；
+       * **残骸照旧必给**（船长同日四答之三："残骸不变"）。掷骰走 `ev.flagshipBlackBox`（一条场次子流，
+       * 读档重打同一场结果相同）。
+       * ⚠ **只有 BOSS 族（有共享血池、才谈得上"输出占比"）才掷**；A/C/G 那些占位卡没有池子 ⇒
+       * 保持老口径"击沉必掉"（`true`），免得把占位口径也改成掷骰。
+       */
+      const box = weekendIsBossFamily(ev) ? weekendRollBlackBox(state, ev, true) : true
+      res.flagshipKilled = { blackBox: box, wreck: WEEKEND_FLAGSHIP_WRECK }
+      res.note = bossDown
+        ? `旗舰血量归零：击沉（跨场累计）${box ? '· 黑匣入手' : '· 黑匣未爆'}`
+        : `旗舰被击毁：战利品归玩家${box ? '（含黑匣）' : '（黑匣未爆）'}`
       return res
     }
   }
@@ -302,7 +314,12 @@ export function weekendSettlePlanOf(
     isk: tier.isk,
     progressIsk: weekendProgressIncomeIsk(ev),
     progressPct: weekendPlayerContribution(ev),
-    blackBoxToPlayer: ev.flagshipDown === 'player',
+    /**
+     * **黑匣是否归玩家**（2026-09-25 改口径：爆率按"输出占比 ＋ 抢没抢到最后一下"掷，
+     * 见 `weekendEvent.weekendBlackBoxChanceOf`）⇒ 判据改成**掷骰结果** `ev.flagshipBlackBox`
+     * —— 章鱼人得手也可能爆（`25% × 输出占比`），玩家击沉也可能不爆（小幅输出那一档）。
+     */
+    blackBoxToPlayer: ev.flagshipBlackBox === true,
   }
 }
 
@@ -444,6 +461,14 @@ export function weekendSettleAndGrant(
    */
   const pending = ev.reclaimPending ?? { isk: 0, wreck: 0 }
   /**
+   * **章鱼人得手那一档的黑匣补发**（船长 2026-09-25 令 ＋ 四答之二"照发"）：
+   * 玩家没抢到最后一下时，黑匣按 `25% × 输出占比` 掷（掷骰在 `weekendTick` 收口那一拍，结果写进
+   * `ev.flagshipBlackBox`）；玩家击沉那一档已由 `weekendApplyBattleOutcome` 即时发过 ⇒ 这里只在
+   * **台账还没有黑匣**（`led.blackBox === 0`）且掷中时补发一次（`prizePaidAtWallMs` 保证只走一遍）。
+   */
+  const boxAtSettle = (ev.rewardLedger?.blackBox ?? 0) === 0 && ev.flagshipBlackBox === true
+  if (boxAtSettle) weekendGrantRewards(state, { blackBox: true })
+  /**
    * **这一笔发三样**：贡献四档奖（`plan`）＋ 待到账的夺回奖励（`pending`）＋ **进度收入**（`plan.progressIsk`，
    * 船长 2026-09-25「按进度获取收入」）。
    */
@@ -455,7 +480,7 @@ export function weekendSettleAndGrant(
   ev.prizePaidAtWallMs = nowWallMs
   ev.reclaimPending = { isk: 0, wreck: 0 }
   /** 贡献奖与进度收入入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它） */
-  noteReward(ev, undefined, { isk: plan.isk + plan.progressIsk, wreck: plan.wreck })
+  noteReward(ev, undefined, { isk: plan.isk + plan.progressIsk, wreck: plan.wreck, ...(boxAtSettle ? { blackBox: 1 } : {}) })
   state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)
   return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck, progressIsk: plan.progressIsk }
 }
@@ -701,7 +726,8 @@ export function weekendApplyBattleOutcome(
   const granted = weekendGrantRewards(state, {
     isk,
     wreck,
-    blackBox: r.flagshipKilled !== undefined,
+    /** 黑匣**按爆率表掷出来的结果**给（2026-09-25 船长令：>50% 输出抢到最后一下必爆；否则按占比衰减） */
+    blackBox: r.flagshipKilled?.blackBox === true,
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
   })
   /**
@@ -750,11 +776,15 @@ export function weekendApplyBattleOutcome(
     }
   }
   if (r.flagshipKilled !== undefined) {
+    /** 黑匣**爆或不爆**分两条文案（2026-09-25 船长令改爆率后，"必掉黑匣"不再成立） */
+    const box = r.flagshipKilled.blackBox
     addLog(
       state,
       'trade',
-      `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×${r.flagshipKilled.wreck}）。`,
-      'core.weekend.003',
+      box
+        ? `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×${r.flagshipKilled.wreck}）。`
+        : `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（稀有残骸 ×${r.flagshipKilled.wreck}；旗舰黑匣未爆）。`,
+      box ? 'core.weekend.003' : 'core.weekend.016',
       { p1: r.flagshipKilled.wreck },
     )
   }

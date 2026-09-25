@@ -324,6 +324,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
   "core.weekend.003": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1}）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils have been credited (flagship black box ×1 + rare wrecks ×{p1})." },
+  // 2026-09-25 船长令改黑匣爆率（>50% 输出抢到最后一下必爆，否则按占比衰减到 10%；没抢到最后一下 25%×占比）
+  // ⇒ 原来的"击沉必掉黑匣"不再成立，日志/结束语按结果分两条。
+  "core.weekend.016": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（稀有残骸 ×{p1}；旗舰黑匣未爆）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils have been credited (rare wrecks ×{p1}; no flagship black box this time)." },
   // 2026-09-25 入侵两封通讯（船长给稿 · 经办人按"不出现括号备注"润色；每场覆盖同一 id）
   // ⚠ 段内不留括号备注：奖励清单是**清单里的一项**（结构化存下、界面按语言拼串后填进 {p3}）
   "core.weekend.010": { zh: "航线警告：{p1}入侵", en: "Route warning: {p1} invasion" },
@@ -1558,6 +1561,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⇒ 已收复星系的悬赏区那一行状态占位（括号只放规格，不写原因解释）。
   "ui.weekend.100": { zh: "已收复 · 常驻悬赏待入侵结束后恢复", en: "Reclaimed · standing bounties resume when the invasion ends" },
   "ui.weekend.101": { zh: "母舰血量剩余 {p1}% · 可从入侵窗口发起旗舰战", en: "Mothership hull remaining: {p1}% · start the flagship battle from the invasion window" },
+  // 2026-09-25 船长令改黑匣爆率：章鱼人得手也可能爆黑匣（25% × 输出占比）⇒ 结束语分两条
+  "ui.weekend.102": { zh: "入侵结束：旗舰被章鱼人部队摧毁，残骸中寻获旗舰黑匣。", en: "Invasion over: the flagship was destroyed by the Octopus forces; a flagship black box was recovered from the wreck." },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },

@@ -1101,7 +1101,15 @@ export class GameEngine {
     }
     if (weekend.ended) {
       const octopus = weekend.flagshipDown === 'octopus'
-      addLog(this.state, 'warn', tr(octopus ? 'ui.weekend.003' : 'ui.weekend.004'), octopus ? 'ui.weekend.003' : 'ui.weekend.004')
+      /**
+       * **章鱼人得手那一条按黑匣结果分文案**（**船长 2026-09-25 令**改爆率后："章鱼人摧毁 ⇒ 黑匣归零"
+       * 不再成立：玩家没抢到最后一下时按 `25% × 输出占比` 掷，掷中照发）⇒
+       * 掷中 = `ui.weekend.102`（残骸里寻获黑匣）· 没掷中 = `ui.weekend.003`（黑匣归零，原句）。
+       * ⚠ 窗口到点（`ui.weekend.004`：旗舰撤走）不掷黑匣，照旧。
+       */
+      const box = this.state.weekendEvent?.flagshipBlackBox === true
+      const id = octopus ? (box ? 'ui.weekend.102' : 'ui.weekend.003') : 'ui.weekend.004'
+      addLog(this.state, 'warn', tr(id), id)
       void this.persist()
     }
     /** **结束结算入账**：本拍刚结束的那一场立刻结；上一拍结束而没结的由开头那句兜（同一幂等口） */

@@ -231,6 +231,11 @@ export {
   /** 2026-09-25 船长令：入侵触发前提 = 协会声望 ≥ 40（调试模式不受限） */
   WEEKEND_MIN_STANDING,
   weekendInvasionAllowedFor,
+  /** 2026-09-25 船长令：黑匣爆率表（>50% 输出抢到最后一下必爆 · 否则按占比衰减 · 没抢到 25%×占比） */
+  WEEKEND_BLACKBOX_MIN_ON_LAST_HIT,
+  WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT,
+  weekendBlackBoxChanceOf,
+  weekendRollBlackBox,
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
   WEEKEND_NPC_CORE_MS,

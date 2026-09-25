@@ -2887,6 +2887,13 @@ function normalizeState(raw: unknown): GameState {
             ...(weekendRaw.flagshipDown === 'player' || weekendRaw.flagshipDown === 'octopus'
               ? { flagshipDown: weekendRaw.flagshipDown as 'player' | 'octopus' }
               : {}),
+            /**
+             * **黑匣掷骰结果**（2026-09-25 船长令改爆率后新增）：不认它 ⇒ 读档后收口那一拍会**重掷**
+             * 或结算漏发。只认真布尔（缺键 = 还没掷 ⇒ 该掷的时候自然会掷）。
+             */
+            ...(typeof weekendRaw.flagshipBlackBox === 'boolean'
+              ? { flagshipBlackBox: weekendRaw.flagshipBlackBox }
+              : {}),
             ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
             ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
             ...(octopusHp !== undefined ? { octopusHpDone: octopusHp } : {}),

@@ -25,6 +25,65 @@ export const WEEKEND_PERIPHERY_THREAT = 78
 /** 核心 T5 旗舰威胁（口径定稿 #13：**核心 120**；4 波 · 4 艘小队战） */
 export const WEEKEND_CORE_THREAT = 120
 /**
+ * **旗舰黑匣的爆率表**（**船长 2026-09-25 令**）：
+ *
+ * > 「**修改敌方旗舰爆黑匣的概率，当玩家输出高于50%时，如果抢到最后一下，就必爆黑匣。
+ * > 如果输出低于50%，按照输出占比，爆率衰减到10%（就是玩家只抢最后一下的话）。
+ * > 如果玩家没抢到最后一下，爆率根据玩家输出，从25%开始衰减（100%输出都是玩家打的情况下）。
+ * > 最终衰减到0(玩家0输出)**」
+ *
+ * 设 `p` = **玩家输出占比 = 玩家对母舰的累计伤害 ÷ 池子总量**（与血条、结算面板
+ * 「对母舰造成原始伤害 X · 血池 Y」同一把尺；船长四答之一）：
+ *
+ * | 情形 | 爆率 |
+ * |---|---|
+ * | **抢到最后一下**（血条是玩家打空的）＋ `p > 50%` | **100%**（必爆） |
+ * | **抢到最后一下** ＋ `p ≤ 50%` | 从 `100%`（p = 50%）**线性衰减到 `10%`**（p = 0，"只抢最后一下"） |
+ * | **没抢到最后一下**（章鱼人把血条削空） | `25% × p`（p = 100% ⇒ 25%，p = 0 ⇒ 0%） |
+ *
+ * ⚠ 两条性质：① **p = 50% 处两支接得上**（都算 100%），不跳变；② 同一 p 下，抢到最后一下**永远不低**于
+ * 没抢到（10%~100% vs 0%~25%）。
+ * ⚠ 窗口到点（**旗舰撤走**、没有被摧毁）**不掷**——没有残骸可捞；残骸本身照旧"玩家击沉必给 ×3"
+ * （船长四答之三："残骸不变"）。
+ */
+export const WEEKEND_BLACKBOX_MIN_ON_LAST_HIT = 0.1
+export const WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT = 0.25
+
+/** 黑匣爆率（纯函数 · 表见上）—— 引擎 / 界面 / 用例读同一份 */
+export function weekendBlackBoxChanceOf(playerDmg: number, hpMax: number, lastHitByPlayer: boolean): number {
+  const p = hpMax > 0 ? Math.max(0, Math.min(1, Math.max(0, playerDmg) / hpMax)) : 0
+  if (lastHitByPlayer) {
+    if (p > 0.5) return 1
+    return WEEKEND_BLACKBOX_MIN_ON_LAST_HIT + (p / 0.5) * (1 - WEEKEND_BLACKBOX_MIN_ON_LAST_HIT)
+  }
+  return WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT * p
+}
+
+/** 黑匣掷骰用的**独立子流盐**（与抽签流错开；口径见 `streamOf`：不消费主随机序列） */
+export const WEEKEND_BLACKBOX_SALT = 20_000
+
+/**
+ * **掷一次黑匣**（船长 2026-09-25 令）：按爆率表掷，结果写进 `ev.flagshipBlackBox`。
+ *
+ * - **幂等**：已掷过（字段有值）直接返回它 —— 收口路径与战斗收尾可能都走到，不能掷两次；
+ * - **可复现**：走**独立子流**（存档种子 ＋ 场次号 ＋ 黑匣盐）⇒ 不消费主随机序列、读档重打同一场
+ *   结果相同（船长四答之四）；
+ * - `chance = 1` 必中、`chance = 0` 必不中（不必消耗随机数，但子流是无状态的，耗不耗都一样）。
+ */
+export function weekendRollBlackBox(
+  state: Pick<GameState, 'rng'>,
+  ev: WeekendEventState,
+  lastHitByPlayer: boolean,
+): boolean {
+  if (ev.flagshipBlackBox !== undefined) return ev.flagshipBlackBox
+  const chance = weekendBlackBoxChanceOf(ev.flagshipHpDone ?? 0, ev.flagshipHpMax ?? 0, lastHitByPlayer)
+  const rng = streamOf(state.rng.seed, ev.seq + WEEKEND_BLACKBOX_SALT)
+  const hit = chance >= 1 || (chance > 0 && rng() < chance)
+  ev.flagshipBlackBox = hit
+  return hit
+}
+
+/**
  * **入侵触发的声望前提**（**船长 2026-09-25 令**：「**给入侵触发加一个前提，需要拥有至少40声望，
  * 才会触发入侵。**」）—— 判的是**协会（DSI）声望**（悬赏卡门槛用的同一条）。
  * 40 与既有"虫洞解锁线"`WORMHOLE_SCAN_UNLOCK_STANDING` 同值，但那是另一件事的旋钮 ⇒ 各自独立成常量。
@@ -264,6 +323,12 @@ export interface WeekendEventState {
   flagshipAtWallMs?: number
   /** 旗舰结局：玩家击毁 / 章鱼人摧毁 */
   flagshipDown?: 'player' | 'octopus'
+  /**
+   * **黑匣掷骰结果**（**船长 2026-09-25 令**：爆率按"输出占比 ＋ 抢没抢到最后一下"算，
+   * 见 `weekendBlackBoxChanceOf`）：`true` = 爆了 · `false` = 没爆 · `undefined` = 还没掷（母舰还在）。
+   * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：不然读档后结算会漏发或重掷。
+   */
+  flagshipBlackBox?: boolean
   /* ─── 旗舰 BOSS 化（2026-09-24 第二轮令；**只有 `WEEKEND_BOSS_FAMILIES` 里的族会写这三格**）─── */
   /** **池子总量**（首次接战后锁定；缺省 = 还没跟母舰交手过） */
   flagshipHpMax?: number
@@ -1019,11 +1084,18 @@ export function weekendTick(
     flagshipAnchored = true
   }
 
-  // ③ 章鱼人得手 ⇒ 结束本场（黑匣归零，贡献奖照给——结算由调用方做）
+  // ③ 章鱼人得手 ⇒ 结束本场（贡献奖照给——结算由调用方做）
   let ended = false
   let flagshipDown: WeekendTickResult['flagshipDown']
   if (view.down === 'octopus' && ev.flagshipDown === undefined) {
     ev.flagshipDown = 'octopus'
+    /**
+     * **黑匣掷骰（"没抢到最后一下"那一档）**（船长 2026-09-25 令 ＋ 四答之二"照发"）：
+     * 章鱼人把血条削空也算"旗舰被摧毁"，玩家按**输出占比**领 `25% × p` 的爆率——
+     * 掷中照发黑匣（旧文案「黑匣归零」按结果分成两条，见 `ui.weekend.003` / `102`）。
+     * ⚠ 窗口到点（旗舰**撤走**、没被摧毁）不掷：没有残骸可捞。
+     */
+    weekendRollBlackBox(state, ev, false)
     flagshipDown = 'octopus'
     endWeekendEvent(state, nowWallMs)
     ended = true
