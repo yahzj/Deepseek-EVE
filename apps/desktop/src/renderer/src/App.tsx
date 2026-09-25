@@ -57,6 +57,8 @@ import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ShipStatusWin } from './ui/ShipStatusWin'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
 import { MoneyFit } from './ui/MoneyFit'
+import { AppShell } from './ui/AppShell'
+import type { LayoutKind } from './ui/AppShell'
 import { cmdText, logText, tr } from './i18n/locale'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
@@ -90,7 +92,7 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
  */
 const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = []
 
-type PageKey =
+export type PageKey =
   | 'ship'
   | 'fit'
   | 'items'
@@ -204,6 +206,8 @@ function SettingsPanel({
   onReset,
   onOpenSaveManager,
   debugOnState,
+  layoutKind,
+  onLayoutChange,
   onDebugChange,
 }: {
   root: RefObject<HTMLDivElement>
@@ -216,6 +220,9 @@ function SettingsPanel({
   /** 设置里的「开发者：调试模式」开关（2026-09-25） */
   debugOnState: boolean
   onDebugChange: (on: boolean) => void
+  /** 设置里的「界面布局」开关（2026-09-25 船长令：两套外壳允许在设置内切换） */
+  layoutKind: LayoutKind
+  onLayoutChange: (k: LayoutKind) => void
 }) {
   const { locale, setLocale, t } = useL10n()
   const [zoom, setZoom] = useState(() => readNum(ZOOM_KEY, 1, 0.8, 1.25))
@@ -278,6 +285,27 @@ function SettingsPanel({
               </button>
             </div>
             <div className="app-settings-desc">{t('ui.App.026')}</div>
+          {/* 界面布局（2026-09-25 船长令：新旧两套界面允许玩家在设置内切换）：本机偏好、即时生效、不进存档 */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.146')}</span>
+              <span className="app-settings-val">{layoutKind === 'classic' ? tr('ui.App.148') : tr('ui.App.147')}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button
+                className={`app-btn is-small${layoutKind === 'modern' ? ' is-primary' : ''}`}
+                onClick={() => onLayoutChange('modern')}
+              >
+                {tr('ui.App.147')}
+              </button>
+              <button
+                className={`app-btn is-small${layoutKind === 'classic' ? ' is-primary' : ''}`}
+                onClick={() => onLayoutChange('classic')}
+              >
+                {tr('ui.App.148')}
+              </button>
+            </div>
+          </div>
           </div>
           {/* 弹药 / 修理组件取用来源（2026-09-23 船长令）：随档开关，洞内同理 */}
           <div className="app-settings-row">
@@ -834,6 +862,23 @@ export function App({ engine }: { engine: GameEngine }) {
    * 在设置里打开后必须重开才生效（船长踩过：以为没生效）。现改为可变状态，点了立刻出按钮。
    */
   const [debugOn, setDebugOn] = useState<boolean>(readDebugEnabled)
+
+/**
+ * **布局偏好**（2026-09-25 船长令：「新旧界面能否允许玩家在设置内切换？」⇒ 裁定甲）：
+ * whale-idle:layout = modern（默认，底部导航版）/ classic（旧版，左侧导航版）。
+ * 两套外壳共用同一份状态（见 ui/AppShell.tsx）⇒ 切换不会丢进度或页面状态。
+ */
+const [layoutKind, setLayoutKind] = useState<LayoutKind>(() =>
+  localStorage.getItem('whale-idle:layout') === 'classic' ? 'classic' : 'modern',
+)
+function chooseLayout(k: LayoutKind): void {
+  setLayoutKind(k)
+  try {
+    localStorage.setItem('whale-idle:layout', k)
+  } catch {
+    /* 存储被禁：忽略（本次会话内仍然生效） */
+  }
+}
   // 性能监测（2026-09-08 诊断工具）：debug 开关在首帧前激活隐形采集；自动采集模式由 main.tsx 预激活
   useState(() => {
     if (perfAutoEnabled()) perfHub.activate()
@@ -1244,454 +1289,247 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [tutStep])
 
   return (
-    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}`}>
+    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''} is-layout-${layoutKind}`}>
       {/* 引擎订阅：正常异步渲染；性能监测激活时改 flushSync 同步刷新并实测整树提交耗时 */}
       <PerfListener engine={engine} force={force} />
       {/* ───── 顶栏 ───── */}
-      <header className="app-header">
-        <div className="app-header-left">
-          {/* 游戏名（2026-09-11 船长：「将游戏的名称改为大鲸鱼-深空放置」；
-              注意「深空工业协会」是**游戏内势力**、不随游戏名改） */}
-          <span className="app-logo">{tr("ui.App.056")}</span>
-          <span className="app-pilot">{state.character.name}</span>
-
-          {/* **钱包**（2026-09-25 船长令：「钱包显示移动到顶部玩家名字的右侧」）
-              —— 原在左侧栏「出港上方」（2026-09-13 令），本轮随外壳重排移到顶栏。 */}
-          <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
-          {/*
-           * **限时活动 + 限时加成**（2026-09-25 船长令：「限时活动和限时加成，放到顶部钱包的右侧」）
-           * —— 原来在活动栏的标题栏里；标题栏移除后归到顶栏、紧跟钱包。
-           * 类名与去向口径**沿用原样**（促销 `p.open` 决定去「扫描虫洞」还是「星图」），只是换了容器。
-           */}
-          {promosNow.map((p) => (
-            <button
-              key={`promo-${p.id}-${p.untilMs}`}
-              className="app-header-tuning app-header-promo"
-              title={
-                `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
-                tr("ui.ActivityBar.054", { p1: new Date(p.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, p.untilMs - tuningTick)) }) +
-                tr("ui.ActivityBar.059", { p1: p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006") })
-              }
-              onClick={() => {
-                if (p.open === 'wormhole-scan') {
-                  changePage('map')
-                  changeMapTab('whscan')
-                  return
-                }
-                changePage('map')
-                changeMapTab('star')
-              }}
-            >
-              <span className="app-ico">
-                <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
-              </span>
-              <span className="app-header-tuning-name">{p.label}</span>
-              <span className="app-header-tuning-time">{formatDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
-            </button>
-          ))}
-          {tuningsNow.map((tn) => (
-            <button
-              key={`${tn.key}-${tn.untilMs}`}
-              className="app-header-tuning"
-              title={
-                tr("ui.ActivityBar.060", { p1: tn.name, p2: tn.mul, p3: tn.note ? `\n${tn.note}` : '' }) +
-                tr("ui.ActivityBar.054", { p1: new Date(tn.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, tn.untilMs - tuningTick)) })
-              }
-              onClick={() => {
-                changePage('map')
-                changeMapTab('star')
-              }}
-            >
-              <span className="app-ico">
-                <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
-              </span>
-              <span className="app-header-tuning-name">{tn.name} ×{tn.mul}</span>
-              <span className="app-header-tuning-time">{formatDurationShort(Math.max(0, tn.untilMs - tuningTick))}</span>
-            </button>
-          ))}
-        </div>
-        <div className="app-header-right">
-          {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}
-          {debugOn ? (
-            <>
-              <DebugButton engine={engine} onFastForwarded={() => setReportDismissed(false)} />
-              <button
-                className="app-btn"
-                onClick={() => setPerfOpen((v) => !v)}
-                title={tr("ui.App.057")}
-              >
-                {tr("ui.App.058")}
-              </button>
-            </>
-          ) : null}
-          {/* 在线时长。⚠ 本条注释原写「金钱栏已移到左侧栏」（船长 2026-09-13 令）；
-               **2026-09-25 船长令「钱包显示移动到顶部玩家名字的右侧」** ⇒ 钱包已回到顶栏
-               （见上方 `app-pilot` 右侧的 `MoneyFit`），本注释随之更正。 */}
-          <span className="app-clock">{tr("ui.App.059")} {formatDurationMs(state.gameMs)}</span>
-          {/* 公告弹层一开就收起嵌入的活动窗口（2026-09-21 船长令：打开弹层即隐藏并最小化） */}
-          <AnnouncementHub engine={engine} onOpen={hideActivityWin} />
-          <button
-            className="app-btn"
-            onClick={copyQqGroup}
-            title={tr("ui.App.111", { QQ_GROUP: QQ_GROUP })}
-          >
-            {qqCopied ? tr("ui.App.060") : tr("ui.App.112", { QQ_GROUP: QQ_GROUP })}
-          </button>
-          <button
-            className="app-btn"
-            onClick={() => {
-              setShowHandbook(true)
-              hideActivityWin() // 打开弹层即收起（同上）
-            }}
-            title={tr("ui.App.061")}
-          >
-            {t('ui.App.028')}
-          </button>
-          <button
-            className="app-btn"
-            onClick={() => {
-              setShowSettings(true)
-              hideActivityWin() // 打开弹层即收起（同上）
-            }}
-            title={tr("ui.App.062")}
-          >
-            {t('ui.App.010')}
-          </button>
-          {/**
-           * ⚠ **顶栏的「保存 / 存档管理 / 重置档案」三个按钮已移入设置弹窗**
-           * （2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
-           * ⇒ 见 `SettingsPanel` 里的「存档」一组。顶栏只留：在线时长 / 公告 / QQ群 / 手册 / 设置。
-           */}
-        </div>
-      </header>
-
-      {/* ───── 工作区：左导航栏 + 主窗口（活动窗口置于主列顶部，宽度与主窗口一致）+ 事件日志 ───── */}
-      <div className="app-workspace">
-        {/* 活动栏：**左侧竖列**（2026-09-25 船长令「将活动栏放到左侧，竖列显示。这样 AI 作业也能
-            同时显示多个」）。宽 150px、高占满内容区 ⇒ 同时可见作业行数由约 7 提到约 18。
-            ⚠ 与右侧 `.app-workspace-body` 在横向 flex 的 workspace 里**并列**；
-            （早先误做成"顶部横条"1244×110，与船长批准的草图丁不符，此处已改回。） */}
-        {/* **左列**（2026-09-25 船长令：「SVG舰船动画小窗口依旧是在左上角，**活动页面的上方**」）
-            ⇒ 舰船窗在上、活动栏在下，同处左侧一列。
-            先前把舰船窗放进主区上方的信息带，与船长要求不符，此处改回。 */}
-        <div className="app-left-col">
-            <ShipStatusWin engine={engine} restore={windowRestore} />
-        <ActivityBar
+      {/* ───── 外壳（顶栏 / 工作区 / 底部导航 / 日志坞；两套布局见 ui/AppShell.tsx）───── */}
+      <AppShell
+        layoutKind={layoutKind}
+        state={state}
         engine={engine}
-        onToast={showToast}
-        onAiCenter={() => {
-        changePage('ship')
-        changeShipTab('ai') // AI 徽标 → 舰船页「AI 指挥中心」标签
-        }}
-        onGoPage={(page, mapTab) => {
-        changePage(page as PageKey)
-        if (mapTab) changeMapTab(mapTab as MapTab)
-        }}
-        onOpenWormhole={openWormhole}
-        />
-        </div>
-
-        {/* 右侧纵向体：信息带（舰船窗 + 金钱栏）+ 主区 + 日志坞 */}
-        <div className="app-workspace-body">
-          {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
-          {/**
-          * **金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」＋
-          * 「更换金钱单位为**信用点**」）：位置 = 舰船状态窗之下、**第一个导航项（出港）之上**。
-          * ⚠ 显示口径（船长同日二次口径）：「**如果有条件，还是优先显示全额数字**…如果实在显示不下，
-          * 采用数量级缩写（**但是仍要尽可能保证数字够长**）」⇒ 值走 `ui/MoneyFit`：
-          * **逐候选实测宽度**，档序 = 全额（带单位 → 去掉单位）→ 缩写（带单位 → 去掉单位，长的在前），
-          * **精确值恒挂 `title`**。窄栏里优先保住的是**数字**，不是「信用点」三个字。
-          */}
-
-          <main className="app-page-main">
-          {/**
-          * ───── **主控活动窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
-          *
-          * 船长原话：「我的意思是**取消悬浮，直接嵌入主窗口**，玩家如果点击最小化或者切换导航栏
-          * 之类的时候就隐藏并最小化。」
-          * ⇒ 窗口就是主区里的一个正常块，上屏时**页面整块让位**
-          * （`.app-page-content.is-win-hidden { display:none }`，
-          * ⚠ **只是不上屏、不是卸载**：页里的检索词 / 滚动位置 / 弹层状态都留住，回来时原样）。
-          * ⚠ 战斗屏**不在**这套机制里（2026-09-22 船长令已把它回滚成全屏覆盖层）。
-          *
-          * **挂载 vs 上屏**：活动窗口"上屏"= 顶掉那一页；战斗屏是**自己的全屏覆盖层**（2026-09-22 回滚），
-          * 不在这套"嵌入"机制里 —— 它的挂载条件单独写在文件末弹层那段（`inBattle || battleOpen`，
-          * 为的是保住战后战报）。`.app-win-host` 用 `display: contents` ⇒ 本身不产生盒子，
-          * 窗口直接参与主区的 flex 排布，因此"挂着但不上屏"时它不会白占地方。
-          */}
-          <div className="app-win-host">
-          {/* 主控活动窗口：嵌入主区、顶掉那一页（船长 2026-09-21 令；战斗屏不在这条链上，见文件末弹层那段） */}
-          {activityOnStage ? (
-          <ActivityScreen
-          state={state}
-          ctx={engine.ctx}
-          open
-          onMinimize={() => setActivityOpen(false)}
-          />
-          ) : null}
-          </div>
-          {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗）。
-          `key={page}` ⇒ 换页即重挂载 = 入场淡入（切页反馈）；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
-          <div
-          className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}${winOnStage ? ' is-win-hidden' : ''}`}
-          key={page}
-          >
-          {page === 'ship' ? (
-          <ShipPage
-          {...pageProps}
-          tab={shipTab}
-          onTab={changeShipTab}
-          onGotoMarket={(goodKey) => {
-          setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
-          changePage('market')
-          }}
-          onGotoFit={(shipId) => {
-          setFitShipId(shipId)
-          changePage('fit')
-          }}
-          />
-          ) : null}
-          {page === 'fit' ? <FitPage {...pageProps} fitShipId={fitShipId} /> : null}
-          {page === 'items' ? (
-          <ItemsPage
-          {...pageProps}
-          onGotoMarket={(goodKey) => {
-          setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
-          changePage('market')
-          }}
-          />
-          ) : null}
-          {page === 'market' ? (
-          <MarketPage
-          {...pageProps}
-          focusKey={mktFocus?.key ?? null}
-          focusSeq={mktFocus?.seq ?? 0}
-          onFocusUsed={() => setMktFocus(null)} // 一次性聚焦：应用后即清，避免每次进市场都带出上次的物品
-          />
-          ) : null}
-          {page === 'industry' ? (
-          <IndustryPage
-          {...pageProps}
-          focusSec={indFocus}
-          onGotoMarket={(goodKey) => {
-          setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
-          changePage('market')
-          }}
-          onGotoMap={gotoMapTab}
-          /**
-          * **组装机「去虫洞（遗迹打捞）」**（船长 2026-09-14：虫洞专属图纸市场买不到）⇒
-          * 跳**星图 · 出港 · 扫描虫洞**页（进洞与库存都在那儿）。走既有的 `changePage` + `changeMapTab`
-          * 两个入口，教程锁与标签口径自动跟随（与星图内部跳转同一把尺）。
-          */
-          onGotoWormhole={() => {
-          changePage('map')
-          changeMapTab('whscan')
-          }}
-          />
-          ) : null}
-          {page === 'skills' ? <SkillsTreePage {...pageProps} focusGroup={skillsFocus} /> : null}
-          {page === 'map' ? (
-          <MapPage
-          {...pageProps}
-          mapTab={mapTab}
-          onMapTab={changeMapTab}
-          mapGoto={mapGoto}
-          onOpenWormhole={openWormhole}
-          onExploreWormhole={(stockId) => openWormhole(stockId)}
-          onAutoExploreWormhole={(stockId) => openWormholeAuto(stockId)}
-          /** 打捞页「打捞需要打捞器」那行的「去装配」按钮（船长 2026-09-20）：与舰船页同一落点 */
-          onGotoFit={(shipId) => {
-          setFitShipId(shipId)
-          changePage('fit')
-          }}
-          />
-          ) : null}
-          {/* 任务中心（2026-09-14 从星图页搬来的一级页）：内层标签定位仍走 taskFocus */}
-          {page === 'task' ? (
-          <TaskCenterPage
-          {...pageProps}
-          taskFocus={taskFocus}
-          // 「第一次」卡片上的「看情报」：切到通讯页并选中那封情报信（沿用既有的 commsFocus 定位机制）
-          onOpenComms={(messageId) => {
-          setCommsFocus((p) => ({ id: messageId, seq: (p?.seq ?? 0) + 1 }))
-          setPage('comms')
-          }}
-          /**
-          * 「第一次」卡片的**跳转按钮**（船长 2026-09-18：「所有的'第一次'任务，添加一个跳转界面的按钮」）：
-          * 一律走既有的 `changePage` / `changeMapTab` / `changeShipTab` 三把尺——
-          * 「第一次」前置锁与页签白名单自动跟随（未解锁时给提示而不是硬跳），工业页再带上内层段。
-          */
-          onJump={(t) => {
-          if (t.industrySec) setIndFocus(t.industrySec)
-          if (t.skillGroup) focusSkillGroup(t.skillGroup)
-          changePage(t.page as PageKey)
-          if (t.mapTab) changeMapTab(t.mapTab as MapTab)
-          if (t.shipTab) changeShipTab(t.shipTab as ShipTab)
-          }}
-          />
-          ) : null}
-          {/* 成就（2026-09-20 一级页）：页内是固定头 + 内容内滚的二级子窗口容器 */}
-          {page === 'achieve' ? <AchievementsPage engine={engine} /> : null}
-          {page === 'comms' ? (
-          <CommsPage
-          {...pageProps}
-          // 顶部引导条「看详情」的定位请求（seq 变化即重新选中对应那封）
-          focus={commsFocus}
-          // 消息提示的跳转出口（③ 只给提示 + 跳转）：与弹窗共用同一套落点规则
-          onGoto={gotoFromComms}
-          />
-          ) : null}
-          </div>
+        changePage={changePage}
+        handleSave={handleSave}
+        handleReset={handleReset}
+        setShowSaveManager={setShowSaveManager}
+        changeMapTab={changeMapTab}
+        changeShipTab={changeShipTab}
+        showToast={showToast}
+        hideActivityWin={hideActivityWin}
+        openWormhole={openWormhole}
+        windowRestore={windowRestore}
+        unlocked={unlocked}
+        commsUnread={commsUnread}
+        bountyNew={bountyNew}
+        firstTaskNew={firstTaskNew}
+        navBeat={navBeat}
+        page={page}
+        setShowSettings={setShowSettings}
+        setShowHandbook={setShowHandbook}
+        copyQqGroup={copyQqGroup}
+        qqCopied={qqCopied}
+        setReportDismissed={setReportDismissed}
+        setPerfOpen={setPerfOpen}
+        debugOn={debugOn}
+        promosNow={promosNow}
+        tuningsNow={tuningsNow}
+        tuningTick={tuningTick}
+        navItems={NAV_ITEMS}
+        debugNavItems={DEBUG_NAV_ITEMS}
+        readDebugEnabled={readDebugEnabled}
+        qqGroup={QQ_GROUP}
+        pageMain={(
+          <>
+            <main className="app-page-main">
+            {/**
+            * ───── **主控活动窗口：嵌入主区、顶掉那一页**（2026-09-21 船长令）─────
+            *
+            * 船长原话：「我的意思是**取消悬浮，直接嵌入主窗口**，玩家如果点击最小化或者切换导航栏
+            * 之类的时候就隐藏并最小化。」
+            * ⇒ 窗口就是主区里的一个正常块，上屏时**页面整块让位**
+            * （`.app-page-content.is-win-hidden { display:none }`，
+            * ⚠ **只是不上屏、不是卸载**：页里的检索词 / 滚动位置 / 弹层状态都留住，回来时原样）。
+            * ⚠ 战斗屏**不在**这套机制里（2026-09-22 船长令已把它回滚成全屏覆盖层）。
+            *
+            * **挂载 vs 上屏**：活动窗口"上屏"= 顶掉那一页；战斗屏是**自己的全屏覆盖层**（2026-09-22 回滚），
+            * 不在这套"嵌入"机制里 —— 它的挂载条件单独写在文件末弹层那段（`inBattle || battleOpen`，
+            * 为的是保住战后战报）。`.app-win-host` 用 `display: contents` ⇒ 本身不产生盒子，
+            * 窗口直接参与主区的 flex 排布，因此"挂着但不上屏"时它不会白占地方。
+            */}
+            <div className="app-win-host">
+            {/* 主控活动窗口：嵌入主区、顶掉那一页（船长 2026-09-21 令；战斗屏不在这条链上，见文件末弹层那段） */}
+            {activityOnStage ? (
+            <ActivityScreen
+            state={state}
+            ctx={engine.ctx}
+            open
+            onMinimize={() => setActivityOpen(false)}
+            />
+            ) : null}
+            </div>
+            {/* 一级页不滚：已按 docs/design/page-scroll-layout.md 完成转换的页进 no-scroll（整页不滚，滚动在二级窗）。
+            `key={page}` ⇒ 换页即重挂载 = 入场淡入（切页反馈）；点当前页不重挂载，走 `is-beat` 的脉冲（见 pulseNav）。 */}
+            <div
+            className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}${winOnStage ? ' is-win-hidden' : ''}`}
+            key={page}
+            >
+            {page === 'ship' ? (
+            <ShipPage
+            {...pageProps}
+            tab={shipTab}
+            onTab={changeShipTab}
+            onGotoMarket={(goodKey) => {
+            setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+            changePage('market')
+            }}
+            onGotoFit={(shipId) => {
+            setFitShipId(shipId)
+            changePage('fit')
+            }}
+            />
+            ) : null}
+            {page === 'fit' ? <FitPage {...pageProps} fitShipId={fitShipId} /> : null}
+            {page === 'items' ? (
+            <ItemsPage
+            {...pageProps}
+            onGotoMarket={(goodKey) => {
+            setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+            changePage('market')
+            }}
+            />
+            ) : null}
+            {page === 'market' ? (
+            <MarketPage
+            {...pageProps}
+            focusKey={mktFocus?.key ?? null}
+            focusSeq={mktFocus?.seq ?? 0}
+            onFocusUsed={() => setMktFocus(null)} // 一次性聚焦：应用后即清，避免每次进市场都带出上次的物品
+            />
+            ) : null}
+            {page === 'industry' ? (
+            <IndustryPage
+            {...pageProps}
+            focusSec={indFocus}
+            onGotoMarket={(goodKey) => {
+            setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+            changePage('market')
+            }}
+            onGotoMap={gotoMapTab}
+            /**
+            * **组装机「去虫洞（遗迹打捞）」**（船长 2026-09-14：虫洞专属图纸市场买不到）⇒
+            * 跳**星图 · 出港 · 扫描虫洞**页（进洞与库存都在那儿）。走既有的 `changePage` + `changeMapTab`
+            * 两个入口，教程锁与标签口径自动跟随（与星图内部跳转同一把尺）。
+            */
+            onGotoWormhole={() => {
+            changePage('map')
+            changeMapTab('whscan')
+            }}
+            />
+            ) : null}
+            {page === 'skills' ? <SkillsTreePage {...pageProps} focusGroup={skillsFocus} /> : null}
+            {page === 'map' ? (
+            <MapPage
+            {...pageProps}
+            mapTab={mapTab}
+            onMapTab={changeMapTab}
+            mapGoto={mapGoto}
+            onOpenWormhole={openWormhole}
+            onExploreWormhole={(stockId) => openWormhole(stockId)}
+            onAutoExploreWormhole={(stockId) => openWormholeAuto(stockId)}
+            /** 打捞页「打捞需要打捞器」那行的「去装配」按钮（船长 2026-09-20）：与舰船页同一落点 */
+            onGotoFit={(shipId) => {
+            setFitShipId(shipId)
+            changePage('fit')
+            }}
+            />
+            ) : null}
+            {/* 任务中心（2026-09-14 从星图页搬来的一级页）：内层标签定位仍走 taskFocus */}
+            {page === 'task' ? (
+            <TaskCenterPage
+            {...pageProps}
+            taskFocus={taskFocus}
+            // 「第一次」卡片上的「看情报」：切到通讯页并选中那封情报信（沿用既有的 commsFocus 定位机制）
+            onOpenComms={(messageId) => {
+            setCommsFocus((p) => ({ id: messageId, seq: (p?.seq ?? 0) + 1 }))
+            setPage('comms')
+            }}
+            /**
+            * 「第一次」卡片的**跳转按钮**（船长 2026-09-18：「所有的'第一次'任务，添加一个跳转界面的按钮」）：
+            * 一律走既有的 `changePage` / `changeMapTab` / `changeShipTab` 三把尺——
+            * 「第一次」前置锁与页签白名单自动跟随（未解锁时给提示而不是硬跳），工业页再带上内层段。
+            */
+            onJump={(t) => {
+            if (t.industrySec) setIndFocus(t.industrySec)
+            if (t.skillGroup) focusSkillGroup(t.skillGroup)
+            changePage(t.page as PageKey)
+            if (t.mapTab) changeMapTab(t.mapTab as MapTab)
+            if (t.shipTab) changeShipTab(t.shipTab as ShipTab)
+            }}
+            />
+            ) : null}
+            {/* 成就（2026-09-20 一级页）：页内是固定头 + 内容内滚的二级子窗口容器 */}
+            {page === 'achieve' ? <AchievementsPage engine={engine} /> : null}
+            {page === 'comms' ? (
+            <CommsPage
+            {...pageProps}
+            // 顶部引导条「看详情」的定位请求（seq 变化即重新选中对应那封）
+            focus={commsFocus}
+            // 消息提示的跳转出口（③ 只给提示 + 跳转）：与弹窗共用同一套落点规则
+            onGoto={gotoFromComms}
+            />
+            ) : null}
+            </div>
           </main>
-
-        </div>
-      </div>
-
-      {/* **事件日志：右侧浮层**（2026-09-25 船长令「事件还是在屏幕右侧，但是采用和现在一样的
-          弹出式（弹出后覆盖在主区上方）」）⇒ 挂到 `app-root` 直下（整屏坐标系）+ `position: fixed`，
-          **不占纵向流** ⇒ 主区吃满高度；沿用既有的 `logCollapsed` 做展开/收起。 */}
-          <div className="app-log-dock">
-          <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>
-          <Panel
-          title={tr("ui.App.067")}
-          /* 周末入侵：**日志面板底部的活动框**（2026-09-24 船长按截图指定位置），点击跳星图 */
-          footer={
-          <WeekendInvasionLogRow
-          engine={engine}
-          onGoto={() => {
-          changePage('map')
-          changeMapTab('star')
-          }}
-          />
-          }
-          right={
-          <div className="app-log-head-right">
-          <span className="app-dim">{tr("ui.App.068")}</span>
-          <button className="app-btn is-small" onClick={() => setLogCollapsed(true)} title={tr("ui.App.069")}>
-          {tr("ui.App.070")}
-          </button>
-          </div>
-          }
-          >
-          <div className="app-log-filters" title={tr("ui.App.071")}>
-          {LOG_KINDS.map((kind) => {
-          const on = logKinds[kind] ?? true
-          return (
-          <button
-          key={kind}
-          className={`app-log-filter${on ? '' : ' is-off'}`}
-          title={KIND_DESC[kind]}
-          onClick={() => setLogKinds((prev) => ({ ...prev, [kind]: !on }))}
-          >
-          <span className="app-log-dot" style={{ background: KIND_DOT[kind] }} />
-          {KIND_LABEL[kind]}
-          </button>
-          )
-          })}
-          </div>
-          {hiddenAll ? (
-          <div className="app-dim app-log-empty">{tr("ui.App.072")}</div>
-          ) : (
-          <LogList
-          logs={visibleLogs.map((l) => ({ id: l.id, kind: l.kind, text: logText(l), timeLabel: gameClock(l.atGameMs) }))}
-          limit={220}
-          />
-          )}
-          </Panel>
-          </aside>
-          {logCollapsed ? (
-          <button className="app-log-handle" onClick={() => setLogCollapsed(false)} title={tr("ui.App.073")}>
-          «
-          </button>
-          ) : null}
-          </div>
-
-      {/* 导航：**底部横栏**（2026-09-25 船长令「将导航栏放到底部，采用大图标+图标下方配字的形式？
-          出港放在正中间，搭配一个不一样的按钮边框」）。**必须在 .app-workspace 之外**：
-          该容器与 `.app-header` 共用 `max-width:1760px` 居中规则、且是横向 flex，
-          导航留在里面会被撑成 700px 高并横向溢出（无头 CDP 实测）。 */}
-      <nav className="app-nav-side">
-      {/**
-      * 2026-09-25 船长令：「将导航栏放到底部…出港放在正中间」
-      *
-      * ⚠ **为什么改成分两组渲染**（而不是只调 `NAV_ITEMS` 的数组顺序）：导航项有**解锁门槛**
-      * （`unlocked()`：市场 ← 第一次生产、工业 ← 第一次精炼），初期项数会变（8~10 项）
-      * ⇒ 平铺时"出港前面有几项"随之变化，**居中会被解锁进度破坏**。
-      * 拆成「左组 + 出港 + 右组」后由底栏的 `justify-content: space-between` 定位：
-      * 左组贴左、右组贴右、出港恒在正中——**与解锁几项无关**。
-      */}
-      {(() => {
-      const allItems = [...NAV_ITEMS, ...(readDebugEnabled() ? DEBUG_NAV_ITEMS : [])]
-      // 「第一次」前置未达 ⇒ **该导航项不显示**（船长：未解锁页面与任务都隐藏）
-      const shown = allItems.filter((it) => unlocked(state, it.key))
-      const navBtn = (item: (typeof allItems)[number]): ReactNode => {
-      // 徽标两族（船长 2026-09-11 / 2026-09-14）：通讯 = 未读条数；任务中心 = 赏金新板条数
-      // ＋**2026-09-20**：「第一次」推进提醒（有新的一步可做时 +1）
-      const unreadN =
-      item.key === 'comms'
-      ? commsUnread
-      : item.key === 'task'
-      ? bountyNew + (firstTaskNew !== null ? 1 : 0)
-      : 0
-      return (
-      <button
-      key={item.key}
-      className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}${navBeat?.key === item.key ? ' is-beat' : ''}`}
-      title={
-      unreadN > 0
-      ? item.key === 'task'
-      ? [
-      /**
-      * 「第一次」有新的一步 ⇒ 先说它（写清是哪一条），赏金新板另起一行。
-      * ⚠ **2026-09-21**：任务改成"玩家点「完成」才推进" ⇒ **已达成**时补一句
-      * 「（已达成，回任务中心点「完成」）」——否则玩家在别处干完活不知道要回去点。
-      */
-      firstTaskNew !== null
-      ? tr('ui.App.120', { p1: firstTaskNew.title }) + (firstTaskNew.ready ? tr('ui.App.122') : '')
-      : null,
-      bountyNew > 0 ? tr('ui.App.113', { unreadN: bountyNew }) : null,
-      ]
-      .filter((s) => s !== null)
-      .join('\n')
-      : tr("ui.App.114", { unreadN: unreadN })
-      : undefined
-      }
-      onClick={() => changePage(item.key)}
-      >
-      <span className="app-nav-icon">
-      {/* 2026-09-25 船长令：「导航栏图除了出港外的图标还是太小了，在宽度不变的前提下，高度要和导航栏匹配」
-                        ⇒ 普通项图标 19 → **34px**（出港 40 → 44px），并同步加大底栏与图标容器（见 styles.css）。 */}
-                    <Glyph name={item.icon} size={item.key === 'map' ? 44 : 34} color={NAV_TONES[item.icon]} />
-      {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
-      </span>
-      <span>{t(item.label)}</span>
-      </button>
-      )
-      }
-      /**
-       * ⚠ **左右分组不能按"出港在数组里的位置"切**（2026-09-25 修，此前就是这么错的）：
-       * `NAV_ITEMS` 里出港（星图）**排第一位** ⇒ `slice(0, featIdx)` 切出空数组、
-       * 其余 9 项全挤到右组（无头实测：左组 children=1 且是空占位、右组 children=7）。
-       * 现改为**把出港单独摘出、其余项按数量对半分成左右两组** ⇒ 与它在数组里的位置无关。
-       */
-      const feat = shown.find((it) => it.key === 'map') ?? null
-      const others = shown.filter((it) => it.key !== 'map')
-      const half = Math.ceil(others.length / 2)
-      const left = others.slice(0, half)
-      const right = others.slice(half)
-      return (
-      <>
-      <div className="app-nav-group is-left">
-      {left.length > 0 ? left.map(navBtn) : <span className="app-nav-ph" />}
-      </div>
-      {feat ? navBtn(feat) : null}
-      <div className="app-nav-group is-right">
-      {right.length > 0 ? right.map(navBtn) : <span className="app-nav-ph" />}
-      </div>
-      </>
-      )
-      })()}
-      </nav>
+          </>
+        )}
+        logDock={(
+            <div className="app-log-dock">
+            <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>
+            <Panel
+            title={tr("ui.App.067")}
+            /* 周末入侵：**日志面板底部的活动框**（2026-09-24 船长按截图指定位置），点击跳星图 */
+            footer={
+            <WeekendInvasionLogRow
+            engine={engine}
+            onGoto={() => {
+            changePage('map')
+            changeMapTab('star')
+            }}
+            />
+            }
+            right={
+            <div className="app-log-head-right">
+            <span className="app-dim">{tr("ui.App.068")}</span>
+            <button className="app-btn is-small" onClick={() => setLogCollapsed(true)} title={tr("ui.App.069")}>
+            {tr("ui.App.070")}
+            </button>
+            </div>
+            }
+            >
+            <div className="app-log-filters" title={tr("ui.App.071")}>
+            {LOG_KINDS.map((kind) => {
+            const on = logKinds[kind] ?? true
+            return (
+            <button
+            key={kind}
+            className={`app-log-filter${on ? '' : ' is-off'}`}
+            title={KIND_DESC[kind]}
+            onClick={() => setLogKinds((prev) => ({ ...prev, [kind]: !on }))}
+            >
+            <span className="app-log-dot" style={{ background: KIND_DOT[kind] }} />
+            {KIND_LABEL[kind]}
+            </button>
+            )
+            })}
+            </div>
+            {hiddenAll ? (
+            <div className="app-dim app-log-empty">{tr("ui.App.072")}</div>
+            ) : (
+            <LogList
+            logs={visibleLogs.map((l) => ({ id: l.id, kind: l.kind, text: logText(l), timeLabel: gameClock(l.atGameMs) }))}
+            limit={220}
+            />
+            )}
+            </Panel>
+            </aside>
+            {logCollapsed ? (
+            <button className="app-log-handle" onClick={() => setLogCollapsed(false)} title={tr("ui.App.073")}>
+            «
+            </button>
+            ) : null}
+            </div>
+        )}
+      />
 
 
 
@@ -1930,6 +1768,8 @@ export function App({ engine }: { engine: GameEngine }) {
           onOpenSaveManager={() => setShowSaveManager(true)}
           debugOnState={debugOn}
           onDebugChange={setDebugOn}
+          layoutKind={layoutKind}
+          onLayoutChange={chooseLayout}
         />
       ) : null}
       {/**

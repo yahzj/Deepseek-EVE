@@ -890,6 +890,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ActivityBar.065": { zh: "计时中", en: "Timers" },
 
   /** 设置·开发者：调试模式开关（2026-09-25；船长报「已开启调试模式但按钮不可见」后加的免 DevTools 开关） */
+  "ui.App.146": { zh: "界面布局", en: "Interface layout" },
+  "ui.App.147": { zh: "新版", en: "New" },
+  "ui.App.148": { zh: "旧版", en: "Classic" },
   "ui.App.141": { zh: "调试模式", en: "Debug mode" },
   "ui.App.142": { zh: "开启", en: "Enable" },
   "ui.App.143": { zh: "已开启", en: "Enabled" },
