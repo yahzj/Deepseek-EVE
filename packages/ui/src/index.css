@@ -767,9 +767,11 @@
         ⚠ 字体族**不动**（系统雅黑栈 + `--wui-mono`），不引入外部字体。
         ⚠ **值必须与实测分毫相同**：`calc(var(--ui-fs, 1) * Npx)`（32 处）是「设置→字体大小」的
           缩放基准，N 一变玩家设置就叠出偏差；`--app-head-fs` 是全站标题缩放常量，另见 styles.css。── */
-  --wui-fs-2xs: 9px;
-  --wui-fs-2xsb: 10px;
-  --wui-fs-2xsc: 10.5px;
+  --wui-fs-2xs: 8.5px;
+  --wui-fs-2xsb: 9px;
+  --wui-fs-2xsc: 9.5px;
+  --wui-fs-2xsd: 10px;
+  --wui-fs-2xse: 10.5px;
   --wui-fs-xs: 11px;
   --wui-fs-xsb: 11.5px;
   --wui-fs-s: 12px;
@@ -784,6 +786,8 @@
   --wui-fs-2xl: 18px;
   --wui-fs-3xl: 19px;
   --wui-fs-4xl: 20px;
+  --wui-fs-4xlb: 21px;
+  --wui-fs-4xlc: 22px;
   --wui-fs-5xl: 36px;
 
   /* ── **间距节奏**（2026-09-25 船长裁决「刻度贴着真实值改」后重定）：12 档。
@@ -813,6 +817,7 @@
   --wui-sp-26: 26px;
   --wui-sp-28: 28px;
   --wui-sp-32: 32px;
+  --wui-sp-34: 34px;
   --wui-sp-44: 44px;
   --wui-sp-999: 999px;   /* 胶囊（原写死 999px 的圆角） */
 
