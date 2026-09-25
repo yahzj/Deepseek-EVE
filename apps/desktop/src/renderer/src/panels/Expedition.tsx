@@ -1010,7 +1010,8 @@ function StarMap({
    * 于是这里出两张表：
    * - `invasionProgress`：**仍被占**（进度 < 1）的星系 → 进度 0~1 ⇒ 画发光与其上方的进度条；
    * - `invasionReclaimed`：**已夺回**的星系 → 只记 id（不发光、不画进度条，避免"打下来了还红着"的误导）。
-   * 只在活动存在时收集（**仅调试模式可见**由 core 的 `WEEKEND_DEBUG_ONLY` 保证：非调试模式压根不会有活动）。
+   * 只在活动存在时收集（可见性由 core 的 `WEEKEND_DEBUG_ONLY` 单点判据决定：
+   * **2026-09-25 船长已解除** ⇒ 正常模式照常有活动、这组标记照常画）。
    */
   const invasionProgress: Map<string, number> = (() => {
     const ev = state.weekendEvent

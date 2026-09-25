@@ -4,7 +4,8 @@
  *
  * 形态：作为日志列表里的**最后一条**（与 `wui-log-item` 同级同款：走 `LogList` 的 `footer`），
  * 单行摘要 + 悬停详情；**点击 → 跳星图**（由 App 传入 `onGoto`）。只在活动存在时渲染。
- * ⚠ 入侵目前**只有调试模式可见**（core 的 `WEEKEND_DEBUG_ONLY`）⇒ 正常模式不会有这一行。
+ * ✅ **2026-09-25 船长解除"仅调试模式可见"**（`WEEKEND_DEBUG_ONLY = false`）⇒ 正常模式也会有这一行；
+ * 调试档的限制由 `WEEKEND_DEBUG_ONLY` 单点判据决定（改回 true 即恢复"只在调试模式显示"）。
  */
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
