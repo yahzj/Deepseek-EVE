@@ -1922,9 +1922,11 @@ function GalaxyActions({
           </button>
         </div>
       ) : null}
-      {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面 */}
+      {/* ⑨ 入侵旗舰（2026-09-25 船长令）：核心星系的星系详细里摆入口 ⇒ 点开战前准备界面。
+          ⚠ 同日第二条：「找不到是因为**不明显**，给容器加一个**红色圆边背景**」⇒ 行容器挂
+          `app-ga-invasion`（观感照抄入侵框 `.app-weekend-box`：红边 ＋ 圆角 ＋ 红底）。 */}
       {flagshipPrep ? (
-        <div className="app-ga-row">
+        <div className="app-ga-row app-ga-invasion">
           <span className="app-ga-main">
             <span className="app-ico">
               <Glyph name="ico-tact" size={13} color={ICO_TONES['ico-tact']} />

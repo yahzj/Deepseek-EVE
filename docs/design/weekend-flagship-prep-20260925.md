@@ -356,3 +356,21 @@ ui:theme-check ✓ · build ✓ · `save:migrate` 88/88 ✓ · docs:index ✓（
 
 第 2/4 波（鱼雷舰/母舰排第一）本来就是主体在前，未动。⇒ `weekend-wiring` 增 ㉕ 把**逐波期望距离**
 钉成 `2,352 / 10,350 / 9,500 / 10,350`；`ink-tide` 的编成用例按新顺序更新（含"为什么主体要排前"的注）。
+
+## 二十三、星系详细的旗舰入口「不明显」⇒ 给容器加红色圆边背景（2026-09-25）
+
+> 船长原话：「**找到了，是因为不明显的原因，建议给容器加一个红色圆边背景**」
+
+入口**本来就有**（2026-09-25 早前的船长令已落：核心星系的星系详细 → 「发现敌方旗舰」＋「战前准备」按钮），
+病根纯属**观感**——那一行与「前往掩护巡逻」等普通行动行长得一模一样，扫视时看不见。
+
+| # | 落法 |
+|---|---|
+| ① **行容器加红框** | `Expedition.tsx` 的旗舰入口行挂 `app-ga-row app-ga-invasion`（沿用本文件既有的双类修饰惯例，见 `app-ga-row app-ga-ai`） |
+| ② **样式照抄同族入侵框** | 新增 `.app-ga-row.app-ga-invasion`（`styles.css`，紧跟 `.app-ga-ai`）：`border 1px --wui-danger/0.55` ＋ `border-left 3px --wui-danger` ＋ `border-radius var(--wui-sp-6)` ＋ `background --wui-danger/0.08` ＋ 内距，悬停 `0.16`；标题走 `--wui-danger` 加粗、说明走 `--wui-red/0.85`——**与 `.app-weekend-box`（日志面板那个入侵框）逐字同款**，只把排布留给 `.app-ga-row` 原本的 flex 骨相（约定第六章「先复刻同级相似项」） |
+| ③ **生成件同步** | ⚠ `styles.css` 是源，`ui/layout-css/styles-{modern,classic}.css` 是**生成件** ⇒ 改完必跑 `npm run ui:layout-css`（本轮已跑；另跑了 `ui:layout-css:check` 复核） |
+
+**验证**：typecheck ✓ · ui:rot-check ✓ · ui:theme-check ✓（颜色全走 `--wui-*` token）· content:check ✓ ·
+l10n:check ✓ · build ✓ · `ui:layout-css:check` ✓ · docs:index ✓。
+⚠ **观感审查权在船长**：本批只做了样式与门禁，没有起无头浏览器截图；好不好看请船长过目。
+（另：同页"悬赏"区那行「击退入侵舰队」是**另一处**入侵行，本轮**没动**——要不要一起红，等船长一句话。）
