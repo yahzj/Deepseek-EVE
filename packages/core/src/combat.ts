@@ -891,8 +891,19 @@ export function applyMeWebDebuff<T extends UnitSpec>(spec: T, d: import('./state
 
 /**
  * **发动捕获网**（船长 2026-09-16：「**在自身第一次开火时发动**」——不看是否命中）：
- * 记"已发放"、给目标上账本、**当场**把效果打在本发目标的规格上、推一条**蓝色连线**特效与一条日志。
- * ⚠ 同一艘电子舰**整场只发一次**（`foeWebFired`）；**多艘不叠加**（同一目标已有账本 ⇒ 只留最早那条）。
+ * 给目标上账本、**当场**把效果打在本发目标的规格上、推一条**蓝色连线**特效与一条日志。
+ *
+ * 三条口径（第三条于 **⟪2026-09-25 船长报障⟫** 修）：
+ * 1. 同一艘舰**整场只发一次**（`foeWebFired`）；
+ * 2. **多艘不叠加**：目标已有账本 ⇒ **不再上账本、不推特效、不写日志**（只留最早那条）；
+ * 3. ⚠ **打空不算用掉**：第 2 条那种"目标已被别的网钉住"的情形下，**本舰的网保留**，
+ *    等它**真正钉住一个未被捕获的目标**时才记 `foeWebFired`。
+ *
+ * 为什么第 3 条必须这样（船长 2026-09-25 原话）：「**装备劫掠捕获网的船攻击时，如果命中已经被捕获的船时，
+ * 并不会触发，而是保留直到攻击了没有被捕获的船**」。修前：本函数**无条件**先记 `foeWebFired` 再判"已钉"，
+ * 于是第 2 艘起的网被**静默作废**（无蓝线、无日志、此后整场不再发放）。真引擎实测（真实入侵卡
+ * `ink-harass` = 墨潮突击舰 ×4 全带网 · 我方只 1 艘船）：**`foeWebFired` 记 4 艘、实际只钉住 1 个目标、
+ * 蓝线只出 1 条** ⇒ 3 张网白费。修后同上场景应记 **1** 艘、留着另外 3 张。
  */
 function fireFoeCaptureWeb(
   state: GameState,
@@ -902,8 +913,9 @@ function fireFoeCaptureWeb(
 ): void {
   const web = f.foeCaptureWeb
   if (!web) return
+  // ⚠ 目标已被别的网钉住 ⇒ **本次不算发放**（本舰的网保留到它钉住新目标为止）——见函数头注第 3 条
+  if (b.meWebDebuffs?.[target.tag]) return
   b.foeWebFired = { ...(b.foeWebFired ?? {}), [f.tag]: true }
-  if (b.meWebDebuffs?.[target.tag]) return // 同一目标已被别的网钉住 ⇒ 不叠加（只推特效不重复上账本）
   const debuff: import('./state').BattleWebDebuff = {
     byTag: f.tag,
     slowMul: web.slowMul,
@@ -7611,7 +7623,9 @@ function stepBattle(
     const gtgt = pickTarget()
     if (!gtgt) continue // 我方已全灭（正常由结束判定收场）
     // **劫掠捕获网**（船长 2026-09-16）：「在自身第一次开火时发动」——**不看命中**，
-    // 就在这一发之前钉住本发目标（于是这一发的命中判定也吃到"闪避归零"）
+    // 就在这一发之前钉住本发目标（于是这一发的命中判定也吃到"闪避归零"）。
+    // ⚠ ⟪2026-09-25 船长报障⟫：目标**已被别的网钉住**时本舰的网**不算用掉**（保留到它钉住新目标为止）
+    // —— 该判定在 `fireFoeCaptureWeb` 内部，这里只判"本舰还没发过"。
     if (f.foeCaptureWeb !== undefined && b.foeWebFired?.[f.tag] !== true) {
       fireFoeCaptureWeb(state, b, f, gtgt.spec)
     }

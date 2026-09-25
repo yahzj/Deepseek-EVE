@@ -160,6 +160,98 @@ describe('劫掠捕获网 · 触发与四层效果', () => {
   })
 })
 
+/**
+ * **多艘同场：没钉到人的网不算用掉**（⟪**2026-09-25 船长报障**⟫）。
+ *
+ * 船长原话：「**装备劫掠捕获网的船攻击时，如果命中已经被捕获的船时，并不会触发，而是保留直到攻击了
+ * 没有被捕获的船。**」——现状与他要的相反：`fireFoeCaptureWeb` 原先**无条件**先记 `foeWebFired` 再判
+ * "目标已被钉住"，于是第 2 艘起的网被**静默作废**（无蓝线、无日志、此后整场不再发放）。
+ *
+ * 为什么这条报障值得单开一组用例：网挂在 **H 族「墨潮突击舰」的舰级上**（2026-09-24 船长令
+ * 「墨潮突击舰添加 A 族洞内电子舰同款网子和冲锋」），而引用它的卡是 **2~4 艘同时上场**
+ * （`ink-harass` = 骚扰舰队 ×4）⇒ 多网同场是**常态**、不是边角。
+ */
+describe('劫掠捕获网 · 多艘同场：打空不算用掉（船长 2026-09-25 报障）', () => {
+  /**
+   * 起一场「墨潮帮骚扰舰队」（墨潮突击舰 ×4，舰级自带捕获网）＋ 我方 1 艘。
+   *
+   * ⚠ **双方血量白盒拉满**：本卡是威胁 90 的入侵编成，真打起来我方单舰十几秒就没了、
+   * 敌方也会被点掉 ⇒ 走不到"四艘都开过火"那一步（第一版就是这么红的）。拉满后**只有我在用例里
+   * 手动清零的那些单位会死**，判据因此完全确定。
+   */
+  function inkBattle() {
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const id = addShipToFleet(state, 'sh-thresher')
+    state.shipId = id
+    state.fleet[id]!.fitted = { high: ['mod-turret-kin-2'], mid: [], low: [] }
+    for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 9_000
+    const battle = startFleetBattleFor(state, ctx, [id], 'ink-harass', 0)!
+    for (const u of Object.values(battle.units)) {
+      u.hp = { s: 1e9, a: 1e9, h: 1e9 }
+      u.hpMax = { s: 1e9, a: 1e9, h: 1e9 }
+    }
+    const foes = Object.values(battle.units).filter((u) => u.side === 'foe')
+    /**
+     * ⚠ **"这一艘开过火没有"只能从 fx 事件看**：`foeShots` 是**战斗级**计数器（`b.stats.foeShots`），
+     * 不是逐单位字段（第一版按 `u.foeShots` 判 ⇒ 恒 0、条件永不成立）。
+     * 敌舰每一次开火（含张网那条）都会推一条 `side:'foe'` 且带自己 tag 的 fx ⇒ 按 tag 收齐即可。
+     */
+    const firedFoes = new Set<string>()
+    const step = (t: number): void => {
+      state.gameMs = t
+      advanceBattleFor(state, ctx, battle, id, 'ink-harass')
+      for (const f of battle.fx) if (f.side === 'foe' && f.tag) firedFoes.add(f.tag)
+    }
+    const runUntil = (cond: () => boolean, maxMs = 60_000): boolean => {
+      for (let t = 1_000; t <= maxMs; t += 1_000) {
+        step(t)
+        if (cond()) return true
+        if (battle.ended) break
+      }
+      return cond()
+    }
+    return { state, battle, id, foes, firedFoes, step, runUntil }
+  }
+
+  it('4 艘网船打同一个目标：**只记 1 艘已发放**（改前记 4 艘 = 3 张网白费）', () => {
+    const w = inkBattle() // 我方只 1 艘 ⇒ 敌方全体只能瞄准它，4 张网必然全打同一目标
+    expect(w.foes.length, '骚扰舰队 = 墨潮突击舰 ×4').toBe(4)
+    // 跑到"四艘都开过火"（每艘装填 4 秒 + 入场错峰 ⇒ 30 秒足够）
+    w.runUntil(() => w.foes.every((f) => w.firedFoes.has(f.tag)), 30_000)
+    expect(w.foes.filter((f) => w.firedFoes.has(f.tag)).length, '四艘都开过火').toBe(4)
+    expect(Object.keys(w.battle.meWebDebuffs ?? {}), '只有 1 个目标可钉').toHaveLength(1)
+    /**
+     * ⚠ **本用例就是报障判据**：改前这里是 4（每艘都在"第一次开火"时被记账，后 3 张静默作废）；
+     * 改后只有**真正钉住人**的那 1 艘记账，其余 3 张网留着。
+     */
+    expect(Object.keys(w.battle.foeWebFired ?? {}).length, '只有真正钉住人的那艘才算发放').toBe(1)
+    expect(w.battle.fx.filter((f) => f.web === true).length, '蓝线只应出现 1 条').toBe(1)
+  })
+
+  it('保留的网**后来会发**：把首张网的发动者打沉（网解除）⇒ 留着的网在同一个目标上补发', () => {
+    const w = inkBattle()
+    // ① 跑到第一张网发出
+    expect(w.runUntil(() => Object.keys(w.battle.meWebDebuffs ?? {}).length > 0, 30_000), '首张网应发出').toBe(true)
+    const pinned = Object.keys(w.battle.meWebDebuffs!)[0]!
+    const firstCaster = w.battle.meWebDebuffs![pinned]!.byTag
+    expect(Object.keys(w.battle.foeWebFired ?? {}), '此刻只有 1 艘记了发放').toEqual([firstCaster])
+    // ② 白盒打沉首张网的发动者 ⇒ 按既有口径"击杀发动者即解除"，目标重新变成**未被捕获**
+    w.battle.units[firstCaster]!.hp = { s: 0, a: 0, h: 0 }
+    w.runUntil(() => Object.keys(w.battle.meWebDebuffs ?? {}).length === 0, 10_000)
+    expect(Object.keys(w.battle.meWebDebuffs ?? {}), '发动者已沉 ⇒ 网解除（既有口径）').toHaveLength(0)
+    // ③ 继续跑：**留着的那几张网**应在这个"重新未被捕获"的目标上发出来
+    const rePinned = w.runUntil(
+      () => Object.entries(w.battle.meWebDebuffs ?? {}).some(([, d]) => d.byTag !== firstCaster),
+      30_000,
+    )
+    expect(rePinned, '保留的网应在（重新）未被捕获的目标上发出来').toBe(true)
+    expect(
+      Object.keys(w.battle.foeWebFired ?? {}).length,
+      '发放数应随"钉到新目标"增加（改前第 2 艘的网早在首发时就作废了、这里恒为 1）',
+    ).toBeGreaterThan(1)
+  })
+})
+
 describe('首次遭遇通讯（结束虫洞或回主界面才送达）', () => {
   it('开战即记下"见过这艘舰"；洞内/交战中压着不投递，空了才送', () => {
     const { state, battle } = warbandBattle()
