@@ -85,12 +85,19 @@ export interface FoeBriefLine {
   hull: string
   /** 本卡编成里的数量（0 = 只是"可能出现"，不在本卡编成里） */
   count: number
-  /** 其余部分：战术 / 武器 / 主副伤 / 舰载机 / 特殊装置 / 精英档 */
+  /** 其余部分：战术 / 武器 / 主副伤 / 舰载机 / 精英档 */
   bits: string[]
+  /** 特殊装置那一节（**单独一段**：界面只染「特殊装置」这四个字）；无则缺省 */
+  mounts?: string
 }
 
-/** 组一句里的"其余部分"（与 `foeShipBriefOf` 同一套判据，避免两处漂移） */
-function bitsOf(ship: FoeShipDef): string[] {
+/**
+ * 其余部分：战术 / 武器 / 主副伤 / 舰载机 / 精英档。
+ * ⚠ **"特殊装置"那一节不在这里**，写进 `out.mounts` 单独一段 —— 界面要**只染「特殊装置」四个字**
+ * （2026-09-26 船长令：「特殊装置颜色不要和舰船名称颜色一样。建议就特殊装置这四个字染色」），
+ * 所以必须让它拿得到这一段，而不是混在一串 bits 里。
+ */
+function bitsOf(ship: FoeShipDef, out: { mounts?: string }): string[] {
   const en = isEn()
   const bits: string[] = []
   if (ship.tactic === 'brawl') bits.push(tr('ui.foeIntro.010'))
@@ -116,7 +123,7 @@ function bitsOf(ship: FoeShipDef): string[] {
   }
   if ((ship.repairPct ?? 0) > 0) mech.push(tr('ui.foeIntro.050'))
   if ((ship.foeRangeDebuffPct ?? 0) > 0) mech.push(tr('ui.foeIntro.051'))
-  if (mech.length > 0) bits.push(tr('ui.foeIntro.060', { p1: mech.join(en ? ', ' : '、') }))
+  if (mech.length > 0) out.mounts = mech.join(en ? ', ' : '、')
   if (ship.elite === true) bits.push(tr('ui.foeIntro.070'))
   return bits
 }
@@ -144,13 +151,24 @@ export function briefShipsOf(anomaly: AnomalyDef | null | undefined): FoeBriefLi
 }
 
 function toLine(ship: FoeShipDef, count: number): FoeBriefLine {
+  const out: { mounts?: string } = {}
+  const bits = bitsOf(ship, out)
   return {
     id: ship.id,
     name: ship.name,
     hull: isEn() ? (HULL_EN[ship.hullClassTier] ?? '') : (HULL_CN[ship.hullClassTier] ?? ''),
     count,
-    bits: bitsOf(ship),
+    bits,
+    ...(out.mounts !== undefined ? { mounts: out.mounts } : {}),
   }
+}
+
+/** 挂载件那一节的**标签词**（「特殊装置」/「special mounts」）——界面要**只染这四个字**，故单点导出 */
+export function mountLabelText(): string {
+  return tr('ui.foeIntro.060', { p1: '' })
+    .replace('{p1}', '')
+    .replace(/[：:]\s*$/, '')
+    .trim()
 }
 
 /**

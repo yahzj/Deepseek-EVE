@@ -90,7 +90,7 @@ import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { UI_TONES } from '../ui/tones'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
-import { briefsOfPool } from '../ui/foeBrief'
+import { briefsOfPool, mountLabelText } from '../ui/foeBrief'
 import { hoverTipProps } from '../ui/Tooltip'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -2192,11 +2192,25 @@ function GalaxyActions({
                     </b>
                     <span className="app-dim">{'：'}</span>
                     {l.bits.map((b, i) => (
-                      <span key={i} style={b.startsWith(tr('ui.foeIntro.060', { p1: '' })) ? { color: UI_TONES.foeName } : undefined}>
+                      <span key={i}>
                         {b}
-                        {i < l.bits.length - 1 ? '，' : '。'}
+                        {i < l.bits.length - 1 || l.mounts !== undefined ? '，' : '。'}
                       </span>
                     ))}
+                    {/**
+                     * **特殊装置**（2026-09-26 船长令：「**特殊装置颜色不要和舰船名称颜色一样。
+                     * 建议就特殊装置这四个字染色**」）：
+                     * · **只染这四个字**，效果说明保持正文色；
+                     * · 用 `UI_TONES.matBattle`（谜质「战斗线」的琥珀）——与舰名那条敌族红
+                     *   （`foeName` / `foeNameMain`）是**不同的 token**，深空主题实测 224,168,106 vs 216,160,143。
+                     */}
+                    {l.mounts !== undefined ? (
+                      <span>
+                        <b style={{ color: UI_TONES.matBattle }}>{mountLabelText()}</b>
+                        {'：'}
+                        {l.mounts}。
+                      </span>
+                    ) : null}
                   </span>
                 ))}
               </span>
