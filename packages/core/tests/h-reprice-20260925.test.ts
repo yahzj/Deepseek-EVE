@@ -1,15 +1,19 @@
 /**
  * **H 族重定价批（船长 2026-09-25 逐条裁定）** —— 本文件钉五件事：
  *
- * 1. **三张非旗舰卡的威胁 = 船长给定的 90 / 108 / 129**（骚扰 / 袭击 / 主力），且**卡面威胁 = 属性实测价**
+ * 1. **三张非旗舰卡的威胁 = 90 / 108 / 132**（骚扰 / 袭击 / 主力），且**卡面威胁 = 属性实测价**
  *    （`X = √(全波总血 × 峰值波火力DPS)` 反解 · 系数 = 单舰 ×3）——这是"威胁 = 战力标尺"规则的守卫。
+ *    ⚠ 主力卡 **129 → 132**（**2026-09-25 无人机微调批**：主力卡第 2 波那架「墨潮重袭机」单发 60 → 120、
+ *    三层血 180 → 600、命中 0.85 → 1.3 ⇒ 实测价 +3；骚扰/袭击两张没有机群 ⇒ 逐字不动）。
+ *    残骸侧按船长「冻结残骸经济」钉住 `wreckThreat: 129` ⇒ H 组代表威胁仍是 **124**（不跟着漂）。
  * 2. **属性落法 = 每艘船的血与单发同乘一个 K**（船长令「**按照敌舰设定的属性比例重定**」）
  *    ⇒ 逐舰 `血 ÷ DPS` 必须等于**该舰级的自然比**（突击 28.55 / 鱼雷 22.40 / 干扰 34.29 / 战巡 42.11）。
  * 3. **入侵敌卡随机抽取**：池 = 外围 {骚扰, 袭击} · 核心 {袭击, 主力}；同输入同结果（不消费主随机序列）、
  *    跨星系会抽到不同编成、被占星系的"驻留"一支在一场入侵内稳定。
  * 4. **遇袭强度 ×0.75 是真倍率**（`FoeOverride.strengthMul`：血与火力同缩），标签按**缩放后实测价**反解
- *    = 骚扰 **76** · 袭击 **91** · 主力 **109**（不是"威胁数字 ×0.75"）。
- * 5. **旗舰部队卡本轮一字未动**（威胁 45 · 总血 1,652），留待船长单独的"旗舰轮"。
+ *    = 骚扰 **76** · 袭击 **91** · 主力 **111**（不是"威胁数字 ×0.75"）。
+ * 5. **旗舰部队卡本轮一字未动**（威胁 170 · 总血 94,439 · 峰值波 405.2 DPS——机群调强后 DPS 上浮，
+ *    母舰血量与卡面编成未动），留待船长单独的"旗舰轮"。
  *
  * 另附残骸侧：船长令「**这边的残骸就不冻结了**」⇒ `h-wh` 组代表威胁随成员走（45 → 93），
  * 但**行为零变化**（四张卡都 `hidden`；组威胁只作"≥17 / ≥41"两道闸门）。
@@ -37,6 +41,8 @@ import {
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
 import { weekendBattleInvolvedOf, weekendRareWreckIdFor } from '../src/weekendBattle'
+// 残骸侧口径：组代表威胁跟的是 `wreckThreat ?? threat`（与 content-check 的残骸组契约同一处）
+import { wreckInjectThreatOf } from '../src/salvage'
 import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import { recycleProfileOf } from '../src/salvage'
 import { pullOneWreck } from '../src/salvaging'
@@ -74,11 +80,12 @@ function occupied(seed: number, family = 'H'): { s: GameState; ev: WeekendEventS
   return { s, ev }
 }
 
-describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / 129）', () => {
-  it('三张非旗舰卡的威胁 = 90 / 108 / 129；旗舰卡仍是锚点 45', () => {
+describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **132**）', () => {
+  it('三张非旗舰卡的威胁 = 90 / 108 / 132；旗舰卡仍是锚点 170', () => {
     expect(card('ink-harass').threat).toBe(90)
     expect(card('ink-raid').threat).toBe(108)
-    expect(card('ink-main').threat).toBe(129)
+    // 129 → 132：无人机微调批（主力卡带机群 ⇒ 实测价 +3；残骸侧用 wreckThreat 钉住 129）
+    expect(card('ink-main').threat).toBe(132)
     expect(card('ink-flagship').threat).toBe(170)
   })
 
@@ -92,7 +99,8 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / 129
     // 三个具体读数（与探针一致，防止"改注释不改数"）
     expect(foeStrengthOf(card('ink-harass'), bal).x).toBeCloseTo(621.12, 1)
     expect(foeStrengthOf(card('ink-raid'), bal).x).toBeCloseTo(835.76, 1)
-    expect(foeStrengthOf(card('ink-main'), bal).x).toBeCloseTo(1114.14, 1)
+    // 1114.14 → 1152.79：无人机微调批（主力卡带一架重袭机）
+    expect(foeStrengthOf(card('ink-main'), bal).x).toBeCloseTo(1152.79, 1)
   })
 
   it('**逐舰血÷DPS = 舰级自然比**（船长令「按照敌舰设定的属性比例重定」）· 每艘的绝对值也对得上', () => {
@@ -134,12 +142,13 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / 129
     expect(gunShotOf(bc)).toBe(513)
   })
 
-  it('旗舰部队卡本轮**一字未动**（威胁 45 · 全波总血 1,652 · 峰值波 7.39 DPS）', () => {
+  it('旗舰部队卡编成与母舰血未动（威胁 170 · 全波总血 94,439 · 峰值波 **405.2 DPS**）', () => {
     const a = card('ink-flagship')
     const m = foeStrengthOf(a, bal)
     expect(a.threat).toBe(170)
     expect(m.hp).toBeCloseTo(94439, 0)
-    expect(m.dps).toBeCloseTo(357.7, 1)
+    // 357.7 → 405.2：无人机微调批（母舰 2 架 ＋ 战巡 1 架重袭机：单发 60 → 120 ⇒ 末波机群 DPS +50）
+    expect(m.dps).toBeCloseTo(405.2, 1)
   })
 
   it('主力第 2 波越 150 线：按既有「超出部分 15% 折扣」落地（名义 162.5 → 实收 160.7 · 逐条取整 137/519/117 → 135/513/116）', () => {
@@ -159,7 +168,7 @@ describe('H 族遇袭 · 真强度 ×0.75（标签按缩放后实测价反解）
     const cases: ReadonlyArray<readonly [string, number]> = [
       ['ink-harass', 76],
       ['ink-raid', 91],
-      ['ink-main', 109],
+      ['ink-main', 111], // 109 → 111（无人机微调批：主力卡实测价 +3 ⇒ 缩放标签同升）
     ]
     for (const [id, label] of cases) {
       const a = card(id)
@@ -230,7 +239,7 @@ describe('入侵敌卡随机抽取（船长 2026-09-25：外围 {骚扰, 袭击}
     expect([76, 91]).toContain(pick.threat)
     const corePick = weekendAmbushPickOf(s, ctx, 'galaxy-kor', 0)!
     expect(['ink-raid', 'ink-main']).toContain(corePick.cardId)
-    expect([91, 109]).toContain(corePick.threat)
+    expect([91, 111]).toContain(corePick.threat) // 主力卡 109 → 111（无人机微调批）
     expect(weekendAmbushPickOf(s, ctx, 'galaxy-redring', 0), '非占领区').toBeNull()
   })
 
@@ -243,13 +252,22 @@ describe('入侵敌卡随机抽取（船长 2026-09-25：外围 {骚扰, 袭击}
   })
 })
 
-describe('残骸侧：H 组**不冻结**（船长令）＋ 组改洞外高安（「修，②」）', () => {
-  it('`h-hi` 组代表威胁 = 成员回收口径体量的平均 = 93（45 → 93）', () => {
+describe('残骸侧：**冻结残骸经济**（船长令）＋ 组改洞外高安（「修，②」）', () => {
+  it('`h-hi` 组代表威胁 = 成员**回收口径**（`wreckThreat ?? threat`）的平均 = 124（战力标签涨了它也不动）', () => {
     const g = WRECK_GROUP_BY_KEY.get('h-hi')!
-    const members = g.members.map((id) => card(id).threat)
-    expect(members).toEqual([90, 108, 129, 170])
-    expect(g.threat).toBe(Math.round(members.reduce((a, b) => a + b, 0) / members.length))
+    /** 战力标签（对外读数）：主力卡已随无人机微调涨到 132 */
+    const threats = g.members.map((id) => card(id).threat)
+    expect(threats).toEqual([90, 108, 132, 170])
+    /**
+     * ⚠ **组代表威胁跟的是回收口径**（`wreckThreat ?? threat`，见 `wreckGroups.ts` 头注）：
+     * 船长 2026-09-25「**冻结残骸经济**」⇒ 主力卡钉了 `wreckThreat: 129`，于是
+     * 哪怕战力标签 129 → 132，本组的代表威胁**仍是 124**（不牵动回收画像与碎片门槛）。
+     */
+    const wreckValues = g.members.map((id) => wreckInjectThreatOf(card(id)))
+    expect(wreckValues).toEqual([90, 108, 129, 170])
+    expect(g.threat).toBe(Math.round(wreckValues.reduce((a, b) => a + b, 0) / wreckValues.length))
     expect(g.threat).toBe(124)
+    expect(card('ink-main').wreckThreat, '主力卡的冻结值').toBe(129)
     expect(g.name).toBe('墨潮帮残骸（高安）')
     expect(recycleProfileOf(ctx, 'wreck-h-hi')!.threat, '回收画像读的就是组代表威胁').toBe(124)
     // 旧洞内组退役：**已无 h-wh 组**（它此前没有任何产出路径 ⇒ 无存档可持有其物品）

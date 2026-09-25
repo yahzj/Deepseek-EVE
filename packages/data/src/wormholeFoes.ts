@@ -635,7 +635,13 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   name: '墨潮帮主力舰队',
   galaxyId: 'galaxy-hub',
   region: 'hi',
-  threat: 129,
+  threat: 132, // **2026-09-25 无人机微调后重算的实测价**（129 → 132：战巡那架重袭机调强了）
+  /**
+   * ⚠ **回收口径的冻结值**（船长 2026-09-25「**冻结残骸经济**」，与 `anomalies.ts` 同一条纪律）：
+   * 本卡的**战力标签**刚从 129 涨到 132，但**残骸侧一律不动** ⇒ 用 `wreckThreat` 把它钉在 129
+   * （否则 H 残骸组的代表威胁会从 124 跟着漂到 125，牵动回收画像与碎片门槛）。
+   */
+  wreckThreat: 129,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 },
   waves: [
