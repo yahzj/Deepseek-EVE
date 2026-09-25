@@ -89,6 +89,7 @@ import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
+import { foeBriefOfCard } from '../ui/foeBrief'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 
@@ -2179,12 +2180,45 @@ function GalaxyActions({
                 <span className="app-ico">
                   <Glyph name="nav-bounty" size={13} color={NAV_TONES['nav-bounty']} />
                 </span>
-                {tr('ui.weekend.092')}
+                {/**
+                 * 卡片标题带**敌舰一句话介绍**的悬停（2026-09-26 船长令：「如果是入侵活动的悬赏卡片，
+                 * 玩家鼠标悬停还能看见敌人舰船的大概介绍（一句话介绍敌人舰船的特点）」＋
+                 * 「介绍内要说明一些有特殊机制的敌方舰船的效果」）。
+                 *
+                 * 句子由 `ui/foeBrief.ts` **从数据推导**（挂载件名逐件点名 + 战术/武器/无人机/精英档），
+                 * 所以它描述的就是战斗里真正生效的那套机制；`card` 缺省（无签可抽）时不挂悬停。
+                 * 悬停走仓里统一的 `title` 口径（`ui/Tooltip` 自绘接管层），不另起机制。
+                 */}
+                <span title={card ? (foeBriefOfCard(card) ?? undefined) : undefined}>{tr('ui.weekend.092')}</span>
                 <span className="app-dim app-ga-desc">
                   {tr('ui.weekend.093', { p1: lo, p2: hi })}
                   {' · '}
                   {tr('ui.weekend.096')}
                 </span>
+                {/**
+                 * **敌火力类型 ＋ 敌血型**（2026-09-26 船长令：「像常驻悬赏那样，添加一个敌人火力类型、
+                 * 敌人血量类型」）：与常驻悬赏卡（`AnomalyCard`）**同一对组件与同一套取数**
+                 * （`FoeDamageMix` / `foeLayerSplit` + `ProfileChip`），口径与战斗结算同源。
+                 * `card` 缺省时不渲染这两行（没抽签就没有可报的敌情）。
+                 */}
+                {card ? (
+                  <span className="app-dim app-ga-invprog-line" title={tr('ui.Expedition.218')}>
+                    {tr('ui.Expedition.366')}
+                    <FoeDamageMix anomaly={card} />
+                  </span>
+                ) : null}
+                {card
+                  ? (() => {
+                      const p = card.defProfile ?? 'balanced'
+                      const cn = p === 'shield' ? tr('ui.Expedition.272') : p === 'armor' ? tr('ui.Expedition.273') : tr('ui.Expedition.098')
+                      return (
+                        <span className="app-dim app-ga-invprog-line" title={tr('ui.Expedition.219', { p1: Math.round(foeLayerSplit(p).s * 100), p2: Math.round(foeLayerSplit(p).a * 100), p3: Math.round(foeLayerSplit(p).h * 100) })}>
+                          {tr('ui.Expedition.367')}
+                          <ProfileChip profile={p} text={cn} />
+                        </span>
+                      )
+                    })()
+                  : null}
                 {/**
                  * **收复进度（2026-09-26 船长令）**：「被入侵的星系的星系详细内，在'击退入侵舰队'卡片处
                  * 显示该星系的**收复进度**。当核心星系无法收复时，在对应的击退入侵舰队卡片**提示玩家**」

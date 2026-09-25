@@ -1575,6 +1575,23 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.103": { zh: "收复进度 {p1}%", en: "Reclaim progress {p1}%" },
   "ui.weekend.104": { zh: "核心进度暂不推进：至少需要夺回一个外围星系", en: "Core progress is on hold: at least one peripheral system must be reclaimed first" },
   "ui.weekend.105": { zh: "核心进度暂不推进：还需夺回 {p1} 个外围星系", en: "Core progress is on hold: {p1} more peripheral systems must be reclaimed" },
+  /* ── 2026-09-26 船长令：入侵悬赏卡的**敌舰一句话介绍**（`ui/foeBrief.ts` 从数据推导，
+       这里只放"连接用"的短标签；机制名直接取 `FOE_MOUNTS[..].name` / `.en`） ── */
+  "ui.foeIntro.001": { zh: "动能", en: "kinetic" },
+  "ui.foeIntro.002": { zh: "爆弹", en: "explosive" },
+  "ui.foeIntro.003": { zh: "能量", en: "energy" },
+  "ui.foeIntro.010": { zh: "近战缠斗", en: "brawls at close range" },
+  "ui.foeIntro.011": { zh: "中程缠斗", en: "fights at mid range" },
+  "ui.foeIntro.012": { zh: "远程狙击", en: "snipes from long range" },
+  "ui.foeIntro.020": { zh: "能量光束必中", en: "energy beams always hit" },
+  "ui.foeIntro.021": { zh: "能量掷命中", en: "energy shots roll to hit" },
+  "ui.foeIntro.030": { zh: "{p1}为主（{p2}%）", en: "mainly {p1} ({p2}%)" },
+  "ui.foeIntro.031": { zh: "副 {p1}", en: "secondary {p1}" },
+  "ui.foeIntro.040": { zh: "带 {p1} 架舰载机", en: "carries {p1} strike craft" },
+  "ui.foeIntro.050": { zh: "船体修理", en: "hull repair" },
+  "ui.foeIntro.051": { zh: "压制敌方射程", en: "suppresses enemy range" },
+  "ui.foeIntro.060": { zh: "特殊装置：{p1}", en: "special mounts: {p1}" },
+  "ui.foeIntro.070": { zh: "精锐规格", en: "elite grade" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
