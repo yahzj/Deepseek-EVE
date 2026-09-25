@@ -39,6 +39,7 @@ import {
 } from './weekendEvent'
 import type { WeekendEventState } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
+import { rareWreckItemIdOfCard } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
 
 /* ─────────────── 战斗规格 ─────────────── */
@@ -291,25 +292,36 @@ export function weekendSettlePlanOf(
 
 /* ─────────────── 奖励入账（M1-b 第五片） ─────────────── */
 
-/** 稀有残骸的**物品 id**（奖励口径：`wreck-rare`；与打捞/回收同一种货币化残骸） */
-export const WEEKEND_RARE_WRECK_ID = 'wreck-rare'
+/**
+ * **这一场该发的稀有残骸物品 id**（2026-09-25 修）：按**"打的那张卡"所属残骸组**取
+ * （H 族独立卡 ⇒ `wreck-rare-h-hi`；A/C/G 占位卡 ⇒ 它们那张虫洞卡所属组）。
+ *
+ * ⚠ 原实现写死 `WEEKEND_RARE_WRECK_ID = 'wreck-rare'` —— 那个 id **在物品目录里不存在**
+ * （真实形态是 `wreck-rare-<组key>`），实测 `ctx.items.has('wreck-rare') === false`，
+ * 发出去就是一件「未知物品」（回收画像 null ⇒ 不能回收、不能卖）。现已删除该常量。
+ * 契约保证"每张敌卡都登记进某一残骸组" ⇒ 正常路径必有值；解析不到就不发（不造假物品）。
+ */
+export function weekendRareWreckIdFor(cardId: string, ctx: SimContext): string | undefined {
+  return rareWreckItemIdOfCard(cardId, ctx) ?? undefined
+}
 
 /**
  * **把结算结果真正发下去**（引擎在拿到 `weekendResolveBattle` / `weekendSettlePlanOf` 的结果后调用）：
  * - ISK 直接进钱包；
- * - 稀有残骸走 `addItem` 进物品仓库（与战利品同一条入库路径）；
+ * - 稀有残骸走 `addItem` 进物品仓库（与战利品同一条入库路径），**物品 id 由调用方按卡解析**
+ *   （`weekendRareWreckIdFor`；缺省 = 不发，绝不发不存在的 id）；
  * - **黑匣暂不发物品**（数据表里还没有这件，M4「黑匣入库与定价」一起做）⇒ 只在返回值里带回数量。
  *
  * ⚠ 幂等由调用方保证（`weekendResolveBattle` 的"夺回只发一次"已在那一层判过）。
  */
 export function weekendGrantRewards(
   state: GameState,
-  reward: { isk?: number; wreck?: number; blackBox?: boolean },
+  reward: { isk?: number; wreck?: number; blackBox?: boolean; wreckItemId?: string },
 ): { isk: number; wreck: number; blackBox: number } {
   const isk = Math.max(0, Math.round(reward.isk ?? 0))
   const wreck = Math.max(0, Math.round(reward.wreck ?? 0))
   if (isk > 0) state.wallet.isk += isk
-  if (wreck > 0) addItem(state, WEEKEND_RARE_WRECK_ID, wreck)
+  if (wreck > 0 && reward.wreckItemId !== undefined) addItem(state, reward.wreckItemId, wreck)
   return { isk, wreck, blackBox: reward.blackBox ? 1 : 0 }
 }
 
@@ -401,6 +413,13 @@ export function weekendApplyBattleOutcome(
   const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs, flagshipDmg, flagshipFloorHp, battle?.startedAtGameMs)
   const isk = (r.reclaimed?.isk ?? 0)
   const wreck = (r.reclaimed?.wreck ?? 0) + (r.flagshipKilled?.wreck ?? 0)
-  const granted = weekendGrantRewards(state, { isk, wreck, blackBox: r.flagshipKilled !== undefined })
+  // **稀有残骸的真实物品 id**：按这一场打的那张卡所属残骸组取（H 族 ⇒ `wreck-rare-h-hi`）
+  const wreckItemId = weekendRareWreckIdFor(spec.cardId, ctx)
+  const granted = weekendGrantRewards(state, {
+    isk,
+    wreck,
+    blackBox: r.flagshipKilled !== undefined,
+    ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+  })
   return { galaxyId: involved.galaxyId, kind: involved.kind, gain: r.progressGain, isk: granted.isk, wreck: granted.wreck, note: r.note }
 }

@@ -650,9 +650,10 @@ const WRECK_IDS = [
   'wreck-rare-e-wh',
   'wreck-g-wh',
   'wreck-rare-g-wh',
-  // H 族（墨潮帮）第 14 组（2026-09-24）：'h-wh' —— 入侵卡的残骸归属组先登记英名
-  'wreck-h-wh',
-  'wreck-rare-h-wh',
+  // H 族（墨潮帮）第 14 组（2026-09-25 船长令「修，②」）：'h-hi' —— 入侵卡的**洞外高安**残骸组
+  // （旧 'h-wh' 已退役：它此前没有任何产出路径，任何存档都不可能持有 ⇒ 改名零迁移）
+  'wreck-h-hi',
+  'wreck-rare-h-hi',
 ] as const
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
