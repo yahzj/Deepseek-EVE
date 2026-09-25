@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **330** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6074** KB · **43790** 行
-- 状态分布：**未标注** 176 · **已确认/已实现** 111 · **进行中** 38 · **待裁定** 4 · **历史留档** 1
-- 孤儿文档（0 引用）**54** 份 · 状态未标注 **176** 份
+- 文档总数 **328** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **5992** KB · **43002** 行
+- 状态分布：**未标注** 175 · **已确认/已实现** 111 · **进行中** 37 · **待裁定** 4 · **历史留档** 1
+- 孤儿文档（0 引用）**54** 份 · 状态未标注 **175** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**213** 份
+- 三、现行设计稿（design）：**211** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**27** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 468 KB / 985 行 | 218 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 101 KB / 310 行 | 312 / 17 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 471 KB / 985 行 | 219 / 16 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 109 KB / 311 行 | 312 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,11 +53,10 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 213 份
+## 三、现行设计稿（design） —— 211 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/announcement-draft-20260925-weekend-invasion.md` | 公告待审稿 · 周末星域入侵（新玩法）（2026-09-25） | 未标注（船长已定稿 · 待发布） | 2026-09-25 | 6 KB / 67 行 | 0 / 4 |
 | `docs/design/armored-line-speed-20260925.md` | 甲壳装甲线三艘降速（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 4 KB / 59 行 | 0 / 0 |
 | `docs/design/battle-dmg-popup-20260925.md` | 战斗页伤害飘字：停留时间延长 + 字重 900（2026-09-25） | 进行中（进行中 —— 改动已落码、七道闸门全） | 2026-09-25 | 3 KB / 41 行 | 0 / 0 |
 | `docs/design/capture-web-retain-20260925.md` | 劫掠捕获网：没钉到人的网不算用掉（2026-09-25） | 进行中（进行中 —— 改动已落码、闸门待跑） | 2026-09-25 | 3 KB / 52 行 | 0 / 0 |
@@ -70,7 +69,6 @@
 | `docs/design/ui-refresh-20260925.md` | 工作文档 · UI 系统级优化重置（ui-refresh 隔离分支）（2026-09-25 · 三号） | 进行中（进行中） | 2026-09-25 | 13 KB / 181 行 | 0 / 0 |
 | `docs/design/ui-shell-bottom-nav-20260925.md` | 工作文档 · 外壳重设计：底部导航 + 活动栏左列（ui-redesign-2 隔离分支）（2026-09-25 · 三号） | 待裁定（代码已落地 · 待船长真机验收） | 2026-09-25 | 5 KB / 61 行 | 0 / 0 |
 | `docs/design/ui-shell-layout2-20260925.md` | 工作文档 · 外壳布局第二轮（ui-redesign-2）（2026-09-25 · 三号） | 进行中（进行中） | 2026-09-25 | 17 KB / 211 行 | 0 / 0 |
-| `docs/design/weekend-flagship-prep-20260925.md` | 旗舰战入口 ＋ 战前准备界面（选船） | 进行中（进行中） | 2026-09-25 | 96 KB / 778 行 | 1 / 0 |
 | `docs/design/bounty-loop-inline-20260924.md` | 工作文档 · 重复清剿并入「④ 悬赏」每一行（删掉独立容器）（2026-09-24 · 三号） | 进行中（进行中） | 2026-09-24 | 5 KB / 60 行 | 0 / 0 |
 | `docs/design/copy-jargon-20260924.md` | 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号） | 未标注（两批全部落码并过闸门） | 2026-09-24 | 8 KB / 67 行 | 3 / 0 |
 | `docs/design/faction-rare-drop-readout-20260924.md` | 派系活跃掉落率读数：从"写死裸常量"收口到"随档位现算"（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 6 KB / 86 行 | 0 / 0 |
@@ -268,7 +266,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注（已按用户确认的 V4/V5 方案实现） | — | 16 KB / 174 行 | 16 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · M1 已上线 · M2–M4 待开工） | 未标注（M1 机制骨架已上线） | — | 21 KB / 198 行 | 6 / 4 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工） | 未标注（M1 机制骨架 ＋ M2 的 H 族） | — | 30 KB / 254 行 | 7 / 8 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 4 KB / 54 行 | 4 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 27 份
@@ -459,9 +457,8 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（176 份，待补一行 `状态：…`）
+## 附：状态未标注（175 份，待补一行 `状态：…`）
 
-- `docs/design/announcement-draft-20260925-weekend-invasion.md`（2026-09-25）—— 公告待审稿 · 周末星域入侵（新玩法）（2026-09-25）
 - `docs/design/hostile-factions-handbook-20260925.md`（2026-09-25）—— 敌族手册（手册 · 新增「敌对势力」一节）—— 挂起备忘（2026-09-25）
 - `docs/design/copy-jargon-20260924.md`（2026-09-24）—— 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号）
 - `docs/design/handoff-foe-mounts-l10n-20260924.md`（2026-09-24）—— 交接卡 · 存量八件敌方挂载件的英文名（本地化 · 2026-09-24 · 二号 → 三号）
@@ -628,7 +625,7 @@
 - `docs/design/v7-design.md`（无日期）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 - `docs/design/v9-market.md`（无日期）—— V9 设计：市场系统（已实现）
 - `docs/design/weapon-skill-batch.md`（无日期）—— 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四）
-- `docs/design/weekend-invasion.md`（无日期）—— 周末入侵活动（设计定稿 · M1 已上线 · M2–M4 待开工）
+- `docs/design/weekend-invasion.md`（无日期）—— 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工）
 - `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/glossary-en.md`（无日期）—— 英文术语与专名译名表（English Glossary & Naming Table）
