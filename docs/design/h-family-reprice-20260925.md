@@ -1,6 +1,6 @@
 # H 族按新规调整（威胁重定价 · 入侵抽签 · 遇袭强度 ×0.75）
 
-- 状态：**落码完成 · 待验收**（2026-09-25 · 二号 · d2）——四闸门全绿（typecheck / test 2,333 例 / content:check / l10n:check / build + docs:index），**未推送**
+- 状态：**落码完成 · 待验收**（2026-09-25 · 二号 · d2）——四闸门全绿（typecheck / test **2,340 例** / content:check / l10n:check / build + docs:index），**未推送**
 - 本文件 = 本批**唯一**工作记录（工作期间不改进旧文档；归档时把结论并入 roadmap / 词典 / 设计稿，本文件删除）
 
 ## 一、船长原话（照抄，按时间序）
@@ -125,6 +125,36 @@
 **验证**：typecheck ✓ · `npm run test -w @whale/core` **2,335 例全绿** · content:check ✓（物品总数契约 100 → **101**）· l10n:check ✓ · build ✓ · docs:index ✓；一次性探针（`_bm-probe*.ts`、`_flagship-*`）全部删除。
 
 **未做（本轮不做，登记）**：旗舰**撤退动画**（船长明示"选了甲就没必要做"）· 黑匣**用途**（开特殊装备/改装件，留待改装件那批）· **引擎接线**（被占星系悬赏替换 / 遇袭掷骰接进事件节拍）＝ 下一批，活动开关 `WEEKEND_DEBUG_ONLY` 保持 `true`（船长令「这条不变」）。
+
+## 九、第四批（同日 · 引擎接线 · 船长令「那你将工作做完再汇报」）
+
+**做的是什么**：把前三批的数值与机制**接进真实引擎路径**（此前多数只有纯函数与单元用例），并补一套端到端证据。
+
+| # | 接线点 | 文件 | 改动 |
+|---|---|---|---|
+| ① | 悬赏板 / 星图 / 出发列表 | `apps/desktop/…/game/engine.ts` | `refreshAnomaliesView` 改用 `weekendBountyCardsOf`（逐星系一次、保持同序）⇒ H 族被占星系显示的是**抽到的那张独立卡**（真实 id · 威胁 = 卡面 · 星系覆写 · 奖励 = 该星系原卡 ×1.4）；A/C/G 仍走原卡派生 |
+| ② | 战斗归属（战后结算认不认得出"这场属于入侵"） | `state.ts` · `expedition.ts` · `weekendBattle.ts` · `engine.ts` | 新增 `ExpeditionState.foeGalaxyId`：出发时写入**界面那张卡的星系**（`foeGalaxyOf`）⇒ `weekendBattleInvolvedOf` 优先读它 ⇒ H 独立卡（自带母港）当悬赏时也认得出 `assault`、打赢记进度、残骸注入落到被占星系（**不再落母港**）；`beginBattleAt` 对 H 不再传 78/120 覆写 |
+| ③ | 遇袭掷骰 | `encounters.ts` | 前批已接：`spawnEncounter` 用 `weekendAmbushPickOf`（每场重抽 · ×0.75 · 实测价标签）、`fightEncounter` 传 `{threat, strengthMul}` |
+| ④ | **占领区破例（本批补的洞）** | `encounters.ts` · `data/src/l10n/table.ts` | 见下 |
+
+**④ 占领区破例：原先只破了一半（本批实测发现）**
+
+设计稿口径定稿 #4「被占星系**一律高频遇袭**：**中安、高安都破例**」（船长 2026-09-23 裁定 Q1「连带高安也破例，但是入侵核心星系只会出现在非高安地区」）此前**只落在概率侧**：`rollLowSecAmbush` 里有 `invaded` 分支（按 `60%×(1−进度)` 掷），但**暴露收集侧**（`collectExposures`）第一行就是"sec > 低安上限 ⇒ 直接丢" ⇒ **中安/高安占领区连一次暴露都收集不到**，破例永远掷不出来（低安占领区不受影响 ⇒ 既有用例全绿、没暴露出来）。
+
+修法（窄口，老口径零变化）：
+
+- `collectExposures(state, ctx, includeOccupiedAt?)`：传墙钟时刻 ⇒ **活的占领区不看安全等级**也算一次暴露；**不传 = 逐字不变**（`maintainPresence` 恒不传 ⇒ 中安/高安占领区**不进** `lowSecPresence`、也不误弹"首次进入低安星系"提示）；
+- `rollLowSecAmbush` 传 `nowWallMs` ⇒ 破例的**两半**（收得进 · 掷得出）终于对齐；
+- **文案**：占领区可能是高安，说"低安遭遇"就是错的 ⇒ 占领区那一支改说「**入侵遭遇**」，走 id 制新条目 **`core.encounters.008`**（中英双语）；非占领区老文案一字不动。
+
+**验证（端到端 · 不手工造 spec）**：新 `packages/core/tests/weekend-wiring-20260925.test.ts` 3 例：
+
+1. 高安被占星系的悬赏板 = 抽到的那张独立卡（真实 id · 威胁 = 卡面 · 星系覆写 · 奖励 ×1.4）＋ 夺回后自动回落原卡；
+2. **高安**被占星系采矿 ⇒ 掷 200 次必命中（破例）⇒ 卡 ∈ 外围池 · `foeStrengthMul = 0.75` · 标签 ∈ {76, 91} · 日志 `textId = core.encounters.008` 且写「入侵遭遇」· 占领区不记低安在场、不弹低安提示；**同一高安星系未占领 ⇒ 掷 200 次一次不中**（老口径不变）；
+3. 远征落盘 `foeGalaxyId` ⇒ `weekendBattleInvolvedOf` 认出 `assault` ⇒ 打赢记进度 +10%。
+
+**验证读数**：typecheck ✓ · `npm run test -w @whale/core` **2,340 例全绿**（208 个文件）· content:check ✓ · l10n:check ✓ · build ✓ · docs:index ✓。
+
 
 
 

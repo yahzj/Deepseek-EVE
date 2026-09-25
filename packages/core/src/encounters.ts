@@ -278,12 +278,25 @@ interface Exposure {
   /** 描述（日志用）：承担船名 + 来源 */
 }
 
-/** 收集当前全部低安暴露（去重：同星系只留最高优先承担者；停留 > 作业，主控作业 > 副船） */
-function collectExposures(state: GameState, ctx: SimContext): Exposure[] {
+/**
+ * 收集当前全部暴露（去重：同星系只留最高优先承担者；停留 > 作业，主控作业 > 副船）。
+ *
+ * `includeOccupiedAt` = **周末入侵的"占领区破例"**（设计稿口径定稿 #4「被占星系一律高频遇袭：
+ * 中安、高安都破例」，船长 2026-09-23 裁定 Q1「连带高安也破例，但是入侵核心星系只会出现在非高安地区」）：
+ * 传墙钟时刻 ⇒ **活的占领区不看安全等级**也算一次暴露，高安/中安占领区里作业与驻留同样会遇袭；
+ * 不传 = 老口径逐字不变。
+ * ⚠ `maintainPresence` 恒不传——中安/高安占领区**不进** `lowSecPresence`，也不会弹"首次进入低安星系"
+ * 那条提示（那条文案讲的是低安，与占领区无关）。
+ */
+function collectExposures(state: GameState, ctx: SimContext, includeOccupiedAt?: number): Exposure[] {
   const bal = ctx.balance.encounter
   const out = new Map<string, Exposure>()
   const push = (e: Exposure): void => {
-    if (secOf(ctx, e.galaxyId) > bal.lowSecMax) return // 中安/高安不掷（低安 = sec ≤ 0，含 0）
+    // 中安/高安不掷（低安 = sec ≤ 0，含 0）；**占领区破例**见上面的 `includeOccupiedAt`
+    if (secOf(ctx, e.galaxyId) > bal.lowSecMax) {
+      if (includeOccupiedAt === undefined) return
+      if (!weekendEncounterAllowedIn(state, e.galaxyId, includeOccupiedAt)) return
+    }
     const prev = out.get(e.galaxyId)
     const rank = (x: Exposure): number => (x.kind === '停留' ? 3 : x.shipId === state.shipId ? 2 : 1)
     if (!prev || rank(e) > rank(prev)) out.set(e.galaxyId, e)
@@ -626,9 +639,11 @@ export function maintainPresence(state: GameState, ctx: SimContext): void {
 export function rollLowSecAmbush(state: GameState, ctx: SimContext, cadenceScale = 1, nowWallMs = Date.now()): boolean {
   if (state.encounter.active) return false // 已有未了结遭遇：不叠
   const bal = ctx.balance.encounter
-  /** **周末入侵**：被占星系（活的占领区）**破例**——不看安全等级、不受入场缓冲限制 */
+  /** **周末入侵**：被占星系（活的占领区）**破例**——不看安全等级、不受入场缓冲限制。
+   *  ⚠ 破例是**两半**：暴露收集侧要把占领区收进来（`collectExposures` 的 `includeOccupiedAt`，
+   *  否则中安/高安占领区连一次暴露都没有），概率侧再按入侵口径掷（本函数下面的 `invaded` 分支）。 */
   const invadedOf = (galaxyId: string): boolean => weekendEncounterAllowedIn(state, galaxyId, nowWallMs)
-  for (const exp of collectExposures(state, ctx)) {
+  for (const exp of collectExposures(state, ctx, nowWallMs)) {
     const invaded = invadedOf(exp.galaxyId)
     const since = state.lowSecPresence[exp.galaxyId]
     // 扫描即暴露：不受入场缓冲限制（含无在场记录的情形；船长 2026-09-05 定）
@@ -694,11 +709,26 @@ function spawnEncounter(state: GameState, ctx: SimContext, exp: Exposure, nowWal
     battle: null,
     ...(ambushPick ? { foeStrengthMul: ambushPick.strengthMul } : {}),
   }
-  addLog(
-    state,
-    'warn',
-    `⚠ 低安遭遇（${ctx.galaxies.get(exp.galaxyId)?.name ?? exp.galaxyId}·「${foe.name}」）：${shipName}（${exp.kind}中）遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
-  )
+  const galaxyName = ctx.galaxies.get(exp.galaxyId)?.name ?? exp.galaxyId
+  /**
+   * 文案两支：**占领区**（`ambushPick` 非空 = 活的占领区）说「入侵遭遇」——被占星系可能是中安/高安，
+   * 说"低安"就是错的（这情形由"占领区破例"引入）；其余照旧老文案一字不动。新支走 id 制。
+   */
+  if (ambushPick) {
+    addLog(
+      state,
+      'warn',
+      `⚠ 入侵遭遇（${galaxyName}·「${foe.name}」）：${shipName} 遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
+      'core.encounters.008',
+      { p1: galaxyName, p2: foe.name, p3: shipName },
+    )
+  } else {
+    addLog(
+      state,
+      'warn',
+      `⚠ 低安遭遇（${galaxyName}·「${foe.name}」）：${shipName}（${exp.kind}中）遭该编队伏击——可「迎战」或「快速脱离」；60 秒未处置将自动脱离。`,
+    )
+  }
   return true
 }
 
