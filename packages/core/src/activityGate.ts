@@ -103,6 +103,29 @@ export const KIND_LABEL: Readonly<Record<MainActivityKind, string>> = {
 }
 
 /**
+ * **活动名的文案 id**（2026-09-26 补；船长报障「部分遗漏未本地化的文本」）。
+ *
+ * 为什么需要：`KIND_LABEL` 是**中文名表**，而它的值会被当**参数**塞进日志
+ * （`logAutoHalt` 的 `{p1}`）与进洞停机提示里 ⇒ 参数值**不会再被翻译**，英文界面下就漏中文。
+ * 约定（与 `i18n/locale.tsx` 的 `paramText` 同款）：给该参数配一个 `p1Id`，由渲染层先翻好再喂进去；
+ * `paramText` 只认 `core.` 前缀的 id ⇒ 本表落 `core.activity.*` 命名空间（`labelsText.ts` 按它反查）。
+ *
+ * ⚠ 四档复用既有 id（开采 / 打捞 / 长途运输 / 扫描虫洞——活动栏与星图页同词），其余六档新登记。
+ */
+export const ACTIVITY_LABEL_ID: Readonly<Record<MainActivityKind, string>> = {
+  mining: 'ui.Expedition.144',
+  salvaging: 'ui.Wormhole.107',
+  hauling: 'ui.MapPage.006',
+  wormholeScan: 'ui.MapPage.007',
+  standby: 'core.activity.001',
+  refine: 'core.activity.002',
+  manufacturing: 'core.activity.003',
+  expedition: 'core.activity.004',
+  deliver: 'core.activity.005',
+  siteDeliver: 'core.activity.006',
+}
+
+/**
  * 现在占着主控的是哪一项（没有 ⇒ null）。判据与活动栏同源（`state` 上的那几个 active 位）。
  * ⚠ **顺序刻意与 `activity.shipBusyLabel` 的主控分支逐项对齐**（同一把尺、同一优先级）——
  * 以后加档两处必须一起加（用例 `activity-gate.test.ts` 的矩阵会钉住）。
@@ -190,11 +213,13 @@ export const ACTIVITY_CONFIRM_ID = 'core.activityGate.002'
 export function logAutoHalt(state: GameState, kind: MainActivityKind, detail?: string): void {
   const p1 = KIND_LABEL[kind]
   const p2 = HALT_COST[kind]
+  /** `p1Id` = 活动名的文案 id（渲染层按 `paramText` 约定翻好再喂进 `{p1}`；见 `ACTIVITY_LABEL_ID` 头注） */
+  const p1Id = ACTIVITY_LABEL_ID[kind]
   if (detail !== undefined && detail.length > 0) {
-    addLog(state, 'warn', `已自动停止「${p1}」：${p2}。（${detail}）`, 'core.activityGate.007', { p1, p2, p3: detail })
+    addLog(state, 'warn', `已自动停止「${p1}」：${p2}。（${detail}）`, 'core.activityGate.007', { p1, p1Id, p2, p3: detail })
     return
   }
-  addLog(state, 'warn', `已自动停止「${p1}」：${p2}。`, 'core.activityGate.001', { p1, p2 })
+  addLog(state, 'warn', `已自动停止「${p1}」：${p2}。`, 'core.activityGate.001', { p1, p1Id, p2 })
 }
 
 /**

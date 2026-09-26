@@ -14,7 +14,8 @@
  * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
  */
 import type { FoeMountId, SimContext } from '@whale/core'
-import { resolveFoeMounts } from '@whale/core'
+// 2026-09-26：残骸英文区名改读组表（`wreckGroupOfItemId` ⇒ `region`），不再按 id 后缀解
+import { resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
 import { SHIP_BLUEPRINTS } from './shipBlueprints'
 
@@ -621,15 +622,29 @@ const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
   // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：A 族海盗的变种/叛出分支
   h: 'Ink Tide',
 }
-const WRECK_AREA_EN: Readonly<Record<string, string>> = { hi: 'High-sec', lo: 'Low-sec', wh: 'Wormhole' }
+const WRECK_AREA_EN: Readonly<Record<string, string>> = {
+  hi: 'High-sec',
+  lo: 'Low-sec',
+  wh: 'Wormhole',
+  // 2026-09-26 船长令「H族残骸不分高安低安，统一为入侵残骸（新增一个类别）」⇒ 区名多一档
+  inv: 'Invasion',
+}
 
-/** 残骸 id → { name, description }（组名/区分/稀有与否全从 id 解出，与中文表同构） */
+/**
+ * 残骸 id → { name, description }（组名/区分/稀有与否全从 id 解出，与中文表同构）。
+ *
+ * ⚠ **2026-09-26 起区名读组表**：原先按 id 后缀 `(hi|lo|wh)` 解区名，而船长同日把 H 组的地区改成
+ * 新类别 `inv`（组 key 故意仍为 `h-hi`——物品 id 已进玩家档，不改）⇒ 后缀不再是区名的可靠来源。
+ * 改成反查 `WRECK_GROUP_BY_KEY` 的 `region`（与中文侧 `wreckItemDefOf(组)` 同源）。
+ */
 function wreckEnText(id: string): EnText {
-  const m = /^wreck-(rare-)?([a-h])-(hi|lo|wh)$/.exec(id)
+  const m = /^wreck-(rare-)?(.+)$/.exec(id)
   if (!m) throw new Error(`残骸 id 形态不符：${id}`)
   const rare = m[1] !== undefined
-  const fam = WRECK_FAMILY_EN[m[2]!]!
-  const area = WRECK_AREA_EN[m[3]!]!
+  const group = wreckGroupOfItemId(id)
+  if (!group) throw new Error(`残骸 id 不在任何组里：${id}`)
+  const fam = WRECK_FAMILY_EN[group.family.toLowerCase()]!
+  const area = WRECK_AREA_EN[group.region]!
   return {
     name: rare ? `${fam} Rare Wreck (${area})` : `${fam} Wreck (${area})`,
     description: rare
@@ -665,7 +680,8 @@ const WRECK_IDS = [
   'wreck-rare-e-wh',
   'wreck-g-wh',
   'wreck-rare-g-wh',
-  // H 族（墨潮帮）第 14 组（2026-09-25 船长令「修，②」）：'h-hi' —— 入侵卡的**洞外高安**残骸组
+  // H 族（墨潮帮）第 14 组（2026-09-26 船长令「统一为入侵残骸（新增一个类别）」）：'h-hi' —— 入侵族的**入侵类**残骸组
+  // （组 key 故意保留 `h-hi`：物品 id `wreck-h-hi` 已进玩家档；英文区名走 `WRECK_AREA_EN.inv = 'Invasion'`）
   // （旧 'h-wh' 已退役：它此前没有任何产出路径，任何存档都不可能持有 ⇒ 改名零迁移）
   'wreck-h-hi',
   'wreck-rare-h-hi',

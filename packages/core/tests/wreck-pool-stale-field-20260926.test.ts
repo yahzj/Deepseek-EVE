@@ -48,7 +48,7 @@ function stateWithEvent(opts: { ended?: boolean } = {}): GameState {
 }
 
 describe('打捞池：入侵残骸场不在占领名单时也要并入侵卡（玩家报障）', () => {
-  it('**残留场（星系已不在占领名单）⇒ 仍能捞出「墨潮帮残骸（高安）」**', () => {
+  it('**残留场（星系已不在占领名单）⇒ 仍能捞出「墨潮帮残骸（入侵）」**', () => {
     const s = stateWithEvent()
     injectWeekendWreck(s, GAL, 600, 'H')
     expect(weekendWreckFamilyOf(s, GAL), '场里记着来源族').toBe('H')

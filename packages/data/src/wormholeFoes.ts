@@ -558,7 +558,12 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮骚扰舰队',
   galaxyId: 'galaxy-hub',
-  region: 'hi',
+  // 2026-09-26 船长令「**H族残骸不分高安低安，统一为入侵残骸**（原先的是高安，低安，虫洞。新增一个类别）」
+  // ⇒ 卡级地区由 `hi` 改新类别 **`inv`**（与残骸组 `h-hi` 的 `region` 一致；契约「卡地区 = 组地区」由此成立）。
+  region: 'inv',
+  // 2026-09-26 船长令「**将G族和H族残骸价格提高到和D族差不多的位置**」⇒ 卡级回收档覆写 **危档**：
+  // 缺省会按锚星系 `galaxy-hub` 的基础密度 58 现算成常档，那样组池/组档都会与保值契约对不上。
+  wreckTier: 'dire',
   threat: 90,
   foeTargeting: 'random',
   dmgMix: { kinetic: 6, explosive: 4 }, // 全卡都是突击舰（船长 2026-09-24 第二轮令：突击舰改 6 动能 : 4 爆炸）
@@ -591,7 +596,8 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮袭击舰队',
   galaxyId: 'galaxy-hub',
-  region: 'hi',
+  region: 'inv', // 2026-09-26 船长令：H 族残骸统一为「入侵」类（与组 h-hi 的 region 一致）
+  wreckTier: 'dire', // 2026-09-26 船长令：G/H 残骸价提到 D 族水平（卡级回收档覆写危档）
   threat: 108,
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 }, // 主体（鱼雷舰 ×3）是导弹/爆炸系
@@ -634,7 +640,8 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮帮主力舰队',
   galaxyId: 'galaxy-hub',
-  region: 'hi',
+  region: 'inv', // 2026-09-26 船长令：H 族残骸统一为「入侵」类（与组 h-hi 的 region 一致）
+  wreckTier: 'dire', // 2026-09-26 船长令：G/H 残骸价提到 D 族水平（卡级回收档覆写危档）
   threat: 132, // **2026-09-25 无人机微调后重算的实测价**（129 → 132：战巡那架重袭机调强了）
   /**
    * ⚠ **回收口径的冻结值**（船长 2026-09-25「**冻结残骸经济**」，与 `anomalies.ts` 同一条纪律）：
@@ -694,7 +701,8 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
   foeFamily: 'H',
   name: '墨潮旗舰部队',
   galaxyId: 'galaxy-hub', // 只作日志/展示归属；本卡不进任何星系目录（hidden）
-  region: 'hi', // 卡级地区覆写：入侵卡与洞内卡同口径（否则会被按高安卡核）
+  region: 'inv', // 2026-09-26 船长令：H 族残骸统一为「入侵」类（原与本卡注释里的洞内口径一致，现独立成类）
+  wreckTier: 'dire', // 2026-09-26 船长令：G/H 残骸价提到 D 族水平（卡级回收档覆写危档）
   threat: 170, // 2026-09-25 船长令：卡面威胁 = 实测价（旗舰战不再覆写 120）
   foeTargeting: 'random',
   dmgMix: { explosive: 8, kinetic: 2 },

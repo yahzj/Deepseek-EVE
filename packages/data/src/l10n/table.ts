@@ -1041,6 +1041,25 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.066": { zh: "外围", en: "Periphery" },
   "ui.labelsText.067": { zh: "核心", en: "Core" },
   "ui.labelsText.068": { zh: "深层", en: "Deep" },
+  /* ── 2026-09-26 乙批（船长令「可以」继续本地化）：虫洞地点名 / 内容原型名 / 活动名 ──
+     病根同一族：core 的纯中文表（`WORMHOLE_PLACE_TEXT` / `WORMHOLE_ARCHETYPE_LABELS` / `KIND_LABEL`）
+     原被渲染层直读或被当**日志参数**塞进文案（参数不会再被翻译）⇒ 英文界面下漏中文。
+     英文口径取自 `docs/glossary-en.md`（Graveyard / Ruins / Ore Vein / Wormhole Enigma）。
+     ⚠ 活动名那 10 条的 id 表在 core（`ACTIVITY_LABEL_ID`），其中四条复用既有 id（见该表注释）。 */
+  "core.wormholePlace.001": { zh: "舰船墓场", en: "Graveyard" },
+  "core.wormholePlace.002": { zh: "遗迹", en: "Ruins" },
+  "core.wormholePlace.003": { zh: "矿脉", en: "Ore Vein" },
+  "core.wormholeArch.001": { zh: "均衡深区", en: "Balanced deep zone" },
+  "core.wormholeArch.002": { zh: "残骸富集", en: "Wreck-rich" },
+  "core.wormholeArch.003": { zh: "遗迹密集", en: "Ruin-dense" },
+  "core.wormholeArch.004": { zh: "母矿脉", en: "Mother lode" },
+  "core.wormholeArch.005": { zh: "交火密集", en: "Combat-heavy" },
+  "core.activity.001": { zh: "掩护巡逻", en: "Escort patrol" },
+  "core.activity.002": { zh: "亲自开炉", en: "Running the furnace" },
+  "core.activity.003": { zh: "亲自开线", en: "Running the line" },
+  "core.activity.004": { zh: "远征", en: "Expedition" },
+  "core.activity.005": { zh: "快递投送", en: "Courier delivery" },
+  "core.activity.006": { zh: "建站交付", en: "Outpost delivery" },
   /**
    * **推进器周期后缀的本地化版**（2026-09-22 · 手册本地化批）：
    * core `thrusterCycleFullText()` 是中文整句，被 `ui/shipInfo.tsx` 直接拼进模块说明里 ⇒

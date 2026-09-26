@@ -24,14 +24,19 @@
 import type { FoeFamily } from './types'
 import type { RecycleTier } from './salvage'
 
-/* ═══════════ 地区（船长口径：高安 / 低安 / 虫洞） ═══════════ */
+/* ═══════════ 地区（船长口径：高安 / 低安 / 虫洞 / 入侵） ═══════════ */
 
-/** 残骸来源地区：`hi` 高安（sec > 0）· `lo` 低安（sec ≤ 0，含 0）· `wh` 虫洞（`wh-*` 敌卡与洞内打捞） */
-export type WreckRegion = 'hi' | 'lo' | 'wh'
+/**
+ * 残骸来源地区：`hi` 高安（sec > 0）· `lo` 低安（sec ≤ 0，含 0）· `wh` 虫洞（`wh-*` 敌卡与洞内打捞）
+ * · **`inv` 入侵**（2026-09-26 船长令「**H族残骸不分高安低安，统一为入侵残骸**（原先的是高安，低安，
+ * 虫洞。新增一个类别）」⇒ 周末入侵族的残骸自成一类，不再借用高安/低安的展示口径）。
+ */
+export type WreckRegion = 'hi' | 'lo' | 'wh' | 'inv'
 export const WRECK_REGION_LABELS: Readonly<Record<WreckRegion, string>> = {
   hi: '高安',
   lo: '低安',
   wh: '虫洞',
+  inv: '入侵',
 }
 
 /** 族称**完整名**（船长 2026-09-19：「种族名称要完整，不要用2字缩写」；A 族照船长指示用「海盗」） */
@@ -42,6 +47,7 @@ export const WRECK_FAMILY_NAMES: Readonly<Record<string, string>> = {
   D: '守墓者',
   E: '泰坦巨构',
   G: '鱿烬亡军',
+  H: '墨潮帮',
 }
 
 /** 组定义（一条 = 一种普通残骸 + 对应的稀有残骸） */
@@ -191,9 +197,12 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     region: 'lo',
     name: '鱿烬亡军残骸（低安）',
     rareName: '鱿烬亡军稀有残骸（低安）',
-    tier: 'risky',
-    pool: [['min-tritanium', 40], ['min-isotope', 37], ['min-nocxium', 13], ['min-mexallon', 7], ['min-pyerite', 3]],
-    note: '鱿烬亡军残骸（低安）：同位聚晶与重钨合金，夹少量晶态胶体',
+    // 2026-09-26 船长令「**将G族和H族残骸价格提高到和D族差不多的位置**」⇒ 本组对标 **D 族低安组**
+    // （`d-lo` 池 = 钛钢 40 · 冥铁合金 19 · 同位聚晶 41，池均价 173.95）；三张成员卡同步写
+    // `wreckTier: 'dire'`（单点 `salvage.wreckCardTierOf`）⇒ 卡级价值 107.85 ISK/m³ = D 低安组同款。
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-darkiron', 19], ['min-isotope', 41]],
+    note: '鱿烬亡军残骸（低安）：冥铁合金与同位聚晶为主，夹结构与装甲料',
     threat: 53,
     theme: { mk2: ['mod-armor-pla-2', 'mod-shield-ext-2', 'mod-rof-2', 'mod-track-2'] },
     members: ['ano-cinder-siege', 'ano-echo-haunt', 'ano-nadir-static'],
@@ -265,26 +274,38 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     theme: {},
     members: ['wh-exile-blockade', 'wh-exile-swarm', 'wh-exile-line'],
   },
-  /* ── H 族（墨潮帮 · 2026-09-25 船长令「**修，②**」）：**入侵独立卡的洞外残骸组** ──
+  /* ── H 族（墨潮帮 · 2026-09-26 船长令「**统一为入侵残骸**（新增一个类别）」）：**入侵族的独立残骸组** ──
    * 沿革：2026-09-24 先按洞内口径登记为 `h-wh`（当时四张卡都 `hidden`、实际产不出，只为满足"每张卡都要有组"）。
-   * 2026-09-25 船长问「入侵敌人的不产生残骸吗」后裁定 ② ⇒ **改成洞外高安组**：入侵舰队在高安/中安/低安
-   * 都会出现，残骸不该挂"虫洞"名，也该能进市场收购行（洞内组一律无市场行）。
+   * 2026-09-25 船长问「入侵敌人的不产生残骸吗」后裁定 ② ⇒ 改成洞外组（残骸不该挂"虫洞"名，也该能进市场收购行）。
+   * 2026-09-26 船长再裁「不分高安低安，统一为入侵残骸」⇒ 地区由 `hi` 改**新类别 `inv`**、档位随提价令升危档。
    * - 旧 `h-wh` **退役**：它此前没有任何产出路径 ⇒ 任何存档都不可能持有 `wreck-h-wh` ⇒ 改名零迁移风险；
-   * - **产出链路**（同批接线）：被占星系的**打捞型号池**在占领期间并入"驻留的那支入侵舰队"（与遇袭取池
+   * - **产出链路**：被占星系的**打捞型号池**在占领期间并入"驻留的那支入侵舰队"（与遇袭取池
    *   `localBountyPoolOf` 同款做法）⇒ 在该星系打捞就能出本组残骸；
-   * - **高级箱**：H 族没有窝点专属件（`FOE_LAIR_GEAR.H = []`）⇒ 走"未中专属"的既有回落，与其余洞外组同款；
+   * - **高级箱**：H 族专属池 = `FOE_LAIR_GEAR.H` 三件（2026-09-26 船长定：射程压制 / 捕获网 / 重袭机），
+   *   未命中时由**本组主题件**（同三件）兜底；
    * - 组代表威胁 = **124**（= 四张卡回收口径体量 (90+108+129+170)÷4；旗舰卡同日按 170 重标后随动）。 ── */
   {
     key: 'h-hi',
     family: 'H',
-    region: 'hi',
-    name: '墨潮帮残骸（高安）',
-    rareName: '墨潮帮稀有残骸（高安）',
-    tier: 'common',
-    pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
-    note: '墨潮帮残骸（高安）：钛钢结构料为主，夹银纹与晶态胶体',
+    // 2026-09-26 船长令「**H族残骸不分高安低安，统一为入侵残骸**（原先的是高安，低安，虫洞。新增一个类别）」
+    // ⇒ 地区由 `hi` 改新类别 **`inv`（入侵）**；组名随之改（组名契约 `<族称>残骸（<地区标签>）` 由测试守）。
+    // ⚠ **组 key 故意不改**（`h-hi`）：物品 id `wreck-h-hi` / `wreck-rare-h-hi` 已进玩家档，改 key 要另做存档迁移；
+    //    地区语义一律看 `region`，不看 key 后缀。
+    region: 'inv',
+    name: '墨潮帮残骸（入侵）',
+    rareName: '墨潮帮稀有残骸（入侵）',
+    // 2026-09-26 船长令「**将G族和H族残骸价格提高到和D族差不多的位置**」⇒ 本组对标 **D 族高安组**
+    // （`d-hi` 池 = 钛钢 40 · 星髓晶 34 · 重钨合金 26，池均价 109.90）；四张入侵卡同步写
+    // `wreckTier: 'dire'`（单点 `salvage.wreckCardTierOf`）⇒ 卡级价值 68.14 ISK/m³ = D 高安组同款。
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    note: '墨潮帮残骸（入侵）：星髓晶与重钨合金为主，夹结构料',
     threat: 124,
-    theme: {},
+    // 2026-09-26 船长令「**H族已经添加势力装备，可以放入残骸内**」+「甲2」⇒ 三件 H 势力装备
+    // （`FOE_LAIR_GEAR.H`）挂成**本组主题件**：普通残骸的直出池追加它们，稀有残骸的「高级箱」
+    // 未命中专属件时也由它们兜底（原先池空 ⇒ 那 95% 是掉空的）。
+    // 契约来源 = 四张成员卡在 `data/src/salvageFlavors.ts` 的 `RECYCLE_LOOT_PILOT` 并集（逐项相等）。
+    theme: { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
     members: ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship'],
   },
 ]

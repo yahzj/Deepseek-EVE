@@ -443,10 +443,10 @@ describe('H 族 · 四张入侵卡（船长逐条给定编成）', () => {
     expect(overwritten.waves!.map((w) => w.units)).toEqual([4]) // 老行为：被覆写
   })
 
-  it('四张卡都 `hidden` ＋ `region: hi`（不进悬赏目录；地区按**洞外高安**口径计 —— 2026-09-25 船长令「修，②」随残骸组改）', () => {
+  it('四张卡都 `hidden` ＋ `region: inv`（不进悬赏目录；地区按**入侵**口径计 —— 2026-09-26 船长令「H族残骸不分高安低安，统一为入侵残骸（新增一个类别）」）', () => {
     for (const id of ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship']) {
       expect(card(id).hidden, id).toBe(true)
-      expect(card(id).region, id).toBe('hi')
+      expect(card(id).region, id).toBe('inv')
       expect(card(id).foeFamily, id).toBe('H')
     }
   })

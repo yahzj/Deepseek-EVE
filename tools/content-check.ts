@@ -139,9 +139,10 @@ securityZoneOf,
   rareWreckItemIdOf,
   rareBoxThemePoolOf,
   recycleProfileOf,
-  recycleTierOf,
+  // 2026-09-26 船长令（G/H 残骸提价）：卡的回收档单点（卡级 `wreckTier` 覆写优先）
+  // —— 原先这里分别引 `recycleTierOf` + `wreckBaseDensity` 两处自算，现统一走单点
+  wreckCardTierOf,
   rackOf,
-  wreckBaseDensity,
   // 2026-09-25 船长令「冻结残骸经济」：残骸线的威胁一律走"回收口径体量"（`wreckThreat` ?? 威胁）
   wreckInjectThreatOf,
   foeLayerSplit,
@@ -258,6 +259,8 @@ securityZoneOf,
   weekendFoeCardOf,
   weekendFoePoolOf,
 } from '@whale/core'
+// 2026-09-26：残骸来源地区联合类型（新增 `inv` 入侵类）——只作类型用，单独一行 type import
+import type { WreckRegion } from '@whale/core'
 
 const errors: string[] = []
 const warn: string[] = []
@@ -2627,8 +2630,8 @@ for (const m of MODULES) {
     }
   }
   // ② 保值 + ③ 矿物来源 + ④ 钛钢 + ⑤ 主题件
-  const regionOfCard = (a: (typeof ANOMALIES_FLAVORED)[number]): 'hi' | 'lo' | 'wh' => {
-    if (a.region) return a.region // 卡级覆写优先（2026-09-24：入侵卡 ink-* 走卡级地区；2026-09-25 起为 'hi'）
+  const regionOfCard = (a: (typeof ANOMALIES_FLAVORED)[number]): WreckRegion => {
+    if (a.region) return a.region // 卡级覆写优先（2026-09-24：入侵卡 ink-* 走卡级地区；2026-09-26 起为 'inv'）
     if (a.id.startsWith('wh-')) return 'wh'
     const sec = typeof ctx.galaxies.get(a.galaxyId)?.security === 'number' ? ctx.galaxies.get(a.galaxyId)!.security! : 1
     return sec <= 0 ? 'lo' : 'hi'
@@ -2653,11 +2656,12 @@ for (const m of MODULES) {
     check(producing.length > 0, `残骸组契约：${g.key} 没有任何"会产出残骸"的成员卡（洞内卡与入侵独立卡按会产出计）`)
     // 卡池均价（原卡级表优先；缺省 = 该卡原档位基础池）
     const cardPoolOf = (a: (typeof ANOMALIES_FLAVORED)[number]): ReadonlyArray<readonly [string, number]> =>
-      RECYCLE_FLAVOR[a.id]?.recyclePool ?? RECYCLE_POOLS[recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))]!
+      RECYCLE_FLAVOR[a.id]?.recyclePool ?? RECYCLE_POOLS[wreckCardTierOf(a, ctx)]!
     let wSum = 0
     let acc = 0
     for (const a of producing) {
-      const t = recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))
+      // 2026-09-26 起走**单点** `wreckCardTierOf`（卡级 `wreckTier` 覆写优先；缺省仍按星系基础密度现算）
+      const t = wreckCardTierOf(a, ctx)
       const v = RECYCLE_YIELD_PER_M3[t] * recyclePoolMeanIsk(cardPoolOf(a), priceOf)
       const w = Math.max(1, wreckInjectThreatOf(a)) // ⚠ 回收口径体量（2026-09-25 起与 `threat` 脱钩）
       acc += w * v
@@ -2698,10 +2702,10 @@ for (const m of MODULES) {
     // 组威胁 = 组内产残骸卡**回收口径体量**的算术平均（取整）——2026-09-25「冻结残骸经济」起与 `threat` 脱钩
     const avgThreat = Math.round(producing.reduce((s, a) => s + wreckInjectThreatOf(a), 0) / producing.length)
     check(g.threat === avgThreat, `残骸组契约：${g.key} 的 threat 记 ${g.threat}，成员产残骸卡平均威胁是 ${avgThreat}`)
-    // 组档位 = 组内产残骸卡的多数档
+    // 组档位 = 组内产残骸卡的多数档（卡级 `wreckTier` 覆写优先 —— 2026-09-26 起同走单点）
     const tally = new Map<RecycleTier, number>()
     for (const a of producing) {
-      const t = recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))
+      const t = wreckCardTierOf(a, ctx)
       tally.set(t, (tally.get(t) ?? 0) + 1)
     }
     const order: RecycleTier[] = ['common', 'risky', 'dire']
@@ -2783,27 +2787,43 @@ for (const m of MODULES) {
   // 2026-09-08 船长定稿：①主题彩头（recycleLoot 追加件）只允许 sec < 0.5 星系；
   // ②主题追加件不得含武器（炮/激光/导弹架），唯一例外 = 穹顶守卫门槛线追加三把 MK3 武器；
   // ③MK3 一律走碎片，穹顶守卫 × {三把 MK3 武器} 为唯一 MK3 直出白名单
+  //
+  // ⚠ **2026-09-26 两处修正（船长令「甲2」）**：
+  // ① **输入换血**：本节原先读 `def.recycleLoot`——该字段已随 2026-09-19 残骸合入组表时**从 `AnomalyDef` 删除**
+  //    ⇒ 这一整段静默退化成"恒读 0 张卡、什么都不查"。现改读**现行卡级主题件表** `RECYCLE_LOOT_PILOT`
+  //    （与本节上方的「组主题件 = 成员卡并集」同源），检查复活。
+  // ② **入侵卡例外**：H 族（墨潮帮）四张入侵卡锚在展示用的 `galaxy-hub`（sec **+1.0** ⇒ 高安），
+  //    而船长同日令「**H族已经添加势力装备，可以放入残骸内**」⇒ 判据取**卡级地区覆写 = `inv`**
+  //    （`region: 'inv'` 是显式声明、不是"看起来像高安"）：地区为 `inv` 的卡按**中安档**处理，
+  //    允许挂 `modules` 主题件；其余卡仍守 sec<0.5 与"中安 modules / 低安 mk2"两条旧口径。
   const weaponIds = new Set(MODULES.filter((m) => m.slot === 'turret' || m.slot === 'laser' || m.slot === 'missile').map((m) => m.id))
+  const moduleIds = new Set(MODULES.map((m) => m.id))
   const mk3Weapons = ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3']
   let lootCards = 0
+  let invasionLootCards = 0
   for (const def of ANOMALIES_FLAVORED) {
-    const loot = def.recycleLoot
+    const loot = RECYCLE_LOOT_PILOT[def.id]
     if (!loot || (!loot.modules?.length && !loot.mk2?.length)) continue
     lootCards += 1
-    const galaxy = ctx.galaxies.get(def.galaxyId)
-    const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
-    check(sec < 0.5, `B3.1 主题彩头仅限 sec<0.5 星系：${def.name}（${def.galaxyId}）sec=${sec}`)
+    const isInvasion = def.region === 'inv'
+    if (isInvasion) invasionLootCards += 1
+    if (!isInvasion) {
+      const galaxy = ctx.galaxies.get(def.galaxyId)
+      const sec = typeof galaxy?.security === 'number' && Number.isFinite(galaxy.security) ? galaxy.security : 0.5
+      check(sec < 0.5, `B3.1 主题彩头仅限 sec<0.5 星系：${def.name}（${def.galaxyId}）sec=${sec}`)
+    }
     // 2026-09-12 船长裁定（「档位**仍逐卡手写**，但**加断言拦住**」）：档位必须与所在星系的**安全分区**一致——
     // 中安（0 < sec < 0.5）只允许 `modules`（直出基础池追加件）、低安（sec ≤ 0）只允许 `mk2`
     // （低安门槛 MK2 池追加件）。**为什么需要**：2026-09-11 船长互换安全等级时，两张卡的档位是
     // **靠人手改的**（`ano-mirage-hijackers` 中安→低安、`ano-cinder-siege` 低安→中安）⇒ 改漏了没人拦。
-    // ⚠ 分区读 `securityZoneOf`（**单一出处**），不在这里重算边界。
-    const lootZone = securityZoneOf(ctx, def.galaxyId)
+    // ⚠ 分区读 `securityZoneOf`（**单一出处**），不在这里重算边界；
+    //   入侵卡（`region: 'inv'`）不适用分区口径 ⇒ 按**中安档**（`modules`）判。
+    const lootZone = isInvasion ? '入侵' : securityZoneOf(ctx, def.galaxyId)
     if ((loot.modules?.length ?? 0) > 0) {
       check(
-        lootZone === '中安',
+        lootZone === '中安' || lootZone === '入侵',
         `B3.1 主题件档位与星系分区不符：${def.name}（${def.galaxyId}，${lootZone}）挂了**中安档** modules——` +
-          `中安档只用于 0 < sec < 0.5 的星系；低安（sec ≤ 0）须改用 mk2`,
+          `中安档只用于 0 < sec < 0.5 的星系（外加 region='inv' 的入侵卡）；低安（sec ≤ 0）须改用 mk2`,
       )
     }
     if ((loot.mk2?.length ?? 0) > 0) {
@@ -2819,10 +2839,21 @@ for (const m of MODULES) {
         const vaultMk3 = def.id === 'ano-vault-sentinel' && mk3Weapons.includes(id)
         check(!isMk3 || vaultMk3, `B3.1 MK3 直出收口失败：${def.name} 主题件 ${id}（MK3 一律走碎片，唯一白名单 = 穹顶守卫 × 三把 MK3 武器）`)
         check(!weaponIds.has(id) || vaultMk3, `B3.1 武器移出主题失败：${def.name} 主题追加件 ${id} 是武器（主题只放增幅装备；唯一武器例外 = 穹顶守卫三把 MK3）`)
+        // 2026-09-26（H 族三件里有无人机）：主题件**不是模块**时，普通残骸的直出池会静默跳过它
+        // （`rollRecycleLoot` 的 base 支只收 `ctx.modules`），只有稀有高级箱那一支给得出 ⇒ 提醒但不报红。
+        if (group === 'modules' && !moduleIds.has(id)) {
+          warn.push(
+            `B3.1 主题件非模块件：${def.name}（${def.id}）的主题件 ${id} 不是模块 ⇒ ` +
+              `普通残骸的直出池会跳过它（池只收模块），它只能从**稀有残骸高级箱**出（专属命中支或主题兜底支）`,
+          )
+        }
       }
     }
   }
-  console.log(`· B3.1 主题追加件：${lootCards} 张卡（sec<0.5 增幅件；武器白名单仅穹顶守卫 × MK3 三武）`)
+  console.log(
+    `· B3.1 主题追加件：${lootCards} 张卡（sec<0.5 增幅件；武器白名单仅穹顶守卫 × MK3 三武；` +
+      `其中 ${invasionLootCards} 张入侵卡走 \`region: 'inv'\` 例外）`,
+  )
 }
 
 /* ── 远端衰减取值域契约（2026-09-12 审计 B1 加）──

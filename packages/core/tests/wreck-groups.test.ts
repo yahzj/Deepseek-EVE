@@ -37,22 +37,25 @@ describe('残骸组表（14 组 · 族 × 地区）', () => {
     let wh = 0
     let hi = 0
     let lo = 0
+    let inv = 0
     for (const g of WRECK_GROUPS) {
       if (g.region === 'wh') wh += 1
       if (g.region === 'hi') hi += 1
       if (g.region === 'lo') lo += 1
+      if (g.region === 'inv') inv += 1
       for (const m of g.members) {
         const a = ctx.anomalies.get(m)
         expect(a, `${g.key} 的成员 ${m} 不在敌卡表里`).toBeTruthy()
         expect(a!.foeFamily).toBe(g.family)
         const sec = ctx.galaxies.get(a!.galaxyId)?.security ?? 1
-        // 2026-09-24: 卡级 region 覆写优先（入侵卡 ink-* 不是 wh- 前缀但属洞内口径，与 content:check 同源）
+        // 2026-09-24: 卡级 region 覆写优先（入侵卡 ink-* 不以 wh- 开头但按卡级地区计，与 content:check 同源）
+        // 2026-09-26: 入侵卡的地区由 'hi' 改新类别 'inv'（船长令「统一为入侵残骸」）
         const region = a!.region ?? (m.startsWith('wh-') ? 'wh' : sec <= 0 ? 'lo' : 'hi')
         expect(region, `${m} 的地区判定`).toBe(g.region)
       }
     }
-    expect([hi, lo, wh]).toEqual([4, 5, 5]) // 2026-09-25：H 族那组由 h-wh 改**洞外高安** `h-hi`（船长令「修，②」）⇒ 高安 4 · 低安 5 · 洞内 5
-    expect(Object.keys(WRECK_REGION_LABELS)).toEqual(['hi', 'lo', 'wh'])
+    expect([hi, lo, wh, inv]).toEqual([3, 5, 5, 1]) // 2026-09-26：H 族那组由**高安**改新类别**入侵**（船长令「统一为入侵残骸（新增一个类别）」）⇒ 高安 3 · 低安 5 · 洞内 5 · 入侵 1
+    expect(Object.keys(WRECK_REGION_LABELS)).toEqual(['hi', 'lo', 'wh', 'inv'])
   })
 
   it('命名口径：`<族称>残骸（<地区>）` 与 `<族称>稀有残骸（<地区>）`，族称取完整名', () => {

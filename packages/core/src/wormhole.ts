@@ -16,6 +16,7 @@ import { addLog, haltActivityForSwitch, haulingHalt, miningHalt, salvageHalt, wo
 import {
   gateMainActivityHandoff,
   KIND_LABEL,
+  ACTIVITY_LABEL_ID,
   logAutoHalt,
   mainActivityOf,
   type MainActivityKind,
@@ -1614,6 +1615,8 @@ export interface WormholeEntryAutoStop {
   label: string
   /** 日志/界面里用的短名（「扫描虫洞」「开采」「打捞」「长途运输」） */
   name: string
+  /** `name` 的**文案 id**（2026-09-26 补：界面按它取当前语言；`name` 只作中文兜底） */
+  nameId: string
   /** 停它有没有可见后果（true ⇒ 准备页发**警告**，而不是轻描淡写地"预告"） */
   warn: boolean
 }
@@ -1646,7 +1649,7 @@ export function wormholeEntryAutoStops(state: GameState): WormholeEntryAutoStop[
   if (v.action !== 'halt' || v.current === undefined) return []
   const meta = ENTRY_STOP_META[v.current]
   if (meta === undefined) return []
-  return [{ ...meta, mainKind: v.current, name: KIND_LABEL[v.current] }]
+  return [{ ...meta, mainKind: v.current, name: KIND_LABEL[v.current], nameId: ACTIVITY_LABEL_ID[v.current] }]
 }
 
 /**

@@ -288,6 +288,20 @@ export function wreckBaseDensity(galaxyId: string, ctx: SimContext): number {
   return Math.max(1, Math.round(sum * WRECK_BASE_BOUNTY_RUNS))
 }
 
+/**
+ * **卡的回收档**（2026-09-26 船长令「将G族和H族残骸价格提高到和D族差不多的位置」时立的单点）。
+ *
+ * 卡级覆写（`AnomalyDef.wreckTier`）优先，缺省 = 该卡所在星系的**基础密度**现算
+ * （与 2026-09-19 合并后的既有口径**逐值一致** ⇒ 没写覆写的卡行为零变化）。
+ *
+ * 为什么要有这个单点：残骸的**保底收益 = 档位当量 × 组池均价**，而 B3.1 契约把组档位钉在
+ * 「成员卡多数档」、把组池均价钉在「卡级加权保值目标 ±3%」⇒ 想抬某个族的残骸价，只能从**卡级**动手：
+ * 卡级覆写既驱动契约复算（`content:check`），也驱动引擎/体检的同一把尺（此处）。
+ */
+export function wreckCardTierOf(card: Pick<AnomalyDef, 'galaxyId' | 'wreckTier'>, ctx: SimContext): RecycleTier {
+  return card.wreckTier ?? recycleTierOf(wreckBaseDensity(card.galaxyId, ctx))
+}
+
 /** 该星系最强悬赏卡的注入量（无可见卡 = null）——低安遇袭注入按其 ×0.5 计（2026-09-10 船长定） */
 export function strongestBountyInjection(galaxyId: string, ctx: SimContext): number | null {
   let best: number | null = null
@@ -945,8 +959,29 @@ export function rollRareBoxExtra(
       return pickOne(state.rng, chosen.ids)
     })()
     if (pick !== undefined) {
-      modules.push(pick)
-      notes.push(`主题装备「${ctx.modules.get(pick)?.name ?? ctx.items.get(pick)?.name ?? pick}」`)
+      /**
+       * ⚠ **2026-09-26 只有"无人机物品"改道**（船长令「H族已经添加势力装备，可以放入残骸内」＋「甲2」）：
+       * 主题件池里可能出现**非模块件**——H 族墨潮帮三件里有一架无人机（`drone-ink-heavy`）。
+       * 改前这一支无条件 `modules.push(pick)`，而调用点（`industry.ts` 的彩头结算）把 `modules`
+       * 一律记进 `moduleBay` ⇒ 无人机 id 会变成一件"假模块"进装备库。
+       *
+       * 分派口径（**保持改前的缺省行为**，只多一条无人机支）：
+       * 蓝图 ⇒ `blueprints` · **物品且 `kind === 'drone'` ⇒ `drones`（一次 `RARE_BOX_DRONE_UNITS` 架）** ·
+       * 其余（模块 / 池里的合成 id / 未知 id）⇒ `modules`（逐字同旧口径 —— `rare-box-weight` 用例
+       * 就是拿合成 id 抽样，不能被改道）。
+       */
+      const themeBpDef = ctx.blueprints.get(pick)
+      const themeItemDef = ctx.items.get(pick)
+      if (themeBpDef) {
+        blueprints.push(pick)
+        notes.push(`主题图纸「${themeBpDef.name}」`)
+      } else if (themeItemDef?.kind === 'drone') {
+        drones.push({ id: pick, count: RARE_BOX_DRONE_UNITS })
+        notes.push(`主题装备「${themeItemDef.name}」×${RARE_BOX_DRONE_UNITS} 架`)
+      } else {
+        modules.push(pick)
+        notes.push(`主题装备「${ctx.modules.get(pick)?.name ?? themeItemDef?.name ?? pick}」`)
+      }
     }
   }
   // ③ 高阶矿物一批（从该敌群特色池或档位池加权抽 1 种）
@@ -966,7 +1001,7 @@ export function rollRareBoxExtra(
 export interface RecycleProfile {
   /** 组 key（`a-hi` / `d-wh`…；2026-09-19 起取代旧的 `anomalyId`） */
   groupKey: string
-  /** 来源地区（高安 / 低安 / 虫洞）——洞内高级箱的"主题件回落池"按它判 */
+  /** 来源地区（高安 / 低安 / 虫洞 / 入侵）——洞内高级箱的"主题件回落池"按它判 */
   region: WreckRegion
   /** 组代表威胁（组内各产残骸卡威胁的平均；驱动蓝图碎片门槛与完好舰体彩头层） */
   threat: number

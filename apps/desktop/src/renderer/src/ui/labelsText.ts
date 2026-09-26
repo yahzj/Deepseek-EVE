@@ -157,6 +157,41 @@ export function lairTierText(tier: number): string {
 }
 
 /**
+ * **虫洞地点名**（空信息地点 / 舰船墓场 / 遗迹 / 舰船信号 / 矿脉 / 虫洞谜质）（2026-09-26 补；
+ * = core `WORMHOLE_PLACE_TEXT` 的本地化版）。中文侧逐字沿用 core 的词；英文侧：
+ * 前四条复用既有 id（`ui.Wormhole.223/221` + 既有地点词），后两条新登记。
+ */
+const PLACE_ID: Record<string, string> = {
+  empty: 'ui.Wormhole.223', // 空信息地点 / Empty information
+  wreck: 'core.wormholePlace.001', // 舰船墓场 / Graveyard
+  ruins: 'core.wormholePlace.002', // 遗迹 / Ruins
+  signal: 'ui.Wormhole.221', // 舰船信号 / Ship signal
+  vein: 'core.wormholePlace.003', // 矿脉 / Ore Vein
+  essence: 'ui.MatterTechTab.005', // 虫洞谜质 / Wormhole Enigma
+}
+export function placeText(place: string): string {
+  const id = PLACE_ID[place]
+  return id !== undefined ? tr(id) : place
+}
+
+/**
+ * **虫洞内容原型名**（均衡深区 / 残骸富集 / 遗迹密集 / 母矿脉 / 交火密集）（2026-09-26 补；
+ * = core `WORMHOLE_ARCHETYPE_LABELS` 的本地化版）。五条**全部新登记**（`core.wormholeArch.*`）。
+ */
+const ARCHETYPE_ID: Record<string, string> = {
+  balanced: 'core.wormholeArch.001', // 均衡深区 / Balanced deep zone
+  wreck: 'core.wormholeArch.002', // 残骸富集 / Wreck-rich
+  ruins: 'core.wormholeArch.003', // 遗迹密集 / Ruin-dense
+  vein: 'core.wormholeArch.004', // 母矿脉 / Mother lode
+  combat: 'core.wormholeArch.005', // 交火密集 / Combat-heavy
+}
+export function archetypeText(archetype: string): string {
+  const id = ARCHETYPE_ID[archetype]
+  return id !== undefined ? tr(id) : archetype
+}
+
+
+/**
  * **舰级名**（= core `shipSizeLabel(tier)` 的本地化版）。
  * 整档模板在 `ui.labelsText.014~018`（`"T{p1} 护卫舰"` / `"T{p1} Frigate"`）⇒ 档号必须由译文自己写，
  * 故这里传 `p1 = tier`（与 `ui/itemSubs.ts` 的 `SHIP_TIER_SUBS` 同一批 id，不另登记）。
