@@ -11156,6 +11156,10 @@ html[data-locale='en'] body {
 .app-chip.is-cost { color: rgb(var(--wui-warn-soft)); border-color: rgb(var(--wui-warn-soft) / 0.5); background: rgb(var(--wui-warn-soft) / 0.1); }
 .app-chip.is-warn { color: rgb(var(--wui-amber-strong)); border-color: rgb(var(--wui-amber-strong) / 0.5); background: rgb(var(--wui-amber-strong) / 0.1); } /* 低安航路：运输途中可能遇袭（2026-09-13 船长「会遇袭的运输任务需要特意标注」） */
 .app-chip.is-ok { color: rgb(var(--wui-mint)); border-color: rgb(var(--wui-mint) / 0.45); background: rgb(var(--wui-mint) / 0.08); } /* 无消耗自愈（异形生体件） */
+/* **危险标签**（**2026-09-26 船长令**：「**将入侵卡标红，打上危险的标签**」）——红底红字，
+ * 沿用既有 `is-*` 修饰体例、配色取既有 `--wui-danger-strong`（与入侵残骸条同一族红）。
+ * 目前唯一用处 = 入侵舰队的悬赏卡：敌人是随机抽的、胜率不固定，先给玩家一个"别按平时的手感上"的信号。 */
+.app-chip.is-danger { color: rgb(var(--wui-danger-strong)); border-color: rgb(var(--wui-danger-strong) / 0.55); background: rgb(var(--wui-danger-deep) / 0.14); }
 .app-kit-stock.is-bad { color: rgb(var(--wui-red)); font-weight: 600; }
 .app-kit-stock.is-warn { color: rgb(var(--wui-amber)); font-weight: 600; }
 .app-kit-stock.is-ok { color: rgb(var(--wui-text-dim)); }

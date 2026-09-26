@@ -4090,6 +4090,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      按 id 制「一经使用不复用、不改名」留档不删；以下两条为并入后**新增**的状态字。 */
   "ui.Expedition.436": { zh: "征战中", en: "In combat" },
   "ui.Expedition.437": { zh: "该星系没有悬赏卡。", en: "No bounty cards in this system." },
+  /* 入侵舰队的悬赏卡（2026-09-26 船长令）：敌人随机抽 ⇒ 不出胜率预估，改一句"敌人未知" ＋ 危险芯片 */
+  "ui.Expedition.438": { zh: "遭遇随机入侵舰队，敌人未知", en: "A random invasion fleet: the enemy is unknown" },
+  "ui.Expedition.439": { zh: "危险", en: "Danger" },
+  "ui.Expedition.440": { zh: "入侵舰队的编成按星系随机抽取，敌人未知，无法预估胜率。", en: "The invasion fleet's make-up is drawn at random per system, so the enemy is unknown and no win chance can be estimated." },
   "ui.Expedition.427": { zh: "重复清剿", en: "Repeat sweeps" },
   "ui.Expedition.428": { zh: "开始重复清剿", en: "Start repeat sweeps" },
   "ui.Expedition.429": { zh: "停止讨伐", en: "Stop the hunt" },

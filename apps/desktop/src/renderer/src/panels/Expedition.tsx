@@ -2826,23 +2826,43 @@ function AnomalyCard({
         </div>
       ) : null}
       <div className="app-ano-win">
-        {tr("ui.Expedition.217")} {power} {tr("ui.Expedition.038")}{' '}
-        <b
-          className={chance === null ? `app-dim` : `app-win-${chanceTone}`}
-          title={
-            mc
-              ? tr("ui.Expedition.426", {
-                  p1: Math.round(mc.armorLoss * 100),
-                  p2: Math.round(mc.hullLoss * 100),
-                  p3: Math.round(mc.worstWinRate * 100),
-                })
-              : pending
-                ? tr("ui.Expedition.425")
-                : tr("ui.Expedition.153", { p1: Math.round(armorLoss * 100), p2: Math.round(hullLoss * 100) })
-          }
-        >
-          {chance === null ? tr("ui.Expedition.425") : `${Math.round(chance)}%`}
-        </b>
+        {/**
+         * **入侵舰队的卡不出胜率预估**（**2026-09-26 船长令**：「**入侵舰队的悬赏卡因为是随机抽取的敌人，
+         * 胜率不固定的，所以在做预估胜率的时候忽略入侵舰队的卡，替换为提示'遭遇随机入侵舰队，敌人未知'。
+         * 并且将入侵卡标红，打上危险的标签。**」）。
+         *
+         * 判据 = `invadedHere`（被占星系的悬赏位已被 `weekendBountyCardsOf` 换成入侵舰队，与"赏金栏改显
+         * 结算口径"同一把尺）⇒ 这一支**既不显示我方战力指数、也不显示百分比**，只给一句"敌人未知"；
+         * 旁边按船长令挂一枚**危险**芯片（`.app-chip.is-danger`）。
+         */}
+        {invadedHere ? (
+          <>
+            <em className="app-chip is-danger" title={tr('ui.Expedition.440')}>
+              {tr('ui.Expedition.439')}
+            </em>{' '}
+            <span className="app-dim">{tr('ui.Expedition.438')}</span>
+          </>
+        ) : (
+          <>
+            {tr("ui.Expedition.217")} {power} {tr("ui.Expedition.038")}{' '}
+            <b
+              className={chance === null ? `app-dim` : `app-win-${chanceTone}`}
+              title={
+                mc
+                  ? tr("ui.Expedition.426", {
+                      p1: Math.round(mc.armorLoss * 100),
+                      p2: Math.round(mc.hullLoss * 100),
+                      p3: Math.round(mc.worstWinRate * 100),
+                    })
+                  : pending
+                    ? tr("ui.Expedition.425")
+                    : tr("ui.Expedition.153", { p1: Math.round(armorLoss * 100), p2: Math.round(hullLoss * 100) })
+              }
+            >
+              {chance === null ? tr("ui.Expedition.425") : `${Math.round(chance)}%`}
+            </b>
+          </>
+        )}
         {!reqMet ? <span className="app-dim">{tr("ui.Expedition.320")} {standing}/{anomaly.standingReq}）</span> : null}
         {/* V17：敌方主伤害类型色 chip——护盾/装甲增强器按系配抗的换装依据
             2026-09-10 船长（混伤）：改为「敌火力 主 80% · 副 20%」——构成与战斗结算同源 */}
