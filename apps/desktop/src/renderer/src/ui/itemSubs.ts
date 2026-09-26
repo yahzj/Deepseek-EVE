@@ -656,7 +656,7 @@ export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = 
 export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string; id: string }> = [
   { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
   { key: 'equip', label: '装备', id: 'ui.MarketPage.178' },
-  { key: 'plug', label: '舰船插件', id: 'ui.itemSubs.041' },
+  { key: 'plug', label: '舰船插件', id: 'ui.itemSubs.042' },
   { key: 'part', label: '零件', id: 'ui.itemSubs.036' },
   { key: 'supply', label: '消耗品', id: 'ui.itemSubs.037' },
 ]

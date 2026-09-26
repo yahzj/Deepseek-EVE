@@ -537,8 +537,9 @@ function kindLabelText(key: string): string {
   if (key === '装备') return tr('ui.MarketPage.178')
   if (key === '零件') return tr('ui.labelsText.001')
   if (key === '消耗品') return tr('ui.itemSubs.037')
-  // 2026-09-26：插件产物单独一个档（`itemSubs.041` 与组装机那一档是**同一条文案**，不另立 id）
-  if (key === '舰船插件') return tr('ui.itemSubs.041')
+  // 2026-09-26：插件产物单独一个档（`ui.itemSubs.042` = 「舰船插件」；
+  // ⚠ 别用 `ui.itemSubs.041`——那是既有的「图纸」，我上一版误用过，界面会印成"图纸"）
+  if (key === '舰船插件') return tr('ui.itemSubs.042')
   return key
 }
 function ownedWhereText(where: string): string {

@@ -1370,10 +1370,10 @@ function PluginSlotsSection({ engine }: { engine: PageProps['engine'] }) {
   return (
     <div className="app-fit-plugslots">
       <div className="app-fit-dronebay-head">
-        <span className="app-fit-dronebay-title">{tr('ui.itemSubs.041')}</span>
+        <span className="app-fit-dronebay-title">{tr('ui.itemSubs.042')}</span>
         <span className="app-dim">
           {tr('ui.Expedition.444', { p1: installed.length, p2: slots })}
-          {full ? ` · ${tr('ui.FitPage.176')}` : ''}
+          {full ? ` · ${tr('ui.FitPage.177')}` : ''}
         </span>
       </div>
       <div className="app-fit-icongrid">
