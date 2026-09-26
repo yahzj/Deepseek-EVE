@@ -709,7 +709,7 @@ export const REPAIR_KITS: readonly ItemDef[] = [
     name: '损管修理组件',
     kind: 'kit',
     unitM3: 1,
-    baseSellPriceIsk: 30_000,
+    baseSellPriceIsk: 500_000,
     description: '损伤管制装置专用补给：装置启动时消耗 1 枚，结构锁定在 1 点、持续 1 秒。市场可买、工业页可自制。',
   },
 ]

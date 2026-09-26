@@ -3373,6 +3373,63 @@ function injectWeekend(state: GameState, opts: { hurt?: boolean } = {}): string[
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   /**
+   * **损伤管制装置验收档**（`dc` · **2026-09-26 船长令**：「做完后给我一个存档 我要测试」）。
+   *
+   * 现场：装备库三档齐备 ＋ 损管修理组件 ×20 ＋ 四张蓝图；主控船**低槽有空位就自动装上 MK3**
+   * （装不上则留装备库手动装）。**不改钱包、不改声望、不改星系状态**——只加"能立刻开测"的那几件。
+   *
+   * 试法（详见 `docs/test-saves/README.md` 同名条目）：
+   * ① **免死窗口**：出击一张硬卡，让结构被打空 ⇒ 战斗内提示「损伤管制装置启动：结构锁定 1」＋
+   *    日志「✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）」；
+   *    这一秒内**结构不再掉**（同拍多段也破不了）；1 秒后照旧会死（丁案不强制撤退）⇒ 要看窗口就趁早撤。
+   * ② **每场一次**：同一场再被打空 ⇒ **不再启动**（照常判负）。
+   * ③ **组件消耗**：战后战报末尾应有「损伤管制装置启动 ×1（消耗损管修理组件 ×1）」，仓库组件 −1。
+   * ④ **没组件不启动**：把损管修理组件卖掉/搬空再打一场 ⇒ 只记一条「⚠ 损伤管制装置未能启动：损管修理组件不足。」
+   * ⑤ **同舰唯一**：装配页再装第二件损伤管制装置 ⇒ 被拒「损伤管制装置每舰只能装一件（已装 …）」。
+   * ⑥ **撤退保险**：开某被占星系的「重复出击」⇒ 结构过半即自动轻损撤退（不掷弃船骰、不丢船）。
+   */
+  dc: (state: GameState): string[] => {
+    const notes: string[] = []
+    for (const id of ['mod-dc-1', 'mod-dc-2', 'mod-dc-3']) {
+      state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 1
+    }
+    notes.push('装备库：损伤管制装置 MK1 / MK2 / MK3 各 ×1（低槽件 · 同舰只能装一件）')
+    state.warehouse.items['repairkit-dc'] = (state.warehouse.items['repairkit-dc'] ?? 0) + 20
+    state.warehouse.items['bp-repairkit-dc'] = (state.warehouse.items['bp-repairkit-dc'] ?? 0) + 1
+    for (const id of ['bp-dc-1', 'bp-dc-2', 'bp-dc-3']) {
+      state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + 1
+    }
+    notes.push('物品仓库：损管修理组件 ×20（50 万/件）＋ 蓝图 bp-repairkit-dc 与 bp-dc-1~3 各 ×1')
+    const ship = state.fleet[state.shipId]
+    const low = ship?.fitted?.low
+    const free = Array.isArray(low) ? low.findIndex((v) => v === null) : -1
+    if (ship && low && free >= 0) {
+      low[free] = 'mod-dc-3'
+      state.moduleBay['mod-dc-3'] = Math.max(0, (state.moduleBay['mod-dc-3'] ?? 0) - 1)
+      if (state.moduleBay['mod-dc-3'] === 0) delete state.moduleBay['mod-dc-3']
+      notes.push(`主控船「${ship.name ?? state.shipId}」低槽第 ${free + 1} 位已装【损伤管制装置 MK3】（+50 三系结构减伤）`)
+    } else if (ship && low && low.length > 0) {
+      /**
+       * 低槽满 ⇒ **就地替换最后一位**（把它退回装备库，无损、可逆）——本档只为"能立刻开测"，
+       * 不动钱包/声望/星系，换下来的那件仍在装备库里，测完装回即可。
+       */
+      const idx = low.length - 1
+      const replaced = low[idx]
+      low[idx] = 'mod-dc-3'
+      state.moduleBay['mod-dc-3'] = Math.max(0, (state.moduleBay['mod-dc-3'] ?? 0) - 1)
+      if (state.moduleBay['mod-dc-3'] === 0) delete state.moduleBay['mod-dc-3']
+      if (replaced !== null && replaced !== undefined) state.moduleBay[replaced] = (state.moduleBay[replaced] ?? 0) + 1
+      notes.push(
+        `主控船「${ship.name ?? state.shipId}」低槽已满 ⇒ **就地替换第 ${idx + 1} 位**：` +
+          `${replaced ?? '（空位）'} → 【损伤管制装置 MK3】（换下来的那件已退回装备库，测完装回即可）`,
+      )
+    } else {
+      notes.push('主控船没有可用的低槽 ⇒ 未自动装配：请到装配页手动装上 MK1~MK3')
+    }
+    notes.push('试法：出击一张硬卡把结构打空 ⇒ 看「结构锁定 1」提示与战报尾巴；细节见 docs/test-saves/README.md')
+    return notes
+  },
+  /**
    * **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档」）：
    * 真战列（巨齿鲨 T4）+ 旗舰（邓氏鱼 T5）+ 巡洋对照，中低槽装满、备件与弹药齐全。
    */

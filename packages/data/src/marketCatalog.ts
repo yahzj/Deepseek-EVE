@@ -203,7 +203,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 2_400, supplyFlow: 20 }, // 2026-09-11 消耗品池按产能标定（原 300/4）
   { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 }, // 2026-09-11（原 120/1.5；船长定：与其它消耗品同口径，激战单场可吃 23 枚 ⇒ 池约撑 45 场）
   // 损管修理组件（2026-09-25 船长令：损伤管制装置启动时消耗的那一种）——单场最多吃 1 枚，池按同族口径给
-  { key: 'repairkit-dc', kind: 'item', refId: 'repairkit-dc', rarity: 'common', basePrice: 33_000, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 },
+  { key: 'repairkit-dc', kind: 'item', refId: 'repairkit-dc', rarity: 'common', basePrice: 550_000, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 },
   // ── 无人机（V10 占位：NPC 补给池） ──
   { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 480, supplyFlow: 4 }, // 2026-09-11 池 = flow×120（原 200）
   { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 240, supplyFlow: 2 },
@@ -265,7 +265,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
   { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 33000, demandMultiplier: 0.6 },
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 138500, demandMultiplier: 0.6 },
-  { key: 'bp-repairkit-dc', kind: 'blueprint', refId: 'bp-repairkit-dc', rarity: 'common', basePrice: 198000, demandMultiplier: 0.6 }, // 2026-09-25 损管修理组件图纸（整批产物价 ×2.2，与民用/军用同式）
+  { key: 'bp-repairkit-dc', kind: 'blueprint', refId: 'bp-repairkit-dc', rarity: 'common', basePrice: 1000000, demandMultiplier: 0.6 }, // 2026-09-25 损管修理组件图纸（整批产物价 ×2.2，与民用/军用同式）
   // 2026-09-09 全蓝图化：全部装备可学蓝图自造（双渠道，现货保留）；蓝图书出现概率 −50%。
   // **蓝图价口径 2026-09-11 归一（船长裁决甲）**：书价 = 产物现货价 × 档位系数（民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3，
   // 取整 500 信用点）——单点 = `blueprints.ts` 的 `blueprintTierCoefOf`，本表每行只做「与 blueprints.ts 同值」的落账。
