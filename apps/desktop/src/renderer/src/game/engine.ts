@@ -96,7 +96,7 @@ import {
   startSalvageOp,
   setSalvageAutoCycle,
   setSalvageStopAfterTrip,
-  setSalvageTarget,
+  wreckGroupStocksOf,
   wreckTargetsOf,
   startScan,
   startTransitHome,
@@ -1814,17 +1814,14 @@ export class GameEngine {
   }
 
   /** 该星系当前可选**打捞对象**与各自存量（界面下拉用；2026-09-26 船长令） */
-  salvageTargetsAt(galaxyId: string): Array<{ groupKey: string; stockM3: number }> {
-    return wreckTargetsOf(this.state, this.ctx, galaxyId)
+  salvageTargetsAt(
+    galaxyId: string,
+    /** **只读**（渲染期用）：缺分组账时现算均分、不写档 */
+    readOnly = false,
+  ): Array<{ groupKey: string; stockM3: number }> {
+    return readOnly ? wreckGroupStocksOf(this.state, this.ctx, galaxyId, true) : wreckTargetsOf(this.state, this.ctx, galaxyId)
   }
 
-  /** **中途换打捞对象**（返回真正生效的对象；`undefined` = 全部）——2026-09-26 船长令 */
-  setSalvageTarget(target: string | undefined): string | undefined {
-    const applied = setSalvageTarget(this.state, this.ctx, target)
-    void this.persist()
-    this.notify()
-    return applied
-  }
 
   /**
    * B3：开始打捞作业（采矿式自动循环，默认卸货后续捞；需高槽打捞器）。

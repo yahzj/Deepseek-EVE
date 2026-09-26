@@ -368,11 +368,25 @@ export function wreckGroupStocksOf(
   state: GameState,
   ctx: SimContext,
   galaxyId: string,
+  /** **只读模式**（渲染期用）：缺 `byGroup` 时**按均分规则现算**、**不写档** */
+  readOnly = false,
 ): Array<{ groupKey: string; stockM3: number }> {
   const rows: Array<{ groupKey: string; stockM3: number }> = []
   const rec = state.galaxyWrecks[galaxyId]
   if (rec) {
-    const shares = ensureWreckGroupShares(state, ctx, galaxyId, rec)
+    const shares = rec.byGroup
+      ? rec.byGroup
+      : (() => {
+          // 老档 / 还没补账：现算均分（与 `ensureWreckGroupShares` 同一条规则），但**不落盘**
+          const groups = residentWreckGroupsOf(galaxyId, ctx)
+          const out: Record<string, number> = {}
+          if (groups.length > 0) {
+            const each = Math.max(0, rec.density) / groups.length
+            for (const g of groups) out[g] = each
+          }
+          return out
+        })()
+    if (!readOnly) ensureWreckGroupShares(state, ctx, galaxyId, rec)
     for (const [groupKey, v] of Object.entries(shares)) {
       if (v > 0.05) rows.push({ groupKey, stockM3: v })
     }

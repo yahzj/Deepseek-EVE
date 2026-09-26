@@ -158,6 +158,38 @@ function wreckPoolOf(
 }
 
 /**
+ * **自动判定本轮打捞对象**（**2026-09-26 船长令**：「**分组后不要再让玩家手动选择打捞对象了，
+ * 这有些太过繁琐。改为自动判断：优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的数量比同步打捞。**」）。
+ *
+ * 三条（按序判定；`target` 有值 = 旧的手选口径，核心能力与用例保留、**界面已无入口**）：
+ * 1. **入侵残骸有存量 ⇒ 只从入侵独立卡里抽**（"优先打捞入侵残骸"）；
+ * 2. 否则 ⇒ **按各组存量的数量比**先抽组、再在该组内按威胁加权抽卡（"同步捞" = 按比例分摊，
+ *    不偏向任何一组；扣减也按同一比例回调，见 `salvage.salvageRoundPull`）；
+ * 3. 没有分组账（老档 / 池底来自安全等级）⇒ 返回 `null`（调用方回落改前的"整池按威胁加权"）。
+ */
+function autoTargetPickOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  pool: ReadonlyArray<{ anomalyId: string; threat: number }>,
+): { anomalyId: string; threat: number } | null {
+  // ① 入侵残骸优先
+  if (weekendWreckDensityOf(state, galaxyId) > 0) {
+    const hidden = pool.filter((p) => ctx.anomalies.get(p.anomalyId)?.hidden === true)
+    if (hidden.length > 0) return pickWeighted(state.rng, hidden, (p) => p.threat, { bound: 'lte' }) ?? hidden[0]!
+  }
+  // ② 按各组存量的数量比抽组
+  const shares = wreckGroupStocksOf(state, ctx, galaxyId).filter(
+    (r) => r.groupKey !== WEEKEND_WRECK_TARGET && r.stockM3 > 0,
+  )
+  if (shares.length === 0) return null
+  const byGroup = pickWeighted(state.rng, shares, (r) => r.stockM3, { bound: 'lte' }) ?? shares[0]!
+  const inGroup = pool.filter((p) => wreckGroupOfCard(p.anomalyId, ctx)?.key === byGroup.groupKey)
+  if (inGroup.length === 0) return null
+  return pickWeighted(state.rng, inGroup, (p) => p.threat, { bound: 'lte' }) ?? inGroup[0]!
+}
+
+/**
  * **该对象在这个星系是否可用**（有存量才算）：`undefined`（全部）恒真；`WEEKEND_WRECK_TARGET` 看入侵残骸；
  * 组 key 看该组份额。给的对象不可用 ⇒ 回落"全部"（不拒开工）。
  */
@@ -460,7 +492,11 @@ export function pullOneWreck(
   if (pool.length === 0) return null
   // 2026-09-12 审计 B3：改走单点 `pickWeighted`（按威胁加权；原累加循环 `roll <= acc` 即 `lte` 口径）；
   // 无中选兜底 = 池首（与改前 `chosen = pool[0]` 初值一致）
-  const chosen = pickWeighted(state.rng, pool, (p) => p.threat, { bound: 'lte' }) ?? pool[0]!
+  /** **自动判定对象**（2026-09-26 船长令）：手选入口已撤，缺省这一支就是主路径 */
+  const chosen =
+    (target === undefined ? autoTargetPickOf(state, ctx, galaxyId, pool) : null) ??
+    pickWeighted(state.rng, pool, (p) => p.threat, { bound: 'lte' }) ??
+    pool[0]!
   // 2026-09-19 合并：产出物 = 该卡**所属组**的残骸（`wreck-<组 key>`）；组查不到 = 未知卡 ⇒ 不产出
   const group = wreckGroupOfCard(chosen.anomalyId, ctx)
   if (!group) return null

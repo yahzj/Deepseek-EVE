@@ -790,27 +790,12 @@ function SalvageTab({
     >
       <div className="app-dim app-inv-empty">{phaseText()}</div>
 
-      {/* **打捞对象**（2026-09-26 船长令）：切换立即生效（`setSalvageTarget`）；作业没有备选对象时不显示 */}
-      {salvageTargets.length > 0 ? (
-        <div className="app-task-sortrow">
-          <span className="app-dim">{tr('ui.MapPage.119')}</span>
-          <select
-            className="app-select"
-            value={me.targetGroup ?? ''}
-            onChange={(e) => engine.setSalvageTarget(e.target.value === '' ? undefined : e.target.value)}
-          >
-            <option value="">{tr('ui.MapPage.120')}</option>
-            {salvageTargets.map((t2) => (
-              <option key={t2.groupKey} value={t2.groupKey}>
-                {(t2.groupKey === WEEKEND_WRECK_TARGET
-                  ? tr('ui.MapPage.121')
-                  : (engine.ctx.items.get(`wreck-${t2.groupKey}`)?.name ?? t2.groupKey)) +
-                  ` · ${Math.round(t2.stockM3)} m³`}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
+      {/*
+       * **打捞对象 = 自动判定**（**2026-09-26 船长令**：「**分组后不要再让玩家手动选择打捞对象了，
+       * 这有些太过繁琐。改为自动判断：优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的数量比同步打捞。**」）
+       * ⇒ 这里只留一行**口径说明**（下拉入口已撤）；每组各自的存量读数在下面每张卡上。
+       */}
+      <div className="app-dim app-inv-empty">{tr('ui.MapPage.122')}</div>
 
       {/**
        * **打捞需要打捞器 ⇒ 一行提示 ＋ 去「装配」的入口**（**2026-09-20 船长令**：
@@ -874,24 +859,51 @@ function SalvageTab({
             </select>
           </div>
           <div className="app-belt-grid">
-            {sortedGalaxies.map(({ galaxy: g, density, workers }) => (
-              <WreckCard
-                key={g.id}
-                galaxy={g}
-                density={density}
-                aiWorkers={workers}
-                isActive={me.active && me.galaxyId === g.id}
-                focus={focusIds.includes(g.id)}
-                activeAnywhere={me.active}
-                idleShips={idleShips}
-                engine={engine}
-                onStart={() => startAt(g.id)}
-                onStop={stopNow}
-                onAiAssign={assignAi}
-                onAiCancel={cancelAi}
-                onToast={onToast}
-              />
-            ))}
+            {/**
+             * **每个残骸组单独一张卡**（**2026-09-26 船长令**：「**建议每个组单独一张卡**」）——
+             * 卡片只做**读数**（各组各自存量）；**打捞对象由 core 自动判定**（船长同日改口：
+             * 「分组后不要再让玩家手动选择打捞对象了……优先打捞入侵残骸，没有入侵残骸则是根据
+             * 两种残骸的数量比同步打捞」）⇒ 每张卡上的「开始打捞」**都是同一个动作**（不带对象）。
+             * 该星系还没有分组账（老档且没打过仗）⇒ 只有「全部」一张，与改前逐字一致。
+             */}
+            {sortedGalaxies.flatMap(({ galaxy: g, density, workers }) => {
+              const targets = engine.salvageTargetsAt(g.id, true) // 只读（渲染期不写档）
+              const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean }) => (
+                <WreckCard
+                  key={`${g.id}|${opts.key}`}
+                  galaxy={g}
+                  density={opts.cardDensity}
+                  densityLabel={opts.label}
+                  aiWorkers={opts.showAi ? workers : []}
+                  isActive={me.active && me.galaxyId === g.id}
+                  focus={focusIds.includes(g.id)}
+                  activeAnywhere={me.active}
+                  idleShips={idleShips}
+                  engine={engine}
+                  onStart={() => startAt(g.id)}
+                  onStop={stopNow}
+                  onAiAssign={assignAi}
+                  onAiCancel={cancelAi}
+                  onToast={onToast}
+                  showAi={opts.showAi === true}
+                />
+              )
+              return [
+                mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: true }),
+                ...targets
+                  .filter((t) => t.groupKey !== WEEKEND_WRECK_TARGET)
+                  .map((t) =>
+                    mk({
+                      key: t.groupKey,
+                      label: engine.ctx.items.get(`wreck-${t.groupKey}`)?.name ?? t.groupKey,
+                      cardDensity: t.stockM3,
+                    }),
+                  ),
+                ...targets
+                  .filter((t) => t.groupKey === WEEKEND_WRECK_TARGET)
+                  .map((t) => mk({ key: t.groupKey, label: tr('ui.MapPage.121'), cardDensity: t.stockM3 })),
+              ]
+            })}
           </div>
         </>
       )}
@@ -927,6 +939,8 @@ function salvageProgressOf(engine: GameEngine): { percent: number; label: string
 function WreckCard({
   galaxy: g,
   density,
+  densityLabel,
+  showAi = false,
   aiWorkers,
   isActive,
   focus = false,
@@ -941,6 +955,10 @@ function WreckCard({
 }: {
   galaxy: GalaxyDef
   density: number
+  /** **打捞对象名**（2026-09-26：每个组一张卡 ⇒ 卡片上标出这一张是谁的读数） */
+  densityLabel?: string
+  /** 是否显示 AI 指派条（只挂「全部」那张：AI 任务按"全部"口径、不带打捞对象） */
+  showAi?: boolean
   aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
   isActive: boolean
   focus?: boolean
@@ -1043,7 +1061,7 @@ function WreckCard({
         </div>
       ) : null}
       <div className="app-belt-ore">
-        {tr("ui.MapPage.064")} <b>{density.toFixed(1)}</b>
+        {densityLabel ? <em className="app-chip">{densityLabel}</em> : null}{tr("ui.MapPage.064")} <b>{density.toFixed(1)}</b>
         {lowSec ? tr("ui.MapPage.065") : ''}{tr('ui.MapPage.116', { v: g.security?.toFixed(1) ?? '—' })}
         {rareCount > 0 ? (
           <>
@@ -1106,6 +1124,8 @@ function WreckCard({
             <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.071")}
           </button>
         )}
+        {/* **AI 指派条只挂「全部」那张卡**：AI 任务不带打捞对象（= 自动口径），挂组卡会误导 */}
+        {showAi ? (
         <div className="app-belt-ai">
           <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title={tr("ui.MapPage.072")}>
             <option value="">{tr("ui.MapPage.043")}</option>
@@ -1129,6 +1149,7 @@ function WreckCard({
             {tr("ui.MapPage.076")}
           </button>
         </div>
+        ) : null}
       </div>
     </div>
   )

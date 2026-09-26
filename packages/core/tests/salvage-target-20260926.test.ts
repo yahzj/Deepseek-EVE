@@ -151,6 +151,49 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     expect(pullOneWreck(s, ctx, GAL, 60_000), '该组已空 ⇒ 不出').toBeNull()
   })
 
+  it('**自动判定①：有入侵残骸 ⇒ 只出入侵那一族的残骸**（船长改口口径）', () => {
+    const s = fresh(31)
+    injectWreckDensity(s, ctx, GAL, 900) // 星系自己也有货
+    injectWeekendWreck(s, GAL, 500, 'H')
+    s.salvaging.active = true
+    s.salvaging.galaxyId = GAL
+    s.salvaging.phase = 'salvaging'
+    s.salvaging.targetGroup = undefined // 不手选 ⇒ 走自动
+    const got = new Set<string>()
+    for (let i = 0; i < 40; i++) {
+      const r = pullOneWreck(s, ctx, GAL, 60_000)
+      if (r) got.add(r.itemId)
+    }
+    const allInvasion = [...got].every((id) => id.startsWith("wreck-h-"))
+    expect(allInvasion, "有入侵残骸时只出入侵族（实际：" + [...got].join(" / ") + "）").toBe(true)
+  })
+
+  it('**自动判定②：没有入侵残骸 ⇒ 按各组存量的数量比同步捞**（不偏向任何一组）', () => {
+    const s = fresh(37)
+    injectWreckDensity(s, ctx, GAL, 900)
+    const shares = wreckGroupStocksOf(s, ctx, GAL)
+    expect(shares.length, "至少两组").toBeGreaterThanOrEqual(2)
+    const rec = s.galaxyWrecks[GAL]!
+    const gs = Object.keys(rec.byGroup!)
+    rec.byGroup![gs[0]!] = 20
+    rec.byGroup![gs[1]!] = 180
+    for (const k of gs.slice(2)) rec.byGroup![k] = 0
+    s.salvaging.active = true
+    s.salvaging.galaxyId = GAL
+    s.salvaging.phase = 'salvaging'
+    s.salvaging.targetGroup = undefined
+    let many = 0
+    let few = 0
+    for (let i = 0; i < 120; i++) {
+      const r = pullOneWreck(s, ctx, GAL, 60_000)
+      if (!r) continue
+      if (r.itemId === "wreck-" + gs[1]!) many += 1
+      else if (r.itemId === "wreck-" + gs[0]!) few += 1
+    }
+    expect(many, "存量大的那组出得多").toBeGreaterThan(few)
+    expect(many + few, "两组都在出（同步捞）").toBeGreaterThan(0)
+  })
+
   it('**随档往返**：`byGroup`（组份额）与 `targetGroup`（打捞对象）读档后都还在', () => {
     const s = fresh(29)
     injectWreckDensity(s, ctx, GAL, 300)
