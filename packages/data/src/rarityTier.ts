@@ -219,6 +219,12 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-dc-1': 2,
   'bp-dc-2': 3,
   'bp-dc-3': 4,
+  // 制式无人机永久图纸（2026-09-26 船长令「放入稀有订单档」）：四型统一**数字档 2（大众）**
+  // —— 与 MK2 装备蓝图同档（稀有订单层内权重 1），渠道稀有、价格大众。
+  'bp-drone-scout': 2,
+  'bp-drone-assault': 2,
+  'bp-drone-heavy': 2,
+  'bp-drone-sentry': 2,
   'mod-armor-pla-1': 1,
   'mod-armor-pla-2': 2,
   'mod-armor-pla-3': 3,

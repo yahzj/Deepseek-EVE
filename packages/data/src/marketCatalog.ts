@@ -442,6 +442,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-dc-1', kind: 'blueprint', refId: 'bp-dc-1', rarity: 'rare', basePrice: 1_240_000, demandMultiplier: 0.65 },
   { key: 'bp-dc-2', kind: 'blueprint', refId: 'bp-dc-2', rarity: 'rare', basePrice: 7_000_000, demandMultiplier: 0.65 },
   { key: 'bp-dc-3', kind: 'blueprint', refId: 'bp-dc-3', rarity: 'rare', basePrice: 28_500_000, demandMultiplier: 0.65 },
+  // 制式无人机永久图纸（**2026-09-26 船长令**：「给官方的无人机添加永久图纸，**放入稀有订单档**」）：
+  // 四条**永久**（可学习、不限次）· 走稀有订单 · **无声望门槛** · 数字档 2（大众）。
+  // 书价 = 一单（100 架）货值 ×2 = 200 架货值（口径见 `blueprints.ts` 那批的头注）。
+  { key: 'bp-drone-scout', kind: 'blueprint', refId: 'bp-drone-scout', rarity: 'rare', basePrice: 180_000, demandMultiplier: 0.65 },
+  { key: 'bp-drone-assault', kind: 'blueprint', refId: 'bp-drone-assault', rarity: 'rare', basePrice: 440_000, demandMultiplier: 0.65 },
+  { key: 'bp-drone-heavy', kind: 'blueprint', refId: 'bp-drone-heavy', rarity: 'rare', basePrice: 1_000_000, demandMultiplier: 0.65 },
+  { key: 'bp-drone-sentry', kind: 'blueprint', refId: 'bp-drone-sentry', rarity: 'rare', basePrice: 1_900_000, demandMultiplier: 0.65 },
   { key: 'bp-armor-plate-2', kind: 'blueprint', refId: 'bp-armor-plate-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲增厚板 MK2（蓝图=产物×2.5）
   { key: 'bp-armor-plate-3', kind: 'blueprint', refId: 'bp-armor-plate-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲增厚板 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-prop-2', kind: 'blueprint', refId: 'bp-prop-2', rarity: 'rare', basePrice: 977500, demandMultiplier: 0.65 }, // 矢量推进器 MK2（蓝图=产物×2.5）
