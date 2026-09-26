@@ -3087,6 +3087,11 @@ function normalizeState(raw: unknown): GameState {
           const dmgLogged = weekendKeep(weekendRaw.flagshipDmgLogged)
           const runId = strictKeep(weekendRaw.flagshipRunId)
           const bossTick = strictKeep(weekendRaw.bossTickWallMs)
+          /**
+           * **章鱼人停工终点**（**2026-09-26 船长令**：旗舰战结束后 60 秒才恢复削血/判定）——
+           * 不认它 ⇒ 读档即丢 ⇒ **冷却被读档绕过**（同类旧账：`bossHpLayers` 那三格当初没过清洗器）。
+           */
+          const octopusHold = strictKeep(weekendRaw.octopusHoldUntilWallMs)
           const prizePaid = strictKeep(weekendRaw.prizePaidAtWallMs)
           const assaultDraws = weekendKeep(weekendRaw.assaultDraws)
           /** 入侵「重复出击」的循环目标（**可选字段**：缺键 = 没开；本批新增，不动结构版本） */
@@ -3121,6 +3126,7 @@ function normalizeState(raw: unknown): GameState {
               ? { flagshipBestRunDmg: weekendKeep(weekendRaw.flagshipBestRunDmg) }
               : {}),
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
+            ...(octopusHold !== undefined ? { octopusHoldUntilWallMs: octopusHold } : {}),
             ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
             ...(assaultDraws !== undefined ? { assaultDraws } : {}),
             ...(autoLoopGalaxyId.length > 0 ? { autoLoopGalaxyId } : {}),

@@ -45,6 +45,7 @@ import { matterTechNodes } from './matterTech'
 import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 import { weekendTickBoss } from './weekendEvent'
+import { weekendFlagshipBattleActive } from './weekendLaunch'
 
 /**
  * **我方此刻是否在战斗中**（周末入侵的章鱼人削血要按它暂停）：远征战斗 / 虫洞战斗 / 低安遭遇战
@@ -189,9 +190,14 @@ export function advanceGame(
    * 母舰血量。当玩家正在战斗时，会暂停削血。等玩家战斗结束才继续。**」）：
    * - **只有在线心跳传 `nowWallMs`** ⇒ 离线结算/工具/用例一律不推进（"离线时章鱼也停"）；
    * - **战斗中暂停**（含普通入侵战斗）⇒ 这里判"我方是否有正在进行的战斗"（远征 / 虫洞 / 遭遇）；
+   * - 🔴 **2026-09-26 船长令（冷却闸）**：「**给章鱼人进攻削血加个冷却，玩家战斗结束 1 分钟后，
+   *   章鱼人才开始削血和判定。这样玩家就能正常收掉 BOSS**」⇒ 额外传"**旗舰战**是否正在进行"
+   *   （单点判据 `weekendLaunch.weekendFlagshipBattleActive`，与战斗界面同源）：进行中每拍把它推后到
+   *   `now + 60 秒` ⇒ **旗舰战结束后 60 秒内既不削血、也不判得手**。
+   *   ⚠ 只有旗舰战起算冷却（船长 2026-09-26 明示），其它战斗只走上面那条"暂停"；
    * - 非 BOSS 族 / 池子未锁定 ⇒ 函数内部直接返回（零开销、零行为变化）。
    */
-  weekendTickBoss(state, opts?.nowWallMs, isPlayerInBattle(state))
+  weekendTickBoss(state, opts?.nowWallMs, isPlayerInBattle(state), weekendFlagshipBattleActive(state))
   advanceScanning(state, ctx)
   // 主控活动「扫描虫洞」（2026-09-14）：进度按游戏时刻累计，满一个窗口发现一处（遇袭不清零）
   // 解锁当次：把进度预置成满窗口（船长 2026-09-14「甲」：点扫描第一拍即得一处；只送一次、不额外提示）
