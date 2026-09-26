@@ -46,15 +46,18 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ano-gravekeeper': { mk2: ['mod-shield-pla-2', 'mod-armor-plate-2'] }, // 坟场守墓：能量盾+增厚
   // ── 穹顶守卫（关底唯一武器直出点）：门槛池追加三把 MK3 武器（动能/激光/导弹架；不追加装甲——默认池已有）──
   'ano-vault-sentinel': { mk2: ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3'] },
-  /* ── H 族（墨潮帮）四张入侵卡：2026-09-26 船长令「**H族已经添加势力装备，可以放入残骸内**」+「甲2」
-   *    ⇒ 三件 H 势力装备挂成主题件（`h-hi` 组的 `theme.modules` 就是本表这四行的并集）。
+  /* ── H 族（墨潮帮）四张入侵卡 ──
+   * 2026-09-26 第一批（船长令「**H族已经添加势力装备，可以放入残骸内**」+「甲2」）：三件 H 势力装备挂成主题件；
+   * 🔴 2026-09-26 第二批（船长令「**将H族稀有残骸按照其他族那样混池**」）：主题件改**通用 MK2 一件**
+   *    （照 D 高安组同款 `mod-shield-pla-2`）⇒ 高级箱回到"专属支 10% ＋ 通用主题件兜底"的两段式。
+   *    ⚠ 三件 H 势力装备仍由 `core/lairs.ts` 的 `FOE_LAIR_GEAR.H` 提供（只走稀有箱专属支）。
    *    ⚠ 契约特别处：它们锚在展示用的 `galaxy-hub`（sec 1.0，高安）⇒ 读 `content:check` 的
    *    「主题彩头仅限 sec<0.5 星系」得走**入侵卡例外**（判据 = 卡级 `region` 覆写为 `inv`），
    *    与洞内/中安/低安卡的 `modules`（中安档）/`mk2`（低安档）分区检查是两条独立的线。 ── */
-  'ink-harass': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
-  'ink-raid': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
-  'ink-main': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
-  'ink-flagship': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
+  'ink-harass': { modules: ['mod-shield-pla-2'] },
+  'ink-raid': { modules: ['mod-shield-pla-2'] },
+  'ink-main': { modules: ['mod-shield-pla-2'] },
+  'ink-flagship': { modules: ['mod-shield-pla-2'] },
 }
 
 /** 卡级特色池与产出倾向（**构建依据 · 体检输入**；运行时见 `@whale/core` 的 `WRECK_GROUPS`） */
