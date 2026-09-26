@@ -7,6 +7,11 @@
  * ⚠ **2026-09-14 船长改判：「玩家撤离战斗按照 10 秒算」⇒ K 由 1 秒改为 10 秒**，且范围经船长裁定
  * 扩为**四档同一 K**：玩家主动撤退 / 结构<50% 自动脱离 / 战斗超时 / **无法交战**（够不着）；
  * 虫洞的撤离战不吃本值（走真实战斗损伤）。**窝点档按派生后威胁算**（与界面/战斗同口径）。
+ *
+ * ⚠ **2026-09-26 船长再改判「甲：单纯削减时间」⇒ K 10 → 5 秒**（起因：「目前撤退的修理损伤有些大，
+ * 我记得之前是敌人10秒的DPS输出吧？」——现值确实是 10 秒，但卡面威胁已整体上调 ⇒ 双重放大）。
+ * 与低安遇袭那口（`encounter.hitFirepowerSec` = 5 秒）**同口径**；**不计玩家抗性**（船长令
+ * 「之前没有抗性就算了」）。本文件里的具体读数已按 K=5 重算。
  */
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
@@ -51,9 +56,9 @@ describe('战斗中撤退（按敌方火力扣装甲/结构）', () => {
     const K = ctx.balance.combat.retreatHitFirepowerSec
     const bite = expectedBite(ctx)
     const iskBefore = state.wallet.isk
-    // 威胁 8 × 0.8/秒 × 10 秒 = 64 HP（2026-09-14 船长改判后的 K）
+    // 威胁 8 × 0.8/秒 × 5 秒 = 32 HP（2026-09-26 船长裁定「甲」：K 10 → 5 秒）
     expect(bite).toBeCloseTo(8 * ctx.balance.battle.foeDpsPerThreat * K, 6)
-    expect(K).toBe(10)
+    expect(K).toBe(5)
     expect(retreatBattle(state, ctx).ok).toBe(true)
     /**
      * **撤退不收维修费**（船长 2026-09-15「**删除撤离费**」）：
@@ -165,7 +170,7 @@ describe('战斗超时判负（视同被迫撤退）', () => {
     const armorAfter = state.fleet[state.shipId]!.armorPct ?? 1
     expect(durAfter).toBeGreaterThanOrEqual(0.05) // 下限保护：绝不因超时弃船
     expect(durAfter).toBeLessThanOrEqual(durBefore + 1e-9)
-    // 与手动撤退**同一 K**：超时这一口也恰好 = 威胁 8 × 0.8/秒 × 10 秒 = 64 HP，且先吃装甲
+    // 与手动撤退**同一 K**：超时这一口也恰好 = 威胁 8 × 0.8/秒 × 5 秒 = 32 HP，且先吃装甲
     const caps = hullLayerCaps(state, ctx, state.shipId)!
     const bite = expectedBite(ctx)
     const armorHp = armorBefore * caps.capA
@@ -179,21 +184,23 @@ describe('战斗超时判负（视同被迫撤退）', () => {
   it('一口伤害 = 敌群火力 × K 秒（线性随威胁），K 走 balance 可调常量', () => {
     const { ctx } = world()
     const K = ctx.balance.combat.retreatHitFirepowerSec
-    // 2026-09-14 船长改判「玩家撤离战斗按照 10 秒算」（四档同一 K；旧值 1 秒作废）
-    expect(K).toBe(10)
-    expect(firepowerHitHp(ctx, 8, K)).toBeCloseTo(64, 6)
-    expect(firepowerHitHp(ctx, 40, K)).toBeCloseTo(320, 6) // 威胁 ×5 ⇒ 伤害 ×5
-    expect(firepowerHitHp(ctx, 8, K * 3)).toBeCloseTo(192, 6) // 秒数线性
+    // 2026-09-26 船长裁定「甲：单纯削减时间」：10 → 5 秒（四档同一 K；旧值 10 / 原 1 秒作废）
+    expect(K).toBe(5)
+    expect(firepowerHitHp(ctx, 8, K)).toBeCloseTo(32, 6)
+    expect(firepowerHitHp(ctx, 40, K)).toBeCloseTo(160, 6) // 威胁 ×5 ⇒ 伤害 ×5
+    expect(firepowerHitHp(ctx, 8, K * 3)).toBeCloseTo(96, 6) // 秒数线性
   })
 
   /**
    * **窝点档按派生威胁算这一口**（2026-09-14 船长裁定「顺手对齐」）：
    * 界面胜率/威胁与实战敌编成都按 `lairAnomalyOf` 派生后的卡（威胁 ×1.3/1.6/2.0），
    * 唯独撤退取数原先读基础卡 ⇒ 窝点档被少算。这里用 L3（×2.0）钉住"按派生值扣"。
+   * ⚠ 基准卡威胁取 **2**（不是 1）：K 改成 5 秒后，威胁 2 派生 4 ⇒ 那一口 16 HP 才够打穿测试船甲池
+   * （威胁 1 派生 2 ⇒ 8 HP < 甲池 10，本用例的第二段反向断言会失效）。
    */
-  it('窝点档（L3 ×2.0）：脱身那一口按**派生后威胁**算（基础卡威胁 1 ⇒ 派生 2 ⇒ 16 HP 打穿甲池）', () => {
+  it('窝点档（L3 ×2.0）：脱身那一口按**派生后威胁**算（基础卡威胁 2 ⇒ 派生 4 ⇒ 16 HP 打穿甲池）', () => {
     const base = makeTestCtx({ quietEvents: true })
-    const card = anomaly('ano-lair', 'galaxy-hub', { threat: 1, lairCore: '测试窝点' })
+    const card = anomaly('ano-lair', 'galaxy-hub', { threat: 2, lairCore: '测试窝点' })
     const ctx: SimContext = { ...base, anomalies: new Map([...base.anomalies, [card.id, card]]) }
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 7 })
     expect(startExpedition(state, 'ano-lair', ctx, { lairTier: 3 }).ok).toBe(true)
@@ -201,8 +208,8 @@ describe('战斗超时判负（视同被迫撤退）', () => {
     expect(state.expedition.phase).toBe('battle')
     const caps = hullLayerCaps(state, ctx, state.shipId)!
     expect(retreatBattle(state, ctx).ok).toBe(true)
-    const derivedThreat = Math.round(card.threat * LAIR_THREAT_MUL[3]) // 1 × 2.0 = 2
-    const bite = firepowerHitHp(ctx, derivedThreat, ctx.balance.combat.retreatHitFirepowerSec) // 2×0.8×10 = 16
+    const derivedThreat = Math.round(card.threat * LAIR_THREAT_MUL[3]) // 2 × 2.0 = 4
+    const bite = firepowerHitHp(ctx, derivedThreat, ctx.balance.combat.retreatHitFirepowerSec) // 4×0.8×5 = 16
     expect(bite).toBe(16)
     const baseBite = firepowerHitHp(ctx, card.threat, ctx.balance.combat.retreatHitFirepowerSec) // 基础口径 = 8
     const ship = state.fleet[state.shipId]!
