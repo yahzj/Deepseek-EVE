@@ -21,6 +21,8 @@ import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 import { Glyph, itemIconOf, itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
 // 围剿者（2026-09-23）：族徽取色与族→卡表（按格上那张围剿卡反查族，不新增 props）
 import { FOE_ACCENT } from '../ui/tones'
+// ⚠ 地点名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_PLACE_TEXT` 是纯中文表
+import { placeText } from '../ui/labelsText'
 // ⚠ 舰级名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 `shipSizeLabel` 是纯中文表
 import { shipTierText } from '../ui/labelsText'
 import { FOE_FAMILY_LABEL } from '../ui/shipArt'
@@ -34,7 +36,6 @@ import {
   WORMHOLE_AUTO_YIELD_MUL,
   WORMHOLE_AUTO_DAMAGE_MIN,
   WORMHOLE_AUTO_DAMAGE_MAX,
-  WORMHOLE_PLACE_TEXT,
   wormholeIsShapedItem,
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
@@ -1075,7 +1076,7 @@ export function WormholePanel({
     return (
       <>
         <div className="app-wh-node-title">
-          {atExit ? tr("ui.Wormhole.007") : WORMHOLE_PLACE_TEXT[hereCell.place]}
+          {atExit ? tr("ui.Wormhole.007") : placeText(hereCell.place)}
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
               属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
@@ -2714,7 +2715,7 @@ function WhGridMap({
               : isExit
                 ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
                 : visited
-                  ? tr('ui.Wormhole.325', { p1: WORMHOLE_PLACE_TEXT[c.place], p2: cleared ? tr('ui.Wormhole.303') : '' }) +
+                  ? tr('ui.Wormhole.325', { p1: placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
                     `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
                   : nebula
                     ? tr("ui.Wormhole.163")

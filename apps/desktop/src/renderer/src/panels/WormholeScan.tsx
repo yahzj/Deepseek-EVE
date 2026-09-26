@@ -23,7 +23,6 @@ import {
   WORMHOLE_AUTO_DURATION_MS,
   WORMHOLE_AUTO_MAX_SHIPS,
   WORMHOLE_SCAN_BASE_MS,
-  WORMHOLE_ARCHETYPE_LABELS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   wormholeStockMaxOf,
   aiCoreName,
@@ -34,6 +33,8 @@ import type { GameState, WormholeArchetype, WormholeFamily } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
+// ⚠ 原型名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_ARCHETYPE_LABELS` 是纯中文表
+import { archetypeText } from '../ui/labelsText'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 import { tr, cmdText } from '../i18n/locale'
@@ -56,7 +57,7 @@ function stockLineOf(
   item: { family: WormholeFamily; archetype: WormholeArchetype; foundAtGameMs: number },
 ): { glyph: string; text: string } {
   const glyph = `fam-${item.family.toLowerCase()}`
-  return { glyph, text: tr("ui.WormholeScan.045", { p1: WORMHOLE_ARCHETYPE_LABELS[item.archetype], p2: foundDateLabel(state, item.foundAtGameMs) }) }
+  return { glyph, text: tr("ui.WormholeScan.045", { p1: archetypeText(item.archetype), p2: foundDateLabel(state, item.foundAtGameMs) }) }
 }
 
 export function WormholeScanTab({
@@ -251,7 +252,7 @@ export function WormholeScanTab({
             {stock.map((item) => {
               const line = stockLineOf(state, item)
               const famName = engine.wormholeFamilyName(item.family)
-              const archName = WORMHOLE_ARCHETYPE_LABELS[item.archetype]
+              const archName = archetypeText(item.archetype)
               return (
                 <li key={item.id} className="app-inv-row">
                   <div className="app-inv-main">

@@ -57,20 +57,30 @@ core 的 `RACK_LABELS`（**纯中文**）。`shipInfo.tsx` / `FitPage.tsx` 读�
   （`ui/labelsText.ts` = 本地化单点本身 · `App.tsx` 的 `KIND_LABEL` = 本文件自定义表 ·
   `ui/itemSubs.ts` = 自定义的已本地化 `RACK_LABELS` 与中文兜底 `label`）。
 
-## 四、⛔ 乙批未做（**需要登记新英文文案，等你点头**）
+## 四、乙批（**已完成** 2026-09-26 · 船长「可以」）
 
-契约现在会**如实报红**的就是乙批——都是"core 有纯中文表、渲染层尚无本地化版"：
+原"未做"的两张表 ＋ 一笔待核，全部收口（`KIND_LABEL` 经核查**确实进玩家可见区**：
 
-| 表（core） | 内容 | 漏在哪 | 估量 |
-| --- | --- | --- | --- |
-| `WORMHOLE_PLACE_TEXT` | 空信息地点 / 舰船墓场 / 遗迹 / 舰船信号 / 矿脉 / 虫洞谜质（7 项） | 虫洞页当前格与图例（2 处渲染） | 7 条 |
-| `WORMHOLE_ARCHETYPE_LABELS` | 均衡深区 / 残骸富集 / 遗迹密集 / 母矿脉 / 交火密集（5 项） | 虫洞扫描页（3 处渲染） | 5 条 |
-| `KIND_LABEL` | 活动名（开采/打捞/长途运输/扫描虫洞/掩护巡逻/亲自开炉…，10 项） | **`App.tsx` 的日志分类行**（`{KIND_LABEL[kind]}`，但那是本文件**自定义**的同名表、不是 core 那张）⇒ 待核：core 的 `KIND_LABEL` 是否另有落点 | 待核 |
+- `activityGate.logAutoHalt` 把它当 **`{p1}` 参数**塞进 `core.activityGate.001/.007`（参数不会再被翻译 ⇒ 英文日志漏中文）；
+- `wormholeEntryAutoStops` 的 `name` 被引擎的两处提示用（进洞准备页的"会先自动停掉哪些"）。
 
-⇒ **乙批要新登记 12 条中英文案**（纯地点名/原型名，无口径问题）；`KIND_LABEL` 那 10 条**待核**
-（渲染层那张是自定义表，core 那张可能只喂 core 自己的日志——先查清再决定要不要登记）。
-要我就做，说一声"继续本地化"即可；在此之前契约对这两处**按"待登记"记账放行**（豁免逐条写了 `⛔` 与文档指向），
-**其余位置一律不许直读**（负向验证：删掉豁免 ⇒ 立刻报 5 处、exit 1）。
+| 表（core） | 新增本地化版 | 登记 id |
+| --- | --- | --- |
+| `WORMHOLE_PLACE_TEXT`（7 条地点名） | `placeText()` | 复用 4 条（`ui.Wormhole.223/221`、`ui.MatterTechTab.005`）＋ 新登记 3 条（`core.wormholePlace.001~003`） |
+| `WORMHOLE_ARCHETYPE_LABELS`（5 条原型名） | `archetypeText()` | 新登记 5 条（`core.wormholeArch.001~005`） |
+| `KIND_LABEL`（10 条活动名） | 界面走 `paramText(nameId)`；core 新增 **`ACTIVITY_LABEL_ID`** 单点表 | 复用 4 条（`ui.Expedition.144` · `ui.Wormhole.107` · `ui.MapPage.006/007`）＋ 新登记 6 条（`core.activity.001~006`） |
+
+**英文口径取自 `docs/glossary-en.md`**（Graveyard / Ruins / Ore Vein / Wormhole Enigma），
+其余（Balanced deep zone / Wreck-rich / Ruin-dense / Mother lode / Combat-heavy · Escort patrol /
+Running the furnace / Running the line / Expedition / Courier delivery / Outpost delivery）为本批新定。
+
+**接线**：`WormholeScan.tsx`（原型名 2 处）· `Wormhole.tsx`（地点名 2 处）· `game/engine.ts`
+（`wormholeEntryAutoStopText/List` 改走 `paramText(a.nameId)`）· `core/activityGate.ts`（日志补 `p1Id`）·
+`core/wormhole.ts`（`WormholeEntryAutoStop` 增 `nameId`）。**未接线的一律删**：原先顺手加的
+`labelsText.activityText()` 全仓无人调用 ⇒ **已删**（不留死代码）。
+
+**契约收口**：三条"待登记"豁免**已删**，`ALLOW_RAW_LABEL` 只剩 3 条**正当豁免**
+（`labelsText.ts` = 单点本身 · `App.tsx` = 自定义同名表 · `itemSubs.ts` = 自定义的已本地化表）。
 
 ## 五、验证（实测读数）
 
