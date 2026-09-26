@@ -1261,6 +1261,12 @@ export function ManufacturingPanel({
   /** 第三级筛选：一次性/永久（**只在选了子类后显示**；见 `BLUEPRINT_USE_TABS` 的注释） */
   const [useKind, setUseKind] = useState<BlueprintUseKey>(SUB_ALL)
   /**
+   * **「仅看可造」开关**（**2026-09-26 船长令**：优化工业界面）。
+   * 与门类/子类那些"选完就收窄"的维度不同：它是**并列的布尔开关**（与「学会」同为属性行），
+   * 关着 = 不过滤（默认）；开着 = 只留"现在就能开工"的图纸（判据 = 卡片按钮同一把尺 `canStartNow`）。
+   */
+  const [craftableOnly, setCraftableOnly] = useState(false)
+  /**
    * **书架跳过来的定位**（船长 2026-09-14）：先把三级筛选全部复位（否则目标卡可能正被筛掉 ⇒ 跳过去空白），
    * 高亮由页面层的 `.app-belt-card.is-goto` + 居中滚动负责（与「去精炼」同一套）。
    */
@@ -1522,6 +1528,15 @@ export function ManufacturingPanel({
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
     // 三级筛选（2026-09-14 船长）：一次性 / 永久——**只在选了子类后才有开关**，故这里 sub=全部时它恒为 SUB_ALL
     .filter((it) => useKind === SUB_ALL || (useKind === 'single' ? it.singleUse : !it.singleUse))
+    /**
+     * **「仅看可造」**（**2026-09-26 船长令**：「**对整个工业界面进行下优化。看下是否有优化空间**」）。
+     *
+     * 为什么加这一条（优化空间就在这里）：组装机是**唯一长列表**（后期档 151 张），而玩家最常问的
+     * 不是"我有哪些图纸"，而是"**现在这批料能造什么**"。原先 `canStartNow()` 只喂按钮的可用态
+     * （在卡片上逐张判），**做成筛选项的入口一个都没有** ⇒ 只能一张张往下找。
+     * 判据与按钮**同一把尺**（同一个 `canStartNow`）⇒ 筛出来的就是真能点的，不会"说能造却点不动"。
+     */
+    .filter((it) => !craftableOnly || canStartNow(it.id, it.materials, it.buildSeconds))
   // 排序口径（类型 → 价格升序 → 同产物的一次性图纸紧随原图纸）**单点在 core**：
   // `sortManuRows`（2026-09-08 船长定 + 2026-09-14 船长改定；详见 core 该段注释与 `tests/manu-order.test.ts`）
   // 2026-09-10 船长定：已标记（收藏）的蓝图在默认排序下置顶——「全部」标签下会排在类型分组之前
@@ -1573,10 +1588,11 @@ export function ManufacturingPanel({
               p4: supplyN,
               p5: learnedN,
             })}
-            {/* 任一一维筛选/搜索生效时补读数，避免玩家对着收窄后的网格数不清 */}
+            {/* 任一一维筛选/搜索生效时补读数，避免玩家对着收窄后的网格数不清
+                ⚠ 2026-09-26：「仅看可造」也要算进来（它同样是"收窄"的一维） */}
             {kq.length > 0
               ? tr('ui.IndustryPage.108', { n: sorted.length })
-              : learn !== SUB_ALL || sub !== SUB_ALL || useKind !== SUB_ALL
+              : learn !== SUB_ALL || sub !== SUB_ALL || useKind !== SUB_ALL || craftableOnly
                 ? tr('ui.Industry.127', { n: sorted.length })
                 : ''}
           </span>
@@ -1609,8 +1625,7 @@ export function ManufacturingPanel({
         </div>
         <span className="app-dim">{tr('ui.Industry.134')}</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          {MANU_TABS_CRAFT.map((t) => {
-            /**
+          {MANU_TABS_CRAFT.map((t) => {            /**
              * **「舰船插件」档在取得第一个黑匣前锁着**（**2026-09-26 船长令**：「玩家获取第一个黑匣后，
              * 才解锁组装机的插件选项」）。判据走 core 单点 `plugCraftUnlockedOf`（= 见过黑匣）。
              * 锁着时：标签仍在（让玩家知道有这一档），但**置灰不可点**并把原因写在悬停里 ——
@@ -1635,6 +1650,25 @@ export function ManufacturingPanel({
               </button>
             )
           })}
+        </div>
+        {/**
+         * **「仅看可造」开关**（**2026-09-26 船长令**：优化工业界面）——与「学会」同排、贴在门类之后。
+         *
+         * 为什么放这一排而不是新起一行：它与「学会」同性质（**并列的布尔收窄**，不是层级维度），
+         * 且 `.app-fleet-row` 自带 `flex-wrap`（窗口窄了自动折行，不必另写断点）⇒ 不新增行高。
+         * 落款走既有胶囊样式（`.app-tasktab` ＋ `is-active`），与两个筛选行**同一套观感**。
+         */}
+        <span className="app-dim">{tr('ui.IndustryPage.127')}</span>
+        <div className="app-task-tabs app-fleet-tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={craftableOnly}
+            className={`app-tasktab${craftableOnly ? ' is-active' : ''}`}
+            title={tr('ui.IndustryPage.128')}
+            onClick={() => setCraftableOnly((v) => !v)}
+          >
+            {tr('ui.IndustryPage.129')}
+          </button>
         </div>
       </div>
       {/* 二级子筛选（2026-09-11 船长：按产物的类型二次分类 / 舰船按舰船级别）——
