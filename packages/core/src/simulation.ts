@@ -104,7 +104,7 @@ export function simulateOffline(
   const before = state.logs.length
   addLog(
     state,
-    'info',
+    'system',
     `离线归来：已离开 ${formatDurationMs(rawGap)}，开始结算……`,
     'core.simulation.001',
     { p1: formatDurationMs(rawGap) },
@@ -194,7 +194,7 @@ export function simulateOffline(
   const tail = overflowMs > 0 ? `；超出上限的 ${formatDurationMs(overflowMs)} 未结算` : ''
   addLog(
     state,
-    'info',
+    'system',
     `离线结算完成：推进 ${formatDurationMs(deltaMs)}${tail}${minedText}，期间发生 ${eventCount} 条事件。`,
     'core.simulation.002',
     {

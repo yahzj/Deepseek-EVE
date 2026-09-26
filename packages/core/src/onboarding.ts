@@ -104,7 +104,7 @@ export function skipPrologue(state: GameState, ctx?: SimContext): CommandResult 
   }
   if (state.character.name === DEFAULT_PILOT_NAME) state.character.name = 'PRTS'
   finishPrologue(state, ctx)
-  addLog(state, 'system', '序章演出已跳过——开始新的航程。', 'core.onboarding.005')
+  addLog(state, 'info', '序章演出已跳过——开始新的航程。', 'core.onboarding.005')
   return { ok: true }
 }
 

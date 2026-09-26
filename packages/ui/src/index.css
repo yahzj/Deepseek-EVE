@@ -79,6 +79,11 @@
   --wui-log-time: 138 160 184;
   --wui-log-warn: 255 130 120;
   --wui-log-warn-bg: 255 90 80;
+  /* 2026-09-26 船长令新增四类（战斗 / 工业 / 舰队 / 打捞）——深浅两套都要给 */
+  --wui-log-combat: 255 138 96;
+  --wui-log-industry: 168 152 255;
+  --wui-log-fleet: 96 208 200;
+  --wui-log-salvage: 196 214 120;
   --wui-map-minor: 85 112 140;
   --wui-mint: 110 231 183;
   --wui-pro-text: 157 184 168;
@@ -445,6 +450,11 @@
   --wui-log-time: 70 82 99;
   --wui-log-warn: 135 10 0;
   --wui-log-warn-bg: 175 10 0;
+  /* 2026-09-26 新增四类（浅色主题取同色系的深一档） */
+  --wui-log-combat: 156 54 12;
+  --wui-log-industry: 74 56 150;
+  --wui-log-fleet: 12 92 92;
+  --wui-log-salvage: 84 96 20;
   --wui-map-minor: 139 142 146;
   --wui-mint: 17 101 68;
   --wui-pro-text: 67 92 77;
@@ -966,6 +976,19 @@
 .wui-log-queue {
   color: rgb(var(--wui-log-queue));
 }
+/* 2026-09-26 船长令新增四类（战斗 / 工业 / 舰队 / 打捞）——只用色相区分，不加粗不铺底（避免又变成"到处都显眼"） */
+.wui-log-combat {
+  color: rgb(var(--wui-log-combat));
+}
+.wui-log-industry {
+  color: rgb(var(--wui-log-industry));
+}
+.wui-log-fleet {
+  color: rgb(var(--wui-log-fleet));
+}
+.wui-log-salvage {
+  color: rgb(var(--wui-log-salvage));
+}
 .wui-log-info {
   color: rgb(var(--wui-log-info));
 }
@@ -1330,6 +1353,10 @@
   --wui-log-time: 248 250 252;
   --wui-log-warn: 255 246 245;
   --wui-log-warn-bg: 255 245 245;
+  --wui-log-combat: 255 250 246;
+  --wui-log-industry: 251 249 255;
+  --wui-log-fleet: 246 254 254;
+  --wui-log-salvage: 251 255 246;
   --wui-map-minor: 38 50 63;
   --wui-mint: 245 255 251;
   --wui-pro-text: 249 251 250;
@@ -1821,6 +1848,10 @@
   --wui-log-time: 148 163 190;
   --wui-log-warn: 226 170 156;
   --wui-log-warn-bg: 217 141 125;
+  --wui-log-combat: 230 156 128;
+  --wui-log-industry: 184 166 224;
+  --wui-log-fleet: 122 196 196;
+  --wui-log-salvage: 198 206 132;
   --wui-map-minor: 153 163 189;
   --wui-mint: 129 219 194;
   --wui-pro-text: 161 187 175;
@@ -2309,6 +2340,10 @@
   --wui-log-time: 137 157 179;
   --wui-log-warn: 246 93 80;
   --wui-log-warn-bg: 245 81 71;
+  --wui-log-combat: 246 140 96;
+  --wui-log-industry: 176 158 248;
+  --wui-log-fleet: 98 206 198;
+  --wui-log-salvage: 198 214 120;
   --wui-map-minor: 78 101 124;
   --wui-mint: 96 221 171;
   --wui-pro-text: 144 172 156;
@@ -2797,6 +2832,10 @@
   --wui-log-time: 148 163 190;
   --wui-log-warn: 226 170 156;
   --wui-log-warn-bg: 217 141 125;
+  --wui-log-combat: 230 156 128;
+  --wui-log-industry: 184 166 224;
+  --wui-log-fleet: 122 196 196;
+  --wui-log-salvage: 198 206 132;
   --wui-map-minor: 90 104 140;
   --wui-mint: 129 219 194;
   --wui-pro-text: 161 187 175;
@@ -3285,6 +3324,10 @@
   --wui-log-time: 138 160 184;
   --wui-log-warn: 255 130 120;
   --wui-log-warn-bg: 255 100 90;
+  --wui-log-combat: 255 170 110;
+  --wui-log-industry: 170 190 255;
+  --wui-log-fleet: 120 220 220;
+  --wui-log-salvage: 220 220 130;
   --wui-map-minor: 85 112 140;
   --wui-mint: 231 201 110;
   --wui-pro-text: 157 184 168;

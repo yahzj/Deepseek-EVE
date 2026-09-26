@@ -490,7 +490,7 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
     }
     addLog(
       state,
-      'info',
+      'industry',
       `已取消制造「${productName}」：材料全额退回物品仓库（按材料学折扣后的实际用量${mf.worker !== undefined && mf.worker !== 'pilot' ? '；AI 核心已归还核心库' : ''}）` +
         (bookBack ? '；一次性图纸已退回蓝图书架（名额同时恢复，可再次开工）。' : '。'),
     )
@@ -603,7 +603,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         addModule(state, moduleDef.id)
         addLog(
           state,
-          'info',
+          'industry',
           `制造完成：${moduleDef.name} 已放入装备库，可以到装配台安装了。`,
           'core.manufacturing.014',
           { p1: moduleDef.name },
@@ -629,7 +629,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         bumpFirst(state, 'ships')
         addLog(
           state,
-          'info',
+          'industry',
           `造船完成：${shipDef.name} 已入舰船仓库（现有 ${state.shipStore[shipDef.id]} 艘）——到舰船页「舰船仓库」可转入舰队。`,
         )
         if (stats && coreType) {
@@ -647,13 +647,13 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       bumpFirst(state, 'produceUnits', n) // 第一次任务/链：组装机产出件数
         // 2026-09-20 零件体系：零件制造完成**不写事件日志**（船长定）——其余物品照旧
         if (itemDef.kind !== 'part') {
-          addLog(state, 'info', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
+          addLog(state, 'industry', `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`)
         }
         // 2026-09-20 零件体系：零件制造完成**不写事件日志**（船长定）——其余物品照旧
         if (itemDef.kind !== 'part') {
           addLog(
             state,
-            'info',
+            'industry',
             `制造完成：${itemDef.name} ×${n.toLocaleString('zh-CN')} 已放入物品仓库（弹药可出发预载装船）。`,
             'core.manufacturing.015',
             { p1: itemDef.name, p2: n.toLocaleString('zh-CN') },
@@ -674,7 +674,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       }
       const buildable = blueprintId ? findBuildable(ctx, blueprintId) : null
       if (!buildable) {
-        addLog(state, 'warn', '制造作业引用的蓝图记录缺失，产出已丢弃（异常）。', 'core.manufacturing.012')
+        addLog(state, 'industry', '制造作业引用的蓝图记录缺失，产出已丢弃（异常）。', 'core.manufacturing.012')
         stopWhy = '蓝图记录缺失'
         break
       }
@@ -682,7 +682,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       // 达成目标时停在"正好等于目标"的**批数**上，随后收尾的在跑件不再计入，故合计即停线依据）
       if (loop && loop.on === true) loop.produced = (loop.produced ?? 0) + 1
       if (!settlePiece(buildable)) {
-        addLog(state, 'warn', '制造作业引用的产物记录缺失，产出已丢弃（异常）。', 'core.manufacturing.013')
+        addLog(state, 'industry', '制造作业引用的产物记录缺失，产出已丢弃（异常）。', 'core.manufacturing.013')
         stopWhy = '产物记录缺失'
         break
       }
@@ -731,7 +731,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         loop.stopWhy = stopWhy
         addLog(
           state,
-          'info',
+          'industry',
           `循环制造停止：${nm}（本卡合计 ${loop.produced ?? 0} 批）——${stopWhy}${
             rest > 0 ? `；本卡其余 ${rest} 条线跑完当前件即停` : ''
           }${byCore ? '；AI 核心已归还核心库' : ''}`,

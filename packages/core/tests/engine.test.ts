@@ -29,7 +29,7 @@ describe('训练队列推进', () => {
     advanceGame(state, 120_000, ctx)
     expect(state.skills.trained['a']).toBe(2)
     expect(state.skills.queue).toHaveLength(0)
-    expect(state.logs.some((l) => l.kind === 'queue' && l.text.includes('训练完成'))).toBe(true)
+    expect(state.logs.some((l) => l.kind === 'levelup' && l.text.includes('训练完成'))).toBe(true)
 
     // 游戏时间要精确等于推入的总时长
     expect(state.gameMs).toBe(180_000)
@@ -47,7 +47,9 @@ describe('训练队列推进', () => {
     expect(state.skills.trained['a']).toBe(2)
     expect(state.skills.trained['b']).toBe(1)
     expect(state.skills.queue).toHaveLength(0)
-    const levelups = state.logs.filter((l) => l.kind === 'levelup')
+    // ⚠ 2026-09-26 日志分类：`queue` 并入 `levelup` ⇒ 本类里既有"提升至 Lv N"也有"训练完成/排入队列"，
+    // 故这里按**文案**筛升级，不再按 kind 数条数
+    const levelups = state.logs.filter((l) => l.kind === 'levelup' && l.text.includes('提升至'))
     expect(levelups).toHaveLength(3) // a: Lv1, Lv2；b: Lv1
   })
 
@@ -68,7 +70,7 @@ describe('训练队列推进', () => {
     advanceGame(state, 30_000, ctx)
     expect(state.skills.trained['b']).toBe(1)
     expect(state.skills.queue).toHaveLength(0)
-    const doneLogs = state.logs.filter((l) => l.kind === 'queue' && l.text.includes('训练完成'))
+    const doneLogs = state.logs.filter((l) => l.kind === 'levelup' && l.text.includes('训练完成'))
     expect(doneLogs).toHaveLength(2)
   })
 

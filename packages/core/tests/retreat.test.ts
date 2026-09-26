@@ -79,7 +79,7 @@ describe('战斗中撤退（按敌方火力扣装甲/结构）', () => {
     expect(ship.armorPct).toBe(0)
     expect(rest).toBeGreaterThan(0) // 余量确实进了结构
     expect(state.fleet[state.shipId]).toBeDefined() // 绝不弃船
-    expect(state.logs.some((l) => l.kind === 'warn' && l.text.includes('撤退'))).toBe(true)
+    expect(state.logs.some((l) => l.kind === 'combat' && l.text.includes('撤退'))).toBe(true)
     // 日志给的是"装甲 -X%（现 装甲 x% / 结构 y%）"这一套（与遇袭同款说法）
     expect(state.logs.some((l) => l.text.includes('装甲 -'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('现 装甲'))).toBe(true)
@@ -161,7 +161,7 @@ describe('战斗超时判负（视同被迫撤退）', () => {
     expect(b.escapeReason).toBe('timeout') // 走的是"超时"来源，不是结构损失过半
     // **撤退不收维修费**（船长 2026-09-15「删除撤离费」）：钱包一分不动（旧口径会扣 奖励 ×25%）
     expect(state.wallet.isk).toBe(iskBefore)
-    expect(state.logs.some((l) => l.kind === 'warn' && l.text.includes('战斗超时'))).toBe(true)
+    expect(state.logs.some((l) => l.kind === 'combat' && l.text.includes('战斗超时'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('舰船被迫撤退，正在返航'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('维修花去'))).toBe(false) // 文案同步：不再提维修费
     expect(state.autoLoopAnomalyId).toBeNull() // 超时 = 收手，停重复清剿
