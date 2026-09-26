@@ -522,6 +522,12 @@ export interface SalvageOpState {
   deviceAccMs: Record<string, number>
   /** 自动循环（默认开）：卸货后同星系自动续捞；关闭 = 本趟收工 */
   autoCycle: boolean
+  /**
+   * **打捞对象**（**2026-09-26 船长令**）：`undefined` = **全部**（按威胁加权，现状口径）；
+   * 组 key（如 `h-hi`）= **只捞该组**；`WEEKEND_WRECK_TARGET` = 只捞**入侵残骸**（独立池）。
+   * 兼容字段（可选 · 零迁移）：老档缺席 = 全部。
+   */
+  targetGroup?: string
   /** 「本次返航卸货后停止」：勾选后强制自动循环开、卸完这一趟即收工（与采矿同款联动） */
   stopAfterTrip: boolean
 }
@@ -1996,6 +2002,16 @@ export interface EncounterState {
 export interface WreckGalaxyRecord {
   density: number
   rare: number
+  /**
+   * **分组份额账**（**2026-09-26 船长令**：「**玩家打捞时，让玩家选择打捞对象，包括多族悬赏混合的
+   * 星系，之后残骸也要分开算。**」）——键 = 残骸组 key（族 × 地区，如 `h-hi`），值 = 该组在总池里的
+   * **份额 m³**（与 `density` 同尺度）。
+   *
+   * 不变量：`Σ byGroup ≈ density`（漂移时按总池变化**等比回调**；打捞按选中组扣、总量同步扣）。
+   * 兼容字段（可选 · 零迁移）：老档缺席 ⇒ **首次读到时惰性初始化**——把"没有组信息的量"按
+   * **该星系各张常驻悬赏卡均分**落组（船长 Q3 口径：「旧的常驻悬赏的残骸按各自均分」）。
+   */
+  byGroup?: Record<string, number>
   /** 稀有残骸按敌群记账（敌群 id → 存量件数）：窝点战利品继承该敌群的回收特色池与专属装备；
    *  老档缺省 = 无（只认 rare 总数，不产出稀有件，避免张冠李戴） */
   rareBy?: Record<string, number>

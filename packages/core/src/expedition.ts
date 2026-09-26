@@ -709,7 +709,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         asFoeFamily(battleCard.foeFamily) ?? asFoeFamily(state.weekendEvent?.family),
       )
     }
-    else injectWreckDensity(state, ctx, wreckGalaxyId, wreckInjected)
+    else injectWreckDensity(state, ctx, wreckGalaxyId, wreckInjected, battleCard.id)
     const wreckNow = isInvasion
       ? weekendWreckDensityOf(state, wreckGalaxyId)
       : wreckDensityOf(state, wreckGalaxyId, ctx)
