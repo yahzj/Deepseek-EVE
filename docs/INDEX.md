@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **318** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6008** KB · **41946** 行
+- 文档总数 **318** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6014** KB · **41950** 行
 - 状态分布：**未标注** 179 · **已确认/已实现** 111 · **进行中** 22 · **待裁定** 5 · **历史留档** 1
 - 孤儿文档（0 引用）**38** 份 · 状态未标注 **179** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 481 KB / 987 行 | 216 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 105 KB / 316 行 | 323 / 17 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 106 KB / 316 行 | 323 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -289,13 +289,13 @@
 | `docs/archive/roadmap-2026-09-24.md` | 封存卷 · roadmap 批次条目 2026-09-24 | 未标注 | — | 22 KB / 24 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-25-26.md` | 封存卷 · roadmap 批次条目 2026-09-25/26 | 未标注 | — | 9 KB / 10 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-25.md` | 封存卷 · roadmap 批次条目 2026-09-25 | 未标注 | — | 22 KB / 22 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 37 KB / 30 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 42 KB / 34 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 43 KB / 764 行 | 11 / 14 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 43 KB / 764 行 | 12 / 15 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
