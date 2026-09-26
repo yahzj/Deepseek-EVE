@@ -175,6 +175,25 @@ export function spendStanding(state: GameState, factionId: string, v: number): b
   return true
 }
 
+/* ═══════════ ⏳ 明日删除（船长令 2026-09-26：「**备注下，明天删除这个修正，防止之后出错**」）═══════════
+ *
+ * 这一段是**一次性修正**：把被"初始赠送 40 / 老档回填 40 下界"抬起来过的累计声望按悬赏进度削回去。
+ * 存量档削过一轮就没事了，**长期留在代码里只会是将来出错的来源** ⇒ **2026-09-27 删干净**。
+ *
+ * 删除清单（一次删完，别留半截）：
+ * ① 本文件：`STANDING_CLAWBACK_THRESHOLD` ＋ `repairStandingFromBountyProgress`（整段，含头注）；
+ * ② `packages/core/src/index.ts`：`repairStandingFromBountyProgress` 的导出那一行（连同它的注释）；
+ * ③ `apps/desktop/src/renderer/src/game/engine.ts`：`applyLoadLedgerRepairs` 里调用它的那一行
+ *    （同函数里的黑匣补发是另一条，见 `weekendComms.ts` 的同类横幅：**要么一起删、要么只删这一行**）；
+ * ④ `packages/core/src/state.ts` 的 `standingClawbackDone` 字段 ＋ `save.ts` 里它的透传与落键两处。
+ *    ⚠ 删字段**不影响老档**：存档里多出来的键会被清洗器丢掉（与其它退役兼容字段同款）；
+ * ⑤ 用例 `packages/core/tests/standing-repair-compensation.test.ts`：删"③ 按悬赏进度削减累计声望"那一组
+ *    ＋ 若同文件里其余用例（初始 0 / 老档回填 / 黑匣补发）仍要留，就把整份文件按剩余内容瘦身。
+ *
+ * ⚠ 删除前提：确认这条修正**已经在正式档上生效过一轮**（否则删早了会留下没削过的档）。
+ * 检索口令：`git grep 明日删除` 一次列全（本批共三处横幅：expedition / weekendComms / engine）。
+ * ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
 /**
  * **本次回正的适用门槛**：只有"按悬赏进度算**本来就不达标**"的档才回正。
  *

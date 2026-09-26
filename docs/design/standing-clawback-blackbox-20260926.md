@@ -89,3 +89,31 @@
 5. 本批基线期间 main 有多次推进（`c36b6d20` 起并入我方「经济与界面」批，另有兑换即学会、入侵战利品
    落点、章鱼人冷却等），合并后 `typecheck` ＋ 全量用例已复跑全绿；两条工作文档（`standing-thresholds`、
    `fit-layout-move`）已由 main 侧 `e40c4334` 归档，故本批新建本文件。
+
+## 五、⏳ 明日（2026-09-27）待办：**删除本修正**
+
+**船长令**（2026-09-26）：「**备注下，明天删除这个修正，防止之后出错。**」
+
+两条读档修复都是**一次性**的（存量档削过一轮 / 该补发的档补过一枚就够了），长期留在代码里只会是
+将来出错的来源 ⇒ 明天删干净。**代码里已埋三处同名横幅，检索口令 `git grep 明日删除` 一次列全**
+（`expedition.ts` · `weekendComms.ts` · `engine.ts`）。
+
+| # | 删什么 | 位置 |
+| --- | --- | --- |
+| ① | `STANDING_CLAWBACK_THRESHOLD` ＋ `repairStandingFromBountyProgress`（整段） | `packages/core/src/expedition.ts` |
+| ② | 上面两条的导出（连同注释） | `packages/core/src/index.ts` |
+| ③ | `WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS` ＋ `compensateMissingWeekendBlackBox` ＋ 私有助手 `hasAnyBlackBox` / `hasAnyPlug` | `packages/core/src/weekendComms.ts` |
+| ④ | 上面两条的导出（连同注释） | `packages/core/src/index.ts` |
+| ⑤ | `applyLoadLedgerRepairs` 整个方法 ＋ 两处调用点（`start()` 读档分支、导入档分支） | `apps/desktop/src/renderer/src/game/engine.ts` |
+| ⑥ | 字段 `standingClawbackDone` ＋ `save.ts` 里的透传与落键 | `packages/core/src/state.ts` · `packages/core/src/save.ts` |
+| ⑦ | 词条 `core.weekend.040` | `packages/data/src/l10n/table.ts` |
+| ⑧ | 用例整份按剩余内容瘦身（删"按悬赏进度削减"与"补发黑匣"两组；"新档初始 0 / 老档回填"两组是**长期口径**，应留） | `packages/core/tests/standing-repair-compensation.test.ts` |
+
+**删除前提**（别删早）：① 那条削减已经**在正式档上生效过一轮**；② 该补发的档都补过了。
+删字段不影响老档——存档里多出来的键会被清洗器丢掉。
+
+**长期口径不要跟着删**（这两条与"临时修正"无关）：新档初始声望 **0**（`INITIAL_STANDING = 0`）·
+老档回填**只搬可支配那本、不补下界**。
+
+⚠ 按 AGENTS.md §8，`docs/roadmap.md` 的"待办活面"条目在**本批归档时**补记，工作期间不往那儿写。
+

@@ -222,6 +222,24 @@ export function weekendSnapshotWreckItemId(
   return snapshot.wreckItemId ?? weekendRareWreckIdFor(weekendFoeCardOf(snapshot.family, 'flagship'), ctx)
 }
 
+/* ═══════════ ⏳ 明日删除（船长令 2026-09-26：「**备注下，明天删除这个修正，防止之后出错**」）═══════════
+ *
+ * 这一段是**一次性补偿**：给"本批修复上线前打完入侵却没拿到黑匣"的档补发 1 枚。截止时刻写死在过去，
+ * 所以**不会**对新场次生效；但它同样是"留在代码里只会是将来出错来源"的一次性修正 ⇒ **2026-09-27 删**。
+ *
+ * 删除清单：
+ * ① 本文件：`WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS` ＋ `compensateMissingWeekendBlackBox`
+ *    ＋ 只服务它的私有助手 `hasAnyBlackBox` / `hasAnyPlug`（整段，含头注）；
+ * ② `packages/core/src/index.ts`：这两条导出的两行（连同注释）；
+ * ③ `apps/desktop/src/renderer/src/game/engine.ts`：`applyLoadLedgerRepairs` 里调用它的那一行
+ *    （声望回正是另一条，见 `expedition.ts` 的同类横幅：**要么一起删、要么只删这一行**）；
+ * ④ 词条 `core.weekend.040`（`packages/data/src/l10n/table.ts`）＋ 用例
+ *    `packages/core/tests/standing-repair-compensation.test.ts` 里"④ 补发黑匣"那一组。
+ *
+ * ⚠ 删除判据：**等该补发的档都落地了再删**（漏登的玩家下次登录仍应拿到那 1 枚）。
+ * 检索口令：`git grep 明日删除`（本批共三处横幅）。
+ * ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
 /**
  * **补发黑匣的截止时刻**（**2026-09-26 船长裁定**：「**必须是推送之前打完**」→ 追问「什么时候算推送」
  * 答「**现在**」）。
