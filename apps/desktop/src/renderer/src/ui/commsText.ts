@@ -284,6 +284,74 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'It never leaves on its own and cannot be scanned away: only a fight clears it. Once it is gone, whatever that tile originally held is still there to salvage or mine.',
     'The worst case is one landing on the tile you are standing on: you get a prompt first and the fight starts once you confirm. Each layer caps how many can be out at once, and killing one frees a slot; the count resets on the next layer.',
   ],
+  // ── 长设定文 9 封（2026-09-26 三号补齐 · roadmap L3 尾巴；逐段与中文行数对齐）──
+  /**
+   * 开局简报（12 段）。⚠ 分段标题（`【自检记录｜本舰】` 这类）**是正文的一部分**，
+   * 英文沿用同一套方括号标记，便于与中文逐段对照（`COMMS_BODY_EN` 按行数校验，不符整段回落中文）。
+   */
+  'msg-briefing': [
+    '[Self-check log | this ship]',
+    'Self-check complete. The crew roster is empty; hull and memory both have sectors missing.',
+    'The identity file is corrupt; the Association callsign is logged as self-reported by this ship.',
+    '[To-do | The First Time]',
+    'The Task Center holds a list: first scan, first raw ore, first turn at the refinery…',
+    'Work it in order: finish the current line and the next one appears.',
+    'Each time you finish one, the Archive files the related intelligence into your inbox.',
+    '[Starting out]',
+    'If you do not know where to begin, sweep the system your home port sits in.',
+    'A position on the star map has to be lit first; only then do its belts, lanes and bounties enter the work list.',
+    '[Note]',
+    'The list stays in the Task Center, ready to be read again at any time.',
+  ],
+  'msg-lowsec-rules': [
+    'You have scanned into low-sec systems — security level 0 or lower on the star map. The rules there differ from both mid-sec and high-sec, so Route Safety will lay them out once.',
+    'First: only low-sec shoots, and only at ships that stop and work on site — mining, salvaging, scanning and standing in the field all draw attention, someone comes to intercept, and you can either fight or break away fast. Long-haul runs are intercepted too, and any route with a low-sec leg is marked as such on the Long-haul Transport page. Mid-sec and high-sec, above security 0, never see this.',
+    'Second: the lower the security level, the higher the chance of an intercept and the slower an on-site scan — the worst tier stretches a ten-minute window to twenty-four hours.',
+    'Third: low-sec wreckage is worth more — in systems with negative security the recovered materials come out a tier higher, and with luck you seize whole fitted modules.',
+    'One last rule, the one that keeps you alive: hull dropping below half triggers an automatic break-off, and that line is always there, but do not count on it to take hits for you. After a beating, a ship carrying a hull repair unit patches itself from the repair kits it carries or keeps in storage; without a unit, with nothing left to patch with, or with hull still under half once patching ends, it gives up and heads home.',
+  ],
+  'msg-wormhole-unlock': [
+    'The Survey Office notifies you: your Association standing is high enough to connect to a wormhole scanning array.',
+    'The array is fitted to a ship and scans the unstable wormholes between systems — fill one window and it pins down one enterable wormhole. Found wormholes are stored until you decide when to go, five at a time at most.',
+    'The usual route events still happen while scanning, and an ambush does not stall the work: the array keeps scanning on its own.',
+    'To start a scan, go to the “Scan for wormholes” tab on the star map’s Undock page. Every wormhole found is different — one holds more wreckage, one has denser ore veins, and the garrisons inside come from different outfits — and all of it can be read before you go in.',
+    'Before you enter, fit the squad with mining lasers and salvagers: ore veins inside are worked with mining lasers, ruins and wreckage are worked with salvagers — go in empty-handed and far less comes back out.',
+  ],
+  'msg-auro-megastructure': [
+    'The Auro Waste Ring is on the star map now. Before you jump in, the Survey Office has one briefing filed separately for you: the wreckage on that ring is not ordinary hull but several megastructures still running.',
+    'A megastructure does not chase and does not care what you are; it treats anything inside its range as a target. It fires slowly, hits hard per shot, and its shell is absurdly thick — grinding it down is not a plan.',
+    'The real trouble is the sentry swarm riding on it: that is its second set of guns, and shooting down a few only brings replacements out of the hangar. The swarm stays short-ranged most of the time, but once the structure itself takes a hit the surviving automation lets their range out: the long arm reaches beyond twenty thousand metres and does not pull back for the rest of the engagement.',
+    'One more practical note: the megastructure’s surviving point defense exists to kill drones, and anything you launch gets picked off one by one before it closes. The reverse holds as well — the only way to clear the sentry swarm is weapons with the point defense attribute, and fitting one point defense gun is exactly what that job calls for.',
+  ],
+  'msg-exile-swarm': [
+    'The space you have scanned has Deadarmy activity — the Cinder Sector, the Echo Wastes and the Nadir Quiet Zone for now, running from the siege fleets on the fringe up to their last hold, each one harder than the last.',
+    'Their ships are bolted together and the plating is not worth much; what matters is the drone swarm slung under the hull: that is their second set of guns, launched from cruisers, seven kilometres of range — further than the megastructure sentries — and once they are spent they are not replaced.',
+    'The swarm craft are thin and fast, piling on damage through numbers and rate of fire. Their point defense scales with hull class: the bigger the ship, the harder it hits, and it concentrates fire to pick drones off one by one, going for sentries and siege craft first. Bring drones into that space and expect to lose them.',
+    'The reverse is also true: clearing a swarm leaves one route only — weapons with the point defense attribute, and the point defense line exists for exactly this. Ordinary weapons cannot even acquire the targets.',
+  ],
+  'msg-wormhole-nebula': [
+    'You are down on layer four. From this layer the deep wormhole starts throwing up nebula belts, and the Survey Office has a memo on what is known.',
+    'A nebula masks the signal of any site inside it: on the first scan you do not see what the site is, only the cloud itself.',
+    'Scan the same spot again on the spot — one region is covered by one scanning array, so the second pass disperses the cloud and the signal shows through.',
+    'The price is one extra turn. Turns are tight in deep operations anyway, so when planning a route through a nebula belt, budget that extra scan instead of spending every turn on the closing steps.',
+  ],
+  'msg-ambush-retreat': [
+    'That withdrawal was not a malfunction. Your ship took hits in low-sec — with armor or hull below half it breaks off on the survival rule; if it cannot patch itself up, it stands down and returns to port to wait for you.',
+    'Two rules cover it: hull below half breaks off automatically and the ship is never abandoned; after a beating, a ship with a hull repair unit patches armor and hull to about sixty percent — if it can do that it stays where it is and keeps working, and only if it cannot does it head home.',
+    'Self-repair has two conditions: the mid-slot hull repair unit has to be fitted, and it only burns the repair kit that matches the unit — a civilian unit takes Civilian Repair Kits, five to a batch and a small patch each, while MK1 and MK2 take Military Repair Kits, three to a batch and a bigger patch each. Both can be built on the Industry page, and the blueprints are sold at market.',
+    'Running dry, or having no repair unit at all, is what sends it home — on long low-sec runs the repair unit and its kits are your second layer of armor.',
+  ],
+  'msg-pirate-capture-web': [
+    'Route Safety reports something new: raider groups are fielding a “Raider Electronic Ship” that carries no heavy guns and exists to spread a snare net.',
+    'The ship caught in it takes four hits at once: mobility down to a tenth, every thruster dead, evasion gone entirely, and weapon range cut by 500 metres. Once the net is on, it does not come off by itself that engagement.',
+    'The good news: it spreads the net once per engagement and only over whatever it had locked at that moment — the net is tied to the ship that cast it. Sink that ship and the net releases at once, and the caught ship is back to normal on the spot.',
+    'So do not rush to switch targets when you meet one: kill it first. Running a squad into a wormhole, have the escorts soak fire for whoever is caught, or simply take it down before it casts.',
+  ],
+  'msg-cinder-warning': [
+    'Visibility in the Cinder Sector is terrible, and more hulls sit in the ash haze than the radar shows.',
+    'The Association does not advise taking an unmodified ship in alone: what fights there is usually a full-armed formation, and once you are inside their range, whether you get out comes down to armor.',
+    'If you are going in anyway, fill out armor and thrusters on the fitting first and carry spare ammo — fights there do not hand out a second loading.',
+  ],
 }
 
 // l10n-keep-start：下面这张表的**中文是键**（数据侧 `brief` 悬停说明原文，逐条独立）

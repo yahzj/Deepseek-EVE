@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_TRAVEL_EVENTS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
+import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_TRAVEL_EVENTS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -225,13 +225,29 @@ describe('英文覆盖层（P2）', () => {
     expect(missEv, `这些旅行事件还没英文名：${missEv.join(', ')}`).toEqual([])
     const missMt = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH))
     expect(missMt, `这些谜质科技还没英文名：${missMt.join(', ')}`).toEqual([])
+    /**
+     * **节点说明（`note`）也必须全部有英文**（2026-09-26 三号补 · roadmap 交接项 L1）：
+     * 说明字段叫 `note`（不是 `description`）⇒ `overlayMap` 覆盖不到，此前英文界面下一直是中文。
+     * 这条断言就是那个缺口的护栏：将来**新增节点漏登记说明** ⇒ 这里当场红。
+     */
+    const missNote = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH_NOTES))
+    expect(missNote, `这些谜质科技还没英文说明：${missNote.join(', ')}`).toEqual([])
     expect(en.travelEvents.find((e) => e.id === 'ev-aurora')?.name).toBe('Warp Aurora')
     expect(en.matterTech?.get('mt-industry-unbox')?.name).toBe('Container Unboxing')
     expect(en.matterTech?.get('mt-battle-threat-boss')?.name).toBe('Guardian Analysis')
+    /** 英文说明要真来自译文（不是照抄中文）且不残留中日韩字符 */
+    const cjkMt = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    for (const [id, def] of zh.matterTech ?? new Map()) {
+      const other = en.matterTech!.get(id)!
+      expect(other.note, `${id} 的英文说明应来自原文且有内容`).not.toBe(def.note)
+      expect(cjkMt.test(other.note), `${id} 的英文说明残留中日韩字符：${other.note}`).toBe(false)
+    }
     const strip = (d: object): string => {
       const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
       delete rest.name
       delete rest.description
+      // 2026-09-26：`note` 也进本地化范围（谜质节点走 `EN_MATTER_TECH_NOTES`）⇒ 深比时一并排除
+      delete rest.note
       return JSON.stringify(rest)
     }
     for (const e of zh.travelEvents) {

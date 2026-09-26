@@ -13,7 +13,7 @@
  * P2 后续批次追加（`localizeCtx` 里没登记的目录 ⇒ 原样中文）。
  * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
  */
-import type { FoeMountId, SimContext } from '@whale/core'
+import type { FoeMountId, MatterTechNodeDef, SimContext } from '@whale/core'
 // 2026-09-26：残骸英文区名改读组表（`wreckGroupOfItemId` ⇒ `region`），不再按 id 后缀解
 import { resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
@@ -1449,6 +1449,78 @@ export const EN_MATTER_TECH: EnTable = {
   'mt-industry-ai': { name: 'Industrial Multi-core Dispatch' },
 }
 
+/**
+ * **谜质科技 · 节点说明（`note`）的英文**（2026-09-26 三号补 · roadmap 交接项 L1）。
+ *
+ * ⚠ **为什么另起一张表**：`overlayMap` 只覆盖 `name` / `description`（见其头注），
+ * 而谜质节点的说明字段叫 **`note`** ⇒ 原先 `EN_MATTER_TECH` 只有名字、说明在英文界面下一直是中文
+ * （既有缺口，非新增）。这里按节点 **id** 逐条补 `note`，由 `overlayMatterTech()` 应用
+ * —— 即 roadmap L1 推荐的那条路（id 映射，与 §十一之三 对齐），数据侧 `MatterTechNodeDef` 一字不动。
+ *
+ * 口径：① 逐条译自中文原文，**数字与百分比照抄**（5% / 20% / 500 米这类规格不许改写）；
+ * ② 术语走 `docs/glossary-en.md`（虫洞 = Wormhole · 打捞器 = Salvager · 采集器 = Mining Laser ·
+ * 时序核心 = Chrono Core · 虚空母矿 = Void Ore）；③ 不写原因解释。
+ */
+export const EN_MATTER_TECH_NOTES: Readonly<Record<string, string>> = {
+  'mt-explore-turn': 'Each level raises the maximum turn count for wormhole exploration by 10 (a permanent bonus; it adds to any Chrono Core carried into the run).',
+  'mt-explore-salvage': 'Each level raises salvager efficiency by 20%: every salvage run pulls extra piles in proportion (each full 100% is one guaranteed extra pile, the remainder by chance).',
+  'mt-explore-collect': 'Each level raises mining laser efficiency by 20%: every mining cycle takes extra piles in proportion (each full 100% is one guaranteed extra pile, the remainder by chance).',
+  'mt-explore-hold': 'Each level adds 4 effective slots to the wormhole hold.',
+  'mt-explore-scan': 'Each level shortens the scan interval of “Scan for wormholes” by 5% (multiplied with the skill chain).',
+  'mt-explore-speed': 'Unlocks battle speed multiplier inside wormholes: level 1 ×2, level 2 ×4 (switch back to ×1 at any time during a fight).',
+  'mt-battle-shield': 'Each level cuts the shield layer’s resistance gap against the enemy’s main damage type by 5% (wormhole battles only).',
+  'mt-battle-armor': 'Each level cuts the armor layer’s resistance gap against the enemy’s main damage type by 5% (wormhole battles only).',
+  'mt-battle-hull': 'Each level cuts the hull layer’s resistance gap against the enemy’s main damage type by 5% (wormhole battles only; requires Resonant Shield Array and Armor Realignment at level 1 each).',
+  'mt-battle-hit': 'Each level raises our accuracy by 1% (wormhole battles only).',
+  'mt-battle-evasion': 'Each level raises our evasion by 1% (wormhole battles only).',
+  'mt-battle-noise': 'Each level lowers enemy accuracy by 1% (wormhole battles only).',
+  'mt-battle-range': 'Each level raises the range of all our weapons by 4% (wormhole battles only).',
+  'mt-battle-reload': 'Each level shortens our weapon reload cycle by 3% (wormhole battles only).',
+  'mt-battle-damage': 'Each level raises our damage per shot by 3% (wormhole battles only).',
+  'mt-battle-blind': 'Each level lowers the damage the enemy deals inside its blind zone by 5% (wormhole battles only).',
+  'mt-battle-threat-node': 'Each level lowers enemy threat in wormhole node battles by 3%.',
+  'mt-battle-threat-boss': 'Each level lowers the threat of the guardian at the end of a wormhole layer by 3%.',
+  'mt-battle-drone': 'Each level raises the recovery rate of drones shot down by 5% (wormhole battles only).',
+  'mt-battle-repair': 'Each level restores 10% of armor and hull after a battle ends (wormhole battles only).',
+  'mt-industry-unbox': 'Each level shortens the container unboxing cycle by 25%.',
+  'mt-industry-void': 'Each level raises the Void Crystal yield from refining Void Ore by 10%.',
+  'mt-industry-wreck': 'Each level raises the guaranteed raw material output of wreck recovery by 5%.',
+  'mt-industry-ai': 'Each level raises the AI-only berth cap for on-station industry by 1 (up to +5 at max level; each berth still occupies one physical core).',
+}
+
+/**
+ * **谜质科技节点的英文覆盖**：`name` 走 `EN_MATTER_TECH`（译名表 §十四），
+ * **`note` 走 `EN_MATTER_TECH_NOTES`**（2026-09-26 补 · L1）。
+ *
+ * 为什么不能顺手用 `overlayMap`：它只认 `name` / `description` 两个字段（见其头注），
+ * 而节点的说明字段是 `note` ⇒ 直接调 `overlayMap` 会让说明在英文界面下仍是中文。
+ * 两者都走**按 id 查表**，查不到的一律保留原文（新增节点漏登记时看得见中文，不会静默变空）。
+ *
+ * ⚠ `ctx.matterTech` 的类型是 `ReadonlyMap`（见 `SimContext`）⇒ 按 Map 覆盖；
+ * 一条都没命中时返回**原对象**（与 `overlayMap` 同款：省一次拷贝，也让"没翻译"可分辨）。
+ */
+function overlayMatterTech(
+  src: ReadonlyMap<string, MatterTechNodeDef>,
+  en: EnTable,
+  notes: Readonly<Record<string, string>>,
+  locale: Locale,
+): ReadonlyMap<string, MatterTechNodeDef> {
+  if (locale === 'zh') return src
+  let out: Map<string, MatterTechNodeDef> | null = null
+  for (const [key, def] of src) {
+    const name = en[def.id]?.name
+    const note = notes[def.id]
+    if (name === undefined && note === undefined) continue
+    out ??= new Map(src)
+    out.set(key, {
+      ...def,
+      ...(name !== undefined ? { name } : {}),
+      ...(note !== undefined ? { note } : {}),
+    })
+  }
+  return out ?? src
+}
+
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
   if (locale === 'zh') return ctx
   return {
@@ -1465,7 +1537,8 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     stations: overlayMap(ctx.stations, EN_STATIONS, locale),
     commsFactions: overlayMap(ctx.commsFactions, EN_COMMS_FACTIONS, locale),
     // matterTech 在 SimContext 里是可选字段（缺省 = 该档内容没装）⇒ 有才覆盖
-    ...(ctx.matterTech ? { matterTech: overlayMap(ctx.matterTech, EN_MATTER_TECH, locale) } : {}),
+    // ⚠ 不用 `overlayMap`：节点的说明字段是 `note`（不是 `description`）⇒ 走专用覆盖
+    ...(ctx.matterTech ? { matterTech: overlayMatterTech(ctx.matterTech, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, locale) } : {}),
     travelEvents: overlayList(ctx.travelEvents, EN_TRAVEL_EVENTS, locale),
   }
 }

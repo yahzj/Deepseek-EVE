@@ -129,6 +129,9 @@ export {
   EN_COMMS_FACTIONS,
   EN_TRAVEL_EVENTS,
   EN_MATTER_TECH,
+  // 2026-09-26 三号补（L1）：谜质科技节点**说明**（`note`）的英文表——
+  // `overlayMap` 只覆盖 `name`/`description`，节点的说明字段叫 `note` ⇒ 单列一张按 id 的表
+  EN_MATTER_TECH_NOTES,
   overlayCardFoes,
   overlayCardFoesList,
   type Locale as L10nLocale,
