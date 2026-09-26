@@ -35,6 +35,7 @@ import { startScan, frontierGalaxyIds } from '../src/explore'
 import { HOME_GALAXY_ID, startExpedition } from '../src/expedition'
 import { shortestTravelMinutes } from '../src/travel'
 import { goStandbyAt } from '../src/location'
+import { setStanding } from './helpers'
 
 const ctx = buildSimContext()
 const T1 = 'sh-falconet'
@@ -71,7 +72,7 @@ function startExpeditionHere(s: GameState): void {
 function fresh(): { state: GameState; pilot: string; mate: string } {
   const state = createInitialState({ nowWallMs: 0, seed: 4242 })
   const mate = addShipToFleet(state, T1)
-  state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING // 扫描虫洞的解锁门槛（另见 wormhole-unlock.test.ts）
+  setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING) // 扫描虫洞的解锁门槛（另见 wormhole-unlock.test.ts）
   return { state, pilot: state.shipId, mate }
 }
 

@@ -843,7 +843,17 @@ export function shipOwnedCount(state: GameState, defId: string): number {
  * `named: true` 是**唯一可以确认放行**的一档（有自定义名）：界面弹「入仓将清除自定义名」，
  * 玩家确认后带 `{ clearName: true }` 再调 `storeShip`。
  */
-export function shipStorable(state: GameState, uid: string): { ok: boolean; reason?: string; named?: boolean } {
+export function shipStorable(
+  state: GameState,
+  uid: string,
+): {
+  ok: boolean
+  reason?: string
+  /** 本地化 id（只有"舰船插件"那一条带；界面优先用它取当前语言，缺省回退 `reason` 原文） */
+  reasonId?: string
+  reasonParams?: Record<string, string | number>
+  named?: boolean
+} {
   const ship = state.fleet[uid]
   if (!ship) return { ok: false, reason: '机库里没有这艘船。' }
   if (state.shipId === uid) return { ok: false, reason: '正在驾驶的船不能入仓：先换到别的船上。' }
@@ -856,8 +866,9 @@ export function shipStorable(state: GameState, uid: string): { ok: boolean; reas
   if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。' }
   if (allFittedIds(ship.fitted).length > 0) return { ok: false, reason: '还装着模块，请先卸下。' }
   // 舰船插件（船长 2026-09-26：「装有插件的舰船无法放入舰船仓库」）——判据单点 `plugBlockReasonOf`
+  // ⚠ 拒因是**结构化**的（`textId` ＋ 中文原文）：界面按 `textId` 取当前语言，引擎日志用 `text`
   const plugBlock = plugBlockReasonOf(state, uid)
-  if (plugBlock) return { ok: false, reason: plugBlock }
+  if (plugBlock) return { ok: false, reason: plugBlock.text, reasonId: plugBlock.textId, reasonParams: plugBlock.params }
   if ((ship.durability ?? 1) < 1 || (ship.armorPct ?? 1) < 1) {
     return { ok: false, reason: '只有满耐久（结构与装甲都完好）的船才能入仓：先维修。' }
   }

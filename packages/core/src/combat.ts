@@ -42,7 +42,7 @@ import { wormholeCardThreatOf, wormholeSkippedBranch } from './wormholeFoes'
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
 import { matterTechBattleSpeedTiers, matterTechWhBuffs } from './matterTech'
 import type { WormholeMatterBuffs } from './wormholeMatter'
-import { nextInt, nextRandom, pickOne } from './rng'
+import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { cargoItemsOf, cargoOfShip, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { shipCategoryKeyOf, uidDefId } from './labels'
@@ -8638,29 +8638,20 @@ export function pickMyUnitTarget(
   if (alive.length === 0) return null
   if (alive.length === 1) return alive[0]!
   /**
-   * **按"被选中权重"加权抽取 · 恰好消费一次 `nextRandom`**。
+   * **按"被选中权重"加权抽取**——走仓内单点 `pickWeighted`（`bound: 'lt'`，与原先的
+   * `nextInt(rng, n) = ⌊u × n⌋` 同边界），**恰好消费一次 `nextRandom`**。
    *
    * ⚠⚠ **零漂移命门（2026-09-26 插件批的等价性证明）**：全部权重都等于 1 时，
-   * `roll = u × n`（`u = nextRandom`）与原先的 `nextInt(rng, n) = ⌊u × n⌋` **恒等**——
-   * 整数 `n` 下 `⌊u×n⌋` 就是"落在第 ⌊u×n⌋ 段"，而 `u×n` 落在第 k 段 ⇔ `⌊u×n⌋ = k`
-   * （仅边界 `u×n = k` 精确相等时两者都取 k）。**随机数消费次数也一致**（都是恰好一次）。
-   * ⇒ 没装靶标/隐匿插件的全部既有场次（含 27 张悬赏卡与标定读数）**逐位不变**。
+   * `roll = u × n` 落在第 k 段 ⇔ `⌊u × n⌋ = k`（仅在 `u × n` 精确等于整数 k 的边界上两者都取 k）
+   * ⇒ 与改动前的 `nextInt(state.rng, cands.length)` **恒等**，随机数消费次数也一致。
+   * 没装靶标/隐匿插件的全部既有场次（含 27 张悬赏卡与标定读数）**逐位不变**。
    */
   const weightOf = (u: UnitSpec): number => {
     const w = u.targetWeightMul
     return w !== undefined && Number.isFinite(w) && w > 0 ? w : 1
   }
-  const randomOf = (cands: UnitSpec[]): UnitSpec => {
-    let total = 0
-    for (const u of cands) total += weightOf(u)
-    let roll = nextRandom(state.rng) * total
-    for (const u of cands) {
-      roll -= weightOf(u)
-      if (roll < 0) return u
-    }
-    // 浮点兜底（理论上到不了这里）：取最后一条，与 `nextInt` 的越界行为同款
-    return cands[cands.length - 1]!
-  }
+  const randomOf = (cands: UnitSpec[]): UnitSpec =>
+    pickWeighted(state.rng, cands, weightOf) ?? cands[cands.length - 1]!
   /**
    * **倾向概率的掷骰点**（2026-09-14 船长）：**每发开火前各掷一次**，没掷中 ⇒ 这一发乱了。
    * 位置刻意放在两个早退**之后** —— 单船 / 只剩一艘时恒返回、不掷骰（洞外零漂移的命门）。

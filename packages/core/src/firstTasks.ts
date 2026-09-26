@@ -213,9 +213,20 @@ export function totalSkillLevels(state: GameState): number {
   return n
 }
 
-/** 协会声望（虫洞解锁口径：≥40，沿用 `WORMHOLE_SCAN_UNLOCK_STANDING`） */
+/**
+ * 协会声望（虫洞解锁口径：≥40，沿用 `WORMHOLE_SCAN_UNLOCK_STANDING`）。
+ *
+ * ⚠ **2026-09-26 改口径**：从"直读 `state.standings`（可支配那本）"改成读**累计获得**那本
+ * （`state.standingsEarned`，取数口径与唯一入口 `expedition.standingOf` **逐字相同**）——
+ * 船长同日令「**其他所有的声望门槛都改为看获得了多少声望总数**」，而这条正是一处门槛
+ * （它决定"第一次虫洞"任务判不判过）。改前直读可支配那本 ⇒ 兑换一扣声望就会出现
+ * "已经攒够 40、兑换之后又被判成没攒够"的怪事。
+ *
+ * ⚠ **为什么这里不 import `expedition.standingOf`**：`expedition.ts` 已经 import 了本文件
+ * （`bumpFirst`）⇒ 反向引会成环。本函数就是这一处门槛的取数点，故就地复刻同一段回退逻辑。
+ */
 export function dsiStanding(state: GameState): number {
-  return state.standings?.[DSI_FACTION_ID] ?? 0
+  return state.standingsEarned?.[DSI_FACTION_ID] ?? state.standings?.[DSI_FACTION_ID] ?? 0
 }
 
 /**

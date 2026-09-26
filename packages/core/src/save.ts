@@ -15,6 +15,7 @@ import {
   DEFAULT_START_ISK,
   DEFAULT_START_SHIP_ID,
   HOME_GALAXY_ID,
+  INITIAL_STANDING,
   MAX_SKILL_LEVEL,
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
@@ -1983,6 +1984,38 @@ function normalizeState(raw: unknown): GameState {
       standings[key] = Math.round(value)
     }
   }
+  /**
+   * --- **累计获得声望**（2026-09-26 船长令，兼容字段无版本号）---
+   *
+   * 两条账：`standings` = **可支配**（只有「章鱼人兑换」扣它）· `standingsEarned` = **累计获得**
+   * （**全仓所有门槛读它**，只增不减）。
+   *
+   * 老档没有累计那一本 ⇒ **回填成 `max(40, 旧声望)`**，理由两条、都可证：
+   * - **今天没有消费点** ⇒ 老档的"可支配"就是它的"累计获得"，原样搬过来就是真值；
+   * - 补一个 **40 的下界** = 新档初始值（`INITIAL_STANDING`）⇒ 老玩家不会因为开档早而比新玩家少
+   *   一档门槛（尤其 `WEEKEND_MIN_STANDING = 40`：不补的话，一个声望 12 的老档反而打不了入侵）。
+   *
+   * ⚠ **不从日志回填**：`logs` 会被 `logCap` 裁剪、且读档不保证带（`serializeSaveFile` 的剥离注释），
+   * 拿它当账本只会得到"有时多、有时少"的假数。只在 `src.standingsEarned` **缺失**时回填（幂等）。
+   */
+  const standingsEarned: Record<string, number> = {}
+  const earnedRaw = asRaw(src.standingsEarned)
+  for (const [key, value] of Object.entries(earnedRaw)) {
+    if (typeof value === 'number' && Number.isFinite(value)) standingsEarned[key] = Math.round(value)
+  }
+  if (Object.keys(earnedRaw).length === 0) {
+    // ⚠ 势力 id 就地写 `'dsi'`：`expedition.ts` 已 import 本文件（`save ↔ expedition` 引不得），
+    //    而 `DSI_FACTION_ID` 的权威定义在那里 ⇒ 这里只用它做一次老档回填，与权威值同字面量。
+    const dsi = 'dsi'
+    standingsEarned[dsi] = Math.max(INITIAL_STANDING, standings[dsi] ?? 0)
+  }
+  /**
+   * --- **见过黑匣没有**（2026-09-26 船长令，兼容字段无版本号）---
+   *
+   * 三态原样透传：`true` / `false` 照抄；**缺省（老档）不写键** ⇒ 由 `blackbox.blackboxSeenOf`
+   * 在首次读取时按"仓库/任一舰队船的货仓里到底有没有黑匣"回填（那一处是唯一判据点）。
+   */
+  const blackboxSeen = src.blackboxSeen === true ? true : src.blackboxSeen === false ? false : undefined
 
   // --- 远征作业（V12 两阶段：out → battle → back；battle 状态只存动态量） ---
   const expRaw = asRaw(src.expedition)
@@ -3770,6 +3803,10 @@ function normalizeState(raw: unknown): GameState {
     manufacturingSeq,
     manufacturingLoops,
     standings,
+    // 累计获得声望（2026-09-26 船长令：门槛读它、兑换只扣可支配那本）——回填后恒非空 ⇒ 恒落键
+    standingsEarned,
+    // 见过黑匣没有（三态；缺省 = 老档 ⇒ 不落键，由 `blackbox.blackboxSeenOf` 回填）
+    ...(blackboxSeen !== undefined ? { blackboxSeen } : {}),
     expedition,
     events,
     exploredGalaxies,

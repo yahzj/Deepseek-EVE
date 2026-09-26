@@ -15,6 +15,8 @@ import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { shipLockedReason } from './state'
 import { familyModules } from './equipment'
+// ⚠ 依赖方向：`blackbox.ts` 只依赖 `state` / `plugs`，**不引 inventory** ⇒ 这边引它不成环
+import { isBlackboxItem, noteBlackboxObtained } from './blackbox'
 
 /** 模块装船的占位体积（m³/件，2026-09-09 船长定：装备无体积字段，携带占用 1 m³；不影响装配/战斗） */
 export const MODULE_CARGO_UNIT_M3 = 1
@@ -78,6 +80,8 @@ export function addItem(state: GameState, itemId: string, units: number): void {
   const cargo = cargoItemsOf(state)
   if (Object.isFrozen(cargo)) return
   cargo[itemId] = (cargo[itemId] ?? 0) + Math.floor(units)
+  // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
+  if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
 }
 
 /** 当前船货仓出库；数量不足返回 false */
@@ -104,6 +108,8 @@ export function countWare(state: GameState, itemId: string): number {
 export function addWare(state: GameState, itemId: string, units: number): void {
   if (!Number.isFinite(units) || units <= 0) return
   state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + Math.floor(units)
+  // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
+  if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
 }
 
 /** 仓库出库；数量不足返回 false */

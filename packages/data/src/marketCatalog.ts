@@ -913,6 +913,23 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
     playerBuyable: false,
     unreleased: true,
   })),
+  /* 舰船插件**蓝图**（2026-09-26 船长令）：图纸在「章鱼人兑换」窗口用声望换 ⇒ 与插件本体同款占位卡，
+     不进市场、不给价（`basePrice: 0` / `demandMultiplier: 0` / `playerBuyable: false` / `unreleased`）；
+     ⚠ `content:check` 的「蓝图价格口径」要求每张蓝图在目录里有行，这一组就是那些行。 */
+  ...([
+    'bp-plug-shield-plate', 'bp-plug-armor-plate', 'bp-plug-hull-plate', 'bp-plug-mid-bay', 'bp-plug-low-bay',
+    'bp-plug-cpu-core', 'bp-plug-firepower', 'bp-plug-sight', 'bp-plug-thruster', 'bp-plug-rangefinder',
+    'bp-plug-target-beacon', 'bp-plug-concealment'
+  ] as const).map((id) => ({
+    key: id,
+    kind: 'blueprint' as const,
+    refId: id,
+    rarity: 'exotic' as const,
+    basePrice: 0,
+    demandMultiplier: 0,
+    playerBuyable: false,
+    unreleased: true,
+  })),
 ]
 
 /** 构建市场商品目录（数字稀有度按物品表 RARITY_TIER 填充——2026-09-09 船长拍板：

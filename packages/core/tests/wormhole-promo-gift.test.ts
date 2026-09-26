@@ -22,7 +22,7 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import { DSI_FACTION_ID } from '../src/expedition'
 import { PROMOS } from '../src/tuning'
-import { markFirstTaskDone } from './helpers'
+import { clearInitialStanding, markFirstTaskDone, setStanding } from './helpers'
 import {
   WORMHOLE_SCAN_UNLOCK_STANDING,
   wormholeStockFull,
@@ -39,12 +39,14 @@ const IN_WINDOW = new Date(2026, 8, 18, 12, 0, 0, 0).getTime()
 const AFTER = new Date(2026, 8, 21, 0, 0, 0, 0).getTime()
 
 function fresh(seed = 5): GameState {
-  return createInitialState({ nowWallMs: 0, seed })
+  const s = createInitialState({ nowWallMs: 0, seed })
+  clearInitialStanding(s) // 2026-09-26：新档初始声望 40 ⇒ 本文件按声望 0 标定（门槛两侧都要测）
+  return s
 }
 
 /** 解锁「扫描虫洞」（协会声望达标） */
 function unlock(s: GameState): void {
-  s.standings[DSI_FACTION_ID] = WORMHOLE_SCAN_UNLOCK_STANDING
+  setStanding(s, DSI_FACTION_ID, WORMHOLE_SCAN_UNLOCK_STANDING) // 2026-09-26：门槛读累计那本 ⇒ 走助手两本一起写
   // ⚠ 声望达标同时会判过「第一次虫洞」⇒ 引擎首拍发 2 处虫洞库存（船长 2026-09-18 的奖励表）。
   //   本组用例只考**限时促销赠送**的点数，故先把那条任务标为已完成（不领它的奖励）。
   markFirstTaskDone(s, 'first-wormhole')

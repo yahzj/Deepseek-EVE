@@ -17,7 +17,7 @@ import {
 import { formatDurationShort } from '../src/time'
 import { FIRST_TASKS } from '../src/firstTasks'
 import { TASK_FIND_HUMANS } from '../src/onboarding'
-import { makeTestCtx, ore, ship, skill } from './helpers'
+import { clearInitialStanding, makeTestCtx, ore, ship, skill } from './helpers'
 
 describe('离线切分', () => {
   it('离开 10 小时，按默认上限 8 小时结算，超出的 2 小时被放弃', () => {
@@ -130,7 +130,10 @@ describe('离线结算：采矿产出与摘要', () => {
      * "事件条数 = 新增日志 − 1"（`simulation.ts` 的粗口径）就会数出 1 而不是 0。
      * 本用例只钉"无事件时计数为 0 而不是 -1"这条回归 ⇒ 把 13 条「第一次」标记为已完成、
      * 贯穿任务标记为已发布（否则闸门也会补一条发布日志）。
+     * ⚠ **2026-09-26 再补一处**：新档初始声望 = 40 ⇒ 真实数据里那封"虫洞扫描阵列已就绪"
+     * 通讯（触发 = 声望 ≥ 40）会在离线窗口内送达并各写一条日志 ⇒ 同样要先清零。
      */
+    clearInitialStanding(state)
     for (const def of FIRST_TASKS) state.importantTasks[def.id] = { done: true }
     state.importantTasks[TASK_FIND_HUMANS] = { done: false }
     simulateOffline(state, 1_000, 1_000 + 600_000, ctx)

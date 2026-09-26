@@ -31,6 +31,7 @@ import {
 } from '@whale/core'
 import { createPlayerSpec, startBattleFor } from '../src/combat'
 import { makeTestCtx, anomaly, moduleDef, ship } from './helpers'
+import { setStanding } from './helpers'
 
 describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
   const ctx = buildSimContext()
@@ -43,7 +44,7 @@ describe('目标距离按星系独立保存（船长 2026-09-11）', () => {
   function fresh(): GameState {
     const state = createInitialState({ nowWallMs: 0, seed: 20260911 })
     state.wallet.isk = 1e9
-    state.standings['dsi'] = 30
+    setStanding(state, 'dsi', 30)
     for (const g of ctx.galaxies.values()) state.exploredGalaxies.push(g.id)
     return state
   }

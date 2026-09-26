@@ -116,6 +116,16 @@ export function installPlug(
   return { ok: true }
 }
 
+/** **这艘船为什么不能进舰船仓库 / 不能挂卖**（`null` = 可以）——一份**结构化的拒因**，不是一句写死的文案 */
+export interface ShipPlugBlock {
+  /** 本地化 id（界面走 `t(textId, params)`；见约定 §十一之三的 id 映射制） */
+  textId: string
+  /** 插值参数（`{p1}` = 已装插件数） */
+  params?: Record<string, string | number>
+  /** 中文原文（引擎日志 / 测试断言用；界面**不要**直接渲染它） */
+  text: string
+}
+
 /**
  * **这艘船为什么不能进舰船仓库 / 不能挂卖**（`null` = 可以）。
  *
@@ -128,10 +138,14 @@ export function installPlug(
  * ⚠ 拒因文案**不列插件名**（船长 2026-09-26「**除非非常有必要，否则不要用括号进行额外说明**」：
  * 理由本身就是通行规则，念名字属于额外说明）。想看装了哪几件走 `plugInfoOf`（装配页只读区）。
  */
-export function plugBlockReasonOf(state: GameState, shipId: string): string | null {
+export function plugBlockReasonOf(state: GameState, shipId: string): ShipPlugBlock | null {
   const plugs = plugsOf(state, shipId)
   if (plugs.length === 0) return null
-  return '这艘船装有舰船插件，插件装上去就拆不下来——不能放入舰船仓库，也不能挂卖。'
+  return {
+    textId: 'core.plug.007',
+    params: { p1: plugs.length },
+    text: `这艘船装有 ${plugs.length} 件舰船插件，插件装上去就拆不下来——不能放入舰船仓库，也不能挂卖。`,
+  }
 }
 
 /** 打捞自己的舰船残骸时：**插件按数量换算成黑匣**（船长：「**玩家回收按插件数量直接回收成黑匣**」） */

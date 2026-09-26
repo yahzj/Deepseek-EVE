@@ -16,6 +16,7 @@ import { buyAtMarket, ensureMarket, marketSellHolding, placeBuyOrder, shipSellab
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import type { BeltDef, ItemDef, MarketGoodDef, ModuleDef, ShipDef, SimContext } from '../src/types'
 import { belt, fittedOf, makeTestCtx, moduleDef, ship } from './helpers'
+import { clearInitialStanding, setStanding } from './helpers'
 
 /** 测试用气体（可采集可精炼 → 矿粉甲） */
 const GAS_X: ItemDef = {
@@ -68,6 +69,7 @@ describe('V10：气体/冰矿接入采集与精炼循环', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 42 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = ctxWithExtras()
   })
 
@@ -120,6 +122,7 @@ describe('V10：采集点声望门槛（主控 + AI）', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
   })
 
   it('主控：声望不足拒绝开采，达标后放行', () => {
@@ -136,7 +139,7 @@ describe('V10：采集点声望门槛（主控 + AI）', () => {
     const r1 = startMining(state, 'belt-gate1', ctx)
     expect(r1.ok).toBe(false)
     expect(r1.error).toContain('声望')
-    state.standings['dsi'] = 3
+    setStanding(state, 'dsi', 3)
     expect(startMining(state, 'belt-gate1', ctx).ok).toBe(true)
   })
 
@@ -148,7 +151,7 @@ describe('V10：采集点声望门槛（主控 + AI）', () => {
     const r = assignAiMining(state, 'sandcat2', 'basic', 'belt-gate2', ctx)
     expect(r.ok).toBe(false)
     expect(r.error).toContain('声望')
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     expect(assignAiMining(state, 'sandcat2', 'basic', 'belt-gate2', ctx).ok).toBe(true)
   })
 })
@@ -188,6 +191,7 @@ describe('V10：市场声望门槛', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 10_000_000
     ctx = ctxWithExtras({
       items: [GATED_ITEM],
@@ -212,7 +216,7 @@ describe('V10：市场声望门槛', () => {
     const r1 = buyShip(state, 'warship', ctx)
     expect(r1.ok).toBe(false)
     expect(r1.error).toContain('声望')
-    state.standings['dsi'] = 6
+    setStanding(state, 'dsi', 6)
     // 手动放一张现货（声望已达标后应直接成交）
     state.market.npcSell['ship-warship']!.push({
       price: 500_000,
@@ -231,6 +235,7 @@ describe('V10：占位槽位（shield/armor/propulsion）装配', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({ modules: [SHIELD_MOD] })
   })
 

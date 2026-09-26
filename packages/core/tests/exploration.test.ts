@@ -28,6 +28,7 @@ import { assignAiExpedition, assignAiMining, gainAiCore } from '../src/ai'
 import { anomaly, belt, galaxy, makeTestCtx, moduleDef, ship , fittedOf } from './helpers'
 import { shipBusyLabel } from '../src/activity'
 import { loadSaveFile, MIN_MIGRATABLE_VERSION, serializeSaveFile } from '../src/save'
+import { setStanding } from './helpers'
 
 describe('V13 星图探索：迷雾与剪影', () => {
   let state: GameState
@@ -83,7 +84,7 @@ describe('V13 探索：行动封锁（远征/采矿/AI）', () => {
   })
 
   it('远征：未点亮星系目标拒绝出发（声望满足也不行），点亮后可出发', () => {
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     const r1 = startExpedition(state, 'ano-hard', ctx)
     expect(r1.ok).toBe(false)
     expect(r1.error).toContain('尚未探索')
@@ -420,7 +421,7 @@ describe('2026-09-15 星系扫描无人化：不占主控 / 不牵动舰船 / �
   })
 
   it('① 双向放行（真命令）：扫描中能采矿、能远征；驾驶船不再报忙', () => {
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     markExplored(state, 'galaxy-far') // 远征目标（悬赏在 far）
     expect(startScan(state, 'galaxy-mid', ctx).ok).toBe(true)
     // 忙态徽标（换驾驶 / 派副船 / 进洞共用那把尺）：修前这里是 '扫描探索中'

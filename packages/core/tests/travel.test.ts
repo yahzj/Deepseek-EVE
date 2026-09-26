@@ -12,6 +12,7 @@ import { belt, makeTestCtx, ship } from './helpers'
 import { oneLegMs } from '../src/mining'
 import { startExpedition } from '../src/expedition'
 import { travelLegMs, travelMinutesEff, travelTimeFactor, warpSpeedAus } from '../src/travel'
+import { setStanding } from './helpers'
 
 function freshState(): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 42 })
@@ -133,7 +134,7 @@ describe('远征出发锁定（V12.1）', () => {
   it('outMs 按出发时技能锁定：途中升级不影响本次（去程取消，开战时刻 = 下达时刻）', () => {
     const ctx = makeTestCtx()
     const state = freshState()
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.exploredGalaxies.push('galaxy-far')
     // 无技能：2 分钟单程 → outMs 120s（用于失利返航腿并入）
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
@@ -148,7 +149,7 @@ describe('远征出发锁定（V12.1）', () => {
   it('出发前已练满技能：outMs 按 ×0.8 锁定', () => {
     const ctx = makeTestCtx()
     const state = freshState()
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.exploredGalaxies.push('galaxy-far')
     state.skills.trained['navigation'] = 5
     state.skills.trained['warp-drive-operation'] = 5
@@ -159,7 +160,7 @@ describe('远征出发锁定（V12.1）', () => {
   it('换乘 warp 不同的船再出发，outMs 随船速变化', () => {
     const ctx = warpCtx()
     const state = freshState()
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.exploredGalaxies.push('galaxy-far')
     addShipToFleet(state, 'warpy')
     expect(changeShip(state, 'warpy', ctx).ok).toBe(true)

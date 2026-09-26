@@ -166,7 +166,12 @@ describe('闸门：装了插件的船不入仓、不挂卖', () => {
     const sellable = shipSellable(state, T1B)
     expect(sellable.ok).toBe(false)
     expect(sellable.reason).toBe(storable.reason)
-    expect(plugBlockReasonOf(state, T1B)).toBe(storable.reason)
+    // 判据单点：`plugBlockReasonOf` 返回**结构化拒因**（`textId` ＋ 中文原文），两处消费同一份
+    const block = plugBlockReasonOf(state, T1B)
+    expect(block?.textId, '界面按 textId 取当前语言').toBe('core.plug.007')
+    expect(block?.text, '引擎/用例侧的中文原文').toBe(storable.reason)
+    expect(block?.params).toEqual({ p1: 1 })
+    expect(storable.reasonId, '入仓拒因也带 textId（界面优先用它）').toBe('core.plug.007')
     expect(plugBlockReasonOf(state, T1), '没插件的船 = 放行').toBeNull()
     console.log(`  [读数] 拒因：${storable.reason}`)
   })

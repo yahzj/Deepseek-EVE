@@ -81,9 +81,9 @@ import {
   factionGalaxyId,
   isGalaxyStationBuilt,
 } from '../src/index'
-import { resolveBattleOutcome } from '../src/expedition'
+import { resolveBattleOutcome, noteStandingEarned, standingOf } from '../src/expedition'
 import { advanceRefining } from '../src/industry'
-import { anomaly, galaxy, makeTestCtx } from './helpers'
+import { anomaly, clearInitialStanding, galaxy, makeTestCtx } from './helpers'
 
 /** 20 分钟板周期（资源/快递仍在用） */
 const PERIOD = DEFAULT_BALANCE.market.orderLifeMs.common
@@ -589,7 +589,9 @@ describe('赏金任务 · 出击校验（目的 = 窝点；档位不再受声望
   it('旧规则已退役：声望 0 也能接深层窝点（档位由日板发放，接取门槛只看卡面声望要求）', () => {
     const { state, ctx } = makeWorld()
     markExplored(state, 'galaxy-far')
-    expect(state.standings[DSI_FACTION_ID] ?? 0).toBe(0)
+    // ⚠ 2026-09-26：新档初始声望 = 40（船长令"一开始其实可以买5张"）⇒ 要验"声望 0"这一档必须显式清零
+    clearInitialStanding(state)
+    expect(standingOf(state, DSI_FACTION_ID)).toBe(0)
     const deep = startExpedition(state, LAIR_LOW1.id, ctx, { lairTier: 3 })
     expect(deep.ok, deep.error ?? '').toBe(true)
     expect(state.expedition.lairTier).toBe(3)
@@ -599,11 +601,13 @@ describe('赏金任务 · 出击校验（目的 = 窝点；档位不再受声望
   it('接取门槛 = 卡面声望要求：不足拒接（任务仍在板上），达标后即可接', () => {
     const { state, ctx } = makeWorld()
     markExplored(state, 'galaxy-low2')
+    clearInitialStanding(state) // 同上：先把新档初始 40 点清掉，才谈得上"不足"
     const denied = startExpedition(state, LAIR_LOW2.id, ctx, { lairTier: 2 })
     expect(denied.ok).toBe(false)
     expect(denied.error).toContain('声望 4')
     expect(state.expedition.active).toBe(false)
-    state.standings[DSI_FACTION_ID] = 4
+    // 达标 = **两条账一起给**（门槛读累计那本）⇒ 走唯一入口，不手写 `standings`
+    noteStandingEarned(state, DSI_FACTION_ID, 4)
     const ok = startExpedition(state, LAIR_LOW2.id, ctx, { lairTier: 2 })
     expect(ok.ok, ok.error ?? '').toBe(true)
     expect(state.expedition.lairTier).toBe(2)
@@ -914,7 +918,7 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     expect(boost.rewardIsk).toBe(card.rewardIsk)
     expect(factionBaseRewardIsk(card)).toBe(Math.round(card.rewardIsk * 1.1))
     // 出征该悬赏（不带档位）→ 本场吃加成；战报/结算按加成后的卡
-    state.standings[DSI_FACTION_ID] = 99
+    noteStandingEarned(state, DSI_FACTION_ID, 99)
     const r = startExpedition(state, card.id, ctx)
     expect(r.ok, r.error ?? '').toBe(true)
     expect(state.expedition.factionActive).toBe(true)
@@ -961,7 +965,7 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     openBountyBoard(state, ctx)
     const f = state.sideTasks.faction!
     const card = ctx.anomalies.get(f.anomalyId!)!
-    state.standings[DSI_FACTION_ID] = 99
+    noteStandingEarned(state, DSI_FACTION_ID, 99)
     let hits = 0
     // 2026-09-10：概率由 10% 下调到 5% 后，40 局的"至少命中一次"会变成 13% 概率的运气用例
     //（0.95^40 ≈ 0.129）——按仓库口径"测试别靠取样运气"，局数提到 200（0.95^200 ≈ 3.5e-5）。

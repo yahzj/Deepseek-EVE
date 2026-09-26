@@ -29,6 +29,7 @@ import {
 } from '../src/index'
 import { startBattleFor } from '../src/combat'
 import { makeTestCtx, moduleDef, ship } from './helpers'
+import { setStanding } from './helpers'
 
 /** 武器夹具（射程/装填照真实件的量级）：近防炮 2,500 / 激光 4,600 / 导弹架 11,760；基础舰炮由引擎恒在（fixed 2,500） */
 function world(): { state: GameState; ctx: SimContext; uid: string } {
@@ -216,7 +217,7 @@ describe('主武器口径在真数据上的一致性（战场弧 isMain）', () 
   function fitted(): GameState {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.wallet.isk = 1e9
-    state.standings['dsi'] = 30
+    setStanding(state, 'dsi', 30)
     for (const g of real.galaxies.values()) state.exploredGalaxies.push(g.id)
     addModule(state, 'mod-pd-e', 1)
     addModule(state, 'mod-laser-1', 1)

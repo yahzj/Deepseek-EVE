@@ -1747,7 +1747,7 @@ export function shipSellable(state: GameState, shipId: string): { ok: boolean; r
   }
   // 舰船插件（船长 2026-09-26：「装有插件的舰船……也不能挂卖」）——与入仓共用同一判据单点
   const plugBlock = plugBlockReasonOf(state, shipId)
-  if (plugBlock) return { ok: false, reason: plugBlock }
+  if (plugBlock) return { ok: false, reason: plugBlock.text }
   return { ok: true }
 }
 

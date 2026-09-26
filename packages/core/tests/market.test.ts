@@ -41,6 +41,7 @@ import { occupyAiCore } from '../src/ai'
 import { DEFAULT_BALANCE } from '../src/balance'
 import { buildSimContext } from '@whale/data'
 import { makeTestCtx, mineral, moduleDef, ship } from './helpers'
+import { clearInitialStanding, setStanding } from './helpers'
 
 const MIN_A = mineral('min-a') // basePrice 8
 
@@ -112,13 +113,15 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
      * 旧基线（8 张残骸收购行）seed 1/2/3/4/5/6 = 1232 / 22832 / **50000** / 22001 / 400 / 401；
      * 2026-09-25 新增第 9 张收购行（H 族洞外残骸 `h-hi`）后**相位整体平移**：
      * seed 1/2/3/4/5/6 = **50000** / 800 / 832 / 50000 / 50000 / 50000。
-     * ⇒ 机制未变、只是"哪个种子落在大额度配置"变了。
-     * **2026-09-26 再一次相位平移**（H 族三件势力装备入库 ⇒ 新增 3 条收购行：墨潮电子舱 / 墨潮捕获网 /
-     * 墨潮重袭无人机）：旧选的 seed 1 从 50,000 掉到 **1,200** ⇒ 改用 **seed 5**。逐种子实测（1~10）：
-     * 1200 / **50000** / 22000 / 400 / **50000** / 400 / 22000 / 400 / 22402 / 22401。
-     * 读数出处：一次性探针（镜像本用例、逐种子打表），已在汇报里列明。
+     * 2026-09-26 第三次相位平移（H 族三件势力装备入库 ⇒ 新增 3 条收购行）：旧选的 seed 1 落到 **1,200** ⇒ 改用 seed 5。
+     * **2026-09-26 第四次相位平移**（声望拆两条账：`state.standingsEarned` 进状态 ⇒ 建局即挪相位）：
+     * 逐种子实测（1~30）：22001 / 832 / 50000 / 50000 / 832 / 832 / 22432 / 1232 / 50000 / 50000 / 832 / 832 /
+     * 50000 / 22400 / 22800 / 49002 / 50000 / 50000 / 50000 / 50000 / 50000 / 800 / 50000 / 22000 / 50000 /
+     * 832 / 22401 / 1264 / 22800 / 22000 ⇒ 改用 **seed 1**（22,001，稳定越线）。
+     * 读数出处：一次性探针（镜像本用例的完整口径：开盘 → 30 窗 → 贴买盘价挂 50,000 → **再走 5 个 60s 窗**），
+     * 已在汇报里列明。⚠ **下次再挪相位时照此重探**，别只改数字。
      */
-    const state = createInitialState({ nowWallMs: 0, seed: 5 })
+    const state = createInitialState({ nowWallMs: 0, seed: 1 })
     advanceGame(state, 1000, ctxReal)
     for (let i = 0; i < 30; i++) advanceGame(state, 60_000, ctxReal) // 让簿上有报价
     const key = 'ammo-kinetic-2'
@@ -141,6 +144,14 @@ describe('市场开盘与市价单', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 }) // 初始 10_000 ISK
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
+    /**
+     * ⚠ **2026-09-26**：新档初始声望 = 40（船长令"一开始其实可以买5张"），而本文件的大量读数
+     * （贸易税、净入账、声望加成）都按**声望 0** 标定；且 40 已越过声望加成 +15% 的上限
+     * （`sellStandingMult` 上限 = 声望 100）⇒ 不清零会把这些用例的基线整体抬高 15%。
+     * 要测加成的用例**自己**用 `setStanding` 设值（本文件里已有几处）。
+     */
+    clearInitialStanding(state)
     ctx = makeTestCtx() // ore-a 池商品 base 12（target 10 万）；min-a/base 8 同样
   })
 
@@ -182,7 +193,7 @@ describe('市场开盘与市价单', () => {
   })
 
   it('协会声望加成：加成计入毛额后扣贸易税', () => {
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.warehouse.items['ore-a'] = 100
     const r = sellWareItem(state, 'ore-a', ctx)
     const gross = Math.round(1_200 * 1.05)
@@ -217,7 +228,7 @@ describe('市场开盘与市价单', () => {
   })
 
   it('市价售出日志：声望加成 ⇒ 换带加成的基础模板', () => {
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.warehouse.items['ore-a'] = 100
     sellWareItem(state, 'ore-a', ctx)
     const log = state.logs[state.logs.length - 1]!
@@ -227,7 +238,7 @@ describe('市场开盘与市价单', () => {
   })
 
   it('市价售出日志：声望加成 ⇒ 换带加成的基础模板', () => {
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.warehouse.items['ore-a'] = 100
     sellWareItem(state, 'ore-a', ctx)
     const log = state.logs[state.logs.length - 1]!
@@ -256,6 +267,7 @@ describe('市场动态：冲击 / 池压力 / 内部消化', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 5 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     // 只放一种池商品，让窗口内行为可精确断言
     ctx = makeTestCtx({ items: [MIN_A], marketGoods: [{ key: 'min-a', kind: 'item', refId: 'min-a', rarity: 'common', basePrice: 8, poolTarget: 3_000, supplyFlow: 500 }] })
   })
@@ -317,6 +329,7 @@ describe('蓝图书：市场买入 → 学习 → 重复书回卖', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx() // bp-bp-a：base 1000（bp-a priceIsk）
   })
 
@@ -351,6 +364,7 @@ describe('市场存档往返（回归：零值 digest 读档后不丢键）', ()
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx() // ore-a/min-a… 池商品
   })
 
@@ -392,6 +406,7 @@ describe('舰船市场：出售需满足条件，成交入账', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     const bigShip = ship('big', { cargo: 2_000, price: 120_000 })
     ctx = makeTestCtx({ ships: [bigShip] })
   })
@@ -429,6 +444,7 @@ describe('贸易税（V9+：5% 销售税 + 减免技能）', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx()
   })
 
@@ -493,6 +509,7 @@ describe('离线窗口推进（A1：未开市档在离线起点开盘，整段�
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 }) // market 全空（模拟迁移/新档）
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx()
   })
 
@@ -544,6 +561,7 @@ describe('AI 核心可回卖（2026-09-06 船长：四档核心放行；收购�
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 }) // 初始 10_000 ISK
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({ marketGoods: [coreDef()] })
   })
 
@@ -615,6 +633,7 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 7 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 100_000_000
     ctx = makeTestCtx({
       quietEvents: true,
@@ -677,7 +696,7 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
 
   it('声望达标（整批解锁）：恢复原价原节奏（每抽取窗 1 张普通稀有单）、暗市文案消失', () => {
     marketQuote(state, ctx, 'mod-x')
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     expect(bmGateReason(state, ctx.marketGoods.get('mod-x')!)).toBeNull()
     advanceGame(state, 40 * 60_000, ctx) // 4 个抽取窗 × 每窗 N=max(1, 8~15%×1)=1 → 恰 4 张
     expect(bmSells().length).toBe(4)
@@ -691,6 +710,7 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
 
   it('有放回抽取：同窗可重复抽中同一商品；每抽取窗张数 = 8%~15% × 已解锁件数（20 件 → 2~3 张）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 11 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 100_000_000
     const goods: MarketGoodDef[] = Array.from({ length: 20 }, (_, i) => ({
       key: `mod-u${i}`,
@@ -723,6 +743,7 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
 
   it('奇货：每抽取窗独立掷骰（测试档上调概率）；订单 6 小时有效；非抽取窗不出货', () => {
     state = createInitialState({ nowWallMs: 0, seed: 13 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 100_000_000
     ctx = makeTestCtx({
       quietEvents: true,
@@ -747,6 +768,7 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
 
   it('奇货单次上限 4：抽取窗命中 >4 件时随机抽选保留 4 张（测试档上调概率验证）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 17 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 100_000_000
     const goods: MarketGoodDef[] = Array.from({ length: 6 }, (_, i) => ({
       key: `mod-e${i}`,
@@ -783,7 +805,12 @@ describe('P2 抽取节拍（2026-09-06 船长定：10 分钟窗，rare 有放回
       const s = createInitialState({ nowWallMs: 0, seed: 21 })
       s.wallet.isk = 100_000_000
       s.skills.trained['secondhand-market'] = lv
-      if (!locked) s.standings['dsi'] = 5 // 解锁 → 原价线
+      /**
+       * ⚠ **2026-09-26**：新档初始声望 = 40 ⇒ 闸内那一档不能靠"默认值恰好为 0"，
+       * 必须**显式**把两条账都清掉（`bmStanding: 5` 的两侧都要能真的落在闸内/闸外）。
+       */
+      if (!locked) setStanding(s, 'dsi', 5)
+      else clearInitialStanding(s)
       const g = makeTestCtx({
         quietEvents: true,
         balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, exoticWindowChance: 0.5 } },
@@ -854,6 +881,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
 
   it('平价挂卖（p = 买盘价）：每窗总吸收恰为配额（簿 5 + 站内补 5，不叠加）——100 件 10 窗清完', () => {
     state = createInitialState({ nowWallMs: 0, seed: 5 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = poolCtx()
     openClean(ctx, 'min-a') // 清开局存量簿
     const before = state.wallet.isk
@@ -869,6 +897,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
 
   it('静默（2026-09-08 船长定）：吸收/越线成交的事件日志与普通成交一致，不出现让利/巡游/站内字样', () => {
     state = createInitialState({ nowWallMs: 0, seed: 5 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = poolCtx()
     openClean(ctx, 'min-a')
     placeSellOrder(state, ctx, 'min-a', 7, 300) // 折价 12.5% → 吸收封顶 ×5
@@ -883,6 +912,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
 
   it('折价放大封顶（p < 买盘价，d≈12.5% → E=5）：单窗吸收 = 5×配额（≈50 件），余量照常排队', () => {
     state = createInitialState({ nowWallMs: 0, seed: 5 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = poolCtx()
     openClean(ctx, 'min-a')
     placeSellOrder(state, ctx, 'min-a', 7, 300) // b=8 → 折 12.5% → 封顶 ×5 → 配额 50/窗
@@ -896,6 +926,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
 
   it('折价 5%（d=5% → E=3）：单窗吸收 30 件（>平价 10，<封顶 50）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 5 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({
       quietEvents: true,
       balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
@@ -913,6 +944,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
 
   it('rare 小数基础吸收 0.3 件/窗：结余结转、10 窗内必触发站内吸收', () => {
     state = createInitialState({ nowWallMs: 0, seed: 11 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({
       quietEvents: true,
       balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
@@ -930,6 +962,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
 
   it('奇货小数基础吸收 0.1 件/窗：30 窗内触发站内吸收', () => {
     state = createInitialState({ nowWallMs: 0, seed: 13 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({
       quietEvents: true,
       balance: { ...DEFAULT_BALANCE, market: { ...DEFAULT_BALANCE.market, noiseStep: 0 } },
@@ -947,6 +980,7 @@ describe('市场站内让利吸收：平价保底 / 折价放大 / 不叠加 / �
 
   it('挂价高于买盘价：站内不接无保底，但越线可遇巡游采购（每窗小概率 ≤1 件）；撤单退回剩余', () => {
     state = createInitialState({ nowWallMs: 0, seed: 5 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = poolCtx()
     marketQuote(state, ctx, 'min-a')
     placeSellOrder(state, ctx, 'min-a', 9, 30) // b = 8 < 9：站内吸收不接（无让利售出），赌巡游抢单
@@ -979,6 +1013,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
 
   it('收购档位真值表：common 0.6 / rare 0.65 / exotic 1.0 / 原料池 1.0 / 池耗材 0.6', () => {
     state = createInitialState({ nowWallMs: 0, seed: 3 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({
       quietEvents: true,
       balance: quietBalance(),
@@ -1007,6 +1042,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
 
   it('簿面件数放大：common 单件开盘收购单 qty 3；rare 收购单出现时 qty 2 @0.65L', () => {
     state = createInitialState({ nowWallMs: 0, seed: 7 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({
       quietEvents: true,
       balance: quietBalance(),
@@ -1033,6 +1069,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
 
   it('卖出侧抢单：挂价 +10% 溢价 → 统计命中率 ≈ 30%·e^(−0.6) ≈16%/窗（无吸收无簿成交）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 101 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     ctx = makeTestCtx({
       quietEvents: true,
       balance: quietBalance(),
@@ -1050,6 +1087,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
 
   it('买入侧抢单：砍价 5%（s≈5%）→ 统计命中率 ≈ 20%·e^(−0.7) ≈10%/窗（簿吃不掉）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 202 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 10_000_000
     ctx = makeTestCtx({
       quietEvents: true,
@@ -1075,6 +1113,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
 
   it('奇货买侧专项（2026-09-08 船长定·试跑）：越线基准改为 20L → 低挂 1000 窗零供货；common 对照照常供货', () => {
     state = createInitialState({ nowWallMs: 0, seed: 77 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 100_000_000
     ctx = makeTestCtx({
       quietEvents: true,
@@ -1117,6 +1156,7 @@ describe('市场收购侧：档位 / 簿面件数 / 巡游抢单', () => {
 
   it('池商品贴线 +1% 挂卖：巡游单次按池量放大（200 窗销量显著 > 旧 1 件/窗口径）', () => {
     state = createInitialState({ nowWallMs: 0, seed: 77 })
+    clearInitialStanding(state) // 2026-09-26：新档初始声望 40 ⇒ 本套件按声望 0 标定
     state.wallet.isk = 1_000_000
     ctx = makeTestCtx({
       quietEvents: true,

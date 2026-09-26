@@ -15,6 +15,17 @@ import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
 
+/**
+ * **新档初始声望 = 40**（**2026-09-26 船长令**：「**声望真扣（就是意味着玩家一开始其实可以买5张）**」）。
+ *
+ * 值 = 插件图纸单价（`plugs.PLUG_BLUEPRINT_COST = 8`）× 5 ⇒ **开局就能换 5 张**。
+ * ⚠ **定义在这里、由 `expedition.ts` 转发**：`expedition` 已经 import 本文件，
+ * 反向引会成环（仓内既有的 `HOME_GALAXY_ID` 就是这个处置）。
+ * ⚠ 连带后果（已如实登记）：入侵门槛 `WEEKEND_MIN_STANDING = 40` 因此**新档开局即达标**——
+ * 门槛数值一字未动，只是这条初始值把它顶到了；老档不受影响。
+ */
+export const INITIAL_STANDING = 40
+
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
@@ -1649,8 +1660,24 @@ export interface GameStateV7 {
   mining: MiningState
   /** 制造作业 */
   manufacturing: ManufacturingRunState
-  /** 势力声望 */
+  /** 势力声望（**2026-09-26 起 = 可支配那一本**：只有「章鱼人兑换」扣它） */
   standings: Record<string, number>
+  /**
+   * **累计获得的势力声望**（**2026-09-26 船长令**：「**其他所有的声望门槛都改为看获得了多少声望总数**」）。
+   *
+   * - **只增不减**（获得时 +v，兑换扣的是 `standings` 那一本）⇒ 兑换不会把已解锁的门槛重新锁上；
+   * - **全仓所有门槛读它**（唯一入口 `expedition.standingOf`）；
+   * - 兼容字段无版本号：老档缺省由 `save.normalizeState` 回填成 `max(旧声望, 已清卡面 standingGain 之和)`。
+   */
+  standingsEarned?: Record<string, number>
+  /**
+   * **见过黑匣没有**（**2026-09-26 船长令**：「**玩家获取第一个黑匣后，才解锁组装机的插件选项，
+   * 并且弹出相关通讯**」）。
+   *
+   * 三态：`true` = 已经拿到过（组装机插件档解锁、通讯已发）；`false` = 本功能之后开的新档、还没拿到；
+   * `undefined` = 老档 ⇒ 读档时按"仓库里有没有黑匣"回填（见 `plugs.blackboxSeenOf`）。
+   */
+  blackboxSeen?: boolean
   /** 远征作业 */
   expedition: ExpeditionState
   /**
@@ -3168,7 +3195,15 @@ export function createInitialState(opts?: {
     manufacturingRuns: [],
     manufacturingSeq: 1,
     manufacturingLoops: {},
-    standings: {},
+    /**
+     * **新档初始声望 = 40**（**2026-09-26 船长令**：「**声望真扣（就是意味着玩家一开始其实可以买5张）**」）
+     * —— 两条账同值（可支配 40 / 累计 40）⇒ 开局就能换 5 张插件图纸，
+     * 且入侵门槛（累计 40）开局即达标（船长接受）。
+     */
+    standings: { dsi: INITIAL_STANDING },
+    standingsEarned: { dsi: INITIAL_STANDING },
+    /** 新档还没见过黑匣（组装机插件档锁着，等第一个黑匣解锁 ＋ 发通讯） */
+    blackboxSeen: false,
     expedition: {
       active: false,
       anomalyId: null,

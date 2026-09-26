@@ -43,13 +43,14 @@ import { WORMHOLE_AUTO_ARCHETYPE_WEIGHTS, wormholeAutoArchetypeMul } from '../sr
 import { wormholeStockDiscard, wormholeStockOf, wormholeStockPush, WORMHOLE_SCAN_UNLOCK_STANDING } from '../src/wormholeScan'
 import { wormholeAutoStart } from '../src/wormholeAuto'
 import { wormholeEnter } from '../src/wormhole'
+import { setStanding } from './helpers'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
 
 function fresh(seed = 4242): GameState {
   const state = createInitialState({ nowWallMs: 0, seed })
-  state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING // 扫描解锁门槛（另见 wormhole-unlock.test.ts）
+  setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING) // 扫描解锁门槛（另见 wormhole-unlock.test.ts）
   return state
 }
 

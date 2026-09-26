@@ -1136,6 +1136,19 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-part-fire-control': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
   'bp-part-grav-comp': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
   'bp-wh-e-drone': 'One batch yields 50 Construct sentry drones: kinetic needles break shields, with longer reach and better accuracy than a standard sentry.',
+  /* 舰船插件图纸 12 张（2026-09-26 船长令）：说明同款，只差产物名（名称由 `EN_MODULES` 派生） */
+  'bp-plug-shield-plate': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-armor-plate': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-hull-plate': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-mid-bay': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-low-bay': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-cpu-core': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-firepower': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-sight': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-thruster': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-rangefinder': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-target-beacon': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-concealment': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
 }
 
 export const EN_BLUEPRINTS: EnTable = (() => {
