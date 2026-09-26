@@ -2099,6 +2099,12 @@ export interface ShipWreckRecord {
   fitted?: FittedModules
   /** **损毁那一刻的无人机舱清单**（droneId → 架数；打捞时按"这一型还剩几架"整型给回） */
   droneLoad?: Record<string, number>
+  /**
+   * **损毁那一刻装着、还没换回黑匣的舰船插件 id 列表**（**2026-09-26 船长令**「**玩家回收按插件数量直接
+   * 回收成黑匣**」）。与 `fitted` **是两本账**：插件不进高/中/低槽，打捞时**不逐件掷骰**——
+   * 残骸第一次被捞时按件数整批换回黑匣，然后把这个字段清空。
+   */
+  plugs?: string[]
   /** 损毁那一刻的结构层（= `FleetShipState.durability`）：整船回收后按它 ×0.3 回港 */
   durability?: number
   /** 损毁那一刻的装甲残余比例：整船回收后按它 ×0.5 回港 */

@@ -22,9 +22,10 @@
 import type { GameState } from './state'
 import type { ModuleDef, SimContext } from './types'
 import { addLog } from './state'
-import { countModule } from './equipment'
-// ⚠ 本模块被 `combat.ts`（建档）与 `equipment.ts`（CPU 预算）反向引用 ⇒ 依赖方向要保守：
-//   只依赖 `state` / `types` / `equipment`，**不引 combat**（避免 combat ↔ plugs 成环）。
+// ⚠ 本模块被 `combat.ts`（建档）· `shipyard.ts` / `market.ts`（入仓与挂卖的闸门）反向引用
+//   ⇒ 依赖方向要保守：**只依赖 `state` / `types`**。原先还 import 了 `equipment.countModule`，
+//   但那只是一行取表（`state.moduleBay[id] ?? 0`），为省掉 `equipment → labels → …` 这条可能成环的
+//   依赖边，这里就地取表（`equipment.countModule` 仍是"装备库余量"的语义单点，本文件只是复读同一份账）。
 
 /** 插件模块 id 的语义判别（等价于「这件是插件」，判据单点） */
 export function isPlugOf(def: Pick<ModuleDef, 'slot'> | undefined): boolean {
@@ -52,6 +53,15 @@ export function plugModulesOf(state: GameState, ctx: SimContext, shipId: string)
     if (def && isPlugOf(def)) out.push(def)
   }
   return out
+}
+
+/** 装配页插件槽只读区要的两份数（槽位上限 + 已装的插件定义，按装入顺序） */
+export function plugInfoOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): { slots: number; installed: ModuleDef[] } {
+  return { slots: plugSlotsOf(state, ctx, shipId), installed: plugModulesOf(state, ctx, shipId) }
 }
 
 /**
@@ -88,11 +98,11 @@ export function installPlug(
   if (have.includes(moduleId)) {
     return { ok: false, error: `本舰已经装了一件「${def.name}」——同型插件不能重复装。`, errorId: 'core.plug.006' }
   }
-  if (countModule(state, moduleId) < 1) {
+  if ((state.moduleBay[moduleId] ?? 0) < 1) {
     return { ok: false, error: `装备库里没有「${def.name}」，先去组装机造一件。`, errorId: 'core.equipment.002' }
   }
   // 扣库 + 装入（复用装备库的扣减单点口径：够就减 1）
-  const rest = countModule(state, moduleId) - 1
+  const rest = (state.moduleBay[moduleId] ?? 0) - 1
   if (rest === 0) delete state.moduleBay[moduleId]
   else state.moduleBay[moduleId] = rest
   ship.plugs = [...have, moduleId]
@@ -107,16 +117,21 @@ export function installPlug(
 }
 
 /**
- * **这艘船为什么不能进舰船仓库**（`null` = 可以进）。
+ * **这艘船为什么不能进舰船仓库 / 不能挂卖**（`null` = 可以）。
  *
- * 船长原话：「**装有插件的舰船无法放入舰船仓库。**」⇒ 有插件就一条都不许进
+ * 船长原话：「**装有插件的舰船无法放入舰船仓库。**」⇒ 有插件就一条都不许
  * （不是"插件留在船上"那种折中：船进了仓库就等于把整船冻结保存，插件会跟着被雪藏）。
- * 消费方两处：`shipyard.shipStorable`（入库/仓库页）与**市场挂卖**（船进了 escrow 同理算离队）。
+ * 消费方两处：`shipyard.shipStorable`（入库）与 `market.shipSellable`（挂卖 / 市价卖船）。
+ *
+ * ⚠ **船型定义不参与判定**：只要 `plugs` 非空即拒——清洗器已经把非法值滤净（`save.cleanPlugIds`），
+ * 这里再查一遍 `ctx.ships` 只会让"船型表查不到"变成一条**绕过闸门**的路。
+ * ⚠ 拒因文案**不列插件名**（船长 2026-09-26「**除非非常有必要，否则不要用括号进行额外说明**」：
+ * 理由本身就是通行规则，念名字属于额外说明）。想看装了哪几件走 `plugInfoOf`（装配页只读区）。
  */
-export function plugBlockReasonOf(state: GameState, ctx: SimContext, shipId: string): string | null {
-  const names = plugModulesOf(state, ctx, shipId).map((d) => d.name)
-  if (names.length === 0) return null
-  return `装有舰船插件（${names.join('、')}）——插件装上去就拆不下来，这艘船不能放入舰船仓库、也不能挂卖。`
+export function plugBlockReasonOf(state: GameState, shipId: string): string | null {
+  const plugs = plugsOf(state, shipId)
+  if (plugs.length === 0) return null
+  return '这艘船装有舰船插件，插件装上去就拆不下来——不能放入舰船仓库，也不能挂卖。'
 }
 
 /** 打捞自己的舰船残骸时：**插件按数量换算成黑匣**（船长：「**玩家回收按插件数量直接回收成黑匣**」） */

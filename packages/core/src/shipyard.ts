@@ -21,6 +21,7 @@ import { cancelAiTask } from './ai'
 import { scaledReturnMs } from './trips'
 import { countWare, removeWare } from './inventory'
 import { quickRepairFactor } from './repair'
+import { plugBlockReasonOf } from './plugs'
 import {
   noteShipWreck,
   RECOVERED_HULL_ARMOR_PCT,
@@ -51,7 +52,18 @@ export function addShipToFleet(state: GameState, defId: string): string {
  */
 export function restoreShipFromWreck(
   state: GameState,
-  args: { defId: string; durability?: number; armorPct?: number; fitted?: FittedModules; droneLoad?: Record<string, number> },
+  args: {
+    defId: string
+    durability?: number
+    armorPct?: number
+    fitted?: FittedModules
+    droneLoad?: Record<string, number>
+    /**
+     * **残骸里那批插件**（**2026-09-26 船长令**）——整船捞回来时**跟着船回去**：
+     * 插件不可拆、也不可能"留在地上"，船回来了插件就在船上（只有没捞回整船时才换黑匣）。
+     */
+    plugs?: readonly string[]
+  },
 ): string {
   const uid = addShipToFleet(state, args.defId)
   const ship = state.fleet[uid]
@@ -62,6 +74,8 @@ export function restoreShipFromWreck(
   ship.armorPct = Math.max(0, Math.min(1, baseArmor * RECOVERED_HULL_ARMOR_PCT))
   if (args.fitted !== undefined) ship.fitted = args.fitted
   if (args.droneLoad !== undefined && Object.keys(args.droneLoad).length > 0) ship.droneLoad = args.droneLoad
+  const plugs = (args.plugs ?? []).filter((id) => typeof id === 'string' && id.length > 0)
+  if (plugs.length > 0) ship.plugs = [...plugs]
   return uid
 }
 
@@ -330,7 +344,10 @@ export function loseShip(
         ...(doomed?.armorPct !== undefined ? { armorPct: doomed.armorPct } : {}),
         ...(doomed?.fitted !== undefined ? { fitted: doomed.fitted } : {}),
         ...(doomed?.droneLoad !== undefined ? { droneLoad: doomed.droneLoad } : {}),
-        reinforceChance: reinforceChanceOfFitted(doomed?.fitted, ctx),
+        // 插件快照（船长 2026-09-26：「玩家回收按插件数量直接回收成黑匣」）——与 fitted 是两本账
+        ...((doomed?.plugs?.length ?? 0) > 0 ? { plugs: [...(doomed?.plugs ?? [])] } : {}),
+        // 加固结构插件走"插件槽" ⇒ 两处都要算进去（它不在 `fitted` 里）
+        reinforceChance: reinforceChanceOfFitted(doomed?.fitted, ctx, doomed?.plugs),
         createdAtWallMs: state.wallMs,
       })
       /**
@@ -838,6 +855,9 @@ export function shipStorable(state: GameState, uid: string): { ok: boolean; reas
   const cargoUnits = Object.values(ship.cargo).reduce((a, b) => a + b, 0)
   if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。' }
   if (allFittedIds(ship.fitted).length > 0) return { ok: false, reason: '还装着模块，请先卸下。' }
+  // 舰船插件（船长 2026-09-26：「装有插件的舰船无法放入舰船仓库」）——判据单点 `plugBlockReasonOf`
+  const plugBlock = plugBlockReasonOf(state, uid)
+  if (plugBlock) return { ok: false, reason: plugBlock }
   if ((ship.durability ?? 1) < 1 || (ship.armorPct ?? 1) < 1) {
     return { ok: false, reason: '只有满耐久（结构与装甲都完好）的船才能入仓：先维修。' }
   }

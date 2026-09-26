@@ -85,6 +85,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 玩家舰船残骸（2026-09-26 船长令）：一具残骸最高优先 · 逐件掷概率回收 · 没捞到不落普通残骸 */
   "core.salvaging.030": { zh: "打捞舰船残骸：捞回 {p1} ×{p2}。", en: "Salvaging the ship wreck: recovered {p1} ×{p2}." },
   "core.salvaging.031": { zh: "舰船残骸里捞回了一艘还能修的船：{p1}——已拖回母港入队。", en: "A repairable hull was raised from the wreck: {p1} — towed back to the home port and rejoined the fleet." },
+  /* 插件换黑匣（2026-09-26 船长令）：「玩家回收按插件数量直接回收成黑匣」 */
+  "core.salvaging.032": { zh: "舰船残骸里的插件换回了 {p1} ×{p2}。", en: "The plugs in the wreck were traded back for {p1} ×{p2}." },
   /* 「互斥」类共用条目：整句两条（开采 / 打捞各一条）——占位符对齐是要塞，
      所以「动词」不做参数（参数里塞 id 要两层渲染，得不偿失） */
   "core.state.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再开采。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before mining." },
@@ -1399,6 +1401,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.111": { zh: "{p1}：存活 {p2}/{p3} 架", en: "{p1}: {p2}/{p3} airframes alive" },
   /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
+  /* 舰船插件（2026-09-26 船长令）：「是一种类似装备的东西，同样装备在舰船上，但是不可拆卸，不可替换」 */
+  "core.plug.001": { zh: "已为 {p1} 装上插件：{p2}。插件装上后无法拆下。", en: "{p1} has been fitted with a plug: {p2}. A plug cannot be removed once fitted." },
+  "core.plug.002": { zh: "{p1} 不是舰船插件。", en: "{p1} is not a ship plug." },
+  "core.plug.003": { zh: "舰队里找不到这艘舰船。", en: "That ship is not in the fleet." },
+  "core.plug.004": { zh: "{p1} 没有舰船插件槽。", en: "{p1} has no ship plug slots." },
+  "core.plug.005": { zh: "插件槽已满：本舰 {p1} 格，且插件装上去就拆不下来。", en: "Plug slots are full: this ship has {p1}, and a plug cannot be removed once fitted." },
+  "core.plug.006": { zh: "本舰已经装了一件 {p1}。同型插件不能重复装。", en: "This ship already carries {p1}. The same plug cannot be installed twice." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },

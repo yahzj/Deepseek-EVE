@@ -40,6 +40,7 @@ import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID } from './expedition'
 import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
+import { plugBlockReasonOf } from './plugs'
 
 /* ═══════════ 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，协会收购网扩容，
  * 玩家"单件商品"卖出吞吐 ×1.5，乘法叠加无封顶——只作用于单件商品（装备/蓝图/船等件货的
@@ -1744,6 +1745,9 @@ export function shipSellable(state: GameState, shipId: string): { ok: boolean; r
   if (allFittedIds(fleetShip.fitted).length > 0) {
     return { ok: false, reason: '还装着模块，请先卸下。' }
   }
+  // 舰船插件（船长 2026-09-26：「装有插件的舰船……也不能挂卖」）——与入仓共用同一判据单点
+  const plugBlock = plugBlockReasonOf(state, shipId)
+  if (plugBlock) return { ok: false, reason: plugBlock }
   return { ok: true }
 }
 
