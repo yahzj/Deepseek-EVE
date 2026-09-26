@@ -190,8 +190,19 @@ function toLine(ship: FoeShipDef, count: number): FoeBriefLine {
   }
 }
 
-/** 挂载件那一节的**标签词**（「特殊装置」/「special mounts」）——界面要**只染这四个字**，故单点导出 */
-export function mountLabelText(): string {
+/**
+ * **单舰级的结构化简报**（2026-09-26 加：势力图鉴复用这份）。
+ *
+ * 与悬赏卡悬停**同一份内容、同一个出口**（`bitsOf` / `toLine`）——图鉴里那一行与悬停里那行**逐字同源**，
+ * 不另写一套文案。`count` 传 `0` = "该族有这型舰、但不在某张卡的编成里"（图鉴就是这个语义）。
+ * ⚠ **只读出口**：不改悬停的任何行为（`foeShipBriefOf` 仍走 `lineText(toLine(ship, 1))`）。
+ */
+export function foeBriefLinesOfShip(ship: FoeShipDef | null | undefined): FoeBriefLine | null {
+  if (!ship) return null
+  return toLine(ship, 0)
+}
+
+/** 挂载件那一节的**标签词**（「特殊装置」/「special mounts」）——界面要**只染这四个字**，故单点导出 */export function mountLabelText(): string {
   return tr('ui.foeIntro.060', { p1: '' })
     .replace('{p1}', '')
     .replace(/[：:]\s*$/, '')

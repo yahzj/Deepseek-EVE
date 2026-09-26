@@ -531,7 +531,7 @@ export function fitModule(
   bays[index] = moduleId
   addLog(
     state,
-    'info',
+    'fleet',
     `已装配 ${def.name}（${rackLabel(rack)}第 ${index + 1} 位）。`,
     'core.equipment.021',
     { p1: def.name, p2: rackLabel(rack), p3: index + 1 },
@@ -566,7 +566,7 @@ export function unfitAt(
   addModule(state, moduleId)
   addLog(
     state,
-    'info',
+    'fleet',
     `已卸下并放回装备库（${rackLabel(rack)}第 ${index + 1} 位）。`,
     'core.equipment.022',
     { p1: rackLabel(rack), p2: index + 1 },
@@ -641,7 +641,7 @@ export function swapModuleAt(
   bays[opts.index] = moduleId
   addLog(
     state,
-    'info',
+    'fleet',
     oldId !== null
       ? `已换装 ${ctx.modules.get(oldId)?.name ?? oldId} → ${def.name}（${rackLabel(opts.rack)}第 ${opts.index + 1} 位）。`
       : `已装配 ${def.name}（${rackLabel(opts.rack)}第 ${opts.index + 1} 位）。`,
@@ -770,7 +770,7 @@ export function adjustDroneLoad(
   fleet.droneLoad = Object.keys(load).length > 0 ? load : undefined
   addLog(
     state,
-    'info',
+    'fleet',
     `${delta > 0 ? '装入' : '卸下'} ${def.name} ×${Math.abs(delta)}（舱内 ×${next > 0 ? next : 0}）。`,
     'core.equipment.024',
     {
@@ -918,7 +918,7 @@ export function setAmmoTier(
   const name = itemId === null ? '基础弹' : (ctx.items.get(itemId)?.name ?? itemId)
   addLog(
     state,
-    'info',
+    'fleet',
     `已设${type}系弹药档位：${name}（开战按此预载）。`,
     'core.equipment.025',
     { p1: type, p2: name },
@@ -944,7 +944,7 @@ export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
   addModule(state, moduleId)
   addLog(
     state,
-    'info',
+    'fleet',
     `已卸下并放回装备库（${slotLabel(family)}）。`,
     'core.equipment.023',
     { p1: slotLabel(family) },
@@ -1120,7 +1120,7 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
   if (total > 0) {
     addLog(
       state,
-      'info',
+      'fleet',
       `装备修复：旧件按动能款迁移 ${fittedMoved + bayMoved} 件；悬空退回 ${slotEmptied} 件；` +
         (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : '') +
         (rackMoved > 0 ? `作业装备（采集器 / 打捞器）归位到高槽 ${rackMoved} 件。` : '') +
@@ -1192,7 +1192,7 @@ export function migrateDeprecatedAmmo(state: GameState): number {
   if (converted > 0) {
     addLog(
       state,
-      'info',
+      'fleet',
       `弹药改版：旧重型弹已按 1:1 并入通用弹（共 ${converted} 发），相关挂单已撤销。`,
       'core.equipment.026',
       { p1: converted },

@@ -111,7 +111,7 @@ import {
 import type { GameState } from '@whale/core'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
-import { GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
+import { FACTION_CODEX_ORDER, FOE_SHIPS, GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
 // 虫洞·货仓装不下 / 超载 / 第 4 层星云现场（要用到的核心单点，走深路径，与 `wormhole-econ` 同一套做法）
 import { WORMHOLE_ORE_ITEM_ID, wormholeEnter } from '../packages/core/src/wormhole'
 import { hexDistance, hexLine, hexNeighbors, isExitCell, gridContentIndex, wormholeMakeGrid } from '../packages/core/src/wormholeGrid'
@@ -3596,6 +3596,36 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
       notes.push('主控船没有可用的低槽 ⇒ 未自动装配：请到装配页手动装上 MK1~MK3')
     }
     notes.push('试法：出击一张硬卡把结构打空 ⇒ 看「结构锁定 1」提示与战报尾巴；细节见 docs/test-saves/README.md')
+    return notes
+  },
+  /**
+   * **势力图鉴验收档**（`faction` · **2026-09-26 船长令**：「**势力图鉴……玩家能在敌族图鉴里查看该势力的
+   * 专属装备和舰船**」＋「按你推荐来」）。
+   *
+   * 现场：把**六个势力（A/C/D/E/G/H）的全部敌舰**标成"已遭遇"（`state.foeShipSeen`）⇒ 图鉴里六族全部解锁：
+   * 敌人块显示逐舰级简报（与悬赏卡悬停同一份内容）、专属块列出该族专属装备/舰船/图纸。
+   * **B 武装拾荒者与 F 制式巡逻的舰级不标** ⇒ 用来对照"未解锁"的样子（不过图鉴本来也不收这两族）。
+   * **不动钱包/声望/星系/舰队**——只改这一处遭遇记录（该字段本就是玩家的探索痕迹）。
+   *
+   * 试法（详见 `docs/test-saves/README.md` 同名条目）：
+   * ① 打开手册 ⇒ 左栏「蓝图图鉴」下方应有 **「势力图鉴」**；六张卡各写「已遭遇 N/M」；
+   * ② 点开任一族 ⇒ 三块：**势力简介**（基调/外观/战斗风格/招牌手段/出没之处）· **敌人**（逐舰级一行）·
+   *    **专属装备与舰船**（含「图纸」一栏）；
+   * ③ 想看"未解锁"的样子：把 `state.foeShipSeen` 清空后另存一份（本档不含清空逻辑，避免误伤）。
+   */
+  faction: (state: GameState): string[] => {
+    const notes: string[] = []
+    const seen: Record<string, true> = { ...(state.foeShipSeen ?? {}) }
+    let n = 0
+    for (const s of FOE_SHIPS) {
+      if (!FACTION_CODEX_ORDER.includes(s.family)) continue // 只标图鉴收录的六族
+      if (seen[s.id] !== true) n += 1
+      seen[s.id] = true
+    }
+    state.foeShipSeen = seen
+    notes.push(`已把图鉴收录六族的敌舰全部标为「已遭遇」（新增 ${n} 条 · 合计 ${Object.keys(seen).length} 条）`)
+    notes.push('手册 → 势力图鉴：六张卡应各写「已遭遇 N/M」、点开有三块（简介/敌人/专属装备与舰船）')
+    notes.push('对照：B 武装拾荒者与 F 制式巡逻不收（图鉴里没有这两张卡）')
     return notes
   },
   /**

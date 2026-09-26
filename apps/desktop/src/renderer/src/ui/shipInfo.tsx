@@ -30,6 +30,38 @@ import { MODULE_SUBS, moduleSubKeyOf, subText } from './itemSubs'
 export const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
 
 /**
+ * **另有一处同值展示**、不要再重复输出的基础行（`ui:attr-check` 按「不重名」体检）。
+ *
+ * 由来（2026-09-26 船长报障「无人机舱有2个重复的」「用机动速度替换所有动力的位置」）：
+ * `shipInfoLines` 给的是**船体静态行**，而装配页在它之上还有右栏区块与装后口径行、
+ * 图鉴档案窗在它之上还有三个静态行与血量徽章 ⇒ 同一名字会出现两次（出现过：无人机舱 ×2、
+ * 机动速度 ×2）。凡"本页别处已经报过同一个数"的基础行都登记进本表：
+ * - 装配页（`pages/FitPage.tsx`）：右栏有无人机舱舱容条 ＋ 主表另有合计行与装后机动速度行；
+ * - 图鉴档案窗 / 舰船蓝图产物（`panels/Handbook.tsx`）：上方静态行已报机动速度（船体基础值）、
+ *   顶部徽章已报三层血量，`无人机舱 = 无` 对无机舱的船只是白占一行。
+ */
+export const FIT_MAIN_HIDDEN_KEYS: readonly string[] = [
+  tr("ui.FitPage.010"), // 无人机舱：装配页右栏有舱容条 + 合计行；图鉴上方静态行已有
+  tr("ui.FitPage.049"), // 机动速度：装配页另有装后口径行；图鉴上方静态行已有（船体基础值）
+]
+
+/**
+ * 装配页主属性表里被**装后合成行**取代的战斗基础行（由 `FitPage` 过滤，避免基础/合成重复）。
+ * 火力加成例外——船长 2026-09-05：不入血量徽章组，作为下方属性行展示，故不在本表内。
+ * 2026-09-26 从 `FitPage.tsx` 挪到此处：与 `FIT_MAIN_HIDDEN_KEYS` 同源，供 `npm run ui:attr-check` 体检。
+ */
+export const COMBAT_BASE_KEYS: ReadonlySet<string> = new Set([
+  tr("ui.FitPage.001"),
+  tr("ui.FitPage.002"),
+  tr("ui.FitPage.003"),
+  tr("ui.FitPage.004"),
+  tr("ui.ShipPage.023"),
+  tr("ui.FitPage.005"),
+  tr("ui.FitPage.006"),
+  tr("ui.FitPage.007"),
+])
+
+/**
  * 伤害类型色 chip（V17.2 快速辨识）：颜色 = 我方三层血量色——
  * 动能 = 盾蓝（拆盾 ×1.5）/ 高爆 = 甲红（破甲 ×1.5）/ 能量 = 结构黄（拆盾 ×1.25）。
  * label 可覆盖文字（如弹药全词"动能弹"），底色仍按类型。
@@ -354,7 +386,8 @@ export function FoeDamageMix({ anomaly }: { anomaly: AnomalyDef }): ReactNode {
   )
 }
 
-/** 跃迁充能速率（派生展示）：动力(agility)越高充能越快 = agility×200%（0.5 → 100% 基准） */
+/** 跃迁充能速率（派生展示）：动力(agility)越高充能越快 = agility×200%（0.5 → 100% 基准）。
+ *  2026-09-26 船长：间接属性里「动力」就排在充能上一行 ⇒ 标签去括号只叫「跃迁充能」。 */
 export function warpChargePct(ship: ShipDef): number | null {
   if (ship.agility === undefined || !Number.isFinite(ship.agility)) return null
   return Math.round(ship.agility * 200)
@@ -443,7 +476,12 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     })(),
     { k: tr("ui.Handbook.010"), v: `${fmt(ship.cargoM3)} m³` },
     { k: tr("ui.Handbook.011"), v: tr("ui.shipInfo.130", { p1: ship.cycleSeconds, p2: ship.oreUnitsPerCycle }) },
-    { k: tr("ui.Handbook.012"), v: `${Math.round(ship.agility * 100)}%` },
+    // 2026-09-26 船长：「动力没必要放入主属性内，用机动速度替换所有动力的位置」⇒ 本行由「动力」
+    // （`agility`，已挪到间接属性）改为「机动速度」。无装配上下文（图鉴 / 悬停卡 / 蓝图产物）时
+    // 取船表基础值 `maxSpeedMps`；装配页另有装后口径的同名行（含推进器点火期），见 `pages/FitPage.tsx`。
+    ...(ship.maxSpeedMps !== undefined
+      ? [{ k: tr("ui.FitPage.049"), v: `${fmt(ship.maxSpeedMps)} m/s` }]
+      : []),
   ]
   const hasCombat = (ship.shieldHp ?? 0) > 0 || (ship.armorHp ?? 0) > 0 || (ship.hullHp ?? 0) > 0
   if (hasCombat) {
@@ -494,7 +532,10 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
  */
 export function shipIndirectLines(ship: ShipDef, effWarp?: { aus: number; bonusPct: number }): InfoLine[] {
   const lines: InfoLine[] = []
-  if (ship.maxSpeedMps !== undefined) lines.push({ k: tr("ui.shipInfo.009"), v: `${fmt(ship.maxSpeedMps)} m/s` })
+  // 2026-09-26 船长：「动力没必要放入主属性内……动力放到间接属性里」＋「间接列删掉最大速度」
+  // ⇒ 原主表的 `agility` 行挪到本块（列标题「间接属性」在装配页由 `ui.FitPage.034` 担任）；
+  // 原「最大速度」行删除（主表已有「机动速度」，不再并列两个速度数字）。
+  if (ship.agility !== undefined) lines.push({ k: tr("ui.Handbook.012"), v: `${Math.round(ship.agility * 100)}%` })
   if (ship.warpSpeedAus !== undefined) {
     const base = ship.warpSpeedAus
     const boosted = effWarp !== undefined && effWarp.bonusPct > 0 && Math.abs(effWarp.aus - base) > 1e-6

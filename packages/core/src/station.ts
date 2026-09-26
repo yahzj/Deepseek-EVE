@@ -175,7 +175,7 @@ function advanceTierIfFull(state: GameState, ctx: SimContext, site: StationSiteD
       const next = site.tiers[prog.stage]!
       addLog(
         state,
-        'info',
+        'fleet',
         `「${site.name}」档位完成「${doneTier.name}」：${doneTier.unlockDesc ?? '施工推进'}。下一档「${next.name}」材料单：${stationBillText(state, ctx, site)}。`,
       )
     }
@@ -289,7 +289,7 @@ export function deliverStationResources(
   const tier = site.tiers[prog.stage]!
   addLog(
     state,
-    'info',
+    'fleet',
     `「${site.name}」已接收 ${itemName}×${took.toLocaleString('zh-CN')}（档位「${tier.name}」：${stationBillText(state, ctx, site)} 中「${itemName}」还差 ${billRemainingOf(state, site, prog.stage, itemId).toLocaleString('zh-CN')}）。`,
     'core.station.009',
     {
@@ -317,10 +317,10 @@ export function onArriveAtGalaxy(state: GameState, ctx: SimContext, galaxyId: st
   if (site && isSiteBuilt(state, site)) {
     state.awayGalaxy = null
     state.dockedSite = site.id
-    addLog(state, 'info', `已停靠「${site.name}」（${galaxyName}）。`, 'core.station.010', { p1: site.name, p2: galaxyName })
+    addLog(state, 'fleet', `已停靠「${site.name}」（${galaxyName}）。`, 'core.station.010', { p1: site.name, p2: galaxyName })
   } else {
     state.awayGalaxy = galaxyId
-    addLog(state, 'info', `抵达「${galaxyName}」——协会的建站工地就在这里。`, 'core.station.011', { p1: galaxyName })
+    addLog(state, 'fleet', `抵达「${galaxyName}」——协会的建站工地就在这里。`, 'core.station.011', { p1: galaxyName })
   }
   // 通讯：未建成 + 介绍剧本未读 → 自动挂起一次
   if (site && !isSiteBuilt(state, site) && site.introDialogueId && !state.dialogueSeen[site.introDialogueId]) {
@@ -356,7 +356,7 @@ export function noteStationSiteAt(state: GameState, ctx: SimContext, galaxyId: s
     const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
     addLog(
       state,
-      'info',
+      'fleet',
       `舰船已抵达「${galaxyName}」——协会的建站工地就在这里。可现场提交建材；也可停靠空间站后一键「前往工地交付」。副站建成前不提供停靠与站内功能，建成后并入基地网络并开放泊位与全部服务。`,
       'core.station.013',
       { p1: galaxyName },

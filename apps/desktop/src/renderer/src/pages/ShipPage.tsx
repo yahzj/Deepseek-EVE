@@ -612,7 +612,7 @@ export function ShipPage({
                   </div>
                 ) : null}
                 <div className="app-ship-spec">
-                  {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.ShipPage.022")} {Math.round(def.agility * 100)}%
+                  {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.Handbook.012")} {Math.round(def.agility * 100)}%
                 </div>
                 <div className="app-dur-row">
                   <div className="app-dur-track">
@@ -850,7 +850,7 @@ export function ShipPage({
                           </span>
                         </div>
                         <div className="app-ship-spec">
-                          {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.ShipPage.022")} {Math.round(def.agility * 100)}%
+                          {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.Handbook.012")} {Math.round(def.agility * 100)}%
                         </div>
                         <div className="app-ship-desc">{def.description}</div>
                         <div className="app-ship-bottom">

@@ -210,7 +210,7 @@ export function wormholeScanStart(state: GameState, _ctx: SimContext): CommandRe
   const scanMin = Math.floor(scan.progressMs / 60_000)
   addLog(
     state,
-    'info',
+    'fleet',
     `🛰 开始扫描虫洞：主控就地展开扫描阵列${resumed ? `（续扫：已扫 ${scanMin} 分钟）` : ''}。`,
     resumed ? 'core.wormholeScan.003' : 'core.wormholeScan.002',
     resumed ? { p1: scanMin } : undefined,
@@ -223,7 +223,7 @@ export function wormholeScanStop(state: GameState): CommandResult {
   /** 状态改动走 `state.ts` 的单点 `wormholeScanHalt`（**进洞前自动停扫**也用它）⇒ 两条路径不会各写一份 */
   const mins = wormholeScanHalt(state)
   if (mins === null) return { ok: false, error: '扫描没在跑。', errorId: 'core.wormholeScan.004' }
-  addLog(state, 'info', `🛰 停止扫描虫洞（进度保留：已扫 ${mins} 分钟）。`, 'core.wormholeScan.005', { p1: mins })
+  addLog(state, 'fleet', `🛰 停止扫描虫洞（进度保留：已扫 ${mins} 分钟）。`, 'core.wormholeScan.005', { p1: mins })
   return { ok: true }
 }
 
@@ -248,7 +248,7 @@ export function reconcileWormholeScanWelcome(state: GameState): boolean {
   if (!wormholeScanUnlocked(state)) return false
   scan.welcomed = true
   scan.progressMs = wormholeScanWindowMs(state) // 本函数拿不到 ctx ⇒ 不带科技削减（解锁礼只给"一整个窗口"的进度）
-  addLog(state, 'info', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描（进洞前记得带采集器与打捞器）。', 'core.wormholeScan.006')
+  addLog(state, 'fleet', '🛰 虫洞扫描阵列已就绪：主控可就地展开扫描（进洞前记得带采集器与打捞器）。', 'core.wormholeScan.006')
   return true
 }
 
@@ -303,7 +303,7 @@ export function wormholeStockDiscard(state: GameState, id: string): CommandResul
   const meta = wormholeStockMeta(hit)
   addLog(
     state,
-    'info',
+    'fleet',
     `🛰 已放弃一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[meta.archetype]}（那处通道就此关闭）。`,
     'core.wormholeScan.009',
     { p1: WORMHOLE_ARCHETYPE_LABELS[meta.archetype] },
@@ -342,7 +342,7 @@ export function wormholeStockPush(state: GameState, ctx: SimContext): WormholeSt
   const item = stockPushUncapped(state, ctx)
   addLog(
     state,
-    'info',
+    'fleet',
     `🛰 发现一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[item.archetype ?? wormholeArchetypeOf(item.seed)]}（已囤积 ${wormholeStockOf(state).length}/${wormholeStockMaxOf(state)} 处）——到「扫描虫洞」页决定何时探索。`,
   )
   return item
@@ -361,7 +361,7 @@ export function grantWormholeStock(state: GameState, ctx: SimContext, count: num
   for (let i = 0; i < n; i++) stockPushUncapped(state, ctx)
   addLog(
     state,
-    'info',
+    'fleet',
     `🛰 已标记 ${n} 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时探索。`,
     'core.wormholeScan.010',
     { p1: n },
@@ -398,7 +398,7 @@ export function reconcileWormholePromoGift(state: GameState, ctx: SimContext): b
     changed = true
     addLog(
       state,
-      'info',
+      'fleet',
       `🛰 测绘处传来一批坐标：协会为你标记了 ${g.count} 处虫洞（共囤积 ${wormholeStockOf(state).length} 处，到「扫描虫洞」页查看）——进洞前记得带采集器与打捞器。`,
     )
   }

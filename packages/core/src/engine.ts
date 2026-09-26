@@ -232,7 +232,7 @@ export function advanceGame(
     const first = readyNow[0]!
     if (state.firstTaskReadyId !== first.id) {
       state.firstTaskReadyId = first.id
-      addLog(state, 'info', `◆ 任务已达成：「${first.title}」——回「任务中心」点「完成」继续下一步。`, 'core.firstTasks.001', { p1: first.title })
+      addLog(state, 'levelup', `◆ 任务已达成：「${first.title}」——回「任务中心」点「完成」继续下一步。`, 'core.firstTasks.001', { p1: first.title })
     }
   }
   if (state.firstTaskAutoClaim === true) {
@@ -374,7 +374,7 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
     // 目标早已达到（正常流程中不会出现，属兜底）：出队
     if (current >= item.targetLevel) {
       state.skills.queue.shift()
-      addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
+      addLog(state, 'levelup', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
         p1: def.name,
         p2: item.targetLevel,
       })
@@ -413,7 +413,7 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
       if (newLevel >= item.targetLevel) {
         // 已达队列目标：立即出队；富余时间继续给后面的队列项（不浪费）
         state.skills.queue.shift()
-        addLog(state, 'queue', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
+        addLog(state, 'levelup', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
           p1: def.name,
           p2: item.targetLevel,
         })
@@ -703,12 +703,12 @@ export function enqueueSkill(
   }
   state.skills.queue.push(item)
   if (state.skills.queue.length === 1) {
-    addLog(state, 'queue', `开始训练：${def.name} → Lv${targetLevel}。`, 'core.engine.011', {
+    addLog(state, 'levelup', `开始训练：${def.name} → Lv${targetLevel}。`, 'core.engine.011', {
       p1: def.name,
       p2: targetLevel,
     })
   } else {
-    addLog(state, 'queue', `排入队列第 ${state.skills.queue.length} 位：${def.name} → Lv${targetLevel}。`, 'core.engine.012', {
+    addLog(state, 'levelup', `排入队列第 ${state.skills.queue.length} 位：${def.name} → Lv${targetLevel}。`, 'core.engine.012', {
       p1: state.skills.queue.length,
       p2: def.name,
       p3: targetLevel,
@@ -803,7 +803,7 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
     ],
     4,
   )
-  addLog(state, 'queue', composed.text, index === 0 ? 'core.engine.014' : 'core.engine.015', {
+  addLog(state, 'levelup', composed.text, index === 0 ? 'core.engine.014' : 'core.engine.015', {
     p1: index + 1,
     p2: removed.skillId,
     p3: removed.targetLevel,
@@ -812,7 +812,7 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
   // 级联单独记一条（段链已占用 p4+，另起一条最省事，玩家在日志里也能一眼看到被连带取消了什么）
   if (cascaded.length > 0) {
     const names = cascaded.map((it) => `${catalog?.get(it.skillId)?.name ?? it.skillId} Lv${it.targetLevel}`).join('、')
-    addLog(state, 'queue', `连带取消 ${cascaded.length} 项依赖训练：${names}。`, 'core.engine.020', {
+    addLog(state, 'levelup', `连带取消 ${cascaded.length} 项依赖训练：${names}。`, 'core.engine.020', {
       p1: cascaded.length,
       p2: names,
     })
@@ -883,7 +883,7 @@ export function clearSkillQueue(state: GameState): number {
       state.skills.savedProgress[head.skillId] = Math.max(prev, head.progressMs)
     }
     state.skills.queue = []
-    addLog(state, 'queue', `已清空训练队列（${count} 项，队首进度已保留）。`, 'core.engine.013', { p1: count })
+    addLog(state, 'levelup', `已清空训练队列（${count} 项，队首进度已保留）。`, 'core.engine.013', { p1: count })
   }
   return count
 }

@@ -100,6 +100,10 @@ export { ANNOUNCEMENTS, buildAnnouncementCatalog, type AnnouncementDef } from '.
 export { buildSimContext } from './context'
 // 2026-09-19 谜质科技树：23 节点数据表（体检「谜质科技契约」逐条校验 id/费用/前置）
 export { MATTER_TECH_NODES, buildMatterTechCatalog } from './matterTech'
+// 势力图鉴的内容登记表（2026-09-26 船长「势力图鉴单独列出」）——单点：收录范围 ＋ 各族专属件/舰/图纸
+export { FACTION_CODEX, FACTION_CODEX_ORDER, FACTION_CODEX_COUNT, buildFactionCards, factionOfExclusive } from './factionCodex'
+export type { FactionCard, FactionEnemy } from './factionCodex'
+export type { FactionCodexEntry } from './factionCodex'
 // 2026-09-20 成就徽章（船长「继续之前的成就系统」· 两批共 81 枚：任务 13 ＋ 链 50 ＋ 里程碑 18）
 export { ACHIEVEMENTS, achievementOf, achievementsOfChain } from './achievements'
 // 2026-09-19 英语本地化（船长令）：**唯一本地化表** `L10N`（id → {zh,en}，一处改全局换语言）

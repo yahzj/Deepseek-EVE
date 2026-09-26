@@ -186,7 +186,7 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
     const prog = state.stationSites[site.id]
     if (prog && prog.stage >= site.tiers.length && site.galaxyId === target) {
       state.dockedSite = site.id
-      addLog(state, 'info', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。${unloadNote.text}`, 'core.location.039', {
+      addLog(state, 'fleet', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。${unloadNote.text}`, 'core.location.039', {
         p1: site.name,
         p2: unloadNote.text,
         ...(unloadNote.id !== undefined ? { p2Id: unloadNote.id } : {}),
@@ -194,7 +194,7 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
       return { ok: true }
     }
   }
-  addLog(state, 'info', `返航完成：舰船已即时停靠「${toName}」（自「${fromName}」归来）。${unloadNote.text}`, 'core.location.040', {
+  addLog(state, 'fleet', `返航完成：舰船已即时停靠「${toName}」（自「${fromName}」归来）。${unloadNote.text}`, 'core.location.040', {
       p1: toName,
       p2: fromName,
       p3: unloadNote.text,
@@ -238,12 +238,12 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
     }
   }
   if (d && d.phase === 'to-station') {
-    addLog(state, 'info', `交付任务收尾：舰船已返航停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
+    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
     // 2026-09-08 v2 自动循环：工地还有缺口且仓库有料 → 同一引擎推进内立即续趟出发
     continueDeliverLoop(state, ctx, d.siteId)
     return
   }
-  addLog(state, 'info', `返航完成：舰船已停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
+  addLog(state, 'fleet', `返航完成：舰船已停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
 }
 
 /* ─────────── 2026-09-08 建站交付航线 v2（船长定稿：物理载货模型 + 自动多趟循环） ─────────── */
@@ -387,7 +387,7 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   const durTxt = legMs <= 1000 ? '约片刻' : `约 ${Math.max(1, Math.round(legMs / 60_000))} 分钟`
   addLog(
     state,
-    'info',
+    'fleet',
     `⚑ 建站交付航线：舰船自「${fromName}」启程，驶往「${toGalaxyName}」的「${site.name}」工地（${durTxt}航程）——本趟装载建材 ${loadedTotal.toLocaleString('zh-CN')} 单位随船（货仓 ${usedV.toLocaleString('zh-CN')}/${capV.toLocaleString('zh-CN')} m³）；到点自动清仓交付，仓库还有建材就自动续趟，全部建完或建材耗尽自动终止。可随时取消（= 停止整个循环）。`,
   )
   return { ok: true }
@@ -471,7 +471,7 @@ function arriveDeliverSite(
   state.dockedSite = null
   addLog(
       state,
-      'info',
+      'fleet',
       `⚑ 交付航线：舰船已抵达「${galaxyName}」——「${site.name}」工地，本趟装载的建材自动清仓交付中。`,
       'core.location.035',
       { p1: galaxyName, p2: site.name },
@@ -510,18 +510,18 @@ function arriveDeliverSite(
     state.awayGalaxy = null
     state.dockedSite = site.id
     const unloadNote = dockUnloadNote(state, state.shipId)
-    addLog(state, 'info', `本次交付达成「建成」档：舰船已停靠新落成的「${site.name}」（副空间站）。${unloadNote}`)
+    addLog(state, 'fleet', `本次交付达成「建成」档：舰船已停靠新落成的「${site.name}」（副空间站）。${unloadNote}`)
     return
   }
   const remain = tierRemaining(state, site)
   if (delivered > 0) {
     addLog(
       state,
-      'info',
+      'fleet',
       `本次清仓交付建材 ${delivered.toLocaleString('zh-CN')} 单位，当前档还差 ${remain.toLocaleString('zh-CN')} 单位（仓库有料将自动续趟）。`,
     )
   } else {
-    addLog(state, 'info', `本趟未交付任何建材（工地当前需求与货仓装载不匹配）——自动返航。`, 'core.location.036')
+    addLog(state, 'fleet', `本趟未交付任何建材（工地当前需求与货仓装载不匹配）——自动返航。`, 'core.location.036')
   }
   // 自动返航最近空间站（真实航程；最近站随本次建成情况实时解析）
   const baseGal = nearestStationGalaxyId(state, ctx, site.galaxyId)
@@ -541,7 +541,7 @@ function arriveDeliverSite(
       }
     }
     const unloadNote = dockUnloadNote(state, state.shipId)
-    addLog(state, 'info', `交付任务收尾：舰船已返航停靠「${dockedName ?? baseName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
+    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? baseName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
     if (site && progAfter.stage < site.tiers.length) continueDeliverLoop(state, ctx, site.id)
     return
   }
@@ -554,7 +554,7 @@ function arriveDeliverSite(
   t.delivery = { siteId: site.id, phase: 'to-station' }
   addLog(
     state,
-    'info',
+    'fleet',
     `交付任务收尾：自动返航「${baseName}」（约 ${Math.max(1, Math.round(legMs / 60_000))} 分钟航程）——到站后如仓库还有建材将自动续趟，可随时取消（= 停止整个循环）。`,
   )
 }
@@ -666,7 +666,7 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
   noteStationSiteAt(state, ctx, galaxyId)
   addLog(
     state,
-    'info',
+    'fleet',
     `⚐ 掩护巡逻：舰船已抵达「${target.name}」并留守该星系（低安星系可能遭遇巡逻/伏击；可随时返航空间站，或从该处继续采矿/出击）。`,
   )
   return { ok: true }
@@ -690,7 +690,7 @@ export function advanceStandby(state: GameState, ctx: SimContext): void {
   noteStationSiteAt(state, ctx, galaxyId) // 2026-09-06：建站叙事入口改挂掩护巡逻到位
   addLog(
     state,
-    'info',
+    'fleet',
     `⚐ 已抵达「${name}」，掩护巡逻就位：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
   )
 }

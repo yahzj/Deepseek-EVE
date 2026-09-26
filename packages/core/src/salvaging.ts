@@ -345,7 +345,7 @@ export function startSalvageOp(
    */
   addLog(
     state,
-    'info',
+    'salvage',
     `开始打捞：${galaxy.name}（残骸密度 ${density.toFixed(1)}）。${shipName} 已抵达目标空域，立即开始持续打捞` +
       `（${salvagers} 台打捞器；满载返航约 ${retSec + outSec} 秒，去程时间已并入返航）。${loopNote}`,
     'core.salvaging.015',
@@ -392,7 +392,7 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
     info.phase === 'returning' ? 'core.mining.019' : info.phase === 'outbound' ? 'core.mining.020' : undefined
   addLog(
     state,
-    'info',
+    'salvage',
     `已停止打捞（${galaxy?.name ?? ''}）。本趟共捞约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量${phaseNote}。`,
     'core.salvaging.016',
     {
@@ -438,7 +438,7 @@ export function retireSalvageShip(state: GameState, ctx: SimContext): boolean {
   resetOp(state)
   addLog(
     state,
-    'info',
+    'salvage',
     `打捞已随换船结束：${shipName} 从「${galaxyName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
     'core.salvaging.017',
     {
@@ -600,7 +600,7 @@ export function pullOneWreck(
   // （不再折算体积）；判定恒消耗一次随机数保 rng 时序（rate=0 时也掷）
   if (nextRandom(state.rng) < assayChanceOf(state, ctx, cycleMsReal)) {
     const gains = rollIntactHullLoot(state, ctx, chosen.anomalyId)
-    if (gains) addLog(state, 'info', `完好舰体！${gains}。`, 'core.salvaging.019', { p1: gains })
+    if (gains) addLog(state, 'salvage', `完好舰体！${gains}。`, 'core.salvaging.019', { p1: gains })
   }
   // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
@@ -656,7 +656,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
         addLog(
           state,
-          'info',
+          'salvage',
           `打捞自动返港：${galaxyName} 残骸已卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} m³ 当量）。`,
           'core.salvaging.022',
           { p1: galaxyName, p2: moved.toLocaleString('zh-CN') },
@@ -665,7 +665,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
         if (s.stopAfterTrip || s.autoCycle === false) {
           addLog(
             state,
-            'info',
+            'salvage',
             s.stopAfterTrip ? '自动循环已结束（按设定返港后停止）。' : '本次打捞结束（未开启自动循环）。',
             s.stopAfterTrip ? 'core.salvaging.023' : 'core.salvaging.024',
           )
@@ -733,7 +733,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           const mergedSec = Math.round((legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)) / 1000)
           addLog(
             state,
-            'info',
+            'salvage',
             `货仓装不下下一轮打捞（余 ${Math.round(freeM3)} m³ ／ 每轮 ${Math.round(pulled.volumeM3)} m³）：自动返航卸货（本趟约 ${Math.round(s.tripM3 * 100) / 100} m³，约 ${mergedSec} 秒，去程已并入返航）。`,
             'core.salvaging.027',
             {

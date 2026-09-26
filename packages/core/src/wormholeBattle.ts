@@ -307,7 +307,7 @@ export function wormholeActivateAt(
       }
       addLog(
         state,
-        'info',
+        'combat',
         `🕳 取回谜质：${device.name}（${device.text}）——` +
           `${landed.where === 'temp' ? '货仓腾不出 2×2，已先进临时空间' : '占货仓 2×2 格'}，离开虫洞即失效。`,
       )
@@ -596,7 +596,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       refundAmmo(state, back, battle.ammoIds)
       addLog(
         state,
-        'info',
+        'combat',
         `🕳 弹药回收装置：这一场打出去的弹药回收了 ${n} 发（${Math.round(matterBuffs.ammoRefundPct * 100)}%）。`,
         'core.wormholeBattle.016',
         { p1: n, p2: Math.round(matterBuffs.ammoRefundPct * 100) },
@@ -629,7 +629,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     if (touched > 0) {
       addLog(
         state,
-        'info',
+        'combat',
         `🕳 战地维修单元：编队装甲与结构各回复 ${Math.round(pct * 100)}%（不耗货仓组件）。`,
         'core.wormholeBattle.017',
         { p1: Math.round(pct * 100) },
@@ -656,7 +656,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     }
     state.wormhole.lastFleetLost += run.fleet.length
     const lostText = `🕳 虫洞探险失败：编队失联、货仓内容全部丢失（损失 ${lost.length} 艘）。`
-    addLog(state, 'warn', lostText)
+    addLog(state, 'combat', lostText)
     /**
      * **结构化战报**（2026-09-14 船长定）：洞内全损 = 我方全灭那一档 ⇒ `lose`，
      * 沉船名单用**整趟丢掉的这批**（含"这一场沉掉的 + 还活着但整趟判负的"）。
@@ -684,7 +684,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   }
   // 胜：先出战报（与结算同源），再按战斗用途分流
   if (report) {
-    addLog(state, 'info', report.text, report.textId, report.textParams)
+    addLog(state, 'combat', report.text, report.textId, report.textParams)
     /**
      * **结构化战报**（2026-09-14 船长定 · 战报改造）：洞内这一支原先写的是「🕳 第 N 层…交火结束：…」
      * ——**不含「战报」二字** ⇒ 弹层永远取不到正文（船长看到的"过于简陋"就是这个）。
@@ -717,7 +717,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     bumpFirst(state, 'whBossClears')
     addLog(
       state,
-      'info',
+      'combat',
       `🕳 第 ${run.depth} 层守卫已清：可以「继续深入」或「撤离」。`,
       'core.wormholeBattle.018',
       { p1: run.depth },
@@ -741,7 +741,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       if (cell?.foe) cell.foe = { ...cell.foe, cleared: true }
       wormholeGrantShipSpoils(state, ctx, 'spawn')
     }
-    if (run.turnsLeft <= 0) addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
+    if (run.turnsLeft <= 0) addLog(state, 'combat', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
     return
   }
   // 老档线性节点：结算该节点（扣回合、推进；回合不够 ⇒ 转撤离相位＝只能撤离）
@@ -750,7 +750,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     run.phase = 'extracting'
     addLog(
       state,
-      'warn',
+      'combat',
       `🕳 回合不足以继续推进：只能撤离（${r.error ?? ''}）。`,
       'core.wormholeBattle.020',
       { p1: r.error ?? '' },
@@ -758,7 +758,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     return
   }
   if (r.mustExtract) {
-    addLog(state, 'warn', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
+    addLog(state, 'combat', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
   }
 }
 
@@ -922,7 +922,7 @@ export function deliverWormholeCores(
       .join('、')
     addLog(
       state,
-      'info',
+      'combat',
       `🕳 带回 ${text}：已直接接入核心库（不占货仓、不入仓库）。`,
       'core.wormholeBattle.021',
       { p1: text },
@@ -955,7 +955,7 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
   }
   addLog(
     state,
-    'info',
+    'combat',
     `🕳 撤离成功：货仓 ${run.bag.length} 类物资入港` +
       (isk > 0 ? `（按基础价约 ${Math.round(isk).toLocaleString('zh-CN')} 信用点）` : '') +
       (recycle > 0 ? `（残骸拆解估值约 ${Math.round(recycle).toLocaleString('zh-CN')} 信用点）` : '') +
@@ -1032,7 +1032,7 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
     const essenceName = ctx.items.get(WORMHOLE_ESSENCE_ITEM_ID)?.name ?? '虫洞谜质'
     addLog(
       state,
-      'info',
+      'combat',
       `🕳 谜质装置 ×${matterDevices} 析出 ${essenceName} ×${essences}（已入仓库 · 只收不卖）。`,
     )
   }
@@ -1050,7 +1050,7 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
   if (tempPlacements.length > 0) {
     addLog(
       state,
-      'warn',
+      'combat',
       `🕳 撤离放弃：临时空间里的 ${tempUnits.size} 类物资留在洞里（未整理的按丢弃处理）。`,
       'core.wormholeBattle.022',
       { p1: tempUnits.size },
@@ -1153,7 +1153,7 @@ export function advanceWormhole(
     if (run.fleet.length === 0) {
       addLog(
         state,
-        'warn',
+        'combat',
         `🕳 撤离失败：编队已经没了（全灭或档案异常）——本趟按全损处理。`,
         'core.wormholeBattle.023',
       )

@@ -317,12 +317,19 @@ export function weekendResolveBattle(
     if (gain > 0) {
       const pctBefore = Math.round(beforePct)
       const pctAfter = Math.round(weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) * 100)
+      /**
+       * ⚠ **合并解冲突（2026-09-26）**：两边改的是**同一格的档位**，只能取一个 ——
+       * **取我方 `warn`**（船长 2026-09-26 明令「**包括玩家夺回进度的更新**」⇒ 提到警告档、要醒目）；
+       * main 侧（一号「事件日志重新分类」）把这两条归入 `combat`。**两条裁定不同源、待船长确认**：
+       * 按「新令压旧令」先落 warn；若船长要跟一号的分类走，把下面两处 `'warn'` 改回 `'combat'` 即可。
+       */
       addLog(state, 'warn', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
         p1: gname0,
         p2: pctBefore,
         p3: pctAfter,
       })
     } else if (gatedThisBattle) {
+      /** 同上：取船长的 `warn`（与 `.035` 那条同一裁定） */
       addLog(state, 'warn', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
     }
   }

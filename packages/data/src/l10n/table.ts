@@ -1147,6 +1147,17 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.039": { zh: "警告：异常/失利/记录缺失", en: "Warnings: anomalies, losses, missing records" },
   "ui.App.040": { zh: "交易：市场成交与挂单、买船买核心、维修费、远征奖金等一切资金往来", en: "Trade: every money movement — market fills and orders, ships and cores bought, repair bills, expedition payouts" },
   "ui.App.041": { zh: "事件：深空偶发奇遇与市场风云（日志带 ✦，在线时会弹小卡）", en: "Events: chance encounters in deep space and market upheaval (these log lines carry ✦ and pop a small card while you are online)" },
+  // ── 2026-09-26 船长令：事件日志重新分类（新增战斗/工业/舰队/打捞；页签改单选） ──
+  "ui.App.154": { zh: "战斗", en: "Combat" },
+  "ui.App.155": { zh: "工业", en: "Industry" },
+  "ui.App.156": { zh: "舰队", en: "Fleet" },
+  "ui.App.157": { zh: "打捞", en: "Salvage" },
+  "ui.App.158": { zh: "全部", en: "All" },
+  "ui.App.159": { zh: "战斗：交火经过与战报——战斗内机制提示、遭遇战、赏金/远征/入侵/虫洞的胜负与撤退、自动清剿开关", en: "Combat: engagements and battle reports — in-fight mechanics, encounters, bounty/expedition/invasion/wormhole wins, losses and retreats, auto-clear toggles" },
+  "ui.App.160": { zh: "工业：制造、残骸回收、货柜拆解、丢弃与学到的图纸", en: "Industry: manufacturing, wreck recycling, container dismantling, discarding and blueprints learned" },
+  "ui.App.161": { zh: "舰队：航行与停靠、建站交付、运输与探索扫描、装配方案与舰船管理、AI 作业", en: "Fleet: travel and docking, station delivery, hauling and survey scans, fittings and ship management, AI assignments" },
+  "ui.App.162": { zh: "打捞：残骸打捞、拾取与战果入库（含洞内遗迹产出）", en: "Salvage: wreck salvaging, pickups and hauling loot aboard, including wormhole relic finds" },
+  "ui.App.163": { zh: "点哪一类就只看那一类；选「全部」不过滤", en: "Pick one category to see only that category; choose All to show everything" },
   "ui.App.042": { zh: "中文", en: "中文" },
   "ui.App.043": { zh: "性能快照 ·", en: "Performance snapshot ·" },
   "ui.App.044": { zh: "✓ 已复制", en: "✓ Copied" },
@@ -2256,12 +2267,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.042": { zh: "生体自愈（无消耗）", en: "Organic self-repair (no consumption)" },
   "ui.FitPage.043": { zh: "无需组件", en: "No kits needed" },
   "ui.FitPage.044": { zh: "（战斗中自动生效，不会因缺料停机；同型多件收益递减）", en: "(works automatically in combat and never stops for lack of kits; stacking the same module gives diminishing returns)" },
-  "ui.FitPage.045": { zh: "护盾抗性（含装备）", en: "Shield resistance (with modules)" },
-  "ui.FitPage.046": { zh: "装甲抗性（含装备）", en: "Armor resistance (with modules)" },
-  "ui.FitPage.047": { zh: "命中率（含装备）", en: "Accuracy (with modules)" },
-  "ui.FitPage.048": { zh: "回避率（含装备）", en: "Evasion (with modules)" },
+  "ui.FitPage.045": { zh: "护盾抗性", en: "Shield resistance" },
+  "ui.FitPage.046": { zh: "装甲抗性", en: "Armor resistance" },
+  "ui.FitPage.047": { zh: "命中率", en: "Accuracy" },
+  "ui.FitPage.048": { zh: "回避率", en: "Evasion" },
   "ui.FitPage.049": { zh: "机动速度", en: "Maneuver speed" },
-  "ui.FitPage.050": { zh: "跃迁速度（含装备）", en: "Warp speed (with modules)" },
+  "ui.FitPage.050": { zh: "跃迁速度", en: "Warp speed" },
   "ui.FitPage.051": { zh: "已占", en: "Used" },
   "ui.FitPage.052": { zh: "卸下", en: "Unfit" },
   "ui.FitPage.053": { zh: "装配方案 ·", en: "Fitting presets ·" },
@@ -2413,7 +2424,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.009": { zh: "定位 / 档次", en: "Role / tier" },
   "ui.Handbook.010": { zh: "货舱容量", en: "Cargo capacity" },
   "ui.Handbook.011": { zh: "采集性能", en: "Extraction performance" },
-  "ui.Handbook.012": { zh: "动力（机动 / 跃迁充能）", en: "Power (maneuver / warp charge)" },
+  "ui.Handbook.012": { zh: "动力", en: "Power" },
   "ui.Handbook.013": { zh: "产物：", en: "Product:" },
   "ui.Handbook.014": { zh: "确认", en: "Confirm" },
   "ui.Handbook.015": { zh: "图标", en: "Icons" },
@@ -2723,10 +2734,112 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.318": { zh: "（战斗数值已启用 · 悬停查看完整面板）", en: "(combat values are in effect · hover for the full panel)" },
   "ui.Handbook.319": { zh: "（舰船）", en: "(ships)" },
   "ui.Handbook.320": { zh: "难度", en: "Difficulty" },
-  "ui.Handbook.321": { zh: " 单位 ·\n                    动力 ", en: " units ·\n                    power " },
-  "ui.Handbook.322": { zh: "动力 {p}%", en: "power {p}%" },
   "ui.Handbook.323": { zh: " · 下一条 ›", en: " · Next ›" },
   "ui.Handbook.324": { zh: " · 耗时 {p}", en: " · takes {p}" },
+
+  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
+     结构 = 新开一节「敌族图鉴」，六族各一条：基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处。
+     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
+     ⚠ H 的「出没之处」按挂起备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等你一句话可换乙案。
+     ⚠ 舰队名（325~372 之外那六条）是可复用词条：放 glossary 块，供手册/别处共用。 */
+
+  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
+     结构（编号即顺序）：325 节名 · 326~336 海盗 · 337~347 异形 · 348~358 守墓 · 359~369 泰坦 ·
+     370~380 亡军 · 381~391 墨潮帮；每族 11 格 = 族名(367~372 六条独立 id) + 五对「标题+正文」
+     （基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处，五对的顺序固定）。
+     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
+     ⚠ H 的「出没之处」按挂起备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。 */
+
+  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
+     结构（编号即顺序）：325 节名 · 326~336 海盗 · 337~347 异形 · 348~358 守墓 ·
+     359~369 泰坦 · 370~380 亡军 · 381~391 墨潮帮。每族 11 格 = **族名一条** ＋
+     五对「标题 ＋ 正文」（基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处，顺序固定）。
+     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
+     玩家侧一律正字「**势力**」；D/E 的留白（谁造的 / 为何在此）与 G 的战争起因**照备忘不写**。
+     ⚠ H 的「出没之处」按备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。 */
+
+  /* ── 2026-09-26 势力图鉴（船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」；
+     同日判词：「你现有的介绍完全是复述我们当初讨论的开发文档，这部分不能直接给玩家看」）──
+     结构（编号即顺序）：325 节名 · 326~334 海盗 · 335~343 异形 · 344~352 守墓 ·
+     353~361 泰坦 · 362~370 亡军 · 371~379 墨潮帮。每族 **9 格** = 族名一条 ＋ 四对「小标题 ＋ 正文」。
+     小标题 = **in-world 四要素**（档案摘要 / 舰体特征 / 交手记录 / 活动星域）——**不是**设计稿那套
+     基调/外观/战斗风格/招牌手段/出没之处（开发用词，2026-09-26 按船长判词换掉）。
+     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；B 武装拾荒者与 F 制式巡逻不收（船长令）。
+     正文为**玩家向**（协会情报档案口吻）：不写开发叙述、不写机制教学；D/E 的留白与 G 的战争起因照旧不写。 */
+  "ui.Handbook.325": { zh: "势力图鉴", en: "Faction codex" },
+  "ui.Handbook.326": { zh: "海盗舰系", en: "Pirate fleet line" },
+  "ui.Handbook.327": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.328": { zh: "一群没有旗号的劫掠者。船旧、装备杂，靠人多和速度吃这条路。", en: "A raider band with no colours to speak of. Old hulls, mismatched gear, and a living taken by numbers and speed." },
+  "ui.Handbook.329": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.330": { zh: "舰体粗短破旧，锈红涂装；角旗天线与舷侧斜排的劫掠炮是他们的记号。", en: "Short, battered hulls in rust-red paint, marked by pennant antennae and raiding guns staggered along the broadside." },
+  "ui.Handbook.331": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.332": { zh: "上来先抢船，不急着打沉：能靠上就靠上，靠不上就在远处吊着。一艘头目舰带队，后面跟着三艘杂鱼舰；头目血厚，杂鱼先冲。", en: "They come to take the ship, not to sink it: if they can close, they board; if they cannot, they shadow you at range. One warlord ship leads and three rabble ships follow; the warlord soaks the damage while the rabble charge first." },
+  "ui.Handbook.333": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.334": { zh: "柯尔边境与红环航道的伏击点；灰霾带、碎晶带、蜃影星系的通缉名单上常挂着他们。", en: "Ambush points along the Cole frontier and the Redring Corridor; bounty boards in the Haze Belt, the Shardfield and Mirage systems carry their names." },
+  "ui.Handbook.335": { zh: "异形生物", en: "Aberrant lifeforms" },
+  "ui.Handbook.336": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.337": { zh: "一支活体舰队：靠有机舰体与发光裂隙行动，螯颚张开就往舰上扑。", en: "A living fleet: organic hulls run through with glowing fissures, mandibles opening as they hurl themselves at a ship." },
+  "ui.Handbook.338": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.339": { zh: "肢节不对称，甲壳与螯颚外露，裂隙里透出磷光绿。", en: "Asymmetric limbs, exposed carapace and mandibles, with phosphor green shining out of the fissures." },
+  "ui.Handbook.340": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.341": { zh: "贴近撕咬，从裂谷与星云里直扑上来，比海盗还快；酸液喷吐越远越不准，外壳厚且会自愈，常带着幼体群一起冲。", en: "They close in to tear at you, bursting out of rifts and nebulae faster than any pirate; their acid spray loses accuracy with distance, and the shell is thick, mends itself, and comes with broods of larvae." },
+  "ui.Handbook.342": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.343": { zh: "深渊之门的门侧守卫、裂谷深带的畸变体、星髓迷宫的虫群、星噬之口的巨兽。", en: "Gate guards at the Abyss Gate, aberrations in the deep rift belt, swarms in the Starcore Labyrinth, and behemoths at the Maw." },
+  "ui.Handbook.344": { zh: "守墓古舰", en: "Gravekeeper ancient fleet" },
+  "ui.Handbook.345": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.346": { zh: "一处远古陵区仍在按誓约运转：不谈判、不停手，也不追出去。", en: "An ancient burial ground still running to its oath: no parley, no pause, and no pursuit beyond the line." },
+  "ui.Handbook.347": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.348": { zh: "残破的古典长舰与高耸艉楼，通体冷青磷光。", en: "Broken classical longships with towering sterncastles, lit cold cyan from end to end." },
+  "ui.Handbook.349": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.350": { zh: "全远程：它在远处盯着，把你的船一层层拆开；陵墓护盾芯、远距必中的守墓者长炮、加厚装甲的陵寝装甲层，一仗打很久。", en: "Wholly long-range: it watches from a distance and takes your ship apart one layer at a time; mausoleum shield cores, long cannons that never miss at range and thickened mausoleum plating make for a long fight." },
+  "ui.Handbook.351": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.352": { zh: "暗星坟场——古代舰队的墓园——与穹顶墓园。", en: "The Darkstar Graveyard, cemetery of an ancient fleet, and the Dome Mausoleum." },
+  "ui.Handbook.353": { zh: "泰坦巨构", en: "Titan megastructures" },
+  "ui.Handbook.354": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.355": { zh: "无人的巨构残骸，加上还在跑的残存程序：不追你、不恨你，只把靠近的东西当靶子。", en: "Crewless megastructure wrecks with programs still running: they do not chase and do not hate. Anything that comes close is simply a target." },
+  "ui.Handbook.356": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.357": { zh: "巨构残段、厚重装甲层与断裂截面，残铁棕色。", en: "Megastructure fragments, heavy armor layers and sheared cross-sections, in scrap-iron brown." },
+  "ui.Handbook.358": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.359": { zh: "守住中距，用老化的重炮和机库里的第二套火力把仗拖长：一发十秒的巨构残骸炮、放出机群的深层机库、全游戏最厚的结构层。", en: "They hold mid range and drag the fight out with aging heavy guns and a second set of firepower from the hangar: wreck cannons that fire once every ten seconds, deep hangars that release drone groups, and the thickest structure of any hull." },
+  "ui.Handbook.360": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.361": { zh: "奥罗荒环的环状废墟带；残骸也散落在别的势力地盘上。", en: "The ring of ruins in the Auro Waste Ring; wrecks also lie scattered across other factions’ ground." },
+  "ui.Handbook.362": { zh: "鱿烬亡军", en: "Deadarmy" },
+  "ui.Handbook.363": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.364": { zh: "乌贼人残兵与依附的流亡聚落：已经战败，却从未停战。", en: "Squidfolk survivors and the exile settlements attached to them: beaten already, never at peace." },
+  "ui.Handbook.365": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.366": { zh: "蜂窝舱段、补丁帆与随处可见的焊接痕，涂装聚落紫。", en: "Honeycomb hull sections, patched sails and weld scars everywhere, painted settlement purple." },
+  "ui.Handbook.367": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.368": { zh: "隔着老远放出一群无人机做蜂群压制：一架便宜，一群致命。", en: "Swarm suppression from far outside your range: their drones are cheap one at a time and lethal as a group." },
+  "ui.Handbook.369": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.370": { zh: "烬火星区的围攻战线、回音荒区的残舰群、天底静区的最后据点。", en: "Siege lines in the Cinder Sector, the wreck fleet in the Echo Wastes, and the last holdout in the Nadir Quiet Zone." },
+  "ui.Handbook.371": { zh: "墨潮帮", en: "Ink Tide" },
+  "ui.Handbook.372": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.373": { zh: "从海盗里分出去的一支独立帮口：更快，也更敢贴上来。", en: "A breakaway outfit that split from the pirates: faster, and far quicker to close in." },
+  "ui.Handbook.374": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.375": { zh: "舰体与海盗同源，墨色涂装，舰影更方更硬。", en: "Hulls of pirate descent in ink-black paint, squarer and harder in silhouette." },
+  "ui.Handbook.376": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.377": { zh: "贴脸突袭：突击舰是海盗里最快的一档，闪避也高；惯用冲锋撞击与劫掠网。", en: "Point-blank raids: their assault ships are the fastest pirate hulls afloat and hard to hit, and they favour ramming charges and raiding webs." },
+  "ui.Handbook.378": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.379": { zh: "行踪不定。", en: "Their whereabouts are never certain." },
+
+  /* ── 2026-09-26 势力图鉴页（船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」）──
+     图鉴页自己的标签/占位/三块标题；势力名与五段简介**复用** ui.Handbook.326~391（原先那节搬过来）。 */
+  "ui.codex.001": { zh: "势力图鉴", en: "Faction codex" },
+  "ui.codex.002": { zh: "搜索势力、舰级或专属装备", en: "Search factions, ship classes or exclusive gear" },
+  "ui.codex.003": { zh: "已遭遇 {p1}/{p2}", en: "Encountered {p1}/{p2}" },
+  "ui.codex.004": { zh: "已解锁", en: "Unlocked" },
+  "ui.codex.005": { zh: "？？？", en: "???" },
+  "ui.codex.006": { zh: "遭遇该势力的敌舰后解锁", en: "Unlocks after meeting one of this faction’s ships" },
+  "ui.codex.007": { zh: "势力简介", en: "Overview" },
+  "ui.codex.008": { zh: "敌人", en: "Enemies" },
+  "ui.codex.009": { zh: "专属装备与舰船", en: "Exclusive modules & ships" },
+  "ui.codex.010": { zh: "未遭遇", en: "Not yet met" },
+  "ui.codex.011": { zh: "专属装备", en: "Exclusive modules" },
+  "ui.codex.012": { zh: "专属舰船", en: "Exclusive ships" },
+  "ui.codex.013": { zh: "图纸", en: "Blueprints" },
+  "ui.codex.014": { zh: "件", en: "items" },
+  "ui.codex.015": { zh: "艘", en: "ships" },
+  "ui.codex.016": { zh: "暂无专属舰船", en: "No exclusive ships" },
   "ui.Hauling.001": { zh: "{m} 分 {rs} 秒", en: "{m} min {rs} s" },
   "ui.Hauling.002": { zh: "{m} 分钟", en: "{m} min" },
   "ui.Hauling.003": { zh: "{s} 秒", en: "{s} s" },
@@ -3116,6 +3229,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.itemSubs.038": { zh: "战斗支援件", en: "Combat support" },
   "ui.itemSubs.039": { zh: "辅助支援件", en: "Auxiliary support" },
   "ui.itemSubs.040": { zh: "修理装置", en: "Repair units" },
+  "ui.itemSubs.041": { zh: "图纸", en: "Blueprint" },
   "ui.itemSubs.005": { zh: "军用备货柜", en: "Military supply container" },
   "ui.itemSubs.006": { zh: "原材料", en: "Materials" },
   "ui.itemSubs.007": { zh: "奢侈品", en: "Luxuries" },
@@ -3668,13 +3782,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}", en: "Enemy weapon range −{p1}" },
   "ui.shipInfo.186": { zh: "每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
-  "ui.shipInfo.009": { zh: "最大速度", en: "Max speed" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },
   "ui.shipInfo.012": { zh: "锁定范围", en: "Lock range" },
   "ui.shipInfo.013": { zh: "信号半径", en: "Signature radius" },
   "ui.shipInfo.014": { zh: "扫描分辨率", en: "Scan resolution" },
-  "ui.shipInfo.015": { zh: "跃迁充能（随动力）", en: "Warp charge (scales with power)" },
+  "ui.shipInfo.015": { zh: "跃迁充能", en: "Warp charge" },
   "ui.shipInfo.016": { zh: "装甲容量", en: "Armor capacity" },
   "ui.shipInfo.017": { zh: "机动代价", en: "Maneuver cost" },
   "ui.shipInfo.018": { zh: "（多件取最重一件）", en: " (heaviest of several)" },
@@ -3791,7 +3904,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.129": { zh: "压制敌舰武器射程 {p1}%（多艘乘法叠加；与敌方增程相加；最低 3000 m）", en: "Suppresses enemy weapon range {p1}% (several ships multiply; it adds to enemy range bonuses; floor 3000 m)" },
   "ui.shipInfo.130": { zh: "{p1} 秒 × {p2} 单位/循环", en: "{p1} s × {p2} units/cycle" },
   "ui.shipInfo.131": { zh: "{p1}伤", en: "{p1} damage" },
-  "ui.shipInfo.132": { zh: "{base} AU/s → {p2} AU/s（含装备 +{p3}）", en: "{base} AU/s → {p2} AU/s (modules included +{p3})" },
+  "ui.shipInfo.132": { zh: "{base} AU/s → {p2} AU/s（+{p3}）", en: "{base} AU/s → {p2} AU/s (+{p3})" },
   "ui.shipInfo.133": { zh: "{p1} 百万 kg", en: "{p1} million kg" },
   "ui.shipInfo.134": { zh: "战斗速度 ×{p1}", en: "Combat speed ×{p1}" },
   "ui.shipInfo.135": { zh: "点火期间战斗速度 +{p1}", en: "Combat speed while burning +{p1}" },
@@ -3864,7 +3977,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ShipPage.019": { zh: "货舱", en: "Cargo hold" },
   "ui.ShipPage.020": { zh: "m³ · 循环", en: "m³ · cycle" },
   "ui.ShipPage.021": { zh: "秒 ×", en: "s ×" },
-  "ui.ShipPage.022": { zh: "单位 · 动力", en: "units · power" },
   "ui.ShipPage.023": { zh: "结构", en: "Structure" },
   "ui.ShipPage.024": { zh: "维修", en: "Repair" },
   "ui.ShipPage.025": { zh: "消耗驾驶船货仓 1 枚修理组件（民用优先）：基础回复 HP×容量增幅（民用30/军用70）——野外/回港前应急可用", en: "Spends 1 repair kit from the piloted ship's hold (civilian first): restores base HP × capacity bonus (30 civilian / 70 military) — for emergencies in the field or before docking" },

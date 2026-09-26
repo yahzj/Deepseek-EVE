@@ -987,6 +987,11 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-dc-1': 'Damage control plans: a resistance lining and an emergency lock valve that holds a ship together the first time its structure runs out.',
   'bp-dc-2': 'Damage control plans: a thicker resistance lining and twin emergency lock valves.',
   'bp-dc-3': 'Damage control plans: fortress-grade resistance lining and a full-ship emergency lock manifold.',
+  // 制式无人机永久图纸（2026-09-26 船长令）：四条永久 · 100 架/批（机型译名与 `EN_ITEMS` 的无人机条目同源）
+  'bp-drone-scout': 'Hummingbird Scout Drone plans: 100 drones per batch; kinetic bursts, the highest evasion and the thinnest armor.',
+  'bp-drone-assault': 'Redkite Combat Drone plans: 100 drones per batch; explosive strikes, the balanced workhorse of the swarm.',
+  'bp-drone-heavy': 'Falcon Siege Drone plans: 100 drones per batch; energy pulses, the most HP and the lowest evasion.',
+  'bp-drone-sentry': 'Thundergull Sentry Drone plans: 100 drones per batch; a heavy energy battery with very long reach and hits that fall off with distance.',
   'bp-laser-1': 'An energy beam focusing chamber; lens coating and heat sink decide the beam purity.',
   'bp-laser-2': 'A reinforced energy beam focusing chamber: longer reach, heavier shots.',
   'bp-laser-3': 'The top-grade energy beam focusing chamber: range and penetration cap out the laser line.',

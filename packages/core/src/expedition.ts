@@ -287,7 +287,7 @@ function maybeFireTravelEvent(state: GameState, ctx: SimContext): void {
 function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEventDef): void {
   const effect = eventDef.effect
   if (effect.kind === 'none') {
-    addLog(state, 'info', eventDef.text)
+    addLog(state, 'event', eventDef.text)
     return
   }
   if (effect.kind === 'isk') {
@@ -304,7 +304,7 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
       return
     }
     addItem(state, effect.itemId, effect.units)
-    addLog(state, 'info', `${eventDef.text}（获得 ${def.name}×${effect.units}）`)
+    addLog(state, 'event', `${eventDef.text}（获得 ${def.name}×${effect.units}）`)
   }
 }
 
@@ -432,7 +432,7 @@ export function startExpedition(
   const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
   addLog(
     state,
-    'info',
+    'combat',
     `⚔ 远征开始（${outName}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。`,
   )
   // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
@@ -493,7 +493,7 @@ export function startExpeditionFromMining(
   const shipName = shipDisplayName(state, ctx, state.shipId)
   addLog(
     state,
-    'warn',
+    'industry',
     `采矿已结束（${shipName} 转战悬赏「${opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name}」）：离开「${beltName}」${trip > 0 ? `——本趟采得的 ${trip} 单位${ore?.name ?? ''}仍在船上` : '（本趟尚无收获）'}，记得回港卸货。`,
   )
   return startExpedition(state, anomalyId, ctx, opts)
@@ -550,7 +550,7 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : ''
   addLog(
     state,
-    'info',
+    'combat',
     `⚔ 抵达目标（${targetName}）：进入交火。${hasTurret ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}` +
       (exp.lairTier ? '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）' : ''),
   )
@@ -746,7 +746,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         `入侵残骸沉积 ${wreckNow.toFixed(1)}（本场 +${wreckInjected.toFixed(1)}）`
       : `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootPart}${dronePart}${repairPart}${dcPart}，${standPart}` +
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`
-    addLog(state, 'trade', winText)
+    addLog(state, 'combat', winText)
     captureBattleReport(state, battle, { source: 'expedition', outcome: 'win', summary: winText })
     // 赏金任务·窝点结算（2026-09-10 船长定，排在战报之后）：①稀有残骸投放该星系残骸场
     // （按敌群记账、打捞必得）②命中本板该条赏金任务 → 酬金入账 + 下板 + 引导文案。
@@ -803,14 +803,14 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       // 本地悬赏（2026-09-08 船长定）：目标星系即返航基准 → 固定返港段 120s，防零航程白刷
       addLog(
         state,
-        'info',
+        'combat',
         '战果已入账：舰队返港中（本地悬赏返航段约 2 分钟，胜利返航不可召回）。',
         'core.expedition.026',
       )
     } else {
       addLog(
         state,
-        'info',
+        'combat',
         `战果已入账：舰队自动返航「${baseName}」（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——到站自动卸货入仓库，可维修或让重复清剿自动续打。`,
       )
     }
@@ -835,7 +835,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       const abandonRepair = repairUsageText(battle, ctx)
       const abandonDc = dcUsageText(battle, ctx)
       const abandonText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}${abandonDc.length > 0 ? `，${abandonDc}` : ''}）……`
-      addLog(state, 'warn', abandonText)
+      addLog(state, 'combat', abandonText)
       // 战报（2026-09-14）：弃船 = 我方全灭那一档 ⇒ `lose`；沉船名单走推导（三层血已归零）
       captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: abandonText })
       loseShip(
@@ -865,7 +865,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const loseRepair = repairUsageText(battle, ctx)
     const loseDc = dcUsageText(battle, ctx)
     const loseText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${loseDc.length > 0 ? `${loseDc}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`
-    addLog(state, 'warn', loseText)
+    addLog(state, 'combat', loseText)
     // 战报（2026-09-14）：走到这里就是"打输了、船没沉"⇒ `lose`（沉船那一支在上面 return 了）
     captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: loseText })
   }
@@ -880,7 +880,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   exp.returnAtGameMs = endAtD
   const retD = returnBackMs(state, ctx, anomaly.galaxyId)
   exp.finishAtGameMs = endAtD + (retD.ms > 0 ? retD.ms : exp.outMs * RETURN_LEG_MUL)
-  addLog(state, 'info', '舰队开始返航（去程时间并入返航）。', 'core.expedition.027')
+  addLog(state, 'fleet', '舰队开始返航（去程时间并入返航）。', 'core.expedition.027')
 }
 
 /**
@@ -981,7 +981,7 @@ function settleBattleRetreat(
     if (hit?.floored) {
       addLog(
         state,
-        'warn',
+        'combat',
         mode === 'timeout'
           ? '⚠ 超时撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
           : mode === 'auto'
@@ -1024,7 +1024,7 @@ function settleBattleRetreat(
           // 2026-09-12 合并：主树「手动撤退 = **立刻回港**」的新文案（本块两侧各改一处 ⇒ 并集）
           // 2026-09-15 船长「删除撤离费」⇒ 四档文案一律去掉「维修花去 N 信用点」（钱包不再变动）
           : `⚔ 撤退（${targetName}）：${shipName} 主动脱离交火（交火 ${durTxt}）——${dmgTxt}，即刻回港。`
-  addLog(state, 'warn', retreatText)
+  addLog(state, 'combat', retreatText)
   /**
    * 战报（2026-09-14 船长定）：**四档里的「脱离」那一档** —— 这四种都是"没分出胜负就收场"
    * （结构撤退 / 打满上限超时 / 无法交战 / 玩家主动撤退），故 `outcome: 'break'`，
@@ -1050,7 +1050,7 @@ function settleBattleRetreat(
           : mode === 'cannot-engage'
             ? `重复清剿已停止（无法交战，已脱离）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
             : `重复清剿已停止（本场结构损失过半，自动撤退）——当前 装甲 ${armorPct}% / 结构 ${structPct}%。`
-    addLog(state, 'info', text)
+    addLog(state, 'combat', text)
     // 2026-09-10 船长定：除事件日志外，玩家在线时弹窗告知（心跳读取即清）
     if (mode === 'auto' || mode === 'cannot-engage') state.autoLoopStopNotice = text
   }
@@ -1069,12 +1069,12 @@ function settleBattleRetreat(
   // 自动撤退（结构损失过半）与超时判负仍按原口径返航（"被迫撤离，正在返航"）。
   if (mode === 'manual') {
     exp.finishAtGameMs = endAtR
-    addLog(state, 'info', '舰队脱离战场，即刻返回最近的空间站。', 'core.expedition.028')
+    addLog(state, 'combat', '舰队脱离战场，即刻返回最近的空间站。', 'core.expedition.028')
     return
   }
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
   exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * RETURN_LEG_MUL)
-  addLog(state, 'info', '舰队脱离战场，自动返航（去程时间并入返航）。', 'core.expedition.029')
+  addLog(state, 'combat', '舰队脱离战场，自动返航（去程时间并入返航）。', 'core.expedition.029')
 }
 
 /** 弃船概率（沿用旧公式；power 用火力指数） */export function abandonChance(
@@ -1198,7 +1198,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
     const unloadedNote = moved > 0 ? `货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : ''
     addLog(
       state,
-      'info',
+      'combat',
       wasVictoryReturn
         ? siteName
           ? `悬赏战果已携回「${siteName}」并自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）——可维修或补给后再次出击。`
@@ -1246,7 +1246,7 @@ export function recallExpedition(state: GameState, ctx: SimContext): CommandResu
   const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
   addLog(
     state,
-    'warn',
+    'fleet',
     `远征已召回：舰队中止前往「${name}」并返回母港（无战果）${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
   )
   return { ok: true }
@@ -1358,14 +1358,14 @@ export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: 
   state.autoLoopAnomalyId = anomalyId
   if (anomalyId === null) {
     state.autoLoopDroneFloor = null
-    addLog(state, 'info', '重复清剿已停止。', 'core.state.008')
+    addLog(state, 'combat', '重复清剿已停止。', 'core.state.008')
   } else {
     state.autoLoopDroneFloor = null // 重新开环 ⇒ 清掉上一轮的机群前置记账
     const def = ctx.anomalies.get(anomalyId)
     const name = def?.name ?? anomalyId
     addLog(
       state,
-      'info',
+      'combat',
       `重复清剿已开启：「${name}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。`,
       'core.expedition.031',
       { p1: name },
@@ -1384,7 +1384,7 @@ function stopAutoLoopReason(state: GameState, reason: string, droneFloor: number
   const armorPct = Math.round((fs?.armorPct ?? 1) * 100)
   const structPct = Math.round((fs?.durability ?? 1) * 100)
   const text = `重复清剿已暂停：${reason}（当前 装甲 ${armorPct}% / 结构 ${structPct}%）`
-  addLog(state, 'warn', text)
+  addLog(state, 'combat', text)
   state.autoLoopStopNotice = text
 }
 
@@ -1544,7 +1544,7 @@ function stopAutoLoopInvasion(state: GameState, reason: string): void {
   const armorPct = Math.round((fs?.armorPct ?? 1) * 100)
   const structPct = Math.round((fs?.durability ?? 1) * 100)
   const text = `重复出击已暂停：${reason}（当前 装甲 ${armorPct}% / 结构 ${structPct}%）`
-  addLog(state, 'warn', text)
+  addLog(state, 'combat', text)
   state.autoLoopStopNotice = text
 }
 
@@ -1556,7 +1556,7 @@ export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId:
   const ev = state.weekendEvent
   if (galaxyId === null) {
     if (ev) delete ev.autoLoopGalaxyId
-    addLog(state, 'info', '重复出击已停止。', 'core.weekend.034')
+    addLog(state, 'combat', '重复出击已停止。', 'core.weekend.034')
     return { ok: true }
   }
   if (!ev || ev.endedAtWallMs !== undefined) {
@@ -1568,13 +1568,13 @@ export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId:
   if (state.autoLoopAnomalyId !== null) {
     state.autoLoopAnomalyId = null
     state.autoLoopDroneFloor = null
-    addLog(state, 'info', '已停止常驻悬赏的重复清剿——改跑入侵重复出击。', 'core.weekend.032')
+    addLog(state, 'combat', '已停止常驻悬赏的重复清剿——改跑入侵重复出击。', 'core.weekend.032')
   }
   ev.autoLoopGalaxyId = galaxyId
   const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   addLog(
     state,
-    'info',
+    'combat',
     `重复出击已开启：「${name}」的入侵舰队，每场重抽一支；该星系被夺回或活动结束时自动停止。`,
     'core.weekend.033',
     { p1: name },

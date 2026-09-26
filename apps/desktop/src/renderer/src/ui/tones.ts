@@ -136,6 +136,7 @@ export const ICO_TONES: Record<string, string> = {
   'fam-d': toneVar('fam-d'),
   'fam-e': toneVar('fam-e'),
   'fam-g': toneVar('fam-g'),
+  'fam-h': toneVar('fam-h'),
   'ico-home': toneVar('ico-home'),
   'ico-lock': toneVar('ico-lock'),
   'ico-clock': toneVar('ico-clock'),

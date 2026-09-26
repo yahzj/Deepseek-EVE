@@ -591,7 +591,7 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   state.wormholeAuto = [...wormholeAutoRunsOf(state), run]
   addLog(
     state,
-    'info',
+    'fleet',
     `🛰 自动探索队出发：${WORMHOLE_ARCHETYPE_LABELS[wormholeRunMeta(run).archetype]} · ${picked.length} 条舰（${picked.map((id) => shipNameOf(state, ctx, id)).join('、')}）` +
       `——约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航（每次自动探索占 1 枚 AI 核心）。`,
   )
@@ -618,7 +618,7 @@ export function wormholeAutoStop(state: GameState, runId: string): CommandResult
   const run = runs.find((r) => r.id === runId)
   if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
   state.wormholeAuto = runs.filter((r) => r.id !== runId)
-  addLog(state, 'info', '🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。')
+  addLog(state, 'fleet', '🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。')
   return { ok: true }
 }
 
@@ -823,7 +823,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     : `谜质科技：残骸线 ×${tf.wreck.toFixed(2)} · 母矿线 ×${tf.ore.toFixed(2)} · 损伤 ×${tf.damage.toFixed(2)}。`
   addLog(
     state,
-    'info',
+    'fleet',
     `🛰 自动探索队返航：带回 ${gainText}（已入仓库）${coreText}；损伤：${dmgText}。${techText}` +
       `${run.shipIds.length} 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。`,
   )

@@ -107,14 +107,14 @@ export function renameShip(state: GameState, uid: string, name: string | null): 
   if (name === null) {
     if (entry.customName === null) return { ok: false, error: '该船用的就是默认名。', errorId: 'core.shipyard.002' }
     entry.customName = null
-    addLog(state, 'info', '已恢复默认船名。', 'core.shipyard.015')
+    addLog(state, 'fleet', '已恢复默认船名。', 'core.shipyard.015')
     return { ok: true }
   }
   const trimmed = name.trim()
   if (trimmed.length === 0) return { ok: false, error: '船名不能为空。', errorId: 'core.shipyard.003' }
   if ([...trimmed].length > 10) return { ok: false, error: '船名最多 10 个字。', errorId: 'core.shipyard.004' }
   entry.customName = trimmed
-  addLog(state, 'info', `该船已命名为「${trimmed}」。`, 'core.shipyard.016', { p1: trimmed })
+  addLog(state, 'fleet', `该船已命名为「${trimmed}」。`, 'core.shipyard.016', { p1: trimmed })
   return { ok: true }
 }
 
@@ -203,7 +203,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
     state.shipReturns[oldShip] = { beltId: null, legMs: remainMs, phaseAccMs: 0, reason: 'expedition' }
     if (state.autoLoopAnomalyId !== null) {
       state.autoLoopAnomalyId = null
-      addLog(state, 'info', '重复清剿已停止（返航中切换驾驶）。', 'core.state.009')
+      addLog(state, 'combat', '重复清剿已停止（返航中切换驾驶）。', 'core.state.009')
     }
     exp.active = false
     exp.anomalyId = null
@@ -213,7 +213,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
     exp.returnReason = undefined
     addLog(
       state,
-      'info',
+      'fleet',
       `远征返航转旧船善后：${oldName} 约 ${Math.max(1, Math.round(remainMs / 1000))} 秒后到港并自动卸货入仓库（战果已在交火结算时入账）。`,
       'core.shipyard.017',
       { p1: oldName, p2: Math.max(1, Math.round(remainMs / 1000)) },
@@ -234,7 +234,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
     cancelAiTask(state, shipId, ctx)
   }
   state.shipId = shipId
-  addLog(state, 'info', `已切换到驾驶 ${shipDisplayName(state, ctx, shipId)}。`, 'core.shipyard.018', {
+  addLog(state, 'fleet', `已切换到驾驶 ${shipDisplayName(state, ctx, shipId)}。`, 'core.shipyard.018', {
     p1: shipDisplayName(state, ctx, shipId),
   })
   return { ok: true }
@@ -280,7 +280,7 @@ export function retireMiningShip(state: GameState, ctx: SimContext): boolean {
   m.rvLeft = 0 // 换船即离开矿带作业：红利窗口清零
   addLog(
     state,
-    'info',
+    'industry',
     `采矿已随换船结束：${shipName} 从「${beltName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
     'core.shipyard.019',
     {
@@ -333,14 +333,19 @@ export function loseShip(
         reinforceChance: reinforceChanceOfFitted(doomed?.fitted, ctx),
         createdAtWallMs: state.wallMs,
       })
-      addLog(state, 'warn', `${display} 的残骸留在 ${ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId}（48 小时内可打捞）。`, 'core.shipyard.033', {
+      /**
+       * ⚠ **档位 = `fleet`**（**2026-09-26 合并时对齐一号的分类**）：本条与上面那条「已损毁，货仓与装备
+       * 一并遗失」（`core.shipyard.020`）是同一件事的两句，「事件日志重新分类」那批把**舰船事件统一归
+       * `fleet`** ⇒ 本条跟着归 `fleet`，不让同一件事的两句落进两个页签。
+       */
+      addLog(state, 'fleet', `${display} 的残骸留在 ${ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId}（48 小时内可打捞）。`, 'core.shipyard.033', {
         p1: display,
         p2: ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId,
       })
     }
   }
   delete state.fleet[shipId]
-  addLog(state, 'warn', `${reason}：${display} 已损毁，船上的货仓与装备一并遗失。`, 'core.shipyard.020', {
+  addLog(state, 'fleet', `${reason}：${display} 已损毁，船上的货仓与装备一并遗失。`, 'core.shipyard.020', {
     p1: reason,
     p2: display,
   })
@@ -404,7 +409,7 @@ export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
       state.shipId = mate
       addLog(
         state,
-        'info',
+        'combat',
         '主控在虫洞里战沉——已由同队的 ' + shipDisplayName(state, ctx, mate) + ' 在洞内接任主控。',
         'core.shipyard.021',
         { p1: shipDisplayName(state, ctx, mate) },
@@ -417,7 +422,7 @@ export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
     state.shipId = idle
     addLog(
       state,
-      'info',
+      'fleet',
       wasBusy
         ? '驾驶中的舰船正被 AI 执勤占用——已自动改派驾驶 ' + shipDisplayName(state, ctx, idle) + '。'
         : '舰队里找不到正在驾驶的舰船——已自动改派驾驶 ' + shipDisplayName(state, ctx, idle) + '。',
@@ -429,7 +434,7 @@ export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
   state.shipId = addShipToFleet(state, DEFAULT_START_SHIP_ID)
   addLog(
     state,
-    'info',
+    'fleet',
     '协会补助：一艘全新的沙猫级采矿艇已停靠机库（保底舰船；其余舰船正被 AI 执勤占用或已全损）。',
     'core.shipyard.024',
   )
@@ -652,7 +657,7 @@ export function repairWithKitsFor(
       .join('、')
     addLog(
       state,
-      'info',
+      'fleet',
       `自动使用修理组件 ×${used}（${kinds}）：${shipDisplayName(state, ctx, shipId)} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
       'core.shipyard.026',
       {
@@ -750,7 +755,7 @@ export function useOneRepairKit(state: GameState, ctx: SimContext): CommandResul
   bumpFirst(state, 'repairs')
   addLog(
     state,
-    'info',
+    'fleet',
     `✚ 使用 ${def.name} ×1：${shipName} 结构恢复至 ${Math.round(fleetShip.durability * 100)}%、装甲 ${Math.round((fleetShip.armorPct ?? 1) * 100)}%。`,
     'core.shipyard.027',
     {
@@ -772,7 +777,7 @@ export function lockShip(state: GameState, shipId: string, locked: boolean, ctx:
       return { ok: false, error: `${name} 已处于锁定状态。`, errorId: 'core.shipyard.013', errorParams: { p1: name } }
     }
     state.shipLocks[shipId] = true
-    addLog(state, 'info', `已锁定 ${name}：此船不可移入舰船仓库（可随时在舰船页解锁）。`, 'core.shipyard.028', {
+    addLog(state, 'fleet', `已锁定 ${name}：此船不可移入舰船仓库（可随时在舰船页解锁）。`, 'core.shipyard.028', {
       p1: name,
     })
   } else {
@@ -780,7 +785,7 @@ export function lockShip(state: GameState, shipId: string, locked: boolean, ctx:
       return { ok: false, error: `${name} 当前未锁定。`, errorId: 'core.shipyard.014', errorParams: { p1: name } }
     }
     delete state.shipLocks[shipId]
-    addLog(state, 'info', `已解锁 ${name}：恢复可移入舰船仓库。`, 'core.shipyard.029', { p1: name })
+    addLog(state, 'fleet', `已解锁 ${name}：恢复可移入舰船仓库。`, 'core.shipyard.029', { p1: name })
   }
   return { ok: true }
 }
@@ -863,7 +868,7 @@ export function storeShip(
   state.shipStore[defId] = shipStoredCount(state, defId) + 1
   addLog(
     state,
-    'info',
+    'fleet',
     check.named === true
       ? `${name} 已移入舰船仓库（自定义名随之清除）：仓库现有 ${state.shipStore[defId]} 艘。`
       : `${name} 已移入舰船仓库：仓库现有 ${state.shipStore[defId]} 艘。`,
@@ -884,7 +889,7 @@ export function unstoreShip(state: GameState, defId: string, ctx: SimContext): C
   const uid = addShipToFleet(state, defId)
   // ⚠ 2026-09-18 修：这一行原先误放在"从舰船仓库转入舰队"这条路径上——**这不是"造出"**，
   //   「第一次造船」的计数改落在 `manufacturing.ts` 的造船交付处（与 `firstShipBuilt` 同一处）。
-  addLog(state, 'info', `${shipDisplayName(state, ctx, uid)} 已从舰船仓库转入舰队（机库）。`, 'core.shipyard.032', {
+  addLog(state, 'fleet', `${shipDisplayName(state, ctx, uid)} 已从舰船仓库转入舰队（机库）。`, 'core.shipyard.032', {
     p1: shipDisplayName(state, ctx, uid),
   })
   return { ok: true }

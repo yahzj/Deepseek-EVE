@@ -97,7 +97,7 @@ export function wormholeSpawnAfterTurns(state: GameState, turns: number): Wormho
      * 不再置"待迎战"标记、也不弹确认条——交火由引擎每拍自动开（见 `wormholeBattle.advanceWormhole`
      * 里的 `hasLiveFoe(脚下格) ⇒ wormholeStartBattle('spawn')`）。
      */
-    addLog(state, 'warn', '🕳 围剿者扑到你所在的位置：交火开始。', 'core.wormholeSpawn.001')
+    addLog(state, 'combat', '🕳 围剿者扑到你所在的位置：交火开始。', 'core.wormholeSpawn.001')
   }
   return { spawned, ambush, ...(lastKey !== undefined ? { lastKey } : {}) }
 }

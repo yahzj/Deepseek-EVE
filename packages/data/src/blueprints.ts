@@ -41,8 +41,11 @@ export const BLUEPRINT_PRICE_STEP = 500
  * 则允许覆盖默认值**」）：键 = 蓝图 id，值 = 覆盖书价 + 理由。
  * 只放"有意偏离系数"的个例；`content-check` 会校验键必须是真实蓝图、且两处价必须等于覆盖价。
  *
- * **现存 6 条 = 弹药蓝图**（船长同日复核：「**弹药蓝图回滚到 1.5 倍，其他保持不变**」）：
- * 弹药线维持 2026-09-09「补给线 ×1.5」那批的落账原值（6 张全数入表，故弹药书价不随系数漂移）。
+ * **现存 6 条 = 弹药蓝图**，其中两段口径不同：
+ * - **基础弹 3 条（常驻）**：2026-09-09「补给线 ×1.5」那批的冻结落账原值
+ *   （船长 2026-09-11 复核「**弹药蓝图回滚到 1.5 倍，其他保持不变**」⇒ 不随系数漂移）；
+ * - **弹药 MK2 3 条（奇货）**：**2026-09-26 船长令改判** ⇒ 书价 = **100 批（12,000 发）的货值**
+ *   （原「单批 ×1.5」的 2026-09-09 冻结值作废；见下方那三条的注释）。
  * 修理组件蓝图与之无关（船长：「其他保持不变」⇒ 走系数默认值）。
  */
 export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {
@@ -50,10 +53,12 @@ export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number;
   'bp-ammo-kinetic': { price: 1_350, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
   'bp-ammo-explosive': { price: 1_650, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
   'bp-ammo-plasma': { price: 1_950, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
-  // 弹药 MK2（奇货书）：2026-09-09 原值（＝当时「现价 ×1.5」的落账值 9k/12.75k/18k）
-  'bp-ammo-kinetic-2': { price: 9_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
-  'bp-ammo-explosive-2': { price: 12_750, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
-  'bp-ammo-plasma-2': { price: 18_000, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
+  // 弹药 MK2（奇货书）：**2026-09-26 船长令**「MK2图纸价格按照一百批弹药的倍率乘上去」＋
+  // 「不是市场订单，是我描述错误，是100批，12000发」＋「不套无人机，就是单纯MK2弹药」＋「按你推荐」
+  // ⇒ 书价 = **100 批（12,000 发）的货值**（旧值 9,000/12,750/18,000 = 单批 ×1.5 的 2026-09-09 冻结值作废）。
+  'bp-ammo-kinetic-2': { price: 540_000, reason: '2026-09-26 船长令：MK2 弹药书价 = 100 批（12,000 发）货值（动能 45/发）' },
+  'bp-ammo-explosive-2': { price: 720_000, reason: '2026-09-26 船长令：MK2 弹药书价 = 100 批（12,000 发）货值（爆破 60/发）' },
+  'bp-ammo-plasma-2': { price: 960_000, reason: '2026-09-26 船长令：MK2 弹药书价 = 100 批（12,000 发）货值（能量 80/发）' },
   // 高级零件蓝图（2026-09-20 船长定：「所有零件及其蓝图都在常驻市场有出售，但是高级零件蓝图需要1000W」）：
   'bp-part-drone-neural': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
   'bp-part-shield-gen': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
@@ -335,7 +340,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-nocxium', count: 33 }], // 2,970 信用点 ≈ 5,400×0.55
     buildSeconds: 10,
     buildCostIsk: 90,
-    priceIsk: 9_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
+    priceIsk: 540_000, // 2026-09-26 船长令：= 100 批（12,000 发 × 45）货值（登记于 BLUEPRINT_PRICE_OVERRIDES）
     description: '动能弹药 MK2 图纸：120 发/批，对护盾 ×1.5、对装甲 ×0.75。',
   },
   {
@@ -346,7 +351,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-isotope', count: 72 }], // 3,960 信用点 ≈ 7,200×0.55
     buildSeconds: 10,
     buildCostIsk: 120,
-    priceIsk: 12_750, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
+    priceIsk: 720_000, // 2026-09-26 船长令：= 100 批（12,000 发 × 60）货值
     description: '爆破弹药 MK2 生产线图纸，120 发/批，对装甲 ×1.5、对护盾 ×0.75。',
   },
   {
@@ -357,7 +362,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     materials: [{ itemId: 'min-starcore', count: 22 }], // 5,390 信用点 ≈ 9,600×0.56
     buildSeconds: 10,
     buildCostIsk: 160,
-    priceIsk: 18_000, // 弹药线维持 2026-09-09「×1.5」口径原值（登记于 BLUEPRINT_PRICE_OVERRIDES）
+    priceIsk: 960_000, // 2026-09-26 船长令：= 100 批（12,000 发 × 80）货值
     description: '能量弹药 MK2 生产线图纸，120 发/批，对护盾 ×1.25、对甲/结构 ×1。',
   },
   /* ═══ 修理组件蓝图（2026-09-05 P2 定稿：材料≈市价 55% 锚，参数可调） ═══ */
@@ -409,6 +414,83 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 1_200,
     priceIsk: 1_000_000,
     description: '损管修理组件图纸，应急损管修复剂封装，3 个/批。',
+  },
+  /* ═══ 制式无人机永久图纸（**2026-09-26 船长令**：「**给官方的无人机添加永久图纸，放入稀有订单档**」
+   *   ＋「**书价应该参考弹药的书价格，因为都是消耗品**」＋「**按照100架的批次**」
+   *   ＋「**MK2图纸价格按照一百单弹药的倍率乘上去**」）═══
+   *
+   * **书价口径（照弹药线反推，可复核）**：弹药 MK2 一张单 1~3 发 ⇒ **100 单 ≈ 200 发 × 45 = 9,000**
+   * = 它的书价（基础弹同理：200 发 × 7 ≈ 1,400，书上冻结值 1,350）⇒ **倍率 = 一单货值 × 2**。
+   * 本批四条因此 = **一单（100 架）货值 ×2 = 200 架货值**，恰好与 `blueprintTierCoefOf` 的
+   * 「民用/基础档 ×2」同值 ⇒ **无需登记 `BLUEPRINT_PRICE_OVERRIDES`**（口径未偏离机械规则）。
+   * 回本节奏也与弹药线同档：自己造一单省 ≈0.5 单货值 ⇒ 书价 = 2 单货值 ⇒ **约 4 单回本**（弹药 MK2 为 3.7 单）。
+   *
+   * **材料**全取自精炼闭环（矿物 + 零件），料/价锚 **≈0.50**（消耗品锚，弹药线为 0.53~0.57）。
+   * ⚠ 一单 100 架的体积：蜂鸟 500 m³ · 赤鸢 1,000 · 猎鹰 2,000 · 雷鸥 4,000 m³。
+   * 渠道见 `marketCatalog` 的稀有订单段（`rarity: 'rare'` · 数字档 2 = 大众）。
+   */
+  {
+    id: 'bp-drone-scout',
+    name: '蜂鸟侦察无人机图纸',
+    itemId: 'drone-scout',
+    outputUnits: 100,
+    materials: [
+      { itemId: 'min-tritanium', count: 3_500 }, // 8/单位 ⇒ 28,000
+      { itemId: 'min-pyerite', count: 1_200 }, // 12/单位 ⇒ 14,400
+      { itemId: 'part-circuit', count: 27 }, // 95/单位 ⇒ 2,565
+    ], // 合计 44,965 = 一单货值 90,000（900 ×100 架）×0.50
+    buildSeconds: 180,
+    buildCostIsk: 1_200,
+    priceIsk: 180_000, // = 一单货值 ×2（200 架货值）
+    description: '蜂鸟侦察无人机图纸：100 架/批，动能点射。',
+  },
+  {
+    id: 'bp-drone-assault',
+    name: '赤鸢战斗无人机图纸',
+    itemId: 'drone-assault',
+    outputUnits: 100,
+    materials: [
+      { itemId: 'min-tritanium', count: 7_000 }, // 56,000
+      { itemId: 'min-pyerite', count: 3_000 }, // 36,000
+      { itemId: 'part-circuit', count: 190 }, // 18,050
+    ], // 合计 110,050 = 一单货值 220,000（2,200 ×100 架）×0.50
+    buildSeconds: 180,
+    buildCostIsk: 2_600,
+    priceIsk: 440_000,
+    description: '赤鸢战斗无人机图纸：100 架/批，高爆打击。',
+  },
+  {
+    id: 'bp-drone-heavy',
+    name: '猎鹰攻坚无人机图纸',
+    itemId: 'drone-heavy',
+    outputUnits: 100,
+    materials: [
+      { itemId: 'min-tritanium', count: 12_000 }, // 96,000
+      { itemId: 'min-pyerite', count: 7_000 }, // 84,000
+      { itemId: 'min-mexallon', count: 1_500 }, // 30,000
+      { itemId: 'part-drone-neural', count: 43 }, // 39,990
+    ], // 合计 249,990 = 一单货值 500,000（5,000 ×100 架）×0.50
+    buildSeconds: 270,
+    buildCostIsk: 5_500,
+    priceIsk: 1_000_000,
+    description: '猎鹰攻坚无人机图纸：100 架/批，能量脉冲、机体最硬。',
+  },
+  {
+    id: 'bp-drone-sentry',
+    name: '雷鸥哨戒无人机图纸',
+    itemId: 'drone-sentry',
+    outputUnits: 100,
+    materials: [
+      { itemId: 'min-tritanium', count: 20_000 }, // 160,000
+      { itemId: 'min-pyerite', count: 12_000 }, // 144,000
+      { itemId: 'min-mexallon', count: 4_000 }, // 80,000
+      { itemId: 'part-qchip', count: 100 }, // 70,000
+      { itemId: 'part-lens', count: 100 }, // 19,000
+    ], // 合计 473,000 = 一单货值 950,000（9,500 ×100 架）×0.50
+    buildSeconds: 360,
+    buildCostIsk: 9_500,
+    priceIsk: 1_900_000,
+    description: '雷鸥哨戒无人机图纸：100 架/批，重型能量炮组、航程极远。',
   },
   /* ═══ 损伤管制装置 MK1~MK3 蓝图（2026-09-25 船长令）═══
    * 材料 = 以 `bp-armor-kin-3`（低槽稀有 · 产物 194 万 · 材料≈产物价×0.40）为参照**按价格比例缩放**
