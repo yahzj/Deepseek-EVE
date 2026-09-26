@@ -156,6 +156,24 @@ export const ICO_TONES: Record<string, string> = {
   'ico-tact': toneVar('ico-tact'),
 }
 
+/**
+ * **取色调（跨表兜底）**（2026-09-26 修 · 船长报障「**手册内的势力都是一个颜色的**」）。
+ *
+ * 症状与真因：手册的卡片统一走 `toneOf(glyph)` 取色，而 `toneOf()` **只查 `TONES`**（物品/装备/分组那 83 条）。
+ * 图标键落在 `ICO_TONES`（`fam-*` 族徽 / `ico-*`）或 `NAV_TONES`（`nav-*`）的卡片就会**静默取到兜底灰**：
+ *   · 势力图鉴六张势力卡的 glyph = 族徽 `fam-a/c/d/e/g/h` ⇒ **六张卡同一个灰色**（就是船长看到的那样）；
+ *   · 势力详情里的敌人卡 = `ico-tact` ⇒ 同灰；
+ *   · 左上角族徽角标的内联色 = `toneOf('fam-x')` ⇒ 也灰（还**压掉**了 `.app-map-famchip.is-fam-X` 的类色）。
+ *
+ * 本函数按 **TONES → ICO_TONES → NAV_TONES** 顺次查，三张表都没有才回落 `--wui-dim`：
+ * 对物品/装备键的行为与 `toneOf()` **逐字一致**（`TONES` 仍是第一顺位），只是不再让另外两张表的键掉进灰兜底。
+ * 族色本身仍是单点：`FOE_ACCENT`（见下）＝ `toneVar('A'..'H')`，与星图族标签、战场敌舰同源。
+ */
+export function toneOfAny(key: string | undefined): string {
+  if (!key) return 'rgb(var(--wui-dim))'
+  return TONES[key] ?? ICO_TONES[key] ?? NAV_TONES[key] ?? 'rgb(var(--wui-dim))'
+}
+
 /** FOE_ACCENT（8 条；H = 墨潮帮 · 2026-09-24 新增，**仍是红色系**（船长令）但比 A 族深/暗一档） */
 export const FOE_ACCENT: Record<string, string> = {
   A: toneVar('A'),

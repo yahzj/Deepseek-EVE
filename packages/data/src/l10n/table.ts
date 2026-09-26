@@ -2680,7 +2680,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.245": { zh: "目前没有任何可执行线索，完成方法未知。", en: "There is no actionable lead yet, and how it ends is unknown." },
   "ui.Handbook.246": { zh: "耗时", en: "Time taken" },
   "ui.Handbook.247": { zh: "约 {p1} 分钟（受工业理论缩短）", en: "about {p1} minutes (shortened by Industrial Theory)" },
-  "ui.Handbook.248": { zh: "点击窗口外部任意位置关闭", en: "Click anywhere outside the window to close it" },
+  "ui.Handbook.248": { zh: "点击窗口外部任意位置关闭，或按 Esc 键", en: "Click anywhere outside the window to close it, or press Esc" },
   "ui.Handbook.249": { zh: "舰船 · {p1}", en: "Ships · {p1}" },
   "ui.Handbook.250": { zh: "精炼（产出倍率 100%）→", en: "Refining (output multiplier 100%) →" },
   "ui.Handbook.251": { zh: "材料", en: "Materials" },

@@ -10,19 +10,20 @@
  * - 图标为统一科幻线性 SVG（Glyphs.tsx），按内容体系映射并带分类色调；
  * - 网格模式下点击卡片 → 弹出详情窗（完整字段）；点击窗口外任意位置关闭；列表视图保留完整字段。
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ITEM_KIND_ORDER, itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
 import type { BlueprintDef, DamageType, DroneClass, FoeShipDef, ItemKind, ModuleDef, ShipBlueprintDef, ShipDef, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
-import { buildFactionCards, factionOfExclusive, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
+import { buildFactionCards, factionOfExclusive, FACTION_CODEX, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
 import type { FactionCard } from '@whale/data'
 // 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
 // （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
 import { handMarketKeyOf } from '../ui/marketJump'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
-import { Glyph, partToneKeyOf, toneOf } from '../ui/Glyphs'
+import { Glyph, partToneKeyOf } from '../ui/Glyphs'
+import { FOE_ACCENT, toneOfAny } from '../ui/tones'
 import {
   BLUEPRINT_SUBS,
   CONTAINER_SUBS,
@@ -143,6 +144,9 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
       key: e.id,
       tab: 'foe',
       glyph: e.seen ? 'ico-tact' : 'signal-lost',
+      /* 已遭遇的敌舰卡：**按本势力族色**（同一条船长令）——它们此前走 `toneOf('ico-tact')` 也是灰的；
+         未遭遇的**有意留灰**（配合「信号不良」图形与「？？？」＝"还没见过它"）。 */
+      ...(ship !== undefined ? { tone: FOE_ACCENT[family] } : {}),
       name: e.seen ? (ship?.name ?? e.id) : tr('ui.codex.005'),
       sub,
       raw: (ship ?? { id: e.id, name: e.id, hullClassTier: 1, split: { s: 0, a: 0, h: 0 } }) as unknown as RawData,
@@ -168,6 +172,13 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
   return (
     <Panel
       title={`${tr(card.nameId)} · ${tr('ui.codex.003', { p1: card.seenCount, p2: card.totalCount })}`}
+      /* 容器标题后面挂本族**族徽**（族色）——同一处族色单点 `FOE_ACCENT`，让"这块是谁的"在标题行就成立
+         （走 `Panel` 既有的 `hint` 槽：标题文字后面的标记位，不新增 CSS 类、不动面板结构） */
+      hint={
+        <span style={{ color: FOE_ACCENT[family], marginLeft: 6, verticalAlign: '-2px' }} aria-hidden="true">
+          <Glyph name={`fam-${family.toLowerCase()}`} size={13} color="currentColor" />
+        </span>
+      }
       right={<span className="app-dim">{card.unlocked ? tr('ui.codex.004') : tr('ui.codex.006')}</span>}
     >
       {/* ① 势力档案：四要素（文档 id = 基准 + 1 + 2k 标题 / + 2 + 2k 正文）——
@@ -745,6 +756,13 @@ interface GridCell {
    */
   tab: DetailTab
   glyph: string
+  /**
+   * **本卡的色调**（**2026-09-26 船长令**：「**手册内的势力都是一个颜色的，按照设定文档进行下染色**」）——
+   * 不传 = 按 `glyph` 走 `toneOfAny()`；传了就用它（势力卡与势力详情里的敌人卡传 `FOE_ACCENT[族]`）。
+   * ⚠ 族色单点是 `ui/tones.ts` 的 `FOE_ACCENT`（＝ `toneVar('A'..'H')`，与星图族标签、战场敌舰同源），
+   * **不新造色板、不写死十六进制**。
+   */
+  tone?: string
   name: string
   sub: string
   /** 完整数据（详情窗用） */
@@ -843,18 +861,35 @@ function SignalLostIcon({ size = 30 }: { size?: number }) {
   )
 }
 
-function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) => void }) {
+/**
+ * 卡片网格（图鉴各页共用）。
+ *
+ * `selectedKey`（2026-09-26 优化批）：**势力图鉴用它标出"当前点开的是哪一张"**——下方窗口容器
+ * 显示的是某一张卡的详情，此前格子没有任何选中态，玩家点完看不出"我看的是哪一族"。
+ * 做法沿用本文件既有纪律：**内联样式、不新增 CSS 类**（避免动 `ui:layout-css` 生成件链路），
+ * 选中态 = 1px 内描边（`inset` 阴影 ⇒ **不占布局、不引起跳动**），描边色就是本卡的 `--tone`。
+ * 同时给 `aria-current`（"这组里的当前项"），键盘/读屏也能定位。
+ */
+function IconGrid({ cells, onPick, selectedKey }: { cells: GridCell[]; onPick: (c: GridCell) => void; selectedKey?: string }) {
   return (
     <div className="app-hand-grid">
       {cells.map((c) => {
-        const tone = toneOf(c.glyph)
+        /* 色调：显式 `tone` 优先（势力卡 / 势力详情敌人卡 = 族色），否则按图标键跨表取色
+           （`toneOfAny`：TONES → ICO_TONES → NAV_TONES）—— 详见 `ui/tones.ts` 的报障注释 */
+        const tone = c.tone ?? toneOfAny(c.glyph)
+        const selected = selectedKey !== undefined && c.key === selectedKey
         return (
           <button
             key={c.key}
             className="app-hand-cell"
             onClick={() => onPick(c)}
+            aria-current={selected ? 'true' : undefined}
             /* `position: relative`：族徽与稀有度两枚角标都绝对定位（内联样式，不新增 CSS 类） */
-            style={{ '--tone': tone, position: 'relative' } as React.CSSProperties}
+            style={{
+              '--tone': tone,
+              position: 'relative',
+              ...(selected ? { boxShadow: `inset 0 0 0 1px ${tone}` } : {}),
+            } as React.CSSProperties}
           >
             <span className="app-hand-cell-icon">
               {/**
@@ -879,14 +914,20 @@ function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) 
              * **族徽角标（左上角）**（**2026-09-26 船长令**：「**给所有位置势力专属的舰船和装备的图标
              * 卡片的左上角标注势力族徽**」）。
              * 与右上角那枚稀有度标签**同一套绝对定位语言**（`top/left: 3px` ＋ 小圆角 ＋ 同族色），
-             * 徽记用已有的 `fam-a/c/d/e/g/h` 线稿（`Glyph`），颜色走 `toneOf('fam-x')` —— 不自造图形与颜色。
-             * `aria-label` 给无障碍/探针一个可读的锚（「势力 X 专属」）。
+             * 徽记用已有的 `fam-a/c/d/e/g/h` 线稿（`Glyph`）。
+             *
+             * ⚠ **颜色取 `FOE_ACCENT[族]`（族色单点），不再用 `toneOf('fam-x')`**——那张表查不到
+             * `fam-*` 键、返回兜底灰，而且内联色会**压掉** `.app-map-famchip.is-fam-X` 的类色 ⇒
+             * 上一批实测这枚角标是灰的（族色没上上去）。顺带解决 **H 族（墨潮帮）没有 `is-fam-H` 类**
+             * 的历史缺口（走 FOE_ACCENT 后八个族一视同仁）。
+             * `aria-label` 用**势力全称**（`FACTION_CODEX` 的 `nameId`，随语言）而不是族字母——
+             * 读屏读「势力 A 专属」等于没读；同时守住"**不许只靠颜色传达信息**"（色盲/读屏照样拿到归属）。
              */}
             {c.crest !== undefined ? (
               <span
                 className={`app-map-famchip is-fam-${c.crest}`}
-                aria-label={`势力 ${c.crest} 专属`}
-                style={{ position: 'absolute', top: 3, left: 3, zIndex: 1, color: toneOf(`fam-${c.crest.toLowerCase()}`), pointerEvents: 'none' }}
+                aria-label={crestLabelOf(c.crest)}
+                style={{ position: 'absolute', top: 3, left: 3, zIndex: 1, color: FOE_ACCENT[c.crest] ?? tone, pointerEvents: 'none' }}
               >
                 <Glyph name={`fam-${c.crest.toLowerCase()}`} size={13} color="currentColor" />
               </span>
@@ -998,6 +1039,20 @@ function shipBlueprintCellOf(engine: GameEngine, bp: ShipBlueprintDef): GridCell
 function crestOfProduct(moduleId: string | undefined): string | undefined {
   const fam = moduleId !== undefined ? factionOfExclusive(moduleId) : undefined
   return fam ?? undefined
+}
+
+/**
+ * **族徽角标的可读名（单一入口）**：族字母 → 势力**全称**（`FACTION_CODEX` 的 `nameId`，随语言取词）。
+ *
+ * 用途有两个，都别绕开它：
+ *  ① **无障碍**：角标只给颜色的话，读屏与色盲玩家拿不到"这件是谁家的"（"不许只靠颜色传达信息"）；
+ *  ② **探针/契约**：族字母（A/C/D/E/G/H）不是玩家可见文案，**不许**漏进界面文本里。
+ * `FACTION_CODEX` 只收 A/C/D/E/G/H 六族，而 `factionOfExclusive` 恰好只会返回这六个 ⇒
+ * 兜底分支实际不可达，留 `fam` 字母只为"万一"（不新造文案 id）。
+ */
+function crestLabelOf(fam: string): string {
+  const entry = FACTION_CODEX[fam]
+  return entry === undefined ? fam : tr(entry.nameId)
 }
 
 /** 详情内容（按页签/数据类型给出完整字段） */
@@ -1249,14 +1304,29 @@ function CellDetail({
   /** 图鉴 → 市场（2026-09-14 船长）：传该条目在市场的商品键；**缺省 = 不渲染按钮**（无入口时也不假装能跳） */
   onGotoMarket?: (goodKey: string) => void
 }) {
-  const tone = toneOf(cell.glyph)
+  const tone = cell.tone ?? toneOfAny(cell.glyph)
   const marketKey = onGotoMarket ? marketKeyOf(engine, cell) : null
+  /**
+   * **Esc 关闭**（2026-09-26 优化批）：详情窗是 `role="dialog"` 的覆盖层，此前只有"点窗口外部"
+   * 一条关法 ⇒ 纯键盘走不通（全仓也没有全局 Esc 兜底，只有舰船页改名那处自己处理）。
+   * 挂 window 上的 keydown，卸载即摘；与遮罩点击走**同一个 `onClose`**，不新增第二条关闭路径。
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
   return (
     <div className="app-detail-mask" onClick={(e) => { e.stopPropagation(); onClose() }}>
       <div
         className="app-detail"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        /* 无障碍名 = 条目名（读屏进这条时先报"这是什么"）。`aria-modal` 不写：
+           本窗不抢焦点、也不锁外部交互，写了反而与"点外面即关"的实际行为不符。 */
+        aria-label={cell.name}
         style={{ '--tone': tone } as React.CSSProperties}
       >
         <div className="app-detail-head">
@@ -1515,6 +1585,13 @@ export function Handbook({
             key: card.family,
             tab,
             glyph: card.glyph,
+            /**
+             * **按族色染色**（**2026-09-26 船长令**：「**手册内的势力都是一个颜色的，按照设定文档
+             * 进行下染色**」）——族色单点 = `FOE_ACCENT`（设定文档各族色：海盗锈红 / 异形磷光绿 /
+             * 守墓磷光冰蓝 / 巨构残铁棕 / 鱿烬聚落紫 / 墨潮深红），与星图「敌对派系」标签、
+             * 战场敌舰**同源同值**。此前六张卡走 `toneOf('fam-x')` ⇒ 查不到键、全落灰兜底。
+             */
+            tone: FOE_ACCENT[card.family],
             name: head,
             sub: tr('ui.codex.003', { p1: card.seenCount, p2: card.totalCount }),
             raw: card as unknown as RawData,
@@ -1982,6 +2059,8 @@ export function Handbook({
                 className="app-head-search"
                 type="search"
                 placeholder={SEARCH_PLACEHOLDER[tab]}
+                /* 无障碍名（2026-09-26 优化批）：占位符在部分读屏里**不算标签**，显式给一个（与占位同文案，不新增 id） */
+                aria-label={SEARCH_PLACEHOLDER[tab]}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -1993,10 +2072,19 @@ export function Handbook({
                */}
               {isCodex && !isFactionPage ? (
                 <div className="app-hand-viewbar">
-                  <button className={`app-hand-viewbtn${view === 'grid' ? ' is-active' : ''}`} onClick={() => changeView('grid')}>
+                  {/* `aria-pressed`（2026-09-26 优化批）：选中态此前只有 `.is-active` 类 ⇒ 读屏读不出"当前是哪一档" */}
+                  <button
+                    className={`app-hand-viewbtn${view === 'grid' ? ' is-active' : ''}`}
+                    aria-pressed={view === 'grid'}
+                    onClick={() => changeView('grid')}
+                  >
                     {tr("ui.Handbook.015")}
                   </button>
-                  <button className={`app-hand-viewbtn${view === 'list' ? ' is-active' : ''}`} onClick={() => changeView('list')}>
+                  <button
+                    className={`app-hand-viewbtn${view === 'list' ? ' is-active' : ''}`}
+                    aria-pressed={view === 'list'}
+                    onClick={() => changeView('list')}
+                  >
                     {tr("ui.Handbook.016")}
                   </button>
                 </div>
@@ -2075,7 +2163,7 @@ export function Handbook({
                         <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
                           {/* 势力页**恒走卡片网格**（2026-09-26 船长令：「图标和列表切换是多余的。而且有问题」）
                               —— 原先那支列表档把卡片按 `.app-inv-row` 排版，观感是坏的，已整支删除 */}
-                          <IconGrid cells={g.cells} onPick={(c) => setFactionSel(c.key)} />
+                          <IconGrid cells={g.cells} onPick={(c) => setFactionSel(c.key)} selectedKey={factionSel} />
                         </GroupSection>
                         {/* 下方**窗口容器**：选中势力的档案 ＋ 敌人种类 ＋ 专属装备 / 舰船 / 图纸 */}
                         {g.cells.some((c) => c.key === factionSel) ? (
