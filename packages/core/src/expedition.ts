@@ -123,9 +123,7 @@ export const DSI_FACTION_ID = 'dsi'
 export { shortestTravelMinutes }
 
 /**
- * **新档初始声望**（**2026-09-26 船长令**：「**声望真扣（就是意味着玩家一开始其实可以买5张）**」）。
- *
- * 值 = 插件图纸单价（`PLUG_BLUEPRINT_COST = 8`）× 5 = **40** ⇒ 开局就能换 5 张。
+ * **新档初始声望 = 0**（**2026-09-26 船长裁定**：初始赠送一律清理）。
  * ⚠ **权威定义在 `state.ts`**（本模块已经 import 它，反向引会成环）⇒ 这里只转发。
  */
 export { INITIAL_STANDING } from './state'
@@ -175,6 +173,71 @@ export function spendStanding(state: GameState, factionId: string, v: number): b
   if (have < need) return false
   state.standings[factionId] = have - need
   return true
+}
+
+/**
+ * **本次回正的适用门槛**：只有"按悬赏进度算**本来就不达标**"的档才回正。
+ *
+ * 船长原话：「**去掉原本声望不达标玩家获得的额外声望（根据悬赏进度来判断）**」＋
+ * 「**声望都没到40的玩家不可能打得过入侵**」⇒ 判据就是这条 40 线。
+ *
+ * ⚠ 与 `WEEKEND_MIN_STANDING` / `WORMHOLE_SCAN_UNLOCK_STANDING` **同值**（都是 40），但那两个模块都
+ * import 本文件 ⇒ 不能反向引，就地写一份；用例里钉住三者同值。
+ * ⚠ **为什么必须带这个门槛**（不然会伤到正常玩家）：达标的档会**合法地**靠入侵贡献继续涨声望
+ * （每场 0~15 点），而诚实值 `H` 只算悬赏 ⇒ 无条件"削到 H"会把他们的入侵声望**每次读档都削一遍**。
+ */
+export const STANDING_CLAWBACK_THRESHOLD = 40
+
+/**
+ * **按"悬赏进度"回正累计声望**（**2026-09-26 船长裁定**：见 `INITIAL_STANDING` 的沿革与
+ * `save.ts` 老档回填那段）——读档后调一次，**只降不升**、幂等。
+ *
+ * 船长原话：「**去掉原本声望不达标玩家获得的额外声望（根据悬赏进度来判断）**」＋
+ * 「**1算（初始 40 也算额外声望），…所以要清理，并且还要削减累计声望**」＋
+ * 「**2 …（入侵贡献）不含**（声望都没到 40 的玩家不可能打得过入侵）」。
+ *
+ * 口径（四条，都可证）：
+ * - **只对"本来就不达标"的档动手**：`H < STANDING_CLAWBACK_THRESHOLD`（= 40）。
+ *   达标的档**一字不动**——他们的累计里可能含**合法的**入侵贡献声望，无条件削到 `H` 会把它削掉。
+ *   而且达标档本来也没有赠送可清：老档回填只在"旧值 < 40"时才抬高，新档开在今天、几小时内
+ *   靠悬赏攒到 40 在实际进度里做不到。
+ * - **诚实值 `H` = Σ 已首胜悬赏卡的 `standingGain`**（`state.completedBounties` × 卡表，逐卡可查）。
+ *   ⚠ **不含**入侵贡献声望（船长明令）——被抬起来的档根本不该打得了入侵。
+ *   卡表里查不到的 id（已退役卡）按 0 计，宁可少算不多算。
+ * - `累计 > H` ⇒ **削减为 `H`**（赠送的 40、老档回填的 40 下界、以及靠它们挣到的部分都在这里面）。
+ * - `累计 < H` ⇒ **不动**（不做"补发"，免得又造出一次"数值突然上涨"；这类档只可能是数据缺失）。
+ *
+ * 附带把**可支配**夹到 `≤ 累计`（`可支配 > 累计` 只可能来自初始赠送那一笔）——
+ * 否则兑换窗口会拿着"从没挣过的声望"换书。已换到手的图纸不回滚。
+ *
+ * ⚠ **只生效一次**（**2026-09-26 船长令**：「**只生效一次，已经削过的玩家不再削**」）：
+ * 走完这一趟就把 `state.standingClawbackDone` 置 `true`（**无论那一趟有没有真削到**）⇒
+ * 此后任何读档都直接返回、**永不再削**。这样即使将来悬赏数据/卡表变动让 `H` 算小了，也不会把
+ * 已经削过一次的玩家再削第二刀。
+ *
+ * @returns 真的改动了账本才 `true`（调用方按需记日志）
+ */
+export function repairStandingFromBountyProgress(state: GameState, ctx: SimContext): boolean {
+  if (state.standingClawbackDone === true) return false
+  state.standingClawbackDone = true
+  let honest = 0
+  for (const id of state.completedBounties ?? []) {
+    honest += Math.max(0, Math.round(ctx.anomalies.get(id)?.standingGain ?? 0))
+  }
+  let changed = false
+  const earned = state.standingsEarned?.[DSI_FACTION_ID] ?? state.standings[DSI_FACTION_ID] ?? 0
+  /** 达标的档不碰（理由见函数头注：他们的累计里可能有合法的入侵贡献声望） */
+  if (honest < STANDING_CLAWBACK_THRESHOLD && earned > honest) {
+    state.standingsEarned = { ...(state.standingsEarned ?? {}), [DSI_FACTION_ID]: honest }
+    changed = true
+  }
+  const after = state.standingsEarned?.[DSI_FACTION_ID] ?? state.standings[DSI_FACTION_ID] ?? 0
+  const spendable = state.standings[DSI_FACTION_ID] ?? 0
+  if (spendable > after) {
+    state.standings[DSI_FACTION_ID] = after
+    changed = true
+  }
+  return changed
 }
 
 /**

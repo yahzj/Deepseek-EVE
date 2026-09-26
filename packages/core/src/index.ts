@@ -340,6 +340,9 @@ export {
   WEEKEND_COMMS_FACTION_ID,
   WEEKEND_COMMS_SETTLE_ID,
   WEEKEND_COMMS_WARN_ID,
+  // 2026-09-26 船长令：给"推送前打完入侵却没拿到黑匣"的档补发 1 枚（判据见函数头注）
+  WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS,
+  compensateMissingWeekendBlackBox,
   weekendFamilyNameId,
   weekendFamilyNameZh,
   weekendRewardLinesOf,
@@ -713,6 +716,8 @@ export {
   spendableStandingOf,
   noteStandingEarned,
   spendStanding,
+  // 2026-09-26 船长裁定：按悬赏进度削减被抬高过的累计声望（读档后一次性、只降不升）
+  repairStandingFromBountyProgress,
   INITIAL_STANDING,
   bountyRewardFactor,
   calcPower,

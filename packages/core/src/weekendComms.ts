@@ -13,6 +13,10 @@
  * 这里同时给一份**中文原文**（core 侧兜底，界面按 id 重新渲染 ⇒ 中英各自成句）。
  */
 import { deliverCommsInstance } from './comms'
+import { blackboxSeenOf } from './blackbox'
+import { addWare } from './inventory'
+import { isPlugOf } from './plugs'
+import { addLog } from './state'
 import type { GameState } from './state'
 import type { CommsInstanceEntry, CommsRewardLine, SimContext } from './types'
 import {
@@ -216,4 +220,74 @@ export function weekendSnapshotWreckItemId(
   ctx: SimContext,
 ): string | undefined {
   return snapshot.wreckItemId ?? weekendRareWreckIdFor(weekendFoeCardOf(snapshot.family, 'flagship'), ctx)
+}
+
+/**
+ * **补发黑匣的截止时刻**（**2026-09-26 船长裁定**：「**必须是推送之前打完**」→ 追问「什么时候算推送」
+ * 答「**现在**」）。
+ *
+ * 值 = 裁决当时的墙钟（2026-09-26 21:33 +08:00）。**只补这一批修复上线之前打完的入侵**——
+ * 之后的场次掉落本身是好的，不需要补偿。⚠ 若日后还要补，**改这个常量**（别改成 `Date.now()`：
+ * 那会让"以后每一场没掉黑匣的入侵"都被补一遍）。
+ */
+export const WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS = 1_790_429_580_000
+
+/**
+ * **给"打完入侵却没拿到黑匣"的玩家补发 1 枚**（**2026-09-26 船长令**：
+ * 「**检查玩家是否已经打完入侵（根据通讯），给所有打完入侵但是没有获取黑匣的玩家补发一个黑匣
+ * （必须是推送之前打完，同时也要检查玩家是否已经将黑匣制作成舰船插件）**」）。
+ *
+ * 判据四条，全部成立才补（读档后调一次；幂等）：
+ * 1. **打完的判据 = 通讯**：`state.commsInstance` 里有结算信 `msg-weekend-settle`（船长指定按通讯判）；
+ * 2. **推送之前打完**：`weekendLastResult.endedAtWallMs < WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS`；
+ * 3. **那一刻没拿到**：快照的 `blackBox === 0`（当场实发数，与结算面板同一把尺）；
+ * 4. **至今也没有黑匣痕迹**：没见过黑匣（`blackboxSeenOf` 唯一判据）**且手上没有黑匣实物**
+ *    （仓库 ＋ 各船货舱；`blackboxSeen` 是三态的显式 `false` ⇒ 单靠它判不出"实物就在库里"）
+ *    **且没有任何舰船插件实物**——船长点名的那条：已经把黑匣做成插件的玩家，说明他当初拿到过黑匣
+ *    （老档的 `blackboxSeen` 是后补的，靠它单独判会漏掉这种）。
+ *
+ * 幂等靠**动作本身**：入库会置位"见过黑匣" ⇒ 第二次调用第 4 条即不成立，天然只补一次。
+ * 落点 = 物品仓库 ＋ 一条系统日志（船长裁定「**不发**（信）」⇒ 不投递通讯）。
+ *
+ * @returns 真补了才 `true`
+ */
+export function compensateMissingWeekendBlackBox(state: GameState, ctx: SimContext): boolean {
+  if (state.commsInstance?.[WEEKEND_COMMS_SETTLE_ID] === undefined) return false
+  const snap = state.weekendLastResult
+  if (snap === undefined || snap.endedAtWallMs >= WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS) return false
+  if ((snap.blackBox ?? 0) > 0) return false
+  if (blackboxSeenOf(state) || hasAnyBlackBox(state)) return false
+  if (hasAnyPlug(state, ctx)) return false
+  addWare(state, WEEKEND_BLACKBOX_ITEM_ID, 1)
+  addLog(
+    state,
+    'system',
+    '入侵补偿：补发旗舰黑匣 ×1（已存入物品仓库）。',
+    'core.weekend.040',
+  )
+  return true
+}
+
+/** 黑匣实物在不在手上（仓库 ＋ 各船货舱；补发黑匣的第 4 条判据之一） */
+function hasAnyBlackBox(state: GameState): boolean {
+  if ((state.warehouse.items[WEEKEND_BLACKBOX_ITEM_ID] ?? 0) > 0) return true
+  for (const ship of Object.values(state.fleet)) {
+    if ((ship?.cargo?.[WEEKEND_BLACKBOX_ITEM_ID] ?? 0) > 0) return true
+  }
+  return false
+}
+
+/** 玩家手上/船上到底有没有舰船插件实物（补发黑匣的第 4 条判据；只看实物，不看图纸与配方） */
+function hasAnyPlug(state: GameState, ctx: SimContext): boolean {
+  for (const ship of Object.values(state.fleet)) {
+    if (ship === undefined) continue
+    if ((ship.plugs ?? []).length > 0) return true
+    for (const [id, n] of Object.entries(ship.cargo ?? {})) {
+      if (n > 0 && isPlugOf(ctx.modules.get(id))) return true
+    }
+  }
+  for (const [id, n] of Object.entries(state.warehouse.items)) {
+    if (n > 0 && isPlugOf(ctx.modules.get(id))) return true
+  }
+  return false
 }

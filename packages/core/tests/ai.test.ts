@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import type { MarketGoodDef, SimContext } from '../src/types'
 import type { GameState } from '../src/state'
-import { createInitialState, INITIAL_STANDING } from '../src/state'
+import { createInitialState } from '../src/state'
 import { standingOf } from '../src/expedition'
 import { advanceGame } from '../src/engine'
 import { countWare } from '../src/inventory'
@@ -424,8 +424,8 @@ describe('AI 远征任务', () => {
       expect(state.logs.some((l) => l.text.includes('战报'))).toBe(false) // 未进入战斗结算
       expect(state.wallet.isk).toBe(walletBefore) // 无奖励入账
       expect(state.completedBounties).toEqual(['ano-easy']) // 无新首胜
-      // ⚠ 2026-09-26：新档初始声望 = 40（不再是"无声望"）⇒ 改钉"**没涨**"（善后不发声望）
-      expect(standingOf(state, 'dsi')).toBe(INITIAL_STANDING)
+      // ⚠ 2026-09-26 船长裁定：初始赠送声望已清理（新档 = 0）⇒ 这里钉"**没涨**"（善后不发声望）
+      expect(standingOf(state, 'dsi')).toBe(0)
     }
   })
 })
