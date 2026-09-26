@@ -69,8 +69,8 @@ describe('入侵战斗的进度反馈（船长批甲）', () => {
     const line = logs.find((l) => l.textId === 'core.weekend.035')
     expect(line, '应有进度反馈行').toBeDefined()
     expect(line!.text).toMatch(/夺回进度 \d+% → \d+%/)
-    /** 🔴 2026-09-26 船长令「包括玩家夺回进度的更新」⇒ 这一档从 `info` 提到 **`warn`**（醒目） */
-    expect(line!.kind, '夺回进度反馈应是警告档（船长令）').toBe('warn')
+    /** 🔴 2026-09-26 船长裁决「「事件日志重新分类」以一号为优先」⇒ 这一档 = **`combat`** */
+    expect(line!.kind, '夺回进度反馈应归战斗类（一号的分类，船长裁决优先）').toBe('combat')
     console.log(`  [读数] 外围胜利日志 = ${line!.text}（级别 ${line!.kind}）`)
   })
 
@@ -82,7 +82,7 @@ describe('入侵战斗的进度反馈（船长批甲）', () => {
     expect(ev.contributed[CORE] ?? 0).toBe(0)
     const line = newLogs(s, n).find((l) => l.textId === 'core.weekend.036')
     expect(line, '应有"本次不计进度"行').toBeDefined()
-    expect(line!.kind, '门禁那一行同样是警告档（同批提级）').toBe('warn')
+    expect(line!.kind, '门禁那一行同样归战斗类（同一裁决）').toBe('combat')
     console.log(`  [读数] 核心门禁日志 = ${line!.text}（级别 ${line!.kind}）`)
   })
 

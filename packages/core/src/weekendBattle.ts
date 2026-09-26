@@ -308,9 +308,10 @@ export function weekendResolveBattle(
    * - **核心门禁**未解 ⇒ 写"本次不计进度"那一行（`core.weekend.036`），把白打讲明白；
    * - 读数取**该星系自己的进度**（与星图/星系详细同源 `weekendProgressAt`，含 NPC 铺底）。
    *
-   * 🔴 **级别 = `warn`**（**2026-09-26 船长令**：「**包括玩家夺回进度的更新**」——与"回收玩家自己残骸的
-   * 事件日志不醒目"同批提出）⇒ 这一档从 `info` 提到警告：它是入侵活动里玩家**唯一**能看到的进度反馈，
-   * 该在事件日志里一眼看见（`.035` / `.036` 两条一起提）。
+   * 🔴 **级别 = `combat`**（**船长 2026-09-26 裁决**：「**「事件日志重新分类」以一号为优先。**」）——
+   * 本条曾按同日另一条令（「**包括玩家夺回进度的更新**」）从 `info` 提为 `warn`，现按本条裁决**改回
+   * `combat`**：与"事件日志重新分类"那批（战斗/工业/舰队/打捞四类）保持同一分类口径，不让同一类
+   * 日志分在两个页签里。⚠ 两条令的先后与取舍见 `docs/development-conventions-changelog.md`。
    */
   if (res.reclaimed === undefined) {
     const gname0 = _ctx.galaxies.get(spec.galaxyId)?.name ?? spec.galaxyId
@@ -323,14 +324,18 @@ export function weekendResolveBattle(
        * main 侧（一号「事件日志重新分类」）把这两条归入 `combat`。**两条裁定不同源、待船长确认**：
        * 按「新令压旧令」先落 warn；若船长要跟一号的分类走，把下面两处 `'warn'` 改回 `'combat'` 即可。
        */
-      addLog(state, 'warn', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
+      /**
+       * 🔴 **档位 = `combat`**（**船长 2026-09-26 裁决**：「**「事件日志重新分类」以一号为优先。**」）——
+       * 与本文件里其余战斗类日志同一档；原先我曾按同日另一条令提为 `warn`，现按本条裁决改回 `combat`。
+       */
+      addLog(state, 'combat', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
         p1: gname0,
         p2: pctBefore,
         p3: pctAfter,
       })
     } else if (gatedThisBattle) {
-      /** 同上：取船长的 `warn`（与 `.035` 那条同一裁定） */
-      addLog(state, 'warn', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
+      /** 同上：`combat`（与 `.035` 那条同一裁决） */
+      addLog(state, 'combat', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
     }
   }
   return res
