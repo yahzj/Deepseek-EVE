@@ -746,8 +746,15 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       detailBlock(rows, `${tr('ui.codex.012')} · ${card.ships.length} ${tr('ui.codex.015')}`,
         hull.length > 0 ? hull : [[tr('ui.codex.016'), '']])
       if (card.blueprints.length > 0) {
+        // 图纸行给「产物名（图纸）」＋该产物的短效果 —— 只写图纸名玩家看不出它是什么（2026-09-26 自检补）
         detailBlock(rows, `${tr('ui.codex.013')} · ${card.blueprints.length} ${tr('ui.codex.014')}`,
-          card.blueprints.map((id) => [bpNameOf(id), ''] as [string, React.ReactNode]))
+          card.blueprints.map((id) => {
+            const mod = engine.ctx.modules.get(id)
+            const modBp = engine.blueprints.find((b) => b.id === id)
+            const prodMod = mod ?? (modBp?.moduleId !== undefined ? engine.ctx.modules.get(modBp.moduleId) : undefined)
+            const name = prodMod?.name ?? bpNameOf(id)
+            return [`${name}（${tr('ui.codex.013')}）`, prodMod ? moduleShortEffect(prodMod) : ''] as [string, React.ReactNode]
+          }))
       }
     }
   }
