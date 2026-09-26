@@ -14,7 +14,7 @@
  * 不需要额外的表，也不需要反向 import data 包。
  */
 import type { AnomalyDef, FoeShipDef } from '@whale/core'
-import { FOE_MOUNTS } from '@whale/core'
+import { FOE_MOUNTS, WEB_BREAK_DIST_M } from '@whale/core'
 import { isEn, tr } from '../i18n/locale'
 
 
@@ -58,7 +58,13 @@ export function mountEffectText(id: string): string | null {
     return tr('ui.foeIntro.101', { p1: String(def.gunRangeOnHit.mul) })
   }
   if (def.web) {
-    return tr('ui.foeIntro.102', { p1: pct(1 - def.web.slowMul), p2: String(def.web.rangeDownM) })
+    // ⚠ 解除条件 = 击沉发动者（2026-09-16）**或交战距离超过 4500 米**（2026-09-26「这个断开对敌我都有效」）
+    // —— 断开距离取引擎单点 `WEB_BREAK_DIST_M`，不在这里硬写数字
+    return tr('ui.foeIntro.102', {
+      p1: pct(1 - def.web.slowMul),
+      p2: String(def.web.rangeDownM),
+      p3: String(WEB_BREAK_DIST_M),
+    })
   }
   if (def.supportCall) {
     return tr('ui.foeIntro.103', { p1: String(def.supportCall.delaySec) })

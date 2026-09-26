@@ -3869,7 +3869,7 @@ for (const m of MODULES) {
         `· 敌方挂载件契约：${allMounts.length} 件（冲锋 ${nCharge} · 机群增程 ${nDrone} · 炮台增程 ${nGun} · 捕获网 ${nWeb}）· ` +
           `C 族 ${aliens.length} 条按档挂件（${aliens.map((s) => `${s.name} T${s.hullClassTier}×${resolveFoeMounts(s.mounts).foeChargeMul}`).join('　')}）· ` +
           `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件` +
-          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」＋ H 族突击舰/干扰舰（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m）` : ''}`,
+          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」＋ H 族突击舰/干扰舰（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m；击沉发动者或交战距离超过 4500m 解除）` : ''}`,
       )
     }
     console.log(

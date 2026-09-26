@@ -42,7 +42,8 @@ export const FOE_MOUNT_IDS = {
    * 不许两族共用同一件（`content:check` 的炮台受击增程契约按"舰级 → 指定件"逐个核）。
    */
   gunRangeX15Titan: 'foe-mount-titan-range-x1-5',
-  /** 劫掠捕获网（船长 2026-09-16）：A 族新舰「劫掠电子舰」专属——首次开火即钉住目标 */
+  /** 劫掠捕获网（船长 2026-09-16）：A 族新舰「劫掠电子舰」专属——首次开火即钉住目标；
+   *  2026-09-26 起交战距离超过 4500 米同样断开（敌我通用） */
   captureWeb: 'foe-mount-capture-web',
   /** **支援呼叫装置**（船长 2026-09-19）：D 族守墓王座舰专属——开战 20 秒后按距离呼叫一支支援军 */
   supportCall: 'foe-mount-support-call',
@@ -108,7 +109,9 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     note:
       '船长 2026-09-16：「劫掠捕获网：降低目标90%移动速度，并关闭所有类型推进器。在自身第一次开火时发动。' +
       '动画效果为一根蓝色的光速连着命中舰船」＋补充「还会让目标闪避强制为0，射程降低500米」。' +
-      '只作用于被钉的那一艘；本场永久；击杀发动者即解除；多艘不叠加。',
+      '只作用于被钉的那一艘；击杀发动者即解除；多艘不叠加。' +
+      '船长 2026-09-26：「将断开距离提高到4500米，且这个断开对敌我都有效」⇒ 交战距离超过 4500 米同样解除' +
+      '（见 combat.WEB_BREAK_DIST_M / expireFoeWebs）；本网整场只张一次 ⇒ 断开后该舰本场不再补发。',
   },
   [FOE_MOUNT_IDS.gunRangeX15]: {
     id: FOE_MOUNT_IDS.gunRangeX15,

@@ -326,16 +326,19 @@ export interface UnitSpec {
   foeGunRangeMulOnHit?: number
   /**
    * **劫掠捕获网**（船长 2026-09-16，A 族新舰「劫掠电子舰」专属；参数见 `FoeMountDef.web`）：
-   * 本舰**第一次开火那一刻**（不看命中）钉住**它这一发的目标**，本场永久、**击杀发动者即解除**。
+   * 本舰**第一次开火那一刻**（不看命中）钉住**它这一发的目标**；**击杀发动者**（2026-09-16）
+   * 或**交战距离超过 4500 米**（**2026-09-26**「这个断开对敌我都有效」）即解除，整场只张一次。
    * 被钉的我方舰：战斗机动 ×`slowMul`（0.1）· 推进器全关 · 闪避归零 · 武器射程 −`rangeDownM`。
    */
   foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /**
    * **我方「墨潮捕获网」**（**船长 2026-09-26**，H 族势力装备之一；模块字段见 `ModuleDef.captureWebCycleMs`）：
-   * 带本字段的我方舰 = 一台**周期装置**——开战即钉一艘**未被钉住**的敌舰（**独立瞄准 · 不看命中**），
-   * 目标被击沉 ⇒ 进冷却、冷却结束选新目标；**携带者被击沉** ⇒ 该网解除。
+   * 带本字段的我方舰 = 一台**周期装置**——钉一艘**未被钉住**的敌舰（**独立瞄准 · 不看命中**）；
+   * ⚠ **不是"开战即钉"**：只有交战距离 ≤ `MY_WEB_RANGE_M`（3800 米）时才张网（船长 2026-09-26 令
+   * 「我方网子的射程是3800米」）。
+   * **一次使用进入冷却**的两种情形：目标被击沉、**与目标距离超过 4500 米断开**（`WEB_BREAK_DIST_M`，
+   * 船长同日追答「断开也当使用一次」）——冷却结束再选新目标；**携带者被击沉** ⇒ 该网解除。
    * 效果三层：机动 ×0.5（**减速 50%**，船长 2026-09-26 改判；原 ×0.1）· 推进器全关 · 闪避归零（⚠ **不含射程**，船长同日明令移除）。
-   * ⚠ **距离上限 4000 米**（船长同日令）：超过即断开，见 `MY_WEB_BREAK_DIST_M`。
    * 周期账本 = `BattleState.myWebs`，被钉状态 = `BattleState.foeWebDebuffs`（见 `advanceMyCaptureWebs`）。
    */
   myCaptureWeb?: { cycleMs: number }
@@ -1063,28 +1066,50 @@ function fireFoeCaptureWeb(
 }
 
 /**
- * **捕获网解除**（船长 2026-09-16：「**击杀发动者即解除**」）：每拍清理"施放者已不在场/已阵亡"的条目。
+ * **捕获网解除**（船长 2026-09-16：「**击杀发动者即解除**」＋ **2026-09-26**：「**将断开距离提高到4500米，
+ * 且这个断开对敌我都有效**」）：每拍清理"施放者已不在场/已阵亡"与"交战距离超过断开距离"的条目。
  * 只删账本（效果随"每拍重建规格"自然消失）；解除时推一条日志，让玩家知道网松了。
+ *
+ * ⚠ 敌方那张网**整场只张一次**（既有口径：`fireFoeCaptureWeb` 的 `foeWebFired` 已记发放）⇒ 距离拉开断开后
+ * 本场不再补发；要恢复只能指望**另一艘还没发过网的敌舰**（多网同场那条报障口径不变）。
  */
 function expireFoeWebs(state: GameState, b: import('./state').BattleState, foes: readonly UnitSpec[]): void {
   const list = b.meWebDebuffs
   if (!list || Object.keys(list).length === 0) return
   const aliveTags = new Set(foes.filter((f) => isAlive(b, f.tag)).map((f) => f.tag))
   for (const [tag, d] of Object.entries(list)) {
-    if (aliveTags.has(d.byTag)) continue
-    delete list[tag]
     const name = b.units[tag]?.name ?? tag
-    addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（发动者已被击沉）。`)
+    if (!aliveTags.has(d.byTag)) {
+      delete list[tag]
+      addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（发动者已被击沉）。`)
+      continue
+    }
+    if (b.distanceM > WEB_BREAK_DIST_M) {
+      delete list[tag]
+      addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（距离超过 ${WEB_BREAK_DIST_M} 米）。`)
+    }
   }
 }
 
 /**
- * **我方「墨潮捕获网」的断开距离**（**船长 2026-09-26**：「**玩家方的捕获网，有距离限制，
- * 距离超过4000米就会断开，且减速效果降低为50%。**」）。
- * 口径：网是**实体缆索**——每拍结算时若交战距离 `b.distanceM` 超过本值 ⇒ 立刻断开（清目标 + 清减益），
- * 且**离得远时不再张网**（避免"刚张开就断"的日志刷屏）；距离回到 4000 米内即可重新张网。
+ * **捕获网的断开距离（敌我通用）**（**船长 2026-09-26**：「**将断开距离提高到4500米，
+ * 且这个断开对敌我都有效**」；前令为 4000 米）。
+ *
+ * 口径：网是**实体缆索**——每拍结算时若交战距离 `b.distanceM` 超过本值 ⇒ **两边的网都立刻断开**：
+ * - **我方「墨潮捕获网」**：清目标 ＋ 清减益，**断开算一次使用**（船长同日追答「断开也当使用一次」）
+ *   ⇒ 进满一轮周期冷却（`advanceMyCaptureWebs`）；
+ * - **敌方「劫掠捕获网」**：清账本（`expireFoeWebs`）——该舰本场只张一次网 ⇒ 本场不再补发。
  */
-export const MY_WEB_BREAK_DIST_M = 4_000
+export const WEB_BREAK_DIST_M = 4_500
+
+/**
+ * **我方「墨潮捕获网」的投网射程**（**船长 2026-09-26**：「**我方网子的射程是3800米**」）。
+ *
+ * 与 `WEB_BREAK_DIST_M`（4500 米断开，敌我通用）**刻意分开**：两者之间是一条**滞回带**
+ * —— 3800 米内才张网；已张开的网在 ≤4500 米内**保持**（不因拉远到 3900 米就掉）；
+ * 超过 4500 米才断。敌方那件仍按"自身第一次开火"发动（无独立射程，等效于它的武器射程）。
+ */
+export const MY_WEB_RANGE_M = 3_800
 
 /**
  * **把我方「墨潮捕获网」的三层效果打在一艘敌舰的规格上**（**船长 2026-09-26**）。
@@ -1110,10 +1135,13 @@ export function applyFoeWebDebuff<T extends UnitSpec>(
  * 不选取重复目标。对方被击沉后进入冷却，冷却结束选择新目标。**」
  *
  * 三条状态机（键 = 携带者 tag，账本 `BattleState.myWebs`）：
- * 1. **待发/冷却中**（`targetTag` 空）：只有 `now ≥ cooldownUntilMs` 且**存在可选目标**时才张网
- *    —— 可选 = 存活 · 在当前波 · **未被任何网钉住**（"不选重复目标"）；**没有可选目标 ⇒ 保持待发**
- *    （不空转冷却，沿用既有"打空不算用掉"口径）。**开战即钉**（初始冷却 = 0）。
- * 2. **已钉住**：每拍把三层效果施加到目标规格上；目标一死 ⇒ 清目标、**记冷却 = 现在 + 周期**、写日志。
+ * 1. **待发/冷却中**（`targetTag` 空）：只有 `now ≥ cooldownUntilMs`、**交战距离 ≤ `MY_WEB_RANGE_M`**
+ *    且**存在可选目标**时才张网 —— 可选 = 存活 · 在当前波 · **未被任何网钉住**（"不选重复目标"）；
+ *    **没有可选目标或距离过远 ⇒ 保持待发**（不空转冷却，沿用既有"打空不算用掉"口径）。初始冷却 = 0
+ *    （⚠ **不是"开战即钉"**：船长 2026-09-26 令「**我方网子的射程是3800米**」⇒ 开战距离远于 3800 米时，
+ *    要等距离压进来才张网）。
+ * 2. **已钉住**：每拍把三层效果施加到目标规格上；目标一死 ⇒ 清目标、**记冷却 = 现在 + 周期**、写日志；
+ *    **交战距离 > `WEB_BREAK_DIST_M`（4500 米）⇒ 断开**（同样算一次使用 ⇒ 同样进冷却）。
  * 3. **携带者阵亡** ⇒ 整条账本删掉、它的网全部解除（"击沉携带者才解除"）。
  *
  * **不看命中 · 独立瞄准**：不掷命中、也不跟武器打谁 —— 目标按**敌阵顺序**取第一个可选的（确定性、
@@ -1161,23 +1189,27 @@ export function advanceMyCaptureWebs(
       addLog(state, 'combat', `墨潮捕获网松开：${gone} 已被击沉，${me.name} 的网开始冷却。`)
     }
     /**
-     * ②b **距离超过上限 ⇒ 网断开**（**船长 2026-09-26**：「玩家方的捕获网，有距离限制，
-     * 距离超过4000米就会断开」）。断开**不算"用掉"** ⇒ 不空转冷却（`cooldownUntilMs` 保持在过去），
-     * 但下面的 ③ 会在距离仍然过远时拒绝重新张网（否则会"张开→立刻断"刷日志）。
+     * ②b **距离超过断开距离 ⇒ 网断开**（**船长 2026-09-26**：「将断开距离提高到4500米，
+     * 且这个断开对敌我都有效」＋前令「距离超过4000米就会断开」＋追答「**断开也当使用一次**」）。
+     * 断开 = **用掉一次** ⇒ 进满一轮周期冷却（与"目标被击沉"同等对待）；
+     * 冷却到点后若距离仍在 `MY_WEB_RANGE_M`（3800 米）外，下面的 ③ 会拒绝张网（保持待发）。
+     *
+     * ⚠ **4500 与 3800 之间是滞回带**：拉远到 3900~4500 米**不会**掉网（只是张不了新网）。
      */
-    if (st.targetTag !== undefined && b.distanceM > MY_WEB_BREAK_DIST_M) {
+    if (st.targetTag !== undefined && b.distanceM > WEB_BREAK_DIST_M) {
       const gone = b.units[st.targetTag]?.name ?? st.targetTag
       if (b.foeWebDebuffs) delete b.foeWebDebuffs[st.targetTag]
       delete st.targetTag
-      st.cooldownUntilMs = now
+      st.cooldownUntilMs = now + cycleMs
       addLog(
         state,
         'combat',
-        `墨潮捕获网断开：${gone} 与 ${me.name} 的距离超过 ${MY_WEB_BREAK_DIST_M} 米。`,
+        `墨潮捕获网断开：${gone} 与 ${me.name} 的距离超过 ${WEB_BREAK_DIST_M} 米，` +
+          `${me.name} 的网开始冷却。`,
       )
     }
-    // ③ 待发且冷却已过 ⇒ 张网（不看命中、独立瞄准、跳过已被钉住的；**距离过远不张**）
-    if (st.targetTag === undefined && now >= st.cooldownUntilMs && b.distanceM <= MY_WEB_BREAK_DIST_M) {
+    // ③ 待发且冷却已过 ⇒ 张网（不看命中、独立瞄准、跳过已被钉住的；**超出投网射程不张**）
+    if (st.targetTag === undefined && now >= st.cooldownUntilMs && b.distanceM <= MY_WEB_RANGE_M) {
       const taken = new Set(Object.keys(b.foeWebDebuffs ?? {}))
       const pick = aliveFoes.find((f) => !taken.has(f.tag))
       if (!pick) continue // 无目标可选 ⇒ 保持待发（不空转冷却）
@@ -7808,7 +7840,8 @@ function stepBattle(
   // ⚠ **顺序**：先更新状态、再算接近速度（倍率由状态读出来，见 `unitSpeedMulOf` 的单点）。
   // 触发条件（乙）与"到达期望交距"兜底都在 `updateFoeCharge` 里；本处只管"读状态算速度"。
   updateFoeCharge(b, foes, bal, b.lastTickGameMs, foeDesireClamped)
-  // **捕获网解除**（船长 2026-09-16：击杀发动者即解除）——每拍清理施放者已不在场的条目
+  // **捕获网解除**（船长 2026-09-16「击杀发动者即解除」＋ **2026-09-26「这个断开对敌我都有效」**）
+  // ——每拍清理"施放者已不在场"与"交战距离超过 4500 米"的条目
   expireFoeWebs(state, b, foes)
   // **我方捕获网**（**船长 2026-09-26** · 墨潮捕获网）：周期账本推进（选目标/冷却/解除）＋
   // 把三层效果（机动 ×0.5 · 推进器全关 · 闪避归零）**每拍重新施加**到本拍敌阵上

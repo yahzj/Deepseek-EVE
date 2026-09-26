@@ -1293,7 +1293,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.031": { zh: "主控", en: "Piloted" },
   "ui.BattleScreen.032": { zh: "运转中", en: "Running" },
   "ui.BattleScreen.033": { zh: "停机", en: "Stopped" },
-  "ui.BattleScreen.034": { zh: "劫掠捕获网：被钉住的舰船机动骤降、推进器熄火、闪避失效、射程缩短——击沉发动者才能解除", en: "Raid snare: a pinned ship loses most of its maneuverability, its thrusters cut out, evasion fails and its range shrinks — only sinking the ship that launched the snare breaks it" },
+  "ui.BattleScreen.034": { zh: "劫掠捕获网：被钉住的舰船机动骤降、推进器熄火、闪避失效、射程缩短——击沉发动者、或把距离拉到 4500 米外才能解除", en: "Raid snare: a pinned ship loses most of its maneuverability, its thrusters cut out, evasion fails and its range shrinks — sinking the ship that launched the snare, or opening the range past 4,500 m, breaks it" },
   "ui.BattleScreen.035": { zh: "敌方全队机库备用机：前线战损后自动满血补位（打光母舰才是解法）", en: "Enemy hangar reserves: they replace losses at full HP (wearing down the carriers is the answer)" },
   /**
    * ⚠ **`ui.BattleScreen.036` 已于 2026-09-20 删除**：它是旧裁定（2026-09-13「虫洞中的战斗画面
@@ -1658,7 +1658,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      ⇒ 下列九条**去掉尾部的装置名括号**（挂载件悬停的标签本来就写着装置名，括号里那一份纯属重复）。 */
   "ui.foeIntro.100": { zh: "受击后进入反击模式，机群射程 ×{p1}", en: "when hit, enters counter mode: strike-craft range ×{p1}" },
   "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}", en: "when hit from beyond its range, its guns reach ×{p1}" },
-  "ui.foeIntro.102": { zh: "首次开火时命中一个未被钉住的目标，减速 {p1}%、闪避归零、射程 −{p2} 米，击沉发动者才解除", en: "its first shot pins an un-webbed target: slowed {p1}%, evasion zeroed, range −{p2} m, released only when the caster dies" },
+  "ui.foeIntro.102": { zh: "首次开火时钉住一个未被钉住的目标，减速 {p1}%、闪避归零、射程 −{p2} 米，击沉发动者或拉到 {p3} 米外才解除", en: "its first shot pins an un-webbed target: slowed {p1}%, evasion zeroed, range −{p2} m; released by sinking the caster or opening the range past {p3} m" },
   "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援", en: "calls reinforcements {p1} s into the fight" },
   "ui.foeIntro.104": { zh: "每 {p1} 秒召回一艘已被击毁的友舰", en: "every {p1} s recalls one destroyed ally" },
   "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构", en: "every {p1} s restores {p2} armour/hull" },
@@ -3784,7 +3784,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.121": { zh: "入侵残骸", en: "Invasion wrecks" },
   // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}", en: "Enemy weapon range −{p1}" },
-  "ui.shipInfo.186": { zh: "每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s" },
+  "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },

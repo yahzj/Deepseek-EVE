@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, droneBayTotalM3, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, droneBayTotalM3, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
 // ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
@@ -443,8 +443,11 @@ export function moduleShortEffect(mod: ModuleDef): string {
         // 2026-09-26 墨潮电子舱（H 族势力装备 · 高槽支援件）：敌方武器射程压制
         body = tr("ui.shipInfo.185", { p1: pct(mod.foeRangeDebuffPct) })
       } else if (mod.captureWebCycleMs !== undefined) {
-        // 2026-09-26 墨潮捕获网（H 族势力装备 · 高槽支援件）：周期张网
-        body = tr("ui.shipInfo.186", { p1: Math.round(mod.captureWebCycleMs / 1000) })
+        // 2026-09-26 墨潮捕获网（H 族势力装备 · 高槽支援件）：周期张网（射程 = 引擎单点 `MY_WEB_RANGE_M`）
+        body = tr("ui.shipInfo.186", {
+          p1: Math.round(mod.captureWebCycleMs / 1000),
+          p2: String(MY_WEB_RANGE_M),
+        })
       }
       break
     }
