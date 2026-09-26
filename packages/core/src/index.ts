@@ -493,6 +493,8 @@ export {
   allocateShipUid,
   changeShip,
   loseShip,
+  // 2026-09-26 整船回收（加固结构插件命中）：把残骸里捞回的船按残骸时刻打折拖回母港入队
+  restoreShipFromWreck,
   durabilityOf,
   repairCostIsk,
   repairShip,

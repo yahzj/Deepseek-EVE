@@ -105,6 +105,8 @@ import {
   wormholeFamilyOfSeed,
   // 2026-09-25 `weekend` / `weekendkill`（旗舰战准备档）：入侵现场的三个单点
   weekendRollOccupation,
+  // 2026-09-26 `shipwreck`（玩家舰船残骸验收档）：注入残骸的唯一入口
+  noteShipWreck,
 } from '@whale/core'
 import type { GameState } from '@whale/core'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
@@ -3371,6 +3373,173 @@ function injectWeekend(state: GameState, opts: { hurt?: boolean } = {}): string[
   return notes
 }
 
+/**
+ * shipwreck（2026-09-26 二号 · **玩家舰船残骸验收档**；船长「可以生成一个存档给我核验」）。
+ *
+ * 机制（船长原话）：「玩家舰船被摧毁后，如果是在非虫洞的正常星系内，在该星系生成一个'<被摧毁的舰船名称>
+ * 的残骸'该残骸存在48小时，玩家如果在该星系打捞，优先打捞该残骸（比稀有残骸优先级还高）。打捞后玩家
+ * 按照一定概率和比例回收被摧毁舰船的部分装备。除此以外没有其他资源。」＋「留一个接口，给之后舰船插件的。」
+ *
+ * 本档一次性摆好**四种验证面**（都能立刻上手，不必先去死一艘船）：
+ * - ① **暗星坟场**（`galaxy-grave`）：一具满配残骸（6 件 ＋ 无人机 6 架）——看最高优先、逐件掷、保底、清空即消失；
+ * - ② **红环航道**（`galaxy-redring`）：另一具残骸（4 件）——验证**跨星系各算各的**；
+ * - ③ **穹顶墓园**（`galaxy-vault`）：**带加固结构插件回收率（已被手工写成 0.6）**的残骸——整船回收那条路**现在就能试**
+ *   （⚠ 正式插件尚未入库；这条是给接口留白做的"临时把手"，插件上线后请把 `reinforceChance` 那一行删掉）；
+ * - ④ 驾驶船 = 白鲨级 4×打捞器 MK2，停在**暗星坟场**，开档即可直接「残骸打捞 → 开始打捞」。
+ *
+ * 界面读数：打捞面板**置顶**有一组「舰船残骸 N 具（优先打捞）」的卡（船名 ＋ 可回收件数 ＋ 剩余小时）。
+ */
+function injectShipWreck(state: GameState): string[] {
+  const notes: string[] = []
+  genericPrep(state)
+  const ctx = buildSimContext()
+  state.wallet.isk += 20_000_000
+  notes.push('钱包 +20,000,000 ISK')
+  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 8)
+  notes.push('协会声望升至 8（打捞相关门槛全过）')
+  let lit = 0
+  for (const g of GALAXIES) {
+    if (!state.exploredGalaxies.includes(g.id)) {
+      state.exploredGalaxies.push(g.id)
+      lit++
+    }
+  }
+  notes.push(`星图全部点亮（新增 ${lit} 个）——四个验收星系全部可达`)
+
+  /**
+   * 按船型槽位**拼一副可安装的满配**：模块家族（`slot`）必须落在对应槽类（`rack`）里，
+   * 顺便把 `fitted` 数组撑到该船的真实槽数（否则装配页会把它当越界件）。
+   *
+   * ⚠ **不循环填满**：给的件比槽少时，剩下的槽**留 null**——早先那版用 `pool[i % pool.length]`
+   * 循环填，结果同一件在残骸里出现两三次（残骸是快照，重复件会让"逐件掷骰"的件数失真）。
+   */
+  const loadoutOf = (shipId: string, bySlot: { high: string[]; mid: string[]; low: string[] }): { high: Array<string | null>; mid: Array<string | null>; low: Array<string | null> } => {
+    const def = ctx.ships.get(shipId)
+    const out = {
+      high: [] as Array<string | null>,
+      mid: [] as Array<string | null>,
+      low: [] as Array<string | null>,
+    }
+    for (const rack of ['high', 'mid', 'low'] as const) {
+      const want = (def?.slots?.[rack] ?? 0) as number
+      const pool = bySlot[rack].filter((id) => (ctx.modules.get(id)?.rack ?? 'high') === rack)
+      for (let i = 0; i < want; i += 1) out[rack].push(pool[i] ?? null)
+    }
+    return out
+  }
+
+  const wrecks: Array<{
+    gal: string
+    shipId: string
+    name: string
+    durability: number
+    armorPct: number
+    bySlot: { high: string[]; mid: string[]; low: string[] }
+    drones?: Record<string, number>
+    reinforce?: number
+    note: string
+  }> = [
+    {
+      gal: 'galaxy-grave',
+      shipId: 'sh-mako',
+      name: '灰鲭鲨·第一艘沉船',
+      durability: 0.22,
+      armorPct: 0.35,
+      bySlot: {
+        high: ['mod-turret-kin-3', 'mod-turret-kin-3', 'mod-turret-kin-2', 'mod-salvager-2'],
+        mid: ['mod-prop-3', 'mod-shield-kin-3', 'mod-track-2'],
+        low: ['mod-armor-pla-3', 'mod-stab-kin-2'],
+      },
+      drones: { 'drone-heavy': 4, 'drone-sentry': 2 },
+      note: '① 暗星坟场（驾驶船所在地）：满配残骸 —— 最高优先 / 逐件掷 / 保底 / 清空即消失',
+    },
+    {
+      gal: 'galaxy-redring',
+      shipId: 'sh-falconet',
+      name: '鲣鱼·侦察分队',
+      durability: 0.1,
+      armorPct: 0.2,
+      bySlot: {
+        high: ['mod-turret-kin-2', 'mod-turret-kin-1'],
+        mid: ['mod-shield-kin-2'],
+        low: ['mod-armor-exp-2'],
+      },
+      note: '② 红环航道：另一具残骸 —— 跨星系各算各的、互不影响',
+    },
+    {
+      gal: 'galaxy-vault',
+      shipId: 'sh-nautilus',
+      name: '鹦鹉螺·要回来的那艘',
+      durability: 0.4,
+      armorPct: 0.5,
+      bySlot: {
+        high: ['mod-turret-kin-2', 'mod-drone-rack-2', 'mod-drone-tac-2', 'mod-drone-relay-2'],
+        mid: ['mod-shieldchg-3', 'mod-prop-2', 'mod-shield-ext-2'],
+        low: ['mod-cargo-3', 'mod-hullrep-1'],
+      },
+      drones: { 'drone-scout': 3 },
+      reinforce: 0.6,
+      note: '③ 穹顶墓园：**带加固结构插件回收率（手工写成 0.6）**——第一次捞这具时会先掷整船回收，命中即整船回母港（结构 ×0.3 / 装甲 ×0.5）；未命中则记下"已掷过"、之后走逐件',
+    },
+  ]
+
+  let seq = 0
+  for (const w of wrecks) {
+    seq += 1
+    noteShipWreck(state, {
+      galaxyId: w.gal,
+      shipId: `wrecked-${seq}-${w.shipId}`,
+      shipName: w.name,
+      defId: w.shipId,
+      durability: w.durability,
+      armorPct: w.armorPct,
+      fitted: loadoutOf(w.shipId, w.bySlot),
+      ...(w.drones !== undefined ? { droneLoad: w.drones } : {}),
+      ...(w.reinforce !== undefined ? { reinforceChance: w.reinforce } : {}),
+      createdAtWallMs: Date.now(),
+    })
+    notes.push(
+      `${w.note} —— 残骸名「${w.name}的残骸」（48 游戏小时：离线时间照样消耗，衰减到 0 即消失）`,
+    )
+  }
+  state.shipWreckSeq = seq
+  notes.push('残骸记录号游标设为 3（同星系多具时按"最新那具优先"排序）')
+
+  // 打捞演示船：白鲨级 4×打捞器 MK2（与既有 b3 档同款），停在暗星坟场 ⇒ 开档即可捞
+  const uid = addShipToFleet(state, 'sh-whiteshark')
+  const demo = state.fleet[uid]!
+  demo.customName = '残骸打捞演示'
+  demo.fitted = {
+    high: ['mod-salvager-2', 'mod-salvager-2', 'mod-salvager-2', 'mod-salvager-2', null],
+    mid: [null, 'mod-shield-kin-2', null],
+    low: [null, null],
+  }
+  demo.durability = 1
+  demo.armorPct = 1
+  state.shipId = uid
+  for (const id of ['mod-salvager-1', 'mod-salvager-2', 'mod-salvager-3']) {
+    state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 1
+  }
+  for (const s of Object.values(state.fleet)) {
+    s.durability = 1
+    s.armorPct = 1
+  }
+  notes.push('新增「残骸打捞演示」白鲨级并设为驾驶（高槽 4×打捞器 MK2）；打捞器 MK1/2/3 各一件入库；全舰耐久回满')
+
+  // 打捞铺底：坟场给足普通残骸（用来对照"残骸优先于稀有池、也优先于普通池"）
+  state.galaxyWrecks['galaxy-grave'] = { density: 60, rare: 0 }
+  state.galaxyWrecks['galaxy-redring'] = { density: 30, rare: 0 }
+  state.galaxyWrecks['galaxy-vault'] = { density: 40, rare: 0 }
+  notes.push('三个验收星系预置普通残骸密度 60 / 30 / 40（对照：残骸立着时**不产普通残骸**）')
+
+  notes.push(
+    '看什么：① 打捞面板置顶的「舰船残骸 N 具」读数卡（船名 + 可回收件数 + 剩余小时）② 点「开始打捞」后事件日志逐条出' +
+      '「打捞舰船残骸：捞回 ◯◯ ×N」③ 捞完一具后该卡消失、装备库/仓库里多出那些件 ④ 稀有池与普通残骸在残骸立着期间**一点不动**' +
+      '⑤（穹顶墓园那具）命中的话日志会写「捞回了一艘还能修的船」、多出舰船页里那艘带伤的鹦鹉螺',
+  )
+  return notes
+}
+
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
   /**
    * **损伤管制装置验收档**（`dc` · **2026-09-26 船长令**：「做完后给我一个存档 我要测试」）。
@@ -3528,6 +3697,8 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   dfamily: injectDfamily,
   // gswarm（2026-09-12 P-20a 收口）：G 族等离子蜂群验收档（四艘同型对照船，只差抗性系）
   gswarm: injectGSwarm,
+  // shipwreck（2026-09-26 船长令）：玩家舰船残骸验收档（四种验证面 + 打捞演示船就位）
+  shipwreck: injectShipWreck,
 }
 function main(): void {
   const feature = process.argv[2]

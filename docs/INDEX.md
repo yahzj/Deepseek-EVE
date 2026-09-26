@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **321** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6036** KB · **42266** 行
+- 文档总数 **321** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6039** KB · **42288** 行
 - 状态分布：**未标注** 179 · **已确认/已实现** 111 · **进行中** 25 · **待裁定** 5 · **历史留档** 1
 - 孤儿文档（0 引用）**40** 份 · 状态未标注 **179** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -35,7 +35,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 481 KB / 987 行 | 216 / 16 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 481 KB / 987 行 | 217 / 16 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 106 KB / 316 行 | 323 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
@@ -60,7 +60,7 @@
 | `docs/design/announcement-draft-20260926-damage-control.md` | 公告待审稿 · 损伤管制装置（2026-09-26） | 待裁定（待船长审核） | 2026-09-26 | 2 KB / 37 行 | 2 / 0 |
 | `docs/design/h-price-salvage-order-20260926.md` | H 三件市场价改判（甲）＋ 打捞三级序口径同步（2026-09-26） | 进行中（进行中 —— 已落码、四道闸门全绿） | 2026-09-26 | 5 KB / 76 行 | 0 / 0 |
 | `docs/design/handoff-20260926-to-pilot2.md` | 交接卡：新二号（2026-09-26 · 旧二号交班） | 未标注（交接中） | 2026-09-26 | 11 KB / 106 行 | 0 / 0 |
-| `docs/design/ship-wreck-20260926.md` | 玩家舰船残骸（含加固结构插件回收接口）（2026-09-26） | 进行中（进行中 —— 设计已获船长确认） | 2026-09-26 | 9 KB / 128 行 | 0 / 4 |
+| `docs/design/ship-wreck-20260926.md` | 玩家舰船残骸（含加固结构插件回收接口）（2026-09-26） | 进行中（进行中 —— 设计已获船长确认） | 2026-09-26 | 9 KB / 128 行 | 1 / 4 |
 | `docs/design/wreck-invasion-region-20260926.md` | 残骸新增「入侵」地区类别 ＋ G/H 残骸提价（2026-09-26） | 进行中（进行中） | 2026-09-26 | 8 KB / 112 行 | 0 / 0 |
 | `docs/design/hostile-factions-handbook-20260925.md` | 敌族手册（手册 · 新增「敌对势力」一节）—— 挂起备忘（2026-09-25） | 未标注（挂起 · 未动工） | 2026-09-25 | 6 KB / 77 行 | 0 / 0 |
 | `docs/design/spore-allfoes-gate-20260925.md` | 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25） | 进行中（进行中 —— 改动已落码、六道闸门待） | 2026-09-25 | 4 KB / 67 行 | 0 / 0 |
@@ -310,7 +310,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 66 KB / 659 行 | 55 / 12 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 69 KB / 681 行 | 55 / 12 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
