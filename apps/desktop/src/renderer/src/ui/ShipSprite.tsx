@@ -14,7 +14,6 @@
  */
 import type { ReactNode } from 'react'
 import type { ShipRole } from '@whale/core'
-import { SHIP_ROLE_LABELS } from '@whale/core'
 import { FOE_ART, SHIP_ART, foeShipArtOf } from './shipArt'
 import { mountsOf } from './shipMounts'
 
@@ -149,9 +148,9 @@ export function ShipSprite({
   )
 }
 
-export function roleLabel(role: ShipRole): string {
-  return SHIP_ROLE_LABELS[role] ?? role
-}
+/* 2026-09-26 删：原先这里导出 `roleLabel(role)`（直读 core 的角色名纯中文表）。
+   全仓**无人引用**（`grep roleLabel` 只剩它自己），而英文界面下它会漏中文 ⇒ 直接删掉，
+   要显示角色名请用 `ui/labelsText.ts` 的 `shipRoleText()`（本地化单点）。 */
 
 /**
  * **把舰形画进"已经存在的 SVG"**（2026-09-13 · 虫洞地图的"当前格 = 玩家舰"用）：

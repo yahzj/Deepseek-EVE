@@ -21,6 +21,8 @@ import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 import { Glyph, itemIconOf, itemToneOf, RARE_WRECK_TONE } from '../ui/Glyphs'
 // 围剿者（2026-09-23）：族徽取色与族→卡表（按格上那张围剿卡反查族，不新增 props）
 import { FOE_ACCENT } from '../ui/tones'
+// ⚠ 舰级名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 `shipSizeLabel` 是纯中文表
+import { shipTierText } from '../ui/labelsText'
 import { FOE_FAMILY_LABEL } from '../ui/shipArt'
 import { WORMHOLE_FAMILY_CARDS } from '@whale/core'
 import {
@@ -39,7 +41,6 @@ import {
   cargoCapacityM3Of,
   isExitCell,
   shipDisplayName,
-  shipSizeLabel,
   wormholeAdmission,
   // 货仓 → 临时空间的**自动找位**（Ctrl+点击快捷搬运用；与 core 的摆放规则同一把尺）
   findFreeSpot,
@@ -1590,7 +1591,7 @@ export function WormholePanel({
                         </span>
                         <span className="app-wh-card-name">{shipDisplayName(state, ctx, uid)}</span>
                         <span className="app-wh-card-sub">
-                          {shipSizeLabel(tier)} · T{tier}
+                          {shipTierText(tier)}
                           {busy ? <span className="app-chip is-dim"> {busy}</span> : null}
                         </span>
                         <span className="app-wh-card-sub">
