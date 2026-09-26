@@ -7254,7 +7254,8 @@ const PD_PRIORITY_BY_ART: Record<string, number> = {
   'drone-wh-e-sentry': 0,
   'drone-wh-c-heavy': 1,
 }
-function pdPriorityOf(artId: string | undefined | null, role?: string): number {
+/** 机型 → 近防炮选靶优先级（见上表；导出供 `pd-rules` 契约逐型断言，与 `pdShotOf` 同款"为可测导出"） */
+export function pdPriorityOf(artId: string | undefined | null, role?: string): number {
   const byArt = artId ? PD_PRIORITY_BY_ART[artId] : undefined
   if (byArt !== undefined) return byArt
   if (role === 'sentry') return 0

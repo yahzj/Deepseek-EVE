@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES_FLAVORED, buildSimContext } from '@whale/data'
 import { DEFAULT_BALANCE } from '@whale/core'
-import { createFoeSpecs, pdShotOf } from '../src/combat'
+import { createFoeSpecs, pdPriorityOf, pdShotOf } from '../src/combat'
 
 const bal = DEFAULT_BALANCE.battle
 /** ⚠ 用 `buildSimContext()`（物品表含无人机）——`makeTestCtx()` 的 items 只有装备模块 */
@@ -82,5 +82,25 @@ describe('敌方近防炮 · 2026-09-12 船长八条裁决', () => {
     expect(createFoeSpecs(ink, bal).every((s) => s.family === 'H'), 'H 卡的单位带族 H').toBe(true)
     const a = ANOMALIES_FLAVORED.find((x) => x.id === 'ano-nadir-static')!
     expect(createFoeSpecs(a, bal).every((s) => s.family !== 'H'), '别的卡不带 H').toBe(true)
+  })
+
+  /**
+   * **族专属无人机也要吃"优先打哨戒与攻坚"的档位**（2026-09-26 加）。
+   *
+   * 由来：`PD_PRIORITY_BY_ART` 原先只登记制式两型，而 `pdPriorityOf` 的 `role` 兜底**只认敌方机型**
+   * （我方打的是敌机、按敌机 id 查不到才回落 role）⇒ 玩家的**专属**哨戒/攻坚机落进"其余等权"，
+   * 与船长 2026-09-12 的口径（「优先攻击哨戒和攻坚无人机」）不符。
+   * 同批还有一条更硬的漏洞：这三型在**战斗演出表**里从未登记 ⇒ 弹道与击落演出直接跳过
+   * （船长报障「玩家的构件哨戒无人机不会出现在战斗场景中」；那道闸门在 `npm run art:ships:check`）。
+   */
+  it('专属无人机同档位优先：构件哨戒 = 0 · 巢卫攻坚 = 1 · 鱿蜂（侦察档）= 2', () => {
+    expect(pdPriorityOf('drone-wh-e-sentry'), 'E 构件哨戒').toBe(0)
+    expect(pdPriorityOf('drone-wh-c-heavy'), 'C 巢卫攻坚').toBe(1)
+    expect(pdPriorityOf('drone-exile-bee'), 'G 鱿蜂（侦察档，与其他侦察机等权）').toBe(2)
+    // 制式两型不受影响；未知 id 仍走 role 兜底（敌机路径靠它）
+    expect(pdPriorityOf('drone-sentry')).toBe(0)
+    expect(pdPriorityOf('drone-heavy')).toBe(1)
+    expect(pdPriorityOf('foe-drone-e-alert')).toBe(2)
+    expect(pdPriorityOf('unknown-drone', 'sentry')).toBe(0)
   })
 })
