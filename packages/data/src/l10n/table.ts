@@ -3710,6 +3710,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.019": { zh: "点击前往星图", en: "Click to open the star map" },
   // 2026-09-24 旗舰 BOSS 化（跨场累计伤害）：入侵面板那一条的进度读数
   "ui.weekend.020": { zh: "母舰血条剩余 {p1}%", en: "Mothership bar: {p1}% left" },
+  // 2026-09-26 船长令：「建议将旗舰的大概信息直接显示在卡上，包括BOSS血条剩余血量」
+  "ui.weekend.112": { zh: "入侵旗舰编成 · 共 {p1} 艘", en: "Invasion flagship roster · {p1} ships total" },
   // 2026-09-25 结束结算（贡献奖四档入账）：一条有 ISK 的、一条只有残骸的（参与档）、一条零贡献的
   "ui.weekend.022": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2} + {p3} credits." },
   "ui.weekend.023": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2}。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2}." },
