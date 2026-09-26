@@ -117,6 +117,26 @@
 真机复读（改后）：详情窗 23 行 —— `定位 / 档次 → 货舱容量 → 采集性能 → **机动速度 = 300 m/s** → 护盾 …`，
 `动力 = 60%` 仅在下方间接属性块。
 
+### 追加令（同日第六条：「不要显示显示间接属性，过于臃肿」）
+
+**背景两件事**（船长问「舰队悬浮窗不显示间接属性？」时取证所得）：
+1. **本地跑的是主树旧产物**：进程 `Deepseek-EVE\node_modules\electron\electron.exe .`（14:19:34 启动），
+   而主树 `apps/desktop/out` 当时停在 10:28:19 的 `index-umMb9ILI.js` ⇒ 主树已补跑构建为 `index-C6vaSxi4.js`（14:59:57），**重启本地游戏才生效**。
+2. **矮窗口会被 `80vh` 截断**：`.app-tip` 是 `max-height: 80vh; overflow-y: auto`；900px 窗口下 641px 卡片全显，
+   **760px 窗口溢出 33px**，末行被切。
+
+**处置**：舰队悬停卡**不带间接属性块**（动力/跃迁速度/质量/锁定/信号/扫描/跃迁充能）。
+
+| 处 | 改前 | 改后 |
+|---|---|---|
+| `shipCurrentLines` | 末尾追加 `shipIndirectLines(ship, effWarp)` | **不追加**（去掉 `effWarp` 参数） |
+| `ShipHover.current` | 含 `effWarp` | 去掉（不再需要） |
+| `ShipPage.FleetShipHover` | 传 `warpSpeedAus` / `warpBonusMult` | 不再传 |
+| `ui:attr-check` 第④档 | 行数含间接属性 | 改为「基础行 − 移走键」，并断言**间接属性不许回流** |
+
+真机复读：舰队悬停卡 **641px ⇒ 497px（24 行 ⇒ 17 行）**，`溢出 = 0`；
+**图鉴档案仍带间接属性**（船长 2026-09-12 令），装配页左栏亦有——两处未动。
+
 ## 七、归档去向（待船长验收后）
 
 - 结论并入 `docs/roadmap.md`（一条精简条目）＋ `docs/glossary.md` 如需新术语（「机动速度」「间接属性」口径）

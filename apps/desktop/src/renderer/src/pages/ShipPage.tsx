@@ -29,11 +29,9 @@ import {
   shipStoredCount,
   shipStorable,
   // 2026-09-26 船长：「舰队页面…悬停舰船时，应该显示舰船的当前属性，而不是基础属性」
-  // ⇒ 悬停卡改报装后合成值（与装配页/战斗同源：createPlayerSpec ＋ 有效跃迁速度 ＋ 机舱合计）
+  // ⇒ 悬停卡改报装后合成值（与装配页/战斗同源：createPlayerSpec ＋ 机舱合计）
   createPlayerSpec,
   droneBayTotalM3,
-  warpBonusMult,
-  warpSpeedAus,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -136,9 +134,10 @@ const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: stri
  * 应该显示舰船的当前属性，而不是基础属性」）。
  *
  * 与装配页 / 战斗**同一把尺**：`createPlayerSpec` 合成装后血量·抗性·命中·回避·速度，
- * 跃迁速度走 `warpSpeedAus` / `warpBonusMult`（跃迁计算机加成），机舱走 `droneBayTotalM3`
- * （船体 ＋ 甲板扩展）。图鉴 / 市场 / 船坞的悬停卡**不传** current ⇒ 仍按船长同日裁定
- * 「图鉴内按照基础属性算」报**基础属性**。
+ * 机舱走 `droneBayTotalM3`（船体 ＋ 甲板扩展）。
+ * ⚠ **不带间接属性块**（船长同日复令：「看了下，不要显示显示间接属性，过于臃肿」）——
+ * 完整间接属性看「装配」页；图鉴档案那条路另有船长令要求带上，见 `panels/Handbook.tsx`。
+ * 图鉴 / 市场 / 船坞的悬停卡**不传** current ⇒ 仍按船长同日裁定「图鉴内按照基础属性算」报**基础属性**。
  */
 function FleetShipHover({
   uid,
@@ -169,7 +168,6 @@ function FleetShipHover({
       current={{
         spec,
         battle: engine.ctx.balance.battle,
-        effWarp: { aus: warpSpeedAus(engine.state, engine.ctx, uid), bonusPct: warpBonusMult(engine.state, engine.ctx, uid) - 1 },
         droneBayTotal: droneBayTotalM3(ship, engine.state.fleet[uid]?.fitted, engine.ctx),
       }}
     >

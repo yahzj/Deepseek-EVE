@@ -96,15 +96,18 @@ export function fittedDroneBayLine(totalM3: number): InfoLine {
  *
  * ① 三层血量与三系抗性（含容量件与抗性件的 EVE 式缺口合成；图鉴侧仍按船长同日裁定走**基础属性**）；
  * ② 回避率、命中加成（姿态陀螺缺口 / 舰种操作技能）；③ 机动速度（航行技能 ＋ 重甲机动代价 ＋
- * 推进器点火期）与有效跃迁速度；④ 无人机舱合计（船体 ＋ 甲板扩展）。
+ * 推进器点火期）；④ 无人机舱合计（船体 ＋ 甲板扩展）。
  *
- * `effWarp` 不传 = 该行报船表基础值（与 `shipIndirectLines` 同口径）；`droneBayTotal` 不传 =
- * 不追加合计行。其余行（定位/货舱/采集/动力/间接属性）本来就是静态值，不动。
+ * ⚠ **不追加间接属性块**（船长 2026-09-26 复令：「看了下，不要显示显示间接属性，过于臃肿」）——
+ * 悬停卡只报"当前属性的核心一屏"；完整间接属性（动力/跃迁/质量/锁定/信号/扫描/充能）看装配页，
+ * 图鉴档案那条路另有船长令要求带上（见 `panels/Handbook.tsx` 自己追加）。
+ *
+ * `droneBayTotal` 不传 = 不追加合计行。其余行（定位/货舱/采集/槽位/CPU/无人机舱）本来就是静态值，不动。
  */
 export function shipCurrentLines(
   ship: ShipDef,
   spec: UnitSpec,
-  opts: { battle: BattleBalance; effWarp?: { aus: number; bonusPct: number }; droneBayTotal?: number },
+  opts: { battle: BattleBalance; droneBayTotal?: number },
 ): InfoLine[] {
   const replaced = new Map<string, InfoLine>()
   // 装后合成值（键与 `shipInfoLines` 的基础行同 id，逐条顶替）
@@ -128,16 +131,15 @@ export function shipCurrentLines(
     else if (FIT_MAIN_HIDDEN_KEYS.includes(line.k)) continue
     else out.push(line)
   }
-  out.push(...shipIndirectLines(ship, opts.effWarp))
   return out
 }
 
 /**
  * **当前属性卡的拼装口径**（不取值）——供 `npm run ui:attr-check` 复算"舰队页悬停卡"这张表。
  * 返回三段读数，与 `shipCurrentLines` 同一段逻辑（改口径只会改这一处）：
- * - `replaced`：被装后行**顶替**的键（`baseRows` 里位置不变、值换掉）；
+ * - `replaced`：被装后行**顶替**的键（位置不变、值换掉）；
  * - `hidden`  ：被**移走**的键（本卡另有同值行的那些，如有机舱合计时的基础机舱行）；
- * - `keys`    ：整卡最终的行 key 序列（含追加的间接属性）。
+ * - `keys`    ：整卡最终的行 key 序列（**不含**间接属性块——船长 2026-09-26「过于臃肿」已去掉）。
  */
 export function shipCurrentLayout(
   ship: ShipDef,
@@ -162,7 +164,6 @@ export function shipCurrentLayout(
     else if (FIT_MAIN_HIDDEN_KEYS.includes(line.k)) hidden.push(line.k)
     else keys.push(line.k)
   }
-  keys.push(...shipIndirectLines(ship).map((l) => l.k))
   return { replaced: [...replaced], hidden, keys }
 }
 
@@ -1221,10 +1222,11 @@ export function ShipHover({
   /**
    * **当前属性**（船长 2026-09-26：「我的舰队页面中，玩家鼠标悬停舰船时，应该显示舰船的当前
    * 属性，而不是基础属性」）：传本舰的 `createPlayerSpec` 快照 ⇒ 血量/抗性/命中/回避/机动速度/
-   * 跃迁速度/无人机舱合计 一律换成装后合成值，顶部三层血量徽章同步。
+   * 无人机舱合计 一律换成装后合成值，顶部三层血量徽章同步；**不带间接属性块**（同日复令
+   * 「不要显示显示间接属性，过于臃肿」）。
    * **不传 = 基础属性**（图鉴 / 市场 / 船坞那条路，与船长同日「图鉴内按照基础属性算」一致）。
    */
-  current?: { spec: UnitSpec; battle?: BattleBalance; effWarp?: { aus: number; bonusPct: number }; droneBayTotal?: number }
+  current?: { spec: UnitSpec; battle?: BattleBalance; droneBayTotal?: number }
 }) {
   const spec = current?.spec
   const content = (
@@ -1245,7 +1247,6 @@ export function ShipHover({
         <InfoTable
           lines={shipCurrentLines(ship, spec, {
             battle: current?.battle ?? DEFAULT_BALANCE.battle,
-            effWarp: current?.effWarp,
             droneBayTotal: current?.droneBayTotal,
           })}
         />

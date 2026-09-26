@@ -77,20 +77,16 @@ for (const ship of SHIPS) {
     problems.push(`${ship.id}（图鉴档案 / 蓝图产物）「动力」应恰好出现一次（在间接属性块里），实际 ${codex.filter((k) => k === tr('ui.Handbook.012')).length} 次`)
   }
 
-  // ④ 舰队页悬停卡（当前属性，2026-09-26 船长令）：基础行被装后行**逐条顶替**（位置不变、值换掉）
-  //    ＋ 追加间接属性。这里除"不重名"外，还要钉住两条结构性不变量——单看"不重名"抓不到退化：
-  //    a) 行一个都不许凭空多出来（否则两张卡重复计入）；b) 被顶替的键必须**真在**基础行里生效，
-  //    且不许出现在"移走"名单里（否则玩家看到的是基础值，不是当前值）。
+  // ④ 舰队页悬停卡（当前属性，2026-09-26 船长令）：基础行被装后行**逐条顶替**（位置不变、值换掉），
+  //    **不带间接属性块**（船长同日复令「不要显示显示间接属性，过于臃肿」）。除"不重名"外还钉住：
+  //    a) 行数守恒（不许凭空多行或少行）；b) 顶替键必须真在基础行里生效；c) 间接属性的键一个都不许出现。
   const hasBay = (ship.droneBayM3 ?? 0) > 0
   const hover = shipCurrentLayout(ship, hasBay)
   const dupHover = dupOf(hover.keys)
   if (dupHover.length > 0) problems.push(`${ship.id}（舰队页悬停卡）重复：${[...new Set(dupHover)].join(' / ')}`)
-  // 行数守恒：卡的最终行 = 基础行 ＋ 间接属性，逐个扣掉被"移走"的键（被顶替的键仍在原位，不扣）
+  // 行数守恒：卡的最终行 = 基础行 − 被"移走"的键（被顶替的键仍在原位，不扣）
   const hiddenSet = new Set(hover.hidden)
-  const expected = [
-    ...shipInfoLines(ship).map((l) => l.k),
-    ...shipIndirectLines(ship).map((l) => l.k),
-  ].filter((k) => !hiddenSet.has(k)).length
+  const expected = shipInfoLines(ship).filter((l) => !hiddenSet.has(l.k)).length
   if (hover.keys.length !== expected) {
     problems.push(`${ship.id}（舰队页悬停卡）行数 ${hover.keys.length} ≠ 应显示 ${expected}（装后行必须逐条顶替、不许增删）`)
   }
@@ -105,6 +101,10 @@ for (const ship of SHIPS) {
   }
   if (hasBay && !hover.replaced.includes(tr('ui.FitPage.010'))) {
     problems.push(`${ship.id}（舰队页悬停卡）有机舱却没把「无人机舱」换成装后合计行`)
+  }
+  // e) 间接属性块不许回流（船长 2026-09-26：「看了下，不要显示显示间接属性，过于臃肿」）
+  for (const k of shipIndirectLines(ship).map((l) => l.k)) {
+    if (finalKeys.has(k)) problems.push(`${ship.id}（舰队页悬停卡）出现了间接属性行「${k}」—— 悬停卡不带间接属性块（完整数据看装配页）`)
   }
 }
 
