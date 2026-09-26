@@ -12,7 +12,7 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindText, rackOf, SHIP_ROLE_LABELS, SLOT_LABELS, shipCategoryKeyOf, shipSizeLabel, visibleItemDefs } from '@whale/core'
+import { ITEM_KIND_ORDER, itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
 import type { DroneClass, ItemKind, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
 import { itemRarityTierOf } from '@whale/data'

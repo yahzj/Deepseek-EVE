@@ -16,6 +16,9 @@
  */
 import type { AiCoreType, DroneClass, ItemKind, ShipRole } from '@whale/core'
 import { tr } from '../i18n/locale'
+// 槽类名复用市场/手册那份**已本地化**的槽位表（`RACK_SUBS` · `subText`）——**不另存第二份文案**
+// （`rackText` 就建在它上面；`itemSubs.ts` 不 import 本文件 ⇒ 无环）
+import { RACK_SUBS, subText } from './itemSubs'
 
 /** 物品大类 → id（能复用既有 id 的一律复用，避免同中文两处登记） */
 const KIND_ID: Record<ItemKind, string> = {
@@ -110,12 +113,47 @@ const SLOT_ID: Record<string, string> = {
   support: 'ui.labelsText.058', // 支援系统 / Support System
   cpu: 'ui.labelsText.059', // 协处理器 / Coprocessor
   'target-lock': 'ui.itemSubs.013', // 目标锁定 / Targeting
+  // 2026-09-26 补（船长报障「高中低槽位数量的文本」时顺带查出的漏登记）：护盾充能力场装置那一支
+  // 原先没有映射 ⇒ `slotText('shield-field')` 回落到槽位键本身（英文界面下显示 "shield-field"）
+  'shield-field': 'ui.labelsText.065', // 护盾力场 / Shield Field
 }
 
 /** 槽位名（core `SLOT_LABELS[slot]` 的本地化版；查不到原样返回，漏登记看得见） */
 export function slotText(slot: string): string {
   const id = SLOT_ID[slot]
   return id !== undefined ? tr(id) : slot
+}
+
+/**
+ * **槽类名（高槽 / 中槽 / 低槽）**（2026-09-26 补；= core `RACK_LABELS` 的本地化版）。
+ *
+ * 病根同本文件开头那族：core 的 `RACK_LABELS` 是纯中文表（`{ high: '高槽', mid: '中槽', low: '低槽' }`），
+ * 而**渲染层另有一份同名的已本地化表**（`ui/itemSubs.ts` 的 `RACK_LABELS` → `ui.itemSubs.025/026/027`，
+ * 市场「类型」下拉 / 手册装备图鉴 / 物品页仓库筛选都读那份）⇒ 谁读到 core 那份，英文界面下就漏中文。
+ * 船长 2026-09-26 报障「**部分遗漏未本地化的文本（舰船类型，高中低槽位数量的文本）**」命中的就是这一类：
+ * 船卡「槽位布局」行、装备信息「槽位 / 类型」行、装配台槽位组标题与换装托 toast 都直读了 core 那份。
+ *
+ * ⚠ **不另存第二份文案**：这里复用市场槽位那三条 id（`RACK_SUBS` 的键），与 `subText` 同一把尺
+ * ——改槽类名只改一处；`rackText` 与 `subText(RACK_SUBS[i])` 逐字等价（契约 `ui:subs-check` 有断言）。
+ */
+export function rackText(rack: string): string {
+  const sub = RACK_SUBS.find((s) => s.key === rack)
+  return sub !== undefined ? subText(sub) : rack
+}
+
+/**
+ * **窝点档名**（外围 / 核心 / 深层）（2026-09-26 补；= core `LAIR_TIER_LABELS` 的本地化版）。
+ * 三档的 id 是本批新登记（`ui.labelsText.066~068`）——core 那张表是纯中文，原先被
+ * `panels/Expedition.tsx` 直接渲染（窝点卡与"本日 N 席"汇总行）⇒ 英文界面下漏中文。
+ */
+const LAIR_TIER_ID: Record<number, string> = {
+  1: 'ui.labelsText.066', // 外围 / Periphery
+  2: 'ui.labelsText.067', // 核心 / Core
+  3: 'ui.labelsText.068', // 深层 / Deep
+}
+export function lairTierText(tier: number): string {
+  const id = LAIR_TIER_ID[tier]
+  return id !== undefined ? tr(id) : String(tier)
 }
 
 /**

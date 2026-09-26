@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useEffect, useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, itemKindLabel, marketGoodOf, SLOT_LABELS } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
@@ -28,7 +28,7 @@ import {
   itemSubPasses,
   rackPasses, subText } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
-import { kindText } from '../ui/labelsText'
+import { kindText, slotText } from '../ui/labelsText'
 /** 装备库展示顺序（单点）：攻击类别 → 档位从低到高（2026-09-24 船长报障后立） */
 import { sortModEntries } from '../ui/modOrder'
 import type { PageProps } from './common'
@@ -92,7 +92,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     if (!def) return false
     return (
       def.name.toLowerCase().includes(wq) ||
-      (SLOT_LABELS[def.slot] ?? '').toLowerCase().includes(wq) ||
+      slotText(def.slot).toLowerCase().includes(wq) ||
       (def.description ?? '').toLowerCase().includes(wq)
     )
   }
@@ -542,7 +542,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       <RowGlyph glyph={def.slot} /> {def.name}
                     </span>
                     <span className="app-inv-count">
-                      ×{units.toLocaleString('zh-CN')} · {SLOT_LABELS[def.slot] ?? def.slot} · CPU {def.cpuUse}
+                      ×{units.toLocaleString('zh-CN')} · {slotText(def.slot)} · CPU {def.cpuUse}
                       {def.dmgMult !== undefined ? ` · 火力 ×${def.dmgMult}${(def.shots ?? 1) > 1 ? `×${def.shots}` : ''}` : ''}
                     </span>
                   </div>
@@ -701,7 +701,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickModDef.name}</div>
                   <div className="app-dim">
-                    ×{pickModUnits.toLocaleString('zh-CN')} · {SLOT_LABELS[pickModDef.slot] ?? pickModDef.slot} · CPU{' '}
+                    ×{pickModUnits.toLocaleString('zh-CN')} · {slotText(pickModDef.slot)} · CPU{' '}
                     {pickModDef.cpuUse}
                   </div>
                 </div>

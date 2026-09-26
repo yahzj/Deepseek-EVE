@@ -15,10 +15,13 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, RACK_LABELS, rackOf, shipSlotsOf, SLOT_LABELS, shipCategoryLabelOf, shipSizeLabel, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
-import { kindTextOfItem } from '../ui/labelsText'
+// ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
+// 「部分遗漏未本地化的文本（舰船类型，高中低槽位数量的文本）」）：core 的同名表/函数是纯中文
+// （`RACK_LABELS` / `shipCategoryLabelOf` / `shipSizeLabel`）⇒ 直读它们英文界面下就漏中文。
+import { kindTextOfItem, rackText, shipRoleText, shipTierText, slotText } from '../ui/labelsText'
 // 支援件的功能子类名（2026-09-26 船长令：「装备的『槽位 / 类型』这个也要更新」）——
 // 「槽位 / 类型」那一行对支援件改报 战斗支援件 / 辅助支援件 / 修理装置（见 `moduleInfoLines`）
 import { MODULE_SUBS, moduleSubKeyOf, subText } from './itemSubs'
@@ -397,9 +400,9 @@ export function combatBadges(ship: ShipDef, over?: BadgeOver): ReactNode[] {
 export function slotListText(ship?: ShipDef): string {
   if (ship) {
     const s = shipSlotsOf(ship)
-    return tr("ui.shipInfo.122", { p1: RACK_LABELS.high, p2: s.high, p3: RACK_LABELS.mid, p4: s.mid, p5: RACK_LABELS.low, p6: s.low })
+    return tr("ui.shipInfo.122", { p1: rackText('high'), p2: s.high, p3: rackText('mid'), p4: s.mid, p5: rackText('low'), p6: s.low })
   }
-  return MODULE_SLOTS.map((m) => SLOT_LABELS[m]).join(' · ')
+  return MODULE_SLOTS.map((m) => slotText(m)).join(' · ')
 }
 
 /** 舰船统一信息行：基础 + V10.5b 面板分组（护盾/装甲/结构区块各自血量与三系抗性；CPU/无人机舱） */
@@ -408,8 +411,10 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
     {
       k: tr("ui.Handbook.009"),
       // 2026-09-13 船长：**舰种子分类进界面**（只有虫洞族专属舰船写 `subClass`）
-      // 2026-09-16 船长：类别名走 `shipCategoryLabelOf`（装甲线 = `role: armored` 或武装舰里装甲占比 > 护盾占比）
-      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipCategoryLabelOf(ship)} · ${shipSizeLabel(ship.tier)} T${ship.tier}`,
+      // 2026-09-16 船长：类别名走 `shipCategoryKeyOf` + 本地化单点 `shipRoleText`
+      // （装甲线 = `role: armored` 或武装舰里装甲占比 > 护盾占比）；舰级名同理走 `shipTierText`
+      // （2026-09-26 报障修：原直读 core 的 `shipCategoryLabelOf` / `shipSizeLabel` ⇒ 英文界面下这行漏中文）
+      v: `${ship.subClass ? `${ship.subClass} · ` : ''}${shipRoleText(shipCategoryKeyOf(ship))} · ${shipTierText(ship.tier)}`,
     },
     // 2026-09-13 船长点名的三条**船体固有新机制**（只虫洞族专属舰船有；没有就不占行）
     ...(() => {
@@ -663,8 +668,8 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
    */
   const subKey = moduleSubKeyOf(mod.slot, mod.id)
   const subOpt = MODULE_SUBS.find((s) => s.key === subKey)
-  const typeText = mod.slot === 'support' && subOpt ? subText(subOpt) : SLOT_LABELS[mod.slot]
-  const lines: InfoLine[] = [{ k: tr("ui.shipInfo.036"), v: `${typeText}（${RACK_LABELS[rackOf(mod)]}）` }]
+  const typeText = mod.slot === 'support' && subOpt ? subText(subOpt) : slotText(mod.slot)
+  const lines: InfoLine[] = [{ k: tr("ui.shipInfo.036"), v: `${typeText}（${rackText(rackOf(mod))}）` }]
   if (mod.slot === 'miner') {
     lines.push({ k: tr("ui.shipInfo.037"), v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'cargo') {

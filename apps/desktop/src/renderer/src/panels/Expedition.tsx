@@ -12,7 +12,6 @@ import {
   DSI_FACTION_ID,
   HOME_GALAXY_ID,
   LAIR_RARE_WRECK_GAIN,
-  LAIR_TIER_LABELS,
   lairLevelOf,
   scanWindowMsFor,
   aiCoreName,
@@ -56,7 +55,6 @@ import {
   originGalaxyOf,
   scanStatus,
   shipDisplayName,
-  shipRoleLabel,
   autoLoopReopenBlockReason,
   wreckDensityOf,
   weekendWreckDensityOf,
@@ -95,6 +93,8 @@ import { hoverTipProps } from '../ui/Tooltip'
 import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
+// ⚠ 舰船角色名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 shipRoleLabel 是纯中文表
+import { lairTierText, shipRoleText } from '../ui/labelsText'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
  * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
@@ -1981,7 +1981,7 @@ function GalaxyActions({
   const pilotName = shipDisplayName(state, ctx, state.shipId)
   const pilotRoleLabel = (() => {
     const role = fleetDefOf(state, ctx, state.shipId)?.role
-    return role ? shipRoleLabel(role) : ''
+    return role ? shipRoleText(role) : ''
   })()
   const miningActive = state.mining.active
   const [goAskAno, setGoAskAno] = useState<string | null>(null)
@@ -2639,7 +2639,7 @@ function AnomalyCard({
   const pilotName = shipDisplayName(state, engine.ctx, state.shipId)
   const pilotRoleLabel = (() => {
     const role = fleetDefOf(state, engine.ctx, state.shipId)?.role
-    return role ? shipRoleLabel(role) : ''
+    return role ? shipRoleText(role) : ''
   })()
   const inFlightSelf = state.expedition.active && state.expedition.anomalyId === anomaly.id
   const inFlightOther = state.expedition.active && !inFlightSelf
@@ -3333,7 +3333,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
 
   // 当日席位构成（档位随机发放，但保证每天三档各至少一张）：按实际板统计，供头部摘要
   const tierCount = (lv: 1 | 2 | 3): number => tasks.filter((t) => (t.lairTier ?? 1) === lv).length
-  const tierSummary = tr("ui.Expedition.232", { p1: tasks.length, p2: LAIR_TIER_LABELS[1], p3: tierCount(1), p4: LAIR_TIER_LABELS[2], p5: tierCount(2), p6: LAIR_TIER_LABELS[3], p7: tierCount(3) })
+  const tierSummary = tr("ui.Expedition.232", { p1: tasks.length, p2: lairTierText(1), p3: tierCount(1), p4: lairTierText(2), p5: tierCount(2), p6: lairTierText(3), p7: tierCount(3) })
   // 敌对派系活跃（2026-09-10 船长定：置顶那一条）——目标 = 当日选中星系的**常驻悬赏**（不是窝点）
   const faction = view.faction
   const factionCard = faction?.anomalyId ? engine.ctx.anomalies.get(faction.anomalyId) : undefined
@@ -3597,7 +3597,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               <div className="app-station-head">
                 <span className="app-station-name">
                   {tr("ui.Expedition.061")}{t.lairName ?? card?.name ?? t.anomalyId}
-                  <em className="app-chip">{LAIR_TIER_LABELS[tier]}{tr("ui.Expedition.294")}</em>
+                  <em className="app-chip">{lairTierText(tier)}{tr("ui.Expedition.294")}</em>
                   {reqStanding > 0 ? (
                     <em className={`app-chip${standingMet ? '' : ' is-dim'}`} title={tr("ui.Expedition.175", { reqStanding: reqStanding, standing: standing })}>
                       {standingMet ? (
@@ -3637,7 +3637,7 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                 {/* 地图级别提示（2026-09-10 船长定）：级别 < 3 的星系出不了高档位，不写清楚玩家会当成 bug */}
                 {base && lairLevelOf(base) < 3 ? (
                   <span title={tr("ui.Expedition.295")}>
-                    <span className="app-lair-key">{tr("ui.Expedition.239")}</span> {LAIR_TIER_LABELS[lairLevelOf(base)]}
+                    <span className="app-lair-key">{tr("ui.Expedition.239")}</span> {lairTierText(lairLevelOf(base))}
                   </span>
                 ) : null}
               </div>
