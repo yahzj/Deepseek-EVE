@@ -26,7 +26,6 @@ import {
   countWare,
   oreAvailable,
   /** 2026-09-25 船长令：H 族残骸暂不开放回收 ⇒ 卡片也摘掉（与起炉那一层同一判据） */
-  wreckRecycleClosedOf,
   RARE_WRECK_VOLUME_M3,
   recycleMineralPoolOf,
   recycleProfileOf,
@@ -594,13 +593,11 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
    *  之前从这里取列表导致回收卡永远不出现（2026-09-06 玩家上报）。
    *  **稀有残骸已解禁**（船长 2026-09-10：二号五族专属装备齐备后开放）——与普通残骸同列表，
    *  卡片带「高级箱」徽标；区别只在"首批触发一次高级箱"（一炉一箱）。
-   *  ⚠ **H 族（墨潮帮）残骸暂不开放回收**（**船长 2026-09-25 令**：「先关闭对应的精炼炉，等势力装备
-   *  出来再说」）⇒ 这里按 core 的同一判据（`wreckRecycleClosedOf`）**把卡片摘掉**（连在炉中的也摘：
-   *  那种情况正常不会发生——起炉那一层也拦着）；打捞与出售不受影响。 */
+   *  ⚠ **H 族（墨潮帮）残骸的回收闸门已于 2026-09-26 退役**（船长 2026-09-25 曾令关炉、
+   *  等势力装备；2026-09-26 三件定稿 ⇒ 理由消失）⇒ 原先那层摘卡过滤一并删除，H 族卡片照常出现。 */
   const wreckDefs = allItemDefs.filter(
     (def) =>
       def.kind === 'wreck' &&
-      !wreckRecycleClosedOf(def.id, engine.ctx) &&
       (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
   )
 

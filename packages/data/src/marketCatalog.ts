@@ -838,10 +838,14 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
     { key: 'mod-lair-frame-e', kind: 'module', refId: 'mod-lair-frame-e', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构骨架（同槽位最高档 1,940,000×4）
     { key: 'mod-lair-drone-tac-g', kind: 'module', refId: 'mod-lair-drone-tac-g', rarity: 'exotic', basePrice: 8_160_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂群导控（同槽位最高档 2,040,000×4）
     { key: 'mod-lair-drone-relay-g', kind: 'module', refId: 'mod-lair-drone-relay-g', rarity: 'exotic', basePrice: 8_120_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 流亡中继桅（同槽位最高档 2,030,000×4）
+    // 2026-09-26 H 族（墨潮帮）三件：两件 support/high 模块 ＋ 一架攻坚机（同槽位最高档 = 隐秘行动装置 MK3 10,000,000 ×4）
+    { key: 'mod-lair-ecm-h', kind: 'module', refId: 'mod-lair-ecm-h', rarity: 'exotic', basePrice: 40_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮电子舱（support/high 最高档 10,000,000×4）
+    { key: 'mod-lair-web-h', kind: 'module', refId: 'mod-lair-web-h', rarity: 'exotic', basePrice: 40_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮捕获网（同上）
   // ── 专属无人机 3 型（自带货值 ×4；无人机线**无制式图纸**，这三型各有一张一次性图纸，见 blueprints.ts）──
     { key: 'drone-exile-bee', kind: 'item', refId: 'drone-exile-bee', rarity: 'exotic', basePrice: 24_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机（自带货值 6000×4）
     { key: 'drone-wh-c-heavy', kind: 'item', refId: 'drone-wh-c-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫攻坚无人机（自带货值 12000×4）
     { key: 'drone-wh-e-sentry', kind: 'item', refId: 'drone-wh-e-sentry', rarity: 'exotic', basePrice: 88_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件哨戒无人机（自带货值 22000×4）
+    { key: 'drone-ink-heavy', kind: 'item', refId: 'drone-ink-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮重袭无人机（自带货值 12000×4）
   // ── 3 张新增的一次性无人机蓝图（每次开工出 50 架）──
   { key: 'bp-lair-g-drone', kind: 'blueprint', refId: 'bp-lair-g-drone', rarity: 'exotic', basePrice: 1_200_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机图纸（一次性）（料÷0.45×4）
   { key: 'bp-wh-c-drone', kind: 'blueprint', refId: 'bp-wh-c-drone', rarity: 'exotic', basePrice: 2_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫无人机图纸（一次性）（料÷0.45×4）

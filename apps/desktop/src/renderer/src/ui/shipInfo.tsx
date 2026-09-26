@@ -290,6 +290,12 @@ export function moduleShortEffect(mod: ModuleDef): string {
       } else if (mod.stealthMs !== undefined) {
         // 2026-09-15 隐秘行动装置（高槽支援件）：开火前隐身——短行必须写明"开火即现形"与推进器禁令
         body = tr("ui.shipInfo.118", { p1: mod.stealthMs / 1000 })
+      } else if (mod.foeRangeDebuffPct !== undefined) {
+        // 2026-09-26 墨潮电子舱（H 族势力装备 · 高槽支援件）：敌方武器射程压制
+        body = tr("ui.shipInfo.185", { p1: pct(mod.foeRangeDebuffPct) })
+      } else if (mod.captureWebCycleMs !== undefined) {
+        // 2026-09-26 墨潮捕获网（H 族势力装备 · 高槽支援件）：周期张网
+        body = tr("ui.shipInfo.186", { p1: Math.round(mod.captureWebCycleMs / 1000) })
       }
       break
     }

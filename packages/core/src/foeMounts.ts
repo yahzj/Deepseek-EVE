@@ -52,6 +52,11 @@ export const FOE_MOUNT_IDS = {
   hullRepair: 'foe-mount-hull-repair',
   /** **支援舰船召唤装置**（**船长 2026-09-25**）：入侵母舰——每 60 秒把当前波已阵亡的一艘敌舰**满血复活入场** */
   reviveEscort: 'foe-mount-revive-escort',
+  /**
+   * **墨潮干扰阵列**（**船长 2026-09-26**：「**敌人的射程压制挂载件好像也还没有命名？**」⇒ 选甲：
+   * 把墨潮干扰舰的**舰级字段** `foeRangeDebuffPct = 0.5` 迁成**具名挂载件**，数值一字不变）。
+   */
+  inkRangeDebuff: 'foe-mount-ink-range-debuff',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -172,6 +177,18 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '通用件、先只装入侵母舰（甲）。实现见 `combat.advanceBattleFor` 的"支援舰召唤"一段：' +
       '新 tag `supN-<原tag>` 入场（美术/体积/名称按原 tag 解析）⇒ 界面表现为「敌方支援舰船入场」。',
   },
+  [FOE_MOUNT_IDS.inkRangeDebuff]: {
+    id: FOE_MOUNT_IDS.inkRangeDebuff,
+    name: '墨潮干扰阵列',
+    en: 'Ink Tide Jammer Array',
+    rangeDebuff: { pct: 0.5 },
+    note:
+      '船长 2026-09-26：「敌人的射程压制挂载件好像也还没有命名？」⇒ 选甲：把 H 族「墨潮干扰舰」' +
+      '原先写在舰级字段上的 `foeRangeDebuffPct = 0.5` 迁成具名挂载件（数值一字不变）——' +
+      '迁移后它有了名字、进敌舰悬停/战报的挂载件清单、也进 `foe:export` 的「H 族 · 挂载件」表；' +
+      '与我方那件「墨潮电子舱」（`mod-lair-ecm-h`）是敌我同源的一对。' +
+      '口径 = 削减我方武器最远射程 50%，与我方电子舰的削减做加法抵消（见 `meJammerNetOf`）。',
+  },
 }
 
 /** 按 id 取件（未知 id ⇒ `undefined`；体检会把它判红） */
@@ -200,6 +217,11 @@ export interface ResolvedFoeMounts {
   foeRepairPulse?: { everyMs: number; armor: number; hull: number }
   /** **支援舰船召唤装置的节拍**（原样带给单位；池子/上限/入场口径见 `FoeMountDef.reviveEscort`） */
   foeReviveEscort?: { everyMs: number }
+  /**
+   * **射程压制阵列的削减率**（原样带给单位；消费方 = `meJammerNetOf` 那条链，逐字不变）。
+   * 与舰级字段 `FoeShipDef.foeRangeDebuffPct` **同源不同入口**：解析后写进**同一个运行时字段**。
+   */
+  foeRangeDebuffPct?: number
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /**
@@ -240,6 +262,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.evasionBonus) out.foeEvasionBonusAdd = (out.foeEvasionBonusAdd ?? 0) + def.evasionBonus.add
     if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
     if (def.reviveEscort) out.foeReviveEscort = { ...def.reviveEscort }
+    if (def.rangeDebuff) out.foeRangeDebuffPct = def.rangeDebuff.pct
   }
   return out
 }

@@ -449,6 +449,11 @@ const BATTLE_FIELDS = {
   droneLoadAtStartBy: { kind: 'persist' },
   foeDroneRangeBuff: { kind: 'persist' }, // E 族受击增程：一次触发、本场永久（丢了 ⇒ 机制静默重置）
   foeGunRangeBuff: { kind: 'persist' }, // D 族炮台受击增程：同上
+  // 2026-09-26 船长令：我方「墨潮捕获网」（H 族势力装备 · 周期装置）——
+  // **必须随档**：漏了会让战中重载后"冷却进度"清零、网立刻重新张（= 白赚一轮控制），
+  // 且被钉目标也会丢（重载即可换目标）。写入点 = combat.advanceMyCaptureWebs，白名单 = cleanBattle。
+  myWebs: { kind: 'persist' },
+  foeWebDebuffs: { kind: 'persist' },
   /* ── 运行态（有意不入档，逐条写明理由） ── */
   foeCharges: {
     kind: 'runtime',
@@ -683,6 +688,31 @@ function cleanBattle(raw: unknown): BattleState | null {
   const droneLoadAtStartBy = cleanCountMapBy(b.droneLoadAtStartBy)
   const foeDroneRangeBuff = cleanPosNum(b.foeDroneRangeBuff)
   const foeGunRangeBuff = cleanPosNum(b.foeGunRangeBuff)
+  /**
+   * **我方捕获网两份账本**（2026-09-26）：
+   * - `myWebs`（键 = 携带者 tag）：只收 `{ targetTag?: 非空字符串, cooldownUntilMs: 有限非负数 }`；
+   * - `foeWebDebuffs`（键 = 被钉敌舰 tag）：`byTag` 必须是非空字符串，三层效果按常量重写（不信档里的数）。
+   * 坏值整条丢（与其余账本同款口径）。
+   */
+  const myWebs = cleanLedgerMap(b.myWebs, (raw) => {
+    const r = asRaw(raw)
+    const cd = r.cooldownUntilMs
+    if (typeof cd !== 'number' || !Number.isFinite(cd) || cd < 0) return undefined
+    const tt = typeof r.targetTag === 'string' && r.targetTag.length > 0 ? r.targetTag : undefined
+    return { ...(tt !== undefined ? { targetTag: tt } : {}), cooldownUntilMs: cd }
+  })
+  const foeWebDebuffs = cleanLedgerMap(b.foeWebDebuffs, (raw) => {
+    const r = asRaw(raw)
+    const byTag = r.byTag
+    if (typeof byTag !== 'string' || byTag.length === 0) return undefined
+    return {
+      byTag,
+      slowMul: 0.1,
+      noThruster: true as const,
+      noEvasion: true as const,
+      atMs: Math.max(0, numf(r.atMs, 0)),
+    }
+  })
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
     ...(foeOverride !== undefined ? { foeOverride } : {}),
@@ -762,6 +792,9 @@ function cleanBattle(raw: unknown): BattleState | null {
     // 2026-09-25 支援舰召唤计时（丢了 ⇒ 战中重载后计时与序号重置）
     ...(foeReviveAtMs !== undefined ? { foeReviveAtMs } : {}),
     ...(foeReviveCount !== undefined ? { foeReviveCount } : {}),
+    // 2026-09-26 我方捕获网（丢了 ⇒ 重载即刷新冷却、可换目标 = 白赚一轮控制）
+    ...(myWebs !== undefined ? { myWebs } : {}),
+    ...(foeWebDebuffs !== undefined ? { foeWebDebuffs } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),

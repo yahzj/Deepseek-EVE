@@ -287,24 +287,21 @@ describe('残骸回收批（精炼炉运转）', () => {
    * 二答「H 族残骸整体暂不可回收」）：普通与稀有**一起拦**，凑够一批也不行；
    * **打捞与出售不受影响**（判据只管回收那条路）。
    */
-  it('H 族残骸（普通/稀有）暂不可回收；别的族照旧', () => {
+  it('H 族残骸回收**已打开**（2026-09-26 船长定三件势力装备后退役闸门）；别的族照旧', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 34 })
     /** ⚠ 这条用例要用**真数据上下文**（H 组是 `buildSimContext` 注册的真物品；`makeTestCtx` 是合成上下文） */
     const ctx = buildSimContext()
-    expect(wreckRecycleClosedOf('wreck-h-hi', ctx), 'H 普通残骸 ⇒ 关着').toBe(true)
-    expect(wreckRecycleClosedOf('wreck-rare-h-hi', ctx), 'H 稀有残骸 ⇒ 关着').toBe(true)
-    expect(wreckRecycleClosedOf(wreckItemIdOf('ano-grave'), ctx), '别的族 ⇒ 不受影响').toBe(false)
-    /** 凑够一大批也照样拦（不是"数量不够"那条因） */
+    expect(wreckRecycleClosedOf('wreck-h-hi', ctx), 'H 普通残骸 ⇒ 已解禁').toBe(false)
+    expect(wreckRecycleClosedOf('wreck-rare-h-hi', ctx), 'H 稀有残骸 ⇒ 已解禁').toBe(false)
+    expect(wreckRecycleClosedOf(wreckItemIdOf('ano-grave'), ctx), '别的族 ⇒ 照旧不拦').toBe(false)
+    /** 真正能起炉（改前这一步会被拒，拒因 `core.industry.084`） */
     addWare(state, 'wreck-h-hi', 500)
     addWare(state, 'wreck-rare-h-hi', 90)
     const a = startRecycleRun(state, 'wreck-h-hi', 'pilot', ctx)
-    expect(a.ok, 'H 普通残骸 ⇒ 拒绝').toBe(false)
-    expect(a.errorId, '拒因走"暂时无法回收"那条（不是来源记录缺失/不足一批）').toBe('core.industry.084')
-    expect(a.error ?? '', '文案里带物品名').toContain('墨潮帮残骸')
+    expect(a.ok, `H 普通残骸应能回收：${JSON.stringify(a)}`).toBe(true)
     const b = startRecycleRun(state, 'wreck-rare-h-hi', 'pilot', ctx)
-    expect(b.ok, 'H 稀有残骸 ⇒ 拒绝').toBe(false)
-    expect(b.errorId).toBe('core.industry.084')
-    expect(state.refineRuns.length, '一条炉都没开起来').toBe(0)
+    expect(b.ok, `H 稀有残骸应能回收：${JSON.stringify(b)}`).toBe(true)
+    expect(state.refineRuns.length, '两条炉都开起来了').toBe(2)
   })
 
   it('残骸回收学：批周期每级 −4%（Lv5 = ×0.6，手动与 AI 同享）', () => {

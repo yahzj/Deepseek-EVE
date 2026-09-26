@@ -14,6 +14,7 @@ import { FOE_DRONES, FOE_SHIPS, INK_SPEED_EXEMPT_SHIP_IDS, buildSimContext } fro
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { resolveFoeMounts } from '../src/index'
+import { FOE_MOUNT_IDS } from '../src/foeMounts'
 import type { AnomalyDef, WeaponSpec } from '../src/index'
 import {
   activeFoeSpecsOf,
@@ -66,10 +67,12 @@ function specsOf(shipId: string) {
 }
 
 describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）', () => {
-  it('舰级字段：`foeRangeDebuffPct = 0.5`，并原样带进单位规格', () => {
-    expect(shipOf('foe-h-ink-jammer')!.foeRangeDebuffPct).toBe(0.5)
-    expect(specsOf('foe-h-ink-jammer')[0]!.foeRangeDebuffPct).toBe(0.5)
-    // 对照：没有该字段的舰级写不出这个运行时值（零行为变化口径）
+  it('射程压制已迁成具名挂载件「墨潮干扰阵列」：舰级不再写该字段，**单位规格读数逐字不变**', () => {
+    expect(shipOf('foe-h-ink-jammer')!.foeRangeDebuffPct, '2026-09-26 起舰级字段已迁走').toBeUndefined()
+    expect(shipOf('foe-h-ink-jammer')!.mounts).toEqual([FOE_MOUNT_IDS.captureWeb, FOE_MOUNT_IDS.inkRangeDebuff])
+    expect(specsOf('foe-h-ink-jammer')[0]!.foeRangeDebuffPct, '运行时读数不变（挂载件供给）').toBe(0.5)
+    expect(specsOf('foe-h-ink-jammer')[0]!.foeMountNames).toContain('墨潮干扰阵列')
+    // 对照：没有该挂载件的舰级写不出这个运行时值（零行为变化口径）
     expect(specsOf('foe-h-ink-corvette')[0]!.foeRangeDebuffPct).toBeUndefined()
   })
 

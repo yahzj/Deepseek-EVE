@@ -318,6 +318,14 @@ export interface UnitSpec {
    * 被钉的我方舰：战斗机动 ×`slowMul`（0.1）· 推进器全关 · 闪避归零 · 武器射程 −`rangeDownM`。
    */
   foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
+  /**
+   * **我方「墨潮捕获网」**（**船长 2026-09-26**，H 族势力装备之一；模块字段见 `ModuleDef.captureWebCycleMs`）：
+   * 带本字段的我方舰 = 一台**周期装置**——开战即钉一艘**未被钉住**的敌舰（**独立瞄准 · 不看命中**），
+   * 目标被击沉 ⇒ 进冷却、冷却结束选新目标；**携带者被击沉** ⇒ 该网解除。
+   * 效果三层：机动 ×0.1 · 推进器全关 · 闪避归零（⚠ **不含射程**，船长同日明令移除）。
+   * 周期账本 = `BattleState.myWebs`，被钉状态 = `BattleState.foeWebDebuffs`（见 `advanceMyCaptureWebs`）。
+   */
+  myCaptureWeb?: { cycleMs: number }
   /** **单次出击上限**（见 `FoeShipDef.droneLaunch`；2026-09-12 船长「限制敌机单次出击数量」） */
   foeDroneLaunch?: { maxAloft: number; cycleMs?: number; keepDps?: boolean }
   /** **备用机库**（见 `FoeShipDef.droneReserve`；2026-09-12 船长「损坏后补充敌机」） */
@@ -963,6 +971,114 @@ function expireFoeWebs(state: GameState, b: import('./state').BattleState, foes:
   }
 }
 
+/**
+ * **把我方「墨潮捕获网」的三层效果打在一艘敌舰的规格上**（**船长 2026-09-26**）。
+ *
+ * 与 `applyMeWebDebuff`（敌方那件打在我们身上）**同构，少一层**：船长明令
+ * 「**我方捕获网移除武器射程下降的效果**」⇒ 只留 **机动 ×`slowMul`** · **推进器全关** · **闪避归零**。
+ * ⚠ 敌阵规格**每拍由卡重建** ⇒ 本函数也必须**每拍重新施加**（与 `applyMeJammerDebuff` 同一套写法），
+ * 否则效果"下一拍就复活"。
+ */
+export function applyFoeWebDebuff<T extends UnitSpec>(
+  spec: T,
+  d: import('./state').BattleFoeWebDebuff,
+): T {
+  spec.speedMps = Math.max(20, spec.speedMps * d.slowMul)
+  if (d.noThruster) spec.thrusterBoost = 0
+  if (d.noEvasion) spec.evasion = 0
+  return spec
+}
+
+/**
+ * **我方捕获网的每拍推进**（**船长 2026-09-26** 全套口径的落点）：
+ * 「**玩家的捕获网和武器一样有冷却周期，独立瞄准，不看命中，击沉携带者才解除，或者对面被击沉，
+ * 不选取重复目标。对方被击沉后进入冷却，冷却结束选择新目标。**」
+ *
+ * 三条状态机（键 = 携带者 tag，账本 `BattleState.myWebs`）：
+ * 1. **待发/冷却中**（`targetTag` 空）：只有 `now ≥ cooldownUntilMs` 且**存在可选目标**时才张网
+ *    —— 可选 = 存活 · 在当前波 · **未被任何网钉住**（"不选重复目标"）；**没有可选目标 ⇒ 保持待发**
+ *    （不空转冷却，沿用既有"打空不算用掉"口径）。**开战即钉**（初始冷却 = 0）。
+ * 2. **已钉住**：每拍把三层效果施加到目标规格上；目标一死 ⇒ 清目标、**记冷却 = 现在 + 周期**、写日志。
+ * 3. **携带者阵亡** ⇒ 整条账本删掉、它的网全部解除（"击沉携带者才解除"）。
+ *
+ * **不看命中 · 独立瞄准**：不掷命中、也不跟武器打谁 —— 目标按**敌阵顺序**取第一个可选的（确定性、
+ * 可复现，不消费随机数）。演出 = 一条蓝色连线（`web: true`，与敌方那套同款）＋ 一条日志。
+ */
+export function advanceMyCaptureWebs(
+  state: GameState,
+  b: import('./state').BattleState,
+  myUnits: readonly UnitSpec[],
+  foes: readonly UnitSpec[],
+): void {
+  const webs = b.myWebs
+  const debuffs = b.foeWebDebuffs
+  const carriers = myUnits.filter((u) => (u.myCaptureWeb?.cycleMs ?? 0) > 0)
+  // ① 携带者已不在场/已阵亡 ⇒ 它的网解除（"击沉携带者才解除"）
+  if (webs) {
+    for (const tag of Object.keys(webs)) {
+      const carrier = carriers.find((u) => u.tag === tag)
+      if (carrier && isAlive(b, tag)) continue
+      delete webs[tag]
+      if (debuffs) {
+        for (const [to, d] of Object.entries(debuffs)) {
+          if (d.byTag !== tag) continue
+          delete debuffs[to]
+          addLog(state, 'info', `墨潮捕获网已失效：${b.units[to]?.name ?? to} 挣脱了束缚（网手已被击沉）。`)
+        }
+      }
+    }
+  }
+  if (carriers.length === 0) return
+  const now = b.lastTickGameMs
+  const aliveFoes = foes.filter((f) => isAlive(b, f.tag))
+  for (const me of carriers) {
+    // ⚠ 已阵亡的网手**不再张网**（上面的清理段刚把它的账本删掉；这里不跳过就会被 `??=` 重建）
+    if (!isAlive(b, me.tag)) continue
+    const cycleMs = me.myCaptureWeb!.cycleMs
+    b.myWebs = { ...(b.myWebs ?? {}) }
+    const st = (b.myWebs[me.tag] ??= { cooldownUntilMs: 0 })
+    // ② 目标已死/已不在本波 ⇒ 清目标并进冷却
+    if (st.targetTag !== undefined && !aliveFoes.some((f) => f.tag === st.targetTag)) {
+      const gone = b.units[st.targetTag]?.name ?? st.targetTag
+      if (b.foeWebDebuffs) delete b.foeWebDebuffs[st.targetTag]
+      delete st.targetTag
+      st.cooldownUntilMs = now + cycleMs
+      addLog(state, 'info', `墨潮捕获网松开：${gone} 已被击沉，${me.name} 的网开始冷却。`)
+    }
+    // ③ 待发且冷却已过 ⇒ 张网（不看命中、独立瞄准、跳过已被钉住的）
+    if (st.targetTag === undefined && now >= st.cooldownUntilMs) {
+      const taken = new Set(Object.keys(b.foeWebDebuffs ?? {}))
+      const pick = aliveFoes.find((f) => !taken.has(f.tag))
+      if (!pick) continue // 无目标可选 ⇒ 保持待发（不空转冷却）
+      st.targetTag = pick.tag
+      b.foeWebDebuffs = {
+        ...(b.foeWebDebuffs ?? {}),
+        [pick.tag]: {
+          byTag: me.tag,
+          slowMul: 0.1,
+          noThruster: true,
+          noEvasion: true,
+          atMs: now,
+        },
+      }
+      pushBattleFx(b, { atMs: now, side: 'me', tag: me.tag, to: pick.tag, type: 'kinetic', hit: true, web: true })
+      addLog(
+        state,
+        'warn',
+        `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：机动骤降、推进器熄火、闪避失效——` +
+          `击沉目标或击沉网手才能解除。`,
+      )
+    }
+  }
+  // ④ 把当前所有网的效果施加到本拍敌阵上（每拍重建 ⇒ 每拍重施加）
+  if (b.foeWebDebuffs) {
+    for (const f of foes) {
+      const d = b.foeWebDebuffs[f.tag]
+      if (d) applyFoeWebDebuff(f, d)
+    }
+  }
+}
+
 function updateFoeCharge(
   b: import('./state').BattleState,
   foes: UnitSpec[],
@@ -1190,6 +1306,14 @@ export function createPlayerSpec(
     propDefs.length > 0 && ship.stealthIgnoresPropulsion !== true
       ? 0
       : allFittedModules(fitted, ctx).reduce((m, d) => Math.max(m, d.stealthMs ?? 0), 0)
+  /**
+   * **墨潮捕获网的周期**（**船长 2026-09-26**）：取所装件里**最短**的一件（缺省 0 = 本舰不带网）。
+   * 与隐身取最长相反 —— 这是攻击性装置，重叠装没有收益。消费见 `advanceMyCaptureWebs`。
+   */
+  const webCycleMs = allFittedModules(fitted, ctx).reduce<number>(
+    (m, d) => (d.captureWebCycleMs === undefined ? m : m === 0 ? d.captureWebCycleMs : Math.min(m, d.captureWebCycleMs)),
+    0,
+  )
 
   // 盾/甲：容量加成加算求和；抗性按系逐件缺口乘入（mergeResist 链；V18.1 同系可多件）
   let shieldHpMult = 1
@@ -1647,6 +1771,12 @@ export function createPlayerSpec(
     // **隐秘行动装置**（2026-09-15 船长）：隐身窗口取所装件里**最长**的一件；
     // **装了任何推进器 ⇒ 直接解除**（船长同日追加的禁令）⇒ 这里不写字段（= 无隐身）。
     ...(stealthMs > 0 ? { stealthMs } : {}),
+    /**
+     * **墨潮捕获网**（**船长 2026-09-26**，H 族势力装备）：带本字段 = 本舰担任"网手"。
+     * 周期取所装件里**最短**的一件（多件 = 更快的那台说了算，与隐身取最长相反：
+     * 这是攻击性装置，重叠装没有收益）；账本与判定见 `advanceMyCaptureWebs`。
+     */
+    ...(webCycleMs > 0 ? { myCaptureWeb: { cycleMs: webCycleMs } } : {}),
     foeTactic: null,
   }
 }
@@ -2331,7 +2461,11 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ),
       ...(mount.foeEvasionBonusAdd !== undefined ? { foeEvasionBonusAdd: mount.foeEvasionBonusAdd } : {}),
       // **射程压制**（H 族墨潮干扰舰 · 2026-09-24 船长）：舰级级字段，原样带到单位（消费见 meRangeMulOf）
-      ...(ship.foeRangeDebuffPct !== undefined ? { foeRangeDebuffPct: ship.foeRangeDebuffPct } : {}),
+      // ⚠ **2026-09-26 起来源以挂载件为准**（船长令：射程压制迁成具名件「墨潮干扰阵列」）——
+      //   挂载件优先、舰级字段保留为回落（别的卡若仍写舰级字段，逐字照旧）。
+      ...((mount.foeRangeDebuffPct ?? ship.foeRangeDebuffPct) !== undefined
+        ? { foeRangeDebuffPct: mount.foeRangeDebuffPct ?? ship.foeRangeDebuffPct }
+        : {}),
       hitBonus: 0,
       signatureM: Math.max(45, Math.round(60 + totalHp * 0.5)),
       scanResMm: 450,
@@ -5682,10 +5816,16 @@ export function battleArcsFor(
     ...(battle.foeSpeedMps !== undefined ? { foeSpeedMps: battle.foeSpeedMps } : {}),
     foeCanCharge: foes.some((f) => f.foeCanCharge === true),
     // **捕获网连线**（船长 2026-09-16：「动画效果为一根蓝色的光速连着命中舰船」）——
-    // 渲染层按 (from = 施放者 tag, to = 被钉舰 tag) 画一条蓝色光束，**持续到效果解除**
-    ...(battle.meWebDebuffs && Object.keys(battle.meWebDebuffs).length > 0
-      ? { webLinks: Object.entries(battle.meWebDebuffs).map(([to, d]) => ({ from: d.byTag, to })) }
-      : {}),
+    // 渲染层按 (from = 施放者 tag, to = 被钉舰 tag) 画一条蓝色光束，**持续到效果解除**。
+    // ⚠ **2026-09-26 起两个方向都下发**：敌方网钉我方（`meWebDebuffs`）＋ 我方网钉敌方（`foeWebDebuffs`，
+    //   墨潮捕获网）——同一份 `webLinks` 结构，渲染层一行不用改。
+    ...(() => {
+      const links = [
+        ...Object.entries(battle.meWebDebuffs ?? {}).map(([to, d]) => ({ from: d.byTag, to })),
+        ...Object.entries(battle.foeWebDebuffs ?? {}).map(([to, d]) => ({ from: d.byTag, to })),
+      ]
+      return links.length > 0 ? { webLinks: links } : {}
+    })(),
     // **敌方挂载件**（去重展示名）——界面/战报同源；空 = 本场敌人没挂件（老档同样缺省）
     // ⚠ 2026-09-24 起**连同双语名对**一起下发（两条数组下标对齐，见 `foeMountNamePairs`）
     ...(() => {
@@ -6730,7 +6870,13 @@ export function foeDroneRangeOf(
  * **削减率每拍重算进运行态 `BattleState.meFoeRangeDebuff`**（不随档 ⇒ 读档/中途换编队都不陈旧）。 */
 export const FOE_RANGE_DEBUFF_FLOOR_M = 3000
 
-/** 编队当前的**敌舰射程削减率** `r = 1 − Π(1 − vᵢ)`（无电子舰 = 0）。 */
+/** 编队当前的**敌舰射程削减率** `r = 1 − Π(1 − vᵢ)`（无电子舰/无压制件 = 0）。
+ *
+ * 两个来源，**一起进同一条乘法合成链**（船长 2026-09-18 定的多艘口径）：
+ * - **船体特性** `ShipDef.foeRangeDebuffPct`（电子舰 15%）；
+ * - **装配件** `ModuleDef.foeRangeDebuffPct`（**2026-09-26 船长令：墨潮电子舱 15%**）——
+ *   同舰多件**先加和**（上限 0.9）再作为一份参与合成。
+ * ⇒ 一件电子舱 ＋ 一艘电子舰 = `1 − 0.85 × 0.85 = 27.75%`（与我方承诺的读数一致）。 */
 export function meFoeRangeDebuffOf(
   state: GameState,
   ctx: SimContext,
@@ -6738,9 +6884,17 @@ export function meFoeRangeDebuffOf(
 ): number {
   let prod = 1
   for (const sid of shipIds) {
-    const defId = state.fleet[sid]?.defId
-    const v = defId ? (ctx.ships.get(defId)?.foeRangeDebuffPct ?? 0) : 0
-    if (v > 0 && v < 1) prod *= 1 - v
+    const entry = state.fleet[sid]
+    const defId = entry?.defId
+    const parts: number[] = []
+    const hull = defId ? (ctx.ships.get(defId)?.foeRangeDebuffPct ?? 0) : 0
+    if (hull > 0 && hull < 1) parts.push(hull)
+    let gear = 0
+    if (entry?.fitted) {
+      for (const m of allFittedModules(entry.fitted, ctx)) gear += Math.max(0, m.foeRangeDebuffPct ?? 0)
+    }
+    if (gear > 0) parts.push(Math.min(0.9, gear))
+    for (const v of parts) prod *= 1 - v
   }
   return prod >= 1 ? 0 : 1 - prod
 }
@@ -7477,6 +7631,9 @@ function stepBattle(
   updateFoeCharge(b, foes, bal, b.lastTickGameMs, foeDesireClamped)
   // **捕获网解除**（船长 2026-09-16：击杀发动者即解除）——每拍清理施放者已不在场的条目
   expireFoeWebs(state, b, foes)
+  // **我方捕获网**（**船长 2026-09-26** · 墨潮捕获网）：周期账本推进（选目标/冷却/解除）＋
+  // 把三层效果（机动 ×0.1 · 推进器全关 · 闪避归零）**每拍重新施加**到本拍敌阵上
+  advanceMyCaptureWebs(state, b, myUnits, foes)
   // **整队机动 = 存活单位的「平均」战斗机动 ×各自倍率**（倍率单点 = `unitSpeedMulOf`）：
   // 我方倍率 = 推进器**周期爆发**（逐单位周期）；敌方倍率 = **冲锋**（逐单位状态）。
   // ⚠ 冲锋倍率**不外溢**（船长 2026-09-11：「冲锋还是按照巨兽自己的速度算…哪怕是冲锋也是按照巨兽速度」）：

@@ -678,6 +678,35 @@ export const DRONES: readonly ItemDef[] = [
     },
     exclusive: true,
   },
+  /* ══════════ H 族（墨潮帮）专属机型（**2026-09-26 船长定**：「**墨潮帮势力装备定为射程压制、捕获网、
+     重袭机，分别占据高槽，高槽，攻坚机。**」）——走"专属强化型"口径（`exclusive`：无蓝图、不上市场、
+     不入常规掉落），只在 H 族稀有残骸 → 高级箱这条链路上产出（一次 ×10 架，见 `RARE_BOX_DRONE_UNITS`） ══════════ */
+  {
+    id: 'drone-ink-heavy',
+    name: '墨潮重袭无人机',
+    kind: 'drone',
+    unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
+    baseSellPriceIsk: 48_000, // 专属 ×4 口径（与巢卫攻坚机同价）
+    description:
+      '墨潮帮的攻坚机：动能重弹近距压制，命中高、机体最薄——挨打就掉。',
+    damageType: 'kinetic', // 船长 2026-09-26：「重袭机单发16的动能伤害」（H 族格 = 爆炸 8 : 动能 2，动能在族内）
+    dmg: 16, // 船长 2026-09-26 给定
+    cpuUse: 13,
+    maxRangeM: 4500, // 船长 2026-09-26 给定（专属机型有"射程豁免"登记，不受档位标准硬钉）
+    droneClass: 'assault', // 攻坚机（船长：「分别占据高槽，高槽，攻坚机」）
+    hitRate: 0.85,
+    falloff: 1, // 攻坚机档：命中不随距离衰减
+    defense: {
+      shieldHp: 40,
+      armorHp: 80,
+      hullHp: 100, // 三层血 40/80/100（船长 2026-09-26 给定）
+      shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
+      armorResist: { kinetic: 0.2, explosive: 0.2, plasma: 0.2 },
+      hullResist: { kinetic: 0.2, explosive: 0.2, plasma: 0.2 },
+      evasion: 0.05, // 船长 2026-09-26 给定（全机型最低）
+    },
+    exclusive: true,
+  },
 ]
 
 /** 修理组件（P2 定稿 2026-09-05；**2026-09-13 船长改数值**：基础回复对齐「船体维修装置每跳」口径——

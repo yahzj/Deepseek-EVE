@@ -475,6 +475,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-wh-g-prop': 4,
   'bp-wh-g-turret': 4,
   'drone-exile-bee': 4,
+  // 2026-09-26 H 族三件（墨潮电子舱 / 墨潮捕获网 / 墨潮重袭无人机）：与其余专属件同档 = 4
+  'drone-ink-heavy': 4,
+  'mod-lair-ecm-h': 4,
+  'mod-lair-web-h': 4,
   'drone-wh-c-heavy': 4,
   'drone-wh-e-sentry': 4,
   'mod-lair-armor-c': 4,

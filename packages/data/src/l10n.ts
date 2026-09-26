@@ -339,6 +339,9 @@ export const EN_MODULES: EnTable = {
   'mod-lair-frame-e': { name: 'Megastructure Frame', description: 'Titan lair-exclusive: a keel section cut whole from a megastructure — structure capacity +60% and armor capacity +30%. When shields and armor are punched through, this is the last stretch of HP. Megastructure constructs do not care about agility, only about lasting to the end.' },
   'mod-lair-drone-tac-g': { name: 'Squidwasp Swarm Control', description: 'Deadarmy lair-exclusive: a swarm console pulled off a wreck — +45% single-shot damage for launched drones, at only 32 CPU. Exiles have no new parts, only good hands.' },
   'mod-lair-drone-relay-g': { name: 'Exile Relay Mast', description: 'Deadarmy lair-exclusive: a relay array jury-rigged from scrap masts — +65% range for launched drones (Hummingbird 6,600 m / Redkite 7,425 m / Falcon 8,250 m / Thundergull 10,725 m). Only 34 CPU, leaving compute for elsewhere.' },
+  // H 族（墨潮帮）势力装备（2026-09-26 船长定：射程压制 · 捕获网 · 重袭机）
+  'mod-lair-ecm-h': { name: 'Ink Tide EW Pod', description: 'A captured, rebuilt electronic-warfare core: fitted to a deployed fleet it suppresses enemy weapon range by 15%, stacking multiplicatively with electronic-warfare ships. It costs 150 CPU — a hull that fits it serves nothing else.' },
+  'mod-lair-web-h': { name: 'Ink Tide Capture Web', description: 'A cycling web: it pins one un-webbed enemy ship the moment battle opens — speed ×0.1, thrusters offline, evasion nullified. It releases when the target or the webbing ship is sunk, then cools down for 20 seconds before choosing a new target.' },
   // 虫洞族专属（mod-wh-*）
   'mod-wh-a-frag': { name: 'Raider Fragment Cannon', description: 'Fragment rounds that burst on their own: inside 7.3 km they scatter a cloud of explosive shrapnel with extreme single-shot power. The fragments ignore armor seams and add 50% kinetic damage (independent of the explosive ammo spent). The cost: accuracy only 0.80 and a 5.6 s reload.' },
   'mod-wh-a-hangar': { name: 'Raider Hangar', description: 'A hangar mezzanine welded from stolen cargo bulkheads: drone bay +30 m³ and launched drones cycle 8% faster. It carries more and launches faster for only 25 CPU.' },
@@ -421,6 +424,8 @@ export const EN_ITEMS: EnTable = {
   'drone-exile-bee': { name: 'Squidwasp Drone', description: 'A scout drone the exiles pieced together from wreck hangars: double the punch of a standard scout, a lighter airframe, and cheaper to launch. The price is the thinnest three-layer HP — one hit and it is gone.' },
   'drone-wh-c-heavy': { name: 'Hiveguard Siege Drone', description: 'A living siege drone of the hive: spore-burst warheads crack armor; its three-layer HP is thicker than a standard siege drone and leans to carapace, and its armor and structure resistances are tougher — at the cost of being clumsier.' },
   'drone-wh-e-sentry': { name: 'Construct Sentry Drone', description: 'A long-needle sentry the megastructure assembles itself: kinetic needles break shields, with longer reach than a standard sentry, better accuracy, slower falloff and a slightly thicker frame — it shoots the farthest of the swarm.' },
+  // H 族（墨潮帮）专属机型（2026-09-26 船长定：重袭机 = 攻坚机）
+  'drone-ink-heavy': { name: 'Ink Tide Striker Drone', description: 'The Ink Tide siege drone: heavy kinetic rounds for close-range suppression, high accuracy and the thinnest airframe of them all — one hit and it drops.' },
   // 修理组件
   'repairkit-civ': { name: 'Civilian Repair Kit', description: 'Nano repair kit: a base 5 HP restored (structure and armor each scale with this value × capacity bonus × Quick Hull Repair — thicker plates and skills restore more). For emergencies in the field or before docking.' },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）

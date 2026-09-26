@@ -307,13 +307,13 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-15：+6（谜质精华 · 奢侈品 ×3 · 贵重品货柜 · 军用备货柜）→ 物品总数 73→**79**
 // 2026-09-16：奢侈品扩到十款（船长「添加更多奢侈品，让奢侈品有10个类型，分布在目前的3个奢侈品价格附近」）
 //   ⇒ +7（陈年雪茄 / 异域织物 / 香木雕刻 / 宫廷乐谱 / 古法香膏 / 星图真迹 / 王冠遗钻）→ 物品总数 79→**86**
-check(itemDefs.length === 101, `物品总数应为 101（2026-09-25 起：+入侵旗舰黑匣 blackbox-h），实际 ${itemDefs.length}`)
+check(itemDefs.length === 102, `物品总数应为 102（2026-09-26 起：+墨潮重袭无人机 drone-ink-heavy），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
-check(drones.length === 7, `无人机应为 7 种（四型制式锚点 + 鱿蜂 + 2 型虫洞族专属），实际 ${drones.length}`)
+check(drones.length === 8, `无人机应为 8 种（四型制式锚点 + 鱿蜂 + 2 型虫洞族专属 + 墨潮重袭），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
@@ -2388,10 +2388,17 @@ for (const m of MODULES) {
     const hasWarp = m.warpSpeedBonusPct !== undefined
     // 2026-09-15 隐秘行动装置：**隐身**成为支援件的第七类效果（**高槽**；开火前隐身 20/30 秒）
     const hasStealth = m.stealthMs !== undefined
+    /**
+     * **2026-09-26 新增两类（H 族势力装备 · 都是高槽支援件）**：
+     * - `foeRangeDebuffPct` = **敌舰射程压制**（墨潮电子舱）；
+     * - `captureWebCycleMs` = **捕获网周期**（墨潮捕获网）。
+     */
+    const hasEcm = m.foeRangeDebuffPct !== undefined
+    const hasWeb = m.captureWebCycleMs !== undefined
     const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
     const kinds =
-      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身）`)
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
       check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
@@ -2421,10 +2428,19 @@ for (const m of MODULES) {
       // 隐秘行动装置（2026-09-15 船长）：隐身窗口值域 (0, 120000] 毫秒（两档 = 20 / 30 秒；
       // 档位与"每档多少秒"由下面「隐秘行动装置契约」逐条核）
       if (hasStealth) check((m.stealthMs ?? 0) > 0 && (m.stealthMs ?? 0) <= 120_000, `支援件 ${m.id} stealthMs 非法（需 (0, 120000] 毫秒）`)
+      // 墨潮电子舱（2026-09-26）：压制率值域 (0, 1)
+      if (hasEcm) check((m.foeRangeDebuffPct ?? 0) > 0 && (m.foeRangeDebuffPct ?? 0) < 1, `支援件 ${m.id} foeRangeDebuffPct 非法（需 (0, 1)）`)
+      // 墨潮捕获网（2026-09-26）：周期值域 [5_000, 120_000] 毫秒
+      if (hasWeb) {
+        const cyc = m.captureWebCycleMs ?? 0
+        check(Number.isInteger(cyc) && cyc >= 5_000 && cyc <= 120_000, `支援件 ${m.id} captureWebCycleMs 非法（需 5000~120000 毫秒的整数）`)
+      }
       // 归槽语义：伤害/射速/**跃迁** = 低槽；命中/闪避 = 中槽；**隐身 = 高槽**（数据显式 rack，rackOf 已校验一致）
       if (stabKeys > 0 || hasRof || hasWarp) check(m.rack === 'low', `支援件 ${m.id}（伤害/射速/跃迁）应为低槽，实际 ${m.rack}`)
       if (hasHit || hasEva) check(m.rack === 'mid', `支援件 ${m.id}（命中/闪避）应为中槽，实际 ${m.rack}`)
       if (hasStealth) check(m.rack === 'high', `支援件 ${m.id}（隐身）应为高槽，实际 ${m.rack}`)
+      // 2026-09-26：射程压制与捕获网都是**高槽**（船长：「分别占据高槽，高槽」）
+      if (hasEcm || hasWeb) check(m.rack === 'high', `支援件 ${m.id}（射程压制/捕获网）应为高槽，实际 ${m.rack}`)
     }
     check(m.bonus === undefined, `支援件 ${m.id} 不应携带工业 bonus`)
     check(m.maxRangeM === undefined && m.damageType === undefined, `支援件 ${m.id} 不应携带炮台武器参数`)

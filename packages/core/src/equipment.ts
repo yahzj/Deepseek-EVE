@@ -270,6 +270,16 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   if (def.repairArmorHp !== undefined || def.repairHullHp !== undefined) {
     return { group: 'weighted', kind: 'repair' }
   }
+  /**
+   * **墨潮电子舱**（`foeRangeDebuffPct`，**2026-09-26 船长令**）：同舰多件**加和**（上限 0.9，见
+   * `combat.meFoeRangeDebuffOf`）⇒ 归 `flat`（与兜底同组，这里显式登记只为"这个键归谁"有据可查）。
+   */
+  if (def.foeRangeDebuffPct !== undefined) return { group: 'flat', kind: 'ecm' }
+  /**
+   * **墨潮捕获网**（`captureWebCycleMs`，**2026-09-26 船长令**）：同舰多件**取最短周期**（更快的那台
+   * 说了算，见 `combat.createPlayerSpec`）⇒ 归 `max` 组（该组的 UI 语义 = 不叠加、只取一件）。
+   */
+  if (def.captureWebCycleMs !== undefined) return { group: 'max', kind: 'capture-web' }
   return { group: 'flat', kind: def.slot }
 }
 

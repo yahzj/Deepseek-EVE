@@ -1188,8 +1188,9 @@ export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
  *
  * - **档位 T3 巡洋舰**（原快艇是 T1）⇒ 血/单发按 T3 档基线 900 / 124 × 角色 1.00 / 0.85 = **900 / 105**
  *   （角色 = "支援/干扰舰"：单发略让位给特性，与电子舰同语言）；
- * - **射程压制 50%**（`foeRangeDebuffPct`）：**多艘乘法合成**（2 艘 = 75%）· 与我方电子舰的 15% **做加法抵消**
- *   （船长例：我方 1 艘电子舰 + 敌方 1 艘干扰舰 ⇒ 我方射程 **×0.65 = -35%**）；
+ * - **射程压制 50%**（**2026-09-26 起写在挂载件「墨潮干扰阵列」上** `foe-mount-ink-range-debuff`；
+ *   迁移前是舰级字段 `foeRangeDebuffPct`，数值一字不变）：**多艘乘法合成**（2 艘 = 75%）·
+ *   与我方电子舰的 15% **做加法抵消**（船长例：我方 1 艘电子舰 + 敌方 1 艘干扰舰 ⇒ 我方射程 **×0.65 = -35%**）；
  * - 速度 258 × **1.45** = **374 m/s**（对基准船 165.2 的 ≈1.43×，落 H 族族格带 1.0~1.6）；射程带 **1 ~ 4,275**（与突击舰同口径 · 中距）。
  */
 export const FOE_H_INK_JAMMER: FoeShipDef = {
@@ -1212,16 +1213,18 @@ export const FOE_H_INK_JAMMER: FoeShipDef = {
   blindDmgMul: 0.3,
   dmgMix: { kinetic: 6, explosive: 4 }, // 船长 2026-09-24：突击舰与干扰舰改「6 动能 : 4 爆炸」
   tactic: 'orbit',
-  // **射程压制 50%**（船长 2026-09-24；与我方电子舰同款机制、方向相反，见 `FoeShipDef.foeRangeDebuffPct`）
-  foeRangeDebuffPct: 0.5,
   /**
    * **劫掠捕获网**（**船长 2026-09-25 令**：「**给墨潮干扰舰添加一个网子**」）——
    * 与 A 族洞内「劫掠电子舰」、H 族「墨潮突击舰」同款那件（减速 90% / 关推进器 / 闪避归零 / 射程 −500m；
    * **首次开火钉住一个没被钉住的目标**，击沉发动者才解除，见 `combat.fireFoeCaptureWeb`）。
    * ⚠ 写在**舰级**上（与突击舰同一条写法）：H 族只在这四张入侵卡里出场，不存在"外借到洞外"的问题；
    * `content:check` 的捕获网归属白名单同步放行本舰级。
+   *
+   * ⚠ **射程压制 50% 已迁成同表第二件**（**船长 2026-09-26**：「**敌人的射程压制挂载件好像也还没有命名？**」
+   * ⇒ 选甲：原舰级字段 `foeRangeDebuffPct: 0.5` 迁到具名挂载件「**墨潮干扰阵列**」
+   * `foe-mount-ink-range-debuff`，数值一字不变）⇒ 本舰现在挂**两件**：网 ＋ 干扰阵列。
    */
-  mounts: [FOE_MOUNT_IDS.captureWeb],
+  mounts: [FOE_MOUNT_IDS.captureWeb, FOE_MOUNT_IDS.inkRangeDebuff],
 }
 
 /**

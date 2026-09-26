@@ -146,20 +146,18 @@ export function isRareWreck(itemId: string): boolean {
 }
 
 /**
- * **这种残骸现在能不能进精炼炉**（**船长 2026-09-25 令**：「**先关闭对应的精炼炉，等势力装备出来再说**」
- * ＋ 同日二答「**H 族残骸整体暂不可回收**」）。
+ * **这种残骸现在能不能进精炼炉** —— **2026-09-26 起：一律可以**（本函数退役，留作历史说明）。
  *
- * 口径：
- * - **H 族（墨潮帮）残骸暂时不可回收**——普通与稀有都算。原因（开发侧记录）：H 族**没有专属装备池**
- *   （`FOE_LAIR_GEAR.H = []`，星图侧还没有墨潮帮窝点卡），稀有残骸的高级箱只剩"一批高阶矿物"那一支；
- *   船长裁定等**H 族势力装备**做出来再开放那口炉；
- * - ⚠ **打捞与出售不受影响**（H 组仍是洞外组、有市场收购行）：只是**拆不了**；
- * - 判据按**组族**取（不是按 id 前缀）⇒ 将来 H 组扩到别的地区/更多 id 也一起管住；
- *   `null`（未知物品）不拦——那类会走 `recycleProfileOf` 的"来源记录缺失"那条路。
+ * 沿革：**船长 2026-09-25 令**「**先关闭对应的精炼炉，等势力装备出来再说**」＋同日二答
+ * 「**H 族残骸整体暂不可回收**」⇒ 当时按组族 H 关着那口炉（普通与稀有都关）。
+ * **2026-09-26 船长定了 H 族势力装备三件**（射程压制 · 捕获网 · 重袭机 ⇒ `FOE_LAIR_GEAR.H` 不再是空池）
+ * ⇒ **关闭的理由消失，判据整体删除**：`startRecycleRun` 的闸门、拒因 `core.industry.084`、
+ * 工业页的摘卡过滤三处一并退役（打捞 / 出售本来就没受影响）。
+ *
+ * ⚠ 保留本函数只为"日后若再要关某族"有个落点；**现在恒返回 false**（永不拦）。
  */
-export function wreckRecycleClosedOf(itemId: string, ctx?: SimContext): boolean {
-  const group = wreckGroupOfWreckItem(itemId, ctx)
-  return group?.family === 'H'
+export function wreckRecycleClosedOf(_itemId: string, _ctx?: SimContext): boolean {
+  return false
 }
 
 /**
