@@ -1165,8 +1165,13 @@ export function Handbook({
    * 这里只把 `FoeShipDef` 目录喂进去、并把搜索文本拼出来。
    */
   const isFactionPage = tab === 'factions'
-  const factionCells: GridCell[] = isFactionPage
-    ? (() => {
+  /**
+   * ⚠ **必须无条件构造**（2026-09-26 船长报障：「势力图鉴，玩家如果不点击，在导航栏的数字显示为 0」）：
+   * 导航计数走 `navCount()` ⇒ `codexCells[t]` —— 若这里按 `isFactionPage` 门控，**在别的页时**
+   * `codexCells.factions` 就是空数组、导航那一格恒显示 0。六张卡本来就不贵（只读 `FOE_SHIPS`＋遭遇记录），
+   * 与搜索词也无关 ⇒ 每次渲染都算。
+   */
+  const factionCells: GridCell[] = (() => {
         const ships = collectFoeShips(engine)
         return buildFactionCards(FOE_SHIPS, engine.state.foeShipSeen).map((card) => {
           const head = card.unlocked ? tr(card.nameId) : tr('ui.codex.005')
@@ -1188,8 +1193,7 @@ export function Handbook({
             hits: `${head} ${enemyText} ${itemText}`,
           }
         })
-      })()
-    : []
+  })()
 
   const codexCells: Record<CodexTab, GridCell[]> = {
     items: itemCells,
