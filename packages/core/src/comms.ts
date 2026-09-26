@@ -391,6 +391,15 @@ export function commsInbox(state: GameState, ctx: SimContext): CommsEntryView[] 
       deliveredAtGameMs: atMs,
       read: state.commsRead?.[id] === true,
       hint: msg.hint,
+      /**
+       * 🔴 **`hint.action` 必须提到顶层 `action`**（**2026-09-26 船长报障**：
+       * 「**通讯也是，前往章鱼人兑换，而且点击后还不是跳转到声望商店**」）。
+       *
+       * 界面侧 `CommsEave` 的「前往」按钮**只认顶层 `entry.action`**：有它 ⇒ 走 `onAction`（开面板/开窗口）；
+       * 没有它 ⇒ 退回 `onGoto(entry.hint.page, …)`（只切页）。表消息这条路原先**只带了 `hint`、没带 `action`**
+       * ⇒ 首匣那封信点「前往」只会切到工业页，永远开不出兑换窗口（实例通讯那条一直是对的，见下面那支）。
+       */
+      ...(msg.hint?.action !== undefined ? { action: msg.hint.action } : {}),
       replies: msg.replies,
     })
   }

@@ -406,7 +406,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
       '工程部那边已经打过招呼了，他们会对你开放制作舰船插件的组装机，去看一看吧。',
     ],
     trigger: { kind: 'blackboxSeen' },
-    hint: { text: '前往章鱼人兑换', page: 'industry', action: 'plug-exchange' },
+    /**
+     * 落款按钮（**2026-09-26 船长两次改口**：先「前往章鱼人兑换」，再「**通讯也是，前往章鱼人兑换**」
+     * ⇒ 与组装机那处**统一口径**）。文案 id = `ui.Expedition.442`，并在 `ui/commsText.ts` 的
+     * `COMMS_HINT_ID` 里登记 ⇒ 英文侧不露中文。
+     */
+    hint: { text: '前往声望商店兑换', page: 'industry', action: 'plug-exchange' },
   },
 ]
 

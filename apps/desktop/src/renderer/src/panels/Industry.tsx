@@ -1095,19 +1095,21 @@ export const BlueprintCard = memo(function BlueprintCard({
           </button>
         ) : plugBlueprint ? (
           /**
-           * **舰船插件图纸 ⇒ 去商店兑换**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该显示
-           * 去商店兑换，点击后跳转到章鱼人声望商店。而不是无市场渠道（本来就不在市场购买）**」）。
+           * **舰船插件图纸 ⇒ 去声望商店兑换**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该
+           * 显示去商店兑换，点击后跳转到章鱼人声望商店。而不是无市场渠道（本来就不在市场购买）**」
+           * ＋（同日改口）「**组装机这边不应该是前往章鱼人兑换，而是前往声望商店兑换**」）。
            *
            * 为什么必须排在这里：这类图的产物插件**从来不在市场卖**（`playerBuyable: false`）⇒
            * `bookBuyable` 恒假 ⇒ 原先会掉进最后一支兜底的「**✕ 无市场渠道**」死路（船长点名的就是它）。
-           * 落款 = 「**前往章鱼人兑换**」＋ 点击直达兑换窗口（与首匣那封通讯同一个出口）。
+           * 落款用 `ui.IndustryPage.126`（「前往声望商店兑换」）——**与通讯里那句分开**：
+           * 通讯是章鱼人主动发信、口吻是"来我这儿"，组装机是玩家在工业页看图纸 ⇒ 说"声望商店"更准。
            */
           <button
             className="app-btn is-small is-primary"
             title={tr('ui.IndustryPage.117')}
             onClick={onGotoPlugExchange}
           >
-            {tr('ui.IndustryPage.118')}
+            {tr('ui.IndustryPage.126')}
           </button>
         ) : whBlueprint ? (
           /**
