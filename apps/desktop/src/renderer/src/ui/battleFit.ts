@@ -1,27 +1,22 @@
 /**
- * **战场「装不下就整块等比缩放」**（2026-09-25 船长令 · 方案甲＋乙）。
+ * **战场「装不下就整块等比缩放」**（2026-09-25 船长令 · 方案甲＋乙；**2026-09-26 改成只缩战场**）。
  *
  * 为什么要有这一层（船长报障「战斗画面被压成一条」的读数结论，详见
- * `docs/design/mobile-battle-fit-20260925.md`）：
+ * `docs/design/battle-ui-opt-20260926.md` §一）：
  * - 手机竖屏会走「旋转＋按宽缩放」，逻辑空间被机型宽高比锁死（1200×约 540~555px）；
- * - 而战斗界面内部按桌面版式要 **约 700px**（顶栏 69 ＋ 距离尺 89 ＋ 战场 353 ＋ 底栏 191），
- *   其中战场那 353px 是它**自己声明的内容高**（两排舰影 ＋ 两排血条），
- *   可手机路径的历史规则把车道最小高压到了 210px（2026-09-06「舞台最小高下调给操作区让位」）
- *   ⇒ 舞台与车道各自 `overflow: hidden`，把血条整条裁掉。
- * - 2026-09-22 那套「窗口壳：固定设计尺寸 ＋ 装不下整块等比缩放」曾解决过同类问题，
- *   但同一天按船长令「界面回滚，战斗界面回滚到全屏显示」被一起撤掉了 ⇒ 手机上只剩硬裁。
+ * - 而战斗界面内部按桌面版式要 **约 700px**（顶栏 69 ＋ 距离尺 89 ＋ 战场 353 ＋ 底栏 191）；
+ * - 舞台与车道各自 `overflow: hidden` ⇒ 硬裁会把两排血条整条裁掉。
  *
- * 本模块干三件事（**只缩不放**）：
- * 1. **车道先拿到自己声明的高度**：内容比最小高还高时，把它的 `min-height` 抬到内容高
- *    （手机上 210 → 353）⇒ 车道不再裁自己的血条；桌面车道本来就比内容高，这一条不触发。
- * 2. **量「内容自然高」**：把包裹层临时交回内容撑（`height: auto` 读一次 `offsetHeight`，
- *    同一拍内还原、不上屏），得到 `need`。
- * 3. **算缩放系数**：`k = min(1, 可用高 / need)`。`k = 1` ⇒ 高度 100% ＋ 不加 `transform`，
- *    **与改造前逐像素一致**（桌面宽窗口恒为这一支）；`k < 1` ⇒ 高度取 `need`、整块
- *    `transform: scale(k)`（`transform-origin: top center`），缩完正好铺满可用高。
+ * ⚠ **2026-09-26 改判（本批）**：原来是**整屏**等比缩放（顶栏/战场/底栏一起缩）⇒ 手机上叠上旋转那层
+ * 0.703 以后，字与按钮一起被缩到 ≈×0.55：13px 的字只剩 ≈7.2 物理 px、战术键高 ≈21 物理 px
+ * （触屏下限 24、原生惯例 44）——即"能看全，但看不清也点不准"。
+ * 现改成 **只缩战场**（`.app-bts-stage` 内的 `.app-bts-stage-fit`）：
+ * - **顶栏与底栏保持 1:1 逻辑尺寸**（下面的手机版式再把字号/触控抬到可读可点）；
+ * - **战场（距离尺 ＋ 车道）** 拿到"剩下的高度"作预算，按 `k = min(1, 预算 ÷ 内容高)` 缩
+ *   ⇒ 舰船图形略小，但读数与操作不再跟着缩。
  *
  * 量尺寸一律用 `offsetHeight / clientHeight / scrollHeight`（**不受 transform 影响**）⇒ 无自激循环；
- * 只盯外层可用区（`ResizeObserver`），舞台自身不盯（它的高是本层给的，盯了会自激）。
+ * 只盯外层（`ResizeObserver`），被缩的那层自身不盯（它的高是本层给的，盯了会自激）。
  */
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react'
 
@@ -36,9 +31,11 @@ export function fitScale(avail: number, need: number): number {
 }
 
 export interface BattleFitRefs {
-  /** `.app-battle-screen`（整屏覆盖层）—— 量「可用高」 */
+  /** `.app-battle-screen`（整屏覆盖层）—— 标记 `is-bts-fit`（缩了就不再让整屏滚动） */
   screen: RefObject<HTMLElement | null>
-  /** `.app-battle-fit`（新增的包裹层）—— 量「内容自然高」并承接缩放 */
+  /** `.app-bts-stage`（战场外层）—— 它的 `clientHeight` 就是"预算"（屏高 − 顶栏 − 底栏） */
+  stage: RefObject<HTMLElement | null>
+  /** `.app-bts-stage-fit`（战场内层）—— 量「内容自然高」并承接缩放 */
   fit: RefObject<HTMLElement | null>
   /** `.app-bts-lane`（战场车道）—— 量它自己声明的内容高 */
   lane: RefObject<HTMLElement | null>
@@ -60,9 +57,10 @@ export function useBattleFit(refs: BattleFitRefs): void {
 
   const apply = useCallback((): void => {
     const screen = refs.screen.current
+    const stage = refs.stage.current
     const fit = refs.fit.current
     const lane = refs.lane.current
-    if (!screen || !fit || !lane) return
+    if (!screen || !stage || !fit || !lane) return
 
     // ① 量「车道的纯内容高」：临时摘掉 flex 拉伸与最小高，让盒子回到内容大小 —— 这样量到的
     //    scrollHeight 与"我们上一拍写进去的最小高"无关 ⇒ **不会自激振荡**
@@ -79,17 +77,23 @@ export function useBattleFit(refs: BattleFitRefs): void {
     // 车道拿到「自己声明的高度」⇒ 不再裁自己的两排血条（桌面本来比内容高，这里不改变观感）
     if (laneNeed > 0 && lane.style.minHeight !== `${laneNeed}px`) lane.style.minHeight = `${laneNeed}px`
 
-    // ② 量内容自然高：临时交回内容撑（同拍还原，不上屏）
+    // ② 量战场内层的「内容自然高」（距离尺 ＋ 车道）：临时交回内容撑（同拍还原，不上屏）。
+    //    ⚠ 它同时是**弹性子项**（`flex: 1 1 auto`）⇒ 只把 height 设成 auto 量到的仍是"分配高"，
+    //       必须连 flex 一起摘掉，量到的才是**内容高**（这是本轮第一版踩的坑：need 量成 302、
+    //       于是判定"装得下"、实际裁掉 134px）。
     const keepH = fit.style.height
     const keepT = fit.style.transform
+    const keepFitFlex = fit.style.flex
+    fit.style.flex = '0 0 auto'
     fit.style.height = 'auto'
     fit.style.transform = 'none'
     const need = fit.offsetHeight
     fit.style.height = keepH
     fit.style.transform = keepT
+    fit.style.flex = keepFitFlex
 
-    // ③ 只缩不放
-    const avail = screen.clientHeight
+    // ③ 只缩不放：**预算 = 战场外层自己的高**（= 屏高 − 顶栏 − 底栏，flex 分配的结果）
+    const avail = stage.clientHeight
     const k = fitScale(avail, need)
     const topEl = screen.querySelector('.app-battle-screen-top')
     const dockEl = screen.querySelector('.app-bts-dock')
@@ -123,13 +127,13 @@ export function useBattleFit(refs: BattleFitRefs): void {
       fit.style.height = `${need}px`
       fit.style.transform = `scale(${k})`
     }
-    // 真缩了 ⇒ 整屏不再需要滚动（内容已等比缩进可用高度）
+    // 真缩了 ⇒ 整屏不再需要滚动（战场已等比缩进剩余高度）
     screen.classList.toggle('is-bts-fit', k < 1)
     // 读数落在 data-* 上，探针与「桌面零改动」对照都读它
     fit.dataset.btsK = k.toFixed(4)
     fit.dataset.btsNeed = String(need)
     fit.dataset.btsAvail = String(avail)
-  }, [refs.screen, refs.fit, refs.lane])
+  }, [refs.screen, refs.stage, refs.fit, refs.lane])
 
   // 每次渲染后重算（战斗界面按引擎节拍重渲染；读数没变时不动 DOM）
   useLayoutEffect(() => {
@@ -138,10 +142,10 @@ export function useBattleFit(refs: BattleFitRefs): void {
 
   // 可用区尺寸变化（窗口/手机视口变化不触发 React 重渲染）也要重算
   useLayoutEffect(() => {
-    const el = refs.screen.current
+    const el = refs.stage.current
     if (!el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => apply())
     ro.observe(el)
     return () => ro.disconnect()
-  }, [apply, refs.screen])
+  }, [apply, refs.stage])
 }
