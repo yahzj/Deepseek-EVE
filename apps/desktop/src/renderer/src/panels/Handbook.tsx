@@ -1151,11 +1151,12 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
  *
  * 数据全部来自**敌舰自身的定义**（`FoeShipDef`）与既有单点，不在界面里另算一套：
  * - 一句话战术/武器/主副伤/舰载机/精英档 ＋ 特殊装置：`foeBriefLinesOfShip`（与悬赏卡悬停**同一份**）；
- * - 机体数值：三层血占比 `split`、单发 `shotDmg`、命中 `hitRate`、装填 `reloadMs`、射程带、闪避、速度比；
+ * - 机体数值：三层血占比 `split`、命中 `hitRate`、装填 `reloadMs`、射程带、闪避、基础速度（机动速度）；
+ *   ⚠ **不含单发伤害**（船长 2026-09-26：「实际上并没有这个伤害」⇒ 舰级裸值不上面）；
  * - 舰影：`ShipSprite`（敌舰逐舰资产表，与战斗画面同一张；未命中回退族形）。
  *
- * ⚠ 标签复用既有 `ui.*` 词条（舰级 / 护盾 / 装甲 / 结构 / 命中加成 / 回避率 / 锁定范围 /
- * 装填 / 单发伤害 / 机动速度 / 特殊装置），**不新造文案、不新取 id**。
+ * ⚠ 标签复用既有 `ui.*` 词条（舰级 / 护盾 / 装甲 / 结构 / 命中加成 / 回避率 / 射程带 /
+ * 装填 / 机动速度 / 特殊装置），**不新造文案、不新取 id**。
  */
 function FoeBody({ cell, engine }: { cell: GridCell; engine: GameEngine }): ReactNode {
   const def = cell.raw as unknown as FoeShipDef
@@ -1207,7 +1208,12 @@ function FoeBody({ cell, engine }: { cell: GridCell; engine: GameEngine }): Reac
        * （原先这一行用的是「锁定范围」的标签，语义不对 —— 那是"能锁多远"，这里要报**火力够到哪**。）
        */}
       {row(tr('ui.shipInfo.040'), `${def.rangeMinM ?? 0} – ${def.rangeMaxM ?? 0} m`)}
-      {row(tr('ui.shipInfo.044'), def.shotDmg !== undefined ? String(def.shotDmg) : '—')}
+      {/**
+       * ⚠ **不显示「单发伤害」**（**2026-09-26 船长令**：「**敌人的单发伤害不要显示，因为实际上
+       * 并没有这个伤害**」）——`FoeShipDef.shotDmg` 是**舰级裸值**，实战单发在战斗建档时经
+       * `dmgMul × 多舰船补偿 × 越线折扣 × 逐卡缩放` 才成形，卡面上报它等于报一个不存在的数。
+       * 火力大小由上面那行**伤害构成占比**表达；装填仍留着（它是射速口径，不是伤害口径）。
+       */}
       {row(tr('ui.shipInfo.032'), `${((def.reloadMs ?? 0) / 1000).toFixed(1)} s`)}
       {/**
        * **基础速度**（同上一条船长令）：`舰种基准 × speedRatio`，与战斗建档**同源同式**
