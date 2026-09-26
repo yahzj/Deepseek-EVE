@@ -17,7 +17,7 @@ import { createInitialState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { applyDcGuard, DC_LOCK_MS, dcUsageText } from '../src/combat'
 import { beginBattleAt } from '../src/expedition'
-import { fitModule } from '../src/equipment'
+import { fitModule, repairDeprecatedModules, swapModuleAt } from '../src/equipment'
 import type { BattleState, GameState } from '../src/state'
 import type { UnitSpec } from '../src/combat'
 import type { WeekendEventState } from '../src/weekendEvent'
@@ -115,6 +115,70 @@ describe('损伤管制装置 · 同舰唯一 ＋ 入侵循环撤退保险（船�
     expect(second.errorId).toBe('core.equipment.028')
     expect(second.error ?? '', '提示里点名已装的那件').toContain('损伤管制装置 MK1')
     console.log(`  [读数] 第二件被拒：${second.error}`)
+  })
+
+  it('**2026-09-26 报障回归**：换装路径（`swapModuleAt`）也必须拦住第二件损管', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 5 })
+    /**
+     * 开局两艘（沙猫 2/1/1 · 鲣鱼 3/2/1）低槽都只有 1 格 ⇒ 造一艘**低槽 4 格**的船来复现报障现场
+     * （玩家那艘战列舰的低槽有多格，才塞得进第二件损管）。
+     */
+    s.fleet['test-big'] = {
+      defId: 'sh-bullshark', // 5/2/4
+      customName: null,
+      durability: 1,
+      armorPct: 1,
+      cargo: {},
+      fitted: { high: [null, null, null, null, null], mid: [null, null], low: [null, null, null, null] },
+    } as never
+    s.shipId = 'test-big'
+    s.moduleBay['mod-dc-1'] = 1
+    s.moduleBay['mod-dc-2'] = 1
+    s.moduleBay['mod-dc-3'] = 1
+    const first = fitModule(s, 'mod-dc-1', ctx)
+    expect(first.ok, `第一件应装上（${first.error ?? ''}）`).toBe(true)
+    const low = s.fleet['test-big']!.fitted!.low!
+    const at = low.findIndex((x) => x === 'mod-dc-1')
+    expect(at, 'MK1 应在低槽里').toBeGreaterThanOrEqual(0)
+    /**
+     * 报障主路径：装配页的「换装」= `swapModuleAt`（**直接写 `bays[index]`**）——
+     * 修复前它不查 `unique` ⇒ 玩家能把第二件损管塞进**另一个**低槽。
+     */
+    const other = low.findIndex((x, i) => i !== at && x === null)
+    expect(other, '应还有空低槽可换').toBeGreaterThanOrEqual(0)
+    const swapped = swapModuleAt(s, 'mod-dc-2', ctx, { rack: 'low', index: other })
+    expect(swapped.ok, '换装第二件损管应被拒').toBe(false)
+    expect(swapped.errorId).toBe('core.equipment.028')
+    expect(s.fleet['test-big']!.fitted!.low!.filter((x) => x?.startsWith('mod-dc-')).length, '低槽里仍只有一件损管').toBe(1)
+    console.log(`  [读数] 换装被拒：${swapped.error}`)
+    // 同槽换装（损管 → 另一款损管）仍然合法：这不是"多装一件"
+    const inPlace = swapModuleAt(s, 'mod-dc-3', ctx, { rack: 'low', index: at })
+    expect(inPlace.ok, `同槽换款应放行（${inPlace.error ?? ''}）`).toBe(true)
+    expect(s.fleet['test-big']!.fitted!.low!.filter((x) => x?.startsWith('mod-dc-')).length).toBe(1)
+  })
+
+  it('**存档归正**：已有档里躺着两件损管 ⇒ 载入修复链只留靠前那件、其余退回装备库', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 5 })
+    s.fleet['test-big'] = {
+      defId: 'sh-bullshark',
+      customName: null,
+      durability: 1,
+      armorPct: 1,
+      cargo: {},
+      fitted: { high: [null, null, null, null, null], mid: [null, null], low: [null, null, null, null] },
+    } as never
+    // 白盒：手工造出"报障期间的存档"——低槽同时挂两件损管
+    const fitted = s.fleet['test-big']!.fitted!
+    fitted.low![0] = 'mod-dc-1'
+    fitted.low![1] = 'mod-dc-2'
+    const before = s.moduleBay['mod-dc-2'] ?? 0
+    repairDeprecatedModules(s, ctx)
+    const left = fitted.low!.filter((x) => x?.startsWith('mod-dc-'))
+    expect(left.length, '只留一件').toBe(1)
+    expect(left[0], '留靠前的那件（MK1）').toBe('mod-dc-1')
+    expect((s.moduleBay['mod-dc-2'] ?? 0) - before, '多出来的那件退回装备库').toBe(1)
+    expect(s.logs.some((l) => l.textId === 'core.equipment.029'), '写一条归正日志').toBe(true)
+    console.log('  [读数] 存档归正：两件损管 → 1 装 + 1 回库')
   })
 
   it('入侵「重复出击」的场次也挂 0.5 撤退保险；循环没开则不挂', () => {

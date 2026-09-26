@@ -451,6 +451,37 @@ function wantedBaysOf(state: GameState, ctx: SimContext, shipId: string, rack: R
  * index 缺省 = 第一个空位；该槽类无空位/CPU 超限 → 拒绝并提示。
  * V18.1：无同类唯一约束——任何件可复数安装，防超模靠收敛机制（stackingOf）与 CPU。
  */
+/**
+ * **同舰唯一的冲突检测（单点）**——**2026-09-25 船长令**「损管只能装备一件」的判据：
+ * 同舰**至多一件**带 `unique` 标记的件（本线 = 损伤管制装置 MK1~MK3 互斥；判据按标记、不看型号）。
+ *
+ * ⚠ **2026-09-26 玩家报障「可以装多个损管」⇒ 抽成单点**：此前只有 `fitModule`（装配页「装上」）
+ * 查这一条，而**换装路径 `swapModuleAt`（装配页「换装」/ 顶替同槽）直接写 `bays[index]`**，
+ * 绕过了检查 ⇒ 玩家能把第二件损管塞进另一个低槽。现在两条写路径**共用本函数**，
+ * 装配方案套用（`applyFitPreset` 逐件走 `fitModule`）本来就在链上。
+ *
+ * @param ignore 正在被替换掉的那一位（同槽换装：把损管换成另一款损管是合法的，不该被判冲突）
+ */
+function uniqueConflictOf(
+  fitted: FittedModules,
+  ctx: SimContext,
+  moduleId: string,
+  ignore?: { rack: RackSlot; index: number },
+): ModuleDef | undefined {
+  if (ctx.modules.get(moduleId)?.unique !== true) return undefined
+  for (const rack of ['high', 'mid', 'low'] as const) {
+    const bays = rackBays(fitted, rack)
+    for (let i = 0; i < bays.length; i += 1) {
+      if (ignore && ignore.rack === rack && ignore.index === i) continue
+      const id = bays[i]
+      if (!id) continue
+      const def = ctx.modules.get(id)
+      if (def?.unique === true) return def
+    }
+  }
+  return undefined
+}
+
 export function fitModule(
   state: GameState,
   moduleId: string,
@@ -469,19 +500,15 @@ export function fitModule(
   const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法装配。', errorId: 'core.equipment.003' }
   /**
-   * **同舰唯一**（**2026-09-25 船长令**：「**损管只能装备一件**」）——V18.1「取消同类唯一」之后
-   * 第一次重新引入的单件约束：同舰**至多一件**带 `unique` 标记的件（本线 = 损伤管制装置 MK1~MK3 互斥）。
-   * ⚠ 判据按**标记**（不看型号）：将来再有别的件标 `unique`，它们同属这一组。
+   * **同舰唯一**（**2026-09-25 船长令**：「**损管只能装备一件**」）——单点判据见 `uniqueConflictOf`。
    */
-  if (def.unique === true) {
-    const already = allFittedModules(fitted, ctx).find((m) => m.unique === true)
-    if (already) {
-      return {
-        ok: false,
-        error: `损伤管制装置每舰只能装一件（已装 ${already.name}）。`,
-        errorId: 'core.equipment.028',
-        errorParams: { p1: already.name },
-      }
+  const clash = uniqueConflictOf(fitted, ctx, moduleId)
+  if (clash) {
+    return {
+      ok: false,
+      error: `损伤管制装置每舰只能装一件（已装 ${clash.name}）。`,
+      errorId: 'core.equipment.028',
+      errorParams: { p1: clash.name },
     }
   }
   const rack = opts?.rack ?? rackOf(def)
@@ -638,6 +665,20 @@ export function swapModuleAt(
   }
   if (countModule(state, moduleId) < 1) {
     return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002' }
+  }
+  /**
+   * **同舰唯一**（**2026-09-26 报障修复**）：换装路径此前**没查这条** ⇒ 玩家能把第二件损管
+   * 塞进另一个低槽（玩家原话：「可以装多个损管」）。判据与「装上」共用单点 `uniqueConflictOf`；
+   * `ignore` = 本槽（把损管换成另一款损管是合法的同槽替换）。
+   */
+  const clash = uniqueConflictOf(fitted, ctx, moduleId, { rack: opts.rack, index: opts.index })
+  if (clash) {
+    return {
+      ok: false,
+      error: `损伤管制装置每舰只能装一件（已装 ${clash.name}）。`,
+      errorId: 'core.equipment.028',
+      errorParams: { p1: clash.name },
+    }
   }
   const overload = cpuOverloadText(state, ctx, shipId, {
     ...(oldId !== null ? { remove: { rack: opts.rack, index: opts.index } } : {}),
@@ -1133,6 +1174,46 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
         (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : '') +
         (rackMoved > 0 ? `作业装备（采集器 / 打捞器）归位到高槽 ${rackMoved} 件。` : '') +
         (rackFreed > 0 ? `高槽已满，为归位腾出的 ${rackFreed} 件已退回装备库（随时可装回）。` : ''),
+    )
+  }
+  /**
+   * **同舰唯一归正**（**2026-09-26 玩家报障「可以装多个损管」**）：报障期间换装路径漏查 ⇒
+   * 已有存档里可能真的躺着两件损管。这里按"**保留靠前那一件**"（高→中→低、位序小的优先）
+   * 把多余件**退回装备库**（不销毁资产），并写一条日志让玩家知道。
+   *
+   * ⚠ **在洞编队跳过**：与上面对齐/归位同口径（进洞船只所有行为锁定，含改装）⇒ 出洞后载入即归正。
+   */
+  const dupReturned: string[] = []
+  const inRunFleet = new Set<string>(state.wormhole?.run?.fleet ?? [])
+  for (const [uid, ship] of Object.entries(state.fleet)) {
+    if (inRunFleet.has(uid)) continue
+    const fitted = ship?.fitted
+    if (!fitted) continue
+    let seen: ModuleDef | undefined
+    for (const rack of ['high', 'mid', 'low'] as const) {
+      const bays = rackBays(fitted, rack)
+      for (let i = 0; i < bays.length; i += 1) {
+        const id = bays[i]
+        if (!id) continue
+        const def = ctx.modules.get(id)
+        if (def?.unique !== true) continue
+        if (seen === undefined) {
+          seen = def
+          continue
+        }
+        bays[i] = null
+        state.moduleBay[id] = countModule(state, id) + 1
+        dupReturned.push(def.name)
+      }
+    }
+  }
+  if (dupReturned.length > 0) {
+    addLog(
+      state,
+      'fleet',
+      `同舰唯一归正：每舰只留一件损伤管制装置，退回装备库 ${dupReturned.length} 件（${dupReturned.join('、')}）。`,
+      'core.equipment.029',
+      { p1: dupReturned.length, p2: dupReturned.join('、') },
     )
   }
   // 槽位对齐可能裁掉甲板扩展 → 机舱变小：超出容量的无人机同样自动卸下（2026-09-10 船长口径）
